@@ -1,0 +1,7191 @@
+{
+  "schema_version": "card_effect_payload_inventory.v1",
+  "audit": {
+    "baseline_sha": "59756a291f811a064726f59aed27efecc3590c9a",
+    "generated_on": "2026-07-26",
+    "method": "PowerShell ConvertFrom-Json structured parse plus source consumer audit",
+    "catalog_path": "data/cards/card_runtime_catalog_v06.json",
+    "catalog_sha256": "b59b73489d23578558d4a7688a03f50a3ef4d776cf528cd9eafd0e1d2a0fcb40",
+    "scope": [
+      "resources/cards/runtime/families",
+      "resources/cards/runtime/packs",
+      "resources/cards/runtime/card_runtime_catalog_v04.tres",
+      "resources/cards/runtime/card_runtime_catalog_v05.tres",
+      "resources/cards/runtime/card_runtime_catalog_v06.tres",
+      "data/cards/card_runtime_catalog_v06.json",
+      "active rules and production consumers"
+    ]
+  },
+  "classification_legend": {
+    "authoritative": "Directly read or value-validated by a current domain owner; does not by itself establish a mechanic_id.",
+    "compatibility": "Layered payload is a mirror or same-name legacy/Ruleset compatibility surface, not the active direct read.",
+    "AI-only": "Only a direct layered AI read; zero fields meet this criterion.",
+    "executor-only": "Only an adapter/schema/reference execution read.",
+    "multi-consumer": "Direct reads or propagated values cross multiple consumer boundaries.",
+    "unknown": "No qualifying direct production read."
+  },
+  "generated_counts": {
+    "card_count": 348,
+    "family_count": 87,
+    "rank_count": 4,
+    "effect_kind_count": 10,
+    "target_kind_count": 9,
+    "payload_key_count": 113,
+    "payload_field_occurrence_count": 2920,
+    "machine_field_occurrence_count": 5568,
+    "player_field_occurrence_count": 4524,
+    "developer_field_occurrence_count": 2100,
+    "layer_field_occurrence_count": 12192,
+    "classification_counts": [
+      {
+        "classification": "authoritative",
+        "field_count": 56
+      },
+      {
+        "classification": "compatibility",
+        "field_count": 29
+      },
+      {
+        "classification": "AI-only",
+        "field_count": 0
+      },
+      {
+        "classification": "executor-only",
+        "field_count": 4
+      },
+      {
+        "classification": "multi-consumer",
+        "field_count": 13
+      },
+      {
+        "classification": "unknown",
+        "field_count": 11
+      }
+    ],
+    "duplicate_card_id_count": 0,
+    "incomplete_family_rank_ladder_count": 0
+  },
+  "resource_catalogs": {
+    "global_resource_catalog": {
+      "path": "resources/cards/runtime/card_runtime_catalog_v04.tres",
+      "version": "v0.4",
+      "family_resource_files": 113,
+      "pack_resource_files": 10,
+      "authored_rank_records": 230,
+      "role": "CardRuntimeCatalogService global Resource-backed catalog"
+    },
+    "migration_catalog": {
+      "path": "resources/cards/runtime/card_runtime_catalog_v05.tres",
+      "version": "v0.5",
+      "card_records": 5,
+      "release_ready_records": 0,
+      "role": "blocked migration catalog"
+    },
+    "v06_catalog": {
+      "resource_path": "resources/cards/runtime/card_runtime_catalog_v06.tres",
+      "source_path": "data/cards/card_runtime_catalog_v06.json",
+      "expected_card_count": 348,
+      "expected_family_count": 87,
+      "role": "thin Resource loader over JSON"
+    },
+    "alpha01_selection": {
+      "path": "resources/content/alpha01/alpha01_content_manifest.tres",
+      "family_count": 40,
+      "rank_record_count": 160,
+      "category_family_counts": {
+        "commodity": 12,
+        "facility": 12,
+        "interaction": 3,
+        "supply_demand": 2,
+        "military": 3,
+        "monster": 8,
+        "organization": 0
+      },
+      "note": "Active selection excludes all organization families and most catalog families."
+    }
+  },
+  "catalog_metadata": {
+    "schema_version": "v0.6",
+    "catalog_id": "space_syndicate.card_runtime_catalog.v06",
+    "catalog_status": "complete_named_seed_playtest",
+    "generated_at": "2026-07-15",
+    "ruleset_id": "space_syndicate_v06"
+  },
+  "layer_inventory": {
+    "machine": {
+      "field_count": 16,
+      "fields": [
+        {
+          "key": "acquisition_kind",
+          "occurrence_count": 348
+        },
+        {
+          "key": "asset_cost",
+          "occurrence_count": 348
+        },
+        {
+          "key": "available_for_acquisition",
+          "occurrence_count": 348
+        },
+        {
+          "key": "card_id",
+          "occurrence_count": 348
+        },
+        {
+          "key": "category_id",
+          "occurrence_count": 348
+        },
+        {
+          "key": "counts_toward_hand_limit",
+          "occurrence_count": 348
+        },
+        {
+          "key": "effect_kind",
+          "occurrence_count": 348
+        },
+        {
+          "key": "effect_payload",
+          "occurrence_count": 348
+        },
+        {
+          "key": "family_id",
+          "occurrence_count": 348
+        },
+        {
+          "key": "industry_id",
+          "occurrence_count": 348
+        },
+        {
+          "key": "maximum_rank",
+          "occurrence_count": 348
+        },
+        {
+          "key": "merge_policy",
+          "occurrence_count": 348
+        },
+        {
+          "key": "purchase_cash",
+          "occurrence_count": 348
+        },
+        {
+          "key": "rank",
+          "occurrence_count": 348
+        },
+        {
+          "key": "resolution_policy",
+          "occurrence_count": 348
+        },
+        {
+          "key": "target_kind",
+          "occurrence_count": 348
+        }
+      ]
+    },
+    "player": {
+      "field_count": 13,
+      "fields": [
+        {
+          "key": "cost",
+          "occurrence_count": 348
+        },
+        {
+          "key": "duration",
+          "occurrence_count": 348
+        },
+        {
+          "key": "effect",
+          "occurrence_count": 348
+        },
+        {
+          "key": "industry",
+          "occurrence_count": 348
+        },
+        {
+          "key": "keywords",
+          "occurrence_count": 348
+        },
+        {
+          "key": "name",
+          "occurrence_count": 348
+        },
+        {
+          "key": "next_step",
+          "occurrence_count": 348
+        },
+        {
+          "key": "rank",
+          "occurrence_count": 348
+        },
+        {
+          "key": "short_effect",
+          "occurrence_count": 348
+        },
+        {
+          "key": "target",
+          "occurrence_count": 348
+        },
+        {
+          "key": "timing",
+          "occurrence_count": 348
+        },
+        {
+          "key": "type",
+          "occurrence_count": 348
+        },
+        {
+          "key": "visibility",
+          "occurrence_count": 348
+        }
+      ]
+    },
+    "developer": {
+      "field_count": 7,
+      "fields": [
+        {
+          "key": "art_key",
+          "occurrence_count": 348
+        },
+        {
+          "key": "balance_status",
+          "occurrence_count": 348
+        },
+        {
+          "key": "effect_review_status",
+          "occurrence_count": 348
+        },
+        {
+          "key": "implementation_status",
+          "occurrence_count": 348
+        },
+        {
+          "key": "legacy_v04_family",
+          "occurrence_count": 12
+        },
+        {
+          "key": "runtime_owner",
+          "occurrence_count": 348
+        },
+        {
+          "key": "source_rule",
+          "occurrence_count": 348
+        }
+      ]
+    }
+  },
+  "rank_counts": [
+    {
+      "rank": 1,
+      "card_count": 87
+    },
+    {
+      "rank": 2,
+      "card_count": 87
+    },
+    {
+      "rank": 3,
+      "card_count": 87
+    },
+    {
+      "rank": 4,
+      "card_count": 87
+    }
+  ],
+  "category_counts": [
+    {
+      "category_id": "commodity",
+      "card_count": 184,
+      "family_count": 46
+    },
+    {
+      "category_id": "facility",
+      "card_count": 64,
+      "family_count": 16
+    },
+    {
+      "category_id": "interaction",
+      "card_count": 12,
+      "family_count": 3
+    },
+    {
+      "category_id": "military",
+      "card_count": 28,
+      "family_count": 7
+    },
+    {
+      "category_id": "monster",
+      "card_count": 32,
+      "family_count": 8
+    },
+    {
+      "category_id": "organization",
+      "card_count": 20,
+      "family_count": 5
+    },
+    {
+      "category_id": "supply_demand",
+      "card_count": 8,
+      "family_count": 2
+    }
+  ],
+  "acquisition_and_activation": {
+    "rule_reference": "docs/tabletop_rulebook_v06.md:373",
+    "acquisition_fields": [
+      "machine.acquisition_kind",
+      "machine.purchase_cash"
+    ],
+    "activation_fields": [
+      "machine.asset_cost"
+    ],
+    "acquisition_kind_counts": [
+      {
+        "acquisition_kind": "commodity_belt_free",
+        "card_count": 184,
+        "family_count": 46
+      },
+      {
+        "acquisition_kind": "dynamic_market_cash",
+        "card_count": 132,
+        "family_count": 33
+      },
+      {
+        "acquisition_kind": "starter_or_dynamic_market_cash",
+        "card_count": 32,
+        "family_count": 8
+      }
+    ],
+    "purchase_cash_distribution": [
+      {
+        "purchase_cash": 0,
+        "card_count": 184
+      },
+      {
+        "purchase_cash": 4,
+        "card_count": 16
+      },
+      {
+        "purchase_cash": 5,
+        "card_count": 6
+      },
+      {
+        "purchase_cash": 6,
+        "card_count": 18
+      },
+      {
+        "purchase_cash": 7,
+        "card_count": 17
+      },
+      {
+        "purchase_cash": 8,
+        "card_count": 6
+      },
+      {
+        "purchase_cash": 10,
+        "card_count": 18
+      },
+      {
+        "purchase_cash": 11,
+        "card_count": 17
+      },
+      {
+        "purchase_cash": 12,
+        "card_count": 6
+      },
+      {
+        "purchase_cash": 15,
+        "card_count": 18
+      },
+      {
+        "purchase_cash": 16,
+        "card_count": 17
+      },
+      {
+        "purchase_cash": 17,
+        "card_count": 6
+      },
+      {
+        "purchase_cash": 21,
+        "card_count": 18
+      },
+      {
+        "purchase_cash": 22,
+        "card_count": 1
+      }
+    ],
+    "activation_asset_total_distribution": [
+      {
+        "asset_total": 0,
+        "card_count": 200
+      },
+      {
+        "asset_total": 2,
+        "card_count": 37
+      },
+      {
+        "asset_total": 3,
+        "card_count": 8
+      },
+      {
+        "asset_total": 4,
+        "card_count": 33
+      },
+      {
+        "asset_total": 5,
+        "card_count": 8
+      },
+      {
+        "asset_total": 6,
+        "card_count": 16
+      },
+      {
+        "asset_total": 7,
+        "card_count": 17
+      },
+      {
+        "asset_total": 8,
+        "card_count": 8
+      },
+      {
+        "asset_total": 9,
+        "card_count": 16
+      },
+      {
+        "asset_total": 11,
+        "card_count": 1
+      },
+      {
+        "asset_total": 12,
+        "card_count": 3
+      },
+      {
+        "asset_total": 16,
+        "card_count": 1
+      }
+    ],
+    "timing_counts": [
+      {
+        "timing": "合法响应窗口",
+        "card_count": 4
+      },
+      {
+        "timing": "普通出牌窗口",
+        "card_count": 324
+      },
+      {
+        "timing": "普通出牌窗口；次窗生效",
+        "card_count": 20
+      }
+    ],
+    "finding": "184 commodities are free to acquire/play; 16 rank-I facilities have positive purchase cash but zero activation assets; all other noncommodity records have positive purchase cash and authored activation costs."
+  },
+  "effect_kinds": [
+    {
+      "effect_kind": "build_upgrade_or_repair_facility",
+      "card_count": 64,
+      "family_count": 16,
+      "target_kinds": [
+        {
+          "target_kind": "region_unique_facility_slot",
+          "card_count": 64
+        }
+      ],
+      "declared_runtime_owners": [
+        "region_infrastructure_runtime_controller"
+      ],
+      "observed_route": {
+        "route": "core_economic_card_runtime",
+        "status": "composed"
+      },
+      "authority_id": "facility_build"
+    },
+    {
+      "effect_kind": "card_counter",
+      "card_count": 4,
+      "family_count": 1,
+      "target_kinds": [
+        {
+          "target_kind": "incoming_direct_player_interaction",
+          "card_count": 4
+        }
+      ],
+      "declared_runtime_owners": [
+        "card_counter_runtime_service"
+      ],
+      "observed_route": {
+        "route": "unsupported_v06_card_runtime",
+        "status": "not_composed"
+      },
+      "authority_id": "card_counter"
+    },
+    {
+      "effect_kind": "deploy_or_upgrade_military",
+      "card_count": 28,
+      "family_count": 7,
+      "target_kinds": [
+        {
+          "target_kind": "region_or_owned_same_family_military",
+          "card_count": 28
+        }
+      ],
+      "declared_runtime_owners": [
+        "military_runtime_controller"
+      ],
+      "observed_route": {
+        "route": "unsupported_v06_card_runtime",
+        "status": "not_composed"
+      },
+      "authority_id": "military_card"
+    },
+    {
+      "effect_kind": "deploy_or_upgrade_monster",
+      "card_count": 32,
+      "family_count": 8,
+      "target_kinds": [
+        {
+          "target_kind": "region_or_existing_same_family_monster",
+          "card_count": 32
+        }
+      ],
+      "declared_runtime_owners": [
+        "monster_runtime_controller"
+      ],
+      "observed_route": {
+        "route": "monster_card_runtime",
+        "status": "capability_gated"
+      },
+      "authority_id": "monster_card"
+    },
+    {
+      "effect_kind": "global_order_budget",
+      "card_count": 4,
+      "family_count": 1,
+      "target_kinds": [
+        {
+          "target_kind": "global_matching_goods",
+          "card_count": 4
+        }
+      ],
+      "declared_runtime_owners": [
+        "global_supply_demand_runtime_service"
+      ],
+      "observed_route": {
+        "route": "core_economic_card_runtime/shared_resolution",
+        "status": "composed_shared_queue"
+      },
+      "authority_id": "conditional_supply_demand"
+    },
+    {
+      "effect_kind": "global_supply_spawn",
+      "card_count": 4,
+      "family_count": 1,
+      "target_kinds": [
+        {
+          "target_kind": "global_matching_factories",
+          "card_count": 4
+        }
+      ],
+      "declared_runtime_owners": [
+        "global_supply_demand_runtime_service"
+      ],
+      "observed_route": {
+        "route": "core_economic_card_runtime/shared_resolution",
+        "status": "composed_shared_queue"
+      },
+      "authority_id": "conditional_supply_demand"
+    },
+    {
+      "effect_kind": "install_commodity_rate",
+      "card_count": 184,
+      "family_count": 46,
+      "target_kinds": [
+        {
+          "target_kind": "same_industry_factory_or_market",
+          "card_count": 184
+        }
+      ],
+      "declared_runtime_owners": [
+        "commodity_flow_runtime_controller"
+      ],
+      "observed_route": {
+        "route": "core_economic_card_runtime",
+        "status": "composed"
+      },
+      "authority_id": "commodity_install"
+    },
+    {
+      "effect_kind": "install_organization_upgrade",
+      "card_count": 20,
+      "family_count": 5,
+      "target_kinds": [
+        {
+          "target_kind": "self_organization_slot",
+          "card_count": 20
+        }
+      ],
+      "declared_runtime_owners": [
+        "organization_runtime_owner_pending"
+      ],
+      "observed_route": {
+        "route": "core_economic_card_runtime",
+        "status": "catalog_present_but_alpha01_excluded_and_consumer_capabilities_incomplete"
+      },
+      "authority_id": "organization_card"
+    },
+    {
+      "effect_kind": "player_hand_disrupt",
+      "card_count": 4,
+      "family_count": 1,
+      "target_kinds": [
+        {
+          "target_kind": "opponent_discardable_hand",
+          "card_count": 4
+        }
+      ],
+      "declared_runtime_owners": [
+        "player_hand_interaction_runtime_service"
+      ],
+      "observed_route": {
+        "route": "unsupported_v06_card_runtime",
+        "status": "not_composed"
+      },
+      "authority_id": "direct_player_interaction"
+    },
+    {
+      "effect_kind": "player_hand_steal",
+      "card_count": 4,
+      "family_count": 1,
+      "target_kinds": [
+        {
+          "target_kind": "opponent_discardable_hand",
+          "card_count": 4
+        }
+      ],
+      "declared_runtime_owners": [
+        "player_hand_interaction_runtime_service"
+      ],
+      "observed_route": {
+        "route": "unsupported_v06_card_runtime",
+        "status": "not_composed"
+      },
+      "authority_id": "direct_player_interaction"
+    }
+  ],
+  "target_kinds": [
+    {
+      "target_kind": "global_matching_factories",
+      "card_count": 4,
+      "family_count": 1,
+      "effect_kinds": [
+        "global_supply_spawn"
+      ]
+    },
+    {
+      "target_kind": "global_matching_goods",
+      "card_count": 4,
+      "family_count": 1,
+      "effect_kinds": [
+        "global_order_budget"
+      ]
+    },
+    {
+      "target_kind": "incoming_direct_player_interaction",
+      "card_count": 4,
+      "family_count": 1,
+      "effect_kinds": [
+        "card_counter"
+      ]
+    },
+    {
+      "target_kind": "opponent_discardable_hand",
+      "card_count": 8,
+      "family_count": 2,
+      "effect_kinds": [
+        "player_hand_disrupt",
+        "player_hand_steal"
+      ]
+    },
+    {
+      "target_kind": "region_or_existing_same_family_monster",
+      "card_count": 32,
+      "family_count": 8,
+      "effect_kinds": [
+        "deploy_or_upgrade_monster"
+      ]
+    },
+    {
+      "target_kind": "region_or_owned_same_family_military",
+      "card_count": 28,
+      "family_count": 7,
+      "effect_kinds": [
+        "deploy_or_upgrade_military"
+      ]
+    },
+    {
+      "target_kind": "region_unique_facility_slot",
+      "card_count": 64,
+      "family_count": 16,
+      "effect_kinds": [
+        "build_upgrade_or_repair_facility"
+      ]
+    },
+    {
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 184,
+      "family_count": 46,
+      "effect_kinds": [
+        "install_commodity_rate"
+      ]
+    },
+    {
+      "target_kind": "self_organization_slot",
+      "card_count": 20,
+      "family_count": 5,
+      "effect_kinds": [
+        "install_organization_upgrade"
+      ]
+    }
+  ],
+  "developer_inventory": {
+    "runtime_owner_counts": [
+      {
+        "runtime_owner": "card_counter_runtime_service",
+        "card_count": 4,
+        "effect_kinds": [
+          "card_counter"
+        ]
+      },
+      {
+        "runtime_owner": "commodity_flow_runtime_controller",
+        "card_count": 184,
+        "effect_kinds": [
+          "install_commodity_rate"
+        ]
+      },
+      {
+        "runtime_owner": "global_supply_demand_runtime_service",
+        "card_count": 8,
+        "effect_kinds": [
+          "global_order_budget",
+          "global_supply_spawn"
+        ]
+      },
+      {
+        "runtime_owner": "military_runtime_controller",
+        "card_count": 28,
+        "effect_kinds": [
+          "deploy_or_upgrade_military"
+        ]
+      },
+      {
+        "runtime_owner": "monster_runtime_controller",
+        "card_count": 32,
+        "effect_kinds": [
+          "deploy_or_upgrade_monster"
+        ]
+      },
+      {
+        "runtime_owner": "organization_runtime_owner_pending",
+        "card_count": 20,
+        "effect_kinds": [
+          "install_organization_upgrade"
+        ]
+      },
+      {
+        "runtime_owner": "player_hand_interaction_runtime_service",
+        "card_count": 8,
+        "effect_kinds": [
+          "player_hand_disrupt",
+          "player_hand_steal"
+        ]
+      },
+      {
+        "runtime_owner": "region_infrastructure_runtime_controller",
+        "card_count": 64,
+        "effect_kinds": [
+          "build_upgrade_or_repair_facility"
+        ]
+      }
+    ],
+    "implementation_status_counts": [
+      {
+        "implementation_status": "catalog_ready_runtime_wiring_pending",
+        "card_count": 348
+      }
+    ],
+    "effect_review_status_counts": [
+      {
+        "effect_review_status": "legacy_effect_review_pending",
+        "card_count": 8
+      },
+      {
+        "effect_review_status": "rent_rate_review_pending",
+        "card_count": 64
+      },
+      {
+        "effect_review_status": "rule_confirmed",
+        "card_count": 216
+      },
+      {
+        "effect_review_status": "unit_profile_review_pending",
+        "card_count": 60
+      }
+    ],
+    "finding": "All 348 records remain catalog_ready_runtime_wiring_pending; declared owners are advisory metadata and do not prove observed route composition."
+  },
+  "authorities": {
+    "commodity_install": {
+      "effect_kinds": [
+        "install_commodity_rate"
+      ],
+      "mechanic_id": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "rule_sources": [
+        "docs/tabletop_rulebook_v06.md:185",
+        "docs/tabletop_rulebook_v06.md:536"
+      ],
+      "owner": "CommodityFlowRuntimeController"
+    },
+    "facility_build": {
+      "effect_kinds": [
+        "build_upgrade_or_repair_facility"
+      ],
+      "mechanic_id": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "rule_sources": [
+        "docs/tabletop_rulebook_v06.md:21",
+        "docs/tabletop_rulebook_v06.md:72",
+        "docs/tabletop_rulebook_v06.md:545"
+      ],
+      "owner": "RegionInfrastructureRuntimeController"
+    },
+    "conditional_supply_demand": {
+      "effect_kinds": [
+        "global_order_budget",
+        "global_supply_spawn"
+      ],
+      "mechanic_id": "conditional_order_auto_settlement",
+      "status": "ACTIVE",
+      "rule_sources": [
+        "docs/tabletop_rulebook_v06.md:442",
+        "docs/rules/v06_mechanic_status_registry.json:24"
+      ],
+      "owner": "GlobalSupplyDemandRuntimeServiceV06 + CommodityFlowRuntimeController"
+    },
+    "monster_card": {
+      "effect_kinds": [
+        "deploy_or_upgrade_monster"
+      ],
+      "mechanic_id": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "rule_sources": [
+        "docs/tabletop_rulebook_v06.md:464"
+      ],
+      "owner": "MonsterRuntimeController"
+    },
+    "military_card": {
+      "effect_kinds": [
+        "deploy_or_upgrade_military"
+      ],
+      "mechanic_id": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "rule_sources": [
+        "docs/tabletop_rulebook_v06.md:454"
+      ],
+      "owner": "MilitaryRuntimeController"
+    },
+    "organization_card": {
+      "effect_kinds": [
+        "install_organization_upgrade"
+      ],
+      "mechanic_id": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "rule_sources": [
+        "docs/tabletop_rulebook_v06.md:398",
+        "docs/tabletop_rulebook_v06.md:440"
+      ],
+      "owner": "PlayerOrganizationRuntimeController",
+      "authority_conflict": "Catalog says acquirable while higher rule authority says not yet open; alpha01 selection excludes organization families."
+    },
+    "direct_player_interaction": {
+      "effect_kinds": [
+        "player_hand_disrupt",
+        "player_hand_steal"
+      ],
+      "mechanic_id": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "related_active_mechanic_id": "card_target_choice",
+      "rule_sources": [
+        "docs/tabletop_rulebook_v06.md:414",
+        "docs/rules/v06_mechanic_status_registry.json:16"
+      ],
+      "owner": "PlayerHandInteractionRuntimeService"
+    },
+    "card_counter": {
+      "effect_kinds": [
+        "card_counter"
+      ],
+      "mechanic_id": "card_counter_response",
+      "status": "ACTIVE",
+      "rule_sources": [
+        "docs/tabletop_rulebook_v06.md:438",
+        "docs/rules/v06_mechanic_status_registry.json:14"
+      ],
+      "owner": "CardResolutionRuntimeController + ForcedDecisionRuntimeScheduler"
+    }
+  },
+  "families": [
+    {
+      "family_id": "commodity.antimatter_tea",
+      "category_id": "commodity",
+      "industry_id": "energy",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.antimatter_tea.rank_1",
+        "commodity.antimatter_tea.rank_2",
+        "commodity.antimatter_tea.rank_3",
+        "commodity.antimatter_tea.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.aurora_salt",
+      "category_id": "commodity",
+      "industry_id": "technology",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.aurora_salt.rank_1",
+        "commodity.aurora_salt.rank_2",
+        "commodity.aurora_salt.rank_3",
+        "commodity.aurora_salt.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.blue_tide_algae",
+      "category_id": "commodity",
+      "industry_id": "shipping",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.blue_tide_algae.rank_1",
+        "commodity.blue_tide_algae.rank_2",
+        "commodity.blue_tide_algae.rank_3",
+        "commodity.blue_tide_algae.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.comet_tail_citrus",
+      "category_id": "commodity",
+      "industry_id": "energy",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.comet_tail_citrus.rank_1",
+        "commodity.comet_tail_citrus.rank_2",
+        "commodity.comet_tail_citrus.rank_3",
+        "commodity.comet_tail_citrus.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.dark_reef_coral",
+      "category_id": "commodity",
+      "industry_id": "industry",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.dark_reef_coral.rank_1",
+        "commodity.dark_reef_coral.rank_2",
+        "commodity.dark_reef_coral.rank_3",
+        "commodity.dark_reef_coral.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.deep_sea_fungal_mat",
+      "category_id": "commodity",
+      "industry_id": "life",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.deep_sea_fungal_mat.rank_1",
+        "commodity.deep_sea_fungal_mat.rank_2",
+        "commodity.deep_sea_fungal_mat.rank_3",
+        "commodity.deep_sea_fungal_mat.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.dream_fragrance",
+      "category_id": "commodity",
+      "industry_id": "commerce",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.dream_fragrance.rank_1",
+        "commodity.dream_fragrance.rank_2",
+        "commodity.dream_fragrance.rank_3",
+        "commodity.dream_fragrance.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.equatorial_vanilla",
+      "category_id": "commodity",
+      "industry_id": "commerce",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.equatorial_vanilla.rank_1",
+        "commodity.equatorial_vanilla.rank_2",
+        "commodity.equatorial_vanilla.rank_3",
+        "commodity.equatorial_vanilla.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.frost_crown_sugar",
+      "category_id": "commodity",
+      "industry_id": "life",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.frost_crown_sugar.rank_1",
+        "commodity.frost_crown_sugar.rank_2",
+        "commodity.frost_crown_sugar.rank_3",
+        "commodity.frost_crown_sugar.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.giant_kelp_fiber",
+      "category_id": "commodity",
+      "industry_id": "shipping",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.giant_kelp_fiber.rank_1",
+        "commodity.giant_kelp_fiber.rank_2",
+        "commodity.giant_kelp_fiber.rank_3",
+        "commodity.giant_kelp_fiber.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.gravity_ceramic",
+      "category_id": "commodity",
+      "industry_id": "industry",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.gravity_ceramic.rank_1",
+        "commodity.gravity_ceramic.rank_2",
+        "commodity.gravity_ceramic.rank_3",
+        "commodity.gravity_ceramic.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.gravity_cotton",
+      "category_id": "commodity",
+      "industry_id": "industry",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.gravity_cotton.rank_1",
+        "commodity.gravity_cotton.rank_2",
+        "commodity.gravity_cotton.rank_3",
+        "commodity.gravity_cotton.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.ion_spice",
+      "category_id": "commodity",
+      "industry_id": "commerce",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.ion_spice.rank_1",
+        "commodity.ion_spice.rank_2",
+        "commodity.ion_spice.rank_3",
+        "commodity.ion_spice.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.iris_mineral_powder",
+      "category_id": "commodity",
+      "industry_id": "industry",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.iris_mineral_powder.rank_1",
+        "commodity.iris_mineral_powder.rank_2",
+        "commodity.iris_mineral_powder.rank_3",
+        "commodity.iris_mineral_powder.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.living_chip",
+      "category_id": "commodity",
+      "industry_id": "technology",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.living_chip.rank_1",
+        "commodity.living_chip.rank_2",
+        "commodity.living_chip.rank_3",
+        "commodity.living_chip.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.lunar_soil_grape",
+      "category_id": "commodity",
+      "industry_id": "life",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.lunar_soil_grape.rank_1",
+        "commodity.lunar_soil_grape.rank_2",
+        "commodity.lunar_soil_grape.rank_3",
+        "commodity.lunar_soil_grape.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.magnetic_core_durian",
+      "category_id": "commodity",
+      "industry_id": "energy",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.magnetic_core_durian.rank_1",
+        "commodity.magnetic_core_durian.rank_2",
+        "commodity.magnetic_core_durian.rank_3",
+        "commodity.magnetic_core_durian.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.meteorite_sauce",
+      "category_id": "commodity",
+      "industry_id": "industry",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.meteorite_sauce.rank_1",
+        "commodity.meteorite_sauce.rank_2",
+        "commodity.meteorite_sauce.rank_3",
+        "commodity.meteorite_sauce.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.mica_toy",
+      "category_id": "commodity",
+      "industry_id": "commerce",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.mica_toy.rank_1",
+        "commodity.mica_toy.rank_2",
+        "commodity.mica_toy.rank_3",
+        "commodity.mica_toy.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.night_sailing_banana",
+      "category_id": "commodity",
+      "industry_id": "shipping",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.night_sailing_banana.rank_1",
+        "commodity.night_sailing_banana.rank_2",
+        "commodity.night_sailing_banana.rank_3",
+        "commodity.night_sailing_banana.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.offshore_crystal",
+      "category_id": "commodity",
+      "industry_id": "technology",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.offshore_crystal.rank_1",
+        "commodity.offshore_crystal.rank_2",
+        "commodity.offshore_crystal.rank_3",
+        "commodity.offshore_crystal.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.orbital_bonsai",
+      "category_id": "commodity",
+      "industry_id": "life",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.orbital_bonsai.rank_1",
+        "commodity.orbital_bonsai.rank_2",
+        "commodity.orbital_bonsai.rank_3",
+        "commodity.orbital_bonsai.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.photosynthetic_gel",
+      "category_id": "commodity",
+      "industry_id": "life",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.photosynthetic_gel.rank_1",
+        "commodity.photosynthetic_gel.rank_2",
+        "commodity.photosynthetic_gel.rank_3",
+        "commodity.photosynthetic_gel.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.plasma_rice",
+      "category_id": "commodity",
+      "industry_id": "energy",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.plasma_rice.rank_1",
+        "commodity.plasma_rice.rank_2",
+        "commodity.plasma_rice.rank_3",
+        "commodity.plasma_rice.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.polar_mint",
+      "category_id": "commodity",
+      "industry_id": "life",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.polar_mint.rank_1",
+        "commodity.polar_mint.rank_2",
+        "commodity.polar_mint.rank_3",
+        "commodity.polar_mint.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.pulse_coffee",
+      "category_id": "commodity",
+      "industry_id": "commerce",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.pulse_coffee.rank_1",
+        "commodity.pulse_coffee.rank_2",
+        "commodity.pulse_coffee.rank_3",
+        "commodity.pulse_coffee.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.quantum_melon",
+      "category_id": "commodity",
+      "industry_id": "commerce",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.quantum_melon.rank_1",
+        "commodity.quantum_melon.rank_2",
+        "commodity.quantum_melon.rank_3",
+        "commodity.quantum_melon.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.ring_crystal_battery",
+      "category_id": "commodity",
+      "industry_id": "energy",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.ring_crystal_battery.rank_1",
+        "commodity.ring_crystal_battery.rank_2",
+        "commodity.ring_crystal_battery.rank_3",
+        "commodity.ring_crystal_battery.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.satellite_nut",
+      "category_id": "commodity",
+      "industry_id": "shipping",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.satellite_nut.rank_1",
+        "commodity.satellite_nut.rank_2",
+        "commodity.satellite_nut.rank_3",
+        "commodity.satellite_nut.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.seabed_black_oil",
+      "category_id": "commodity",
+      "industry_id": "energy",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.seabed_black_oil.rank_1",
+        "commodity.seabed_black_oil.rank_2",
+        "commodity.seabed_black_oil.rank_3",
+        "commodity.seabed_black_oil.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.sleepwalking_mushroom",
+      "category_id": "commodity",
+      "industry_id": "life",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.sleepwalking_mushroom.rank_1",
+        "commodity.sleepwalking_mushroom.rank_2",
+        "commodity.sleepwalking_mushroom.rank_3",
+        "commodity.sleepwalking_mushroom.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.solar_scale",
+      "category_id": "commodity",
+      "industry_id": "energy",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.solar_scale.rank_1",
+        "commodity.solar_scale.rank_2",
+        "commodity.solar_scale.rank_3",
+        "commodity.solar_scale.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.spore_silk",
+      "category_id": "commodity",
+      "industry_id": "life",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.spore_silk.rank_1",
+        "commodity.spore_silk.rank_2",
+        "commodity.spore_silk.rank_3",
+        "commodity.spore_silk.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.star_dew_berry",
+      "category_id": "commodity",
+      "industry_id": "life",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.star_dew_berry.rank_1",
+        "commodity.star_dew_berry.rank_2",
+        "commodity.star_dew_berry.rank_3",
+        "commodity.star_dew_berry.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.star_whale_canning",
+      "category_id": "commodity",
+      "industry_id": "shipping",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.star_whale_canning.rank_1",
+        "commodity.star_whale_canning.rank_2",
+        "commodity.star_whale_canning.rank_3",
+        "commodity.star_whale_canning.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.stardust_bread",
+      "category_id": "commodity",
+      "industry_id": "life",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.stardust_bread.rank_1",
+        "commodity.stardust_bread.rank_2",
+        "commodity.stardust_bread.rank_3",
+        "commodity.stardust_bread.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.starfin_school",
+      "category_id": "commodity",
+      "industry_id": "shipping",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.starfin_school.rank_1",
+        "commodity.starfin_school.rank_2",
+        "commodity.starfin_school.rank_3",
+        "commodity.starfin_school.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.static_honey",
+      "category_id": "commodity",
+      "industry_id": "energy",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.static_honey.rank_1",
+        "commodity.static_honey.rank_2",
+        "commodity.static_honey.rank_3",
+        "commodity.static_honey.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.storm_pearl",
+      "category_id": "commodity",
+      "industry_id": "commerce",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.storm_pearl.rank_1",
+        "commodity.storm_pearl.rank_2",
+        "commodity.storm_pearl.rank_3",
+        "commodity.storm_pearl.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.tidal_plasma",
+      "category_id": "commodity",
+      "industry_id": "energy",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.tidal_plasma.rank_1",
+        "commodity.tidal_plasma.rank_2",
+        "commodity.tidal_plasma.rank_3",
+        "commodity.tidal_plasma.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.titanium_shell_clam",
+      "category_id": "commodity",
+      "industry_id": "industry",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.titanium_shell_clam.rank_1",
+        "commodity.titanium_shell_clam.rank_2",
+        "commodity.titanium_shell_clam.rank_3",
+        "commodity.titanium_shell_clam.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.trajectory_ink",
+      "category_id": "commodity",
+      "industry_id": "technology",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.trajectory_ink.rank_1",
+        "commodity.trajectory_ink.rank_2",
+        "commodity.trajectory_ink.rank_3",
+        "commodity.trajectory_ink.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.twilight_cheese",
+      "category_id": "commodity",
+      "industry_id": "life",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.twilight_cheese.rank_1",
+        "commodity.twilight_cheese.rank_2",
+        "commodity.twilight_cheese.rank_3",
+        "commodity.twilight_cheese.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.vacuum_cocoa",
+      "category_id": "commodity",
+      "industry_id": "commerce",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.vacuum_cocoa.rank_1",
+        "commodity.vacuum_cocoa.rank_2",
+        "commodity.vacuum_cocoa.rank_3",
+        "commodity.vacuum_cocoa.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.volcanic_tomato",
+      "category_id": "commodity",
+      "industry_id": "energy",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.volcanic_tomato.rank_1",
+        "commodity.volcanic_tomato.rank_2",
+        "commodity.volcanic_tomato.rank_3",
+        "commodity.volcanic_tomato.rank_4"
+      ]
+    },
+    {
+      "family_id": "commodity.zero_point_beverage",
+      "category_id": "commodity",
+      "industry_id": "commerce",
+      "effect_kind": "install_commodity_rate",
+      "target_kind": "same_industry_factory_or_market",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "commodity.zero_point_beverage.rank_1",
+        "commodity.zero_point_beverage.rank_2",
+        "commodity.zero_point_beverage.rank_3",
+        "commodity.zero_point_beverage.rank_4"
+      ]
+    },
+    {
+      "family_id": "facility.factory.commerce",
+      "category_id": "facility",
+      "industry_id": "commerce",
+      "effect_kind": "build_upgrade_or_repair_facility",
+      "target_kind": "region_unique_facility_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "facility.factory.commerce.rank_1",
+        "facility.factory.commerce.rank_2",
+        "facility.factory.commerce.rank_3",
+        "facility.factory.commerce.rank_4"
+      ]
+    },
+    {
+      "family_id": "facility.factory.energy",
+      "category_id": "facility",
+      "industry_id": "energy",
+      "effect_kind": "build_upgrade_or_repair_facility",
+      "target_kind": "region_unique_facility_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "facility.factory.energy.rank_1",
+        "facility.factory.energy.rank_2",
+        "facility.factory.energy.rank_3",
+        "facility.factory.energy.rank_4"
+      ]
+    },
+    {
+      "family_id": "facility.factory.industry",
+      "category_id": "facility",
+      "industry_id": "industry",
+      "effect_kind": "build_upgrade_or_repair_facility",
+      "target_kind": "region_unique_facility_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "facility.factory.industry.rank_1",
+        "facility.factory.industry.rank_2",
+        "facility.factory.industry.rank_3",
+        "facility.factory.industry.rank_4"
+      ]
+    },
+    {
+      "family_id": "facility.factory.life",
+      "category_id": "facility",
+      "industry_id": "life",
+      "effect_kind": "build_upgrade_or_repair_facility",
+      "target_kind": "region_unique_facility_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "facility.factory.life.rank_1",
+        "facility.factory.life.rank_2",
+        "facility.factory.life.rank_3",
+        "facility.factory.life.rank_4"
+      ]
+    },
+    {
+      "family_id": "facility.factory.shipping",
+      "category_id": "facility",
+      "industry_id": "shipping",
+      "effect_kind": "build_upgrade_or_repair_facility",
+      "target_kind": "region_unique_facility_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "facility.factory.shipping.rank_1",
+        "facility.factory.shipping.rank_2",
+        "facility.factory.shipping.rank_3",
+        "facility.factory.shipping.rank_4"
+      ]
+    },
+    {
+      "family_id": "facility.factory.technology",
+      "category_id": "facility",
+      "industry_id": "technology",
+      "effect_kind": "build_upgrade_or_repair_facility",
+      "target_kind": "region_unique_facility_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "facility.factory.technology.rank_1",
+        "facility.factory.technology.rank_2",
+        "facility.factory.technology.rank_3",
+        "facility.factory.technology.rank_4"
+      ]
+    },
+    {
+      "family_id": "facility.market.commerce",
+      "category_id": "facility",
+      "industry_id": "commerce",
+      "effect_kind": "build_upgrade_or_repair_facility",
+      "target_kind": "region_unique_facility_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "facility.market.commerce.rank_1",
+        "facility.market.commerce.rank_2",
+        "facility.market.commerce.rank_3",
+        "facility.market.commerce.rank_4"
+      ]
+    },
+    {
+      "family_id": "facility.market.energy",
+      "category_id": "facility",
+      "industry_id": "energy",
+      "effect_kind": "build_upgrade_or_repair_facility",
+      "target_kind": "region_unique_facility_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "facility.market.energy.rank_1",
+        "facility.market.energy.rank_2",
+        "facility.market.energy.rank_3",
+        "facility.market.energy.rank_4"
+      ]
+    },
+    {
+      "family_id": "facility.market.industry",
+      "category_id": "facility",
+      "industry_id": "industry",
+      "effect_kind": "build_upgrade_or_repair_facility",
+      "target_kind": "region_unique_facility_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "facility.market.industry.rank_1",
+        "facility.market.industry.rank_2",
+        "facility.market.industry.rank_3",
+        "facility.market.industry.rank_4"
+      ]
+    },
+    {
+      "family_id": "facility.market.life",
+      "category_id": "facility",
+      "industry_id": "life",
+      "effect_kind": "build_upgrade_or_repair_facility",
+      "target_kind": "region_unique_facility_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "facility.market.life.rank_1",
+        "facility.market.life.rank_2",
+        "facility.market.life.rank_3",
+        "facility.market.life.rank_4"
+      ]
+    },
+    {
+      "family_id": "facility.market.shipping",
+      "category_id": "facility",
+      "industry_id": "shipping",
+      "effect_kind": "build_upgrade_or_repair_facility",
+      "target_kind": "region_unique_facility_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "facility.market.shipping.rank_1",
+        "facility.market.shipping.rank_2",
+        "facility.market.shipping.rank_3",
+        "facility.market.shipping.rank_4"
+      ]
+    },
+    {
+      "family_id": "facility.market.technology",
+      "category_id": "facility",
+      "industry_id": "technology",
+      "effect_kind": "build_upgrade_or_repair_facility",
+      "target_kind": "region_unique_facility_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "facility.market.technology.rank_1",
+        "facility.market.technology.rank_2",
+        "facility.market.technology.rank_3",
+        "facility.market.technology.rank_4"
+      ]
+    },
+    {
+      "family_id": "facility.orbital_warehouse",
+      "category_id": "facility",
+      "industry_id": "generic",
+      "effect_kind": "build_upgrade_or_repair_facility",
+      "target_kind": "region_unique_facility_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "facility.orbital_warehouse.rank_1",
+        "facility.orbital_warehouse.rank_2",
+        "facility.orbital_warehouse.rank_3",
+        "facility.orbital_warehouse.rank_4"
+      ]
+    },
+    {
+      "family_id": "facility.road",
+      "category_id": "facility",
+      "industry_id": "generic",
+      "effect_kind": "build_upgrade_or_repair_facility",
+      "target_kind": "region_unique_facility_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "facility.road.rank_1",
+        "facility.road.rank_2",
+        "facility.road.rank_3",
+        "facility.road.rank_4"
+      ]
+    },
+    {
+      "family_id": "facility.seaport",
+      "category_id": "facility",
+      "industry_id": "generic",
+      "effect_kind": "build_upgrade_or_repair_facility",
+      "target_kind": "region_unique_facility_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "facility.seaport.rank_1",
+        "facility.seaport.rank_2",
+        "facility.seaport.rank_3",
+        "facility.seaport.rank_4"
+      ]
+    },
+    {
+      "family_id": "facility.spaceport",
+      "category_id": "facility",
+      "industry_id": "generic",
+      "effect_kind": "build_upgrade_or_repair_facility",
+      "target_kind": "region_unique_facility_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "facility.spaceport.rank_1",
+        "facility.spaceport.rank_2",
+        "facility.spaceport.rank_3",
+        "facility.spaceport.rank_4"
+      ]
+    },
+    {
+      "family_id": "interaction.phase_veto",
+      "category_id": "interaction",
+      "industry_id": "technology",
+      "effect_kind": "card_counter",
+      "target_kind": "incoming_direct_player_interaction",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "interaction.phase_veto.rank_1",
+        "interaction.phase_veto.rank_2",
+        "interaction.phase_veto.rank_3",
+        "interaction.phase_veto.rank_4"
+      ]
+    },
+    {
+      "family_id": "interaction.shadow_warehouse_traction",
+      "category_id": "interaction",
+      "industry_id": "technology",
+      "effect_kind": "player_hand_steal",
+      "target_kind": "opponent_discardable_hand",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "interaction.shadow_warehouse_traction.rank_1",
+        "interaction.shadow_warehouse_traction.rank_2",
+        "interaction.shadow_warehouse_traction.rank_3",
+        "interaction.shadow_warehouse_traction.rank_4"
+      ]
+    },
+    {
+      "family_id": "interaction.starlink_dismantle",
+      "category_id": "interaction",
+      "industry_id": "technology",
+      "effect_kind": "player_hand_disrupt",
+      "target_kind": "opponent_discardable_hand",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "interaction.starlink_dismantle.rank_1",
+        "interaction.starlink_dismantle.rank_2",
+        "interaction.starlink_dismantle.rank_3",
+        "interaction.starlink_dismantle.rank_4"
+      ]
+    },
+    {
+      "family_id": "organization.deep_space_archive",
+      "category_id": "organization",
+      "industry_id": "technology",
+      "effect_kind": "install_organization_upgrade",
+      "target_kind": "self_organization_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "organization.deep_space_archive.rank_1",
+        "organization.deep_space_archive.rank_2",
+        "organization.deep_space_archive.rank_3",
+        "organization.deep_space_archive.rank_4"
+      ]
+    },
+    {
+      "family_id": "organization.monster_liaison_charter",
+      "category_id": "organization",
+      "industry_id": "life",
+      "effect_kind": "install_organization_upgrade",
+      "target_kind": "self_organization_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "organization.monster_liaison_charter.rank_1",
+        "organization.monster_liaison_charter.rank_2",
+        "organization.monster_liaison_charter.rank_3",
+        "organization.monster_liaison_charter.rank_4"
+      ]
+    },
+    {
+      "family_id": "organization.quantum_agenda_network",
+      "category_id": "organization",
+      "industry_id": "generic",
+      "effect_kind": "install_organization_upgrade",
+      "target_kind": "self_organization_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "organization.quantum_agenda_network.rank_1",
+        "organization.quantum_agenda_network.rank_2",
+        "organization.quantum_agenda_network.rank_3",
+        "organization.quantum_agenda_network.rank_4"
+      ]
+    },
+    {
+      "family_id": "organization.starport_clearinghouse",
+      "category_id": "organization",
+      "industry_id": "generic",
+      "effect_kind": "install_organization_upgrade",
+      "target_kind": "self_organization_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "organization.starport_clearinghouse.rank_1",
+        "organization.starport_clearinghouse.rank_2",
+        "organization.starport_clearinghouse.rank_3",
+        "organization.starport_clearinghouse.rank_4"
+      ]
+    },
+    {
+      "family_id": "organization.stellar_command_directorate",
+      "category_id": "organization",
+      "industry_id": "industry",
+      "effect_kind": "install_organization_upgrade",
+      "target_kind": "self_organization_slot",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "organization.stellar_command_directorate.rank_1",
+        "organization.stellar_command_directorate.rank_2",
+        "organization.stellar_command_directorate.rank_3",
+        "organization.stellar_command_directorate.rank_4"
+      ]
+    },
+    {
+      "family_id": "supply_demand.near_land_supply",
+      "category_id": "supply_demand",
+      "industry_id": "industry",
+      "effect_kind": "global_supply_spawn",
+      "target_kind": "global_matching_factories",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "supply_demand.near_land_supply.rank_1",
+        "supply_demand.near_land_supply.rank_2",
+        "supply_demand.near_land_supply.rank_3",
+        "supply_demand.near_land_supply.rank_4"
+      ]
+    },
+    {
+      "family_id": "supply_demand.remote_sea_order",
+      "category_id": "supply_demand",
+      "industry_id": "shipping",
+      "effect_kind": "global_order_budget",
+      "target_kind": "global_matching_goods",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "supply_demand.remote_sea_order.rank_1",
+        "supply_demand.remote_sea_order.rank_2",
+        "supply_demand.remote_sea_order.rank_3",
+        "supply_demand.remote_sea_order.rank_4"
+      ]
+    },
+    {
+      "family_id": "unit.military.air_superiority_fighter",
+      "category_id": "military",
+      "industry_id": "industry",
+      "effect_kind": "deploy_or_upgrade_military",
+      "target_kind": "region_or_owned_same_family_military",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "unit.military.air_superiority_fighter.rank_1",
+        "unit.military.air_superiority_fighter.rank_2",
+        "unit.military.air_superiority_fighter.rank_3",
+        "unit.military.air_superiority_fighter.rank_4"
+      ]
+    },
+    {
+      "family_id": "unit.military.heavy_tank",
+      "category_id": "military",
+      "industry_id": "industry",
+      "effect_kind": "deploy_or_upgrade_military",
+      "target_kind": "region_or_owned_same_family_military",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "unit.military.heavy_tank.rank_1",
+        "unit.military.heavy_tank.rank_2",
+        "unit.military.heavy_tank.rank_3",
+        "unit.military.heavy_tank.rank_4"
+      ]
+    },
+    {
+      "family_id": "unit.military.missile_emplacement",
+      "category_id": "military",
+      "industry_id": "technology",
+      "effect_kind": "deploy_or_upgrade_military",
+      "target_kind": "region_or_owned_same_family_military",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "unit.military.missile_emplacement.rank_1",
+        "unit.military.missile_emplacement.rank_2",
+        "unit.military.missile_emplacement.rank_3",
+        "unit.military.missile_emplacement.rank_4"
+      ]
+    },
+    {
+      "family_id": "unit.military.orbital_bomber",
+      "category_id": "military",
+      "industry_id": "energy",
+      "effect_kind": "deploy_or_upgrade_military",
+      "target_kind": "region_or_owned_same_family_military",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "unit.military.orbital_bomber.rank_1",
+        "unit.military.orbital_bomber.rank_2",
+        "unit.military.orbital_bomber.rank_3",
+        "unit.military.orbital_bomber.rank_4"
+      ]
+    },
+    {
+      "family_id": "unit.military.planetary_defense_force",
+      "category_id": "military",
+      "industry_id": "industry",
+      "effect_kind": "deploy_or_upgrade_military",
+      "target_kind": "region_or_owned_same_family_military",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "unit.military.planetary_defense_force.rank_1",
+        "unit.military.planetary_defense_force.rank_2",
+        "unit.military.planetary_defense_force.rank_3",
+        "unit.military.planetary_defense_force.rank_4"
+      ]
+    },
+    {
+      "family_id": "unit.military.star_ocean_battleship",
+      "category_id": "military",
+      "industry_id": "energy",
+      "effect_kind": "deploy_or_upgrade_military",
+      "target_kind": "region_or_owned_same_family_military",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "unit.military.star_ocean_battleship.rank_1",
+        "unit.military.star_ocean_battleship.rank_2",
+        "unit.military.star_ocean_battleship.rank_3",
+        "unit.military.star_ocean_battleship.rank_4"
+      ]
+    },
+    {
+      "family_id": "unit.military.submarine_fleet",
+      "category_id": "military",
+      "industry_id": "technology",
+      "effect_kind": "deploy_or_upgrade_military",
+      "target_kind": "region_or_owned_same_family_military",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "unit.military.submarine_fleet.rank_1",
+        "unit.military.submarine_fleet.rank_2",
+        "unit.military.submarine_fleet.rank_3",
+        "unit.military.submarine_fleet.rank_4"
+      ]
+    },
+    {
+      "family_id": "unit.monster.blue_edge_knight",
+      "category_id": "monster",
+      "industry_id": "technology",
+      "effect_kind": "deploy_or_upgrade_monster",
+      "target_kind": "region_or_existing_same_family_monster",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "unit.monster.blue_edge_knight.rank_1",
+        "unit.monster.blue_edge_knight.rank_2",
+        "unit.monster.blue_edge_knight.rank_3",
+        "unit.monster.blue_edge_knight.rank_4"
+      ]
+    },
+    {
+      "family_id": "unit.monster.flame_ring_proto_star",
+      "category_id": "monster",
+      "industry_id": "energy",
+      "effect_kind": "deploy_or_upgrade_monster",
+      "target_kind": "region_or_existing_same_family_monster",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "unit.monster.flame_ring_proto_star.rank_1",
+        "unit.monster.flame_ring_proto_star.rank_2",
+        "unit.monster.flame_ring_proto_star.rank_3",
+        "unit.monster.flame_ring_proto_star.rank_4"
+      ]
+    },
+    {
+      "family_id": "unit.monster.meteor_sentinel",
+      "category_id": "monster",
+      "industry_id": "energy",
+      "effect_kind": "deploy_or_upgrade_monster",
+      "target_kind": "region_or_existing_same_family_monster",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "unit.monster.meteor_sentinel.rank_1",
+        "unit.monster.meteor_sentinel.rank_2",
+        "unit.monster.meteor_sentinel.rank_3",
+        "unit.monster.meteor_sentinel.rank_4"
+      ]
+    },
+    {
+      "family_id": "unit.monster.mirror_hunter",
+      "category_id": "monster",
+      "industry_id": "technology",
+      "effect_kind": "deploy_or_upgrade_monster",
+      "target_kind": "region_or_existing_same_family_monster",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "unit.monster.mirror_hunter.rank_1",
+        "unit.monster.mirror_hunter.rank_2",
+        "unit.monster.mirror_hunter.rank_3",
+        "unit.monster.mirror_hunter.rank_4"
+      ]
+    },
+    {
+      "family_id": "unit.monster.oasis_repairer",
+      "category_id": "monster",
+      "industry_id": "life",
+      "effect_kind": "deploy_or_upgrade_monster",
+      "target_kind": "region_or_existing_same_family_monster",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "unit.monster.oasis_repairer.rank_1",
+        "unit.monster.oasis_repairer.rank_2",
+        "unit.monster.oasis_repairer.rank_3",
+        "unit.monster.oasis_repairer.rank_4"
+      ]
+    },
+    {
+      "family_id": "unit.monster.prism_blade_colossus",
+      "category_id": "monster",
+      "industry_id": "commerce",
+      "effect_kind": "deploy_or_upgrade_monster",
+      "target_kind": "region_or_existing_same_family_monster",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "unit.monster.prism_blade_colossus.rank_1",
+        "unit.monster.prism_blade_colossus.rank_2",
+        "unit.monster.prism_blade_colossus.rank_3",
+        "unit.monster.prism_blade_colossus.rank_4"
+      ]
+    },
+    {
+      "family_id": "unit.monster.sand_armor_rover",
+      "category_id": "monster",
+      "industry_id": "industry",
+      "effect_kind": "deploy_or_upgrade_monster",
+      "target_kind": "region_or_existing_same_family_monster",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "unit.monster.sand_armor_rover.rank_1",
+        "unit.monster.sand_armor_rover.rank_2",
+        "unit.monster.sand_armor_rover.rank_3",
+        "unit.monster.sand_armor_rover.rank_4"
+      ]
+    },
+    {
+      "family_id": "unit.monster.spore_tide_emperor",
+      "category_id": "monster",
+      "industry_id": "life",
+      "effect_kind": "deploy_or_upgrade_monster",
+      "target_kind": "region_or_existing_same_family_monster",
+      "card_count": 4,
+      "ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card_ids": [
+        "unit.monster.spore_tide_emperor.rank_1",
+        "unit.monster.spore_tide_emperor.rank_2",
+        "unit.monster.spore_tide_emperor.rank_3",
+        "unit.monster.spore_tide_emperor.rank_4"
+      ]
+    }
+  ],
+  "payload_fields": [
+    {
+      "key": "absolute_hand_limit_cap",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 26482
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "activation_snapshot_timing",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25506
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "activation_window_offset",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25505
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "ai_effect_tags",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "array",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "unknown",
+      "classification_note": "No direct AiRuntimeController read of the layered field was found; the similarly named authoring promise is unfulfilled.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25521
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "allocation_basis",
+      "occurrence_count": 8,
+      "family_count": 2,
+      "category_ids": [
+        "supply_demand"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "global_order_budget",
+          "occurrence_count": 4
+        },
+        {
+          "effect_kind": "global_supply_spawn",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "global_matching_factories",
+        "global_matching_goods"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 8
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19288
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "GLOBAL_OWNER"
+      ],
+      "authority_ids": [
+        "conditional_supply_demand"
+      ]
+    },
+    {
+      "key": "allowed_region_states",
+      "occurrence_count": 64,
+      "family_count": 16,
+      "category_ids": [
+        "facility"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "build_upgrade_or_repair_facility",
+          "occurrence_count": 64
+        }
+      ],
+      "target_kinds": [
+        "region_unique_facility_slot"
+      ],
+      "value_types": [
+        {
+          "type": "array",
+          "occurrence_count": 64
+        }
+      ],
+      "classification": "multi-consumer",
+      "classification_note": "Direct reads or propagated values cross more than one runtime, owner, coordinator, or presentation boundary.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 14020
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "COORDINATOR_PAYLOAD_HELPER",
+        "FACILITY_EXECUTOR"
+      ],
+      "authority_ids": [
+        "facility_build"
+      ]
+    },
+    {
+      "key": "anti_snowball_cap",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "object",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "unknown",
+      "classification_note": "No qualifying direct production read was found; builder, docs, tests, and presence-only catalog checks do not count.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25530
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "asset_conversion_bonus_bp",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25527
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "asset_conversion_bonus_cap_milli_per_second",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25528
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "base_controlled_military_count_limit",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 27435
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "base_controlled_monster_count_limit",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 26951
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "base_ordinary_hand_limit",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 26479
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "base_primary_military_rank_limit",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 27436
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "base_primary_monster_rank_limit",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 26952
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "bound_action_profile_review_pending",
+      "occurrence_count": 28,
+      "family_count": 7,
+      "category_ids": [
+        "military"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "deploy_or_upgrade_military",
+          "occurrence_count": 28
+        }
+      ],
+      "target_kinds": [
+        "region_or_owned_same_family_military"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 28
+        }
+      ],
+      "classification": "unknown",
+      "classification_note": "No qualifying direct production read was found; builder, docs, tests, and presence-only catalog checks do not count.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 22510
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "UNIT_SCHEMA"
+      ],
+      "authority_ids": [
+        "military_card"
+      ]
+    },
+    {
+      "key": "bound_actions_excluded_from_hand_limit",
+      "occurrence_count": 28,
+      "family_count": 7,
+      "category_ids": [
+        "military"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "deploy_or_upgrade_military",
+          "occurrence_count": 28
+        }
+      ],
+      "target_kinds": [
+        "region_or_owned_same_family_military"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 28
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 22508
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "UNIT_SCHEMA"
+      ],
+      "authority_ids": [
+        "military_card"
+      ]
+    },
+    {
+      "key": "bound_actions_require_assets",
+      "occurrence_count": 28,
+      "family_count": 7,
+      "category_ids": [
+        "military"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "deploy_or_upgrade_military",
+          "occurrence_count": 28
+        }
+      ],
+      "target_kinds": [
+        "region_or_owned_same_family_military"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 28
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 22509
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "UNIT_SCHEMA"
+      ],
+      "authority_ids": [
+        "military_card"
+      ]
+    },
+    {
+      "key": "bound_skill_recipient",
+      "occurrence_count": 32,
+      "family_count": 8,
+      "category_ids": [
+        "monster"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "deploy_or_upgrade_monster",
+          "occurrence_count": 32
+        }
+      ],
+      "target_kinds": [
+        "region_or_existing_same_family_monster"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 32
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19921
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "MONSTER_OWNER",
+        "UNIT_SCHEMA"
+      ],
+      "authority_ids": [
+        "monster_card"
+      ]
+    },
+    {
+      "key": "budget_units",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "supply_demand"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "global_order_budget",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "global_matching_goods"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19284
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "GLOBAL_OWNER"
+      ],
+      "authority_ids": [
+        "conditional_supply_demand"
+      ]
+    },
+    {
+      "key": "burst_submission_bonus",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25995
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "burst_submission_surcharge",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25996
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "burst_window_period",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25994
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "card_rank",
+      "occurrence_count": 124,
+      "family_count": 31,
+      "category_ids": [
+        "facility",
+        "military",
+        "monster"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "build_upgrade_or_repair_facility",
+          "occurrence_count": 64
+        },
+        {
+          "effect_kind": "deploy_or_upgrade_military",
+          "occurrence_count": 28
+        },
+        {
+          "effect_kind": "deploy_or_upgrade_monster",
+          "occurrence_count": 32
+        }
+      ],
+      "target_kinds": [
+        "region_or_existing_same_family_monster",
+        "region_or_owned_same_family_military",
+        "region_unique_facility_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 124
+        }
+      ],
+      "classification": "multi-consumer",
+      "classification_note": "Direct reads or propagated values cross more than one runtime, owner, coordinator, or presentation boundary.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 14018
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "FACILITY_EXECUTOR",
+        "MONSTER_OWNER",
+        "UNIT_SCHEMA"
+      ],
+      "authority_ids": [
+        "facility_build",
+        "military_card",
+        "monster_card"
+      ]
+    },
+    {
+      "key": "controlled_military_count_limit",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 27437
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "controlled_monster_count_limit",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "multi-consumer",
+      "classification_note": "Direct reads or propagated values cross more than one runtime, owner, coordinator, or presentation boundary.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 26953
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "counter_strength",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "interaction"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "card_counter",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "incoming_direct_player_interaction"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "Same-name reads are on the flat v0.4 skill path; no layered v0.6 flattening route is composed.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 24752
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "INTERACTION_SCHEMA",
+        "LEGACY_AI",
+        "LEGACY_INTERACTION"
+      ],
+      "authority_ids": [
+        "card_counter"
+      ]
+    },
+    {
+      "key": "counter_window_seconds",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "interaction"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "card_counter",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "incoming_direct_player_interaction"
+      ],
+      "value_types": [
+        {
+          "type": "number",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "Same-name reads are on legacy/ruleset paths; the layered v0.6 counter route is unsupported.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 24754
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "INTERACTION_SCHEMA",
+        "LEGACY_AI",
+        "LEGACY_INTERACTION"
+      ],
+      "authority_ids": [
+        "card_counter"
+      ]
+    },
+    {
+      "key": "counterable",
+      "occurrence_count": 28,
+      "family_count": 7,
+      "category_ids": [
+        "interaction",
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        },
+        {
+          "effect_kind": "player_hand_disrupt",
+          "occurrence_count": 4
+        },
+        {
+          "effect_kind": "player_hand_steal",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "opponent_discardable_hand",
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 28
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly validated for organization cards; layered direct-interaction records are not used by a composed v0.6 route.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 24608
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "INTERACTION_SCHEMA",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "direct_player_interaction",
+        "organization_card"
+      ]
+    },
+    {
+      "key": "counterplay_tags",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "array",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "unknown",
+      "classification_note": "No qualifying direct production read was found; builder, docs, tests, and presence-only catalog checks do not count.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25511
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "counts_as_normal_card_submission",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25520
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "creates_one_time_physical_goods",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "supply_demand"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "global_supply_spawn",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "global_matching_factories"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19604
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "GLOBAL_OWNER"
+      ],
+      "authority_ids": [
+        "conditional_supply_demand"
+      ]
+    },
+    {
+      "key": "demand_capacity_units_per_minute",
+      "occurrence_count": 24,
+      "family_count": 6,
+      "category_ids": [
+        "facility"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "build_upgrade_or_repair_facility",
+          "occurrence_count": 24
+        }
+      ],
+      "target_kinds": [
+        "region_unique_facility_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 24
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 14357
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "FACILITY_EXECUTOR",
+        "FACILITY_RULESET"
+      ],
+      "authority_ids": [
+        "facility_build"
+      ]
+    },
+    {
+      "key": "direct_player_interaction",
+      "occurrence_count": 28,
+      "family_count": 7,
+      "category_ids": [
+        "interaction",
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        },
+        {
+          "effect_kind": "player_hand_disrupt",
+          "occurrence_count": 4
+        },
+        {
+          "effect_kind": "player_hand_steal",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "opponent_discardable_hand",
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 28
+        }
+      ],
+      "classification": "multi-consumer",
+      "classification_note": "Direct reads or propagated values cross more than one runtime, owner, coordinator, or presentation boundary.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 24607
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "INTERACTION_SCHEMA",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "direct_player_interaction",
+        "organization_card"
+      ]
+    },
+    {
+      "key": "distance_rule",
+      "occurrence_count": 8,
+      "family_count": 2,
+      "category_ids": [
+        "supply_demand"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "global_order_budget",
+          "occurrence_count": 4
+        },
+        {
+          "effect_kind": "global_supply_spawn",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "global_matching_factories",
+        "global_matching_goods"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 8
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19287
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "GLOBAL_OWNER"
+      ],
+      "authority_ids": [
+        "conditional_supply_demand"
+      ]
+    },
+    {
+      "key": "equal_or_lower_rank_resolution",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25504
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "extra_submission_asset_surcharge",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25992
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "facility_kind",
+      "occurrence_count": 64,
+      "family_count": 16,
+      "category_ids": [
+        "facility"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "build_upgrade_or_repair_facility",
+          "occurrence_count": 64
+        }
+      ],
+      "target_kinds": [
+        "region_unique_facility_slot"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 64
+        }
+      ],
+      "classification": "multi-consumer",
+      "classification_note": "Direct reads or propagated values cross more than one runtime, owner, coordinator, or presentation boundary.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 14016
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "COORDINATOR_PAYLOAD_HELPER",
+        "FACILITY_EXECUTOR"
+      ],
+      "authority_ids": [
+        "facility_build"
+      ]
+    },
+    {
+      "key": "foreign_same_name_upgrade_must_respect_target_owner_limits",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 26956
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "foreign_upgrade_does_not_transfer_control",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 26958
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "foreign_upgrade_rank_limit_source",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 26957
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "hand_discard_count",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "interaction"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "player_hand_disrupt",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "opponent_discardable_hand"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "Same-name reads are on the flat legacy interaction/AI path; layered v0.6 interaction is not composed.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 24604
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "INTERACTION_SCHEMA",
+        "LEGACY_AI",
+        "LEGACY_INTERACTION"
+      ],
+      "authority_ids": [
+        "direct_player_interaction"
+      ]
+    },
+    {
+      "key": "hand_lock_seconds",
+      "occurrence_count": 8,
+      "family_count": 2,
+      "category_ids": [
+        "interaction"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "player_hand_disrupt",
+          "occurrence_count": 4
+        },
+        {
+          "effect_kind": "player_hand_steal",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "opponent_discardable_hand"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 8
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "Same-name reads are on the flat legacy interaction/AI path; layered v0.6 interaction is not composed.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 24605
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "INTERACTION_SCHEMA",
+        "LEGACY_AI",
+        "LEGACY_INTERACTION"
+      ],
+      "authority_ids": [
+        "direct_player_interaction"
+      ]
+    },
+    {
+      "key": "hand_steal_count",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "interaction"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "player_hand_steal",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "opponent_discardable_hand"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "Same-name reads are on the flat legacy interaction/AI path; layered v0.6 interaction is not composed.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 24678
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "INTERACTION_SCHEMA",
+        "LEGACY_AI",
+        "LEGACY_INTERACTION"
+      ],
+      "authority_ids": [
+        "direct_player_interaction"
+      ]
+    },
+    {
+      "key": "heal_to_full_on_upgrade",
+      "occurrence_count": 32,
+      "family_count": 8,
+      "category_ids": [
+        "monster"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "deploy_or_upgrade_monster",
+          "occurrence_count": 32
+        }
+      ],
+      "target_kinds": [
+        "region_or_existing_same_family_monster"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 32
+        }
+      ],
+      "classification": "executor-only",
+      "classification_note": "Direct layered read is confined to an adapter/schema/reference execution path and has no direct AI or presentation consumer.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19917
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "MONSTER_OWNER",
+        "UNIT_SCHEMA"
+      ],
+      "authority_ids": [
+        "monster_card"
+      ]
+    },
+    {
+      "key": "inbound_throughput_units_per_minute",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "facility"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "build_upgrade_or_repair_facility",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "region_unique_facility_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 18962
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "FACILITY_EXECUTOR",
+        "FACILITY_RULESET"
+      ],
+      "authority_ids": [
+        "facility_build"
+      ]
+    },
+    {
+      "key": "industry_id",
+      "occurrence_count": 248,
+      "family_count": 62,
+      "category_ids": [
+        "commodity",
+        "facility"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "build_upgrade_or_repair_facility",
+          "occurrence_count": 64
+        },
+        {
+          "effect_kind": "install_commodity_rate",
+          "occurrence_count": 184
+        }
+      ],
+      "target_kinds": [
+        "region_unique_facility_slot",
+        "same_industry_factory_or_market"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 248
+        }
+      ],
+      "classification": "multi-consumer",
+      "classification_note": "Direct reads or propagated values cross more than one runtime, owner, coordinator, or presentation boundary.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 14
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "COMMODITY_EXECUTOR",
+        "COORDINATOR_PAYLOAD_HELPER",
+        "FACILITY_EXECUTOR"
+      ],
+      "authority_ids": [
+        "commodity_install",
+        "facility_build"
+      ]
+    },
+    {
+      "key": "install_policy",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25501
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "is_permanent_installation",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "supply_demand"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "global_supply_spawn",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "global_matching_factories"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19605
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "GLOBAL_OWNER"
+      ],
+      "authority_ids": [
+        "conditional_supply_demand"
+      ]
+    },
+    {
+      "key": "may_exceed_persistent_demand",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "supply_demand"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "global_order_budget",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "global_matching_goods"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19292
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "GLOBAL_OWNER"
+      ],
+      "authority_ids": [
+        "conditional_supply_demand"
+      ]
+    },
+    {
+      "key": "military_family_id",
+      "occurrence_count": 28,
+      "family_count": 7,
+      "category_ids": [
+        "military"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "deploy_or_upgrade_military",
+          "occurrence_count": 28
+        }
+      ],
+      "target_kinds": [
+        "region_or_owned_same_family_military"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 28
+        }
+      ],
+      "classification": "executor-only",
+      "classification_note": "Direct layered read is confined to an adapter/schema/reference execution path and has no direct AI or presentation consumer.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 22504
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "UNIT_SCHEMA"
+      ],
+      "authority_ids": [
+        "military_card"
+      ]
+    },
+    {
+      "key": "monster_family_id",
+      "occurrence_count": 32,
+      "family_count": 8,
+      "category_ids": [
+        "monster"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "deploy_or_upgrade_monster",
+          "occurrence_count": 32
+        }
+      ],
+      "target_kinds": [
+        "region_or_existing_same_family_monster"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 32
+        }
+      ],
+      "classification": "multi-consumer",
+      "classification_note": "Direct reads or propagated values cross more than one runtime, owner, coordinator, or presentation boundary.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19912
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "MONSTER_OWNER",
+        "UNIT_SCHEMA"
+      ],
+      "authority_ids": [
+        "monster_card"
+      ]
+    },
+    {
+      "key": "operation_policy",
+      "occurrence_count": 64,
+      "family_count": 16,
+      "category_ids": [
+        "facility"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "build_upgrade_or_repair_facility",
+          "occurrence_count": 64
+        }
+      ],
+      "target_kinds": [
+        "region_unique_facility_slot"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 64
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 14019
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "FACILITY_EXECUTOR",
+        "FACILITY_RULESET"
+      ],
+      "authority_ids": [
+        "facility_build"
+      ]
+    },
+    {
+      "key": "ordinary_hand_limit",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 26480
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "ordinary_hand_limit_bonus",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 26481
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "ordinary_submission_bonus",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25991
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "ordinary_submission_cost",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25519
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "ordinary_submission_hard_cap",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25993
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "organization_axis",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "multi-consumer",
+      "classification_note": "Direct reads or propagated values cross more than one runtime, owner, coordinator, or presentation boundary.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25496
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "organization_family_id",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25497
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "organization_rank",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "multi-consumer",
+      "classification_note": "Direct reads or propagated values cross more than one runtime, owner, coordinator, or presentation boundary.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25498
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "organization_slot_cost",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25499
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "organization_slot_limit",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25500
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "outbound_throughput_units_per_minute",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "facility"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "build_upgrade_or_repair_facility",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "region_unique_facility_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 18963
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "FACILITY_EXECUTOR",
+        "FACILITY_RULESET"
+      ],
+      "authority_ids": [
+        "facility_build"
+      ]
+    },
+    {
+      "key": "ownership_transfer_on_upgrade",
+      "occurrence_count": 32,
+      "family_count": 8,
+      "category_ids": [
+        "monster"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "deploy_or_upgrade_monster",
+          "occurrence_count": 32
+        }
+      ],
+      "target_kinds": [
+        "region_or_existing_same_family_monster"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 32
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19920
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "MONSTER_OWNER",
+        "UNIT_SCHEMA"
+      ],
+      "authority_ids": [
+        "monster_card"
+      ]
+    },
+    {
+      "key": "persistence",
+      "occurrence_count": 204,
+      "family_count": 51,
+      "category_ids": [
+        "commodity",
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_commodity_rate",
+          "occurrence_count": 184
+        },
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "same_industry_factory_or_market",
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 204
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly validated for 20 organization cards; the 184 commodity occurrences are not read by the commodity executor.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 39
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "COMMODITY_EXECUTOR",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "commodity_install",
+        "organization_card"
+      ]
+    },
+    {
+      "key": "phase_veto_eligible",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25518
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "presence_time_policy",
+      "occurrence_count": 32,
+      "family_count": 8,
+      "category_ids": [
+        "monster"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "deploy_or_upgrade_monster",
+          "occurrence_count": 32
+        }
+      ],
+      "target_kinds": [
+        "region_or_existing_same_family_monster"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 32
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19916
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "MONSTER_OWNER",
+        "UNIT_SCHEMA"
+      ],
+      "authority_ids": [
+        "monster_card"
+      ]
+    },
+    {
+      "key": "primary_military_rank_limit",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 27438
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "primary_monster_rank_limit",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "multi-consumer",
+      "classification_note": "Direct reads or propagated values cross more than one runtime, owner, coordinator, or presentation boundary.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 26954
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "private_trace_count",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "interaction"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "card_counter",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "incoming_direct_player_interaction"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "unknown",
+      "classification_note": "No qualifying direct production read was found; builder, docs, tests, and presence-only catalog checks do not count.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 24756
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "INTERACTION_SCHEMA"
+      ],
+      "authority_ids": [
+        "card_counter"
+      ]
+    },
+    {
+      "key": "product_id",
+      "occurrence_count": 184,
+      "family_count": 46,
+      "category_ids": [
+        "commodity"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_commodity_rate",
+          "occurrence_count": 184
+        }
+      ],
+      "target_kinds": [
+        "same_industry_factory_or_market"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 184
+        }
+      ],
+      "classification": "multi-consumer",
+      "classification_note": "Direct reads or propagated values cross more than one runtime, owner, coordinator, or presentation boundary.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 32
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "COMMODITY_EXECUTOR",
+        "PRODUCT_CODEX"
+      ],
+      "authority_ids": [
+        "commodity_install"
+      ]
+    },
+    {
+      "key": "production_capacity_units_per_minute",
+      "occurrence_count": 24,
+      "family_count": 6,
+      "category_ids": [
+        "facility"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "build_upgrade_or_repair_facility",
+          "occurrence_count": 24
+        }
+      ],
+      "target_kinds": [
+        "region_unique_facility_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 24
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 14029
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "FACILITY_EXECUTOR",
+        "FACILITY_RULESET"
+      ],
+      "authority_ids": [
+        "facility_build"
+      ]
+    },
+    {
+      "key": "public_clue_kind",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "unknown",
+      "classification_note": "Payload value is not consumed; PlayerOrganizationRuntimeController emits a hard-coded clue value.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25510
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "public_same_source_aura",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "unknown",
+      "classification_note": "No qualifying direct production read was found; builder, docs, tests, and presence-only catalog checks do not count.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25999
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "rank4_repeat_behavior",
+      "occurrence_count": 32,
+      "family_count": 8,
+      "category_ids": [
+        "monster"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "deploy_or_upgrade_monster",
+          "occurrence_count": 32
+        }
+      ],
+      "target_kinds": [
+        "region_or_existing_same_family_monster"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 32
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19918
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "MONSTER_OWNER",
+        "UNIT_SCHEMA"
+      ],
+      "authority_ids": [
+        "monster_card"
+      ]
+    },
+    {
+      "key": "rate_per_minute",
+      "occurrence_count": 184,
+      "family_count": 46,
+      "category_ids": [
+        "commodity"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_commodity_rate",
+          "occurrence_count": 184
+        }
+      ],
+      "target_kinds": [
+        "same_industry_factory_or_market"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 184
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "Layered payload is not read by CommodityCardEffectAdapterV06; execution passes rank and the active Ruleset owns commodity_rate_by_rank.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 34
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "COMMODITY_EXECUTOR",
+        "COMMODITY_RULESET"
+      ],
+      "authority_ids": [
+        "commodity_install"
+      ]
+    },
+    {
+      "key": "refresh_total_presence_time",
+      "occurrence_count": 32,
+      "family_count": 8,
+      "category_ids": [
+        "monster"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "deploy_or_upgrade_monster",
+          "occurrence_count": 32
+        }
+      ],
+      "target_kinds": [
+        "region_or_existing_same_family_monster"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 32
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19915
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "MONSTER_OWNER",
+        "UNIT_SCHEMA"
+      ],
+      "authority_ids": [
+        "monster_card"
+      ]
+    },
+    {
+      "key": "refund_cash",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "interaction"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "card_counter",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "incoming_direct_player_interaction"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "unknown",
+      "classification_note": "No qualifying direct production read was found; builder, docs, tests, and presence-only catalog checks do not count.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 24755
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "INTERACTION_SCHEMA"
+      ],
+      "authority_ids": [
+        "card_counter"
+      ]
+    },
+    {
+      "key": "region_damage_requires_explicit_unit_action",
+      "occurrence_count": 28,
+      "family_count": 7,
+      "category_ids": [
+        "military"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "deploy_or_upgrade_military",
+          "occurrence_count": 28
+        }
+      ],
+      "target_kinds": [
+        "region_or_owned_same_family_military"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 28
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 22507
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "UNIT_SCHEMA"
+      ],
+      "authority_ids": [
+        "military_card"
+      ]
+    },
+    {
+      "key": "rent_enabled",
+      "occurrence_count": 64,
+      "family_count": 16,
+      "category_ids": [
+        "facility"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "build_upgrade_or_repair_facility",
+          "occurrence_count": 64
+        }
+      ],
+      "target_kinds": [
+        "region_unique_facility_slot"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 64
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 14027
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "FACILITY_EXECUTOR",
+        "FACILITY_RULESET"
+      ],
+      "authority_ids": [
+        "facility_build"
+      ]
+    },
+    {
+      "key": "rent_rate_profile",
+      "occurrence_count": 64,
+      "family_count": 16,
+      "category_ids": [
+        "facility"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "build_upgrade_or_repair_facility",
+          "occurrence_count": 64
+        }
+      ],
+      "target_kinds": [
+        "region_unique_facility_slot"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 64
+        }
+      ],
+      "classification": "unknown",
+      "classification_note": "Value is pending_first_playtest_table and has no qualifying production read.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 14028
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "FACILITY_EXECUTOR"
+      ],
+      "authority_ids": [
+        "facility_build"
+      ]
+    },
+    {
+      "key": "replacement_requires_higher_rank",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25503
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "required_own_gdp_min",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "unknown",
+      "classification_note": "Required for organization catalog presence only; PlayerOrganizationRuntimeController does not enforce it.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25508
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "required_positive_gdp_color_count",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "unknown",
+      "classification_note": "Required for organization catalog presence only; PlayerOrganizationRuntimeController does not enforce it.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25509
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "required_route_tag",
+      "occurrence_count": 8,
+      "family_count": 2,
+      "category_ids": [
+        "supply_demand"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "global_order_budget",
+          "occurrence_count": 4
+        },
+        {
+          "effect_kind": "global_supply_spawn",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "global_matching_factories",
+        "global_matching_goods"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 8
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19285
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "GLOBAL_OWNER"
+      ],
+      "authority_ids": [
+        "conditional_supply_demand"
+      ]
+    },
+    {
+      "key": "requires_legal_production_factory",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "supply_demand"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "global_supply_spawn",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "global_matching_factories"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19606
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "GLOBAL_OWNER"
+      ],
+      "authority_ids": [
+        "conditional_supply_demand"
+      ]
+    },
+    {
+      "key": "requires_positive_owner_matching_product_gdp",
+      "occurrence_count": 8,
+      "family_count": 2,
+      "category_ids": [
+        "supply_demand"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "global_order_budget",
+          "occurrence_count": 4
+        },
+        {
+          "effect_kind": "global_supply_spawn",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "global_matching_factories",
+        "global_matching_goods"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 8
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19289
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "GLOBAL_OWNER"
+      ],
+      "authority_ids": [
+        "conditional_supply_demand"
+      ]
+    },
+    {
+      "key": "requires_real_market_node",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "supply_demand"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "global_order_budget",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "global_matching_goods"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19293
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "GLOBAL_OWNER"
+      ],
+      "authority_ids": [
+        "conditional_supply_demand"
+      ]
+    },
+    {
+      "key": "requires_real_market_or_factory_nodes",
+      "occurrence_count": 8,
+      "family_count": 2,
+      "category_ids": [
+        "supply_demand"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "global_order_budget",
+          "occurrence_count": 4
+        },
+        {
+          "effect_kind": "global_supply_spawn",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "global_matching_factories",
+        "global_matching_goods"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 8
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19291
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "GLOBAL_OWNER"
+      ],
+      "authority_ids": [
+        "conditional_supply_demand"
+      ]
+    },
+    {
+      "key": "response_cards_ignore_ordinary_submission_limit",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25998
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "response_depth",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "interaction"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "card_counter",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "incoming_direct_player_interaction"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "executor-only",
+      "classification_note": "Direct layered read is confined to an adapter/schema/reference execution path and has no direct AI or presentation consumer.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 24753
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "INTERACTION_SCHEMA"
+      ],
+      "authority_ids": [
+        "card_counter"
+      ]
+    },
+    {
+      "key": "route_tag_match_mode",
+      "occurrence_count": 8,
+      "family_count": 2,
+      "category_ids": [
+        "supply_demand"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "global_order_budget",
+          "occurrence_count": 4
+        },
+        {
+          "effect_kind": "global_supply_spawn",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "global_matching_factories",
+        "global_matching_goods"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 8
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19286
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "GLOBAL_OWNER"
+      ],
+      "authority_ids": [
+        "conditional_supply_demand"
+      ]
+    },
+    {
+      "key": "same_name_upgrade_extend_seconds",
+      "occurrence_count": 32,
+      "family_count": 8,
+      "category_ids": [
+        "monster"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "deploy_or_upgrade_monster",
+          "occurrence_count": 32
+        }
+      ],
+      "target_kinds": [
+        "region_or_existing_same_family_monster"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 32
+        }
+      ],
+      "classification": "multi-consumer",
+      "classification_note": "Direct reads or propagated values cross more than one runtime, owner, coordinator, or presentation boundary.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19914
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "MONSTER_OWNER",
+        "UNIT_SCHEMA"
+      ],
+      "authority_ids": [
+        "monster_card"
+      ]
+    },
+    {
+      "key": "scope",
+      "occurrence_count": 8,
+      "family_count": 2,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 8
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 8
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25529
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "secondary_military_rank_limit",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 27439
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "secondary_monster_rank_limit",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "multi-consumer",
+      "classification_note": "Direct reads or propagated values cross more than one runtime, owner, coordinator, or presentation boundary.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 26955
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "shared_hp_contribution",
+      "occurrence_count": 64,
+      "family_count": 16,
+      "category_ids": [
+        "facility"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "build_upgrade_or_repair_facility",
+          "occurrence_count": 64
+        }
+      ],
+      "target_kinds": [
+        "region_unique_facility_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 64
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 14026
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "FACILITY_EXECUTOR",
+        "FACILITY_RULESET"
+      ],
+      "authority_ids": [
+        "facility_build"
+      ]
+    },
+    {
+      "key": "shared_hp_profile",
+      "occurrence_count": 64,
+      "family_count": 16,
+      "category_ids": [
+        "facility"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "build_upgrade_or_repair_facility",
+          "occurrence_count": 64
+        }
+      ],
+      "target_kinds": [
+        "region_unique_facility_slot"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 64
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 14025
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "FACILITY_EXECUTOR",
+        "FACILITY_RULESET"
+      ],
+      "authority_ids": [
+        "facility_build"
+      ]
+    },
+    {
+      "key": "spawn_units",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "supply_demand"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "global_supply_spawn",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "global_matching_factories"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19596
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "GLOBAL_OWNER"
+      ],
+      "authority_ids": [
+        "conditional_supply_demand"
+      ]
+    },
+    {
+      "key": "speed_multiplier",
+      "occurrence_count": 12,
+      "family_count": 3,
+      "category_ids": [
+        "facility"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "build_upgrade_or_repair_facility",
+          "occurrence_count": 12
+        }
+      ],
+      "target_kinds": [
+        "region_unique_facility_slot"
+      ],
+      "value_types": [
+        {
+          "type": "number",
+          "occurrence_count": 12
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 17966
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "FACILITY_EXECUTOR",
+        "FACILITY_RULESET"
+      ],
+      "authority_ids": [
+        "facility_build"
+      ]
+    },
+    {
+      "key": "stack_policy",
+      "occurrence_count": 20,
+      "family_count": 5,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 20
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 20
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25502
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    },
+    {
+      "key": "starter_conflict_policy",
+      "occurrence_count": 32,
+      "family_count": 8,
+      "category_ids": [
+        "monster"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "deploy_or_upgrade_monster",
+          "occurrence_count": 32
+        }
+      ],
+      "target_kinds": [
+        "region_or_existing_same_family_monster"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 32
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19922
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "MONSTER_OWNER",
+        "UNIT_SCHEMA"
+      ],
+      "authority_ids": [
+        "monster_card"
+      ]
+    },
+    {
+      "key": "steal_fail_cash",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "interaction"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "player_hand_steal",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "opponent_discardable_hand"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "Same-name reads are on the flat legacy interaction/AI path; layered v0.6 interaction is not composed.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 24680
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "INTERACTION_SCHEMA",
+        "LEGACY_AI",
+        "LEGACY_INTERACTION"
+      ],
+      "authority_ids": [
+        "direct_player_interaction"
+      ]
+    },
+    {
+      "key": "storage_capacity_units",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "facility"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "build_upgrade_or_repair_facility",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "region_unique_facility_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 18961
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "FACILITY_EXECUTOR",
+        "FACILITY_RULESET"
+      ],
+      "authority_ids": [
+        "facility_build"
+      ]
+    },
+    {
+      "key": "target_cash_penalty",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "interaction"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "player_hand_disrupt",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "opponent_discardable_hand"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "Same-name reads are on the flat legacy interaction/AI path; layered v0.6 interaction is not composed.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 24606
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "INTERACTION_SCHEMA",
+        "LEGACY_AI",
+        "LEGACY_INTERACTION"
+      ],
+      "authority_ids": [
+        "direct_player_interaction"
+      ]
+    },
+    {
+      "key": "target_scope",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "interaction"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "card_counter",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "incoming_direct_player_interaction"
+      ],
+      "value_types": [
+        {
+          "type": "string",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "executor-only",
+      "classification_note": "Direct layered read is confined to an adapter/schema/reference execution path and has no direct AI or presentation consumer.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 24757
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "INTERACTION_SCHEMA"
+      ],
+      "authority_ids": [
+        "card_counter"
+      ]
+    },
+    {
+      "key": "throughput_units_per_minute",
+      "occurrence_count": 12,
+      "family_count": 3,
+      "category_ids": [
+        "facility"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "build_upgrade_or_repair_facility",
+          "occurrence_count": 12
+        }
+      ],
+      "target_kinds": [
+        "region_unique_facility_slot"
+      ],
+      "value_types": [
+        {
+          "type": "integer",
+          "occurrence_count": 12
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 17965
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "FACILITY_EXECUTOR",
+        "FACILITY_RULESET"
+      ],
+      "authority_ids": [
+        "facility_build"
+      ]
+    },
+    {
+      "key": "unit_profile_owns_stats",
+      "occurrence_count": 60,
+      "family_count": 15,
+      "category_ids": [
+        "military",
+        "monster"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "deploy_or_upgrade_military",
+          "occurrence_count": 28
+        },
+        {
+          "effect_kind": "deploy_or_upgrade_monster",
+          "occurrence_count": 32
+        }
+      ],
+      "target_kinds": [
+        "region_or_existing_same_family_monster",
+        "region_or_owned_same_family_military"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 60
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19924
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "MONSTER_OWNER",
+        "UNIT_SCHEMA"
+      ],
+      "authority_ids": [
+        "military_card",
+        "monster_card"
+      ]
+    },
+    {
+      "key": "upgrade_respects_target_owner_rank_cap",
+      "occurrence_count": 32,
+      "family_count": 8,
+      "category_ids": [
+        "monster"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "deploy_or_upgrade_monster",
+          "occurrence_count": 32
+        }
+      ],
+      "target_kinds": [
+        "region_or_existing_same_family_monster"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 32
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19923
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "MONSTER_OWNER",
+        "UNIT_SCHEMA"
+      ],
+      "authority_ids": [
+        "monster_card"
+      ]
+    },
+    {
+      "key": "upgrade_target_same_family_any_owner",
+      "occurrence_count": 32,
+      "family_count": 8,
+      "category_ids": [
+        "monster"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "deploy_or_upgrade_monster",
+          "occurrence_count": 32
+        }
+      ],
+      "target_kinds": [
+        "region_or_existing_same_family_monster"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 32
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19919
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "MONSTER_OWNER",
+        "UNIT_SCHEMA"
+      ],
+      "authority_ids": [
+        "monster_card"
+      ]
+    },
+    {
+      "key": "uses_real_route_capacity",
+      "occurrence_count": 8,
+      "family_count": 2,
+      "category_ids": [
+        "supply_demand"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "global_order_budget",
+          "occurrence_count": 4
+        },
+        {
+          "effect_kind": "global_supply_spawn",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "global_matching_factories",
+        "global_matching_goods"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 8
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 19290
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "GLOBAL_OWNER"
+      ],
+      "authority_ids": [
+        "conditional_supply_demand"
+      ]
+    },
+    {
+      "key": "valid_facility_kinds",
+      "occurrence_count": 184,
+      "family_count": 46,
+      "category_ids": [
+        "commodity"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_commodity_rate",
+          "occurrence_count": 184
+        }
+      ],
+      "target_kinds": [
+        "same_industry_factory_or_market"
+      ],
+      "value_types": [
+        {
+          "type": "array",
+          "occurrence_count": 184
+        }
+      ],
+      "classification": "compatibility",
+      "classification_note": "The layered payload is not the active read site; the behavior/value is mirrored by a Ruleset, hard-coded policy, or flat legacy path.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 35
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "COMMODITY_EXECUTOR",
+        "COMMODITY_RULESET"
+      ],
+      "authority_ids": [
+        "commodity_install"
+      ]
+    },
+    {
+      "key": "window_start_snapshot_required",
+      "occurrence_count": 4,
+      "family_count": 1,
+      "category_ids": [
+        "organization"
+      ],
+      "effect_kinds": [
+        {
+          "effect_kind": "install_organization_upgrade",
+          "occurrence_count": 4
+        }
+      ],
+      "target_kinds": [
+        "self_organization_slot"
+      ],
+      "value_types": [
+        {
+          "type": "boolean",
+          "occurrence_count": 4
+        }
+      ],
+      "classification": "authoritative",
+      "classification_note": "Directly read or value-validated by the current domain owner; rule-authority status is recorded separately.",
+      "catalog_first_reference": {
+        "path": "data/cards/card_runtime_catalog_v06.json",
+        "line": 25997
+      },
+      "consumer_evidence_ids": [
+        "CATALOG_SOURCE",
+        "ORGANIZATION_OWNER",
+        "ORGANIZATION_TERMS"
+      ],
+      "authority_ids": [
+        "organization_card"
+      ]
+    }
+  ],
+  "consumer_audit": {
+    "direct_layered_ai_fields": [],
+    "ai_labelled_coordinator_helper_fields": [
+      "allowed_region_states",
+      "facility_kind",
+      "industry_id"
+    ],
+    "legacy_flat_ai_same_name_fields": [
+      "counter_strength",
+      "hand_discard_count",
+      "hand_lock_seconds",
+      "hand_steal_count",
+      "product_id",
+      "scope",
+      "steal_fail_cash",
+      "target_cash_penalty"
+    ],
+    "executor_direct_read_summary": {
+      "commodity": [
+        "industry_id",
+        "product_id"
+      ],
+      "facility": [
+        "allowed_region_states",
+        "card_rank",
+        "facility_kind",
+        "industry_id"
+      ],
+      "supply_demand": [
+        "allocation_basis",
+        "budget_units",
+        "creates_one_time_physical_goods",
+        "distance_rule",
+        "is_permanent_installation",
+        "may_exceed_persistent_demand",
+        "required_route_tag",
+        "requires_legal_production_factory",
+        "requires_positive_owner_matching_product_gdp",
+        "requires_real_market_node",
+        "requires_real_market_or_factory_nodes",
+        "route_tag_match_mode",
+        "spawn_units",
+        "uses_real_route_capacity"
+      ],
+      "organization": "See authoritative and multi-consumer organization fields; four authoring-only fields remain unknown.",
+      "unit": [
+        "card_rank",
+        "heal_to_full_on_upgrade",
+        "military_family_id",
+        "monster_family_id",
+        "ownership_transfer_on_upgrade",
+        "presence_time_policy",
+        "refresh_total_presence_time",
+        "same_name_upgrade_extend_seconds"
+      ],
+      "interaction": [
+        "direct_player_interaction",
+        "response_depth",
+        "target_scope"
+      ]
+    },
+    "presentation_aliases": {
+      "machine.card_id": "card_name/name",
+      "machine.family_id": "family",
+      "machine.effect_kind": "kind, except facility table alias public_facility",
+      "machine.purchase_cash": "price/purchase_cost",
+      "machine.asset_cost": "play_cost/asset_cost",
+      "player.name": "display_name",
+      "player.effect": "text/full_effect_text",
+      "player.short_effect": "quick_effect/preview",
+      "player.timing": "timing/timing_text",
+      "player.target": "target/target_text"
+    },
+    "presentation_payload_reads": [
+      "product_id via recursive product-related-card lookup only"
+    ]
+  },
+  "mixing_findings": [
+    {
+      "id": "STATIC_INSTANCE_MIX",
+      "finding": "Hand slots contain a deep copy of all machine/player/developer static layers plus runtime_instance_id and later queue/lock flags.",
+      "evidence_id": "INSTANCE_MIX"
+    },
+    {
+      "id": "LEGAL_ACTION_MIX",
+      "finding": "Queued supply/demand cards receive _v06_automatic_target_context inside the card dictionary instead of a separate legal-action record.",
+      "evidence_id": "LEGAL_ACTION_MIX"
+    },
+    {
+      "id": "ALIAS_SPLIT",
+      "finding": "Codex and region supply build separate flat aliases; table presentation only normalizes v0.6 facilities, so semantic aliases are not uniform across categories.",
+      "evidence_ids": [
+        "CODEX_ALIASES",
+        "TABLE_ALIAS",
+        "REGION_ALIAS"
+      ]
+    },
+    {
+      "id": "STATIC_VS_EXECUTION_DIVERGENCE",
+      "finding": "Commodity rate and facility HP/capacity/throughput values exist in payload but active execution derives them from rank/Ruleset or hard-coded owner behavior.",
+      "evidence_ids": [
+        "COMMODITY_EXECUTOR",
+        "COMMODITY_RULESET",
+        "FACILITY_EXECUTOR",
+        "FACILITY_RULESET"
+      ]
+    }
+  ],
+  "evidence_index": {
+    "CATALOG_SOURCE": {
+      "path": "scripts/cards/card_runtime_catalog_v06_resource.gd",
+      "line": 25,
+      "role": "v0.6 Resource points to JSON source"
+    },
+    "CATALOG_VALIDATOR": {
+      "path": "scripts/cards/card_runtime_catalog_v06_resource.gd",
+      "line": 115,
+      "role": "identity, layer, payload and rank-ladder validator"
+    },
+    "COMMODITY_EXECUTOR": {
+      "path": "scripts/cards/v06/effects/commodity_card_effect_adapter_v06.gd",
+      "line": 42,
+      "role": "layered payload adapter reads product_id and industry_id"
+    },
+    "FACILITY_EXECUTOR": {
+      "path": "scripts/cards/v06/effects/facility_card_effect_adapter_v06.gd",
+      "line": 66,
+      "role": "layered payload adapter reads facility_kind, card_rank, industry_id and allowed_region_states"
+    },
+    "FACILITY_RULESET": {
+      "path": "scripts/rules/space_syndicate_ruleset_profile_v06.gd",
+      "line": 9,
+      "role": "active rank profiles own HP, capacity, throughput, speed and warehouse values"
+    },
+    "COMMODITY_RULESET": {
+      "path": "scripts/rules/space_syndicate_ruleset_profile_v06.gd",
+      "line": 38,
+      "role": "active commodity rate by rank"
+    },
+    "GLOBAL_OWNER": {
+      "path": "scripts/cards/v06/effects/global_supply_demand_runtime_service_v06.gd",
+      "line": 453,
+      "role": "authoritative supply/demand payload contract and execution planner"
+    },
+    "ORGANIZATION_OWNER": {
+      "path": "scripts/runtime/player_organization_runtime_controller.gd",
+      "line": 547,
+      "role": "organization payload normalization and value validation"
+    },
+    "ORGANIZATION_TERMS": {
+      "path": "scripts/runtime/player_organization_runtime_controller.gd",
+      "line": 333,
+      "role": "organization capability terms emitted from stored payload"
+    },
+    "UNIT_SCHEMA": {
+      "path": "scripts/cards/v06/units/unit_card_runtime_schema_v06.gd",
+      "line": 205,
+      "role": "unit execution schema reads family/rank fields"
+    },
+    "MONSTER_OWNER": {
+      "path": "scripts/runtime/monster_runtime_controller.gd",
+      "line": 2962,
+      "role": "real monster owner reads duration and ownership payload fields"
+    },
+    "INTERACTION_SCHEMA": {
+      "path": "scripts/cards/v06/interaction/anonymous_interaction_runtime_schema_v06.gd",
+      "line": 39,
+      "role": "uncomposed v0.6 interaction schema reads routing and response fields"
+    },
+    "LEGACY_AI": {
+      "path": "scripts/runtime/ai_runtime_controller.gd",
+      "line": 7398,
+      "role": "AI reads same-name flat v0.4 skill fields, not machine.effect_payload"
+    },
+    "LEGACY_INTERACTION": {
+      "path": "scripts/runtime/player_hand_interaction_runtime_service.gd",
+      "line": 273,
+      "role": "legacy flat skill interaction consumer"
+    },
+    "COORDINATOR_PAYLOAD_HELPER": {
+      "path": "scripts/runtime/game_runtime_coordinator.gd",
+      "line": 2473,
+      "role": "AI-labelled/coordinator facility helper reads three layered fields; no AiRuntimeController caller found"
+    },
+    "ROUTE_GATE": {
+      "path": "scripts/runtime/game_runtime_coordinator.gd",
+      "line": 2641,
+      "role": "observed production v0.6 effect routing and unsupported fallthrough"
+    },
+    "CODEX_ALIASES": {
+      "path": "scripts/runtime/card_codex_public_source_service.gd",
+      "line": 201,
+      "role": "machine/player fields normalized into presentation aliases"
+    },
+    "TABLE_ALIAS": {
+      "path": "scripts/presentation/table_presentation_viewmodel_query.gd",
+      "line": 632,
+      "role": "facility-only v0.6-to-flat presentation alias"
+    },
+    "PRODUCT_CODEX": {
+      "path": "scripts/runtime/product_codex_public_source_service.gd",
+      "line": 291,
+      "role": "presentation recursively searches payload values for product identity"
+    },
+    "INSTANCE_MIX": {
+      "path": "scripts/cards/v06/card_flow_transaction_service_v06.gd",
+      "line": 1273,
+      "role": "canonical static card copied into hand slot then receives runtime_instance_id"
+    },
+    "LEGAL_ACTION_MIX": {
+      "path": "scripts/runtime/game_runtime_coordinator.gd",
+      "line": 2760,
+      "role": "legal target context injected into queued card dictionary"
+    },
+    "REGION_ALIAS": {
+      "path": "scripts/runtime/game_runtime_coordinator.gd",
+      "line": 5597,
+      "role": "catalog layers normalized to region-listing descriptor aliases"
+    },
+    "RULE_COSTS": {
+      "path": "docs/tabletop_rulebook_v06.md",
+      "line": 373,
+      "role": "acquisition cash versus activation asset authority"
+    },
+    "RULE_ORGANIZATION": {
+      "path": "docs/tabletop_rulebook_v06.md",
+      "line": 398,
+      "role": "organization slots and next-window activation"
+    },
+    "RULE_ORGANIZATION_CLOSED": {
+      "path": "docs/tabletop_rulebook_v06.md",
+      "line": 440,
+      "role": "higher authority says organization cards are not yet open"
+    },
+    "RULE_SUPPLY": {
+      "path": "docs/tabletop_rulebook_v06.md",
+      "line": 442,
+      "role": "conditional supply/demand semantics"
+    },
+    "RULE_MONSTER": {
+      "path": "docs/tabletop_rulebook_v06.md",
+      "line": 464,
+      "role": "monster summon and same-family upgrade semantics"
+    },
+    "MECHANIC_COUNTER": {
+      "path": "docs/rules/v06_mechanic_status_registry.json",
+      "line": 14,
+      "role": "ACTIVE card_counter_response"
+    },
+    "MECHANIC_TARGET": {
+      "path": "docs/rules/v06_mechanic_status_registry.json",
+      "line": 16,
+      "role": "ACTIVE card_target_choice"
+    },
+    "MECHANIC_SUPPLY": {
+      "path": "docs/rules/v06_mechanic_status_registry.json",
+      "line": 24,
+      "role": "ACTIVE conditional_order_auto_settlement"
+    }
+  }
+}
