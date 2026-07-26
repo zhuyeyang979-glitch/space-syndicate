@@ -17,6 +17,7 @@ const SCHEMA_VERSION := 1
 const SOURCE_KIND_OWN_HAND := "own_hand"
 const VISIBILITY_SCOPE_ACTOR_PRIVATE := "actor_private"
 const JOURNAL_LIMIT := 128
+const REQUEST_BINDING_LIMIT := 4096
 const MICROSECONDS_PER_SECOND := 1000000
 
 const REASON_AUTHORIZED := "authorized"
@@ -31,6 +32,8 @@ const REASON_RUNTIME_INSTANCE_ID_INVALID := "runtime_instance_id_invalid"
 const REASON_SOURCE_INSTANCE_STATE_INVALID := "source_instance_state_invalid"
 const REASON_REQUEST_ID_INVALID := "request_id_invalid"
 const REASON_REQUEST_ID_COLLISION := "request_id_collision"
+const REASON_REQUEST_BINDING_CAPACITY_EXHAUSTED := \
+	"request_binding_capacity_exhausted"
 const REASON_REQUEST_REPLAY_MISMATCH := "request_replay_mismatch"
 const REASON_SEMANTIC_COMPILE_FAILED := "semantic_compile_failed"
 const REASON_SEMANTIC_CACHE_MISS := "semantic_cache_miss"
@@ -79,6 +82,8 @@ const STATIC_RECORD_KEYS := ["machine", "player", "developer"]
 )
 
 var _capability: AiActorHandInventoryCapability
+var _actor_capability_by_index: Dictionary = {}
+var _actor_capabilities_sealed := false
 var _capability_revision := 0
 var _capability_bind_rejection_count := 0
 var _authorization_attempt_count := 0
@@ -119,10 +124,47 @@ func bind_ai_capability(capability: AiActorHandInventoryCapability) -> bool:
 	return true
 
 
+func bind_actor_capability(
+	root_capability: AiActorHandInventoryCapability,
+	actor_capability: AiActorHandInventoryCapability,
+	actor_index: int
+) -> bool:
+	if _actor_capabilities_sealed or root_capability == null \
+			or root_capability != _capability or actor_capability == null \
+			or actor_capability == root_capability or actor_index < 0:
+		_capability_bind_rejection_count += 1
+		return false
+	if _actor_capability_by_index.has(actor_index):
+		var existing := _actor_capability_by_index.get(actor_index) \
+			as AiActorHandInventoryCapability
+		if existing == actor_capability:
+			return true
+		_capability_bind_rejection_count += 1
+		return false
+	for existing_variant in _actor_capability_by_index.values():
+		if existing_variant == actor_capability:
+			_capability_bind_rejection_count += 1
+			return false
+	_actor_capability_by_index[actor_index] = actor_capability
+	return true
+
+
+func seal_actor_capabilities(
+	root_capability: AiActorHandInventoryCapability
+) -> bool:
+	if root_capability == null or root_capability != _capability \
+			or _actor_capability_by_index.is_empty():
+		_capability_bind_rejection_count += 1
+		return false
+	_actor_capabilities_sealed = true
+	return true
+
+
 func is_ready() -> bool:
 	var hand_port := _hand_port()
 	var catalog := _catalog_service()
-	if _capability == null or hand_port == null or catalog == null \
+	if _capability == null or not _actor_capabilities_sealed \
+			or hand_port == null or catalog == null \
 			or not hand_port.is_ready():
 		return false
 	return bool(catalog.validation_snapshot().get("configured", false))
@@ -271,6 +313,10 @@ func debug_snapshot() -> Dictionary:
 		"journal_entry_count": _journal_order.size(),
 		"journal_limit": JOURNAL_LIMIT,
 		"journal_eviction_count": _journal_eviction_count,
+		"request_binding_count": (
+			_binding_fingerprint_by_request_fingerprint.size()
+		),
+		"request_binding_limit": REQUEST_BINDING_LIMIT,
 		"hand_snapshot_query_count": _hand_snapshot_query_count,
 		"source_revalidation_count": _source_revalidation_count,
 		"actor_state_query_proxy_count": _hand_snapshot_query_count,
@@ -293,14 +339,14 @@ func _authorize_own_hand_card(
 	request_id: String
 ) -> Dictionary:
 	_authorization_attempt_count += 1
-	if capability == null or capability != _capability:
+	if not _actor_capability_matches(capability, actor_index):
 		return _reject(REASON_CAPABILITY_REJECTED)
 	if not is_ready():
 		return _reject(REASON_DEPENDENCY_UNAVAILABLE)
 	var hand_port := _hand_port()
 	_hand_snapshot_query_count += 1
 	var attestation := hand_port.actor_hand_slot_attestation(
-		capability,
+		_capability,
 		actor_index,
 		slot_index
 	)
@@ -310,7 +356,7 @@ func _authorize_own_hand_card(
 	_hand_snapshot_query_count += 1
 	_source_revalidation_count += 1
 	var source_is_current := hand_port.is_current_slot_attestation(
-		capability,
+		_capability,
 		attestation
 	)
 	if source_is_current:
@@ -359,7 +405,14 @@ func _authorize_own_hand_card(
 		)) != binding_fingerprint:
 			_collision_count += 1
 			return _reject(REASON_REQUEST_ID_COLLISION)
+		if not _bundle_fingerprint_by_request_fingerprint.has(
+			request_fingerprint
+		):
+			return _reject(REASON_REQUEST_NOT_JOURNALED)
 		replay = true
+	elif _binding_fingerprint_by_request_fingerprint.size() \
+			>= REQUEST_BINDING_LIMIT:
+		return _reject(REASON_REQUEST_BINDING_CAPACITY_EXHAUSTED)
 
 	var static_record := material.get("static_record", {}) as Dictionary
 	_catalog_compile_request_count += 1
@@ -458,11 +511,12 @@ func _authorize_own_hand_card(
 			return _reject(REASON_REQUEST_REPLAY_MISMATCH)
 		_replay_count += 1
 	else:
-		_remember_request(
+		if not _remember_request(
 			request_fingerprint,
 			binding_fingerprint,
 			str(bundle.get("bundle_fingerprint", ""))
-		)
+		):
+			return _reject(REASON_REQUEST_BINDING_CAPACITY_EXHAUSTED)
 	_authorization_success_count += 1
 	_detached_bundle_copy_count += 1
 	return bundle.duplicate(true)
@@ -843,19 +897,19 @@ func _remember_request(
 	request_fingerprint: String,
 	binding_fingerprint: String,
 	bundle_fingerprint: String
-) -> void:
+) -> bool:
 	if not WIRE.is_fingerprint(request_fingerprint) \
 			or not WIRE.is_fingerprint(binding_fingerprint) \
 			or not WIRE.is_fingerprint(bundle_fingerprint) \
 			or _binding_fingerprint_by_request_fingerprint.has(
 				request_fingerprint
 			):
-		return
+		return false
+	if _binding_fingerprint_by_request_fingerprint.size() \
+			>= REQUEST_BINDING_LIMIT:
+		return false
 	while _journal_order.size() >= JOURNAL_LIMIT:
 		var retired_request_fingerprint: String = _journal_order.pop_front()
-		_binding_fingerprint_by_request_fingerprint.erase(
-			retired_request_fingerprint
-		)
 		_bundle_fingerprint_by_request_fingerprint.erase(
 			retired_request_fingerprint
 		)
@@ -865,6 +919,7 @@ func _remember_request(
 	_bundle_fingerprint_by_request_fingerprint[request_fingerprint] = \
 		bundle_fingerprint
 	_journal_order.append(request_fingerprint)
+	return true
 
 
 func _journal_fingerprint() -> String:
@@ -939,6 +994,18 @@ func _failure_result(reason_id: String) -> Dictionary:
 		"authorization_receipt": {},
 		"bundle_fingerprint": "",
 	}
+
+
+func _actor_capability_matches(
+	capability: AiActorHandInventoryCapability,
+	actor_index: int
+) -> bool:
+	return (
+		_actor_capabilities_sealed
+		and capability != null
+		and actor_index >= 0
+		and _actor_capability_by_index.get(actor_index) == capability
+	)
 
 
 func _hand_port() -> AiActorHandInventoryQueryPort:

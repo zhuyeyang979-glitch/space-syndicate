@@ -41,6 +41,7 @@ var _new_session_presentation_refresh_count := 0
 var _last_new_session_commit_only_receipt: Dictionary = {}
 var _ai_actor_state_capability: AiActorStateCapability
 var _ai_actor_hand_inventory_capability: AiActorHandInventoryCapability
+var _card_semantic_source_capability_by_actor: Dictionary = {}
 var _ai_actor_economy_facts_capability: AiActorEconomyFactsCapability
 
 
@@ -1509,7 +1510,23 @@ func _bind_card_semantic_source_authorization_port() -> bool:
 	var port := _card_semantic_source_authorization_port_node()
 	if port == null or _ai_actor_hand_inventory_capability == null:
 		return false
-	return port.bind_ai_capability(_ai_actor_hand_inventory_capability)
+	if not port.bind_ai_capability(_ai_actor_hand_inventory_capability):
+		return false
+	var maximum_actor_count := int(RULESET_V06_PROFILE.maximum_player_count)
+	for actor_index in range(maximum_actor_count):
+		if _card_semantic_source_capability_by_actor.has(actor_index):
+			continue
+		var actor_capability := AiActorHandInventoryCapability.new()
+		if not port.bind_actor_capability(
+			_ai_actor_hand_inventory_capability,
+			actor_capability,
+			actor_index
+		):
+			return false
+		_card_semantic_source_capability_by_actor[actor_index] = actor_capability
+	return port.seal_actor_capabilities(
+		_ai_actor_hand_inventory_capability
+	)
 
 
 func _prebind_ai_actor_economy_facts_capability() -> bool:

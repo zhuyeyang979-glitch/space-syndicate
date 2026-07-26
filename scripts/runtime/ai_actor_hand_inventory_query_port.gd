@@ -69,12 +69,15 @@ const EXTRA_FORBIDDEN_CARD_KEYS := [
 @export var game_session_runtime_controller_path: NodePath
 @export var ai_actor_state_port_path: NodePath
 @export var card_inventory_runtime_service_path: NodePath
+@export var card_cooldown_runtime_controller_path: NodePath
 
 var _capability: AiActorHandInventoryCapability
 var _capability_revision := 0
 var _capability_bind_rejection_count := 0
 var _restore_epoch := 0
 var _bound_world: WorldSessionState
+var _bound_session: GameSessionRuntimeController
+var _bound_card_cooldown: CardCooldownRuntimeController
 
 
 func _ready() -> void:
@@ -97,6 +100,7 @@ func bind_ai_capability(capability: AiActorHandInventoryCapability) -> bool:
 
 func is_ready() -> bool:
 	var inventory := _card_inventory_service()
+	var card_cooldown := _card_cooldown_controller()
 	return (
 		_capability != null
 		and _world() != null
@@ -104,6 +108,8 @@ func is_ready() -> bool:
 		and _actor_state_port() != null
 		and inventory != null
 		and inventory.is_ready()
+		and card_cooldown != null
+		and card_cooldown.is_ready()
 	)
 
 
@@ -386,24 +392,100 @@ func _session_context() -> Dictionary:
 
 func _bind_world_lifecycle() -> void:
 	var world := _world()
-	if world == _bound_world:
-		return
-	if (
-		_bound_world != null
-		and is_instance_valid(_bound_world)
-		and _bound_world.session_restored.is_connected(_on_world_session_restored)
-	):
-		_bound_world.session_restored.disconnect(_on_world_session_restored)
-	_bound_world = world
-	if (
-		_bound_world != null
-		and not _bound_world.session_restored.is_connected(_on_world_session_restored)
-	):
-		_bound_world.session_restored.connect(_on_world_session_restored)
-	_restore_epoch += 1
+	if world != _bound_world:
+		if _bound_world != null and is_instance_valid(_bound_world):
+			if _bound_world.players_replaced.is_connected(
+				_on_world_players_replaced
+			):
+				_bound_world.players_replaced.disconnect(
+					_on_world_players_replaced
+				)
+			if _bound_world.session_restored.is_connected(
+				_on_world_session_restored
+			):
+				_bound_world.session_restored.disconnect(
+					_on_world_session_restored
+				)
+		_bound_world = world
+		if _bound_world != null:
+			if not _bound_world.players_replaced.is_connected(
+				_on_world_players_replaced
+			):
+				_bound_world.players_replaced.connect(
+					_on_world_players_replaced
+				)
+			if not _bound_world.session_restored.is_connected(
+				_on_world_session_restored
+			):
+				_bound_world.session_restored.connect(
+					_on_world_session_restored
+				)
+		_advance_source_generation()
+	var session := _session()
+	if session != _bound_session:
+		if (
+			_bound_session != null
+			and is_instance_valid(_bound_session)
+			and _bound_session.authorization_context_changed.is_connected(
+					_on_session_authorization_context_changed
+				)
+		):
+			_bound_session.authorization_context_changed.disconnect(
+				_on_session_authorization_context_changed
+			)
+		_bound_session = session
+		if (
+			_bound_session != null
+			and not _bound_session.authorization_context_changed.is_connected(
+					_on_session_authorization_context_changed
+				)
+		):
+			_bound_session.authorization_context_changed.connect(
+				_on_session_authorization_context_changed
+			)
+		_advance_source_generation()
+	var card_cooldown := _card_cooldown_controller()
+	if card_cooldown != _bound_card_cooldown:
+		if (
+			_bound_card_cooldown != null
+			and is_instance_valid(_bound_card_cooldown)
+			and _bound_card_cooldown.card_instance_decision_state_changed.is_connected(
+					_on_card_instance_decision_state_changed
+				)
+		):
+			_bound_card_cooldown.card_instance_decision_state_changed.disconnect(
+				_on_card_instance_decision_state_changed
+			)
+		_bound_card_cooldown = card_cooldown
+		if (
+			_bound_card_cooldown != null
+			and not _bound_card_cooldown.card_instance_decision_state_changed.is_connected(
+					_on_card_instance_decision_state_changed
+				)
+		):
+			_bound_card_cooldown.card_instance_decision_state_changed.connect(
+				_on_card_instance_decision_state_changed
+			)
+		_advance_source_generation()
+
+
+func _on_world_players_replaced(_player_count: int) -> void:
+	_advance_source_generation()
 
 
 func _on_world_session_restored(_summary: Dictionary) -> void:
+	_advance_source_generation()
+
+
+func _on_session_authorization_context_changed(_reason_id: String) -> void:
+	_advance_source_generation()
+
+
+func _on_card_instance_decision_state_changed(_mutation_revision: int) -> void:
+	_advance_source_generation()
+
+
+func _advance_source_generation() -> void:
 	_restore_epoch += 1
 
 
@@ -452,3 +534,8 @@ func _actor_state_port() -> AiActorStatePort:
 func _card_inventory_service() -> CardInventoryRuntimeService:
 	return get_node_or_null(card_inventory_runtime_service_path) \
 		as CardInventoryRuntimeService
+
+
+func _card_cooldown_controller() -> CardCooldownRuntimeController:
+	return get_node_or_null(card_cooldown_runtime_controller_path) \
+		as CardCooldownRuntimeController

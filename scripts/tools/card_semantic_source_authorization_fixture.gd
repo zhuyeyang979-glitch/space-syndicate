@@ -72,9 +72,13 @@ static func configure_coordinator(
 		"districts": [],
 		"game_time": 23.0,
 	}, true)
-	var capability := coordinator.get(
-		"_ai_actor_hand_inventory_capability"
-	) as AiActorHandInventoryCapability
+	var actor_capabilities_variant: Variant = coordinator.get(
+		"_card_semantic_source_capability_by_actor"
+	)
+	var actor_capabilities := actor_capabilities_variant as Dictionary \
+		if actor_capabilities_variant is Dictionary else {}
+	var capability := actor_capabilities.get(AI_ACTOR_INDEX) \
+		as AiActorHandInventoryCapability
 	if (
 		str(started.get("session_state", ""))
 			!= GameSessionRuntimeController.STATE_RUNNING

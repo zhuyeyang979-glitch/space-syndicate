@@ -4084,9 +4084,11 @@ func _has_pending_blocking_decision() -> bool:
 
 
 func _queue_monster_card_as_counter(player_index: int, slot_index: int, source_skill: Dictionary) -> bool:
-	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
+	var world_session := _game_runtime_coordinator_node().world_session_state()
+	if player_index < 0 or player_index >= world_session.players.size():
 		return false
-	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
+	var players := world_session.players.duplicate(true)
+	var player: Dictionary = players[player_index]
 	var slots: Array = player.get("slots", [])
 	if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
 		return false
@@ -4102,7 +4104,8 @@ func _queue_monster_card_as_counter(player_index: int, slot_index: int, source_s
 	var original_skill := (slots[slot_index] as Dictionary).duplicate(true)
 	slots[slot_index] = counter_skill
 	player["slots"] = slots
-	_game_runtime_coordinator_node().world_session_state().players[player_index] = player
+	players[player_index] = player
+	world_session.replace_players(players)
 	var counter_receipt := _game_runtime_coordinator_node().submit_card_play({
 		"player_index": player_index,
 		"slot_index": slot_index,
@@ -4116,12 +4119,14 @@ func _queue_monster_card_as_counter(player_index: int, slot_index: int, source_s
 	if queued:
 		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s触发角色被动：一张怪兽牌被临时改写为相位否决并进入匿名反制等待。" % _player_name(player_index))
 		return true
-	player = _game_runtime_coordinator_node().world_session_state().players[player_index]
+	players = world_session.players.duplicate(true)
+	player = players[player_index]
 	slots = player.get("slots", [])
 	if slot_index >= 0 and slot_index < slots.size():
 		slots[slot_index] = original_skill
 		player["slots"] = slots
-		_game_runtime_coordinator_node().world_session_state().players[player_index] = player
+		players[player_index] = player
+		world_session.replace_players(players)
 	return false
 
 

@@ -470,17 +470,24 @@ func _run() -> void:
 		"queries perform literal zero port diagnostic mutation"
 	)
 
-	var original_actor := (world.players[1] as Dictionary).duplicate(true)
+	var original_players := world.players.duplicate(true)
+	var original_actor := (original_players[1] as Dictionary).duplicate(true)
 	var changed_actor := original_actor.duplicate(true)
 	var changed_slots := (changed_actor.get("slots", []) as Array).duplicate(true)
 	changed_slots[0] = _card("星际广告1", "AI_ONE_HAND_CHANGED")
 	changed_actor["slots"] = changed_slots
-	world.players[1] = changed_actor
+	var changed_players := original_players.duplicate(true)
+	changed_players[1] = changed_actor
+	world.replace_players(changed_players, true)
 	_expect(
 		not port.is_current_snapshot(capability, snapshot),
 		"authoritative hand mutation invalidates a stale snapshot"
 	)
-	world.players[1] = original_actor
+	world.replace_players(original_players, true)
+	_expect(
+		not port.is_current_snapshot(capability, snapshot),
+		"authoritative hand A-B-A replacement cannot revive a stale snapshot"
+	)
 	var before_restore := port.actor_hand_snapshot(capability, 1)
 	var saved_world := world.to_save_data()
 	world.restore(saved_world, true)

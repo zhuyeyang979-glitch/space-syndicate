@@ -7,6 +7,8 @@ const NAME_KIND_REPORT_PATH := "res://reports/semantic_program/name_and_kind_spe
 const AI_RUNTIME_PATH := "res://scripts/runtime/ai_runtime_controller.gd"
 const CATALOG_SERVICE_PATH := "res://scripts/runtime/card_semantic_catalog_service.gd"
 const SOURCE_AUTHORIZATION_PATH := "res://scripts/runtime/card_semantic_source_authorization_port.gd"
+const AI_PROJECTION_SERVICE_PATH := \
+	"res://scripts/runtime/ai_card_semantic_projection_service.gd"
 const COORDINATOR_SCENE_PATH := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
 const COORDINATOR_SCRIPT_PATH := "res://scripts/runtime/game_runtime_coordinator.gd"
 
@@ -297,9 +299,11 @@ func _scan_authorized_source_boundary() -> void:
 	var expected_methods: Array[String] = [
 		"authorize_own_hand_card",
 		"authorize_source",
+		"bind_actor_capability",
 		"bind_ai_capability",
 		"debug_snapshot",
 		"is_ready",
+		"seal_actor_capabilities",
 		"validate_authorized_bundle",
 	]
 	expected_methods.sort()
@@ -324,6 +328,33 @@ func _scan_authorized_source_boundary() -> void:
 			"production AI/UI/Main has no semantic cutover consumer: %s"
 				% forbidden_consumer
 		)
+	var production_sources := _production_source_map()
+	_expect(
+		production_sources.size() > SEMANTIC_SOURCE_PATHS.size(),
+		"semantic cutover ratchet scans the complete production script tree"
+	)
+	var compatibility_consumers := production_sources.duplicate()
+	compatibility_consumers.erase(AI_PROJECTION_SERVICE_PATH)
+	_expect(
+		_token_hits(compatibility_consumers, ["project_candidates"]).is_empty(),
+		"production scripts cannot call the compatibility projection entry"
+	)
+	_expect(
+		_token_hits(
+			compatibility_consumers,
+			["project_authorized_source"]
+		).is_empty(),
+		"production scripts cannot activate the authorized shadow projection"
+	)
+	var source_consumers := production_sources.duplicate()
+	source_consumers.erase(SOURCE_AUTHORIZATION_PATH)
+	_expect(
+		_token_hits(
+			source_consumers,
+			["authorize_own_hand_card", "authorize_source"]
+		).is_empty(),
+		"production scripts cannot consume either source authorization entry"
+	)
 
 
 func _scan_save_registry_contract() -> void:
@@ -492,6 +523,32 @@ func _source_map(paths: Array) -> Dictionary:
 			continue
 		result[path] = source
 	return result
+
+
+func _production_source_map() -> Dictionary:
+	var paths: Array[String] = []
+	_collect_gdscript_paths("res://scripts", paths)
+	paths.sort()
+	var production_paths: Array[String] = []
+	for path in paths:
+		if not path.begins_with("res://scripts/tools/"):
+			production_paths.append(path)
+	return _source_map(production_paths)
+
+
+func _collect_gdscript_paths(
+	directory_path: String,
+	paths: Array[String]
+) -> void:
+	for file_name in DirAccess.get_files_at(directory_path):
+		if file_name.ends_with(".gd"):
+			paths.append(directory_path.path_join(file_name))
+	for child_name in DirAccess.get_directories_at(directory_path):
+		if not child_name.begins_with("."):
+			_collect_gdscript_paths(
+				directory_path.path_join(child_name),
+				paths
+			)
 
 
 func _combined_source(paths: Array) -> String:

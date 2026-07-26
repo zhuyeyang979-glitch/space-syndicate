@@ -36,6 +36,8 @@ const DEBUG_KEYS := [
 	"journal_entry_count",
 	"journal_limit",
 	"journal_eviction_count",
+	"request_binding_count",
+	"request_binding_limit",
 	"hand_snapshot_query_count",
 	"source_revalidation_count",
 	"actor_state_query_proxy_count",
@@ -127,6 +129,38 @@ func _run() -> void:
 		CardSemanticSourceAuthorizationPort.REASON_CAPABILITY_REJECTED,
 		"forged capability"
 	)
+	_authorize_rejected_without_cache_delta(
+		fixture,
+		"own_hand",
+		fixture.get("root_capability") as AiActorHandInventoryCapability,
+		AI_ACTOR_INDEX,
+		0,
+		"source-root-capability",
+		CardSemanticSourceAuthorizationPort.REASON_CAPABILITY_REJECTED,
+		"broad root hand capability"
+	)
+	var foreign_coordinator := COORDINATOR_SCENE.instantiate() \
+		as GameRuntimeCoordinator
+	root.add_child(foreign_coordinator)
+	await process_frame
+	var foreign_capabilities_variant: Variant = foreign_coordinator.get(
+		"_card_semantic_source_capability_by_actor"
+	)
+	var foreign_capabilities := foreign_capabilities_variant as Dictionary \
+		if foreign_capabilities_variant is Dictionary else {}
+	_authorize_rejected_without_cache_delta(
+		fixture,
+		"own_hand",
+		foreign_capabilities.get(AI_ACTOR_INDEX)
+			as AiActorHandInventoryCapability,
+		AI_ACTOR_INDEX,
+		0,
+		"source-foreign-composition-capability",
+		CardSemanticSourceAuthorizationPort.REASON_CAPABILITY_REJECTED,
+		"capability issued by another production composition"
+	)
+	foreign_coordinator.queue_free()
+	await process_frame
 	for source_kind in ["public_rack", "public_reveal", "response_window"]:
 		_authorize_rejected_without_cache_delta(
 			fixture,
@@ -138,9 +172,20 @@ func _run() -> void:
 			CardSemanticSourceAuthorizationPort.REASON_SOURCE_KIND_UNSUPPORTED,
 			"unsupported %s source" % source_kind
 		)
+	_authorize_rejected_without_cache_delta(
+		fixture,
+		"own_hand",
+		capability,
+		2,
+		0,
+		"source-cross-actor-capability",
+		CardSemanticSourceAuthorizationPort.REASON_CAPABILITY_REJECTED,
+		"actor-one capability requesting another AI hand"
+	)
 
 	_run_record_mutation_checks(fixture, capability)
 	_run_stale_replacement_check(fixture, capability)
+	_run_cooldown_owner_aba_check(fixture, capability)
 	_run_replay_collision_checks(fixture, capability)
 	_run_actor_slot_and_instance_rejections(fixture, capability)
 	_run_instance_state_mapping_checks(fixture, capability)
@@ -207,20 +252,30 @@ func _configure_fixture(coordinator: GameRuntimeCoordinator) -> Dictionary:
 		"districts": [],
 		"game_time": 23.0,
 	}, true)
-	var capability := coordinator.get(
+	var root_capability := coordinator.get(
 		"_ai_actor_hand_inventory_capability"
 	) as AiActorHandInventoryCapability
+	var actor_capabilities_variant: Variant = coordinator.get(
+		"_card_semantic_source_capability_by_actor"
+	)
+	var actor_capabilities := actor_capabilities_variant as Dictionary \
+		if actor_capabilities_variant is Dictionary else {}
+	var capability := actor_capabilities.get(AI_ACTOR_INDEX) \
+		as AiActorHandInventoryCapability
 	if str(started.get("session_state", "")) \
 			!= GameSessionRuntimeController.STATE_RUNNING \
 			or capability == null:
 		return {}
 	return {
+		"coordinator": coordinator,
 		"world": world,
 		"session": session,
 		"source": source,
 		"semantic_catalog": semantic_catalog,
 		"rng": rng,
 		"capability": capability,
+		"root_capability": root_capability,
+		"actor_capabilities": actor_capabilities.duplicate(),
 		"default_slots": slots.duplicate(true),
 	}
 
@@ -436,6 +491,118 @@ func _run_stale_replacement_check(
 		"stale slot replacement"
 	)
 	_replace_ai_slots(fixture, defaults)
+	_validate_rejected_without_cache_delta(
+		fixture,
+		bundle,
+		CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_STALE,
+		"slot replacement A-B-A cannot resurrect old authorization"
+	)
+
+
+func _run_cooldown_owner_aba_check(
+	fixture: Dictionary,
+	_capability: AiActorHandInventoryCapability
+) -> void:
+	var defaults := fixture.get("default_slots", []) as Array
+	_replace_ai_slots(fixture, defaults)
+	var bundle := _authorize_positive(
+		fixture,
+		AI_ACTOR_INDEX,
+		0,
+		"source-before-cooldown-aba",
+		"pre-cooldown source"
+	)
+	var state := bundle.get("instance_decision_state", {}) as Dictionary
+	var coordinator := fixture.get("coordinator") as GameRuntimeCoordinator
+	var cooldown := coordinator.get_node_or_null(
+		"CardCooldownRuntimeController"
+	) as CardCooldownRuntimeController if coordinator != null else null
+	var actor_state := coordinator.get_node_or_null(
+		"AiActorStatePort"
+	) as AiActorStatePort if coordinator != null else null
+	_expect(cooldown != null, "authoritative card cooldown owner resolves")
+	_expect(actor_state != null, "production AI actor-state Port resolves")
+	if cooldown == null or actor_state == null:
+		return
+	var actor_generation_before := int(
+		actor_state.debug_snapshot().get("state_generation", -1)
+	)
+	var armed := cooldown.arm_persistent_card(
+		AI_ACTOR_INDEX,
+		0,
+		str(state.get("instance_id", "")),
+		1.0
+	)
+	_expect(
+		bool(armed.get("armed", false))
+			and bool(armed.get("changed", false)),
+		"authoritative cooldown owner arms current card instance"
+	)
+	_validate_rejected_without_cache_delta(
+		fixture,
+		bundle,
+		CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_STALE,
+		"cooldown owner mutation invalidates old authorization"
+	)
+	var advanced := cooldown.advance_world(1.0)
+	var world := fixture.get("world") as WorldSessionState
+	var current_card := (((world.players[AI_ACTOR_INDEX] as Dictionary).get(
+		"slots",
+		[]
+	) as Array)[0]) as Dictionary
+	_expect(
+		bool(advanced.get("advanced", false))
+			and is_zero_approx(float(current_card.get("cooldown_left", -1.0))),
+		"authoritative cooldown owner returns the card to byte-equivalent state"
+	)
+	_expect(
+		int(actor_state.debug_snapshot().get("state_generation", -2))
+			== actor_generation_before,
+		"card-instance invalidation does not churn production AI actor-state revision"
+	)
+	_validate_rejected_without_cache_delta(
+		fixture,
+		bundle,
+		CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_STALE,
+		"cooldown A-B-A cannot resurrect old authorization"
+	)
+	_replace_ai_slots(fixture, defaults)
+	var epsilon_bundle := _authorize_positive(
+		fixture,
+		AI_ACTOR_INDEX,
+		0,
+		"source-before-cooldown-epsilon-aba",
+		"pre-epsilon-cooldown source"
+	)
+	var epsilon_state := epsilon_bundle.get(
+		"instance_decision_state",
+		{}
+	) as Dictionary
+	var epsilon := 0.0000001
+	var epsilon_armed := cooldown.arm_persistent_card(
+		AI_ACTOR_INDEX,
+		0,
+		str(epsilon_state.get("instance_id", "")),
+		epsilon
+	)
+	_expect(
+		bool(epsilon_armed.get("changed", false)),
+		"sub-approximation cooldown mutation is reported exactly"
+	)
+	_validate_rejected_without_cache_delta(
+		fixture,
+		epsilon_bundle,
+		CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_STALE,
+		"epsilon cooldown mutation invalidates old authorization"
+	)
+	cooldown.advance_world(epsilon)
+	_validate_rejected_without_cache_delta(
+		fixture,
+		epsilon_bundle,
+		CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_STALE,
+		"epsilon cooldown A-B-A cannot resurrect old authorization"
+	)
+	_replace_ai_slots(fixture, defaults)
 
 
 func _run_replay_collision_checks(
@@ -503,9 +670,24 @@ func _run_actor_slot_and_instance_rejections(
 	var cache_before_rebind := _catalog_metrics(
 		semantic_catalog.validation_snapshot()
 	)
+	var root_capability := fixture.get("root_capability") \
+		as AiActorHandInventoryCapability
 	_expect(
 		not source.bind_ai_capability(AiActorHandInventoryCapability.new()),
 		"hostile capability rebind is rejected"
+	)
+	_expect(
+		not source.bind_actor_capability(
+			root_capability,
+			AiActorHandInventoryCapability.new(),
+			AI_ACTOR_INDEX
+		)
+			and not source.bind_actor_capability(
+				root_capability,
+				capability,
+				2
+			),
+		"sealed actor capability registry rejects hostile bind and cross-actor rebind"
 	)
 	_expect(
 		cache_before_rebind == _catalog_metrics(
@@ -514,8 +696,11 @@ func _run_actor_slot_and_instance_rejections(
 		"hostile capability rebind has zero compiler/cache delta"
 	)
 	var debug_before_human := source.debug_snapshot()
+	var actor_capabilities := fixture.get("actor_capabilities") as Dictionary
+	var human_capability := actor_capabilities.get(0) \
+		as AiActorHandInventoryCapability
 	_authorize_rejected_without_cache_delta(
-		fixture, "own_hand", capability, 0, 0,
+		fixture, "own_hand", human_capability, 0, 0,
 		"source-human-actor", CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_FAILED,
 		"human actor"
 	)
@@ -574,6 +759,13 @@ func _run_actor_slot_and_instance_rejections(
 	)
 	eliminated_actor["eliminated"] = false
 	world.players[AI_ACTOR_INDEX] = eliminated_actor
+	var pre_restart_bundle := _authorize_positive(
+		fixture,
+		AI_ACTOR_INDEX,
+		0,
+		"source-before-same-session-restart",
+		"pre-restart source"
+	)
 	var session := fixture.get("session") as GameSessionRuntimeController
 	session.finish_session({})
 	_authorize_rejected_without_cache_delta(
@@ -587,6 +779,27 @@ func _run_actor_slot_and_instance_rejections(
 		"seed": 271828,
 		"player_count": 4,
 	})
+	_validate_rejected_without_cache_delta(
+		fixture,
+		pre_restart_bundle,
+		CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_STALE,
+		"same-identity session restart cannot resurrect old authorization"
+	)
+	var pre_pause_bundle := _authorize_positive(
+		fixture,
+		AI_ACTOR_INDEX,
+		0,
+		"source-before-pause-resume",
+		"pre-pause source"
+	)
+	session.pause_session()
+	session.resume_session()
+	_validate_rejected_without_cache_delta(
+		fixture,
+		pre_pause_bundle,
+		CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_STALE,
+		"pause-resume A-B-A cannot resurrect old authorization"
+	)
 	_replace_ai_slots(fixture, defaults)
 
 
@@ -753,6 +966,12 @@ func _run_restore_and_identity_stale_checks(
 		"source card moved to another slot"
 	)
 	_replace_ai_slots(fixture, defaults)
+	_validate_rejected_without_cache_delta(
+		fixture,
+		moved_bundle,
+		CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_STALE,
+		"slot move A-B-A cannot resurrect old authorization"
+	)
 	var restore_bundle := _authorize_positive(
 		fixture, AI_ACTOR_INDEX, 0, "source-before-restore", "pre-restore source"
 	)
@@ -812,6 +1031,14 @@ func _run_journal_eviction_check(
 		"fingerprint-only authorization journal stays at its closed limit"
 	)
 	_expect(
+		int(debug_after.get("request_binding_count", -1))
+			== int(debug_before.get("request_binding_count", -2))
+				+ CardSemanticSourceAuthorizationPort.JOURNAL_LIMIT + 1
+			and int(debug_after.get("request_binding_limit", -1))
+				== CardSemanticSourceAuthorizationPort.REQUEST_BINDING_LIMIT,
+		"session request bindings remain fingerprint-only and bounded"
+	)
+	_expect(
 		int(cache_after.get("compile_count", -1))
 			== int(cache_before.get("compile_count", -2))
 			and int(cache_after.get("cache_entry_count", -1))
@@ -830,6 +1057,26 @@ func _run_journal_eviction_check(
 	_expect(
 		source.validate_authorized_bundle(newest_bundle) == newest_bundle,
 		"newest journal request remains current and idempotent"
+	)
+	_authorize_rejected_without_cache_delta(
+		fixture,
+		"own_hand",
+		capability,
+		AI_ACTOR_INDEX,
+		0,
+		"source-journal-boundary-000",
+		CardSemanticSourceAuthorizationPort.REASON_REQUEST_NOT_JOURNALED,
+		"evicted request replay"
+	)
+	_authorize_rejected_without_cache_delta(
+		fixture,
+		"own_hand",
+		capability,
+		AI_ACTOR_INDEX,
+		1,
+		"source-journal-boundary-000",
+		CardSemanticSourceAuthorizationPort.REASON_REQUEST_ID_COLLISION,
+		"evicted request rebound to different source"
 	)
 
 
@@ -868,6 +1115,22 @@ func _run_surface_and_save_checks(
 			and not source_text.contains("apply_save_data")
 			and not source_text.contains("RunRngService"),
 		"source has no enumeration, Save, or RNG backchannel"
+	)
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var counter_start := main_source.find(
+		"func _queue_monster_card_as_counter("
+	)
+	var counter_end := main_source.find("\nfunc ", counter_start + 5)
+	var counter_body := main_source.substr(
+		counter_start,
+		counter_end - counter_start
+	) if counter_start >= 0 and counter_end > counter_start else ""
+	_expect(
+		not counter_body.contains(
+			"world_session_state().players[player_index] ="
+		)
+			and counter_body.count("world_session.replace_players(players)") >= 2,
+		"legacy counter conversion commits through the WorldSession owner"
 	)
 
 
@@ -983,9 +1246,11 @@ func _validate_rejected_without_cache_delta(
 
 func _replace_ai_slots(fixture: Dictionary, slots: Array) -> void:
 	var world := fixture.get("world") as WorldSessionState
-	var actor := (world.players[AI_ACTOR_INDEX] as Dictionary).duplicate(true)
+	var players := world.players.duplicate(true)
+	var actor := (players[AI_ACTOR_INDEX] as Dictionary).duplicate(true)
 	actor["slots"] = slots.duplicate(true)
-	world.players[AI_ACTOR_INDEX] = actor
+	players[AI_ACTOR_INDEX] = actor
+	world.replace_players(players, true)
 
 
 func _catalog_metrics(snapshot: Dictionary) -> Dictionary:
