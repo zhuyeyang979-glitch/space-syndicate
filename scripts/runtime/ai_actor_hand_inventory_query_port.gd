@@ -32,6 +32,17 @@ const SLOT_KEYS := [
 	"lock_left",
 	"card",
 ]
+const SLOT_ATTESTATION_KEYS := [
+	"schema_version",
+	"session_id",
+	"session_revision",
+	"source_revision",
+	"source_fingerprint",
+	"visibility_scope",
+	"actor_index",
+	"slot",
+	"fingerprint",
+]
 const EXTRA_FORBIDDEN_CARD_KEYS := [
 	"actor_index",
 	"ai_memory",
@@ -156,6 +167,71 @@ func is_current_snapshot(
 		int(snapshot.get("actor_index", -1))
 	)
 	return not current.is_empty() and current == snapshot
+
+
+func actor_hand_slot_attestation(
+	capability: AiActorHandInventoryCapability,
+	actor_index: int,
+	slot_index: int
+) -> Dictionary:
+	var snapshot := actor_hand_snapshot(capability, actor_index)
+	if snapshot.is_empty() or slot_index < 0:
+		return {}
+	var slots_value: Variant = snapshot.get("slots")
+	if not (slots_value is Array) or slot_index >= (slots_value as Array).size():
+		return {}
+	var slot_value: Variant = (slots_value as Array)[slot_index]
+	if not (slot_value is Dictionary):
+		return {}
+	var slot := slot_value as Dictionary
+	if not _exact_keys(slot, SLOT_KEYS) or not bool(slot.get("occupied", false)) \
+			or int(slot.get("slot_index", -1)) != slot_index:
+		return {}
+	var attestation := {
+		"schema_version": SCHEMA_VERSION,
+		"session_id": str(snapshot.get("session_id", "")),
+		"session_revision": int(snapshot.get("session_revision", -1)),
+		"source_revision": str(snapshot.get("source_revision", "")),
+		"source_fingerprint": str(snapshot.get("fingerprint", "")),
+		"visibility_scope": str(snapshot.get("visibility_scope", "")),
+		"actor_index": actor_index,
+		"slot": slot.duplicate(true),
+		"fingerprint": "",
+	}
+	attestation["fingerprint"] = JSON.stringify([
+		"ai_actor_hand_slot_attestation_v1",
+		attestation.get("session_id", ""),
+		attestation.get("session_revision", -1),
+		attestation.get("source_revision", ""),
+		attestation.get("source_fingerprint", ""),
+		attestation.get("visibility_scope", ""),
+		actor_index,
+		slot_index,
+		attestation.get("slot", {}),
+	]).sha256_text().to_lower()
+	if not _exact_keys(attestation, SLOT_ATTESTATION_KEYS) or not _pure(attestation):
+		return {}
+	return attestation.duplicate(true)
+
+
+func is_current_slot_attestation(
+	capability: AiActorHandInventoryCapability,
+	attestation: Dictionary
+) -> bool:
+	if not _exact_keys(attestation, SLOT_ATTESTATION_KEYS) or not _pure(attestation):
+		return false
+	var slot_value: Variant = attestation.get("slot")
+	if not (slot_value is Dictionary):
+		return false
+	var slot := slot_value as Dictionary
+	if not _exact_keys(slot, SLOT_KEYS) or not bool(slot.get("occupied", false)):
+		return false
+	var actor_index := int(attestation.get("actor_index", -1))
+	var slot_index := int(slot.get("slot_index", -1))
+	if actor_index < 0 or slot_index < 0:
+		return false
+	var current := actor_hand_slot_attestation(capability, actor_index, slot_index)
+	return not current.is_empty() and current == attestation
 
 
 func debug_snapshot() -> Dictionary:

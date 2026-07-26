@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_semantic_source_authorization_port.gd" id="1_port"]
+
+[node name="CardSemanticSourceAuthorizationPort" type="Node"]
+script = ExtResource("1_port")
+ai_actor_hand_inventory_query_port_path = NodePath("../AiActorHandInventoryQueryPort")
+card_semantic_catalog_service_path = NodePath("../CardSemanticCatalogService")
+editor_description = "Capability-guarded own-hand semantic authorization with current-source reattestation and fingerprint-only replay journaling."
