@@ -6,6 +6,7 @@ class_name AiCardSemanticProjectionInputV1
 const CARD_SEMANTIC_SCHEMA_V1 := preload(
 	"res://scripts/cards/semantic/card_semantic_schema_v1.gd"
 )
+const SEMANTIC_WIRE_V1 := preload("res://scripts/semantic/semantic_wire_v1.gd")
 const OUTCOME_VECTOR_V1 := preload("res://scripts/runtime/ai_outcome_vector_v1.gd")
 const SCHEMA_VERSION := 1
 const INFORMATION_SCOPE_ID := "actor_private"
@@ -48,13 +49,12 @@ static func instance_state_error(instance: Dictionary) -> String:
 		instance, INSTANCE_ALLOWED_KEYS, INSTANCE_REQUIRED_KEYS
 	) or int(instance.get("schema_version", -1)) != SCHEMA_VERSION:
 		return "invalid_instance_schema"
-	if not _valid_stable_id(instance.get("instance_id")) \
+	if not _valid_runtime_instance_id(instance.get("instance_id")) \
 			or not _valid_stable_id(instance.get("card_id")):
 		return "invalid_instance_identity"
 	if not (instance.get("source_slot") is int) \
 			or int(instance.get("source_slot", -1)) < 0 \
-			or not (instance.get("instance_revision") is int) \
-			or int(instance.get("instance_revision", -1)) < 0:
+			or not _valid_instance_revision(instance.get("instance_revision")):
 		return "invalid_instance_revision"
 	if not (instance.get("queued") is bool) or not (instance.get("locked") is bool):
 		return "invalid_instance_state"
@@ -80,14 +80,15 @@ static func observation_error(observation: Dictionary) -> String:
 	if not _exact_keys(observation, OBSERVATION_KEYS) \
 			or int(observation.get("schema_version", -1)) != SCHEMA_VERSION:
 		return "invalid_world_schema"
-	for key in ["projection_id", "viewer_actor_id", "card_id", "instance_id"]:
+	for key in ["projection_id", "viewer_actor_id", "card_id"]:
 		if not _valid_stable_id(observation.get(key)):
 			return "invalid_world_identity"
+	if not _valid_runtime_instance_id(observation.get("instance_id")):
+		return "invalid_world_identity"
 	if not _valid_revision(observation.get("source_revision")) \
 			or not (observation.get("source_slot") is int) \
 			or int(observation.get("source_slot", -1)) < 0 \
-			or not (observation.get("instance_revision") is int) \
-			or int(observation.get("instance_revision", -1)) < 0 \
+			or not _valid_instance_revision(observation.get("instance_revision")) \
 			or not (observation.get("world_revision") is int) \
 			or int(observation.get("world_revision", -1)) < 0:
 		return "invalid_world_revision"
@@ -145,8 +146,7 @@ static func cross_boundary_error(
 		return "unauthorized_instance_identity"
 	if int(observation.get("source_slot", -1)) != int(instance.get("source_slot", -2)):
 		return "stale_source_slot"
-	if int(observation.get("instance_revision", -1)) \
-			!= int(instance.get("instance_revision", -2)):
+	if observation.get("instance_revision") != instance.get("instance_revision"):
 		return "stale_instance_revision"
 	var timing_id := str((spec.get("timing", {}) as Dictionary).get("timing_id", ""))
 	var source_kind := str(observation.get("source_kind", ""))
@@ -184,8 +184,8 @@ static func _legal_target_error(target: Dictionary, observation: Dictionary) -> 
 		return "invalid_legal_target_id"
 	if target.get("source_revision") != observation.get("source_revision"):
 		return "stale_legal_target_source_revision"
-	if int(target.get("instance_revision", -1)) \
-			!= int(observation.get("instance_revision", -2)):
+	if not _valid_instance_revision(target.get("instance_revision")) \
+			or target.get("instance_revision") != observation.get("instance_revision"):
 		return "stale_legal_target_instance_revision"
 	if int(target.get("world_revision", -1)) != int(observation.get("world_revision", -2)):
 		return "stale_legal_target_world_revision"
@@ -266,6 +266,11 @@ static func _valid_stable_id(value: Variant) -> bool:
 	return value is String and CARD_SEMANTIC_SCHEMA_V1.is_stable_id(value as String)
 
 
+static func _valid_runtime_instance_id(value: Variant) -> bool:
+	return SEMANTIC_WIRE_V1.is_ascii_reference(value) \
+		and str(value) == str(value).strip_edges()
+
+
 static func _valid_stable_id_array(value: Variant, maximum_size: int) -> bool:
 	if not (value is Array) or (value as Array).size() > maximum_size:
 		return false
@@ -289,6 +294,10 @@ static func _valid_fingerprint(value: Variant) -> bool:
 static func _valid_revision(value: Variant) -> bool:
 	return (value is int and int(value) >= 0) \
 		or (value is String and (_valid_stable_id(value) or _valid_fingerprint(value)))
+
+
+static func _valid_instance_revision(value: Variant) -> bool:
+	return (value is int and int(value) >= 0) or _valid_fingerprint(value)
 
 
 static func _valid_risk_index(value: Variant) -> bool:

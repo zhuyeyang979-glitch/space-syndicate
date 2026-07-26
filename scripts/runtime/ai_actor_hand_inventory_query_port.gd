@@ -32,28 +32,52 @@ const SLOT_KEYS := [
 	"lock_left",
 	"card",
 ]
+const SLOT_ATTESTATION_KEYS := [
+	"schema_version",
+	"session_id",
+	"session_revision",
+	"source_revision",
+	"source_fingerprint",
+	"visibility_scope",
+	"actor_index",
+	"slot",
+	"fingerprint",
+]
 const EXTRA_FORBIDDEN_CARD_KEYS := [
 	"actor_index",
 	"ai_memory",
+	"ai_score",
+	"ai_value",
 	"cash_cents",
 	"city_guesses",
 	"decision_samples",
+	"exact_cash",
+	"future_bag",
+	"method_name",
 	"opponent_slots",
 	"player_index",
+	"private_plan",
 	"rival_hand",
+	"rng_state",
+	"route_plan",
 	"save_payload",
+	"script_path",
+	"true_owner",
 ]
 
 @export var world_session_state_path: NodePath
 @export var game_session_runtime_controller_path: NodePath
 @export var ai_actor_state_port_path: NodePath
 @export var card_inventory_runtime_service_path: NodePath
+@export var card_cooldown_runtime_controller_path: NodePath
 
 var _capability: AiActorHandInventoryCapability
 var _capability_revision := 0
 var _capability_bind_rejection_count := 0
 var _restore_epoch := 0
 var _bound_world: WorldSessionState
+var _bound_session: GameSessionRuntimeController
+var _bound_card_cooldown: CardCooldownRuntimeController
 
 
 func _ready() -> void:
@@ -76,6 +100,7 @@ func bind_ai_capability(capability: AiActorHandInventoryCapability) -> bool:
 
 func is_ready() -> bool:
 	var inventory := _card_inventory_service()
+	var card_cooldown := _card_cooldown_controller()
 	return (
 		_capability != null
 		and _world() != null
@@ -83,6 +108,8 @@ func is_ready() -> bool:
 		and _actor_state_port() != null
 		and inventory != null
 		and inventory.is_ready()
+		and card_cooldown != null
+		and card_cooldown.is_ready()
 	)
 
 
@@ -156,6 +183,71 @@ func is_current_snapshot(
 		int(snapshot.get("actor_index", -1))
 	)
 	return not current.is_empty() and current == snapshot
+
+
+func actor_hand_slot_attestation(
+	capability: AiActorHandInventoryCapability,
+	actor_index: int,
+	slot_index: int
+) -> Dictionary:
+	var snapshot := actor_hand_snapshot(capability, actor_index)
+	if snapshot.is_empty() or slot_index < 0:
+		return {}
+	var slots_value: Variant = snapshot.get("slots")
+	if not (slots_value is Array) or slot_index >= (slots_value as Array).size():
+		return {}
+	var slot_value: Variant = (slots_value as Array)[slot_index]
+	if not (slot_value is Dictionary):
+		return {}
+	var slot := slot_value as Dictionary
+	if not _exact_keys(slot, SLOT_KEYS) or not bool(slot.get("occupied", false)) \
+			or int(slot.get("slot_index", -1)) != slot_index:
+		return {}
+	var attestation := {
+		"schema_version": SCHEMA_VERSION,
+		"session_id": str(snapshot.get("session_id", "")),
+		"session_revision": int(snapshot.get("session_revision", -1)),
+		"source_revision": str(snapshot.get("source_revision", "")),
+		"source_fingerprint": str(snapshot.get("fingerprint", "")),
+		"visibility_scope": str(snapshot.get("visibility_scope", "")),
+		"actor_index": actor_index,
+		"slot": slot.duplicate(true),
+		"fingerprint": "",
+	}
+	attestation["fingerprint"] = JSON.stringify([
+		"ai_actor_hand_slot_attestation_v1",
+		attestation.get("session_id", ""),
+		attestation.get("session_revision", -1),
+		attestation.get("source_revision", ""),
+		attestation.get("source_fingerprint", ""),
+		attestation.get("visibility_scope", ""),
+		actor_index,
+		slot_index,
+		attestation.get("slot", {}),
+	]).sha256_text().to_lower()
+	if not _exact_keys(attestation, SLOT_ATTESTATION_KEYS) or not _pure(attestation):
+		return {}
+	return attestation.duplicate(true)
+
+
+func is_current_slot_attestation(
+	capability: AiActorHandInventoryCapability,
+	attestation: Dictionary
+) -> bool:
+	if not _exact_keys(attestation, SLOT_ATTESTATION_KEYS) or not _pure(attestation):
+		return false
+	var slot_value: Variant = attestation.get("slot")
+	if not (slot_value is Dictionary):
+		return false
+	var slot := slot_value as Dictionary
+	if not _exact_keys(slot, SLOT_KEYS) or not bool(slot.get("occupied", false)):
+		return false
+	var actor_index := int(attestation.get("actor_index", -1))
+	var slot_index := int(slot.get("slot_index", -1))
+	if actor_index < 0 or slot_index < 0:
+		return false
+	var current := actor_hand_slot_attestation(capability, actor_index, slot_index)
+	return not current.is_empty() and current == attestation
 
 
 func debug_snapshot() -> Dictionary:
@@ -300,24 +392,100 @@ func _session_context() -> Dictionary:
 
 func _bind_world_lifecycle() -> void:
 	var world := _world()
-	if world == _bound_world:
-		return
-	if (
-		_bound_world != null
-		and is_instance_valid(_bound_world)
-		and _bound_world.session_restored.is_connected(_on_world_session_restored)
-	):
-		_bound_world.session_restored.disconnect(_on_world_session_restored)
-	_bound_world = world
-	if (
-		_bound_world != null
-		and not _bound_world.session_restored.is_connected(_on_world_session_restored)
-	):
-		_bound_world.session_restored.connect(_on_world_session_restored)
-	_restore_epoch += 1
+	if world != _bound_world:
+		if _bound_world != null and is_instance_valid(_bound_world):
+			if _bound_world.players_replaced.is_connected(
+				_on_world_players_replaced
+			):
+				_bound_world.players_replaced.disconnect(
+					_on_world_players_replaced
+				)
+			if _bound_world.session_restored.is_connected(
+				_on_world_session_restored
+			):
+				_bound_world.session_restored.disconnect(
+					_on_world_session_restored
+				)
+		_bound_world = world
+		if _bound_world != null:
+			if not _bound_world.players_replaced.is_connected(
+				_on_world_players_replaced
+			):
+				_bound_world.players_replaced.connect(
+					_on_world_players_replaced
+				)
+			if not _bound_world.session_restored.is_connected(
+				_on_world_session_restored
+			):
+				_bound_world.session_restored.connect(
+					_on_world_session_restored
+				)
+		_advance_source_generation()
+	var session := _session()
+	if session != _bound_session:
+		if (
+			_bound_session != null
+			and is_instance_valid(_bound_session)
+			and _bound_session.authorization_context_changed.is_connected(
+					_on_session_authorization_context_changed
+				)
+		):
+			_bound_session.authorization_context_changed.disconnect(
+				_on_session_authorization_context_changed
+			)
+		_bound_session = session
+		if (
+			_bound_session != null
+			and not _bound_session.authorization_context_changed.is_connected(
+					_on_session_authorization_context_changed
+				)
+		):
+			_bound_session.authorization_context_changed.connect(
+				_on_session_authorization_context_changed
+			)
+		_advance_source_generation()
+	var card_cooldown := _card_cooldown_controller()
+	if card_cooldown != _bound_card_cooldown:
+		if (
+			_bound_card_cooldown != null
+			and is_instance_valid(_bound_card_cooldown)
+			and _bound_card_cooldown.card_instance_decision_state_changed.is_connected(
+					_on_card_instance_decision_state_changed
+				)
+		):
+			_bound_card_cooldown.card_instance_decision_state_changed.disconnect(
+				_on_card_instance_decision_state_changed
+			)
+		_bound_card_cooldown = card_cooldown
+		if (
+			_bound_card_cooldown != null
+			and not _bound_card_cooldown.card_instance_decision_state_changed.is_connected(
+					_on_card_instance_decision_state_changed
+				)
+		):
+			_bound_card_cooldown.card_instance_decision_state_changed.connect(
+				_on_card_instance_decision_state_changed
+			)
+		_advance_source_generation()
+
+
+func _on_world_players_replaced(_player_count: int) -> void:
+	_advance_source_generation()
 
 
 func _on_world_session_restored(_summary: Dictionary) -> void:
+	_advance_source_generation()
+
+
+func _on_session_authorization_context_changed(_reason_id: String) -> void:
+	_advance_source_generation()
+
+
+func _on_card_instance_decision_state_changed(_mutation_revision: int) -> void:
+	_advance_source_generation()
+
+
+func _advance_source_generation() -> void:
 	_restore_epoch += 1
 
 
@@ -366,3 +534,8 @@ func _actor_state_port() -> AiActorStatePort:
 func _card_inventory_service() -> CardInventoryRuntimeService:
 	return get_node_or_null(card_inventory_runtime_service_path) \
 		as CardInventoryRuntimeService
+
+
+func _card_cooldown_controller() -> CardCooldownRuntimeController:
+	return get_node_or_null(card_cooldown_runtime_controller_path) \
+		as CardCooldownRuntimeController

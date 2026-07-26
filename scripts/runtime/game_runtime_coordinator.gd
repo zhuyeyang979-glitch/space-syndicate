@@ -41,6 +41,7 @@ var _new_session_presentation_refresh_count := 0
 var _last_new_session_commit_only_receipt: Dictionary = {}
 var _ai_actor_state_capability: AiActorStateCapability
 var _ai_actor_hand_inventory_capability: AiActorHandInventoryCapability
+var _card_semantic_source_capability_by_actor: Dictionary = {}
 var _ai_actor_economy_facts_capability: AiActorEconomyFactsCapability
 
 
@@ -51,6 +52,8 @@ func _enter_tree() -> void:
 		push_error("GameRuntimeCoordinator could not prebind the one-shot AI actor-state capability before child lifecycle callbacks.")
 	if not _prebind_ai_actor_hand_inventory_capability():
 		push_error("GameRuntimeCoordinator could not prebind the one-shot AI actor-hand capability before child lifecycle callbacks.")
+	if not _bind_card_semantic_source_authorization_port():
+		push_error("GameRuntimeCoordinator could not bind the one-shot AI actor-hand capability to CardSemanticSourceAuthorizationPort before child lifecycle callbacks.")
 	if not _prebind_ai_actor_economy_facts_capability():
 		push_error("GameRuntimeCoordinator could not prebind the one-shot AI actor-economy capability before child lifecycle callbacks.")
 
@@ -63,6 +66,7 @@ func _ready() -> void:
 	_wire_world_session_state()
 	_wire_ai_world_typed_ports()
 	_wire_ai_actor_hand_inventory_query_port()
+	_wire_card_semantic_source_authorization_port()
 	_wire_table_presentation_query_ports()
 	_wire_monster_wager_cash_commitment_query_port()
 	_wire_ai_actor_economy_facts_query_port()
@@ -89,6 +93,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_wire_world_session_state()
 	_wire_ai_world_typed_ports()
 	_wire_ai_actor_hand_inventory_query_port()
+	_wire_card_semantic_source_authorization_port()
 	_wire_table_presentation_query_ports()
 	_wire_monster_wager_cash_commitment_query_port()
 	_wire_ai_actor_economy_facts_query_port()
@@ -1501,6 +1506,29 @@ func _prebind_ai_actor_hand_inventory_capability() -> bool:
 	return hand_port.bind_ai_capability(_ai_actor_hand_inventory_capability)
 
 
+func _bind_card_semantic_source_authorization_port() -> bool:
+	var port := _card_semantic_source_authorization_port_node()
+	if port == null or _ai_actor_hand_inventory_capability == null:
+		return false
+	if not port.bind_ai_capability(_ai_actor_hand_inventory_capability):
+		return false
+	var maximum_actor_count := int(RULESET_V06_PROFILE.maximum_player_count)
+	for actor_index in range(maximum_actor_count):
+		if _card_semantic_source_capability_by_actor.has(actor_index):
+			continue
+		var actor_capability := AiActorHandInventoryCapability.new()
+		if not port.bind_actor_capability(
+			_ai_actor_hand_inventory_capability,
+			actor_capability,
+			actor_index
+		):
+			return false
+		_card_semantic_source_capability_by_actor[actor_index] = actor_capability
+	return port.seal_actor_capabilities(
+		_ai_actor_hand_inventory_capability
+	)
+
+
 func _prebind_ai_actor_economy_facts_capability() -> bool:
 	var economy_port := _ai_actor_economy_facts_query_port_node()
 	if economy_port == null:
@@ -1549,6 +1577,14 @@ func _wire_ai_actor_hand_inventory_query_port() -> void:
 		port,
 		_ai_actor_hand_inventory_capability
 	)
+
+
+func _wire_card_semantic_source_authorization_port() -> void:
+	var port := _card_semantic_source_authorization_port_node()
+	if port == null:
+		push_error("GameRuntimeCoordinator requires one CardSemanticSourceAuthorizationPort; authorized semantic reads fail closed.")
+		return
+	# Readiness is session-bound and is checked by every authorization request.
 
 
 func _wire_monster_wager_cash_commitment_query_port() -> void:
@@ -5793,6 +5829,11 @@ func _ai_actor_state_port_node() -> AiActorStatePort:
 func _ai_actor_hand_inventory_query_port_node() -> AiActorHandInventoryQueryPort:
 	return get_node_or_null("AiActorHandInventoryQueryPort") \
 		as AiActorHandInventoryQueryPort
+
+
+func _card_semantic_source_authorization_port_node() -> CardSemanticSourceAuthorizationPort:
+	return get_node_or_null("CardSemanticSourceAuthorizationPort") \
+		as CardSemanticSourceAuthorizationPort
 
 
 func _ai_actor_economy_facts_query_port_node() -> AiActorEconomyFactsQueryPort:

@@ -2,6 +2,8 @@
 extends Node
 class_name GameSessionRuntimeController
 
+signal authorization_context_changed(reason_id: String)
+
 const STATE_IDLE := "idle"
 const STATE_STARTING := "starting"
 const STATE_RUNNING := "running"
@@ -55,12 +57,14 @@ func configure(ruleset_snapshot: Dictionary, save_config: Dictionary = {}) -> vo
 	# Session lifecycle remains available to the transitional v0.4 composition,
 	# but every save operation below is strict v3/v0.6 and cannot resume v1/v2.
 	_configured = _ruleset_id in ["v0.4", "v0.6"] and bool(save_snapshot.get("configured", false))
+	_emit_authorization_context_changed("configured")
 
 
 func begin_session(setup_snapshot: Dictionary) -> Dictionary:
 	if not _configured or not _is_data_only(setup_snapshot):
 		_session_state = STATE_ERROR
 		_save_state = "failed"
+		_emit_authorization_context_changed("begin_rejected")
 		return session_summary()
 	var legacy_guard := LegacyContractPayloadGuardV06.validation_report(setup_snapshot)
 	if not bool(legacy_guard.get("valid", false)):
@@ -79,6 +83,7 @@ func begin_session(setup_snapshot: Dictionary) -> Dictionary:
 	_save_state = "dirty"
 	_dirty_reason = "new_session"
 	_session_state = STATE_RUNNING
+	_emit_authorization_context_changed("session_began")
 	return session_summary()
 
 
@@ -137,6 +142,7 @@ func apply_new_session_plan(setup_snapshot: Dictionary, expected_revision: int) 
 	_save_state = "dirty"
 	_dirty_reason = "new_session"
 	_session_state = STATE_RUNNING
+	_emit_authorization_context_changed("session_plan_applied")
 	return {"applied": true, "reason_code": "game_session_start_committed", "session_revision": session_start_revision(), "session": session_summary()}
 
 
@@ -159,6 +165,7 @@ func rollback_new_session_checkpoint(checkpoint: Dictionary) -> Dictionary:
 	_last_operation = (checkpoint.get("last_operation", {}) as Dictionary).duplicate(true)
 	if _world_effective_clock != null and _world_effective_clock.has_method("restore_micros"):
 		_world_effective_clock.call("restore_micros", int(checkpoint.get("world_effective_us", 0)))
+	_emit_authorization_context_changed("session_checkpoint_rolled_back")
 	return {"restored": true, "reason_code": "game_session_checkpoint_restored", "session_revision": session_start_revision()}
 
 
@@ -172,11 +179,13 @@ func mark_dirty(reason: String = "runtime_change") -> void:
 func pause_session() -> void:
 	if _session_state == STATE_RUNNING:
 		_session_state = STATE_PAUSED
+		_emit_authorization_context_changed("session_paused")
 
 
 func resume_session() -> void:
 	if _session_state == STATE_PAUSED:
 		_session_state = STATE_RUNNING
+		_emit_authorization_context_changed("session_resumed")
 
 
 func finish_session(result_summary: Dictionary = {}) -> void:
@@ -188,6 +197,7 @@ func finish_session(result_summary: Dictionary = {}) -> void:
 	_session_state = STATE_FINISHED
 	_save_state = "dirty"
 	_dirty_reason = "session_finished"
+	_emit_authorization_context_changed("session_finished")
 
 
 func is_finished() -> bool:
@@ -237,6 +247,7 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	_outcome_receipt = next_outcome
 	_save_state = "clean"
 	_dirty_reason = ""
+	_emit_authorization_context_changed("session_save_applied")
 	return {"applied": true, "legacy_default": false, "session_state": _session_state, "reason_code": "session_runtime_restored"}
 
 
@@ -350,6 +361,7 @@ func complete_load(error_code: int) -> void:
 			_session_state = STATE_RUNNING
 			_save_state = "clean"
 			_dirty_reason = ""
+			_emit_authorization_context_changed("session_load_completed")
 	return
 
 
@@ -418,6 +430,11 @@ func reset_state() -> void:
 	_last_operation = {}
 	if _world_effective_clock != null and _world_effective_clock.has_method("reset_state"):
 		_world_effective_clock.call("reset_state")
+	_emit_authorization_context_changed("session_reset")
+
+
+func _emit_authorization_context_changed(reason_id: String) -> void:
+	authorization_context_changed.emit(reason_id)
 
 
 func debug_snapshot() -> Dictionary:

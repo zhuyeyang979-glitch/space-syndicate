@@ -2,6 +2,8 @@
 extends Node
 class_name CardCooldownRuntimeController
 
+signal card_instance_decision_state_changed(mutation_revision: int)
+
 var _world_session: WorldSessionState
 var _configured := false
 var _advance_count := 0
@@ -12,6 +14,10 @@ var _last_receipt: Dictionary = {}
 func configure(world_session: WorldSessionState) -> void:
 	_world_session = world_session
 	_configured = _world_session != null
+
+
+func is_ready() -> bool:
+	return _configured and _world_session != null
 
 
 func advance_world(delta: float) -> Dictionary:
@@ -37,12 +43,14 @@ func advance_world(delta: float) -> Dictionary:
 			for field in ["cooldown_left", "lock_left"]:
 				var before := maxf(0.0, float(skill.get(field, 0.0)))
 				var after := maxf(0.0, before - step)
-				if not is_equal_approx(before, after):
+				if before != after:
 					card_cooldowns_changed += 1
 				skill[field] = after
 	_advance_count += 1
 	if player_cooldowns_changed > 0 or card_cooldowns_changed > 0:
 		_mutation_revision += 1
+	if card_cooldowns_changed > 0:
+		card_instance_decision_state_changed.emit(_mutation_revision)
 	return _receipt(true, "", player_cooldowns_changed, card_cooldowns_changed)
 
 
@@ -72,9 +80,11 @@ func arm_persistent_card(player_index: int, slot_index: int, expected_runtime_in
 	var before := maxf(0.0, float(skill.get("cooldown_left", 0.0)))
 	var after := maxf(before, maxf(0.0, seconds))
 	skill["cooldown_left"] = after
-	if not is_equal_approx(before, after):
+	var changed := before != after
+	if changed:
 		_mutation_revision += 1
-	return {"armed": true, "reason": "", "changed": not is_equal_approx(before, after), "revision": _mutation_revision}
+		card_instance_decision_state_changed.emit(_mutation_revision)
+	return {"armed": true, "reason": "", "changed": changed, "revision": _mutation_revision}
 
 
 func debug_snapshot() -> Dictionary:
