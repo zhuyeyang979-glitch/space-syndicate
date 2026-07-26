@@ -1,0 +1,549 @@
+{
+  "schema_version": 1,
+  "report_id": "card_semantic_adversarial_pre_review",
+  "review_kind": "analysis_only_adversarial_architecture_pre_review",
+  "review_role": "Subagent K",
+  "baseline": {
+    "sha": "59756a291f811a064726f59aed27efecc3590c9a",
+    "branch": "codex/card-semantic-wave1-k-review-59756a2",
+    "worktree_clean_at_start": true
+  },
+  "scope": {
+    "phase": "Space Syndicate Card Semantic Phase 1",
+    "inspected_boundaries": [
+      "current_runtime_owners",
+      "card_catalogs",
+      "card_resolution_queue_and_execution",
+      "ai_scoring_and_typed_ports",
+      "card_and_table_presentation",
+      "v06_save_owner_registry",
+      "run_rng_service",
+      "hidden_information",
+      "main_dependency_policy",
+      "scene_and_bench_requirements"
+    ],
+    "owned_files": [
+      "reports/cards/card_semantic_adversarial_pre_review.md",
+      "reports/cards/card_semantic_adversarial_pre_review.json"
+    ],
+    "production_files_modified": 0
+  },
+  "verdict": {
+    "phase_1": "BLOCKED_PENDING_ARCHITECTURE_GATES",
+    "report_artifacts": "READY_TO_MERGE_REPORT_ONLY_AFTER_VALIDATION",
+    "production_authorized": false,
+    "blocker_ids": [
+      "B-01",
+      "B-02",
+      "B-03",
+      "B-04"
+    ]
+  },
+  "severity_summary": {
+    "blocker": 4,
+    "major": 7,
+    "minor": 3,
+    "no_finding": 4,
+    "total": 18
+  },
+  "rule_authority": {
+    "status": "PARTIAL_WITH_BLOCKING_GAP",
+    "gap_code": "RULE_AUTHORITY_NOT_ESTABLISHED",
+    "gap": "No baseline mechanic registry entry or approved field-authority matrix exists for a card semantic projection/compiler or a new semantic taxonomy.",
+    "authority_gate": "AGENTS.md:373-404",
+    "related_established_mechanics": [
+      {
+        "mechanic_id": "ai_runtime_world_interaction",
+        "status": "ACTIVE",
+        "authority": "docs/rules/v06_mechanic_status_registry.json:18"
+      },
+      {
+        "mechanic_id": "ai_actor_hand_inventory_typed_port_migration",
+        "status": "MIGRATION_ONLY",
+        "authority": "docs/rules/v06_mechanic_status_registry.json:21"
+      },
+      {
+        "mechanic_id": "card_counter_response",
+        "status": "ACTIVE",
+        "authority": "docs/rules/v06_mechanic_status_registry.json:14"
+      },
+      {
+        "mechanic_id": "card_target_choice",
+        "status": "ACTIVE",
+        "authority": "docs/rules/v06_mechanic_status_registry.json:16"
+      }
+    ],
+    "required_resolution": "Approve one migration-only mechanic record and map every semantic operation to an active rule clause, existing machine/effect fields, established owner, privacy, and persistence=none."
+  },
+  "current_ownership": [
+    {
+      "boundary": "legacy_card_catalog",
+      "owner": "CardRuntimeCatalogService",
+      "evidence": [
+        "scenes/runtime/CardRuntimeCatalogService.tscn:3-9",
+        "docs/runtime_card_catalog_ownership_contract.md:5-20"
+      ]
+    },
+    {
+      "boundary": "v06_card_catalog",
+      "owner": "CardRuntimeCatalogV06Resource",
+      "evidence": [
+        "scripts/cards/card_runtime_catalog_v06_resource.gd:24-55",
+        "resources/content/alpha01/alpha01_content_manifest.tres:4-14"
+      ]
+    },
+    {
+      "boundary": "card_definition_composition",
+      "owner": "CardRuntimeDefinitionWorldBridge",
+      "evidence": [
+        "scripts/runtime/card_runtime_definition_world_bridge.gd:31-43",
+        "scripts/runtime/card_runtime_definition_world_bridge.gd:89-103"
+      ]
+    },
+    {
+      "boundary": "card_queue_state",
+      "owner": "CardResolutionQueueRuntimeService",
+      "evidence": [
+        "docs/card_resolution_execution_runtime_contract.md:114-123"
+      ]
+    },
+    {
+      "boundary": "card_execution_lifecycle",
+      "owner": "CardResolutionExecutionRuntimeService and CardResolutionTransitionSink",
+      "evidence": [
+        "docs/card_resolution_execution_runtime_contract.md:135-144",
+        "scripts/runtime/card_resolution_transition_sink.gd:23-64"
+      ]
+    },
+    {
+      "boundary": "ai_scoring",
+      "owner": "AiRuntimeController",
+      "evidence": [
+        "docs/ai_runtime_ownership_contract.md:5-7",
+        "scripts/runtime/ai_runtime_controller.gd:7377-7444"
+      ]
+    },
+    {
+      "boundary": "card_presentation",
+      "owner": "CardPresentationRuntimeService",
+      "evidence": [
+        "docs/card_presentation_viewmodel_runtime_contract.md:3-24"
+      ]
+    },
+    {
+      "boundary": "save_manifest",
+      "owner": "V06SaveOwnerRegistry",
+      "evidence": [
+        "docs/v06_save_owner_registry_contract.md:5-20",
+        "scripts/runtime/v06_save_owner_registry.gd:28-48"
+      ]
+    },
+    {
+      "boundary": "gameplay_rng",
+      "owner": "RunRngService",
+      "evidence": [
+        "scripts/runtime/run_rng_service.gd:8-22",
+        "scenes/runtime/RunRngService.tscn:5-7"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "B-01",
+      "severity": "blocker",
+      "title": "Semantic field rule authority is not established",
+      "status": "open",
+      "rule_authority": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "evidence": [
+        "AGENTS.md:373-404",
+        "docs/rules/v06_mechanic_status_registry.json:13-37"
+      ],
+      "risk": "Production fields or policy could be invented from code, tests, text, or historical behavior without active product authority.",
+      "required_gate": "Approve one migration-only mechanic record and a per-field authority/owner/privacy/persistence matrix; fail closed on unmapped meaning."
+    },
+    {
+      "id": "B-02",
+      "severity": "blocker",
+      "title": "Canonical semantic source and deletion path are missing",
+      "status": "open",
+      "rule_authority": "docs/rules_v06_runtime_directive.md:246-260",
+      "evidence": [
+        "scenes/runtime/CardRuntimeCatalogService.tscn:3-9",
+        "scripts/cards/card_runtime_catalog_v06_resource.gd:4-25",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:632-683",
+        "scripts/runtime/game_runtime_coordinator.gd:1925-1933",
+        "scripts/runtime/game_runtime_coordinator.gd:2249-2254"
+      ],
+      "risk": "A sidecar or duplicate AI/Presentation mapping would become a third long-term card authority and drift from both catalog generations.",
+      "required_gate": "Select one canonical v0.6 authored location, one typed read path, and an explicit deletion gate for any read-only legacy adapter."
+    },
+    {
+      "id": "B-03",
+      "severity": "blocker",
+      "title": "Arbitrary card-id lookup can expose hidden candidates",
+      "status": "open",
+      "rule_authority": "docs/tabletop_rulebook_v06.md:172-175,340-348",
+      "evidence": [
+        "docs/rules_v06_runtime_directive.md:145-163",
+        "scripts/runtime/ai_actor_hand_inventory_query_port.gd:219-260"
+      ],
+      "risk": "AI could enrich future supply-bag or obscured belt identities even if returned semantic keys themselves are public-safe.",
+      "required_gate": "AI accepts semantics only for a revision-bound definition/provenance envelope from an existing own-hand or public-rack visibility port; expose no enumeration or arbitrary-ID API."
+    },
+    {
+      "id": "B-04",
+      "severity": "blocker",
+      "title": "AI scores and policy weights must be excluded from public definitions",
+      "status": "open",
+      "rule_authority": "docs/tabletop_rulebook_v06.md:334",
+      "evidence": [
+        "docs/ai_runtime_ownership_contract.md:5-7",
+        "docs/ai_runtime_ownership_contract.md:109-113",
+        "scripts/runtime/ai_runtime_controller.gd:7377-7444",
+        "scripts/runtime/ai_runtime_controller.gd:8288-8302",
+        "docs/migration/table_presentation_privacy_review.md:286-317"
+      ],
+      "risk": "Public/catalog utility values would create a second AI policy owner and leak hidden reasoning through presentation or diagnostics.",
+      "required_gate": "Recursively reject AI score, utility, policy-weight, reason, candidate, plan, learning, and policy fields; the rule-authorized region_supply_weight remains a supply field rather than AI utility; AI applies all private weights after the neutral typed read."
+    },
+    {
+      "id": "M-01",
+      "severity": "major",
+      "title": "Semantic projection must not become a second card engine",
+      "status": "mandatory_boundary",
+      "rule_authority": "docs/rules_v06_runtime_directive.md:39-45",
+      "evidence": [
+        "docs/card_resolution_execution_runtime_contract.md:112-144",
+        "docs/card_resolution_execution_runtime_contract.md:227-229"
+      ],
+      "risk": "Legality, execution, queue, target, or effect ownership could be duplicated behind a generic semantic service.",
+      "required_gate": "Semantic code is read-only and has zero imports from queue/execution/effect owners in either direction."
+    },
+    {
+      "id": "M-02",
+      "severity": "major",
+      "title": "Localized-text inference and specific-card branching are forbidden",
+      "status": "mandatory_boundary",
+      "rule_authority": "docs/rules_v06_runtime_directive.md:9-11",
+      "evidence": [
+        "docs/tabletop_rulebook_v06.md:342-346",
+        "scripts/runtime/card_presentation_runtime_service.gd:27-48",
+        "scripts/runtime/card_presentation_runtime_service.gd:451-506"
+      ],
+      "risk": "Text/name matching creates language-dependent hidden rules and one-off card behavior that diverges from machine fields.",
+      "required_gate": "Compile only closed active effect kinds and validated machine fields; reject card-id/name/family/localized-text branches."
+    },
+    {
+      "id": "M-03",
+      "severity": "major",
+      "title": "Presentation must remain the sole UI-rule owner",
+      "status": "mandatory_boundary",
+      "rule_authority": "docs/card_presentation_viewmodel_runtime_contract.md:3-24,34-48",
+      "evidence": [
+        "scripts/runtime/card_presentation_runtime_service.gd:51-86"
+      ],
+      "risk": "Semantic data could encode copy, icons, chips, layout, tooltips, animation, or action state and become a competing presentation engine.",
+      "required_gate": "Semantic output is neutral mechanics only; CardPresentationRuntimeService owns every card-facing presentation decision."
+    },
+    {
+      "id": "M-04",
+      "severity": "major",
+      "title": "Compilation must occur once per stable definition fingerprint",
+      "status": "mandatory_boundary",
+      "rule_authority": "NOT_A_GAMEPLAY_RULE; AGENTS.md:303-305 repository performance policy",
+      "evidence": [
+        "tests/ai_card_play_candidate_performance_parity_test.gd:147-170"
+      ],
+      "risk": "Per-target, per-score, per-frame, or per-comparison compilation would multiply candidate cost and blur compiler versus AI ownership.",
+      "required_gate": "Cache by semantic schema, catalog identity, and definition fingerprint; repeated AI and Presentation reads are cache hits and return detached copies."
+    },
+    {
+      "id": "M-05",
+      "severity": "major",
+      "title": "Semantic data adds no persistence or randomness",
+      "status": "mandatory_boundary",
+      "rule_authority": "docs/v06_save_owner_registry_contract.md:22-51,69-71",
+      "evidence": [
+        "scripts/runtime/run_rng_service.gd:44-61",
+        "scripts/runtime/run_rng_service.gd:167-187"
+      ],
+      "risk": "A saved cache, new section, random fallback, or tie-break would alter deterministic continuation and owner count.",
+      "required_gate": "Save remains exactly 19 sections; semantic cache is rebuilt; compile/query leaves RunRngService checkpoint unchanged."
+    },
+    {
+      "id": "M-06",
+      "severity": "major",
+      "title": "Integration must be typed, scene-owned, and Main-free",
+      "status": "mandatory_boundary",
+      "rule_authority": "AGENTS.md:406-428",
+      "evidence": [
+        "AGENTS.md:222-225",
+        "AGENTS.md:335-343",
+        "docs/development/current_file_ownership.json:5-35"
+      ],
+      "risk": "A Main callback, dynamic method-name route, service locator, or script-only runtime helper would violate the extinction and scene acceptance policies.",
+      "required_gate": "Typed injection under GameRuntimeCoordinator, editable production scene plus Bench/MCP evidence for new runtime responsibility, and negative Main dependency scans."
+    },
+    {
+      "id": "M-07",
+      "severity": "major",
+      "title": "Retired and unavailable mechanics must fail closed",
+      "status": "mandatory_boundary",
+      "rule_authority": "docs/rules_v06_runtime_directive.md:15-27",
+      "evidence": [
+        "docs/rules/v06_mechanic_status_registry.json:25-37",
+        "docs/tabletop_rulebook_v06.md:398-440",
+        "docs/development/current_program_state.json:183-196"
+      ],
+      "risk": "Compilation could make retired or catalog-present-but-unavailable content visible, scoreable, purchasable, or executable.",
+      "required_gate": "Reject retired identifiers and keep deferred organization content out of active acquisition, AI candidates, and player surfaces."
+    },
+    {
+      "id": "MIN-01",
+      "severity": "minor",
+      "title": "Snapshot needs closed schema identity and provenance",
+      "status": "required_before_wave_3",
+      "rule_authority": "docs/runtime_card_catalog_resource_schema.md:70-85",
+      "evidence": [
+        "scripts/cards/card_runtime_catalog_v06_resource.gd:274-287"
+      ],
+      "risk": "Unversioned or mutable dictionaries make drift, stale cache, and non-data leakage difficult to detect.",
+      "required_gate": "Version/fingerprint the snapshot, reject unknown/nonfinite/Object values, and return detached pure data."
+    },
+    {
+      "id": "MIN-02",
+      "severity": "minor",
+      "title": "Shared hot files require one integration writer",
+      "status": "open_operational_gate",
+      "rule_authority": "docs/development/current_file_ownership.json:5-38",
+      "evidence": [
+        "docs/development/current_file_ownership.json:68-94"
+      ],
+      "risk": "Parallel schema, AI, Presentation, and integration branches can collide in catalogs and coordinator composition.",
+      "required_gate": "Merge schema first, then typed consumers, then one integration-writer composition change."
+    },
+    {
+      "id": "MIN-03",
+      "severity": "minor",
+      "title": "Diagnostics must expose counters rather than private payloads",
+      "status": "required_before_wave_3",
+      "rule_authority": "docs/ai_runtime_ownership_contract.md:109-113",
+      "evidence": [
+        "docs/migration/table_presentation_privacy_review.md:286-317"
+      ],
+      "risk": "Debug snapshots could leak scores, candidate lists, owner truth, hands, targets, or future bag order.",
+      "required_gate": "Allow only schema/fingerprint/readiness/cache counters and public-safe validation codes."
+    },
+    {
+      "id": "N-01",
+      "severity": "no-finding",
+      "title": "Existing queue and execution ownership can remain untouched",
+      "status": "confirmed",
+      "rule_authority": "docs/rules_v06_runtime_directive.md:39-45",
+      "evidence": [
+        "docs/card_resolution_execution_runtime_contract.md:112-171"
+      ],
+      "conclusion": "A read-only semantic projection can remain outside the execution graph."
+    },
+    {
+      "id": "N-02",
+      "severity": "no-finding",
+      "title": "Save and RNG authorities are unambiguous",
+      "status": "confirmed",
+      "rule_authority": "docs/v06_save_owner_registry_contract.md:22-71",
+      "evidence": [
+        "scripts/runtime/v06_save_owner_registry.gd:28-48",
+        "scenes/runtime/RunRngService.tscn:5-7"
+      ],
+      "conclusion": "No semantic persistence or randomness is required."
+    },
+    {
+      "id": "N-03",
+      "severity": "no-finding",
+      "title": "Current v0.6 catalog structured scan has zero retired-identifier hits",
+      "status": "confirmed",
+      "rule_authority": "docs/rules/v06_mechanic_status_registry.json:25-37",
+      "evidence": [
+        "scripts/cards/card_runtime_catalog_v06_resource.gd:107-164"
+      ],
+      "conclusion": "All 348 current v0.6 records scanned clean for retired contract identifiers and legacy panic/heat keys; a permanent validator is still required."
+    },
+    {
+      "id": "N-04",
+      "severity": "no-finding",
+      "title": "Existing scene seams support typed semantic consumers",
+      "status": "confirmed",
+      "rule_authority": "AGENTS.md:222-225,335-343",
+      "evidence": [
+        "scenes/runtime/GameRuntimeCoordinator.tscn:24-52",
+        "scenes/runtime/GameRuntimeCoordinator.tscn:254-258",
+        "scenes/runtime/GameRuntimeCoordinator.tscn:334-337",
+        "scenes/runtime/GameRuntimeCoordinator.tscn:394-430"
+      ],
+      "conclusion": "A narrow query port can be injected without a Main dependency or second process loop."
+    }
+  ],
+  "hard_invariants": [
+    {
+      "id": "HI-01",
+      "name": "no_second_card_state_owner_or_engine",
+      "gate": "Semantic code owns no card instance, hand, queue, timing, target, legality, execution, effect, cooldown, history, or settlement state."
+    },
+    {
+      "id": "HI-02",
+      "name": "no_ai_score_in_public_definitions",
+      "gate": "No AI score, utility, policy-weight, priority, reason, candidate, plan, learning, or policy coefficient is stored in public/catalog semantic output."
+    },
+    {
+      "id": "HI-03",
+      "name": "no_localized_text_rules",
+      "gate": "Machine semantics never parse or match display/rules text, localization keys, tooltips, or translated keywords."
+    },
+    {
+      "id": "HI-04",
+      "name": "no_ui_rules",
+      "gate": "Semantic data owns no color, icon, chip order, copy, layout, tooltip, animation, or action-state decision."
+    },
+    {
+      "id": "HI-05",
+      "name": "no_save_section",
+      "gate": "No new save key, owner binding, restore hook, or twentieth v0.6 section; cache is rebuilt."
+    },
+    {
+      "id": "HI-06",
+      "name": "no_rng_change",
+      "gate": "Zero draws, streams, seeds, shuffles, random fallbacks, or tie-break changes; checkpoint equality is tested."
+    },
+    {
+      "id": "HI-07",
+      "name": "no_retired_mechanics",
+      "gate": "Retired identifiers fail validation and cannot enter candidates, presentation, execution, AI, or persistence."
+    },
+    {
+      "id": "HI-08",
+      "name": "no_untyped_or_main_bypass",
+      "gate": "No Main/current-scene lookup, dynamic call/get/set/has_method, string callback, or compatibility fallback."
+    },
+    {
+      "id": "HI-09",
+      "name": "no_candidate_hidden_information",
+      "gate": "AI receives semantics only after own-hand/public-rack/belt visibility authorization; no arbitrary ID lookup or enumeration exists on the AI port."
+    },
+    {
+      "id": "HI-10",
+      "name": "no_per_score_compilation",
+      "gate": "At most one compile per stable definition fingerprint and semantic schema version; scoring is cache-read only."
+    },
+    {
+      "id": "HI-11",
+      "name": "no_specific_card_branching",
+      "gate": "No card-id, card-name, family-name, or localized-tag code branch; use closed active effect kinds and authored fields."
+    },
+    {
+      "id": "HI-12",
+      "name": "no_dual_long_term_authority",
+      "gate": "One canonical authored semantic source and one typed read path; temporary legacy adapters have a named deletion gate and are never writable authorities."
+    },
+    {
+      "id": "HI-13",
+      "name": "fail_closed_on_unknown_meaning",
+      "gate": "Any untraceable field is RULE_AUTHORITY_NOT_ESTABLISHED, not a generic inferred behavior."
+    }
+  ],
+  "recommended_safe_boundary": {
+    "canonical_data": "Neutral rule-backed semantic descriptors live with the eventual authoritative v0.6 machine definition or typed Resource representation; no runtime sidecar is created.",
+    "read_port": {
+      "kind": "typed_scene_owned_context_free_query",
+      "preferred_input": "already_resolved_and_authorized_definition_snapshot",
+      "cache_key": [
+        "semantic_schema_version",
+        "catalog_id",
+        "definition_fingerprint"
+      ],
+      "allowed_responsibilities": [
+        "validate_schema_and_active_mechanic_mapping",
+        "compile_or_read_one_neutral_snapshot",
+        "return_detached_pure_data",
+        "report_public_safe_validation_and_cache_counters"
+      ],
+      "forbidden_responsibilities": [
+        "enumerate_candidates",
+        "arbitrary_ai_card_id_lookup",
+        "score_or_rank",
+        "choose_target",
+        "decide_legality",
+        "execute_effect",
+        "mutate_world_or_card_state",
+        "own_ui_copy_or_style",
+        "consume_rng",
+        "own_save_data"
+      ]
+    },
+    "ai_flow": [
+      "authorized_own_hand_or_public_rack",
+      "typed_candidate_provenance",
+      "neutral_semantic_snapshot",
+      "AiRuntimeController_private_score_and_rank"
+    ],
+    "presentation_flow": [
+      "viewer_authorized_card_source",
+      "neutral_semantic_snapshot",
+      "CardPresentationRuntimeService",
+      "CardViewSnapshot_or_table_viewmodel",
+      "UI"
+    ],
+    "explicit_non_consumers": [
+      "CardResolutionQueueRuntimeService",
+      "CardResolutionRuntimeController",
+      "CardResolutionExecutionRuntimeService",
+      "CardResolutionTransitionSink",
+      "CardEffectRuntimeRouter",
+      "concrete_effect_owners",
+      "V06SaveOwnerRegistry",
+      "RunRngService"
+    ]
+  },
+  "wave_3_review_checklist": [
+    {"id":"W3-01","check":"Approved migration-only mechanic_id with rule source, player meaning, owner, privacy, and persistence=none."},
+    {"id":"W3-02","check":"Every semantic operation maps to active rule/effect fields; gaps report RULE_AUTHORITY_NOT_ESTABLISHED."},
+    {"id":"W3-03","check":"No rule, balance, legality, target, effect, RNG, or persistence behavior change."},
+    {"id":"W3-04","check":"One canonical authored semantic source; no sidecar or writable duplicate."},
+    {"id":"W3-05","check":"Legacy adapter scope and physical deletion gate documented."},
+    {"id":"W3-06","check":"Validators reject unknown, non-data, AI-policy, UI, private, retired, and unavailable-active-surface fields."},
+    {"id":"W3-07","check":"Catalog and semantic outputs are detached pure data and fingerprint-bound."},
+    {"id":"W3-08","check":"No specific-card/name/family/localized-text branch."},
+    {"id":"W3-09","check":"AI reads bind typed own-hand/public-rack or viewer-legal belt provenance and source revision."},
+    {"id":"W3-10","check":"AI API has no arbitrary-ID lookup, enumeration, future-bag, or obscured-card path."},
+    {"id":"W3-11","check":"Scores, weights, reasons, candidates, plans, and learning remain private in AiRuntimeController."},
+    {"id":"W3-12","check":"Play, buy, counter, and supply candidate set/order/score/selection plus RNG parity pass."},
+    {"id":"W3-13","check":"CardPresentationRuntimeService remains the sole card-facing UI-rule owner."},
+    {"id":"W3-14","check":"Public, owner-private, rival-private, obscured-belt, and final-audit recursive leak tests pass."},
+    {"id":"W3-15","check":"Card faces consume semantic facts without localized-text parsing or semantic UI-style fields."},
+    {"id":"W3-16","check":"Queue, timing, execution, transition, router, and concrete owners have zero semantic-port references."},
+    {"id":"W3-17","check":"Save manifest remains exactly 19 sections and phase save bytes are unchanged."},
+    {"id":"W3-18","check":"RunRngService checkpoint is identical around compile, query, presentation, candidates, and cache rebuild."},
+    {"id":"W3-19","check":"No Main/current-scene/dynamic method-name dependency or fallback; negative scans pass."},
+    {"id":"W3-20","check":"Production composition contains one semantic query port and no second process/tick/execution path."},
+    {"id":"W3-21","check":"Compile count is at most one per definition fingerprint/schema; repeated reads are cache hits."},
+    {"id":"W3-22","check":"Fingerprint invalidation is deterministic, fail-closed, and unsaved."},
+    {"id":"W3-23","check":"Focused headless tests cover positive/negative schema, privacy, authority, parity, and cache cases."},
+    {"id":"W3-24","check":"Editable production scene and production-wiring Bench exist for any new runtime responsibility."},
+    {"id":"W3-25","check":"Godot MCP real scene/Bench run has zero debug errors and clean stop with recorded evidence."},
+    {"id":"W3-26","check":"Final assigned-file diff, shared-hot-file ownership, JSON/resource validation, and unrelated-churn checks pass."}
+  ],
+  "validation_requirements": [
+    "parse_json_with_powershell_convertfrom_json",
+    "cross_check_markdown_and_json_finding_ids",
+    "cross_check_hard_invariant_ids",
+    "cross_check_wave_3_ids",
+    "git_diff_check_only_two_owned_files",
+    "git_diff_check",
+    "commit_only_two_owned_files"
+  ],
+  "merge_readiness": {
+    "analysis_commit": "READY_AFTER_VALIDATION",
+    "phase_1_production": "NOT_READY_UNTIL_B_01_THROUGH_B_04_AND_W3_01_THROUGH_W3_12_CLOSE",
+    "godot_mcp_required_for_this_analysis_only_commit": false,
+    "godot_mcp_required_for_future_production_change": true
+  }
+}

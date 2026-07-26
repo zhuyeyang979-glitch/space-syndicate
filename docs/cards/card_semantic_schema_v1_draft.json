@@ -1,0 +1,1062 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.space-syndicate.invalid/cards/card-semantic-v1-draft.schema.json",
+  "title": "Space Syndicate Card Semantic Contract v1 Draft",
+  "description": "Wave-1 closed pure-data interface. This schema recognizes definitions and boundary records; production readiness is separately gated by x-op-family-registry.",
+  "type": "object",
+  "oneOf": [
+    { "$ref": "#/$defs/CardSemanticSpec" },
+    { "$ref": "#/$defs/CardInstanceState" },
+    { "$ref": "#/$defs/AiActionCandidate" },
+    { "$ref": "#/$defs/AiProjectedOutcome" },
+    { "$ref": "#/$defs/PlayerFaceDTOBoundaryRef" }
+  ],
+  "x-contract-version": "1.0.0-draft.1",
+  "x-validation-policy": {
+    "object_keys": "exact",
+    "unknown_schema_version": "reject_before_use",
+    "unknown_op_id": "reject_before_candidate_or_effect",
+    "unknown_target_id": "reject_before_candidate_or_effect",
+    "unknown_timing_id": "reject_before_candidate_or_effect",
+    "unknown_authority_status": "reject_before_candidate_or_effect",
+    "numbers": "json_safe_integers_only",
+    "optional_values": "omit_key_never_null",
+    "runtime_values": "json_primitives_arrays_and_objects_only"
+  },
+  "x-canonicalization": {
+    "algorithm_id": "rfc8785_jcs_utf8_sha256_v1",
+    "digest_format": "sha256:<64_lowercase_hex>",
+    "dictionary_order": "rfc8785_utf16_code_unit_order",
+    "semantic_array_order": "preserve",
+    "set_array_order": "sort_ascii_ascending_and_reject_duplicates",
+    "fingerprint_fields": {
+      "CardSemanticSpec": "semantic_fingerprint",
+      "CardInstanceState": "state_fingerprint",
+      "AiActionCandidate": "candidate_fingerprint",
+      "AiProjectedOutcome": "projection_fingerprint"
+    },
+    "self_field_rule": "remove_only_the_named_fingerprint_field_before_canonicalization"
+  },
+  "x-boundary-layers": [
+    {
+      "layer_id": "static_definition",
+      "type_id": "CardSemanticSpec",
+      "persistence_id": "catalog_owned_not_save_embedded"
+    },
+    {
+      "layer_id": "instance_state",
+      "type_id": "CardInstanceState",
+      "persistence_id": "instance_owner_section"
+    },
+    {
+      "layer_id": "legal_action",
+      "type_id": "AiActionCandidate",
+      "persistence_id": "ephemeral_never_saved"
+    },
+    {
+      "layer_id": "projected_outcome",
+      "type_id": "AiProjectedOutcome",
+      "persistence_id": "ephemeral_never_saved"
+    },
+    {
+      "layer_id": "presentation",
+      "type_id": "PlayerFaceDTOBoundaryRef",
+      "persistence_id": "presentation_cache_never_authoritative"
+    }
+  ],
+  "x-op-family-registry": [
+    {
+      "op_id": "install_commodity_rate",
+      "authority_status_id": "active",
+      "production_readiness_id": "owner_established",
+      "rule_sources": [
+        { "path": "docs/tabletop_rulebook_v06.md", "section_id": "5.3" },
+        { "path": "docs/tabletop_rulebook_v06.md", "section_id": "7.2" }
+      ],
+      "owner_ids": ["commodity_flow_runtime_controller"],
+      "privacy_id": "public_installation_owner_visible",
+      "persistence_id": "commodity_installation_owner_section"
+    },
+    {
+      "op_id": "build_upgrade_or_repair_facility",
+      "authority_status_id": "active",
+      "production_readiness_id": "owner_established",
+      "rule_sources": [
+        { "path": "docs/tabletop_rulebook_v06.md", "section_id": "2.1" },
+        { "path": "docs/tabletop_rulebook_v06.md", "section_id": "2.3" }
+      ],
+      "owner_ids": ["region_infrastructure_runtime_controller"],
+      "privacy_id": "public_facility_and_region_result",
+      "persistence_id": "region_infrastructure_owner_section"
+    },
+    {
+      "op_id": "global_order_budget",
+      "authority_status_id": "active",
+      "production_readiness_id": "owner_established",
+      "rule_sources": [
+        { "path": "docs/tabletop_rulebook_v06.md", "section_id": "8" },
+        { "path": "docs/rules/v06_mechanic_status_registry.json", "section_id": "conditional_order_auto_settlement" }
+      ],
+      "owner_ids": ["global_supply_demand_runtime_service_v06", "commodity_flow_runtime_controller"],
+      "privacy_id": "public_condition_and_aggregate_result_private_owner_inputs",
+      "persistence_id": "resolution_lineage_and_commodity_flow_owner_sections"
+    },
+    {
+      "op_id": "global_supply_spawn",
+      "authority_status_id": "active",
+      "production_readiness_id": "owner_established",
+      "rule_sources": [
+        { "path": "docs/tabletop_rulebook_v06.md", "section_id": "8" },
+        { "path": "docs/rules/v06_mechanic_status_registry.json", "section_id": "conditional_order_auto_settlement" }
+      ],
+      "owner_ids": ["global_supply_demand_runtime_service_v06", "commodity_flow_runtime_controller"],
+      "privacy_id": "public_condition_and_aggregate_result_private_owner_inputs",
+      "persistence_id": "resolution_lineage_and_commodity_flow_owner_sections"
+    },
+    {
+      "op_id": "deploy_or_upgrade_monster",
+      "authority_status_id": "active",
+      "production_readiness_id": "blocked_atomic_owner_capability",
+      "rule_sources": [
+        { "path": "docs/tabletop_rulebook_v06.md", "section_id": "9" },
+        { "path": "docs/monster_military_card_runtime_v06_contract.md", "section_id": "5.2" }
+      ],
+      "owner_ids": ["monster_runtime_controller"],
+      "privacy_id": "public_unit_result_anonymous_card_actor",
+      "persistence_id": "monster_owner_section_after_checkpoint_gate"
+    },
+    {
+      "op_id": "deploy_or_upgrade_military",
+      "authority_status_id": "active",
+      "production_readiness_id": "blocked_atomic_owner_capability",
+      "rule_sources": [
+        { "path": "docs/tabletop_rulebook_v06.md", "section_id": "9" },
+        { "path": "docs/monster_military_card_runtime_v06_contract.md", "section_id": "5.2" }
+      ],
+      "owner_ids": ["military_runtime_controller"],
+      "privacy_id": "public_unit_result_anonymous_card_actor",
+      "persistence_id": "military_owner_section_after_checkpoint_gate"
+    },
+    {
+      "op_id": "player_hand_disrupt",
+      "authority_status_id": "active_catalog",
+      "production_readiness_id": "owner_established",
+      "rule_sources": [
+        { "path": "docs/tabletop_rulebook_v06.md", "section_id": "8" },
+        { "path": "data/cards/card_runtime_catalog_v06.json", "section_id": "player_hand_disrupt" }
+      ],
+      "owner_ids": ["player_hand_interaction_runtime_service"],
+      "privacy_id": "actor_and_target_private_payload_public_aftermath",
+      "persistence_id": "inventory_owner_and_resolution_history_sections"
+    },
+    {
+      "op_id": "player_hand_steal",
+      "authority_status_id": "active_catalog",
+      "production_readiness_id": "owner_established",
+      "rule_sources": [
+        { "path": "docs/tabletop_rulebook_v06.md", "section_id": "8" },
+        { "path": "data/cards/card_runtime_catalog_v06.json", "section_id": "player_hand_steal" }
+      ],
+      "owner_ids": ["player_hand_interaction_runtime_service"],
+      "privacy_id": "actor_and_target_private_payload_public_aftermath",
+      "persistence_id": "inventory_owner_and_resolution_history_sections"
+    },
+    {
+      "op_id": "card_counter",
+      "authority_status_id": "active",
+      "production_readiness_id": "owner_established",
+      "rule_sources": [
+        { "path": "docs/tabletop_rulebook_v06.md", "section_id": "8" },
+        { "path": "docs/rules/v06_mechanic_status_registry.json", "section_id": "card_counter_response" }
+      ],
+      "owner_ids": ["card_counter_runtime_service", "forced_decision_runtime_scheduler"],
+      "privacy_id": "private_response_choice_public_anonymous_result",
+      "persistence_id": "card_resolution_queue_and_history_sections"
+    },
+    {
+      "op_id": "install_organization_upgrade",
+      "authority_status_id": "active_rule_not_acquirable",
+      "production_readiness_id": "blocked_owner_not_established",
+      "rule_sources": [
+        { "path": "docs/tabletop_rulebook_v06.md", "section_id": "7.3" },
+        { "path": "docs/tabletop_rulebook_v06.md", "section_id": "8" },
+        { "path": "data/cards/card_runtime_catalog_v06.json", "section_id": "install_organization_upgrade" }
+      ],
+      "owner_ids": [],
+      "privacy_id": "public_installed_axis_private_affordability",
+      "persistence_id": "RULE_AUTHORITY_NOT_ESTABLISHED"
+    }
+  ],
+  "x-unrecognized-op-gaps": [
+    { "op_id": "cash_delta", "status_id": "RULE_AUTHORITY_NOT_ESTABLISHED" },
+    { "op_id": "financial_position", "status_id": "RULE_AUTHORITY_NOT_ESTABLISHED" },
+    { "op_id": "information_reveal", "status_id": "RULE_AUTHORITY_NOT_ESTABLISHED" },
+    { "op_id": "market_pressure", "status_id": "RULE_AUTHORITY_NOT_ESTABLISHED" },
+    { "op_id": "region_damage", "status_id": "RULE_AUTHORITY_NOT_ESTABLISHED" },
+    { "op_id": "route_modifier", "status_id": "RULE_AUTHORITY_NOT_ESTABLISHED" },
+    { "op_id": "unit_bound_action", "status_id": "RULE_AUTHORITY_NOT_ESTABLISHED" },
+    { "op_id": "weather_control", "status_id": "RULE_AUTHORITY_NOT_ESTABLISHED" }
+  ],
+  "x-target-registry": [
+    { "target_id": "none", "authority_status_id": "active" },
+    { "target_id": "same_industry_factory_or_market", "authority_status_id": "active" },
+    { "target_id": "region_unique_facility_slot", "authority_status_id": "active" },
+    { "target_id": "global_matching_goods", "authority_status_id": "active" },
+    { "target_id": "global_matching_factories", "authority_status_id": "active" },
+    { "target_id": "region_or_existing_same_family_monster", "authority_status_id": "active" },
+    { "target_id": "region_or_owned_same_family_military", "authority_status_id": "active" },
+    { "target_id": "opponent_discardable_hand", "authority_status_id": "active_catalog" },
+    { "target_id": "incoming_direct_player_interaction", "authority_status_id": "active" },
+    { "target_id": "self_organization_slot", "authority_status_id": "active_rule_not_acquirable" }
+  ],
+  "$defs": {
+    "StableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$"
+    },
+    "Fingerprint": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "NonNegativeSafeInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "PositiveSafeInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "SignedSafeInteger": {
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    },
+    "IndustryId": {
+      "enum": ["commerce", "energy", "industry", "life", "shipping", "technology"]
+    },
+    "IndustryOrNeutralId": {
+      "enum": ["commerce", "energy", "industry", "life", "neutral", "shipping", "technology"]
+    },
+    "CardCategoryId": {
+      "enum": ["commodity", "facility", "interaction", "military", "monster", "organization", "supply_demand"]
+    },
+    "ColoredAssetVector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commerce", "energy", "industry", "life", "shipping", "technology"],
+      "properties": {
+        "commerce": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+        "energy": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+        "industry": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+        "life": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+        "shipping": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+        "technology": { "$ref": "#/$defs/NonNegativeSafeInteger" }
+      }
+    },
+    "CardIdentitySpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["card_id", "family_id", "rank", "category_id", "ruleset_id", "definition_revision", "tag_ids"],
+      "properties": {
+        "card_id": { "$ref": "#/$defs/StableId" },
+        "family_id": { "$ref": "#/$defs/StableId" },
+        "rank": { "type": "integer", "minimum": 1, "maximum": 4 },
+        "category_id": { "$ref": "#/$defs/CardCategoryId" },
+        "industry_id": { "$ref": "#/$defs/IndustryId" },
+        "ruleset_id": { "const": "space_syndicate_v06" },
+        "definition_revision": { "$ref": "#/$defs/PositiveSafeInteger" },
+        "tag_ids": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/StableId" }
+        },
+        "unique_scope_id": { "enum": ["none", "global_same_family"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "category_id": { "const": "commodity" } }, "required": ["category_id"] },
+          "then": { "required": ["industry_id"] }
+        }
+      ]
+    },
+    "CardCostSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "acquisition_kind_id",
+        "purchase_cash_cents",
+        "play_cost_kind_id",
+        "colored_asset_cost_units",
+        "generic_asset_cost_units",
+        "submission_kind_id",
+        "card_disposition_id",
+        "transaction_policy_id"
+      ],
+      "properties": {
+        "acquisition_kind_id": { "enum": ["commodity_belt_free", "not_acquirable", "region_rack_cash"] },
+        "purchase_cash_cents": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+        "play_cost_kind_id": { "enum": ["assets", "free"] },
+        "colored_asset_cost_units": { "$ref": "#/$defs/ColoredAssetVector" },
+        "generic_asset_cost_units": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+        "submission_kind_id": { "enum": ["counter_response", "ordinary"] },
+        "card_disposition_id": { "enum": ["consume_on_commit", "install_on_success"] },
+        "transaction_policy_id": { "const": "prepare_commit_rollback_exact_once" }
+      }
+    },
+    "CardTimingSpec": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["timing_id", "submission_phase_id", "cadence_profile_id", "clock_id"],
+          "properties": {
+            "timing_id": { "const": "shared_card_window" },
+            "submission_phase_id": { "const": "planning" },
+            "cadence_profile_id": { "const": "shared_card_window_v06" },
+            "clock_id": { "const": "world_effective" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["timing_id", "submission_phase_id", "cadence_profile_id", "clock_id"],
+          "properties": {
+            "timing_id": { "const": "counter_response_window" },
+            "submission_phase_id": { "const": "response" },
+            "cadence_profile_id": { "const": "single_counter_layer_v06" },
+            "clock_id": { "const": "world_effective" }
+          }
+        }
+      ]
+    },
+    "EntityTypeId": {
+      "enum": [
+        "card_instance",
+        "card_resolution",
+        "commodity",
+        "facility",
+        "facility_slot",
+        "military",
+        "monster",
+        "organization_slot",
+        "player",
+        "region",
+        "route"
+      ]
+    },
+    "EntityRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_type_id", "entity_id", "revision"],
+      "properties": {
+        "entity_type_id": { "$ref": "#/$defs/EntityTypeId" },
+        "entity_id": { "$ref": "#/$defs/StableId" },
+        "revision": { "$ref": "#/$defs/NonNegativeSafeInteger" }
+      }
+    },
+    "CardTargetSpec": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target_binding_id", "target_id", "selection_mode_id", "minimum_count", "maximum_count", "allowed_entity_type_ids", "revalidation_policy_id"],
+          "properties": {
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "target_id": { "const": "none" },
+            "selection_mode_id": { "const": "none" },
+            "minimum_count": { "const": 0 },
+            "maximum_count": { "const": 0 },
+            "allowed_entity_type_ids": { "const": [] },
+            "revalidation_policy_id": { "const": "none" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target_binding_id", "target_id", "selection_mode_id", "minimum_count", "maximum_count", "allowed_entity_type_ids", "revalidation_policy_id"],
+          "properties": {
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "target_id": { "const": "same_industry_factory_or_market" },
+            "selection_mode_id": { "const": "actor_choice" },
+            "minimum_count": { "const": 1 },
+            "maximum_count": { "const": 1 },
+            "allowed_entity_type_ids": { "const": ["facility"] },
+            "revalidation_policy_id": { "const": "commit_and_resolution" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target_binding_id", "target_id", "selection_mode_id", "minimum_count", "maximum_count", "allowed_entity_type_ids", "revalidation_policy_id"],
+          "properties": {
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "target_id": { "const": "region_unique_facility_slot" },
+            "selection_mode_id": { "const": "actor_choice" },
+            "minimum_count": { "const": 1 },
+            "maximum_count": { "const": 1 },
+            "allowed_entity_type_ids": { "const": ["facility_slot"] },
+            "revalidation_policy_id": { "const": "commit_and_resolution" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target_binding_id", "target_id", "selection_mode_id", "minimum_count", "maximum_count", "allowed_entity_type_ids", "revalidation_policy_id"],
+          "properties": {
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "target_id": { "const": "global_matching_goods" },
+            "selection_mode_id": { "const": "automatic_snapshot" },
+            "minimum_count": { "const": 0 },
+            "maximum_count": { "const": 0 },
+            "allowed_entity_type_ids": { "const": [] },
+            "revalidation_policy_id": { "const": "resolution_snapshot" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target_binding_id", "target_id", "selection_mode_id", "minimum_count", "maximum_count", "allowed_entity_type_ids", "revalidation_policy_id"],
+          "properties": {
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "target_id": { "const": "global_matching_factories" },
+            "selection_mode_id": { "const": "automatic_snapshot" },
+            "minimum_count": { "const": 0 },
+            "maximum_count": { "const": 0 },
+            "allowed_entity_type_ids": { "const": [] },
+            "revalidation_policy_id": { "const": "resolution_snapshot" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target_binding_id", "target_id", "selection_mode_id", "minimum_count", "maximum_count", "allowed_entity_type_ids", "revalidation_policy_id"],
+          "properties": {
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "target_id": { "const": "region_or_existing_same_family_monster" },
+            "selection_mode_id": { "const": "actor_choice" },
+            "minimum_count": { "const": 1 },
+            "maximum_count": { "const": 1 },
+            "allowed_entity_type_ids": { "const": ["monster", "region"] },
+            "revalidation_policy_id": { "const": "commit_and_resolution" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target_binding_id", "target_id", "selection_mode_id", "minimum_count", "maximum_count", "allowed_entity_type_ids", "revalidation_policy_id"],
+          "properties": {
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "target_id": { "const": "region_or_owned_same_family_military" },
+            "selection_mode_id": { "const": "actor_choice" },
+            "minimum_count": { "const": 1 },
+            "maximum_count": { "const": 1 },
+            "allowed_entity_type_ids": { "const": ["military", "region"] },
+            "revalidation_policy_id": { "const": "commit_and_resolution" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target_binding_id", "target_id", "selection_mode_id", "minimum_count", "maximum_count", "allowed_entity_type_ids", "revalidation_policy_id"],
+          "properties": {
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "target_id": { "const": "opponent_discardable_hand" },
+            "selection_mode_id": { "const": "actor_choice" },
+            "minimum_count": { "const": 1 },
+            "maximum_count": { "const": 1 },
+            "allowed_entity_type_ids": { "const": ["player"] },
+            "revalidation_policy_id": { "const": "commit_and_resolution" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target_binding_id", "target_id", "selection_mode_id", "minimum_count", "maximum_count", "allowed_entity_type_ids", "revalidation_policy_id"],
+          "properties": {
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "target_id": { "const": "incoming_direct_player_interaction" },
+            "selection_mode_id": { "const": "trigger_context" },
+            "minimum_count": { "const": 1 },
+            "maximum_count": { "const": 1 },
+            "allowed_entity_type_ids": { "const": ["card_resolution"] },
+            "revalidation_policy_id": { "const": "response_commit" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target_binding_id", "target_id", "selection_mode_id", "minimum_count", "maximum_count", "allowed_entity_type_ids", "revalidation_policy_id"],
+          "properties": {
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "target_id": { "const": "self_organization_slot" },
+            "selection_mode_id": { "const": "actor_choice" },
+            "minimum_count": { "const": 1 },
+            "maximum_count": { "const": 1 },
+            "allowed_entity_type_ids": { "const": ["organization_slot"] },
+            "revalidation_policy_id": { "const": "commit_and_resolution" }
+          }
+        }
+      ]
+    },
+    "SupplyDemandFilterSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "maxProperties": 2,
+      "properties": {
+        "industry_id": { "$ref": "#/$defs/IndustryId" },
+        "route_mode_id": { "enum": ["air", "land", "sea"] },
+        "distance_band_id": { "enum": ["near_lte_2", "remote_gt_2"] }
+      }
+    },
+    "OrganizationCapabilitySpec": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["capability_id", "ordinary_hand_limit"],
+          "properties": {
+            "capability_id": { "const": "hand_capacity" },
+            "ordinary_hand_limit": { "type": "integer", "minimum": 5, "maximum": 9 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["capability_id", "controlled_monster_count_limit", "primary_monster_rank_limit", "secondary_monster_rank_limit"],
+          "properties": {
+            "capability_id": { "const": "monster_binding" },
+            "controlled_monster_count_limit": { "type": "integer", "minimum": 1, "maximum": 2 },
+            "primary_monster_rank_limit": { "type": "integer", "minimum": 2, "maximum": 4 },
+            "secondary_monster_rank_limit": { "type": "integer", "minimum": 0, "maximum": 4 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["capability_id", "controlled_military_count_limit", "primary_military_rank_limit", "secondary_military_rank_limit"],
+          "properties": {
+            "capability_id": { "const": "military_command" },
+            "controlled_military_count_limit": { "type": "integer", "minimum": 1, "maximum": 2 },
+            "primary_military_rank_limit": { "type": "integer", "minimum": 2, "maximum": 4 },
+            "secondary_military_rank_limit": { "type": "integer", "minimum": 0, "maximum": 4 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["capability_id", "asset_conversion_bonus_basis_points", "bonus_cap_milliunits_per_second"],
+          "properties": {
+            "capability_id": { "const": "asset_conversion" },
+            "asset_conversion_bonus_basis_points": { "type": "integer", "minimum": 0, "maximum": 10000 },
+            "bonus_cap_milliunits_per_second": { "$ref": "#/$defs/NonNegativeSafeInteger" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["capability_id", "ordinary_submission_bonus", "extra_submission_asset_surcharge", "ordinary_submission_hard_cap"],
+          "properties": {
+            "capability_id": { "const": "action_bandwidth" },
+            "ordinary_submission_bonus": { "type": "integer", "minimum": 0, "maximum": 2 },
+            "extra_submission_asset_surcharge": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+            "ordinary_submission_hard_cap": { "const": 3 }
+          }
+        }
+      ]
+    },
+    "CardEffectOp": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op_id", "op_version", "target_binding_id", "commodity_id", "industry_id", "rate_units_per_minute", "installation_direction_id", "persistence_id"],
+          "properties": {
+            "op_id": { "const": "install_commodity_rate" },
+            "op_version": { "const": 1 },
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "commodity_id": { "$ref": "#/$defs/StableId" },
+            "industry_id": { "$ref": "#/$defs/IndustryId" },
+            "rate_units_per_minute": { "$ref": "#/$defs/PositiveSafeInteger" },
+            "installation_direction_id": { "const": "derive_from_facility_kind" },
+            "persistence_id": { "const": "until_facility_destroyed" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op_id", "op_version", "target_binding_id", "facility_kind_id", "industry_id", "card_rank", "operation_policy_id"],
+          "properties": {
+            "op_id": { "const": "build_upgrade_or_repair_facility" },
+            "op_version": { "const": 1 },
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "facility_kind_id": { "enum": ["airport", "factory", "market", "road", "seaport", "warehouse"] },
+            "industry_id": { "$ref": "#/$defs/IndustryOrNeutralId" },
+            "card_rank": { "type": "integer", "minimum": 1, "maximum": 4 },
+            "operation_policy_id": { "const": "empty_build_higher_upgrade_same_or_lower_repair_v06" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op_id", "op_version", "target_binding_id", "budget_units", "filter", "allocation_policy_id", "settlement_policy_id"],
+          "properties": {
+            "op_id": { "const": "global_order_budget" },
+            "op_version": { "const": 1 },
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "budget_units": { "$ref": "#/$defs/PositiveSafeInteger" },
+            "filter": { "$ref": "#/$defs/SupplyDemandFilterSpec" },
+            "allocation_policy_id": { "const": "matching_product_gdp_share_30s" },
+            "settlement_policy_id": { "const": "automatic_real_market_route_capacity_exact_once" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op_id", "op_version", "target_binding_id", "spawn_units", "filter", "allocation_policy_id", "settlement_policy_id"],
+          "properties": {
+            "op_id": { "const": "global_supply_spawn" },
+            "op_version": { "const": 1 },
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "spawn_units": { "$ref": "#/$defs/PositiveSafeInteger" },
+            "filter": { "$ref": "#/$defs/SupplyDemandFilterSpec" },
+            "allocation_policy_id": { "const": "matching_product_gdp_share_30s" },
+            "settlement_policy_id": { "const": "automatic_physical_goods_real_route_capacity_exact_once" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op_id", "op_version", "target_binding_id", "monster_family_id", "card_rank", "upgrade_duration_delta_ms", "heal_to_full_on_upgrade", "ownership_policy_id", "bound_skill_recipient_id"],
+          "properties": {
+            "op_id": { "const": "deploy_or_upgrade_monster" },
+            "op_version": { "const": 1 },
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "monster_family_id": { "$ref": "#/$defs/StableId" },
+            "card_rank": { "type": "integer", "minimum": 1, "maximum": 4 },
+            "upgrade_duration_delta_ms": { "const": 60000 },
+            "heal_to_full_on_upgrade": { "const": true },
+            "ownership_policy_id": { "const": "preserve_existing_owner" },
+            "bound_skill_recipient_id": { "const": "existing_monster_owner" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op_id", "op_version", "target_binding_id", "military_family_id", "card_rank", "deployment_policy_id"],
+          "properties": {
+            "op_id": { "const": "deploy_or_upgrade_military" },
+            "op_version": { "const": 1 },
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "military_family_id": { "$ref": "#/$defs/StableId" },
+            "card_rank": { "type": "integer", "minimum": 1, "maximum": 4 },
+            "deployment_policy_id": { "const": "region_or_owned_same_family_upgrade_v06" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op_id", "op_version", "target_binding_id", "discard_count", "target_hand_lock_ms", "target_cash_penalty_cents"],
+          "properties": {
+            "op_id": { "const": "player_hand_disrupt" },
+            "op_version": { "const": 1 },
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "discard_count": { "$ref": "#/$defs/PositiveSafeInteger" },
+            "target_hand_lock_ms": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+            "target_cash_penalty_cents": { "$ref": "#/$defs/NonNegativeSafeInteger" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op_id", "op_version", "target_binding_id", "transfer_count", "target_hand_lock_ms", "failure_compensation_cash_cents"],
+          "properties": {
+            "op_id": { "const": "player_hand_steal" },
+            "op_version": { "const": 1 },
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "transfer_count": { "$ref": "#/$defs/PositiveSafeInteger" },
+            "target_hand_lock_ms": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+            "failure_compensation_cash_cents": { "$ref": "#/$defs/NonNegativeSafeInteger" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op_id", "op_version", "target_binding_id", "counter_strength", "refund_cash_cents", "target_scope_id"],
+          "properties": {
+            "op_id": { "const": "card_counter" },
+            "op_version": { "const": 1 },
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "counter_strength": { "$ref": "#/$defs/PositiveSafeInteger" },
+            "refund_cash_cents": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+            "target_scope_id": { "const": "direct_player_interaction" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op_id", "op_version", "target_binding_id", "organization_family_id", "organization_rank", "slot_cost", "activation_window_offset", "install_policy_id", "capability"],
+          "properties": {
+            "op_id": { "const": "install_organization_upgrade" },
+            "op_version": { "const": 1 },
+            "target_binding_id": { "$ref": "#/$defs/StableId" },
+            "organization_family_id": { "$ref": "#/$defs/StableId" },
+            "organization_rank": { "type": "integer", "minimum": 1, "maximum": 4 },
+            "slot_cost": { "const": 1 },
+            "activation_window_offset": { "const": 1 },
+            "install_policy_id": { "const": "highest_rank_nonstacking" },
+            "capability": { "$ref": "#/$defs/OrganizationCapabilitySpec" }
+          }
+        }
+      ]
+    },
+    "CardResponseSpec": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["response_id"],
+          "properties": {
+            "response_id": { "const": "none" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["response_id", "trigger_scope_id", "timing_id", "maximum_depth", "window_duration_ms", "timeout_action_id", "allowed_response_op_ids"],
+          "properties": {
+            "response_id": { "const": "single_counter" },
+            "trigger_scope_id": { "const": "direct_player_interaction" },
+            "timing_id": { "const": "counter_response_window" },
+            "maximum_depth": { "const": 1 },
+            "window_duration_ms": { "const": 5000 },
+            "timeout_action_id": { "const": "pass" },
+            "allowed_response_op_ids": { "const": ["card_counter"] }
+          }
+        }
+      ]
+    },
+    "CardInformationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy_id",
+        "definition_visibility_id",
+        "instance_identity_visibility_id",
+        "actor_visibility_id",
+        "target_choice_visibility_id",
+        "outcome_visibility_id",
+        "affordability_visibility_id",
+        "ai_analysis_visibility_id"
+      ],
+      "properties": {
+        "policy_id": { "$ref": "#/$defs/StableId" },
+        "definition_visibility_id": { "enum": ["public_catalog", "viewer_zone_authorized"] },
+        "instance_identity_visibility_id": { "enum": ["public_on_reveal", "viewer_zone_authorized"] },
+        "actor_visibility_id": { "enum": ["anonymous_until_authorized_reveal", "public", "viewer_private"] },
+        "target_choice_visibility_id": { "enum": ["actor_private_until_lock", "not_applicable", "public", "response_actor_private"] },
+        "outcome_visibility_id": { "enum": ["public_allowlisted_receipt", "viewer_private_allowlisted_receipt"] },
+        "affordability_visibility_id": { "const": "actor_private" },
+        "ai_analysis_visibility_id": { "const": "actor_private_never_player_face" }
+      }
+    },
+    "CardSemanticSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "identity",
+        "cost",
+        "timing",
+        "targets",
+        "effect_ops",
+        "response",
+        "information_policy",
+        "mechanic_family_ids",
+        "semantic_fingerprint"
+      ],
+      "properties": {
+        "schema_id": { "const": "space_syndicate.card_semantic_spec" },
+        "schema_version": { "const": "1.0.0" },
+        "identity": { "$ref": "#/$defs/CardIdentitySpec" },
+        "cost": { "$ref": "#/$defs/CardCostSpec" },
+        "timing": { "$ref": "#/$defs/CardTimingSpec" },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/CardTargetSpec" }
+        },
+        "effect_ops": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/CardEffectOp" }
+        },
+        "response": { "$ref": "#/$defs/CardResponseSpec" },
+        "information_policy": { "$ref": "#/$defs/CardInformationPolicy" },
+        "mechanic_family_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/StableId" }
+        },
+        "semantic_fingerprint": { "$ref": "#/$defs/Fingerprint" }
+      }
+    },
+    "CardStaticRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["card_id", "semantic_schema_version", "semantic_fingerprint"],
+      "properties": {
+        "card_id": { "$ref": "#/$defs/StableId" },
+        "semantic_schema_version": { "const": "1.0.0" },
+        "semantic_fingerprint": { "$ref": "#/$defs/Fingerprint" }
+      }
+    },
+    "CardInstanceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instance_id", "instance_revision", "card_ref"],
+      "properties": {
+        "instance_id": { "$ref": "#/$defs/StableId" },
+        "instance_revision": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+        "card_ref": { "$ref": "#/$defs/CardStaticRef" }
+      }
+    },
+    "CardInstanceState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "instance_id",
+        "card_ref",
+        "instance_revision",
+        "lifecycle_state_id",
+        "cooldown_remaining_ms",
+        "use_count",
+        "state_fingerprint"
+      ],
+      "properties": {
+        "schema_id": { "const": "space_syndicate.card_instance_state" },
+        "schema_version": { "const": "1.0.0" },
+        "instance_id": { "$ref": "#/$defs/StableId" },
+        "card_ref": { "$ref": "#/$defs/CardStaticRef" },
+        "instance_revision": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+        "lifecycle_state_id": { "enum": ["available", "bound", "consumed", "installed", "queued", "reserved"] },
+        "cooldown_remaining_ms": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+        "use_count": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+        "binding_ref": { "$ref": "#/$defs/EntityRef" },
+        "state_fingerprint": { "$ref": "#/$defs/Fingerprint" }
+      }
+    },
+    "TargetSelection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_binding_id", "target_id", "selection_revision", "entity_refs"],
+      "properties": {
+        "target_binding_id": { "$ref": "#/$defs/StableId" },
+        "target_id": {
+          "enum": [
+            "global_matching_factories",
+            "global_matching_goods",
+            "incoming_direct_player_interaction",
+            "none",
+            "opponent_discardable_hand",
+            "region_or_existing_same_family_monster",
+            "region_or_owned_same_family_military",
+            "region_unique_facility_slot",
+            "same_industry_factory_or_market",
+            "self_organization_slot"
+          ]
+        },
+        "selection_revision": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+        "entity_refs": {
+          "type": "array",
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/EntityRef" }
+        }
+      }
+    },
+    "CostPayment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["colored_asset_units", "generic_asset_allocation_units", "payment_revision"],
+      "properties": {
+        "colored_asset_units": { "$ref": "#/$defs/ColoredAssetVector" },
+        "generic_asset_allocation_units": { "$ref": "#/$defs/ColoredAssetVector" },
+        "payment_revision": { "$ref": "#/$defs/NonNegativeSafeInteger" }
+      }
+    },
+    "LegalityProofRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status_id", "rules_revision", "world_revision", "legality_fingerprint"],
+      "properties": {
+        "status_id": { "const": "legal" },
+        "rules_revision": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+        "world_revision": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+        "legality_fingerprint": { "$ref": "#/$defs/Fingerprint" }
+      }
+    },
+    "AiActionCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "candidate_id",
+        "actor_id",
+        "action_kind_id",
+        "card_instance_ref",
+        "timing_id",
+        "timing_revision",
+        "selected_targets",
+        "cost_payment",
+        "legality",
+        "information_scope_id",
+        "candidate_fingerprint"
+      ],
+      "properties": {
+        "schema_id": { "const": "space_syndicate.ai_action_candidate" },
+        "schema_version": { "const": "1.0.0" },
+        "candidate_id": { "$ref": "#/$defs/StableId" },
+        "actor_id": { "$ref": "#/$defs/StableId" },
+        "action_kind_id": { "const": "play_card" },
+        "card_instance_ref": { "$ref": "#/$defs/CardInstanceRef" },
+        "timing_id": { "enum": ["counter_response_window", "shared_card_window"] },
+        "timing_revision": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+        "selected_targets": {
+          "type": "array",
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/TargetSelection" }
+        },
+        "cost_payment": { "$ref": "#/$defs/CostPayment" },
+        "legality": { "$ref": "#/$defs/LegalityProofRef" },
+        "information_scope_id": { "const": "actor_private" },
+        "candidate_fingerprint": { "$ref": "#/$defs/Fingerprint" }
+      }
+    },
+    "AiProjectedMetricDelta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric_id", "subject_ref", "unit_id", "minimum_delta", "expected_delta", "maximum_delta", "horizon_ms"],
+      "properties": {
+        "metric_id": {
+          "enum": [
+            "asset_units",
+            "cash_cents",
+            "commodity_rate_units_per_minute",
+            "facility_rank",
+            "gdp_milliunits_per_minute",
+            "hand_card_count",
+            "military_rank",
+            "monster_rank",
+            "ordinary_submission_limit",
+            "region_hp",
+            "route_capacity_units_per_minute"
+          ]
+        },
+        "subject_ref": { "$ref": "#/$defs/EntityRef" },
+        "unit_id": {
+          "enum": [
+            "asset_unit",
+            "basis_point",
+            "card_count",
+            "cash_cent",
+            "gdp_milliunit_per_minute",
+            "hp_point",
+            "rank_step",
+            "submission_count",
+            "unit_per_minute"
+          ]
+        },
+        "minimum_delta": { "$ref": "#/$defs/SignedSafeInteger" },
+        "expected_delta": { "$ref": "#/$defs/SignedSafeInteger" },
+        "maximum_delta": { "$ref": "#/$defs/SignedSafeInteger" },
+        "horizon_ms": { "$ref": "#/$defs/NonNegativeSafeInteger" }
+      }
+    },
+    "AiProjectedOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "projection_id",
+        "candidate_id",
+        "candidate_fingerprint",
+        "actor_id",
+        "basis_world_revision",
+        "projection_model_id",
+        "metric_deltas",
+        "assumption_ids",
+        "risk_flag_ids",
+        "information_scope_id",
+        "projection_fingerprint"
+      ],
+      "properties": {
+        "schema_id": { "const": "space_syndicate.ai_projected_outcome" },
+        "schema_version": { "const": "1.0.0" },
+        "projection_id": { "$ref": "#/$defs/StableId" },
+        "candidate_id": { "$ref": "#/$defs/StableId" },
+        "candidate_fingerprint": { "$ref": "#/$defs/Fingerprint" },
+        "actor_id": { "$ref": "#/$defs/StableId" },
+        "basis_world_revision": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+        "projection_model_id": { "$ref": "#/$defs/StableId" },
+        "metric_deltas": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/AiProjectedMetricDelta" }
+        },
+        "assumption_ids": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/StableId" }
+        },
+        "risk_flag_ids": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/StableId" }
+        },
+        "information_scope_id": { "const": "actor_private" },
+        "projection_fingerprint": { "$ref": "#/$defs/Fingerprint" }
+      }
+    },
+    "PlayerFaceDTOBoundaryRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "card_ref",
+        "presentation_catalog_id",
+        "presentation_revision",
+        "locale_id",
+        "viewer_scope_id",
+        "dto_fingerprint"
+      ],
+      "properties": {
+        "schema_id": { "const": "space_syndicate.player_face_dto_ref" },
+        "schema_version": { "const": "1.0.0" },
+        "card_ref": { "$ref": "#/$defs/CardStaticRef" },
+        "presentation_catalog_id": { "$ref": "#/$defs/StableId" },
+        "presentation_revision": { "$ref": "#/$defs/NonNegativeSafeInteger" },
+        "locale_id": { "$ref": "#/$defs/StableId" },
+        "viewer_scope_id": { "enum": ["public", "viewer_private"] },
+        "dto_fingerprint": { "$ref": "#/$defs/Fingerprint" }
+      }
+    }
+  }
+}
