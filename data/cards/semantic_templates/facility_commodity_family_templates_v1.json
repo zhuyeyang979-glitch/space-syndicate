@@ -1,12 +1,20 @@
 {
   "schema_version": 1,
   "template_set_id": "facility_commodity_family_templates_v1",
-  "semantic_contract_id": "card_semantic_projection_v1_migration",
+  "semantic_contract_id": "card_semantic_schema_v1",
+  "schema_authority": {
+    "class_name": "CardSemanticSchemaV1",
+    "script_path": "res://scripts/cards/semantic/card_semantic_schema_v1.gd",
+    "compiler_class_name": "CardSemanticCompilerV1",
+    "compiler_script_path": "res://scripts/cards/semantic/card_semantic_compiler_v1.gd",
+    "authority_count": 1
+  },
   "source_catalog": {
     "catalog_id": "space_syndicate.card_runtime_catalog.v06",
     "schema_version": "v0.6",
     "resource_path": "res://resources/cards/runtime/card_runtime_catalog_v06.tres",
     "source_path": "res://data/cards/card_runtime_catalog_v06.json",
+    "source_sha256": "b59b73489d23578558d4a7688a03f50a3ef4d776cf528cd9eafd0e1d2a0fcb40",
     "expected_card_count": 348,
     "expected_family_count": 87
   },
@@ -15,27 +23,26 @@
     "dictionary_key_order_id": "lexicographic",
     "array_order_id": "preserve",
     "digest_encoding_id": "lowercase_hex",
-    "omit_own_fingerprint_field": true
+    "source_definition_input_id": "source_catalog_id_plus_complete_machine_block",
+    "semantic_fingerprint_omitted_key": "semantic_fingerprint"
   },
-  "projection_defaults": {
+  "shared_expected_projection": {
     "schema_version": 1,
-    "timing": "main_action",
-    "response": "none",
-    "information_policy": "authorized_source_only",
-    "runtime_readiness_id": "owner_established",
-    "selection_id": "single",
-    "cardinality_id": "exactly_one"
+    "source_catalog_id": "space_syndicate.card_runtime_catalog.v06",
+    "timing": {
+      "timing_id": "main_action"
+    },
+    "response": {
+      "response_id": "none"
+    },
+    "information_policy": {
+      "visibility_policy_id": "authorized_source_only"
+    }
   },
   "families": [
     {
       "template_id": "commodity_install_rate_factory_or_market_v1",
       "family_id": "commodity.star_dew_berry",
-      "expected_ranks": [
-        1,
-        2,
-        3,
-        4
-      ],
       "source_match": {
         "category_id": "commodity",
         "industry_id": "life",
@@ -45,133 +52,195 @@
         "available_for_acquisition": true,
         "resolution_policy": "reject_before_consume_if_unowned"
       },
-      "rank_values": [
-        {
-          "rank": 1,
-          "card_id": "commodity.star_dew_berry.rank_1",
-          "purchase_cash": 0,
-          "asset_cost": {
-            "life": 0,
-            "energy": 0,
-            "industry": 0,
-            "technology": 0,
-            "commerce": 0,
-            "shipping": 0,
-            "generic": 0
-          },
-          "rate_per_minute": 10
-        },
-        {
-          "rank": 2,
-          "card_id": "commodity.star_dew_berry.rank_2",
-          "purchase_cash": 0,
-          "asset_cost": {
-            "life": 0,
-            "energy": 0,
-            "industry": 0,
-            "technology": 0,
-            "commerce": 0,
-            "shipping": 0,
-            "generic": 0
-          },
-          "rate_per_minute": 20
-        },
-        {
-          "rank": 3,
-          "card_id": "commodity.star_dew_berry.rank_3",
-          "purchase_cash": 0,
-          "asset_cost": {
-            "life": 0,
-            "energy": 0,
-            "industry": 0,
-            "technology": 0,
-            "commerce": 0,
-            "shipping": 0,
-            "generic": 0
-          },
-          "rate_per_minute": 40
-        },
-        {
-          "rank": 4,
-          "card_id": "commodity.star_dew_berry.rank_4",
-          "purchase_cash": 0,
-          "asset_cost": {
-            "life": 0,
-            "energy": 0,
-            "industry": 0,
-            "technology": 0,
-            "commerce": 0,
-            "shipping": 0,
-            "generic": 0
-          },
-          "rate_per_minute": 80
-        }
-      ],
-      "target_template": {
-        "target_id": "facility.same_industry",
-        "selection_id": "single",
+      "expected_identity_defaults": {
+        "family_id": "commodity.star_dew_berry",
+        "category_id": "commodity",
+        "industry_id": "life",
+        "available_for_acquisition": true
+      },
+      "expected_target": {
         "cardinality_id": "exactly_one",
         "filter_ids": [
           "facility.kind.factory_or_market",
-          "facility.industry.same_as_card"
-        ]
+          "industry.same_as_card"
+        ],
+        "selection_id": "actor_choice",
+        "target_id": "facility.same_industry"
       },
-      "effect_op_templates": [
+      "expected_runtime_readiness_id": "active",
+      "readiness_evidence": {
+        "route_id": "core_economic_card_runtime",
+        "evidence_status_id": "existing_production_route",
+        "execution_claim_scope_id": "existing_v06_core_economic_owner_only"
+      },
+      "expected_projection_refs": [
         {
-          "op_id": "install_rate",
-          "source_bindings": {
-            "product_id": "/effect_payload/product_id",
-            "industry_id": "/effect_payload/industry_id",
-            "rate_per_minute": "/effect_payload/rate_per_minute",
-            "valid_facility_kind_ids": "/effect_payload/valid_facility_kinds",
-            "persistence_id": "/effect_payload/persistence"
-          },
-          "fixed_values": {
-            "direction_by_facility_kind": {
-              "factory": "production",
-              "market": "demand"
+          "case_id": "commodity_star_dew_berry_rank_1",
+          "card_id": "commodity.star_dew_berry.rank_1",
+          "source_definition_fingerprint": "3e0b3740222e5ba06f24b71f053b7e5eebac22f0d2c2dd2aa95bac13a14d7a34",
+          "semantic_fingerprint": "264c79ac3a6434d5e83b283fe0f8e1010af933eb58df730d6af35fdd2bebd8c4"
+        },
+        {
+          "case_id": "commodity_star_dew_berry_rank_2",
+          "card_id": "commodity.star_dew_berry.rank_2",
+          "source_definition_fingerprint": "c630689aaf68fe892850512698c8a0ccbd22b2a8e1612c364bf98d7ff9efb0dc",
+          "semantic_fingerprint": "7ff22c5707ceb81c4dd627e20dd6448062b95ab9e6c64953ca568699b771a70d"
+        },
+        {
+          "case_id": "commodity_star_dew_berry_rank_3",
+          "card_id": "commodity.star_dew_berry.rank_3",
+          "source_definition_fingerprint": "f5319473ca204aca7090672642f84423b342a4492258f4cb2d6b2b28035d0d26",
+          "semantic_fingerprint": "4ebf779a52c2b932d16dea438351396cbd8090a182de2af5abe5ab87cc23c6e0"
+        },
+        {
+          "case_id": "commodity_star_dew_berry_rank_4",
+          "card_id": "commodity.star_dew_berry.rank_4",
+          "source_definition_fingerprint": "9519bfd2c7b22087433883066e1d06c5e7771a647a43308679ff71ed94886cbf",
+          "semantic_fingerprint": "83b9eae3ec028b95fc1846908855c06ad64cd062873aff9134fc4c24c6ba40c4"
+        }
+      ],
+      "rank_cases": [
+        {
+          "case_id": "commodity_star_dew_berry_rank_1",
+          "card_id": "commodity.star_dew_berry.rank_1",
+          "rank": 1,
+          "expected_cost": {
+            "acquisition": {
+              "acquisition_kind": "commodity_belt_free",
+              "purchase_cash": 0
+            },
+            "activation": {
+              "commerce": 0,
+              "energy": 0,
+              "generic": 0,
+              "industry": 0,
+              "life": 0,
+              "shipping": 0,
+              "technology": 0
             }
-          }
-        }
-      ],
-      "required_source_invariants": [
-        {
-          "invariant_id": "commodity_industry_matches_identity",
-          "left_pointer": "/effect_payload/industry_id",
-          "relation_id": "equals",
-          "right_pointer": "/industry_id",
-          "on_failure_id": "reject_projection"
+          },
+          "expected_effect_ops": [
+            {
+              "industry_id": "life",
+              "op_id": "install_rate",
+              "persistence_id": "until_facility_destroyed",
+              "rate_axis_id": "production_or_demand_by_facility_kind",
+              "rate_subject_id": "card_family",
+              "rate_units_per_minute": 10,
+              "valid_facility_kind_ids": [
+                "factory",
+                "market"
+              ]
+            }
+          ]
         },
         {
-          "invariant_id": "commodity_facility_kinds_exact",
-          "pointer": "/effect_payload/valid_facility_kinds",
-          "expected_value": [
-            "factory",
-            "market"
-          ],
-          "on_failure_id": "reject_projection"
+          "case_id": "commodity_star_dew_berry_rank_2",
+          "card_id": "commodity.star_dew_berry.rank_2",
+          "rank": 2,
+          "expected_cost": {
+            "acquisition": {
+              "acquisition_kind": "commodity_belt_free",
+              "purchase_cash": 0
+            },
+            "activation": {
+              "commerce": 0,
+              "energy": 0,
+              "generic": 0,
+              "industry": 0,
+              "life": 0,
+              "shipping": 0,
+              "technology": 0
+            }
+          },
+          "expected_effect_ops": [
+            {
+              "industry_id": "life",
+              "op_id": "install_rate",
+              "persistence_id": "until_facility_destroyed",
+              "rate_axis_id": "production_or_demand_by_facility_kind",
+              "rate_subject_id": "card_family",
+              "rate_units_per_minute": 20,
+              "valid_facility_kind_ids": [
+                "factory",
+                "market"
+              ]
+            }
+          ]
         },
         {
-          "invariant_id": "commodity_persistence_exact",
-          "pointer": "/effect_payload/persistence",
-          "expected_value": "until_facility_destroyed",
-          "on_failure_id": "reject_projection"
+          "case_id": "commodity_star_dew_berry_rank_3",
+          "card_id": "commodity.star_dew_berry.rank_3",
+          "rank": 3,
+          "expected_cost": {
+            "acquisition": {
+              "acquisition_kind": "commodity_belt_free",
+              "purchase_cash": 0
+            },
+            "activation": {
+              "commerce": 0,
+              "energy": 0,
+              "generic": 0,
+              "industry": 0,
+              "life": 0,
+              "shipping": 0,
+              "technology": 0
+            }
+          },
+          "expected_effect_ops": [
+            {
+              "industry_id": "life",
+              "op_id": "install_rate",
+              "persistence_id": "until_facility_destroyed",
+              "rate_axis_id": "production_or_demand_by_facility_kind",
+              "rate_subject_id": "card_family",
+              "rate_units_per_minute": 40,
+              "valid_facility_kind_ids": [
+                "factory",
+                "market"
+              ]
+            }
+          ]
+        },
+        {
+          "case_id": "commodity_star_dew_berry_rank_4",
+          "card_id": "commodity.star_dew_berry.rank_4",
+          "rank": 4,
+          "expected_cost": {
+            "acquisition": {
+              "acquisition_kind": "commodity_belt_free",
+              "purchase_cash": 0
+            },
+            "activation": {
+              "commerce": 0,
+              "energy": 0,
+              "generic": 0,
+              "industry": 0,
+              "life": 0,
+              "shipping": 0,
+              "technology": 0
+            }
+          },
+          "expected_effect_ops": [
+            {
+              "industry_id": "life",
+              "op_id": "install_rate",
+              "persistence_id": "until_facility_destroyed",
+              "rate_axis_id": "production_or_demand_by_facility_kind",
+              "rate_subject_id": "card_family",
+              "rate_units_per_minute": 80,
+              "valid_facility_kind_ids": [
+                "factory",
+                "market"
+              ]
+            }
+          ]
         }
-      ],
-      "authority_guard_ids": [
-        "commodity_rate_ruleset_parity",
-        "commodity_product_stable_ascii_gap"
       ]
     },
     {
       "template_id": "facility_factory_build_upgrade_repair_v1",
       "family_id": "facility.factory.life",
-      "expected_ranks": [
-        1,
-        2,
-        3,
-        4
-      ],
       "source_match": {
         "category_id": "facility",
         "industry_id": "life",
@@ -181,178 +250,299 @@
         "available_for_acquisition": true,
         "resolution_policy": "reject_before_consume_if_unowned"
       },
-      "rank_values": [
-        {
-          "rank": 1,
-          "card_id": "facility.factory.life.rank_1",
-          "purchase_cash": 4,
-          "asset_cost": {
-            "life": 0,
-            "energy": 0,
-            "industry": 0,
-            "technology": 0,
-            "commerce": 0,
-            "shipping": 0,
-            "generic": 0
-          },
-          "shared_hp_contribution": 100,
-          "production_capacity_units_per_minute": 40
-        },
-        {
-          "rank": 2,
-          "card_id": "facility.factory.life.rank_2",
-          "purchase_cash": 7,
-          "asset_cost": {
-            "life": 2,
-            "energy": 0,
-            "industry": 0,
-            "technology": 0,
-            "commerce": 0,
-            "shipping": 0,
-            "generic": 0
-          },
-          "shared_hp_contribution": 200,
-          "production_capacity_units_per_minute": 80
-        },
-        {
-          "rank": 3,
-          "card_id": "facility.factory.life.rank_3",
-          "purchase_cash": 11,
-          "asset_cost": {
-            "life": 4,
-            "energy": 0,
-            "industry": 0,
-            "technology": 0,
-            "commerce": 0,
-            "shipping": 0,
-            "generic": 0
-          },
-          "shared_hp_contribution": 300,
-          "production_capacity_units_per_minute": 140
-        },
-        {
-          "rank": 4,
-          "card_id": "facility.factory.life.rank_4",
-          "purchase_cash": 16,
-          "asset_cost": {
-            "life": 7,
-            "energy": 0,
-            "industry": 0,
-            "technology": 0,
-            "commerce": 0,
-            "shipping": 0,
-            "generic": 0
-          },
-          "shared_hp_contribution": 400,
-          "production_capacity_units_per_minute": 220
-        }
-      ],
-      "target_template": {
-        "target_id": "district.active",
-        "selection_id": "single",
+      "expected_identity_defaults": {
+        "family_id": "facility.factory.life",
+        "category_id": "facility",
+        "industry_id": "life",
+        "available_for_acquisition": true
+      },
+      "expected_target": {
         "cardinality_id": "exactly_one",
         "filter_ids": [
-          "facility.kind.factory",
-          "facility.slot.unique",
-          "industry.life",
-          "region.state.active",
-          "region.state.undeveloped",
-          "region.state.ruined"
-        ]
+          "district.state.active_or_undeveloped_or_ruined",
+          "facility.slot.unique_by_kind"
+        ],
+        "selection_id": "actor_choice",
+        "target_id": "district.active"
       },
-      "effect_op_templates": [
+      "expected_runtime_readiness_id": "active",
+      "readiness_evidence": {
+        "route_id": "core_economic_card_runtime",
+        "evidence_status_id": "existing_production_route",
+        "execution_claim_scope_id": "existing_v06_core_economic_owner_only"
+      },
+      "expected_projection_refs": [
         {
-          "op_id": "build_facility",
-          "condition_id": "empty_slot",
-          "source_bindings": {
-            "facility_kind_id": "/effect_payload/facility_kind",
-            "industry_id": "/effect_payload/industry_id",
-            "facility_rank": "/effect_payload/card_rank",
-            "shared_hp_contribution": "/effect_payload/shared_hp_contribution",
-            "capacity_units_per_minute": "/effect_payload/production_capacity_units_per_minute"
-          },
-          "fixed_values": {
-            "capacity_direction_id": "production"
-          }
+          "case_id": "facility_factory_life_rank_1",
+          "card_id": "facility.factory.life.rank_1",
+          "source_definition_fingerprint": "e5fc8871914a41b53e94ff9cf288da8c339153e0671f1661f20c81621f86a9e3",
+          "semantic_fingerprint": "85483c5e62153fd0e1028ac5028abc0e75168ac2e897a00ac9cea7d12b20f67f"
         },
         {
-          "op_id": "upgrade_facility",
-          "condition_id": "card_rank_higher_than_existing",
-          "source_bindings": {
-            "facility_kind_id": "/effect_payload/facility_kind",
-            "industry_id": "/effect_payload/industry_id",
-            "facility_rank": "/effect_payload/card_rank",
-            "shared_hp_contribution": "/effect_payload/shared_hp_contribution",
-            "capacity_units_per_minute": "/effect_payload/production_capacity_units_per_minute"
-          },
-          "fixed_values": {
-            "capacity_direction_id": "production"
-          }
+          "case_id": "facility_factory_life_rank_2",
+          "card_id": "facility.factory.life.rank_2",
+          "source_definition_fingerprint": "f2d2da9cc8ee73ec965b6e14e16f3526781220fbf7e89709b782780b9f61f8d1",
+          "semantic_fingerprint": "2c876fc2c191b0a2d797802fd58966305f00b15aef3217ef2edd6e49e4543816"
         },
         {
-          "op_id": "repair_facility",
-          "condition_id": "card_rank_same_or_lower_than_existing",
-          "source_bindings": {
-            "facility_kind_id": "/effect_payload/facility_kind",
-            "industry_id": "/effect_payload/industry_id",
-            "card_rank": "/effect_payload/card_rank",
-            "repair_shared_hp": "/effect_payload/shared_hp_contribution"
-          }
+          "case_id": "facility_factory_life_rank_3",
+          "card_id": "facility.factory.life.rank_3",
+          "source_definition_fingerprint": "9b492641bd5a88ae07ffb4fc9a5e909efd415d01808a3fa7877d96f18206ff73",
+          "semantic_fingerprint": "b54106d40a7fe891be40b092e44780e1416a930f229ade6db9b1d5dd3a2732c9"
+        },
+        {
+          "case_id": "facility_factory_life_rank_4",
+          "card_id": "facility.factory.life.rank_4",
+          "source_definition_fingerprint": "c04eb9c9c834b7f9ebcc4d8a45129ef60be2cb1215fe337edadb6862b64854d7",
+          "semantic_fingerprint": "af9cc3abf513d696cb773ecba7965eefb7142177e8b10daf4c1552610d34a111"
         }
       ],
-      "required_source_invariants": [
+      "rank_cases": [
         {
-          "invariant_id": "facility_card_rank_matches_identity",
-          "left_pointer": "/effect_payload/card_rank",
-          "relation_id": "equals",
-          "right_pointer": "/rank",
-          "on_failure_id": "reject_projection"
+          "case_id": "facility_factory_life_rank_1",
+          "card_id": "facility.factory.life.rank_1",
+          "rank": 1,
+          "expected_cost": {
+            "acquisition": {
+              "acquisition_kind": "dynamic_market_cash",
+              "purchase_cash": 4
+            },
+            "activation": {
+              "commerce": 0,
+              "energy": 0,
+              "generic": 0,
+              "industry": 0,
+              "life": 0,
+              "shipping": 0,
+              "technology": 0
+            }
+          },
+          "expected_effect_ops": [
+            {
+              "card_rank": 1,
+              "condition_id": "facility_slot.empty_or_district_ruined",
+              "facility_kind_id": "factory",
+              "facility_profile": {
+                "production_capacity_units_per_minute": 40,
+                "profile_id": "factory",
+                "rent_enabled": true,
+                "rent_rate_profile_id": "pending_first_playtest_table",
+                "shared_hp_contribution": 100,
+                "shared_hp_profile_id": "equal_contribution_by_rank"
+              },
+              "industry_id": "life",
+              "op_id": "build_facility"
+            },
+            {
+              "card_rank": 1,
+              "condition_id": "facility.same_kind_lower_rank",
+              "facility_kind_id": "factory",
+              "facility_profile": {
+                "production_capacity_units_per_minute": 40,
+                "profile_id": "factory",
+                "rent_enabled": true,
+                "rent_rate_profile_id": "pending_first_playtest_table",
+                "shared_hp_contribution": 100,
+                "shared_hp_profile_id": "equal_contribution_by_rank"
+              },
+              "industry_id": "life",
+              "op_id": "upgrade_facility"
+            },
+            {
+              "card_rank": 1,
+              "condition_id": "facility.same_kind_equal_or_higher_rank",
+              "facility_kind_id": "factory",
+              "industry_id": "life",
+              "op_id": "repair_facility",
+              "repair_policy_id": "established_facility_repair"
+            }
+          ]
         },
         {
-          "invariant_id": "facility_industry_matches_identity",
-          "left_pointer": "/effect_payload/industry_id",
-          "relation_id": "equals",
-          "right_pointer": "/industry_id",
-          "on_failure_id": "reject_projection"
+          "case_id": "facility_factory_life_rank_2",
+          "card_id": "facility.factory.life.rank_2",
+          "rank": 2,
+          "expected_cost": {
+            "acquisition": {
+              "acquisition_kind": "dynamic_market_cash",
+              "purchase_cash": 7
+            },
+            "activation": {
+              "commerce": 0,
+              "energy": 0,
+              "generic": 0,
+              "industry": 0,
+              "life": 2,
+              "shipping": 0,
+              "technology": 0
+            }
+          },
+          "expected_effect_ops": [
+            {
+              "card_rank": 2,
+              "condition_id": "facility_slot.empty_or_district_ruined",
+              "facility_kind_id": "factory",
+              "facility_profile": {
+                "production_capacity_units_per_minute": 80,
+                "profile_id": "factory",
+                "rent_enabled": true,
+                "rent_rate_profile_id": "pending_first_playtest_table",
+                "shared_hp_contribution": 200,
+                "shared_hp_profile_id": "equal_contribution_by_rank"
+              },
+              "industry_id": "life",
+              "op_id": "build_facility"
+            },
+            {
+              "card_rank": 2,
+              "condition_id": "facility.same_kind_lower_rank",
+              "facility_kind_id": "factory",
+              "facility_profile": {
+                "production_capacity_units_per_minute": 80,
+                "profile_id": "factory",
+                "rent_enabled": true,
+                "rent_rate_profile_id": "pending_first_playtest_table",
+                "shared_hp_contribution": 200,
+                "shared_hp_profile_id": "equal_contribution_by_rank"
+              },
+              "industry_id": "life",
+              "op_id": "upgrade_facility"
+            },
+            {
+              "card_rank": 2,
+              "condition_id": "facility.same_kind_equal_or_higher_rank",
+              "facility_kind_id": "factory",
+              "industry_id": "life",
+              "op_id": "repair_facility",
+              "repair_policy_id": "established_facility_repair"
+            }
+          ]
         },
         {
-          "invariant_id": "facility_operation_policy_exact",
-          "pointer": "/effect_payload/operation_policy",
-          "expected_value": "empty_build_higher_rank_upgrade_same_or_lower_repair",
-          "on_failure_id": "reject_projection"
+          "case_id": "facility_factory_life_rank_3",
+          "card_id": "facility.factory.life.rank_3",
+          "rank": 3,
+          "expected_cost": {
+            "acquisition": {
+              "acquisition_kind": "dynamic_market_cash",
+              "purchase_cash": 11
+            },
+            "activation": {
+              "commerce": 0,
+              "energy": 0,
+              "generic": 0,
+              "industry": 0,
+              "life": 4,
+              "shipping": 0,
+              "technology": 0
+            }
+          },
+          "expected_effect_ops": [
+            {
+              "card_rank": 3,
+              "condition_id": "facility_slot.empty_or_district_ruined",
+              "facility_kind_id": "factory",
+              "facility_profile": {
+                "production_capacity_units_per_minute": 140,
+                "profile_id": "factory",
+                "rent_enabled": true,
+                "rent_rate_profile_id": "pending_first_playtest_table",
+                "shared_hp_contribution": 300,
+                "shared_hp_profile_id": "equal_contribution_by_rank"
+              },
+              "industry_id": "life",
+              "op_id": "build_facility"
+            },
+            {
+              "card_rank": 3,
+              "condition_id": "facility.same_kind_lower_rank",
+              "facility_kind_id": "factory",
+              "facility_profile": {
+                "production_capacity_units_per_minute": 140,
+                "profile_id": "factory",
+                "rent_enabled": true,
+                "rent_rate_profile_id": "pending_first_playtest_table",
+                "shared_hp_contribution": 300,
+                "shared_hp_profile_id": "equal_contribution_by_rank"
+              },
+              "industry_id": "life",
+              "op_id": "upgrade_facility"
+            },
+            {
+              "card_rank": 3,
+              "condition_id": "facility.same_kind_equal_or_higher_rank",
+              "facility_kind_id": "factory",
+              "industry_id": "life",
+              "op_id": "repair_facility",
+              "repair_policy_id": "established_facility_repair"
+            }
+          ]
         },
         {
-          "invariant_id": "facility_region_states_exact",
-          "pointer": "/effect_payload/allowed_region_states",
-          "expected_value": [
-            "active",
-            "undeveloped",
-            "ruined"
-          ],
-          "on_failure_id": "reject_projection"
-        },
-        {
-          "invariant_id": "facility_shared_hp_profile_exact",
-          "pointer": "/effect_payload/shared_hp_profile",
-          "expected_value": "equal_contribution_by_rank",
-          "on_failure_id": "reject_projection"
+          "case_id": "facility_factory_life_rank_4",
+          "card_id": "facility.factory.life.rank_4",
+          "rank": 4,
+          "expected_cost": {
+            "acquisition": {
+              "acquisition_kind": "dynamic_market_cash",
+              "purchase_cash": 16
+            },
+            "activation": {
+              "commerce": 0,
+              "energy": 0,
+              "generic": 0,
+              "industry": 0,
+              "life": 7,
+              "shipping": 0,
+              "technology": 0
+            }
+          },
+          "expected_effect_ops": [
+            {
+              "card_rank": 4,
+              "condition_id": "facility_slot.empty_or_district_ruined",
+              "facility_kind_id": "factory",
+              "facility_profile": {
+                "production_capacity_units_per_minute": 220,
+                "profile_id": "factory",
+                "rent_enabled": true,
+                "rent_rate_profile_id": "pending_first_playtest_table",
+                "shared_hp_contribution": 400,
+                "shared_hp_profile_id": "equal_contribution_by_rank"
+              },
+              "industry_id": "life",
+              "op_id": "build_facility"
+            },
+            {
+              "card_rank": 4,
+              "condition_id": "facility.same_kind_lower_rank",
+              "facility_kind_id": "factory",
+              "facility_profile": {
+                "production_capacity_units_per_minute": 220,
+                "profile_id": "factory",
+                "rent_enabled": true,
+                "rent_rate_profile_id": "pending_first_playtest_table",
+                "shared_hp_contribution": 400,
+                "shared_hp_profile_id": "equal_contribution_by_rank"
+              },
+              "industry_id": "life",
+              "op_id": "upgrade_facility"
+            },
+            {
+              "card_rank": 4,
+              "condition_id": "facility.same_kind_equal_or_higher_rank",
+              "facility_kind_id": "factory",
+              "industry_id": "life",
+              "op_id": "repair_facility",
+              "repair_policy_id": "established_facility_repair"
+            }
+          ]
         }
-      ],
-      "authority_guard_ids": [
-        "facility_hp_ruleset_parity",
-        "factory_market_capacity_ruleset_parity",
-        "facility_rent_profile_authority_gap"
       ]
     },
     {
       "template_id": "facility_market_build_upgrade_repair_v1",
       "family_id": "facility.market.life",
-      "expected_ranks": [
-        1,
-        2,
-        3,
-        4
-      ],
       "source_match": {
         "category_id": "facility",
         "industry_id": "life",
@@ -362,243 +552,331 @@
         "available_for_acquisition": true,
         "resolution_policy": "reject_before_consume_if_unowned"
       },
-      "rank_values": [
-        {
-          "rank": 1,
-          "card_id": "facility.market.life.rank_1",
-          "purchase_cash": 4,
-          "asset_cost": {
-            "life": 0,
-            "energy": 0,
-            "industry": 0,
-            "technology": 0,
-            "commerce": 0,
-            "shipping": 0,
-            "generic": 0
-          },
-          "shared_hp_contribution": 100,
-          "demand_capacity_units_per_minute": 40
-        },
-        {
-          "rank": 2,
-          "card_id": "facility.market.life.rank_2",
-          "purchase_cash": 7,
-          "asset_cost": {
-            "life": 2,
-            "energy": 0,
-            "industry": 0,
-            "technology": 0,
-            "commerce": 0,
-            "shipping": 0,
-            "generic": 0
-          },
-          "shared_hp_contribution": 200,
-          "demand_capacity_units_per_minute": 80
-        },
-        {
-          "rank": 3,
-          "card_id": "facility.market.life.rank_3",
-          "purchase_cash": 11,
-          "asset_cost": {
-            "life": 4,
-            "energy": 0,
-            "industry": 0,
-            "technology": 0,
-            "commerce": 0,
-            "shipping": 0,
-            "generic": 0
-          },
-          "shared_hp_contribution": 300,
-          "demand_capacity_units_per_minute": 140
-        },
-        {
-          "rank": 4,
-          "card_id": "facility.market.life.rank_4",
-          "purchase_cash": 16,
-          "asset_cost": {
-            "life": 7,
-            "energy": 0,
-            "industry": 0,
-            "technology": 0,
-            "commerce": 0,
-            "shipping": 0,
-            "generic": 0
-          },
-          "shared_hp_contribution": 400,
-          "demand_capacity_units_per_minute": 220
-        }
-      ],
-      "target_template": {
-        "target_id": "district.active",
-        "selection_id": "single",
+      "expected_identity_defaults": {
+        "family_id": "facility.market.life",
+        "category_id": "facility",
+        "industry_id": "life",
+        "available_for_acquisition": true
+      },
+      "expected_target": {
         "cardinality_id": "exactly_one",
         "filter_ids": [
-          "facility.kind.market",
-          "facility.slot.unique",
-          "industry.life",
-          "region.state.active",
-          "region.state.undeveloped",
-          "region.state.ruined"
-        ]
+          "district.state.active_or_undeveloped_or_ruined",
+          "facility.slot.unique_by_kind"
+        ],
+        "selection_id": "actor_choice",
+        "target_id": "district.active"
       },
-      "effect_op_templates": [
+      "expected_runtime_readiness_id": "active",
+      "readiness_evidence": {
+        "route_id": "core_economic_card_runtime",
+        "evidence_status_id": "existing_production_route",
+        "execution_claim_scope_id": "existing_v06_core_economic_owner_only"
+      },
+      "expected_projection_refs": [
         {
-          "op_id": "build_facility",
-          "condition_id": "empty_slot",
-          "source_bindings": {
-            "facility_kind_id": "/effect_payload/facility_kind",
-            "industry_id": "/effect_payload/industry_id",
-            "facility_rank": "/effect_payload/card_rank",
-            "shared_hp_contribution": "/effect_payload/shared_hp_contribution",
-            "capacity_units_per_minute": "/effect_payload/demand_capacity_units_per_minute"
-          },
-          "fixed_values": {
-            "capacity_direction_id": "demand"
-          }
+          "case_id": "facility_market_life_rank_1",
+          "card_id": "facility.market.life.rank_1",
+          "source_definition_fingerprint": "91ff4178d0fe720730e2f3ccc501e5fd162dda7f21ca705d12fe1e49cb27dd6f",
+          "semantic_fingerprint": "401a5697859afef6b259a8fe18533e0249f2610816566a6de86a1cc098e0a6e4"
         },
         {
-          "op_id": "upgrade_facility",
-          "condition_id": "card_rank_higher_than_existing",
-          "source_bindings": {
-            "facility_kind_id": "/effect_payload/facility_kind",
-            "industry_id": "/effect_payload/industry_id",
-            "facility_rank": "/effect_payload/card_rank",
-            "shared_hp_contribution": "/effect_payload/shared_hp_contribution",
-            "capacity_units_per_minute": "/effect_payload/demand_capacity_units_per_minute"
-          },
-          "fixed_values": {
-            "capacity_direction_id": "demand"
-          }
+          "case_id": "facility_market_life_rank_2",
+          "card_id": "facility.market.life.rank_2",
+          "source_definition_fingerprint": "c112520926fd172ea953a862d69eb5467e369ab619b3716a90171c5beda0498b",
+          "semantic_fingerprint": "23df44aa3bca1a05d1510916f6146512c5f89e8a87022471dd733b5bd33c41ae"
         },
         {
-          "op_id": "repair_facility",
-          "condition_id": "card_rank_same_or_lower_than_existing",
-          "source_bindings": {
-            "facility_kind_id": "/effect_payload/facility_kind",
-            "industry_id": "/effect_payload/industry_id",
-            "card_rank": "/effect_payload/card_rank",
-            "repair_shared_hp": "/effect_payload/shared_hp_contribution"
-          }
+          "case_id": "facility_market_life_rank_3",
+          "card_id": "facility.market.life.rank_3",
+          "source_definition_fingerprint": "094e82ae2e37b17e336408f02efc355b2cd55f528fb06ea04faadfb690364bd2",
+          "semantic_fingerprint": "7a6db07201e04758e0b8f4886b5dd1a651a3468b9f8c4dc6d0665054432f00a0"
+        },
+        {
+          "case_id": "facility_market_life_rank_4",
+          "card_id": "facility.market.life.rank_4",
+          "source_definition_fingerprint": "d199211efdca7d59bad599f33ece548f1ef5f46cdc0cf3f00cba82ee068bb3ef",
+          "semantic_fingerprint": "e8da8860b53286c4cbda5cda750eda32752c08d2587e9e04aa8d6700e9827a96"
         }
       ],
-      "required_source_invariants": [
+      "rank_cases": [
         {
-          "invariant_id": "facility_card_rank_matches_identity",
-          "left_pointer": "/effect_payload/card_rank",
-          "relation_id": "equals",
-          "right_pointer": "/rank",
-          "on_failure_id": "reject_projection"
+          "case_id": "facility_market_life_rank_1",
+          "card_id": "facility.market.life.rank_1",
+          "rank": 1,
+          "expected_cost": {
+            "acquisition": {
+              "acquisition_kind": "dynamic_market_cash",
+              "purchase_cash": 4
+            },
+            "activation": {
+              "commerce": 0,
+              "energy": 0,
+              "generic": 0,
+              "industry": 0,
+              "life": 0,
+              "shipping": 0,
+              "technology": 0
+            }
+          },
+          "expected_effect_ops": [
+            {
+              "card_rank": 1,
+              "condition_id": "facility_slot.empty_or_district_ruined",
+              "facility_kind_id": "market",
+              "facility_profile": {
+                "demand_capacity_units_per_minute": 40,
+                "profile_id": "market",
+                "rent_enabled": true,
+                "rent_rate_profile_id": "pending_first_playtest_table",
+                "shared_hp_contribution": 100,
+                "shared_hp_profile_id": "equal_contribution_by_rank"
+              },
+              "industry_id": "life",
+              "op_id": "build_facility"
+            },
+            {
+              "card_rank": 1,
+              "condition_id": "facility.same_kind_lower_rank",
+              "facility_kind_id": "market",
+              "facility_profile": {
+                "demand_capacity_units_per_minute": 40,
+                "profile_id": "market",
+                "rent_enabled": true,
+                "rent_rate_profile_id": "pending_first_playtest_table",
+                "shared_hp_contribution": 100,
+                "shared_hp_profile_id": "equal_contribution_by_rank"
+              },
+              "industry_id": "life",
+              "op_id": "upgrade_facility"
+            },
+            {
+              "card_rank": 1,
+              "condition_id": "facility.same_kind_equal_or_higher_rank",
+              "facility_kind_id": "market",
+              "industry_id": "life",
+              "op_id": "repair_facility",
+              "repair_policy_id": "established_facility_repair"
+            }
+          ]
         },
         {
-          "invariant_id": "facility_industry_matches_identity",
-          "left_pointer": "/effect_payload/industry_id",
-          "relation_id": "equals",
-          "right_pointer": "/industry_id",
-          "on_failure_id": "reject_projection"
+          "case_id": "facility_market_life_rank_2",
+          "card_id": "facility.market.life.rank_2",
+          "rank": 2,
+          "expected_cost": {
+            "acquisition": {
+              "acquisition_kind": "dynamic_market_cash",
+              "purchase_cash": 7
+            },
+            "activation": {
+              "commerce": 0,
+              "energy": 0,
+              "generic": 0,
+              "industry": 0,
+              "life": 2,
+              "shipping": 0,
+              "technology": 0
+            }
+          },
+          "expected_effect_ops": [
+            {
+              "card_rank": 2,
+              "condition_id": "facility_slot.empty_or_district_ruined",
+              "facility_kind_id": "market",
+              "facility_profile": {
+                "demand_capacity_units_per_minute": 80,
+                "profile_id": "market",
+                "rent_enabled": true,
+                "rent_rate_profile_id": "pending_first_playtest_table",
+                "shared_hp_contribution": 200,
+                "shared_hp_profile_id": "equal_contribution_by_rank"
+              },
+              "industry_id": "life",
+              "op_id": "build_facility"
+            },
+            {
+              "card_rank": 2,
+              "condition_id": "facility.same_kind_lower_rank",
+              "facility_kind_id": "market",
+              "facility_profile": {
+                "demand_capacity_units_per_minute": 80,
+                "profile_id": "market",
+                "rent_enabled": true,
+                "rent_rate_profile_id": "pending_first_playtest_table",
+                "shared_hp_contribution": 200,
+                "shared_hp_profile_id": "equal_contribution_by_rank"
+              },
+              "industry_id": "life",
+              "op_id": "upgrade_facility"
+            },
+            {
+              "card_rank": 2,
+              "condition_id": "facility.same_kind_equal_or_higher_rank",
+              "facility_kind_id": "market",
+              "industry_id": "life",
+              "op_id": "repair_facility",
+              "repair_policy_id": "established_facility_repair"
+            }
+          ]
         },
         {
-          "invariant_id": "facility_operation_policy_exact",
-          "pointer": "/effect_payload/operation_policy",
-          "expected_value": "empty_build_higher_rank_upgrade_same_or_lower_repair",
-          "on_failure_id": "reject_projection"
+          "case_id": "facility_market_life_rank_3",
+          "card_id": "facility.market.life.rank_3",
+          "rank": 3,
+          "expected_cost": {
+            "acquisition": {
+              "acquisition_kind": "dynamic_market_cash",
+              "purchase_cash": 11
+            },
+            "activation": {
+              "commerce": 0,
+              "energy": 0,
+              "generic": 0,
+              "industry": 0,
+              "life": 4,
+              "shipping": 0,
+              "technology": 0
+            }
+          },
+          "expected_effect_ops": [
+            {
+              "card_rank": 3,
+              "condition_id": "facility_slot.empty_or_district_ruined",
+              "facility_kind_id": "market",
+              "facility_profile": {
+                "demand_capacity_units_per_minute": 140,
+                "profile_id": "market",
+                "rent_enabled": true,
+                "rent_rate_profile_id": "pending_first_playtest_table",
+                "shared_hp_contribution": 300,
+                "shared_hp_profile_id": "equal_contribution_by_rank"
+              },
+              "industry_id": "life",
+              "op_id": "build_facility"
+            },
+            {
+              "card_rank": 3,
+              "condition_id": "facility.same_kind_lower_rank",
+              "facility_kind_id": "market",
+              "facility_profile": {
+                "demand_capacity_units_per_minute": 140,
+                "profile_id": "market",
+                "rent_enabled": true,
+                "rent_rate_profile_id": "pending_first_playtest_table",
+                "shared_hp_contribution": 300,
+                "shared_hp_profile_id": "equal_contribution_by_rank"
+              },
+              "industry_id": "life",
+              "op_id": "upgrade_facility"
+            },
+            {
+              "card_rank": 3,
+              "condition_id": "facility.same_kind_equal_or_higher_rank",
+              "facility_kind_id": "market",
+              "industry_id": "life",
+              "op_id": "repair_facility",
+              "repair_policy_id": "established_facility_repair"
+            }
+          ]
         },
         {
-          "invariant_id": "facility_region_states_exact",
-          "pointer": "/effect_payload/allowed_region_states",
-          "expected_value": [
-            "active",
-            "undeveloped",
-            "ruined"
-          ],
-          "on_failure_id": "reject_projection"
-        },
-        {
-          "invariant_id": "facility_shared_hp_profile_exact",
-          "pointer": "/effect_payload/shared_hp_profile",
-          "expected_value": "equal_contribution_by_rank",
-          "on_failure_id": "reject_projection"
+          "case_id": "facility_market_life_rank_4",
+          "card_id": "facility.market.life.rank_4",
+          "rank": 4,
+          "expected_cost": {
+            "acquisition": {
+              "acquisition_kind": "dynamic_market_cash",
+              "purchase_cash": 16
+            },
+            "activation": {
+              "commerce": 0,
+              "energy": 0,
+              "generic": 0,
+              "industry": 0,
+              "life": 7,
+              "shipping": 0,
+              "technology": 0
+            }
+          },
+          "expected_effect_ops": [
+            {
+              "card_rank": 4,
+              "condition_id": "facility_slot.empty_or_district_ruined",
+              "facility_kind_id": "market",
+              "facility_profile": {
+                "demand_capacity_units_per_minute": 220,
+                "profile_id": "market",
+                "rent_enabled": true,
+                "rent_rate_profile_id": "pending_first_playtest_table",
+                "shared_hp_contribution": 400,
+                "shared_hp_profile_id": "equal_contribution_by_rank"
+              },
+              "industry_id": "life",
+              "op_id": "build_facility"
+            },
+            {
+              "card_rank": 4,
+              "condition_id": "facility.same_kind_lower_rank",
+              "facility_kind_id": "market",
+              "facility_profile": {
+                "demand_capacity_units_per_minute": 220,
+                "profile_id": "market",
+                "rent_enabled": true,
+                "rent_rate_profile_id": "pending_first_playtest_table",
+                "shared_hp_contribution": 400,
+                "shared_hp_profile_id": "equal_contribution_by_rank"
+              },
+              "industry_id": "life",
+              "op_id": "upgrade_facility"
+            },
+            {
+              "card_rank": 4,
+              "condition_id": "facility.same_kind_equal_or_higher_rank",
+              "facility_kind_id": "market",
+              "industry_id": "life",
+              "op_id": "repair_facility",
+              "repair_policy_id": "established_facility_repair"
+            }
+          ]
         }
-      ],
-      "authority_guard_ids": [
-        "facility_hp_ruleset_parity",
-        "factory_market_capacity_ruleset_parity",
-        "facility_rent_profile_authority_gap"
       ]
     }
   ],
-  "authority_guards": [
+  "source_catalog_evidence": [
     {
-      "guard_id": "commodity_rate_ruleset_parity",
-      "status_id": "required",
-      "catalog_pointer": "/effect_payload/rate_per_minute",
-      "owner_id": "space_syndicate_ruleset_profile_v06",
-      "owner_field_id": "commodity_rate_by_rank",
-      "comparison_id": "rank_value_equal",
-      "on_failure_id": "reject_projection"
-    },
-    {
-      "guard_id": "facility_hp_ruleset_parity",
-      "status_id": "required",
-      "catalog_pointer": "/effect_payload/shared_hp_contribution",
-      "owner_id": "space_syndicate_ruleset_profile_v06",
-      "owner_field_id": "facility_hp_contribution_by_rank",
-      "comparison_id": "rank_value_equal",
-      "on_failure_id": "reject_projection"
-    },
-    {
-      "guard_id": "factory_market_capacity_ruleset_parity",
-      "status_id": "required",
-      "catalog_pointer_ids": [
-        "/effect_payload/production_capacity_units_per_minute",
-        "/effect_payload/demand_capacity_units_per_minute"
+      "evidence_id": "commodity_product_id_opaque_compatibility_fact",
+      "source_card_ids": [
+        "commodity.star_dew_berry.rank_1",
+        "commodity.star_dew_berry.rank_2",
+        "commodity.star_dew_berry.rank_3",
+        "commodity.star_dew_berry.rank_4"
       ],
-      "owner_id": "space_syndicate_ruleset_profile_v06",
-      "owner_field_id": "factory_market_capacity_by_rank",
-      "comparison_id": "present_rank_value_equal",
-      "on_failure_id": "reject_projection"
+      "source_pointer": "machine.effect_payload.product_id",
+      "exact_source_value": "星露莓",
+      "value_policy_id": "opaque_compatibility_fact_only",
+      "compiler_output_policy_id": "omit_localized_product_id",
+      "compiled_rate_subject_id": "card_family",
+      "product_semantic_spec_identity_bridge_status_id": "unresolved_future_migration",
+      "forbidden_action_id": "invent_ascii_product_alias"
     },
     {
-      "guard_id": "commodity_product_stable_ascii_gap",
-      "status_id": "RULE_AUTHORITY_NOT_ESTABLISHED",
-      "catalog_pointer": "/effect_payload/product_id",
-      "observed_catalog_value": "星露莓",
-      "projection_action_id": "preserve_exact_catalog_product_id",
-      "forbidden_action_id": "invent_ascii_product_alias",
-      "consumer_requirement_failure_id": "reject_if_stable_ascii_product_id_required"
-    },
-    {
-      "guard_id": "facility_rent_profile_authority_gap",
-      "status_id": "RULE_AUTHORITY_NOT_ESTABLISHED",
-      "catalog_pointer": "/effect_payload/rent_rate_profile",
-      "observed_catalog_value": "pending_first_playtest_table",
-      "projection_action_id": "omit_rent_semantics",
-      "consumer_requirement_failure_id": "reject_if_rent_semantics_required"
+      "evidence_id": "facility_rent_profile_opaque_catalog_id",
+      "source_pointer": "machine.effect_payload.rent_rate_profile",
+      "exact_source_value": "pending_first_playtest_table",
+      "compiler_output_field": "effect_ops.facility_profile.rent_rate_profile_id",
+      "value_policy_id": "preserve_profile_id_without_inventing_numeric_rate"
     }
   ],
-  "fail_closed_requirements": [
-    {
-      "requirement_id": "family_rank_identity_exact",
-      "on_failure_id": "reject_complete_projection"
-    },
-    {
-      "requirement_id": "source_match_exact",
-      "on_failure_id": "reject_complete_projection"
-    },
-    {
-      "requirement_id": "source_owner_numeric_parity",
-      "on_failure_id": "reject_complete_projection"
-    },
-    {
-      "requirement_id": "unknown_operation_or_target",
-      "on_failure_id": "reject_complete_projection"
-    },
-    {
-      "requirement_id": "branch_selection_requires_authoritative_legality",
-      "on_failure_id": "do_not_select_runtime_branch"
-    },
-    {
-      "requirement_id": "template_is_projection_only_and_non_executable",
-      "on_failure_id": "do_not_mutate_or_consume_card"
-    }
-  ]
+  "validation_contract": {
+    "expected_family_count": 3,
+    "expected_rank_case_count": 12,
+    "expected_active_count": 12,
+    "projection_assembly_id": "shared_plus_family_plus_rank_case_without_inference",
+    "projection_validation_id": "card_semantic_schema_v1_validate_semantic_spec",
+    "fingerprint_validation_id": "card_semantic_schema_v1_fingerprint",
+    "unknown_field_policy_id": "fail_closed",
+    "localized_product_id_semantic_output_count": 0,
+    "second_schema_authority_count": 0
+  }
 }

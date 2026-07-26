@@ -1,135 +1,209 @@
 # Facility and Commodity Semantic Fixture Validation
 
-## Change identity
+Status: `MERGE_READY_FOR_INTEGRATION`
 
-- Base: `a96c34f9d1a9f79fc20c4689b8d2ff82e22c623e`
-- Branch: `codex/card-semantic-wave2-g-facility-fixtures-a96c34f`
-- Semantic contract: `card_semantic_projection_v1_migration`, schema version `1`
-- Source catalog: `space_syndicate.card_runtime_catalog.v06`
-- Production code changes: none
-- Catalog or balance changes: none
-- Owned artifacts:
-  - `data/cards/semantic_templates/facility_commodity_family_templates_v1.json`
-  - `tests/fixtures/card_semantic_phase1/facility_commodity_golden.json`
-  - `reports/cards/facility_commodity_semantic_fixture_validation.md`
+## Scope
 
-## Representative coverage
+- Integration base: `8c730e0edd54f79cc5c2aee39537b291b72c2108`
+- Branch: `codex/card-semantic-facility-fixture-repair-8c730e0`
+- Schema authority: `CardSemanticSchemaV1`
+- Compiler authority: `CardSemanticCompilerV1`
+- Catalog authority: v0.6 `machine` blocks only
+- Production code changed: none
+- Catalog records changed: none
+- Test scripts changed: none
 
-The fixture uses one coherent life-industry route so the commodity can target
-both representative facilities without an invented cross-industry rule.
+The repair is limited to the family template, the twelve-card golden fixture,
+and this report. It reconciles the pre-freeze fixture shape with the integrated
+schema/compiler v1 without changing a rule, balance value, target, readiness
+decision, or runtime route.
 
-| Family | Ranks | Acquisition cash | Activation life assets | Rank values copied from v0.6 |
-| --- | --- | --- | --- | --- |
-| `commodity.star_dew_berry` | I-IV | 0, 0, 0, 0 | 0, 0, 0, 0 | install rate 10, 20, 40, 80 units/minute |
-| `facility.factory.life` | I-IV | 4, 7, 11, 16 | 0, 2, 4, 7 | shared HP 100, 200, 300, 400; production capacity 40, 80, 140, 220 |
-| `facility.market.life` | I-IV | 4, 7, 11, 16 | 0, 2, 4, 7 | shared HP 100, 200, 300, 400; demand capacity 40, 80, 140, 220 |
+## Reconciliation Result
 
-All 12 identities satisfy
-`card_id == family_id + ".rank_" + rank`, every family contains exactly ranks
-`[1, 2, 3, 4]`, and every acquisition/activation value is copied from the
-current machine record.
+The mismatch count is a recursive shape-and-value comparison. It records
+container type and keys, array length and order, scalar type, and scalar value.
 
-## Projection contract
+| Measure | Before | After |
+| --- | ---: | ---: |
+| Golden cases that differ from compiler output | 12 | 0 |
+| Recursive mismatch paths | 852 | 0 |
+| Template rank cases that differ after deterministic assembly | 12 | 0 |
+| Schema validation failures | 12 | 0 |
+| Fingerprint mismatches | 12 | 0 |
+| Localized product facts inside semantic output | 4 | 0 |
 
-Each golden projection contains exactly the frozen top-level fields:
-`schema_version`, `source_catalog_id`,
-`source_definition_fingerprint`, `semantic_fingerprint`, `identity`,
-`cost`, `timing`, `target`, `effect_ops`, `response`,
-`information_policy`, and `runtime_readiness_id`.
+The old nested contract was removed. The repaired data now uses exactly:
 
-The family templates normalize only closed Phase 1 meanings:
+- `timing: { timing_id }`
+- `target.selection_id=actor_choice`
+- compiler-owned target and filter IDs
+- `response: { response_id }`
+- `information_policy: { visibility_policy_id }`
+- `runtime_readiness_id=active`
+- acquisition and activation cost as separate dictionaries
+- closed compiler operation fields and nesting
 
-- `install_commodity_rate` becomes `install_rate`. The exact catalog
-  `product_id`, industry, rate, valid facility kinds, and persistence are
-  preserved. Rulebook section 5.3 supplies the stable direction map:
-  factory -> production, market -> demand.
-- `build_upgrade_or_repair_facility` exposes three mutually conditional
-  semantic capabilities: `build_facility` for an empty slot,
-  `upgrade_facility` when the card rank is higher, and `repair_facility`
-  when the card rank is the same or lower. The projection does not choose a
-  branch without an authoritative legality result.
-- Factory capacity is always tagged `production`; market capacity is always
-  tagged `demand`. Capacity, HP contribution, repair amount, and card rank
-  remain the exact catalog values.
+No `owner_established`, `selection_id=single`, flat timing/response/information
+strings, or pre-freeze operation aliases remain.
 
-The eight machine-readable proof rows cover commodity installation to both
-facility kinds, empty-slot factory and market builds, higher-rank factory and
-market upgrades, same-rank repair, and lower-rank repair. They are explicitly
-`semantic_branch_only` and require authoritative legality; they are not
-receipts or mutation expectations.
+## Exact Fingerprints
 
-## Authority gates
+All twelve rows were compiled from the current catalog through the integrated
+compiler. Source fingerprints cover the catalog ID and complete source
+`machine` block. Semantic fingerprints cover the closed semantic projection
+while omitting only its own `semantic_fingerprint` field.
 
-The templates fail closed at the known boundary:
+| Card ID | Source definition SHA-256 | Semantic SHA-256 |
+| --- | --- | --- |
+| `commodity.star_dew_berry.rank_1` | `3e0b3740222e5ba06f24b71f053b7e5eebac22f0d2c2dd2aa95bac13a14d7a34` | `264c79ac3a6434d5e83b283fe0f8e1010af933eb58df730d6af35fdd2bebd8c4` |
+| `commodity.star_dew_berry.rank_2` | `c630689aaf68fe892850512698c8a0ccbd22b2a8e1612c364bf98d7ff9efb0dc` | `7ff22c5707ceb81c4dd627e20dd6448062b95ab9e6c64953ca568699b771a70d` |
+| `commodity.star_dew_berry.rank_3` | `f5319473ca204aca7090672642f84423b342a4492258f4cb2d6b2b28035d0d26` | `4ebf779a52c2b932d16dea438351396cbd8090a182de2af5abe5ab87cc23c6e0` |
+| `commodity.star_dew_berry.rank_4` | `9519bfd2c7b22087433883066e1d06c5e7771a647a43308679ff71ed94886cbf` | `83b9eae3ec028b95fc1846908855c06ad64cd062873aff9134fc4c24c6ba40c4` |
+| `facility.factory.life.rank_1` | `e5fc8871914a41b53e94ff9cf288da8c339153e0671f1661f20c81621f86a9e3` | `85483c5e62153fd0e1028ac5028abc0e75168ac2e897a00ac9cea7d12b20f67f` |
+| `facility.factory.life.rank_2` | `f2d2da9cc8ee73ec965b6e14e16f3526781220fbf7e89709b782780b9f61f8d1` | `2c876fc2c191b0a2d797802fd58966305f00b15aef3217ef2edd6e49e4543816` |
+| `facility.factory.life.rank_3` | `9b492641bd5a88ae07ffb4fc9a5e909efd415d01808a3fa7877d96f18206ff73` | `b54106d40a7fe891be40b092e44780e1416a930f229ade6db9b1d5dd3a2732c9` |
+| `facility.factory.life.rank_4` | `c04eb9c9c834b7f9ebcc4d8a45129ef60be2cb1215fe337edadb6862b64854d7` | `af9cc3abf513d696cb773ecba7965eefb7142177e8b10daf4c1552610d34a111` |
+| `facility.market.life.rank_1` | `91ff4178d0fe720730e2f3ccc501e5fd162dda7f21ca705d12fe1e49cb27dd6f` | `401a5697859afef6b259a8fe18533e0249f2610816566a6de86a1cc098e0a6e4` |
+| `facility.market.life.rank_2` | `c112520926fd172ea953a862d69eb5467e369ab619b3716a90171c5beda0498b` | `23df44aa3bca1a05d1510916f6146512c5f89e8a87022471dd733b5bd33c41ae` |
+| `facility.market.life.rank_3` | `094e82ae2e37b17e336408f02efc355b2cd55f528fb06ea04faadfb690364bd2` | `7a6db07201e04758e0b8f4886b5dd1a651a3468b9f8c4dc6d0665054432f00a0` |
+| `facility.market.life.rank_4` | `d199211efdca7d59bad599f33ece548f1ef5f46cdc0cf3f00cba82ee068bb3ef` | `e8da8860b53286c4cbda5cda750eda32752c08d2587e9e04aa8d6700e9827a96` |
 
-1. Catalog commodity rates and facility HP/capacity values are compatibility
-   mirrors of `SpaceSyndicateRulesetProfileV06`. Compilation requires exact
-   per-rank parity and rejects the complete projection on mismatch.
-2. `effect_payload.product_id` is the exact catalog value `星露莓`, not a
-   stable ASCII ID. No alias is invented. A consumer that requires a stable
-   ASCII product ID receives `RULE_AUTHORITY_NOT_ESTABLISHED`.
-3. Facility `rent_rate_profile` remains
-   `pending_first_playtest_table`. Rent semantics are omitted; a consumer
-   that requires them receives `RULE_AUTHORITY_NOT_ESTABLISHED`.
-4. `owner_established` records the observed commodity/infrastructure owner
-   route only. It does not authorize a viewer, establish live legality, select
-   a target, consume a card, or execute an effect.
-5. Unknown families, ranks, operations, targets, operation policies, source
-   mismatches, or source/Ruleset numeric drift reject the complete projection.
+All twelve records are `active`. This claim is limited to the existing v0.6
+core-economic facility/commodity route and does not generalize to unwired
+military, interaction, or organization routes.
 
-## Godot MCP evidence
+## Rule and Balance Parity
 
-- Role-local endpoint: Role `Supervisor`, port `8905`
+The repaired projections preserve the current catalog values:
+
+- commodity rates: `10 / 20 / 40 / 80`
+- facility purchase cash: `4 / 7 / 11 / 16`
+- facility life activation assets: `0 / 2 / 4 / 7`
+- facility shared HP: `100 / 200 / 300 / 400`
+- factory production capacity: `40 / 80 / 140 / 220`
+- market demand capacity: `40 / 80 / 140 / 220`
+- build condition: `facility_slot.empty_or_district_ruined`
+- upgrade condition: `facility.same_kind_lower_rank`
+- repair condition: `facility.same_kind_equal_or_higher_rank`
+- repair policy: `established_facility_repair`
+
+The commodity operation now exactly matches compiler v1:
+`rate_subject_id=card_family`,
+`rate_axis_id=production_or_demand_by_facility_kind`, and
+`rate_units_per_minute`. Facility capacity and HP fields live inside the
+compiler-owned nested `facility_profile`.
+
+## Product Identity Boundary
+
+The localized source value `星露莓` is retained only as an opaque compatibility
+fact under source/catalog evidence. It is not parsed, branched on, emitted by a
+semantic operation, or replaced with an invented ASCII product alias.
+
+Compiler output continues to use `rate_subject_id=card_family`. This repair
+does not claim that `card_family` resolves the future
+`ProductSemanticSpec` identity bridge. A consumer that requires that future
+identity must still fail closed.
+
+The catalog rent profile `pending_first_playtest_table` is likewise preserved
+as an opaque profile ID. No numeric rent rate is invented.
+
+## Behavioral Proof Boundary
+
+The eight behavioral rows are explicitly marked
+`projection_and_legality_only` and `runtime_execution_claimed=false`.
+Each row embeds one exact compiler operation and a separate authorized target
+context. The rows demonstrate branch selection expectations; they do not
+execute an owner, consume a card, mutate the world, or create a second rules
+path.
+
+## Deterministic Validation
+
+### Fixture and Template Query
+
+A role-local Funplay MCP `execute_code` query loaded the real catalog,
+schema, compiler, template, and golden fixture. JSON integral numbers were
+normalized to GDScript `int` before schema validation, matching compiler
+normalization.
+
+Result:
+
+- selected compile: `12/12`
+- active readiness: `12/12`
+- compile failures: `0`
+- golden mismatches: `0`
+- template assembly mismatches: `0`
+- schema errors: `0`
+- source/semantic fingerprint mismatches: `0`
+- localized product leaks into semantic specs: `0`
+- behavioral proof errors: `0`
+- compiler cache entries/compiles: `12/12`
+
+### Focused Headless Test
+
+Command:
+
+```powershell
+pwsh -File tools/invoke_godot_test.ps1 `
+  -TestScript res://tests/card_semantic_schema_compiler_test.gd `
+  -TimeoutSeconds 60 `
+  -ExpectedCompletionMarker CARD_SEMANTIC_SCHEMA_COMPILER_TEST
+```
+
+Run `20260726-153013-153-card_semantic_schema_compiler_test-c786f159`:
+
+- status: `PASS`
+- checks: `5289/5289`
+- failures: `0`
+- script errors: `0`
+- wrapper duration: `2.288 s`
+- test duration: `1662.392 ms`
+- first catalog compile: `298.787 ms`
+
+### Funplay Godot MCP Bench
+
+- Role/endpoint: Role A, `127.0.0.1:8915`
 - Godot: `4.7-stable (official)`
-- Edited scene inspected: `res://scenes/tools/CardRuntimeCatalogV06Builder.tscn`
-- Runtime root: `/root/CardRuntimeCatalogV06Builder`
-- Runtime script: `res://scripts/tools/card_runtime_catalog_v06_builder.gd`
-- Catalog Resource:
-  `res://resources/cards/runtime/card_runtime_catalog_v06.tres`
-- Resource source:
-  `res://data/cards/card_runtime_catalog_v06.json`
-- Builder result: `code=OK`, cards `348`, families `87`,
-  effect-review pending `132`, `errors=[]`
-- Category counts: commodity 184, facility 64, interaction 12, military 28,
-  monster 32, organization 20, supply/demand 8
-- Scoped runtime `godot.log`: warning lines `0`, error lines `0`
-- Play stop: `is_playing_scene=false`
-- Editor stop: `stopped=true`, `port_open=false`, PID `11636`
-- Post-run catalog diff: empty
+- Worktree identity: exact isolated branch worktree
+- Edited scene: `res://scenes/tools/CardSemanticCompilerBench.tscn`
+- Child service scene: `res://scenes/runtime/CardSemanticCatalogService.tscn`
+- Bench: `PASS`, `38/38`, failures `0`
+- Catalog: `348/348` compiled
+- Readiness: `288 active / 60 projection_only / 0 not_acquirable`
+- Operations: `606`
+- Compile duration: `397.814 ms`
+- Cache entries/compiles/authorized hits: `348/348/3`
+- Compiler/service errors: `0/0`
+- MCP script diagnostics: `0`
+- Runtime error log lines: `0`
+- Stop result: `Stopped the running scene.`
+- Final play state: `is_playing_scene=false`
 
-The broad editor baseline scan also reported unrelated pre-existing parser
-diagnostics outside this role's ownership. The final builder acceptance is the
-isolated play-mode runtime log above. The scan generated exactly 19 unrelated
-untracked `.uid` files under existing `scripts/tools` and `tests`; a dry
-run verified their paths, tracked source counterparts, and worktree containment
-before removing only that set. Final untracked UID count is zero.
+One inspection-only MCP call initially used a relative runtime node path and
+returned `Runtime node not found`; the absolute `/root/...` query succeeded.
+This was a tool-query path error, not a script, scene, compiler, or runtime
+failure.
 
-## Deterministic validation
+## File Hashes
 
-| Gate | Result |
-| --- | --- |
-| PowerShell `ConvertFrom-Json` for both JSON artifacts | PASS |
-| Independent catalog/template/golden cross-check | PASS: 3 templates, 12 projections, 8 proofs, 5 fail-closed cases |
-| Deterministic template-to-golden rebuild | PASS: 12/12 canonical projections match |
-| Source-definition fingerprints | PASS: 12/12 recomputed from canonical machine records |
-| Semantic fingerprints | PASS: 12/12 recomputed after omitting only `semantic_fingerprint` |
-| Template canonical SHA-256 repeat | `21605799ce57f13e0d1cd3a63162506c237364205c4f168eec50b83e7832f8a1`, repeat match |
-| Golden canonical SHA-256 repeat | `4616b4b0248c0bcb1ad2b28aad943e45ebd5268cd4ee88f5448b2250e1ea071e`, repeat match |
-| Current catalog file SHA-256 | `b59b73489d23578558d4a7688a03f50a3ef4d776cf528cd9eafd0e1d2a0fcb40` |
-| `card_runtime_catalog_v06_test.gd` | PASS: 2,894 checks, 0 failures, 0 script errors |
-| `git diff --check` | PASS |
-| Catalog diff after MCP builder run | empty |
-| Untracked `.uid` count after cleanup | 0 |
+- Catalog JSON SHA-256:
+  `b59b73489d23578558d4a7688a03f50a3ef4d776cf528cd9eafd0e1d2a0fcb40`
+- Template JSON SHA-256:
+  `ced58639da4eca729df5ef00a7dcebb4e900fa88a8564f0d382b77c5345b321e`
+- Golden JSON SHA-256:
+  `fc17efc134705115b0d945d8f0522c2d3965d3988ecb90c5e20156ba64647426`
+- Compiler source catalog fingerprint:
+  `ae2f6e17181fd31114e18d3ee0695ba5a31db99b0f09bdd4963aa556acaa4792`
+- Compiler semantic catalog fingerprint:
+  `5d0f57e3079dab72ec3d5c95ac4825dc23ce5762194d6d2ac93e70153e07b189`
 
-## Residual integration risks
+## Residual Risks and Mergeability
 
-- The Phase 1 compiler schema must keep the fixture's conditional facility ops
-  as static capabilities. Treating all three as sequential execution would be
-  invalid.
-- Stable ASCII commodity identity still needs an approved registry before a
-  consumer may replace the exact catalog `product_id`.
-- Rent remains outside the semantic projection until its pending profile gains
-  rule authority.
-- Full cross-wave compiler/AI/PlayerFace integration and global regression
-  belong to the coordinator; this branch intentionally supplies no runtime
-  implementation.
+- The future `ProductSemanticSpec` identity bridge remains unresolved by
+  design.
+- JSON fixture readers must normalize integral JSON numbers before invoking
+  the strict GDScript schema validator.
+- Behavioral proofs remain projection/legality fixtures, not executable tests.
+- No production code, catalog value, RNG path, save owner, or runtime route was
+  changed.
+
+The three owned files are mergeable as one fixture-only reconciliation commit.
