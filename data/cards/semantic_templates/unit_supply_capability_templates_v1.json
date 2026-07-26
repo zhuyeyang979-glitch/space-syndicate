@@ -1,0 +1,820 @@
+{
+  "schema_version": 1,
+  "template_set_id": "unit_supply_capability_templates_v1",
+  "semantic_contract_id": "card_semantic_projection_v1_migration",
+  "baseline_commit": "a96c34f9d1a9f79fc20c4689b8d2ff82e22c623e",
+  "source_catalog": {
+    "catalog_id": "space_syndicate.card_runtime_catalog.v06",
+    "schema_version": "v0.6",
+    "resource_path": "res://resources/cards/runtime/card_runtime_catalog_v06.tres",
+    "source_path": "res://data/cards/card_runtime_catalog_v06.json",
+    "source_sha256": "b59b73489d23578558d4a7688a03f50a3ef4d776cf528cd9eafd0e1d2a0fcb40",
+    "expected_card_count": 348,
+    "expected_family_count": 87
+  },
+  "canonicalization": {
+    "profile_id": "recursive_sorted_keys_utf8_json_sha256_v1",
+    "dictionary_key_order_id": "lexicographic",
+    "array_order_id": "preserve",
+    "digest_encoding_id": "lowercase_hex",
+    "source_definition_input": [
+      "source_catalog_id",
+      "machine"
+    ],
+    "omit_own_fingerprint_field": true
+  },
+  "projection_defaults": {
+    "schema_version": 1,
+    "timing": {
+      "timing_id": "main_action"
+    },
+    "response": {
+      "response_id": "none"
+    },
+    "information_policy": {
+      "visibility_policy_id": "authorized_source_only"
+    }
+  },
+  "runtime_readiness_contract": {
+    "monster": "projection_only",
+    "monster_reason_id": "monster_cross_owner_atomicity_unavailable",
+    "military": "projection_only",
+    "military_reason_id": "military_card_route_and_atomic_owner_missing",
+    "global_supply_demand": "active",
+    "unknown": "reject_projection"
+  },
+  "effect_capability_mappings": [
+    {
+      "catalog_effect_kind": "global_order_budget",
+      "semantic_op_id": "modify_demand",
+      "capability_id": "global_order",
+      "card_route_status_id": "active",
+      "route_claim_id": "core_economic_card_runtime"
+    },
+    {
+      "catalog_effect_kind": "global_supply_spawn",
+      "semantic_op_id": "modify_supply",
+      "capability_id": "global_supply_spawn",
+      "card_route_status_id": "active",
+      "route_claim_id": "core_economic_card_runtime"
+    }
+  ],
+  "family_templates": [
+    {
+      "template_id": "monster_deploy_upgrade_extend_heal_v1",
+      "family_id": "unit.monster.spore_tide_emperor",
+      "expected_ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "runtime_readiness_id": "projection_only",
+      "source_match": {
+        "category_id": "monster",
+        "industry_id": "life",
+        "acquisition_kind": "starter_or_dynamic_market_cash",
+        "effect_kind": "deploy_or_upgrade_monster",
+        "target_kind": "region_or_existing_same_family_monster",
+        "available_for_acquisition": true,
+        "resolution_policy": "reject_before_consume_if_unowned"
+      },
+      "rank_values": [
+        {
+          "rank": 1,
+          "card_id": "unit.monster.spore_tide_emperor.rank_1",
+          "purchase_cash": 6,
+          "asset_cost": {
+            "life": 2,
+            "energy": 0,
+            "industry": 0,
+            "technology": 0,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          },
+          "monster_family_id": "spore_tide_emperor",
+          "card_rank": 1,
+          "same_name_upgrade_extend_seconds": 60,
+          "refresh_total_presence_time": false,
+          "presence_time_policy": "add_to_remaining_time",
+          "heal_to_full_on_upgrade": true,
+          "rank4_repeat_behavior": "heal_to_full_and_extend_60_seconds"
+        },
+        {
+          "rank": 2,
+          "card_id": "unit.monster.spore_tide_emperor.rank_2",
+          "purchase_cash": 10,
+          "asset_cost": {
+            "life": 4,
+            "energy": 0,
+            "industry": 0,
+            "technology": 0,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          },
+          "monster_family_id": "spore_tide_emperor",
+          "card_rank": 2,
+          "same_name_upgrade_extend_seconds": 60,
+          "refresh_total_presence_time": false,
+          "presence_time_policy": "add_to_remaining_time",
+          "heal_to_full_on_upgrade": true,
+          "rank4_repeat_behavior": "heal_to_full_and_extend_60_seconds"
+        },
+        {
+          "rank": 3,
+          "card_id": "unit.monster.spore_tide_emperor.rank_3",
+          "purchase_cash": 15,
+          "asset_cost": {
+            "life": 6,
+            "energy": 0,
+            "industry": 0,
+            "technology": 0,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          },
+          "monster_family_id": "spore_tide_emperor",
+          "card_rank": 3,
+          "same_name_upgrade_extend_seconds": 60,
+          "refresh_total_presence_time": false,
+          "presence_time_policy": "add_to_remaining_time",
+          "heal_to_full_on_upgrade": true,
+          "rank4_repeat_behavior": "heal_to_full_and_extend_60_seconds"
+        },
+        {
+          "rank": 4,
+          "card_id": "unit.monster.spore_tide_emperor.rank_4",
+          "purchase_cash": 21,
+          "asset_cost": {
+            "life": 9,
+            "energy": 0,
+            "industry": 0,
+            "technology": 0,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          },
+          "monster_family_id": "spore_tide_emperor",
+          "card_rank": 4,
+          "same_name_upgrade_extend_seconds": 60,
+          "refresh_total_presence_time": false,
+          "presence_time_policy": "add_to_remaining_time",
+          "heal_to_full_on_upgrade": true,
+          "rank4_repeat_behavior": "heal_to_full_and_extend_60_seconds"
+        }
+      ],
+      "target_template": {
+        "target_id": "unit.same_family",
+        "selection_id": "actor_choice",
+        "cardinality_id": "exactly_one",
+        "filter_ids": [
+          "unit.kind.monster",
+          "unit.region_or_same_family",
+          "unit.controller.any"
+        ]
+      },
+      "effect_op_templates": [
+        {
+          "op_id": "deploy_unit",
+          "condition_id": "same_family_unit_absent",
+          "source_bindings": {
+            "unit_family_id": "/effect_payload/monster_family_id",
+            "card_rank": "/rank"
+          },
+          "fixed_values": {
+            "unit_kind_id": "monster",
+            "stats_source_id": "unit_profile"
+          }
+        },
+        {
+          "op_id": "upgrade_same_family_unit",
+          "condition_id": "same_family_unit_lower_rank",
+          "source_bindings": {
+            "unit_family_id": "/effect_payload/monster_family_id",
+            "card_rank": "/rank"
+          },
+          "fixed_values": {
+            "unit_kind_id": "monster",
+            "target_controller_scope_id": "any",
+            "control_transfer_id": "preserve_existing_controller",
+            "rank_cap_policy_id": "target_controller_organization_cap",
+            "recipient_policy_id": "existing_unit_controller",
+            "stats_source_id": "unit_profile"
+          }
+        },
+        {
+          "op_id": "extend_presence",
+          "condition_id": "same_family_unit_present",
+          "source_bindings": {
+            "duration_seconds": "/effect_payload/same_name_upgrade_extend_seconds",
+            "presence_time_policy_id": "/effect_payload/presence_time_policy",
+            "refresh_total_presence_time": "/effect_payload/refresh_total_presence_time"
+          },
+          "fixed_values": {
+            "rank4_repeat_policy_id": "heal_to_full_and_extend"
+          }
+        },
+        {
+          "op_id": "heal_unit",
+          "condition_id": "same_family_unit_present",
+          "include_when": {
+            "pointer": "/effect_payload/heal_to_full_on_upgrade",
+            "equals": true
+          },
+          "fixed_values": {
+            "heal_policy_id": "to_full"
+          }
+        }
+      ],
+      "required_source_invariants": [
+        {
+          "invariant_id": "monster_rank_matches_identity",
+          "left_pointer": "/effect_payload/card_rank",
+          "relation_id": "equals",
+          "right_pointer": "/rank",
+          "on_failure_id": "reject_projection"
+        },
+        {
+          "invariant_id": "monster_presence_policy_exact",
+          "pointer": "/effect_payload/presence_time_policy",
+          "expected_value": "add_to_remaining_time",
+          "on_failure_id": "reject_projection"
+        },
+        {
+          "invariant_id": "monster_presence_refresh_forbidden",
+          "pointer": "/effect_payload/refresh_total_presence_time",
+          "expected_value": false,
+          "on_failure_id": "reject_projection"
+        },
+        {
+          "invariant_id": "monster_upgrade_preserves_controller",
+          "pointer": "/effect_payload/ownership_transfer_on_upgrade",
+          "expected_value": false,
+          "on_failure_id": "reject_projection"
+        }
+      ]
+    },
+    {
+      "template_id": "military_deploy_upgrade_no_automatic_region_damage_v1",
+      "family_id": "unit.military.planetary_defense_force",
+      "expected_ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "runtime_readiness_id": "projection_only",
+      "source_match": {
+        "category_id": "military",
+        "industry_id": "industry",
+        "acquisition_kind": "dynamic_market_cash",
+        "effect_kind": "deploy_or_upgrade_military",
+        "target_kind": "region_or_owned_same_family_military",
+        "available_for_acquisition": true,
+        "resolution_policy": "reject_before_consume_if_unowned"
+      },
+      "rank_values": [
+        {
+          "rank": 1,
+          "card_id": "unit.military.planetary_defense_force.rank_1",
+          "purchase_cash": 6,
+          "asset_cost": {
+            "life": 0,
+            "energy": 0,
+            "industry": 2,
+            "technology": 0,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          },
+          "military_family_id": "planetary_defense_force",
+          "card_rank": 1,
+          "unit_profile_owns_stats": true,
+          "region_damage_requires_explicit_unit_action": true
+        },
+        {
+          "rank": 2,
+          "card_id": "unit.military.planetary_defense_force.rank_2",
+          "purchase_cash": 10,
+          "asset_cost": {
+            "life": 0,
+            "energy": 0,
+            "industry": 4,
+            "technology": 0,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          },
+          "military_family_id": "planetary_defense_force",
+          "card_rank": 2,
+          "unit_profile_owns_stats": true,
+          "region_damage_requires_explicit_unit_action": true
+        },
+        {
+          "rank": 3,
+          "card_id": "unit.military.planetary_defense_force.rank_3",
+          "purchase_cash": 15,
+          "asset_cost": {
+            "life": 0,
+            "energy": 0,
+            "industry": 6,
+            "technology": 0,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          },
+          "military_family_id": "planetary_defense_force",
+          "card_rank": 3,
+          "unit_profile_owns_stats": true,
+          "region_damage_requires_explicit_unit_action": true
+        },
+        {
+          "rank": 4,
+          "card_id": "unit.military.planetary_defense_force.rank_4",
+          "purchase_cash": 21,
+          "asset_cost": {
+            "life": 0,
+            "energy": 0,
+            "industry": 9,
+            "technology": 0,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          },
+          "military_family_id": "planetary_defense_force",
+          "card_rank": 4,
+          "unit_profile_owns_stats": true,
+          "region_damage_requires_explicit_unit_action": true
+        }
+      ],
+      "target_template": {
+        "target_id": "unit.same_family",
+        "selection_id": "actor_choice",
+        "cardinality_id": "exactly_one",
+        "filter_ids": [
+          "unit.kind.military",
+          "unit.region_or_same_family",
+          "unit.controller.actor"
+        ]
+      },
+      "effect_op_templates": [
+        {
+          "op_id": "deploy_unit",
+          "condition_id": "same_family_unit_absent",
+          "source_bindings": {
+            "unit_family_id": "/effect_payload/military_family_id",
+            "card_rank": "/rank"
+          },
+          "fixed_values": {
+            "unit_kind_id": "military",
+            "stats_source_id": "unit_profile"
+          }
+        },
+        {
+          "op_id": "upgrade_same_family_unit",
+          "condition_id": "same_family_unit_lower_rank",
+          "source_bindings": {
+            "unit_family_id": "/effect_payload/military_family_id",
+            "card_rank": "/rank"
+          },
+          "fixed_values": {
+            "unit_kind_id": "military",
+            "target_controller_scope_id": "actor",
+            "control_transfer_id": "preserve_actor_control",
+            "rank_cap_policy_id": "established_military_cap",
+            "recipient_policy_id": "actor",
+            "stats_source_id": "unit_profile"
+          }
+        }
+      ],
+      "required_source_invariants": [
+        {
+          "invariant_id": "military_rank_matches_identity",
+          "left_pointer": "/effect_payload/card_rank",
+          "relation_id": "equals",
+          "right_pointer": "/rank",
+          "on_failure_id": "reject_projection"
+        },
+        {
+          "invariant_id": "military_region_damage_requires_command",
+          "pointer": "/effect_payload/region_damage_requires_explicit_unit_action",
+          "expected_value": true,
+          "on_failure_id": "reject_projection"
+        },
+        {
+          "invariant_id": "military_card_ops_exact",
+          "expected_op_ids": [
+            "deploy_unit",
+            "upgrade_same_family_unit"
+          ],
+          "on_failure_id": "reject_projection"
+        }
+      ]
+    },
+    {
+      "template_id": "global_remote_sea_order_v1",
+      "family_id": "supply_demand.remote_sea_order",
+      "expected_ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "runtime_readiness_id": "active",
+      "capability_id": "global_order",
+      "source_match": {
+        "category_id": "supply_demand",
+        "industry_id": "shipping",
+        "acquisition_kind": "dynamic_market_cash",
+        "effect_kind": "global_order_budget",
+        "target_kind": "global_matching_goods",
+        "available_for_acquisition": true,
+        "resolution_policy": "reject_before_consume_if_unowned"
+      },
+      "rank_values": [
+        {
+          "rank": 1,
+          "card_id": "supply_demand.remote_sea_order.rank_1",
+          "purchase_cash": 5,
+          "asset_cost": {
+            "life": 0,
+            "energy": 0,
+            "industry": 0,
+            "technology": 0,
+            "commerce": 0,
+            "shipping": 2,
+            "generic": 0
+          },
+          "budget_units": 20
+        },
+        {
+          "rank": 2,
+          "card_id": "supply_demand.remote_sea_order.rank_2",
+          "purchase_cash": 8,
+          "asset_cost": {
+            "life": 0,
+            "energy": 0,
+            "industry": 0,
+            "technology": 0,
+            "commerce": 0,
+            "shipping": 3,
+            "generic": 0
+          },
+          "budget_units": 40
+        },
+        {
+          "rank": 3,
+          "card_id": "supply_demand.remote_sea_order.rank_3",
+          "purchase_cash": 12,
+          "asset_cost": {
+            "life": 0,
+            "energy": 0,
+            "industry": 0,
+            "technology": 0,
+            "commerce": 0,
+            "shipping": 5,
+            "generic": 0
+          },
+          "budget_units": 80
+        },
+        {
+          "rank": 4,
+          "card_id": "supply_demand.remote_sea_order.rank_4",
+          "purchase_cash": 17,
+          "asset_cost": {
+            "life": 0,
+            "energy": 0,
+            "industry": 0,
+            "technology": 0,
+            "commerce": 0,
+            "shipping": 8,
+            "generic": 0
+          },
+          "budget_units": 160
+        }
+      ],
+      "target_template": {
+        "target_id": "world.global",
+        "selection_id": "automatic",
+        "cardinality_id": "all_matching",
+        "filter_ids": [
+          "world.matching_goods"
+        ]
+      },
+      "effect_op_templates": [
+        {
+          "op_id": "modify_demand",
+          "source_bindings": {
+            "amount_units": "/effect_payload/budget_units",
+            "allocation_basis_id": "/effect_payload/allocation_basis",
+            "distance_rule_id": "/effect_payload/distance_rule",
+            "required_route_tag_id": "/effect_payload/required_route_tag",
+            "route_tag_match_mode_id": "/effect_payload/route_tag_match_mode",
+            "requires_positive_controller_matching_product_gdp": "/effect_payload/requires_positive_owner_matching_product_gdp",
+            "requires_real_market_or_factory_nodes": "/effect_payload/requires_real_market_or_factory_nodes",
+            "requires_real_market_node": "/effect_payload/requires_real_market_node",
+            "uses_real_route_capacity": "/effect_payload/uses_real_route_capacity",
+            "may_exceed_persistent_demand": "/effect_payload/may_exceed_persistent_demand"
+          }
+        }
+      ],
+      "required_source_invariants": [
+        {
+          "invariant_id": "global_order_route_tag_exact",
+          "pointer": "/effect_payload/required_route_tag",
+          "expected_value": "sea",
+          "on_failure_id": "reject_projection"
+        },
+        {
+          "invariant_id": "global_order_distance_exact",
+          "pointer": "/effect_payload/distance_rule",
+          "expected_value": "remote_gt_2",
+          "on_failure_id": "reject_projection"
+        },
+        {
+          "invariant_id": "global_order_real_market_required",
+          "pointer": "/effect_payload/requires_real_market_node",
+          "expected_value": true,
+          "on_failure_id": "reject_projection"
+        }
+      ]
+    },
+    {
+      "template_id": "global_near_land_supply_v1",
+      "family_id": "supply_demand.near_land_supply",
+      "expected_ranks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "runtime_readiness_id": "active",
+      "capability_id": "global_supply_spawn",
+      "source_match": {
+        "category_id": "supply_demand",
+        "industry_id": "industry",
+        "acquisition_kind": "dynamic_market_cash",
+        "effect_kind": "global_supply_spawn",
+        "target_kind": "global_matching_factories",
+        "available_for_acquisition": true,
+        "resolution_policy": "reject_before_consume_if_unowned"
+      },
+      "rank_values": [
+        {
+          "rank": 1,
+          "card_id": "supply_demand.near_land_supply.rank_1",
+          "purchase_cash": 5,
+          "asset_cost": {
+            "life": 0,
+            "energy": 0,
+            "industry": 2,
+            "technology": 0,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          },
+          "spawn_units": 20
+        },
+        {
+          "rank": 2,
+          "card_id": "supply_demand.near_land_supply.rank_2",
+          "purchase_cash": 8,
+          "asset_cost": {
+            "life": 0,
+            "energy": 0,
+            "industry": 3,
+            "technology": 0,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          },
+          "spawn_units": 40
+        },
+        {
+          "rank": 3,
+          "card_id": "supply_demand.near_land_supply.rank_3",
+          "purchase_cash": 12,
+          "asset_cost": {
+            "life": 0,
+            "energy": 0,
+            "industry": 5,
+            "technology": 0,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          },
+          "spawn_units": 80
+        },
+        {
+          "rank": 4,
+          "card_id": "supply_demand.near_land_supply.rank_4",
+          "purchase_cash": 17,
+          "asset_cost": {
+            "life": 0,
+            "energy": 0,
+            "industry": 8,
+            "technology": 0,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          },
+          "spawn_units": 160
+        }
+      ],
+      "target_template": {
+        "target_id": "world.global",
+        "selection_id": "automatic",
+        "cardinality_id": "all_matching",
+        "filter_ids": [
+          "world.matching_factories"
+        ]
+      },
+      "effect_op_templates": [
+        {
+          "op_id": "modify_supply",
+          "source_bindings": {
+            "amount_units": "/effect_payload/spawn_units",
+            "allocation_basis_id": "/effect_payload/allocation_basis",
+            "distance_rule_id": "/effect_payload/distance_rule",
+            "required_route_tag_id": "/effect_payload/required_route_tag",
+            "route_tag_match_mode_id": "/effect_payload/route_tag_match_mode",
+            "requires_positive_controller_matching_product_gdp": "/effect_payload/requires_positive_owner_matching_product_gdp",
+            "requires_real_market_or_factory_nodes": "/effect_payload/requires_real_market_or_factory_nodes",
+            "requires_real_production_factory": "/effect_payload/requires_legal_production_factory",
+            "uses_real_route_capacity": "/effect_payload/uses_real_route_capacity",
+            "creates_one_time_physical_goods": "/effect_payload/creates_one_time_physical_goods",
+            "is_permanent_installation": "/effect_payload/is_permanent_installation"
+          }
+        }
+      ],
+      "required_source_invariants": [
+        {
+          "invariant_id": "global_supply_route_tag_exact",
+          "pointer": "/effect_payload/required_route_tag",
+          "expected_value": "land",
+          "on_failure_id": "reject_projection"
+        },
+        {
+          "invariant_id": "global_supply_distance_exact",
+          "pointer": "/effect_payload/distance_rule",
+          "expected_value": "near_lte_2",
+          "on_failure_id": "reject_projection"
+        },
+        {
+          "invariant_id": "global_supply_real_factory_required",
+          "pointer": "/effect_payload/requires_legal_production_factory",
+          "expected_value": true,
+          "on_failure_id": "reject_projection"
+        },
+        {
+          "invariant_id": "global_supply_one_time_not_installation",
+          "left_pointer": "/effect_payload/creates_one_time_physical_goods",
+          "expected_value": true,
+          "right_pointer": "/effect_payload/is_permanent_installation",
+          "right_expected_value": false,
+          "on_failure_id": "reject_projection"
+        }
+      ]
+    }
+  ],
+  "capability_only_templates": [
+    {
+      "fixture_id": "capability.military_move",
+      "capability_id": "military_move",
+      "source_kind": "rule_capability_only",
+      "rule_reference": {
+        "path": "res://docs/tabletop_rulebook_v06.md",
+        "section_id": "9"
+      },
+      "expected_effect_op": {
+        "op_id": "military_move"
+      },
+      "executable_card_route_claimed": false
+    },
+    {
+      "fixture_id": "capability.military_guard",
+      "capability_id": "military_guard",
+      "source_kind": "rule_capability_only",
+      "rule_reference": {
+        "path": "res://docs/tabletop_rulebook_v06.md",
+        "section_id": "9"
+      },
+      "expected_effect_op": {
+        "op_id": "military_guard"
+      },
+      "executable_card_route_claimed": false
+    },
+    {
+      "fixture_id": "capability.military_strike",
+      "capability_id": "military_strike",
+      "source_kind": "rule_capability_only",
+      "rule_reference": {
+        "path": "res://docs/tabletop_rulebook_v06.md",
+        "section_id": "9"
+      },
+      "expected_effect_op": {
+        "op_id": "military_strike"
+      },
+      "executable_card_route_claimed": false
+    },
+    {
+      "fixture_id": "capability.upgrade_same_family_unit",
+      "capability_id": "upgrade_same_family_unit",
+      "source_kind": "rule_capability_only",
+      "rule_reference": {
+        "path": "res://docs/tabletop_rulebook_v06.md",
+        "section_id": "9"
+      },
+      "expected_effect_op": {
+        "op_id": "upgrade_same_family_unit",
+        "condition_id": "same_family_unit_lower_rank",
+        "unit_kind_id": "monster",
+        "unit_family_id": "spore_tide_emperor",
+        "card_rank": 4,
+        "target_controller_scope_id": "any",
+        "control_transfer_id": "preserve_existing_controller",
+        "rank_cap_policy_id": "target_controller_organization_cap",
+        "recipient_policy_id": "existing_unit_controller",
+        "stats_source_id": "unit_profile"
+      },
+      "executable_card_route_claimed": false
+    },
+    {
+      "fixture_id": "capability.extend_presence",
+      "capability_id": "extend_presence",
+      "source_kind": "rule_capability_only",
+      "rule_reference": {
+        "path": "res://docs/tabletop_rulebook_v06.md",
+        "section_id": "9"
+      },
+      "expected_effect_op": {
+        "op_id": "extend_presence",
+        "condition_id": "same_family_unit_present",
+        "duration_seconds": 60,
+        "presence_time_policy_id": "add_to_remaining_time",
+        "refresh_total_presence_time": false,
+        "rank4_repeat_policy_id": "heal_to_full_and_extend"
+      },
+      "executable_card_route_claimed": false
+    },
+    {
+      "fixture_id": "capability.heal_unit",
+      "capability_id": "heal_unit",
+      "source_kind": "rule_capability_only",
+      "rule_reference": {
+        "path": "res://docs/tabletop_rulebook_v06.md",
+        "section_id": "9"
+      },
+      "expected_effect_op": {
+        "op_id": "heal_unit",
+        "condition_id": "same_family_unit_present",
+        "heal_policy_id": "to_full"
+      },
+      "executable_card_route_claimed": false
+    }
+  ],
+  "fail_closed_guards": [
+    {
+      "guard_id": "unknown_behavior_rejected",
+      "policy_id": "reject_projection"
+    },
+    {
+      "guard_id": "missing_card_route_not_promoted",
+      "policy_id": "projection_only"
+    },
+    {
+      "guard_id": "military_region_damage_not_automatic",
+      "required_catalog_pointer": "/effect_payload/region_damage_requires_explicit_unit_action",
+      "required_value": true
+    },
+    {
+      "guard_id": "capability_rows_never_authorize_execution",
+      "required_value": true
+    }
+  ],
+  "privacy_guards": {
+    "information_policy_id": "authorized_source_only",
+    "forbidden_semantic_keys": [
+      "actor_id",
+      "owner",
+      "owner_id",
+      "true_owner",
+      "player_index",
+      "unit_uid",
+      "runtime_instance_id",
+      "target_owner_id",
+      "hidden_hand",
+      "private_route_plan",
+      "ai_value",
+      "score",
+      "weight",
+      "method",
+      "script_path",
+      "node",
+      "callable"
+    ],
+    "capability_only_rows_forbid_live_binding": true
+  }
+}
