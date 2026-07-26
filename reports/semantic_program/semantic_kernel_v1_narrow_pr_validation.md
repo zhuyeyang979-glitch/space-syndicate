@@ -34,9 +34,13 @@ The adversarial follow-up also establishes these gates:
 
 - unknown or retired ID arrays force `SemanticValidationReport.valid=false`
   even when the issue array is empty;
-- legality proof fingerprints are canonical and every request, ruleset,
-  semantic, actor, source, rules, world, registry, and RNG revision/fingerprint
-  is equality-bound to its `RuleExecutionPlan`;
+- `LegalityProofRef` and `RuleExecutionPlan` retain the exact frozen v1 closed
+  shapes from `semantic_kernel_v1_contract`; added revision or identity fields
+  fail closed;
+- legality source/world revisions equal the Plan revisions, while every
+  ConditionProofRef rules revision equals the legality rules revision and its
+  world revision equals both legality and Plan world revisions;
+- legality and condition proof fingerprints are canonical self-fingerprints;
 - operations use the exact randomness policy declared by their closed contract,
   deterministic operations use explicit `none`, random operations use non-none,
   and result visibility must match the randomness policy;
@@ -60,9 +64,9 @@ Results:
 
 - Import bootstrap: PASS, 26.891 seconds, zero script errors.
 - Original focused gate: `70/70 PASS`.
-- Adversarial focused gate: `116/116 PASS`, 0.564 seconds process time,
-  49.930 milliseconds in-suite.
-- `smoke_test.gd --check-only`: PASS, 5.222 seconds, zero script errors.
+- Frozen-v1 focused gate: `119/119 PASS`, 0.574 seconds process time,
+  49.003 milliseconds in-suite.
+- `smoke_test.gd --check-only`: PASS, 5.589 seconds, zero script errors.
 - Scoped Godot processes after each run: 0.
 
 Coverage includes schema/version/ASCII-ID rejection, canonical fingerprints,

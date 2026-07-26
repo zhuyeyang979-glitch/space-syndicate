@@ -258,21 +258,92 @@ func _test_operation_and_rule_plan(contracts: Dictionary) -> void:
 		contracts.get("visibility_policies", {})
 	)
 	_expect(not plan.is_empty(), "RuleExecutionPlan builds from revision-bound pure refs")
+	_expect(
+		WIRE.LEGALITY_PROOF_REF_FIELDS == [
+			"schema_version",
+			"status_id",
+			"rules_revision",
+			"world_revision",
+			"source_revision",
+			"proof_fingerprint",
+		],
+		"LegalityProofRef preserves the exact frozen v1 shape"
+	)
+	_expect(
+		RULE_PLAN.FIELDS == [
+			"schema_version",
+			"plan_id",
+			"request_id",
+			"ruleset_id",
+			"semantic_ref",
+			"actor_ref",
+			"source_instance_ref",
+			"source_revision",
+			"world_revision",
+			"legality_proof_ref",
+			"registry_fingerprint",
+			"resolved_target_bindings",
+			"condition_proof_refs",
+			"steps",
+			"transaction_policy_id",
+			"rng_precondition_revision",
+			"visibility_policy_id",
+			"plan_fingerprint",
+		],
+		"RuleExecutionPlan preserves the exact frozen v1 shape"
+	)
+	var frozen_contract: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(
+		"res://docs/architecture/semantic_kernel_v1_contract.json"
+	)) as Dictionary
+	var supporting_types := frozen_contract.get("supporting_types", {}) as Dictionary
+	var shared_types := frozen_contract.get("shared_types", {}) as Dictionary
+	_expect(
+		WIRE.LEGALITY_PROOF_REF_FIELDS
+			== ((supporting_types.get("LegalityProofRef", {}) as Dictionary).get(
+				"required_fields", []
+			) as Array),
+		"LegalityProofRef fields match the frozen contract JSON directly"
+	)
+	_expect(
+		RULE_PLAN.FIELDS
+			== ((shared_types.get("RuleExecutionPlan", {}) as Dictionary).get(
+				"required_fields", []
+			) as Array),
+		"RuleExecutionPlan fields match the frozen contract JSON directly"
+	)
 	plan_input["steps"][0]["parameters"]["count"] = 7
 	_expect(
 		int((plan.get("steps") as Array)[0]["parameters"]["count"]) == 1,
 		"RuleExecutionPlan is deeply detached"
 	)
-	for revision_field in [
-		"rules_revision",
-		"source_revision",
-		"world_revision",
-		"registry_revision",
-		"rng_precondition_revision",
-		"semantic_definition_revision",
-		"actor_revision",
-		"source_instance_revision",
-	]:
+	for extra_plan_field in ["rules_revision", "registry_revision"]:
+		var extra_plan := _rule_plan_input()
+		extra_plan[extra_plan_field] = 1
+		_expect(
+			RULE_PLAN.build(
+				extra_plan,
+				contracts.get("operation_contracts", {}),
+				contracts.get("parameter_schemas", {}),
+				contracts.get("randomness_policies", {}),
+				contracts.get("visibility_policies", {})
+			).is_empty(),
+			"RuleExecutionPlan rejects extra v1 field %s" % extra_plan_field
+		)
+	for extra_proof_field in ["request_id", "registry_revision", "semantic_fingerprint"]:
+		var extra_proof := _rule_plan_input()
+		extra_proof["legality_proof_ref"][extra_proof_field] = "extra.value"
+		_reseal_legality_proof(extra_proof["legality_proof_ref"])
+		_expect(
+			RULE_PLAN.build(
+				extra_proof,
+				contracts.get("operation_contracts", {}),
+				contracts.get("parameter_schemas", {}),
+				contracts.get("randomness_policies", {}),
+				contracts.get("visibility_policies", {})
+			).is_empty(),
+			"LegalityProofRef rejects extra v1 field %s" % extra_proof_field
+		)
+	for revision_field in ["source_revision", "world_revision"]:
 		var stale_plan := _rule_plan_input()
 		stale_plan["legality_proof_ref"][revision_field] = int(
 			stale_plan["legality_proof_ref"][revision_field]
@@ -286,26 +357,37 @@ func _test_operation_and_rule_plan(contracts: Dictionary) -> void:
 				contracts.get("randomness_policies", {}),
 				contracts.get("visibility_policies", {})
 			).is_empty(),
-			"legality proof %s must exactly match the plan" % revision_field
+			"stale legality %s fails closed" % revision_field
 		)
-	for binding_field in ["request_id", "ruleset_id", "semantic_fingerprint", "registry_fingerprint"]:
-		var stale_binding := _rule_plan_input()
-		stale_binding["legality_proof_ref"][binding_field] = (
-			"request.other" if binding_field == "request_id"
-			else "ruleset.other" if binding_field == "ruleset_id"
-			else "9".repeat(64)
-		)
-		_reseal_legality_proof(stale_binding["legality_proof_ref"])
+	for revision_field in ["rules_revision", "world_revision"]:
+		var stale_condition := _rule_plan_input()
+		stale_condition["condition_proof_refs"][0][revision_field] = int(
+			stale_condition["condition_proof_refs"][0][revision_field]
+		) + 1
+		_reseal_condition_proof(stale_condition["condition_proof_refs"][0])
 		_expect(
 			RULE_PLAN.build(
-				stale_binding,
+				stale_condition,
 				contracts.get("operation_contracts", {}),
 				contracts.get("parameter_schemas", {}),
 				contracts.get("randomness_policies", {}),
 				contracts.get("visibility_policies", {})
 			).is_empty(),
-			"legality proof %s must exactly match the plan" % binding_field
+			"stale condition %s fails closed" % revision_field
 		)
+	var illegal_status := _rule_plan_input()
+	illegal_status["legality_proof_ref"]["status_id"] = "rejected"
+	_reseal_legality_proof(illegal_status["legality_proof_ref"])
+	_expect(
+		RULE_PLAN.build(
+			illegal_status,
+			contracts.get("operation_contracts", {}),
+			contracts.get("parameter_schemas", {}),
+			contracts.get("randomness_policies", {}),
+			contracts.get("visibility_policies", {})
+		).is_empty(),
+		"non-legal LegalityProofRef status fails closed"
+	)
 	var hash_only_proof := _rule_plan_input()
 	hash_only_proof["legality_proof_ref"]["proof_fingerprint"] = "8".repeat(64)
 	_expect(
@@ -317,6 +399,18 @@ func _test_operation_and_rule_plan(contracts: Dictionary) -> void:
 			contracts.get("visibility_policies", {})
 		).is_empty(),
 		"arbitrary hash-shaped legality evidence fails closed"
+	)
+	var hash_only_condition := _rule_plan_input()
+	hash_only_condition["condition_proof_refs"][0]["proof_fingerprint"] = "7".repeat(64)
+	_expect(
+		RULE_PLAN.build(
+			hash_only_condition,
+			contracts.get("operation_contracts", {}),
+			contracts.get("parameter_schemas", {}),
+			contracts.get("randomness_policies", {}),
+			contracts.get("visibility_policies", {})
+		).is_empty(),
+		"arbitrary hash-shaped condition evidence fails closed"
 	)
 	var unknown_step := _rule_plan_input()
 	unknown_step["steps"][0]["operation_id"] = "operation.unknown"
@@ -823,7 +917,6 @@ func _rule_plan_input() -> Dictionary:
 		"plan_id": "plan.example",
 		"request_id": "request.example",
 		"ruleset_id": "ruleset.v06",
-		"rules_revision": 4,
 		"semantic_ref": _semantic_ref(),
 		"actor_ref": _entity_ref("player", "player.one", 3),
 		"source_instance_ref": _entity_ref("card_instance", "card.instance.one", 2),
@@ -831,7 +924,6 @@ func _rule_plan_input() -> Dictionary:
 		"world_revision": 7,
 		"legality_proof_ref": _legality_proof_ref(),
 		"registry_fingerprint": "d".repeat(64),
-		"registry_revision": 6,
 		"resolved_target_bindings": [{
 			"schema_version": 1,
 			"target_binding_id": "target.player",
@@ -840,14 +932,7 @@ func _rule_plan_input() -> Dictionary:
 			"entity_refs": [_entity_ref("player", "player.two", 3)],
 			"revalidation_policy_id": "revalidate.before_apply",
 		}],
-		"condition_proof_refs": [{
-			"schema_version": 1,
-			"condition_binding_id": "condition.target_hand",
-			"condition_id": "condition.target_has_hand",
-			"rules_revision": 4,
-			"world_revision": 7,
-			"proof_fingerprint": "e".repeat(64),
-		}],
+		"condition_proof_refs": [_condition_proof_ref()],
 		"steps": [{
 			"schema_version": 1,
 			"operation_instance_id": "operation.instance.one",
@@ -873,18 +958,9 @@ func _legality_proof_ref() -> Dictionary:
 	var proof := {
 		"schema_version": 1,
 		"status_id": "legal",
-		"request_id": "request.example",
-		"ruleset_id": "ruleset.v06",
 		"rules_revision": 4,
 		"world_revision": 7,
 		"source_revision": 2,
-		"registry_revision": 6,
-		"rng_precondition_revision": 11,
-		"semantic_definition_revision": 1,
-		"actor_revision": 3,
-		"source_instance_revision": 2,
-		"semantic_fingerprint": "b".repeat(64),
-		"registry_fingerprint": "d".repeat(64),
 		"proof_fingerprint": "",
 	}
 	_reseal_legality_proof(proof)
@@ -892,6 +968,23 @@ func _legality_proof_ref() -> Dictionary:
 
 
 func _reseal_legality_proof(proof: Dictionary) -> void:
+	proof["proof_fingerprint"] = WIRE.fingerprint(proof, "proof_fingerprint")
+
+
+func _condition_proof_ref() -> Dictionary:
+	var proof := {
+		"schema_version": 1,
+		"condition_binding_id": "condition.target_hand",
+		"condition_id": "condition.target_has_hand",
+		"rules_revision": 4,
+		"world_revision": 7,
+		"proof_fingerprint": "",
+	}
+	_reseal_condition_proof(proof)
+	return proof
+
+
+func _reseal_condition_proof(proof: Dictionary) -> void:
 	proof["proof_fingerprint"] = WIRE.fingerprint(proof, "proof_fingerprint")
 
 

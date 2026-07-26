@@ -10,7 +10,6 @@ const BUILD_FIELDS := [
 	"plan_id",
 	"request_id",
 	"ruleset_id",
-	"rules_revision",
 	"semantic_ref",
 	"actor_ref",
 	"source_instance_ref",
@@ -18,7 +17,6 @@ const BUILD_FIELDS := [
 	"world_revision",
 	"legality_proof_ref",
 	"registry_fingerprint",
-	"registry_revision",
 	"resolved_target_bindings",
 	"condition_proof_refs",
 	"steps",
@@ -103,13 +101,7 @@ static func validate(
 		nested_error = WIRE.legality_proof_ref_error(plan.get("legality_proof_ref"))
 	if not nested_error.is_empty():
 		return WIRE.invalid_result("rule_execution_plan.%s" % nested_error)
-	for field in [
-		"rules_revision",
-		"source_revision",
-		"world_revision",
-		"registry_revision",
-		"rng_precondition_revision",
-	]:
+	for field in ["source_revision", "world_revision", "rng_precondition_revision"]:
 		if not WIRE.is_nonnegative_integer(plan.get(field)):
 			return WIRE.invalid_result("rule_execution_plan.%s_invalid" % field)
 	if not WIRE.is_fingerprint(plan.get("registry_fingerprint")):
@@ -143,6 +135,9 @@ static func validate(
 		if proof_binding_ids.has(proof_id):
 			return WIRE.invalid_result("rule_execution_plan.condition_proof_duplicate")
 		proof_binding_ids.append(proof_id)
+	var condition_binding_error := _condition_proof_binding_error(plan, proof_values as Array)
+	if not condition_binding_error.is_empty():
+		return WIRE.invalid_result("rule_execution_plan.%s" % condition_binding_error)
 
 	var steps_value: Variant = plan.get("steps")
 	if not (steps_value is Array) or (steps_value as Array).is_empty():
@@ -173,27 +168,22 @@ static func validate(
 
 static func _legality_binding_error(plan: Dictionary) -> String:
 	var proof := plan.get("legality_proof_ref", {}) as Dictionary
-	var semantic_ref := plan.get("semantic_ref", {}) as Dictionary
-	var actor_ref := plan.get("actor_ref", {}) as Dictionary
-	var source_instance_ref := plan.get("source_instance_ref", {}) as Dictionary
-	for pair in [
-		["request_id", plan.get("request_id")],
-		["ruleset_id", plan.get("ruleset_id")],
-		["rules_revision", plan.get("rules_revision")],
-		["source_revision", plan.get("source_revision")],
-		["world_revision", plan.get("world_revision")],
-		["registry_revision", plan.get("registry_revision")],
-		["rng_precondition_revision", plan.get("rng_precondition_revision")],
-		["semantic_definition_revision", semantic_ref.get("definition_revision")],
-		["actor_revision", actor_ref.get("revision")],
-		["source_instance_revision", source_instance_ref.get("revision")],
-		["semantic_fingerprint", semantic_ref.get("semantic_fingerprint")],
-		["registry_fingerprint", plan.get("registry_fingerprint")],
-	]:
-		if proof.get(pair[0]) != pair[1]:
-			return "legality_proof_%s_mismatch" % pair[0]
-	if plan.get("source_revision") != source_instance_ref.get("revision"):
-		return "source_instance_revision_mismatch"
+	if proof.get("source_revision") != plan.get("source_revision"):
+		return "legality_proof_source_revision_mismatch"
+	if proof.get("world_revision") != plan.get("world_revision"):
+		return "legality_proof_world_revision_mismatch"
+	return ""
+
+
+static func _condition_proof_binding_error(plan: Dictionary, proofs: Array) -> String:
+	var legality_proof := plan.get("legality_proof_ref", {}) as Dictionary
+	for proof_variant in proofs:
+		var proof := proof_variant as Dictionary
+		if proof.get("rules_revision") != legality_proof.get("rules_revision"):
+			return "condition_proof_rules_revision_mismatch"
+		if proof.get("world_revision") != legality_proof.get("world_revision") \
+				or proof.get("world_revision") != plan.get("world_revision"):
+			return "condition_proof_world_revision_mismatch"
 	return ""
 
 
