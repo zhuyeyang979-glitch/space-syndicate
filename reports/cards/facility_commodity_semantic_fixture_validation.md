@@ -4,10 +4,12 @@ Status: `MERGE_READY_FOR_INTEGRATION`
 
 ## Scope
 
-- Integration base: `8c730e0edd54f79cc5c2aee39537b291b72c2108`
+- Integration base: `1552c39dc405dd336fa5a00848b3d3425a0ee9a4`
 - Branch: `codex/card-semantic-facility-fixture-repair-8c730e0`
 - Schema authority: `CardSemanticSchemaV1`
 - Compiler authority: `CardSemanticCompilerV1`
+- Reviewed monster-readiness correction: `3d5366263619006c3071fc963b4077a4ca1c8214`
+- Integrated equivalent: `5a4fadb5e76ee6c1e5be50a2529ea64dfea63537`
 - Catalog authority: v0.6 `machine` blocks only
 - Production code changed: none
 - Catalog records changed: none
@@ -71,6 +73,11 @@ while omitting only its own `semantic_fingerprint` field.
 All twelve records are `active`. This claim is limited to the existing v0.6
 core-economic facility/commodity route and does not generalize to unwired
 military, interaction, or organization routes.
+
+The monster-readiness correction changes neither these twelve semantic specs
+nor any individual source/semantic fingerprint. The reviewed and integrated
+correction commits have the same stable patch ID
+`d7757a0a1cd4683cbf4670ccffd48a30e358b841`.
 
 ## Rule and Balance Parity
 
@@ -149,15 +156,15 @@ pwsh -File tools/invoke_godot_test.ps1 `
   -ExpectedCompletionMarker CARD_SEMANTIC_SCHEMA_COMPILER_TEST
 ```
 
-Run `20260726-153013-153-card_semantic_schema_compiler_test-c786f159`:
+Run `20260726-153540-783-card_semantic_schema_compiler_test-b65c26e2`:
 
 - status: `PASS`
-- checks: `5289/5289`
+- checks: `5290/5290`
 - failures: `0`
 - script errors: `0`
-- wrapper duration: `2.288 s`
-- test duration: `1662.392 ms`
-- first catalog compile: `298.787 ms`
+- wrapper duration: `2.023 s`
+- test duration: `1419.280 ms`
+- first catalog compile: `313.646 ms`
 
 ### Funplay Godot MCP Bench
 
@@ -168,20 +175,15 @@ Run `20260726-153013-153-card_semantic_schema_compiler_test-c786f159`:
 - Child service scene: `res://scenes/runtime/CardSemanticCatalogService.tscn`
 - Bench: `PASS`, `38/38`, failures `0`
 - Catalog: `348/348` compiled
-- Readiness: `288 active / 60 projection_only / 0 not_acquirable`
+- Readiness: `256 active / 92 projection_only / 0 not_acquirable`
 - Operations: `606`
-- Compile duration: `397.814 ms`
+- Compile duration: `293.822 ms`
 - Cache entries/compiles/authorized hits: `348/348/3`
 - Compiler/service errors: `0/0`
 - MCP script diagnostics: `0`
 - Runtime error log lines: `0`
 - Stop result: `Stopped the running scene.`
 - Final play state: `is_playing_scene=false`
-
-One inspection-only MCP call initially used a relative runtime node path and
-returned `Runtime node not found`; the absolute `/root/...` query succeeded.
-This was a tool-query path error, not a script, scene, compiler, or runtime
-failure.
 
 ## File Hashes
 
@@ -194,7 +196,7 @@ failure.
 - Compiler source catalog fingerprint:
   `ae2f6e17181fd31114e18d3ee0695ba5a31db99b0f09bdd4963aa556acaa4792`
 - Compiler semantic catalog fingerprint:
-  `5d0f57e3079dab72ec3d5c95ac4825dc23ce5762194d6d2ac93e70153e07b189`
+  `1db2ac3fefdeebcdf2a28525be089cdc2fef383aeebf46f9962a23b8c49d1288`
 
 ## Residual Risks and Mergeability
 
