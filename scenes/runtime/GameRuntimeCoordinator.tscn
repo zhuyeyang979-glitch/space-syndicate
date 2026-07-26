@@ -1,4 +1,4 @@
-[gd_scene load_steps=129 format=3]
+[gd_scene load_steps=130 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -126,6 +126,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiActorEconomyFactsQueryPort.tscn" id="133_ai_actor_economy"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiActorHandInventoryQueryPort.tscn" id="134_ai_actor_hand_inventory"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardSemanticCatalogService.tscn" id="135_card_semantic_catalog"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardSemanticSourceAuthorizationPort.tscn" id="138_card_semantic_source_authorization"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiCardSemanticProjectionService.tscn" id="136_ai_card_semantic_projection"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayerFaceProjectionService.tscn" id="137_card_player_face_projection"]
 
@@ -520,6 +521,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="CardSemanticCatalogService" parent="." instance=ExtResource("135_card_semantic_catalog")]
+unique_name_in_owner = true
+
+[node name="CardSemanticSourceAuthorizationPort" parent="." instance=ExtResource("138_card_semantic_source_authorization")]
 unique_name_in_owner = true
 
 [node name="AiCardSemanticProjectionService" parent="." instance=ExtResource("136_ai_card_semantic_projection")]
