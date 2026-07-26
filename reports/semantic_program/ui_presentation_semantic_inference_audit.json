@@ -1,0 +1,1548 @@
+{
+  "schema_version": 1,
+  "audit_id": "ui_presentation_semantic_inference_audit.v1",
+  "status": "complete_analysis_only",
+  "baseline": {
+    "origin_main": "59756a291f811a064726f59aed27efecc3590c9a",
+    "audited_integration_sha": "bd24b463660e55d83fc63deaab650c64c134be20",
+    "branch": "codex/semantic-program-wave1-ui-presentation-bd24b46"
+  },
+  "scope": {
+    "direct_production_files": 227,
+    "direct_file_groups": {
+      "scripts_ui": 108,
+      "scripts_presentation": 48,
+      "scripts_viewmodels": 28,
+      "top_level_ui_art_adapters": 6,
+      "runtime_presentation_boundaries": 37
+    },
+    "upstream_authority_boundary_files": 20,
+    "unique_production_files_audited": 247,
+    "upstream_files": [
+      "scripts/runtime/card_player_face_projection_service.gd",
+      "scripts/cards/semantic/card_semantic_schema_v1.gd",
+      "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd",
+      "scripts/balance/runtime_balance_model.gd",
+      "scripts/runtime/role_catalog_runtime_service.gd",
+      "scripts/runtime/monster_catalog_v06.gd",
+      "scripts/runtime/monster_runtime_controller.gd",
+      "scripts/runtime/product_market_runtime_controller.gd",
+      "scripts/runtime/military_runtime_controller.gd",
+      "scripts/runtime/weather_runtime_controller.gd",
+      "scripts/runtime/weather_definition_catalog.gd",
+      "scripts/runtime/victory_control_runtime_controller.gd",
+      "scripts/runtime/final_settlement_runtime_composition.gd",
+      "scripts/runtime/commodity_sushi_track_runtime_service.gd",
+      "scripts/runtime/card_runtime_catalog_service.gd",
+      "scripts/cards/card_runtime_catalog_v06_resource.gd",
+      "scripts/runtime/card_semantic_catalog_service.gd",
+      "scripts/runtime/card_resolution_history_runtime_service.gd",
+      "scripts/runtime/district_purchase_runtime_controller.gd",
+      "scripts/runtime/card_inventory_runtime_service.gd"
+    ]
+  },
+  "scan_evidence": {
+    "core_alias_chain_lines": 22,
+    "raw_skill_read_lines_in_direct_scope": 8,
+    "raw_skill_read_file_count": 4,
+    "card_effect_payload_presentation_read_lines": 1,
+    "player_face_dto_production_consumer_count": 0,
+    "localized_color_or_icon_to_rule_execution_count": 0,
+    "localized_text_to_ui_or_navigation_route_groups": 3,
+    "raw_skill_locations": [
+      "scripts/presentation/card_history_public_query_port.gd:78",
+      "scripts/presentation/table_presentation_viewmodel_query.gd:281",
+      "scripts/presentation/table_presentation_viewmodel_query.gd:282",
+      "scripts/runtime/card_presentation_runtime_service.gd:29",
+      "scripts/runtime/card_presentation_runtime_service.gd:209",
+      "scripts/runtime/card_presentation_runtime_service.gd:259",
+      "scripts/runtime/game_table_viewmodel_runtime_service.gd:242",
+      "scripts/runtime/game_table_viewmodel_runtime_service.gd:256"
+    ],
+    "card_effect_payload_location": "scripts/runtime/product_codex_public_source_service.gd:297",
+    "player_face_consumer_search": "production rg finds only PlayerFaceDTOv1 and CardPlayerFaceProjectionService definitions"
+  },
+  "summary": {
+    "finding_count": 52,
+    "disposition_counts": {
+      "REMOVE": 9,
+      "MOVE": 30,
+      "KEEP": 13
+    }
+  },
+  "findings": [
+    {
+      "id": "UISEM-001",
+      "disposition": "REMOVE",
+      "severity": "blocker",
+      "domain": "card",
+      "category": "alias_chain",
+      "summary": "Core card adapters accept the 22-line cost/effect/type/rank alias chain.",
+      "locations": [
+        "scripts/CardUI.gd:67",
+        "scripts/CardUI.gd:69",
+        "scripts/CardUI.gd:70",
+        "scripts/CardUI.gd:71",
+        "scripts/GameScreen.gd:181",
+        "scripts/GameScreen.gd:182",
+        "scripts/viewmodels/card_view_snapshot.gd:19",
+        "scripts/viewmodels/card_view_snapshot.gd:20",
+        "scripts/viewmodels/card_view_snapshot.gd:21",
+        "scripts/viewmodels/card_view_snapshot.gd:23",
+        "scripts/ui/card_face.gd:17",
+        "scripts/ui/game_screen.gd:1439",
+        "scripts/ui/game_screen.gd:1440",
+        "scripts/ui/game_screen.gd:1676",
+        "scripts/ui/game_screen.gd:1677",
+        "scripts/ui/hand_rack.gd:137",
+        "scripts/ui/hand_rack.gd:138",
+        "scripts/ui/hand_rack.gd:139",
+        "scripts/ui/right_inspector.gd:197",
+        "scripts/ui/right_inspector.gd:266",
+        "scripts/ui/right_inspector.gd:267",
+        "scripts/ui/right_inspector.gd:307"
+      ],
+      "target_boundary": "PlayerCardFaceDTO exact fields",
+      "risk": "Acquisition, activation, text, taxonomy, and rank meanings remain ambiguous."
+    },
+    {
+      "id": "UISEM-002",
+      "disposition": "REMOVE",
+      "severity": "major",
+      "domain": "card",
+      "category": "alias_chain",
+      "summary": "Card Codex detail normalizes a second alias family into the legacy face shape.",
+      "locations": [
+        "scripts/viewmodels/card_codex_detail_snapshot.gd:37",
+        "scripts/viewmodels/card_codex_detail_snapshot.gd:38",
+        "scripts/viewmodels/card_codex_detail_snapshot.gd:39",
+        "scripts/viewmodels/card_codex_detail_snapshot.gd:40",
+        "scripts/viewmodels/card_codex_detail_snapshot.gd:41",
+        "scripts/viewmodels/card_codex_detail_snapshot.gd:44",
+        "scripts/viewmodels/card_codex_detail_snapshot.gd:60"
+      ],
+      "target_boundary": "PlayerCardFaceDTO codex surface",
+      "risk": "Malformed producers remain visually valid and deprecation cannot close."
+    },
+    {
+      "id": "UISEM-003",
+      "disposition": "REMOVE",
+      "severity": "major",
+      "domain": "card",
+      "category": "identity_inference",
+      "summary": "Hand identity falls back to localized name, cost, type, rank, and array index.",
+      "locations": [
+        "scripts/ui/hand_rack.gd:130",
+        "scripts/ui/hand_rack.gd:131",
+        "scripts/ui/hand_rack.gd:135",
+        "scripts/ui/hand_rack.gd:136",
+        "scripts/ui/hand_rack.gd:137",
+        "scripts/ui/hand_rack.gd:138",
+        "scripts/ui/hand_rack.gd:139",
+        "scripts/ui/hand_rack.gd:142"
+      ],
+      "target_boundary": "opaque card instance_id",
+      "risk": "Localized or dynamic visible fields become identity and can collide."
+    },
+    {
+      "id": "UISEM-004",
+      "disposition": "MOVE",
+      "severity": "blocker",
+      "domain": "card",
+      "category": "catalog_duality",
+      "summary": "Table presentation merges legacy catalog, raw private cards, and a facility-only v0.6 adapter.",
+      "locations": [
+        "scripts/presentation/table_presentation_viewmodel_query.gd:224",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:281",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:282",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:299",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:306",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:308",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:310",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:311",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:632",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:633",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:635",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:641",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:643",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:646",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:664",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:667",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:673",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:674",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:678"
+      ],
+      "target_boundary": "CardSemanticCatalogService -> PlayerCardFaceDTO",
+      "risk": "The same card identity can display different semantics by surface."
+    },
+    {
+      "id": "UISEM-005",
+      "disposition": "MOVE",
+      "severity": "blocker",
+      "domain": "card",
+      "category": "raw_semantic_interpretation",
+      "summary": "Card presentation enriches raw skills and derives route, type, color, use case, facts, duration, and copy.",
+      "locations": [
+        "scripts/runtime/card_presentation_runtime_service.gd:29",
+        "scripts/runtime/card_presentation_runtime_service.gd:31",
+        "scripts/runtime/card_presentation_runtime_service.gd:33",
+        "scripts/runtime/card_presentation_runtime_service.gd:35",
+        "scripts/runtime/card_presentation_runtime_service.gd:36",
+        "scripts/runtime/card_presentation_runtime_service.gd:40",
+        "scripts/runtime/card_presentation_runtime_service.gd:41",
+        "scripts/runtime/card_presentation_runtime_service.gd:426",
+        "scripts/runtime/card_presentation_runtime_service.gd:451",
+        "scripts/runtime/card_presentation_runtime_service.gd:478",
+        "scripts/runtime/card_presentation_runtime_service.gd:551",
+        "scripts/runtime/card_presentation_runtime_service.gd:577",
+        "scripts/runtime/card_presentation_runtime_service.gd:606",
+        "scripts/runtime/card_presentation_runtime_service.gd:897"
+      ],
+      "target_boundary": "CardSemanticSpec -> PlayerCardFaceDTO",
+      "risk": "Presentation is a second rules oracle and can drift from handlers."
+    },
+    {
+      "id": "UISEM-006",
+      "disposition": "MOVE",
+      "severity": "major",
+      "domain": "card",
+      "category": "resolution_projection_dispatch",
+      "summary": "Resolution presentation dispatches animation, clue, radius, and style by raw kind.",
+      "locations": [
+        "scripts/runtime/card_presentation_runtime_service.gd:256",
+        "scripts/runtime/card_presentation_runtime_service.gd:267",
+        "scripts/runtime/card_presentation_runtime_service.gd:272",
+        "scripts/runtime/card_presentation_runtime_service.gd:739",
+        "scripts/runtime/card_presentation_runtime_service.gd:742",
+        "scripts/runtime/card_presentation_runtime_service.gd:743",
+        "scripts/runtime/card_presentation_runtime_service.gd:838",
+        "scripts/runtime/card_presentation_runtime_service.gd:840",
+        "scripts/runtime/card_presentation_runtime_service.gd:858",
+        "scripts/runtime/card_presentation_runtime_service.gd:861",
+        "scripts/runtime/card_presentation_runtime_service.gd:871",
+        "scripts/runtime/card_presentation_runtime_service.gd:872"
+      ],
+      "target_boundary": "CardResolutionPublicPresentationDTO",
+      "risk": "Adding an operation requires another presentation switch and privacy prose can diverge."
+    },
+    {
+      "id": "UISEM-007",
+      "disposition": "MOVE",
+      "severity": "blocker",
+      "domain": "card",
+      "category": "renderer_rule_inference",
+      "summary": "CardUI synthesizes semantic chips and use cases from aliases and localized substrings.",
+      "locations": [
+        "scripts/CardUI.gd:546",
+        "scripts/CardUI.gd:548",
+        "scripts/CardUI.gd:549",
+        "scripts/CardUI.gd:560",
+        "scripts/CardUI.gd:563",
+        "scripts/CardUI.gd:566",
+        "scripts/CardUI.gd:572",
+        "scripts/CardUI.gd:575",
+        "scripts/CardUI.gd:612",
+        "scripts/CardUI.gd:613",
+        "scripts/CardUI.gd:615",
+        "scripts/CardUI.gd:617",
+        "scripts/CardUI.gd:691",
+        "scripts/CardUI.gd:694",
+        "scripts/CardUI.gd:696",
+        "scripts/CardUI.gd:724",
+        "scripts/CardUI.gd:729",
+        "scripts/CardUI.gd:730"
+      ],
+      "target_boundary": "PlayerCardFaceDTO keywords, targets, duration, and decision_hint_ref",
+      "risk": "Missing semantics are guessed as free, one-shot, target type, or use case."
+    },
+    {
+      "id": "UISEM-008",
+      "disposition": "MOVE",
+      "severity": "blocker",
+      "domain": "card",
+      "category": "renderer_rule_inference",
+      "summary": "Right Inspector reinterprets timing, target, effects, visibility, keywords, and use case.",
+      "locations": [
+        "scripts/ui/right_inspector.gd:193",
+        "scripts/ui/right_inspector.gd:196",
+        "scripts/ui/right_inspector.gd:197",
+        "scripts/ui/right_inspector.gd:198",
+        "scripts/ui/right_inspector.gd:199",
+        "scripts/ui/right_inspector.gd:222",
+        "scripts/ui/right_inspector.gd:230",
+        "scripts/ui/right_inspector.gd:253",
+        "scripts/ui/right_inspector.gd:261",
+        "scripts/ui/right_inspector.gd:266",
+        "scripts/ui/right_inspector.gd:267",
+        "scripts/ui/right_inspector.gd:268",
+        "scripts/ui/right_inspector.gd:274",
+        "scripts/ui/right_inspector.gd:276",
+        "scripts/ui/right_inspector.gd:287",
+        "scripts/ui/right_inspector.gd:291",
+        "scripts/ui/right_inspector.gd:297",
+        "scripts/ui/right_inspector.gd:307",
+        "scripts/ui/right_inspector.gd:313",
+        "scripts/ui/right_inspector.gd:315",
+        "scripts/ui/right_inspector.gd:316"
+      ],
+      "target_boundary": "PlayerCardFaceDTO detail surface",
+      "risk": "Localized effect prose decides strategy guidance and display semantics."
+    },
+    {
+      "id": "UISEM-009",
+      "disposition": "REMOVE",
+      "severity": "major",
+      "domain": "card",
+      "category": "localized_identity_parser",
+      "summary": "Card Codex resolves identity and rank from localized names and name suffixes.",
+      "locations": [
+        "scripts/runtime/card_codex_public_source_service.gd:105",
+        "scripts/runtime/card_codex_public_source_service.gd:115",
+        "scripts/runtime/card_codex_public_source_service.gd:117",
+        "scripts/runtime/card_codex_public_source_service.gd:130",
+        "scripts/runtime/card_codex_public_source_service.gd:133"
+      ],
+      "target_boundary": "stable card_id only",
+      "risk": "Localization and rank suffixes become catalog identity."
+    },
+    {
+      "id": "UISEM-010",
+      "disposition": "MOVE",
+      "severity": "major",
+      "domain": "card",
+      "category": "player_prose_projection",
+      "summary": "Card Codex projects player prose and raw machine target fields rather than CardSemanticSpec.",
+      "locations": [
+        "scripts/runtime/card_codex_public_source_service.gd:195",
+        "scripts/runtime/card_codex_public_source_service.gd:211",
+        "scripts/runtime/card_codex_public_source_service.gd:212",
+        "scripts/runtime/card_codex_public_source_service.gd:218",
+        "scripts/runtime/card_codex_public_source_service.gd:221",
+        "scripts/runtime/card_codex_public_source_service.gd:227",
+        "scripts/runtime/card_codex_public_source_service.gd:228",
+        "scripts/runtime/card_codex_public_source_service.gd:234",
+        "scripts/runtime/card_codex_public_source_service.gd:236",
+        "scripts/runtime/card_codex_public_source_service.gd:237",
+        "scripts/runtime/card_codex_public_source_service.gd:243",
+        "scripts/runtime/card_codex_public_source_service.gd:244",
+        "scripts/runtime/card_codex_public_source_service.gd:246",
+        "scripts/runtime/card_codex_public_source_service.gd:249",
+        "scripts/runtime/card_codex_public_source_service.gd:250",
+        "scripts/runtime/card_codex_public_source_service.gd:251",
+        "scripts/runtime/card_codex_public_source_service.gd:252",
+        "scripts/runtime/card_codex_public_source_service.gd:257",
+        "scripts/runtime/card_codex_public_source_service.gd:258"
+      ],
+      "target_boundary": "PlayerCardFaceDTO codex surface",
+      "risk": "Public copy can disagree with executable effect steps and target policy."
+    },
+    {
+      "id": "UISEM-011",
+      "disposition": "MOVE",
+      "severity": "major",
+      "domain": "card",
+      "category": "tactical_projection_inference",
+      "summary": "Card Codex snapshot derives tactical timing, combos, and privacy hints from route labels and kind.",
+      "locations": [
+        "scripts/runtime/card_codex_public_snapshot_service.gd:220",
+        "scripts/runtime/card_codex_public_snapshot_service.gd:221",
+        "scripts/runtime/card_codex_public_snapshot_service.gd:232",
+        "scripts/runtime/card_codex_public_snapshot_service.gd:233",
+        "scripts/runtime/card_codex_public_snapshot_service.gd:234",
+        "scripts/runtime/card_codex_public_snapshot_service.gd:235",
+        "scripts/runtime/card_codex_public_snapshot_service.gd:236",
+        "scripts/runtime/card_codex_public_snapshot_service.gd:237",
+        "scripts/runtime/card_codex_public_snapshot_service.gd:241",
+        "scripts/runtime/card_codex_public_snapshot_service.gd:242",
+        "scripts/runtime/card_codex_public_snapshot_service.gd:243",
+        "scripts/runtime/card_codex_public_snapshot_service.gd:245"
+      ],
+      "target_boundary": "CardSemanticSpec diagnostic/player guidance projection",
+      "risk": "Codex becomes an independent strategy and privacy oracle."
+    },
+    {
+      "id": "UISEM-012",
+      "disposition": "KEEP",
+      "severity": "no_finding",
+      "domain": "card",
+      "category": "strict_dto_target",
+      "summary": "PlayerFaceDTOv1 is strict, versioned, pure-data, fingerprinted, and separates acquisition and activation cost.",
+      "locations": [
+        "scripts/presentation/player_face_dto_v1.gd:161",
+        "scripts/presentation/player_face_dto_v1.gd:172",
+        "scripts/presentation/player_face_dto_v1.gd:194",
+        "scripts/presentation/player_face_dto_v1.gd:197",
+        "scripts/presentation/player_face_dto_v1.gd:203",
+        "scripts/presentation/player_face_dto_v1.gd:209",
+        "scripts/presentation/player_face_dto_v1.gd:218",
+        "scripts/presentation/player_face_dto_v1.gd:225"
+      ],
+      "target_boundary": "retain and evolve as PlayerCardFaceDTO",
+      "risk": "None in the DTO itself; production composition is separate."
+    },
+    {
+      "id": "UISEM-013",
+      "disposition": "MOVE",
+      "severity": "blocker",
+      "domain": "card",
+      "category": "unwired_migration_bridge",
+      "summary": "The strict player-face projector is an unwired migration bridge with zero production consumers.",
+      "locations": [
+        "scripts/runtime/card_player_face_projection_service.gd:91",
+        "scripts/runtime/card_player_face_projection_service.gd:98",
+        "scripts/runtime/card_player_face_projection_service.gd:104",
+        "scripts/runtime/card_player_face_projection_service.gd:270",
+        "scripts/runtime/card_player_face_projection_service.gd:287",
+        "scripts/runtime/card_player_face_projection_service.gd:298"
+      ],
+      "target_boundary": "GameRuntimeCoordinator composition plus per-surface query",
+      "risk": "The strict contract does not yet constrain any real UI path."
+    },
+    {
+      "id": "UISEM-014",
+      "disposition": "MOVE",
+      "severity": "blocker",
+      "domain": "card",
+      "category": "market_definition_inference",
+      "summary": "District supply merges legacy/public definitions and infers target, persistence, and card facts.",
+      "locations": [
+        "scripts/presentation/district_supply_viewer_query_port.gd:173",
+        "scripts/presentation/district_supply_viewer_query_port.gd:177",
+        "scripts/presentation/district_supply_viewer_query_port.gd:181",
+        "scripts/presentation/district_supply_viewer_query_port.gd:186",
+        "scripts/presentation/district_supply_viewer_query_port.gd:205",
+        "scripts/presentation/district_supply_viewer_query_port.gd:206",
+        "scripts/presentation/district_supply_viewer_query_port.gd:212",
+        "scripts/presentation/district_supply_viewer_query_port.gd:215",
+        "scripts/presentation/district_supply_viewer_query_port.gd:216",
+        "scripts/presentation/district_supply_viewer_query_port.gd:222",
+        "scripts/presentation/district_supply_viewer_query_port.gd:428",
+        "scripts/presentation/district_supply_viewer_query_port.gd:434"
+      ],
+      "target_boundary": "PlayerCardFaceDTO market surface",
+      "risk": "Static definition, offer, and target semantics are flattened and reconstructed."
+    },
+    {
+      "id": "UISEM-015",
+      "disposition": "MOVE",
+      "severity": "blocker",
+      "domain": "card_action",
+      "category": "dynamic_legality_in_presentation",
+      "summary": "District supply computes purchase legality from quote, cash, hand, inventory, and catalog state inside presentation.",
+      "locations": [
+        "scripts/presentation/district_supply_viewer_query_port.gd:244",
+        "scripts/presentation/district_supply_viewer_query_port.gd:251",
+        "scripts/presentation/district_supply_viewer_query_port.gd:265",
+        "scripts/presentation/district_supply_viewer_query_port.gd:273",
+        "scripts/presentation/district_supply_viewer_query_port.gd:275",
+        "scripts/presentation/district_supply_viewer_query_port.gd:278",
+        "scripts/presentation/district_supply_viewer_query_port.gd:280",
+        "scripts/presentation/district_supply_viewer_query_port.gd:282",
+        "scripts/presentation/district_supply_viewer_query_port.gd:284",
+        "scripts/presentation/district_supply_viewer_query_port.gd:292",
+        "scripts/presentation/district_supply_viewer_query_port.gd:300",
+        "scripts/presentation/district_supply_viewer_query_port.gd:307",
+        "scripts/presentation/district_supply_viewer_query_port.gd:311",
+        "scripts/presentation/district_supply_viewer_query_port.gd:326",
+        "scripts/presentation/district_supply_viewer_query_port.gd:349"
+      ],
+      "target_boundary": "DistrictPurchaseActionCandidate from purchase and inventory owners",
+      "risk": "UI legality can drift from command preflight and private data crosses too far."
+    },
+    {
+      "id": "UISEM-016",
+      "disposition": "REMOVE",
+      "severity": "blocker",
+      "domain": "card_action",
+      "category": "localized_action_routing",
+      "summary": "Market snapshot chooses command IDs from localized state labels.",
+      "locations": [
+        "scripts/runtime/district_supply_snapshot_service.gd:425",
+        "scripts/runtime/district_supply_snapshot_service.gd:426",
+        "scripts/runtime/district_supply_snapshot_service.gd:457",
+        "scripts/runtime/district_supply_snapshot_service.gd:465",
+        "scripts/runtime/district_supply_snapshot_service.gd:468",
+        "scripts/runtime/district_supply_snapshot_service.gd:470"
+      ],
+      "target_boundary": "typed legal_actions from purchase owner",
+      "risk": "Changing localized copy can change which command is emitted."
+    },
+    {
+      "id": "UISEM-017",
+      "disposition": "MOVE",
+      "severity": "major",
+      "domain": "card",
+      "category": "market_rule_projection",
+      "summary": "Market snapshot reconstructs play gates, targets, and persistence from flattened fields.",
+      "locations": [
+        "scripts/runtime/district_supply_snapshot_service.gd:473",
+        "scripts/runtime/district_supply_snapshot_service.gd:475",
+        "scripts/runtime/district_supply_snapshot_service.gd:480",
+        "scripts/runtime/district_supply_snapshot_service.gd:481",
+        "scripts/runtime/district_supply_snapshot_service.gd:487",
+        "scripts/runtime/district_supply_snapshot_service.gd:490",
+        "scripts/runtime/district_supply_snapshot_service.gd:494",
+        "scripts/runtime/district_supply_snapshot_service.gd:498",
+        "scripts/runtime/district_supply_snapshot_service.gd:504",
+        "scripts/runtime/district_supply_snapshot_service.gd:505",
+        "scripts/runtime/district_supply_snapshot_service.gd:597",
+        "scripts/runtime/district_supply_snapshot_service.gd:599",
+        "scripts/runtime/district_supply_snapshot_service.gd:601",
+        "scripts/runtime/district_supply_snapshot_service.gd:604",
+        "scripts/runtime/district_supply_snapshot_service.gd:608",
+        "scripts/runtime/district_supply_snapshot_service.gd:618"
+      ],
+      "target_boundary": "PlayerCardFaceDTO market surface",
+      "risk": "Market teaches rules independently from CardSemanticSpec."
+    },
+    {
+      "id": "UISEM-018",
+      "disposition": "KEEP",
+      "severity": "no_finding",
+      "domain": "card_privacy",
+      "category": "privacy_defense",
+      "summary": "Public market downgrade and recursive private-field checks are valuable defense in depth.",
+      "locations": [
+        "scripts/presentation/district_supply_viewer_query_port.gd:71",
+        "scripts/presentation/district_supply_viewer_query_port.gd:73",
+        "scripts/presentation/district_supply_viewer_query_port.gd:107",
+        "scripts/presentation/district_supply_viewer_query_port.gd:115",
+        "scripts/presentation/district_supply_viewer_query_port.gd:127",
+        "scripts/presentation/district_supply_viewer_query_port.gd:231",
+        "scripts/presentation/district_supply_viewer_query_port.gd:237",
+        "scripts/runtime/district_supply_snapshot_service.gd:676",
+        "scripts/runtime/district_supply_snapshot_service.gd:689",
+        "scripts/runtime/district_supply_snapshot_service.gd:702",
+        "scripts/runtime/district_supply_snapshot_service.gd:717"
+      ],
+      "target_boundary": "retain after typed cutover",
+      "risk": "None if treated as scrub defense rather than authorization authority."
+    },
+    {
+      "id": "UISEM-019",
+      "disposition": "REMOVE",
+      "severity": "major",
+      "domain": "card_history",
+      "category": "track_alias_and_state_inference",
+      "summary": "PublicTrackSnapshot is a second alias normalizer and infers owner, state, kind, and accent.",
+      "locations": [
+        "scripts/viewmodels/public_track_snapshot.gd:34",
+        "scripts/viewmodels/public_track_snapshot.gd:35",
+        "scripts/viewmodels/public_track_snapshot.gd:36",
+        "scripts/viewmodels/public_track_snapshot.gd:37",
+        "scripts/viewmodels/public_track_snapshot.gd:40",
+        "scripts/viewmodels/public_track_snapshot.gd:42",
+        "scripts/viewmodels/public_track_snapshot.gd:44",
+        "scripts/viewmodels/public_track_snapshot.gd:55",
+        "scripts/viewmodels/public_track_snapshot.gd:78",
+        "scripts/viewmodels/public_track_snapshot.gd:82",
+        "scripts/viewmodels/public_track_snapshot.gd:94",
+        "scripts/viewmodels/public_track_snapshot.gd:98",
+        "scripts/viewmodels/public_track_snapshot.gd:108",
+        "scripts/viewmodels/public_track_snapshot.gd:112",
+        "scripts/viewmodels/public_track_snapshot.gd:128",
+        "scripts/viewmodels/public_track_snapshot.gd:136",
+        "scripts/viewmodels/public_track_snapshot.gd:161"
+      ],
+      "target_boundary": "CardResolutionPublicPresentationDTO exact schema",
+      "risk": "Generic owner aliases can bypass the intended public receipt boundary."
+    },
+    {
+      "id": "UISEM-020",
+      "disposition": "MOVE",
+      "severity": "major",
+      "domain": "card_history",
+      "category": "raw_skill_projection",
+      "summary": "Card history query reads raw skill and independently formats category and target.",
+      "locations": [
+        "scripts/presentation/card_history_public_query_port.gd:74",
+        "scripts/presentation/card_history_public_query_port.gd:78",
+        "scripts/presentation/card_history_public_query_port.gd:79",
+        "scripts/presentation/card_history_public_query_port.gd:80",
+        "scripts/presentation/card_history_public_query_port.gd:81",
+        "scripts/presentation/card_history_public_query_port.gd:84",
+        "scripts/presentation/card_history_public_query_port.gd:98",
+        "scripts/presentation/card_history_public_query_port.gd:103",
+        "scripts/presentation/card_history_public_query_port.gd:104",
+        "scripts/presentation/card_history_public_query_port.gd:106",
+        "scripts/presentation/card_history_public_query_port.gd:108"
+      ],
+      "target_boundary": "CardResolutionPublicPresentationDTO from public history receipt",
+      "risk": "History and card definition semantics can diverge."
+    },
+    {
+      "id": "UISEM-021",
+      "disposition": "REMOVE",
+      "severity": "blocker",
+      "domain": "card_history",
+      "category": "localized_state_routing",
+      "summary": "Card resolution UI derives lanes and response visibility from Chinese state and phase text.",
+      "locations": [
+        "scripts/ui/card_resolution_track.gd:143",
+        "scripts/ui/card_resolution_track.gd:454",
+        "scripts/ui/card_resolution_track.gd:464",
+        "scripts/ui/card_resolution_track.gd:531",
+        "scripts/ui/card_resolution_track.gd:534",
+        "scripts/ui/card_resolution_track.gd:536",
+        "scripts/ui/card_resolution_track.gd:538",
+        "scripts/ui/card_resolution_track.gd:563",
+        "scripts/ui/card_resolution_track.gd:627",
+        "scripts/ui/card_resolution_track.gd:629"
+      ],
+      "target_boundary": "typed lane_id, phase_id, and legal_actions",
+      "risk": "Localized copy changes UI state and available response controls."
+    },
+    {
+      "id": "UISEM-022",
+      "disposition": "REMOVE",
+      "severity": "blocker",
+      "domain": "card_action",
+      "category": "ui_action_synthesis",
+      "summary": "Game screen synthesizes track actions and fails open when drag legality fields are absent.",
+      "locations": [
+        "scripts/ui/game_screen.gd:1521",
+        "scripts/ui/game_screen.gd:1525",
+        "scripts/ui/game_screen.gd:1527",
+        "scripts/ui/game_screen.gd:1531",
+        "scripts/ui/game_screen.gd:1535",
+        "scripts/ui/game_screen.gd:1549",
+        "scripts/ui/game_screen.gd:1560",
+        "scripts/ui/game_screen.gd:2066",
+        "scripts/ui/game_screen.gd:2067",
+        "scripts/ui/game_screen.gd:2069",
+        "scripts/ui/game_screen.gd:2071",
+        "scripts/ui/game_screen.gd:2077",
+        "scripts/ui/game_screen.gd:2079"
+      ],
+      "target_boundary": "typed legal_actions and fail-closed drop action",
+      "risk": "Missing producer data is treated as a legal drag operation."
+    },
+    {
+      "id": "UISEM-023",
+      "disposition": "KEEP",
+      "severity": "no_finding",
+      "domain": "privacy",
+      "category": "privacy_scrub_defense",
+      "summary": "Track and game-screen scrub guards remain useful after typed projection.",
+      "locations": [
+        "scripts/ui/card_resolution_track.gd:393",
+        "scripts/ui/card_resolution_track.gd:412",
+        "scripts/ui/card_resolution_track.gd:419",
+        "scripts/ui/card_resolution_track.gd:485",
+        "scripts/ui/card_resolution_track.gd:489",
+        "scripts/ui/card_resolution_track.gd:508",
+        "scripts/ui/card_resolution_track.gd:527",
+        "scripts/ui/card_resolution_track.gd:634",
+        "scripts/ui/game_screen.gd:1568",
+        "scripts/ui/game_screen.gd:1573",
+        "scripts/ui/game_screen.gd:1592",
+        "scripts/ui/game_screen.gd:1596"
+      ],
+      "target_boundary": "retain as defense in depth",
+      "risk": "Do not treat text scrub as the primary authorization boundary."
+    },
+    {
+      "id": "UISEM-024",
+      "disposition": "KEEP",
+      "severity": "no_finding",
+      "domain": "card_renderer",
+      "category": "layout_renderer",
+      "summary": "Dedicated card, Codex, and market controls are layout renderers when given prepared DTO fields.",
+      "locations": [
+        "scripts/ui/card_codex_detail.gd:32",
+        "scripts/ui/card_codex_detail.gd:87",
+        "scripts/ui/card_codex_browser.gd:33",
+        "scripts/ui/card_codex_browser.gd:112",
+        "scripts/ui/district_supply_market_card.gd:34",
+        "scripts/ui/district_supply_market_card.gd:137"
+      ],
+      "target_boundary": "consume exact PlayerCardFaceDTO surface data",
+      "risk": "None after legacy fallbacks in shared CardUI are removed."
+    },
+    {
+      "id": "UISEM-025",
+      "disposition": "MOVE",
+      "severity": "major",
+      "domain": "card_art",
+      "category": "localized_art_inference",
+      "summary": "Card art chooses frames, motifs, sprites, and military silhouettes from kind, name, tags, and text.",
+      "locations": [
+        "scripts/card_art_view.gd:190",
+        "scripts/card_art_view.gd:257",
+        "scripts/card_art_view.gd:261",
+        "scripts/card_art_view.gd:304",
+        "scripts/card_art_view.gd:305",
+        "scripts/card_art_view.gd:413",
+        "scripts/card_art_view.gd:417",
+        "scripts/card_art_view.gd:446",
+        "scripts/card_art_view.gd:450",
+        "scripts/card_art_view.gd:933",
+        "scripts/card_art_view.gd:936",
+        "scripts/card_art_view.gd:953",
+        "scripts/card_art_view.gd:979",
+        "scripts/card_art_view.gd:1136",
+        "scripts/card_art_view.gd:1156",
+        "scripts/card_art_view.gd:1158",
+        "scripts/card_art_view.gd:1172",
+        "scripts/card_art_view.gd:1179",
+        "scripts/card_art_view.gd:1187",
+        "scripts/card_art_view.gd:1196",
+        "scripts/card_art_view.gd:1201",
+        "scripts/card_art_view.gd:1522",
+        "scripts/card_art_view.gd:1606"
+      ],
+      "target_boundary": "illustration_key and stable visual token IDs",
+      "risk": "Localization changes art selection and duplicates content classification."
+    },
+    {
+      "id": "UISEM-026",
+      "disposition": "KEEP",
+      "severity": "no_finding",
+      "domain": "renderer",
+      "category": "token_renderer",
+      "summary": "Token-driven drawing and layout can remain once the token is authoritative.",
+      "locations": [
+        "scripts/card_art_view.gd:506",
+        "scripts/card_art_view.gd:763",
+        "scripts/card_art_view.gd:1022",
+        "scripts/monster_art_view.gd:156",
+        "scripts/monster_art_view.gd:387",
+        "scripts/monster_art_view.gd:427"
+      ],
+      "target_boundary": "presentation token registry",
+      "risk": "None if tokens, not localized prose, select the renderer branch."
+    },
+    {
+      "id": "UISEM-027",
+      "disposition": "MOVE",
+      "severity": "major",
+      "domain": "theme",
+      "category": "duplicate_presentation_mapping",
+      "summary": "Category and industry label, icon, glyph, and color maps are duplicated across four surfaces.",
+      "locations": [
+        "scripts/runtime/card_codex_public_source_service.gd:7",
+        "scripts/runtime/card_codex_public_source_service.gd:16",
+        "scripts/runtime/card_codex_public_source_service.gd:25",
+        "scripts/runtime/card_codex_public_source_service.gd:402",
+        "scripts/runtime/card_presentation_runtime_service.gd:426",
+        "scripts/ui/table/top_commodity_sushi_track_item.gd:114",
+        "scripts/ui/table/top_commodity_sushi_track_item.gd:125",
+        "scripts/ui/district_info_panel.gd:4",
+        "scripts/ui/district_info_panel.gd:12"
+      ],
+      "target_boundary": "single presentation theme token catalog",
+      "risk": "The same stable ID can display different labels/colors/icons."
+    },
+    {
+      "id": "UISEM-028",
+      "disposition": "MOVE",
+      "severity": "major",
+      "domain": "product_theme",
+      "category": "localized_visual_mapping",
+      "summary": "Map route color is inferred from legacy or Chinese product labels.",
+      "locations": [
+        "scripts/ui/planet_map_view.gd:1374",
+        "scripts/ui/planet_map_view.gd:1375",
+        "scripts/ui/planet_map_view.gd:1376",
+        "scripts/ui/planet_map_view.gd:1378",
+        "scripts/ui/planet_map_view.gd:1380",
+        "scripts/ui/planet_map_view.gd:1382",
+        "scripts/ui/planet_map_view.gd:1384",
+        "scripts/ui/planet_map_view.gd:1386"
+      ],
+      "target_boundary": "ProductPresentationDTO route_accent_token_id",
+      "risk": "Localized identity and legacy category aliases drive visuals."
+    },
+    {
+      "id": "UISEM-029",
+      "disposition": "MOVE",
+      "severity": "minor",
+      "domain": "action_theme",
+      "category": "substring_visual_mapping",
+      "summary": "Action Dock derives accent from action-ID substrings, including localized text.",
+      "locations": [
+        "scripts/ui/action_dock.gd:235",
+        "scripts/ui/action_dock.gd:236",
+        "scripts/ui/action_dock.gd:237",
+        "scripts/ui/action_dock.gd:239",
+        "scripts/ui/action_dock.gd:241",
+        "scripts/ui/action_dock.gd:243"
+      ],
+      "target_boundary": "typed action presentation token",
+      "risk": "New actions receive accidental colors based on naming."
+    },
+    {
+      "id": "UISEM-030",
+      "disposition": "REMOVE",
+      "severity": "blocker",
+      "domain": "navigation",
+      "category": "localized_navigation_routing",
+      "summary": "Menu routing and shell state depend on localized page titles.",
+      "locations": [
+        "scripts/runtime/menu_lifecycle_application_flow_controller.gd:161",
+        "scripts/runtime/menu_lifecycle_application_flow_controller.gd:167",
+        "scripts/runtime/menu_lifecycle_application_flow_controller.gd:171",
+        "scripts/runtime/menu_lifecycle_application_flow_controller.gd:343",
+        "scripts/runtime/menu_lifecycle_application_flow_controller.gd:344",
+        "scripts/runtime/menu_lifecycle_application_flow_controller.gd:345",
+        "scripts/runtime/menu_lifecycle_application_flow_controller.gd:350",
+        "scripts/runtime/menu_lifecycle_application_flow_controller.gd:354",
+        "scripts/runtime/menu_lifecycle_application_flow_controller.gd:362"
+      ],
+      "target_boundary": "stable application page_id and shell DTO",
+      "risk": "Changing localized titles changes navigation behavior."
+    },
+    {
+      "id": "UISEM-031",
+      "disposition": "MOVE",
+      "severity": "blocker",
+      "domain": "role",
+      "category": "flat_passive_interpretation",
+      "summary": "Role Codex passes flat passive fields, then derives strategy routes, privacy, and opening advice.",
+      "locations": [
+        "scripts/runtime/role_codex_public_source_adapter.gd:4",
+        "scripts/runtime/role_codex_public_source_adapter.gd:12",
+        "scripts/runtime/role_codex_public_source_adapter.gd:22",
+        "scripts/runtime/role_codex_public_source_adapter.gd:28",
+        "scripts/runtime/role_codex_public_source_adapter.gd:34",
+        "scripts/runtime/codex_public_snapshot_service.gd:13",
+        "scripts/runtime/codex_public_snapshot_service.gd:23",
+        "scripts/runtime/codex_public_snapshot_service.gd:25",
+        "scripts/runtime/codex_public_snapshot_service.gd:28",
+        "scripts/runtime/codex_public_snapshot_service.gd:212",
+        "scripts/runtime/codex_public_snapshot_service.gd:214",
+        "scripts/runtime/codex_public_snapshot_service.gd:224",
+        "scripts/runtime/codex_public_snapshot_service.gd:237",
+        "scripts/runtime/codex_public_snapshot_service.gd:252",
+        "scripts/runtime/codex_public_snapshot_service.gd:260",
+        "scripts/runtime/codex_public_snapshot_service.gd:271"
+      ],
+      "target_boundary": "RoleSemanticSpec -> PlayerRoleCardDTO",
+      "risk": "UI explains passive rules that have no single established execution authority."
+    },
+    {
+      "id": "UISEM-032",
+      "disposition": "MOVE",
+      "severity": "major",
+      "domain": "role",
+      "category": "legacy_card_face_projection",
+      "summary": "Compendium assembles a legacy card face directly from role prose.",
+      "locations": [
+        "scripts/presentation/compendium_readonly_query_port.gd:74",
+        "scripts/presentation/compendium_readonly_query_port.gd:77",
+        "scripts/presentation/compendium_readonly_query_port.gd:80",
+        "scripts/presentation/compendium_readonly_query_port.gd:81",
+        "scripts/presentation/compendium_readonly_query_port.gd:82",
+        "scripts/presentation/compendium_readonly_query_port.gd:87",
+        "scripts/presentation/compendium_readonly_query_port.gd:90",
+        "scripts/presentation/compendium_readonly_query_port.gd:91",
+        "scripts/presentation/compendium_readonly_query_port.gd:99"
+      ],
+      "target_boundary": "PlayerRoleCardDTO",
+      "risk": "Role prose is flattened into card aliases and reinterpreted by CardUI."
+    },
+    {
+      "id": "UISEM-033",
+      "disposition": "MOVE",
+      "severity": "major",
+      "domain": "role_art",
+      "category": "localized_identity",
+      "summary": "Role portrait lookup is keyed by localized role name rather than stable role ID.",
+      "locations": [
+        "scripts/presentation/role_portrait_catalog.gd:36",
+        "scripts/presentation/role_portrait_catalog.gd:41",
+        "scripts/presentation/role_portrait_catalog.gd:42",
+        "scripts/presentation/role_portrait_catalog.gd:44",
+        "scripts/presentation/role_portrait_catalog.gd:49",
+        "scripts/presentation/role_portrait_catalog.gd:53",
+        "scripts/presentation/role_portrait_catalog.gd:59",
+        "scripts/presentation/role_portrait_catalog.gd:66",
+        "scripts/presentation/role_portrait_catalog.gd:68",
+        "scripts/presentation/role_portrait_catalog.gd:72"
+      ],
+      "target_boundary": "RoleSemanticSpec.role_id -> portrait token",
+      "risk": "Localization or catalog ordering can break portrait identity."
+    },
+    {
+      "id": "UISEM-034",
+      "disposition": "MOVE",
+      "severity": "blocker",
+      "domain": "setup_privacy",
+      "category": "late_privacy_crop",
+      "summary": "Setup snapshot carries the true AI starter-monster name beyond the privacy crop, although the current renderer hides it.",
+      "locations": [
+        "scripts/runtime/new_game_setup_viewer_query_port.gd:78",
+        "scripts/runtime/new_game_setup_viewer_query_port.gd:81",
+        "scripts/runtime/new_game_setup_viewer_query_port.gd:83",
+        "scripts/runtime/new_game_setup_viewer_query_port.gd:85",
+        "scripts/runtime/new_game_setup_viewer_query_port.gd:117",
+        "scripts/runtime/new_game_setup_viewer_query_port.gd:119",
+        "scripts/ui/new_game_setup_seat_card.gd:55",
+        "scripts/ui/new_game_setup_seat_card.gd:56",
+        "scripts/ui/new_game_setup_seat_card.gd:57"
+      ],
+      "target_boundary": "viewer-cropped SetupSeatPresentationDTO",
+      "risk": "Hidden content crosses the query boundary and is protected only by renderer behavior."
+    },
+    {
+      "id": "UISEM-035",
+      "disposition": "KEEP",
+      "severity": "no_finding",
+      "domain": "role_renderer",
+      "category": "layout_renderer",
+      "summary": "Role identity board renders supplied cards, chips, KPIs, and route cards without rule mutation.",
+      "locations": [
+        "scripts/ui/role_codex_identity_board.gd:18",
+        "scripts/ui/role_codex_identity_board.gd:28",
+        "scripts/ui/role_codex_identity_board.gd:46",
+        "scripts/ui/role_codex_identity_board.gd:68",
+        "scripts/ui/role_codex_identity_board.gd:77",
+        "scripts/ui/role_codex_identity_board.gd:86"
+      ],
+      "target_boundary": "consume PlayerRoleCardDTO",
+      "risk": "None once CardFace alias adapter is removed from the nested face."
+    },
+    {
+      "id": "UISEM-036",
+      "disposition": "MOVE",
+      "severity": "blocker",
+      "domain": "monster",
+      "category": "unstable_identity_and_join",
+      "summary": "Monster Codex uses catalog index IDs and localized monster names for art and card joins.",
+      "locations": [
+        "scripts/runtime/monster_codex_public_source_service.gd:93",
+        "scripts/runtime/monster_codex_public_source_service.gd:94",
+        "scripts/runtime/monster_codex_public_source_service.gd:97",
+        "scripts/runtime/monster_codex_public_source_service.gd:100",
+        "scripts/runtime/monster_codex_public_source_service.gd:168",
+        "scripts/runtime/monster_codex_public_source_service.gd:172",
+        "scripts/runtime/monster_codex_public_source_service.gd:184",
+        "scripts/runtime/monster_codex_public_source_service.gd:186",
+        "scripts/runtime/monster_codex_public_source_service.gd:187",
+        "scripts/runtime/monster_codex_public_source_service.gd:190",
+        "scripts/runtime/monster_codex_public_source_service.gd:193"
+      ],
+      "target_boundary": "MonsterSemanticSpec.monster_family_id",
+      "risk": "Catalog reorder or localization breaks stable navigation and art/card joins."
+    },
+    {
+      "id": "UISEM-037",
+      "disposition": "MOVE",
+      "severity": "major",
+      "domain": "monster",
+      "category": "raw_behavior_projection",
+      "summary": "Monster snapshot interprets raw ecology and action dictionaries into player-facing mechanics.",
+      "locations": [
+        "scripts/runtime/monster_codex_public_snapshot_service.gd:13",
+        "scripts/runtime/monster_codex_public_snapshot_service.gd:17",
+        "scripts/runtime/monster_codex_public_snapshot_service.gd:18",
+        "scripts/runtime/monster_codex_public_snapshot_service.gd:21",
+        "scripts/runtime/monster_codex_public_snapshot_service.gd:35",
+        "scripts/runtime/monster_codex_public_snapshot_service.gd:48",
+        "scripts/runtime/monster_codex_public_snapshot_service.gd:52",
+        "scripts/runtime/monster_codex_public_snapshot_service.gd:89",
+        "scripts/runtime/monster_codex_public_snapshot_service.gd:94",
+        "scripts/runtime/monster_codex_public_snapshot_service.gd:116",
+        "scripts/runtime/monster_codex_public_snapshot_service.gd:127",
+        "scripts/runtime/monster_codex_public_snapshot_service.gd:139",
+        "scripts/runtime/monster_codex_public_snapshot_service.gd:147"
+      ],
+      "target_boundary": "MonsterSemanticSpec + MonsterBehaviorSpec -> MonsterCodexDTO",
+      "risk": "Codex can describe behavior differently from the monster execution owner."
+    },
+    {
+      "id": "UISEM-038",
+      "disposition": "KEEP",
+      "severity": "no_finding",
+      "domain": "monster_renderer",
+      "category": "layout_renderer",
+      "summary": "Bestiary and monster-art controls are renderers when supplied a public profile token.",
+      "locations": [
+        "scripts/ui/bestiary_detail.gd:23",
+        "scripts/ui/bestiary_detail.gd:61",
+        "scripts/ui/bestiary_detail.gd:84",
+        "scripts/ui/bestiary_detail.gd:102",
+        "scripts/monster_art_view.gd:74",
+        "scripts/monster_art_view.gd:82",
+        "scripts/monster_art_view.gd:156"
+      ],
+      "target_boundary": "consume MonsterCodexDTO presentation profile",
+      "risk": "None if profile keys are stable tokens supplied upstream."
+    },
+    {
+      "id": "UISEM-039",
+      "disposition": "MOVE",
+      "severity": "blocker",
+      "domain": "product_card",
+      "category": "raw_payload_introspection",
+      "summary": "Product Codex recursively scans raw card effect_payload to infer related products.",
+      "locations": [
+        "scripts/runtime/product_codex_public_source_service.gd:287",
+        "scripts/runtime/product_codex_public_source_service.gd:291",
+        "scripts/runtime/product_codex_public_source_service.gd:297",
+        "scripts/runtime/product_codex_public_source_service.gd:308",
+        "scripts/runtime/product_codex_public_source_service.gd:309",
+        "scripts/runtime/product_codex_public_source_service.gd:311",
+        "scripts/runtime/product_codex_public_source_service.gd:315",
+        "scripts/runtime/product_codex_public_source_service.gd:317"
+      ],
+      "target_boundary": "ProductSemanticSpec related_card_ids projection",
+      "risk": "Arbitrary payload strings become semantic product relationships."
+    },
+    {
+      "id": "UISEM-040",
+      "disposition": "MOVE",
+      "severity": "major",
+      "domain": "product",
+      "category": "mixed_static_dynamic_projection",
+      "summary": "Product Codex mixes static profile, live market state, monster names, strategy copy, and UI styling.",
+      "locations": [
+        "scripts/runtime/product_codex_public_source_service.gd:49",
+        "scripts/runtime/product_codex_public_source_service.gd:55",
+        "scripts/runtime/product_codex_public_source_service.gd:60",
+        "scripts/runtime/product_codex_public_source_service.gd:68",
+        "scripts/runtime/product_codex_public_source_service.gd:70",
+        "scripts/runtime/product_codex_public_source_service.gd:76",
+        "scripts/runtime/product_codex_public_source_service.gd:89",
+        "scripts/runtime/product_codex_public_source_service.gd:236",
+        "scripts/runtime/product_codex_public_source_service.gd:237",
+        "scripts/runtime/product_codex_public_source_service.gd:240",
+        "scripts/runtime/product_codex_public_source_service.gd:322",
+        "scripts/runtime/product_codex_public_source_service.gd:324",
+        "scripts/runtime/product_codex_public_snapshot_service.gd:23",
+        "scripts/runtime/product_codex_public_snapshot_service.gd:30",
+        "scripts/runtime/product_codex_public_snapshot_service.gd:36",
+        "scripts/runtime/product_codex_public_snapshot_service.gd:49",
+        "scripts/runtime/product_codex_public_snapshot_service.gd:79",
+        "scripts/runtime/product_codex_public_snapshot_service.gd:129",
+        "scripts/runtime/product_codex_public_snapshot_service.gd:149",
+        "scripts/runtime/product_codex_public_snapshot_service.gd:160"
+      ],
+      "target_boundary": "ProductSemanticSpec + public market state -> ProductCodexDTO",
+      "risk": "Static meaning, live economics, and presentation style have no clean boundary."
+    },
+    {
+      "id": "UISEM-041",
+      "disposition": "KEEP",
+      "severity": "compatibility_bridge",
+      "domain": "product",
+      "category": "localized_authority_bridge",
+      "summary": "Localized product IDs are current cross-owner authority and must remain until a versioned save and RNG-safe migration.",
+      "locations": [
+        "scripts/runtime/product_market_runtime_controller.gd:80",
+        "scripts/runtime/product_market_runtime_controller.gd:81",
+        "scripts/runtime/product_codex_public_source_service.gd:52",
+        "scripts/runtime/product_codex_public_source_service.gd:55",
+        "scripts/runtime/product_codex_public_source_service.gd:125",
+        "scripts/runtime/product_codex_public_source_service.gd:132",
+        "scripts/runtime/product_codex_public_source_service.gd:134",
+        "scripts/runtime/product_codex_public_source_service.gd:137"
+      ],
+      "target_boundary": "versioned ProductSemanticSpec identity bridge",
+      "risk": "Premature ASCII renaming would break saves, routes, cards, market state, and deterministic allocation."
+    },
+    {
+      "id": "UISEM-042",
+      "disposition": "MOVE",
+      "severity": "blocker",
+      "domain": "facility",
+      "category": "ui_catalog_and_summary_inference",
+      "summary": "Facility labels and summaries are reconstructed in UI and Codex from industry, type, owner, and rank fields.",
+      "locations": [
+        "scripts/ui/district_info_panel.gd:4",
+        "scripts/ui/district_info_panel.gd:12",
+        "scripts/ui/district_info_panel.gd:57",
+        "scripts/ui/district_info_panel.gd:59",
+        "scripts/ui/district_info_panel.gd:62",
+        "scripts/ui/district_info_panel.gd:64",
+        "scripts/ui/district_info_panel.gd:65",
+        "scripts/runtime/region_codex_public_source_adapter.gd:13",
+        "scripts/runtime/region_codex_public_source_adapter.gd:54",
+        "scripts/runtime/region_codex_public_source_adapter.gd:84",
+        "scripts/runtime/codex_public_snapshot_service.gd:191",
+        "scripts/runtime/codex_public_snapshot_service.gd:193",
+        "scripts/runtime/codex_public_snapshot_service.gd:197",
+        "scripts/runtime/codex_public_snapshot_service.gd:198"
+      ],
+      "target_boundary": "FacilitySemanticSpec -> FacilityPublicDTO",
+      "risk": "There is no single immutable facility presentation authority."
+    },
+    {
+      "id": "UISEM-043",
+      "disposition": "KEEP",
+      "severity": "no_finding",
+      "domain": "product_facility_renderer",
+      "category": "layout_renderer",
+      "summary": "Product and region detail controls are prepared-data renderers.",
+      "locations": [
+        "scripts/ui/product_codex_detail.gd:21",
+        "scripts/ui/product_codex_detail.gd:53",
+        "scripts/ui/product_codex_detail.gd:65",
+        "scripts/ui/region_codex_detail.gd:17",
+        "scripts/ui/region_codex_detail.gd:52",
+        "scripts/ui/region_codex_detail.gd:73"
+      ],
+      "target_boundary": "consume ProductCodexDTO and Region/Facility DTOs",
+      "risk": "None after upstream semantic inference and color fallbacks are removed."
+    },
+    {
+      "id": "UISEM-044",
+      "disposition": "MOVE",
+      "severity": "major",
+      "domain": "military",
+      "category": "display_mapping_in_state_owner",
+      "summary": "Military owner contains display label, glyph, motif, color, domain, and terrain maps and table map query calls them directly.",
+      "locations": [
+        "scripts/runtime/military_runtime_controller.gd:182",
+        "scripts/runtime/military_runtime_controller.gd:183",
+        "scripts/runtime/military_runtime_controller.gd:193",
+        "scripts/runtime/military_runtime_controller.gd:194",
+        "scripts/runtime/military_runtime_controller.gd:204",
+        "scripts/runtime/military_runtime_controller.gd:215",
+        "scripts/runtime/military_runtime_controller.gd:216",
+        "scripts/runtime/military_runtime_controller.gd:226",
+        "scripts/runtime/military_runtime_controller.gd:234",
+        "scripts/presentation/table_public_map_query.gd:156",
+        "scripts/presentation/table_public_map_query.gd:162",
+        "scripts/presentation/table_public_map_query.gd:163",
+        "scripts/presentation/table_public_map_query.gd:164",
+        "scripts/presentation/table_public_map_query.gd:167",
+        "scripts/presentation/table_public_map_query.gd:168"
+      ],
+      "target_boundary": "MilitaryUnitSemanticSpec -> MilitaryUnitPublicDTO",
+      "risk": "State owner and presentation duplicate unit taxonomy and visual meaning."
+    },
+    {
+      "id": "UISEM-045",
+      "disposition": "MOVE",
+      "severity": "blocker",
+      "domain": "weather",
+      "category": "duplicate_semantic_projection",
+      "summary": "Weather presentation duplicates definition-ID effect rows, icon keys, patterns, and raw effect-field interpretation.",
+      "locations": [
+        "scripts/runtime/weather_presentation_runtime_service.gd:55",
+        "scripts/runtime/weather_presentation_runtime_service.gd:58",
+        "scripts/runtime/weather_presentation_runtime_service.gd:60",
+        "scripts/runtime/weather_presentation_runtime_service.gd:65",
+        "scripts/runtime/weather_presentation_runtime_service.gd:71",
+        "scripts/runtime/weather_presentation_runtime_service.gd:73",
+        "scripts/runtime/weather_presentation_runtime_service.gd:76",
+        "scripts/runtime/weather_presentation_runtime_service.gd:157",
+        "scripts/runtime/weather_presentation_runtime_service.gd:158",
+        "scripts/runtime/weather_presentation_runtime_service.gd:161",
+        "scripts/runtime/weather_presentation_runtime_service.gd:167",
+        "scripts/runtime/weather_presentation_runtime_service.gd:173",
+        "scripts/runtime/weather_presentation_runtime_service.gd:179",
+        "scripts/runtime/weather_presentation_runtime_service.gd:185",
+        "scripts/runtime/weather_presentation_runtime_service.gd:190",
+        "scripts/runtime/weather_presentation_runtime_service.gd:216",
+        "scripts/runtime/weather_presentation_runtime_service.gd:228"
+      ],
+      "target_boundary": "WeatherSemanticSpec -> WeatherForecastDTO",
+      "risk": "Weather effects can drift from the runtime definition catalog."
+    },
+    {
+      "id": "UISEM-046",
+      "disposition": "MOVE",
+      "severity": "major",
+      "domain": "weather",
+      "category": "duplicate_presentation_catalog",
+      "summary": "Weather view models, telemetry, and two UI controls duplicate static IDs and phase or icon labels.",
+      "locations": [
+        "scripts/viewmodels/weather_forecast_view_model.gd:10",
+        "scripts/viewmodels/weather_forecast_view_model.gd:18",
+        "scripts/viewmodels/weather_forecast_view_model.gd:22",
+        "scripts/viewmodels/weather_forecast_view_model.gd:23",
+        "scripts/viewmodels/weather_forecast_view_model.gd:328",
+        "scripts/viewmodels/weather_forecast_view_model.gd:340",
+        "scripts/viewmodels/weather_forecast_view_model.gd:375",
+        "scripts/ui/weather/weather_telemetry_buffer.gd:26",
+        "scripts/ui/weather/weather_telemetry_buffer.gd:27",
+        "scripts/ui/weather/weather_telemetry_buffer.gd:138",
+        "scripts/ui/weather/weather_forecast_strip.gd:294",
+        "scripts/ui/weather/weather_forecast_strip.gd:303",
+        "scripts/ui/weather/weather_forecast_strip.gd:311",
+        "scripts/ui/weather/weather_map_overlay.gd:202",
+        "scripts/ui/weather/weather_map_overlay.gd:211"
+      ],
+      "target_boundary": "WeatherForecastDTO message refs and visual tokens",
+      "risk": "Static lists and labels can diverge across service, telemetry, and renderers."
+    },
+    {
+      "id": "UISEM-047",
+      "disposition": "KEEP",
+      "severity": "no_finding",
+      "domain": "weather_renderer",
+      "category": "renderer_state_and_validation",
+      "summary": "Forecast and overlay state validation and pattern drawing are legitimate renderer state.",
+      "locations": [
+        "scripts/viewmodels/weather_forecast_view_model.gd:186",
+        "scripts/viewmodels/weather_forecast_view_model.gd:188",
+        "scripts/ui/weather/weather_map_overlay.gd:115",
+        "scripts/ui/weather/weather_map_overlay.gd:119",
+        "scripts/ui/weather/weather_forecast_strip.gd:55",
+        "scripts/ui/weather/weather_forecast_strip.gd:58"
+      ],
+      "target_boundary": "consume WeatherForecastDTO stable tokens",
+      "risk": "Keep phase animation logic; centralize labels and static definition IDs."
+    },
+    {
+      "id": "UISEM-048",
+      "disposition": "MOVE",
+      "severity": "major",
+      "domain": "victory",
+      "category": "rule_copy_in_presentation",
+      "summary": "Standings presentation embeds rule prose and state labels instead of consuming VictorySemanticSpec message refs.",
+      "locations": [
+        "scripts/runtime/standings_public_snapshot_service.gd:51",
+        "scripts/runtime/standings_public_snapshot_service.gd:55",
+        "scripts/runtime/standings_public_snapshot_service.gd:57",
+        "scripts/runtime/standings_public_snapshot_service.gd:58",
+        "scripts/runtime/standings_public_snapshot_service.gd:73",
+        "scripts/runtime/standings_public_snapshot_service.gd:76",
+        "scripts/runtime/standings_public_snapshot_service.gd:77",
+        "scripts/runtime/standings_public_snapshot_service.gd:78",
+        "scripts/runtime/standings_public_snapshot_service.gd:211",
+        "scripts/runtime/standings_public_snapshot_service.gd:212",
+        "scripts/runtime/standings_public_snapshot_service.gd:220"
+      ],
+      "target_boundary": "VictorySemanticSpec -> VictoryProgressDTO",
+      "risk": "Hardcoded 30 percent, 10 second, and 120 second explanations can drift."
+    },
+    {
+      "id": "UISEM-049",
+      "disposition": "KEEP",
+      "severity": "no_finding",
+      "domain": "victory_privacy",
+      "category": "authoritative_receipt_projection",
+      "summary": "Victory outcome receipt, ranking order, and dual cash-disclosure checks remain authoritative; UI does not recalculate winners.",
+      "locations": [
+        "scripts/runtime/final_settlement_public_snapshot_service.gd:47",
+        "scripts/runtime/final_settlement_public_snapshot_service.gd:53",
+        "scripts/runtime/final_settlement_public_snapshot_service.gd:54",
+        "scripts/runtime/final_settlement_public_snapshot_service.gd:139",
+        "scripts/runtime/final_settlement_public_snapshot_service.gd:149",
+        "scripts/runtime/final_settlement_public_snapshot_service.gd:181",
+        "scripts/runtime/final_settlement_public_snapshot_service.gd:229",
+        "scripts/runtime/final_settlement_public_snapshot_service.gd:243",
+        "scripts/runtime/standings_public_snapshot_service.gd:32",
+        "scripts/runtime/standings_public_snapshot_service.gd:34",
+        "scripts/runtime/standings_public_snapshot_service.gd:181",
+        "scripts/runtime/standings_public_snapshot_service.gd:196"
+      ],
+      "target_boundary": "retain receipt ordering and privacy checks in VictoryProgressDTO projector",
+      "risk": "None if presentation copy is sourced from VictorySemanticSpec."
+    },
+    {
+      "id": "UISEM-050",
+      "disposition": "MOVE",
+      "severity": "blocker",
+      "domain": "diagnostics",
+      "category": "raw_semantic_reinterpretation",
+      "summary": "Balance diagnostics independently read raw skills, infer routes, targets and ranks, and score card fields.",
+      "locations": [
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:65",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:66",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:76",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:112",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:113",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:119",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:144",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:154",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:203",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:205",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:211",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:217",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:223",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:233",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:318",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:325",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:339",
+        "scripts/balance/runtime_balance_model.gd:528",
+        "scripts/balance/runtime_balance_model.gd:587",
+        "scripts/balance/runtime_balance_model.gd:625",
+        "scripts/balance/runtime_balance_model.gd:639",
+        "scripts/balance/runtime_balance_model.gd:787",
+        "scripts/balance/runtime_balance_model.gd:838",
+        "scripts/balance/runtime_balance_model.gd:909",
+        "scripts/balance/runtime_balance_model.gd:974",
+        "scripts/balance/runtime_balance_model.gd:979",
+        "scripts/balance/runtime_balance_model.gd:1010",
+        "scripts/balance/runtime_balance_model.gd:1017",
+        "scripts/balance/runtime_balance_model.gd:1024"
+      ],
+      "target_boundary": "SemanticDiagnosticProjection",
+      "risk": "Diagnostics become a fourth rule interpreter and retain name/rank heuristics."
+    },
+    {
+      "id": "UISEM-051",
+      "disposition": "KEEP",
+      "severity": "no_finding",
+      "domain": "diagnostics_renderer",
+      "category": "layout_renderer",
+      "summary": "Developer balance panel and presentation target render prepared diagnostic snapshots.",
+      "locations": [
+        "scripts/ui/developer_balance_panel.gd:9",
+        "scripts/ui/developer_balance_panel.gd:13",
+        "scripts/presentation/developer_balance_presentation_target.gd:20",
+        "scripts/presentation/developer_balance_presentation_target.gd:31"
+      ],
+      "target_boundary": "consume SemanticDiagnosticProjection",
+      "risk": "None if raw-card scoring is removed upstream."
+    },
+    {
+      "id": "UISEM-052",
+      "disposition": "KEEP",
+      "severity": "no_finding",
+      "domain": "compendium_navigation",
+      "category": "stable_domain_state_machine",
+      "summary": "Stable domain-ID dispatch, layout selection, and pure-data rejection are legitimate state and navigation logic.",
+      "locations": [
+        "scripts/presentation/compendium_readonly_query_port.gd:40",
+        "scripts/presentation/compendium_readonly_query_port.gd:45",
+        "scripts/presentation/compendium_readonly_query_port.gd:55",
+        "scripts/presentation/compendium_readonly_query_port.gd:324",
+        "scripts/presentation/compendium_readonly_query_port.gd:327",
+        "scripts/ui/codex_compendium_surface.gd:55",
+        "scripts/ui/codex_compendium_surface.gd:56",
+        "scripts/ui/codex_compendium_surface.gd:70",
+        "scripts/ui/codex_compendium_surface.gd:79"
+      ],
+      "target_boundary": "retain stable domain dispatch; replace domain payloads only",
+      "risk": "Do not confuse required domain state machines with content special cases."
+    }
+  ],
+  "future_player_presentation_boundaries": [
+    {
+      "domain": "card",
+      "dto": "PlayerCardFaceDTO",
+      "current_seed": "PlayerFaceDTOv1",
+      "static_input": "CardSemanticSpec",
+      "dynamic_input": "authorized CardInstanceState and typed legal actions",
+      "consumers": ["hand", "market", "detail", "codex", "public_track"]
+    },
+    {
+      "domain": "role",
+      "dto": "PlayerRoleCardDTO",
+      "static_input": "RoleSemanticSpec",
+      "dynamic_input": "public selected-role state",
+      "consumers": ["setup", "seat", "role_codex", "portrait"]
+    },
+    {
+      "domain": "monster",
+      "dto": "MonsterCodexDTO and MonsterTokenDTO",
+      "static_input": "MonsterSemanticSpec and MonsterBehaviorSpec",
+      "dynamic_input": "viewer-cropped public roster state",
+      "consumers": ["bestiary", "map", "wager", "targeting"]
+    },
+    {
+      "domain": "product",
+      "dto": "ProductCodexDTO and ProductMarketRowDTO",
+      "static_input": "ProductSemanticSpec",
+      "dynamic_input": "public market, weather, and route aggregates",
+      "consumers": ["product_codex", "economy", "map", "market"]
+    },
+    {
+      "domain": "facility",
+      "dto": "FacilityPublicDTO",
+      "static_input": "FacilitySemanticSpec",
+      "dynamic_input": "public owner, rank, health, and build state",
+      "consumers": ["region_detail", "market_preview", "map"]
+    },
+    {
+      "domain": "military",
+      "dto": "MilitaryUnitPublicDTO",
+      "static_input": "MilitaryUnitSemanticSpec",
+      "dynamic_input": "public unit position, health, and action state",
+      "consumers": ["map", "card_detail", "combat_presentation"]
+    },
+    {
+      "domain": "weather",
+      "dto": "WeatherForecastDTO",
+      "static_input": "WeatherSemanticSpec",
+      "dynamic_input": "public weather event phase and timing",
+      "consumers": ["forecast_strip", "map_overlay", "region_detail", "economy_detail"]
+    },
+    {
+      "domain": "victory",
+      "dto": "VictoryProgressDTO and FinalSettlementDTO",
+      "static_input": "VictorySemanticSpec",
+      "dynamic_input": "authoritative public or authorized private victory receipts",
+      "consumers": ["standings", "final_settlement"]
+    },
+    {
+      "domain": "card_history",
+      "dto": "CardResolutionPublicPresentationDTO",
+      "static_input": "card semantic identity references",
+      "dynamic_input": "sanitized public resolution receipt",
+      "consumers": ["public_track", "inspector", "intel_deep_link"]
+    },
+    {
+      "domain": "diagnostics",
+      "dto": "SemanticDiagnosticProjection",
+      "static_input": "domain SemanticSpecs",
+      "dynamic_input": "explicitly authorized aggregate telemetry",
+      "consumers": ["developer_balance_tools"]
+    }
+  ],
+  "shared_dto_envelope": [
+    "schema_version",
+    "domain_id",
+    "viewer_scope_id",
+    "authorization_revision",
+    "definition_revision",
+    "runtime_revision",
+    "identity",
+    "message_refs",
+    "presentation_token_ids",
+    "legal_actions"
+  ],
+  "atomic_cutover_sequence": [
+    "Freeze shared presentation envelope, message references, and one theme-token catalog.",
+    "Establish stable semantic authority for Role, Monster, Product, Facility, Military, Weather, and Victory.",
+    "Move purchase, play, track, and drag legality into typed action authorities; missing actions fail closed.",
+    "Add new projectors beside legacy producers; dual output is test-only and production chooses one producer.",
+    "Cut static public consumers first: all Codex pages, region/facility detail, weather definitions, and victory copy.",
+    "Cut dynamic public consumers next: public track, map units, weather events, standings, and settlement.",
+    "Cut viewer-private hand, market, inspector, hover, and drag paths atomically with definition, instance, and actions.",
+    "Migrate role, monster, and product identity with versioned save and RNG parity before deleting bridges.",
+    "Redirect diagnostics to SemanticDiagnosticProjection and ban new raw skill or payload reads.",
+    "Delete aliases, text-driven routing, localized art inference, duplicate theme maps, and dual catalog fallbacks after caller counts reach zero."
+  ],
+  "privacy_risks": [
+    {
+      "severity": "blocker",
+      "id": "PRIV-SETUP-AI-MONSTER",
+      "summary": "True AI starter-monster name crosses the setup query boundary in monster_label before the renderer hides it.",
+      "locations": [
+        "scripts/runtime/new_game_setup_viewer_query_port.gd:83",
+        "scripts/runtime/new_game_setup_viewer_query_port.gd:117",
+        "scripts/ui/new_game_setup_seat_card.gd:56"
+      ]
+    },
+    {
+      "severity": "major",
+      "id": "PRIV-MARKET-PRIVATE-STATE",
+      "summary": "District supply imports exact own cash and hand state into presentation to recompute actionability.",
+      "locations": [
+        "scripts/presentation/district_supply_viewer_query_port.gd:121",
+        "scripts/presentation/district_supply_viewer_query_port.gd:244",
+        "scripts/presentation/district_supply_viewer_query_port.gd:278"
+      ]
+    },
+    {
+      "severity": "major",
+      "id": "PRIV-CARD-FLATTENING",
+      "summary": "CardViewSnapshot and CardPresentationRuntimeService carry no intrinsic viewer-scope contract.",
+      "locations": [
+        "scripts/viewmodels/card_view_snapshot.gd:16",
+        "scripts/runtime/card_presentation_runtime_service.gd:27",
+        "scripts/runtime/card_presentation_runtime_service.gd:205"
+      ]
+    },
+    {
+      "severity": "major",
+      "id": "PRIV-TRACK-OWNER-ALIASES",
+      "summary": "PublicTrackSnapshot trusts generic owner visibility aliases and raw owner fields.",
+      "locations": [
+        "scripts/viewmodels/public_track_snapshot.gd:108",
+        "scripts/viewmodels/public_track_snapshot.gd:112",
+        "scripts/viewmodels/public_track_snapshot.gd:115"
+      ]
+    }
+  ],
+  "preserved_privacy_controls": [
+    "District supply unauthorized-viewer downgrade",
+    "Codex forbidden-key and object rejection",
+    "Card track and game-screen recursive scrub guards",
+    "Standings and settlement dual audit cash authorization",
+    "Bestiary omission of internal weights, random tickets, and preselected targets"
+  ],
+  "compatibility_bridges": [
+    {
+      "id": "BRIDGE-PRODUCT-ID",
+      "status": "keep_until_versioned_migration",
+      "summary": "Localized product IDs remain current authority across market, route, card, world, and save state."
+    },
+    {
+      "id": "BRIDGE-ROLE-ID",
+      "status": "keep_until_stable_role_id",
+      "summary": "Role portrait and navigation still use localized name or catalog index."
+    },
+    {
+      "id": "BRIDGE-MONSTER-ID",
+      "status": "keep_until_checkpoint_normalization",
+      "summary": "Monster Codex and art joins still use catalog index and localized name."
+    },
+    {
+      "id": "BRIDGE-CARD-READINESS",
+      "status": "projection_only_must_not_claim_executable",
+      "summary": "Card semantic catalog is 256 active and 92 projection_only at the audited baseline."
+    },
+    {
+      "id": "BRIDGE-PRIVACY-SCRUB",
+      "status": "retain_as_defense_in_depth",
+      "summary": "Existing scrubbers stay after typed viewer projections are authoritative."
+    }
+  ],
+  "blockers": [
+    {
+      "id": "BLOCK-PLAYER-FACE-CONSUMERS",
+      "summary": "Strict card DTO has zero production consumers."
+    },
+    {
+      "id": "BLOCK-LEGAL-ACTION-AUTHORITY",
+      "summary": "Market and drag/drop still synthesize actionability in presentation or UI."
+    },
+    {
+      "id": "BLOCK-ROLE-SEMANTICS",
+      "summary": "Role passive rule authority is not established for all passive families."
+    },
+    {
+      "id": "BLOCK-MONSTER-IDENTITY",
+      "summary": "Stable monster family identity is not universal in runtime and checkpoint data."
+    },
+    {
+      "id": "BLOCK-PRODUCT-IDENTITY",
+      "summary": "Localized product IDs require a versioned save and RNG-safe migration."
+    },
+    {
+      "id": "BLOCK-FACILITY-CATALOG",
+      "summary": "No single immutable FacilitySemanticSpec catalog feeds region and market presentation."
+    },
+    {
+      "id": "BLOCK-WEATHER-DUPLICATION",
+      "summary": "Weather effects and visual identity are duplicated across service, view model, telemetry, and UI."
+    },
+    {
+      "id": "BLOCK-PRIVACY-CROP",
+      "summary": "True AI starter monster crosses the setup query boundary before renderer hiding."
+    },
+    {
+      "id": "BLOCK-LOCALIZATION-SOURCE",
+      "summary": "The new card projector has no production-authorized localization source or composition."
+    }
+  ],
+  "required_scan_gates": [
+    "ban presentation effect_payload and raw skill reads outside explicit migration allowlists",
+    "ban new cost/effect/type/rank alias fallbacks",
+    "ban localized names, labels, tooltip text, or colors from selecting action, route, target, rule, rank, or handler",
+    "require viewer cropping before private values enter a DTO",
+    "ban per-frame or per-render semantic compilation",
+    "unknown semantic operations must not render as executable",
+    "require stable message refs and presentation token IDs",
+    "require legal actions from authoritative action/query owners",
+    "preserve renderer-only layout, focus, animation, accessibility, and scrub behavior"
+  ],
+  "preservation": {
+    "production_code_changed": false,
+    "tests_changed": false,
+    "catalogs_changed": false,
+    "rules_changed": false,
+    "balance_changed": false,
+    "rng_changed": false,
+    "save_or_replay_changed": false,
+    "existing_reports_changed": false,
+    "godot_run_required": false
+  }
+}
