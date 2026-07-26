@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/card_semantic_compiler_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardSemanticCatalogService.tscn" id="2_service"]
+
+[node name="CardSemanticCompilerBench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="CardSemanticCatalogService" parent="." instance=ExtResource("2_service")]
