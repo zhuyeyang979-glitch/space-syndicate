@@ -10,6 +10,14 @@ const ASSET_COST_KEYS := ["life", "energy", "industry", "technology", "commerce"
 func plan_receive(inventory: Dictionary, incoming_card: Dictionary, catalog: CardRuntimeCatalogV06Resource) -> Dictionary:
 	if catalog == null or not bool(catalog.validation_report().get("valid", false)):
 		return _reject("catalog_unavailable")
+	return _plan_receive_catalog_ready(inventory, incoming_card, catalog)
+
+
+func _plan_receive_catalog_ready(
+	inventory: Dictionary,
+	incoming_card: Dictionary,
+	catalog: CardRuntimeCatalogV06Resource
+) -> Dictionary:
 	if int(inventory.get("hand_limit", HAND_LIMIT)) != HAND_LIMIT:
 		return _reject("hand_limit_mismatch")
 	var incoming_machine := _machine(incoming_card)
@@ -88,7 +96,55 @@ func plan_receive_with_optional_discard(
 	catalog: CardRuntimeCatalogV06Resource,
 	discard_slot: int = -1
 ) -> Dictionary:
-	var direct_plan := plan_receive(inventory, incoming_card, catalog)
+	if catalog == null or not bool(catalog.validation_report().get("valid", false)):
+		return _reject("catalog_unavailable")
+	return _plan_receive_with_optional_discard_catalog_ready(
+		inventory,
+		incoming_card,
+		catalog,
+		discard_slot
+	)
+
+
+func plan_receive_with_optional_discard_batch(
+	inventory: Dictionary,
+	incoming_cards_by_id: Dictionary,
+	card_ids: Array,
+	catalog: CardRuntimeCatalogV06Resource,
+	discard_slot: int = -1
+) -> Dictionary:
+	if catalog == null or not bool(catalog.validation_report().get("valid", false)):
+		return {
+			"accepted": false,
+			"reason_code": "catalog_unavailable",
+			"plans_by_card_id": {},
+		}
+	var plans_by_card_id: Dictionary = {}
+	for card_id_variant in card_ids:
+		var card_id := str(card_id_variant)
+		var incoming_card_variant: Variant = incoming_cards_by_id.get(card_id, {})
+		var incoming_card: Dictionary = incoming_card_variant as Dictionary \
+			if incoming_card_variant is Dictionary else {}
+		plans_by_card_id[card_id] = _plan_receive_with_optional_discard_catalog_ready(
+			inventory,
+			incoming_card,
+			catalog,
+			discard_slot
+		)
+	return {
+		"accepted": true,
+		"reason_code": "receive_preview_batch_ready",
+		"plans_by_card_id": plans_by_card_id,
+	}
+
+
+func _plan_receive_with_optional_discard_catalog_ready(
+	inventory: Dictionary,
+	incoming_card: Dictionary,
+	catalog: CardRuntimeCatalogV06Resource,
+	discard_slot: int
+) -> Dictionary:
+	var direct_plan := _plan_receive_catalog_ready(inventory, incoming_card, catalog)
 	if bool(direct_plan.get("ready", false)):
 		var direct_result := direct_plan.duplicate(true)
 		direct_result["discarded"] = false
@@ -114,7 +170,7 @@ func plan_receive_with_optional_discard(
 	slots[discard_slot] = null
 	var after_discard := inventory.duplicate(true)
 	after_discard["slots"] = slots
-	var receive_plan := plan_receive(after_discard, incoming_card, catalog)
+	var receive_plan := _plan_receive_catalog_ready(after_discard, incoming_card, catalog)
 	if not bool(receive_plan.get("ready", false)):
 		return _reject(
 			str(receive_plan.get("reason_code", "inventory_commit_failed")),

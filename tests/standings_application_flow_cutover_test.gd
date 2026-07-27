@@ -18,7 +18,8 @@ class FakeVictoryController extends VictoryControlRuntimeController:
 		"visibility_scope": "public",
 	}
 	var private_value := {
-		"own_candidate": {"top_n_gdp_per_minute": 145, "controlled_region_count": 4},
+		"viewer_player_index": 0,
+		"own_candidate": {"top_k_gdp_per_minute": 145, "top_n_gdp_per_minute": 145, "controlled_region_count": 4, "eligible": true},
 		"visibility_scope": "viewer_private",
 	}
 
@@ -27,6 +28,9 @@ class FakeVictoryController extends VictoryControlRuntimeController:
 
 	func private_snapshot(_viewer_index: int) -> Dictionary:
 		return private_value.duplicate(true)
+
+	func timer_duration(timer_id: String) -> float:
+		return 10.0 if timer_id == "victory_qualification" else (120.0 if timer_id == "public_audit" else 0.0)
 
 
 var _checks := 0
@@ -77,14 +81,24 @@ func _run() -> void:
 
 	var before_world := JSON.stringify(world.players)
 	var snapshot := query.snapshot_for_authorized_viewer(960.0)
+	var progress := query.victory_progress_for_authorized_viewer()
 	var after_world := JSON.stringify(world.players)
 	_check(before_world == after_world, "opening standings does not mutate world state")
 	_check(str(snapshot.get("summary_text", "")).contains("局势排名"), "authorized viewer receives a standings snapshot")
 	_check(JSON.stringify(snapshot).contains("本地玩家") and not JSON.stringify(snapshot).contains("987654321") and not JSON.stringify(snapshot).contains("秘密牌"), "opponent cash and hand stay private")
 	var seats := ((snapshot.get("scoreboard", {}) as Dictionary).get("seats", []) as Array)
 	_check(seats.size() == 2 and str((seats[0] as Dictionary).get("score", "")) == "Top-N 145" and str((seats[1] as Dictionary).get("score", "")) == "进度隐藏", "only the authorized local viewer receives private progress")
+	_check(bool(progress.get("valid", false)) and int(progress.get("schema_version", 0)) == 1 and str(progress.get("visibility_scope", "")) == "viewer_private", "typed victory progress requires the same authorized local viewer")
+	_check(int(progress.get("selected_top_k_gdp_per_minute", -1)) == 145 and int(progress.get("required_top_k_gdp_per_minute", -1)) == 130 and int(progress.get("selected_controlled_region_count", -1)) == 4 and int(progress.get("required_controlled_region_count", -1)) == 4 and bool(progress.get("eligible", false)), "typed victory progress preserves authoritative numeric facts without presentation parsing")
+	_check(is_equal_approx(float(progress.get("qualification_duration_seconds", 0.0)), 10.0) and is_equal_approx(float(progress.get("audit_duration_seconds", 0.0)), 120.0), "typed progress projects timer durations from the authoritative Victory clock registry")
+	victory.private_value["viewer_player_index"] = 1
+	_check(str(query.victory_progress_for_authorized_viewer().get("reason_id", "")) == "victory_progress_subject_mismatch", "typed victory progress rejects a cross-subject private snapshot")
+	victory.private_value["viewer_player_index"] = 0
+	_check(not JSON.stringify(progress).contains("987654321") and not JSON.stringify(progress).contains("秘密牌") and not progress.has("cash") and not progress.has("players"), "typed victory progress contains no rival cash, hand, or world payload")
+	progress["selected_top_k_gdp_per_minute"] = 999999
+	_check(int(query.victory_progress_for_authorized_viewer().get("selected_top_k_gdp_per_minute", -1)) == 145, "typed victory progress is a detached read and cannot mutate the Victory owner")
 	var query_debug := query.debug_snapshot()
-	_check(not bool(query_debug.get("refreshes_routes", true)) and not bool(query_debug.get("mutates_world", true)) and not bool(query_debug.get("reveals_all_on_session_finish", true)), "query boundary is read-only and never enables finish-time full disclosure")
+	_check(int(query_debug.get("progress_query_count", 0)) == 2 and bool(query_debug.get("provides_viewer_authorized_progress", false)) and not bool(query_debug.get("refreshes_routes", true)) and not bool(query_debug.get("mutates_world", true)) and not bool(query_debug.get("reveals_all_on_session_finish", true)), "query boundary is read-only, counts accepted typed progress reads, and never enables finish-time full disclosure")
 
 	var flow := ApplicationFlowPort.new()
 	host.add_child(flow)
@@ -116,6 +130,7 @@ func _run() -> void:
 		_check(not main_source.contains(retired), "Main retired standings symbol is absent: %s" % retired)
 	var query_source := FileAccess.get_file_as_string("res://scripts/runtime/standings_public_query_port.gd")
 	_check(not query_source.contains("_refresh_route_network") and not query_source.contains("TableSelectionState") and not query_source.contains("/root/" + "Main") and not query_source.contains("current_scene"), "query port has no route mutation, selection-state authorization, Main, or current-scene fallback")
+	_check(not query_source.contains("func victory_progress_for_authorized_viewer() -> Dictionary:\n\tvar query_ports := _table_query_ports()\n\tvar victory := _victory_controller()\n\tif query_ports == null or victory == null:\n\t\treturn _rejected_progress(\"progress_dependency_unavailable\")\n\tvar context := query_ports.viewer_context()\n\tvar public_world"), "typed progress authorization does not deep-copy the public world")
 
 	host.queue_free()
 	await process_frame

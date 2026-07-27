@@ -80,11 +80,11 @@ func to_dictionary() -> Dictionary:
 func public_context() -> Dictionary:
 	if not is_valid():
 		return {}
+	# Final settlement derives player copy from the projected outcome reason_code.
 	return {
 		"victory_public_snapshot": public_snapshot.duplicate(true),
 		"participant_names": participant_names.duplicate(true),
 		"public_map_facts": public_map_facts.duplicate(true),
-		"reason": str(change_kind),
 	}
 
 

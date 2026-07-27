@@ -406,6 +406,41 @@ func region_supply_receive_preview(
 	)
 
 
+func region_supply_receive_previews(
+	actor_id: String,
+	card_ids: Array,
+	discard_slot: int = -1
+) -> Dictionary:
+	if not _service_ready() \
+			or not _transaction_service.has_method(
+				"region_supply_receive_previews"
+			):
+		return {
+			"accepted": false,
+			"reason_code": "controller_not_ready",
+			"player_revision": -1,
+			"card_ids": [],
+			"plans_by_card_id": {},
+		}
+	var value_variant: Variant = _transaction_service.call(
+		"region_supply_receive_previews",
+		actor_id,
+		card_ids.duplicate(),
+		discard_slot
+	)
+	return (
+		(value_variant as Dictionary).duplicate(true)
+		if value_variant is Dictionary
+		else {
+			"accepted": false,
+			"reason_code": "region_supply_receive_previews_invalid",
+			"player_revision": -1,
+			"card_ids": [],
+			"plans_by_card_id": {},
+		}
+	)
+
+
 func claim_belt_card(
 	actor_id: String,
 	source_item_id: String,

@@ -137,6 +137,40 @@ func private_inventory_plan_for_actor(
 	return _commodity_inventory().region_supply_receive_preview(_actor_id(player_index), incoming_card_id, discard_slot)
 
 
+func private_inventory_plans_for_actor(
+	capability: DistrictSupplyAiQueryCapability,
+	player_index: int,
+	incoming_card_ids: Array,
+	discard_slot := -1
+) -> Dictionary:
+	_private_ai_query_count += 1
+	if not _ai_private_authorized(capability, player_index) \
+			or _commodity_inventory() == null \
+			or not _commodity_inventory().has_method("region_supply_receive_previews"):
+		_rejected_query_count += 1
+		return {}
+	var normalized_card_ids: Array = []
+	for card_id_variant in incoming_card_ids:
+		if not (card_id_variant is String or card_id_variant is StringName):
+			_rejected_query_count += 1
+			return {}
+		var card_id := str(card_id_variant).strip_edges()
+		if card_id.is_empty():
+			_rejected_query_count += 1
+			return {}
+		if not normalized_card_ids.has(card_id):
+			normalized_card_ids.append(card_id)
+	var result := _commodity_inventory().region_supply_receive_previews(
+		_actor_id(player_index),
+		normalized_card_ids,
+		int(discard_slot)
+	)
+	if not bool(result.get("accepted", false)):
+		_rejected_query_count += 1
+		return {}
+	return result.duplicate(true)
+
+
 func private_discardable_slots_for_actor(capability: DistrictSupplyAiQueryCapability, player_index: int) -> Array:
 	return _commodity_inventory().discardable_slots(_actor_id(player_index)) \
 		if not private_inventory_snapshot_for_actor(capability, player_index).is_empty() else []

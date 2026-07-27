@@ -96,23 +96,23 @@ Market, weather, city-control, futures, generic-effect, instance-state, and role
 
 The semantic debt scanner remains the source of the exact `219/5/31/69` AI
 consumer metric. A second receiver-independent token scanner now protects that
-ledger against structural bypass: it scans all 561 project production
+ledger against structural bypass: it scans all 562 project production
 GDScripts under `res://`, excluding `tests`, `tools`, `addons`, `reports`, and
 `scripts/tools`. Every direct literal `.get`, `.has`, and bracket access enters
 the lock, including unknown future keys, raw strings, StringName literals, and
 multiline forms. Its stable signature includes path, function, key, access
 form, normalized receiver, and normalized access expression.
 
-The closed structural lock contains 29,725 occurrences, 25,717 distinct
-signatures, 4,477 distinct literal keys, 451 files, and all 71 historical keys.
-Its `bracket/get/has` counts are `3496/25841/388`, key-set fingerprint is
-`2649386fe9193664cc742bf950318eb20df85a237e06e17a13371e2f3361d40b`,
+The closed structural lock contains 30,253 occurrences, 26,150 distinct
+signatures, 4,578 distinct literal keys, 455 files, and all 71 historical keys.
+Its `bracket/get/has` counts are `3514/26340/399`, key-set fingerprint is
+`ab8355b7f177d68c9af7d2eb593f33b8fd075976f62074d5e0a11e0b6e50436b`,
 and structure fingerprint is
-`6a2dd2b439c1554421a8218e38e0b269a2e4f4a368b3f7330a116d80c9aa1ead`.
+`29c955c953ed83df97e564f214a74f74e0a586bdb29035382de932d9b02fa0f3`.
 Receiver renaming, resource/helper relocation, unknown keys such as
 `future_private_value`, multiline access, `payload["kind"]`, `r"kind"`, and
 `&"kind"` all change the lock and fail the scanner. This project-production
-inventory is a structural guard, not a claim that all 29,725 sites are AI raw
+inventory is a structural guard, not a claim that all 30,076 sites are AI raw
 reads.
 
 The scanner still does not claim arbitrary data-flow or reflection analysis.

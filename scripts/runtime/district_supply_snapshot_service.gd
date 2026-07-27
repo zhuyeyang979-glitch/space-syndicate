@@ -391,6 +391,8 @@ func _market_card_snapshot(card: Dictionary, source: Dictionary) -> Dictionary:
 		"rank_number": maxi(1, int(card.get("rank", 1))),
 		"rank_tooltip": "Card rank / upgrade tier.",
 		"kind": str(card.get("kind", "")),
+		"facility_kind": str(card.get("facility_kind", "")),
+		"industry_id": str(card.get("industry_id", "")),
 		"card_stats": str(card.get("art_stats", "")),
 		"card_art_stats": str(card.get("art_stats", "")),
 		"chips": [
@@ -426,6 +428,8 @@ func _preview_snapshot(card: Dictionary, source: Dictionary) -> Dictionary:
 	var primary_action_id := _primary_action_id(state, can_request_quote)
 	return {
 		"card_name": card_name,
+		"facility_kind": str(card.get("facility_kind", "")),
+		"industry_id": str(card.get("industry_id", "")),
 		"title": "%s | %s" % [display_name, str(card.get("primary_type_label", "卡牌"))],
 		"title_tooltip": str(card.get("detail_tooltip", "")),
 		"chips": [

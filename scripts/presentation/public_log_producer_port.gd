@@ -2,6 +2,9 @@
 extends Node
 class_name PublicLogProducerPort
 
+const SESSION_CHECKPOINT_SCHEMA_VERSION := 1
+const SESSION_CHECKPOINT_KEYS := ["schema_version", "sequence"]
+
 var _owner: PublicLogPresentationOwner
 var _sequence := 0
 
@@ -16,6 +19,25 @@ func is_ready() -> bool:
 
 func reset_state() -> void:
 	_sequence = 0
+
+
+func capture_session_checkpoint() -> Dictionary:
+	return {
+		"schema_version": SESSION_CHECKPOINT_SCHEMA_VERSION,
+		"sequence": _sequence,
+	}
+
+
+func restore_session_checkpoint(checkpoint: Dictionary) -> bool:
+	if not TablePresentationPureDataPolicy.is_pure_data(checkpoint) \
+			or not _has_exact_keys(checkpoint, SESSION_CHECKPOINT_KEYS) \
+			or typeof(checkpoint.get("schema_version")) != TYPE_INT \
+			or int(checkpoint.get("schema_version", 0)) != SESSION_CHECKPOINT_SCHEMA_VERSION \
+			or typeof(checkpoint.get("sequence")) != TYPE_INT \
+			or int(checkpoint.get("sequence", -1)) < 0:
+		return false
+	_sequence = int(checkpoint.get("sequence", 0))
+	return true
 
 
 func publish(
@@ -51,3 +73,12 @@ func debug_snapshot() -> Dictionary:
 		"owns_log_entries": false,
 		"accepts_typed_receipts": true,
 	}
+
+
+func _has_exact_keys(value: Dictionary, expected: Array) -> bool:
+	if value.size() != expected.size():
+		return false
+	for key_variant in expected:
+		if not value.has(key_variant):
+			return false
+	return true

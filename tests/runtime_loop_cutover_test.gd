@@ -5,6 +5,7 @@ class TraceState extends RefCounted:
 	var finished := false
 	var paused := false
 	var globally_blocked := false
+	var clear_global_block_on_sync := false
 	var card_progress := true
 	var flow_finalized := true
 	var finish_after_flow := false
@@ -35,6 +36,8 @@ class FakeLifecyclePort extends RuntimeLifecyclePort:
 
 	func synchronize_forced_decisions() -> Dictionary:
 		state._record(&"synchronize_forced_decisions")
+		if state.clear_global_block_on_sync:
+			state.globally_blocked = false
 		return {"synchronized": true}
 	func blocks_global_time() -> bool:
 		state._record(&"blocks_global_time")
@@ -148,6 +151,7 @@ func _run() -> void:
 	_test_active_trace()
 	_test_postcommit_recovery_fence()
 	_test_blocked_pause_and_terminal_paths()
+	_test_blocked_realtime_only_path()
 	_test_early_return_paths()
 	_test_deterministic_port_replay()
 	_test_scene_reconstruction()
@@ -234,6 +238,43 @@ func _test_blocked_pause_and_terminal_paths() -> void:
 	finished_loop.advance_frame_for_test(0.4)
 	_check(finished_state.calls == [&"session_is_finished"], "terminal session stops before synchronization")
 	finished_loop.free(); finished_ports.free()
+
+
+func _test_blocked_realtime_only_path() -> void:
+	var blocked_state := TraceState.new()
+	blocked_state.globally_blocked = true
+	var blocked_ports := FakePorts.new(blocked_state)
+	var blocked_loop := RuntimeLoop.new()
+	_bind_loop_to_phases(blocked_loop, blocked_ports)
+	var blocked := blocked_loop.advance_frame_for_test(1.0, RuntimeLoop.TEST_ADVANCE_MODE_BLOCKED_REALTIME_ONLY)
+	_check(blocked_state.calls == [&"session_is_finished", &"synchronize_forced_decisions", &"blocks_global_time", &"tick_monster_wagers", &"advance_visual_cues", &"advance_table_presentation"], "blocked-only frame advances only the established real-time owners")
+	_check(str(blocked.get("path", "")) == "global_blocked" and is_zero_approx(float(blocked.get("world_delta", -1.0))), "blocked-only frame keeps authoritative world time frozen")
+	_check(blocked.get("phase_trace", []) == [&"lifecycle_blocked_realtime_probe", &"simulation_blocked_realtime", &"presentation_blocked_realtime"], "blocked-only frame exposes a closed phase trace")
+	_check(not blocked_state.calls.has(&"tick_ai") and not blocked_state.calls.has(&"advance_world_time"), "blocked-only frame cannot advance AI or the world clock")
+	blocked_loop.free(); blocked_ports.free()
+
+	var stale_state := TraceState.new()
+	stale_state.globally_blocked = true
+	stale_state.clear_global_block_on_sync = true
+	var stale_ports := FakePorts.new(stale_state)
+	var stale_loop := RuntimeLoop.new()
+	_bind_loop_to_phases(stale_loop, stale_ports)
+	var stale := stale_loop.advance_frame_for_test(1.0, RuntimeLoop.TEST_ADVANCE_MODE_BLOCKED_REALTIME_ONLY)
+	_check(stale_state.calls == [&"session_is_finished", &"synchronize_forced_decisions", &"blocks_global_time"], "a stale block that clears during synchronization performs no simulation work")
+	_check(str(stale.get("path", "")) == "blocked_realtime_unavailable" and is_zero_approx(float(stale.get("world_delta", -1.0))), "a stale block fails to a zero-world no-op")
+	_check(not stale_state.calls.has(&"tick_ai") and not stale_state.calls.has(&"advance_world_time"), "the stale-block race cannot fall through to an active frame")
+	stale_loop.free(); stale_ports.free()
+
+	var recovery_state := TraceState.new()
+	recovery_state.globally_blocked = true
+	recovery_state.postcommit_pending = true
+	var recovery_ports := FakePorts.new(recovery_state)
+	var recovery_loop := RuntimeLoop.new()
+	_bind_loop_to_phases(recovery_loop, recovery_ports)
+	var recovery := recovery_loop.advance_frame_for_test(1.0, RuntimeLoop.TEST_ADVANCE_MODE_BLOCKED_REALTIME_ONLY)
+	_check(str(recovery.get("path", "")) == "blocked_realtime_unavailable" and str(recovery.get("stopped_reason", "")) == "postcommit_recovery_pending", "blocked-only stepping yields to an existing postcommit recovery transaction")
+	_check(recovery_state.calls.is_empty(), "blocked-only stepping neither recovers nor bypasses a pending postcommit transaction")
+	recovery_loop.free(); recovery_ports.free()
 
 
 func _test_postcommit_recovery_fence() -> void:

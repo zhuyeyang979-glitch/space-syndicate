@@ -121,6 +121,17 @@ func _run() -> void:
 	_expect(str(private_snapshot.get("visibility_scope", "")) == "viewer_private", "formatted drawer retains viewer-private scope")
 	_expect(private_text.contains("¥%d" % HUMAN_CASH_SENTINEL), "private drawer contains only the local human's exact cash summary")
 	_expect(not private_text.contains("quote_fingerprint") and not private_text.contains("supply_revision"), "private drawer strips quote credentials and internal supply revisions")
+	var typed_facility_listings: Array = []
+	for card_variant in private_snapshot.get("cards", []) as Array:
+		if card_variant is Dictionary and not str((card_variant as Dictionary).get("facility_kind", "")).is_empty():
+			typed_facility_listings.append((card_variant as Dictionary).duplicate(true))
+	var typed_facility_fields_valid := not typed_facility_listings.is_empty()
+	for facility_variant in typed_facility_listings:
+		var facility := facility_variant as Dictionary
+		typed_facility_fields_valid = typed_facility_fields_valid \
+			and not str(facility.get("facility_kind", "")).is_empty() \
+			and not str(facility.get("industry_id", "")).is_empty()
+	_expect(typed_facility_fields_valid, "real production rack facility listings retain non-empty typed facility kind and industry without exposing the machine payload")
 
 	var rival := (world.players[1] as Dictionary).duplicate(true)
 	rival["cash"] = RIVAL_CASH_SENTINEL
@@ -214,14 +225,24 @@ func _run() -> void:
 
 
 func _first_rack_district(world: WorldSessionState, region_supply: RegionSupplyRuntimeController) -> int:
+	var fallback := -1
 	for district_index in range(world.districts.size()):
 		var district: Dictionary = world.districts[district_index] if world.districts[district_index] is Dictionary else {}
 		var region_id := str(district.get("region_id", ""))
 		var rack := region_supply.public_rack_snapshot(region_id)
 		var rows: Array = rack.get("regions", []) if rack.get("regions", []) is Array else []
-		if not rows.is_empty() and rows[0] is Dictionary and not ((rows[0] as Dictionary).get("slots", []) as Array).is_empty():
-			return district_index
-	return -1
+		if rows.is_empty() or not (rows[0] is Dictionary):
+			continue
+		var slots: Array = (rows[0] as Dictionary).get("slots", []) as Array
+		if slots.is_empty():
+			continue
+		if fallback < 0:
+			fallback = district_index
+		for slot_variant in slots:
+			if slot_variant is Dictionary \
+					and not str((slot_variant as Dictionary).get("facility_kind", "")).is_empty():
+				return district_index
+	return fallback
 
 
 func _collect_forbidden_paths(value: Variant, path: String, result: Array[String]) -> void:

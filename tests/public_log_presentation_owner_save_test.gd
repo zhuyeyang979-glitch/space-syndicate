@@ -14,6 +14,18 @@ func _run() -> void:
 	var receipt := _receipt()
 	var applied := owner.append_receipt(receipt)
 	_expect(bool(applied.get("applied", false)) and owner.recent_public_entries(8).size() == 1, "typed receipt seeds one public entry")
+	var session_checkpoint := owner.capture_session_checkpoint()
+	var owner_save_before_checkpoint_restore := owner.to_save_data()
+	var owner_debug_before_checkpoint_restore := owner.debug_snapshot()
+	owner.reset_state()
+	_expect(owner.restore_session_checkpoint(session_checkpoint) and owner.to_save_data() == owner_save_before_checkpoint_restore and owner.debug_snapshot() == owner_debug_before_checkpoint_restore, "in-memory session checkpoint restores PublicLog rows, bindings, revisions, and counters exactly")
+	var unknown_checkpoint_key := session_checkpoint.duplicate(true)
+	unknown_checkpoint_key["unexpected"] = true
+	var before_unknown_checkpoint_reject := owner.capture_session_checkpoint()
+	_expect(not owner.restore_session_checkpoint(unknown_checkpoint_key) and owner.capture_session_checkpoint() == before_unknown_checkpoint_reject, "PublicLog session checkpoint rejects unknown keys with zero owner mutation")
+	var invalid_checkpoint_counter := session_checkpoint.duplicate(true)
+	invalid_checkpoint_counter["duplicate_receipt_count"] = -1
+	_expect(not owner.restore_session_checkpoint(invalid_checkpoint_counter) and owner.capture_session_checkpoint() == before_unknown_checkpoint_reject, "PublicLog session checkpoint rejects invalid transient counters with zero owner mutation")
 	var save := owner.to_save_data()
 	_expect(int(save.get("schema_version", -1)) == 2 and (save.get("legacy_unverified_receipt_ids", []) as Array).is_empty(), "new public-log saves use fingerprint-bound schema v2")
 

@@ -23,7 +23,7 @@ const FULL_HAND_GOLDEN_FORCE_SELECTION_SHA256 := "6c4e9b50341a15d2704543a35b445a
 const FULL_HAND_GOLDEN_NORMAL_SELECTION_SHA256 := "6c4e9b50341a15d2704543a35b445ad82ccefeeac47769fad315d3f2830a729d"
 const FULL_HAND_GOLDEN_NORMAL_TERMINAL_SHA256 := "31f5a028edcf8c0afb56a4f234ae09de7b1b050ea62e51da6f7a9a9a8006d78e"
 const FULL_HAND_GOLDEN_FINAL_MEMORY_SHA256 := "9a1951ceac14f8fdfd28488f9105b2e0c405a5b5b4160666caaa05ec1637c957"
-const FULL_HAND_GOLDEN_AI_QUERY_DELTA := 27
+const FULL_HAND_GOLDEN_AI_QUERY_DELTA := 22
 const FULL_HAND_GOLDEN_COMMIT_DELTA := 4
 
 const FALLBACK_SUGGESTED_LIMIT_MSEC := 8_000
@@ -193,6 +193,7 @@ func _run() -> void:
 		await _cleanup(app_root)
 		_finish(scenario)
 		return
+	_verify_actor_state_tick_cache_boundary(ai, actor_state_port, actor_index)
 
 	var hand_ready := _replace_actor_hand(coordinator, world, actor_index, FULL_HAND_CARD_ID)
 	_expect(hand_ready, "focused fixture installs exactly five owned runtime cards")
@@ -226,12 +227,60 @@ func _run() -> void:
 		) and fallback_fixture_ready
 	_expect(fallback_fixture_ready, "fallback fixture installs five evaluated but unplayable cards for every AI actor")
 	if fallback_fixture_ready:
-		_run_development_route_lookup_context_gate(ai, actor_state_port, rng, world, actor_indices[0])
+		_run_development_route_lookup_context_gate(
+			ai,
+			coordinator.gameplay_balance_diagnostics_service(),
+			actor_state_port,
+			rng,
+			world,
+			actor_indices[0]
+		)
 		_run_route_hand_inventory_cache_review_gate(ai, actor_state_port, rng, world, actor_indices[0])
 		_run_fallback_aggregate(ai, actor_state_port, rng, world, actor_indices)
 
 	await _cleanup(app_root)
 	_finish(scenario)
+
+
+func _verify_actor_state_tick_cache_boundary(
+	ai: AiRuntimeController,
+	actor_state_port: AiActorStatePort,
+	actor_index: int
+) -> void:
+	var port_before := actor_state_port.debug_snapshot()
+	var ai_before := ai.debug_snapshot()
+	ai._actor_state_tick_cache.clear()
+	ai._actor_state_tick_cache_active = true
+	var first := ai.call("_ai_actor_state_snapshot", actor_index) as Dictionary
+	var second := ai.call("_ai_actor_state_snapshot", actor_index) as Dictionary
+	var profile: Dictionary = (first.get("ai_profile", {}) as Dictionary).duplicate(true)
+	var memory: Dictionary = (first.get("ai_memory", {}) as Dictionary).duplicate(true)
+	var unchanged_commit := ai.call(
+		"_commit_ai_actor_state",
+		actor_index,
+		profile,
+		memory,
+		first
+	) as Dictionary
+	var third := ai.call("_ai_actor_state_snapshot", actor_index) as Dictionary
+	ai._actor_state_tick_cache_active = false
+	ai._actor_state_tick_cache.clear()
+	var port_after := actor_state_port.debug_snapshot()
+	var ai_after := ai.debug_snapshot()
+	_expect(
+		not first.is_empty() and first == second and second == third,
+		"one synchronous simulation tick reuses an identical actor-state projection"
+	)
+	_expect(
+		int(port_after.get("ai_state_query_count", 0)) - int(port_before.get("ai_state_query_count", 0)) == 2 \
+			and int(ai_after.get("actor_state_tick_cache_hit_count", 0)) - int(ai_before.get("actor_state_tick_cache_hit_count", 0)) == 1 \
+			and int(ai_after.get("actor_state_tick_cache_miss_count", 0)) - int(ai_before.get("actor_state_tick_cache_miss_count", 0)) == 2,
+		"actor-state cache hits only before a typed commit invalidates the tick lease"
+	)
+	_expect(
+		bool(unchanged_commit.get("accepted", false)) and not bool(unchanged_commit.get("changed", true)),
+		"cache invalidation probe uses an accepted no-op typed commit"
+	)
 
 
 func _run_saturated_play_turn_route_context_gate(
@@ -1664,12 +1713,16 @@ func _run_fallback_aggregate(
 			]
 	)
 	print(
-		"ROUTE_LOOKUP_CACHE_REVIEW_REPAIR_GATE|status=%s|fresh_snapshot_contexts=%d|shared_snapshot_contexts=%d|snapshot_identity_preserved=%s|uncached_route_hand_scans=%d|cached_route_hand_scans=%d|unique_route_count=%d|candidate_order_selection_parity=%s|memory_parity=%s|commit_parity=%s|rng_parity=%s"
+		"ROUTE_LOOKUP_CACHE_REVIEW_REPAIR_GATE|status=%s|fresh_snapshot_contexts=%d|shared_snapshot_contexts=%d|index_build_delta=%d|legacy_snapshot_delta=%d|baseline_resolutions=%d|optimized_resolutions=%d|lookup_context_detached=%s|uncached_route_hand_scans=%d|cached_route_hand_scans=%d|unique_route_count=%d|candidate_order_selection_parity=%s|memory_parity=%s|commit_parity=%s|rng_parity=%s"
 			% [
 				"PASS" if gate_passed else "FAIL",
 				int(_route_lookup_profile.get("baseline_snapshot_lookup_count", -1)),
 				int(_route_lookup_profile.get("optimized_snapshot_lookup_count", -1)),
-				str(bool(_route_lookup_profile.get("snapshot_identity_preserved", false))),
+				int(_route_lookup_profile.get("index_build_delta", -1)),
+				int(_route_lookup_profile.get("legacy_snapshot_delta", -1)),
+				int(_route_lookup_profile.get("baseline_resolution_delta", -1)),
+				int(_route_lookup_profile.get("optimized_resolution_delta", -1)),
+				str(bool(_route_lookup_profile.get("lookup_context_remained_detached", false))),
 				int(_route_hand_inventory_profile.get("uncached_scan_count", -1)),
 				int(_route_hand_inventory_profile.get("cached_scan_count", -1)),
 				int(_route_hand_inventory_profile.get("unique_route_count", -1)),
@@ -1680,13 +1733,15 @@ func _run_fallback_aggregate(
 			]
 	)
 	print(
-		"NEXT_AI_FRAME_HOTSPOT_GATE|status=%s|hotspot=development_route_lookup|baseline_route_usec=%d|optimized_route_usec=%d|baseline_snapshot_lookups=%d|optimized_snapshot_lookups=%d|fallback_buy_elapsed_msec=%d|fallback_buy_queries=%d|semantic_parity=%s|order_selection_parity=%s|memory_parity=%s|commit_parity=%s|rng_parity=%s"
+		"NEXT_AI_FRAME_HOTSPOT_GATE|status=%s|hotspot=sealed_development_route_index|baseline_route_usec=%d|optimized_route_usec=%d|baseline_snapshot_lookups=%d|optimized_snapshot_lookups=%d|index_build_delta=%d|legacy_snapshot_delta=%d|fallback_buy_elapsed_msec=%d|fallback_buy_queries=%d|semantic_parity=%s|order_selection_parity=%s|memory_parity=%s|commit_parity=%s|rng_parity=%s"
 			% [
 				"PASS" if gate_passed else "FAIL",
 				int(_route_lookup_profile.get("baseline_elapsed_usec", -1)),
 				int(_route_lookup_profile.get("optimized_elapsed_usec", -1)),
 				int(_route_lookup_profile.get("baseline_snapshot_lookup_count", -1)),
 				int(_route_lookup_profile.get("optimized_snapshot_lookup_count", -1)),
+				int(_route_lookup_profile.get("index_build_delta", -1)),
+				int(_route_lookup_profile.get("legacy_snapshot_delta", -1)),
 				int(optimized.get("buy_elapsed_msec", -1)),
 				int(optimized.get("buy_ai_state_query_delta", -1)),
 				str(semantic_parity),
@@ -1710,11 +1765,17 @@ func _run_fallback_aggregate(
 
 func _run_development_route_lookup_context_gate(
 	ai: AiRuntimeController,
+	diagnostics: GameplayBalanceDiagnosticsRuntimeService,
 	actor_state_port: AiActorStatePort,
 	rng: RunRngService,
 	world: WorldSessionState,
 	actor_index: int
 ) -> void:
+	if diagnostics == null:
+		_route_lookup_profile = {"passed": false}
+		print("DEVELOPMENT_ROUTE_LOOKUP_CONTEXT_GATE|status=FAIL|reason=diagnostics_missing")
+		_expect(false, "route lookup fixture exposes production diagnostics service")
+		return
 	var skills: Array = []
 	for district_index in range(world.districts.size()):
 		for card_variant in ai.call("_district_supply_card_ids", district_index) as Array:
@@ -1729,6 +1790,7 @@ func _run_development_route_lookup_context_gate(
 
 	var memory_before := ai.call("_ai_memory_for_player", actor_index) as Dictionary
 	var rng_before := rng.capture_plan_checkpoint()
+	var diagnostics_before := diagnostics.debug_snapshot()
 	var baseline_state_before := actor_state_port.debug_snapshot()
 	var baseline_started_usec := Time.get_ticks_usec()
 	var baseline_routes: Array = []
@@ -1744,36 +1806,23 @@ func _run_development_route_lookup_context_gate(
 			baseline_snapshot_lookup_count += 1
 	var baseline_elapsed_usec := Time.get_ticks_usec() - baseline_started_usec
 	var baseline_state_after := actor_state_port.debug_snapshot()
+	var diagnostics_after_baseline := diagnostics.debug_snapshot()
 
 	var lookup_context: Dictionary = {}
 	var optimized_state_before := actor_state_port.debug_snapshot()
 	var optimized_started_usec := Time.get_ticks_usec()
 	var optimized_routes: Array = []
-	var optimized_snapshot_lookup_count := 0
-	var snapshot_identity_preserved := false
-	var first_skill := skills[0] as Dictionary
-	optimized_routes.append(ai.call(
-		"_card_development_route_id",
-		first_skill,
-		lookup_context
-	))
-	var shared_snapshot: Dictionary = lookup_context.get("world_snapshot", {}) \
-		if lookup_context.get("world_snapshot", {}) is Dictionary else {}
-	if not shared_snapshot.is_empty():
-		optimized_snapshot_lookup_count = 1
-		shared_snapshot["__route_lookup_review_sentinel"] = "preserved"
-	for skill_index in range(1, skills.size()):
+	for skill_variant in skills:
 		optimized_routes.append(ai.call(
 			"_card_development_route_id",
-			skills[skill_index] as Dictionary,
+			skill_variant as Dictionary,
 			lookup_context
 		))
-	var final_shared_snapshot: Dictionary = lookup_context.get("world_snapshot", {}) \
-		if lookup_context.get("world_snapshot", {}) is Dictionary else {}
-	snapshot_identity_preserved = str(final_shared_snapshot.get("__route_lookup_review_sentinel", "")) == "preserved"
-	final_shared_snapshot.erase("__route_lookup_review_sentinel")
 	var optimized_elapsed_usec := Time.get_ticks_usec() - optimized_started_usec
+	var optimized_snapshot_lookup_count := 1 if lookup_context.has("world_snapshot") else 0
+	var lookup_context_remained_detached := optimized_snapshot_lookup_count == 0
 	var optimized_state_after := actor_state_port.debug_snapshot()
+	var diagnostics_after_optimized := diagnostics.debug_snapshot()
 	var memory_after := ai.call("_ai_memory_for_player", actor_index) as Dictionary
 	var rng_after := rng.capture_plan_checkpoint()
 
@@ -1787,15 +1836,38 @@ func _run_development_route_lookup_context_gate(
 			- int(optimized_state_before.get("state_commit_count", 0))
 	) == 0
 	var rng_parity: bool = rng_after == rng_before
-	var elapsed_reduction: bool = optimized_elapsed_usec < baseline_elapsed_usec
+	var baseline_resolution_delta := (
+		int(diagnostics_after_baseline.get("card_route_index_hit_count", 0))
+			+ int(diagnostics_after_baseline.get("card_route_index_miss_count", 0))
+	) - (
+		int(diagnostics_before.get("card_route_index_hit_count", 0))
+			+ int(diagnostics_before.get("card_route_index_miss_count", 0))
+	)
+	var optimized_resolution_delta := (
+		int(diagnostics_after_optimized.get("card_route_index_hit_count", 0))
+			+ int(diagnostics_after_optimized.get("card_route_index_miss_count", 0))
+	) - (
+		int(diagnostics_after_baseline.get("card_route_index_hit_count", 0))
+			+ int(diagnostics_after_baseline.get("card_route_index_miss_count", 0))
+	)
+	var index_build_delta := int(diagnostics_after_optimized.get("card_route_index_build_count", 0)) \
+		- int(diagnostics_before.get("card_route_index_build_count", 0))
+	var legacy_snapshot_delta := int(diagnostics_after_optimized.get("card_route_legacy_snapshot_lookup_count", 0)) \
+		- int(diagnostics_before.get("card_route_legacy_snapshot_lookup_count", 0))
+	var sealed_index_contract := bool(diagnostics_before.get("card_route_index_ready", false)) \
+		and bool(diagnostics_before.get("card_route_index_sealed", false)) \
+		and index_build_delta == 0 \
+		and legacy_snapshot_delta == 0 \
+		and baseline_snapshot_lookup_count == 0 \
+		and optimized_snapshot_lookup_count == 0 \
+		and lookup_context_remained_detached \
+		and baseline_resolution_delta > 0 \
+		and optimized_resolution_delta == baseline_resolution_delta
 	var gate_passed: bool = result_parity \
 		and memory_parity \
 		and commit_parity \
 		and rng_parity \
-		and elapsed_reduction \
-		and baseline_snapshot_lookup_count > optimized_snapshot_lookup_count \
-		and optimized_snapshot_lookup_count == 1 \
-		and snapshot_identity_preserved
+		and sealed_index_contract
 	_route_lookup_profile = {
 		"passed": gate_passed,
 		"baseline_elapsed_usec": baseline_elapsed_usec,
@@ -1806,10 +1878,14 @@ func _run_development_route_lookup_context_gate(
 			- int(optimized_state_before.get("ai_state_query_count", 0)),
 		"baseline_snapshot_lookup_count": baseline_snapshot_lookup_count,
 		"optimized_snapshot_lookup_count": optimized_snapshot_lookup_count,
-		"snapshot_identity_preserved": snapshot_identity_preserved,
+		"lookup_context_remained_detached": lookup_context_remained_detached,
+		"index_build_delta": index_build_delta,
+		"legacy_snapshot_delta": legacy_snapshot_delta,
+		"baseline_resolution_delta": baseline_resolution_delta,
+		"optimized_resolution_delta": optimized_resolution_delta,
 		"result_sha256": JSON.stringify(baseline_routes).sha256_text(),
 	}
-	print("DEVELOPMENT_ROUTE_LOOKUP_CONTEXT_GATE|status=%s|calls=%d|baseline_usec=%d|optimized_usec=%d|baseline_queries=%d|optimized_queries=%d|baseline_snapshot_lookups=%d|optimized_snapshot_lookups=%d|snapshot_identity_preserved=%s|result_parity=%s|memory_parity=%s|commit_parity=%s|rng_parity=%s" % [
+	print("DEVELOPMENT_ROUTE_LOOKUP_CONTEXT_GATE|status=%s|calls=%d|baseline_usec=%d|optimized_usec=%d|baseline_queries=%d|optimized_queries=%d|baseline_snapshot_lookups=%d|optimized_snapshot_lookups=%d|index_build_delta=%d|legacy_snapshot_delta=%d|baseline_resolutions=%d|optimized_resolutions=%d|lookup_context_detached=%s|result_parity=%s|memory_parity=%s|commit_parity=%s|rng_parity=%s" % [
 		"PASS" if gate_passed else "FAIL",
 		skills.size(),
 		baseline_elapsed_usec,
@@ -1818,13 +1894,17 @@ func _run_development_route_lookup_context_gate(
 		int(_route_lookup_profile.get("optimized_queries", -1)),
 		baseline_snapshot_lookup_count,
 		optimized_snapshot_lookup_count,
-		str(snapshot_identity_preserved),
+		index_build_delta,
+		legacy_snapshot_delta,
+		baseline_resolution_delta,
+		optimized_resolution_delta,
+		str(lookup_context_remained_detached),
 		str(result_parity),
 		str(memory_parity),
 		str(commit_parity),
 		str(rng_parity),
 	])
-	_expect(gate_passed, "call-local development-route lookup context preserves results, memory, commits, and RNG while reducing elapsed time")
+	_expect(gate_passed, "sealed development-route index preserves results, memory, commits, and RNG without candidate-loop builds or snapshots")
 
 
 func _run_route_hand_inventory_cache_review_gate(

@@ -10,6 +10,7 @@ class_name RuntimePhaseCoordinator
 @onready var simulation_step: RuntimeSimulationStep = $RuntimeSimulationStep
 
 var _last_receipt: Dictionary = {}
+var _victory_port: RuntimeVictoryPort
 
 
 func bind_ports(ports: RuntimeWorldPorts) -> void:
@@ -21,6 +22,7 @@ func bind_ports(ports: RuntimeWorldPorts) -> void:
 	resolution.bind_port(ports.economy)
 	state_commit.bind_ports(ports.economy, ports.victory)
 	presentation_schedule.bind_port(ports.presentation)
+	_victory_port = ports.victory
 	_bind_simulation_step()
 
 
@@ -34,6 +36,8 @@ func is_ready() -> bool:
 
 func advance_frame(real_delta: float) -> Dictionary:
 	var context := RuntimePhaseFrameContext.new(real_delta)
+	if _advance_pending_terminal(context):
+		return _finish(context)
 	if not is_ready():
 		_last_receipt = context.receipt()
 		return _last_receipt.duplicate(true)
@@ -54,11 +58,31 @@ func advance_frame(real_delta: float) -> Dictionary:
 	return _finish(context)
 
 
+func advance_blocked_realtime_frame(real_delta: float) -> Dictionary:
+	var context := RuntimePhaseFrameContext.new(real_delta)
+	if _advance_pending_terminal(context):
+		return _finish(context)
+	if not is_ready():
+		_last_receipt = context.receipt()
+		return _last_receipt.duplicate(true)
+	if simulation_step.has_pending_postcommit_recovery():
+		context.path = &"blocked_realtime_unavailable"
+		context.stopped_reason = &"postcommit_recovery_pending"
+		return _finish(context)
+	var path := lifecycle.begin_blocked_realtime_frame(context)
+	if path == &"global_blocked":
+		simulation.advance_blocked_realtime(context)
+		presentation_schedule.advance_blocked_realtime(context)
+	return _finish(context)
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"ready": is_ready(),
 		"phase_count": 6,
 		"simulation_step_count": 1,
+		"terminal_presentation_pending": is_instance_valid(_victory_port) and _victory_port.has_pending_terminal_outcome(),
+		"simulation": simulation.debug_snapshot() if simulation != null else {},
 		"owns_world_state": false,
 		"owns_gameplay_rules": false,
 		"last_receipt": _last_receipt.duplicate(true),
@@ -73,3 +97,19 @@ func _finish(context: RuntimePhaseFrameContext) -> Dictionary:
 func _bind_simulation_step() -> void:
 	if simulation_step != null:
 		simulation_step.bind_phases(command, simulation, resolution, lifecycle, state_commit)
+
+
+func _advance_pending_terminal(context: RuntimePhaseFrameContext) -> bool:
+	if not is_instance_valid(_victory_port) or not _victory_port.has_pending_terminal_outcome():
+		return false
+	context.enter_phase(&"terminal_presentation_retry")
+	context.append_step(&"terminal_presentation_retry")
+	var retry := _victory_port.retry_pending_terminal_outcome()
+	context.world_delta = 0.0
+	if bool(retry.get("accepted", false)):
+		context.path = &"finished"
+		context.stopped_reason = &"session_finished_after_terminal_retry"
+	else:
+		context.path = &"terminal_pending"
+		context.stopped_reason = &"terminal_presentation_pending"
+	return true

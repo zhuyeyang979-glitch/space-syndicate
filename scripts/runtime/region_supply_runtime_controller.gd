@@ -19,6 +19,8 @@ const PUBLIC_CARD_FIELDS := [
 	"target_type",
 	"effect_text",
 	"requirement_text",
+	"facility_kind",
+	"industry_id",
 	"route_tags",
 	"art_key",
 ]

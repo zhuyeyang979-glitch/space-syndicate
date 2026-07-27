@@ -86,17 +86,17 @@ const GOLDEN_NORMAL_TERMINAL := {
 	"draw_count": 240,
 }
 const GOLDEN_STATE_COMMIT_COUNT_DELTA := 4
-const GOLDEN_PRIVATE_AI_QUERY_COUNT_DELTA := 12
-const AI_STATE_QUERY_COUNT_UPPER_BOUND := 320
+const GOLDEN_PRIVATE_AI_QUERY_COUNT_DELTA := 1
+const AI_STATE_QUERY_COUNT_UPPER_BOUND := 64
 const DISCARD_PRESSURE_GRANT_CARD_ID := "interaction.starlink_dismantle.rank_1"
 const DISCARD_PRESSURE_LIMIT_MSEC := 60_000
 const DISCARD_PRESSURE_GOLDEN_LOCKED := true
 const DISCARD_PRESSURE_GOLDEN_CANDIDATE_COUNT := 16
 const DISCARD_PRESSURE_GOLDEN_DISCARD_CANDIDATE_COUNT := 14
 const DISCARD_PRESSURE_GOLDEN_PROJECTION_SHA256 := "06454d9b06dda5850ef497f918153f23f3569f2fe62659c920d27c3e46dc9118"
-const DISCARD_PRESSURE_GOLDEN_AI_STATE_QUERY_COUNT_DELTA := 109
+const DISCARD_PRESSURE_GOLDEN_AI_STATE_QUERY_COUNT_DELTA := 4
 const DISCARD_PRESSURE_GOLDEN_STATE_COMMIT_COUNT_DELTA := 0
-const DISCARD_PRESSURE_GOLDEN_PRIVATE_AI_QUERY_COUNT_DELTA := 12
+const DISCARD_PRESSURE_GOLDEN_PRIVATE_AI_QUERY_COUNT_DELTA := 1
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -181,10 +181,12 @@ func _run() -> void:
 	var ai := coordinator.get_node_or_null("AiRuntimeController") as AiRuntimeController
 	var actor_state_port := coordinator.get_node_or_null("AiActorStatePort") as AiActorStatePort
 	var district_supply_query := coordinator.get_node_or_null("DistrictSupplyRuntimeQueryPort") as DistrictSupplyRuntimeQueryPort
+	var balance_diagnostics := coordinator.gameplay_balance_diagnostics_service()
 	_expect(session.session_state() == GameSessionRuntimeController.STATE_PAUSED, "formal session reaches the paused lifecycle before the focused query")
 	_expect(
-		world != null and ai != null and actor_state_port != null and district_supply_query != null,
-		"production WorldSession, AI controller, actor-state port, and district-supply query are available"
+		world != null and ai != null and actor_state_port != null \
+			and district_supply_query != null and balance_diagnostics != null,
+		"production WorldSession, AI controller, actor-state port, district-supply query, and diagnostics are available"
 	)
 	_expect(
 		world != null
@@ -195,7 +197,8 @@ func _run() -> void:
 			and bool((world.players[3] as Dictionary).get("is_ai", false)),
 		"formal roster contains one human and three legal AI seats"
 	)
-	if world == null or ai == null or actor_state_port == null or district_supply_query == null:
+	if world == null or ai == null or actor_state_port == null \
+			or district_supply_query == null or balance_diagnostics == null:
 		await _cleanup(app_root)
 		_finish()
 		return
@@ -219,12 +222,14 @@ func _run() -> void:
 	var rng_before_generation := rng.capture_plan_checkpoint()
 	var actor_state_debug_before := actor_state_port.debug_snapshot()
 	var district_supply_debug_before := district_supply_query.debug_snapshot()
+	var route_index_debug_before := balance_diagnostics.debug_snapshot()
 	print("AI_CARD_BUY_CANDIDATE_PERFORMANCE|CALL_STARTED")
 	var call_started_msec := Time.get_ticks_msec()
 	var candidates := ai.call("_ai_card_buy_candidates", actor_index) as Array
 	var call_elapsed_msec := Time.get_ticks_msec() - call_started_msec
 	var actor_state_debug_after := actor_state_port.debug_snapshot()
 	var district_supply_debug_after := district_supply_query.debug_snapshot()
+	var route_index_debug_after := balance_diagnostics.debug_snapshot()
 	var ai_state_query_count_delta := int(actor_state_debug_after.get("ai_state_query_count", 0)) - int(actor_state_debug_before.get("ai_state_query_count", 0))
 	var state_commit_count_delta := int(actor_state_debug_after.get("state_commit_count", 0)) - int(actor_state_debug_before.get("state_commit_count", 0))
 	var private_ai_query_count_delta := int(district_supply_debug_after.get("private_ai_query_count", 0)) - int(district_supply_debug_before.get("private_ai_query_count", 0))
@@ -236,10 +241,38 @@ func _run() -> void:
 		"AI_CARD_BUY_CANDIDATE_PERFORMANCE|QUERY_COUNTERS|ai_state_query_count_delta=%d|state_commit_count_delta=%d|private_ai_query_count_delta=%d"
 			% [ai_state_query_count_delta, state_commit_count_delta, private_ai_query_count_delta]
 	)
+	print("AI_CARD_ROUTE_INDEX|%s" % JSON.stringify(route_index_debug_after))
+	print("AI_CARD_BUY_TIMING|%s" % JSON.stringify({
+		"count": ai.debug_snapshot().get("tick_timing_count", {}),
+		"total_usec": ai.debug_snapshot().get("tick_timing_total_usec", {}),
+		"max_usec": ai.debug_snapshot().get("tick_timing_max_usec", {}),
+	}))
 	var rng_after_generation := rng.capture_plan_checkpoint()
 	_expect(call_elapsed_msec < PRODUCT_LIMIT_MSEC, "candidate generation stays below the 30000 ms product limit: %d ms" % call_elapsed_msec)
 	_expect(not candidates.is_empty(), "formal AI actor exposes at least one legal card-buy candidate")
 	_expect(rng_after_generation == rng_before_generation, "candidate generation consumes zero RunRngService draws")
+	_expect(bool(route_index_debug_before.get("card_route_index_ready", false)), "production card-route index is primed before candidate generation")
+	_expect(bool(route_index_debug_before.get("card_route_index_sealed", false)), "production card-route index is sealed before candidate generation")
+	_expect(
+		int(route_index_debug_after.get("card_route_index_build_count", -1)) \
+			== int(route_index_debug_before.get("card_route_index_build_count", -2)),
+		"candidate generation performs zero card-route index builds"
+	)
+	_expect(
+		int(route_index_debug_after.get("card_route_legacy_snapshot_lookup_count", -1)) \
+			== int(route_index_debug_before.get("card_route_legacy_snapshot_lookup_count", -2)),
+		"production candidate generation performs zero legacy diagnostics snapshot lookups"
+	)
+	_expect(
+		int(route_index_debug_after.get("card_route_index_hit_count", 0)) \
+			> int(route_index_debug_before.get("card_route_index_hit_count", 0)),
+		"production candidate generation records real sealed-index hits"
+	)
+	_expect(
+		int(route_index_debug_after.get("card_route_index_miss_count", -1)) \
+			== int(route_index_debug_before.get("card_route_index_miss_count", -2)),
+		"production candidate generation records zero sealed-index misses"
+	)
 	_expect(
 		state_commit_count_delta == GOLDEN_STATE_COMMIT_COUNT_DELTA,
 		"candidate generation preserves the frozen actor-state commit delta: %d" % state_commit_count_delta
@@ -330,6 +363,41 @@ func _run() -> void:
 		_expect(_selection_identity(forced_selection) == GOLDEN_FORCE_SELECTION, "force=true selected action matches the explicit golden")
 		_expect(_selection_identity(normal_selection_first) == GOLDEN_NORMAL_SELECTION, "normal selected action matches the explicit golden")
 		_expect(normal_terminal_first == GOLDEN_NORMAL_TERMINAL, "normal selection reaches the frozen terminal RNG cursor")
+
+	var supplied_context_variant: Variant = ai.call("_ai_card_turn_scoring_context", actor_index, {})
+	var supplied_context: Dictionary = supplied_context_variant as Dictionary \
+		if supplied_context_variant is Dictionary else {}
+	var context_rng_before := rng.capture_plan_checkpoint()
+	var context_state_before := actor_state_port.debug_snapshot()
+	var context_started_msec := Time.get_ticks_msec()
+	var context_candidates := ai.call(
+		"_ai_card_buy_candidates",
+		actor_index,
+		supplied_context
+	) as Array
+	var context_elapsed_msec := Time.get_ticks_msec() - context_started_msec
+	var context_state_after := actor_state_port.debug_snapshot()
+	var context_rng_after := rng.capture_plan_checkpoint()
+	var context_projection := _candidate_projection(context_candidates)
+	_expect(bool(supplied_context.get("cache_active", false)), "formal supplied turn context activates call-local reuse")
+	_expect(not supplied_context.has("actor_state") and not supplied_context.has("learning_memory"), "supplied turn context retains no private actor snapshot")
+	_expect(context_projection == projection, "call-local supplied context preserves the complete frozen candidate projection")
+	_expect(_candidate_order(context_projection) == original_order, "call-local supplied context preserves candidate order")
+	_expect(context_rng_after == context_rng_before, "call-local supplied-context generation consumes zero RNG")
+	_expect(
+		int(context_state_after.get("state_commit_count", 0)) \
+			== int(context_state_before.get("state_commit_count", 0)),
+		"call-local supplied-context generation performs zero additional actor-state commits"
+	)
+	print(
+		"AI_CARD_BUY_CALL_LOCAL_CONTEXT|elapsed_msec=%d|candidate_count=%d|projection_sha256=%s"
+			% [context_elapsed_msec, context_candidates.size(), JSON.stringify(context_projection).sha256_text()]
+	)
+	print("AI_CARD_BUY_CALL_LOCAL_TIMING|%s" % JSON.stringify({
+		"count": ai.debug_snapshot().get("tick_timing_count", {}),
+		"total_usec": ai.debug_snapshot().get("tick_timing_total_usec", {}),
+		"max_usec": ai.debug_snapshot().get("tick_timing_max_usec", {}),
+	}))
 
 	var discard_pressure_fixture := _prepare_discard_pressure_fixture(coordinator, actor_index)
 	_expect(bool(discard_pressure_fixture.get("prepared", false)), "formal inventory owner prepares one full-hand discard-pressure fixture")

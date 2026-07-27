@@ -1898,15 +1898,11 @@ func _apply_victory_outcome_receipt(receipt: Dictionary) -> void:
 	if session == null or session.is_finished():
 		return
 	_drain_ai_business_publications_before_session_finish()
-	session.finish_session(receipt)
-	if not session.is_finished():
+	var port := _runtime_victory_port_node()
+	var victory := _victory_control_runtime_controller_node()
+	if port == null or victory == null:
 		return
-	var ai_runtime := _ai_runtime_controller_node() as AiRuntimeController
-	if ai_runtime != null:
-		ai_runtime.finalize_victory_outcome_learning(receipt)
-	var ports := _table_presentation_query_ports_node()
-	if ports != null:
-		ports.capture_victory_outcome(victory_control_public_snapshot(-1))
+	port.commit_terminal_outcome(receipt, victory.public_snapshot(-1))
 
 
 func card_runtime_catalog_service() -> CardRuntimeCatalogService:
@@ -3773,6 +3769,15 @@ func capture_new_session_checkpoint() -> Dictionary:
 	var annotations := _card_history_private_annotation_service_node()
 	var ai_runtime := _ai_runtime_controller_node()
 	var core_adapter := _core_economic_card_runtime_adapter_v06_node()
+	var balance_diagnostics := _gameplay_balance_diagnostics_node()
+	if balance_diagnostics == null \
+			or not balance_diagnostics.has_method("capture_card_route_index_checkpoint"):
+		return {"captured": false, "reason_code": "new_session_checkpoint_card_route_index_unavailable"}
+	var card_route_index_variant: Variant = balance_diagnostics.call("capture_card_route_index_checkpoint")
+	var card_route_index: Dictionary = card_route_index_variant \
+		if card_route_index_variant is Dictionary else {}
+	if not bool(card_route_index.get("captured", false)):
+		return {"captured": false, "reason_code": "new_session_checkpoint_card_route_index_invalid"}
 	return {
 		"captured": true,
 		"schema_version": 1,
@@ -3788,6 +3793,7 @@ func capture_new_session_checkpoint() -> Dictionary:
 		"annotations": annotations.call("capture_runtime_checkpoint") if annotations != null else {},
 		"ai_runtime": ai_runtime.call("capture_new_session_checkpoint") if ai_runtime != null else {},
 		"core_binding": core_adapter.call("capture_new_session_binding_checkpoint") if core_adapter != null else {},
+		"card_route_index": card_route_index.duplicate(true),
 		"world_effective_us": int(_world_effective_clock_runtime_controller_node().call("world_effective_micros")) if _world_effective_clock_runtime_controller_node() != null else 0,
 	}
 
@@ -3870,6 +3876,16 @@ func rollback_new_session_checkpoint(checkpoint: Dictionary) -> Dictionary:
 	if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("saved_owners", {}) is Dictionary):
 		return {"restored": false, "reason_code": "runtime_new_session_checkpoint_invalid", "failures": []}
 	var failures: Array = []
+	var balance_diagnostics := _gameplay_balance_diagnostics_node()
+	var card_route_restore_variant: Variant = balance_diagnostics.call(
+		"restore_card_route_index_checkpoint",
+		checkpoint.get("card_route_index", {})
+	) if balance_diagnostics != null \
+		and balance_diagnostics.has_method("restore_card_route_index_checkpoint") else {}
+	var card_route_restore: Dictionary = card_route_restore_variant \
+		if card_route_restore_variant is Dictionary else {}
+	if not bool(card_route_restore.get("restored", false)):
+		failures.append("card_route_index")
 	var core_adapter := _core_economic_card_runtime_adapter_v06_node()
 	if core_adapter == null or not bool((core_adapter.call("restore_new_session_binding_checkpoint", checkpoint.get("core_binding", {})) as Dictionary).get("restored", false)):
 		failures.append("core_binding")
@@ -3934,6 +3950,16 @@ func commit_new_session_side_effects(plan: Dictionary) -> Dictionary:
 	var sushi_track := _commodity_sushi_track_runtime_service_node()
 	if sushi_track != null:
 		sushi_track.reset_projection_state()
+	var balance_diagnostics := _gameplay_balance_diagnostics_node()
+	var card_route_index_result: Dictionary = {}
+	if balance_diagnostics != null and balance_diagnostics.has_method("prime_card_route_index"):
+		var route_index_variant: Variant = balance_diagnostics.call(
+			"prime_card_route_index",
+			region_supply_catalog_card_ids()
+		)
+		card_route_index_result = (route_index_variant as Dictionary).duplicate(true) \
+			if route_index_variant is Dictionary else {}
+	var card_route_index_fault := _new_session_fault("after_card_route_index_prime")
 	var weather_presentation: Dictionary = _weather_runtime_controller_node().call("commit_new_session_presentation")
 	request_table_presentation_refresh(&"full", &"session_start_committed")
 	_new_session_presentation_refresh_count += 1
@@ -3942,13 +3968,20 @@ func commit_new_session_side_effects(plan: Dictionary) -> Dictionary:
 	var weather_after: Dictionary = _weather_runtime_controller_node().call("to_save_data")
 	var rng_delta := int(rng_after.get("draw_count", 0)) - int(rng_before.get("draw_count", 0))
 	var gameplay_mutation_count := int(market_after != market_before) + int(weather_after != weather_before)
-	var committed := bool(weather_presentation.get("committed", false)) and rng_delta == 0 and gameplay_mutation_count == 0
+	var committed := bool(weather_presentation.get("committed", false)) \
+		and bool(card_route_index_result.get("accepted", false)) \
+		and not card_route_index_fault \
+		and rng_delta == 0 \
+		and gameplay_mutation_count == 0
 	_last_new_session_commit_only_receipt = {
 		"committed": committed,
-		"reason_code": "new_session_side_effects_committed" if committed else "new_session_commit_only_invariant_failed",
+		"reason_code": "new_session_side_effects_committed" if committed \
+			else ("new_session_fault_after_card_route_index_prime" \
+				if card_route_index_fault else "new_session_commit_only_invariant_failed"),
 		"player_count": int(plan.get("player_count", 0)),
 		"rng_draw_delta": rng_delta,
 		"gameplay_mutation_count": gameplay_mutation_count,
+		"card_route_index": card_route_index_result,
 		"weather_presentation": weather_presentation.duplicate(true),
 	}
 	return _last_new_session_commit_only_receipt.duplicate(true)
@@ -5400,7 +5433,8 @@ func _wire_table_presentation_query_ports() -> void:
 		_monster_runtime_controller_node() as MonsterRuntimeController,
 		_military_runtime_controller_node() as MilitaryRuntimeController,
 		_commodity_flow_runtime_controller_node() as CommodityFlowRuntimeController,
-		_victory_control_runtime_controller_node() as VictoryControlRuntimeController
+		_victory_control_runtime_controller_node() as VictoryControlRuntimeController,
+		_region_infrastructure_world_bridge_node() as RegionInfrastructureWorldBridge
 	)
 	if not ports.victory_presentation_receipt_ready.is_connected(_on_victory_presentation_receipt_ready):
 		ports.victory_presentation_receipt_ready.connect(_on_victory_presentation_receipt_ready)
@@ -5648,12 +5682,33 @@ func _wire_domain_presentation_ports(refresh_port: TablePresentationRefreshPort,
 
 
 func _on_victory_presentation_receipt_ready(receipt: VictoryPresentationStateChangeReceipt) -> void:
-	if receipt != null and receipt.is_valid():
-		var port := _table_presentation_refresh_port_node()
-		if port != null:
-			for kind in receipt.immediate_refresh_mask:
-				port.request_immediate(kind, &"victory_state_changed")
+	if receipt == null or not receipt.is_valid():
+		victory_presentation_receipt_ready.emit(receipt)
+		return
+	if receipt.change_kind != &"outcome":
+		_apply_victory_presentation_immediate_refresh(receipt)
+		victory_presentation_receipt_ready.emit(receipt)
+		return
+	# FinalSettlement returns its typed acknowledgement synchronously through
+	# TablePresentationQueryPorts. Terminal UI refresh is committed only after
+	# that acknowledgement is accepted, so a rejected zero-world retry cannot
+	# apply live/full targets more than once.
 	victory_presentation_receipt_ready.emit(receipt)
+	var ports := _table_presentation_query_ports_node()
+	var refresh_port := _table_presentation_refresh_port_node()
+	if ports == null or refresh_port == null:
+		return
+	for kind in ports.pending_accepted_victory_outcome_refresh_kinds(receipt):
+		var apply_receipt := refresh_port.request_immediate(kind, &"victory_state_changed")
+		ports.record_victory_outcome_refresh_result(receipt, apply_receipt)
+
+
+func _apply_victory_presentation_immediate_refresh(receipt: VictoryPresentationStateChangeReceipt) -> void:
+	var port := _table_presentation_refresh_port_node()
+	if port == null:
+		return
+	for kind in receipt.immediate_refresh_mask:
+		port.request_immediate(kind, &"victory_state_changed")
 
 
 func _card_cooldown_runtime_controller_node() -> CardCooldownRuntimeController:
@@ -5733,6 +5788,8 @@ func _region_supply_card_descriptor(card_id: String) -> Dictionary:
 		"target_type": str(machine.get("target_kind", "")),
 		"effect_text": str(player.get("effect", player.get("short_effect", ""))),
 		"requirement_text": str(player.get("cost", "")),
+		"facility_kind": str(effect_payload.get("facility_kind", "")),
+		"industry_id": str(effect_payload.get("industry_id", machine.get("industry_id", ""))),
 		"route_tags": route_tags.duplicate(),
 		"art_key": str(developer.get("art_key", card_id)),
 		"enabled": true,

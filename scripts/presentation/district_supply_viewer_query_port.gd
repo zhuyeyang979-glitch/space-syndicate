@@ -195,7 +195,10 @@ func _card_source(
 		if viewer_authorized else _public_purchase_state(listing, district_index)
 	var rank := _rank_number(public_card.get("rank", definition.get("rank", 1)))
 	var theme_color := _color_hex(presentation.get("accent", Color("#94a3b8")))
-	return {
+	var category_id := str(
+		public_card.get("card_type", definition.get("category_id", definition.get("kind", "")))
+	).strip_edges()
+	var result := {
 		"card_name": card_id,
 		"illustration_key": str(presentation.get("illustration_key", "")),
 		"display_name": str(presentation.get("display_name", public_card.get("display_name", card_id))),
@@ -226,6 +229,14 @@ func _card_source(
 			"level_text": str(presentation.get("rank_label", _roman_rank(rank))),
 		},
 	}
+	if category_id == "facility":
+		result["facility_kind"] = str(
+			public_card.get("facility_kind", definition.get("facility_kind", ""))
+		).strip_edges()
+		result["industry_id"] = str(
+			public_card.get("industry_id", definition.get("industry_id", ""))
+		).strip_edges()
+	return result
 
 
 func _public_purchase_state(listing: Dictionary, district_index: int) -> Dictionary:

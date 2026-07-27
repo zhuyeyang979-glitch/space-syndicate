@@ -8,6 +8,7 @@ const MAX_ENTRIES := 90
 const MAX_TOMBSTONES := 4096
 const SAVE_SCHEMA_VERSION := 2
 const LEGACY_SAVE_SCHEMA_VERSION := 1
+const SESSION_CHECKPOINT_SCHEMA_VERSION := 1
 const LEGACY_SAVE_KEYS := [
 	"schema_version",
 	"entries",
@@ -17,6 +18,18 @@ const LEGACY_SAVE_KEYS := [
 	"revision",
 ]
 const SAVE_KEYS := LEGACY_SAVE_KEYS + ["legacy_unverified_receipt_ids"]
+const SESSION_CHECKPOINT_KEYS := [
+	"schema_version",
+	"entries",
+	"applied_receipt_ids",
+	"tombstone_order",
+	"retired_revision_floor_by_kind",
+	"legacy_unverified_receipt_ids",
+	"revision",
+	"duplicate_receipt_count",
+	"rejected_receipt_count",
+	"collision_receipt_count",
+]
 const ENTRY_KEYS := [
 	"receipt_id",
 	"event_kind",
@@ -43,6 +56,11 @@ const VICTORY_STATE_LABELS := {
 	"audit": "公开审计",
 	"cooldown": "审计冷却",
 	"resolved": "结算完成",
+}
+const VICTORY_OUTCOME_REASON_LABELS := {
+	"public_audit_complete": "公开审计完成",
+	"last_survivor": "仅剩一名未淘汰玩家",
+	"planet_destroyed": "星球毁灭结算",
 }
 const GENERIC_PUBLIC_MESSAGE := "公开局势已更新"
 
@@ -169,6 +187,59 @@ func reset_state() -> void:
 	_collision_receipt_count = 0
 	_revision += 1
 	public_log_changed.emit(_revision)
+
+
+func capture_session_checkpoint() -> Dictionary:
+	var legacy_unverified_ids: Array = _legacy_unverified_receipt_ids.keys()
+	legacy_unverified_ids.sort()
+	return {
+		"schema_version": SESSION_CHECKPOINT_SCHEMA_VERSION,
+		"entries": _entries.duplicate(true),
+		"applied_receipt_ids": _applied_receipt_ids.duplicate(true),
+		"tombstone_order": _tombstone_order.duplicate(),
+		"retired_revision_floor_by_kind": _retired_revision_floor_by_kind.duplicate(true),
+		"legacy_unverified_receipt_ids": legacy_unverified_ids,
+		"revision": _revision,
+		"duplicate_receipt_count": _duplicate_receipt_count,
+		"rejected_receipt_count": _rejected_receipt_count,
+		"collision_receipt_count": _collision_receipt_count,
+	}
+
+
+func restore_session_checkpoint(checkpoint: Dictionary) -> bool:
+	if not TablePresentationPureDataPolicy.is_pure_data(checkpoint) \
+			or not _has_exact_keys(checkpoint, SESSION_CHECKPOINT_KEYS) \
+			or typeof(checkpoint.get("schema_version")) != TYPE_INT \
+			or int(checkpoint.get("schema_version", 0)) != SESSION_CHECKPOINT_SCHEMA_VERSION:
+		return false
+	for counter_key in ["duplicate_receipt_count", "rejected_receipt_count", "collision_receipt_count"]:
+		if typeof(checkpoint.get(counter_key)) != TYPE_INT or int(checkpoint.get(counter_key, -1)) < 0:
+			return false
+	var save_data := {
+		"schema_version": SAVE_SCHEMA_VERSION,
+		"entries": checkpoint.get("entries"),
+		"applied_receipt_ids": checkpoint.get("applied_receipt_ids"),
+		"tombstone_order": checkpoint.get("tombstone_order"),
+		"retired_revision_floor_by_kind": checkpoint.get("retired_revision_floor_by_kind"),
+		"revision": checkpoint.get("revision"),
+		"legacy_unverified_receipt_ids": checkpoint.get("legacy_unverified_receipt_ids"),
+	}
+	var normalized := _normalize_save_data(save_data)
+	if not bool(normalized.get("accepted", false)):
+		return false
+	_entries = (normalized.get("entries", []) as Array).duplicate(true)
+	_applied_receipt_ids = (normalized.get("applied_receipt_ids", {}) as Dictionary).duplicate(true)
+	_tombstone_order.clear()
+	for receipt_id_variant in normalized.get("tombstone_order", []):
+		_tombstone_order.append(str(receipt_id_variant))
+	_retired_revision_floor_by_kind = (normalized.get("retired_revision_floor_by_kind", {}) as Dictionary).duplicate(true)
+	_legacy_unverified_receipt_ids = (normalized.get("legacy_unverified_receipt_ids", {}) as Dictionary).duplicate(true)
+	_revision = int(normalized.get("revision", 0))
+	_duplicate_receipt_count = int(checkpoint.get("duplicate_receipt_count", 0))
+	_rejected_receipt_count = int(checkpoint.get("rejected_receipt_count", 0))
+	_collision_receipt_count = int(checkpoint.get("collision_receipt_count", 0))
+	public_log_changed.emit(_revision)
+	return true
 
 
 func to_save_data() -> Dictionary:
@@ -452,4 +523,13 @@ func _localized_message(receipt: PublicLogReceipt) -> String:
 		if not previous_label.is_empty() and not state_label.is_empty():
 			return "胜利进程：%s → %s" % [previous_label, state_label]
 		return "胜利进程已更新"
+	if localization_key == "victory.public.final_settlement":
+		var seats: Array[String] = []
+		for player_index_variant in receipt.public_values.get("winner_player_indices", []):
+			seats.append(str(int(player_index_variant) + 1))
+		var reason_label := str(VICTORY_OUTCOME_REASON_LABELS.get(
+			str(receipt.public_values.get("reason_code", "")),
+			"胜利条件已结算"
+		))
+		return "终局结算完成：%s；胜者席位%s" % [reason_label, "、".join(seats)]
 	return GENERIC_PUBLIC_MESSAGE

@@ -130,6 +130,96 @@ func region_supply_receive_preview(
 			"discardable_slots": [],
 		}
 	var player := player_snapshot(actor_id.strip_edges())
+	return _region_supply_receive_preview_from_player(player, card_id, discard_slot)
+
+
+func region_supply_receive_previews(
+	actor_id: String,
+	card_ids: Array,
+	discard_slot: int = -1
+) -> Dictionary:
+	if not _catalog_ready():
+		return {
+			"accepted": false,
+			"reason_code": "catalog_unavailable",
+			"player_revision": -1,
+			"card_ids": [],
+			"plans_by_card_id": {},
+		}
+	var player := player_snapshot(actor_id.strip_edges())
+	if player.is_empty():
+		return {
+			"accepted": false,
+			"reason_code": "player_unavailable",
+			"player_revision": -1,
+			"card_ids": [],
+			"plans_by_card_id": {},
+		}
+	var normalized_card_ids: Array = []
+	var incoming_cards_by_id: Dictionary = {}
+	for card_id_variant in card_ids:
+		if not (card_id_variant is String or card_id_variant is StringName):
+			return {
+				"accepted": false,
+				"reason_code": "incoming_card_ids_invalid",
+				"player_revision": int(player.get("revision", -1)),
+				"card_ids": [],
+				"plans_by_card_id": {},
+			}
+		var card_id := str(card_id_variant).strip_edges()
+		if card_id.is_empty():
+			return {
+				"accepted": false,
+				"reason_code": "incoming_card_ids_invalid",
+				"player_revision": int(player.get("revision", -1)),
+				"card_ids": [],
+				"plans_by_card_id": {},
+			}
+		if incoming_cards_by_id.has(card_id):
+			continue
+		normalized_card_ids.append(card_id)
+		incoming_cards_by_id[card_id] = _catalog.card_snapshot(card_id)
+	var batch_plan := _policy.plan_receive_with_optional_discard_batch(
+		player.get("inventory", {}) as Dictionary,
+		incoming_cards_by_id,
+		normalized_card_ids,
+		_catalog,
+		discard_slot
+	)
+	if not bool(batch_plan.get("accepted", false)):
+		return {
+			"accepted": false,
+			"reason_code": str(batch_plan.get("reason_code", "receive_preview_batch_invalid")),
+			"player_revision": int(player.get("revision", -1)),
+			"card_ids": [],
+			"plans_by_card_id": {},
+		}
+	var raw_plans_by_card_id: Dictionary = batch_plan.get("plans_by_card_id", {}) \
+		if batch_plan.get("plans_by_card_id", {}) is Dictionary else {}
+	var projected_plans_by_card_id: Dictionary = {}
+	for card_id_variant in normalized_card_ids:
+		var card_id := str(card_id_variant)
+		var raw_plan_variant: Variant = raw_plans_by_card_id.get(card_id, {})
+		var raw_plan: Dictionary = raw_plan_variant as Dictionary \
+			if raw_plan_variant is Dictionary else {}
+		projected_plans_by_card_id[card_id] = _region_supply_receive_preview_projection(
+			player,
+			raw_plan
+		)
+	return {
+		"accepted": true,
+		"reason_code": "region_supply_receive_previews_ready",
+		"player_revision": int(player.get("revision", -1)),
+		"card_ids": normalized_card_ids,
+		"plans_by_card_id": projected_plans_by_card_id,
+	}
+
+
+func _region_supply_receive_preview_from_player(
+	player: Dictionary,
+	card_id: String,
+	discard_slot: int
+) -> Dictionary:
 	var card := _catalog.card_snapshot(card_id.strip_edges())
 	if player.is_empty() or card.is_empty():
 		return {
@@ -144,6 +234,13 @@ func region_supply_receive_preview(
 		_catalog,
 		discard_slot
 	)
+	return _region_supply_receive_preview_projection(player, plan)
+
+
+func _region_supply_receive_preview_projection(
+	player: Dictionary,
+	plan: Dictionary
+) -> Dictionary:
 	return {
 		"ready": bool(plan.get("ready", false)),
 		"requires_discard": bool(plan.get("requires_discard", false)),
