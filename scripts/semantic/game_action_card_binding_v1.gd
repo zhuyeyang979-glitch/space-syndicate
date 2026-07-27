@@ -44,14 +44,14 @@ static func _binding_source(card: Dictionary, slot_index: int) -> Dictionary:
 	var runtime_instance_id := _runtime_reference(card.get("runtime_instance_id", ""))
 	if runtime_instance_id.is_empty():
 		runtime_instance_id = "none"
-	var rank_variant: Variant = machine.get("rank", card.get("rank", 0))
-	if not WIRE.is_nonnegative_integer(rank_variant):
+	var rank := _normalized_nonnegative_integer(machine.get("rank", card.get("rank", 0)))
+	if rank < 0:
 		return {}
 	var source := {
 		"runtime_instance_id": runtime_instance_id,
 		"card_id": card_id,
 		"family_id": family_id,
-		"rank": int(rank_variant),
+		"rank": rank,
 		"slot_index": slot_index,
 	}
 	return source if WIRE.is_closed_data(source) else {}
@@ -66,3 +66,15 @@ static func _runtime_reference(value: Variant) -> String:
 	var normalized := str(value) if value is String or value is StringName else ""
 	return normalized if normalized == normalized.strip_edges() \
 		and WIRE.is_ascii_reference(normalized) else ""
+
+
+static func _normalized_nonnegative_integer(value: Variant) -> int:
+	if WIRE.is_nonnegative_integer(value):
+		return int(value)
+	if value is float:
+		var numeric := float(value)
+		if is_finite(numeric) and numeric >= 0.0 \
+				and numeric <= float(WIRE.MAX_SAFE_INTEGER) \
+				and numeric == floorf(numeric):
+			return int(numeric)
+	return -1

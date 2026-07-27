@@ -658,6 +658,11 @@ func _selection_snapshot(request: Dictionary) -> Dictionary:
 	if _table_selection_state == null:
 		return {}
 	var result := _table_selection_state.snapshot()
+	if request.has("selected_district"):
+		var selected_district := int(request.get("selected_district", -1))
+		if selected_district < 0:
+			return {}
+		result["selected_district"] = selected_district
 	if request.has("selected_card_resolution_id"):
 		result["selected_card_resolution_id"] = int(request.get("selected_card_resolution_id", -1))
 	return result

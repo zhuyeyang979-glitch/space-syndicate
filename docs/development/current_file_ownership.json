@@ -1,141 +1,96 @@
 {
-  "schema_version": 4,
-  "generated_at": "2026-07-23T08:02:01+09:00",
-  "base_main_sha": "80817847cfd0061de19516829460ca45b41558dc",
+  "schema_version": 5,
+  "generated_at": "2026-07-28T06:05:00+09:00",
+  "base_main_sha": "b5763bbfb96994aa55ab36ae4335db332d9818a8",
   "policy": {
     "one_writer_per_file_ownership_set": true,
     "shared_hot_files_require_integration_writer": true,
     "analysis_agents_do_not_write": true,
     "feature_agents_use_independent_branches": true,
     "machine_paths_not_recorded": true,
-    "historical_worktrees_out_of_scope": true
+    "historical_worktrees_out_of_scope": true,
+    "unowned_uid_files_forbidden": true
   },
   "shared_hot_files": [
+    "AGENTS.md",
     "scripts/main.gd",
     "scenes/main.tscn",
     "scripts/runtime/game_runtime_coordinator.gd",
     "scenes/runtime/GameRuntimeCoordinator.tscn",
     "scripts/ui/game_screen.gd",
     "scenes/ui/GameScreen.tscn",
-    "scripts/ui/planet_board.gd",
-    "scenes/ui/PlanetBoard.tscn",
-    "scripts/ui/player_board.gd",
-    "scenes/ui/PlayerBoard.tscn",
-    "scripts/ui/right_inspector.gd",
-    "scenes/ui/RightInspector.tscn",
-    "project.godot",
-    "export_presets.cfg",
-    "resources/cards/runtime/card_runtime_catalog_v04.tres",
-    "data/cards/card_runtime_catalog_v06.json",
-    "assets/art/role_portraits/temporary/manifest.json",
-    "data/art/card_illustration_manifest_v06.json",
-    "data/art/monster_body_art_manifest.json",
+    "docs/semantic/global_three_layer_semantic_registry.json",
     "docs/development/current_program_state.json",
     "docs/development/current_task_graph.json",
     "docs/development/current_file_ownership.json",
-    "docs/development/alpha_03_program.md",
-    "docs/development/alpha_03_program.json",
-    "docs/development/alpha_03_execution_checkpoint.json"
+    "docs/development/alpha_03_execution_checkpoint.json",
+    "docs/migration/main_gd_cutover_ledger.json"
   ],
   "completed_ownership_sets": [
     {
-      "ownership_set_id": "ALPHA03-PROGRAM-INITIALIZATION",
-      "writer": "integration coordinator",
-      "branch": "codex/alpha03-program-init-53c4c02",
-      "mode": "DOCS_ONLY",
-      "files": [
-        "docs/development/current_program_state.json",
-        "docs/development/current_task_graph.json",
-        "docs/development/current_file_ownership.json",
-        "docs/development/alpha_03_program.md",
-        "docs/development/alpha_03_program.json",
-        "docs/development/alpha_03_execution_checkpoint.json"
-      ],
-      "forbidden": ["production scripts", "scenes", "resources", "tests", "assets"],
-      "status": "MERGED",
-      "pull_request": 50
+      "ownership_set_id": "P0-AI-WORLD-TYPED-PORTS-PUBLIC-DISTRICT-FACTS",
+      "delivery": "MERGED",
+      "pull_request": 57,
+      "merge_commit": "ad3b3184533a8cd08cfbf1107399d80f4fdd2ce6",
+      "status": "COMPLETE"
     },
     {
-      "ownership_set_id": "P0-AI-WORLD-TYPED-PORTS-CUTOVER-CITY-INFERENCE",
-      "branch": "codex/alpha03-ai-world-typed-ports-e49ad50",
-      "atomic_domain": "city_inference_query_command",
-      "status": "MERGED",
-      "pull_request": 51,
-      "commit": "90014ec92a5b2f1f15e658d007ce9c87f2c4fbef",
-      "merge_commit": "80817847cfd0061de19516829460ca45b41558dc"
-    }
-  ],
-  "active_ownership_sets": [
-    {
-      "ownership_set_id": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
-      "writer": "one production writer plus analysis-only reviewers",
-      "branch_pattern": "codex/alpha03-ai-actor-state-<short_sha>",
-      "active_branch": null,
-      "current_atomic_domain": "actor_state",
-      "mode": "PRODUCTION_AND_FOCUSED_TESTS",
-      "files": [
-        "scripts/runtime/ai_actor_state_port.gd",
-        "scripts/runtime/ai_actor_state_capability.gd",
-        "scripts/runtime/ai_runtime_world_bridge.gd",
-        "scripts/runtime/ai_runtime_controller.gd",
-        "scene-owned actor-private state query ports",
-        "focused AI privacy, parity and capability-negative tests",
-        "docs/migration/ai_actor_state_typed_port_migration.*",
-        "docs/ai_runtime_ownership_contract.md"
-      ],
-      "integration_request_only": [
-        "scripts/main.gd",
-        "scenes/main.tscn",
-        "scripts/runtime/game_runtime_coordinator.gd",
-        "scenes/runtime/GameRuntimeCoordinator.tscn",
-        "docs/migration/main_gd_cutover_ledger.json"
-      ],
-      "status": "ACTIVE",
-      "atomic_status": "ACTOR_STATE_READY_FOR_BRANCH"
-    },
-    {
-      "ownership_set_id": "P1-FIRST-ECONOMIC-ENGINE-EVIDENCE",
-      "writer": "one product verification writer",
-      "branch_pattern": "codex/alpha03-first-economic-engine-<short_sha>",
-      "mode": "FORMAL_PRODUCT_DRIVER_AND_EVIDENCE",
+      "ownership_set_id": "SAMPLE-FULL-RUN-VERTICAL-SLICE-TO-SETTLEMENT",
+      "delivery": "MERGED",
+      "pull_request": 68,
+      "merge_commit": "b5763bbfb96994aa55ab36ae4335db332d9818a8",
       "files": [
         "scripts/tools/full_run_quality_driver.gd",
-        "focused full-run policy and contract tests",
-        "reports/playability/full_run/**"
+        "reports/playability/full_run/sample_full_run_vertical_slice_to_settlement_validation.md"
       ],
-      "forbidden": ["shared hot files", "direct WorldSession mutation", "fake Sale Receipt"],
-      "status": "ACTIVE"
+      "status": "COMPLETE"
+    },
+    {
+      "ownership_set_id": "V07-CONSTITUTION-GLOBAL-SEMANTIC-ACTION-SPINE-CUTOVER",
+      "writer": "active integration coordinator",
+      "branch": "codex/commodity-track-three-layer-semantics-b5763bb",
+      "delivery": "LOCAL_COMMITTED_UNPUSHED",
+      "checkpoint_sha": "5cf30c64bc53e4056afdb1337fa279b355c9fc99",
+      "commit": "THIS_CUTOVER",
+      "pushed": false,
+      "merged_to_main": false,
+      "files": [
+        "AGENTS.md and V0.7 semantic constitution records",
+        "docs/semantic/global_three_layer_semantic_registry.json",
+        "scripts/semantic/game_action_*_v1.gd",
+        "scripts/runtime/table_player_action_application_flow_controller.gd",
+        "scripts/runtime/card_group_action_port.gd",
+        "scripts/ui/game_screen.gd",
+        "scripts/main.gd",
+        "scenes/main.tscn",
+        "scenes/runtime/GameRuntimeCoordinator.tscn",
+        "focused tests, production Bench, migration report, and authoritative state files"
+      ],
+      "status": "COMPLETE"
     }
   ],
+  "active_ownership_sets": [],
   "ready_ownership_sets": [
     {
-      "ownership_set_id": "P1-SAVE-OWNER-COVERAGE-INVENTORY",
-      "mode": "DOCS_AND_TEST_INVENTORY_ONLY",
-      "files": ["save owner coverage report", "seven owner-specific child task definitions"],
+      "ownership_set_id": "P0-AI-WORLD-TYPED-PORTS-MAIN-HOST-DETACHMENT",
+      "mode": "PRODUCTION_AND_FOCUSED_TESTS",
+      "effective_base": "latest local Action Spine closure commit",
+      "forbidden": [
+        "reopening the retired player-action Main path",
+        "generic replacement world bridge",
+        "new Save section",
+        "new RNG owner or draw point"
+      ],
       "status": "READY"
     },
     {
-      "ownership_set_id": "P2-CARD-ART-WAVE1-ASSETS",
-      "mode": "WRITE_NEW_ASSET_FILES_ONLY",
-      "files": ["selected card identity asset directories", "prompt/license/hash records", "wave contact sheet"],
-      "integration_request_only": ["production art manifests", "card scenes"],
-      "status": "READY"
-    },
-    {
-      "ownership_set_id": "P3-UX-AUDIO-PREFLIGHT",
-      "mode": "ANALYSIS_AND_CONTRACT_ONLY",
-      "files": ["TableAudioHost contract", "typed presentation cue inventory", "lightweight onboarding audit"],
-      "status": "READY"
-    },
-    {
-      "ownership_set_id": "P4-FULL-SMOKE-FIXTURE",
-      "mode": "ONE_TEST_WRITER",
-      "files": ["one stale fixture family", "tests/helpers/**", "docs/test_debt/full_smoke_fixture_migration.md"],
-      "forbidden": ["scripts/main.gd", "retired compatibility wrappers", "production rule changes"],
+      "ownership_set_id": "P1-SAVE-RESUME-OWNER-COVERAGE-AND-COLD-RESTORE",
+      "mode": "OWNER_INVENTORY_THEN_VERTICAL_SLICE",
       "status": "READY"
     }
   ],
   "active_open_pull_requests": [],
   "conflict_count": 0,
-  "unauthorized_shared_hot_file_write_count": 0
+  "unauthorized_shared_hot_file_write_count": 0,
+  "unowned_uid_file_count_after_closure": 0
 }

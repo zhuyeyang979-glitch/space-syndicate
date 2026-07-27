@@ -699,7 +699,10 @@ func _run() -> void:
 				if not _submit_scripted_ui_action(runtime_screen, ui_action):
 					_action_stats["attempted"] = int(_action_stats.get("attempted", 0)) + 1
 					_action_stats["rejected_invalid"] = int(_action_stats.get("rejected_invalid", 0)) + 1
-					failure_code = "scripted_ui_action_submission_rejected:%s" % action_id
+					failure_code = "scripted_ui_action_submission_rejected:%s:%s" % [
+						action_id,
+						_scripted_ui_action_rejection_reason(runtime_screen, ui_action),
+					]
 					_record_reason("scripted_ui_action_submission_rejected")
 					_last_event = "blocked:%s" % failure_code
 					final_status = "blocked"
@@ -880,7 +883,8 @@ func _capability_preflight(main_instance: Node, coordinator: Node, session: Node
 	var session_ready := session != null and session.has_method("session_summary")
 	var settlement_ready := settlement_composition != null and settlement_composition.has_method("debug_snapshot") and settlement_composition.has_method("last_public_snapshot")
 	var scripted_ui_port_ready := runtime_screen is SpaceSyndicateGameScreen \
-		and runtime_screen.has_signal("action_requested") \
+		and runtime_screen.has_signal("game_action_intent_requested") \
+		and runtime_screen.has_method("_submit_game_action_offer") \
 		and runtime_screen.has_method("request_district_selection") \
 		and runtime_screen.has_method("request_district_supply_open") \
 		and runtime_screen.has_method("request_district_supply_close") \
@@ -1359,11 +1363,16 @@ func _scripted_ui_action(
 		var card: Dictionary = card_variant
 		var card_action := _first_enabled_action(card.get("actions", []))
 		if not card_action.is_empty():
-			return {
+			var request := {
 				"id": str(card_action.get("id", "")),
 				"phase": "play.hand.%s.%s" % [str(card.get("id", "card")), str(card.get("action_state", card.get("play_state", "ready")))],
 				"disabled": false,
 			}
+			var offer: Dictionary = card_action.get("game_action_offer", {}) \
+				if card_action.get("game_action_offer", {}) is Dictionary else {}
+			if not offer.is_empty():
+				request["game_action_offer"] = offer.duplicate(true)
+			return request
 	var board_action := _first_enabled_action(player_board.get("actions", []))
 	var board_signature := ""
 	if not board_action.is_empty():
@@ -1909,11 +1918,16 @@ func _first_enabled_card_action_by_kind(
 			continue
 		var action := _first_enabled_action(card.get("actions", []))
 		if not action.is_empty():
-			return {
+			var request := {
 				"id": str(action.get("id", "")),
 				"phase": "play.hand.%s.%s" % [kind, str(card.get("action_state", card.get("play_state", "ready")))],
 				"disabled": false,
 			}
+			var offer: Dictionary = action.get("game_action_offer", {}) \
+				if action.get("game_action_offer", {}) is Dictionary else {}
+			if not offer.is_empty():
+				request["game_action_offer"] = offer.duplicate(true)
+			return request
 	return {}
 
 
@@ -1959,13 +1973,18 @@ static func first_unexhausted_card_by_kind(
 
 func _board_action_request(action: Dictionary, player_board: Dictionary, signature: String = "") -> Dictionary:
 	var action_signature := signature if not signature.is_empty() else _board_action_signature(action, player_board)
-	return {
+	var request := {
 		"id": str(action.get("id", "")),
 		"phase": "play.board.%s.%s" % [str(action.get("kind", "action")), str(action.get("state", "ready"))],
 		"disabled": bool(action.get("disabled", false)),
 		"origin": "board_primary" if str(action.get("kind", "")) in ["build_economic_source", "expand_economic_source", "open_rack", "summon_monster", "play_card", "review_economy", "protect_route", "pressure_competition"] else "board_action",
 		"signature": action_signature,
 	}
+	var offer: Dictionary = action.get("game_action_offer", {}) \
+		if action.get("game_action_offer", {}) is Dictionary else {}
+	if not offer.is_empty():
+		request["game_action_offer"] = offer.duplicate(true)
+	return request
 
 
 func _submit_scripted_ui_action(runtime_screen: Node, action: Dictionary) -> bool:
@@ -2012,10 +2031,52 @@ func _submit_scripted_ui_action(runtime_screen: Node, action: Dictionary) -> boo
 		var selection_screen := runtime_screen as SpaceSyndicateGameScreen
 		return selection_screen != null \
 			and selection_screen.request_district_selection(int(action.get("district_index", -1)), &"qa_driver")
-	if runtime_screen == null or not runtime_screen.has_signal("action_requested") or action_id.is_empty():
+	var action_screen := runtime_screen as SpaceSyndicateGameScreen
+	var offer: Dictionary = action.get("game_action_offer", {}) \
+		if action.get("game_action_offer", {}) is Dictionary else {}
+	if action_screen == null or action_id.is_empty() or offer.is_empty():
 		return false
-	runtime_screen.emit_signal("action_requested", action_id)
-	return true
+	return bool(action_screen.call("_submit_game_action_offer", offer, "human_click", {}, {}))
+
+
+func _scripted_ui_action_rejection_reason(runtime_screen: Node, action: Dictionary) -> String:
+	var origin := str(action.get("origin", ""))
+	if origin in ["temporary_decision", "district_supply_rotation", "menu_overlay", "district_supply", "planet_map"] \
+			or str(action.get("id", "")) in TYPED_RACK_ACTION_IDS:
+		return "typed_adapter_rejected"
+	var screen := runtime_screen as SpaceSyndicateGameScreen
+	if screen == null:
+		return "game_screen_missing"
+	var offer: Dictionary = action.get("game_action_offer", {}) \
+		if action.get("game_action_offer", {}) is Dictionary else {}
+	if offer.is_empty():
+		return "game_action_offer_missing"
+	var validation := GameActionOfferV1.validation_report(offer)
+	if not bool(validation.get("valid", false)):
+		return "game_action_offer_%s" % str(validation.get("reason_code", "invalid"))
+	if str(offer.get("legality_state", "")) != "available":
+		return "game_action_offer_unavailable"
+	var authorization_variant: Variant = screen.call("_game_action_actor_authorization", "human_click")
+	var authorization: Dictionary = authorization_variant if authorization_variant is Dictionary else {}
+	if authorization.is_empty():
+		return "actor_authorization_missing"
+	var probe_raw := {
+		"schema_version": GameActionIntentV1.SCHEMA_VERSION,
+		"request_id": "full-run-action-probe",
+		"semantic_action_id": str(offer.get("semantic_action_id", "")),
+		"source_revision": int(offer.get("source_revision", 0)),
+		"actor_authorization": authorization,
+		"target_ids": GameActionOfferV1.target_ids(offer),
+		"parameters": {},
+		"submission_kind": "human_click",
+	}
+	var probe := SemanticWireV1.sealed_copy(probe_raw, "intent_fingerprint")
+	var intent_validation := GameActionIntentV1.validation_report(probe)
+	if not bool(intent_validation.get("valid", false)):
+		return str(intent_validation.get("reason_id", "game_action_intent_invalid"))
+	if not GameActionOfferV1.accepts_intent(offer, probe):
+		return "game_action_offer_intent_binding_rejected"
+	return "game_action_adapter_rejected"
 
 
 func _temporary_decision_overlay(runtime_screen: Node) -> SpaceSyndicateOverlayLayer:

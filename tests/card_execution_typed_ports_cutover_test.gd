@@ -59,7 +59,7 @@ func _verify_sources() -> void:
 	for forbidden in ["world.call", "world.get", "world.set", "world.has_method", "get_node_or_null", "current_scene", "apply_intent(world", "Callable("]:
 		_expect(not execution_source.contains(forbidden), "execution port omits dynamic Main pattern %s" % forbidden)
 	var ai_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
-	_expect(not ai_source.contains("_call_world(&\"_queue_skill_resolution\"") and ai_source.contains("_card_play_submission_controller.submit_card_play"), "AI submits through the shared typed controller without Main fallback")
+	_expect(not ai_source.contains("_call_world(&\"_queue_skill_resolution\"") and ai_source.contains("GameActionIntentV1.build") and ai_source.contains("_game_action_submission_port.submit_intent"), "AI submits the shared GameActionIntentV1 through the typed application flow without Main fallback")
 	_expect(not FileAccess.file_exists("res://scripts/runtime/contract_runtime_world_bridge.gd"), "retired contract response bridge is absent")
 
 

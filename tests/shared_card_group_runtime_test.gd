@@ -47,7 +47,7 @@ func _run() -> void:
 	_expect(str((public_bid_submit.get("plan", {}) as Dictionary).get("reason", "")) == "public_bid_phase", "public bid rejects new ordinary submissions")
 	var queue_debug: Dictionary = queue.call("debug_snapshot")
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	_expect(not bool(queue_debug.get("cash_authority", true)) and not bool(queue_debug.get("priority_bid_authority", true)) and main_source.contains("func _apply_card_group_wager_pool_receipt"), "cadence cutover does not move wager-pool receipt or cash ownership into Queue")
+	_expect(not bool(queue_debug.get("cash_authority", true)) and not bool(queue_debug.get("priority_bid_authority", true)) and not main_source.contains("func _apply_card_group_wager_pool_receipt"), "current cadence Queue owns neither retired priority-bid cash nor a Main wager-pool receipt bridge")
 
 	var window := WINDOW_SCENE.instantiate()
 	host.add_child(window)

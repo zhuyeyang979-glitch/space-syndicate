@@ -8,6 +8,22 @@ const CARD_BINDING := preload("res://scripts/semantic/game_action_card_binding_v
 const AI_CAPABILITY := preload(
 	"res://scripts/runtime/game_action_ai_submission_capability.gd"
 )
+const GLOBAL_REGISTRY_PATH := "res://docs/semantic/global_three_layer_semantic_registry.json"
+const REGISTRY_REQUIRED_DOMAIN_FIELDS := [
+	"domain_id", "current_runtime_version", "target_rule_version",
+	"core_authority_owner", "core_rule_schema", "core_state_schema",
+	"core_command_port", "core_receipt_schema", "ai_observation_schema",
+	"ai_candidate_schema", "ai_intent_schema", "ai_outcome_schema",
+	"ai_information_boundary", "player_public_projection",
+	"player_private_projection", "player_intent_schema", "player_feedback_schema",
+	"visibility_policy", "rng_policy", "save_owner", "replay_identity",
+	"main_gd_dependencies", "legacy_authority", "old_write_paths",
+	"core_semantics_status", "ai_semantics_status", "player_semantics_status",
+	"save_replay_status", "main_free_status", "cutover_status",
+	"core_semantics_ready", "ai_semantics_ready", "player_semantics_ready",
+	"focused_tests", "production_scene_or_bench", "known_blockers",
+	"next_atomic_boundary",
+]
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -20,11 +36,13 @@ func _init() -> void:
 func _run() -> void:
 	_test_offer_contract()
 	_test_intent_contract()
+	_test_session_id_contract()
 	_test_offer_intent_binding()
 	_test_receipt_contract()
 	_test_forbidden_wire_values()
 	_test_card_binding()
 	_test_ai_capability_is_out_of_band()
+	_test_global_three_layer_registry_contract()
 	_finish()
 
 
@@ -122,6 +140,46 @@ func _test_intent_contract() -> void:
 	var unknown := _card_play_intent_input("human", "human_click")
 	unknown["semantic_action_id"] = "unknown.action"
 	_expect(INTENT.build(unknown).is_empty(), "unknown semantic action fails closed")
+
+
+func _test_session_id_contract() -> void:
+	var production_session_id := "session:full-run:900626424"
+	_expect(
+		WIRE.is_session_id(production_session_id),
+		"production session namespace is a valid bounded session identity"
+	)
+	var production_intent := _card_play_intent_input("human", "human_click")
+	(production_intent["actor_authorization"] as Dictionary)["session_id"] = production_session_id
+	_expect(
+		not INTENT.build(production_intent).is_empty(),
+		"action authorization accepts the production session identity"
+	)
+	for invalid_session_id in [
+		"",
+		" session:full-run:900626424",
+		"session:full run:900626424",
+		"res://scripts/session.gd",
+		"scripts/session.gd",
+		"session.gd",
+		"session\\full-run\\900626424",
+		"session:full-run:900626424()",
+		"session::full-run:900626424",
+		"session:full-run:900626424:",
+	]:
+		_expect(
+			not WIRE.is_session_id(invalid_session_id),
+			"session identity rejects unsafe value: %s" % invalid_session_id
+		)
+		var invalid_intent := _card_play_intent_input("human", "human_click")
+		(invalid_intent["actor_authorization"] as Dictionary)["session_id"] = invalid_session_id
+		_expect(
+			INTENT.build(invalid_intent).is_empty(),
+			"action authorization rejects unsafe session identity"
+		)
+	_expect(
+		not WIRE.is_session_id("session" + "a".repeat(160)),
+		"session identity is length bounded"
+	)
 
 
 func _test_offer_intent_binding() -> void:
@@ -276,11 +334,17 @@ func _test_card_binding() -> void:
 			and CARD_BINDING.resolution_ref(17) == "card.resolution.17",
 		"numeric presentation inputs become stable semantic references"
 	)
+	var integral_float_rank := card.duplicate(true)
+	(integral_float_rank["machine"] as Dictionary)["rank"] = 1.0
+	_expect(
+		CARD_BINDING.private_instance_ref(integral_float_rank, 0) == first,
+		"integral JSON card rank normalizes to the same closed integer binding"
+	)
 	var invalid_rank := card.duplicate(true)
 	(invalid_rank["machine"] as Dictionary)["rank"] = 1.5
 	_expect(
 		CARD_BINDING.private_instance_ref(invalid_rank, 0).is_empty(),
-		"card binding refuses float gameplay identity"
+		"card binding refuses fractional gameplay identity"
 	)
 	var runtime_object := card.duplicate(true)
 	(runtime_object["machine"] as Dictionary)["card_id"] = RefCounted.new()
@@ -300,6 +364,48 @@ func _test_ai_capability_is_out_of_band() -> void:
 	_expect(not capability.matches_owner_nonce(88), "wrong owner nonce is rejected")
 	var forged := AI_CAPABILITY.new()
 	_expect(forged != capability and not forged.matches_owner_nonce(77), "new object cannot forge bound capability")
+
+
+func _test_global_three_layer_registry_contract() -> void:
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(GLOBAL_REGISTRY_PATH))
+	var registry: Dictionary = parsed if parsed is Dictionary else {}
+	_expect(not registry.is_empty(), "global three-layer semantic registry is valid JSON")
+	_expect(str(registry.get("registry_id", "")) == "global_three_layer_semantic_registry", "one canonical global semantic registry is identified")
+	_expect(str(registry.get("current_production_runtime_ruleset", "")) == "V0.6" and str(registry.get("target_development_constitution", "")) == "V0.7" and not bool(registry.get("full_v0_7_runtime_cutover", true)), "registry separates current V0.6 runtime from target V0.7 constitution")
+	var vocabulary: Array = registry.get("status_vocabulary", []) if registry.get("status_vocabulary", []) is Array else []
+	var domains: Array = registry.get("domains", []) if registry.get("domains", []) is Array else []
+	var domain_ids: Array[String] = []
+	var complete_domain_count := 0
+	var core_ready_count := 0
+	var fields_complete := true
+	var statuses_valid := true
+	var ready_flags_consistent := true
+	for domain_variant in domains:
+		if not (domain_variant is Dictionary):
+			fields_complete = false
+			continue
+		var domain := domain_variant as Dictionary
+		var domain_id := str(domain.get("domain_id", ""))
+		if domain_id.is_empty() or domain_ids.has(domain_id):
+			fields_complete = false
+		domain_ids.append(domain_id)
+		for field in REGISTRY_REQUIRED_DOMAIN_FIELDS:
+			fields_complete = fields_complete and domain.has(field)
+		for status_field in ["core_semantics_status", "ai_semantics_status", "player_semantics_status", "save_replay_status", "main_free_status", "cutover_status"]:
+			statuses_valid = statuses_valid and vocabulary.has(str(domain.get(status_field, "")))
+		var all_layers_ready := bool(domain.get("core_semantics_ready", false)) and bool(domain.get("ai_semantics_ready", false)) and bool(domain.get("player_semantics_ready", false))
+		ready_flags_consistent = ready_flags_consistent and (str(domain.get("core_semantics_status", "")) == "THREE_LAYER_READY") == all_layers_ready
+		if all_layers_ready:
+			complete_domain_count += 1
+		if bool(domain.get("core_semantics_ready", false)):
+			core_ready_count += 1
+	var summary: Dictionary = registry.get("summary", {}) if registry.get("summary", {}) is Dictionary else {}
+	_expect(domains.size() == 24 and int(summary.get("registered_domain_count", -1)) == domains.size(), "registry inventories exactly 24 required semantic domains")
+	_expect(fields_complete and domain_ids.size() == domains.size(), "every semantic domain has the closed required field set and a unique identity")
+	_expect(statuses_valid, "every semantic status uses the one approved vocabulary")
+	_expect(ready_flags_consistent, "THREE_LAYER_READY is claimed only when core, AI, and player readiness are all true")
+	_expect(core_ready_count == int(summary.get("core_ready_domain_count", -1)) and complete_domain_count == int(summary.get("global_three_layer_ready_domain_count", -1)), "registry summary readiness counts are derived from domain truth")
+	_expect(complete_domain_count == 1 and domain_ids.has("player_action_routing") and not bool(summary.get("global_three_layer_complete", true)), "only the completed player-action vertical slice is three-layer ready; global completion remains false")
 
 
 func _offer_input() -> Dictionary:

@@ -232,9 +232,11 @@ static func _authorization_error(value: Variant) -> String:
 	if authorization.get("schema_version") != SCHEMA_VERSION \
 			or str(authorization.get("actor_kind_id", "")) not in ACTOR_KIND_IDS:
 		return "game_action_intent_authorization_kind_invalid"
-	for field in ["actor_id", "session_id", "authorization_proof_ref", "source_surface_id"]:
+	for field in ["actor_id", "authorization_proof_ref", "source_surface_id"]:
 		if not SemanticWireV1.is_stable_id(authorization.get(field)):
 			return "game_action_intent_authorization_%s_invalid" % field
+	if not SemanticWireV1.is_session_id(authorization.get("session_id")):
+		return "game_action_intent_authorization_session_id_invalid"
 	for field in ["actor_index", "actor_revision", "session_revision"]:
 		if not SemanticWireV1.is_nonnegative_integer(authorization.get(field)):
 			return "game_action_intent_authorization_%s_invalid" % field

@@ -1408,11 +1408,8 @@ func _on_card_drag_released(card_data: Dictionary, screen_position: Vector2) -> 
 		return
 	if _card_drop_zone_contains(screen_position) and _card_can_drop_on_map(card_data):
 		var district_index := _district_at_map_position(screen_position)
-		if district_index < 0 or not request_district_selection(district_index, &"planet_map"):
+		if district_index < 0:
 			return
-		if int(_selection_context().get("selected_district", -1)) != district_index:
-			return
-		request_hand_selection(_hand_slot_from_card_data(card_data), &"hand_rack")
 		var entry := _card_game_action_entry(card_data)
 		var offer: Dictionary = entry.get("game_action_offer", {}) if entry.get("game_action_offer", {}) is Dictionary else {}
 		var region_id := _region_id_for_district(district_index)

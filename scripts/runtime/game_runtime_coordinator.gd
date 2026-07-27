@@ -1582,10 +1582,25 @@ func _wire_game_action_submission_port() -> void:
 	var port := get_node_or_null("TablePlayerActionApplicationFlowController") \
 		as TablePlayerActionApplicationFlowController
 	var ai := _ai_runtime_controller_node() as AiRuntimeController
-	if port == null or ai == null or not _prebind_game_action_submission_capability():
+	var session := _session_node() as GameSessionRuntimeController
+	if port == null or ai == null or session == null or not _prebind_game_action_submission_capability():
 		push_error("GameRuntimeCoordinator requires one typed player/AI game-action submission spine; AI card actions fail closed.")
 		return
 	ai.set_game_action_submission_port(port, _game_action_ai_submission_capability)
+	var authorization_callback := Callable(self, "_on_game_action_authorization_context_changed")
+	if not session.authorization_context_changed.is_connected(authorization_callback):
+		session.authorization_context_changed.connect(authorization_callback)
+	_on_game_action_authorization_context_changed(&"composition_wired")
+
+
+func _on_game_action_authorization_context_changed(_reason_id: String) -> void:
+	var game_screen := get_node_or_null(presentation_game_screen_path) as SpaceSyndicateGameScreen \
+		if not presentation_game_screen_path.is_empty() else null
+	if game_screen == null:
+		return
+	game_screen.bind_gameplay_actor_authorization_context(
+		gameplay_actor_authorization_context(&"game_screen")
+	)
 
 
 func _prebind_ai_card_interaction_observation_service() -> bool:

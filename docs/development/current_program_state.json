@@ -1,35 +1,29 @@
 {
-  "schema_version": 4,
-  "generated_at": "2026-07-25T03:26:45+09:00",
+  "schema_version": 5,
+  "generated_at": "2026-07-28T06:05:00+09:00",
   "source": {
     "repository": "zhuyeyang979-glitch/space-syndicate",
-    "branch": "main",
-    "main_sha": "ebaf91942c23b9c78ffa05873fff73d2b2262f8e",
-    "latest_merge_pr": 56,
+    "branch": "origin/main",
+    "main_sha": "b5763bbfb96994aa55ab36ae4335db332d9818a8",
+    "latest_merge_pr": 68,
     "origin_divergence": {"ahead": 0, "behind": 0},
-    "open_pull_requests": [],
-    "recent_main_commits_reviewed": 30,
-    "remote_tag_count": 0,
-    "draft_release_count": 0,
-    "branch_protection_configured": false,
-    "main_ci": {
-      "workflow_run_count": 0,
-      "check_run_count": 0,
-      "commit_status_count": 0,
-      "required_status_context_count": 0
-    }
+    "local_candidate_branch": "codex/commodity-track-three-layer-semantics-b5763bb",
+    "local_candidate_checkpoint_sha": "5cf30c64bc53e4056afdb1337fa279b355c9fc99",
+    "local_commits_ahead_before_closure": 3,
+    "open_pull_requests_observed": []
   },
   "program": {
     "program_id": "ALPHA_0_3_CORE_COMPLETE_CLOSED_ALPHA",
     "status": "ACTIVE",
-    "initial_main_sha": "53c4c02fcb6c17dbc8e97af88e753d78ea3cb225",
-    "current_phase": "GATE_A_REMAINING_P0",
-    "final_status_claimed": false,
-    "playable_game": false,
-    "complete_match_proven": false,
+    "current_phase": "V07_ACTION_SPINE_LOCAL_CLOSURE",
+    "current_production_runtime_ruleset": "V0.6",
+    "target_development_constitution": "V0.7",
+    "v07_highest_development_authority": true,
+    "full_v0_7_runtime_cutover": false,
+    "playable_game": true,
+    "complete_match_proven": true,
     "full_run_resume_claim": false,
-    "content_pipeline_open": true,
-    "art_pipeline_open": true,
+    "save_resume_ready": false,
     "closed_alpha_ready": false,
     "public_release_published": false
   },
@@ -38,197 +32,110 @@
       "task_id": "P0-AI-BUSINESS-COST-TYPED-CASH-CUTOVER",
       "status": "MERGED",
       "pull_request": 45,
-      "commit": "398e56837c0d782586d80a0dfe0d370f40ff5a8c",
       "merge_commit": "ce6853cb75c10fdfed457431d638af9009a01083"
     },
     {
       "task_id": "P0-COMMODITY-FLOW-POSTCOMMIT-EXACT-ONCE",
       "status": "MERGED",
       "pull_request": 46,
-      "commit": "87dd12a9b673a364592760cde148a43ab00ac65b",
       "merge_commit": "cb9194a32e86c20287572b20b92acc0064fcd858"
     },
     {
       "task_id": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
       "status": "ACTIVE",
-      "canonical_state": "ACTIVE_ACTOR_HAND_INVENTORY_MERGED_PUBLIC_DISTRICT_FACTS_VALIDATED",
-      "foundation_pull_request": 48,
-      "foundation_commit": "6596c3c",
-      "completed_atomic_domains": [
-        "foundation_ports",
-        "city_inference_query_command",
-        "actor_state",
-        "public_player_facts",
-        "actor_economy_facts",
-        "actor_hand_inventory"
-      ],
-      "city_inference_pull_request": 51,
-      "city_inference_commit": "90014ec92a5b2f1f15e658d007ce9c87f2c4fbef",
-      "city_inference_merge_commit": "80817847cfd0061de19516829460ca45b41558dc",
-      "actor_state_pull_request": 53,
-      "actor_state_commit": "bb3a7af95907ec44b4f3e2c7274a791bab83455a",
-      "actor_state_merge_commit": "0b4b72a742e4d3ac08cc6308d596d26383942a2d",
-      "public_player_facts_pull_request": 54,
-      "public_player_facts_commit": "65bd34be41303572cb70ff319dc79c682283f651",
-      "public_player_facts_merge_commit": "d78ca8973c86563dea502b725600b5840c9941c3",
-      "actor_economy_facts_pull_request": 55,
-      "actor_economy_facts_commit": "b50d0fc5de13d9b5eb88806d1c2b38c7da84374f",
-      "actor_economy_facts_merge_commit": "3d659323b8ed36088489cadc485cc3ffb8bf64e8",
-      "actor_hand_inventory_pull_request": 56,
-      "actor_hand_inventory_commit": "7a2d37c056d685dbee84d133fabe7768165c9ec6",
-      "actor_hand_inventory_merge_commit": "ebaf91942c23b9c78ffa05873fff73d2b2262f8e",
-      "next_atomic_boundary": "AI_PUBLIC_DISTRICT_FACTS_TYPED_PORT_MIGRATION",
-      "completion_claimed": false,
-      "remaining_scope": "migrate all AI production consumers and remove generic Main/world access"
+      "merged_through_atomic_domain": "public_district_facts",
+      "latest_pull_request": 57,
+      "latest_merge_commit": "ad3b3184533a8cd08cfbf1107399d80f4fdd2ce6",
+      "remaining_scope": "remove Main AI-world hosting and migrate remaining raw world reads through authorized typed domain ports"
     },
     {
-      "task_id": "P1-FOUR-SEAT-FIRST-ECONOMIC-ENGINE",
-      "status": "ACTIVE",
-      "completion_claimed": false
+      "task_id": "SAMPLE-FULL-RUN-VERTICAL-SLICE-TO-SETTLEMENT",
+      "status": "MERGED_AND_PROVEN",
+      "pull_request": 68,
+      "merge_commit": "b5763bbfb96994aa55ab36ae4335db332d9818a8",
+      "evidence": "reports/playability/full_run/sample_full_run_vertical_slice_to_settlement_validation.md"
     },
     {
-      "task_id": "P1-FOUR-SEAT-TERMINAL-PATH",
-      "status": "BLOCKED",
-      "blocked_by": ["P1-FOUR-SEAT-FIRST-ECONOMIC-ENGINE"]
+      "task_id": "V07-CONSTITUTION-GLOBAL-SEMANTIC-ACTION-SPINE-CUTOVER",
+      "status": "LOCAL_COMMITTED_UNPUSHED",
+      "base_main_sha": "b5763bbfb96994aa55ab36ae4335db332d9818a8",
+      "branch": "codex/commodity-track-three-layer-semantics-b5763bb",
+      "checkpoint_sha": "5cf30c64bc53e4056afdb1337fa279b355c9fc99",
+      "commit": "THIS_CUTOVER",
+      "pushed": false,
+      "merged_to_main": false,
+      "full_v0_7_runtime_cutover": false
     },
     {
       "task_id": "P1-SAVE-RESUME-OWNER-COVERAGE",
       "status": "READY",
-      "readiness_stage": "OWNER_INVENTORY",
-      "canonical_state": "READY_FOR_OWNER_INVENTORY",
       "transactional_owner_count": 12,
-      "required_owner_count": 19
-    },
-    {
-      "task_id": "P2-ALPHA01-CARD-ART-WAVE-1",
-      "status": "READY",
-      "canonical_state": "READY"
+      "required_owner_count": 19,
+      "resume_ready": false
     }
   ],
   "playable": {
-    "status": "INTERNAL_PLAYABLE_FOUNDATION_FIRST_ECONOMIC_ENGINE_UNPROVEN",
+    "status": "PRODUCTION_FULL_RUN_TO_SETTLEMENT_PROVEN_COLD_RESUME_UNPROVEN",
     "recommended_configuration": "1 local human plus 3 AI; challenge depth 1",
     "verified": [
-      "formal main scene composition",
-      "four-seat session startup",
-      "typed district rack quote and purchase",
-      "facility card enters private hand",
-      "typed facility play",
-      "forced monster wager opens and clears",
-      "CommodityFlow post-commit exact-once"
+      "production new-game session start",
+      "three real facility acquisitions and installations through typed table actions",
+      "real CommodityFlow Sale Receipts and positive GDP",
+      "Victory idle-to-qualification-to-audit-to-resolved lifecycle",
+      "FinalSettlement exact-once public log and live/full presentation",
+      "eight terminal-quiescent RuntimeLoop frames with zero world and RNG delta"
     ],
     "unverified": [
-      "compatible factory and market engine",
-      "first authoritative Sale Receipt",
-      "positive GDP per minute",
-      "complete match to settlement",
-      "return to menu and restart"
-    ]
+      "complete production Save capture",
+      "application close and cold startup restore",
+      "continued play from cold restore through settlement",
+      "full menu return and a second complete run",
+      "V0.7 production runtime rules"
+    ],
+    "evidence_runs": ["A13", "A14"]
   },
   "architecture": {
-    "main_gd": {
-      "physical_lines": 6433,
-      "nonblank_lines": 5415,
+    "origin_main_baseline": {
+      "physical_lines": 6438,
+      "nonblank_lines": 5420,
       "methods": 469,
       "top_level_variables": 46,
       "constants": 45,
       "top_level_preloads": 7,
-      "external_caller_files": 103,
-      "external_call_occurrences": 1231,
-      "production_reference_files": 3,
-      "absolute_budget_gate": "INHERITED_CALLER_THRESHOLD_103_GT_102",
-      "latest_cutover_monotonic": true,
+      "external_caller_files": 111,
+      "external_call_occurrences": 1252
+    },
+    "action_spine_local_candidate": {
+      "physical_lines": 5664,
+      "nonblank_lines": 4671,
+      "methods": 440,
+      "top_level_variables": 46,
+      "constants": 44,
+      "top_level_preloads": 6,
+      "external_caller_files": 111,
+      "external_call_occurrences": 1249,
+      "new_main_caller_count": 0,
+      "new_main_fallback_count": 0,
       "bootstrap_only": false
     },
     "cutover_ledger": {
-      "total_domains": 43,
-      "cut_over_domains": 39,
-      "pending_domains": [
-        "typed_world_ports",
-        "save_restore",
-        "presentation_action_routing",
-        "remaining_root_responsibilities"
-      ]
+      "presentation_action_routing": "cut_over",
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true
     },
-    "active_p0": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
-    "last_atomic_delivery": {
-      "branch": "codex/alpha03-ai-actor-hand-inventory-3d65932",
-      "base_main_sha": "3d659323b8ed36088489cadc485cc3ffb8bf64e8",
-      "atomic_domain": "actor_hand_inventory",
-      "status": "MERGED",
-      "pull_request": 56,
-      "commit": "7a2d37c056d685dbee84d133fabe7768165c9ec6",
-      "merge_commit": "ebaf91942c23b9c78ffa05873fff73d2b2262f8e",
-      "main_gd": {
-        "physical_lines": 6440,
-        "nonblank_lines": 5421,
-        "methods": 470,
-        "top_level_variables": 46,
-        "constants": 45,
-        "top_level_preloads": 7,
-        "external_caller_files": 103,
-        "new_caller_files": 0
-      },
-      "parent_gate_complete": false
-    },
-    "next_atomic_candidate": {
-      "base_main_sha": "ebaf91942c23b9c78ffa05873fff73d2b2262f8e",
-      "atomic_domain": "AI_PUBLIC_DISTRICT_FACTS_TYPED_PORT_MIGRATION",
-      "status": "VALIDATED_CANDIDATE",
-      "focused_gate": "104/104 PASS",
-      "production_scene_bench": "22/22 PASS",
-      "parent_gate_complete": false
-    }
+    "absolute_budget_gate": "INHERITED_CALLER_THRESHOLD_111_GT_102",
+    "task_relative_budget_monotonic": true
   },
-  "content": {
-    "current": {
-      "roles": 8,
-      "card_identities": 40,
-      "ranked_records": 160,
-      "monsters": 8,
-      "products": 46,
-      "industries": 6,
-      "organization_cards": 0
-    },
-    "alpha_0_2_targets": {"roles": 12, "card_identities": 56, "monsters": 10, "products": 46},
-    "alpha_0_3_targets": {"roles": 16, "card_identities": 72, "monsters": 12, "products": 46, "industries": 6},
-    "organization_cards_status": "DEFERRED",
-    "data_only_content_required": true
+  "semantics": {
+    "registry": "docs/semantic/global_three_layer_semantic_registry.json",
+    "registered_domain_count": 24,
+    "core_ready_domain_count": 18,
+    "three_layer_ready_domain_count": 1,
+    "three_layer_ready_domains": ["player_action_routing"],
+    "global_three_layer_complete": false,
+    "player_action_semantic_spine_ready": true,
+    "human_ai_shared_intent_ready": true
   },
-  "art": {
-    "roles": {"catalog_total": 24, "rendered": 12, "pending": 12, "alpha_0_1_selected_pairs": 8},
-    "cards": {"alpha_identities": 40, "rendered": 5, "semantic_fallback": 35, "fake_rendered_count": 0},
-    "monsters": {"alpha_active_roster": 8, "licensed_assets": 8, "unique_visual_sources": 8},
-    "products": {"catalog_total": 46, "proof_assets": 6, "production_track_icons": 0},
-    "audio": {"table_audio_host": false, "formal_manifest": false}
-  },
-  "manifest_evidence": [
-    {
-      "path": "docs/playtest/alpha_0_1/content_manifest.json",
-      "file_sha256": "152cebaed82edf804a69078e9b72fb9f23851e8e0fe82980129a8a09534c3e39",
-      "semantic_selection_fingerprint": "e1754e42641e0cc6bd3175326f6fea2b8a62802bf4068d340e11862132b6fb54"
-    },
-    {
-      "path": "assets/art/role_portraits/temporary/manifest.json",
-      "file_sha256": "86172650b490ce65ece04233de890b8ff225115069ff5e9410b47976dffd7d00"
-    },
-    {
-      "path": "data/art/alpha01_card_illustration_status_manifest.json",
-      "file_sha256": "8fcb0f5e00feffeb061b184d31b7253e896b82107134e71f78fd230da2a55f55"
-    },
-    {
-      "path": "data/art/monster_body_art_manifest.json",
-      "file_sha256": "88a1ed453b1fb15bd6319f4321cb1af09544121b0f7a04dc5fe110979da19aee"
-    },
-    {
-      "path": "data/art/alpha01_product_art_manifest.json",
-      "file_sha256": "0459c75cb1e5add8cb69b56a8266c3aac8d4ed8a77a417f157a64f30f0ab6e4f"
-    },
-    {
-      "path": "docs/rules/v06_mechanic_status_registry.json",
-      "file_sha256": "a0ac24e43c8fbd2a9066719c4e3c11b8de35776017e88ab987526f72ed33d27d"
-    }
-  ],
   "save_resume": {
     "transactional_owner_count": 12,
     "required_owner_count": 19,
@@ -241,39 +148,28 @@
       "card_resolution_queue",
       "ai"
     ],
-    "inventory_task_status": "READY",
     "resume_ready": false,
     "cold_restore_proven": false,
     "full_run_resume_claim": false
   },
-  "release": {
-    "alpha_0_1_export_preset_present": true,
-    "alpha_0_3_export_preset_present": false,
-    "current_head_build_present": false,
-    "tag_count": 0,
-    "draft_prerelease_count": 0,
-    "public_release_published": false
-  },
   "known_test_state": {
+    "action_protocol": "GREEN_110_OF_110",
+    "table_action_flow": "GREEN_48_OF_48",
+    "production_action_bench": "GREEN_12_OF_12",
+    "main_architecture": "GREEN_219_CHECKS",
+    "main_runtime_composition": "GREEN",
+    "victory_terminal_exact_once": "GREEN_81_OF_81",
+    "final_settlement_composition": "GREEN_24_OF_24",
     "smoke_check_only": "PASS",
-    "full_smoke": "STALE_FIXTURE_DEBT_PRESENT",
-    "current_atomic_focused_gate": "104/104 PASS",
-    "known_non_product_red_tests": [
-      "ai_commodity_futures_policy_runtime_test.gd calls retired Main._new_game",
-      "intel_query_command_cutover_test.gd expects retired world envelope schema v1",
-      "AiPolicyResourceBench.tscn has three inherited source-string fixture failures (38/41 on base and candidate)",
-      "CardInventoryRuntimeCharacterizationBench.tscn calls retired Main._new_game",
-      "PlayerHandInteractionRuntimeCharacterizationBench.tscn calls retired Main._new_game",
-      "session_envelope_save_owner_test.gd has one stale Main source-string oracle"
-    ],
-    "policy": "Do not restore retired Main wrappers; migrate one current fixture family per test-debt PR."
+    "sample_full_run": "PASS_ON_ORIGIN_MAIN_PR68",
+    "action_spine_candidate_full_run": "BOUNDED_INCOMPLETE_OBSERVATION_WINDOW_0_INVALID_ACTIONS",
+    "full_smoke": "BLOCKED_BY_RETIRED_MAIN_FIXTURES",
+    "policy": "Do not restore retired Main wrappers; migrate historical fixture families in their own test-debt boundary."
   },
   "next_boundaries": {
-    "architecture": "P0-AI-WORLD-TYPED-PORTS-CUTOVER / AI_PUBLIC_DISTRICT_FACTS_TYPED_PORT_MIGRATION",
-    "product": "P1-FOUR-SEAT-FIRST-ECONOMIC-ENGINE",
-    "save": "P1-SAVE-RESUME-OWNER-COVERAGE inventory",
-    "content": "P2-ALPHA01-CARD-ART-WAVE-1",
-    "ux_audio": "TABLE-AUDIO-AND-LIGHTWEIGHT-ONBOARDING-PREFLIGHT",
-    "test_debt": "P4-FULL-SMOKE-FIXTURE-MIGRATION"
+    "architecture": "P0_AI_WORLD_TYPED_PORTS_MAIN_HOST_DETACHMENT",
+    "product": "P1_SAVE_RESUME_OWNER_COVERAGE_AND_COLD_RESTORE_VERTICAL_SLICE",
+    "v07_runtime": "V07_SHARED_COMMODITY_TRACK_CORE_OWNER_AFTER_AI_AND_SAVE_BOUNDARIES",
+    "test_debt": "P4_FULL_SMOKE_FIXTURE_MIGRATION"
   }
 }

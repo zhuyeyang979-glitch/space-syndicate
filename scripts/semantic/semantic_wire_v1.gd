@@ -142,6 +142,33 @@ static func is_stable_id(value: Variant) -> bool:
 	return not previous_was_separator
 
 
+static func is_session_id(value: Variant) -> bool:
+	if not (value is String):
+		return false
+	var text := value as String
+	if text.is_empty() or text.length() > 160:
+		return false
+	var previous_was_separator := false
+	for index in range(text.length()):
+		var code := text.unicode_at(index)
+		var lower := code >= 97 and code <= 122
+		var digit := code >= 48 and code <= 57
+		var separator := code == 46 or code == 95 or code == 45 or code == 58
+		if index == 0 and not lower:
+			return false
+		if not lower and not digit and not separator:
+			return false
+		if separator and previous_was_separator:
+			return false
+		previous_was_separator = separator
+	if previous_was_separator:
+		return false
+	for forbidden_suffix in [".gd", ".tscn", ".tres", ".res", ".cfg", ".json"]:
+		if text.ends_with(forbidden_suffix):
+			return false
+	return true
+
+
 static func is_fingerprint(value: Variant) -> bool:
 	if not (value is String) or (value as String).length() != 64:
 		return false

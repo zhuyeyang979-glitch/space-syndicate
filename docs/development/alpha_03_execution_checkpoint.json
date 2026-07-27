@@ -1,96 +1,123 @@
 {
-  "branch": "codex/alpha03-ai-public-district-facts-ebaf919",
+  "schema_version": 2,
+  "generated_at": "2026-07-28T06:05:00+09:00",
+  "branch": "codex/commodity-track-three-layer-semantics-b5763bb",
   "commit": "THIS_CUTOVER",
-  "task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
-  "status": "ACTIVE_ACTOR_HAND_INVENTORY_MERGED_PUBLIC_DISTRICT_FACTS_VALIDATED_CANDIDATE",
-  "completed_atomic_domains": [
-    "foundation_ports",
-    "city_inference_query_command",
-    "actor_state",
-    "public_player_facts",
-    "actor_economy_facts",
-    "actor_hand_inventory"
-  ],
-  "logical_ownership_set": [
-    "AI public district facts query",
-    "public region identity and lifecycle projection",
-    "public district and city product-demand projection",
-    "seven AI leaf consumer cutovers",
-    "Main alive-district helper deletion",
-    "Alpha 0.3 checkpoint"
-  ],
+  "base_main_sha": "b5763bbfb96994aa55ab36ae4335db332d9818a8",
+  "task": "V07_CONSTITUTION_GLOBAL_SEMANTIC_ACTION_SPINE_CUTOVER",
+  "status": "LOCAL_COMMITTED_UNPUSHED",
+  "pushed": false,
+  "merged_to_main": false,
   "latest_merged_pr": {
-    "number": 56,
+    "number": 68,
     "status": "MERGED",
-    "head_commit": "7a2d37c056d685dbee84d133fabe7768165c9ec6",
-    "merge_commit": "ebaf91942c23b9c78ffa05873fff73d2b2262f8e",
-    "atomic_domain": "actor_hand_inventory"
+    "merge_commit": "b5763bbfb96994aa55ab36ae4335db332d9818a8",
+    "milestone": "sample full run from new game through terminal settlement"
+  },
+  "production_truth": {
+    "current_runtime_ruleset": "V0.6",
+    "target_development_constitution": "V0.7",
+    "v07_highest_development_authority": true,
+    "full_v0_7_runtime_cutover": false,
+    "playable_game": true,
+    "complete_match_proven": true,
+    "save_resume_ready": false,
+    "closed_alpha_ready": false
+  },
+  "full_run_baseline": {
+    "status": "SAMPLE_FULL_RUN_VERTICAL_SLICE_TO_SETTLEMENT_GREEN",
+    "evidence": "reports/playability/full_run/sample_full_run_vertical_slice_to_settlement_validation.md",
+    "accepted_runs": ["A13", "A14"],
+    "real_facilities_peak": 3,
+    "sale_receipts_per_run": 31,
+    "victory_trace": ["idle", "qualification", "audit", "resolved"],
+    "final_settlement_exact_once": true,
+    "terminal_quiescent_frames": 8,
+    "terminal_rng_delta": 0
   },
   "current_candidate": {
-    "branch": "codex/alpha03-ai-public-district-facts-ebaf919",
-    "base_main_sha": "ebaf91942c23b9c78ffa05873fff73d2b2262f8e",
-    "atomic_domain": "AI_PUBLIC_DISTRICT_FACTS_TYPED_PORT_MIGRATION",
-    "status": "VALIDATED_CANDIDATE",
-    "focused_test": "104/104 PASS",
-    "production_scene_bench": "22/22 PASS",
-    "privacy_leak_count": 0,
-    "query_mutation_count": 0,
-    "query_rng_delta": 0,
-    "new_query_port_count": 0,
+    "checkpoint_sha": "5cf30c64bc53e4056afdb1337fa279b355c9fc99",
+    "atomic_domain": "player_action_routing",
+    "status": "THREE_LAYER_READY_CUTOVER_COMPLETE",
+    "scene_owner": "res://scenes/runtime/TablePlayerActionApplicationFlowController.tscn",
+    "production_bench": "res://scenes/tools/TablePlayerActionApplicationFlowBench.tscn",
+    "human_ai_shared_intent": true,
+    "main_player_action_routing_removed": true,
     "new_save_section_count": 0,
-    "new_main_caller_count": 0
+    "new_rng_owner_count": 0,
+    "new_rng_draw_point_count": 0,
+    "privacy_regression_count": 0
+  },
+  "global_semantic_registry": {
+    "path": "docs/semantic/global_three_layer_semantic_registry.json",
+    "registered_domain_count": 24,
+    "core_ready_domain_count": 18,
+    "three_layer_ready_domain_count": 1,
+    "three_layer_ready_domains": ["player_action_routing"],
+    "global_three_layer_complete": false
+  },
+  "main_budget": {
+    "before": {
+      "physical_lines": 6438,
+      "nonblank_lines": 5420,
+      "methods": 469,
+      "fields": 46,
+      "constants": 45,
+      "preloads": 7,
+      "external_caller_files": 111,
+      "external_call_occurrences": 1252
+    },
+    "after": {
+      "physical_lines": 5664,
+      "nonblank_lines": 4671,
+      "methods": 440,
+      "fields": 46,
+      "constants": 44,
+      "preloads": 6,
+      "external_caller_files": 111,
+      "external_call_occurrences": 1249
+    },
+    "task_relative_monotonic": true,
+    "new_main_caller_count": 0,
+    "new_main_fallback_count": 0,
+    "inherited_absolute_budget_failure": "external_caller_files_111_gt_102"
   },
   "regression_result": {
-    "public_district_facts": "104/104 PASS",
-    "public_district_facts_bench": "22/22 PASS",
-    "actor_hand": "92/92 PASS",
-    "actor_economy": "81/81 PASS",
-    "actor_economy_bench": "19/19 PASS",
-    "public_player_facts": "128/128 PASS",
-    "city_inference": "48/48 PASS",
-    "typed_world": "83/83 PASS",
-    "ai_business_transaction": "68/68 PASS",
-    "weather_ai": "49/49 PASS",
-    "formal_main_four_player": "28/28 PASS",
-    "main_architecture": "217/217 PASS",
-    "main_runtime_composition": "PASS",
-    "smoke_check_only": "PASS",
-    "godot_mcp_script_errors": 0,
-    "godot_mcp_cold_scene_composition": "PASS",
-    "godot_mcp_live_bench": "PASS",
-    "git_diff_check": "PASS",
-    "main_budget": "MONOTONIC_WITH_INHERITED_CALLER_THRESHOLD_103_GT_102"
-  },
-  "remaining_parent_scope": {
-    "districts_tokens": 80,
-    "raw_city_call_count": 63,
-    "raw_city_owner_read_count": 43,
-    "deferred_domains": [
-      "actor_city_authorization",
-      "routes",
-      "market_and_supply",
-      "monsters",
-      "weather",
-      "military",
-      "victory",
-      "mutations"
-    ]
+    "game_action_protocol": "GREEN",
+    "table_action_flow": "GREEN",
+    "table_action_bench": "GREEN",
+    "main_architecture": "GREEN",
+    "main_runtime_composition": "GREEN",
+    "ui_text": "GREEN",
+    "visual_snapshot": "GREEN",
+    "smoke_check_only": "GREEN",
+    "sample_full_run_origin_main": "GREEN",
+    "action_spine_full_run_candidate": "BOUNDED_INCOMPLETE_OBSERVATION_WINDOW_WITH_ZERO_INVALID_ACTIONS",
+    "action_spine_full_run_attempted_actions": 74,
+    "action_spine_full_run_progressed_actions": 71,
+    "action_spine_full_run_peak_production_installations": 3,
+    "action_spine_full_run_sale_receipt_count": 8,
+    "action_spine_full_run_victory_or_settlement_reached": false,
+    "godot_mcp": "GREEN_PRODUCTION_SCENE_STARTED_DEBUG_READ_STOPPED",
+    "godot_mcp_new_script_or_runtime_error_count": 0,
+    "git_diff_check": "GREEN"
   },
   "inherited_test_debt": {
     "active_gate_impact": false,
     "items": [
-      "CardInventoryRuntimeCharacterizationBench uses retired Main._new_game",
-      "PlayerHandInteractionRuntimeCharacterizationBench uses retired Main._new_game",
-      "session_envelope_save_owner_test has one stale Main source-string oracle"
+      "full smoke still calls retired Main._new_game",
+      "later smoke fixture calls retired Main monster helper signatures",
+      "historical fixture families remain separate P4 debt"
     ],
-    "policy": "Do not restore retired Main wrappers; migrate fixture families in their own test-debt boundary."
+    "policy": "Do not restore retired Main wrappers."
   },
   "completion_claims": {
-    "parent_p0_complete": false,
-    "complete_match_proven": false,
+    "action_spine_local_complete": true,
+    "global_three_layer_complete": false,
+    "full_v0_7_runtime_cutover": false,
     "full_run_resume_claim": false,
     "alpha_0_3_complete": false
   },
-  "next_atomic_boundary": "AI_PUBLIC_DISTRICT_FACTS_TYPED_PORT_MIGRATION",
-  "post_merge_recommendation": "AI_ACTOR_CITY_AUTHORIZATION_TYPED_PORT_MIGRATION_PREFLIGHT"
+  "next_atomic_boundary": "P0_AI_WORLD_TYPED_PORTS_MAIN_HOST_DETACHMENT",
+  "post_architecture_recommendation": "P1_SAVE_RESUME_OWNER_COVERAGE_AND_COLD_RESTORE_VERTICAL_SLICE"
 }

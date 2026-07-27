@@ -8895,3 +8895,45 @@ deleted. Evidence and the remaining action inventory are recorded in
 - Final focused evidence is `135/135`; the real tools Bench is `13/13`; 3-8
   seat vectors, JSON parse, baseline composition/UI/visual checks, and smoke
   `--check-only` remain green.
+
+## 2026-07-28 — V0.7 global semantic Action Spine cutover
+
+- Reconciled the program control files with merged PR #68: the production V0.6
+  path now has accepted evidence from new-game startup through three facilities,
+  Sale Receipts, positive GDP, Victory audit, FinalSettlement, and terminal
+  quiescence. Cold Save/Resume and V0.7 runtime cutover remain explicitly false.
+- Established one 24-domain global three-layer semantic registry. Eighteen
+  domains are core-ready; `player_action_routing` is the only domain currently
+  ready across Core, AI, and Player layers. Global completion remains false.
+- Added the closed `GameActionOfferV1`, `GameActionIntentV1`, and
+  `GameActionReceiptV1` contracts and routed human click/drag/quick actions plus
+  AI card play through the scene-owned
+  `TablePlayerActionApplicationFlowController` and existing typed domain ports.
+- Authorization now precedes the bounded exact-once journal. Duplicate requests
+  replay without a second domain apply or refresh; collisions, stale revisions,
+  cross-actor requests, and invalid targets fail closed. AI receipts never enter
+  the local human's private feedback path.
+- Removed the complete player-action routing family from `scripts/main.gd`: 29
+  methods, 774 physical lines, and one preload. Main falls from 6,438 to 5,664
+  physical lines and from 469 to 440 methods with no task-owned new caller or
+  fallback. The inherited absolute caller threshold remains documented debt.
+- No Save owner/section, RNG owner/draw point, runtime loop, gameplay formula,
+  V0.7 production owner, or dual route was introduced. The next boundary is
+  `P0_AI_WORLD_TYPED_PORTS_MAIN_HOST_DETACHMENT`.
+- Final closure hardened production session authorization without changing
+  session generation or Save identity, and normalized authored integral JSON
+  card ranks before constructing stable private card bindings. Fractional
+  ranks, paths, script names, whitespace, backslashes, and method syntax still
+  fail closed.
+- Final focused evidence: GameAction protocol `110/110`, action flow `48/48`,
+  production Bench `12/12`, Main architecture `219` checks, FullRun contract
+  `181/181`, observation policy `8/8`, Victory terminal exact-once `81/81`,
+  FinalSettlement `24/24`, Main composition, UI text, visual, and smoke
+  `--check-only` all pass. Godot MCP started and stopped production `main.tscn`
+  with zero new script/runtime errors.
+- The one bounded candidate FullRun completed 71 of 74 attempted actions with
+  zero invalid actions, three production installations, eight public Sale
+  Receipts, and positive GDP. It honestly ended at the 150-second observation
+  boundary before Victory/settlement, so candidate terminal regression is
+  recorded as bounded incomplete; merged PR #68 A13/A14 remains the terminal
+  baseline and is not rewritten as a fresh candidate pass.

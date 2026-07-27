@@ -1,0 +1,19 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/table_player_action_application_flow_bench.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RulesetRuntimeBridge.tscn" id="2_ruleset"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GameRuntimeCoordinator.tscn" id="3_coordinator"]
+[ext_resource type="PackedScene" path="res://scenes/ui/GameScreen.tscn" id="4_screen"]
+
+[node name="TablePlayerActionApplicationFlowBench" type="Node"]
+script = ExtResource("1_script")
+
+[node name="RulesetRuntimeBridge" parent="." instance=ExtResource("2_ruleset")]
+
+[node name="GameRuntimeCoordinator" parent="." instance=ExtResource("3_coordinator")]
+presentation_game_screen_path = NodePath("../RuntimeGameScreen")
+
+[node name="RuntimeGameScreen" parent="." instance=ExtResource("4_screen")]
+
+[connection signal="game_action_intent_requested" from="RuntimeGameScreen" to="GameRuntimeCoordinator/TablePlayerActionApplicationFlowController" method="submit_intent"]
+[connection signal="receipt_ready" from="GameRuntimeCoordinator/TablePlayerActionApplicationFlowController" to="RuntimeGameScreen" method="apply_game_action_receipt"]

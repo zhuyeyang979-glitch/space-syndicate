@@ -173,19 +173,20 @@ func current_ai_source_revision(actor_index: int) -> int:
 
 func submit_intent(intent: Dictionary, capability: GameActionAiSubmissionCapability = null) -> Dictionary:
 	_submission_count += 1
+	var actor_kind := _receipt_actor_kind(intent)
 	var validation := INTENT.validation_report(intent)
 	if not bool(validation.get("valid", false)):
-		return _complete(_receipt_for(intent, false, "intent-invalid", [], "none", false, false))
-	var authorization := intent.get("actor_authorization", {}) as Dictionary
-	var actor_kind := str(authorization.get("actor_kind_id", ""))
+		return _complete(_receipt_for(intent, false, "intent-invalid", [], "none", false, false, -1, actor_kind))
 	if actor_kind == "human":
 		_human_submission_count += 1
 	elif actor_kind == "ai":
 		_ai_submission_count += 1
-	var session_key := "%s:%d" % [
-		str(authorization.get("session_id", "")),
-		int(authorization.get("session_revision", 0)),
-	]
+	var authorization_reason := _authorization_reason(intent, capability)
+	if authorization_reason != "authorized":
+		return _complete(_receipt_for(intent, false, authorization_reason, [], "none", false, false, -1, actor_kind))
+	var session_key := _trusted_session_key()
+	if session_key.is_empty():
+		return _complete(_receipt_for(intent, false, "session-unavailable", [], "none", false, false, -1, actor_kind))
 	_sync_journal(session_key)
 	var request_id := str(intent.get("request_id", ""))
 	var request_fingerprint := INTENT.request_fingerprint(intent)
@@ -193,18 +194,15 @@ func submit_intent(intent: Dictionary, capability: GameActionAiSubmissionCapabil
 		var prior: Dictionary = _journal.get(request_id, {}) if _journal.get(request_id, {}) is Dictionary else {}
 		if str(prior.get("request_fingerprint", "")) != request_fingerprint:
 			_collision_count += 1
-			return _complete(_receipt_for(intent, false, "request-id-collision", [], "none", false, true))
+			return _complete(_receipt_for(intent, false, "request-id-collision", [], "none", false, true, -1, actor_kind))
 		_replay_count += 1
 		var replay := RECEIPT.replay_copy(prior.get("receipt", {}) as Dictionary)
 		if replay.is_empty():
-			return _complete(_receipt_for(intent, false, "request-replay-invalid", [], "none", true, false), false)
+			return _complete(_receipt_for(intent, false, "request-replay-invalid", [], "none", true, false, -1, actor_kind), false)
 		return _complete(replay, false)
-	var authorization_reason := _authorization_reason(intent, capability)
-	if authorization_reason != "authorized":
-		return _remember_and_complete(intent, _receipt_for(intent, false, authorization_reason, [], "none", false, false))
 	if not _source_revision_current(intent, actor_kind):
 		_stale_count += 1
-		return _remember_and_complete(intent, _receipt_for(intent, false, "source-revision-stale", [], "none", false, false))
+		return _remember_and_complete(intent, _receipt_for(intent, false, "source-revision-stale", [], "none", false, false, -1, actor_kind))
 	var outcome := _dispatch(intent)
 	var accepted := bool(outcome.get("accepted", false))
 	var refresh_scope := str(outcome.get("refresh_scope", "full" if accepted else "none"))
@@ -427,7 +425,8 @@ func _complete(receipt: Dictionary, request_refresh := true) -> Dictionary:
 		if scope != &"none" and _refresh() != null:
 			_refresh().request_immediate(scope, &"game_action_receipt")
 			_refresh_request_count += 1
-	if bool(RECEIPT.validation_report(receipt).get("valid", false)):
+	if bool(RECEIPT.validation_report(receipt).get("valid", false)) \
+			and str(receipt.get("viewer_private_projection_ref", "none")) != "none":
 		receipt_ready.emit(RECEIPT.detached_copy(receipt))
 	return RECEIPT.detached_copy(receipt)
 
@@ -441,7 +440,7 @@ func _receipt_for(
 	idempotent_replay: bool,
 	request_id_collision: bool,
 	authoritative_revision := -1,
-	actor_kind := "human"
+	actor_kind := "system"
 ) -> Dictionary:
 	var action_id := str(intent.get("semantic_action_id", INTENT.ACTION_SESSION_END_TURN))
 	if INTENT.action_contract(action_id).is_empty():
@@ -465,11 +464,29 @@ func _receipt_for(
 		"authoritative_revision": maxi(0, _operation_revision + 1 if authoritative_revision < 0 else authoritative_revision),
 		"committed_effect_refs": committed_effect_refs.duplicate(),
 		"public_projection_ref": "none",
-		"viewer_private_projection_ref": "none" if actor_kind == "ai" else "viewer.feedback.%s" % request_id,
+		"viewer_private_projection_ref": "viewer.feedback.%s" % request_id if actor_kind == "human" else "none",
 		"idempotent_replay": idempotent_replay,
 		"request_id_collision": request_id_collision,
 		"refresh_scope": refresh_scope,
 	})
+
+
+func _receipt_actor_kind(intent: Dictionary) -> String:
+	var authorization: Dictionary = intent.get("actor_authorization", {}) \
+		if intent.get("actor_authorization", {}) is Dictionary else {}
+	var actor_kind := str(authorization.get("actor_kind_id", ""))
+	return actor_kind if actor_kind in ["human", "ai"] else "system"
+
+
+func _trusted_session_key() -> String:
+	var session := _session()
+	if session == null:
+		return ""
+	var summary := session.session_summary()
+	var session_id := str(summary.get("session_id", ""))
+	var session_revision := session.session_start_revision()
+	return "%s:%d" % [session_id, session_revision] \
+		if not session_id.is_empty() and session_revision > 0 else ""
 
 
 func _card_play_offer(

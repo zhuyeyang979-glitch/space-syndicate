@@ -254,10 +254,10 @@ func _card_track_source(viewer_index: int, action: Dictionary) -> Dictionary:
 	for message in _ports.recent_public_log_messages(2):
 		events.append({"text": str(message), "tooltip": str(message)})
 	return {
-		"history": _enriched_track_entries(history_rows, viewer_index),
-		"active": _enriched_track_entry(_dictionary(queue_public.get("active", {})), viewer_index),
-		"queue": _enriched_track_entries(_array(queue_public.get("current", [])), viewer_index),
-		"next_queue": _enriched_track_entries(_array(queue_public.get("next", [])), viewer_index),
+		"history": _enriched_track_entries(history_rows, viewer_index, "history"),
+		"active": _enriched_track_entry(_dictionary(queue_public.get("active", {})), viewer_index, "active"),
+		"queue": _enriched_track_entries(_array(queue_public.get("current", [])), viewer_index, "current"),
+		"next_queue": _enriched_track_entries(_array(queue_public.get("next", [])), viewer_index, "next"),
 		"events": events,
 		"selected_resolution_id": _selection.selected_card_resolution_id if _selection != null else -1,
 		"selected_player": viewer_index,
@@ -279,23 +279,27 @@ func _card_track_source(viewer_index: int, action: Dictionary) -> Dictionary:
 	}
 
 
-func _enriched_track_entries(entries: Array, viewer_index: int) -> Array:
+func _enriched_track_entries(entries: Array, viewer_index: int, queue_scope := "history") -> Array:
 	var result: Array = []
 	for entry_variant in entries:
 		if entry_variant is Dictionary:
-			result.append(_enriched_track_entry(entry_variant as Dictionary, viewer_index))
+			result.append(_enriched_track_entry(entry_variant as Dictionary, viewer_index, queue_scope))
 	return result
 
 
-func _enriched_track_entry(entry: Dictionary, viewer_index: int) -> Dictionary:
+func _enriched_track_entry(entry: Dictionary, viewer_index: int, queue_scope := "history") -> Dictionary:
 	if entry.is_empty():
 		return {}
 	var card_name := str(entry.get("card_name", _dictionary(entry.get("skill", {})).get("name", "")))
 	var skill := _catalog_skill(card_name, _dictionary(entry.get("skill", {})))
 	var public_entry := TablePresentationPureDataPolicy.detached_copy(entry) as Dictionary
-	public_entry["is_viewer_card"] = str(entry.get("visibility_scope", "")) == "owner_private"
-	var can_reorder := bool(public_entry.get("is_viewer_card", false)) and _card_resolution != null and _card_resolution.submissions_open()
 	var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
+	var is_viewer_card := _viewer_owns_resolution_in_scope(resolution_id, viewer_index, queue_scope) \
+		if queue_scope in ["active", "current", "next"] \
+		else str(entry.get("visibility_scope", "")) == "owner_private"
+	public_entry["is_viewer_card"] = is_viewer_card
+	var can_reorder := queue_scope == "current" and is_viewer_card \
+		and _card_resolution != null and _card_resolution.submissions_open()
 	var group_size := maxi(1, int(entry.get("group_size", 1)))
 	var group_order := clampi(int(entry.get("group_order", 1)), 1, group_size)
 	return {
@@ -312,6 +316,28 @@ func _enriched_track_entry(entry: Dictionary, viewer_index: int) -> Dictionary:
 		"reorder_up_offer": _card_group_offer(GameActionIntentV1.ACTION_CARD_GROUP_REORDER, resolution_id, can_reorder and group_order > 1, "group-boundary", -1) if viewer_index >= 0 else {},
 		"reorder_down_offer": _card_group_offer(GameActionIntentV1.ACTION_CARD_GROUP_REORDER, resolution_id, can_reorder and group_order < group_size, "group-boundary", 1) if viewer_index >= 0 else {},
 	}
+
+
+func _viewer_owns_resolution_in_scope(resolution_id: int, viewer_index: int, queue_scope: String) -> bool:
+	if _queue == null or resolution_id < 0 or viewer_index < 0:
+		return false
+	var entries: Array = []
+	match queue_scope:
+		"active":
+			entries = [_queue.active_entry()]
+		"current":
+			entries = _queue.current_queue()
+		"next":
+			entries = _queue.next_queue()
+		_:
+			return false
+	for entry_variant in entries:
+		if not (entry_variant is Dictionary):
+			continue
+		var authoritative_entry := entry_variant as Dictionary
+		if int(authoritative_entry.get("resolution_id", authoritative_entry.get("queued_order", -1))) == resolution_id:
+			return int(authoritative_entry.get("player_index", -1)) == viewer_index
+	return false
 
 
 func _card_source(skill: Dictionary) -> Dictionary:

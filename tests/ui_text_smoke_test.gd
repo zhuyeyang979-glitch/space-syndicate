@@ -70,6 +70,7 @@ func _run() -> void:
 	var main_source := _source("res://scripts/main.gd")
 	var main_scene_source := _source("res://scenes/main.tscn")
 	var game_screen_source := _source("res://scripts/ui/game_screen.gd")
+	var table_action_flow_source := _source("res://scripts/runtime/table_player_action_application_flow_controller.gd")
 	var player_board_source := _source("res://scripts/ui/player_board.gd")
 	var public_log_source := _source("res://scripts/presentation/public_log_presentation_owner.gd")
 	var presentation_query_source := _source("res://scripts/presentation/table_presentation_viewmodel_query.gd")
@@ -82,7 +83,7 @@ func _run() -> void:
 
 	_expect(main_scene_source.contains("RuntimeGameScreen") and main_scene_source.contains("GameScreen.tscn"), "main.tscn embeds the sceneized GameScreen")
 	_expect(game_screen_source.contains("func apply_state(data: Dictionary)") and game_screen_source.contains("TABLE_SNAPSHOT_SCRIPT"), "GameScreen consumes the table snapshot bridge")
-	_expect(game_screen_source.contains("signal action_requested") and game_screen_source.contains("signal card_selected") and game_screen_source.contains("temporary_decision_action_requested"), "GameScreen forwards player and decision signals")
+	_expect(game_screen_source.contains("signal game_action_intent_requested(intent: Dictionary)") and not game_screen_source.contains("signal action_requested") and not game_screen_source.contains("signal end_turn_requested") and not game_screen_source.contains("signal card_drop_requested") and game_screen_source.contains("signal card_selected") and game_screen_source.contains("temporary_decision_action_requested"), "GameScreen emits typed game-action intents while preserving local selection and decision signals")
 	_expect(player_board_source.contains("func set_player_state(data: Dictionary)") and player_board_source.contains("func set_hand_cards(cards: Array)"), "PlayerBoard exposes structured state and hand APIs")
 	_expect(public_log_source.contains("LOCALIZED_MESSAGES") and public_log_source.contains("公开局势已更新") and not public_log_source.contains("var message := str(receipt.localization_key)"), "public log renders closed player copy instead of raw localization keys")
 	_expect(presentation_query_source.contains('_phase_label(table_phase)') and not presentation_query_source.contains('"state": str(track.get("phase", "空闲"))'), "table state lamp localizes raw runtime phases")
@@ -93,7 +94,7 @@ func _run() -> void:
 	_expect(overlay_source.contains("signal temporary_decision_action_requested") and overlay_source.contains("func show_temporary_decision(data: Dictionary)"), "OverlayLayer owns temporary decision routing")
 	_expect(table_snapshot_source.contains("PLAYER_BOARD_SNAPSHOT_SCRIPT") and table_snapshot_source.contains("func apply_dictionary(data: Dictionary)"), "TableSnapshot remains the pure-data UI boundary")
 
-	_expect(not main_source.contains("func _runtime_table_snapshot_source") and not main_source.contains("func _sync_runtime_game_screen") and main_source.contains("func _on_runtime_game_screen_action_requested"), "main.gd keeps action routing while scene-owned presentation owns snapshots and targets")
+	_expect(not main_source.contains("func _runtime_table_snapshot_source") and not main_source.contains("func _sync_runtime_game_screen") and not main_source.contains("func _on_runtime_game_screen_action_requested") and main_scene_source.contains("TablePlayerActionApplicationFlowController") and table_action_flow_source.contains("func submit_intent("), "scene-owned presentation and typed application flow own snapshots, targets, and player action routing outside main.gd")
 	_expect(not main_source.contains("BUILD_LEGACY_RUNTIME_TABLE") and not main_scene_source.contains("LegacyRuntimeTable"), "legacy runtime table composition stays retired")
 	for helper_variant: Variant in RETIRED_PLAYER_SURFACE_HELPERS:
 		var helper_name := str(helper_variant)

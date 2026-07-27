@@ -100,10 +100,20 @@ func _validate_actor_entry(actor_index: int, resolution_id: int) -> Dictionary:
 	var player: Dictionary = world.players[actor_index] if world.players[actor_index] is Dictionary else {}
 	if bool(player.get("eliminated", false)):
 		return {"valid": false, "reason_id": "player_unavailable"}
-	var entry := queue.entry_by_id(resolution_id)
+	var entry := _current_entry_by_id(queue.current_queue(), resolution_id)
 	if entry.is_empty() or int(entry.get("player_index", -1)) != actor_index:
 		return {"valid": false, "reason_id": "card_group_target_invalid"}
 	return {"valid": true, "reason_id": ""}
+
+
+func _current_entry_by_id(entries: Array, resolution_id: int) -> Dictionary:
+	for entry_variant in entries:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if int(entry.get("resolution_id", entry.get("queued_order", -1))) == resolution_id:
+			return entry.duplicate(true)
+	return {}
 
 
 func _card_group_facts() -> Dictionary:
