@@ -12,12 +12,22 @@ const AUTHORIZED_ENVELOPE := preload(
 const INSTANCE_STATE := preload(
 	"res://scripts/cards/semantic/card_instance_decision_state_v1.gd"
 )
+const INTERACTION_POLICY_COMPATIBILITY := preload(
+	"res://scripts/semantic/ai_card_interaction_policy_compatibility_v1.gd"
+)
+const LEGACY_V04_INTERACTION_REFERENCE := preload(
+	"res://scripts/cards/semantic/card_v04_interaction_semantic_reference_adapter_v1.gd"
+)
+const LEGACY_V04_INTERACTION_SOURCE_BUNDLE := preload(
+	"res://scripts/semantic/ai_card_interaction_legacy_source_bundle_v1.gd"
+)
 
 const SCHEMA_VERSION := 1
 const SOURCE_KIND_OWN_HAND := "own_hand"
 const VISIBILITY_SCOPE_ACTOR_PRIVATE := "actor_private"
 const JOURNAL_LIMIT := 128
 const REQUEST_BINDING_LIMIT := 4096
+const GENERATED_REQUEST_ID_PREFIX := "card-semantic-authorization-request"
 const MICROSECONDS_PER_SECOND := 1000000
 
 const REASON_AUTHORIZED := "authorized"
@@ -31,6 +41,7 @@ const REASON_SOURCE_CARD_IDENTITY_INVALID := "source_card_identity_invalid"
 const REASON_RUNTIME_INSTANCE_ID_INVALID := "runtime_instance_id_invalid"
 const REASON_SOURCE_INSTANCE_STATE_INVALID := "source_instance_state_invalid"
 const REASON_REQUEST_ID_INVALID := "request_id_invalid"
+const REASON_REQUEST_ID_RESERVED := "request_id_reserved"
 const REASON_REQUEST_ID_COLLISION := "request_id_collision"
 const REASON_REQUEST_BINDING_CAPACITY_EXHAUSTED := \
 	"request_binding_capacity_exhausted"
@@ -46,6 +57,14 @@ const REASON_BUNDLE_INVALID := "authorized_bundle_invalid"
 const REASON_BUNDLE_FINGERPRINT_INVALID := "bundle_fingerprint_invalid"
 const REASON_REQUEST_NOT_JOURNALED := "request_not_journaled"
 const REASON_JOURNAL_BUNDLE_MISMATCH := "journal_bundle_mismatch"
+const REASON_POLICY_COMPATIBILITY_INVALID := \
+	"interaction_policy_compatibility_invalid"
+const REASON_POLICY_COMPATIBILITY_BINDING_INVALID := \
+	"interaction_policy_compatibility_binding_invalid"
+const REASON_LEGACY_V04_INTERACTION_SOURCE_INVALID := \
+	"legacy_v04_interaction_source_invalid"
+const REASON_LEGACY_V04_INTERACTION_WITNESS_REJECTED := \
+	"legacy_v04_interaction_witness_rejected"
 
 const RESULT_KEYS := [
 	"schema_version",
@@ -73,12 +92,52 @@ const RECEIPT_BUILD_KEYS := [
 ]
 const RECEIPT_KEYS := RECEIPT_BUILD_KEYS + ["receipt_fingerprint"]
 const STATIC_RECORD_KEYS := ["machine", "player", "developer"]
+const LEGACY_V04_FORBIDDEN_VALUE_CHANNEL_KEYS := [
+	"owner",
+	"hidden_owner",
+	"true_owner",
+	"actor_index",
+	"player_index",
+	"hand",
+	"rival_hand",
+	"opponent_hand",
+	"exact_cash",
+	"private_plan",
+	"ai_score",
+	"ai_value",
+	"route_plan",
+	"future_bag",
+	"rng_state",
+	"save_payload",
+	"developer",
+	"effect_payload",
+	"skill",
+	"method_name",
+	"script_path",
+	"machine",
+	"player",
+]
+const POLICY_COMPATIBILITY_RESULT_KEYS := [
+	"schema_version",
+	"accepted",
+	"reason_id",
+	"policy_compatibility_profile",
+]
+const LEGACY_V04_INTERACTION_SOURCE_RESULT_KEYS := [
+	"schema_version",
+	"accepted",
+	"reason_id",
+	"source_bundle",
+]
 
 @export var ai_actor_hand_inventory_query_port_path := NodePath(
 	"../AiActorHandInventoryQueryPort"
 )
 @export var card_semantic_catalog_service_path := NodePath(
 	"../CardSemanticCatalogService"
+)
+@export var legacy_v04_runtime_catalog_service_path := NodePath(
+	"../CardRuntimeCatalogService"
 )
 
 var _capability: AiActorHandInventoryCapability
@@ -101,8 +160,18 @@ var _source_revalidation_count := 0
 var _catalog_compile_request_count := 0
 var _catalog_spec_authorization_count := 0
 var _detached_bundle_copy_count := 0
+var _policy_compatibility_attempt_count := 0
+var _policy_compatibility_success_count := 0
+var _policy_compatibility_rejection_count := 0
+var _generated_request_replacement_count := 0
+var _generated_request_journal_retirement_count := 0
+var _legacy_v04_reference_attempt_count := 0
+var _legacy_v04_reference_success_count := 0
+var _legacy_v04_reference_rejection_count := 0
 var _binding_fingerprint_by_request_fingerprint: Dictionary = {}
 var _bundle_fingerprint_by_request_fingerprint: Dictionary = {}
+var _generated_source_key_by_request_fingerprint: Dictionary = {}
+var _generated_request_fingerprint_by_source_key: Dictionary = {}
 var _journal_order: Array[String] = []
 
 
@@ -200,6 +269,374 @@ func authorize_own_hand_card(
 		slot_index,
 		request_id
 	)
+
+
+func authorize_own_hand_v04_interaction_observation_source(
+	capability: AiActorHandInventoryCapability,
+	actor_index: int,
+	slot_index: int
+) -> Dictionary:
+	_legacy_v04_reference_attempt_count += 1
+	if not _actor_capability_matches(capability, actor_index):
+		return _legacy_v04_interaction_reject(REASON_CAPABILITY_REJECTED)
+	if not is_ready() or _legacy_v04_runtime_catalog_service() == null:
+		return _legacy_v04_interaction_reject(REASON_DEPENDENCY_UNAVAILABLE)
+	var hand_port := _hand_port()
+	_hand_snapshot_query_count += 1
+	var attestation := hand_port.actor_hand_slot_attestation(
+		_capability,
+		actor_index,
+		slot_index
+	)
+	if attestation.is_empty():
+		return _legacy_v04_interaction_reject(
+			REASON_SOURCE_ATTESTATION_FAILED
+		)
+	_successful_hand_snapshot_query_count += 1
+	var material := _legacy_v04_interaction_material(attestation)
+	if not bool(material.get("valid", false)):
+		return _legacy_v04_interaction_reject(str(material.get(
+			"reason_id",
+			REASON_LEGACY_V04_INTERACTION_SOURCE_INVALID
+		)))
+	var reference := material.get("reference", {}) as Dictionary
+	var witness_request := LEGACY_V04_INTERACTION_REFERENCE \
+		.semantic_witness_request(reference)
+	var witness_result := _catalog_service() \
+		.authorize_v04_interaction_effect_witness(witness_request)
+	if not bool(witness_result.get("accepted", false)):
+		return _legacy_v04_interaction_reject(
+			REASON_LEGACY_V04_INTERACTION_WITNESS_REJECTED
+		)
+	var witness_value: Variant = witness_result.get("effect_witness")
+	if not (witness_value is Dictionary):
+		return _legacy_v04_interaction_reject(
+			REASON_LEGACY_V04_INTERACTION_WITNESS_REJECTED
+		)
+	var witness := witness_value as Dictionary
+	if str(witness.get("semantic_card_id", "")) \
+			!= str(reference.get("semantic_card_id", "")) \
+			or str(witness.get("legacy_definition_fingerprint", "")) \
+				!= str(reference.get("legacy_definition_fingerprint", "")) \
+			or str(witness.get("mapping_fingerprint", "")) \
+				!= str(reference.get("mapping_fingerprint", "")):
+		return _legacy_v04_interaction_reject(
+			REASON_LEGACY_V04_INTERACTION_WITNESS_REJECTED
+		)
+	var source_slot := int((attestation.get("slot", {}) as Dictionary).get(
+		"slot_index",
+		-1
+	))
+	var instance_revision := CARD_SCHEMA.fingerprint({
+		"schema_version": SCHEMA_VERSION,
+		"session_id": attestation.get("session_id", ""),
+		"session_revision": attestation.get("session_revision", -1),
+		"source_revision": attestation.get("source_revision", ""),
+		"source_slot": source_slot,
+		"instance_id": material.get("runtime_instance_id", ""),
+		"queued": material.get("queued", false),
+		"locked": material.get("locked", false),
+		"cooldown_remaining_microseconds": material.get(
+			"cooldown_remaining_microseconds",
+			-1
+		),
+	})
+	var source_authorization_fingerprint := CARD_SCHEMA.fingerprint({
+		"schema_version": SCHEMA_VERSION,
+		"adapter_id": LEGACY_V04_INTERACTION_REFERENCE.ADAPTER_ID,
+		"viewer_ref": _viewer_ref(actor_index),
+		"session_id": attestation.get("session_id", ""),
+		"session_revision": attestation.get("session_revision", -1),
+		"source_revision": attestation.get("source_revision", ""),
+		"source_slot": source_slot,
+		"runtime_instance_id": material.get("runtime_instance_id", ""),
+		"instance_revision": instance_revision,
+		"source_attestation_fingerprint": attestation.get(
+			"fingerprint",
+			""
+		),
+		"reference_fingerprint": reference.get("reference_fingerprint", ""),
+		"effect_witness_fingerprint": witness.get(
+			"witness_fingerprint",
+			""
+		),
+		"policy_facts": material.get("policy_facts", {}),
+	})
+	if not WIRE.is_fingerprint(instance_revision) \
+			or not WIRE.is_fingerprint(source_authorization_fingerprint):
+		return _legacy_v04_interaction_reject(
+			REASON_LEGACY_V04_INTERACTION_SOURCE_INVALID
+		)
+	var facts := material.get("policy_facts", {}) as Dictionary
+	var profile := INTERACTION_POLICY_COMPATIBILITY.build({
+		"schema_version": INTERACTION_POLICY_COMPATIBILITY.SCHEMA_VERSION,
+		"policy_compatibility_id": (
+			INTERACTION_POLICY_COMPATIBILITY.POLICY_COMPATIBILITY_ID
+		),
+		"viewer_ref": _viewer_ref(actor_index),
+		"visibility_scope_id": VISIBILITY_SCOPE_ACTOR_PRIVATE,
+		"source_kind": SOURCE_KIND_OWN_HAND,
+		"session_id": str(attestation.get("session_id", "")),
+		"session_revision": int(attestation.get("session_revision", -1)),
+		"source_revision": str(attestation.get("source_revision", "")),
+		"source_slot": source_slot,
+		"instance_id": str(material.get("runtime_instance_id", "")),
+		"instance_revision": instance_revision,
+		"card_id": str(witness.get("semantic_card_id", "")),
+		"source_attestation_fingerprint": str(attestation.get(
+			"fingerprint",
+			""
+		)),
+		"static_record_fingerprint": str(reference.get(
+			"legacy_definition_fingerprint",
+			""
+		)),
+		"authorized_bundle_fingerprint": source_authorization_fingerprint,
+		"policy_interaction_kind_id": str(facts.get(
+			"policy_interaction_kind_id",
+			""
+		)),
+		"policy_discard_count": int(facts.get("policy_discard_count", -1)),
+		"policy_steal_count": int(facts.get("policy_steal_count", -1)),
+		"policy_lock_duration_microseconds": int(facts.get(
+			"policy_lock_duration_microseconds",
+			-1
+		)),
+		"policy_cash_penalty": int(facts.get("policy_cash_penalty", -1)),
+		"policy_steal_failure_cash": int(facts.get(
+			"policy_steal_failure_cash",
+			-1
+		)),
+	})
+	if profile.is_empty():
+		return _legacy_v04_interaction_reject(
+			REASON_POLICY_COMPATIBILITY_INVALID
+		)
+	var source_bundle := LEGACY_V04_INTERACTION_SOURCE_BUNDLE.build({
+		"schema_version": LEGACY_V04_INTERACTION_SOURCE_BUNDLE.SCHEMA_VERSION,
+		"viewer_ref": _viewer_ref(actor_index),
+		"visibility_scope_id": VISIBILITY_SCOPE_ACTOR_PRIVATE,
+		"source_kind": SOURCE_KIND_OWN_HAND,
+		"session_id": str(attestation.get("session_id", "")),
+		"session_revision": int(attestation.get("session_revision", -1)),
+		"source_revision": str(attestation.get("source_revision", "")),
+		"source_slot": source_slot,
+		"instance_id": str(material.get("runtime_instance_id", "")),
+		"instance_revision": instance_revision,
+		"semantic_card_id": str(witness.get("semantic_card_id", "")),
+		"semantic_fingerprint": str(witness.get("semantic_fingerprint", "")),
+		"runtime_readiness_id": str(witness.get(
+			"runtime_readiness_id",
+			""
+		)),
+		"effect_ops": (witness.get("effect_ops", []) as Array).duplicate(true),
+		"policy_compatibility_profile": profile.duplicate(true),
+		"source_attestation_fingerprint": str(attestation.get(
+			"fingerprint",
+			""
+		)),
+		"legacy_definition_fingerprint": str(reference.get(
+			"legacy_definition_fingerprint",
+			""
+		)),
+		"effect_witness_fingerprint": str(witness.get(
+			"witness_fingerprint",
+			""
+		)),
+		"source_authorization_fingerprint": source_authorization_fingerprint,
+	})
+	if source_bundle.is_empty():
+		return _legacy_v04_interaction_reject(
+			REASON_LEGACY_V04_INTERACTION_SOURCE_INVALID
+		)
+	_hand_snapshot_query_count += 1
+	_source_revalidation_count += 1
+	var current_attestation := hand_port.actor_hand_slot_attestation(
+		_capability,
+		actor_index,
+		slot_index
+	)
+	if current_attestation.is_empty() \
+			or str(current_attestation.get("fingerprint", "")) \
+				!= str(attestation.get("fingerprint", "")):
+		return _legacy_v04_interaction_reject(
+			REASON_SOURCE_ATTESTATION_STALE
+		)
+	_successful_hand_snapshot_query_count += 1
+	_legacy_v04_reference_success_count += 1
+	return {
+		"schema_version": SCHEMA_VERSION,
+		"accepted": true,
+		"reason_id": REASON_AUTHORIZED,
+		"source_bundle": source_bundle.duplicate(true),
+	}
+
+
+func authorize_own_hand_interaction_policy_compatibility(
+	capability: AiActorHandInventoryCapability,
+	actor_index: int,
+	slot_index: int,
+	authorized_bundle: Dictionary
+) -> Dictionary:
+	_policy_compatibility_attempt_count += 1
+	if not _actor_capability_matches(capability, actor_index) or not is_ready():
+		return _policy_compatibility_reject(REASON_CAPABILITY_REJECTED)
+	var shape_reason := _bundle_shape_reason(authorized_bundle)
+	if not shape_reason.is_empty():
+		return _policy_compatibility_reject(shape_reason)
+	var validated_bundle := authorized_bundle.duplicate(true)
+	var envelope := validated_bundle.get(
+		"authorized_envelope_ref",
+		{}
+	) as Dictionary
+	var state := validated_bundle.get(
+		"instance_decision_state",
+		{}
+	) as Dictionary
+	var receipt := validated_bundle.get(
+		"authorization_receipt",
+		{}
+	) as Dictionary
+	var viewer_ref := envelope.get("viewer_ref", {}) as Dictionary
+	if int(viewer_ref.get("actor_index", -1)) != actor_index \
+			or int(envelope.get("source_slot", -1)) != slot_index:
+		validated_bundle.clear()
+		return _policy_compatibility_reject(
+			REASON_POLICY_COMPATIBILITY_BINDING_INVALID
+		)
+	var request_fingerprint := _journal_request_fingerprint(
+		str(envelope.get("request_id", "")),
+		str(envelope.get("session_id", "")),
+		int(envelope.get("session_revision", -1))
+	)
+	if request_fingerprint.is_empty() \
+			or not _binding_fingerprint_by_request_fingerprint.has(
+				request_fingerprint
+			) \
+			or str(_bundle_fingerprint_by_request_fingerprint.get(
+				request_fingerprint,
+				""
+			)) != str(validated_bundle.get("bundle_fingerprint", "")):
+		validated_bundle.clear()
+		return _policy_compatibility_reject(REASON_REQUEST_NOT_JOURNALED)
+	var hand_port := _hand_port()
+	_hand_snapshot_query_count += 1
+	_source_revalidation_count += 1
+	var attestation := hand_port.actor_hand_slot_attestation(
+		_capability,
+		actor_index,
+		slot_index
+	)
+	if attestation.is_empty():
+		validated_bundle.clear()
+		return _policy_compatibility_reject(REASON_SOURCE_ATTESTATION_STALE)
+	_successful_hand_snapshot_query_count += 1
+	var material := _source_material(attestation)
+	if not bool(material.get("valid", false)):
+		validated_bundle.clear()
+		return _policy_compatibility_reject(str(material.get(
+			"reason_id",
+			REASON_SOURCE_ATTESTATION_FAILED
+		)))
+	var slot := attestation.get("slot", {}) as Dictionary
+	var card := slot.get("card", {}) as Dictionary
+	var expected_state := _build_instance_state(attestation, material)
+	var current_binding_fingerprint := _binding_fingerprint(
+		attestation,
+		material,
+		expected_state
+	)
+	if expected_state.is_empty() or expected_state != state \
+			or current_binding_fingerprint.is_empty() \
+			or str(_binding_fingerprint_by_request_fingerprint.get(
+				request_fingerprint,
+				""
+			)) != current_binding_fingerprint:
+		validated_bundle.clear()
+		return _policy_compatibility_reject(REASON_SOURCE_ATTESTATION_STALE)
+	if str(receipt.get("source_attestation_fingerprint", "")) \
+			!= str(attestation.get("fingerprint", "")) \
+			or str(envelope.get("static_record_fingerprint", "")) \
+				!= str(material.get("static_record_fingerprint", "")) \
+			or str(envelope.get("hand_source_revision", "")) \
+				!= str(attestation.get("source_revision", "")) \
+			or str(envelope.get("runtime_instance_id", "")) \
+				!= str(material.get("runtime_instance_id", "")) \
+			or str(envelope.get("card_id", "")) \
+				!= str(material.get("card_id", "")) \
+			or str(state.get("source_revision", "")) \
+				!= str(attestation.get("source_revision", "")):
+		validated_bundle.clear()
+		return _policy_compatibility_reject(
+			REASON_POLICY_COMPATIBILITY_BINDING_INVALID
+		)
+	var facts := _legacy_interaction_policy_facts(card)
+	if not bool(facts.get("valid", false)):
+		validated_bundle.clear()
+		return _policy_compatibility_reject(
+			REASON_POLICY_COMPATIBILITY_INVALID
+		)
+	var profile := INTERACTION_POLICY_COMPATIBILITY.build({
+		"schema_version": INTERACTION_POLICY_COMPATIBILITY.SCHEMA_VERSION,
+		"policy_compatibility_id": (
+			INTERACTION_POLICY_COMPATIBILITY.POLICY_COMPATIBILITY_ID
+		),
+		"viewer_ref": viewer_ref.duplicate(true),
+		"visibility_scope_id": VISIBILITY_SCOPE_ACTOR_PRIVATE,
+		"source_kind": SOURCE_KIND_OWN_HAND,
+		"session_id": str(attestation.get("session_id", "")),
+		"session_revision": int(attestation.get("session_revision", -1)),
+		"source_revision": str(attestation.get("source_revision", "")),
+		"source_slot": slot_index,
+		"instance_id": str(material.get("runtime_instance_id", "")),
+		"instance_revision": str(state.get("instance_revision", "")),
+		"card_id": str(material.get("card_id", "")),
+		"source_attestation_fingerprint": str(attestation.get(
+			"fingerprint",
+			""
+		)),
+		"static_record_fingerprint": str(material.get(
+			"static_record_fingerprint",
+			""
+		)),
+		"authorized_bundle_fingerprint": str(validated_bundle.get(
+			"bundle_fingerprint",
+			""
+		)),
+		"policy_interaction_kind_id": str(facts.get(
+			"policy_interaction_kind_id",
+			""
+		)),
+		"policy_discard_count": int(facts.get("policy_discard_count", -1)),
+		"policy_steal_count": int(facts.get("policy_steal_count", -1)),
+		"policy_lock_duration_microseconds": int(facts.get(
+			"policy_lock_duration_microseconds",
+			-1
+		)),
+		"policy_cash_penalty": int(facts.get("policy_cash_penalty", -1)),
+		"policy_steal_failure_cash": int(facts.get(
+			"policy_steal_failure_cash",
+			-1
+		)),
+	})
+	validated_bundle.clear()
+	if profile.is_empty():
+		return _policy_compatibility_reject(
+			REASON_POLICY_COMPATIBILITY_INVALID
+		)
+	var result := {
+		"schema_version": SCHEMA_VERSION,
+		"accepted": true,
+		"reason_id": REASON_AUTHORIZED,
+		"policy_compatibility_profile": profile.duplicate(true),
+	}
+	if not CARD_SCHEMA.is_pure_data(result) \
+			or result.keys() != POLICY_COMPATIBILITY_RESULT_KEYS:
+		return _policy_compatibility_reject(
+			REASON_POLICY_COMPATIBILITY_INVALID
+		)
+	_policy_compatibility_success_count += 1
+	return result
 
 
 func validate_authorized_bundle(bundle: Dictionary) -> Dictionary:
@@ -326,6 +763,45 @@ func debug_snapshot() -> Dictionary:
 		"catalog_compile_request_count": _catalog_compile_request_count,
 		"catalog_spec_authorization_count": _catalog_spec_authorization_count,
 		"detached_bundle_copy_count": _detached_bundle_copy_count,
+		"policy_compatibility_attempt_count": (
+			_policy_compatibility_attempt_count
+		),
+		"policy_compatibility_success_count": (
+			_policy_compatibility_success_count
+		),
+		"policy_compatibility_rejection_count": (
+			_policy_compatibility_rejection_count
+		),
+		"policy_compatibility_id": (
+			INTERACTION_POLICY_COMPATIBILITY.POLICY_COMPATIBILITY_ID
+		),
+		"policy_compatibility_stores_card_records": false,
+		"generated_request_binding_count": (
+			_generated_request_fingerprint_by_source_key.size()
+		),
+		"generated_request_replacement_count": (
+			_generated_request_replacement_count
+		),
+		"generated_request_journal_retirement_count": (
+			_generated_request_journal_retirement_count
+		),
+		"legacy_v04_reference_adapter_id": (
+			LEGACY_V04_INTERACTION_REFERENCE.ADAPTER_ID
+		),
+		"legacy_v04_reference_supported_count": (
+			LEGACY_V04_INTERACTION_REFERENCE.supported_reference_count()
+		),
+		"legacy_v04_reference_attempt_count": (
+			_legacy_v04_reference_attempt_count
+		),
+		"legacy_v04_reference_success_count": (
+			_legacy_v04_reference_success_count
+		),
+		"legacy_v04_reference_rejection_count": (
+			_legacy_v04_reference_rejection_count
+		),
+		"legacy_v04_reference_stores_state": false,
+		"legacy_v04_reference_parses_localized_identity": false,
 		"journal_fingerprint": _journal_fingerprint(),
 		"journal_fingerprint_only": true,
 		"stores_authorized_payloads": false,
@@ -380,14 +856,20 @@ func _authorize_own_hand_card(
 	if binding_fingerprint.is_empty():
 		return _reject(REASON_BUNDLE_INVALID)
 	var normalized_request_id := request_id
+	var generated_source_key := ""
 	if normalized_request_id.is_empty():
 		normalized_request_id = _generated_runtime_id(
-			"card-semantic-authorization-request",
+			GENERATED_REQUEST_ID_PREFIX,
 			binding_fingerprint,
 			binding_fingerprint
 		)
+		generated_source_key = _generated_source_key(actor_index, slot_index)
 	elif not _is_runtime_id(normalized_request_id):
 		return _reject(REASON_REQUEST_ID_INVALID)
+	elif normalized_request_id.begins_with(
+		"%s:" % GENERATED_REQUEST_ID_PREFIX
+	):
+		return _reject(REASON_REQUEST_ID_RESERVED)
 	if not _is_runtime_id(normalized_request_id):
 		return _reject(REASON_REQUEST_ID_INVALID)
 	var request_fingerprint := _journal_request_fingerprint(
@@ -411,7 +893,8 @@ func _authorize_own_hand_card(
 			return _reject(REASON_REQUEST_NOT_JOURNALED)
 		replay = true
 	elif _binding_fingerprint_by_request_fingerprint.size() \
-			>= REQUEST_BINDING_LIMIT:
+			>= REQUEST_BINDING_LIMIT \
+			and not _generated_request_can_replace(generated_source_key):
 		return _reject(REASON_REQUEST_BINDING_CAPACITY_EXHAUSTED)
 
 	var static_record := material.get("static_record", {}) as Dictionary
@@ -514,7 +997,8 @@ func _authorize_own_hand_card(
 		if not _remember_request(
 			request_fingerprint,
 			binding_fingerprint,
-			str(bundle.get("bundle_fingerprint", ""))
+			str(bundle.get("bundle_fingerprint", "")),
+			generated_source_key
 		):
 			return _reject(REASON_REQUEST_BINDING_CAPACITY_EXHAUSTED)
 	_authorization_success_count += 1
@@ -591,6 +1075,91 @@ func _source_material(attestation: Dictionary) -> Dictionary:
 		"locked": float(slot.get("lock_left", 0.0)) > 0.0,
 		"cooldown_remaining_microseconds": cooldown_microseconds,
 	}
+
+
+func _legacy_v04_interaction_material(attestation: Dictionary) -> Dictionary:
+	if not CARD_SCHEMA.is_pure_data(attestation) \
+			or attestation.keys() \
+				!= AiActorHandInventoryQueryPort.SLOT_ATTESTATION_KEYS \
+			or attestation.get("schema_version") \
+				!= AiActorHandInventoryQueryPort.SCHEMA_VERSION \
+			or str(attestation.get("visibility_scope", "")) \
+				!= VISIBILITY_SCOPE_ACTOR_PRIVATE \
+			or not _is_runtime_id(attestation.get("session_id")) \
+			or not WIRE.is_nonnegative_integer(
+				attestation.get("session_revision")
+			) \
+			or not WIRE.is_fingerprint(attestation.get("source_revision")) \
+			or not WIRE.is_fingerprint(attestation.get("source_fingerprint")) \
+			or not WIRE.is_fingerprint(attestation.get("fingerprint")):
+		return _invalid_material(REASON_SOURCE_ATTESTATION_FAILED)
+	var slot_value: Variant = attestation.get("slot")
+	if not (slot_value is Dictionary):
+		return _invalid_material(REASON_SOURCE_ATTESTATION_FAILED)
+	var slot := slot_value as Dictionary
+	if slot.keys() != AiActorHandInventoryQueryPort.SLOT_KEYS \
+			or not bool(slot.get("occupied", false)) \
+			or int(slot.get("slot_index", -1)) < 0:
+		return _invalid_material(REASON_SOURCE_ATTESTATION_FAILED)
+	var card_value: Variant = slot.get("card")
+	if not (card_value is Dictionary):
+		return _invalid_material(REASON_SOURCE_CARD_RECORD_INVALID)
+	var card := card_value as Dictionary
+	if _contains_legacy_v04_forbidden_value_channel(card):
+		return _invalid_material(REASON_SOURCE_CARD_RECORD_INVALID)
+	var runtime_instance_value: Variant = slot.get("runtime_instance_id")
+	if not (runtime_instance_value is String) \
+			or not _is_runtime_id(runtime_instance_value) \
+			or not (card.get("runtime_instance_id") is String) \
+			or runtime_instance_value != card.get("runtime_instance_id"):
+		return _invalid_material(REASON_RUNTIME_INSTANCE_ID_INVALID)
+	var reference := LEGACY_V04_INTERACTION_REFERENCE.resolve(
+		card,
+		str(slot.get("card_id", "")),
+		_legacy_v04_runtime_catalog_service()
+	)
+	if reference.is_empty():
+		return _invalid_material(REASON_LEGACY_V04_INTERACTION_SOURCE_INVALID)
+	var definition_value: Variant = reference.get("legacy_definition")
+	if not (definition_value is Dictionary):
+		return _invalid_material(REASON_LEGACY_V04_INTERACTION_SOURCE_INVALID)
+	var runtime_facts := _legacy_interaction_policy_facts(card)
+	var definition_facts := _legacy_interaction_policy_facts(
+		definition_value as Dictionary
+	)
+	if not bool(runtime_facts.get("valid", false)) \
+			or runtime_facts != definition_facts:
+		return _invalid_material(REASON_POLICY_COMPATIBILITY_INVALID)
+	var cooldown_microseconds := _cooldown_microseconds(
+		slot.get("cooldown_left")
+	)
+	if cooldown_microseconds < 0:
+		return _invalid_material(REASON_SOURCE_INSTANCE_STATE_INVALID)
+	return {
+		"valid": true,
+		"reason_id": REASON_AUTHORIZED,
+		"reference": reference.duplicate(true),
+		"policy_facts": runtime_facts.duplicate(true),
+		"runtime_instance_id": runtime_instance_value,
+		"queued": bool(slot.get("queued_for_resolution", false)),
+		"locked": float(slot.get("lock_left", 0.0)) > 0.0,
+		"cooldown_remaining_microseconds": cooldown_microseconds,
+	}
+
+
+func _contains_legacy_v04_forbidden_value_channel(value: Variant) -> bool:
+	if value is Dictionary:
+		for key_variant in (value as Dictionary).keys():
+			if LEGACY_V04_FORBIDDEN_VALUE_CHANNEL_KEYS.has(str(key_variant)) \
+					or _contains_legacy_v04_forbidden_value_channel(
+						(value as Dictionary).get(key_variant)
+					):
+				return true
+	elif value is Array:
+		for item_variant in value as Array:
+			if _contains_legacy_v04_forbidden_value_channel(item_variant):
+				return true
+	return false
 
 
 func _build_instance_state(
@@ -896,7 +1465,8 @@ func _journal_request_fingerprint(
 func _remember_request(
 	request_fingerprint: String,
 	binding_fingerprint: String,
-	bundle_fingerprint: String
+	bundle_fingerprint: String,
+	generated_source_key: String = ""
 ) -> bool:
 	if not WIRE.is_fingerprint(request_fingerprint) \
 			or not WIRE.is_fingerprint(binding_fingerprint) \
@@ -905,6 +1475,21 @@ func _remember_request(
 				request_fingerprint
 			):
 		return false
+	if not generated_source_key.is_empty() \
+			and not WIRE.is_fingerprint(generated_source_key):
+		return false
+	if not generated_source_key.is_empty():
+		var previous_request_fingerprint := str(
+			_generated_request_fingerprint_by_source_key.get(
+				generated_source_key,
+				""
+			)
+		)
+		if not previous_request_fingerprint.is_empty() \
+				and previous_request_fingerprint != request_fingerprint:
+			if not _retire_generated_request(previous_request_fingerprint):
+				return false
+			_generated_request_replacement_count += 1
 	if _binding_fingerprint_by_request_fingerprint.size() \
 			>= REQUEST_BINDING_LIMIT:
 		return false
@@ -913,12 +1498,107 @@ func _remember_request(
 		_bundle_fingerprint_by_request_fingerprint.erase(
 			retired_request_fingerprint
 		)
+		if _generated_source_key_by_request_fingerprint.has(
+			retired_request_fingerprint
+		):
+			var retired_source_key := str(
+				_generated_source_key_by_request_fingerprint.get(
+					retired_request_fingerprint,
+					""
+				)
+			)
+			_generated_source_key_by_request_fingerprint.erase(
+				retired_request_fingerprint
+			)
+			if str(_generated_request_fingerprint_by_source_key.get(
+				retired_source_key,
+				""
+			)) == retired_request_fingerprint:
+				_generated_request_fingerprint_by_source_key.erase(
+					retired_source_key
+				)
+			_binding_fingerprint_by_request_fingerprint.erase(
+				retired_request_fingerprint
+			)
+			_generated_request_journal_retirement_count += 1
 		_journal_eviction_count += 1
 	_binding_fingerprint_by_request_fingerprint[request_fingerprint] = \
 		binding_fingerprint
 	_bundle_fingerprint_by_request_fingerprint[request_fingerprint] = \
 		bundle_fingerprint
+	if not generated_source_key.is_empty():
+		_generated_source_key_by_request_fingerprint[request_fingerprint] = \
+			generated_source_key
+		_generated_request_fingerprint_by_source_key[generated_source_key] = \
+			request_fingerprint
 	_journal_order.append(request_fingerprint)
+	return true
+
+
+func _generated_source_key(actor_index: int, slot_index: int) -> String:
+	if actor_index < 0 or slot_index < 0:
+		return ""
+	return CARD_SCHEMA.fingerprint({
+		"source_kind": SOURCE_KIND_OWN_HAND,
+		"actor_index": actor_index,
+		"source_slot": slot_index,
+	})
+
+
+func _generated_request_can_replace(generated_source_key: String) -> bool:
+	if not WIRE.is_fingerprint(generated_source_key) \
+			or not _generated_request_fingerprint_by_source_key.has(
+				generated_source_key
+			):
+		return false
+	var request_fingerprint := str(
+		_generated_request_fingerprint_by_source_key.get(
+			generated_source_key,
+			""
+		)
+	)
+	return WIRE.is_fingerprint(request_fingerprint) \
+		and str(_generated_source_key_by_request_fingerprint.get(
+			request_fingerprint,
+			""
+		)) == generated_source_key \
+		and _binding_fingerprint_by_request_fingerprint.has(
+			request_fingerprint
+		) \
+		and _bundle_fingerprint_by_request_fingerprint.has(
+			request_fingerprint
+		) \
+		and _journal_order.has(request_fingerprint)
+
+
+func _retire_generated_request(request_fingerprint: String) -> bool:
+	if not WIRE.is_fingerprint(request_fingerprint) \
+			or not _generated_source_key_by_request_fingerprint.has(
+				request_fingerprint
+			):
+		return false
+	var source_key := str(_generated_source_key_by_request_fingerprint.get(
+		request_fingerprint,
+		""
+	))
+	if not WIRE.is_fingerprint(source_key) \
+			or str(_generated_request_fingerprint_by_source_key.get(
+				source_key,
+				""
+			)) != request_fingerprint \
+			or not _binding_fingerprint_by_request_fingerprint.has(
+				request_fingerprint
+			) \
+			or not _bundle_fingerprint_by_request_fingerprint.has(
+				request_fingerprint
+			) \
+			or not _journal_order.has(request_fingerprint):
+		return false
+	_generated_source_key_by_request_fingerprint.erase(request_fingerprint)
+	_generated_request_fingerprint_by_source_key.erase(source_key)
+	_binding_fingerprint_by_request_fingerprint.erase(request_fingerprint)
+	_bundle_fingerprint_by_request_fingerprint.erase(request_fingerprint)
+	_journal_order.erase(request_fingerprint)
 	return true
 
 
@@ -964,6 +1644,83 @@ func _cooldown_microseconds(value: Variant) -> int:
 	return microseconds if WIRE.is_nonnegative_integer(microseconds) else -1
 
 
+func _legacy_interaction_policy_facts(card: Dictionary) -> Dictionary:
+	if not CARD_SCHEMA.is_pure_data(card):
+		return {"valid": false}
+	var interaction_kind_value: Variant = card.get(
+		"kind",
+		"player_hand_disrupt"
+	)
+	if not (interaction_kind_value is String):
+		return {"valid": false}
+	var interaction_kind_id := interaction_kind_value as String
+	if not WIRE.is_stable_id(interaction_kind_id):
+		return {"valid": false}
+	var lock_value: Variant = card.get("hand_lock_seconds", 0.0)
+	if not (lock_value is int or lock_value is float):
+		return {"valid": false}
+	var lock_seconds := float(lock_value)
+	if not is_finite(lock_seconds) or lock_seconds < 0.0:
+		return {"valid": false}
+	var maximum_seconds := float(WIRE.MAX_SAFE_INTEGER) \
+		/ float(MICROSECONDS_PER_SECOND)
+	if lock_seconds > maximum_seconds:
+		return {"valid": false}
+	var lock_microseconds := roundi(
+		lock_seconds * float(MICROSECONDS_PER_SECOND)
+	)
+	if roundi(lock_seconds * 4.0) != roundi(
+		float(lock_microseconds) * 4.0 / float(MICROSECONDS_PER_SECOND)
+	):
+		return {"valid": false}
+	var discard_count := _legacy_nonnegative_integer(
+		card.get("hand_discard_count", 0)
+	)
+	var steal_count := _legacy_nonnegative_integer(
+		card.get("hand_steal_count", 0)
+	)
+	var cash_penalty := _legacy_nonnegative_integer(
+		card.get("target_cash_penalty", 0)
+	)
+	var steal_failure_cash := _legacy_nonnegative_integer(
+		card.get("steal_fail_cash", 0)
+	)
+	if discard_count < 0 or steal_count < 0 or cash_penalty < 0 \
+			or steal_failure_cash < 0:
+		return {"valid": false}
+	var facts := {
+		"valid": true,
+		"policy_interaction_kind_id": interaction_kind_id,
+		"policy_discard_count": discard_count,
+		"policy_steal_count": steal_count,
+		"policy_lock_duration_microseconds": lock_microseconds,
+		"policy_cash_penalty": cash_penalty,
+		"policy_steal_failure_cash": steal_failure_cash,
+	}
+	for field in [
+		"policy_discard_count",
+		"policy_steal_count",
+		"policy_lock_duration_microseconds",
+		"policy_cash_penalty",
+		"policy_steal_failure_cash",
+	]:
+		if not WIRE.is_nonnegative_integer(facts.get(field)):
+			return {"valid": false}
+	return facts
+
+
+func _legacy_nonnegative_integer(value: Variant) -> int:
+	if not (value is int or value is float):
+		return -1
+	var numeric := float(value)
+	if not is_finite(numeric) or numeric < 0.0 \
+			or numeric > float(WIRE.MAX_SAFE_INTEGER) \
+			or numeric != floor(numeric):
+		return -1
+	var converted := int(value)
+	return converted if WIRE.is_nonnegative_integer(converted) else -1
+
+
 func _is_runtime_id(value: Variant) -> bool:
 	return WIRE.is_ascii_reference(value) \
 		and str(value) == str(value).strip_edges()
@@ -981,6 +1738,30 @@ func _reject(reason_id: String) -> Dictionary:
 func _validation_reject(reason_id: String) -> Dictionary:
 	_validation_failure_count += 1
 	return _reject(reason_id)
+
+
+func _policy_compatibility_reject(reason_id: String) -> Dictionary:
+	_policy_compatibility_rejection_count += 1
+	_rejection_count += 1
+	return {
+		"schema_version": SCHEMA_VERSION,
+		"accepted": false,
+		"reason_id": reason_id,
+		"policy_compatibility_profile": {},
+	}
+
+
+func _legacy_v04_interaction_reject(reason_id: String) -> Dictionary:
+	_legacy_v04_reference_rejection_count += 1
+	_rejection_count += 1
+	var result := {
+		"schema_version": SCHEMA_VERSION,
+		"accepted": false,
+		"reason_id": reason_id,
+		"source_bundle": {},
+	}
+	return result if result.keys() \
+		== LEGACY_V04_INTERACTION_SOURCE_RESULT_KEYS else {}
 
 
 func _failure_result(reason_id: String) -> Dictionary:
@@ -1016,3 +1797,8 @@ func _hand_port() -> AiActorHandInventoryQueryPort:
 func _catalog_service() -> CardSemanticCatalogService:
 	return get_node_or_null(card_semantic_catalog_service_path) \
 		as CardSemanticCatalogService
+
+
+func _legacy_v04_runtime_catalog_service() -> CardRuntimeCatalogService:
+	return get_node_or_null(legacy_v04_runtime_catalog_service_path) \
+		as CardRuntimeCatalogService

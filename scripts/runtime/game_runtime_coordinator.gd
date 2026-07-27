@@ -12,6 +12,9 @@ const RUNTIME_BALANCE_MODEL_SCRIPT := preload("res://scripts/balance/runtime_bal
 const COMMODITY_SUSHI_TRACK_SERVICE_SCRIPT := preload("res://scripts/runtime/commodity_sushi_track_runtime_service.gd")
 const CARD_TARGET_CHOICE_RESPONSE_SINK_SCRIPT := preload("res://scripts/runtime/card_target_choice_response_sink.gd")
 const MONSTER_WAGER_RESPONSE_SINK_SCRIPT := preload("res://scripts/runtime/monster_wager_response_sink.gd")
+const AI_CARD_INTERACTION_OBSERVATION_CAPABILITY := preload(
+	"res://scripts/runtime/ai_card_interaction_observation_capability.gd"
+)
 const AlphaContentLoader := preload("res://scripts/runtime/alpha01_content_manifest_loader.gd")
 const CORE_ECONOMIC_CARD_EFFECT_KINDS_V06 := [
 	"install_commodity_rate",
@@ -42,6 +45,7 @@ var _last_new_session_commit_only_receipt: Dictionary = {}
 var _ai_actor_state_capability: AiActorStateCapability
 var _ai_actor_hand_inventory_capability: AiActorHandInventoryCapability
 var _card_semantic_source_capability_by_actor: Dictionary = {}
+var _ai_card_interaction_observation_capability_by_actor: Dictionary = {}
 var _ai_actor_economy_facts_capability: AiActorEconomyFactsCapability
 
 
@@ -54,6 +58,8 @@ func _enter_tree() -> void:
 		push_error("GameRuntimeCoordinator could not prebind the one-shot AI actor-hand capability before child lifecycle callbacks.")
 	if not _bind_card_semantic_source_authorization_port():
 		push_error("GameRuntimeCoordinator could not bind the one-shot AI actor-hand capability to CardSemanticSourceAuthorizationPort before child lifecycle callbacks.")
+	if not _prebind_ai_card_interaction_observation_service():
+		push_error("GameRuntimeCoordinator could not prebind the interaction observation service before child lifecycle callbacks.")
 	if not _prebind_ai_actor_economy_facts_capability():
 		push_error("GameRuntimeCoordinator could not prebind the one-shot AI actor-economy capability before child lifecycle callbacks.")
 
@@ -67,6 +73,7 @@ func _ready() -> void:
 	_wire_ai_world_typed_ports()
 	_wire_ai_actor_hand_inventory_query_port()
 	_wire_card_semantic_source_authorization_port()
+	_wire_ai_card_interaction_observation_service()
 	_wire_table_presentation_query_ports()
 	_wire_monster_wager_cash_commitment_query_port()
 	_wire_ai_actor_economy_facts_query_port()
@@ -94,6 +101,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_wire_ai_world_typed_ports()
 	_wire_ai_actor_hand_inventory_query_port()
 	_wire_card_semantic_source_authorization_port()
+	_wire_ai_card_interaction_observation_service()
 	_wire_table_presentation_query_ports()
 	_wire_monster_wager_cash_commitment_query_port()
 	_wire_ai_actor_economy_facts_query_port()
@@ -1555,6 +1563,33 @@ func _prebind_ai_actor_economy_facts_capability() -> bool:
 	return economy_port.bind_ai_capability(_ai_actor_economy_facts_capability)
 
 
+func _prebind_ai_card_interaction_observation_service() -> bool:
+	var service := _ai_card_interaction_observation_service_node()
+	var ai := _ai_runtime_controller_node() as AiRuntimeController
+	if service == null or ai == null \
+			or _card_semantic_source_capability_by_actor.is_empty():
+		return false
+	if not service.bind_actor_capabilities(
+		_card_semantic_source_capability_by_actor
+	):
+		return false
+	for actor_index_variant in _card_semantic_source_capability_by_actor.keys():
+		var actor_index := int(actor_index_variant)
+		if not _ai_card_interaction_observation_capability_by_actor.has(
+			actor_index
+		):
+			_ai_card_interaction_observation_capability_by_actor[actor_index] = \
+				AI_CARD_INTERACTION_OBSERVATION_CAPABILITY.new()
+	if not service.bind_consumer_capabilities(
+		_ai_card_interaction_observation_capability_by_actor
+	):
+		return false
+	return ai.set_card_interaction_observation_source(
+		service,
+		_ai_card_interaction_observation_capability_by_actor
+	)
+
+
 func _wire_ai_world_typed_ports() -> void:
 	var actor_state_port := _ai_actor_state_port_node()
 	var region_query_port := _ai_region_knowledge_query_port_node()
@@ -1602,6 +1637,22 @@ func _wire_card_semantic_source_authorization_port() -> void:
 		push_error("GameRuntimeCoordinator requires one CardSemanticSourceAuthorizationPort; authorized semantic reads fail closed.")
 		return
 	# Readiness is session-bound and is checked by every authorization request.
+
+
+func _wire_ai_card_interaction_observation_service() -> void:
+	var service := _ai_card_interaction_observation_service_node()
+	var ai := _ai_runtime_controller_node() as AiRuntimeController
+	if service == null or ai == null:
+		push_error("GameRuntimeCoordinator requires one AiCardInteractionObservationService and AiRuntimeController; direct-interaction card scoring fails closed.")
+		return
+	if not _prebind_ai_card_interaction_observation_service():
+		push_error("GameRuntimeCoordinator could not reuse the prebound interaction observation service capabilities.")
+		return
+	if not ai.set_card_interaction_observation_source(
+		service,
+		_ai_card_interaction_observation_capability_by_actor
+	):
+		push_error("GameRuntimeCoordinator could not bind the AI interaction observation consumer.")
 
 
 func _wire_monster_wager_cash_commitment_query_port() -> void:
@@ -5851,6 +5902,11 @@ func _ai_actor_hand_inventory_query_port_node() -> AiActorHandInventoryQueryPort
 func _card_semantic_source_authorization_port_node() -> CardSemanticSourceAuthorizationPort:
 	return get_node_or_null("CardSemanticSourceAuthorizationPort") \
 		as CardSemanticSourceAuthorizationPort
+
+
+func _ai_card_interaction_observation_service_node() -> AiCardInteractionObservationService:
+	return get_node_or_null("AiCardInteractionObservationService") \
+		as AiCardInteractionObservationService
 
 
 func _ai_actor_economy_facts_query_port_node() -> AiActorEconomyFactsQueryPort:

@@ -45,6 +45,21 @@ const DEBUG_KEYS := [
 	"catalog_compile_request_count",
 	"catalog_spec_authorization_count",
 	"detached_bundle_copy_count",
+	"policy_compatibility_attempt_count",
+	"policy_compatibility_success_count",
+	"policy_compatibility_rejection_count",
+	"policy_compatibility_id",
+	"policy_compatibility_stores_card_records",
+	"generated_request_binding_count",
+	"generated_request_replacement_count",
+	"generated_request_journal_retirement_count",
+	"legacy_v04_reference_adapter_id",
+	"legacy_v04_reference_supported_count",
+	"legacy_v04_reference_attempt_count",
+	"legacy_v04_reference_success_count",
+	"legacy_v04_reference_rejection_count",
+	"legacy_v04_reference_stores_state",
+	"legacy_v04_reference_parses_localized_identity",
 	"journal_fingerprint",
 	"journal_fingerprint_only",
 	"stores_authorized_payloads",
@@ -192,6 +207,7 @@ func _run() -> void:
 	_run_impure_source_rejections(fixture, capability)
 	_run_resigned_bundle_rejection(fixture)
 	_run_restore_and_identity_stale_checks(fixture, capability)
+	_run_generated_request_binding_churn_check(fixture, capability)
 	_run_journal_eviction_check(fixture, capability)
 	_run_surface_and_save_checks(source)
 	_run_debug_privacy_check(source)
@@ -747,6 +763,17 @@ func _run_actor_slot_and_instance_rejections(
 		"source-control-instance", CardSemanticSourceAuthorizationPort.REASON_RUNTIME_INSTANCE_ID_INVALID,
 		"control-character runtime instance ID"
 	)
+	var wrong_type_id_card := _runtime_card(
+		ACTIVE_CARD_ID,
+		"semantic:wrong-type-placeholder"
+	)
+	wrong_type_id_card["runtime_instance_id"] = 7
+	_replace_ai_slots(fixture, [wrong_type_id_card, defaults[1]])
+	_authorize_rejected_without_cache_delta(
+		fixture, "own_hand", capability, AI_ACTOR_INDEX, 0,
+		"source-wrong-type-instance", CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_FAILED,
+		"non-string runtime instance ID"
+	)
 	_replace_ai_slots(fixture, defaults)
 	var world := fixture.get("world") as WorldSessionState
 	var eliminated_actor := (world.players[AI_ACTOR_INDEX] as Dictionary).duplicate(true)
@@ -1034,6 +1061,15 @@ func _run_journal_eviction_check(
 		int(debug_after.get("request_binding_count", -1))
 			== int(debug_before.get("request_binding_count", -2))
 				+ CardSemanticSourceAuthorizationPort.JOURNAL_LIMIT + 1
+				- (
+					int(debug_after.get(
+						"generated_request_journal_retirement_count",
+						-1
+					)) - int(debug_before.get(
+						"generated_request_journal_retirement_count",
+						-1
+					))
+				)
 			and int(debug_after.get("request_binding_limit", -1))
 				== CardSemanticSourceAuthorizationPort.REQUEST_BINDING_LIMIT,
 		"session request bindings remain fingerprint-only and bounded"
@@ -1077,6 +1113,93 @@ func _run_journal_eviction_check(
 		"source-journal-boundary-000",
 		CardSemanticSourceAuthorizationPort.REASON_REQUEST_ID_COLLISION,
 		"evicted request rebound to different source"
+	)
+
+
+func _run_generated_request_binding_churn_check(
+	fixture: Dictionary,
+	capability: AiActorHandInventoryCapability
+) -> void:
+	const CHURN_COUNT := 96
+	var defaults := fixture.get("default_slots", []) as Array
+	_replace_ai_slots(fixture, defaults)
+	var source := fixture.get("source") as CardSemanticSourceAuthorizationPort
+	var semantic_catalog := fixture.get("semantic_catalog") \
+		as CardSemanticCatalogService
+	var debug_before := source.debug_snapshot()
+	var cache_before := _catalog_metrics(semantic_catalog.validation_snapshot())
+	var first_bundle: Dictionary = {}
+	var newest_bundle: Dictionary = {}
+	var all_authorized := true
+	for revision_index in range(CHURN_COUNT):
+		var unrelated_card := _runtime_card(
+			OTHER_CARD_ID,
+			"semantic:unrelated:revision:%03d" % revision_index
+		)
+		_replace_ai_slots(fixture, [defaults[0], unrelated_card])
+		var bundle := source.authorize_own_hand_card(
+			capability,
+			AI_ACTOR_INDEX,
+			0
+		)
+		if not _accepted_bundle(bundle):
+			all_authorized = false
+		if revision_index == 0:
+			first_bundle = bundle
+		newest_bundle = bundle
+	var debug_after := source.debug_snapshot()
+	var cache_after := _catalog_metrics(semantic_catalog.validation_snapshot())
+	var first_request_id := str((first_bundle.get(
+		"authorized_envelope_ref",
+		{}
+	) as Dictionary).get("request_id", ""))
+	_expect(
+		all_authorized,
+		"generated requests survive unrelated-slot source revision churn"
+	)
+	_expect(
+		int(debug_after.get("generated_request_binding_count", -1))
+			== int(debug_before.get("generated_request_binding_count", -2)) + 1
+			and int(debug_after.get("request_binding_count", -1))
+				== int(debug_before.get("request_binding_count", -2)) + 1
+			and int(debug_after.get("journal_entry_count", -1))
+				== int(debug_before.get("journal_entry_count", -2)) + 1,
+		"generated actor-slot binding and journal growth stay bounded to one"
+	)
+	_expect(
+		int(debug_after.get("generated_request_replacement_count", -1))
+			== int(debug_before.get("generated_request_replacement_count", -2))
+				+ CHURN_COUNT - 1,
+		"each changed source revision retires exactly one generated binding"
+	)
+	_expect(
+		int(cache_after.get("compile_count", -1))
+			== int(cache_before.get("compile_count", -2))
+			and int(cache_after.get("cache_entry_count", -1))
+				== int(cache_before.get("cache_entry_count", -2))
+			and int(cache_after.get("cache_hit_count", -1))
+				== int(cache_before.get("cache_hit_count", -2)) + CHURN_COUNT,
+		"generated binding churn remains catalog-cache-only with zero compile delta"
+	)
+	_validate_rejected_without_cache_delta(
+		fixture,
+		first_bundle,
+		CardSemanticSourceAuthorizationPort.REASON_REQUEST_NOT_JOURNALED,
+		"retired generated request replay"
+	)
+	_expect(
+		source.validate_authorized_bundle(newest_bundle) == newest_bundle,
+		"newest generated request remains current and idempotent"
+	)
+	_authorize_rejected_without_cache_delta(
+		fixture,
+		"own_hand",
+		capability,
+		AI_ACTOR_INDEX,
+		0,
+		first_request_id,
+		CardSemanticSourceAuthorizationPort.REASON_REQUEST_ID_RESERVED,
+		"retired generated request ID reused as an explicit request"
 	)
 
 

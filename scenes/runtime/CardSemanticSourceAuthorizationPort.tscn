@@ -6,4 +6,5 @@
 script = ExtResource("1_port")
 ai_actor_hand_inventory_query_port_path = NodePath("../AiActorHandInventoryQueryPort")
 card_semantic_catalog_service_path = NodePath("../CardSemanticCatalogService")
+legacy_v04_runtime_catalog_service_path = NodePath("../CardRuntimeCatalogService")
 editor_description = "Capability-guarded own-hand semantic authorization with current-source reattestation and fingerprint-only replay journaling."

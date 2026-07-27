@@ -26,9 +26,19 @@ const AI_RUNTIME_PATH := "res://scripts/runtime/ai_runtime_controller.gd"
 const SAVE_REGISTRY_PATH := "res://scripts/runtime/v06_save_owner_registry.gd"
 const AI_DEBT_REPORT_PATH := \
 	"res://reports/cards/ai_direct_field_read_migration.json"
+const AI_RAW_READ_BATCH1_REPORT_PATH := \
+	"res://reports/cards/ai_raw_read_ratchet_batch1.json"
 const RUNTIME_ROOT := "res://scripts/runtime"
 const AI_PROJECTION_SERVICE_PATH := \
 	"res://scripts/runtime/ai_card_semantic_projection_service.gd"
+const SOURCE_AUTHORIZATION_PATH := \
+	"res://scripts/runtime/card_semantic_source_authorization_port.gd"
+const INTERACTION_OBSERVATION_SERVICE_PATH := \
+	"res://scripts/runtime/ai_card_interaction_observation_service.gd"
+const INTERACTION_OBSERVATION_SCHEMA_PATH := \
+	"res://scripts/semantic/ai_card_interaction_observation_v1.gd"
+const INTERACTION_POLICY_COMPATIBILITY_SCHEMA_PATH := \
+	"res://scripts/semantic/ai_card_interaction_policy_compatibility_v1.gd"
 const COORDINATOR_SCENE_PATH := \
 	"res://scenes/runtime/GameRuntimeCoordinator.tscn"
 
@@ -53,11 +63,17 @@ const DYNAMIC_POLICY_FIELDS := [
 	"futures_direction",
 	"strategic_role",
 ]
-const EXPECTED_AI_DEBT := {
+const ORIGIN_AI_DEBT := {
 	"value_reads": 225,
 	"presence_checks": 5,
 	"functions": 33,
 	"keys": 71,
+}
+const EXPECTED_AI_DEBT := {
+	"value_reads": 219,
+	"presence_checks": 5,
+	"functions": 31,
+	"keys": 69,
 }
 
 var _checks := 0
@@ -252,6 +268,54 @@ func _scan_ai_consumer_and_raw_read_ratchets() -> void:
 		"production AI semantic consumer count remains zero: %s"
 			% str(ai_consumer_hits)
 	)
+	var coordinator_scene := _read_text(COORDINATOR_SCENE_PATH)
+	_expect(
+		_count_occurrences(
+			coordinator_scene,
+			'[node name="AiCardInteractionObservationService"'
+		) == 1
+			and _count_occurrences(
+				coordinator_scene,
+				'path="res://scenes/runtime/AiCardInteractionObservationService.tscn"'
+			) == 1,
+		"production coordinator composes exactly one interaction observation service"
+	)
+	var ai_source := _read_text(AI_RUNTIME_PATH)
+	_expect(
+		ai_source.contains("AiCardInteractionObservationService")
+			and ai_source.contains("observe_own_hand_interaction"),
+		"production AI consumes only the narrow interaction observation service"
+	)
+	var observation_callers := runtime_sources.duplicate()
+	observation_callers.erase(INTERACTION_OBSERVATION_SERVICE_PATH)
+	_expect(
+		_paths_calling_tokens(
+			observation_callers,
+			["observe_own_hand_interaction"]
+		) == [AI_RUNTIME_PATH],
+		"only production AI invokes the actor-private observation entrypoint"
+	)
+	for forbidden_direct_source_token in [
+		"CardSemanticSourceAuthorizationPort",
+		"authorize_own_hand_card",
+		"authorize_source(",
+	]:
+		_expect(
+			not ai_source.contains(forbidden_direct_source_token),
+			"production AI cannot consume source authorization directly: %s"
+				% forbidden_direct_source_token
+		)
+	var source_consumers := runtime_sources.duplicate()
+	source_consumers.erase(SOURCE_AUTHORIZATION_PATH)
+	var source_consumer_paths := _paths_calling_tokens(
+		source_consumers,
+		["authorize_own_hand_card", "authorize_source"]
+	)
+	_expect(
+		source_consumer_paths == [INTERACTION_OBSERVATION_SERVICE_PATH],
+		"only interaction observation consumes source authorization: %s"
+			% [source_consumer_paths]
+	)
 
 	var report := _json_object(AI_DEBT_REPORT_PATH)
 	var deterministic_counts := _dictionary(
@@ -266,14 +330,206 @@ func _scan_ai_consumer_and_raw_read_ratchets() -> void:
 		"keys": int(deterministic_counts.get("distinct_field_keys", -1)),
 	}
 	_expect(
-		report_counts == EXPECTED_AI_DEBT,
+		report_counts == ORIGIN_AI_DEBT,
 		"AI raw-read report remains exactly 225 value / 5 presence / 33 functions / 71 keys"
 	)
+	var batch_report := _json_object(AI_RAW_READ_BATCH1_REPORT_PATH)
+	var batch_counts := _dictionary(batch_report.get("current_lock", {}))
+	var current_report_counts := {
+		"value_reads": int(batch_counts.get("value_reads", -1)),
+		"presence_checks": int(batch_counts.get("presence_checks", -1)),
+		"functions": int(batch_counts.get("functions", -1)),
+		"keys": int(batch_counts.get("keys", -1)),
+	}
+	_expect(
+		current_report_counts == EXPECTED_AI_DEBT,
+		"Batch 1 report freezes the exact 219/5/31/69 current lock"
+	)
+	_expect(
+		int(current_report_counts.get("value_reads", -1))
+			<= int(ORIGIN_AI_DEBT.get("value_reads", -1))
+			and int(current_report_counts.get("presence_checks", -1))
+				<= int(ORIGIN_AI_DEBT.get("presence_checks", -1))
+			and int(current_report_counts.get("functions", -1))
+				<= int(ORIGIN_AI_DEBT.get("functions", -1))
+			and int(current_report_counts.get("keys", -1))
+				<= int(ORIGIN_AI_DEBT.get("keys", -1)),
+		"Batch 1 debt metrics are monotonic from the immutable origin"
+	)
+	var removed_signatures: Array = batch_report.get(
+		"removed_read_signatures",
+		[]
+	) as Array
+	_expect(
+		batch_report.get("removed_origin_rows", []) == ["R03", "R04"]
+			and removed_signatures.size() == 6,
+		"Batch 1 current lock removes exactly the six R03/R04 signatures"
+	)
+	_scan_batch1_new_service_raw_aliases(report)
+	_scan_source_owner_policy_compatibility(batch_report)
 	_ai_metrics = _scan_ai_runtime_raw_reads()
 	_expect(
 		_ai_metrics == EXPECTED_AI_DEBT,
-		"live AiRuntimeController raw reads remain exactly 225/5/33/71: %s"
+		"live AiRuntimeController raw reads remain exactly 219/5/31/69: %s"
 			% str(_ai_metrics)
+	)
+	for removal_variant in removed_signatures:
+		if not (removal_variant is Dictionary):
+			continue
+		var removal := removal_variant as Dictionary
+		var function_block := _function_block(
+			ai_source,
+			str(removal.get("function", ""))
+		)
+		var field_id := str(removal.get("field", ""))
+		_expect(
+			not function_block.contains('"%s"' % field_id),
+			"removed R03/R04 raw signature cannot reappear: %s::%s"
+				% [str(removal.get("function", "")), field_id]
+		)
+
+
+func _scan_batch1_new_service_raw_aliases(origin_report: Dictionary) -> void:
+	var service_source := _read_text(INTERACTION_OBSERVATION_SERVICE_PATH)
+	_expect(not service_source.is_empty(), "Batch 1 interaction observation service is readable")
+	var batch1_sources := _source_map([
+		INTERACTION_OBSERVATION_SERVICE_PATH,
+		INTERACTION_OBSERVATION_SCHEMA_PATH,
+		INTERACTION_POLICY_COMPATIBILITY_SCHEMA_PATH,
+	])
+	_expect(
+		batch1_sources.size() == 3,
+		"all three Batch 1 interaction observation production files are readable"
+	)
+	var origin_keys: Dictionary = {}
+	for row_variant in origin_report.get("migration_rows", []):
+		if not (row_variant is Dictionary):
+			continue
+		var occurrences := _dictionary(
+			(row_variant as Dictionary).get("field_occurrences", {})
+		)
+		for field_variant in occurrences.keys():
+			origin_keys[str(field_variant)] = true
+	var reviewed_op_fields := ["target_cash_penalty", "steal_fail_cash"]
+	_expect(
+		_count_occurrences(service_source, 'op.get("target_cash_penalty"') == 1
+			and _count_occurrences(
+				service_source,
+				'op.get("steal_fail_cash"'
+			) == 1,
+		"two exact semantic-op adapter reads are reviewed and no others are added"
+	)
+	var escaped_keys: Array[String] = []
+	for path_variant in batch1_sources.keys():
+		var path := str(path_variant)
+		var source := str(batch1_sources[path])
+		for field_variant in origin_keys.keys():
+			var field_id := str(field_variant)
+			if path == INTERACTION_OBSERVATION_SERVICE_PATH \
+					and reviewed_op_fields.has(field_id):
+				continue
+			if source.contains('"%s"' % field_id):
+				escaped_keys.append("%s:%s" % [path, field_id])
+	escaped_keys.sort()
+	_expect(
+		escaped_keys.is_empty(),
+		"new observation files contain no unreviewed historical raw-key alias: %s"
+			% [escaped_keys]
+	)
+	for forbidden_alias_token in [
+		"effect_payload",
+		"source_skill",
+		"counter_skill",
+		"role_card",
+		"raw_payload",
+		"raw_card",
+	]:
+		_expect(
+			not service_source.contains(forbidden_alias_token),
+			"new interaction observation service contains no raw alias helper escape: %s"
+				% forbidden_alias_token
+		)
+	var raw_carrier_regex := RegEx.new()
+	raw_carrier_regex.compile(
+		"\\b(skill|source_skill|counter_skill|role_card|raw_payload|raw_card|"
+			+ "card_record|card_definition)\\b"
+	)
+	var raw_carrier_hits: Array[String] = []
+	for path_variant in batch1_sources.keys():
+		var path := str(path_variant)
+		for match_variant in raw_carrier_regex.search_all(
+			str(batch1_sources[path])
+		):
+			raw_carrier_hits.append(
+				"%s:%s" % [
+					path,
+					(match_variant as RegExMatch).get_string(1),
+				]
+			)
+	_expect(
+		raw_carrier_hits.is_empty(),
+		"new observation files contain no raw carrier or alias identifier: %s"
+			% [raw_carrier_hits]
+	)
+
+
+func _scan_source_owner_policy_compatibility(batch_report: Dictionary) -> void:
+	var source := _read_text(SOURCE_AUTHORIZATION_PATH)
+	var schema := _read_text(INTERACTION_POLICY_COMPATIBILITY_SCHEMA_PATH)
+	var function_block := _function_block(
+		source,
+		"_legacy_interaction_policy_facts"
+	)
+	var raw_keys: Array[String] = [
+		"kind",
+		"hand_discard_count",
+		"hand_steal_count",
+		"hand_lock_seconds",
+		"target_cash_penalty",
+		"steal_fail_cash",
+	]
+	var read_regex := RegEx.new()
+	read_regex.compile(
+		"\\bcard\\.get\\(\\s*\"(%s)\"" % "|".join(raw_keys)
+	)
+	var observed: Dictionary = {}
+	for match_variant in read_regex.search_all(function_block):
+		var field_id := (match_variant as RegExMatch).get_string(1)
+		observed[field_id] = int(observed.get(field_id, 0)) + 1
+	var expected: Dictionary = {}
+	for field_id in raw_keys:
+		expected[field_id] = 1
+	_expect(
+		observed == expected
+			and read_regex.search_all(source).size() == raw_keys.size(),
+		"owner compatibility bridge contains exactly six isolated raw reads"
+	)
+	var schema_aliases: Array[String] = []
+	for field_id in raw_keys:
+		if schema.contains('"%s"' % field_id):
+			schema_aliases.append(field_id)
+	_expect(
+		schema_aliases.is_empty(),
+		"owner raw keys cannot escape into the wire compatibility schema"
+	)
+	var owner_lock := _dictionary(batch_report.get(
+		"source_owner_compatibility_lock",
+		{}
+	))
+	var combined := _dictionary(batch_report.get(
+		"combined_historical_ai_policy_read_ledger",
+		{}
+	))
+	_expect(
+		int(owner_lock.get("value_reads", -1)) == 6
+			and int(owner_lock.get("presence_checks", -1)) == 0
+			and int(owner_lock.get("functions", -1)) == 1
+			and int(owner_lock.get("keys", -1)) == 6
+			and int(combined.get("value_reads", -1)) == 225
+			and int(combined.get("presence_checks", -1)) == 5
+			and int(combined.get("functions", -1)) == 32
+			and int(combined.get("keys", -1)) == 71,
+		"ratchet report distinguishes AI reduction from retained owner bridge"
 	)
 
 
@@ -521,6 +777,34 @@ func _token_hits(sources: Dictionary, tokens: Array) -> Array[String]:
 			if source.contains(token):
 				hits.append("%s:%s" % [path, token])
 	return hits
+
+
+func _paths_calling_tokens(sources: Dictionary, tokens: Array) -> Array[String]:
+	var paths: Array[String] = []
+	for path_variant in sources.keys():
+		var path := str(path_variant)
+		var source := str(sources.get(path, ""))
+		for token_variant in tokens:
+			if source.contains(str(token_variant)):
+				paths.append(path)
+				break
+	paths.sort()
+	return paths
+
+
+func _function_block(source: String, function_id: String) -> String:
+	var lines: Array[String] = []
+	var collecting := false
+	for raw_line in source.split("\n"):
+		var line := str(raw_line)
+		var stripped := line.strip_edges()
+		if stripped.begins_with("func "):
+			if collecting:
+				break
+			collecting = stripped.begins_with("func %s(" % function_id)
+		if collecting:
+			lines.append(line)
+	return "\n".join(lines)
 
 
 func _json_object(path: String) -> Dictionary:

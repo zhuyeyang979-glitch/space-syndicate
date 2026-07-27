@@ -2,18 +2,18 @@
 
 ## Audit Basis
 
-- Baseline: `46b356f99da5b536f877d96a946ceddd1720fef4`
-- Branch: `codex/codex-first-playerface-cutover-46b356f`
+- Baseline: `56b572ac8b1d52ae71a43c53dfc7a4d875d7282b`
+- Branch: `codex/ai-viewer-privacy-raw-read-batch1-56b572a`
 - Observed: `2026-07-27`
 - Machine-readable authority: `reports/semantic_program/global_three_projection_adoption_matrix.json`
 - Claim policy: an existing domain-specific snapshot, DTO, controller, or state machine is not counted as a shared SemanticSpec projection unless it consumes the immutable shared semantic contract.
-- Worktree note: the Card Codex cutover is recorded as `CODEX_ONLY_ACTIVE`; full-catalog, runtime, performance, privacy, and Godot MCP gates are green.
+- Worktree note: the Card Codex remains `CODEX_ONLY_ACTIVE`; Card AI R03/R04 consume the production actor-private interaction observation and all Batch 1 local/MCP gates are green. The other 31 raw-read rows remain debt.
 
 ## Program Snapshot
 
 | Domain | Immutable Core | PlayerProjection | AiProjection | RulesProjection | Dynamic State Owner |
 | --- | --- | --- | --- | --- | --- |
-| Card | `GREEN` | `CODEX_ONLY_ACTIVE` (local and MCP gates green) | `PASSIVE_OWN_HAND_AUTHORIZED` | `NOT_STARTED` | Existing Card/WorldSession owners |
+| Card | `GREEN` | `CODEX_ONLY_ACTIVE` (local and MCP gates green) | `BATCH1_INTERACTION_OBSERVATION_ACTIVE` | `NOT_STARTED` | Existing Card/WorldSession owners |
 | Role | Not implemented; rule authority blocked | Legacy domain-specific | Raw catalog/saved fields | `NOT_STARTED` | `WorldSessionState` plus existing passive effect owners |
 | Monster | Not implemented | Legacy Monster Codex/presentation | Raw controller/roster reads | `NOT_STARTED` | `MonsterRuntimeController` |
 | MonsterBehavior | Not implemented | Legacy action presentation | Controller-internal weights/raw facts | `NOT_STARTED` | `MonsterRuntimeController` |
@@ -31,12 +31,12 @@ No domain has an active shared RulesProjection. `OperationHandlerRegistry` remai
 - **Immutable spec:** `CardSemanticSpecV1` is `GREEN`: 348 definitions compile, 256 are active, and 92 remain `projection_only`.
 - **Dynamic owners:** `WorldSessionState` owns hand-slot records; `CardInventoryRuntimeService` owns inventory policy; cooldown and queue/execution state remain in their existing owners. The semantic layer owns none of this state.
 - **PlayerProjection:** `CODEX_ONLY_ACTIVE`; full-catalog, production-scene, visual, performance, privacy, and architecture gates are green. It uses `PlayerFaceDTOv1` detail plus the closed `PlayerCardCodexDTOv1` and family-ladder DTO. Market, hand, and card-track cutovers remain false.
-- **AiProjection:** `PASSIVE_OWN_HAND_AUTHORIZED` through `AiActorHandInventoryQueryPort`, `CardSemanticSourceAuthorizationPort`, and `CardInstanceDecisionStateV1`. Production AI remains on its old path.
+- **AiProjection:** `BATCH1_INTERACTION_OBSERVATION_ACTIVE`. The R03/R04 production scoring path consumes `AiCardInteractionObservationV1` through `AiActorHandInventoryQueryPort` and `CardSemanticSourceAuthorizationPort`; all other AI card reads remain on their audited legacy paths. The AI consumer lock is `219/5/31/69`, with six compatibility reads isolated at the attested source owner. Flat v0.4 support is a specialized eight-reference interaction-effect observation adapter, not a complete semantic or Save migration.
 - **RulesProjection:** `NOT_STARTED`; no production `RuleExecutionPlan` or gameplay handler registration exists.
-- **Visibility:** public Codex records require exact catalog membership and trusted public localization; own-hand semantics require actor/session capability authorization. Other source kinds fail closed.
+- **Visibility:** public Codex records require exact catalog membership and trusted public localization; own-hand semantics require actor/session authorization plus one opaque consumer capability per actor. Cross-actor and aliased-token use fail closed. The trusted singleton AI consumer holds the complete actor-token map, so this does not claim seat isolation inside that consumer or against arbitrary hostile in-process reflection. Other source kinds fail closed.
 - **RNG and Save:** semantic compilation and both projections consume zero RNG. Semantic specs and authorization bundles are not saved. Card instance restore remains partial across existing session, inventory, queue, execution, and history sections.
 - **Bridges:** temporary DTO-to-Codex snapshot adaptation, narrow audited legacy identity compatibility, raw AI/non-Codex UI readers, and the v0.4/v0.6 execution bridge.
-- **Next boundary:** `AI_VIEWER_PRIVACY_AND_RAW_READ_RATCHET_BATCH1`.
+- **Next boundary:** `SAMPLE_FULL_RUN_VERTICAL_SLICE_TO_SETTLEMENT`.
 
 ## Role
 
@@ -120,4 +120,4 @@ No domain has an active shared RulesProjection. `OperationHandlerRegistry` remai
 
 ## Program Order
 
-The immediate program boundary after the Card Codex integration is `AI_VIEWER_PRIVACY_AND_RAW_READ_RATCHET_BATCH1`. The matrix does not authorize parallel full-domain cutovers. Each later domain should first freeze one immutable authority and preserve its existing dynamic owner, visibility boundary, RNG order, and Save identity before any consumer switch.
+The immediate program boundary is `SAMPLE_FULL_RUN_VERTICAL_SLICE_TO_SETTLEMENT`. Batch 1 deliberately migrated only R03/R04 and did not expand into a second raw-read batch. The matrix does not authorize parallel full-domain cutovers. Each later domain should first freeze one immutable authority and preserve its existing dynamic owner, visibility boundary, RNG order, and Save identity before any consumer switch.

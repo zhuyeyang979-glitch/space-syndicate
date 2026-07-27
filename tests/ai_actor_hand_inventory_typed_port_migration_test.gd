@@ -429,7 +429,14 @@ func _run() -> void:
 		"buy upgrade scoring preserves highest-family slot selection"
 	)
 	_expect(
-		int(ai.call("_ai_actor_private_receive_pressure", 1, "player_hand_steal", {}))
+		int(ai.call(
+			"_ai_actor_private_receive_pressure",
+			1,
+			{
+				"policy_interaction_kind_id": "player_hand_steal",
+				"policy_steal_failure_cash": 0,
+			}
+		))
 			== 46,
 		"hand-steal pressure preserves below-limit behavior"
 	)
