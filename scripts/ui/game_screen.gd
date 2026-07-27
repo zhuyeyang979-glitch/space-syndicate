@@ -12,6 +12,9 @@ const TABLE_NAVIGATION_ACTION_INTENT_SCRIPT := preload("res://scripts/runtime/ta
 const DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT := preload("res://scripts/runtime/district_supply_action_intent.gd")
 const CARD_TARGET_CHOICE_RESPONSE_RECEIPT_SCRIPT := preload("res://scripts/runtime/card_target_choice_response_receipt.gd")
 const MONSTER_WAGER_RESPONSE_RECEIPT_SCRIPT := preload("res://scripts/runtime/monster_wager_response_receipt.gd")
+const GAME_ACTION_OFFER_SCRIPT := preload("res://scripts/semantic/game_action_offer_v1.gd")
+const GAME_ACTION_INTENT_SCRIPT := preload("res://scripts/semantic/game_action_intent_v1.gd")
+const GAME_ACTION_RECEIPT_SCRIPT := preload("res://scripts/semantic/game_action_receipt_v1.gd")
 const HAND_HOVER_PREVIEW_LEFT := 0.020
 const HAND_HOVER_PREVIEW_TOP := 0.350
 const HAND_HOVER_PREVIEW_RIGHT := 0.190
@@ -42,8 +45,7 @@ const PRIVATE_TRACK_ENTRY_KEYS := [
 ]
 const PRIVATE_TRACK_TEXT_TOKENS := ["hidden_", "private_", "owner_secret", "secret_owner", "opponent_cash", "opponent_hand", "true_owner"]
 
-signal end_turn_requested
-signal action_requested(action_id: String)
+signal game_action_intent_requested(intent: Dictionary)
 signal application_intent_requested(intent: IntelApplicationIntent)
 signal card_selected(card_data: Dictionary)
 signal card_hovered(card_data: Dictionary)
@@ -51,7 +53,6 @@ signal card_unhovered
 signal card_unselected(card_data: Dictionary)
 signal card_drag_preview_started(card_data: Dictionary)
 signal card_drag_preview_ended(card_data: Dictionary)
-signal card_drop_requested(card_data: Dictionary, screen_position: Vector2)
 signal commodity_claim_requested(request: COMMODITY_CLAIM_REQUEST_SCRIPT)
 signal table_selection_intent_requested(intent: TABLE_SELECTION_INTENT_SCRIPT)
 signal navigation_intent_requested(intent: TABLE_NAVIGATION_ACTION_INTENT_SCRIPT)
@@ -96,6 +97,7 @@ var _table_selection_request_revision := 0
 var _navigation_request_revision := 0
 var _district_supply_action_request_revision := 0
 var _forced_decision_response_request_revision := 0
+var _game_action_request_revision := 0
 var _district_supply_locked_quote_ids: Dictionary = {}
 var _district_supply_selected_card_by_district: Dictionary = {}
 
@@ -472,6 +474,23 @@ func apply_district_supply_action_receipt(receipt: DistrictSupplyActionReceipt) 
 	if receipt.requires_discard:
 		detail = "手牌已满，请私下选择一张可弃的普通牌。"
 	_show_player_action_feedback(receipt.request_id, "success" if receipt.accepted else ("pending" if receipt.requires_discard else "blocked"), detail)
+
+
+func apply_game_action_receipt(receipt: Dictionary) -> void:
+	if not bool(GAME_ACTION_RECEIPT_SCRIPT.validation_report(receipt).get("valid", false)):
+		return
+	if str(receipt.get("viewer_private_projection_ref", "none")) == "none":
+		return
+	var accepted := bool(receipt.get("accepted", false))
+	var action_id := str(receipt.get("semantic_action_id", "game-action"))
+	var reason_id := str(receipt.get("reason_id", "action-rejected"))
+	var detail := _game_action_feedback_text(
+		action_id,
+		reason_id,
+		accepted,
+		bool(receipt.get("idempotent_replay", false))
+	)
+	_show_player_action_feedback(action_id, "resolved" if accepted else "blocked", detail)
 
 
 func apply_card_target_choice_response_receipt(receipt: CARD_TARGET_CHOICE_RESPONSE_RECEIPT_SCRIPT) -> void:
@@ -953,8 +972,12 @@ func _on_end_turn_requested() -> void:
 	if _forced_surface_blocks_player_actions():
 		_show_player_action_feedback("end_turn", "blocked", "请先完成当前强制决策。")
 		return
-	_show_player_action_feedback("end_turn", "pending", "结束回合已提交，等待桌面进入下一阶段。")
-	end_turn_requested.emit()
+	var top_data: Dictionary = current_ui_data.get("top_bar", {}) if current_ui_data.get("top_bar", {}) is Dictionary else {}
+	var offer: Dictionary = top_data.get("end_turn_offer", {}) if top_data.get("end_turn_offer", {}) is Dictionary else {}
+	if _submit_game_action_offer(offer, "human_click", {}, {}):
+		_show_player_action_feedback("end_turn", "pending", "结束回合已提交，等待桌面进入下一阶段。")
+	else:
+		_show_player_action_feedback("end_turn", "blocked", "结束回合动作已过期，请等待桌面刷新。")
 
 
 func _on_menu_requested() -> void:
@@ -992,7 +1015,12 @@ func _on_action_requested(action_id: String) -> void:
 	_show_player_action_feedback(action_id)
 	if _emit_navigation_intent_if_supported(action_id, &"game_screen"):
 		return
-	action_requested.emit(action_id)
+	var entry := _game_action_entry(action_id)
+	var offer: Dictionary = entry.get("game_action_offer", {}) if entry.get("game_action_offer", {}) is Dictionary else {}
+	var parameters: Dictionary = entry.get("game_action_parameters", {}) if entry.get("game_action_parameters", {}) is Dictionary else {}
+	var submission_kind := "human_quick_action" if action_id == "play" else "human_click"
+	if not _submit_game_action_offer(offer, submission_kind, parameters, {}):
+		_show_player_action_feedback(action_id, "blocked", "该动作投影已过期或不可用，请等待桌面刷新。")
 
 
 func _on_application_intent_requested(intent: IntelApplicationIntent) -> void:
@@ -1058,8 +1086,7 @@ func _on_side_drawer_action_requested(action_id: String) -> void:
 	if _forced_surface_blocks_player_actions():
 		_show_player_action_feedback(action_id, "blocked", "请先完成当前强制决策。")
 		return
-	_show_player_action_feedback(action_id, "resolved", "侧栏动作已提交。")
-	action_requested.emit(action_id)
+	_on_action_requested(action_id)
 
 
 func _on_temporary_decision_action_requested(action_id: String) -> void:
@@ -1080,8 +1107,7 @@ func _on_temporary_decision_action_requested(action_id: String) -> void:
 		if not _emit_forced_decision_response(action_id, expected_kind, "target-choice"):
 			_show_player_action_feedback(action_id, "blocked", "目标选择已失效，请等待桌面刷新。")
 		return
-	_show_player_action_feedback(action_id, "resolved", "临时决策已提交，等待规则结算。")
-	action_requested.emit(action_id)
+	_show_player_action_feedback(action_id, "blocked", "该临时决策没有有效的类型化入口。")
 
 
 func _emit_forced_decision_response(option_id: String, expected_kind: String, request_prefix: String) -> bool:
@@ -1121,8 +1147,7 @@ func _on_public_bid_action_requested(action_id: String) -> void:
 	if action_id.begins_with("track_select_"):
 		_emit_track_action_request(action_id, "已选择竞价对应的公共牌轨线索。", &"public_bid_board")
 		return
-	_show_player_action_feedback(action_id, "resolved", "牌序竞价选择已提交，等待牌序阶段推进。")
-	action_requested.emit(action_id)
+	_on_action_requested(action_id)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -1347,7 +1372,7 @@ func _emit_track_action_request(action_id: String, detail: String, source_surfac
 	_show_player_action_feedback(normalized_action_id, "pending", detail)
 	if _emit_navigation_intent_if_supported(normalized_action_id, source_surface):
 		return
-	action_requested.emit(normalized_action_id)
+	_on_action_requested(normalized_action_id)
 
 
 func _emit_navigation_intent_if_supported(action_id: String, source_surface: StringName) -> bool:
@@ -1388,7 +1413,171 @@ func _on_card_drag_released(card_data: Dictionary, screen_position: Vector2) -> 
 		if int(_selection_context().get("selected_district", -1)) != district_index:
 			return
 		request_hand_selection(_hand_slot_from_card_data(card_data), &"hand_rack")
-		card_drop_requested.emit(card_data, screen_position)
+		var entry := _card_game_action_entry(card_data)
+		var offer: Dictionary = entry.get("game_action_offer", {}) if entry.get("game_action_offer", {}) is Dictionary else {}
+		var region_id := _region_id_for_district(district_index)
+		if region_id.is_empty() or not _submit_game_action_offer(
+			offer,
+			"human_drag",
+			{},
+			{"region_id": region_id}
+		):
+			_show_player_action_feedback("card_drag", "blocked", "卡牌或地图目标已变化，请刷新后重试。")
+
+
+func _submit_game_action_offer(
+	offer: Dictionary,
+	submission_kind: String,
+	parameters: Dictionary,
+	target_overrides: Dictionary
+) -> bool:
+	if not bool(GAME_ACTION_OFFER_SCRIPT.validation_report(offer).get("valid", false)) \
+			or str(offer.get("legality_state", "")) != "available" \
+			or not SemanticWireV1.is_closed_data(parameters) \
+			or not SemanticWireV1.is_closed_data(target_overrides):
+		return false
+	var authorization := _game_action_actor_authorization(submission_kind)
+	if authorization.is_empty():
+		return false
+	var target_ids := GAME_ACTION_OFFER_SCRIPT.target_ids(offer)
+	for key_variant in target_overrides.keys():
+		target_ids[str(key_variant)] = target_overrides.get(key_variant)
+	_game_action_request_revision += 1
+	var intent := GAME_ACTION_INTENT_SCRIPT.build({
+		"schema_version": GAME_ACTION_INTENT_SCRIPT.SCHEMA_VERSION,
+		"request_id": "game-action.%d.%d" % [
+			maxi(0, _presentation_authorized_viewer_index),
+			_game_action_request_revision,
+		],
+		"semantic_action_id": str(offer.get("semantic_action_id", "")),
+		"source_revision": int(offer.get("source_revision", 0)),
+		"actor_authorization": authorization,
+		"target_ids": target_ids,
+		"parameters": parameters.duplicate(true),
+		"submission_kind": submission_kind,
+	})
+	if intent.is_empty() or not GAME_ACTION_OFFER_SCRIPT.accepts_intent(offer, intent):
+		return false
+	game_action_intent_requested.emit(intent)
+	return true
+
+
+func _game_action_actor_authorization(submission_kind: String) -> Dictionary:
+	if submission_kind not in ["human_click", "human_drag", "human_quick_action"] \
+			or _presentation_authorized_viewer_index < 0 \
+			or _presentation_authorization_revision <= 0 \
+			or _presentation_session_id.is_empty() \
+			or _presentation_session_revision <= 0:
+		return {}
+	return {
+		"schema_version": GAME_ACTION_INTENT_SCRIPT.SCHEMA_VERSION,
+		"actor_kind_id": "human",
+		"actor_id": "player.%d" % _presentation_authorized_viewer_index,
+		"actor_index": _presentation_authorized_viewer_index,
+		"actor_revision": _presentation_authorization_revision,
+		"session_id": _presentation_session_id,
+		"session_revision": _presentation_session_revision,
+		"authorization_proof_ref": "authorization.%d.%d" % [
+			_presentation_authorization_revision,
+			_presentation_session_revision,
+		],
+		"source_surface_id": {
+			"human_drag": "game-screen-drag",
+			"human_quick_action": "game-screen-quick",
+		}.get(submission_kind, "game-screen"),
+	}
+
+
+func _game_action_entry(action_id: String) -> Dictionary:
+	var player_data: Dictionary = current_ui_data.get("player_board", {}) \
+		if current_ui_data.get("player_board", {}) is Dictionary else {}
+	var right_data: Dictionary = current_ui_data.get("right_inspector", {}) \
+		if current_ui_data.get("right_inspector", {}) is Dictionary else {}
+	var bid_data: Dictionary = player_data.get("bid_board", {}) \
+		if player_data.get("bid_board", {}) is Dictionary else {}
+	for entries_variant in [
+		player_data.get("quick_actions", []),
+		player_data.get("actions", []),
+		right_data.get("actions", []),
+		bid_data.get("actions", []),
+	]:
+		var found := _game_action_entry_in(entries_variant, action_id)
+		if not found.is_empty():
+			return found
+	var hand_cards: Array = player_data.get("hand_cards", []) \
+		if player_data.get("hand_cards", []) is Array else []
+	for card_variant in hand_cards:
+		if card_variant is Dictionary:
+			var found := _game_action_entry_in((card_variant as Dictionary).get("actions", []), action_id)
+			if not found.is_empty():
+				return found
+	var track: Dictionary = current_ui_data.get("card_resolution_track", {}) \
+		if current_ui_data.get("card_resolution_track", {}) is Dictionary else {}
+	var track_entries: Array = track.get("entries", []) if track.get("entries", []) is Array else []
+	for track_variant in track_entries:
+		if track_variant is Dictionary:
+			var found := _game_action_entry_in((track_variant as Dictionary).get("actions", []), action_id)
+			if not found.is_empty():
+				return found
+	return {}
+
+
+func _game_action_entry_in(value: Variant, action_id: String) -> Dictionary:
+	if not (value is Array):
+		return {}
+	for entry_variant in value as Array:
+		if entry_variant is Dictionary and str((entry_variant as Dictionary).get("id", "")) == action_id:
+			var offer: Variant = (entry_variant as Dictionary).get("game_action_offer", {})
+			if offer is Dictionary and bool(GAME_ACTION_OFFER_SCRIPT.validation_report(offer).get("valid", false)):
+				return (entry_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _card_game_action_entry(card_data: Dictionary) -> Dictionary:
+	var actions: Variant = card_data.get("actions", [])
+	if not (actions is Array):
+		return {}
+	for entry_variant in actions as Array:
+		if not (entry_variant is Dictionary):
+			continue
+		var offer: Variant = (entry_variant as Dictionary).get("game_action_offer", {})
+		if offer is Dictionary \
+				and bool(GAME_ACTION_OFFER_SCRIPT.validation_report(offer).get("valid", false)) \
+				and str((offer as Dictionary).get("semantic_action_id", "")) == GAME_ACTION_INTENT_SCRIPT.ACTION_CARD_PLAY:
+			return (entry_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _region_id_for_district(district_index: int) -> String:
+	var context := _selection_context()
+	var region_ids: Array = context.get("district_region_ids", []) \
+		if context.get("district_region_ids", []) is Array else []
+	return str(region_ids[district_index]) \
+		if district_index >= 0 and district_index < region_ids.size() else ""
+
+
+func _game_action_feedback_text(
+	action_id: String,
+	reason_id: String,
+	accepted: bool,
+	replay: bool
+) -> String:
+	if replay:
+		return "重复提交已按原回执处理，没有再次执行。"
+	if accepted:
+		return {
+			GAME_ACTION_INTENT_SCRIPT.ACTION_CARD_PLAY: "卡牌提交已由权威规则入口接收。",
+			GAME_ACTION_INTENT_SCRIPT.ACTION_CARD_GROUP_READY: "本阶段已确认，等待其他席位。",
+			GAME_ACTION_INTENT_SCRIPT.ACTION_CARD_GROUP_REORDER: "卡牌组内部顺序已更新。",
+			GAME_ACTION_INTENT_SCRIPT.ACTION_SESSION_END_TURN: "回合请求已接收。",
+		}.get(action_id, "动作已完成。")
+	return {
+		"source-revision-stale": "桌面状态已经变化，请刷新后重试。",
+		"actor-authorization-rejected": "当前席位无权提交该动作。",
+		"request-id-collision": "动作编号冲突，本次未执行。",
+		"card-binding-stale": "手牌位置或卡牌实例已经变化。",
+		"card-target-invalid": "所选公开目标已经失效。",
+	}.get(reason_id, "动作未执行：%s。" % reason_id)
 
 
 func _hand_slot_from_card_data(card_data: Dictionary) -> int:

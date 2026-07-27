@@ -47,6 +47,7 @@ var _ai_actor_hand_inventory_capability: AiActorHandInventoryCapability
 var _card_semantic_source_capability_by_actor: Dictionary = {}
 var _ai_card_interaction_observation_capability_by_actor: Dictionary = {}
 var _ai_actor_economy_facts_capability: AiActorEconomyFactsCapability
+var _game_action_ai_submission_capability: GameActionAiSubmissionCapability
 
 
 func _enter_tree() -> void:
@@ -62,6 +63,8 @@ func _enter_tree() -> void:
 		push_error("GameRuntimeCoordinator could not prebind the interaction observation service before child lifecycle callbacks.")
 	if not _prebind_ai_actor_economy_facts_capability():
 		push_error("GameRuntimeCoordinator could not prebind the one-shot AI actor-economy capability before child lifecycle callbacks.")
+	if not _prebind_game_action_submission_capability():
+		push_error("GameRuntimeCoordinator could not prebind the one-shot AI game-action capability before child lifecycle callbacks.")
 
 
 func _ready() -> void:
@@ -79,6 +82,7 @@ func _ready() -> void:
 	_wire_ai_actor_economy_facts_query_port()
 	_wire_player_cash_mutation_port()
 	_wire_ai_business_cost_cash_port()
+	_wire_game_action_submission_port()
 	_wire_commodity_flow_postcommit()
 	_wire_forced_decision_candidate_sources()
 	call_deferred("_wire_table_selection_intent_port")
@@ -107,6 +111,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_wire_ai_actor_economy_facts_query_port()
 	_wire_player_cash_mutation_port()
 	_wire_ai_business_cost_cash_port()
+	_wire_game_action_submission_port()
 	_wire_commodity_flow_postcommit()
 	_wire_forced_decision_candidate_sources()
 	call_deferred("_wire_table_selection_intent_port")
@@ -1561,6 +1566,26 @@ func _prebind_ai_actor_economy_facts_capability() -> bool:
 	if _ai_actor_economy_facts_capability == null:
 		_ai_actor_economy_facts_capability = AiActorEconomyFactsCapability.new()
 	return economy_port.bind_ai_capability(_ai_actor_economy_facts_capability)
+
+
+func _prebind_game_action_submission_capability() -> bool:
+	var port := get_node_or_null("TablePlayerActionApplicationFlowController") \
+		as TablePlayerActionApplicationFlowController
+	if port == null:
+		return false
+	if _game_action_ai_submission_capability == null:
+		_game_action_ai_submission_capability = GameActionAiSubmissionCapability.new()
+	return port.bind_ai_submission_capability(_game_action_ai_submission_capability)
+
+
+func _wire_game_action_submission_port() -> void:
+	var port := get_node_or_null("TablePlayerActionApplicationFlowController") \
+		as TablePlayerActionApplicationFlowController
+	var ai := _ai_runtime_controller_node() as AiRuntimeController
+	if port == null or ai == null or not _prebind_game_action_submission_capability():
+		push_error("GameRuntimeCoordinator requires one typed player/AI game-action submission spine; AI card actions fail closed.")
+		return
+	ai.set_game_action_submission_port(port, _game_action_ai_submission_capability)
 
 
 func _prebind_ai_card_interaction_observation_service() -> bool:

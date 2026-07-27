@@ -46,6 +46,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 		"revision": maxi(0, int(selection_source.get("revision", 0))),
 		"selected_district": int(selection_source.get("selected_district", -1)),
 		"district_count": maxi(0, int(selection_source.get("district_count", 0))),
+		"district_region_ids": _selection_string_array(selection_source.get("district_region_ids", [])),
 		"selected_trade_product": str(selection_source.get("selected_trade_product", "")),
 		"trade_product_ids": _selection_string_array(selection_source.get("trade_product_ids", [])),
 		"default_trade_product_id": str(selection_source.get("default_trade_product_id", "")),

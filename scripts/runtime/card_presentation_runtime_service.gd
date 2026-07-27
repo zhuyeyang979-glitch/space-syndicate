@@ -271,6 +271,9 @@ func compose_hand_card(source: Dictionary) -> Dictionary:
 			"label": "出牌",
 			"disabled": not actionable,
 			"tooltip": str(play_state.get("detail", "")),
+			"game_action_offer": GameActionOfferV1.detached_copy(source.get("game_action_offer", {}) as Dictionary) \
+				if source.get("game_action_offer", {}) is Dictionary else {},
+			"game_action_parameters": {},
 		}],
 	}
 	if hand_kind == "facility_v06":

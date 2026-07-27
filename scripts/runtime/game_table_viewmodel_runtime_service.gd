@@ -251,8 +251,22 @@ func _compose_track_entry(source: Dictionary, state_text: String, track: Diction
 		var group_size := maxi(1, int(entry.get("group_size", 1)))
 		var group_order := clampi(int(entry.get("group_order", 1)), 1, group_size)
 		if bool(source.get("can_reorder", false)) and group_size > 1:
-			actions.append({"id":"group_order_up_%d" % resolution_id, "label":"组内前移", "disabled":group_order <= 1, "tooltip":"只调整自己卡牌组的连续结算顺序。"})
-			actions.append({"id":"group_order_down_%d" % resolution_id, "label":"组内后移", "disabled":group_order >= group_size, "tooltip":"只调整自己卡牌组的连续结算顺序。"})
+			actions.append({
+				"id":"group_order_up_%d" % resolution_id,
+				"label":"组内前移",
+				"disabled":group_order <= 1,
+				"tooltip":"只调整自己卡牌组的连续结算顺序。",
+				"game_action_offer": _dictionary(source.get("reorder_up_offer", {})),
+				"game_action_parameters": {"direction": -1},
+			})
+			actions.append({
+				"id":"group_order_down_%d" % resolution_id,
+				"label":"组内后移",
+				"disabled":group_order >= group_size,
+				"tooltip":"只调整自己卡牌组的连续结算顺序。",
+				"game_action_offer": _dictionary(source.get("reorder_down_offer", {})),
+				"game_action_parameters": {"direction": 1},
+			})
 	var card_name := str(card_source.get("card_name", _dictionary(card_source.get("skill", {})).get("name", "")))
 	if card_name != "":
 		actions.append({"id":"track_open_%s" % card_name, "label":"卡牌详情", "tooltip":"打开这张牌的图鉴详情。"})

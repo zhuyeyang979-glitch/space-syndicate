@@ -573,20 +573,22 @@ func _check_runtime_signal_bindings(main: Control) -> void:
 	var screen := main.get_node_or_null("RuntimeGameScreen") as Control
 	if screen == null:
 		return
-	var bindings := {
-		"action_requested": "_on_runtime_game_screen_action_requested",
-		"end_turn_requested": "_on_runtime_game_screen_end_turn_requested",
-		"card_drop_requested": "_on_runtime_game_screen_card_drop_requested",
-	}
-	for signal_name_variant in bindings.keys():
-		var signal_name := StringName(signal_name_variant)
-		var expected := Callable(main, StringName(bindings[signal_name_variant]))
-		var count := 0
-		for connection_variant in screen.get_signal_connection_list(signal_name):
+	for retired_signal in [&"action_requested", &"end_turn_requested", &"card_drop_requested"]:
+		_expect(not screen.has_signal(retired_signal), "%s raw outward signal is retired from RuntimeGameScreen" % retired_signal)
+	var action_flow := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/TablePlayerActionApplicationFlowController")
+	_expect(action_flow != null, "scene composition exposes the typed table-player action flow")
+	if action_flow != null:
+		var request_count := 0
+		for connection_variant in screen.get_signal_connection_list(&"game_action_intent_requested"):
 			var connection: Dictionary = connection_variant if connection_variant is Dictionary else {}
-			if connection.get("callable", Callable()) == expected:
-				count += 1
-		_expect(count == 1, "%s is connected to main exactly once" % signal_name)
+			if connection.get("callable", Callable()) == Callable(action_flow, &"submit_intent"):
+				request_count += 1
+		var receipt_count := 0
+		for connection_variant in action_flow.get_signal_connection_list(&"receipt_ready"):
+			var connection: Dictionary = connection_variant if connection_variant is Dictionary else {}
+			if connection.get("callable", Callable()) == Callable(screen, &"apply_game_action_receipt"):
+				receipt_count += 1
+		_expect(request_count == 1 and receipt_count == 1, "typed table-player action request and receipt are each connected exactly once")
 	var legacy_card_selection := Callable(main, &"_on_runtime_game_screen_card_selected")
 	var legacy_count := 0
 	for connection_variant in screen.get_signal_connection_list(&"card_selected"):

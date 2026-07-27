@@ -94,6 +94,14 @@ func _normalize_action(entry_variant: Variant, index: int, fallback_label: Strin
 	var application_intent: Variant = entry.get("application_intent", {})
 	if application_intent is Dictionary and IntelApplicationIntent.from_dictionary(application_intent as Dictionary) != null:
 		result["application_intent"] = (application_intent as Dictionary).duplicate(true)
+	var game_action_offer: Variant = entry.get("game_action_offer", {})
+	if game_action_offer is Dictionary \
+			and bool(GameActionOfferV1.validation_report(game_action_offer).get("valid", false)):
+		result["game_action_offer"] = GameActionOfferV1.detached_copy(game_action_offer)
+	var game_action_parameters: Variant = entry.get("game_action_parameters", {})
+	if game_action_parameters is Dictionary \
+			and SemanticWireV1.is_closed_data(game_action_parameters):
+		result["game_action_parameters"] = (game_action_parameters as Dictionary).duplicate(true)
 	return result
 
 

@@ -34,6 +34,8 @@ var _district_supply_query: DistrictSupplyViewerQueryPort
 var _revision := 0
 var _compose_count := 0
 var _last_visual_event_revision := 0
+var _action_offer_revision := 0
+var _action_offer_revision_by_viewer: Dictionary = {}
 
 
 func configure(
@@ -91,6 +93,8 @@ func configure(
 func compose_table_state(viewer_index: int, include_full: bool) -> Dictionary:
 	if not _viewer_is_authorized(viewer_index) or _table_viewmodel == null:
 		return {}
+	_action_offer_revision += 1
+	_action_offer_revision_by_viewer[viewer_index] = _action_offer_revision
 	var public_projection := _ports.public_world_projection()
 	var public_world := public_projection.to_dictionary()
 	var private_world := _ports.private_world_projection(viewer_index, viewer_index).to_dictionary()
@@ -107,6 +111,7 @@ func compose_table_state(viewer_index: int, include_full: bool) -> Dictionary:
 			"revision": int(_selection.snapshot().get("revision", 0)) if _selection != null else 0,
 			"selected_district": _selection.selected_district if _selection != null else -1,
 			"district_count": _array(public_world.get("districts", [])).size(),
+			"district_region_ids": _district_region_ids(public_world),
 			"selected_trade_product": _selection.selected_trade_product if _selection != null else "",
 			"trade_product_ids": ProductMarketRuntimeController.PRODUCT_CATALOG.duplicate(),
 			"default_trade_product_id": _default_trade_product_id(district),
@@ -171,6 +176,10 @@ func hand_presentation_sources_for_viewer(viewer_index: int) -> Array:
 	return TablePresentationPureDataPolicy.detached_copy(_hand_card_sources(viewer_index, private_world)) as Array
 
 
+func current_action_offer_revision(viewer_index: int) -> int:
+	return int(_action_offer_revision_by_viewer.get(viewer_index, 0))
+
+
 func card_track_presentation_source_for_viewer(viewer_index: int) -> Dictionary:
 	if _ports == null or not _viewer_is_authorized(viewer_index):
 		return {}
@@ -222,10 +231,13 @@ func _hand_card_sources(viewer_index: int, private_world: Dictionary) -> Array:
 		if slot_index < 0 or card_name.is_empty():
 			continue
 		var skill := _catalog_skill(card_name, private_card)
+		var eligibility := _card_eligibility(viewer_index, skill, slot_index)
+		var offer := _human_card_play_offer(viewer_index, slot_index, skill, eligibility)
 		result.append({
 			"slot": slot_index,
 			"card": _card_source(skill),
-			"eligibility": _card_eligibility(viewer_index, skill, slot_index),
+			"eligibility": eligibility,
+			"game_action_offer": offer,
 		})
 	return result
 
@@ -275,13 +287,17 @@ func _enriched_track_entries(entries: Array, viewer_index: int) -> Array:
 	return result
 
 
-func _enriched_track_entry(entry: Dictionary, _viewer_index: int) -> Dictionary:
+func _enriched_track_entry(entry: Dictionary, viewer_index: int) -> Dictionary:
 	if entry.is_empty():
 		return {}
 	var card_name := str(entry.get("card_name", _dictionary(entry.get("skill", {})).get("name", "")))
 	var skill := _catalog_skill(card_name, _dictionary(entry.get("skill", {})))
 	var public_entry := TablePresentationPureDataPolicy.detached_copy(entry) as Dictionary
 	public_entry["is_viewer_card"] = str(entry.get("visibility_scope", "")) == "owner_private"
+	var can_reorder := bool(public_entry.get("is_viewer_card", false)) and _card_resolution != null and _card_resolution.submissions_open()
+	var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
+	var group_size := maxi(1, int(entry.get("group_size", 1)))
+	var group_order := clampi(int(entry.get("group_order", 1)), 1, group_size)
 	return {
 		"entry": public_entry,
 		"card": _card_source(skill),
@@ -292,7 +308,9 @@ func _enriched_track_entry(entry: Dictionary, _viewer_index: int) -> Dictionary:
 		"animation_text": str(entry.get("aftermath_clue", "")),
 		"order_clue": _track_order_text(entry),
 		"facility_label": "%s%s" % [str(skill.get("industry_id", "")), str(skill.get("facility_type", ""))],
-		"can_reorder": bool(public_entry.get("is_viewer_card", false)) and _card_resolution != null and _card_resolution.submissions_open(),
+		"can_reorder": can_reorder,
+		"reorder_up_offer": _card_group_offer(GameActionIntentV1.ACTION_CARD_GROUP_REORDER, resolution_id, can_reorder and group_order > 1, "group-boundary", -1) if viewer_index >= 0 else {},
+		"reorder_down_offer": _card_group_offer(GameActionIntentV1.ACTION_CARD_GROUP_REORDER, resolution_id, can_reorder and group_order < group_size, "group-boundary", 1) if viewer_index >= 0 else {},
 	}
 
 
@@ -379,8 +397,18 @@ func _selected_district_source(viewer_index: int, public_world: Dictionary, acti
 func _action_entries(viewer_index: int, _public_world: Dictionary, action: Dictionary, district: Dictionary) -> Array:
 	var actions := _district_actions(action, _array(district.get("rack", [])))
 	var private_world := _ports.private_world_projection(viewer_index, viewer_index).to_dictionary()
-	if not _hand_card_sources(viewer_index, private_world).is_empty():
-		actions.append({"id": "play", "label": "出牌", "state": "选择手牌", "kind": "play_card", "disabled": false, "tooltip": "选择底部手牌查看合法目标。"})
+	var hand_sources := _hand_card_sources(viewer_index, private_world)
+	var quick_offer := _first_available_card_offer(hand_sources)
+	if not hand_sources.is_empty():
+		actions.append({
+			"id": "play",
+			"label": "出牌",
+			"state": "选择手牌",
+			"kind": "play_card",
+			"disabled": quick_offer.is_empty(),
+			"tooltip": "选择底部手牌查看合法目标。",
+			"game_action_offer": quick_offer,
+		})
 	if actions.is_empty():
 		actions.append({"id": "inspect", "label": "看星球", "state": "可看", "kind": "inspect", "disabled": false, "tooltip": "选择区域，查看公开局势。"})
 	return actions.slice(0, 6)
@@ -409,6 +437,16 @@ func _top_bar_source(viewer_index: int, public_world: Dictionary, private_world:
 	var victory_rule := _dictionary(victory_public.get("victory_rule", {}))
 	var progress := int(candidate.get("top_k_gdp_per_minute", candidate.get("top_n_gdp_per_minute", 0)))
 	var goal := int(victory_rule.get("required_top_k_gdp_per_minute", victory_rule.get("required_top_n_gdp_per_minute", victory_rule.get("required_gdp_per_minute", 0))))
+	var flow := _game_action_flow()
+	var end_turn_offer := flow.human_action_offer(
+		GameActionIntentV1.ACTION_SESSION_END_TURN,
+		_ensure_action_offer_revision(viewer_index),
+		true,
+		"none",
+		{},
+		"full",
+		["action.session.end-turn", "feedback.session.end-turn"]
+	) if flow != null else {}
 	return {
 		"table_state": _table_state_text(action, victory_public),
 		"tempo": _format_time(float(public_world.get("game_time", 0.0))),
@@ -421,6 +459,7 @@ func _top_bar_source(viewer_index: int, public_world: Dictionary, private_world:
 		"selected_district": str(district.get("title", "未选区")),
 		"primary_action": _primary_action_label(action),
 		"weather_status": _weather_status_text(),
+		"end_turn_offer": end_turn_offer,
 	}
 
 
@@ -430,6 +469,7 @@ func _player_board_source(viewer_index: int, public_world: Dictionary, private_w
 	var hand_count := _array(player.get("hand", [])).size()
 	var availability := _dictionary(action.get("availability", {}))
 	var rack_count := _array(district.get("rack", [])).size()
+	var quick_play_offer := _first_available_card_offer(_hand_card_sources(viewer_index, private_world))
 	return {
 		"title": "玩家板｜手牌",
 		"hint": "私密手牌和当前行动固定在底部玩家板。",
@@ -444,7 +484,7 @@ func _player_board_source(viewer_index: int, public_world: Dictionary, private_w
 		"quick_actions": [
 			{"id": "rack", "label": "区域牌架", "active": rack_count > 0, "state": "%d张" % rack_count, "tooltip": "当前选区公开挂牌。"},
 			{"id": "buy", "label": "买牌", "active": bool(availability.get("can_request_region_purchase", false)) and rack_count > 0, "state": "ready" if rack_count > 0 else "locked", "tooltip": "选择挂牌后锁定报价。"},
-			{"id": "play", "label": "出牌", "active": hand_count > 0 and bool(availability.get("card_submissions_open", false)), "state": "ready" if hand_count > 0 else "waiting", "tooltip": "选择一张私密手牌。"},
+			{"id": "play", "label": "出牌", "active": not quick_play_offer.is_empty(), "state": "ready" if not quick_play_offer.is_empty() else "waiting", "tooltip": "选择一张私密手牌。", "game_action_offer": quick_play_offer},
 		],
 		"table_state_lamps": _table_state_lamps(action, district),
 		"readiness_chips": [
@@ -581,6 +621,8 @@ func _bid_board(viewer_index: int, action: Dictionary) -> Dictionary:
 	var track := _card_track_source(viewer_index, action)
 	var phase := str(track.get("group_phase", "idle"))
 	var remaining := int(ceil(float(track.get("group_phase_remaining_seconds", 0.0))))
+	var viewer_resolution_id := _viewer_queue_resolution_id(track)
+	var ready_available := phase in ["planning", "public_bid", "lock"] and viewer_resolution_id >= 0
 	return {
 		"title": "卡牌组确认",
 		"phase": "%s %ds" % [_phase_label(phase), remaining] if remaining > 0 else _phase_label(phase),
@@ -588,7 +630,19 @@ func _bid_board(viewer_index: int, action: Dictionary) -> Dictionary:
 		"active": phase in ["planning", "public_bid", "lock"],
 		"chips": [{"label": "本阶段", "state": _phase_label(phase), "active": phase != "idle"}],
 		"track_links": [],
-		"actions": [{"id": "card_group_ready", "label": "完成本阶段", "disabled": phase not in ["planning", "public_bid", "lock"], "tooltip": "确认后等待其他席位。"}],
+		"actions": [{
+			"id": "card_group_ready",
+			"label": "完成本阶段",
+			"disabled": not ready_available,
+			"tooltip": "确认后等待其他席位。",
+			"game_action_offer": _card_group_offer(
+				GameActionIntentV1.ACTION_CARD_GROUP_READY,
+				viewer_resolution_id,
+				ready_available,
+				"queued-entry-missing",
+				0
+			),
+		}],
 	}
 
 
@@ -902,6 +956,111 @@ func _goal_ratio(goal_text: String) -> float:
 		return 0.0
 	var goal := maxi(0, int(values[1]))
 	return clampf(float(int(values[0])) / float(goal), 0.0, 1.0) if goal > 0 else 0.0
+
+
+func _human_card_play_offer(
+	viewer_index: int,
+	slot_index: int,
+	_skill: Dictionary,
+	eligibility: Dictionary
+) -> Dictionary:
+	var flow := _game_action_flow()
+	if flow == null:
+		return {}
+	var source_revision := _ensure_action_offer_revision(viewer_index)
+	var available := bool(eligibility.get("allowed", false)) \
+		and bool(eligibility.get("actionable", false))
+	var reason_id := str(eligibility.get("reason_code", "card-play-disabled"))
+	if available:
+		reason_id = "none"
+	return flow.human_card_play_offer(
+		viewer_index,
+		slot_index,
+		source_revision,
+		available,
+		reason_id,
+		_selected_region_id(),
+		_selection.selected_card_resolution_id if _selection != null else -1
+	)
+
+
+func _card_group_offer(
+	action_id: String,
+	resolution_id: int,
+	available: bool,
+	disabled_reason_id: String,
+	_direction: int
+) -> Dictionary:
+	var flow := _game_action_flow()
+	var viewer_index := _ports.authorized_viewer_index() if _ports != null else -1
+	if flow == null or viewer_index < 0 or resolution_id < 0:
+		return {}
+	return flow.human_action_offer(
+		action_id,
+		_ensure_action_offer_revision(viewer_index),
+		available,
+		"none" if available else disabled_reason_id,
+		{"resolution_id": GameActionCardBindingV1.resolution_ref(resolution_id)},
+		"full",
+		["action.card-group", "feedback.card-group"]
+	)
+
+
+func _first_available_card_offer(hand_sources: Array) -> Dictionary:
+	for source_variant in hand_sources:
+		if not (source_variant is Dictionary):
+			continue
+		var offer: Dictionary = (source_variant as Dictionary).get("game_action_offer", {}) \
+			if (source_variant as Dictionary).get("game_action_offer", {}) is Dictionary else {}
+		if bool(GameActionOfferV1.validation_report(offer).get("valid", false)) \
+				and str(offer.get("legality_state", "")) == "available":
+			return GameActionOfferV1.detached_copy(offer)
+	return {}
+
+
+func _viewer_queue_resolution_id(track: Dictionary) -> int:
+	for source_variant in _array(track.get("queue", [])):
+		if not (source_variant is Dictionary):
+			continue
+		var entry := _dictionary((source_variant as Dictionary).get("entry", {}))
+		if bool(entry.get("is_viewer_card", false)):
+			return int(entry.get("resolution_id", entry.get("queued_order", -1)))
+	return -1
+
+
+func _selected_region_id() -> String:
+	if _ports == null or _selection == null or _selection.selected_district < 0:
+		return ""
+	var public_world := _ports.public_world_projection().to_dictionary()
+	var districts := _array(public_world.get("districts", []))
+	if _selection.selected_district >= districts.size() \
+			or not (districts[_selection.selected_district] is Dictionary):
+		return ""
+	return str((districts[_selection.selected_district] as Dictionary).get("region_id", ""))
+
+
+func _district_region_ids(public_world: Dictionary) -> Array[String]:
+	var result: Array[String] = []
+	for district_variant in _array(public_world.get("districts", [])):
+		var district := _dictionary(district_variant)
+		var region_id := str(district.get("region_id", ""))
+		if not region_id.is_empty():
+			result.append(region_id)
+	return result
+
+
+func _ensure_action_offer_revision(viewer_index: int) -> int:
+	var current := int(_action_offer_revision_by_viewer.get(viewer_index, 0))
+	if current > 0:
+		return current
+	_action_offer_revision += 1
+	_action_offer_revision_by_viewer[viewer_index] = _action_offer_revision
+	return _action_offer_revision
+
+
+func _game_action_flow() -> TablePlayerActionApplicationFlowController:
+	return get_node_or_null("../TablePlayerActionApplicationFlowController") \
+		as TablePlayerActionApplicationFlowController
 
 
 func _viewer_is_authorized(viewer_index: int) -> bool:
