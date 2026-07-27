@@ -6,6 +6,7 @@ const TRANSACTIONAL_SESSION_ROLLBACK_REASON := "session_checkpoint_rolled_back"
 const TRANSACTIONAL_SAVE_REASON := "session_save_applied"
 const COMMITTED_LOAD_REASON := "session_load_completed"
 const HARD_RESET_REASON_IDS := ["session_began", "session_reset"]
+const NO_OP_SESSION_REASON_IDS := ["session_paused", "session_resumed", "session_finished"]
 
 var _victory: VictoryControlRuntimeController
 var _world_query: VictoryControlWorldBridge
@@ -128,10 +129,10 @@ func retry_pending_terminal_outcome() -> Dictionary:
 	if _session.is_finished():
 		return _terminal_rejected("session_already_finished")
 	var current_public := _victory.public_snapshot(-1)
-	var current_outcome: Dictionary = current_public.get("outcome_receipt", {}) if current_public.get("outcome_receipt", {}) is Dictionary else {}
+	var current_authoritative_outcome := _victory.outcome_receipt()
 	if _outcome_binding(_pending_outcome) != _pending_binding \
 			or _public_snapshot_binding(_pending_public_snapshot) != _pending_public_binding \
-			or _outcome_binding(current_outcome) != _pending_binding \
+			or _outcome_binding(current_authoritative_outcome) != _pending_binding \
 			or _public_snapshot_binding(current_public) != _pending_public_binding:
 		var stale_outcome_id := str(_pending_outcome.get("outcome_id", ""))
 		_clear_pending_terminal()
@@ -142,7 +143,12 @@ func retry_pending_terminal_outcome() -> Dictionary:
 		if presentation_receipt == null or not presentation_receipt.is_valid():
 			return _terminal_rejected("terminal_presentation_not_accepted")
 		var presented_outcome: Dictionary = presentation_receipt.public_snapshot.get("outcome_receipt", {}) if presentation_receipt.public_snapshot.get("outcome_receipt", {}) is Dictionary else {}
-		if _outcome_binding(presented_outcome) != _pending_binding:
+		var projected_pending_public := VictoryPresentationStateChangeReceipt.project_public_snapshot(
+			_pending_public_snapshot
+		)
+		var pending_public_outcome: Dictionary = projected_pending_public.get("outcome_receipt", {}) \
+			if projected_pending_public.get("outcome_receipt", {}) is Dictionary else {}
+		if _outcome_binding(presented_outcome) != _outcome_binding(pending_public_outcome):
 			return _terminal_rejected("terminal_presentation_outcome_mismatch")
 		var presentation_dictionary := presentation_receipt.to_dictionary()
 		if presentation_dictionary.is_empty():
@@ -203,6 +209,9 @@ func _on_session_authorization_context_changed(reason_id: String) -> void:
 		_clear_lifecycle_transition()
 		_reset_active_terminal_state()
 		_lifecycle_restore_count = 0
+		_session_context_binding = current_context_binding
+		return
+	if reason_id in NO_OP_SESSION_REASON_IDS:
 		_session_context_binding = current_context_binding
 		return
 	match reason_id:
@@ -351,8 +360,7 @@ func _outcomes_share_identity(authoritative: Dictionary, projected: Dictionary) 
 	var authoritative_identity := _outcome_identity(authoritative)
 	var projected_identity := _outcome_identity(projected)
 	return not authoritative_identity.is_empty() \
-		and authoritative_identity == projected_identity \
-		and _outcome_binding(authoritative) == _outcome_binding(projected)
+		and authoritative_identity == projected_identity
 
 
 func _outcome_binding(outcome: Dictionary) -> String:
@@ -386,7 +394,10 @@ func _outcome_identity(outcome: Dictionary) -> Dictionary:
 	var winner_indices: Array = outcome.get("winner_player_indices", []) if outcome.get("winner_player_indices", []) is Array else []
 	var comparison_order: Array = outcome.get("comparison_order", []) if outcome.get("comparison_order", []) is Array else []
 	var rankings: Array = outcome.get("rankings", []) if outcome.get("rankings", []) is Array else []
-	if outcome_id.is_empty() or reason_code.is_empty() or schema_version.is_empty() or ruleset_id.is_empty() or winner_indices.is_empty() or comparison_order.is_empty() or rankings.is_empty():
+	var audit_evidence := _normalized_audit_evidence(outcome)
+	if outcome_id.is_empty() or reason_code.is_empty() or schema_version.is_empty() or ruleset_id.is_empty() or winner_indices.is_empty() or comparison_order.is_empty() or rankings.is_empty() or audit_evidence.is_empty() \
+			or (reason_code == "public_audit_complete" and (audit_evidence.get("audit_roster", []) as Array).is_empty()) \
+			or (reason_code == "public_audit_complete" and str(audit_evidence.get("settlement_checkpoint", "")).is_empty()):
 		return {}
 	var normalized_winners: Array[int] = []
 	for value in winner_indices:
@@ -425,6 +436,39 @@ func _outcome_identity(outcome: Dictionary) -> Dictionary:
 		"co_victory": bool(outcome.get("co_victory", false)),
 		"comparison_order": normalized_order,
 		"rankings": normalized_rankings,
+		"audit_evidence": audit_evidence,
+	}
+
+
+func _normalized_audit_evidence(outcome: Dictionary) -> Dictionary:
+	var evidence: Dictionary = outcome.get("audit_evidence", {}) \
+		if outcome.get("audit_evidence", {}) is Dictionary else {}
+	var victory_rule: Dictionary = evidence.get("victory_rule", {}) \
+		if evidence.get("victory_rule", {}) is Dictionary else {}
+	var roster_value: Variant = evidence.get("audit_roster", null)
+	var roster_values: Array = roster_value if roster_value is Array else []
+	var checkpoint_value: Variant = evidence.get("settlement_checkpoint", null)
+	var settlement_checkpoint := str(checkpoint_value).strip_edges()
+	if victory_rule.is_empty() or not (roster_value is Array) \
+			or not (typeof(checkpoint_value) in [TYPE_STRING, TYPE_STRING_NAME]):
+		return {}
+	var audit_roster: Array[int] = []
+	for value in roster_values:
+		if typeof(value) != TYPE_INT or int(value) < 0 or audit_roster.has(int(value)):
+			return {}
+		audit_roster.append(int(value))
+	return {
+		"victory_rule": {
+			"surviving_region_count": int(victory_rule.get("surviving_region_count", 0)),
+			"coverage_basis_points": int(victory_rule.get("coverage_basis_points", 0)),
+			"required_region_count": int(victory_rule.get("required_region_count", 0)),
+			"gdp_per_required_region_per_minute": int(victory_rule.get("gdp_per_required_region_per_minute", 0)),
+			"required_top_k_gdp_per_minute": int(victory_rule.get("required_top_k_gdp_per_minute", 0)),
+			"required_top_k_gdp_per_minute_cents": int(victory_rule.get("required_top_k_gdp_per_minute_cents", 0)),
+			"ordinary_victory_paused": bool(victory_rule.get("ordinary_victory_paused", false)),
+		},
+		"audit_roster": audit_roster,
+		"settlement_checkpoint": settlement_checkpoint,
 	}
 
 

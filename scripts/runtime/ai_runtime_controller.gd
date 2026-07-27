@@ -62,6 +62,10 @@ var _card_target_pre_submit_rejection_count := 0
 var _tick_timing_count: Dictionary = {}
 var _tick_timing_total_usec: Dictionary = {}
 var _tick_timing_max_usec: Dictionary = {}
+var _actor_state_tick_cache: Dictionary = {}
+var _actor_state_tick_cache_active := false
+var _actor_state_tick_cache_hit_count := 0
+var _actor_state_tick_cache_miss_count := 0
 var ai_card_decision_timer := 2.2
 var ai_auction_reaction_timer := 0.7
 var ai_intel_decision_timer := 5.5
@@ -249,6 +253,8 @@ func reset_state() -> void:
 	ai_intel_decision_timer = float(_policy_value("timing", "intel_decision_interval_seconds", 5.5))
 	ai_card_decision_enabled = true
 	_last_receipts.clear()
+	_actor_state_tick_cache.clear()
+	_actor_state_tick_cache_active = false
 
 
 func capture_new_session_checkpoint() -> Dictionary:
@@ -283,7 +289,11 @@ func restore_new_session_checkpoint(checkpoint: Dictionary) -> Dictionary:
 func tick(delta: float) -> void:
 	if not _configured or not _world_ready():
 		return
+	_actor_state_tick_cache.clear()
+	_actor_state_tick_cache_active = true
 	_update_ai_decisions(delta)
+	_actor_state_tick_cache_active = false
+	_actor_state_tick_cache.clear()
 
 
 func ensure_player_state() -> void:
@@ -562,6 +572,9 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"tick_timing_count": _tick_timing_count.duplicate(true),
 		"tick_timing_total_usec": _tick_timing_total_usec.duplicate(true),
 		"tick_timing_max_usec": _tick_timing_max_usec.duplicate(true),
+		"actor_state_tick_cache_hit_count": _actor_state_tick_cache_hit_count,
+		"actor_state_tick_cache_miss_count": _actor_state_tick_cache_miss_count,
+		"actor_state_tick_cache_bounded": true,
 	}
 
 
@@ -724,12 +737,18 @@ func _actor_training_economy_facts(player_index: int) -> Dictionary:
 func _ai_actor_state_snapshot(player_index: int) -> Dictionary:
 	if not _actor_state_ready():
 		return {}
+	if _actor_state_tick_cache_active and _actor_state_tick_cache.get(player_index) is Dictionary:
+		_actor_state_tick_cache_hit_count += 1
+		return (_actor_state_tick_cache.get(player_index) as Dictionary).duplicate(true)
 	var started_usec := Time.get_ticks_usec()
 	var snapshot := _ai_actor_state_port.ai_actor_state_snapshot(
 		_ai_actor_state_capability,
 		player_index
 	)
 	_record_tick_timing(&"actor_state_snapshot", started_usec)
+	_actor_state_tick_cache_miss_count += 1
+	if _actor_state_tick_cache_active and not snapshot.is_empty():
+		_actor_state_tick_cache[player_index] = snapshot.duplicate(true)
 	return snapshot
 
 
@@ -742,6 +761,10 @@ func _commit_ai_actor_state(
 	var source := actor_snapshot if not actor_snapshot.is_empty() else _ai_actor_state_snapshot(player_index)
 	if source.is_empty() or int(source.get("player_index", -1)) != player_index:
 		return {"accepted": false, "changed": false, "reason_code": "ai_actor_state_snapshot_missing"}
+	# Any attempted write closes the decision-local read lease before the typed
+	# port validates its optimistic revision. A conflict retry must always read
+	# a fresh actor snapshot.
+	_actor_state_tick_cache.clear()
 	return _ai_actor_state_port.commit_ai_state(
 		_ai_actor_state_capability,
 		player_index,

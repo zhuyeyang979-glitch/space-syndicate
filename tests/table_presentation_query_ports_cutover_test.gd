@@ -153,6 +153,7 @@ func _run() -> void:
 	_expect(redacted_victory != null and redacted_victory.is_valid() and not redacted_victory.to_dictionary().has("players") and not JSON.stringify(redacted_victory.to_dictionary()).contains("999"), "victory presentation redacts private world payloads")
 	var accept_terminal_presentation := [false]
 	var terminal_presentation_attempts := [0]
+	var terminal_refresh_sequence := [0]
 	var terminal_receipt_snapshots: Array = []
 	ports.victory_presentation_receipt_ready.connect(func(receipt: VictoryPresentationStateChangeReceipt) -> void:
 		terminal_presentation_attempts[0] = int(terminal_presentation_attempts[0]) + 1
@@ -167,6 +168,13 @@ func _run() -> void:
 			"reason_id": "" if bool(accept_terminal_presentation[0]) else "fixture_dependency_missing",
 			"outcome_id": str(receipt_outcome.get("outcome_id", "")) if bool(accept_terminal_presentation[0]) else "",
 		})
+		if bool(accept_terminal_presentation[0]):
+			for kind in receipt.immediate_refresh_mask:
+				terminal_refresh_sequence[0] = int(terminal_refresh_sequence[0]) + 1
+				ports.record_victory_outcome_refresh_result(
+					receipt,
+					_accepted_refresh_apply_receipt(kind, int(terminal_refresh_sequence[0]))
+				)
 	)
 	var terminal_public := _terminal_public_snapshot()
 	_expect(ports.capture_victory_outcome(terminal_public) == null and int((ports.debug_snapshot().get("victory_receipts", {}) as Dictionary).get("applied_outcome_count", -1)) == 0, "rejected FinalSettlement acceptance releases the outcome for a normal retry")
@@ -175,6 +183,7 @@ func _run() -> void:
 	var accepted_terminal := ports.capture_victory_outcome(terminal_public)
 	_expect(accepted_terminal != null and accepted_terminal.is_valid() and int(terminal_presentation_attempts[0]) == 2, "accepted FinalSettlement acknowledgement returns the typed terminal receipt")
 	_expect(terminal_receipt_snapshots.size() == 2 and terminal_receipt_snapshots[0] == terminal_receipt_snapshots[1] and int((terminal_receipt_snapshots[0] as Dictionary).get("revision", -1)) == accepted_terminal.revision and is_equal_approx(float((terminal_receipt_snapshots[0] as Dictionary).get("world_time", -1.0)), accepted_terminal.world_time), "rejected outcome retry reuses the exact receipt revision, world time, and fingerprint inputs after world time advances")
+	_expect(ports.victory_outcome_refresh_complete(accepted_terminal) and ports.pending_accepted_victory_outcome_refresh_kinds(accepted_terminal).is_empty(), "accepted terminal refresh lineage records every target apply exactly once")
 	_expect(ports.capture_victory_outcome(terminal_public) == null and int((ports.debug_snapshot().get("victory_receipts", {}) as Dictionary).get("applied_outcome_count", -1)) == 1, "accepted terminal outcome remains exact-once")
 
 	var producer_checkpoint := ports.public_log_port.capture_session_checkpoint()
@@ -207,10 +216,48 @@ func _run() -> void:
 	var post_rollback_replay_ack := {}
 	ports.acknowledge_final_settlement_public_log(reused_outcome_receipt, post_rollback_replay_ack)
 	_expect(bool(post_rollback_replay_ack.get("accepted", false)) and bool(post_rollback_replay_ack.get("duplicate", false)) and str(post_rollback_replay_ack.get("receipt_fingerprint", "")) == reused_outcome_receipt.fingerprint(), "restored public-log exact-once binding accepts the old receipt only as an exact duplicate")
+
+	var public_log_before_failed_load := ports.public_log_owner.to_save_data()
+	var public_log_port_before_failed_load := ports.public_log_port.debug_snapshot()
+	var private_feedback_before_failed_load := ports.recent_viewer_private_feedback(0, ViewerPrivateFeedbackOwner.MAX_MESSAGES_PER_VIEWER)
+	var victory_before_failed_load := ports.victory_receipt_service.debug_snapshot()
+	var query_debug_before_failed_load := ports.debug_snapshot()
+	ports._on_session_authorization_context_changed("session_save_applied")
+	var quarantined_debug := ports.debug_snapshot()
+	_expect(ports.public_log_owner.recent_public_entries(90).is_empty() and ports.recent_viewer_private_feedback(0, ViewerPrivateFeedbackOwner.MAX_MESSAGES_PER_VIEWER).is_empty() and int((quarantined_debug.get("victory_receipts", {}) as Dictionary).get("applied_outcome_count", -1)) == 0 and str(quarantined_debug.get("session_lifecycle_checkpoint_kind", "")) == "session_save_applied", "first save-owner apply quarantines predecessor presentation journals during load validation")
+	ports._on_session_authorization_context_changed("session_save_applied")
+	var restored_after_failed_load := ports.debug_snapshot()
+	_expect(ports.public_log_owner.to_save_data() == public_log_before_failed_load and ports.public_log_port.debug_snapshot() == public_log_port_before_failed_load and ports.recent_viewer_private_feedback(0, ViewerPrivateFeedbackOwner.MAX_MESSAGES_PER_VIEWER) == private_feedback_before_failed_load, "reverse-order save rollback restores public and viewer-private journals exactly")
+	_expect(ports.victory_receipt_service.debug_snapshot() == victory_before_failed_load and int(restored_after_failed_load.get("outcome_presentation_result_count", -1)) == int(query_debug_before_failed_load.get("outcome_presentation_result_count", -2)) and int(restored_after_failed_load.get("outcome_immediate_refresh_count", -1)) == 1 and ports.victory_outcome_refresh_complete(accepted_terminal), "failed load restores terminal receipt, acknowledgement, and fully applied refresh lineage")
+
+	ports._on_session_authorization_context_changed("session_save_applied")
+	ports._on_session_authorization_context_changed("session_load_completed")
+	var committed_load_debug := ports.debug_snapshot()
+	_expect(ports.public_log_owner.recent_public_entries(90).is_empty() and int(committed_load_debug.get("outcome_presentation_result_count", -1)) == 0 and int(committed_load_debug.get("outcome_immediate_refresh_count", -1)) == 0 and str(committed_load_debug.get("session_lifecycle_checkpoint_kind", "stale")) == "", "successful load commits an empty new-session presentation lineage and retires the rollback checkpoint")
+	var loaded_session_terminal := ports.capture_victory_outcome(terminal_public)
+	_expect(loaded_session_terminal != null and loaded_session_terminal.is_valid() and int(terminal_presentation_attempts[0]) == 3, "successful load may reuse the predecessor outcome ID as a fresh terminal presentation")
+	_expect(ports.victory_outcome_refresh_complete(loaded_session_terminal) and ports.pending_accepted_victory_outcome_refresh_kinds(loaded_session_terminal).is_empty(), "successful load owns an independent exact-once terminal refresh lineage")
+	var no_op_lifecycle_before := {
+		"public_log": ports.public_log_owner.to_save_data(),
+		"producer": ports.public_log_port.debug_snapshot(),
+		"private_feedback": ports.recent_viewer_private_feedback(0, ViewerPrivateFeedbackOwner.MAX_MESSAGES_PER_VIEWER),
+		"victory": ports.victory_receipt_service.debug_snapshot(),
+		"query": ports.debug_snapshot(),
+	}
+	for non_reset_reason in ["session_paused", "session_resumed", "session_finished"]:
+		ports._on_session_authorization_context_changed(non_reset_reason)
+	var no_op_lifecycle_after := {
+		"public_log": ports.public_log_owner.to_save_data(),
+		"producer": ports.public_log_port.debug_snapshot(),
+		"private_feedback": ports.recent_viewer_private_feedback(0, ViewerPrivateFeedbackOwner.MAX_MESSAGES_PER_VIEWER),
+		"victory": ports.victory_receipt_service.debug_snapshot(),
+		"query": ports.debug_snapshot(),
+	}
+	_expect(no_op_lifecycle_after == no_op_lifecycle_before, "pause, resume, and session-finished lifecycle notices preserve terminal presentation journals exactly")
 	var main_scene_source := FileAccess.get_file_as_string("res://scenes/main.tscn")
 	_expect(main_scene_source.contains('signal="victory_presentation_result_ready"') and main_scene_source.contains('method="record_victory_outcome_presentation_result"'), "main scene composes the typed FinalSettlement acceptance return path")
 	_expect(main_scene_source.contains('signal="public_log_receipt_requested"') and main_scene_source.contains('method="acknowledge_final_settlement_public_log"') and not main_scene_source.contains('method="append_public_log_receipt"]'), "main scene routes FinalSettlement logs only through the synchronous query-port acknowledgement")
-	_expect(main_scene_source.count('signal="authorization_context_changed"') >= 2 and main_scene_source.contains('method="_on_session_authorization_context_changed"'), "production session lifecycle resets settlement and log acknowledgement state")
+	_expect(main_scene_source.count('signal="authorization_context_changed"') >= 2 and main_scene_source.contains('method="_on_session_authorization_context_changed"') and table_ports_source.contains('SESSION_SAVE_APPLIED_REASON_ID := "session_save_applied"') and table_ports_source.contains('SESSION_LOAD_COMPLETED_REASON_ID := "session_load_completed"'), "production session lifecycle transactionally replaces settlement and log acknowledgement state")
 
 	state.replace_players([_fixture_players()[0], {"name": "真人二", "is_ai": false}], true)
 	_expect(coordinator.presentation_authorized_viewer_index() == -1, "multiple local humans fail closed until a viewer is explicitly modeled")
@@ -247,6 +294,20 @@ func _terminal_public_snapshot() -> Dictionary:
 		},
 		"visibility_scope": "public",
 	}
+
+
+func _accepted_refresh_apply_receipt(
+	kind: StringName,
+	sequence: int
+) -> TablePresentationApplyReceipt:
+	var receipt := TablePresentationApplyReceipt.new()
+	receipt.refresh_receipt_id = "terminal-refresh-%s-%d" % [str(kind), sequence]
+	receipt.sequence = sequence
+	receipt.kind = kind
+	receipt.applied = true
+	receipt.snapshot_revision = sequence
+	receipt.target_revision = sequence
+	return receipt
 
 
 func _final_settlement_log_receipt(

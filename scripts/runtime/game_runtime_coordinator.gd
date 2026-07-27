@@ -5433,7 +5433,8 @@ func _wire_table_presentation_query_ports() -> void:
 		_monster_runtime_controller_node() as MonsterRuntimeController,
 		_military_runtime_controller_node() as MilitaryRuntimeController,
 		_commodity_flow_runtime_controller_node() as CommodityFlowRuntimeController,
-		_victory_control_runtime_controller_node() as VictoryControlRuntimeController
+		_victory_control_runtime_controller_node() as VictoryControlRuntimeController,
+		_region_infrastructure_world_bridge_node() as RegionInfrastructureWorldBridge
 	)
 	if not ports.victory_presentation_receipt_ready.is_connected(_on_victory_presentation_receipt_ready):
 		ports.victory_presentation_receipt_ready.connect(_on_victory_presentation_receipt_ready)
@@ -5681,12 +5682,33 @@ func _wire_domain_presentation_ports(refresh_port: TablePresentationRefreshPort,
 
 
 func _on_victory_presentation_receipt_ready(receipt: VictoryPresentationStateChangeReceipt) -> void:
-	if receipt != null and receipt.is_valid():
-		var port := _table_presentation_refresh_port_node()
-		if port != null:
-			for kind in receipt.immediate_refresh_mask:
-				port.request_immediate(kind, &"victory_state_changed")
+	if receipt == null or not receipt.is_valid():
+		victory_presentation_receipt_ready.emit(receipt)
+		return
+	if receipt.change_kind != &"outcome":
+		_apply_victory_presentation_immediate_refresh(receipt)
+		victory_presentation_receipt_ready.emit(receipt)
+		return
+	# FinalSettlement returns its typed acknowledgement synchronously through
+	# TablePresentationQueryPorts. Terminal UI refresh is committed only after
+	# that acknowledgement is accepted, so a rejected zero-world retry cannot
+	# apply live/full targets more than once.
 	victory_presentation_receipt_ready.emit(receipt)
+	var ports := _table_presentation_query_ports_node()
+	var refresh_port := _table_presentation_refresh_port_node()
+	if ports == null or refresh_port == null:
+		return
+	for kind in ports.pending_accepted_victory_outcome_refresh_kinds(receipt):
+		var apply_receipt := refresh_port.request_immediate(kind, &"victory_state_changed")
+		ports.record_victory_outcome_refresh_result(receipt, apply_receipt)
+
+
+func _apply_victory_presentation_immediate_refresh(receipt: VictoryPresentationStateChangeReceipt) -> void:
+	var port := _table_presentation_refresh_port_node()
+	if port == null:
+		return
+	for kind in receipt.immediate_refresh_mask:
+		port.request_immediate(kind, &"victory_state_changed")
 
 
 func _card_cooldown_runtime_controller_node() -> CardCooldownRuntimeController:
@@ -5766,6 +5788,8 @@ func _region_supply_card_descriptor(card_id: String) -> Dictionary:
 		"target_type": str(machine.get("target_kind", "")),
 		"effect_text": str(player.get("effect", player.get("short_effect", ""))),
 		"requirement_text": str(player.get("cost", "")),
+		"facility_kind": str(effect_payload.get("facility_kind", "")),
+		"industry_id": str(effect_payload.get("industry_id", machine.get("industry_id", ""))),
 		"route_tags": route_tags.duplicate(),
 		"art_key": str(developer.get("art_key", card_id)),
 		"enabled": true,

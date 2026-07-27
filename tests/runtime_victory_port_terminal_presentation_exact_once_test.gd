@@ -4,6 +4,7 @@ extends SceneTree
 class FakeVictoryController extends VictoryControlRuntimeController:
 	var queued_results: Array[Dictionary] = []
 	var public_value: Dictionary = {}
+	var authoritative_outcome_value: Dictionary = {}
 	var advance_count := 0
 
 	func advance_world_effective(_delta_seconds: float, _world_snapshot: Dictionary) -> Dictionary:
@@ -14,6 +15,12 @@ class FakeVictoryController extends VictoryControlRuntimeController:
 
 	func public_snapshot(_viewer_index := -1) -> Dictionary:
 		return public_value.duplicate(true)
+
+	func outcome_receipt() -> Dictionary:
+		if not authoritative_outcome_value.is_empty():
+			return authoritative_outcome_value.duplicate(true)
+		var projected: Variant = public_value.get("outcome_receipt", {})
+		return (projected as Dictionary).duplicate(true) if projected is Dictionary else {}
 
 
 class FakeWorldBridge extends VictoryControlWorldBridge:
@@ -106,6 +113,29 @@ class FakePresentationQueries extends TablePresentationQueryPorts:
 		return successful_outcome_receipt
 
 
+class CountingRefreshPort extends TablePresentationRefreshPort:
+	var apply_count_by_kind := {"live": 0, "full": 0}
+	var request_count := 0
+	var fail_once_kind := ""
+	var failed_once := false
+
+	func request_immediate(kind: StringName, _reason: StringName = &"state_changed") -> TablePresentationApplyReceipt:
+		request_count += 1
+		var result := TablePresentationApplyReceipt.new()
+		result.refresh_receipt_id = "counting-refresh-%d" % request_count
+		result.sequence = request_count
+		result.kind = kind
+		if str(kind) == fail_once_kind and not failed_once:
+			failed_once = true
+			result.reason_code = "fixture_target_failed_once"
+			return result
+		result.applied = true
+		result.snapshot_revision = request_count
+		result.target_revision = request_count
+		apply_count_by_kind[str(kind)] = int(apply_count_by_kind.get(str(kind), 0)) + 1
+		return result
+
+
 var _checks := 0
 var _failures: Array[String] = []
 
@@ -189,6 +219,10 @@ func _run() -> void:
 	_expect(world.capture_count == 5 and victory.advance_count == 5, "ordinary advancement still uses the authoritative world and Victory owners exactly once per non-retry call")
 
 	_test_outcome_identity_mismatch()
+	_test_outcome_audit_evidence_mismatch()
+	_test_authoritative_and_public_outcome_shape_parity()
+	_test_special_outcome_empty_audit_roster_identity()
+	_test_real_special_outcome_projection_identity()
 	_test_finish_retry_after_presentation_commit()
 	_test_pending_public_snapshot_stale_rejection()
 	_test_pending_reset()
@@ -198,6 +232,7 @@ func _run() -> void:
 	_test_formal_lifecycle_transaction_contract()
 	_test_special_outcome_route_source()
 	_test_receipt_reason_boundary()
+	_test_terminal_refresh_waits_for_settlement_acceptance()
 	host.queue_free()
 	await process_frame
 	_finish()
@@ -231,6 +266,183 @@ func _test_outcome_identity_mismatch() -> void:
 	_expect(not port.has_pending_terminal_outcome() and session.finish_count == 0 and presentation.outcome_count == 0, "identity mismatch fails before queue, presentation, or session finish")
 	for node in [port, presentation, ai, session, world, victory]:
 		node.free()
+
+
+func _test_outcome_audit_evidence_mismatch() -> void:
+	var victory := FakeVictoryController.new()
+	var world := FakeWorldBridge.new()
+	var session := FakeSessionController.new()
+	var ai := FakeAiController.new()
+	var presentation := FakePresentationQueries.new()
+	presentation.successful_outcome_receipt = _terminal_presentation_receipt()
+	var port := RuntimeVictoryPort.new()
+	for node in [victory, world, session, ai, presentation, port]:
+		root.add_child(node)
+	port.bind_dependencies(victory, world, session, ai, presentation)
+	var authoritative := _outcome_receipt("victory.v06.audit-evidence")
+	var mismatches: Array[Dictionary] = []
+	var checkpoint_mismatch := authoritative.duplicate(true)
+	var checkpoint_evidence := (checkpoint_mismatch.get("audit_evidence", {}) as Dictionary).duplicate(true)
+	checkpoint_evidence["settlement_checkpoint"] = "forged_checkpoint"
+	checkpoint_mismatch["audit_evidence"] = checkpoint_evidence
+	mismatches.append(checkpoint_mismatch)
+	var roster_mismatch := authoritative.duplicate(true)
+	var roster_evidence := (roster_mismatch.get("audit_evidence", {}) as Dictionary).duplicate(true)
+	roster_evidence["audit_roster"] = [1]
+	roster_mismatch["audit_evidence"] = roster_evidence
+	mismatches.append(roster_mismatch)
+	var rule_mismatch := authoritative.duplicate(true)
+	var rule_evidence := (rule_mismatch.get("audit_evidence", {}) as Dictionary).duplicate(true)
+	var victory_rule := (rule_evidence.get("victory_rule", {}) as Dictionary).duplicate(true)
+	victory_rule["required_region_count"] = 3
+	rule_evidence["victory_rule"] = victory_rule
+	rule_mismatch["audit_evidence"] = rule_evidence
+	mismatches.append(rule_mismatch)
+	for mismatch in mismatches:
+		var commit := port.commit_terminal_outcome(authoritative, _terminal_public_snapshot(mismatch))
+		_expect(
+			not bool(commit.get("accepted", true)) \
+				and str(commit.get("reason_id", "")) == "terminal_outcome_identity_mismatch",
+			"public audit evidence must match the authoritative outcome identity"
+		)
+	_expect(session.finish_count == 0 and presentation.outcome_count == 0 and ai.finalize_count == 0, "audit-evidence mismatches fail before all terminal side effects")
+	for node in [port, presentation, ai, session, world, victory]:
+		node.free()
+
+
+func _test_authoritative_and_public_outcome_shape_parity() -> void:
+	var victory := FakeVictoryController.new()
+	var world := FakeWorldBridge.new()
+	var session := FakeSessionController.new()
+	var ai := FakeAiController.new()
+	var presentation := FakePresentationQueries.new()
+	presentation.successful_outcome_receipt = _terminal_presentation_receipt()
+	var port := RuntimeVictoryPort.new()
+	for node in [victory, world, session, ai, presentation, port]:
+		root.add_child(node)
+	port.bind_dependencies(victory, world, session, ai, presentation)
+	var authoritative := _outcome_receipt("victory.v06.private-public-shape")
+	var authoritative_rankings := (authoritative.get("rankings", []) as Array).duplicate(true)
+	(authoritative_rankings[0] as Dictionary)["cash_ledger_cents"] = 48_900
+	authoritative["rankings"] = authoritative_rankings
+	var public_outcome := _outcome_receipt("victory.v06.private-public-shape")
+	var public_rankings := (public_outcome.get("rankings", []) as Array).duplicate(true)
+	(public_rankings[0] as Dictionary)["cash_visibility"] = "redacted"
+	public_outcome["rankings"] = public_rankings
+	var public_snapshot := _terminal_public_snapshot(public_outcome)
+	victory.authoritative_outcome_value = authoritative.duplicate(true)
+	victory.public_value = public_snapshot.duplicate(true)
+	var result := port.commit_terminal_outcome(authoritative, public_snapshot)
+	_expect(
+		bool(result.get("accepted", false)) \
+			and session.finish_count == 1 \
+			and session.last_outcome == authoritative \
+			and presentation.outcome_count == 1 \
+			and ai.finalize_count == 1,
+		"equivalent authoritative and visibility-projected outcomes commit through their separate exact bindings"
+	)
+	for node in [port, presentation, ai, session, world, victory]:
+		node.free()
+
+
+func _test_special_outcome_empty_audit_roster_identity() -> void:
+	var victory := FakeVictoryController.new()
+	var world := FakeWorldBridge.new()
+	var session := FakeSessionController.new()
+	var ai := FakeAiController.new()
+	var presentation := FakePresentationQueries.new()
+	presentation.successful_outcome_receipt = _terminal_presentation_receipt()
+	var port := RuntimeVictoryPort.new()
+	for node in [victory, world, session, ai, presentation, port]:
+		root.add_child(node)
+	port.bind_dependencies(victory, world, session, ai, presentation)
+	var outcome := _outcome_receipt("victory.v06.last-survivor")
+	outcome["reason_code"] = "last_survivor"
+	var evidence := (outcome.get("audit_evidence", {}) as Dictionary).duplicate(true)
+	evidence["audit_roster"] = []
+	evidence["settlement_checkpoint"] = ""
+	outcome["audit_evidence"] = evidence
+	victory.authoritative_outcome_value = outcome.duplicate(true)
+	victory.public_value = _terminal_public_snapshot(outcome)
+	var commit := port.commit_terminal_outcome(outcome, victory.public_value)
+	_expect(bool(commit.get("accepted", false)) and session.finish_count == 1 and presentation.outcome_count == 1 and ai.finalize_count == 1, "special outcomes preserve a typed empty audit roster without weakening terminal identity")
+	for node in [port, presentation, ai, session, world, victory]:
+		node.free()
+
+
+func _test_real_special_outcome_projection_identity() -> void:
+	var packed := load("res://scenes/runtime/VictoryControlRuntimeController.tscn") as PackedScene
+	_expect(packed != null, "real VictoryControl scene loads for special-outcome identity")
+	if packed == null:
+		return
+	for reason_id in ["last_survivor", "planet_destroyed"]:
+		var victory := packed.instantiate() as VictoryControlRuntimeController
+		_expect(victory != null, "real VictoryControl scene instantiates for %s identity" % reason_id)
+		if victory == null:
+			continue
+		var configured := victory.configure()
+		_expect(bool(configured.get("configured", false)), "real VictoryControl configures for %s identity" % reason_id)
+		var world_snapshot := _special_outcome_world_snapshot(reason_id)
+		var outcome := victory.resolve_special_outcome(reason_id, world_snapshot)
+		var public_snapshot := victory.public_snapshot(-1)
+		var evidence: Dictionary = outcome.get("audit_evidence", {}) \
+			if outcome.get("audit_evidence", {}) is Dictionary else {}
+		_expect(
+			not outcome.is_empty() \
+				and (evidence.get("audit_roster", []) as Array).is_empty() \
+				and str(evidence.get("settlement_checkpoint", "")).is_empty(),
+			"real %s outcome carries typed empty audit-only evidence" % reason_id
+		)
+		var world := FakeWorldBridge.new()
+		var session := FakeSessionController.new()
+		var ai := FakeAiController.new()
+		var presentation := FakePresentationQueries.new()
+		presentation.successful_outcome_receipt = _terminal_presentation_receipt()
+		var port := RuntimeVictoryPort.new()
+		for node in [victory, world, session, ai, presentation, port]:
+			root.add_child(node)
+		port.bind_dependencies(victory, world, session, ai, presentation)
+		var commit := port.commit_terminal_outcome(outcome, public_snapshot)
+		_expect(
+			bool(commit.get("accepted", false)) \
+				and session.finish_count == 1 \
+				and presentation.outcome_count == 1 \
+				and ai.finalize_count == 1,
+			"real %s authoritative/public projections share one strict special-outcome identity" % reason_id
+		)
+		for node in [port, presentation, ai, session, world, victory]:
+			node.free()
+
+
+func _special_outcome_world_snapshot(reason_id: String) -> Dictionary:
+	return {
+		"schema_version": "v0.6.victory-world.2",
+		"players": [
+			{
+				"player_index": 0,
+				"eliminated": false,
+				"cash_ledger_cents": 48_900,
+				"audit_assets": {},
+			},
+			{
+				"player_index": 1,
+				"eliminated": reason_id == "last_survivor",
+				"cash_ledger_cents": 32_100,
+				"audit_assets": {},
+			},
+		],
+		"regions": [{
+			"region_id": "region.special.0",
+			"district_index": 0,
+			"lifecycle_state": "active",
+			"destroyed": false,
+			"region_gdp_per_minute_cents": 0,
+			"player_gdp_by_index": {},
+		}],
+		"clock_pause": {},
+		"irreversible_planet_destruction_triggered": reason_id == "planet_destroyed",
+		"scenario_allows_cash_fallback": reason_id == "planet_destroyed",
+	}
 
 
 func _test_finish_retry_after_presentation_commit() -> void:
@@ -310,6 +522,18 @@ func _test_pending_reset() -> void:
 	victory.public_value = public_snapshot.duplicate(true)
 	port.commit_terminal_outcome(outcome, public_snapshot)
 	_expect(port.has_pending_terminal_outcome(), "fixture creates a pending terminal commit")
+	var pending_before_no_ops := port.debug_snapshot()
+	for reason_id in ["session_paused", "session_resumed", "session_finished"]:
+		session.authorization_context_changed.emit(reason_id)
+	var pending_after_no_ops := port.debug_snapshot()
+	_expect(
+		port.has_pending_terminal_outcome() \
+			and str(pending_after_no_ops.get("pending_binding_fingerprint", "")) \
+				== str(pending_before_no_ops.get("pending_binding_fingerprint", "")) \
+			and int(pending_after_no_ops.get("terminal_queue_count", -1)) \
+				== int(pending_before_no_ops.get("terminal_queue_count", -2)),
+		"pause, resume, and session-finished notices preserve the in-flight terminal transaction"
+	)
 	session.authorization_context_changed.emit("session_began")
 	_expect(not port.has_pending_terminal_outcome() and int(port.debug_snapshot().get("terminal_queue_count", -1)) == 0, "new-session authorization reset clears pending terminal state")
 	for node in [port, presentation, session, world, victory]:
@@ -497,6 +721,70 @@ func _test_receipt_reason_boundary() -> void:
 		1.0
 	)
 	_expect(not forged_log.is_valid(), "unregistered terminal reason codes fail closed")
+
+
+func _test_terminal_refresh_waits_for_settlement_acceptance() -> void:
+	var coordinator := GameRuntimeCoordinator.new()
+	var queries := TablePresentationQueryPorts.new()
+	queries.name = "TablePresentationQueryPorts"
+	var refresh_port := CountingRefreshPort.new()
+	refresh_port.name = "TablePresentationRefreshPort"
+	coordinator.add_child(queries)
+	coordinator.add_child(refresh_port)
+	var accept_result := [false]
+	var accepted_presentation_attempts := [0]
+	coordinator.victory_presentation_receipt_ready.connect(
+		func(receipt: VictoryPresentationStateChangeReceipt) -> void:
+			var outcome: Dictionary = receipt.public_snapshot.get("outcome_receipt", {}) \
+				if receipt.public_snapshot.get("outcome_receipt", {}) is Dictionary else {}
+			if bool(accept_result[0]):
+				accepted_presentation_attempts[0] = int(accepted_presentation_attempts[0]) + 1
+			var duplicate := bool(accept_result[0]) and int(accepted_presentation_attempts[0]) > 1
+			queries.record_victory_outcome_presentation_result({
+				"schema_version": 1,
+				"receipt_id": receipt.receipt_id,
+				"accepted": bool(accept_result[0]),
+				"duplicate": duplicate,
+				"reason_id": "victory_outcome_already_presented" if duplicate \
+					else ("" if bool(accept_result[0]) else "fixture_public_log_rejected"),
+				"outcome_id": str(outcome.get("outcome_id", "")) if bool(accept_result[0]) else "",
+			})
+	)
+	var receipt := _terminal_presentation_receipt()
+	coordinator._on_victory_presentation_receipt_ready(receipt)
+	_expect(
+		int(refresh_port.apply_count_by_kind.get("live", -1)) == 0 \
+			and int(refresh_port.apply_count_by_kind.get("full", -1)) == 0,
+		"rejected FinalSettlement acknowledgement applies no terminal refresh target"
+	)
+	# A real retry emits the retained receipt and replaces the prior rejected result.
+	queries._outcome_presentation_results.erase(receipt.receipt_id)
+	accept_result[0] = true
+	refresh_port.fail_once_kind = "full"
+	coordinator._on_victory_presentation_receipt_ready(receipt)
+	_expect(
+		int(refresh_port.apply_count_by_kind.get("live", -1)) == 1 \
+			and int(refresh_port.apply_count_by_kind.get("full", -1)) == 0 \
+			and not queries.victory_outcome_refresh_complete(receipt) \
+			and queries.pending_accepted_victory_outcome_refresh_kinds(receipt) == [&"full"],
+		"a failed full target retains only the missing terminal refresh kind for zero-world retry"
+	)
+	coordinator._on_victory_presentation_receipt_ready(receipt)
+	_expect(
+		int(refresh_port.apply_count_by_kind.get("live", -1)) == 1 \
+			and int(refresh_port.apply_count_by_kind.get("full", -1)) == 1 \
+			and queries.victory_outcome_refresh_complete(receipt),
+		"zero-world retry applies the missing full target without replaying live"
+	)
+	coordinator._on_victory_presentation_receipt_ready(receipt)
+	_expect(
+		int(refresh_port.apply_count_by_kind.get("live", -1)) == 1 \
+			and int(refresh_port.apply_count_by_kind.get("full", -1)) == 1 \
+			and refresh_port.request_count == 3 \
+			and queries._outcome_immediate_refresh_receipt_ids.size() == 1,
+		"a fully applied terminal receipt cannot reapply either refresh target"
+	)
+	coordinator.free()
 
 
 func _terminal_presentation_receipt() -> VictoryPresentationStateChangeReceipt:

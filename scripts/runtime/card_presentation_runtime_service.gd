@@ -225,6 +225,13 @@ func compose_hand_card(source: Dictionary) -> Dictionary:
 	var presentation := compose_card(raw_card)
 	var skill := _dictionary(raw_card.get("skill", {}))
 	var machine := _dictionary(skill.get("machine", raw_card.get("machine", {})))
+	var effect_payload := _dictionary(machine.get("effect_payload", {}))
+	var facility_kind := str(
+		skill.get("facility_kind", effect_payload.get("facility_kind", ""))
+	).strip_edges()
+	var industry_id := str(
+		skill.get("industry_id", effect_payload.get("industry_id", machine.get("industry_id", "")))
+	).strip_edges()
 	var category_id := str(raw_card.get("category_id", machine.get("category_id", "")))
 	var hand_kind := "facility_v06" if category_id == "facility" else str(skill.get("kind", raw_card.get("kind", "card")))
 	var play_state := compose_play_eligibility(_dictionary(source.get("eligibility", {})), _dictionary(source.get("card", {})))
@@ -266,6 +273,10 @@ func compose_hand_card(source: Dictionary) -> Dictionary:
 			"tooltip": str(play_state.get("detail", "")),
 		}],
 	}
+	if hand_kind == "facility_v06":
+		card_source["card_id"] = str(skill.get("card_id", machine.get("card_id", ""))).strip_edges()
+		card_source["facility_kind"] = facility_kind
+		card_source["industry_id"] = industry_id
 	if presentation.has("illustration_key"):
 		card_source["illustration_key"] = str(presentation.get("illustration_key", ""))
 	return CARD_VIEW_SNAPSHOT_SCRIPT.new().apply_dictionary(card_source).to_ui_dictionary().merged(card_source, true)

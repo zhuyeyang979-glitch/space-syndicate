@@ -130,6 +130,24 @@ func _exercise_acknowledgement_loss_and_rollback(composition_packed: PackedScene
 	var title_after_rollback := str((board.find_child("FinalSettlementBoardTitle", true, false) as Label).text)
 	_expect(composition.call("last_public_snapshot") == snapshot_before_rollback and debug_after_rollback == debug_before_rollback, "session rollback restores the settlement snapshot and exact-once journals exactly")
 	_expect(board.get_parent() == preview_host and board.visible and title_after_rollback == title_before_rollback, "session rollback remounts the same final-board content and visibility")
+
+	composition.call("_on_session_authorization_context_changed", "session_save_applied")
+	var save_quarantine_debug: Dictionary = composition.call("debug_snapshot")
+	_expect(composition.call("last_public_snapshot").is_empty() and board.get_parent() == composition and not board.visible and str(save_quarantine_debug.get("session_lifecycle_checkpoint_kind", "")) == "session_save_applied", "first save-owner apply quarantines the predecessor board and exact-once journals")
+	composition.call("_on_session_authorization_context_changed", "session_save_applied")
+	var failed_load_restored_debug: Dictionary = composition.call("debug_snapshot")
+	_expect(composition.call("last_public_snapshot") == snapshot_before_rollback and failed_load_restored_debug == debug_before_rollback and board.get_parent() == preview_host and board.visible, "reverse-order save rollback restores the predecessor board and settlement lineage exactly")
+
+	composition.call("_on_session_authorization_context_changed", "session_save_applied")
+	composition.call("_on_session_authorization_context_changed", "session_load_completed")
+	var committed_load_debug: Dictionary = composition.call("debug_snapshot")
+	_expect(composition.call("last_public_snapshot").is_empty() and int(committed_load_debug.get("presented_outcome_count", -1)) == 0 and int(committed_load_debug.get("logged_outcome_count", -1)) == 0 and str(committed_load_debug.get("session_lifecycle_checkpoint_kind", "stale")) == "" and board.get_parent() == composition and not board.visible, "successful load commits an empty settlement lineage and cannot resurrect the predecessor board")
+	var loaded_session_result: Dictionary = composition.call("present", public_context.duplicate(true))
+	_expect(bool(loaded_session_result.get("accepted", false)) and not bool(loaded_session_result.get("duplicate", true)) and int(composition.call("debug_snapshot").get("present_count", -1)) == 1, "loaded session may reuse the predecessor outcome ID as a fresh presentation while the public-log owner accepts its exact duplicate")
+	var loaded_snapshot := composition.call("last_public_snapshot") as Dictionary
+	for non_reset_reason in ["session_paused", "session_resumed", "session_finished"]:
+		composition.call("_on_session_authorization_context_changed", non_reset_reason)
+	_expect(composition.call("last_public_snapshot") == loaded_snapshot and board.get_parent() == preview_host and board.visible, "pause, resume, and session-finished lifecycle notices retain the terminal board")
 	harness.queue_free()
 	await process_frame
 

@@ -22,7 +22,13 @@ func _run() -> void:
 		"card": {
 			"category_id": "facility",
 			"display_name": "测试设施",
-			"skill": {"name": "facility.test.rank_1", "kind": "public_facility"},
+			"skill": {
+				"name": "facility.test.rank_1",
+				"card_id": "facility.test.rank_1",
+				"kind": "public_facility",
+				"facility_kind": "factory",
+				"industry_id": "technology",
+			},
 		},
 		"eligibility": {
 			"allowed": false,
@@ -33,6 +39,8 @@ func _run() -> void:
 	var hand := service.compose_hand_card(source)
 	_expect(str(hand.get("play_reason_id", "")) == "public_facility_product_unavailable", "hand DTO carries the stable eligibility reason id")
 	_expect(str(hand.get("kind", "")) == "facility_v06" and not bool(hand.get("actionable", true)), "reason projection does not change facility kind or legal action state")
+	_expect(str(hand.get("facility_kind", "")) == "factory" and str(hand.get("industry_id", "")) == "technology", "authorized private facility DTO retains typed target semantics without exposing its raw card payload")
+	_expect(str(hand.get("card_id", "")) == "facility.test.rank_1" and not hand.has("runtime_instance_id"), "authorized private facility DTO retains canonical card identity without exposing a runtime instance ID")
 	_expect(not hand.has("reason_args") and not hand.has("eligibility") and not hand.has("skill"), "hand DTO does not expose the raw eligibility or card payload")
 	var forged := source.duplicate(true)
 	(forged["eligibility"] as Dictionary)["reason_code"] = "中文提示 不是稳定ID"

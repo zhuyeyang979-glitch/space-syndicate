@@ -23,6 +23,7 @@ const REQUIRED_SECTION_COUNT := 19
 const SCRIPTED_PLAYER_INDEX := 0
 const RECOMMENDED_PLAYER_COUNT := 4
 const RECOMMENDED_AI_COUNT := 3
+const TARGET_PRODUCTION_INSTALLATION_COUNT := 3
 const HEARTBEAT_INTERVAL_SECONDS := 2.0
 const TELEMETRY_REFRESH_INTERVAL_MSEC := 100
 const ACTION_PROGRESS_TIMEOUT_SECONDS := 3.0
@@ -32,9 +33,9 @@ const DEFAULT_MAX_WALL_SECONDS := 30
 const OBSERVATION_ACTION_OPEN := &"open"
 const OBSERVATION_ACTION_DRAIN := &"drain"
 const OBSERVATION_ACTION_CLOSED := &"closed"
-# Keep every automatic frame at human-scale time. Bounded manual RuntimeLoop
-# stepping is the only acceleration path, so a newly actionable decision never
-# inherits a scaled real-time delta from an earlier economic wait.
+# Keep every authoritative frame at human-scale time. The driver probes typed
+# actions after every complete RuntimeLoop step so a newly opened decision never
+# inherits extra world, AI, market, or RNG advancement from a hidden batch.
 const ACTION_ENGINE_TIME_SCALE := 1.0
 const AUTHORITATIVE_WAIT_STEP_SECONDS := 1.0
 const AUTHORITATIVE_WAIT_STEPS_PER_RENDER_FRAME := 1
@@ -135,6 +136,8 @@ const CAPABILITY_PUBLIC_KEYS := [
 	"resume_ready",
 	"capture_fail_closed",
 	"district_supply_query_ready",
+	"facility_target_query_ready",
+	"table_selection_receipt_ready",
 	"standings_query_ready",
 	"public_sale_receipt_query_ready",
 	"authoritative_runtime_step_ready",
@@ -147,11 +150,14 @@ var _last_event := "driver_started"
 var _last_progress_feedback := ""
 var _district_supply_receipt_sequence := 0
 var _last_district_supply_receipt: Dictionary = {}
+var _table_selection_receipt_sequence := 0
+var _last_table_selection_receipt: Dictionary = {}
 var _monster_wager_receipt_sequence := 0
 var _last_monster_wager_receipt: Dictionary = {}
 var _current_forced_decision_binding: Dictionary = {}
 var _runtime_simulation_timing: Dictionary = {}
 var _district_supply_query_port: DistrictSupplyViewerQueryPort
+var _table_presentation_query_ports: TablePresentationQueryPorts
 var _telemetry_collect_count := 0
 var _action_projection_count := 0
 var _district_supply_query_count := 0
@@ -194,6 +200,9 @@ var _runtime_loop_manual_mode := false
 var _runtime_loop_manual_mode_transition_count := 0
 var _runtime_loop_manual_expected_frame_index := -1
 var _exhausted_map_districts := {}
+var _exhausted_facility_card_signatures := {}
+var _facility_candidate_attempts := {}
+var _peak_production_installation_count := 0
 var _session_started_msec := 0
 var _milestones := {
 	"clock": "wall_seconds_from_session_start",
@@ -256,10 +265,16 @@ func _run() -> void:
 	session = coordinator.get_node_or_null(SESSION_PATH) if coordinator != null else null
 	var runtime_loop := coordinator.get_node_or_null(RUNTIME_LOOP_PATH) as RuntimeLoop if coordinator != null else null
 	var district_supply_port := (coordinator as GameRuntimeCoordinator).district_supply_action_port() if coordinator is GameRuntimeCoordinator else null
+	var table_selection_port := coordinator.get_node_or_null("TableSelectionIntentPort") as TableSelectionIntentPort \
+		if coordinator != null else null
 	_district_supply_query_port = coordinator.get_node_or_null("DistrictSupplyViewerQueryPort") as DistrictSupplyViewerQueryPort \
 		if coordinator != null else null
+	_table_presentation_query_ports = (coordinator as GameRuntimeCoordinator).table_presentation_query_ports() \
+		if coordinator is GameRuntimeCoordinator else null
 	if district_supply_port != null and not district_supply_port.receipt_ready.is_connected(_on_district_supply_action_receipt):
 		district_supply_port.receipt_ready.connect(_on_district_supply_action_receipt)
+	if table_selection_port != null and not table_selection_port.receipt_ready.is_connected(_on_table_selection_receipt):
+		table_selection_port.receipt_ready.connect(_on_table_selection_receipt)
 	var monster_wager_response_sink := coordinator.get_node_or_null(MONSTER_WAGER_RESPONSE_SINK_PATH) as MonsterWagerResponseSink \
 		if coordinator != null else null
 	if monster_wager_response_sink != null \
@@ -351,6 +366,8 @@ func _run() -> void:
 		if current_facility_count > observed_owned_facility_count:
 			observed_owned_facility_count = current_facility_count
 			_exhausted_map_districts.clear()
+			_exhausted_facility_card_signatures.clear()
+			_facility_candidate_attempts.clear()
 			supply_rotation_state = _new_supply_rotation_state()
 			public_progress = current_progress
 			ui_action = _scripted_ui_action(runtime_screen, exhausted_navigation_actions, public_progress, supply_rotation_state, sale_receipt)
@@ -397,6 +414,17 @@ func _run() -> void:
 					if not bool(quiescence.get("verified", false)) else "victory_transition_sequence_incomplete"
 				_last_event = "blocked:%s" % failure_code
 			break
+		var settlement_observation: Dictionary = final_telemetry.get("settlement", {}) \
+			if final_telemetry.get("settlement", {}) is Dictionary else {}
+		if terminal_presentation_drain_policy(pending_action, settlement_observation):
+			_leave_runtime_loop_manual_mode(runtime_loop)
+			if now_msec - _started_msec >= max_wall_msec:
+				final_status = "failed"
+				failure_code = "terminal_presentation_drain_timeout"
+				_last_event = "blocked:%s" % failure_code
+				break
+			_last_event = "waiting:terminal_presentation_commit"
+			continue
 
 		var decision_window: Dictionary = final_telemetry.get("decision_window", {}) \
 			if final_telemetry.get("decision_window", {}) is Dictionary else {}
@@ -461,12 +489,13 @@ func _run() -> void:
 				break
 			continue
 
-		var manual_wait_requested := pending_action.is_empty() \
-			and _session_state(session) == "running" \
-			and not bool(decision_window.get("active", false)) \
-			and str(ui_action.get("id", "")) == "gdp_accumulation_wait" \
-			and bool(ui_action.get("disabled", false)) \
-			and now_msec - _started_msec < max_wall_msec
+		var manual_wait_requested := authoritative_manual_wait_policy(
+			pending_action,
+			_session_state(session),
+			decision_window,
+			ui_action,
+			supply_rotation_state
+		) and now_msec - _started_msec < max_wall_msec
 		if manual_wait_requested:
 			Engine.time_scale = ACTION_ENGINE_TIME_SCALE
 			if not _enter_runtime_loop_manual_mode(runtime_loop):
@@ -515,10 +544,29 @@ func _run() -> void:
 		if not pending_action.is_empty():
 			var pending_id := str(pending_action.get("id", ""))
 			var pending_phase := str(pending_action.get("phase", ""))
-			var supply_receipt_arrived := str(pending_action.get("origin", "")) == "district_supply" \
+			var supply_receipt_arrived := str(pending_action.get("origin", "")) in ["district_supply", "district_supply_rotation"] \
 				and _district_supply_receipt_sequence > int(pending_action.get("supply_receipt_sequence", -1))
+			var selection_receipt_arrived := str(pending_action.get("origin", "")) == "planet_map" \
+				and _table_selection_receipt_sequence > int(pending_action.get("selection_receipt_sequence", -1))
 			if supply_receipt_arrived and not bool(_last_district_supply_receipt.get("accepted", false)):
 				var receipt_reason := str(_last_district_supply_receipt.get("reason_code", "district_supply_rejected"))
+				if str(pending_action.get("origin", "")) == "district_supply_rotation" \
+						and pending_id == "district_supply_rotation_open" \
+						and receipt_reason in ["purchase_window_unavailable", "district_unavailable"] \
+						and _advance_supply_rotation_after_unavailable_open(
+							runtime_screen,
+							supply_rotation_state,
+							int(pending_action.get("district_index", -1))
+						):
+					_record_reason("district_supply_rotation_unavailable")
+					_action_stats["supply_rack_rotations"] = int(_action_stats.get("supply_rack_rotations", 0)) + 1
+					_last_event = "rotation_skipped_unavailable_district:%d:%s" % [
+						int(pending_action.get("district_index", -1)),
+						receipt_reason,
+					]
+					pending_action = {}
+					no_action_since_msec = now_msec
+					continue
 				if recoverable_supply_receipt_reason(receipt_reason):
 					_record_reason("district_supply_retryable_receipt")
 					_last_event = "retrying_typed_receipt:%s" % receipt_reason
@@ -534,7 +582,33 @@ func _run() -> void:
 				_last_event = "blocked_typed_receipt:%s" % receipt_reason
 				final_status = "blocked"
 				break
-			var action_progressed := str(ui_action.get("id", "")) != pending_id or str(ui_action.get("phase", "")) != pending_phase
+			if selection_receipt_arrived and not bool(_last_table_selection_receipt.get("accepted", false)):
+				var exhausted_district := int(pending_action.get("district_index", -1))
+				if exhausted_district >= 0:
+					_exhausted_map_districts[exhausted_district] = true
+				_record_reason("map_selection_typed_rejection")
+				_last_event = "map_target_rejected:%d:%s" % [
+					exhausted_district,
+					str(_last_table_selection_receipt.get("reason_code", "selection_rejected")),
+				]
+				pending_action = {}
+				last_telemetry_refresh_msec = 0
+				no_action_since_msec = now_msec
+				continue
+			var supply_receipt_progressed := supply_receipt_confirms_progress(
+				pending_action,
+				_district_supply_receipt_sequence,
+				_last_district_supply_receipt
+			)
+			var selection_receipt_progressed := selection_receipt_confirms_progress(
+				pending_action,
+				_table_selection_receipt_sequence,
+				_last_table_selection_receipt
+			)
+			var action_progressed := supply_receipt_progressed \
+				or selection_receipt_progressed \
+				or str(ui_action.get("id", "")) != pending_id \
+				or str(ui_action.get("phase", "")) != pending_phase
 			if action_progressed:
 				_action_stats["progressed"] = int(_action_stats.get("progressed", 0)) + 1
 				if str(pending_action.get("origin", "")) == "board_primary" and pending_id != "strategy_expand_gdp":
@@ -545,6 +619,8 @@ func _run() -> void:
 				_last_progress_feedback = "%s:%s:%s" % [pending_id, str(feedback.get("state", "none")), str(feedback.get("detail", "")).left(96)]
 				_last_event = "action_progressed:%s" % _last_progress_feedback
 				pending_action = {}
+				if supply_receipt_progressed or selection_receipt_progressed:
+					last_telemetry_refresh_msec = 0
 				no_action_since_msec = now_msec
 			elif now_msec - int(pending_action.get("requested_msec", now_msec)) >= int(ACTION_PROGRESS_TIMEOUT_SECONDS * 1000.0):
 				if str(pending_action.get("origin", "")) == "board_primary":
@@ -588,14 +664,36 @@ func _run() -> void:
 			pending_action
 		)
 		if observation_policy == OBSERVATION_ACTION_CLOSED:
+			var lifecycle_settlement: Dictionary = final_telemetry.get("settlement", {}) \
+				if final_telemetry.get("settlement", {}) is Dictionary else {}
+			if terminal_lifecycle_drain_policy(
+				pending_action,
+				lifecycle_settlement,
+				now_msec - _started_msec,
+				max_wall_msec
+			):
+				_last_event = "waiting:terminal_lifecycle_drain"
+				continue
 			failure_code = "observation_window_elapsed_before_settlement"
 			_last_event = "blocked:%s" % failure_code
 			break
 
 		if pending_action.is_empty() and observation_policy == OBSERVATION_ACTION_OPEN:
 			var action_id := str(ui_action.get("id", ""))
+			if _apply_driver_planning_transition(ui_action):
+				public_progress = current_progress
+				cached_ui_action = _scripted_ui_action(
+					runtime_screen,
+					exhausted_navigation_actions,
+					public_progress,
+					supply_rotation_state,
+					sale_receipt
+				)
+				_last_event = "driver_planning_transition:%s" % action_id
+				continue
 			if not action_id.is_empty() and not bool(ui_action.get("disabled", false)):
 				var supply_receipt_sequence_before_submission := _district_supply_receipt_sequence
+				var selection_receipt_sequence_before_submission := _table_selection_receipt_sequence
 				var wager_receipt_sequence_before_submission := _monster_wager_receipt_sequence
 				var forced_decision_binding_before_submission := _current_forced_decision_binding.duplicate(true)
 				if not _submit_scripted_ui_action(runtime_screen, ui_action):
@@ -615,6 +713,7 @@ func _run() -> void:
 					"signature": str(ui_action.get("signature", "")),
 					"requested_msec": now_msec,
 					"supply_receipt_sequence": supply_receipt_sequence_before_submission,
+					"selection_receipt_sequence": selection_receipt_sequence_before_submission,
 					"wager_receipt_sequence": wager_receipt_sequence_before_submission,
 					"decision_id": str(forced_decision_binding_before_submission.get("decision_id", "")),
 					"decision_kind": str(forced_decision_binding_before_submission.get("decision_kind", "")),
@@ -631,7 +730,7 @@ func _run() -> void:
 					var attempts := int(attempts_by_signature.get(rack_signature, 0))
 					var exhausted_signatures: Dictionary = supply_rotation_state.get("exhausted_signatures", {}) \
 						if supply_rotation_state.get("exhausted_signatures", {}) is Dictionary else {}
-					if not rack_signature.is_empty() and (not bool(wait_facts.get("has_visible_facility", true)) \
+					if not rack_signature.is_empty() and (not bool(wait_facts.get("has_visible_production_facility", false)) \
 							or bool(exhausted_signatures.get(rack_signature, false)) \
 							or attempts >= SUPPLY_QUOTE_REFRESH_ATTEMPTS_PER_RACK):
 						exhausted_signatures[rack_signature] = true
@@ -688,6 +787,45 @@ func _run() -> void:
 		quit(EXIT_NONFINITE)
 	else:
 		quit(EXIT_OBSERVATION_INCOMPLETE)
+
+
+static func authoritative_manual_wait_policy(
+	pending_action: Dictionary,
+	session_state: String,
+	decision_window: Dictionary,
+	ui_action: Dictionary,
+	supply_rotation_state: Dictionary
+) -> bool:
+	if not pending_action.is_empty() \
+			or session_state != "running" \
+			or bool(decision_window.get("active", false)) \
+			or not bool(ui_action.get("disabled", false)):
+		return false
+	var action_id := str(ui_action.get("id", ""))
+	if action_id == "gdp_accumulation_wait":
+		return true
+	return action_id == "district_supply_wait" \
+		and str(supply_rotation_state.get("phase", "")) == "exhausted"
+
+
+static func terminal_presentation_drain_policy(
+	pending_action: Dictionary,
+	settlement: Dictionary
+) -> bool:
+	return pending_action.is_empty() \
+		and str(settlement.get("state", "")) == "resolved" \
+		and not bool(settlement.get("completed", false))
+
+
+static func terminal_lifecycle_drain_policy(
+	pending_action: Dictionary,
+	settlement: Dictionary,
+	elapsed_wall_msec: int,
+	max_wall_msec: int
+) -> bool:
+	return pending_action.is_empty() \
+		and str(settlement.get("state", "")) in ["qualification", "audit"] \
+		and elapsed_wall_msec < max_wall_msec
 
 
 func _start_fixed_seed_run(main_instance: Node, session: Node, run_seed: int) -> Dictionary:
@@ -752,6 +890,10 @@ func _capability_preflight(main_instance: Node, coordinator: Node, session: Node
 		and main_instance.get_node_or_null(SESSION_START_TRANSACTION_PATH) is SessionStartTransactionCoordinator
 	var district_supply_query_ready := _district_supply_query_port != null \
 		and _district_supply_query_port.has_method("snapshot_for_viewer")
+	var facility_target_query_ready := _table_presentation_query_ports != null \
+		and _table_presentation_query_ports.has_method("public_new_facility_target_candidates")
+	var table_selection_receipt_ready := coordinator != null \
+		and coordinator.get_node_or_null("TableSelectionIntentPort") is TableSelectionIntentPort
 	var standings_query_ready := standings_query_port != null \
 		and standings_query_port.has_method("snapshot_for_authorized_viewer") \
 		and standings_query_port.has_method("victory_progress_for_authorized_viewer")
@@ -791,6 +933,8 @@ func _capability_preflight(main_instance: Node, coordinator: Node, session: Node
 		and settlement_ready \
 		and scripted_ui_port_ready \
 		and district_supply_query_ready \
+		and facility_target_query_ready \
+		and table_selection_receipt_ready \
 		and standings_query_ready \
 		and public_sale_receipt_query_ready \
 		and monster_wager_receipt_ready \
@@ -812,6 +956,8 @@ func _capability_preflight(main_instance: Node, coordinator: Node, session: Node
 			"resume_ready": resume_ready,
 			"capture_fail_closed": capture_fail_closed,
 			"district_supply_query_ready": district_supply_query_ready,
+			"facility_target_query_ready": facility_target_query_ready,
+			"table_selection_receipt_ready": table_selection_receipt_ready,
 			"standings_query_ready": standings_query_ready,
 			"public_sale_receipt_query_ready": public_sale_receipt_query_ready,
 			"monster_wager_receipt_ready": monster_wager_receipt_ready,
@@ -866,6 +1012,11 @@ func _collect_telemetry(run_seed: int, coordinator: Node, session: Node, settlem
 		"production_installation_count": int(economic_source.get("production_installation_count", 0)),
 		"eligible": bool(standings_progress.get("eligible", false)),
 	}
+	_peak_production_installation_count = maxi(
+		_peak_production_installation_count,
+		int(public_progress.get("production_installation_count", 0))
+	)
+	public_progress["peak_production_installation_count"] = _peak_production_installation_count
 	var ui_action: Dictionary = (ui_action_override as Dictionary) if ui_action_override is Dictionary \
 		else _scripted_ui_action(runtime_screen, {}, public_progress, {}, sale_receipt)
 	var session_summary := _session_summary(session)
@@ -1103,11 +1254,12 @@ func _scripted_ui_action(
 				"origin": "temporary_decision",
 			}
 	var source_established := false
-	var production_source_established := int(public_progress.get("production_installation_count", 0)) >= 1
+	var production_installation_count := int(public_progress.get("production_installation_count", 0))
+	var production_source_established := production_installation_count >= 1
+	var production_chain_incomplete := production_installation_count < TARGET_PRODUCTION_INSTALLATION_COUNT
 	var own_victory_eligible := bool(public_progress.get("eligible", false))
 	var victory_countdown_active := not _victory_state_sequence.is_empty() \
 		and _victory_state_sequence[-1] in ["qualification", "audit", "resolved"]
-	var facility_chain_incomplete := not own_victory_eligible
 	var strategy_actions: Array[Dictionary] = []
 	for strategy_kind in ["expand_economic_source", "protect_route", "pressure_competition"]:
 		var strategy_action := _first_enabled_action_by_kind(player_board.get("actions", []), strategy_kind)
@@ -1124,37 +1276,64 @@ func _scripted_ui_action(
 			"disabled": true,
 			"origin": "economic_wait",
 		}
-	if bool(sale_receipt.get("observed", false)) and (own_victory_eligible or victory_countdown_active):
+	if bool(sale_receipt.get("observed", false)) \
+			and not production_chain_incomplete \
+			and (own_victory_eligible or victory_countdown_active):
 		return {
 			"id": "gdp_accumulation_wait",
 			"phase": "play.victory_qualification",
 			"disabled": true,
 			"origin": "economic_wait",
 		}
-	var facility_hand_action := _first_enabled_card_action_by_kind(hand_cards, "facility_v06")
-	if not facility_hand_action.is_empty():
-		return facility_hand_action
-	var blocked_facility := _first_card_by_kind(hand_cards, "facility_v06")
-	if not blocked_facility.is_empty():
-		var play_reason_id := str(blocked_facility.get("play_reason_id", "invalid_payload"))
-		if play_reason_id in FACILITY_TARGET_RETRY_REASON_IDS:
-			var target_retry := _next_public_map_action(runtime_screen)
-			if not target_retry.is_empty():
-				target_retry["phase"] = "play.hand.facility_v06.retarget.%s" % play_reason_id
-				return target_retry
+	# Once the acceptance slice owns three real production installations, use
+	# only the existing typed board strategy actions to recover/raise public GDP.
+	# Do not keep buying cards or manufacture a driver-only economy shortcut.
+	if bool(sale_receipt.get("observed", false)) and not production_chain_incomplete:
+		for strategy_action in strategy_actions:
+			var strategy_signature := "strategy:%s:%d" % [str(strategy_action.get("id", "strategy")), int(strategy_action.get("source_revision", 0))]
+			if not bool(exhausted_navigation_actions.get(strategy_signature, false)):
+				return _board_action_request(strategy_action, player_board, strategy_signature)
 		return {
-			"id": "facility_play_wait",
-			"phase": "play.hand.facility_v06.wait.%s" % play_reason_id,
+			"id": "gdp_accumulation_wait",
+			"phase": "play.victory_qualification",
 			"disabled": true,
 			"origin": "economic_wait",
 		}
+	var required_facility_kind := "factory" if production_chain_incomplete else ""
+	var facility_hand_action := _first_enabled_card_action_by_kind(
+		hand_cards,
+		"facility_v06",
+		required_facility_kind
+	)
+	if not facility_hand_action.is_empty():
+		return facility_hand_action
+	var blocked_facility := first_unexhausted_card_by_kind(
+		hand_cards,
+		"facility_v06",
+		_exhausted_facility_card_signatures,
+		required_facility_kind
+	)
+	if not blocked_facility.is_empty():
+		var play_reason_id := str(blocked_facility.get("play_reason_id", "invalid_payload"))
+		if play_reason_id in FACILITY_TARGET_RETRY_REASON_IDS:
+			var target_retry := _next_typed_facility_map_action(runtime_screen, blocked_facility)
+			if not target_retry.is_empty():
+				target_retry["phase"] = "play.hand.facility_v06.retarget.%s" % play_reason_id
+				return target_retry
+		else:
+			return {
+				"id": "facility_play_wait",
+				"phase": "play.hand.facility_v06.wait.%s" % play_reason_id,
+				"disabled": true,
+				"origin": "economic_wait",
+			}
 	# A bought facility is a stronger continuation than rotating the public rack.
 	# Rotation remains available only after the authorized hand projection proves
 	# there is no facility card waiting to be played.
 	var supply_rotation_action := _supply_rotation_action(runtime_screen, supply_rotation_state)
 	if not supply_rotation_action.is_empty():
 		return supply_rotation_action
-	var visible_supply_action := _district_supply_ui_action(runtime_screen, facility_chain_incomplete)
+	var visible_supply_action := _district_supply_ui_action(runtime_screen, production_chain_incomplete)
 	if not visible_supply_action.is_empty():
 		return visible_supply_action
 	for strategy_action in strategy_actions:
@@ -1168,7 +1347,7 @@ func _scripted_ui_action(
 			"disabled": true,
 			"origin": "economic_wait",
 		}
-	var supply_action := _district_supply_ui_action(runtime_screen, facility_chain_incomplete)
+	var supply_action := _district_supply_ui_action(runtime_screen, production_chain_incomplete)
 	if not supply_action.is_empty():
 		return supply_action
 	var build_source_action := _first_enabled_action_by_kind(player_board.get("actions", []), "build_economic_source")
@@ -1200,12 +1379,12 @@ func _scripted_ui_action(
 	return {"id": "", "phase": "play", "disabled": true}
 
 
-func _district_supply_ui_action(runtime_screen: Node, facility_chain_incomplete := false) -> Dictionary:
+func _district_supply_ui_action(runtime_screen: Node, production_chain_incomplete := false) -> Dictionary:
 	var drawer := _district_supply_drawer(runtime_screen)
 	if drawer == null or not drawer.visible or not drawer.has_signal("supply_action_requested"):
 		return {}
-	var snapshot := _district_supply_view_snapshot()
-	return district_supply_action_from_snapshot(snapshot, facility_chain_incomplete)
+	var snapshot := _annotate_new_facility_target_availability(_district_supply_view_snapshot())
+	return district_supply_action_from_snapshot(snapshot, production_chain_incomplete)
 
 
 func _district_supply_view_snapshot() -> Dictionary:
@@ -1218,16 +1397,58 @@ func _district_supply_view_snapshot() -> Dictionary:
 	return (surface.get("snapshot", {}) as Dictionary).duplicate(true)
 
 
-static func district_supply_action_from_snapshot(snapshot: Dictionary, facility_chain_incomplete := false) -> Dictionary:
+func _annotate_new_facility_target_availability(snapshot: Dictionary) -> Dictionary:
+	var result := snapshot.duplicate(true)
+	if _table_presentation_query_ports == null:
+		return result
+	var cards: Array = result.get("cards", []) if result.get("cards", []) is Array else []
+	var target_by_card_name := {}
+	for card_index in range(cards.size()):
+		if not (cards[card_index] is Dictionary):
+			continue
+		var card := (cards[card_index] as Dictionary).duplicate(true)
+		if not _is_supply_facility_kind(str(card.get("kind", ""))):
+			continue
+		var target_snapshot := _table_presentation_query_ports.public_new_facility_target_candidates(
+			StringName(str(card.get("facility_kind", ""))),
+			StringName(str(card.get("industry_id", "")))
+		)
+		var target := target_snapshot.to_dictionary() if target_snapshot != null else {}
+		var target_available := bool(target.get("available", false)) \
+			and not (target.get("candidates", []) as Array).is_empty()
+		card["new_target_available"] = target_available
+		card["target_source_revision"] = int(target.get("source_revision", 0))
+		card["target_reason_code"] = str(target.get("reason_code", "public_new_facility_target_query_unavailable"))
+		cards[card_index] = card
+		target_by_card_name[str(card.get("card_name", ""))] = {
+			"new_target_available": target_available,
+			"target_source_revision": int(card.get("target_source_revision", 0)),
+			"target_reason_code": str(card.get("target_reason_code", "")),
+		}
+	result["cards"] = cards
+	var preview: Dictionary = result.get("preview", {}) if result.get("preview", {}) is Dictionary else {}
+	var preview_target: Dictionary = target_by_card_name.get(str(preview.get("card_name", "")), {}) \
+		if target_by_card_name.get(str(preview.get("card_name", "")), {}) is Dictionary else {}
+	if not preview_target.is_empty():
+		preview = preview.duplicate(true)
+		preview.merge(preview_target, true)
+		result["preview"] = preview
+	return result
+
+
+static func district_supply_action_from_snapshot(snapshot: Dictionary, production_chain_incomplete := false) -> Dictionary:
 	var preview: Dictionary = snapshot.get("preview", {}) if snapshot.get("preview", {}) is Dictionary else {}
 	var preview_card_name := str(preview.get("card_name", ""))
 	var primary_action_id := str(preview.get("primary_action_id", ""))
 	var cards: Array = snapshot.get("cards", []) if snapshot.get("cards", []) is Array else []
 	var preview_kind := _supply_card_kind(cards, preview_card_name)
+	var preview_facility_kind := _supply_facility_kind(cards, preview_card_name)
 	if not preview_card_name.is_empty() \
 			and bool(preview.get("buy_enabled", false)) \
 			and primary_action_id in ["district_supply_preview_card", "district_supply_purchase_card"] \
-			and (not facility_chain_incomplete or _is_supply_facility_kind(preview_kind)):
+			and (not production_chain_incomplete \
+				or (preview_facility_kind == "factory" \
+					and _supply_new_target_available(cards, preview_card_name))):
 		var action_phase := "quote" if primary_action_id == "district_supply_preview_card" else "purchase"
 		return {
 			"id": primary_action_id,
@@ -1243,7 +1464,12 @@ static func district_supply_action_from_snapshot(snapshot: Dictionary, facility_
 		"market_quote_unavailable",
 		"quote_expired",
 	]
-	var facility_card := _next_supply_facility_card(cards, preview_card_name if retry_next_facility else "")
+	var required_facility_kind := "factory" if production_chain_incomplete else ""
+	var facility_card := _next_supply_facility_card(
+		cards,
+		preview_card_name if retry_next_facility else "",
+		required_facility_kind
+	)
 	if not facility_card.is_empty():
 		var facility_name := str(facility_card.get("card_name", ""))
 		if preview_card_name != facility_name:
@@ -1254,8 +1480,12 @@ static func district_supply_action_from_snapshot(snapshot: Dictionary, facility_
 				"origin": "district_supply",
 				"payload": {"card_name": facility_name, "source": "full_run_gdp_strategy"},
 			}
-	if facility_chain_incomplete:
-		var visible_facility := _next_visible_supply_facility_card(cards, preview_card_name)
+	if production_chain_incomplete:
+		var visible_facility := _next_visible_supply_facility_card(
+			cards,
+			preview_card_name,
+			required_facility_kind
+		)
 		if not visible_facility.is_empty() and not _is_supply_facility_kind(preview_kind):
 			var visible_facility_name := str(visible_facility.get("card_name", ""))
 			return {
@@ -1327,22 +1557,30 @@ func _public_supply_wait_facts(runtime_screen: Node) -> Dictionary:
 	var drawer := _district_supply_drawer(runtime_screen)
 	if screen == null or drawer == null or not drawer.visible:
 		return {}
-	var drawer_snapshot := _district_supply_view_snapshot()
+	var drawer_snapshot := _annotate_new_facility_target_availability(_district_supply_view_snapshot())
 	var ui: Dictionary = screen.current_ui_data if screen.current_ui_data is Dictionary else {}
 	var selection: Dictionary = ui.get("selection_context", {}) if ui.get("selection_context", {}) is Dictionary else {}
 	var district_index := int(selection.get("selected_district", -1))
 	var district_count := int(selection.get("district_count", 0))
 	var card_signature_rows: Array[String] = []
 	var has_visible_facility := false
+	var has_visible_production_facility := false
 	var cards: Array = drawer_snapshot.get("cards", []) if drawer_snapshot.get("cards", []) is Array else []
 	for card_variant in cards:
 		if not (card_variant is Dictionary):
 			continue
 		var card := card_variant as Dictionary
 		has_visible_facility = has_visible_facility or _is_supply_facility_kind(str(card.get("kind", "")))
+		has_visible_production_facility = has_visible_production_facility \
+			or (str(card.get("facility_kind", "")) == "factory" \
+				and bool(card.get("new_target_available", false)))
 		card_signature_rows.append("%s|%s" % [
 			str(card.get("card_name", "")),
-			str(card.get("kind", "")),
+			"%s|%s|%s" % [
+				str(card.get("kind", "")),
+				str(card.get("facility_kind", "")),
+				str(card.get("industry_id", "")),
+			],
 		])
 	var signature_source := {
 		"district_index": district_index,
@@ -1355,6 +1593,7 @@ func _public_supply_wait_facts(runtime_screen: Node) -> Dictionary:
 		"selection_revision": int(selection.get("revision", -1)),
 		"rack_signature": JSON.stringify(signature_source).sha256_text(),
 		"has_visible_facility": has_visible_facility,
+		"has_visible_production_facility": has_visible_production_facility,
 	}
 
 
@@ -1446,6 +1685,62 @@ func _supply_rotation_action(runtime_screen: Node, rotation_state: Dictionary) -
 	return {}
 
 
+func _advance_supply_rotation_after_unavailable_open(
+	runtime_screen: Node,
+	rotation_state: Dictionary,
+	failed_district: int
+) -> bool:
+	var screen := runtime_screen as SpaceSyndicateGameScreen
+	if screen == null:
+		return false
+	var ui: Dictionary = screen.current_ui_data if screen.current_ui_data is Dictionary else {}
+	var selection: Dictionary = ui.get("selection_context", {}) \
+		if ui.get("selection_context", {}) is Dictionary else {}
+	return advance_supply_rotation_after_unavailable_open(
+		rotation_state,
+		failed_district,
+		int(selection.get("selected_district", -1)),
+		int(selection.get("district_count", 0)),
+		int(selection.get("revision", -1))
+	)
+
+
+static func advance_supply_rotation_after_unavailable_open(
+	rotation_state: Dictionary,
+	failed_district: int,
+	selected_district: int,
+	district_count: int,
+	selection_revision: int
+) -> bool:
+	if rotation_state.is_empty() or str(rotation_state.get("phase", "")) != "open" \
+			or failed_district < 0 or selected_district != failed_district \
+			or district_count <= 1 or int(rotation_state.get("target_district", -1)) != failed_district:
+		return false
+	var visited: Dictionary = rotation_state.get("visited_districts", {}) \
+		if rotation_state.get("visited_districts", {}) is Dictionary else {}
+	visited[failed_district] = true
+	rotation_state["visited_districts"] = visited
+	rotation_state["source_rack_signature"] = ""
+	rotation_state["source_selection_revision"] = selection_revision
+	rotation_state["target_district"] = -1
+	if int(rotation_state.get("rotation_count", 0)) >= SUPPLY_RACK_ROTATION_LIMIT:
+		rotation_state["phase"] = "exhausted"
+		return true
+	var next_district := -1
+	for offset in range(1, district_count + 1):
+		var candidate := wrapi(failed_district + offset, 0, district_count)
+		if not bool(visited.get(candidate, false)):
+			next_district = candidate
+			break
+	if next_district < 0:
+		rotation_state["phase"] = "exhausted"
+		return true
+	rotation_state["phase"] = "select"
+	rotation_state["target_district"] = next_district
+	rotation_state["rotation_count"] = int(rotation_state.get("rotation_count", 0)) + 1
+	return true
+
+
 static func _supply_card_kind(cards: Array, card_name: String) -> String:
 	if card_name.is_empty():
 		return ""
@@ -1453,6 +1748,25 @@ static func _supply_card_kind(cards: Array, card_name: String) -> String:
 		if card_variant is Dictionary and str((card_variant as Dictionary).get("card_name", "")) == card_name:
 			return str((card_variant as Dictionary).get("kind", ""))
 	return ""
+
+
+static func _supply_facility_kind(cards: Array, card_name: String) -> String:
+	if card_name.is_empty():
+		return ""
+	for card_variant in cards:
+		if card_variant is Dictionary and str((card_variant as Dictionary).get("card_name", "")) == card_name:
+			return str((card_variant as Dictionary).get("facility_kind", ""))
+	return ""
+
+
+static func _supply_new_target_available(cards: Array, card_name: String) -> bool:
+	if card_name.is_empty():
+		return false
+	for card_variant in cards:
+		if card_variant is Dictionary \
+				and str((card_variant as Dictionary).get("card_name", "")) == card_name:
+			return bool((card_variant as Dictionary).get("new_target_available", false))
+	return false
 
 
 static func _is_supply_facility_kind(kind: String) -> bool:
@@ -1475,12 +1789,45 @@ static func recoverable_supply_receipt_reason(reason_code: String) -> bool:
 	]
 
 
-static func _next_supply_facility_card(cards: Array, after_card_name: String = "") -> Dictionary:
+static func supply_receipt_confirms_progress(
+	pending_action: Dictionary,
+	receipt_sequence: int,
+	receipt: Dictionary
+) -> bool:
+	return str(pending_action.get("origin", "")) in ["district_supply", "district_supply_rotation"] \
+		and receipt_sequence > int(pending_action.get("supply_receipt_sequence", -1)) \
+		and bool(receipt.get("accepted", false)) \
+		and bool(receipt.get("applied", false))
+
+
+static func selection_receipt_confirms_progress(
+	pending_action: Dictionary,
+	receipt_sequence: int,
+	receipt: Dictionary
+) -> bool:
+	return str(pending_action.get("origin", "")) == "planet_map" \
+		and receipt_sequence > int(pending_action.get("selection_receipt_sequence", -1)) \
+		and bool(receipt.get("accepted", false)) \
+		and bool(receipt.get("applied", false)) \
+		and str(receipt.get("selection_kind", "")) == str(TableSelectionIntent.KIND_SELECT_DISTRICT) \
+		and int(receipt.get("district_index", -1)) == int(pending_action.get("district_index", -2))
+
+
+static func _next_supply_facility_card(
+	cards: Array,
+	after_card_name: String = "",
+	required_facility_kind: String = ""
+) -> Dictionary:
 	var matching: Array[Dictionary] = []
 	for card_variant in cards:
 		if card_variant is Dictionary:
 			var card := card_variant as Dictionary
-			if _is_supply_facility_kind(str(card.get("kind", ""))) and bool(card.get("actionable", false)):
+			if _is_supply_facility_kind(str(card.get("kind", ""))) \
+					and (required_facility_kind.is_empty() \
+						or str(card.get("facility_kind", "")) == required_facility_kind) \
+					and (required_facility_kind.is_empty() \
+						or bool(card.get("new_target_available", false))) \
+					and bool(card.get("actionable", false)):
 				matching.append(card)
 	if matching.is_empty():
 		return {}
@@ -1492,12 +1839,20 @@ static func _next_supply_facility_card(cards: Array, after_card_name: String = "
 	return matching[0].duplicate(true)
 
 
-static func _next_visible_supply_facility_card(cards: Array, after_card_name: String = "") -> Dictionary:
+static func _next_visible_supply_facility_card(
+	cards: Array,
+	after_card_name: String = "",
+	required_facility_kind: String = ""
+) -> Dictionary:
 	var matching: Array[Dictionary] = []
 	for card_variant in cards:
 		if card_variant is Dictionary:
 			var card := card_variant as Dictionary
-			if _is_supply_facility_kind(str(card.get("kind", ""))):
+			if _is_supply_facility_kind(str(card.get("kind", ""))) \
+					and (required_facility_kind.is_empty() \
+						or str(card.get("facility_kind", "")) == required_facility_kind) \
+					and (required_facility_kind.is_empty() \
+						or bool(card.get("new_target_available", false))):
 				matching.append(card)
 	if matching.is_empty():
 		return {}
@@ -1538,12 +1893,19 @@ func _first_enabled_action_by_kind(value: Variant, kind: String) -> Dictionary:
 	return {}
 
 
-func _first_enabled_card_action_by_kind(cards: Array, kind: String) -> Dictionary:
+func _first_enabled_card_action_by_kind(
+	cards: Array,
+	kind: String,
+	required_facility_kind: String = ""
+) -> Dictionary:
 	for card_variant in cards:
 		if not (card_variant is Dictionary):
 			continue
 		var card: Dictionary = card_variant
 		if str(card.get("kind", "")) != kind:
+			continue
+		if not required_facility_kind.is_empty() \
+				and str(card.get("facility_kind", "")) != required_facility_kind:
 			continue
 		var action := _first_enabled_action(card.get("actions", []))
 		if not action.is_empty():
@@ -1559,6 +1921,39 @@ func _first_card_by_kind(cards: Array, kind: String) -> Dictionary:
 	for card_variant in cards:
 		if card_variant is Dictionary and str((card_variant as Dictionary).get("kind", "")) == kind:
 			return (card_variant as Dictionary).duplicate(true)
+	return {}
+
+
+static func facility_card_retry_signature(card: Dictionary) -> String:
+	if card.is_empty():
+		return ""
+	return "%s|%d|%s|%s|%s" % [
+		str(card.get("card_id", card.get("id", ""))),
+		int(card.get("slot", -1)),
+		str(card.get("name", "")),
+		str(card.get("facility_kind", "")),
+		str(card.get("industry_id", "")),
+	]
+
+
+static func first_unexhausted_card_by_kind(
+	cards: Array,
+	kind: String,
+	exhausted: Dictionary,
+	required_facility_kind: String = ""
+) -> Dictionary:
+	for card_variant in cards:
+		if not (card_variant is Dictionary):
+			continue
+		var card := card_variant as Dictionary
+		if str(card.get("kind", "")) != kind:
+			continue
+		if not required_facility_kind.is_empty() \
+				and str(card.get("facility_kind", "")) != required_facility_kind:
+			continue
+		var signature := facility_card_retry_signature(card)
+		if not signature.is_empty() and not bool(exhausted.get(signature, false)):
+			return card.duplicate(true)
 	return {}
 
 
@@ -1676,6 +2071,7 @@ func _on_district_supply_action_receipt(receipt: DistrictSupplyActionReceipt) ->
 	_district_supply_receipt_sequence += 1
 	_last_district_supply_receipt = {
 		"accepted": receipt.accepted,
+		"applied": receipt.applied,
 		"reason_code": receipt.reason_code,
 		"action_kind": str(receipt.action_kind),
 		"request_id": receipt.request_id,
@@ -1689,6 +2085,20 @@ func _on_district_supply_action_receipt(receipt: DistrictSupplyActionReceipt) ->
 			_mark_milestone("time_to_first_quote")
 		DistrictSupplyActionIntent.KIND_PURCHASE:
 			_mark_milestone("time_to_first_purchase")
+
+
+func _on_table_selection_receipt(receipt: TableSelectionReceipt) -> void:
+	if receipt == null:
+		return
+	_table_selection_receipt_sequence += 1
+	_last_table_selection_receipt = {
+		"accepted": receipt.accepted,
+		"applied": receipt.applied,
+		"reason_code": receipt.reason_code,
+		"selection_kind": str(receipt.selection_kind),
+		"district_index": receipt.district_index,
+		"selection_revision_after": receipt.selection_revision_after,
+	}
 
 
 func _on_monster_wager_response_receipt(receipt: MonsterWagerResponseReceipt) -> void:
@@ -1722,6 +2132,96 @@ func _mark_milestone(key: String) -> void:
 	)
 
 
+func _apply_driver_planning_transition(action: Dictionary) -> bool:
+	if str(action.get("origin", "")) != "driver_planning":
+		return false
+	match str(action.get("id", "")):
+		"facility_candidate_rejected":
+			var attempt_key := str(action.get("candidate_attempt_key", "")).strip_edges()
+			var public_index := int(action.get("public_index", -1))
+			if attempt_key.is_empty() or public_index < 0:
+				return false
+			var attempted: Dictionary = _facility_candidate_attempts.get(attempt_key, {}) \
+				if _facility_candidate_attempts.get(attempt_key, {}) is Dictionary else {}
+			attempted[public_index] = true
+			_facility_candidate_attempts[attempt_key] = attempted
+			return true
+		"facility_target_search_exhausted":
+			var signature := str(action.get("facility_card_signature", "")).strip_edges()
+			if signature.is_empty():
+				return false
+			_exhausted_facility_card_signatures[signature] = true
+			return true
+	return false
+
+
+func _next_typed_facility_map_action(runtime_screen: Node, card: Dictionary) -> Dictionary:
+	var screen := runtime_screen as SpaceSyndicateGameScreen
+	if screen == null or _table_presentation_query_ports == null:
+		return {}
+	var target_snapshot := _table_presentation_query_ports.public_new_facility_target_candidates(
+		StringName(str(card.get("facility_kind", ""))),
+		StringName(str(card.get("industry_id", "")))
+	)
+	var target := target_snapshot.to_dictionary() if target_snapshot != null else {}
+	if not bool(target.get("available", false)):
+		return {
+			"id": "facility_play_wait",
+			"phase": "play.hand.facility_v06.wait.%s" % str(target.get("reason_code", "target_query_unavailable")),
+			"disabled": true,
+			"origin": "economic_wait",
+		}
+	var ui: Dictionary = screen.current_ui_data if screen.current_ui_data is Dictionary else {}
+	var selection: Dictionary = ui.get("selection_context", {}) \
+		if ui.get("selection_context", {}) is Dictionary else {}
+	var selected_district := int(selection.get("selected_district", -1))
+	var candidates: Array = target.get("candidates", []) if target.get("candidates", []) is Array else []
+	var card_signature := facility_card_retry_signature(card)
+	var attempt_key := "%s|targets:%d" % [card_signature, int(target.get("source_revision", 0))]
+	var attempted: Dictionary = _facility_candidate_attempts.get(attempt_key, {}) \
+		if _facility_candidate_attempts.get(attempt_key, {}) is Dictionary else {}
+	for candidate_variant in candidates:
+		if candidate_variant is Dictionary \
+				and int((candidate_variant as Dictionary).get("public_index", -1)) == selected_district \
+				and not bool(attempted.get(selected_district, false)):
+			return {
+				"id": "facility_candidate_rejected",
+				"phase": "driver.facility_candidate_rejected.%d" % selected_district,
+				"disabled": false,
+				"origin": "driver_planning",
+				"candidate_attempt_key": attempt_key,
+				"public_index": selected_district,
+			}
+	var candidate := next_public_facility_candidate(candidates, attempted)
+	if candidate.is_empty():
+		return {
+			"id": "facility_target_search_exhausted",
+			"phase": "driver.facility_target_search_exhausted",
+			"disabled": false,
+			"origin": "driver_planning",
+			"facility_card_signature": card_signature,
+		}
+	var target_district := int(candidate.get("public_index", -1))
+	return {
+		"id": "map_select_%d" % target_district,
+		"phase": "play.map.%d_to_%d" % [selected_district, target_district],
+		"disabled": false,
+		"origin": "planet_map",
+		"district_index": target_district,
+	}
+
+
+static func next_public_facility_candidate(candidates: Array, attempted: Dictionary) -> Dictionary:
+	for candidate_variant in candidates:
+		if not (candidate_variant is Dictionary):
+			continue
+		var candidate := candidate_variant as Dictionary
+		var public_index := int(candidate.get("public_index", -1))
+		if public_index >= 0 and not bool(attempted.get(public_index, false)):
+			return candidate.duplicate(true)
+	return {}
+
+
 func _next_public_map_action(runtime_screen: Node) -> Dictionary:
 	var screen := runtime_screen as SpaceSyndicateGameScreen
 	if screen == null:
@@ -1732,12 +2232,11 @@ func _next_public_map_action(runtime_screen: Node) -> Dictionary:
 	if district_count <= 1:
 		return {}
 	var selected_district := int(selection.get("selected_district", -1))
-	var next_district := -1
-	for offset in range(1, district_count + 1):
-		var candidate := wrapi(selected_district + offset, 0, district_count)
-		if not bool(_exhausted_map_districts.get(candidate, false)):
-			next_district = candidate
-			break
+	var next_district := next_unexhausted_map_district(
+		selected_district,
+		district_count,
+		_exhausted_map_districts
+	)
 	if next_district < 0:
 		return {}
 	return {
@@ -1747,6 +2246,20 @@ func _next_public_map_action(runtime_screen: Node) -> Dictionary:
 		"origin": "planet_map",
 		"district_index": next_district,
 	}
+
+
+static func next_unexhausted_map_district(
+	selected_district: int,
+	district_count: int,
+	exhausted: Dictionary
+) -> int:
+	if district_count <= 1:
+		return -1
+	for offset in range(1, district_count + 1):
+		var candidate := wrapi(selected_district + offset, 0, district_count)
+		if not bool(exhausted.get(candidate, false)):
+			return candidate
+	return -1
 
 
 func _first_enabled_board_action(player_board: Dictionary, exhausted_navigation_actions: Dictionary) -> Dictionary:
@@ -2253,6 +2766,7 @@ static func timer_traversal_evidence(
 		"qualification_entry_window_us": -1,
 		"qualification_countdown_world_delta_us": -1,
 		"qualification_total_world_delta_us": -1,
+		"qualification_reset_count": 0,
 		"audit_authorized_duration_us": audit_duration_us,
 		"audit_initial_remaining_us": -1,
 		"audit_countdown_world_delta_us": -1,
@@ -2268,12 +2782,10 @@ static func timer_traversal_evidence(
 		return _timer_evidence_failure(result, "timer_trace_overflow")
 	if trace.size() < 4:
 		return result
-	var qualification_index := -1
-	var audit_index := -1
-	var resolved_index := -1
 	var previous_sequence := -1
 	var previous_world_us := -1
 	var previous_state_rank := -1
+	var qualification_reset_count := 0
 	var state_ranks := {"idle": 0, "qualification": 1, "audit": 2, "resolved": 3}
 	for index in range(trace.size()):
 		if not (trace[index] is Dictionary):
@@ -2293,16 +2805,29 @@ static func timer_traversal_evidence(
 			return _timer_evidence_failure(result, "timer_trace_order_invalid")
 		var state_rank := int(state_ranks[state_id])
 		if state_rank < previous_state_rank:
-			return _timer_evidence_failure(result, "timer_trace_state_regressed")
-		if state_id == "qualification" and qualification_index < 0:
-			qualification_index = index
-		if state_id == "audit" and audit_index < 0:
-			audit_index = index
-		if state_id == "resolved" and resolved_index < 0:
-			resolved_index = index
+			if state_id != "idle" or previous_state_rank == int(state_ranks["resolved"]):
+				return _timer_evidence_failure(result, "timer_trace_state_regressed")
+			qualification_reset_count += 1
 		previous_sequence = sequence
 		previous_world_us = world_us
 		previous_state_rank = state_rank
+	result["qualification_reset_count"] = qualification_reset_count
+	var resolved_index := -1
+	for index in range(trace.size() - 1, -1, -1):
+		if str((trace[index] as Dictionary).get("state", "")) == "resolved":
+			resolved_index = index
+			break
+	if resolved_index <= 0:
+		return _timer_evidence_failure(result, "timer_trace_state_sequence_incomplete")
+	var attempt_cursor := resolved_index - 1
+	while attempt_cursor >= 0 \
+			and str((trace[attempt_cursor] as Dictionary).get("state", "")) == "audit":
+		attempt_cursor -= 1
+	var audit_index := attempt_cursor + 1
+	while attempt_cursor >= 0 \
+			and str((trace[attempt_cursor] as Dictionary).get("state", "")) == "qualification":
+		attempt_cursor -= 1
+	var qualification_index := attempt_cursor + 1
 	if qualification_index <= 0 or audit_index <= qualification_index or resolved_index <= audit_index:
 		return _timer_evidence_failure(result, "timer_trace_state_sequence_incomplete")
 	var idle_before := trace[qualification_index - 1] as Dictionary
@@ -2399,17 +2924,24 @@ static func outcome_identity_evidence(public_outcome: Dictionary, session_outcom
 static func _outcome_identity(outcome: Dictionary) -> Dictionary:
 	var outcome_id := str(outcome.get("outcome_id", "")).strip_edges()
 	var reason_code := str(outcome.get("reason_code", "")).strip_edges()
+	var schema_version := str(outcome.get("schema_version", "")).strip_edges()
 	var ruleset_id := str(outcome.get("ruleset_id", "")).strip_edges()
 	var winner_values: Variant = outcome.get("winner_player_indices", null)
 	var comparison_values: Variant = outcome.get("comparison_order", null)
-	if outcome_id.is_empty() or reason_code.is_empty() or ruleset_id.is_empty() \
+	var ranking_values: Variant = outcome.get("rankings", null)
+	var audit_evidence := _normalized_outcome_audit_evidence(outcome)
+	if outcome_id.is_empty() or reason_code.is_empty() or schema_version.is_empty() or ruleset_id.is_empty() \
 			or not TablePresentationPureDataPolicy.is_pure_data(outcome) \
 			or not (winner_values is Array) or (winner_values as Array).is_empty() \
-			or not (comparison_values is Array) or (comparison_values as Array).is_empty():
+			or not (comparison_values is Array) or (comparison_values as Array).is_empty() \
+			or not (ranking_values is Array) or (ranking_values as Array).is_empty() \
+			or audit_evidence.is_empty() \
+			or (reason_code == "public_audit_complete" and (audit_evidence.get("audit_roster", []) as Array).is_empty()) \
+			or (reason_code == "public_audit_complete" and str(audit_evidence.get("settlement_checkpoint", "")).is_empty()):
 		return {}
 	var winners: Array[int] = []
 	for value in winner_values as Array:
-		if typeof(value) != TYPE_INT or int(value) < 0:
+		if typeof(value) != TYPE_INT or int(value) < 0 or winners.has(int(value)):
 			return {}
 		winners.append(int(value))
 	var comparison_order: Array[String] = []
@@ -2418,15 +2950,65 @@ static func _outcome_identity(outcome: Dictionary) -> Dictionary:
 		if token.is_empty():
 			return {}
 		comparison_order.append(token)
+	var rankings: Array[Dictionary] = []
+	var ranked_players := {}
+	for ranking_variant in ranking_values as Array:
+		if not (ranking_variant is Dictionary):
+			return {}
+		var ranking := ranking_variant as Dictionary
+		var player_index := int(ranking.get("player_index", -1))
+		if player_index < 0 or ranked_players.has(player_index):
+			return {}
+		ranked_players[player_index] = true
+		rankings.append({
+			"player_index": player_index,
+			"top_k_gdp_per_minute_cents": int(ranking.get("top_k_gdp_per_minute_cents", 0)),
+			"top_k_gdp_per_minute": int(ranking.get("top_k_gdp_per_minute", ranking.get("top_n_gdp_per_minute", 0))),
+			"controlled_region_count": int(ranking.get("controlled_region_count", 0)),
+			"winner": bool(ranking.get("winner", false)),
+		})
 	return {
 		"outcome_id": outcome_id,
-		"schema_version": str(outcome.get("schema_version", "")),
+		"schema_version": schema_version,
 		"ruleset_id": ruleset_id,
 		"reason_code": reason_code,
 		"winner_player_indices": winners,
 		"co_victory": bool(outcome.get("co_victory", false)),
 		"comparison_order": comparison_order,
-		"payload_fingerprint": JSON.stringify(outcome).sha256_text(),
+		"rankings": rankings,
+		"audit_evidence": audit_evidence,
+	}
+
+
+static func _normalized_outcome_audit_evidence(outcome: Dictionary) -> Dictionary:
+	var evidence: Dictionary = outcome.get("audit_evidence", {}) \
+		if outcome.get("audit_evidence", {}) is Dictionary else {}
+	var victory_rule: Dictionary = evidence.get("victory_rule", {}) \
+		if evidence.get("victory_rule", {}) is Dictionary else {}
+	var roster_value: Variant = evidence.get("audit_roster", null)
+	var roster_values: Array = roster_value if roster_value is Array else []
+	var checkpoint_value: Variant = evidence.get("settlement_checkpoint", null)
+	var settlement_checkpoint := str(checkpoint_value).strip_edges()
+	if victory_rule.is_empty() or not (roster_value is Array) \
+			or not (typeof(checkpoint_value) in [TYPE_STRING, TYPE_STRING_NAME]):
+		return {}
+	var audit_roster: Array[int] = []
+	for value in roster_values:
+		if typeof(value) != TYPE_INT or int(value) < 0 or audit_roster.has(int(value)):
+			return {}
+		audit_roster.append(int(value))
+	return {
+		"victory_rule": {
+			"surviving_region_count": int(victory_rule.get("surviving_region_count", 0)),
+			"coverage_basis_points": int(victory_rule.get("coverage_basis_points", 0)),
+			"required_region_count": int(victory_rule.get("required_region_count", 0)),
+			"gdp_per_required_region_per_minute": int(victory_rule.get("gdp_per_required_region_per_minute", 0)),
+			"required_top_k_gdp_per_minute": int(victory_rule.get("required_top_k_gdp_per_minute", 0)),
+			"required_top_k_gdp_per_minute_cents": int(victory_rule.get("required_top_k_gdp_per_minute_cents", 0)),
+			"ordinary_victory_paused": bool(victory_rule.get("ordinary_victory_paused", false)),
+		},
+		"audit_roster": audit_roster,
+		"settlement_checkpoint": settlement_checkpoint,
 	}
 
 
@@ -2593,6 +3175,7 @@ func _terminal_runtime_probe(coordinator: Node, runtime_loop: RuntimeLoop, sessi
 			"sale_receipt": sale_receipt,
 			"timer_evidence": timer_evidence,
 			"actions": _action_stats.duplicate(true),
+			"peak_production_installation_count": _peak_production_installation_count,
 			"rng": _capture_rng_checkpoint(coordinator),
 		},
 		"frame": {
@@ -2625,6 +3208,7 @@ static func _terminal_baseline_valid(stable: Dictionary) -> bool:
 			== str(stable.get("session_outcome_identity_fingerprint", "")) \
 		and str(stable.get("outcome_reason_code", "")) == "public_audit_complete" \
 		and int(stable.get("winner_count", 0)) > 0 \
+		and int(stable.get("peak_production_installation_count", 0)) >= TARGET_PRODUCTION_INSTALLATION_COUNT \
 		and int(stable.get("present_count", 0)) == 1 \
 		and int(stable.get("presented_outcome_count", 0)) == 1 \
 		and int(stable.get("logged_outcome_count", 0)) == 1 \

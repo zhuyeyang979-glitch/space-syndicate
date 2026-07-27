@@ -11,6 +11,9 @@ const REGION_CODEX_PRIVATE_SENTINEL_MARKERS_V06 := [
 	"private_sentinel", "secret_sentinel", "cash_sentinel", "hand_sentinel", "discard_sentinel",
 	"owner_sentinel", "ai_plan_sentinel", "do_not_leak",
 ]
+const NEW_FACILITY_COLORED_KINDS := ["factory", "market", "warehouse"]
+const NEW_FACILITY_TRANSPORT_KINDS := ["road", "port", "spaceport"]
+const NEW_FACILITY_REGION_STATES := ["active", "undeveloped", "ruined"]
 
 var _controller: Node
 var _world: Node
@@ -333,6 +336,107 @@ func public_commodity_region_facts() -> Array:
 	return result
 
 
+func public_new_facility_target_candidates(
+	facility_kind: StringName,
+	industry_id: StringName
+) -> Dictionary:
+	var normalized_kind := str(facility_kind).strip_edges()
+	var normalized_industry := str(industry_id).strip_edges()
+	var unavailable := _public_new_facility_target_result(
+		false,
+		"public_new_facility_target_query_unavailable",
+		normalized_kind,
+		normalized_industry,
+		0,
+		[]
+	)
+	if _controller == null or _world_session_state == null \
+			or not _controller.has_method("public_economy_snapshot"):
+		return unavailable
+	var industry_ids: Array = PRODUCT_INDUSTRY_CATALOG.industry_ids() \
+		if PRODUCT_INDUSTRY_CATALOG != null else []
+	if not NEW_FACILITY_COLORED_KINDS.has(normalized_kind) \
+			and not NEW_FACILITY_TRANSPORT_KINDS.has(normalized_kind):
+		return _public_new_facility_target_result(false, "public_new_facility_kind_invalid", normalized_kind, normalized_industry, 0, [])
+	if NEW_FACILITY_COLORED_KINDS.has(normalized_kind) and not industry_ids.has(normalized_industry):
+		return _public_new_facility_target_result(false, "public_new_facility_industry_invalid", normalized_kind, normalized_industry, 0, [])
+	if NEW_FACILITY_TRANSPORT_KINDS.has(normalized_kind) and not normalized_industry.is_empty():
+		return _public_new_facility_target_result(false, "public_new_facility_industry_invalid", normalized_kind, normalized_industry, 0, [])
+	var economy_variant: Variant = _controller.call("public_economy_snapshot")
+	var economy: Dictionary = economy_variant if economy_variant is Dictionary else {}
+	var facts_rows := public_commodity_region_facts()
+	if not bool(economy.get("available", false)) \
+			or not _is_pure_data(economy) \
+			or not _is_pure_data(facts_rows):
+		return unavailable
+	var lifecycle_by_region := {}
+	for region_variant in economy.get("regions", []) as Array:
+		if region_variant is Dictionary:
+			var region := region_variant as Dictionary
+			lifecycle_by_region[str(region.get("region_id", ""))] = str(region.get("lifecycle_state", ""))
+	var occupied_regions := {}
+	for facility_variant in economy.get("facilities", []) as Array:
+		if not (facility_variant is Dictionary):
+			continue
+		var facility := facility_variant as Dictionary
+		if bool(facility.get("active", false)) \
+				and str(facility.get("facility_type", "")) == normalized_kind \
+				and str(facility.get("industry_id", "")) == normalized_industry:
+			occupied_regions[str(facility.get("region_id", ""))] = true
+	var candidates: Array = []
+	var revision_basis: Array = []
+	for facts_variant in facts_rows:
+		if not (facts_variant is Dictionary):
+			continue
+		var facts := facts_variant as Dictionary
+		var region_id := str(facts.get("region_id", "")).strip_edges()
+		var public_index := int(facts.get("legacy_index", -1))
+		var region_revision := maxi(0, int(facts.get("region_revision", 0)))
+		var identity_mapped := _public_region_identity_matches(public_index, region_id)
+		var lifecycle_state := str(lifecycle_by_region.get(region_id, ""))
+		var occupied := bool(occupied_regions.get(region_id, false))
+		var product_match := _new_facility_product_match(facts, normalized_kind, normalized_industry)
+		revision_basis.append({
+			"region_id": region_id,
+			"public_index": public_index,
+			"region_revision": region_revision,
+			"facts_fingerprint": str(facts.get("facts_fingerprint", "")),
+			"identity_mapped": identity_mapped,
+			"lifecycle_state": lifecycle_state,
+			"occupied": occupied,
+			"product_match": product_match,
+		})
+		if region_id.is_empty() or public_index < 0 or not identity_mapped or occupied \
+				or not NEW_FACILITY_REGION_STATES.has(lifecycle_state) or not product_match:
+			continue
+		candidates.append({
+			"region_id": region_id,
+			"public_index": public_index,
+			"region_revision": region_revision,
+		})
+	candidates.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		var left_index := int(left.get("public_index", -1))
+		var right_index := int(right.get("public_index", -1))
+		return left_index < right_index \
+			if left_index != right_index else str(left.get("region_id", "")) < str(right.get("region_id", ""))
+	)
+	var source_revision := _stable_public_source_revision({
+		"infrastructure_revision": maxi(0, int(economy.get("revision", 0))),
+		"facility_kind": normalized_kind,
+		"industry_id": normalized_industry,
+		"regions": revision_basis,
+	})
+	return _public_new_facility_target_result(
+		true,
+		"public_new_facility_target_candidates_ready" if not candidates.is_empty() \
+			else "public_new_facility_target_candidates_empty",
+		normalized_kind,
+		normalized_industry,
+		source_revision,
+		candidates
+	)
+
+
 func selected_region_commodity_facts() -> Dictionary:
 	if _world_session_state == null or _table_selection_state == null:
 		return {"available": false, "authoritative": false, "reason_code": "region_commodity_facts_unavailable"}
@@ -344,6 +448,69 @@ func selected_region_commodity_facts() -> Dictionary:
 	if not (district_variant is Dictionary):
 		return {"available": false, "authoritative": false, "reason_code": "selected_region_missing"}
 	return region_commodity_facts(str((district_variant as Dictionary).get("region_id", "")))
+
+
+func _public_new_facility_target_result(
+	available: bool,
+	reason_code: String,
+	facility_kind: String,
+	industry_id: String,
+	source_revision: int,
+	candidates: Array
+) -> Dictionary:
+	return {
+		"schema_version": 1,
+		"available": available,
+		"reason_code": reason_code,
+		"query_kind": "new_facility_installation",
+		"facility_kind": facility_kind,
+		"industry_id": industry_id,
+		"source_revision": maxi(0, source_revision),
+		"candidates": candidates.duplicate(true),
+	}
+
+
+func _public_region_identity_matches(public_index: int, region_id: String) -> bool:
+	if _world_session_state == null or public_index < 0 \
+			or public_index >= _world_session_state.districts.size():
+		return false
+	var district_variant: Variant = _world_session_state.districts[public_index]
+	if not (district_variant is Dictionary):
+		return false
+	var district := district_variant as Dictionary
+	return str(district.get("region_id", "")).strip_edges() == region_id
+
+
+func _new_facility_product_match(facts: Dictionary, facility_kind: String, industry_id: String) -> bool:
+	if not ["factory", "market"].has(facility_kind):
+		return true
+	var rows_key := "production_products" if facility_kind == "factory" else "demand_products"
+	for product_variant in facts.get(rows_key, []) as Array:
+		if product_variant is Dictionary \
+				and str((product_variant as Dictionary).get("industry_id", "")) == industry_id:
+			return true
+	return false
+
+
+func _stable_public_source_revision(value: Dictionary) -> int:
+	var digest := JSON.stringify(_canonical_public_value(value)).sha256_text()
+	return int(digest.left(7).hex_to_int())
+
+
+func _canonical_public_value(value: Variant) -> Variant:
+	if value is Dictionary:
+		var result := {}
+		var keys := (value as Dictionary).keys()
+		keys.sort_custom(func(left: Variant, right: Variant) -> bool: return str(left) < str(right))
+		for key_variant in keys:
+			result[str(key_variant)] = _canonical_public_value((value as Dictionary).get(key_variant))
+		return result
+	if value is Array:
+		var result: Array = []
+		for child_variant in value as Array:
+			result.append(_canonical_public_value(child_variant))
+		return result
+	return value
 
 
 func debug_snapshot() -> Dictionary:

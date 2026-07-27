@@ -646,6 +646,7 @@ func _catalog_skill(card_name: String, fallback: Dictionary) -> Dictionary:
 func _normalized_v06_skill(card: Dictionary) -> Dictionary:
 	var machine := _dictionary(card.get("machine", {}))
 	var player := _dictionary(card.get("player", {}))
+	var effect_payload := _dictionary(machine.get("effect_payload", {}))
 	var card_id := str(machine.get("card_id", ""))
 	var category_id := str(machine.get("category_id", ""))
 	var asset_cost := _normalized_asset_cost(machine.get("asset_cost", {}))
@@ -673,6 +674,8 @@ func _normalized_v06_skill(card: Dictionary) -> Dictionary:
 		"cost": _v06_play_cost_text(asset_cost, player),
 		"purchase_cost": maxi(0, int(machine.get("purchase_cash", 0))),
 		"category_id": category_id,
+		"facility_kind": str(effect_payload.get("facility_kind", "")),
+		"industry_id": str(effect_payload.get("industry_id", machine.get("industry_id", ""))),
 		"type_label": str(player.get("type", "")),
 		"subtype_label": str(player.get("industry", "")),
 		"play_requirement_text": str(player.get("cost", "条件：见卡面")),

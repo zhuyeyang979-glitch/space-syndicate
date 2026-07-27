@@ -28,6 +28,8 @@ const PUBLIC_LOG_ACK_KEYS := [
 const SESSION_RESET_REASON_IDS := ["session_began", "session_reset"]
 const SESSION_PLAN_APPLIED_REASON_ID := "session_plan_applied"
 const SESSION_CHECKPOINT_ROLLED_BACK_REASON_ID := "session_checkpoint_rolled_back"
+const SESSION_SAVE_APPLIED_REASON_ID := "session_save_applied"
+const SESSION_LOAD_COMPLETED_REASON_ID := "session_load_completed"
 
 @export var menu_overlay_path: NodePath
 @export var snapshot_service_path: NodePath
@@ -44,6 +46,7 @@ var _present_count := 0
 var _action_emission_count := 0
 var _session_plan_checkpoint: Dictionary = {}
 var _session_checkpoint_epoch := 0
+var _session_checkpoint_kind := ""
 
 
 func present_victory_receipt(receipt: VictoryPresentationStateChangeReceipt) -> Dictionary:
@@ -181,9 +184,17 @@ func _reset_presentation_state() -> void:
 
 func _on_session_authorization_context_changed(reason_id: String) -> void:
 	if reason_id == SESSION_PLAN_APPLIED_REASON_ID:
-		_begin_session_plan_checkpoint()
+		_begin_session_checkpoint(SESSION_PLAN_APPLIED_REASON_ID)
 	elif reason_id == SESSION_CHECKPOINT_ROLLED_BACK_REASON_ID:
-		_restore_session_plan_checkpoint()
+		_restore_session_checkpoint(SESSION_PLAN_APPLIED_REASON_ID)
+	elif reason_id == SESSION_SAVE_APPLIED_REASON_ID:
+		if _session_checkpoint_kind == SESSION_SAVE_APPLIED_REASON_ID:
+			_restore_session_checkpoint(SESSION_SAVE_APPLIED_REASON_ID)
+		else:
+			_begin_session_checkpoint(SESSION_SAVE_APPLIED_REASON_ID)
+	elif reason_id == SESSION_LOAD_COMPLETED_REASON_ID:
+		_discard_session_plan_checkpoint()
+		_reset_presentation_state()
 	elif SESSION_RESET_REASON_IDS.has(reason_id):
 		reset_state()
 
@@ -198,6 +209,9 @@ func debug_snapshot() -> Dictionary:
 		"action_emission_count": _action_emission_count,
 		"logged_outcome_count": _logged_outcome_ids.size(),
 		"session_plan_checkpoint_pending": not _session_plan_checkpoint.is_empty(),
+		"lifecycle_checkpoint_pending": not _session_plan_checkpoint.is_empty(),
+		"lifecycle_transition_kind": _session_checkpoint_kind,
+		"session_lifecycle_checkpoint_kind": _session_checkpoint_kind,
 		"source_adapter_ready": _source_adapter != null,
 		"snapshot_service_ready": _snapshot_service() != null,
 		"menu_overlay_ready": _menu_overlay() != null,
@@ -210,7 +224,7 @@ func debug_snapshot() -> Dictionary:
 	}
 
 
-func _begin_session_plan_checkpoint() -> void:
+func _begin_session_checkpoint(checkpoint_kind: String) -> void:
 	_session_checkpoint_epoch += 1
 	var checkpoint_epoch := _session_checkpoint_epoch
 	_session_plan_checkpoint = {
@@ -225,12 +239,13 @@ func _begin_session_plan_checkpoint() -> void:
 		"board_attached": _board != null and _board.get_parent() != self,
 		"board_visible": _board != null and _board.visible,
 	}
+	_session_checkpoint_kind = checkpoint_kind
 	_reset_presentation_state()
 	call_deferred("_finalize_session_plan_checkpoint", checkpoint_epoch)
 
 
-func _restore_session_plan_checkpoint() -> void:
-	if _session_plan_checkpoint.is_empty():
+func _restore_session_checkpoint(expected_kind: String) -> void:
+	if _session_plan_checkpoint.is_empty() or _session_checkpoint_kind != expected_kind:
 		return
 	var checkpoint := _session_plan_checkpoint.duplicate(true)
 	_discard_session_plan_checkpoint()
@@ -268,11 +283,13 @@ func _restore_checkpointed_board(was_attached: bool, was_visible: bool) -> void:
 func _finalize_session_plan_checkpoint(checkpoint_epoch: int) -> void:
 	if checkpoint_epoch == _session_checkpoint_epoch:
 		_session_plan_checkpoint.clear()
+		_session_checkpoint_kind = ""
 
 
 func _discard_session_plan_checkpoint() -> void:
 	_session_checkpoint_epoch += 1
 	_session_plan_checkpoint.clear()
+	_session_checkpoint_kind = ""
 
 
 func _facts_from_public_context(public_context: Dictionary) -> Dictionary:

@@ -78,6 +78,7 @@ static func compose(source: Dictionary) -> Dictionary:
 			"required_top_k_gdp_per_minute": maxi(0, int(progress_source.get("required_top_k_gdp_per_minute", 0))),
 			"owned_facility_count": maxi(0, int(progress_source.get("owned_facility_count", 0))),
 			"production_installation_count": maxi(0, int(progress_source.get("production_installation_count", 0))),
+			"peak_production_installation_count": maxi(0, int(progress_source.get("peak_production_installation_count", 0))),
 			"eligible": bool(progress_source.get("eligible", false)),
 		},
 		"sale_receipt": {
@@ -136,6 +137,7 @@ static func compose(source: Dictionary) -> Dictionary:
 				"qualification_entry_window_us": int(timer_evidence_source.get("qualification_entry_window_us", -1)),
 				"qualification_countdown_world_delta_us": int(timer_evidence_source.get("qualification_countdown_world_delta_us", -1)),
 				"qualification_total_world_delta_us": int(timer_evidence_source.get("qualification_total_world_delta_us", -1)),
+				"qualification_reset_count": maxi(0, int(timer_evidence_source.get("qualification_reset_count", 0))),
 				"audit_authorized_duration_us": int(timer_evidence_source.get("audit_authorized_duration_us", -1)),
 				"audit_initial_remaining_us": int(timer_evidence_source.get("audit_initial_remaining_us", -1)),
 				"audit_countdown_world_delta_us": int(timer_evidence_source.get("audit_countdown_world_delta_us", -1)),
@@ -167,7 +169,7 @@ static func _invalid_snapshot(seed_value: int, reason_code: String) -> Dictionar
 		"seed": seed_value,
 		"phase": "blocked",
 		"elapsed": {"wall_seconds": 0.0, "world_seconds": 0.0},
-		"progress": {"controlled_region_count": 0, "required_region_count": 0, "top_k_gdp_per_minute": 0, "required_top_k_gdp_per_minute": 0, "owned_facility_count": 0, "production_installation_count": 0, "eligible": false},
+		"progress": {"controlled_region_count": 0, "required_region_count": 0, "top_k_gdp_per_minute": 0, "required_top_k_gdp_per_minute": 0, "owned_facility_count": 0, "production_installation_count": 0, "peak_production_installation_count": 0, "eligible": false},
 		"sale_receipt": {"observed": false, "public_event_count": 0, "first_world_seconds": 0.0, "latest_source_revision": 0, "public_fingerprint": ""},
 		"decision_window": {
 			"active": false,
@@ -218,6 +220,7 @@ static func _invalid_snapshot(seed_value: int, reason_code: String) -> Dictionar
 				"qualification_entry_window_us": -1,
 				"qualification_countdown_world_delta_us": -1,
 				"qualification_total_world_delta_us": -1,
+				"qualification_reset_count": 0,
 				"audit_authorized_duration_us": -1,
 				"audit_initial_remaining_us": -1,
 				"audit_countdown_world_delta_us": -1,

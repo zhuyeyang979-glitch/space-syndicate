@@ -109,6 +109,90 @@ func _run() -> void:
 	_expect(DriverScript.SUPPLY_QUOTE_REFRESH_ATTEMPTS_PER_RACK == 1 and DriverScript.SUPPLY_RACK_ROTATION_LIMIT == 8, "district exploration has explicit quote-retry and whole-run rotation bounds")
 	_expect(DriverScript.SUPPLY_RESCAN_WORLD_SECONDS == 15.0 and driver_source.contains('supply_rotation_state["exhausted_world_seconds"]') and driver_source.contains('current_world_seconds - exhausted_world_seconds >= SUPPLY_RESCAN_WORLD_SECONDS'), "an exhausted public scan waits on authoritative world time before starting another legal browse epoch")
 	_expect(driver_source.contains('rotation_screen.request_district_supply_close(&"qa_driver")') and driver_source.contains('rotation_screen.request_district_supply_open(int(action.get("district_index", -1)), &"qa_driver")'), "bounded rack exploration uses the production typed close and open requests")
+	_expect(driver_source.contains('str(pending_action.get("origin", "")) in ["district_supply", "district_supply_rotation"]'), "typed rack rotation observes and classifies its action-port receipt instead of timing out on a forced-decision race")
+	_expect(driver_source.contains('table_selection_port.receipt_ready.connect(_on_table_selection_receipt)') and driver_source.contains('"table_selection_receipt_ready": table_selection_receipt_ready'), "fresh-run composition requires and observes the scene-owned typed table-selection receipt")
+	var accepted_supply_progress := {
+		"origin": "district_supply_rotation",
+		"supply_receipt_sequence": 7,
+	}
+	_expect(
+		DriverScript.supply_receipt_confirms_progress(
+			accepted_supply_progress,
+			8,
+			{"accepted": true, "applied": true}
+		),
+		"an exact newer accepted-and-applied typed rack receipt confirms action progress without waiting for presentation cadence"
+	)
+	_expect(
+		not DriverScript.supply_receipt_confirms_progress(
+			accepted_supply_progress,
+			8,
+			{"accepted": true, "applied": false}
+		) \
+			and not DriverScript.supply_receipt_confirms_progress(
+				accepted_supply_progress,
+				7,
+				{"accepted": true, "applied": true}
+			),
+		"unapplied or stale rack receipts cannot advance the scripted action lifecycle"
+	)
+	var accepted_selection_progress := {
+		"origin": "planet_map",
+		"district_index": 4,
+		"selection_receipt_sequence": 11,
+	}
+	_expect(
+		DriverScript.selection_receipt_confirms_progress(
+			accepted_selection_progress,
+			12,
+			{
+				"accepted": true,
+				"applied": true,
+				"selection_kind": str(TableSelectionIntent.KIND_SELECT_DISTRICT),
+				"district_index": 4,
+			}
+		),
+		"an exact newer typed district-selection receipt confirms map progress without waiting for presentation cadence"
+	)
+	_expect(
+		not DriverScript.selection_receipt_confirms_progress(
+			accepted_selection_progress,
+			12,
+			{
+				"accepted": true,
+				"applied": true,
+				"selection_kind": str(TableSelectionIntent.KIND_SELECT_DISTRICT),
+				"district_index": 5,
+			}
+		),
+		"a district-selection receipt for another target cannot advance the pending map action"
+	)
+	var unavailable_rotation := {
+		"phase": "open",
+		"target_district": 3,
+		"source_rack_signature": "closed-rack",
+		"source_selection_revision": 41,
+		"rotation_count": 3,
+		"visited_districts": {0: true, 1: true, 2: true},
+	}
+	_expect(
+		DriverScript.advance_supply_rotation_after_unavailable_open(unavailable_rotation, 3, 3, 6, 42) \
+			and str(unavailable_rotation.get("phase", "")) == "select" \
+			and int(unavailable_rotation.get("target_district", -1)) == 4 \
+			and bool((unavailable_rotation.get("visited_districts", {}) as Dictionary).get(3, false)) \
+			and int(unavailable_rotation.get("rotation_count", 0)) == 4,
+		"a typed unavailable rotation-open receipt advances to the next unvisited public district"
+	)
+	var exhausted_rotation := unavailable_rotation.duplicate(true)
+	exhausted_rotation["phase"] = "open"
+	exhausted_rotation["target_district"] = 4
+	exhausted_rotation["rotation_count"] = DriverScript.SUPPLY_RACK_ROTATION_LIMIT
+	_expect(
+		DriverScript.advance_supply_rotation_after_unavailable_open(exhausted_rotation, 4, 4, 6, 43) \
+			and str(exhausted_rotation.get("phase", "")) == "exhausted" \
+			and int(exhausted_rotation.get("target_district", 99)) == -1,
+		"an unavailable rotation-open receipt respects the bounded exploration limit"
+	)
 	_expect(driver_source.contains('"origin": "planet_map"') and driver_source.contains('selection_screen.request_district_selection(int(action.get("district_index", -1)), &"qa_driver")'), "bounded rack exploration selects another region through the same typed GameScreen selection boundary")
 	_expect(driver_source.contains('"selection_revision": int(selection.get("revision", -1))') and driver_source.contains('"rack_signature": JSON.stringify(signature_source).sha256_text()'), "rack retry de-duplication binds the public selection revision and visible rack signature")
 	_expect(driver_source.contains('"refresh_attempts_by_signature": {}') and driver_source.contains('"exhausted_signatures": {}') and driver_source.contains('"visited_districts": {}'), "bounded exploration remembers visible rack attempts and visited public districts without future-rack inspection")
@@ -129,16 +213,22 @@ func _run() -> void:
 	_expect(driver_source.contains('int(strategy_action.get("source_revision", 0))'), "GDP expansion exhaustion is scoped to the authoritative source revision")
 	_expect(driver_source.contains('pending_id != "strategy_expand_gdp"'), "a successful GDP expansion remains repeatable until the owner reports no legal facility target")
 	_expect(driver_source.find("for strategy_action in strategy_actions") < driver_source.find('"phase": "play.gdp_accumulation"'), "available GDP expansion is attempted before the driver settles into authoritative income and victory waiting")
-	_expect(driver_source.find("var facility_hand_action") < driver_source.find("for strategy_action in strategy_actions"), "a purchased expansion facility is played before another strategy navigation action")
+	var facility_hand_index := driver_source.find("var facility_hand_action")
+	var incomplete_strategy_index := driver_source.find("for strategy_action in strategy_actions", facility_hand_index)
+	var visible_supply_index := driver_source.find("var visible_supply_action", facility_hand_index)
+	_expect(facility_hand_index >= 0 and facility_hand_index < incomplete_strategy_index, "a purchased expansion facility is played before another strategy navigation action")
 	_expect(driver_source.find("var facility_hand_action") < driver_source.find("var supply_rotation_action"), "a purchased facility is played before any public rack rotation can continue")
-	_expect(driver_source.contains('_first_card_by_kind(hand_cards, "facility_v06")') and driver_source.contains('"id": "facility_play_wait"'), "a purchased facility that is temporarily ineligible waits for authoritative world time instead of opening another rack")
+	_expect(driver_source.contains("first_unexhausted_card_by_kind") and driver_source.contains("_exhausted_facility_card_signatures") and driver_source.contains("_facility_candidate_attempts") and driver_source.contains("_apply_driver_planning_transition") and not driver_source.contains("_mark_current_public_map_district_exhausted"), "facility target bookkeeping commits outside the read-only action projection before normal rack flow searches for a different facility")
 	_expect(driver_source.contains("FACILITY_TARGET_RETRY_REASON_IDS") and driver_source.contains('blocked_facility.get("play_reason_id"') and driver_source.contains('target_retry["phase"] = "play.hand.facility_v06.retarget.%s"'), "a stable facility target rejection retries through the public map selection path without parsing player prose")
-	_expect(driver_source.find("var visible_supply_action") < driver_source.find("for strategy_action in strategy_actions"), "an opened expansion rack is consumed before the expansion button can repeat")
+	_expect(driver_source.contains("public_new_facility_target_candidates") and driver_source.contains("next_public_facility_candidate") and driver_source.contains('target.get("source_revision", 0)') and not driver_source.contains("PRODUCT_INDUSTRY_CATALOG") and not driver_source.contains("_public_map_query") and not driver_source.contains('card_name.contains("facility.factory'), "factory targeting consumes the typed public candidate facade without copying product, lifecycle, or slot rules into the driver")
+	_expect(visible_supply_index >= 0 and visible_supply_index < incomplete_strategy_index, "an opened expansion rack is consumed before the expansion button can repeat")
 	_expect(driver_source.contains('bool(card.get("actionable", false))') and driver_source.contains("matching[wrapi(index + 1, 0, matching.size())]"), "facility supply selection prefers an owner-confirmable listing, then rotates through public alternatives without reading private affordability state")
-	_expect(driver_source.contains('production_source_established := int(public_progress.get("production_installation_count", 0)) >= 1') and driver_source.contains('own_victory_eligible := bool(public_progress.get("eligible", false))'), "the scripted player waits for one authoritative production installation, then resumes normal UI expansion until a real Victory candidate exists")
-	_expect(driver_source.contains('else "facility_not_visible"') and driver_source.contains('not bool(wait_facts.get("has_visible_facility", true))'), "a visible rack without a facility rotates immediately instead of buying unrelated cards or inspecting future rack order")
+	_expect(driver_source.contains('production_installation_count := int(public_progress.get("production_installation_count", 0))') and driver_source.contains('production_chain_incomplete := production_installation_count < TARGET_PRODUCTION_INSTALLATION_COUNT'), "the scripted player targets the explicit three-installation acceptance slice through public progress")
+	_expect(driver_source.contains('_peak_production_installation_count = maxi(') and driver_source.contains('int(stable.get("peak_production_installation_count", 0)) >= TARGET_PRODUCTION_INSTALLATION_COUNT'), "terminal acceptance proves that three production installations existed in the authoritative run even if later damage removes one")
+	_expect(driver_source.contains('bool(sale_receipt.get("observed", false)) and not production_chain_incomplete') and driver_source.find('bool(sale_receipt.get("observed", false)) and not production_chain_incomplete') < driver_source.find('var required_facility_kind := "factory" if production_chain_incomplete else ""'), "after three installations the driver uses typed board strategy actions instead of purchasing unrelated rack cards")
+	_expect(driver_source.contains('else "facility_not_visible"') and driver_source.contains('not bool(wait_facts.get("has_visible_production_facility", false))'), "a visible rack without a typed factory rotates immediately instead of buying unrelated cards or inspecting future rack order")
 	_expect(driver_source.contains("_next_visible_supply_facility_card") and driver_source.contains('preview.get("action_reason_code", "facility_not_visible")'), "a visible but unavailable facility retains its qualitative typed reason instead of being mislabeled as absent")
-	_expect(driver_source.contains('not facility_chain_incomplete or _is_supply_facility_kind(preview_kind)') and driver_source.contains('return kind in ["facility", "facility_v06", "public_facility"]'), "until the opening facility chain exists, a non-facility preview cannot displace the public facility search, while the public catalog facility kind remains recognized")
+	_expect(driver_source.contains('preview_facility_kind == "factory"') and driver_source.contains("_supply_new_target_available") and driver_source.contains('return kind in ["facility", "facility_v06", "public_facility"]'), "until three production installations exist, only a typed factory with a public new-target candidate can displace the production-facility search")
 	_expect(driver_source.contains("const ACTION_ENGINE_TIME_SCALE := 1.0") and not driver_source.contains("SUPPLY_WAIT_ENGINE_TIME_SCALE"), "every automatic driver frame remains at human-scale engine time")
 	_expect(driver_source.contains("district_supply_port.receipt_ready.connect(_on_district_supply_action_receipt)") and driver_source.contains("blocked_typed_receipt"), "district-supply failures are attributed from the scene-owned typed receipt instead of a generic UI timeout")
 	_expect(driver_source.contains('supply_screen.request_selected_district_supply_purchase(&"qa_driver")') and driver_source.contains('DistrictSupplyActionIntent.KIND_QUOTE') and driver_source.contains('DistrictSupplyActionIntent.KIND_PURCHASE'), "purchase uses GameScreen's public typed request and accepted typed receipts identify quote and purchase milestones")
@@ -151,14 +241,14 @@ func _run() -> void:
 	_expect(driver_source.contains('preview.get("action_reason_code", "purchase_unavailable")') and not driver_source.contains('preview.get("player_cash"'), "facility wait telemetry records only an allowlisted qualitative reason and never reads exact cash")
 	_expect(driver_source.contains('preview.get("primary_action_id", "")') and driver_source.contains('"quote" if primary_action_id == "district_supply_preview_card" else "purchase"'), "scripted human follows the visible quote-or-purchase projection instead of treating every enabled button as a purchase")
 	_expect(not driver_source.contains('"id": "district_supply_purchase_card",\n\t\t\t"phase": "play.supply.purchase.%s" % preview_card_name'), "driver no longer hard-codes enabled district supply previews as purchases")
-	_expect(driver_source.find("var visible_supply_action") < driver_source.find("for strategy_action in strategy_actions"), "an in-progress expansion purchase completes even if the rolling GDP window temporarily returns to zero")
+	_expect(visible_supply_index >= 0 and visible_supply_index < incomplete_strategy_index, "an in-progress expansion purchase completes even if the rolling GDP window temporarily returns to zero")
 	_expect(driver_source.contains('standings_progress.get("required_controlled_region_count", 0)') and driver_source.contains('standings_progress.get("required_top_k_gdp_per_minute", 0)') and not driver_source.contains('victory.get("victory_rule"'), "driver reads dynamic victory requirements from the authorized standings projection while Victory public remains state-only")
-	_expect(driver_source.contains('production_installation_count", 0)) >= 1') and driver_source.contains('not bool(sale_receipt.get("observed", false))') and driver_source.contains('"phase": "play.gdp_first_receipt"'), "driver waits for a typed Sale Receipt only after a real production installation exists")
+	_expect(driver_source.contains('production_source_established := production_installation_count >= 1') and driver_source.contains('not bool(sale_receipt.get("observed", false))') and driver_source.contains('"phase": "play.gdp_first_receipt"'), "driver waits for a typed Sale Receipt only after a real production installation exists")
 	_expect(driver_source.contains("draft.reset_to_defaults()"), "fixed-seed runs reset the unique draft owner to the first-run depth instead of inheriting local settings")
 	_expect(driver_source.contains('(session as GameSessionRuntimeController).session_summary()') and driver_source.contains('setup.get("player_count", 0)') and driver_source.contains('setup.get("ai_player_count", 0)'), "fixed-seed start verification consumes the authoritative session setup summary")
 	_expect(not driver_source.contains("world_session_state()") and not driver_source.contains("players_variant"), "full-run QA cannot inspect private WorldSessionState player records to verify startup")
 	_expect(driver_source.contains("district_supply_quote_availability") and driver_source.contains("Engine.time_scale = ACTION_ENGINE_TIME_SCALE"), "driver waits for world-time quote availability without scaling a future forced-decision frame")
-	_expect(DriverScript.ACTION_ENGINE_TIME_SCALE == 1.0 and DriverScript.AUTHORITATIVE_WAIT_STEP_SECONDS == 1.0 and DriverScript.AUTHORITATIVE_WAIT_STEPS_PER_RENDER_FRAME == 1 and DriverScript.AUTHORITATIVE_WAIT_TOTAL_STEP_LIMIT >= 130 and DriverScript.BLOCKED_REALTIME_TOTAL_STEP_LIMIT >= 15, "typed UI actions remain human-paced while active and blocked manual RuntimeLoop steps are independently bounded")
+	_expect(DriverScript.ACTION_ENGINE_TIME_SCALE == 1.0 and DriverScript.AUTHORITATIVE_WAIT_STEP_SECONDS == 1.0 and DriverScript.AUTHORITATIVE_WAIT_STEPS_PER_RENDER_FRAME == 1 and DriverScript.AUTHORITATIVE_WAIT_TOTAL_STEP_LIMIT >= 130 and DriverScript.BLOCKED_REALTIME_TOTAL_STEP_LIMIT >= 15, "each one-second authoritative step is followed by a typed action probe so forced decisions and terminal paths cannot be skipped by batching")
 	_expect(stepper_source.contains("const MAX_STEP_SECONDS := 1.0") and stepper_source.contains("step_seconds > MAX_STEP_SECONDS") and not driver_source.contains("AUTHORITATIVE_PRE_RECEIPT_ACCUMULATION_SECONDS") and not driver_source.contains("AUTHORITATIVE_AUDIT_STEP_SECONDS"), "the bounded driver has no 55/120-second single-frame shortcut")
 	_expect(stepper_source.count("advance_frame_for_test(") == 1 and not stepper_source.contains("CommodityFlow") and not stepper_source.contains("VictoryControl") and not stepper_source.contains("RuntimePhaseCoordinator"), "the test-only stepper calls only the unique RuntimeLoop entry and knows no child owner")
 	_expect(stepper_source.contains("advance_blocked_realtime_bounded") and stepper_source.contains("BLOCKED_REALTIME_PHASE_TRACE") and stepper_source.contains("blocked_realtime_delta_mismatch"), "blocked-only stepping validates its closed phase trace and zero-world receipt")
@@ -180,6 +270,97 @@ func _run() -> void:
 	_expect(driver_source.contains('_record_rng_checkpoint("terminal_quiescent", coordinator)') and driver_source.contains("rng_quiescence_evidence") and driver_source.contains('"rng_quiescence_verified", false'), "successful completion requires terminal and terminal-quiescent RNG checkpoints with zero within-run draw delta")
 	_expect(driver_source.contains('progress.get("qualification_duration_seconds", null)') and driver_source.contains('progress.get("audit_duration_seconds", null)') and not driver_source.contains("EXPECTED_QUALIFICATION_DURATION") and not driver_source.contains("EXPECTED_AUDIT_DURATION"), "timer evidence consumes the viewer-authorized Standings duration contract without copying rule durations into the driver")
 	_expect(not driver_source.contains('"completion_rate"') and not driver_source.contains('"completed_runs"'), "single-run output cannot masquerade as aggregate quality evidence")
+	_expect(
+		DriverScript.authoritative_manual_wait_policy(
+			{},
+			"running",
+			{"active": false},
+			{"id": "gdp_accumulation_wait", "disabled": true},
+			{}
+		),
+		"GDP accumulation uses the bounded one-step authoritative wait"
+	)
+	_expect(
+		DriverScript.authoritative_manual_wait_policy(
+			{},
+			"running",
+			{"active": false},
+			{"id": "district_supply_wait", "disabled": true},
+			{"phase": "exhausted"}
+		),
+		"an exhausted public-rack epoch waits fifteen world seconds through the same bounded one-step authority"
+	)
+	_expect(
+		not DriverScript.authoritative_manual_wait_policy(
+			{},
+			"running",
+			{"active": false},
+			{"id": "district_supply_wait", "disabled": true},
+			{"phase": "browsing"}
+		),
+		"an actionable public-rack browsing epoch is never accelerated as a neutral wait"
+	)
+	_expect(
+		not DriverScript.authoritative_manual_wait_policy(
+			{},
+			"running",
+			{"active": true},
+			{"id": "gdp_accumulation_wait", "disabled": true},
+			{}
+		),
+		"an active forced decision always closes authoritative wait acceleration"
+	)
+	_expect(
+		not DriverScript.authoritative_manual_wait_policy(
+			{"id": "already_submitted"},
+			"running",
+			{"active": false},
+			{"id": "gdp_accumulation_wait", "disabled": true},
+			{}
+		),
+		"a pending typed action always closes authoritative wait acceleration"
+	)
+	_expect(
+		DriverScript.terminal_presentation_drain_policy(
+			{},
+			{"state": "resolved", "completed": false}
+		),
+		"a resolved outcome receives a bounded no-action frame to finish the exact-once presentation chain"
+	)
+	_expect(
+		not DriverScript.terminal_presentation_drain_policy(
+			{"id": "already_submitted"},
+			{"state": "resolved", "completed": false}
+		),
+		"terminal presentation drain never overlaps a pending typed action"
+	)
+	_expect(
+		not DriverScript.terminal_presentation_drain_policy(
+			{},
+			{"state": "resolved", "completed": true}
+		),
+		"a committed terminal presentation exits the drain immediately"
+	)
+	_expect(
+		DriverScript.terminal_lifecycle_drain_policy({}, {"state": "audit"}, 150_000, 180_000),
+		"an in-progress terminal audit can use the explicit max-wall grace after the observation window"
+	)
+	_expect(
+		DriverScript.terminal_lifecycle_drain_policy({}, {"state": "qualification"}, 150_000, 180_000),
+		"an in-progress qualification can finish only inside the same bounded max-wall grace"
+	)
+	_expect(
+		not DriverScript.terminal_lifecycle_drain_policy({}, {"state": "idle"}, 150_000, 180_000),
+		"an idle run cannot extend the observation window"
+	)
+	_expect(
+		not DriverScript.terminal_lifecycle_drain_policy({"id": "pending"}, {"state": "audit"}, 150_000, 180_000),
+		"terminal lifecycle grace never bypasses an in-flight action"
+	)
+	_expect(
+		not DriverScript.terminal_lifecycle_drain_policy({}, {"state": "audit"}, 180_000, 180_000),
+		"terminal lifecycle grace cannot exceed the configured hard wall"
+	)
 
 	var pending_wager := {
 		"origin": "temporary_decision",
@@ -270,6 +451,50 @@ func _run() -> void:
 	)
 	_expect(bool(timer_evidence.get("verified", false)), "authorized duration fields plus one-second remaining-time trace prove the complete qualification and audit traversal")
 	_expect(int(timer_evidence.get("qualification_authorized_duration_us", -1)) == 10_000_000 and int(timer_evidence.get("audit_authorized_duration_us", -1)) == 120_000_000 and int(timer_evidence.get("audit_countdown_world_delta_us", -1)) == 120_000_000, "timer evidence records authorized durations and matching world-clock deltas")
+	var restarted_timer_trace := _timer_trace_after_qualification_reset(timer_contract)
+	var restarted_timer_evidence := DriverScript.timer_traversal_evidence(
+		restarted_timer_trace,
+		sale_observation,
+		timer_contract,
+		"",
+		false
+	)
+	_expect(
+		bool(restarted_timer_evidence.get("verified", false)) \
+			and int(restarted_timer_evidence.get("qualification_reset_count", 0)) == 1,
+		"a rules-authorized qualification loss is recorded before the final complete timer traversal"
+	)
+	var illegal_regression_trace := timer_trace.duplicate(true)
+	(illegal_regression_trace[11] as Dictionary)["state"] = "qualification"
+	_expect(
+		str(DriverScript.timer_traversal_evidence(
+			illegal_regression_trace,
+			sale_observation,
+			timer_contract,
+			"",
+			false
+		).get("reason_id", "")) == "timer_trace_state_regressed",
+		"an audit-to-qualification regression remains invalid"
+	)
+	var post_resolved_trace := timer_trace.duplicate(true)
+	post_resolved_trace.append(_timer_sample(
+		post_resolved_trace.size() + 1,
+		131_000_000,
+		"idle",
+		0,
+		0,
+		timer_contract
+	))
+	_expect(
+		str(DriverScript.timer_traversal_evidence(
+			post_resolved_trace,
+			sale_observation,
+			timer_contract,
+			"",
+			false
+		).get("reason_id", "")) == "timer_trace_state_regressed",
+		"a resolved terminal state cannot regress into a new attempt"
+	)
 	var no_sale_evidence := DriverScript.timer_traversal_evidence(timer_trace, {}, timer_contract, "", false)
 	_expect(not bool(no_sale_evidence.get("verified", true)), "a terminal trace without a real SaleReceipt fails closed")
 	var late_sale := sale_observation.duplicate(true)
@@ -285,14 +510,49 @@ func _run() -> void:
 	_expect(not bool(DriverScript.timer_traversal_evidence(timer_trace, sale_observation, invalid_timer_contract, "", false).get("verified", true)), "invalid authorized timer durations fail closed")
 	_expect(not bool(DriverScript.timer_traversal_evidence(timer_trace, sale_observation, timer_contract, "timer_contract_changed_during_run", false).get("verified", true)), "a changing authorized timer contract fails closed")
 	var public_outcome := _outcome("victory.v06.1")
-	var identity_evidence := DriverScript.outcome_identity_evidence(public_outcome, public_outcome)
-	_expect(bool(identity_evidence.get("verified", false)), "the authoritative Session receipt and public Victory receipt share one stable outcome identity")
+	var authoritative_outcome := public_outcome.duplicate(true)
+	var authoritative_rankings := (authoritative_outcome.get("rankings", []) as Array).duplicate(true)
+	(authoritative_rankings[0] as Dictionary)["cash_ledger_cents"] = 48_900
+	(authoritative_rankings[0] as Dictionary)["private_cash_carrier"] = {"ledger_revision": 11}
+	authoritative_outcome["rankings"] = authoritative_rankings
+	var public_rankings := (public_outcome.get("rankings", []) as Array).duplicate(true)
+	(public_rankings[0] as Dictionary)["cash_visibility"] = "redacted"
+	public_outcome["rankings"] = public_rankings
+	var identity_evidence := DriverScript.outcome_identity_evidence(public_outcome, authoritative_outcome)
+	_expect(bool(identity_evidence.get("verified", false)), "visibility-safe public and private authoritative outcome carriers share one normalized terminal identity")
 	var different_session_outcome := public_outcome.duplicate(true)
 	different_session_outcome["winner_player_indices"] = [1]
 	_expect(not bool(DriverScript.outcome_identity_evidence(public_outcome, different_session_outcome).get("verified", true)), "same-ID Session and public receipts with different winner identity fail closed")
-	var mutated_audit_outcome := public_outcome.duplicate(true)
-	mutated_audit_outcome["audit_evidence"] = {"settlement_checkpoint": "forged_checkpoint"}
-	_expect(not bool(DriverScript.outcome_identity_evidence(public_outcome, mutated_audit_outcome).get("verified", true)), "same-ID Session and public receipts with different settlement evidence fail closed")
+	var different_gdp_outcome := public_outcome.duplicate(true)
+	var different_gdp_rankings := (different_gdp_outcome.get("rankings", []) as Array).duplicate(true)
+	(different_gdp_rankings[0] as Dictionary)["top_k_gdp_per_minute_cents"] = 10_801
+	different_gdp_outcome["rankings"] = different_gdp_rankings
+	_expect(not bool(DriverScript.outcome_identity_evidence(public_outcome, different_gdp_outcome).get("verified", true)), "same-ID receipts with different ranked GDP fail closed")
+	var different_control_outcome := public_outcome.duplicate(true)
+	var different_control_rankings := (different_control_outcome.get("rankings", []) as Array).duplicate(true)
+	(different_control_rankings[0] as Dictionary)["controlled_region_count"] = 4
+	different_control_outcome["rankings"] = different_control_rankings
+	_expect(not bool(DriverScript.outcome_identity_evidence(public_outcome, different_control_outcome).get("verified", true)), "same-ID receipts with different controlled-region rank facts fail closed")
+	var different_order_outcome := public_outcome.duplicate(true)
+	different_order_outcome["comparison_order"] = ["controlled_region_count", "top_k_gdp_per_minute_cents", "cash_ledger_cents"]
+	_expect(not bool(DriverScript.outcome_identity_evidence(public_outcome, different_order_outcome).get("verified", true)), "same-ID receipts with a different comparison order fail closed")
+	var different_checkpoint_outcome := public_outcome.duplicate(true)
+	var different_checkpoint_evidence := (different_checkpoint_outcome.get("audit_evidence", {}) as Dictionary).duplicate(true)
+	different_checkpoint_evidence["settlement_checkpoint"] = "forged_checkpoint"
+	different_checkpoint_outcome["audit_evidence"] = different_checkpoint_evidence
+	_expect(not bool(DriverScript.outcome_identity_evidence(public_outcome, different_checkpoint_outcome).get("verified", true)), "same-ID receipts with different settlement checkpoints fail closed")
+	var different_roster_outcome := public_outcome.duplicate(true)
+	var different_roster_evidence := (different_roster_outcome.get("audit_evidence", {}) as Dictionary).duplicate(true)
+	different_roster_evidence["audit_roster"] = [1]
+	different_roster_outcome["audit_evidence"] = different_roster_evidence
+	_expect(not bool(DriverScript.outcome_identity_evidence(public_outcome, different_roster_outcome).get("verified", true)), "same-ID receipts with different audit rosters fail closed")
+	var different_rule_outcome := public_outcome.duplicate(true)
+	var different_rule_evidence := (different_rule_outcome.get("audit_evidence", {}) as Dictionary).duplicate(true)
+	var different_rule := (different_rule_evidence.get("victory_rule", {}) as Dictionary).duplicate(true)
+	different_rule["required_region_count"] = 4
+	different_rule_evidence["victory_rule"] = different_rule
+	different_rule_outcome["audit_evidence"] = different_rule_evidence
+	_expect(not bool(DriverScript.outcome_identity_evidence(public_outcome, different_rule_outcome).get("verified", true)), "same-ID receipts with different public victory rules fail closed")
 	var terminal_stable := {
 		"session_state": "finished",
 		"world_effective_us": 185000000,
@@ -308,6 +568,7 @@ func _run() -> void:
 		"session_outcome_identity_fingerprint": str(identity_evidence.get("session_fingerprint", "")),
 		"outcome_reason_code": "public_audit_complete",
 		"winner_count": 1,
+		"peak_production_installation_count": 3,
 		"present_count": 1,
 		"presented_outcome_count": 1,
 		"logged_outcome_count": 1,
@@ -321,6 +582,9 @@ func _run() -> void:
 		"rng": {"draw_count": 538, "checkpoint_fingerprint": "e".repeat(64)},
 	}
 	_expect(DriverScript._terminal_baseline_valid(terminal_stable), "a finished typed settlement with public log and RNG evidence is a valid terminal baseline")
+	var incomplete_installation_slice := terminal_stable.duplicate(true)
+	incomplete_installation_slice["peak_production_installation_count"] = 2
+	_expect(not DriverScript._terminal_baseline_valid(incomplete_installation_slice), "terminal settlement cannot pass before the scripted player has owned three production installations")
 	var missing_log := terminal_stable.duplicate(true)
 	missing_log["final_public_log"] = {"public_entry_count": 0, "outcome_id": "", "public_fingerprint": ""}
 	_expect(not DriverScript._terminal_baseline_valid(missing_log), "composition counters without a public final-settlement log cannot satisfy the terminal baseline")
@@ -471,6 +735,23 @@ func _timer_trace(timer_contract: Dictionary) -> Array[Dictionary]:
 	return trace
 
 
+func _timer_trace_after_qualification_reset(timer_contract: Dictionary) -> Array[Dictionary]:
+	var qualification_duration_us := int(timer_contract.get("qualification_duration_us", 0))
+	var trace: Array[Dictionary] = [
+		_timer_sample(1, 0, "idle", 0, 0, timer_contract),
+		_timer_sample(2, 1_000_000, "qualification", qualification_duration_us - 1_000_000, 0, timer_contract),
+		_timer_sample(3, 2_000_000, "qualification", qualification_duration_us - 2_000_000, 0, timer_contract),
+		_timer_sample(4, 3_000_000, "idle", 0, 0, timer_contract),
+	]
+	var successful_trace := _timer_trace(timer_contract)
+	for index in range(1, successful_trace.size()):
+		var sample := (successful_trace[index] as Dictionary).duplicate(true)
+		sample["observation_sequence"] = trace.size() + 1
+		sample["world_effective_us"] = int(sample.get("world_effective_us", 0)) + 3_000_000
+		trace.append(sample)
+	return trace
+
+
 func _timer_sample(
 	sequence: int,
 	world_effective_us: int,
@@ -499,6 +780,26 @@ func _outcome(outcome_id: String) -> Dictionary:
 		"winner_player_indices": [0],
 		"co_victory": false,
 		"comparison_order": ["top_k_gdp_per_minute_cents", "controlled_region_count", "cash_ledger_cents"],
+		"rankings": [{
+			"player_index": 0,
+			"top_k_gdp_per_minute_cents": 10_800,
+			"top_k_gdp_per_minute": 108,
+			"controlled_region_count": 3,
+			"winner": true,
+		}],
+		"audit_evidence": {
+			"victory_rule": {
+				"surviving_region_count": 6,
+				"coverage_basis_points": 4000,
+				"required_region_count": 3,
+				"gdp_per_required_region_per_minute": 36,
+				"required_top_k_gdp_per_minute": 108,
+				"required_top_k_gdp_per_minute_cents": 10_800,
+				"ordinary_victory_paused": false,
+			},
+			"audit_roster": [0],
+			"settlement_checkpoint": "post_world_settlement",
+		},
 	}
 
 

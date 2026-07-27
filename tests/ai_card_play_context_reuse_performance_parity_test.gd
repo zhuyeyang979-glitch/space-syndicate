@@ -193,6 +193,7 @@ func _run() -> void:
 		await _cleanup(app_root)
 		_finish(scenario)
 		return
+	_verify_actor_state_tick_cache_boundary(ai, actor_state_port, actor_index)
 
 	var hand_ready := _replace_actor_hand(coordinator, world, actor_index, FULL_HAND_CARD_ID)
 	_expect(hand_ready, "focused fixture installs exactly five owned runtime cards")
@@ -239,6 +240,47 @@ func _run() -> void:
 
 	await _cleanup(app_root)
 	_finish(scenario)
+
+
+func _verify_actor_state_tick_cache_boundary(
+	ai: AiRuntimeController,
+	actor_state_port: AiActorStatePort,
+	actor_index: int
+) -> void:
+	var port_before := actor_state_port.debug_snapshot()
+	var ai_before := ai.debug_snapshot()
+	ai._actor_state_tick_cache.clear()
+	ai._actor_state_tick_cache_active = true
+	var first := ai.call("_ai_actor_state_snapshot", actor_index) as Dictionary
+	var second := ai.call("_ai_actor_state_snapshot", actor_index) as Dictionary
+	var profile: Dictionary = (first.get("ai_profile", {}) as Dictionary).duplicate(true)
+	var memory: Dictionary = (first.get("ai_memory", {}) as Dictionary).duplicate(true)
+	var unchanged_commit := ai.call(
+		"_commit_ai_actor_state",
+		actor_index,
+		profile,
+		memory,
+		first
+	) as Dictionary
+	var third := ai.call("_ai_actor_state_snapshot", actor_index) as Dictionary
+	ai._actor_state_tick_cache_active = false
+	ai._actor_state_tick_cache.clear()
+	var port_after := actor_state_port.debug_snapshot()
+	var ai_after := ai.debug_snapshot()
+	_expect(
+		not first.is_empty() and first == second and second == third,
+		"one synchronous simulation tick reuses an identical actor-state projection"
+	)
+	_expect(
+		int(port_after.get("ai_state_query_count", 0)) - int(port_before.get("ai_state_query_count", 0)) == 2 \
+			and int(ai_after.get("actor_state_tick_cache_hit_count", 0)) - int(ai_before.get("actor_state_tick_cache_hit_count", 0)) == 1 \
+			and int(ai_after.get("actor_state_tick_cache_miss_count", 0)) - int(ai_before.get("actor_state_tick_cache_miss_count", 0)) == 2,
+		"actor-state cache hits only before a typed commit invalidates the tick lease"
+	)
+	_expect(
+		bool(unchanged_commit.get("accepted", false)) and not bool(unchanged_commit.get("changed", true)),
+		"cache invalidation probe uses an accepted no-op typed commit"
+	)
 
 
 func _run_saturated_play_turn_route_context_gate(
