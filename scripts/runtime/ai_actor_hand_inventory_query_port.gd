@@ -331,13 +331,19 @@ func _slot_entries(slots: Array) -> Array:
 			return []
 		var kind := str(card.get("kind", machine.get("category_id", "")))
 		var persistent := bool(card.get("persistent", false))
+		var runtime_instance_value: Variant = card.get(
+			"runtime_instance_id",
+			""
+		)
+		if not (runtime_instance_value is String):
+			return []
 		var counts_toward_limit := _card_inventory_service() \
 			.card_counts_toward_hand_limit(card)
 		var entry := {
 			"slot_index": slot_index,
 			"occupied": true,
 			"card_id": card_id,
-			"runtime_instance_id": str(card.get("runtime_instance_id", "")),
+			"runtime_instance_id": runtime_instance_value as String,
 			"family_id": str(card.get(
 				"family_id",
 				card.get("family", machine.get("family_id", card_id))

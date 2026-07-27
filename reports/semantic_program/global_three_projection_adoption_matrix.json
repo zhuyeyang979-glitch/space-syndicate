@@ -2,10 +2,10 @@
   "schema_version": 1,
   "matrix_id": "global_three_projection_adoption_matrix",
   "observed_repository": {
-    "baseline_sha": "46b356f99da5b536f877d96a946ceddd1720fef4",
-    "branch": "codex/codex-first-playerface-cutover-46b356f",
+    "baseline_sha": "56b572ac8b1d52ae71a43c53dfc7a4d875d7282b",
+    "branch": "codex/ai-viewer-privacy-raw-read-batch1-56b572a",
     "observed_date": "2026-07-27",
-    "worktree_evidence_state": "codex_cutover_local_and_mcp_gates_green",
+    "worktree_evidence_state": "batch1_local_and_mcp_gates_green",
     "claim_policy": "Conservative source audit. Existing domain-specific DTOs, snapshots, state machines, and controllers are not counted as shared SemanticSpec projections unless they consume the shared immutable semantic contract."
   },
   "source_reports": [
@@ -17,7 +17,8 @@
     "reports/semantic_program/military_weather_semantic_audit.json",
     "reports/semantic_program/victory_semantic_audit.json",
     "reports/semantic_program/save_replay_privacy_rng_audit.json",
-    "reports/semantic_program/content_authority_duality_audit.json"
+    "reports/semantic_program/content_authority_duality_audit.json",
+    "reports/cards/ai_raw_read_ratchet_batch1.json"
   ],
   "program_invariants": {
     "immutable_semantics_are_not_saved": true,
@@ -83,16 +84,24 @@
         "note": "The production Codex path passed full-catalog, visual, runtime, performance, privacy, and architecture gates. Other player surfaces remain out of scope."
       },
       "ai_projection": {
-        "status": "PASSIVE_OWN_HAND_AUTHORIZED",
+        "status": "BATCH1_INTERACTION_OBSERVATION_ACTIVE",
         "source_boundary": "CardSemanticSourceAuthorizationPort",
-        "instance_contract": "CardInstanceDecisionStateV1",
-        "production_ai_cutover": false,
+        "instance_contracts": [
+          "CardInstanceDecisionStateV1 for v0.6",
+          "AiCardInteractionLegacySourceBundleV1 for specialized v0.4 observation-only compatibility"
+        ],
+        "production_ai_cutover": "R03_R04_INTERACTION_OBSERVATION_ONLY",
         "raw_read_debt": {
-          "value_reads": 225,
-          "presence_checks": 5,
-          "functions": 33,
-          "keys": 71
-        }
+          "historical_origin": "225/5/33/71",
+          "ai_consumer": "219/5/31/69",
+          "source_owner_policy_bridge": "6/0/1/6",
+          "combined_historical_ai_policy_ledger": "225/5/32/71",
+          "remaining_rows": 31
+        },
+        "consumer_trust_model": "One opaque consumer capability is bound per actor; cross-actor and aliased-token use fail closed. The trusted singleton AI consumer holds the complete map, so this is not seat isolation inside that consumer or against arbitrary hostile in-process reflection.",
+        "generic_v06_authorization_accepts_flat_v04": false,
+        "v04_compatibility_scope": "interaction_effect_observation_only",
+        "v04_save_migration_implemented": false
       },
       "rules_projection": {
         "status": "NOT_STARTED",
@@ -138,18 +147,19 @@
       },
       "compatibility_bridges": [
         "v0.4 and v0.6 card catalogs/execution paths",
+        "eight-reference parser-free v0.4 interaction observation adapter",
         "temporary PlayerCardCodexDTO-to-existing-snapshot adapter",
         "narrow legacy localized-name identity adapter for audited non-Card-Codex callers",
         "legacy raw AI and non-Codex UI reads"
       ],
       "blockers": [
-        "Final Codex full-catalog, production scene, visual, privacy, performance, and merge evidence is pending.",
-        "Production AI still reads raw card fields.",
+        "Production AI retains 219 direct raw value reads across 31 functions and 31 historical migration rows.",
+        "The v0.4 interaction adapter proves observation compatibility only; full semantic and Save migration are not implemented.",
         "RulesProjection and trusted gameplay handler dispatch are absent.",
         "The v0.4/v0.6 authority and execution bridge remains active.",
         "Market, hand, and card-track surfaces are not cut over."
       ],
-      "next_atomic_boundary": "AI_VIEWER_PRIVACY_AND_RAW_READ_RATCHET_BATCH1"
+      "next_atomic_boundary": "SAMPLE_FULL_RUN_VERTICAL_SLICE_TO_SETTLEMENT"
     },
     {
       "domain_id": "Role",
@@ -807,7 +817,7 @@
       "Card: CODEX_ONLY_ACTIVE, local and MCP gates green"
     ],
     "standard_ai_projection_status": [
-      "Card: PASSIVE_OWN_HAND_AUTHORIZED"
+      "Card: BATCH1_INTERACTION_OBSERVATION_ACTIVE"
     ],
     "standard_rules_projection_active_domains": [],
     "domains_without_implemented_immutable_semantic_spec": [
@@ -822,6 +832,6 @@
     ],
     "card_market_hand_track_cutover": false,
     "legacy_v04_v06_bridge": "ACTIVE_DEBT",
-    "next_program_boundary": "AI_VIEWER_PRIVACY_AND_RAW_READ_RATCHET_BATCH1"
+    "next_program_boundary": "SAMPLE_FULL_RUN_VERTICAL_SLICE_TO_SETTLEMENT"
   }
 }

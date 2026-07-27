@@ -191,12 +191,16 @@ func _run() -> void:
 		{"name": "隐藏城市", "city": {"active": true, "owner": 0}},
 	]
 	ai.auto_monsters = [{"uid": 1, "down": false, "owner": 0}]
-	ai._ai_direct_player_interaction_plan(1, {"kind": "player_hand_disrupt", "hand_discard_count": 1})
+	var interaction_observation := {
+		"policy_interaction_kind_id": "player_hand_disrupt",
+		"policy_discard_count": 1,
+	}
+	ai._ai_direct_player_interaction_plan(1, interaction_observation)
 	var plan_rng_before := rng.capture_plan_checkpoint()
-	var plan_a := ai._ai_direct_player_interaction_plan(1, {"kind": "player_hand_disrupt", "hand_discard_count": 1})
+	var plan_a := ai._ai_direct_player_interaction_plan(1, interaction_observation)
 	(world.districts[0] as Dictionary)["city"] = {"active": true, "owner": 2}
 	ai.auto_monsters = [{"uid": 1, "down": false, "owner": 2}]
-	var plan_b := ai._ai_direct_player_interaction_plan(1, {"kind": "player_hand_disrupt", "hand_discard_count": 1})
+	var plan_b := ai._ai_direct_player_interaction_plan(1, interaction_observation)
 	_expect(int(plan_a.get("target_player", -1)) in [0, 2] and int(plan_a.get("target_player", -1)) != 3, "direct interaction chooses only a typed active target")
 	_expect(int(plan_a.get("direct_target_city_pressure", -1)) == 0 and int(plan_a.get("direct_target_monster_pressure", -1)) == 0, "direct interaction no longer scores hidden owner aggregates")
 	_expect(int(plan_a.get("target_player", -1)) == int(plan_b.get("target_player", -2)) and int(plan_a.get("score", -1)) == int(plan_b.get("score", -2)), "hidden city and monster owner changes do not affect public target scoring")

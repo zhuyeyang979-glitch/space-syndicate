@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/ai_card_interaction_observation_service.gd" id="1_service"]
+
+[node name="AiCardInteractionObservationService" type="Node"]
+script = ExtResource("1_service")
+source_authorization_port_path = NodePath("../CardSemanticSourceAuthorizationPort")
+editor_description = "Scene-owned actor-private observation boundary for authorized own-hand direct-interaction semantics. It emits detached facts and proof fingerprints only, and owns no card, game, Save, or RNG state."

@@ -101,13 +101,17 @@ func _run() -> void:
 	_check(not port.ai_actor_state_snapshot(capability, 1).is_empty() and port.ai_actor_state_snapshot(hostile, 1).is_empty(), "capability_authorization_preserved")
 	_check(port.ai_actor_state_snapshot(hostile_early_bind.capability, 1).is_empty(), "early_hostile_capability_has_zero_private_access")
 
-	var plan_a := ai._ai_direct_player_interaction_plan(1, {"kind": "player_hand_disrupt", "hand_discard_count": 1})
+	var interaction_observation := {
+		"policy_interaction_kind_id": "player_hand_disrupt",
+		"policy_discard_count": 1,
+	}
+	var plan_a := ai._ai_direct_player_interaction_plan(1, interaction_observation)
 	world.districts = [{"name": "hidden", "city": {"active": true, "owner": 0}}]
 	ai.auto_monsters = [{"uid": 1, "down": false, "owner": 0}]
-	var plan_b := ai._ai_direct_player_interaction_plan(1, {"kind": "player_hand_disrupt", "hand_discard_count": 1})
+	var plan_b := ai._ai_direct_player_interaction_plan(1, interaction_observation)
 	(world.districts[0] as Dictionary)["city"] = {"active": true, "owner": 2}
 	ai.auto_monsters = [{"uid": 1, "down": false, "owner": 2}]
-	var plan_c := ai._ai_direct_player_interaction_plan(1, {"kind": "player_hand_disrupt", "hand_discard_count": 1})
+	var plan_c := ai._ai_direct_player_interaction_plan(1, interaction_observation)
 	_check(int(plan_a.get("target_player", -1)) in [0, 2] and int(plan_a.get("target_player", -1)) != 3, "typed_target_identity")
 	_check(int(plan_b.get("target_player", -1)) == int(plan_c.get("target_player", -2)) and int(plan_b.get("score", -1)) == int(plan_c.get("score", -2)), "hidden_owner_privacy_differential")
 	_check(int(plan_c.get("direct_target_city_pressure", -1)) == 0 and int(plan_c.get("direct_target_monster_pressure", -1)) == 0, "hidden_owner_scores_removed")

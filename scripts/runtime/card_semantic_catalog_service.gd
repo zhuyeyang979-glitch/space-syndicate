@@ -4,6 +4,9 @@ class_name CardSemanticCatalogService
 
 const COMPILER := preload("res://scripts/cards/semantic/card_semantic_compiler_v1.gd")
 const SCHEMA := preload("res://scripts/cards/semantic/card_semantic_schema_v1.gd")
+const LEGACY_V04_INTERACTION_REFERENCE := preload(
+	"res://scripts/cards/semantic/card_v04_interaction_semantic_reference_adapter_v1.gd"
+)
 
 const PUBLIC_CODEX_AUTHORIZATION_SCHEMA_VERSION := 1
 const PUBLIC_CODEX_SOURCE_KIND := "codex_public_catalog"
@@ -45,6 +48,28 @@ const PUBLIC_CODEX_RECEIPT_KEYS := [
 	"runtime_readiness_id",
 	"request_fingerprint",
 	"receipt_fingerprint",
+]
+const LEGACY_V04_INTERACTION_WITNESS_RESULT_KEYS := [
+	"schema_version",
+	"accepted",
+	"reason_id",
+	"effect_witness",
+]
+const LEGACY_V04_INTERACTION_WITNESS_KEYS := [
+	"schema_version",
+	"witness_id",
+	"adapter_id",
+	"semantic_source_catalog_id",
+	"semantic_card_id",
+	"semantic_family_id",
+	"semantic_rank",
+	"semantic_fingerprint",
+	"runtime_readiness_id",
+	"effect_ops",
+	"legacy_definition_fingerprint",
+	"mapping_fingerprint",
+	"request_fingerprint",
+	"witness_fingerprint",
 ]
 
 @export var configure_on_ready := true
@@ -178,6 +203,102 @@ func authorize_semantic_spec(semantic_spec: Dictionary) -> Dictionary:
 		"ok": true,
 		"spec": (_authorized_specs_by_card_id[card_id] as Dictionary).duplicate(true),
 		"errors": [],
+	}
+
+
+func authorize_v04_interaction_effect_witness(
+	request: Dictionary
+) -> Dictionary:
+	if not _configured:
+		configure()
+	if not _configured:
+		return _legacy_v04_interaction_witness_failure(
+			"semantic_catalog_not_configured"
+		)
+	if not LEGACY_V04_INTERACTION_REFERENCE.validate_witness_request(request):
+		return _legacy_v04_interaction_witness_failure(
+			"legacy_v04_interaction_witness_request_invalid"
+		)
+	var semantic_card_id := str(request.get("semantic_card_id", ""))
+	if not _authorized_specs_by_card_id.has(semantic_card_id):
+		return _legacy_v04_interaction_witness_failure(
+			"legacy_v04_interaction_semantic_reference_not_registered"
+		)
+	var semantic_spec := _authorized_specs_by_card_id.get(
+		semantic_card_id,
+		{}
+	) as Dictionary
+	var identity_value: Variant = semantic_spec.get("identity")
+	var effect_ops_value: Variant = semantic_spec.get("effect_ops")
+	if not (identity_value is Dictionary) or not (effect_ops_value is Array):
+		return _legacy_v04_interaction_witness_failure(
+			"legacy_v04_interaction_semantic_witness_invalid"
+		)
+	var identity := identity_value as Dictionary
+	var effect_ops := effect_ops_value as Array
+	if str(identity.get("card_id", "")) != semantic_card_id \
+			or str(identity.get("family_id", "")) \
+				!= str(request.get("semantic_family_id", "")) \
+			or identity.get("rank") != request.get("semantic_rank") \
+			or effect_ops.is_empty() or effect_ops.size() > 2:
+		return _legacy_v04_interaction_witness_failure(
+			"legacy_v04_interaction_semantic_witness_binding_invalid"
+		)
+	for op_value in effect_ops:
+		if not (op_value is Dictionary) \
+				or not bool(SCHEMA.validate_effect_op(op_value).get(
+					"valid",
+					false
+				)):
+			return _legacy_v04_interaction_witness_failure(
+				"legacy_v04_interaction_semantic_effect_op_invalid"
+			)
+	var request_fingerprint := str(request.get("request_fingerprint", ""))
+	var witness := {
+		"schema_version": LEGACY_V04_INTERACTION_REFERENCE.SCHEMA_VERSION,
+		"witness_id": "card-v04-interaction-effect-witness:%s" \
+			% request_fingerprint,
+		"adapter_id": LEGACY_V04_INTERACTION_REFERENCE.ADAPTER_ID,
+		"semantic_source_catalog_id": _source_catalog_id,
+		"semantic_card_id": semantic_card_id,
+		"semantic_family_id": str(identity.get("family_id", "")),
+		"semantic_rank": int(identity.get("rank", 0)),
+		"semantic_fingerprint": str(semantic_spec.get(
+			"semantic_fingerprint",
+			""
+		)),
+		"runtime_readiness_id": str(semantic_spec.get(
+			"runtime_readiness_id",
+			""
+		)),
+		"effect_ops": effect_ops.duplicate(true),
+		"legacy_definition_fingerprint": str(request.get(
+			"legacy_definition_fingerprint",
+			""
+		)),
+		"mapping_fingerprint": str(request.get("mapping_fingerprint", "")),
+		"request_fingerprint": request_fingerprint,
+		"witness_fingerprint": "",
+	}
+	witness["witness_fingerprint"] = SCHEMA.fingerprint(
+		witness,
+		"witness_fingerprint"
+	)
+	if not SCHEMA.is_pure_data(witness) \
+			or not _has_exact_keys(
+				witness,
+				LEGACY_V04_INTERACTION_WITNESS_KEYS
+			) \
+			or not _is_sha256(str(witness.get("semantic_fingerprint", ""))) \
+			or not _is_sha256(str(witness.get("witness_fingerprint", ""))):
+		return _legacy_v04_interaction_witness_failure(
+			"legacy_v04_interaction_semantic_witness_invalid"
+		)
+	return {
+		"schema_version": LEGACY_V04_INTERACTION_REFERENCE.SCHEMA_VERSION,
+		"accepted": true,
+		"reason_id": "authorized",
+		"effect_witness": witness.duplicate(true),
 	}
 
 
@@ -511,6 +632,19 @@ func _failure_result(error_id: String) -> Dictionary:
 
 func _semantic_authorization_failure(error_id: String) -> Dictionary:
 	return {"ok": false, "spec": {}, "errors": [error_id]}
+
+
+func _legacy_v04_interaction_witness_failure(reason_id: String) -> Dictionary:
+	var result := {
+		"schema_version": LEGACY_V04_INTERACTION_REFERENCE.SCHEMA_VERSION,
+		"accepted": false,
+		"reason_id": reason_id,
+		"effect_witness": {},
+	}
+	return result if _has_exact_keys(
+		result,
+		LEGACY_V04_INTERACTION_WITNESS_RESULT_KEYS
+	) else {}
 
 
 func _set_failure(errors: Array) -> void:

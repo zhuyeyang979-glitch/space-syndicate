@@ -29,6 +29,8 @@ var _ai_actor_state_port: AiActorStatePort
 var _ai_actor_state_capability: AiActorStateCapability
 var _ai_actor_hand_inventory_query_port: AiActorHandInventoryQueryPort
 var _ai_actor_hand_inventory_capability: AiActorHandInventoryCapability
+var _ai_card_interaction_observation_service: AiCardInteractionObservationService
+var _ai_card_interaction_observation_capability_by_actor: Dictionary = {}
 var _ai_region_knowledge_query_port: AiRegionKnowledgeQueryPort
 var _ai_region_knowledge_capability: AiRegionKnowledgeCapability
 var _ai_city_inference_command_port: AiCityInferenceCommandPort
@@ -87,6 +89,35 @@ func set_actor_hand_inventory_query_port(
 ) -> void:
 	_ai_actor_hand_inventory_query_port = port
 	_ai_actor_hand_inventory_capability = capability
+
+
+func set_card_interaction_observation_source(
+	service: AiCardInteractionObservationService,
+	consumer_capabilities: Dictionary
+) -> bool:
+	if service == null or consumer_capabilities.is_empty():
+		return false
+	var normalized: Dictionary = {}
+	for actor_index_variant in consumer_capabilities.keys():
+		if not (actor_index_variant is int) or int(actor_index_variant) < 0:
+			return false
+		var capability_variant: Variant = consumer_capabilities.get(
+			actor_index_variant
+		)
+		if not (capability_variant is AiCardInteractionObservationCapability):
+			return false
+		normalized[int(actor_index_variant)] = capability_variant
+	if not _capability_values_are_unique(normalized):
+		return false
+	if _ai_card_interaction_observation_service != null:
+		return _ai_card_interaction_observation_service == service \
+			and _same_identity_map(
+				_ai_card_interaction_observation_capability_by_actor,
+				normalized
+			)
+	_ai_card_interaction_observation_service = service
+	_ai_card_interaction_observation_capability_by_actor = normalized.duplicate()
+	return true
 
 
 func set_monster_runtime_controller(controller: MonsterRuntimeController) -> void:
@@ -504,6 +535,19 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"actor_hand_inventory_uses_main": false,
 		"actor_hand_inventory_uses_whole_players": false,
 		"actor_hand_inventory_stores_state": false,
+		"typed_card_interaction_observation_bound": (
+			_ai_card_interaction_observation_service != null
+		),
+		"card_interaction_source_capability_count": 0,
+		"card_interaction_source_capabilities_held": false,
+		"card_interaction_observation_exposes_capabilities": false,
+		"card_interaction_observation_consumer_capability_bound": (
+			not _ai_card_interaction_observation_capability_by_actor.is_empty()
+		),
+		"card_interaction_observation_consumer_capability_count": (
+			_ai_card_interaction_observation_capability_by_actor.size()
+		),
+		"card_interaction_observation_uses_raw_payload": false,
 		"typed_region_knowledge_bound": _ai_region_knowledge_query_port != null and _ai_region_knowledge_capability != null,
 		"typed_public_district_facts_bound": _public_district_facts_ready(),
 		"public_district_facts_uses_main": false,
@@ -550,6 +594,48 @@ func _actor_hand_inventory_snapshot(player_index: int) -> Dictionary:
 		_ai_actor_hand_inventory_capability,
 		player_index
 	)
+
+
+func _authorized_card_interaction_observation(
+	player_index: int,
+	slot_index: int
+) -> Dictionary:
+	if _ai_card_interaction_observation_service == null \
+			or not _ai_card_interaction_observation_capability_by_actor.has(
+				player_index
+			):
+		return {}
+	var consumer_capability := \
+		_ai_card_interaction_observation_capability_by_actor.get(player_index) \
+		as RefCounted
+	if consumer_capability == null:
+		return {}
+	return _ai_card_interaction_observation_service \
+		.observe_own_hand_interaction(
+			consumer_capability,
+			player_index,
+			slot_index
+		)
+
+
+func _same_identity_map(left: Dictionary, right: Dictionary) -> bool:
+	if left.size() != right.size():
+		return false
+	for key_variant in left.keys():
+		if not right.has(key_variant) \
+				or left.get(key_variant) != right.get(key_variant):
+			return false
+	return true
+
+
+func _capability_values_are_unique(capabilities: Dictionary) -> bool:
+	var seen: Array[RefCounted] = []
+	for capability_variant in capabilities.values():
+		var capability := capability_variant as RefCounted
+		if capability == null or seen.has(capability):
+			return false
+		seen.append(capability)
+	return true
 
 
 func _actor_hand_slot_entries(snapshot: Dictionary) -> Array:
@@ -3891,32 +3977,60 @@ func _ai_best_pressure_target_city(player_index: int) -> int:
 func _ai_direct_interaction_target_player(player_index: int) -> int:
 	var plan := _ai_direct_player_interaction_plan(player_index, {})
 	return int(plan.get("target_player", -1))
-func _ai_actor_private_receive_pressure(player_index: int, kind: String, skill: Dictionary) -> int:
-	if kind != "player_hand_steal" or player_index < 0 or player_index >= _public_player_count():
+func _ai_actor_private_receive_pressure(
+	player_index: int,
+	interaction_observation: Dictionary
+) -> int:
+	if str(interaction_observation.get("policy_interaction_kind_id", "")) \
+			!= "player_hand_steal" \
+			or player_index < 0 or player_index >= _public_player_count():
 		return 0
 	var hand_snapshot := _actor_hand_inventory_snapshot(player_index)
 	if hand_snapshot.is_empty():
 		return 0
 	if _actor_counted_hand_size(hand_snapshot) < _actor_hand_limit(hand_snapshot):
 		return 46
-	return int(float(maxi(0, int(skill.get("steal_fail_cash", 0)))) / 3.0) - 32
+	return int(float(maxi(0, int(interaction_observation.get(
+		"policy_steal_failure_cash",
+		0
+	)))) / 3.0) - 32
 
 
-func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) -> Dictionary:
+func _ai_direct_player_interaction_plan(
+	player_index: int,
+	interaction_observation: Dictionary
+) -> Dictionary:
 	var target_rows := _public_active_target_rows(player_index)
 	if _public_player_snapshot(player_index).is_empty() or target_rows.is_empty():
 		return {}
-	var kind := String(skill.get("kind", "player_hand_disrupt"))
+	var kind := str(interaction_observation.get(
+		"policy_interaction_kind_id",
+		"player_hand_disrupt"
+	))
 	var leader_index := int(_visible_score_leader_entry(player_index).get("player_index", -1))
 	var posture := _ai_competitive_posture(player_index)
 	var self_estimate := _victory_top_n_gdp(player_index)
-	var hand_effect_pressure := int(skill.get("hand_discard_count", 0)) * 118 \
-		+ int(skill.get("hand_steal_count", 0)) * 154 \
-		+ int(round(float(skill.get("hand_lock_seconds", 0.0)) * 4.0)) \
-		+ int(float(int(skill.get("target_cash_penalty", 0))) / 2.0)
+	var hand_effect_pressure := int(interaction_observation.get(
+		"policy_discard_count",
+		0
+	)) * 118 \
+		+ int(interaction_observation.get("policy_steal_count", 0)) * 154 \
+		+ int(round(
+			float(interaction_observation.get(
+				"policy_lock_duration_microseconds",
+				0
+			)) * 4.0 / 1000000.0
+		)) \
+		+ int(float(int(interaction_observation.get(
+			"policy_cash_penalty",
+			0
+		))) / 2.0)
 	if hand_effect_pressure <= 0:
 		hand_effect_pressure = 75
-	var receive_pressure := _ai_actor_private_receive_pressure(player_index, kind, skill)
+	var receive_pressure := _ai_actor_private_receive_pressure(
+		player_index,
+		interaction_observation
+	)
 	var best := {}
 	var best_score := -999999
 	for target_variant in target_rows:
@@ -8007,7 +8121,16 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["district"] = _ai_best_district_near_monster(player_index, target_slot, target_range)
 		context["score"] = int(context["score"]) + 80
 	elif _skill_targets_player(skill):
-		var direct_plan := _ai_direct_player_interaction_plan(player_index, skill)
+		var interaction_observation := _authorized_card_interaction_observation(
+			player_index,
+			slot_index
+		)
+		if interaction_observation.is_empty():
+			return {}
+		var direct_plan := _ai_direct_player_interaction_plan(
+			player_index,
+			interaction_observation
+		)
 		if direct_plan.is_empty():
 			return {}
 		var base_direct_score := int(context["score"])
