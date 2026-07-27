@@ -368,7 +368,98 @@ If a design choice is ambiguous:
 4. Prefer Terraforming Mars / Gaia Project style board-game clarity over debug density.
 5. Make a small reversible change with tests instead of a broad rewrite.
 
-## V0.6 Rule Authority Gate
+## V0.7 Commodity Semantic Constitution
+
+This section is the highest development authority for the approved V0.7
+shared-sushi commodity-track direction. It does not change the current runtime
+rules by itself.
+
+```text
+GAME_SEMANTIC_CONSTITUTION_VERSION=V0.7
+CURRENT_RUNTIME_RULE_VERSION=v0.6
+TARGET_RULE_VERSION=V0.7
+FULL_V0_7_CUTOVER=false
+NON_INTERRUPTING_SCOPE_AMENDMENT=true
+```
+
+Until one atomic production cutover passes Core, AI, player, privacy,
+determinism, persistence, and old-path deletion gates, the v0.6 runtime remains
+the only production authority. V0.6 commodity clauses may continue executing,
+but they are superseded as future commodity design and may not be expanded as
+the target architecture.
+
+The authority order for this V0.7 domain is:
+
+1. the user's latest explicitly approved V0.7 semantic constitution;
+2. the V0.7 Core semantic contract;
+3. the V0.7 AI observation and decision contract;
+4. the V0.7 player/UI projection contract;
+5. feature design records;
+6. conflicting v0.6 commodity rules, which remain runtime-only until cutover;
+7. temporary implementation notes, code, tests, and historical fixtures.
+
+The immutable V0.7 commodity rules are:
+
+- one real, globally ordered, cyclic commodity track is shared by all players;
+- each player and AI sees only its owner-authorized local segment;
+- six-color global supply and GDP baseline aggregates are public;
+- supply starts evenly, GDP drives the long horizon, and player stances drive
+  one 180-second short-horizon cycle;
+- each seat privately precommits one different increase/decrease color during
+  the active cycle, then all valid stances reveal simultaneously with no empty
+  waiting phase;
+- ordinary influence is `+/-300` basis points and the current hidden lead is
+  `+/-600`; the core applies weight, while public projections reveal colors but
+  never lead identity, effective weight, or pre-normalization contribution;
+- one hidden lead order is fixed for the session; every roster player leads
+  exactly once per macro round, and macro rounds alternate exact forward and
+  reverse order without reshuffling;
+- original end conditions become pending mid-round and may finalize only after
+  a complete macro-round boundary revalidation;
+- commodity levels are linear base units: `L1+L1->L2`, `L2+L1->L3`, and
+  `L3+L1->L4`; `L2+L2` and `L3+L3` are not legal upgrade edges;
+- manual merge choice remains the target interaction until a later explicit
+  rule authorizes another policy.
+
+The two card capacities are independent constitutional invariants:
+
+```text
+NORMAL_CARD_HAND_LIMIT=5
+COMMODITY_CARD_HAND_LIMIT=5
+HAND_POOLS_ARE_INDEPENDENT=true
+
+normal_card_count <= 5
+commodity_slot_count <= 5
+```
+
+Five normal cards do not block commodity acquisition, and five commodity
+stacks do not block normal-card acquisition. A valid state may contain five of
+each, but there is no shared `TOTAL_CARD_COUNT<=10` rule. A merged commodity
+still occupies one commodity slot. Core state, AI observation, player
+projection, persistence, and eventual replay/network schemas must carry the
+two counts and limits separately; generic `hand_limit` and mixed-hand authority
+are forbidden in the V0.7 target.
+
+The only legal semantic direction is:
+
+```text
+Core computes and is the sole mutation authority.
+AI receives an owner-bound allowlisted observation, interprets, and submits intent.
+Player UI receives public plus owner-bound private projection and submits the same intent.
+```
+
+AI and UI may not receive the full core object, calculate supply/lead/end facts,
+read another seat's local track or private stance, read the hidden order, or
+maintain a second inventory count. Human and AI seats use the same typed stance,
+claim, merge, capacity, and overflow semantics.
+
+The detailed executable reference and unresolved production decisions live in
+`docs/rules/shared_partial_visibility_commodity_track_contract.md`. Do not wire
+that reference into production. `FULL_V0_7_CUTOVER` stays false unless every
+listed production gate is true and all conflicting v0.6 write paths are deleted
+in the same atomic cutover.
+
+## Active Runtime v0.6 Rule Authority Gate
 
 Before adding any gameplay Owner, Port, Sink, Request, Receipt, RuntimeController,
 UI decision window, AI policy, save field, save section, or card effect kind, the
@@ -381,7 +472,7 @@ change must identify all of the following:
 - required privacy
 - required persistence
 
-The permanent authority order is:
+For currently executing production behavior, the authority order is:
 
 1. `docs/tabletop_rulebook_v06.md`
 2. `docs/rules_v06_runtime_directive.md`

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/shared_commodity_track_three_layer_semantics_bench.gd" id="1_bench"]
+
+[node name="SharedCommodityTrackThreeLayerSemanticsBench" type="Node"]
+script = ExtResource("1_bench")

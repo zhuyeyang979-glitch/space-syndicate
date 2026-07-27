@@ -8864,3 +8864,34 @@ deleted. Evidence and the remaining action inventory are recorded in
 - Focused coverage now executes live observation, decision recording, and reward finalization across a -5 to -3 debt recovery: 81/81 PASS. The production Bench is 19/19 PASS.
 - Funplay MCP scene writes now verify exact reloaded scene identity, restore the previous editor tab, fail closed on unverified reload, and suppress filesystem refresh after synchronization failure. Source gate: 15/15 PASS. Live clean and dirty open-scene probes both passed.
 - main_gd_cutover_ledger.json now records merged foundation, city-inference, actor-state, and public-player atomic domains plus this validated actor-economy candidate. The parent typed-world P0 remains ACTIVE.
+
+## 2026-07-28 — V0.7 shared commodity-track three-layer semantic reference
+
+- Recorded the approved V0.7 Commodity Semantic Constitution in the existing
+  top-level `AGENTS.md` authority chain and marked conflicting v0.6 commodity
+  clauses as runtime-only/future-superseded. `project.godot` has no application
+  release version; active runtime rules remain v0.6 and
+  `FULL_V0_7_CUTOVER=false`.
+- Froze one non-active `CORE_SEMANTICS → AI_SEMANTICS → PLAYER_SEMANTICS`
+  reference contract for the shared partial-visibility sushi commodity track.
+  The active v0.6 belt, inventory, merge, Save, AI, UI and Victory runtime
+  remains unchanged and is still the only production authority.
+- Added pure deterministic reference semantics for 10,000bp six-color supply,
+  180-second cycles, private precommit/simultaneous reveal, hidden 300/600bp
+  lead weighting, fixed forward/reverse macro rounds, actor-local windows,
+  independent five-card normal and five-slot commodity capacities, linear L1
+  consumption and pending end recheck. The reference proves 5+0, 0+5, legal
+  5+5, independent sixth-card failures, merge slot release, and pure payload
+  round-trip without a shared `hand_limit`.
+- Added owner-bound AI/player query entry points and exact nested allowlists.
+  Cross-seat requests fail closed; hostile nested Save, RNG, lead-order, weight,
+  learning and internal fields cannot pass through inventory, demand, history,
+  stance or local-track rows. Easy/Normal/Hard/Expert AI and human seats submit
+  the same `MarketStanceIntent` and use the same independent capacity rules.
+- Production cutover remains blocked on track topology/lifecycle, default
+  stance, eliminated-seat roster, merge identity/rate mapping, full-inventory
+  behavior, special outcomes, balance parameters and Save migration. No
+  production `.gd`/`.tscn`, Main, RuntimeLoop or Save schema was changed.
+- Final focused evidence is `135/135`; the real tools Bench is `13/13`; 3-8
+  seat vectors, JSON parse, baseline composition/UI/visual checks, and smoke
+  `--check-only` remain green.

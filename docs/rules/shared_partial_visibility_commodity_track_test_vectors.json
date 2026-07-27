@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "contract_id": "shared_partial_visibility_commodity_track.v1",
+  "rule_status": "v0_7_approved_semantic_constitution_not_active_runtime_rule",
+  "repository_application_version": null,
+  "current_runtime_rule_version": "v0.6",
+  "target_rule_version": "V0.7",
+  "game_semantic_constitution_version": "V0.7",
+  "full_v0_7_cutover": false,
+  "fixed_point_total_basis_points": 10000,
+  "market_cycle_duration_us": 180000000,
+  "normal_player_influence_bp": 300,
+  "lead_player_influence_bp": 600,
+  "normal_card_hand_limit": 5,
+  "commodity_card_hand_limit": 5,
+  "hand_pools_are_independent": true,
+  "maximum_commodity_level": 4,
+  "stable_color_order": [
+    "life",
+    "energy",
+    "industry",
+    "technology",
+    "commerce",
+    "shipping"
+  ],
+  "simulation_parameters_not_balance_lock": {
+    "gdp_equal_mix_bp": 5000,
+    "minimum_color_bp": 500,
+    "maximum_color_bp": 4000,
+    "status": "OPEN_BALANCE_PARAMETER"
+  },
+  "seat_vectors": [
+    {
+      "seat_count": 3,
+      "seed": 900626424,
+      "player_ids": ["player_0", "player_1", "player_2"],
+      "expected_forward_order": ["player_2", "player_1", "player_0"]
+    },
+    {
+      "seat_count": 4,
+      "seed": 900626424,
+      "player_ids": ["player_0", "player_1", "player_2", "player_3"],
+      "expected_forward_order": ["player_2", "player_1", "player_3", "player_0"]
+    },
+    {
+      "seat_count": 5,
+      "seed": 900626424,
+      "player_ids": ["player_0", "player_1", "player_2", "player_3", "player_4"],
+      "expected_forward_order": ["player_2", "player_1", "player_3", "player_4", "player_0"]
+    },
+    {
+      "seat_count": 6,
+      "seed": 900626424,
+      "player_ids": ["player_0", "player_1", "player_2", "player_3", "player_4", "player_5"],
+      "expected_forward_order": ["player_2", "player_5", "player_1", "player_3", "player_4", "player_0"]
+    },
+    {
+      "seat_count": 7,
+      "seed": 900626424,
+      "player_ids": ["player_0", "player_1", "player_2", "player_3", "player_4", "player_5", "player_6"],
+      "expected_forward_order": ["player_2", "player_5", "player_1", "player_6", "player_3", "player_4", "player_0"]
+    },
+    {
+      "seat_count": 8,
+      "seed": 900626424,
+      "player_ids": ["player_0", "player_1", "player_2", "player_3", "player_4", "player_5", "player_6", "player_7"],
+      "expected_forward_order": ["player_2", "player_5", "player_1", "player_7", "player_6", "player_3", "player_4", "player_0"]
+    }
+  ],
+  "deterministic_default_stances": {
+    "player_0": {"increase_color": "life", "decrease_color": "energy"},
+    "player_1": {"increase_color": "industry", "decrease_color": "technology"},
+    "player_2": {"increase_color": "commerce", "decrease_color": "shipping"},
+    "player_3": {"increase_color": "energy", "decrease_color": "life"},
+    "player_4": {"increase_color": "technology", "decrease_color": "industry"},
+    "player_5": {"increase_color": "shipping", "decrease_color": "commerce"},
+    "player_6": {"increase_color": "life", "decrease_color": "technology"},
+    "player_7": {"increase_color": "commerce", "decrease_color": "energy"}
+  },
+  "state_topology_blockers": [
+    "track_length_and_viewer_window_length",
+    "track_motion_speed_and_discrete_or_continuous_model",
+    "finite_stock_refill_and_unclaimed_item_lifecycle",
+    "simultaneous_claim_tie_break",
+    "commodity_merge_identity_same_product_or_same_color",
+    "full_commodity_inventory_reject_discard_or_replace_behavior",
+    "eliminated_seat_macro_round_roster",
+    "irreversible_special_outcome_end_gate",
+    "production_save_migration"
+  ],
+  "cutover": {
+    "runtime_cutover_performed": false,
+    "old_rule_authority_disabled": false,
+    "full_rule_cutover": false
+  }
+}

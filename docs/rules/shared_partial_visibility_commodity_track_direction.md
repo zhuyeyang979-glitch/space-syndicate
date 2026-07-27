@@ -2,17 +2,22 @@
 
 ## Document Status
 
-This document records a candidate direction for a future commodity-track and
-market-supply cutover. It is not an active v0.6 runtime rule, implementation
-contract, balance declaration, or save migration.
+This document records the approved V0.7 future direction for the commodity
+track and market-supply cutover under the V0.7 Commodity Semantic Constitution
+in `AGENTS.md`. It is not an active v0.6 runtime rule, production implementation,
+balance declaration, or save migration.
 
 The current production runtime remains authoritative until a later, explicitly
 scoped cutover completes logic, privacy, replay, save, UI, and balance gates.
-The in-progress `SAMPLE_FULL_RUN_VERTICAL_SLICE_TO_SETTLEMENT` task is not
-interrupted or expanded by this direction record.
+The V0.7 constitution amendment was applied to the current three-layer semantic
+task without restart, rollback, discarded work, or a parallel rule authority.
 
 ```text
 RULE_DIRECTION=SHARED_PARTIAL_VISIBILITY_COMMODITY_TRACK
+GAME_SEMANTIC_CONSTITUTION_VERSION=V0.7
+CURRENT_RUNTIME_RULE_VERSION=v0.6
+TARGET_RULE_VERSION=V0.7
+FULL_V0_7_CUTOVER=false
 MARKET_CYCLE=180_SECONDS
 PLAYER_STANCES_PUBLIC_AFTER_REVEAL=true
 NEXT_CYCLE_STANCES_HIDDEN_UNTIL_REVEAL=true
@@ -42,11 +47,16 @@ MACRO_ROUND_2=REVERSE
 FOLLOWING_ROUNDS=ALTERNATING_FORWARD_REVERSE
 EACH_PLAYER_ONCE_PER_MACRO_ROUND=true
 
-OTHER_CARD_HAND_LIMIT=5
-COMMODITY_HAND_LIMIT=5
+NORMAL_CARD_HAND_LIMIT=5
+COMMODITY_CARD_HAND_LIMIT=5
+HAND_POOLS_ARE_INDEPENDENT=true
+NORMAL_FULL_DOES_NOT_BLOCK_COMMODITY=true
+COMMODITY_FULL_DOES_NOT_BLOCK_NORMAL=true
 MAX_COMMODITY_LEVEL=4
 
 CURRENT_TASK_INTERRUPTED=false
+CURRENT_WORK_DISCARDED=false
+CONSTITUTION_AMENDMENT_RECORDED=true
 NEW_RULE_DIRECTION_RECORDED=true
 RUNTIME_CUTOVER_PERFORMED=false
 SHARED_COMMODITY_TRACK_PLANNED=true
@@ -55,10 +65,13 @@ FIXED_HIDDEN_LEAD_ORDER_PLANNED=true
 ALTERNATING_REVERSE_MACRO_ROUNDS_PLANNED=true
 SEPARATE_COMMODITY_HAND_PLANNED=true
 COMPLETE_MACRO_ROUND_END_GATE_PLANNED=true
-NEXT_IMPLEMENTATION_PHASE=PHASE_A_RULE_AND_SEMANTIC_FREEZE
+PHASE_A_THREE_LAYER_SEMANTIC_CONTRACT_READY=true
+PHASE_B_REFERENCE_SIMULATION_READY_FOR_FROZEN_SUBDOMAINS=true
+PRODUCTION_RULE_DECISIONS_COMPLETE=false
+NEXT_IMPLEMENTATION_PHASE=SHARED_COMMODITY_TRACK_RULE_DECISION_FREEZE
 ```
 
-## Candidate Rule Summary
+## Approved V0.7 Target Rule Summary
 
 All players share one continuously moving commodity sequence. The sequence is
 real global state, but each viewer sees only the local segment currently in
@@ -100,7 +113,7 @@ domain. This document does not create those owners.
 | Random generation | Existing shared run RNG authority | A market-specific RNG or projection-time draw |
 | Public and viewer-private UI | Read-only projections from authoritative state | Rule calculation, hidden lead inference, or state mutation |
 
-Static terms and dynamic state must remain separate. A candidate future model
+Static terms and dynamic state must remain separate. The future model
 may use the following closed, versioned concepts without treating these names
 as implemented APIs:
 
@@ -110,8 +123,8 @@ SharedCommodityTrackRuleSpecV1
   color_ids
   normal_influence_basis_points
   lead_influence_basis_points
-  commodity_hand_limit
-  other_card_hand_limit
+  commodity_slot_limit
+  normal_card_limit
   maximum_commodity_level
   lead_order_policy_id
   macro_round_direction_policy_id
@@ -154,7 +167,10 @@ MacroRoundEndGateStateV1
 
 Hidden state remains authoritative data, not security by omission in the UI.
 It must be clipped before construction of any public or viewer-scoped
-projection.
+projection. The projection source binds the authenticated/authorized actor;
+callers may not choose an arbitrary viewer ID. Every nested row is rebuilt from
+an exact allowlist, so a future extra Save, RNG, lead, weight, learning, or
+internal-ID field cannot cross through a deep copy.
 
 ## Visibility Contract
 
@@ -333,21 +349,27 @@ distribution outcomes. No public snapshot may provide the order directly.
 
 ## Separate Commodity Inventory
 
-The candidate direction separates inventory capacity:
+The V0.7 constitution separates inventory capacity:
 
 ```text
-ordinary non-commodity cards: 5 slots
-commodity cards or groups:     5 slots
+normal cards:       normal_card_count <= normal_card_limit = 5
+commodity stacks:  commodity_slot_count <= commodity_slot_limit = 5
 ```
 
 Commodity occupancy does not reduce ordinary-card capacity, and ordinary cards
 do not consume commodity slots. UI projections must show both counts and both
 limits without creating a second mutable inventory owner.
 
-Whether a slot represents one card or one manually retained group must be
-frozen before implementation. The invariant is that a merged higher-level
-commodity occupies one commodity slot and that players may retain multiple
-same-color groups when legal.
+A state with five normal cards and five commodity stacks is legal. This is not
+a shared total-card limit of ten: each acquisition and overflow checks only its
+own pool. The sixth normal card cannot change or block commodity state, and the
+sixth commodity cannot change or block normal-card state.
+
+One retained commodity group occupies one commodity slot. A merged
+higher-level commodity still occupies one slot, so a legal merge releases one
+commodity slot without changing normal-card count. Players may manually retain
+multiple same-color groups; the still-open identity decision is whether a merge
+requires the same stable product ID or merely the same color ID.
 
 ## Linear Commodity Upgrade
 
@@ -368,7 +390,8 @@ An upgrade must preserve stable commodity identity and record exact base-unit
 count. It must not infer level from a localized name or suffix. Level IV is
 terminal.
 
-Manual merge is the preferred first interaction prototype because a player may
+Manual merge is the approved V0.7 target interaction until a later explicit
+rule changes it because a player may
 need one high-level commodity and one same-color low-level commodity for
 different facilities. Automatic merge remains an unresolved usability option;
 it may not be introduced before tests prove that it preserves player intent,
@@ -477,8 +500,9 @@ The following values are test baselines, not balance-complete declarations:
 MARKET_CYCLE_SECONDS=180
 NORMAL_PLAYER_INFLUENCE=3_PERCENTAGE_POINTS
 LEAD_PLAYER_INFLUENCE=6_PERCENTAGE_POINTS
-COMMODITY_HAND_LIMIT=5
-OTHER_CARD_HAND_LIMIT=5
+COMMODITY_CARD_HAND_LIMIT=5
+NORMAL_CARD_HAND_LIMIT=5
+HAND_POOLS_ARE_INDEPENDENT=true
 MAX_COMMODITY_LEVEL=4
 ```
 
@@ -491,7 +515,7 @@ Phase A/B must evaluate:
 - minimum and maximum color generation shares;
 - deterministic fixed-point rounding and normalization order;
 - whether five commodity slots support intended factory and market decisions;
-- manual versus automatic merge experience;
+- same-product versus same-color merge identity and full-inventory behavior;
 - whether local visibility provides enough evidence without revealing neighbors;
 - whether players can infer the hidden order late in a match through fair play;
 - whether snake-order inference is interesting rather than mechanical;
@@ -523,5 +547,12 @@ Until those gates pass, the status remains:
 ```text
 IMPLEMENTATION_CUTOVER_NOW=false
 RUNTIME_CUTOVER_PERFORMED=false
-NEXT_IMPLEMENTATION_PHASE=PHASE_A_RULE_AND_SEMANTIC_FREEZE
+PHASE_A_THREE_LAYER_SEMANTIC_CONTRACT_READY=true
+FULL_RULE_CUTOVER=false
+NEXT_IMPLEMENTATION_PHASE=SHARED_COMMODITY_TRACK_RULE_DECISION_FREEZE
 ```
+
+The executable nonproduction contract and its remaining decision list now live
+in `docs/rules/shared_partial_visibility_commodity_track_contract.md` and the
+matching JSON/test-vector artifacts. This direction record remains non-active;
+the new references do not alter the current v0.6 runtime.

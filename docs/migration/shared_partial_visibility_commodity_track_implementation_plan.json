@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "plan_id": "shared_partial_visibility_commodity_track_implementation_plan.v1",
+  "game_semantic_constitution_version": "V0.7",
+  "current_runtime_rule_version": "v0.6",
+  "target_rule_version": "V0.7",
+  "constitution_amendment_recorded": true,
+  "full_v0_7_cutover": false,
+  "current_phase": "A_CONTRACT_PLUS_B_REFERENCE",
+  "production_cutover_allowed": false,
+  "phases": [
+    {
+      "id": "B_RULE_DECISION_AND_PURE_SIMULATION",
+      "entry_gate": "approve topology, identity, default, elimination, special-outcome and balance-parameter policy IDs",
+      "deliverables": [
+        "versioned immutable rule spec Resource",
+        "pure deterministic cycle and track reducer",
+        "3_4_5_6_7_8_seat parity vectors",
+        "save_restore identity prototype without changing production schema"
+      ],
+      "production_wiring": false
+    },
+    {
+      "id": "C_PASSIVE_THREE_LAYER_PROJECTIONS",
+      "entry_gate": "Phase B all deterministic and privacy gates green",
+      "deliverables": [
+        "typed AI observation port",
+        "typed public and actor-private player projection",
+        "passive production-shaped UI Bench",
+        "same MarketStanceIntent for AI and human",
+        "no gameplay mutation or dual write"
+      ],
+      "production_wiring": "read_only_only"
+    },
+    {
+      "id": "D_ATOMIC_PRODUCTION_CUTOVER",
+      "entry_gate": "core, AI, player, Save, privacy, determinism and performance gates all green",
+      "deliverables": [
+        "one SharedCommodityTrackRuntimeController under RuntimeSimulationStep",
+        "typed claim stance merge commands through RuntimeCommandPipeline",
+        "existing inventory owner partition migration",
+        "Victory macro-round boundary attestation",
+        "versioned Save migration and exact restore",
+        "production UI and AI consumers switched together",
+        "old belt writer direct claim old merge and stale UI paths deleted"
+      ],
+      "production_wiring": "atomic"
+    }
+  ],
+  "forbidden": [
+    "second_RuntimeLoop",
+    "second_RNG",
+    "second_Victory_owner",
+    "Main_fallback",
+    "legacy_and_new_dual_write",
+    "AI_full_core_state_access",
+    "UI_distribution_calculation",
+    "save_schema_change_before_cutover"
+  ],
+  "next_minimum_task": "SHARED_COMMODITY_TRACK_RULE_DECISION_FREEZE",
+  "next_required_decisions": [
+    "track_topology_and_lifecycle",
+    "missing_stance_default",
+    "eliminated_seat_roster",
+    "merge_identity_and_rate_mapping",
+    "full_commodity_inventory_reject_discard_or_replace_behavior",
+    "special_outcome_end_gate",
+    "GDP_smoothing_floor_ceiling_and_caps"
+  ]
+}
