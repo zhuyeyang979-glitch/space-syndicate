@@ -39,6 +39,25 @@ func begin_frame(context: RuntimePhaseFrameContext) -> StringName:
 	return &"active"
 
 
+func begin_blocked_realtime_frame(context: RuntimePhaseFrameContext) -> StringName:
+	context.enter_phase(&"lifecycle_blocked_realtime_probe")
+	context.append_step(&"blocked_realtime_session_finished_gate")
+	if _lifecycle.session_is_finished():
+		context.path = &"finished"
+		context.stopped_reason = &"session_finished"
+		return &"stop"
+	context.append_step(&"blocked_realtime_synchronize_forced_decisions")
+	_lifecycle.synchronize_forced_decisions()
+	context.append_step(&"blocked_realtime_global_time_block_gate")
+	if not _lifecycle.blocks_global_time():
+		context.path = &"blocked_realtime_unavailable"
+		context.stopped_reason = &"global_time_not_blocked"
+		return &"stop"
+	context.path = &"global_blocked"
+	context.stopped_reason = &"global_time_blocked"
+	return &"global_blocked"
+
+
 func allow_after_flow(context: RuntimePhaseFrameContext) -> bool:
 	context.enter_phase(&"lifecycle_post_flow")
 	context.append_step(&"post_flow_session_finished_gate")
@@ -58,4 +77,4 @@ func allow_after_victory(context: RuntimePhaseFrameContext) -> bool:
 
 
 func debug_snapshot() -> Dictionary:
-	return {"ready": is_ready(), "operation_count": 3, "owns_world_state": false}
+	return {"ready": is_ready(), "operation_count": 4, "owns_world_state": false}

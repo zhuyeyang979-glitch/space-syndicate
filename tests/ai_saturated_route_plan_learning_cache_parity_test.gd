@@ -9,8 +9,9 @@ const PRODUCT_FUTURES_CARD_ID := "商品看涨1"
 const WAREHOUSE_FUTURES_CARD_ID := "港仓囤货1"
 const HAND_SIZE := 5
 const SATURATED_SAMPLE_COUNT := 47
-const PATH_LIMIT_MSEC := 120_000
-const TOTAL_LIMIT_MSEC := 120_000
+const CANDIDATE_QUERY_DELTA_MAX := 13
+const PATH_LIMIT_MSEC := 60_000
+const TOTAL_LIMIT_MSEC := 60_000
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -164,14 +165,14 @@ func _run() -> void:
 	var stale_optimized := stale_pair.get("optimized", {}) as Dictionary
 	var current_baseline := current_pair.get("baseline", {}) as Dictionary
 	var current_optimized := current_pair.get("optimized", {}) as Dictionary
-	var stale_query_reduction: bool = int(stale_optimized.get("candidate_query_delta", 0)) \
-		< int(stale_baseline.get("candidate_query_delta", 0)) \
-		and int(stale_baseline.get("candidate_query_delta", 0)) \
-			- int(stale_optimized.get("candidate_query_delta", 0)) >= 8
-	var current_query_reduction: bool = int(current_optimized.get("candidate_query_delta", 0)) \
-		< int(current_baseline.get("candidate_query_delta", 0)) \
-		and int(current_baseline.get("candidate_query_delta", 0)) \
-			- int(current_optimized.get("candidate_query_delta", 0)) >= 16
+	var stale_query_ratchet: bool = int(stale_optimized.get("candidate_query_delta", -1)) \
+		== int(stale_baseline.get("candidate_query_delta", -2)) \
+		and int(stale_optimized.get("candidate_query_delta", CANDIDATE_QUERY_DELTA_MAX + 1)) \
+			<= CANDIDATE_QUERY_DELTA_MAX
+	var current_query_ratchet: bool = int(current_optimized.get("candidate_query_delta", -1)) \
+		== int(current_baseline.get("candidate_query_delta", -2)) \
+		and int(current_optimized.get("candidate_query_delta", CANDIDATE_QUERY_DELTA_MAX + 1)) \
+			<= CANDIDATE_QUERY_DELTA_MAX
 	var ordinary_helper_parity := _helper_pair_parity(ordinary_helper_pair)
 	var warehouse_helper_parity := _helper_pair_parity(warehouse_helper_pair)
 	var warehouse_baseline := warehouse_helper_pair.get("baseline", {}) as Dictionary
@@ -208,8 +209,8 @@ func _run() -> void:
 	var total_limit_met: bool = total_elapsed_msec < TOTAL_LIMIT_MSEC
 	var gate_passed: bool = bool(stale_parity.get("all", false)) \
 		and bool(current_parity.get("all", false)) \
-		and stale_query_reduction \
-		and current_query_reduction \
+		and stale_query_ratchet \
+		and current_query_ratchet \
 		and ordinary_helper_parity \
 		and warehouse_helper_parity \
 		and warehouse_fixture_ready \
@@ -245,14 +246,14 @@ func _run() -> void:
 		str(current_zero_commit),
 		total_elapsed_msec,
 	])
-	print("SATURATED_GENERIC_EFFECT_GATE|status=%s|sample_count=%d|hotspot=generic_effect_product_futures|current_baseline_msec=%d|current_optimized_msec=%d|current_baseline_queries=%d|current_optimized_queries=%d|query_reduction=%d|ordinary_futures_parity=%s|warehouse_futures_parity=%s|wrong_actor_fail_closed=%s|helper_query_delta=%d/%d|empty_plan_reused=%s|candidate_parity=%s|original_order_parity=%s|ranked_order_parity=%s|selection_parity=%s|full_memory_parity=%s|commit_parity=%s|rng_parity=%s|route_commit_zero=%s" % [
+	print("SATURATED_GENERIC_EFFECT_GATE|status=%s|sample_count=%d|hotspot=generic_effect_product_futures|current_baseline_msec=%d|current_optimized_msec=%d|current_baseline_queries=%d|current_optimized_queries=%d|query_ratchet_max=%d|ordinary_futures_parity=%s|warehouse_futures_parity=%s|wrong_actor_fail_closed=%s|helper_query_delta=%d/%d|empty_plan_reused=%s|candidate_parity=%s|original_order_parity=%s|ranked_order_parity=%s|selection_parity=%s|full_memory_parity=%s|commit_parity=%s|rng_parity=%s|route_commit_zero=%s" % [
 		"PASS" if gate_passed else "FAIL",
 		SATURATED_SAMPLE_COUNT,
 		int(current_baseline.get("elapsed_msec", -1)),
 		int(current_optimized.get("elapsed_msec", -1)),
 		int(current_baseline.get("candidate_query_delta", -1)),
 		int(current_optimized.get("candidate_query_delta", -1)),
-		int(current_baseline.get("candidate_query_delta", 0)) - int(current_optimized.get("candidate_query_delta", 0)),
+		CANDIDATE_QUERY_DELTA_MAX,
 		str(ordinary_helper_parity),
 		str(warehouse_helper_parity),
 		str(wrong_actor_parity),
@@ -284,8 +285,8 @@ func _run() -> void:
 	])
 	_expect(bool(stale_parity.get("all", false)), "stale route preserves full candidates, ordering, selection, memory, commits, and RNG")
 	_expect(bool(current_parity.get("all", false)), "current route preserves full candidates, ordering, selection, memory, commits, and RNG")
-	_expect(stale_query_reduction, "stale optimized route removes at least eight actor-state snapshot queries")
-	_expect(current_query_reduction, "current optimized generic/futures context removes at least sixteen actor-state snapshot queries")
+	_expect(stale_query_ratchet, "stale baseline and explicit contexts both stay within the 13-query production ratchet")
+	_expect(current_query_ratchet, "current baseline and explicit contexts both stay within the 13-query production ratchet")
 	_expect(ordinary_helper_parity, "ordinary futures helper chain preserves plan, score, memory, commits, and RNG")
 	_expect(warehouse_helper_parity, "warehouse futures helper chain preserves plan, score, memory, commits, and RNG")
 	_expect(warehouse_fixture_used, "both warehouse plans target the legal actor-owned active city fixture")
@@ -295,8 +296,8 @@ func _run() -> void:
 	_expect(empty_plan_reused, "an explicitly cached empty futures plan is not recomputed")
 	_expect(stale_commit_once, "stale route commits exactly once in both paths")
 	_expect(current_zero_commit, "current route commits zero times in both paths")
-	_expect(path_limits_met, "every candidate path completes below 120 seconds")
-	_expect(total_limit_met, "complete saturated test finishes below 120 seconds")
+	_expect(path_limits_met, "every candidate path completes below 60 seconds")
+	_expect(total_limit_met, "complete saturated test finishes below 60 seconds")
 
 	await _cleanup(app_root)
 	_finish(total_started_msec, {

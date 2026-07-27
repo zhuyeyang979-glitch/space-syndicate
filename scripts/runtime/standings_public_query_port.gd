@@ -12,6 +12,7 @@ class_name StandingsPublicQueryPort
 @export var snapshot_service_path: NodePath
 
 var _query_count := 0
+var _progress_query_count := 0
 var _rejected_count := 0
 var _last_viewer_index := -1
 
@@ -52,10 +53,57 @@ func snapshot_for_authorized_viewer(content_width: float = 960.0) -> Dictionary:
 	return service.compose(source)
 
 
+func victory_progress_for_authorized_viewer() -> Dictionary:
+	var query_ports := _table_query_ports()
+	var victory := _victory_controller()
+	if query_ports == null or victory == null:
+		return _rejected_progress("progress_dependency_unavailable")
+	var context := query_ports.viewer_context()
+	if not context.authorized or not query_ports.can_view_private_subject(context.viewer_index, context.viewer_index):
+		return _rejected_progress("viewer_not_authorized")
+	var viewer_index := context.viewer_index
+	var victory_public := victory.public_snapshot(viewer_index)
+	var victory_private := victory.private_snapshot(viewer_index)
+	if str(victory_private.get("visibility_scope", "")) != "viewer_private" \
+			or int(victory_private.get("viewer_player_index", -1)) != viewer_index:
+		return _rejected_progress("victory_progress_subject_mismatch")
+	var own_candidate: Dictionary = victory_private.get("own_candidate", {}) \
+		if victory_private.get("own_candidate", {}) is Dictionary else {}
+	var victory_rule: Dictionary = victory_public.get("victory_rule", {}) \
+		if victory_public.get("victory_rule", {}) is Dictionary else {}
+	if own_candidate.is_empty() or victory_rule.is_empty():
+		return _rejected_progress("victory_progress_unavailable")
+	var qualification_duration := victory.timer_duration("victory_qualification")
+	var audit_duration := victory.timer_duration("public_audit")
+	if not is_finite(qualification_duration) or qualification_duration <= 0.0 or not is_finite(audit_duration) or audit_duration <= 0.0:
+		return _rejected_progress("victory_timer_contract_unavailable")
+	var result := {
+		"schema_version": 1,
+		"valid": true,
+		"reason_id": "",
+		"visibility_scope": "viewer_private",
+		"viewer_index": viewer_index,
+		"victory_state": str(victory_public.get("state", "idle")),
+		"selected_top_k_gdp_per_minute": int(own_candidate.get("top_k_gdp_per_minute", 0)),
+		"selected_controlled_region_count": int(own_candidate.get("controlled_region_count", 0)),
+		"required_top_k_gdp_per_minute": int(victory_rule.get("required_top_k_gdp_per_minute", 0)),
+		"required_controlled_region_count": int(victory_rule.get("required_region_count", 0)),
+		"qualification_duration_seconds": qualification_duration,
+		"audit_duration_seconds": audit_duration,
+		"eligible": bool(own_candidate.get("eligible", false)),
+	}
+	if not TablePresentationPureDataPolicy.is_pure_data(result):
+		return _rejected_progress("victory_progress_not_pure_data")
+	_progress_query_count += 1
+	_last_viewer_index = viewer_index
+	return result
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"port_id": "standings_public_query_port_v06",
 		"query_count": _query_count,
+		"progress_query_count": _progress_query_count,
 		"rejected_count": _rejected_count,
 		"last_viewer_index": _last_viewer_index,
 		"viewer_authorization_required": true,
@@ -64,6 +112,17 @@ func debug_snapshot() -> Dictionary:
 		"mutates_world": false,
 		"reveals_all_on_session_finish": false,
 		"references_main": false,
+		"provides_viewer_authorized_progress": true,
+	}
+
+
+func _rejected_progress(reason_id: String) -> Dictionary:
+	_rejected_count += 1
+	return {
+		"schema_version": 1,
+		"valid": false,
+		"reason_id": reason_id,
+		"visibility_scope": "none",
 	}
 
 

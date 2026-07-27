@@ -10,6 +10,7 @@ const INTERACTION_FAMILIES := {
 	"产权冻结": "city_control_dispute",
 	"轨道齐射": "global_barrage",
 }
+const CARD_ROUTE_INDEX_CHECKPOINT_VERSION := 1
 
 @export var route_catalog: DevelopmentRouteCatalogResource
 
@@ -21,6 +22,17 @@ var _last_snapshot: Dictionary = {}
 var _last_snapshot_frame := -1
 var _last_snapshot_sample_only := false
 var _snapshot_cache_hits := 0
+var _route_profile_by_id: Dictionary = {}
+var _route_id_by_strategy_label: Dictionary = {}
+var _card_route_id_by_card_id: Dictionary = {}
+var _card_route_fallback_only_ids: Dictionary = {}
+var _card_route_index_build_count := 0
+var _card_route_index_hit_count := 0
+var _card_route_index_miss_count := 0
+var _card_route_legacy_snapshot_lookup_count := 0
+var _card_route_index_fingerprint := ""
+var _card_route_index_sealed := false
+var _card_route_index_priming := false
 
 
 func _ready() -> void:
@@ -36,12 +48,23 @@ func configure(catalog: Resource = null, runtime_balance_model: Variant = null) 
 	elif _runtime_balance_model == null:
 		_runtime_balance_model = RuntimeBalanceModelScript.new()
 	var validation := route_catalog.validation_report() if route_catalog != null else {"valid": false, "issues": ["route_catalog_missing"]}
-	_configured = bool(validation.get("valid", false)) and _runtime_balance_model != null
+	var route_cache_ready := _rebuild_route_metadata_cache() if bool(validation.get("valid", false)) else false
+	_card_route_id_by_card_id.clear()
+	_card_route_fallback_only_ids.clear()
+	_card_route_index_fingerprint = ""
+	_card_route_index_sealed = false
+	_configured = bool(validation.get("valid", false)) \
+		and route_cache_ready \
+		and _runtime_balance_model != null
 	return {"configured": _configured, "route_catalog": validation}
 
 
 func set_world_bridge(world_bridge: GameplayBalanceDiagnosticsWorldBridge) -> void:
 	_world_bridge = world_bridge
+	_card_route_id_by_card_id.clear()
+	_card_route_fallback_only_ids.clear()
+	_card_route_index_fingerprint = ""
+	_card_route_index_sealed = false
 
 
 func refresh_world_snapshot(sample_only := false) -> Dictionary:
@@ -56,24 +79,13 @@ func development_routes() -> Array:
 
 
 func route_profile(route_id: String) -> Dictionary:
-	if route_catalog == null:
-		return {}
-	return route_catalog.route_profile(route_id)
+	var profile_variant: Variant = _route_profile_by_id.get(route_id, {})
+	return (profile_variant as Dictionary).duplicate(true) \
+		if profile_variant is Dictionary else {}
 
 
 func route_for_card(card_facts: Dictionary, lookup_context: Dictionary = {}) -> Dictionary:
-	var skill := _dictionary(card_facts.get("skill", card_facts))
-	var card_name := str(card_facts.get("card_name", card_facts.get("card_id", skill.get("name", ""))))
-	var authored_route_label := str(card_facts.get("route_label", card_facts.get("strategy_route_label", "")))
-	if authored_route_label == "" and card_name != "":
-		var route_lookup_snapshot: Dictionary = lookup_context.get("world_snapshot", {}) \
-			if lookup_context.get("world_snapshot", {}) is Dictionary else {}
-		if not lookup_context.has("world_snapshot"):
-			route_lookup_snapshot = _snapshot(false)
-			lookup_context["world_snapshot"] = route_lookup_snapshot
-		var known := _card_fact(card_name, route_lookup_snapshot)
-		authored_route_label = str(known.get("route_label", ""))
-	var route_id := route_catalog.route_id_for_strategy_label(authored_route_label) if route_catalog != null and authored_route_label != "" else _fallback_route_id(skill)
+	var route_id := _resolved_route_id_for_card(card_facts, lookup_context)
 	var profile := route_profile(route_id)
 	if profile.is_empty():
 		profile = route_profile("tactical_support")
@@ -81,7 +93,230 @@ func route_for_card(card_facts: Dictionary, lookup_context: Dictionary = {}) -> 
 
 
 func route_id_for_card(card_facts: Dictionary, lookup_context: Dictionary = {}) -> String:
-	return str(route_for_card(card_facts, lookup_context).get("id", "tactical_support"))
+	return _resolved_route_id_for_card(card_facts, lookup_context)
+
+
+func prime_card_route_index(candidate_card_ids: Array = []) -> Dictionary:
+	if not _configured or _world_bridge == null:
+		return {
+			"accepted": false,
+			"reason_code": "card_route_index_dependencies_unavailable",
+			"card_count": 0,
+			"fingerprint": "",
+		}
+	_card_route_index_priming = true
+	var snapshot := refresh_world_snapshot(false)
+	_card_route_index_priming = false
+	var next_index: Dictionary = {}
+	var next_fallback_only_ids: Dictionary = {}
+	var issues: Array[String] = []
+	for card_variant in _cards(snapshot):
+		if not (card_variant is Dictionary):
+			issues.append("card_fact_invalid")
+			continue
+		var card := card_variant as Dictionary
+		var card_id := str(card.get("card_name", card.get("card_id", ""))).strip_edges()
+		if card_id.is_empty():
+			issues.append("card_id_missing")
+			continue
+		var skill := _dictionary(card.get("skill", {}))
+		var authored_route_label := str(card.get("route_label", card.get("strategy_route_label", "")))
+		var route_id := _route_id_for_strategy_label(authored_route_label) \
+			if not authored_route_label.is_empty() else _fallback_route_id(skill)
+		if not _route_profile_by_id.has(route_id):
+			issues.append("route_id_unknown:%s:%s" % [card_id, route_id])
+			continue
+		if next_index.has(card_id) and str(next_index.get(card_id, "")) != route_id:
+			issues.append("card_route_conflict:%s" % card_id)
+			continue
+		next_index[card_id] = route_id
+	# Region supply candidates use stable v0.6 IDs while the authored diagnostics
+	# catalog still uses v0.4 IDs. Seal the session's legal candidate identities
+	# with the same tactical fallback the legacy miss path produced.
+	for card_id_variant in candidate_card_ids:
+		var card_id := str(card_id_variant).strip_edges()
+		if card_id.is_empty():
+			issues.append("candidate_card_id_missing")
+		elif not next_index.has(card_id):
+			next_index[card_id] = "tactical_support"
+			next_fallback_only_ids[card_id] = true
+	if next_index.is_empty() or not issues.is_empty():
+		_clear_snapshot_cache()
+		return {
+			"accepted": false,
+			"reason_code": "card_route_index_invalid",
+			"card_count": next_index.size(),
+			"issue_count": issues.size(),
+			"fingerprint": "",
+		}
+	_card_route_id_by_card_id = next_index
+	_card_route_fallback_only_ids = next_fallback_only_ids
+	_card_route_index_fingerprint = _card_route_index_fingerprint_for(
+		next_index,
+		next_fallback_only_ids
+	)
+	_card_route_index_sealed = true
+	_card_route_index_build_count += 1
+	_clear_snapshot_cache()
+	return {
+		"accepted": true,
+		"reason_code": "card_route_index_ready",
+		"card_count": _card_route_id_by_card_id.size(),
+		"fingerprint": _card_route_index_fingerprint,
+	}
+
+
+func capture_card_route_index_checkpoint() -> Dictionary:
+	return {
+		"captured": true,
+		"schema_version": CARD_ROUTE_INDEX_CHECKPOINT_VERSION,
+		"index": _card_route_id_by_card_id.duplicate(true),
+		"fallback_only_ids": _card_route_fallback_only_ids.duplicate(true),
+		"build_count": _card_route_index_build_count,
+		"hit_count": _card_route_index_hit_count,
+		"miss_count": _card_route_index_miss_count,
+		"legacy_lookup_count": _card_route_legacy_snapshot_lookup_count,
+		"fingerprint": _card_route_index_fingerprint,
+		"sealed": _card_route_index_sealed,
+	}
+
+
+func restore_card_route_index_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if int(checkpoint.get("schema_version", 0)) != CARD_ROUTE_INDEX_CHECKPOINT_VERSION \
+			or not (checkpoint.get("index", {}) is Dictionary) \
+			or not (checkpoint.get("fallback_only_ids", {}) is Dictionary):
+		return {"restored": false, "reason_code": "card_route_index_checkpoint_invalid"}
+	var restored_index := (checkpoint.get("index", {}) as Dictionary).duplicate(true)
+	var restored_fallback_only_ids := (
+		checkpoint.get("fallback_only_ids", {}) as Dictionary
+	).duplicate(true)
+	var restored_fingerprint := str(checkpoint.get("fingerprint", ""))
+	var restored_sealed := bool(checkpoint.get("sealed", false))
+	if restored_sealed:
+		if restored_index.is_empty() \
+				or restored_fingerprint != _card_route_index_fingerprint_for(
+					restored_index,
+					restored_fallback_only_ids
+				):
+			return {"restored": false, "reason_code": "card_route_index_checkpoint_binding_invalid"}
+	elif not restored_index.is_empty() or not restored_fallback_only_ids.is_empty() \
+			or not restored_fingerprint.is_empty():
+		return {"restored": false, "reason_code": "card_route_index_checkpoint_unsealed_invalid"}
+	for route_id_variant in restored_index.values():
+		if not _route_profile_by_id.has(str(route_id_variant)):
+			return {"restored": false, "reason_code": "card_route_index_checkpoint_route_unknown"}
+	for card_id_variant in restored_fallback_only_ids.keys():
+		if not restored_index.has(str(card_id_variant)):
+			return {"restored": false, "reason_code": "card_route_index_checkpoint_fallback_unknown"}
+	for counter_key in ["build_count", "hit_count", "miss_count", "legacy_lookup_count"]:
+		if not checkpoint.has(counter_key) or int(checkpoint.get(counter_key, -1)) < 0:
+			return {"restored": false, "reason_code": "card_route_index_checkpoint_counter_invalid"}
+	_card_route_id_by_card_id = restored_index
+	_card_route_fallback_only_ids = restored_fallback_only_ids
+	_card_route_index_build_count = int(checkpoint.get("build_count", 0))
+	_card_route_index_hit_count = int(checkpoint.get("hit_count", 0))
+	_card_route_index_miss_count = int(checkpoint.get("miss_count", 0))
+	_card_route_legacy_snapshot_lookup_count = int(checkpoint.get("legacy_lookup_count", 0))
+	_card_route_index_fingerprint = restored_fingerprint
+	_card_route_index_sealed = restored_sealed
+	_clear_snapshot_cache()
+	return {
+		"restored": true,
+		"reason_code": "card_route_index_checkpoint_restored",
+		"card_count": _card_route_id_by_card_id.size(),
+		"fingerprint": _card_route_index_fingerprint,
+	}
+
+
+func _resolved_route_id_for_card(
+	card_facts: Dictionary,
+	lookup_context: Dictionary
+) -> String:
+	var skill := _dictionary(card_facts.get("skill", card_facts))
+	var card_name := str(card_facts.get(
+		"card_name",
+		card_facts.get("card_id", skill.get("name", ""))
+	)).strip_edges()
+	var authored_route_label := str(card_facts.get(
+		"route_label",
+		card_facts.get("strategy_route_label", "")
+	))
+	if not authored_route_label.is_empty():
+		return _route_id_for_strategy_label(authored_route_label)
+	if _card_route_index_priming:
+		return _fallback_route_id(skill)
+	if not card_name.is_empty() and _card_route_id_by_card_id.has(card_name):
+		if _card_route_fallback_only_ids.has(card_name) \
+				and not str(skill.get("kind", "")).is_empty():
+			return _fallback_route_id(skill)
+		_card_route_index_hit_count += 1
+		return str(_card_route_id_by_card_id.get(card_name, "tactical_support"))
+	_card_route_index_miss_count += 1
+	if _card_route_index_sealed:
+		return _fallback_route_id(skill)
+	if not card_name.is_empty():
+		_card_route_legacy_snapshot_lookup_count += 1
+		var route_lookup_snapshot: Dictionary = lookup_context.get("world_snapshot", {}) \
+			if lookup_context.get("world_snapshot", {}) is Dictionary else {}
+		if not lookup_context.has("world_snapshot"):
+			route_lookup_snapshot = _snapshot(false)
+			lookup_context["world_snapshot"] = route_lookup_snapshot
+		var known := _card_fact(card_name, route_lookup_snapshot)
+		authored_route_label = str(known.get("route_label", ""))
+	if not authored_route_label.is_empty():
+		return _route_id_for_strategy_label(authored_route_label)
+	return _fallback_route_id(skill)
+
+
+func _rebuild_route_metadata_cache() -> bool:
+	if route_catalog == null:
+		_route_profile_by_id.clear()
+		_route_id_by_strategy_label.clear()
+		return false
+	var next_profiles: Dictionary = {}
+	var next_labels: Dictionary = {}
+	for route_variant in route_catalog.all_routes():
+		if not (route_variant is Dictionary):
+			return false
+		var route := route_variant as Dictionary
+		var route_id := str(route.get("id", "")).strip_edges()
+		if route_id.is_empty() or next_profiles.has(route_id):
+			return false
+		next_profiles[route_id] = route.duplicate(true)
+		for label_variant in route.get("strategy_labels", []) as Array:
+			var label := str(label_variant)
+			if not label.is_empty() and not next_labels.has(label):
+				next_labels[label] = route_id
+	_route_profile_by_id = next_profiles
+	_route_id_by_strategy_label = next_labels
+	return _route_profile_by_id.has("tactical_support")
+
+
+func _route_id_for_strategy_label(strategy_label: String) -> String:
+	return str(_route_id_by_strategy_label.get(strategy_label, "tactical_support"))
+
+
+func _clear_snapshot_cache() -> void:
+	_last_snapshot.clear()
+	_last_snapshot_frame = -1
+	_last_snapshot_sample_only = false
+
+
+func _card_route_index_fingerprint_for(
+	index: Dictionary,
+	fallback_only_ids: Dictionary = {}
+) -> String:
+	var ordered_ids: Array = index.keys()
+	ordered_ids.sort()
+	var rows: Array = []
+	for card_id_variant in ordered_ids:
+		var card_id := str(card_id_variant)
+		rows.append([
+			card_id,
+			str(index.get(card_id, "")),
+			fallback_only_ids.has(card_id),
+		])
+	return JSON.stringify(rows).sha256_text()
 
 
 func route_label(route_id: String) -> String:
@@ -846,7 +1081,28 @@ func build_balance_report(world_snapshot: Dictionary = {}) -> Dictionary:
 
 func debug_snapshot() -> Dictionary:
 	var catalog_report := route_catalog.validation_report() if route_catalog != null else {"valid": false, "route_count": 0}
-	return {"service_ready": _configured, "route_catalog_valid": bool(catalog_report.get("valid", false)), "route_count": int(catalog_report.get("route_count", 0)), "world_bridge_ready": _world_bridge != null, "report_build_count": _report_build_count, "snapshot_cache_hits": _snapshot_cache_hits, "runtime_balance_model_owner": "res://scripts/balance/runtime_balance_model.gd", "diagnostic_authority": true, "formula_authority": false, "world_mutation_authority": false, "pure_data_outputs": true}
+	return {
+		"service_ready": _configured,
+		"route_catalog_valid": bool(catalog_report.get("valid", false)),
+		"route_count": int(catalog_report.get("route_count", 0)),
+		"world_bridge_ready": _world_bridge != null,
+		"report_build_count": _report_build_count,
+		"snapshot_cache_hits": _snapshot_cache_hits,
+		"card_route_index_ready": not _card_route_id_by_card_id.is_empty(),
+		"card_route_index_card_count": _card_route_id_by_card_id.size(),
+		"card_route_index_build_count": _card_route_index_build_count,
+		"card_route_index_hit_count": _card_route_index_hit_count,
+		"card_route_index_miss_count": _card_route_index_miss_count,
+		"card_route_legacy_snapshot_lookup_count": _card_route_legacy_snapshot_lookup_count,
+		"card_route_index_fingerprint": _card_route_index_fingerprint,
+		"card_route_index_sealed": _card_route_index_sealed,
+		"card_route_index_exposes_entries": false,
+		"runtime_balance_model_owner": "res://scripts/balance/runtime_balance_model.gd",
+		"diagnostic_authority": true,
+		"formula_authority": false,
+		"world_mutation_authority": false,
+		"pure_data_outputs": true,
+	}
 
 
 func _snapshot(sample_only: bool) -> Dictionary:

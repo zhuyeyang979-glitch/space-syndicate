@@ -2138,6 +2138,8 @@ func _legacy_card_play_context_oracle(
 		skill,
 		requirement_district
 	)
+	var cash_cost := int(requirement_metadata.get("_cash_cost_internal", 0))
+	requirement_metadata.erase("_cash_cost_internal")
 	if not bool(requirement_metadata.get("requirement_satisfied", false)):
 		return {}
 	context.merge(requirement_metadata, true)
@@ -2150,7 +2152,6 @@ func _legacy_card_play_context_oracle(
 	var required := ai._skill_play_flow_required(skill, player_index)
 	if required > 0:
 		return {}
-	var cash_cost := ai._skill_play_cash_cost(skill, player_index)
 	if ai._spendable_cash_units(player_index) < cash_cost:
 		return {}
 	var target_owner := -999

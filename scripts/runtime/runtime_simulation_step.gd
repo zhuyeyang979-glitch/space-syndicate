@@ -83,6 +83,10 @@ func recover_postcommit_before_frame(context: RuntimePhaseFrameContext) -> Dicti
 	return result
 
 
+func has_pending_postcommit_recovery() -> bool:
+	return _resolution != null and _resolution.has_pending_postcommit_recovery()
+
+
 func advance_active(context: RuntimePhaseFrameContext) -> Dictionary:
 	if not is_ready() or context == null or context.path != &"active":
 		_last_step_receipt = {

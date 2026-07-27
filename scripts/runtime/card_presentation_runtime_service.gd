@@ -2,6 +2,23 @@
 extends Node
 class_name CardPresentationRuntimeService
 
+const PLAY_REASON_IDS := [
+	"invalid_payload", "service_missing", "invalid_player", "player_eliminated", "game_over",
+	"already_queued", "pending_target_choice", "monster_wager_freeze", "forced_decision_pending",
+	"player_action_cooldown", "card_cooldown", "card_locked", "starter_district_missing",
+	"starter_district_destroyed", "starter_ready", "counter_conversion_ready", "counter_window_closed",
+	"counter_target_invalid", "monster_target_unavailable", "public_facility_target_unavailable",
+	"public_facility_slot_occupied", "public_facility_slot_incompatible",
+	"public_facility_product_unavailable", "public_facility_card_unavailable",
+	"public_facility_preflight_unavailable", "public_facility_target_ready", "military_unit_missing",
+	"military_unit_cooldown", "military_deployment_invalid", "cash_insufficient",
+	"financial_margin_insufficient", "gdp_share_insufficient", "asset_cost_invalid",
+	"asset_cost_unavailable", "asset_cost_unknown_color", "asset_cost_invalid_amount",
+	"player_mana_snapshot_missing", "asset_insufficient", "generic_asset_insufficient",
+	"needs_monster_target", "needs_player_target", "playable", "catalog_only",
+	"legacy_card_kind_retired",
+]
+
 const CARD_VIEW_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/card_view_snapshot.gd")
 
 var _configured := false
@@ -230,6 +247,7 @@ func compose_hand_card(source: Dictionary) -> Dictionary:
 		"target": str(play_state.get("label", "")),
 		"play_state": _hand_state_primary_text(play_state),
 		"action_state": _hand_action_text(play_state, skill),
+		"play_reason_id": _play_reason_id(_dictionary(source.get("eligibility", {}))),
 		"actionable": actionable,
 		"drop_enabled": actionable,
 		"drop_label": _hand_drop_label(play_state, _dictionary(source.get("card", {})), skill),
@@ -251,6 +269,11 @@ func compose_hand_card(source: Dictionary) -> Dictionary:
 	if presentation.has("illustration_key"):
 		card_source["illustration_key"] = str(presentation.get("illustration_key", ""))
 	return CARD_VIEW_SNAPSHOT_SCRIPT.new().apply_dictionary(card_source).to_ui_dictionary().merged(card_source, true)
+
+
+func _play_reason_id(eligibility: Dictionary) -> String:
+	var reason_id := str(eligibility.get("reason_code", "invalid_payload")).strip_edges()
+	return reason_id if PLAY_REASON_IDS.has(reason_id) else "invalid_payload"
 
 
 func compose_resolution(source: Dictionary) -> Dictionary:

@@ -43,4 +43,18 @@ func tick_military(delta_seconds: float) -> void:
 
 
 func debug_snapshot() -> Dictionary:
-	return {"port_kind": "actors", "ready": is_ready(), "operation_count": 3, "owns_actor_state": false}
+	var ai_debug := _ai.debug_snapshot() if _ai != null else {}
+	return {
+		"port_kind": "actors",
+		"ready": is_ready(),
+		"operation_count": 3,
+		"owns_actor_state": false,
+		"ai_tick_timing": {
+			"count": (ai_debug.get("tick_timing_count", {}) as Dictionary).duplicate(true) \
+				if ai_debug.get("tick_timing_count", {}) is Dictionary else {},
+			"total_usec": (ai_debug.get("tick_timing_total_usec", {}) as Dictionary).duplicate(true) \
+				if ai_debug.get("tick_timing_total_usec", {}) is Dictionary else {},
+			"max_usec": (ai_debug.get("tick_timing_max_usec", {}) as Dictionary).duplicate(true) \
+				if ai_debug.get("tick_timing_max_usec", {}) is Dictionary else {},
+		},
+	}

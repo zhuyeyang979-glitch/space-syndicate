@@ -36,8 +36,18 @@ func _run() -> void:
 	_expect(str((opening_with_facility.get("payload", {}) as Dictionary).get("card_name", "")) == "facility.factory.energy.rank_1", "facility selection uses only the visible card identity")
 	var dark_facility := mixed_snapshot.duplicate(true)
 	(dark_facility["cards"] as Array)[1]["actionable"] = false
-	var dark_facility_wait := DriverScript.district_supply_action_from_snapshot(dark_facility, true)
-	_expect(str(dark_facility_wait.get("id", "")) == "district_supply_wait", "a visible dark-side facility remains viewable but never produces an invalid quote request")
+	var dark_facility_select := DriverScript.district_supply_action_from_snapshot(dark_facility, true)
+	_expect(str(dark_facility_select.get("id", "")) == "district_supply_preview_card" and str((dark_facility_select.get("payload", {}) as Dictionary).get("card_name", "")) == "facility.factory.energy.rank_1", "a visible dark-side facility is selected for its typed public reason without submitting an invalid quote")
+	var dark_selected := _snapshot(
+		"facility.factory.energy.rank_1",
+		"facility",
+		"",
+		[{"card_name": "facility.factory.energy.rank_1", "kind": "facility", "actionable": false}]
+	)
+	(dark_selected["preview"] as Dictionary)["buy_enabled"] = false
+	(dark_selected["preview"] as Dictionary)["action_reason_code"] = "source_region_dark"
+	var dark_facility_wait := DriverScript.district_supply_action_from_snapshot(dark_selected, true)
+	_expect(str(dark_facility_wait.get("id", "")) == "district_supply_wait" and str(dark_facility_wait.get("phase", "")).contains("reason_source_region_dark"), "a selected dark-side facility waits with its qualitative typed reason")
 
 	var quoted_facility := _snapshot(
 		"facility.factory.energy.rank_1",
@@ -63,7 +73,7 @@ func _run() -> void:
 
 	var mature_strategy := DriverScript.district_supply_action_from_snapshot(military_snapshot, false)
 	_expect(str(mature_strategy.get("id", "")) == "district_supply_purchase_card", "after the facility chain is complete, ordinary visible purchases remain available")
-	_expect(DriverScript.recoverable_supply_receipt_reason("locked_quote_changed") and DriverScript.recoverable_supply_receipt_reason("source_region_dark"), "volatile quote and illumination receipts remain retryable human interactions")
+	_expect(DriverScript.recoverable_supply_receipt_reason("locked_quote_changed") and DriverScript.recoverable_supply_receipt_reason("source_region_dark") and DriverScript.recoverable_supply_receipt_reason("card_not_in_supply") and DriverScript.recoverable_supply_receipt_reason("forced_decision_blocks_district_supply"), "volatile quote, illumination, stale listing, and forced-decision preflight receipts remain retryable human interactions")
 	_expect(not DriverScript.recoverable_supply_receipt_reason("purchase_target_invalid"), "structural purchase rejection is never hidden as a retryable quote race")
 	_expect(not JSON.stringify(opening_without_facility).contains("future") and not JSON.stringify(opening_with_facility).contains("future"), "facility search exposes no future supply-bag data")
 	_finish()

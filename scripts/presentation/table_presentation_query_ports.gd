@@ -4,6 +4,33 @@ class_name TablePresentationQueryPorts
 
 signal victory_presentation_receipt_ready(receipt: VictoryPresentationStateChangeReceipt)
 
+const OUTCOME_PRESENTATION_RESULT_KEYS := [
+	"schema_version", "receipt_id", "accepted", "duplicate", "reason_id", "outcome_id",
+]
+const FINAL_SETTLEMENT_PUBLIC_LOG_ACK_KEYS := [
+	"schema_version",
+	"receipt_id",
+	"outcome_id",
+	"receipt_fingerprint",
+	"accepted",
+	"duplicate",
+	"reason_id",
+]
+const PUBLIC_LOG_BINDING_KEYS := ["event_kind", "source_revision", "receipt_fingerprint"]
+const SESSION_RESET_REASON_IDS := ["session_began", "session_reset"]
+const SESSION_PLAN_APPLIED_REASON_ID := "session_plan_applied"
+const SESSION_CHECKPOINT_ROLLED_BACK_REASON_ID := "session_checkpoint_rolled_back"
+const SESSION_PLAN_CHECKPOINT_KEYS := [
+	"schema_version",
+	"public_log_owner",
+	"public_log_producer_port",
+	"victory_receipts",
+	"viewer_private_feedback",
+	"outcome_presentation_results",
+	"outcome_presentation_accepted_count",
+	"outcome_presentation_rejected_count",
+]
+
 var local_viewer_authorization: LocalViewerAuthorization
 var world_session_query: WorldSessionPresentationQuery
 var action_query: TableActionPresentationQuery
@@ -14,6 +41,11 @@ var victory_receipt_service: VictoryPresentationReceiptService
 var viewer_private_feedback_owner: ViewerPrivateFeedbackOwner
 
 var _configured := false
+var _outcome_presentation_results: Dictionary = {}
+var _outcome_presentation_accepted_count := 0
+var _outcome_presentation_rejected_count := 0
+var _session_plan_checkpoint: Dictionary = {}
+var _session_checkpoint_epoch := 0
 
 
 func configure(
@@ -48,10 +80,32 @@ func configure(
 
 
 func reset_state() -> void:
-	public_log_owner.reset_state()
-	public_log_port.reset_state()
-	victory_receipt_service.reset_state()
-	viewer_private_feedback_owner.reset_state()
+	_discard_session_plan_checkpoint()
+	_reset_presentation_journals()
+
+
+func _reset_presentation_journals() -> void:
+	_resolve_children()
+	if public_log_owner != null:
+		public_log_owner.reset_state()
+	if public_log_port != null:
+		public_log_port.reset_state()
+	if victory_receipt_service != null:
+		victory_receipt_service.reset_state()
+	if viewer_private_feedback_owner != null:
+		viewer_private_feedback_owner.reset_state()
+	_outcome_presentation_results.clear()
+	_outcome_presentation_accepted_count = 0
+	_outcome_presentation_rejected_count = 0
+
+
+func _on_session_authorization_context_changed(reason_id: String) -> void:
+	if reason_id == SESSION_PLAN_APPLIED_REASON_ID:
+		_begin_session_plan_checkpoint()
+	elif reason_id == SESSION_CHECKPOINT_ROLLED_BACK_REASON_ID:
+		_restore_session_plan_checkpoint()
+	elif SESSION_RESET_REASON_IDS.has(reason_id):
+		reset_state()
 
 
 func authorized_viewer_index() -> int:
@@ -115,6 +169,16 @@ func append_public_log_receipt(receipt: PublicLogReceipt) -> Dictionary:
 	return public_log_port.append_receipt(receipt)
 
 
+func acknowledge_final_settlement_public_log(
+	receipt: PublicLogReceipt,
+	acknowledgement: Dictionary
+) -> void:
+	var result := _final_settlement_public_log_acknowledgement(receipt)
+	acknowledgement.clear()
+	for key_variant in FINAL_SETTLEMENT_PUBLIC_LOG_ACK_KEYS:
+		acknowledgement[str(key_variant)] = result.get(str(key_variant))
+
+
 func recent_public_log_messages(limit := 6) -> Array:
 	return public_log_owner.recent_public_messages(limit)
 
@@ -159,7 +223,45 @@ func capture_victory_advance(result: Dictionary) -> VictoryPresentationStateChan
 
 
 func capture_victory_outcome(public_snapshot: Dictionary) -> VictoryPresentationStateChangeReceipt:
-	return victory_receipt_service.capture_outcome(public_snapshot)
+	var outcome: Dictionary = public_snapshot.get("outcome_receipt", {}) \
+		if public_snapshot.get("outcome_receipt", {}) is Dictionary else {}
+	var outcome_id := str(outcome.get("outcome_id", "")).strip_edges()
+	if outcome_id.is_empty() or victory_receipt_service == null:
+		return null
+	var receipt_id := "victory-outcome-%s" % outcome_id.sha256_text().left(16)
+	_outcome_presentation_results.erase(receipt_id)
+	var receipt := victory_receipt_service.capture_outcome(public_snapshot)
+	if receipt == null:
+		return null
+	var result: Dictionary = _outcome_presentation_results.get(receipt.receipt_id, {}) \
+		if _outcome_presentation_results.get(receipt.receipt_id, {}) is Dictionary else {}
+	if bool(result.get("accepted", false)) \
+			and str(result.get("outcome_id", "")) == outcome_id:
+		_outcome_presentation_accepted_count += 1
+		return receipt
+	_outcome_presentation_rejected_count += 1
+	victory_receipt_service.release_outcome_for_retry(receipt)
+	return null
+
+
+func record_victory_outcome_presentation_result(result: Dictionary) -> bool:
+	if not TablePresentationPureDataPolicy.is_pure_data(result) \
+			or not _has_exact_keys(result, OUTCOME_PRESENTATION_RESULT_KEYS) \
+			or typeof(result.get("schema_version")) != TYPE_INT \
+			or int(result.get("schema_version", 0)) != 1 \
+			or not (result.get("receipt_id") is String) \
+			or str(result.get("receipt_id", "")).strip_edges().is_empty() \
+			or typeof(result.get("accepted")) != TYPE_BOOL \
+			or typeof(result.get("duplicate")) != TYPE_BOOL \
+			or not (result.get("reason_id") is String) \
+			or not (result.get("outcome_id") is String):
+		return false
+	var receipt_id := str(result.get("receipt_id", "")).strip_edges()
+	var normalized := result.duplicate(true)
+	if _outcome_presentation_results.has(receipt_id):
+		return _outcome_presentation_results.get(receipt_id) == normalized
+	_outcome_presentation_results[receipt_id] = normalized
+	return true
 
 
 func debug_snapshot() -> Dictionary:
@@ -177,14 +279,188 @@ func debug_snapshot() -> Dictionary:
 		"public_log": public_log_owner.debug_snapshot(),
 		"viewer_private_feedback": viewer_private_feedback_owner.debug_snapshot(),
 		"victory_receipts": victory_receipt_service.debug_snapshot(),
+		"outcome_presentation_result_count": _outcome_presentation_results.size(),
+		"outcome_presentation_accepted_count": _outcome_presentation_accepted_count,
+		"outcome_presentation_rejected_count": _outcome_presentation_rejected_count,
+		"session_plan_checkpoint_pending": not _session_plan_checkpoint.is_empty(),
+		"requires_outcome_presentation_acceptance": true,
 		"owns_refresh_cadence": false,
 		"owns_ui_targets": false,
 		"references_main": false,
 	}
 
 
+func _begin_session_plan_checkpoint() -> void:
+	_resolve_children()
+	var checkpoint := _capture_session_plan_checkpoint()
+	if checkpoint.is_empty():
+		return
+	_session_checkpoint_epoch += 1
+	var checkpoint_epoch := _session_checkpoint_epoch
+	_session_plan_checkpoint = checkpoint
+	_reset_presentation_journals()
+	call_deferred("_finalize_session_plan_checkpoint", checkpoint_epoch)
+
+
+func _capture_session_plan_checkpoint() -> Dictionary:
+	if public_log_owner == null or public_log_port == null or victory_receipt_service == null \
+			or viewer_private_feedback_owner == null \
+			or not public_log_owner.has_method("capture_session_checkpoint") \
+			or not public_log_port.has_method("capture_session_checkpoint") \
+			or not victory_receipt_service.has_method("capture_session_checkpoint") \
+			or not viewer_private_feedback_owner.has_method("capture_session_checkpoint"):
+		return {}
+	return {
+		"schema_version": 1,
+		"public_log_owner": public_log_owner.capture_session_checkpoint(),
+		"public_log_producer_port": public_log_port.capture_session_checkpoint(),
+		"victory_receipts": victory_receipt_service.capture_session_checkpoint(),
+		"viewer_private_feedback": viewer_private_feedback_owner.capture_session_checkpoint(),
+		"outcome_presentation_results": _outcome_presentation_results.duplicate(true),
+		"outcome_presentation_accepted_count": _outcome_presentation_accepted_count,
+		"outcome_presentation_rejected_count": _outcome_presentation_rejected_count,
+	}
+
+
+func _restore_session_plan_checkpoint() -> void:
+	if _session_plan_checkpoint.is_empty():
+		return
+	var checkpoint := _session_plan_checkpoint.duplicate(true)
+	_discard_session_plan_checkpoint()
+	if not TablePresentationPureDataPolicy.is_pure_data(checkpoint) \
+			or not _has_exact_keys(checkpoint, SESSION_PLAN_CHECKPOINT_KEYS) \
+			or typeof(checkpoint.get("schema_version")) != TYPE_INT \
+			or int(checkpoint.get("schema_version", 0)) != 1:
+		return
+	_resolve_children()
+	if public_log_owner == null or public_log_port == null or victory_receipt_service == null \
+			or viewer_private_feedback_owner == null \
+			or not public_log_owner.has_method("restore_session_checkpoint") \
+			or not public_log_port.has_method("restore_session_checkpoint") \
+			or not victory_receipt_service.has_method("restore_session_checkpoint") \
+			or not viewer_private_feedback_owner.has_method("restore_session_checkpoint"):
+		return
+	var public_log_checkpoint: Dictionary = checkpoint.get("public_log_owner", {}) \
+		if checkpoint.get("public_log_owner", {}) is Dictionary else {}
+	var producer_checkpoint: Dictionary = checkpoint.get("public_log_producer_port", {}) \
+		if checkpoint.get("public_log_producer_port", {}) is Dictionary else {}
+	var victory_checkpoint: Dictionary = checkpoint.get("victory_receipts", {}) \
+		if checkpoint.get("victory_receipts", {}) is Dictionary else {}
+	var viewer_checkpoint: Dictionary = checkpoint.get("viewer_private_feedback", {}) \
+		if checkpoint.get("viewer_private_feedback", {}) is Dictionary else {}
+	if not public_log_owner.restore_session_checkpoint(public_log_checkpoint) \
+			or not public_log_port.restore_session_checkpoint(producer_checkpoint) \
+			or not victory_receipt_service.restore_session_checkpoint(victory_checkpoint) \
+			or not viewer_private_feedback_owner.restore_session_checkpoint(viewer_checkpoint):
+		return
+	_outcome_presentation_results = (checkpoint.get("outcome_presentation_results", {}) as Dictionary).duplicate(true)
+	_outcome_presentation_accepted_count = int(checkpoint.get("outcome_presentation_accepted_count", 0))
+	_outcome_presentation_rejected_count = int(checkpoint.get("outcome_presentation_rejected_count", 0))
+func _finalize_session_plan_checkpoint(checkpoint_epoch: int) -> void:
+	if checkpoint_epoch == _session_checkpoint_epoch:
+		_session_plan_checkpoint.clear()
+
+
+func _discard_session_plan_checkpoint() -> void:
+	_session_checkpoint_epoch += 1
+	_session_plan_checkpoint.clear()
+
+
 func _on_outcome_presentation_ready(receipt: VictoryPresentationStateChangeReceipt) -> void:
 	victory_presentation_receipt_ready.emit(receipt)
+
+
+func _final_settlement_public_log_acknowledgement(receipt: PublicLogReceipt) -> Dictionary:
+	var receipt_id := receipt.receipt_id if receipt != null else ""
+	var outcome_id := str(receipt.public_values.get("outcome_id", "")).strip_edges() \
+		if receipt != null and receipt.public_values is Dictionary else ""
+	var receipt_fingerprint := receipt.fingerprint() if receipt != null else ""
+	var rejected := _final_settlement_public_log_rejected(
+		receipt_id,
+		outcome_id,
+		receipt_fingerprint,
+		"final_settlement_public_log_receipt_invalid"
+	)
+	if receipt == null or not receipt.is_valid() \
+			or receipt.event_kind != &"final_settlement" \
+			or receipt.localization_key != &"victory.public.final_settlement" \
+			or outcome_id.is_empty() or receipt_fingerprint.is_empty():
+		return rejected
+	_resolve_children()
+	if public_log_port == null or not public_log_port.is_ready():
+		return _final_settlement_public_log_rejected(
+			receipt_id,
+			outcome_id,
+			receipt_fingerprint,
+			"public_log_owner_missing"
+		)
+	var owner_result := public_log_port.append_receipt(receipt)
+	if not TablePresentationPureDataPolicy.is_pure_data(owner_result):
+		return _final_settlement_public_log_rejected(
+			receipt_id,
+			outcome_id,
+			receipt_fingerprint,
+			"final_settlement_public_log_owner_ack_invalid"
+		)
+	var applied := bool(owner_result.get("applied", false))
+	var duplicate := bool(owner_result.get("duplicate", false))
+	var reason_id := str(owner_result.get("reason_code", "")).strip_edges()
+	var owner_fingerprint := str(owner_result.get("receipt_fingerprint", ""))
+	var owner_binding := public_log_port.receipt_binding(receipt_id)
+	var binding_valid := TablePresentationPureDataPolicy.is_pure_data(owner_binding) \
+		and _has_exact_keys(owner_binding, PUBLIC_LOG_BINDING_KEYS) \
+		and str(owner_binding.get("event_kind", "")) == "final_settlement" \
+		and int(owner_binding.get("source_revision", -1)) == receipt.source_revision \
+		and str(owner_binding.get("receipt_fingerprint", "")) == receipt_fingerprint
+	var first_apply_valid := applied and not duplicate and reason_id.is_empty()
+	var exact_duplicate_valid := not applied and duplicate \
+		and reason_id == "public_log_receipt_duplicate" \
+		and not bool(owner_result.get("legacy_unverified", false)) \
+		and not bool(owner_result.get("collision", false)) \
+		and not bool(owner_result.get("stale", false))
+	if not (first_apply_valid or exact_duplicate_valid) \
+			or owner_fingerprint != receipt_fingerprint or not binding_valid:
+		return _final_settlement_public_log_rejected(
+			receipt_id,
+			outcome_id,
+			receipt_fingerprint,
+			reason_id if not reason_id.is_empty() else "final_settlement_public_log_owner_ack_invalid"
+		)
+	return {
+		"schema_version": 1,
+		"receipt_id": receipt_id,
+		"outcome_id": outcome_id,
+		"receipt_fingerprint": receipt_fingerprint,
+		"accepted": true,
+		"duplicate": exact_duplicate_valid,
+		"reason_id": "",
+	}
+
+
+func _final_settlement_public_log_rejected(
+	receipt_id: String,
+	outcome_id: String,
+	receipt_fingerprint: String,
+	reason_id: String
+) -> Dictionary:
+	return {
+		"schema_version": 1,
+		"receipt_id": receipt_id,
+		"outcome_id": outcome_id,
+		"receipt_fingerprint": receipt_fingerprint,
+		"accepted": false,
+		"duplicate": false,
+		"reason_id": reason_id,
+	}
+
+
+func _has_exact_keys(value: Dictionary, expected: Array) -> bool:
+	if value.size() != expected.size():
+		return false
+	for key_variant in expected:
+		if not value.has(key_variant):
+			return false
+	return true
 
 
 func _resolve_children() -> void:

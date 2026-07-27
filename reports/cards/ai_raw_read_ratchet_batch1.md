@@ -103,16 +103,16 @@ the lock, including unknown future keys, raw strings, StringName literals, and
 multiline forms. Its stable signature includes path, function, key, access
 form, normalized receiver, and normalized access expression.
 
-The closed structural lock contains 29,725 occurrences, 25,717 distinct
-signatures, 4,477 distinct literal keys, 451 files, and all 71 historical keys.
-Its `bracket/get/has` counts are `3496/25841/388`, key-set fingerprint is
-`2649386fe9193664cc742bf950318eb20df85a237e06e17a13371e2f3361d40b`,
+The closed structural lock contains 30,076 occurrences, 25,992 distinct
+signatures, 4,567 distinct literal keys, 454 files, and all 71 historical keys.
+Its `bracket/get/has` counts are `3502/26179/395`, key-set fingerprint is
+`c0273aa2997564ed18f232b18fcd60204f625948aa09797f26abe0c049a41617`,
 and structure fingerprint is
-`6a2dd2b439c1554421a8218e38e0b269a2e4f4a368b3f7330a116d80c9aa1ead`.
+`343d3d8b7ae56a8049c4937f1efbca7744d0fafc5d03419350737fc41ba07927`.
 Receiver renaming, resource/helper relocation, unknown keys such as
 `future_private_value`, multiline access, `payload["kind"]`, `r"kind"`, and
 `&"kind"` all change the lock and fail the scanner. This project-production
-inventory is a structural guard, not a claim that all 29,725 sites are AI raw
+inventory is a structural guard, not a claim that all 30,076 sites are AI raw
 reads.
 
 The scanner still does not claim arbitrary data-flow or reflection analysis.

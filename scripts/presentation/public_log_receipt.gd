@@ -11,6 +11,7 @@ const ALLOWED_PUBLIC_KEYS := [
 	"level",
 	"military_unit_name",
 	"monster_name",
+	"outcome_id",
 	"player_index",
 	"price_after",
 	"price_before",
@@ -26,6 +27,11 @@ const ALLOWED_PUBLIC_KEYS := [
 	"state",
 	"value_band",
 	"winner_player_indices",
+]
+const FINAL_SETTLEMENT_REASON_CODES := [
+	"public_audit_complete",
+	"last_survivor",
+	"planet_destroyed",
 ]
 const FORBIDDEN_PUBLIC_KEYS := [
 	"ai_plan",
@@ -127,6 +133,27 @@ func _event_contract_valid() -> bool:
 		for key_variant in public_values.keys():
 			if not ["previous_state", "state"].has(str(key_variant)):
 				return false
+	if event_kind == &"final_settlement":
+		if localization_key != &"victory.public.final_settlement" \
+				or public_values.size() != 4 \
+				or not public_values.has("outcome_id") \
+				or not public_values.has("public_status") \
+				or not public_values.has("reason_code") \
+				or not public_values.has("winner_player_indices") \
+				or str(public_values.get("outcome_id", "")).strip_edges().is_empty() \
+				or str(public_values.get("public_status", "")) != "settled" \
+				or not str(public_values.get("reason_code", "")) in FINAL_SETTLEMENT_REASON_CODES \
+				or not (public_values.get("winner_player_indices") is Array):
+			return false
+		var winner_indices := public_values.get("winner_player_indices") as Array
+		if winner_indices.is_empty():
+			return false
+		var seen := {}
+		for player_index_variant in winner_indices:
+			if typeof(player_index_variant) != TYPE_INT or int(player_index_variant) < 0 \
+					or seen.has(int(player_index_variant)):
+				return false
+			seen[int(player_index_variant)] = true
 	return true
 
 
