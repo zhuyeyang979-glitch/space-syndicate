@@ -8972,3 +8972,29 @@ deleted. Evidence and the remaining action inventory are recorded in
   may not merge to `main` or admit AI World typed ports. The next atomic task is
   legal rack/economy progression performance inside the unchanged 180-second
   wall boundary, without budget expansion or state injection.
+
+## 2026-07-28 — Action Spine economy continuation (PARTIAL)
+
+- Added a detached viewer-safe economy continuation observation and a pure
+  complementary factory/market planner. Facility selection now uses typed
+  semantic IDs, authorized hand priority, public target retries, and the
+  existing GameAction Offer/Intent/Receipt spine only.
+- Added bounded public-rack advancement and an opaque public rack revision.
+  Facility navigation hints and non-facility advancement candidates are bound
+  to district, rack revision, stable card ID, and plan. Every arrival re-queries
+  the source; stale data performs zero purchase and advances to another
+  observed candidate.
+- The strongest staged run reached five real Sale Receipts, Top-K GDP
+  `1368/108`, five controlled regions, and `idle -> qualification -> audit`
+  with zero invalid actions and zero post-Victory installations. It installed
+  only two production facilities before Victory locked growth, so the required
+  three-facility terminal baseline, FinalSettlement, and eight quiet frames are
+  not proved.
+- The formal `150/180` FullRun allocation was not consumed because its stage
+  gate failed. The work is safe for a task-branch Draft PR but cannot merge to
+  `main` and cannot authorize a V0.7 production cutover.
+- Focused observation/planner/facility/Driver/Action Spine checks, independent
+  CommodityFlow/Victory/FinalSettlement regressions, Main gates, UI text,
+  visual contract, and smoke `--check-only` pass. Godot MCP loaded the real
+  main scene; the production Action Flow Bench passed `12/12` and exited with
+  no new script or runtime error.
