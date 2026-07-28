@@ -64,6 +64,25 @@ func run_checks() -> Dictionary:
 	coordinator.refresh_v06_production_player_bindings(world)
 	await get_tree().process_frame
 	await get_tree().process_frame
+	var viewer_context := coordinator.table_presentation_query_ports().viewer_context()
+	var actor_context := GameplayActorAuthorizationContext.new()
+	actor_context.request_id = "actor-context:commodity-track-bench:1"
+	actor_context.authorized = true
+	actor_context.reason_code = "authorized"
+	actor_context.viewer_index = 0
+	actor_context.authorized_actor_player_index = 0
+	actor_context.authorization_revision = maxi(1, int(viewer_context.authorization_revision))
+	actor_context.session_id = "commodity-track-bench-session"
+	actor_context.session_revision = 1
+	actor_context.source_surface = &"game_screen"
+	actor_context.issued_at_operation_revision = 1
+	game_screen.bind_gameplay_actor_authorization_context(actor_context)
+	_check(
+		actor_context.is_valid() \
+			and str(game_screen.get("_presentation_session_id")) == actor_context.session_id \
+			and int(game_screen.get("_presentation_session_revision")) == actor_context.session_revision,
+		"synthetic_bench_actor_context_is_valid_and_bound:%s" % JSON.stringify(actor_context.to_dictionary())
+	)
 	var service := coordinator.get_node_or_null("CommoditySushiTrackRuntimeService")
 	var inventory := coordinator.commodity_card_inventory_runtime_controller()
 	var track := game_screen.get_node_or_null("SafeArea/MainRows/TopCommoditySushiTrack")
@@ -77,9 +96,14 @@ func run_checks() -> Dictionary:
 
 	var receipt := coordinator.request_table_presentation_refresh(&"full", &"commodity_sushi_bench")
 	await get_tree().process_frame
+	# The synthetic Bench has no running GameSession, so the production refresh
+	# correctly rebinds a denied session context. Re-apply the explicit valid Bench
+	# context after that refresh to exercise the UI/ApplicationFlow claim path.
+	game_screen.bind_gameplay_actor_authorization_context(actor_context)
 	_check(receipt != null and receipt.applied, "typed_full_presentation_applies")
 	var track_debug: Dictionary = track.debug_snapshot()
-	_check(int(track_debug.get("rendered_item_count", -1)) == 8, "eight_public_items_render")
+	var initial_rendered_count := int(track_debug.get("rendered_item_count", -1))
+	_check(initial_rendered_count == 12, "all_twelve_active_public_commodity_types_render")
 	_check(track.size.x >= 1000.0 and track.size.y >= 150.0, "top_track_is_wide_and_thick")
 	var planet := game_screen.get_node_or_null("SafeArea/MainRows/TableArea/PlanetBoard") as Control
 	var inspector := game_screen.get_node_or_null("SafeArea/MainRows/TableArea/RightInspector") as Control
@@ -91,7 +115,7 @@ func run_checks() -> Dictionary:
 		var slot_id := str(rendered_ids[0])
 		var item_node := track.find_child("CommoditySlot_%s" % _safe_node_name(slot_id), true, false)
 		if item_node != null:
-			item_node.call("_emit_focus")
+			await _hover_control(item_node as Control)
 		await get_tree().process_frame
 		var inspector_title := inspector.find_child("InspectorTitle", true, false) as Label if inspector != null else null
 		_check(item_node != null and inspector_title != null and inspector_title.text == "公共商品", "item_focus_updates_right_inspector")
@@ -99,12 +123,18 @@ func run_checks() -> Dictionary:
 		var rng_before := JSON.stringify(coordinator.run_rng_service().debug_snapshot())
 		var market := coordinator.get_node_or_null("ProductMarketRuntimeController")
 		var market_before := JSON.stringify(market.public_market_snapshot()) if market != null else ""
-		var claim_button := item_node.get_node_or_null("ItemRows/CommodityClaimButton") as Button if item_node != null else null
-		if claim_button != null:
-			claim_button.pressed.emit()
-		await _wait_for_rendered_count(track, 7, 12)
+		var item_debug: Dictionary = item_node.call("debug_snapshot") as Dictionary if item_node != null else {}
+		_check(item_node != null and item_node.find_children("*", "Button", true, false).is_empty(), "source_card_has_no_claim_button")
+		_check(bool(item_debug.get("illustration_active", false)), "source_card_renders_authored_commodity_art")
+		if item_node != null:
+			await _click_control(item_node as Control)
+		await _wait_for_rendered_count(track, initial_rendered_count - 1, 12)
 		var after_debug: Dictionary = track.debug_snapshot()
-		_check(claim_button != null and int(after_debug.get("rendered_item_count", -1)) == 7, "typed_claim_refreshes_track_from_owner_snapshot")
+		_check(int(after_debug.get("claim_submission_count", 0)) == 1 \
+			and int(after_debug.get("claim_result_success_count", 0)) == 1 \
+			and int(after_debug.get("rendered_item_count", -1)) == initial_rendered_count - 1,
+			"card_body_claim_refreshes_track_from_owner_snapshot_exactly_once:%s" % JSON.stringify(after_debug)
+		)
 		_check(int(inventory.player_snapshot("player.0").get("cash", -2)) == cash_before, "free_claim_changes_no_cash")
 		_check(JSON.stringify(coordinator.run_rng_service().debug_snapshot()) == rng_before and (market == null or JSON.stringify(market.public_market_snapshot()) == market_before), "claim_consumes_no_rng_and_does_not_refresh_market")
 		_check(inspector_title != null and inspector_title.text == "公共商品", "claim_result_keeps_public_commodity_inspector_focus")
@@ -155,6 +185,31 @@ func _capture_screenshot() -> Dictionary:
 
 func _safe_node_name(value: String) -> String:
 	return value.replace(".", "_").replace(":", "_").replace("/", "_")
+
+
+func _hover_control(control: Control) -> void:
+	if control == null:
+		return
+	var point := control.get_global_rect().get_center()
+	var motion := InputEventMouseMotion.new()
+	motion.position = point
+	motion.global_position = point
+	get_viewport().push_input(motion, true)
+	await get_tree().process_frame
+
+
+func _click_control(control: Control) -> void:
+	if control == null:
+		return
+	var point := control.get_global_rect().get_center()
+	for pressed in [true, false]:
+		var event := InputEventMouseButton.new()
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.pressed = pressed
+		event.position = point
+		event.global_position = point
+		get_viewport().push_input(event, true)
+		await get_tree().process_frame
 
 
 func _wait_for_rendered_count(track: Node, expected_count: int, max_frames: int) -> void:

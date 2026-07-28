@@ -24,6 +24,7 @@ const RIGHT_INSPECTOR_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/right
 const TOP_BAR_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/top_bar_snapshot.gd")
 const OPTIONAL_ROUTE_PUBLIC_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/optional_route_public_snapshot.gd")
 const COMMODITY_SUSHI_TRACK_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/commodity_sushi_track_snapshot.gd")
+const PLAYER_CARD_DOCK_PROJECTION_SCRIPT := preload("res://scripts/presentation/player_card_dock_projection_v1.gd")
 
 var top_bar: Dictionary = {}
 var card_track: Array = []
@@ -31,6 +32,7 @@ var card_resolution_track: Dictionary = {}
 var planet: Dictionary = {}
 var right_inspector: Dictionary = {}
 var player_board: Dictionary = {}
+var player_card_dock: Dictionary = {}
 var temporary_decision: Dictionary = {}
 var active_forced_decision: Dictionary = {}
 var optional_route_presentation: Dictionary = {}
@@ -63,6 +65,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	var district: Variant = DISTRICT_VIEW_SNAPSHOT_SCRIPT.new().apply_dictionary(data.get("district", {}) if data.get("district", {}) is Dictionary else {})
 	var player: Variant = PLAYER_BOARD_SNAPSHOT_SCRIPT.new().apply_dictionary(data.get("player_board", {}) if data.get("player_board", {}) is Dictionary else {})
 	player_board = player.to_ui_dictionary()
+	player_card_dock = PLAYER_CARD_DOCK_PROJECTION_SCRIPT.detached_copy(data.get("player_card_dock", {}))
 	var top_source: Dictionary = _merge_top_bar_source(data.get("top_bar", {}) if data.get("top_bar", {}) is Dictionary else {}, player_board)
 	top_bar = TOP_BAR_SNAPSHOT_SCRIPT.new().apply_dictionary(top_source).to_ui_dictionary()
 	var inspector_source: Dictionary = data.get("right_inspector", data.get("inspector", {})) if data.get("right_inspector", data.get("inspector", {})) is Dictionary else {}
@@ -97,6 +100,7 @@ func to_ui_dictionary() -> Dictionary:
 		"planet": planet,
 		"right_inspector": right_inspector,
 		"player_board": player_board,
+		"player_card_dock": player_card_dock,
 		"temporary_decision": temporary_decision,
 		"active_forced_decision": active_forced_decision,
 		"optional_route_presentation": optional_route_presentation,

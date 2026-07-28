@@ -35,3 +35,18 @@ func canonical_key() -> String:
 		visibility_revision,
 		request_revision,
 	]
+
+
+func request_identity_key() -> String:
+	return "%d|%d" % [viewer_index, request_revision]
+
+
+func source_identity_key() -> String:
+	return "%d|%s|%s|%d|%d|%d" % [
+		viewer_index,
+		commodity_slot_id,
+		commodity_card_id,
+		snapshot_revision,
+		belt_revision,
+		visibility_revision,
+	]

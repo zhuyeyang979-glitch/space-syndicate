@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/ui/table/top_commodity_sushi_track_item.gd" id="2_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/CardIllustrationLayer.tscn" id="3_illustration"]
 
 [node name="TopCommoditySushiTrackItem" type="PanelContainer"]
 custom_minimum_size = Vector2(100, 100)
@@ -12,8 +13,36 @@ script = ExtResource("2_script")
 
 [node name="ItemRows" type="VBoxContainer" parent="."]
 layout_mode = 2
-mouse_filter = 1
+mouse_filter = 2
 theme_override_constants/separation = 2
+
+[node name="CommodityArtPanel" type="PanelContainer" parent="ItemRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="CommodityArtStack" type="Control" parent="ItemRows/CommodityArtPanel"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="CommodityIllustrationLayer" parent="ItemRows/CommodityArtPanel/CommodityArtStack" instance=ExtResource("3_illustration")]
+unique_name_in_owner = true
+visible = false
+
+[node name="CommodityArtFallback" type="Label" parent="ItemRows/CommodityArtPanel/CommodityArtStack"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+text = "货"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="IconNameRow" type="HBoxContainer" parent="ItemRows"]
 layout_mode = 2
@@ -68,9 +97,12 @@ mouse_filter = 2
 text = "供0 需0"
 text_overrun_behavior = 3
 
-[node name="CommodityClaimButton" type="Button" parent="ItemRows"]
+[node name="CommodityClaimStateLabel" type="Label" parent="ItemRows"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 26)
+custom_minimum_size = Vector2(0, 18)
 layout_mode = 2
-focus_neighbor_top = NodePath("..")
-text = "免费领取"
+mouse_filter = 2
+text = "可领取"
+horizontal_alignment = 1
+vertical_alignment = 1
+text_overrun_behavior = 3

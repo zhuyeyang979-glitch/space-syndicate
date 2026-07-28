@@ -37,8 +37,7 @@ const TRADE_PRODUCT_SELECTION_SOURCE_SURFACES := [
 	&"qa_driver",
 ]
 const HAND_SELECTION_SOURCE_SURFACES := [
-	&"hand_rack",
-	&"player_board",
+	&"player_card_dock",
 	&"game_screen",
 	&"qa_driver",
 ]

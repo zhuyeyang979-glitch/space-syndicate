@@ -120,17 +120,10 @@ func show_public_commodity(item: Dictionary, action_result: Dictionary = {}) -> 
 	var disabled_reason := str(item.get("public_claim_disabled_reason", "当前不可领取。"))
 	var result_text := str(action_result.get("explanation", "")).strip_edges()
 	var why := result_text if not result_text.is_empty() else (
-		"共享商品牌可免费领取；行情只说明商品市场状态，不是领取费用。" \
+		"单击商品牌本体即可领取；行情只说明商品市场状态，不是领取费用。" \
 		if claimable else disabled_reason
 	)
 	var trend_text := "%+d" % trend if trend != 0 else "持平"
-	var actions: Array = []
-	if claimable:
-		actions.append({
-			"id": "commodity_claim_selected",
-			"label": "免费领取",
-			"tooltip": "提交给商品卡库存 owner；界面不会直接移除商品。",
-		})
 	set_context({
 		"context_kind": "public_commodity",
 		"title": "公共商品",
@@ -149,9 +142,9 @@ func show_public_commodity(item: Dictionary, action_result: Dictionary = {}) -> 
 		},
 		"requirements": [
 			{"text": "免费", "tooltip": "领取不支付现金或资产。"},
-			{"text": "可领取" if claimable else "暂不可领", "tooltip": "商品必须仍在当前权威快照中。" if claimable else disabled_reason},
+			{"text": "单击卡面" if claimable else "暂不可领", "tooltip": "商品必须仍在当前权威快照中。" if claimable else disabled_reason},
 		],
-		"actions": actions,
+		"actions": [],
 		"deep_links": [{"id": "detail_products", "label": "商品图鉴"}],
 		"logs": [str(action_result.get("consequence", ""))] if not action_result.is_empty() else [],
 	})

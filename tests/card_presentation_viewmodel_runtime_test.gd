@@ -77,14 +77,19 @@ func _run() -> void:
 		current_ui_data = (current_variant as Dictionary).duplicate(true) if current_variant is Dictionary else {}
 	var snapshot: Dictionary = TABLE_SNAPSHOT_SCRIPT.new().apply_dictionary(current_ui_data).to_ui_dictionary()
 	_expect(not snapshot.is_empty() and _is_pure_data(snapshot), "runtime table snapshot is non-empty pure data")
-	var player_board: Dictionary = snapshot.get("player_board", {}) if snapshot.get("player_board", {}) is Dictionary else {}
-	var hand_cards: Array = player_board.get("hand_cards", []) if player_board.get("hand_cards", []) is Array else []
-	_expect(not hand_cards.is_empty(), "real first-run hand is composed by the service")
-	if not hand_cards.is_empty() and hand_cards[0] is Dictionary:
-		var first_card := hand_cards[0] as Dictionary
-		_expect(first_card.has("use_case") and first_card.has("play_state") and first_card.has("drop_label"), "hand card includes presentation and play-state fields")
-		var actions: Array = first_card.get("actions", []) if first_card.get("actions", []) is Array else []
-		_expect(_has_action_prefix(actions, "play_"), "hand card preserves the existing play_<slot> action id")
+	var player_card_dock: Dictionary = snapshot.get("player_card_dock", {}) \
+		if snapshot.get("player_card_dock", {}) is Dictionary else {}
+	var normal_cards: Array = player_card_dock.get("normal_cards", []) \
+		if player_card_dock.get("normal_cards", []) is Array else []
+	_expect(not normal_cards.is_empty(), "real first-run normal hand is composed into the typed Player Card Dock")
+	if not normal_cards.is_empty() and normal_cards[0] is Dictionary:
+		var first_card := normal_cards[0] as Dictionary
+		_expect(first_card.has("slot_id") and first_card.has("play_state") \
+			and first_card.has("disabled_reason_text"), "normal card includes typed slot, presentation legality, and readable failure fields")
+		var offer: Dictionary = first_card.get("game_action_offer", {}) \
+			if first_card.get("game_action_offer", {}) is Dictionary else {}
+		_expect(bool(GameActionOfferV1.validation_report(offer).get("valid", false)) \
+			and str(offer.get("semantic_action_id", "")) == GameActionIntentV1.ACTION_CARD_PLAY, "normal card preserves the formal Action Spine offer")
 	var inspector: Dictionary = snapshot.get("right_inspector", {}) if snapshot.get("right_inspector", {}) is Dictionary else {}
 	var deep_links: Array = inspector.get("deep_links", []) if inspector.get("deep_links", []) is Array else []
 	_expect(_has_action_id(deep_links, "detail_region") and _has_action_id(deep_links, "detail_cards"), "RightInspector fallback precedence and deep links remain compatible")

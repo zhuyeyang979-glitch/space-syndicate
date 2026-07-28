@@ -624,7 +624,10 @@ func _test_source_negative_gates() -> void:
 	for forbidden in ["action_id.begins_with", "play_\"", "district_\"", "group_order_", "screen_position", "Vector2"]:
 		_expect(not flow_source.contains(forbidden), "application flow contains no legacy prefix or screen-coordinate dispatch: %s" % forbidden)
 	_expect(not screen_source.contains("signal action_requested") and not screen_source.contains("signal end_turn_requested") and not screen_source.contains("signal card_drop_requested"), "RuntimeGameScreen exposes no retired raw outward action signal")
-	_expect(drag_body.contains("region_id") and not drag_body.contains("request_district_selection") and not drag_body.contains("request_hand_selection"), "drag hit testing emits a stable region target without synchronously mutating selection")
+	_expect(drag_body == "MISSING" \
+		and not screen_source.contains("func _on_card_drag_released(") \
+		and screen_source.contains("func _on_game_action_offer_requested(") \
+		and screen_source.contains("if not submit_game_action_offer("), "retired HandRack drag has no production callback and PlayerCardDock forwards one typed offer")
 	_expect(submit_body.find("_authorization_reason") < submit_body.find("_sync_journal") and not submit_body.contains("_remember_and_complete(intent, _receipt_for(intent, false, authorization_reason"), "authorization precedes exact-once journal lookup and unauthorized requests are never remembered")
 	_expect(not flow_source.contains("Callable(") and not flow_source.contains("current_scene") and not flow_source.contains("call(method_name"), "application flow contains no scene-root fallback or generic method dispatch")
 
