@@ -1,0 +1,142 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/v07/v07_reference_planet_map_view.gd" id="1_planet_map_view"]
+[ext_resource type="PackedScene" path="res://scenes/ui/v07/V07ReferencePlanetBackdrop.tscn" id="2_backdrop"]
+[ext_resource type="PackedScene" path="res://scenes/ui/v07/V07ReferencePlanetGuide.tscn" id="3_guide"]
+[ext_resource type="PackedScene" path="res://scenes/ui/map/PlanetFocusRangeOverlay.tscn" id="4_focus_overlay"]
+[ext_resource type="PackedScene" path="res://scenes/ui/map/PlanetMapScaleHint.tscn" id="5_scale_hint"]
+[ext_resource type="PackedScene" path="res://scenes/ui/map/PlanetSolarCameraController.tscn" id="6_solar_camera"]
+[ext_resource type="PackedScene" path="res://scenes/ui/weather/WeatherMapOverlay.tscn" id="7_weather_overlay"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/OptionalRoutePresentationRuntimeService.tscn" id="8_optional_route"]
+
+[node name="V07ReferencePlanetMapView" type="Control"]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+clip_contents = false
+focus_mode = 2
+script = ExtResource("1_planet_map_view")
+sceneized_visual_cutover_enabled = true
+legacy_draw_fallback_enabled = false
+
+[node name="OptionalRoutePresentationRuntimeService" parent="." instance=ExtResource("8_optional_route")]
+unique_name_in_owner = true
+
+[node name="BackdropLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="PlanetGlobeBackdrop" parent="BackdropLayer" instance=ExtResource("2_backdrop")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="OrbitLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="PlanetOrbitGuide" parent="OrbitLayer" instance=ExtResource("3_guide")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="WeatherLayer" parent="." instance=ExtResource("7_weather_overlay")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="DistrictLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="RouteLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="MonsterLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="SelectionLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="PlanetFocusRangeOverlay" parent="SelectionLayer" instance=ExtResource("4_focus_overlay")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="EffectLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="CalloutLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="DebugOverlayLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="PlanetMapScaleHint" parent="DebugOverlayLayer" instance=ExtResource("5_scale_hint")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="PlanetSolarCameraController" parent="." instance=ExtResource("6_solar_camera")]
+unique_name_in_owner = true
+layout_mode = 1

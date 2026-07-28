@@ -406,6 +406,7 @@ func _player_rows(actor_ids_variant: Variant) -> Array:
 			"player_id": str((actor_ids_variant as Array)[index]),
 			"display_name": "玩家 %d" % (index + 1),
 			"public_status": "已提交" if index < 2 else "等待",
+			"public_order_index": index,
 		})
 	return result
 

@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "status": "REFERENCE_LAYER_GREEN",
+  "scope": "V07_REFERENCE_ONLY",
+  "production_runtime_ruleset": "V0.6",
+  "full_v07_runtime_cutover": false,
+  "pr69_green": false,
+  "before": {
+    "reference_player_roster_source_count": 2,
+    "orbit_player_marker_count": 8,
+    "orbit_radial_spoke_count": 8,
+    "left_right_seat_layer_count": 2,
+    "production_planet_board_loaded": true
+  },
+  "after": {
+    "reference_player_roster_source_count": 1,
+    "orbit_player_marker_count": 0,
+    "orbit_radial_spoke_count": 0,
+    "left_right_seat_layer_count": 0,
+    "production_planet_board_loaded": false,
+    "sceneized_visual_cutover_enabled": true,
+    "legacy_draw_fallback_enabled": false
+  },
+  "reference_composition": {
+    "surface": "res://scenes/ui/v07/V07ContextualTableSurface.tscn",
+    "stage": "res://scenes/ui/v07/V07ReferencePlanetStage.tscn",
+    "map_view": "res://scenes/ui/v07/V07ReferencePlanetMapView.tscn",
+    "backdrop": "res://scenes/ui/v07/V07ReferencePlanetBackdrop.tscn",
+    "guide": "res://scenes/ui/v07/V07ReferencePlanetGuide.tscn",
+    "reference_map_boundary_script": "res://scripts/ui/v07/v07_reference_planet_map_view.gd",
+    "real_map_interaction_base_script": "res://scripts/ui/planet_map_view.gd"
+  },
+  "roster_contract": {
+    "authority_order_field": "public_order_index",
+    "local_first_rotation": false,
+    "one_column_player_counts": [3, 4],
+    "two_column_player_counts": [5, 6, 7, 8],
+    "mouse_inspection": true,
+    "keyboard_inspection": true,
+    "single_visual_selection": true,
+    "private_fields_fail_closed": true
+  },
+  "verification": {
+    "focused_retirement_test": "PASS 74/74",
+    "player_semantics_test": "PASS 64/64",
+    "contextual_bench": "PASS 44/44",
+    "architecture_gate": "PASS 17/17",
+    "three_layer_integration_test": "PASS 24/24",
+    "performance_test": "PASS 11/11",
+    "ui_text_smoke": "PASS",
+    "visual_contract": "PASS",
+    "smoke_check_only_exit_code": 0,
+    "godot_version": "4.7-stable (official)",
+    "godot_mcp_endpoint": "http://127.0.0.1:8825/",
+    "godot_mcp_bench": "res://scenes/tools/V07UninterruptedCardBatchContextualTableBench.tscn",
+    "godot_mcp_runtime_error_count": 0,
+    "godot_mcp_runtime_script_error_count": 0,
+    "godot_mcp_runtime_warning_count": 0,
+    "godot_mcp_stopped_cleanly": true,
+    "screenshot": "res://docs/ui_qa/v07_card_batch/legacy_planet_orbit_seat_retired_1600x960.png"
+  },
+  "production_components_retained": [
+    "res://scenes/ui/PlanetBoard.tscn",
+    "res://scripts/ui/planet_board.gd",
+    "res://scenes/ui/planet_table/RoleSeatLayerHost.tscn",
+    "res://scripts/ui/planet_table/role_seat_layer_host.gd",
+    "res://scenes/ui/PlanetMapView.tscn",
+    "res://scenes/ui/map/PlanetGlobeBackdrop.tscn",
+    "res://scenes/ui/map/PlanetOrbitGuide.tscn",
+    "res://scripts/viewmodels/public_player_seat_snapshot.gd"
+  ],
+  "final_deletion_gate": [
+    "PR69_GREEN",
+    "FORMAL_V07_PRODUCTION_TABLE_SHELL_CUTOVER",
+    "SINGLE_SIDE_PRODUCTION_ROSTER_PARITY",
+    "ALL_PRODUCTION_POSITION_COMPONENT_CONSUMERS_MIGRATED",
+    "PRODUCTION_MAP_AND_PRESENTATION_REGRESSION_GREEN",
+    "LEGACY_MAP_FALLBACK_SEPARATE_DELETION_PROOF"
+  ],
+  "forbidden_in_this_atom": [
+    "GameScreen production changes",
+    "Main changes",
+    "PlanetBoard production changes",
+    "production player-position snapshot deletion",
+    "production map or underlay deletion",
+    "V0.7 production cutover"
+  ]
+}

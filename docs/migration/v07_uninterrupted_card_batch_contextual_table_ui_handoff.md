@@ -127,11 +127,16 @@ Intent and zero RNG consumption. There is no AI-only privileged action.
 
 ## Player semantic boundary
 
-The reference surface instantiates the real `PlanetBoard/PlanetMapView` and
-keeps the planet as the permanent stage. It uses only exact-key typed
-projections:
+The reference surface instantiates its own `V07ReferencePlanetStage` and
+`V07ReferencePlanetMapView`. The reference map reuses the real map interaction,
+projection, district, route, weather and camera implementation, but it does not
+instantiate production `PlanetBoard`, the production player-position host, or
+the production backdrop/guide that carry eight-position decoration. The planet
+remains the permanent stage and consumes only exact-key typed projections:
 
-- all players appear on the left; 3-4 seats use one column and 5-8 use two;
+- all players appear on the left; 3-4 players use one column and 5-8 use two;
+- `public_order_index` is the only roster ordering input; delivery order and
+  local-player identity never reorder the list;
 - the permanent right rack is replaced by a closable translucent region popup;
 - opening, closing or switching the popup does not redraw the authoritative
   rack;

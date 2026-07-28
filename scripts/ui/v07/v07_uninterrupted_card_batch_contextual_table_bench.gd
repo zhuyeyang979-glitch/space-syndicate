@@ -58,16 +58,26 @@ func apply_visual_mode(mode_id: String) -> bool:
 func _run_acceptance() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_expect(bool(table_surface.debug_snapshot().get("planet_map_connected", false)), "real PlanetBoard map target is connected")
-	_expect(_apply_real_planet_fixture(), "deterministic fixture renders through the real PlanetMapView")
+	_expect(bool(table_surface.debug_snapshot().get("planet_map_connected", false)), "reference planet stage map target is connected")
+	_expect(_apply_real_planet_fixture(), "deterministic fixture renders through the real map interaction implementation")
 	var map_view := table_surface.planet_map_view()
-	_expect(map_view != null, "bench uses the real PlanetMapView")
+	_expect(map_view != null, "bench uses the real map interaction and projection script")
+	var reference_snapshot := table_surface.debug_snapshot()
+	_expect(bool(reference_snapshot.get("reference_planet_stage", false)), "bench composes the V0.7 reference-only planet stage")
+	_expect(int(reference_snapshot.get("reference_player_roster_source_count", -1)) == 1, "one player roster source owns the reference layout")
+	_expect(int(reference_snapshot.get("orbit_player_marker_count", -1)) == 0, "reference planet has zero orbit player markers")
+	_expect(int(reference_snapshot.get("orbit_radial_spoke_count", -1)) == 0, "reference planet has zero positional radial spokes")
+	_expect(int(reference_snapshot.get("left_right_seat_layer_count", -1)) == 0, "reference planet has zero left or right seat layers")
+	_expect(not bool(reference_snapshot.get("legacy_draw_fallback_enabled", true)), "reference map keeps the legacy draw fallback disabled")
 
 	_expect(table_surface.apply_player_roster({"players": _players(4)}), "four-seat roster projection applies")
 	_expect(int(table_surface.debug_snapshot().get("roster_columns", 0)) == 1, "three-to-four seats use one left-side column")
 	_expect(table_surface.apply_player_roster({"players": _players(8)}), "eight-seat roster projection applies")
 	_expect(int(table_surface.debug_snapshot().get("roster_columns", 0)) == 2, "five-to-eight seats use two left-side columns")
 	_expect(str(table_surface.debug_snapshot().get("roster_side", "")) == "left", "roster remains single-side")
+	_expect(bool(table_surface.debug_snapshot().get("roster_focus_links_valid", false)), "roster exposes deterministic keyboard focus links")
+	_expect(table_surface.request_player_inspection("seat-3"), "public roster entry can request inspection")
+	_expect(str(table_surface.debug_snapshot().get("last_inspected_player_id", "")) == "seat-3", "inspection request carries only the public player id")
 
 	table_surface.apply_card_window(_window_projection(30, "所有战略选择一次完成。"))
 	_expect(table_surface.apply_submission_preview({
@@ -189,27 +199,6 @@ func _apply_real_planet_fixture() -> bool:
 	)
 	if map_view.has_method("set_preview_note"):
 		map_view.call("set_preview_note", "共享星球地图｜点击地区查看公开牌架")
-	var planet_board := table_surface.get_node_or_null("PlanetBoard")
-	if planet_board != null and planet_board.has_method("set_board_state"):
-		planet_board.call("set_board_state", {
-			"title": "星球主舞台",
-			"hint": "地图保持常驻；牌架与结算按上下文出现。",
-			"left_rail": {
-				"title": "公开局势",
-				"entries": [
-					{"label": "批次", "value": "准备中", "active": true},
-					{"label": "地图", "value": "6 区", "active": true},
-				],
-			},
-			"right_rail": {"hidden": true, "entries": []},
-			"flow_compass": {
-				"title": "行动节奏",
-				"steps": ["选牌", "锁定", "公开", "结算"],
-				"current_index": 0,
-				"next_text": "窗口内完成所有选择",
-			},
-			"player_seats": [],
-		})
 	return true
 
 
@@ -259,6 +248,7 @@ func _players(count: int) -> Array:
 			"player_id": "seat-%d" % index,
 			"display_name": "玩家 %d" % (index + 1),
 			"public_status": "已锁定" if index % 2 == 0 else "选择中",
+			"public_order_index": index,
 		})
 	return rows
 

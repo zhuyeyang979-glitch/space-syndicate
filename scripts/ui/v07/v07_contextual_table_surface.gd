@@ -4,6 +4,7 @@ class_name V07ContextualTableSurface
 
 signal region_projection_requested(region_index: int)
 signal prebound_target_requested(region_index: int)
+signal player_inspection_requested(player_id: String)
 
 const MODE_TABLE_MAP := "TABLE_MAP_MODE"
 const MODE_REGION_SUPPLY_POPUP := "REGION_SUPPLY_POPUP_MODE"
@@ -20,7 +21,7 @@ const RESOLUTION_PHASES := [
 ]
 
 const ROSTER_ROOT_KEYS := ["players"]
-const ROSTER_ROW_KEYS := ["player_id", "display_name", "public_status", "avatar_key", "accent"]
+const ROSTER_ROW_KEYS := ["player_id", "display_name", "public_status", "public_order_index", "avatar_key", "accent"]
 const CARD_WINDOW_KEYS := ["phase", "window_id", "batch_id", "window_duration_seconds", "remaining_seconds", "status_text"]
 const SUBMISSION_PREVIEW_KEYS := ["card_display_name", "target_display_name", "mode_display_name", "quantity", "locked"]
 const REGION_ROOT_KEYS := ["region_index", "region_id", "rack_revision", "display_name", "public_status", "availability_text", "cards"]
@@ -57,7 +58,7 @@ const CARD_DOCK_ROW_KEYS := ["display_name", "status", "card_semantic_id", "sour
 @onready var normal_hand_title: Label = %NormalHandTitle
 @onready var commodity_title: Label = %CommodityTitle
 @onready var submission_summary: Label = %SubmissionSummary
-@onready var planet_board: Control = $PlanetBoard
+@onready var reference_planet_stage: Control = $ReferencePlanetStage
 
 var _interaction_mode := MODE_TABLE_MAP
 var _roster_apply_count := 0
@@ -81,6 +82,10 @@ var _planet_map_view: Control
 var _last_district_selected_frame := -1
 var _popup_blank_close_count := 0
 var _popup_same_region_close_count := 0
+var _roster_player_ids: Array[String] = []
+var _roster_buttons: Array[Button] = []
+var _roster_inspection_count := 0
+var _last_inspected_player_id := ""
 
 
 func _ready() -> void:
@@ -100,24 +105,54 @@ func apply_player_roster(projection: Dictionary) -> bool:
 		return false
 	if not _rows_use_exact_keys(players, ROSTER_ROW_KEYS):
 		return false
-	_clear_children(roster_grid)
-	roster_grid.columns = 1 if players.size() <= 4 else 2
+	var next_player_ids: Array[String] = []
+	var public_order_indexes: Array[int] = []
 	for player_variant in players:
 		if not (player_variant is Dictionary):
 			return false
 		var player := player_variant as Dictionary
-		var row := PanelContainer.new()
+		var player_id := str(player.get("player_id", "")).strip_edges()
+		if typeof(player.get("public_order_index")) != TYPE_INT:
+			return false
+		var public_order_index := int(player.get("public_order_index", -1))
+		if player_id.is_empty() or player_id in next_player_ids:
+			return false
+		if public_order_index < 0 or public_order_index in public_order_indexes:
+			return false
+		next_player_ids.append(player_id)
+		public_order_indexes.append(public_order_index)
+	var ordered_players := players.duplicate(true)
+	ordered_players.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		return _roster_sort_key(left) < _roster_sort_key(right)
+	)
+	next_player_ids.clear()
+	for player_variant in ordered_players:
+		next_player_ids.append(str((player_variant as Dictionary).get("player_id", "")))
+	_clear_children(roster_grid)
+	_roster_buttons.clear()
+	_roster_player_ids = next_player_ids
+	if _last_inspected_player_id not in _roster_player_ids:
+		_last_inspected_player_id = ""
+	roster_grid.columns = 1 if players.size() <= 4 else 2
+	for player_variant in ordered_players:
+		var player := player_variant as Dictionary
+		var player_id := str(player.get("player_id", ""))
+		var row := Button.new()
+		row.name = "RosterPlayer_%s" % _safe_node_fragment(player_id)
 		row.custom_minimum_size = Vector2(132, 52)
-		var label := Label.new()
-		label.text = "%s\n%s" % [
+		row.focus_mode = Control.FOCUS_ALL
+		row.toggle_mode = true
+		row.set_meta("public_player_id", player_id)
+		row.button_pressed = player_id == _last_inspected_player_id
+		row.text = "%s\n%s" % [
 			str(player.get("display_name", "席位")),
 			str(player.get("public_status", "观察中")),
 		]
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		row.add_child(label)
+		row.tooltip_text = "查看 %s 的公开信息" % str(player.get("display_name", "玩家"))
+		row.pressed.connect(_on_roster_player_pressed.bind(player_id))
 		roster_grid.add_child(row)
+		_roster_buttons.append(row)
+	_configure_roster_focus_neighbors()
 	roster_count_label.text = "%d 席｜%s" % [
 		players.size(),
 		"一列" if roster_grid.columns == 1 else "两列",
@@ -301,11 +336,19 @@ func apply_player_card_dock(projection: Dictionary) -> bool:
 
 
 func debug_snapshot() -> Dictionary:
+	var stage_snapshot := _reference_stage_snapshot()
 	return {
 		"interaction_mode": _interaction_mode,
 		"roster_columns": roster_grid.columns,
 		"roster_count": roster_grid.get_child_count(),
 		"roster_side": "left",
+		"roster_player_ids": _roster_player_ids.duplicate(),
+		"roster_focusable_count": _roster_buttons.size(),
+		"roster_focus_links_valid": _roster_focus_links_valid(),
+		"roster_inspection_count": _roster_inspection_count,
+		"last_inspected_player_id": _last_inspected_player_id,
+		"inspected_roster_button_count": _inspected_roster_button_count(),
+		"reference_player_roster_source_count": 1,
 		"region_popup_visible": region_popup.visible,
 		"region_popup_region_id": _last_popup_region_id,
 		"region_popup_region_index": _last_popup_region_index,
@@ -324,6 +367,12 @@ func debug_snapshot() -> Dictionary:
 		"window_phase": _last_window_phase,
 		"submission_locked": _last_submission_locked,
 		"planet_map_connected": _planet_map_view != null,
+		"reference_planet_stage": bool(stage_snapshot.get("reference_stage", false)),
+		"orbit_player_marker_count": int(stage_snapshot.get("positional_marker_count", -1)) \
+			+ int(stage_snapshot.get("positional_decoration_count", -1)),
+		"orbit_radial_spoke_count": int(stage_snapshot.get("radial_spoke_count", -1)),
+		"left_right_seat_layer_count": int(stage_snapshot.get("left_right_layer_count", -1)),
+		"legacy_draw_fallback_enabled": bool(stage_snapshot.get("legacy_draw_fallback_enabled", true)),
 		"roster_apply_count": _roster_apply_count,
 		"popup_apply_count": _popup_apply_count,
 		"popup_blank_close_count": _popup_blank_close_count,
@@ -383,14 +432,23 @@ func begin_prebound_target_selection() -> bool:
 	return set_interaction_mode(MODE_CARD_TARGET_SELECTION)
 
 
+func request_player_inspection(player_id: String) -> bool:
+	var normalized := player_id.strip_edges()
+	if normalized.is_empty() or normalized not in _roster_player_ids:
+		return false
+	_on_roster_player_pressed(normalized)
+	return true
+
+
 func planet_map_view() -> Control:
 	return _planet_map_view
 
 
 func _connect_planet_map() -> void:
-	if planet_board == null or not planet_board.has_method("get_embedded_map_view"):
+	if reference_planet_stage == null \
+			or not reference_planet_stage.has_method("get_embedded_map_view"):
 		return
-	_planet_map_view = planet_board.call("get_embedded_map_view") as Control
+	_planet_map_view = reference_planet_stage.call("get_embedded_map_view") as Control
 	if _planet_map_view != null and _planet_map_view.has_signal("district_selected") \
 			and not _planet_map_view.is_connected(
 				"district_selected",
@@ -403,6 +461,16 @@ func _connect_planet_map() -> void:
 				Callable(self, "_on_planet_map_gui_input")
 			):
 		_planet_map_view.connect("gui_input", Callable(self, "_on_planet_map_gui_input"))
+
+
+func _on_roster_player_pressed(player_id: String) -> void:
+	if player_id not in _roster_player_ids:
+		return
+	_last_inspected_player_id = player_id
+	for button in _roster_buttons:
+		button.button_pressed = str(button.get_meta("public_player_id", "")) == player_id
+	_roster_inspection_count += 1
+	player_inspection_requested.emit(player_id)
 
 
 func _on_planet_district_selected(region_index: int) -> void:
@@ -469,8 +537,75 @@ func _fixture_players(count: int) -> Array:
 			"player_id": "seat-%d" % index,
 			"display_name": "玩家 %d" % (index + 1),
 			"public_status": "已锁定" if index % 2 == 0 else "选择中",
+			"public_order_index": index,
 		})
 	return result
+
+
+func _reference_stage_snapshot() -> Dictionary:
+	if reference_planet_stage == null or not reference_planet_stage.has_method("debug_snapshot"):
+		return {}
+	var value: Variant = reference_planet_stage.call("debug_snapshot")
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func _roster_sort_key(player: Dictionary) -> int:
+	return int(player.get("public_order_index", -1))
+
+
+func _safe_node_fragment(value: String) -> String:
+	var result := value.validate_node_name().replace(" ", "_")
+	return result if not result.is_empty() else "unknown"
+
+
+func _configure_roster_focus_neighbors() -> void:
+	if _roster_buttons.is_empty():
+		return
+	var columns := maxi(1, roster_grid.columns)
+	var last_index := _roster_buttons.size() - 1
+	for index in range(_roster_buttons.size()):
+		var button := _roster_buttons[index]
+		var column := index % columns
+		var top_index := index - columns if index >= columns else index
+		var bottom_index := index + columns if index + columns <= last_index else index
+		var left_index := index - 1 if column > 0 else index
+		var right_index := index + 1 \
+			if column + 1 < columns and index + 1 <= last_index else index
+		button.focus_neighbor_top = button.get_path_to(_roster_buttons[top_index])
+		button.focus_neighbor_bottom = button.get_path_to(_roster_buttons[bottom_index])
+		button.focus_neighbor_left = button.get_path_to(_roster_buttons[left_index])
+		button.focus_neighbor_right = button.get_path_to(_roster_buttons[right_index])
+		button.focus_next = button.get_path_to(_roster_buttons[(index + 1) % _roster_buttons.size()])
+		button.focus_previous = button.get_path_to(
+			_roster_buttons[(index - 1 + _roster_buttons.size()) % _roster_buttons.size()]
+		)
+
+
+func _roster_focus_links_valid() -> bool:
+	if _roster_buttons.size() != _roster_player_ids.size() or _roster_buttons.is_empty():
+		return false
+	for button in _roster_buttons:
+		if button == null or button.focus_mode != Control.FOCUS_ALL:
+			return false
+		for path in [
+			button.focus_neighbor_top,
+			button.focus_neighbor_bottom,
+			button.focus_neighbor_left,
+			button.focus_neighbor_right,
+			button.focus_next,
+			button.focus_previous,
+		]:
+			if path.is_empty() or not (button.get_node_or_null(path) is Button):
+				return false
+	return true
+
+
+func _inspected_roster_button_count() -> int:
+	var count := 0
+	for button in _roster_buttons:
+		if button != null and button.button_pressed:
+			count += 1
+	return count
 
 
 func _apply_card_chips(host: HFlowContainer, rows: Array, fallback: String) -> void:
