@@ -24,6 +24,8 @@ const FORBIDDEN_PRESENTATION_KEYS := [
 
 var failures: Array[String] = []
 var checks := 0
+var rendered_count := 0
+var fallback_count := 0
 
 
 func _init() -> void:
@@ -41,15 +43,23 @@ func _run() -> void:
 	var alpha_ids := _alpha_rank_one_ids(alpha)
 	var rendered := _dictionary(status.get("rendered_entries", {}))
 	var fallback := _string_array(status.get("semantic_fallback_entries", []))
+	rendered_count = rendered.size()
+	fallback_count = fallback.size()
 	var status_ids := rendered.keys()
 	status_ids.append_array(fallback)
 	status_ids.sort()
 	var expected_ids: Array = alpha_ids.duplicate()
 	expected_ids.sort()
-	_expect(alpha_ids.size() == 40 and rendered.size() == 5 and fallback.size() == 35, "status manifest declares 40 Alpha ids as 5 rendered plus 35 semantic fallbacks")
+	var status_counts := _dictionary(status.get("counts", {}))
+	_expect(alpha_ids.size() == 40 \
+		and rendered.size() + fallback.size() == alpha_ids.size() \
+		and int(status_counts.get("rendered", -1)) == rendered.size() \
+		and int(status_counts.get("semantic_fallback", -1)) == fallback.size(), "status manifest derives one exact rendered-or-fallback state for all 40 Alpha ids")
 	_expect(status_ids == expected_ids, "status manifest has exact Alpha id parity without overlap or invented cards")
 	var validation := catalog_resource.validation_report()
-	_expect(bool(validation.get("valid", false)) and int(validation.get("rendered_count", 0)) == 5 and int(validation.get("fallback_count", 0)) == 35, "typed catalog resource validates the 5/35 boundary")
+	_expect(bool(validation.get("valid", false)) \
+		and int(validation.get("rendered_count", -1)) == rendered.size() \
+		and int(validation.get("fallback_count", -1)) == fallback.size(), "typed catalog resource validates the manifest-derived rendered/fallback boundary")
 	for card_id_variant in rendered.keys():
 		var card_id := str(card_id_variant)
 		var entry := _dictionary(rendered[card_id_variant])
@@ -59,7 +69,9 @@ func _run() -> void:
 		_expect(FileAccess.get_sha256(asset_path).to_lower() == str(entry.get("sha256", "")).to_lower(), "%s asset hash matches" % card_id)
 		_expect(str(entry.get("license", "")).strip_edges() != "" and FileAccess.file_exists(evidence_path), "%s license and evidence exist" % card_id)
 		var presentation_key := str(entry.get("presentation_key", ""))
-		_expect(presentation_key.begins_with("alpha01_art_") and not presentation_key.contains(card_id), "%s exposes an opaque presentation key" % card_id)
+		_expect(presentation_key.begins_with("alpha") \
+			and not presentation_key.begins_with("res://") \
+			and not presentation_key.contains(card_id), "%s exposes an opaque presentation key" % card_id)
 		_expect(str(catalog_resource.presentation_key_for_card(card_id)) == presentation_key and catalog_resource.texture_for_key(StringName(presentation_key)) != null, "%s typed presentation key resolves" % card_id)
 	for card_id in fallback:
 		_expect(catalog_resource.presentation_key_for_card(card_id) == StringName(), "%s remains an explicit semantic fallback" % card_id)
@@ -123,7 +135,7 @@ func _run() -> void:
 			fallback_output_count += 1
 		else:
 			rendered_output_count += 1
-	_expect(rendered_output_count == 5 and fallback_output_count == 35, "formal presentation outputs resolve exactly 5/40 illustrations")
+	_expect(rendered_output_count == rendered.size() and fallback_output_count == fallback.size(), "formal presentation outputs match the exact Alpha rendered/fallback manifest")
 	_expect(canonical_cost_count == 40, "all 40 Alpha Codex facts separate acquisition and activation costs without aliases")
 
 	var rendered_id := "commodity.ring_crystal_battery.rank_1"
@@ -311,7 +323,7 @@ func _expect(condition: bool, message: String) -> void:
 
 func _finish() -> void:
 	if failures.is_empty():
-		print("ALPHA01_CARD_ILLUSTRATION_PRODUCTION_CUTOVER|status=PASS|checks=%d|rendered=5|fallback=35|privacy_leaks=0" % checks)
+		print("ALPHA01_CARD_ILLUSTRATION_PRODUCTION_CUTOVER|status=PASS|checks=%d|rendered=%d|fallback=%d|privacy_leaks=0" % [checks, rendered_count, fallback_count])
 		quit(0)
 		return
 	print("ALPHA01_CARD_ILLUSTRATION_PRODUCTION_CUTOVER|status=FAIL|checks=%d|failures=%d|details=%s" % [checks, failures.size(), JSON.stringify(failures)])

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="768" viewBox="0 0 1024 768">
+  <defs>
+    <linearGradient id="corona" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#3b1525"/>
+      <stop offset="1" stop-color="#1b1834"/>
+    </linearGradient>
+    <linearGradient id="scale" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff7ed"/>
+      <stop offset="0.42" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#dc2626"/>
+    </linearGradient>
+  </defs>
+  <rect x="18" y="18" width="988" height="732" rx="80" fill="url(#corona)"/>
+  <circle cx="512" cy="383" r="268" fill="none" stroke="#fb923c" stroke-width="17" stroke-dasharray="9 28"/>
+  <g fill="url(#scale)" stroke="#ffedd5" stroke-width="13">
+    <path d="M512 105 C610 191 604 297 512 353 C420 297 414 191 512 105Z"/>
+    <path d="M710 186 C745 310 681 393 574 399 C535 298 596 213 710 186Z" transform="rotate(8 642 292)"/>
+    <path d="M790 394 C748 517 652 553 562 495 C586 390 684 350 790 394Z"/>
+    <path d="M622 652 C499 681 419 612 419 505 C522 471 605 538 622 652Z"/>
+    <path d="M302 584 C237 474 278 386 378 348 C447 432 407 525 302 584Z"/>
+    <path d="M263 270 C348 177 449 192 507 282 C441 369 339 356 263 270Z"/>
+  </g>
+  <circle cx="512" cy="396" r="106" fill="#7c2d12" stroke="#f8fafc" stroke-width="17"/>
+  <path d="M512 323 L545 380 L512 469 L479 380Z" fill="#fde047"/>
+  <path d="M171 148 L214 196 M853 151 L809 199 M168 619 L215 574 M857 617 L808 570" stroke="#67e8f9" stroke-width="13" stroke-linecap="round"/>
+</svg>
