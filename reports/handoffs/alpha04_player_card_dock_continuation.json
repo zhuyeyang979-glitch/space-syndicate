@@ -1,29 +1,214 @@
 {
   "task_id": "ALPHA_0_4_A_PLAYER_CARD_DOCK_CONTINUATION_DIRECT_COMMODITY_CLAIM_AND_ART",
-  "updated_at_local": "2026-07-29",
-  "status": "in_progress",
-  "resume_mode": "EXISTING_DIRTY_TASK_WORKTREE",
-  "effective_base_sha": "e6dc983be8154908e77d3a11bdee353a1b705152",
-  "effective_branch": "codex/alpha04-production-player-card-dock-cde98ae",
-  "effective_worktree": "E:/SpaceSyndicateWorkspace/worktrees/alpha04-production-player-card-dock-cde98ae",
-  "worktree_dirty_at_resume": true,
-  "uncommitted_task_work_preserved": true,
-  "commits_ahead_of_known_cloud": 4,
-  "known_cloud_sha": "b5d5682072fd9ff02be700ce9d5503d1df996641",
-  "repeated_previous_work": false,
-  "current_production_runtime_ruleset": "V0.6",
-  "target_development_constitution": "V0.7",
-  "full_v0_7_runtime_cutover": false,
-  "runtime_capacity_mode": "SHARED_V06",
-  "requested_subagents": 6,
-  "actual_max_concurrent_subagents": 3,
-  "recovered_components": {
-    "player_card_dock_scene": "present_pre_audit",
-    "typed_projection": "present_pre_audit",
-    "viewer_query_port": "present_pre_audit",
-    "production_gamescreen_composition": "present_pre_audit",
-    "normal_card_visibility_screenshots": "present",
-    "commodity_card_visibility_screenshots": "present"
+  "updated_at_local": "2026-07-29T08:40:00+09:00",
+  "status": "partial",
+  "status_reason": "The production UI, direct claim, commodity art, focused tests, production capture, semantic protocol, and MCP launch are green, but the single authorized formal FullRun ended incomplete before sale, victory, settlement, and terminal quiescence.",
+  "resume": {
+    "mode": "EXISTING_DIRTY_TASK_WORKTREE",
+    "effective_base_sha": "e6dc983be8154908e77d3a11bdee353a1b705152",
+    "effective_branch": "codex/alpha04-production-player-card-dock-cde98ae",
+    "effective_worktree": "E:/SpaceSyndicateWorkspace/worktrees/alpha04-production-player-card-dock-cde98ae",
+    "worktree_dirty_at_resume": true,
+    "uncommitted_task_work_preserved": true,
+    "repeated_previous_work": false
   },
-  "next_single_task": "reestablish_previous_focused_test_baseline_then_integrate_continuation_lanes"
+  "release": {
+    "implementation_evidence_commit": "b230833979d268b0c6d50ca52af1b7669847dee8",
+    "checkpoint_commits": [
+      "9b2efd8",
+      "b6430d6",
+      "a815b31",
+      "b230833"
+    ],
+    "pushed": true,
+    "pull_request": 72,
+    "pull_request_url": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/72",
+    "draft": true,
+    "base_branch": "codex/v07-table-shell-orbit-retirement-e19eb4a",
+    "merge_to_main_allowed": false,
+    "untracked_preserved_uid_count": 23,
+    "untracked_obsolete_screenshot_count": 5
+  },
+  "runtime_authority": {
+    "current_production_runtime_ruleset": "V0.6",
+    "target_development_constitution": "V0.7",
+    "full_v0_7_runtime_cutover": false,
+    "runtime_capacity_mode": "SHARED_V06",
+    "capacity_display_truthful": true
+  },
+  "subagents": {
+    "requested": 6,
+    "actual_max_concurrent": 3,
+    "utilization": [
+      "commodity_art: authored asset coverage and final 13-suite regression",
+      "direct_claim: exact-once interaction review and two P1 closures",
+      "dock_audit: layout, capture, evidence, and stacked release audit"
+    ]
+  },
+  "production_slice": {
+    "normal_card_authority_count": 1,
+    "normal_card_authorized_projection_count": 1,
+    "normal_card_visible_count": 1,
+    "commodity_card_authority_count": 4,
+    "commodity_card_authorized_projection_count": 4,
+    "commodity_card_visible_count": 4,
+    "bound_action_authority_ready": false,
+    "bound_action_visible_count": 0,
+    "player_card_dock_typed_port_ready": true,
+    "normal_hand_section_ready": true,
+    "commodity_section_ready": true,
+    "bound_action_section_ready": true,
+    "action_spine_only_card_submission": true,
+    "old_main_card_action_path_count": 0,
+    "duplicate_card_action_surface_count": 0,
+    "duplicate_card_submission_count": 0
+  },
+  "direct_claim": {
+    "commodity_claim_button_count": 0,
+    "hidden_commodity_claim_button_count": 0,
+    "orphan_commodity_claim_signal_count": 0,
+    "commodity_direct_single_click_claim_ready": true,
+    "commodity_claim_request_count_per_click": 1,
+    "duplicate_commodity_claim_count": 0,
+    "unavailable_click_mutation_count": 0,
+    "mouse_ready": true,
+    "keyboard_ready": true,
+    "controller_ready": true,
+    "drag_guard_ready": true,
+    "double_click_source_scoped": true,
+    "structured_failure_ready": true
+  },
+  "commodity_art": {
+    "active_commodity_type_count": 12,
+    "active_commodity_card_family_count": 12,
+    "active_commodity_card_id_count": 48,
+    "unique_base_asset_count": 12,
+    "commodity_type_unique_art_coverage_percent": 100,
+    "commodity_source_art_coverage_percent": 100,
+    "commodity_inventory_art_coverage_percent": 100,
+    "active_commodity_fallback_art_count": 0,
+    "text_only_active_commodity_card_count": 0,
+    "missing_commodity_illustration_count": 0,
+    "manifest": "data/art/alpha04_commodity_art_manifest.json"
+  },
+  "invariants": {
+    "gameplay_value_change_count": 0,
+    "commodity_rule_change_count": 0,
+    "capacity_rule_change_count": 0,
+    "ai_policy_change_count": 0,
+    "new_save_owner_count": 0,
+    "new_save_section_count": 0,
+    "save_schema_changed": false,
+    "new_rng_owner_count": 0,
+    "new_rng_draw_point_count": 0,
+    "presentation_rng_draw_delta": 0,
+    "new_main_responsibility_count": 0
+  },
+  "validation": {
+    "focused_regression": {
+      "status": "pass",
+      "suite_count": 13,
+      "checks": 948,
+      "failures": 0
+    },
+    "semantic_protocol": {
+      "status": "pass",
+      "checks": 119,
+      "failures": 0
+    },
+    "production_capture": {
+      "status": "pass",
+      "checks": 176,
+      "failures": 0,
+      "main_scene": "res://scenes/main.tscn",
+      "screenshot_count": 8,
+      "direct_claim_service_call_count": 0,
+      "direct_gameplay_state_injection_count": 0,
+      "private_pointer_method_call_count": 0,
+      "player_default_save_unchanged": true,
+      "performance_p95_ms": {
+        "commodity_source_render": 26.537,
+        "commodity_inventory_render": 15.858,
+        "commodity_hover": 165.248,
+        "single_click_to_intent": 0.467,
+        "receipt_to_inventory_refresh": 95.823
+      },
+      "result": "docs/ui_qa/alpha04_player_card_dock/production_capture_result.json"
+    },
+    "godot_mcp": {
+      "status": "pass_with_known_warnings",
+      "endpoint": "mcp__godot",
+      "version": "4.7.stable.official.5b4e0cb0f",
+      "scene": "res://scenes/main.tscn",
+      "debug_error_count": 0,
+      "runtime_error_count": 0,
+      "stopped_cleanly": true,
+      "process_count_after": 0
+    }
+  },
+  "formal_full_run": {
+    "status": "fail",
+    "result": "incomplete",
+    "command_run_count": 1,
+    "formal_rerun_count": 0,
+    "seed": 900626424,
+    "observation_seconds": 150,
+    "max_wall_seconds": 180,
+    "exit_code": 1,
+    "failure_code": "observation_window_elapsed_before_settlement",
+    "process_wall_seconds": 166.235,
+    "session_wall_seconds": 153.906,
+    "world_seconds": 55.647202,
+    "attempted_actions": 134,
+    "progressed_actions": 130,
+    "invalid_action_count": 0,
+    "facility_count": 1,
+    "sale_receipt_count": 0,
+    "victory_state_sequence": [
+      "idle"
+    ],
+    "final_settlement_count": 0,
+    "final_settlement_presentation_count": 0,
+    "final_settlement_public_log_count": 0,
+    "terminal_quiescent_frames": 0,
+    "terminal_world_delta": -1,
+    "terminal_rng_draw_delta": -1,
+    "normal_card_was_visible_during_run": true,
+    "commodity_card_was_visible_during_run": true,
+    "commodity_source_art_was_visible": true,
+    "commodity_inventory_art_was_visible": true,
+    "direct_commodity_claim_succeeded": true,
+    "commodity_claim_request_count": 1,
+    "duplicate_commodity_claim_count": 0,
+    "commodity_claim_button_count": 0,
+    "duplicate_card_submission_count": 0,
+    "commodity_performance_metrics_recorded": true,
+    "claim_capacity_cause_excluded": true,
+    "dock_adapter_regression_evidence": false,
+    "diagnostic_classification": "throughput_confounded_before_historical_first_sale_window",
+    "historical_first_sale_world_seconds": [
+      62.486,
+      70.596
+    ],
+    "observed_world_to_session_wall_ratio": 0.3616,
+    "planner_observation": {
+      "installed_factory": "shipping",
+      "installed_production_capacity": 20,
+      "selected_gap_industry": "energy",
+      "selected_gap_capacity": 70,
+      "selected_plan_reason": "missing_matching_factory",
+      "matching_factory_obtained_in_window": false,
+      "same_commodity_matched_row_formed": false
+    },
+    "missing_integration_test": "claim -> normal-card purchase/discard -> facility install -> matched sale",
+    "environment_confound": {
+      "present": true,
+      "process": "district_supply_purchase_projection_receipt_test.gd",
+      "approximate_cpu_seconds_before_cleanup": 3500,
+      "stopped_after_formal_run": true,
+      "changes_gate_result": false
+    }
+  },
+  "next_single_task": "ALPHA_0_4_A_FULL_RUN_ECONOMY_CONTINUATION_DIAGNOSIS",
+  "next_product_boundary_after_green": "ALPHA_0_4_B_PRODUCTION_ROSTER_REGION_POPUP_AND_RIGHT_INSPECTOR_RETIREMENT"
 }
