@@ -31,7 +31,7 @@ func _run_bench() -> void:
 		if _add_card(card_id, true):
 			active_count += 1
 	var fallback_active := _add_card(FALLBACK_CARD_ID, false)
-	_summary_label.text = "5 张正式插画已接入 · 35 张未完成卡牌保留语义图形"
+	_summary_label.text = "16 张正式插画已接入 · 24 张非商品卡保留语义图形"
 	_expect(active_count == 5, "all five approved Alpha illustrations render through production CardUI")
 	_expect(not fallback_active, "unrendered Alpha card keeps semantic fallback")
 	_expect(_card_row.get_child_count() == 6, "bench shows five rendered cards and one honest fallback")

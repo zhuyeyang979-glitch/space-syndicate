@@ -4,19 +4,132 @@
   "runtime_contract": "player-facing snapshots expose illustration_key only; paths, provenance, hashes and licenses stay in this QA manifest and the typed catalog resource",
   "counts": {
     "alpha_card_identities": 40,
-    "rendered": 5,
-    "semantic_fallback": 35
+    "rendered": 16,
+    "semantic_fallback": 24,
+    "active_commodity_types": 12,
+    "active_commodity_card_ids": 48,
+    "active_commodity_fallback": 0
   },
   "rendered_entries": {
     "commodity.ring_crystal_battery.rank_1": {
       "status": "rendered",
       "presentation_key": "alpha01_art_001",
-      "illustration_path": "res://assets/art/cards/v06/style_keys/commodity/ring_crystal_battery_v01.png",
-      "sha256": "f980c9afabc85a5334f36bbf3fc2308e5754dae20351d318ea23ee91ec40a288",
+      "illustration_path": "res://assets/art/cards/v06/style_keys/commodity/ring_crystal_battery_v02.svg",
+      "sha256": "8e0183a86ded661e82ac83c3abd19df177e2487d142ff3483e3676c78b64c935",
       "source_type": "authored",
-      "license": "project_generated_candidate",
-      "commercial_status": "review_before_release",
-      "license_evidence": "res://reports/art/card_placeholder_lab/card_placeholder_license_matrix_v06.md"
+      "license": "project_original_svg",
+      "commercial_status": "project_owned",
+      "license_evidence": "res://data/art/alpha04_commodity_art_manifest.json"
+    },
+    "commodity.blue_tide_algae.rank_1": {
+      "status": "rendered",
+      "presentation_key": "alpha04_commodity_art_001",
+      "illustration_path": "res://assets/art/cards/v06/style_keys/commodity/blue_tide_algae_v01.svg",
+      "sha256": "94b6f466188c1e6fdca57b3f255ed368ca9676b015363b703a984eedd8644f8b",
+      "source_type": "authored",
+      "license": "project_original_svg",
+      "commercial_status": "project_owned",
+      "license_evidence": "res://data/art/alpha04_commodity_art_manifest.json"
+    },
+    "commodity.deep_sea_fungal_mat.rank_1": {
+      "status": "rendered",
+      "presentation_key": "alpha04_commodity_art_002",
+      "illustration_path": "res://assets/art/cards/v06/style_keys/commodity/deep_sea_fungal_mat_v01.svg",
+      "sha256": "aaa8009e3dc76fcf309a96b55c0facbe3fb1f8623647f73618fb1b9957c8313a",
+      "source_type": "authored",
+      "license": "project_original_svg",
+      "commercial_status": "project_owned",
+      "license_evidence": "res://data/art/alpha04_commodity_art_manifest.json"
+    },
+    "commodity.dream_fragrance.rank_1": {
+      "status": "rendered",
+      "presentation_key": "alpha04_commodity_art_003",
+      "illustration_path": "res://assets/art/cards/v06/style_keys/commodity/dream_fragrance_v01.svg",
+      "sha256": "6b87708baefb5cdefd42803169608634580e94e1621e893b5473dc13f76fa794",
+      "source_type": "authored",
+      "license": "project_original_svg",
+      "commercial_status": "project_owned",
+      "license_evidence": "res://data/art/alpha04_commodity_art_manifest.json"
+    },
+    "commodity.gravity_ceramic.rank_1": {
+      "status": "rendered",
+      "presentation_key": "alpha04_commodity_art_004",
+      "illustration_path": "res://assets/art/cards/v06/style_keys/commodity/gravity_ceramic_v01.svg",
+      "sha256": "81cce92ae6da4c310cb843b87aadc2f62f25807a24d092e3742039c965ecad0c",
+      "source_type": "authored",
+      "license": "project_original_svg",
+      "commercial_status": "project_owned",
+      "license_evidence": "res://data/art/alpha04_commodity_art_manifest.json"
+    },
+    "commodity.living_chip.rank_1": {
+      "status": "rendered",
+      "presentation_key": "alpha04_commodity_art_005",
+      "illustration_path": "res://assets/art/cards/v06/style_keys/commodity/living_chip_v01.svg",
+      "sha256": "c1ce2b32a5309509fbce9aca1489b7c6ebeb9e957ee58669bd243b9f9037755c",
+      "source_type": "authored",
+      "license": "project_original_svg",
+      "commercial_status": "project_owned",
+      "license_evidence": "res://data/art/alpha04_commodity_art_manifest.json"
+    },
+    "commodity.photosynthetic_gel.rank_1": {
+      "status": "rendered",
+      "presentation_key": "alpha04_commodity_art_006",
+      "illustration_path": "res://assets/art/cards/v06/style_keys/commodity/photosynthetic_gel_v01.svg",
+      "sha256": "d5a6ea50cacecdc72add77402bd9706b1c88619011230250603f60956abf465b",
+      "source_type": "authored",
+      "license": "project_original_svg",
+      "commercial_status": "project_owned",
+      "license_evidence": "res://data/art/alpha04_commodity_art_manifest.json"
+    },
+    "commodity.solar_scale.rank_1": {
+      "status": "rendered",
+      "presentation_key": "alpha04_commodity_art_007",
+      "illustration_path": "res://assets/art/cards/v06/style_keys/commodity/solar_scale_v01.svg",
+      "sha256": "ac0079b49f9891851f549b4c5054a78bb9754e1342e83b6b23a6a0ca9ada3d63",
+      "source_type": "authored",
+      "license": "project_original_svg",
+      "commercial_status": "project_owned",
+      "license_evidence": "res://data/art/alpha04_commodity_art_manifest.json"
+    },
+    "commodity.star_whale_canning.rank_1": {
+      "status": "rendered",
+      "presentation_key": "alpha04_commodity_art_008",
+      "illustration_path": "res://assets/art/cards/v06/style_keys/commodity/star_whale_canning_v01.svg",
+      "sha256": "e2ca847b6940861ea15f0cde22444d084c6369a4413cb4142e4480265920d818",
+      "source_type": "authored",
+      "license": "project_original_svg",
+      "commercial_status": "project_owned",
+      "license_evidence": "res://data/art/alpha04_commodity_art_manifest.json"
+    },
+    "commodity.storm_pearl.rank_1": {
+      "status": "rendered",
+      "presentation_key": "alpha04_commodity_art_009",
+      "illustration_path": "res://assets/art/cards/v06/style_keys/commodity/storm_pearl_v01.svg",
+      "sha256": "07d8091d9e2999e3361665fdcfaac17e67d861394621a5e5edfb82fec62ce8bd",
+      "source_type": "authored",
+      "license": "project_original_svg",
+      "commercial_status": "project_owned",
+      "license_evidence": "res://data/art/alpha04_commodity_art_manifest.json"
+    },
+    "commodity.titanium_shell_clam.rank_1": {
+      "status": "rendered",
+      "presentation_key": "alpha04_commodity_art_010",
+      "illustration_path": "res://assets/art/cards/v06/style_keys/commodity/titanium_shell_clam_v01.svg",
+      "sha256": "a696249ccf212d4dc6553779a4dfc80172c07535e58d493d43e03a57c388e621",
+      "source_type": "authored",
+      "license": "project_original_svg",
+      "commercial_status": "project_owned",
+      "license_evidence": "res://data/art/alpha04_commodity_art_manifest.json"
+    },
+    "commodity.trajectory_ink.rank_1": {
+      "status": "rendered",
+      "presentation_key": "alpha04_commodity_art_011",
+      "illustration_path": "res://assets/art/cards/v06/style_keys/commodity/trajectory_ink_v01.svg",
+      "sha256": "54ede1e31d686a9537475702b8bc23418cc58b4ee15b446de45fbc4b15c43de6",
+      "source_type": "authored",
+      "license": "project_original_svg",
+      "commercial_status": "project_owned",
+      "license_evidence": "res://data/art/alpha04_commodity_art_manifest.json"
     },
     "supply_demand.remote_sea_order.rank_1": {
       "status": "rendered",
@@ -61,17 +174,6 @@
     }
   },
   "semantic_fallback_entries": [
-    "commodity.blue_tide_algae.rank_1",
-    "commodity.deep_sea_fungal_mat.rank_1",
-    "commodity.dream_fragrance.rank_1",
-    "commodity.gravity_ceramic.rank_1",
-    "commodity.living_chip.rank_1",
-    "commodity.photosynthetic_gel.rank_1",
-    "commodity.solar_scale.rank_1",
-    "commodity.star_whale_canning.rank_1",
-    "commodity.storm_pearl.rank_1",
-    "commodity.titanium_shell_clam.rank_1",
-    "commodity.trajectory_ink.rank_1",
     "facility.factory.commerce.rank_1",
     "facility.factory.energy.rank_1",
     "facility.factory.industry.rank_1",

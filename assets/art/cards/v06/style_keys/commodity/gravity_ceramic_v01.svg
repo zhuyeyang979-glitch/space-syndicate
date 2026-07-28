@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="768" viewBox="0 0 1024 768">
+  <defs>
+    <linearGradient id="forge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#27334a"/>
+      <stop offset="1" stop-color="#0b1020"/>
+    </linearGradient>
+    <linearGradient id="ceramic" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="0.48" stop-color="#94a3b8"/>
+      <stop offset="1" stop-color="#475569"/>
+    </linearGradient>
+  </defs>
+  <rect x="18" y="18" width="988" height="732" rx="80" fill="url(#forge)"/>
+  <g fill="none" stroke="#c084fc" opacity="0.42">
+    <ellipse cx="512" cy="384" rx="401" ry="127" stroke-width="13" transform="rotate(-15 512 384)"/>
+    <ellipse cx="512" cy="384" rx="315" ry="86" stroke-width="8" transform="rotate(21 512 384)"/>
+  </g>
+  <path d="M177 573 L326 196 L499 196 L347 573Z" fill="url(#ceramic)" stroke="#f8fafc" stroke-width="17" stroke-linejoin="round"/>
+  <path d="M525 196 H698 L847 573 H677Z" fill="#64748b" stroke="#f8fafc" stroke-width="17" stroke-linejoin="round"/>
+  <path d="M347 573 C379 433 437 356 512 356 C587 356 645 433 677 573Z" fill="#111827" stroke="#fb923c" stroke-width="19"/>
+  <path d="M410 573 C431 489 463 445 512 445 C561 445 593 489 614 573Z" fill="#7c3aed"/>
+  <circle cx="512" cy="444" r="43" fill="#f8fafc" stroke="#fb923c" stroke-width="13"/>
+  <g stroke="#1e293b" stroke-width="12"><path d="M254 489 L384 235"/><path d="M770 490 L641 235"/></g>
+  <g fill="#fbbf24"><rect x="171" y="604" width="114" height="25" rx="12"/><rect x="739" y="604" width="114" height="25" rx="12"/></g>
+</svg>
