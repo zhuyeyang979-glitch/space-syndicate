@@ -8998,3 +8998,27 @@ deleted. Evidence and the remaining action inventory are recorded in
   visual contract, and smoke `--check-only` pass. Godot MCP loaded the real
   main scene; the production Action Flow Bench passed `12/12` and exited with
   no new script or runtime error.
+
+## 2026-07-29 — PR #69 terminal acceptance gate closure (GREEN)
+
+- Confirmed from the V0.6 rulebook, Victory contract, Ruleset profile, and
+  runtime owner that three production facilities were never a Victory rule.
+  They were a historical FullRun acceptance heuristic.
+- Removed the harness-only facility floor. FullRun progression and terminal
+  acceptance now require viewer-safe matched production/demand capacity,
+  settled units, a typed public Sale Receipt, authoritative Victory state, and
+  the existing exact-once terminal owners. Peak facility count is diagnostic.
+- Moved the installation guard evidence to first eligibility and made its delta
+  monotonic so later destruction cannot hide an unauthorized installation.
+- The single formal seed-0 `150/180` run
+  `20260728-153746-194-full_run_quality_driver-652209fd` completed with two
+  production installations, one settled matched chain, 23 Sale Receipts,
+  Top-K GDP `1368/108`, controlled regions `5/3`, zero invalid actions,
+  `idle -> qualification -> audit -> resolved`, exact-once settlement,
+  presentation and public log, eight quiet frames, zero world/RNG delta, and
+  zero post-eligibility installation delta.
+- Focused FullRun, Action Spine, CommodityFlow, Victory, FinalSettlement, Main,
+  UI text, visual, and smoke check-only gates pass. Godot MCP loaded and stopped
+  production `main.tscn` with no new script/runtime error. No gameplay value,
+  Victory timer, RuntimeLoop, RNG, Save, Main, AI production, or formula change
+  was made.
