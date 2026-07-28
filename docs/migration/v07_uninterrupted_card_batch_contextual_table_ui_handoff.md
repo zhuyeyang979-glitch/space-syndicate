@@ -273,6 +273,11 @@ Visual evidence:
 - `docs/ui_qa/v07_card_batch/contextual_table_resolution_1366x768.png`
 - `docs/ui_qa/v07_card_batch/contextual_table_target_1366x768.png`
 - `docs/ui_qa/v07_card_batch/contextual_table_complete_1920x1080.png`
+- `docs/ui_qa/v07_card_batch/reference_orbit_overlap_before.png`
+- `docs/ui_qa/v07_card_batch/v07_reference_roster_4p_popup_1600x960.png`
+- `docs/ui_qa/v07_card_batch/v07_reference_roster_8p_popup_1600x960.png`
+- `docs/ui_qa/v07_card_batch/v07_reference_roster_8p_popup_closed_1600x960.png`
+- `docs/ui_qa/v07_card_batch/v07_reference_roster_8p_popup_1366x768.png`
 
 The corrected 1366x768 resolution capture hides the card-window banner while
 the batch overlay is active, so the screen does not imply that gameplay input
@@ -288,12 +293,16 @@ Counter conversion still needs an explicit V0.7 rule decision. Production
 Save consumers have not migrated. Main and GameScreen were intentionally not
 modified. No V0.7 production cutover occurred.
 
-The next exact task remains:
+The Action Spine terminal predecessor is now green at PR #69 head
+`b5d5682072fd9ff02be700ce9d5503d1df996641`. That proof lives on a remote
+sibling branch rather than in this Lane B ancestry, so the stacked merge order
+must preserve both lines. The next exact task is:
 
 ```text
-ACTION_SPINE_V07_TERMINAL_PROGRESSION_ECONOMY_CONTINUATION
+V07_PRODUCTION_TABLE_SHELL_TYPED_PRESENTATION_PORTS_PREFLIGHT
 ```
 
-Only after that predecessor is green should a narrow production-cutover
-preflight verify that Core, AI, player UI, Save, privacy and every V0.6 Counter
-consumer can switch atomically with zero dual authority.
+That narrow preflight must split the fixed RightInspector and positional-seat
+responsibilities into typed production targets before any physical production
+deletion. V0.7 Card Batch Core, Save and Counter retirement remain outside this
+presentation-only boundary.

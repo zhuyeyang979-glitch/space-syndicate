@@ -227,7 +227,7 @@ func _p95(samples: Array[int]) -> int:
 func _players(count: int) -> Array:
 	var rows: Array = []
 	for index in range(count):
-		rows.append({"player_id": "seat-%d" % index, "display_name": "玩家 %d" % (index + 1), "public_status": "已锁定", "public_order_index": index})
+		rows.append({"player_id": "seat-%d" % index, "display_name": "玩家 %d" % (index + 1), "public_status": "已锁定", "public_order_index": index, "is_viewer": index == count - 1})
 	return rows
 
 

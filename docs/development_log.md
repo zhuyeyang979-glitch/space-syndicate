@@ -9041,3 +9041,37 @@ deleted. Evidence and the remaining action inventory are recorded in
   production Save or V0.6 Counter consumer changed. The branch is suitable for
   a Draft PR only; the next task remains
   `ACTION_SPINE_V07_TERMINAL_PROGRESSION_ECONOMY_CONTINUATION`.
+
+## 2026-07-29 — Terminal gate closure and V0.7 reference orbit retirement (PARTIAL)
+
+- PR #69 terminal evidence is green at `b5d5682`: the V0.6 authority has no
+  three-facility Victory rule, and one formal 150/180 FullRun completed with two
+  facilities, one real matched chain, 23 Sale Receipts, Top-K GDP `1368/108`,
+  controlled regions `5/3`, resolved Victory, one FinalSettlement/public
+  presentation/public log, eight quiet frames and zero world/RNG delta.
+- PR #69 remains an external sibling-branch prerequisite, not a Git ancestor of
+  this Lane B stack. V0.6 remains the production runtime and the stacking order
+  must preserve both lines before any later production cutover.
+- The V0.7 reference table now owns an independent real-map stage with one
+  left-side roster, zero orbit player markers, zero radial seat spokes and zero
+  front/back seat layers. `public_order_index` remains authoritative; exactly
+  one viewer-authorized row receives a `你` marker without local-first rotation.
+- The fixed production RightInspector is not falsely retired. Its ten live
+  responsibility classes, 292-pixel width, 48 matching GameScreen source lines,
+  59 symbol occurrences, 13 dynamic calls and two signal connections are now
+  versioned with their required typed replacement targets and deletion gates.
+- Final visual QA covers four-player one-column, eight-player two-column,
+  popup-open, popup-closed full map and physical 1366x768 layouts. The roster
+  and planet retain 36.8px / 39.26px gaps, and the context hint has a dedicated
+  top lane instead of overlapping the map's scale hint.
+- Final gates pass: RightInspector 80/80, reference retirement 90/90, player
+  semantics 71/71, contextual Bench 44/44, architecture 17/17, three-layer
+  integration 24/24, performance 11/11, Main architecture 219/219, Main runtime
+  composition, UI text, visual contract and smoke check-only. Clean MCP QA on
+  endpoint 8815 reports zero runtime/script errors and zero remaining project
+  processes.
+- Production GameScreen, PlanetBoard, RoleSeatLayerHost, Back/Front layers,
+  PublicPlayerSeatSnapshot and the fixed RightInspector remain unchanged with
+  real V0.6 consumers. The next exact atom is
+  `V07_PRODUCTION_TABLE_SHELL_TYPED_PRESENTATION_PORTS_PREFLIGHT`; full V0.7
+  runtime cutover and merge to main remain forbidden.

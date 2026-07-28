@@ -35,7 +35,7 @@ func _verify_runtime_surface(viewport_size: Vector2i) -> void:
 	await process_frame
 	await process_frame
 
-	for count in [3, 4, 5, 8]:
+	for count in [3, 4, 5, 6, 8]:
 		_expect(surface.apply_player_roster({"players": _players(count)}), "%d-player authorized roster applies at %s" % [count, viewport_size])
 		_expect(int(surface.debug_snapshot().get("roster_columns", 0)) == (1 if count <= 4 else 2), "%d-player roster uses its responsive column rule at %s" % [count, viewport_size])
 
@@ -44,6 +44,7 @@ func _verify_runtime_surface(viewport_size: Vector2i) -> void:
 	_expect(surface.apply_player_roster({"players": reversed}), "reordered delivery remains a valid authorized roster at %s" % viewport_size)
 	var snapshot := surface.debug_snapshot()
 	_expect(snapshot.get("roster_player_ids", []) == ["player-0", "player-1", "player-2", "player-3", "player-4", "player-5", "player-6", "player-7"], "public authority order is stable at %s" % viewport_size)
+	_expect(str(snapshot.get("viewer_player_id", "")) == "player-7" and int(snapshot.get("viewer_marker_count", -1)) == 1, "viewer marker is unique and does not rotate public order at %s" % viewport_size)
 	_expect(int(snapshot.get("reference_player_roster_source_count", -1)) == 1, "one roster source owns player placement at %s" % viewport_size)
 	_expect(int(snapshot.get("orbit_player_marker_count", -1)) == 0, "orbit player marker count is zero at %s" % viewport_size)
 	_expect(int(snapshot.get("orbit_radial_spoke_count", -1)) == 0, "positional radial spoke count is zero at %s" % viewport_size)
@@ -82,16 +83,27 @@ func _verify_runtime_surface(viewport_size: Vector2i) -> void:
 	var duplicate_order := _players(3)
 	(duplicate_order[1] as Dictionary)["public_order_index"] = 0
 	_expect(not surface.apply_player_roster({"players": duplicate_order}), "duplicate public order fails closed at %s" % viewport_size)
+	var missing_viewer := _players(3)
+	for player_variant in missing_viewer:
+		(player_variant as Dictionary)["is_viewer"] = false
+	_expect(not surface.apply_player_roster({"players": missing_viewer}), "missing viewer binding fails closed at %s" % viewport_size)
+	var duplicate_viewer := _players(3)
+	(duplicate_viewer[0] as Dictionary)["is_viewer"] = true
+	_expect(not surface.apply_player_roster({"players": duplicate_viewer}), "duplicate viewer binding fails closed at %s" % viewport_size)
 	var hostile := _players(3)
 	(hostile[0] as Dictionary)["hidden_hand"] = ["secret-card"]
 	_expect(not surface.apply_player_roster({"players": hostile}), "private roster data fails closed at %s" % viewport_size)
 
 	var stage := surface.get_node_or_null("ReferencePlanetStage") as Control
 	var roster := surface.get_node_or_null("PlayerRosterPanel") as Control
+	var mode_label := surface.get_node_or_null("MapModeLabel") as Control
 	var dock := surface.get_node_or_null("PlayerCardDock") as Control
 	_expect(_inside_viewport(stage, viewport_size), "reference planet stage stays inside %s" % viewport_size)
 	_expect(_inside_viewport(roster, viewport_size), "player roster stays inside %s" % viewport_size)
+	_expect(_inside_viewport(mode_label, viewport_size), "context hint stays inside %s" % viewport_size)
 	_expect(_inside_viewport(dock, viewport_size), "card dock stays inside %s" % viewport_size)
+	_expect(not _controls_overlap(stage, roster), "single-side roster never covers the planet stage at %s" % viewport_size)
+	_expect(not _controls_overlap(mode_label, stage) and not _controls_overlap(mode_label, roster), "context hint has a dedicated non-overlapping top lane at %s" % viewport_size)
 
 	var map_view := surface.planet_map_view()
 	_expect(map_view != null and map_view.has_method("get_projection_debug_snapshot"), "reference stage preserves real map interaction at %s" % viewport_size)
@@ -126,6 +138,7 @@ func _players(count: int) -> Array:
 			"display_name": "玩家 %d" % (index + 1),
 			"public_status": "已锁定" if index % 2 == 0 else "选择中",
 			"public_order_index": index,
+			"is_viewer": index == count - 1,
 		})
 	return rows
 
@@ -176,6 +189,10 @@ func _inside_control(inner: Control, outer: Control) -> bool:
 		and inner_rect.position.y >= outer_rect.position.y - 1.0 \
 		and inner_rect.end.x <= outer_rect.end.x + 1.0 \
 		and inner_rect.end.y <= outer_rect.end.y + 1.0
+
+
+func _controls_overlap(left: Control, right: Control) -> bool:
+	return left != null and right != null and left.get_global_rect().intersects(right.get_global_rect())
 
 
 func _expect(condition: bool, label: String) -> void:

@@ -32,10 +32,11 @@ func _run() -> void:
 	_expect(int(initial.get("left_right_seat_layer_count", -1)) == 0, "reference planet contains zero left or right seat layers")
 	_expect(not bool(initial.get("legacy_draw_fallback_enabled", true)), "reference planet cannot fall back to the old table draw path")
 
-	for count in [3, 4, 5, 8]:
+	for count in [3, 4, 5, 6, 8]:
 		_expect(surface.apply_player_roster({"players": _players(count)}), "%d-seat public roster applies" % count)
 		var expected_columns := 1 if count <= 4 else 2
 		_expect(int(surface.debug_snapshot().get("roster_columns", 0)) == expected_columns, "%d-seat roster uses %d left-side column(s)" % [count, expected_columns])
+		_expect(int(surface.debug_snapshot().get("viewer_marker_count", -1)) == 1, "%d-seat roster has one viewer marker" % count)
 	_expect(str(surface.debug_snapshot().get("roster_side", "")) == "left", "player avatars have one left-side roster only")
 	var reversed_players := _players(8)
 	reversed_players.reverse()
@@ -219,6 +220,7 @@ func _players(count: int) -> Array:
 			"display_name": "玩家 %d" % (index + 1),
 			"public_status": "已锁定" if index % 2 == 0 else "选择中",
 			"public_order_index": index,
+			"is_viewer": index == count - 1,
 		})
 	return rows
 

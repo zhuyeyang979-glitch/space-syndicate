@@ -36,9 +36,11 @@ func acceptance_snapshot() -> Dictionary:
 
 
 func apply_visual_mode(mode_id: String) -> bool:
+	var visual_roster_count := _visual_roster_count()
+	table_surface.apply_player_roster({"players": _players(visual_roster_count)})
 	match mode_id:
 		"popup":
-			table_surface.apply_reference_fixture()
+			table_surface.apply_reference_fixture(visual_roster_count)
 			return true
 		"window":
 			table_surface.close_region_popup()
@@ -249,8 +251,14 @@ func _players(count: int) -> Array:
 			"display_name": "玩家 %d" % (index + 1),
 			"public_status": "已锁定" if index % 2 == 0 else "选择中",
 			"public_order_index": index,
+			"is_viewer": index == count - 1,
 		})
 	return rows
+
+
+func _visual_roster_count() -> int:
+	var authored := OS.get_environment("V07_BENCH_ROSTER_COUNT").strip_edges()
+	return clampi(int(authored), 3, 8) if not authored.is_empty() else 6
 
 
 func _card_rows(prefix: String, count: int) -> Array:

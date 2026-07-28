@@ -2,10 +2,13 @@
 
 Status: `REFERENCE_LAYER_GREEN`
 
-This migration is deliberately limited to the V0.7 reference table. The V0.6
-production runtime remains authoritative, PR69 is not yet GREEN, and no
-production `GameScreen`, `PlanetBoard`, player-position snapshot, map scene, or
-runtime composition is changed.
+This migration is deliberately limited to the V0.7 reference table. PR #69 is
+now GREEN on its remote sibling branch at
+`b5d5682072fd9ff02be700ce9d5503d1df996641`; it is an external prerequisite,
+not a Git ancestor of this Lane B stack. The V0.6 production runtime remains
+authoritative and the split typed presentation targets are not yet complete.
+No production `GameScreen`, `PlanetBoard`, player-position snapshot, map scene,
+or runtime composition is changed.
 
 ## Problem and previous dependency chain
 
@@ -84,6 +87,7 @@ player_id
 display_name
 public_status
 public_order_index
+is_viewer
 optional avatar_key
 optional accent
 ```
@@ -94,6 +98,8 @@ the local player, display name, player ID, input array order, private state, or
 the retired orbit positions.
 
 The roster provides one column for 3-4 players and two columns for 5-8 players.
+Exactly one owner-authorized row carries a `你` marker; the marker never
+rotates that player to the first row or changes `public_order_index` ordering.
 Every row is a focusable button with explicit directional/tab focus links.
 Mouse or focused-keyboard activation emits only the selected public
 `player_id`, and exactly one inspected row remains visually selected. Unknown
@@ -115,19 +121,52 @@ PRODUCTION_POSITIONAL_UNDERLAY_REFERENCE_COUNT=0
 LEGACY_DRAW_FALLBACK_ENABLED=false
 ```
 
-The gates cover 3, 4, 5 and 8 players; scrambled delivery order; public
-inspection; actual focused Enter activation; privacy rejection; 1366x768 and
+The gates cover 3, 4, 5, 6 and 8 players; scrambled delivery order; one stable
+viewer marker without local-first rotation; non-overlap between the roster and
+planet stage; a dedicated non-overlapping context-hint lane; public inspection;
+actual focused Enter activation; privacy rejection; 1366x768 and
 1920x1080 layout bounds; map wheel zoom; contextual popup/target behavior; and
 the uninterrupted resolution overlay. Headed evidence must be captured only
 after the deterministic real-map fixture is applied, so the empty-map
 placeholder cannot be mistaken for player-position decoration.
 
-Godot 4.7 MCP verification used the isolated endpoint
-`http://127.0.0.1:8825/` and ran
-`V07UninterruptedCardBatchContextualTableBench.tscn`. The Bench passed 44/44,
-its runtime log contained zero errors, script errors and warnings, and the
-server stopped cleanly. The inspected 1600x960 capture is
-`docs/ui_qa/v07_card_batch/legacy_planet_orbit_seat_retired_1600x960.png`.
+The initial implementation QA used isolated endpoint `8825`; the final
+coordinator QA used independent endpoint `8815`. Both ran
+`V07UninterruptedCardBatchContextualTableBench.tscn` on Godot 4.7. The final
+4-player, 8-player and physical 1366x768 runs each passed 44/44. At 1600x960
+the roster ended at x=328 and the planet began at x=364.8, leaving 36.8 pixels;
+the 1366x768 gap was 39.26 pixels. Seat, BackSeat and FrontSeat runtime node
+counts were all zero, and the viewer marker count was exactly one.
+
+Final clean-session MCP diagnostics were zero runtime errors, zero script
+errors and zero warnings. Three earlier exploratory-session script errors (one
+editor placeholder preview and two malformed dynamic QA snippets) remain
+honestly recorded as pre-clean diagnostics; a fresh editor/runtime session
+proved they are not production or Bench failures. Six existing Unicode-NUL
+decode diagnostics remain baseline-only. The final endpoint listener and
+project Godot process counts were both zero.
+
+Final automated evidence is: RightInspector inventory 80/80, reference
+retirement 90/90, player semantics 71/71, contextual Bench 44/44, architecture
+17/17, three-layer integration 24/24, performance 11/11, Main architecture
+219/219, Main runtime composition PASS, UI text PASS, visual contract PASS and
+smoke check-only exit 0.
+
+The headed comparison is explicit about scope:
+
+- `docs/ui_qa/v07_card_batch/reference_orbit_overlap_before.png` is the V0.7
+  reference surface before detaching the production orbit/seat composition; it
+  is not a production GameScreen screenshot.
+- `docs/ui_qa/v07_card_batch/legacy_planet_orbit_seat_retired_1600x960.png` is
+  the initial detached reference stage after the eight positional markers and
+  spokes are absent.
+- `docs/ui_qa/v07_card_batch/v07_reference_roster_4p_popup_1600x960.png` proves
+  one-column four-player layout and the owner-authorized `你` marker.
+- `docs/ui_qa/v07_card_batch/v07_reference_roster_8p_popup_1600x960.png` and
+  `v07_reference_roster_8p_popup_1366x768.png` prove the two-column layout at
+  desktop and low resolution.
+- `docs/ui_qa/v07_card_batch/v07_reference_roster_8p_popup_closed_1600x960.png`
+  proves the popup closes without replacing the full planet map.
 
 ## Production components intentionally retained
 
@@ -155,7 +194,7 @@ Representative current production tests include
 Production player-position components may be physically deleted only after all
 of the following are true:
 
-1. PR69 is GREEN.
+1. PR69 is GREEN. This prerequisite is now satisfied.
 2. The formal V0.7 production table-shell cutover is complete.
 3. Production `GameScreen` consumes one typed, visibility-safe single-side
    roster projection with mouse, keyboard, inspection and privacy parity.

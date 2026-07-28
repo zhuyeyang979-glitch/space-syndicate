@@ -21,7 +21,7 @@ const RESOLUTION_PHASES := [
 ]
 
 const ROSTER_ROOT_KEYS := ["players"]
-const ROSTER_ROW_KEYS := ["player_id", "display_name", "public_status", "public_order_index", "avatar_key", "accent"]
+const ROSTER_ROW_KEYS := ["player_id", "display_name", "public_status", "public_order_index", "is_viewer", "avatar_key", "accent"]
 const CARD_WINDOW_KEYS := ["phase", "window_id", "batch_id", "window_duration_seconds", "remaining_seconds", "status_text"]
 const SUBMISSION_PREVIEW_KEYS := ["card_display_name", "target_display_name", "mode_display_name", "quantity", "locked"]
 const REGION_ROOT_KEYS := ["region_index", "region_id", "rack_revision", "display_name", "public_status", "availability_text", "cards"]
@@ -86,6 +86,7 @@ var _roster_player_ids: Array[String] = []
 var _roster_buttons: Array[Button] = []
 var _roster_inspection_count := 0
 var _last_inspected_player_id := ""
+var _viewer_player_id := ""
 
 
 func _ready() -> void:
@@ -107,6 +108,7 @@ func apply_player_roster(projection: Dictionary) -> bool:
 		return false
 	var next_player_ids: Array[String] = []
 	var public_order_indexes: Array[int] = []
+	var viewer_player_ids: Array[String] = []
 	for player_variant in players:
 		if not (player_variant is Dictionary):
 			return false
@@ -119,8 +121,15 @@ func apply_player_roster(projection: Dictionary) -> bool:
 			return false
 		if public_order_index < 0 or public_order_index in public_order_indexes:
 			return false
+		if player.has("is_viewer") and typeof(player.get("is_viewer")) != TYPE_BOOL:
+			return false
+		if bool(player.get("is_viewer", false)):
+			viewer_player_ids.append(player_id)
 		next_player_ids.append(player_id)
 		public_order_indexes.append(public_order_index)
+	if viewer_player_ids.size() != 1:
+		return false
+	_viewer_player_id = viewer_player_ids[0]
 	var ordered_players := players.duplicate(true)
 	ordered_players.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
 		return _roster_sort_key(left) < _roster_sort_key(right)
@@ -143,11 +152,15 @@ func apply_player_roster(projection: Dictionary) -> bool:
 		row.focus_mode = Control.FOCUS_ALL
 		row.toggle_mode = true
 		row.set_meta("public_player_id", player_id)
+		row.set_meta("is_viewer", player_id == _viewer_player_id)
 		row.button_pressed = player_id == _last_inspected_player_id
-		row.text = "%s\n%s" % [
+		row.text = "%s%s\n%s" % [
 			str(player.get("display_name", "席位")),
+			"（你）" if player_id == _viewer_player_id else "",
 			str(player.get("public_status", "观察中")),
 		]
+		if player_id == _viewer_player_id:
+			row.self_modulate = Color(0.82, 0.95, 1.0, 1.0)
 		row.tooltip_text = "查看 %s 的公开信息" % str(player.get("display_name", "玩家"))
 		row.pressed.connect(_on_roster_player_pressed.bind(player_id))
 		roster_grid.add_child(row)
@@ -343,6 +356,8 @@ func debug_snapshot() -> Dictionary:
 		"roster_count": roster_grid.get_child_count(),
 		"roster_side": "left",
 		"roster_player_ids": _roster_player_ids.duplicate(),
+		"viewer_player_id": _viewer_player_id,
+		"viewer_marker_count": _viewer_marker_count(),
 		"roster_focusable_count": _roster_buttons.size(),
 		"roster_focus_links_valid": _roster_focus_links_valid(),
 		"roster_inspection_count": _roster_inspection_count,
@@ -391,8 +406,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-func apply_reference_fixture() -> void:
-	apply_player_roster({"players": _fixture_players(6)})
+func apply_reference_fixture(player_count: int = 6) -> void:
+	apply_player_roster({"players": _fixture_players(clampi(player_count, 3, 8))})
 	apply_card_window({
 		"phase": "CARD_WINDOW_OPEN",
 		"window_id": "fixture-window-12",
@@ -538,6 +553,7 @@ func _fixture_players(count: int) -> Array:
 			"display_name": "玩家 %d" % (index + 1),
 			"public_status": "已锁定" if index % 2 == 0 else "选择中",
 			"public_order_index": index,
+			"is_viewer": index == count - 1,
 		})
 	return result
 
@@ -604,6 +620,14 @@ func _inspected_roster_button_count() -> int:
 	var count := 0
 	for button in _roster_buttons:
 		if button != null and button.button_pressed:
+			count += 1
+	return count
+
+
+func _viewer_marker_count() -> int:
+	var count := 0
+	for button in _roster_buttons:
+		if button != null and bool(button.get_meta("is_viewer", false)):
 			count += 1
 	return count
 
