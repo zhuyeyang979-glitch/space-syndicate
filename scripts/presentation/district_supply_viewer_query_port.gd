@@ -14,6 +14,7 @@ var _card_presentation: CardPresentationRuntimeService
 var _snapshot_service: DistrictSupplySnapshotService
 var _inventory: CardInventoryRuntimeService
 var _session: GameSessionRuntimeController
+var _action_flow: TablePlayerActionApplicationFlowController
 var _query_count := 0
 var _private_snapshot_count := 0
 var _public_snapshot_count := 0
@@ -32,7 +33,8 @@ func configure(
 	card_presentation: CardPresentationRuntimeService,
 	snapshot_service: DistrictSupplySnapshotService,
 	inventory: CardInventoryRuntimeService,
-	session: GameSessionRuntimeController
+	session: GameSessionRuntimeController,
+	action_flow: TablePlayerActionApplicationFlowController = null
 ) -> void:
 	_query_ports = query_ports
 	_presentation_state = presentation_state
@@ -44,6 +46,7 @@ func configure(
 	_snapshot_service = snapshot_service
 	_inventory = inventory
 	_session = session
+	_action_flow = action_flow
 
 
 func snapshot_for_viewer(viewer_index: int) -> Dictionary:
@@ -89,6 +92,7 @@ func snapshot_for_viewer(viewer_index: int) -> Dictionary:
 		var listing := listing_variant as Dictionary
 		var card_source := _card_source(
 			listing,
+			region_id,
 			district_index,
 			subject_index,
 			private_player,
@@ -123,6 +127,11 @@ func snapshot_for_viewer(viewer_index: int) -> Dictionary:
 		source["hand_limit"] = hand_limit
 		source["can_buy"] = bool(availability.get("purchasable", false)) and not _session.is_finished()
 		source["purchase_window"] = purchase_window
+		source["close_offer"] = _surface_offer(
+			GameActionIntentV1.ACTION_DISTRICT_SUPPLY_CLOSE,
+			{},
+			["action.district-supply.close", "feedback.district-supply.close"]
+		)
 		_private_snapshot_count += 1
 	else:
 		_public_snapshot_count += 1
@@ -138,6 +147,7 @@ func snapshot_for_viewer(viewer_index: int) -> Dictionary:
 		"reason_code": _last_reason_code,
 		"district_index": district_index,
 		"rack_source_revision": _rack_source_revision(rack_row, region_id, district_index),
+		"rack_source_version": int(rack_row.get("rack_source_version", 0)),
 		"viewer_index": viewer_index,
 		"subject_player_index": subject_index,
 		"authorization_revision": viewer_context.authorization_revision,
@@ -180,6 +190,7 @@ func debug_snapshot() -> Dictionary:
 
 func _card_source(
 	listing: Dictionary,
+	region_id: String,
 	district_index: int,
 	player_index: int,
 	private_player: Dictionary,
@@ -253,7 +264,30 @@ func _card_source(
 		result["industry_id"] = str(
 			public_card.get("industry_id", definition.get("industry_id", ""))
 		).strip_edges()
+	if viewer_authorized:
+		var targets := {"region_id": region_id, "card_id": card_id}
+		result["quote_offer"] = _surface_offer(
+			GameActionIntentV1.ACTION_DISTRICT_SUPPLY_QUOTE,
+			targets,
+			["action.district-supply.quote", "feedback.district-supply.quote"]
+		)
+		result["purchase_offer"] = _surface_offer(
+			GameActionIntentV1.ACTION_DISTRICT_SUPPLY_PURCHASE,
+			targets,
+			["action.district-supply.purchase", "feedback.district-supply.purchase"]
+		)
 	return result
+
+
+func _surface_offer(action_id: String, target_ids: Dictionary, presentation_tokens: Array) -> Dictionary:
+	if _action_flow == null:
+		return {}
+	return _action_flow.human_surface_action_offer(
+		action_id,
+		target_ids,
+		"full",
+		presentation_tokens
+	)
 
 
 func _public_purchase_state(listing: Dictionary, district_index: int) -> Dictionary:
@@ -425,7 +459,9 @@ func _rack_row(region_id: String) -> Dictionary:
 	var rack := _region_supply.public_rack_snapshot(region_id)
 	for row_variant in rack.get("regions", []) as Array:
 		if row_variant is Dictionary and str((row_variant as Dictionary).get("region_id", "")) == region_id:
-			return (row_variant as Dictionary).duplicate(true)
+			var row := (row_variant as Dictionary).duplicate(true)
+			row["rack_source_version"] = maxi(0, int(rack.get("state_revision", 0)))
+			return row
 	return {}
 
 
@@ -535,6 +571,7 @@ func _closed_surface(reason_code: String, viewer_index := -1, authorization_revi
 		"reason_code": reason_code,
 		"district_index": -1,
 		"rack_source_revision": "",
+		"rack_source_version": 0,
 		"viewer_index": viewer_index,
 		"subject_player_index": -1,
 		"authorization_revision": authorization_revision,
@@ -553,4 +590,5 @@ func _is_configured() -> bool:
 		and _card_presentation != null \
 		and _snapshot_service != null \
 		and _inventory != null \
-		and _session != null
+		and _session != null \
+		and _action_flow != null

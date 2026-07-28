@@ -54,10 +54,16 @@ func _draw_globe_graticule(center: Vector2, radius: float, globe_blend: float) -
 	for i in range(1, 4):
 		var ratio := float(i) / 4.0
 		draw_arc(center, radius * ratio, 0.0, TAU, 96, color, 0.7, true)
-	for i in range(0, 8):
-		var angle := TAU * float(i) / 8.0
-		var forward := Vector2(cos(angle), sin(angle))
-		draw_line(center - forward * radius, center + forward * radius, color, 0.7, true)
+	for latitude in [-0.5, 0.0, 0.5]:
+		var y := radius * float(latitude)
+		var half_chord := sqrt(maxf(0.0, radius * radius - y * y))
+		draw_line(
+			center + Vector2(-half_chord, y),
+			center + Vector2(half_chord, y),
+			color,
+			0.7,
+			true
+		)
 
 
 func _draw_local_grid(globe_blend: float) -> void:

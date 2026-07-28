@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/DistrictSupplyDrawer.tscn" id="1_base"]
+[ext_resource type="Script" path="res://scripts/ui/table/region_supply_popup.gd" id="2_script"]
+
+[node name="RegionSupplyPopup" instance=ExtResource("1_base")]
+script = ExtResource("2_script")
+
+[node name="DistrictSupplySideDrawer" parent="." index="0"]
+anchor_left = 0.54
+anchor_top = 0.12
+anchor_right = 0.94
+anchor_bottom = 0.86
+
+[editable path="DistrictSupplySideDrawer"]

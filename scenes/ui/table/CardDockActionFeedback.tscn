@@ -1,0 +1,46 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/table/card_dock_action_feedback.gd" id="2_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleFeedback"]
+bg_color = Color(0.025, 0.045, 0.09, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.35, 0.48, 0.68, 0.72)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="CardDockActionFeedback" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 32)
+theme = ExtResource("1_theme")
+theme_override_styles/panel = SubResource("StyleFeedback")
+script = ExtResource("2_script")
+
+[node name="FeedbackMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 4
+
+[node name="FeedbackRow" type="HBoxContainer" parent="FeedbackMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="FeedbackState" type="Label" parent="FeedbackMargin/FeedbackRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+text = "待选择"
+
+[node name="FeedbackDetail" type="Label" parent="FeedbackMargin/FeedbackRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "选择卡牌查看状态与合法目标。"
+text_overrun_behavior = 3

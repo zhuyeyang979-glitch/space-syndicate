@@ -17,7 +17,7 @@ const MAP_LAYER_IDS := [
 	&"city",
 ]
 const PLAYER_INSPECTION_SOURCE_SURFACES := [
-	&"player_seat",
+	&"player_roster",
 	&"player_board",
 	&"fullscreen_hud",
 	&"keyboard_hotkey",
@@ -26,6 +26,7 @@ const PLAYER_INSPECTION_SOURCE_SURFACES := [
 ]
 const DISTRICT_SELECTION_SOURCE_SURFACES := [
 	&"planet_map",
+	&"game_screen",
 	&"fullscreen_hud",
 	&"keyboard_hotkey",
 	&"qa_driver",
@@ -37,15 +38,14 @@ const TRADE_PRODUCT_SELECTION_SOURCE_SURFACES := [
 	&"qa_driver",
 ]
 const HAND_SELECTION_SOURCE_SURFACES := [
-	&"hand_rack",
-	&"player_board",
+	&"player_card_dock",
 	&"game_screen",
 	&"qa_driver",
 ]
 const CARD_RESOLUTION_SELECTION_SOURCE_SURFACES := [
 	&"card_resolution_track",
 	&"public_bid_board",
-	&"right_inspector",
+	&"context_detail_popup",
 	&"qa_driver",
 ]
 

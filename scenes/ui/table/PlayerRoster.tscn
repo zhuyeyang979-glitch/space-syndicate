@@ -1,0 +1,58 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/table/player_roster.gd" id="2_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleRoster"]
+bg_color = Color(0.018, 0.035, 0.078, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.22, 0.62, 0.88, 0.76)
+corner_radius_top_left = 9
+corner_radius_top_right = 9
+corner_radius_bottom_right = 9
+corner_radius_bottom_left = 9
+
+[node name="PlayerRoster" type="PanelContainer"]
+custom_minimum_size = Vector2(164, 260)
+theme = ExtResource("1_theme")
+theme_override_styles/panel = SubResource("StyleRoster")
+script = ExtResource("2_script")
+
+[node name="RosterMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="RosterRows" type="VBoxContainer" parent="RosterMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="RosterTitle" type="Label" parent="RosterMargin/RosterRows"]
+layout_mode = 2
+text = "玩家席位"
+theme_override_font_sizes/font_size = 17
+
+[node name="RosterCountLabel" type="Label" parent="RosterMargin/RosterRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "等待公开席位"
+theme_override_colors/font_color = Color(0.58, 0.82, 0.98, 1)
+
+[node name="RosterScroll" type="ScrollContainer" parent="RosterMargin/RosterRows"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="RosterGrid" type="GridContainer" parent="RosterMargin/RosterRows/RosterScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 1
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 5

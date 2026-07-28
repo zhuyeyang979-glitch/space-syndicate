@@ -44,7 +44,9 @@ func _run() -> void:
 	var presentation := coordinator.card_supply_presentation_state()
 	var port := coordinator.district_supply_action_port()
 	var screen := app_root.find_child("RuntimeGameScreen", true, false) as SpaceSyndicateGameScreen
-	var overlay := screen.get_node_or_null("OverlayLayer") as SpaceSyndicateOverlayLayer if screen != null else null
+	var popup := screen.get_node_or_null("RegionSupplyPopup") as SpaceSyndicateRegionSupplyPopup if screen != null else null
+	var action_flow := coordinator.get_node_or_null("TablePlayerActionApplicationFlowController") as TablePlayerActionApplicationFlowController
+	var dock_query := coordinator.get_node_or_null("PlayerCardDockViewerQueryPort") as PlayerCardDockViewerQueryPort
 	var infrastructure_owner := coordinator.get_node_or_null("RegionInfrastructureRuntimeController") as RegionInfrastructureRuntimeController
 	var configured := coordinator.configure_region_supply_from_world(
 		FIXED_SEED,
@@ -55,8 +57,8 @@ func _run() -> void:
 	_expect(bool(configured.get("configured", false)), "fixed seed configures the target facility listing")
 	var district_index := _first_purchasable_target_district(coordinator, world, infrastructure_owner)
 	_expect(district_index >= 0, "fixed seed exposes the target facility in a currently purchasable district with an empty technology-market slot")
-	_expect(query != null and table_query != null and query_ports != null and presentation != null and port != null and screen != null and overlay != null, "typed rack query, hand query, privacy ports, GameScreen and action port are composed")
-	if district_index < 0 or query == null or table_query == null or query_ports == null or presentation == null or port == null or screen == null or overlay == null:
+	_expect(query != null and table_query != null and query_ports != null and presentation != null and port != null and screen != null and popup != null and action_flow != null and dock_query != null, "typed rack query, Dock query, privacy ports, GameScreen, Popup and application flow are composed")
+	if district_index < 0 or query == null or table_query == null or query_ports == null or presentation == null or port == null or screen == null or popup == null or action_flow == null or dock_query == null:
 		_stop_audio(app_root)
 		app_root.queue_free()
 		await process_frame
@@ -70,7 +72,7 @@ func _run() -> void:
 	var context := coordinator.get_node("TablePresentationQueryPorts").viewer_context() as TablePresentationViewerContext
 	screen.bind_presentation_viewer(0, context.authorization_revision)
 	var identity := coordinator.get_node("PlayerIdentityAuthorizationBoundary") as PlayerIdentityAuthorizationBoundary
-	var actor_context := identity.current_actor_context(&"district_supply") if identity != null else null
+	var actor_context := identity.current_actor_context(&"game_screen") if identity != null else null
 	screen.bind_gameplay_actor_authorization_context(actor_context)
 	_expect(actor_context != null and actor_context.is_valid() and actor_context.authorization_revision == context.authorization_revision, "human surface binds the same typed actor and viewer authorization")
 	_expect(screen.request_district_selection(district_index, &"qa_driver"), "human table selection is aligned with the open rack")
@@ -83,37 +85,42 @@ func _run() -> void:
 	coordinator.open_district_purchase_window(0, district_index, {"supply_revision": rack_revision})
 	coordinator.mark_district_supply_revision(0, district_index, rack_revision)
 
-	var intents: Array[DistrictSupplyActionIntent] = []
+	var intents: Array[Dictionary] = []
 	var receipts: Array[DistrictSupplyActionReceipt] = []
-	screen.district_supply_action_intent_requested.connect(func(intent: DistrictSupplyActionIntent) -> void:
-		intents.append(intent)
+	screen.game_action_intent_requested.connect(func(intent: Dictionary) -> void:
+		intents.append(intent.duplicate(true))
 	)
 	port.receipt_ready.connect(func(receipt: DistrictSupplyActionReceipt) -> void:
 		receipts.append(receipt)
 	)
 
 	var first_surface := query.snapshot_for_viewer(0)
-	_expect(overlay.apply_district_supply_presentation(first_surface, 0, context.authorization_revision), "viewer-private target facility drawer applies")
-	var drawer := screen.get_district_supply_drawer() as SpaceSyndicateDistrictSupplyDrawer
-	var first_preview := _drawer_preview(drawer)
+	_expect(popup.apply_presentation(first_surface, 0, context.authorization_revision), "viewer-private target facility Popup applies")
+	var first_preview := _drawer_preview(popup)
 	_expect(str(first_preview.get("card_name", "")) == TARGET_CARD_ID, "fixed facility is the rendered preview")
 	_expect(str(first_preview.get("primary_action_id", "")) == "district_supply_preview_card", "no-quote projection explicitly requests a quote")
 	_expect(bool(first_preview.get("buy_enabled", false)) and str(first_preview.get("buy_text", "")).contains("获取报价"), "enabled button copy and action both describe quote acquisition")
 
-	drawer.call("_on_card_purchase_requested", TARGET_CARD_ID, "focused_human_double_click")
-	_expect(intents.size() == 1 and intents[0].action_kind == DistrictSupplyActionIntent.KIND_QUOTE, "human Drawer-to-GameScreen path emits a typed quote intent first")
+	popup.call("_on_card_purchase_requested", TARGET_CARD_ID, "focused_human_double_click")
+	_expect(intents.size() == 1 and str(intents[0].get("semantic_action_id", "")) == GameActionIntentV1.ACTION_DISTRICT_SUPPLY_QUOTE, "human Popup-to-ApplicationFlow path emits a typed quote intent first")
 	_expect(receipts.size() == 1 and receipts[0].accepted and receipts[0].reason_code == "quote_locked", "authoritative port accepts and reports the locked quote: %s" % _receipt_debug(receipts))
-	_expect(not receipts[0].quote_id.is_empty(), "private quote receipt carries the locked quote credential")
+	_expect(receipts.size() == 1 and not receipts[0].quote_id.is_empty(), "private quote receipt carries the locked quote credential")
+	if receipts.is_empty():
+		_stop_audio(app_root)
+		app_root.queue_free()
+		await process_frame
+		_finish()
+		return
 
 	var second_surface := query.snapshot_for_viewer(0)
-	_expect(overlay.apply_district_supply_presentation(second_surface, 0, context.authorization_revision), "post-quote viewer-private projection reapplies")
-	var second_preview := _drawer_preview(drawer)
+	_expect(popup.apply_presentation(second_surface, 0, context.authorization_revision), "post-quote viewer-private projection reapplies")
+	var second_preview := _drawer_preview(popup)
 	_expect(str(second_preview.get("primary_action_id", "")) == "district_supply_purchase_card", "active quote projection advances to purchase: %s" % JSON.stringify(second_preview))
 	_expect(str(second_preview.get("action_reason_code", "")) == "facility_purchase_ready", "buy-enabled projection exposes the allowlisted ready reason")
 
 	var before_purchase := port.debug_snapshot()
-	drawer.call("_on_card_purchase_requested", TARGET_CARD_ID, "focused_human_confirm")
-	_expect(intents.size() == 2 and intents[1].action_kind == DistrictSupplyActionIntent.KIND_PURCHASE, "same human surface emits typed purchase only after quote")
+	popup.call("_on_card_purchase_requested", TARGET_CARD_ID, "focused_human_confirm")
+	_expect(intents.size() == 2 and str(intents[1].get("semantic_action_id", "")) == GameActionIntentV1.ACTION_DISTRICT_SUPPLY_PURCHASE, "same human surface emits typed purchase only after quote")
 	_expect(receipts.size() == 2 and receipts[1].accepted and receipts[1].applied, "authoritative purchase receipt commits the facility card: %s" % _receipt_debug(receipts))
 	_expect(receipts[1].reason_code != "locked_quote_required", "purchase no longer reaches the missing-quote rejection")
 	var after_purchase := port.debug_snapshot()
@@ -134,11 +141,11 @@ func _run() -> void:
 	var denied_projection := query_ports.private_world_projection(1, 0).to_dictionary()
 	_expect(not bool(denied_projection.get("authorized", true)) and (denied_projection.get("player", {}) as Dictionary).is_empty() and str(denied_projection.get("visibility_scope", "")) == "denied", "another viewer receives only a denied envelope for the human player's private hand")
 
-	var table_state := table_query.compose_table_state(0, true)
-	var player_board: Dictionary = table_state.get("player_board", {}) if table_state.get("player_board", {}) is Dictionary else {}
-	var hand_cards: Array = player_board.get("hand_cards", []) if player_board.get("hand_cards", []) is Array else []
-	var facility_hand := _first_card_of_kind(hand_cards, "facility_v06")
-	var facility_slot := int(facility_hand.get("slot", -1))
+	var purchased_inventory_snapshot := coordinator.v06_card_player_snapshot(actor_id)
+	var facility_slot := _inventory_slot_for_card(purchased_inventory_snapshot, TARGET_CARD_ID)
+	var dock_projection := dock_query.snapshot_for_viewer(0, context.authorization_revision)
+	var normal_cards: Array = dock_projection.get("normal_cards", []) if dock_projection.get("normal_cards", []) is Array else []
+	var facility_hand := _first_normal_card_named(normal_cards, "科技市场")
 	var malformed_definition := coordinator.v06_card_definition(TARGET_CARD_ID)
 	var malformed_machine: Dictionary = (malformed_definition.get("machine", {}) as Dictionary).duplicate(true) if malformed_definition.get("machine", {}) is Dictionary else {}
 	var malformed_cost: Dictionary = (malformed_machine.get("asset_cost", {}) as Dictionary).duplicate(true) if malformed_machine.get("asset_cost", {}) is Dictionary else {}
@@ -161,11 +168,13 @@ func _run() -> void:
 	var missing_cost_state := coordinator.compose_card_play_eligibility(missing_cost_eligibility, {"display_name": "设施牌"})
 	_expect(not bool(missing_cost_eligibility.get("actionable", true)) and str(missing_cost_eligibility.get("reason_code", "")) == "asset_cost_unavailable", "missing v0.6 asset key disables the formal hand action")
 	_expect(str(missing_cost_state.get("detail", "")).contains("不会扣牌或资产") and not JSON.stringify(missing_cost_eligibility.get("reason_args", {})).contains("generic"), "missing asset schema exposes only a readable public-safe reason")
-	var facility_action := _first_enabled_play_action(facility_hand)
-	_expect(not facility_hand.is_empty() and str(facility_hand.get("name", "")) == "科技市场", "bought v0.6 facility is rendered as the authored technology-market hand card")
-	_expect(str(facility_hand.get("effect", "")).strip_edges() != "" and str(facility_hand.get("use_case", "")).strip_edges() != "", "facility hand card carries authored effect and use-case copy")
-	_expect(str(facility_hand.get("type", "")) == "城市成长" and str(facility_hand.get("cost", "")) == "打出免费", "facility hand card exposes a human-readable route and play cost instead of generic placeholders")
-	_expect(bool(facility_hand.get("actionable", false)) and str(facility_action.get("id", "")).begins_with("play_"), "facility hand card exposes one enabled formal play action")
+	var facility_offer: Dictionary = facility_hand.get("game_action_offer", {}) if facility_hand.get("game_action_offer", {}) is Dictionary else {}
+	_expect(not facility_hand.is_empty() and str(facility_hand.get("display_name", "")) == "科技市场", "bought v0.6 facility is rendered in the typed PlayerCardDock projection")
+	_expect(str(facility_hand.get("card_semantic_id", "")) == TARGET_CARD_ID \
+		and str(facility_hand.get("category_id", "")) == "facility-v06" \
+		and int(facility_hand.get("rank", 0)) == 1, "Dock preserves the authored facility identity, category and rank|%s" % JSON.stringify(facility_hand))
+	_expect(bool(GameActionOfferV1.validation_report(facility_offer).get("valid", false)) \
+		and str(facility_offer.get("legality_state", "")) == "available", "facility card exposes one enabled formal GameAction offer")
 
 	var inventory_before_play := coordinator.v06_card_player_snapshot(actor_id)
 	var authoritative_inventory: Dictionary = inventory_before_play.get("inventory", {}) if inventory_before_play.get("inventory", {}) is Dictionary else {}
@@ -229,14 +238,14 @@ func _run() -> void:
 	var cooldown_clear := coordinator.advance_card_cooldowns(5.0)
 	_expect(bool(cooldown_clear.get("advanced", false)) and float((world.players[0] as Dictionary).get("action_cooldown", -1.0)) <= 0.0, "authoritative cooldown owner clears the deliberately injected rejection gate")
 
-	var refreshed_table_state := table_query.compose_table_state(0, true)
-	var refreshed_player_board: Dictionary = refreshed_table_state.get("player_board", {}) if refreshed_table_state.get("player_board", {}) is Dictionary else {}
-	var refreshed_hand_cards: Array = refreshed_player_board.get("hand_cards", []) if refreshed_player_board.get("hand_cards", []) is Array else []
-	var refreshed_facility_hand := _first_card_of_kind(refreshed_hand_cards, "facility_v06")
-	var refreshed_facility_action := _first_enabled_play_action(refreshed_facility_hand)
-	_expect(str(refreshed_facility_action.get("id", "")) == "play_%d" % facility_slot, "fresh viewer projection re-enables the same authoritative facility slot after cooldown expiry")
+	var refreshed_dock := dock_query.snapshot_for_viewer(0, context.authorization_revision)
+	var refreshed_normal_cards: Array = refreshed_dock.get("normal_cards", []) if refreshed_dock.get("normal_cards", []) is Array else []
+	var refreshed_facility_hand := _first_normal_card_named(refreshed_normal_cards, "科技市场")
+	var refreshed_facility_offer: Dictionary = refreshed_facility_hand.get("game_action_offer", {}) if refreshed_facility_hand.get("game_action_offer", {}) is Dictionary else {}
+	_expect(str(GameActionOfferV1.target_ids(refreshed_facility_offer).get("hand_slot_id", "")) == "hand.slot.%d" % facility_slot \
+		and str(refreshed_facility_offer.get("legality_state", "")) == "available", "fresh Dock projection re-enables the same authoritative facility slot after cooldown expiry")
 	var submission_before := coordinator.card_play_submission_controller().debug_snapshot()
-	_expect(_submit_game_action(screen, refreshed_facility_action), "fresh facility projection submits through the public GameAction offer boundary")
+	_expect(_submit_game_action(screen, {"game_action_offer": refreshed_facility_offer}), "fresh facility projection submits through the public GameAction offer boundary")
 	var submission_after := coordinator.card_play_submission_controller().debug_snapshot()
 	for _frame in range(30):
 		if int(submission_after.get("submission_count", 0)) > int(submission_before.get("submission_count", 0)):
@@ -302,13 +311,14 @@ func _run() -> void:
 	var upgrade_grant: Dictionary = (upgrade_grant_variant as Dictionary).duplicate(true) if upgrade_grant_variant is Dictionary else {}
 	var after_upgrade_grant := coordinator.v06_card_player_snapshot(actor_id)
 	var upgrade_slot := _inventory_slot_for_card(after_upgrade_grant, rank_two_card_id)
-	var upgrade_table := table_query.compose_table_state(0, true)
-	var upgrade_board: Dictionary = upgrade_table.get("player_board", {}) if upgrade_table.get("player_board", {}) is Dictionary else {}
-	var upgrade_hand := _first_card_named(upgrade_board.get("hand_cards", []) if upgrade_board.get("hand_cards", []) is Array else [], "科技市场")
-	var upgrade_action := _first_enabled_play_action(upgrade_hand)
-	_expect(bool(upgrade_grant.get("committed", false)) and upgrade_slot >= 0 and bool(upgrade_hand.get("actionable", false)) and not upgrade_action.is_empty(), "owned Rank-II upgrade is actionable on the real GameScreen hand projection")
+	var upgrade_dock := dock_query.snapshot_for_viewer(0, context.authorization_revision)
+	var upgrade_hand := _first_normal_card_named(upgrade_dock.get("normal_cards", []) if upgrade_dock.get("normal_cards", []) is Array else [], "科技市场")
+	var upgrade_offer: Dictionary = upgrade_hand.get("game_action_offer", {}) if upgrade_hand.get("game_action_offer", {}) is Dictionary else {}
+	_expect(bool(upgrade_grant.get("committed", false)) and upgrade_slot >= 0 \
+		and str(upgrade_hand.get("play_state", "")) == "available" \
+		and bool(GameActionOfferV1.validation_report(upgrade_offer).get("valid", false)), "owned Rank-II upgrade is actionable on the real PlayerCardDock projection")
 	var upgrade_submission_before := coordinator.card_play_submission_controller().debug_snapshot()
-	_expect(_submit_game_action(screen, upgrade_action), "Rank-II upgrade submits through the same public GameAction offer boundary")
+	_expect(_submit_game_action(screen, {"game_action_offer": upgrade_offer}), "Rank-II upgrade submits through the same public GameAction offer boundary")
 	var upgrade_submission_after := upgrade_submission_before
 	for _frame in range(30):
 		await process_frame
@@ -334,13 +344,14 @@ func _run() -> void:
 	var repair_grant: Dictionary = (repair_grant_variant as Dictionary).duplicate(true) if repair_grant_variant is Dictionary else {}
 	var after_repair_grant := coordinator.v06_card_player_snapshot(actor_id)
 	var repair_slot := _inventory_slot_for_card(after_repair_grant, rank_two_card_id)
-	var repair_table := table_query.compose_table_state(0, true)
-	var repair_board: Dictionary = repair_table.get("player_board", {}) if repair_table.get("player_board", {}) is Dictionary else {}
-	var repair_hand := _first_card_named(repair_board.get("hand_cards", []) if repair_board.get("hand_cards", []) is Array else [], "科技市场")
-	var repair_action := _first_enabled_play_action(repair_hand)
-	_expect(bool(repair_damage.get("committed", false)) and bool(repair_grant.get("committed", false)) and repair_slot >= 0 and bool(repair_hand.get("actionable", false)) and not repair_action.is_empty(), "damaged owned Rank-II facility exposes an actionable repair on the real hand projection")
+	var repair_dock := dock_query.snapshot_for_viewer(0, context.authorization_revision)
+	var repair_hand := _first_normal_card_named(repair_dock.get("normal_cards", []) if repair_dock.get("normal_cards", []) is Array else [], "科技市场")
+	var repair_offer: Dictionary = repair_hand.get("game_action_offer", {}) if repair_hand.get("game_action_offer", {}) is Dictionary else {}
+	_expect(bool(repair_damage.get("committed", false)) and bool(repair_grant.get("committed", false)) and repair_slot >= 0 \
+		and str(repair_hand.get("play_state", "")) == "available" \
+		and bool(GameActionOfferV1.validation_report(repair_offer).get("valid", false)), "damaged owned Rank-II facility exposes an actionable repair on the real PlayerCardDock projection")
 	var repair_submission_before := coordinator.card_play_submission_controller().debug_snapshot()
-	_expect(_submit_game_action(screen, repair_action), "Rank-II repair submits through the same public GameAction offer boundary")
+	_expect(_submit_game_action(screen, {"game_action_offer": repair_offer}), "Rank-II repair submits through the same public GameAction offer boundary")
 	var repair_submission_after := repair_submission_before
 	for _frame in range(30):
 		await process_frame
@@ -353,9 +364,10 @@ func _run() -> void:
 			and int(repaired_facility.get("rank", 0)) == 2 and damage_before_repair > 0 and damage_after_repair < damage_before_repair, "GameScreen→submission→formal play repairs the explicitly selected Rank-II region without changing rank")
 	_expect(int(_facility_for_slot(infrastructure_owner, occupied_region_id, "market", "technology").get("rank", 0)) == 1, "repair does not mutate the other occupied region")
 
-	var replay := port.submit_intent(intents[1])
+	var replay := action_flow.submit_intent(intents[1])
 	var after_replay := port.debug_snapshot()
-	_expect(replay.idempotent_replay and replay.reason_code == "request_replay", "duplicate typed submit is rejected as an idempotent replay")
+	_expect(bool(replay.get("idempotent_replay", false)) and bool(replay.get("accepted", false)) \
+		and str(replay.get("semantic_action_id", "")) == GameActionIntentV1.ACTION_DISTRICT_SUPPLY_PURCHASE, "duplicate GameAction submit returns the original accepted receipt as an idempotent replay")
 	_expect(int(after_replay.get("purchase_commit_count", 0)) == int(after_purchase.get("purchase_commit_count", 0)), "duplicate submit cannot commit a second card or debit")
 	var public_receipt_text := JSON.stringify(receipts[1].public_summary())
 	_expect(not public_receipt_text.contains(TARGET_CARD_ID) and not public_receipt_text.contains(receipts[0].quote_id) and not public_receipt_text.contains("locked_quote"), "public receipt omits card, quote credential and private reason")
@@ -410,26 +422,11 @@ func _receipt_debug(receipts: Array[DistrictSupplyActionReceipt]) -> String:
 	return JSON.stringify(rows)
 
 
-func _first_card_of_kind(cards: Array, kind: String) -> Dictionary:
+func _first_normal_card_named(cards: Array, display_name: String) -> Dictionary:
 	for card_variant in cards:
-		if card_variant is Dictionary and str((card_variant as Dictionary).get("kind", "")) == kind:
+		if card_variant is Dictionary \
+				and str((card_variant as Dictionary).get("display_name", "")) == display_name:
 			return (card_variant as Dictionary).duplicate(true)
-	return {}
-
-
-func _first_card_named(cards: Array, display_name: String) -> Dictionary:
-	for card_variant in cards:
-		if card_variant is Dictionary and str((card_variant as Dictionary).get("name", "")) == display_name:
-			return (card_variant as Dictionary).duplicate(true)
-	return {}
-
-
-func _first_enabled_play_action(card: Dictionary) -> Dictionary:
-	var actions: Array = card.get("actions", []) if card.get("actions", []) is Array else []
-	for action_variant in actions:
-		if action_variant is Dictionary and str((action_variant as Dictionary).get("id", "")).begins_with("play_") \
-				and not bool((action_variant as Dictionary).get("disabled", false)):
-			return (action_variant as Dictionary).duplicate(true)
 	return {}
 
 

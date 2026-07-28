@@ -1,0 +1,83 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/table/context_detail_popup.gd" id="2_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleDetail"]
+bg_color = Color(0.018, 0.036, 0.078, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.48, 0.7, 0.92, 0.88)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0, 0, 0, 0.55)
+shadow_size = 12
+
+[node name="ContextDetailPopup" type="PanelContainer"]
+visible = false
+custom_minimum_size = Vector2(400, 250)
+theme = ExtResource("1_theme")
+theme_override_styles/panel = SubResource("StyleDetail")
+script = ExtResource("2_script")
+
+[node name="DetailMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="DetailRows" type="VBoxContainer" parent="DetailMargin"]
+layout_mode = 2
+theme_override_constants/separation = 9
+
+[node name="DetailHeader" type="HBoxContainer" parent="DetailMargin/DetailRows"]
+layout_mode = 2
+
+[node name="DetailTitle" type="Label" parent="DetailMargin/DetailRows/DetailHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "卡牌详情"
+theme_override_font_sizes/font_size = 21
+
+[node name="DetailClose" type="Button" parent="DetailMargin/DetailRows/DetailHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 30)
+layout_mode = 2
+text = "关闭"
+
+[node name="DetailSubtitle" type="Label" parent="DetailMargin/DetailRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.82, 0.98, 1)
+text = "用途与目标"
+
+[node name="DetailChips" type="HFlowContainer" parent="DetailMargin/DetailRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 4
+
+[node name="DetailBody" type="Label" parent="DetailMargin/DetailRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+text = "选择卡牌查看完整效果、合法目标和不可用原因。"
+autowrap_mode = 3
+
+[node name="DetailActions" type="HFlowContainer" parent="DetailMargin/DetailRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 7
+theme_override_constants/v_separation = 5
+
+[node name="DetailDeepLinks" type="HFlowContainer" parent="DetailMargin/DetailRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 7
+theme_override_constants/v_separation = 5

@@ -5,6 +5,7 @@ class_name GameTableViewModelRuntimeService
 const TABLE_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/table_snapshot.gd")
 const BID_BOARD_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/bid_board_snapshot.gd")
 const OPTIONAL_ROUTE_PUBLIC_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/optional_route_public_snapshot.gd")
+const CARD_RESOLUTION_OVERLAY_PROJECTION_SCRIPT := preload("res://scripts/presentation/card_resolution_overlay_projection_v1.gd")
 
 var _configured := false
 var _card_presentation_service: Node = null
@@ -24,14 +25,13 @@ func compose_table_source(source: Dictionary) -> Dictionary:
 	table_source["card_track"] = _array(surfaces.get("card_track", []))
 	table_source["card_resolution_track"] = _dictionary(surfaces.get("card_resolution_track", {}))
 	var player_board := _dictionary(table_source.get("player_board", {}))
-	player_board["hand_cards"] = _array(surfaces.get("hand_cards", []))
 	var viewer_surfaces := _compose_viewer_surfaces(_dictionary(source.get("viewer_surfaces", {})))
 	if not viewer_surfaces.is_empty():
 		table_source["active_forced_decision"] = _dictionary(viewer_surfaces.get("active_forced_decision", {}))
 		player_board["bid_board"] = _dictionary(viewer_surfaces.get("public_bid", {}))
 		table_source["optional_route_presentation"] = _dictionary(viewer_surfaces.get("optional_route_presentation", {}))
 	table_source["player_board"] = player_board
-	table_source["right_inspector"] = _dictionary(surfaces.get("right_inspector", {}))
+	table_source["contextual_detail"] = _dictionary(surfaces.get("contextual_detail", {}))
 	return table_source
 
 
@@ -46,46 +46,13 @@ func compose_card_surfaces(source: Dictionary) -> Dictionary:
 	var hand_cards := _compose_hand_cards(_array(source.get("hand_cards", [])))
 	var track_snapshot := _compose_track(_dictionary(source.get("track", {})))
 	var card_track := _array(track_snapshot.get("entries", []))
-	var right_inspector := _compose_right_inspector(source, hand_cards, card_track)
+	var contextual_detail := _compose_contextual_detail(source, hand_cards, card_track)
 	return {
 		"hand_cards": hand_cards,
 		"card_track": card_track,
 		"card_resolution_track": _dictionary(track_snapshot.get("resolution_track", {})),
-		"right_inspector": right_inspector,
+		"contextual_detail": contextual_detail,
 	}
-
-
-func compose_resolution_overlay_badges(source: Dictionary) -> Array:
-	var entry := _dictionary(source.get("entry", {}))
-	if entry.is_empty():
-		return []
-	var badge_texts: Array = []
-	if bool(entry.get("is_viewer_card", false)):
-		badge_texts.append("我的展示牌")
-	else:
-		badge_texts.append("匿名公开动作")
-	var requirement_text := str(source.get("requirement_text", ""))
-	if requirement_text != "":
-		badge_texts.append("出牌条件｜%s" % _short_text(requirement_text.replace("打出条件：", "").replace("条件：", ""), 22))
-	var order_clue := str(source.get("order_clue", ""))
-	if order_clue != "":
-		badge_texts.append("结算顺序｜%s" % _short_text(order_clue, 20))
-	var current_queue_count := maxi(0, int(source.get("current_queue_count", 0)))
-	var next_queue_count := maxi(0, int(source.get("next_queue_count", 0)))
-	if current_queue_count > 0:
-		badge_texts.append("锁定候补%d" % current_queue_count)
-	if next_queue_count > 0:
-		badge_texts.append("下批等待%d" % next_queue_count)
-	var result: Array = []
-	for text_variant in badge_texts:
-		var badge_text := str(text_variant)
-		var text_color := _resolution_badge_color(badge_text)
-		result.append({
-			"text": badge_text,
-			"text_color": text_color,
-			"background_color": Color("#020617").lerp(text_color, 0.24),
-		})
-	return result
 
 
 func debug_snapshot() -> Dictionary:
@@ -97,8 +64,8 @@ func debug_snapshot() -> Dictionary:
 		"owns_table_snapshot_normalization": true,
 		"owns_hand_card_viewmodels": true,
 		"owns_public_track_viewmodels": true,
-		"owns_right_inspector_assembly": true,
-		"owns_resolution_overlay_badges": true,
+		"owns_contextual_detail_assembly": true,
+		"owns_typed_resolution_overlay_projection": true,
 		"owns_viewer_surface_projection": true,
 		"viewer_surface_owner_reads_runtime_nodes": false,
 		"uses_existing_table_snapshot": true,
@@ -217,8 +184,139 @@ func _compose_track(source: Dictionary) -> Dictionary:
 			"summary": _track_response_text(source),
 		},
 		"entries": entries,
+		"overlay": _compose_resolution_overlay(source, active),
 	}
 	return {"entries": entries, "resolution_track": resolution_track}
+
+
+func _compose_resolution_overlay(source: Dictionary, active_source: Dictionary) -> Dictionary:
+	var mode := str(source.get(
+		"resolution_runtime_mode",
+		CARD_RESOLUTION_OVERLAY_PROJECTION_SCRIPT.MODE_V06_LEGACY
+	))
+	if mode not in CARD_RESOLUTION_OVERLAY_PROJECTION_SCRIPT.MODES:
+		return {}
+	var public_source := _dictionary(source.get("resolution_overlay_source", {}))
+	var source_revision := maxi(0, int(public_source.get("revision", 0)))
+	var overlay := _dictionary(public_source.get("overlay", {}))
+	var visible := bool(overlay.get("visible", false))
+	var phase := str(overlay.get("phase", "idle"))
+	if phase not in CARD_RESOLUTION_OVERLAY_PROJECTION_SCRIPT.PHASE_IDS:
+		phase = "idle"
+	if not visible:
+		phase = "idle"
+	var resolution_id := int(overlay.get("resolution_id", -1)) if visible else -1
+	var presentation := _compose_card(_dictionary(active_source.get("card", {}))) \
+		if visible and not active_source.is_empty() else {}
+	var entry := _dictionary(active_source.get("entry", {}))
+	if resolution_id >= 0 and _resolution_id(entry) != resolution_id:
+		presentation = {}
+		entry = {}
+	var skill := _dictionary(_dictionary(active_source.get("card", {})).get("skill", {}))
+	var title := str(presentation.get("display_name", overlay.get("card_name", "牌桌结算")))
+	if visible and phase in ["planning", "public_bid", "lock"]:
+		title = str({
+			"planning": "共享窗·组织",
+			"public_bid": "共享窗·公开展示",
+			"lock": "共享窗·锁牌",
+		}.get(phase, "共享卡牌窗"))
+	if title.strip_edges().is_empty():
+		title = "牌桌结算"
+	var remaining_ms := maxi(0, int(round(float(overlay.get("remaining_seconds", 0.0)) * 1000.0))) \
+		if visible else 0
+	var counter_visible := visible \
+		and mode == CARD_RESOLUTION_OVERLAY_PROJECTION_SCRIPT.MODE_V06_LEGACY \
+		and phase == "counter"
+	var body_parts: Array[String] = []
+	var effect_text := str(active_source.get("effect_text", presentation.get("quick_effect_full", ""))).strip_edges()
+	if not effect_text.is_empty():
+		body_parts.append("效果：%s" % _short_text(effect_text.replace("\n", " / "), 72))
+	var target_text := str(active_source.get("target_text", "")).strip_edges()
+	if not target_text.is_empty():
+		body_parts.append("目标：%s" % _short_text(target_text, 44))
+	var requirement_text := str(active_source.get("requirement_text", "")).strip_edges()
+	if not requirement_text.is_empty():
+		body_parts.append(_short_text(requirement_text, 64))
+	if body_parts.is_empty() and visible and phase in ["planning", "public_bid", "lock"]:
+		body_parts.append_array(_resolution_group_summary_lines(source))
+	if body_parts.is_empty():
+		body_parts.append("当前公开结算阶段。")
+	var badges: Array = ["V0.6 当前规则"] if visible else []
+	if counter_visible:
+		badges.append("响应窗口")
+	elif visible and phase in ["planning", "public_bid", "lock"]:
+		badges.append("共享卡牌窗")
+		var queue_count := _array(source.get("queue", [])).size()
+		var next_queue_count := _array(source.get("next_queue", [])).size()
+		if queue_count > 0:
+			badges.append("候补%d" % queue_count)
+		if next_queue_count > 0:
+			badges.append("下批%d" % next_queue_count)
+	elif visible:
+		badges.append("匿名公开动作")
+	var accent_variant: Variant = presentation.get("accent", Color("#fb7185"))
+	var accent := accent_variant as Color if accent_variant is Color else Color("#fb7185")
+	return CARD_RESOLUTION_OVERLAY_PROJECTION_SCRIPT.build({
+		"schema_version": CARD_RESOLUTION_OVERLAY_PROJECTION_SCRIPT.SCHEMA_VERSION,
+		"resolution_runtime_mode": mode,
+		"source_revision": source_revision,
+		"visible": visible,
+		"phase_id": phase,
+		"resolution_id": resolution_id,
+		"remaining_milliseconds": remaining_ms,
+		"title": title if visible else "",
+		"status_text": _resolution_overlay_status_text(mode, phase, remaining_ms) if visible else "",
+		"body_text": "\n".join(body_parts) if visible else "",
+		"card_kind": str(skill.get("kind", presentation.get("category_id", ""))) if visible else "",
+		"card_tags": str(skill.get("tag_text", presentation.get("type_line", ""))) if visible else "",
+		"accent_hex": accent.to_html(),
+		"rank": clampi(int(presentation.get("rank", 1)), 1, 4) if visible else 0,
+		"art_stats": str(presentation.get("art_stats", "")) if visible else "",
+		"illustration_key": str(presentation.get("illustration_key", "")) if visible else "",
+		"badge_labels": badges,
+		"counter_response_visible": counter_visible,
+		"gameplay_input_mode": "V06_COUNTER_RESPONSE" if counter_visible else "NONE",
+		"visibility_scope": "public",
+	})
+
+
+func _resolution_group_summary_lines(source: Dictionary) -> Array[String]:
+	var result: Array[String] = []
+	var queue := _array(source.get("queue", []))
+	for index in range(mini(queue.size(), 4)):
+		var queued := _dictionary(queue[index])
+		var entry := _dictionary(queued.get("entry", {}))
+		var presentation := _compose_card(_dictionary(queued.get("card", {})))
+		var label := str(presentation.get("display_name", queued.get("card_label", "公开牌"))).strip_edges()
+		if label.is_empty():
+			label = "公开牌"
+		var group_position := maxi(1, int(entry.get("group_position", index + 1)))
+		var group_size := maxi(1, int(entry.get("group_size", 1)))
+		var group_order := clampi(int(entry.get("group_order", 1)), 1, group_size)
+		var line := "G%d·%d/%d %s" % [group_position, group_order, group_size, _short_text(label, 18)]
+		var requirement := str(queued.get("requirement_text", "")).strip_edges()
+		if not requirement.is_empty():
+			line += "｜%s" % _short_text(requirement.replace("打出条件：", "条件："), 28)
+		result.append(line)
+	if result.is_empty():
+		result.append("等待本组公开牌进入队列。")
+	return result
+
+
+func _resolution_overlay_status_text(mode: String, phase: String, remaining_ms: int) -> String:
+	var seconds := ceili(float(remaining_ms) / 1000.0)
+	var phase_text := str({
+		"planning": "共享窗·组织",
+		"public_bid": "共享窗·公开展示",
+		"lock": "共享窗·锁牌",
+		"counter": "V0.6 响应窗口",
+		"reveal": "公开展示",
+		"resolving": "效果结算",
+		"aftermath": "结算余波",
+	}.get(phase, "牌桌结算"))
+	if mode == CARD_RESOLUTION_OVERLAY_PROJECTION_SCRIPT.MODE_V07_UNINTERRUPTED:
+		phase_text = "无中断批次·%s" % phase_text
+	return "%s｜剩余%d秒" % [phase_text, seconds] if remaining_ms > 0 else phase_text
 
 
 func _compose_track_entry(source: Dictionary, state_text: String, track: Dictionary) -> Dictionary:
@@ -282,23 +380,24 @@ func _compose_track_entry(source: Dictionary, state_text: String, track: Diction
 	}
 
 
-func _compose_right_inspector(source: Dictionary, hand_cards: Array, track_entries: Array) -> Dictionary:
+func _compose_contextual_detail(source: Dictionary, hand_cards: Array, track_entries: Array) -> Dictionary:
+	var viewer_index := int(source.get("viewer_index", -1))
+	var authorization_revision := int(source.get("authorization_revision", 0))
 	var selected_slot := int(source.get("selected_hand_slot", -1))
 	for card_variant in hand_cards:
 		var card := _dictionary(card_variant)
-		if int(card.get("slot", -1)) == selected_slot: return _hand_inspector(card, _array(source.get("logs", [])))
+		if int(card.get("slot", -1)) == selected_slot:
+			return _hand_context(card, int(source.get("source_revision", 0)), viewer_index, authorization_revision)
 	var selected_resolution_id := int(source.get("selected_resolution_id", -1))
 	if selected_resolution_id >= 0:
 		for entry_variant in track_entries:
 			var entry := _dictionary(entry_variant)
-			if int(entry.get("resolution_id", -1)) == selected_resolution_id: return _track_inspector(entry, _array(source.get("logs", [])))
-	return {
-		"title":"右侧详情", "why":str(source.get("fallback_why", "先选择区域或卡牌。")), "district":_dictionary(source.get("district", {})),
-		"requirements":_array(source.get("fallback_requirements", [])), "actions":_array(source.get("fallback_actions", [])), "deep_links":_array(source.get("fallback_deep_links", [])), "logs":_array(source.get("logs", [])),
-	}
+			if int(entry.get("resolution_id", -1)) == selected_resolution_id:
+				return _track_context(entry, int(source.get("source_revision", 0)), viewer_index, authorization_revision)
+	return _region_context(source)
 
 
-func _hand_inspector(card: Dictionary, logs: Array) -> Dictionary:
+func _hand_context(card: Dictionary, source_revision: int, viewer_index: int, authorization_revision: int) -> Dictionary:
 	var chips := []
 	for key in ["rank", "type", "cost", "target"]:
 		var value := str(card.get(key, ""))
@@ -308,17 +407,132 @@ func _hand_inspector(card: Dictionary, logs: Array) -> Dictionary:
 	if summary_text == "": summary_text = _short_text(effect_text, 56) if effect_text.strip_edges() != "" else "看费用、目标和当前选区条件。"
 	var why_text := str(card.get("why", effect_text))
 	if why_text.strip_edges() == "": why_text = "先看费用、目标和当前选区条件，再决定是否打出。"
-	return {"title":"卡牌详情", "why":why_text, "district":{"id":str(card.get("id", "")), "title":str(card.get("name", "卡牌")), "summary":summary_text, "detail":summary_text, "full_detail":effect_text, "chips":chips}, "requirements":_array(card.get("requirements", [])), "actions":_array(card.get("actions", [])), "deep_links":[{"id":"detail_cards", "label":"卡牌详情"}, {"id":"detail_region", "label":"区域详情"}], "logs":logs}
+	return _context_projection(
+		maxi(0, source_revision),
+		viewer_index,
+		authorization_revision,
+		"viewer_private",
+		"hand_card",
+		str(card.get("id", "hand-card")),
+		str(card.get("name", "卡牌详情")),
+		why_text,
+		effect_text if not effect_text.is_empty() else summary_text,
+		chips,
+		[],
+		[{"id":"codex_cards", "label":"打开卡牌图鉴", "tooltip":"查看公开卡牌说明。"}]
+	)
 
 
-func _track_inspector(entry: Dictionary, logs: Array) -> Dictionary:
+func _track_context(entry: Dictionary, source_revision: int, viewer_index: int, authorization_revision: int) -> Dictionary:
 	var chips := [{"text":"槽 %s" % str(entry.get("slot", "--"))}, {"text":str(entry.get("state", "等待"))}, {"text":"归属:%s" % str(entry.get("owner_hint", "匿名"))}]
 	for badge_variant in _array(entry.get("badges", [])):
 		var badge_text := str(badge_variant).strip_edges()
 		if badge_text != "": chips.append({"text":badge_text})
 		if chips.size() >= 6: break
 	var tooltip := str(entry.get("tooltip", ""))
-	return {"title":str(entry.get("title", "牌轨详情")), "why":str(entry.get("why", tooltip)), "district":{"id":str(entry.get("id", "")), "title":str(entry.get("label", "公共牌槽")), "summary":str(entry.get("summary", tooltip)), "detail":str(entry.get("detail", tooltip)), "full_detail":str(entry.get("full_detail", tooltip)), "chips":chips}, "requirements":_array(entry.get("requirements", [])), "actions":_array(entry.get("actions", [])), "deep_links":_array(entry.get("deep_links", [])), "logs":logs}
+	return _context_projection(
+		maxi(0, source_revision),
+		viewer_index,
+		authorization_revision,
+		"public",
+		"public_track",
+		str(entry.get("id", "track.%d" % int(entry.get("resolution_id", -1)))),
+		str(entry.get("title", "牌轨详情")),
+		str(entry.get("label", "公共牌槽")),
+		str(entry.get("full_detail", tooltip)),
+		chips + _array(entry.get("requirements", [])),
+		_array(entry.get("actions", [])),
+		_array(entry.get("deep_links", []))
+	)
+
+
+func _region_context(source: Dictionary) -> Dictionary:
+	var district := _dictionary(source.get("district", {}))
+	var context_id := str(district.get("id", district.get("region_id", "region.none"))).strip_edges()
+	if context_id.is_empty():
+		context_id = "region.none"
+	var body := str(district.get("full_detail", district.get("detail", district.get("summary", source.get("fallback_why", "先选择区域。")))))
+	return _context_projection(
+		maxi(0, int(source.get("source_revision", 0))),
+		int(source.get("viewer_index", -1)),
+		int(source.get("authorization_revision", 0)),
+		"viewer_private",
+		"region",
+		context_id,
+		str(district.get("title", "区域详情")),
+		str(source.get("fallback_why", "选择区域后查看牌架与公开信息。")),
+		body,
+		_array(district.get("chips", [])) + _array(source.get("fallback_requirements", [])),
+		_array(source.get("fallback_actions", [])),
+		_array(source.get("fallback_deep_links", []))
+	)
+
+
+func _context_projection(
+	source_revision: int,
+	viewer_index: int,
+	authorization_revision: int,
+	visibility_scope: String,
+	context_kind: String,
+	context_id: String,
+	title: String,
+	subtitle: String,
+	body: String,
+	chips_source: Array,
+	actions_source: Array,
+	deep_links_source: Array
+) -> Dictionary:
+	return {
+		"schema_version": 1,
+		"source_revision": source_revision,
+		"viewer_index": viewer_index,
+		"authorization_revision": authorization_revision,
+		"visibility_scope": visibility_scope,
+		"context_kind": context_kind,
+		"context_id": context_id,
+		"title": title,
+		"subtitle": subtitle,
+		"body": body,
+		"chips": _context_chips(chips_source),
+		"actions": _context_actions(actions_source),
+		"deep_links": _context_actions(deep_links_source),
+	}
+
+
+func _context_chips(entries: Array) -> Array:
+	var result: Array = []
+	for entry_variant in entries:
+		var entry := _dictionary(entry_variant)
+		var text := str(entry.get("text", entry.get("label", ""))).strip_edges()
+		if text.is_empty():
+			continue
+		result.append({"text": _short_text(text, 48), "tooltip": _short_text(str(entry.get("tooltip", text)), 180)})
+		if result.size() >= 6:
+			break
+	return result
+
+
+func _context_actions(entries: Array) -> Array:
+	var result: Array = []
+	for entry_variant in entries:
+		var entry := _dictionary(entry_variant)
+		var action_id := str(entry.get("id", entry.get("action_id", ""))).strip_edges()
+		var label := str(entry.get("label", entry.get("text", action_id))).strip_edges()
+		if action_id.is_empty() or label.is_empty():
+			continue
+		var intent_data := _dictionary(entry.get("application_intent", {}))
+		if not intent_data.is_empty() and IntelApplicationIntent.from_dictionary(intent_data) == null:
+			intent_data = {}
+		result.append({
+			"id": _short_text(action_id, 120),
+			"label": _short_text(label, 80),
+			"disabled": bool(entry.get("disabled", false)),
+			"tooltip": _short_text(str(entry.get("tooltip", "")), 240),
+			"application_intent": intent_data,
+		})
+		if result.size() >= 6:
+			break
+	return result
 
 
 func _visible_badges(entry: Dictionary, state_text: String, selected: bool) -> Array:
@@ -331,18 +545,6 @@ func _visible_badges(entry: Dictionary, state_text: String, selected: bool) -> A
 	elif state_text.begins_with("下批"): badges.append("下批")
 	if state_text.begins_with("已结算") and str(entry.get("aftermath_clue", "")) != "": badges.append("余波")
 	return badges.slice(0, 2)
-
-
-func _resolution_badge_color(text: String) -> Color:
-	if text.contains("我的"): return Color("#a7f3d0")
-	if text.contains("余波线索"): return Color("#f0abfc")
-	if text.contains("结算顺序"): return Color("#fde68a")
-	if text.contains("合约"): return Color("#fbbf24")
-	if text.contains("出牌条件"): return Color("#bbf7d0")
-	if text.contains("匿名公开动作"): return Color("#94a3b8")
-	if text.contains("下一张") or text.contains("队首") or text.contains("候补") or text.contains("下批"): return Color("#bae6fd")
-	if text.contains("展示"): return Color("#fda4af")
-	return Color("#c4b5fd")
 
 
 func _track_tooltip(source: Dictionary, presentation: Dictionary, state_text: String, requirement_text: String, target_text: String, badges: Array) -> String:

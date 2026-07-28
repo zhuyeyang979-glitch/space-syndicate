@@ -12,6 +12,9 @@ const RUNTIME_BALANCE_MODEL_SCRIPT := preload("res://scripts/balance/runtime_bal
 const COMMODITY_SUSHI_TRACK_SERVICE_SCRIPT := preload("res://scripts/runtime/commodity_sushi_track_runtime_service.gd")
 const CARD_TARGET_CHOICE_RESPONSE_SINK_SCRIPT := preload("res://scripts/runtime/card_target_choice_response_sink.gd")
 const MONSTER_WAGER_RESPONSE_SINK_SCRIPT := preload("res://scripts/runtime/monster_wager_response_sink.gd")
+const DISTRICT_SUPPLY_DISCARD_RESPONSE_SINK_SCRIPT := preload(
+	"res://scripts/runtime/district_supply_discard_response_sink.gd"
+)
 const AI_CARD_INTERACTION_OBSERVATION_CAPABILITY := preload(
 	"res://scripts/runtime/ai_card_interaction_observation_capability.gd"
 )
@@ -5145,14 +5148,6 @@ func compose_game_card_surfaces(source: Dictionary) -> Dictionary:
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
-func compose_game_resolution_overlay_badges(source: Dictionary) -> Array:
-	var service := _table_viewmodel_node()
-	if service == null or not service.has_method("compose_resolution_overlay_badges"):
-		return []
-	var value: Variant = service.call("compose_resolution_overlay_badges", source)
-	return (value as Array).duplicate(true) if value is Array else []
-
-
 func compose_game_table_snapshot(source: Dictionary) -> Dictionary:
 	var service := _table_viewmodel_node()
 	if service == null or not service.has_method("compose_table"):
@@ -5506,7 +5501,9 @@ func _wire_table_presentation_source_target() -> void:
 		_card_presentation_node() as CardPresentationRuntimeService,
 		_district_supply_snapshot_node() as DistrictSupplySnapshotService,
 		_card_inventory_node() as CardInventoryRuntimeService,
-		_session_node() as GameSessionRuntimeController
+		_session_node() as GameSessionRuntimeController,
+		get_node_or_null("TablePlayerActionApplicationFlowController") \
+			as TablePlayerActionApplicationFlowController
 	)
 	viewmodel_query.configure(
 		_table_presentation_query_ports_node(),
@@ -5529,11 +5526,21 @@ func _wire_table_presentation_source_target() -> void:
 		_card_resolution_queue_node() as CardResolutionQueueRuntimeService,
 		_card_resolution_history_runtime_service_node(),
 		_card_resolution_presentation_port_node(),
-		_player_seat_public_source_node() as PlayerSeatPublicSourceService,
 		_commodity_sushi_track_runtime_service_node(),
 		district_supply_query,
 		_v06_runtime_card_catalog() as CardRuntimeCatalogV06Resource
 	)
+	var player_card_dock_query := _player_card_dock_viewer_query_port_node()
+	var player_roster_query := _player_roster_viewer_query_port_node()
+	if player_card_dock_query == null or player_roster_query == null:
+		push_error("GameRuntimeCoordinator requires PlayerCardDock and PlayerRoster viewer query ports.")
+		return
+	player_card_dock_query.configure(
+		_table_presentation_query_ports_node(),
+		viewmodel_query,
+		_card_presentation_node() as CardPresentationRuntimeService
+	)
+	player_roster_query.configure(_table_presentation_query_ports_node())
 	source.configure(
 		_table_presentation_query_ports_node(),
 		viewmodel_query,
@@ -5541,7 +5548,9 @@ func _wire_table_presentation_source_target() -> void:
 		_visual_cue_runtime_owner_node() as VisualCueRuntimeOwner,
 		_solar_availability_runtime_service_node() as SolarAvailabilityRuntimeService,
 		_world_effective_clock_runtime_controller_node() as WorldEffectiveClockRuntimeController,
-		_weather_presentation_runtime_service_node() as WeatherPresentationRuntimeService
+		_weather_presentation_runtime_service_node() as WeatherPresentationRuntimeService,
+		player_card_dock_query,
+		player_roster_query
 	)
 	port.configure(source, game_screen, game_screen.presentation_planet_target(), developer_target, _table_presentation_refresh_scheduler_node())
 	_wire_domain_presentation_ports(port, _table_presentation_query_ports_node().public_log_port)
@@ -5572,14 +5581,19 @@ func _wire_forced_decision_response_paths() -> void:
 	var response_port := get_node_or_null("ForcedDecisionResponsePort") as ForcedDecisionResponsePort
 	var target_sink := card_target_choice_response_sink()
 	var wager_sink := get_node_or_null("MonsterWagerResponseSink") as MONSTER_WAGER_RESPONSE_SINK_SCRIPT
+	var discard_sink := get_node_or_null("DistrictSupplyDiscardResponseSink") \
+		as DISTRICT_SUPPLY_DISCARD_RESPONSE_SINK_SCRIPT
 	var game_screen := get_node_or_null(presentation_game_screen_path) as SpaceSyndicateGameScreen \
 			if not presentation_game_screen_path.is_empty() else null
-	if response_port == null or target_sink == null or wager_sink == null:
+	if response_port == null or target_sink == null or wager_sink == null or discard_sink == null \
+			or not discard_sink.configure(district_supply_action_port()):
 		return
 	if not response_port.response_authorized.is_connected(target_sink.consume_authorized_response):
 		response_port.response_authorized.connect(target_sink.consume_authorized_response)
 	if not response_port.response_authorized.is_connected(wager_sink.consume_authorized_response):
 		response_port.response_authorized.connect(wager_sink.consume_authorized_response)
+	if not response_port.response_authorized.is_connected(discard_sink.consume_authorized_response):
+		response_port.response_authorized.connect(discard_sink.consume_authorized_response)
 	if not response_port.receipt_ready.is_connected(_on_forced_decision_response_receipt_ready):
 		response_port.receipt_ready.connect(_on_forced_decision_response_receipt_ready)
 	if not target_sink.presentation_refresh_requested.is_connected(_on_forced_decision_domain_refresh_requested):
@@ -5595,13 +5609,15 @@ func _wire_forced_decision_response_paths() -> void:
 		target_sink.receipt_ready.connect(game_screen.apply_card_target_choice_response_receipt)
 	if not wager_sink.receipt_ready.is_connected(game_screen.apply_monster_wager_response_receipt):
 		wager_sink.receipt_ready.connect(game_screen.apply_monster_wager_response_receipt)
+	if not discard_sink.receipt_ready.is_connected(game_screen.apply_district_supply_discard_receipt):
+		discard_sink.receipt_ready.connect(game_screen.apply_district_supply_discard_receipt)
 	if not response_port.receipt_ready.is_connected(game_screen.apply_forced_decision_response_receipt):
 		response_port.receipt_ready.connect(game_screen.apply_forced_decision_response_receipt)
 
 
 func _on_forced_decision_response_receipt_ready(receipt: ForcedDecisionResponseReceipt) -> void:
 	if receipt == null or receipt.accepted \
-			or str(receipt.decision_kind) not in [&"monster_wager", CardTargetChoiceRuntimeController.KIND_MONSTER, CardTargetChoiceRuntimeController.KIND_PLAYER]:
+			or str(receipt.decision_kind) not in [&"monster_wager", &"discard_purchase", CardTargetChoiceRuntimeController.KIND_MONSTER, CardTargetChoiceRuntimeController.KIND_PLAYER]:
 		return
 	synchronize_forced_decisions()
 	var refresh_port := _table_presentation_refresh_port_node()
@@ -5629,8 +5645,6 @@ func _wire_district_supply_action_port() -> void:
 		return
 	var port := district_supply_action_port()
 	var query := district_supply_runtime_query_port()
-	var game_screen := get_node_or_null(presentation_game_screen_path) as SpaceSyndicateGameScreen \
-		if not presentation_game_screen_path.is_empty() else null
 	if port == null or query == null:
 		return
 	var ai_query_capability := DistrictSupplyAiQueryCapability.new()
@@ -5645,13 +5659,6 @@ func _wire_district_supply_action_port() -> void:
 	var infrastructure_bridge := _region_infrastructure_world_bridge_node() as RegionInfrastructureWorldBridge
 	if infrastructure_bridge != null:
 		infrastructure_bridge.set_district_supply_runtime_query_port(query)
-	if game_screen == null:
-		return
-	game_screen.bind_gameplay_actor_authorization_context(gameplay_actor_authorization_context(&"game_screen"))
-	if not game_screen.district_supply_action_intent_requested.is_connected(port.submit_intent):
-		game_screen.district_supply_action_intent_requested.connect(port.submit_intent)
-	if not port.receipt_ready.is_connected(game_screen.apply_district_supply_action_receipt):
-		port.receipt_ready.connect(game_screen.apply_district_supply_action_receipt)
 	if not port.presentation_refresh_requested.is_connected(_on_district_supply_presentation_refresh_requested):
 		port.presentation_refresh_requested.connect(_on_district_supply_presentation_refresh_requested)
 
@@ -5773,6 +5780,14 @@ func _table_presentation_viewmodel_query_node() -> TablePresentationViewModelQue
 
 func _district_supply_viewer_query_port_node() -> DistrictSupplyViewerQueryPort:
 	return get_node_or_null("DistrictSupplyViewerQueryPort") as DistrictSupplyViewerQueryPort
+
+
+func _player_card_dock_viewer_query_port_node() -> PlayerCardDockViewerQueryPort:
+	return get_node_or_null("PlayerCardDockViewerQueryPort") as PlayerCardDockViewerQueryPort
+
+
+func _player_roster_viewer_query_port_node() -> PlayerRosterViewerQueryPort:
+	return get_node_or_null("PlayerRosterViewerQueryPort") as PlayerRosterViewerQueryPort
 
 
 func _table_presentation_refresh_port_node() -> TablePresentationRefreshPort:
@@ -6267,10 +6282,6 @@ func _card_presentation_node() -> Node:
 
 func _table_viewmodel_node() -> Node:
 	return get_node_or_null("GameTableViewModelRuntimeService")
-
-
-func _player_seat_public_source_node() -> Node:
-	return get_node_or_null("PlayerSeatPublicSourceService")
 
 
 func _ai_runtime_debug_snapshot() -> Dictionary:

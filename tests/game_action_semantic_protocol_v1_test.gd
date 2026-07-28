@@ -455,7 +455,7 @@ func _test_global_three_layer_registry_contract() -> void:
 		if bool(domain.get("core_semantics_ready", false)):
 			core_ready_count += 1
 	var summary: Dictionary = registry.get("summary", {}) if registry.get("summary", {}) is Dictionary else {}
-	_expect(domains.size() == 24 and int(summary.get("registered_domain_count", -1)) == domains.size(), "registry inventories exactly 24 required semantic domains")
+	_expect(domains.size() == 31 and int(summary.get("registered_domain_count", -1)) == domains.size(), "registry inventories exactly 31 required semantic domains")
 	_expect(fields_complete and domain_ids.size() == domains.size(), "every semantic domain has the closed required field set and a unique identity")
 	_expect(statuses_valid, "every semantic status uses the one approved vocabulary")
 	_expect(ready_flags_consistent, "THREE_LAYER_READY is claimed only when core, AI, and player readiness are all true")

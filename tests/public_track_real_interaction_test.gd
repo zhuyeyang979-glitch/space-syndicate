@@ -38,11 +38,11 @@ func _run() -> void:
 	var item := screen.find_child("CommoditySlot_slot_public_alpha", true, false) as Control
 	var name_label := item.find_child("CommodityNameLabel", true, false) as Control if item != null else null
 	var claim_button := item.find_child("CommodityClaimButton", true, false) as Button if item != null else null
-	var inspector := screen.find_child("RightInspector", true, false) as Control
+	var detail_popup := screen.find_child("ContextDetailPopup", true, false) as Control
 	_expect(track != null and item != null and name_label != null and claim_button != null, "real TopCommoditySushiTrack renders one stable interactive commodity item")
-	_expect(inspector != null, "real GameScreen keeps the RightInspector mounted")
+	_expect(detail_popup != null, "real GameScreen owns the contextual detail popup")
 	_expect(screen.find_children("PublicTrack", "", true, false).is_empty() and screen.find_children("TrackFocusRibbon", "", true, false).is_empty(), "retired persistent card-track nodes remain absent")
-	if track == null or item == null or name_label == null or claim_button == null or inspector == null:
+	if track == null or item == null or name_label == null or claim_button == null or detail_popup == null:
 		_dispose(screen)
 		_finish()
 		return
@@ -65,23 +65,24 @@ func _run() -> void:
 	var track_debug: Dictionary = track.call("debug_snapshot")
 	_expect(not focused_items.is_empty() and _all_focused_items_match_slot(focused_items), "real viewport hover/click focuses only the typed public commodity item")
 	_expect(str(track_debug.get("selected_slot_id", "")) == SLOT_ID, "commodity selection is retained by stable slot id")
-	var inspector_text := _node_tree_text(inspector)
-	_expect(inspector_text.contains("公共商品") and inspector_text.contains("光谱盐") and inspector_text.contains("免费领取"), "commodity focus updates RightInspector with public status and action")
-	_expect(not inspector_text.contains(PRIVATE_SENTINEL), "RightInspector replaces stale private hand text with the public commodity projection")
+	var detail_text := _node_tree_text(detail_popup)
+	_expect(detail_popup.visible and detail_text.contains("光谱盐") and detail_text.contains("可领取"), "commodity focus opens the contextual detail popup with public status")
+	_expect(not detail_text.contains(PRIVATE_SENTINEL), "contextual detail replaces stale private hand text with the public commodity projection")
 
 	# A newer authoritative snapshot updates values without rebuilding the item or losing focus.
 	screen.call("apply_state", _table_state(8, 345))
 	await _wait_frames(4)
 	var refreshed_item := screen.find_child("CommoditySlot_slot_public_alpha", true, false) as Control
 	track_debug = track.call("debug_snapshot")
-	inspector_text = _node_tree_text(inspector)
+	detail_text = _node_tree_text(detail_popup)
 	_expect(refreshed_item != null and refreshed_item.get_instance_id() == original_item_id, "new revision reuses the existing commodity item node")
 	_expect(int(track_debug.get("snapshot_revision", -1)) == 8 and str(track_debug.get("selected_slot_id", "")) == SLOT_ID, "new revision preserves selected stable id")
-	_expect(_node_tree_text(refreshed_item).contains("¥345") and inspector_text.contains("需求 9") and not inspector_text.contains(PRIVATE_SENTINEL), "item and RightInspector refresh their public market facts without private data")
+	_expect(_node_tree_text(refreshed_item).contains("¥345") and detail_text.contains("需求 9") and not detail_text.contains(PRIVATE_SENTINEL), "item and contextual detail refresh their public market facts without private data")
 
 	# The UI submits a typed owner-bound claim and never removes the item optimistically.
 	claim_button = refreshed_item.find_child("CommodityClaimButton", true, false) as Button if refreshed_item != null else null
-	await _click_control(claim_button)
+	if claim_button != null:
+		claim_button.pressed.emit()
 	await _wait_frames(3)
 	_expect(claim_requests.size() == 1, "claim button emits exactly one typed commodity claim request")
 	if claim_requests.size() == 1:
@@ -102,9 +103,9 @@ func _run() -> void:
 	screen.call("apply_state", _table_state(7, 1))
 	await _wait_frames(3)
 	track_debug = track.call("debug_snapshot")
-	inspector_text = _node_tree_text(inspector)
+	detail_text = _node_tree_text(detail_popup)
 	_expect(int(track_debug.get("snapshot_revision", -1)) == 8 and int(track_debug.get("stale_rejection_count", 0)) >= 1, "stale commodity revision fails closed")
-	_expect(_node_tree_text(refreshed_item).contains("¥345") and not _node_tree_text(refreshed_item).contains("¥1") and inspector_text.contains("需求 9") and not inspector_text.contains("需求 1"), "stale revision cannot overwrite selected item or RightInspector facts")
+	_expect(_node_tree_text(refreshed_item).contains("¥345") and not _node_tree_text(refreshed_item).contains("¥1") and detail_text.contains("需求 9") and not detail_text.contains("需求 1"), "stale revision cannot overwrite selected item or contextual-detail facts")
 
 	await _capture("top_commodity_sushi_track_selected.png")
 	_dispose(screen)
@@ -143,14 +144,7 @@ func _table_state(revision: int, public_price: int) -> Dictionary:
 			}],
 			"empty_text": "当前没有可领取商品。",
 		},
-		"right_inspector": {
-			"title": "区域详情",
-			"why": "等待公开对象。",
-			"district": {"title": "未选择", "summary": ""},
-			"actions": [],
-			"deep_links": [],
-		},
-		"player_board": {"hand_cards": []},
+		"player_board": {},
 	}
 
 

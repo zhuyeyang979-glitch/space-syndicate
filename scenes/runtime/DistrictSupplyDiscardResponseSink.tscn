@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/district_supply_discard_response_sink.gd" id="1"]
+
+[node name="DistrictSupplyDiscardResponseSink" type="Node"]
+script = ExtResource("1")
+editor_description = "Typed discard-purchase response adapter. It consumes an already-authorized forced-decision response and delegates the single mutation to DistrictSupplyActionPort."

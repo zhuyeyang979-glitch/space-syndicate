@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/ui/overlay_layer.gd" id="2_overlay"]
@@ -6,8 +6,6 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/TemporaryChoiceDecisionPanel.tscn" id="5_choice"]
 [ext_resource type="PackedScene" path="res://scenes/ui/FullscreenMapOverlay.tscn" id="6_fullscreen_map"]
 [ext_resource type="PackedScene" path="res://scenes/ui/CardResolutionBanner.tscn" id="7_resolution_banner"]
-[ext_resource type="PackedScene" path="res://scenes/ui/BottomCountdownBar.tscn" id="8_countdown"]
-[ext_resource type="PackedScene" path="res://scenes/ui/DistrictSupplyDrawer.tscn" id="9_supply_drawer"]
 [ext_resource type="PackedScene" path="res://scenes/ui/MenuOverlay.tscn" id="10_menu"]
 [ext_resource type="PackedScene" path="res://scenes/ui/BidBoard.tscn" id="11_bid_board"]
 
@@ -257,21 +255,13 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-editor_description = "Scene-owned runtime overlays. main.gd binds these instances and only creates compatibility fallbacks when one is missing."
+editor_description = "Scene-owned transient runtime overlays composed by GameRuntimeCoordinator."
 
 [node name="FullscreenMapOverlay" parent="RuntimeSurfaceLayer" instance=ExtResource("6_fullscreen_map")]
 unique_name_in_owner = true
 visible = false
 
 [node name="CardResolutionTableBannerOverlay" parent="RuntimeSurfaceLayer" instance=ExtResource("7_resolution_banner")]
-unique_name_in_owner = true
-visible = false
-
-[node name="BottomCountdownOverlay" parent="RuntimeSurfaceLayer" instance=ExtResource("8_countdown")]
-unique_name_in_owner = true
-visible = false
-
-[node name="DistrictSupplySideDrawerOverlay" parent="RuntimeSurfaceLayer" instance=ExtResource("9_supply_drawer")]
 unique_name_in_owner = true
 visible = false
 

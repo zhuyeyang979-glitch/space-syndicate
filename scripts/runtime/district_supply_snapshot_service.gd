@@ -2,6 +2,9 @@
 extends Node
 class_name DistrictSupplySnapshotService
 
+const OFFER := preload("res://scripts/semantic/game_action_offer_v1.gd")
+const INTENT := preload("res://scripts/semantic/game_action_intent_v1.gd")
+
 const REQUIRED_SOURCE_FIELDS := [
 	"district_index",
 	"district_name",
@@ -23,6 +26,7 @@ const VIEWER_PRIVATE_REQUIRED_FIELDS := [
 	"hand_limit",
 	"can_buy",
 	"purchase_window",
+	"close_offer",
 ]
 
 const VIEWER_PRIVATE_SOURCE_KEYS := [
@@ -163,6 +167,7 @@ func compose(source: Dictionary) -> Dictionary:
 	}
 	if viewer_private:
 		output["purchase_window"] = _purchase_window_snapshot(source.get("purchase_window", {}))
+		output["close_offer"] = OFFER.detached_copy(source.get("close_offer", {}))
 	_last_output_card_count = cards.size()
 	_last_pure_data_checked = _is_data_only(output)
 	return output if _last_pure_data_checked else _safe_snapshot()
@@ -182,8 +187,11 @@ func validate_source(source: Dictionary) -> Dictionary:
 	var private_paths: Array = []
 	_collect_viewer_private_paths(source, "source", private_paths)
 	var public_purchase_state_violations: Array = []
+	var action_offer_violations: Array = []
 	if visibility_scope == "public":
 		_collect_public_purchase_state_violations(source, public_purchase_state_violations)
+	else:
+		_collect_action_offer_violations(source, action_offer_violations)
 	var viewer_relation_valid := false
 	if viewer_private:
 		for field_variant in VIEWER_PRIVATE_REQUIRED_FIELDS:
@@ -200,7 +208,8 @@ func validate_source(source: Dictionary) -> Dictionary:
 			and public_purchase_state_violations.is_empty()
 	var pure_data := _is_data_only(source)
 	return {
-		"valid": pure_data and scope_valid and viewer_relation_valid and missing_fields.is_empty() and forbidden_paths.is_empty(),
+		"valid": pure_data and scope_valid and viewer_relation_valid and missing_fields.is_empty() \
+			and forbidden_paths.is_empty() and action_offer_violations.is_empty(),
 		"pure_data": pure_data,
 		"visibility_scope": visibility_scope,
 		"scope_valid": scope_valid,
@@ -209,6 +218,7 @@ func validate_source(source: Dictionary) -> Dictionary:
 		"forbidden_paths": forbidden_paths,
 		"private_paths": private_paths,
 		"public_purchase_state_violations": public_purchase_state_violations,
+		"action_offer_violations": action_offer_violations,
 		"card_count": (source.get("cards", []) as Array).size() if source.get("cards", []) is Array else 0,
 	}
 
@@ -408,10 +418,14 @@ func _market_card_snapshot(card: Dictionary, source: Dictionary) -> Dictionary:
 		"facts_tooltip": facts,
 		"state_text": _short_text(str(state.get("label", "仅浏览")), 12),
 		"state_tooltip": str(state.get("detail", "")),
+		"purchase_state": _presentation_purchase_state(state, source),
 		"accent": accent,
 		"theme_color": theme_color,
 		"tooltip": "%s\n%s" % [str(card.get("detail_tooltip", "")), str(state.get("detail", ""))],
 	}
+	if str(source.get("visibility_scope", "public")) == "viewer_private":
+		_copy_offer_if_valid(result, card, "quote_offer", INTENT.ACTION_DISTRICT_SUPPLY_QUOTE)
+		_copy_offer_if_valid(result, card, "purchase_offer", INTENT.ACTION_DISTRICT_SUPPLY_PURCHASE)
 	result["preview"] = _preview_snapshot(card, source)
 	return result
 
@@ -428,7 +442,7 @@ func _preview_snapshot(card: Dictionary, source: Dictionary) -> Dictionary:
 	var detail := str(state.get("detail", ""))
 	var can_request_quote := _can_request_quote(state, source)
 	var primary_action_id := _primary_action_id(state, can_request_quote)
-	return {
+	var result := {
 		"card_id": str(card.get("card_id", card_name)),
 		"card_name": card_name,
 		"facility_kind": str(card.get("facility_kind", "")),
@@ -451,6 +465,7 @@ func _preview_snapshot(card: Dictionary, source: Dictionary) -> Dictionary:
 		"status_tooltip": detail,
 		"action_reason_code": _safe_action_reason_code(state),
 		"primary_action_id": primary_action_id,
+		"purchase_state": _presentation_purchase_state(state, source),
 		"buy_text": "%s ¥%d" % ["获取报价" if can_request_quote else ("手满限制" if bool(state.get("requires_discard", false)) else "购买"), price],
 		"buy_enabled": not primary_action_id.is_empty(),
 		"buy_tooltip": "查看总是允许；%s" % detail,
@@ -459,6 +474,44 @@ func _preview_snapshot(card: Dictionary, source: Dictionary) -> Dictionary:
 		"theme_color": theme_color,
 		"tooltip": str(card.get("detail_tooltip", "")),
 	}
+	if str(source.get("visibility_scope", "public")) == "viewer_private":
+		_copy_offer_if_valid(result, card, "quote_offer", INTENT.ACTION_DISTRICT_SUPPLY_QUOTE)
+		_copy_offer_if_valid(result, card, "purchase_offer", INTENT.ACTION_DISTRICT_SUPPLY_PURCHASE)
+	return result
+
+
+func _copy_offer_if_valid(target: Dictionary, source: Dictionary, key: String, action_id: String) -> void:
+	var offer: Variant = source.get(key, {})
+	if offer is Dictionary and bool(OFFER.validation_report(offer).get("valid", false)) \
+			and str((offer as Dictionary).get("semantic_action_id", "")) == action_id:
+		target[key] = OFFER.detached_copy(offer)
+
+
+func _collect_action_offer_violations(source: Dictionary, result: Array) -> void:
+	if not _offer_matches(source.get("close_offer", {}), INTENT.ACTION_DISTRICT_SUPPLY_CLOSE):
+		result.append("source.close_offer:invalid")
+	var cards: Array = source.get("cards", []) if source.get("cards", []) is Array else []
+	for index in range(cards.size()):
+		if not (cards[index] is Dictionary):
+			continue
+		var card := cards[index] as Dictionary
+		if not _offer_matches(card.get("quote_offer", {}), INTENT.ACTION_DISTRICT_SUPPLY_QUOTE):
+			result.append("source.cards[%d].quote_offer:invalid" % index)
+		var purchase_offer: Variant = card.get("purchase_offer", {})
+		if purchase_offer is Dictionary and not (purchase_offer as Dictionary).is_empty() \
+				and not _offer_matches(purchase_offer, INTENT.ACTION_DISTRICT_SUPPLY_PURCHASE):
+			result.append("source.cards[%d].purchase_offer:invalid" % index)
+
+
+func _offer_matches(value: Variant, action_id: String) -> bool:
+	if not (value is Dictionary) or not bool(OFFER.validation_report(value).get("valid", false)):
+		return false
+	var offer := value as Dictionary
+	var target_spec: Dictionary = offer.get("public_or_private_target_spec", {}) \
+		if offer.get("public_or_private_target_spec", {}) is Dictionary else {}
+	return str(offer.get("semantic_action_id", "")) == action_id \
+		and str(offer.get("actor_scope", "")) == "authorized_actor" \
+		and str(target_spec.get("visibility_scope_id", "")) == "viewer_private"
 
 
 func _primary_action_id(state: Dictionary, can_request_quote: bool) -> String:
@@ -475,6 +528,22 @@ func _can_request_quote(state: Dictionary, source: Dictionary) -> bool:
 	if str(source.get("availability_kind", "")) != "sunlit":
 		return false
 	return str(state.get("label", "")) in ["选择以报价", "报价已过期"]
+
+
+func _presentation_purchase_state(state: Dictionary, source: Dictionary) -> Dictionary:
+	var interaction_state := "blocked"
+	if _can_request_quote(state, source):
+		interaction_state = "quote"
+	elif bool(state.get("actionable", false)):
+		interaction_state = "purchase"
+	return {
+		"interaction_state": interaction_state,
+		"reason_code": _safe_action_reason_code(state),
+		"actionable": interaction_state == "purchase",
+		"requires_discard": bool(state.get("requires_discard", false)) \
+			if interaction_state == "purchase" else false,
+		"price": maxi(0, int(state.get("price", 0))),
+	}
 
 
 func _micro_chips(card: Dictionary) -> Array:
@@ -572,8 +641,8 @@ func _preview_card_face(card: Dictionary) -> Dictionary:
 		"card_stats": str(card.get("art_stats", "")),
 		"presentation": "inspector_full",
 		"accent": _hex(card.get("theme_color", "#94a3b8ff"), "#94a3b8ff"),
-		"minimum_width": 174.0,
-		"minimum_height": 218.0,
+		"minimum_width": 174,
+		"minimum_height": 218,
 	}
 
 

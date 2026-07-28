@@ -37,11 +37,10 @@ func _run() -> void:
 		var presentation_debug: Dictionary = presentation.call("debug_snapshot")
 		_expect(_is_pure_data(resolution) and str(resolution.get("animation_text", "")) != "" and str(resolution.get("target_text", "")).contains("测试区域"), "resolution cinematic presentation is composed as pure ViewModel data")
 		_expect(bool(presentation_debug.get("owns_resolution_presentation", false)), "card presentation service declares resolution presentation ownership")
-	_expect(table_viewmodel != null and table_viewmodel.has_method("compose_table") and table_viewmodel.has_method("compose_card_surfaces") and table_viewmodel.has_method("compose_resolution_overlay_badges"), "table ViewModel service exposes its public API")
+	_expect(table_viewmodel != null and table_viewmodel.has_method("compose_table") and table_viewmodel.has_method("compose_card_surfaces") and not table_viewmodel.has_method("compose_resolution_overlay_badges"), "table ViewModel service exposes the typed surface API and retires the legacy overlay-badge helper")
 	if table_viewmodel != null:
-		var overlay_badges_variant: Variant = table_viewmodel.call("compose_resolution_overlay_badges", {"entry":{"is_viewer_card":true, "winning_bid":40, "tip_paid":true}, "requirement_text":"条件：区域GDP份额≥10%", "current_queue_count":1})
-		var overlay_badges: Array = overlay_badges_variant if overlay_badges_variant is Array else []
-		_expect(not overlay_badges.is_empty() and _is_pure_data(overlay_badges) and str((overlay_badges[0] as Dictionary).get("text", "")) == "我的展示牌", "resolution-overlay badges are composed as privacy-safe ViewModel data")
+		var table_debug: Dictionary = table_viewmodel.call("debug_snapshot")
+		_expect(bool(table_debug.get("owns_typed_resolution_overlay_projection", false)), "table ViewModel owns the typed resolution-overlay projection")
 	var test_bgm := main.get_node_or_null("RuntimeServices/TableAudioHost/NightPatrolTableBgm") as AudioStreamPlayer
 	if test_bgm != null:
 		test_bgm.stream = null

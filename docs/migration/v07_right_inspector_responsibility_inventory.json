@@ -1,126 +1,128 @@
 {
-  "schema_version": 1,
-  "task_id": "P0_TERMINAL_GATE_CLOSURE_AND_V07_LEGACY_ORBIT_RETIREMENT",
-  "status": "AUDIT_GREEN_PRODUCTION_CUTOVER_NOT_EXECUTED",
+  "schema_version": 2,
+  "task_id": "ALPHA_0_4_PLAYER_VISIBLE_TABLE_SHELL_AND_CARD_DOCK_CUTOVER",
+  "status": "PRODUCTION_CUTOVER_COMPLETE",
   "production_runtime_ruleset": "V0.6",
   "target_development_constitution": "V0.7",
   "pr69_terminal_gate_green": true,
   "pr69_result_sha": "b5d5682072fd9ff02be700ce9d5503d1df996641",
-  "pr69_prerequisite_evidence_mode": "REMOTE_SIBLING_BRANCH_NOT_GIT_ANCESTOR",
-  "pr69_is_lane_b_git_ancestor": false,
+  "pr69_prerequisite_evidence_mode": "INTEGRATED_GIT_ANCESTOR",
+  "pr69_is_lane_b_git_ancestor": true,
   "production_presentation_shell_preflight_allowed": true,
-  "production_presentation_shell_cutover_complete": false,
+  "production_presentation_shell_cutover_complete": true,
   "right_inspector_responsibility_count_before": 10,
   "right_inspector_feature_loss_count": 0,
   "fixed_width_pixels": 292,
-  "game_screen_matching_source_line_count": 48,
-  "game_screen_symbol_occurrence_count": 59,
-  "game_screen_dynamic_call_count": 13,
-  "game_screen_signal_connection_count": 2,
+  "game_screen_matching_source_line_count": 0,
+  "game_screen_symbol_occurrence_count": 0,
+  "game_screen_dynamic_call_count": 0,
+  "game_screen_signal_connection_count": 0,
   "verification": {
-    "inventory_test": "PASS 80/80",
+    "inventory_test": "PRODUCTION_SOURCE_NEGATIVE_GATE",
     "source_metrics_verified": true,
-    "production_fixed_inspector_preserved": true,
+    "production_fixed_inspector_preserved": false,
+    "production_fixed_inspector_retired": true,
     "reference_fixed_inspector_count": 0
   },
   "responsibilities": [
     {
       "id": "table_context_assembly",
-      "current_consumer": "GameTableViewModelRuntimeService -> TableSnapshot.right_inspector -> GameScreen.apply_state -> RightInspector.set_context",
-      "replacement": "typed contextual presentation snapshots routed to their owning surfaces",
-      "typed_api_status": "MISSING_SPLIT_TYPED_TARGETS",
+      "current_consumer": "TableSnapshot.contextual_detail -> GameScreen.apply_state -> ContextDetailPopup.apply_projection",
+      "replacement": "typed ContextualDetailSnapshot routed to the scene-owned ContextDetailPopup",
+      "typed_api_status": "PRODUCTION_CUTOVER_COMPLETE",
       "visibility_scope": "public plus viewer-authorized private card context",
-      "final_disposition": "MIGRATE_BEFORE_DELETE"
+      "final_disposition": "CUTOVER_COMPLETE"
     },
     {
       "id": "region_summary",
-      "current_consumer": "RightInspector/DistrictInfoPanel",
-      "replacement": "RegionSupplyPopup plus district detail drawer",
-      "typed_api_status": "RACK_QUERY_EXISTS_REGION_CONTEXT_TARGET_MISSING",
+      "current_consumer": "DistrictSupplyViewerQueryPort -> DistrictSupplyPresentationEnvelopeV1 -> RegionSupplyPopup.apply_presentation",
+      "replacement": "scene-owned RegionSupplyPopup",
+      "typed_api_status": "PRODUCTION_CUTOVER_COMPLETE",
       "visibility_scope": "public region facts",
-      "final_disposition": "MIGRATE_BEFORE_DELETE"
+      "final_disposition": "CUTOVER_COMPLETE"
     },
     {
       "id": "action_reason_requirements",
-      "current_consumer": "RightInspector/InspectorReasonPanel",
-      "replacement": "CompactCurrentActionSurface or ActionContextChipRow above PlayerCardDock",
-      "typed_api_status": "MISSING_TYPED_ACTION_CONTEXT_TARGET",
+      "current_consumer": "PlayerCardDock projection and CardDockActionFeedback",
+      "replacement": "CardDockActionFeedback plus the compact PlayerBoard action state",
+      "typed_api_status": "PRODUCTION_CUTOVER_COMPLETE",
       "visibility_scope": "viewer-authorized action legality explanation",
-      "final_disposition": "MIGRATE_BEFORE_DELETE"
+      "final_disposition": "CUTOVER_COMPLETE"
     },
     {
       "id": "action_dispatch",
-      "current_consumer": "RightInspector/CurrentActionPanel -> GameScreen action and application-intent signals",
-      "replacement": "existing PlayerBoard ActionDock using the same typed action/application intents",
-      "typed_api_status": "PORT_EXISTS_TARGET_PARITY_NOT_PROVEN",
+      "current_consumer": "PlayerCardDock GameActionOfferV1 and PlayerBoard ActionDock typed action intents",
+      "replacement": "existing TablePlayerActionApplicationFlowController semantic Action Spine",
+      "typed_api_status": "PRODUCTION_CUTOVER_COMPLETE",
       "visibility_scope": "viewer-authorized actions",
-      "final_disposition": "MIGRATE_BEFORE_DELETE"
+      "final_disposition": "CUTOVER_COMPLETE"
     },
     {
       "id": "event_feedback",
-      "current_consumer": "RightInspector/EventLogPanel",
-      "replacement": "non-blocking typed Toast plus expandable public event history",
-      "typed_api_status": "MISSING_TYPED_EVENT_FEEDBACK_TARGET",
+      "current_consumer": "NonBlockingToast plus the existing typed public-history owner",
+      "replacement": "scene-owned NonBlockingToast and public event history",
+      "typed_api_status": "PRODUCTION_CUTOVER_COMPLETE",
       "visibility_scope": "public event lines only",
-      "final_disposition": "MIGRATE_BEFORE_DELETE"
+      "final_disposition": "CUTOVER_COMPLETE"
     },
     {
       "id": "deep_navigation_intel",
-      "current_consumer": "RightInspector/InspectorDeepLinkRow -> navigation and IntelApplicationIntent",
+      "current_consumer": "ContextDetailPopup.application_intent_requested -> existing navigation flow",
       "replacement": "context buttons and top navigation routed through existing typed application intents",
-      "typed_api_status": "INTENT_EXISTS_CONTEXT_TARGET_MISSING",
+      "typed_api_status": "PRODUCTION_CUTOVER_COMPLETE",
       "visibility_scope": "public navigation plus viewer-authorized intel",
-      "final_disposition": "MIGRATE_BEFORE_DELETE"
+      "final_disposition": "CUTOVER_COMPLETE"
     },
     {
       "id": "hand_card_detail",
-      "current_consumer": "HandRack/PlayerBoard -> GameScreen -> RightInspector.show_card",
-      "replacement": "PlayerCardDock hover preview plus contextual detail drawer",
-      "typed_api_status": "PREVIEW_EXISTS_FULL_TYPED_DRAWER_PARITY_MISSING",
+      "current_consumer": "PlayerCardDock typed selection/hover -> ContextDetailPopup",
+      "replacement": "PlayerCardDock hover preview plus contextual detail popup",
+      "typed_api_status": "PRODUCTION_CUTOVER_COMPLETE",
       "visibility_scope": "current viewer private hand only",
-      "final_disposition": "MIGRATE_BEFORE_DELETE"
+      "final_disposition": "CUTOVER_COMPLETE"
     },
     {
       "id": "public_track_detail",
-      "current_consumer": "Public track focus/hover -> GameScreen._track_entry_inspector_context -> RightInspector",
-      "replacement": "transient public-track detail drawer and focus ribbon",
-      "typed_api_status": "SELECTION_INTENT_EXISTS_TYPED_DETAIL_TARGET_MISSING",
+      "current_consumer": "public track focus/hover -> typed contextual detail -> ContextDetailPopup",
+      "replacement": "transient public-track ContextDetailPopup projection",
+      "typed_api_status": "PRODUCTION_CUTOVER_COMPLETE",
       "visibility_scope": "sanitized public track facts",
-      "final_disposition": "MIGRATE_BEFORE_DELETE"
+      "final_disposition": "CUTOVER_COMPLETE"
     },
     {
       "id": "public_commodity_detail_claim",
-      "current_consumer": "TopCommoditySushiTrack -> GameScreen -> RightInspector.show_public_commodity",
-      "replacement": "commodity contextual detail surface beside PlayerCardDock",
-      "typed_api_status": "CLAIM_REQUEST_EXISTS_TYPED_DETAIL_TARGET_MISSING",
+      "current_consumer": "TopCommoditySushiTrack -> typed public commodity context -> ContextDetailPopup",
+      "replacement": "commodity ContextDetailPopup beside PlayerCardDock",
+      "typed_api_status": "PRODUCTION_CUTOVER_COMPLETE",
       "visibility_scope": "public commodity facts and viewer claim result",
-      "final_disposition": "MIGRATE_BEFORE_DELETE"
+      "final_disposition": "CUTOVER_COMPLETE"
     },
     {
       "id": "public_player_inspection",
-      "current_consumer": "PlanetBoard/PlayerBoard/TopBar -> GameScreen -> RightInspector.show_public_player",
-      "replacement": "single-side PublicPlayerRoster -> typed PlayerInspectionPopup",
-      "typed_api_status": "V07_REFERENCE_READY_PRODUCTION_TYPED_ROSTER_AND_POPUP_MISSING",
+      "current_consumer": "PlayerRoster typed inspection intent/receipt -> PlayerInspectionPopup",
+      "replacement": "single-side PlayerRoster plus typed PlayerInspectionPopup",
+      "typed_api_status": "PRODUCTION_CUTOVER_COMPLETE",
       "visibility_scope": "public player facts; rival cash, hand and plans forbidden",
-      "final_disposition": "MIGRATE_BEFORE_DELETE"
+      "final_disposition": "CUTOVER_COMPLETE"
     }
   ],
-  "temporarily_preserved_components": [
+  "temporarily_preserved_components": [],
+  "retired_components": [
     {
       "component": "GameScreen/SafeArea/MainRows/TableArea/RightInspector",
-      "current_consumer": "V0.6 production GameScreen and ten responsibility paths above",
-      "exact_deletion_gate": "all ten responsibilities have typed production targets and parity tests; fixed inspector references are zero"
+      "replacement": "ContextDetailPopup, PlayerInspectionPopup, CardDockActionFeedback, NonBlockingToast and typed navigation",
+      "production_reference_count": 0
     },
     {
       "component": "PlanetBoard/RoleSeatLayerHost plus BackSeatLayer and FrontSeatLayer",
-      "current_consumer": "V0.6 production player inspection and public-seat projection",
-      "exact_deletion_gate": "production PublicPlayerRosterSnapshot and PlayerInspectionPopup replace every consumer with mouse, keyboard, order and privacy parity"
+      "replacement": "viewer-authorized PlayerRoster plus PlayerInspectionPopup",
+      "production_reference_count": 0
     },
     {
       "component": "PublicPlayerSeatSnapshot positional fields and production positional underlays",
-      "current_consumer": "PlanetBoardSnapshot, table viewmodel services, PlanetBoard and production tests",
-      "exact_deletion_gate": "typed production roster projection is authoritative and all positional consumers are zero"
+      "replacement": "PlayerRosterProjectionV1 ordered by public_order_index",
+      "production_reference_count": 0
     }
   ],
-  "next_task": "V07_PRODUCTION_TABLE_SHELL_TYPED_PRESENTATION_PORTS_PREFLIGHT"
+  "next_task": "V07_PRODUCTION_CARD_POOLS_AND_UNINTERRUPTED_BATCH_ATOMIC_CUTOVER"
 }

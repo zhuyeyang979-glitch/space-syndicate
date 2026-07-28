@@ -66,7 +66,7 @@ func retirement_cases() -> Array:
 	return [
 		"real_main_scene_loads",
 		"sceneized_player_board_present",
-		"sceneized_hand_rack_present",
+		"sceneized_player_card_dock_present",
 		"sceneized_action_dock_present",
 		"sceneized_bid_board_present",
 		"legacy_player_refresh_absent",
@@ -77,15 +77,15 @@ func retirement_cases() -> Array:
 		"legacy_first_summon_renderer_absent",
 		"legacy_tableau_renderer_absent",
 		"legacy_contract_ui_wrapper_absent",
-		"runtime_player_snapshot_pure_data",
-		"card_selection_bridge_present",
-		"action_bridge_present",
+		"runtime_table_snapshot_pure_data",
+		"typed_card_submission_bridge_present",
+		"application_flow_bridge_present",
 		"privacy_boundary_preserved",
 		"card_presentation_service_composition",
 		"table_viewmodel_service_composition",
 		"card_presentation_runtime_source",
-		"hand_card_viewmodel_owned_by_service",
-		"right_inspector_owned_by_service",
+		"player_card_dock_viewmodel_owned_by_service",
+		"contextual_detail_targets_scene_owned",
 		"public_track_viewmodel_privacy",
 		"coordinator_pure_data_routes",
 		"presentation_rule_boundary_preserved",
@@ -178,9 +178,18 @@ func _ensure_main() -> void:
 		_main.set("configured_ai_player_count", 3)
 		_main.call("_new_game")
 		await get_tree().process_frame
-	if _main.has_method("_runtime_table_snapshot"):
-		var snapshot_variant: Variant = _main.call("_runtime_table_snapshot")
-		_runtime_snapshot = snapshot_variant if snapshot_variant is Dictionary else {}
+	var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	if coordinator != null:
+		coordinator.request_table_presentation_refresh(&"full", &"legacy_player_surface_retirement_bench")
+		await get_tree().process_frame
+		await get_tree().process_frame
+	var screen := _main.get_node_or_null("RuntimeGameScreen") as SpaceSyndicateGameScreen
+	_runtime_snapshot = screen.current_ui_data.duplicate(true) if screen != null else {}
+	if _runtime_snapshot.is_empty() and coordinator != null:
+		var viewmodel := coordinator.get_node_or_null("GameTableViewModelRuntimeService")
+		if viewmodel != null and viewmodel.has_method("compose_table"):
+			var fallback_variant: Variant = viewmodel.call("compose_table", {})
+			_runtime_snapshot = fallback_variant if fallback_variant is Dictionary else {}
 
 
 func _run_case(case_id: String) -> Dictionary:
@@ -189,12 +198,14 @@ func _run_case(case_id: String) -> Dictionary:
 	var flags := {}
 	var screen := _main.get_node_or_null("RuntimeGameScreen") as Control if _main != null else null
 	var player_board := screen.find_child("PlayerBoard", true, false) if screen != null else null
-	var hand_rack := screen.find_child("HandRack", true, false) if screen != null else null
+	var player_card_dock := screen.find_child("PlayerCardDock", true, false) if screen != null else null
 	var action_dock := screen.find_child("PlayerMainActionDock", true, false) if screen != null else null
 	var bid_board := screen.find_child("PublicBidDecisionPanel", true, false) if screen != null else null
 	var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
 	var card_presentation_service := coordinator.get_node_or_null("CardPresentationRuntimeService") if coordinator != null else null
 	var table_viewmodel_service := coordinator.get_node_or_null("GameTableViewModelRuntimeService") if coordinator != null else null
+	var application_flow := coordinator.get_node_or_null("TablePlayerActionApplicationFlowController") if coordinator != null else null
+	var dock_query := coordinator.get_node_or_null("PlayerCardDockViewerQueryPort") if coordinator != null else null
 	match case_id:
 		"real_main_scene_loads":
 			passed = _main != null and _main.scene_file_path == MAIN_SCENE_PATH
@@ -204,10 +215,10 @@ func _run_case(case_id: String) -> Dictionary:
 			passed = player_board != null and player_board.scene_file_path == "res://scenes/ui/PlayerBoard.tscn"
 			flags["scene_checked"] = true
 			notes = "PlayerBoard is the only player tableau renderer"
-		"sceneized_hand_rack_present":
-			passed = hand_rack != null and hand_rack.scene_file_path == "res://scenes/ui/HandRack.tscn" and load("res://scenes/ui/CardFace.tscn") is PackedScene
+		"sceneized_player_card_dock_present":
+			passed = player_card_dock != null and player_card_dock.scene_file_path == "res://scenes/ui/table/PlayerCardDock.tscn" and load("res://scenes/ui/CardFace.tscn") is PackedScene
 			flags["scene_checked"] = true
-			notes = "HandRack and CardFace own card-node synchronization, presentation, hover, selection, and drag input"
+			notes = "PlayerCardDock is the single three-pool card surface and CardFace remains its visual card primitive"
 		"sceneized_action_dock_present":
 			passed = action_dock != null and action_dock.scene_file_path == "res://scenes/ui/ActionDock.tscn"
 			flags["scene_checked"] = true
@@ -250,19 +261,24 @@ func _run_case(case_id: String) -> Dictionary:
 			passed = _tokens_absent(["func _respond_to_active_contract", "func _respond_to_pending_contract("])
 			flags["deletion_checked"] = true
 			notes = "retired contract-response UI has no player action bridge or obsolete wrapper"
-		"runtime_player_snapshot_pure_data":
+		"runtime_table_snapshot_pure_data":
 			passed = not _runtime_snapshot.is_empty() and _is_pure_data(_runtime_snapshot)
 			flags["snapshot_checked"] = true
 			flags["pure_data_checked"] = true
-			notes = "sceneized player state crosses the boundary as data only"
-		"card_selection_bridge_present":
-			passed = _main != null and _main.has_method("_on_runtime_game_screen_card_selected") and _main_source.contains("func _runtime_hand_card_fact_sources") and not _main_source.contains("func _runtime_hand_card_snapshots")
+			notes = "the production typed table snapshot crosses the scene boundary as data only"
+		"typed_card_submission_bridge_present":
+			passed = screen != null and screen.has_method("submit_game_action_offer") \
+				and screen.has_signal("game_action_intent_requested") \
+				and player_card_dock != null and player_card_dock.has_signal("game_action_offer_requested") \
+				and not _main_source.contains("func _on_runtime_game_screen_card_selected")
 			flags["bridge_checked"] = true
-			notes = "card selection still enters the existing runtime action adapter while hand ViewModels are service-owned"
-		"action_bridge_present":
-			passed = _main != null and _main.has_method("_on_runtime_game_screen_action_requested") and _main_source.contains("func _activate_runtime_quick_action")
+			notes = "PlayerCardDock offers enter the typed GameScreen intent boundary without a Main card-selection bridge"
+		"application_flow_bridge_present":
+			var flow_debug: Dictionary = application_flow.call("debug_snapshot") if application_flow != null else {}
+			passed = application_flow != null and application_flow.scene_file_path == "res://scenes/runtime/TablePlayerActionApplicationFlowController.tscn" \
+				and bool(flow_debug.get("scene_owned", false)) and not bool(flow_debug.get("references_main", true))
 			flags["bridge_checked"] = true
-			notes = "scene-owned buttons preserve existing action ids and handlers"
+			notes = "scene-owned typed application flow is the only card-action bridge and owns no gameplay state"
 		"privacy_boundary_preserved":
 			passed = _is_pure_data(_runtime_snapshot) and not _contains_forbidden_key(_runtime_snapshot)
 			flags["privacy_checked"] = true
@@ -276,7 +292,7 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "CardPresentationRuntimeService is the editable card color/icon/route/copy owner"
 		"table_viewmodel_service_composition":
 			var debug: Dictionary = table_viewmodel_service.call("debug_snapshot") if table_viewmodel_service != null and table_viewmodel_service.has_method("debug_snapshot") else {}
-			passed = table_viewmodel_service != null and table_viewmodel_service.scene_file_path == TABLE_VIEWMODEL_SERVICE_SCENE and table_viewmodel_service.has_method("compose_table") and table_viewmodel_service.has_method("compose_card_surfaces") and table_viewmodel_service.has_method("compose_resolution_overlay_badges") and bool(debug.get("service_authoritative", false)) and bool(debug.get("owns_resolution_overlay_badges", false))
+			passed = table_viewmodel_service != null and table_viewmodel_service.scene_file_path == TABLE_VIEWMODEL_SERVICE_SCENE and table_viewmodel_service.has_method("compose_table") and table_viewmodel_service.has_method("compose_card_surfaces") and not table_viewmodel_service.has_method("compose_resolution_overlay_badges") and bool(debug.get("service_authoritative", false)) and bool(debug.get("owns_typed_resolution_overlay_projection", false))
 			flags["scene_checked"] = true
 			flags["service_checked"] = true
 			notes = "GameTableViewModelRuntimeService owns TableSnapshot, hand, track, and inspector assembly"
@@ -287,21 +303,26 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["service_checked"] = true
 			flags["pure_data_checked"] = true
 			notes = "real card facts route through the authoritative presentation service"
-		"hand_card_viewmodel_owned_by_service":
-			var runtime_player_board := _runtime_snapshot.get("player_board", {}) as Dictionary
-			var hand_cards := runtime_player_board.get("hand_cards", []) as Array
-			var first_card := hand_cards[0] as Dictionary if not hand_cards.is_empty() and hand_cards[0] is Dictionary else {}
-			passed = not first_card.is_empty() and first_card.has("use_case") and first_card.has("play_state") and first_card.has("drop_label") and not _main_source.contains("func _runtime_hand_card_snapshots(")
+		"player_card_dock_viewmodel_owned_by_service":
+			var dock_debug: Dictionary = dock_query.call("debug_snapshot") if dock_query != null else {}
+			passed = dock_query != null and dock_query.scene_file_path == "res://scenes/runtime/presentation/PlayerCardDockViewerQueryPort.tscn" \
+				and bool(dock_debug.get("configured", false)) \
+				and str(dock_debug.get("capacity_mode", "")) == "SHARED_V06" \
+				and bool(dock_debug.get("viewer_authorized_only", false)) \
+				and not bool(dock_debug.get("stores_card_state", true)) \
+				and not _main_source.contains("func _runtime_hand_card_snapshots(")
 			flags["snapshot_checked"] = true
 			flags["deletion_checked"] = true
-			notes = "hand-card presentation is composed outside main.gd while action ids remain play_<slot>"
-		"right_inspector_owned_by_service":
-			var inspector := _runtime_snapshot.get("right_inspector", {}) as Dictionary
-			var deep_links := inspector.get("deep_links", []) as Array
-			passed = not inspector.is_empty() and _action_has_id(deep_links, "detail_region") and _action_has_id(deep_links, "detail_cards") and not _main_source.contains("func _runtime_right_inspector_snapshot_source(")
+			notes = "viewer-authorized PlayerCardDock query owns the V0.6 card surface and truthful shared-capacity mode without storing card state"
+		"contextual_detail_targets_scene_owned":
+			passed = screen != null and screen.find_child("RightInspector", true, false) == null \
+				and screen.find_child("RegionSupplyPopup", true, false) != null \
+				and screen.find_child("ContextDetailPopup", true, false) != null \
+				and screen.find_child("PlayerInspectionPopup", true, false) != null \
+				and not _main_source.contains("func _runtime_right_inspector_snapshot_source(")
 			flags["snapshot_checked"] = true
 			flags["deletion_checked"] = true
-			notes = "RightInspector assembly and selected-card precedence belong to the ViewModel service"
+			notes = "the fixed RightInspector is retired; region, contextual and player details use separate scene-owned typed targets"
 		"public_track_viewmodel_privacy":
 			var track := _runtime_snapshot.get("card_track", []) as Array
 			var encoded := JSON.stringify(track)

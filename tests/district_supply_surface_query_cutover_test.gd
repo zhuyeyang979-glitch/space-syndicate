@@ -71,11 +71,11 @@ func _run() -> void:
 	var pricing := coordinator.get_node_or_null("CardMarketPricingRuntimeController") as CardMarketPricingRuntimeController if coordinator != null else null
 	var inventory := coordinator.get_node_or_null("CardInventoryRuntimeService") as CardInventoryRuntimeService if coordinator != null else null
 	var screen := app_root.find_child("RuntimeGameScreen", true, false) as SpaceSyndicateGameScreen
-	var overlay := screen.get_node_or_null("OverlayLayer") as SpaceSyndicateOverlayLayer if screen != null else null
+	var popup := screen.get_node_or_null("RegionSupplyPopup") as SpaceSyndicateRegionSupplyPopup if screen != null else null
 	_expect(query != null and viewmodel != null and presentation != null, "scene-owned query and presentation state are composed")
 	_expect(region_supply != null and pricing != null and inventory != null, "query dependencies remain the unique production owners")
-	_expect(screen != null and overlay != null, "typed GameScreen and Overlay targets are composed")
-	if query == null or viewmodel == null or presentation == null or region_supply == null or pricing == null or inventory == null or screen == null or overlay == null:
+	_expect(screen != null and popup != null, "typed GameScreen and RegionSupplyPopup targets are composed")
+	if query == null or viewmodel == null or presentation == null or region_supply == null or pricing == null or inventory == null or screen == null or popup == null:
 		app_root.queue_free()
 		await process_frame
 		_finish()
@@ -122,13 +122,18 @@ func _run() -> void:
 	_expect(bool(private_surface.get("visible", false)) and str(private_surface.get("visibility_scope", "")) == "viewer_private", "local human receives a visible private surface")
 	_expect(int(private_surface.get("viewer_index", -1)) == 0 and int(private_surface.get("authorization_revision", 0)) == context.authorization_revision, "surface is bound to the current viewer authorization")
 	var rack_source_revision := str(private_surface.get("rack_source_revision", ""))
+	var rack_source_version := int(private_surface.get("rack_source_version", 0))
 	var repeated_private_surface := query.snapshot_for_viewer(0)
 	_expect(
 		rack_source_revision.length() == 64 \
+			and rack_source_version == int(rack.get("state_revision", 0)) \
+			and rack_source_version > 0 \
 			and str(repeated_private_surface.get("rack_source_revision", "")) \
 				== rack_source_revision \
+			and int(repeated_private_surface.get("rack_source_version", 0)) \
+				== rack_source_version \
 			and not JSON.stringify(private_surface).contains(rack_revision),
-		"public rack identity is a stable opaque revision token and never exposes the raw per-rack or per-slot credential"
+		"public rack identity keeps an opaque token plus the owner's monotonic numeric source version without exposing slot credentials"
 	)
 	var private_snapshot: Dictionary = private_surface.get("snapshot", {}) if private_surface.get("snapshot", {}) is Dictionary else {}
 	var private_text := JSON.stringify(private_snapshot)
@@ -140,6 +145,8 @@ func _run() -> void:
 		var card: Dictionary = card_variant if card_variant is Dictionary else {}
 		var card_preview: Dictionary = card.get("preview", {}) \
 			if card.get("preview", {}) is Dictionary else {}
+		var purchase_state: Dictionary = card.get("purchase_state", {}) \
+			if card.get("purchase_state", {}) is Dictionary else {}
 		typed_listing_fields_valid = typed_listing_fields_valid \
 			and not str(card.get("card_id", "")).is_empty() \
 			and not str(card.get("kind", "")).is_empty() \
@@ -147,7 +154,9 @@ func _run() -> void:
 			and int(card.get("price", -1)) >= 0 \
 			and card_preview.has("primary_action_id") \
 			and card_preview.has("buy_enabled") \
-			and card_preview.has("action_reason_code")
+			and card_preview.has("action_reason_code") \
+			and str(purchase_state.get("interaction_state", "")) \
+				in ["quote", "purchase", "blocked"]
 	_expect(
 		typed_listing_fields_valid,
 		"authorized rack rows retain stable card identity, typed kind, public price, and typed quote-or-purchase projection"
@@ -177,8 +186,9 @@ func _run() -> void:
 	var public_snapshot: Dictionary = public_surface.get("snapshot", {}) if public_surface.get("snapshot", {}) is Dictionary else {}
 	_expect(str(public_surface.get("visibility_scope", "")) == "public" and str(public_snapshot.get("visibility_scope", "")) == "public", "opponent subject is downgraded to public browse scope")
 	_expect(
-		str(public_surface.get("rack_source_revision", "")) == rack_source_revision,
-		"rack revision identity is public and independent from private subject authorization"
+		str(public_surface.get("rack_source_revision", "")) == rack_source_revision \
+			and int(public_surface.get("rack_source_version", 0)) == rack_source_version,
+		"rack revision identity and ordered source version are public and independent from private subject authorization"
 	)
 	var leak_text := JSON.stringify(public_surface)
 	for sentinel in [str(RIVAL_CASH_SENTINEL), RIVAL_HAND_SENTINEL, RIVAL_DISCARD_SENTINEL, RIVAL_PLAN_SENTINEL, RIVAL_OWNER_SENTINEL]:
@@ -191,22 +201,29 @@ func _run() -> void:
 	for card_variant in public_cards:
 		var card: Dictionary = card_variant if card_variant is Dictionary else {}
 		var preview: Dictionary = card.get("preview", {}) if card.get("preview", {}) is Dictionary else {}
+		var purchase_state: Dictionary = card.get("purchase_state", {}) \
+			if card.get("purchase_state", {}) is Dictionary else {}
 		browse_only = browse_only and not bool(card.get("actionable", true)) \
 			and str(card.get("state_text", "")) == "仅浏览" \
-			and not bool(preview.get("buy_enabled", true))
+			and not bool(preview.get("buy_enabled", true)) \
+			and str(purchase_state.get("interaction_state", "")) == "blocked"
 	_expect(browse_only, "all opponent/public cards are browse-only and non-actionable")
 
-	var purchase_signal_count := [0]
-	var drawer := screen.get_district_supply_drawer() as SpaceSyndicateDistrictSupplyDrawer
-	if drawer != null:
-		drawer.supply_action_requested.connect(func(action_id: String, _payload: Dictionary) -> void:
-			if action_id == "district_supply_purchase_card":
-				purchase_signal_count[0] += 1
+	var typed_offer_signal_count := [0]
+	if popup != null:
+		popup.game_action_offer_requested.connect(func(
+			_offer: Dictionary,
+			_submission_kind: String,
+			_parameters: Dictionary,
+			_target_overrides: Dictionary
+		) -> void:
+			typed_offer_signal_count[0] += 1
 		)
-		_expect(overlay.apply_district_supply_presentation(public_surface, 0, context.authorization_revision), "public surface applies to the typed drawer target")
+		screen.bind_presentation_viewer(0, context.authorization_revision)
+		_expect(popup.apply_presentation(public_surface, 0, context.authorization_revision), "public surface applies to the typed popup target")
 		if not public_cards.is_empty():
-			drawer.call("_on_card_purchase_requested", str((public_cards[0] as Dictionary).get("card_name", "")), "test_double_click")
-		_expect(purchase_signal_count[0] == 0, "public double-click/confirm cannot emit a purchase action")
+			popup.call("_on_card_purchase_requested", str((public_cards[0] as Dictionary).get("card_name", "")), "test_double_click")
+		_expect(typed_offer_signal_count[0] == 0, "public double-click/confirm cannot emit a typed game-action offer")
 
 	presentation.open_player = 0
 	private_surface = query.snapshot_for_viewer(0)
@@ -220,8 +237,8 @@ func _run() -> void:
 	full_snapshot.table_state = full_state
 	screen.bind_presentation_viewer(0, context.authorization_revision)
 	screen.apply_full_presentation(full_snapshot)
-	var target_after_full := overlay.district_supply_presentation_target_snapshot()
-	_expect(bool(target_after_full.get("visible", false)) and str(target_after_full.get("last_visibility_scope", "")) == "viewer_private", "full target renders the authorized private drawer")
+	var target_after_full: Dictionary = popup.presentation_target_snapshot()
+	_expect(popup.visible and str(target_after_full.get("last_visibility_scope", "")) == "viewer_private", "full target renders the authorized private drawer")
 	var target_apply_count := int(target_after_full.get("apply_count", 0))
 	var live_snapshot := TableLivePresentationSnapshot.new()
 	live_snapshot.revision = 2
@@ -229,11 +246,11 @@ func _run() -> void:
 	live_snapshot.authorization_revision = context.authorization_revision
 	live_snapshot.table_state = live_state
 	screen.apply_live_presentation(live_snapshot)
-	var target_after_live := overlay.district_supply_presentation_target_snapshot()
-	_expect(bool(target_after_live.get("visible", false)) and int(target_after_live.get("apply_count", -1)) == target_apply_count, "live refresh neither clears nor reapplies the district drawer")
+	var target_after_live: Dictionary = popup.presentation_target_snapshot()
+	_expect(popup.visible and int(target_after_live.get("apply_count", -1)) == target_apply_count, "live refresh neither clears nor reapplies the district drawer")
 	screen.bind_presentation_viewer(0, context.authorization_revision + 1)
-	var target_after_rebind := overlay.district_supply_presentation_target_snapshot()
-	_expect(not bool(target_after_rebind.get("visible", true)) and str(target_after_rebind.get("last_visibility_scope", "")) == "closed", "authorization revision change immediately clears stale private drawer content")
+	var target_after_rebind: Dictionary = popup.presentation_target_snapshot()
+	_expect(not popup.visible and str(target_after_rebind.get("last_visibility_scope", "")) == "closed", "authorization revision change immediately clears stale private drawer content")
 
 	var main_source_path := "/".join(["res://scripts", "main.gd"])
 	var main_source := FileAccess.get_file_as_string(main_source_path)

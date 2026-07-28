@@ -92,8 +92,17 @@ func _init() -> void:
 	var public_receipt_text := JSON.stringify(private_receipt.public_summary())
 	_expect(not public_receipt_text.contains("hand_limit") and not public_receipt_text.contains("requires_discard") and not public_receipt_text.contains("PRIVATE_"), "public receipt hides hand pressure, card, actor and quote details")
 	var screen_source := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")
-	_expect(screen_source.contains("signal district_supply_action_intent_requested"), "GameScreen exposes typed district intent signal")
-	_expect(screen_source.contains("district_double_clicked"), "double click is bound by GameScreen")
+	_expect(
+		not screen_source.contains("district_supply_action_intent_requested") \
+		and screen_source.contains("region_supply_popup.game_action_offer_requested") \
+		and screen_source.contains("game_action_intent_requested.emit(intent)"),
+		"GameScreen routes the production RegionSupplyPopup through the shared GameAction spine"
+	)
+	_expect(
+		not screen_source.contains("_emit_district_supply_action") \
+		and not screen_source.contains("_on_district_supply_action_requested"),
+		"production district supply UI has no parallel direct-port submission path"
+	)
 	root.queue_free()
 	await process_frame
 	await _check_ai_purchase_exact_once()

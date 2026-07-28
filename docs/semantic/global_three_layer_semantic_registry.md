@@ -10,8 +10,8 @@ state and must not be maintained as a competing registry.
 - Current production runtime ruleset: **V0.6**
 - Highest target development constitution: **V0.7**
 - Full V0.7 runtime cutover: **false**
-- Registered domains: **24**
-- Core-ready domains: **18**
+- Registered domains: **31**
+- Core-ready domains: **24**
 - Fully three-layer-ready domains: **2**
 - Global three-layer semantics complete: **false**
 
@@ -73,8 +73,9 @@ trace.
 This readiness is not a production-cutover claim. V0.6 CardResolution and
 Counter owners remain the only composed production authority, the production
 Save format is unchanged, and no V0.7 Core, AI, or player Bench is connected
-to `main.tscn`. Phase E remains blocked until the terminal-progression
-predecessor is green and all production consumers can switch atomically.
+to `main.tscn`. The terminal predecessor is green through PR #69; Phase E
+remains blocked until the production consumers and Save boundary can switch
+atomically after the V0.6 bound-action acquisition gap is closed.
 
 ## Domain status matrix
 
@@ -83,7 +84,7 @@ predecessor is green and all production consumers can switch atomically.
 | session_setup | CORE_READY | CONTRACT_ONLY | CORE_PLAYER_READY | CUTOVER_COMPLETE | CORE_PLAYER_READY | AI_SETUP_OBSERVATION_CONTRACT |
 | runtime_lifecycle | CORE_READY | CONTRACT_ONLY | PASSIVE_PROJECTION_ONLY | CUTOVER_COMPLETE | CUTOVER_COMPLETE | NONE_RUNTIME_LOOP_STABLE |
 | ordinary_cards | CORE_READY | CONTRACT_ONLY | CORE_PLAYER_READY | CUTOVER_COMPLETE | CORE_PLAYER_READY | AI_WORLD_TYPED_PORTS_AND_MAIN_BINDING_REMOVAL |
-| card_group_resolution | THREE_LAYER_READY | THREE_LAYER_READY | THREE_LAYER_READY | CUTOVER_COMPLETE | THREE_LAYER_READY | ACTION_SPINE_V07_TERMINAL_PROGRESSION_ECONOMY_CONTINUATION |
+| card_group_resolution | THREE_LAYER_READY | THREE_LAYER_READY | THREE_LAYER_READY | CUTOVER_COMPLETE | THREE_LAYER_READY | V07_PRODUCTION_CARD_POOLS_AND_UNINTERRUPTED_BATCH_ATOMIC_CUTOVER_AFTER_BOUND_ACTION_ROUTE |
 | commodity_inventory | CONTRACT_ONLY | PASSIVE_PROJECTION_ONLY | PASSIVE_PROJECTION_ONLY | CUTOVER_COMPLETE | CONTRACT_ONLY | V07_COMMODITY_INVENTORY_CORE_OWNER_AND_SAVE_PREFLIGHT |
 | commodity_sushi_track | CONTRACT_ONLY | PASSIVE_PROJECTION_ONLY | PASSIVE_PROJECTION_ONLY | CUTOVER_COMPLETE | CONTRACT_ONLY | V07_SHARED_COMMODITY_TRACK_CORE_OWNER |
 | market_stance_cycle | CONTRACT_ONLY | PASSIVE_PROJECTION_ONLY | PASSIVE_PROJECTION_ONLY | CUTOVER_COMPLETE | CONTRACT_ONLY | V07_MARKET_STANCE_CYCLE_CORE_OWNER |
@@ -104,11 +105,22 @@ predecessor is green and all production consumers can switch atomically.
 | player_action_routing | THREE_LAYER_READY | THREE_LAYER_READY | THREE_LAYER_READY | CUTOVER_COMPLETE | CUTOVER_COMPLETE | AI_WORLD_TYPED_PORTS_AND_MAIN_BINDING_REMOVAL |
 | ai_observation_decision_action | CONTRACT_ONLY | LEGACY_RAW | CONTRACT_ONLY | BLOCKED | BLOCKED | AI_WORLD_TYPED_PORTS_AND_MAIN_BINDING_REMOVAL |
 | application_navigation | CORE_READY | CONTRACT_ONLY | CORE_PLAYER_READY | CUTOVER_COMPLETE | CUTOVER_COMPLETE | NONE_APPLICATION_FLOW_STABLE |
+| normal_card_inventory | CORE_READY | CONTRACT_ONLY | CORE_PLAYER_READY | CUTOVER_COMPLETE | CORE_PLAYER_READY | V06_BOUND_ACTION_TYPED_ACQUISITION_LIFECYCLE_CUTOVER |
+| commodity_card_inventory | CORE_READY | CONTRACT_ONLY | CORE_PLAYER_READY | CUTOVER_COMPLETE | CORE_PLAYER_READY | V07_PRODUCTION_CARD_POOLS_AND_UNINTERRUPTED_BATCH_ATOMIC_CUTOVER |
+| bound_action_inventory | BLOCKED | CONTRACT_ONLY | PASSIVE_PROJECTION_ONLY | CUTOVER_COMPLETE | BLOCKED | V06_BOUND_ACTION_TYPED_ACQUISITION_LIFECYCLE_CUTOVER |
+| player_card_dock | CORE_READY | CONTRACT_ONLY | CORE_PLAYER_READY | CUTOVER_COMPLETE | CUTOVER_COMPLETE | V06_BOUND_ACTION_TYPED_ACQUISITION_LIFECYCLE_CUTOVER |
+| player_roster | CORE_READY | CONTRACT_ONLY | CORE_PLAYER_READY | CUTOVER_COMPLETE | CUTOVER_COMPLETE | NONE_PLAYER_ROSTER_PRODUCTION_STABLE |
+| region_supply_popup | CORE_READY | CONTRACT_ONLY | CORE_PLAYER_READY | CUTOVER_COMPLETE | CUTOVER_COMPLETE | NONE_REGION_SUPPLY_POPUP_PRODUCTION_STABLE |
+| card_resolution_presentation | CORE_READY | CONTRACT_ONLY | CORE_PLAYER_READY | CUTOVER_COMPLETE | CUTOVER_COMPLETE | V07_PRODUCTION_CARD_POOLS_AND_UNINTERRUPTED_BATCH_ATOMIC_CUTOVER |
 
 ## Remaining global blockers
 
 - `bind_ai_world(self)` and broad AI world reads remain a separate P0 boundary.
 - Production Save Owner coverage remains incomplete; Save/Resume is not ready.
+- The production V0.6 starter-monster profile grants no bound action, and the
+  shipped military card still fails closed at the missing typed V0.6 effect
+  route. The Dock must not fabricate a third pool while that gameplay route is
+  absent.
 - V0.7 uninterrupted card-batch Core, AI, and player semantics are reference
   ready, but V0.6 Counter and CardResolution remain the production authority;
   production consumers and Save have not migrated.
@@ -118,6 +130,8 @@ predecessor is green and all production consumers can switch atomically.
 - No replay, rollback, multiplayer synchronization, or second Save system has
   been introduced.
 
-The next minimum boundary is
-`AI_WORLD_TYPED_PORTS_AND_MAIN_BINDING_REMOVAL`. It must consume the action
-spine established here rather than recreate it.
+The next minimum product boundary is
+`V06_BOUND_ACTION_TYPED_ACQUISITION_LIFECYCLE_CUTOVER`. It must add one typed,
+exact-once grant/revoke lifecycle without restoring the legacy helper or a
+parallel inventory owner. The separate architecture boundary remains
+`P0_AI_WORLD_TYPED_PORTS_MAIN_HOST_DETACHMENT`.

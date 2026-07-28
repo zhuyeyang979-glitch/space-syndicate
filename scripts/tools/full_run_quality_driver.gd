@@ -1564,6 +1564,7 @@ func _scripted_ui_action(
 	var ui_variant: Variant = runtime_screen.get("current_ui_data")
 	var ui: Dictionary = ui_variant if ui_variant is Dictionary else {}
 	var player_board: Dictionary = ui.get("player_board", {}) if ui.get("player_board", {}) is Dictionary else {}
+	var player_card_dock: Dictionary = ui.get("player_card_dock", {}) if ui.get("player_card_dock", {}) is Dictionary else {}
 	var temporary: Dictionary = ui.get("temporary_decision", {}) if ui.get("temporary_decision", {}) is Dictionary else {}
 	if not temporary.is_empty():
 		var temporary_action := _first_enabled_action(temporary.get("actions", []))
@@ -1639,7 +1640,7 @@ func _scripted_ui_action(
 		}
 	_sync_supply_rotation_plan(supply_rotation_state, normalized_plan)
 	var hand_cards := _facility_cards_with_stable_identity(
-		player_board.get("hand_cards", []) if player_board.get("hand_cards", []) is Array else []
+		player_card_dock.get("normal_cards", []) if player_card_dock.get("normal_cards", []) is Array else []
 	)
 	var matching_hand_card := EconomyContinuationPlannerScript.first_matching_facility(
 		hand_cards,
@@ -1994,23 +1995,33 @@ static func _facility_cards_with_stable_identity(cards: Array) -> Array:
 		if not (card_variant is Dictionary):
 			continue
 		var card := (card_variant as Dictionary).duplicate(true)
-		if str(card.get("kind", "")) != "facility_v06":
+		if str(card.get("category_id", "")) not in ["facility", "facility-v06"]:
 			continue
-		var action := _first_enabled_or_disabled_action(card.get("actions", []))
-		var offer: Dictionary = action.get("game_action_offer", {}) \
-			if action.get("game_action_offer", {}) is Dictionary else {}
+		var offer: Dictionary = card.get("game_action_offer", {}) \
+			if card.get("game_action_offer", {}) is Dictionary else {}
+		if not bool(GameActionOfferV1.validation_report(offer).get("valid", false)):
+			continue
 		var target_ids := GameActionOfferV1.target_ids(offer) if not offer.is_empty() else {}
 		var offered_instance_ref := str(target_ids.get("card_instance_id", ""))
-		var projected_instance_ref := str(card.get("card_instance_ref", ""))
+		var projected_instance_ref := str(card.get("card_instance_id", ""))
 		var offered_source_revision := maxi(0, int(offer.get("source_revision", 0)))
-		var projected_source_revision := maxi(0, int(card.get("offer_source_revision", 0)))
+		var projected_source_revision := maxi(0, int(card.get("source_revision", 0)))
 		if (not projected_instance_ref.is_empty() \
 				and projected_instance_ref != offered_instance_ref) \
 				or (projected_source_revision > 0 \
 				and projected_source_revision != offered_source_revision):
 			continue
+		card["card_id"] = str(card.get("card_semantic_id", ""))
 		card["card_instance_ref"] = offered_instance_ref
 		card["source_revision"] = offered_source_revision
+		card["kind"] = "facility_v06"
+		card["actionable"] = str(card.get("play_state", "disabled")) == "available"
+		# PlayerCardDock exposes wire-safe stable IDs with hyphens. The driver keeps
+		# its established domain reason enum in snake_case before matching retry
+		# classes; this is presentation adaptation, not a second gameplay rule.
+		card["play_reason_id"] = str(
+			card.get("disabled_reason_id", "action-disabled")
+		).replace("-", "_")
 		if not str(card.get("card_id", "")).is_empty() \
 				and not str(card.get("card_instance_ref", "")).is_empty():
 			result.append(card)
@@ -2042,31 +2053,21 @@ static func matching_facility_cards(
 static func _enabled_card_action_request(card: Dictionary) -> Dictionary:
 	if card.is_empty():
 		return {}
-	var action := _first_enabled_action(card.get("actions", []))
-	if action.is_empty():
+	var offer: Dictionary = card.get("game_action_offer", {}) \
+		if card.get("game_action_offer", {}) is Dictionary else {}
+	if not bool(GameActionOfferV1.validation_report(offer).get("valid", false)) \
+			or str(offer.get("legality_state", "")) != "available" \
+			or not bool(card.get("actionable", false)):
 		return {}
 	var request := {
-		"id": str(action.get("id", "")),
+		"id": "card.play.%s" % str(card.get("card_instance_ref", "unknown")),
 		"phase": "play.hand.facility_v06.%s" % str(card.get("action_state", card.get("play_state", "ready"))),
 		"disabled": false,
 		"origin": "game_action",
 	}
-	var offer: Dictionary = action.get("game_action_offer", {}) \
-		if action.get("game_action_offer", {}) is Dictionary else {}
-	if offer.is_empty():
-		return {}
 	request["game_action_offer"] = offer.duplicate(true)
 	request["game_action_required"] = true
 	return request
-
-
-static func _first_enabled_or_disabled_action(value: Variant) -> Dictionary:
-	if not (value is Array):
-		return {}
-	for action_variant in value as Array:
-		if action_variant is Dictionary and not str((action_variant as Dictionary).get("id", "")).is_empty():
-			return (action_variant as Dictionary).duplicate(true)
-	return {}
 
 
 static func production_growth_required(
@@ -2444,8 +2445,8 @@ static func _safe_progress_run_id(value: String) -> String:
 	return normalized if seed_index >= 0 and seed_index < FIXED_SEEDS.size() else ""
 
 func _district_supply_ui_action(runtime_screen: Node, continuation_plan: Dictionary) -> Dictionary:
-	var drawer := _district_supply_drawer(runtime_screen)
-	if drawer == null or not drawer.visible or not drawer.has_signal("supply_action_requested"):
+	var drawer := _region_supply_popup(runtime_screen)
+	if drawer == null or not drawer.visible or not drawer.has_signal("game_action_offer_requested"):
 		return {}
 	var snapshot := _annotate_new_facility_target_availability(
 		_district_supply_view_snapshot(),
@@ -2476,8 +2477,8 @@ func _district_supply_advancement_ui_action(
 	runtime_screen: Node,
 	rotation_state: Dictionary
 ) -> Dictionary:
-	var drawer := _district_supply_drawer(runtime_screen)
-	if drawer == null or not drawer.visible or not drawer.has_signal("supply_action_requested"):
+	var drawer := _region_supply_popup(runtime_screen)
+	if drawer == null or not drawer.visible or not drawer.has_signal("game_action_offer_requested"):
 		return {}
 	var snapshot := _district_supply_view_snapshot()
 	var pending_candidate: Dictionary = rotation_state.get(
@@ -2903,7 +2904,7 @@ func _public_supply_wait_facts(
 	continuation_plan: Dictionary
 ) -> Dictionary:
 	var screen := runtime_screen as SpaceSyndicateGameScreen
-	var drawer := _district_supply_drawer(runtime_screen)
+	var drawer := _region_supply_popup(runtime_screen)
 	if screen == null or drawer == null or not drawer.visible:
 		return {}
 	var drawer_snapshot := _annotate_new_facility_target_availability(
@@ -3187,7 +3188,7 @@ func _facility_rack_hint_ui_action(
 		_discard_pending_facility_rack_hint(rotation_state, hint)
 		_promote_next_facility_rack_hint(rotation_state, continuation_plan)
 		return {}
-	var drawer := _district_supply_drawer(runtime_screen)
+	var drawer := _region_supply_popup(runtime_screen)
 	if phase == "facility_hint_pending":
 		if selected_district == target_district and drawer != null and drawer.visible:
 			rotation_state["phase"] = "facility_hint_recheck"
@@ -3282,7 +3283,7 @@ static func advance_rack_advancement_after_retryable_failure(
 
 func _begin_supply_rack_discovery(runtime_screen: Node, rotation_state: Dictionary) -> bool:
 	var screen := runtime_screen as SpaceSyndicateGameScreen
-	var drawer := _district_supply_drawer(runtime_screen)
+	var drawer := _region_supply_popup(runtime_screen)
 	if screen == null or drawer == null or drawer.visible:
 		return false
 	var ui: Dictionary = screen.current_ui_data if screen.current_ui_data is Dictionary else {}
@@ -3389,7 +3390,7 @@ func _supply_rotation_action(runtime_screen: Node, rotation_state: Dictionary) -
 			"disabled": true,
 			"origin": "economic_wait",
 		}
-	var drawer := _district_supply_drawer(runtime_screen)
+	var drawer := _region_supply_popup(runtime_screen)
 	var screen := runtime_screen as SpaceSyndicateGameScreen
 	if screen == null:
 		return {}
@@ -3835,17 +3836,10 @@ func _temporary_decision_overlay(runtime_screen: Node) -> SpaceSyndicateOverlayL
 	return screen.get_overlay_host() as SpaceSyndicateOverlayLayer
 
 
-func _district_supply_drawer(runtime_screen: Node) -> Node:
+func _region_supply_popup(runtime_screen: Node) -> Node:
 	if runtime_screen == null:
 		return null
-	if runtime_screen.has_method("get_district_supply_drawer"):
-		var owned_drawer: Variant = runtime_screen.call("get_district_supply_drawer")
-		if owned_drawer is Node:
-			return owned_drawer as Node
-	var drawer := runtime_screen.get_node_or_null("OverlayLayer/RuntimeSurfaceLayer/DistrictSupplySideDrawerOverlay")
-	if drawer == null:
-		drawer = runtime_screen.find_child("DistrictSupplySideDrawerOverlay", true, false)
-	return drawer
+	return runtime_screen.get_node_or_null("RegionSupplyPopup")
 
 
 func _menu_overlay_ui_action(runtime_screen: Node) -> Dictionary:

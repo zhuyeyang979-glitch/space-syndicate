@@ -16,21 +16,25 @@ const VALID_FORCED_PRIORITY_GROUPS := [
 ]
 const VALID_FORCED_PRESENTATION_SURFACES := ["overlay", "card_resolution_track", "player_hint"]
 
-const DISTRICT_VIEW_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/district_view_snapshot.gd")
 const PLAYER_BOARD_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/player_board_snapshot.gd")
 const PLANET_BOARD_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/planet_board_snapshot.gd")
 const PUBLIC_TRACK_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/public_track_snapshot.gd")
-const RIGHT_INSPECTOR_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/right_inspector_snapshot.gd")
+const CONTEXTUAL_DETAIL_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/contextual_detail_snapshot.gd")
 const TOP_BAR_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/top_bar_snapshot.gd")
 const OPTIONAL_ROUTE_PUBLIC_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/optional_route_public_snapshot.gd")
 const COMMODITY_SUSHI_TRACK_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/commodity_sushi_track_snapshot.gd")
+const PLAYER_CARD_DOCK_PROJECTION_SCRIPT := preload("res://scripts/presentation/player_card_dock_projection_v1.gd")
+const PLAYER_ROSTER_PROJECTION_SCRIPT := preload("res://scripts/presentation/player_roster_projection_v1.gd")
+const CARD_RESOLUTION_OVERLAY_PROJECTION_SCRIPT := preload("res://scripts/presentation/card_resolution_overlay_projection_v1.gd")
 
 var top_bar: Dictionary = {}
 var card_track: Array = []
 var card_resolution_track: Dictionary = {}
 var planet: Dictionary = {}
-var right_inspector: Dictionary = {}
+var contextual_detail: Dictionary = {}
 var player_board: Dictionary = {}
+var player_card_dock: Dictionary = {}
+var player_roster: Dictionary = {}
 var temporary_decision: Dictionary = {}
 var active_forced_decision: Dictionary = {}
 var optional_route_presentation: Dictionary = {}
@@ -47,6 +51,9 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 		"selected_district": int(selection_source.get("selected_district", -1)),
 		"district_count": maxi(0, int(selection_source.get("district_count", 0))),
 		"district_region_ids": _selection_string_array(selection_source.get("district_region_ids", [])),
+		"district_supply_open_offers": _selection_district_supply_open_offers(
+			selection_source.get("district_supply_open_offers", [])
+		),
 		"selected_trade_product": str(selection_source.get("selected_trade_product", "")),
 		"trade_product_ids": _selection_string_array(selection_source.get("trade_product_ids", [])),
 		"default_trade_product_id": str(selection_source.get("default_trade_product_id", "")),
@@ -60,20 +67,15 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	card_resolution_track = _normalize_card_resolution_track(card_resolution_source, card_track)
 	var planet_source: Dictionary = data.get("planet", {}) if data.get("planet", {}) is Dictionary else {}
 	planet = PLANET_BOARD_SNAPSHOT_SCRIPT.new().apply_dictionary(planet_source).to_ui_dictionary()
-	var district: Variant = DISTRICT_VIEW_SNAPSHOT_SCRIPT.new().apply_dictionary(data.get("district", {}) if data.get("district", {}) is Dictionary else {})
 	var player: Variant = PLAYER_BOARD_SNAPSHOT_SCRIPT.new().apply_dictionary(data.get("player_board", {}) if data.get("player_board", {}) is Dictionary else {})
 	player_board = player.to_ui_dictionary()
+	player_card_dock = PLAYER_CARD_DOCK_PROJECTION_SCRIPT.detached_copy(data.get("player_card_dock", {}))
+	player_roster = PLAYER_ROSTER_PROJECTION_SCRIPT.detached_copy(data.get("player_roster", {}))
 	var top_source: Dictionary = _merge_top_bar_source(data.get("top_bar", {}) if data.get("top_bar", {}) is Dictionary else {}, player_board)
 	top_bar = TOP_BAR_SNAPSHOT_SCRIPT.new().apply_dictionary(top_source).to_ui_dictionary()
-	var inspector_source: Dictionary = data.get("right_inspector", data.get("inspector", {})) if data.get("right_inspector", data.get("inspector", {})) is Dictionary else {}
-	inspector_source = inspector_source.duplicate(true)
-	if not inspector_source.has("district"):
-		inspector_source["district"] = district.to_ui_dictionary()
-	if not inspector_source.has("actions"):
-		inspector_source["actions"] = data.get("actions", []) if data.get("actions", []) is Array else []
-	if not inspector_source.has("logs"):
-		inspector_source["logs"] = data.get("logs", []) if data.get("logs", []) is Array else []
-	right_inspector = RIGHT_INSPECTOR_SNAPSHOT_SCRIPT.new().apply_dictionary(inspector_source).to_ui_dictionary()
+	contextual_detail = CONTEXTUAL_DETAIL_SNAPSHOT_SCRIPT.new() \
+		.apply_dictionary(data.get("contextual_detail", {})) \
+		.to_ui_dictionary()
 	temporary_decision = _normalize_temporary_decision(data.get("temporary_decision", {}))
 	active_forced_decision = _normalize_active_forced_decision(data.get("active_forced_decision", {}))
 	optional_route_presentation = OPTIONAL_ROUTE_PUBLIC_SNAPSHOT_SCRIPT.new() \
@@ -88,6 +90,32 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	return self
 
 
+func _selection_district_supply_open_offers(value: Variant) -> Array:
+	var result: Array = []
+	if not (value is Array):
+		return result
+	for entry_variant in value as Array:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		var district_index := int(entry.get("district_index", -1))
+		var region_id := str(entry.get("region_id", ""))
+		var offer: Variant = entry.get("game_action_offer", {})
+		if district_index < 0 or region_id.is_empty() \
+				or not (offer is Dictionary) \
+				or not bool(GameActionOfferV1.validation_report(offer).get("valid", false)) \
+				or str((offer as Dictionary).get("semantic_action_id", "")) \
+					!= GameActionIntentV1.ACTION_DISTRICT_SUPPLY_OPEN \
+				or str(GameActionOfferV1.target_ids(offer as Dictionary).get("region_id", "")) != region_id:
+			continue
+		result.append({
+			"district_index": district_index,
+			"region_id": region_id,
+			"game_action_offer": GameActionOfferV1.detached_copy(offer),
+		})
+	return result
+
+
 func to_ui_dictionary() -> Dictionary:
 	return {
 		"selection_context": selection_context.duplicate(true),
@@ -95,8 +123,10 @@ func to_ui_dictionary() -> Dictionary:
 		"card_track": card_track,
 		"card_resolution_track": card_resolution_track,
 		"planet": planet,
-		"right_inspector": right_inspector,
+		"contextual_detail": contextual_detail,
 		"player_board": player_board,
+		"player_card_dock": player_card_dock,
+		"player_roster": player_roster,
 		"temporary_decision": temporary_decision,
 		"active_forced_decision": active_forced_decision,
 		"optional_route_presentation": optional_route_presentation,
@@ -245,6 +275,7 @@ func _normalize_card_resolution_track(source: Dictionary, fallback_entries: Arra
 		"empty_text": str(source.get("empty_text", "牌轨空闲，等待玩家出牌。")),
 		"auction_open": bool(source.get("auction_open", false)),
 		"entries": entries,
+		"overlay": CARD_RESOLUTION_OVERLAY_PROJECTION_SCRIPT.detached_copy(source.get("overlay", {})),
 	}
 	var auction_source: Dictionary = source.get("auction_response", {}) if source.get("auction_response", {}) is Dictionary else {}
 	result["auction_response"] = {

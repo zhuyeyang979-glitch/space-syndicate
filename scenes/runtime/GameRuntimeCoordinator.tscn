@@ -1,4 +1,4 @@
-[gd_scene load_steps=134 format=3]
+[gd_scene load_steps=137 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -33,7 +33,6 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiRuntimeWorldBridge.tscn" id="29_ai_world_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPresentationRuntimeService.tscn" id="30_card_presentation"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/GameTableViewModelRuntimeService.tscn" id="31_table_viewmodel"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/PlayerSeatPublicSourceService.tscn" id="81_player_seat_source"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayEligibilityRuntimeService.tscn" id="32_card_play_eligibility"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayEligibilityWorldBridge.tscn" id="33_card_play_world_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/MonsterRuntimeController.tscn" id="34_monster_runtime"]
@@ -133,6 +132,9 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayerFaceProjectionService.tscn" id="137_card_player_face_projection"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayerFacePublicLocalizationSourceService.tscn" id="139_card_player_face_public_localization"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiCardInteractionObservationService.tscn" id="140_ai_card_interaction_observation"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/PlayerCardDockViewerQueryPort.tscn" id="141_player_card_dock_query"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/PlayerRosterViewerQueryPort.tscn" id="142_player_roster_query"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/DistrictSupplyDiscardResponseSink.tscn" id="143_district_discard_response"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -194,6 +196,9 @@ unique_name_in_owner = true
 [node name="MonsterWagerResponseSink" parent="." instance=ExtResource("125_monster_wager_response")]
 unique_name_in_owner = true
 
+[node name="DistrictSupplyDiscardResponseSink" parent="." instance=ExtResource("143_district_discard_response")]
+unique_name_in_owner = true
+
 [node name="TableSelectionIntentPort" parent="." instance=ExtResource("119_table_selection_intent")]
 unique_name_in_owner = true
 identity_boundary_path = NodePath("../PlayerIdentityAuthorizationBoundary")
@@ -209,6 +214,12 @@ product_market_runtime_controller_path = NodePath("../ProductMarketRuntimeContro
 game_session_runtime_controller_path = NodePath("../GameSessionRuntimeController")
 
 [node name="TablePresentationViewModelQuery" parent="." instance=ExtResource("103_table_presentation_viewmodel_query")]
+unique_name_in_owner = true
+
+[node name="PlayerCardDockViewerQueryPort" parent="." instance=ExtResource("141_player_card_dock_query")]
+unique_name_in_owner = true
+
+[node name="PlayerRosterViewerQueryPort" parent="." instance=ExtResource("142_player_roster_query")]
 unique_name_in_owner = true
 
 [node name="DistrictSupplyViewerQueryPort" parent="." instance=ExtResource("121_district_supply_viewer_query")]
@@ -409,9 +420,6 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="GameTableViewModelRuntimeService" parent="." instance=ExtResource("31_table_viewmodel")]
-unique_name_in_owner = true
-
-[node name="PlayerSeatPublicSourceService" parent="." instance=ExtResource("81_player_seat_source")]
 unique_name_in_owner = true
 
 [node name="ForcedDecisionRuntimeScheduler" parent="." instance=ExtResource("2_scheduler")]

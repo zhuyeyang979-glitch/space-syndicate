@@ -130,7 +130,19 @@ func _run() -> void:
 	_expect(driver_source.find('str(action.get("origin", "")) == "temporary_decision"') < driver_source.find('action_screen.submit_game_action_offer(offer, "human_click", {}, {})'), "typed forced-decision routing is resolved before the shared game-action offer adapter")
 	_expect(driver_source.contains("and _temporary_decision_overlay(runtime_screen) != null"), "fresh-run preflight fails closed when the production temporary-decision surface is missing")
 	_expect(driver_source.contains("scripted_ui_action_submission_rejected") and driver_source.contains("if not _submit_scripted_ui_action(runtime_screen, ui_action):"), "a missing typed UI entrypoint is reported immediately instead of timing out as false gameplay progress")
-	_expect(driver_source.contains('_district_supply_query_port.snapshot_for_viewer(SCRIPTED_PLAYER_INDEX)') and driver_source.contains('GameActionIntentV1.ACTION_DISTRICT_SUPPLY_QUOTE') and not driver_source.contains('drawer.emit_signal("supply_action_requested"') and not driver_source.contains('drawer.call("debug_snapshot")'), "scripted human consumes the formal viewer query and submits quotes only through the semantic Action Spine")
+	_expect(
+			driver_source.contains('_district_supply_query_port.snapshot_for_viewer(SCRIPTED_PLAYER_INDEX)') \
+				and driver_source.contains('GameActionIntentV1.ACTION_DISTRICT_SUPPLY_QUOTE') \
+				and driver_source.contains("func _region_supply_popup(runtime_screen: Node) -> Node:") \
+				and driver_source.contains('runtime_screen.get_node_or_null("RegionSupplyPopup")') \
+				and driver_source.contains('drawer.has_signal("game_action_offer_requested")') \
+				and not driver_source.contains("_district_supply_drawer") \
+				and not driver_source.contains("DistrictSupplySideDrawerOverlay") \
+				and not driver_source.contains('drawer.has_signal("supply_action_requested")') \
+				and not driver_source.contains('drawer.emit_signal("supply_action_requested"') \
+				and not driver_source.contains('drawer.call("debug_snapshot")'),
+		"scripted human reads the formal viewer query, uses RegionSupplyPopup, and submits quotes only through the semantic Action Spine"
+	)
 	_expect(driver_source.contains('GameActionIntentV1.ACTION_DISTRICT_SELECT') and not driver_source.contains('request_district_selection(') and not driver_source.contains('map_view.emit_signal("district_selected"'), "scripted human rotates regions through a typed district-select GameAction offer")
 	_expect(DriverScript.SUPPLY_QUOTE_REFRESH_ATTEMPTS_PER_RACK == 1 and DriverScript.SUPPLY_RACK_ROTATION_LIMIT == 8, "district exploration has explicit quote-retry and whole-run rotation bounds")
 	_expect(DriverScript.SUPPLY_RESCAN_WORLD_SECONDS == 15.0 and driver_source.contains('supply_rotation_state["exhausted_world_seconds"]') and driver_source.contains('current_world_seconds - exhausted_world_seconds >= SUPPLY_RESCAN_WORLD_SECONDS'), "an exhausted public scan waits on authoritative world time before starting another legal browse epoch")
@@ -416,7 +428,15 @@ func _run() -> void:
 	_expect(driver_source.contains("gdp_accumulation_wait") and driver_source.contains("victory_qualification"), "driver stops manufacturing clicks after strategy review and lets authoritative GDP/victory time advance")
 	_expect(driver_source.contains("MenuModalOverlay") and driver_source.contains("continue_requested"), "driver closes strategy pages through the scene-owned menu signal")
 	_expect(driver_source.contains("if not temporary.is_empty():") and not driver_source.contains('temporary.get("visible"') and not driver_source.contains('temporary.get("active"'), "driver consumes the normalized non-empty temporary-decision snapshot instead of retired visible/active flags")
-	_expect(driver_source.contains('player_board.get("hand_cards"') and driver_source.contains('player_board.get("actions"') and driver_source.contains('"play.hand.facility_v06.%s"') and driver_source.contains('"play.board.%s.%s"'), "post-coach scripted play uses only public HandRack and PlayerBoard action ids with stateful progress fingerprints")
+	_expect(driver_source.contains('ui.get("player_card_dock"') \
+		and driver_source.contains('player_card_dock.get("normal_cards"') \
+		and driver_source.contains('card.get("card_semantic_id"') \
+		and driver_source.contains('card.get("card_instance_id"') \
+		and driver_source.contains('.replace("-", "_")') \
+		and not driver_source.contains('player_board.get("hand_cards"') \
+		and driver_source.contains('player_board.get("actions"') \
+		and driver_source.contains('"play.hand.facility_v06.%s"') \
+		and driver_source.contains('"play.board.%s.%s"'), "post-coach scripted play consumes typed PlayerCardDock normal cards and keeps only non-card PlayerBoard strategy actions")
 	_expect(driver_source.contains('"board_primary"') and driver_source.contains("navigation_no_state_change") and driver_source.contains('"selected_district_summary"'), "one-shot board navigation cannot loop in one region and becomes eligible again after a public region change")
 	_expect(driver_source.contains("observation_window_elapsed_before_settlement") and driver_source.contains("driver_wall_timeout"), "bounded observation and wall timeout have distinct failure codes")
 	_expect(not driver_source.contains("observation_window_elapsed_during_action"), "observation expiry no longer misclassifies an action admitted near the boundary as a product stall")

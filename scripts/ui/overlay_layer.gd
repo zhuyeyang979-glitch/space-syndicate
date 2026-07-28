@@ -20,6 +20,7 @@ signal map_layer_focus_requested(layer_id: String)
 @onready var monster_wager_decision_panel: Control = %MonsterWagerDecisionPanel
 @onready var temporary_choice_decision_panel: Control = %TemporaryChoiceDecisionPanel
 @onready var public_bid_decision_panel: Control = %PublicBidDecisionPanel
+@onready var card_resolution_overlay: Control = %CardResolutionTableBannerOverlay
 @onready var side_drawer_panel: PanelContainer = %SideDrawerPanel
 @onready var side_drawer_title: Label = %SideDrawerTitle
 @onready var side_drawer_close_button: Button = %SideDrawerCloseButton
@@ -32,7 +33,6 @@ signal map_layer_focus_requested(layer_id: String)
 @onready var drag_drop_target_label: Label = %DragDropTargetLabel
 @onready var drag_preview_panel: PanelContainer = %DragPreviewPanel
 @onready var drag_preview_label: Label = %DragPreviewLabel
-@onready var district_supply_drawer: Control = %DistrictSupplySideDrawerOverlay
 @onready var map_control_toolbar: PlanetMapControlToolbar = get_node_or_null(
 	"RuntimeSurfaceLayer/FullscreenMapOverlay/FullscreenMapMargin/FullscreenMapRows/FullscreenMapToolbar/FullscreenMapActionHost/PlanetMapControlToolbar"
 ) as PlanetMapControlToolbar
@@ -65,16 +65,12 @@ const REAL_TEMPORARY_DECISION_KINDS := [
 ]
 const SURFACE_CONFIRM := "confirm"
 const SURFACE_SIDE_DRAWER := "side_drawer"
-const SURFACE_DISTRICT_SUPPLY := "district_supply"
 const SURFACE_ROUTE_VIEW := "route_view"
 
 var _surface_stack: Array[Dictionary] = []
 var _surface_context_revision := 0
 var _active_forced_surface_id := ""
 var _forced_focus_restore_path := ""
-var _district_supply_presentation_apply_count := 0
-var _district_supply_presentation_reject_count := 0
-var _last_district_supply_visibility_scope := "closed"
 
 
 func _ready() -> void:
@@ -87,8 +83,6 @@ func _ready() -> void:
 	_connect_public_bid_panel()
 	if map_control_toolbar != null and not map_control_toolbar.map_layer_focus_requested.is_connected(_on_map_layer_focus_requested):
 		map_control_toolbar.map_layer_focus_requested.connect(_on_map_layer_focus_requested)
-	if district_supply_drawer != null and not district_supply_drawer.visibility_changed.is_connected(_on_district_supply_visibility_changed):
-		district_supply_drawer.visibility_changed.connect(_on_district_supply_visibility_changed)
 
 
 func _input(event: InputEvent) -> void:
@@ -111,14 +105,22 @@ func handle_back_request() -> bool:
 			return true
 	if _active_forced_surface_id != "":
 		return true
-	if district_supply_drawer != null and district_supply_drawer.visible:
-		_request_district_supply_close()
-		return true
 	return false
 
 
 func presentation_fullscreen_planet_target() -> SpaceSyndicatePlanetMapView:
 	return fullscreen_planet_map_view
+
+
+func apply_card_resolution_presentation(projection: Dictionary) -> bool:
+	if card_resolution_overlay == null:
+		return false
+	return card_resolution_overlay.apply_projection(projection)
+
+
+func clear_card_resolution_presentation() -> void:
+	if card_resolution_overlay != null:
+		card_resolution_overlay.clear_projection()
 
 
 func _on_map_layer_focus_requested(layer_id: String) -> void:
@@ -347,62 +349,6 @@ func deactivate_optional_route_view(restore_focus := true) -> void:
 	_remove_surface(SURFACE_ROUTE_VIEW, restore_focus)
 
 
-func apply_district_supply_presentation(
-	surface: Dictionary,
-	viewer_index: int,
-	authorization_revision: int
-) -> bool:
-	var drawer := district_supply_drawer as SpaceSyndicateDistrictSupplyDrawer
-	if drawer == null:
-		_district_supply_presentation_reject_count += 1
-		return false
-	if int(surface.get("viewer_index", -1)) != viewer_index \
-			or int(surface.get("authorization_revision", 0)) != authorization_revision \
-			or (str(surface.get("visibility_scope", "closed")) == "viewer_private" \
-				and int(surface.get("subject_player_index", -1)) != viewer_index):
-		_clear_district_supply_presentation(drawer)
-		_district_supply_presentation_reject_count += 1
-		return false
-	var should_show := bool(surface.get("visible", false))
-	var snapshot: Dictionary = surface.get("snapshot", {}) if surface.get("snapshot", {}) is Dictionary else {}
-	if not should_show:
-		_clear_district_supply_presentation(drawer)
-		_district_supply_presentation_apply_count += 1
-		return true
-	if forced_surface_active() or snapshot.is_empty():
-		_district_supply_presentation_reject_count += 1
-		return false
-	drawer.set_supply(snapshot)
-	drawer.visible = true
-	_last_district_supply_visibility_scope = str(surface.get("visibility_scope", "public"))
-	_district_supply_presentation_apply_count += 1
-	return true
-
-
-func clear_district_supply_presentation() -> void:
-	var drawer := district_supply_drawer as SpaceSyndicateDistrictSupplyDrawer
-	if drawer != null:
-		_clear_district_supply_presentation(drawer)
-
-
-func district_supply_presentation_target_snapshot() -> Dictionary:
-	return {
-		"apply_count": _district_supply_presentation_apply_count,
-		"reject_count": _district_supply_presentation_reject_count,
-		"last_visibility_scope": _last_district_supply_visibility_scope,
-		"visible": district_supply_drawer.visible if district_supply_drawer != null else false,
-		"owns_gameplay_state": false,
-		"owns_purchase_quote": false,
-		"references_main": false,
-	}
-
-
-func _clear_district_supply_presentation(drawer: SpaceSyndicateDistrictSupplyDrawer) -> void:
-	drawer.clear_supply()
-	drawer.visible = false
-	_last_district_supply_visibility_scope = "closed"
-
-
 func transient_surface_stack_snapshot() -> Dictionary:
 	var entries: Array = []
 	for entry in _surface_stack:
@@ -415,7 +361,6 @@ func transient_surface_stack_snapshot() -> Dictionary:
 		"active_forced_surface_id": _active_forced_surface_id,
 		"public_bid_visible": public_bid_visible(),
 		"side_drawer_visible": side_drawer_panel.visible if side_drawer_panel != null else false,
-		"district_supply_visible": district_supply_drawer.visible if district_supply_drawer != null else false,
 	}
 
 
@@ -789,8 +734,6 @@ func _dismiss_surface(surface_id: String) -> void:
 			hide_confirm()
 		SURFACE_SIDE_DRAWER:
 			hide_side_drawer()
-		SURFACE_DISTRICT_SUPPLY:
-			_request_district_supply_close()
 		SURFACE_ROUTE_VIEW:
 			get_tree().call_group("optional_route_presentation_views", "hide_optional_route_presentation")
 			get_tree().call_group("optional_route_presentation_toolbars", "sync_optional_route_hidden")
@@ -830,9 +773,6 @@ func _close_player_opened_surfaces_for_forced() -> void:
 	if side_drawer_panel != null and side_drawer_panel.visible:
 		side_drawer_panel.visible = false
 		_remove_surface(SURFACE_SIDE_DRAWER, false)
-	if district_supply_drawer != null and district_supply_drawer.visible:
-		_remove_surface(SURFACE_DISTRICT_SUPPLY, false)
-		_request_district_supply_close()
 	if _surface_stack.any(func(entry: Dictionary) -> bool: return str(entry.get("surface_id", "")) == SURFACE_ROUTE_VIEW):
 		get_tree().call_group("optional_route_presentation_views", "hide_optional_route_presentation")
 		get_tree().call_group("optional_route_presentation_toolbars", "sync_optional_route_hidden")
@@ -864,25 +804,3 @@ func _restore_surface_focus(path: String) -> void:
 			if fallback != null:
 				return
 		parent_path = parent_path.get_base_dir()
-
-
-func _on_district_supply_visibility_changed() -> void:
-	if district_supply_drawer == null:
-		return
-	if district_supply_drawer.visible:
-		if forced_surface_active():
-			_request_district_supply_close()
-			return
-		_push_surface(SURFACE_DISTRICT_SUPPLY, "player_opened", district_supply_drawer, null, true, false, "open_district_supply")
-	else:
-		_remove_surface(SURFACE_DISTRICT_SUPPLY, true)
-
-
-func _request_district_supply_close() -> void:
-	if district_supply_drawer == null:
-		_remove_surface(SURFACE_DISTRICT_SUPPLY, true)
-		return
-	if district_supply_drawer.has_signal("supply_action_requested"):
-		district_supply_drawer.emit_signal("supply_action_requested", "district_supply_close", {})
-	else:
-		district_supply_drawer.visible = false

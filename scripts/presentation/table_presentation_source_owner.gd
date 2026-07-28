@@ -14,6 +14,8 @@ var _visual_cues: VisualCueRuntimeOwner
 var _solar: SolarAvailabilityRuntimeService
 var _world_clock: WorldEffectiveClockRuntimeController
 var _weather: WeatherPresentationRuntimeService
+var _player_card_dock_query: PlayerCardDockViewerQueryPort
+var _player_roster_query: PlayerRosterViewerQueryPort
 var _revision := 0
 var _snapshot_build_count_by_kind := {"live": 0, "map": 0, "full": 0, "developer": 0}
 
@@ -25,7 +27,9 @@ func configure(
 	visual_cues: VisualCueRuntimeOwner = null,
 	solar: SolarAvailabilityRuntimeService = null,
 	world_clock: WorldEffectiveClockRuntimeController = null,
-	weather: WeatherPresentationRuntimeService = null
+	weather: WeatherPresentationRuntimeService = null,
+	player_card_dock_query: PlayerCardDockViewerQueryPort = null,
+	player_roster_query: PlayerRosterViewerQueryPort = null
 ) -> void:
 	_query_ports = query_ports
 	_viewmodel_query = viewmodel_query
@@ -34,6 +38,8 @@ func configure(
 	_solar = solar
 	_world_clock = world_clock
 	_weather = weather
+	_player_card_dock_query = player_card_dock_query
+	_player_roster_query = player_roster_query
 
 
 func build_live_snapshot(receipt: TablePresentationRefreshReceipt) -> TableLivePresentationSnapshot:
@@ -47,7 +53,7 @@ func build_live_snapshot(receipt: TablePresentationRefreshReceipt) -> TableLiveP
 	snapshot.revision = _revision
 	snapshot.viewer_index = viewer
 	snapshot.authorization_revision = context.authorization_revision
-	snapshot.table_state = _viewmodel_query.compose_table_state(viewer, false) if _viewmodel_query != null else {}
+	snapshot.table_state = _compose_table_state(viewer, context.authorization_revision, false)
 	return snapshot
 
 
@@ -62,7 +68,7 @@ func build_full_snapshot(receipt: TablePresentationRefreshReceipt) -> TableFullP
 	snapshot.revision = _revision
 	snapshot.viewer_index = viewer
 	snapshot.authorization_revision = context.authorization_revision
-	snapshot.table_state = _viewmodel_query.compose_table_state(viewer, true) if _viewmodel_query != null else {}
+	snapshot.table_state = _compose_table_state(viewer, context.authorization_revision, true)
 	return snapshot
 
 
@@ -132,11 +138,36 @@ func debug_snapshot() -> Dictionary:
 		"owns_refresh_cadence": false,
 		"owns_gameplay_state": false,
 		"viewmodel_query": _viewmodel_query.debug_snapshot() if _viewmodel_query != null else {},
+		"player_card_dock_query": _player_card_dock_query.debug_snapshot() if _player_card_dock_query != null else {},
+		"player_roster_query": _player_roster_query.debug_snapshot() if _player_roster_query != null else {},
 	}
 
 
 func viewer_context() -> TablePresentationViewerContext:
 	return _query_ports.viewer_context() if _query_ports != null else TablePresentationViewerContext.denied()
+
+
+func _compose_table_state(
+	viewer_index: int,
+	authorization_revision: int,
+	include_full: bool
+) -> Dictionary:
+	if _viewmodel_query == null:
+		return {}
+	var state := _viewmodel_query.compose_table_state(viewer_index, include_full)
+	if state.is_empty():
+		return state
+	if _player_card_dock_query != null:
+		state["player_card_dock"] = _player_card_dock_query.snapshot_for_viewer(
+			viewer_index,
+			authorization_revision
+		)
+	if _player_roster_query != null:
+		state["player_roster"] = _player_roster_query.snapshot_for_viewer(
+			viewer_index,
+			authorization_revision
+		)
+	return TablePresentationPureDataPolicy.detached_copy(state) as Dictionary
 
 
 func _can_build(receipt: TablePresentationRefreshReceipt, expected_kind: StringName) -> bool:

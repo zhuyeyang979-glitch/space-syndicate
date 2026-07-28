@@ -62,6 +62,25 @@ func _run() -> void:
 	_expect(not main_source.contains("func _on_victory_outcome_applied") and not main_source.contains("var log_lines"), "Main owns neither victory presentation nor public log storage")
 	_expect(not main_source.contains("func _city_markers_for_selected_player") and not main_source.contains("func _auto_monster_markers"), "Main no longer assembles public map markers")
 	_expect(not main_source.contains("_card_resolution_presentation_source") and not main_source.contains("_card_resolution_presentation_snapshot"), "Main no longer owns card-resolution presentation source or snapshot methods")
+	for retired_overlay_symbol in [
+		"card_resolution_overlay",
+		"_build_card_resolution_overlay",
+		"_show_card_batch_lobby_overlay",
+		"_show_card_resolution_overlay",
+		"_hide_card_resolution_overlay",
+		"_refresh_card_resolution_overlay_badges",
+		"_runtime_card_resolution_overlay_badge_source",
+		"_card_resolution_overlay_compact_body_text",
+		"_card_resolution_overlay_detail_text",
+		"_update_card_resolution_timer_bar",
+		"CardResolutionTableBannerOverlay",
+		"BottomCountdownOverlay",
+		"PlanetRightSpaceRail",
+		"compose_game_resolution_overlay_badges",
+	]:
+		_expect(not main_source.contains(retired_overlay_symbol), "Main no longer owns resolution presentation symbol %s" % retired_overlay_symbol)
+	var overlay_scene_source := FileAccess.get_file_as_string("res://scenes/ui/OverlayLayer.tscn")
+	_expect(not overlay_scene_source.contains("BottomCountdownBar.tscn") and not overlay_scene_source.contains("BottomCountdownOverlay"), "production OverlayLayer retires the orphaned legacy countdown surface")
 	_expect(not FileAccess.file_exists("res://scripts/runtime/contract_runtime_world_bridge.gd"), "retired contract response bridge is absent")
 	var victory_bridge_source := FileAccess.get_file_as_string("res://scripts/runtime/victory_control_world_bridge.gd")
 	_expect(not victory_bridge_source.contains("apply_outcome_receipt") and not victory_bridge_source.contains("_on_victory_outcome_applied"), "victory fact bridge has no Main presentation callback")

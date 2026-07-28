@@ -111,8 +111,8 @@ func _test_authority_contract() -> void:
 
 func _test_actor_and_inspection_separation() -> void:
 	_expect(_selection.inspected_player_index() == 0 and _actor_index() == 0, "viewer zero starts with actor zero and inspected player zero")
-	var first := _port.submit_intent(_inspection_intent("inspect:player-2", 2, &"player_seat"))
-	_expect(first.accepted and first.applied and first.changed, "player-seat inspection selects player two through the typed port")
+	var first := _port.submit_intent(_inspection_intent("inspect:player-2", 2, &"player_roster"))
+	_expect(first.accepted and first.applied and first.changed, "player-roster inspection selects player two through the typed port")
 	_expect(_selection.inspected_player_index() == 2 and _selection.selected_player == 2, "legacy selected_player now mirrors only the inspected player target")
 	_expect(_actor_index() == 0, "inspecting player two does not change the authorized actor")
 	var second := _port.submit_intent(_inspection_intent("inspect:player-3", 3, &"table_toolbar"))
@@ -130,7 +130,7 @@ func _test_forgery_and_revisions() -> void:
 	var forged := _identity.authorize_actor_index(2, &"qa_driver")
 	_expect(not forged.is_valid() and forged.reason_code == "actor_authority_mismatch", "viewer zero cannot forge actor player two")
 	_selection.select_inspected_player(2, int(_selection.snapshot().get("revision", -1)))
-	var selected_forgery := _identity.authorize_actor_index(_selection.inspected_player_index(), &"player_seat")
+	var selected_forgery := _identity.authorize_actor_index(_selection.inspected_player_index(), &"player_roster")
 	_expect(not selected_forgery.is_valid() and selected_forgery.reason_code == "actor_authority_mismatch", "inspected player two cannot authorize actor player two")
 	var wrong_viewer := _inspection_intent("inspect:wrong-viewer", 1, &"qa_driver")
 	wrong_viewer.viewer_index = 1
@@ -208,7 +208,7 @@ func _test_ui_input_and_presentation_sync() -> void:
 	screen.bind_gameplay_actor_authorization_context(actor_context)
 	screen.apply_state({
 		"selection_context": {"revision": int(_selection.snapshot().get("revision", -1))},
-		"planet": {"public_player_seat_sources": _public_seat_sources()},
+		"player_roster": _player_roster_projection(_authorization.context().authorization_revision),
 		"top_bar": {"identity": "Local Player"},
 		"player_board": {"identity": "Local Player"},
 	})
@@ -219,30 +219,18 @@ func _test_ui_input_and_presentation_sync() -> void:
 	_port.receipt_ready.connect(func(receipt: TableSelectionReceipt) -> void: emitted_receipts.append(receipt))
 	_port.receipt_ready.connect(screen.apply_table_selection_receipt)
 	await process_frame
-	var seat_host := screen.find_child("RoleSeatLayerHost", true, false) as RoleSeatLayerHost
-	var mouse_event := InputEventMouseButton.new()
-	mouse_event.button_index = MOUSE_BUTTON_LEFT
-	mouse_event.pressed = true
-	seat_host.call("_on_seat_gui_input", mouse_event, 2)
-	_expect(not emitted_intents.is_empty() and emitted_intents.back().source_surface == &"player_seat", "PlayerSeat click emits the typed inspection intent")
-	_expect(_selection.inspected_player_index() == 2 and _actor_index() == 0, "PlayerSeat click changes inspection without changing actor")
+	var roster := screen.player_roster as SpaceSyndicatePlayerRoster
+	_expect(roster != null and roster.request_player_inspection(2), "PlayerRoster click path requests an authorized public player")
+	_expect(not emitted_intents.is_empty() and emitted_intents.back().source_surface == &"player_roster", "PlayerRoster emits the typed inspection intent")
+	_expect(_selection.inspected_player_index() == 2 and _actor_index() == 0, "PlayerRoster click changes inspection without changing actor")
 	var debug := screen.player_inspection_debug_snapshot()
-	_expect(bool(debug.get("player_seat_synced", false)), "PlayerSeat inspection outline follows the authoritative receipt")
-	_expect(bool(debug.get("player_board_synced", false)), "PlayerBoard public identity follows the authoritative receipt")
-	_expect(bool(debug.get("toolbar_synced", false)), "table toolbar public identity follows the authoritative receipt")
+	_expect(bool(debug.get("roster_synced", false)), "PlayerRoster selection follows the authoritative receipt")
+	_expect(bool(debug.get("inspection_popup_public_only", false)), "PlayerInspectionPopup remains public-only")
 	_expect(bool(debug.get("fullscreen_hud_synced", false)), "fullscreen HUD metadata follows the authoritative receipt")
-	_expect(bool(debug.get("right_inspector_public_only", false)), "RightInspector uses the public-player context only")
 	var apply_count_before_replay := int(debug.get("receipt_apply_count", -1))
 	screen.apply_table_selection_receipt(emitted_receipts.back())
 	_expect(int(screen.player_inspection_debug_snapshot().get("receipt_apply_count", -1)) == apply_count_before_replay, "duplicate receipt revision does not apply presentation targets twice")
-	var seat_layout := seat_host.layout_debug_snapshot()
-	_expect(_inspected_count(seat_layout) == 1 and _inspected_index(seat_layout) == 2, "exactly one public PlayerSeat displays the inspection outline")
-	var player_board := screen.player_board as SpaceSyndicatePlayerBoard
-	player_board.call("_on_identity_chip_gui_input", mouse_event)
-	_expect(emitted_intents.back().source_surface == &"player_board" and _selection.inspected_player_index() == 0, "PlayerBoard identity click uses the same typed path")
-	var top_bar := screen.top_bar as SpaceSyndicateTopBar
-	top_bar.call("_on_identity_chip_gui_input", mouse_event)
-	_expect(emitted_intents.back().source_surface == &"table_toolbar" and _selection.inspected_player_index() == 0, "toolbar identity click uses the same typed path")
+	_expect(int(roster.debug_snapshot().get("selected_player_index", -1)) == 2, "duplicate receipt leaves one committed roster selection")
 	var key_event := InputEventKey.new()
 	key_event.pressed = true
 	key_event.keycode = KEY_4
@@ -251,11 +239,11 @@ func _test_ui_input_and_presentation_sync() -> void:
 	var before_keyboard_count := emitted_intents.size()
 	screen.request_player_inspection(key_target, &"keyboard_hotkey")
 	_expect(key_target == 3 and emitted_intents.size() == before_keyboard_count + 1 and _selection.inspected_player_index() == 3, "keyboard 1-8 adapter is equivalent to the click intent path")
-	var gamepad_event := InputEventAction.new()
-	gamepad_event.action = &"ui_accept"
-	gamepad_event.pressed = true
-	seat_host.call("_on_seat_gui_input", gamepad_event, 1)
-	_expect(emitted_intents.back().source_surface == &"player_seat" and _selection.inspected_player_index() == 1, "gamepad focus acceptance uses the PlayerSeat typed path")
+	var roster_button := screen.find_child("RosterPlayer_1", true, false) as Button
+	_expect(roster_button != null, "player one has a focusable PlayerRoster button")
+	if roster_button != null:
+		roster_button.pressed.emit()
+	_expect(emitted_intents.back().source_surface == &"player_roster" and _selection.inspected_player_index() == 1, "gamepad/click acceptance uses the PlayerRoster typed path")
 	var fullscreen_before := emitted_intents.size()
 	screen.request_player_inspection(2, &"fullscreen_hud")
 	_expect(emitted_intents.size() == fullscreen_before + 1 and emitted_intents.back().source_surface == &"fullscreen_hud", "fullscreen HUD adapter emits one allowlisted inspection intent")
@@ -266,8 +254,8 @@ func _test_ui_input_and_presentation_sync() -> void:
 	_expect(bool(screen.call("_should_ignore_player_inspection_hotkey")), "text input focus suppresses player inspection hotkeys")
 	text_input.release_focus()
 	text_input.queue_free()
-	var right_inspector := screen.right_inspector as SpaceSyndicateRightInspector
-	var public_text := _visible_text(right_inspector)
+	var inspection_popup := screen.player_inspection_popup as SpaceSyndicatePlayerInspectionPopup
+	var public_text := _visible_text(inspection_popup)
 	_expect(public_text.contains("AI 2") and not public_text.contains("700") and not public_text.contains("secret-card"), "opponent inspection shows public identity without cash or hand data")
 	_port.receipt_ready.disconnect(screen.apply_table_selection_receipt)
 	screen.queue_free()
@@ -289,6 +277,9 @@ func _test_source_negative_gates() -> void:
 	_expect(not ai.contains("_skill_play_requirement_status(selected_player") and not ai.contains("selected_player = player_index"), "AI card decisions use their explicit player index")
 	var game_screen_source := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")
 	_expect(not game_screen_source.contains("Main._select_player") and not game_screen_source.contains("call(\"_select_player\""), "selected-player UI has no dynamic Main fallback")
+	_expect(not game_screen_source.contains("RoleSeatLayerHost") and not game_screen_source.contains("right_inspector"), "selected-player UI no longer depends on orbit seats or RightInspector")
+	var game_screen_scene := FileAccess.get_file_as_string("res://scenes/ui/GameScreen.tscn")
+	_expect(not game_screen_scene.contains("RoleSeatLayerHost") and not game_screen_scene.contains("RightInspector"), "production scene has one PlayerRoster inspection surface and no retired seat/inspector node")
 	var coordinator_scene := FileAccess.get_file_as_string(COORDINATOR_SCENE_PATH)
 	_expect(coordinator_scene.count("PlayerIdentityAuthorizationBoundary.tscn") == 1 and coordinator_scene.count("TableSelectionIntentPort.tscn") == 1, "scene composition has one actor authority boundary and one selection intent port")
 	_expect(FileAccess.get_file_as_string("res://scripts/runtime/table_selection_state.gd").contains("presentation_inspection_target"), "legacy selected_player semantics are frozen as presentation inspection")
@@ -324,18 +315,28 @@ func _player(index: int, is_ai: bool, cash: int) -> Dictionary:
 	}
 
 
-func _public_seat_sources() -> Array:
-	var result: Array = []
+func _player_roster_projection(authorization_revision: int) -> Dictionary:
+	var players: Array = []
 	for index in range(_world.players.size()):
-		result.append({
+		players.append({
 			"player_index": index,
+			"public_order_index": index,
 			"public_player_name": "Local Player" if index == 0 else "AI %d" % index,
 			"role_name": "Public Role %d" % index,
 			"player_color": Color.from_hsv(float(index) / 4.0, 0.5, 0.9),
 			"is_local_player": index == 0,
 			"public_status": "ready",
+			"is_publicly_active": false,
+			"public_activity_is_anonymous": true,
 		})
-	return result
+	return PlayerRosterProjectionV1.build({
+		"schema_version": PlayerRosterProjectionV1.SCHEMA_VERSION,
+		"source_revision": 1,
+		"viewer_index": 0,
+		"authorization_revision": authorization_revision,
+		"visibility_scope": "viewer_scoped_public",
+		"players": players,
+	})
 
 
 func _actor_index() -> int:

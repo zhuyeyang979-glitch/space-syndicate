@@ -2,11 +2,12 @@ extends SceneTree
 
 const GAME_SCREEN_SCENE := preload("res://scenes/ui/GameScreen.tscn")
 const COORDINATOR_SCENE := preload("res://scenes/runtime/GameRuntimeCoordinator.tscn")
+const RUNTIME_RULESET := preload("res://resources/rules/space_syndicate_ruleset_v04.tres")
 const RULESET := preload("res://resources/rules/space_syndicate_ruleset_v06.tres")
 const BATTLE_LIFECYCLE_POLICY := preload("res://scripts/runtime/monster_battle_lifecycle_policy_v06.gd")
 
 const TOP_BAR_FIELDS := ["table_state", "tempo", "phase", "turn", "identity", "cash_text", "gdp_text", "goal_text", "selected_district", "primary_action", "weather_status"]
-const PLAYER_BOARD_FIELDS := ["actions", "quick_actions", "region_infrastructure", "table_state_lamps", "readiness_chips", "progress_path", "bid_board", "goal_text", "goal_ratio", "primary_action", "hand_cards"]
+const PLAYER_BOARD_FIELDS := ["actions", "quick_actions", "region_infrastructure", "table_state_lamps", "readiness_chips", "progress_path", "bid_board", "goal_text", "goal_ratio", "primary_action"]
 const TRACK_SOURCE_FIELDS := ["history", "active", "queue", "next_queue", "events", "selected_resolution_id", "selected_player", "auction_open", "batch_locked", "counter_window_active", "group_phase", "group_phase_remaining_seconds", "group_cadence", "group_count", "pending_decision", "status_text"]
 const DECISION_KINDS := ["monster_wager", "discard_purchase", "monster_target_choice", "player_target_choice"]
 
@@ -48,6 +49,7 @@ func _run() -> void:
 	coordinator.name = "GameRuntimeCoordinator"
 	coordinator.presentation_game_screen_path = NodePath("../GameScreen")
 	host.add_child(coordinator)
+	coordinator.configure(RUNTIME_RULESET.debug_snapshot())
 	_configure_presentation_dependencies(coordinator)
 	await process_frame
 	await process_frame
@@ -58,10 +60,51 @@ func _run() -> void:
 	var card_id := str(ordered_ids[0]) if not ordered_ids.is_empty() else ""
 	var skill := catalog.definition(card_id) if not card_id.is_empty() else {}
 	coordinator.world_session_state().replace_players([
-		{"name": "本地玩家", "is_ai": false, "cash": 1400, "slots": [skill], "city_guesses": {1: 1}},
-		{"name": "AI一", "is_ai": true, "cash": 987654, "slots": [{"name": "秘密手牌"}], "ai_plan": "SECRET_PLAN"},
-		{"name": "AI二", "is_ai": true, "cash": 876543, "slots": [{"name": "另一秘密牌"}]},
+		{"name": "本地玩家", "is_ai": false, "cash": 1400, "city_guesses": {1: 1}},
+		{"name": "AI一", "is_ai": true, "cash": 987654, "private_hand_probe": "秘密手牌", "ai_plan": "SECRET_PLAN"},
+		{"name": "AI二", "is_ai": true, "cash": 876543, "private_hand_probe": "另一秘密牌"},
 	], true)
+	coordinator.refresh_v06_session_player_bindings()
+	var session_start := coordinator.begin_session({
+		"session_id": "table-presentation-parity-session",
+		"scenario_id": "focused",
+		"seed": 7331,
+		"player_count": 3,
+	})
+	_expect(
+		str(session_start.get("session_state", "")) == "running",
+		"fixture starts one authoritative runtime session for actor authorization"
+	)
+	var inventory := coordinator.commodity_card_inventory_runtime_controller()
+	var actor_mapping := coordinator.actor_id_for_player_index(0)
+	var actor_id := str(actor_mapping.get("actor_id", ""))
+	_expect(
+		inventory != null and bool(actor_mapping.get("available", false))
+			and actor_id == "player.0",
+		"fixture resolves the production authorized actor and inventory owner"
+	)
+	if inventory == null or actor_id.is_empty():
+		_finish(host)
+		return
+	var hand_card_id := _first_rank_one_facility_card_id(inventory.catalog())
+	_expect(not hand_card_id.is_empty(), "production v0.6 catalog provides a legal normal hand card")
+	var player_before_grant := inventory.player_snapshot(actor_id)
+	var grant := inventory.grant_card(
+		actor_id,
+		hand_card_id,
+		int(player_before_grant.get("revision", -1)),
+		"table-presentation-parity-authoritative-grant",
+		"table_presentation_parity"
+	)
+	var player_after_grant := inventory.player_snapshot(actor_id)
+	var granted_slots: Array = _dictionary(player_after_grant.get("inventory", {})).get("slots", []) \
+		if _dictionary(player_after_grant.get("inventory", {})).get("slots", []) is Array else []
+	var granted_cards := _filled_cards(granted_slots)
+	_expect(
+		bool(grant.get("committed", false)) and granted_cards.size() == 1
+			and not str(_dictionary(granted_cards[0]).get("runtime_instance_id", "")).is_empty(),
+		"fixture grants one legal runtime card instance through the authoritative owner"
+	)
 	coordinator.world_session_state().replace_districts([
 		{"region_id": "r0", "name": "甲区", "center": Vector2(100, 100), "terrain": "land", "terrain_label": "陆地", "products": ["crystal"], "demands": ["food"], "city": {"owner": 0, "active": true, "level": 1}},
 		{"region_id": "r1", "name": "乙区", "center": Vector2(300, 100), "terrain": "land", "terrain_label": "陆地", "products": ["food"], "demands": ["crystal"], "city": {"owner": 1, "active": true, "level": 1}},
@@ -88,6 +131,16 @@ func _run() -> void:
 	if query == null or source == null or scheduler == null:
 		_finish(host)
 		return
+	var viewer_context := source.viewer_context()
+	_expect(
+		viewer_context.authorized and viewer_context.viewer_index == 0
+			and viewer_context.authorization_revision > 0,
+		"production source resolves the authorized local viewer context"
+	)
+	game_screen.bind_presentation_viewer(
+		viewer_context.viewer_index,
+		viewer_context.authorization_revision
+	)
 
 	var raw_hand := query.hand_presentation_sources_for_viewer(0)
 	var raw_track := query.card_track_presentation_source_for_viewer(0)
@@ -95,7 +148,8 @@ func _run() -> void:
 	var table := full_snapshot.to_dictionary()
 	var top := _dictionary(table.get("top_bar", {}))
 	var player_board := _dictionary(table.get("player_board", {}))
-	var district := _dictionary(_dictionary(table.get("right_inspector", {})).get("district", {}))
+	var player_card_dock := _dictionary(table.get("player_card_dock", {}))
+	var contextual_detail := _dictionary(table.get("contextual_detail", {}))
 	for field in TOP_BAR_FIELDS:
 		_expect(top.has(field), "top bar preserves BASE field: %s" % field)
 	for field in PLAYER_BOARD_FIELDS:
@@ -104,21 +158,41 @@ func _run() -> void:
 		_expect(raw_track.has(field), "card track source preserves BASE field: %s" % field)
 
 	_expect(raw_hand.size() == 1, "authorized hand projection produces one CardPresentation source")
-	var hand_cards := _array(player_board.get("hand_cards", []))
-	_expect(hand_cards.size() == 1, "full table contains the real CardPresentation hand")
-	if not hand_cards.is_empty():
-		var hand_card := _dictionary(hand_cards[0])
-		_expect(str(hand_card.get("id", "")) == "hand_0", "hand card keeps its scene-owned selected slot identity")
-		_expect(not str(hand_card.get("effect", "")).is_empty(), "hand card has a non-empty CardPresentation effect")
-		_expect(not _array(hand_card.get("actions", [])).is_empty() and str(_dictionary(_array(hand_card.get("actions", []))[0]).get("id", "")) == "play_0", "hand card exposes the typed play action")
+	_expect(
+		PlayerCardDockProjectionV1.matches_viewer_authorization(
+			player_card_dock,
+			viewer_context.viewer_index,
+			viewer_context.authorization_revision
+		),
+		"full table contains one valid viewer-authorized PlayerCardDock projection"
+	)
+	var normal_cards := _array(player_card_dock.get("normal_cards", []))
+	_expect(normal_cards.size() == 1, "PlayerCardDock contains the authorized normal hand card")
+	if not normal_cards.is_empty():
+		var hand_card := _dictionary(normal_cards[0])
+		_expect(not str(hand_card.get("card_instance_id", "")).is_empty(), "dock card keeps a stable private instance identity")
+		_expect(not str(hand_card.get("display_name", "")).is_empty(), "dock card has non-empty player-facing copy")
+		var offer := _dictionary(hand_card.get("game_action_offer", {}))
+		var target_spec := _dictionary(offer.get("public_or_private_target_spec", {}))
+		var target_ids := GameActionOfferV1.target_ids(offer)
+		_expect(
+			GameActionOfferV1.validation_report(offer).get("valid", false)
+				and str(offer.get("semantic_action_id", "")) == GameActionIntentV1.ACTION_CARD_PLAY
+				and str(offer.get("actor_scope", "")) == "authorized_actor"
+				and str(target_spec.get("visibility_scope_id", "")) == "viewer_private"
+				and not target_ids.has("player_id"),
+			"dock card exposes one authorized viewer-private typed card-play offer"
+		)
 	_expect(not _array(player_board.get("actions", [])).is_empty(), "player board exposes non-empty primary actions")
-	_expect(_array(player_board.get("quick_actions", [])).size() >= 3, "player board exposes rack, buy and play quick actions")
+	var quick_actions := _array(player_board.get("quick_actions", []))
+	_expect(quick_actions.size() == 2 and not JSON.stringify(quick_actions).contains('"id":"play"'), "player board keeps rack/buy context without a duplicate hand-play entry")
 	_expect(not _array(player_board.get("readiness_chips", [])).is_empty(), "player board exposes readiness chips")
 	_expect(not _dictionary(player_board.get("bid_board", {})).is_empty(), "player board exposes the public bid board")
 	var table_lamps_json := JSON.stringify(player_board.get("table_state_lamps", []))
 	_expect(table_lamps_json.contains("结算") and not table_lamps_json.contains("resolving"), "player table state lamp localizes the raw resolving phase")
-	_expect(not str(district.get("title", "")).is_empty(), "right inspector receives selected district details")
-	_expect(not _array(_dictionary(table.get("right_inspector", {})).get("actions", [])).is_empty(), "right inspector preserves actionable entries")
+	_expect(str(contextual_detail.get("context_kind", "")) == "hand_card" and not str(contextual_detail.get("title", "")).is_empty(), "ContextDetailPopup projection receives selected private hand detail")
+	_expect(not _array(contextual_detail.get("deep_links", [])).is_empty(), "context detail preserves typed deep navigation without owning card execution")
+	_expect(not table.has("right_inspector"), "retired RightInspector snapshot is absent from the production table")
 	_expect(_array(raw_track.get("history", [])).size() == 1, "track has a real public history entry")
 	_expect(not _dictionary(raw_track.get("active", {})).is_empty(), "track has a real active entry")
 	_expect(_array(raw_track.get("queue", [])).size() == 1, "track has a real current queue entry")
@@ -422,3 +496,25 @@ func _dictionary(value: Variant) -> Dictionary:
 
 func _array(value: Variant) -> Array:
 	return (value as Array).duplicate(true) if value is Array else []
+
+
+func _filled_cards(slots: Array) -> Array:
+	var cards: Array = []
+	for slot_variant in slots:
+		if slot_variant is Dictionary and not (slot_variant as Dictionary).is_empty():
+			cards.append((slot_variant as Dictionary).duplicate(true))
+	return cards
+
+
+func _first_rank_one_facility_card_id(catalog: Resource) -> String:
+	if catalog == null or not catalog.has_method("card_ids") \
+			or not catalog.has_method("card_snapshot"):
+		return ""
+	for card_id_variant in catalog.call("card_ids") as Array:
+		var card_id := str(card_id_variant)
+		var card := _dictionary(catalog.call("card_snapshot", card_id))
+		var machine := _dictionary(card.get("machine", {}))
+		if str(machine.get("category_id", "")) == "facility" \
+				and int(machine.get("rank", 0)) == 1:
+			return card_id
+	return ""

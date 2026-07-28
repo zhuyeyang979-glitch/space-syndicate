@@ -4,15 +4,18 @@ const SCENE_PATHS := {
 	"game_screen": "res://scenes/ui/GameScreen.tscn",
 	"top_bar": "res://scenes/ui/TopBar.tscn",
 	"planet_board": "res://scenes/ui/PlanetBoard.tscn",
-	"right_inspector": "res://scenes/ui/RightInspector.tscn",
 	"player_board": "res://scenes/ui/PlayerBoard.tscn",
-	"hand_rack": "res://scenes/ui/HandRack.tscn",
+	"player_card_dock": "res://scenes/ui/table/PlayerCardDock.tscn",
+	"player_roster": "res://scenes/ui/table/PlayerRoster.tscn",
+	"context_detail": "res://scenes/ui/table/ContextDetailPopup.tscn",
+	"player_inspection": "res://scenes/ui/table/PlayerInspectionPopup.tscn",
+	"toast": "res://scenes/ui/table/NonBlockingToast.tscn",
 	"action_dock": "res://scenes/ui/ActionDock.tscn",
 	"bid_board": "res://scenes/ui/BidBoard.tscn",
 	"top_commodity_track": "res://scenes/ui/table/TopCommoditySushiTrack.tscn",
 	"card_resolution_track": "res://scenes/ui/CardResolutionTrack.tscn",
 	"overlay_layer": "res://scenes/ui/OverlayLayer.tscn",
-	"district_supply": "res://scenes/ui/DistrictSupplyDrawer.tscn",
+	"district_supply": "res://scenes/ui/table/RegionSupplyPopup.tscn",
 }
 
 const RETIRED_PLAYER_SURFACE_HELPERS := [
@@ -49,23 +52,25 @@ func _run() -> void:
 
 	var game_screen := roots.get("game_screen") as Node
 	var player_board := roots.get("player_board") as Node
+	var player_card_dock := roots.get("player_card_dock") as Node
 	var commodity_track := roots.get("top_commodity_track") as Node
 	var card_track := roots.get("card_resolution_track") as Node
 	var overlay := roots.get("overlay_layer") as Node
 	var planet_board := roots.get("planet_board") as Node
 	var district_supply := roots.get("district_supply") as Node
 
-	_expect(_has_nodes(game_screen, ["TopBar", "TopCommoditySushiTrack", "PlanetBoard", "RightInspector", "PlayerBoard", "OverlayLayer"]), "GameScreen composes the current commodity-led table scenes")
+	_expect(_has_nodes(game_screen, ["TopBar", "TopCommoditySushiTrack", "PlayerRoster", "PlanetBoard", "PlayerBoard", "PlayerCardDock", "RegionSupplyPopup", "ContextDetailPopup", "PlayerInspectionPopup", "NonBlockingToast", "OverlayLayer"]), "GameScreen composes the player-visible table shell")
 	_expect(game_screen != null and game_screen.find_child("PublicTrack", true, false) == null, "GameScreen keeps the retired PublicTrack out of active production composition")
 	_expect(game_screen != null and game_screen.find_children("TopCommoditySushiTrack", "", true, false).size() == 1, "GameScreen composes exactly one TopCommoditySushiTrack")
 	_expect(_has_nodes(game_screen, ["RuntimeVisualEventLayer"]) and not _has_nodes(game_screen, ["FirstRunCoach", "ScenarioCoach"]), "GameScreen keeps runtime feedback and removes legacy coach surfaces")
-	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "HandRack", "PlayerMainActionDock"]) and player_board.find_child("PlayerBidBoard", true, false) == null, "PlayerBoard owns resources, hand, and actions without reserving a permanent bid surface")
+	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "PlayerCommandTableau", "PlayerMainActionDock"]) and player_board.find_child("HandRack", true, false) == null and player_board.find_child("PlayerBidBoard", true, false) == null, "PlayerBoard is a compact status/action strip with no duplicate hand surface")
+	_expect(_has_nodes(player_card_dock, ["BoundActionCards", "NormalHandCards", "CommodityCards", "CardDockActionFeedback"]), "PlayerCardDock owns the three typed player-private card pools")
 	_expect(_has_nodes(commodity_track, ["TrackMargin", "TrackRows", "HeaderRow", "TitleLabel", "CommodityTrackPhaseLabel", "CommodityTrackCountLabel", "BeltViewport", "CommodityTrackItemHost", "CommodityTrackEmptyLabel"]), "TopCommoditySushiTrack owns its stable public commodity surface")
 	_expect(commodity_track is Control and (commodity_track as Control).custom_minimum_size.y >= 150.0, "TopCommoditySushiTrack remains a wide table surface instead of the retired 44px banner")
 	_expect(_has_nodes(card_track, ["HistoryRail", "ActiveResolutionSlot", "QueueRail", "NextQueueRail", "AuctionResponseLayer", "PrivacyHintLayer", "EmptyStateLayer"]), "CardResolutionTrack owns its complete public resolution surface")
 	_expect(_has_nodes(overlay, ["ConfirmPanel", "MonsterWagerDecisionPanel", "TemporaryChoiceDecisionPanel", "PublicBidDecisionPanel"]), "OverlayLayer owns every current temporary decision panel, including structured public_bid")
 	_expect(_has_nodes(planet_board, ["WeatherForecastStrip", "PlanetMapView"]), "PlanetBoard owns weather and the sceneized planet map")
-	_expect(_has_nodes(district_supply, ["DistrictSupplyMarketGrid", "DistrictSupplyPreviewPanel"]), "DistrictSupplyDrawer owns its market and preview surfaces")
+	_expect(_has_nodes(district_supply, ["DistrictSupplyMarketGrid", "DistrictSupplyPreviewPanel"]), "RegionSupplyPopup owns its market and preview surfaces")
 
 	var main_source := _source("res://scripts/main.gd")
 	var main_scene_source := _source("res://scenes/main.tscn")
@@ -74,7 +79,7 @@ func _run() -> void:
 	var player_board_source := _source("res://scripts/ui/player_board.gd")
 	var public_log_source := _source("res://scripts/presentation/public_log_presentation_owner.gd")
 	var presentation_query_source := _source("res://scripts/presentation/table_presentation_viewmodel_query.gd")
-	var hand_rack_source := _source("res://scripts/ui/hand_rack.gd")
+	var player_card_dock_source := _source("res://scripts/ui/table/player_card_dock.gd")
 	var action_dock_source := _source("res://scripts/ui/action_dock.gd")
 	var bid_board_source := _source("res://scripts/ui/bid_board.gd")
 	var track_source := _source("res://scripts/ui/card_resolution_track.gd")
@@ -84,15 +89,15 @@ func _run() -> void:
 	_expect(main_scene_source.contains("RuntimeGameScreen") and main_scene_source.contains("GameScreen.tscn"), "main.tscn embeds the sceneized GameScreen")
 	_expect(game_screen_source.contains("func apply_state(data: Dictionary)") and game_screen_source.contains("TABLE_SNAPSHOT_SCRIPT"), "GameScreen consumes the table snapshot bridge")
 	_expect(game_screen_source.contains("signal game_action_intent_requested(intent: Dictionary)") and not game_screen_source.contains("signal action_requested") and not game_screen_source.contains("signal end_turn_requested") and not game_screen_source.contains("signal card_drop_requested") and game_screen_source.contains("signal card_selected") and game_screen_source.contains("temporary_decision_action_requested"), "GameScreen emits typed game-action intents while preserving local selection and decision signals")
-	_expect(player_board_source.contains("func set_player_state(data: Dictionary)") and player_board_source.contains("func set_hand_cards(cards: Array)"), "PlayerBoard exposes structured state and hand APIs")
+	_expect(player_board_source.contains("func set_player_state(data: Dictionary)") and not player_board_source.contains("signal card_selected") and not player_board_source.contains("func set_hand_cards"), "PlayerBoard exposes status state without a card-action API")
 	_expect(public_log_source.contains("LOCALIZED_MESSAGES") and public_log_source.contains("公开局势已更新") and not public_log_source.contains("var message := str(receipt.localization_key)"), "public log renders closed player copy instead of raw localization keys")
 	_expect(presentation_query_source.contains('_phase_label(table_phase)') and not presentation_query_source.contains('"state": str(track.get("phase", "空闲"))'), "table state lamp localizes raw runtime phases")
-	_expect(hand_rack_source.contains("signal card_selected") and hand_rack_source.contains("signal card_drag_released") and hand_rack_source.contains("func set_cards(cards: Array)"), "HandRack owns card selection and drag interaction")
+	_expect(player_card_dock_source.contains("signal card_selected") and player_card_dock_source.contains("signal game_action_offer_requested") and player_card_dock_source.contains("func apply_projection"), "PlayerCardDock owns typed card selection and Action Spine offer submission")
 	_expect(action_dock_source.contains("signal action_requested") and action_dock_source.contains("func set_dock(data: Dictionary)"), "ActionDock owns actionable commands")
 	_expect(bid_board_source.contains("signal action_requested") and bid_board_source.contains("func set_bid_state(data: Dictionary)"), "BidBoard owns bid presentation and actions")
 	_expect(track_source.contains("signal track_action_requested") and track_source.contains("signal track_entry_selected") and track_source.contains("signal track_entry_opened"), "CardResolutionTrack preserves its public interaction signals")
 	_expect(overlay_source.contains("signal temporary_decision_action_requested") and overlay_source.contains("func show_temporary_decision(data: Dictionary)"), "OverlayLayer owns temporary decision routing")
-	_expect(table_snapshot_source.contains("PLAYER_BOARD_SNAPSHOT_SCRIPT") and table_snapshot_source.contains("func apply_dictionary(data: Dictionary)"), "TableSnapshot remains the pure-data UI boundary")
+	_expect(table_snapshot_source.contains("CONTEXTUAL_DETAIL_SNAPSHOT_SCRIPT") and table_snapshot_source.contains("PLAYER_CARD_DOCK_PROJECTION_SCRIPT") and table_snapshot_source.contains("func apply_dictionary(data: Dictionary)"), "TableSnapshot remains the typed pure-data UI boundary")
 
 	_expect(not main_source.contains("func _runtime_table_snapshot_source") and not main_source.contains("func _sync_runtime_game_screen") and not main_source.contains("func _on_runtime_game_screen_action_requested") and main_scene_source.contains("TablePlayerActionApplicationFlowController") and table_action_flow_source.contains("func submit_intent("), "scene-owned presentation and typed application flow own snapshots, targets, and player action routing outside main.gd")
 	_expect(not main_source.contains("BUILD_LEGACY_RUNTIME_TABLE") and not main_scene_source.contains("LegacyRuntimeTable"), "legacy runtime table composition stays retired")
@@ -113,7 +118,7 @@ func _run() -> void:
 	var planet_map_source := _source("res://scripts/ui/planet_map_view.gd")
 	var district_node_source := _source("res://scripts/ui/map/planet_district_node.gd")
 	var district_info_source := _source("res://scripts/ui/district_info_panel.gd")
-	_expect(_contains_all(player_scene_text, ["玩家板｜手牌", "现金｜", "GDP｜", "选区｜", "下一步｜", "手牌｜"]), "PlayerBoard keeps concise player-facing Chinese defaults")
+	_expect(_contains_all(player_scene_text, ["玩家状态", "现金｜", "GDP｜", "选区｜", "下一步｜"]) and not player_scene_text.contains("HandRack"), "PlayerBoard keeps concise player-facing Chinese status defaults without a hand surface")
 	_expect(_contains_all(top_bar_text, ["桌态｜待开桌", "计时｜00:00", "结束操作", "菜单"]), "TopBar keeps readable table status and commands")
 	_expect(_contains_all(commodity_track_scene_text, ["公共商品寿司带", "等待权威快照", "0 件公开商品", "共享商品带尚未就绪。"]), "TopCommoditySushiTrack explains its public commodity state")
 	_expect(_contains_all(commodity_track_source, ["signal item_focused", "signal claim_requested", "func set_snapshot(snapshot:"]), "TopCommoditySushiTrack exposes typed commodity focus, claim, and snapshot boundaries")

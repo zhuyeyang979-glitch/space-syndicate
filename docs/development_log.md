@@ -9098,3 +9098,42 @@ deleted. Evidence and the remaining action inventory are recorded in
   production `main.tscn` with no new script/runtime error. No gameplay value,
   Victory timer, RuntimeLoop, RNG, Save, Main, AI production, or formula change
   was made.
+
+## 2026-07-29 — Alpha 0.4 player-visible production shell (PARTIAL)
+
+- 集成分支同时保留 PR #69 的终局绿灯、PR #70 的 V0.7 三层参考语义和
+  PR #71 的参考桌面清理；`b5d5682`、`e19eb4a`、`cde98ae` 均为当前
+  integration base `aea16c9` 的祖先。
+- 生产 GameScreen 已物理切换到 viewer-authorized `PlayerCardDock`、单侧
+  `PlayerRoster`、typed `RegionSupplyPopup`、上下文详情/玩家详情/Toast 和
+  V0.6 typed Resolution Overlay。生产 RightInspector、HandRack、旧星球席位
+  与 BottomCountdown 重复线路已移除，Main 由 5,664/440/46 降至
+  5,249/417/36（物理行/方法/字段）。
+- 正常牌不可见根因冻结为 `HAND_SOURCE_NORMALIZATION_DROPPED`：旧适配只
+  规范化 facility machine card；当前适配覆盖全部非空 V0.6 machine card，
+  未改变卡牌规则、Save 或 RNG。真实起始牌、地区购买和商品轨 claim 均可
+  进入唯一 Dock；V0.6 容量仍诚实显示 `SHARED_V06`。
+- 绑定行动只能诚实保持 blocked：正式起始怪兽 profile 的
+  `bound_skill_patch={}`，军队牌正式提交返回
+  `v06_card_effect_route_unavailable`。没有调用旧 summon/grant helper、没有
+  直接注入第三池，也没有伪造截图。
+- 最新门禁通过：Dock projection `37/37`、target mode `11/11`、商品目标
+  `18/18`、真实两池/绑定 blocker `27/27`、Roster/详情 `30/30`、Popup
+  target `21/21`、Popup Action Spine `19/19`、Action protocol `119/119`、
+  table action flow `57/57`、隐私 `48/48`、resolution overlay `47/47`、
+  FullRun contract `197/197`、facility policy `62/62`、Main composition、
+  Main architecture `234/234`、UI text、visual contract、smoke check-only 与
+  `git diff --check`。
+- exact-candidate FullRun
+  `20260728-201751-988-full_run_quality_driver-760fb582` 通过 typed Popup/Dock
+  获得并安装两座真实设施，产生 21 条公开 Sale Receipt，达到 Top-K GDP
+  `1678/108`、控制区 `4/3`、`idle -> qualification -> audit`、invalid action
+  `0`，但在 `resolved`、
+  FinalSettlement 与 8 帧静默前超过 150 秒观察窗。因此本 SHA 不借用 PR #69
+  旧运行宣称全绿，`FULL_RUN_TO_SETTLEMENT_GREEN=false`。
+- 独立 Funplay MCP `8835` 在 Godot 4.7 中打开并运行生产 main/GameScreen/
+  PlayerCardDock，运行时与脚本错误为 0，干净停止。正式命名截图集尚未提交；
+  尤其绑定行动截图在合法获取路线建立前不可生成。
+- 当前状态为 `PARTIAL`、不可合并 main。下一最小原子边界是
+  `V06_BOUND_ACTION_TYPED_ACQUISITION_LIFECYCLE_CUTOVER`，随后必须回到本门
+  重跑三池、视觉证据和 exact-candidate FullRun。

@@ -63,10 +63,10 @@ func _run() -> void:
 	var card_track := _instantiate("res://scenes/ui/CardResolutionTrack.tscn")
 	var overlay := _instantiate("res://scenes/ui/OverlayLayer.tscn")
 
-	_expect(_has_nodes(game_screen, ["Background", "TopBar", "TopCommoditySushiTrack", "PlanetBoard", "RightInspector", "PlayerBoard", "OverlayLayer"]), "GameScreen provides the current commodity-led scene-owned table composition")
+	_expect(_has_nodes(game_screen, ["Background", "TopBar", "TopCommoditySushiTrack", "PlayerRoster", "PlanetBoard", "PlayerBoard", "PlayerCardDock", "RegionSupplyPopup", "ContextDetailPopup", "PlayerInspectionPopup", "NonBlockingToast", "OverlayLayer"]), "GameScreen provides the player-visible scene-owned table composition")
 	_expect(game_screen != null and game_screen.find_child("PublicTrack", true, false) == null, "GameScreen excludes the retired PublicTrack node")
 	_expect(game_screen != null and game_screen.find_children("TopCommoditySushiTrack", "", true, false).size() == 1, "GameScreen composes exactly one TopCommoditySushiTrack node")
-	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "PlayerHandTableau", "HandRack", "PlayerCommandTableau", "PlayerMainActionDock"]) and player_board.find_child("PlayerBidBoard", true, false) == null, "PlayerBoard has stable resource, hand, and action regions with zero permanent bid footprint")
+	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "PlayerCommandTableau", "PlayerMainActionDock"]) and player_board.find_child("HandRack", true, false) == null and player_board.find_child("PlayerBidBoard", true, false) == null, "PlayerBoard has compact resource and action regions without a duplicate hand or bid surface")
 	_expect(_has_nodes(planet_map, ["BackdropLayer", "OrbitLayer", "DistrictLayer", "RouteLayer", "MonsterLayer", "SelectionLayer", "EffectLayer", "CalloutLayer", "DebugOverlayLayer"]), "PlanetMapView exposes editable visual layers")
 	_expect(_has_nodes(commodity_track, ["TrackMargin", "HeaderRow", "BeltViewport", "CommodityTrackItemHost", "CommodityTrackEmptyLabel"]), "TopCommoditySushiTrack exposes stable header, belt, item, and empty-state regions")
 	_expect(_has_nodes(card_track, ["HistoryRail", "ActiveResolutionSlot", "QueueRail", "NextQueueRail", "AuctionResponseLayer", "PrivacyHintLayer"]), "CardResolutionTrack exposes stable visual lanes and privacy feedback")
