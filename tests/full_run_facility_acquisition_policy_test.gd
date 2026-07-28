@@ -116,6 +116,87 @@ func _run() -> void:
 
 	var mature_strategy := DriverScript.district_supply_action_from_snapshot(military_snapshot, false)
 	_expect(str(mature_strategy.get("id", "")) == "district_supply_purchase_card", "after the facility chain is complete, ordinary visible purchases remain available")
+	var maturity_checkpoint := {
+		"installation_count": 3,
+		"sale_receipt_count": 1,
+		"sale_receipt_revision": 10,
+		"observed_world_seconds": 20.0,
+	}
+	_expect(
+		DriverScript.production_growth_required({
+			"production_installation_count": 2,
+			"top_k_gdp_per_minute": 32,
+			"required_top_k_gdp_per_minute": 108,
+		}, {"observed": true}),
+		"fewer than three production installations always keep the legal growth path open"
+	)
+	_expect(
+		not DriverScript.production_growth_required({
+			"production_installation_count": 3,
+			"top_k_gdp_per_minute": 32,
+			"required_top_k_gdp_per_minute": 108,
+		}, {"observed": false}),
+		"three installations wait for the first authoritative Sale Receipt before diagnosing GDP capacity"
+	)
+	_expect(
+		DriverScript.production_growth_required({
+			"production_installation_count": 3,
+			"top_k_gdp_per_minute": 32,
+			"required_top_k_gdp_per_minute": 108,
+		}, {"observed": true, "public_event_count": 3}, "idle", 25.0, maturity_checkpoint),
+		"a live but sub-threshold three-facility economy continues through typed production actions"
+	)
+	_expect(
+		not DriverScript.production_growth_required({
+			"production_installation_count": 3,
+			"top_k_gdp_per_minute": 32,
+			"required_top_k_gdp_per_minute": 108,
+		}, {"observed": true, "public_event_count": 2}, "idle", 49.9, maturity_checkpoint) \
+			and DriverScript.production_growth_required({
+				"production_installation_count": 3,
+				"top_k_gdp_per_minute": 32,
+				"required_top_k_gdp_per_minute": 108,
+			}, {"observed": true, "public_event_count": 2}, "idle", 50.0, maturity_checkpoint),
+		"a new facility receives a bounded 30-second or two-receipt maturation window before further expansion"
+	)
+	_expect(
+		not DriverScript.production_growth_required({
+			"production_installation_count": 3,
+			"top_k_gdp_per_minute": 108,
+			"required_top_k_gdp_per_minute": 108,
+		}, {"observed": true}),
+		"meeting the public Victory GDP threshold closes additional production search"
+	)
+	_expect(
+		not DriverScript.production_growth_required({
+			"production_installation_count": 3,
+			"top_k_gdp_per_minute": 32,
+			"required_top_k_gdp_per_minute": 108,
+		}, {"observed": true}, "qualification") \
+			and not DriverScript.production_growth_required({
+				"production_installation_count": 3,
+				"top_k_gdp_per_minute": 32,
+				"required_top_k_gdp_per_minute": 108,
+			}, {"observed": true}, "audit"),
+		"qualification and audit freeze further scripted growth even when the rolling GDP sample dips"
+	)
+	_expect(
+		not DriverScript.production_growth_required({
+			"production_installation_count": 3,
+			"top_k_gdp_per_minute": 32,
+			"required_top_k_gdp_per_minute": 108,
+			"eligible": true,
+		}, {"observed": true, "public_event_count": 3}, "idle", 60.0, maturity_checkpoint),
+		"the eligible transition frame freezes growth before the public Victory state changes"
+	)
+	_expect(
+		DriverScript.production_growth_required({
+			"production_installation_count": 3,
+			"top_k_gdp_per_minute": 32,
+			"required_top_k_gdp_per_minute": 108,
+		}, {"observed": true, "public_event_count": 3}, "cooldown", 60.0, maturity_checkpoint),
+		"a failed qualification cooldown may resume legal typed growth"
+	)
 	_expect(DriverScript.recoverable_supply_receipt_reason("locked_quote_changed") and DriverScript.recoverable_supply_receipt_reason("source_region_dark") and DriverScript.recoverable_supply_receipt_reason("card_not_in_supply") and DriverScript.recoverable_supply_receipt_reason("forced_decision_blocks_district_supply"), "volatile quote, illumination, stale listing, and forced-decision preflight receipts remain retryable human interactions")
 	_expect(not DriverScript.recoverable_supply_receipt_reason("purchase_target_invalid"), "structural purchase rejection is never hidden as a retryable quote race")
 	_expect(not JSON.stringify(opening_without_facility).contains("future") and not JSON.stringify(opening_with_facility).contains("future"), "facility search exposes no future supply-bag data")

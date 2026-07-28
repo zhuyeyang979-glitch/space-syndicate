@@ -30,6 +30,7 @@ const ACTION_PROGRESS_TIMEOUT_SECONDS := 3.0
 const NO_ACTION_TIMEOUT_SECONDS := 1.5
 const DEFAULT_OBSERVATION_SECONDS := 12
 const DEFAULT_MAX_WALL_SECONDS := 30
+const MAX_WALL_SECONDS_LIMIT := 180
 const OBSERVATION_ACTION_OPEN := &"open"
 const OBSERVATION_ACTION_DRAIN := &"drain"
 const OBSERVATION_ACTION_CLOSED := &"closed"
@@ -39,7 +40,15 @@ const OBSERVATION_ACTION_CLOSED := &"closed"
 const ACTION_ENGINE_TIME_SCALE := 1.0
 const AUTHORITATIVE_WAIT_STEP_SECONDS := 1.0
 const AUTHORITATIVE_WAIT_STEPS_PER_RENDER_FRAME := 1
-const AUTHORITATIVE_WAIT_TOTAL_STEP_LIMIT := 360
+const AUTHORITATIVE_WAIT_BASE_STEP_LIMIT := 360
+const AUTHORITATIVE_WAIT_MAX_STEP_LIMIT := 480
+const AUTHORITATIVE_PROGRESS_STALL_WINDOW_STEPS := 90
+const AUTHORITATIVE_WORLD_EFFECTIVE_TIME_LIMIT_SECONDS := 420.0
+const AUTHORITATIVE_ZERO_WORLD_STEP_LIMIT := 3
+const AUTHORITATIVE_TERMINAL_TIMER_STALL_STEP_LIMIT := 3
+const PROGRESS_CHECKPOINT_INTERVAL_STEPS := 30
+const PRODUCTION_MATURITY_WORLD_SECONDS := 30.0
+const PRODUCTION_MATURITY_SALE_RECEIPT_COUNT := 2
 const BLOCKED_REALTIME_TOTAL_STEP_LIMIT := 360
 const TIMER_TRACE_SAMPLE_LIMIT := 512
 const TIMER_DELTA_TOLERANCE_US := 8
@@ -68,6 +77,25 @@ const FACILITY_TARGET_RETRY_REASON_IDS := [
 	"public_facility_slot_occupied",
 	"public_facility_slot_incompatible",
 	"public_facility_product_unavailable",
+]
+const PROGRESS_CHECKPOINT_PUBLIC_KEYS := [
+	"type",
+	"schema",
+	"driver",
+	"run_id",
+	"step",
+	"world_time",
+	"facilities",
+	"production",
+	"demand",
+	"transport",
+	"waste",
+	"sale_receipts",
+	"top_k_gdp",
+	"victory_state",
+	"last_successful_action",
+	"steps_since_progress",
+	"rng_draw_count",
 ]
 
 const FIXED_SEEDS: Array[int] = [
@@ -188,6 +216,26 @@ var _authoritative_step_wall_msec_total := 0
 var _authoritative_step_wall_msec_max := 0
 var _authoritative_slowest_step_path := ""
 var _authoritative_slowest_step_reason := ""
+var _authoritative_last_progress_step := 0
+var _authoritative_last_progress_reason := "session_started"
+var _authoritative_progress_high_water := {
+	"production_installation_count": 0,
+	"sale_receipt_revision": 0,
+	"top_k_gdp_per_minute": 0,
+	"controlled_region_count": 0,
+	"eligible": false,
+	"victory_state_rank": 0,
+}
+var _authoritative_zero_world_step_count := 0
+var _authoritative_terminal_timer_stall_count := 0
+var _authoritative_last_terminal_timer_sample: Dictionary = {}
+var _authoritative_progress_checkpoints: Array[Dictionary] = []
+var _next_progress_checkpoint_step := PROGRESS_CHECKPOINT_INTERVAL_STEPS
+var _last_successful_action_id := ""
+var _production_maturity_checkpoint: Dictionary = {}
+var _latest_public_world_seconds := 0.0
+var _victory_locked_production_installation_count := -1
+var _post_victory_production_installation_delta := 0
 var _blocked_realtime_step_batch_count := 0
 var _blocked_realtime_step_attempt_count := 0
 var _blocked_realtime_step_count := 0
@@ -337,6 +385,7 @@ func _run() -> void:
 	var final_status := "incomplete"
 	var failure_code := "observation_window_elapsed_before_settlement"
 	var final_telemetry := _collect_telemetry(run_seed, coordinator, session, settlement_composition, standings_query_port, runtime_screen, observation_started_msec, _last_event)
+	_observe_authoritative_progress(final_telemetry)
 	var cached_ui_action := _scripted_ui_action(
 		runtime_screen,
 		exhausted_navigation_actions,
@@ -355,6 +404,8 @@ func _run() -> void:
 			Engine.time_scale = ACTION_ENGINE_TIME_SCALE
 		if now_msec - last_telemetry_refresh_msec >= TELEMETRY_REFRESH_INTERVAL_MSEC:
 			final_telemetry = _collect_telemetry(run_seed, coordinator, session, settlement_composition, standings_query_port, runtime_screen, observation_started_msec, _last_event, cached_ui_action)
+			_observe_authoritative_progress(final_telemetry)
+			_emit_authoritative_progress_checkpoints(seed_index, final_telemetry, coordinator)
 			last_telemetry_refresh_msec = now_msec
 			public_progress = final_telemetry.get("progress", {}) as Dictionary
 			sale_receipt = final_telemetry.get("sale_receipt", {}) as Dictionary
@@ -503,12 +554,19 @@ func _run() -> void:
 				failure_code = "authoritative_runtime_manual_mode_unavailable"
 				_last_event = "blocked:%s" % failure_code
 				break
-			var remaining_steps := AUTHORITATIVE_WAIT_TOTAL_STEP_LIMIT - _authoritative_step_attempt_count
-			if remaining_steps <= 0:
+			var current_world_seconds := float((final_telemetry.get("elapsed", {}) as Dictionary).get("world_seconds", 0.0)) \
+				if final_telemetry.get("elapsed", {}) is Dictionary else 0.0
+			var budget_decision := authoritative_progress_budget_decision(
+				_authoritative_step_attempt_count,
+				_authoritative_last_progress_step,
+				current_world_seconds
+			)
+			if not bool(budget_decision.get("allowed", false)):
 				final_status = "blocked"
-				failure_code = "authoritative_runtime_step_budget_exhausted"
+				failure_code = str(budget_decision.get("reason_id", "authoritative_runtime_step_budget_exhausted"))
 				_last_event = "blocked:%s" % failure_code
 				break
+			var remaining_steps := AUTHORITATIVE_WAIT_MAX_STEP_LIMIT - _authoritative_step_attempt_count
 			var step_started_msec := Time.get_ticks_msec()
 			var step_result: Dictionary = AuthoritativeRuntimeStepperScript.advance_bounded(
 				runtime_loop,
@@ -529,13 +587,27 @@ func _run() -> void:
 			_authoritative_step_batch_count += 1
 			_authoritative_step_attempt_count += int(step_result.get("attempted_steps", 0))
 			_authoritative_step_active_count += int(step_result.get("active_steps", 0))
-			_authoritative_step_world_seconds += float(step_result.get("world_seconds", 0.0))
+			var advanced_world_seconds := float(step_result.get("world_seconds", 0.0))
+			_authoritative_step_world_seconds += advanced_world_seconds
+			_authoritative_zero_world_step_count = 0 \
+				if advanced_world_seconds > 0.0 else _authoritative_zero_world_step_count + 1
 			_record_authoritative_timeline_from_public_snapshot(coordinator)
+			_observe_terminal_timer_step_progress()
 			last_telemetry_refresh_msec = 0
 			_last_event = "authoritative_runtime_wait:%s" % str(step_result.get("reason_id", "unknown"))
 			if not bool(step_result.get("accepted", false)):
 				final_status = "blocked"
 				failure_code = "authoritative_runtime_step_rejected:%s" % str(step_result.get("reason_id", "unknown"))
+				_last_event = "blocked:%s" % failure_code
+				break
+			if _authoritative_zero_world_step_count >= AUTHORITATIVE_ZERO_WORLD_STEP_LIMIT:
+				final_status = "blocked"
+				failure_code = "authoritative_zero_world_step_stall"
+				_last_event = "blocked:%s" % failure_code
+				break
+			if _authoritative_terminal_timer_stall_count >= AUTHORITATIVE_TERMINAL_TIMER_STALL_STEP_LIMIT:
+				final_status = "blocked"
+				failure_code = "authoritative_terminal_timer_stalled"
 				_last_event = "blocked:%s" % failure_code
 				break
 			continue
@@ -611,6 +683,7 @@ func _run() -> void:
 				or str(ui_action.get("phase", "")) != pending_phase
 			if action_progressed:
 				_action_stats["progressed"] = int(_action_stats.get("progressed", 0)) + 1
+				_last_successful_action_id = _safe_progress_token(pending_id)
 				if str(pending_action.get("origin", "")) == "board_primary" and pending_id != "strategy_expand_gdp":
 					var progressed_signature := str(pending_action.get("signature", ""))
 					if not progressed_signature.is_empty():
@@ -781,6 +854,8 @@ func _run() -> void:
 
 	_leave_runtime_loop_manual_mode(runtime_loop)
 	final_telemetry = _collect_telemetry(run_seed, coordinator, session, settlement_composition, standings_query_port, runtime_screen, observation_started_msec, _last_event, cached_ui_action)
+	_observe_authoritative_progress(final_telemetry)
+	_emit_authoritative_progress_checkpoints(seed_index, final_telemetry, coordinator)
 	_emit_heartbeat(seed_index, final_telemetry, final_status)
 	_cleanup_main(main_instance, save_coordinator)
 	_emit_summary(_summary(options, final_telemetry, final_status, failure_code, public_capability, _save_status(public_capability)))
@@ -1021,6 +1096,9 @@ func _collect_telemetry(run_seed: int, coordinator: Node, session: Node, settlem
 		int(public_progress.get("production_installation_count", 0))
 	)
 	public_progress["peak_production_installation_count"] = _peak_production_installation_count
+	var world_seconds := maxf(0.0, float(clock.get("world_effective_seconds", 0.0)))
+	_latest_public_world_seconds = world_seconds
+	_observe_production_maturity_checkpoint(public_progress, sale_receipt, world_seconds)
 	var ui_action: Dictionary = (ui_action_override as Dictionary) if ui_action_override is Dictionary \
 		else _scripted_ui_action(runtime_screen, {}, public_progress, {}, sale_receipt)
 	var session_summary := _session_summary(session)
@@ -1029,7 +1107,6 @@ func _collect_telemetry(run_seed: int, coordinator: Node, session: Node, settlem
 	var final_settlement_log := _public_final_settlement_log_observation(coordinator, str(outcome.get("outcome_id", "")))
 	var settlement := _settlement_snapshot(victory, settlement_composition, session_summary, final_settlement_log, sale_receipt)
 	var phase := _phase_for(session_state, victory, decision, ui_action, settlement)
-	var world_seconds := maxf(0.0, float(clock.get("world_effective_seconds", 0.0)))
 	return FullRunQualitySnapshotScript.compose({
 		"seed": run_seed,
 		"phase": phase,
@@ -1151,6 +1228,7 @@ func _settlement_snapshot(
 		"transition_sequence_complete": _victory_transition_sequence_complete(),
 		"quiescence_verified": bool(_terminal_quiescence.get("verified", false)),
 		"quiescence_frame_count": int(_terminal_quiescence.get("frame_count", 0)),
+		"terminal_world_delta": float(_terminal_quiescence.get("world_delta", -1.0)),
 		"quiescence_fingerprint": str(_terminal_quiescence.get("fingerprint", "")),
 		"quiescence_reason_id": str(_terminal_quiescence.get("reason_id", "not_observed")),
 		"rng_quiescence_verified": bool(_terminal_quiescence.get("rng_verified", false)),
@@ -1260,10 +1338,18 @@ func _scripted_ui_action(
 	var source_established := false
 	var production_installation_count := int(public_progress.get("production_installation_count", 0))
 	var production_source_established := production_installation_count >= 1
-	var production_chain_incomplete := production_installation_count < TARGET_PRODUCTION_INSTALLATION_COUNT
 	var own_victory_eligible := bool(public_progress.get("eligible", false))
-	var victory_countdown_active := not _victory_state_sequence.is_empty() \
-		and _victory_state_sequence[-1] in ["qualification", "audit", "resolved"]
+	var victory_state := str(_victory_state_sequence[-1]) if not _victory_state_sequence.is_empty() else "idle"
+	var victory_countdown_active := victory_state in ["qualification", "audit", "resolved"]
+	var growth_policy := production_growth_policy(
+		public_progress,
+		sale_receipt,
+		_latest_public_world_seconds,
+		_production_maturity_checkpoint,
+		victory_state
+	)
+	var production_chain_incomplete := bool(growth_policy.get("growth_required", false))
+	var production_maturation_is_pending := str(growth_policy.get("reason_id", "")) == "production_maturation_pending"
 	var strategy_actions: Array[Dictionary] = []
 	for strategy_kind in ["expand_economic_source", "protect_route", "pressure_competition"]:
 		var strategy_action := _first_enabled_action_by_kind(player_board.get("actions", []), strategy_kind)
@@ -1271,8 +1357,9 @@ func _scripted_ui_action(
 			continue
 		source_established = true
 		strategy_actions.append(strategy_action)
-	# Once the production Owner confirms a real installation, stop manufacturing
-	# clicks and let CommodityFlow produce the first typed Sale Receipt.
+	# V0.6 guarantees low public ambient consumption in surviving regions. Once
+	# the production Owner confirms a real installation, let world-effective time
+	# produce the first typed Sale Receipt before continuing facility search.
 	if production_source_established and not bool(sale_receipt.get("observed", false)):
 		return {
 			"id": "gdp_accumulation_wait",
@@ -1280,12 +1367,20 @@ func _scripted_ui_action(
 			"disabled": true,
 			"origin": "economic_wait",
 		}
-	if bool(sale_receipt.get("observed", false)) \
-			and not production_chain_incomplete \
-			and (own_victory_eligible or victory_countdown_active):
+	# Qualification and audit are authoritative lifecycle states. A rolling GDP
+	# dip must never turn the Driver back into a facility purchaser after either
+	# state has begun.
+	if own_victory_eligible or victory_countdown_active:
 		return {
 			"id": "gdp_accumulation_wait",
 			"phase": "play.victory_qualification",
+			"disabled": true,
+			"origin": "economic_wait",
+		}
+	if production_maturation_is_pending:
+		return {
+			"id": "gdp_accumulation_wait",
+			"phase": "play.production_maturation",
 			"disabled": true,
 			"origin": "economic_wait",
 		}
@@ -1387,6 +1482,333 @@ func _scripted_ui_action(
 		return map_action
 	return {"id": "", "phase": "play", "disabled": true}
 
+
+static func production_growth_required(
+	public_progress: Dictionary,
+	sale_receipt: Dictionary,
+	victory_state := "idle",
+	current_world_seconds := 0.0,
+	maturity_checkpoint: Dictionary = {}
+) -> bool:
+	return bool(production_growth_policy(
+		public_progress,
+		sale_receipt,
+		current_world_seconds,
+		maturity_checkpoint,
+		victory_state
+	).get("growth_required", false))
+
+
+static func production_growth_policy(
+	public_progress: Dictionary,
+	sale_receipt: Dictionary,
+	current_world_seconds: float,
+	maturity_checkpoint: Dictionary,
+	victory_state: String
+) -> Dictionary:
+	var installation_count := maxi(
+		0,
+		int(public_progress.get("production_installation_count", 0))
+	)
+	if installation_count < TARGET_PRODUCTION_INSTALLATION_COUNT:
+		return {"growth_required": true, "reason_id": "production_floor_incomplete"}
+	if victory_state in ["qualification", "audit", "resolved"]:
+		return {"growth_required": false, "reason_id": "victory_lifecycle_locked"}
+	if bool(public_progress.get("eligible", false)):
+		return {"growth_required": false, "reason_id": "victory_eligible"}
+	if not bool(sale_receipt.get("observed", false)):
+		return {"growth_required": false, "reason_id": "first_sale_pending"}
+	var required_top_k := maxi(
+		0,
+		int(public_progress.get("required_top_k_gdp_per_minute", 0))
+	)
+	if required_top_k <= 0:
+		return {"growth_required": false, "reason_id": "victory_threshold_unavailable"}
+	if int(public_progress.get("top_k_gdp_per_minute", 0)) >= required_top_k:
+		return {"growth_required": false, "reason_id": "gdp_threshold_met"}
+	if production_maturation_pending(
+		public_progress,
+		sale_receipt,
+		current_world_seconds,
+		maturity_checkpoint
+	):
+		return {"growth_required": false, "reason_id": "production_maturation_pending"}
+	return {"growth_required": true, "reason_id": "gdp_capacity_below_threshold"}
+
+
+static func production_maturation_pending(
+	public_progress: Dictionary,
+	sale_receipt: Dictionary,
+	current_world_seconds: float,
+	maturity_checkpoint: Dictionary
+) -> bool:
+	var installation_count := maxi(0, int(public_progress.get("production_installation_count", 0)))
+	if installation_count < TARGET_PRODUCTION_INSTALLATION_COUNT \
+			or not bool(sale_receipt.get("observed", false)):
+		return false
+	if int(maturity_checkpoint.get("installation_count", -1)) != installation_count:
+		return true
+	var receipt_delta := maxi(
+		0,
+		int(sale_receipt.get("public_event_count", 0))
+			- int(maturity_checkpoint.get("sale_receipt_count", 0))
+	)
+	var elapsed_world_seconds := maxf(
+		0.0,
+		current_world_seconds - float(maturity_checkpoint.get("observed_world_seconds", current_world_seconds))
+	)
+	return receipt_delta < PRODUCTION_MATURITY_SALE_RECEIPT_COUNT \
+		and elapsed_world_seconds < PRODUCTION_MATURITY_WORLD_SECONDS
+
+
+func _observe_production_maturity_checkpoint(
+	public_progress: Dictionary,
+	sale_receipt: Dictionary,
+	world_seconds: float
+) -> void:
+	var installation_count := maxi(0, int(public_progress.get("production_installation_count", 0)))
+	if not _production_maturity_checkpoint.is_empty() \
+			and int(_production_maturity_checkpoint.get("installation_count", -1)) == installation_count:
+		return
+	_production_maturity_checkpoint = {
+		"installation_count": installation_count,
+		"sale_receipt_count": maxi(0, int(sale_receipt.get("public_event_count", 0))),
+		"sale_receipt_revision": maxi(0, int(sale_receipt.get("latest_source_revision", 0))),
+		"observed_world_seconds": maxf(0.0, world_seconds),
+	}
+
+
+static func authoritative_progress_budget_decision(
+	authoritative_step_count: int,
+	last_progress_step: int,
+	world_effective_seconds: float
+) -> Dictionary:
+	var safe_step_count := maxi(0, authoritative_step_count)
+	var steps_since_progress := maxi(0, safe_step_count - maxi(0, last_progress_step))
+	if world_effective_seconds >= AUTHORITATIVE_WORLD_EFFECTIVE_TIME_LIMIT_SECONDS:
+		return {"allowed": false, "reason_id": "authoritative_world_time_budget_exhausted", "steps_since_progress": steps_since_progress, "extension_active": safe_step_count >= AUTHORITATIVE_WAIT_BASE_STEP_LIMIT}
+	if safe_step_count >= AUTHORITATIVE_WAIT_MAX_STEP_LIMIT:
+		return {"allowed": false, "reason_id": "authoritative_runtime_max_step_budget_exhausted", "steps_since_progress": steps_since_progress, "extension_active": true}
+	if steps_since_progress >= AUTHORITATIVE_PROGRESS_STALL_WINDOW_STEPS:
+		return {"allowed": false, "reason_id": "authoritative_runtime_progress_stalled", "steps_since_progress": steps_since_progress, "extension_active": safe_step_count >= AUTHORITATIVE_WAIT_BASE_STEP_LIMIT}
+	return {
+		"allowed": true,
+		"reason_id": "progress_extension" if safe_step_count >= AUTHORITATIVE_WAIT_BASE_STEP_LIMIT else "base_budget",
+		"steps_since_progress": steps_since_progress,
+		"extension_active": safe_step_count >= AUTHORITATIVE_WAIT_BASE_STEP_LIMIT,
+	}
+
+
+func _observe_authoritative_progress(telemetry: Dictionary) -> void:
+	var progress: Dictionary = telemetry.get("progress", {}) if telemetry.get("progress", {}) is Dictionary else {}
+	var sale_receipt: Dictionary = telemetry.get("sale_receipt", {}) if telemetry.get("sale_receipt", {}) is Dictionary else {}
+	var settlement: Dictionary = telemetry.get("settlement", {}) if telemetry.get("settlement", {}) is Dictionary else {}
+	var reasons: Array[String] = []
+	_observe_progress_high_water("production_installation_count", int(progress.get("production_installation_count", 0)), "production_installation", reasons)
+	_observe_progress_high_water("sale_receipt_revision", int(sale_receipt.get("latest_source_revision", 0)), "sale_receipt", reasons)
+	_observe_progress_high_water("top_k_gdp_per_minute", int(progress.get("top_k_gdp_per_minute", 0)), "top_k_gdp", reasons)
+	_observe_progress_high_water("controlled_region_count", int(progress.get("controlled_region_count", 0)), "controlled_region", reasons)
+	if bool(progress.get("eligible", false)) and not bool(_authoritative_progress_high_water.get("eligible", false)):
+		_authoritative_progress_high_water["eligible"] = true
+		reasons.append("victory_eligible")
+	var victory_state := str(settlement.get("state", "idle"))
+	var victory_rank := _victory_state_progress_rank(victory_state)
+	if victory_rank > int(_authoritative_progress_high_water.get("victory_state_rank", 0)):
+		_authoritative_progress_high_water["victory_state_rank"] = victory_rank
+		reasons.append("victory_%s" % victory_state)
+	var installation_count := maxi(0, int(progress.get("production_installation_count", 0)))
+	if victory_state in ["qualification", "audit", "resolved"]:
+		if _victory_locked_production_installation_count < 0:
+			_victory_locked_production_installation_count = installation_count
+		_post_victory_production_installation_delta = maxi(0, installation_count - _victory_locked_production_installation_count)
+	else:
+		_victory_locked_production_installation_count = -1
+		_post_victory_production_installation_delta = 0
+	if bool(settlement.get("completed", false)):
+		reasons.append("settlement_completed")
+	if not reasons.is_empty():
+		_mark_authoritative_progress("+".join(reasons))
+
+
+func _observe_progress_high_water(key: String, value: int, reason_id: String, reasons: Array[String]) -> void:
+	var safe_value := maxi(0, value)
+	if not monotonic_progress_advanced(int(_authoritative_progress_high_water.get(key, 0)), safe_value):
+		return
+	_authoritative_progress_high_water[key] = safe_value
+	reasons.append(reason_id)
+
+
+func _mark_authoritative_progress(reason_id: String) -> void:
+	_authoritative_last_progress_step = _authoritative_step_attempt_count
+	_authoritative_last_progress_reason = _safe_progress_token(reason_id)
+
+
+func _observe_terminal_timer_step_progress() -> void:
+	if _victory_timer_trace.is_empty():
+		_authoritative_last_terminal_timer_sample = {}
+		_authoritative_terminal_timer_stall_count = 0
+		return
+	var current := (_victory_timer_trace[-1] as Dictionary).duplicate(true)
+	var state_id := str(current.get("state", ""))
+	if state_id not in ["qualification", "audit"]:
+		_authoritative_last_terminal_timer_sample = current
+		_authoritative_terminal_timer_stall_count = 0
+		return
+	if _authoritative_last_terminal_timer_sample.is_empty() or str(_authoritative_last_terminal_timer_sample.get("state", "")) != state_id:
+		_authoritative_last_terminal_timer_sample = current
+		_authoritative_terminal_timer_stall_count = 0
+		_mark_authoritative_progress("victory_timer_%s" % state_id)
+		return
+	var remaining_key := "qualification_remaining_us" if state_id == "qualification" else "audit_remaining_us"
+	if terminal_timer_sample_progressed(_authoritative_last_terminal_timer_sample, current, remaining_key):
+		_authoritative_terminal_timer_stall_count = 0
+		_mark_authoritative_progress("victory_timer_%s" % state_id)
+	else:
+		_authoritative_terminal_timer_stall_count += 1
+	_authoritative_last_terminal_timer_sample = current
+
+
+static func monotonic_progress_advanced(previous_value: int, current_value: int) -> bool:
+	return current_value > previous_value
+
+
+static func terminal_timer_sample_progressed(previous: Dictionary, current: Dictionary, remaining_key: String) -> bool:
+	var previous_remaining := int(previous.get(remaining_key, -1))
+	var current_remaining := int(current.get(remaining_key, -1))
+	return int(current.get("world_effective_us", -1)) > int(previous.get("world_effective_us", -1)) \
+		and current_remaining >= 0 \
+		and previous_remaining > current_remaining
+
+
+static func _victory_state_progress_rank(state_id: String) -> int:
+	match state_id:
+		"qualification":
+			return 1
+		"audit":
+			return 2
+		"resolved":
+			return 3
+	return 0
+
+
+func _emit_authoritative_progress_checkpoints(seed_index: int, telemetry: Dictionary, coordinator: Node) -> void:
+	while _authoritative_step_attempt_count >= _next_progress_checkpoint_step:
+		var progress: Dictionary = telemetry.get("progress", {}) if telemetry.get("progress", {}) is Dictionary else {}
+		var sale_receipt: Dictionary = telemetry.get("sale_receipt", {}) if telemetry.get("sale_receipt", {}) is Dictionary else {}
+		var settlement: Dictionary = telemetry.get("settlement", {}) if telemetry.get("settlement", {}) is Dictionary else {}
+		var elapsed: Dictionary = telemetry.get("elapsed", {}) if telemetry.get("elapsed", {}) is Dictionary else {}
+		var economy := _public_economy_progress_observation(coordinator)
+		var rng := _capture_rng_checkpoint(coordinator)
+		var checkpoint := progress_checkpoint_snapshot({
+			"run_id": "seed-%02d" % seed_index,
+			"step": _next_progress_checkpoint_step,
+			"world_time": maxf(0.0, float(elapsed.get("world_seconds", 0.0))),
+			"facilities": maxi(0, int(progress.get("production_installation_count", 0))),
+			"production": economy.get("production", {}),
+			"demand": economy.get("demand", {}),
+			"transport": economy.get("transport", {}),
+			"waste": economy.get("waste", {}),
+			"sale_receipts": maxi(0, int(sale_receipt.get("public_event_count", 0))),
+			"top_k_gdp": maxi(0, int(progress.get("top_k_gdp_per_minute", 0))),
+			"victory_state": str(settlement.get("state", "idle")),
+			"last_successful_action": _last_successful_action_id,
+			"steps_since_progress": maxi(0, _next_progress_checkpoint_step - _authoritative_last_progress_step),
+			"rng_draw_count": maxi(0, int(rng.get("draw_count", 0))),
+		})
+		_authoritative_progress_checkpoints.append(checkpoint.duplicate(true))
+		_emit_ndjson(checkpoint)
+		_next_progress_checkpoint_step += PROGRESS_CHECKPOINT_INTERVAL_STEPS
+
+
+static func progress_checkpoint_snapshot(source: Dictionary) -> Dictionary:
+	var production: Dictionary = source.get("production", {}) if source.get("production", {}) is Dictionary else {}
+	var demand: Dictionary = source.get("demand", {}) if source.get("demand", {}) is Dictionary else {}
+	var transport: Dictionary = source.get("transport", {}) if source.get("transport", {}) is Dictionary else {}
+	var waste: Dictionary = source.get("waste", {}) if source.get("waste", {}) is Dictionary else {}
+	return {
+		"type": "progress_checkpoint",
+		"schema": 1,
+		"driver": DRIVER_ID,
+		"run_id": _safe_progress_run_id(str(source.get("run_id", ""))),
+		"step": maxi(0, int(source.get("step", 0))),
+		"world_time": maxf(0.0, float(source.get("world_time", 0.0))),
+		"facilities": maxi(0, int(source.get("facilities", 0))),
+		"production": {"capacity_units_per_minute": maxi(0, int(production.get("capacity_units_per_minute", 0))), "settled_units": maxi(0, int(production.get("settled_units", 0)))},
+		"demand": {"capacity_units_per_minute": maxi(0, int(demand.get("capacity_units_per_minute", 0))), "settled_units": maxi(0, int(demand.get("settled_units", 0)))},
+		"transport": {"settled_units": maxi(0, int(transport.get("settled_units", 0)))},
+		"waste": {"cumulative_units": maxf(0.0, float(waste.get("cumulative_units", 0.0)))},
+		"sale_receipts": maxi(0, int(source.get("sale_receipts", 0))),
+		"top_k_gdp": maxi(0, int(source.get("top_k_gdp", 0))),
+		"victory_state": _safe_progress_token(str(source.get("victory_state", "idle"))),
+		"last_successful_action": _safe_progress_token(str(source.get("last_successful_action", ""))),
+		"steps_since_progress": maxi(0, int(source.get("steps_since_progress", 0))),
+		"rng_draw_count": maxi(0, int(source.get("rng_draw_count", 0))),
+	}
+
+
+func _public_economy_progress_observation(coordinator: Node) -> Dictionary:
+	var flow := coordinator.get_node_or_null("CommodityFlowRuntimeController") if coordinator != null else null
+	if flow == null or not flow.has_method("public_installations_snapshot") or not flow.has_method("recent_sale_receipts_snapshot") or not flow.has_method("public_waste_summary_snapshot"):
+		return {"production": {"capacity_units_per_minute": 0}, "demand": {"capacity_units_per_minute": 0}, "transport": {"settled_units": 0}, "waste": {"cumulative_units": 0.0}}
+	var production_capacity := 0
+	var demand_capacity := 0
+	var installations_variant: Variant = flow.call("public_installations_snapshot")
+	var installations: Array = installations_variant if installations_variant is Array else []
+	for installation_variant in installations:
+		if not (installation_variant is Dictionary):
+			continue
+		var installation := installation_variant as Dictionary
+		if not bool(installation.get("active", false)):
+			continue
+		var base_rate := maxi(0, int(installation.get("base_units_per_minute", 0)))
+		if str(installation.get("direction", "")) == "production":
+			production_capacity += base_rate
+		elif str(installation.get("direction", "")) == "demand":
+			demand_capacity += base_rate
+	var settled_units := 0
+	var transported_units := 0
+	var receipts_variant: Variant = flow.call("recent_sale_receipts_snapshot", -1)
+	var receipts: Array = receipts_variant if receipts_variant is Array else []
+	for receipt_variant in receipts:
+		if receipt_variant is Dictionary:
+			var receipt := receipt_variant as Dictionary
+			var units := maxi(0, int(receipt.get("units", 0)))
+			settled_units += units
+			if not str(receipt.get("route_id", "")).is_empty():
+				transported_units += units
+	var cumulative_waste := 0.0
+	var waste_variant: Variant = flow.call("public_waste_summary_snapshot")
+	var waste: Dictionary = waste_variant if waste_variant is Dictionary else {}
+	for row_variant in waste.get("commodity_rows", []):
+		if row_variant is Dictionary:
+			cumulative_waste += maxf(0.0, float((row_variant as Dictionary).get("cumulative_wasted_units", 0.0)))
+	return {
+		"production": {"capacity_units_per_minute": production_capacity, "settled_units": settled_units},
+		"demand": {"capacity_units_per_minute": demand_capacity, "settled_units": settled_units},
+		"transport": {"settled_units": transported_units},
+		"waste": {"cumulative_units": snappedf(cumulative_waste, 0.001)},
+	}
+
+
+static func _safe_progress_token(value: String) -> String:
+	var normalized := value.strip_edges().left(96)
+	var result := ""
+	for index in range(normalized.length()):
+		var code := normalized.unicode_at(index)
+		if (code >= 48 and code <= 57) or (code >= 65 and code <= 90) or (code >= 97 and code <= 122) or code in [43, 45, 46, 47, 58, 95]:
+			result += String.chr(code)
+	return result
+
+
+static func _safe_progress_run_id(value: String) -> String:
+	var normalized := value.strip_edges()
+	if normalized.length() != 7 or not normalized.begins_with("seed-"):
+		return ""
+	var index_text := normalized.substr(5, 2)
+	if not index_text.is_valid_int():
+		return ""
+	var seed_index := int(index_text)
+	return normalized if seed_index >= 0 and seed_index < FIXED_SEEDS.size() else ""
 
 func _district_supply_ui_action(runtime_screen: Node, production_chain_incomplete := false) -> Dictionary:
 	var drawer := _district_supply_drawer(runtime_screen)
@@ -2417,6 +2839,7 @@ func _summary(options: Dictionary, telemetry: Dictionary, status: String, failur
 		"completed": status == "settled" \
 			and bool((telemetry.get("settlement", {}) as Dictionary).get("completed", false)) \
 			and bool((telemetry.get("settlement", {}) as Dictionary).get("quiescence_verified", false)) \
+			and is_zero_approx(float((telemetry.get("settlement", {}) as Dictionary).get("terminal_world_delta", -1.0))) \
 			and bool((telemetry.get("settlement", {}) as Dictionary).get("rng_quiescence_verified", false)) \
 			and bool((telemetry.get("settlement", {}) as Dictionary).get("transition_sequence_complete", false)),
 		"status": status,
@@ -2458,7 +2881,20 @@ func _performance_snapshot() -> Dictionary:
 		"authoritative_slowest_step_path": _authoritative_slowest_step_path,
 		"authoritative_slowest_step_reason": _authoritative_slowest_step_reason,
 		"authoritative_step_seconds": AUTHORITATIVE_WAIT_STEP_SECONDS,
-		"authoritative_step_limit": AUTHORITATIVE_WAIT_TOTAL_STEP_LIMIT,
+		"authoritative_step_limit": AUTHORITATIVE_WAIT_MAX_STEP_LIMIT,
+		"authoritative_base_step_limit": AUTHORITATIVE_WAIT_BASE_STEP_LIMIT,
+		"authoritative_max_step_limit": AUTHORITATIVE_WAIT_MAX_STEP_LIMIT,
+		"authoritative_progress_stall_window_steps": AUTHORITATIVE_PROGRESS_STALL_WINDOW_STEPS,
+		"authoritative_world_effective_time_limit_seconds": AUTHORITATIVE_WORLD_EFFECTIVE_TIME_LIMIT_SECONDS,
+		"authoritative_last_progress_step": _authoritative_last_progress_step,
+		"authoritative_steps_since_progress": maxi(0, _authoritative_step_attempt_count - _authoritative_last_progress_step),
+		"authoritative_last_progress_reason": _authoritative_last_progress_reason,
+		"authoritative_progress_extension_used": _authoritative_step_attempt_count > AUTHORITATIVE_WAIT_BASE_STEP_LIMIT,
+		"authoritative_progress_checkpoint_count": _authoritative_progress_checkpoints.size(),
+		"authoritative_progress_checkpoint_fingerprint": JSON.stringify(_authoritative_progress_checkpoints).sha256_text() if not _authoritative_progress_checkpoints.is_empty() else "",
+		"authoritative_last_progress_checkpoint": (_authoritative_progress_checkpoints[-1] as Dictionary).duplicate(true) if not _authoritative_progress_checkpoints.is_empty() else {},
+		"production_maturity_checkpoint": _production_maturity_checkpoint.duplicate(true),
+		"post_victory_production_installation_delta": _post_victory_production_installation_delta,
 		"blocked_realtime_step_batch_count": _blocked_realtime_step_batch_count,
 		"blocked_realtime_step_attempt_count": _blocked_realtime_step_attempt_count,
 		"blocked_realtime_step_count": _blocked_realtime_step_count,
@@ -3160,6 +3596,7 @@ func _verify_terminal_quiescence(
 	_terminal_quiescence = {
 		"verified": verified,
 		"frame_count": passed_frames,
+		"world_delta": 0.0 if verified else -1.0,
 		"fingerprint": JSON.stringify(baseline_stable).sha256_text() if verified else "",
 		"reason_id": reason_id,
 		"rng_verified": bool(rng_evidence.get("verified", false)),
@@ -3237,6 +3674,7 @@ func _terminal_runtime_probe(coordinator: Node, runtime_loop: RuntimeLoop, sessi
 			"timer_evidence": timer_evidence,
 			"actions": _action_stats.duplicate(true),
 			"peak_production_installation_count": _peak_production_installation_count,
+			"post_victory_production_installation_delta": _post_victory_production_installation_delta,
 			"rng": _capture_rng_checkpoint(coordinator),
 		},
 		"frame": {
@@ -3270,6 +3708,7 @@ static func _terminal_baseline_valid(stable: Dictionary) -> bool:
 		and str(stable.get("outcome_reason_code", "")) == "public_audit_complete" \
 		and int(stable.get("winner_count", 0)) > 0 \
 		and int(stable.get("peak_production_installation_count", 0)) >= TARGET_PRODUCTION_INSTALLATION_COUNT \
+		and int(stable.get("post_victory_production_installation_delta", -1)) == 0 \
 		and int(stable.get("present_count", 0)) == 1 \
 		and int(stable.get("presented_outcome_count", 0)) == 1 \
 		and int(stable.get("logged_outcome_count", 0)) == 1 \
@@ -3393,7 +3832,7 @@ static func _parse_options(arguments: PackedStringArray) -> Dictionary:
 		elif argument.begins_with("--max-wall-seconds="):
 			var accepted := _claim_option(seen_options, "max_wall_seconds")
 			if accepted:
-				accepted = _assign_integer_option(result, "max_wall_seconds", argument.trim_prefix("--max-wall-seconds="), 1, 86400)
+				accepted = _assign_integer_option(result, "max_wall_seconds", argument.trim_prefix("--max-wall-seconds="), 1, MAX_WALL_SECONDS_LIMIT)
 			result["valid"] = bool(result.get("valid", true)) and accepted
 		elif argument == "--max-wall-seconds":
 			var accepted := _claim_option(seen_options, "max_wall_seconds")
@@ -3401,7 +3840,7 @@ static func _parse_options(arguments: PackedStringArray) -> Dictionary:
 			if index >= arguments.size():
 				accepted = false
 			elif accepted:
-				accepted = _assign_integer_option(result, "max_wall_seconds", str(arguments[index]), 1, 86400)
+				accepted = _assign_integer_option(result, "max_wall_seconds", str(arguments[index]), 1, MAX_WALL_SECONDS_LIMIT)
 			result["valid"] = bool(result.get("valid", true)) and accepted
 		else:
 			result["valid"] = false

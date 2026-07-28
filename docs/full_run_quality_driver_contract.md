@@ -26,9 +26,9 @@ The current driver:
 - uses bounded test-only acceleration without adding a production speed control.
 
 Fresh-run preflight requires a valid 19-binding registry and all runtime composition ports,
-but does not pretend incomplete resume support is complete. At `main@b2441cc` the registry
-reports 8 transactional / 10 unsupported bindings; capture correctly fails closed with
-`restore_capability_incomplete`.
+but does not pretend incomplete resume support is complete. At
+`origin/main@b5763bb` the registry reports 12 transactional / 7 unsupported
+bindings; capture correctly fails closed with `restore_capability_incomplete`.
 
 The round is not complete until resume preflight reaches 19/19 and the driver performs a
 real save, fresh-world restore and continued settlement.
@@ -185,6 +185,92 @@ finish only inside the existing three-second action-progress bound; it must then
 progress or the exact no-progress failure. This prevents a healthy production action from being
 misreported merely because the observation deadline arrived between submission and the next UI
 projection, without extending the observation indefinitely.
+
+## Action Spine terminal-progression repair profile
+
+The `ACTION_SPINE_V07_TERMINAL_PROGRESSION_REPAIR` profile keeps the production
+runtime on V0.6 and treats V0.7 only as the target development constitution. It
+does not change gameplay values, the clock formula, Save identity, RNG draws,
+Victory durations, or FinalSettlement ownership.
+
+The fixed `360`-step oracle is replaced by a bounded progress lease:
+
+```text
+BASE_STEP_BUDGET=360
+MAX_STEP_BUDGET=480
+STALL_WINDOW_STEPS=90
+WORLD_EFFECTIVE_HARD_CAP_SECONDS=420
+WALL_TIME_HARD_CAP_SECONDS=180
+AUTHORITATIVE_STEP_SECONDS=1
+STEPS_PER_RENDER_FRAME=1
+```
+
+Reaching the base budget never grants an unbounded extension. The Driver may
+continue only while a viewer-safe monotonic fact has advanced recently, and it
+always stops at the maximum step, world-effective, or wall-time boundary.
+Accepted progress facts are restricted to:
+
+- production-installation high-water growth;
+- a newer public Sale Receipt source revision;
+- Top-K GDP high-water growth;
+- controlled-region high-water growth;
+- the first `eligible=true` observation;
+- forward Victory-state movement;
+- authoritative settlement completion.
+
+GDP rollback, duplicate or stale receipts, rack rotation, navigation, action
+attempts, presentation refreshes, and wall-clock heartbeats do not renew the
+lease. Three accepted steps with zero world delta fail as
+`authoritative_zero_world_step_stall`; three qualification/audit steps with a
+frozen authoritative terminal timer fail as
+`authoritative_terminal_timer_stalled`.
+
+Every 30 authoritative steps the Driver emits a stable, viewer-safe checkpoint
+with this closed field set:
+
+```text
+STEP
+WORLD_TIME
+FACILITIES
+PRODUCTION
+DEMAND
+TRANSPORT
+WASTE
+SALE_RECEIPTS
+TOP_K_GDP
+VICTORY_STATE
+LAST_SUCCESSFUL_ACTION
+STEPS_SINCE_PROGRESS
+RNG_DRAW_COUNT
+```
+
+The checkpoint must not contain cash, cards, discard contents, hidden owner,
+private stance, AI candidates, AI selected actions, learning data, a future
+supply sequence, internal node identity, or a private transaction binding.
+
+The production oracle treats three installations as a minimum acceptance floor,
+not an unconditional stop. After each new installation count it observes a
+bounded maturation window of 30 world-effective seconds or two additional
+public Sale Receipts. If the public Victory GDP threshold is still unmet after
+that window, it may pursue another legal typed production action. It never
+adds another scripted production installation while `eligible` is true or
+Victory is in `qualification`, `audit`, or `resolved`; `cooldown` may reopen
+legal growth. Terminal acceptance also requires a zero post-Victory production
+installation delta.
+
+The final controlled run for this repair is intentionally single-use:
+
+```text
+--seed-index 0 --observation-seconds 150 --max-wall-seconds 180
+```
+
+Run `20260728-093544-814-full_run_quality_driver-5752ad04` reached three
+production installations, five public Sale Receipts and Top-K GDP `59/108`
+through 138 progressed actions with zero invalid actions. It stopped honestly
+at `observation_window_elapsed_before_settlement`; it did not enter Victory,
+FinalSettlement, or terminal quiescence. Therefore the repair profile is
+current as a bounded diagnostic contract, but terminal product completion
+remains unproven on the Action Spine descendant and the result is `PARTIAL`.
 
 ## Invocation
 

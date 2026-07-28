@@ -8937,3 +8937,38 @@ deleted. Evidence and the remaining action inventory are recorded in
   boundary before Victory/settlement, so candidate terminal regression is
   recorded as bounded incomplete; merged PR #68 A13/A14 remains the terminal
   baseline and is not rewritten as a fresh candidate pass.
+
+## 2026-07-28 — Action Spine terminal-progression repair (PARTIAL)
+
+- Kept the committed Action Spine at `02d1719` and the production ruleset at
+  V0.6 while V0.7 remains the target development constitution. AI World typed
+  ports are paused; this repair changes no AI production code.
+- Replaced the stale fixed-step/three-facility FullRun oracle with a bounded
+  360-to-480 progress lease, a 90-step stall window, 420-second world-effective
+  cap, 180-second wall cap, three-step zero-world/terminal-timer stall guards,
+  and privacy-safe checkpoints every 30 authoritative steps.
+- Added a 30-world-second or two-new-Sale facility maturation observation.
+  Scripted growth is forbidden after `eligible` or Victory
+  `qualification/audit/resolved`; terminal acceptance requires zero later
+  production installations. Cooldown may reopen the existing typed path.
+- The same Driver SHA-256
+  `6A2F26270F42E275E50A932421763D164E906DAC7AA8134312D4094164684868`
+  cannot run on parent `5cf30c6` because its second action rejects the session
+  identity before authoritative stepping. The current descendant progresses
+  138 of 147 actions with zero invalid actions. The primary classification is
+  `FULL_RUN_DRIVER_ORACLE_STALE`, not an identified Action Spine regression;
+  strict parent/child pacing parity remains unproved.
+- The task's one final FullRun
+  `20260728-093544-814-full_run_quality_driver-5752ad04` reached three real
+  facilities, five public Sale Receipts and Top-K GDP `59/108` over 150
+  authoritative steps. It stopped honestly at the observation boundary with
+  Victory still idle, so FinalSettlement and eight quiet frames were not
+  observed. Terminal world/RNG deltas remain `-1` (not observed), not zero.
+- Focused Driver/Action Spine checks pass `433/433`; counted regression checks
+  pass `929/929`; Main composition, UI text, visual snapshot and smoke
+  `--check-only` pass. Full smoke remains blocked by existing retired Main and
+  old monster-signature fixtures; no compatibility wrapper was restored.
+- This PARTIAL repair may be committed and pushed only to its task branch. It
+  may not merge to `main` or admit AI World typed ports. The next atomic task is
+  legal rack/economy progression performance inside the unchanged 180-second
+  wall boundary, without budget expansion or state injection.

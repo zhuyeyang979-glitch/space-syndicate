@@ -84,6 +84,11 @@ func _run() -> void:
 		not _valid(["--observation-seconds=55", "--max-wall-seconds=55"], []),
 		"an observation boundary that reaches the wall boundary fails closed"
 	)
+	_expect(
+		not _valid(["--observation-seconds=150", "--max-wall-seconds=181"], []) \
+			and _valid(["--observation-seconds=150", "--max-wall-seconds=180"], []),
+		"the repair profile enforces an explicit maximum 180-second wall boundary"
+	)
 	_finish()
 
 

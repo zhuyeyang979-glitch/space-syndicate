@@ -5,6 +5,55 @@ while keeping V0.6 as the only production runtime ruleset. It does not activate
 the V0.7 commodity runtime, add a Save section, add an RNG owner, or create a
 second gameplay authority.
 
+## Terminal-progression repair status
+
+The Action Spine architecture remains ready, but its descendant terminal
+product gate is currently `PARTIAL`. The controlled repair branch is
+`codex/action-spine-v07-terminal-progression-repair-02d1719`, based on
+`02d1719b83ce614b63627245641d3744f6f56c19`.
+
+The same repair Driver artifact (SHA-256
+`6A2F26270F42E275E50A932421763D164E906DAC7AA8134312D4094164684868`)
+was applied to the direct parent and current descendant. Parent `5cf30c6`
+could not start the 360-step comparison: its second action failed with
+`game_action_intent_authorization_session_id_invalid`, after zero authoritative
+steps. The current descendant performed 147 actions, progressed 138, and
+reported zero invalid actions. This evidence excludes a current Action Spine
+rejection regression, but does not manufacture strict parent/child pacing
+parity from a parent that cannot consume the same Driver contract.
+
+The repaired Driver now owns a bounded `360` base / `480` maximum progress
+lease, a 90-step no-progress boundary, a 420-second world-effective hard cap,
+and a 180-second wall cap. Only monotonic public progress renews the lease. It
+also emits viewer-safe 30-step checkpoints, observes a bounded facility
+maturation window, freezes scripted facility growth across
+`eligible/qualification/audit/resolved`, and requires zero post-Victory
+facility growth at terminal acceptance. No gameplay value, RNG owner or draw,
+Save owner or schema, Main route, RuntimeLoop, Victory duration, or
+FinalSettlement path changed.
+
+The one final controlled FullRun was
+`20260728-093544-814-full_run_quality_driver-5752ad04`. It reached three real
+production installations, five public Sale Receipts, Top-K GDP `59/108`, five
+privacy-safe checkpoints, and 150 one-second authoritative steps. It ended at
+`observation_window_elapsed_before_settlement` with Victory still `idle`.
+FinalSettlement and eight-frame quiescence were therefore not observed, and
+terminal world/RNG deltas remain unavailable rather than being reported as
+zero.
+
+The failure is classified as `FULL_RUN_DRIVER_ORACLE_STALE`, not
+`ACTION_SPINE_BEHAVIOR_REGRESSION`: the stale fixed-budget/three-facility oracle
+has been replaced and the repaired path sustains valid typed actions, but its
+legal rack/economy progression is still too slow for the product wall gate.
+Consequently:
+
+```text
+STATUS=ACTION_SPINE_V07_TERMINAL_PROGRESSION_REPAIR_PARTIAL
+MERGE_TO_MAIN_ALLOWED=false
+NEXT_MAJOR_TASK_ALLOWED=false
+AI_WORLD_PRODUCTION_MODIFIED=false
+```
+
 ## Reconciled production baseline
 
 `origin/main` at `b5763bbfb96994aa55ab36ae4335db332d9818a8`
@@ -181,8 +230,14 @@ wrapper was restored; this remains a separate P4 fixture-migration boundary.
 
 Global three-layer semantics are not complete. `bind_ai_world(self)` and broad
 AI world reads remain outside this slice, as do the seven unsupported Save
-owners and all production V0.7 commodity-track rules. The next atomic task is
-`P0_AI_WORLD_TYPED_PORTS_MAIN_HOST_DETACHMENT`, consuming this action spine
-without recreating a generic world bridge. After that architecture boundary,
-the product-critical recommendation is
-`P1_SAVE_RESUME_OWNER_COVERAGE_AND_COLD_RESTORE_VERTICAL_SLICE`.
+owners and all production V0.7 commodity-track rules.
+
+`P0_AI_WORLD_TYPED_PORTS_MAIN_HOST_DETACHMENT` is paused. The next minimum
+atomic task is to improve the Driver's legal rack facility acquisition and
+economic-progress selection so the same V0.6 production owners can reach
+Victory and FinalSettlement inside the 180-second wall boundary. It may not
+increase the wall cap, inject GDP, force Victory, skip qualification/audit, or
+restore a Main action route. AI World typed ports may resume only after one
+fresh controlled run proves Victory, FinalSettlement exact-once, eight quiet
+frames, zero terminal world delta, zero terminal RNG delta, and zero invalid
+actions.
