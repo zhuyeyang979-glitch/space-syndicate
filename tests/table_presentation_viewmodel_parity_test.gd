@@ -6,7 +6,7 @@ const RULESET := preload("res://resources/rules/space_syndicate_ruleset_v06.tres
 const BATTLE_LIFECYCLE_POLICY := preload("res://scripts/runtime/monster_battle_lifecycle_policy_v06.gd")
 
 const TOP_BAR_FIELDS := ["table_state", "tempo", "phase", "turn", "identity", "cash_text", "gdp_text", "goal_text", "selected_district", "primary_action", "weather_status"]
-const PLAYER_BOARD_FIELDS := ["actions", "quick_actions", "region_infrastructure", "table_state_lamps", "readiness_chips", "progress_path", "bid_board", "goal_text", "goal_ratio", "primary_action", "hand_cards"]
+const PLAYER_BOARD_FIELDS := ["actions", "quick_actions", "region_infrastructure", "table_state_lamps", "readiness_chips", "progress_path", "bid_board", "goal_text", "goal_ratio", "primary_action"]
 const TRACK_SOURCE_FIELDS := ["history", "active", "queue", "next_queue", "events", "selected_resolution_id", "selected_player", "auction_open", "batch_locked", "counter_window_active", "group_phase", "group_phase_remaining_seconds", "group_cadence", "group_count", "pending_decision", "status_text"]
 const DECISION_KINDS := ["monster_wager", "discard_purchase", "monster_target_choice", "player_target_choice"]
 
@@ -52,11 +52,9 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 
-	var catalog := coordinator.card_runtime_catalog_service()
-	var ordered_ids := catalog.ordered_card_ids()
-	_expect(not ordered_ids.is_empty(), "production card catalog has a card for the parity fixture")
-	var card_id := str(ordered_ids[0]) if not ordered_ids.is_empty() else ""
-	var skill := catalog.definition(card_id) if not card_id.is_empty() else {}
+	var card_id := "unit.monster.spore_tide_emperor.rank_1"
+	var skill := coordinator.v06_card_definition(card_id)
+	_expect(not skill.is_empty(), "production V0.6 card catalog has an authored card for the parity fixture")
 	coordinator.world_session_state().replace_players([
 		{"name": "本地玩家", "is_ai": false, "cash": 1400, "slots": [skill], "city_guesses": {1: 1}},
 		{"name": "AI一", "is_ai": true, "cash": 987654, "slots": [{"name": "秘密手牌"}], "ai_plan": "SECRET_PLAN"},
@@ -95,6 +93,7 @@ func _run() -> void:
 	var table := full_snapshot.to_dictionary()
 	var top := _dictionary(table.get("top_bar", {}))
 	var player_board := _dictionary(table.get("player_board", {}))
+	var player_card_dock := _dictionary(table.get("player_card_dock", {}))
 	var district := _dictionary(_dictionary(table.get("right_inspector", {})).get("district", {}))
 	for field in TOP_BAR_FIELDS:
 		_expect(top.has(field), "top bar preserves BASE field: %s" % field)
@@ -104,15 +103,19 @@ func _run() -> void:
 		_expect(raw_track.has(field), "card track source preserves BASE field: %s" % field)
 
 	_expect(raw_hand.size() == 1, "authorized hand projection produces one CardPresentation source")
-	var hand_cards := _array(player_board.get("hand_cards", []))
-	_expect(hand_cards.size() == 1, "full table contains the real CardPresentation hand")
-	if not hand_cards.is_empty():
-		var hand_card := _dictionary(hand_cards[0])
-		_expect(str(hand_card.get("id", "")) == "hand_0", "hand card keeps its scene-owned selected slot identity")
-		_expect(not str(hand_card.get("effect", "")).is_empty(), "hand card has a non-empty CardPresentation effect")
-		_expect(not _array(hand_card.get("actions", [])).is_empty() and str(_dictionary(_array(hand_card.get("actions", []))[0]).get("id", "")) == "play_0", "hand card exposes the typed play action")
+	var normal_cards := _array(player_card_dock.get("normal_cards", []))
+	var parity_source := _dictionary(raw_hand[0]) if not raw_hand.is_empty() else {}
+	var parity_skill := _dictionary(_dictionary(parity_source.get("card", {})).get("skill", {}))
+	var parity_eligibility := _dictionary(parity_source.get("eligibility", {}))
+	_expect(player_card_dock.is_empty() and normal_cards.is_empty(), "incomplete parity fixture fails the production Dock closed instead of fabricating an actionable card")
+	_expect(str(parity_skill.get("card_id", "")) == card_id and str(parity_skill.get("display_name", "")).strip_edges() != "", "authorized hand source still carries typed V0.6 identity and CardPresentation copy")
+	_expect(_dictionary(parity_source.get("game_action_offer", {})).is_empty() \
+		and not bool(parity_eligibility.get("allowed", true)) \
+		and str(parity_eligibility.get("reason_code", "")) == "player_mana_snapshot_missing", "missing actor assets produce no sealed play offer and no Dock action")
 	_expect(not _array(player_board.get("actions", [])).is_empty(), "player board exposes non-empty primary actions")
-	_expect(_array(player_board.get("quick_actions", [])).size() >= 3, "player board exposes rack, buy and play quick actions")
+	var board_quick_actions := _array(player_board.get("quick_actions", []))
+	_expect(board_quick_actions.size() == 2, "player board exposes only rack and buy quick actions")
+	_expect(not JSON.stringify(board_quick_actions).contains("ACTION_CARD_PLAY") and not JSON.stringify(player_board.get("actions", [])).contains("ACTION_CARD_PLAY"), "player board does not duplicate the PlayerCardDock card-play submission surface")
 	_expect(not _array(player_board.get("readiness_chips", [])).is_empty(), "player board exposes readiness chips")
 	_expect(not _dictionary(player_board.get("bid_board", {})).is_empty(), "player board exposes the public bid board")
 	var table_lamps_json := JSON.stringify(player_board.get("table_state_lamps", []))

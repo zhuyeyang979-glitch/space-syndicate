@@ -5534,6 +5534,15 @@ func _wire_table_presentation_source_target() -> void:
 		district_supply_query,
 		_v06_runtime_card_catalog() as CardRuntimeCatalogV06Resource
 	)
+	var player_card_dock_query := _player_card_dock_viewer_query_port_node()
+	if player_card_dock_query == null:
+		push_error("GameRuntimeCoordinator requires PlayerCardDockViewerQueryPort.")
+		return
+	player_card_dock_query.configure(
+		_table_presentation_query_ports_node(),
+		viewmodel_query,
+		_card_presentation_node() as CardPresentationRuntimeService
+	)
 	source.configure(
 		_table_presentation_query_ports_node(),
 		viewmodel_query,
@@ -5541,7 +5550,8 @@ func _wire_table_presentation_source_target() -> void:
 		_visual_cue_runtime_owner_node() as VisualCueRuntimeOwner,
 		_solar_availability_runtime_service_node() as SolarAvailabilityRuntimeService,
 		_world_effective_clock_runtime_controller_node() as WorldEffectiveClockRuntimeController,
-		_weather_presentation_runtime_service_node() as WeatherPresentationRuntimeService
+		_weather_presentation_runtime_service_node() as WeatherPresentationRuntimeService,
+		player_card_dock_query
 	)
 	port.configure(source, game_screen, game_screen.presentation_planet_target(), developer_target, _table_presentation_refresh_scheduler_node())
 	_wire_domain_presentation_ports(port, _table_presentation_query_ports_node().public_log_port)
@@ -5769,6 +5779,10 @@ func _table_presentation_source_owner_node() -> TablePresentationSourceOwner:
 
 func _table_presentation_viewmodel_query_node() -> TablePresentationViewModelQuery:
 	return get_node_or_null("TablePresentationViewModelQuery") as TablePresentationViewModelQuery
+
+
+func _player_card_dock_viewer_query_port_node() -> PlayerCardDockViewerQueryPort:
+	return get_node_or_null("PlayerCardDockViewerQueryPort") as PlayerCardDockViewerQueryPort
 
 
 func _district_supply_viewer_query_port_node() -> DistrictSupplyViewerQueryPort:

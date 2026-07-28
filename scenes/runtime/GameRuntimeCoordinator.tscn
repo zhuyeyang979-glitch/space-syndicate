@@ -133,6 +133,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayerFaceProjectionService.tscn" id="137_card_player_face_projection"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayerFacePublicLocalizationSourceService.tscn" id="139_card_player_face_public_localization"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiCardInteractionObservationService.tscn" id="140_ai_card_interaction_observation"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/PlayerCardDockViewerQueryPort.tscn" id="141_player_card_dock_query"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -209,6 +210,9 @@ product_market_runtime_controller_path = NodePath("../ProductMarketRuntimeContro
 game_session_runtime_controller_path = NodePath("../GameSessionRuntimeController")
 
 [node name="TablePresentationViewModelQuery" parent="." instance=ExtResource("103_table_presentation_viewmodel_query")]
+unique_name_in_owner = true
+
+[node name="PlayerCardDockViewerQueryPort" parent="." instance=ExtResource("141_player_card_dock_query")]
 unique_name_in_owner = true
 
 [node name="DistrictSupplyViewerQueryPort" parent="." instance=ExtResource("121_district_supply_viewer_query")]

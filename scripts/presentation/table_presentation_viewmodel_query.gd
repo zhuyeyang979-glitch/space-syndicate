@@ -6,6 +6,7 @@ const HAND_LIMIT := 5
 const COMMODITY_SUSHI_TRACK_SERVICE_SCRIPT := preload("res://scripts/runtime/commodity_sushi_track_runtime_service.gd")
 const V06_ASSET_COST_KEYS := ["life", "energy", "industry", "technology", "commerce", "shipping", "generic"]
 const MAX_EXACT_JSON_INTEGER := 9007199254740991.0
+const PLAYER_CARD_DOCK_HAND_VIEWMODELS_KEY := "__player_card_dock_hand_viewmodels"
 
 var _ports: TablePresentationQueryPorts
 var _selection: TableSelectionState
@@ -91,6 +92,13 @@ func configure(
 
 
 func compose_table_state(viewer_index: int, include_full: bool) -> Dictionary:
+	var bundle := compose_table_state_bundle(viewer_index, include_full)
+	return TablePresentationPureDataPolicy.detached_copy(
+		bundle.get("table_state", {}) if bundle.get("table_state", {}) is Dictionary else {}
+	) as Dictionary
+
+
+func compose_table_state_bundle(viewer_index: int, include_full: bool) -> Dictionary:
 	if not _viewer_is_authorized(viewer_index) or _table_viewmodel == null:
 		return {}
 	_action_offer_revision += 1
@@ -151,14 +159,22 @@ func compose_table_state(viewer_index: int, include_full: bool) -> Dictionary:
 	var composed := _table_viewmodel.compose_table_source({
 		"table_source": table_source,
 		"card_surfaces": card_surfaces,
+		"include_player_card_dock_bundle": true,
 	})
+	var hand_viewmodels: Array = composed.get(PLAYER_CARD_DOCK_HAND_VIEWMODELS_KEY, []) \
+		if composed.get(PLAYER_CARD_DOCK_HAND_VIEWMODELS_KEY, []) is Array else []
+	composed.erase(PLAYER_CARD_DOCK_HAND_VIEWMODELS_KEY)
 	if include_full:
 		composed["viewer_private_feedback"] = _ports.recent_viewer_private_feedback(viewer_index, 6)
 		composed["district_supply"] = _district_supply_query.snapshot_for_viewer(viewer_index) \
 			if _district_supply_query != null else {}
 	_revision += 1
 	_compose_count += 1
-	return TablePresentationPureDataPolicy.detached_copy(composed) as Dictionary
+	return {
+		"table_state": TablePresentationPureDataPolicy.detached_copy(composed) as Dictionary,
+		"hand_sources": TablePresentationPureDataPolicy.detached_copy(hand_cards) as Array,
+		"hand_viewmodels": TablePresentationPureDataPolicy.detached_copy(hand_viewmodels) as Array,
+	}
 
 
 func _default_trade_product_id(district: Dictionary) -> String:
@@ -420,21 +436,8 @@ func _selected_district_source(viewer_index: int, public_world: Dictionary, acti
 	}
 
 
-func _action_entries(viewer_index: int, _public_world: Dictionary, action: Dictionary, district: Dictionary) -> Array:
+func _action_entries(_viewer_index: int, _public_world: Dictionary, action: Dictionary, district: Dictionary) -> Array:
 	var actions := _district_actions(action, _array(district.get("rack", [])))
-	var private_world := _ports.private_world_projection(viewer_index, viewer_index).to_dictionary()
-	var hand_sources := _hand_card_sources(viewer_index, private_world)
-	var quick_offer := _first_available_card_offer(hand_sources)
-	if not hand_sources.is_empty():
-		actions.append({
-			"id": "play",
-			"label": "出牌",
-			"state": "选择手牌",
-			"kind": "play_card",
-			"disabled": quick_offer.is_empty(),
-			"tooltip": "选择底部手牌查看合法目标。",
-			"game_action_offer": quick_offer,
-		})
 	if actions.is_empty():
 		actions.append({"id": "inspect", "label": "看星球", "state": "可看", "kind": "inspect", "disabled": false, "tooltip": "选择区域，查看公开局势。"})
 	return actions.slice(0, 6)
@@ -495,10 +498,9 @@ func _player_board_source(viewer_index: int, public_world: Dictionary, private_w
 	var hand_count := _array(player.get("hand", [])).size()
 	var availability := _dictionary(action.get("availability", {}))
 	var rack_count := _array(district.get("rack", [])).size()
-	var quick_play_offer := _first_available_card_offer(_hand_card_sources(viewer_index, private_world))
 	return {
-		"title": "玩家板｜手牌",
-		"hint": "私密手牌和当前行动固定在底部玩家板。",
+		"title": "玩家状态条",
+		"hint": "卡牌操作只在下方玩家卡牌坞中进行。",
 		"identity": top.get("identity", "玩家"),
 		"cash_text": top.get("cash_text", "--"),
 		"gdp_text": top.get("gdp_text", "--/min"),
@@ -510,7 +512,6 @@ func _player_board_source(viewer_index: int, public_world: Dictionary, private_w
 		"quick_actions": [
 			{"id": "rack", "label": "区域牌架", "active": rack_count > 0, "state": "%d张" % rack_count, "tooltip": "当前选区公开挂牌。"},
 			{"id": "buy", "label": "买牌", "active": bool(availability.get("can_request_region_purchase", false)) and rack_count > 0, "state": "ready" if rack_count > 0 else "locked", "tooltip": "选择挂牌后锁定报价。"},
-			{"id": "play", "label": "出牌", "active": not quick_play_offer.is_empty(), "state": "ready" if not quick_play_offer.is_empty() else "waiting", "tooltip": "选择一张私密手牌。", "game_action_offer": quick_play_offer},
 		],
 		"table_state_lamps": _table_state_lamps(action, district),
 		"readiness_chips": [
@@ -715,10 +716,7 @@ func _catalog_skill(card_name: String, fallback: Dictionary) -> Dictionary:
 	if _v06_card_catalog != null and not card_name.is_empty():
 		var v06_card := _v06_card_catalog.card_snapshot(card_name)
 		var v06_machine := _dictionary(v06_card.get("machine", {}))
-		# This cutover is deliberately facility-only. Other v0.6 categories keep
-		# their existing fail-closed presentation until their typed target and
-		# eligibility semantics are migrated as separate atomic boundaries.
-		if str(v06_machine.get("category_id", "")) == "facility":
+		if not v06_machine.is_empty():
 			return _normalized_v06_skill(v06_card)
 	return fallback.duplicate(true)
 
@@ -763,6 +761,16 @@ func _normalized_v06_skill(card: Dictionary) -> Dictionary:
 		"target": str(player.get("target", "")),
 		"timing": str(player.get("timing", "")),
 		"duration": str(player.get("duration", "")),
+		"machine": {
+			"card_id": card_id,
+			"family_id": str(machine.get("family_id", "")),
+			"category_id": category_id,
+			"rank": maxi(1, int(machine.get("rank", 1))),
+			"counts_toward_hand_limit": bool(machine.get("counts_toward_hand_limit", true)),
+			"target_kind": str(machine.get("target_kind", "none")),
+			"effect_kind": str(machine.get("effect_kind", "")),
+			"effect_payload": effect_payload.duplicate(true),
+		},
 	}
 
 
