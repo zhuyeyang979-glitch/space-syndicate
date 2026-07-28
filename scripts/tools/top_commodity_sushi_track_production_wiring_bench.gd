@@ -106,7 +106,7 @@ func run_checks() -> Dictionary:
 	_check(initial_rendered_count == 12, "all_twelve_active_public_commodity_types_render")
 	_check(track.size.x >= 1000.0 and track.size.y >= 150.0, "top_track_is_wide_and_thick")
 	var planet := game_screen.get_node_or_null("SafeArea/MainRows/TableArea/PlanetBoard") as Control
-	var inspector := game_screen.get_node_or_null("SafeArea/MainRows/TableArea/RightInspector") as Control
+	var inspector := game_screen.find_child("RightInspector", true, false) as Control
 	_check(planet != null and inspector != null and planet.size.x > inspector.size.x and planet.size.y > track.size.y, "planet_remains_primary_visual")
 	_check(planet != null and not planet.get_global_rect().intersects(track.get_global_rect()), "top_track_does_not_cover_planet_input")
 	_check(inspector != null and not inspector.get_global_rect().intersects(track.get_global_rect()), "top_track_does_not_overlap_right_inspector")

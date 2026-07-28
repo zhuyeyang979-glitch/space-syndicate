@@ -29,7 +29,7 @@ func _run() -> void:
 		"CardDockCapacitySummary",
 		"CardDockActionFeedback",
 	]), "PlayerCardDock exposes all typed pool targets and feedback")
-	_expect(dock.custom_minimum_size.y >= 180.0, "production Dock reserves readable card height")
+	_expect(dock.custom_minimum_size.y >= 168.0, "production Dock reserves the dedicated readable dock_mini card height")
 	_expect(screen.get_combined_minimum_size().x <= 1366.0, "production GameScreen remains within the 1366-wide acceptance viewport")
 
 	var coordinator := COORDINATOR_SCENE.instantiate() as GameRuntimeCoordinator

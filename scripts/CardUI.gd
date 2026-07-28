@@ -13,6 +13,7 @@ signal card_clicked(card_data: Dictionary)
 @export var presentation_mode: String = "full"
 
 const PRESENTATION_MINI_HAND := "mini_hand"
+const PRESENTATION_DOCK_MINI := "dock_mini"
 const PRESENTATION_INSPECTOR_FULL := "inspector_full"
 const PRESENTATION_CODEX_FULL := "codex_full"
 const CARD_FEEL_V3_STATE_KEYS := ["hovered", "selected", "dragging", "pressed", "returning", "disabled", "drop_valid", "drop_invalid", "resolving"]
@@ -208,6 +209,7 @@ func _apply_density_for_size() -> void:
 	if not is_node_ready():
 		return
 	var hand_mini := _is_mini_hand_card()
+	var dock_mini := _is_dock_mini_card()
 	var inspector_full := _is_inspector_full_card()
 	var codex_full := _is_codex_full_card()
 	var spacious_full := inspector_full or codex_full
@@ -231,14 +233,14 @@ func _apply_density_for_size() -> void:
 		cost_badge.custom_minimum_size = Vector2(20, 18) if is_mini_card else (Vector2(22, 20) if compact else Vector2(28, 26))
 	if route_glyph_badge != null:
 		route_glyph_badge.custom_minimum_size = Vector2(18, 18) if is_mini_card else (Vector2(21, 20) if compact else Vector2(24, 26))
-	art_panel.custom_minimum_size = Vector2(0, 30 if hand_mini else (104 if codex_full else (58 if inspector_full else (28 if is_mini_card else (42 if compact else 70)))))
+	art_panel.custom_minimum_size = Vector2(0, 26 if dock_mini else (30 if hand_mini else (104 if codex_full else (58 if inspector_full else (28 if is_mini_card else (42 if compact else 70))))))
 	if keyword_chip_rail != null:
-		keyword_chip_rail.visible = true
-		keyword_chip_rail.custom_minimum_size = Vector2(0, 18 if hand_mini else (22 if compact else 24))
+		keyword_chip_rail.visible = not dock_mini
+		keyword_chip_rail.custom_minimum_size = Vector2(0, 0 if dock_mini else (18 if hand_mini else (22 if compact else 24)))
 		keyword_chip_rail.add_theme_constant_override("h_separation", 3 if hand_mini else 4)
 		keyword_chip_rail.add_theme_constant_override("v_separation", 1 if hand_mini else 2)
-	effect_label.custom_minimum_size = Vector2(0, 34 if hand_mini else (96 if codex_full else (92 if inspector_full else (34 if is_mini_card else (42 if compact else 58)))))
-	effect_label.max_lines_visible = 3 if hand_mini else (5 if codex_full else (7 if inspector_full else (3 if is_mini_card else (3 if compact else 4))))
+	effect_label.custom_minimum_size = Vector2(0, 20 if dock_mini else (34 if hand_mini else (96 if codex_full else (92 if inspector_full else (34 if is_mini_card else (42 if compact else 58))))))
+	effect_label.max_lines_visible = 1 if dock_mini else (3 if hand_mini else (5 if codex_full else (7 if inspector_full else (3 if is_mini_card else (3 if compact else 4)))))
 	effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	effect_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	stat_label.custom_minimum_size = Vector2(22, 0) if is_mini_card else (Vector2(26, 0) if compact else Vector2(36, 0))
@@ -497,7 +499,12 @@ func _contains_cjk(value: String) -> bool:
 
 func _is_mini_hand_card() -> bool:
 	var normalized := presentation_mode.strip_edges().to_lower()
-	return normalized == "mini_hand" or normalized == "hand_mini" or normalized == "mini"
+	return normalized == PRESENTATION_DOCK_MINI \
+		or normalized == "mini_hand" or normalized == "hand_mini" or normalized == "mini"
+
+
+func _is_dock_mini_card() -> bool:
+	return presentation_mode.strip_edges().to_lower() == PRESENTATION_DOCK_MINI
 
 
 func _is_inspector_full_card() -> bool:

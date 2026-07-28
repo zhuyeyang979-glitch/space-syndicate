@@ -269,7 +269,7 @@ func _render_pool(pool_id: StringName, rows: Array, host: HBoxContainer) -> void
 
 func _create_card_node(pool_id: StringName, identity: String) -> Control:
 	var card := CARD_FACE_SCENE.instantiate() as Control
-	card.custom_minimum_size = Vector2(108, 148)
+	card.custom_minimum_size = Vector2(104, 100)
 	card.focus_mode = Control.FOCUS_ALL
 	card.set_meta("player_card_dock_pool", pool_id)
 	card.set_meta("player_card_dock_identity", identity)
@@ -300,7 +300,7 @@ func _card_face_data(pool_id: StringName, row: Dictionary) -> Dictionary:
 		"stats": "L%d" % maxi(1, rank) if pool_id == &"commodity_cards" else str(maxi(1, rank)),
 		"effect": effect,
 		"summary": effect,
-		"presentation": "mini_hand",
+		"presentation": "dock_mini",
 		"play_state": "available" if _card_available(pool_id, row) else "disabled",
 		"block_reason": str(row.get(
 			"disabled_reason_text",

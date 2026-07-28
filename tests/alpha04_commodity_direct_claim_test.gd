@@ -132,6 +132,13 @@ func _run() -> void:
 		int(track.debug_snapshot().get("scoped_handled_event_count", -1)) == handled_before_non_mouse_claim_input,
 		"track router does not swallow wheel or native touch-swipe events"
 	)
+	var duplicate_before_outside_double := int(track.debug_snapshot().get("duplicate_claim_suppression_count", 0))
+	await _double_click_outside_track_via_viewport(track)
+	_expect(
+		int(track.debug_snapshot().get("scoped_handled_event_count", -1)) == handled_before_non_mouse_claim_input \
+			and int(track.debug_snapshot().get("duplicate_claim_suppression_count", -1)) == duplicate_before_outside_double,
+		"track router leaves a double-click outside the commodity source cards unhandled"
+	)
 	card_debug = card_a.debug_snapshot()
 	_expect(int(card_debug.get("drag_cancellation_count", 0)) >= 1 and int(card_debug.get("cross_item_release_rejection_count", 0)) >= 1, "deadzone and same-card release guards report their rejections")
 
@@ -171,8 +178,13 @@ func _run() -> void:
 	_click_card(card_b)
 	_expect(claims.size() == claims_before_source_advance_click, "the second half of a rapid double-click cannot claim a newly shifted source card after synchronous refresh")
 	await create_timer(0.40).timeout
-	_click_card(card_b)
-	_expect(claims.size() == claims_before_source_advance_click + 1, "a deliberate later click can claim the advanced source card")
+	var duplicate_suppression_before_slow_double := int(track.debug_snapshot().get("duplicate_claim_suppression_count", 0))
+	await _slow_double_click_card_via_viewport(card_b)
+	_expect(claims.size() == claims_before_source_advance_click + 1, "a deliberate later double-click claims the advanced source card exactly once")
+	_expect(
+		int(track.debug_snapshot().get("duplicate_claim_suppression_count", 0)) == duplicate_suppression_before_slow_double + 1,
+		"the OS double-click half is suppressed independently of a slow frame interval"
+	)
 	_expect(track.bind_pending_request_revision(SLOT_B, 45), "advanced source click binds its own request revision")
 	_expect(track.apply_claim_result(_failure_result(SLOT_B, 45, "item_not_claimable")), "advanced source failure releases only its pending identity")
 	_expect(track.set_snapshot_dictionary(_snapshot(4, false)), "new authoritative snapshot can make the remaining source unavailable")
@@ -319,6 +331,37 @@ func _click_card_via_viewport(card: Control) -> void:
 	await process_frame
 	for pressed in [true, false]:
 		root.push_input(_mouse_button(MOUSE_BUTTON_LEFT, pressed, center), true)
+		await process_frame
+
+
+func _slow_double_click_card_via_viewport(card: Control) -> void:
+	if card == null:
+		return
+	var center := card.get_global_rect().get_center()
+	var motion := InputEventMouseMotion.new()
+	motion.position = center
+	motion.global_position = center
+	root.push_input(motion, true)
+	await process_frame
+	for pressed in [true, false]:
+		root.push_input(_mouse_button(MOUSE_BUTTON_LEFT, pressed, center), true)
+		await process_frame
+	await create_timer(0.40).timeout
+	for pressed in [true, false]:
+		var event := _mouse_button(MOUSE_BUTTON_LEFT, pressed, center)
+		event.double_click = true
+		root.push_input(event, true)
+		await process_frame
+
+
+func _double_click_outside_track_via_viewport(track: Control) -> void:
+	var point := Vector2(root.get_visible_rect().size.x - 8.0, root.get_visible_rect().size.y - 8.0)
+	if track != null and track.get_global_rect().has_point(point):
+		point = Vector2(8.0, root.get_visible_rect().size.y - 8.0)
+	for pressed in [true, false]:
+		var event := _mouse_button(MOUSE_BUTTON_LEFT, pressed, point)
+		event.double_click = true
+		root.push_input(event, true)
 		await process_frame
 
 

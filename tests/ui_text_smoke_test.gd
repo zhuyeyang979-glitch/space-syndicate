@@ -66,7 +66,7 @@ func _run() -> void:
 		and player_board.find_child("PlayerHandTableau", true, false) == null, "PlayerBoard keeps resources and actions while the legacy production hand surface is retired")
 	_expect(_has_nodes(player_card_dock, ["BoundActionCards", "NormalHandCards", "CommodityCards", "CardDockCapacitySummary", "CardDockActionFeedback"]), "PlayerCardDock owns the three typed card pools, truthful capacity and action feedback")
 	_expect(_has_nodes(commodity_track, ["TrackMargin", "TrackRows", "HeaderRow", "TitleLabel", "CommodityTrackPhaseLabel", "CommodityTrackCountLabel", "BeltViewport", "CommodityTrackItemHost", "CommodityTrackEmptyLabel"]), "TopCommoditySushiTrack owns its stable public commodity surface")
-	_expect(commodity_track is Control and (commodity_track as Control).custom_minimum_size.y >= 150.0, "TopCommoditySushiTrack remains a wide table surface instead of the retired 44px banner")
+	_expect(commodity_track is Control and (commodity_track as Control).custom_minimum_size.y >= 130.0, "TopCommoditySushiTrack remains a readable illustrated table surface instead of the retired 44px banner")
 	_expect(_has_nodes(card_track, ["HistoryRail", "ActiveResolutionSlot", "QueueRail", "NextQueueRail", "AuctionResponseLayer", "PrivacyHintLayer", "EmptyStateLayer"]), "CardResolutionTrack owns its complete public resolution surface")
 	_expect(_has_nodes(overlay, ["ConfirmPanel", "MonsterWagerDecisionPanel", "TemporaryChoiceDecisionPanel", "PublicBidDecisionPanel"]), "OverlayLayer owns every current temporary decision panel, including structured public_bid")
 	_expect(_has_nodes(planet_board, ["WeatherForecastStrip", "PlanetMapView"]), "PlanetBoard owns weather and the sceneized planet map")

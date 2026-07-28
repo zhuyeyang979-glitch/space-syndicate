@@ -64,6 +64,7 @@ var _hover_to_focus_usec_samples: Array[int] = []
 var _click_to_intent_usec_samples: Array[int] = []
 var _pointer_owner_slot_id := ""
 var _hovered_pointer_slot_id := ""
+var _suppress_double_click_release := false
 var _scoped_pointer_capture_count := 0
 var _scoped_pointer_release_count := 0
 var _scoped_handled_event_count := 0
@@ -265,15 +266,26 @@ func _input(event: InputEvent) -> void:
 	if mouse_event.button_index != MOUSE_BUTTON_LEFT:
 		return
 	if mouse_event.pressed:
+		var pressed_item := _item_node_at_screen_position(mouse_event.global_position)
+		if mouse_event.double_click:
+			if pressed_item == null:
+				return
+			_suppress_double_click_release = true
+			_duplicate_claim_suppression_count += 1
+			_mark_scoped_pointer_handled()
+			return
 		if not _pointer_owner_slot_id.is_empty():
 			return
-		var pressed_item := _item_node_at_screen_position(mouse_event.global_position)
 		var pressed_slot_id := _slot_id_for_item_node(pressed_item)
 		if pressed_item == null or pressed_slot_id.is_empty():
 			return
 		_pointer_owner_slot_id = pressed_slot_id
 		pressed_item.begin_pointer_gesture(mouse_event.global_position)
 		_scoped_pointer_capture_count += 1
+		_mark_scoped_pointer_handled()
+		return
+	if _suppress_double_click_release:
+		_suppress_double_click_release = false
 		_mark_scoped_pointer_handled()
 		return
 	if _pointer_owner_slot_id.is_empty():
@@ -569,10 +581,10 @@ func _ordered_rendered_ids() -> Array[String]:
 
 func _update_density() -> void:
 	var viewport_height := get_viewport_rect().size.y if is_inside_tree() else 960.0
-	custom_minimum_size.y = 160.0 if viewport_height >= 900.0 else 152.0
+	custom_minimum_size.y = 140.0 if viewport_height >= 900.0 else 132.0
 	for node_variant in _item_nodes_by_id.values():
 		if node_variant is Control:
-			(node_variant as Control).custom_minimum_size = Vector2(100, 112 if viewport_height >= 900.0 else 104)
+			(node_variant as Control).custom_minimum_size = Vector2(92, 88)
 
 
 func _apply_panel_style() -> void:

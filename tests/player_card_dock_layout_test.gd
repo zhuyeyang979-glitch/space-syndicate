@@ -50,7 +50,7 @@ func _run() -> void:
 	var production_card := normal_host.get_child(0) as Control if normal_host != null and normal_host.get_child_count() > 0 else null
 	var production_card_data: Dictionary = production_card.call("get_card_data") as Dictionary \
 		if production_card != null and production_card.has_method("get_card_data") else {}
-	_expect(str(production_card_data.get("presentation", "")) == "mini_hand", "production Dock CardFace uses the recognized compact MiniCard contract")
+	_expect(str(production_card_data.get("presentation", "")) == "dock_mini", "production Dock CardFace uses the dedicated compact MiniCard contract")
 	_expect(production_card != null and production_card.get_combined_minimum_size().y <= 160.0, "production Dock MiniCard cannot expand back to the full-card height")
 
 	for size in [Vector2i(1366, 768), Vector2i(1600, 900), Vector2i(1920, 1080)]:
@@ -90,6 +90,15 @@ func _run() -> void:
 		var dock_bottom := production_dock.global_position.y + production_dock.size.y
 		_expect(dock_bottom <= float(effective_size.y) + 0.5, "production GameScreen keeps the complete Dock inside physical %dx%d / expanded viewport %dx%d (bottom=%.1f height=%.1f minimum=%.1f)" % [physical_size.x, physical_size.y, effective_size.x, effective_size.y, dock_bottom, production_dock.size.y, production_dock.get_combined_minimum_size().y])
 		_expect(production_dock.size.y >= production_dock.get_combined_minimum_size().y, "production Dock receives its full compact minimum height at physical %dx%d" % [physical_size.x, physical_size.y])
+		for host_name in ["NormalHandCards", "CommodityCards"]:
+			var host := production_dock.find_child(host_name, true, false) as Control
+			var card := host.get_child(0) as Control if host != null and host.get_child_count() > 0 else null
+			_expect(
+				card != null \
+					and card.global_position.y >= production_dock.global_position.y \
+					and card.global_position.y + card.size.y <= dock_bottom + 0.5,
+				"%s card remains fully inside the production Dock at %dx%d" % [host_name, physical_size.x, physical_size.y]
+			)
 	screen.queue_free()
 	await process_frame
 	_finish()

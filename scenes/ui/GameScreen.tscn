@@ -68,10 +68,18 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="RightInspector" parent="SafeArea/MainRows/TableArea" instance=ExtResource("6_right_inspector")]
+[node name="RightInspectorScroll" type="ScrollContainer" parent="SafeArea/MainRows/TableArea"]
+custom_minimum_size = Vector2(304, 300)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+
+[node name="RightInspector" parent="SafeArea/MainRows/TableArea/RightInspectorScroll" instance=ExtResource("6_right_inspector")]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(292, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="PlayerBoard" parent="SafeArea/MainRows" instance=ExtResource("7_player_board")]

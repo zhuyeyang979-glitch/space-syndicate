@@ -416,7 +416,75 @@ func _run() -> void:
 	_expect(driver_source.contains("gdp_accumulation_wait") and driver_source.contains("victory_qualification"), "driver stops manufacturing clicks after strategy review and lets authoritative GDP/victory time advance")
 	_expect(driver_source.contains("MenuModalOverlay") and driver_source.contains("continue_requested"), "driver closes strategy pages through the scene-owned menu signal")
 	_expect(driver_source.contains("if not temporary.is_empty():") and not driver_source.contains('temporary.get("visible"') and not driver_source.contains('temporary.get("active"'), "driver consumes the normalized non-empty temporary-decision snapshot instead of retired visible/active flags")
-	_expect(driver_source.contains('player_board.get("hand_cards"') and driver_source.contains('player_board.get("actions"') and driver_source.contains('"play.hand.facility_v06.%s"') and driver_source.contains('"play.board.%s.%s"'), "post-coach scripted play uses only public HandRack and PlayerBoard action ids with stateful progress fingerprints")
+	_expect(driver_source.contains('player_card_dock.get("normal_cards"') \
+		and not driver_source.contains('player_board.get("hand_cards"') \
+		and driver_source.contains('player_board.get("actions"') \
+		and driver_source.contains('card.get("game_action_offer", {})') \
+		and driver_source.contains('card.get("card_semantic_id", "")') \
+		and driver_source.contains('"play.hand.facility_v06.%s"') \
+		and driver_source.contains('"play.board.%s.%s"'), "post-coach scripted play consumes typed PlayerCardDock offers while PlayerBoard retains only non-card strategy actions")
+	_expect(driver_source.contains('"normal_card_was_visible_during_run": false') \
+		and driver_source.contains('"commodity_card_was_visible_during_run": false') \
+		and driver_source.contains('"commodity_source_art_was_visible": false') \
+		and driver_source.contains('"commodity_inventory_art_was_visible": false') \
+		and driver_source.contains('"direct_commodity_claim_succeeded": false') \
+		and driver_source.contains('"commodity_claim_request_count": 0') \
+		and driver_source.contains('"duplicate_commodity_claim_count": 0') \
+		and driver_source.contains('"commodity_claim_button_count": -1') \
+		and driver_source.contains('"commodity_performance_metrics_recorded": false') \
+		and driver_source.contains('"player_card_dock_refresh_count": 0') \
+		and driver_source.contains('"duplicate_card_submission_count": 0'), "FullRun publishes card visibility, commodity art, direct claim and duplicate gates inside its existing action evidence")
+	_expect(driver_source.contains('dock.is_visible_in_tree()') \
+		and driver_source.contains('_visible_card_face_count(dock, "NormalHandCards")') \
+		and driver_source.contains('_visible_card_face_count(dock, "CommodityCards")') \
+		and driver_source.contains('_visible_authored_card_face_count(dock, "CommodityCards")') \
+		and driver_source.contains('track.find_children("CommoditySlot_*"') \
+		and driver_source.contains('int(debug.get("apply_count", 0))'), "Dock evidence comes from visible real CardFace nodes and the typed target apply count")
+	_expect(not driver_source.contains("CommodityClaimButton") \
+		and driver_source.contains('item_node.call("notify_pointer_hover")') \
+		and driver_source.contains('item_node.call("_begin_pointer_interaction"') \
+		and driver_source.contains('item_node.call("_finish_pointer_interaction"'), "FullRun hovers and claims through the production source card body and contains no retired claim-button lookup")
+	_expect(driver_source.contains('track_debug.get("claim_button_count", -1)') \
+		and driver_source.contains('"commodity_source_render_sample_count"') \
+		and driver_source.contains('"commodity_inventory_render_sample_count"') \
+		and driver_source.contains('"commodity_hover_sample_count"') \
+		and driver_source.contains('"single_click_to_intent_sample_count"') \
+		and driver_source.contains('"receipt_to_inventory_refresh_sample_count"'), "FullRun observes zero source buttons and requires samples behind every commodity interaction p95")
+	_expect(driver_source.contains('str(offer.get("semantic_action_id", "")) == GameActionIntentV1.ACTION_CARD_PLAY') \
+		and driver_source.contains('_submitted_card_offer_fingerprints.has(offer_fingerprint)') \
+		and not driver_source.contains('debug.get("duplicate_count"'), "duplicate submission evidence is card-offer-specific and cannot reuse duplicate projection diagnostics")
+	var dock_green := {
+		"normal_card_was_visible_during_run": true,
+		"commodity_card_was_visible_during_run": true,
+		"commodity_source_art_was_visible": true,
+		"commodity_inventory_art_was_visible": true,
+		"direct_commodity_claim_succeeded": true,
+		"commodity_claim_request_count": 1,
+		"duplicate_commodity_claim_count": 0,
+		"commodity_claim_button_count": 0,
+		"commodity_performance_metrics_recorded": true,
+		"commodity_source_render_p95_ms": 0.1,
+		"commodity_inventory_render_p95_ms": 0.1,
+		"commodity_hover_p95_ms": 0.1,
+		"single_click_to_intent_p95_ms": 0.1,
+		"receipt_to_inventory_refresh_p95_ms": 0.1,
+		"player_card_dock_refresh_count": 1,
+		"duplicate_card_submission_count": 0,
+	}
+	_expect(DriverScript.player_card_dock_acceptance_green(dock_green), "complete PlayerCardDock evidence satisfies the terminal acceptance gate")
+	for failed_key in dock_green.keys():
+		var failed_dock := dock_green.duplicate(true)
+		failed_dock[failed_key] = 0 if failed_key in ["commodity_claim_request_count", "duplicate_commodity_claim_count", "commodity_claim_button_count", "commodity_source_render_p95_ms", "commodity_inventory_render_p95_ms", "commodity_hover_p95_ms", "single_click_to_intent_p95_ms", "receipt_to_inventory_refresh_p95_ms", "player_card_dock_refresh_count", "duplicate_card_submission_count"] else false
+		if failed_key in ["duplicate_commodity_claim_count", "duplicate_card_submission_count"]:
+			failed_dock[failed_key] = 1
+		elif failed_key == "commodity_claim_button_count":
+			failed_dock[failed_key] = 1
+		elif failed_key == "commodity_claim_request_count":
+			failed_dock[failed_key] = 2
+		_expect(not DriverScript.player_card_dock_acceptance_green(failed_dock), "PlayerCardDock terminal acceptance fails closed for %s" % failed_key)
+	_expect(driver_source.contains('failure_code = "player_card_dock_acceptance_incomplete"') \
+		and driver_source.contains('and player_card_dock_acceptance_green(_action_stats)') \
+		and not driver_source.contains('"bound_action_was_visible_during_run"'), "settled exit is impossible without the two P0 pools, commodity art/direct-claim proof, refresh and zero-duplicate gates while bound actions remain non-blocking")
 	_expect(driver_source.contains('"board_primary"') and driver_source.contains("navigation_no_state_change") and driver_source.contains('"selected_district_summary"'), "one-shot board navigation cannot loop in one region and becomes eligible again after a public region change")
 	_expect(driver_source.contains("observation_window_elapsed_before_settlement") and driver_source.contains("driver_wall_timeout"), "bounded observation and wall timeout have distinct failure codes")
 	_expect(not driver_source.contains("observation_window_elapsed_during_action"), "observation expiry no longer misclassifies an action admitted near the boundary as a product stall")
