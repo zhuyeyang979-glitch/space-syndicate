@@ -248,15 +248,23 @@ The checkpoint must not contain cash, cards, discard contents, hidden owner,
 private stance, AI candidates, AI selected actions, learning data, a future
 supply sequence, internal node identity, or a private transaction binding.
 
-The production oracle treats three installations as a minimum acceptance floor,
-not an unconditional stop. After each new installation count it observes a
-bounded maturation window of 30 world-effective seconds or two additional
-public Sale Receipts. If the public Victory GDP threshold is still unmet after
-that window, it may pursue another legal typed production action. It never
-adds another scripted production installation while `eligible` is true or
-Victory is in `qualification`, `audit`, or `resolved`; `cooldown` may reopen
-legal growth. Terminal acceptance also requires a zero post-Victory production
-installation delta.
+The production oracle has no facility-count floor. A count of three was a
+historical FullRun acceptance heuristic and is not an authoritative V0.6
+Victory rule. The versioned machine contract is
+`docs/contracts/v06_full_run_terminal_acceptance_v1.json` and fixes
+`THREE_FACILITY_RULE_AUTHORITY=false`.
+
+The Driver first establishes at least one viewer-safe matched commodity chain:
+the same commodity has positive public production capacity, positive public
+demand capacity, and settled units. It separately requires at least one typed
+public Sale Receipt. After each new installation count it observes a bounded
+maturation window of 30 world-effective seconds or two additional public Sale
+Receipts. If the public Victory GDP threshold is still unmet after that window,
+it may pursue another legal typed production action. It never adds another
+scripted production installation while `eligible` is true or Victory is in
+`qualification`, `audit`, or `resolved`; `cooldown` may reopen legal growth.
+Terminal acceptance keeps peak facility count as diagnostics only and requires
+a monotonic zero post-eligibility production-installation delta.
 
 The final controlled run for this repair is intentionally single-use:
 
@@ -264,13 +272,16 @@ The final controlled run for this repair is intentionally single-use:
 --seed-index 0 --observation-seconds 150 --max-wall-seconds 180
 ```
 
-Run `20260728-093544-814-full_run_quality_driver-5752ad04` reached three
-production installations, five public Sale Receipts and Top-K GDP `59/108`
-through 138 progressed actions with zero invalid actions. It stopped honestly
-at `observation_window_elapsed_before_settlement`; it did not enter Victory,
-FinalSettlement, or terminal quiescence. Therefore the repair profile is
-current as a bounded diagnostic contract, but terminal product completion
-remains unproven on the Action Spine descendant and the result is `PARTIAL`.
+The single-use closure run
+`20260728-153746-194-full_run_quality_driver-652209fd` used seed index `0`, the
+150-second observation contract, and the 180-second wall cap. It established
+one settled matched chain with two production installations, emitted 23 public
+Sale Receipts, reached Top-K GDP `1368/108` and controlled regions `5/3`, and
+completed `idle -> qualification -> audit -> resolved`. FinalSettlement,
+terminal presentation, and the final public log each applied exactly once.
+Eight quiet frames preserved zero world and RNG draw deltas, and the monotonic
+post-eligibility installation delta was zero. This is the current `GREEN`
+terminal acceptance result for the Action Spine descendant.
 
 ## Invocation
 

@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "contract_id": "v06_full_run_terminal_acceptance",
+  "runtime_ruleset": "V0.6",
+  "authority_sources": [
+    "AGENTS.md",
+    "docs/tabletop_rulebook_v06.md",
+    "docs/victory_control_runtime_contract.md",
+    "scripts/rules/space_syndicate_ruleset_profile_v06.gd",
+    "scripts/runtime/victory_control_runtime_controller.gd"
+  ],
+  "THREE_FACILITY_RULE_AUTHORITY": false,
+  "three_facility_classification": "historical_fullrun_acceptance_oracle",
+  "peak_production_installation_count_role": "diagnostic_only",
+  "vertical_slice_economy": {
+    "matched_production_demand_chain_count_min": 1,
+    "matched_chain_requires_public_production_capacity": true,
+    "matched_chain_requires_public_demand_capacity": true,
+    "matched_chain_requires_settled_units": true,
+    "public_sale_receipt_count_min": 1,
+    "invalid_action_count_max": 0,
+    "nonfinite_count_max": 0
+  },
+  "authoritative_victory": {
+    "eligibility_comes_from_owner": true,
+    "required_state_sequence": [
+      "idle",
+      "qualification",
+      "audit",
+      "resolved"
+    ],
+    "qualification_duration_seconds": 10,
+    "audit_duration_seconds": 120,
+    "settlement_checkpoint": "post_world_settlement",
+    "outcome_reason_code": "public_audit_complete"
+  },
+  "exact_once": {
+    "final_settlement_count": 1,
+    "terminal_presentation_count": 1,
+    "final_public_log_count": 1
+  },
+  "terminal_quiescence": {
+    "quiet_frame_count_min": 8,
+    "world_delta": 0,
+    "rng_draw_delta": 0,
+    "post_eligibility_production_installation_delta": 0
+  },
+  "forbidden_changes": {
+    "gameplay_value_change_count": 0,
+    "victory_rule_change_count": 0,
+    "runtime_loop_change_count": 0,
+    "clock_formula_change_count": 0,
+    "rng_owner_change_count": 0,
+    "rng_draw_point_change_count": 0,
+    "save_change_count": 0,
+    "main_change_count": 0,
+    "ai_production_behavior_change_count": 0,
+    "state_injection_count": 0
+  }
+}

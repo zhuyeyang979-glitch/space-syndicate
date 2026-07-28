@@ -4,8 +4,10 @@ const DriverScript := preload("res://scripts/tools/full_run_quality_driver.gd")
 const SnapshotScript := preload("res://scripts/viewmodels/full_run_quality_snapshot.gd")
 const GameActionReceiptScript := preload("res://scripts/semantic/game_action_receipt_v1.gd")
 const DRIVER_PATH := "res://scripts/tools/full_run_quality_driver.gd"
+const PLANNER_PATH := "res://scripts/tools/full_run_economy_continuation_planner.gd"
 const SNAPSHOT_PATH := "res://scripts/viewmodels/full_run_quality_snapshot.gd"
 const STEPPER_PATH := "res://scripts/tools/full_run_authoritative_runtime_stepper.gd"
+const TERMINAL_ACCEPTANCE_CONTRACT_PATH := "res://docs/contracts/v06_full_run_terminal_acceptance_v1.json"
 const EXPECTED_SEEDS: Array[int] = [
 	900626424,
 	865984508,
@@ -81,9 +83,32 @@ func _init() -> void:
 
 func _run() -> void:
 	var driver_source := FileAccess.get_file_as_string(DRIVER_PATH)
+	var planner_source := FileAccess.get_file_as_string(PLANNER_PATH)
 	var snapshot_source := FileAccess.get_file_as_string(SNAPSHOT_PATH)
 	var stepper_source := FileAccess.get_file_as_string(STEPPER_PATH)
-	_expect(not driver_source.is_empty() and not snapshot_source.is_empty(), "driver and telemetry source are readable")
+	var terminal_contract_variant: Variant = JSON.parse_string(
+		FileAccess.get_file_as_string(TERMINAL_ACCEPTANCE_CONTRACT_PATH)
+	)
+	var terminal_contract: Dictionary = terminal_contract_variant if terminal_contract_variant is Dictionary else {}
+	_expect(not driver_source.is_empty() and not planner_source.is_empty() and not snapshot_source.is_empty(), "driver planner and telemetry source are readable")
+	_expect(
+		int(terminal_contract.get("schema_version", 0)) == 1 \
+			and str(terminal_contract.get("runtime_ruleset", "")) == "V0.6" \
+			and not bool(terminal_contract.get("THREE_FACILITY_RULE_AUTHORITY", true)) \
+			and str(terminal_contract.get("peak_production_installation_count_role", "")) == "diagnostic_only",
+		"versioned terminal contract classifies three facilities as a historical diagnostic oracle"
+	)
+	var contract_economy := terminal_contract.get("vertical_slice_economy", {}) as Dictionary
+	var contract_quiescence := terminal_contract.get("terminal_quiescence", {}) as Dictionary
+	_expect(
+		int(contract_economy.get("matched_production_demand_chain_count_min", 0)) == 1 \
+			and bool(contract_economy.get("matched_chain_requires_settled_units", false)) \
+			and int(contract_economy.get("public_sale_receipt_count_min", 0)) == 1 \
+			and int(contract_quiescence.get("quiet_frame_count_min", 0)) == 8 \
+			and int(contract_quiescence.get("post_eligibility_production_installation_delta", -1)) == 0,
+		"terminal contract requires a settled matched chain Sale Receipt eight quiet frames and zero post-eligibility growth"
+	)
+	_expect(not driver_source.contains("TARGET_PRODUCTION_INSTALLATION_COUNT") and not driver_source.contains("production_floor") and not planner_source.contains("production_floor"), "driver and planner contain no hidden three-facility acceptance floor")
 	_expect(DriverScript.DRIVER_ID == "full_run_quality_driver_v2" and DriverScript.FIXED_SEEDS == EXPECTED_SEEDS, "driver carries one versioned execution contract and the audited seed set")
 	_expect(bool(DriverScript.public_output_contract().get("single_run_only", false)), "this atomic block executes one seed and cannot claim a twenty-run completion rate")
 	_expect(driver_source.contains("parse_command_line_options(OS.get_cmdline_user_args(), OS.get_cmdline_args())") and driver_source.contains("func _legacy_engine_driver_arguments("), "driver reads official arguments after the Godot delimiter and isolates the legacy engine-side compatibility path")
@@ -351,10 +376,10 @@ func _run() -> void:
 	_expect(driver_source.contains("public_new_facility_target_candidates") and driver_source.contains("matching_target_candidates") and driver_source.contains("facility_card_retry_signature") and driver_source.contains('target.get("source_revision", 0)') and not driver_source.contains("PRODUCT_INDUSTRY_CATALOG") and not driver_source.contains("_public_map_query") and not driver_source.contains('card_name.contains("facility.factory'), "facility targeting consumes typed public commodity-compatible candidates without copying lifecycle rules into the driver")
 	_expect(visible_supply_index >= 0 and visible_supply_index < continuation_strategy_index, "an opened rack is consumed before the expansion button can repeat")
 	_expect(driver_source.contains('bool(card.get("actionable", false))') and driver_source.contains("_next_matching_supply_facility_card") and not driver_source.contains("_next_supply_facility_card"), "facility supply selection admits only a typed complementary listing and never falls back to an unrelated ordinary card")
-	_expect(driver_source.contains('production_installation_count := int(public_progress.get("production_installation_count", 0))') and driver_source.contains('growth_policy := production_growth_policy(') and driver_source.contains('required_top_k_gdp_per_minute') and driver_source.contains('top_k_gdp_per_minute'), "the scripted player treats three installations as an acceptance floor and continues legal typed growth until the public Victory GDP threshold is met")
+	_expect(driver_source.contains('matched_chain_established := bool(_matched_economy_chain_evidence.get("observed", false))') and driver_source.contains('growth_policy := production_growth_policy(') and driver_source.contains('required_top_k_gdp_per_minute') and driver_source.contains('top_k_gdp_per_minute'), "the scripted player uses a matched economy chain and the public Victory GDP threshold instead of a facility-count oracle")
 	_expect(driver_source.contains('victory_state in ["qualification", "audit", "resolved"]') and driver_source.contains('rolling GDP') and driver_source.find('victory_state :=') < driver_source.find('growth_policy := production_growth_policy('), "once Victory owns qualification or audit, the driver freezes further growth and leaves terminal advancement to RuntimeLoop")
 	_expect(driver_source.contains("PRODUCTION_MATURITY_WORLD_SECONDS := 30.0") and driver_source.contains("PRODUCTION_MATURITY_SALE_RECEIPT_COUNT := 2") and driver_source.contains("production_maturation_pending"), "each new production-installation count receives a bounded public Sale Receipt/world-time maturation observation")
-	_expect(driver_source.contains('_peak_production_installation_count = maxi(') and driver_source.contains('int(stable.get("peak_production_installation_count", 0)) >= TARGET_PRODUCTION_INSTALLATION_COUNT'), "terminal acceptance proves that three production installations existed in the authoritative run even if later damage removes one")
+	_expect(driver_source.contains('_peak_production_installation_count = maxi(') and driver_source.contains('matched_economy_chain') and driver_source.contains('settled_matched_commodity_count') and not driver_source.contains("TARGET_PRODUCTION_INSTALLATION_COUNT"), "terminal acceptance keeps peak installations diagnostic-only and requires a settled matched economy chain")
 	_expect(not driver_source.contains("production_chain_incomplete") and not driver_source.contains('var required_facility_kind := "factory"'), "the retired GDP-shortfall-to-factory-only policy is absent")
 	_expect(driver_source.contains('not bool(wait_facts.get("has_visible_matching_facility", false))') and driver_source.contains('not bool(wait_facts.get("has_visible_matching_target", false))'), "a rack without the plan-matching facility and target rotates without buying unrelated cards")
 	_expect(driver_source.contains('preview.get("action_reason_code", "facility_not_visible")') and driver_source.contains('return kind in ["facility", "facility_v06", "public_facility"]'), "a visible but unavailable matching facility retains a qualitative typed wait reason")
@@ -373,7 +398,7 @@ func _run() -> void:
 	_expect(not driver_source.contains('"id": "district_supply_purchase_card",\n\t\t\t"phase": "play.supply.purchase.%s" % preview_card_name'), "driver no longer hard-codes enabled district supply previews as purchases")
 	_expect(visible_supply_index >= 0 and visible_supply_index < continuation_strategy_index, "an in-progress matching expansion purchase completes before new navigation")
 	_expect(driver_source.contains('standings_progress.get("required_controlled_region_count", 0)') and driver_source.contains('standings_progress.get("required_top_k_gdp_per_minute", 0)') and not driver_source.contains('victory.get("victory_rule"'), "driver reads dynamic victory requirements from the authorized standings projection while Victory public remains state-only")
-	_expect(driver_source.contains('production_floor_established := production_installation_count') and driver_source.contains('>= TARGET_PRODUCTION_INSTALLATION_COUNT') and driver_source.contains('not bool(sale_receipt.get("observed", false))') and driver_source.contains('"phase": "play.gdp_first_receipt"'), "driver establishes the three-installation proof floor before waiting for the first typed Sale Receipt")
+	_expect(driver_source.contains('if matched_chain_established and not bool(sale_receipt.get("observed", false)):') and driver_source.contains('"phase": "play.gdp_first_receipt"') and not driver_source.contains("production_floor"), "driver waits for the first typed Sale Receipt as soon as a viewer-safe matched chain exists")
 	_expect(driver_source.contains("draft.reset_to_defaults()"), "fixed-seed runs reset the unique draft owner to the first-run depth instead of inheriting local settings")
 	_expect(driver_source.contains('(session as GameSessionRuntimeController).session_summary()') and driver_source.contains('setup.get("player_count", 0)') and driver_source.contains('setup.get("ai_player_count", 0)'), "fixed-seed start verification consumes the authoritative session setup summary")
 	_expect(not driver_source.contains("world_session_state()") and not driver_source.contains("players_variant"), "full-run QA cannot inspect private WorldSessionState player records to verify startup")
@@ -701,7 +726,8 @@ func _run() -> void:
 		"outcome_reason_code": "public_audit_complete",
 		"winner_count": 1,
 		"peak_production_installation_count": 3,
-		"post_victory_production_installation_delta": 0,
+		"matched_economy_chain": {"observed": true, "matched_commodity_count": 1, "settled_matched_commodity_count": 1, "fingerprint": "9".repeat(64)},
+		"post_eligibility_production_installation_delta": 0,
 		"present_count": 1,
 		"presented_outcome_count": 1,
 		"logged_outcome_count": 1,
@@ -715,12 +741,15 @@ func _run() -> void:
 		"rng": {"draw_count": 538, "checkpoint_fingerprint": "e".repeat(64)},
 	}
 	_expect(DriverScript._terminal_baseline_valid(terminal_stable), "a finished typed settlement with public log and RNG evidence is a valid terminal baseline")
-	var incomplete_installation_slice := terminal_stable.duplicate(true)
-	incomplete_installation_slice["peak_production_installation_count"] = 2
-	_expect(not DriverScript._terminal_baseline_valid(incomplete_installation_slice), "terminal settlement cannot pass before the scripted player has owned three production installations")
-	var post_victory_growth := terminal_stable.duplicate(true)
-	post_victory_growth["post_victory_production_installation_delta"] = 1
-	_expect(not DriverScript._terminal_baseline_valid(post_victory_growth), "terminal settlement rejects any scripted production installation after qualification begins")
+	var two_installation_terminal := terminal_stable.duplicate(true)
+	two_installation_terminal["peak_production_installation_count"] = 2
+	_expect(DriverScript._terminal_baseline_valid(two_installation_terminal), "a legitimate two-installation Victory passes because facility count is diagnostic-only")
+	var missing_matched_chain := terminal_stable.duplicate(true)
+	missing_matched_chain["matched_economy_chain"] = {"observed": false, "matched_commodity_count": 0, "settled_matched_commodity_count": 0, "fingerprint": ""}
+	_expect(not DriverScript._terminal_baseline_valid(missing_matched_chain), "terminal settlement without a settled production-demand chain fails closed")
+	var post_eligibility_growth := terminal_stable.duplicate(true)
+	post_eligibility_growth["post_eligibility_production_installation_delta"] = 1
+	_expect(not DriverScript._terminal_baseline_valid(post_eligibility_growth), "terminal settlement rejects any scripted production installation after eligibility begins")
 	var missing_log := terminal_stable.duplicate(true)
 	missing_log["final_public_log"] = {"public_entry_count": 0, "outcome_id": "", "public_fingerprint": ""}
 	_expect(not DriverScript._terminal_baseline_valid(missing_log), "composition counters without a public final-settlement log cannot satisfy the terminal baseline")
