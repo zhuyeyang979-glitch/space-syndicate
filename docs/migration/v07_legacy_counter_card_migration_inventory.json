@@ -1,0 +1,259 @@
+{
+  "schema_version": 1,
+  "inventory_id": "v07_legacy_counter_card_migration_inventory.v1",
+  "task_id": "V07_UNINTERRUPTED_CARD_BATCH_CONTEXTUAL_TABLE_UI",
+  "scope": "V06_ACTIVE_COUNTER_CONTENT_TO_V07_FUTURE_SEMANTICS",
+  "authority": {
+    "source_catalog": "res://data/cards/card_runtime_catalog_v06.json",
+    "source_family": "res://resources/cards/runtime/families/054_相位否决.tres",
+    "source_builder": "res://scripts/tools/card_runtime_catalog_v06_builder.gd",
+    "source_rulebook": "res://docs/tabletop_rulebook_v06.md",
+    "current_production_runtime_ruleset": "V0.6",
+    "target_development_constitution": "V0.7",
+    "v06_counter_runtime_preserved": true,
+    "full_v0_7_runtime_cutover": false
+  },
+  "allowed_primary_classifications": [
+    "MIGRATE_TO_PROACTIVE_DEFENSE",
+    "MIGRATE_TO_INSURANCE",
+    "MIGRATE_TO_BATCH_INTERFERENCE",
+    "MIGRATE_TO_PASSIVE_SOURCE_ABILITY",
+    "RETIRE_FROM_V07",
+    "BLOCKED_NEEDS_USER_RULE_DECISION"
+  ],
+  "classification_counts": {
+    "MIGRATE_TO_PROACTIVE_DEFENSE": 4,
+    "MIGRATE_TO_INSURANCE": 0,
+    "MIGRATE_TO_BATCH_INTERFERENCE": 0,
+    "MIGRATE_TO_PASSIVE_SOURCE_ABILITY": 0,
+    "RETIRE_FROM_V07": 0,
+    "BLOCKED_NEEDS_USER_RULE_DECISION": 0
+  },
+  "former_counter_card_count": 4,
+  "cards": [
+    {
+      "stable_card_id": "interaction.phase_veto.rank_1",
+      "family_id": "interaction.phase_veto",
+      "rank": 1,
+      "v06_effect_kind": "card_counter",
+      "v06_target_kind": "incoming_direct_player_interaction",
+      "v06_counter_window_seconds": 5,
+      "v06_counter_strength": 1,
+      "v06_refund_cash": 0,
+      "v06_private_trace_count": 0,
+      "primary_classification": "MIGRATE_TO_PROACTIVE_DEFENSE",
+      "v07_action_class": "PROACTIVE_DEFENSE",
+      "v07_target_binding": "PROTECTED_PLAYER_OR_AUTHORED_OBJECT",
+      "v07_defense_filter": "direct_player_interaction",
+      "v07_prevention_count": 1,
+      "v07_expiry": "CREATING_BATCH_ONLY",
+      "v07_target_invalidation_policy": "FIZZLE_NO_EFFECT",
+      "v07_refund_policy": "NONE",
+      "v07_trace_policy": "NONE"
+    },
+    {
+      "stable_card_id": "interaction.phase_veto.rank_2",
+      "family_id": "interaction.phase_veto",
+      "rank": 2,
+      "v06_effect_kind": "card_counter",
+      "v06_target_kind": "incoming_direct_player_interaction",
+      "v06_counter_window_seconds": 5,
+      "v06_counter_strength": 2,
+      "v06_refund_cash": 40,
+      "v06_private_trace_count": 0,
+      "primary_classification": "MIGRATE_TO_PROACTIVE_DEFENSE",
+      "v07_action_class": "PROACTIVE_DEFENSE",
+      "v07_target_binding": "PROTECTED_PLAYER_OR_AUTHORED_OBJECT",
+      "v07_defense_filter": "direct_player_interaction",
+      "v07_prevention_count": 1,
+      "v07_expiry": "CREATING_BATCH_ONLY",
+      "v07_target_invalidation_policy": "FIZZLE_NO_EFFECT",
+      "v07_refund_policy": "REFUND_40_ONLY_WHEN_DEFENSE_TRIGGERS",
+      "v07_trace_policy": "NONE"
+    },
+    {
+      "stable_card_id": "interaction.phase_veto.rank_3",
+      "family_id": "interaction.phase_veto",
+      "rank": 3,
+      "v06_effect_kind": "card_counter",
+      "v06_target_kind": "incoming_direct_player_interaction",
+      "v06_counter_window_seconds": 5,
+      "v06_counter_strength": 3,
+      "v06_refund_cash": 90,
+      "v06_private_trace_count": 1,
+      "primary_classification": "MIGRATE_TO_PROACTIVE_DEFENSE",
+      "v07_action_class": "PROACTIVE_DEFENSE",
+      "v07_target_binding": "PROTECTED_PLAYER_OR_AUTHORED_OBJECT",
+      "v07_defense_filter": "direct_player_interaction",
+      "v07_prevention_count": 1,
+      "v07_expiry": "CREATING_BATCH_ONLY",
+      "v07_target_invalidation_policy": "FIZZLE_NO_EFFECT",
+      "v07_refund_policy": "REFUND_90_ONLY_WHEN_DEFENSE_TRIGGERS",
+      "v07_trace_policy": "DEFENDER_ONLY_ALLOWLISTED_PRIVATE_RECEIPT_COUNT_1"
+    },
+    {
+      "stable_card_id": "interaction.phase_veto.rank_4",
+      "family_id": "interaction.phase_veto",
+      "rank": 4,
+      "v06_effect_kind": "card_counter",
+      "v06_target_kind": "incoming_direct_player_interaction",
+      "v06_counter_window_seconds": 5,
+      "v06_counter_strength": 4,
+      "v06_refund_cash": 160,
+      "v06_private_trace_count": 2,
+      "primary_classification": "MIGRATE_TO_PROACTIVE_DEFENSE",
+      "v07_action_class": "PROACTIVE_DEFENSE",
+      "v07_target_binding": "PROTECTED_PLAYER_OR_AUTHORED_OBJECT",
+      "v07_defense_filter": "direct_player_interaction",
+      "v07_prevention_count": 1,
+      "v07_expiry": "CREATING_BATCH_ONLY",
+      "v07_target_invalidation_policy": "FIZZLE_NO_EFFECT",
+      "v07_refund_policy": "REFUND_160_ONLY_WHEN_DEFENSE_TRIGGERS",
+      "v07_trace_policy": "DEFENDER_ONLY_ALLOWLISTED_PRIVATE_RECEIPT_COUNT_2"
+    }
+  ],
+  "non_catalog_counter_capabilities": [
+    {
+      "capability_id": "role.paradox_beast_contract.temporary_monster_counter_conversion",
+      "source_paths": [
+        "res://scripts/runtime/role_catalog_runtime_service.gd",
+        "res://scripts/runtime/card_play_eligibility_world_bridge.gd",
+        "res://scripts/main.gd"
+      ],
+      "v06_status": "ACTIVE_COMPATIBILITY_SURFACE",
+      "v07_status": "BLOCKED_NEEDS_USER_RULE_DECISION",
+      "reason": "The capability converts a monster card during a response window and cannot survive unchanged when resolution accepts no gameplay input.",
+      "allowed_future_directions": [
+        "MIGRATE_TO_PROACTIVE_DEFENSE",
+        "MIGRATE_TO_PASSIVE_SOURCE_ABILITY",
+        "RETIRE_FROM_V07"
+      ],
+      "counted_as_former_counter_card": false
+    }
+  ],
+  "explicit_exclusions": [
+    {
+      "identity": "interaction.starlink_dismantle.rank_1_to_4",
+      "reason": "Counterable attack cards, not Counter cards."
+    },
+    {
+      "identity": "interaction.shadow_warehouse_traction.rank_1_to_4",
+      "reason": "Counterable attack cards, not Counter cards."
+    },
+    {
+      "identity": "resources/cards/runtime/families/099_火花反制.tres",
+      "reason": "Name-only match; active effect kind is special_monster_delay and can remain an ordinary prebound batch interference card."
+    },
+    {
+      "identity": "guard.rank_1_to_3",
+      "reason": "Existing guard status, not a response-window card."
+    },
+    {
+      "identity": "response_cards_ignore_ordinary_submission_limit",
+      "reason": "Legacy organization capability field, not an independent card."
+    },
+    {
+      "identity": "v04_resources_and_schema_fixtures",
+      "reason": "Historical representations of the same four Phase Veto ranks; not additional cards."
+    }
+  ],
+  "surface_scan": {
+    "baseline_sha": "f377746584ac70d706418d399b813f3ad456763e",
+    "baseline_definition": "Tracked repository text at baseline_sha, excluding *.uid, addons, third_party, and top-level tools. This makes the audit stable while sibling agents add V0.7 files.",
+    "semantic_patterns": [
+      "card_counter",
+      "counter_window",
+      "counter_stack",
+      "pending_counter",
+      "response_window",
+      "counter_strength",
+      "counter_refund",
+      "counter_trace",
+      "response_cards_ignore",
+      "counterability",
+      "合法响应窗口",
+      "反制窗口",
+      "反制牌",
+      "反制栈"
+    ],
+    "baseline_file_count": 148,
+    "files_by_root": {
+      "data": 4,
+      "docs": 21,
+      "reports": 26,
+      "resources": 5,
+      "scenes": 2,
+      "scripts": 55,
+      "tests": 35
+    },
+    "script_classification": {
+      "production_core": 26,
+      "ai": 2,
+      "presentation_ui": 7,
+      "main": 1,
+      "tools": 19
+    },
+    "production_hotspots": {
+      "core_execution": [
+        "res://scripts/runtime/card_resolution_runtime_controller.gd",
+        "res://scripts/runtime/card_resolution_frame_driver.gd",
+        "res://scripts/runtime/card_resolution_transition_sink.gd",
+        "res://scripts/runtime/card_resolution_execution_runtime_service.gd",
+        "res://scripts/runtime/card_resolution_execution_world_bridge.gd",
+        "res://scripts/runtime/card_resolution_queue_runtime_service.gd",
+        "res://scripts/runtime/card_counter_settlement_runtime_service.gd",
+        "res://scripts/runtime/card_play_eligibility_runtime_service.gd",
+        "res://scripts/runtime/card_play_submission_runtime_controller.gd"
+      ],
+      "ai": [
+        "res://scripts/runtime/ai_runtime_controller.gd",
+        "res://scripts/ai/ai_policy_profile_resource.gd"
+      ],
+      "presentation": [
+        "res://scripts/runtime/card_presentation_runtime_service.gd",
+        "res://scripts/runtime/card_resolution_presentation_port.gd",
+        "res://scripts/presentation/table_presentation_viewmodel_query.gd",
+        "res://scripts/runtime/game_table_viewmodel_runtime_service.gd",
+        "res://scripts/ui/card_resolution_track.gd",
+        "res://scripts/ui/overlay_layer.gd",
+        "res://scripts/ui/game_screen.gd"
+      ],
+      "persistence": [
+        "res://scripts/runtime/card_resolution_runtime_controller.gd",
+        "res://scripts/runtime/card_resolution_queue_runtime_service.gd",
+        "res://scripts/runtime/card_resolution_execution_runtime_service.gd"
+      ],
+      "composition": [
+        "res://scenes/runtime/CardCounterSettlementRuntimeService.tscn",
+        "res://scenes/runtime/GameRuntimeCoordinator.tscn"
+      ],
+      "legacy_main": [
+        "res://scripts/main.gd"
+      ]
+    }
+  },
+  "phase_e_atomic_retirement_requirements": [
+    "Disable and delete reactive Counter submission bypass.",
+    "Replace execution counter_check with prebound target validation and DefenseStatus application.",
+    "Delete CardCounterSettlementRuntimeService composition and code.",
+    "Delete begin_counter transitions, Counter timers, and Counter presentation events.",
+    "Delete AI mid-resolution Counter planning and its RNG consumption.",
+    "Delete Counter forced-decision kind and options while preserving unrelated forced decisions.",
+    "Migrate or retire the role-based temporary Counter conversion by an explicit rule decision.",
+    "Migrate pending legacy Counter save entries once, without restoring a gameplay window.",
+    "Delete V0.7 Counter UI, counterability DTO fields, and live Counter history emission.",
+    "Delete the corresponding Main fields, methods, and overlay glue without a wrapper or fallback.",
+    "Prove exact-once batch completion, zero mid-resolution gameplay input, and zero dual authority."
+  ],
+  "readiness": {
+    "legacy_catalog_audited": true,
+    "every_former_counter_card_has_exactly_one_primary_classification": true,
+    "v07_rule_contract_ready": true,
+    "v07_production_catalog_migrated": false,
+    "v07_core_runtime_ready": false,
+    "v07_ai_runtime_ready": false,
+    "v07_player_ui_ready": false,
+    "old_v06_counter_authority_disabled": false,
+    "full_v0_7_runtime_cutover": false
+  }
+}

@@ -1,0 +1,22 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/v07/v07_uninterrupted_card_batch_contextual_table_bench.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/v07/V07ContextualTableSurface.tscn" id="2_surface"]
+
+[node name="V07UninterruptedCardBatchContextualTableBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="V07ContextualTableSurface" parent="." instance=ExtResource("2_surface")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2

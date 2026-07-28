@@ -1,0 +1,377 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/v07/v07_contextual_table_surface.gd" id="1_script"]
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="2_theme"]
+[ext_resource type="PackedScene" path="res://scenes/ui/PlanetBoard.tscn" id="3_planet"]
+
+[sub_resource type="StyleBoxFlat" id="StyleRoster"]
+bg_color = Color(0.035, 0.055, 0.09, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.18, 0.41, 0.62, 0.7)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleWindow"]
+bg_color = Color(0.06, 0.09, 0.15, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.34, 0.72, 0.95, 0.85)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="StylePopup"]
+bg_color = Color(0.035, 0.055, 0.09, 0.88)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.39, 0.79, 0.92, 0.8)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+shadow_color = Color(0, 0, 0, 0.55)
+shadow_size = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleResolution"]
+bg_color = Color(0.08, 0.055, 0.13, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.68, 0.48, 0.95, 0.9)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+shadow_color = Color(0, 0, 0, 0.62)
+shadow_size = 14
+
+[node name="V07ContextualTableSurface" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.012, 0.019, 0.035, 1)
+
+[node name="PlanetBoard" parent="." instance=ExtResource("3_planet")]
+layout_mode = 1
+anchor_left = 0.155
+anchor_top = 0.095
+anchor_right = 0.995
+anchor_bottom = 0.79
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PlayerRosterPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchor_left = 0.008
+anchor_top = 0.095
+anchor_right = 0.205
+anchor_bottom = 0.79
+theme_override_styles/panel = SubResource("StyleRoster")
+
+[node name="RosterMargin" type="MarginContainer" parent="PlayerRosterPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="RosterRows" type="VBoxContainer" parent="PlayerRosterPanel/RosterMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="RosterTitle" type="Label" parent="PlayerRosterPanel/RosterMargin/RosterRows"]
+layout_mode = 2
+text = "玩家席位"
+theme_override_font_sizes/font_size = 18
+
+[node name="RosterCountLabel" type="Label" parent="PlayerRosterPanel/RosterMargin/RosterRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "6 席｜两列"
+theme_override_colors/font_color = Color(0.58, 0.82, 0.98, 1)
+
+[node name="RosterScroll" type="ScrollContainer" parent="PlayerRosterPanel/RosterMargin/RosterRows"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="RosterGrid" type="GridContainer" parent="PlayerRosterPanel/RosterMargin/RosterRows/RosterScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="MapModeLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.225
+anchor_top = 0.105
+anchor_right = 0.59
+anchor_bottom = 0.145
+text = "地区牌架｜点击其他地区直接切换"
+theme_override_colors/font_color = Color(0.72, 0.87, 0.98, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="SubmissionSummary" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchor_left = 0.585
+anchor_top = 0.105
+anchor_right = 0.982
+anchor_bottom = 0.145
+text = "预先部署 → 晨曦环带 · 轨道工厂 · 护盾 ×1｜已锁定"
+theme_override_colors/font_color = Color(0.55, 0.94, 0.81, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 2
+text_overrun_behavior = 3
+
+[node name="CardWindowPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchor_left = 0.31
+anchor_top = 0.012
+anchor_right = 0.72
+anchor_bottom = 0.09
+theme_override_styles/panel = SubResource("StyleWindow")
+
+[node name="WindowMargin" type="MarginContainer" parent="CardWindowPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 7
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 7
+
+[node name="WindowRow" type="HBoxContainer" parent="CardWindowPanel/WindowMargin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="CardWindowTitle" type="Label" parent="CardWindowPanel/WindowMargin/WindowRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "本批次一次性出牌"
+theme_override_font_sizes/font_size = 18
+
+[node name="CardWindowTimer" type="Label" parent="CardWindowPanel/WindowMargin/WindowRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "23 秒"
+theme_override_colors/font_color = Color(0.49, 0.88, 1, 1)
+theme_override_font_sizes/font_size = 22
+
+[node name="CardWindowStatus" type="Label" parent="CardWindowPanel/WindowMargin/WindowRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "选择、预绑定并锁定"
+horizontal_alignment = 2
+text_overrun_behavior = 3
+
+[node name="RegionSupplyPopup" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchor_left = 0.57
+anchor_top = 0.18
+anchor_right = 0.965
+anchor_bottom = 0.715
+theme_override_styles/panel = SubResource("StylePopup")
+
+[node name="PopupMargin" type="MarginContainer" parent="RegionSupplyPopup"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 14
+
+[node name="PopupRows" type="VBoxContainer" parent="RegionSupplyPopup/PopupMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PopupHeader" type="HBoxContainer" parent="RegionSupplyPopup/PopupMargin/PopupRows"]
+layout_mode = 2
+
+[node name="RegionPopupTitle" type="Label" parent="RegionSupplyPopup/PopupMargin/PopupRows/PopupHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "晨曦环带"
+theme_override_font_sizes/font_size = 24
+
+[node name="RegionPopupClose" type="Button" parent="RegionSupplyPopup/PopupMargin/PopupRows/PopupHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "关闭"
+
+[node name="RegionPopupStatus" type="Label" parent="RegionSupplyPopup/PopupMargin/PopupRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "受光｜权威牌架投影"
+autowrap_mode = 3
+
+[node name="PopupDivider" type="HSeparator" parent="RegionSupplyPopup/PopupMargin/PopupRows"]
+layout_mode = 2
+
+[node name="RegionPopupCards" type="VBoxContainer" parent="RegionSupplyPopup/PopupMargin/PopupRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="PopupHint" type="Label" parent="RegionSupplyPopup/PopupMargin/PopupRows"]
+layout_mode = 2
+text = "打开、关闭与切换地区都不会刷新牌架。"
+theme_override_colors/font_color = Color(0.58, 0.76, 0.87, 1)
+
+[node name="CardResolutionOverlay" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchor_left = 0.275
+anchor_top = 0.18
+anchor_right = 0.83
+anchor_bottom = 0.69
+theme_override_styles/panel = SubResource("StyleResolution")
+
+[node name="ResolutionMargin" type="MarginContainer" parent="CardResolutionOverlay"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 18
+
+[node name="ResolutionRows" type="VBoxContainer" parent="CardResolutionOverlay/ResolutionMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ResolutionTitle" type="Label" parent="CardResolutionOverlay/ResolutionMargin/ResolutionRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "批次结算｜1 / 4"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 26
+
+[node name="ResolutionCurrent" type="Label" parent="CardResolutionOverlay/ResolutionMargin/ResolutionRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "当前｜预先部署"
+theme_override_font_sizes/font_size = 22
+
+[node name="ResolutionNext" type="Label" parent="CardResolutionOverlay/ResolutionMargin/ResolutionRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "下一张｜市场干扰"
+
+[node name="ResolutionQueue" type="Label" parent="CardResolutionOverlay/ResolutionMargin/ResolutionRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "后续｜航线保险 · 商品交付"
+autowrap_mode = 3
+
+[node name="ResolutionDefense" type="Label" parent="CardResolutionOverlay/ResolutionMargin/ResolutionRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "护盾生效｜伤害减免 2"
+theme_override_colors/font_color = Color(0.51, 0.92, 0.82, 1)
+
+[node name="ResolutionResult" type="Label" parent="CardResolutionOverlay/ResolutionMargin/ResolutionRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "权威结果｜目标合法，效果已提交"
+autowrap_mode = 3
+
+[node name="ResolutionHint" type="Label" parent="CardResolutionOverlay/ResolutionMargin/ResolutionRows"]
+layout_mode = 2
+text = "序列公开后自动连续结算；仅可查看详情与调整本地展示速度。"
+theme_override_colors/font_color = Color(0.71, 0.67, 0.88, 1)
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="PlayerCardDock" type="PanelContainer" parent="."]
+layout_mode = 1
+anchor_left = 0.155
+anchor_top = 0.795
+anchor_right = 0.995
+anchor_bottom = 0.992
+theme_override_styles/panel = SubResource("StyleRoster")
+
+[node name="DockMargin" type="MarginContainer" parent="PlayerCardDock"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="DockColumns" type="HBoxContainer" parent="PlayerCardDock/DockMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="BoundColumn" type="VBoxContainer" parent="PlayerCardDock/DockMargin/DockColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BoundActionTitle" type="Label" parent="PlayerCardDock/DockMargin/DockColumns/BoundColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "绑定行动 2｜不占上限"
+
+[node name="BoundActionCards" type="HFlowContainer" parent="PlayerCardDock/DockMargin/DockColumns/BoundColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="NormalColumn" type="VBoxContainer" parent="PlayerCardDock/DockMargin/DockColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="NormalHandTitle" type="Label" parent="PlayerCardDock/DockMargin/DockColumns/NormalColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "普通手牌 3 / 5"
+
+[node name="NormalHandCards" type="HFlowContainer" parent="PlayerCardDock/DockMargin/DockColumns/NormalColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CommodityColumn" type="VBoxContainer" parent="PlayerCardDock/DockMargin/DockColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CommodityTitle" type="Label" parent="PlayerCardDock/DockMargin/DockColumns/CommodityColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "商品库存 2 / 5"
+
+[node name="CommodityCards" type="HFlowContainer" parent="PlayerCardDock/DockMargin/DockColumns/CommodityColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3

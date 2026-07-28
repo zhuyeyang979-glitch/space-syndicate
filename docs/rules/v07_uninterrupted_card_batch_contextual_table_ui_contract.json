@@ -1,0 +1,331 @@
+{
+  "schema_version": 1,
+  "contract_id": "v07_uninterrupted_card_batch_contextual_table_ui.v1",
+  "task_id": "V07_UNINTERRUPTED_CARD_BATCH_CONTEXTUAL_TABLE_UI",
+  "phase": "PHASE_A_TO_D_REFERENCE_SEMANTICS_READY",
+  "authority": {
+    "current_production_runtime_ruleset": "V0.6",
+    "target_development_constitution": "V0.7",
+    "v07_highest_development_authority": true,
+    "full_v0_7_runtime_cutover": false,
+    "reference_layers_are_production_authority": false,
+    "v06_counter_runtime_preserved_until_atomic_cutover": true,
+    "new_v07_path_may_call_v06_counter_runtime": false
+  },
+  "counter_retirement": {
+    "v07_interactive_counter_cards_retired": true,
+    "v07_counter_window_retired": true,
+    "v07_counter_stack_retired": true,
+    "resolution_accepts_new_card_submission": false,
+    "resolution_accepts_new_target_selection": false,
+    "resolution_accepts_player_gameplay_input": false,
+    "resolution_accepts_ai_gameplay_input": false,
+    "mid_resolution_card_submission_count": 0,
+    "counter_window_count": 0,
+    "counter_stack_depth": 0
+  },
+  "state_machine": [
+    "CARD_WINDOW_CLOSED",
+    "CARD_WINDOW_OPEN",
+    "CARD_WINDOW_LOCKING",
+    "RESOLUTION_ORDER_BUILD",
+    "RESOLUTION_ORDER_REVEAL",
+    "CARD_RESOLUTION_ACTIVE",
+    "CARD_EFFECT_COMMIT",
+    "CARD_AFTERMATH",
+    "BATCH_AFTERMATH",
+    "BATCH_COMPLETE",
+    "CARD_WINDOW_OPEN"
+  ],
+  "state_machine_invariants": {
+    "card_submission_window_seconds": 30,
+    "card_window_is_one_shot": true,
+    "periodic_card_window_timer": false,
+    "order_build_requires_window_lock": true,
+    "resolution_is_strictly_sequential": true,
+    "resolution_requires_player_response": false,
+    "next_window_requires_batch_complete": true,
+    "next_window_authoritative_receipt_kind": "CARD_BATCH_COMPLETE_RECEIPT",
+    "card_batch_after_lock_is_automatic": true,
+    "card_batch_after_lock_is_non_blocking": true,
+    "no_world_tick_between_resolving_cards": true
+  },
+  "typed_contracts": {
+    "CardBatchStateV1": [
+      "schema_version",
+      "ruleset_id",
+      "production_cutover",
+      "batch_sequence",
+      "batch_id",
+      "batch_revision",
+      "phase",
+      "window_sequence",
+      "window_id",
+      "window_remaining_phase_time_usec",
+      "world_effective_time_usec",
+      "card_phase_time_usec",
+      "actor_ids",
+      "authored_rules_by_semantic_id",
+      "submissions_by_actor",
+      "locked_submission_ids",
+      "locked_submissions_by_id",
+      "resolution_order",
+      "current_resolution_index",
+      "active_resolution_id",
+      "pending_receipt_ids",
+      "card_resolution_state",
+      "card_receipts",
+      "aftermath_state",
+      "batch_after_action_complete",
+      "batch_complete",
+      "batch_complete_receipt",
+      "consumed_batch_complete_receipt_ids",
+      "defense_statuses",
+      "private_defense_receipts_by_actor",
+      "inventories_by_actor",
+      "deterministic_effect_totals_by_target",
+      "phase_trace",
+      "mutation_trace"
+    ],
+    "CardBatchSubmissionV1": [
+      "schema_version",
+      "submission_id",
+      "actor_id",
+      "card_instance_id",
+      "card_semantic_id",
+      "action_class",
+      "source_pool",
+      "source_revision",
+      "locked_at_window_id",
+      "actor_seat_index",
+      "order_priority",
+      "submission_sequence",
+      "target_binding"
+    ],
+    "PreboundTargetSpecV1": [
+      "schema_version",
+      "target_kind",
+      "target_ids",
+      "target_revision",
+      "placement_slot_id",
+      "mode_id",
+      "quantity",
+      "authored_parameters",
+      "target_invalidation_policy"
+    ],
+    "CardResolutionStateV1": [
+      "schema_version",
+      "resolution_id",
+      "batch_id",
+      "window_id",
+      "submission_id",
+      "resolution_index",
+      "phase",
+      "prebound_target_fingerprint",
+      "target_validation_result",
+      "applied_defense_status_ids",
+      "outcome",
+      "authoritative_effect_receipt_id",
+      "aftermath_complete"
+    ],
+    "DefenseStatusV1": [
+      "schema_version",
+      "defense_status_id",
+      "source_card_instance_id",
+      "owner_player_id",
+      "protected_target_ids",
+      "defense_kind",
+      "effect_filter",
+      "reduction_amount",
+      "prevention_count",
+      "active_from_revision",
+      "expires_at_batch_id",
+      "expires_at_world_time_usec",
+      "remaining_uses",
+      "visibility_policy",
+      "trigger_refund_amount",
+      "private_trace_count"
+    ],
+    "forbidden_reference_types": [
+      "Node",
+      "Object",
+      "Resource",
+      "Callable",
+      "NodePath"
+    ]
+  },
+  "submission_lock": {
+    "all_strategic_choices_occur_during_card_window_open": true,
+    "submission_mutable_after_lock": false,
+    "target_mutable_after_lock": false,
+    "mode_mutable_after_lock": false,
+    "quantity_mutable_after_lock": false,
+    "ordinary_and_commodity_and_defense_targets_prebound": true
+  },
+  "target_invalidation": {
+    "default_policy": "FIZZLE_NO_EFFECT",
+    "allowed_policies": [
+      "FIZZLE_NO_EFFECT",
+      "COMMIT_LEGAL_REMAINDER",
+      "REFUND_BY_AUTHORED_RULE",
+      "DETERMINISTIC_FALLBACK"
+    ],
+    "deterministic_fallback_requires_authored_rule": true,
+    "deterministic_fallback_uses_stable_ids": true,
+    "target_reselection_input_allowed": false,
+    "ai_replanning_during_resolution_allowed": false
+  },
+  "defense_application": {
+    "defense_effect_is_existing_state": true,
+    "defense_effect_is_not_mid_resolution_card": true,
+    "defense_application_requires_no_input": true,
+    "defense_application_inserts_no_queue_entry": true,
+    "defense_application_uses_rng": false,
+    "defense_application_is_recursive": false,
+    "multiple_defense_order": [
+      "active_from_revision",
+      "source_card_instance_id",
+      "defense_status_id"
+    ],
+    "default_v07_phase_veto_lifecycle": {
+      "scope": "CREATING_BATCH_ONLY",
+      "remaining_uses": 1,
+      "retroactive": false,
+      "eligible_effect_filter": "direct_player_interaction",
+      "refund_occurs_only_when_defense_triggers": true,
+      "private_trace_visibility": "DEFENDER_ONLY_ALLOWLISTED_RECEIPT"
+    }
+  },
+  "time_domains": {
+    "CARD_WINDOW_OPEN": {
+      "world_effective_time_running": true,
+      "card_window_timer_running": true,
+      "presentation_time_running": true
+    },
+    "RESOLUTION_ORDER_BUILD_THROUGH_BATCH_AFTERMATH": {
+      "world_effective_time_running": false,
+      "card_window_timer_running": false,
+      "presentation_time_running": true,
+      "card_state_commits_sequentially": true
+    }
+  },
+  "next_window_gate": {
+    "required_facts": [
+      "resolution_queue_empty",
+      "active_resolution_none",
+      "pending_authoritative_receipt_none",
+      "pending_aftermath_none",
+      "batch_after_action_complete",
+      "terminal_presentation_not_blocking"
+    ],
+    "receipt_exact_once": true,
+    "presentation_may_open_window": false,
+    "timer_may_open_window": false
+  },
+  "card_pools": {
+    "normal_hand_limit": 5,
+    "commodity_inventory_limit": 5,
+    "bound_action_capacity_cost": 0,
+    "three_pools_independent": true,
+    "bound_counter_action_count": 0,
+    "bound_action_classes": [
+      "BATCH_ACTION",
+      "PASSIVE_ABILITY"
+    ]
+  },
+  "ai_semantics": {
+    "planning_phase": "CARD_WINDOW_OPEN",
+    "plans_cards_targets_modes_quantities_and_defense_in_window": true,
+    "mid_resolution_action_intent_count": 0,
+    "reads_full_authority_state": false,
+    "uses_owner_bound_allowlisted_observation": true,
+    "uses_same_submission_contract_as_human": true
+  },
+  "player_semantics": {
+    "single_side_roster": true,
+    "roster_columns_3_to_4": 1,
+    "roster_columns_5_to_8": 2,
+    "right_fixed_region_panel_retired": true,
+    "region_supply_is_contextual_popup": true,
+    "region_popup_close_triggers": [
+      "close_button",
+      "ui_cancel",
+      "blank_map_click",
+      "same_region_click",
+      "card_resolution",
+      "target_selection",
+      "menu_or_codex"
+    ],
+    "resolution_overlay_is_transient": true,
+    "counter_ui_element_count": 0,
+    "card_dock_pools": [
+      "BOUND_ACTIONS",
+      "NORMAL_HAND",
+      "COMMODITY_INVENTORY"
+    ],
+    "ui_computes_authoritative_rules": false
+  },
+  "interaction_modes": [
+    "TABLE_MAP_MODE",
+    "REGION_SUPPLY_POPUP_MODE",
+    "CARD_SUBMISSION_MODE",
+    "CARD_TARGET_SELECTION_MODE",
+    "CARD_RESOLUTION_MODE",
+    "MENU_OR_CODEX_MODE"
+  ],
+  "persistence_and_replay": {
+    "reference_save_codec_ready": true,
+    "reference_replay_identity_ready": true,
+    "reference_private_defense_receipt_roundtrip_ready": true,
+    "production_save_migration_ready": false,
+    "future_save_includes_batch_target_defense_and_three_pools": true,
+    "future_save_includes_counter_window": false,
+    "future_save_includes_counter_stack": false,
+    "future_save_includes_pending_counter_input": false,
+    "future_replay_identity": [
+      "batch_id",
+      "submission_id",
+      "card_instance_id",
+      "target_binding_fingerprint",
+      "resolution_order_fingerprint",
+      "defense_status_fingerprint"
+    ],
+    "current_production_save_schema_changed_in_phase_a": false
+  },
+  "privacy": {
+    "unrevealed_submission_public": false,
+    "unrevealed_target_public": false,
+    "hidden_owner_public": false,
+    "ai_plan_public": false,
+    "rival_private_inventory_public": false,
+    "private_trace_public": false
+  },
+  "rng": {
+    "new_rng_owner_count": 0,
+    "defense_order_rng_draw_count": 0,
+    "target_validation_rng_draw_count": 0,
+    "save_restore_rng_draw_count": 0,
+    "ui_rng_draw_count": 0
+  },
+  "architecture": {
+    "new_main_responsibility_count": 0,
+    "new_main_caller_count": 0,
+    "new_main_fallback_count": 0,
+    "second_runtime_authority_count": 0,
+    "v06_v07_dual_write_count": 0
+  },
+  "cutover": {
+    "phase_a_contract_ready": true,
+    "phase_b_reference_core_ready": true,
+    "phase_c_reference_ai_ready": true,
+    "phase_d_reference_player_ui_ready": true,
+    "phase_b_production_core_runtime_ready": false,
+    "phase_c_production_ai_runtime_ready": false,
+    "phase_d_production_player_ui_ready": false,
+    "save_migration_ready": false,
+    "production_consumers_migrated": false,
+    "old_v06_counter_authority_disabled": false,
+    "full_v0_7_runtime_cutover": false,
+    "atomic_cutover_required": true
+  }
+}

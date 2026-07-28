@@ -12,7 +12,7 @@ state and must not be maintained as a competing registry.
 - Full V0.7 runtime cutover: **false**
 - Registered domains: **24**
 - Core-ready domains: **18**
-- Fully three-layer-ready domains: **1**
+- Fully three-layer-ready domains: **2**
 - Global three-layer semantics complete: **false**
 
 Coverage means that every required registry field has an explicit value. It
@@ -20,7 +20,9 @@ does not mean that a domain is ready. A domain is `THREE_LAYER_READY` only when
 its core authority, authorized AI interpretation, and authorized player
 projection/intent path all operate on the same runtime facts.
 
-## Completed vertical slice: player action routing
+## Completed three-layer slices
+
+### Production slice: player action routing
 
 `player_action_routing` is the first production vertical slice that is marked
 `THREE_LAYER_READY` and `CUTOVER_COMPLETE`.
@@ -58,6 +60,22 @@ signal. Screen coordinates remain inside GameScreen and become a stable public
 region ID; the application flow and card submission owner revalidate the
 authoritative district.
 
+### Reference slice: uninterrupted card-group resolution
+
+`card_group_resolution` is now three-layer-ready as detached V0.7 reference
+semantics. It combines the deterministic `CardBatchReferenceRuntime`, the
+actor/seat/revision-bound AI observation and planner, and the typed contextual
+table surface over the same pure-data batch facts. The reference Save codec
+and replay identity cover locked targets, authored rules, Defense Status,
+owner-private defense benefits, receipt lineage, phase trace, and mutation
+trace.
+
+This readiness is not a production-cutover claim. V0.6 CardResolution and
+Counter owners remain the only composed production authority, the production
+Save format is unchanged, and no V0.7 Core, AI, or player Bench is connected
+to `main.tscn`. Phase E remains blocked until the terminal-progression
+predecessor is green and all production consumers can switch atomically.
+
 ## Domain status matrix
 
 | Domain | Core | AI | Player | Main-free | Cutover | Next atomic boundary |
@@ -65,7 +83,7 @@ authoritative district.
 | session_setup | CORE_READY | CONTRACT_ONLY | CORE_PLAYER_READY | CUTOVER_COMPLETE | CORE_PLAYER_READY | AI_SETUP_OBSERVATION_CONTRACT |
 | runtime_lifecycle | CORE_READY | CONTRACT_ONLY | PASSIVE_PROJECTION_ONLY | CUTOVER_COMPLETE | CUTOVER_COMPLETE | NONE_RUNTIME_LOOP_STABLE |
 | ordinary_cards | CORE_READY | CONTRACT_ONLY | CORE_PLAYER_READY | CUTOVER_COMPLETE | CORE_PLAYER_READY | AI_WORLD_TYPED_PORTS_AND_MAIN_BINDING_REMOVAL |
-| card_group_resolution | CORE_READY | LEGACY_RAW | CORE_PLAYER_READY | CUTOVER_COMPLETE | CORE_PLAYER_READY | AI_WORLD_TYPED_PORTS_AND_MAIN_BINDING_REMOVAL |
+| card_group_resolution | THREE_LAYER_READY | THREE_LAYER_READY | THREE_LAYER_READY | CUTOVER_COMPLETE | THREE_LAYER_READY | ACTION_SPINE_V07_TERMINAL_PROGRESSION_ECONOMY_CONTINUATION |
 | commodity_inventory | CONTRACT_ONLY | PASSIVE_PROJECTION_ONLY | PASSIVE_PROJECTION_ONLY | CUTOVER_COMPLETE | CONTRACT_ONLY | V07_COMMODITY_INVENTORY_CORE_OWNER_AND_SAVE_PREFLIGHT |
 | commodity_sushi_track | CONTRACT_ONLY | PASSIVE_PROJECTION_ONLY | PASSIVE_PROJECTION_ONLY | CUTOVER_COMPLETE | CONTRACT_ONLY | V07_SHARED_COMMODITY_TRACK_CORE_OWNER |
 | market_stance_cycle | CONTRACT_ONLY | PASSIVE_PROJECTION_ONLY | PASSIVE_PROJECTION_ONLY | CUTOVER_COMPLETE | CONTRACT_ONLY | V07_MARKET_STANCE_CYCLE_CORE_OWNER |
@@ -91,6 +109,9 @@ authoritative district.
 
 - `bind_ai_world(self)` and broad AI world reads remain a separate P0 boundary.
 - Production Save Owner coverage remains incomplete; Save/Resume is not ready.
+- V0.7 uninterrupted card-batch Core, AI, and player semantics are reference
+  ready, but V0.6 Counter and CardResolution remain the production authority;
+  production consumers and Save have not migrated.
 - V0.7 shared commodity track, market stance cycle, independent commodity
   capacity, linear upgrades, and macro-round end gate remain contract/reference
   semantics rather than production authority.

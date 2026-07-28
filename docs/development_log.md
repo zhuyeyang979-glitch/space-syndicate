@@ -8998,3 +8998,46 @@ deleted. Evidence and the remaining action inventory are recorded in
   visual contract, and smoke `--check-only` pass. Godot MCP loaded the real
   main scene; the production Action Flow Bench passed `12/12` and exited with
   no new script or runtime error.
+
+## 2026-07-28 — V0.7 uninterrupted card batch contextual table (PARTIAL)
+
+- Froze the V0.7 no-Counter constitution and audited all four formal V0.6
+  Counter cards. Phase Veto I-IV each migrate to proactive defense; the
+  role-based temporary monster-to-Counter conversion remains a separate rule
+  decision. V0.6 remains the sole production authority.
+- Added a detached pure-data `V0.7_REFERENCE_ONLY` Card Batch Core with a
+  one-shot 30-second window, trusted authored rules, prebound targets, strict
+  sequential commits, automatic Defense Status, exact-once Batch Complete,
+  independent normal/commodity five-slot pools, and zero-capacity
+  monster/military bound actions.
+- Added actor/seat/revision-bound AI observation and deterministic planning.
+  AI submits the shared `CardBatchSubmissionV1` during the window and produces
+  zero submission, gameplay Intent, Counter state or RNG consumption during
+  resolution.
+- Added the scene-owned contextual table reference surface over the real
+  PlanetBoard: one-side roster, contextual translucent region popup,
+  target-selection separation, transient no-Counter resolution overlay and
+  three-pool bottom dock. The V0.6 production GameScreen is unchanged.
+- Hardened reference Save/Replay against hostile receipt rebind, duplicate,
+  private-refund tamper, completion-order tamper and stale viewer capability.
+  Restore revokes old capabilities; card, completion and private Defense
+  receipts use typed exact lineage and enter replay identity.
+- The cross-layer gate proves one Core state feeds AI and player projections
+  with zero projection write, zero Counter path and zero production connection.
+  The global registry now counts two three-layer-ready domains while explicitly
+  marking `card_group_resolution` reference-only and leaving global completion
+  false.
+- Final focused results: contract `122/122`, migration `122/122`, Core
+  `103/103`, Save/Replay/privacy `72/72`, AI `134/134`, AI privacy `39/39`,
+  three-layer integration `24/24`, player semantics `53/53`, player Bench
+  `35/35`, performance `11/11`, and task architecture `8/8`. Main architecture
+  remains `219` checks and Main composition passes.
+- Godot MCP loaded production `main.tscn` and ran/stopped the Core, AI and player
+  Benches with zero task-owned errors. The corrected 1366x768 capture hides the
+  30-second banner during uninterrupted resolution. Full smoke remained bounded
+  at 300 seconds on documented legacy-suite debt; check-only passes and no
+  compatibility path was restored.
+- Phase E remains forbidden: no Main, production GameScreen, RuntimeLoop,
+  production Save or V0.6 Counter consumer changed. The branch is suitable for
+  a Draft PR only; the next task remains
+  `ACTION_SPINE_V07_TERMINAL_PROGRESSION_ECONOMY_CONTINUATION`.

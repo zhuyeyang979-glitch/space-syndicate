@@ -459,6 +459,122 @@ that reference into production. `FULL_V0_7_CUTOVER` stays false unless every
 listed production gate is true and all conflicting v0.6 write paths are deleted
 in the same atomic cutover.
 
+## V0.7 Uninterrupted Card Batch Constitution
+
+This section is the highest development authority for V0.7 card submission,
+target binding, resolution pacing, and contextual table presentation. It is a
+target-rule constitution and does not replace the current V0.6 production
+runtime by itself.
+
+```text
+CURRENT_PRODUCTION_RUNTIME_RULESET=V0.6
+TARGET_DEVELOPMENT_CONSTITUTION=V0.7
+FULL_V0_7_RUNTIME_CUTOVER=false
+
+V07_INTERACTIVE_COUNTER_CARDS_RETIRED=true
+V07_COUNTER_WINDOW_RETIRED=true
+V07_COUNTER_STACK_RETIRED=true
+V07_RESOLUTION_HAS_NO_GAMEPLAY_INPUT=true
+```
+
+V0.7 moves all player and AI strategy into one authoritative 30-second card
+window. During that window each submitted card locks its card instance,
+semantic action, actor, source revision, target kind and stable target IDs,
+target revision, placement slot, mode, quantity, and authored parameters.
+After locking, submission, target, mode, and quantity are immutable.
+
+The only V0.7 state order is:
+
+```text
+CARD_WINDOW_CLOSED
+-> CARD_WINDOW_OPEN
+-> CARD_WINDOW_LOCKING
+-> RESOLUTION_ORDER_BUILD
+-> RESOLUTION_ORDER_REVEAL
+-> CARD_RESOLUTION_ACTIVE
+-> CARD_EFFECT_COMMIT
+-> CARD_AFTERMATH
+-> BATCH_AFTERMATH
+-> BATCH_COMPLETE
+-> CARD_WINDOW_OPEN
+```
+
+There is no `COUNTER_WINDOW`, `COUNTER_STACK`, forced card response, target
+reselection, or mid-resolution submission in this state machine. Once the
+order is revealed, cards resolve strictly and continuously. Presentation may
+show details, targets, receipts, and local speed controls, but no player or AI
+gameplay intent may be accepted. The next window may open only from an
+authoritative Card Batch Complete receipt after the queue, active resolution,
+receipt, aftermath, and batch after-action gates are clear.
+
+Every target is revalidated when its card resolves. The default invalidation
+policy is `FIZZLE_NO_EFFECT`. `COMMIT_LEGAL_REMAINDER`, authored refunds, and
+deterministic fallback are legal only when declared by the card rule before
+the window locks; none may ask a player or AI to choose again.
+
+V0.7 defense is proactive state, not a response card. A defense, insurance, or
+interference card is chosen and targeted in the 30-second window. Once its
+ordinary resolution establishes a Defense Status, later effects query and
+apply that existing status automatically, emit the authoritative result, add
+no queue entry, consume no response input, and preserve the revealed order.
+Legacy cards whose only value is deciding after seeing a resolving card must
+be explicitly redesigned or retired.
+
+World-effective simulation time and the card-window timer run during
+submission. Both pause during locked batch resolution, while presentation time
+may continue and each card still commits its own deterministic state. No world
+tick is inserted between resolving cards. Resolution adds no decision-time RNG;
+all authored random outcomes consume the injected `RunRngService` in the
+stable revealed order.
+
+The three V0.7 card pools are independent:
+
+```text
+NORMAL_CARD_HAND_LIMIT=5
+COMMODITY_CARD_HAND_LIMIT=5
+BOUND_ACTION_CARD_CAPACITY_COST=0
+BOUND_ACTION_CARDS_IN_NORMAL_HAND=false
+BOUND_ACTION_CARDS_IN_COMMODITY_INVENTORY=false
+```
+
+Monster- and military-granted bound actions remain visible in the bottom card
+dock but must be authored as a window-time `batch_action` or an automatic
+`passive_source_ability`; they may not retain counter or instant-response
+timing.
+
+AI receives an owner-authorized, allowlisted card-batch observation. It may
+choose cards, targets, modes, quantities, proactive defenses, and a lock intent
+only while `CARD_WINDOW_OPEN`. It uses the same submission schema as a human
+seat and must emit zero Action Intents during resolution. Rival unrevealed
+submissions, targets, hands, private inventory, hidden owners, AI plans, future
+racks, RNG state, and full core state are never observation fields.
+
+The target player table is contextual and scene-owned: the real planet map is
+the permanent center stage; the compact player roster appears on the left only
+with one column for three to four seats and two columns for five to eight;
+region supply opens as a closable translucent popup and browsing never redraws
+the rack; target-selection map clicks bind targets instead of opening supply;
+the revealed sequence exists only in a transient resolution overlay; and the
+bottom dock renders bound actions, normal cards, and commodities as separate
+pools. No V0.7 player projection contains a counter button, counter countdown,
+counter stack, or permanent right-side region rack.
+
+V0.7 persistence stores only stable pure data needed to resume the one-shot
+window or uninterrupted batch: state ID, window/batch IDs, remaining window
+time, immutable submissions and target bindings, revealed order and cursor,
+Defense Status records, the three independent pools, and bound-action source
+lifecycle. It stores no Node, Object, Resource, Callable, UI state, Counter
+Window, Counter Stack, or engine-frame metadata. Restore consumes zero RNG and
+must reproduce the same batch fingerprint and receipt lineage. This is a
+persistence and deterministic identity contract, not a replay-system cutover.
+
+Until one atomic Core/AI/player/Save/privacy/determinism production migration
+also removes every conflicting V0.6 writer and consumer, the V0.6 Counter
+runtime remains preserved for the current production ruleset. New V0.7 code
+must never call it, and no V0.6/V0.7 dual write is allowed. Reference Benches,
+tests, and passive projections may be three-layer ready while
+`FULL_V0_7_RUNTIME_CUTOVER` remains false.
+
 ## Active Runtime v0.6 Rule Authority Gate
 
 Before adding any gameplay Owner, Port, Sink, Request, Receipt, RuntimeController,

@@ -429,6 +429,7 @@ func _test_global_three_layer_registry_contract() -> void:
 	var domain_ids: Array[String] = []
 	var complete_domain_count := 0
 	var core_ready_count := 0
+	var card_group_domain: Dictionary = {}
 	var fields_complete := true
 	var statuses_valid := true
 	var ready_flags_consistent := true
@@ -441,6 +442,8 @@ func _test_global_three_layer_registry_contract() -> void:
 		if domain_id.is_empty() or domain_ids.has(domain_id):
 			fields_complete = false
 		domain_ids.append(domain_id)
+		if domain_id == "card_group_resolution":
+			card_group_domain = domain
 		for field in REGISTRY_REQUIRED_DOMAIN_FIELDS:
 			fields_complete = fields_complete and domain.has(field)
 		for status_field in ["core_semantics_status", "ai_semantics_status", "player_semantics_status", "save_replay_status", "main_free_status", "cutover_status"]:
@@ -457,7 +460,9 @@ func _test_global_three_layer_registry_contract() -> void:
 	_expect(statuses_valid, "every semantic status uses the one approved vocabulary")
 	_expect(ready_flags_consistent, "THREE_LAYER_READY is claimed only when core, AI, and player readiness are all true")
 	_expect(core_ready_count == int(summary.get("core_ready_domain_count", -1)) and complete_domain_count == int(summary.get("global_three_layer_ready_domain_count", -1)), "registry summary readiness counts are derived from domain truth")
-	_expect(complete_domain_count == 1 and domain_ids.has("player_action_routing") and not bool(summary.get("global_three_layer_complete", true)), "only the completed player-action vertical slice is three-layer ready; global completion remains false")
+	_expect(complete_domain_count == 2 and domain_ids.has("player_action_routing") and domain_ids.has("card_group_resolution") and not bool(summary.get("global_three_layer_complete", true)), "player-action production routing and card-batch reference semantics are three-layer ready; global completion remains false")
+	_expect(str(card_group_domain.get("current_runtime_version", "")) == "V0.6" and not bool(registry.get("full_v0_7_runtime_cutover", true)), "card-batch reference readiness does not replace the V0.6 production runtime")
+	_expect(str(card_group_domain.get("legacy_authority", "")).contains("V0.6") and str(card_group_domain.get("known_blockers", [])).contains("V0.6 Counter"), "card-batch registry keeps the V0.6 Counter production blocker explicit")
 
 
 func _offer_input() -> Dictionary:
