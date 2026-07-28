@@ -464,7 +464,7 @@ func _run() -> void:
 		"a matching market is selected while an unrelated factory remains visible"
 	)
 	var maturity_checkpoint := {
-		"installation_count": 3,
+		"installation_count": 2,
 		"sale_receipt_count": 1,
 		"sale_receipt_revision": 10,
 		"observed_world_seconds": 20.0,
@@ -475,53 +475,58 @@ func _run() -> void:
 			"top_k_gdp_per_minute": 32,
 			"required_top_k_gdp_per_minute": 108,
 		}, {"observed": true}),
-		"fewer than three production installations always keep the legal growth path open"
+		"an economy without a viewer-safe matched chain keeps the legal complementary path open"
 	)
 	_expect(
 		not DriverScript.production_growth_required({
-			"production_installation_count": 3,
+			"production_installation_count": 2,
 			"top_k_gdp_per_minute": 32,
 			"required_top_k_gdp_per_minute": 108,
+			"matched_economy_chain_observed": true,
 		}, {"observed": false}),
-		"three installations wait for the first authoritative Sale Receipt before diagnosing GDP capacity"
+		"a matched chain waits for its first authoritative Sale Receipt before diagnosing GDP capacity"
 	)
 	_expect(
 		DriverScript.production_growth_required({
-			"production_installation_count": 3,
+			"production_installation_count": 2,
 			"top_k_gdp_per_minute": 32,
 			"required_top_k_gdp_per_minute": 108,
+			"matched_economy_chain_observed": true,
 		}, {"observed": true, "public_event_count": 3}, "idle", 25.0, maturity_checkpoint),
-		"a live but sub-threshold three-facility economy continues through typed production actions"
+		"a mature live matched economy below the public threshold continues through typed production actions"
 	)
 	_expect(
-		not DriverScript.production_growth_required({
-			"production_installation_count": 3,
-			"top_k_gdp_per_minute": 32,
-			"required_top_k_gdp_per_minute": 108,
-		}, {"observed": true, "public_event_count": 2}, "idle", 49.9, maturity_checkpoint) \
-			and DriverScript.production_growth_required({
-				"production_installation_count": 3,
+			not DriverScript.production_growth_required({
+				"production_installation_count": 2,
 				"top_k_gdp_per_minute": 32,
 				"required_top_k_gdp_per_minute": 108,
+				"matched_economy_chain_observed": true,
+			}, {"observed": true, "public_event_count": 2}, "idle", 49.9, maturity_checkpoint) \
+			and DriverScript.production_growth_required({
+				"production_installation_count": 2,
+				"top_k_gdp_per_minute": 32,
+				"required_top_k_gdp_per_minute": 108,
+				"matched_economy_chain_observed": true,
 			}, {"observed": true, "public_event_count": 2}, "idle", 50.0, maturity_checkpoint),
 		"a new facility receives a bounded 30-second or two-receipt maturation window before further expansion"
 	)
 	_expect(
 		not DriverScript.production_growth_required({
-			"production_installation_count": 3,
+			"production_installation_count": 2,
 			"top_k_gdp_per_minute": 108,
 			"required_top_k_gdp_per_minute": 108,
+			"matched_economy_chain_observed": true,
 		}, {"observed": true}),
 		"meeting the public Victory GDP threshold closes additional production search"
 	)
 	_expect(
 		not DriverScript.production_growth_required({
-			"production_installation_count": 3,
+			"production_installation_count": 2,
 			"top_k_gdp_per_minute": 32,
 			"required_top_k_gdp_per_minute": 108,
 		}, {"observed": true}, "qualification") \
 			and not DriverScript.production_growth_required({
-				"production_installation_count": 3,
+				"production_installation_count": 2,
 				"top_k_gdp_per_minute": 32,
 				"required_top_k_gdp_per_minute": 108,
 			}, {"observed": true}, "audit"),
@@ -529,7 +534,7 @@ func _run() -> void:
 	)
 	_expect(
 		not DriverScript.production_growth_required({
-			"production_installation_count": 3,
+			"production_installation_count": 2,
 			"top_k_gdp_per_minute": 32,
 			"required_top_k_gdp_per_minute": 108,
 			"eligible": true,
@@ -538,11 +543,17 @@ func _run() -> void:
 	)
 	_expect(
 		DriverScript.production_growth_required({
-			"production_installation_count": 3,
+			"production_installation_count": 2,
 			"top_k_gdp_per_minute": 32,
 			"required_top_k_gdp_per_minute": 108,
+			"matched_economy_chain_observed": true,
 		}, {"observed": true, "public_event_count": 3}, "cooldown", 60.0, maturity_checkpoint),
 		"a failed qualification cooldown may resume legal typed growth"
+	)
+	_expect(
+		DriverScript.post_eligibility_installation_delta(0, 2, 3) == 1 \
+			and DriverScript.post_eligibility_installation_delta(1, 2, 2) == 1,
+		"post-eligibility installation evidence remains a monotonic high-water mark after later destruction"
 	)
 	_expect(DriverScript.recoverable_supply_receipt_reason("locked_quote_changed") and DriverScript.recoverable_supply_receipt_reason("source_region_dark") and DriverScript.recoverable_supply_receipt_reason("card_not_in_supply") and DriverScript.recoverable_supply_receipt_reason("forced_decision_blocks_district_supply"), "volatile quote, illumination, stale listing, and forced-decision preflight receipts remain retryable human interactions")
 	_expect(not DriverScript.recoverable_supply_receipt_reason("purchase_target_invalid"), "structural purchase rejection is never hidden as a retryable quote race")

@@ -21,10 +21,25 @@ func _run() -> void:
 	_expect(_kind(production_bottleneck) == "factory" and _reason(production_bottleneck) == "production_capacity_bottleneck", "demand above production selects a factory")
 	var waste_pressure := Planner.plan(_observation(20, 20, 4.0, 3))
 	_expect(_kind(waste_pressure) == "market" and _reason(waste_pressure) == "production_waste_dominant", "waste pressure forbids another same-product factory and selects a market")
-	var balanced_floor := Planner.plan(_observation(20, 20, 0.0, 2))
-	_expect(_kind(balanced_floor) == "factory" and _reason(balanced_floor) == "production_floor_incomplete", "a balanced chain below the minimum production proof may scale production")
+	var balanced_chain := Planner.plan(_observation(20, 20, 0.0, 2))
+	_expect(_kind(balanced_chain) == "factory" and _reason(balanced_chain) == "matched_chain_scale_required", "a balanced chain below the public Victory GDP threshold may scale production without a facility-count oracle")
+	var threshold_met := _observation(20, 20, 0.0, 2)
+	(threshold_met.get("public_progress", {}) as Dictionary)["top_k_gdp"] = 108
+	_expect(bool(Planner.plan(threshold_met).get("stop", false)), "two production installations stop growing when the authoritative GDP threshold is met")
 	var initial := Planner.plan(_empty_observation())
-	_expect(_kind(initial) == "factory" and str(initial.get("industry_id", "")).is_empty(), "an empty economy starts with a typed factory without guessing a name")
+	_expect(_kind(initial) == "factory" and _reason(initial) == "economy_chain_start" and str(initial.get("industry_id", "")).is_empty(), "an empty economy starts a typed chain without guessing a name")
+	var matched_chain_evidence := Planner.matched_chain_evidence(_observation(20, 20, 0.0, 2))
+	_expect(
+		bool(matched_chain_evidence.get("observed", false)) \
+			and int(matched_chain_evidence.get("matched_commodity_count", 0)) == 1 \
+			and int(matched_chain_evidence.get("settled_matched_commodity_count", 0)) == 1 \
+			and str(matched_chain_evidence.get("fingerprint", "")).length() == 64,
+		"viewer-safe production, demand, and settled units create stable matched-chain evidence"
+	)
+	_expect(
+		not bool(Planner.matched_chain_evidence(_observation(20, 0, 0.0, 2)).get("observed", true)),
+		"production without matching demand does not satisfy the chain oracle"
+	)
 	var tied_observation := _observation(10, 0, 0.0, 1)
 	var beta_row := ((tied_observation.get("commodity_rows", []) as Array)[0] as Dictionary).duplicate(true)
 	beta_row["commodity_id"] = "commodity.beta"
@@ -134,16 +149,18 @@ func _run() -> void:
 	_expect(Planner.rack_plan_signature(multi_card_rack, missing_market) == Planner.rack_plan_signature(reordered_rack, missing_market), "rack signatures canonicalize card rows before hashing")
 	_expect(rack_signature != Planner.rack_plan_signature(rack, missing_factory), "a changed complementary plan admits a new rack evaluation")
 
-	var locked := _observation(10, 0, 3.0, 3)
+	var locked := _observation(10, 0, 3.0, 2)
 	(locked.get("public_progress", {}) as Dictionary)["eligible"] = true
 	_expect(bool(Planner.plan(locked).get("stop", false)), "eligible locks all further facility growth")
 	for state in ["qualification", "audit", "resolved"]:
-		var lifecycle := _observation(10, 0, 3.0, 3)
+		var lifecycle := _observation(10, 0, 3.0, 2)
 		(lifecycle.get("public_progress", {}) as Dictionary)["victory_state"] = state
 		_expect(bool(Planner.plan(lifecycle).get("stop", false)), "%s locks all further facility growth" % state)
-	var cooldown := _observation(10, 0, 3.0, 3)
+	var cooldown := _observation(10, 0, 3.0, 2)
 	(cooldown.get("public_progress", {}) as Dictionary)["victory_state"] = "cooldown"
 	_expect(not bool(Planner.plan(cooldown).get("stop", true)) and _kind(Planner.plan(cooldown)) == "market", "cooldown may resume a legal complementary plan")
+	var planner_source := FileAccess.get_file_as_string("res://scripts/tools/full_run_economy_continuation_planner.gd")
+	_expect(not planner_source.contains("production_floor") and not planner_source.contains("TARGET_PRODUCTION_INSTALLATION_COUNT"), "planner source contains no hidden three-facility acceptance floor")
 	_finish()
 
 

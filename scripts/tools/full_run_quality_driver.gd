@@ -25,7 +25,6 @@ const REQUIRED_SECTION_COUNT := 19
 const SCRIPTED_PLAYER_INDEX := 0
 const RECOMMENDED_PLAYER_COUNT := 4
 const RECOMMENDED_AI_COUNT := 3
-const TARGET_PRODUCTION_INSTALLATION_COUNT := 3
 const HEARTBEAT_INTERVAL_SECONDS := 2.0
 const TELEMETRY_REFRESH_INTERVAL_MSEC := 100
 const ACTION_PROGRESS_TIMEOUT_SECONDS := 3.0
@@ -247,13 +246,19 @@ var _production_maturity_checkpoint: Dictionary = {}
 var _latest_public_world_seconds := 0.0
 var _latest_economy_continuation_observation: Dictionary = {}
 var _latest_economy_continuation_plan: Dictionary = {}
+var _matched_economy_chain_evidence := {
+	"observed": false,
+	"matched_commodity_count": 0,
+	"settled_matched_commodity_count": 0,
+	"fingerprint": "",
+}
 var _economy_plan_override_signature := ""
 var _exhausted_economy_plan_signatures := {}
 var _rack_advancement_purchase_count := 0
 var _pending_rack_advancement_discard: Dictionary = {}
 var _rack_advancement_reset_requested := false
-var _victory_locked_production_installation_count := -1
-var _post_victory_production_installation_delta := 0
+var _eligibility_locked_production_installation_count := -1
+var _post_eligibility_production_installation_delta := 0
 var _blocked_realtime_step_batch_count := 0
 var _blocked_realtime_step_attempt_count := 0
 var _blocked_realtime_step_count := 0
@@ -1306,9 +1311,20 @@ func _collect_telemetry(run_seed: int, coordinator: Node, session: Node, settlem
 		coordinator,
 		continuation_progress
 	)
+	var matched_chain_evidence := EconomyContinuationPlannerScript.matched_chain_evidence(
+		_latest_economy_continuation_observation
+	)
+	if bool(matched_chain_evidence.get("observed", false)) \
+			and (
+				not bool(_matched_economy_chain_evidence.get("observed", false)) \
+				or int(matched_chain_evidence.get("matched_commodity_count", 0)) \
+					> int(_matched_economy_chain_evidence.get("matched_commodity_count", 0)) \
+				or int(matched_chain_evidence.get("settled_matched_commodity_count", 0)) \
+					> int(_matched_economy_chain_evidence.get("settled_matched_commodity_count", 0))
+			):
+		_matched_economy_chain_evidence = matched_chain_evidence.duplicate(true)
 	_latest_economy_continuation_plan = _select_economy_continuation_plan(
-		_latest_economy_continuation_observation,
-		TARGET_PRODUCTION_INSTALLATION_COUNT
+		_latest_economy_continuation_observation
 	)
 	_peak_production_installation_count = maxi(
 		_peak_production_installation_count,
@@ -1561,9 +1577,7 @@ func _scripted_ui_action(
 	var menu_action := _menu_overlay_ui_action(runtime_screen)
 	if not menu_action.is_empty():
 		return menu_action
-	var production_installation_count := int(public_progress.get("production_installation_count", 0))
-	var production_floor_established := production_installation_count \
-		>= TARGET_PRODUCTION_INSTALLATION_COUNT
+	var matched_chain_established := bool(_matched_economy_chain_evidence.get("observed", false))
 	var own_victory_eligible := bool(public_progress.get("eligible", false))
 	var victory_state := str(_victory_state_sequence[-1]) if not _victory_state_sequence.is_empty() else "idle"
 	var victory_countdown_active := victory_state in ["qualification", "audit", "resolved"]
@@ -1579,19 +1593,20 @@ func _scripted_ui_action(
 			"disabled": true,
 			"origin": "economic_wait",
 		}
+	var growth_progress := public_progress.duplicate(true)
+	growth_progress["matched_economy_chain_observed"] = matched_chain_established
 	var growth_policy := production_growth_policy(
-		public_progress,
+		growth_progress,
 		sale_receipt,
 		_latest_public_world_seconds,
 		_production_maturity_checkpoint,
 		victory_state
 	)
 	var production_maturation_is_pending := str(growth_policy.get("reason_id", "")) == "production_maturation_pending"
-	# V0.6 guarantees low public ambient consumption in surviving regions. The
-	# three-installation proof floor must be established before waiting for the
-	# first typed Sale Receipt; otherwise one early source idles for a full market
-	# minute and a second matched source can enter Victory before the floor exists.
-	if production_floor_established and not bool(sale_receipt.get("observed", false)):
+	# Once a real production/demand pair exists, its first typed Sale Receipt is
+	# the acceptance signal. Facility count is not a V0.6 Victory rule and cannot
+	# delay an otherwise authoritative qualification lifecycle.
+	if matched_chain_established and not bool(sale_receipt.get("observed", false)):
 		return {
 			"id": "gdp_accumulation_wait",
 			"phase": "play.gdp_first_receipt",
@@ -1779,14 +1794,8 @@ static func continuation_plan_signature(continuation_plan: Dictionary) -> String
 	}).sha256_text()
 
 
-func _select_economy_continuation_plan(
-	observation: Dictionary,
-	production_floor: int
-) -> Dictionary:
-	var ranked: Array = EconomyContinuationPlannerScript.ranked_plans(
-		observation,
-		production_floor
-	)
+func _select_economy_continuation_plan(observation: Dictionary) -> Dictionary:
+	var ranked: Array = EconomyContinuationPlannerScript.ranked_plans(observation)
 	if ranked.is_empty():
 		return {}
 	if not _economy_plan_override_signature.is_empty():
@@ -1809,8 +1818,7 @@ func _next_visible_economy_continuation_plan(
 	if visible_keys.is_empty():
 		return {}
 	var ranked: Array = EconomyContinuationPlannerScript.ranked_plans(
-		_latest_economy_continuation_observation,
-		TARGET_PRODUCTION_INSTALLATION_COUNT
+		_latest_economy_continuation_observation
 	)
 	return first_visible_alternative_plan(
 		ranked,
@@ -2084,16 +2092,12 @@ static func production_growth_policy(
 	maturity_checkpoint: Dictionary,
 	victory_state: String
 ) -> Dictionary:
-	var installation_count := maxi(
-		0,
-		int(public_progress.get("production_installation_count", 0))
-	)
-	if installation_count < TARGET_PRODUCTION_INSTALLATION_COUNT:
-		return {"growth_required": true, "reason_id": "production_floor_incomplete"}
 	if victory_state in ["qualification", "audit", "resolved"]:
 		return {"growth_required": false, "reason_id": "victory_lifecycle_locked"}
 	if bool(public_progress.get("eligible", false)):
 		return {"growth_required": false, "reason_id": "victory_eligible"}
+	if not bool(public_progress.get("matched_economy_chain_observed", false)):
+		return {"growth_required": true, "reason_id": "matched_economy_chain_incomplete"}
 	if not bool(sale_receipt.get("observed", false)):
 		return {"growth_required": false, "reason_id": "first_sale_pending"}
 	var required_top_k := maxi(
@@ -2121,7 +2125,7 @@ static func production_maturation_pending(
 	maturity_checkpoint: Dictionary
 ) -> bool:
 	var installation_count := maxi(0, int(public_progress.get("production_installation_count", 0)))
-	if installation_count < TARGET_PRODUCTION_INSTALLATION_COUNT \
+	if not bool(public_progress.get("matched_economy_chain_observed", false)) \
 			or not bool(sale_receipt.get("observed", false)):
 		return false
 	if int(maturity_checkpoint.get("installation_count", -1)) != installation_count:
@@ -2195,17 +2199,35 @@ func _observe_authoritative_progress(telemetry: Dictionary) -> void:
 		_authoritative_progress_high_water["victory_state_rank"] = victory_rank
 		reasons.append("victory_%s" % victory_state)
 	var installation_count := maxi(0, int(progress.get("production_installation_count", 0)))
-	if victory_state in ["qualification", "audit", "resolved"]:
-		if _victory_locked_production_installation_count < 0:
-			_victory_locked_production_installation_count = installation_count
-		_post_victory_production_installation_delta = maxi(0, installation_count - _victory_locked_production_installation_count)
+	if bool(progress.get("eligible", false)) \
+			or victory_state in ["qualification", "audit", "resolved"]:
+		if _eligibility_locked_production_installation_count < 0:
+			_eligibility_locked_production_installation_count = installation_count
+		_post_eligibility_production_installation_delta = post_eligibility_installation_delta(
+			_post_eligibility_production_installation_delta,
+			_eligibility_locked_production_installation_count,
+			installation_count
+		)
 	else:
-		_victory_locked_production_installation_count = -1
-		_post_victory_production_installation_delta = 0
+		_eligibility_locked_production_installation_count = -1
+		_post_eligibility_production_installation_delta = 0
 	if bool(settlement.get("completed", false)):
 		reasons.append("settlement_completed")
 	if not reasons.is_empty():
 		_mark_authoritative_progress("+".join(reasons))
+
+
+static func post_eligibility_installation_delta(
+	previous_delta: int,
+	locked_installation_count: int,
+	current_installation_count: int
+) -> int:
+	if locked_installation_count < 0:
+		return 0
+	return maxi(
+		maxi(0, previous_delta),
+		maxi(0, current_installation_count - locked_installation_count)
+	)
 
 
 func _observe_progress_high_water(key: String, value: int, reason_id: String, reasons: Array[String]) -> void:
@@ -4289,7 +4311,7 @@ func _performance_snapshot() -> Dictionary:
 		"authoritative_progress_checkpoint_fingerprint": JSON.stringify(_authoritative_progress_checkpoints).sha256_text() if not _authoritative_progress_checkpoints.is_empty() else "",
 		"authoritative_last_progress_checkpoint": (_authoritative_progress_checkpoints[-1] as Dictionary).duplicate(true) if not _authoritative_progress_checkpoints.is_empty() else {},
 		"production_maturity_checkpoint": _production_maturity_checkpoint.duplicate(true),
-		"post_victory_production_installation_delta": _post_victory_production_installation_delta,
+		"post_eligibility_production_installation_delta": _post_eligibility_production_installation_delta,
 		"blocked_realtime_step_batch_count": _blocked_realtime_step_batch_count,
 		"blocked_realtime_step_attempt_count": _blocked_realtime_step_attempt_count,
 		"blocked_realtime_step_count": _blocked_realtime_step_count,
@@ -5067,10 +5089,11 @@ func _terminal_runtime_probe(coordinator: Node, runtime_loop: RuntimeLoop, sessi
 			"settlement_action_emission_count": int(settlement_debug.get("action_emission_count", 0)),
 			"final_public_log": final_log,
 			"sale_receipt": sale_receipt,
+			"matched_economy_chain": _matched_economy_chain_evidence.duplicate(true),
 			"timer_evidence": timer_evidence,
 			"actions": _action_stats.duplicate(true),
 			"peak_production_installation_count": _peak_production_installation_count,
-			"post_victory_production_installation_delta": _post_victory_production_installation_delta,
+			"post_eligibility_production_installation_delta": _post_eligibility_production_installation_delta,
 			"rng": _capture_rng_checkpoint(coordinator),
 		},
 		"frame": {
@@ -5087,6 +5110,7 @@ func _terminal_runtime_probe(coordinator: Node, runtime_loop: RuntimeLoop, sessi
 static func _terminal_baseline_valid(stable: Dictionary) -> bool:
 	var final_log: Dictionary = stable.get("final_public_log", {}) if stable.get("final_public_log", {}) is Dictionary else {}
 	var sale_receipt: Dictionary = stable.get("sale_receipt", {}) if stable.get("sale_receipt", {}) is Dictionary else {}
+	var matched_chain: Dictionary = stable.get("matched_economy_chain", {}) if stable.get("matched_economy_chain", {}) is Dictionary else {}
 	var timer_evidence: Dictionary = stable.get("timer_evidence", {}) if stable.get("timer_evidence", {}) is Dictionary else {}
 	var rng: Dictionary = stable.get("rng", {}) if stable.get("rng", {}) is Dictionary else {}
 	return str(stable.get("session_state", "")) == "finished" \
@@ -5103,8 +5127,11 @@ static func _terminal_baseline_valid(stable: Dictionary) -> bool:
 			== str(stable.get("session_outcome_identity_fingerprint", "")) \
 		and str(stable.get("outcome_reason_code", "")) == "public_audit_complete" \
 		and int(stable.get("winner_count", 0)) > 0 \
-		and int(stable.get("peak_production_installation_count", 0)) >= TARGET_PRODUCTION_INSTALLATION_COUNT \
-		and int(stable.get("post_victory_production_installation_delta", -1)) == 0 \
+		and bool(matched_chain.get("observed", false)) \
+		and int(matched_chain.get("matched_commodity_count", 0)) > 0 \
+		and int(matched_chain.get("settled_matched_commodity_count", 0)) > 0 \
+		and str(matched_chain.get("fingerprint", "")).length() == 64 \
+		and int(stable.get("post_eligibility_production_installation_delta", -1)) == 0 \
 		and int(stable.get("present_count", 0)) == 1 \
 		and int(stable.get("presented_outcome_count", 0)) == 1 \
 		and int(stable.get("logged_outcome_count", 0)) == 1 \

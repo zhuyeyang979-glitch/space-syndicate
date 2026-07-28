@@ -173,8 +173,39 @@ static func observation_from_public_sources(source: Dictionary) -> Dictionary:
 	return OBSERVATION.normalize(observation_source)
 
 
-static func plan(observation: Dictionary, production_floor := 3) -> Dictionary:
-	var plans := ranked_plans(observation, production_floor)
+static func matched_chain_evidence(observation: Dictionary) -> Dictionary:
+	var normalized := OBSERVATION.normalize(observation)
+	if normalized.is_empty():
+		return {
+			"observed": false,
+			"matched_commodity_count": 0,
+			"settled_matched_commodity_count": 0,
+			"fingerprint": "",
+		}
+	var rows: Array = []
+	var settled_count := 0
+	for row_variant in normalized.get("commodity_rows", []) as Array:
+		var row := row_variant as Dictionary
+		if float(row.get("public_production_capacity", 0.0)) <= 0.0 \
+				or float(row.get("public_demand_capacity", 0.0)) <= 0.0:
+			continue
+		var settled := float(row.get("public_settled_units", 0.0)) > 0.0
+		settled_count += 1 if settled else 0
+		rows.append({
+			"commodity_id": str(row.get("commodity_id", "")),
+			"industry_id": str(row.get("industry_id", "")),
+			"settled": settled,
+		})
+	return {
+		"observed": not rows.is_empty(),
+		"matched_commodity_count": rows.size(),
+		"settled_matched_commodity_count": settled_count,
+		"fingerprint": JSON.stringify(rows).sha256_text() if not rows.is_empty() else "",
+	}
+
+
+static func plan(observation: Dictionary) -> Dictionary:
+	var plans := ranked_plans(observation)
 	return (plans[0] as Dictionary).duplicate(true) if not plans.is_empty() else _plan(
 		false,
 		"observation_unavailable",
@@ -187,7 +218,7 @@ static func plan(observation: Dictionary, production_floor := 3) -> Dictionary:
 	)
 
 
-static func ranked_plans(observation: Dictionary, production_floor := 3) -> Array:
+static func ranked_plans(observation: Dictionary) -> Array:
 	var normalized := OBSERVATION.normalize(observation)
 	if normalized.is_empty():
 		return [_plan(false, "observation_unavailable", "", "", "", "", 0, true)]
@@ -197,14 +228,11 @@ static func ranked_plans(observation: Dictionary, production_floor := 3) -> Arra
 	if bool(progress.get("eligible", false)) or victory_state in VICTORY_LOCK_STATES:
 		return [_plan(true, "victory_lifecycle_locked", "", "", "", "", source_revision, true)]
 	var active_facilities: Array = []
-	var production_count := 0
 	for facility_variant in normalized.get("facility_rows", []) as Array:
 		if facility_variant is Dictionary and bool((facility_variant as Dictionary).get("active", false)):
 			active_facilities.append(facility_variant)
-			if str((facility_variant as Dictionary).get("direction", "")) == "production":
-				production_count += 1
 	if active_facilities.is_empty():
-		return [_plan(true, "production_floor_start", "factory", "production", "", "", source_revision, false)]
+		return [_plan(true, "economy_chain_start", "factory", "production", "", "", source_revision, false)]
 	var candidates: Array[Dictionary] = []
 	for row_variant in normalized.get("commodity_rows", []) as Array:
 		var row := row_variant as Dictionary
@@ -234,14 +262,10 @@ static func ranked_plans(observation: Dictionary, production_floor := 3) -> Arra
 			desired_kind = "factory"
 			reason_id = "production_capacity_bottleneck"
 			priority = 2
-		elif production_count < maxi(1, production_floor):
-			desired_kind = "factory"
-			reason_id = "production_floor_incomplete"
-			priority = 3
 		elif int(progress.get("top_k_gdp", 0)) < int(progress.get("required_top_k_gdp", 0)):
 			desired_kind = "factory"
 			reason_id = "matched_chain_scale_required"
-			priority = 4
+			priority = 3
 		if desired_kind.is_empty():
 			continue
 		candidates.append({
