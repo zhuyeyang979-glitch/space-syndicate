@@ -83,7 +83,12 @@ func _run() -> void:
 
 	var world := coordinator.world_session_state()
 	_expect(world.players.size() == 3, "one human and two AI seats exist")
-	var district_index := _first_rack_district(world, region_supply)
+	var district_index := _first_typed_facility_rack_district(
+		world,
+		query,
+		presentation,
+		region_supply
+	)
 	_expect(district_index >= 0, "at least one authoritative public rack is available")
 	if district_index < 0:
 		app_root.queue_free()
@@ -116,11 +121,37 @@ func _run() -> void:
 	_expect(presentation_before == presentation.snapshot(), "query does not mutate selected or previewed card state")
 	_expect(bool(private_surface.get("visible", false)) and str(private_surface.get("visibility_scope", "")) == "viewer_private", "local human receives a visible private surface")
 	_expect(int(private_surface.get("viewer_index", -1)) == 0 and int(private_surface.get("authorization_revision", 0)) == context.authorization_revision, "surface is bound to the current viewer authorization")
+	var rack_source_revision := str(private_surface.get("rack_source_revision", ""))
+	var repeated_private_surface := query.snapshot_for_viewer(0)
+	_expect(
+		rack_source_revision.length() == 64 \
+			and str(repeated_private_surface.get("rack_source_revision", "")) \
+				== rack_source_revision \
+			and not JSON.stringify(private_surface).contains(rack_revision),
+		"public rack identity is a stable opaque revision token and never exposes the raw per-rack or per-slot credential"
+	)
 	var private_snapshot: Dictionary = private_surface.get("snapshot", {}) if private_surface.get("snapshot", {}) is Dictionary else {}
 	var private_text := JSON.stringify(private_snapshot)
 	_expect(str(private_snapshot.get("visibility_scope", "")) == "viewer_private", "formatted drawer retains viewer-private scope")
 	_expect(private_text.contains("¥%d" % HUMAN_CASH_SENTINEL), "private drawer contains only the local human's exact cash summary")
-	_expect(not private_text.contains("quote_fingerprint") and not private_text.contains("supply_revision"), "private drawer strips quote credentials and internal supply revisions")
+	_expect(not private_text.contains("quote_fingerprint") and not private_text.contains("\"supply_revision\":"), "private drawer strips quote credentials and internal per-slot supply revisions")
+	var typed_listing_fields_valid := not (private_snapshot.get("cards", []) as Array).is_empty()
+	for card_variant in private_snapshot.get("cards", []) as Array:
+		var card: Dictionary = card_variant if card_variant is Dictionary else {}
+		var card_preview: Dictionary = card.get("preview", {}) \
+			if card.get("preview", {}) is Dictionary else {}
+		typed_listing_fields_valid = typed_listing_fields_valid \
+			and not str(card.get("card_id", "")).is_empty() \
+			and not str(card.get("kind", "")).is_empty() \
+			and card.get("price", null) is int \
+			and int(card.get("price", -1)) >= 0 \
+			and card_preview.has("primary_action_id") \
+			and card_preview.has("buy_enabled") \
+			and card_preview.has("action_reason_code")
+	_expect(
+		typed_listing_fields_valid,
+		"authorized rack rows retain stable card identity, typed kind, public price, and typed quote-or-purchase projection"
+	)
 	var typed_facility_listings: Array = []
 	for card_variant in private_snapshot.get("cards", []) as Array:
 		if card_variant is Dictionary and not str((card_variant as Dictionary).get("facility_kind", "")).is_empty():
@@ -145,6 +176,10 @@ func _run() -> void:
 	var public_surface := query.snapshot_for_viewer(0)
 	var public_snapshot: Dictionary = public_surface.get("snapshot", {}) if public_surface.get("snapshot", {}) is Dictionary else {}
 	_expect(str(public_surface.get("visibility_scope", "")) == "public" and str(public_snapshot.get("visibility_scope", "")) == "public", "opponent subject is downgraded to public browse scope")
+	_expect(
+		str(public_surface.get("rack_source_revision", "")) == rack_source_revision,
+		"rack revision identity is public and independent from private subject authorization"
+	)
 	var leak_text := JSON.stringify(public_surface)
 	for sentinel in [str(RIVAL_CASH_SENTINEL), RIVAL_HAND_SENTINEL, RIVAL_DISCARD_SENTINEL, RIVAL_PLAN_SENTINEL, RIVAL_OWNER_SENTINEL]:
 		_expect(not leak_text.contains(sentinel), "public surface omits sentinel %s" % sentinel)
@@ -243,6 +278,28 @@ func _first_rack_district(world: WorldSessionState, region_supply: RegionSupplyR
 					and not str((slot_variant as Dictionary).get("facility_kind", "")).is_empty():
 				return district_index
 	return fallback
+
+
+func _first_typed_facility_rack_district(
+	world: WorldSessionState,
+	query: DistrictSupplyViewerQueryPort,
+	presentation: TableCardSupplyPresentationState,
+	region_supply: RegionSupplyRuntimeController
+) -> int:
+	if world == null or query == null or presentation == null:
+		return -1
+	for district_index in range(world.districts.size()):
+		presentation.open_district = district_index
+		presentation.open_player = 0
+		var surface := query.snapshot_for_viewer(0)
+		var snapshot: Dictionary = surface.get("snapshot", {}) \
+			if surface.get("snapshot", {}) is Dictionary else {}
+		for card_variant in snapshot.get("cards", []) as Array:
+			if card_variant is Dictionary \
+					and not str((card_variant as Dictionary).get("facility_kind", "")).is_empty() \
+					and not str((card_variant as Dictionary).get("industry_id", "")).is_empty():
+				return district_index
+	return _first_rack_district(world, region_supply)
 
 
 func _collect_forbidden_paths(value: Variant, path: String, result: Array[String]) -> void:

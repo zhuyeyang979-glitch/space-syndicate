@@ -111,6 +111,9 @@ class FakeDistrictSupply:
 	extends DistrictSupplyActionPort
 	var submit_count := 0
 	var last_intent: DistrictSupplyActionIntent
+	var pending_discard_next := false
+	var quote_failure_next := false
+	var active_quote_id := ""
 
 	func submit_intent(intent: DistrictSupplyActionIntent) -> DistrictSupplyActionReceipt:
 		submit_count += 1
@@ -124,6 +127,64 @@ class FakeDistrictSupply:
 		receipt.actor_player_index = intent.actor_player_index
 		receipt.district_index = intent.district_index
 		receipt.focus_district_index = intent.district_index
+		if intent.action_kind == DistrictSupplyActionIntent.KIND_QUOTE \
+				and quote_failure_next:
+			quote_failure_next = false
+			active_quote_id = ""
+			receipt.accepted = false
+			receipt.applied = false
+			receipt.reason_code = "quote_unavailable"
+			return receipt
+		if intent.action_kind == DistrictSupplyActionIntent.KIND_PURCHASE \
+				and pending_discard_next:
+			pending_discard_next = false
+			receipt.accepted = true
+			receipt.applied = true
+			receipt.reason_code = "hand_limit_requires_discard"
+			receipt.requires_discard = true
+			receipt.quote_id = intent.locked_quote_id
+		if intent.action_kind == DistrictSupplyActionIntent.KIND_QUOTE:
+			receipt.quote_id = "quote.action-spine.%d" % submit_count
+			active_quote_id = receipt.quote_id
+		elif intent.action_kind in [
+			DistrictSupplyActionIntent.KIND_OPEN,
+			DistrictSupplyActionIntent.KIND_CLOSE,
+			DistrictSupplyActionIntent.KIND_PURCHASE,
+		]:
+			active_quote_id = ""
+		receipt.presentation_refresh_requested = true
+		return receipt
+
+	func quote_is_confirmable(
+		_player_index: int,
+		_district_index: int,
+		_card_id: String,
+		quote_id: String
+	) -> bool:
+		return not active_quote_id.is_empty() and quote_id == active_quote_id
+
+
+class FakeSelectionPort:
+	extends TableSelectionIntentPort
+	var submit_count := 0
+	var last_intent: TableSelectionIntent
+
+	func submit_intent(intent: TableSelectionIntent) -> TableSelectionReceipt:
+		submit_count += 1
+		last_intent = intent
+		var receipt := TableSelectionReceipt.new()
+		receipt.request_id = intent.request_id
+		receipt.selection_kind = intent.selection_kind
+		receipt.viewer_index = intent.viewer_index
+		receipt.authorization_revision = intent.authorization_revision
+		receipt.session_revision = intent.session_revision
+		receipt.accepted = true
+		receipt.applied = true
+		receipt.changed = true
+		receipt.reason_code = "selection_applied"
+		receipt.district_index = intent.target_district_index
+		receipt.selection_revision_before = submit_count - 1
+		receipt.selection_revision_after = submit_count
 		receipt.presentation_refresh_requested = true
 		return receipt
 
@@ -152,6 +213,7 @@ func _run() -> void:
 	_test_authorization_journal_and_exact_once()
 	_test_stale_collision_and_invalid_target()
 	_test_group_district_and_refresh_routing()
+	_test_economy_surface_action_spine()
 	_test_current_lane_visibility_and_drag_override()
 	_test_source_negative_gates()
 	_finish()
@@ -177,8 +239,17 @@ func _test_game_screen_human_paths() -> void:
 	var offer := controller.human_card_play_offer(0, 0, HUMAN_SOURCE_REVISION, true, "none")
 	_expect(bool(GameActionOfferV1.validation_report(offer).get("valid", false)), "human card offer is a valid closed GameActionOfferV1")
 	for submission_kind in ["human_click", "human_quick_action"]:
-		_expect(bool(screen.call("_submit_game_action_offer", offer, submission_kind, {}, {})), "%s adapter emits one typed intent" % submission_kind)
-	_expect(bool(screen.call("_submit_game_action_offer", offer, "human_drag", {}, {"region_id": "region.beta"})), "human drag emits the same typed intent with a stable public region target")
+		_expect(screen.submit_game_action_offer(offer, submission_kind, {}, {}), "%s adapter emits one typed intent" % submission_kind)
+	_expect(screen.submit_game_action_offer(offer, "human_drag", {}, {"region_id": "region.beta"}), "human drag emits the same typed intent with a stable public region target")
+	_expect(
+		not screen.submit_game_action_offer(
+			offer,
+			"human_click",
+			{},
+			{"card_instance_id": "card.instance.retargeted"}
+		),
+		"human adapter cannot rewrite an offer-bound required card target"
+	)
 	_expect(receipts.size() == 3 and receipts.all(func(receipt: Dictionary) -> bool: return bool(receipt.get("accepted", false))), "click, quick action, and drag all reach the same accepted application flow")
 	_expect(card_play.submit_count == 3 and str(card_play.requests[0].get("submission_source", "")) == "human_click" and str(card_play.requests[1].get("submission_source", "")) == "human_quick_action" and str(card_play.requests[2].get("submission_source", "")) == "human_drag", "all three human adapters reach the same typed card-play target exactly once")
 	_expect(int(card_play.requests[2].get("selected_district", -1)) == 1 and not card_play.requests[2].has("screen_position"), "drag converts Vector2 hit testing to a stable authoritative district index before core submission")
@@ -286,6 +357,230 @@ func _test_group_district_and_refresh_routing() -> void:
 	_dispose(fixture)
 
 
+func _test_economy_surface_action_spine() -> void:
+	var fixture := _fixture()
+	var controller := fixture.controller as TablePlayerActionApplicationFlowController
+	var district := fixture.district as FakeDistrictSupply
+	var selection_port := fixture.selection_port as FakeSelectionPort
+	var authorization := controller.human_actor_authorization()
+	var action_rows := [
+		{
+			"action_id": GameActionIntentV1.ACTION_DISTRICT_SELECT,
+			"targets": {"region_id": "region.beta"},
+			"request_id": "request.economy-select",
+		},
+		{
+			"action_id": GameActionIntentV1.ACTION_DISTRICT_SUPPLY_CLOSE,
+			"targets": {},
+			"request_id": "request.economy-close",
+		},
+		{
+			"action_id": GameActionIntentV1.ACTION_DISTRICT_SUPPLY_OPEN,
+			"targets": {"region_id": "region.beta"},
+			"request_id": "request.economy-open",
+		},
+		{
+			"action_id": GameActionIntentV1.ACTION_DISTRICT_SUPPLY_QUOTE,
+			"targets": {
+				"region_id": "region.beta",
+				"card_id": "facility.market.energy.rank_1",
+			},
+			"request_id": "request.economy-quote",
+		},
+	]
+	var receipts: Array[Dictionary] = []
+	for row_variant in action_rows:
+		var row := row_variant as Dictionary
+		var offer := controller.human_surface_action_offer(
+			str(row.get("action_id", "")),
+			row.get("targets", {}) as Dictionary
+		)
+		var action_intent := _intent(
+			offer,
+			authorization,
+			str(row.get("request_id", "")),
+			"human_click"
+		)
+		receipts.append(controller.submit_intent(action_intent))
+	var purchase_offer := controller.human_surface_action_offer(
+		GameActionIntentV1.ACTION_DISTRICT_SUPPLY_PURCHASE,
+		{
+			"region_id": "region.beta",
+			"card_id": "facility.market.energy.rank_1",
+		}
+	)
+	var purchase_intent := _intent(
+		purchase_offer,
+		authorization,
+		"request.economy-purchase",
+		"human_click"
+	)
+	var purchase := controller.submit_intent(purchase_intent)
+	var purchase_replay := controller.submit_intent(purchase_intent)
+	receipts.append(purchase)
+	var all_commits_valid := true
+	for receipt_variant in receipts:
+		var receipt := receipt_variant as Dictionary
+		if not bool(receipt.get("accepted", false)) \
+				or (receipt.get("committed_effect_refs", []) as Array).is_empty() \
+				or int(receipt.get("authoritative_revision", 0)) <= 0:
+			all_commits_valid = false
+			break
+	_expect(
+		all_commits_valid,
+		"district select, supply close/open/quote/purchase each return authoritative GameAction commit evidence"
+	)
+	_expect(
+		selection_port.submit_count == 1 \
+			and bool(selection_port.last_intent.validation_report().get("valid", false)) \
+			and selection_port.last_intent.source_surface == &"planet_map" \
+			and district.submit_count == 4 \
+			and district.last_intent.action_kind == DistrictSupplyActionIntent.KIND_PURCHASE \
+			and district.last_intent.locked_quote_id == "quote.action-spine.3",
+		"the semantic adapters reach each typed owner once, preserve the typed planet-map source contract, and bind purchase to the accepted quote"
+	)
+	_expect(
+		bool(purchase_replay.get("accepted", false)) \
+			and bool(purchase_replay.get("idempotent_replay", false)) \
+			and district.submit_count == 4,
+		"duplicate purchase delivery replays the GameAction receipt with zero second domain apply"
+	)
+	var second_quote_offer := controller.human_surface_action_offer(
+		GameActionIntentV1.ACTION_DISTRICT_SUPPLY_QUOTE,
+		{
+			"region_id": "region.beta",
+			"card_id": "facility.market.energy.rank_1",
+		}
+	)
+	var second_quote := controller.submit_intent(_intent(
+		second_quote_offer,
+		authorization,
+		"request.economy-quote.pending-discard",
+		"human_click"
+	))
+	var pending_purchase_offer := controller.human_surface_action_offer(
+		GameActionIntentV1.ACTION_DISTRICT_SUPPLY_PURCHASE,
+		{
+			"region_id": "region.beta",
+			"card_id": "facility.market.energy.rank_1",
+		}
+	)
+	var tampered_targets := GameActionOfferV1.target_ids(pending_purchase_offer)
+	tampered_targets["quote_id"] = "quote.action-spine.forged"
+	var tampered_purchase := controller.submit_intent(_intent(
+		pending_purchase_offer,
+		authorization,
+		"request.economy-purchase.forged-quote",
+		"human_click",
+		{},
+		tampered_targets
+	))
+	district.pending_discard_next = true
+	var pending_purchase_intent := _intent(
+		pending_purchase_offer,
+		authorization,
+		"request.economy-purchase.pending-discard",
+		"human_click"
+	)
+	var pending_purchase := controller.submit_intent(pending_purchase_intent)
+	var pending_purchase_replay := controller.submit_intent(pending_purchase_intent)
+	var pending_effect_committed := false
+	for effect_ref_variant in pending_purchase.get("committed_effect_refs", []) as Array:
+		if str(effect_ref_variant).contains(".pending-discard."):
+			pending_effect_committed = true
+			break
+	_expect(
+		bool(second_quote.get("accepted", false)) \
+			and str(tampered_purchase.get("reason_id", "")) == "district-quote-binding-stale" \
+			and bool(pending_purchase.get("accepted", false)) \
+			and pending_effect_committed \
+			and bool(pending_purchase_replay.get("idempotent_replay", false)) \
+			and district.submit_count == 6,
+		"purchase quote identity is intent-bound and a full-hand pending discard is one replay-safe committed application transition"
+	)
+	var retained_quote := controller.submit_intent(_intent(
+		controller.human_surface_action_offer(
+			GameActionIntentV1.ACTION_DISTRICT_SUPPLY_QUOTE,
+			{
+				"region_id": "region.beta",
+				"card_id": "facility.market.energy.rank_1",
+			}
+		),
+		authorization,
+		"request.economy-quote.before-failure",
+		"human_click"
+	))
+	district.quote_failure_next = true
+	var failed_requote := controller.submit_intent(_intent(
+		controller.human_surface_action_offer(
+			GameActionIntentV1.ACTION_DISTRICT_SUPPLY_QUOTE,
+			{
+				"region_id": "region.beta",
+				"card_id": "facility.market.energy.rank_1",
+			}
+		),
+		authorization,
+		"request.economy-quote.failure",
+		"human_click"
+	))
+	var stale_purchase_offer := controller.human_surface_action_offer(
+		GameActionIntentV1.ACTION_DISTRICT_SUPPLY_PURCHASE,
+		{
+			"region_id": "region.beta",
+			"card_id": "facility.market.energy.rank_1",
+		}
+	)
+	_expect(
+		bool(retained_quote.get("accepted", false)) \
+			and not bool(failed_requote.get("accepted", true)) \
+			and stale_purchase_offer.is_empty() \
+			and district.submit_count == 8,
+		"a failed replacement quote clears the facade credential instead of authorizing purchase with an invalidated prior quote"
+	)
+	var quote_before_reopen := controller.submit_intent(_intent(
+		controller.human_surface_action_offer(
+			GameActionIntentV1.ACTION_DISTRICT_SUPPLY_QUOTE,
+			{
+				"region_id": "region.beta",
+				"card_id": "facility.market.energy.rank_1",
+			}
+		),
+		authorization,
+		"request.economy-quote.before-reopen",
+		"human_click"
+	))
+	var reopen := controller.submit_intent(_intent(
+		controller.human_surface_action_offer(
+			GameActionIntentV1.ACTION_DISTRICT_SUPPLY_OPEN,
+			{"region_id": "region.beta"}
+		),
+		authorization,
+		"request.economy-reopen",
+		"human_click"
+	))
+	var purchase_after_reopen := controller.human_surface_action_offer(
+		GameActionIntentV1.ACTION_DISTRICT_SUPPLY_PURCHASE,
+		{
+			"region_id": "region.beta",
+			"card_id": "facility.market.energy.rank_1",
+		}
+	)
+	_expect(
+		bool(quote_before_reopen.get("accepted", false)) \
+			and bool(reopen.get("accepted", false)) \
+			and purchase_after_reopen.is_empty() \
+			and district.submit_count == 10,
+		"opening a fresh district window invalidates the prior quote before another purchase offer can be issued"
+	)
+	var debug := controller.debug_snapshot()
+	_expect(
+		int(debug.get("district_selection_apply_count", 0)) == 1 \
+			and int(debug.get("district_adapter_apply_count", 0)) == 9,
+		"flow diagnostics count one selection and nine accepted supply application transitions without owning gameplay state"
+	)
+	_dispose(fixture)
+
+
 func _test_current_lane_visibility_and_drag_override() -> void:
 	var host := Node.new()
 	root.add_child(host)
@@ -361,6 +656,12 @@ func _fixture() -> Dictionary:
 	var group := FakeCardGroup.new()
 	group.name = "CardGroupActionPort"
 	host.add_child(group)
+	var selection_state := TableSelectionState.new()
+	selection_state.name = "TableSelectionState"
+	host.add_child(selection_state)
+	var selection_port := FakeSelectionPort.new()
+	selection_port.name = "TableSelectionIntentPort"
+	host.add_child(selection_port)
 	var district := FakeDistrictSupply.new()
 	district.name = "DistrictSupplyActionPort"
 	host.add_child(district)
@@ -371,7 +672,7 @@ func _fixture() -> Dictionary:
 	host.add_child(controller)
 	var capability := GameActionAiSubmissionCapability.new()
 	_expect(controller.bind_ai_submission_capability(capability), "fixture binds the opaque AI submission capability once")
-	return {"host": host, "identity": identity, "world": world, "session": session, "offer_source": offer_source, "card_play": card_play, "group": group, "district": district, "refresh": refresh, "controller": controller, "capability": capability}
+	return {"host": host, "identity": identity, "world": world, "session": session, "offer_source": offer_source, "card_play": card_play, "group": group, "selection_state": selection_state, "selection_port": selection_port, "district": district, "refresh": refresh, "controller": controller, "capability": capability}
 
 
 func _card(runtime_id: String, card_id: String) -> Dictionary:

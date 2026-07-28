@@ -19,6 +19,7 @@ const JOURNAL_LIMIT := 128
 @export var action_offer_source_path: NodePath
 @export var card_play_submission_path: NodePath
 @export var card_group_action_port_path: NodePath
+@export var table_selection_intent_port_path: NodePath
 @export var district_supply_action_port_path: NodePath
 @export var presentation_query_ports_path: NodePath
 @export var presentation_refresh_port_path: NodePath
@@ -40,7 +41,9 @@ var _ai_submission_count := 0
 var _refresh_request_count := 0
 var _card_play_apply_count := 0
 var _card_group_apply_count := 0
+var _district_selection_apply_count := 0
 var _district_adapter_apply_count := 0
+var _district_quote_bindings: Dictionary = {}
 
 
 func bind_ai_submission_capability(capability: GameActionAiSubmissionCapability) -> bool:
@@ -117,6 +120,48 @@ func human_action_offer(
 		available,
 		disabled_reason_id,
 		target_ids,
+		refresh_scope,
+		presentation_token_ids
+	)
+
+
+func human_surface_action_offer(
+	action_id: String,
+	target_ids: Dictionary = {},
+	refresh_scope := "full",
+	presentation_token_ids: Array = []
+) -> Dictionary:
+	var context := _identity().current_actor_context(&"game_screen") if _identity() != null else null
+	if context == null or not context.is_valid():
+		return {}
+	var source_revision := _current_human_source_revision(context.authorized_actor_player_index)
+	if source_revision <= 0:
+		return {}
+	var bound_targets := target_ids.duplicate(true)
+	if action_id == INTENT.ACTION_DISTRICT_SUPPLY_PURCHASE:
+		var quote_key := _district_quote_key(
+			context.authorized_actor_player_index,
+			str(bound_targets.get("region_id", "")),
+			str(bound_targets.get("card_id", ""))
+		)
+		var quote_id := str(_district_quote_bindings.get(quote_key, ""))
+		var district_index := _district_index_for_region_id(str(bound_targets.get("region_id", "")))
+		if quote_id.is_empty() or _district_supply() == null \
+				or not _district_supply().quote_is_confirmable(
+					context.authorized_actor_player_index,
+					district_index,
+					str(bound_targets.get("card_id", "")),
+					quote_id
+				):
+			_district_quote_bindings.erase(quote_key)
+			return {}
+		bound_targets["quote_id"] = quote_id
+	return _build_offer(
+		action_id,
+		source_revision,
+		true,
+		"none",
+		bound_targets,
 		refresh_scope,
 		presentation_token_ids
 	)
@@ -238,7 +283,9 @@ func debug_snapshot() -> Dictionary:
 		"refresh_request_count": _refresh_request_count,
 		"card_play_apply_count": _card_play_apply_count,
 		"card_group_apply_count": _card_group_apply_count,
+		"district_selection_apply_count": _district_selection_apply_count,
 		"district_adapter_apply_count": _district_adapter_apply_count,
+		"district_quote_binding_count": _district_quote_bindings.size(),
 		"journal_size": _journal.size(),
 		"journal_limit": JOURNAL_LIMIT,
 		"ai_capability_bound": _ai_capability != null,
@@ -273,13 +320,17 @@ func _dispatch(intent: Dictionary) -> Dictionary:
 				_card_group_apply_count += 1
 			outcome["refresh_scope"] = "full" if bool(outcome.get("accepted", false)) else "none"
 			return outcome
-		INTENT.ACTION_DISTRICT_SUPPLY_OPEN, INTENT.ACTION_PLAYER_STRATEGY_OPEN_SUPPLY:
-			return _dispatch_district_supply_open(intent, actor_index)
+		INTENT.ACTION_DISTRICT_SELECT:
+			return _dispatch_district_selection(intent, actor_index)
+		INTENT.ACTION_DISTRICT_SUPPLY_OPEN, INTENT.ACTION_DISTRICT_SUPPLY_CLOSE, \
+				INTENT.ACTION_DISTRICT_SUPPLY_QUOTE, INTENT.ACTION_DISTRICT_SUPPLY_PURCHASE, \
+				INTENT.ACTION_PLAYER_STRATEGY_OPEN_SUPPLY:
+			return _dispatch_district_supply(intent, actor_index)
 		INTENT.ACTION_SESSION_END_TURN:
 			return {
 				"accepted": true,
 				"reason_id": "end-turn-refresh-accepted",
-				"effect_ref": "none",
+				"effect_ref": "session.end-turn.refresh",
 				"authoritative_revision": _operation_revision + 1,
 				"refresh_scope": "full",
 			}
@@ -324,6 +375,13 @@ func _dispatch_card_play(intent: Dictionary, actor_index: int) -> Dictionary:
 		request["target_player"] = player_index
 	var result := _card_play().request_hand_play(request) if _card_play() != null else {}
 	var accepted := bool(result.get("accepted", result.get("queued", false)))
+	var v06_receipt: Dictionary = result.get("v06_receipt", {}) \
+		if result.get("v06_receipt", {}) is Dictionary else {}
+	if accepted and not v06_receipt.is_empty():
+		var finalization: Dictionary = v06_receipt.get("effect_finalization", {}) \
+			if v06_receipt.get("effect_finalization", {}) is Dictionary else {}
+		accepted = bool(v06_receipt.get("committed", false)) \
+			and bool(finalization.get("finalized", v06_receipt.get("finalized", false)))
 	if accepted:
 		_card_play_apply_count += 1
 	return {
@@ -335,37 +393,133 @@ func _dispatch_card_play(intent: Dictionary, actor_index: int) -> Dictionary:
 	}
 
 
-func _dispatch_district_supply_open(intent: Dictionary, actor_index: int) -> Dictionary:
+func _dispatch_district_selection(intent: Dictionary, actor_index: int) -> Dictionary:
+	var port := _table_selection()
+	var region_id := str((intent.get("target_ids", {}) as Dictionary).get("region_id", ""))
+	var district_index := _district_index_for_region_id(region_id)
+	if port == null or district_index < 0:
+		return {"accepted": false, "reason_id": "district-selection-port-missing" if port == null else "district-target-invalid", "refresh_scope": "none"}
+	var authorization := intent.get("actor_authorization", {}) as Dictionary
+	var before_revision := int(_selection_state().snapshot().get("revision", -1)) if _selection_state() != null else -1
+	if before_revision < 0:
+		return {"accepted": false, "reason_id": "district-selection-state-missing", "refresh_scope": "none"}
+	var selection_intent := TableSelectionIntent.new()
+	selection_intent.request_id = "game-action-adapter:%s" % str(intent.get("request_id", ""))
+	selection_intent.selection_kind = TableSelectionIntent.KIND_SELECT_DISTRICT
+	selection_intent.viewer_index = actor_index
+	selection_intent.authorization_revision = int(authorization.get("actor_revision", 0))
+	selection_intent.session_id = str(authorization.get("session_id", ""))
+	selection_intent.session_revision = int(authorization.get("session_revision", 0))
+	selection_intent.expected_selection_revision = before_revision
+	selection_intent.target_district_index = district_index
+	selection_intent.source_surface = &"planet_map"
+	selection_intent.request_revision = _operation_revision + 1
+	var result := port.submit_intent(selection_intent)
+	var after_revision := result.selection_revision_after if result != null else before_revision
+	var committed := result != null and result.accepted and result.applied \
+		and result.changed and after_revision > before_revision
+	if committed:
+		_district_selection_apply_count += 1
+	return {
+		"accepted": committed,
+		"reason_id": str(result.reason_code).replace("_", "-") if result != null else "district-selection-rejected",
+		"effect_ref": "district.select.%s" % region_id if committed else "none",
+		"authoritative_revision": _operation_revision + 1,
+		"refresh_scope": "full" if committed else "none",
+		"domain_refresh_owned": committed and result.presentation_refresh_requested,
+	}
+
+
+func _dispatch_district_supply(intent: Dictionary, actor_index: int) -> Dictionary:
 	var port := _district_supply()
 	var identity := _identity()
 	if port == null or identity == null:
 		return {"accepted": false, "reason_id": "district-supply-port-missing", "refresh_scope": "none"}
-	var region_id := str((intent.get("target_ids", {}) as Dictionary).get("region_id", ""))
-	var district_index := _district_index_for_region_id(region_id)
-	if district_index < 0:
+	var action_id := str(intent.get("semantic_action_id", ""))
+	var target_ids := intent.get("target_ids", {}) as Dictionary
+	var region_id := str(target_ids.get("region_id", ""))
+	var district_index := _district_index_for_region_id(region_id) if not region_id.is_empty() else -1
+	if action_id != INTENT.ACTION_DISTRICT_SUPPLY_CLOSE and district_index < 0:
 		return {"accepted": false, "reason_id": "district-target-invalid", "refresh_scope": "none"}
 	var authorization := intent.get("actor_authorization", {}) as Dictionary
 	var district_intent := DistrictSupplyActionIntent.new()
 	district_intent.request_id = "game-action-adapter:%s" % str(intent.get("request_id", ""))
-	district_intent.action_kind = DistrictSupplyActionIntent.KIND_OPEN
+	district_intent.action_kind = {
+		INTENT.ACTION_DISTRICT_SUPPLY_CLOSE: DistrictSupplyActionIntent.KIND_CLOSE,
+		INTENT.ACTION_DISTRICT_SUPPLY_QUOTE: DistrictSupplyActionIntent.KIND_QUOTE,
+		INTENT.ACTION_DISTRICT_SUPPLY_PURCHASE: DistrictSupplyActionIntent.KIND_PURCHASE,
+	}.get(action_id, DistrictSupplyActionIntent.KIND_OPEN)
 	district_intent.actor_player_index = actor_index
 	district_intent.authorization_revision = int(authorization.get("actor_revision", 0))
 	district_intent.session_id = str(authorization.get("session_id", ""))
 	district_intent.session_revision = int(authorization.get("session_revision", 0))
 	district_intent.district_index = district_index
+	district_intent.card_id = str(target_ids.get("card_id", ""))
+	var quote_key := _district_quote_key(actor_index, region_id, district_intent.card_id)
+	if district_intent.action_kind == DistrictSupplyActionIntent.KIND_PURCHASE:
+		var offered_quote_id := str(target_ids.get("quote_id", ""))
+		if offered_quote_id.is_empty() \
+				or offered_quote_id != str(_district_quote_bindings.get(quote_key, "")):
+			return {
+				"accepted": false,
+				"reason_id": "district-quote-binding-stale",
+				"refresh_scope": "none",
+			}
+		district_intent.locked_quote_id = offered_quote_id
+	elif district_intent.action_kind == DistrictSupplyActionIntent.KIND_QUOTE:
+		# Selecting another listing invalidates the prior domain quote before the
+		# new typed receipt can establish a replacement binding.
+		_clear_district_quotes_for_actor(actor_index)
 	district_intent.source_surface = &"game_screen"
 	district_intent.request_revision = _operation_revision + 1
 	var result := port.submit_intent(district_intent)
-	var accepted := result != null and result.accepted
+	var committed := result != null and result.accepted and result.applied
+	var pending_discard := committed and result.requires_discard \
+		and not result.quote_id.is_empty()
+	var accepted := committed
+	if accepted and district_intent.action_kind == DistrictSupplyActionIntent.KIND_QUOTE \
+			and not result.quote_id.is_empty():
+		_district_quote_bindings[quote_key] = result.quote_id
+	elif committed and district_intent.action_kind in [
+		DistrictSupplyActionIntent.KIND_OPEN,
+		DistrictSupplyActionIntent.KIND_CLOSE,
+	]:
+		_clear_district_quotes_for_actor(actor_index)
+	elif district_intent.action_kind == DistrictSupplyActionIntent.KIND_PURCHASE \
+			and (committed or result != null and result.reason_code in [
+				"locked_quote_changed",
+				"locked_quote_required",
+				"quote_unavailable",
+				"quote_unauthorized",
+				"quote_expired",
+				"quote_missing",
+				"quote_binding_mismatch",
+				"quote_fingerprint_mismatch",
+			]):
+		_district_quote_bindings.erase(quote_key)
 	if accepted:
 		_district_adapter_apply_count += 1
+	var effect_ref := "none"
+	if accepted:
+		match district_intent.action_kind:
+			DistrictSupplyActionIntent.KIND_CLOSE:
+				effect_ref = "district.supply.close"
+			DistrictSupplyActionIntent.KIND_QUOTE:
+				effect_ref = "district.supply.quote.%s" % SemanticWireV1.fingerprint({"quote_id": result.quote_id}).substr(0, 24)
+			DistrictSupplyActionIntent.KIND_PURCHASE:
+				effect_ref = (
+					"district.supply.purchase.pending-discard.%s"
+					% SemanticWireV1.fingerprint({"quote_id": result.quote_id}).substr(0, 24)
+				) if pending_discard else "district.supply.purchase.%s" % district_intent.card_id
+			_:
+				effect_ref = "district.supply.open.%s" % region_id
 	return {
 		"accepted": accepted,
 		"reason_id": str(result.reason_code).replace("_", "-") if result != null else "district-supply-rejected",
-		"effect_ref": "district.supply.open.%s" % region_id if accepted else "none",
+		"effect_ref": effect_ref,
 		"authoritative_revision": _operation_revision + 1,
 		"refresh_scope": "full" if accepted else "none",
-		"domain_refresh_owned": accepted,
+		"domain_refresh_owned": result != null and result.presentation_refresh_requested,
 	}
 
 
@@ -648,6 +802,7 @@ func _sync_journal(session_key: String) -> void:
 		return
 	_journal.clear()
 	_journal_order.clear()
+	_district_quote_bindings.clear()
 	_journal_session_key = session_key
 
 
@@ -681,8 +836,27 @@ func _card_group() -> CardGroupActionPort:
 	return get_node_or_null(card_group_action_port_path) as CardGroupActionPort
 
 
+func _table_selection() -> TableSelectionIntentPort:
+	return get_node_or_null(table_selection_intent_port_path) as TableSelectionIntentPort
+
+
+func _selection_state() -> TableSelectionState:
+	return get_node_or_null(table_selection_state_path) as TableSelectionState
+
+
 func _district_supply() -> DistrictSupplyActionPort:
 	return get_node_or_null(district_supply_action_port_path) as DistrictSupplyActionPort
+
+
+static func _district_quote_key(actor_index: int, region_id: String, card_id: String) -> String:
+	return "%d|%s|%s" % [actor_index, region_id.strip_edges(), card_id.strip_edges()]
+
+
+func _clear_district_quotes_for_actor(actor_index: int) -> void:
+	var prefix := "%d|" % actor_index
+	for key_variant in _district_quote_bindings.keys():
+		if str(key_variant).begins_with(prefix):
+			_district_quote_bindings.erase(key_variant)
 
 
 func _refresh() -> TablePresentationRefreshPort:

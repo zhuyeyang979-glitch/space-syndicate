@@ -44,7 +44,7 @@ func _run() -> void:
 	_check(not authorization.is_empty(), "production identity boundary issues the bench actor authorization")
 	var context := coordinator.get_node("PlayerIdentityAuthorizationBoundary").current_actor_context(&"game_screen") as GameplayActorAuthorizationContext
 	screen.bind_presentation_viewer(0, context.authorization_revision)
-	_check(not authorization.is_empty() and not (screen.call("_game_action_actor_authorization", "human_click") as Dictionary).is_empty(), "production session lifecycle binds the bench actor authorization into GameScreen")
+	_check(not authorization.is_empty() and not screen.game_action_actor_authorization("human_click").is_empty(), "production session lifecycle binds the bench actor authorization into GameScreen")
 	flow.receipt_ready.connect(_on_player_receipt)
 	var source_revision := query.current_action_offer_revision(0)
 	var offer := flow.human_action_offer(GameActionIntentV1.ACTION_SESSION_END_TURN, source_revision, true, "none", {}, "full", ["action.session.end-turn"])

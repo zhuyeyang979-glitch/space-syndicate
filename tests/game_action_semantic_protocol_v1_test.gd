@@ -56,7 +56,10 @@ func _test_offer_contract() -> void:
 	)
 	_expect(WIRE.is_closed_data(offer), "action offer is closed pure data")
 	_expect(
-		OFFER.target_ids(offer) == {"source-card": "card.instance.0123456789abcdef01234567"},
+		OFFER.target_ids(offer) == {
+			"card_instance_id": "card.instance.0123456789abcdef01234567",
+			"hand_slot_id": "hand.slot.0",
+		},
 		"offer exposes only stable target bindings"
 	)
 	source["source_revision"] = 99
@@ -134,6 +137,27 @@ func _test_intent_contract() -> void:
 	_expect(not INTENT.build(reorder).is_empty(), "group reorder accepts direction minus one")
 	reorder["parameters"] = {"direction": 0}
 	_expect(INTENT.build(reorder).is_empty(), "group reorder rejects zero direction")
+	var quote := _base_intent_input(
+		INTENT.ACTION_DISTRICT_SUPPLY_QUOTE,
+		"human",
+		"human_click"
+	)
+	quote["target_ids"] = {
+		"card_id": "facility.market.energy.rank_1",
+		"region_id": "region.beta",
+	}
+	_expect(not INTENT.build(quote).is_empty(), "district quote uses stable card and region targets")
+	var purchase := quote.duplicate(true)
+	purchase["request_id"] = "request.district-purchase"
+	purchase["semantic_action_id"] = INTENT.ACTION_DISTRICT_SUPPLY_PURCHASE
+	(purchase["target_ids"] as Dictionary)["quote_id"] = "market-quote.17"
+	_expect(not INTENT.build(purchase).is_empty(), "district purchase binds the locked quote with stable card and region targets")
+	var close := _base_intent_input(
+		INTENT.ACTION_DISTRICT_SUPPLY_CLOSE,
+		"human",
+		"human_click"
+	)
+	_expect(not INTENT.build(close).is_empty(), "district supply close carries no hidden target payload")
 	var open_payload := _card_play_intent_input("human", "human_click")
 	(open_payload["parameters"] as Dictionary)["method_name"] = "queue_card"
 	_expect(INTENT.build(open_payload).is_empty(), "intent rejects undeclared parameter fields")
@@ -186,6 +210,28 @@ func _test_offer_intent_binding() -> void:
 	var offer := OFFER.build(_offer_input())
 	var intent := INTENT.build(_card_play_intent_input("human", "human_drag"))
 	_expect(OFFER.accepts_intent(offer, intent), "available offer accepts matching revision intent")
+	var retargeted_source := _card_play_intent_input("human", "human_drag")
+	(retargeted_source["target_ids"] as Dictionary)["card_instance_id"] = "card.instance.ffffffffffffffffffffffff"
+	_expect(
+		not OFFER.accepts_intent(offer, INTENT.build(retargeted_source)),
+		"offer rejects a rewritten required target binding"
+	)
+	var optional_region_source := _card_play_intent_input("human", "human_drag")
+	(optional_region_source["target_ids"] as Dictionary)["region_id"] = "region.beta"
+	_expect(
+		OFFER.accepts_intent(offer, INTENT.build(optional_region_source)),
+		"offer permits a schema-declared optional drag target while preserving required bindings"
+	)
+	var bound_optional_offer_source := _offer_input()
+	(bound_optional_offer_source["public_or_private_target_spec"] as Dictionary)["target_bindings"].append({
+		"target_role_id": "region_id",
+		"target_id": "region.alpha",
+	})
+	var bound_optional_offer := OFFER.build(bound_optional_offer_source)
+	_expect(
+		not OFFER.accepts_intent(bound_optional_offer, INTENT.build(optional_region_source)),
+		"offer rejects rewriting a schema-optional target once the offer has bound it"
+	)
 	var stale_source := _card_play_intent_input("human", "human_drag")
 	stale_source["source_revision"] = 8
 	_expect(
@@ -265,6 +311,12 @@ func _test_receipt_contract() -> void:
 	_expect(
 		RECEIPT.build(missing_request_fingerprint).is_empty(),
 		"receipt requires the request fingerprint"
+	)
+	var accepted_without_commit := _receipt_input(intent)
+	accepted_without_commit["committed_effect_refs"] = []
+	_expect(
+		RECEIPT.build(accepted_without_commit).is_empty(),
+		"an accepted action receipt requires explicit committed effect evidence"
 	)
 
 
@@ -418,10 +470,16 @@ func _offer_input() -> Dictionary:
 		"public_or_private_target_spec": {
 			"visibility_scope_id": "actor_private",
 			"target_kind_id": "stable-entity",
-			"target_bindings": [{
-				"target_role_id": "source-card",
-				"target_id": "card.instance.0123456789abcdef01234567",
-			}],
+			"target_bindings": [
+				{
+					"target_role_id": "card_instance_id",
+					"target_id": "card.instance.0123456789abcdef01234567",
+				},
+				{
+					"target_role_id": "hand_slot_id",
+					"target_id": "hand.slot.0",
+				},
+			],
 			"requires_target": true,
 		},
 		"legality_state": "available",

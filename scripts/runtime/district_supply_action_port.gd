@@ -102,6 +102,22 @@ func submit_ai_purchase(
 	return bool(outcome.get("committed", false))
 
 
+func quote_is_confirmable(
+	player_index: int,
+	district_index: int,
+	card_id: String,
+	quote_id: String
+) -> bool:
+	if _purchase() == null or player_index < 0 or district_index < 0 \
+			or card_id.is_empty() or quote_id.is_empty():
+		return false
+	var quote := _purchase().active_quote(player_index, district_index)
+	return str(quote.get("quote_id", "")) == quote_id \
+		and str(quote.get("card_id", "")) == card_id \
+		and int(quote.get("district_index", -1)) == district_index \
+		and bool(quote.get("confirmable", false))
+
+
 func submit_current_actor_action(action_kind: StringName, district_index := -1, card_id := "", discard_slot := -1, source_surface: StringName = &"game_screen") -> DistrictSupplyActionReceipt:
 	if _identity() == null:
 		return _complete(_receipt(null, false, "identity_boundary_missing"))
@@ -224,11 +240,13 @@ func _purchase_intent(intent: DistrictSupplyActionIntent) -> DistrictSupplyActio
 		return _receipt(intent, false, "session_finished")
 	var outcome := _purchase_card(intent.actor_player_index, intent.district_index, intent.card_id, intent.discard_slot, intent.locked_quote_id, false)
 	_last_reason_code = str(outcome.get("reason", "purchase_rejected"))
-	var receipt := _receipt(intent, bool(outcome.get("committed", false)), str(outcome.get("reason", "purchase_rejected")))
-	receipt.applied = receipt.accepted
+	var requires_discard := bool(outcome.get("requires_discard", false))
+	var transitioned := bool(outcome.get("committed", false)) or requires_discard
+	var receipt := _receipt(intent, transitioned, str(outcome.get("reason", "purchase_rejected")))
+	receipt.applied = transitioned
 	receipt.quote_id = str(outcome.get("quote_id", ""))
 	receipt.price = int(outcome.get("price", -1))
-	receipt.requires_discard = bool(outcome.get("requires_discard", false))
+	receipt.requires_discard = requires_discard
 	if receipt.accepted or receipt.requires_discard:
 		return _refresh(receipt)
 	return receipt

@@ -72,6 +72,11 @@ func _init() -> void:
 	_expect(port_source.contains("_grant_role_bonus_card"), "role bonus receive remains on the typed inventory owner path")
 	_expect(port_source.contains("listing.get(\"price_cash\""), "quotes use the authoritative rack price")
 	_expect(port_source.contains("locked_quote_required") and port_source.contains("locked_quote_changed"), "human purchase consumes the previously locked quote without silently renewing it")
+	_expect(
+		port_source.contains("var transitioned := bool(outcome.get(\"committed\", false)) or requires_discard") \
+			and port_source.contains("receipt.applied = transitioned"),
+		"a full-hand purchase reports the committed pending-discard transition instead of a mutating rejection"
+	)
 	_expect(port_source.contains("session_is_finished") and port_source.contains("get(\"is_ai\""), "terminal sessions and non-AI seats cannot use the AI purchase entry")
 	_expect(not FileAccess.get_file_as_string("res://scripts/runtime/district_supply_action_intent.gd").contains("var anonymous"), "human intents cannot forge the trusted AI purchase path")
 	_expect(port_source.contains("lock_quote and _coordinator().session_is_finished()"), "finished sessions cannot create a fresh purchase quote")

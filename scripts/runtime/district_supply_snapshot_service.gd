@@ -379,11 +379,13 @@ func _market_card_snapshot(card: Dictionary, source: Dictionary) -> Dictionary:
 	if facts == "":
 		facts = _short_text(str(card.get("effect_text", "")), 26)
 	var result := {
+		"card_id": str(card.get("card_id", card_name)),
 		"card_name": card_name,
 		"illustration_key": str(card.get("illustration_key", "")),
 		"display_name": display_name,
 		"selected": selected,
 		"actionable": actionable,
+		"price": price,
 		"title": "%s%s %s" % ["> " if selected else "", str(card.get("icon", "◇")), _short_text(display_name, 11)],
 		"title_color": "#f8fafcff" if actionable else "#cbd5e1ff",
 		"title_tooltip": display_name,
@@ -427,6 +429,7 @@ func _preview_snapshot(card: Dictionary, source: Dictionary) -> Dictionary:
 	var can_request_quote := _can_request_quote(state, source)
 	var primary_action_id := _primary_action_id(state, can_request_quote)
 	return {
+		"card_id": str(card.get("card_id", card_name)),
 		"card_name": card_name,
 		"facility_kind": str(card.get("facility_kind", "")),
 		"industry_id": str(card.get("industry_id", "")),

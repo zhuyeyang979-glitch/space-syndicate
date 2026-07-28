@@ -86,7 +86,10 @@ static func validation_report(value: Variant) -> Dictionary:
 	if str(offer.get("legality_state", "")) == "disabled" \
 			and str(offer.get("disabled_reason_id", "")) == "none":
 		return SemanticWireV1.invalid_result("game_action_offer_disabled_reason_missing")
-	var nested_error := _target_spec_error(offer.get("public_or_private_target_spec"))
+	var nested_error := _target_spec_error(
+		offer.get("public_or_private_target_spec"),
+		action_id
+	)
 	if not nested_error.is_empty():
 		return SemanticWireV1.invalid_result(nested_error)
 	nested_error = _cost_spec_error(offer.get("cost_spec"))
@@ -126,14 +129,27 @@ static func accepts_intent(offer: Dictionary, intent: Dictionary) -> bool:
 	if not bool(validation_report(offer).get("valid", false)) \
 			or not bool(ACTION_INTENT.validation_report(intent).get("valid", false)):
 		return false
-	return str(offer.get("semantic_action_id", "")) \
+	if str(offer.get("semantic_action_id", "")) \
 			== str(intent.get("semantic_action_id", "")) \
 		and int(offer.get("source_revision", -1)) \
 			== int(intent.get("source_revision", -2)) \
-		and str(offer.get("legality_state", "")) == "available"
+		and str(offer.get("legality_state", "")) == "available":
+		var required_fields := _required_target_fields(str(offer.get("semantic_action_id", "")))
+		var offered_targets := target_ids(offer)
+		var intent_targets := intent.get("target_ids", {}) as Dictionary
+		for field_variant in required_fields:
+			var field := str(field_variant)
+			if str(offered_targets.get(field, "")) != str(intent_targets.get(field, "")):
+				return false
+		for field_variant in offered_targets.keys():
+			var field := str(field_variant)
+			if str(offered_targets.get(field, "")) != str(intent_targets.get(field, "")):
+				return false
+		return true
+	return false
 
 
-static func _target_spec_error(value: Variant) -> String:
+static func _target_spec_error(value: Variant, action_id: String) -> String:
 	if not (value is Dictionary) or not SemanticWireV1.is_closed_data(value):
 		return "game_action_offer_target_spec_not_closed"
 	var spec := value as Dictionary
@@ -147,6 +163,8 @@ static func _target_spec_error(value: Variant) -> String:
 	if not (spec.get("requires_target") is bool) or not (spec.get("target_bindings") is Array):
 		return "game_action_offer_target_spec_shape_invalid"
 	var roles: Array[String] = []
+	var allowed_fields := _allowed_target_fields(action_id)
+	var required_fields := _required_target_fields(action_id)
 	for binding_variant in spec.get("target_bindings") as Array:
 		if not (binding_variant is Dictionary) or not SemanticWireV1.is_closed_data(binding_variant):
 			return "game_action_offer_target_binding_not_closed"
@@ -156,12 +174,40 @@ static func _target_spec_error(value: Variant) -> String:
 				or not SemanticWireV1.is_stable_id(binding.get("target_id")):
 			return "game_action_offer_target_binding_invalid"
 		var role := str(binding.get("target_role_id", ""))
+		if not allowed_fields.has(role):
+			return "game_action_offer_target_binding_role_invalid"
 		if roles.has(role):
 			return "game_action_offer_target_binding_duplicate"
 		roles.append(role)
+	for field_variant in required_fields:
+		if not roles.has(str(field_variant)):
+			return "game_action_offer_required_target_binding_missing"
 	if bool(spec.get("requires_target", false)) and roles.is_empty():
 		return "game_action_offer_required_target_missing"
 	return ""
+
+
+static func _target_schema(action_id: String) -> Dictionary:
+	var contract := ACTION_INTENT.action_contract(action_id)
+	var schema_id := str(contract.get("target_schema_id", ""))
+	var schema: Variant = ACTION_INTENT.TARGET_SCHEMAS.get(schema_id)
+	return (schema as Dictionary).duplicate(true) if schema is Dictionary else {}
+
+
+static func _required_target_fields(action_id: String) -> Array:
+	var schema := _target_schema(action_id)
+	return (schema.get("required_fields", []) as Array).duplicate() \
+		if schema.get("required_fields", []) is Array else []
+
+
+static func _allowed_target_fields(action_id: String) -> Array:
+	var schema := _target_schema(action_id)
+	var fields: Array = []
+	if schema.get("required_fields", []) is Array:
+		fields.append_array(schema.get("required_fields", []) as Array)
+	if schema.get("optional_fields", []) is Array:
+		fields.append_array(schema.get("optional_fields", []) as Array)
+	return fields
 
 
 static func _cost_spec_error(value: Variant) -> String:

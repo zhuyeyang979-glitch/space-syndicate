@@ -5,7 +5,11 @@ const SCHEMA_VERSION := 1
 const ACTION_CARD_PLAY := "card.play"
 const ACTION_CARD_GROUP_READY := "card.group.ready"
 const ACTION_CARD_GROUP_REORDER := "card.group.reorder"
+const ACTION_DISTRICT_SELECT := "district.select"
 const ACTION_DISTRICT_SUPPLY_OPEN := "district.supply.open"
+const ACTION_DISTRICT_SUPPLY_CLOSE := "district.supply.close"
+const ACTION_DISTRICT_SUPPLY_QUOTE := "district.supply.quote"
+const ACTION_DISTRICT_SUPPLY_PURCHASE := "district.supply.purchase"
 const ACTION_PLAYER_STRATEGY_OPEN_SUPPLY := "player.strategy.open-supply"
 const ACTION_SESSION_END_TURN := "session.end-turn"
 const FAMILY_CARD_PLAY := "card-play"
@@ -17,7 +21,11 @@ const ACTION_IDS := [
 	ACTION_CARD_PLAY,
 	ACTION_CARD_GROUP_READY,
 	ACTION_CARD_GROUP_REORDER,
+	ACTION_DISTRICT_SELECT,
 	ACTION_DISTRICT_SUPPLY_OPEN,
+	ACTION_DISTRICT_SUPPLY_CLOSE,
+	ACTION_DISTRICT_SUPPLY_QUOTE,
+	ACTION_DISTRICT_SUPPLY_PURCHASE,
 	ACTION_PLAYER_STRATEGY_OPEN_SUPPLY,
 	ACTION_SESSION_END_TURN,
 ]
@@ -89,6 +97,23 @@ const TARGET_SCHEMAS := {
 		"optional_fields": [],
 		"field_kinds": {"region_id": "stable_id"},
 	},
+	"district-card-targets": {
+		"required_fields": ["card_id", "region_id"],
+		"optional_fields": [],
+		"field_kinds": {
+			"region_id": "stable_id",
+			"card_id": "stable_id",
+		},
+	},
+	"district-purchase-targets": {
+		"required_fields": ["card_id", "quote_id", "region_id"],
+		"optional_fields": [],
+		"field_kinds": {
+			"region_id": "stable_id",
+			"card_id": "stable_id",
+			"quote_id": "stable_id",
+		},
+	},
 	"no-targets": {
 		"required_fields": [],
 		"optional_fields": [],
@@ -123,9 +148,29 @@ const ACTION_CONTRACTS := {
 		"target_schema_id": "card-group-reorder-targets",
 		"parameter_schema_id": "card-group-reorder-parameters",
 	},
+	ACTION_DISTRICT_SELECT: {
+		"action_family_id": FAMILY_DISTRICT_SUPPLY,
+		"target_schema_id": "district-targets",
+		"parameter_schema_id": "no-parameters",
+	},
 	ACTION_DISTRICT_SUPPLY_OPEN: {
 		"action_family_id": FAMILY_DISTRICT_SUPPLY,
 		"target_schema_id": "district-targets",
+		"parameter_schema_id": "no-parameters",
+	},
+	ACTION_DISTRICT_SUPPLY_CLOSE: {
+		"action_family_id": FAMILY_DISTRICT_SUPPLY,
+		"target_schema_id": "no-targets",
+		"parameter_schema_id": "no-parameters",
+	},
+	ACTION_DISTRICT_SUPPLY_QUOTE: {
+		"action_family_id": FAMILY_DISTRICT_SUPPLY,
+		"target_schema_id": "district-card-targets",
+		"parameter_schema_id": "no-parameters",
+	},
+	ACTION_DISTRICT_SUPPLY_PURCHASE: {
+		"action_family_id": FAMILY_DISTRICT_SUPPLY,
+		"target_schema_id": "district-purchase-targets",
 		"parameter_schema_id": "no-parameters",
 	},
 	ACTION_PLAYER_STRATEGY_OPEN_SUPPLY: {

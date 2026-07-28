@@ -74,6 +74,10 @@ static func validation_report(value: Variant) -> Dictionary:
 		return SemanticWireV1.invalid_result("game_action_receipt_revision_invalid")
 	if SemanticWireV1.stable_id_array_error(receipt.get("committed_effect_refs"), true, false) != "":
 		return SemanticWireV1.invalid_result("game_action_receipt_effect_refs_invalid")
+	if bool(receipt.get("accepted", false)) \
+			and ((receipt.get("committed_effect_refs", []) as Array).is_empty() \
+				or int(receipt.get("authoritative_revision", 0)) <= 0):
+		return SemanticWireV1.invalid_result("game_action_receipt_commit_evidence_missing")
 	if str(receipt.get("refresh_scope", "")) not in REFRESH_SCOPES:
 		return SemanticWireV1.invalid_result("game_action_receipt_refresh_scope_invalid")
 	if bool(receipt.get("accepted", false)) and bool(receipt.get("request_id_collision", false)):

@@ -2,6 +2,8 @@ extends SceneTree
 
 const FullRunQualitySnapshotScript := preload("res://scripts/viewmodels/full_run_quality_snapshot.gd")
 const AuthoritativeRuntimeStepperScript := preload("res://scripts/tools/full_run_authoritative_runtime_stepper.gd")
+const EconomyContinuationPlannerScript := preload("res://scripts/tools/full_run_economy_continuation_planner.gd")
+const PublicEconomyContinuationObservationScript := preload("res://scripts/viewmodels/public_economy_continuation_observation_v1.gd")
 
 const DRIVER_SCHEMA := 3
 const DRIVER_ID := "full_run_quality_driver_v2"
@@ -57,6 +59,10 @@ const SUPPLY_QUOTE_REFRESH_INTERVAL_MSEC := 250
 const SUPPLY_QUOTE_REFRESH_ATTEMPTS_PER_RACK := 1
 const SUPPLY_RACK_ROTATION_LIMIT := 8
 const SUPPLY_RESCAN_WORLD_SECONDS := 15.0
+const SUPPLY_EVALUATED_RACK_SIGNATURE_LIMIT := 64
+const SUPPLY_FACILITY_RACK_HINT_LIMIT := 64
+const FACILITY_CANDIDATE_ATTEMPT_LIMIT := 128
+const SUPPLY_RACK_ADVANCEMENT_PURCHASE_LIMIT := SUPPLY_RACK_ROTATION_LIMIT
 const EXIT_INVALID_ARGUMENTS := 2
 const EXIT_CAPABILITY_INCOMPLETE := 3
 const EXIT_OBSERVATION_INCOMPLETE := 4
@@ -140,6 +146,7 @@ const SUMMARY_PUBLIC_KEYS := [
 	"milestones",
 	"performance",
 	"determinism",
+	"economy_continuation",
 	"phase",
 	"elapsed",
 	"progress",
@@ -165,6 +172,7 @@ const CAPABILITY_PUBLIC_KEYS := [
 	"capture_fail_closed",
 	"district_supply_query_ready",
 	"facility_target_query_ready",
+	"game_action_receipt_ready",
 	"table_selection_receipt_ready",
 	"standings_query_ready",
 	"public_sale_receipt_query_ready",
@@ -180,12 +188,15 @@ var _district_supply_receipt_sequence := 0
 var _last_district_supply_receipt: Dictionary = {}
 var _table_selection_receipt_sequence := 0
 var _last_table_selection_receipt: Dictionary = {}
+var _game_action_receipt_sequence := 0
+var _last_game_action_receipt: Dictionary = {}
 var _monster_wager_receipt_sequence := 0
 var _last_monster_wager_receipt: Dictionary = {}
 var _current_forced_decision_binding: Dictionary = {}
 var _runtime_simulation_timing: Dictionary = {}
 var _district_supply_query_port: DistrictSupplyViewerQueryPort
 var _table_presentation_query_ports: TablePresentationQueryPorts
+var _game_action_application_flow: TablePlayerActionApplicationFlowController
 var _telemetry_collect_count := 0
 var _action_projection_count := 0
 var _district_supply_query_count := 0
@@ -234,6 +245,13 @@ var _next_progress_checkpoint_step := PROGRESS_CHECKPOINT_INTERVAL_STEPS
 var _last_successful_action_id := ""
 var _production_maturity_checkpoint: Dictionary = {}
 var _latest_public_world_seconds := 0.0
+var _latest_economy_continuation_observation: Dictionary = {}
+var _latest_economy_continuation_plan: Dictionary = {}
+var _economy_plan_override_signature := ""
+var _exhausted_economy_plan_signatures := {}
+var _rack_advancement_purchase_count := 0
+var _pending_rack_advancement_discard: Dictionary = {}
+var _rack_advancement_reset_requested := false
 var _victory_locked_production_installation_count := -1
 var _post_victory_production_installation_delta := 0
 var _blocked_realtime_step_batch_count := 0
@@ -248,7 +266,6 @@ var _runtime_loop_manual_mode := false
 var _runtime_loop_manual_mode_transition_count := 0
 var _runtime_loop_manual_expected_frame_index := -1
 var _exhausted_map_districts := {}
-var _exhausted_facility_card_signatures := {}
 var _facility_candidate_attempts := {}
 var _peak_production_installation_count := 0
 var _session_started_msec := 0
@@ -264,6 +281,7 @@ var _action_stats := {
 	"rejected_invalid": 0,
 	"supply_quote_refreshes": 0,
 	"supply_rack_rotations": 0,
+	"supply_rack_advancement_purchases": 0,
 	"reason_codes": {},
 }
 
@@ -315,6 +333,8 @@ func _run() -> void:
 	var district_supply_port := (coordinator as GameRuntimeCoordinator).district_supply_action_port() if coordinator is GameRuntimeCoordinator else null
 	var table_selection_port := coordinator.get_node_or_null("TableSelectionIntentPort") as TableSelectionIntentPort \
 		if coordinator != null else null
+	_game_action_application_flow = coordinator.get_node_or_null("TablePlayerActionApplicationFlowController") \
+		as TablePlayerActionApplicationFlowController if coordinator != null else null
 	_district_supply_query_port = coordinator.get_node_or_null("DistrictSupplyViewerQueryPort") as DistrictSupplyViewerQueryPort \
 		if coordinator != null else null
 	_table_presentation_query_ports = (coordinator as GameRuntimeCoordinator).table_presentation_query_ports() \
@@ -323,6 +343,9 @@ func _run() -> void:
 		district_supply_port.receipt_ready.connect(_on_district_supply_action_receipt)
 	if table_selection_port != null and not table_selection_port.receipt_ready.is_connected(_on_table_selection_receipt):
 		table_selection_port.receipt_ready.connect(_on_table_selection_receipt)
+	if _game_action_application_flow != null \
+			and not _game_action_application_flow.receipt_ready.is_connected(_on_game_action_receipt):
+		_game_action_application_flow.receipt_ready.connect(_on_game_action_receipt)
 	var monster_wager_response_sink := coordinator.get_node_or_null(MONSTER_WAGER_RESPONSE_SINK_PATH) as MonsterWagerResponseSink \
 		if coordinator != null else null
 	if monster_wager_response_sink != null \
@@ -391,7 +414,8 @@ func _run() -> void:
 		exhausted_navigation_actions,
 		final_telemetry.get("progress", {}) as Dictionary,
 		supply_rotation_state,
-		final_telemetry.get("sale_receipt", {}) as Dictionary
+		final_telemetry.get("sale_receipt", {}) as Dictionary,
+		_latest_economy_continuation_plan
 	)
 
 	while true:
@@ -409,19 +433,59 @@ func _run() -> void:
 			last_telemetry_refresh_msec = now_msec
 			public_progress = final_telemetry.get("progress", {}) as Dictionary
 			sale_receipt = final_telemetry.get("sale_receipt", {}) as Dictionary
-			cached_ui_action = _scripted_ui_action(runtime_screen, exhausted_navigation_actions, public_progress, supply_rotation_state, sale_receipt)
+			cached_ui_action = _scripted_ui_action(
+				runtime_screen,
+				exhausted_navigation_actions,
+				public_progress,
+				supply_rotation_state,
+				sale_receipt,
+				_latest_economy_continuation_plan
+			)
 			ui_action = cached_ui_action
 		var current_progress: Dictionary = final_telemetry.get("progress", {}) \
 			if final_telemetry.get("progress", {}) is Dictionary else {}
+		if _rack_advancement_reset_requested and pending_action.is_empty():
+			supply_rotation_state = reset_supply_rotation_after_advancement(
+				supply_rotation_state
+			)
+			_rack_advancement_reset_requested = false
+			public_progress = current_progress
+			ui_action = _scripted_ui_action(
+				runtime_screen,
+				exhausted_navigation_actions,
+				public_progress,
+				supply_rotation_state,
+				sale_receipt,
+				_latest_economy_continuation_plan
+			)
+			cached_ui_action = ui_action
+			_last_event = "supply_rack_advancement_committed:%d" \
+				% _rack_advancement_purchase_count
 		var current_facility_count := int(current_progress.get("owned_facility_count", 0))
 		if current_facility_count > observed_owned_facility_count:
+			var preserved_facility_rack_hints: Dictionary = supply_rotation_state.get(
+				"facility_rack_hints",
+				{}
+			) if supply_rotation_state.get("facility_rack_hints", {}) is Dictionary else {}
 			observed_owned_facility_count = current_facility_count
 			_exhausted_map_districts.clear()
-			_exhausted_facility_card_signatures.clear()
 			_facility_candidate_attempts.clear()
-			supply_rotation_state = _new_supply_rotation_state()
+			_exhausted_economy_plan_signatures.clear()
+			_economy_plan_override_signature = ""
+			supply_rotation_state = _new_supply_rotation_state(
+				{},
+				"",
+				preserved_facility_rack_hints
+			)
 			public_progress = current_progress
-			ui_action = _scripted_ui_action(runtime_screen, exhausted_navigation_actions, public_progress, supply_rotation_state, sale_receipt)
+			ui_action = _scripted_ui_action(
+				runtime_screen,
+				exhausted_navigation_actions,
+				public_progress,
+				supply_rotation_state,
+				sale_receipt,
+				_latest_economy_continuation_plan
+			)
 			cached_ui_action = ui_action
 			_last_event = "facility_progress_observed:%d" % current_facility_count
 		elif str(supply_rotation_state.get("phase", "")) == "exhausted" and pending_action.is_empty():
@@ -431,9 +495,19 @@ func _run() -> void:
 			if exhausted_world_seconds < 0.0:
 				supply_rotation_state["exhausted_world_seconds"] = current_world_seconds
 			elif current_world_seconds - exhausted_world_seconds >= SUPPLY_RESCAN_WORLD_SECONDS:
-				supply_rotation_state = _new_supply_rotation_state()
+				supply_rotation_state = _new_supply_rotation_state(
+					supply_rotation_state.get("evaluated_rack_plan_signatures", {}) as Dictionary,
+					str(supply_rotation_state.get("active_plan_signature", ""))
+				)
 				public_progress = current_progress
-				ui_action = _scripted_ui_action(runtime_screen, exhausted_navigation_actions, public_progress, supply_rotation_state, sale_receipt)
+				ui_action = _scripted_ui_action(
+					runtime_screen,
+					exhausted_navigation_actions,
+					public_progress,
+					supply_rotation_state,
+					sale_receipt,
+					_latest_economy_continuation_plan
+				)
 				cached_ui_action = ui_action
 				_last_event = "supply_public_rescan_started"
 		if int((final_telemetry.get("nonfinite", {}) as Dictionary).get("count", 0)) > 0:
@@ -616,10 +690,64 @@ func _run() -> void:
 		if not pending_action.is_empty():
 			var pending_id := str(pending_action.get("id", ""))
 			var pending_phase := str(pending_action.get("phase", ""))
+			var game_action_required := bool(pending_action.get("game_action_required", false))
+			var game_action_receipt_arrived := game_action_required \
+				and _game_action_receipt_sequence \
+					> int(pending_action.get("game_action_receipt_sequence", -1))
 			var supply_receipt_arrived := str(pending_action.get("origin", "")) in ["district_supply", "district_supply_rotation"] \
 				and _district_supply_receipt_sequence > int(pending_action.get("supply_receipt_sequence", -1))
 			var selection_receipt_arrived := str(pending_action.get("origin", "")) == "planet_map" \
 				and _table_selection_receipt_sequence > int(pending_action.get("selection_receipt_sequence", -1))
+			if game_action_receipt_arrived and not bool(_last_game_action_receipt.get("accepted", false)) \
+					and not supply_receipt_arrived and not selection_receipt_arrived:
+				var game_action_reason := str(
+					_last_game_action_receipt.get("reason_id", "game-action-rejected")
+				).replace("-", "_")
+				if game_action_reason == "source_revision_stale":
+					_record_reason("game_action_source_revision_stale")
+					_last_event = "retrying_game_action_receipt:%s" % game_action_reason
+					pending_action = {}
+					last_telemetry_refresh_msec = 0
+					no_action_since_msec = now_msec
+					continue
+				_action_stats["rejected_invalid"] = int(_action_stats.get("rejected_invalid", 0)) + 1
+				failure_code = "game_action_rejected:%s:%s" % [pending_id, game_action_reason]
+				_record_reason("game_action_receipt_rejected")
+				_last_event = "blocked_game_action_receipt:%s" % game_action_reason
+				final_status = "blocked"
+				break
+			if supply_receipt_arrived \
+					and bool(_last_district_supply_receipt.get("accepted", false)) \
+					and bool(_last_district_supply_receipt.get("applied", false)) \
+					and bool(_last_district_supply_receipt.get("requires_discard", false)) \
+					and game_action_receipt_arrived \
+				and bool(_last_game_action_receipt.get("accepted", false)):
+				if bool(pending_action.get("rack_advancement", false)):
+					var pending_discard_binding := {
+						"actor_player_index": int(
+							_last_district_supply_receipt.get("actor_player_index", -1)
+						),
+						"card_id": str(
+							_last_district_supply_receipt.get(
+								"card_id",
+								pending_action.get("rack_advancement_card_id", "")
+							)
+						),
+						"quote_id": str(
+							_last_district_supply_receipt.get("quote_id", "")
+						),
+					}
+					if int(pending_discard_binding.get("actor_player_index", -1)) >= 0 \
+							and not str(pending_discard_binding.get("card_id", "")).is_empty() \
+							and not str(pending_discard_binding.get("quote_id", "")).is_empty():
+						_pending_rack_advancement_discard = pending_discard_binding
+				_action_stats["progressed"] = int(_action_stats.get("progressed", 0)) + 1
+				_record_reason("district_supply_pending_discard")
+				_last_event = "action_progressed:district_supply_pending_discard"
+				pending_action = {}
+				last_telemetry_refresh_msec = 0
+				no_action_since_msec = now_msec
+				continue
 			if supply_receipt_arrived and not bool(_last_district_supply_receipt.get("accepted", false)):
 				var receipt_reason := str(_last_district_supply_receipt.get("reason_code", "district_supply_rejected"))
 				if str(pending_action.get("origin", "")) == "district_supply_rotation" \
@@ -642,8 +770,15 @@ func _run() -> void:
 				if recoverable_supply_receipt_reason(receipt_reason):
 					_record_reason("district_supply_retryable_receipt")
 					_last_event = "retrying_typed_receipt:%s" % receipt_reason
-					if receipt_reason in ["source_region_dark", "card_not_in_supply"] \
-							and _begin_supply_rack_rotation(supply_rotation_state, _public_supply_wait_facts(runtime_screen)):
+					if bool(pending_action.get("rack_advancement", false)):
+						advance_rack_advancement_after_retryable_failure(
+							supply_rotation_state
+						)
+					elif receipt_reason in ["source_region_dark", "card_not_in_supply"] \
+							and _begin_supply_rack_rotation(
+								supply_rotation_state,
+								_public_supply_wait_facts(runtime_screen, _latest_economy_continuation_plan)
+							):
 						_action_stats["supply_rack_rotations"] = int(_action_stats.get("supply_rack_rotations", 0)) + 1
 					pending_action = {}
 					no_action_since_msec = now_msec
@@ -656,13 +791,31 @@ func _run() -> void:
 				break
 			if selection_receipt_arrived and not bool(_last_table_selection_receipt.get("accepted", false)):
 				var exhausted_district := int(pending_action.get("district_index", -1))
-				if exhausted_district >= 0:
+				var selection_reason := str(
+					_last_table_selection_receipt.get("reason_code", "selection_rejected")
+				)
+				var retryable_selection := recoverable_selection_receipt_reason(selection_reason)
+				if exhausted_district >= 0 and not retryable_selection:
 					_exhausted_map_districts[exhausted_district] = true
-				_record_reason("map_selection_typed_rejection")
+				_record_reason(
+					"map_selection_retryable_receipt" if retryable_selection \
+					else "map_selection_typed_rejection"
+				)
 				_last_event = "map_target_rejected:%d:%s" % [
 					exhausted_district,
-					str(_last_table_selection_receipt.get("reason_code", "selection_rejected")),
+					selection_reason,
 				]
+				pending_action = {}
+				last_telemetry_refresh_msec = 0
+				no_action_since_msec = now_msec
+				continue
+			if selection_receipt_arrived \
+					and bool(_last_table_selection_receipt.get("accepted", false)) \
+					and not bool(_last_table_selection_receipt.get("changed", false)):
+				_record_reason("map_selection_unchanged")
+				_last_event = "map_target_already_selected:%d" % int(
+					pending_action.get("district_index", -1)
+				)
 				pending_action = {}
 				last_telemetry_refresh_msec = 0
 				no_action_since_msec = now_msec
@@ -677,13 +830,31 @@ func _run() -> void:
 				_table_selection_receipt_sequence,
 				_last_table_selection_receipt
 			)
-			var action_progressed := supply_receipt_progressed \
+			var game_action_progressed := game_action_receipt_confirms_progress(
+				pending_action,
+				_game_action_receipt_sequence,
+				_last_game_action_receipt
+			)
+			var action_progressed := game_action_progressed if game_action_required else (
+				supply_receipt_progressed \
 				or selection_receipt_progressed \
 				or str(ui_action.get("id", "")) != pending_id \
 				or str(ui_action.get("phase", "")) != pending_phase
+			)
 			if action_progressed:
 				_action_stats["progressed"] = int(_action_stats.get("progressed", 0)) + 1
-				_last_successful_action_id = _safe_progress_token(pending_id)
+				if rack_advancement_purchase_committed(
+					pending_action,
+					game_action_progressed,
+					_last_game_action_receipt
+				):
+					_record_rack_advancement_purchase()
+				if action_records_economic_success(
+					pending_action,
+					game_action_progressed,
+					_last_game_action_receipt
+				):
+					_last_successful_action_id = _safe_progress_token(pending_id)
 				if str(pending_action.get("origin", "")) == "board_primary" and pending_id != "strategy_expand_gdp":
 					var progressed_signature := str(pending_action.get("signature", ""))
 					if not progressed_signature.is_empty():
@@ -760,13 +931,28 @@ func _run() -> void:
 					exhausted_navigation_actions,
 					public_progress,
 					supply_rotation_state,
-					sale_receipt
+					sale_receipt,
+					_latest_economy_continuation_plan
 				)
 				_last_event = "driver_planning_transition:%s" % action_id
 				continue
 			if not action_id.is_empty() and not bool(ui_action.get("disabled", false)):
+				if economy_growth_action(ui_action) \
+						and not _economy_growth_submission_allowed_now(
+							coordinator,
+							standings_query_port
+						):
+					_record_reason("victory_growth_submission_guard")
+					_last_event = "growth_submission_cancelled:victory_lifecycle"
+					cached_ui_action = {}
+					last_telemetry_refresh_msec = 0
+					continue
 				var supply_receipt_sequence_before_submission := _district_supply_receipt_sequence
 				var selection_receipt_sequence_before_submission := _table_selection_receipt_sequence
+				var game_action_receipt_sequence_before_submission := _game_action_receipt_sequence
+				var game_action_revision_before_submission := int(
+					_last_game_action_receipt.get("authoritative_revision", 0)
+				)
 				var wager_receipt_sequence_before_submission := _monster_wager_receipt_sequence
 				var forced_decision_binding_before_submission := _current_forced_decision_binding.duplicate(true)
 				if not _submit_scripted_ui_action(runtime_screen, ui_action):
@@ -790,38 +976,59 @@ func _run() -> void:
 					"requested_msec": now_msec,
 					"supply_receipt_sequence": supply_receipt_sequence_before_submission,
 					"selection_receipt_sequence": selection_receipt_sequence_before_submission,
+					"game_action_receipt_sequence": game_action_receipt_sequence_before_submission,
+					"game_action_revision_before": game_action_revision_before_submission,
+					"game_action_required": bool(ui_action.get("game_action_required", false)) \
+						or ui_action.get("game_action_offer", {}) is Dictionary \
+						and not (ui_action.get("game_action_offer", {}) as Dictionary).is_empty(),
+					"game_action_request_id": str(_last_game_action_receipt.get("request_id", "")) \
+						if _game_action_receipt_sequence > game_action_receipt_sequence_before_submission else "",
+					"game_action_request_fingerprint": str(_last_game_action_receipt.get("request_fingerprint", "")) \
+						if _game_action_receipt_sequence > game_action_receipt_sequence_before_submission else "",
+					"game_action_semantic_action_id": str(
+						(ui_action.get("game_action_offer", {}) as Dictionary).get("semantic_action_id", "")
+					) if ui_action.get("game_action_offer", {}) is Dictionary else "",
 					"wager_receipt_sequence": wager_receipt_sequence_before_submission,
 					"decision_id": str(forced_decision_binding_before_submission.get("decision_id", "")),
 					"decision_kind": str(forced_decision_binding_before_submission.get("decision_kind", "")),
 					"decision_revision": int(forced_decision_binding_before_submission.get("decision_revision", 0)),
 					"district_index": int(ui_action.get("district_index", -1)),
+					"rack_advancement": bool(ui_action.get("rack_advancement", false)),
+					"rack_advancement_card_id": str(
+						ui_action.get("rack_advancement_card_id", "")
+					),
 				}
 				no_action_since_msec = now_msec
 			elif action_id in ["district_supply_wait", "facility_play_wait", "gdp_accumulation_wait"] and bool(ui_action.get("disabled", false)):
 				if action_id == "district_supply_wait" and now_msec - last_supply_quote_refresh_msec >= SUPPLY_QUOTE_REFRESH_INTERVAL_MSEC:
-					var wait_facts := _public_supply_wait_facts(runtime_screen)
+					var wait_facts := _public_supply_wait_facts(
+						runtime_screen,
+						_latest_economy_continuation_plan
+					)
 					var rack_signature := str(wait_facts.get("rack_signature", ""))
 					var attempts_by_signature: Dictionary = supply_rotation_state.get("refresh_attempts_by_signature", {}) \
 						if supply_rotation_state.get("refresh_attempts_by_signature", {}) is Dictionary else {}
 					var attempts := int(attempts_by_signature.get(rack_signature, 0))
 					var exhausted_signatures: Dictionary = supply_rotation_state.get("exhausted_signatures", {}) \
 						if supply_rotation_state.get("exhausted_signatures", {}) is Dictionary else {}
-					if not rack_signature.is_empty() and (not bool(wait_facts.get("has_visible_production_facility", false)) \
+					var evaluated_signatures: Dictionary = supply_rotation_state.get("evaluated_rack_plan_signatures", {}) \
+						if supply_rotation_state.get("evaluated_rack_plan_signatures", {}) is Dictionary else {}
+					var rack_already_evaluated := bool(evaluated_signatures.get(rack_signature, false))
+					if not rack_signature.is_empty() and (rack_already_evaluated \
+							or not bool(wait_facts.get("has_visible_matching_facility", false)) \
+							or not bool(wait_facts.get("has_visible_matching_target", false)) \
 							or bool(exhausted_signatures.get(rack_signature, false)) \
 							or attempts >= SUPPLY_QUOTE_REFRESH_ATTEMPTS_PER_RACK):
 						exhausted_signatures[rack_signature] = true
 						supply_rotation_state["exhausted_signatures"] = exhausted_signatures
+						_remember_supply_rack_evaluation(supply_rotation_state, rack_signature)
 						if _begin_supply_rack_rotation(supply_rotation_state, wait_facts):
 							_action_stats["supply_rack_rotations"] = int(_action_stats.get("supply_rack_rotations", 0)) + 1
 							_last_event = "supply_rack_rotation_started:%d" % int(supply_rotation_state.get("target_district", -1))
-					elif _refresh_visible_supply_quote(runtime_screen):
-						_action_stats["supply_quote_refreshes"] = int(_action_stats.get("supply_quote_refreshes", 0)) + 1
-						if not rack_signature.is_empty():
-							attempts_by_signature[rack_signature] = attempts + 1
-							supply_rotation_state["refresh_attempts_by_signature"] = attempts_by_signature
 					elif not rack_signature.is_empty():
 						exhausted_signatures[rack_signature] = true
 						supply_rotation_state["exhausted_signatures"] = exhausted_signatures
+						_remember_supply_rack_evaluation(supply_rotation_state, rack_signature)
 						if _begin_supply_rack_rotation(supply_rotation_state, wait_facts):
 							_action_stats["supply_rack_rotations"] = int(_action_stats.get("supply_rack_rotations", 0)) + 1
 					last_supply_quote_refresh_msec = now_msec
@@ -959,11 +1166,8 @@ func _capability_preflight(main_instance: Node, coordinator: Node, session: Node
 	var settlement_ready := settlement_composition != null and settlement_composition.has_method("debug_snapshot") and settlement_composition.has_method("last_public_snapshot")
 	var scripted_ui_port_ready := runtime_screen is SpaceSyndicateGameScreen \
 		and runtime_screen.has_signal("game_action_intent_requested") \
-		and runtime_screen.has_method("_submit_game_action_offer") \
-		and runtime_screen.has_method("request_district_selection") \
-		and runtime_screen.has_method("request_district_supply_open") \
-		and runtime_screen.has_method("request_district_supply_close") \
-		and runtime_screen.has_method("request_selected_district_supply_purchase") \
+		and runtime_screen.has_method("submit_game_action_offer") \
+		and runtime_screen.has_method("game_action_actor_authorization") \
 		and _temporary_decision_overlay(runtime_screen) != null
 	var setup_ready := main_instance.get_node_or_null(SETUP_DRAFT_PATH) is NewGameSetupDraftService \
 		and main_instance.get_node_or_null(SESSION_START_TRANSACTION_PATH) is SessionStartTransactionCoordinator
@@ -971,6 +1175,9 @@ func _capability_preflight(main_instance: Node, coordinator: Node, session: Node
 		and _district_supply_query_port.has_method("snapshot_for_viewer")
 	var facility_target_query_ready := _table_presentation_query_ports != null \
 		and _table_presentation_query_ports.has_method("public_new_facility_target_candidates")
+	var game_action_receipt_ready := _game_action_application_flow != null \
+		and _game_action_application_flow.has_signal("receipt_ready") \
+		and _game_action_application_flow.receipt_ready.is_connected(_on_game_action_receipt)
 	var table_selection_receipt_ready := coordinator != null \
 		and coordinator.get_node_or_null("TableSelectionIntentPort") is TableSelectionIntentPort
 	var standings_query_ready := standings_query_port != null \
@@ -1013,6 +1220,7 @@ func _capability_preflight(main_instance: Node, coordinator: Node, session: Node
 		and scripted_ui_port_ready \
 		and district_supply_query_ready \
 		and facility_target_query_ready \
+		and game_action_receipt_ready \
 		and table_selection_receipt_ready \
 		and standings_query_ready \
 		and public_sale_receipt_query_ready \
@@ -1036,6 +1244,7 @@ func _capability_preflight(main_instance: Node, coordinator: Node, session: Node
 			"capture_fail_closed": capture_fail_closed,
 			"district_supply_query_ready": district_supply_query_ready,
 			"facility_target_query_ready": facility_target_query_ready,
+			"game_action_receipt_ready": game_action_receipt_ready,
 			"table_selection_receipt_ready": table_selection_receipt_ready,
 			"standings_query_ready": standings_query_ready,
 			"public_sale_receipt_query_ready": public_sale_receipt_query_ready,
@@ -1091,6 +1300,16 @@ func _collect_telemetry(run_seed: int, coordinator: Node, session: Node, settlem
 		"production_installation_count": int(economic_source.get("production_installation_count", 0)),
 		"eligible": bool(standings_progress.get("eligible", false)),
 	}
+	var continuation_progress := public_progress.duplicate(true)
+	continuation_progress["victory_state"] = str(victory.get("state", "idle"))
+	_latest_economy_continuation_observation = _public_economy_continuation_observation(
+		coordinator,
+		continuation_progress
+	)
+	_latest_economy_continuation_plan = _select_economy_continuation_plan(
+		_latest_economy_continuation_observation,
+		TARGET_PRODUCTION_INSTALLATION_COUNT
+	)
 	_peak_production_installation_count = maxi(
 		_peak_production_installation_count,
 		int(public_progress.get("production_installation_count", 0))
@@ -1100,7 +1319,14 @@ func _collect_telemetry(run_seed: int, coordinator: Node, session: Node, settlem
 	_latest_public_world_seconds = world_seconds
 	_observe_production_maturity_checkpoint(public_progress, sale_receipt, world_seconds)
 	var ui_action: Dictionary = (ui_action_override as Dictionary) if ui_action_override is Dictionary \
-		else _scripted_ui_action(runtime_screen, {}, public_progress, {}, sale_receipt)
+		else _scripted_ui_action(
+			runtime_screen,
+			{},
+			public_progress,
+			{},
+			sale_receipt,
+			_latest_economy_continuation_plan
+		)
 	var session_summary := _session_summary(session)
 	var session_state := str(session_summary.get("session_state", "unavailable"))
 	var outcome: Dictionary = victory.get("outcome_receipt", {}) if victory.get("outcome_receipt", {}) is Dictionary else {}
@@ -1313,18 +1539,15 @@ func _scripted_ui_action(
 	exhausted_navigation_actions: Dictionary = {},
 	public_progress: Dictionary = {},
 	supply_rotation_state: Dictionary = {},
-	sale_receipt: Dictionary = {}
+	sale_receipt: Dictionary = {},
+	continuation_plan: Dictionary = {}
 ) -> Dictionary:
 	_action_projection_count += 1
 	if runtime_screen == null:
 		return {"id": "", "phase": "play", "disabled": true}
-	var menu_action := _menu_overlay_ui_action(runtime_screen)
-	if not menu_action.is_empty():
-		return menu_action
 	var ui_variant: Variant = runtime_screen.get("current_ui_data")
 	var ui: Dictionary = ui_variant if ui_variant is Dictionary else {}
 	var player_board: Dictionary = ui.get("player_board", {}) if ui.get("player_board", {}) is Dictionary else {}
-	var hand_cards: Array = player_board.get("hand_cards", []) if player_board.get("hand_cards", []) is Array else []
 	var temporary: Dictionary = ui.get("temporary_decision", {}) if ui.get("temporary_decision", {}) is Dictionary else {}
 	if not temporary.is_empty():
 		var temporary_action := _first_enabled_action(temporary.get("actions", []))
@@ -1335,12 +1558,27 @@ func _scripted_ui_action(
 				"disabled": bool(temporary_action.get("disabled", false)),
 				"origin": "temporary_decision",
 			}
-	var source_established := false
+	var menu_action := _menu_overlay_ui_action(runtime_screen)
+	if not menu_action.is_empty():
+		return menu_action
 	var production_installation_count := int(public_progress.get("production_installation_count", 0))
-	var production_source_established := production_installation_count >= 1
+	var production_floor_established := production_installation_count \
+		>= TARGET_PRODUCTION_INSTALLATION_COUNT
 	var own_victory_eligible := bool(public_progress.get("eligible", false))
 	var victory_state := str(_victory_state_sequence[-1]) if not _victory_state_sequence.is_empty() else "idle"
 	var victory_countdown_active := victory_state in ["qualification", "audit", "resolved"]
+	# Victory owns the lifecycle before any economic continuation decision. A
+	# rolling GDP dip must not reopen hand, rack, or strategy growth.
+	if own_victory_eligible or victory_countdown_active:
+		if str(supply_rotation_state.get("phase", "")) == "advancement_recheck":
+			supply_rotation_state["phase"] = ""
+			supply_rotation_state["advancement_epoch_active"] = false
+		return {
+			"id": "gdp_accumulation_wait",
+			"phase": "play.victory_qualification",
+			"disabled": true,
+			"origin": "economic_wait",
+		}
 	var growth_policy := production_growth_policy(
 		public_progress,
 		sale_receipt,
@@ -1348,32 +1586,15 @@ func _scripted_ui_action(
 		_production_maturity_checkpoint,
 		victory_state
 	)
-	var production_chain_incomplete := bool(growth_policy.get("growth_required", false))
 	var production_maturation_is_pending := str(growth_policy.get("reason_id", "")) == "production_maturation_pending"
-	var strategy_actions: Array[Dictionary] = []
-	for strategy_kind in ["expand_economic_source", "protect_route", "pressure_competition"]:
-		var strategy_action := _first_enabled_action_by_kind(player_board.get("actions", []), strategy_kind)
-		if strategy_action.is_empty():
-			continue
-		source_established = true
-		strategy_actions.append(strategy_action)
-	# V0.6 guarantees low public ambient consumption in surviving regions. Once
-	# the production Owner confirms a real installation, let world-effective time
-	# produce the first typed Sale Receipt before continuing facility search.
-	if production_source_established and not bool(sale_receipt.get("observed", false)):
+	# V0.6 guarantees low public ambient consumption in surviving regions. The
+	# three-installation proof floor must be established before waiting for the
+	# first typed Sale Receipt; otherwise one early source idles for a full market
+	# minute and a second matched source can enter Victory before the floor exists.
+	if production_floor_established and not bool(sale_receipt.get("observed", false)):
 		return {
 			"id": "gdp_accumulation_wait",
 			"phase": "play.gdp_first_receipt",
-			"disabled": true,
-			"origin": "economic_wait",
-		}
-	# Qualification and audit are authoritative lifecycle states. A rolling GDP
-	# dip must never turn the Driver back into a facility purchaser after either
-	# state has begun.
-	if own_victory_eligible or victory_countdown_active:
-		return {
-			"id": "gdp_accumulation_wait",
-			"phase": "play.victory_qualification",
 			"disabled": true,
 			"origin": "economic_wait",
 		}
@@ -1384,38 +1605,46 @@ func _scripted_ui_action(
 			"disabled": true,
 			"origin": "economic_wait",
 		}
-	# Once the acceptance slice owns three real production installations, use
-	# only the existing typed board strategy actions to recover/raise public GDP.
-	# Do not keep buying cards or manufacture a driver-only economy shortcut.
-	if bool(sale_receipt.get("observed", false)) and not production_chain_incomplete:
-		for strategy_action in strategy_actions:
-			var strategy_signature := "strategy:%s:%d" % [str(strategy_action.get("id", "strategy")), int(strategy_action.get("source_revision", 0))]
-			if not bool(exhausted_navigation_actions.get(strategy_signature, false)):
-				return _board_action_request(strategy_action, player_board, strategy_signature)
+	var normalized_plan := continuation_plan.duplicate(true)
+	if normalized_plan.is_empty():
+		normalized_plan = _latest_economy_continuation_plan.duplicate(true)
+	if not bool(normalized_plan.get("ready", false)):
 		return {
-			"id": "gdp_accumulation_wait",
-			"phase": "play.victory_qualification",
+			"id": "facility_play_wait",
+			"phase": "play.economy_continuation.observation_unavailable",
 			"disabled": true,
 			"origin": "economic_wait",
 		}
-	var required_facility_kind := "factory" if production_chain_incomplete else ""
-	var facility_hand_action := _first_enabled_card_action_by_kind(
-		hand_cards,
-		"facility_v06",
-		required_facility_kind
+	if bool(normalized_plan.get("stop", false)):
+		return {
+			"id": "gdp_accumulation_wait",
+			"phase": "play.gdp_accumulation.%s" % str(normalized_plan.get("reason_id", "no_complementary_growth_required")),
+			"disabled": true,
+			"origin": "economic_wait",
+		}
+	_sync_supply_rotation_plan(supply_rotation_state, normalized_plan)
+	var hand_cards := _facility_cards_with_stable_identity(
+		player_board.get("hand_cards", []) if player_board.get("hand_cards", []) is Array else []
 	)
+	var matching_hand_card := EconomyContinuationPlannerScript.first_matching_facility(
+		hand_cards,
+		normalized_plan,
+		true
+	)
+	var facility_hand_action := _enabled_card_action_request(matching_hand_card)
 	if not facility_hand_action.is_empty():
 		return facility_hand_action
-	var blocked_facility := first_unexhausted_card_by_kind(
-		hand_cards,
-		"facility_v06",
-		_exhausted_facility_card_signatures,
-		required_facility_kind
-	)
-	if not blocked_facility.is_empty():
+	for blocked_facility in matching_facility_cards(hand_cards, normalized_plan, false):
+		if bool(blocked_facility.get("actionable", false)):
+			continue
 		var play_reason_id := str(blocked_facility.get("play_reason_id", "invalid_payload"))
 		if play_reason_id in FACILITY_TARGET_RETRY_REASON_IDS:
-			var target_retry := _next_typed_facility_map_action(runtime_screen, blocked_facility)
+			var target_retry := _next_typed_facility_map_action(
+				runtime_screen,
+				blocked_facility,
+				normalized_plan,
+				play_reason_id
+			)
 			if not target_retry.is_empty():
 				target_retry["phase"] = "play.hand.facility_v06.retarget.%s" % play_reason_id
 				return target_retry
@@ -1426,61 +1655,410 @@ func _scripted_ui_action(
 				"disabled": true,
 				"origin": "economic_wait",
 			}
-	# A bought facility is a stronger continuation than rotating the public rack.
-	# Rotation remains available only after the authorized hand projection proves
-	# there is no facility card waiting to be played.
+	var facility_hint_action := _facility_rack_hint_ui_action(
+		runtime_screen,
+		supply_rotation_state,
+		normalized_plan
+	)
+	if not facility_hint_action.is_empty():
+		return facility_hint_action
+	var exhausted_visible_supply_action: Dictionary = {}
+	var rotation_phase := str(supply_rotation_state.get("phase", ""))
+	if rotation_phase in ["exhausted", "advancement_recheck"]:
+		exhausted_visible_supply_action = _district_supply_ui_action(
+			runtime_screen,
+			normalized_plan
+		)
+		if not exhausted_visible_supply_action.is_empty() \
+				and not bool(exhausted_visible_supply_action.get("disabled", false)):
+			return exhausted_visible_supply_action
+	if exhausted_matching_facility_wait_required(supply_rotation_state):
+		return _supply_rotation_action(runtime_screen, supply_rotation_state)
+	if rotation_phase == "exhausted":
+		var visible_alternative_plan := _next_visible_economy_continuation_plan(
+			supply_rotation_state,
+			normalized_plan
+		)
+		if not visible_alternative_plan.is_empty():
+			return {
+				"id": "economy_plan_exhausted",
+				"phase": "driver.economy_plan_exhausted.%s" \
+					% str(normalized_plan.get("reason_id", "unknown")),
+				"disabled": false,
+				"origin": "driver_planning",
+				"exhausted_plan_signature": continuation_plan_signature(
+					normalized_plan
+				),
+				"next_plan": visible_alternative_plan,
+			}
+	# A rack may advance only after the complete public search is exhausted. Buy
+	# one typed non-facility listing through the same quote/purchase Action Spine
+	# used by a human; never consume an off-plan facility merely to reveal a slot.
+	var advancement_allowed := rack_advancement_allowed(
+		supply_rotation_state,
+		_rack_advancement_purchase_count
+	)
+	var rack_advancement := _district_supply_advancement_ui_action(
+		runtime_screen,
+		supply_rotation_state
+	) \
+		if advancement_allowed else {}
+	if advancement_allowed and rotation_phase == "advancement_recheck" \
+			and _begin_supply_advancement_reposition(
+				runtime_screen,
+				supply_rotation_state
+			):
+		var recheck_reposition := _supply_rotation_action(
+			runtime_screen,
+			supply_rotation_state
+		)
+		if not recheck_reposition.is_empty():
+			return recheck_reposition
+	if not rack_advancement.is_empty():
+		return rack_advancement
+	if advancement_allowed and rotation_phase == "exhausted" \
+			and _begin_supply_advancement_reposition(
+				runtime_screen,
+				supply_rotation_state
+			):
+		var exhausted_reposition := _supply_rotation_action(
+			runtime_screen,
+			supply_rotation_state
+		)
+		if not exhausted_reposition.is_empty():
+			return exhausted_reposition
+	if rotation_phase == "advancement_recheck":
+		# The replacement slot was inspected and yielded neither a matching
+		# facility nor another legal bounded purchase. The carried exhaustion
+		# proof ends here; subsequent work must perform a new complete scan.
+		supply_rotation_state["phase"] = ""
+		supply_rotation_state["advancement_epoch_active"] = false
+	# Finish an already-started bounded rotation only after the authorized hand
+	# projection proves there is no matching facility waiting to be played.
 	var supply_rotation_action := _supply_rotation_action(runtime_screen, supply_rotation_state)
 	if not supply_rotation_action.is_empty():
 		return supply_rotation_action
-	var visible_supply_action := _district_supply_ui_action(runtime_screen, production_chain_incomplete)
+	var visible_supply_action := exhausted_visible_supply_action \
+		if not exhausted_visible_supply_action.is_empty() \
+		else _district_supply_ui_action(runtime_screen, normalized_plan)
 	if not visible_supply_action.is_empty():
 		return visible_supply_action
-	for strategy_action in strategy_actions:
+	# Strategy buttons may open the real player-facing rack, but never choose the
+	# facility semantics. The complementary typed plan remains the sole selector.
+	for strategy_kind in ["expand_economic_source", "build_economic_source"]:
+		var strategy_action := _first_enabled_action_by_kind(player_board.get("actions", []), strategy_kind)
+		if strategy_action.is_empty():
+			continue
 		var strategy_signature := "strategy:%s:%d" % [str(strategy_action.get("id", "strategy")), int(strategy_action.get("source_revision", 0))]
 		if not bool(exhausted_navigation_actions.get(strategy_signature, false)):
 			return _board_action_request(strategy_action, player_board, strategy_signature)
-	if source_established:
-		return {
-			"id": "gdp_accumulation_wait",
-			"phase": "play.gdp_accumulation" if int(public_progress.get("top_k_gdp_per_minute", 0)) > 0 else "play.gdp_first_receipt",
-			"disabled": true,
-			"origin": "economic_wait",
-		}
-	var supply_action := _district_supply_ui_action(runtime_screen, production_chain_incomplete)
-	if not supply_action.is_empty():
-		return supply_action
-	var build_source_action := _first_enabled_action_by_kind(player_board.get("actions", []), "build_economic_source")
-	if not build_source_action.is_empty():
-		return _board_action_request(build_source_action, player_board)
-	for card_variant in hand_cards:
-		if not (card_variant is Dictionary):
-			continue
-		var card: Dictionary = card_variant
-		var card_action := _first_enabled_action(card.get("actions", []))
-		if not card_action.is_empty():
-			var request := {
-				"id": str(card_action.get("id", "")),
-				"phase": "play.hand.%s.%s" % [str(card.get("id", "card")), str(card.get("action_state", card.get("play_state", "ready")))],
-				"disabled": false,
-			}
-			var offer: Dictionary = card_action.get("game_action_offer", {}) \
-				if card_action.get("game_action_offer", {}) is Dictionary else {}
-			if not offer.is_empty():
-				request["game_action_offer"] = offer.duplicate(true)
-			return request
-	var board_action := _first_enabled_action(player_board.get("actions", []))
-	var board_signature := ""
-	if not board_action.is_empty():
-		board_signature = _board_action_signature(board_action, player_board)
-		if bool(exhausted_navigation_actions.get(board_signature, false)):
-			board_action = _first_enabled_board_action(player_board, exhausted_navigation_actions)
-			board_signature = _board_action_signature(board_action, player_board)
-	if not board_action.is_empty():
-		return _board_action_request(board_action, player_board, board_signature)
+	if _begin_supply_rack_discovery(runtime_screen, supply_rotation_state):
+		var discovery_action := _supply_rotation_action(runtime_screen, supply_rotation_state)
+		if not discovery_action.is_empty():
+			return discovery_action
 	var map_action := _next_public_map_action(runtime_screen)
 	if not map_action.is_empty():
 		return map_action
-	return {"id": "", "phase": "play", "disabled": true}
+	return {
+		"id": "district_supply_wait",
+		"phase": "play.economy_continuation.wait.%s" % str(normalized_plan.get("reason_id", "no_legal_matching_facility")),
+		"disabled": true,
+		"origin": "economic_wait",
+	}
+
+
+static func continuation_plan_signature(continuation_plan: Dictionary) -> String:
+	return JSON.stringify({
+		"ready": bool(continuation_plan.get("ready", false)),
+		"stop": bool(continuation_plan.get("stop", true)),
+		"reason_id": str(continuation_plan.get("reason_id", "")),
+		"desired_facility_kind": str(continuation_plan.get("desired_facility_kind", "")),
+		"desired_direction": str(continuation_plan.get("desired_direction", "")),
+		"commodity_id": str(continuation_plan.get("commodity_id", "")),
+		"industry_id": str(continuation_plan.get("industry_id", "")),
+	}).sha256_text()
+
+
+func _select_economy_continuation_plan(
+	observation: Dictionary,
+	production_floor: int
+) -> Dictionary:
+	var ranked: Array = EconomyContinuationPlannerScript.ranked_plans(
+		observation,
+		production_floor
+	)
+	if ranked.is_empty():
+		return {}
+	if not _economy_plan_override_signature.is_empty():
+		for plan_variant in ranked:
+			if plan_variant is Dictionary \
+					and continuation_plan_signature(plan_variant as Dictionary) \
+						== _economy_plan_override_signature:
+				return (plan_variant as Dictionary).duplicate(true)
+		_economy_plan_override_signature = ""
+		_exhausted_economy_plan_signatures.clear()
+	return (ranked[0] as Dictionary).duplicate(true)
+
+
+func _next_visible_economy_continuation_plan(
+	rotation_state: Dictionary,
+	current_plan: Dictionary
+) -> Dictionary:
+	var visible_keys: Dictionary = rotation_state.get("visible_facility_plan_keys", {}) \
+		if rotation_state.get("visible_facility_plan_keys", {}) is Dictionary else {}
+	if visible_keys.is_empty():
+		return {}
+	var ranked: Array = EconomyContinuationPlannerScript.ranked_plans(
+		_latest_economy_continuation_observation,
+		TARGET_PRODUCTION_INSTALLATION_COUNT
+	)
+	return first_visible_alternative_plan(
+		ranked,
+		current_plan,
+		_exhausted_economy_plan_signatures,
+		visible_keys
+	)
+
+
+static func first_visible_alternative_plan(
+	ranked: Array,
+	current_plan: Dictionary,
+	exhausted_signatures: Dictionary,
+	visible_facility_plan_keys: Dictionary
+) -> Dictionary:
+	var current_signature := continuation_plan_signature(current_plan)
+	for plan_variant in ranked:
+		if not (plan_variant is Dictionary):
+			continue
+		var plan := plan_variant as Dictionary
+		var signature := continuation_plan_signature(plan)
+		var facility_key := "%s|%s" % [
+			str(plan.get("desired_facility_kind", "")),
+			str(plan.get("industry_id", "")),
+		]
+		if signature.is_empty() or signature == current_signature \
+				or bool(exhausted_signatures.get(signature, false)) \
+				or not bool(visible_facility_plan_keys.get(facility_key, false)):
+			continue
+		return plan.duplicate(true)
+	return {}
+
+
+static func first_public_facility_rack_hint_for_plan(
+	facility_rack_hints: Dictionary,
+	continuation_plan: Dictionary
+) -> Dictionary:
+	var ordered: Array[Dictionary] = []
+	for hint_variant in facility_rack_hints.values():
+		if not (hint_variant is Dictionary):
+			continue
+		var hint := hint_variant as Dictionary
+		if not _facility_rack_hint_matches_plan(hint, continuation_plan):
+			continue
+		ordered.append(hint.duplicate(true))
+	ordered.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		return "%06d|%s|%s|%s" % [
+			int(left.get("district_index", -1)),
+			str(left.get("region_id", "")),
+			str(left.get("card_id", "")),
+			str(left.get("rack_source_revision", "")),
+		] < "%06d|%s|%s|%s" % [
+			int(right.get("district_index", -1)),
+			str(right.get("region_id", "")),
+			str(right.get("card_id", "")),
+			str(right.get("rack_source_revision", "")),
+		]
+	)
+	return ordered[0].duplicate(true) if not ordered.is_empty() else {}
+
+
+static func facility_rack_hint_matches_snapshot(
+	hint: Dictionary,
+	snapshot: Dictionary,
+	continuation_plan: Dictionary
+) -> bool:
+	if not _facility_rack_hint_matches_plan(hint, continuation_plan) \
+			or str(snapshot.get("visibility_scope", "")) != "viewer_private" \
+			or int(snapshot.get("district_index", -1)) != int(hint.get("district_index", -1)) \
+			or str(snapshot.get("region_id", "")) != str(hint.get("region_id", "")) \
+			or str(snapshot.get("rack_source_revision", "")).is_empty() \
+			or str(snapshot.get("rack_source_revision", "")) \
+				!= str(hint.get("rack_source_revision", "")):
+		return false
+	var expected_card_id := str(hint.get("card_id", "")).strip_edges()
+	for card_variant in snapshot.get("cards", []) as Array:
+		if not (card_variant is Dictionary):
+			continue
+		var card := card_variant as Dictionary
+		if str(card.get("card_id", card.get("card_name", ""))) == expected_card_id \
+				and _is_supply_facility_kind(str(card.get("kind", ""))) \
+				and EconomyContinuationPlannerScript.facility_matches_plan(
+					card,
+					continuation_plan
+				) and bool(card.get(
+					"continuation_target_available",
+					card.get("new_target_available", false)
+				)):
+			return true
+	return false
+
+
+static func _facility_rack_hint_matches_plan(
+	hint: Dictionary,
+	continuation_plan: Dictionary
+) -> bool:
+	var bound_plan_signature := str(
+		hint.get("active_plan_signature", "")
+	).strip_edges()
+	var desired_facility_kind := str(
+		continuation_plan.get("desired_facility_kind", "")
+	)
+	var desired_industry_id := str(continuation_plan.get("industry_id", ""))
+	return int(hint.get("schema_version", 0)) == 1 \
+		and int(hint.get("district_index", -1)) >= 0 \
+		and not str(hint.get("region_id", "")).strip_edges().is_empty() \
+		and not str(hint.get("rack_source_revision", "")).strip_edges().is_empty() \
+		and not str(hint.get("card_id", "")).strip_edges().is_empty() \
+		and str(hint.get("facility_kind", "")) == desired_facility_kind \
+		and (desired_industry_id.is_empty() \
+			or str(hint.get("industry_id", "")) == desired_industry_id) \
+		and (bound_plan_signature.is_empty() \
+			or bound_plan_signature == continuation_plan_signature(continuation_plan))
+
+
+static func _facility_rack_hint_key(hint: Dictionary) -> String:
+	if int(hint.get("schema_version", 0)) != 1:
+		return ""
+	return JSON.stringify({
+		"district_index": int(hint.get("district_index", -1)),
+		"region_id": str(hint.get("region_id", "")),
+		"rack_source_revision": str(hint.get("rack_source_revision", "")),
+		"card_id": str(hint.get("card_id", "")),
+		"facility_kind": str(hint.get("facility_kind", "")),
+		"industry_id": str(hint.get("industry_id", "")),
+	}).sha256_text()
+
+
+func _sync_supply_rotation_plan(rotation_state: Dictionary, continuation_plan: Dictionary) -> void:
+	if rotation_state.is_empty():
+		return
+	var plan_signature := continuation_plan_signature(continuation_plan)
+	if str(rotation_state.get("active_plan_signature", "")) == plan_signature:
+		return
+	var facility_hints: Dictionary = rotation_state.get("facility_rack_hints", {}) \
+		if rotation_state.get("facility_rack_hints", {}) is Dictionary else {}
+	var matching_hint := first_public_facility_rack_hint_for_plan(
+		facility_hints,
+		continuation_plan
+	)
+	if not matching_hint.is_empty():
+		matching_hint["active_plan_signature"] = plan_signature
+	rotation_state["phase"] = ""
+	rotation_state["target_district"] = -1
+	rotation_state["source_rack_signature"] = ""
+	rotation_state["source_selection_revision"] = -1
+	rotation_state["rotation_count"] = 0
+	rotation_state["exhausted_world_seconds"] = -1.0
+	rotation_state["refresh_attempts_by_signature"] = {}
+	rotation_state["exhausted_signatures"] = {}
+	rotation_state["visited_districts"] = {}
+	rotation_state["advancement_candidate_districts"] = {}
+	rotation_state["pending_advancement_candidate"] = {}
+	rotation_state["visible_facility_plan_keys"] = {}
+	rotation_state["facility_rack_hints"] = facility_hints.duplicate(true)
+	rotation_state["pending_facility_rack_hint"] = matching_hint.duplicate(true)
+	rotation_state["matching_facility_seen"] = false
+	rotation_state["matching_target_seen"] = false
+	rotation_state["current_district"] = -1
+	rotation_state["advancement_reposition"] = false
+	rotation_state["facility_hint_reposition"] = false
+	rotation_state["evaluated_rack_plan_signatures"] = {}
+	rotation_state["active_plan_signature"] = plan_signature
+	rotation_state["advancement_epoch_active"] = false
+	if not matching_hint.is_empty():
+		rotation_state["phase"] = "facility_hint_pending"
+	_facility_candidate_attempts.clear()
+
+
+static func _facility_cards_with_stable_identity(cards: Array) -> Array:
+	var result: Array = []
+	for card_variant in cards:
+		if not (card_variant is Dictionary):
+			continue
+		var card := (card_variant as Dictionary).duplicate(true)
+		if str(card.get("kind", "")) != "facility_v06":
+			continue
+		var action := _first_enabled_or_disabled_action(card.get("actions", []))
+		var offer: Dictionary = action.get("game_action_offer", {}) \
+			if action.get("game_action_offer", {}) is Dictionary else {}
+		var target_ids := GameActionOfferV1.target_ids(offer) if not offer.is_empty() else {}
+		var offered_instance_ref := str(target_ids.get("card_instance_id", ""))
+		var projected_instance_ref := str(card.get("card_instance_ref", ""))
+		var offered_source_revision := maxi(0, int(offer.get("source_revision", 0)))
+		var projected_source_revision := maxi(0, int(card.get("offer_source_revision", 0)))
+		if (not projected_instance_ref.is_empty() \
+				and projected_instance_ref != offered_instance_ref) \
+				or (projected_source_revision > 0 \
+				and projected_source_revision != offered_source_revision):
+			continue
+		card["card_instance_ref"] = offered_instance_ref
+		card["source_revision"] = offered_source_revision
+		if not str(card.get("card_id", "")).is_empty() \
+				and not str(card.get("card_instance_ref", "")).is_empty():
+			result.append(card)
+	return result
+
+
+static func matching_facility_cards(
+	cards: Array,
+	continuation_plan: Dictionary,
+	actionable_only := false
+) -> Array:
+	var result: Array[Dictionary] = []
+	for card_variant in cards:
+		if not (card_variant is Dictionary):
+			continue
+		var card := card_variant as Dictionary
+		if str(card.get("kind", "")) not in ["facility", "facility_v06", "public_facility"] \
+				or not EconomyContinuationPlannerScript.facility_matches_plan(card, continuation_plan) \
+				or actionable_only and not bool(card.get("actionable", false)):
+			continue
+		result.append(card.duplicate(true))
+	result.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		return "%s|%s|%06d" % [str(left.get("card_id", "")), str(left.get("card_instance_ref", left.get("id", ""))), int(left.get("slot", -1))] \
+			< "%s|%s|%06d" % [str(right.get("card_id", "")), str(right.get("card_instance_ref", right.get("id", ""))), int(right.get("slot", -1))]
+	)
+	return result
+
+
+static func _enabled_card_action_request(card: Dictionary) -> Dictionary:
+	if card.is_empty():
+		return {}
+	var action := _first_enabled_action(card.get("actions", []))
+	if action.is_empty():
+		return {}
+	var request := {
+		"id": str(action.get("id", "")),
+		"phase": "play.hand.facility_v06.%s" % str(card.get("action_state", card.get("play_state", "ready"))),
+		"disabled": false,
+		"origin": "game_action",
+	}
+	var offer: Dictionary = action.get("game_action_offer", {}) \
+		if action.get("game_action_offer", {}) is Dictionary else {}
+	if offer.is_empty():
+		return {}
+	request["game_action_offer"] = offer.duplicate(true)
+	request["game_action_required"] = true
+	return request
+
+
+static func _first_enabled_or_disabled_action(value: Variant) -> Dictionary:
+	if not (value is Array):
+		return {}
+	for action_variant in value as Array:
+		if action_variant is Dictionary and not str((action_variant as Dictionary).get("id", "")).is_empty():
+			return (action_variant as Dictionary).duplicate(true)
+	return {}
 
 
 static func production_growth_required(
@@ -1746,6 +2324,39 @@ static func progress_checkpoint_snapshot(source: Dictionary) -> Dictionary:
 	}
 
 
+func _public_economy_continuation_observation(
+	coordinator: Node,
+	public_progress: Dictionary
+) -> Dictionary:
+	if coordinator == null:
+		return {}
+	var flow := coordinator.get_node_or_null("CommodityFlowRuntimeController")
+	var infrastructure := coordinator.get_node_or_null("RegionInfrastructureRuntimeController")
+	if flow == null or infrastructure == null \
+			or not flow.has_method("public_installations_snapshot") \
+			or not flow.has_method("recent_sale_receipts_snapshot") \
+			or not flow.has_method("public_waste_summary_snapshot") \
+			or not infrastructure.has_method("public_economy_snapshot"):
+		return {}
+	var infrastructure_variant: Variant = infrastructure.call("public_economy_snapshot")
+	var installations_variant: Variant = flow.call("public_installations_snapshot")
+	var receipts_variant: Variant = flow.call("recent_sale_receipts_snapshot", SCRIPTED_PLAYER_INDEX)
+	var waste_variant: Variant = flow.call("public_waste_summary_snapshot")
+	var observation := EconomyContinuationPlannerScript.observation_from_public_sources({
+		"viewer_index": SCRIPTED_PLAYER_INDEX,
+		"infrastructure": (infrastructure_variant as Dictionary).duplicate(true) \
+			if infrastructure_variant is Dictionary else {},
+		"installations": (installations_variant as Array).duplicate(true) \
+			if installations_variant is Array else [],
+		"own_receipts": (receipts_variant as Array).duplicate(true) \
+			if receipts_variant is Array else [],
+		"waste": (waste_variant as Dictionary).duplicate(true) \
+			if waste_variant is Dictionary else {},
+		"public_progress": public_progress.duplicate(true),
+	})
+	return PublicEconomyContinuationObservationScript.detached_copy(observation)
+
+
 func _public_economy_progress_observation(coordinator: Node) -> Dictionary:
 	var flow := coordinator.get_node_or_null("CommodityFlowRuntimeController") if coordinator != null else null
 	if flow == null or not flow.has_method("public_installations_snapshot") or not flow.has_method("recent_sale_receipts_snapshot") or not flow.has_method("public_waste_summary_snapshot"):
@@ -1810,12 +2421,161 @@ static func _safe_progress_run_id(value: String) -> String:
 	var seed_index := int(index_text)
 	return normalized if seed_index >= 0 and seed_index < FIXED_SEEDS.size() else ""
 
-func _district_supply_ui_action(runtime_screen: Node, production_chain_incomplete := false) -> Dictionary:
+func _district_supply_ui_action(runtime_screen: Node, continuation_plan: Dictionary) -> Dictionary:
 	var drawer := _district_supply_drawer(runtime_screen)
 	if drawer == null or not drawer.visible or not drawer.has_signal("supply_action_requested"):
 		return {}
-	var snapshot := _annotate_new_facility_target_availability(_district_supply_view_snapshot())
-	return district_supply_action_from_snapshot(snapshot, production_chain_incomplete)
+	var snapshot := _annotate_new_facility_target_availability(
+		_district_supply_view_snapshot(),
+		continuation_plan
+	)
+	var request := district_supply_action_from_snapshot(snapshot, continuation_plan)
+	var action_id := str(request.get("id", ""))
+	var region_id := str(snapshot.get("region_id", ""))
+	var payload: Dictionary = request.get("payload", {}) \
+		if request.get("payload", {}) is Dictionary else {}
+	var card_id := str(payload.get("card_name", ""))
+	if action_id == "district_supply_preview_card":
+		return _request_with_surface_offer(
+			request,
+			GameActionIntentV1.ACTION_DISTRICT_SUPPLY_QUOTE,
+			{"region_id": region_id, "card_id": card_id}
+		)
+	if action_id == "district_supply_purchase_card":
+		return _request_with_surface_offer(
+			request,
+			GameActionIntentV1.ACTION_DISTRICT_SUPPLY_PURCHASE,
+			{"region_id": region_id, "card_id": card_id}
+		)
+	return request
+
+
+func _district_supply_advancement_ui_action(
+	runtime_screen: Node,
+	rotation_state: Dictionary
+) -> Dictionary:
+	var drawer := _district_supply_drawer(runtime_screen)
+	if drawer == null or not drawer.visible or not drawer.has_signal("supply_action_requested"):
+		return {}
+	var snapshot := _district_supply_view_snapshot()
+	var pending_candidate: Dictionary = rotation_state.get(
+		"pending_advancement_candidate",
+		{}
+	) if rotation_state.get("pending_advancement_candidate", {}) is Dictionary else {}
+	if not pending_candidate.is_empty() and not rack_advancement_candidate_matches_snapshot(
+		pending_candidate,
+		snapshot,
+		str(rotation_state.get("active_plan_signature", ""))
+	):
+		advance_rack_advancement_after_retryable_failure(rotation_state)
+		return {}
+	var request := district_supply_advancement_action_from_snapshot(
+		snapshot,
+		str(pending_candidate.get("card_id", ""))
+	)
+	var action_id := str(request.get("id", ""))
+	if action_id not in [
+		"district_supply_preview_card",
+		"district_supply_purchase_card",
+	]:
+		return {}
+	var payload: Dictionary = request.get("payload", {}) \
+		if request.get("payload", {}) is Dictionary else {}
+	var card_id := str(payload.get("card_name", "")).strip_edges()
+	var region_id := str(snapshot.get("region_id", "")).strip_edges()
+	if card_id.is_empty() or region_id.is_empty():
+		return {}
+	return _request_with_surface_offer(
+		request,
+		GameActionIntentV1.ACTION_DISTRICT_SUPPLY_QUOTE \
+			if action_id == "district_supply_preview_card" \
+			else GameActionIntentV1.ACTION_DISTRICT_SUPPLY_PURCHASE,
+		{"region_id": region_id, "card_id": card_id}
+	)
+
+
+static func rack_advancement_candidate_matches_snapshot(
+	candidate: Dictionary,
+	snapshot: Dictionary,
+	active_plan_signature: String
+) -> bool:
+	var card_id := str(candidate.get("card_id", "")).strip_edges()
+	return not card_id.is_empty() \
+		and str(snapshot.get("visibility_scope", "")) == "viewer_private" \
+		and int(candidate.get("district_index", -1)) \
+			== int(snapshot.get("district_index", -1)) \
+		and not str(candidate.get("rack_source_revision", "")).is_empty() \
+		and str(candidate.get("rack_source_revision", "")) \
+			== str(snapshot.get("rack_source_revision", "")) \
+		and not active_plan_signature.is_empty() \
+		and str(candidate.get("active_plan_signature", "")) == active_plan_signature \
+		and not district_supply_advancement_action_from_snapshot(snapshot, card_id).is_empty()
+
+
+static func district_supply_advancement_action_from_snapshot(
+	snapshot: Dictionary,
+	expected_card_id := ""
+) -> Dictionary:
+	if str(snapshot.get("visibility_scope", "")) != "viewer_private":
+		return {}
+	var cards: Array = snapshot.get("cards", []) if snapshot.get("cards", []) is Array else []
+	var ordered: Array[Dictionary] = []
+	for card_variant in cards:
+		if not (card_variant is Dictionary):
+			continue
+		var card := card_variant as Dictionary
+		var card_id := str(card.get("card_id", card.get("card_name", ""))).strip_edges()
+		var card_kind := str(card.get("kind", "")).strip_edges()
+		var card_preview: Dictionary = card.get("preview", {}) \
+			if card.get("preview", {}) is Dictionary else {}
+		var primary_action_id := str(card_preview.get("primary_action_id", ""))
+		if card_id.is_empty() or not expected_card_id.is_empty() and card_id != expected_card_id \
+				or card_kind.is_empty() \
+				or _is_supply_facility_kind(card_kind) \
+				or not str(card.get("facility_kind", "")).strip_edges().is_empty() \
+				or primary_action_id not in [
+					"district_supply_preview_card",
+					"district_supply_purchase_card",
+				] or not bool(card_preview.get("buy_enabled", false)):
+			continue
+		var candidate := card.duplicate(true)
+		candidate["rack_advancement_action_id"] = primary_action_id
+		ordered.append(candidate)
+	ordered.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		return "%01d|%012d|%s" % [
+			0 if str(left.get("rack_advancement_action_id", "")) \
+				== "district_supply_purchase_card" else 1,
+			maxi(0, int(left.get("price", 0))),
+			str(left.get("card_id", left.get("card_name", ""))),
+		] < "%01d|%012d|%s" % [
+			0 if str(right.get("rack_advancement_action_id", "")) \
+				== "district_supply_purchase_card" else 1,
+			maxi(0, int(right.get("price", 0))),
+			str(right.get("card_id", right.get("card_name", ""))),
+		]
+	)
+	if ordered.is_empty():
+		return {}
+	var selected := ordered[0]
+	var selected_card_id := str(
+		selected.get("card_id", selected.get("card_name", ""))
+	).strip_edges()
+	var action_id := str(selected.get("rack_advancement_action_id", ""))
+	return {
+		"id": action_id,
+		"phase": "play.supply.rack_advancement.%s.%s" % [
+			"purchase" if action_id == "district_supply_purchase_card" else "quote",
+			selected_card_id,
+		],
+		"disabled": false,
+		"origin": "district_supply",
+		"rack_advancement": true,
+		"rack_advancement_card_id": selected_card_id,
+		"payload": {
+			"card_name": selected_card_id,
+			"source": "full_run_bounded_rack_advancement",
+		},
+	}
 
 
 func _district_supply_view_snapshot() -> Dictionary:
@@ -1825,68 +2585,121 @@ func _district_supply_view_snapshot() -> Dictionary:
 	var surface := _district_supply_query_port.snapshot_for_viewer(SCRIPTED_PLAYER_INDEX)
 	if not bool(surface.get("visible", false)) or not (surface.get("snapshot", {}) is Dictionary):
 		return {}
-	return (surface.get("snapshot", {}) as Dictionary).duplicate(true)
+	var result := (surface.get("snapshot", {}) as Dictionary).duplicate(true)
+	var district_index := int(surface.get("district_index", -1))
+	result["district_index"] = district_index
+	result["region_id"] = _public_region_id_for_district(district_index)
+	result["rack_source_revision"] = str(
+		surface.get("rack_source_revision", "")
+	).strip_edges()
+	return result
 
 
-func _annotate_new_facility_target_availability(snapshot: Dictionary) -> Dictionary:
+func _public_region_id_for_district(district_index: int) -> String:
+	if _table_presentation_query_ports == null or district_index < 0:
+		return ""
+	var public_world := _table_presentation_query_ports.public_world_projection().to_dictionary()
+	var districts: Array = public_world.get("districts", []) \
+		if public_world.get("districts", []) is Array else []
+	if district_index >= districts.size() or not (districts[district_index] is Dictionary):
+		return ""
+	return str((districts[district_index] as Dictionary).get("region_id", "")).strip_edges()
+
+
+func _public_region_commodity_facts() -> Array:
+	if _table_presentation_query_ports == null:
+		return []
+	var query := _table_presentation_query_ports.region_infrastructure_public_query
+	if query == null or not query.has_method("public_commodity_region_facts"):
+		return []
+	var value: Variant = query.call("public_commodity_region_facts")
+	return (value as Array).duplicate(true) if value is Array else []
+
+
+func _annotate_new_facility_target_availability(
+	snapshot: Dictionary,
+	continuation_plan: Dictionary
+) -> Dictionary:
 	var result := snapshot.duplicate(true)
 	if _table_presentation_query_ports == null:
 		return result
 	var cards: Array = result.get("cards", []) if result.get("cards", []) is Array else []
-	var target_by_card_name := {}
+	var target_by_card_id := {}
+	var region_facts := _public_region_commodity_facts()
 	for card_index in range(cards.size()):
 		if not (cards[card_index] is Dictionary):
 			continue
 		var card := (cards[card_index] as Dictionary).duplicate(true)
+		var card_id := str(card.get("card_id", card.get("card_name", ""))).strip_edges()
+		card["card_id"] = card_id
 		if not _is_supply_facility_kind(str(card.get("kind", ""))):
+			cards[card_index] = card
 			continue
 		var target_snapshot := _table_presentation_query_ports.public_new_facility_target_candidates(
 			StringName(str(card.get("facility_kind", ""))),
 			StringName(str(card.get("industry_id", "")))
 		)
 		var target := target_snapshot.to_dictionary() if target_snapshot != null else {}
+		var matching_candidates := EconomyContinuationPlannerScript.matching_target_candidates(
+			target.get("candidates", []) as Array,
+			region_facts,
+			continuation_plan
+		)
 		var target_available := bool(target.get("available", false)) \
 			and not (target.get("candidates", []) as Array).is_empty()
+		var continuation_target_available := target_available \
+			and not matching_candidates.is_empty()
 		card["new_target_available"] = target_available
+		card["continuation_target_available"] = continuation_target_available
 		card["target_source_revision"] = int(target.get("source_revision", 0))
 		card["target_reason_code"] = str(target.get("reason_code", "public_new_facility_target_query_unavailable"))
 		cards[card_index] = card
-		target_by_card_name[str(card.get("card_name", ""))] = {
+		target_by_card_id[card_id] = {
 			"new_target_available": target_available,
+			"continuation_target_available": continuation_target_available,
 			"target_source_revision": int(card.get("target_source_revision", 0)),
 			"target_reason_code": str(card.get("target_reason_code", "")),
 		}
 	result["cards"] = cards
 	var preview: Dictionary = result.get("preview", {}) if result.get("preview", {}) is Dictionary else {}
-	var preview_target: Dictionary = target_by_card_name.get(str(preview.get("card_name", "")), {}) \
-		if target_by_card_name.get(str(preview.get("card_name", "")), {}) is Dictionary else {}
+	var preview_card_id := str(preview.get("card_id", preview.get("card_name", ""))).strip_edges()
+	var preview_target: Dictionary = target_by_card_id.get(preview_card_id, {}) \
+		if target_by_card_id.get(preview_card_id, {}) is Dictionary else {}
 	if not preview_target.is_empty():
 		preview = preview.duplicate(true)
+		preview["card_id"] = preview_card_id
 		preview.merge(preview_target, true)
 		result["preview"] = preview
 	return result
 
 
-static func district_supply_action_from_snapshot(snapshot: Dictionary, production_chain_incomplete := false) -> Dictionary:
+static func district_supply_action_from_snapshot(
+	snapshot: Dictionary,
+	continuation_plan: Dictionary
+) -> Dictionary:
 	var preview: Dictionary = snapshot.get("preview", {}) if snapshot.get("preview", {}) is Dictionary else {}
-	var preview_card_name := str(preview.get("card_name", ""))
+	var preview_card_id := str(preview.get("card_id", preview.get("card_name", "")))
 	var primary_action_id := str(preview.get("primary_action_id", ""))
 	var cards: Array = snapshot.get("cards", []) if snapshot.get("cards", []) is Array else []
-	var preview_kind := _supply_card_kind(cards, preview_card_name)
-	var preview_facility_kind := _supply_facility_kind(cards, preview_card_name)
-	if not preview_card_name.is_empty() \
-			and bool(preview.get("buy_enabled", false)) \
-			and primary_action_id in ["district_supply_preview_card", "district_supply_purchase_card"] \
-			and (not production_chain_incomplete \
-				or (preview_facility_kind == "factory" \
-					and _supply_new_target_available(cards, preview_card_name))):
+	var preview_card := _supply_card_by_stable_id(cards, preview_card_id)
+	var preview_matches := not preview_card.is_empty() \
+		and EconomyContinuationPlannerScript.facility_matches_plan(preview_card, continuation_plan) \
+		and bool(preview_card.get("continuation_target_available", false))
+	var preview_reason := str(preview.get("action_reason_code", ""))
+	var quote_retry_allowed := primary_action_id == "district_supply_preview_card" \
+		and preview_reason not in ["source_region_dark", "source_region_destroyed", "card_not_in_supply"]
+	var purchase_ready := primary_action_id == "district_supply_purchase_card" \
+		and bool(preview.get("buy_enabled", false))
+	if not preview_card_id.is_empty() \
+			and preview_matches \
+			and (quote_retry_allowed or purchase_ready):
 		var action_phase := "quote" if primary_action_id == "district_supply_preview_card" else "purchase"
 		return {
 			"id": primary_action_id,
-			"phase": "play.supply.%s.%s" % [action_phase, preview_card_name],
+			"phase": "play.supply.%s.%s" % [action_phase, preview_card_id],
 			"disabled": false,
 			"origin": "district_supply",
-			"payload": {"card_name": preview_card_name, "source": "full_run_visible_preview"},
+			"payload": {"card_name": preview_card_id, "source": "full_run_visible_preview"},
 		}
 	var retry_next_facility := str(preview.get("action_reason_code", "")) in [
 		"source_region_dark",
@@ -1895,81 +2708,96 @@ static func district_supply_action_from_snapshot(snapshot: Dictionary, productio
 		"market_quote_unavailable",
 		"quote_expired",
 	]
-	var required_facility_kind := "factory" if production_chain_incomplete else ""
-	var facility_card := _next_supply_facility_card(
+	var facility_card := _next_matching_supply_facility_card(
 		cards,
-		preview_card_name if retry_next_facility else "",
-		required_facility_kind
+		continuation_plan,
+		preview_card_id if retry_next_facility else "",
+		true
 	)
 	if not facility_card.is_empty():
-		var facility_name := str(facility_card.get("card_name", ""))
-		if preview_card_name != facility_name:
+		var facility_id := str(facility_card.get("card_id", facility_card.get("card_name", "")))
+		if preview_card_id != facility_id:
 			return {
 				"id": "district_supply_preview_card",
-				"phase": "play.supply.preview_facility.%s" % facility_name,
+				"phase": "play.supply.preview_facility.%s" % facility_id,
 				"disabled": false,
 				"origin": "district_supply",
-				"payload": {"card_name": facility_name, "source": "full_run_gdp_strategy"},
+				"payload": {"card_name": facility_id, "source": "full_run_economy_continuation"},
 			}
-	if production_chain_incomplete:
-		var visible_facility := _next_visible_supply_facility_card(
-			cards,
-			preview_card_name,
-			required_facility_kind
-		)
-		if not visible_facility.is_empty() and not _is_supply_facility_kind(preview_kind):
-			var visible_facility_name := str(visible_facility.get("card_name", ""))
+	var visible_facility := _next_matching_supply_facility_card(
+		cards,
+		continuation_plan,
+		preview_card_id,
+		false
+	)
+	if not visible_facility.is_empty():
+		var visible_facility_id := str(visible_facility.get("card_id", visible_facility.get("card_name", "")))
+		if preview_card_id != visible_facility_id:
 			return {
 				"id": "district_supply_preview_card",
-				"phase": "play.supply.preview_facility.%s" % visible_facility_name,
+				"phase": "play.supply.preview_facility.%s" % visible_facility_id,
 				"disabled": false,
 				"origin": "district_supply",
-				"payload": {"card_name": visible_facility_name, "source": "full_run_gdp_strategy"},
+				"payload": {"card_name": visible_facility_id, "source": "full_run_economy_continuation"},
 			}
-		var wait_reason := str(preview.get("action_reason_code", "facility_not_visible")) \
-			if _is_supply_facility_kind(preview_kind) else "facility_not_visible"
-		return {
-			"id": "district_supply_wait",
-			"phase": "play.supply.wait.cards_%d.preview_%s.reason_%s" % [cards.size(), preview_card_name if not preview_card_name.is_empty() else "none", wait_reason],
-			"disabled": true,
-			"origin": "district_supply",
-		}
-	for card_variant in cards:
-		if not (card_variant is Dictionary):
-			continue
-		var card: Dictionary = card_variant
-		var card_name := str(card.get("card_name", ""))
-		if card_name.is_empty() or not bool(card.get("actionable", true)):
-			continue
-		return {
-			"id": "district_supply_preview_card",
-			"phase": "play.supply.preview.%s" % card_name,
-			"disabled": false,
-			"origin": "district_supply",
-			"payload": {"card_name": card_name, "source": "full_run_visible_card"},
-		}
+	var wait_reason := str(preview.get("action_reason_code", "facility_not_visible")) \
+		if preview_matches else "facility_not_visible"
 	return {
 		"id": "district_supply_wait",
-		"phase": "play.supply.wait.cards_%d.preview_%s.reason_%s" % [cards.size(), preview_card_name if not preview_card_name.is_empty() else "none", str(preview.get("action_reason_code", "purchase_unavailable"))],
+		"phase": "play.supply.wait.cards_%d.preview_%s.reason_%s" % [
+			cards.size(),
+			preview_card_id if not preview_card_id.is_empty() else "none",
+			wait_reason,
+		],
 		"disabled": true,
 		"origin": "district_supply",
 	}
 
 
-func _refresh_visible_supply_quote(runtime_screen: Node) -> bool:
-	var drawer := _district_supply_drawer(runtime_screen)
-	if drawer == null or not drawer.visible or not drawer.has_signal("supply_action_requested"):
-		return false
-	var snapshot := _district_supply_view_snapshot()
-	var preview: Dictionary = snapshot.get("preview", {}) if snapshot.get("preview", {}) is Dictionary else {}
-	var card_name := str(preview.get("card_name", "")).strip_edges()
-	if card_name.is_empty() or bool(preview.get("buy_enabled", false)):
-		return false
-	drawer.emit_signal("supply_action_requested", "district_supply_preview_card", {"card_name": card_name, "source": "full_run_quote_refresh"})
-	return true
+static func _next_matching_supply_facility_card(
+	cards: Array,
+	continuation_plan: Dictionary,
+	after_card_id := "",
+	actionable_only := false
+) -> Dictionary:
+	var matching: Array[Dictionary] = []
+	for card in matching_facility_cards(cards, continuation_plan, actionable_only):
+		if bool(card.get("continuation_target_available", false)):
+			matching.append(card)
+	if matching.is_empty():
+		return {}
+	if after_card_id.is_empty():
+		return matching[0].duplicate(true)
+	for index in range(matching.size()):
+		var card_id := str(matching[index].get("card_id", matching[index].get("card_name", "")))
+		if card_id == after_card_id:
+			return matching[wrapi(index + 1, 0, matching.size())].duplicate(true)
+	return matching[0].duplicate(true)
 
 
-func _new_supply_rotation_state() -> Dictionary:
+static func _supply_card_by_stable_id(cards: Array, card_id: String) -> Dictionary:
+	if card_id.is_empty():
+		return {}
+	for card_variant in cards:
+		if not (card_variant is Dictionary):
+			continue
+		var card := card_variant as Dictionary
+		if str(card.get("card_id", card.get("card_name", ""))) == card_id:
+			return card.duplicate(true)
+	return {}
+
+
+static func _new_supply_rotation_state(
+	preserved_evaluated_rack_plan_signatures: Dictionary = {},
+	active_plan_signature := "",
+	preserved_facility_rack_hints: Dictionary = {}
+) -> Dictionary:
+	var preserved := preserved_evaluated_rack_plan_signatures.duplicate(true)
+	while preserved.size() > SUPPLY_EVALUATED_RACK_SIGNATURE_LIMIT:
+		preserved.erase(preserved.keys()[0])
+	var facility_hints := preserved_facility_rack_hints.duplicate(true)
+	while facility_hints.size() > SUPPLY_FACILITY_RACK_HINT_LIMIT:
+		facility_hints.erase(facility_hints.keys()[0])
 	return {
 		"phase": "",
 		"target_district": -1,
@@ -1980,61 +2808,202 @@ func _new_supply_rotation_state() -> Dictionary:
 		"refresh_attempts_by_signature": {},
 		"exhausted_signatures": {},
 		"visited_districts": {},
+		"advancement_candidate_districts": {},
+		"pending_advancement_candidate": {},
+		"visible_facility_plan_keys": {},
+		"facility_rack_hints": facility_hints,
+		"pending_facility_rack_hint": {},
+		"matching_facility_seen": false,
+		"matching_target_seen": false,
+		"current_district": -1,
+		"advancement_reposition": false,
+		"facility_hint_reposition": false,
+		"evaluated_rack_plan_signatures": preserved,
+		"active_plan_signature": active_plan_signature,
+		"advancement_epoch_active": false,
 	}
 
 
-func _public_supply_wait_facts(runtime_screen: Node) -> Dictionary:
+static func rack_advancement_allowed(
+	rotation_state: Dictionary,
+	committed_purchase_count: int
+) -> bool:
+	var phase := str(rotation_state.get("phase", ""))
+	var exhaustion_proven := phase == "exhausted" \
+		or phase == "advancement_recheck" \
+			and bool(rotation_state.get("advancement_epoch_active", false))
+	return exhaustion_proven \
+		and committed_purchase_count >= 0 \
+		and committed_purchase_count < SUPPLY_RACK_ADVANCEMENT_PURCHASE_LIMIT
+
+
+static func exhausted_matching_facility_wait_required(
+	rotation_state: Dictionary
+) -> bool:
+	return str(rotation_state.get("phase", "")) == "exhausted" \
+		and bool(rotation_state.get("matching_facility_seen", false)) \
+		and bool(rotation_state.get("matching_target_seen", false))
+
+
+static func reset_supply_rotation_after_advancement(
+	rotation_state: Dictionary
+) -> Dictionary:
+	var preserved_facility_hints: Dictionary = rotation_state.get("facility_rack_hints", {}) \
+		if rotation_state.get("facility_rack_hints", {}) is Dictionary else {}
+	preserved_facility_hints = preserved_facility_hints.duplicate(true)
+	var current_district := int(rotation_state.get("current_district", -1))
+	_remove_facility_rack_hints_for_district(
+		preserved_facility_hints,
+		current_district
+	)
+	var result := _new_supply_rotation_state(
+		rotation_state.get("evaluated_rack_plan_signatures", {}) as Dictionary \
+			if rotation_state.get("evaluated_rack_plan_signatures", {}) is Dictionary else {},
+		str(rotation_state.get("active_plan_signature", "")),
+		preserved_facility_hints
+	)
+	var candidates: Dictionary = rotation_state.get("advancement_candidate_districts", {}) \
+		if rotation_state.get("advancement_candidate_districts", {}) is Dictionary else {}
+	candidates = candidates.duplicate(true)
+	candidates.erase(current_district)
+	# The committed purchase changed only the current public rack. Keep the
+	# completed-search lineage just long enough to inspect that replacement slot;
+	# any non-actionable result exits this epoch and starts a new full scan.
+	result["phase"] = "advancement_recheck"
+	result["advancement_epoch_active"] = true
+	result["advancement_candidate_districts"] = candidates
+	result["current_district"] = current_district
+	return result
+
+
+func _public_supply_wait_facts(
+	runtime_screen: Node,
+	continuation_plan: Dictionary
+) -> Dictionary:
 	var screen := runtime_screen as SpaceSyndicateGameScreen
 	var drawer := _district_supply_drawer(runtime_screen)
 	if screen == null or drawer == null or not drawer.visible:
 		return {}
-	var drawer_snapshot := _annotate_new_facility_target_availability(_district_supply_view_snapshot())
+	var drawer_snapshot := _annotate_new_facility_target_availability(
+		_district_supply_view_snapshot(),
+		continuation_plan
+	)
 	var ui: Dictionary = screen.current_ui_data if screen.current_ui_data is Dictionary else {}
 	var selection: Dictionary = ui.get("selection_context", {}) if ui.get("selection_context", {}) is Dictionary else {}
 	var district_index := int(selection.get("selected_district", -1))
 	var district_count := int(selection.get("district_count", 0))
-	var card_signature_rows: Array[String] = []
 	var has_visible_facility := false
-	var has_visible_production_facility := false
+	var has_visible_matching_facility := false
+	var has_visible_matching_target := false
+	var has_actionable_matching_facility := false
+	var visible_facility_plan_keys: Array[String] = []
+	var facility_rack_hints: Array[Dictionary] = []
+	var rack_source_revision := str(
+		drawer_snapshot.get("rack_source_revision", "")
+	).strip_edges()
+	var region_id := str(drawer_snapshot.get("region_id", "")).strip_edges()
 	var cards: Array = drawer_snapshot.get("cards", []) if drawer_snapshot.get("cards", []) is Array else []
 	for card_variant in cards:
 		if not (card_variant is Dictionary):
 			continue
 		var card := card_variant as Dictionary
-		has_visible_facility = has_visible_facility or _is_supply_facility_kind(str(card.get("kind", "")))
-		has_visible_production_facility = has_visible_production_facility \
-			or (str(card.get("facility_kind", "")) == "factory" \
-				and bool(card.get("new_target_available", false)))
-		card_signature_rows.append("%s|%s" % [
-			str(card.get("card_name", "")),
-			"%s|%s|%s" % [
-				str(card.get("kind", "")),
-				str(card.get("facility_kind", "")),
-				str(card.get("industry_id", "")),
-			],
-		])
-	var signature_source := {
-		"district_index": district_index,
-		"cards": card_signature_rows,
-	}
+		var facility_kind := str(card.get("facility_kind", "")).strip_edges()
+		var industry_id := str(card.get("industry_id", "")).strip_edges()
+		var is_facility := _is_supply_facility_kind(str(card.get("kind", "")))
+		has_visible_facility = has_visible_facility or is_facility
+		if is_facility and not facility_kind.is_empty() and not industry_id.is_empty():
+			if bool(card.get("new_target_available", false)):
+				var facility_plan_key := "%s|%s" % [facility_kind, industry_id]
+				if not visible_facility_plan_keys.has(facility_plan_key):
+					visible_facility_plan_keys.append(facility_plan_key)
+			var card_id := str(
+				card.get("card_id", card.get("card_name", ""))
+			).strip_edges()
+			if district_index >= 0 and not region_id.is_empty() \
+					and not rack_source_revision.is_empty() and not card_id.is_empty():
+				facility_rack_hints.append({
+					"schema_version": 1,
+					"district_index": district_index,
+					"region_id": region_id,
+					"rack_source_revision": rack_source_revision,
+					"card_id": card_id,
+					"facility_kind": facility_kind,
+					"industry_id": industry_id,
+				})
+		if not EconomyContinuationPlannerScript.facility_matches_plan(card, continuation_plan):
+			continue
+		has_visible_matching_facility = true
+		var matching_target := bool(card.get("continuation_target_available", false))
+		has_visible_matching_target = has_visible_matching_target or matching_target
+		has_actionable_matching_facility = has_actionable_matching_facility \
+			or (matching_target and bool(card.get("actionable", false)))
+	var rack_signature := EconomyContinuationPlannerScript.rack_plan_signature(
+		drawer_snapshot,
+		continuation_plan
+	)
+	for hint in facility_rack_hints:
+		hint["rack_signature"] = rack_signature
+	var advancement_action := district_supply_advancement_action_from_snapshot(
+		drawer_snapshot
+	)
+	visible_facility_plan_keys.sort()
 	return {
 		"valid": district_index >= 0 and district_count > 1,
 		"district_index": district_index,
 		"district_count": district_count,
 		"selection_revision": int(selection.get("revision", -1)),
-		"rack_signature": JSON.stringify(signature_source).sha256_text(),
+		"rack_source_revision": rack_source_revision,
+		"rack_signature": rack_signature,
+		"rack_content_plan_signature": rack_signature,
 		"has_visible_facility": has_visible_facility,
-		"has_visible_production_facility": has_visible_production_facility,
+		"has_visible_matching_facility": has_visible_matching_facility,
+		"has_visible_matching_target": has_visible_matching_target,
+		"has_actionable_matching_facility": has_actionable_matching_facility,
+		"has_legal_advancement_candidate": not advancement_action.is_empty(),
+		"advancement_card_id": str(
+			advancement_action.get("rack_advancement_card_id", "")
+		),
+		"visible_facility_plan_keys": visible_facility_plan_keys,
+		"facility_rack_hints": facility_rack_hints,
 	}
 
 
-func _begin_supply_rack_rotation(rotation_state: Dictionary, wait_facts: Dictionary) -> bool:
+static func _remember_supply_rack_evaluation(rotation_state: Dictionary, rack_signature: String) -> void:
+	if rotation_state.is_empty() or rack_signature.is_empty():
+		return
+	var evaluated: Dictionary = rotation_state.get("evaluated_rack_plan_signatures", {}) \
+		if rotation_state.get("evaluated_rack_plan_signatures", {}) is Dictionary else {}
+	_remember_bounded_signature(
+		evaluated,
+		rack_signature,
+		SUPPLY_EVALUATED_RACK_SIGNATURE_LIMIT
+	)
+	rotation_state["evaluated_rack_plan_signatures"] = evaluated
+
+
+static func _remember_bounded_signature(
+	signatures: Dictionary,
+	signature: String,
+	limit: int
+) -> void:
+	if signature.is_empty() or limit <= 0:
+		return
+	if signatures.has(signature):
+		signatures.erase(signature)
+	while signatures.size() >= limit:
+		signatures.erase(signatures.keys()[0])
+	signatures[signature] = true
+
+
+static func _begin_supply_rack_rotation(rotation_state: Dictionary, wait_facts: Dictionary) -> bool:
 	if rotation_state.is_empty() or not bool(wait_facts.get("valid", false)) \
 			or not str(rotation_state.get("phase", "")).is_empty():
 		return false
+	_remember_supply_advancement_candidate(rotation_state, wait_facts)
 	if int(rotation_state.get("rotation_count", 0)) >= SUPPLY_RACK_ROTATION_LIMIT:
 		rotation_state["phase"] = "exhausted"
 		return false
+	_remember_supply_rack_evaluation(rotation_state, str(wait_facts.get("rack_signature", "")))
 	var selected_district := int(wait_facts.get("district_index", -1))
 	var district_count := int(wait_facts.get("district_count", 0))
 	var visited: Dictionary = rotation_state.get("visited_districts", {}) \
@@ -2055,6 +3024,333 @@ func _begin_supply_rack_rotation(rotation_state: Dictionary, wait_facts: Diction
 	rotation_state["source_rack_signature"] = str(wait_facts.get("rack_signature", ""))
 	rotation_state["source_selection_revision"] = int(wait_facts.get("selection_revision", -1))
 	rotation_state["rotation_count"] = int(rotation_state.get("rotation_count", 0)) + 1
+	rotation_state["advancement_reposition"] = false
+	return true
+
+
+static func _remember_supply_advancement_candidate(
+	rotation_state: Dictionary,
+	wait_facts: Dictionary
+) -> void:
+	if rotation_state.is_empty() or not bool(wait_facts.get("valid", false)):
+		return
+	var district_index := int(wait_facts.get("district_index", -1))
+	if district_index < 0:
+		return
+	rotation_state["current_district"] = district_index
+	var candidates: Dictionary = rotation_state.get("advancement_candidate_districts", {}) \
+		if rotation_state.get("advancement_candidate_districts", {}) is Dictionary else {}
+	if bool(wait_facts.get("has_legal_advancement_candidate", false)) \
+			and not str(wait_facts.get("rack_source_revision", "")).is_empty():
+		candidates[district_index] = {
+			"rack_signature": str(wait_facts.get("rack_signature", "")),
+			"rack_source_revision": str(wait_facts.get("rack_source_revision", "")),
+			"active_plan_signature": str(rotation_state.get("active_plan_signature", "")),
+			"card_id": str(wait_facts.get("advancement_card_id", "")),
+			"district_index": district_index,
+		}
+	else:
+		candidates.erase(district_index)
+	rotation_state["advancement_candidate_districts"] = candidates
+	var visible_keys: Dictionary = rotation_state.get("visible_facility_plan_keys", {}) \
+		if rotation_state.get("visible_facility_plan_keys", {}) is Dictionary else {}
+	for key_variant in wait_facts.get("visible_facility_plan_keys", []) as Array:
+		var key := str(key_variant).strip_edges()
+		if not key.is_empty():
+			visible_keys[key] = true
+	rotation_state["visible_facility_plan_keys"] = visible_keys
+	rotation_state["matching_facility_seen"] = bool(
+		rotation_state.get("matching_facility_seen", false)
+	) or bool(wait_facts.get("has_visible_matching_facility", false))
+	rotation_state["matching_target_seen"] = bool(
+		rotation_state.get("matching_target_seen", false)
+	) or bool(wait_facts.get("has_visible_matching_target", false))
+	_remember_supply_facility_rack_hints(rotation_state, wait_facts)
+
+
+static func _remember_supply_facility_rack_hints(
+	rotation_state: Dictionary,
+	wait_facts: Dictionary
+) -> void:
+	var district_index := int(wait_facts.get("district_index", -1))
+	var rack_source_revision := str(
+		wait_facts.get("rack_source_revision", "")
+	).strip_edges()
+	if rotation_state.is_empty() or district_index < 0 or rack_source_revision.is_empty():
+		return
+	var hints: Dictionary = rotation_state.get("facility_rack_hints", {}) \
+		if rotation_state.get("facility_rack_hints", {}) is Dictionary else {}
+	hints = hints.duplicate(true)
+	_remove_facility_rack_hints_for_district(hints, district_index)
+	for hint_variant in wait_facts.get("facility_rack_hints", []) as Array:
+		if not (hint_variant is Dictionary):
+			continue
+		var hint := (hint_variant as Dictionary).duplicate(true)
+		if int(hint.get("district_index", -1)) != district_index \
+				or str(hint.get("rack_source_revision", "")) != rack_source_revision:
+			continue
+		var hint_key := _facility_rack_hint_key(hint)
+		if hint_key.is_empty():
+			continue
+		_remember_bounded_dictionary(
+			hints,
+			hint_key,
+			hint,
+			SUPPLY_FACILITY_RACK_HINT_LIMIT
+		)
+	rotation_state["facility_rack_hints"] = hints
+
+
+static func _remove_facility_rack_hints_for_district(
+	hints: Dictionary,
+	district_index: int
+) -> void:
+	for key_variant in hints.keys():
+		var hint_variant: Variant = hints.get(key_variant, {})
+		if hint_variant is Dictionary \
+				and int((hint_variant as Dictionary).get("district_index", -1)) == district_index:
+			hints.erase(key_variant)
+
+
+static func _remember_bounded_dictionary(
+	values: Dictionary,
+	key: String,
+	value: Dictionary,
+	limit: int
+) -> void:
+	if key.is_empty() or value.is_empty() or limit <= 0:
+		return
+	if values.has(key):
+		values.erase(key)
+	while values.size() >= limit:
+		values.erase(values.keys()[0])
+	values[key] = value.duplicate(true)
+
+
+func _facility_rack_hint_ui_action(
+	runtime_screen: Node,
+	rotation_state: Dictionary,
+	continuation_plan: Dictionary
+) -> Dictionary:
+	if runtime_screen == null or rotation_state.is_empty():
+		return {}
+	var hint: Dictionary = rotation_state.get("pending_facility_rack_hint", {}) \
+		if rotation_state.get("pending_facility_rack_hint", {}) is Dictionary else {}
+	var phase := str(rotation_state.get("phase", ""))
+	if hint.is_empty() or phase not in [
+		"facility_hint_pending",
+		"facility_hint_recheck",
+		"close",
+		"select",
+		"open",
+	]:
+		return {}
+	if not _facility_rack_hint_matches_plan(hint, continuation_plan):
+		_discard_pending_facility_rack_hint(rotation_state, hint)
+		_promote_next_facility_rack_hint(rotation_state, continuation_plan)
+		return {}
+	var screen := runtime_screen as SpaceSyndicateGameScreen
+	if screen == null:
+		_discard_pending_facility_rack_hint(rotation_state, hint)
+		_promote_next_facility_rack_hint(rotation_state, continuation_plan)
+		return {}
+	var ui: Dictionary = screen.current_ui_data if screen.current_ui_data is Dictionary else {}
+	var selection: Dictionary = ui.get("selection_context", {}) \
+		if ui.get("selection_context", {}) is Dictionary else {}
+	var selected_district := int(selection.get("selected_district", -1))
+	var target_district := int(hint.get("district_index", -1))
+	var target_region_id := _public_region_id_for_district(target_district)
+	if target_district < 0 or target_region_id.is_empty() \
+			or target_region_id != str(hint.get("region_id", "")):
+		_discard_pending_facility_rack_hint(rotation_state, hint)
+		_promote_next_facility_rack_hint(rotation_state, continuation_plan)
+		return {}
+	var drawer := _district_supply_drawer(runtime_screen)
+	if phase == "facility_hint_pending":
+		if selected_district == target_district and drawer != null and drawer.visible:
+			rotation_state["phase"] = "facility_hint_recheck"
+		else:
+			rotation_state["target_district"] = target_district
+			rotation_state["source_selection_revision"] = int(
+				selection.get("revision", -1)
+			)
+			rotation_state["facility_hint_reposition"] = true
+			rotation_state["phase"] = "close" if drawer != null and drawer.visible \
+				else ("open" if selected_district == target_district else "select")
+			var navigation := _supply_rotation_action(runtime_screen, rotation_state)
+			if not navigation.is_empty():
+				return navigation
+		phase = str(rotation_state.get("phase", ""))
+	elif phase in ["close", "select", "open"] \
+			and bool(rotation_state.get("facility_hint_reposition", false)):
+		var navigation := _supply_rotation_action(runtime_screen, rotation_state)
+		if not navigation.is_empty():
+			return navigation
+		phase = str(rotation_state.get("phase", ""))
+	if phase != "facility_hint_recheck":
+		return {}
+	var snapshot := _annotate_new_facility_target_availability(
+		_district_supply_view_snapshot(),
+		continuation_plan
+	)
+	var fresh := facility_rack_hint_matches_snapshot(
+		hint,
+		snapshot,
+		continuation_plan
+	)
+	_discard_pending_facility_rack_hint(rotation_state, hint, not fresh)
+	if not fresh:
+		_promote_next_facility_rack_hint(rotation_state, continuation_plan)
+	return _district_supply_ui_action(runtime_screen, continuation_plan) if fresh else {}
+
+
+static func _discard_pending_facility_rack_hint(
+	rotation_state: Dictionary,
+	hint: Dictionary,
+	remove_district_hints := true
+) -> void:
+	if remove_district_hints:
+		var hints: Dictionary = rotation_state.get("facility_rack_hints", {}) \
+			if rotation_state.get("facility_rack_hints", {}) is Dictionary else {}
+		hints = hints.duplicate(true)
+		_remove_facility_rack_hints_for_district(
+			hints,
+			int(hint.get("district_index", -1))
+		)
+		rotation_state["facility_rack_hints"] = hints
+	rotation_state["pending_facility_rack_hint"] = {}
+	rotation_state["facility_hint_reposition"] = false
+	rotation_state["phase"] = ""
+	rotation_state["target_district"] = -1
+
+
+static func _promote_next_facility_rack_hint(
+	rotation_state: Dictionary,
+	continuation_plan: Dictionary
+) -> void:
+	var hints: Dictionary = rotation_state.get("facility_rack_hints", {}) \
+		if rotation_state.get("facility_rack_hints", {}) is Dictionary else {}
+	var next_hint := first_public_facility_rack_hint_for_plan(hints, continuation_plan)
+	if next_hint.is_empty():
+		return
+	next_hint["active_plan_signature"] = continuation_plan_signature(
+		continuation_plan
+	)
+	rotation_state["pending_facility_rack_hint"] = next_hint
+	rotation_state["phase"] = "facility_hint_pending"
+
+
+static func advance_rack_advancement_after_retryable_failure(
+	rotation_state: Dictionary
+) -> void:
+	if rotation_state.is_empty():
+		return
+	var candidates: Dictionary = rotation_state.get("advancement_candidate_districts", {}) \
+		if rotation_state.get("advancement_candidate_districts", {}) is Dictionary else {}
+	rotation_state["target_district"] = -1
+	rotation_state["advancement_reposition"] = false
+	rotation_state["pending_advancement_candidate"] = {}
+	if candidates.is_empty():
+		rotation_state["phase"] = ""
+		rotation_state["advancement_epoch_active"] = false
+		return
+	rotation_state["phase"] = "advancement_recheck"
+	rotation_state["advancement_epoch_active"] = true
+
+
+func _begin_supply_rack_discovery(runtime_screen: Node, rotation_state: Dictionary) -> bool:
+	var screen := runtime_screen as SpaceSyndicateGameScreen
+	var drawer := _district_supply_drawer(runtime_screen)
+	if screen == null or drawer == null or drawer.visible:
+		return false
+	var ui: Dictionary = screen.current_ui_data if screen.current_ui_data is Dictionary else {}
+	var selection: Dictionary = ui.get("selection_context", {}) \
+		if ui.get("selection_context", {}) is Dictionary else {}
+	return begin_supply_rack_discovery(
+		rotation_state,
+		int(selection.get("selected_district", -1)),
+		int(selection.get("district_count", 0)),
+		int(selection.get("revision", -1))
+	)
+
+
+func _begin_supply_advancement_reposition(
+	runtime_screen: Node,
+	rotation_state: Dictionary
+) -> bool:
+	var screen := runtime_screen as SpaceSyndicateGameScreen
+	if screen == null:
+		return false
+	var ui: Dictionary = screen.current_ui_data if screen.current_ui_data is Dictionary else {}
+	var selection: Dictionary = ui.get("selection_context", {}) \
+		if ui.get("selection_context", {}) is Dictionary else {}
+	return begin_supply_advancement_reposition(
+		rotation_state,
+		int(selection.get("selected_district", -1)),
+		int(selection.get("district_count", 0)),
+		int(selection.get("revision", -1))
+	)
+
+
+static func begin_supply_advancement_reposition(
+	rotation_state: Dictionary,
+	selected_district: int,
+	district_count: int,
+	selection_revision: int
+) -> bool:
+	var phase := str(rotation_state.get("phase", ""))
+	if rotation_state.is_empty() or phase not in ["exhausted", "advancement_recheck"] \
+			or phase == "advancement_recheck" \
+				and not bool(rotation_state.get("advancement_epoch_active", false)) \
+			or selected_district < 0 or selected_district >= district_count \
+			or selection_revision < 0:
+		return false
+	var candidates: Dictionary = rotation_state.get("advancement_candidate_districts", {}) \
+		if rotation_state.get("advancement_candidate_districts", {}) is Dictionary else {}
+	candidates = candidates.duplicate(true)
+	candidates.erase(selected_district)
+	var ordered: Array[int] = []
+	for district_variant in candidates.keys():
+		var district_index := int(district_variant)
+		if district_index >= 0 and district_index < district_count:
+			ordered.append(district_index)
+	ordered.sort()
+	if ordered.is_empty():
+		rotation_state["advancement_candidate_districts"] = candidates
+		return false
+	var target_district := ordered[0]
+	var selected_candidate: Dictionary = candidates.get(target_district, {}) \
+		if candidates.get(target_district, {}) is Dictionary else {}
+	candidates.erase(target_district)
+	rotation_state["advancement_candidate_districts"] = candidates
+	rotation_state["pending_advancement_candidate"] = selected_candidate.duplicate(true)
+	rotation_state["phase"] = "close"
+	rotation_state["target_district"] = target_district
+	rotation_state["source_selection_revision"] = selection_revision
+	rotation_state["advancement_reposition"] = true
+	rotation_state["advancement_epoch_active"] = true
+	return true
+
+
+static func begin_supply_rack_discovery(
+	rotation_state: Dictionary,
+	selected_district: int,
+	district_count: int,
+	selection_revision: int
+) -> bool:
+	if rotation_state.is_empty() or not str(rotation_state.get("phase", "")).is_empty() \
+			or selected_district < 0 or selected_district >= district_count \
+			or district_count <= 0 or selection_revision < 0:
+		return false
+	if int(rotation_state.get("rotation_count", 0)) >= SUPPLY_RACK_ROTATION_LIMIT:
+		rotation_state["phase"] = "exhausted"
+		return false
+	rotation_state["phase"] = "open"
+	rotation_state["target_district"] = selected_district
+	rotation_state["source_rack_signature"] = ""
+	rotation_state["source_selection_revision"] = selection_revision
+	rotation_state["rotation_count"] = int(rotation_state.get("rotation_count", 0)) + 1
+	rotation_state["advancement_reposition"] = false
 	return true
 
 
@@ -2082,37 +3378,48 @@ func _supply_rotation_action(runtime_screen: Node, rotation_state: Dictionary) -
 	var target_district := int(rotation_state.get("target_district", -1))
 	if phase == "close":
 		if drawer != null and drawer.visible:
-			return {
+			return _request_with_surface_offer({
 				"id": "district_supply_rotation_close",
 				"phase": "play.supply.rotation_close.%d" % int(rotation_state.get("source_selection_revision", -1)),
 				"disabled": false,
 				"origin": "district_supply_rotation",
-			}
+			}, GameActionIntentV1.ACTION_DISTRICT_SUPPLY_CLOSE)
 		rotation_state["phase"] = "select"
 		phase = "select"
 	if phase == "select":
 		if selected_district != target_district:
-			return {
+			var target_region_id := _public_region_id_for_district(target_district)
+			return _request_with_surface_offer({
 				"id": "map_select_%d" % target_district,
 				"phase": "play.supply.rotation_select.%d.%d" % [selection_revision, target_district],
 				"disabled": false,
 				"origin": "planet_map",
 				"district_index": target_district,
-			}
+			}, GameActionIntentV1.ACTION_DISTRICT_SELECT, {"region_id": target_region_id})
 		rotation_state["phase"] = "open"
 		phase = "open"
 	if phase == "open":
 		if drawer != null and drawer.visible:
-			rotation_state["phase"] = ""
-			rotation_state["target_district"] = -1
+			if bool(rotation_state.get("facility_hint_reposition", false)):
+				rotation_state["phase"] = "facility_hint_recheck"
+				rotation_state["current_district"] = selected_district
+				rotation_state["facility_hint_reposition"] = false
+			elif bool(rotation_state.get("advancement_reposition", false)):
+				rotation_state["phase"] = "advancement_recheck"
+				rotation_state["current_district"] = selected_district
+				rotation_state["advancement_reposition"] = false
+			else:
+				rotation_state["phase"] = ""
+				rotation_state["target_district"] = -1
 			return {}
-		return {
+		var open_region_id := _public_region_id_for_district(target_district)
+		return _request_with_surface_offer({
 			"id": "district_supply_rotation_open",
 			"phase": "play.supply.rotation_open.%d.%d" % [selection_revision, target_district],
 			"disabled": false,
 			"origin": "district_supply_rotation",
 			"district_index": target_district,
-		}
+		}, GameActionIntentV1.ACTION_DISTRICT_SUPPLY_OPEN, {"region_id": open_region_id})
 	return {}
 
 
@@ -2172,34 +3479,6 @@ static func advance_supply_rotation_after_unavailable_open(
 	return true
 
 
-static func _supply_card_kind(cards: Array, card_name: String) -> String:
-	if card_name.is_empty():
-		return ""
-	for card_variant in cards:
-		if card_variant is Dictionary and str((card_variant as Dictionary).get("card_name", "")) == card_name:
-			return str((card_variant as Dictionary).get("kind", ""))
-	return ""
-
-
-static func _supply_facility_kind(cards: Array, card_name: String) -> String:
-	if card_name.is_empty():
-		return ""
-	for card_variant in cards:
-		if card_variant is Dictionary and str((card_variant as Dictionary).get("card_name", "")) == card_name:
-			return str((card_variant as Dictionary).get("facility_kind", ""))
-	return ""
-
-
-static func _supply_new_target_available(cards: Array, card_name: String) -> bool:
-	if card_name.is_empty():
-		return false
-	for card_variant in cards:
-		if card_variant is Dictionary \
-				and str((card_variant as Dictionary).get("card_name", "")) == card_name:
-			return bool((card_variant as Dictionary).get("new_target_available", false))
-	return false
-
-
 static func _is_supply_facility_kind(kind: String) -> bool:
 	# The public region-supply projection uses the v0.6 catalog category
 	# (`facility`); hand presentation uses `facility_v06`. Accept both typed
@@ -2217,6 +3496,13 @@ static func recoverable_supply_receipt_reason(reason_code: String) -> bool:
 		"source_region_dark",
 		"card_not_in_supply",
 		"forced_decision_blocks_district_supply",
+	]
+
+
+static func recoverable_selection_receipt_reason(reason_code: String) -> bool:
+	return reason_code in [
+		"forced_decision_blocks_selection",
+		"selection_revision_stale",
 	]
 
 
@@ -2240,77 +3526,155 @@ static func selection_receipt_confirms_progress(
 		and receipt_sequence > int(pending_action.get("selection_receipt_sequence", -1)) \
 		and bool(receipt.get("accepted", false)) \
 		and bool(receipt.get("applied", false)) \
+		and bool(receipt.get("changed", false)) \
+		and int(receipt.get("selection_revision_after", -1)) \
+			> int(receipt.get("selection_revision_before", -1)) \
 		and str(receipt.get("selection_kind", "")) == str(TableSelectionIntent.KIND_SELECT_DISTRICT) \
 		and int(receipt.get("district_index", -1)) == int(pending_action.get("district_index", -2))
 
 
-static func _next_supply_facility_card(
-	cards: Array,
-	after_card_name: String = "",
-	required_facility_kind: String = ""
-) -> Dictionary:
-	var matching: Array[Dictionary] = []
-	for card_variant in cards:
-		if card_variant is Dictionary:
-			var card := card_variant as Dictionary
-			if _is_supply_facility_kind(str(card.get("kind", ""))) \
-					and (required_facility_kind.is_empty() \
-						or str(card.get("facility_kind", "")) == required_facility_kind) \
-					and (required_facility_kind.is_empty() \
-						or bool(card.get("new_target_available", false))) \
-					and bool(card.get("actionable", false)):
-				matching.append(card)
-	if matching.is_empty():
-		return {}
-	if after_card_name.is_empty():
-		return matching[0].duplicate(true)
-	for index in range(matching.size()):
-		if str(matching[index].get("card_name", "")) == after_card_name:
-			return matching[wrapi(index + 1, 0, matching.size())].duplicate(true)
-	return matching[0].duplicate(true)
+static func game_action_receipt_confirms_progress(
+	pending_action: Dictionary,
+	receipt_sequence: int,
+	receipt: Dictionary
+) -> bool:
+	if not bool(pending_action.get("game_action_required", false)) \
+			or receipt_sequence <= int(pending_action.get("game_action_receipt_sequence", -1)) \
+			or not bool(GameActionReceiptV1.validation_report(receipt).get("valid", false)) \
+			or not bool(receipt.get("accepted", false)) \
+			or bool(receipt.get("idempotent_replay", false)) \
+			or bool(receipt.get("request_id_collision", false)) \
+			or int(receipt.get("authoritative_revision", 0)) \
+				<= int(pending_action.get("game_action_revision_before", 0)):
+		return false
+	var expected_request_id := str(pending_action.get("game_action_request_id", ""))
+	var expected_request_fingerprint := str(
+		pending_action.get("game_action_request_fingerprint", "")
+	)
+	var expected_action_id := str(pending_action.get("game_action_semantic_action_id", ""))
+	if expected_request_id.is_empty() \
+			or expected_request_fingerprint.is_empty() \
+			or expected_action_id.is_empty() \
+			or str(receipt.get("request_id", "")) != expected_request_id \
+			or str(receipt.get("request_fingerprint", "")) != expected_request_fingerprint \
+			or str(receipt.get("semantic_action_id", "")) != expected_action_id:
+		return false
+	var effect_refs: Array = receipt.get("committed_effect_refs", []) \
+		if receipt.get("committed_effect_refs", []) is Array else []
+	return not effect_refs.is_empty()
 
 
-static func _next_visible_supply_facility_card(
-	cards: Array,
-	after_card_name: String = "",
-	required_facility_kind: String = ""
-) -> Dictionary:
-	var matching: Array[Dictionary] = []
-	for card_variant in cards:
-		if card_variant is Dictionary:
-			var card := card_variant as Dictionary
-			if _is_supply_facility_kind(str(card.get("kind", ""))) \
-					and (required_facility_kind.is_empty() \
-						or str(card.get("facility_kind", "")) == required_facility_kind) \
-					and (required_facility_kind.is_empty() \
-						or bool(card.get("new_target_available", false))):
-				matching.append(card)
-	if matching.is_empty():
-		return {}
-	if after_card_name.is_empty():
-		return matching[0].duplicate(true)
-	for index in range(matching.size()):
-		if str(matching[index].get("card_name", "")) == after_card_name:
-			return matching[wrapi(index + 1, 0, matching.size())].duplicate(true)
-	return matching[0].duplicate(true)
+static func action_records_economic_success(
+	pending_action: Dictionary,
+	game_action_progressed: bool,
+	receipt: Dictionary = {}
+) -> bool:
+	if not game_action_progressed:
+		return false
+	if bool(pending_action.get("rack_advancement", false)):
+		return false
+	var action_id := str(pending_action.get("id", ""))
+	var origin := str(pending_action.get("origin", ""))
+	var effect_refs: Array = receipt.get("committed_effect_refs", []) \
+		if receipt.get("committed_effect_refs", []) is Array else []
+	if origin == "game_action":
+		return effect_refs.any(func(effect_ref: Variant) -> bool:
+			return str(effect_ref).begins_with("card.play.")
+		)
+	if origin == "district_supply" and action_id == "district_supply_purchase_card":
+		return effect_refs.any(func(effect_ref: Variant) -> bool:
+			var ref := str(effect_ref)
+			return ref.begins_with("district.supply.purchase.") \
+				and not ref.contains(".pending-discard.")
+		)
+	return false
 
 
-static func _next_supply_card_of_kind(cards: Array, kind: String, after_card_name: String = "") -> Dictionary:
-	var matching: Array[Dictionary] = []
-	for card_variant in cards:
-		if card_variant is Dictionary and str((card_variant as Dictionary).get("kind", "")) == kind:
-			matching.append((card_variant as Dictionary).duplicate(true))
-	if matching.is_empty():
-		return {}
-	for card in matching:
-		if bool(card.get("actionable", false)):
-			return card
-	if after_card_name.is_empty():
-		return matching[0]
-	for index in range(matching.size()):
-		if str(matching[index].get("card_name", "")) == after_card_name:
-			return matching[wrapi(index + 1, 0, matching.size())]
-	return matching[0]
+static func rack_advancement_purchase_committed(
+	pending_action: Dictionary,
+	game_action_progressed: bool,
+	receipt: Dictionary
+) -> bool:
+	if not bool(pending_action.get("rack_advancement", false)) \
+			or str(pending_action.get("id", "")) != "district_supply_purchase_card" \
+			or not game_action_progressed:
+		return false
+	var card_id := str(pending_action.get("rack_advancement_card_id", "")).strip_edges()
+	if card_id.is_empty():
+		return false
+	var committed_effect_refs: Array = receipt.get("committed_effect_refs", []) \
+		if receipt.get("committed_effect_refs", []) is Array else []
+	return committed_effect_refs.has("district.supply.purchase.%s" % card_id)
+
+
+static func rack_advancement_discard_receipt_committed(
+	binding: Dictionary,
+	receipt: Dictionary
+) -> bool:
+	var binding_actor := int(binding.get("actor_player_index", -1))
+	var binding_card_id := str(binding.get("card_id", "")).strip_edges()
+	var binding_quote_id := str(binding.get("quote_id", "")).strip_edges()
+	if binding.is_empty() or binding_actor < 0 \
+			or binding_card_id.is_empty() or binding_quote_id.is_empty() \
+			or not bool(receipt.get("accepted", false)) \
+			or not bool(receipt.get("applied", false)) \
+			or bool(receipt.get("requires_discard", false)) \
+			or str(receipt.get("action_kind", "")) \
+				!= str(DistrictSupplyActionIntent.KIND_PURCHASE):
+		return false
+	return int(receipt.get("actor_player_index", -1)) == binding_actor \
+		and str(receipt.get("card_id", "")) == binding_card_id \
+		and str(receipt.get("quote_id", "")) == binding_quote_id
+
+
+func _record_rack_advancement_purchase() -> void:
+	if _rack_advancement_purchase_count >= SUPPLY_RACK_ADVANCEMENT_PURCHASE_LIMIT:
+		return
+	_rack_advancement_purchase_count += 1
+	_action_stats["supply_rack_advancement_purchases"] = _rack_advancement_purchase_count
+	_rack_advancement_reset_requested = true
+	_record_reason("supply_rack_advancement_committed")
+
+
+static func economy_growth_action(action: Dictionary) -> bool:
+	var origin := str(action.get("origin", ""))
+	var action_id := str(action.get("id", ""))
+	return origin in ["district_supply", "district_supply_rotation", "planet_map"] \
+		or (origin == "board_primary" and action_id.begins_with("strategy")) \
+		or (origin == "game_action" \
+			and str(action.get("phase", "")).begins_with("play.hand.facility_v06"))
+
+
+static func economy_growth_submission_allowed(
+	victory: Dictionary,
+	standings_progress: Dictionary
+) -> bool:
+	if not bool(standings_progress.get("valid", false)):
+		return false
+	var victory_state := str(victory.get("state", ""))
+	if victory_state not in VICTORY_STATE_IDS:
+		return false
+	return not bool(standings_progress.get("eligible", false)) \
+		and victory_state not in ["qualification", "audit", "resolved"]
+
+
+func _economy_growth_submission_allowed_now(
+	coordinator: Node,
+	standings_query_port: StandingsPublicQueryPort
+) -> bool:
+	if coordinator == null or standings_query_port == null \
+			or not coordinator.has_method("victory_control_public_snapshot") \
+			or not standings_query_port.has_method("victory_progress_for_authorized_viewer"):
+		return false
+	var victory_variant: Variant = coordinator.call("victory_control_public_snapshot", -1)
+	var progress_variant: Variant = standings_query_port.call("victory_progress_for_authorized_viewer")
+	_standings_progress_query_count += 1
+	return economy_growth_submission_allowed(
+		(victory_variant as Dictionary).duplicate(true) \
+			if victory_variant is Dictionary else {},
+		(progress_variant as Dictionary).duplicate(true) \
+			if progress_variant is Dictionary else {}
+	)
 
 
 func _first_enabled_action_by_kind(value: Variant, kind: String) -> Dictionary:
@@ -2324,73 +3688,45 @@ func _first_enabled_action_by_kind(value: Variant, kind: String) -> Dictionary:
 	return {}
 
 
-func _first_enabled_card_action_by_kind(
-	cards: Array,
-	kind: String,
-	required_facility_kind: String = ""
+static func facility_card_retry_signature(
+	card: Dictionary,
+	continuation_plan: Dictionary,
+	target: Dictionary,
+	failure_reason_id: String
+) -> String:
+	return EconomyContinuationPlannerScript.retry_signature(
+		card,
+		continuation_plan,
+		target,
+		failure_reason_id
+	)
+
+
+func _surface_game_action_offer(action_id: String, target_ids: Dictionary = {}) -> Dictionary:
+	if _game_action_application_flow == null:
+		return {}
+	return _game_action_application_flow.human_surface_action_offer(
+		action_id,
+		target_ids,
+		"full",
+		["action.economy.continuation"]
+	)
+
+
+func _request_with_surface_offer(
+	request: Dictionary,
+	action_id: String,
+	target_ids: Dictionary = {}
 ) -> Dictionary:
-	for card_variant in cards:
-		if not (card_variant is Dictionary):
-			continue
-		var card: Dictionary = card_variant
-		if str(card.get("kind", "")) != kind:
-			continue
-		if not required_facility_kind.is_empty() \
-				and str(card.get("facility_kind", "")) != required_facility_kind:
-			continue
-		var action := _first_enabled_action(card.get("actions", []))
-		if not action.is_empty():
-			var request := {
-				"id": str(action.get("id", "")),
-				"phase": "play.hand.%s.%s" % [kind, str(card.get("action_state", card.get("play_state", "ready")))],
-				"disabled": false,
-			}
-			var offer: Dictionary = action.get("game_action_offer", {}) \
-				if action.get("game_action_offer", {}) is Dictionary else {}
-			if not offer.is_empty():
-				request["game_action_offer"] = offer.duplicate(true)
-			return request
-	return {}
-
-
-func _first_card_by_kind(cards: Array, kind: String) -> Dictionary:
-	for card_variant in cards:
-		if card_variant is Dictionary and str((card_variant as Dictionary).get("kind", "")) == kind:
-			return (card_variant as Dictionary).duplicate(true)
-	return {}
-
-
-static func facility_card_retry_signature(card: Dictionary) -> String:
-	if card.is_empty():
-		return ""
-	return "%s|%d|%s|%s|%s" % [
-		str(card.get("card_id", card.get("id", ""))),
-		int(card.get("slot", -1)),
-		str(card.get("name", "")),
-		str(card.get("facility_kind", "")),
-		str(card.get("industry_id", "")),
-	]
-
-
-static func first_unexhausted_card_by_kind(
-	cards: Array,
-	kind: String,
-	exhausted: Dictionary,
-	required_facility_kind: String = ""
-) -> Dictionary:
-	for card_variant in cards:
-		if not (card_variant is Dictionary):
-			continue
-		var card := card_variant as Dictionary
-		if str(card.get("kind", "")) != kind:
-			continue
-		if not required_facility_kind.is_empty() \
-				and str(card.get("facility_kind", "")) != required_facility_kind:
-			continue
-		var signature := facility_card_retry_signature(card)
-		if not signature.is_empty() and not bool(exhausted.get(signature, false)):
-			return card.duplicate(true)
-	return {}
+	if request.is_empty():
+		return {}
+	var offer := _surface_game_action_offer(action_id, target_ids)
+	if offer.is_empty():
+		return {}
+	var result := request.duplicate(true)
+	result["game_action_offer"] = offer
+	result["game_action_required"] = true
+	return result
 
 
 func _board_action_request(action: Dictionary, player_board: Dictionary, signature: String = "") -> Dictionary:
@@ -2406,6 +3742,7 @@ func _board_action_request(action: Dictionary, player_board: Dictionary, signatu
 		if action.get("game_action_offer", {}) is Dictionary else {}
 	if not offer.is_empty():
 		request["game_action_offer"] = offer.duplicate(true)
+		request["game_action_required"] = true
 	return request
 
 
@@ -2417,54 +3754,23 @@ func _submit_scripted_ui_action(runtime_screen: Node, action: Dictionary) -> boo
 			return false
 		temporary_decision_overlay.temporary_decision_action_requested.emit(action_id)
 		return true
-	if str(action.get("origin", "")) == "district_supply_rotation":
-		var rotation_screen := runtime_screen as SpaceSyndicateGameScreen
-		if rotation_screen == null:
-			return false
-		if action_id == "district_supply_rotation_close":
-			return rotation_screen.request_district_supply_close(&"qa_driver")
-		if action_id == "district_supply_rotation_open":
-			return rotation_screen.request_district_supply_open(int(action.get("district_index", -1)), &"qa_driver")
-		return false
-	if action_id in TYPED_RACK_ACTION_IDS:
-		var screen := runtime_screen as SpaceSyndicateGameScreen
-		if screen == null:
-			return false
-		var ui: Dictionary = screen.current_ui_data if screen.current_ui_data is Dictionary else {}
-		var selection_context: Dictionary = ui.get("selection_context", {}) if ui.get("selection_context", {}) is Dictionary else {}
-		var selected_district := int(selection_context.get("selected_district", -1))
-		return selected_district >= 0 and screen.request_district_supply_open(selected_district, &"qa_driver")
 	if str(action.get("origin", "")) == "menu_overlay":
 		var menu_overlay := _menu_overlay(runtime_screen)
 		if menu_overlay != null and menu_overlay.has_signal("continue_requested"):
 			menu_overlay.emit_signal("continue_requested")
 			return true
 		return false
-	if str(action.get("origin", "")) == "district_supply":
-		var supply_screen := runtime_screen as SpaceSyndicateGameScreen
-		if action_id == "district_supply_purchase_card":
-			return supply_screen != null and supply_screen.request_selected_district_supply_purchase(&"qa_driver")
-		var drawer := _district_supply_drawer(runtime_screen)
-		if drawer != null and drawer.has_signal("supply_action_requested"):
-			drawer.emit_signal("supply_action_requested", str(action.get("id", "")), (action.get("payload", {}) as Dictionary).duplicate(true))
-			return true
-		return false
-	if str(action.get("origin", "")) == "planet_map":
-		var selection_screen := runtime_screen as SpaceSyndicateGameScreen
-		return selection_screen != null \
-			and selection_screen.request_district_selection(int(action.get("district_index", -1)), &"qa_driver")
 	var action_screen := runtime_screen as SpaceSyndicateGameScreen
 	var offer: Dictionary = action.get("game_action_offer", {}) \
 		if action.get("game_action_offer", {}) is Dictionary else {}
 	if action_screen == null or action_id.is_empty() or offer.is_empty():
 		return false
-	return bool(action_screen.call("_submit_game_action_offer", offer, "human_click", {}, {}))
+	return action_screen.submit_game_action_offer(offer, "human_click", {}, {})
 
 
 func _scripted_ui_action_rejection_reason(runtime_screen: Node, action: Dictionary) -> String:
 	var origin := str(action.get("origin", ""))
-	if origin in ["temporary_decision", "district_supply_rotation", "menu_overlay", "district_supply", "planet_map"] \
-			or str(action.get("id", "")) in TYPED_RACK_ACTION_IDS:
+	if origin in ["temporary_decision", "menu_overlay"]:
 		return "typed_adapter_rejected"
 	var screen := runtime_screen as SpaceSyndicateGameScreen
 	if screen == null:
@@ -2478,8 +3784,7 @@ func _scripted_ui_action_rejection_reason(runtime_screen: Node, action: Dictiona
 		return "game_action_offer_%s" % str(validation.get("reason_code", "invalid"))
 	if str(offer.get("legality_state", "")) != "available":
 		return "game_action_offer_unavailable"
-	var authorization_variant: Variant = screen.call("_game_action_actor_authorization", "human_click")
-	var authorization: Dictionary = authorization_variant if authorization_variant is Dictionary else {}
+	var authorization := screen.game_action_actor_authorization("human_click")
 	if authorization.is_empty():
 		return "actor_authorization_missing"
 	var probe_raw := {
@@ -2548,6 +3853,13 @@ func _runtime_action_feedback(runtime_screen: Node) -> Dictionary:
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
+func _on_game_action_receipt(receipt: Dictionary) -> void:
+	if not bool(GameActionReceiptV1.validation_report(receipt).get("valid", false)):
+		return
+	_game_action_receipt_sequence += 1
+	_last_game_action_receipt = GameActionReceiptV1.detached_copy(receipt)
+
+
 func _on_district_supply_action_receipt(receipt: DistrictSupplyActionReceipt) -> void:
 	if receipt == null:
 		return
@@ -2558,7 +3870,22 @@ func _on_district_supply_action_receipt(receipt: DistrictSupplyActionReceipt) ->
 		"reason_code": receipt.reason_code,
 		"action_kind": str(receipt.action_kind),
 		"request_id": receipt.request_id,
+		"actor_player_index": receipt.actor_player_index,
+		"district_index": receipt.district_index,
+		"card_id": receipt.card_id,
+		"quote_id": receipt.quote_id,
+		"requires_discard": receipt.requires_discard,
 	}
+	if rack_advancement_discard_receipt_committed(
+		_pending_rack_advancement_discard,
+		_last_district_supply_receipt
+	):
+		_pending_rack_advancement_discard = {}
+		_record_rack_advancement_purchase()
+	elif not _pending_rack_advancement_discard.is_empty() \
+			and str(receipt.action_kind) == str(DistrictSupplyActionIntent.KIND_DISCARD_CANCEL) \
+			and receipt.accepted and receipt.applied:
+		_pending_rack_advancement_discard = {}
 	if not receipt.accepted:
 		return
 	match receipt.action_kind:
@@ -2577,9 +3904,11 @@ func _on_table_selection_receipt(receipt: TableSelectionReceipt) -> void:
 	_last_table_selection_receipt = {
 		"accepted": receipt.accepted,
 		"applied": receipt.applied,
+		"changed": receipt.changed,
 		"reason_code": receipt.reason_code,
 		"selection_kind": str(receipt.selection_kind),
 		"district_index": receipt.district_index,
+		"selection_revision_before": receipt.selection_revision_before,
 		"selection_revision_after": receipt.selection_revision_after,
 	}
 
@@ -2619,26 +3948,44 @@ func _apply_driver_planning_transition(action: Dictionary) -> bool:
 	if str(action.get("origin", "")) != "driver_planning":
 		return false
 	match str(action.get("id", "")):
-		"facility_candidate_rejected":
-			var attempt_key := str(action.get("candidate_attempt_key", "")).strip_edges()
-			var public_index := int(action.get("public_index", -1))
-			if attempt_key.is_empty() or public_index < 0:
+		"economy_plan_exhausted":
+			var exhausted_signature := str(
+				action.get("exhausted_plan_signature", "")
+			).strip_edges()
+			var next_plan: Dictionary = action.get("next_plan", {}) \
+				if action.get("next_plan", {}) is Dictionary else {}
+			var next_signature := continuation_plan_signature(next_plan)
+			if exhausted_signature.is_empty() or next_signature.is_empty() \
+					or not bool(next_plan.get("ready", false)) \
+					or bool(next_plan.get("stop", true)):
 				return false
-			var attempted: Dictionary = _facility_candidate_attempts.get(attempt_key, {}) \
-				if _facility_candidate_attempts.get(attempt_key, {}) is Dictionary else {}
-			attempted[public_index] = true
-			_facility_candidate_attempts[attempt_key] = attempted
+			_remember_bounded_signature(
+				_exhausted_economy_plan_signatures,
+				exhausted_signature,
+				SUPPLY_EVALUATED_RACK_SIGNATURE_LIMIT
+			)
+			_economy_plan_override_signature = next_signature
+			_latest_economy_continuation_plan = next_plan.duplicate(true)
 			return true
-		"facility_target_search_exhausted":
-			var signature := str(action.get("facility_card_signature", "")).strip_edges()
-			if signature.is_empty():
+		"facility_candidate_rejected":
+			var attempt_signature := str(action.get("candidate_attempt_signature", "")).strip_edges()
+			if attempt_signature.is_empty():
 				return false
-			_exhausted_facility_card_signatures[signature] = true
+			_remember_bounded_signature(
+				_facility_candidate_attempts,
+				attempt_signature,
+				FACILITY_CANDIDATE_ATTEMPT_LIMIT
+			)
 			return true
 	return false
 
 
-func _next_typed_facility_map_action(runtime_screen: Node, card: Dictionary) -> Dictionary:
+func _next_typed_facility_map_action(
+	runtime_screen: Node,
+	card: Dictionary,
+	continuation_plan: Dictionary,
+	failure_reason_id: String
+) -> Dictionary:
 	var screen := runtime_screen as SpaceSyndicateGameScreen
 	if screen == null or _table_presentation_query_ports == null:
 		return {}
@@ -2658,49 +4005,89 @@ func _next_typed_facility_map_action(runtime_screen: Node, card: Dictionary) -> 
 	var selection: Dictionary = ui.get("selection_context", {}) \
 		if ui.get("selection_context", {}) is Dictionary else {}
 	var selected_district := int(selection.get("selected_district", -1))
-	var candidates: Array = target.get("candidates", []) if target.get("candidates", []) is Array else []
-	var card_signature := facility_card_retry_signature(card)
-	var attempt_key := "%s|targets:%d" % [card_signature, int(target.get("source_revision", 0))]
-	var attempted: Dictionary = _facility_candidate_attempts.get(attempt_key, {}) \
-		if _facility_candidate_attempts.get(attempt_key, {}) is Dictionary else {}
+	var scoped_plan := continuation_plan.duplicate(true)
+	scoped_plan["target_source_revision"] = maxi(0, int(target.get("source_revision", 0)))
+	var candidates := EconomyContinuationPlannerScript.matching_target_candidates(
+		target.get("candidates", []) as Array,
+		_public_region_commodity_facts(),
+		scoped_plan
+	)
+	if candidates.is_empty():
+		return {
+			"id": "facility_play_wait",
+			"phase": "play.hand.facility_v06.wait.no_matching_public_target.%d" \
+				% int(target.get("source_revision", 0)),
+			"disabled": true,
+			"origin": "economic_wait",
+		}
 	for candidate_variant in candidates:
-		if candidate_variant is Dictionary \
-				and int((candidate_variant as Dictionary).get("public_index", -1)) == selected_district \
-				and not bool(attempted.get(selected_district, false)):
+		if not (candidate_variant is Dictionary):
+			continue
+		var selected_candidate := candidate_variant as Dictionary
+		if int(selected_candidate.get("public_index", -1)) != selected_district:
+			continue
+		var selected_attempt_signature := facility_card_retry_signature(
+			card,
+			scoped_plan,
+			selected_candidate,
+			failure_reason_id
+		)
+		if not selected_attempt_signature.is_empty() \
+				and not bool(_facility_candidate_attempts.get(selected_attempt_signature, false)):
 			return {
 				"id": "facility_candidate_rejected",
 				"phase": "driver.facility_candidate_rejected.%d" % selected_district,
 				"disabled": false,
 				"origin": "driver_planning",
-				"candidate_attempt_key": attempt_key,
-				"public_index": selected_district,
+				"candidate_attempt_signature": selected_attempt_signature,
 			}
-	var candidate := next_public_facility_candidate(candidates, attempted)
+	var candidate := next_public_facility_candidate(
+		candidates,
+		_facility_candidate_attempts,
+		card,
+		scoped_plan,
+		failure_reason_id
+	)
 	if candidate.is_empty():
 		return {
-			"id": "facility_target_search_exhausted",
-			"phase": "driver.facility_target_search_exhausted",
-			"disabled": false,
-			"origin": "driver_planning",
-			"facility_card_signature": card_signature,
+			"id": "facility_play_wait",
+			"phase": "play.hand.facility_v06.wait.targets_exhausted.%d" \
+				% int(target.get("source_revision", 0)),
+			"disabled": true,
+			"origin": "economic_wait",
 		}
 	var target_district := int(candidate.get("public_index", -1))
-	return {
+	return _request_with_surface_offer({
 		"id": "map_select_%d" % target_district,
 		"phase": "play.map.%d_to_%d" % [selected_district, target_district],
 		"disabled": false,
 		"origin": "planet_map",
 		"district_index": target_district,
-	}
+	}, GameActionIntentV1.ACTION_DISTRICT_SELECT, {
+		"region_id": str(candidate.get("region_id", "")),
+	})
 
 
-static func next_public_facility_candidate(candidates: Array, attempted: Dictionary) -> Dictionary:
+static func next_public_facility_candidate(
+	candidates: Array,
+	attempted: Dictionary,
+	card: Dictionary,
+	continuation_plan: Dictionary,
+	failure_reason_id: String
+) -> Dictionary:
 	for candidate_variant in candidates:
 		if not (candidate_variant is Dictionary):
 			continue
 		var candidate := candidate_variant as Dictionary
 		var public_index := int(candidate.get("public_index", -1))
-		if public_index >= 0 and not bool(attempted.get(public_index, false)):
+		var attempt_signature := facility_card_retry_signature(
+			card,
+			continuation_plan,
+			candidate,
+			failure_reason_id
+		)
+		if public_index >= 0 and not attempt_signature.is_empty() \
+				and not bool(attempted.get(attempt_signature, false)):
 			return candidate.duplicate(true)
 	return {}
 
@@ -2722,13 +4109,15 @@ func _next_public_map_action(runtime_screen: Node) -> Dictionary:
 	)
 	if next_district < 0:
 		return {}
-	return {
+	return _request_with_surface_offer({
 		"id": "map_select_%d" % next_district,
 		"phase": "play.map.%d_to_%d" % [selected_district, next_district],
 		"disabled": false,
 		"origin": "planet_map",
 		"district_index": next_district,
-	}
+	}, GameActionIntentV1.ACTION_DISTRICT_SELECT, {
+		"region_id": _public_region_id_for_district(next_district),
+	})
 
 
 static func next_unexhausted_map_district(
@@ -2769,7 +4158,7 @@ func _board_action_signature(action: Dictionary, player_board: Dictionary) -> St
 	return "%s:%s" % [str(action.get("id", "")), str(hash(var_to_str(public_context)))]
 
 
-func _first_enabled_action(value: Variant) -> Dictionary:
+static func _first_enabled_action(value: Variant) -> Dictionary:
 	if not (value is Array):
 		return {}
 	for action_variant in value as Array:
@@ -2851,6 +4240,12 @@ func _summary(options: Dictionary, telemetry: Dictionary, status: String, failur
 		"milestones": _milestones.duplicate(true),
 		"performance": _performance_snapshot(),
 		"determinism": {"rng_checkpoints": _rng_checkpoints.duplicate(true)},
+		"economy_continuation": {
+			"observation": PublicEconomyContinuationObservationScript.detached_copy(
+				_latest_economy_continuation_observation
+			),
+			"plan": _latest_economy_continuation_plan.duplicate(true),
+		},
 		"wall_ms": maxi(0, Time.get_ticks_msec() - _started_msec),
 	}
 	for key_variant in FullRunQualitySnapshotScript.PUBLIC_KEYS:
@@ -2904,6 +4299,7 @@ func _performance_snapshot() -> Dictionary:
 		"blocked_realtime_invariant_failure_count": _blocked_realtime_invariant_failure_count,
 		"blocked_realtime_wall_msec_total": _blocked_realtime_wall_msec_total,
 		"blocked_realtime_wall_msec_max": _blocked_realtime_wall_msec_max,
+		"game_action_receipt_count": _game_action_receipt_sequence,
 		"monster_wager_receipt_count": _monster_wager_receipt_sequence,
 		"runtime_simulation_timing": _runtime_simulation_timing.duplicate(true),
 		"runtime_loop_manual_mode_transition_count": _runtime_loop_manual_mode_transition_count,

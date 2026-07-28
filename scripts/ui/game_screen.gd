@@ -974,7 +974,7 @@ func _on_end_turn_requested() -> void:
 		return
 	var top_data: Dictionary = current_ui_data.get("top_bar", {}) if current_ui_data.get("top_bar", {}) is Dictionary else {}
 	var offer: Dictionary = top_data.get("end_turn_offer", {}) if top_data.get("end_turn_offer", {}) is Dictionary else {}
-	if _submit_game_action_offer(offer, "human_click", {}, {}):
+	if submit_game_action_offer(offer, "human_click", {}, {}):
 		_show_player_action_feedback("end_turn", "pending", "结束回合已提交，等待桌面进入下一阶段。")
 	else:
 		_show_player_action_feedback("end_turn", "blocked", "结束回合动作已过期，请等待桌面刷新。")
@@ -1019,7 +1019,7 @@ func _on_action_requested(action_id: String) -> void:
 	var offer: Dictionary = entry.get("game_action_offer", {}) if entry.get("game_action_offer", {}) is Dictionary else {}
 	var parameters: Dictionary = entry.get("game_action_parameters", {}) if entry.get("game_action_parameters", {}) is Dictionary else {}
 	var submission_kind := "human_quick_action" if action_id == "play" else "human_click"
-	if not _submit_game_action_offer(offer, submission_kind, parameters, {}):
+	if not submit_game_action_offer(offer, submission_kind, parameters, {}):
 		_show_player_action_feedback(action_id, "blocked", "该动作投影已过期或不可用，请等待桌面刷新。")
 
 
@@ -1413,7 +1413,7 @@ func _on_card_drag_released(card_data: Dictionary, screen_position: Vector2) -> 
 		var entry := _card_game_action_entry(card_data)
 		var offer: Dictionary = entry.get("game_action_offer", {}) if entry.get("game_action_offer", {}) is Dictionary else {}
 		var region_id := _region_id_for_district(district_index)
-		if region_id.is_empty() or not _submit_game_action_offer(
+		if region_id.is_empty() or not submit_game_action_offer(
 			offer,
 			"human_drag",
 			{},
@@ -1422,7 +1422,7 @@ func _on_card_drag_released(card_data: Dictionary, screen_position: Vector2) -> 
 			_show_player_action_feedback("card_drag", "blocked", "卡牌或地图目标已变化，请刷新后重试。")
 
 
-func _submit_game_action_offer(
+func submit_game_action_offer(
 	offer: Dictionary,
 	submission_kind: String,
 	parameters: Dictionary,
@@ -1433,7 +1433,7 @@ func _submit_game_action_offer(
 			or not SemanticWireV1.is_closed_data(parameters) \
 			or not SemanticWireV1.is_closed_data(target_overrides):
 		return false
-	var authorization := _game_action_actor_authorization(submission_kind)
+	var authorization := game_action_actor_authorization(submission_kind)
 	if authorization.is_empty():
 		return false
 	var target_ids := GAME_ACTION_OFFER_SCRIPT.target_ids(offer)
@@ -1459,7 +1459,7 @@ func _submit_game_action_offer(
 	return true
 
 
-func _game_action_actor_authorization(submission_kind: String) -> Dictionary:
+func game_action_actor_authorization(submission_kind: String) -> Dictionary:
 	if submission_kind not in ["human_click", "human_drag", "human_quick_action"] \
 			or _presentation_authorized_viewer_index < 0 \
 			or _presentation_authorization_revision <= 0 \

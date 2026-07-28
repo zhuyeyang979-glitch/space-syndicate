@@ -49,9 +49,25 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	await process_frame
-	main.set("configured_player_count", 4)
-	main.set("configured_ai_player_count", 3)
-	main.call("_new_game")
+	var services := main.get_node_or_null("RuntimeServices")
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+	var draft := services.get_node_or_null("NewGameSetupDraftService") as NewGameSetupDraftService \
+		if services != null else null
+	var transaction := services.get_node_or_null("SessionStartTransactionCoordinator") as SessionStartTransactionCoordinator \
+		if services != null else null
+	var session := coordinator.get_node_or_null("GameSessionRuntimeController") as GameSessionRuntimeController \
+		if coordinator != null else null
+	_expect(draft != null and transaction != null and session != null, "atomic session-start composition is available")
+	if draft != null and transaction != null and session != null:
+		draft.reset_to_defaults()
+		var request := SessionStartRequest.create(
+			"card-presentation-viewmodel-runtime",
+			draft.draft_snapshot(),
+			session.session_start_revision(),
+			"focused_test"
+		)
+		var start_receipt := transaction.start_session(request)
+		_expect(start_receipt != null and start_receipt.applied, "real first-run table starts through the atomic session transaction")
 	await process_frame
 	var runtime_screen := main.get_node_or_null("RuntimeGameScreen") as Control
 	_expect(runtime_screen != null and runtime_screen.has_method("apply_state"), "current RuntimeGameScreen public presentation surface exists")

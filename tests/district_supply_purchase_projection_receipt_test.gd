@@ -236,7 +236,7 @@ func _run() -> void:
 	var refreshed_facility_action := _first_enabled_play_action(refreshed_facility_hand)
 	_expect(str(refreshed_facility_action.get("id", "")) == "play_%d" % facility_slot, "fresh viewer projection re-enables the same authoritative facility slot after cooldown expiry")
 	var submission_before := coordinator.card_play_submission_controller().debug_snapshot()
-	screen.emit_signal("action_requested", str(refreshed_facility_action.get("id", "")))
+	_expect(_submit_game_action(screen, refreshed_facility_action), "fresh facility projection submits through the public GameAction offer boundary")
 	var submission_after := coordinator.card_play_submission_controller().debug_snapshot()
 	for _frame in range(30):
 		if int(submission_after.get("submission_count", 0)) > int(submission_before.get("submission_count", 0)):
@@ -308,7 +308,7 @@ func _run() -> void:
 	var upgrade_action := _first_enabled_play_action(upgrade_hand)
 	_expect(bool(upgrade_grant.get("committed", false)) and upgrade_slot >= 0 and bool(upgrade_hand.get("actionable", false)) and not upgrade_action.is_empty(), "owned Rank-II upgrade is actionable on the real GameScreen hand projection")
 	var upgrade_submission_before := coordinator.card_play_submission_controller().debug_snapshot()
-	screen.emit_signal("action_requested", str(upgrade_action.get("id", "")))
+	_expect(_submit_game_action(screen, upgrade_action), "Rank-II upgrade submits through the same public GameAction offer boundary")
 	var upgrade_submission_after := upgrade_submission_before
 	for _frame in range(30):
 		await process_frame
@@ -340,7 +340,7 @@ func _run() -> void:
 	var repair_action := _first_enabled_play_action(repair_hand)
 	_expect(bool(repair_damage.get("committed", false)) and bool(repair_grant.get("committed", false)) and repair_slot >= 0 and bool(repair_hand.get("actionable", false)) and not repair_action.is_empty(), "damaged owned Rank-II facility exposes an actionable repair on the real hand projection")
 	var repair_submission_before := coordinator.card_play_submission_controller().debug_snapshot()
-	screen.emit_signal("action_requested", str(repair_action.get("id", "")))
+	_expect(_submit_game_action(screen, repair_action), "Rank-II repair submits through the same public GameAction offer boundary")
 	var repair_submission_after := repair_submission_before
 	for _frame in range(30):
 		await process_frame
@@ -390,6 +390,17 @@ func _drawer_preview(drawer: SpaceSyndicateDistrictSupplyDrawer) -> Dictionary:
 	var snapshot_variant: Variant = drawer.debug_snapshot()
 	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
 	return (snapshot.get("preview", {}) as Dictionary).duplicate(true) if snapshot.get("preview", {}) is Dictionary else {}
+
+
+func _submit_game_action(screen: SpaceSyndicateGameScreen, action: Dictionary) -> bool:
+	if screen == null:
+		return false
+	var offer: Dictionary = action.get("game_action_offer", {}) \
+		if action.get("game_action_offer", {}) is Dictionary else {}
+	var parameters: Dictionary = action.get("game_action_parameters", {}) \
+		if action.get("game_action_parameters", {}) is Dictionary else {}
+	return not offer.is_empty() \
+		and screen.submit_game_action_offer(offer, "human_click", parameters, {})
 
 
 func _receipt_debug(receipts: Array[DistrictSupplyActionReceipt]) -> String:
