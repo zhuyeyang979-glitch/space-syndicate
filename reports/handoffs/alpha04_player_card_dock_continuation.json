@@ -1,0 +1,29 @@
+{
+  "task_id": "ALPHA_0_4_A_PLAYER_CARD_DOCK_CONTINUATION_DIRECT_COMMODITY_CLAIM_AND_ART",
+  "updated_at_local": "2026-07-29",
+  "status": "in_progress",
+  "resume_mode": "EXISTING_DIRTY_TASK_WORKTREE",
+  "effective_base_sha": "e6dc983be8154908e77d3a11bdee353a1b705152",
+  "effective_branch": "codex/alpha04-production-player-card-dock-cde98ae",
+  "effective_worktree": "E:/SpaceSyndicateWorkspace/worktrees/alpha04-production-player-card-dock-cde98ae",
+  "worktree_dirty_at_resume": true,
+  "uncommitted_task_work_preserved": true,
+  "commits_ahead_of_known_cloud": 4,
+  "known_cloud_sha": "b5d5682072fd9ff02be700ce9d5503d1df996641",
+  "repeated_previous_work": false,
+  "current_production_runtime_ruleset": "V0.6",
+  "target_development_constitution": "V0.7",
+  "full_v0_7_runtime_cutover": false,
+  "runtime_capacity_mode": "SHARED_V06",
+  "requested_subagents": 6,
+  "actual_max_concurrent_subagents": 3,
+  "recovered_components": {
+    "player_card_dock_scene": "present_pre_audit",
+    "typed_projection": "present_pre_audit",
+    "viewer_query_port": "present_pre_audit",
+    "production_gamescreen_composition": "present_pre_audit",
+    "normal_card_visibility_screenshots": "present",
+    "commodity_card_visibility_screenshots": "present"
+  },
+  "next_single_task": "reestablish_previous_focused_test_baseline_then_integrate_continuation_lanes"
+}
