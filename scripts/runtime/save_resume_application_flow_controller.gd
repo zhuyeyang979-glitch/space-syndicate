@@ -34,14 +34,14 @@ func inspect_slot(source_surface: StringName = &"root_menu") -> SaveResumeReceip
 	return submit_intent(SaveResumeIntentV06.inspect(_next_request_id(), source_surface))
 
 
-func request_save_game(source_surface: StringName = &"pause_menu") -> SaveResumeReceiptV06:
+func request_save_game(source_surface: StringName = &"pause_menu", destructive_confirmed := false) -> SaveResumeReceiptV06:
 	_save_count += 1
-	return submit_intent(SaveResumeIntentV06.save(_next_request_id(), source_surface))
+	return submit_intent(SaveResumeIntentV06.save(_next_request_id(), source_surface, destructive_confirmed))
 
 
-func request_resume_game(source_surface: StringName = &"root_menu") -> SaveResumeReceiptV06:
+func request_resume_game(source_surface: StringName = &"root_menu", destructive_confirmed := false) -> SaveResumeReceiptV06:
 	_resume_count += 1
-	return submit_intent(SaveResumeIntentV06.resume(_next_request_id(), source_surface))
+	return submit_intent(SaveResumeIntentV06.resume(_next_request_id(), source_surface, destructive_confirmed))
 
 
 func submit_intent(intent: SaveResumeIntentV06) -> SaveResumeReceiptV06:

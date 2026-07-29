@@ -1,7 +1,7 @@
 extends RefCounted
 class_name SaveResumeReceiptV06
 
-const SCHEMA_VERSION := 1
+const SCHEMA_VERSION := 2
 const SLOT_EMPTY := &"empty"
 const SLOT_READY := &"ready"
 const SLOT_CORRUPT := &"corrupt"
@@ -56,6 +56,8 @@ static func from_gateway_result(intent: SaveResumeIntentV06, value: Variant) -> 
 		data = (value as Dictionary).duplicate(true)
 	if not _has_exact_fields(data, GATEWAY_FIELDS):
 		return rejected(intent, "gateway_receipt_shape_invalid")
+	if not _gateway_field_types_valid(data):
+		return rejected(intent, "gateway_receipt_type_invalid")
 	var receipt := SaveResumeReceiptV06.new()
 	receipt.schema_version = int(data.get("schema_version", 0))
 	receipt.request_id = str(data.get("request_id", ""))
@@ -100,11 +102,21 @@ func is_valid_for(intent: SaveResumeIntentV06) -> bool:
 		return false
 	if ruleset_id not in ["", "v0.6"] or (applied and not accepted):
 		return false
-	if mission_title.length() > 96 or mission_title.strip_edges() != mission_title \
+	if not _safe_summary_text(mission_title, 96) \
 			or session_state not in ["", "idle", "running", "paused", "finished"]:
 		return false
-	if operation == SaveResumeIntentV06.OPERATION_INSPECT and applied:
-		return false
+	if operation == SaveResumeIntentV06.OPERATION_INSPECT:
+		if applied:
+			return false
+		# For inspection, "ready" means the complete 19-owner preflight has
+		# accepted the slot. Empty is a successful query; corrupt and
+		# unavailable slots are rejected so UI cannot advertise Continue.
+		if slot_state == SLOT_READY and (not accepted or not can_resume):
+			return false
+		if slot_state == SLOT_EMPTY and (not accepted or can_resume):
+			return false
+		if slot_state in [SLOT_CORRUPT, SLOT_UNAVAILABLE] and (accepted or can_resume):
+			return false
 	if operation in [SaveResumeIntentV06.OPERATION_SAVE, SaveResumeIntentV06.OPERATION_RESUME] \
 			and accepted != applied:
 		return false
@@ -173,8 +185,6 @@ func player_summary() -> String:
 				facts.append("世界时间%d分钟" % maxi(1, int(float(playtime_seconds) / 60.0)))
 			if session_state in ["running", "paused", "finished"]:
 				facts.append({"running": "进行中", "paused": "已暂停", "finished": "已结束"}.get(session_state, session_state))
-			if saved_at_unix > 0:
-				facts.append("保存于%s" % Time.get_datetime_string_from_unix_time(saved_at_unix, true))
 			return "存档：可以继续%s。" % ("｜" + "｜".join(facts) if not facts.is_empty() else "")
 		SLOT_CORRUPT:
 			return "存档：文件无法读取；可尝试备份。" if backup_available else "存档：文件无法读取。"
@@ -223,8 +233,12 @@ static func _failure_summary(operation_id: StringName, reason: String, has_backu
 		return "存档：暂无可继续的游戏。"
 	if reason in ["save_corrupt", "save_read_invalid", "legacy_or_corrupt"]:
 		return "存档：文件无法读取；可尝试备份。" if has_backup else "存档：文件无法读取。"
+	if has_backup or reason in ["ruleset_attestation_mismatch", "v06_pre_resume_manifest_resume_forbidden", "v06_previous_manifest_resume_forbidden", "legacy_resume_forbidden"]:
+		return "存档：版本或规则不兼容，需要保留备份后开始新局。"
 	if reason in ["operation_in_progress", "registry_busy"]:
 		return "存档：另一项操作尚未完成。"
+	if reason == "confirmation_required":
+		return "存档：该操作会替换已有局面，需要玩家确认。"
 	if reason in ["restore_capability_incomplete", "save_resume_gateway_unavailable"]:
 		return "存档：恢复功能仍在准备中。"
 	if operation_id == SaveResumeIntentV06.OPERATION_SAVE:
@@ -236,6 +250,29 @@ static func _failure_summary(operation_id: StringName, reason: String, has_backu
 
 static func _safe_reason(value: String) -> bool:
 	return SaveResumeIntentV06._safe_token(value, 128)
+
+
+static func _safe_summary_text(value: String, maximum_length: int) -> bool:
+	if value.length() > maximum_length or value.strip_edges() != value or value.contains("|") or value.contains("｜"):
+		return false
+	for index in range(value.length()):
+		var code := value.unicode_at(index)
+		if code < 32 or code == 127:
+			return false
+	return true
+
+
+static func _gateway_field_types_valid(data: Dictionary) -> bool:
+	for field in ["schema_version", "saved_at_unix", "playtime_seconds", "seat_count"]:
+		if not (data.get(field) is int):
+			return false
+	for field in ["request_id", "operation", "slot_id", "reason_code", "slot_state", "ruleset_id", "mission_title", "session_state"]:
+		if not (data.get(field) is String):
+			return false
+	for field in ["accepted", "applied", "can_save", "can_resume", "backup_available"]:
+		if not (data.get(field) is bool):
+			return false
+	return true
 
 
 static func _has_exact_fields(data: Dictionary, fields: Array) -> bool:

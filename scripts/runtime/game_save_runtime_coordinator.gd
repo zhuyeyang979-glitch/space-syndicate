@@ -21,6 +21,11 @@ var _last_reason_code := "idle"
 var _last_error_code: int = OK
 var _last_path := ""
 var _operation_sequence := 0
+var _last_readback_validation_reason := ""
+var _last_readback_fingerprint_match := true
+var _last_readback_mismatch_sections: Array[String] = []
+var _last_readback_mismatch_fields: Dictionary = {}
+var _last_readback_first_mismatch: Dictionary = {}
 
 
 func _ready() -> void:
@@ -133,6 +138,11 @@ func write_validated_envelope(path: String, envelope: Dictionary, authorization:
 		return _receipt("write", false, "qa_injected_after_temp_write", ERR_CANT_CREATE, resolved_path, write_id, fingerprint)
 	var temp_read := _read_document(temp_path)
 	var temp_validation: Dictionary = validate_envelope(temp_read.get("document", {}) as Dictionary) if bool(temp_read.get("parsed", false)) else {}
+	_last_readback_validation_reason = str(temp_validation.get("reason_code", "temporary_document_parse_failed"))
+	_last_readback_fingerprint_match = str(temp_validation.get("fingerprint", "")) == fingerprint
+	_last_readback_mismatch_sections = _mismatched_section_fingerprints(envelope, temp_read.get("document", {}) as Dictionary, handshake)
+	_last_readback_mismatch_fields = _mismatched_section_fields(envelope, temp_read.get("document", {}) as Dictionary, handshake, _last_readback_mismatch_sections)
+	_last_readback_first_mismatch = _first_canonical_mismatch(envelope, temp_read.get("document", {}) as Dictionary, handshake)
 	if not bool(temp_read.get("parsed", false)) or not bool(temp_validation.get("valid", false)) or str(temp_validation.get("fingerprint", "")) != fingerprint:
 		_cleanup_file(temp_path)
 		return _receipt("write", false, "temporary_readback_validation_failed", ERR_INVALID_DATA, resolved_path, write_id, fingerprint)
@@ -259,7 +269,7 @@ func public_slot_summary(path: String = "") -> Dictionary:
 	var resolved_path := resolved_save_path(path)
 	var empty := {
 		"slot_state": "empty",
-		"backup_available": _backup_available(resolved_path),
+		"backup_available": false,
 		"saved_at_unix": 0,
 		"world_time_seconds": 0,
 		"seat_count": 0,
@@ -270,12 +280,12 @@ func public_slot_summary(path: String = "") -> Dictionary:
 	if not _is_allowed_save_path(resolved_path):
 		empty["slot_state"] = "unavailable"
 		return empty
+	empty["backup_available"] = _backup_available(resolved_path)
 	if not FileAccess.file_exists(resolved_path):
 		return empty
 	var result := read_and_validate(resolved_path)
 	if not bool(result.get("ok", false)):
 		empty["slot_state"] = "corrupt" if str(result.get("classification", "")) == "corrupt" else "unavailable"
-		empty["backup_available"] = bool(result.get("requires_backup", false)) or bool(empty.get("backup_available", false))
 		return empty
 	var envelope: Dictionary = result.get("envelope", {}) if result.get("envelope", {}) is Dictionary else {}
 	var metadata := _public_metadata_from_envelope(envelope)
@@ -320,6 +330,11 @@ func operation_snapshot() -> Dictionary:
 		"last_error_code": _last_error_code,
 		"last_path": _last_path,
 		"operation_sequence": _operation_sequence,
+		"last_readback_validation_reason": _last_readback_validation_reason,
+		"last_readback_fingerprint_match": _last_readback_fingerprint_match,
+		"last_readback_mismatch_sections": _last_readback_mismatch_sections.duplicate(),
+		"last_readback_mismatch_fields": _last_readback_mismatch_fields.duplicate(true),
+		"last_readback_first_mismatch": _last_readback_first_mismatch.duplicate(true),
 		"captures_business_state": false,
 	}
 
@@ -456,6 +471,102 @@ func _record_operation(operation: String, ok: bool, reason_code: String, error_c
 	_last_path = path
 
 
+func _mismatched_section_fingerprints(original: Dictionary, parsed: Dictionary, handshake: Node) -> Array[String]:
+	var result: Array[String] = []
+	if handshake == null or not handshake.has_method("canonical_json"):
+		return result
+	var original_sections: Dictionary = original.get("sections", {}) if original.get("sections", {}) is Dictionary else {}
+	var parsed_sections: Dictionary = parsed.get("sections", {}) if parsed.get("sections", {}) is Dictionary else {}
+	var section_ids: Array = original_sections.keys()
+	section_ids.sort()
+	for section_id_variant in section_ids:
+		var section_id := str(section_id_variant)
+		if str(handshake.call("canonical_json", original_sections.get(section_id_variant))) \
+				!= str(handshake.call("canonical_json", parsed_sections.get(section_id))):
+			result.append(section_id)
+	return result
+
+
+func _mismatched_section_fields(original: Dictionary, parsed: Dictionary, handshake: Node, section_ids: Array[String]) -> Dictionary:
+	var result: Dictionary = {}
+	if handshake == null or not handshake.has_method("canonical_json"):
+		return result
+	var original_sections: Dictionary = original.get("sections", {}) if original.get("sections", {}) is Dictionary else {}
+	var parsed_sections: Dictionary = parsed.get("sections", {}) if parsed.get("sections", {}) is Dictionary else {}
+	for section_id in section_ids:
+		var original_wrapper: Dictionary = original_sections.get(section_id, {}) if original_sections.get(section_id, {}) is Dictionary else {}
+		var parsed_wrapper: Dictionary = parsed_sections.get(section_id, {}) if parsed_sections.get(section_id, {}) is Dictionary else {}
+		var original_state: Dictionary = original_wrapper.get("owner_state", {}) if original_wrapper.get("owner_state", {}) is Dictionary else {}
+		var parsed_state: Dictionary = parsed_wrapper.get("owner_state", {}) if parsed_wrapper.get("owner_state", {}) is Dictionary else {}
+		var mismatches: Array[String] = []
+		var field_names: Array = original_state.keys()
+		field_names.sort()
+		for field_variant in field_names:
+			var field := str(field_variant)
+			if str(handshake.call("canonical_json", original_state.get(field_variant))) \
+					!= str(handshake.call("canonical_json", parsed_state.get(field))):
+				var original_field: Variant = original_state.get(field_variant)
+				var parsed_field: Variant = parsed_state.get(field)
+				if original_field is Dictionary and parsed_field is Dictionary:
+					var child_names: Array = (original_field as Dictionary).keys()
+					child_names.sort()
+					for child_variant in child_names:
+						var child := str(child_variant)
+						if str(handshake.call("canonical_json", (original_field as Dictionary).get(child_variant))) \
+								!= str(handshake.call("canonical_json", (parsed_field as Dictionary).get(child))):
+							mismatches.append("%s.%s" % [field, child])
+				else:
+					mismatches.append(field)
+		result[section_id] = mismatches
+	return result
+
+
+func _first_canonical_mismatch(left: Variant, right: Variant, handshake: Node, path := "root", depth := 0) -> Dictionary:
+	if handshake == null or not handshake.has_method("canonical_json") \
+			or str(handshake.call("canonical_json", left)) == str(handshake.call("canonical_json", right)):
+		return {}
+	if depth < 20 and left is Dictionary and right is Dictionary:
+		var left_dictionary := left as Dictionary
+		var right_dictionary := right as Dictionary
+		var keys: Array[String] = []
+		for key_variant in left_dictionary.keys():
+			var key := str(key_variant)
+			if not keys.has(key):
+				keys.append(key)
+		for key_variant in right_dictionary.keys():
+			var key := str(key_variant)
+			if not keys.has(key):
+				keys.append(key)
+		keys.sort()
+		for key in keys:
+			var child := _first_canonical_mismatch(left_dictionary.get(key), right_dictionary.get(key), handshake, "%s.%s" % [path, key], depth + 1)
+			if not child.is_empty():
+				return child
+	if depth < 20 and left is Array and right is Array:
+		var size := maxi((left as Array).size(), (right as Array).size())
+		for index in range(size):
+			var left_item: Variant = (left as Array)[index] if index < (left as Array).size() else null
+			var right_item: Variant = (right as Array)[index] if index < (right as Array).size() else null
+			var child := _first_canonical_mismatch(left_item, right_item, handshake, "%s[%d]" % [path, index], depth + 1)
+			if not child.is_empty():
+				return child
+	return {
+		"path": path,
+		"left_type": type_string(typeof(left)),
+		"right_type": type_string(typeof(right)),
+		"left_scalar": _safe_scalar_diagnostic(left),
+		"right_scalar": _safe_scalar_diagnostic(right),
+	}
+
+
+func _safe_scalar_diagnostic(value: Variant) -> String:
+	if value == null or value is bool or value is int or value is float:
+		return str(value)
+	if value is String or value is StringName:
+		return "string:%d:%s" % [str(value).length(), str(value).sha256_text().substr(0, 12)]
+	return type_string(typeof(value))
+
+
 func _safe_suffix(value: String) -> String:
 	var result := ""
 	for character in value:
@@ -488,7 +599,7 @@ func _public_metadata_from_envelope(envelope: Dictionary) -> Dictionary:
 		if session_state.get("world_session_state", {}) is Dictionary else {}
 	var setup: Dictionary = runtime_state.get("setup", {}) if runtime_state.get("setup", {}) is Dictionary else {}
 	var players: Array = world_state.get("players", []) if world_state.get("players", []) is Array else []
-	var title := str(setup.get("mission_title", setup.get("scenario_title", runtime_state.get("scenario_id", "")))).strip_edges()
+	var title := _safe_public_summary_title(str(setup.get("mission_title", setup.get("scenario_title", ""))))
 	return {
 		"slot_state": "ready",
 		"backup_available": false,
@@ -496,9 +607,20 @@ func _public_metadata_from_envelope(envelope: Dictionary) -> Dictionary:
 		"world_time_seconds": maxi(0, int(round(float(runtime_state.get("world_effective_us", 0)) / 1_000_000.0))),
 		"seat_count": players.size(),
 		"ruleset_id": str(runtime_state.get("ruleset_id", envelope.get("ruleset_id", ""))),
-		"mission_title": title.substr(0, 96),
+		"mission_title": title,
 		"session_state": str(runtime_state.get("session_state", "idle")),
 	}
+
+
+func _safe_public_summary_title(value: String) -> String:
+	var normalized := value.strip_edges()
+	if normalized.is_empty() or normalized.length() > 96 or normalized.contains("|") or normalized.contains("｜"):
+		return ""
+	for index in range(normalized.length()):
+		var code := normalized.unicode_at(index)
+		if code < 32 or code == 127:
+			return ""
+	return normalized
 
 
 func _backup_available(path: String) -> bool:

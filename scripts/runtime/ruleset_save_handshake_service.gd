@@ -10,12 +10,14 @@ const CURRENCY_SCALE := 100
 const PROFILE_SCHEMA_VERSION := 1
 const ENVELOPE_SCHEMA := "space_syndicate.v06.save.v3"
 const FORMAT_ID := "space_syndicate_json"
-const CODEC_ID := "explicit_tagged_json_v1"
+const CODEC_ID := "explicit_tagged_json_v2"
 const MIGRATION_POLICY := "new_session_only"
 const AUTHORIZATION_SCHEMA_VERSION := 1
 const CODEC_KEY := "$codec"
 const CODEC_VECTOR2 := "Vector2"
 const CODEC_COLOR := "Color"
+const CODEC_INT64 := "Int64"
+const CODEC_FLOAT64 := "Float64"
 const PRE_RESUME_SECTION_VERSIONS := {
 	"ruleset": 1,
 	"region_infrastructure": 1,
@@ -454,10 +456,14 @@ func _inspection(classification: String, source_ruleset_id: String, target_rules
 
 func _encode_codec_value(value: Variant) -> Dictionary:
 	if value is Vector2:
-		return {"ok": true, "value": {CODEC_KEY: CODEC_VECTOR2, "x": value.x, "y": value.y}}
+		return {"ok": true, "value": {CODEC_KEY: CODEC_VECTOR2, "x": _float64_bits(value.x), "y": _float64_bits(value.y)}}
 	if value is Color:
-		return {"ok": true, "value": {CODEC_KEY: CODEC_COLOR, "r": value.r, "g": value.g, "b": value.b, "a": value.a}}
-	if value == null or value is String or value is bool or value is int or (value is float and is_finite(value)):
+		return {"ok": true, "value": {CODEC_KEY: CODEC_COLOR, "r": _float64_bits(value.r), "g": _float64_bits(value.g), "b": _float64_bits(value.b), "a": _float64_bits(value.a)}}
+	if value is int:
+		return {"ok": true, "value": {CODEC_KEY: CODEC_INT64, "value": str(value)}}
+	if value is float and is_finite(value):
+		return {"ok": true, "value": {CODEC_KEY: CODEC_FLOAT64, "bits": _float64_bits(value)}}
+	if value == null or value is String or value is bool:
 		return {"ok": true, "value": value}
 	if value is Array:
 		var encoded_array: Array = []
@@ -481,8 +487,13 @@ func _encode_codec_value(value: Variant) -> Dictionary:
 
 
 func _decode_codec_value(value: Variant) -> Dictionary:
-	if value == null or value is String or value is bool or value is int or (value is float and is_finite(value)):
+	# Codec v2 never transports numbers as JSON number scalars. Rejecting bare
+	# numeric values here makes the codec id an enforceable wire contract and
+	# prevents a seed/RNG cursor from silently passing through JSON precision.
+	if value == null or value is String or value is bool:
 		return {"ok": true, "value": value}
+	if value is int or value is float:
+		return {"ok": false, "reason_code": "codec_numeric_scalar_untagged"}
 	if value is Array:
 		var decoded_array: Array = []
 		for item in value:
@@ -495,10 +506,28 @@ func _decode_codec_value(value: Variant) -> Dictionary:
 		var dictionary := value as Dictionary
 		if dictionary.has(CODEC_KEY):
 			var codec_type := str(dictionary.get(CODEC_KEY, ""))
-			if codec_type == CODEC_VECTOR2 and dictionary.keys().size() == 3 and dictionary.has("x") and dictionary.has("y"):
-				return {"ok": true, "value": Vector2(float(dictionary.x), float(dictionary.y))}
-			if codec_type == CODEC_COLOR and dictionary.keys().size() == 5 and dictionary.has("r") and dictionary.has("g") and dictionary.has("b") and dictionary.has("a"):
-				return {"ok": true, "value": Color(float(dictionary.r), float(dictionary.g), float(dictionary.b), float(dictionary.a))}
+			if codec_type == CODEC_FLOAT64 and dictionary.keys().size() == 2 and dictionary.get("bits") is String:
+				return _decode_float64_bits(str(dictionary.get("bits", "")))
+			if codec_type == CODEC_INT64 and dictionary.keys().size() == 2 and dictionary.get("value") is String:
+				var integer_text := str(dictionary.get("value", ""))
+				if not integer_text.is_valid_int():
+					return {"ok": false, "reason_code": "codec_int64_invalid"}
+				var integer_value := integer_text.to_int()
+				if str(integer_value) != integer_text:
+					return {"ok": false, "reason_code": "codec_int64_noncanonical"}
+				return {"ok": true, "value": integer_value}
+			if codec_type == CODEC_VECTOR2 and dictionary.keys().size() == 3 and dictionary.get("x") is String and dictionary.get("y") is String:
+				var x_result := _decode_float64_bits(str(dictionary.get("x", "")))
+				var y_result := _decode_float64_bits(str(dictionary.get("y", "")))
+				return {"ok": true, "value": Vector2(float(x_result.get("value", 0.0)), float(y_result.get("value", 0.0)))} \
+					if bool(x_result.get("ok", false)) and bool(y_result.get("ok", false)) else {"ok": false, "reason_code": "codec_vector2_invalid"}
+			if codec_type == CODEC_COLOR and dictionary.keys().size() == 5 and dictionary.get("r") is String and dictionary.get("g") is String and dictionary.get("b") is String and dictionary.get("a") is String:
+				var r_result := _decode_float64_bits(str(dictionary.get("r", "")))
+				var g_result := _decode_float64_bits(str(dictionary.get("g", "")))
+				var b_result := _decode_float64_bits(str(dictionary.get("b", "")))
+				var a_result := _decode_float64_bits(str(dictionary.get("a", "")))
+				return {"ok": true, "value": Color(float(r_result.get("value", 0.0)), float(g_result.get("value", 0.0)), float(b_result.get("value", 0.0)), float(a_result.get("value", 0.0)))} \
+					if bool(r_result.get("ok", false)) and bool(g_result.get("ok", false)) and bool(b_result.get("ok", false)) and bool(a_result.get("ok", false)) else {"ok": false, "reason_code": "codec_color_invalid"}
 			return {"ok": false, "reason_code": "codec_tag_invalid"}
 		var decoded_dictionary: Dictionary = {}
 		for key_variant in dictionary.keys():
@@ -510,6 +539,23 @@ func _decode_codec_value(value: Variant) -> Dictionary:
 			decoded_dictionary[str(key_variant)] = decoded_item.get("value")
 		return {"ok": true, "value": decoded_dictionary}
 	return {"ok": false, "reason_code": "codec_variant_type_forbidden"}
+
+
+func _float64_bits(value: float) -> String:
+	var bytes := PackedByteArray()
+	bytes.resize(8)
+	bytes.encode_double(0, value)
+	return bytes.hex_encode()
+
+
+func _decode_float64_bits(bits: String) -> Dictionary:
+	if bits.length() != 16:
+		return {"ok": false, "reason_code": "codec_float64_bits_invalid"}
+	var bytes := bits.hex_decode()
+	if bytes.size() != 8 or bytes.hex_encode() != bits.to_lower():
+		return {"ok": false, "reason_code": "codec_float64_bits_invalid"}
+	var value := bytes.decode_double(0)
+	return {"ok": is_finite(value), "reason_code": "codec_float64_valid" if is_finite(value) else "codec_float64_nonfinite", "value": value}
 
 
 func _is_encoded_pure_data(value: Variant) -> bool:

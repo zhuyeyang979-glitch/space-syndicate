@@ -1343,6 +1343,8 @@ func restore_save_restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictiona
 
 func save_restore_safety_observation() -> Dictionary:
 	var rng_snapshot := _run_rng_service_node().debug_snapshot() if _run_rng_service_node() != null else {}
+	var world_clock_snapshot := _node_debug_snapshot(_world_effective_clock_runtime_controller_node())
+	var commodity_flow_snapshot := _node_debug_snapshot(_commodity_flow_runtime_controller_node())
 	var presentation_snapshot := _table_presentation_query_ports_node().debug_snapshot() if _table_presentation_query_ports_node() != null else {}
 	var public_log: Dictionary = presentation_snapshot.get("public_log", {}) if presentation_snapshot.get("public_log", {}) is Dictionary else {}
 	var private_feedback: Dictionary = presentation_snapshot.get("viewer_private_feedback", {}) if presentation_snapshot.get("viewer_private_feedback", {}) is Dictionary else {}
@@ -1355,6 +1357,8 @@ func save_restore_safety_observation() -> Dictionary:
 	return {
 		"schema_version": 1,
 		"rng_draw_invocation_count": int(rng_snapshot.get("runtime_draw_invocation_count", 0)),
+		"world_clock_advance_count": int(world_clock_snapshot.get("advance_count", 0)),
+		"sale_receipt_emission_count": int(commodity_flow_snapshot.get("runtime_sale_receipt_emission_count", 0)),
 		"public_log_entry_count": int(public_log.get("entry_count", 0)),
 		"public_log_revision": int(public_log.get("revision", 0)),
 		"private_feedback_revision": int(private_feedback.get("revision", 0)),
@@ -4902,6 +4906,12 @@ func request_run_save(path: String, domain_sections: Dictionary) -> Dictionary:
 func submit_save_resume_intent(intent: SaveResumeIntentV06) -> Dictionary:
 	if intent == null or not intent.is_valid():
 		return {}
+	if not intent.is_valid_for_production():
+		return _save_resume_gateway_receipt(intent, false, false, "source_surface_not_allowed", {
+			"slot_state": "unavailable",
+			"can_save": false,
+			"can_resume": false,
+		})
 	var path := SaveSlotPolicyV06.path_for_production_slot(intent.slot_id)
 	if path.is_empty():
 		return _save_resume_gateway_receipt(intent, false, false, "slot_not_allowed", {})
@@ -4925,24 +4935,41 @@ func _inspect_save_resume_slot(intent: SaveResumeIntentV06, path: String) -> Dic
 	var inspection := session.inspect_save(path)
 	var slot_state := str(metadata.get("slot_state", "unavailable"))
 	var can_resume := slot_state == "ready" and bool(inspection.get("ok", false)) and bool(inspection.get("applied", false))
+	if slot_state == "ready" and not can_resume:
+		metadata["slot_state"] = "unavailable"
 	metadata["can_resume"] = can_resume
 	metadata["can_save"] = _production_save_available()
 	var reason_code: String = "slot_ready" if can_resume else str({
 		"empty": "save_not_found",
 		"corrupt": "save_corrupt",
 	}.get(slot_state, str(inspection.get("reason_code", "resume_unavailable"))))
-	return _save_resume_gateway_receipt(intent, true, false, reason_code, metadata)
+	# Inspecting an empty slot is a successful query. Corrupt, incompatible, and
+	# otherwise non-resumable occupied slots fail closed so presentation cannot
+	# mistake a readable header for a playable save.
+	var inspection_accepted := slot_state == "empty" or can_resume
+	return _save_resume_gateway_receipt(intent, inspection_accepted, false, reason_code, metadata)
 
 
 func _save_current_run_from_intent(intent: SaveResumeIntentV06, path: String) -> Dictionary:
 	if not _production_save_available():
 		return _save_resume_gateway_receipt(intent, false, false, "save_not_available", _current_public_slot_metadata(path))
+	var existing_metadata := _current_public_slot_metadata(path)
+	if str(existing_metadata.get("slot_state", "unavailable")) != "empty" and not intent.destructive_confirmed:
+		existing_metadata["can_save"] = true
+		existing_metadata["can_resume"] = str(existing_metadata.get("slot_state", "")) == "ready"
+		return _save_resume_gateway_receipt(intent, false, false, "confirmation_required", existing_metadata)
 	var session := _session_node() as GameSessionRuntimeController
 	var registry := session.get_node_or_null("V06SaveOwnerRegistry") if session != null else null
 	var save := session.get_node_or_null("GameSaveRuntimeCoordinator") if session != null else null
 	if session == null or registry == null or save == null:
 		return _save_resume_gateway_receipt(intent, false, false, "save_resume_runtime_unavailable", {})
-	var unique_suffix := "%d-%d" % [int(Time.get_unix_time_from_system()), _save_resume_gateway_sequence]
+	# A write identity must stay unique across fresh processes as well as within
+	# one coordinator lifetime. This uses no gameplay RNG.
+	var unique_suffix := "%d-%d-%d" % [
+		int(Time.get_unix_time_from_system() * 1_000_000.0),
+		OS.get_process_id(),
+		_save_resume_gateway_sequence,
+	]
 	var capture := _call_dictionary_on(registry, "capture_resume_envelope", [{
 		"envelope_id": "current-run-%s" % unique_suffix,
 		"write_id": "current-run-write-%s" % unique_suffix,
@@ -4968,9 +4995,15 @@ func _resume_current_run_from_intent(intent: SaveResumeIntentV06, path: String) 
 	var session := _session_node() as GameSessionRuntimeController
 	if session == null:
 		return _save_resume_gateway_receipt(intent, false, false, "save_resume_runtime_unavailable", {})
+	if save_resume_replacement_confirmation_required() and not intent.destructive_confirmed:
+		var confirmation_metadata := _current_public_slot_metadata(path)
+		confirmation_metadata["can_resume"] = str(confirmation_metadata.get("slot_state", "")) == "ready"
+		return _save_resume_gateway_receipt(intent, false, false, "confirmation_required", confirmation_metadata)
 	var loaded := session.request_load(path)
 	var succeeded := bool(loaded.get("ok", false)) and bool(loaded.get("applied", false))
 	var metadata := _current_public_slot_metadata(path)
+	if not succeeded and bool(loaded.get("requires_backup", false)):
+		metadata["slot_state"] = "unavailable"
 	metadata["can_save"] = _production_save_available()
 	metadata["can_resume"] = str(metadata.get("slot_state", "")) == "ready"
 	return _save_resume_gateway_receipt(intent, succeeded, succeeded, str(loaded.get("reason_code", "resume_failed")), metadata)
@@ -4989,6 +5022,16 @@ func _production_save_available() -> bool:
 		return false
 	return session.session_state() in [GameSessionRuntimeController.STATE_RUNNING, GameSessionRuntimeController.STATE_PAUSED] \
 		and bool(_call_dictionary_on(registry, "registry_snapshot").get("resume_ready", false))
+
+
+func save_resume_replacement_confirmation_required() -> bool:
+	var session := _session_node() as GameSessionRuntimeController
+	var world := _world_session_state_node()
+	if session == null or world == null or world.players.is_empty():
+		return false
+	var summary := session.session_summary()
+	return bool(summary.get("dirty", false)) \
+		and str(summary.get("session_state", "")) in [GameSessionRuntimeController.STATE_RUNNING, GameSessionRuntimeController.STATE_PAUSED]
 
 
 func _save_resume_gateway_receipt(

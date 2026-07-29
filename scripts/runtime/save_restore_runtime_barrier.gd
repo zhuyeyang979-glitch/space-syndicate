@@ -5,6 +5,8 @@ class_name SaveRestoreRuntimeBarrier
 const CHECKPOINT_SCHEMA_VERSION := 1
 const QUIET_COUNTER_FIELDS := [
 	"rng_draw_invocation_count",
+	"world_clock_advance_count",
+	"sale_receipt_emission_count",
 	"public_log_entry_count",
 	"public_log_revision",
 	"private_feedback_revision",

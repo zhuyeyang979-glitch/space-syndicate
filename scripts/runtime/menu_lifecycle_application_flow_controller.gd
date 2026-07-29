@@ -31,6 +31,7 @@ var _root_lobby: SpaceSyndicateMenuRootLobby
 var _pause_summary_board: SpaceSyndicatePauseMenuSummaryBoard
 var _connected_save_resume_flow: SaveResumeApplicationFlowController
 var _last_shell_kind: StringName = &""
+var _resume_confirmation_pending := false
 
 
 func _ready() -> void:
@@ -102,6 +103,7 @@ func close_to_table() -> bool:
 	overlay.visible = false
 	overlay.set_body_text("", false)
 	overlay.clear_preview()
+	_resume_confirmation_pending = false
 	if not _session_finished():
 		var coordinator := _coordinator()
 		if coordinator != null:
@@ -165,6 +167,7 @@ func debug_snapshot() -> Dictionary:
 		"last_shell_kind": String(_last_shell_kind),
 		"menu_visible": is_menu_visible(),
 		"save_resume_flow_bound": _connected_save_resume_flow != null,
+		"resume_confirmation_pending": _resume_confirmation_pending,
 		"owns_gameplay_state": false,
 		"owns_world_clock": false,
 		"owns_page_snapshots": false,
@@ -217,6 +220,7 @@ func _attach_root_lobby() -> void:
 	var overlay := _menu_overlay()
 	if overlay == null:
 		return
+	_resume_confirmation_pending = false
 	overlay.clear_preview()
 	var host := overlay.get_preview_host()
 	if host == null:
@@ -274,21 +278,40 @@ func _resume_run_from_menu() -> void:
 	if flow == null:
 		_apply_save_resume_public_state(SaveResumeReceiptV06.unavailable_public_snapshot())
 		return
+	var coordinator := _coordinator()
+	var requires_confirmation := coordinator != null and coordinator.save_resume_replacement_confirmation_required()
+	if requires_confirmation and not _resume_confirmation_pending:
+		_resume_confirmation_pending = true
+		if _load_run_button != null:
+			_load_run_button.text = "确认读取存档"
+			_load_run_button.tooltip_text = "再次点击将用存档替换尚未保存的当前牌桌；回到牌桌可取消。"
+		if _root_lobby != null:
+			_root_lobby.set_action_state("load_run", {
+				"label": "确认读取存档",
+				"tooltip": "再次点击将用存档替换尚未保存的当前牌桌；回到牌桌可取消。",
+				"disabled": false,
+			})
+		var overlay := _menu_overlay()
+		if overlay != null:
+			overlay.set_run_save_summary("存档：读取会替换尚未保存的当前牌桌；再次点击确认，或回到牌桌取消。")
+		return
 	_load_request_count += 1
-	var receipt := flow.request_resume_game(&"root_menu")
+	var confirmed := requires_confirmation and _resume_confirmation_pending
+	_resume_confirmation_pending = false
+	var receipt := flow.request_resume_game(&"root_menu", confirmed)
 	if receipt.accepted and receipt.applied:
 		close_to_table()
 	else:
 		_request_full_refresh()
 
 
-func _save_run_from_menu() -> void:
+func _save_run_from_menu(destructive_confirmed: bool) -> void:
 	var flow := _save_resume_flow()
 	if flow == null:
 		_apply_save_resume_public_state(SaveResumeReceiptV06.unavailable_public_snapshot())
 		return
 	_save_request_count += 1
-	flow.request_save_game(&"pause_menu")
+	flow.request_save_game(&"pause_menu", destructive_confirmed)
 	_request_full_refresh()
 
 

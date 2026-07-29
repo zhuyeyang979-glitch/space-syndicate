@@ -426,6 +426,7 @@ func request_load(path: String = "") -> Dictionary:
 	var summary := "存档：已通过 v0.6 Owner Registry 完成事务恢复。" if applied else _registry_unavailable_summary(owner_registry, reason_code)
 	var receipt := _load_result(applied, applied, error_code, reason_code, summary)
 	receipt["registry_apply_count"] = 1
+	receipt["requires_backup"] = bool(apply_receipt.get("requires_backup", false))
 	_finish_operation(receipt)
 	return receipt
 
@@ -451,7 +452,9 @@ func inspect_save(path: String = "") -> Dictionary:
 	var applicable := bool(preflight.get("ok", false))
 	var reason_code := str(preflight.get("reason_code", "owner_registry_preflight_failed"))
 	var summary := "存档：格式有效，可以继续本局。" if applicable else _registry_unavailable_summary(owner_registry, reason_code)
-	return _load_result(true, applicable, OK if applicable else ERR_UNAVAILABLE, reason_code, summary)
+	var inspection_receipt := _load_result(true, applicable, OK if applicable else ERR_UNAVAILABLE, reason_code, summary)
+	inspection_receipt["requires_backup"] = bool(preflight.get("requires_backup", false))
+	return inspection_receipt
 
 
 func complete_load(error_code: int) -> void:

@@ -1,7 +1,7 @@
 extends RefCounted
 class_name SaveResumeIntentV06
 
-const SCHEMA_VERSION := 1
+const SCHEMA_VERSION := 2
 const OPERATION_INSPECT := &"inspect"
 const OPERATION_SAVE := &"save"
 const OPERATION_RESUME := &"resume"
@@ -15,6 +15,7 @@ const FIELDS := [
 	"source_surface",
 	"overwrite_existing",
 	"preserve_incompatible_backup",
+	"destructive_confirmed",
 ]
 
 var schema_version := SCHEMA_VERSION
@@ -24,22 +25,23 @@ var slot_id: StringName = SaveSlotPolicyV06.PRODUCTION_SLOT_ID
 var source_surface: StringName = &"root_menu"
 var overwrite_existing := false
 var preserve_incompatible_backup := false
+var destructive_confirmed := false
 
 
 static func inspect(request: String, source: StringName = &"root_menu") -> SaveResumeIntentV06:
 	return _make(request, OPERATION_INSPECT, source, false, false)
 
 
-static func save(request: String, source: StringName = &"pause_menu") -> SaveResumeIntentV06:
-	return _make(request, OPERATION_SAVE, source, true, true)
+static func save(request: String, source: StringName = &"pause_menu", confirmed := false) -> SaveResumeIntentV06:
+	return _make(request, OPERATION_SAVE, source, confirmed, true, confirmed)
 
 
-static func resume(request: String, source: StringName = &"root_menu") -> SaveResumeIntentV06:
-	return _make(request, OPERATION_RESUME, source, false, false)
+static func resume(request: String, source: StringName = &"root_menu", confirmed := false) -> SaveResumeIntentV06:
+	return _make(request, OPERATION_RESUME, source, false, false, confirmed)
 
 
 static func from_dictionary(source: Dictionary) -> SaveResumeIntentV06:
-	if not _has_exact_fields(source, FIELDS):
+	if not _has_exact_fields(source, FIELDS) or not _field_types_valid(source):
 		return null
 	var intent := SaveResumeIntentV06.new()
 	intent.schema_version = int(source.get("schema_version", 0))
@@ -49,6 +51,7 @@ static func from_dictionary(source: Dictionary) -> SaveResumeIntentV06:
 	intent.source_surface = StringName(str(source.get("source_surface", "")))
 	intent.overwrite_existing = bool(source.get("overwrite_existing", false))
 	intent.preserve_incompatible_backup = bool(source.get("preserve_incompatible_backup", false))
+	intent.destructive_confirmed = bool(source.get("destructive_confirmed", false))
 	return intent if intent.is_valid() else null
 
 
@@ -59,9 +62,21 @@ func is_valid() -> bool:
 		return false
 	if not _safe_token(request_id, 128):
 		return false
+	if operation == OPERATION_INSPECT:
+		return not overwrite_existing and not preserve_incompatible_backup and not destructive_confirmed
 	if operation == OPERATION_SAVE:
-		return overwrite_existing and preserve_incompatible_backup
+		return overwrite_existing == destructive_confirmed and preserve_incompatible_backup
 	return not overwrite_existing and not preserve_incompatible_backup
+
+
+func is_valid_for_production() -> bool:
+	if not is_valid() or source_surface == &"qa_driver":
+		return false
+	if source_surface == &"root_menu":
+		return operation in [OPERATION_INSPECT, OPERATION_RESUME]
+	if source_surface == &"pause_menu":
+		return operation in [OPERATION_INSPECT, OPERATION_SAVE]
+	return false
 
 
 func to_dictionary() -> Dictionary:
@@ -73,6 +88,7 @@ func to_dictionary() -> Dictionary:
 		"source_surface": String(source_surface),
 		"overwrite_existing": overwrite_existing,
 		"preserve_incompatible_backup": preserve_incompatible_backup,
+		"destructive_confirmed": destructive_confirmed,
 	}
 
 
@@ -85,7 +101,8 @@ static func _make(
 	operation_id: StringName,
 	source: StringName,
 	overwrite: bool,
-	preserve_backup: bool
+	preserve_backup: bool,
+	confirmed := false
 ) -> SaveResumeIntentV06:
 	var intent := SaveResumeIntentV06.new()
 	intent.request_id = request
@@ -93,6 +110,7 @@ static func _make(
 	intent.source_surface = source
 	intent.overwrite_existing = overwrite
 	intent.preserve_incompatible_backup = preserve_backup
+	intent.destructive_confirmed = confirmed
 	return intent
 
 
@@ -117,5 +135,17 @@ static func _has_exact_fields(data: Dictionary, fields: Array) -> bool:
 		return false
 	for field_variant in fields:
 		if not data.has(str(field_variant)):
+			return false
+	return true
+
+
+static func _field_types_valid(data: Dictionary) -> bool:
+	if not (data.get("schema_version") is int):
+		return false
+	for field in ["request_id", "operation", "slot_id", "source_surface"]:
+		if not (data.get(field) is String):
+			return false
+	for field in ["overwrite_existing", "preserve_incompatible_backup", "destructive_confirmed"]:
+		if not (data.get(field) is bool):
 			return false
 	return true

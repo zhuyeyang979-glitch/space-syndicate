@@ -39,6 +39,7 @@ func preflight_save_data(data: Dictionary) -> Dictionary:
 			"accepted": false,
 			"reason": "ruleset_attestation_mismatch",
 			"reason_code": "ruleset_attestation_mismatch",
+			"requires_backup": true,
 		}
 	return {
 		"accepted": true,
