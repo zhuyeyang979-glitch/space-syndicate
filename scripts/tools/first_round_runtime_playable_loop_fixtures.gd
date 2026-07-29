@@ -39,7 +39,7 @@ func case_data(case_id: String) -> Dictionary:
 		"boot_to_first_player_turn":
 			return _case(case_id, "normal_hand", "boot", "card_orbital_finance", "", "玩家回合", "Boot the real GameScreen into a readable first player turn.")
 		"inspect_opening_hand_card":
-			return _case(case_id, "normal_hand", "inspect_card", "card_orbital_finance", "", "轨道融资", "Click an opening hand card and read it in RightInspector.")
+			return _case(case_id, "normal_hand", "inspect_card", "card_orbital_finance", "", "轨道融资", "Click an opening hand card and read it in ContextDetailDrawer.")
 		"execute_enabled_card_action":
 			return _case(case_id, "selected_enabled_card", "execute_card_action", "card_shadow_disruption", "play:shadow_disruption", "影仓牵引", "Execute an enabled card action through GameScreen.action_requested.")
 		"disabled_action_guard":
@@ -120,7 +120,7 @@ func _case(case_id: String, fixture_id: String, interaction: String, selected_ca
 		"interaction": interaction,
 		"selected_card_id": selected_card_id,
 		"expected_action_id": expected_action_id,
-		"expected_inspector_text": expected_text,
+		"expected_context_detail_text": expected_text,
 		"notes": notes,
 	}
 
@@ -128,7 +128,7 @@ func _case(case_id: String, fixture_id: String, interaction: String, selected_ca
 func _table_state_from_fixture(fixture: Dictionary, flow_case: Dictionary) -> Dictionary:
 	var case_id := str(flow_case.get("case_id", ""))
 	var player_state: Dictionary = fixture.get("player_state", {}) if fixture.get("player_state", {}) is Dictionary else {}
-	var inspector: Dictionary = fixture.get("inspector", {}) if fixture.get("inspector", {}) is Dictionary else {}
+	var context_detail: Dictionary = fixture.get("context_detail", {}) if fixture.get("context_detail", {}) is Dictionary else {}
 	var selected_card: Dictionary = fixture.get("selected_card", {}) if fixture.get("selected_card", {}) is Dictionary else {}
 	player_state = player_state.duplicate(true)
 	player_state["hint"] = _player_hint_for_case(case_id)
@@ -148,7 +148,7 @@ func _table_state_from_fixture(fixture: Dictionary, flow_case: Dictionary) -> Di
 		"card_track": _public_track_entries_for_case(case_id),
 		"card_resolution_track": _card_resolution_track_state_for_case(case_id),
 		"planet": _planet_panel_state_for_case(case_id),
-		"right_inspector": inspector,
+		"context_detail": context_detail,
 		"player_board": player_state,
 		"temporary_decision": temporary_decision_payload() if case_id in ["temporary_decision_pending_flow", "recovery_after_action_sequence"] else {},
 	}

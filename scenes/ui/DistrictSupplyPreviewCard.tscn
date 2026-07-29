@@ -64,7 +64,7 @@ size_flags_horizontal = 3
 tooltip_text = "速读区：用途、买入、打出、目标。完整细节看卡面或悬停。"
 theme_override_constants/h_separation = 5
 theme_override_constants/v_separation = 5
-columns = 2
+columns = 1
 
 [node name="DistrictSupplyPreviewBodyLabel" type="Label" parent="DistrictSupplySelectedPreviewMargin/DistrictSupplySelectedPreviewStack"]
 unique_name_in_owner = true
@@ -95,7 +95,7 @@ max_lines_visible = 2
 
 [node name="DistrictSupplyPreviewCardFaceHost" type="CenterContainer" parent="DistrictSupplySelectedPreviewMargin/DistrictSupplySelectedPreviewStack"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 218)
+custom_minimum_size = Vector2(0, 184)
 layout_mode = 2
 size_flags_horizontal = 3
 

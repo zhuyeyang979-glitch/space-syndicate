@@ -234,6 +234,28 @@ func recent_viewer_private_feedback(viewer_index: int, limit := 6) -> Array:
 	return viewer_private_feedback_owner.recent_for_viewer(viewer_index, limit)
 
 
+func viewer_private_feedback_revision(viewer_index: int) -> int:
+	if viewer_private_feedback_owner == null \
+			or not can_view_private_subject(viewer_index, viewer_index):
+		return -1
+	return viewer_private_feedback_owner.current_revision()
+
+
+func recent_viewer_private_feedback_entries(viewer_index: int, limit := 6) -> Array:
+	var source_revision := viewer_private_feedback_revision(viewer_index)
+	if source_revision < 0:
+		return []
+	var result: Array = []
+	for message_variant in viewer_private_feedback_owner.recent_for_viewer(viewer_index, limit):
+		if not (message_variant is String):
+			return []
+		result.append({
+			"message": str(message_variant),
+			"source_revision": source_revision,
+		})
+	return result
+
+
 func import_legacy_viewer_feedback(messages: Array) -> Dictionary:
 	var viewer := authorized_viewer_index()
 	if viewer < 0:

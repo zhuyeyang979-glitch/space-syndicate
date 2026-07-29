@@ -1,0 +1,81 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/table/player_roster_panel.gd" id="2_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleRoster"]
+bg_color = Color(0.008, 0.022, 0.052, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.18, 0.43, 0.64, 0.78)
+corner_radius_top_left = 9
+corner_radius_top_right = 9
+corner_radius_bottom_right = 9
+corner_radius_bottom_left = 9
+
+[node name="PlayerRosterPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(184, 0)
+theme = ExtResource("1_theme")
+theme_override_styles/panel = SubResource("StyleRoster")
+script = ExtResource("2_script")
+
+[node name="RosterMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 7
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 8
+
+[node name="RosterRows" type="VBoxContainer" parent="RosterMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="RosterHeader" type="HBoxContainer" parent="RosterMargin/RosterRows"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="RosterMargin/RosterRows/RosterHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "公开玩家"
+theme_override_colors/font_color = Color(0.75, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="PlayerCount" type="Label" parent="RosterMargin/RosterRows/RosterHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0 位"
+horizontal_alignment = 2
+theme_override_colors/font_color = Color(0.46, 0.66, 0.8, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="HeaderRule" type="HSeparator" parent="RosterMargin/RosterRows"]
+layout_mode = 2
+
+[node name="EmptyState" type="Label" parent="RosterMargin/RosterRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(168, 58)
+layout_mode = 2
+text = "等待公开玩家投影"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.42, 0.54, 0.66, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="RosterColumns" type="HBoxContainer" parent="RosterMargin/RosterRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="LeftColumn" type="VBoxContainer" parent="RosterMargin/RosterRows/RosterColumns"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="RightColumn" type="VBoxContainer" parent="RosterMargin/RosterRows/RosterColumns"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5

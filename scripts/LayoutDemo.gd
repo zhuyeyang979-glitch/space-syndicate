@@ -73,7 +73,7 @@ func _sample_card_data(index: int, count: int) -> Dictionary:
 	var data: Dictionary = SAMPLE_CARDS[index % SAMPLE_CARDS.size()].duplicate()
 	data["id"] = "layout_demo_%d_%d" % [count, index]
 	data["presentation"] = "mini_hand"
-	data["detail_policy"] = "right_inspector"
+	data["detail_policy"] = "context_detail"
 	data["actions"] = [{"id": "play_%d" % index, "label": "出牌", "disabled": false}]
 	if index >= SAMPLE_CARDS.size():
 		data["rank"] = ["I", "II", "III", "IV"][index % 4]

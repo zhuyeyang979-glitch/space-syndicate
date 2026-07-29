@@ -129,20 +129,20 @@ func _run_step(viewport: SubViewport, screen: Control, step_data: Dictionary, em
 	var before_overlay_count := overlay_action_ids.size()
 	var clicked_action_id := ""
 	var emitted_action_id := ""
-	var right_inspector_checked := _right_inspector_has_expected_detail(screen, fixture)
+	var context_detail_checked := _context_detail_has_expected_detail(screen, fixture)
 	var player_feedback_checked := true
 	var overlay_checked := _overlay_idle_or_visible(screen)
 	var privacy_checked := _privacy_surface_safe(screen)
 	match step_id:
 		"boot_to_player_turn":
-			right_inspector_checked = _core_surface_present(screen) and _top_bar_mentions_player_turn(screen) and _hand_has_cards(screen)
+			context_detail_checked = _core_surface_present(screen) and _top_bar_mentions_player_turn(screen) and _hand_has_cards(screen)
 			player_feedback_checked = _player_board_readable(screen)
 			overlay_checked = _overlay_node_present(screen)
 		"inspect_first_card":
 			selected_card_id = str(step_data.get("selected_card_id", "card_orbital_finance"))
 			await _click_hand_card(viewport, screen, selected_card_id)
 			await _pump_frames(6)
-			right_inspector_checked = _right_inspector_has_card(screen, selected_card_id)
+			context_detail_checked = _context_detail_has_card(screen, selected_card_id)
 			player_feedback_checked = _selected_card_visual_stable(screen, selected_card_id)
 		"execute_enabled_action":
 			await _click_hand_card(viewport, screen, selected_card_id)
@@ -150,7 +150,7 @@ func _run_step(viewport: SubViewport, screen: Control, step_data: Dictionary, em
 			clicked_action_id = expected_action_id
 			await _click_card_action(viewport, screen, fixture, selected_card_id, false, emitted_action_ids)
 			emitted_action_id = _latest_since(emitted_action_ids, before_action_count)
-			right_inspector_checked = _right_inspector_has_card(screen, selected_card_id)
+			context_detail_checked = _context_detail_has_card(screen, selected_card_id)
 			player_feedback_checked = _player_feedback_contains(screen, expected_action_id, "action")
 		"disabled_action_guard":
 			await _click_hand_card(viewport, screen, selected_card_id)
@@ -158,13 +158,13 @@ func _run_step(viewport: SubViewport, screen: Control, step_data: Dictionary, em
 			clicked_action_id = expected_action_id
 			var guarded := await _click_card_action(viewport, screen, fixture, selected_card_id, true, emitted_action_ids)
 			emitted_action_id = _latest_since(emitted_action_ids, before_action_count)
-			right_inspector_checked = _right_inspector_has_card(screen, selected_card_id) and _disabled_reason_visible(screen, fixture)
+			context_detail_checked = _context_detail_has_card(screen, selected_card_id) and _disabled_reason_visible(screen, fixture)
 			player_feedback_checked = guarded and emitted_action_id == ""
 		"public_track_safe_read":
 			clicked_action_id = expected_action_id
 			await _click_public_track_slot(viewport, screen)
 			emitted_action_id = _latest_since(emitted_action_ids, before_action_count)
-			right_inspector_checked = _node_tree_text(screen.find_child("RightInspector", true, false)).contains("互动牌")
+			context_detail_checked = _node_tree_text(screen.find_child("ContextDetailDrawer", true, false)).contains("互动牌")
 			player_feedback_checked = _player_feedback_contains(screen, expected_action_id, "action")
 		"temporary_decision_roundtrip":
 			overlay_checked = _temporary_decision_overlay_visible(screen)
@@ -173,14 +173,14 @@ func _run_step(viewport: SubViewport, screen: Control, step_data: Dictionary, em
 			await _click_temporary_decision_action(viewport, screen, expected_action_id)
 			emitted_action_id = _latest_since(emitted_action_ids, before_action_count)
 			var overlay_emitted := _latest_since(overlay_action_ids, before_overlay_count)
-			right_inspector_checked = true
+			context_detail_checked = true
 			overlay_checked = overlay_checked and overlay_emitted == expected_action_id
 			player_feedback_checked = player_feedback_checked and _player_feedback_contains(screen, expected_action_id, "action")
 		"end_turn_feedback":
 			clicked_action_id = "end_turn"
 			await _click_end_turn(viewport, screen)
 			emitted_action_id = _latest_since(emitted_end_turns, before_end_turn_count)
-			right_inspector_checked = _top_bar_mentions_player_turn(screen)
+			context_detail_checked = _top_bar_mentions_player_turn(screen)
 			player_feedback_checked = _player_feedback_contains(screen, "end_turn", "action")
 			overlay_checked = _overlay_node_present(screen)
 		_:
@@ -195,15 +195,15 @@ func _run_step(viewport: SubViewport, screen: Control, step_data: Dictionary, em
 			emit_ok = emitted_action_id == "end_turn_requested"
 		_:
 			emit_ok = true
-	var passed := right_inspector_checked and player_feedback_checked and overlay_checked and privacy_checked and emit_ok
+	var passed := context_detail_checked and player_feedback_checked and overlay_checked and privacy_checked and emit_ok
 	if not passed:
-		_failures.append("%s failed: fixture=%s clicked=%s emitted=%s expected=%s inspector=%s feedback=%s overlay=%s privacy=%s" % [
+		_failures.append("%s failed: fixture=%s clicked=%s emitted=%s expected=%s context_detail=%s feedback=%s overlay=%s privacy=%s" % [
 			step_id,
 			fixture_id,
 			clicked_action_id,
 			emitted_action_id,
 			expected_action_id,
-			str(right_inspector_checked),
+			str(context_detail_checked),
 			str(player_feedback_checked),
 			str(overlay_checked),
 			str(privacy_checked),
@@ -214,7 +214,7 @@ func _run_step(viewport: SubViewport, screen: Control, step_data: Dictionary, em
 		"expected_surface": expected_surface,
 		"clicked_action_id": clicked_action_id,
 		"emitted_action_id": emitted_action_id,
-		"right_inspector_checked": right_inspector_checked,
+		"context_detail_checked": context_detail_checked,
 		"player_feedback_checked": player_feedback_checked,
 		"overlay_checked": overlay_checked,
 		"privacy_checked": privacy_checked,
@@ -233,7 +233,7 @@ func _preview_manifest_record(step_data: Dictionary) -> Dictionary:
 		"expected_surface": str(step_data.get("expected_surface", "")),
 		"clicked_action_id": str(step_data.get("expected_action_id", "")),
 		"emitted_action_id": "",
-		"right_inspector_checked": false,
+		"context_detail_checked": false,
 		"player_feedback_checked": false,
 		"overlay_checked": false,
 		"privacy_checked": false,
@@ -290,7 +290,7 @@ func _click_card_action(viewport: SubViewport, screen: Control, fixture: Diction
 	var action := _first_card_action(fixture, card_id, disabled)
 	if action.is_empty():
 		return false
-	var button := _button_for_action(screen.find_child("RightInspector", true, false), action)
+	var button := _button_for_action(screen.find_child("PlayerCardDock", true, false), action)
 	if button == null:
 		_failures.append("action button not found: %s" % str(action.get("id", "")))
 		return false
@@ -365,7 +365,7 @@ func _click_control(viewport: SubViewport, control: Control) -> void:
 
 
 func _core_surface_present(screen: Control) -> bool:
-	for node_name in ["TopBar", "PlayerBoard", "HandRack", "RightInspector", "PublicTrack", "PlanetBoard", "OverlayLayer"]:
+	for node_name in ["TopBar", "PlayerBoard", "HandRack", "PlayerCardDock", "ContextDetailDrawer", "PublicTrack", "PlanetBoard", "OverlayLayer"]:
 		if screen.find_child(node_name, true, false) == null:
 			return false
 	return true
@@ -437,24 +437,24 @@ func _player_board_feedback(screen: Control) -> Dictionary:
 	return {}
 
 
-func _right_inspector_has_expected_detail(screen: Control, fixture: Dictionary) -> bool:
+func _context_detail_has_expected_detail(screen: Control, fixture: Dictionary) -> bool:
 	var selected: Dictionary = fixture.get("selected_card", {}) if fixture.get("selected_card", {}) is Dictionary else {}
 	if selected.is_empty():
 		return true
-	return _right_inspector_text_matches(screen, selected)
+	return _context_detail_text_matches(screen, selected)
 
 
-func _right_inspector_has_card(screen: Control, card_id: String) -> bool:
+func _context_detail_has_card(screen: Control, card_id: String) -> bool:
 	var card := _hand_card_by_id(screen, card_id)
 	if card == null or not card.has_method("get_card_data"):
 		return false
 	var value: Variant = card.call("get_card_data")
 	var card_data: Dictionary = value if value is Dictionary else {}
-	return _right_inspector_text_matches(screen, card_data)
+	return _context_detail_text_matches(screen, card_data)
 
 
-func _right_inspector_text_matches(screen: Control, card_data: Dictionary) -> bool:
-	var text := _node_tree_text(screen.find_child("RightInspector", true, false))
+func _context_detail_text_matches(screen: Control, card_data: Dictionary) -> bool:
+	var text := _node_tree_text(screen.find_child("ContextDetailDrawer", true, false))
 	var matched := 0
 	for key in ["name", "target", "type"]:
 		var value := str(card_data.get(key, "")).strip_edges()
@@ -669,7 +669,7 @@ func _build_markdown_report(manifest: Dictionary) -> String:
 	lines.append("- Screenshot: `%s`" % SCREENSHOT_PATH)
 	lines.append("- Case count: %d" % int(manifest.get("case_count", 0)))
 	lines.append("")
-	lines.append("| Step | Fixture | Surface | Clicked | Emitted | Inspector | Feedback | Overlay | Privacy | Passed |")
+	lines.append("| Step | Fixture | Surface | Clicked | Emitted | Context Detail | Feedback | Overlay | Privacy | Passed |")
 	lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
 	for record_variant in manifest.get("records", []):
 		var record: Dictionary = record_variant if record_variant is Dictionary else {}
@@ -679,7 +679,7 @@ func _build_markdown_report(manifest: Dictionary) -> String:
 			str(record.get("expected_surface", "")),
 			str(record.get("clicked_action_id", "")),
 			str(record.get("emitted_action_id", "")),
-			str(record.get("right_inspector_checked", false)),
+			str(record.get("context_detail_checked", false)),
 			str(record.get("player_feedback_checked", false)),
 			str(record.get("overlay_checked", false)),
 			str(record.get("privacy_checked", false)),

@@ -481,20 +481,41 @@ func _test_global_three_layer_registry_contract() -> void:
 		"player_action_routing",
 		"ai_observation_decision_action",
 		"application_navigation",
+		"player_roster",
+		"player_inspection",
+		"region_supply_presentation",
+		"action_context_presentation",
+		"public_feedback_presentation",
+		"context_detail_presentation",
+		"planet_table_presentation",
+		"right_" + "inspector_legacy",
+		"player_seat_legacy",
 	]
 	var actual_domain_ids: Array[String] = domain_ids.duplicate()
 	required_domain_ids.sort()
 	actual_domain_ids.sort()
 	_expect(
-		domains.size() == 28 \
+		domains.size() == 37 \
 			and int(summary.get("registered_domain_count", -1)) == domains.size() \
 			and actual_domain_ids == required_domain_ids,
-		"registry inventories exactly the 28 required semantic domains"
+		"registry inventories exactly the 37 required semantic domains"
 	)
 	_expect(fields_complete and domain_ids.size() == domains.size(), "every semantic domain has the closed required field set and a unique identity")
 	_expect(statuses_valid, "every semantic status uses the one approved vocabulary")
 	_expect(ready_flags_consistent, "THREE_LAYER_READY is claimed only when core, AI, and player readiness are all true")
 	_expect(core_ready_count == int(summary.get("core_ready_domain_count", -1)) and complete_domain_count == int(summary.get("global_three_layer_ready_domain_count", -1)), "registry summary readiness counts are derived from domain truth")
+	var main_dependent_domain_count := 0
+	for domain_variant in domains:
+		var domain := domain_variant as Dictionary
+		if domain.get("main_gd_dependencies", []) is Array \
+				and not (domain.get("main_gd_dependencies", []) as Array).is_empty():
+			main_dependent_domain_count += 1
+	_expect(
+		main_dependent_domain_count <= 12 \
+			and int(summary.get("main_dependent_domain_count_before", -1)) == 12 \
+			and int(summary.get("main_dependent_domain_count_after", -1)) == main_dependent_domain_count,
+		"Alpha 0.4-B presentation domains add no Main dependency"
+	)
 	_expect(complete_domain_count == 1 and domain_ids.has("player_action_routing") and not bool(summary.get("global_three_layer_complete", true)), "only the completed player-action vertical slice is three-layer ready; global completion remains false")
 
 

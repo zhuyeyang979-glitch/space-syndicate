@@ -9061,3 +9061,31 @@ deleted. Evidence and the remaining action inventory are recorded in
   and post-merge smoke `--check-only` passed. PR #69/#72 are closed as
   superseded, while PR #70/#71 remain Draft reference-only. Alpha 0.4-B is the
   next product boundary and is not started here.
+
+## 2026-07-29 — Alpha 0.4-B production contextual table shell (GREEN)
+
+- Replaced the fixed 292-pixel `RightInspector` and the planet orbit/side-seat
+  system with a single left-side typed player roster. Three to four players use
+  one ordered column; five to eight use two columns without rotating the local
+  viewer. Player inspection is now a transient public-only popup.
+- Split the former generic inspector responsibilities across viewer-authorized
+  region supply, compact non-card action context, toast/history, and closed-union
+  detail projections. The production region popup reuses the authoritative rack
+  query/action ports and preserves rack revision across open, close, switch,
+  hover, camera, and zoom operations.
+- Physically deleted the RightInspector scenes/scripts/snapshot assembly,
+  RoleSeatLayerHost, seat fallback/coordinates, public seat service/snapshot,
+  legacy fixtures, signal forwarding, and hidden fallback paths. The Player Card
+  Dock remains the sole production card submission surface and keeps V0.6 shared
+  capacity and Alpha 0.4-A direct-claim/target behavior unchanged.
+- The nine affected semantic-registry domains are `CUTOVER_COMPLETE` with zero
+  legacy write paths or blockers. Main-dependent domains remain `12 -> 12`, and
+  `GLOBAL_THREE_LAYER_COMPLETE=false`; this does not claim a V0.7 runtime cutover.
+- The real `main.tscn` production journey passes `53/53` at 1920x1080 and
+  1366x768 with ten inspected screenshots. Legacy/architecture passes `60/60`,
+  layout passes `28/28`, typed schema passes `120/120`, contextual surfaces pass
+  `76/76`, and the Alpha 0.4-A focused regression matrix remains green.
+- Main, gameplay values, terminal owners, Victory/settlement/timers, AI policy,
+  Save owners/sections, RNG owners/draw points, and V0.6 rules are unchanged.
+  This task ran component and production-journey acceptance only: no third
+  Formal FullRun and no full smoke were executed.

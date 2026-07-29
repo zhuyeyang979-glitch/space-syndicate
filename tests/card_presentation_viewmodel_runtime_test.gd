@@ -4,6 +4,8 @@ const MAIN_SCENE := "res://scenes/main.tscn"
 const CARD_PRESENTATION_SCENE := "res://scenes/runtime/CardPresentationRuntimeService.tscn"
 const TABLE_VIEWMODEL_SCENE := "res://scenes/runtime/GameTableViewModelRuntimeService.tscn"
 const TABLE_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/table_snapshot.gd")
+const CURRENT_ACTION_CONTEXT := preload("res://scripts/presentation/current_action_context_projection_v1.gd")
+const CONTEXT_DETAIL := preload("res://scripts/presentation/context_detail_projection_v1.gd")
 
 var failures: Array[String] = []
 
@@ -90,13 +92,20 @@ func _run() -> void:
 			if first_card.get("game_action_offer", {}) is Dictionary else {}
 		_expect(bool(GameActionOfferV1.validation_report(offer).get("valid", false)) \
 			and str(offer.get("semantic_action_id", "")) == GameActionIntentV1.ACTION_CARD_PLAY, "normal card preserves the formal Action Spine offer")
-	var inspector: Dictionary = snapshot.get("right_inspector", {}) if snapshot.get("right_inspector", {}) is Dictionary else {}
-	var deep_links: Array = inspector.get("deep_links", []) if inspector.get("deep_links", []) is Array else []
-	_expect(_has_action_id(deep_links, "detail_region") and _has_action_id(deep_links, "detail_cards"), "RightInspector fallback precedence and deep links remain compatible")
+	var current_action: Dictionary = snapshot.get("current_action_context", {}) \
+		if snapshot.get("current_action_context", {}) is Dictionary else {}
+	var context_detail: Dictionary = snapshot.get("context_detail", {}) \
+		if snapshot.get("context_detail", {}) is Dictionary else {}
+	_expect(snapshot.has("current_action_context") \
+		and (current_action.is_empty() or bool(CURRENT_ACTION_CONTEXT.validation_report(current_action).get("valid", false))) \
+		and not JSON.stringify(current_action.get("game_action_offers", [])).contains(GameActionIntentV1.ACTION_CARD_PLAY), "typed current-action context fails closed and cannot duplicate Dock card play")
+	_expect(snapshot.has("context_detail") \
+		and (context_detail.is_empty() or bool(CONTEXT_DETAIL.validation_report(context_detail).get("valid", false))) \
+		and not context_detail.has("actions") and _is_pure_data(context_detail), "typed context detail is read-only and fails closed without a selected object")
 	var card_track: Array = snapshot.get("card_track", []) if snapshot.get("card_track", []) is Array else []
 	_expect(_is_pure_data(card_track) and not _contains_forbidden_key(card_track), "public card track remains pure and privacy-safe")
 	var source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	for retired_name in ["_card_theme_color", "_card_use_case_text_for_skill", "_card_rule_facts", "_runtime_hand_card_snapshots", "_runtime_card_track_snapshot_source", "_runtime_right_inspector_snapshot_source", "_card_resolution_animation_text", "_card_resolution_target_text", "_card_resolution_effect_style"]:
+	for retired_name in ["_card_theme_color", "_card_use_case_text_for_skill", "_card_rule_facts", "_runtime_hand_card_snapshots", "_runtime_card_track_snapshot_source", "_card_resolution_animation_text", "_card_resolution_target_text", "_card_resolution_effect_style"]:
 		_expect(not source.contains("func %s(" % retired_name), "%s remains deleted from main.gd" % retired_name)
 	_expect(not source.contains("TableSnapshotScript"), "main.gd no longer owns TableSnapshot normalization")
 	var audio_players: Array[AudioStreamPlayer] = []

@@ -7,7 +7,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/FullscreenMapOverlay.tscn" id="6_fullscreen_map"]
 [ext_resource type="PackedScene" path="res://scenes/ui/CardResolutionBanner.tscn" id="7_resolution_banner"]
 [ext_resource type="PackedScene" path="res://scenes/ui/BottomCountdownBar.tscn" id="8_countdown"]
-[ext_resource type="PackedScene" path="res://scenes/ui/DistrictSupplyDrawer.tscn" id="9_supply_drawer"]
+[ext_resource type="PackedScene" path="res://scenes/ui/table/RegionSupplyPopup.tscn" id="9_supply_drawer"]
 [ext_resource type="PackedScene" path="res://scenes/ui/MenuOverlay.tscn" id="10_menu"]
 [ext_resource type="PackedScene" path="res://scenes/ui/BidBoard.tscn" id="11_bid_board"]
 
@@ -271,7 +271,7 @@ visible = false
 unique_name_in_owner = true
 visible = false
 
-[node name="DistrictSupplySideDrawerOverlay" parent="RuntimeSurfaceLayer" instance=ExtResource("9_supply_drawer")]
+[node name="RegionSupplyPopup" parent="RuntimeSurfaceLayer" instance=ExtResource("9_supply_drawer")]
 unique_name_in_owner = true
 visible = false
 

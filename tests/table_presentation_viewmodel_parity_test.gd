@@ -94,7 +94,8 @@ func _run() -> void:
 	var top := _dictionary(table.get("top_bar", {}))
 	var player_board := _dictionary(table.get("player_board", {}))
 	var player_card_dock := _dictionary(table.get("player_card_dock", {}))
-	var district := _dictionary(_dictionary(table.get("right_inspector", {})).get("district", {}))
+	var current_action := _dictionary(table.get("current_action_context", {}))
+	var context_detail := _dictionary(table.get("context_detail", {}))
 	for field in TOP_BAR_FIELDS:
 		_expect(top.has(field), "top bar preserves BASE field: %s" % field)
 	for field in PLAYER_BOARD_FIELDS:
@@ -120,8 +121,11 @@ func _run() -> void:
 	_expect(not _dictionary(player_board.get("bid_board", {})).is_empty(), "player board exposes the public bid board")
 	var table_lamps_json := JSON.stringify(player_board.get("table_state_lamps", []))
 	_expect(table_lamps_json.contains("结算") and not table_lamps_json.contains("resolving"), "player table state lamp localizes the raw resolving phase")
-	_expect(not str(district.get("title", "")).is_empty(), "right inspector receives selected district details")
-	_expect(not _array(_dictionary(table.get("right_inspector", {})).get("actions", [])).is_empty(), "right inspector preserves actionable entries")
+	_expect(not current_action.is_empty() and not str(current_action.get("title", "")).is_empty(), "typed current-action context receives selected district guidance")
+	_expect(current_action.get("game_action_offers", []) is Array \
+		and not JSON.stringify(current_action.get("game_action_offers", [])).contains("ACTION_CARD_PLAY"), "typed current-action context carries only non-card actionable offers and may fail closed")
+	_expect(not context_detail.is_empty() and str(context_detail.get("context_kind", "")) in ["normal_card", "commodity_card", "public_track"] \
+		and not context_detail.has("actions"), "selected object is exposed through typed read-only context detail")
 	_expect(_array(raw_track.get("history", [])).size() == 1, "track has a real public history entry")
 	_expect(not _dictionary(raw_track.get("active", {})).is_empty(), "track has a real active entry")
 	_expect(_array(raw_track.get("queue", [])).size() == 1, "track has a real current queue entry")

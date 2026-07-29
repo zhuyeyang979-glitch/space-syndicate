@@ -1,7 +1,6 @@
 extends PanelContainer
 class_name SpaceSyndicatePlayerBoard
 
-signal action_requested(action_id: String)
 signal application_intent_requested(intent: IntelApplicationIntent)
 signal player_inspection_requested(player_index: int)
 
@@ -15,7 +14,7 @@ signal player_inspection_requested(player_index: int)
 @onready var progress_path_rail: Container = %PlayerProgressPathRail
 @onready var goal_bar: ProgressBar = %PlayerGoalBar
 @onready var action_hint_label: Label = %PlayerActionHint
-@onready var main_action_dock: SpaceSyndicateActionDock = %PlayerMainActionDock
+@onready var compact_current_action_surface: SpaceSyndicateCompactCurrentActionSurface = %CompactCurrentActionSurface
 @onready var status_lamp_row: Container = %PlayerStatusLampRow
 @onready var readiness_chip_row: Container = %PlayerReadinessChipRow
 @onready var resource_tableau: PanelContainer = %PlayerResourceTableau
@@ -37,10 +36,6 @@ func _ready() -> void:
 	identity_chip.mouse_filter = Control.MOUSE_FILTER_STOP
 	identity_chip.focus_mode = Control.FOCUS_ALL
 	identity_chip.gui_input.connect(_on_identity_chip_gui_input)
-	if main_action_dock != null:
-		main_action_dock.set_compact_mode(true)
-		main_action_dock.action_requested.connect(_on_action_requested)
-		main_action_dock.application_intent_requested.connect(_on_application_intent_requested)
 
 
 func _configure_pointer_filter_skeleton() -> void:
@@ -71,15 +66,13 @@ func set_player_state(data: Dictionary) -> void:
 	action_hint_label.remove_theme_color_override("font_color")
 	runtime_feedback = {}
 	set_meta("runtime_feedback", {})
-	var actions: Array = data.get("actions", []) if data.get("actions", []) is Array else []
-	var primary_action := _first_text(data, ["primary_action", "primary_action_label", "next_action"], _first_action_label(actions))
+	var primary_action := _first_text(data, ["primary_action", "primary_action_label", "next_action"], "查看详情")
 	var identity_text := _first_text(data, ["identity", "player", "seat"], "未入席")
 	_owner_identity_text = identity_text
 	var cash_text := _first_text(data, ["cash_text", "cash", "money"], "¥ --")
 	var gdp_text := _first_text(data, ["gdp_text", "gdp"], "--/min")
 	var goal_text := _first_text(data, ["goal_text", "goal", "target"], "--")
 	var selected_text := _first_text(data, ["selected_district_summary", "selected_district", "selected_region"], "未选区")
-	var quick_actions: Array = data.get("quick_actions", data.get("action_summary", [])) if data.get("quick_actions", data.get("action_summary", [])) is Array else []
 	var status_lamps: Array = _first_array(data, ["table_state_lamps", "status_lamps", "table_lamps"])
 	var readiness_chips: Array = _first_array(data, ["readiness_chips", "action_readiness", "readiness"])
 	var progress_path: Array = _first_array(data, ["progress_path", "runtime_path", "path_steps"])
@@ -90,7 +83,6 @@ func set_player_state(data: Dictionary) -> void:
 	_set_chip(selected_district_chip, "选区", selected_text, 128, 14)
 	_set_chip(primary_action_chip, "下一步", primary_action, 122, 14)
 	goal_bar.value = clampf(float(data.get("goal_ratio", 0.0)) * 100.0, 0.0, 100.0)
-	_set_main_action_dock(quick_actions, actions)
 	_set_status_lamps(status_lamps)
 	_set_readiness_chips(readiness_chips)
 	_set_progress_path(progress_path)
@@ -154,22 +146,13 @@ func get_runtime_feedback_snapshot() -> Dictionary:
 	return runtime_feedback.duplicate(true)
 
 
-func _on_action_requested(action_id: String) -> void:
-	action_requested.emit(action_id)
-
-
 func _on_application_intent_requested(intent: IntelApplicationIntent) -> void:
 	if intent != null and intent.is_valid():
 		application_intent_requested.emit(intent)
 
 
-func _set_main_action_dock(quick_actions: Array, actions: Array) -> void:
-	if main_action_dock == null:
-		return
-	main_action_dock.set_dock({
-		"quick_actions": quick_actions,
-		"actions": actions,
-	})
+func get_current_action_surface() -> SpaceSyndicateCompactCurrentActionSurface:
+	return compact_current_action_surface
 
 
 func _set_status_lamps(entries: Array) -> void:

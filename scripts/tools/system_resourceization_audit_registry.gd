@@ -633,7 +633,7 @@ const RECORDS := [
 		"editor_visibility": "scene_tree",
 		"risk_level": "low",
 		"recommended_next_step": "Keep GameScreen scenes plus CardPresentationRuntimeService and GameTableViewModelRuntimeService as hard dependencies; main.gd should only supply domain facts and route stable actions.",
-		"mcp_notes": "LegacyRuntimeTable and 164 player/card-surface, presentation, resolution-cinematic, hand/track snapshot, resolution-overlay badge, RightInspector, and TableSnapshot helpers are retired. CardPresentationRuntimeService and GameTableViewModelRuntimeService now own the UI data contract.",
+		"mcp_notes": "LegacyRuntimeTable and 164 player/card-surface, presentation, resolution-cinematic, hand/track snapshot, resolution-overlay badge, legacy detail-panel, and TableSnapshot helpers are retired. CardPresentationRuntimeService and GameTableViewModelRuntimeService now own the UI data contract.",
 	},
 	{
 		"id": "card_presentation_runtime_service_owned",
@@ -674,8 +674,8 @@ const RECORDS := [
 		"key_functions": ["compose_table_source", "compose_table", "compose_card_surfaces", "debug_snapshot"],
 		"editor_visibility": "scene_tree",
 		"risk_level": "high",
-		"recommended_next_step": "Keep hand, public track, CardResolutionTrack, and RightInspector precedence in one pure-data service.",
-		"mcp_notes": "Sprint 42 removes TableSnapshot, hand/track snapshot, and RightInspector assembly ownership from main.gd while preserving action ids and privacy.",
+		"recommended_next_step": "Keep PlayerCardDock, public track, CardResolutionTrack, and typed context-detail precedence in one pure-data service.",
+		"mcp_notes": "Sprint 42 removes TableSnapshot, hand/track snapshot, and legacy detail assembly ownership from main.gd while preserving action ids and privacy.",
 	},
 	{
 		"id": "district_supply_drawer_scene_owned",

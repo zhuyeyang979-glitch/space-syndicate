@@ -17,7 +17,7 @@ const MAP_LAYER_IDS := [
 	&"city",
 ]
 const PLAYER_INSPECTION_SOURCE_SURFACES := [
-	&"player_seat",
+	&"player_roster",
 	&"player_board",
 	&"fullscreen_hud",
 	&"keyboard_hotkey",
@@ -44,7 +44,6 @@ const HAND_SELECTION_SOURCE_SURFACES := [
 const CARD_RESOLUTION_SELECTION_SOURCE_SURFACES := [
 	&"card_resolution_track",
 	&"public_bid_board",
-	&"right_inspector",
 	&"qa_driver",
 ]
 

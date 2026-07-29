@@ -5,7 +5,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/PublicTrack.tscn" id="3_public_track"]
 [ext_resource type="PackedScene" path="res://scenes/ui/PlayerBoard.tscn" id="4_player_board"]
 [ext_resource type="PackedScene" path="res://scenes/ui/CardFace.tscn" id="5_card_face"]
-[ext_resource type="PackedScene" path="res://scenes/ui/RightInspector.tscn" id="6_right_inspector"]
+[ext_resource type="PackedScene" path="res://scenes/ui/table/ContextDetailDrawer.tscn" id="6_context_detail"]
 
 [node name="PlayerTurnMcpPreview" type="Control"]
 layout_mode = 3
@@ -65,7 +65,7 @@ text_overrun_behavior = 3
 
 [node name="PlayerTurnPreviewSubtitleLabel" type="Label" parent="PlayerTurnPreviewMargin/PlayerTurnPreviewColumns/PlayerTurnControlPanel/PlayerTurnControlMargin/PlayerTurnControlRows"]
 layout_mode = 2
-text = "真实 PlayerBoard / HandRack / CardFace / RightInspector"
+text = "真实 PlayerBoard / HandRack / CardFace / ContextDetailDrawer"
 autowrap_mode = 3
 
 [node name="PlayerTurnStateSectionLabel" type="Label" parent="PlayerTurnPreviewMargin/PlayerTurnPreviewColumns/PlayerTurnControlPanel/PlayerTurnControlMargin/PlayerTurnControlRows"]
@@ -196,26 +196,6 @@ custom_minimum_size = Vector2(0, 200)
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="RightInspectorPreviewHost" type="PanelContainer" parent="PlayerTurnPreviewMargin/PlayerTurnPreviewColumns/PlayerTurnStagePanel/PlayerTurnStageMargin/PlayerTurnStageRows/PlayerTurnMainPreviewRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(240, 220)
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="RightInspectorPreviewMargin" type="MarginContainer" parent="PlayerTurnPreviewMargin/PlayerTurnPreviewColumns/PlayerTurnStagePanel/PlayerTurnStageMargin/PlayerTurnStageRows/PlayerTurnMainPreviewRow/RightInspectorPreviewHost"]
-layout_mode = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 8
-
-[node name="RightInspector" parent="PlayerTurnPreviewMargin/PlayerTurnPreviewColumns/PlayerTurnStagePanel/PlayerTurnStageMargin/PlayerTurnStageRows/PlayerTurnMainPreviewRow/RightInspectorPreviewHost/RightInspectorPreviewMargin" instance=ExtResource("6_right_inspector")]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(220, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
 [node name="PlayerBoardPreviewHost" type="PanelContainer" parent="PlayerTurnPreviewMargin/PlayerTurnPreviewColumns/PlayerTurnStagePanel/PlayerTurnStageMargin/PlayerTurnStageRows"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -235,3 +215,7 @@ custom_minimum_size = Vector2(780, 300)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+
+[node name="ContextDetailDrawer" parent="PlayerTurnPreviewMargin/PlayerTurnPreviewColumns/PlayerTurnStagePanel" instance=ExtResource("6_context_detail")]
+unique_name_in_owner = true
+layout_mode = 1

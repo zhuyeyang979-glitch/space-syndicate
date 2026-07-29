@@ -3,7 +3,10 @@ extends SceneTree
 const CATALOG_PATH := "res://data/cards/card_runtime_catalog_v06.json"
 const SKIN_FIXTURE_PATH := "res://data/ui/card_ui_skin_lab_cards_v06.json"
 const RULEBOOK_PATH := "res://docs/tabletop_rulebook_v06.md"
-const INSPECTOR_PATH := "res://scripts/ui/right_inspector.gd"
+const CONTEXTUAL_COPY_PATHS := [
+	"res://scripts/ui/table/compact_current_action_surface.gd",
+	"res://scripts/ui/table/context_detail_drawer.gd",
+]
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -49,8 +52,9 @@ func _run() -> void:
 	_expect(not skin_source.is_empty() and not _contains_legacy_text(skin_source), "Skin Lab player fixture contains no legacy resource term")
 	var rulebook_source := _read_text(RULEBOOK_PATH)
 	_expect(not rulebook_source.is_empty() and not _contains_legacy_text(rulebook_source), "v0.6 player rulebook contains no legacy resource term")
-	var inspector_source := _read_text(INSPECTOR_PATH)
-	_expect(not inspector_source.is_empty() and not _contains_legacy_text(inspector_source), "right-side player inspector contains no legacy resource term")
+	for path in CONTEXTUAL_COPY_PATHS:
+		var contextual_source := _read_text(path)
+		_expect(not contextual_source.is_empty() and not _contains_legacy_text(contextual_source), "%s contains no legacy resource term" % path)
 	_finish()
 
 

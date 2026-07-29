@@ -40,7 +40,9 @@ func is_valid() -> bool:
 
 func to_dictionary() -> Dictionary:
 	return {
-		"kind": intent_kind,
+		# Wire payloads are closed data. StringName is an engine value, so
+		# normalize it at the serialization boundary.
+		"kind": str(intent_kind),
 		"focused_history_entry_id": focused_history_entry_id,
 		"focused_region_id": focused_region_id,
 	}

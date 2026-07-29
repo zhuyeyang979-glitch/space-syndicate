@@ -6,6 +6,7 @@ signal card_selected(card_data: Dictionary)
 signal card_hovered(card_data: Dictionary)
 signal card_unhovered
 signal card_unselected(card_data: Dictionary)
+signal card_target_selection_requested(card_data: Dictionary)
 signal game_action_offer_requested(
 	offer: Dictionary,
 	submission_kind: String,
@@ -345,6 +346,9 @@ func _on_card_double_clicked(_face_data: Dictionary, pool_id: StringName, card: 
 	var row := _row_for_card(card)
 	if row.is_empty():
 		return
+	if _requires_scene_target_selection(pool_id, row):
+		_request_scene_target_selection(pool_id, row)
+		return
 	_on_card_clicked({}, pool_id, card)
 	_submit_offer(pool_id, row, "human_click")
 
@@ -375,11 +379,31 @@ func _on_card_gui_input(event: InputEvent, pool_id: StringName, card: Control) -
 	if identity.is_empty():
 		return
 	if identity == _selected_identity:
-		if _card_available(pool_id, row):
+		if _requires_scene_target_selection(pool_id, row):
+			_request_scene_target_selection(pool_id, row)
+		elif _card_available(pool_id, row):
 			_submit_offer(pool_id, row, "human_click")
 	else:
 		_on_card_clicked({}, pool_id, card)
 	get_viewport().set_input_as_handled()
+
+
+func _requires_scene_target_selection(pool_id: StringName, row: Dictionary) -> bool:
+	return pool_id == &"commodity_cards" \
+		and not str(row.get("legal_target_summary", "")).is_empty()
+
+
+func _request_scene_target_selection(pool_id: StringName, row: Dictionary) -> void:
+	var identity := _card_identity(pool_id, row)
+	if identity.is_empty():
+		feedback.show_card_snapshot(pool_id, row)
+		return
+	var data := _card_face_data(pool_id, row)
+	if identity != _selected_identity:
+		_selected_identity = identity
+		card_selected.emit(data)
+	card_target_selection_requested.emit(data)
+	_sync_selection_visuals()
 
 
 func _submit_offer(pool_id: StringName, row: Dictionary, submission_kind: String) -> bool:

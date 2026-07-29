@@ -12,14 +12,12 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/TargetingOverlay.tscn" id="8_targeting"]
 [ext_resource type="PackedScene" path="res://scenes/ui/HandRack.tscn" id="9_hand"]
 [ext_resource type="Script" path="res://scripts/ui/planet_map_view.gd" id="9_q1kbs"]
-[ext_resource type="PackedScene" path="res://scenes/ui/RightInspector.tscn" id="10_inspector"]
 [ext_resource type="Script" path="res://scripts/ui/skin_lab/card_settlement_stage.gd" id="11_10263"]
 [ext_resource type="PackedScene" path="res://scenes/ui/CardFace.tscn" id="11_card"]
 [ext_resource type="Script" path="res://scripts/ui/targeting_overlay.gd" id="13_crdhk"]
 [ext_resource type="Script" path="res://scripts/ui/hand_rack.gd" id="15_8jro6"]
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="17_fm6mt"]
 [ext_resource type="Script" path="res://scripts/ui/card_face.gd" id="18_frkrk"]
-[ext_resource type="Script" path="res://scripts/ui/right_inspector.gd" id="20_aany0"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_table"]
 shader = ExtResource("3_shader")
@@ -498,22 +496,6 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(66, 25)
 layout_mode = 2
 text = "隐藏"
-
-[node name="InspectorDivider" type="HSeparator" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows" unique_id=1625278226]
-layout_mode = 2
-
-[node name="InspectorScroll" type="ScrollContainer" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows" unique_id=560894618]
-layout_mode = 2
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
-
-[node name="RightInspector" type="PanelContainer" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/InspectorScroll" unique_id=693081920 instance=ExtResource("10_inspector")]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(272, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-theme = ExtResource("2_theme")
-script = ExtResource("20_aany0")
 
 [node name="TransitLayer" type="Control" parent="." unique_id=2081072768]
 layout_mode = 1

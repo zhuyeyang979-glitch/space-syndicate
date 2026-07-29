@@ -37,7 +37,15 @@ func _run() -> void:
 	var card := dock.find_child("CardFace", true, false) as Control
 	_expect(card != null, "production GameScreen renders the real commodity CardFace in PlayerCardDock")
 	dock.call("_on_card_clicked", {}, &"commodity_cards", card)
-	_expect(dock.target_selection_active(), "selecting the commodity card enters target-selection mode")
+	_expect(not dock.target_selection_active(), "first commodity selection remains a read-only detail stage")
+	var selected_row: Dictionary = dock.call("_row_for_card", card) as Dictionary
+	dock.call("_request_scene_target_selection", &"commodity_cards", selected_row)
+	_expect(dock.target_selection_active(), "explicit second activation enters target-selection mode")
+	if not dock.target_selection_active():
+		screen.queue_free()
+		await process_frame
+		_finish()
+		return
 
 	screen.call("_on_district_selection_requested", 0, &"planet_map")
 	_expect(selection_intents.size() >= 2, "card selection and map target produce typed table-selection intents")
@@ -68,6 +76,11 @@ func _run() -> void:
 	screen.apply_state(_table_state(2, 0, "region.alpha", true))
 	await process_frame
 	_expect(action_intents.size() == 1, "authoritative refreshed offer submits exactly once through GameActionIntent")
+	if action_intents.is_empty():
+		screen.queue_free()
+		await process_frame
+		_finish()
+		return
 	var action_intent := action_intents[0]
 	_expect(str(action_intent.get("semantic_action_id", "")) == INTENT.ACTION_CARD_PLAY \
 		and str((action_intent.get("target_ids", {}) as Dictionary).get("region_id", "")) == "region.alpha" \

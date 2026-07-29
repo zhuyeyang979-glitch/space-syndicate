@@ -113,7 +113,10 @@ func _test_static_privacy_and_action_routes() -> void:
 	var main_scene := _source("res://scenes/main.tscn")
 	var screen_source := _source("res://scripts/ui/game_screen.gd")
 	var board_source := _source("res://scripts/ui/player_board.gd")
-	var inspector_source := _source("res://scripts/ui/right_inspector.gd")
+	var context_detail_source := _source("res://scripts/ui/table/context_detail_drawer.gd")
+	var context_detail_projection := _source("res://scripts/presentation/context_detail_projection_v1.gd")
+	var current_action_source := _source("res://scripts/ui/table/compact_current_action_surface.gd")
+	var current_action_projection := _source("res://scripts/presentation/current_action_context_projection_v1.gd")
 	var dock_source := _source("res://scripts/ui/table/player_card_dock.gd")
 	var dock_query_source := _source("res://scripts/presentation/player_card_dock_viewer_query_port.gd")
 	var track_source := _source("res://scripts/ui/table/top_commodity_sushi_track.gd")
@@ -131,11 +134,13 @@ func _test_static_privacy_and_action_routes() -> void:
 	_expect(not dock_source.contains("submit_intent") and not dock_source.contains("CommodityCardInventoryRuntimeController") \
 		and not dock_source.contains("/root/Main"), "Dock performs no gameplay mutation or direct submission")
 
-	_expect(not inspector_source.contains("commodity_claim_selected") \
-		and inspector_source.contains("\"actions\": []"), "RightInspector commodity details are read-only")
-	_expect(screen_source.contains("func _retire_right_inspector_card_actions(") \
-		and screen_source.contains("read_only_details[\"actions\"] = []") \
-		and not screen_source.contains("func _card_game_action_entry("), "RightInspector cannot retain a Dock card-play offer")
+	_expect(context_detail_source.contains("\"read_only\": true") \
+		and context_detail_source.contains("\"accepts_card_submission\": false") \
+		and not context_detail_projection.contains("game_action_offers"), "typed detail projection remains read-only and owns no gameplay offers")
+	_expect(current_action_projection.contains("current_action_context_projection_card_play_forbidden") \
+		and current_action_source.contains("\"accepts_card_submission\": false") \
+		and current_action_source.contains("\"emits_card_action_offer\": false") \
+		and not screen_source.contains("func _card_game_action_entry("), "typed current-action context cannot retain a Dock card-play offer")
 	_expect(not screen_source.contains("player_board.has_signal(\"card_selected\")") \
 		and not screen_source.contains("func _on_card_drag_released"), "GameScreen has no HandRack card submission fallback")
 
@@ -224,10 +229,10 @@ func _test_runtime_query_invariants() -> void:
 	var track_debug: Dictionary = track.call("debug_snapshot") if track != null and track.has_method("debug_snapshot") else {}
 	var player_board_projection: Dictionary = screen.current_ui_data.get("player_board", {}) \
 		if screen.current_ui_data.get("player_board", {}) is Dictionary else {}
-	var inspector_projection: Dictionary = screen.current_ui_data.get("right_inspector", {}) \
-		if screen.current_ui_data.get("right_inspector", {}) is Dictionary else {}
+	var current_action_projection: Dictionary = screen.current_ui_data.get("current_action_context", {}) \
+		if screen.current_ui_data.get("current_action_context", {}) is Dictionary else {}
 	var legacy_card_action_entries := _count_action_id(player_board_projection, "play") \
-		+ _count_semantic_action_offers(inspector_projection, INTENT.ACTION_CARD_PLAY)
+		+ _count_semantic_action_offers(current_action_projection, INTENT.ACTION_CARD_PLAY)
 	_duplicate_submission_entry_count += legacy_card_action_entries
 
 	_expect(bool(PROJECTION.validation_report(projection).get("valid", false)) \
@@ -245,26 +250,18 @@ func _test_runtime_query_invariants() -> void:
 	_expect(int(track_debug.get("direct_inventory_mutation_count", -1)) == 0 \
 		and int(track_debug.get("direct_track_mutation_count", -1)) == 0 \
 		and int(track_debug.get("claim_button_count", -1)) == 0, "commodity source UI has no direct mutation or hidden claim button")
-	_expect(legacy_card_action_entries == 0, "PlayerBoard and RightInspector expose no duplicate card-play offer")
+	_expect(legacy_card_action_entries == 0, "PlayerBoard and typed current-action context expose no duplicate card-play offer")
 
-	var right_inspector := screen.find_child("RightInspector", true, false) as SpaceSyndicateRightInspector
-	if right_inspector != null:
-		right_inspector.show_public_commodity({
-			"public_name": "审计商品",
-			"public_supply_pressure": 1,
-			"public_demand_pressure": 1,
-			"public_market_price": 1,
-			"public_market_trend": 0,
-			"claimable": true,
-			"public_claim_disabled_reason": "",
-			"commodity_slot_id": "slot.audit",
-			"public_short_effect": "审计只读详情",
-			"public_industry": "life",
-		})
-	await process_frame
-	var inspector_actions := right_inspector.get_node_or_null("InspectorRows/CurrentActionPanel") as SpaceSyndicateActionDock \
-		if right_inspector != null else null
-	_expect(inspector_actions != null and inspector_actions.actions_signature == var_to_str([]), "runtime RightInspector exposes no commodity claim action")
+	var detail_surface := screen.find_child("ContextDetailDrawer", true, false) as SpaceSyndicateContextDetailDrawer
+	var action_surface := screen.find_child("CompactCurrentActionSurface", true, false) as SpaceSyndicateCompactCurrentActionSurface
+	var detail_debug := detail_surface.debug_snapshot() if detail_surface != null else {}
+	var action_debug := action_surface.debug_snapshot() if action_surface != null else {}
+	_expect(detail_surface != null and bool(detail_debug.get("read_only", false)) \
+		and not bool(detail_debug.get("accepts_card_submission", true)) \
+		and not bool(detail_debug.get("mutates_gameplay", true)), "runtime typed detail surface is read-only and exposes no commodity claim action")
+	_expect(action_surface != null and not bool(action_debug.get("accepts_card_submission", true)) \
+		and not bool(action_debug.get("emits_card_action_offer", true)) \
+		and not bool(action_debug.get("owns_action_legality", true)), "runtime current-action surface cannot duplicate Dock card submission or legality")
 	_expect(screen.find_child("HandRack", true, false) == null \
 		and screen.find_children("PlayerCardDock", "", true, false).size() == 1, "runtime table has one Dock and no legacy HandRack")
 

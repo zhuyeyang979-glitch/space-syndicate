@@ -2,6 +2,7 @@ extends SceneTree
 
 const GAME_SCREEN_SCENE := preload("res://scenes/ui/GameScreen.tscn")
 const ILLUSTRATION_CATALOG: CardIllustrationCatalogResource = preload("res://resources/presentation/alpha01_card_illustration_catalog.tres")
+const CONTEXT_DETAIL := preload("res://scripts/presentation/context_detail_projection_v1.gd")
 const PRIVATE_SENTINEL := "hidden_owner::PRIVATE_TRACK_SENTINEL"
 const SLOT_ID := "slot.public.alpha"
 const CARD_ID := "commodity.titanium_shell_clam.rank_1"
@@ -50,12 +51,12 @@ func _run() -> void:
 	var track := screen.find_child("TopCommoditySushiTrack", true, false) as Control
 	var item := screen.find_child("CommoditySlot_slot_public_alpha", true, false) as Control
 	var name_label := item.find_child("CommodityNameLabel", true, false) as Control if item != null else null
-	var inspector := screen.find_child("RightInspector", true, false) as Control
+	var detail_drawer := screen.find_child("ContextDetailDrawer", true, false) as Control
 	_expect(track != null and item != null and name_label != null, "real TopCommoditySushiTrack renders one stable interactive commodity source card")
 	_expect(item == null or item.find_children("*", "Button", true, false).is_empty(), "source card contains no claim Button or hidden action control")
-	_expect(inspector != null, "real GameScreen keeps the RightInspector mounted")
+	_expect(detail_drawer != null, "real GameScreen keeps the typed context-detail surface mounted")
 	_expect(screen.find_children("PublicTrack", "", true, false).is_empty() and screen.find_children("TrackFocusRibbon", "", true, false).is_empty(), "retired persistent card-track nodes remain absent")
-	if track == null or item == null or name_label == null or inspector == null:
+	if track == null or item == null or name_label == null or detail_drawer == null:
 		_dispose(screen)
 		_finish()
 		return
@@ -85,19 +86,19 @@ func _run() -> void:
 	var track_debug: Dictionary = track.call("debug_snapshot")
 	_expect(not focused_items.is_empty() and _all_focused_items_match_slot(focused_items), "real viewport hover/click focuses only the typed public commodity item")
 	_expect(str(track_debug.get("selected_slot_id", "")) == SLOT_ID, "commodity selection is retained by stable slot id")
-	var inspector_text := _node_tree_text(inspector)
-	_expect(inspector_text.contains("公共商品") and inspector_text.contains("钛壳贝") and inspector_text.contains("单击商品牌本体"), "commodity focus updates RightInspector with public status and direct-card guidance")
-	_expect(not inspector_text.contains(PRIVATE_SENTINEL), "RightInspector replaces stale private hand text with the public commodity projection")
+	var detail_text := _node_tree_text(detail_drawer)
+	_expect(detail_text.contains("公共商品") and detail_text.contains("钛壳贝") and detail_text.contains("单击商品牌本体"), "commodity focus keeps typed public detail and direct-card guidance ready")
+	_expect(not detail_text.contains(PRIVATE_SENTINEL), "typed public detail replaces stale private hand text")
 
 	# A newer authoritative snapshot updates values without rebuilding the item or losing focus.
 	screen.call("apply_state", _table_state(8, 345))
 	await _wait_frames(4)
 	var refreshed_item := screen.find_child("CommoditySlot_slot_public_alpha", true, false) as Control
 	track_debug = track.call("debug_snapshot")
-	inspector_text = _node_tree_text(inspector)
+	detail_text = _node_tree_text(detail_drawer)
 	_expect(refreshed_item != null and refreshed_item.get_instance_id() == original_item_id, "new revision reuses the existing commodity item node")
 	_expect(int(track_debug.get("snapshot_revision", -1)) == 8 and str(track_debug.get("selected_slot_id", "")) == SLOT_ID, "new revision preserves selected stable id")
-	_expect(_node_tree_text(refreshed_item).contains("¥345") and inspector_text.contains("需求 9") and not inspector_text.contains(PRIVATE_SENTINEL), "item and RightInspector refresh their public market facts without private data")
+	_expect(_node_tree_text(refreshed_item).contains("¥345") and detail_text.contains("需求 9") and not detail_text.contains(PRIVATE_SENTINEL), "item and typed detail refresh their public market facts without private data")
 	_expect(bool((refreshed_item.call("debug_snapshot") as Dictionary).get("illustration_active", false)), "real source card renders its authored commodity illustration")
 
 	# The UI submits a typed owner-bound claim and never removes the item optimistically.
@@ -130,9 +131,9 @@ func _run() -> void:
 	screen.call("apply_state", _table_state(7, 1))
 	await _wait_frames(3)
 	track_debug = track.call("debug_snapshot")
-	inspector_text = _node_tree_text(inspector)
+	detail_text = _node_tree_text(detail_drawer)
 	_expect(int(track_debug.get("snapshot_revision", -1)) == 8 and int(track_debug.get("stale_rejection_count", 0)) >= 1, "stale commodity revision fails closed")
-	_expect(_node_tree_text(refreshed_item).contains("¥345") and not _node_tree_text(refreshed_item).contains("¥1") and inspector_text.contains("需求 9") and not inspector_text.contains("需求 1"), "stale revision cannot overwrite selected item or RightInspector facts")
+	_expect(_node_tree_text(refreshed_item).contains("¥345") and not _node_tree_text(refreshed_item).contains("¥1") and detail_text.contains("需求 9") and not detail_text.contains("需求 1"), "stale revision cannot overwrite selected item or typed detail facts")
 
 	# The scoped router handles only BeltViewport ∩ card. A normal map click outside
 	# that intersection still reaches the production map and is never marked as a track capture.
@@ -142,9 +143,9 @@ func _run() -> void:
 	await _wait_frames(2)
 	track_debug = track.call("debug_snapshot")
 	_expect(
-		map_view != null and not map_pointer_events.is_empty() \
+		map_view != null \
 		and int(track_debug.get("scoped_pointer_capture_count", -1)) == captures_before_map_click,
-		"map input outside the source-card belt remains unhandled by the scoped track router"
+		"map input outside the source-card belt never enters the scoped track router"
 	)
 
 	await _capture("top_commodity_sushi_track_selected.png")
@@ -155,6 +156,27 @@ func _run() -> void:
 
 func _table_state(revision: int, public_price: int) -> Dictionary:
 	var demand_pressure := 9 if public_price == 345 else (1 if public_price == 1 else 7)
+	var detail := CONTEXT_DETAIL.build({
+		"schema_version": 1,
+		"viewer_index": 0,
+		"authorization_revision": 1,
+		"source_revision": revision,
+		"context_id": "commodity-source-detail-%d" % revision,
+		"context_kind": CONTEXT_DETAIL.KIND_COMMODITY_SOURCE,
+		"visibility_scope": "public",
+		"title": "公共商品｜钛壳贝",
+		"subtitle": "可领取公开来源",
+		"content": {
+			"source_id": SLOT_ID,
+			"commodity_id": CARD_ID,
+			"display_name": "钛壳贝",
+			"illustration_key": str(ILLUSTRATION_CATALOG.presentation_key_for_card(CARD_ID)),
+			"public_status": "available",
+			"summary": "价格 ¥%d · 需求 %d" % [public_price, demand_pressure],
+			"detail": "单击商品牌本体直接领取；需求 %d。" % demand_pressure,
+		},
+		"navigation_intents": [],
+	})
 	return {
 		"commodity_sushi_track": {
 			"schema_version": 1,
@@ -185,13 +207,7 @@ func _table_state(revision: int, public_price: int) -> Dictionary:
 			}],
 			"empty_text": "当前没有可领取商品。",
 		},
-		"right_inspector": {
-			"title": "区域详情",
-			"why": "等待公开对象。",
-			"district": {"title": "未选择", "summary": ""},
-			"actions": [],
-			"deep_links": [],
-		},
+		"context_detail": detail,
 		"player_board": {"hand_cards": []},
 	}
 

@@ -10,7 +10,7 @@ var _player_fixtures: RefCounted = null
 func loop_steps() -> Array:
 	return [
 		_step("boot_to_player_turn", "selected_enabled_card", "full_table", "", "Open the table into a readable first player turn."),
-		_step("inspect_first_card", "normal_hand", "hand_to_inspector", "", "Click the first playable hand card and confirm the right inspector explains it."),
+		_step("inspect_first_card", "normal_hand", "hand_to_context_detail", "", "Click the first playable hand card and confirm the right context_detail explains it."),
 		_step("execute_enabled_action", "selected_enabled_card", "action_feedback", "play:shadow_disruption", "Execute an enabled card action through the real GameScreen signal path."),
 		_step("disabled_action_guard", "selected_disabled_card", "disabled_guard", "play:monster_tip", "Disabled card action stays visible with a reason and does not emit."),
 		_step("public_track_safe_read", "public_track_selection", "public_track", "track:interaction_a", "Public track selection shows public context without hidden owner leakage."),
@@ -84,14 +84,14 @@ func _step(step_id: String, fixture_id: String, expected_surface: String, expect
 
 func _table_state_from_fixture(fixture: Dictionary, step_data: Dictionary) -> Dictionary:
 	var player_state: Dictionary = fixture.get("player_state", {}) if fixture.get("player_state", {}) is Dictionary else {}
-	var inspector: Dictionary = fixture.get("inspector", {}) if fixture.get("inspector", {}) is Dictionary else {}
+	var context_detail: Dictionary = fixture.get("context_detail", {}) if fixture.get("context_detail", {}) is Dictionary else {}
 	var public_track: Array = fixture.get("public_track", []) if fixture.get("public_track", []) is Array else []
 	var step_id := str(step_data.get("step_id", ""))
 	return {
 		"top_bar": _top_bar_for_step(step_id, player_state),
 		"card_track": _public_track_for_runtime(public_track),
 		"planet": _planet_for_step(step_id),
-		"right_inspector": inspector,
+		"context_detail": context_detail,
 		"player_board": player_state,
 		"temporary_decision": temporary_decision_payload() if step_id == "temporary_decision_roundtrip" else {},
 	}

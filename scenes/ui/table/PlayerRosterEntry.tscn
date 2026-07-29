@@ -1,0 +1,114 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/table/player_roster_entry.gd" id="2_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleAvatar"]
+bg_color = Color(0.027, 0.061, 0.12, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.24, 0.42, 0.62, 0.72)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[node name="PlayerRosterEntry" type="Button"]
+custom_minimum_size = Vector2(168, 58)
+focus_mode = 2
+mouse_default_cursor_shape = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="EntryMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 3
+theme_override_constants/margin_top = 3
+theme_override_constants/margin_right = 3
+theme_override_constants/margin_bottom = 3
+
+[node name="EntryRow" type="HBoxContainer" parent="EntryMargin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 3
+
+[node name="AccentStrip" type="ColorRect" parent="EntryMargin/EntryRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(3, 0)
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.133, 0.827, 0.933, 1)
+
+[node name="AvatarPanel" type="PanelContainer" parent="EntryMargin/EntryRow"]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleAvatar")
+
+[node name="AvatarGlyph" type="Label" parent="EntryMargin/EntryRow/AvatarPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "?"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.78, 0.91, 1, 1)
+theme_override_font_sizes/font_size = 15
+
+[node name="Identity" type="VBoxContainer" parent="EntryMargin/EntryRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 1
+
+[node name="DisplayName" type="Label" parent="EntryMargin/EntryRow/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "玩家"
+text_overrun_behavior = 3
+clip_text = true
+theme_override_colors/font_color = Color(0.9, 0.96, 1, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="RoleStatus" type="Label" parent="EntryMargin/EntryRow/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "角色 · 状态"
+text_overrun_behavior = 3
+clip_text = true
+theme_override_colors/font_color = Color(0.58, 0.72, 0.84, 1)
+theme_override_font_sizes/font_size = 9
+
+[node name="Badges" type="VBoxContainer" parent="EntryMargin/EntryRow"]
+custom_minimum_size = Vector2(26, 0)
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 1
+
+[node name="LocalBadge" type="Label" parent="EntryMargin/EntryRow/Badges"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "本地"
+horizontal_alignment = 2
+theme_override_colors/font_color = Color(0.99, 0.83, 0.36, 1)
+theme_override_font_sizes/font_size = 9
+
+[node name="StateBadge" type="Label" parent="EntryMargin/EntryRow/Badges"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "可行动"
+horizontal_alignment = 2
+theme_override_colors/font_color = Color(0.58, 0.68, 0.78, 1)
+theme_override_font_sizes/font_size = 9

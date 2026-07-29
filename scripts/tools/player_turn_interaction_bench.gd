@@ -41,7 +41,7 @@ func interaction_cases() -> Array:
 		_case_record("selected_disabled_card", "disabled_action_silent", "card_monster_tip_blocked", "play:monster_tip", "Disabled action remains visible but does not emit."),
 		_case_record("hovered_card", "hover_keeps_focus", "card_orbital_finance", "", "Hover metadata is present without clearing selected-card context."),
 		_case_record("drag_preview", "invalid_drop_silent", "card_signal_jammer", "", "Invalid drop state is visible and does not emit a play action."),
-		_case_record("right_inspector_card_detail", "right_inspector_detail", "card_orbital_finance", "play:orbital_finance", "RightInspector shows use-case, target, requirement, effect, and action."),
+		_case_record("context_detail_card", "context_detail_detail", "card_orbital_finance", "play:orbital_finance", "ContextDetailDrawer shows read-only card facts while PlayerBoard emits the preview action."),
 		_case_record("public_track_selection", "public_track_click", "card_orbital_finance", "track:interaction_a", "Clicking a public-track slot records the public UI action without private owner data."),
 		_case_record("temporary_decision_pending_hint", "temporary_decision_pending_hint", "card_shadow_disruption", "", "Pending overlay hint is visible and does not bypass the temporary decision flow."),
 	]
@@ -123,7 +123,7 @@ func _run_case(viewport: SubViewport, preview: Control, case: Dictionary, emitte
 	var emitted_action_id := ""
 	var before_count := emitted_action_ids.size()
 	var before_track_count := track_action_ids.size()
-	var right_inspector_checked := _right_inspector_has_expected_detail(preview, fixture)
+	var context_detail_checked := _context_detail_has_expected_detail(preview, fixture)
 	var disabled_action_checked := false
 	var drag_state_checked := false
 	var panel_exclusive := _preview_has_single_player_surface(preview)
@@ -134,7 +134,7 @@ func _run_case(viewport: SubViewport, preview: Control, case: Dictionary, emitte
 		"select_first_card_and_play":
 			await _click_hand_card(viewport, preview, selected_card_id)
 			await _pump_frames(6)
-			right_inspector_checked = _right_inspector_has_card(preview, selected_card_id) and _right_inspector_has_expected_detail(preview, preview.call("current_fixture") if preview.has_method("current_fixture") else fixture)
+			context_detail_checked = _context_detail_has_card(preview, selected_card_id) and _context_detail_has_expected_detail(preview, preview.call("current_fixture") if preview.has_method("current_fixture") else fixture)
 			clicked_action_id = expected_action_id
 			await _click_card_action(viewport, preview, fixture, selected_card_id, emitted_action_ids)
 			emitted_action_id = _latest_since(emitted_action_ids, before_count)
@@ -154,7 +154,7 @@ func _run_case(viewport: SubViewport, preview: Control, case: Dictionary, emitte
 			drag_state_checked = _hand_card_has_meta(preview, selected_card_id, "hand_state_drop_invalid", true) and _hand_card_drag_state(preview, selected_card_id) == "invalid_drop"
 			disabled_action_checked = emitted_action_ids.size() == before_count
 			_clear_invalid_drag(preview)
-		"right_inspector_detail":
+		"context_detail_detail":
 			clicked_action_id = expected_action_id
 			await _click_card_action(viewport, preview, fixture, selected_card_id, emitted_action_ids)
 			emitted_action_id = _latest_since(emitted_action_ids, before_count)
@@ -162,34 +162,34 @@ func _run_case(viewport: SubViewport, preview: Control, case: Dictionary, emitte
 			await _click_public_track_slot(viewport, preview, track_action_ids, fixture)
 			clicked_action_id = expected_action_id
 			emitted_action_id = _latest_since(track_action_ids, before_track_count)
-			right_inspector_checked = _public_track_privacy_checked(preview)
+			context_detail_checked = _public_track_privacy_checked(preview)
 			disabled_action_checked = emitted_action_ids.size() == before_count
 		"temporary_decision_pending_hint":
-			right_inspector_checked = _node_tree_text(preview).contains("Overlay") and _node_tree_text(preview).contains("等待目标")
+			context_detail_checked = _node_tree_text(preview).contains("Overlay") and _node_tree_text(preview).contains("等待目标")
 			disabled_action_checked = emitted_action_ids.size() == before_count
 		_:
 			_failures.append("unknown interaction case: %s" % interaction_name)
 	var expected_emit_ok := true
-	if interaction_name in ["select_first_card_and_play", "selected_enabled_action", "right_inspector_detail"]:
+	if interaction_name in ["select_first_card_and_play", "selected_enabled_action", "context_detail_detail"]:
 		expected_emit_ok = emitted_action_id == expected_action_id
 	elif interaction_name == "public_track_click":
 		expected_emit_ok = emitted_action_id == expected_action_id
 	else:
 		expected_emit_ok = emitted_action_id == ""
-	var passed := panel_exclusive and right_inspector_checked and expected_emit_ok
+	var passed := panel_exclusive and context_detail_checked and expected_emit_ok
 	match interaction_name:
 		"empty_hand_affordance", "disabled_action_silent", "hover_keeps_focus", "invalid_drop_silent", "public_track_click", "temporary_decision_pending_hint":
 			passed = passed and disabled_action_checked
 	if interaction_name in ["selected_enabled_action", "hover_keeps_focus", "invalid_drop_silent"]:
 		passed = passed and drag_state_checked
 	if not passed:
-		_failures.append("%s/%s failed: clicked=%s emitted=%s expected=%s inspector=%s disabled=%s drag=%s exclusive=%s" % [
+		_failures.append("%s/%s failed: clicked=%s emitted=%s expected=%s context_detail=%s disabled=%s drag=%s exclusive=%s" % [
 			fixture_id,
 			interaction_name,
 			clicked_action_id,
 			emitted_action_id,
 			expected_action_id,
-			str(right_inspector_checked),
+			str(context_detail_checked),
 			str(disabled_action_checked),
 			str(drag_state_checked),
 			str(panel_exclusive),
@@ -200,7 +200,7 @@ func _run_case(viewport: SubViewport, preview: Control, case: Dictionary, emitte
 		"selected_card_id": selected_card_id,
 		"clicked_action_id": clicked_action_id,
 		"emitted_action_id": emitted_action_id,
-		"right_inspector_checked": right_inspector_checked,
+		"context_detail_checked": context_detail_checked,
 		"disabled_action_checked": disabled_action_checked,
 		"drag_state_checked": drag_state_checked,
 		"passed": passed,
@@ -228,7 +228,7 @@ func _preview_manifest_record(case: Dictionary) -> Dictionary:
 		"selected_card_id": str(case.get("selected_card_id", "")),
 		"clicked_action_id": str(case.get("expected_action_id", "")),
 		"emitted_action_id": "",
-		"right_inspector_checked": false,
+		"context_detail_checked": false,
 		"disabled_action_checked": false,
 		"drag_state_checked": false,
 		"passed": false,
@@ -267,7 +267,7 @@ func _click_hand_card(viewport: SubViewport, preview: Control, card_id: String) 
 
 func _click_card_action(viewport: SubViewport, preview: Control, fixture: Dictionary, card_id: String, emitted_action_ids: Array[String]) -> void:
 	var action := _first_enabled_card_action(fixture, card_id)
-	var button := _button_for_action(preview.find_child("RightInspector", true, false), action)
+	var button := _button_for_action(preview.find_child("PlayerBoard", true, false), action)
 	if button == null:
 		_failures.append("enabled action button not found: %s" % str(action.get("id", "")))
 		return
@@ -282,7 +282,7 @@ func _click_disabled_card_action(viewport: SubViewport, preview: Control, fixtur
 	var action := _first_disabled_card_action(fixture, card_id)
 	if action.is_empty():
 		return false
-	var button := _button_for_action(preview.find_child("RightInspector", true, false), action)
+	var button := _button_for_action(preview.find_child("PlayerBoard", true, false), action)
 	if button == null or not button.disabled:
 		return false
 	var before_count := emitted_action_ids.size()
@@ -390,8 +390,8 @@ func _check_empty_hand(preview: Control) -> bool:
 	return hand_rack.visible and hand_rack.get_global_rect().size.y >= 80.0 and _node_tree_text(hand_rack).contains("暂无手牌")
 
 
-func _right_inspector_has_expected_detail(preview: Control, fixture: Dictionary) -> bool:
-	var text := _node_tree_text(preview.find_child("RightInspector", true, false))
+func _context_detail_has_expected_detail(preview: Control, fixture: Dictionary) -> bool:
+	var text := _node_tree_text(preview.find_child("ContextDetailDrawer", true, false))
 	if text.strip_edges() == "":
 		return false
 	var selected: Dictionary = fixture.get("selected_card", {}) if fixture.get("selected_card", {}) is Dictionary else {}
@@ -417,7 +417,7 @@ func _right_inspector_has_expected_detail(preview: Control, fixture: Dictionary)
 	return matched >= mini(2, expected_bits.size())
 
 
-func _right_inspector_has_card(preview: Control, card_id: String) -> bool:
+func _context_detail_has_card(preview: Control, card_id: String) -> bool:
 	var current: Dictionary = preview.call("current_fixture") if preview.has_method("current_fixture") else {}
 	var selected: Dictionary = current.get("selected_card", {}) if current.get("selected_card", {}) is Dictionary else {}
 	return str(selected.get("id", selected.get("card_id", ""))) == card_id
@@ -429,7 +429,7 @@ func _public_track_privacy_checked(preview: Control) -> bool:
 
 
 func _preview_has_single_player_surface(preview: Control) -> bool:
-	return preview.find_child("PlayerBoard", true, false) != null and preview.find_child("HandRack", true, false) != null and preview.find_child("RightInspector", true, false) != null and preview.find_child("PublicTrack", true, false) != null
+	return preview.find_child("PlayerBoard", true, false) != null and preview.find_child("HandRack", true, false) != null and preview.find_child("ContextDetailDrawer", true, false) != null and preview.find_child("PublicTrack", true, false) != null
 
 
 func _hand_card_has_meta(preview: Control, card_id: String, meta_key: String, expected: Variant) -> bool:
@@ -558,7 +558,7 @@ func _build_markdown_report(manifest: Dictionary) -> String:
 	lines.append("- Manifest: `%s`" % MANIFEST_PATH)
 	lines.append("- Case count: %d" % int(manifest.get("case_count", 0)))
 	lines.append("")
-	lines.append("| Fixture | Interaction | Selected Card | Clicked | Emitted | Inspector | Disabled/Quiet | Drag | Passed |")
+	lines.append("| Fixture | Interaction | Selected Card | Clicked | Emitted | Context Detail | Disabled/Quiet | Drag | Passed |")
 	lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- |")
 	for record_variant in manifest.get("records", []):
 		var record: Dictionary = record_variant if record_variant is Dictionary else {}
@@ -568,7 +568,7 @@ func _build_markdown_report(manifest: Dictionary) -> String:
 			str(record.get("selected_card_id", "")),
 			str(record.get("clicked_action_id", "")),
 			str(record.get("emitted_action_id", "")),
-			str(record.get("right_inspector_checked", false)),
+			str(record.get("context_detail_checked", false)),
 			str(record.get("disabled_action_checked", false)),
 			str(record.get("drag_state_checked", false)),
 			str(record.get("passed", false)),

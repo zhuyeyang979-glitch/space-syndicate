@@ -290,7 +290,7 @@ func _wait_for_stable_frame(main: Node) -> Dictionary:
 
 func _core_table_snapshot(main: Node) -> Dictionary:
 	var result := {}
-	for node_name in ["TopBar", "PlayerBoard", "HandRack", "PlayerMainActionDock", "RightInspector"]:
+	for node_name in ["TopBar", "PlayerBoard", "PlayerCardDock", "PlayerMainActionDock", "ContextDetailDrawer"]:
 		result[node_name] = _control_snapshot(main.find_child(node_name, true, false))
 	return result
 

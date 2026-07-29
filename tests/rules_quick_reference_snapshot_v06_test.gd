@@ -11,7 +11,8 @@ const PLAYER_COPY_PATHS := [
 	"res://scripts/runtime/district_supply_snapshot_service.gd",
 	"res://scripts/ui/card_codex_detail.gd",
 	"res://scripts/viewmodels/card_codex_detail_snapshot.gd",
-	"res://scripts/ui/right_inspector.gd",
+	"res://scripts/ui/table/compact_current_action_surface.gd",
+	"res://scripts/ui/table/context_detail_drawer.gd",
 ]
 
 var failures: Array[String] = []

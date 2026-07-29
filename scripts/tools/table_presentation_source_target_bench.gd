@@ -141,12 +141,14 @@ func run_bench() -> Dictionary:
 	var table := game_screen.current_ui_data
 	var player_board: Dictionary = table.get("player_board", {}) if table.get("player_board", {}) is Dictionary else {}
 	var hand_cards: Array = player_board.get("hand_cards", []) if player_board.get("hand_cards", []) is Array else []
-	var right_inspector: Dictionary = table.get("right_inspector", {}) if table.get("right_inspector", {}) is Dictionary else {}
+	var context_detail: Dictionary = table.get("context_detail", {}) if table.get("context_detail", {}) is Dictionary else {}
 	_check(hand_cards.size() == 1 and str((hand_cards[0] as Dictionary).get("id", "")) == "hand_0", "production Bench renders the real CardPresentation hand")
 	_check(not hand_cards.is_empty() and not ((hand_cards[0] as Dictionary).get("actions", []) as Array).is_empty(), "production Bench exposes the real play action")
 	var board_quick_actions: Array = player_board.get("quick_actions", []) as Array
 	_check(board_quick_actions.size() == 2 and not JSON.stringify(board_quick_actions).contains("ACTION_CARD_PLAY"), "production Bench exposes only non-card rack and buy quick actions")
-	_check(not (right_inspector.get("actions", []) as Array).is_empty(), "production Bench exposes selected card or district inspector actions")
+	_check(not context_detail.is_empty() \
+		and str(context_detail.get("context_kind", "")) in ["normal_card", "commodity_card", "public_track", "region_facility", "commodity_source", "public_event"] \
+		and not context_detail.has("actions"), "production Bench exposes selected typed context as read-only detail")
 	_check(not (table.get("card_track", []) as Array).is_empty(), "production Bench renders real history/current/next card-track content")
 
 	var target_debug := game_screen.presentation_target_debug_snapshot()

@@ -113,6 +113,7 @@ class FakeDistrictSupply:
 	var last_intent: DistrictSupplyActionIntent
 	var pending_discard_next := false
 	var quote_failure_next := false
+	var emit_synchronous_quote_refresh := false
 	var active_quote_id := ""
 
 	func submit_intent(intent: DistrictSupplyActionIntent) -> DistrictSupplyActionReceipt:
@@ -146,6 +147,8 @@ class FakeDistrictSupply:
 		if intent.action_kind == DistrictSupplyActionIntent.KIND_QUOTE:
 			receipt.quote_id = "quote.action-spine.%d" % submit_count
 			active_quote_id = receipt.quote_id
+			if emit_synchronous_quote_refresh:
+				presentation_refresh_requested.emit(&"full", &"district_supply_action")
 		elif intent.action_kind in [
 			DistrictSupplyActionIntent.KIND_OPEN,
 			DistrictSupplyActionIntent.KIND_CLOSE,
@@ -193,10 +196,16 @@ class FakeRefresh:
 	extends TablePresentationRefreshPort
 	var request_count := 0
 	var kinds: Array[StringName] = []
+	var reasons: Array[StringName] = []
+	var request_probe: Callable
+	var request_probe_results: Array[bool] = []
 
-	func request_immediate(kind: StringName, _reason: StringName = &"state_changed") -> TablePresentationApplyReceipt:
+	func request_immediate(kind: StringName, reason: StringName = &"state_changed") -> TablePresentationApplyReceipt:
 		request_count += 1
 		kinds.append(kind)
+		reasons.append(reason)
+		if request_probe.is_valid():
+			request_probe_results.append(bool(request_probe.call()))
 		var receipt := TablePresentationApplyReceipt.new()
 		receipt.kind = kind
 		receipt.applied = true
@@ -213,6 +222,7 @@ func _run() -> void:
 	_test_authorization_journal_and_exact_once()
 	_test_stale_collision_and_invalid_target()
 	_test_group_district_and_refresh_routing()
+	_test_district_quote_post_bind_refresh_order()
 	_test_economy_surface_action_spine()
 	_test_current_lane_visibility_and_drag_override()
 	_test_source_negative_gates()
@@ -354,6 +364,45 @@ func _test_group_district_and_refresh_routing() -> void:
 	var ended := controller.submit_intent(_intent(end_offer, authorization, "request.end-turn", "human_click"))
 	_expect(bool(ended.get("accepted", false)), "end-turn compatibility request is represented by a closed semantic intent")
 	_expect(refresh.request_count == 3, "ready, reorder, and end-turn each refresh once while the district owner keeps its existing refresh ownership")
+	_dispose(fixture)
+
+
+func _test_district_quote_post_bind_refresh_order() -> void:
+	var fixture := _fixture()
+	var controller := fixture.controller as TablePlayerActionApplicationFlowController
+	var district := fixture.district as FakeDistrictSupply
+	var refresh := fixture.refresh as FakeRefresh
+	var targets := {
+		"region_id": "region.beta",
+		"card_id": "facility.market.energy.rank_1",
+	}
+	district.emit_synchronous_quote_refresh = true
+	district.presentation_refresh_requested.connect(refresh.request_immediate)
+	refresh.request_probe = func() -> bool:
+		return not controller.human_surface_action_offer(
+			GameActionIntentV1.ACTION_DISTRICT_SUPPLY_PURCHASE,
+			targets
+		).is_empty()
+	var quote_offer := controller.human_surface_action_offer(
+		GameActionIntentV1.ACTION_DISTRICT_SUPPLY_QUOTE,
+		targets
+	)
+	var quote_receipt := controller.submit_intent(_intent(
+		quote_offer,
+		controller.human_actor_authorization(),
+		"request.economy-quote.post-bind-refresh",
+		"human_click"
+	))
+	_expect(
+		bool(quote_receipt.get("accepted", false))
+			and refresh.kinds == [&"full", &"full"]
+			and refresh.reasons == [
+				&"district_supply_action",
+				&"district_supply_quote_bound",
+			]
+			and refresh.request_probe_results == [false, true],
+		"the synchronous owner refresh observes no facade quote, then one post-bind full refresh exposes the purchase offer"
+	)
 	_dispose(fixture)
 
 

@@ -711,7 +711,7 @@ func _case_presentation_shows_financial_terms() -> Dictionary:
 	var text := "｜".join(presentation.get("rule_facts", []) as Array)
 	var terms := _market_controller.terms_for_card_id("港仓囤货4")
 	var observed := text.contains("保证金:¥600") and text.contains("最大收益:¥1200") and text.contains("最大损失:¥600") and text.contains("持续时间:2分30秒") and int(terms.get("duration_seconds", 0)) == 150
-	return _live_record("presentation_shows_financial_terms", observed, "Card presentation, RightInspector, and Codex receive duration, margin, maximum gain, and maximum loss from one snapshot.", {"card_id": "港仓囤货4"})
+	return _live_record("presentation_shows_financial_terms", observed, "Card presentation, ContextDetailDrawer, and Codex receive duration, margin, maximum gain, and maximum loss from one snapshot.", {"card_id": "港仓囤货4"})
 
 
 func _case_no_parallel_futures_fallback() -> Dictionary:

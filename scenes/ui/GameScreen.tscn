@@ -1,16 +1,20 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/ui/game_screen.gd" id="2_game_screen"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TopBar.tscn" id="3_top_bar"]
 [ext_resource type="PackedScene" path="res://scenes/ui/table/TopCommoditySushiTrack.tscn" id="4_commodity_track"]
 [ext_resource type="PackedScene" path="res://scenes/ui/PlanetBoard.tscn" id="5_planet_board"]
-[ext_resource type="PackedScene" path="res://scenes/ui/RightInspector.tscn" id="6_right_inspector"]
+[ext_resource type="PackedScene" path="res://scenes/ui/table/PlayerRosterPanel.tscn" id="6_player_roster"]
 [ext_resource type="PackedScene" path="res://scenes/ui/PlayerBoard.tscn" id="7_player_board"]
 [ext_resource type="PackedScene" path="res://scenes/ui/OverlayLayer.tscn" id="8_overlay"]
 [ext_resource type="PackedScene" path="res://scenes/ui/VisualEventLayer.tscn" id="11_visual_event_layer"]
 [ext_resource type="PackedScene" path="res://scenes/ui/CardFace.tscn" id="13_card_face"]
 [ext_resource type="PackedScene" path="res://scenes/ui/table/PlayerCardDock.tscn" id="15_player_card_dock"]
+[ext_resource type="PackedScene" path="res://scenes/ui/table/PlayerInspectionPopup.tscn" id="16_player_inspection"]
+[ext_resource type="PackedScene" path="res://scenes/ui/table/NonBlockingToastSurface.tscn" id="17_public_toast"]
+[ext_resource type="PackedScene" path="res://scenes/ui/table/ExpandablePublicHistorySurface.tscn" id="18_public_history"]
+[ext_resource type="PackedScene" path="res://scenes/ui/table/ContextDetailDrawer.tscn" id="19_context_detail"]
 
 [node name="GameScreen" type="Control"]
 layout_mode = 3
@@ -62,22 +66,13 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
+[node name="PlayerRosterPanel" parent="SafeArea/MainRows/TableArea" instance=ExtResource("6_player_roster")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
 [node name="PlanetBoard" parent="SafeArea/MainRows/TableArea" instance=ExtResource("5_planet_board")]
 unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="RightInspectorScroll" type="ScrollContainer" parent="SafeArea/MainRows/TableArea"]
-custom_minimum_size = Vector2(304, 300)
-layout_mode = 2
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
-vertical_scroll_mode = 1
-
-[node name="RightInspector" parent="SafeArea/MainRows/TableArea/RightInspectorScroll" instance=ExtResource("6_right_inspector")]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(292, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -138,6 +133,35 @@ layout_mode = 2
 mouse_filter = 2
 
 [node name="RuntimeVisualEventLayer" parent="." instance=ExtResource("11_visual_event_layer")]
+unique_name_in_owner = true
+
+[node name="NonBlockingToastSurface" parent="." instance=ExtResource("17_public_toast")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = -388.0
+offset_top = 18.0
+offset_right = -24.0
+offset_bottom = 82.0
+grow_horizontal = 0
+
+[node name="ExpandablePublicHistorySurface" parent="." instance=ExtResource("18_public_history")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 2
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -388.0
+offset_top = 92.0
+offset_right = -24.0
+offset_bottom = 144.0
+grow_horizontal = 0
+
+[node name="PlayerInspectionPopup" parent="." instance=ExtResource("16_player_inspection")]
+unique_name_in_owner = true
+
+[node name="ContextDetailDrawer" parent="." instance=ExtResource("19_context_detail")]
 unique_name_in_owner = true
 
 [node name="OverlayLayer" parent="." instance=ExtResource("8_overlay")]

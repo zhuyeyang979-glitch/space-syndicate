@@ -2,7 +2,6 @@ extends Control
 class_name SpaceSyndicateGameScreen
 
 const TABLE_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/table_snapshot.gd")
-const OVERLAY_LAYER_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/overlay_layer_snapshot.gd")
 const COMMODITY_CLAIM_REQUEST_SCRIPT := preload("res://scripts/runtime/commodity_sushi_track_claim_request.gd")
 const COMMODITY_ITEM_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/commodity_sushi_track_item_snapshot.gd")
 const COMMODITY_TRACK_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/commodity_sushi_track_snapshot.gd")
@@ -16,36 +15,12 @@ const MONSTER_WAGER_RESPONSE_RECEIPT_SCRIPT := preload("res://scripts/runtime/mo
 const GAME_ACTION_OFFER_SCRIPT := preload("res://scripts/semantic/game_action_offer_v1.gd")
 const GAME_ACTION_INTENT_SCRIPT := preload("res://scripts/semantic/game_action_intent_v1.gd")
 const GAME_ACTION_RECEIPT_SCRIPT := preload("res://scripts/semantic/game_action_receipt_v1.gd")
+const TABLE_INTERACTION_MODE_SCRIPT := preload("res://scripts/presentation/table_interaction_mode_v1.gd")
 const HAND_HOVER_PREVIEW_LEFT := 0.020
 const HAND_HOVER_PREVIEW_TOP := 0.350
 const HAND_HOVER_PREVIEW_RIGHT := 0.190
 const HAND_HOVER_PREVIEW_BOTTOM := 0.880
 const HAND_HOVER_PREVIEW_CARD_MIN_SIZE := Vector2(216, 292)
-const PRIVATE_TRACK_ENTRY_KEYS := [
-	"hidden_owner",
-	"hidden_owner_id",
-	"private_owner",
-	"private_target",
-	"owner_secret",
-	"secret_owner",
-	"private_discard",
-	"private_hand",
-	"opponent_hand",
-	"opponent_cash",
-	"true_owner",
-	"owner",
-	"owner_id",
-	"owner_index",
-	"player_index",
-	"viewer_index",
-	"cash",
-	"cash_cents",
-	"exact_cash",
-	"hand",
-	"hand_size",
-]
-const PRIVATE_TRACK_TEXT_TOKENS := ["hidden_", "private_", "owner_secret", "secret_owner", "opponent_cash", "opponent_hand", "true_owner"]
-
 signal game_action_intent_requested(intent: Dictionary)
 signal application_intent_requested(intent: IntelApplicationIntent)
 signal card_selected(card_data: Dictionary)
@@ -61,9 +36,14 @@ signal forced_decision_response_requested(request: ForcedDecisionResponseRequest
 @onready var top_bar: Node = %TopBar
 @onready var commodity_sushi_track: COMMODITY_TRACK_SCRIPT = %TopCommoditySushiTrack
 @onready var planet_board: Node = %PlanetBoard
-@onready var right_inspector: SpaceSyndicateRightInspector = %RightInspector
+@onready var player_roster_panel: SpaceSyndicatePlayerRosterPanel = %PlayerRosterPanel
 @onready var player_board: SpaceSyndicatePlayerBoard = %PlayerBoard
+@onready var current_action_surface: SpaceSyndicateCompactCurrentActionSurface = player_board.get_current_action_surface()
 @onready var player_card_dock: SpaceSyndicatePlayerCardDock = %PlayerCardDock
+@onready var player_inspection_popup: SpaceSyndicatePlayerInspectionPopup = %PlayerInspectionPopup
+@onready var public_toast_surface: SpaceSyndicateNonBlockingToastSurface = %NonBlockingToastSurface
+@onready var public_history_surface: SpaceSyndicateExpandablePublicHistorySurface = %ExpandablePublicHistorySurface
+@onready var context_detail_drawer: SpaceSyndicateContextDetailDrawer = %ContextDetailDrawer
 @onready var visual_event_layer: Node = get_node_or_null("%RuntimeVisualEventLayer")
 @onready var overlay_layer: Node = %OverlayLayer
 @onready var hand_hover_preview_host: Control = get_node_or_null("%HandHoverPreviewHost") as Control
@@ -91,6 +71,8 @@ var _presentation_authorization_revision := 0
 var _presentation_session_id := ""
 var _presentation_session_revision := 0
 var _inspected_player_index := -1
+var _pending_player_inspection_id := ""
+var _active_context_detail_id := ""
 var _last_player_inspection_receipt_revision := -1
 var _player_inspection_receipt_apply_count := 0
 var _table_selection_request_revision := 0
@@ -122,21 +104,23 @@ func _ready() -> void:
 	if commodity_sushi_track != null:
 		commodity_sushi_track.item_focused.connect(_on_commodity_item_focused)
 		commodity_sushi_track.claim_requested.connect(_on_commodity_claim_requested)
-	if right_inspector.has_signal("action_requested"):
-		right_inspector.connect("action_requested", Callable(self, "_on_action_requested"))
-	right_inspector.application_intent_requested.connect(_on_application_intent_requested)
+	player_roster_panel.player_inspection_requested.connect(_on_roster_player_inspection_requested)
+	player_inspection_popup.close_requested.connect(_on_player_inspection_popup_closed)
+	player_inspection_popup.navigation_intent_requested.connect(_on_contextual_navigation_requested)
+	current_action_surface.game_action_offer_requested.connect(_on_current_action_offer_requested)
+	current_action_surface.navigation_intent_requested.connect(_on_contextual_navigation_requested)
+	public_toast_surface.navigation_intent_requested.connect(_on_contextual_navigation_requested)
+	public_history_surface.navigation_intent_requested.connect(_on_contextual_navigation_requested)
+	context_detail_drawer.navigation_intent_requested.connect(_on_contextual_navigation_requested)
 	player_card_dock.card_selected.connect(_on_card_selected)
 	player_card_dock.card_hovered.connect(_on_card_hovered)
 	player_card_dock.card_unhovered.connect(_on_card_unhovered)
 	player_card_dock.card_unselected.connect(_on_card_unselected)
+	player_card_dock.card_target_selection_requested.connect(_on_card_target_selection_requested)
 	player_card_dock.game_action_offer_requested.connect(_on_game_action_offer_requested)
-	if player_board.has_signal("action_requested"):
-		player_board.connect("action_requested", Callable(self, "_on_action_requested"))
 	if player_board.has_signal("player_inspection_requested"):
 		player_board.connect("player_inspection_requested", Callable(self, "_on_player_board_inspection_requested"))
 	player_board.application_intent_requested.connect(_on_application_intent_requested)
-	if planet_board.has_signal("player_inspection_requested"):
-		planet_board.connect("player_inspection_requested", Callable(self, "_on_player_seat_inspection_requested"))
 	if overlay_layer.has_signal("side_drawer_action_requested"):
 		overlay_layer.connect("side_drawer_action_requested", Callable(self, "_on_side_drawer_action_requested"))
 	if overlay_layer.has_signal("temporary_decision_action_requested"):
@@ -149,9 +133,10 @@ func _ready() -> void:
 		overlay_layer.connect("public_bid_track_link_unhovered", Callable(self, "_on_track_link_unhovered"))
 	if overlay_layer.has_signal("map_layer_focus_requested"):
 		overlay_layer.connect("map_layer_focus_requested", Callable(self, "_on_map_layer_focus_requested"))
-	var district_supply_drawer := get_district_supply_drawer()
-	if district_supply_drawer != null and district_supply_drawer.has_signal("supply_action_requested"):
-		district_supply_drawer.connect("supply_action_requested", Callable(self, "_on_district_supply_action_requested"))
+	var region_supply_popup := get_region_supply_popup()
+	if region_supply_popup != null:
+		region_supply_popup.supply_action_requested.connect(_on_district_supply_action_requested)
+		region_supply_popup.navigation_intent_requested.connect(_on_contextual_navigation_requested)
 	call_deferred("_bind_district_selection_sources")
 	call_deferred("_sync_runtime_table_focus_order")
 
@@ -168,7 +153,6 @@ func _configure_pointer_passthrough_hosts() -> void:
 
 func apply_state(data: Dictionary) -> void:
 	var ui_data: Dictionary = TABLE_SNAPSHOT_SCRIPT.new().apply_dictionary(data).to_ui_dictionary()
-	_retire_right_inspector_card_actions(ui_data)
 	current_ui_data = ui_data
 	if top_bar.has_method("set_state"):
 		top_bar.call("set_state", ui_data.get("top_bar", {}))
@@ -179,9 +163,7 @@ func apply_state(data: Dictionary) -> void:
 	if planet_board.has_method("set_board_state"):
 		planet_board.call("set_board_state", ui_data.get("planet", {}))
 	_sync_optional_route_public_surface(ui_data.get("optional_route_presentation", {}))
-	if right_inspector.has_method("set_context"):
-		var inspector: Dictionary = ui_data.get("right_inspector", {}) if ui_data.get("right_inspector", {}) is Dictionary else {}
-		right_inspector.call("set_context", inspector)
+	_apply_contextual_table_projections(ui_data)
 	var player_data: Dictionary = ui_data.get("player_board", {}) if ui_data.get("player_board", {}) is Dictionary else {}
 	if player_board.has_method("set_player_state"):
 		player_board.call("set_player_state", player_data)
@@ -206,26 +188,52 @@ func apply_state(data: Dictionary) -> void:
 	call_deferred("_sync_runtime_table_focus_order")
 
 
-func _retire_right_inspector_card_actions(ui_data: Dictionary) -> void:
-	var inspector: Dictionary = ui_data.get("right_inspector", {}) \
-		if ui_data.get("right_inspector", {}) is Dictionary else {}
-	if inspector.is_empty():
+func _apply_contextual_table_projections(ui_data: Dictionary) -> void:
+	var roster: Dictionary = ui_data.get("player_roster", {}) \
+		if ui_data.get("player_roster", {}) is Dictionary else {}
+	if roster.is_empty() or not player_roster_panel.apply_projection(roster):
+		player_roster_panel.clear_projection()
+	var inspection: Dictionary = ui_data.get("player_inspection", {}) \
+		if ui_data.get("player_inspection", {}) is Dictionary else {}
+	if inspection.is_empty():
+		player_inspection_popup.clear_projection()
+	elif not _pending_player_inspection_id.is_empty() \
+			or player_inspection_popup.visible:
+		if player_inspection_popup.show_projection(inspection):
+			_pending_player_inspection_id = ""
+	var action_context: Dictionary = ui_data.get("current_action_context", {}) \
+		if ui_data.get("current_action_context", {}) is Dictionary else {}
+	if action_context.is_empty() or not current_action_surface.apply_projection(action_context):
+		current_action_surface.clear_projection()
+	var feedback_entries: Array = ui_data.get("public_feedback", []) \
+		if ui_data.get("public_feedback", []) is Array else []
+	_apply_public_feedback_projections(feedback_entries)
+	var context_detail: Dictionary = ui_data.get("context_detail", {}) \
+		if ui_data.get("context_detail", {}) is Dictionary else {}
+	if context_detail.is_empty():
+		context_detail_drawer.clear_projection()
+		_active_context_detail_id = ""
+	elif context_detail_drawer.apply_projection(context_detail):
+		_active_context_detail_id = str(context_detail.get("context_id", ""))
+
+
+func _apply_public_feedback_projections(entries: Array) -> void:
+	if entries.is_empty():
+		public_toast_surface.clear_projection()
+		public_history_surface.clear_history()
 		return
-	var retained_actions: Array = []
-	var actions: Array = inspector.get("actions", []) if inspector.get("actions", []) is Array else []
-	for action_variant in actions:
-		if not (action_variant is Dictionary):
+	var public_entries: Array = []
+	for entry_variant in entries:
+		if not (entry_variant is Dictionary):
 			continue
-		var action := action_variant as Dictionary
-		var offer: Dictionary = action.get("game_action_offer", {}) \
-			if action.get("game_action_offer", {}) is Dictionary else {}
-		if bool(GAME_ACTION_OFFER_SCRIPT.validation_report(offer).get("valid", false)) \
-				and str(offer.get("semantic_action_id", "")) == GAME_ACTION_INTENT_SCRIPT.ACTION_CARD_PLAY:
-			continue
-		retained_actions.append(action.duplicate(true))
-	inspector = inspector.duplicate(true)
-	inspector["actions"] = retained_actions
-	ui_data["right_inspector"] = inspector
+		var entry := entry_variant as Dictionary
+		if str(entry.get("public_or_viewer_private", "")) == "public":
+			public_entries.append(entry)
+	if public_entries.is_empty():
+		public_history_surface.clear_history()
+	else:
+		public_history_surface.apply_projections(public_entries)
+	public_toast_surface.apply_projection(entries.back() as Dictionary)
 
 
 func apply_live_presentation(snapshot: TableLivePresentationSnapshot) -> int:
@@ -243,13 +251,17 @@ func apply_full_presentation(snapshot: TableFullPresentationSnapshot) -> int:
 	var data := snapshot.to_dictionary()
 	apply_state(data)
 	var overlays := overlay_layer as SpaceSyndicateOverlayLayer
-	var district_supply: Dictionary = data.get("district_supply", {}) if data.get("district_supply", {}) is Dictionary else {}
+	var region_supply: Dictionary = data.get("region_supply_popup", {}) \
+		if data.get("region_supply_popup", {}) is Dictionary else {}
 	if overlays != null:
-		overlays.apply_district_supply_presentation(
-			district_supply,
-			snapshot.viewer_index,
-			snapshot.authorization_revision
-		)
+		if _card_resolution_mode_active():
+			overlays.clear_region_supply_popup_projection()
+		else:
+			overlays.apply_region_supply_popup_projection(
+				region_supply,
+				snapshot.viewer_index,
+				snapshot.authorization_revision
+			)
 	_presentation_target_revision += 1
 	_full_presentation_target_count += 1
 	return _presentation_target_revision
@@ -277,16 +289,24 @@ func bind_presentation_viewer(viewer_index: int, authorization_revision: int) ->
 		_selected_commodity_item_data = {}
 		_last_commodity_action_result = {}
 		_inspected_player_index = viewer_index
+		_pending_player_inspection_id = ""
+		_active_context_detail_id = ""
 		_last_player_inspection_receipt_revision = -1
 		_player_inspection_receipt_apply_count = 0
 	if authorization_changed:
 		var overlays := overlay_layer as SpaceSyndicateOverlayLayer
 		if overlays != null:
-			overlays.clear_district_supply_presentation()
+			overlays.clear_region_supply_popup_projection()
 		player_card_dock.clear_projection()
 	_presentation_authorized_viewer_index = viewer_index
 	_presentation_authorization_revision = authorization_revision
 	player_card_dock.bind_viewer(viewer_index, authorization_revision)
+	player_roster_panel.bind_viewer(viewer_index, authorization_revision)
+	player_inspection_popup.bind_viewer(viewer_index, authorization_revision)
+	current_action_surface.bind_viewer(viewer_index, authorization_revision)
+	public_toast_surface.bind_viewer(viewer_index, authorization_revision)
+	public_history_surface.bind_viewer(viewer_index, authorization_revision)
+	context_detail_drawer.bind_viewer(viewer_index, authorization_revision)
 	if planet_board is SpaceSyndicatePlanetBoard:
 		(planet_board as SpaceSyndicatePlanetBoard).bind_presentation_viewer(viewer_index, authorization_revision)
 	if player_board.has_method("bind_public_identity"):
@@ -307,6 +327,12 @@ func bind_gameplay_actor_authorization_context(context: GameplayActorAuthorizati
 	_presentation_session_id = context.session_id
 	_presentation_session_revision = context.session_revision
 	player_card_dock.bind_viewer(context.viewer_index, context.authorization_revision)
+	player_roster_panel.bind_viewer(context.viewer_index, context.authorization_revision)
+	player_inspection_popup.bind_viewer(context.viewer_index, context.authorization_revision)
+	current_action_surface.bind_viewer(context.viewer_index, context.authorization_revision)
+	public_toast_surface.bind_viewer(context.viewer_index, context.authorization_revision)
+	public_history_surface.bind_viewer(context.viewer_index, context.authorization_revision)
+	context_detail_drawer.bind_viewer(context.viewer_index, context.authorization_revision)
 
 
 func _presentation_authorization_matches(viewer_index: int, authorization_revision: int) -> bool:
@@ -514,7 +540,7 @@ func apply_district_supply_action_receipt(receipt: DistrictSupplyActionReceipt) 
 	if receipt.close_drawer:
 		var overlays := overlay_layer as SpaceSyndicateOverlayLayer
 		if overlays != null:
-			overlays.clear_district_supply_presentation()
+			overlays.clear_region_supply_popup_projection()
 	var detail := "区域牌架动作已完成。" if receipt.accepted else "区域牌架状态已经变化，请刷新后重试。"
 	if receipt.requires_discard:
 		detail = "手牌已满，请私下选择一张可弃的普通牌。"
@@ -580,10 +606,6 @@ func _focus_public_district(district_index: int) -> void:
 			map_node.call("focus_district", district_index)
 
 
-func _on_player_seat_inspection_requested(player_index: int) -> void:
-	request_player_inspection(player_index, &"player_seat")
-
-
 func _on_player_board_inspection_requested(player_index: int) -> void:
 	request_player_inspection(player_index, &"player_board")
 
@@ -592,41 +614,74 @@ func _on_toolbar_player_inspection_requested(player_index: int) -> void:
 	request_player_inspection(player_index, &"table_toolbar")
 
 
-func _apply_inspected_player_presentation(focus_seat: bool = false) -> void:
+func _on_roster_player_inspection_requested(player_id: String) -> void:
+	var player_index := _player_index_from_id(player_id)
+	if player_index < 0:
+		return
+	if player_inspection_popup.visible \
+			and player_inspection_popup.current_player_id() == player_id:
+		player_inspection_popup.close_popup("same_player")
+		player_roster_panel.set_active_inspection_player_id("")
+		return
+	_pending_player_inspection_id = player_id
+	player_roster_panel.set_active_inspection_player_id(player_id)
+	var projection: Dictionary = current_ui_data.get("player_inspection", {}) \
+		if current_ui_data.get("player_inspection", {}) is Dictionary else {}
+	if str(projection.get("player_id", "")) == player_id:
+		player_inspection_popup.show_projection(projection)
+		_pending_player_inspection_id = ""
+		return
+	if not request_player_inspection(player_index, &"player_roster"):
+		_pending_player_inspection_id = ""
+		player_roster_panel.set_active_inspection_player_id("")
+
+
+func _on_player_inspection_popup_closed() -> void:
+	_pending_player_inspection_id = ""
+	player_roster_panel.set_active_inspection_player_id("")
+
+
+func _player_index_from_id(player_id: String) -> int:
+	if not player_id.begins_with("player."):
+		return -1
+	var suffix := player_id.substr("player.".length())
+	return int(suffix) if suffix.is_valid_int() else -1
+
+
+func _apply_inspected_player_presentation(_focus_roster: bool = false) -> void:
 	var descriptor := _public_player_descriptor(_inspected_player_index)
 	if descriptor.is_empty():
 		return
-	if planet_board.has_method("set_inspected_player_index"):
-		planet_board.call("set_inspected_player_index", _inspected_player_index)
-	if focus_seat and planet_board.has_method("focus_inspected_player"):
-		planet_board.call("focus_inspected_player", _inspected_player_index)
+	var player_id := "player.%d" % _inspected_player_index
+	player_roster_panel.set_active_inspection_player_id(
+		player_id if player_inspection_popup.visible or not _pending_player_inspection_id.is_empty() else ""
+	)
 	if player_board.has_method("set_inspected_public_player"):
 		player_board.call("set_inspected_public_player", descriptor)
 	if top_bar.has_method("set_inspected_public_player"):
 		top_bar.call("set_inspected_public_player", descriptor)
-	if right_inspector.has_method("show_public_player"):
-		right_inspector.call("show_public_player", descriptor)
 	if overlay_layer != null:
 		overlay_layer.set_meta("inspected_player_index", _inspected_player_index)
 		overlay_layer.set_meta("player_inspection_revision", _current_selection_revision())
 
 
 func _public_player_descriptor(player_index: int) -> Dictionary:
-	var planet: Dictionary = current_ui_data.get("planet", {}) if current_ui_data.get("planet", {}) is Dictionary else {}
-	var seats: Array = planet.get("player_seats", []) if planet.get("player_seats", []) is Array else []
-	for seat_variant in seats:
-		if not (seat_variant is Dictionary):
+	var roster: Dictionary = current_ui_data.get("player_roster", {}) \
+		if current_ui_data.get("player_roster", {}) is Dictionary else {}
+	var players: Array = roster.get("players", []) if roster.get("players", []) is Array else []
+	for player_variant in players:
+		if not (player_variant is Dictionary):
 			continue
-		var seat := seat_variant as Dictionary
-		if int(seat.get("player_index", -1)) != player_index:
+		var player := player_variant as Dictionary
+		if str(player.get("player_id", "")) != "player.%d" % player_index:
 			continue
 		return {
 			"player_index": player_index,
-			"public_player_name": str(seat.get("public_player_name", "玩家%d" % (player_index + 1))),
-			"role_name": str(seat.get("role_name", "外星辛迪加")),
-			"player_color": seat.get("player_color", Color.WHITE),
-			"public_status": str(seat.get("public_status", "waiting")),
-			"is_local_player": bool(seat.get("is_local_player", false)),
+			"public_player_name": str(player.get("display_name", "玩家%d" % (player_index + 1))),
+			"role_name": str(player.get("role_display_name", "外星辛迪加")),
+			"player_color": Color.WHITE,
+			"public_status": str(player.get("public_status", "waiting")),
+			"is_local_player": bool(player.get("is_local_player", false)),
 		}
 	return {}
 
@@ -636,11 +691,12 @@ func player_inspection_debug_snapshot() -> Dictionary:
 		"inspected_player_index": _inspected_player_index,
 		"authorized_viewer_index": _presentation_authorized_viewer_index,
 		"session_id_bound": not _presentation_session_id.is_empty(),
-		"player_seat_synced": planet_board.has_method("inspected_player_index") and int(planet_board.call("inspected_player_index")) == _inspected_player_index,
+		"roster_active_player_id": str(player_roster_panel.debug_snapshot().get("active_inspection_player_id", "")),
+		"popup_player_id": player_inspection_popup.current_player_id(),
+		"popup_visible": player_inspection_popup.visible,
 		"player_board_synced": int(player_board.get_meta("inspected_player_index", -1)) == _inspected_player_index,
 		"toolbar_synced": int(top_bar.get_meta("inspected_player_index", -1)) == _inspected_player_index,
 		"fullscreen_hud_synced": int(overlay_layer.get_meta("inspected_player_index", -1)) == _inspected_player_index if overlay_layer != null else false,
-		"right_inspector_public_only": str(right_inspector.get_meta("context_kind", "")) == "public_player",
 		"receipt_apply_count": _player_inspection_receipt_apply_count,
 		"last_receipt_revision": _last_player_inspection_receipt_revision,
 	}
@@ -692,47 +748,111 @@ func _bind_district_selection_source(map_node: Control, source_surface: StringNa
 	var callback := Callable(self, "_on_district_selection_requested").bind(source_surface)
 	if not map_node.is_connected("district_selected", callback):
 		map_node.connect("district_selected", callback)
-	if map_node.has_signal("district_double_clicked"):
-		var double_callback := Callable(self, "_on_district_supply_open_requested").bind(source_surface)
-		if not map_node.is_connected("district_double_clicked", double_callback):
-			map_node.connect("district_double_clicked", double_callback)
+	if map_node.has_signal("map_background_clicked"):
+		var background_callback := Callable(self, "_on_map_background_clicked")
+		if not map_node.is_connected("map_background_clicked", background_callback):
+			map_node.connect("map_background_clicked", background_callback)
 
 
 func _on_district_selection_requested(district_index: int, source_surface: StringName) -> void:
-	if player_card_dock.target_selection_active():
-		if _forced_surface_blocks_player_actions():
-			player_card_dock.set_action_feedback(
-				"commodity-target-selection",
-				"blocked",
-				"请先完成当前强制决策。"
-			)
-			return
-		_pending_card_target_region_id = ""
-		if not request_district_selection(district_index, source_surface):
-			player_card_dock.set_action_feedback(
-				"commodity-target-selection",
-				"blocked",
-				"区域选择请求已失效，请重新选择卡牌。"
-			)
-			return
-		player_card_dock.set_action_feedback(
-			"commodity-target-selection",
-			"pending",
-			"正在验证该区域是否存在唯一匹配的同产业工厂或市场。"
-		)
+	var clicked_region_id := _region_id_for_district(district_index)
+	if clicked_region_id.is_empty():
 		return
-	request_district_selection(district_index, source_surface)
+	var popup := get_region_supply_popup()
+	var popup_debug: Dictionary = popup.debug_snapshot() if popup != null else {}
+	var open_region_id := str(popup_debug.get("region_id", "")) \
+		if bool(popup_debug.get("visible", false)) else ""
+	var mode := _current_table_interaction_mode(open_region_id)
+	var disposition := TABLE_INTERACTION_MODE_SCRIPT.region_click_disposition(
+		mode,
+		clicked_region_id,
+		open_region_id
+	)
+	match disposition:
+		TABLE_INTERACTION_MODE_SCRIPT.REGION_CLICK_SUBMIT_TARGET:
+			_pending_card_target_region_id = ""
+			if not request_district_selection(district_index, source_surface):
+				player_card_dock.set_action_feedback(
+					"commodity-target-selection",
+					"blocked",
+					"区域选择请求已失效，请重新选择卡牌。"
+				)
+				return
+			player_card_dock.set_action_feedback(
+				"commodity-target-selection",
+				"pending",
+				"正在验证该区域是否存在唯一匹配的同产业工厂或市场。"
+			)
+		TABLE_INTERACTION_MODE_SCRIPT.REGION_CLICK_CLOSE_POPUP:
+			request_district_supply_close(source_surface)
+		TABLE_INTERACTION_MODE_SCRIPT.REGION_CLICK_OPEN_POPUP, \
+		TABLE_INTERACTION_MODE_SCRIPT.REGION_CLICK_SWITCH_POPUP:
+			if request_district_selection(district_index, source_surface):
+				_emit_district_supply_action(
+					DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_OPEN,
+					district_index,
+					"",
+					-1,
+					source_surface
+				)
+		_:
+			_show_player_action_feedback(
+				"region_click",
+				"blocked",
+				"当前桌面模式不接受普通区域弹窗。"
+			)
 
 
 func _on_district_supply_open_requested(district_index: int, source_surface: StringName) -> void:
-	if player_card_dock.target_selection_active():
-		return
+	_on_district_selection_requested(district_index, source_surface)
+
+
+func _on_map_background_clicked() -> void:
+	var popup := get_region_supply_popup()
+	if popup != null and popup.visible:
+		request_district_supply_close(&"planet_map")
+
+
+func _current_table_interaction_mode(open_region_id: String = "") -> Dictionary:
+	var mode_id := TABLE_INTERACTION_MODE_SCRIPT.TABLE_MAP_MODE
+	var active_region_id := ""
+	var active_player_id := ""
+	var active_context_id := ""
 	if _forced_surface_blocks_player_actions():
-		_show_player_action_feedback("district_supply_open", "blocked", "请先完成当前强制决策。")
-		return
-	if not request_district_selection(district_index, source_surface):
-		return
-	_emit_district_supply_action(DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_OPEN, district_index, "", -1, source_surface)
+		mode_id = TABLE_INTERACTION_MODE_SCRIPT.FORCED_DECISION_MODE
+		active_context_id = "context.forced-decision"
+	elif player_card_dock.target_selection_active():
+		mode_id = TABLE_INTERACTION_MODE_SCRIPT.CARD_TARGET_SELECTION_MODE
+		active_context_id = "context.card-target"
+	elif _card_resolution_mode_active():
+		mode_id = TABLE_INTERACTION_MODE_SCRIPT.CARD_RESOLUTION_MODE
+		active_context_id = "context.card-resolution"
+	elif context_detail_drawer.visible:
+		mode_id = TABLE_INTERACTION_MODE_SCRIPT.CONTEXT_DETAIL_MODE
+		active_context_id = _active_context_detail_id \
+			if not _active_context_detail_id.is_empty() else "context.detail"
+	elif player_inspection_popup.visible:
+		mode_id = TABLE_INTERACTION_MODE_SCRIPT.PLAYER_INSPECTION_MODE
+		active_player_id = player_inspection_popup.current_player_id()
+	elif not open_region_id.is_empty():
+		mode_id = TABLE_INTERACTION_MODE_SCRIPT.REGION_SUPPLY_POPUP_MODE
+		active_region_id = open_region_id
+	return TABLE_INTERACTION_MODE_SCRIPT.build({
+		"schema_version": TABLE_INTERACTION_MODE_SCRIPT.SCHEMA_VERSION,
+		"viewer_index": maxi(0, _presentation_authorized_viewer_index),
+		"authorization_revision": maxi(1, _presentation_authorization_revision),
+		"source_revision": _current_selection_revision(),
+		"mode_id": mode_id,
+		"active_region_id": active_region_id,
+		"active_player_id": active_player_id,
+		"active_context_id": active_context_id,
+	})
+
+
+func _card_resolution_mode_active() -> bool:
+	var track: Dictionary = current_ui_data.get("card_resolution_track", {}) \
+		if current_ui_data.get("card_resolution_track", {}) is Dictionary else {}
+	return str(track.get("phase", "")) in ["响应", "公开展示", "锁牌", "展示中", "锁定"]
 
 
 func request_district_supply_open(district_index: int, source_surface: StringName = &"game_screen") -> bool:
@@ -763,10 +883,39 @@ func _on_district_supply_action_requested(action_id: String, payload: Dictionary
 		"district_supply_close":
 			_emit_district_supply_action(DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_CLOSE, district_index, "", -1, &"district_supply")
 		"district_supply_preview_card":
-			var kind := DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_PREVIEW if str(payload.get("source", "")) == "hover" else DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_QUOTE
-			_emit_district_supply_action(kind, district_index, card_id, -1, &"district_supply")
+			if str(payload.get("source", "")) in ["hover", "click_or_keyboard"]:
+				_emit_district_supply_action(
+					DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_PREVIEW,
+					district_index,
+					card_id,
+					-1,
+					&"district_supply"
+				)
+			else:
+				_submit_region_supply_offer(
+					card_id,
+					GAME_ACTION_INTENT_SCRIPT.ACTION_DISTRICT_SUPPLY_QUOTE
+				)
 		"district_supply_purchase_card":
-			_emit_district_supply_action(DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_PURCHASE, district_index, card_id, -1, &"district_supply")
+			_submit_region_supply_offer(
+				card_id,
+				GAME_ACTION_INTENT_SCRIPT.ACTION_DISTRICT_SUPPLY_PURCHASE
+			)
+
+
+func _submit_region_supply_offer(card_id: String, semantic_action_id: String) -> bool:
+	var popup := get_region_supply_popup()
+	if popup == null:
+		return false
+	var offer := popup.action_offer_for_card(card_id, semantic_action_id)
+	if offer.is_empty():
+		_show_player_action_feedback(
+			semantic_action_id,
+			"blocked",
+			"区域牌架动作已变化，请等待权威投影刷新。"
+		)
+		return false
+	return submit_game_action_offer(offer, "human_click", {}, {})
 
 
 func _emit_district_supply_action(kind: StringName, district_index: int, card_id: String, discard_slot: int, source_surface: StringName) -> bool:
@@ -851,8 +1000,9 @@ func get_overlay_host() -> Node:
 	return overlay_layer
 
 
-func get_district_supply_drawer() -> Node:
-	return overlay_layer.find_child("DistrictSupplySideDrawerOverlay", true, false) if overlay_layer != null else null
+func get_region_supply_popup() -> SpaceSyndicateRegionSupplyPopup:
+	return overlay_layer.find_child("RegionSupplyPopup", true, false) as SpaceSyndicateRegionSupplyPopup \
+		if overlay_layer != null else null
 
 
 func get_visual_event_snapshot() -> Dictionary:
@@ -921,11 +1071,13 @@ func _runtime_table_focus_controls() -> Array[Control]:
 	var result: Array[Control] = []
 	_append_runtime_focus_control(result, top_bar as Control, "顶部状态")
 	_append_runtime_focus_control(result, commodity_sushi_track as Control, "公共商品带")
+	_append_runtime_focus_control(result, player_roster_panel as Control, "公开玩家名册")
 	_append_runtime_focus_control(result, _runtime_map_focus_control(), "星球地图")
-	_append_runtime_focus_control(result, right_inspector as Control, "右侧详情")
-	_append_runtime_focus_control(result, _first_visible_control(["DistrictSupplySideDrawer", "DistrictSupplyPanel", "DistrictSupplySideDrawerOverlay", "DistrictSupplyDrawer", "SideDrawerPanel"]), "区域牌架")
+	_append_runtime_focus_control(result, current_action_surface as Control, "当前行动")
+	_append_runtime_focus_control(result, get_region_supply_popup() as Control, "区域牌架")
+	_append_runtime_focus_control(result, context_detail_drawer as Control, "上下文详情")
 	_append_runtime_focus_control(result, player_card_dock as Control, "玩家卡牌坞")
-	_append_runtime_focus_control(result, _first_visible_control(["PlayerMainActionDock", "PlayerCommandTableau", "PlayerBoard"]), "当前行动")
+	_append_runtime_focus_control(result, public_history_surface as Control, "公共历史")
 	_append_runtime_focus_control(result, _first_visible_control(["PublicBidDecisionPanel"]), "牌序竞价")
 	return result
 
@@ -980,8 +1132,6 @@ func _on_commodity_item_focused(item: COMMODITY_ITEM_SNAPSHOT_SCRIPT) -> void:
 	_selected_commodity_slot_id = item.commodity_slot_id
 	_selected_commodity_item_data = item.to_dictionary()
 	_last_commodity_action_result = {}
-	if right_inspector != null and right_inspector.has_method("show_public_commodity"):
-		right_inspector.call("show_public_commodity", _selected_commodity_item_data, {})
 
 
 func _on_commodity_claim_requested(item: COMMODITY_ITEM_SNAPSHOT_SCRIPT) -> void:
@@ -1097,9 +1247,6 @@ func apply_commodity_claim_result(result: Dictionary, snapshot: COMMODITY_TRACK_
 		current_ui_data["commodity_sushi_track"] = snapshot_data
 		if commodity_sushi_track != null:
 			commodity_sushi_track.set_snapshot(snapshot)
-	if right_inspector != null and right_inspector.has_method("show_public_commodity") \
-			and not _selected_commodity_item_data.is_empty():
-		right_inspector.call("show_public_commodity", _selected_commodity_item_data, _last_commodity_action_result)
 
 
 func commodity_claim_performance_snapshot() -> Dictionary:
@@ -1147,8 +1294,7 @@ func _p95_milliseconds(samples: Array[int]) -> float:
 
 
 func _restore_selected_commodity_focus() -> bool:
-	if _selected_commodity_item_data.is_empty() or right_inspector == null \
-			or not right_inspector.has_method("show_public_commodity"):
+	if _selected_commodity_item_data.is_empty():
 		return false
 	var current_item := commodity_sushi_track.item_snapshot_by_id(_selected_commodity_slot_id) \
 		if commodity_sushi_track != null and not _selected_commodity_slot_id.is_empty() else null
@@ -1156,8 +1302,23 @@ func _restore_selected_commodity_focus() -> bool:
 		_selected_commodity_item_data = current_item.to_dictionary()
 	elif _last_commodity_action_result.is_empty():
 		return false
-	right_inspector.call("show_public_commodity", _selected_commodity_item_data, _last_commodity_action_result)
 	return true
+
+
+func _on_current_action_offer_requested(offer: Dictionary) -> void:
+	_on_game_action_offer_requested(offer, "human_click", {}, {})
+
+
+func _on_contextual_navigation_requested(intent_data: Dictionary) -> void:
+	if intent_data.has("action_kind"):
+		var navigation := TABLE_NAVIGATION_ACTION_INTENT_SCRIPT.from_dictionary(intent_data)
+		if navigation != null and bool(navigation.validation_report().get("valid", false)):
+			navigation_intent_requested.emit(navigation)
+		return
+	if intent_data.has("kind"):
+		var intel := IntelApplicationIntent.from_dictionary(intent_data)
+		if intel != null:
+			_on_application_intent_requested(intel)
 
 
 func _on_end_turn_requested() -> void:
@@ -1181,6 +1342,8 @@ func request_pause_menu() -> void:
 
 
 func _on_action_requested(action_id: String) -> void:
+	if action_id == "menu" or action_id.begins_with("codex"):
+		_close_ordinary_contextual_surfaces(action_id, true)
 	if action_id in ["rack", "buy", "district_open_rack", "primary_open_development_rack", "primary_open_rack", "primary_review_rack", "strategy_build_gdp_source"]:
 		if _forced_surface_blocks_player_actions():
 			_show_player_action_feedback(action_id, "blocked", "请先完成当前强制决策。")
@@ -1194,7 +1357,7 @@ func _on_action_requested(action_id: String) -> void:
 		)
 		return
 	if action_id.begins_with("track_select_"):
-		_emit_track_action_request(action_id, "已选择公共轨道线索。", &"right_inspector")
+		_emit_track_action_request(action_id, "已选择公共轨道线索。", &"card_resolution_track")
 		return
 	if _forced_surface_blocks_player_actions():
 		_show_player_action_feedback(action_id, "blocked", "请先完成当前强制决策。")
@@ -1226,7 +1389,6 @@ func _on_track_link_hovered(action_id: String) -> void:
 func _on_track_link_unhovered(_action_id: String) -> void:
 	_set_public_track_hover("")
 	_temporary_track_focus_active = false
-	_restore_right_inspector_context()
 	_sync_selected_track_focus_from_state()
 
 
@@ -1245,7 +1407,6 @@ func _on_track_entry_hovered(entry: Dictionary) -> void:
 func _on_track_entry_unhovered(_entry: Dictionary) -> void:
 	_set_player_board_track_hover("")
 	_temporary_track_focus_active = false
-	_restore_right_inspector_context()
 	_sync_selected_track_focus_from_state()
 
 
@@ -1257,9 +1418,8 @@ func _set_player_board_track_hover(action_id: String) -> void:
 
 
 func _show_track_entry_hover_preview(entry: Dictionary) -> void:
-	if entry.is_empty() or right_inspector == null or not right_inspector.has_method("set_context"):
-		return
-	right_inspector.call("set_context", _track_entry_inspector_context(entry))
+	if not entry.is_empty():
+		_show_track_focus_for_entry(entry, "牌轨对照", true)
 
 
 func _show_track_action_hover_preview(action_id: String) -> void:
@@ -1397,11 +1557,14 @@ func _handle_table_selection_hotkey(event: InputEventKey) -> bool:
 
 
 func _cycle_district_supply_quote() -> bool:
-	var drawer := get_district_supply_drawer()
+	var drawer := get_region_supply_popup()
 	if drawer == null or not drawer.has_method("debug_snapshot"):
 		return false
 	var snapshot: Dictionary = drawer.call("debug_snapshot")
-	var card_ids: Array = snapshot.get("rendered_card_names", []) if snapshot.get("rendered_card_names", []) is Array else []
+	var drawer_snapshot: Dictionary = snapshot.get("drawer", {}) \
+		if snapshot.get("drawer", {}) is Dictionary else {}
+	var card_ids: Array = drawer_snapshot.get("rendered_card_names", []) \
+		if drawer_snapshot.get("rendered_card_names", []) is Array else []
 	if card_ids.is_empty():
 		return false
 	var district_index := int(_selection_context().get("selected_district", -1))
@@ -1478,39 +1641,40 @@ func _on_card_selected(card_data: Dictionary) -> void:
 	_selected_commodity_item_data = {}
 	_last_commodity_action_result = {}
 	_selected_hand_card_data = card_data.duplicate(true)
+	player_card_dock.cancel_target_selection()
 	request_hand_selection(_hand_slot_from_card_data(card_data), &"player_card_dock")
 	_pending_card_target_region_id = ""
-	if str(card_data.get("pool_id", "")) == "commodity_cards" \
-			and str(card_data.get("legal_target_summary", "")) == COMMODITY_TARGET_KIND:
-		if not player_card_dock.begin_target_selection(
-			str(card_data.get("id", "")),
-			str(card_data.get("legal_target_summary", ""))
-		):
-			player_card_dock.set_action_feedback(
-				"commodity-target-selection",
-				"blocked",
-				"商品目标投影已经变化，请等待刷新。"
-			)
-	else:
-		player_card_dock.cancel_target_selection()
-	_show_dock_card_details(card_data)
 	card_selected.emit(card_data)
+
+
+func _on_card_target_selection_requested(card_data: Dictionary) -> void:
+	if str(card_data.get("pool_id", "")) != "commodity_cards" \
+			or str(card_data.get("legal_target_summary", "")) != COMMODITY_TARGET_KIND:
+		return
+	_selected_hand_card_data = card_data.duplicate(true)
+	_pending_card_target_region_id = ""
+	_close_ordinary_contextual_surfaces("card_target_selection", true)
+	if not player_card_dock.begin_target_selection(
+		str(card_data.get("id", "")),
+		str(card_data.get("legal_target_summary", ""))
+	):
+		player_card_dock.set_action_feedback(
+			"commodity-target-selection",
+			"blocked",
+			"商品目标投影已经变化，请等待刷新。"
+		)
 
 
 func _on_card_hovered(card_data: Dictionary) -> void:
 	_show_hand_hover_preview(card_data)
-	_show_dock_card_details(card_data)
 	card_hovered.emit(card_data)
 
 
 func _on_card_unhovered() -> void:
 	_hide_hand_hover_preview()
-	if not _selected_hand_card_data.is_empty():
-		_show_dock_card_details(_selected_hand_card_data)
-	else:
-		_restore_right_inspector_context()
-		if not _restore_selected_commodity_focus():
-			_sync_selected_track_focus_from_state()
+	if _selected_hand_card_data.is_empty() \
+			and not _restore_selected_commodity_focus():
+		_sync_selected_track_focus_from_state()
 	card_unhovered.emit()
 
 
@@ -1519,19 +1683,9 @@ func _on_card_unselected(card_data: Dictionary) -> void:
 	_pending_card_target_region_id = ""
 	player_card_dock.cancel_target_selection()
 	request_hand_selection(-1, &"player_card_dock")
-	_restore_right_inspector_context()
 	if not _restore_selected_commodity_focus():
 		_sync_selected_track_focus_from_state()
 	card_unselected.emit(card_data)
-
-
-func _show_dock_card_details(card_data: Dictionary) -> void:
-	if card_data.is_empty() or not right_inspector.has_method("show_card"):
-		return
-	var read_only_details := card_data.duplicate(true)
-	read_only_details["actions"] = []
-	read_only_details["actionable"] = false
-	right_inspector.call("show_card", read_only_details)
 
 
 func _attempt_pending_card_target_submission() -> void:
@@ -1567,8 +1721,6 @@ func _on_track_entry_selected(entry: Dictionary) -> void:
 	_last_commodity_action_result = {}
 	_clear_hand_detail_focus_for_track()
 	request_hand_selection(-1, &"game_screen")
-	if right_inspector.has_method("set_context"):
-		right_inspector.call("set_context", _track_entry_inspector_context(entry))
 	_show_track_focus_for_entry(entry, "已选牌轨", false)
 	var action_id := _track_select_action(entry)
 	if action_id != "":
@@ -1578,8 +1730,6 @@ func _on_track_entry_selected(entry: Dictionary) -> void:
 func _on_track_entry_opened(entry: Dictionary) -> void:
 	_clear_hand_detail_focus_for_track()
 	request_hand_selection(-1, &"game_screen")
-	if right_inspector.has_method("set_context"):
-		right_inspector.call("set_context", _track_entry_inspector_context(entry))
 	_show_track_focus_for_entry(entry, "打开牌轨", false)
 	var action_id := _track_open_action(entry)
 	if action_id != "":
@@ -1690,14 +1840,11 @@ func game_action_actor_authorization(submission_kind: String) -> Dictionary:
 func _game_action_entry(action_id: String) -> Dictionary:
 	var player_data: Dictionary = current_ui_data.get("player_board", {}) \
 		if current_ui_data.get("player_board", {}) is Dictionary else {}
-	var right_data: Dictionary = current_ui_data.get("right_inspector", {}) \
-		if current_ui_data.get("right_inspector", {}) is Dictionary else {}
 	var bid_data: Dictionary = player_data.get("bid_board", {}) \
 		if player_data.get("bid_board", {}) is Dictionary else {}
 	for entries_variant in [
 		player_data.get("quick_actions", []),
 		player_data.get("actions", []),
-		right_data.get("actions", []),
 		bid_data.get("actions", []),
 	]:
 		var found := _game_action_entry_in(entries_variant, action_id)
@@ -1782,71 +1929,12 @@ func _hand_slot_from_card_data(card_data: Dictionary) -> int:
 	return -1
 
 
-func _restore_right_inspector_context() -> void:
-	if right_inspector == null or not right_inspector.has_method("set_context"):
-		return
-	var inspector: Dictionary = current_ui_data.get("right_inspector", {}) if current_ui_data.get("right_inspector", {}) is Dictionary else {}
-	right_inspector.call("set_context", inspector)
-
-
 func _clear_hand_detail_focus_for_track() -> void:
 	_selected_hand_card_data = {}
 	_selected_commodity_slot_id = ""
 	_selected_commodity_item_data = {}
 	_last_commodity_action_result = {}
 	_hide_hand_hover_preview()
-
-
-func _track_entry_inspector_context(entry: Dictionary) -> Dictionary:
-	var public_entry := _safe_public_track_entry(entry)
-	var requirements: Array = (public_entry.get("requirements", []) as Array).duplicate(true) if public_entry.get("requirements", []) is Array else []
-	var actions: Array = (public_entry.get("actions", []) as Array).duplicate(true) if public_entry.get("actions", []) is Array else []
-	var deep_links: Array = (public_entry.get("deep_links", []) as Array).duplicate(true) if public_entry.get("deep_links", []) is Array else []
-	_append_track_action_if_missing(actions, _track_select_action(public_entry), "查看履历", "把这条公共动作设为当前查看对象。")
-	_append_track_intel_intent_if_missing(actions, public_entry)
-	_append_track_intel_intent_if_missing(deep_links, public_entry)
-	_append_track_action_if_missing(actions, _track_open_action(public_entry), "卡牌详情", "打开这张公开牌的图鉴详情。")
-	_append_track_action_if_missing(deep_links, _track_open_action(public_entry), "卡牌详情", "打开这张公开牌的图鉴详情。")
-	var badges: Array = public_entry.get("badges", []) if public_entry.get("badges", []) is Array else []
-	var chips: Array = [
-		{"text": "槽 %s" % str(public_entry.get("slot", "--"))},
-		{"text": str(public_entry.get("state", "等待"))},
-	]
-	var owner_hint := _track_owner_hint_text(public_entry)
-	if owner_hint != "":
-		chips.append({"text": "来源%s" % owner_hint})
-	var cost_text := str(public_entry.get("cost", "")).strip_edges()
-	if cost_text != "":
-		chips.append({"text": "报价%s" % cost_text})
-	for badge_variant in badges:
-		var badge_text := str(badge_variant).strip_edges()
-		if badge_text != "":
-			chips.append({"text": badge_text})
-		if chips.size() >= 6:
-			break
-	var logs: Array = []
-	var current_logs: Variant = current_ui_data.get("logs", [])
-	var safe_logs: Variant = _sanitize_public_track_value(current_logs)
-	if safe_logs is Array:
-		logs = safe_logs
-	return {
-		"context_kind": "public_track",
-		"resolution_id": int(public_entry.get("resolution_id", -1)),
-		"title": str(public_entry.get("title", "牌轨详情")),
-		"why": str(public_entry.get("why", public_entry.get("tooltip", "看状态、报价、归属和余波线索来推理来源。"))),
-		"district": {
-			"id": str(public_entry.get("id", "")),
-			"title": str(public_entry.get("label", "公共牌槽")),
-			"summary": str(public_entry.get("summary", public_entry.get("tooltip", ""))),
-			"detail": str(public_entry.get("detail", public_entry.get("tooltip", ""))),
-			"full_detail": str(public_entry.get("full_detail", public_entry.get("tooltip", ""))),
-			"chips": chips,
-		},
-		"requirements": requirements,
-		"actions": actions,
-		"deep_links": deep_links,
-		"logs": logs,
-	}
 
 
 func _track_hover_action(entry: Dictionary) -> String:
@@ -1869,71 +1957,6 @@ func _track_open_action(entry: Dictionary) -> String:
 		return action_id
 	var card_name := str(entry.get("card_name", "")).strip_edges()
 	return "track_open_%s" % card_name if card_name != "" else ""
-
-
-func _append_track_action_if_missing(target: Array, action_id: String, label: String, tooltip: String) -> void:
-	if action_id == "":
-		return
-	for action_variant in target:
-		var action: Dictionary = action_variant if action_variant is Dictionary else {}
-		if str(action.get("id", action.get("action_id", ""))).strip_edges() == action_id:
-			return
-	target.append({"id": action_id, "label": label, "tooltip": tooltip})
-
-
-func _append_track_intel_intent_if_missing(target: Array, entry: Dictionary) -> void:
-	if str(entry.get("kind", "")).strip_edges().to_lower() == "event":
-		return
-	var resolution_id := int(entry.get("resolution_id", -1))
-	if resolution_id < 0:
-		return
-	for action_variant in target:
-		var action: Dictionary = action_variant if action_variant is Dictionary else {}
-		var intent_value: Variant = action.get("application_intent", {})
-		if intent_value is Dictionary and str((intent_value as Dictionary).get("focused_history_entry_id", "")) == "card-history:%d" % resolution_id:
-			return
-	target.append({
-		"id": "intel",
-		"label": "线索档案",
-		"tooltip": "打开情报档案并置顶这张公共履历。",
-		"application_intent": IntelApplicationIntent.open("card-history:%d" % resolution_id).to_dictionary(),
-	})
-
-
-func _safe_public_track_entry(entry: Dictionary) -> Dictionary:
-	var safe_variant: Variant = _sanitize_public_track_value(entry)
-	return safe_variant if safe_variant is Dictionary else {}
-
-
-func _sanitize_public_track_value(value: Variant) -> Variant:
-	if value is Dictionary:
-		var dictionary_result: Dictionary = {}
-		for key_variant in value:
-			var key := str(key_variant).to_lower()
-			if _is_private_track_key(key):
-				continue
-			dictionary_result[key_variant] = _sanitize_public_track_value((value as Dictionary)[key_variant])
-		return dictionary_result
-	if value is Array:
-		var array_result: Array = []
-		for entry_variant in value:
-			array_result.append(_sanitize_public_track_value(entry_variant))
-		return array_result
-	if value is String:
-		return _safe_public_track_text(value)
-	return value
-
-
-func _is_private_track_key(key: String) -> bool:
-	return PRIVATE_TRACK_ENTRY_KEYS.has(key) or key.begins_with("private_") or key.begins_with("hidden_")
-
-
-func _safe_public_track_text(value: String) -> String:
-	var lower := value.to_lower()
-	for token in PRIVATE_TRACK_TEXT_TOKENS:
-		if lower.contains(token):
-			return "匿名线索"
-	return value
 
 
 func _configure_hand_hover_preview() -> void:
@@ -2060,15 +2083,6 @@ func _sync_selected_track_focus_from_state() -> void:
 		_clear_track_focus_ribbon()
 		return
 	_show_track_focus_for_entry(selected_entry, "已选牌轨", false)
-	if not _selected_hand_card_data.is_empty() or _right_inspector_state_is_hand_card():
-		return
-	if right_inspector != null and right_inspector.has_method("set_context"):
-		right_inspector.call("set_context", _track_entry_inspector_context(selected_entry))
-
-
-func _right_inspector_state_is_hand_card() -> bool:
-	var inspector: Dictionary = current_ui_data.get("right_inspector", {}) if current_ui_data.get("right_inspector", {}) is Dictionary else {}
-	return str(inspector.get("context_kind", "")).strip_edges() == "hand_card" or str(inspector.get("title", "")).strip_edges() == "卡牌详情"
 
 
 func _selected_track_entry() -> Dictionary:
@@ -2173,11 +2187,11 @@ func _should_open_detail_drawer(action_id: String) -> bool:
 
 
 func _open_detail_drawer(action_id: String) -> void:
-	if overlay_layer == null or not overlay_layer.has_method("show_side_drawer"):
-		return
-	var inspector: Dictionary = current_ui_data.get("right_inspector", {}) if current_ui_data.get("right_inspector", {}) is Dictionary else {}
-	var drawer: Dictionary = OVERLAY_LAYER_SNAPSHOT_SCRIPT.new().apply_side_drawer(action_id, inspector).to_side_drawer_dictionary()
-	overlay_layer.call("show_side_drawer", drawer)
+	var projection: Dictionary = current_ui_data.get("context_detail", {}) \
+		if current_ui_data.get("context_detail", {}) is Dictionary else {}
+	if not projection.is_empty():
+		context_detail_drawer.apply_projection(projection)
+	context_detail_drawer.show_drawer()
 
 
 func _sync_temporary_decision_overlay(value: Variant) -> void:
@@ -2217,6 +2231,10 @@ func _sync_transient_gameplay_surfaces(decision_value: Variant, bid_value: Varia
 		and bool(active_forced.get("visible_to_viewer", false)) \
 		and bool(active_forced.get("blocks_player_actions", false)) \
 		and str(active_forced.get("presentation_surface", "")).strip_edges() == "overlay"
+	if bool(active_forced.get("blocks_player_actions", false)):
+		_close_ordinary_contextual_surfaces("forced_decision", false)
+	elif _card_resolution_mode_active():
+		_close_ordinary_contextual_surfaces("card_resolution", true)
 	if temporary_decision_is_active:
 		if overlay_layer.has_method("hide_public_bid"):
 			overlay_layer.call("hide_public_bid", false)
@@ -2267,6 +2285,18 @@ func _forced_surface_blocks_player_actions() -> bool:
 	return overlay_layer != null \
 		and overlay_layer.has_method("forced_surface_active") \
 		and bool(overlay_layer.call("forced_surface_active"))
+
+
+func _close_ordinary_contextual_surfaces(reason_id: String, close_region: bool) -> void:
+	if player_inspection_popup != null and player_inspection_popup.visible:
+		player_inspection_popup.close_popup(reason_id)
+	if context_detail_drawer != null and context_detail_drawer.visible:
+		context_detail_drawer.close_drawer(reason_id)
+	if close_region:
+		var popup := get_region_supply_popup()
+		if popup != null and popup.visible:
+			request_district_supply_close(&"game_screen")
+			popup.close_popup(reason_id, false)
 
 
 func _show_player_action_feedback(action_id: String, state: String = "pending", detail: String = "") -> void:
@@ -2350,9 +2380,6 @@ func _action_label_for_id(action_id: String) -> String:
 		candidates.append_array(bid_state.get("actions", []))
 	if not _selected_hand_card_data.is_empty() and _selected_hand_card_data.get("actions", []) is Array:
 		candidates.append_array(_selected_hand_card_data.get("actions", []))
-	var inspector: Dictionary = current_ui_data.get("right_inspector", {}) if current_ui_data.get("right_inspector", {}) is Dictionary else {}
-	if inspector.get("actions", []) is Array:
-		candidates.append_array(inspector.get("actions", []))
 	for entry_variant in candidates:
 		if not (entry_variant is Dictionary):
 			continue

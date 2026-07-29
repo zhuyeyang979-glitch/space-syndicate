@@ -26,7 +26,7 @@ const RETIRED_FUNCTION_NAMES := [
 	"_goal_hint_body", "_goal_hint_accent", "_goal_hint_chip_entries", "_table_goal_condition_chip", "_table_goal_condition_entries", "_add_table_goal_prompt",
 	"_hand_card_state_chip_entries", "_add_hand_card_play_state_rail", "_add_hand_card_play_lamp", "_add_card_face_chip_rail", "_add_card_face",
 	"_add_action_button", "_add_selected_district_card_list", "_add_district_card_button",
-	"_runtime_right_inspector_snapshot_source", "_runtime_selected_card_track_entry_snapshot", "_runtime_selected_hand_card_snapshot", "_runtime_hand_card_inspector_snapshot_source", "_runtime_card_track_inspector_snapshot_source", "_runtime_card_fact_label",
+	"_runtime_legacy_detail_snapshot_source", "_runtime_selected_card_track_entry_snapshot", "_runtime_selected_hand_card_snapshot", "_runtime_hand_card_detail_snapshot_source", "_runtime_card_track_detail_snapshot_source", "_runtime_card_fact_label",
 	"_runtime_card_track_snapshot_source", "_runtime_card_resolution_track_snapshot_source", "_runtime_card_resolution_track_phase_text", "_runtime_card_resolution_track_summary_text", "_runtime_card_resolution_track_response_text", "_runtime_card_resolution_track_pending_decision", "_runtime_real_card_track_entry_count",
 	"_runtime_scenario_demo_card_track_entry", "_runtime_card_track_event_snapshots", "_runtime_card_track_entry_snapshot", "_runtime_card_track_kind", "_runtime_hand_card_snapshots", "_runtime_hand_card_drop_label",
 	"_card_category_icon", "_card_route_icon", "_card_icon_for_card", "_card_icon_type_label", "_card_icon_route_label", "_card_icon_legend_text", "_card_codex_category_for_card", "_card_primary_type_label", "_card_subtype_label", "_card_type_line",
@@ -85,7 +85,7 @@ func retirement_cases() -> Array:
 		"table_viewmodel_service_composition",
 		"card_presentation_runtime_source",
 		"hand_card_viewmodel_owned_by_service",
-		"right_inspector_owned_by_service",
+		"context_detail_owned_by_service",
 		"public_track_viewmodel_privacy",
 		"coordinator_pure_data_routes",
 		"presentation_rule_boundary_preserved",
@@ -279,7 +279,7 @@ func _run_case(case_id: String) -> Dictionary:
 			passed = table_viewmodel_service != null and table_viewmodel_service.scene_file_path == TABLE_VIEWMODEL_SERVICE_SCENE and table_viewmodel_service.has_method("compose_table") and table_viewmodel_service.has_method("compose_card_surfaces") and table_viewmodel_service.has_method("compose_resolution_overlay_badges") and bool(debug.get("service_authoritative", false)) and bool(debug.get("owns_resolution_overlay_badges", false))
 			flags["scene_checked"] = true
 			flags["service_checked"] = true
-			notes = "GameTableViewModelRuntimeService owns TableSnapshot, hand, track, and inspector assembly"
+			notes = "GameTableViewModelRuntimeService owns TableSnapshot, PlayerCardDock, public track, and typed context-detail assembly"
 		"card_presentation_runtime_source":
 			var diagnostics: Node = coordinator.gameplay_balance_diagnostics_service() if coordinator is GameRuntimeCoordinator else null
 			var one_glance: Dictionary = diagnostics.card_one_glance_source("城市融资1") if diagnostics != null else {}
@@ -295,13 +295,19 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["snapshot_checked"] = true
 			flags["deletion_checked"] = true
 			notes = "hand-card presentation is composed outside main.gd while action ids remain play_<slot>"
-		"right_inspector_owned_by_service":
-			var inspector := _runtime_snapshot.get("right_inspector", {}) as Dictionary
-			var deep_links := inspector.get("deep_links", []) as Array
-			passed = not inspector.is_empty() and _action_has_id(deep_links, "detail_region") and _action_has_id(deep_links, "detail_cards") and not _main_source.contains("func _runtime_right_inspector_snapshot_source(")
+		"context_detail_owned_by_service":
+			var context_detail := _runtime_snapshot.get("context_detail", {}) as Dictionary
+			var context_kind := str(context_detail.get("context_kind", ""))
+			passed = not context_detail.is_empty() \
+				and context_kind in ["normal_card", "commodity_card", "public_track", "region_facility", "commodity_source", "public_event"] \
+				and str(context_detail.get("visibility_scope", "")) in ["public", "viewer_private"] \
+				and not context_detail.has("actions") \
+				and _is_pure_data(context_detail) \
+				and not _main_source.contains("func _runtime_legacy_detail_snapshot_source(")
 			flags["snapshot_checked"] = true
+			flags["pure_data_checked"] = true
 			flags["deletion_checked"] = true
-			notes = "RightInspector assembly and selected-card precedence belong to the ViewModel service"
+			notes = "typed ContextDetailDrawer projection and selected-card precedence belong to the ViewModel service"
 		"public_track_viewmodel_privacy":
 			var track := _runtime_snapshot.get("card_track", []) as Array
 			var encoded := JSON.stringify(track)
@@ -329,9 +335,9 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["rule_boundary_checked"] = true
 			notes = "CardPlayEligibilityRuntimeService owns legality while price, effects, and mutations retain their existing owners"
 		"legacy_presentation_and_snapshot_owners_absent":
-			passed = not _main_source.contains("TableSnapshotScript") and not _main_source.contains("func _card_theme_color(") and not _main_source.contains("func _card_use_case_text_for_skill(") and not _main_source.contains("func _card_rule_facts(") and not _main_source.contains("func _runtime_card_track_snapshot_source(") and not _main_source.contains("func _runtime_right_inspector_snapshot_source(") and not _main_source.contains("func _card_resolution_animation_text(") and not _main_source.contains("func _card_resolution_effect_style(")
+			passed = not _main_source.contains("TableSnapshotScript") and not _main_source.contains("func _card_theme_color(") and not _main_source.contains("func _card_use_case_text_for_skill(") and not _main_source.contains("func _card_rule_facts(") and not _main_source.contains("func _runtime_card_track_snapshot_source(") and not _main_source.contains("func _runtime_legacy_detail_snapshot_source(") and not _main_source.contains("func _card_resolution_animation_text(") and not _main_source.contains("func _card_resolution_effect_style(")
 			flags["deletion_checked"] = true
-			notes = "main.gd no longer owns parallel card presentation, TableSnapshot, track, hand, or inspector algorithms"
+			notes = "main.gd no longer owns parallel card presentation, TableSnapshot, track, hand, or context-detail algorithms"
 		"retired_function_set_absent":
 			passed = RETIRED_FUNCTION_NAMES.size() == 164
 			for function_name_variant in RETIRED_FUNCTION_NAMES:
@@ -440,7 +446,7 @@ func _update_ui(manifest: Dictionary) -> void:
 	status_label.modulate = Color("#4ade80") if passed == total else Color("#fb7185")
 	summary_label.text = "%d/%d retirement cases passed" % [passed, total]
 	var metrics: Dictionary = manifest.get("main_metrics", {}) if manifest.get("main_metrics", {}) is Dictionary else {}
-	ownership_text.text = "[b]Scene-owned card presentation[/b]\nCardPresentationRuntimeService owns colors, icons, routes, use cases, card copy, chips, hand-card ViewModels, and resolution cinematic presentation. GameTableViewModelRuntimeService owns hand, track, resolution-overlay badges, RightInspector, and TableSnapshot assembly. main.gd supplies domain facts and receives existing action ids.\n\n[b]Retired closure[/b]\n164 generated player/card presentation and snapshot helpers are deleted.\n\n[b]Current main metrics[/b]\n%s nonblank lines · %s functions · %s vars · %s constants" % [str(metrics.get("nonblank_lines", 0)), str(metrics.get("function_count", 0)), str(metrics.get("top_level_variable_count", 0)), str(metrics.get("constant_count", 0))]
+	ownership_text.text = "[b]Scene-owned card presentation[/b]\nCardPresentationRuntimeService owns colors, icons, routes, use cases, card copy, chips, hand-card ViewModels, and resolution cinematic presentation. GameTableViewModelRuntimeService owns PlayerCardDock, public track, resolution-overlay badges, typed context-detail, and TableSnapshot assembly. main.gd supplies domain facts and receives existing action ids.\n\n[b]Retired closure[/b]\n164 generated player/card presentation and snapshot helpers are deleted.\n\n[b]Current main metrics[/b]\n%s nonblank lines · %s functions · %s vars · %s constants" % [str(metrics.get("nonblank_lines", 0)), str(metrics.get("function_count", 0)), str(metrics.get("top_level_variable_count", 0)), str(metrics.get("constant_count", 0))]
 	var lines: Array[String] = []
 	for record_variant in _records:
 		var record: Dictionary = record_variant if record_variant is Dictionary else {}

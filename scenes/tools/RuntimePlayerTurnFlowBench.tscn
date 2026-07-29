@@ -50,7 +50,7 @@ text_overrun_behavior = 3
 
 [node name="RuntimePlayerFlowScopeLabel" type="Label" parent="RuntimePlayerFlowMargin/RuntimePlayerFlowRows/RuntimePlayerFlowHeader"]
 layout_mode = 2
-text = "真实 GameScreen / PlayerBoard / RightInspector / OverlayLayer"
+text = "真实 GameScreen / PlayerBoard / ContextDetailDrawer / OverlayLayer"
 text_overrun_behavior = 3
 
 [node name="RuntimePlayerFlowStatusPanel" type="PanelContainer" parent="RuntimePlayerFlowMargin/RuntimePlayerFlowRows"]

@@ -5529,7 +5529,6 @@ func _wire_table_presentation_source_target() -> void:
 		_card_resolution_queue_node() as CardResolutionQueueRuntimeService,
 		_card_resolution_history_runtime_service_node(),
 		_card_resolution_presentation_port_node(),
-		_player_seat_public_source_node() as PlayerSeatPublicSourceService,
 		_commodity_sushi_track_runtime_service_node(),
 		district_supply_query,
 		_v06_runtime_card_catalog() as CardRuntimeCatalogV06Resource
@@ -5556,6 +5555,7 @@ func _wire_table_presentation_source_target() -> void:
 	port.configure(source, game_screen, game_screen.presentation_planet_target(), developer_target, _table_presentation_refresh_scheduler_node())
 	_wire_domain_presentation_ports(port, _table_presentation_query_ports_node().public_log_port)
 	_wire_table_selection_intent_port()
+	_wire_district_supply_action_port()
 	_wire_forced_decision_response_paths()
 
 
@@ -6281,10 +6281,6 @@ func _card_presentation_node() -> Node:
 
 func _table_viewmodel_node() -> Node:
 	return get_node_or_null("GameTableViewModelRuntimeService")
-
-
-func _player_seat_public_source_node() -> Node:
-	return get_node_or_null("PlayerSeatPublicSourceService")
 
 
 func _ai_runtime_debug_snapshot() -> Dictionary:

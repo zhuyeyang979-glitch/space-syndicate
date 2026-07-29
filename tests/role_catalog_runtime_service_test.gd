@@ -144,16 +144,10 @@ func _test_production_composition_and_runtime_parity() -> void:
 			_expect(int(saved_role.get("role_index", -1)) == player_index and str(saved_role.get("name", "")) == EXPECTED_NAMES[player_index], "world_session_save_keeps_legacy_role_index_name_%d" % player_index)
 		var public_projection := coordinator.presentation_public_world_projection()
 		var public_players := public_projection.players if public_projection != null else []
-		_expect(public_players.size() == players.size(), "world_public_projection_preserves_role_seat_count")
+		_expect(public_players.size() == players.size(), "world_public_projection_preserves_public_role_count")
 		for player_index in range(public_players.size()):
 			var public_player := public_players[player_index] as Dictionary
 			_expect(str(public_player.get("role_name", "")) == EXPECTED_NAMES[player_index], "world_public_projection_role_name_matches_catalog_%d" % player_index)
-		var seat_source := coordinator.get_node_or_null("PlayerSeatPublicSourceService") as PlayerSeatPublicSourceService
-		var seat_rows := seat_source.compose_sources(public_projection, 0) if seat_source != null else []
-		_expect(seat_rows.size() == players.size(), "player_seat_source_preserves_formal_role_count")
-		for player_index in range(seat_rows.size()):
-			var seat := seat_rows[player_index] as Dictionary
-			_expect(int(seat.get("player_index", -1)) == player_index and str(seat.get("role_name", "")) == EXPECTED_NAMES[player_index], "player_seat_role_projection_matches_catalog_%d" % player_index)
 	runtime_root.queue_free()
 	await process_frame
 	await process_frame

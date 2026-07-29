@@ -1,0 +1,76 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/table/expandable_public_history_surface.gd" id="2_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleHistory"]
+bg_color = Color(0.015, 0.032, 0.07, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.31, 0.47, 0.72, 0.68)
+corner_radius_top_left = 7
+corner_radius_top_right = 7
+corner_radius_bottom_right = 7
+corner_radius_bottom_left = 7
+
+[node name="ExpandablePublicHistorySurface" type="PanelContainer"]
+custom_minimum_size = Vector2(340, 42)
+mouse_filter = 1
+theme = ExtResource("1_theme")
+theme_override_styles/panel = SubResource("StyleHistory")
+script = ExtResource("2_script")
+
+[node name="PublicHistoryMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 9
+theme_override_constants/margin_top = 7
+theme_override_constants/margin_right = 9
+theme_override_constants/margin_bottom = 7
+
+[node name="PublicHistoryStack" type="VBoxContainer" parent="PublicHistoryMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="PublicHistoryHeader" type="HBoxContainer" parent="PublicHistoryMargin/PublicHistoryStack"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PublicHistoryTitle" type="Label" parent="PublicHistoryMargin/PublicHistoryStack/PublicHistoryHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "公共历史 · 0"
+
+[node name="PublicHistoryToggle" type="Button" parent="PublicHistoryMargin/PublicHistoryStack/PublicHistoryHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 28)
+layout_mode = 2
+text = "展开"
+
+[node name="PublicHistoryBody" type="VBoxContainer" parent="PublicHistoryMargin/PublicHistoryStack"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="PublicHistoryScroll" type="ScrollContainer" parent="PublicHistoryMargin/PublicHistoryStack/PublicHistoryBody"]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PublicHistoryEntries" type="RichTextLabel" parent="PublicHistoryMargin/PublicHistoryStack/PublicHistoryBody/PublicHistoryScroll"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 145)
+layout_mode = 2
+size_flags_horizontal = 3
+fit_content = true
+scroll_active = false
+text = "暂无公共记录。"
+
+[node name="PublicHistoryLatestLink" type="Button" parent="PublicHistoryMargin/PublicHistoryStack/PublicHistoryBody"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text = "查看最新记录"

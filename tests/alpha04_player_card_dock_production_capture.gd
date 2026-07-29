@@ -166,8 +166,8 @@ func _run_capture_suite() -> void:
 	var claim_flow := _claim_flow()
 	var claim_service := _claim_service()
 	var planet_board := screen.find_child("PlanetBoard", true, false) as Control if screen != null else null
-	var right_inspector := screen.find_child("RightInspector", true, false) as Control if screen != null else null
-	if not _required_nodes_ready(screen, track, dock, claim_flow, claim_service, planet_board, right_inspector):
+	var context_detail := screen.find_child("ContextDetailDrawer", true, false) as Control if screen != null else null
+	if not _required_nodes_ready(screen, track, dock, claim_flow, claim_service, planet_board, context_detail):
 		return
 	_assert_production_surface(screen, track, dock, CAPTURE_SIZE_LARGE, false)
 
@@ -191,7 +191,10 @@ func _run_capture_suite() -> void:
 	await _wait_until("commodity_hover_projection", func() -> bool:
 		return str(_track_debug(track).get("selected_slot_id", "")) == first_slot_id
 	)
-	_expect(right_inspector.is_visible_in_tree(), "commodity hover keeps the real RightInspector visible")
+	var detail_debug: Dictionary = context_detail.call("debug_snapshot") as Dictionary \
+		if context_detail.has_method("debug_snapshot") else {}
+	_expect(bool(detail_debug.get("read_only", false)) \
+		and not bool(detail_debug.get("accepts_card_submission", true)), "commodity hover coexists with the mounted read-only typed detail surface")
 	await _capture("production_commodity_hover.png", CAPTURE_SIZE_LARGE)
 
 	var outside_before := _claim_state(screen, track, dock, claim_flow, claim_service)
@@ -314,7 +317,7 @@ func _run_capture_suite() -> void:
 	_expect(
 		str(failure_feedback.get("failure_code", "")) == "shared_hand_capacity_full" \
 			and _node_text(failure_source).contains("容量已满") \
-			and _node_text(right_inspector).contains("当前 V0.6 共享手牌容量已满"),
+			and str(failure_feedback.get("detail", "")).contains("当前 V0.6 共享手牌容量已满"),
 		"fifth distinct commodity click shows the typed V0.6 shared-capacity failure"
 	)
 	_evidence["shared_capacity_failure"] = _delta_evidence(failure_before, failure_after)
@@ -365,12 +368,12 @@ func _required_nodes_ready(
 	claim_flow: Node,
 	claim_service: Node,
 	planet_board: Control,
-	right_inspector: Control
+	context_detail: Control
 ) -> bool:
 	var ready := screen != null and track != null and dock != null \
 		and claim_flow != null and claim_service != null \
-		and planet_board != null and right_inspector != null
-	_expect(ready, "real main exposes the production screen, track, Dock, claim flow, service, map and inspector")
+		and planet_board != null and context_detail != null
+	_expect(ready, "real main exposes the production screen, track, Dock, claim flow, service, map and typed detail surface")
 	return ready
 
 
@@ -444,7 +447,7 @@ func _assert_production_surface(
 	require_commodity := true
 ) -> void:
 	_expect(root.size == expected_size, "root viewport is exactly %dx%d" % [expected_size.x, expected_size.y])
-	for node_name in ["TopCommoditySushiTrack", "PlanetBoard", "RightInspector", "PlayerBoard", "PlayerCardDock"]:
+	for node_name in ["TopCommoditySushiTrack", "PlayerRosterPanel", "PlanetBoard", "PlayerBoard", "CompactCurrentActionSurface", "PlayerCardDock"]:
 		var control := screen.find_child(node_name, true, false) as Control
 		_expect(
 			control != null and control.is_visible_in_tree() \

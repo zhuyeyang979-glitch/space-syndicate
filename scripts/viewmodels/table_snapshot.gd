@@ -16,21 +16,30 @@ const VALID_FORCED_PRIORITY_GROUPS := [
 ]
 const VALID_FORCED_PRESENTATION_SURFACES := ["overlay", "card_resolution_track", "player_hint"]
 
-const DISTRICT_VIEW_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/district_view_snapshot.gd")
 const PLAYER_BOARD_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/player_board_snapshot.gd")
 const PLANET_BOARD_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/planet_board_snapshot.gd")
 const PUBLIC_TRACK_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/public_track_snapshot.gd")
-const RIGHT_INSPECTOR_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/right_inspector_snapshot.gd")
 const TOP_BAR_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/top_bar_snapshot.gd")
 const OPTIONAL_ROUTE_PUBLIC_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/optional_route_public_snapshot.gd")
 const COMMODITY_SUSHI_TRACK_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/commodity_sushi_track_snapshot.gd")
 const PLAYER_CARD_DOCK_PROJECTION_SCRIPT := preload("res://scripts/presentation/player_card_dock_projection_v1.gd")
+const PLAYER_ROSTER_PROJECTION_SCRIPT := preload("res://scripts/presentation/public_player_roster_projection_v1.gd")
+const PLAYER_INSPECTION_PROJECTION_SCRIPT := preload("res://scripts/presentation/player_inspection_projection_v1.gd")
+const REGION_SUPPLY_POPUP_PROJECTION_SCRIPT := preload("res://scripts/presentation/region_supply_popup_projection_v1.gd")
+const CURRENT_ACTION_CONTEXT_PROJECTION_SCRIPT := preload("res://scripts/presentation/current_action_context_projection_v1.gd")
+const PUBLIC_FEEDBACK_PROJECTION_SCRIPT := preload("res://scripts/presentation/public_feedback_projection_v1.gd")
+const CONTEXT_DETAIL_PROJECTION_SCRIPT := preload("res://scripts/presentation/context_detail_projection_v1.gd")
 
 var top_bar: Dictionary = {}
 var card_track: Array = []
 var card_resolution_track: Dictionary = {}
 var planet: Dictionary = {}
-var right_inspector: Dictionary = {}
+var player_roster: Dictionary = {}
+var player_inspection: Dictionary = {}
+var region_supply_popup: Dictionary = {}
+var current_action_context: Dictionary = {}
+var public_feedback: Array = []
+var context_detail: Dictionary = {}
 var player_board: Dictionary = {}
 var player_card_dock: Dictionary = {}
 var temporary_decision: Dictionary = {}
@@ -62,21 +71,17 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	card_resolution_track = _normalize_card_resolution_track(card_resolution_source, card_track)
 	var planet_source: Dictionary = data.get("planet", {}) if data.get("planet", {}) is Dictionary else {}
 	planet = PLANET_BOARD_SNAPSHOT_SCRIPT.new().apply_dictionary(planet_source).to_ui_dictionary()
-	var district: Variant = DISTRICT_VIEW_SNAPSHOT_SCRIPT.new().apply_dictionary(data.get("district", {}) if data.get("district", {}) is Dictionary else {})
 	var player: Variant = PLAYER_BOARD_SNAPSHOT_SCRIPT.new().apply_dictionary(data.get("player_board", {}) if data.get("player_board", {}) is Dictionary else {})
 	player_board = player.to_ui_dictionary()
 	player_card_dock = PLAYER_CARD_DOCK_PROJECTION_SCRIPT.detached_copy(data.get("player_card_dock", {}))
+	player_roster = PLAYER_ROSTER_PROJECTION_SCRIPT.detached_copy(data.get("player_roster", {}))
+	player_inspection = PLAYER_INSPECTION_PROJECTION_SCRIPT.detached_copy(data.get("player_inspection", {}))
+	region_supply_popup = REGION_SUPPLY_POPUP_PROJECTION_SCRIPT.detached_copy(data.get("region_supply_popup", {}))
+	current_action_context = CURRENT_ACTION_CONTEXT_PROJECTION_SCRIPT.detached_copy(data.get("current_action_context", {}))
+	public_feedback = _validated_public_feedback(data.get("public_feedback", []))
+	context_detail = CONTEXT_DETAIL_PROJECTION_SCRIPT.detached_copy(data.get("context_detail", {}))
 	var top_source: Dictionary = _merge_top_bar_source(data.get("top_bar", {}) if data.get("top_bar", {}) is Dictionary else {}, player_board)
 	top_bar = TOP_BAR_SNAPSHOT_SCRIPT.new().apply_dictionary(top_source).to_ui_dictionary()
-	var inspector_source: Dictionary = data.get("right_inspector", data.get("inspector", {})) if data.get("right_inspector", data.get("inspector", {})) is Dictionary else {}
-	inspector_source = inspector_source.duplicate(true)
-	if not inspector_source.has("district"):
-		inspector_source["district"] = district.to_ui_dictionary()
-	if not inspector_source.has("actions"):
-		inspector_source["actions"] = data.get("actions", []) if data.get("actions", []) is Array else []
-	if not inspector_source.has("logs"):
-		inspector_source["logs"] = data.get("logs", []) if data.get("logs", []) is Array else []
-	right_inspector = RIGHT_INSPECTOR_SNAPSHOT_SCRIPT.new().apply_dictionary(inspector_source).to_ui_dictionary()
 	temporary_decision = _normalize_temporary_decision(data.get("temporary_decision", {}))
 	active_forced_decision = _normalize_active_forced_decision(data.get("active_forced_decision", {}))
 	optional_route_presentation = OPTIONAL_ROUTE_PUBLIC_SNAPSHOT_SCRIPT.new() \
@@ -98,7 +103,12 @@ func to_ui_dictionary() -> Dictionary:
 		"card_track": card_track,
 		"card_resolution_track": card_resolution_track,
 		"planet": planet,
-		"right_inspector": right_inspector,
+		"player_roster": player_roster,
+		"player_inspection": player_inspection,
+		"region_supply_popup": region_supply_popup,
+		"current_action_context": current_action_context,
+		"public_feedback": public_feedback.duplicate(true),
+		"context_detail": context_detail,
 		"player_board": player_board,
 		"player_card_dock": player_card_dock,
 		"temporary_decision": temporary_decision,
@@ -108,6 +118,17 @@ func to_ui_dictionary() -> Dictionary:
 		"visual_events": visual_events,
 		"visual_event_key": visual_event_key,
 	}
+
+
+func _validated_public_feedback(value: Variant) -> Array:
+	var result: Array = []
+	if not (value is Array):
+		return result
+	for entry_variant in value as Array:
+		var entry := PUBLIC_FEEDBACK_PROJECTION_SCRIPT.detached_copy(entry_variant)
+		if not entry.is_empty():
+			result.append(entry)
+	return result
 
 
 func _merge_top_bar_source(top_source: Dictionary, player_source: Dictionary) -> Dictionary:

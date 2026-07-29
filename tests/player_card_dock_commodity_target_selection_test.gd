@@ -70,9 +70,11 @@ func _run() -> void:
 	_expect(screen_source.contains("request_district_selection(district_index, source_surface)") \
 		and screen_source.contains("submit_target_selection(_pending_card_target_region_id)") \
 		and screen_source.contains("player_card_dock.target_selection_active()") \
-		and not screen_source.contains("region_supply_popup") \
+		and screen_source.contains("get_region_supply_popup()") \
+		and not screen_source.contains("get_district_supply_drawer") \
+		and not screen_source.contains("RightInspector") \
 		and not screen_source.contains("/root/Main") \
-		and not screen_source.contains("current_scene"), "production GameScreen coordinates typed district selection and offer submit while retaining the existing V0.6 district drawer")
+		and not screen_source.contains("current_scene"), "production GameScreen coordinates typed target selection while the contextual RegionSupplyPopup stays presentation-only")
 
 	dock.queue_free()
 	await process_frame
