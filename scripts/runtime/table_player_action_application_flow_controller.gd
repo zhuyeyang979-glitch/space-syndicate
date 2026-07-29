@@ -480,6 +480,7 @@ func _dispatch_district_supply(intent: Dictionary, actor_index: int) -> Dictiona
 	if accepted and district_intent.action_kind == DistrictSupplyActionIntent.KIND_QUOTE \
 			and not result.quote_id.is_empty():
 		_district_quote_bindings[quote_key] = result.quote_id
+		_request_post_bind_district_quote_refresh()
 	elif committed and district_intent.action_kind in [
 		DistrictSupplyActionIntent.KIND_OPEN,
 		DistrictSupplyActionIntent.KIND_CLOSE,
@@ -857,6 +858,19 @@ func _clear_district_quotes_for_actor(actor_index: int) -> void:
 	for key_variant in _district_quote_bindings.keys():
 		if str(key_variant).begins_with(prefix):
 			_district_quote_bindings.erase(key_variant)
+
+
+func _request_post_bind_district_quote_refresh() -> void:
+	# The district owner can synchronously request its full refresh before
+	# submit_intent() returns. At that point this adapter has not yet recorded the
+	# accepted quote ID, so that projection cannot expose the bound purchase
+	# offer. Refresh once after the facade binding commits instead of relying on
+	# the periodic presentation cadence to repair the surface later.
+	var refresh := _refresh()
+	if refresh == null:
+		return
+	refresh.request_immediate(&"full", &"district_supply_quote_bound")
+	_refresh_request_count += 1
 
 
 func _refresh() -> TablePresentationRefreshPort:
