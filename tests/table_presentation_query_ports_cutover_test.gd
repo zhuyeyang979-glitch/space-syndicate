@@ -111,6 +111,52 @@ func _run() -> void:
 		_expect(bool(coordinator.record_legacy_viewer_feedback(sample).get("applied", false)), "sensitive local feedback is accepted only for the viewer")
 	_expect(coordinator.presentation_recent_public_log_entries(64).size() == public_count_before_sensitive, "sixteen sensitive local feedback samples never enter PublicLog")
 	_expect(coordinator.table_presentation_query_ports().recent_viewer_private_feedback(0, 32).size() >= 16, "authorized viewer can recover the sixteen private feedback samples")
+	var private_entries_before := ports.recent_viewer_private_feedback_entries(0, 6)
+	var private_revision_before := ports.viewer_private_feedback_revision(0)
+	_expect(
+		private_entries_before.size() == 6
+			and private_revision_before > 0
+			and _private_feedback_entries_match_revision(
+				private_entries_before,
+				private_revision_before
+			),
+		"viewer-private feedback entries bind the rolling window to one global revision"
+	)
+	var post_window_message := "第十七条私密反馈仍需刷新。"
+	_expect(
+		bool(ports.record_viewer_private_feedback(0, post_window_message).get("applied", false)),
+		"authorized viewer can append feedback after the six-entry presentation window is full"
+	)
+	var private_entries_after := ports.recent_viewer_private_feedback_entries(0, 6)
+	var private_revision_after := ports.viewer_private_feedback_revision(0)
+	_expect(
+		private_revision_after > private_revision_before
+			and private_entries_after.size() == 6
+			and _private_feedback_entries_match_revision(
+				private_entries_after,
+				private_revision_after
+			)
+			and str((private_entries_after.back() as Dictionary).get("message", "")) \
+			== post_window_message,
+		"post-window viewer-private feedback advances a globally monotonic source revision"
+	)
+	_expect(
+		ports.recent_viewer_private_feedback_entries(1, 6).is_empty()
+			and ports.viewer_private_feedback_revision(1) == -1,
+		"viewer-private feedback entry and revision APIs fail closed for an unauthorized viewer"
+	)
+	var private_checkpoint_shape := ports.viewer_private_feedback_owner.capture_session_checkpoint()
+	var private_checkpoint_messages: Dictionary = private_checkpoint_shape.get(
+		"messages_by_viewer",
+		{}
+	) as Dictionary
+	var stored_private_messages: Array = private_checkpoint_messages.get("0", []) as Array
+	_expect(
+		int(private_checkpoint_shape.get("schema_version", 0)) == 1
+			and private_checkpoint_shape.size() == 3
+			and stored_private_messages.all(func(value: Variant) -> bool: return value is String),
+		"viewer-private revision adapter preserves checkpoint v1 and string-only storage"
+	)
 
 	var settlement_receipt := _final_settlement_log_receipt("settlement-ack-1", "victory.v06.ack-1", [0], 40)
 	var first_ack := {}
@@ -376,6 +422,18 @@ func _has_exact_keys(value: Dictionary, expected: Array) -> bool:
 		return false
 	for key_variant in expected:
 		if not value.has(key_variant):
+			return false
+	return true
+
+
+func _private_feedback_entries_match_revision(entries: Array, expected_revision: int) -> bool:
+	for entry_variant in entries:
+		if not (entry_variant is Dictionary):
+			return false
+		var entry := entry_variant as Dictionary
+		if not _has_exact_keys(entry, ["message", "source_revision"]) \
+				or not (entry.get("message") is String) \
+				or int(entry.get("source_revision", -1)) != expected_revision:
 			return false
 	return true
 

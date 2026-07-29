@@ -82,6 +82,10 @@ func recent_for_viewer(viewer_index: int, limit := 6) -> Array:
 	return messages.slice(start).duplicate()
 
 
+func current_revision() -> int:
+	return _revision
+
+
 func debug_snapshot() -> Dictionary:
 	var counts: Dictionary = {}
 	for viewer_variant in _messages_by_viewer.keys():
