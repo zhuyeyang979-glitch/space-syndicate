@@ -1,0 +1,373 @@
+{
+  "schema_version": 1,
+  "task_id": "ALPHA_0_4_A_AUDIT_TAIL_DISPOSITION_COMPOSITIONAL_ACCEPTANCE_AND_CLEAN_MAIN_LANDING",
+  "program_milestone": "ALPHA_0_4_PLAYER_VISIBLE_SAMPLE",
+  "generated_at": "2026-07-29T19:30:00+09:00",
+  "status": "GREEN_COMPONENT_ACCEPTED",
+  "decision": {
+    "audit_tail_classification": "BOUNDED_WINDOW_ENDED_DURING_ACTIVE_AUTHORIZED_AUDIT",
+    "terminal_runtime_regression_found": false,
+    "compositional_acceptance_allowed": true,
+    "alpha_0_4_a_component_acceptance": "GREEN_COMPONENT_ACCEPTED",
+    "clean_landing_pr_allowed": true,
+    "merge_to_main_allowed": true,
+    "release_level_full_run_deferred": true
+  },
+  "source_integrity": {
+    "repository": "zhuyeyang979-glitch/space-syndicate",
+    "source_pr": 72,
+    "source_branch": "codex/alpha04-production-player-card-dock-cde98ae",
+    "source_pr_head": "54095570fa4783fda7e3386cde5fa2a16be761b8",
+    "source_head_matches_remote": true,
+    "source_ahead_behind_remote": "0/0",
+    "formal_tested_head_is_ancestor_of_source_head": true,
+    "terminal_green_sha_is_ancestor_of_formal_tested_head": true,
+    "post_formal_production_code_diff_count": 0,
+    "source_worktree_tracked_and_staged_clean": true,
+    "source_worktree_preserved_known_untracked_file_count": 28
+  },
+  "formal_history": {
+    "formal_full_run_total_count": 2,
+    "formal_full_run_rerun_count": 1,
+    "additional_formal_run_authorized": false,
+    "third_formal_full_run_forbidden": true,
+    "third_formal_run_performed": false,
+    "formal_tested_production_head": "30a6d87c545df2d8de3c369dec5fb2b3d57a1e92",
+    "formal_evidence_commit": "b4b1475153dee6e3d6e3efbbd73e47a65b34eb06",
+    "formal_program_state_commit": "54095570fa4783fda7e3386cde5fa2a16be761b8",
+    "formal_run_2": {
+      "status": "INCOMPLETE",
+      "failure_code": "observation_window_elapsed_before_settlement",
+      "driver_wall_seconds": 181.437,
+      "session_wall_seconds": 174.654,
+      "world_seconds": 185.634705,
+      "facility_count": 2,
+      "production_installation_count": 2,
+      "sale_receipt_count": 22,
+      "first_sale_world_seconds": 62.391742,
+      "matched_commodity": "磁核榴莲",
+      "matched_industry": "energy",
+      "matched_production_capacity": 10,
+      "matched_demand_capacity": 10,
+      "matched_settled_units": 5,
+      "matched_transported_units": 5,
+      "controlled_region_count": 4,
+      "required_region_count": 3,
+      "top_k_gdp": 1612,
+      "required_top_k_gdp": 108,
+      "eligible": true,
+      "post_eligibility_installation_delta": 0,
+      "victory_state_sequence": ["idle", "qualification", "audit"],
+      "victory_resolved": false,
+      "final_settlement_count": 0,
+      "final_settlement_presentation_count": 0,
+      "final_settlement_public_log_count": 0,
+      "terminal_quiescent_frames": 0,
+      "terminal_world_delta": -1,
+      "terminal_rng_draw_delta": -1,
+      "invalid_action_count": 0,
+      "nonfinite_count": 0,
+      "authoritative_step_attempt_count": 159,
+      "authoritative_step_active_count": 159,
+      "authoritative_last_progress_reason": "victory_timer_audit",
+      "authoritative_steps_since_progress": 0,
+      "progress_stall": false,
+      "blocked_realtime_invariant_failure_count": 0,
+      "dock_normal_visible": true,
+      "dock_commodity_visible": true,
+      "commodity_source_art_visible": true,
+      "commodity_inventory_art_visible": true,
+      "direct_commodity_claim_succeeded": true,
+      "commodity_claim_request_count": 1,
+      "duplicate_commodity_claim_count": 0,
+      "commodity_claim_button_count": 0,
+      "duplicate_card_submission_count": 0,
+      "player_card_dock_refresh_count": 675,
+      "all_five_performance_metrics_recorded": true
+    },
+    "truthful_claims": {
+      "exact_formal_head_full_run_to_terminal_proven": false,
+      "exact_formal_head_economy_gate_green": true,
+      "exact_formal_head_player_card_dock_gate_green": true,
+      "exact_formal_head_victory_audit_entry_proven": true,
+      "exact_formal_head_settlement_proven": false,
+      "full_run_to_settlement_green": false
+    }
+  },
+  "terminal_green_ancestor": {
+    "sha": "b5d5682072fd9ff02be700ce9d5503d1df996641",
+    "present": true,
+    "is_git_ancestor_of_clean_candidate": true,
+    "full_terminal_contract_green": true,
+    "reused_for_terminal_proof": true
+  },
+  "terminal_critical_diff_audit": {
+    "base": "b5d5682072fd9ff02be700ce9d5503d1df996641",
+    "audited_head": "30a6d87c545df2d8de3c369dec5fb2b3d57a1e92",
+    "owner_discovery_used": true,
+    "terminal_runtime_owner_diff_count": 0,
+    "victory_rule_diff_count": 0,
+    "victory_timer_diff_count": 0,
+    "final_settlement_runtime_diff_count": 0,
+    "final_settlement_presentation_diff_count": 0,
+    "final_public_log_diff_count": 0,
+    "runtime_loop_terminal_diff_count": 0,
+    "clock_formula_diff_count": 0,
+    "terminal_rng_diff_count": 0,
+    "terminal_save_diff_count": 0,
+    "terminal_state_injection_count": 0,
+    "main_terminal_owner_diff_count": 0,
+    "qa_observation_only_diff_count": 1
+  },
+  "clean_extraction_equivalence": {
+    "whole_tree_equivalence_claimed": false,
+    "formal_observation_is_candidate_ancestor": false,
+    "relationship": "SIBLING_DESCENDANTS_FROM_TERMINAL_GREEN_BASE_WITH_VERIFIED_CLEAN_EXTRACTION",
+    "merge_base_sha": "b5d5682072fd9ff02be700ce9d5503d1df996641",
+    "clean_extraction_destination_sha": "bd51858b5489e1db3ff4a4c9464c72df638bf9fb",
+    "clean_extraction_destination_is_candidate_ancestor": true,
+    "formal_observation_head": "30a6d87c545df2d8de3c369dec5fb2b3d57a1e92",
+    "clean_candidate_production_checkpoint": "dbc5ae6eb6fed354fe8d00825a105780ba0ae84b",
+    "alpha04_production_required_path_count": 68,
+    "paths_present_on_both_sides": 68,
+    "byte_identical_path_count": 62,
+    "enumerated_nonsemantic_normalization_path_count": 6,
+    "semantic_mismatch_count": 0,
+    "terminal_critical_mismatch_count": 0,
+    "unclassified_difference_count": 0,
+    "post_extraction_behavior_change_count": 0,
+    "unmapped_source_commit_count": 0,
+    "source_to_destination_commit_map": [
+      {
+        "source_commit": "e19eb4af8b1bbc4375e71a8e6ce2b3d254f0b43a",
+        "destination_commit": null,
+        "disposition": "EXCLUDED_V07_REFERENCE_ONLY_CARD_BATCH"
+      },
+      {
+        "source_commit": "2c841a2dc5ab3eeee427727f21a7ac90fc7be1d1",
+        "destination_commit": null,
+        "disposition": "EXCLUDED_V07_REFERENCE_ONLY_ORBIT_LAYER"
+      },
+      {
+        "source_commit": "cde98aec2b2717759461a21ce3fa6e70679cf1fa",
+        "destination_commit": null,
+        "disposition": "EXCLUDED_V07_REFERENCE_ONLY_ROSTER_INSPECTOR_PREFLIGHT"
+      },
+      {
+        "source_commit": "e6dc983be8154908e77d3a11bdee353a1b705152",
+        "destination_commit": "b5d5682072fd9ff02be700ce9d5503d1df996641",
+        "disposition": "MERGE_TOPOLOGY_REPLACED_BY_DIRECT_TERMINAL_GREEN_BASE"
+      },
+      {
+        "source_commit": "9b2efd86c14f40f475088e107f1150251006d6d8",
+        "destination_commit": null,
+        "disposition": "OMITTED_SOURCE_ONLY_TASK_RECOVERY_STATE"
+      },
+      {
+        "source_commit": "b6430d6cd8e2ac51e692c818d6f41635ccaab2f6",
+        "destination_commit": "baf00c134b8ac81ecb58217059153e5438b52b6d",
+        "disposition": "EXACT_CHERRY_PICK_COMMODITY_ART"
+      },
+      {
+        "source_commit": "a815b31818ba1662f2efc63035930f8220bff2bf",
+        "destination_commit": "214638c4ff387fd057fdeffaaacf1df3e0d4fabe",
+        "disposition": "EXACT_CHERRY_PICK_DOCK_AND_DIRECT_CLAIM"
+      },
+      {
+        "source_commit": "b230833979d268b0c6d50ca52af1b7669847dee8",
+        "destination_commit": "9f95a8004810fc01fb9b5f3af4f757f5d191388c",
+        "disposition": "SELECTIVE_TEST_EVIDENCE_WITH_REGISTRY_REGENERATED_WITHOUT_REFERENCE_READY_STATE"
+      },
+      {
+        "source_commit": "c0b2108e5d5e7478c983165551d1c3fc4e2b58a3",
+        "destination_commit": null,
+        "disposition": "OMITTED_STALE_SOURCE_HANDOFF"
+      },
+      {
+        "source_commit": "9ed2bb6202a679f0589d9aefc131ecfe31fb7b17",
+        "destination_commit": "ac166ce77ecd608a046c8dd55a78670d30deb627",
+        "disposition": "SELECTIVE_CLAIM_TO_SALE_AND_PARITY_EVIDENCE_WITH_LONG_WORLD_PROBE_EXCLUDED"
+      },
+      {
+        "source_commit": "30a6d87c545df2d8de3c369dec5fb2b3d57a1e92",
+        "destination_commit": null,
+        "disposition": "OMITTED_SOURCE_PROGRAM_STATE_REGENERATED_ON_CLEAN_TREE"
+      },
+      {
+        "source_commit": "b4b1475153dee6e3d6e3efbbd73e47a65b34eb06",
+        "destination_commit": "bd51858b5489e1db3ff4a4c9464c72df638bf9fb",
+        "disposition": "EXACT_CHERRY_PICK_FROZEN_FORMAL_EVIDENCE"
+      },
+      {
+        "source_commit": "54095570fa4783fda7e3386cde5fa2a16be761b8",
+        "destination_commit": null,
+        "disposition": "OMITTED_SOURCE_PROGRAM_STATE_REGENERATED_ON_CLEAN_TREE"
+      }
+    ],
+    "post_destination_clean_only_commits": [
+      {
+        "commit": "92e0d8dfa3a0f78d74b31a860ae4b99729e0a881",
+        "disposition": "STRICT_COMPONENT_ACCEPTANCE_CONTRACT"
+      },
+      {
+        "commit": "dbc5ae6eb6fed354fe8d00825a105780ba0ae84b",
+        "disposition": "ENUMERATED_NONSEMANTIC_EOF_NORMALIZATION_AND_REFERENCE_PROSE_REMOVAL"
+      }
+    ],
+    "nonsemantic_normalization_paths": [
+      "scenes/runtime/presentation/PlayerCardDockViewerQueryPort.tscn",
+      "scripts/presentation/player_card_dock_projection_service.gd.uid",
+      "scripts/presentation/player_card_dock_projection_v1.gd.uid",
+      "scripts/presentation/player_card_dock_viewer_query_port.gd.uid",
+      "scripts/ui/table/card_dock_action_feedback.gd.uid",
+      "scripts/ui/table/player_card_dock.gd.uid"
+    ],
+    "normalization": "EOF_WHITESPACE_ONLY"
+  },
+  "clean_landing": {
+    "base_sha": "b5d5682072fd9ff02be700ce9d5503d1df996641",
+    "branch": "codex/alpha04a-clean-landing-b5d568",
+    "production_checkpoint_sha": "dbc5ae6eb6fed354fe8d00825a105780ba0ae84b",
+    "runtime_capacity_mode": "SHARED_V06",
+    "normal_and_commodity_shared_limit": 5,
+    "full_v07_independent_5_plus_5": false,
+    "required_product_capabilities_preserved": true,
+    "reference_only_runtime_file_count_in_landing": 0,
+    "reference_only_ui_file_count_in_landing": 0,
+    "reference_only_bench_file_count_in_landing": 0,
+    "reference_only_test_file_count_in_landing": 0,
+    "unresolved_reference_dependency_count": 0,
+    "pr_70_71_raw_path_intersection_count": 4,
+    "pr_70_71_raw_path_intersection_classification": "CLEAN_REGENERATED_OR_SELECTIVE_ALPHA04_HUNKS_NOT_REFERENCE_ONLY_CONTENT",
+    "pr_70_71_raw_path_intersection_paths": [
+      "docs/development_log.md",
+      "docs/semantic/global_three_layer_semantic_registry.json",
+      "docs/semantic/global_three_layer_semantic_registry.md",
+      "tests/game_action_semantic_protocol_v1_test.gd"
+    ],
+    "pr_70_71_reference_only_path_intersection_count": 0,
+    "reference_resource_path_count_present": 0,
+    "reference_class_definition_count_present": 0,
+    "reference_uid_count_present": 0,
+    "production_checkpoint_new_resource_reference_count": 96,
+    "production_checkpoint_resolved_new_resource_reference_count": 96,
+    "final_candidate_new_resource_reference_count": 110,
+    "final_candidate_resolved_new_resource_reference_count": 110,
+    "v07_reference_stack_production_cutover": false
+  },
+  "semantic_registry": {
+    "registered_domain_count": 28,
+    "core_ready_domain_count": 21,
+    "ai_ready_domain_count": 1,
+    "player_ready_domain_count": 12,
+    "three_layer_ready_domain_count": 1,
+    "main_dependent_domain_count": 12,
+    "production_surface_domain_count": 28,
+    "global_three_layer_complete": false,
+    "player_card_dock_core_ready": true,
+    "player_card_dock_player_ready": true,
+    "player_card_dock_ai_status": "CONTRACT_ONLY",
+    "bound_action_status": "BLOCKED"
+  },
+  "validation": {
+    "component_test_only": true,
+    "formal_full_run": false,
+    "end_to_end_terminal_proof": false,
+    "full_smoke": false,
+    "exact_candidate_unique_suite_count": 44,
+    "exact_head_terminal_component_tests_green": true,
+    "exact_head_victory_component_tests_green": true,
+    "exact_head_final_settlement_component_tests_green": true,
+    "exact_head_terminal_presentation_tests_green": true,
+    "exact_head_terminal_quiescence_tests_green": true,
+    "exact_head_terminal_rng_tests_green": true,
+    "exact_head_save_settlement_tests_green": true,
+    "alpha04_functional_gates_green": true,
+    "privacy_gates_green": true,
+    "action_spine_gates_green": true,
+    "main_invariants_green": true,
+    "save_invariants_green": true,
+    "rng_invariants_green": true,
+    "game_action_semantic_protocol_checks": "117_OF_117",
+    "game_action_semantic_protocol_run_id": "20260729-101857-292-game_action_semantic_protocol_v1_test-6c66b945",
+    "semantic_architecture_scan_green": true,
+    "semantic_architecture_scan_checks": "271_OF_271",
+    "semantic_architecture_scan_run_id": "20260729-101902-180-card_semantic_architecture_scan_test-1b63d0c3",
+    "smoke_check_only_green": true,
+    "smoke_check_only_run_id": "20260729-100209-642-smoke_test-2018fcf4",
+    "ui_text_gate_green": true,
+    "ui_text_run_id": "20260729-100205-918-ui_text_smoke_test-d3360a2f",
+    "visual_snapshot_gate_green": true,
+    "visual_snapshot_run_id": "20260729-100207-732-visual_snapshot-dda46207",
+    "git_diff_check_green": true,
+    "inherited_excluded_test_debt": [
+      {
+        "test": "commodity_card_inventory_runtime_test",
+        "baseline_result": "17_OF_43",
+        "classification": "PRE_EXISTING_STALE_FIXTURE_AT_TERMINAL_GREEN_BASE",
+        "failure_causing_oracle_target_changed_by_alpha04": false
+      },
+      {
+        "test": "player_facing_privacy_boundary_test",
+        "baseline_result": "RETIRED_MAIN_API_ORACLE",
+        "classification": "PRE_B5_STALE_FIXTURE",
+        "failure_causing_oracle_target_changed_by_alpha04": false
+      },
+      {
+        "test": "session_envelope_save_owner_test",
+        "baseline_result": "92_OF_93",
+        "classification": "PRE_EXISTING_STALE_MAIN_STRING_ORACLE",
+        "failure_causing_oracle_target_changed_by_alpha04": false
+      }
+    ],
+    "compatibility_wrappers_restored": false
+  },
+  "player_visible_production_evidence": {
+    "green": true,
+    "committed_source_capture_result": "docs/ui_qa/alpha04_player_card_dock/production_capture_result.json",
+    "committed_source_capture_check_count": 176,
+    "committed_source_capture_failure_count": 0,
+    "committed_source_capture_screenshot_count": 8,
+    "committed_source_capture_sha256": "2758e351a4336a7d2a7a8384159e34cd4bec58b84922e4bd898e8e128865281b",
+    "manual_layout_review_1366x768_green": true,
+    "manual_layout_review_1920x1080_green": true,
+    "basis": "SOURCE_PASS_EVIDENCE_PLUS_VERIFIED_68_PATH_BEHAVIOR_EQUIVALENCE_AND_EXACT_CANDIDATE_FUNCTIONAL_GATES",
+    "exact_clean_recapture": {
+      "attempted_once": true,
+      "status": "INCOMPLETE_HARNESS_FAILURE",
+      "check_count": 77,
+      "failure_count": 2,
+      "failure_classification": "FORCED_PRODUCTION_ACTION_NOT_CLICKABLE_THEN_CONTROL_FREED",
+      "new_runtime_regression_identified": false,
+      "retried": false,
+      "supersedes_committed_source_capture": false,
+      "partial_outputs_retained": false
+    }
+  },
+  "godot_mcp": {
+    "green": true,
+    "project_version": "4.7",
+    "production_scene_started": "res://scenes/main.tscn",
+    "new_script_error_count": 0,
+    "new_runtime_error_count": 0,
+    "required_node_composition_green": true,
+    "player_card_dock_count": 1,
+    "top_commodity_sushi_track_count": 1,
+    "planet_board_count": 1,
+    "player_board_count": 1,
+    "right_inspector_count": 1,
+    "project_stopped": true,
+    "godot_process_count_after": 0
+  },
+  "pull_request_policy": {
+    "source_pr_72_frozen_draft_evidence": true,
+    "source_pr_72_direct_merge_forbidden": true,
+    "pr_70_disposition": "draft_reference_only",
+    "pr_71_disposition": "draft_reference_only",
+    "new_clean_landing_pr_base": "main",
+    "new_clean_landing_pr_head": "codex/alpha04a-clean-landing-b5d568",
+    "new_clean_landing_pr_number_recording_required_after_creation": true,
+    "auto_merge_to_main_allowed_if_remote_main_and_gates_remain_green": true
+  },
+  "next_product_boundary": "ALPHA_0_4_B_PRODUCTION_ROSTER_REGION_POPUP_AND_RIGHT_INSPECTOR_RETIREMENT"
+}

@@ -944,7 +944,7 @@
       "core_semantics_ready": true,
       "ai_semantics_ready": false,
       "player_semantics_ready": true,
-      "focused_tests": ["res://tests/player_card_dock_commodity_target_selection_test.gd", "res://tests/commodity_card_inventory_runtime_test.gd", "res://tests/commodity_sushi_track_runtime_test.gd", "res://tests/alpha04_commodity_direct_claim_test.gd", "res://tests/alpha04_commodity_art_coverage_test.gd", "res://tests/player_card_dock_real_three_pool_production_test.gd"],
+      "focused_tests": ["res://tests/player_card_dock_commodity_target_selection_test.gd", "res://tests/commodity_sushi_track_runtime_test.gd", "res://tests/alpha04_commodity_direct_claim_test.gd", "res://tests/alpha04_commodity_art_coverage_test.gd", "res://tests/alpha04_claim_to_sale_integration_test.gd", "res://tests/player_card_dock_real_three_pool_production_test.gd"],
       "production_scene_or_bench": "res://scenes/ui/table/PlayerCardDock.tscn in res://scenes/ui/GameScreen.tscn",
       "known_blockers": ["V0.7 independent 5+5 inventory is reference-only and is not a production rule in this cutover."],
       "next_atomic_boundary": "V07_INDEPENDENT_CARD_INVENTORY_CORE_CUTOVER_AFTER_REQUIRED_GATES"

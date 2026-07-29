@@ -38,11 +38,19 @@ authority, or the full V0.7 runtime cutover.
 
 Every item below must pass. One failure blocks component acceptance.
 
-1. A terminal-green Formal commit exists and is a real Git ancestor of the
-   candidate.
-2. The production commit traversed by the component Formal is a real Git
-   ancestor of the candidate, with zero later production-code changes before
-   the audited candidate evidence commit.
+1. A settled terminal-green Formal commit satisfying the canonical terminal
+   contract exists and is a real Git ancestor of the candidate. This ancestor
+   is the only evidence reused for terminal-green status.
+2. A later Formal used only to prove traversal of the changed component path
+   may be a non-ancestor source commit when the candidate is a clean extraction.
+   In that case, the source and candidate must share the terminal-green
+   ancestor; the extraction destination must be a Git ancestor of the
+   candidate; every behavior-bearing component and every owner-discovered
+   dependency in the traversed Formal path must be byte-identical or have an
+   enumerated, deterministic nonsemantic normalization; and there must be zero
+   semantic mismatches, unclassified differences, terminal-critical
+   differences, or post-extraction behavior changes. Commit names, subjects,
+   matching paths, or claimed intent alone do not establish equivalence.
 3. Real owner discovery proves zero candidate changes to terminal runtime
    owners, Victory rules and timers, FinalSettlement runtime, RuntimeLoop
    terminal behavior, the world-effective clock formula, terminal RNG, terminal

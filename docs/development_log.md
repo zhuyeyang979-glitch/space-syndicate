@@ -9022,3 +9022,40 @@ deleted. Evidence and the remaining action inventory are recorded in
   production `main.tscn` with no new script/runtime error. No gameplay value,
   Victory timer, RuntimeLoop, RNG, Save, Main, AI production, or formula change
   was made.
+
+## 2026-07-29 — Alpha 0.4-A audit-tail disposition and clean landing
+
+- Preserved the second authorized Formal as `INCOMPLETE`:
+  `idle -> qualification -> audit` was observed with a live
+  `victory_timer_audit` progress reason, but `resolved`, FinalSettlement,
+  terminal presentation/public log, quiet frames, and terminal world/RNG zero
+  were not observed. Its terminal deltas remain `-1`. No third Formal, hidden
+  equivalent, extended audit probe, or full smoke was run.
+- Added a strict component-landing compositional-acceptance contract. It keeps
+  the complete Formal terminal definition unchanged and fails closed for
+  gameplay, Victory/timer, RuntimeLoop, economy, AI behavior, action execution,
+  Save, RNG, terminal-owner, authority, V0.7 cutover, or unknown production
+  changes.
+- Reused settled `b5d5682` only as the real terminal-green ancestor. The later
+  Formal head `30a6d87` is explicitly a non-ancestor component-path observation:
+  68 required production paths were verified as 62 byte-identical plus six
+  enumerated EOF-only normalizations, with zero semantic, terminal-critical, or
+  unclassified difference. Whole-tree equivalence is not claimed.
+- Extracted Alpha 0.4-A onto
+  `codex/alpha04a-clean-landing-b5d568` without PR #70/#71's reference runtime,
+  UI, Bench, tests, or unresolved resource dependencies. Production remains
+  V0.6 shared capacity five; V0.7 independent 5+5 and Card Batch cutover remain
+  deferred.
+- Forty-four bounded exact-candidate suites, terminal owner diffs, Main,
+  Action Spine, active privacy, Save/RNG, semantic-lock, UI/visual, and smoke
+  `--check-only` gates are green. Three unchanged pre-b5 fixture/oracle debts
+  remain explicitly excluded; no retired Main wrapper was restored.
+- The committed production capture remains 176/176 with both required layouts.
+  One permitted exact-clean recapture ended in a two-check harness failure and
+  was not retried or promoted over the committed evidence. Godot MCP started
+  and stopped real `main.tscn` with zero new script/runtime errors and zero
+  remaining Godot processes.
+- Alpha 0.4-A is `GREEN_COMPONENT_ACCEPTED` while exact-Formal terminal proof
+  and release-level FullRun remain false/deferred. A clean PR to `main` is
+  allowed only while every recorded gate stays green. Alpha 0.4-B is the next
+  product boundary and is not started here.

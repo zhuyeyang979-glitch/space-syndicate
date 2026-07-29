@@ -2,7 +2,7 @@
   "schema_version": 1,
   "contract_id": "component_landing_compositional_acceptance_v1",
   "contract_kind": "strict_component_landing_gate",
-  "purpose": "Permit a narrowly scoped component landing to reuse an ancestral terminal-green Formal without weakening the end-to-end Formal success definition.",
+  "purpose": "Permit a narrowly scoped clean-extracted component landing to reuse an ancestral terminal-green Formal and a separately verified component-path Formal observation without treating the latter as ancestral or successful end-to-end evidence.",
   "authority": {
     "full_run_terminal_contract": "docs/contracts/v06_full_run_terminal_acceptance_v1.json",
     "full_run_definition_unchanged": true,
@@ -54,11 +54,27 @@
     "full_v07_runtime_cutover",
     "unknown_production_change"
   ],
-  "ancestry_gate": {
-    "terminal_green_formal_ancestor_required": true,
-    "terminal_green_commit_must_be_git_ancestor": true,
-    "formal_tested_production_commit_must_be_git_ancestor": true,
-    "post_formal_production_change_count_max": 0
+  "terminal_green_ancestry_gate": {
+    "terminal_green_formal_commit_must_be_git_ancestor": true,
+    "terminal_green_formal_must_be_settled": true,
+    "terminal_green_formal_must_satisfy_full_run_terminal_contract": true
+  },
+  "clean_extraction_equivalence_gate": {
+    "formal_observation_commit_must_be_git_ancestor_or_verified_clean_extraction_source": true,
+    "non_ancestor_formal_observation_without_verified_clean_extraction_forbidden": true,
+    "source_and_candidate_must_share_terminal_green_ancestor": true,
+    "clean_extraction_destination_commit_must_be_git_ancestor": true,
+    "source_to_destination_commit_map_required": true,
+    "behavior_bearing_semantic_mismatch_count_max": 0,
+    "owner_discovered_formal_path_dependency_semantic_mismatch_count_max": 0,
+    "nonidentical_behavior_blob_must_be_deterministically_classified_nonsemantic": true,
+    "unmapped_extracted_change_count_max": 0,
+    "unclassified_omission_or_difference_count_max": 0,
+    "source_formal_observation_to_source_evidence_production_change_count_max": 0,
+    "post_extraction_behavior_semantic_change_count_max": 0,
+    "path_name_commit_subject_or_intent_only_equivalence_forbidden": true,
+    "whole_tree_equivalence_claim_required": false,
+    "exact_candidate_component_gates_required": true
   },
   "terminal_critical_diff_gate": {
     "terminal_runtime_owner_diff_count_max": 0,
