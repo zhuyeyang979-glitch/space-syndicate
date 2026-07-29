@@ -38,8 +38,9 @@ func _init() -> void:
 
 func _run() -> void:
 	var source := FileAccess.get_file_as_string(ORCHESTRATOR_PATH)
-	_expect(source.contains("$ORCHESTRATOR_SCHEMA_VERSION = 2") and source.contains("$FORMAL_FULL_RUN = $false") and source.contains("$DriverExecutionReady = $true"), "orchestrator declares executable non-Formal v2 contract")
+	_expect(source.contains("$ORCHESTRATOR_SCHEMA_VERSION = 2") and source.contains("$FORMAL_FULL_RUN = $false") and source.contains("$DriverExecutionReady = $false"), "orchestrator checkpoints a disabled non-Formal v2 contract before qualification")
 	_expect(source.contains('[ValidateSet("producer", "consumer", "validator")]') and source.contains('$RoleSequence = @("producer", "consumer", "validator")'), "v2 contract has three closed process roles")
+	_expect(source.contains('"worktree_not_clean"') and source.contains("-Environment @{ APPDATA = $IsolatedAppData; LOCALAPPDATA = $IsolatedLocalAppData }"), "official execution rejects dirty sources and isolates the shared production slot from player data")
 	_expect(source.contains("-PassThru -Wait -WindowStyle Hidden") and source.contains("-RedirectStandardOutput") and source.contains("-RedirectStandardError"), "every Godot role redirects stdout/stderr and waits for process exit")
 	var producer_index := source.find('Invoke-ColdRestoreRole "producer"')
 	var consumer_index := source.find('Invoke-ColdRestoreRole "consumer"')

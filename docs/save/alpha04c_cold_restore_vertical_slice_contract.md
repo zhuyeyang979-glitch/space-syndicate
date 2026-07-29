@@ -3,6 +3,7 @@
 ```text
 FORMAL_FULL_RUN=false
 DRIVER_EXECUTION_READY=false
+CONTRACT_SCHEMA_VERSION=2
 CURRENT_RUNTIME_RULE_VERSION=v0.6
 SAVE_SECTION_COUNT=19
 NEW_SAVE_SECTION_COUNT=0
@@ -36,13 +37,17 @@ NEW_RNG_OWNER_COUNT=0
    production composition, restores before the first gameplay tick, verifies
    viewer-safe state and RNG continuation, advances at least one normal tick,
    asserts no duplicate receipt or settlement, emits its manifest, and exits.
-3. Process C is the external orchestrator. It compares only the two allowlisted
-   manifests and process exit results. It is not a third gameplay authority and
-   never parses the save envelope.
+3. Process C (`validator`) launches a third fresh process, restores Generation 2,
+   performs exact recapture, and emits the same closed allowlisted manifest.
+4. The external orchestrator compares only the three allowlisted manifests and
+   process exit results. It never parses the save envelope.
 
-The skeleton remains deliberately non-executable until all 19 owners are
-transactional and the production restore barrier/rebind phase is integrated.
-It must never be cited as cold-restore or full-run evidence while
+All 19 owners and the restore barrier are integrated, but the current recovery
+checkpoint is deliberately non-executable while Process A is migrated to an
+arbitrary formal Action Spine offer and Process C/terminal evidence is completed.
+The orchestrator also rejects a dirty worktree and places the production slot in
+one run-specific isolated user-data root shared by A, B, and C. This checkpoint
+must never be cited as cold-restore or full-run evidence while
 `DRIVER_EXECUTION_READY=false`.
 
 ## High-level application gateway

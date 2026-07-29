@@ -12,9 +12,12 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $ORCHESTRATOR_SCHEMA_VERSION = 2
 $FORMAL_FULL_RUN = $false
-$DriverExecutionReady = $true
+$DriverExecutionReady = $false
 $DriverScript = "res://scripts/tools/cold_restore_vertical_slice_driver.gd"
 $ArtifactRoot = "user://test_runs/alpha04c/$RunId/evidence"
+$UserDataRoot = Join-Path ([IO.Path]::GetTempPath()) "space_syndicate_alpha04c_cold_restore_$RunId"
+$IsolatedAppData = Join-Path $UserDataRoot "appdata-roaming"
+$IsolatedLocalAppData = Join-Path $UserDataRoot "appdata-local"
 $ManifestPrefix = "COLD_RESTORE_MANIFEST|"
 $RoleSequence = @("producer", "consumer", "validator")
 $ProcessSequence = @(
@@ -290,6 +293,7 @@ function Invoke-ColdRestoreRole {
     )
     $process = Start-Process -FilePath $GodotPath -ArgumentList $arguments `
         -PassThru -Wait -WindowStyle Hidden `
+        -Environment @{ APPDATA = $IsolatedAppData; LOCALAPPDATA = $IsolatedLocalAppData } `
         -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
     Assert-ColdRestoreCondition ($process.ExitCode -eq 0) "${Role}_process_failed"
     $manifest = Read-ColdRestoreManifest $stdoutPath $Role $RunId
@@ -479,6 +483,10 @@ try {
     New-Item -ItemType Directory -Path $logRoot -Force | Out-Null
     $headSha = [string](& git -C $resolvedProjectPath rev-parse HEAD 2>$null)
     Assert-ColdRestoreCondition ($headSha -match '^[0-9a-f]{40,64}$') "head_sha_unavailable"
+    $dirtyPaths = @(& git -C $resolvedProjectPath status --porcelain=v1 2>$null)
+    Assert-ColdRestoreCondition ($dirtyPaths.Count -eq 0) "worktree_not_clean"
+    New-Item -ItemType Directory -Path $IsolatedAppData -Force | Out-Null
+    New-Item -ItemType Directory -Path $IsolatedLocalAppData -Force | Out-Null
 
     $producerRun = Invoke-ColdRestoreRole "producer" $resolvedProjectPath $logRoot $headSha
     # Process B starts only after Process A exited and its one safe manifest parsed.
