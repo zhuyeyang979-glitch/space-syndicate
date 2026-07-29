@@ -10,7 +10,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$ORCHESTRATOR_SCHEMA_VERSION = 2
+$ORCHESTRATOR_SCHEMA_VERSION = 3
 $FORMAL_FULL_RUN = $false
 $DriverExecutionReady = $false
 $DriverScript = "res://scripts/tools/cold_restore_vertical_slice_driver.gd"
@@ -74,6 +74,21 @@ $ManifestFields = @(
     "queue_entry_count",
     "weather_region_count",
     "ai_nondefault_state_count",
+    "queue_trigger_resolution_id",
+    "queue_trigger_stable_target_fingerprint",
+    "queue_target_pending_before_resume",
+    "queue_target_pending_after_resume",
+    "queue_target_completed_before_resume",
+    "queue_target_completed_after_resume",
+    "queue_target_history_before_resume",
+    "queue_target_history_after_resume",
+    "queue_target_execution_finalize_delta",
+    "queue_target_history_append_delta",
+    "queue_target_history_duplicate_delta",
+    "queue_target_transition_duplicate_delta",
+    "queue_target_inventory_queue_commit_delta",
+    "queue_target_public_log_duplicate_delta",
+    "queue_target_public_log_collision_delta",
     "victory_unresolved_before_save",
     "production_surface_ready",
     "victory_state_sequence",
@@ -122,6 +137,20 @@ $IntegerManifestFields = @(
     "queue_entry_count",
     "weather_region_count",
     "ai_nondefault_state_count",
+    "queue_trigger_resolution_id",
+    "queue_target_pending_before_resume",
+    "queue_target_pending_after_resume",
+    "queue_target_completed_before_resume",
+    "queue_target_completed_after_resume",
+    "queue_target_history_before_resume",
+    "queue_target_history_after_resume",
+    "queue_target_execution_finalize_delta",
+    "queue_target_history_append_delta",
+    "queue_target_history_duplicate_delta",
+    "queue_target_transition_duplicate_delta",
+    "queue_target_inventory_queue_commit_delta",
+    "queue_target_public_log_duplicate_delta",
+    "queue_target_public_log_collision_delta",
     "final_settlement_count",
     "final_settlement_presentation_count",
     "final_settlement_public_log_count",
@@ -153,10 +182,6 @@ $SettlementCountFields = @(
     "final_settlement_public_log_count"
 )
 $GenerationTwoExactCountFields = @(
-    "human_action_count",
-    "commodity_action_count",
-    "ai_action_count",
-    "sale_receipt_count",
     "normal_card_count",
     "commodity_card_count",
     "commodity_claim_count",
@@ -166,6 +191,13 @@ $GenerationTwoExactCountFields = @(
     "queue_entry_count",
     "weather_region_count",
     "ai_nondefault_state_count"
+)
+$QueueTargetSideEffectDeltaFields = @(
+    "queue_target_history_duplicate_delta",
+    "queue_target_transition_duplicate_delta",
+    "queue_target_inventory_queue_commit_delta",
+    "queue_target_public_log_duplicate_delta",
+    "queue_target_public_log_collision_delta"
 )
 
 function Assert-ColdRestoreCondition {
@@ -229,7 +261,8 @@ function Assert-ColdRestoreManifest {
         "restored_sections_digest",
         "saved_sections_digest",
         "source_write_fingerprint",
-        "write_fingerprint"
+        "write_fingerprint",
+        "queue_trigger_stable_target_fingerprint"
     )) {
         Assert-ColdRestoreCondition (Test-Sha256OrEmpty $Manifest.$field) "manifest_digest_invalid"
     }
@@ -277,7 +310,9 @@ function Invoke-ColdRestoreRole {
         [Parameter(Mandatory = $true)][ValidateSet("producer", "consumer", "validator")][string]$Role,
         [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
         [Parameter(Mandatory = $true)][string]$LogRoot,
-        [Parameter(Mandatory = $true)][string]$HeadSha
+        [Parameter(Mandatory = $true)][string]$HeadSha,
+        [int64]$ExpectedQueueResolutionId = 0,
+        [string]$ExpectedQueueStableTargetFingerprint = ""
     )
     $stdoutPath = Join-Path $LogRoot "$Role.stdout.log"
     $stderrPath = Join-Path $LogRoot "$Role.stderr.log"
@@ -291,12 +326,20 @@ function Invoke-ColdRestoreRole {
         "--cold-restore-head-sha=$HeadSha",
         "--cold-restore-artifact-root=$ArtifactRoot"
     )
+    if ($Role -ne "producer") {
+        Assert-ColdRestoreCondition ($ExpectedQueueResolutionId -gt 0) "expected_queue_resolution_id_invalid"
+        Assert-ColdRestoreCondition ($ExpectedQueueStableTargetFingerprint -match '^[0-9a-f]{64}$') "expected_queue_stable_target_fingerprint_invalid"
+        $arguments += "--cold-restore-expected-queue-resolution-id=$ExpectedQueueResolutionId"
+        $arguments += "--cold-restore-expected-queue-stable-target-fingerprint=$ExpectedQueueStableTargetFingerprint"
+    }
     $process = Start-Process -FilePath $GodotPath -ArgumentList $arguments `
         -PassThru -Wait -WindowStyle Hidden `
         -Environment @{ APPDATA = $IsolatedAppData; LOCALAPPDATA = $IsolatedLocalAppData } `
         -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
     Assert-ColdRestoreCondition ($process.ExitCode -eq 0) "${Role}_process_failed"
     $manifest = Read-ColdRestoreManifest $stdoutPath $Role $RunId
+    Assert-ColdRestoreCondition ([int64]$manifest.process_id -eq [int64]$process.Id) "${Role}_manifest_process_id_mismatch"
+    Assert-ColdRestoreCondition ([string]$manifest.head_sha -eq $HeadSha) "${Role}_manifest_head_sha_mismatch"
     return [pscustomobject]@{
         process_id = $process.Id
         manifest = $manifest
@@ -356,6 +399,15 @@ function Compare-ColdRestoreManifests {
         -and [string]$Validator.source_write_id -eq [string]$Consumer.write_id `
         -and [string]$Validator.source_write_fingerprint -eq [string]$Consumer.write_fingerprint) "write_chain_mismatch"
 
+    $queueTargetResolutionId = [int64]$Producer.queue_trigger_resolution_id
+    $queueTargetFingerprint = [string]$Producer.queue_trigger_stable_target_fingerprint
+    Assert-ColdRestoreCondition ($queueTargetResolutionId -gt 0 `
+        -and $queueTargetFingerprint -match '^[0-9a-f]{64}$') "queue_target_identity_invalid"
+    Assert-ColdRestoreCondition ([int64]$Consumer.queue_trigger_resolution_id -eq $queueTargetResolutionId `
+        -and [int64]$Validator.queue_trigger_resolution_id -eq $queueTargetResolutionId `
+        -and [string]$Consumer.queue_trigger_stable_target_fingerprint -eq $queueTargetFingerprint `
+        -and [string]$Validator.queue_trigger_stable_target_fingerprint -eq $queueTargetFingerprint) "queue_target_identity_mismatch"
+
     foreach ($manifest in @($Producer, $Consumer, $Validator)) {
         Assert-ColdRestoreCondition ([int]$manifest.section_count -eq 19 `
             -and [int]$manifest.preflight_count -eq 19) "section_or_preflight_count_invalid"
@@ -373,16 +425,75 @@ function Compare-ColdRestoreManifests {
         }
         Assert-ColdRestoreCondition ([int]$manifest.rng_draw_count_before -eq [int]$manifest.rng_draw_count_after) "restore_rng_count_changed"
     }
+    foreach ($field in @(
+        "source_sections_digest",
+        "restored_sections_digest",
+        "source_write_id",
+        "source_write_fingerprint"
+    )) {
+        Assert-ColdRestoreCondition ([string]$Producer.$field -eq "") "producer_role_empty_field_invalid"
+    }
+    foreach ($field in @("saved_sections_digest", "write_id", "write_fingerprint")) {
+        Assert-ColdRestoreCondition ([string]$Validator.$field -eq "") "validator_role_empty_field_invalid"
+    }
+    foreach ($field in $RestoreDeltaFields) {
+        Assert-ColdRestoreCondition ([int]$Producer.$field -eq 0) "producer_role_zero_invalid"
+    }
+    foreach ($field in $SettlementCountFields) {
+        Assert-ColdRestoreCondition ([int]$Producer.$field -eq 0) "producer_role_zero_invalid"
+    }
+    Assert-ColdRestoreCondition (@($Producer.victory_state_sequence).Count -eq 0 `
+        -and [int]$Producer.terminal_quiescent_frames -eq 0 `
+        -and [int]$Producer.terminal_world_delta -eq 0 `
+        -and [int]$Producer.terminal_rng_draw_delta -eq 0) "producer_role_zero_invalid"
 
     foreach ($field in $ActionCountFields) {
         Assert-ColdRestoreCondition ([int]$Consumer.$field -gt 0) "consumer_action_count_missing"
+        Assert-ColdRestoreCondition ([int]$Validator.$field -eq 0) "validator_action_count_nonzero"
+    }
+    Assert-ColdRestoreCondition ([int]$Producer.queue_entry_count -eq 1 `
+        -and [int]$Producer.queue_target_pending_before_resume -eq 1 `
+        -and [int]$Producer.queue_target_pending_after_resume -eq 1 `
+        -and [int]$Producer.queue_target_completed_before_resume -eq 0 `
+        -and [int]$Producer.queue_target_completed_after_resume -eq 0 `
+        -and [int]$Producer.queue_target_history_before_resume -eq 0 `
+        -and [int]$Producer.queue_target_history_after_resume -eq 0 `
+        -and [int]$Producer.queue_target_execution_finalize_delta -eq 0 `
+        -and [int]$Producer.queue_target_history_append_delta -eq 0) "producer_queue_target_state_invalid"
+    foreach ($field in $QueueTargetSideEffectDeltaFields) {
+        Assert-ColdRestoreCondition ([int]$Producer.$field -eq 0) "producer_queue_target_state_invalid"
+    }
+    Assert-ColdRestoreCondition ([int]$Consumer.queue_target_pending_before_resume -eq 1 `
+        -and [int]$Consumer.queue_target_pending_after_resume -eq 0 `
+        -and [int]$Consumer.queue_target_completed_before_resume -eq 0 `
+        -and [int]$Consumer.queue_target_completed_after_resume -eq 1 `
+        -and [int]$Consumer.queue_target_history_before_resume -eq 0 `
+        -and [int]$Consumer.queue_target_history_after_resume -eq 1 `
+        -and [int]$Consumer.queue_target_execution_finalize_delta -eq 1 `
+        -and [int]$Consumer.queue_target_history_append_delta -eq 1) "consumer_queue_target_exact_once_invalid"
+    foreach ($field in $QueueTargetSideEffectDeltaFields) {
+        Assert-ColdRestoreCondition ([int]$Consumer.$field -eq 0) "consumer_queue_target_duplicate_side_effect"
+    }
+    Assert-ColdRestoreCondition ([int]$Validator.queue_target_pending_before_resume -eq 0 `
+        -and [int]$Validator.queue_target_pending_after_resume -eq 0 `
+        -and [int]$Validator.queue_target_completed_before_resume -eq 1 `
+        -and [int]$Validator.queue_target_completed_after_resume -eq 1 `
+        -and [int]$Validator.queue_target_history_before_resume -eq 1 `
+        -and [int]$Validator.queue_target_history_after_resume -eq 1 `
+        -and [int]$Validator.queue_target_execution_finalize_delta -eq 0 `
+        -and [int]$Validator.queue_target_history_append_delta -eq 0) "validator_queue_target_lineage_invalid"
+    foreach ($field in $QueueTargetSideEffectDeltaFields) {
+        Assert-ColdRestoreCondition ([int]$Validator.$field -eq 0) "validator_queue_target_duplicate_side_effect"
     }
     foreach ($field in $GenerationTwoExactCountFields) {
         Assert-ColdRestoreCondition ([int]$Validator.$field -eq [int]$Consumer.$field) "validator_generation_two_count_mismatch"
     }
     Assert-ColdRestoreCondition ([bool]$Consumer.production_surface_ready `
         -and [bool]$Validator.production_surface_ready) "production_surface_not_ready"
-    $expectedVictorySequence = @("restored_running", "last_survivor", "resolved", "final_settlement", "quiescent")
+    Assert-ColdRestoreCondition ([bool]$Producer.victory_unresolved_before_save `
+        -and [bool]$Consumer.victory_unresolved_before_save `
+        -and [bool]$Validator.victory_unresolved_before_save) "preterminal_victory_state_invalid"
+    $expectedVictorySequence = @("idle", "qualification", "audit", "resolved")
     $consumerVictory = @($Consumer.victory_state_sequence) | ConvertTo-Json -Compress
     $validatorVictory = @($Validator.victory_state_sequence) | ConvertTo-Json -Compress
     $expectedVictory = $expectedVictorySequence | ConvertTo-Json -Compress
@@ -406,6 +517,8 @@ function Compare-ColdRestoreManifests {
         generation1_digest_match = $true
         generation2_digest_match = $true
         write_chain_match = $true
+        queue_target_identity_match = $true
+        pending_queue_exact_once = $true
         section_counts_exact = $true
         save_capture_deltas_zero = $true
         restore_deltas_zero = $true
@@ -429,7 +542,7 @@ function New-AllowlistedResult {
     $safeRunId = if ($RunId -match '^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$') { $RunId } else { "" }
     return [ordered]@{
         schema_version = $ORCHESTRATOR_SCHEMA_VERSION
-        driver_id = "alpha04c_cold_restore_vertical_slice_orchestrator_v2"
+        driver_id = "alpha04c_cold_restore_vertical_slice_orchestrator_v3"
         formal_full_run = $FORMAL_FULL_RUN
         execution_ready = $DriverExecutionReady
         executed = $Executed
@@ -442,6 +555,8 @@ function New-AllowlistedResult {
         generation1_digest_match = $compared -and [bool]$Comparison.generation1_digest_match
         generation2_digest_match = $compared -and [bool]$Comparison.generation2_digest_match
         write_chain_match = $compared -and [bool]$Comparison.write_chain_match
+        queue_target_identity_match = $compared -and [bool]$Comparison.queue_target_identity_match
+        pending_queue_exact_once = $compared -and [bool]$Comparison.pending_queue_exact_once
         section_counts_exact = $compared -and [bool]$Comparison.section_counts_exact
         save_capture_deltas_zero = $compared -and [bool]$Comparison.save_capture_deltas_zero
         restore_deltas_zero = $compared -and [bool]$Comparison.restore_deltas_zero
@@ -479,7 +594,7 @@ try {
     Assert-ColdRestoreCondition $DriverExecutionReady "driver_execution_not_ready"
     $resolvedProjectPath = (Resolve-Path -LiteralPath $ProjectPath).Path
     Assert-ColdRestoreCondition (Test-Path -LiteralPath (Join-Path $resolvedProjectPath "project.godot") -PathType Leaf) "godot_project_invalid"
-    $logRoot = Join-Path $resolvedProjectPath ".godot\cold_restore_v2\$RunId\orchestrator-$PID"
+    $logRoot = Join-Path $resolvedProjectPath ".godot\cold_restore_v3\$RunId\orchestrator-$PID"
     New-Item -ItemType Directory -Path $logRoot -Force | Out-Null
     $headSha = [string](& git -C $resolvedProjectPath rev-parse HEAD 2>$null)
     Assert-ColdRestoreCondition ($headSha -match '^[0-9a-f]{40,64}$') "head_sha_unavailable"
@@ -490,9 +605,13 @@ try {
 
     $producerRun = Invoke-ColdRestoreRole "producer" $resolvedProjectPath $logRoot $headSha
     # Process B starts only after Process A exited and its one safe manifest parsed.
-    $consumerRun = Invoke-ColdRestoreRole "consumer" $resolvedProjectPath $logRoot $headSha
+    $consumerRun = Invoke-ColdRestoreRole "consumer" $resolvedProjectPath $logRoot $headSha `
+        ([int64]$producerRun.manifest.queue_trigger_resolution_id) `
+        ([string]$producerRun.manifest.queue_trigger_stable_target_fingerprint)
     # Process C starts only after Process B exited and its one safe manifest parsed.
-    $validatorRun = Invoke-ColdRestoreRole "validator" $resolvedProjectPath $logRoot $headSha
+    $validatorRun = Invoke-ColdRestoreRole "validator" $resolvedProjectPath $logRoot $headSha `
+        ([int64]$consumerRun.manifest.queue_trigger_resolution_id) `
+        ([string]$consumerRun.manifest.queue_trigger_stable_target_fingerprint)
     $comparison = Compare-ColdRestoreManifests `
         $producerRun.manifest $consumerRun.manifest $validatorRun.manifest
     Write-AllowlistedResult (New-AllowlistedResult $true $false $true "" $comparison)

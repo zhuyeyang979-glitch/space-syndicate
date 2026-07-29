@@ -276,11 +276,10 @@ func _purchase_real_rack_card(
 	seed_value: int
 ) -> bool:
 	var world := coordinator.world_session_state()
-	var query := coordinator.get_node_or_null("DistrictSupplyViewerQueryPort") as DistrictSupplyViewerQueryPort
-	var presentation := coordinator.card_supply_presentation_state()
-	var overlay := screen.get_node_or_null("OverlayLayer") as SpaceSyndicateOverlayLayer
-	var drawer := screen.get_district_supply_drawer() as SpaceSyndicateDistrictSupplyDrawer
-	if world == null or query == null or presentation == null or overlay == null or drawer == null:
+	var viewmodel_query := coordinator.get_node_or_null("TablePresentationViewModelQuery") as TablePresentationViewModelQuery
+	var port := coordinator.district_supply_action_port()
+	var popup := screen.get_region_supply_popup() as SpaceSyndicateRegionSupplyPopup
+	if world == null or viewmodel_query == null or port == null or popup == null:
 		return false
 	var configured := coordinator.configure_region_supply_from_world(
 		seed_value,
@@ -311,33 +310,75 @@ func _purchase_real_rack_card(
 	if actor_context == null or not actor_context.is_valid() \
 			or not screen.request_district_selection(district_index, &"qa_driver"):
 		return false
-	presentation.open_district = district_index
-	presentation.open_player = 0
-	presentation.previewed_district_card = card_id
-	presentation.selected_market_skill = card_id
-	var district := world.districts[district_index] as Dictionary
-	var rack_revision := coordinator.region_supply_rack_revision(str(district.get("region_id", "")))
-	coordinator.open_district_purchase_window(0, district_index, {"supply_revision": rack_revision})
-	coordinator.mark_district_supply_revision(0, district_index, rack_revision)
+	var receipts: Array[DistrictSupplyActionReceipt] = []
+	var capture_receipt := func(receipt: DistrictSupplyActionReceipt) -> void:
+		receipts.append(receipt)
+	port.receipt_ready.connect(capture_receipt)
 	var before_inventory := coordinator.v06_card_player_snapshot("player.0")
 	var before_count := _authoritative_inventory_count(before_inventory)
-	var quote_surface := query.snapshot_for_viewer(0)
-	if quote_surface.is_empty():
-		return false
-	if not overlay.apply_district_supply_presentation(quote_surface, 0, authorization_revision):
-		return false
-	drawer.call("_on_card_purchase_requested", card_id, "alpha04_real_quote")
+	coordinator.request_table_presentation_refresh(&"full", &"player_card_dock_real_three_pool_open_sync")
 	await process_frame
-	var purchase_surface := query.snapshot_for_viewer(0)
-	if purchase_surface.is_empty():
+	if not screen.request_district_supply_open(district_index, &"qa_driver"):
+		if port.receipt_ready.is_connected(capture_receipt):
+			port.receipt_ready.disconnect(capture_receipt)
 		return false
-	if not overlay.apply_district_supply_presentation(purchase_surface, 0, authorization_revision):
-		return false
-	drawer.call("_on_card_purchase_requested", card_id, "alpha04_real_purchase")
 	await process_frame
+	var quote_state := viewmodel_query.compose_table_state(0, true)
+	var quote_projection: Dictionary = quote_state.get("region_supply_popup", {}) \
+		if quote_state.get("region_supply_popup", {}) is Dictionary else {}
+	if quote_projection.is_empty() or not popup.apply_projection(quote_projection):
+		if port.receipt_ready.is_connected(capture_receipt):
+			port.receipt_ready.disconnect(capture_receipt)
+		return false
+	var quote_offer := popup.action_offer_for_card(
+		card_id,
+		GameActionIntentV1.ACTION_DISTRICT_SUPPLY_QUOTE
+	)
+	if quote_offer.is_empty() or not screen.submit_game_action_offer(
+		quote_offer,
+		"human_click",
+		{},
+		{}
+	):
+		if port.receipt_ready.is_connected(capture_receipt):
+			port.receipt_ready.disconnect(capture_receipt)
+		return false
+	await process_frame
+	var purchase_state := viewmodel_query.compose_table_state(0, true)
+	var purchase_projection: Dictionary = purchase_state.get("region_supply_popup", {}) \
+		if purchase_state.get("region_supply_popup", {}) is Dictionary else {}
+	if purchase_projection.is_empty() or not popup.apply_projection(purchase_projection):
+		if port.receipt_ready.is_connected(capture_receipt):
+			port.receipt_ready.disconnect(capture_receipt)
+		return false
+	var purchase_offer := popup.action_offer_for_card(
+		card_id,
+		GameActionIntentV1.ACTION_DISTRICT_SUPPLY_PURCHASE
+	)
+	if purchase_offer.is_empty() or not screen.submit_game_action_offer(
+		purchase_offer,
+		"human_click",
+		{},
+		{}
+	):
+		if port.receipt_ready.is_connected(capture_receipt):
+			port.receipt_ready.disconnect(capture_receipt)
+		return false
+	await process_frame
+	if port.receipt_ready.is_connected(capture_receipt):
+		port.receipt_ready.disconnect(capture_receipt)
 	var after_inventory := coordinator.v06_card_player_snapshot("player.0")
+	var purchase_receipt_seen := false
+	for receipt_variant in receipts:
+		if not (receipt_variant is DistrictSupplyActionReceipt):
+			continue
+		var receipt := receipt_variant as DistrictSupplyActionReceipt
+		if receipt.accepted and receipt.applied and receipt.reason_code == "purchase_committed":
+			purchase_receipt_seen = true
+			break
 	var purchased := _authoritative_inventory_count(after_inventory) == before_count + 1 \
-		and _inventory_contains_card(after_inventory, card_id)
+		and _inventory_contains_card(after_inventory, card_id) \
+		and purchase_receipt_seen
 	return purchased
 
 
