@@ -2,6 +2,7 @@ extends SceneTree
 
 const SESSION_DRIVER := preload("res://tests/support/production_session_start_driver.gd")
 const CLAIM_REQUEST := preload("res://scripts/runtime/commodity_sushi_track_claim_request.gd")
+const GAME_ACTION_INTENT := preload("res://scripts/semantic/game_action_intent_v1.gd")
 
 const QA_SAVE_PATH := "user://test_runs/alpha04_claim_to_sale_integration.save"
 const REGION_SUPPLY_SEED := 904_062_611
@@ -59,24 +60,23 @@ func _run() -> void:
 	var world := coordinator.world_session_state()
 	var screen := app_root.find_child("RuntimeGameScreen", true, false) as SpaceSyndicateGameScreen
 	var overlay := screen.get_node_or_null("OverlayLayer") as SpaceSyndicateOverlayLayer if screen != null else null
-	var drawer := screen.get_district_supply_drawer() as SpaceSyndicateDistrictSupplyDrawer if screen != null else null
-	var district_query := coordinator.get_node_or_null("DistrictSupplyViewerQueryPort") as DistrictSupplyViewerQueryPort
+	var region_popup := screen.get_region_supply_popup() as SpaceSyndicateRegionSupplyPopup if screen != null else null
+	var viewmodel_query := coordinator.get_node_or_null("TablePresentationViewModelQuery") as TablePresentationViewModelQuery
 	var query_ports := coordinator.get_node_or_null("TablePresentationQueryPorts") as TablePresentationQueryPorts
-	var presentation := coordinator.card_supply_presentation_state()
 	var district_port := coordinator.district_supply_action_port()
 	var sushi_service := coordinator.get_node_or_null("CommoditySushiTrackRuntimeService")
 	var inventory := coordinator.commodity_card_inventory_runtime_controller()
 	var infrastructure := coordinator.get_node_or_null("RegionInfrastructureRuntimeController") as RegionInfrastructureRuntimeController
 	var flow := coordinator.get_node_or_null("CommodityFlowRuntimeController")
 	_expect(
-		world != null and screen != null and overlay != null and drawer != null \
-			and district_query != null and query_ports != null and presentation != null \
+		world != null and screen != null and overlay != null and region_popup != null \
+			and viewmodel_query != null and query_ports != null \
 			and district_port != null and sushi_service != null and inventory != null \
 			and infrastructure != null and flow != null,
-		"production claim, SHARED_V06 inventory, DistrictSupply, facility, and CommodityFlow services are composed"
+		"production claim, SHARED_V06 inventory, typed RegionSupplyPopup, facility, and CommodityFlow services are composed"
 	)
-	if world == null or screen == null or overlay == null or drawer == null \
-			or district_query == null or query_ports == null or presentation == null \
+	if world == null or screen == null or overlay == null or region_popup == null \
+			or viewmodel_query == null or query_ports == null \
 			or district_port == null or sushi_service == null or inventory == null \
 			or infrastructure == null or flow == null:
 		await _cleanup(app_root)
@@ -235,17 +235,15 @@ func _run() -> void:
 	district_port.receipt_ready.connect(func(receipt: DistrictSupplyActionReceipt) -> void:
 		district_receipts.append(receipt)
 	)
-	var first_purchase: Dictionary = await _purchase_from_real_drawer(
+	var first_purchase: Dictionary = await _purchase_from_region_supply_popup(
 		coordinator,
 		world,
 		screen,
 		overlay,
-		drawer,
-		district_query,
-		presentation,
+		region_popup,
+		viewmodel_query,
 		district_port,
 		district_receipts,
-		context.authorization_revision,
 		factory_card_id,
 		discard_slot,
 		-1
@@ -309,17 +307,15 @@ func _run() -> void:
 		bool(market_preview.get("ready", false)) and not bool(market_preview.get("requires_discard", false)),
 		"playing the factory reopens one shared hand slot for the complementary market purchase"
 	)
-	var second_purchase: Dictionary = await _purchase_from_real_drawer(
+	var second_purchase: Dictionary = await _purchase_from_region_supply_popup(
 		coordinator,
 		world,
 		screen,
 		overlay,
-		drawer,
-		district_query,
-		presentation,
+		region_popup,
+		viewmodel_query,
 		district_port,
 		district_receipts,
-		context.authorization_revision,
 		market_card_id,
 		-1,
 		int(first_purchase.get("source_district", -1))
@@ -652,17 +648,15 @@ func _sort_targets(targets: Array[Dictionary]) -> void:
 	)
 
 
-func _purchase_from_real_drawer(
+func _purchase_from_region_supply_popup(
 	coordinator: GameRuntimeCoordinator,
 	world: WorldSessionState,
 	screen: SpaceSyndicateGameScreen,
 	overlay: SpaceSyndicateOverlayLayer,
-	drawer: SpaceSyndicateDistrictSupplyDrawer,
-	query: DistrictSupplyViewerQueryPort,
-	presentation: Object,
+	region_popup: SpaceSyndicateRegionSupplyPopup,
+	viewmodel_query: TablePresentationViewModelQuery,
 	port: DistrictSupplyActionPort,
 	receipts: Array[DistrictSupplyActionReceipt],
-	authorization_revision: int,
 	card_id: String,
 	discard_slot: int,
 	preferred_district: int
@@ -677,40 +671,70 @@ func _purchase_from_real_drawer(
 	}
 	var district_index := _purchasable_listing_district(coordinator, world, card_id, preferred_district)
 	result["source_district"] = district_index
-	if district_index < 0 or not screen.request_district_selection(district_index, &"qa_driver"):
+	# Direct facility-play helpers advance authoritative state without going
+	# through GameScreen selection. Refresh first so the production open intent
+	# carries the current typed selection revision instead of a stale UI copy.
+	coordinator.request_table_presentation_refresh(&"full", &"alpha04_claim_sale_open_sync")
+	await process_frame
+	var open_receipt_start := receipts.size()
+	if district_index < 0 or not screen.request_district_supply_open(district_index, &"qa_driver"):
 		result["failure"] = "purchasable_listing_or_selection_missing"
 		return result
-	presentation.set("open_district", district_index)
-	presentation.set("open_player", 0)
-	presentation.set("previewed_district_card", card_id)
-	presentation.set("selected_market_skill", card_id)
-	var district: Dictionary = world.districts[district_index] if world.districts[district_index] is Dictionary else {}
-	var region_id := str(district.get("region_id", ""))
-	var rack_revision := coordinator.region_supply_rack_revision(region_id)
-	coordinator.open_district_purchase_window(0, district_index, {"supply_revision": rack_revision})
-	coordinator.mark_district_supply_revision(0, district_index, rack_revision)
-	var receipt_start := receipts.size()
-	var first_surface := query.snapshot_for_viewer(0)
-	if first_surface.is_empty() or not overlay.apply_district_supply_presentation(first_surface, 0, authorization_revision):
-		result["failure"] = "quote_surface_unavailable"
+	await process_frame
+	if receipts.size() <= open_receipt_start or not receipts[open_receipt_start].accepted:
+		result["failure"] = "typed_region_supply_open_rejected"
+		result["receipts"] = _receipt_slice(receipts, open_receipt_start)
+		result["popup"] = region_popup.debug_snapshot()
 		return result
-	drawer.call("_on_card_purchase_requested", card_id, "alpha04_claim_sale_quote")
+	var receipt_start := receipts.size()
+	var quote_state := viewmodel_query.compose_table_state(0, true)
+	var quote_projection: Dictionary = quote_state.get("region_supply_popup", {}) \
+		if quote_state.get("region_supply_popup", {}) is Dictionary else {}
+	if quote_projection.is_empty() or not region_popup.apply_projection(quote_projection):
+		result["failure"] = "quote_surface_unavailable"
+		result["popup"] = region_popup.debug_snapshot()
+		return result
+	var quote_offer := region_popup.action_offer_for_card(
+		card_id,
+		GAME_ACTION_INTENT.ACTION_DISTRICT_SUPPLY_QUOTE
+	)
+	if quote_offer.is_empty() or not screen.submit_game_action_offer(
+		quote_offer,
+		"human_click",
+		{},
+		{}
+	):
+		result["failure"] = "quote_surface_unavailable"
+		result["popup"] = region_popup.debug_snapshot()
+		return result
 	await process_frame
 	if receipts.size() <= receipt_start or not receipts[receipt_start].accepted \
 			or receipts[receipt_start].reason_code != "quote_locked":
 		result["receipts"] = _receipt_slice(receipts, receipt_start)
 		result["failure"] = "quote_rejected"
 		return result
-	var purchase_surface := query.snapshot_for_viewer(0)
-	if purchase_surface.is_empty() or not overlay.apply_district_supply_presentation(purchase_surface, 0, authorization_revision):
+	var purchase_state := viewmodel_query.compose_table_state(0, true)
+	var purchase_projection: Dictionary = purchase_state.get("region_supply_popup", {}) \
+		if purchase_state.get("region_supply_popup", {}) is Dictionary else {}
+	if purchase_projection.is_empty() or not region_popup.apply_projection(purchase_projection):
 		result["receipts"] = _receipt_slice(receipts, receipt_start)
 		result["failure"] = "purchase_surface_unavailable"
+		result["popup"] = region_popup.debug_snapshot()
 		return result
-	# The locked quote receipt has already bound the selected card inside the
-	# production GameScreen. Submit its public purchase action directly so an
-	# asynchronous Drawer repaint cannot turn the confirm click back into a
-	# second quote request.
-	screen.request_selected_district_supply_purchase(&"district_supply")
+	var purchase_offer := region_popup.action_offer_for_card(
+		card_id,
+		GAME_ACTION_INTENT.ACTION_DISTRICT_SUPPLY_PURCHASE
+	)
+	if purchase_offer.is_empty() or not screen.submit_game_action_offer(
+		purchase_offer,
+		"human_click",
+		{},
+		{}
+	):
+		result["receipts"] = _receipt_slice(receipts, receipt_start)
+		result["failure"] = "purchase_surface_unavailable"
+		result["popup"] = region_popup.debug_snapshot()
+		return result
 	await process_frame
 	if receipts.size() <= receipt_start + 1:
 		result["receipts"] = _receipt_slice(receipts, receipt_start)
