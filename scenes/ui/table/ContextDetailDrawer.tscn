@@ -1,0 +1,138 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/table/context_detail_drawer.gd" id="2_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleDetail"]
+bg_color = Color(0.015, 0.03, 0.07, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.45, 0.62, 0.9, 0.88)
+corner_radius_top_left = 9
+corner_radius_top_right = 9
+corner_radius_bottom_right = 9
+corner_radius_bottom_left = 9
+
+[node name="ContextDetailDrawer" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="ContextDetailBackdrop" type="ColorRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.004, 0.01, 0.03, 0.4)
+
+[node name="ContextDetailSideMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchor_left = 0.64
+anchor_top = 0.055
+anchor_right = 0.985
+anchor_bottom = 0.76
+mouse_filter = 1
+
+[node name="ContextDetailPanel" type="PanelContainer" parent="ContextDetailSideMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleDetail")
+
+[node name="ContextDetailInnerMargin" type="MarginContainer" parent="ContextDetailSideMargin/ContextDetailPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="ContextDetailStack" type="VBoxContainer" parent="ContextDetailSideMargin/ContextDetailPanel/ContextDetailInnerMargin"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="ContextDetailHeader" type="HBoxContainer" parent="ContextDetailSideMargin/ContextDetailPanel/ContextDetailInnerMargin/ContextDetailStack"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ContextDetailKind" type="Label" parent="ContextDetailSideMargin/ContextDetailPanel/ContextDetailInnerMargin/ContextDetailStack/ContextDetailHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.55, 0.78, 1, 1)
+text = "上下文详情"
+
+[node name="ContextDetailCloseButton" type="Button" parent="ContextDetailSideMargin/ContextDetailPanel/ContextDetailInnerMargin/ContextDetailStack/ContextDetailHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 30)
+layout_mode = 2
+text = "关闭"
+
+[node name="ContextDetailTitle" type="Label" parent="ContextDetailSideMargin/ContextDetailPanel/ContextDetailInnerMargin/ContextDetailStack"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "详情"
+autowrap_mode = 3
+
+[node name="ContextDetailSubtitle" type="Label" parent="ContextDetailSideMargin/ContextDetailPanel/ContextDetailInnerMargin/ContextDetailStack"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.8, 0.9, 1)
+autowrap_mode = 3
+
+[node name="ContextDetailIdentity" type="Label" parent="ContextDetailSideMargin/ContextDetailPanel/ContextDetailInnerMargin/ContextDetailStack"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.64, 0.76, 1)
+theme_override_font_sizes/font_size = 10
+autowrap_mode = 3
+
+[node name="ContextDetailStatus" type="Label" parent="ContextDetailSideMargin/ContextDetailPanel/ContextDetailInnerMargin/ContextDetailStack"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.75, 0.42, 1)
+autowrap_mode = 3
+
+[node name="ContextDetailScroll" type="ScrollContainer" parent="ContextDetailSideMargin/ContextDetailPanel/ContextDetailInnerMargin/ContextDetailStack"]
+custom_minimum_size = Vector2(0, 330)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ContextDetailBody" type="Label" parent="ContextDetailSideMargin/ContextDetailPanel/ContextDetailInnerMargin/ContextDetailStack/ContextDetailScroll"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "暂无更多公开详情。"
+autowrap_mode = 3
+
+[node name="ContextDetailKeywords" type="Label" parent="ContextDetailSideMargin/ContextDetailPanel/ContextDetailInnerMargin/ContextDetailStack"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.75, 0.9, 1)
+autowrap_mode = 3
+
+[node name="ContextDetailNavigationRow" type="HFlowContainer" parent="ContextDetailSideMargin/ContextDetailPanel/ContextDetailInnerMargin/ContextDetailStack"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 4
