@@ -1,6 +1,6 @@
 # Alpha 0.4-A Player Card Dock continuation
 
-Updated: 2026-07-29 13:37 (Asia/Tokyo)
+Updated: 2026-07-29 18:19 (Asia/Tokyo)
 
 ## Outcome
 
@@ -9,9 +9,11 @@ Updated: 2026-07-29 13:37 (Asia/Tokyo)
 The production Player Card Dock, direct commodity claim interaction, commodity
 art, focused tests, production capture, semantic registry, Godot MCP launch,
 and non-Formal economy-continuation diagnosis are complete. The diagnosis is
-green and found no production fix to make. The parent task cannot be marked
-GREEN because the one authorized Formal FullRun remains `INCOMPLETE` before
-sale, victory, settlement, or terminal quiescence. It was not formally rerun.
+green and found no Dock or claim-capacity defect. The separately authorized
+second Formal FullRun was consumed and again ended `INCOMPLETE`: it proved the
+matched economy, 22 sales, qualification, and audit, but did not reach
+`resolved`, settlement, or terminal quiescence. The parent task remains
+PARTIAL.
 
 - Draft PR: https://github.com/zhuyeyang979-glitch/space-syndicate/pull/72
 - Draft base: `codex/v07-table-shell-orbit-retirement-e19eb4a` (PR #71 head)
@@ -41,6 +43,8 @@ excluded from every commit.
 4. `b230833 test(playability): prove production card dock and direct claims`
 5. `c0b2108 docs(program): record partial Alpha 0.4-A formal handoff`
 6. `9ed2bb6 test(playability): diagnose card dock economy continuation`
+7. `30a6d87 docs(program): record green economy diagnosis`
+8. `b4b1475 test(playability): record authorized formal rerun`
 
 The checkpoints are pushed to
 `origin/codex/alpha04-production-player-card-dock-cde98ae`.
@@ -178,7 +182,7 @@ outside this slice. MCP stopped cleanly. The Windows GPU-captured window
 returned blank/background content, so it was not used as interaction evidence;
 the real headed production capture above is the interaction oracle.
 
-## One formal FullRun
+## Two Formal FullRun attempts
 
 Command:
 
@@ -186,19 +190,46 @@ Command:
 godot --headless --path . --script res://scripts/tools/full_run_quality_driver.gd -- --seed-index 0 --observation-seconds 150 --max-wall-seconds 180
 ```
 
-- formal command count: 1
-- formal rerun count: 0
+- formal command count: 2
+- formal rerun count: 1
+- additional Formal run authorized: false
 - seed: `900626424`
-- exit: 1
-- status: `INCOMPLETE`
+
+Attempt 1, before the focused diagnosis:
+
+- exit / status: `1 / INCOMPLETE`
 - failure: `observation_window_elapsed_before_settlement`
 - process wall/session wall/world: `166.235 / 153.906 / 55.647202` seconds
 - actions attempted/progressed/invalid: `134 / 130 / 0`
 - facilities/sales: `1 / 0`
-- victory sequence: `idle`
-- final settlement: 0
+- Victory sequence: `idle`
+- concurrent orphan Godot environment confound: present
+
+Attempt 2, separately authorized after the diagnosis:
+
+- evidence: `reports/playability/full_run/alpha04_authorized_formal_rerun_validation.*`
+- head: `30a6d87c545df2d8de3c369dec5fb2b3d57a1e92`
+- exit / status / completed: `1 / INCOMPLETE / false`
+- failure: `observation_window_elapsed_before_settlement`
+- driver wall/session wall/world: `181.437 / 174.654 / 185.634705` seconds
+- actions attempted/progressed/invalid: `141 / 140 / 0`
+- facilities/Sale Receipts: `2 / 22`
+- first Sale Receipt: world `62.391742`
+- matched chain: energy production/demand `10 / 10`, settled/transported `5 / 5`
+- regions/required: `4 / 3`
+- GDP/required: `1612 / 108`
+- Victory sequence: `idle -> qualification -> audit`
+- final settlement/presentation/public log: `0 / 0 / 0`
 - terminal quiescent frames: 0
 - terminal world/RNG deltas: not observed (`-1 / -1`)
+- post-eligibility production-installation delta: 0
+- system Godot process count before/after: `0 / 0`
+
+Attempt 2 is PARTIAL, not BLOCKED. It had zero invalid actions, zero non-finite
+facts, no capability failure, no runtime-step rejection, and no progress stall.
+It remained actively advancing the authorized audit timer when the bounded
+window ended. It did not reach `resolved`, so settlement exact-once and
+terminal quiescence cannot be claimed.
 
 All newly added player-surface gates were green in that same run:
 
@@ -211,29 +242,10 @@ All newly added player-surface gates were green in that same run:
 - duplicate card submissions 0;
 - all five performance metrics had samples and positive values.
 
-The direct claim did not cause this failure through `SHARED_V06` capacity.
-A full-hand purchase would have emitted
-`district_supply_pending_discard`; the run recorded no such reason and zero
-invalid actions. Claiming changed the shared count from roughly 1/5 to 2/5 but
-does not install facilities, alter production or demand, or create a sale.
-
-The observed economy mismatch was a shipping factory with production 20 versus
-the largest anonymous demand gap, energy 70. The continuation planner selected
-`energy / missing_matching_factory` and did not obtain and play that factory
-before timeout, so no same-commodity matched row formed. This is not yet
-evidence of a Dock adapter regression: the Dock path successfully submitted the
-first facility card, 130 of 134 actions progressed with zero invalid actions,
-and the mapped fields match the planner contract.
-
-The original classification was wall-time/throughput confounding before the
-historical first-sale window. The run advanced only 55.647 world seconds in
-153.906 session-wall seconds (about 0.36x), while same-seed historical traces
-first sold around world 62.486 and 70.596 seconds. A pre-existing orphan
-`district_supply_purchase_projection_receipt_test.gd` Godot process had been
-running since 03:17 and had accumulated about 3500 CPU seconds while the formal
-run executed. It was stopped afterward and the final Godot process count is
-zero. This is a material environment confound, not proof of external causation;
-it does not turn the formal result into a pass or authorize a rerun.
+Attempt 1's orphan-process confound is retained as history, but Attempt 2 ran
+with a clean process precondition and directly proved that the planned energy
+factory, matched economy, sales, and Victory admission work. The remaining
+unproven boundary is only the audit-to-resolved terminal tail.
 
 ## Non-Formal economy-continuation diagnosis
 
@@ -275,7 +287,7 @@ Final diagnosis:
 - direct-claim capacity blocker: false.
 - production repair required: false.
 - Formal gate result changed: false.
-- Formal command count / rerun count: `1 / 0`.
+- Formal command count / rerun count: `2 / 1`.
 
 ## Invariants
 
@@ -290,14 +302,15 @@ Final diagnosis:
 - new Main responsibilities: 0
 - `scripts/main.gd`, `scenes/main.tscn`, and `project.godot` diff: 0
 
-## Next single gate
+## Next single decision
 
-`ALPHA_0_4_A_SEPARATELY_AUTHORIZED_FORMAL_FULL_RUN_RERUN`
+`ALPHA_0_4_A_FORMAL_AUDIT_WINDOW_TERMINAL_GATE_DECISION`
 
-The diagnosis is complete; there is no production patch to apply first. A new
-terminal FullRun still requires explicit separate authorization because this
-task's one Formal run has already been consumed. Until that run is authorized
-and green, PR #72 remains Draft/PARTIAL and must not merge.
+The separately authorized rerun has been consumed and no third Formal run is
+authorized. Do not change the Formal budgets, run again, or begin Alpha 0.4-B
+silently. The next user decision is whether to authorize a bounded performance
+diagnosis of the audit tail or choose another explicit disposition. PR #72
+remains Draft/PARTIAL and must not merge.
 
 After that gate is green, the next product boundary remains
 `ALPHA_0_4_B_PRODUCTION_ROSTER_REGION_POPUP_AND_RIGHT_INSPECTOR_RETIREMENT`.
