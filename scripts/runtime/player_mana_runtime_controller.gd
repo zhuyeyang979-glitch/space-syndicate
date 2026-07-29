@@ -8,6 +8,26 @@ const RULESET_ID := "v0.6"
 const STATE_VERSION := 1
 const MILLIASSET_SCALE := 1000
 const ASSET_IDS := ["life", "energy", "industry", "technology", "commerce", "shipping"]
+const RESERVATION_SNAPSHOT_VERSION := 1
+const RESERVATION_SNAPSHOT_KEYS := [
+	"schema_version",
+	"transaction_id",
+	"player_index",
+	"asset_cost",
+	"asset_debit",
+	"debit_milliunits",
+	"state",
+	"fingerprint",
+]
+const RESERVATION_COST_KEYS := ["life", "energy", "industry", "technology", "commerce", "shipping", "generic"]
+const RESERVATION_ROLLBACK_MARKER_VERSION := 1
+const RESERVATION_ROLLBACK_MARKER_KEYS := [
+	"schema_version",
+	"transaction_id",
+	"expected_reservation_fingerprint",
+	"reason",
+	"state_id",
+]
 const ADVANCE_ONCE_JOURNAL_LIMIT := 128
 const SAVE_KEYS := [
 	"state_version",
@@ -259,18 +279,100 @@ func plan_reservation(request: Dictionary) -> Dictionary:
 	}
 
 
+func reservation_snapshot(transaction_id: String) -> Dictionary:
+	if not _configured or transaction_id.is_empty() or transaction_id != transaction_id.strip_edges() \
+			or not _reservations.has(transaction_id):
+		return {}
+	var snapshot := _reservation_snapshot_from_record(_dictionary(_reservations[transaction_id]))
+	return snapshot.duplicate(true) if not snapshot.is_empty() else {}
+
+
+func reservation_settlement_snapshot(transaction_id: String) -> Dictionary:
+	var normalized_id := transaction_id.strip_edges()
+	if not _configured or normalized_id.is_empty() or normalized_id != transaction_id:
+		return {
+			"found": false,
+			"reason_code": "asset_reservation_settlement_id_invalid",
+			"state_id": "missing",
+			"outcome_id": "missing",
+			"reservation": {},
+			"terminal_receipt": {},
+		}
+	if _reservations.has(normalized_id):
+		var reservation := _reservation_snapshot_from_record(
+			_dictionary(_reservations[normalized_id])
+		)
+		return {
+			"found": not reservation.is_empty(),
+			"reason_code": "asset_reservation_pending" if not reservation.is_empty() \
+				else "asset_reservation_binding_invalid",
+			"state_id": "reserved" if not reservation.is_empty() else "invalid",
+			"outcome_id": "pending" if not reservation.is_empty() else "invalid",
+			"reservation": reservation.duplicate(true),
+			"terminal_receipt": {},
+		}
+	if _terminal_receipts.has(normalized_id):
+		var terminal := _dictionary(_terminal_receipts[normalized_id])
+		var binding := _terminal_reservation_binding(terminal)
+		var outcome := str(terminal.get("outcome", ""))
+		var valid := not binding.is_empty() and outcome in ["consumed", "released"]
+		return {
+			"found": valid,
+			"reason_code": "asset_reservation_terminal" if valid \
+				else "asset_reservation_terminal_invalid",
+			"state_id": "terminal" if valid else "invalid",
+			"outcome_id": outcome if valid else "invalid",
+			"reservation": binding.duplicate(true),
+			"terminal_receipt": terminal.duplicate(true) if valid else {},
+		}
+	return {
+		"found": false,
+		"reason_code": "asset_reservation_settlement_missing",
+		"state_id": "missing",
+		"outcome_id": "missing",
+		"reservation": {},
+		"terminal_receipt": {},
+	}
+
+
+func reservation_fingerprint(snapshot: Dictionary) -> String:
+	if not _reservation_snapshot_body_is_valid(snapshot):
+		return ""
+	var binding := {
+		"schema_version": RESERVATION_SNAPSHOT_VERSION,
+		"transaction_id": str(snapshot.get("transaction_id", "")),
+		"player_index": int(snapshot.get("player_index", -1)),
+		"asset_cost": _dictionary(snapshot.get("asset_cost", {})),
+		"asset_debit": _dictionary(snapshot.get("asset_debit", {})),
+		"debit_milliunits": _dictionary(snapshot.get("debit_milliunits", {})),
+		"state": str(snapshot.get("state", "")),
+	}
+	return JSON.stringify(_canonicalize(binding)).sha256_text()
+
+
 func commit_reservation(plan: Dictionary) -> Dictionary:
 	if not _configured or not _is_pure_data(plan) or not bool(plan.get("accepted", false)):
 		return _commit_rejection("invalid_asset_reservation_plan")
 	if not bool(plan.get("required", false)):
 		return {"committed": true, "authorized": true, "required": false, "transaction_id": "", "duplicate": false}
 	var transaction_id := str(plan.get("transaction_id", ""))
+	var has_existing_binding := _terminal_receipts.has(transaction_id) or _reservations.has(transaction_id)
+	var candidate_binding := _reservation_snapshot_from_plan(plan)
+	if candidate_binding.is_empty():
+		return _reservation_binding_collision(transaction_id) if has_existing_binding \
+			else _commit_rejection("invalid_asset_reservation_plan")
 	if _terminal_receipts.has(transaction_id):
 		var terminal := _dictionary(_terminal_receipts[transaction_id])
+		var terminal_binding := _terminal_reservation_binding(terminal)
+		if not _reservation_bindings_match(candidate_binding, terminal_binding):
+			return _reservation_binding_collision(transaction_id)
 		terminal["duplicate"] = true
 		return terminal
 	if _reservations.has(transaction_id):
 		var existing := _dictionary(_reservations[transaction_id])
+		var existing_binding := _reservation_snapshot_from_record(existing)
+		if not _reservation_bindings_match(candidate_binding, existing_binding):
+			return _reservation_binding_collision(transaction_id)
 		return {
 			"committed": true,
 			"authorized": true,
@@ -364,6 +466,76 @@ func release_reservation(transaction_id: String, reason: String = "released") ->
 	_last_reason = ""
 	receipt["revision"] = _revision
 	return receipt
+
+
+func rollback_consumed_reservation(
+	transaction_id: String,
+	expected_reservation_fingerprint: String,
+	reason: String
+) -> Dictionary:
+	var normalized_reason := reason.strip_edges()
+	if not _configured or transaction_id.is_empty() or transaction_id != transaction_id.strip_edges() \
+			or not _is_sha256_fingerprint(expected_reservation_fingerprint) \
+			or normalized_reason.is_empty() or normalized_reason != reason or normalized_reason.length() > 160:
+		return _reservation_rollback_rejection("invalid_asset_reservation_rollback_request", transaction_id)
+	if _reservations.has(transaction_id):
+		var existing := _dictionary(_reservations[transaction_id])
+		var existing_binding := _reservation_snapshot_from_record(existing)
+		if str(existing_binding.get("fingerprint", "")) != expected_reservation_fingerprint:
+			return _reservation_rollback_rejection("asset_reservation_binding_collision", transaction_id)
+		var replay_marker := _dictionary(existing.get("consumed_rollback", {}))
+		if not _reservation_rollback_marker_is_valid(replay_marker, existing_binding):
+			return _reservation_rollback_rejection("asset_reservation_not_consumed", transaction_id)
+		if str(replay_marker.get("reason", "")) != normalized_reason:
+			return _reservation_rollback_rejection("asset_reservation_rollback_collision", transaction_id)
+		return _reservation_rollback_success(transaction_id, expected_reservation_fingerprint, normalized_reason, true)
+	if not _terminal_receipts.has(transaction_id):
+		return _reservation_rollback_rejection("asset_reservation_terminal_missing", transaction_id)
+	var terminal := _dictionary(_terminal_receipts[transaction_id])
+	if str(terminal.get("outcome", "")) != "consumed":
+		return _reservation_rollback_rejection("asset_reservation_not_consumed", transaction_id)
+	var binding := _terminal_reservation_binding(terminal)
+	if binding.is_empty() or str(binding.get("fingerprint", "")) != expected_reservation_fingerprint:
+		return _reservation_rollback_rejection("asset_reservation_binding_collision", transaction_id)
+	var player_index := int(binding.get("player_index", -1))
+	var player_key := str(player_index)
+	if not _pools_by_player.has(player_key):
+		return _reservation_rollback_rejection("asset_reservation_rollback_player_missing", transaction_id)
+	var pools := _dictionary(_pools_by_player[player_key])
+	var debit := _dictionary(binding.get("debit_milliunits", {}))
+	for asset_id_variant in ASSET_IDS:
+		var asset_id := str(asset_id_variant)
+		var restored_value := int(pools.get(asset_id, 0)) + int(debit.get(asset_id, 0))
+		if restored_value < 0 or restored_value > _pool_maximum_milliunits:
+			return _reservation_rollback_rejection("asset_reservation_rollback_balance_overflow", transaction_id)
+		pools[asset_id] = restored_value
+	var reserved_at_variant: Variant = terminal.get("reservation_reserved_at", -1.0)
+	if not (reserved_at_variant is int or reserved_at_variant is float) \
+			or not is_finite(float(reserved_at_variant)) or float(reserved_at_variant) < 0.0:
+		return _reservation_rollback_rejection("asset_reservation_rollback_binding_invalid", transaction_id)
+	var rollback_marker := {
+		"schema_version": RESERVATION_ROLLBACK_MARKER_VERSION,
+		"transaction_id": transaction_id,
+		"expected_reservation_fingerprint": expected_reservation_fingerprint,
+		"reason": normalized_reason,
+		"state_id": "consumed_reservation_rolled_back",
+	}
+	var restored_reservation := {
+		"transaction_id": transaction_id,
+		"player_index": player_index,
+		"asset_cost": _dictionary(binding.get("asset_cost", {})),
+		"asset_debit": _dictionary(binding.get("asset_debit", {})),
+		"debit_milliunits": debit,
+		"reserved_at": float(reserved_at_variant),
+		"state": "reserved",
+		"consumed_rollback": rollback_marker,
+	}
+	_pools_by_player[player_key] = pools
+	_terminal_receipts.erase(transaction_id)
+	_reservations[transaction_id] = restored_reservation
+	_revision += 1
+	_last_reason = ""
+	return _reservation_rollback_success(transaction_id, expected_reservation_fingerprint, normalized_reason, false)
 
 
 func to_save_data() -> Dictionary:
@@ -506,10 +678,35 @@ func _prepare_save_data(data: Dictionary) -> Dictionary:
 		if transaction_id.is_empty() or not (reservation_variant is Dictionary) \
 				or str((reservation_variant as Dictionary).get("state", "")) != "reserved":
 			return {"valid": false, "reason_code": "asset_save_reservation_invalid"}
+		var reservation := reservation_variant as Dictionary
+		var reservation_binding := _reservation_snapshot_from_record(reservation)
+		var reserved_at_variant: Variant = reservation.get("reserved_at", -1.0)
+		if reservation_binding.is_empty() \
+				or str(reservation_binding.get("transaction_id", "")) != transaction_id \
+				or not (reserved_at_variant is int or reserved_at_variant is float) \
+				or not is_finite(float(reserved_at_variant)) or float(reserved_at_variant) < 0.0:
+			return {"valid": false, "reason_code": "asset_save_reservation_invalid"}
+		if reservation.has("consumed_rollback") and not _reservation_rollback_marker_is_valid(
+				_dictionary(reservation.get("consumed_rollback", {})), reservation_binding):
+			return {"valid": false, "reason_code": "asset_save_reservation_invalid"}
 	var terminal_receipts := (data.get("terminal_receipts") as Dictionary).duplicate(true)
 	for transaction_id_variant in terminal_receipts.keys():
-		if str(transaction_id_variant).is_empty() or not (terminal_receipts[transaction_id_variant] is Dictionary):
+		var transaction_id := str(transaction_id_variant)
+		if transaction_id.is_empty() or not (terminal_receipts[transaction_id_variant] is Dictionary):
 			return {"valid": false, "reason_code": "asset_save_terminal_receipt_invalid"}
+		var terminal := terminal_receipts[transaction_id_variant] as Dictionary
+		if terminal.has("reservation_binding"):
+			var terminal_binding := _terminal_reservation_binding(terminal)
+			var reservation_reserved_at_variant: Variant = terminal.get("reservation_reserved_at", -1.0)
+			if terminal_binding.is_empty() \
+					or str(terminal_binding.get("transaction_id", "")) != transaction_id \
+					or int(terminal.get("player_index", -1)) != int(terminal_binding.get("player_index", -1)) \
+					or _dictionary(terminal.get("asset_debit", {})) != _dictionary(terminal_binding.get("asset_debit", {})) \
+					or _dictionary(terminal.get("debit_milliunits", {})) != _dictionary(terminal_binding.get("debit_milliunits", {})) \
+					or not (reservation_reserved_at_variant is int or reservation_reserved_at_variant is float) \
+					or not is_finite(float(reservation_reserved_at_variant)) \
+					or float(reservation_reserved_at_variant) < 0.0:
+				return {"valid": false, "reason_code": "asset_save_terminal_receipt_invalid"}
 	var advance_journal := (data.get("advance_once_journal") as Dictionary).duplicate(true)
 	var advance_order := (data.get("advance_once_order") as Array).duplicate()
 	var advance_validation := _validate_advance_once_journal(advance_journal, advance_order)
@@ -714,6 +911,7 @@ func _reserved_milliunits_for_player(player_index: int) -> Dictionary:
 
 
 func _terminal_receipt(transaction_id: String, player_index: int, outcome: String, reservation: Dictionary) -> Dictionary:
+	var reservation_binding := _reservation_snapshot_from_record(reservation)
 	return {
 		"committed": true,
 		"authorized": true,
@@ -724,8 +922,179 @@ func _terminal_receipt(transaction_id: String, player_index: int, outcome: Strin
 		"outcome": outcome,
 		"asset_debit": _dictionary(reservation.get("asset_debit", {})),
 		"debit_milliunits": _dictionary(reservation.get("debit_milliunits", {})),
+		"reservation_binding": reservation_binding,
+		"reservation_reserved_at": float(reservation.get("reserved_at", _current_game_time)),
 		"settled_at": _current_game_time,
 		"reason": "",
+	}
+
+
+func _reservation_snapshot_from_plan(plan: Dictionary) -> Dictionary:
+	return _make_reservation_snapshot(
+		str(plan.get("transaction_id", "")),
+		int(plan.get("player_index", -1)),
+		_dictionary(plan.get("asset_cost", {})),
+		_dictionary(plan.get("asset_debit", {})),
+		_dictionary(plan.get("debit_milliunits", {})),
+		"reserved"
+	)
+
+
+func _reservation_snapshot_from_record(reservation: Dictionary) -> Dictionary:
+	return _make_reservation_snapshot(
+		str(reservation.get("transaction_id", "")),
+		int(reservation.get("player_index", -1)),
+		_dictionary(reservation.get("asset_cost", {})),
+		_dictionary(reservation.get("asset_debit", {})),
+		_dictionary(reservation.get("debit_milliunits", {})),
+		str(reservation.get("state", ""))
+	)
+
+
+func _make_reservation_snapshot(
+	transaction_id: String,
+	player_index: int,
+	asset_cost: Dictionary,
+	asset_debit: Dictionary,
+	debit_milliunits: Dictionary,
+	state: String
+) -> Dictionary:
+	var snapshot := {
+		"schema_version": RESERVATION_SNAPSHOT_VERSION,
+		"transaction_id": transaction_id,
+		"player_index": player_index,
+		"asset_cost": asset_cost.duplicate(true),
+		"asset_debit": asset_debit.duplicate(true),
+		"debit_milliunits": debit_milliunits.duplicate(true),
+		"state": state,
+		"fingerprint": "",
+	}
+	if not _reservation_snapshot_body_is_valid(snapshot):
+		return {}
+	snapshot["fingerprint"] = reservation_fingerprint(snapshot)
+	return snapshot
+
+
+func _reservation_snapshot_body_is_valid(snapshot: Dictionary) -> bool:
+	if not StrictState.has_exact_keys(snapshot, RESERVATION_SNAPSHOT_KEYS) \
+			or not _is_pure_data(snapshot) \
+			or not (snapshot.get("schema_version") is int) \
+			or int(snapshot.get("schema_version", 0)) != RESERVATION_SNAPSHOT_VERSION \
+			or not (snapshot.get("transaction_id") is String) \
+			or str(snapshot.get("transaction_id", "")).is_empty() \
+			or str(snapshot.get("transaction_id", "")) != str(snapshot.get("transaction_id", "")).strip_edges() \
+			or not (snapshot.get("player_index") is int) \
+			or int(snapshot.get("player_index", -1)) < 0 \
+			or str(snapshot.get("state", "")) != "reserved" \
+			or not _exact_nonnegative_integer_map(snapshot.get("asset_cost"), RESERVATION_COST_KEYS) \
+			or not _exact_nonnegative_integer_map(snapshot.get("asset_debit"), ASSET_IDS) \
+			or not _exact_nonnegative_integer_map(snapshot.get("debit_milliunits"), ASSET_IDS):
+		return false
+	var cost := snapshot.get("asset_cost") as Dictionary
+	var debit := snapshot.get("asset_debit") as Dictionary
+	var milliunits := snapshot.get("debit_milliunits") as Dictionary
+	var debit_total := 0
+	for asset_id_variant in ASSET_IDS:
+		var asset_id := str(asset_id_variant)
+		var debit_value := int(debit.get(asset_id, 0))
+		if int(milliunits.get(asset_id, -1)) != debit_value * MILLIASSET_SCALE:
+			return false
+		debit_total += debit_value
+	return _asset_total(cost) == debit_total
+
+
+func _exact_nonnegative_integer_map(value: Variant, expected_keys: Array) -> bool:
+	if not (value is Dictionary) or not StrictState.has_exact_keys(value as Dictionary, expected_keys):
+		return false
+	for key_variant in expected_keys:
+		var amount_variant: Variant = (value as Dictionary).get(key_variant)
+		if not (amount_variant is int) or int(amount_variant) < 0:
+			return false
+	return true
+
+
+func _terminal_reservation_binding(terminal: Dictionary) -> Dictionary:
+	var binding_variant: Variant = terminal.get("reservation_binding", {})
+	if not (binding_variant is Dictionary):
+		return {}
+	var binding := (binding_variant as Dictionary).duplicate(true)
+	var expected_fingerprint := reservation_fingerprint(binding)
+	if expected_fingerprint.is_empty() or str(binding.get("fingerprint", "")) != expected_fingerprint:
+		return {}
+	return binding
+
+
+func _reservation_bindings_match(left: Dictionary, right: Dictionary) -> bool:
+	if left.is_empty() or right.is_empty():
+		return false
+	var left_fingerprint := reservation_fingerprint(left)
+	var right_fingerprint := reservation_fingerprint(right)
+	return not left_fingerprint.is_empty() \
+		and left_fingerprint == str(left.get("fingerprint", "")) \
+		and right_fingerprint == str(right.get("fingerprint", "")) \
+		and left_fingerprint == right_fingerprint
+
+
+func _reservation_rollback_marker_is_valid(marker: Dictionary, binding: Dictionary) -> bool:
+	return StrictState.has_exact_keys(marker, RESERVATION_ROLLBACK_MARKER_KEYS) \
+		and _is_pure_data(marker) \
+		and marker.get("schema_version") is int \
+		and int(marker.get("schema_version", 0)) == RESERVATION_ROLLBACK_MARKER_VERSION \
+		and str(marker.get("transaction_id", "")) == str(binding.get("transaction_id", "")) \
+		and str(marker.get("expected_reservation_fingerprint", "")) == str(binding.get("fingerprint", "")) \
+		and not str(marker.get("reason", "")).is_empty() \
+		and str(marker.get("reason", "")) == str(marker.get("reason", "")).strip_edges() \
+		and str(marker.get("reason", "")).length() <= 160 \
+		and str(marker.get("state_id", "")) == "consumed_reservation_rolled_back"
+
+
+func _is_sha256_fingerprint(fingerprint: String) -> bool:
+	if fingerprint.length() != 64 or fingerprint != fingerprint.to_lower():
+		return false
+	for index in range(fingerprint.length()):
+		var code := fingerprint.unicode_at(index)
+		if not (code >= 48 and code <= 57) and not (code >= 97 and code <= 102):
+			return false
+	return true
+
+
+func _reservation_binding_collision(transaction_id: String) -> Dictionary:
+	return {
+		"committed": false,
+		"authorized": false,
+		"reason": "asset_reservation_binding_collision",
+		"transaction_id": transaction_id,
+		"revision": _revision,
+	}
+
+
+func _reservation_rollback_success(
+	transaction_id: String,
+	reservation_binding_fingerprint: String,
+	reason: String,
+	duplicate: bool
+) -> Dictionary:
+	return {
+		"committed": true,
+		"rolled_back": true,
+		"reservation_restored": true,
+		"duplicate": duplicate,
+		"transaction_id": transaction_id,
+		"reservation_fingerprint": reservation_binding_fingerprint,
+		"reason": reason,
+		"revision": _revision,
+	}
+
+
+func _reservation_rollback_rejection(reason: String, transaction_id: String) -> Dictionary:
+	return {
+		"committed": false,
+		"rolled_back": false,
+		"reservation_restored": false,
+		"duplicate": false,
+		"transaction_id": transaction_id,
+		"reason": reason,
+		"revision": _revision,
 	}
 
 

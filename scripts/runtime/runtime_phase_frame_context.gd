@@ -9,6 +9,8 @@ var trace: Array[StringName] = []
 var phase_trace: Array[StringName] = []
 var simulation_step_index := 0
 var simulation_step_receipt: Dictionary = {}
+var command_phase_consumes_frame := false
+var command_phase_receipt: Dictionary = {}
 
 
 func _init(delta_seconds := 0.0) -> void:

@@ -44,6 +44,15 @@ func advance_frame(real_delta: float) -> Dictionary:
 	var recovery := simulation_step.recover_postcommit_before_frame(context)
 	if bool(recovery.get("needed", false)):
 		return _finish(context)
+	var immediate := command.immediate_facility_resolution_pending()
+	if bool(immediate.get("pending", false)):
+		var command_only_path := lifecycle.begin_command_only_frame(context)
+		if command_only_path != &"active":
+			return _finish(context)
+		var command_only_receipt := simulation_step.advance_active(context)
+		if bool(command_only_receipt.get("completed", false)):
+			presentation_schedule.advance_frame_end(context)
+		return _finish(context)
 	var path := lifecycle.begin_frame(context)
 	if path == &"global_blocked":
 		simulation.advance_blocked_realtime(context)

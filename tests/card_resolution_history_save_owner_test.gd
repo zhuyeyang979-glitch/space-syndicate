@@ -166,7 +166,7 @@ func _run() -> void:
 	var registry_snapshot: Dictionary = registry.registry_snapshot()
 	_expect(registry.fixed_section_order() == EXPECTED_ORDER and EXPECTED_ORDER[-1] == "session", "registry fixed order inserts history after execution and keeps session last")
 	_expect(int(registry_snapshot.get("required_section_count", 0)) == 19 and int(registry_snapshot.get("binding_count", 0)) == 19, "registry has nineteen required unique bindings")
-	_expect(int(registry_snapshot.get("transactional_section_count", 0)) == 12 and int(registry_snapshot.get("unsupported_section_count", 0)) == 7 and not bool(registry_snapshot.get("resume_ready", true)), "registry remains fail-closed at the 12/7 boundary")
+	_expect(int(registry_snapshot.get("transactional_section_count", 0)) == 19 and int(registry_snapshot.get("unsupported_section_count", -1)) == 0 and bool(registry_snapshot.get("resume_ready", false)), "all nineteen existing owners are transactionally restore-ready")
 	_expect(_history_binding_valid(registry), "history binding is unique, transactional, and uses explicit preflight")
 	_expect(not execution.to_save_data().has("history") and not execution.to_save_data().has("card_resolution_history"), "execution section contains no history copy")
 	_expect(not session.to_save_data().has("history") and not session.to_save_data().has("card_resolution_history"), "session section contains no history copy")

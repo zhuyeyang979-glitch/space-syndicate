@@ -5,6 +5,8 @@ class_name CardResolutionQueueRuntimeService
 const SharedCardGroupWindowScript := preload("res://scripts/cards/shared_card_group_window.gd")
 const StableTargetEnvelope := preload("res://scripts/runtime/card_resolution_stable_target_envelope.gd")
 const StrictState := preload("res://scripts/runtime/save_owner_state_v2_contract.gd")
+const FacilityBinding := preload("res://scripts/cards/v06/queued_facility_card_action_v1.gd")
+const FacilityRestoreDependencies := preload("res://scripts/runtime/queued_facility_card_restore_dependency_contract_v06.gd")
 
 const RULESET_ID := "v0.6"
 const SAVE_STATE_VERSION := 2
@@ -321,6 +323,43 @@ func start_next(facts: Dictionary = {}) -> Dictionary:
 	}
 
 
+func start_immediate_facility(resolution_id: int, facts: Dictionary = {}) -> Dictionary:
+	if not _configured or not _is_data_only(facts) or resolution_id <= 0:
+		return {"started": false, "reason": "invalid_immediate_facility_request"}
+	if not _active_entry.is_empty():
+		return {"started": false, "reason": "active_present"}
+	var entry_index := -1
+	for index in range(_current_queue.size()):
+		var candidate_variant: Variant = _current_queue[index]
+		if not (candidate_variant is Dictionary):
+			continue
+		var candidate := candidate_variant as Dictionary
+		if int(candidate.get("resolution_id", -1)) == resolution_id:
+			entry_index = index
+			break
+	if entry_index < 0:
+		return {"started": false, "reason": "immediate_facility_entry_missing"}
+	var entry := (_current_queue[entry_index] as Dictionary).duplicate(true)
+	var binding: Dictionary = entry.get("v06_facility_action", {}) \
+		if entry.get("v06_facility_action", {}) is Dictionary else {}
+	if not bool(FacilityBinding.validation_report(binding).get("valid", false)) \
+			or int(binding.get("resolution_id", -1)) != resolution_id:
+		return {"started": false, "reason": "immediate_facility_binding_invalid"}
+	_current_queue.remove_at(entry_index)
+	_reindex_current_groups()
+	entry["facility_immediate_preemption"] = true
+	entry["started_time"] = float(facts.get("game_time", 0.0))
+	_active_entry = entry
+	_revision += 1
+	return {
+		"started": true,
+		"reason": "",
+		"revision": _revision,
+		"active_entry": active_entry(),
+		"current_count": _current_queue.size(),
+	}
+
+
 func complete_active(resolution_id: int, _result: Dictionary = {}) -> Dictionary:
 	if _active_entry.is_empty():
 		return {"completed": false, "reason": "active_missing"}
@@ -611,6 +650,14 @@ func preflight_restore_dependencies(section_state: Dictionary, all_normalized_st
 	var section_preflight := preflight_save_data(section_state)
 	if not bool(section_preflight.get("accepted", false)):
 		return _restore_dependency_rejection("card_resolution_queue_dependency_section_invalid")
+	var facility_dependencies := FacilityRestoreDependencies.validate(
+		section_state.duplicate(true),
+		all_normalized_states.duplicate(true)
+	)
+	if not bool(facility_dependencies.get("accepted", false)):
+		return _restore_dependency_rejection(str(facility_dependencies.get(
+			"reason_code", "card_resolution_queue_facility_dependency_invalid"
+		)))
 	if not (all_normalized_states.get("session") is Dictionary) \
 			or not (all_normalized_states.get("card_resolution_execution") is Dictionary) \
 			or not (all_normalized_states.get("card_resolution_history") is Dictionary):
@@ -651,7 +698,7 @@ func preflight_restore_dependencies(section_state: Dictionary, all_normalized_st
 	)
 	if not bool(lineage_result.get("valid", false)):
 		return _restore_dependency_rejection(str(lineage_result.get("reason_code", "card_resolution_queue_dependency_lineage_invalid")))
-	return {
+	var receipt := {
 		"accepted": true,
 		"reason": "",
 		"reason_code": "card_resolution_queue_restore_dependencies_valid",
@@ -659,6 +706,14 @@ func preflight_restore_dependencies(section_state: Dictionary, all_normalized_st
 		"execution_lineage_count": int(lineage_result.get("execution_lineage_count", 0)),
 		"history_lineage_count": int(lineage_result.get("history_lineage_count", 0)),
 	}
+	for field_id in [
+		"facility_reference_count",
+		"facility_escrow_reference_count",
+		"facility_reservation_reference_count",
+		"facility_target_catalog_count",
+	]:
+		receipt[field_id] = int(facility_dependencies.get(field_id, 0))
+	return receipt
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
@@ -778,6 +833,26 @@ func _group_count_in_prefix(entries: Array, player_index: int, end_exclusive: in
 	for index in range(clampi(end_exclusive, 0, entries.size())):
 		prefix.append(entries[index])
 	return SharedCardGroupWindowScript.group_card_count(prefix, player_index)
+
+
+func _reindex_current_groups() -> void:
+	var group_sizes: Dictionary = {}
+	for entry_variant in _current_queue:
+		if entry_variant is Dictionary:
+			var player_index := int((entry_variant as Dictionary).get("player_index", -1))
+			group_sizes[str(player_index)] = int(group_sizes.get(str(player_index), 0)) + 1
+	var group_orders: Dictionary = {}
+	for index in range(_current_queue.size()):
+		if not (_current_queue[index] is Dictionary):
+			continue
+		var entry := (_current_queue[index] as Dictionary).duplicate(true)
+		var player_index := int(entry.get("player_index", -1))
+		var player_key := str(player_index)
+		var group_order := int(group_orders.get(player_key, 0)) + 1
+		group_orders[player_key] = group_order
+		entry["group_order"] = group_order
+		entry["group_size"] = int(group_sizes.get(player_key, group_order))
+		_current_queue[index] = entry
 
 
 func _authoritative_submission_capability(player_index: int, window_sequence: int, request: Dictionary, facts: Dictionary) -> Dictionary:
@@ -1113,14 +1188,14 @@ func _validate_save_data(data: Dictionary) -> Dictionary:
 	var maximum_window_sequence := -1
 	for entries_variant in [data.get("current_queue"), data.get("next_queue")]:
 		for entry_variant in entries_variant as Array:
-			var entry_validation := _validate_save_entry(entry_variant, seen_resolution_ids)
+			var entry_validation := _validate_save_entry(entry_variant, seen_resolution_ids, int(data.get("revision", -1)))
 			if not bool(entry_validation.get("valid", false)):
 				return entry_validation
 			maximum_resolution_id = maxi(maximum_resolution_id, int(entry_validation.get("resolution_id", 0)))
 			maximum_window_sequence = maxi(maximum_window_sequence, int(entry_validation.get("window_sequence", -1)))
 	var active := data.get("active_entry") as Dictionary
 	if not active.is_empty():
-		var active_validation := _validate_save_entry(active, seen_resolution_ids)
+		var active_validation := _validate_save_entry(active, seen_resolution_ids, int(data.get("revision", -1)))
 		if not bool(active_validation.get("valid", false)):
 			return active_validation
 		maximum_resolution_id = maxi(maximum_resolution_id, int(active_validation.get("resolution_id", 0)))
@@ -1132,7 +1207,7 @@ func _validate_save_data(data: Dictionary) -> Dictionary:
 	return {"valid": true, "reason_code": "card_resolution_queue_save_valid"}
 
 
-func _validate_save_entry(entry_variant: Variant, seen_resolution_ids: Dictionary) -> Dictionary:
+func _validate_save_entry(entry_variant: Variant, seen_resolution_ids: Dictionary, queue_revision: int) -> Dictionary:
 	if not (entry_variant is Dictionary):
 		return {"valid": false, "reason_code": "card_resolution_queue_entry_not_dictionary"}
 	var entry := entry_variant as Dictionary
@@ -1175,6 +1250,24 @@ func _validate_save_entry(entry_variant: Variant, seen_resolution_ids: Dictionar
 		var target_validation := StableTargetEnvelope.validate_entry_binding(entry)
 		if not bool(target_validation.get("valid", false)):
 			return {"valid": false, "reason_code": "card_resolution_queue_target_dangling"}
+	if entry.has("v06_facility_action"):
+		var facility_report := FacilityBinding.validation_report(entry.get("v06_facility_action"))
+		if not bool(facility_report.get("valid", false)):
+			return {"valid": false, "reason_code": "card_resolution_queue_facility_binding_invalid"}
+		var binding := entry.get("v06_facility_action") as Dictionary
+		var skill := entry.get("skill") as Dictionary
+		if int(binding.get("resolution_id", -1)) != resolution_id \
+				or int(binding.get("actor_player_index", -1)) != int(entry.get("player_index", -2)) \
+				or int(binding.get("source_slot_index", -1)) != int(entry.get("slot_index", -2)) \
+				or int(binding.get("queue_revision_at_commit", -1)) <= 0 \
+				or int(binding.get("queue_revision_at_commit", -1)) > queue_revision \
+				or str(skill.get("kind", "")) != "public_facility" \
+				or int(skill.get("rank", -1)) != int(binding.get("rank", -2)) \
+				or bool(entry.get("asset_reservation_required", false)) \
+					!= bool((binding.get("asset_reservation") as Dictionary).get("required", false)) \
+				or str(entry.get("asset_reservation_id", "")) \
+					!= str((binding.get("asset_reservation") as Dictionary).get("reservation_id", "")):
+			return {"valid": false, "reason_code": "card_resolution_queue_facility_binding_mismatch"}
 	return {
 		"valid": true,
 		"reason_code": "card_resolution_queue_entry_valid",

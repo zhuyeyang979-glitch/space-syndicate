@@ -23,6 +23,7 @@ const TEST_FAULT_STAGES := [
 @export var world_session_path: NodePath
 @export var run_rng_path: NodePath
 @export var card_annotation_path: NodePath
+@export var card_state_validation_path: NodePath
 
 var _test_fault_once := ""
 var _apply_count := 0
@@ -52,6 +53,9 @@ func capture_composite_state() -> Dictionary:
 	if not bool(world_capture.get("accepted", false)):
 		return _capture_rejection(str(world_capture.get("reason_code", "world_session_capture_invalid")))
 	var world_state: Dictionary = world_capture.get("normalized_state", {})
+	var escrow_preflight := _preflight_world_facility_card_escrows(world_state)
+	if not bool(escrow_preflight.get("accepted", false)):
+		return _capture_rejection(str(escrow_preflight.get("reason_code", "facility_card_escrow_world_state_invalid")))
 	var rng_state_variant: Variant = run_rng.call("to_save_data")
 	var rng_state: Dictionary = rng_state_variant if rng_state_variant is Dictionary else {}
 	var rng_preflight: Dictionary = run_rng.call("preflight_save_data", rng_state)
@@ -117,6 +121,12 @@ func preflight_save_data(data: Dictionary) -> Dictionary:
 	if not bool(world_preflight.get("accepted", false)):
 		return _preflight_rejection(str(world_preflight.get("reason_code", "world_session_preflight_failed")), "world_session_state")
 	var normalized_world: Dictionary = world_preflight.get("normalized_state", {})
+	var escrow_preflight := _preflight_world_facility_card_escrows(normalized_world)
+	if not bool(escrow_preflight.get("accepted", false)):
+		return _preflight_rejection(
+			str(escrow_preflight.get("reason_code", "facility_card_escrow_world_state_invalid")),
+			"world_session_state"
+		)
 	var rng_preflight: Dictionary = run_rng.call("preflight_save_data", data.get("run_rng_state", {}))
 	if not bool(rng_preflight.get("accepted", false)):
 		return _preflight_rejection(str(rng_preflight.get("reason_code", "run_rng_preflight_failed")), "run_rng_state")
@@ -292,6 +302,7 @@ func debug_snapshot() -> Dictionary:
 		"owns_save_section": false,
 		"coordinates_existing_owners": true,
 		"child_owner_count": 3,
+		"facility_escrow_validation_dependency": true,
 		"apply_count": _apply_count,
 		"rollback_count": _rollback_count,
 		"last_reason_code": _last_reason_code,
@@ -354,6 +365,40 @@ func _run_rng_node() -> RunRngService:
 
 func _annotation_node() -> CardHistoryPrivateAnnotationService:
 	return get_node_or_null(card_annotation_path) as CardHistoryPrivateAnnotationService
+
+
+func _card_state_validation_node() -> Node:
+	return get_node_or_null(card_state_validation_path)
+
+
+func _preflight_world_facility_card_escrows(world_state: Dictionary) -> Dictionary:
+	var players_variant: Variant = world_state.get("players", [])
+	if not (players_variant is Array):
+		return {"accepted": false, "reason_code": "facility_card_escrow_world_state_invalid"}
+	var has_facility_state := false
+	for player_variant in players_variant as Array:
+		if not (player_variant is Dictionary):
+			return {"accepted": false, "reason_code": "facility_card_escrow_world_state_invalid"}
+		var player := player_variant as Dictionary
+		for field_id in ["facility_card_escrows", "facility_card_escrow_receipts"]:
+			if not player.has(field_id):
+				continue
+			if not (player.get(field_id) is Dictionary):
+				return {"accepted": false, "reason_code": "facility_card_escrow_state_invalid"}
+			has_facility_state = has_facility_state or not (player.get(field_id) as Dictionary).is_empty()
+	if not has_facility_state:
+		return {"accepted": true, "reason_code": "facility_card_escrow_world_state_empty"}
+	var validator := _card_state_validation_node()
+	if validator == null or not validator.has_method("preflight_facility_card_escrow_world_state"):
+		return {"accepted": false, "reason_code": "facility_card_escrow_validator_unavailable"}
+	var receipt_variant: Variant = validator.call(
+		"preflight_facility_card_escrow_world_state",
+		world_state.duplicate(true)
+	)
+	return (receipt_variant as Dictionary).duplicate(true) if receipt_variant is Dictionary else {
+		"accepted": false,
+		"reason_code": "facility_card_escrow_validation_receipt_invalid",
+	}
 
 
 func _looks_like_pre_resume(data: Dictionary) -> bool:

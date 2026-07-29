@@ -338,6 +338,8 @@ func _dispatch(intent: Dictionary) -> Dictionary:
 
 
 func _dispatch_card_play(intent: Dictionary, actor_index: int) -> Dictionary:
+	var authorization: Dictionary = intent.get("actor_authorization", {}) \
+		if intent.get("actor_authorization", {}) is Dictionary else {}
 	var target_ids := intent.get("target_ids", {}) as Dictionary
 	var slot_index := _slot_index(str(target_ids.get("hand_slot_id", "")))
 	var card := _card_at(actor_index, slot_index)
@@ -351,6 +353,15 @@ func _dispatch_card_play(intent: Dictionary, actor_index: int) -> Dictionary:
 		"player_index": actor_index,
 		"slot_index": slot_index,
 		"submission_source": str(intent.get("submission_kind", "")),
+		"request_id": str(intent.get("request_id", "")),
+		"intent_fingerprint": str(intent.get("intent_fingerprint", "")),
+		"source_revision": int(intent.get("source_revision", -1)),
+		"actor_kind_id": str(authorization.get("actor_kind_id", "")),
+		"actor_id": str(authorization.get("actor_id", "")),
+		"session_id": str(authorization.get("session_id", "")),
+		"session_revision": int(authorization.get("session_revision", -1)),
+		"hand_slot_id": str(target_ids.get("hand_slot_id", "")),
+		"card_instance_id": str(target_ids.get("card_instance_id", "")),
 	}
 	var selected_resolution_id := _parse_stable_suffix(str(target_ids.get("selected_resolution_id", "")), "card.resolution.")
 	if selected_resolution_id >= 0:
@@ -377,17 +388,27 @@ func _dispatch_card_play(intent: Dictionary, actor_index: int) -> Dictionary:
 	var accepted := bool(result.get("accepted", result.get("queued", false)))
 	var v06_receipt: Dictionary = result.get("v06_receipt", {}) \
 		if result.get("v06_receipt", {}) is Dictionary else {}
+	var queued := accepted and bool(v06_receipt.get("queued", false))
 	if accepted and not v06_receipt.is_empty():
-		var finalization: Dictionary = v06_receipt.get("effect_finalization", {}) \
-			if v06_receipt.get("effect_finalization", {}) is Dictionary else {}
-		accepted = bool(v06_receipt.get("committed", false)) \
-			and bool(finalization.get("finalized", v06_receipt.get("finalized", false)))
+		if queued:
+			accepted = not CARD_BINDING.resolution_ref(
+				int(v06_receipt.get("resolution_id", -1))
+			).is_empty()
+		else:
+			var finalization: Dictionary = v06_receipt.get("effect_finalization", {}) \
+				if v06_receipt.get("effect_finalization", {}) is Dictionary else {}
+			accepted = bool(v06_receipt.get("committed", false)) \
+				and bool(finalization.get("finalized", v06_receipt.get("finalized", false)))
 	if accepted:
 		_card_play_apply_count += 1
 	return {
 		"accepted": accepted,
 		"reason_id": str(result.get("reason", "card-play-accepted" if accepted else "card-play-rejected")).replace("_", "-"),
-		"effect_ref": "card.play.%s" % str(target_ids.get("card_instance_id", "")) if accepted else "none",
+		"effect_ref": CARD_BINDING.resolution_ref(
+			int(v06_receipt.get("resolution_id", -1))
+		) if queued and accepted else (
+			"card.play.%s" % str(target_ids.get("card_instance_id", "")) if accepted else "none"
+		),
 		"authoritative_revision": _operation_revision + 1,
 		"refresh_scope": "full" if accepted else "none",
 	}

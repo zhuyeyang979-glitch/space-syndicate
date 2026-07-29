@@ -1,285 +1,57 @@
 extends SceneTree
 
-const AI_SCRIPT := preload("res://scripts/runtime/ai_runtime_controller.gd")
-const PORT_SCRIPT := preload("res://scripts/runtime/ai_v06_economy_action_port.gd")
-const WORLD_BRIDGE_SCRIPT := preload("res://scripts/runtime/ai_runtime_world_bridge.gd")
-const MONSTER_SCRIPT := preload("res://scripts/runtime/monster_runtime_controller.gd")
+const FLOW_SCENE := preload("res://scenes/runtime/TablePlayerActionApplicationFlowController.tscn")
+const GAME_ACTION_INTENT := preload("res://scripts/semantic/game_action_intent_v1.gd")
+const GAME_ACTION_OFFER := preload("res://scripts/semantic/game_action_offer_v1.gd")
 
-const ACTOR_ONE := "ai.one"
-const ACTOR_TWO := "ai.two"
-const FACILITY_CARD_ID := "facility.factory.commerce.rank_1"
-const FACILITY_EFFECT_KIND := "build_upgrade_or_repair_facility"
+const SESSION_ID := "session.ai-facility-action-spine"
+const SESSION_REVISION := 23
+const RESOLUTION_ID := 73
 
 var _checks := 0
 var _failures: Array[String] = []
 
 
-class FakeWorld:
-	extends Node
+class FakeSession:
+	extends GameSessionRuntimeController
 
-	var players: Array = [
-		{"is_ai": true, "eliminated": false, "action_cooldown": 0.0},
-		{"is_ai": true, "eliminated": false, "action_cooldown": 0.0},
-	]
-	var districts: Array = [
-		{"region_id": "region.alpha", "destroyed": false, "lifecycle_state": "active"},
-	]
-	var game_time := 0.0
-	var configured_ai_player_count := 2
-	var configured_player_count := 2
-	var card_resolution_auction_open := false
-	var card_resolution_batch_locked := false
-	var card_resolution_counter_window_active := false
-	var resolved_card_history: Array = []
-	var selected_card_resolution_id := -1
-	var rng := RandomNumberGenerator.new()
-
-	func _init() -> void:
-		rng.seed = 60501
-
-	func _player_is_ai(player_index: int) -> bool:
-		return player_index >= 0 and player_index < players.size() and bool((players[player_index] as Dictionary).get("is_ai", false))
-
-	func _player_is_eliminated(player_index: int) -> bool:
-		return player_index < 0 or player_index >= players.size() or bool((players[player_index] as Dictionary).get("eliminated", false))
-
-	func _runtime_session_finished() -> bool:
-		return false
-
-	func _configured_human_player_count() -> int:
-		return 0
-
-
-class FakeEconomyDelegate:
-	extends RefCounted
-
-	var player_states: Dictionary = {}
-	var market_states: Dictionary = {}
-	var source_states: Dictionary = {}
-	var market_snapshot_revision_offset: Dictionary = {}
-	var player_snapshot_revision_offset: Dictionary = {}
-	var call_log: Array[Dictionary] = []
-	var purchase_requests: Array[Dictionary] = []
-	var play_requests: Array[Dictionary] = []
-	var purchase_calls := 0
-	var play_calls := 0
-	var mutation_count := 0
-	var mutation_origins: Array[String] = []
-	var journal: Dictionary = {}
-
-	func _init() -> void:
-		for actor_id in [ACTOR_ONE, ACTOR_TWO]:
-			player_states[actor_id] = {
-				"revision": 11,
-				"cash": 20,
-				"cards": [],
-			}
-			market_states[actor_id] = {
-				"revision": 7,
-				"listing": {
-					"canonical": true,
-					"bootstrap_eligible": true,
-					"item_id": "listing.%s.7" % actor_id,
-					"card_id": FACILITY_CARD_ID,
-					"category_id": "facility",
-					"rank": 1,
-					"effect_kind": FACILITY_EFFECT_KIND,
-					"purchase_cash": 4,
-					"target_region_id": "region.alpha",
-					"legal_region_ids": ["region.alpha"],
-				},
-			}
-			source_states[actor_id] = {
-				"revision": 3,
-				"has_source": false,
-				"bootstrap_finalized": false,
-				"legal_region_ids": ["region.alpha"],
-			}
-
-	func actor_id_for_player_index(player_index: int) -> Dictionary:
-		var actor_id := ACTOR_ONE if player_index == 0 else (ACTOR_TWO if player_index == 1 else "")
-		_record_call("actor_id_for_player_index", actor_id)
+	func session_summary() -> Dictionary:
 		return {
-			"available": not actor_id.is_empty(),
-			"revision": 1,
-			"reason_code": "fake_actor_mapping_ready" if not actor_id.is_empty() else "fake_actor_mapping_missing",
-			"actor_id": actor_id,
+			"session_state": STATE_RUNNING,
+			"session_id": SESSION_ID,
+			"scenario_id": "ai-facility-action-spine",
+			"ruleset_id": "v0.6",
+			"seed": 60501,
 		}
 
-	func market_snapshot(actor_id: String) -> Dictionary:
-		_record_call("market_snapshot", actor_id)
-		if not market_states.has(actor_id):
-			return _failure("fake_market_missing")
-		var result := (market_states[actor_id] as Dictionary).duplicate(true)
-		result["revision"] = int(result.get("revision", 0)) + int(market_snapshot_revision_offset.get(actor_id, 0))
-		result["available"] = true
-		result["reason_code"] = "fake_market_ready"
-		return result
+	func session_start_revision() -> int:
+		return SESSION_REVISION
 
-	func purchase_rank_i_facility(
-		actor_id: String,
-		item_id: String,
-		transaction_id: String,
-		expected_market_revision: int,
-		expected_player_revision: int,
-		expected_source_revision: int
-	) -> Dictionary:
-		purchase_calls += 1
-		_record_call("purchase_rank_i_facility", actor_id)
-		purchase_requests.append({
-			"actor_id": actor_id,
-			"item_id": item_id,
-			"transaction_id": transaction_id,
-			"expected_market_revision": expected_market_revision,
-			"expected_player_revision": expected_player_revision,
-			"expected_source_revision": expected_source_revision,
-		})
-		if journal.has(transaction_id):
-			return (journal[transaction_id] as Dictionary).duplicate(true)
-		if not player_states.has(actor_id) or not market_states.has(actor_id) or not source_states.has(actor_id):
-			return _failure("fake_actor_missing")
-		var player := player_states[actor_id] as Dictionary
-		var market := market_states[actor_id] as Dictionary
-		var source := source_states[actor_id] as Dictionary
-		var listing := market.get("listing", {}) as Dictionary
-		if expected_market_revision != int(market.get("revision", -1)):
-			return _failure("market_revision_stale", int(market.get("revision", 0)))
-		if expected_player_revision != int(player.get("revision", -1)):
-			return _failure("player_revision_stale", int(player.get("revision", 0)))
-		if expected_source_revision != int(source.get("revision", -1)) or bool(source.get("has_source", false)):
-			return _failure("source_revision_stale", int(source.get("revision", 0)))
-		if item_id != str(listing.get("item_id", "")):
-			return _failure("listing_changed", int(market.get("revision", 0)))
-		var price := int(listing.get("purchase_cash", -1))
-		if price < 0 or int(player.get("cash", -1)) < price:
-			return _failure("cash_insufficient", int(player.get("revision", 0)))
-		var cards: Array = (player.get("cards", []) as Array).duplicate(true)
-		cards.append({
-			"slot_index": cards.size(),
-			"runtime_instance_id": "runtime.%s.%s" % [actor_id, item_id],
-			"card_id": str(listing.get("card_id", "")),
-			"category_id": str(listing.get("category_id", "")),
-			"rank": int(listing.get("rank", 0)),
-			"effect_kind": str(listing.get("effect_kind", "")),
-			"bootstrap_eligible": bool(listing.get("bootstrap_eligible", false)),
-		})
-		player["cash"] = int(player.get("cash", 0)) - price
-		player["cards"] = cards
-		player["revision"] = int(player.get("revision", 0)) + 1
-		market["revision"] = int(market.get("revision", 0)) + 1
-		player_states[actor_id] = player
-		market_states[actor_id] = market
-		mutation_count += 1
-		mutation_origins.append("purchase_rank_i_facility")
-		var result := {
-			"available": true,
-			"revision": int(player.get("revision", 0)),
-			"reason_code": "committed",
-			"committed": true,
-		}
-		journal[transaction_id] = result.duplicate(true)
-		return result
 
-	func player_snapshot(actor_id: String) -> Dictionary:
-		_record_call("player_snapshot", actor_id)
-		if not player_states.has(actor_id):
-			return _failure("fake_player_missing")
-		var state := (player_states[actor_id] as Dictionary).duplicate(true)
+class FakeCardPlaySubmission:
+	extends CardPlaySubmissionRuntimeController
+
+	var submission_count := 0
+	var owner_mutation_count := 0
+	var requests: Array[Dictionary] = []
+
+	func request_hand_play(request: Dictionary) -> Dictionary:
+		submission_count += 1
+		requests.append(request.duplicate(true))
 		return {
-			"available": true,
-			"revision": int(state.get("revision", 0)) + int(player_snapshot_revision_offset.get(actor_id, 0)),
-			"reason_code": "fake_player_ready",
-			"cash": int(state.get("cash", 0)),
-			"cards": (state.get("cards", []) as Array).duplicate(true),
-		}
-
-	func play_runtime_card(request: Dictionary) -> Dictionary:
-		play_calls += 1
-		var actor_id := str(request.get("actor_id", ""))
-		_record_call("play_runtime_card", actor_id)
-		play_requests.append(request.duplicate(true))
-		var transaction_id := str(request.get("transaction_id", ""))
-		if journal.has(transaction_id):
-			return (journal[transaction_id] as Dictionary).duplicate(true)
-		if not player_states.has(actor_id) or not source_states.has(actor_id):
-			return _failure("fake_actor_missing")
-		var player := player_states[actor_id] as Dictionary
-		var source := source_states[actor_id] as Dictionary
-		if int(request.get("expected_player_revision", -1)) != int(player.get("revision", -1)):
-			return _failure("player_revision_stale", int(player.get("revision", 0)))
-		if int(request.get("expected_source_revision", -1)) != int(source.get("revision", -1)) or bool(source.get("has_source", false)):
-			return _failure("source_revision_stale", int(source.get("revision", 0)))
-		if str(request.get("region_id", "")) != "region.alpha":
-			return _failure("region_invalid", int(player.get("revision", 0)))
-		var cards: Array = (player.get("cards", []) as Array).duplicate(true)
-		var slot_index := int(request.get("slot_index", -1))
-		if slot_index < 0 or slot_index >= cards.size() or not (cards[slot_index] is Dictionary):
-			return _failure("card_binding_missing", int(player.get("revision", 0)))
-		var card := cards[slot_index] as Dictionary
-		if str(card.get("runtime_instance_id", "")) != str(request.get("runtime_instance_id", "")):
-			return _failure("card_binding_changed", int(player.get("revision", 0)))
-		cards.remove_at(slot_index)
-		player["cards"] = cards
-		player["revision"] = int(player.get("revision", 0)) + 1
-		source["has_source"] = true
-		source["bootstrap_finalized"] = true
-		source["revision"] = int(source.get("revision", 0)) + 1
-		player_states[actor_id] = player
-		source_states[actor_id] = source
-		mutation_count += 1
-		mutation_origins.append("play_runtime_card")
-		var result := {
-			"available": true,
-			"revision": int(player.get("revision", 0)),
-			"reason_code": "committed",
-			"committed": true,
-			"finalized": true,
-			"effect_finalization": {"finalized": true},
-		}
-		journal[transaction_id] = result.duplicate(true)
-		return result
-
-	func economic_source_snapshot(actor_id: String) -> Dictionary:
-		_record_call("economic_source_snapshot", actor_id)
-		if not source_states.has(actor_id):
-			return _failure("fake_source_missing")
-		var source := source_states[actor_id] as Dictionary
-		return {
-			"available": true,
-			"revision": int(source.get("revision", 0)),
-			"reason_code": "fake_source_ready",
-			"has_source": bool(source.get("has_source", false)),
-			"bootstrap_finalized": bool(source.get("bootstrap_finalized", false)),
-			"target_region_id": str(source.get("target_region_id", "")),
-			"legal_region_ids": (source.get("legal_region_ids", []) as Array).duplicate(true),
-		}
-
-	func owner_snapshot() -> Dictionary:
-		return {
-			"players": player_states.duplicate(true),
-			"markets": market_states.duplicate(true),
-			"sources": source_states.duplicate(true),
-			"journal": journal.duplicate(true),
-			"mutation_count": mutation_count,
-		}
-
-	func calls_for_actor(actor_id: String) -> Array[String]:
-		var result: Array[String] = []
-		for entry_variant in call_log:
-			var entry := entry_variant as Dictionary
-			if str(entry.get("actor_id", "")) == actor_id:
-				result.append(str(entry.get("method", "")))
-		return result
-
-	func _record_call(method_name: String, actor_id: String) -> void:
-		call_log.append({"method": method_name, "actor_id": actor_id})
-
-	func _failure(reason_code: String, revision: int = 0) -> Dictionary:
-		return {
-			"available": true,
-			"revision": maxi(0, revision),
-			"reason_code": reason_code,
-			"committed": false,
+			"accepted": true,
+			"queued": true,
+			"reason": "facility_card_queued",
+			"resolution_id": RESOLUTION_ID,
+			"queue_revision": 1,
+			"v06_receipt": {
+				"accepted": true,
+				"queued": true,
+				"committed": false,
+				"reason_code": "facility_card_queued",
+				"resolution_id": RESOLUTION_ID,
+				"queue_revision": 1,
+			},
 		}
 
 
@@ -288,225 +60,207 @@ func _init() -> void:
 
 
 func _run() -> void:
-	_test_port_contract()
-	_test_actor_identity_is_port_authoritative()
-	_test_normal_and_forced_share_owner_chain()
-	_test_fail_closed_gates()
-	_test_force_only_bypasses_cooldown()
+	_test_ai_submission_is_queue_only()
+	_test_production_spine_is_unique()
 	_finish()
 
 
-func _fixture(bind_port := true) -> Dictionary:
-	var world := FakeWorld.new()
-	var bridge: Node = WORLD_BRIDGE_SCRIPT.new()
-	var monster: Node = MONSTER_SCRIPT.new()
-	var ai: Node = AI_SCRIPT.new()
-	var delegate := FakeEconomyDelegate.new()
-	var port: RefCounted = PORT_SCRIPT.new()
-	get_root().add_child(world)
-	get_root().add_child(bridge)
-	get_root().add_child(monster)
-	get_root().add_child(ai)
-	bridge.call("bind_world", world)
-	ai.call("set_world_bridge", bridge)
-	ai.call("set_monster_runtime_controller", monster)
-	ai.call("configure", {}, null)
-	var starter_state := {
-		ACTOR_ONE: {"state": "summoned", "unit_uid": 101, "transaction_id": "starter.one", "revision": 1},
-		ACTOR_TWO: {"state": "summoned", "unit_uid": 102, "transaction_id": "starter.two", "revision": 1},
-	}
-	monster.set("_monster_starter_state_v06", starter_state)
-	monster.set("_monster_card_revision_v06", 2)
-	if bind_port:
-		port.call("bind_delegate", delegate)
-		ai.call("set_v06_economy_action_port", port)
+func _test_ai_submission_is_queue_only() -> void:
+	var fixture := _fixture()
+	var flow := fixture.get("flow") as TablePlayerActionApplicationFlowController
+	var capability := fixture.get("capability") as GameActionAiSubmissionCapability
+	var card_play := fixture.get("card_play") as FakeCardPlaySubmission
+	var offer := flow.ai_card_play_offer(capability, 0, 0, "region.alpha")
+	var authorization := flow.ai_actor_authorization(capability, 0, "ai-runtime")
+	_expect(
+		bool(GAME_ACTION_OFFER.validation_report(offer).get("valid", false))
+			and not authorization.is_empty(),
+		"capability-bound AI receives one closed card-play offer and authorization"
+	)
+	var intent := GAME_ACTION_INTENT.build({
+		"schema_version": GAME_ACTION_INTENT.SCHEMA_VERSION,
+		"request_id": "request.ai.facility.queue.1",
+		"semantic_action_id": GAME_ACTION_INTENT.ACTION_CARD_PLAY,
+		"source_revision": int(offer.get("source_revision", 0)),
+		"actor_authorization": authorization,
+		"target_ids": GAME_ACTION_OFFER.target_ids(offer),
+		"parameters": {},
+		"submission_kind": "ai_decision",
+	})
+	_expect(
+		bool(GAME_ACTION_INTENT.validation_report(intent).get("valid", false))
+			and GAME_ACTION_OFFER.accepts_intent(offer, intent),
+		"facility submission is a valid offer-bound GameActionIntentV1"
+	)
+	var forged_capability := GameActionAiSubmissionCapability.new()
+	_expect(
+		flow.ai_card_play_offer(forged_capability, 0, 0, "region.alpha").is_empty()
+			and flow.ai_actor_authorization(forged_capability, 0).is_empty(),
+		"an unbound capability cannot obtain an AI offer or authorization"
+	)
+
+	var receipt := flow.submit_intent(intent, capability)
+	var effect_refs: Array = receipt.get("committed_effect_refs", []) \
+		if receipt.get("committed_effect_refs", []) is Array else []
+	_expect(
+		bool(receipt.get("accepted", false))
+			and str(receipt.get("reason_id", "")) == "facility-card-queued"
+			and effect_refs == ["card.resolution.%d" % RESOLUTION_ID],
+		"formal submission reports a queued resolution reference, not immediate completion"
+	)
+	_expect(
+		card_play.submission_count == 1
+			and card_play.owner_mutation_count == 0
+			and card_play.requests.size() == 1,
+		"submission reaches the card-play command target once and mutates no facility owner"
+	)
+	var request := card_play.requests[0]
+	_expect(
+		_same_string_set(request.keys(), [
+			"player_index",
+			"slot_index",
+			"submission_source",
+			"request_id",
+			"intent_fingerprint",
+			"source_revision",
+			"actor_kind_id",
+			"actor_id",
+			"session_id",
+			"session_revision",
+			"hand_slot_id",
+			"card_instance_id",
+			"selected_district",
+		])
+			and int(request.get("selected_district", -1)) == 0
+			and not request.has("card")
+			and not request.has("method_name"),
+		"application flow forwards only stable card, actor, session, and target bindings"
+	)
+
+	var replay := flow.submit_intent(intent, capability)
+	var debug := flow.debug_snapshot()
+	_expect(
+		bool(replay.get("accepted", false))
+			and bool(replay.get("idempotent_replay", false))
+			and card_play.submission_count == 1
+			and card_play.owner_mutation_count == 0,
+		"same-intent replay does not enqueue or mutate a second time"
+	)
+	_expect(
+		int(debug.get("card_play_apply_count", 0)) == 1
+			and int(debug.get("journal_size", 0)) == 1
+			and int(debug.get("replay_count", 0)) == 1,
+		"the formal action journal records one application and one deterministic replay"
+	)
+	(fixture.get("host") as Node).free()
+
+
+func _test_production_spine_is_unique() -> void:
+	var ai_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
+	var flow_source := FileAccess.get_file_as_string("res://scripts/runtime/table_player_action_application_flow_controller.gd")
+	var submission_source := FileAccess.get_file_as_string("res://scripts/runtime/card_play_submission_runtime_controller.gd")
+	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
+	var adapter_source := FileAccess.get_file_as_string("res://scripts/runtime/facility_card_queue_adapter_v06.gd")
+	_expect(
+		ai_source.contains("GameActionIntentV1.ACTION_CARD_PLAY")
+			and ai_source.contains("_game_action_submission_port.submit_intent")
+			and ai_source.contains("_game_action_submission_port.ai_card_play_offer"),
+		"AI card play enters the typed offer-intent-submission spine"
+	)
+	_expect(
+		flow_source.contains("request_hand_play(request)")
+			and flow_source.contains("v06_receipt.get(\"queued\"")
+			and flow_source.contains("CARD_BINDING.resolution_ref"),
+		"application flow accepts facility completion only as a valid queued resolution reference"
+	)
+	_expect(
+		submission_source.contains("func _queue_v06_facility(")
+			and submission_source.contains("_facility_queue_source.submit(_facility_queue_capability")
+			and not coordinator_source.contains("func queue_v06_facility_card_action(")
+			and coordinator_source.contains("func resolve_queued_v06_facility_card_action(")
+			and coordinator_source.contains("func advance_card_resolution_frame("),
+		"facility submission and authorized resolution are separate production transitions"
+	)
+	_expect(
+		adapter_source.contains("func submit(capability: RefCounted, request: Dictionary)")
+			and adapter_source.contains("facility_queue_submission_unauthorized")
+			and adapter_source.contains("func resolve(entry: Dictionary)")
+			and adapter_source.contains("_queue.commit_submission")
+			and adapter_source.contains("_resolution_count += 1"),
+		"the one scene-owned facility adapter bridges Queue submission to later resolution"
+	)
+	_expect(
+		not ai_source.contains("purchase_rank_i_facility")
+			and not ai_source.contains("_ai_v06_facility_bootstrap")
+			and not ai_source.contains("play_runtime_card")
+			and not coordinator_source.contains("func play_runtime_card(")
+			and coordinator_source.contains("v06_facility_requires_game_action_spine"),
+		"retired bespoke AI purchase-play and direct facility-play entry points cannot return"
+	)
+
+
+func _fixture() -> Dictionary:
+	var host := Node.new()
+	host.name = "AiFacilityActionSpineFixture"
+	root.add_child(host)
+	var world := WorldSessionState.new()
+	world.name = "WorldSessionState"
+	world.players = [{
+		"name": "AI",
+		"is_ai": true,
+		"eliminated": false,
+		"slots": [{
+			"runtime_instance_id": "runtime.facility.ai.1",
+			"machine": {
+				"card_id": "facility.factory.commerce.rank_1",
+				"family_id": "facility.factory.commerce",
+				"rank": 1,
+			},
+		}],
+	}]
+	world.districts = [{"region_id": "region.alpha"}]
+	host.add_child(world)
+	var session := FakeSession.new()
+	session.name = "GameSessionRuntimeController"
+	host.add_child(session)
+	var card_play := FakeCardPlaySubmission.new()
+	card_play.name = "CardPlaySubmissionRuntimeController"
+	host.add_child(card_play)
+	var flow := FLOW_SCENE.instantiate() as TablePlayerActionApplicationFlowController
+	host.add_child(flow)
+	var capability := GameActionAiSubmissionCapability.new()
+	_expect(flow.bind_ai_submission_capability(capability), "fixture binds one opaque AI submission capability")
 	return {
-		"world": world,
-		"bridge": bridge,
-		"monster": monster,
-		"ai": ai,
-		"delegate": delegate,
-		"port": port,
+		"host": host,
+		"flow": flow,
+		"capability": capability,
+		"card_play": card_play,
 	}
 
 
-func _dispose(fixture: Dictionary) -> void:
-	for key in ["ai", "monster", "bridge", "world"]:
-		var value: Variant = fixture.get(key)
-		if value is Node and is_instance_valid(value):
-			(value as Node).free()
-
-
-func _test_port_contract() -> void:
-	var port: RefCounted = PORT_SCRIPT.new()
-	var unavailable: Dictionary = port.call("capability_snapshot")
-	_expect(not bool(unavailable.get("available", true)), "unbound port fails closed")
-	var delegate := FakeEconomyDelegate.new()
-	var capability: Dictionary = port.call("bind_delegate", delegate)
-	_expect(bool(capability.get("available", false)), "all six narrow capabilities make the port ready")
-	_expect(str(capability.get("contract_version", "")) == "v0.6-ai-economy-action-port-v2", "port exposes a versioned contract")
-	_expect(int(capability.get("revision", -1)) == 2, "port capability revision advances with the actor identity method")
-	var identity: Dictionary = port.call("actor_id_for_player_index", 0)
-	_expect(bool(identity.get("available", false)) and str(identity.get("actor_id", "")) == ACTOR_ONE, "port resolves the authoritative actor for a player index")
-	var market: Dictionary = port.call("market_snapshot", ACTOR_ONE)
-	_expect(bool(market.get("available", false)) and int(market.get("revision", -1)) >= 0 and not str(market.get("reason_code", "")).is_empty(), "port result has availability revision and reason")
-
-
-func _test_actor_identity_is_port_authoritative() -> void:
-	var fixture := _fixture()
-	var ai: Node = fixture["ai"]
-	var world := fixture["world"] as FakeWorld
-	_expect(not (world.players[0] as Dictionary).has("actor_id"), "AI production world player does not need an actor_id field")
-	var missing_field_candidate: Dictionary = ai.call("_ai_v06_facility_bootstrap_candidate", 0, true)
-	_expect(str(missing_field_candidate.get("actor_id", "")) == ACTOR_ONE, "AI resolves actor identity through the authoritative port when the world player has no actor_id")
-	var forged_player := (world.players[0] as Dictionary).duplicate(true)
-	forged_player["actor_id"] = "forged.world.actor"
-	world.players[0] = forged_player
-	var forged_field_candidate: Dictionary = ai.call("_ai_v06_facility_bootstrap_candidate", 0, true)
-	_expect(str(forged_field_candidate.get("actor_id", "")) == ACTOR_ONE, "forged world-player actor_id cannot override the authoritative port mapping")
-	_dispose(fixture)
-
-
-func _test_normal_and_forced_share_owner_chain() -> void:
-	var fixture := _fixture()
-	var ai: Node = fixture["ai"]
-	var world := fixture["world"] as FakeWorld
-	var delegate := fixture["delegate"] as FakeEconomyDelegate
-	var world_before := {"players": world.players.duplicate(true), "districts": world.districts.duplicate(true)}
-	var candidate: Dictionary = ai.call("_ai_v06_facility_bootstrap_candidate", 0, false)
-	_expect(bool(candidate.get("available", false)), "field-driven candidate is available after starter with no source")
-	_expect(str(candidate.get("policy_kind", "")) == "v06_facility_bootstrap" and str(candidate.get("action_kind", "")) == "purchase_and_play_facility", "candidate identifies policy and action kinds")
-	_expect(candidate.has("expected_market_revision") and candidate.has("expected_player_revision") and candidate.has("expected_source_revision"), "candidate binds all authoritative revisions")
-	_expect(str(candidate.get("region_id", "")) == "region.alpha", "candidate consumes the authoritative listing target")
-	delegate.call_log.clear()
-	ai.set("ai_card_decision_timer", 0.0)
-	ai.call("_update_ai_decisions", 0.01)
-	_expect(bool((delegate.source_states[ACTOR_ONE] as Dictionary).get("has_source", false)), "normal scheduler finalizes the first AI facility")
-	_expect(not bool((delegate.source_states[ACTOR_TWO] as Dictionary).get("has_source", false)), "one scheduler cycle bootstraps at most one seat")
-	_expect(delegate.purchase_calls == 1 and delegate.play_calls == 1, "normal scheduler uses one purchase and one play")
-	var expected_chain: Array[String] = ["actor_id_for_player_index", "economic_source_snapshot", "player_snapshot", "market_snapshot", "purchase_rank_i_facility", "player_snapshot", "play_runtime_card"]
-	_expect(delegate.calls_for_actor(ACTOR_ONE) == expected_chain, "normal scheduler follows the narrow production call chain")
-	_expect(world.players == world_before["players"] and world.districts == world_before["districts"], "AI does not write legacy players or district city state")
-	_expect(delegate.mutation_origins == ["purchase_rank_i_facility", "play_runtime_card"], "only fake owner methods mutate authoritative fixture state")
-	var purchases_before := delegate.purchase_calls
-	var plays_before := delegate.play_calls
-	var repeated: Dictionary = ai.call("_ai_execute_v06_facility_bootstrap_for_player", 0, true)
-	_expect(str(repeated.get("reason_code", "")) == "ai_v06_economic_source_already_exists", "same seat stops after one finalized source")
-	_expect(delegate.purchase_calls == purchases_before and delegate.play_calls == plays_before, "second same-seat invocation does not buy or play again")
-	delegate.call_log.clear()
-	var forced: Dictionary = ai.call("execute_v06_facility_bootstrap_cycle", true)
-	_expect(int(forced.get("acted", 0)) == 1 and bool((delegate.source_states[ACTOR_TWO] as Dictionary).get("has_source", false)), "later forced cycle advances the other AI seat")
-	_expect(delegate.calls_for_actor(ACTOR_TWO) == expected_chain, "forced and normal cycles share the identical owner call chain")
-	var purchase_request: Dictionary = delegate.purchase_requests[0]
-	_expect(not purchase_request.has("price") and not purchase_request.has("card_payload") and not purchase_request.has("owner_receipt"), "purchase submits only identity transaction and revision bindings")
-	var play_request: Dictionary = delegate.play_requests[0]
-	_expect(_keys_equal(play_request.keys(), ["actor_id", "slot_index", "runtime_instance_id", "transaction_id", "region_id", "expected_player_revision", "expected_source_revision"]), "play request is restricted to the narrow binding fields")
-	var public_snapshot: Dictionary = ai.call("ai_v06_facility_bootstrap_public_snapshot")
-	_expect(not _contains_private_key(public_snapshot), "public-safe snapshot excludes actors transactions cash hands routes and scores")
-	_dispose(fixture)
-
-
-func _test_fail_closed_gates() -> void:
-	var cases := [
-		{"name": "port unavailable", "setup": "port", "expected": "ai_v06_economy_port_unavailable"},
-		{"name": "starter incomplete", "setup": "starter", "expected": "ai_v06_starter_not_completed"},
-		{"name": "source exists", "setup": "source", "expected": "ai_v06_economic_source_already_exists"},
-		{"name": "bootstrap already finalized", "setup": "bootstrap_finalized", "expected": "ai_v06_facility_bootstrap_already_finalized"},
-		{"name": "cash insufficient", "setup": "cash", "expected": "ai_v06_facility_cash_insufficient"},
-		{"name": "authoritative target unavailable", "setup": "target", "expected": "ai_v06_facility_authoritative_target_unavailable"},
-		{"name": "stale market revision", "setup": "market_revision", "expected": "market_revision_stale"},
-		{"name": "stale player revision", "setup": "player_revision", "expected": "player_revision_stale"},
-	]
-	for case_variant in cases:
-		var case := case_variant as Dictionary
-		var fixture := _fixture(str(case.get("setup", "")) != "port")
-		var ai: Node = fixture["ai"]
-		var monster: Node = fixture["monster"]
-		var delegate := fixture["delegate"] as FakeEconomyDelegate
-		match str(case.get("setup", "")):
-			"starter":
-				var starter_state: Dictionary = monster.get("_monster_starter_state_v06")
-				starter_state[ACTOR_ONE] = {"state": "not_summoned", "unit_uid": 0, "transaction_id": "", "revision": 0}
-				monster.set("_monster_starter_state_v06", starter_state)
-			"source":
-				(delegate.source_states[ACTOR_ONE] as Dictionary)["has_source"] = true
-			"bootstrap_finalized":
-				(delegate.source_states[ACTOR_ONE] as Dictionary)["bootstrap_finalized"] = true
-			"cash":
-				(delegate.player_states[ACTOR_ONE] as Dictionary)["cash"] = 3
-			"target":
-				var listing := (delegate.market_states[ACTOR_ONE] as Dictionary).get("listing", {}) as Dictionary
-				listing.erase("target_region_id")
-				listing["legal_region_ids"] = []
-				(delegate.market_states[ACTOR_ONE] as Dictionary)["listing"] = listing
-				(delegate.source_states[ACTOR_ONE] as Dictionary)["legal_region_ids"] = []
-			"market_revision":
-				delegate.market_snapshot_revision_offset[ACTOR_ONE] = -1
-			"player_revision":
-				delegate.player_snapshot_revision_offset[ACTOR_ONE] = -1
-		var before := delegate.owner_snapshot()
-		var result: Dictionary = ai.call("_ai_execute_v06_facility_bootstrap_for_player", 0, true)
-		var after := delegate.owner_snapshot()
-		_expect(str(result.get("reason_code", "")) == str(case.get("expected", "")), "%s reports its exact failure" % str(case.get("name", "gate")))
-		_expect(before == after, "%s has zero owner side effects" % str(case.get("name", "gate")))
-		_dispose(fixture)
-
-
-func _test_force_only_bypasses_cooldown() -> void:
-	var fixture := _fixture()
-	var ai: Node = fixture["ai"]
-	var world := fixture["world"] as FakeWorld
-	var delegate := fixture["delegate"] as FakeEconomyDelegate
-	(world.players[0] as Dictionary)["action_cooldown"] = 9.0
-	var normal: Dictionary = ai.call("_ai_execute_v06_facility_bootstrap_for_player", 0, false)
-	_expect(str(normal.get("reason_code", "")) == "ai_v06_facility_action_cooldown" and delegate.mutation_count == 0, "normal action respects cooldown")
-	var forced: Dictionary = ai.call("_ai_execute_v06_facility_bootstrap_for_player", 0, true)
-	_expect(bool(forced.get("finalized", false)), "force bypasses cooldown through the same action")
-	_expect(delegate.purchase_calls == 1 and delegate.play_calls == 1, "force does not bypass purchase or play owners")
-	_dispose(fixture)
-
-
-func _keys_equal(actual: Array, expected: Array) -> bool:
+func _same_string_set(actual: Array, expected: Array) -> bool:
 	var left: Array[String] = []
 	var right: Array[String] = []
-	for key_variant in actual:
-		left.append(str(key_variant))
-	for key_variant in expected:
-		right.append(str(key_variant))
+	for value in actual:
+		left.append(str(value))
+	for value in expected:
+		right.append(str(value))
 	left.sort()
 	right.sort()
 	return left == right
-
-
-func _contains_private_key(value: Variant) -> bool:
-	var forbidden := ["actor_id", "transaction_id", "cash", "hand", "slots", "score", "route", "plan", "pressure"]
-	if value is Dictionary:
-		for key_variant in (value as Dictionary).keys():
-			var key := str(key_variant).to_lower()
-			for token in forbidden:
-				if key.contains(token):
-					return true
-			if _contains_private_key((value as Dictionary).get(key_variant)):
-				return true
-	elif value is Array:
-		for item_variant in value as Array:
-			if _contains_private_key(item_variant):
-				return true
-	return false
 
 
 func _expect(condition: bool, message: String) -> void:
 	_checks += 1
 	if not condition:
 		_failures.append(message)
+		push_error(message)
 
 
 func _finish() -> void:
-	if _failures.is_empty():
-		print("AI V0.6 FACILITY BOOTSTRAP POLICY TEST PASS: %d checks" % _checks)
-		quit(0)
-		return
-	for failure in _failures:
-		push_error("AI V0.6 FACILITY BOOTSTRAP POLICY TEST FAIL: %s" % failure)
-	print("AI V0.6 FACILITY BOOTSTRAP POLICY TEST FAIL: %d/%d" % [_failures.size(), _checks])
-	quit(1)
+	print("AI_V06_FACILITY_ACTION_SPINE_TEST|status=%s|checks=%d|failures=%d" % [
+		"PASS" if _failures.is_empty() else "FAIL",
+		_checks,
+		_failures.size(),
+	])
+	quit(_failures.size())

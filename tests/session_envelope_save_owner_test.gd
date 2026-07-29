@@ -22,6 +22,10 @@ func _run() -> void:
 	var result: Dictionary = bench.run_bench()
 	_expect(bool(result.get("passed", false)), "session envelope production transaction matrix passes: %s" % JSON.stringify(result.get("failures", [])))
 	_expect(int(result.get("checks", 0)) >= 57, "session envelope Bench executes the full bounded cold-restore matrix")
+	var evidence: Dictionary = result.get("evidence", {}) if result.get("evidence", {}) is Dictionary else {}
+	_expect(bool(evidence.get("persistent_session_identity_parity", false)) \
+		and str(evidence.get("persistent_session_identity_seed_decimal", "")) == "9007199254740993" \
+		and int(evidence.get("persistent_session_identity_fault_rollback_count", 0)) == SessionEnvelopeSaveOwner.TEST_FAULT_STAGES.size(), "persistent session identity preserves high Int64 parity across capture restore recapture and every fault rollback")
 	bench.queue_free()
 	await process_frame
 	await _verify_formal_four_player_capture()

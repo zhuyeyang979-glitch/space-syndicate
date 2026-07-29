@@ -17,6 +17,7 @@ const TRANSITION_COMMAND_KINDS := {
 	"all_ready_lock": true,
 	"all_ready_lock_batch": true,
 	"lock_batch": true,
+	"resolve_queued_facility_immediate": true,
 	"hide_overlay": true,
 }
 
@@ -226,6 +227,13 @@ func tick(delta: float, facts: Dictionary) -> Array:
 	_prepare_transition_latches(_last_facts)
 	var commands: Array = []
 	var step := maxf(0.0, delta)
+	if bool(_last_facts.get("immediate_facility_pending", false)):
+		commands.append(_command("resolve_queued_facility_immediate", {
+			"resolution_id": int(_last_facts.get("immediate_facility_resolution_id", -1)),
+			"stage_id": str(_last_facts.get("immediate_facility_stage_id", "queued")),
+		}))
+		_publish_state(_last_facts)
+		return commands
 	var active_present := bool(_last_facts.get("active_present", false))
 	if active_present:
 		if counter_window_active:
@@ -307,6 +315,8 @@ func tick(delta: float, facts: Dictionary) -> Array:
 
 func current_phase(facts: Dictionary = {}) -> String:
 	var state_facts := _sanitize_facts(facts) if not facts.is_empty() else _last_facts
+	if bool(state_facts.get("immediate_facility_pending", false)):
+		return "resolving"
 	if bool(state_facts.get("active_present", false)):
 		return "counter" if counter_window_active else "resolving"
 	if batch_locked:
@@ -773,6 +783,9 @@ func _sanitize_facts(facts: Dictionary) -> Dictionary:
 		"public_bid_duration": maxf(0.0, float(facts.get("public_bid_duration", public_bid_seconds))),
 		"counter_duration": maxf(0.0, float(facts.get("counter_duration", counter_seconds))),
 		"active_player_indices": (facts.get("active_player_indices", []) as Array).duplicate() if facts.get("active_player_indices", []) is Array else [],
+		"immediate_facility_pending": bool(facts.get("immediate_facility_pending", false)),
+		"immediate_facility_resolution_id": int(facts.get("immediate_facility_resolution_id", -1)),
+		"immediate_facility_stage_id": str(facts.get("immediate_facility_stage_id", "")),
 	}
 
 
@@ -836,7 +849,7 @@ func _command(transition: String, details: Dictionary = {}) -> Dictionary:
 		"window_sequence": window_sequence,
 		"resolution_id": _safe_resolution_id(active_token),
 		"visibility_scope": "public",
-		"requires_gameplay_mutation": ["complete_active", "start_next", "lock_batch"].has(transition),
+		"requires_gameplay_mutation": ["complete_active", "start_next", "lock_batch", "resolve_queued_facility_immediate"].has(transition),
 		"requires_presentation_receipt": true,
 	}
 	for key_variant in details.keys():

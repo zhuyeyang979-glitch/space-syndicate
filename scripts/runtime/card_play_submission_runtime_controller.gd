@@ -5,6 +5,7 @@ class_name CardPlaySubmissionRuntimeController
 const TARGET_MONSTER := CardTargetChoiceRuntimeController.KIND_MONSTER
 const TARGET_PLAYER := CardTargetChoiceRuntimeController.KIND_PLAYER
 const StableTargetEnvelope := preload("res://scripts/runtime/card_resolution_stable_target_envelope.gd")
+const CardBinding := preload("res://scripts/semantic/game_action_card_binding_v1.gd")
 const SHARED_RESOLUTION_EFFECT_KINDS_V06 := [
 	"global_order_budget",
 	"global_supply_spawn",
@@ -24,6 +25,8 @@ var _derivative_controller: CityGdpDerivativeRuntimeController
 var _selection_catalog_query_port: TableSelectionCatalogQueryPort
 var _runtime_coordinator: GameRuntimeCoordinator
 var _cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort
+var _facility_queue_source: FacilityCardQueueAdapterV06
+var _facility_queue_capability: RefCounted
 var _submission_count := 0
 var _accepted_count := 0
 var _last_receipt: Dictionary = {}
@@ -57,6 +60,21 @@ func set_dependencies(
 	_cash_commitment_query_port = cash_commitment_query_port
 
 
+func bind_facility_queue_source(
+	source: FacilityCardQueueAdapterV06,
+	capability: RefCounted
+) -> Dictionary:
+	if source == null or capability == null:
+		return {"bound": false, "reason_code": "facility_queue_source_binding_invalid"}
+	if _facility_queue_source != null:
+		if _facility_queue_source == source and _facility_queue_capability == capability:
+			return {"bound": true, "reason_code": "facility_queue_source_already_bound"}
+		return {"bound": false, "reason_code": "facility_queue_source_rebind_rejected"}
+	_facility_queue_source = source
+	_facility_queue_capability = capability
+	return {"bound": true, "reason_code": "facility_queue_source_bound"}
+
+
 func request_hand_play(request: Dictionary) -> Dictionary:
 	_submission_count += 1
 	var player_index := int(request.get("player_index", -1))
@@ -71,7 +89,7 @@ func request_hand_play(request: Dictionary) -> Dictionary:
 			return _remember(_rejection("stable_target_capture_failed"))
 		if _uses_shared_resolution_v06(skill):
 			return _remember(_submit_v06_automatic_supply_demand(player_index, slot_index, skill, v06_envelope))
-		return _remember(_submit_v06(player_index, slot_index, skill, v06_envelope))
+		return _remember(_submit_v06(player_index, slot_index, skill, v06_envelope, request))
 	var frozen := _prepare_legacy_submission(player_index, skill, "hand", request)
 	if not bool(frozen.get("prepared", false)):
 		return _remember(_rejection(str(frozen.get("reason", "stable_target_capture_failed")), _dictionary(frozen.get("details", {}))))
@@ -99,7 +117,7 @@ func submit_card_play(request: Dictionary) -> Dictionary:
 			return _remember(_rejection("stable_target_capture_failed"))
 		if _uses_shared_resolution_v06(skill):
 			return _remember(_submit_v06_automatic_supply_demand(player_index, slot_index, skill, v06_envelope))
-		return _remember(_submit_v06(player_index, slot_index, skill, v06_envelope))
+		return _remember(_submit_v06(player_index, slot_index, skill, v06_envelope, request))
 	var frozen := _pending_or_new_submission(player_index, slot_index, skill, request)
 	if not bool(frozen.get("prepared", false)):
 		return _remember(_rejection(str(frozen.get("reason", "stable_target_capture_failed")), _dictionary(frozen.get("details", {}))))
@@ -107,58 +125,6 @@ func submit_card_play(request: Dictionary) -> Dictionary:
 	if not bool(eligibility.get("allowed", false)):
 		return _remember(_rejection(str(eligibility.get("reason_code", "card_play_rejected")), eligibility))
 	return _remember(_submit_legacy(player_index, slot_index, eligibility, _dictionary(frozen.get("envelope", {}))))
-
-
-func submit_v06_facility_play_action(request: Dictionary) -> Dictionary:
-	_submission_count += 1
-	if _runtime_coordinator == null or _world_session_state == null:
-		return _remember(_rejection("v06_runtime_unavailable"))
-	var player_index := int(request.get("player_index", -1))
-	var slot_index := int(request.get("slot_index", -1))
-	var actor_id := str(request.get("actor_id", "")).strip_edges()
-	var card_id := str(request.get("card_id", "")).strip_edges()
-	var runtime_instance_id := str(request.get("runtime_instance_id", "")).strip_edges()
-	var region_id := str(request.get("region_id", "")).strip_edges()
-	var transaction_id := str(request.get("transaction_id", "")).strip_edges()
-	if player_index < 0 or slot_index < 0 or actor_id.is_empty() or card_id.is_empty() \
-			or runtime_instance_id.is_empty() or region_id.is_empty() or transaction_id.is_empty():
-		return _remember(_rejection("v06_facility_submission_invalid"))
-	var actor_binding := _runtime_coordinator.actor_id_for_player_index(player_index)
-	if not bool(actor_binding.get("available", false)) or str(actor_binding.get("actor_id", "")) != actor_id:
-		return _remember(_rejection("v06_actor_mapping_changed"))
-	var authoritative_card := _v06_authoritative_card_at(actor_id, slot_index)
-	var machine: Dictionary = authoritative_card.get("machine", {}) if authoritative_card.get("machine", {}) is Dictionary else {}
-	if not _v06_is_facility_card(authoritative_card) \
-			or str(machine.get("card_id", "")) != card_id \
-			or str(authoritative_card.get("runtime_instance_id", "")) != runtime_instance_id:
-		return _remember(_rejection("v06_authoritative_slot_changed"))
-	var district_index := _district_index_for_region_id(region_id)
-	if district_index < 0:
-		return _remember(_rejection("public_facility_target_unavailable"))
-	var gate := _v06_facility_eligibility(player_index, slot_index, authoritative_card, {
-		"selected_district": district_index,
-		"slot_index": slot_index,
-		"game_time": _world_session_state.game_time,
-	})
-	if not bool(gate.get("allowed", false)) or not bool(gate.get("actionable", false)):
-		return _remember(_rejection(str(gate.get("reason_code", "card_play_rejected")), gate))
-	var result := _runtime_coordinator.play_v06_runtime_card({
-		"actor_id": actor_id,
-		"slot_index": slot_index,
-		"transaction_id": transaction_id,
-		"region_id": region_id,
-		"game_time": _world_session_state.game_time,
-	})
-	var committed := bool(result.get("committed", false)) and bool(_dictionary(result.get("effect_finalization", {})).get("finalized", result.get("finalized", false)))
-	if committed:
-		_accepted_count += 1
-	return _remember({
-		"accepted": committed,
-		"queued": false,
-		"reason": str(result.get("reason_code", "v06_card_play_committed" if committed else "v06_card_play_rejected")),
-		"v06_receipt": result.duplicate(true),
-		"player_message": "卡牌事务已完成。" if committed else "卡牌当前未能生效。",
-	})
 
 
 func debug_snapshot() -> Dictionary:
@@ -297,7 +263,13 @@ func _submit_legacy(player_index: int, slot_index: int, eligibility: Dictionary,
 	}
 
 
-func _submit_v06(player_index: int, slot_index: int, card: Dictionary, stable_target_envelope: Dictionary) -> Dictionary:
+func _submit_v06(
+	player_index: int,
+	slot_index: int,
+	card: Dictionary,
+	stable_target_envelope: Dictionary,
+	source_request: Dictionary
+) -> Dictionary:
 	if _runtime_coordinator == null:
 		return _rejection("v06_runtime_unavailable")
 	var actor_id := str((_world_session_state.players[player_index] as Dictionary).get("actor_id", "player.%d" % player_index)).strip_edges()
@@ -323,6 +295,13 @@ func _submit_v06(player_index: int, slot_index: int, card: Dictionary, stable_ta
 		var gate := _v06_facility_eligibility(player_index, authoritative_slot, authoritative_card, frozen_context)
 		if not bool(gate.get("allowed", false)) or not bool(gate.get("actionable", false)):
 			return _rejection(str(gate.get("reason_code", "card_play_rejected")), gate)
+		return _queue_v06_facility(
+			player_index,
+			authoritative_slot,
+			authoritative_card,
+			stable_target_envelope,
+			source_request
+		)
 	var result := _runtime_coordinator.play_v06_runtime_card({
 		"actor_id": actor_id,
 		"slot_index": authoritative_slot,
@@ -339,6 +318,65 @@ func _submit_v06(player_index: int, slot_index: int, card: Dictionary, stable_ta
 		"reason": str(result.get("reason_code", "v06_card_play_committed" if committed else "v06_card_play_rejected")),
 		"v06_receipt": result,
 		"player_message": "卡牌事务已完成。" if committed else "卡牌当前未能生效。",
+	}
+
+
+func _queue_v06_facility(
+	player_index: int,
+	slot_index: int,
+	card: Dictionary,
+	stable_target_envelope: Dictionary,
+	source_request: Dictionary
+) -> Dictionary:
+	var machine: Dictionary = card.get("machine", {}) \
+		if card.get("machine", {}) is Dictionary else {}
+	var actor_id := str(source_request.get("actor_id", ""))
+	var runtime_instance_id := str(card.get("runtime_instance_id", ""))
+	var region_id := str(stable_target_envelope.get("region_id", ""))
+	if actor_id.is_empty():
+		return _rejection("facility_queue_actor_binding_missing")
+	if runtime_instance_id.is_empty():
+		return _rejection("facility_queue_runtime_instance_missing")
+	if region_id.is_empty():
+		return _rejection("facility_queue_target_region_missing")
+	if not CardBinding.matches_private_instance_ref(
+		card,
+		slot_index,
+		str(source_request.get("card_instance_id", ""))
+	):
+		return _rejection("facility_queue_card_instance_binding_stale")
+	if str(source_request.get("hand_slot_id", "")) != CardBinding.hand_slot_ref(slot_index):
+		return _rejection("facility_queue_hand_slot_binding_stale")
+	if _facility_queue_source == null or _facility_queue_capability == null:
+		return _rejection("facility_queue_source_unavailable")
+	var result := _facility_queue_source.submit(_facility_queue_capability, {
+		"schema_version": 1,
+		"request_id": str(source_request.get("request_id", "")),
+		"intent_fingerprint": str(source_request.get("intent_fingerprint", "")),
+		"source_revision": int(source_request.get("source_revision", -1)),
+		"actor_kind_id": str(source_request.get("actor_kind_id", "")),
+		"actor_id": actor_id,
+		"actor_player_index": player_index,
+		"session_id": str(source_request.get("session_id", "")),
+		"session_revision": int(source_request.get("session_revision", -1)),
+		"hand_slot_id": str(source_request.get("hand_slot_id", "")),
+		"card_instance_id": runtime_instance_id,
+		"source_slot_index": slot_index,
+		"card_semantic_id": str(machine.get("card_id", "")),
+		"region_id": region_id,
+		"stable_target_envelope": stable_target_envelope.duplicate(true),
+	})
+	var queued := bool(result.get("accepted", false)) and bool(result.get("queued", false))
+	if queued:
+		_accepted_count += 1
+	return {
+		"accepted": queued,
+		"queued": queued,
+		"reason": str(result.get("reason_code", "facility_card_queued" if queued else "facility_queue_rejected")),
+		"resolution_id": int(result.get("resolution_id", -1)),
+		"queue_revision": int(result.get("queue_revision", -1)),
+		"v06_receipt": result.duplicate(true),
+		"player_message": "卡牌已提交，等待结算。" if queued else "卡牌当前未能提交。",
 	}
 
 

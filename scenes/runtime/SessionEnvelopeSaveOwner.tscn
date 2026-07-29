@@ -8,4 +8,5 @@ game_session_path = NodePath("..")
 world_session_path = NodePath("../../WorldSessionState")
 run_rng_path = NodePath("../../RunRngService")
 card_annotation_path = NodePath("../../CardHistoryPrivateAnnotationService")
+card_state_validation_path = NodePath("../../CardPlayerStateProductionAdapterV06")
 editor_description = "Stateless transaction adapter for the existing session, world-session, and private card-history owners. It owns no gameplay state and creates no additional save section."

@@ -105,6 +105,8 @@ func advance_active(context: RuntimePhaseFrameContext) -> Dictionary:
 	var phase_start := context.phase_trace.size()
 	var mutation_start := context.trace.size()
 	_command.advance_active(context)
+	if context.command_phase_consumes_frame:
+		return _finish_step(context, phase_start, mutation_start, true)
 	_simulation.advance_active(context)
 	if not _resolution.advance_active(context):
 		return _finish_step(context, phase_start, mutation_start, false)

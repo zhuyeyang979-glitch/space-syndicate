@@ -1,4 +1,4 @@
-[gd_scene load_steps=136 format=3]
+[gd_scene load_steps=137 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -136,6 +136,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayerFacePublicLocalizationSourceService.tscn" id="139_card_player_face_public_localization"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiCardInteractionObservationService.tscn" id="140_ai_card_interaction_observation"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/presentation/PlayerCardDockViewerQueryPort.tscn" id="141_player_card_dock_query"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/FacilityCardQueueAdapterV06.tscn" id="146_facility_queue_adapter"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -481,6 +482,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="CardPlaySubmissionRuntimeController" parent="." instance=ExtResource("97_card_play_submission")]
+unique_name_in_owner = true
+
+[node name="FacilityCardQueueAdapterV06" parent="." instance=ExtResource("146_facility_queue_adapter")]
 unique_name_in_owner = true
 
 [node name="CardEconomyProductRouteEffectRuntimeService" parent="." instance=ExtResource("25_economy_product_route_effect")]

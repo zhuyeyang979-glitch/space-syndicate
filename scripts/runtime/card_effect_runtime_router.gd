@@ -62,6 +62,21 @@ func dispatch(transaction: Dictionary) -> Dictionary:
 		resolved = bool(v06_result.get("resolved", false)) and bool(v06_result.get("committed", false)) and bool(v06_result.get("finalized", false))
 		if not resolved:
 			return _receipt(true, false, str(v06_result.get("reason_code", "queued_supply_demand_effect_failed")))
+	elif handler_id == "public_facility":
+		if _runtime_coordinator == null or not entry.has("v06_facility_action"):
+			return _receipt(true, false, "queued_facility_binding_missing")
+		var facility_result := _runtime_coordinator.resolve_queued_v06_facility_card_action(
+			entry.duplicate(true)
+		)
+		resolved = bool(facility_result.get("resolved", false)) \
+			and bool(facility_result.get("committed", false)) \
+			and bool(facility_result.get("finalized", false))
+		if not resolved:
+			return _receipt(
+				true,
+				false,
+				str(facility_result.get("reason_code", "queued_facility_effect_failed"))
+			)
 	elif handler_id == "target_monster":
 		resolved = _resolve_targeted_skill(skill, player, _resolved_monster_target_slot(entry), player_index, int(entry.get("selected_district", -1)), entry)
 	elif handler_id == "target_player":
@@ -130,18 +145,6 @@ func _dispatch_domain_handler(handler_id: String, player_index: int, player: Dic
 	match handler_id:
 		"monster_card":
 			return _monster_controller != null and _monster_controller._summon_monster_from_card(player_index, skill)
-		"public_facility":
-			if _runtime_coordinator == null:
-				return false
-			var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
-			var result := _runtime_coordinator.submit_public_facility_card({
-				"transaction_id": "card-resolution-%d-public-facility" % resolution_id if resolution_id >= 0 else "",
-				"player_index": player_index,
-				"target_region_index": int(skill.get("target_region_index", entry.get("selected_district", -1))),
-				"occurred_at": _world_session_state.game_time,
-				"skill": skill,
-			})
-			return bool(result.get("committed", false))
 		"monster_bound_action":
 			return _monster_controller != null and _monster_controller._trigger_bound_monster_skill(skill, player)
 		"military_force":

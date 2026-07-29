@@ -561,7 +561,8 @@ func apply_game_action_receipt(receipt: Dictionary) -> void:
 		accepted,
 		bool(receipt.get("idempotent_replay", false))
 	)
-	_show_player_action_feedback(action_id, "resolved" if accepted else "blocked", detail)
+	var queued := accepted and reason_id == "facility-card-queued"
+	_show_player_action_feedback(action_id, "pending" if queued else ("resolved" if accepted else "blocked"), detail)
 
 
 func apply_card_target_choice_response_receipt(receipt: CARD_TARGET_CHOICE_RESPONSE_RECEIPT_SCRIPT) -> void:
@@ -1889,6 +1890,8 @@ func _game_action_feedback_text(
 	if replay:
 		return "重复提交已按原回执处理，没有再次执行。"
 	if accepted:
+		if reason_id == "facility-card-queued":
+			return "卡牌已提交，等待结算。"
 		return {
 			GAME_ACTION_INTENT_SCRIPT.ACTION_CARD_PLAY: "卡牌提交已由权威规则入口接收。",
 			GAME_ACTION_INTENT_SCRIPT.ACTION_CARD_GROUP_READY: "本阶段已确认，等待其他席位。",

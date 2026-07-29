@@ -39,6 +39,31 @@ func begin_frame(context: RuntimePhaseFrameContext) -> StringName:
 	return &"active"
 
 
+func begin_command_only_frame(context: RuntimePhaseFrameContext) -> StringName:
+	context.enter_phase(&"lifecycle_command_only_begin")
+	context.append_step(&"command_only_session_finished_gate")
+	if _lifecycle.session_is_finished():
+		context.path = &"finished"
+		context.stopped_reason = &"session_finished"
+		return &"stop"
+	context.append_step(&"command_only_synchronize_forced_decisions")
+	_lifecycle.synchronize_forced_decisions()
+	context.append_step(&"command_only_global_time_block_gate")
+	if _lifecycle.blocks_global_time():
+		context.path = &"global_blocked"
+		context.stopped_reason = &"global_time_blocked"
+		return &"global_blocked"
+	context.append_step(&"command_only_session_pause_gate")
+	if _lifecycle.session_is_paused():
+		context.path = &"paused"
+		context.stopped_reason = &"session_paused"
+		return &"stop"
+	context.world_delta = 0.0
+	context.path = &"active"
+	context.stopped_reason = &"facility_resolution_command_only"
+	return &"active"
+
+
 func begin_blocked_realtime_frame(context: RuntimePhaseFrameContext) -> StringName:
 	context.enter_phase(&"lifecycle_blocked_realtime_probe")
 	context.append_step(&"blocked_realtime_session_finished_gate")

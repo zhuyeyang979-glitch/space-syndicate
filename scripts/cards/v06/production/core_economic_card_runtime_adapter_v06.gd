@@ -14,6 +14,7 @@ const ORGANIZATION_PORT_SCRIPT := preload("res://scripts/cards/v06/production/or
 const EFFECT_SUPPORT_SCRIPT := preload("res://scripts/cards/v06/effects/card_effect_adapter_support_v06.gd")
 const ORGANIZATION_EFFECT_KIND := "install_organization_upgrade"
 const FACILITY_EFFECT_KIND := "build_upgrade_or_repair_facility"
+const FACILITY_ACTION_SPINE_REQUIRED_REASON := "v06_facility_requires_game_action_spine"
 const FACILITY_TARGET_KIND := "region_unique_facility_slot"
 const COMMODITY_EFFECT_KIND := "install_commodity_rate"
 const COMMODITY_TARGET_KIND := "same_industry_factory_or_market"
@@ -297,6 +298,177 @@ func resolve_queued_automatic_supply_demand(
 	}
 
 
+func prepare_queued_facility_card(
+	actor_id: String,
+	card: Dictionary,
+	target_context: Dictionary,
+	transaction_id: String
+) -> Dictionary:
+	if not _configured or _effect_router == null:
+		return {"prepared": false, "reason_code": "core_economic_runtime_unavailable"}
+	var build := _queued_facility_effect_intent(
+		actor_id,
+		card,
+		target_context,
+		transaction_id
+	)
+	if not bool(build.get("valid", false)):
+		return {
+			"prepared": false,
+			"reason_code": str(build.get("reason_code", "queued_facility_binding_invalid")),
+		}
+	var binding := (build.get("binding", {}) as Dictionary).duplicate(true)
+	var prepared_variant: Variant = _effect_router.call(
+		"prepare_effect",
+		(build.get("intent", {}) as Dictionary).duplicate(true)
+	)
+	var prepared: Dictionary = prepared_variant if prepared_variant is Dictionary else {}
+	if not bool(prepared.get("prepared", false)) \
+			or not EFFECT_SUPPORT_SCRIPT.binding_matches(prepared, binding):
+		if _effect_router.has_method("abort_prepared_effect"):
+			_effect_router.call("abort_prepared_effect", prepared.duplicate(true))
+		return {
+			"prepared": false,
+			"reason_code": str(prepared.get("reason_code", "effect_prepare_failed")),
+		}
+	return {
+		"prepared": true,
+		"reason_code": "queued_facility_effect_prepared",
+		"binding": binding,
+		"prepared_receipt": prepared.duplicate(true),
+	}
+
+
+func commit_queued_facility_card(preparation: Dictionary) -> Dictionary:
+	if not _configured or _effect_router == null \
+			or not bool(preparation.get("prepared", false)):
+		return {"committed": false, "reason_code": "queued_facility_prepare_missing"}
+	var binding: Dictionary = preparation.get("binding", {}) \
+		if preparation.get("binding", {}) is Dictionary else {}
+	var prepared: Dictionary = preparation.get("prepared_receipt", {}) \
+		if preparation.get("prepared_receipt", {}) is Dictionary else {}
+	if binding.is_empty() or prepared.is_empty() \
+			or not EFFECT_SUPPORT_SCRIPT.binding_matches(prepared, binding):
+		return {"committed": false, "reason_code": "queued_facility_prepare_binding_invalid"}
+	var committed_variant: Variant = _effect_router.call("commit_effect", prepared.duplicate(true))
+	var committed: Dictionary = committed_variant if committed_variant is Dictionary else {}
+	if not bool(committed.get("committed", false)) \
+			or not EFFECT_SUPPORT_SCRIPT.binding_matches(committed, binding):
+		if _effect_router.has_method("abort_prepared_effect"):
+			_effect_router.call("abort_prepared_effect", prepared.duplicate(true))
+		return {
+			"committed": false,
+			"reason_code": str(committed.get("reason_code", "effect_commit_failed")),
+		}
+	return {
+		"committed": true,
+		"reason_code": "queued_facility_effect_committed",
+		"binding": binding.duplicate(true),
+		"effect_receipt": committed.duplicate(true),
+	}
+
+
+func abort_queued_facility_card(preparation: Dictionary) -> Dictionary:
+	if _effect_router == null:
+		return {"aborted": false, "reason_code": "core_economic_runtime_unavailable"}
+	var prepared: Dictionary = preparation.get("prepared_receipt", {}) \
+		if preparation.get("prepared_receipt", {}) is Dictionary else {}
+	var value_variant: Variant = _effect_router.call("abort_prepared_effect", prepared.duplicate(true)) \
+		if not prepared.is_empty() else {}
+	return (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {
+		"aborted": false,
+		"reason_code": "queued_facility_abort_invalid",
+	}
+
+
+func rollback_queued_facility_card(effect_receipt: Dictionary) -> Dictionary:
+	if _effect_router == null:
+		return {"rolled_back": false, "reason_code": "core_economic_runtime_unavailable"}
+	var value_variant: Variant = _effect_router.call("rollback_effect", effect_receipt.duplicate(true))
+	return (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {
+		"rolled_back": false,
+		"reason_code": "queued_facility_rollback_invalid",
+	}
+
+
+func preflight_finalize_queued_facility_card(effect_receipt: Dictionary) -> Dictionary:
+	var owner_receipt := _find_receipt_kind(effect_receipt, "facility_action")
+	if owner_receipt.is_empty() or _infrastructure_owner == null \
+			or not _infrastructure_owner.has_method("facility_action_lifecycle_snapshot"):
+		return {
+			"ready": false,
+			"reason_code": "queued_facility_finalize_preflight_unavailable",
+		}
+	var transaction_id := str(owner_receipt.get("transaction_id", "")).strip_edges()
+	var lifecycle_variant: Variant = _infrastructure_owner.call(
+		"facility_action_lifecycle_snapshot",
+		transaction_id
+	)
+	var lifecycle: Dictionary = lifecycle_variant if lifecycle_variant is Dictionary else {}
+	if transaction_id.is_empty() or lifecycle.is_empty():
+		return {
+			"ready": false,
+			"reason_code": "facility_action_transaction_missing",
+		}
+	var state := str(lifecycle.get("state", ""))
+	if state == "finalized":
+		return {
+			"ready": true,
+			"already_finalized": true,
+			"reason_code": "queued_facility_finalize_ready",
+		}
+	var original: Dictionary = lifecycle.get("original_receipt", {}) \
+		if lifecycle.get("original_receipt", {}) is Dictionary else {}
+	var ready := state == "applied" \
+		and bool(lifecycle.get("rollback_open", false)) \
+		and str(original.get("owner_binding_fingerprint", "")) \
+			== str(owner_receipt.get("owner_binding_fingerprint", "")) \
+		and int(original.get("receipt_sequence", -1)) \
+			== int(owner_receipt.get("receipt_sequence", -2))
+	return {
+		"ready": ready,
+		"already_finalized": false,
+		"reason_code": "queued_facility_finalize_ready" if ready \
+			else "queued_facility_finalize_preflight_failed",
+	}
+
+
+func finalize_queued_facility_card(effect_receipt: Dictionary) -> Dictionary:
+	if _effect_router == null:
+		return {"finalized": false, "reason_code": "core_economic_runtime_unavailable"}
+	var value_variant: Variant = _effect_router.call("finalize_effect", effect_receipt.duplicate(true))
+	var result: Dictionary = (value_variant as Dictionary).duplicate(true) \
+		if value_variant is Dictionary else {}
+	if bool(result.get("finalized", false)):
+		return result
+	var owner_receipt := _find_receipt_kind(effect_receipt, "facility_action")
+	if owner_receipt.is_empty() or _infrastructure_owner == null \
+			or not _infrastructure_owner.has_method("finalize_facility_action"):
+		return result if not result.is_empty() else {
+			"finalized": false,
+			"reason_code": "queued_facility_finalize_invalid",
+		}
+	var owner_variant: Variant = _infrastructure_owner.call(
+		"finalize_facility_action",
+		owner_receipt.duplicate(true)
+	)
+	var owner_result: Dictionary = owner_variant if owner_variant is Dictionary else {}
+	if not bool(owner_result.get("finalized", false)):
+		return {
+			"finalized": false,
+			"reason_code": str(owner_result.get("reason_code", "facility_action_finalize_failed")),
+			"owner_result": owner_result.duplicate(true),
+		}
+	# Facility-only finalization is delegated by the effect adapter. Close the
+	# router's transient association after the authoritative owner closes it.
+	_effect_router.call("abort_prepared_effect", effect_receipt.duplicate(true))
+	return {
+		"finalized": true,
+		"reason_code": "queued_facility_effect_finalized",
+		"owner_result": owner_result.duplicate(true),
+	}
+
+
 func preflight_automatic_supply_demand(
 	actor_id: String,
 	card: Dictionary,
@@ -379,6 +551,59 @@ func _automatic_supply_demand_intent(
 		"reason_code": "automatic_supply_demand_intent_ready",
 		"binding": binding.duplicate(true),
 		"intent": intent.duplicate(true),
+	}
+
+
+func _queued_facility_effect_intent(
+	actor_id: String,
+	card: Dictionary,
+	target_context: Dictionary,
+	transaction_id: String
+) -> Dictionary:
+	var machine: Dictionary = card.get("machine", {}) \
+		if card.get("machine", {}) is Dictionary else {}
+	var payload: Dictionary = machine.get("effect_payload", {}) \
+		if machine.get("effect_payload", {}) is Dictionary else {}
+	var card_id := str(machine.get("card_id", ""))
+	var card_instance_id := str(card.get("runtime_instance_id", ""))
+	if actor_id.strip_edges().is_empty() or transaction_id.strip_edges().is_empty() \
+			or card_id.is_empty() or card_instance_id.is_empty() or payload.is_empty():
+		return {"valid": false, "reason_code": "queued_facility_binding_invalid"}
+	if str(machine.get("effect_kind", "")) != FACILITY_EFFECT_KIND \
+			or str(machine.get("target_kind", "")) != FACILITY_TARGET_KIND \
+			or not bool(target_context.get("valid", false)) \
+			or str(target_context.get("target_kind", "")) != FACILITY_TARGET_KIND:
+		return {"valid": false, "reason_code": "queued_facility_target_mismatch"}
+	var target_hash := _stable_hash(target_context)
+	var payload_hash := _stable_hash(payload)
+	var intent_hash := _stable_hash({
+		"operation": "resolve_queued_facility_card",
+		"transaction_id": transaction_id,
+		"actor_id": actor_id,
+		"card_id": card_id,
+		"card_instance_id": card_instance_id,
+		"target_hash": target_hash,
+		"payload_hash": payload_hash,
+	})
+	var binding := {
+		"transaction_id": transaction_id,
+		"actor_id": actor_id,
+		"card_id": card_id,
+		"card_instance_id": card_instance_id,
+		"effect_kind": FACILITY_EFFECT_KIND,
+		"target_hash": target_hash,
+		"payload_hash": payload_hash,
+		"intent_hash": intent_hash,
+	}
+	var intent := binding.duplicate(true)
+	intent["target_context"] = target_context.duplicate(true)
+	intent["effect_payload"] = payload.duplicate(true)
+	intent["contract"] = "prepare_is_side_effect_free"
+	return {
+		"valid": true,
+		"reason_code": "queued_facility_intent_ready",
+		"binding": binding,
+		"intent": intent,
 	}
 
 
@@ -484,6 +709,8 @@ func play_card(
 	if not _configured or not _source_api_ready() or _effect_router == null:
 		return _failure("core_economic_runtime_unavailable")
 	var effect_kind := _authoritative_slot_effect_kind(actor_id, slot_index)
+	if effect_kind == FACILITY_EFFECT_KIND:
+		return _failure(FACILITY_ACTION_SPINE_REQUIRED_REASON)
 	if effect_kind == ORGANIZATION_EFFECT_KIND and not bool(organization_consumer_readiness_snapshot().get("production_ready", false)):
 		return _failure("organization_consumer_capabilities_incomplete")
 	var value_variant: Variant = _card_source_owner.call(
@@ -679,22 +906,28 @@ func _facility_target_context_for_card(card: Dictionary, region_id: String, game
 	var payload: Dictionary = machine.get("effect_payload", {}) if machine.get("effect_payload", {}) is Dictionary else {}
 	var facility_kind := str(payload.get("facility_kind", ""))
 	var industry_id := str(payload.get("industry_id", machine.get("industry_id", "")))
-	var slot_id := str(_infrastructure_owner.call("slot_id", normalized_region_id, facility_kind, industry_id))
-	var region_variant: Variant = _infrastructure_owner.call("region_snapshot", normalized_region_id)
-	var region: Dictionary = region_variant if region_variant is Dictionary else {}
-	if region.is_empty() or slot_id.is_empty():
+	if not _infrastructure_owner.has_method("facility_target_binding_snapshot"):
+		return {"ready": false, "reason_code": "facility_target_binding_unavailable"}
+	var binding_variant: Variant = _infrastructure_owner.call(
+		"facility_target_binding_snapshot",
+		normalized_region_id,
+		facility_kind,
+		industry_id
+	)
+	var target_binding: Dictionary = binding_variant if binding_variant is Dictionary else {}
+	if target_binding.is_empty():
 		return {"ready": false, "reason_code": "facility_target_unavailable"}
+	var target_context := target_binding.duplicate(true)
+	target_context["valid"] = true
+	target_context["target_kind"] = FACILITY_TARGET_KIND
+	target_context["slot_id"] = str(target_binding.get("target_slot_id", ""))
+	target_context["industry_id"] = industry_id
+	target_context["game_time"] = game_time
 	return {
 		"ready": true,
 		"reason_code": "facility_target_context_ready",
-		"target_context": {
-			"valid": true,
-			"target_kind": FACILITY_TARGET_KIND,
-			"region_id": normalized_region_id,
-			"slot_id": slot_id,
-			"industry_id": industry_id,
-			"game_time": game_time,
-		},
+		"target_context": target_context,
+		"prebound_target": target_binding.duplicate(true),
 	}
 
 
@@ -812,6 +1045,23 @@ func _queued_resolution_failure(reason_code: String, binding: Dictionary) -> Dic
 		"binding": binding.duplicate(true),
 		"feedback": _localized_feedback(reason_code),
 	}
+
+
+func _find_receipt_kind(value: Variant, receipt_kind: String) -> Dictionary:
+	if value is Dictionary:
+		var dictionary := value as Dictionary
+		if str(dictionary.get("receipt_kind", "")) == receipt_kind:
+			return dictionary.duplicate(true)
+		for child in dictionary.values():
+			var found := _find_receipt_kind(child, receipt_kind)
+			if not found.is_empty():
+				return found
+	elif value is Array:
+		for child in value as Array:
+			var found := _find_receipt_kind(child, receipt_kind)
+			if not found.is_empty():
+				return found
+	return {}
 
 
 func _stable_hash(value: Variant) -> String:

@@ -16,6 +16,7 @@ const SUPPORTED_TRANSITIONS := {
 	"all_ready_lock": true,
 	"all_ready_lock_batch": true,
 	"lock_batch": true,
+	"resolve_queued_facility_immediate": true,
 	"hide_overlay": true,
 }
 
@@ -84,6 +85,7 @@ func apply_transition_batch(commands: Array) -> Dictionary:
 		return replay_receipt
 	_batch_count += 1
 	var receipts: Array = []
+	var consumes_command_frame := false
 	for command_variant in commands:
 		var command := (command_variant as Dictionary).duplicate(true)
 		var command_id := str(command.get("command_id", ""))
@@ -114,6 +116,8 @@ func apply_transition_batch(commands: Array) -> Dictionary:
 		if not bool(lineage.get("accepted", false)):
 			return _reject_batch(str(lineage.get("reason", "transition_lineage_rejected")), lineage, receipts)
 		_applied_count += 1
+		consumes_command_frame = consumes_command_frame \
+			or bool(handler_receipt.get("consumes_command_frame", false))
 		_last_trace.append(str(command.get("transition", "")))
 		var public_receipt := {
 			"handled": true,
@@ -123,6 +127,8 @@ func apply_transition_batch(commands: Array) -> Dictionary:
 			"batch_revision": int(command.get("batch_revision", -1)),
 			"order_index": int(command.get("order_index", -1)),
 		}
+		if bool(handler_receipt.get("consumes_command_frame", false)):
+			public_receipt["consumes_command_frame"] = true
 		receipts.append(public_receipt)
 	var result := {
 		"handled": true,
@@ -131,6 +137,7 @@ func apply_transition_batch(commands: Array) -> Dictionary:
 		"command_count": commands.size(),
 		"receipts": receipts,
 		"trace": _last_trace.duplicate(),
+		"consumes_command_frame": consumes_command_frame,
 	}
 	_last_receipt = result.duplicate(true)
 	return result
@@ -186,6 +193,8 @@ func _apply_transition(command: Dictionary) -> Dictionary:
 			return _show_group_window(command)
 		"lock_batch":
 			return _lock_batch()
+		"resolve_queued_facility_immediate":
+			return _resolve_queued_facility_immediate(command)
 		"hide_overlay":
 			_presentation.set_overlay_state({"visible": false, "phase": "idle", "resolution_id": -1})
 			return {"handled": true, "reason": "overlay_hidden"}
@@ -360,6 +369,37 @@ func _lock_batch() -> Dictionary:
 		return {"handled": true, "reason": "batch_already_started"}
 	var receipt := _execution_port.lock_batch_transition()
 	return {"handled": bool(receipt.get("handled", false)), "reason": str(receipt.get("reason", ""))}
+
+
+func _resolve_queued_facility_immediate(command: Dictionary) -> Dictionary:
+	var resolution_id := int(command.get("resolution_id", -1))
+	if resolution_id <= 0:
+		return {"handled": false, "reason": "immediate_facility_resolution_id_invalid", "consumes_command_frame": true}
+	var execution_pending := _execution.immediate_facility_resolution_snapshot()
+	if bool(execution_pending.get("pending", false)):
+		if int(execution_pending.get("resolution_id", -1)) != resolution_id \
+				or str(execution_pending.get("stage_id", "")) != str(command.get("stage_id", "")):
+			return {"handled": false, "reason": "immediate_facility_execution_binding_changed", "consumes_command_frame": true}
+		var resumed := _complete_active(command)
+		resumed["consumes_command_frame"] = true
+		return resumed
+	if _queue.active_entry().is_empty():
+		var start_receipt := _queue.start_immediate_facility(resolution_id, {
+			"game_time": _world_session.game_time if _world_session != null else 0.0,
+		})
+		if not bool(start_receipt.get("started", false)):
+			return {
+				"handled": false,
+				"reason": str(start_receipt.get("reason", "immediate_facility_start_failed")),
+				"consumes_command_frame": true,
+			}
+	var active := _queue.active_entry()
+	if active.is_empty() or int(active.get("resolution_id", -1)) != resolution_id \
+			or not active.has("v06_facility_action"):
+		return {"handled": false, "reason": "immediate_facility_active_binding_changed", "consumes_command_frame": true}
+	var completion := _complete_active(command)
+	completion["consumes_command_frame"] = true
+	return completion
 
 
 func _publish_phase_event(command: Dictionary) -> Dictionary:

@@ -2,6 +2,7 @@ extends SceneTree
 
 const MAIN_SCENE := preload("res://scenes/main.tscn")
 const CLAIM_REQUEST := preload("res://scripts/runtime/commodity_sushi_track_claim_request.gd")
+const DISTRICT_SUPPLY_ACTION_INTENT := preload("res://scripts/runtime/district_supply_action_intent.gd")
 const GAME_ACTION_INTENT := preload("res://scripts/semantic/game_action_intent_v1.gd")
 const GAME_ACTION_OFFER := preload("res://scripts/semantic/game_action_offer_v1.gd")
 const GAME_ACTION_RECEIPT := preload("res://scripts/semantic/game_action_receipt_v1.gd")
@@ -14,19 +15,37 @@ const FORMAL_FULL_RUN := false
 const EXECUTION_READY := false
 const ACCEPTANCE_SEED := 900626424
 const ACCEPTANCE_CHALLENGE_DEPTH := 1
-const SCHEMA_VERSION := 3
+const SCHEMA_VERSION := 4
+const OFFICIAL_CLAIM_SCHEMA_VERSION := 2
+const OFFICIAL_AUTHORIZATION_ID := "alpha04c-p0-cold-restore-depth1-seed900626424-v1"
+const OFFICIAL_CLAIM_RELATIVE_PATH := "codex/cold_restore_v3/official-alpha04c-depth1-seed900626424/official_claim_ledger.json"
+const LAUNCH_ATTESTATION_SCHEMA_VERSION := 1
 const PROCESS_ROLES := ["producer", "consumer", "validator"]
 const INDUSTRY_IDS := ["life", "energy", "industry", "technology", "commerce", "shipping"]
-const QUEUE_EFFECT_KINDS := ["global_order_budget", "global_supply_spawn"]
+const QUEUE_EFFECT_KINDS := [
+	"build_upgrade_or_repair_facility",
+	"global_order_budget",
+	"global_supply_spawn",
+]
 const MAX_SUPPLY_CHURN := 40
 const MAX_SALE_SECONDS := 180
 const MAX_QUEUE_ASSET_SECONDS := 30
+const MAX_QUEUE_PURCHASE_FUNDING_CYCLES := 4
 const PUBLIC_MANIFEST_FIELDS := [
 	"schema_version",
 	"visibility_scope",
 	"run_id",
 	"process_role",
 	"process_id",
+	"parent_process_id",
+	"process_creation_time_utc_ticks",
+	"wrapper_process_id",
+	"wrapper_parent_process_id",
+	"wrapper_creation_time_utc_ticks",
+	"orchestrator_process_id",
+	"orchestrator_creation_time_utc_ticks",
+	"launch_nonce",
+	"official_claim_fingerprint",
 	"head_sha",
 	"slot_id",
 	"slot_state",
@@ -97,6 +116,39 @@ const PUBLIC_MANIFEST_FIELDS := [
 	"success",
 	"failure_code",
 ]
+const OFFICIAL_CLAIM_FIELDS := [
+	"schema_version",
+	"authorization_id",
+	"created_at_utc",
+	"source_head_sha",
+	"challenge_depth",
+	"seed",
+	"status",
+	"claim_nonce",
+	"orchestrator_process_id",
+	"orchestrator_creation_time_utc_ticks",
+]
+const LAUNCH_ATTESTATION_FIELDS := [
+	"schema_version",
+	"authorization_id",
+	"claim_fingerprint",
+	"claim_nonce",
+	"source_head_sha",
+	"run_id",
+	"process_role",
+	"launch_nonce",
+	"orchestrator_process_id",
+	"orchestrator_creation_time_utc_ticks",
+	"wrapper_process_id",
+	"wrapper_parent_process_id",
+	"wrapper_creation_time_utc_ticks",
+	"engine_process_id",
+	"engine_parent_process_id",
+	"engine_creation_time_utc_ticks",
+	"status",
+]
+
+var _district_supply_request_revision := 0
 
 
 func _init() -> void:
@@ -125,6 +177,15 @@ func _run_entry() -> void:
 		push_error("Cold restore options rejected: %s" % str(validation.get("reason_code", "options_invalid")))
 		quit(2)
 		return
+	var launch_authorization := await _authorize_official_launch(validation, str(parsed.get("head_sha", "")))
+	if not bool(launch_authorization.get("authorized", false)):
+		push_error("Cold restore launch rejected: %s" % str(launch_authorization.get("reason_code", "official_launch_unauthorized")))
+		quit(2)
+		return
+	for key_variant in launch_authorization.keys():
+		var key := str(key_variant)
+		if key not in ["authorized", "reason_code"]:
+			validation[key] = launch_authorization[key_variant]
 	var started_ms := Time.get_ticks_msec()
 	var result: Dictionary = await _run_role(validation, str(parsed.get("head_sha", "")))
 	result["elapsed_ms"] = maxi(0, Time.get_ticks_msec() - started_ms)
@@ -137,7 +198,7 @@ func _run_entry() -> void:
 static func contract_snapshot() -> Dictionary:
 	return {
 		"schema_version": SCHEMA_VERSION,
-		"driver_id": "alpha04c_cold_restore_vertical_slice_v3",
+		"driver_id": "alpha04c_cold_restore_vertical_slice_v4",
 		"formal_full_run": FORMAL_FULL_RUN,
 		"cold_restore_vertical_slice": true,
 		"execution_ready": EXECUTION_READY,
@@ -150,10 +211,15 @@ static func contract_snapshot() -> Dictionary:
 		"runtime_loop_frozen_until_restore_commit": true,
 		"minimum_post_restore_ticks": 1,
 		"terminal_quiescent_frames": 8,
+		"official_ledger_required": true,
+		"launch_attestation_required": true,
+		"manifest_process_identity_bound": true,
 	}
 
 
 static func validate_options(options: Dictionary) -> Dictionary:
+	if not EXECUTION_READY:
+		return {"valid": false, "reason_code": "driver_execution_not_ready"}
 	var run_id := str(options.get("run_id", ""))
 	var process_role := str(options.get("process_role", ""))
 	if not str(options.get("parse_error", "")).is_empty():
@@ -170,6 +236,15 @@ static func validate_options(options: Dictionary) -> Dictionary:
 	var expected_artifact_root := "user://test_runs/alpha04c/%s/evidence" % run_id
 	if artifact_root != expected_artifact_root:
 		return {"valid": false, "reason_code": "artifact_root_invalid"}
+	var official_claim_path := str(options.get("official_claim_path", ""))
+	if official_claim_path.is_empty() or not official_claim_path.is_absolute_path():
+		return {"valid": false, "reason_code": "official_claim_path_invalid"}
+	var launch_attestation_path := str(options.get("launch_attestation_path", ""))
+	if launch_attestation_path.is_empty() or not launch_attestation_path.is_absolute_path():
+		return {"valid": false, "reason_code": "launch_attestation_path_invalid"}
+	var launch_nonce := str(options.get("launch_nonce", ""))
+	if launch_nonce.length() != 32 or not _is_lower_hex(launch_nonce):
+		return {"valid": false, "reason_code": "launch_nonce_invalid"}
 	var expected_resolution_id := int(options.get("expected_queue_resolution_id", 0))
 	var expected_stable_fingerprint := str(options.get("expected_queue_stable_target_fingerprint", ""))
 	if process_role == "producer":
@@ -185,6 +260,9 @@ static func validate_options(options: Dictionary) -> Dictionary:
 		"qa_evidence_path": qa_path,
 		"save_path": SaveSlotPolicyV06.PRODUCTION_PATH,
 		"artifact_root": artifact_root,
+		"official_claim_path": official_claim_path,
+		"launch_attestation_path": launch_attestation_path,
+		"launch_nonce": launch_nonce,
 		"expected_queue_resolution_id": expected_resolution_id,
 		"expected_queue_stable_target_fingerprint": expected_stable_fingerprint,
 	}
@@ -203,6 +281,171 @@ static func _is_lower_sha256(value: String) -> bool:
 	return value.length() == 64 and _is_lower_hex(value)
 
 
+func _authorize_official_launch(options: Dictionary, head_sha: String) -> Dictionary:
+	var claim_path := _normalize_absolute_path(str(options.get("official_claim_path", "")))
+	var expected_claim_path := _resolve_official_claim_path()
+	if claim_path.is_empty() or expected_claim_path.is_empty() \
+			or claim_path.to_lower() != expected_claim_path.to_lower():
+		return {"authorized": false, "reason_code": "official_claim_path_mismatch"}
+	if not FileAccess.file_exists(claim_path):
+		return {"authorized": false, "reason_code": "official_claim_missing"}
+	var claim_text := FileAccess.get_file_as_string(claim_path)
+	var claim_variant: Variant = JSON.parse_string(claim_text)
+	if not (claim_variant is Dictionary):
+		return {"authorized": false, "reason_code": "official_claim_invalid"}
+	var claim := claim_variant as Dictionary
+	if not _has_exact_fields(claim, OFFICIAL_CLAIM_FIELDS):
+		return {"authorized": false, "reason_code": "official_claim_field_set_invalid"}
+	if int(claim.get("schema_version", 0)) != OFFICIAL_CLAIM_SCHEMA_VERSION \
+			or str(claim.get("authorization_id", "")) != OFFICIAL_AUTHORIZATION_ID \
+			or str(claim.get("source_head_sha", "")) != head_sha \
+			or int(claim.get("challenge_depth", 0)) != ACCEPTANCE_CHALLENGE_DEPTH \
+			or int(claim.get("seed", 0)) != ACCEPTANCE_SEED \
+			or str(claim.get("status", "")) != "claimed" \
+			or str(claim.get("claim_nonce", "")).length() != 32 \
+			or not _is_lower_hex(str(claim.get("claim_nonce", ""))) \
+			or int(claim.get("orchestrator_process_id", 0)) <= 0 \
+			or not _is_positive_decimal(str(claim.get("orchestrator_creation_time_utc_ticks", ""))):
+		return {"authorized": false, "reason_code": "official_claim_binding_invalid"}
+	var claim_fingerprint := claim_text.sha256_text()
+	var attestation_path := _normalize_absolute_path(str(options.get("launch_attestation_path", "")))
+	var deadline_ms := Time.get_ticks_msec() + 10000
+	while not FileAccess.file_exists(attestation_path) and Time.get_ticks_msec() < deadline_ms:
+		await create_timer(0.025).timeout
+	if not FileAccess.file_exists(attestation_path):
+		return {"authorized": false, "reason_code": "launch_attestation_missing"}
+	var attestation_variant: Variant = JSON.parse_string(FileAccess.get_file_as_string(attestation_path))
+	if not (attestation_variant is Dictionary):
+		return {"authorized": false, "reason_code": "launch_attestation_invalid"}
+	var attestation := attestation_variant as Dictionary
+	if not _has_exact_fields(attestation, LAUNCH_ATTESTATION_FIELDS):
+		return {"authorized": false, "reason_code": "launch_attestation_field_set_invalid"}
+	var orchestrator_process_id := int(attestation.get("orchestrator_process_id", 0))
+	var wrapper_process_id := int(attestation.get("wrapper_process_id", 0))
+	var engine_process_id := int(attestation.get("engine_process_id", 0))
+	var engine_parent_process_id := int(attestation.get("engine_parent_process_id", 0))
+	var wrapper_parent_process_id := int(attestation.get("wrapper_parent_process_id", 0))
+	var process_relation_valid := wrapper_parent_process_id == orchestrator_process_id
+	if engine_process_id == wrapper_process_id:
+		process_relation_valid = process_relation_valid \
+				and engine_parent_process_id == orchestrator_process_id \
+				and str(attestation.get("engine_creation_time_utc_ticks", "")) \
+					== str(attestation.get("wrapper_creation_time_utc_ticks", ""))
+	else:
+		process_relation_valid = process_relation_valid and engine_parent_process_id == wrapper_process_id
+	var expected_attestation_path := _expected_launch_attestation_path(
+		str(options.get("run_id", "")),
+		str(options.get("process_role", "")),
+		orchestrator_process_id
+	)
+	if int(attestation.get("schema_version", 0)) != LAUNCH_ATTESTATION_SCHEMA_VERSION \
+			or str(attestation.get("authorization_id", "")) != OFFICIAL_AUTHORIZATION_ID \
+			or str(attestation.get("claim_fingerprint", "")) != claim_fingerprint \
+			or str(attestation.get("claim_nonce", "")) != str(claim.get("claim_nonce", "")) \
+			or str(attestation.get("source_head_sha", "")) != head_sha \
+			or str(attestation.get("run_id", "")) != str(options.get("run_id", "")) \
+			or str(attestation.get("process_role", "")) != str(options.get("process_role", "")) \
+			or str(attestation.get("launch_nonce", "")) != str(options.get("launch_nonce", "")) \
+			or str(attestation.get("status", "")) != "authorized" \
+			or orchestrator_process_id != int(claim.get("orchestrator_process_id", 0)) \
+			or str(attestation.get("orchestrator_creation_time_utc_ticks", "")) \
+				!= str(claim.get("orchestrator_creation_time_utc_ticks", "")) \
+			or wrapper_process_id <= 0 \
+			or engine_process_id != OS.get_process_id() \
+			or not process_relation_valid \
+			or expected_attestation_path.is_empty() \
+			or attestation_path.to_lower() != expected_attestation_path.to_lower():
+		return {"authorized": false, "reason_code": "launch_attestation_binding_invalid"}
+	for ticks_field in [
+		"orchestrator_creation_time_utc_ticks",
+		"wrapper_creation_time_utc_ticks",
+		"engine_creation_time_utc_ticks",
+	]:
+		if not _is_positive_decimal(str(attestation.get(ticks_field, ""))):
+			return {"authorized": false, "reason_code": "launch_attestation_creation_time_invalid"}
+	return {
+		"authorized": true,
+		"reason_code": "ok",
+		"parent_process_id": engine_parent_process_id,
+		"process_creation_time_utc_ticks": str(attestation.get("engine_creation_time_utc_ticks", "")),
+		"wrapper_process_id": wrapper_process_id,
+		"wrapper_parent_process_id": wrapper_parent_process_id,
+		"wrapper_creation_time_utc_ticks": str(attestation.get("wrapper_creation_time_utc_ticks", "")),
+		"orchestrator_process_id": orchestrator_process_id,
+		"orchestrator_creation_time_utc_ticks": str(attestation.get("orchestrator_creation_time_utc_ticks", "")),
+		"launch_nonce": str(attestation.get("launch_nonce", "")),
+		"official_claim_fingerprint": claim_fingerprint,
+	}
+
+
+static func _has_exact_fields(value: Dictionary, expected_fields: Array) -> bool:
+	if value.size() != expected_fields.size():
+		return false
+	for field_variant in expected_fields:
+		if not value.has(str(field_variant)):
+			return false
+	return true
+
+
+static func _is_positive_decimal(value: String) -> bool:
+	if value.is_empty() or value.length() > 19 or value.begins_with("0"):
+		return false
+	for index in range(value.length()):
+		if not "0123456789".contains(value.substr(index, 1)):
+			return false
+	return true
+
+
+static func _normalize_absolute_path(value: String) -> String:
+	if value.is_empty() or not value.is_absolute_path():
+		return ""
+	return value.replace("\\", "/").simplify_path().trim_suffix("/")
+
+
+static func _resolve_official_claim_path() -> String:
+	var common_dir := _resolve_git_common_dir()
+	if common_dir.is_empty():
+		return ""
+	return _normalize_absolute_path(common_dir.path_join(OFFICIAL_CLAIM_RELATIVE_PATH))
+
+
+static func _resolve_git_common_dir() -> String:
+	var project_root := _normalize_absolute_path(ProjectSettings.globalize_path("res://"))
+	if project_root.is_empty():
+		return ""
+	var git_marker := project_root.path_join(".git")
+	if DirAccess.dir_exists_absolute(git_marker):
+		return _normalize_absolute_path(git_marker)
+	if not FileAccess.file_exists(git_marker):
+		return ""
+	var marker_text := FileAccess.get_file_as_string(git_marker).strip_edges()
+	if not marker_text.begins_with("gitdir:"):
+		return ""
+	var git_dir := marker_text.trim_prefix("gitdir:").strip_edges()
+	if not git_dir.is_absolute_path():
+		git_dir = project_root.path_join(git_dir)
+	git_dir = _normalize_absolute_path(git_dir)
+	if git_dir.is_empty():
+		return ""
+	var common_dir_path := git_dir.path_join("commondir")
+	if not FileAccess.file_exists(common_dir_path):
+		return git_dir
+	var common_dir := FileAccess.get_file_as_string(common_dir_path).strip_edges()
+	if not common_dir.is_absolute_path():
+		common_dir = git_dir.path_join(common_dir)
+	return _normalize_absolute_path(common_dir)
+
+
+static func _expected_launch_attestation_path(run_id: String, role: String, orchestrator_process_id: int) -> String:
+	if run_id.is_empty() or role not in PROCESS_ROLES or orchestrator_process_id <= 0:
+		return ""
+	var project_root := _normalize_absolute_path(ProjectSettings.globalize_path("res://"))
+	return _normalize_absolute_path(project_root.path_join(
+		".godot/cold_restore_v3/%s/orchestrator-%d/%s.launch-attestation.json" \
+			% [run_id, orchestrator_process_id, role]
+	))
+
+
 static func sanitize_public_manifest(source: Dictionary) -> Dictionary:
 	var result := {
 		"schema_version": SCHEMA_VERSION,
@@ -210,6 +453,15 @@ static func sanitize_public_manifest(source: Dictionary) -> Dictionary:
 		"run_id": str(source.get("run_id", "")),
 		"process_role": str(source.get("process_role", "")),
 		"process_id": maxi(0, int(source.get("process_id", 0))),
+		"parent_process_id": maxi(0, int(source.get("parent_process_id", 0))),
+		"process_creation_time_utc_ticks": str(source.get("process_creation_time_utc_ticks", "")),
+		"wrapper_process_id": maxi(0, int(source.get("wrapper_process_id", 0))),
+		"wrapper_parent_process_id": maxi(0, int(source.get("wrapper_parent_process_id", 0))),
+		"wrapper_creation_time_utc_ticks": str(source.get("wrapper_creation_time_utc_ticks", "")),
+		"orchestrator_process_id": maxi(0, int(source.get("orchestrator_process_id", 0))),
+		"orchestrator_creation_time_utc_ticks": str(source.get("orchestrator_creation_time_utc_ticks", "")),
+		"launch_nonce": str(source.get("launch_nonce", "")),
+		"official_claim_fingerprint": str(source.get("official_claim_fingerprint", "")),
 		"head_sha": str(source.get("head_sha", "")),
 		"slot_id": String(SaveSlotPolicyV06.PRODUCTION_SLOT_ID),
 		"slot_state": str(source.get("slot_state", "failed")),
@@ -293,9 +545,35 @@ static func _manifest_shape_valid(manifest: Dictionary) -> bool:
 			or str(manifest.get("process_role", "")) not in PROCESS_ROLES \
 			or str(manifest.get("slot_state", "")) not in ["ready", "restored", "validated", "failed"]:
 		return false
+	if int(manifest.get("process_id", 0)) <= 0 \
+			or int(manifest.get("parent_process_id", 0)) <= 0 \
+			or int(manifest.get("wrapper_process_id", 0)) <= 0 \
+			or int(manifest.get("wrapper_parent_process_id", 0)) <= 0 \
+			or int(manifest.get("orchestrator_process_id", 0)) <= 0:
+		return false
+	for ticks_field in [
+		"process_creation_time_utc_ticks",
+		"wrapper_creation_time_utc_ticks",
+		"orchestrator_creation_time_utc_ticks",
+	]:
+		if not _is_positive_decimal(str(manifest.get(ticks_field, ""))):
+			return false
+	if str(manifest.get("launch_nonce", "")).length() != 32 \
+			or not _is_lower_hex(str(manifest.get("launch_nonce", ""))) \
+			or not _is_lower_sha256(str(manifest.get("official_claim_fingerprint", ""))):
+		return false
+	if int(manifest.get("wrapper_parent_process_id", 0)) != int(manifest.get("orchestrator_process_id", 0)):
+		return false
+	if int(manifest.get("wrapper_process_id", 0)) == int(manifest.get("process_id", 0)):
+		if int(manifest.get("parent_process_id", 0)) != int(manifest.get("orchestrator_process_id", 0)) \
+				or str(manifest.get("process_creation_time_utc_ticks", "")) \
+					!= str(manifest.get("wrapper_creation_time_utc_ticks", "")):
+			return false
+	elif int(manifest.get("parent_process_id", 0)) != int(manifest.get("wrapper_process_id", 0)):
+		return false
 	if (manifest.get("victory_state_sequence", []) as Array).size() > 12:
 		return false
-	for field in ["run_id", "head_sha", "source_sections_digest", "saved_sections_digest", "restored_sections_digest", "source_write_id", "write_id", "source_write_fingerprint", "write_fingerprint", "queue_trigger_stable_target_fingerprint", "failure_code"]:
+	for field in ["run_id", "head_sha", "source_sections_digest", "saved_sections_digest", "restored_sections_digest", "source_write_id", "write_id", "source_write_fingerprint", "write_fingerprint", "queue_trigger_stable_target_fingerprint", "failure_code", "launch_nonce", "official_claim_fingerprint"]:
 		if str(manifest.get(field, "")).length() > 128:
 			return false
 	var queue_target_fingerprint := str(manifest.get("queue_trigger_stable_target_fingerprint", ""))
@@ -306,7 +584,7 @@ static func _manifest_shape_valid(manifest: Dictionary) -> bool:
 
 func _run_role(options: Dictionary, head_sha: String) -> Dictionary:
 	var role := str(options.get("process_role", ""))
-	var base := _manifest_base(str(options.get("run_id", "")), role, head_sha)
+	var base := _manifest_base(options, head_sha)
 	var main := MAIN_SCENE.instantiate()
 	var lifecycle := main.get_node_or_null("RuntimeServices/MenuLifecycleApplicationFlowController")
 	if lifecycle != null:
@@ -409,7 +687,7 @@ func _run_qualification_probe(run_id: String) -> Dictionary:
 	result["scenario_fingerprint"] = str(started.get("scenario_fingerprint", ""))
 	var initial_ai_digest := _ai_state_digest(context)
 	var human := _submit_human_selection(context, "qualification-human", 1)
-	var legal: Dictionary = await _prepare_generic_legal_checkpoint(context)
+	var legal: Dictionary = await _prepare_facility_queue_checkpoint(context)
 	if not bool(legal.get("ready", false)):
 		result["failure_code"] = str(legal.get("reason_code", "legal_checkpoint_failed"))
 		print("COLD_RESTORE_QUALIFICATION_DIAGNOSTIC|" + JSON.stringify({
@@ -430,17 +708,20 @@ func _run_qualification_probe(run_id: String) -> Dictionary:
 		main.queue_free()
 		await process_frame
 		return result
-	var queue_capability := _advance_until_any_queue_capability_ready(context)
-	var trigger: Dictionary
-	if bool(queue_capability.get("ready", false)):
-		coordinator.pause_session()
-		coordinator.request_table_presentation_refresh(&"full", &"cold_restore_qualification_offer_sync")
-		await process_frame
-		await process_frame
-		trigger = _submit_first_formal_queue_offer(context)
-	else:
-		trigger = _tick_ai_until_formal_queue(context, 240)
-		ai_actions += int(trigger.get("ai_action_count", 0))
+	var queue_capability := {
+		"ready": true,
+		"reason_code": "facility_queue_capability_ready",
+		"sale_receipt_count": 0,
+	}
+	coordinator.resume_session()
+	coordinator.request_table_presentation_refresh(&"full", &"cold_restore_qualification_offer_sync")
+	await process_frame
+	await process_frame
+	var trigger := _submit_first_formal_queue_offer(
+		context,
+		str(legal.get("queue_facility_card_id", "")),
+		str(legal.get("queue_facility_region_id", ""))
+	)
 	if not bool(trigger.get("accepted", false)) or not bool(trigger.get("queued", false)):
 		result["failure_code"] = str(trigger.get("reason_code", "legal_queue_offer_missing"))
 		print("COLD_RESTORE_QUALIFICATION_DIAGNOSTIC|" + JSON.stringify({
@@ -452,6 +733,12 @@ func _run_qualification_probe(run_id: String) -> Dictionary:
 		main.queue_free()
 		await process_frame
 		return result
+	coordinator.request_table_presentation_refresh(
+		&"full",
+		&"cold_restore_qualification_checkpoint_sync"
+	)
+	await process_frame
+	await process_frame
 	var checkpoint := _checkpoint_summary(context)
 	result.merge({
 		"human_action_count": int(legal.get("human_action_count", 0)) + (1 if bool(human.get("accepted", false)) else 0) + (1 if bool(trigger.get("accepted", false)) else 0),
@@ -514,7 +801,7 @@ func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -
 		return _fail(base, str(started.get("reason_code", "session_start_failed")))
 	var initial_ai_digest := _ai_state_digest(context)
 	var human := _submit_human_selection(context, "producer-human", 1)
-	var legal_checkpoint: Dictionary = await _prepare_generic_legal_checkpoint(context)
+	var legal_checkpoint: Dictionary = await _prepare_facility_queue_checkpoint(context)
 	if not bool(legal_checkpoint.get("ready", false)):
 		return _fail(base, str(legal_checkpoint.get("reason_code", "legal_checkpoint_failed")))
 	var initial_sales: Dictionary = legal_checkpoint.get("sales", {}) \
@@ -525,17 +812,20 @@ func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -
 	var drain := _drain_pending_queue(context, 120)
 	if not bool(drain.get("drained", false)):
 		return _fail(base, "pre_trigger_queue_not_empty")
-	var queue_capability := _advance_until_any_queue_capability_ready(context)
-	var queue_submission: Dictionary
-	if bool(queue_capability.get("ready", false)):
-		(context.get("coordinator") as GameRuntimeCoordinator).pause_session()
-		(context.get("coordinator") as GameRuntimeCoordinator).request_table_presentation_refresh(&"full", &"cold_restore_queue_offer_sync")
-		await process_frame
-		await process_frame
-		queue_submission = _submit_first_formal_queue_offer(context)
-	else:
-		queue_submission = _tick_ai_until_formal_queue(context, 240)
-		ai_actions += int(queue_submission.get("ai_action_count", 0))
+	var queue_capability := {
+		"ready": true,
+		"reason_code": "facility_queue_capability_ready",
+		"sale_receipt_count": 0,
+	}
+	(context.get("coordinator") as GameRuntimeCoordinator).resume_session()
+	(context.get("coordinator") as GameRuntimeCoordinator).request_table_presentation_refresh(&"full", &"cold_restore_queue_offer_sync")
+	await process_frame
+	await process_frame
+	var queue_submission := _submit_first_formal_queue_offer(
+		context,
+		str(legal_checkpoint.get("queue_facility_card_id", "")),
+		str(legal_checkpoint.get("queue_facility_region_id", ""))
+	)
 	if not bool(queue_submission.get("accepted", false)) \
 			or not bool(queue_submission.get("queued", false)):
 		return _fail(base, "legal_queue_submission_failed")
@@ -1068,6 +1358,250 @@ func _submit_human_selection(context: Dictionary, request_suffix: String, prefer
 	return {"accepted": receipt != null and receipt.accepted and receipt.applied, "reason_code": receipt.reason_code if receipt != null else "selection_receipt_missing"}
 
 
+func _select_exact_region(context: Dictionary, region_id: String, request_suffix: String) -> bool:
+	var coordinator := context.get("coordinator") as GameRuntimeCoordinator
+	var world := coordinator.world_session_state() if coordinator != null else null
+	var selection := coordinator.table_selection_state() if coordinator != null else null
+	if world == null or selection == null or region_id.is_empty():
+		return false
+	var district_index := -1
+	for index in range(world.districts.size()):
+		if world.districts[index] is Dictionary \
+				and str((world.districts[index] as Dictionary).get("region_id", "")) == region_id:
+			district_index = index
+			break
+	if district_index < 0:
+		return false
+	if int(selection.snapshot().get("selected_district", -1)) == district_index:
+		return true
+	var receipt := _submit_human_selection(context, request_suffix, district_index)
+	return bool(receipt.get("accepted", false)) \
+		and int(selection.snapshot().get("selected_district", -1)) == district_index
+
+
+func _prepare_facility_queue_checkpoint(context: Dictionary) -> Dictionary:
+	var coordinator := context.get("coordinator") as GameRuntimeCoordinator
+	var main := context.get("main") as Node
+	if coordinator == null or main == null:
+		return {"ready": false, "reason_code": "facility_checkpoint_runtime_missing"}
+	coordinator.pause_session()
+	await process_frame
+	var world := coordinator.world_session_state()
+	var screen := main.find_child("RuntimeGameScreen", true, false) as SpaceSyndicateGameScreen
+	var overlay := screen.get_node_or_null("OverlayLayer") as SpaceSyndicateOverlayLayer \
+		if screen != null else null
+	var popup := screen.get_region_supply_popup() as SpaceSyndicateRegionSupplyPopup \
+		if screen != null else null
+	var viewmodel_query := coordinator.get_node_or_null("TablePresentationViewModelQuery") \
+		as TablePresentationViewModelQuery
+	var query_ports := coordinator.get_node_or_null("TablePresentationQueryPorts") \
+		as TablePresentationQueryPorts
+	var district_port := coordinator.district_supply_action_port()
+	var infrastructure := coordinator.get_node_or_null("RegionInfrastructureRuntimeController") \
+		as RegionInfrastructureRuntimeController
+	var flow := coordinator.commodity_flow_runtime_controller()
+	var routes := coordinator.get_node_or_null("RouteNetworkRuntimeController") \
+		as RouteNetworkRuntimeController
+	if world == null or screen == null or overlay == null or popup == null \
+			or viewmodel_query == null or query_ports == null or district_port == null \
+			or infrastructure == null or flow == null or routes == null \
+			or query_ports.region_infrastructure_public_query == null:
+		return {"ready": false, "reason_code": "facility_checkpoint_dependency_missing"}
+	var actor_binding := coordinator.actor_id_for_player_index(0)
+	var actor_id := str(actor_binding.get("actor_id", ""))
+	var identity := coordinator.get_node_or_null("PlayerIdentityAuthorizationBoundary") \
+		as PlayerIdentityAuthorizationBoundary
+	var actor_context := identity.current_actor_context(&"district_supply") if identity != null else null
+	var viewer_context := query_ports.viewer_context()
+	if not bool(actor_binding.get("available", false)) or actor_id.is_empty() \
+			or actor_context == null or not actor_context.is_valid():
+		return {"ready": false, "reason_code": "facility_checkpoint_actor_missing"}
+	screen.bind_presentation_viewer(0, viewer_context.authorization_revision)
+	screen.bind_gameplay_actor_authorization_context(actor_context)
+	var facts_variant: Variant = query_ports.region_infrastructure_public_query.call(
+		"public_commodity_region_facts"
+	)
+	var facts: Array = facts_variant if facts_variant is Array else []
+	var facility_index := _active_rank_one_facility_card_index(coordinator)
+	if facts.is_empty() or not bool(facility_index.get("valid", false)):
+		return {"ready": false, "reason_code": "facility_checkpoint_catalog_or_facts_missing"}
+	var selected_plan: Dictionary = {}
+	var diagnostics: Array[Dictionary] = []
+	for industry_id_variant in INDUSTRY_IDS:
+		var industry_id := str(industry_id_variant)
+		var rows := _legal_factory_and_market_targets(
+			coordinator,
+			query_ports,
+			infrastructure,
+			flow,
+			routes,
+			facts,
+			facility_index.get("cards_by_industry", {}) as Dictionary,
+			industry_id
+		)
+		var factory_targets: Array = rows.get("factory_targets", []) \
+			if rows.get("factory_targets", []) is Array else []
+		var market_targets: Array = rows.get("market_targets", []) \
+			if rows.get("market_targets", []) is Array else []
+		diagnostics.append({
+			"industry_id": industry_id,
+			"factory_target_count": factory_targets.size(),
+			"market_target_count": market_targets.size(),
+		})
+		if selected_plan.is_empty() and factory_targets.size() >= 2:
+			selected_plan = {
+				"industry_id": industry_id,
+				"first_card_id": str(rows.get("factory_card_id", "")),
+				"queue_card_id": str(rows.get("factory_card_id", "")),
+				"first_target": (factory_targets[0] as Dictionary).duplicate(true),
+				"queue_target": (factory_targets[1] as Dictionary).duplicate(true),
+				"product_id": str((factory_targets[0] as Dictionary).get("product_id", "")),
+			}
+	if selected_plan.is_empty() or str(selected_plan.get("first_card_id", "")).is_empty() \
+			or str(selected_plan.get("queue_card_id", "")).is_empty() \
+			or str(selected_plan.get("product_id", "")).is_empty():
+		return {
+			"ready": false,
+			"reason_code": "facility_checkpoint_two_targets_missing",
+			"diagnostics": {"targets_by_industry": diagnostics},
+		}
+	var claim := _claim_first_visible_commodity(context, maxi(1, Time.get_ticks_msec()))
+	if not bool(claim.get("success", false)):
+		return {"ready": false, "reason_code": "facility_checkpoint_commodity_claim_failed"}
+	var protected_card_ids: Array = [
+		str(claim.get("commodity_card_id", "")),
+		str(selected_plan.get("first_card_id", "")),
+		str(selected_plan.get("queue_card_id", "")),
+	]
+	var receipts: Array[DistrictSupplyActionReceipt] = []
+	district_port.receipt_ready.connect(func(receipt: DistrictSupplyActionReceipt) -> void:
+		receipts.append(receipt)
+	)
+	var first_purchase := await _purchase_with_legal_churn(
+		coordinator,
+		world,
+		screen,
+		overlay,
+		popup,
+		viewmodel_query,
+		district_port,
+		receipts,
+		actor_id,
+		str(selected_plan.get("first_card_id", "")),
+		protected_card_ids
+	)
+	if not bool(first_purchase.get("completed", false)):
+		return {
+			"ready": false,
+			"reason_code": "facility_checkpoint_first_purchase_failed",
+			"diagnostics": {"first_purchase": first_purchase.duplicate(true)},
+		}
+	var first_target := selected_plan.get("first_target", {}) as Dictionary
+	var first_play := await _play_facility_through_formal_submission(
+		context,
+		actor_id,
+		str(selected_plan.get("first_card_id", "")),
+		str(first_target.get("region_id", ""))
+	)
+	if not bool(first_play.get("success", false)):
+		return {
+			"ready": false,
+			"reason_code": "facility_checkpoint_first_play_failed",
+			"diagnostics": first_play.duplicate(true),
+		}
+	coordinator.resume_session()
+	var sales := _advance_until_product_sale(context, str(selected_plan.get("product_id", "")))
+	coordinator.pause_session()
+	if int(sales.get("owned_sale_receipt_count", 0)) <= 0:
+		return {
+			"ready": false,
+			"reason_code": str(sales.get("reason_code", "facility_checkpoint_sale_missing")),
+			"diagnostics": {"sales": sales.duplicate(true)},
+		}
+	var queue_purchase: Dictionary = {}
+	var queue_purchase_count := 0
+	for funding_cycle in range(MAX_QUEUE_PURCHASE_FUNDING_CYCLES + 1):
+		queue_purchase = await _purchase_with_legal_churn(
+			coordinator,
+			world,
+			screen,
+			overlay,
+			popup,
+			viewmodel_query,
+			district_port,
+			receipts,
+			actor_id,
+			str(selected_plan.get("queue_card_id", "")),
+			protected_card_ids,
+			int(first_purchase.get("source_district_index", -1)),
+			true
+		)
+		queue_purchase_count += int(queue_purchase.get("purchase_count", 0))
+		queue_purchase["purchase_count"] = queue_purchase_count
+		if bool(queue_purchase.get("completed", false)):
+			break
+		if funding_cycle >= MAX_QUEUE_PURCHASE_FUNDING_CYCLES \
+				or str(queue_purchase.get("reason_code", "")) not in [
+					"legal_supply_churn_exhausted",
+					"purchase_surface_unavailable",
+				]:
+			break
+		coordinator.resume_session()
+		var funding_sale := _advance_until_product_sale(
+			context,
+			str(selected_plan.get("product_id", "")),
+			int(first_purchase.get("source_district_index", -1))
+		)
+		coordinator.pause_session()
+		sales["advanced"] = bool(sales.get("advanced", false)) \
+			or bool(funding_sale.get("advanced", false))
+		sales["sale_receipt_count"] = int(sales.get("sale_receipt_count", 0)) \
+			+ int(funding_sale.get("sale_receipt_count", 0))
+		sales["owned_sale_receipt_count"] = int(sales.get("owned_sale_receipt_count", 0)) \
+			+ int(funding_sale.get("owned_sale_receipt_count", 0))
+		sales["funding_cycle_count"] = funding_cycle + 1
+		if int(funding_sale.get("owned_sale_receipt_count", 0)) <= 0 \
+				or not bool(funding_sale.get("market_purchasable", false)):
+			queue_purchase["reason_code"] = str(funding_sale.get(
+				"reason_code",
+				"facility_checkpoint_funding_sale_missing"
+			))
+			break
+	if not bool(queue_purchase.get("completed", false)):
+		return {
+			"ready": false,
+			"reason_code": "facility_checkpoint_queue_purchase_failed",
+			"diagnostics": {
+				"first_purchase": first_purchase.duplicate(true),
+				"queue_purchase": queue_purchase.duplicate(true),
+				"sales": sales.duplicate(true),
+			},
+		}
+	var queue_target := selected_plan.get("queue_target", {}) as Dictionary
+	if not _select_exact_region(context, str(queue_target.get("region_id", "")), "facility-queue-target"):
+		return {"ready": false, "reason_code": "facility_checkpoint_queue_target_selection_failed"}
+	coordinator.request_table_presentation_refresh(&"full", &"facility_queue_checkpoint_ready")
+	await process_frame
+	await process_frame
+	return {
+		"ready": true,
+		"reason_code": "facility_queue_checkpoint_ready",
+		"actor_id": actor_id,
+		"queue_facility_card_id": str(selected_plan.get("queue_card_id", "")),
+		"queue_facility_region_id": str(queue_target.get("region_id", "")),
+		"product_id": str(selected_plan.get("product_id", "")),
+		"commodity_action_count": 1,
+		"normal_card_purchase_count": int(first_purchase.get("purchase_count", 0)) \
+			+ int(queue_purchase.get("purchase_count", 0)),
+		"facility_action_count": 1,
+		"invalid_action_count": 0,
+		"direct_authority_mutation_count": 0,
+		"human_action_count": int(first_purchase.get("purchase_count", 0)) \
+			+ int(queue_purchase.get("purchase_count", 0)) + 1,
+		"sales": sales.duplicate(true),
+	}
+
+
 func _prepare_generic_legal_checkpoint(context: Dictionary) -> Dictionary:
 	var coordinator := context.get("coordinator") as GameRuntimeCoordinator
 	var main := context.get("main") as Node
@@ -1218,8 +1752,8 @@ func _prepare_generic_legal_checkpoint(context: Dictionary) -> Dictionary:
 				"diagnostics": {"facility_role": str(spec.get("role", ""))},
 			}
 		facility_purchase_count += int(purchase.get("purchase_count", 0))
-		var play := _play_facility_through_formal_submission(
-			coordinator,
+		var play := await _play_facility_through_formal_submission(
+			context,
 			actor_id,
 			str(spec.get("card_id", "")),
 			str(target.get("region_id", ""))
@@ -1592,7 +2126,11 @@ func _active_rank_one_facility_card_index(coordinator: GameRuntimeCoordinator) -
 	}
 
 
-func _advance_until_product_sale(context: Dictionary, product_id: String) -> Dictionary:
+func _advance_until_product_sale(
+	context: Dictionary,
+	product_id: String,
+	required_purchasable_district: int = -1
+) -> Dictionary:
 	var coordinator := context.get("coordinator") as GameRuntimeCoordinator
 	# The public (-1) receipt view intentionally redacts commodity ownership and
 	# owner cash.  The authorized player-0 view is required for the independent
@@ -1603,6 +2141,7 @@ func _advance_until_product_sale(context: Dictionary, product_id: String) -> Dic
 	var any_advanced := false
 	var last_reason := ""
 	var last_advance: Dictionary = {}
+	var market_purchasable := required_purchasable_district < 0
 	for _second in range(MAX_SALE_SECONDS):
 		coordinator.advance_runtime_world_time(1.0)
 		var advanced := coordinator.advance_commodity_flow(1.0, {})
@@ -1617,13 +2156,18 @@ func _advance_until_product_sale(context: Dictionary, product_id: String) -> Dic
 			if not receipt_id.is_empty() and not baseline_ids.has(receipt_id):
 				observed_new[receipt_id] = receipt.duplicate(true)
 		owned_sale_count = _matching_sale_count(observed_new.values(), 0, product_id, 0)
-		if owned_sale_count > 0:
+		market_purchasable = required_purchasable_district < 0 \
+			or bool(coordinator.card_market_listing_availability(
+				required_purchasable_district
+			).get("purchasable", false))
+		if owned_sale_count > 0 and market_purchasable:
 			break
 	return {
 		"advanced": any_advanced,
 		"sale_receipt_count": observed_new.size(),
 		"owned_sale_receipt_count": owned_sale_count,
-		"reason_code": "legal_product_sale_ready" if owned_sale_count > 0 \
+		"market_purchasable": market_purchasable,
+		"reason_code": "legal_product_sale_ready" if owned_sale_count > 0 and market_purchasable \
 			else ("legal_flow_advance_blocked" if not any_advanced else "legal_product_sale_missing"),
 		"internal_reason": last_reason,
 		"last_advance": last_advance,
@@ -2068,7 +2612,11 @@ func _drain_pending_queue(context: Dictionary, maximum_steps: int) -> Dictionary
 	return {"drained": _queue_entry_count(context) == 0, "step_count": steps}
 
 
-func _submit_first_formal_queue_offer(context: Dictionary) -> Dictionary:
+func _submit_first_formal_queue_offer(
+	context: Dictionary,
+	expected_card_semantic_id: String = "",
+	expected_region_id: String = ""
+) -> Dictionary:
 	var coordinator := context.get("coordinator") as GameRuntimeCoordinator
 	var main := context.get("main") as Node
 	var screen := main.find_child("RuntimeGameScreen", true, false) as SpaceSyndicateGameScreen \
@@ -2139,6 +2687,23 @@ func _submit_first_formal_queue_offer(context: Dictionary) -> Dictionary:
 			if not (row_variant is Dictionary):
 				continue
 			var row := row_variant as Dictionary
+			var row_card_semantic_id := str(row.get(str(pool_spec.get("semantic_field", "")), ""))
+			if not expected_card_semantic_id.is_empty() and row_card_semantic_id == expected_card_semantic_id:
+				var diagnostic_offer: Dictionary = row.get("game_action_offer", {}) \
+					if row.get("game_action_offer", {}) is Dictionary else {}
+				var diagnostic_targets: Dictionary = diagnostic_offer.get("target_ids", {}) \
+					if diagnostic_offer.get("target_ids", {}) is Dictionary else {}
+				var matching_rows: Array = reason_diagnostics.get("expected_card_rows", []) \
+					if reason_diagnostics.get("expected_card_rows", []) is Array else []
+				matching_rows.append({
+					"pool_id": pool_id,
+					"card_semantic_id": row_card_semantic_id,
+					"play_state": str(row.get("play_state", "")),
+					"disabled_reason_id": str(row.get("disabled_reason_id", "")),
+					"offer_legality_state": str(diagnostic_offer.get("legality_state", "")),
+					"target_region_id": str(diagnostic_targets.get("region_id", "")),
+				})
+				reason_diagnostics["expected_card_rows"] = matching_rows
 			var availability_field := str(pool_spec.get("availability_field", ""))
 			var available := bool(row.get(availability_field, false)) \
 				if availability_field == "enabled" else str(row.get(availability_field, "")) == "available"
@@ -2182,7 +2747,14 @@ func _submit_first_formal_queue_offer(context: Dictionary) -> Dictionary:
 				}
 			var offer_fingerprint := str(offer.get("offer_fingerprint", ""))
 			var semantic_action_id := str(offer.get("semantic_action_id", ""))
-			var card_semantic_id := str(row.get(str(pool_spec.get("semantic_field", "")), ""))
+			var card_semantic_id := row_card_semantic_id
+			if not expected_card_semantic_id.is_empty() \
+					and card_semantic_id != expected_card_semantic_id:
+				continue
+			if not expected_region_id.is_empty() \
+					and not str(targets.get("region_id", "")).is_empty() \
+					and str(targets.get("region_id", "")) != expected_region_id:
+				continue
 			var definition := coordinator.v06_card_definition(card_semantic_id)
 			var machine: Dictionary = definition.get("machine", {}) \
 				if definition.get("machine", {}) is Dictionary else {}
@@ -2191,7 +2763,12 @@ func _submit_first_formal_queue_offer(context: Dictionary) -> Dictionary:
 					reason_diagnostics.get("non_queue_offer_count", 0)
 				) + 1
 				continue
-			var target_fingerprint := SEMANTIC_WIRE.fingerprint(targets)
+			var effective_targets := targets.duplicate(true)
+			var target_overrides: Dictionary = {}
+			if not expected_region_id.is_empty() and str(effective_targets.get("region_id", "")).is_empty():
+				effective_targets["region_id"] = expected_region_id
+				target_overrides["region_id"] = expected_region_id
+			var target_fingerprint := SEMANTIC_WIRE.fingerprint(effective_targets)
 			var stable_sort_key := "%s\u001f%s\u001f%s\u001f%s\u001f%010d\u001f%02d:%s\u001f%010d\u001f%s" % [
 				semantic_action_id,
 				card_semantic_id,
@@ -2213,6 +2790,7 @@ func _submit_first_formal_queue_offer(context: Dictionary) -> Dictionary:
 				"stable_sort_key": stable_sort_key,
 				"offer_fingerprint": offer_fingerprint,
 				"target_fingerprint": target_fingerprint,
+				"target_overrides": target_overrides.duplicate(true),
 			})
 	candidates.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
 		return str(left.get("stable_sort_key", "")) < str(right.get("stable_sort_key", ""))
@@ -2259,7 +2837,7 @@ func _submit_first_formal_queue_offer(context: Dictionary) -> Dictionary:
 		selected.get("offer", {}) as Dictionary,
 		"human_click",
 		{},
-		{}
+		selected.get("target_overrides", {}) as Dictionary
 	)
 	coordinator.pause_session()
 	if screen.game_action_intent_requested.is_connected(capture_intent):
@@ -2580,8 +3158,8 @@ func _prepare_legal_checkpoint(context: Dictionary) -> Dictionary:
 	)
 	if not bool(asset_purchase.get("completed", false)):
 		return {"ready": false, "reason_code": "legal_asset_factory_purchase_failed"}
-	var asset_play := _play_facility_through_formal_submission(
-		coordinator,
+	var asset_play := await _play_facility_through_formal_submission(
+		context,
 		actor_id,
 		asset_factory_card_id,
 		str(asset_target.get("region_id", ""))
@@ -2615,8 +3193,8 @@ func _prepare_legal_checkpoint(context: Dictionary) -> Dictionary:
 		if not bool(supply_purchase.get("completed", false)):
 			return {"ready": false, "reason_code": "legal_supply_factory_purchase_failed"}
 		supply_purchase_count = int(supply_purchase.get("purchase_count", 0))
-		var supply_play := _play_facility_through_formal_submission(
-			coordinator,
+		var supply_play := await _play_facility_through_formal_submission(
+			context,
 			actor_id,
 			supply_factory_card_id,
 			str(supply_target.get("region_id", ""))
@@ -3029,36 +3607,57 @@ func _purchase_with_legal_churn(
 	receipts: Array[DistrictSupplyActionReceipt],
 	actor_id: String,
 	target_card_id: String,
-	protected_card_ids: Array
+	protected_card_ids: Array,
+	preferred_churn_district: int = -1,
+	strict_preferred_district: bool = false
 ) -> Dictionary:
 	var purchase_count := 0
 	for _attempt in range(MAX_SUPPLY_CHURN):
 		var player := coordinator.v06_card_player_snapshot(actor_id)
 		if _inventory_has_card(player, target_card_id):
-			return {"completed": true, "reason_code": "target_already_owned", "purchase_count": purchase_count}
-		var visible_target_district := _purchasable_listing_district(coordinator, world, target_card_id, -1)
+			return {
+				"completed": true,
+				"reason_code": "target_already_owned",
+				"purchase_count": purchase_count,
+				"source_district_index": -1,
+			}
+		var visible_target_district := _purchasable_listing_district(
+			coordinator,
+			world,
+			target_card_id,
+			preferred_churn_district,
+			strict_preferred_district
+		)
 		var purchase_card_id := target_card_id
+		var purchase_district := visible_target_district
 		if visible_target_district < 0:
-			purchase_card_id = _first_visible_purchasable_filler(coordinator, world, protected_card_ids)
+			var filler := _lowest_visible_purchasable_filler(
+				coordinator,
+				world,
+				protected_card_ids,
+				preferred_churn_district
+			)
+			purchase_card_id = str(filler.get("card_id", ""))
+			purchase_district = int(filler.get("district_index", -1))
 		if purchase_card_id.is_empty():
-			return {"completed": false, "reason_code": "legal_supply_churn_exhausted", "purchase_count": purchase_count}
+			return {
+				"completed": false,
+				"reason_code": "legal_supply_churn_exhausted",
+				"purchase_count": purchase_count,
+				"source_district_index": -1,
+			}
 		var discard_slot := -1
 		if _inventory_card_count(player) >= CardFlowPolicyV06.HAND_LIMIT:
 			discard_slot = _first_disposable_inventory_slot(player, protected_card_ids)
 			if discard_slot < 0:
 				return {"completed": false, "reason_code": "legal_supply_discard_unavailable", "purchase_count": purchase_count}
-		var purchase: Dictionary = await _purchase_from_region_supply_popup(
+		var purchase: Dictionary = await _purchase_from_authoritative_region_supply_port(
 			coordinator,
 			world,
-			screen,
-			overlay,
-			popup,
-			viewmodel_query,
 			port,
-			receipts,
 			purchase_card_id,
 			discard_slot,
-			visible_target_district
+			purchase_district
 		)
 		if not bool(purchase.get("completed", false)):
 			return {
@@ -3067,28 +3666,72 @@ func _purchase_with_legal_churn(
 				"purchase_count": purchase_count,
 			}
 		purchase_count += 1
+		if purchase_card_id == target_card_id:
+			return {
+				"completed": true,
+				"reason_code": "legal_supply_target_found",
+				"purchase_count": purchase_count,
+				"source_district_index": purchase_district,
+			}
 	return {
 		"completed": _inventory_has_card(coordinator.v06_card_player_snapshot(actor_id), target_card_id),
 		"reason_code": "legal_supply_target_found" if _inventory_has_card(coordinator.v06_card_player_snapshot(actor_id), target_card_id) else "legal_supply_churn_limit",
 		"purchase_count": purchase_count,
+		"source_district_index": -1,
 	}
 
 
-func _first_visible_purchasable_filler(
+func _lowest_visible_purchasable_filler(
 	coordinator: GameRuntimeCoordinator,
 	world: WorldSessionState,
-	protected_card_ids: Array
-) -> String:
-	for district_index in range(world.districts.size()):
+	protected_card_ids: Array,
+	preferred_district: int = -1
+) -> Dictionary:
+	if preferred_district < 0:
+		for district_index in range(world.districts.size()):
+			if not (world.districts[district_index] is Dictionary) \
+					or not bool(coordinator.card_market_listing_availability(district_index).get("purchasable", false)):
+				continue
+			var region_id := str((world.districts[district_index] as Dictionary).get("region_id", ""))
+			for card_id_variant in coordinator.region_supply_card_ids(region_id):
+				var card_id := str(card_id_variant)
+				if not card_id.is_empty() and not protected_card_ids.has(card_id):
+					return {"card_id": card_id, "district_index": district_index}
+		return {}
+	var district_indices: Array[int] = []
+	district_indices.append(preferred_district)
+	var candidates: Array[Dictionary] = []
+	for district_index in district_indices:
+		if district_index < 0 or district_index >= world.districts.size():
+			continue
 		if not (world.districts[district_index] is Dictionary) \
 				or not bool(coordinator.card_market_listing_availability(district_index).get("purchasable", false)):
 			continue
 		var region_id := str((world.districts[district_index] as Dictionary).get("region_id", ""))
 		for card_id_variant in coordinator.region_supply_card_ids(region_id):
 			var card_id := str(card_id_variant)
-			if not card_id.is_empty() and not protected_card_ids.has(card_id):
-				return card_id
-	return ""
+			if card_id.is_empty() or protected_card_ids.has(card_id):
+				continue
+			var listing := coordinator.region_supply_listing(region_id, card_id)
+			if listing.is_empty():
+				continue
+			candidates.append({
+				"card_id": card_id,
+				"district_index": district_index,
+				"price_cash": maxi(0, int(listing.get("price_cash", 0))),
+			})
+	candidates.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		var left_price := int(left.get("price_cash", 0))
+		var right_price := int(right.get("price_cash", 0))
+		if left_price != right_price:
+			return left_price < right_price
+		var left_card_id := str(left.get("card_id", ""))
+		var right_card_id := str(right.get("card_id", ""))
+		if left_card_id != right_card_id:
+			return left_card_id < right_card_id
+		return int(left.get("district_index", -1)) < int(right.get("district_index", -1))
+	)
+	return candidates[0].duplicate(true) if not candidates.is_empty() else {}
 
 
 func _first_disposable_inventory_slot(player_snapshot: Dictionary, protected_card_ids: Array) -> int:
@@ -3106,90 +3749,126 @@ func _first_disposable_inventory_slot(player_snapshot: Dictionary, protected_car
 	return -1
 
 
-func _purchase_from_region_supply_popup(
+func _purchase_from_authoritative_region_supply_port(
 	coordinator: GameRuntimeCoordinator,
 	world: WorldSessionState,
-	screen: SpaceSyndicateGameScreen,
-	overlay: SpaceSyndicateOverlayLayer,
-	region_popup: SpaceSyndicateRegionSupplyPopup,
-	viewmodel_query: TablePresentationViewModelQuery,
 	port: DistrictSupplyActionPort,
-	receipts: Array[DistrictSupplyActionReceipt],
 	card_id: String,
 	discard_slot: int,
 	preferred_district: int
 ) -> Dictionary:
 	var result := {"completed": false, "failure": "purchase_not_started"}
-	var district_index := _purchasable_listing_district(coordinator, world, card_id, preferred_district)
-	coordinator.request_table_presentation_refresh(&"full", &"cold_restore_supply_open_sync")
-	await process_frame
-	var open_receipt_start := receipts.size()
-	if district_index < 0 or not screen.request_district_supply_open(district_index, &"qa_driver"):
+	var district_index := _purchasable_listing_district(
+		coordinator,
+		world,
+		card_id,
+		preferred_district,
+		true
+	)
+	if district_index < 0 or port == null:
 		result["failure"] = "purchasable_listing_or_selection_missing"
 		return result
-	await process_frame
-	if receipts.size() <= open_receipt_start or not receipts[open_receipt_start].accepted:
+	var open_receipt := port.submit_current_actor_action(
+		DISTRICT_SUPPLY_ACTION_INTENT.KIND_OPEN,
+		district_index,
+		"",
+		-1,
+		&"district_supply"
+	)
+	if open_receipt == null or not open_receipt.accepted:
 		result["failure"] = "typed_region_supply_open_rejected"
 		return result
-	var receipt_start := receipts.size()
-	var quote_state := viewmodel_query.compose_table_state(0, true)
-	var quote_projection: Dictionary = quote_state.get("region_supply_popup", {}) \
-		if quote_state.get("region_supply_popup", {}) is Dictionary else {}
-	if quote_projection.is_empty() or not region_popup.apply_projection(quote_projection):
-		result["failure"] = "quote_surface_unavailable"
-		return result
-	var quote_offer := region_popup.action_offer_for_card(card_id, GAME_ACTION_INTENT.ACTION_DISTRICT_SUPPLY_QUOTE)
-	if quote_offer.is_empty() or not screen.submit_game_action_offer(quote_offer, "human_click", {}, {}):
-		result["failure"] = "quote_surface_unavailable"
-		return result
-	await process_frame
-	if receipts.size() <= receipt_start or not receipts[receipt_start].accepted \
-			or receipts[receipt_start].reason_code != "quote_locked":
+	var quote_receipt := port.submit_current_actor_action(
+		DISTRICT_SUPPLY_ACTION_INTENT.KIND_QUOTE,
+		district_index,
+		card_id,
+		-1,
+		&"district_supply"
+	)
+	if quote_receipt == null or not quote_receipt.accepted \
+			or quote_receipt.reason_code != "quote_locked" \
+			or quote_receipt.quote_id.is_empty():
 		result["failure"] = "quote_rejected"
 		return result
-	var purchase_state := viewmodel_query.compose_table_state(0, true)
-	var purchase_projection: Dictionary = purchase_state.get("region_supply_popup", {}) \
-		if purchase_state.get("region_supply_popup", {}) is Dictionary else {}
-	if purchase_projection.is_empty() or not region_popup.apply_projection(purchase_projection):
-		result["failure"] = "purchase_surface_unavailable"
-		return result
-	var purchase_offer := region_popup.action_offer_for_card(card_id, GAME_ACTION_INTENT.ACTION_DISTRICT_SUPPLY_PURCHASE)
-	if purchase_offer.is_empty() or not screen.submit_game_action_offer(purchase_offer, "human_click", {}, {}):
-		result["failure"] = "purchase_surface_unavailable"
-		return result
-	await process_frame
-	if receipts.size() <= receipt_start + 1:
+	var purchase_receipt := _submit_locked_region_supply_purchase(
+		coordinator,
+		port,
+		district_index,
+		card_id,
+		quote_receipt.quote_id
+	)
+	if purchase_receipt == null:
 		result["failure"] = "purchase_receipt_missing"
 		return result
-	var purchase_receipt := receipts[receipt_start + 1]
+	var terminal_receipt := purchase_receipt
 	if purchase_receipt.requires_discard:
 		if discard_slot < 0:
 			result["failure"] = "discard_slot_missing"
 			return result
-		overlay.temporary_decision_action_requested.emit("discard_purchase_%d" % discard_slot)
-		await process_frame
-	if receipts.size() <= receipt_start + (2 if purchase_receipt.requires_discard else 1):
+		terminal_receipt = port.submit_current_actor_action(
+			DISTRICT_SUPPLY_ACTION_INTENT.KIND_DISCARD_CONFIRM,
+			-1,
+			"",
+			discard_slot,
+			&"district_supply"
+		)
+	if terminal_receipt == null:
 		result["failure"] = "terminal_purchase_receipt_missing"
 		return result
-	var terminal_receipt := receipts[-1]
 	result["completed"] = terminal_receipt.accepted and terminal_receipt.applied \
 		and terminal_receipt.reason_code == "purchase_committed"
 	result["failure"] = "" if bool(result.get("completed", false)) else terminal_receipt.reason_code
 	return result
 
 
+func _submit_locked_region_supply_purchase(
+	coordinator: GameRuntimeCoordinator,
+	port: DistrictSupplyActionPort,
+	district_index: int,
+	card_id: String,
+	quote_id: String
+) -> DistrictSupplyActionReceipt:
+	var identity := coordinator.get_node_or_null("PlayerIdentityAuthorizationBoundary") \
+		as PlayerIdentityAuthorizationBoundary if coordinator != null else null
+	var actor_context := identity.current_actor_context(&"district_supply") \
+		if identity != null else null
+	if port == null or actor_context == null or not actor_context.is_valid() \
+			or district_index < 0 or card_id.is_empty() or quote_id.is_empty():
+		return null
+	_district_supply_request_revision += 1
+	var intent := DISTRICT_SUPPLY_ACTION_INTENT.new()
+	intent.request_id = "cold-restore-district-supply:%d:%d" % [
+		actor_context.authorized_actor_player_index,
+		_district_supply_request_revision,
+	]
+	intent.action_kind = DISTRICT_SUPPLY_ACTION_INTENT.KIND_PURCHASE
+	intent.actor_player_index = actor_context.authorized_actor_player_index
+	intent.authorization_revision = actor_context.authorization_revision
+	intent.session_id = actor_context.session_id
+	intent.session_revision = actor_context.session_revision
+	intent.district_index = district_index
+	intent.card_id = card_id
+	intent.discard_slot = -1
+	intent.locked_quote_id = quote_id
+	intent.source_surface = &"district_supply"
+	intent.request_revision = _district_supply_request_revision
+	return port.submit_intent(intent)
+
+
 func _purchasable_listing_district(
 	coordinator: GameRuntimeCoordinator,
 	world: WorldSessionState,
 	card_id: String,
-	preferred_district: int
+	preferred_district: int,
+	strict_preferred_district: bool = false
 ) -> int:
 	var ordered: Array[int] = []
 	if preferred_district >= 0:
 		ordered.append(preferred_district)
-	for district_index in range(world.districts.size()):
-		if not ordered.has(district_index):
-			ordered.append(district_index)
+	if not strict_preferred_district or preferred_district < 0:
+		for district_index in range(world.districts.size()):
+			if not ordered.has(district_index):
+				ordered.append(district_index)
 	for district_index in ordered:
 		if district_index < 0 or district_index >= world.districts.size() \
 				or not (world.districts[district_index] is Dictionary):
@@ -3202,28 +3881,66 @@ func _purchasable_listing_district(
 
 
 func _play_facility_through_formal_submission(
-	coordinator: GameRuntimeCoordinator,
+	context: Dictionary,
 	actor_id: String,
 	card_id: String,
 	region_id: String
 ) -> Dictionary:
-	var submission := coordinator.card_play_submission_controller()
-	var before := submission.debug_snapshot()
-	var public_result := coordinator.execute_v06_facility_play_action(actor_id, card_id, region_id)
-	var after := submission.debug_snapshot()
-	var receipt: Dictionary = after.get("last_receipt", {}) if after.get("last_receipt", {}) is Dictionary else {}
-	var v06_receipt: Dictionary = receipt.get("v06_receipt", {}) if receipt.get("v06_receipt", {}) is Dictionary else {}
-	var finalization: Dictionary = v06_receipt.get("effect_finalization", {}) \
-		if v06_receipt.get("effect_finalization", {}) is Dictionary else {}
+	var coordinator := context.get("coordinator") as GameRuntimeCoordinator
+	if coordinator == null:
+		return {"success": false, "reason_code": "facility_formal_coordinator_missing"}
+	var actor_binding := coordinator.actor_id_for_player_index(0)
+	if not bool(actor_binding.get("available", false)) \
+			or str(actor_binding.get("actor_id", "")) != actor_id:
+		return {"success": false, "reason_code": "facility_formal_actor_binding_changed"}
+	var adapter := coordinator.facility_card_queue_adapter_v06()
+	if adapter == null:
+		return {"success": false, "reason_code": "facility_formal_queue_adapter_missing"}
+	if not _select_exact_region(context, region_id, "facility-formal-target"):
+		return {"success": false, "reason_code": "facility_formal_target_selection_failed"}
+	coordinator.resume_session()
+	coordinator.request_table_presentation_refresh(&"full", &"cold_restore_facility_offer_sync")
+	await process_frame
+	await process_frame
+	var adapter_before := adapter.debug_snapshot()
+	var queue_count_before := _queue_entry_count(context)
+	var queued := _submit_first_formal_queue_offer(context, card_id, region_id)
+	var queue := coordinator.get_node_or_null("CardResolutionQueueRuntimeService") \
+		as CardResolutionQueueRuntimeService
+	var queued_entry := queue.entry_by_id(int(queued.get("queue_resolution_id", -1))) \
+		if queue != null and int(queued.get("queue_resolution_id", -1)) >= 0 else {}
+	var queued_binding: Dictionary = queued_entry.get("v06_facility_action", {}) \
+		if queued_entry.get("v06_facility_action", {}) is Dictionary else {}
+	var queued_target: Dictionary = queued_binding.get("prebound_target", {}) \
+		if queued_binding.get("prebound_target", {}) is Dictionary else {}
+	var queued_ok := bool(queued.get("accepted", false)) \
+		and bool(queued.get("queued", false)) \
+		and int(queued.get("queue_resolution_id", -1)) >= 0 \
+		and str(queued_target.get("region_id", "")) == region_id \
+		and queue_count_before == 0 \
+		and _queue_entry_count(context) == 1
+	var resolution_step: Dictionary = {}
+	if queued_ok:
+		resolution_step = coordinator.advance_card_resolution_frame(0.0)
+	var adapter_after := adapter.debug_snapshot()
+	var resolved_once := int(adapter_after.get("resolution_count", 0)) \
+		== int(adapter_before.get("resolution_count", 0)) + 1
+	var queue_empty := _queue_entry_count(context) == 0
 	return {
-		"success": bool(public_result.get("success", false)) \
-			and int(after.get("submission_count", 0)) == int(before.get("submission_count", 0)) + 1 \
-			and int(after.get("accepted_count", 0)) == int(before.get("accepted_count", 0)) + 1 \
-			and bool(receipt.get("accepted", false)) \
-			and bool(v06_receipt.get("committed", false)) \
-			and bool(finalization.get("finalized", v06_receipt.get("finalized", false))),
-		"public_result": public_result,
-		"receipt": receipt,
+		"success": queued_ok and resolved_once and queue_empty,
+		"reason_code": "facility_formal_queue_resolved" if queued_ok and resolved_once and queue_empty \
+			else str(queued.get("reason_code", "facility_formal_queue_resolution_failed")),
+		"public_result": {
+			"success": queued_ok and resolved_once and queue_empty,
+			"failure_code": "" if queued_ok and resolved_once and queue_empty \
+				else str(queued.get("reason_code", "facility_formal_queue_resolution_failed")),
+		},
+		"receipt": queued.duplicate(true),
+		"resolution_step": resolution_step.duplicate(true),
+		"adapter_resolution_delta": int(adapter_after.get("resolution_count", 0)) \
+			- int(adapter_before.get("resolution_count", 0)),
+		"queue_count_before": queue_count_before,
+		"queue_count_after": _queue_entry_count(context),
 	}
 
 
@@ -3501,6 +4218,18 @@ func _checkpoint_summary(context: Dictionary) -> Dictionary:
 		"dock_ready": dock_ready,
 		"roster_ready": roster_ready,
 		"map_ready": map_ready,
+		"map_diagnostics": {
+			"map_node_present": map_view != null,
+			"has_map_data": bool(map_debug.get("has_map_data", false)),
+			"district_count": int(map_debug.get("district_count", 0)),
+			"district_polygon_count": int(map_debug.get("district_polygon_count", -1)),
+			"district_node_count": int(map_debug.get("district_node_count", -1)),
+			"sceneized_visual_cutover_enabled": bool(map_debug.get(
+				"sceneized_visual_cutover_enabled",
+				false
+			)),
+			"legacy_draw_fallback_used": bool(map_debug.get("legacy_draw_fallback_used", true)),
+		},
 		"production_surface_ready": dock_ready and roster_ready and map_ready,
 	}
 
@@ -3519,7 +4248,7 @@ func _checkpoint_ready(checkpoint: Dictionary) -> bool:
 	return int(checkpoint.get("normal_card_count", 0)) > 0 \
 		and int(checkpoint.get("commodity_card_count", 0)) > 0 \
 		and int(checkpoint.get("commodity_claim_count", 0)) > 0 \
-		and int(checkpoint.get("facility_count", 0)) >= 2 \
+		and int(checkpoint.get("facility_count", 0)) >= 1 \
 		and int(checkpoint.get("route_count", 0)) > 0 \
 		and int(checkpoint.get("queue_entry_count", 0)) > 0 \
 		and int(checkpoint.get("weather_region_count", 0)) > 0 \
@@ -3596,11 +4325,20 @@ func _delta(before: Dictionary, after: Dictionary, field: String) -> int:
 	return int(after.get(field, 0)) - int(before.get(field, 0))
 
 
-func _manifest_base(run_id: String, role: String, head_sha: String) -> Dictionary:
+func _manifest_base(options: Dictionary, head_sha: String) -> Dictionary:
 	return {
-		"run_id": run_id,
-		"process_role": role,
+		"run_id": str(options.get("run_id", "")),
+		"process_role": str(options.get("process_role", "")),
 		"process_id": OS.get_process_id(),
+		"parent_process_id": int(options.get("parent_process_id", 0)),
+		"process_creation_time_utc_ticks": str(options.get("process_creation_time_utc_ticks", "")),
+		"wrapper_process_id": int(options.get("wrapper_process_id", 0)),
+		"wrapper_parent_process_id": int(options.get("wrapper_parent_process_id", 0)),
+		"wrapper_creation_time_utc_ticks": str(options.get("wrapper_creation_time_utc_ticks", "")),
+		"orchestrator_process_id": int(options.get("orchestrator_process_id", 0)),
+		"orchestrator_creation_time_utc_ticks": str(options.get("orchestrator_creation_time_utc_ticks", "")),
+		"launch_nonce": str(options.get("launch_nonce", "")),
+		"official_claim_fingerprint": str(options.get("official_claim_fingerprint", "")),
 		"head_sha": head_sha,
 		"slot_state": "failed",
 		"success": false,
@@ -3621,6 +4359,9 @@ func _parse_options(args: PackedStringArray) -> Dictionary:
 		"process_role": "",
 		"head_sha": "",
 		"artifact_root": "",
+		"official_claim_path": "",
+		"launch_attestation_path": "",
+		"launch_nonce": "",
 		"expected_queue_resolution_id": 0,
 		"expected_queue_stable_target_fingerprint": "",
 		"parse_error": "",
@@ -3644,6 +4385,15 @@ func _parse_options(args: PackedStringArray) -> Dictionary:
 		elif text.begins_with("--cold-restore-artifact-root="):
 			option_key = "artifact_root"
 			option_value = text.trim_prefix("--cold-restore-artifact-root=")
+		elif text.begins_with("--cold-restore-official-claim-path="):
+			option_key = "official_claim_path"
+			option_value = text.trim_prefix("--cold-restore-official-claim-path=")
+		elif text.begins_with("--cold-restore-launch-attestation-path="):
+			option_key = "launch_attestation_path"
+			option_value = text.trim_prefix("--cold-restore-launch-attestation-path=")
+		elif text.begins_with("--cold-restore-launch-nonce="):
+			option_key = "launch_nonce"
+			option_value = text.trim_prefix("--cold-restore-launch-nonce=")
 		elif text.begins_with("--cold-restore-expected-queue-resolution-id="):
 			option_key = "expected_queue_resolution_id"
 			var resolution_text := text.trim_prefix("--cold-restore-expected-queue-resolution-id=")
