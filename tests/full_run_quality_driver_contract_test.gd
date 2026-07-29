@@ -2,9 +2,12 @@ extends SceneTree
 
 const DriverScript := preload("res://scripts/tools/full_run_quality_driver.gd")
 const SnapshotScript := preload("res://scripts/viewmodels/full_run_quality_snapshot.gd")
+const GameActionReceiptScript := preload("res://scripts/semantic/game_action_receipt_v1.gd")
 const DRIVER_PATH := "res://scripts/tools/full_run_quality_driver.gd"
+const PLANNER_PATH := "res://scripts/tools/full_run_economy_continuation_planner.gd"
 const SNAPSHOT_PATH := "res://scripts/viewmodels/full_run_quality_snapshot.gd"
 const STEPPER_PATH := "res://scripts/tools/full_run_authoritative_runtime_stepper.gd"
+const TERMINAL_ACCEPTANCE_CONTRACT_PATH := "res://docs/contracts/v06_full_run_terminal_acceptance_v1.json"
 const EXPECTED_SEEDS: Array[int] = [
 	900626424,
 	865984508,
@@ -80,9 +83,32 @@ func _init() -> void:
 
 func _run() -> void:
 	var driver_source := FileAccess.get_file_as_string(DRIVER_PATH)
+	var planner_source := FileAccess.get_file_as_string(PLANNER_PATH)
 	var snapshot_source := FileAccess.get_file_as_string(SNAPSHOT_PATH)
 	var stepper_source := FileAccess.get_file_as_string(STEPPER_PATH)
-	_expect(not driver_source.is_empty() and not snapshot_source.is_empty(), "driver and telemetry source are readable")
+	var terminal_contract_variant: Variant = JSON.parse_string(
+		FileAccess.get_file_as_string(TERMINAL_ACCEPTANCE_CONTRACT_PATH)
+	)
+	var terminal_contract: Dictionary = terminal_contract_variant if terminal_contract_variant is Dictionary else {}
+	_expect(not driver_source.is_empty() and not planner_source.is_empty() and not snapshot_source.is_empty(), "driver planner and telemetry source are readable")
+	_expect(
+		int(terminal_contract.get("schema_version", 0)) == 1 \
+			and str(terminal_contract.get("runtime_ruleset", "")) == "V0.6" \
+			and not bool(terminal_contract.get("THREE_FACILITY_RULE_AUTHORITY", true)) \
+			and str(terminal_contract.get("peak_production_installation_count_role", "")) == "diagnostic_only",
+		"versioned terminal contract classifies three facilities as a historical diagnostic oracle"
+	)
+	var contract_economy := terminal_contract.get("vertical_slice_economy", {}) as Dictionary
+	var contract_quiescence := terminal_contract.get("terminal_quiescence", {}) as Dictionary
+	_expect(
+		int(contract_economy.get("matched_production_demand_chain_count_min", 0)) == 1 \
+			and bool(contract_economy.get("matched_chain_requires_settled_units", false)) \
+			and int(contract_economy.get("public_sale_receipt_count_min", 0)) == 1 \
+			and int(contract_quiescence.get("quiet_frame_count_min", 0)) == 8 \
+			and int(contract_quiescence.get("post_eligibility_production_installation_delta", -1)) == 0,
+		"terminal contract requires a settled matched chain Sale Receipt eight quiet frames and zero post-eligibility growth"
+	)
+	_expect(not driver_source.contains("TARGET_PRODUCTION_INSTALLATION_COUNT") and not driver_source.contains("production_floor") and not planner_source.contains("production_floor"), "driver and planner contain no hidden three-facility acceptance floor")
 	_expect(DriverScript.DRIVER_ID == "full_run_quality_driver_v2" and DriverScript.FIXED_SEEDS == EXPECTED_SEEDS, "driver carries one versioned execution contract and the audited seed set")
 	_expect(bool(DriverScript.public_output_contract().get("single_run_only", false)), "this atomic block executes one seed and cannot claim a twenty-run completion rate")
 	_expect(driver_source.contains("parse_command_line_options(OS.get_cmdline_user_args(), OS.get_cmdline_args())") and driver_source.contains("func _legacy_engine_driver_arguments("), "driver reads official arguments after the Godot delimiter and isolates the legacy engine-side compatibility path")
@@ -95,20 +121,20 @@ func _run() -> void:
 
 	_expect(driver_source.contains("res://scenes/main.tscn") and driver_source.contains("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator"), "driver instantiates the real Main scene and current Coordinator composition")
 	_expect(driver_source.contains("NewGameSetupDraftService") and driver_source.contains("SessionStartTransactionCoordinator") and driver_source.contains("SessionStartRequest.create"), "driver starts a normal four-seat session through the formal setup transaction")
-	_expect(driver_source.contains('runtime_screen.emit_signal("action_requested", action_id)'), "non-rack scripted actions continue through the real GameScreen outward signal")
-	_expect(driver_source.contains("TYPED_RACK_ACTION_IDS") and driver_source.contains('screen.request_district_supply_open(selected_district, &"qa_driver")'), "rack navigation uses GameScreen's public typed district-supply request instead of its outward signal")
-	_expect(driver_source.find("if action_id in TYPED_RACK_ACTION_IDS:") < driver_source.find('runtime_screen.emit_signal("action_requested", action_id)'), "typed rack routing is resolved before the generic outward action signal")
-	_expect(driver_source.contains('runtime_screen is SpaceSyndicateGameScreen') and driver_source.contains('runtime_screen.has_method("request_district_selection")') and driver_source.contains('runtime_screen.has_method("request_district_supply_open")') and driver_source.contains('runtime_screen.has_method("request_selected_district_supply_purchase")'), "fresh-run preflight fails closed unless the production typed select/open/purchase entrypoints exist")
+	_expect(driver_source.contains('action_screen.submit_game_action_offer(offer, "human_click", {}, {})'), "all scripted economic actions consume a typed offer through GameScreen's public semantic adapter")
+	_expect(driver_source.contains("TYPED_RACK_ACTION_IDS") and driver_source.contains('request["game_action_offer"] = offer.duplicate(true)'), "rack navigation preserves its projected GameAction offer instead of invoking the supply port directly")
+	_expect(not driver_source.contains("if action_id in TYPED_RACK_ACTION_IDS:") and not driver_source.contains('request_district_supply_open('), "typed rack routing has no parallel direct GameScreen request path")
+	_expect(driver_source.contains('runtime_screen is SpaceSyndicateGameScreen') and driver_source.contains('runtime_screen.has_method("submit_game_action_offer")') and driver_source.contains('runtime_screen.has_method("game_action_actor_authorization")') and driver_source.contains('"game_action_receipt_ready": game_action_receipt_ready'), "fresh-run preflight fails closed unless public offer submission and authoritative GameAction receipts are wired")
 	_expect(driver_source.contains('"origin": "temporary_decision"') and driver_source.contains("func _temporary_decision_overlay(runtime_screen: Node) -> SpaceSyndicateOverlayLayer:"), "temporary decision actions bind the existing typed Overlay surface")
 	_expect(driver_source.contains("temporary_decision_overlay.temporary_decision_action_requested.emit(action_id)"), "monster wager and other forced choices enter GameScreen through the production temporary-decision signal")
-	_expect(driver_source.find('str(action.get("origin", "")) == "temporary_decision"') < driver_source.find('runtime_screen.emit_signal("action_requested", action_id)'), "typed forced-decision routing is resolved before the generic outward action signal")
+	_expect(driver_source.find('str(action.get("origin", "")) == "temporary_decision"') < driver_source.find('action_screen.submit_game_action_offer(offer, "human_click", {}, {})'), "typed forced-decision routing is resolved before the shared game-action offer adapter")
 	_expect(driver_source.contains("and _temporary_decision_overlay(runtime_screen) != null"), "fresh-run preflight fails closed when the production temporary-decision surface is missing")
 	_expect(driver_source.contains("scripted_ui_action_submission_rejected") and driver_source.contains("if not _submit_scripted_ui_action(runtime_screen, ui_action):"), "a missing typed UI entrypoint is reported immediately instead of timing out as false gameplay progress")
-	_expect(driver_source.contains('drawer.emit_signal("supply_action_requested"') and driver_source.contains('_district_supply_query_port.snapshot_for_viewer(SCRIPTED_PLAYER_INDEX)') and not driver_source.contains('drawer.call("debug_snapshot")'), "scripted human consumes the formal viewer query and submits quotes through the scene-owned Drawer action contract")
-	_expect(driver_source.contains('selection_screen.request_district_selection(int(action.get("district_index", -1)), &"qa_driver")') and not driver_source.contains('map_view.emit_signal("district_selected"') and not driver_source.contains('map_view.call("get_sceneization_debug_snapshot")'), "scripted human rotates regions through GameScreen's typed selection entrypoint and presentation selection context")
+	_expect(driver_source.contains('_district_supply_query_port.snapshot_for_viewer(SCRIPTED_PLAYER_INDEX)') and driver_source.contains('GameActionIntentV1.ACTION_DISTRICT_SUPPLY_QUOTE') and not driver_source.contains('drawer.emit_signal("supply_action_requested"') and not driver_source.contains('drawer.call("debug_snapshot")'), "scripted human consumes the formal viewer query and submits quotes only through the semantic Action Spine")
+	_expect(driver_source.contains('GameActionIntentV1.ACTION_DISTRICT_SELECT') and not driver_source.contains('request_district_selection(') and not driver_source.contains('map_view.emit_signal("district_selected"'), "scripted human rotates regions through a typed district-select GameAction offer")
 	_expect(DriverScript.SUPPLY_QUOTE_REFRESH_ATTEMPTS_PER_RACK == 1 and DriverScript.SUPPLY_RACK_ROTATION_LIMIT == 8, "district exploration has explicit quote-retry and whole-run rotation bounds")
 	_expect(DriverScript.SUPPLY_RESCAN_WORLD_SECONDS == 15.0 and driver_source.contains('supply_rotation_state["exhausted_world_seconds"]') and driver_source.contains('current_world_seconds - exhausted_world_seconds >= SUPPLY_RESCAN_WORLD_SECONDS'), "an exhausted public scan waits on authoritative world time before starting another legal browse epoch")
-	_expect(driver_source.contains('rotation_screen.request_district_supply_close(&"qa_driver")') and driver_source.contains('rotation_screen.request_district_supply_open(int(action.get("district_index", -1)), &"qa_driver")'), "bounded rack exploration uses the production typed close and open requests")
+	_expect(driver_source.contains('GameActionIntentV1.ACTION_DISTRICT_SUPPLY_CLOSE') and driver_source.contains('GameActionIntentV1.ACTION_DISTRICT_SUPPLY_OPEN'), "bounded rack exploration uses semantic close and open offers")
 	_expect(driver_source.contains('str(pending_action.get("origin", "")) in ["district_supply", "district_supply_rotation"]'), "typed rack rotation observes and classifies its action-port receipt instead of timing out on a forced-decision race")
 	_expect(driver_source.contains('table_selection_port.receipt_ready.connect(_on_table_selection_receipt)') and driver_source.contains('"table_selection_receipt_ready": table_selection_receipt_ready'), "fresh-run composition requires and observes the scene-owned typed table-selection receipt")
 	var accepted_supply_progress := {
@@ -148,8 +174,11 @@ func _run() -> void:
 			{
 				"accepted": true,
 				"applied": true,
+				"changed": true,
 				"selection_kind": str(TableSelectionIntent.KIND_SELECT_DISTRICT),
 				"district_index": 4,
+				"selection_revision_before": 8,
+				"selection_revision_after": 9,
 			}
 		),
 		"an exact newer typed district-selection receipt confirms map progress without waiting for presentation cadence"
@@ -161,11 +190,91 @@ func _run() -> void:
 			{
 				"accepted": true,
 				"applied": true,
+				"changed": true,
 				"selection_kind": str(TableSelectionIntent.KIND_SELECT_DISTRICT),
 				"district_index": 5,
+				"selection_revision_before": 8,
+				"selection_revision_after": 9,
 			}
 		),
 		"a district-selection receipt for another target cannot advance the pending map action"
+	)
+	_expect(
+		not DriverScript.selection_receipt_confirms_progress(
+			accepted_selection_progress,
+			12,
+			{
+				"accepted": true,
+				"applied": true,
+				"changed": false,
+				"selection_kind": str(TableSelectionIntent.KIND_SELECT_DISTRICT),
+				"district_index": 4,
+				"selection_revision_before": 8,
+				"selection_revision_after": 8,
+			}
+		),
+		"an already-selected map target is a neutral replan, never authoritative progress"
+	)
+	var game_action_request_fingerprint := "c".repeat(64)
+	var game_action_pending := {
+		"game_action_required": true,
+		"game_action_receipt_sequence": 21,
+		"game_action_revision_before": 50,
+		"game_action_request_id": "game-action.0.22",
+		"game_action_request_fingerprint": game_action_request_fingerprint,
+		"game_action_semantic_action_id": GameActionIntentV1.ACTION_DISTRICT_SUPPLY_PURCHASE,
+	}
+	var game_action_commit := GameActionReceiptScript.build({
+		"schema_version": GameActionReceiptScript.SCHEMA_VERSION,
+		"semantic_action_id": GameActionIntentV1.ACTION_DISTRICT_SUPPLY_PURCHASE,
+		"accepted": true,
+		"reason_id": "purchase-committed",
+		"request_id": "game-action.0.22",
+		"request_fingerprint": game_action_request_fingerprint,
+		"authoritative_revision": 51,
+		"committed_effect_refs": ["district.supply.purchase.facility.market.energy.rank_1"],
+		"public_projection_ref": "none",
+		"viewer_private_projection_ref": "viewer.feedback.game-action.0.22",
+		"idempotent_replay": false,
+		"request_id_collision": false,
+		"refresh_scope": "full",
+	})
+	_expect(
+		DriverScript.game_action_receipt_confirms_progress(
+			game_action_pending,
+			22,
+			game_action_commit
+		),
+		"a bound GameAction receipt confirms progress only with accepted commit evidence and a newer authority revision"
+	)
+	var stale_game_action := game_action_commit.duplicate(true)
+	stale_game_action["authoritative_revision"] = 50
+	var uncommitted_game_action := game_action_commit.duplicate(true)
+	uncommitted_game_action["committed_effect_refs"] = []
+	var replayed_game_action := game_action_commit.duplicate(true)
+	replayed_game_action["idempotent_replay"] = true
+	_expect(
+		not DriverScript.game_action_receipt_confirms_progress(
+			game_action_pending,
+			21,
+			game_action_commit
+		) \
+			and not DriverScript.game_action_receipt_confirms_progress(
+				game_action_pending,
+				22,
+				stale_game_action
+			) \
+			and not DriverScript.game_action_receipt_confirms_progress(
+				game_action_pending,
+				22,
+				uncommitted_game_action
+			) \
+			and not DriverScript.game_action_receipt_confirms_progress(
+				game_action_pending,
+				22,
+				replayed_game_action
+			),
+		"duplicate delivery, replay, stale authority, and missing effect evidence cannot advance Driver state"
 	)
 	var unavailable_rotation := {
 		"phase": "open",
@@ -193,10 +302,15 @@ func _run() -> void:
 			and int(exhausted_rotation.get("target_district", 99)) == -1,
 		"an unavailable rotation-open receipt respects the bounded exploration limit"
 	)
-	_expect(driver_source.contains('"origin": "planet_map"') and driver_source.contains('selection_screen.request_district_selection(int(action.get("district_index", -1)), &"qa_driver")'), "bounded rack exploration selects another region through the same typed GameScreen selection boundary")
-	_expect(driver_source.contains('"selection_revision": int(selection.get("revision", -1))') and driver_source.contains('"rack_signature": JSON.stringify(signature_source).sha256_text()'), "rack retry de-duplication binds the public selection revision and visible rack signature")
-	_expect(driver_source.contains('"refresh_attempts_by_signature": {}') and driver_source.contains('"exhausted_signatures": {}') and driver_source.contains('"visited_districts": {}'), "bounded exploration remembers visible rack attempts and visited public districts without future-rack inspection")
-	_expect(driver_source.contains('current_facility_count > observed_owned_facility_count') and driver_source.contains('supply_rotation_state = _new_supply_rotation_state()'), "an authoritative facility-count advance starts a fresh public rack exploration epoch")
+	_expect(driver_source.contains('"origin": "planet_map"') and driver_source.contains('GameActionIntentV1.ACTION_DISTRICT_SELECT'), "bounded rack exploration selects another region through the same semantic Action Spine boundary")
+	_expect(driver_source.contains('"selection_revision": int(selection.get("revision", -1))') and driver_source.contains("EconomyContinuationPlannerScript.rack_plan_signature("), "rack retry de-duplication binds the public selection revision to a stable rack-content and continuation-plan signature")
+	_expect(driver_source.contains('"evaluated_rack_plan_signatures": preserved') and driver_source.contains("SUPPLY_EVALUATED_RACK_SIGNATURE_LIMIT") and driver_source.contains('supply_rotation_state.get("evaluated_rack_plan_signatures"'), "bounded exploration preserves evaluated rack-plan signatures across timed rescans")
+	_expect(
+		driver_source.contains('current_facility_count > observed_owned_facility_count') \
+			and driver_source.contains('var preserved_facility_rack_hints') \
+			and driver_source.contains('supply_rotation_state = _new_supply_rotation_state('),
+		"an authoritative facility-count advance starts a fresh search epoch while retaining only revision-bound public facility navigation hints"
+	)
 	_expect(not driver_source.contains("public_market_purchasable") and not driver_source.contains("public_card_ids_for_district"), "scripted exploration does not query hidden or unopened-rack purchasability before visiting a district")
 	_expect(driver_source.contains("world_effective_clock_snapshot") and driver_source.contains("victory_control_public_snapshot") and driver_source.contains("active_forced_decision"), "telemetry reads the authoritative clock, public victory state, and viewer-scoped decision window")
 	_expect(driver_source.contains('STANDINGS_QUERY_PATH := "RuntimeServices/StandingsPublicQueryPort"') and driver_source.contains('standings_query_port.call("victory_progress_for_authorized_viewer")'), "scripted-player victory progress enters telemetry through the production viewer-authorized standings query")
@@ -208,58 +322,169 @@ func _run() -> void:
 	_expect(driver_source.contains("FinalSettlementRuntimeComposition") and driver_source.contains("last_public_snapshot"), "driver observes the real final-settlement composition without forcing an outcome")
 	_expect(driver_source.contains("registry_snapshot") and driver_source.contains("capture_resume_envelope") and driver_source.contains("restore_capability_incomplete"), "save continuation remains explicitly fail-closed while owner coverage is incomplete")
 	_expect(driver_source.contains("scripted_ui_action_no_progress") and driver_source.contains("scripted_ui_action_disabled") and driver_source.contains("scripted_guidance_exhausted_before_settlement"), "driver reports an exact scripted-player stall or disabled action instead of claiming completion")
-	_expect(driver_source.contains("build_economic_source") and driver_source.contains("facility_v06") and driver_source.contains("_first_enabled_card_action_by_kind"), "driver prioritizes the public GDP-source strategy and the real facility card interaction")
-	_expect(driver_source.contains('for strategy_kind in ["expand_economic_source", "protect_route", "pressure_competition"]'), "driver expands GDP through owner revisions before route review and economic wait")
+	_expect(driver_source.contains("EconomyContinuationPlannerScript.ranked_plans(") and driver_source.contains("_select_economy_continuation_plan(") and driver_source.contains("PublicEconomyContinuationObservationScript") and driver_source.contains("matching_facility_cards"), "driver plans ranked complementary economy continuation from the narrow viewer-safe typed observation")
+	_expect(driver_source.contains('for strategy_kind in ["expand_economic_source", "build_economic_source"]'), "strategy navigation only opens the real rack after typed hand and visible-rack matching")
 	_expect(driver_source.contains('int(strategy_action.get("source_revision", 0))'), "GDP expansion exhaustion is scoped to the authoritative source revision")
 	_expect(driver_source.contains('pending_id != "strategy_expand_gdp"'), "a successful GDP expansion remains repeatable until the owner reports no legal facility target")
-	_expect(driver_source.find("for strategy_action in strategy_actions") < driver_source.find('"phase": "play.gdp_accumulation"'), "available GDP expansion is attempted before the driver settles into authoritative income and victory waiting")
 	var facility_hand_index := driver_source.find("var facility_hand_action")
-	var incomplete_strategy_index := driver_source.find("for strategy_action in strategy_actions", facility_hand_index)
+	var continuation_strategy_index := driver_source.find('for strategy_kind in ["expand_economic_source", "build_economic_source"]', facility_hand_index)
 	var visible_supply_index := driver_source.find("var visible_supply_action", facility_hand_index)
-	_expect(facility_hand_index >= 0 and facility_hand_index < incomplete_strategy_index, "a purchased expansion facility is played before another strategy navigation action")
+	var exhausted_visible_supply_index := driver_source.find("var exhausted_visible_supply_action", facility_hand_index)
+	var rack_advancement_index := driver_source.find("var rack_advancement", facility_hand_index)
+	var supply_rotation_index := driver_source.find("var supply_rotation_action", facility_hand_index)
+	_expect(facility_hand_index >= 0 and facility_hand_index < continuation_strategy_index, "a matching facility already in hand is played before another strategy navigation action")
 	_expect(driver_source.find("var facility_hand_action") < driver_source.find("var supply_rotation_action"), "a purchased facility is played before any public rack rotation can continue")
-	_expect(driver_source.contains("first_unexhausted_card_by_kind") and driver_source.contains("_exhausted_facility_card_signatures") and driver_source.contains("_facility_candidate_attempts") and driver_source.contains("_apply_driver_planning_transition") and not driver_source.contains("_mark_current_public_map_district_exhausted"), "facility target bookkeeping commits outside the read-only action projection before normal rack flow searches for a different facility")
+	_expect(
+		exhausted_visible_supply_index > facility_hand_index \
+			and exhausted_visible_supply_index < rack_advancement_index \
+			and rack_advancement_index < supply_rotation_index,
+		"an exhausted rack rechecks matching typed facilities, then bounded advancement, before returning the neutral exhausted wait"
+	)
+	_expect(
+		DriverScript.SUPPLY_RACK_ADVANCEMENT_PURCHASE_LIMIT \
+			== DriverScript.SUPPLY_RACK_ROTATION_LIMIT \
+			and driver_source.contains("var _rack_advancement_purchase_count := 0") \
+			and not driver_source.contains('rotation_state["rack_advancement_purchase_count"]') \
+			and not driver_source.contains("_first_enabled_nonfacility_hand_action"),
+		"rack advancement has one run-scoped cap aligned to the existing public-rack search bound and never plays arbitrary ordinary cards from hand"
+	)
+	_expect(
+		driver_source.contains("district_supply_advancement_action_from_snapshot") \
+			and driver_source.contains('str(snapshot.get("visibility_scope", "")) != "viewer_private"') \
+			and driver_source.contains('GameActionIntentV1.ACTION_DISTRICT_SUPPLY_QUOTE') \
+			and driver_source.contains('GameActionIntentV1.ACTION_DISTRICT_SUPPLY_PURCHASE') \
+			and driver_source.contains("rack_advancement_purchase_committed") \
+			and driver_source.contains("reset_supply_rotation_after_advancement"),
+		"advancement uses the current-player typed snapshot, shared quote/purchase Action Spine, exact commit evidence, and a post-commit search reset"
+	)
+	_expect(
+		driver_source.contains('surface.get("rack_source_revision", "")') \
+			and driver_source.contains("facility_rack_hint_matches_snapshot") \
+			and driver_source.contains("first_public_facility_rack_hint_for_plan") \
+			and driver_source.contains("_promote_next_facility_rack_hint") \
+			and driver_source.contains("rack_advancement_candidate_matches_snapshot"),
+		"facility and advancement navigation re-query opaque public rack revisions, reject stale hints, and promote the next observed candidate"
+	)
+	_expect(
+		not driver_source.contains("public_rack_snapshot(") \
+			and not driver_source.contains("bags_by_region") \
+			and not driver_source.contains('get("supply_revision"'),
+		"driver never reads RegionSupply internals, future bags, or per-slot purchase credentials"
+	)
+	_expect(driver_source.contains("_facility_candidate_attempts") and driver_source.contains("candidate_attempt_signature") and driver_source.contains("_apply_driver_planning_transition") and not driver_source.contains("_exhausted_facility_card_signatures") and not driver_source.contains("first_unexhausted_card_by_kind"), "facility target bookkeeping uses revision-bound stable attempts without permanently exhausting a card")
 	_expect(driver_source.contains("FACILITY_TARGET_RETRY_REASON_IDS") and driver_source.contains('blocked_facility.get("play_reason_id"') and driver_source.contains('target_retry["phase"] = "play.hand.facility_v06.retarget.%s"'), "a stable facility target rejection retries through the public map selection path without parsing player prose")
-	_expect(driver_source.contains("public_new_facility_target_candidates") and driver_source.contains("next_public_facility_candidate") and driver_source.contains('target.get("source_revision", 0)') and not driver_source.contains("PRODUCT_INDUSTRY_CATALOG") and not driver_source.contains("_public_map_query") and not driver_source.contains('card_name.contains("facility.factory'), "factory targeting consumes the typed public candidate facade without copying product, lifecycle, or slot rules into the driver")
-	_expect(visible_supply_index >= 0 and visible_supply_index < incomplete_strategy_index, "an opened expansion rack is consumed before the expansion button can repeat")
-	_expect(driver_source.contains('bool(card.get("actionable", false))') and driver_source.contains("matching[wrapi(index + 1, 0, matching.size())]"), "facility supply selection prefers an owner-confirmable listing, then rotates through public alternatives without reading private affordability state")
-	_expect(driver_source.contains('production_installation_count := int(public_progress.get("production_installation_count", 0))') and driver_source.contains('production_chain_incomplete := production_installation_count < TARGET_PRODUCTION_INSTALLATION_COUNT'), "the scripted player targets the explicit three-installation acceptance slice through public progress")
-	_expect(driver_source.contains('_peak_production_installation_count = maxi(') and driver_source.contains('int(stable.get("peak_production_installation_count", 0)) >= TARGET_PRODUCTION_INSTALLATION_COUNT'), "terminal acceptance proves that three production installations existed in the authoritative run even if later damage removes one")
-	_expect(driver_source.contains('bool(sale_receipt.get("observed", false)) and not production_chain_incomplete') and driver_source.find('bool(sale_receipt.get("observed", false)) and not production_chain_incomplete') < driver_source.find('var required_facility_kind := "factory" if production_chain_incomplete else ""'), "after three installations the driver uses typed board strategy actions instead of purchasing unrelated rack cards")
-	_expect(driver_source.contains('else "facility_not_visible"') and driver_source.contains('not bool(wait_facts.get("has_visible_production_facility", false))'), "a visible rack without a typed factory rotates immediately instead of buying unrelated cards or inspecting future rack order")
-	_expect(driver_source.contains("_next_visible_supply_facility_card") and driver_source.contains('preview.get("action_reason_code", "facility_not_visible")'), "a visible but unavailable facility retains its qualitative typed reason instead of being mislabeled as absent")
-	_expect(driver_source.contains('preview_facility_kind == "factory"') and driver_source.contains("_supply_new_target_available") and driver_source.contains('return kind in ["facility", "facility_v06", "public_facility"]'), "until three production installations exist, only a typed factory with a public new-target candidate can displace the production-facility search")
+	_expect(driver_source.contains("public_new_facility_target_candidates") and driver_source.contains("matching_target_candidates") and driver_source.contains("facility_card_retry_signature") and driver_source.contains('target.get("source_revision", 0)') and not driver_source.contains("PRODUCT_INDUSTRY_CATALOG") and not driver_source.contains("_public_map_query") and not driver_source.contains('card_name.contains("facility.factory'), "facility targeting consumes typed public commodity-compatible candidates without copying lifecycle rules into the driver")
+	_expect(visible_supply_index >= 0 and visible_supply_index < continuation_strategy_index, "an opened rack is consumed before the expansion button can repeat")
+	_expect(driver_source.contains('bool(card.get("actionable", false))') and driver_source.contains("_next_matching_supply_facility_card") and not driver_source.contains("_next_supply_facility_card"), "facility supply selection admits only a typed complementary listing and never falls back to an unrelated ordinary card")
+	_expect(driver_source.contains('matched_chain_established := bool(_matched_economy_chain_evidence.get("observed", false))') and driver_source.contains('growth_policy := production_growth_policy(') and driver_source.contains('required_top_k_gdp_per_minute') and driver_source.contains('top_k_gdp_per_minute'), "the scripted player uses a matched economy chain and the public Victory GDP threshold instead of a facility-count oracle")
+	_expect(driver_source.contains('victory_state in ["qualification", "audit", "resolved"]') and driver_source.contains('rolling GDP') and driver_source.find('victory_state :=') < driver_source.find('growth_policy := production_growth_policy('), "once Victory owns qualification or audit, the driver freezes further growth and leaves terminal advancement to RuntimeLoop")
+	_expect(driver_source.contains("PRODUCTION_MATURITY_WORLD_SECONDS := 30.0") and driver_source.contains("PRODUCTION_MATURITY_SALE_RECEIPT_COUNT := 2") and driver_source.contains("production_maturation_pending"), "each new production-installation count receives a bounded public Sale Receipt/world-time maturation observation")
+	_expect(driver_source.contains('_peak_production_installation_count = maxi(') and driver_source.contains('matched_economy_chain') and driver_source.contains('settled_matched_commodity_count') and not driver_source.contains("TARGET_PRODUCTION_INSTALLATION_COUNT"), "terminal acceptance keeps peak installations diagnostic-only and requires a settled matched economy chain")
+	_expect(not driver_source.contains("production_chain_incomplete") and not driver_source.contains('var required_facility_kind := "factory"'), "the retired GDP-shortfall-to-factory-only policy is absent")
+	_expect(driver_source.contains('not bool(wait_facts.get("has_visible_matching_facility", false))') and driver_source.contains('not bool(wait_facts.get("has_visible_matching_target", false))'), "a rack without the plan-matching facility and target rotates without buying unrelated cards")
+	_expect(driver_source.contains('preview.get("action_reason_code", "facility_not_visible")') and driver_source.contains('return kind in ["facility", "facility_v06", "public_facility"]'), "a visible but unavailable matching facility retains a qualitative typed wait reason")
+	_expect(driver_source.contains("action_records_economic_success") and driver_source.contains('origin == "district_supply"') and driver_source.contains('action_id == "district_supply_purchase_card"'), "navigation, selection, preview, and refresh progress do not update economic-success evidence")
 	_expect(driver_source.contains("const ACTION_ENGINE_TIME_SCALE := 1.0") and not driver_source.contains("SUPPLY_WAIT_ENGINE_TIME_SCALE"), "every automatic driver frame remains at human-scale engine time")
 	_expect(driver_source.contains("district_supply_port.receipt_ready.connect(_on_district_supply_action_receipt)") and driver_source.contains("blocked_typed_receipt"), "district-supply failures are attributed from the scene-owned typed receipt instead of a generic UI timeout")
-	_expect(driver_source.contains('supply_screen.request_selected_district_supply_purchase(&"qa_driver")') and driver_source.contains('DistrictSupplyActionIntent.KIND_QUOTE') and driver_source.contains('DistrictSupplyActionIntent.KIND_PURCHASE'), "purchase uses GameScreen's public typed request and accepted typed receipts identify quote and purchase milestones")
+	_expect(driver_source.contains('GameActionIntentV1.ACTION_DISTRICT_SUPPLY_PURCHASE') and driver_source.contains('GameActionIntentV1.ACTION_DISTRICT_SUPPLY_QUOTE') and driver_source.contains('game_action_receipt_confirms_progress'), "quote and purchase use GameAction offers and authoritative commit evidence")
 	var private_root_call_token := "main" + '.call("_'
 	_expect(not driver_source.contains("submit_current_actor_action") and not driver_source.contains(".submit_intent(") and not driver_source.contains('main_instance.call("_') and not driver_source.contains(private_root_call_token), "driver cannot bypass the public scene boundary through an owner submission port or private Main call")
 	var retired_main_source_path := "scripts/" + "main.gd"
 	_expect(not driver_source.contains(retired_main_source_path), "driver cannot inspect or depend on the retired Main script source")
 	_expect(driver_source.contains('"time_to_first_rack"') and driver_source.contains('"time_to_first_quote"') and driver_source.contains('"time_to_first_purchase"') and DriverScript.SUMMARY_PUBLIC_KEYS.has("milestones"), "single-run output reports accepted rack, quote, and purchase wall-time milestones")
 	_expect(driver_source.contains('"phase": "play.supply.rotation_exhausted_wait.%d"') and not driver_source.contains('"id": "district_supply_rotation_exhausted"'), "bounded public rack exploration becomes a neutral observation wait instead of a false product blocker")
-	_expect(driver_source.contains('preview.get("action_reason_code", "purchase_unavailable")') and not driver_source.contains('preview.get("player_cash"'), "facility wait telemetry records only an allowlisted qualitative reason and never reads exact cash")
+	_expect(driver_source.contains('preview.get("action_reason_code", "facility_not_visible")') and not driver_source.contains('preview.get("player_cash"'), "facility wait telemetry records only an allowlisted qualitative reason and never reads exact cash")
 	_expect(driver_source.contains('preview.get("primary_action_id", "")') and driver_source.contains('"quote" if primary_action_id == "district_supply_preview_card" else "purchase"'), "scripted human follows the visible quote-or-purchase projection instead of treating every enabled button as a purchase")
 	_expect(not driver_source.contains('"id": "district_supply_purchase_card",\n\t\t\t"phase": "play.supply.purchase.%s" % preview_card_name'), "driver no longer hard-codes enabled district supply previews as purchases")
-	_expect(visible_supply_index >= 0 and visible_supply_index < incomplete_strategy_index, "an in-progress expansion purchase completes even if the rolling GDP window temporarily returns to zero")
+	_expect(visible_supply_index >= 0 and visible_supply_index < continuation_strategy_index, "an in-progress matching expansion purchase completes before new navigation")
 	_expect(driver_source.contains('standings_progress.get("required_controlled_region_count", 0)') and driver_source.contains('standings_progress.get("required_top_k_gdp_per_minute", 0)') and not driver_source.contains('victory.get("victory_rule"'), "driver reads dynamic victory requirements from the authorized standings projection while Victory public remains state-only")
-	_expect(driver_source.contains('production_source_established := production_installation_count >= 1') and driver_source.contains('not bool(sale_receipt.get("observed", false))') and driver_source.contains('"phase": "play.gdp_first_receipt"'), "driver waits for a typed Sale Receipt only after a real production installation exists")
+	_expect(driver_source.contains('if matched_chain_established and not bool(sale_receipt.get("observed", false)):') and driver_source.contains('"phase": "play.gdp_first_receipt"') and not driver_source.contains("production_floor"), "driver waits for the first typed Sale Receipt as soon as a viewer-safe matched chain exists")
 	_expect(driver_source.contains("draft.reset_to_defaults()"), "fixed-seed runs reset the unique draft owner to the first-run depth instead of inheriting local settings")
 	_expect(driver_source.contains('(session as GameSessionRuntimeController).session_summary()') and driver_source.contains('setup.get("player_count", 0)') and driver_source.contains('setup.get("ai_player_count", 0)'), "fixed-seed start verification consumes the authoritative session setup summary")
 	_expect(not driver_source.contains("world_session_state()") and not driver_source.contains("players_variant"), "full-run QA cannot inspect private WorldSessionState player records to verify startup")
 	_expect(driver_source.contains("district_supply_quote_availability") and driver_source.contains("Engine.time_scale = ACTION_ENGINE_TIME_SCALE"), "driver waits for world-time quote availability without scaling a future forced-decision frame")
-	_expect(DriverScript.ACTION_ENGINE_TIME_SCALE == 1.0 and DriverScript.AUTHORITATIVE_WAIT_STEP_SECONDS == 1.0 and DriverScript.AUTHORITATIVE_WAIT_STEPS_PER_RENDER_FRAME == 1 and DriverScript.AUTHORITATIVE_WAIT_TOTAL_STEP_LIMIT >= 130 and DriverScript.BLOCKED_REALTIME_TOTAL_STEP_LIMIT >= 15, "each one-second authoritative step is followed by a typed action probe so forced decisions and terminal paths cannot be skipped by batching")
+	_expect(DriverScript.ACTION_ENGINE_TIME_SCALE == 1.0 and DriverScript.AUTHORITATIVE_WAIT_STEP_SECONDS == 1.0 and DriverScript.AUTHORITATIVE_WAIT_STEPS_PER_RENDER_FRAME == 1 and DriverScript.AUTHORITATIVE_WAIT_BASE_STEP_LIMIT == 360 and DriverScript.AUTHORITATIVE_WAIT_MAX_STEP_LIMIT == 480 and DriverScript.AUTHORITATIVE_PROGRESS_STALL_WINDOW_STEPS == 90 and DriverScript.BLOCKED_REALTIME_TOTAL_STEP_LIMIT >= 15, "each one-second authoritative step is followed by a typed action probe and only recent deterministic progress may lease the bounded 360-to-480 extension")
+	_expect(not driver_source.contains("AUTHORITATIVE_WAIT_TOTAL_STEP_LIMIT") and driver_source.contains("authoritative_progress_budget_decision") and driver_source.contains("authoritative_runtime_progress_stalled") and driver_source.contains("authoritative_world_time_budget_exhausted"), "the stale single total-step constant is deleted in favor of distinct progress-stall, world-time, and hard-step failure modes")
+	_expect(driver_source.contains("PROGRESS_CHECKPOINT_INTERVAL_STEPS := 30") and driver_source.contains('"type": "progress_checkpoint"') and driver_source.contains('"steps_since_progress"') and driver_source.contains('"rng_draw_count"'), "the driver emits step-aligned viewer-safe progress checkpoints")
 	_expect(stepper_source.contains("const MAX_STEP_SECONDS := 1.0") and stepper_source.contains("step_seconds > MAX_STEP_SECONDS") and not driver_source.contains("AUTHORITATIVE_PRE_RECEIPT_ACCUMULATION_SECONDS") and not driver_source.contains("AUTHORITATIVE_AUDIT_STEP_SECONDS"), "the bounded driver has no 55/120-second single-frame shortcut")
 	_expect(stepper_source.count("advance_frame_for_test(") == 1 and not stepper_source.contains("CommodityFlow") and not stepper_source.contains("VictoryControl") and not stepper_source.contains("RuntimePhaseCoordinator"), "the test-only stepper calls only the unique RuntimeLoop entry and knows no child owner")
 	_expect(stepper_source.contains("advance_blocked_realtime_bounded") and stepper_source.contains("BLOCKED_REALTIME_PHASE_TRACE") and stepper_source.contains("blocked_realtime_delta_mismatch"), "blocked-only stepping validates its closed phase trace and zero-world receipt")
 	_expect(driver_source.contains("MonsterWagerResponseSink") and driver_source.contains("_on_monster_wager_response_receipt") and driver_source.contains("blocked_realtime_wait_policy"), "blocked-real-time acceleration is attested by the applied domain receipt")
 	_expect(driver_source.contains("_capture_world_clock_checkpoint") and driver_source.contains("blocked_realtime_step_evidence") and driver_source.contains("_capture_rng_checkpoint"), "each blocked-only step proves world-clock and RNG invariance")
-	_expect(driver_source.contains("_next_supply_card_of_kind") and driver_source.contains("source_region_dark") and driver_source.contains("district_supply_preview_card"), "driver rotates visible facility listings when the public quote reports an unavailable source region")
-	_expect(DriverScript.SUPPLY_QUOTE_REFRESH_INTERVAL_MSEC == 250 and driver_source.contains("_refresh_visible_supply_quote(runtime_screen)") and driver_source.contains('"supply_quote_refreshes"') and driver_source.contains('"source": "full_run_quote_refresh"'), "dark-side waiting promptly reselects the visible card through the real Drawer signal and records one bounded attempt without reading or bypassing solar authority")
+	_expect(driver_source.contains("_next_matching_supply_facility_card") and driver_source.contains("source_region_dark") and driver_source.contains("district_supply_preview_card"), "driver rotates only matching visible facility listings when the public quote reports an unavailable source region")
+	_expect(DriverScript.SUPPLY_QUOTE_REFRESH_INTERVAL_MSEC == 250 and driver_source.contains("quote_retry_allowed") and driver_source.contains('GameActionIntentV1.ACTION_DISTRICT_SUPPLY_QUOTE') and not driver_source.contains("_refresh_visible_supply_quote") and not driver_source.contains('"source": "full_run_quote_refresh"'), "stale quotes retry through a new semantic offer without a Drawer-signal bypass")
 	_expect(driver_source.contains("gdp_accumulation_wait") and driver_source.contains("victory_qualification"), "driver stops manufacturing clicks after strategy review and lets authoritative GDP/victory time advance")
 	_expect(driver_source.contains("MenuModalOverlay") and driver_source.contains("continue_requested"), "driver closes strategy pages through the scene-owned menu signal")
 	_expect(driver_source.contains("if not temporary.is_empty():") and not driver_source.contains('temporary.get("visible"') and not driver_source.contains('temporary.get("active"'), "driver consumes the normalized non-empty temporary-decision snapshot instead of retired visible/active flags")
-	_expect(driver_source.contains('player_board.get("hand_cards"') and driver_source.contains('player_board.get("actions"') and driver_source.contains('"play.hand.%s.%s"') and driver_source.contains('"play.board.%s.%s"'), "post-coach scripted play uses only public HandRack and PlayerBoard action ids with stateful progress fingerprints")
+	_expect(driver_source.contains('player_card_dock.get("normal_cards"') \
+		and not driver_source.contains('player_board.get("hand_cards"') \
+		and driver_source.contains('player_board.get("actions"') \
+		and driver_source.contains('card.get("game_action_offer", {})') \
+		and driver_source.contains('card.get("card_semantic_id", "")') \
+		and driver_source.contains('"play.hand.facility_v06.%s"') \
+		and driver_source.contains('"play.board.%s.%s"'), "post-coach scripted play consumes typed PlayerCardDock offers while PlayerBoard retains only non-card strategy actions")
+	_expect(driver_source.contains('"normal_card_was_visible_during_run": false') \
+		and driver_source.contains('"commodity_card_was_visible_during_run": false') \
+		and driver_source.contains('"commodity_source_art_was_visible": false') \
+		and driver_source.contains('"commodity_inventory_art_was_visible": false') \
+		and driver_source.contains('"direct_commodity_claim_succeeded": false') \
+		and driver_source.contains('"commodity_claim_request_count": 0') \
+		and driver_source.contains('"duplicate_commodity_claim_count": 0') \
+		and driver_source.contains('"commodity_claim_button_count": -1') \
+		and driver_source.contains('"commodity_performance_metrics_recorded": false') \
+		and driver_source.contains('"player_card_dock_refresh_count": 0') \
+		and driver_source.contains('"duplicate_card_submission_count": 0'), "FullRun publishes card visibility, commodity art, direct claim and duplicate gates inside its existing action evidence")
+	_expect(driver_source.contains('dock.is_visible_in_tree()') \
+		and driver_source.contains('_visible_card_face_count(dock, "NormalHandCards")') \
+		and driver_source.contains('_visible_card_face_count(dock, "CommodityCards")') \
+		and driver_source.contains('_visible_authored_card_face_count(dock, "CommodityCards")') \
+		and driver_source.contains('track.find_children("CommoditySlot_*"') \
+		and driver_source.contains('int(debug.get("apply_count", 0))'), "Dock evidence comes from visible real CardFace nodes and the typed target apply count")
+	_expect(not driver_source.contains("CommodityClaimButton") \
+		and driver_source.contains('item_node.call("notify_pointer_hover")') \
+		and driver_source.contains('item_node.call("_begin_pointer_interaction"') \
+		and driver_source.contains('item_node.call("_finish_pointer_interaction"'), "FullRun hovers and claims through the production source card body and contains no retired claim-button lookup")
+	_expect(driver_source.contains('track_debug.get("claim_button_count", -1)') \
+		and driver_source.contains('"commodity_source_render_sample_count"') \
+		and driver_source.contains('"commodity_inventory_render_sample_count"') \
+		and driver_source.contains('"commodity_hover_sample_count"') \
+		and driver_source.contains('"single_click_to_intent_sample_count"') \
+		and driver_source.contains('"receipt_to_inventory_refresh_sample_count"'), "FullRun observes zero source buttons and requires samples behind every commodity interaction p95")
+	_expect(driver_source.contains('str(offer.get("semantic_action_id", "")) == GameActionIntentV1.ACTION_CARD_PLAY') \
+		and driver_source.contains('_submitted_card_offer_fingerprints.has(offer_fingerprint)') \
+		and not driver_source.contains('debug.get("duplicate_count"'), "duplicate submission evidence is card-offer-specific and cannot reuse duplicate projection diagnostics")
+	var dock_green := {
+		"normal_card_was_visible_during_run": true,
+		"commodity_card_was_visible_during_run": true,
+		"commodity_source_art_was_visible": true,
+		"commodity_inventory_art_was_visible": true,
+		"direct_commodity_claim_succeeded": true,
+		"commodity_claim_request_count": 1,
+		"duplicate_commodity_claim_count": 0,
+		"commodity_claim_button_count": 0,
+		"commodity_performance_metrics_recorded": true,
+		"commodity_source_render_p95_ms": 0.1,
+		"commodity_inventory_render_p95_ms": 0.1,
+		"commodity_hover_p95_ms": 0.1,
+		"single_click_to_intent_p95_ms": 0.1,
+		"receipt_to_inventory_refresh_p95_ms": 0.1,
+		"player_card_dock_refresh_count": 1,
+		"duplicate_card_submission_count": 0,
+	}
+	_expect(DriverScript.player_card_dock_acceptance_green(dock_green), "complete PlayerCardDock evidence satisfies the terminal acceptance gate")
+	for failed_key in dock_green.keys():
+		var failed_dock := dock_green.duplicate(true)
+		failed_dock[failed_key] = 0 if failed_key in ["commodity_claim_request_count", "duplicate_commodity_claim_count", "commodity_claim_button_count", "commodity_source_render_p95_ms", "commodity_inventory_render_p95_ms", "commodity_hover_p95_ms", "single_click_to_intent_p95_ms", "receipt_to_inventory_refresh_p95_ms", "player_card_dock_refresh_count", "duplicate_card_submission_count"] else false
+		if failed_key in ["duplicate_commodity_claim_count", "duplicate_card_submission_count"]:
+			failed_dock[failed_key] = 1
+		elif failed_key == "commodity_claim_button_count":
+			failed_dock[failed_key] = 1
+		elif failed_key == "commodity_claim_request_count":
+			failed_dock[failed_key] = 2
+		_expect(not DriverScript.player_card_dock_acceptance_green(failed_dock), "PlayerCardDock terminal acceptance fails closed for %s" % failed_key)
+	_expect(driver_source.contains('failure_code = "player_card_dock_acceptance_incomplete"') \
+		and driver_source.contains('and player_card_dock_acceptance_green(_action_stats)') \
+		and not driver_source.contains('"bound_action_was_visible_during_run"'), "settled exit is impossible without the two P0 pools, commodity art/direct-claim proof, refresh and zero-duplicate gates while bound actions remain non-blocking")
 	_expect(driver_source.contains('"board_primary"') and driver_source.contains("navigation_no_state_change") and driver_source.contains('"selected_district_summary"'), "one-shot board navigation cannot loop in one region and becomes eligible again after a public region change")
 	_expect(driver_source.contains("observation_window_elapsed_before_settlement") and driver_source.contains("driver_wall_timeout"), "bounded observation and wall timeout have distinct failure codes")
 	_expect(not driver_source.contains("observation_window_elapsed_during_action"), "observation expiry no longer misclassifies an action admitted near the boundary as a product stall")
@@ -569,6 +794,8 @@ func _run() -> void:
 		"outcome_reason_code": "public_audit_complete",
 		"winner_count": 1,
 		"peak_production_installation_count": 3,
+		"matched_economy_chain": {"observed": true, "matched_commodity_count": 1, "settled_matched_commodity_count": 1, "fingerprint": "9".repeat(64)},
+		"post_eligibility_production_installation_delta": 0,
 		"present_count": 1,
 		"presented_outcome_count": 1,
 		"logged_outcome_count": 1,
@@ -582,9 +809,15 @@ func _run() -> void:
 		"rng": {"draw_count": 538, "checkpoint_fingerprint": "e".repeat(64)},
 	}
 	_expect(DriverScript._terminal_baseline_valid(terminal_stable), "a finished typed settlement with public log and RNG evidence is a valid terminal baseline")
-	var incomplete_installation_slice := terminal_stable.duplicate(true)
-	incomplete_installation_slice["peak_production_installation_count"] = 2
-	_expect(not DriverScript._terminal_baseline_valid(incomplete_installation_slice), "terminal settlement cannot pass before the scripted player has owned three production installations")
+	var two_installation_terminal := terminal_stable.duplicate(true)
+	two_installation_terminal["peak_production_installation_count"] = 2
+	_expect(DriverScript._terminal_baseline_valid(two_installation_terminal), "a legitimate two-installation Victory passes because facility count is diagnostic-only")
+	var missing_matched_chain := terminal_stable.duplicate(true)
+	missing_matched_chain["matched_economy_chain"] = {"observed": false, "matched_commodity_count": 0, "settled_matched_commodity_count": 0, "fingerprint": ""}
+	_expect(not DriverScript._terminal_baseline_valid(missing_matched_chain), "terminal settlement without a settled production-demand chain fails closed")
+	var post_eligibility_growth := terminal_stable.duplicate(true)
+	post_eligibility_growth["post_eligibility_production_installation_delta"] = 1
+	_expect(not DriverScript._terminal_baseline_valid(post_eligibility_growth), "terminal settlement rejects any scripted production installation after eligibility begins")
 	var missing_log := terminal_stable.duplicate(true)
 	missing_log["final_public_log"] = {"public_entry_count": 0, "outcome_id": "", "public_fingerprint": ""}
 	_expect(not DriverScript._terminal_baseline_valid(missing_log), "composition counters without a public final-settlement log cannot satisfy the terminal baseline")

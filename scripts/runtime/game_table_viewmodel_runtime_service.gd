@@ -5,6 +5,7 @@ class_name GameTableViewModelRuntimeService
 const TABLE_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/table_snapshot.gd")
 const BID_BOARD_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/bid_board_snapshot.gd")
 const OPTIONAL_ROUTE_PUBLIC_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/optional_route_public_snapshot.gd")
+const PLAYER_CARD_DOCK_HAND_VIEWMODELS_KEY := "__player_card_dock_hand_viewmodels"
 
 var _configured := false
 var _card_presentation_service: Node = null
@@ -24,7 +25,6 @@ func compose_table_source(source: Dictionary) -> Dictionary:
 	table_source["card_track"] = _array(surfaces.get("card_track", []))
 	table_source["card_resolution_track"] = _dictionary(surfaces.get("card_resolution_track", {}))
 	var player_board := _dictionary(table_source.get("player_board", {}))
-	player_board["hand_cards"] = _array(surfaces.get("hand_cards", []))
 	var viewer_surfaces := _compose_viewer_surfaces(_dictionary(source.get("viewer_surfaces", {})))
 	if not viewer_surfaces.is_empty():
 		table_source["active_forced_decision"] = _dictionary(viewer_surfaces.get("active_forced_decision", {}))
@@ -32,6 +32,8 @@ func compose_table_source(source: Dictionary) -> Dictionary:
 		table_source["optional_route_presentation"] = _dictionary(viewer_surfaces.get("optional_route_presentation", {}))
 	table_source["player_board"] = player_board
 	table_source["right_inspector"] = _dictionary(surfaces.get("right_inspector", {}))
+	if bool(source.get("include_player_card_dock_bundle", false)):
+		table_source[PLAYER_CARD_DOCK_HAND_VIEWMODELS_KEY] = _array(surfaces.get("hand_cards", []))
 	return table_source
 
 
@@ -100,6 +102,7 @@ func debug_snapshot() -> Dictionary:
 		"owns_right_inspector_assembly": true,
 		"owns_resolution_overlay_badges": true,
 		"owns_viewer_surface_projection": true,
+		"supports_player_card_dock_bundle": true,
 		"viewer_surface_owner_reads_runtime_nodes": false,
 		"uses_existing_table_snapshot": true,
 		"calculates_play_legality": false,
@@ -251,8 +254,22 @@ func _compose_track_entry(source: Dictionary, state_text: String, track: Diction
 		var group_size := maxi(1, int(entry.get("group_size", 1)))
 		var group_order := clampi(int(entry.get("group_order", 1)), 1, group_size)
 		if bool(source.get("can_reorder", false)) and group_size > 1:
-			actions.append({"id":"group_order_up_%d" % resolution_id, "label":"组内前移", "disabled":group_order <= 1, "tooltip":"只调整自己卡牌组的连续结算顺序。"})
-			actions.append({"id":"group_order_down_%d" % resolution_id, "label":"组内后移", "disabled":group_order >= group_size, "tooltip":"只调整自己卡牌组的连续结算顺序。"})
+			actions.append({
+				"id":"group_order_up_%d" % resolution_id,
+				"label":"组内前移",
+				"disabled":group_order <= 1,
+				"tooltip":"只调整自己卡牌组的连续结算顺序。",
+				"game_action_offer": _dictionary(source.get("reorder_up_offer", {})),
+				"game_action_parameters": {"direction": -1},
+			})
+			actions.append({
+				"id":"group_order_down_%d" % resolution_id,
+				"label":"组内后移",
+				"disabled":group_order >= group_size,
+				"tooltip":"只调整自己卡牌组的连续结算顺序。",
+				"game_action_offer": _dictionary(source.get("reorder_down_offer", {})),
+				"game_action_parameters": {"direction": 1},
+			})
 	var card_name := str(card_source.get("card_name", _dictionary(card_source.get("skill", {})).get("name", "")))
 	if card_name != "":
 		actions.append({"id":"track_open_%s" % card_name, "label":"卡牌详情", "tooltip":"打开这张牌的图鉴详情。"})

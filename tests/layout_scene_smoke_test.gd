@@ -2193,7 +2193,7 @@ func _check_public_track_thin(screen: Control, path: String) -> void:
 
 func _check_player_board_first_glance_actions(screen: Control) -> void:
 	var dock := screen.find_child("PlayerMainActionDock", true, false)
-	_expect(dock != null, "runtime PlayerBoard exposes one main action dock for rack/buy/play")
+	_expect(dock != null, "runtime PlayerBoard exposes one non-card action dock for rack/buy")
 	if dock == null:
 		return
 	var text := " ".join(_visible_text_under(dock))
@@ -3655,14 +3655,13 @@ func _check_viewmodel_contracts() -> void:
 	var card_detail_upgrades: Array = card_detail_ui.get("upgrades", []) if card_detail_ui.get("upgrades", []) is Array else []
 	_expect(action_quick.size() == 1 and action_quick[0].get("state") == "就绪" and action_primary.size() == 1 and action_primary[0].get("disabled") == false, "ActionDockSnapshot normalizes quick and primary action states for UI rendering")
 	_expect(action_quick.size() == 1 and action_quick[0].get("shortcut") == "1", "ActionDockSnapshot assigns numeric shortcuts to supplied quick actions")
-	_expect(default_quick.size() == 3 and default_quick[0].get("label") == "牌架" and default_quick[0].get("shortcut") == "1" and default_quick[2].get("label") == "出牌" and default_quick[2].get("shortcut") == "3", "ActionDockSnapshot supplies only the three legal v0.4 quick actions and numeric shortcuts when source data is absent")
+	_expect(default_quick.size() == 2 and default_quick[0].get("label") == "牌架" and default_quick[0].get("shortcut") == "1" and default_quick[1].get("label") == "买牌" and default_quick[1].get("shortcut") == "2", "ActionDockSnapshot supplies only the non-card rack and buy actions when source data is absent")
 	_expect(bid_board_ui.get("chips", []).size() == 1 and bid_track_links.size() == 1 and str((bid_track_links[0] as Dictionary).get("id", "")) == "track_select_9001" and bool((bid_track_links[0] as Dictionary).get("selected", false)) and bid_board_ui.get("actions", []).size() == 1 and bid_board_ui.get("phase") == "规划 4s", "BidBoardSnapshot normalizes planning chips, clickable track links, selected state, and the confirmation action before PlayerBoard renders them")
 	_expect(card.to_ui_dictionary().get("name") == "相位否决", "CardViewSnapshot emits card UI dictionaries")
 	_expect(district.to_ui_dictionary().get("title") == "雾港区", "DistrictViewSnapshot emits district UI dictionaries")
-	var player_hand_cards: Array = player.to_ui_dictionary().get("hand_cards", []) if player.to_ui_dictionary().get("hand_cards", []) is Array else []
-	var player_first_hand_card: Dictionary = player_hand_cards[0] if player_hand_cards.size() > 0 and player_hand_cards[0] is Dictionary else {}
-	_expect(player_hand_cards.size() == 1, "PlayerBoardSnapshot keeps hand cards")
-	_expect(player_first_hand_card.get("presentation") == "mini_hand" and player_first_hand_card.get("detail_policy") == "right_inspector", "PlayerBoardSnapshot normalizes bottom hand cards as MiniCards and routes full detail out of the rack")
+	var player_ui: Dictionary = player.to_ui_dictionary()
+	_expect(not player_ui.has("hand_cards"), "PlayerBoardSnapshot no longer forwards private cards to the retired HandRack surface")
+	_expect(player_ui.has("identity") and player_ui.has("actions"), "PlayerBoardSnapshot remains a status/action projection after card ownership moves to PlayerCardDock")
 	_expect(player.to_ui_dictionary().get("quick_actions", []).size() == 1 and player.to_ui_dictionary().get("quick_actions", [])[0].get("state") == "就绪", "PlayerBoardSnapshot routes quick action scan chips through ActionDockSnapshot")
 	_expect(player.to_ui_dictionary().get("table_state_lamps", []).size() == 1 and player.to_ui_dictionary().get("readiness_chips", []).size() == 1, "PlayerBoardSnapshot keeps table-state and readiness chips")
 	_expect(player.to_ui_dictionary().get("progress_path", []).size() == 2 and player.to_ui_dictionary().get("progress_path", [])[0].get("text") == "点区", "PlayerBoardSnapshot keeps non-blocking runtime path chips for the split PlayerBoard")
@@ -10244,58 +10243,22 @@ func _check_card_face_presentation_specs() -> void:
 
 func _check_empty_player_board_affordance() -> void:
 	var packed := load("res://scenes/ui/PlayerBoard.tscn") as PackedScene
-	_expect(packed != null, "PlayerBoard scene loads for empty-hand affordance")
+	_expect(packed != null, "PlayerBoard scene loads after production hand-surface retirement")
 	if packed == null:
 		return
 	var board := packed.instantiate()
 	root.add_child(board)
 	await process_frame
-	_expect(board.has_method("set_player_state"), "PlayerBoard accepts player-state snapshots")
-	board.call("set_player_state", {"title": "玩家板｜空手牌", "hand_cards": []})
+	_expect(board.has_method("set_player_state"), "PlayerBoard still accepts status snapshots")
+	board.call("set_player_state", {"title": "玩家状态", "hand_cards": [{"id": "legacy-card"}]})
 	await process_frame
-	var hand_rack := board.find_child("HandRack", true, false)
-	_expect(hand_rack != null, "PlayerBoard keeps a HandRack node for empty hands")
-	_expect(hand_rack != null and hand_rack.get_child_count() == 1 and hand_rack.get_child(0) is Label, "PlayerBoard renders an empty-hand affordance instead of collapsing the rack")
-	_expect(hand_rack != null and _node_tree_text(hand_rack).contains("暂无手牌") and _node_tree_text(hand_rack).contains("区域牌架"), "empty HandRack copy points the player to supply instead of sounding like debug text")
-	board.call("set_player_state", {"title": "玩家板｜手牌", "hand_cards": [{"id": "stable_card_0", "name": "轨道融资", "cost": "2", "type": "经济", "rank": "I", "effect": "现金流上升。"}]})
-	await process_frame
-	var first_card_id := -1
-	if hand_rack != null and hand_rack.get_child_count() > 0:
-		first_card_id = hand_rack.get_child(0).get_instance_id()
-	board.call("set_player_state", {"title": "玩家板｜手牌", "hand_cards": [{"id": "stable_card_0", "name": "轨道融资", "cost": "2", "type": "经济", "rank": "I", "effect": "现金流说明更新。"}]})
-	await process_frame
-	var stable_card: Control = null
-	if hand_rack != null and hand_rack.get_child_count() > 0:
-		stable_card = hand_rack.get_child(0) as Control
-	var stable_card_data: Dictionary = stable_card.call("get_card_data") if stable_card != null and stable_card.has_method("get_card_data") else {}
-	_expect(stable_card != null and stable_card.get_instance_id() == first_card_id, "PlayerBoard keeps same-id hand card nodes across card-detail snapshot updates")
-	_expect(stable_card_data.get("effect", "") == "现金流说明更新。", "PlayerBoard still updates card-face data when reusing the same hand card node")
-	_expect(stable_card != null and stable_card.name.begins_with("MiniHandCardFace"), "PlayerBoard names reused hand cards as MiniCard faces")
-	_expect(stable_card_data.get("presentation") == "mini_hand" and stable_card_data.get("detail_policy") == "right_inspector", "PlayerBoard direct hand-card input still renders as MiniCard and sends full detail to RightInspector")
-	var double_click_actions: Array[String] = []
-	if board.has_signal("action_requested"):
-		board.connect("action_requested", func(action_id: String) -> void:
-			double_click_actions.append(action_id)
-		)
-	board.call("set_player_state", {
-		"title": "玩家板｜手牌",
-		"hand_cards": [{
-			"id": "stable_card_0",
-			"name": "轨道融资",
-			"cost": "2",
-			"type": "经济",
-			"rank": "I",
-			"effect": "现金流说明更新。",
-			"actions": [{"id": "play_0", "label": "出牌", "disabled": false}],
-		}],
-	})
-	await process_frame
-	if hand_rack != null and hand_rack.get_child_count() > 0:
-		stable_card = hand_rack.get_child(0) as Control
-	if stable_card != null:
-		_double_click_card_control(stable_card)
-		await process_frame
-	_expect(double_click_actions.has("play_0"), "PlayerBoard double-clicks an enabled hand card into its snapshot play action")
+	_expect(board.find_child("HandRack", true, false) == null
+		and board.find_child("PlayerHandTableau", true, false) == null
+		and board.find_child("PlayerHandCountChip", true, false) == null, "PlayerBoard ignores legacy hand payloads and exposes no hidden card surface")
+	_expect(board.find_child("PlayerResourceTableau", true, false) != null
+		and board.find_child("PlayerMainActionDock", true, false) != null, "PlayerBoard retains its status and non-card action surfaces")
+	_expect(not board.has_signal("card_selected")
+		and not board.has_signal("card_drag_released"), "PlayerBoard exposes no legacy card submission signals")
 	root.remove_child(board)
 	board.queue_free()
 
@@ -10305,19 +10268,26 @@ func _check_main_player_panel_refresh_contract() -> void:
 	var coordinator_source := FileAccess.get_file_as_string(GAME_RUNTIME_COORDINATOR_SCRIPT)
 	var presentation_query_source := FileAccess.get_file_as_string("res://scripts/presentation/table_presentation_viewmodel_query.gd")
 	var player_board_source := FileAccess.get_file_as_string("res://scripts/ui/player_board.gd")
-	var hand_rack_source := FileAccess.get_file_as_string("res://scripts/ui/hand_rack.gd")
+	var player_dock_source := FileAccess.get_file_as_string("res://scripts/ui/table/player_card_dock.gd")
+	var player_dock_query_source := FileAccess.get_file_as_string("res://scripts/presentation/player_card_dock_viewer_query_port.gd")
 	_expect(not main_source.contains("var player_panel_signature") and not main_source.contains("func _uses_split_runtime_table") and not main_source.contains("func _refresh_split_compatibility_player_panel") and not main_source.contains("func _player_panel_structure_signature") and not main_source.contains("func _refresh_player_panel_live_values"), "main.gd no longer owns the generated or compatibility PlayerBoard renderer")
 	_expect(not main_source.contains("func _sync_runtime_game_screen") and coordinator_source.contains("func advance_table_presentation") and coordinator_source.contains("TablePresentationRefreshPort"), "scene-owned source and typed refresh port update GameScreen without a Main snapshot bridge")
-	_expect(main_source.contains("func _activate_runtime_quick_action") and main_source.contains("_runtime_quick_action_entry(player_index, action_id)") and not main_source.contains("_reject_legacy_direct_city_build") and main_source.contains("_open_district_supply_from_map(_game_runtime_coordinator_node().table_selection_state().selected_district)") and coordinator_source.contains("func play_v06_runtime_card("), "main quick actions stay data-backed while rack opening and card play use their existing runtime routes")
-	_expect(not main_source.contains("func _runtime_player_board_quick_actions") and presentation_query_source.contains("\"quick_actions\"") and presentation_query_source.contains("\"id\": \"rack\"") and presentation_query_source.contains("\"id\": \"buy\"") and presentation_query_source.contains("\"id\": \"play\""), "scene-owned typed presentation query exposes generic rack, buy, and play actions without asserting a guaranteed card category")
+	var action_flow_source := FileAccess.get_file_as_string("res://scripts/runtime/table_player_action_application_flow_controller.gd")
+	_expect(not main_source.contains("func _activate_runtime_quick_action") and not main_source.contains("func _runtime_quick_action_entry") and not main_source.contains("_reject_legacy_direct_city_build") and action_flow_source.contains("func submit_intent(") and action_flow_source.contains("request_hand_play(request)"), "typed application flow owns quick actions and card play without a Main route")
+	_expect(not main_source.contains("func _runtime_player_board_quick_actions") and presentation_query_source.contains("\"quick_actions\"") and presentation_query_source.contains("\"id\": \"rack\"") and presentation_query_source.contains("\"id\": \"buy\"") and not presentation_query_source.contains("\"id\": \"play\""), "scene-owned typed presentation query exposes only non-card rack and buy actions; card play stays in PlayerCardDock")
 	var game_screen_source := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")
-	_expect(game_screen_source.contains("func _unhandled_key_input") and game_screen_source.contains("_quick_action_index_for_key") and game_screen_source.contains("_quick_action_id_at") and game_screen_source.contains("_should_ignore_quick_action_hotkey"), "split GameScreen maps 1-4 keyboard shortcuts onto the current data-backed quick actions without reading gameplay rules")
-	_expect(main_source.contains("_on_runtime_game_screen_card_drop_requested") and main_source.contains("_runtime_drop_position_targets_map(screen_position)") and main_source.contains("get_district_at_control_position"), "main runtime maps split hand-card drops onto MapView districts before using existing play-card controller flow")
-	_expect(player_board_source.contains("hand_rack.call(\"set_cards\", cards)") and not player_board_source.contains("hand_rack.remove_child"), "split PlayerBoard delegates hand rendering to HandRack instead of clearing card nodes")
-	_expect(player_board_source.contains("func _first_enabled_card_action_id") and player_board_source.contains("card_double_selected") and player_board_source.contains("action_requested.emit(action_id)"), "split PlayerBoard turns a double-clicked enabled hand card into its snapshot action instead of reading gameplay rules")
-	_expect(hand_rack_source.contains("func set_cards") and hand_rack_source.contains("_card_identity_key") and hand_rack_source.contains("_sync_card_nodes"), "split HandRack performs same-id card-node synchronization for live snapshot rendering")
-	_expect(hand_rack_source.contains("signal card_unselected") and hand_rack_source.contains("_selected_identity") and hand_rack_source.contains("_select_card_node") and hand_rack_source.contains("_unselect_current_card"), "split HandRack owns stable selected-card focus without relying on hover")
-	_expect(hand_rack_source.contains("signal card_drag_released") and hand_rack_source.contains("_event_screen_position") and hand_rack_source.contains("card_drag_released.emit") and hand_rack_source.contains("_card_drag_drop_valid") and not hand_rack_source.contains("_use_skill"), "split HandRack reports card drag release coordinates and invalid-drop state without reading gameplay rules")
+	_expect(game_screen_source.contains("func _unhandled_key_input") and game_screen_source.contains("_quick_action_index_for_key") and game_screen_source.contains("_quick_action_id_at") and game_screen_source.contains("_should_ignore_quick_action_hotkey"), "GameScreen maps 1-4 keyboard shortcuts onto data-backed quick actions without reading gameplay rules")
+	_expect(game_screen_source.contains("player_card_dock.game_action_offer_requested.connect")
+		and game_screen_source.contains("func submit_game_action_offer(")
+		and not game_screen_source.contains("func _on_card_drag_released"), "PlayerCardDock submits typed offers while the old drag action route remains retired")
+	_expect(not player_board_source.contains("hand_rack")
+		and not player_board_source.contains("func set_hand_cards")
+		and not player_board_source.contains("signal card_selected"), "PlayerBoard owns no card rendering or submission path")
+	_expect(player_dock_source.contains("CARD_FACE_SCENE.instantiate()")
+		and player_dock_source.contains("card_double_clicked")
+		and player_dock_source.contains("game_action_offer_requested.emit"), "PlayerCardDock owns CardFace rendering and double-click offer submission")
+	_expect(player_dock_query_source.contains("can_view_private_subject")
+		and player_dock_query_source.contains("expected_authorization_revision"), "PlayerCardDock query is viewer-authorized and rejects stale capabilities")
 
 
 func _check_hand_layout_counts() -> void:

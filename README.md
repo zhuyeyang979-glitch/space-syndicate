@@ -4,6 +4,14 @@ Godot 4 project for **太空辛迪加 / Space Syndicate**, based on the local ru
 
 > Active rules authority: [`docs/tabletop_rulebook_v06.md`](docs/tabletop_rulebook_v06.md). The shorter [`docs/rules_summary.md`](docs/rules_summary.md) is the current v0.6 player quick reference. When code, UI text, tests, or older documents disagree, the v0.6 rulebook wins.
 >
+> Version boundary: `project.godot` currently declares no application release
+> version. The active runtime rules remain **v0.6** (with Alpha 0.1 content
+> manifests where applicable). The approved next commodity semantic target is
+> **V0.7**, governed by the V0.7 Commodity Semantic Constitution in
+> [`AGENTS.md`](AGENTS.md) and its linked three-layer contract. This records a
+> future direction only: `FULL_V0_7_CUTOVER=false` until Core, AI, player,
+> privacy, deterministic, Save/load, and old-write-path deletion gates all pass.
+>
 > Migration boundary: the long prototype inventory below records the playable v0.4 implementation that v0.6 is replacing. Its forced first summon, monster-gated district card access, urbanization shares, full-hand private discard, automatic reacquisition upgrade, old contracts/route damage, and cash-goal ending are historical migration evidence, not active v0.6 player rules or claims that the runtime migration is complete. The legacy [`docs/tabletop_rulebook.md`](docs/tabletop_rulebook.md) is historical for the same reason.
 
 ## Active v0.6 Gameplay

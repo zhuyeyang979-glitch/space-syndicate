@@ -5,6 +5,7 @@ const VALID_AVAILABILITY_STATES := ["available", "unavailable"]
 const ALLOWED_INPUT_KEYS := [
 	"commodity_slot_id",
 	"commodity_card_id",
+	"illustration_key",
 	"public_name",
 	"public_icon_id",
 	"slot_index",
@@ -23,6 +24,7 @@ const ALLOWED_INPUT_KEYS := [
 
 var commodity_slot_id := ""
 var commodity_card_id := ""
+var illustration_key := ""
 var public_name := ""
 var public_icon_id := "generic"
 var slot_index := -1
@@ -47,6 +49,7 @@ func apply_dictionary(source: Dictionary) -> CommoditySushiTrackItemSnapshot:
 			return self
 	commodity_slot_id = str(source.get("commodity_slot_id", "")).strip_edges()
 	commodity_card_id = str(source.get("commodity_card_id", "")).strip_edges()
+	illustration_key = str(source.get("illustration_key", "")).strip_edges()
 	public_name = str(source.get("public_name", "")).strip_edges()
 	public_icon_id = str(source.get("public_icon_id", "generic")).strip_edges()
 	slot_index = int(source.get("slot_index", -1))
@@ -75,6 +78,7 @@ func to_dictionary() -> Dictionary:
 	return {
 		"commodity_slot_id": commodity_slot_id,
 		"commodity_card_id": commodity_card_id,
+		"illustration_key": illustration_key,
 		"public_name": public_name,
 		"public_icon_id": public_icon_id,
 		"slot_index": slot_index,

@@ -5,7 +5,7 @@ const SCHEMA_VERSION := 1
 const SOURCE_SURFACES := [
 	&"game_screen",
 	&"player_board",
-	&"hand_rack",
+	&"player_card_dock",
 	&"planet_map",
 	&"district_supply",
 	&"top_commodity_track",

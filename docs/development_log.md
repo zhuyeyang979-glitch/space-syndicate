@@ -8864,3 +8864,198 @@ deleted. Evidence and the remaining action inventory are recorded in
 - Focused coverage now executes live observation, decision recording, and reward finalization across a -5 to -3 debt recovery: 81/81 PASS. The production Bench is 19/19 PASS.
 - Funplay MCP scene writes now verify exact reloaded scene identity, restore the previous editor tab, fail closed on unverified reload, and suppress filesystem refresh after synchronization failure. Source gate: 15/15 PASS. Live clean and dirty open-scene probes both passed.
 - main_gd_cutover_ledger.json now records merged foundation, city-inference, actor-state, and public-player atomic domains plus this validated actor-economy candidate. The parent typed-world P0 remains ACTIVE.
+
+## 2026-07-28 — V0.7 shared commodity-track three-layer semantic reference
+
+- Recorded the approved V0.7 Commodity Semantic Constitution in the existing
+  top-level `AGENTS.md` authority chain and marked conflicting v0.6 commodity
+  clauses as runtime-only/future-superseded. `project.godot` has no application
+  release version; active runtime rules remain v0.6 and
+  `FULL_V0_7_CUTOVER=false`.
+- Froze one non-active `CORE_SEMANTICS → AI_SEMANTICS → PLAYER_SEMANTICS`
+  reference contract for the shared partial-visibility sushi commodity track.
+  The active v0.6 belt, inventory, merge, Save, AI, UI and Victory runtime
+  remains unchanged and is still the only production authority.
+- Added pure deterministic reference semantics for 10,000bp six-color supply,
+  180-second cycles, private precommit/simultaneous reveal, hidden 300/600bp
+  lead weighting, fixed forward/reverse macro rounds, actor-local windows,
+  independent five-card normal and five-slot commodity capacities, linear L1
+  consumption and pending end recheck. The reference proves 5+0, 0+5, legal
+  5+5, independent sixth-card failures, merge slot release, and pure payload
+  round-trip without a shared `hand_limit`.
+- Added owner-bound AI/player query entry points and exact nested allowlists.
+  Cross-seat requests fail closed; hostile nested Save, RNG, lead-order, weight,
+  learning and internal fields cannot pass through inventory, demand, history,
+  stance or local-track rows. Easy/Normal/Hard/Expert AI and human seats submit
+  the same `MarketStanceIntent` and use the same independent capacity rules.
+- Production cutover remains blocked on track topology/lifecycle, default
+  stance, eliminated-seat roster, merge identity/rate mapping, full-inventory
+  behavior, special outcomes, balance parameters and Save migration. No
+  production `.gd`/`.tscn`, Main, RuntimeLoop or Save schema was changed.
+- Final focused evidence is `135/135`; the real tools Bench is `13/13`; 3-8
+  seat vectors, JSON parse, baseline composition/UI/visual checks, and smoke
+  `--check-only` remain green.
+
+## 2026-07-28 — V0.7 global semantic Action Spine cutover
+
+- Reconciled the program control files with merged PR #68: the production V0.6
+  path now has accepted evidence from new-game startup through three facilities,
+  Sale Receipts, positive GDP, Victory audit, FinalSettlement, and terminal
+  quiescence. Cold Save/Resume and V0.7 runtime cutover remain explicitly false.
+- Established one 24-domain global three-layer semantic registry. Eighteen
+  domains are core-ready; `player_action_routing` is the only domain currently
+  ready across Core, AI, and Player layers. Global completion remains false.
+- Added the closed `GameActionOfferV1`, `GameActionIntentV1`, and
+  `GameActionReceiptV1` contracts and routed human click/drag/quick actions plus
+  AI card play through the scene-owned
+  `TablePlayerActionApplicationFlowController` and existing typed domain ports.
+- Authorization now precedes the bounded exact-once journal. Duplicate requests
+  replay without a second domain apply or refresh; collisions, stale revisions,
+  cross-actor requests, and invalid targets fail closed. AI receipts never enter
+  the local human's private feedback path.
+- Removed the complete player-action routing family from `scripts/main.gd`: 29
+  methods, 774 physical lines, and one preload. Main falls from 6,438 to 5,664
+  physical lines and from 469 to 440 methods with no task-owned new caller or
+  fallback. The inherited absolute caller threshold remains documented debt.
+- No Save owner/section, RNG owner/draw point, runtime loop, gameplay formula,
+  V0.7 production owner, or dual route was introduced. The next boundary is
+  `P0_AI_WORLD_TYPED_PORTS_MAIN_HOST_DETACHMENT`.
+- Final closure hardened production session authorization without changing
+  session generation or Save identity, and normalized authored integral JSON
+  card ranks before constructing stable private card bindings. Fractional
+  ranks, paths, script names, whitespace, backslashes, and method syntax still
+  fail closed.
+- Final focused evidence: GameAction protocol `110/110`, action flow `48/48`,
+  production Bench `12/12`, Main architecture `219` checks, FullRun contract
+  `181/181`, observation policy `8/8`, Victory terminal exact-once `81/81`,
+  FinalSettlement `24/24`, Main composition, UI text, visual, and smoke
+  `--check-only` all pass. Godot MCP started and stopped production `main.tscn`
+  with zero new script/runtime errors.
+- The one bounded candidate FullRun completed 71 of 74 attempted actions with
+  zero invalid actions, three production installations, eight public Sale
+  Receipts, and positive GDP. It honestly ended at the 150-second observation
+  boundary before Victory/settlement, so candidate terminal regression is
+  recorded as bounded incomplete; merged PR #68 A13/A14 remains the terminal
+  baseline and is not rewritten as a fresh candidate pass.
+
+## 2026-07-28 — Action Spine terminal-progression repair (PARTIAL)
+
+- Kept the committed Action Spine at `02d1719` and the production ruleset at
+  V0.6 while V0.7 remains the target development constitution. AI World typed
+  ports are paused; this repair changes no AI production code.
+- Replaced the stale fixed-step/three-facility FullRun oracle with a bounded
+  360-to-480 progress lease, a 90-step stall window, 420-second world-effective
+  cap, 180-second wall cap, three-step zero-world/terminal-timer stall guards,
+  and privacy-safe checkpoints every 30 authoritative steps.
+- Added a 30-world-second or two-new-Sale facility maturation observation.
+  Scripted growth is forbidden after `eligible` or Victory
+  `qualification/audit/resolved`; terminal acceptance requires zero later
+  production installations. Cooldown may reopen the existing typed path.
+- The same Driver SHA-256
+  `6A2F26270F42E275E50A932421763D164E906DAC7AA8134312D4094164684868`
+  cannot run on parent `5cf30c6` because its second action rejects the session
+  identity before authoritative stepping. The current descendant progresses
+  138 of 147 actions with zero invalid actions. The primary classification is
+  `FULL_RUN_DRIVER_ORACLE_STALE`, not an identified Action Spine regression;
+  strict parent/child pacing parity remains unproved.
+- The task's one final FullRun
+  `20260728-093544-814-full_run_quality_driver-5752ad04` reached three real
+  facilities, five public Sale Receipts and Top-K GDP `59/108` over 150
+  authoritative steps. It stopped honestly at the observation boundary with
+  Victory still idle, so FinalSettlement and eight quiet frames were not
+  observed. Terminal world/RNG deltas remain `-1` (not observed), not zero.
+- Focused Driver/Action Spine checks pass `433/433`; counted regression checks
+  pass `929/929`; Main composition, UI text, visual snapshot and smoke
+  `--check-only` pass. Full smoke remains blocked by existing retired Main and
+  old monster-signature fixtures; no compatibility wrapper was restored.
+- This PARTIAL repair may be committed and pushed only to its task branch. It
+  may not merge to `main` or admit AI World typed ports. The next atomic task is
+  legal rack/economy progression performance inside the unchanged 180-second
+  wall boundary, without budget expansion or state injection.
+
+## 2026-07-28 — Action Spine economy continuation (PARTIAL)
+
+- Added a detached viewer-safe economy continuation observation and a pure
+  complementary factory/market planner. Facility selection now uses typed
+  semantic IDs, authorized hand priority, public target retries, and the
+  existing GameAction Offer/Intent/Receipt spine only.
+- Added bounded public-rack advancement and an opaque public rack revision.
+  Facility navigation hints and non-facility advancement candidates are bound
+  to district, rack revision, stable card ID, and plan. Every arrival re-queries
+  the source; stale data performs zero purchase and advances to another
+  observed candidate.
+- The strongest staged run reached five real Sale Receipts, Top-K GDP
+  `1368/108`, five controlled regions, and `idle -> qualification -> audit`
+  with zero invalid actions and zero post-Victory installations. It installed
+  only two production facilities before Victory locked growth, so the required
+  three-facility terminal baseline, FinalSettlement, and eight quiet frames are
+  not proved.
+- The formal `150/180` FullRun allocation was not consumed because its stage
+  gate failed. The work is safe for a task-branch Draft PR but cannot merge to
+  `main` and cannot authorize a V0.7 production cutover.
+- Focused observation/planner/facility/Driver/Action Spine checks, independent
+  CommodityFlow/Victory/FinalSettlement regressions, Main gates, UI text,
+  visual contract, and smoke `--check-only` pass. Godot MCP loaded the real
+  main scene; the production Action Flow Bench passed `12/12` and exited with
+  no new script or runtime error.
+
+## 2026-07-29 — PR #69 terminal acceptance gate closure (GREEN)
+
+- Confirmed from the V0.6 rulebook, Victory contract, Ruleset profile, and
+  runtime owner that three production facilities were never a Victory rule.
+  They were a historical FullRun acceptance heuristic.
+- Removed the harness-only facility floor. FullRun progression and terminal
+  acceptance now require viewer-safe matched production/demand capacity,
+  settled units, a typed public Sale Receipt, authoritative Victory state, and
+  the existing exact-once terminal owners. Peak facility count is diagnostic.
+- Moved the installation guard evidence to first eligibility and made its delta
+  monotonic so later destruction cannot hide an unauthorized installation.
+- The single formal seed-0 `150/180` run
+  `20260728-153746-194-full_run_quality_driver-652209fd` completed with two
+  production installations, one settled matched chain, 23 Sale Receipts,
+  Top-K GDP `1368/108`, controlled regions `5/3`, zero invalid actions,
+  `idle -> qualification -> audit -> resolved`, exact-once settlement,
+  presentation and public log, eight quiet frames, zero world/RNG delta, and
+  zero post-eligibility installation delta.
+- Focused FullRun, Action Spine, CommodityFlow, Victory, FinalSettlement, Main,
+  UI text, visual, and smoke check-only gates pass. Godot MCP loaded and stopped
+  production `main.tscn` with no new script/runtime error. No gameplay value,
+  Victory timer, RuntimeLoop, RNG, Save, Main, AI production, or formula change
+  was made.
+
+## 2026-07-29 — Alpha 0.4-A audit-tail disposition and clean landing
+
+- Preserved the second authorized Formal as `INCOMPLETE`:
+  `idle -> qualification -> audit` was observed with a live
+  `victory_timer_audit` progress reason, but `resolved`, FinalSettlement,
+  terminal presentation/public log, quiet frames, and terminal world/RNG zero
+  were not observed. Its terminal deltas remain `-1`. No third Formal, hidden
+  equivalent, extended audit probe, or full smoke was run.
+- Added a strict component-landing compositional-acceptance contract. It keeps
+  the complete Formal terminal definition unchanged and fails closed for
+  gameplay, Victory/timer, RuntimeLoop, economy, AI behavior, action execution,
+  Save, RNG, terminal-owner, authority, V0.7 cutover, or unknown production
+  changes.
+- Reused settled `b5d5682` only as the real terminal-green ancestor. The later
+  Formal head `30a6d87` is explicitly a non-ancestor component-path observation:
+  68 required production paths were verified as 62 byte-identical plus six
+  enumerated EOF-only normalizations, with zero semantic, terminal-critical, or
+  unclassified difference. Whole-tree equivalence is not claimed.
+- Extracted Alpha 0.4-A onto
+  `codex/alpha04a-clean-landing-b5d568` without PR #70/#71's reference runtime,
+  UI, Bench, tests, or unresolved resource dependencies. Production remains
+  V0.6 shared capacity five; V0.7 independent 5+5 and Card Batch cutover remain
+  deferred.
+- Forty-four bounded exact-candidate suites, terminal owner diffs, Main,
+  Action Spine, active privacy, Save/RNG, semantic-lock, UI/visual, and smoke
+  `--check-only` gates are green. Three unchanged pre-b5 fixture/oracle debts
+  remain explicitly excluded; no retired Main wrapper was restored.
+- The committed production capture remains 176/176 with both required layouts.
+  One permitted exact-clean recapture ended in a two-check harness failure and
+  was not retried or promoted over the committed evidence. Godot MCP started
+  and stopped real `main.tscn` with zero new script/runtime errors and zero
+  remaining Godot processes.
+- Alpha 0.4-A is `GREEN_COMPONENT_ACCEPTED` while exact-Formal terminal proof
+  and release-level FullRun remain false/deferred. A clean PR to `main` is
+  allowed only while every recorded gate stays green. Alpha 0.4-B is the next
+  product boundary and is not started here.

@@ -49,9 +49,25 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	await process_frame
-	main.set("configured_player_count", 4)
-	main.set("configured_ai_player_count", 3)
-	main.call("_new_game")
+	var services := main.get_node_or_null("RuntimeServices")
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+	var draft := services.get_node_or_null("NewGameSetupDraftService") as NewGameSetupDraftService \
+		if services != null else null
+	var transaction := services.get_node_or_null("SessionStartTransactionCoordinator") as SessionStartTransactionCoordinator \
+		if services != null else null
+	var session := coordinator.get_node_or_null("GameSessionRuntimeController") as GameSessionRuntimeController \
+		if coordinator != null else null
+	_expect(draft != null and transaction != null and session != null, "atomic session-start composition is available")
+	if draft != null and transaction != null and session != null:
+		draft.reset_to_defaults()
+		var request := SessionStartRequest.create(
+			"card-presentation-viewmodel-runtime",
+			draft.draft_snapshot(),
+			session.session_start_revision(),
+			"focused_test"
+		)
+		var start_receipt := transaction.start_session(request)
+		_expect(start_receipt != null and start_receipt.applied, "real first-run table starts through the atomic session transaction")
 	await process_frame
 	var runtime_screen := main.get_node_or_null("RuntimeGameScreen") as Control
 	_expect(runtime_screen != null and runtime_screen.has_method("apply_state"), "current RuntimeGameScreen public presentation surface exists")
@@ -61,14 +77,19 @@ func _run() -> void:
 		current_ui_data = (current_variant as Dictionary).duplicate(true) if current_variant is Dictionary else {}
 	var snapshot: Dictionary = TABLE_SNAPSHOT_SCRIPT.new().apply_dictionary(current_ui_data).to_ui_dictionary()
 	_expect(not snapshot.is_empty() and _is_pure_data(snapshot), "runtime table snapshot is non-empty pure data")
-	var player_board: Dictionary = snapshot.get("player_board", {}) if snapshot.get("player_board", {}) is Dictionary else {}
-	var hand_cards: Array = player_board.get("hand_cards", []) if player_board.get("hand_cards", []) is Array else []
-	_expect(not hand_cards.is_empty(), "real first-run hand is composed by the service")
-	if not hand_cards.is_empty() and hand_cards[0] is Dictionary:
-		var first_card := hand_cards[0] as Dictionary
-		_expect(first_card.has("use_case") and first_card.has("play_state") and first_card.has("drop_label"), "hand card includes presentation and play-state fields")
-		var actions: Array = first_card.get("actions", []) if first_card.get("actions", []) is Array else []
-		_expect(_has_action_prefix(actions, "play_"), "hand card preserves the existing play_<slot> action id")
+	var player_card_dock: Dictionary = snapshot.get("player_card_dock", {}) \
+		if snapshot.get("player_card_dock", {}) is Dictionary else {}
+	var normal_cards: Array = player_card_dock.get("normal_cards", []) \
+		if player_card_dock.get("normal_cards", []) is Array else []
+	_expect(not normal_cards.is_empty(), "real first-run normal hand is composed into the typed Player Card Dock")
+	if not normal_cards.is_empty() and normal_cards[0] is Dictionary:
+		var first_card := normal_cards[0] as Dictionary
+		_expect(first_card.has("slot_id") and first_card.has("play_state") \
+			and first_card.has("disabled_reason_text"), "normal card includes typed slot, presentation legality, and readable failure fields")
+		var offer: Dictionary = first_card.get("game_action_offer", {}) \
+			if first_card.get("game_action_offer", {}) is Dictionary else {}
+		_expect(bool(GameActionOfferV1.validation_report(offer).get("valid", false)) \
+			and str(offer.get("semantic_action_id", "")) == GameActionIntentV1.ACTION_CARD_PLAY, "normal card preserves the formal Action Spine offer")
 	var inspector: Dictionary = snapshot.get("right_inspector", {}) if snapshot.get("right_inspector", {}) is Dictionary else {}
 	var deep_links: Array = inspector.get("deep_links", []) if inspector.get("deep_links", []) is Array else []
 	_expect(_has_action_id(deep_links, "detail_region") and _has_action_id(deep_links, "detail_cards"), "RightInspector fallback precedence and deep links remain compatible")

@@ -262,6 +262,8 @@ editor_description = "Explicit host for compatibility fallbacks created only whe
 [connection signal="codex_action_requested" from="RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay" to="RuntimeServices/CompendiumApplicationFlowController" method="handle_surface_action"]
 [connection signal="navigation_requested" from="RuntimeServices/CompendiumNavigationPort" to="RuntimeServices/CompendiumApplicationFlowController" method="handle_navigation_request"]
 [connection signal="commodity_claim_requested" from="RuntimeGameScreen" to="RuntimeServices/CommoditySushiTrackApplicationFlowController" method="handle_claim_request"]
+[connection signal="game_action_intent_requested" from="RuntimeGameScreen" to="RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/TablePlayerActionApplicationFlowController" method="submit_intent"]
+[connection signal="receipt_ready" from="RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/TablePlayerActionApplicationFlowController" to="RuntimeGameScreen" method="apply_game_action_receipt"]
 [connection signal="application_intent_requested" from="RuntimeGameScreen" to="RuntimeServices/ApplicationFlowPort" method="submit_intel_application_intent"]
 [connection signal="navigation_intent_requested" from="RuntimeGameScreen" to="RuntimeServices/TableNavigationActionRouter" method="submit_intent"]
 [connection signal="public_log_receipt_requested" from="RuntimeServices/FinalSettlementRuntimeComposition" to="RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/TablePresentationQueryPorts" method="acknowledge_final_settlement_public_log"]

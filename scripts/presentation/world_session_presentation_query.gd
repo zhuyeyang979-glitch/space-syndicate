@@ -16,6 +16,12 @@ const PRIVATE_CARD_KEYS := [
 	"persistent",
 	"queued_for_resolution",
 	"lock_left",
+	"counts_toward_hand_limit",
+	"bound_monster_uid",
+	"bound_military_uid",
+	"military_command",
+	"action_kind",
+	"charges",
 ]
 const PRIVATE_PLAYER_KEYS := ["cash", "cash_cents", "city_guesses", "city_guess_confidence", "city_guess_reasons", "known_card_owners", "eliminated"]
 
@@ -164,19 +170,24 @@ func _private_hand(value: Variant) -> Array:
 			continue
 		var source_card := source[slot_index] as Dictionary
 		var card := _allowlist(source_card, PRIVATE_CARD_KEYS)
-		# v0.6 facility cards keep their stable identity inside the machine
-		# envelope. Expose only that identity to the authorized owner projection;
-		# the presentation query resolves the authored definition from the existing
-		# catalog. Never forward the machine envelope or runtime instance id. A
-		# conflicting root identity is rejected rather than shown as another card.
+		# V0.6 authored cards keep their stable identity inside the machine
+		# envelope. Expose only the allowlisted identity needed by the authorized
+		# owner projection; never forward the complete machine envelope.
 		var machine: Dictionary = source_card.get("machine", {}) if source_card.get("machine", {}) is Dictionary else {}
-		if str(machine.get("category_id", "")) == "facility":
+		if not machine.is_empty():
 			var root_card_id := str(card.get("card_id", ""))
 			var stable_card_id := str(machine.get("card_id", ""))
-			card.erase("name")
-			card.erase("card_id")
-			if not stable_card_id.is_empty() and (root_card_id.is_empty() or root_card_id == stable_card_id):
-				card["card_id"] = stable_card_id
+			if stable_card_id.is_empty() or (not root_card_id.is_empty() and root_card_id != stable_card_id):
+				continue
+			card["card_id"] = stable_card_id
+			card["family_id"] = str(machine.get("family_id", card.get("family_id", stable_card_id)))
+			card["rank"] = maxi(1, int(machine.get("rank", card.get("rank", 1))))
+			card["kind"] = str(machine.get("category_id", card.get("kind", "card_v06")))
+			card["counts_toward_hand_limit"] = bool(machine.get(
+				"counts_toward_hand_limit",
+				card.get("counts_toward_hand_limit", true)
+			))
+			card["target_type"] = str(machine.get("target_kind", card.get("target_type", "none")))
 		card["slot_index"] = slot_index
 		result.append(card)
 	return result

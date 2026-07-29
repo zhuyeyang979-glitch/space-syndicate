@@ -276,7 +276,9 @@ func _test_ui_input_and_presentation_sync() -> void:
 func _test_source_negative_gates() -> void:
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	_expect(not main_source.contains("func _select_player") and not main_source.contains("table_selection_state().selected_player"), "Main has zero selected-player route or actor reads")
-	_expect(not main_source.contains("_set_selected_player_card_group_ready") and main_source.contains("_set_authorized_player_card_group_ready"), "card-group readiness names and resolves the authorized actor")
+	var table_action_flow := FileAccess.get_file_as_string("res://scripts/runtime/table_player_action_application_flow_controller.gd")
+	var card_group_port := FileAccess.get_file_as_string("res://scripts/runtime/card_group_action_port.gd")
+	_expect(not main_source.contains("_set_selected_player_card_group_ready") and not main_source.contains("_set_authorized_player_card_group_ready") and table_action_flow.contains("_card_group().submit_ready(actor_index, resolution_id)") and card_group_port.contains("func submit_ready(actor_index: int, resolution_id: int)"), "typed card-group readiness carries the explicitly authorized actor outside Main")
 	var card_submission := FileAccess.get_file_as_string("res://scripts/runtime/card_play_submission_runtime_controller.gd")
 	var military := FileAccess.get_file_as_string("res://scripts/runtime/military_runtime_controller.gd")
 	var monster := FileAccess.get_file_as_string("res://scripts/runtime/monster_runtime_controller.gd")

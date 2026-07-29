@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/ui/game_screen.gd" id="2_game_screen"]
@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/OverlayLayer.tscn" id="8_overlay"]
 [ext_resource type="PackedScene" path="res://scenes/ui/VisualEventLayer.tscn" id="11_visual_event_layer"]
 [ext_resource type="PackedScene" path="res://scenes/ui/CardFace.tscn" id="13_card_face"]
+[ext_resource type="PackedScene" path="res://scenes/ui/table/PlayerCardDock.tscn" id="15_player_card_dock"]
 
 [node name="GameScreen" type="Control"]
 layout_mode = 3
@@ -40,13 +41,13 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 5
+theme_override_constants/margin_top = 4
 theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 5
+theme_override_constants/margin_bottom = 4
 
 [node name="MainRows" type="VBoxContainer" parent="SafeArea"]
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 3
 
 [node name="TopBar" parent="SafeArea/MainRows" instance=ExtResource("3_top_bar")]
 unique_name_in_owner = true
@@ -67,13 +68,25 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="RightInspector" parent="SafeArea/MainRows/TableArea" instance=ExtResource("6_right_inspector")]
+[node name="RightInspectorScroll" type="ScrollContainer" parent="SafeArea/MainRows/TableArea"]
+custom_minimum_size = Vector2(304, 300)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+
+[node name="RightInspector" parent="SafeArea/MainRows/TableArea/RightInspectorScroll" instance=ExtResource("6_right_inspector")]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(292, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="PlayerBoard" parent="SafeArea/MainRows" instance=ExtResource("7_player_board")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="PlayerCardDock" parent="SafeArea/MainRows" instance=ExtResource("15_player_card_dock")]
 unique_name_in_owner = true
 layout_mode = 2
 

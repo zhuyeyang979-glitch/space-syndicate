@@ -162,7 +162,7 @@ func _test_public_queue_focus() -> void:
 func _test_public_history_focus() -> void:
 	var receipt := _port.submit_intent(_focus_intent("focus:history", 61, &"qa_driver"))
 	_expect(receipt.accepted and receipt.card_resolution_id == 61, "resolved public history remains a legal focus target")
-	_expect(receipt.focus_district_index == 2 and _selection.selected_district == 2, "public contract target is the preferred history map focus")
+	_expect(receipt.focus_district_index == 0 and _selection.selected_district == 0, "public history selected_district is the authorized map focus")
 
 
 func _test_private_target_is_not_used_for_focus() -> void:
@@ -216,20 +216,20 @@ func _test_game_screen_typed_adapters() -> void:
 		},
 	})
 	var intents: Array[TableSelectionIntent] = []
-	var raw_actions := [0]
+	var gameplay_intents := [0]
 	screen.table_selection_intent_requested.connect(func(intent: TableSelectionIntent) -> void: intents.append(intent))
-	screen.action_requested.connect(func(_action_id: String) -> void: raw_actions[0] = int(raw_actions[0]) + 1)
+	screen.game_action_intent_requested.connect(func(_intent: Dictionary) -> void: gameplay_intents[0] = int(gameplay_intents[0]) + 1)
 	screen.call("_on_action_requested", "track_select_51")
-	_expect(intents.size() == 1 and int(raw_actions[0]) == 0, "RightInspector track selection emits one typed intent and zero generic actions")
+	_expect(intents.size() == 1 and int(gameplay_intents[0]) == 0, "RightInspector track selection emits one typed selection intent and zero gameplay intents")
 	_expect(intents.back().selection_kind == TableSelectionIntent.KIND_SELECT_CARD_RESOLUTION and intents.back().target_card_resolution_id == 51 and intents.back().source_surface == &"right_inspector", "RightInspector adapter carries only stable public resolution identity")
 	screen.call("_on_public_bid_action_requested", "track_select_52")
-	_expect(intents.size() == 2 and int(raw_actions[0]) == 0 and intents.back().source_surface == &"public_bid_board", "public bid link uses the same typed focus boundary")
+	_expect(intents.size() == 2 and int(gameplay_intents[0]) == 0 and intents.back().source_surface == &"public_bid_board", "public bid link uses the same typed focus boundary")
 	screen.call("_on_track_action_requested", "track_select_61")
-	_expect(intents.size() == 3 and int(raw_actions[0]) == 0 and intents.back().source_surface == &"card_resolution_track", "card track link uses the same typed focus boundary")
+	_expect(intents.size() == 3 and int(gameplay_intents[0]) == 0 and intents.back().source_surface == &"card_resolution_track", "card track link uses the same typed focus boundary")
 	screen.call("_on_action_requested", "track_select_invalid")
-	_expect(intents.size() == 3 and int(raw_actions[0]) == 0, "malformed track selection fails closed without falling through to Main")
+	_expect(intents.size() == 3 and int(gameplay_intents[0]) == 0, "malformed track selection fails closed without becoming a gameplay intent")
 	screen.call("_on_track_action_requested", "track_open_public_contract")
-	_expect(int(raw_actions[0]) == 1, "track detail navigation remains a distinct generic route for its existing Compendium adapter")
+	_expect(int(gameplay_intents[0]) == 0, "track detail navigation never falls through to the gameplay action spine")
 	await process_frame
 	screen.queue_free()
 
@@ -243,7 +243,7 @@ func _test_explicit_card_effect_context() -> void:
 	_expect(intel_source.contains("context.get(\"selected_card_resolution_id\", -1)"), "Intel effects consume only the frozen resolution context")
 	var ai_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
 	_expect(not ai_source.contains("var selected_card_resolution_id") and not ai_source.contains("_table_selection_state"), "AI no longer reads or writes the human card-track focus")
-	_expect(ai_source.contains("_traceable_contract_entries(-1, 1)") and ai_source.contains("context[\"selected_card_resolution_id\"]"), "AI chooses a public trace target explicitly before submitting the card")
+	_expect(ai_source.contains("_latest_public_history_resolution_id()") and ai_source.contains("context[\"selected_card_resolution_id\"]"), "AI chooses an authorized public-history target explicitly before submitting the card")
 
 
 func _test_source_negative_gates() -> void:

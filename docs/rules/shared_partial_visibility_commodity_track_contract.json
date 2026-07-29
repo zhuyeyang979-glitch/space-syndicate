@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "contract_id": "shared_partial_visibility_commodity_track.v1",
+  "mechanic_ids": [
+    "shared_commodity_track_local_window_v1",
+    "commodity_supply_cycle_180s_v1",
+    "commodity_hidden_lead_snake_order_v1",
+    "commodity_gdp_generation_baseline_v1",
+    "separate_commodity_inventory_v1",
+    "linear_commodity_upgrade_v1",
+    "commodity_macro_round_end_gate_v1"
+  ],
+  "authority_status": "V0_7_APPROVED_SEMANTIC_CONSTITUTION_NOT_ACTIVE_RUNTIME_RULE",
+  "repository_application_version": null,
+  "active_production_ruleset": "v0.6",
+  "current_runtime_rule_version": "v0.6",
+  "target_rule_version": "V0.7",
+  "game_semantic_constitution_version": "V0.7",
+  "constitution_amendment_recorded": true,
+  "current_task_interrupted": false,
+  "current_work_discarded": false,
+  "single_production_runtime_authority": true,
+  "runtime_cutover_performed": false,
+  "full_v0_7_cutover": false,
+  "fixed_semantics": {
+    "color_ids": ["life", "energy", "industry", "technology", "commerce", "shipping"],
+    "distribution_total_basis_points": 10000,
+    "initial_distribution_policy": "stable_largest_remainder_in_color_id_order",
+    "market_cycle_duration_us": 180000000,
+    "clock_domain": "RuntimeSimulationStep.world_effective",
+    "ordinary_pause_advances": false,
+    "monster_wager_global_block_advances": false,
+    "session_finished_advances": false,
+    "large_delta_policy": "process_every_crossed_boundary_in_order",
+    "normal_player_influence_bp": 300,
+    "lead_player_influence_bp": 600,
+    "lead_weight_timing": "current_cycle_lead_weights_stance_revealed_at_that_cycle_boundary_then_cursor_advances",
+    "precommit_during_active_cycle": true,
+    "simultaneous_reveal": true,
+    "no_empty_voting_phase": true,
+    "same_market_stance_intent_for_human_and_ai": true,
+    "macro_round_one_direction": "forward",
+    "macro_round_two_direction": "reverse",
+    "following_macro_rounds": "alternate_forward_reverse",
+    "each_roster_player_leads_once_per_complete_macro_round": true,
+    "normal_card_hand_limit": 5,
+    "commodity_card_hand_limit": 5,
+    "hand_pools_are_independent": true,
+    "normal_full_does_not_block_commodity": true,
+    "commodity_full_does_not_block_normal": true,
+    "maximum_combined_entities_is_derived_not_a_shared_limit": 10,
+    "commodity_level_base_units": {"1": 1, "2": 2, "3": 3, "4": 4},
+    "legal_upgrade_edges": ["1+1=2", "2+1=3", "3+1=4"],
+    "equal_rank_doubling_allowed": false,
+    "merge_trigger_policy": "manual_player_choice_until_a_later_explicit_rule_changes_it",
+    "game_end_formula": "original_end_condition_met AND current_macro_round_complete",
+    "mid_round_original_end_condition": "pending_then_revalidate_at_complete_macro_round_boundary"
+  },
+  "three_layer_contract": {
+    "core_semantics": {
+      "may_mutate_authoritative_state": true,
+      "owns": [
+        "shared_sequence_and_positions",
+        "market_cycle_and_private_stances",
+        "hidden_lead_order_and_macro_round_cursor",
+        "gdp_baseline_intervention_and_final_distribution",
+        "independent_normal_hand_and_commodity_inventory_partition",
+        "commodity_inventory_linear_merge",
+        "attested_macro_round_end_gate"
+      ]
+    },
+    "semantic_query_source": {
+      "may_receive_complete_authority_state": true,
+      "requires_owner_bound_actor_or_viewer": true,
+      "nested_projection_policy": "exact_allowlist_rebuild",
+      "may_mutate_authoritative_state": false
+    },
+    "ai_semantics": {
+      "may_mutate_authoritative_state": false,
+      "may_receive_complete_authority_state": false,
+      "may_submit": ["MarketStanceIntent", "CommodityClaimIntent", "CommodityMergeIntent"],
+      "observation_contract": "actor_scoped_commodity_market_observation"
+    },
+    "player_semantics": {
+      "may_mutate_authoritative_state": false,
+      "may_receive_complete_authority_state": false,
+      "may_submit": ["MarketStanceIntent", "CommodityClaimIntent", "CommodityMergeIntent"],
+      "projection_contract": "public_plus_actor_private_commodity_market_projection"
+    }
+  },
+  "visibility": {
+    "PUBLIC": [
+      "current_final_distribution",
+      "gdp_baseline_distribution",
+      "trend_distribution",
+      "cycle_index_and_remaining_time",
+      "revealed_current_stances",
+      "normal_hand_and_commodity_inventory_counts_and_independent_limits",
+      "end_condition_pending_message"
+    ],
+    "ACTOR_PRIVATE": [
+      "viewer_local_track_segment",
+      "own_next_stance",
+      "own_stance_lock_state",
+      "self_is_current_lead",
+      "own_commodity_inventory",
+      "actor_authorized_action_receipts"
+    ],
+    "AUTHORITY_SECRET": [
+      "complete_track_sequence",
+      "other_viewer_segments",
+      "fixed_hidden_lead_order",
+      "current_lead_identity_for_other_players",
+      "effective_player_weights",
+      "pre_normalization_player_contributions",
+      "other_players_next_private_stances",
+      "future_unseen_tokens",
+      "rng_cursor_and_save_payload"
+    ],
+    "DERIVED_REBUILDABLE": [
+      "public_trend_rows",
+      "localized_labels",
+      "lead_private_notice_text",
+      "inventory_capacity_labels",
+      "end_gate_player_message"
+    ]
+  },
+  "production_owner_plan": {
+    "track_cycle_and_distribution": "one future SharedCommodityTrackRuntimeController under RuntimeSimulationStep",
+    "gdp_input": "typed six-color aggregate query from CommodityFlowRuntimeController",
+    "commodity_inventory": "existing CardFlow plus CardPlayerStateProductionAdapterV06 ownership chain migrated atomically",
+    "price_and_futures": "existing ProductMarketRuntimeController remains separate",
+    "original_end_condition_and_final_scoring": "existing VictoryControlRuntimeController",
+    "randomness": "existing RunRngService only",
+    "presentation": "read-only typed public and actor-private projections"
+  },
+  "persistence_contract": {
+    "future_authoritative_fields": [
+      "track_sequence_positions_cursor_stock_and_generation_lineage",
+      "cycle_index_deadline_distributions_and_revealed_stances",
+      "next_private_stances_and_lock_receipts",
+      "hidden_fixed_order_macro_round_direction_and_cursor",
+      "separate_normal_hand_and_commodity_inventory_with_independent_counts_limits_and_linear_merge_lineage",
+      "pending_end_state"
+    ],
+    "viewer_projection_saved": false,
+    "legacy_and_new_schema_dual_write_allowed": false,
+    "current_save_schema_changed": false
+  },
+  "open_balance_parameters": [
+    "gdp_equal_mix_or_smoothing_coefficient",
+    "minimum_color_basis_points",
+    "maximum_color_basis_points",
+    "per_color_net_intervention_cap",
+    "player_count_scaling"
+  ],
+  "rule_authority_not_established": [
+    "track_length",
+    "viewer_window_length_and_overlap",
+    "movement_speed_and_discrete_or_continuous_model",
+    "spawn_refill_expiry_and_unclaimed_item_lifecycle",
+    "simultaneous_claim_tie_break",
+    "first_cycle_and_missing_stance_default_policy",
+    "eliminated_or_disconnected_seat_macro_round_roster",
+    "commodity_merge_same_product_or_same_color",
+    "linear_base_units_to_existing_10_20_40_80_installation_rate_migration",
+    "full_commodity_inventory_reject_discard_or_replace_behavior",
+    "irreversible_special_outcomes_through_macro_round_gate",
+    "production_save_migration_and_restore_order"
+  ],
+  "nonproduction_reference_gates": {
+    "core_reference_semantics": true,
+    "ai_reference_semantics": true,
+    "player_reference_semantics": true,
+    "normal_hand_limit_5": true,
+    "commodity_extra_limit_5": true,
+    "hand_pools_independent": true,
+    "normal_full_does_not_block_commodity": true,
+    "commodity_full_does_not_block_normal": true,
+    "owner_bound_viewer_authorization": true,
+    "complete_authority_fixture_access_limited_to_query_source": true,
+    "nested_allowlist_privacy": true,
+    "deterministic_reference_tests": true,
+    "reference_persistence_round_trip": true,
+    "production_wiring": false
+  },
+  "v0_7_production_cutover_gate": {
+    "core_semantics_ready": false,
+    "ai_semantics_ready": false,
+    "player_semantics_ready": false,
+    "normal_hand_limit_5_ready": false,
+    "commodity_extra_limit_5_ready": false,
+    "hand_pools_independent": false,
+    "shared_commodity_track_ready": false,
+    "local_track_visibility_ready": false,
+    "gdp_supply_baseline_ready": false,
+    "market_cycle_180s_ready": false,
+    "public_stances_ready": false,
+    "hidden_weight_ready": false,
+    "hidden_lead_identity_ready": false,
+    "fixed_hidden_lead_order_ready": false,
+    "reversed_macro_round_ready": false,
+    "linear_commodity_upgrade_ready": false,
+    "complete_macro_round_end_gate_ready": false,
+    "ai_information_firewall_ready": false,
+    "player_information_projection_ready": false,
+    "old_rule_write_paths_disabled": false,
+    "single_runtime_authority": true,
+    "deterministic_tests_green": false,
+    "save_load_semantics_green": false,
+    "full_v0_7_cutover": false
+  },
+  "phase_status": {
+    "phase_a_contract": "implemented_in_this_change",
+    "phase_b_reference_simulation": "implemented_for_frozen_subdomains_only",
+    "phase_c_passive_projection_contract": "implemented_as_nonproduction_reference",
+    "phase_d_production_cutover": "blocked"
+  }
+}

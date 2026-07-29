@@ -110,11 +110,11 @@ func _test_ui_typed_emission() -> void:
 	screen.bind_presentation_viewer(0, _authorization.context().authorization_revision)
 	screen.apply_state({"selection_context": {"revision": _selection.snapshot().get("revision", 0)}})
 	var intents: Array[TableSelectionIntent] = []
-	var raw_actions := [0]
+	var gameplay_intents := [0]
 	screen.table_selection_intent_requested.connect(func(intent: TableSelectionIntent) -> void: intents.append(intent))
-	screen.action_requested.connect(func(_action_id: String) -> void: raw_actions[0] = int(raw_actions[0]) + 1)
+	screen.game_action_intent_requested.connect(func(_intent: Dictionary) -> void: gameplay_intents[0] = int(gameplay_intents[0]) + 1)
 	screen.call("_on_map_layer_focus_requested", "product")
-	_expect(intents.size() == 1 and int(raw_actions[0]) == 0, "GameScreen turns the map-layer UI event into one typed intent and no generic action")
+	_expect(intents.size() == 1 and int(gameplay_intents[0]) == 0, "GameScreen turns the map-layer UI event into one typed selection intent and no gameplay intent")
 	var intent := intents[0]
 	_expect(intent.viewer_index == 0 and intent.authorization_revision == _authorization.context().authorization_revision, "typed UI intent binds the current presentation viewer authority")
 	_expect(intent.expected_selection_revision == int(_selection.snapshot().get("revision", -1)) and intent.map_layer_id == &"product", "typed UI intent carries the detached selection revision and stable layer ID")
@@ -211,6 +211,7 @@ func _test_presentation_revision_contract() -> void:
 		"revision": 17,
 		"selected_district": -1,
 		"district_count": 0,
+		"district_region_ids": [],
 		"selected_trade_product": "",
 		"trade_product_ids": [],
 		"default_trade_product_id": "",

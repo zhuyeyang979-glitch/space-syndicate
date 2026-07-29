@@ -1,0 +1,149 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/table/player_card_dock.gd" id="2_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/table/CardDockActionFeedback.tscn" id="3_feedback"]
+
+[sub_resource type="StyleBoxFlat" id="StyleDock"]
+bg_color = Color(0.012, 0.027, 0.061, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.31, 0.59, 0.86, 0.78)
+corner_radius_top_left = 9
+corner_radius_top_right = 9
+corner_radius_bottom_right = 9
+corner_radius_bottom_left = 9
+
+[sub_resource type="StyleBoxFlat" id="StylePool"]
+bg_color = Color(0.02, 0.043, 0.09, 0.72)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.25, 0.42, 0.64, 0.55)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="PlayerCardDock" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 168)
+theme = ExtResource("1_theme")
+theme_override_styles/panel = SubResource("StyleDock")
+script = ExtResource("2_script")
+
+[node name="DockMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 3
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 3
+
+[node name="DockRows" type="VBoxContainer" parent="DockMargin"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="DockHeader" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+
+[node name="DockTitle" type="Label" parent="DockMargin/DockRows/DockHeader"]
+layout_mode = 2
+text = "玩家卡牌坞"
+theme_override_font_sizes/font_size = 14
+
+[node name="CardDockCapacitySummary" type="Label" parent="DockMargin/DockRows/DockHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "当前 V0.6 共享容量｜0 / 5"
+horizontal_alignment = 2
+text_overrun_behavior = 3
+clip_text = true
+theme_override_colors/font_color = Color(0.64, 0.83, 0.98, 1)
+
+[node name="CardDockActionFeedback" parent="DockMargin/DockRows/DockHeader" instance=ExtResource("3_feedback")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PoolColumns" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 7
+
+[node name="BoundPool" type="PanelContainer" parent="DockMargin/DockRows/PoolColumns"]
+custom_minimum_size = Vector2(218, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StylePool")
+
+[node name="BoundRows" type="VBoxContainer" parent="DockMargin/DockRows/PoolColumns/BoundPool"]
+layout_mode = 2
+
+[node name="BoundActionTitle" type="Label" parent="DockMargin/DockRows/PoolColumns/BoundPool/BoundRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "绑定行动 0｜不占上限"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 10
+
+[node name="BoundScroll" type="ScrollContainer" parent="DockMargin/DockRows/PoolColumns/BoundPool/BoundRows"]
+layout_mode = 2
+size_flags_vertical = 3
+vertical_scroll_mode = 0
+
+[node name="BoundActionCards" type="HBoxContainer" parent="DockMargin/DockRows/PoolColumns/BoundPool/BoundRows/BoundScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="NormalPool" type="PanelContainer" parent="DockMargin/DockRows/PoolColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StylePool")
+
+[node name="NormalRows" type="VBoxContainer" parent="DockMargin/DockRows/PoolColumns/NormalPool"]
+layout_mode = 2
+
+[node name="NormalHandTitle" type="Label" parent="DockMargin/DockRows/PoolColumns/NormalPool/NormalRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "普通牌 0"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 10
+
+[node name="NormalScroll" type="ScrollContainer" parent="DockMargin/DockRows/PoolColumns/NormalPool/NormalRows"]
+layout_mode = 2
+size_flags_vertical = 3
+vertical_scroll_mode = 0
+
+[node name="NormalHandCards" type="HBoxContainer" parent="DockMargin/DockRows/PoolColumns/NormalPool/NormalRows/NormalScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="CommodityPool" type="PanelContainer" parent="DockMargin/DockRows/PoolColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StylePool")
+
+[node name="CommodityRows" type="VBoxContainer" parent="DockMargin/DockRows/PoolColumns/CommodityPool"]
+layout_mode = 2
+
+[node name="CommodityTitle" type="Label" parent="DockMargin/DockRows/PoolColumns/CommodityPool/CommodityRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "商品牌 0"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 10
+
+[node name="CommodityScroll" type="ScrollContainer" parent="DockMargin/DockRows/PoolColumns/CommodityPool/CommodityRows"]
+layout_mode = 2
+size_flags_vertical = 3
+vertical_scroll_mode = 0
+
+[node name="CommodityCards" type="HBoxContainer" parent="DockMargin/DockRows/PoolColumns/CommodityPool/CommodityRows/CommodityScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 5

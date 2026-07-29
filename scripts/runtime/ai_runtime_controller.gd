@@ -53,6 +53,9 @@ var _ai_actor_economy_facts_query_port: AiActorEconomyFactsQueryPort
 var _ai_actor_economy_facts_capability: AiActorEconomyFactsCapability
 var _ai_business_cost_cash_port: AiBusinessCostCashPort
 var _ai_business_cost_capability: AiBusinessCostCapability
+var _game_action_submission_port: TablePlayerActionApplicationFlowController
+var _game_action_submission_capability: GameActionAiSubmissionCapability
+var _game_action_request_sequence := 0
 var _ruleset_snapshot: Dictionary = {}
 var _policy_main_payload: Dictionary = {}
 var _business_action_policy: Dictionary = {}
@@ -201,6 +204,14 @@ func set_ai_business_cost_cash_port(
 ) -> void:
 	_ai_business_cost_cash_port = port
 	_ai_business_cost_capability = capability
+
+
+func set_game_action_submission_port(
+	port: TablePlayerActionApplicationFlowController,
+	capability: GameActionAiSubmissionCapability
+) -> void:
+	_game_action_submission_port = port
+	_game_action_submission_capability = capability
 
 
 func new_session_identity_for_seat(player_index: int, human_player_count: int) -> Dictionary:
@@ -1956,16 +1967,47 @@ func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: in
 	if not _current_public_card_target_is_valid(player_index, target_player):
 		_card_target_pre_submit_rejection_count += 1
 		return false
-	if _card_play_submission_controller == null:
+	if _game_action_submission_port == null or _game_action_submission_capability == null:
 		return false
-	return bool(_card_play_submission_controller.submit_card_play({
-		"player_index": player_index,
-		"slot_index": slot_index,
-		"target_slot": target_slot,
-		"target_player": target_player,
-		"selected_card_resolution_id": selected_resolution_id,
-		"submission_source": "ai",
-	}).get("accepted", false))
+	var region_id := _ai_business_public_region_id(selected_district) \
+		if selected_district >= 0 else ""
+	var offer := _game_action_submission_port.ai_card_play_offer(
+		_game_action_submission_capability,
+		player_index,
+		slot_index,
+		region_id,
+		selected_resolution_id
+	)
+	var authorization := _game_action_submission_port.ai_actor_authorization(
+		_game_action_submission_capability,
+		player_index,
+		"ai-runtime"
+	)
+	if offer.is_empty() or authorization.is_empty():
+		return false
+	var target_ids := GameActionOfferV1.target_ids(offer)
+	if target_slot >= 0:
+		target_ids["monster_id"] = "monster.slot.%d" % target_slot
+	if target_player >= 0:
+		target_ids["player_id"] = "player.%d" % target_player
+	_game_action_request_sequence += 1
+	var intent := GameActionIntentV1.build({
+		"schema_version": GameActionIntentV1.SCHEMA_VERSION,
+		"request_id": "ai-game-action.%d.%d" % [player_index, _game_action_request_sequence],
+		"semantic_action_id": GameActionIntentV1.ACTION_CARD_PLAY,
+		"source_revision": int(offer.get("source_revision", 0)),
+		"actor_authorization": authorization,
+		"target_ids": target_ids,
+		"parameters": {},
+		"submission_kind": "ai_decision",
+	})
+	if intent.is_empty() or not GameActionOfferV1.accepts_intent(offer, intent):
+		return false
+	var receipt := _game_action_submission_port.submit_intent(
+		intent,
+		_game_action_submission_capability
+	)
+	return bool(receipt.get("accepted", false))
 
 func _is_counter_skill(skill: Dictionary) -> bool:
 	var value: Variant = _call_world(&"_card_play_target_snapshot", [skill])

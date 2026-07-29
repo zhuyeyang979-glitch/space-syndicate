@@ -4,14 +4,14 @@
   "purpose": "Developer-only mapping from stable card identity to authored or licensed placeholder illustration assets. Paths, licenses, provenance and treatment fields never become player-facing copy.",
   "style_keys": {
     "commodity.ring_crystal_battery.rank_1": {
-      "illustration_path": "res://assets/art/cards/v06/style_keys/commodity/ring_crystal_battery_v01.png",
+      "illustration_path": "res://assets/art/cards/v06/style_keys/commodity/ring_crystal_battery_v02.svg",
       "source_type": "authored",
-      "upstream_source_id": "space_syndicate_generated_art",
-      "visual_source_id": "space_syndicate_authored_imagegen_v01",
-      "license": "project_generated_candidate",
-      "attribution": "Space Syndicate development art; generation prompt and hash are recorded in-project.",
-      "commercial_status": "review_before_release",
-      "sprite_key": "ring_crystal_battery_v01",
+      "upstream_source_id": "space_syndicate_project_original_svg",
+      "visual_source_id": "space_syndicate_authored_ring_crystal_battery_svg_v02",
+      "license": "project_original_svg",
+      "attribution": "Space Syndicate project-owned original vector art.",
+      "commercial_status": "project_owned",
+      "sprite_key": "ring_crystal_battery_v02",
       "sprite_cell": "full_texture",
       "layout_variant": "centered_crop_safe",
       "palette_variant": "energy_orange_cyan",
@@ -25,10 +25,10 @@
       "semantic_motif": "energy_orbit",
       "texture_filter": "linear",
       "overlay_intensity": 0.34,
-      "source_dimensions": [1536, 1024],
-      "sha256": "f980c9afabc85a5334f36bbf3fc2308e5754dae20351d318ea23ee91ec40a288",
-      "prompt_document": "res://docs/next_task_prompt_card_art_style_key_v06.md",
-      "status": "style_key_v01"
+      "source_dimensions": [1024, 768],
+      "sha256": "8e0183a86ded661e82ac83c3abd19df177e2487d142ff3483e3676c78b64c935",
+      "prompt_document": "res://data/art/alpha04_commodity_art_manifest.json",
+      "status": "active_commodity_svg_v02"
     },
     "facility.orbital_warehouse.rank_1": {
       "illustration_path": "res://assets/third_party/game_icons_ccby/warehouse.svg",

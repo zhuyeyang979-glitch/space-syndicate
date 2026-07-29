@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_group_action_port.gd" id="1_script"]
+
+[node name="CardGroupActionPort" type="Node"]
+script = ExtResource("1_script")
+world_session_state_path = NodePath("../WorldSessionState")
+queue_service_path = NodePath("../CardResolutionQueueRuntimeService")
+resolution_controller_path = NodePath("../CardResolutionRuntimeController")

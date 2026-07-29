@@ -5,6 +5,23 @@ class_name CommoditySushiTrackRuntimeService
 const SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/commodity_sushi_track_snapshot.gd")
 const CLAIM_REQUEST_SCRIPT := preload("res://scripts/runtime/commodity_sushi_track_claim_request.gd")
 const ITEM_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/commodity_sushi_track_item_snapshot.gd")
+const ILLUSTRATION_CATALOG: CardIllustrationCatalogResource = preload(
+	"res://resources/presentation/alpha01_card_illustration_catalog.tres"
+)
+const PUBLIC_CLAIM_FAILURE_CODES := [
+	"commodity_inventory_full",
+	"shared_hand_capacity_full",
+	"stale_source_revision",
+	"item_already_claimed",
+	"item_not_visible",
+	"item_not_claimable",
+	"actor_authorization_invalid",
+	"session_not_running",
+	"request_duplicate",
+	"request_collision",
+	"claim_request_invalid",
+	"claim_failed",
+]
 
 var _inventory: CommodityCardInventoryRuntimeController
 var _player_state: CardPlayerStateProductionAdapterV06
@@ -14,6 +31,7 @@ var _last_public_fingerprint_by_viewer: Dictionary = {}
 var _last_visibility_fingerprint_by_viewer: Dictionary = {}
 var _visibility_revision_by_viewer: Dictionary = {}
 var _terminal_request_results: Dictionary = {}
+var _request_source_bindings: Dictionary = {}
 var _compose_count := 0
 var _claim_count := 0
 var _rejected_count := 0
@@ -39,6 +57,7 @@ func reset_projection_state() -> void:
 	_last_visibility_fingerprint_by_viewer.clear()
 	_visibility_revision_by_viewer.clear()
 	_terminal_request_results.clear()
+	_request_source_bindings.clear()
 	_compose_count = 0
 	_claim_count = 0
 	_rejected_count = 0
@@ -100,10 +119,18 @@ func claim(request: CLAIM_REQUEST_SCRIPT) -> Dictionary:
 	if request == null or not bool(request.validation_report().get("valid", false)) or not _dependencies_ready():
 		_rejected_count += 1
 		return _public_result(false, "claim_request_invalid", request)
+	var request_identity := request.request_identity_key()
+	var source_identity := request.source_identity_key()
+	if _request_source_bindings.has(request_identity) \
+			and str(_request_source_bindings.get(request_identity, "")) != source_identity:
+		_rejected_count += 1
+		return _public_result(false, "request_collision", request)
+	_request_source_bindings[request_identity] = source_identity
 	var request_key: String = request.canonical_key()
 	if _terminal_request_results.has(request_key):
 		var replay: Dictionary = (_terminal_request_results.get(request_key, {}) as Dictionary).duplicate(true)
 		replay["idempotent_replay"] = true
+		replay["request_status_code"] = "request_duplicate"
 		return replay
 	var current: SNAPSHOT_SCRIPT = public_snapshot(request.viewer_index)
 	if current == null or not current.is_valid() \
@@ -111,19 +138,25 @@ func claim(request: CLAIM_REQUEST_SCRIPT) -> Dictionary:
 			or current.belt_revision != request.belt_revision \
 			or current.visibility_revision != request.visibility_revision:
 		_rejected_count += 1
-		return _remember_result(request_key, _public_result(false, "snapshot_stale", request))
-	var item: ITEM_SNAPSHOT_SCRIPT = current.item_by_id(request.commodity_slot_id)
-	if item == null or item.commodity_card_id != request.commodity_card_id:
-		_rejected_count += 1
-		return _remember_result(request_key, _public_result(false, "commodity_slot_changed", request))
-	if not item.claimable:
-		_rejected_count += 1
-		return _remember_result(request_key, _public_result(false, "commodity_slot_unavailable", request))
+		return _remember_result(request_key, _public_result(false, "stale_source_revision", request))
 	var actor_id := _actor_id_for_player(request.viewer_index)
 	var player := _inventory.player_snapshot(actor_id)
 	if actor_id.is_empty() or player.is_empty():
 		_rejected_count += 1
-		return _remember_result(request_key, _public_result(false, "viewer_binding_unavailable", request))
+		return _remember_result(request_key, _public_result(false, "actor_authorization_invalid", request))
+	var item: ITEM_SNAPSHOT_SCRIPT = current.item_by_id(request.commodity_slot_id)
+	if item == null:
+		_rejected_count += 1
+		var missing_code := "item_not_visible" \
+			if _authoritative_source_presence(request.commodity_slot_id, actor_id) == &"present_hidden" \
+			else "item_already_claimed"
+		return _remember_result(request_key, _public_result(false, missing_code, request))
+	if item.commodity_card_id != request.commodity_card_id:
+		_rejected_count += 1
+		return _remember_result(request_key, _public_result(false, "stale_source_revision", request))
+	if not item.claimable:
+		_rejected_count += 1
+		return _remember_result(request_key, _public_result(false, "item_not_claimable", request))
 	var transaction_id := "commodity_sushi:%d:%d:%s:%d" % [
 		request.viewer_index,
 		request.belt_revision,
@@ -150,6 +183,12 @@ func claim(request: CLAIM_REQUEST_SCRIPT) -> Dictionary:
 	return _remember_result(request_key, result)
 
 
+func rejected_claim_result(request: CLAIM_REQUEST_SCRIPT, failure_code: String) -> Dictionary:
+	_rejected_count += 1
+	var normalized := failure_code if failure_code in PUBLIC_CLAIM_FAILURE_CODES else "claim_failed"
+	return _public_result(false, normalized, request)
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"configured": _dependencies_ready(),
@@ -157,6 +196,7 @@ func debug_snapshot() -> Dictionary:
 		"claim_count": _claim_count,
 		"rejected_count": _rejected_count,
 		"terminal_request_count": _terminal_request_results.size(),
+		"request_identity_count": _request_source_bindings.size(),
 		"owns_belt_state": false,
 		"owns_player_state": false,
 		"owns_market_state": false,
@@ -186,6 +226,7 @@ func _public_item(
 	return {
 		"commodity_slot_id": item_id,
 		"commodity_card_id": card_id,
+		"illustration_key": str(ILLUSTRATION_CATALOG.presentation_key_for_card(card_id)),
 		"public_name": str(player.get("name", product_id)),
 		"public_icon_id": str(machine.get("industry_id", "generic")),
 		"slot_index": slot_index,
@@ -217,6 +258,19 @@ func _source_visible_to_actor(item: Dictionary, actor_id: String) -> bool:
 	return visible_actor_ids.is_empty() or visible_actor_ids.has(actor_id)
 
 
+func _authoritative_source_presence(item_id: String, actor_id: String) -> StringName:
+	if _inventory == null or item_id.strip_edges().is_empty() or actor_id.strip_edges().is_empty():
+		return &"missing"
+	var belt := _inventory.belt_snapshot()
+	var raw_items: Dictionary = belt.get("items", {}) if belt.get("items", {}) is Dictionary else {}
+	if not raw_items.has(item_id):
+		return &"missing"
+	var raw_item: Dictionary = raw_items.get(item_id, {}) if raw_items.get(item_id, {}) is Dictionary else {}
+	if raw_item.is_empty():
+		return &"missing"
+	return &"present_visible" if _source_visible_to_actor(raw_item, actor_id) else &"present_hidden"
+
+
 func _actor_id_for_player(viewer_index: int) -> String:
 	if _player_state == null or viewer_index < 0:
 		return ""
@@ -237,9 +291,13 @@ func _public_result(success: bool, failure_code: String, request: CLAIM_REQUEST_
 		if item != null:
 			item_name = item.public_name
 	var explanation := _failure_explanation(failure_code)
+	var redact_hidden_source := not success and failure_code == "item_not_visible"
 	return {
 		"success": success,
 		"failure_code": "" if success else failure_code,
+		"request_status_code": "accepted" if success else failure_code,
+		"request_identity": request.request_identity_key() if request != null else "",
+		"source_identity": request.source_identity_key() if request != null and not redact_hidden_source else "",
 		"title": "已领取%s" % item_name if success else "未能领取%s" % item_name,
 		"explanation": "免费商品牌已进入你的手牌。" if success else explanation,
 		"consequence": "共享商品带已更新；领取不支付现金。" if success else "商品带和你的资源均未改变。",
@@ -247,7 +305,8 @@ func _public_result(success: bool, failure_code: String, request: CLAIM_REQUEST_
 		"focus_target": request.commodity_slot_id if request != null else "",
 		"relevant_cost": "免费",
 		"relevant_requirement": "商品仍在共享轨道且当前可领取",
-		"affected_entity_ids": [request.commodity_slot_id, request.commodity_card_id] if request != null else [],
+		"affected_entity_ids": [request.commodity_slot_id, request.commodity_card_id] \
+			if request != null and not redact_hidden_source else [],
 		"request_revision": request.request_revision if request != null else 0,
 		"idempotent_replay": false,
 	}
@@ -255,28 +314,39 @@ func _public_result(success: bool, failure_code: String, request: CLAIM_REQUEST_
 
 func _failure_explanation(code: String) -> String:
 	return {
-		"snapshot_stale": "商品带已刷新，这次请求使用的是旧快照。",
-		"commodity_slot_changed": "这个槽位的商品已经变化。",
-		"commodity_slot_unavailable": "这个商品当前不可领取。",
-		"viewer_binding_unavailable": "当前玩家席位尚未绑定到卡牌库存。",
-		"inventory_full": "当前手牌没有可接收该商品的位置。",
+		"commodity_inventory_full": "商品库存已满，当前无法接收更多商品牌。",
+		"shared_hand_capacity_full": "当前 V0.6 共享手牌容量已满。",
+		"stale_source_revision": "商品带已刷新，这次请求使用的是旧来源版本。",
+		"item_already_claimed": "这张商品牌已经被领取。",
+		"item_not_visible": "这张商品牌不在当前玩家可见的来源区段。",
+		"item_not_claimable": "这张商品牌当前不可领取。",
+		"actor_authorization_invalid": "当前玩家身份未获授权领取这张商品牌。",
+		"session_not_running": "当前对局尚未运行，不能领取商品牌。",
+		"request_duplicate": "这次领取请求已经处理，不会重复加入库存。",
+		"request_collision": "领取请求身份与来源不一致，已安全拒绝。",
 	}.get(code, "领取条件在提交前发生变化。")
 
 
 func _failure_suggestion(code: String) -> String:
-	if code == "inventory_full":
+	if code in ["commodity_inventory_full", "shared_hand_capacity_full"]:
 		return "先打出或整理手牌，再领取商品。"
+	if code in ["actor_authorization_invalid", "session_not_running"]:
+		return "返回当前对局并等待玩家身份恢复。"
 	return "查看刷新后的商品带并重新选择。"
 
 
 func _public_failure_code(owner_code: String) -> String:
 	return {
-		"source_revision_changed": "snapshot_stale",
-		"source_item_missing": "commodity_slot_changed",
-		"source_item_unavailable": "commodity_slot_unavailable",
-		"source_item_not_visible": "commodity_slot_unavailable",
-		"hand_limit_reached": "inventory_full",
-		"inventory_full": "inventory_full",
+		"source_revision_changed": "stale_source_revision",
+		"source_item_missing": "item_already_claimed",
+		"source_item_unavailable": "item_not_claimable",
+		"source_item_not_visible": "item_not_visible",
+		"hand_limit_reached": "shared_hand_capacity_full",
+		"inventory_full": "shared_hand_capacity_full",
+		"hand_full_no_matching_merge": "shared_hand_capacity_full",
+		"commodity_inventory_full": "commodity_inventory_full",
+		"transaction_intent_collision": "request_collision",
+		"controller_not_ready": "session_not_running",
 	}.get(owner_code, "claim_failed")
 
 

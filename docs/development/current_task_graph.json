@@ -1,31 +1,30 @@
 {
-  "schema_version": 4,
-  "generated_at": "2026-07-25T03:26:45+09:00",
-  "base_main_sha": "ebaf91942c23b9c78ffa05873fff73d2b2262f8e",
+  "schema_version": 5,
+  "generated_at": "2026-07-28T06:05:00+09:00",
+  "base_main_sha": "b5763bbfb96994aa55ab36ae4335db332d9818a8",
   "allowed_statuses": [
     "MERGED",
     "ACTIVE",
     "READY",
+    "LOCAL_COMMITTED",
     "BLOCKED",
     "EXTERNAL_EVIDENCE_REQUIRED",
     "DEFERRED"
   ],
   "selection_policy": {
-    "cloud_truth_only": true,
-    "open_pull_requests_only": true,
+    "cloud_truth_distinguished_from_local_candidates": true,
     "historical_branch_sweep_forbidden": true,
     "one_writer_per_file_ownership_set": true,
-    "shared_hot_files_integration_only": true
+    "shared_hot_files_integration_only": true,
+    "local_latest_may_continue_without_reopening_worktree": true
   },
   "tasks": [
     {
       "task_id": "ALPHA03-PROGRAM-INITIALIZATION",
       "priority": "P0",
       "status": "MERGED",
-      "branch": "codex/alpha03-program-init-53c4c02",
       "pull_request": 50,
-      "dependencies": [],
-      "completion_scope": "initialize machine-independent Alpha 0.3 state, graph, ownership and checkpoint"
+      "dependencies": []
     },
     {
       "task_id": "P0-AI-BUSINESS-COST-TYPED-CASH-CUTOVER",
@@ -45,178 +44,103 @@
       "task_id": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
       "priority": "P0",
       "status": "ACTIVE",
-      "foundation_pull_request": 48,
-      "foundation_only": false,
-      "atomic_progress": [
-        {
-          "domain": "foundation_ports",
-          "status": "MERGED",
-          "pull_request": 48
-        },
-        {
-          "domain": "city_inference_query_command",
-          "status": "MERGED",
-          "branch": "codex/alpha03-ai-world-typed-ports-e49ad50",
-          "focused_gate": "48/48 PASS",
-          "production_scene_bench": "14/14 PASS",
-          "pull_request": 51,
-          "commit": "90014ec92a5b2f1f15e658d007ce9c87f2c4fbef",
-          "merge_commit": "80817847cfd0061de19516829460ca45b41558dc",
-          "delivery": "MERGED"
-        },
-        {
-          "domain": "actor_state",
-          "status": "MERGED",
-          "pull_request": 53,
-          "commit": "bb3a7af95907ec44b4f3e2c7274a791bab83455a",
-          "merge_commit": "0b4b72a742e4d3ac08cc6308d596d26383942a2d"
-        },
-        {
-          "domain": "public_player_facts",
-          "status": "MERGED",
-          "pull_request": 54,
-          "commit": "65bd34be41303572cb70ff319dc79c682283f651",
-          "merge_commit": "d78ca8973c86563dea502b725600b5840c9941c3"
-        },
-        {
-          "domain": "actor_economy_facts",
-          "status": "MERGED",
-          "base_main_sha": "d78ca8973c86563dea502b725600b5840c9941c3",
-          "focused_gate": "81/81 PASS",
-          "production_scene_bench": "19/19 PASS",
-          "pull_request": 55,
-          "commit": "b50d0fc5de13d9b5eb88806d1c2b38c7da84374f",
-          "merge_commit": "3d659323b8ed36088489cadc485cc3ffb8bf64e8"
-        },
-        {
-          "domain": "actor_hand_inventory",
-          "status": "MERGED",
-          "base_main_sha": "3d659323b8ed36088489cadc485cc3ffb8bf64e8",
-          "focused_gate": "92/92 PASS",
-          "production_scene_bench": "21/21 PASS",
-          "pull_request": 56,
-          "commit": "7a2d37c056d685dbee84d133fabe7768165c9ec6",
-          "merge_commit": "ebaf91942c23b9c78ffa05873fff73d2b2262f8e",
-          "new_main_caller_count": 0,
-          "new_save_section_count": 0
-        },
-        {
-          "domain": "public_district_facts",
-          "status": "VALIDATED_CANDIDATE",
-          "base_main_sha": "ebaf91942c23b9c78ffa05873fff73d2b2262f8e",
-          "focused_gate": "104/104 PASS",
-          "production_scene_bench": "22/22 PASS",
-          "migrated_consumer_count": 7,
-          "new_query_port_count": 0,
-          "new_main_caller_count": 0,
-          "new_save_section_count": 0
-        }
+      "latest_merged_atomic_domain": "public_district_facts",
+      "latest_pull_request": 57,
+      "latest_merge_commit": "ad3b3184533a8cd08cfbf1107399d80f4fdd2ce6",
+      "completed_atomic_domains": [
+        "foundation_ports",
+        "city_inference_query_command",
+        "actor_state",
+        "public_player_facts",
+        "actor_economy_facts",
+        "actor_hand_inventory",
+        "public_district_facts"
       ],
-      "next_atomic_boundary": "AI_PUBLIC_DISTRICT_FACTS_TYPED_PORT_MIGRATION",
-      "dependencies": [
-        "P0-AI-BUSINESS-COST-TYPED-CASH-CUTOVER",
-        "P0-COMMODITY-FLOW-POSTCOMMIT-EXACT-ONCE"
-      ],
-      "hard_gate": {
-        "ai_generic_get_count": 0,
-        "ai_generic_set_count": 0,
-        "ai_generic_callv_count": 0,
-        "ai_main_method_name_count": 0,
-        "ai_whole_players_access_count": 0,
-        "ai_whole_districts_access_count": 0,
-        "ai_rival_private_fact_leak_count": 0
-      }
+      "remaining_scope": "Main AI-world host detachment and remaining authorized typed-domain observations",
+      "next_atomic_boundary": "P0_AI_WORLD_TYPED_PORTS_MAIN_HOST_DETACHMENT",
+      "dependencies": []
     },
     {
       "task_id": "P1-FOUR-SEAT-FIRST-ECONOMIC-ENGINE",
       "priority": "P1",
-      "status": "ACTIVE",
-      "dependencies": [],
-      "missing_evidence": [
-        "compatible factory and market installation",
-        "authoritative Sale Receipt",
-        "positive GDP per minute",
-        "duplicate batch zero side effect"
-      ]
+      "status": "MERGED",
+      "pull_request": 68,
+      "evidence": "31 Sale Receipts and three installed facilities in each accepted run",
+      "dependencies": []
     },
     {
       "task_id": "P1-FOUR-SEAT-TERMINAL-PATH",
       "priority": "P1",
-      "status": "BLOCKED",
+      "status": "MERGED",
+      "pull_request": 68,
+      "evidence": "Victory qualification, audit, FinalSettlement, and terminal quiescence",
       "dependencies": ["P1-FOUR-SEAT-FIRST-ECONOMIC-ENGINE"]
+    },
+    {
+      "task_id": "V07-CONSTITUTION-GLOBAL-SEMANTIC-ACTION-SPINE-CUTOVER",
+      "priority": "P0",
+      "status": "LOCAL_COMMITTED",
+      "branch": "codex/commodity-track-three-layer-semantics-b5763bb",
+      "base_main_sha": "b5763bbfb96994aa55ab36ae4335db332d9818a8",
+      "checkpoint_sha": "5cf30c64bc53e4056afdb1337fa279b355c9fc99",
+      "commit": "THIS_CUTOVER",
+      "pushed": false,
+      "merged_to_main": false,
+      "delivery_scope": [
+        "V0.7 highest target constitution",
+        "one 24-domain global three-layer registry",
+        "GameActionOfferV1, GameActionIntentV1, and GameActionReceiptV1",
+        "scene-owned table player action flow",
+        "human and AI shared card-play intent",
+        "physical Main player-action routing deletion"
+      ],
+      "full_v0_7_runtime_cutover": false,
+      "candidate_full_run": "BOUNDED_INCOMPLETE_OBSERVATION_WINDOW_0_INVALID_ACTIONS",
+      "dependencies": ["P1-FOUR-SEAT-TERMINAL-PATH"]
+    },
+    {
+      "task_id": "P0-AI-WORLD-TYPED-PORTS-MAIN-HOST-DETACHMENT",
+      "priority": "P0",
+      "status": "READY",
+      "effective_base": "latest local Action Spine commit after closure",
+      "dependencies": ["V07-CONSTITUTION-GLOBAL-SEMANTIC-ACTION-SPINE-CUTOVER"]
+    },
+    {
+      "task_id": "P1-SAVE-RESUME-OWNER-COVERAGE-AND-COLD-RESTORE",
+      "priority": "P1",
+      "status": "READY",
+      "transactional_owner_count": 12,
+      "required_owner_count": 19,
+      "production_cutover_blocked_until_owner_inventory": true,
+      "dependencies": []
     },
     {
       "task_id": "P1-ALPHA01-WINDOWS-RC",
       "priority": "P1",
       "status": "BLOCKED",
-      "dependencies": ["P1-FOUR-SEAT-TERMINAL-PATH"]
+      "dependencies": ["P1-SAVE-RESUME-OWNER-COVERAGE-AND-COLD-RESTORE"]
     },
     {
       "task_id": "P1-ALPHA01-EXTERNAL-PLAYTEST",
       "priority": "P1",
       "status": "BLOCKED",
-      "dependencies": ["P1-ALPHA01-WINDOWS-RC"],
-      "required_testers": 5,
-      "required_matches": 10,
-      "required_completed_matches": 5
+      "dependencies": ["P1-ALPHA01-WINDOWS-RC"]
     },
     {
-      "task_id": "P1-SAVE-RESUME-OWNER-COVERAGE",
+      "task_id": "V07-SHARED-COMMODITY-TRACK-RUNTIME-CUTOVER",
       "priority": "P1",
-      "status": "READY",
-      "readiness_stage": "OWNER_INVENTORY",
-      "canonical_state": "READY_FOR_OWNER_INVENTORY",
-      "dependencies": [],
-      "transactional_owner_count": 12,
-      "required_owner_count": 19,
-      "production_cutover_blocked_until_inventory": true
-    },
-    {
-      "task_id": "P2-ALPHA01-CARD-ART-WAVE-1",
-      "priority": "P2",
-      "status": "READY",
-      "canonical_state": "READY",
-      "dependencies": []
-    },
-    {
-      "task_id": "P2-ALPHA02-DATA-ONLY-CONTENT",
-      "priority": "P2",
       "status": "BLOCKED",
-      "dependencies": ["P1-ALPHA01-EXTERNAL-PLAYTEST", "P1-SAVE-RESUME-OWNER-COVERAGE"]
-    },
-    {
-      "task_id": "P3-TABLE-AUDIO-AND-LIGHTWEIGHT-ONBOARDING",
-      "priority": "P3",
-      "status": "BLOCKED",
-      "dependencies": ["P1-FOUR-SEAT-FIRST-ECONOMIC-ENGINE"]
+      "dependencies": [
+        "P0-AI-WORLD-TYPED-PORTS-MAIN-HOST-DETACHMENT",
+        "P1-SAVE-RESUME-OWNER-COVERAGE-AND-COLD-RESTORE"
+      ],
+      "reason": "Core, AI, Player, Save, privacy, RNG, and old-rule retirement must cut over together."
     },
     {
       "task_id": "P4-FULL-SMOKE-FIXTURE-MIGRATION",
       "priority": "P4",
       "status": "READY",
       "dependencies": []
-    },
-    {
-      "task_id": "ALPHA03-DATA-ONLY-CONTENT-WAVE",
-      "priority": "P2",
-      "status": "BLOCKED",
-      "dependencies": ["P2-ALPHA02-DATA-ONLY-CONTENT", "P1-SAVE-RESUME-OWNER-COVERAGE"]
-    },
-    {
-      "task_id": "ALPHA03-BALANCE-AND-REPLAYABILITY",
-      "priority": "P1",
-      "status": "BLOCKED",
-      "dependencies": ["ALPHA03-DATA-ONLY-CONTENT-WAVE", "P1-FOUR-SEAT-TERMINAL-PATH"]
-    },
-    {
-      "task_id": "ALPHA03-STABILITY-AND-RELEASE",
-      "priority": "P0",
-      "status": "BLOCKED",
-      "dependencies": [
-        "ALPHA03-BALANCE-AND-REPLAYABILITY",
-        "P1-SAVE-RESUME-OWNER-COVERAGE",
-        "P3-TABLE-AUDIO-AND-LIGHTWEIGHT-ONBOARDING"
-      ]
     },
     {
       "task_id": "ORGANIZATION-CARDS",

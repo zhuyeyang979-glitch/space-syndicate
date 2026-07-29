@@ -323,7 +323,7 @@ func _run_source_negative_gates() -> void:
 	_expect(target_guard_body.contains("_public_player_snapshot") and target_guard_body.contains("target_player == player_index") and target_guard_body.contains("eliminated"), "pre-submit target guard uses the current typed public row and rejects self or eliminated targets")
 	var queue_body := _function_body(controller_source, "_queue_skill_resolution")
 	var validation_position := queue_body.find("_current_public_card_target_is_valid")
-	var submission_position := queue_body.find("submit_card_play")
+	var submission_position := queue_body.find("submit_intent")
 	_expect(validation_position >= 0 and submission_position > validation_position, "current typed target validation is physically before CardPlay submission")
 	var coordinator_enter_body := _function_body(coordinator_source, "_enter_tree")
 	var coordinator_prebind_body := _function_body(coordinator_source, "_prebind_ai_actor_state_capability")

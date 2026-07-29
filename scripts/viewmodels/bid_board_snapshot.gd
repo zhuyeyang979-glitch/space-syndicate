@@ -72,14 +72,21 @@ func _normalize_actions(entries_variant: Variant) -> Array:
 	for entry_variant in entries:
 		var entry: Dictionary = entry_variant if entry_variant is Dictionary else {}
 		var label := _first_text(entry, ["label", "text", "name"], "行动")
-		result.append({
+		var normalized := {
 			"id": _first_text(entry, ["id", "action_id", "key"], label),
 			"label": _short_text(label, 8),
 			"disabled": bool(entry.get("disabled", false)),
 			"active": bool(entry.get("active", not bool(entry.get("disabled", false)))),
 			"accent": _entry_color(entry, Color("#fde68a")),
 			"tooltip": _first_text(entry, ["tooltip", "tip", "why"], ""),
-		})
+		}
+		var offer: Variant = entry.get("game_action_offer", {})
+		if offer is Dictionary and bool(GameActionOfferV1.validation_report(offer).get("valid", false)):
+			normalized["game_action_offer"] = GameActionOfferV1.detached_copy(offer)
+		var parameters: Variant = entry.get("game_action_parameters", {})
+		if parameters is Dictionary and SemanticWireV1.is_closed_data(parameters):
+			normalized["game_action_parameters"] = (parameters as Dictionary).duplicate(true)
+		result.append(normalized)
 	return result
 
 

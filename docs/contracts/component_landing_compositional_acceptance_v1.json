@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "contract_id": "component_landing_compositional_acceptance_v1",
+  "contract_kind": "strict_component_landing_gate",
+  "purpose": "Permit a narrowly scoped clean-extracted component landing to reuse an ancestral terminal-green Formal and a separately verified component-path Formal observation without treating the latter as ancestral or successful end-to-end evidence.",
+  "authority": {
+    "full_run_terminal_contract": "docs/contracts/v06_full_run_terminal_acceptance_v1.json",
+    "full_run_definition_unchanged": true,
+    "component_acceptance_is_not_formal_success": true,
+    "component_acceptance_is_not_release_acceptance": true,
+    "unknown_change_class_fails_closed": true
+  },
+  "formal_success_boundary": {
+    "real_matched_economy_chain_required": true,
+    "public_sale_receipt_required": true,
+    "required_victory_state_sequence": [
+      "idle",
+      "qualification",
+      "audit",
+      "resolved"
+    ],
+    "final_settlement_exact_count": 1,
+    "terminal_presentation_exact_count": 1,
+    "final_public_log_exact_count": 1,
+    "terminal_quiescent_frame_count_min": 8,
+    "terminal_world_delta": 0,
+    "terminal_rng_draw_delta": 0,
+    "invalid_action_count_max": 0,
+    "nonfinite_count_max": 0
+  },
+  "allowed_change_classes": [
+    "ui",
+    "presentation",
+    "read_only_projection",
+    "player_input_adapter",
+    "artwork_catalog",
+    "accessibility",
+    "non_rule_interaction_shell",
+    "qa_observation"
+  ],
+  "forbidden_change_classes": [
+    "gameplay_value",
+    "victory_rule",
+    "qualification_timer",
+    "audit_timer",
+    "runtime_loop",
+    "economy_formula",
+    "ai_production_behavior",
+    "action_semantic_execution",
+    "save_owner_or_schema",
+    "rng_owner_or_draw_point",
+    "terminal_owner",
+    "multiplayer_or_replay_authority",
+    "full_v07_runtime_cutover",
+    "unknown_production_change"
+  ],
+  "terminal_green_ancestry_gate": {
+    "terminal_green_formal_commit_must_be_git_ancestor": true,
+    "terminal_green_formal_must_be_settled": true,
+    "terminal_green_formal_must_satisfy_full_run_terminal_contract": true
+  },
+  "clean_extraction_equivalence_gate": {
+    "formal_observation_commit_must_be_git_ancestor_or_verified_clean_extraction_source": true,
+    "non_ancestor_formal_observation_without_verified_clean_extraction_forbidden": true,
+    "source_and_candidate_must_share_terminal_green_ancestor": true,
+    "clean_extraction_destination_commit_must_be_git_ancestor": true,
+    "source_to_destination_commit_map_required": true,
+    "behavior_bearing_semantic_mismatch_count_max": 0,
+    "owner_discovered_formal_path_dependency_semantic_mismatch_count_max": 0,
+    "nonidentical_behavior_blob_must_be_deterministically_classified_nonsemantic": true,
+    "unmapped_extracted_change_count_max": 0,
+    "unclassified_omission_or_difference_count_max": 0,
+    "source_formal_observation_to_source_evidence_production_change_count_max": 0,
+    "post_extraction_behavior_semantic_change_count_max": 0,
+    "path_name_commit_subject_or_intent_only_equivalence_forbidden": true,
+    "whole_tree_equivalence_claim_required": false,
+    "exact_candidate_component_gates_required": true
+  },
+  "terminal_critical_diff_gate": {
+    "terminal_runtime_owner_diff_count_max": 0,
+    "victory_rule_diff_count_max": 0,
+    "victory_timer_diff_count_max": 0,
+    "final_settlement_runtime_diff_count_max": 0,
+    "runtime_loop_terminal_diff_count_max": 0,
+    "clock_formula_diff_count_max": 0,
+    "terminal_rng_diff_count_max": 0,
+    "terminal_save_diff_count_max": 0,
+    "terminal_state_injection_count_max": 0,
+    "owner_discovery_required": true,
+    "path_name_only_classification_forbidden": true
+  },
+  "formal_path_gate": {
+    "candidate_component_path_traversed_by_real_production_formal": true,
+    "candidate_component_gates_green_in_that_formal": true,
+    "formal_invalid_action_count_max": 0,
+    "formal_nonfinite_count_max": 0,
+    "formal_victory_audit_entry_required": true,
+    "formal_authoritative_progress_must_be_active_at_end": true,
+    "formal_progress_stall_forbidden": true,
+    "incomplete_formal_status_must_be_preserved": true
+  },
+  "exact_candidate_gate": {
+    "deterministic_terminal_component_tests_required": true,
+    "functional_tests_required": true,
+    "privacy_tests_required": true,
+    "action_spine_tests_required": true,
+    "main_invariants_required": true,
+    "save_invariants_required": true,
+    "rng_invariants_required": true,
+    "reference_dependency_audit_required": true,
+    "git_diff_check_required": true,
+    "end_to_end_game_substitute_forbidden": true,
+    "renamed_formal_equivalent_forbidden": true
+  },
+  "required_terminal_component_coverage": [
+    "victory_split_delta_precision",
+    "qualification_timer",
+    "audit_timer",
+    "audit_to_resolved",
+    "victory_transition_order",
+    "final_settlement_exact_once",
+    "terminal_presentation_exact_once",
+    "final_public_log_exact_once",
+    "runtime_loop_terminal_freeze",
+    "eight_frame_quiescence",
+    "terminal_world_delta_zero",
+    "terminal_rng_delta_zero",
+    "post_eligibility_installation_guard",
+    "final_settlement_production_composition",
+    "save_settlement_checkpoint",
+    "action_spine_terminal_compatibility",
+    "full_run_driver_contract_static",
+    "authoritative_runtime_stepper_policy"
+  ],
+  "decision": {
+    "all_gates_are_conjunctive": true,
+    "green_status": "GREEN_COMPONENT_ACCEPTED",
+    "partial_status": "PARTIAL",
+    "blocked_status": "BLOCKED",
+    "any_forbidden_change_blocks_acceptance": true,
+    "any_unknown_or_missing_evidence_blocks_acceptance": true
+  },
+  "truthful_output_requirements": {
+    "component_acceptance_green_when_all_gates_pass": true,
+    "terminal_green_ancestor_reused_when_all_gates_pass": true,
+    "release_level_full_run_deferred": true,
+    "exact_formal_head_full_run_to_terminal_proven_must_remain_false_if_formal_was_incomplete": true,
+    "full_run_to_settlement_green_must_remain_false_if_formal_was_incomplete": true,
+    "exact_head_terminal_green_claim_forbidden_without_exact_end_to_end_proof": true
+  },
+  "formal_run_policy": {
+    "acceptance_evaluation_may_authorize_new_formal_run": false,
+    "hidden_or_renamed_formal_equivalent_allowed": false,
+    "bounded_component_fixture_only": true
+  }
+}

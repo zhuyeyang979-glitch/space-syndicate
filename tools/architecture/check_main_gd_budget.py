@@ -23,6 +23,10 @@ SCAN_EXCLUDES = (
     "scripts/tools/runtime_authority_audit_bench.gd",
     "scenes/tools/RuntimeAuthorityAuditBench.tscn",
     "tests/run_rng_service_cutover_test.gd",
+    # Source-negative V0.7 reference oracle; it reads Main as text and is not a caller.
+    "tests/shared_partial_visibility_commodity_track_three_layer_semantics_test.gd",
+    # Source-negative Action Spine oracle; method-name strings are forbidden evidence.
+    "tests/table_player_action_application_flow_test.gd",
     "tests/table_selection_state_cutover_test.gd",
     "tests/world_session_state_cutover_test.gd",
 )

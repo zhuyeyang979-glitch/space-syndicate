@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="768" viewBox="0 0 1024 768">
+  <defs>
+    <radialGradient id="abyss" cx="50%" cy="44%" r="70%">
+      <stop offset="0" stop-color="#173f3b"/>
+      <stop offset="1" stop-color="#061d24"/>
+    </radialGradient>
+    <linearGradient id="mat" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a7f3d0"/>
+      <stop offset="1" stop-color="#15803d"/>
+    </linearGradient>
+  </defs>
+  <rect x="18" y="18" width="988" height="732" rx="80" fill="url(#abyss)"/>
+  <path d="M104 561 C172 465 280 470 342 524 C407 406 554 401 636 501 C726 435 862 463 924 575 C825 680 199 692 104 561Z" fill="url(#mat)"/>
+  <path d="M127 574 C251 521 317 603 407 530 C491 462 558 567 646 515 C733 463 819 529 905 585" fill="none" stroke="#5eead4" stroke-width="18" opacity="0.8"/>
+  <g fill="#d1fae5" stroke="#064e3b" stroke-width="12">
+    <path d="M245 511 C229 423 248 348 303 293 C365 348 378 426 348 508Z"/>
+    <path d="M442 466 C418 351 446 256 520 197 C593 271 607 368 568 470Z"/>
+    <path d="M666 503 C643 412 667 337 731 285 C790 349 796 432 763 513Z"/>
+  </g>
+  <g fill="#22d3ee">
+    <circle cx="294" cy="367" r="21"/><circle cx="512" cy="286" r="28"/><circle cx="721" cy="371" r="23"/>
+  </g>
+  <g fill="none" stroke="#f0fdfa" stroke-width="9" opacity="0.72">
+    <path d="M303 497 C296 451 300 411 294 367"/><path d="M507 454 C511 391 513 337 512 286"/><path d="M711 493 C718 451 721 410 721 371"/>
+  </g>
+  <g fill="#fcd34d" opacity="0.85">
+    <circle cx="164" cy="314" r="9"/><circle cx="201" cy="264" r="6"/><circle cx="827" cy="295" r="8"/><circle cx="860" cy="241" r="5"/>
+  </g>
+</svg>

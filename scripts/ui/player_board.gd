@@ -1,14 +1,6 @@
 extends PanelContainer
 class_name SpaceSyndicatePlayerBoard
 
-signal card_selected(card_data: Dictionary)
-signal card_hovered(card_data: Dictionary)
-signal card_unhovered
-signal card_unselected(card_data: Dictionary)
-signal card_drag_preview_started(card_data: Dictionary, screen_position: Vector2)
-signal card_drag_preview_moved(card_data: Dictionary, screen_position: Vector2)
-signal card_drag_preview_ended(card_data: Dictionary)
-signal card_drag_released(card_data: Dictionary, screen_position: Vector2)
 signal action_requested(action_id: String)
 signal application_intent_requested(intent: IntelApplicationIntent)
 signal player_inspection_requested(player_index: int)
@@ -21,18 +13,14 @@ signal player_inspection_requested(player_index: int)
 @onready var selected_district_chip: Label = %PlayerSelectedDistrictChip
 @onready var primary_action_chip: Label = %PlayerPrimaryActionChip
 @onready var progress_path_rail: Container = %PlayerProgressPathRail
-@onready var hand_count_chip: Label = %PlayerHandCountChip
 @onready var goal_bar: ProgressBar = %PlayerGoalBar
-@onready var hand_rack: Control = %HandRack
 @onready var action_hint_label: Label = %PlayerActionHint
 @onready var main_action_dock: SpaceSyndicateActionDock = %PlayerMainActionDock
 @onready var status_lamp_row: Container = %PlayerStatusLampRow
 @onready var readiness_chip_row: Container = %PlayerReadinessChipRow
 @onready var resource_tableau: PanelContainer = %PlayerResourceTableau
-@onready var hand_tableau: PanelContainer = %PlayerHandTableau
 @onready var command_tableau: PanelContainer = %PlayerCommandTableau
 
-var hand_cards_signature: String = ""
 var status_lamps_signature: String = ""
 var readiness_chips_signature: String = ""
 var progress_path_signature: String = ""
@@ -49,24 +37,6 @@ func _ready() -> void:
 	identity_chip.mouse_filter = Control.MOUSE_FILTER_STOP
 	identity_chip.focus_mode = Control.FOCUS_ALL
 	identity_chip.gui_input.connect(_on_identity_chip_gui_input)
-	if hand_rack != null and hand_rack.has_signal("card_hovered"):
-		hand_rack.connect("card_hovered", Callable(self, "_on_card_hovered"))
-	if hand_rack != null and hand_rack.has_signal("card_unhovered"):
-		hand_rack.connect("card_unhovered", Callable(self, "_on_card_unhovered"))
-	if hand_rack != null and hand_rack.has_signal("card_unselected"):
-		hand_rack.connect("card_unselected", Callable(self, "_on_card_unselected"))
-	if hand_rack != null and hand_rack.has_signal("card_selected"):
-		hand_rack.connect("card_selected", Callable(self, "_on_card_clicked"))
-	if hand_rack != null and hand_rack.has_signal("card_double_selected"):
-		hand_rack.connect("card_double_selected", Callable(self, "_on_card_double_clicked"))
-	if hand_rack != null and hand_rack.has_signal("card_drag_preview_started"):
-		hand_rack.connect("card_drag_preview_started", Callable(self, "_on_card_drag_preview_started"))
-	if hand_rack != null and hand_rack.has_signal("card_drag_preview_moved"):
-		hand_rack.connect("card_drag_preview_moved", Callable(self, "_on_card_drag_preview_moved"))
-	if hand_rack != null and hand_rack.has_signal("card_drag_preview_ended"):
-		hand_rack.connect("card_drag_preview_ended", Callable(self, "_on_card_drag_preview_ended"))
-	if hand_rack != null and hand_rack.has_signal("card_drag_released"):
-		hand_rack.connect("card_drag_released", Callable(self, "_on_card_drag_released"))
 	if main_action_dock != null:
 		main_action_dock.set_compact_mode(true)
 		main_action_dock.action_requested.connect(_on_action_requested)
@@ -82,10 +52,6 @@ func _configure_pointer_filter_skeleton() -> void:
 		"PlayerRows/PlayerBoardBody",
 		"PlayerRows/PlayerBoardBody/PlayerResourceTableau",
 		"PlayerRows/PlayerBoardBody/PlayerResourceTableau/PlayerResourceRows",
-		"PlayerRows/PlayerBoardBody/PlayerHandTableau",
-		"PlayerRows/PlayerBoardBody/PlayerHandTableau/PlayerHandRows",
-		"PlayerRows/PlayerBoardBody/PlayerHandTableau/PlayerHandRows/PlayerHandHeader",
-		"PlayerRows/PlayerBoardBody/PlayerHandTableau/PlayerHandRows/HandRackColumn",
 		"PlayerRows/PlayerBoardBody/PlayerCommandTableau",
 		"PlayerRows/PlayerBoardBody/PlayerCommandTableau/PlayerCommandRows",
 	]:
@@ -94,12 +60,8 @@ func _configure_pointer_filter_skeleton() -> void:
 			(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if resource_tableau != null:
 		resource_tableau.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if hand_tableau != null:
-		hand_tableau.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if command_tableau != null:
 		command_tableau.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if hand_rack != null:
-		hand_rack.mouse_filter = Control.MOUSE_FILTER_STOP
 
 
 func set_player_state(data: Dictionary) -> void:
@@ -132,14 +94,6 @@ func set_player_state(data: Dictionary) -> void:
 	_set_status_lamps(status_lamps)
 	_set_readiness_chips(readiness_chips)
 	_set_progress_path(progress_path)
-	var cards_variant: Variant = data.get("hand_cards", [])
-	var hand_cards: Array = cards_variant if cards_variant is Array else []
-	var hand_limit := int(data.get("hand_limit", data.get("max_hand_size", 5)))
-	_set_chip(hand_count_chip, "手牌", "%d/%d" % [hand_cards.size(), maxi(1, hand_limit)], 92, 12)
-	var next_hand_signature := var_to_str(hand_cards)
-	if next_hand_signature != hand_cards_signature:
-		hand_cards_signature = next_hand_signature
-		set_hand_cards(hand_cards)
 	_sync_inspected_identity_chip()
 
 
@@ -181,12 +135,6 @@ func _on_identity_chip_gui_input(event: InputEvent) -> void:
 		player_inspection_requested.emit(_public_player_index)
 
 
-func set_hand_cards(cards: Array) -> void:
-	if hand_rack == null or not hand_rack.has_method("set_cards"):
-		return
-	hand_rack.call("set_cards", cards)
-
-
 func set_runtime_feedback(data: Dictionary) -> void:
 	runtime_feedback = data.duplicate(true)
 	set_meta("runtime_feedback", runtime_feedback.duplicate(true))
@@ -206,45 +154,6 @@ func get_runtime_feedback_snapshot() -> Dictionary:
 	return runtime_feedback.duplicate(true)
 
 
-func _on_card_clicked(card_data: Dictionary) -> void:
-	card_selected.emit(card_data)
-
-
-func _on_card_double_clicked(card_data: Dictionary) -> void:
-	card_selected.emit(card_data)
-	var action_id := _first_enabled_card_action_id(card_data)
-	if action_id != "":
-		action_requested.emit(action_id)
-
-
-func _on_card_hovered(card_data: Dictionary) -> void:
-	card_hovered.emit(card_data)
-
-
-func _on_card_unhovered() -> void:
-	card_unhovered.emit()
-
-
-func _on_card_unselected(card_data: Dictionary) -> void:
-	card_unselected.emit(card_data)
-
-
-func _on_card_drag_preview_started(card_data: Dictionary, screen_position: Vector2) -> void:
-	card_drag_preview_started.emit(card_data, screen_position)
-
-
-func _on_card_drag_preview_moved(card_data: Dictionary, screen_position: Vector2) -> void:
-	card_drag_preview_moved.emit(card_data, screen_position)
-
-
-func _on_card_drag_preview_ended(card_data: Dictionary) -> void:
-	card_drag_preview_ended.emit(card_data)
-
-
-func _on_card_drag_released(card_data: Dictionary, screen_position: Vector2) -> void:
-	card_drag_released.emit(card_data, screen_position)
-
-
 func _on_action_requested(action_id: String) -> void:
 	action_requested.emit(action_id)
 
@@ -252,20 +161,6 @@ func _on_action_requested(action_id: String) -> void:
 func _on_application_intent_requested(intent: IntelApplicationIntent) -> void:
 	if intent != null and intent.is_valid():
 		application_intent_requested.emit(intent)
-
-
-func _first_enabled_card_action_id(card_data: Dictionary) -> String:
-	var actions: Array = card_data.get("actions", []) if card_data.get("actions", []) is Array else []
-	for action_variant in actions:
-		if not (action_variant is Dictionary):
-			continue
-		var action: Dictionary = action_variant
-		if bool(action.get("disabled", false)):
-			continue
-		var action_id := str(action.get("id", "")).strip_edges()
-		if action_id != "":
-			return action_id
-	return ""
 
 
 func _set_main_action_dock(quick_actions: Array, actions: Array) -> void:
@@ -515,7 +410,7 @@ func _first_array(data: Dictionary, keys: Array) -> Array:
 
 
 func _configure_chip_defaults() -> void:
-	for chip in [identity_chip, cash_chip, gdp_chip, goal_chip, selected_district_chip, primary_action_chip, hand_count_chip]:
+	for chip in [identity_chip, cash_chip, gdp_chip, goal_chip, selected_district_chip, primary_action_chip]:
 		chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		chip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		chip.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -525,8 +420,6 @@ func _configure_chip_defaults() -> void:
 func _configure_tableau_styles() -> void:
 	if resource_tableau != null:
 		resource_tableau.add_theme_stylebox_override("panel", _tableau_style(Color("#facc15"), 0.08))
-	if hand_tableau != null:
-		hand_tableau.add_theme_stylebox_override("panel", _tableau_style(Color("#38bdf8"), 0.06))
 	if command_tableau != null:
 		command_tableau.add_theme_stylebox_override("panel", _tableau_style(Color("#22c55e"), 0.07))
 

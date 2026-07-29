@@ -207,14 +207,14 @@ func _test_game_screen_and_main_cutover() -> void:
 	screen.current_ui_data = {"active_forced_decision": {"id": "monster_wager_50", "kind": "monster_wager", "decision_revision": 8, "visible_to_viewer": true}}
 	screen.set("_rendered_forced_decision_binding", {"decision_id": "monster_wager_49", "decision_revision": 7, "kind": "monster_wager"})
 	var typed_requests: Array = []
-	var generic_actions: Array = []
+	var gameplay_intents: Array = []
 	screen.forced_decision_response_requested.connect(func(request: ForcedDecisionResponseRequest) -> void: typed_requests.append(request))
-	screen.action_requested.connect(func(action_id: String) -> void: generic_actions.append(action_id))
+	screen.game_action_intent_requested.connect(func(intent: Dictionary) -> void: gameplay_intents.append(intent))
 	screen.call("_on_temporary_decision_action_requested", "monster_wager:49:a:5")
-	_expect(typed_requests.is_empty() and generic_actions.is_empty(), "stale rendered wager cannot rebind to a newer decision or fall through to Main")
+	_expect(typed_requests.is_empty() and gameplay_intents.is_empty(), "stale rendered wager cannot rebind to a newer decision or fall through to gameplay")
 	screen.set("_rendered_forced_decision_binding", {"decision_id": "monster_wager_50", "decision_revision": 8, "kind": "monster_wager"})
 	screen.call("_on_temporary_decision_action_requested", "monster_wager:50:a:5")
-	_expect(typed_requests.size() == 1 and generic_actions.is_empty() and (typed_requests[0] as ForcedDecisionResponseRequest).decision_id == "monster_wager_50", "matching wager click emits one typed request and zero generic actions")
+	_expect(typed_requests.size() == 1 and gameplay_intents.is_empty() and (typed_requests[0] as ForcedDecisionResponseRequest).decision_id == "monster_wager_50", "matching wager click emits one typed wager request and zero unrelated gameplay intents")
 	screen.free()
 
 

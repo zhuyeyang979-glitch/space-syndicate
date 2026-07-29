@@ -237,6 +237,11 @@ func compose_hand_card(source: Dictionary) -> Dictionary:
 	var play_state := compose_play_eligibility(_dictionary(source.get("eligibility", {})), _dictionary(source.get("card", {})))
 	var slot := int(source.get("slot", -1))
 	var actionable := bool(play_state.get("actionable", false))
+	var game_action_offer := GameActionOfferV1.detached_copy(
+		source.get("game_action_offer", {}) as Dictionary
+	) if source.get("game_action_offer", {}) is Dictionary else {}
+	var game_action_targets := GameActionOfferV1.target_ids(game_action_offer) \
+		if not game_action_offer.is_empty() else {}
 	var effect_text := str(presentation.get("quick_effect_compact", ""))
 	if effect_text.strip_edges() == "":
 		effect_text = _short_text(str(_dictionary(source.get("card", {})).get("display_text", "")), 44)
@@ -271,10 +276,14 @@ func compose_hand_card(source: Dictionary) -> Dictionary:
 			"label": "出牌",
 			"disabled": not actionable,
 			"tooltip": str(play_state.get("detail", "")),
+			"game_action_offer": game_action_offer.duplicate(true),
+			"game_action_parameters": {},
 		}],
 	}
 	if hand_kind == "facility_v06":
 		card_source["card_id"] = str(skill.get("card_id", machine.get("card_id", ""))).strip_edges()
+		card_source["card_instance_ref"] = str(game_action_targets.get("card_instance_id", ""))
+		card_source["offer_source_revision"] = maxi(0, int(game_action_offer.get("source_revision", 0)))
 		card_source["facility_kind"] = facility_kind
 		card_source["industry_id"] = industry_id
 	if presentation.has("illustration_key"):

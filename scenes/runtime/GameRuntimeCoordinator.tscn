@@ -1,4 +1,4 @@
-[gd_scene load_steps=132 format=3]
+[gd_scene load_steps=134 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -123,6 +123,8 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiActorStatePort.tscn" id="130_ai_actor_state"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiRegionKnowledgeQueryPort.tscn" id="131_ai_region_knowledge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiCityInferenceCommandPort.tscn" id="132_ai_city_inference"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardGroupActionPort.tscn" id="133_card_group_action"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/TablePlayerActionApplicationFlowController.tscn" id="134_player_action_flow"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiActorEconomyFactsQueryPort.tscn" id="133_ai_actor_economy"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiActorHandInventoryQueryPort.tscn" id="134_ai_actor_hand_inventory"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardSemanticCatalogService.tscn" id="135_card_semantic_catalog"]
@@ -131,6 +133,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayerFaceProjectionService.tscn" id="137_card_player_face_projection"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayerFacePublicLocalizationSourceService.tscn" id="139_card_player_face_public_localization"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiCardInteractionObservationService.tscn" id="140_ai_card_interaction_observation"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/PlayerCardDockViewerQueryPort.tscn" id="141_player_card_dock_query"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -209,6 +212,9 @@ game_session_runtime_controller_path = NodePath("../GameSessionRuntimeController
 [node name="TablePresentationViewModelQuery" parent="." instance=ExtResource("103_table_presentation_viewmodel_query")]
 unique_name_in_owner = true
 
+[node name="PlayerCardDockViewerQueryPort" parent="." instance=ExtResource("141_player_card_dock_query")]
+unique_name_in_owner = true
+
 [node name="DistrictSupplyViewerQueryPort" parent="." instance=ExtResource("121_district_supply_viewer_query")]
 unique_name_in_owner = true
 
@@ -216,6 +222,12 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="DistrictSupplyActionPort" parent="." instance=ExtResource("122_district_supply_action")]
+unique_name_in_owner = true
+
+[node name="CardGroupActionPort" parent="." instance=ExtResource("133_card_group_action")]
+unique_name_in_owner = true
+
+[node name="TablePlayerActionApplicationFlowController" parent="." instance=ExtResource("134_player_action_flow")]
 unique_name_in_owner = true
 
 [node name="TablePresentationSourceOwner" parent="." instance=ExtResource("100_table_presentation_source")]

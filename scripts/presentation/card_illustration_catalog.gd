@@ -22,6 +22,32 @@ func presentation_key_for_card(card_id: String) -> StringName:
 	return key
 
 
+func presentation_key_for_commodity_id(commodity_id: String) -> StringName:
+	_request_count += 1
+	if catalog == null:
+		_fallback_count += 1
+		return StringName()
+	var key := catalog.presentation_key_for_commodity_id(commodity_id)
+	if key == StringName():
+		_fallback_count += 1
+	else:
+		_rendered_hit_count += 1
+	return key
+
+
+func presentation_key_for_commodity_family(family_id: String) -> StringName:
+	_request_count += 1
+	if catalog == null:
+		_fallback_count += 1
+		return StringName()
+	var key := catalog.presentation_key_for_commodity_family(family_id)
+	if key == StringName():
+		_fallback_count += 1
+	else:
+		_rendered_hit_count += 1
+	return key
+
+
 func validation_report() -> Dictionary:
 	return catalog.validation_report() if catalog != null else {
 		"valid": false,
@@ -29,6 +55,11 @@ func validation_report() -> Dictionary:
 		"alpha_count": 0,
 		"rendered_count": 0,
 		"fallback_count": 0,
+		"active_commodity_type_count": 0,
+		"active_commodity_family_count": 0,
+		"active_commodity_card_id_count": 0,
+		"active_commodity_unique_art_count": 0,
+		"active_commodity_fallback_count": 0,
 	}
 
 
@@ -41,6 +72,11 @@ func debug_snapshot() -> Dictionary:
 		"alpha_count": int(report.get("alpha_count", 0)),
 		"rendered_count": int(report.get("rendered_count", 0)),
 		"fallback_count": int(report.get("fallback_count", 0)),
+		"active_commodity_type_count": int(report.get("active_commodity_type_count", 0)),
+		"active_commodity_family_count": int(report.get("active_commodity_family_count", 0)),
+		"active_commodity_card_id_count": int(report.get("active_commodity_card_id_count", 0)),
+		"active_commodity_unique_art_count": int(report.get("active_commodity_unique_art_count", 0)),
+		"active_commodity_fallback_count": int(report.get("active_commodity_fallback_count", 0)),
 		"request_count": _request_count,
 		"rendered_hit_count": _rendered_hit_count,
 		"semantic_fallback_count": _fallback_count,

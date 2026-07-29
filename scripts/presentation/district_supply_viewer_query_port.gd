@@ -137,12 +137,28 @@ func snapshot_for_viewer(viewer_index: int) -> Dictionary:
 		"visible": true,
 		"reason_code": _last_reason_code,
 		"district_index": district_index,
+		"rack_source_revision": _rack_source_revision(rack_row, region_id, district_index),
 		"viewer_index": viewer_index,
 		"subject_player_index": subject_index,
 		"authorization_revision": viewer_context.authorization_revision,
 		"visibility_scope": _last_visibility_scope,
 		"snapshot": drawer_snapshot,
 	}
+
+
+func _rack_source_revision(rack_row: Dictionary, region_id: String, district_index: int) -> String:
+	var rack_revision := str(rack_row.get("rack_revision", "")).strip_edges()
+	if region_id.is_empty() or district_index < 0 or rack_revision.is_empty():
+		return ""
+	# The raw rack revision is already a public RegionSupply fact. Hash the
+	# binding so consumers can reject stale navigation hints without receiving a
+	# per-slot purchase credential or learning anything about the future bag.
+	return JSON.stringify({
+		"schema_version": 1,
+		"district_index": district_index,
+		"region_id": region_id,
+		"rack_revision": rack_revision,
+	}).sha256_text()
 
 
 func debug_snapshot() -> Dictionary:
@@ -199,6 +215,7 @@ func _card_source(
 		public_card.get("card_type", definition.get("category_id", definition.get("kind", "")))
 	).strip_edges()
 	var result := {
+		"card_id": card_id,
 		"card_name": card_id,
 		"illustration_key": str(presentation.get("illustration_key", "")),
 		"display_name": str(presentation.get("display_name", public_card.get("display_name", card_id))),
@@ -517,6 +534,7 @@ func _closed_surface(reason_code: String, viewer_index := -1, authorization_revi
 		"visible": false,
 		"reason_code": reason_code,
 		"district_index": -1,
+		"rack_source_revision": "",
 		"viewer_index": viewer_index,
 		"subject_player_index": -1,
 		"authorization_revision": authorization_revision,

@@ -476,6 +476,17 @@ func _check_static_composition(main: Control) -> void:
 	_expect(eligibility_cutover_checked, "Sprint 43 removes parallel card eligibility, requirement, target-trait, and counter-trait ownership from main.gd")
 	_expect(execution_complete_source.contains("func _complete_active(") and execution_complete_source.contains("_execution.plan_execution") and execution_complete_source.contains("_execution.finalize_execution") and not main_source.contains("func _complete_active_card_resolution(") and execution_effect_adapter_source.contains("_resolve_targeted_skill") and execution_effect_adapter_source.contains("_resolve_player_interaction") and execution_service_source.contains("INTENT_RELEASE_ACTIVE") and execution_service_source.contains("INTENT_DISPATCH_EFFECT") and not main_source.contains("func _apply_card_resolution_effect_request("), "typed TransitionSink routes lifecycle through Execution Service and scene-owned effect router")
 	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
+	var table_action_flow_source := FileAccess.get_file_as_string("res://scripts/runtime/table_player_action_application_flow_controller.gd")
+	for retired_action_entrypoint in [
+		"_on_runtime_game_screen_action_requested",
+		"_on_runtime_game_screen_end_turn_requested",
+		"_on_runtime_game_screen_card_drop_requested",
+		"_play_v06_runtime_card_for_player",
+		"_move_card_within_group",
+		"_set_authorized_player_card_group_ready",
+	]:
+		_expect(not main_source.contains("func %s(" % retired_action_entrypoint), "Main physically retires action-spine entrypoint %s" % retired_action_entrypoint)
+	_expect(not table_action_flow_source.contains("/root/Main") and not table_action_flow_source.contains("current_scene") and not table_action_flow_source.contains("Callable("), "scene-owned action flow has no Main or scene-root fallback")
 	var v04_catalog_scene_source := FileAccess.get_file_as_string(CARD_RUNTIME_CATALOG_SERVICE)
 	var commodity_inventory_source := FileAccess.get_file_as_string("res://scripts/runtime/commodity_card_inventory_runtime_controller.gd")
 	var core_economic_adapter_source := FileAccess.get_file_as_string("res://scripts/cards/v06/production/core_economic_card_runtime_adapter_v06.gd")
@@ -483,7 +494,7 @@ func _check_static_composition(main: Control) -> void:
 	namespace_cutover_checked = namespace_cutover_checked and formula_service_source.contains("FORMULA_IDS") and not execution_service_source.contains("CoreEconomicCardRuntimeAdapterV06") and not execution_service_source.contains("CommodityCardInventoryRuntimeController")
 	namespace_cutover_checked = namespace_cutover_checked and v04_catalog_scene_source.contains("card_runtime_catalog_v04.tres") and not v04_catalog_scene_source.contains("card_runtime_catalog_v06")
 	namespace_cutover_checked = namespace_cutover_checked and coordinator_source.contains("func play_v06_runtime_card(") and coordinator_source.contains('== "core_economic_card_runtime"') and coordinator_source.contains('inventory.call("play_core_card"')
-	namespace_cutover_checked = namespace_cutover_checked and commodity_inventory_source.contains("func play_core_card(") and core_economic_adapter_source.contains("func play_card(") and main_source.contains("func _play_v06_runtime_card_for_player(")
+	namespace_cutover_checked = namespace_cutover_checked and commodity_inventory_source.contains("func play_core_card(") and core_economic_adapter_source.contains("func play_card(") and not main_source.contains("func _play_v06_runtime_card_for_player(") and table_action_flow_source.contains("func _dispatch_card_play(") and table_action_flow_source.contains("request_hand_play(request)")
 	_expect(namespace_cutover_checked, "legacy v0.4 effect/formula services stay isolated while v0.6 core cards use the single CardFlow transaction facade")
 	_expect(not main_source.contains("func _lowest_level_city_product_index(") and not main_source.contains("func _product_futures_balance_") and not main_source.contains("PRODUCT_FUTURES_PAYOUT_UNIT") and not execution_service_source.contains("CardEconomyProductRouteFormulaRuntimeService"), "retired formula ownership stays absent from main and the Execution Service remains formula-agnostic")
 	_expect(codex_navigation != null and codex_navigation.scene_file_path == "res://scenes/runtime/CodexNavigationRuntimeController.tscn" and codex_navigation.has_method("navigation_snapshot") and codex_navigation.has_method("to_legacy_save_snapshot") and codex_navigation.has_method("apply_legacy_save_snapshot"), "GameRuntimeCoordinator owns the editable CodexNavigationRuntimeController scene")
@@ -573,20 +584,25 @@ func _check_runtime_signal_bindings(main: Control) -> void:
 	var screen := main.get_node_or_null("RuntimeGameScreen") as Control
 	if screen == null:
 		return
-	var bindings := {
-		"action_requested": "_on_runtime_game_screen_action_requested",
-		"end_turn_requested": "_on_runtime_game_screen_end_turn_requested",
-		"card_drop_requested": "_on_runtime_game_screen_card_drop_requested",
-	}
-	for signal_name_variant in bindings.keys():
-		var signal_name := StringName(signal_name_variant)
-		var expected := Callable(main, StringName(bindings[signal_name_variant]))
-		var count := 0
-		for connection_variant in screen.get_signal_connection_list(signal_name):
+	for retired_signal in [&"action_requested", &"end_turn_requested", &"card_drop_requested"]:
+		_expect(not screen.has_signal(retired_signal), "%s raw outward signal is retired from RuntimeGameScreen" % retired_signal)
+	var action_flow := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/TablePlayerActionApplicationFlowController")
+	_expect(action_flow != null, "scene composition exposes the typed table-player action flow")
+	if action_flow != null:
+		var request_count := 0
+		for connection_variant in screen.get_signal_connection_list(&"game_action_intent_requested"):
 			var connection: Dictionary = connection_variant if connection_variant is Dictionary else {}
-			if connection.get("callable", Callable()) == expected:
-				count += 1
-		_expect(count == 1, "%s is connected to main exactly once" % signal_name)
+			if connection.get("callable", Callable()) == Callable(action_flow, &"submit_intent"):
+				request_count += 1
+		var receipt_count := 0
+		for connection_variant in action_flow.get_signal_connection_list(&"receipt_ready"):
+			var connection: Dictionary = connection_variant if connection_variant is Dictionary else {}
+			if connection.get("callable", Callable()) == Callable(screen, &"apply_game_action_receipt"):
+				receipt_count += 1
+		_expect(request_count == 1 and receipt_count == 1, "typed table-player action request and receipt are each connected exactly once")
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var game_session := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController") as GameSessionRuntimeController
+	_expect(coordinator != null and game_session != null and game_session.authorization_context_changed.is_connected(Callable(coordinator, &"_on_game_action_authorization_context_changed")), "session lifecycle refreshes the GameScreen actor authorization through Coordinator composition")
 	var legacy_card_selection := Callable(main, &"_on_runtime_game_screen_card_selected")
 	var legacy_count := 0
 	for connection_variant in screen.get_signal_connection_list(&"card_selected"):
@@ -969,7 +985,7 @@ func _check_ruleset_v06_region_infrastructure_foundation_assets() -> void:
 	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
 	ready = ready and save_source.contains("const CURRENT_SAVE_VERSION := 3")
 	ready = ready and coordinator_scene.contains("RegionInfrastructureRuntimeController") and coordinator_scene.contains("CommodityFlowRuntimeController") and coordinator_scene.contains("CommodityCardInventoryRuntimeController") and coordinator_scene.contains("CardPlayerStateProductionAdapterV06") and not coordinator_scene.contains("CommodityCardInventoryWorldBridge")
-	ready = ready and coordinator_source.contains("func refresh_v06_production_player_bindings(") and coordinator_source.contains("func play_v06_runtime_card(") and main_source.contains("func _play_v06_runtime_card_for_player(")
+	ready = ready and coordinator_source.contains("func refresh_v06_production_player_bindings(") and coordinator_source.contains("func play_v06_runtime_card(") and not main_source.contains("func _play_v06_runtime_card_for_player(") and coordinator_scene.contains("TablePlayerActionApplicationFlowController")
 	var contract := FileAccess.get_file_as_string(REGION_INFRASTRUCTURE_CONTRACT)
 	ready = ready and contract.contains("Legacy Heat / Panic Retirement") and contract.contains("No parallel fallback") and contract.contains("active `GameRuntimeCoordinator` composition no longer instances `CityDevelopmentRuntimeController`")
 	_expect(ready, "the v0.4 global namespace and v3 save boundary coexist with one explicit v0.6 transaction/infrastructure production graph")

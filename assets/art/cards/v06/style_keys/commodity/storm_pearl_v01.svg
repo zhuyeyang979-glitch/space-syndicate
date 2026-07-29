@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="768" viewBox="0 0 1024 768">
+  <defs>
+    <radialGradient id="vault" cx="50%" cy="47%" r="70%">
+      <stop offset="0" stop-color="#312e81"/>
+      <stop offset="1" stop-color="#160f2f"/>
+    </radialGradient>
+    <radialGradient id="pearl" cx="35%" cy="28%" r="72%">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.32" stop-color="#bae6fd"/>
+      <stop offset="0.68" stop-color="#a78bfa"/>
+      <stop offset="1" stop-color="#4338ca"/>
+    </radialGradient>
+  </defs>
+  <rect x="18" y="18" width="988" height="732" rx="80" fill="url(#vault)"/>
+  <circle cx="512" cy="388" r="222" fill="url(#pearl)" stroke="#f8fafc" stroke-width="18"/>
+  <path d="M392 348 C438 251 581 246 641 335 C687 404 623 479 556 484 C487 490 445 439 469 394 C490 355 543 350 574 379" fill="none" stroke="#312e81" stroke-width="32" stroke-linecap="round"/>
+  <path d="M543 204 L487 351 H548 L474 550 L627 340 H558 L615 204Z" fill="#fef08a" stroke="#f8fafc" stroke-width="11" stroke-linejoin="round"/>
+  <g fill="none" stroke="#fbbf24" stroke-width="15" stroke-linecap="round">
+    <path d="M175 394 C262 219 391 126 548 116"/>
+    <path d="M849 383 C766 561 641 655 476 663"/>
+  </g>
+  <g fill="#fbbf24"><circle cx="179" cy="394" r="24"/><circle cx="845" cy="383" r="24"/></g>
+  <g fill="#67e8f9"><circle cx="259" cy="561" r="10"/><circle cx="783" cy="213" r="8"/><circle cx="704" cy="618" r="6"/></g>
+</svg>

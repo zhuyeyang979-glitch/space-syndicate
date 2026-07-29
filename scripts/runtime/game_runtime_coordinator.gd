@@ -47,6 +47,7 @@ var _ai_actor_hand_inventory_capability: AiActorHandInventoryCapability
 var _card_semantic_source_capability_by_actor: Dictionary = {}
 var _ai_card_interaction_observation_capability_by_actor: Dictionary = {}
 var _ai_actor_economy_facts_capability: AiActorEconomyFactsCapability
+var _game_action_ai_submission_capability: GameActionAiSubmissionCapability
 
 
 func _enter_tree() -> void:
@@ -62,6 +63,8 @@ func _enter_tree() -> void:
 		push_error("GameRuntimeCoordinator could not prebind the interaction observation service before child lifecycle callbacks.")
 	if not _prebind_ai_actor_economy_facts_capability():
 		push_error("GameRuntimeCoordinator could not prebind the one-shot AI actor-economy capability before child lifecycle callbacks.")
+	if not _prebind_game_action_submission_capability():
+		push_error("GameRuntimeCoordinator could not prebind the one-shot AI game-action capability before child lifecycle callbacks.")
 
 
 func _ready() -> void:
@@ -79,6 +82,7 @@ func _ready() -> void:
 	_wire_ai_actor_economy_facts_query_port()
 	_wire_player_cash_mutation_port()
 	_wire_ai_business_cost_cash_port()
+	_wire_game_action_submission_port()
 	_wire_commodity_flow_postcommit()
 	_wire_forced_decision_candidate_sources()
 	call_deferred("_wire_table_selection_intent_port")
@@ -107,6 +111,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_wire_ai_actor_economy_facts_query_port()
 	_wire_player_cash_mutation_port()
 	_wire_ai_business_cost_cash_port()
+	_wire_game_action_submission_port()
 	_wire_commodity_flow_postcommit()
 	_wire_forced_decision_candidate_sources()
 	call_deferred("_wire_table_selection_intent_port")
@@ -1561,6 +1566,41 @@ func _prebind_ai_actor_economy_facts_capability() -> bool:
 	if _ai_actor_economy_facts_capability == null:
 		_ai_actor_economy_facts_capability = AiActorEconomyFactsCapability.new()
 	return economy_port.bind_ai_capability(_ai_actor_economy_facts_capability)
+
+
+func _prebind_game_action_submission_capability() -> bool:
+	var port := get_node_or_null("TablePlayerActionApplicationFlowController") \
+		as TablePlayerActionApplicationFlowController
+	if port == null:
+		return false
+	if _game_action_ai_submission_capability == null:
+		_game_action_ai_submission_capability = GameActionAiSubmissionCapability.new()
+	return port.bind_ai_submission_capability(_game_action_ai_submission_capability)
+
+
+func _wire_game_action_submission_port() -> void:
+	var port := get_node_or_null("TablePlayerActionApplicationFlowController") \
+		as TablePlayerActionApplicationFlowController
+	var ai := _ai_runtime_controller_node() as AiRuntimeController
+	var session := _session_node() as GameSessionRuntimeController
+	if port == null or ai == null or session == null or not _prebind_game_action_submission_capability():
+		push_error("GameRuntimeCoordinator requires one typed player/AI game-action submission spine; AI card actions fail closed.")
+		return
+	ai.set_game_action_submission_port(port, _game_action_ai_submission_capability)
+	var authorization_callback := Callable(self, "_on_game_action_authorization_context_changed")
+	if not session.authorization_context_changed.is_connected(authorization_callback):
+		session.authorization_context_changed.connect(authorization_callback)
+	_on_game_action_authorization_context_changed(&"composition_wired")
+
+
+func _on_game_action_authorization_context_changed(_reason_id: String) -> void:
+	var game_screen := get_node_or_null(presentation_game_screen_path) as SpaceSyndicateGameScreen \
+		if not presentation_game_screen_path.is_empty() else null
+	if game_screen == null:
+		return
+	game_screen.bind_gameplay_actor_authorization_context(
+		gameplay_actor_authorization_context(&"game_screen")
+	)
 
 
 func _prebind_ai_card_interaction_observation_service() -> bool:
@@ -5494,6 +5534,15 @@ func _wire_table_presentation_source_target() -> void:
 		district_supply_query,
 		_v06_runtime_card_catalog() as CardRuntimeCatalogV06Resource
 	)
+	var player_card_dock_query := _player_card_dock_viewer_query_port_node()
+	if player_card_dock_query == null:
+		push_error("GameRuntimeCoordinator requires PlayerCardDockViewerQueryPort.")
+		return
+	player_card_dock_query.configure(
+		_table_presentation_query_ports_node(),
+		viewmodel_query,
+		_card_presentation_node() as CardPresentationRuntimeService
+	)
 	source.configure(
 		_table_presentation_query_ports_node(),
 		viewmodel_query,
@@ -5501,7 +5550,8 @@ func _wire_table_presentation_source_target() -> void:
 		_visual_cue_runtime_owner_node() as VisualCueRuntimeOwner,
 		_solar_availability_runtime_service_node() as SolarAvailabilityRuntimeService,
 		_world_effective_clock_runtime_controller_node() as WorldEffectiveClockRuntimeController,
-		_weather_presentation_runtime_service_node() as WeatherPresentationRuntimeService
+		_weather_presentation_runtime_service_node() as WeatherPresentationRuntimeService,
+		player_card_dock_query
 	)
 	port.configure(source, game_screen, game_screen.presentation_planet_target(), developer_target, _table_presentation_refresh_scheduler_node())
 	_wire_domain_presentation_ports(port, _table_presentation_query_ports_node().public_log_port)
@@ -5729,6 +5779,10 @@ func _table_presentation_source_owner_node() -> TablePresentationSourceOwner:
 
 func _table_presentation_viewmodel_query_node() -> TablePresentationViewModelQuery:
 	return get_node_or_null("TablePresentationViewModelQuery") as TablePresentationViewModelQuery
+
+
+func _player_card_dock_viewer_query_port_node() -> PlayerCardDockViewerQueryPort:
+	return get_node_or_null("PlayerCardDockViewerQueryPort") as PlayerCardDockViewerQueryPort
 
 
 func _district_supply_viewer_query_port_node() -> DistrictSupplyViewerQueryPort:

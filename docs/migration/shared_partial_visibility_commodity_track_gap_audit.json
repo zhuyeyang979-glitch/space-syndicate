@@ -1,0 +1,269 @@
+{
+  "schema_version": 1,
+  "audit_id": "shared_partial_visibility_commodity_track_gap_audit.v1",
+  "baseline_sha": "b5763bbfb96994aa55ab36ae4335db332d9818a8",
+  "repository_application_version": null,
+  "current_runtime_rule_version": "v0.6",
+  "target_rule_version": "V0.7",
+  "game_semantic_constitution_version": "V0.7",
+  "constitution_amendment_recorded": true,
+  "full_v0_7_cutover": false,
+  "audit_verdict": "V0_7_CONSTITUTION_RECORDED_PRODUCTION_RULE_AUTHORITY_INCOMPLETE",
+  "formal_production_cutover_safe": false,
+  "current_mutation_path": [
+    "TopCommoditySushiTrack",
+    "GameScreen",
+    "CommoditySushiTrackApplicationFlowController",
+    "CommoditySushiTrackRuntimeService.claim",
+    "CommodityCardInventoryRuntimeController",
+    "CardFlowTransactionServiceV06",
+    "CardPlayerStateProductionAdapterV06",
+    "WorldSessionState.players[*].slots"
+  ],
+  "command_pipeline_bypass": true,
+  "constitutional_conflict_audit": [
+    {
+      "id": "full_track_visibility",
+      "current_behavior": "current belt snapshot may expose every sorted item and an empty visibility allowlist is broad",
+      "v0_7_required_behavior": "owner-bound viewer receives only its local segment and fails closed",
+      "affected_modules": ["CommoditySushiTrackRuntimeService", "CommoditySushiTrackSnapshot", "TopCommoditySushiTrack"],
+      "migration_risk": "critical_privacy",
+      "cutover_plan": "replace snapshot at the same atomic track-owner cutover",
+      "test_coverage": "reference hostile/local-segment gates green; production false"
+    },
+    {
+      "id": "mixed_five_card_hand",
+      "current_behavior": "commodity and normal cards share WorldSessionState player slots and one five-card policy",
+      "v0_7_required_behavior": "normal_card_count<=5 and commodity_slot_count<=5 are independent",
+      "affected_modules": ["CardPlayerStateProductionAdapterV06", "CardFlowTransactionServiceV06", "CommodityCardInventoryRuntimeController", "Save", "UI"],
+      "migration_risk": "high_data_exact_once",
+      "cutover_plan": "migrate the existing owner once without a second hand or dual write",
+      "test_coverage": "reference 5+0, 0+5, 5+5 and independent overflow gates green; production false"
+    },
+    {
+      "id": "ai_complete_track_access",
+      "current_behavior": "no V0.7 AI observation port exists and the current full-belt service shape is not an acceptable AI boundary",
+      "v0_7_required_behavior": "owner-bound nested-allowlisted CommodityMarketObservation only",
+      "affected_modules": ["AiRuntimeController", "future observation source", "commodity service"],
+      "migration_risk": "critical_hidden_information",
+      "cutover_plan": "introduce typed query after core owner and delete raw belt/core reads",
+      "test_coverage": "reference cross-seat and nested-secret attacks green; production false"
+    },
+    {
+      "id": "ai_hidden_lead_answer",
+      "current_behavior": "current runtime has no hidden-lead mechanic",
+      "v0_7_required_behavior": "AI sees only whether itself is lead and never another lead or fixed order",
+      "affected_modules": ["AI observation", "AI policy", "future cycle owner"],
+      "migration_risk": "critical_cheating_side_channel",
+      "cutover_plan": "core-owned private boolean with no public identity",
+      "test_coverage": "reference lead aliases stripped; production false"
+    },
+    {
+      "id": "ui_supply_calculation",
+      "current_behavior": "no V0.7 six-color stance supply UI exists",
+      "v0_7_required_behavior": "UI consumes core-provided basis points and trend and never totals votes",
+      "affected_modules": ["player projection", "GameScreen", "commodity track target"],
+      "migration_risk": "high_semantic_divergence",
+      "cutover_plan": "add passive typed projection then switch target with core",
+      "test_coverage": "reference projection green; production false"
+    },
+    {
+      "id": "equal_rank_merge",
+      "current_behavior": "same-family same-rank merge and full-hand auto merge permit old equal-rank paths",
+      "v0_7_required_behavior": "only L1+L1, L2+L1 and L3+L1 with manual choice and one result slot",
+      "affected_modules": ["CardFlowPolicyV06", "CardFlowTransactionServiceV06", "catalog", "UI text"],
+      "migration_risk": "high_inventory_rate_save",
+      "cutover_plan": "replace policy, receipts, installation mapping and stale tests together",
+      "test_coverage": "reference linear/rejection/slot-release gates green; production false"
+    },
+    {
+      "id": "mid_macro_round_end",
+      "current_behavior": "Victory may finalize without commodity macro-round attestation",
+      "v0_7_required_behavior": "pending then revalidate only at complete macro-round boundary",
+      "affected_modules": ["VictoryControlRuntimeController", "future boundary port", "Save"],
+      "migration_risk": "critical_terminal_exact_once",
+      "cutover_plan": "extend the existing Victory owner without a parallel ending",
+      "test_coverage": "pure end-gate reducer green; production false"
+    },
+    {
+      "id": "lead_order_reshuffle",
+      "current_behavior": "hidden lead order does not exist",
+      "v0_7_required_behavior": "one fixed hidden order for the whole session",
+      "affected_modules": ["future track/cycle owner", "RunRngService", "Save"],
+      "migration_risk": "high_deterministic_identity",
+      "cutover_plan": "derive once from RunRngService and persist",
+      "test_coverage": "3-8 fixed-seed vectors green; production false"
+    },
+    {
+      "id": "reverse_macro_round",
+      "current_behavior": "macro rounds do not exist",
+      "v0_7_required_behavior": "exact forward/reverse alternation with every roster seat once",
+      "affected_modules": ["future cycle owner", "Save", "AI projection", "player projection"],
+      "migration_risk": "high_ordering_elimination",
+      "cutover_plan": "freeze roster edge cases then add one cursor",
+      "test_coverage": "3-8 forward/reverse/forward vectors green; roster gate open"
+    },
+    {
+      "id": "old_mutation_entry",
+      "current_behavior": "application flow calls commodity inventory transaction directly outside RuntimeCommandPipeline",
+      "v0_7_required_behavior": "claim, stance and merge intents enter the single command authority",
+      "affected_modules": ["CommoditySushiTrackApplicationFlowController", "CommoditySushiTrackRuntimeService", "RuntimeCommandPipeline"],
+      "migration_risk": "critical_dual_mutation",
+      "cutover_plan": "add command path and delete direct claim in one commit",
+      "test_coverage": "negative production-wiring reference gate green; production migration absent"
+    },
+    {
+      "id": "multiple_commodity_authorities",
+      "current_behavior": "belt, inventory, price, GDP and Victory are separate domains but no V0.7 aggregate owner exists",
+      "v0_7_required_behavior": "one track/cycle owner while existing inventory, price, GDP and Victory owners remain narrow",
+      "affected_modules": ["GameRuntimeCoordinator", "typed ports", "future track/cycle owner"],
+      "migration_risk": "critical_god_object_or_dual_write",
+      "cutover_plan": "compose narrow ports and never mirror inventory, price, GDP or Victory",
+      "test_coverage": "production reference count zero; composition gate pending"
+    },
+    {
+      "id": "mixed_save_array",
+      "current_behavior": "current Save/player state stores commodities in mixed player slots and has no new track/cycle/order schema",
+      "v0_7_required_behavior": "separate versioned normal/commodity state plus track, cycle, order and end gate",
+      "affected_modules": ["Save registry", "player adapter", "future track owner", "Victory"],
+      "migration_risk": "critical_restore_rollback",
+      "cutover_plan": "version-pair migration and exact restore without dual write",
+      "test_coverage": "reference pure payload round-trip green; production Save false"
+    },
+    {
+      "id": "stale_v0_6_tests",
+      "current_behavior": "existing tests assert mixed hand, complete belt and same-rank behavior",
+      "v0_7_required_behavior": "V0.7 tests assert independent pools, local visibility and linear merge",
+      "affected_modules": ["commodity inventory tests", "commodity track tests", "smoke fixtures"],
+      "migration_risk": "medium_false_regression_compatibility",
+      "cutover_plan": "replace only at owning-domain cutover and never restore old wrappers",
+      "test_coverage": "new reference tests green; legacy suite intentionally unchanged"
+    }
+  ],
+  "conflicts": [
+    {
+      "id": "visibility",
+      "current_owner": "CommoditySushiTrackRuntimeService plus legacy visibility payload",
+      "current_behavior": "sorted concrete belt; empty visible_actor_ids means visible to every actor",
+      "future_owner": "one shared track owner plus actor-scoped projection port",
+      "future_behavior": "only the viewer local segment is concrete; other segments and future sequence are absent",
+      "migration_phase": "C/D",
+      "save_impact": "projection rebuildable; full sequence and bindings authoritative",
+      "privacy_impact": "critical fail-closed migration",
+      "determinism_impact": "window revision and movement order must be stable",
+      "old_path_removal_required": true
+    },
+    {
+      "id": "track_lifecycle",
+      "current_owner": "CardFlowTransactionServiceV06._belt",
+      "current_behavior": "12 static selected rank-I items; claim removes one item and advances revision",
+      "future_owner": "future SharedCommodityTrackRuntimeController",
+      "future_behavior": "one ordered moving sequence with cursor, positions, stock, spawn and unclaimed lifecycle",
+      "migration_phase": "B/D",
+      "save_impact": "replace belt save shape with sequence and generation lineage",
+      "privacy_impact": "full sequence authority-secret",
+      "determinism_impact": "movement, refill and claim tie-break require fixed ordering",
+      "old_path_removal_required": true
+    },
+    {
+      "id": "inventory_partition",
+      "current_owner": "CardPlayerStateProductionAdapterV06 and WorldSessionState player slots",
+      "current_behavior": "commodity and ordinary cards share one five-card hand",
+      "future_owner": "same existing ownership chain migrated atomically",
+      "future_behavior": "ordinary five slots and commodity five groups are independent",
+      "migration_phase": "D",
+      "save_impact": "card_inventory schema migration; no second hand section",
+      "privacy_impact": "commodity contents actor-private",
+      "determinism_impact": "CAS revisions and transaction lineage must remain exact-once",
+      "old_path_removal_required": true
+    },
+    {
+      "id": "upgrade",
+      "current_owner": "CardFlowPolicyV06 and CardFlowTransactionServiceV06",
+      "current_behavior": "same-family same-rank merge; full hand may auto-merge; 10/20/40/80 rates",
+      "future_owner": "same inventory authority with linear merge policy",
+      "future_behavior": "L1+L1, L2+L1, L3+L1; base units 1/2/3/4; one resulting slot",
+      "migration_phase": "B/D",
+      "save_impact": "persist base_unit_count and merge lineage",
+      "privacy_impact": "merge intent and inventory actor-private",
+      "determinism_impact": "identity and target-slot policy must be frozen",
+      "old_path_removal_required": true
+    },
+    {
+      "id": "market_cycle",
+      "current_owner": "ProductMarketRuntimeController for prices; no stance-cycle owner",
+      "current_behavior": "30-60 second RNG price cadence, no precommit/reveal/hidden lead",
+      "future_owner": "future track cycle owner; ProductMarket retains price/futures",
+      "future_behavior": "continuous 180-second world-effective stance cycle",
+      "migration_phase": "B/D",
+      "save_impact": "cycle index, deadline, stances and distributions",
+      "privacy_impact": "next stances private; revealed stances public",
+      "determinism_impact": "boundary order and large-delta traversal",
+      "old_path_removal_required": false
+    },
+    {
+      "id": "gdp_supply_distribution",
+      "current_owner": "CommodityFlowRuntimeController GDP facts; no generation-distribution owner",
+      "current_behavior": "GDP and price-market supply are present but do not control a six-color track distribution",
+      "future_owner": "track owner consuming a typed six-color GDP aggregate",
+      "future_behavior": "GDP baseline plus one-cycle intervention produces a 10,000bp final generation distribution",
+      "migration_phase": "B/D",
+      "save_impact": "baseline smoothing and distribution revision",
+      "privacy_impact": "aggregate public; player-level source facts remain scoped",
+      "determinism_impact": "fixed-point normalization and tie-break",
+      "old_path_removal_required": false
+    },
+    {
+      "id": "hidden_lead",
+      "current_owner": "none",
+      "current_behavior": "no fixed hidden order, lead weight, or snake macro round",
+      "future_owner": "same future market-cycle authority",
+      "future_behavior": "one hidden order per session; forward/reverse macro rounds; every roster seat once",
+      "migration_phase": "B/D",
+      "save_impact": "hidden order, direction, cursor and roster",
+      "privacy_impact": "order and weights authority-secret; self lead actor-private",
+      "determinism_impact": "one RunRngService lineage and no reshuffle",
+      "old_path_removal_required": false
+    },
+    {
+      "id": "end_gate",
+      "current_owner": "VictoryControlRuntimeController",
+      "current_behavior": "qualification/audit can finalize independently of a commodity macro-round boundary",
+      "future_owner": "same Victory owner with typed boundary attestation",
+      "future_behavior": "original condition becomes pending and is revalidated after the complete macro round",
+      "migration_phase": "B/D",
+      "save_impact": "pending reason/cycle and final validation revision",
+      "privacy_impact": "pending status public; hidden order absent",
+      "determinism_impact": "boundary after final cycle settlement and before final scoring",
+      "old_path_removal_required": true
+    },
+    {
+      "id": "ai_semantics",
+      "current_owner": "AiRuntimeController",
+      "current_behavior": "price/futures and ordinary supply decisions; no sushi claim, stance, lead inference or linear inventory policy",
+      "future_owner": "AI observation and policy consumers only",
+      "future_behavior": "actor-scoped observation, shared intents, difficulty-scaled legal interpretation",
+      "migration_phase": "C/D",
+      "save_impact": "public history may persist in core; AI observation is rebuildable",
+      "privacy_impact": "must not receive full sequence/order/other private stances",
+      "determinism_impact": "same observation and difficulty yield same intent",
+      "old_path_removal_required": true
+    },
+    {
+      "id": "player_semantics",
+      "current_owner": "TopCommoditySushiTrack and current snapshots",
+      "current_behavior": "stationary cards over moving decoration; full concrete belt-oriented UI; one hand capacity",
+      "future_owner": "typed public plus actor-private projection and existing UI targets",
+      "future_behavior": "local segment, six ratios, timer, stance lock/reveal, private lead notice, split capacities and pending-end message",
+      "migration_phase": "C/D",
+      "save_impact": "UI state not saved",
+      "privacy_impact": "no lead side channel or other local segment",
+      "determinism_impact": "UI applies core revision and performs no formula",
+      "old_path_removal_required": true
+    }
+  ],
+  "production_files_changed_by_reference_phase": 0,
+  "main_changed": false,
+  "runtime_loop_changed": false,
+  "save_schema_changed": false
+}

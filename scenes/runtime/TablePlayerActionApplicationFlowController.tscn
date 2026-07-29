@@ -1,0 +1,17 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/table_player_action_application_flow_controller.gd" id="1_script"]
+
+[node name="TablePlayerActionApplicationFlowController" type="Node"]
+script = ExtResource("1_script")
+identity_boundary_path = NodePath("../PlayerIdentityAuthorizationBoundary")
+world_session_state_path = NodePath("../WorldSessionState")
+game_session_path = NodePath("../GameSessionRuntimeController")
+table_selection_state_path = NodePath("../TableSelectionState")
+action_offer_source_path = NodePath("../TablePresentationViewModelQuery")
+card_play_submission_path = NodePath("../CardPlaySubmissionRuntimeController")
+card_group_action_port_path = NodePath("../CardGroupActionPort")
+table_selection_intent_port_path = NodePath("../TableSelectionIntentPort")
+district_supply_action_port_path = NodePath("../DistrictSupplyActionPort")
+presentation_query_ports_path = NodePath("../TablePresentationQueryPorts")
+presentation_refresh_port_path = NodePath("../TablePresentationRefreshPort")

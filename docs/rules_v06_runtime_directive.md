@@ -4,6 +4,12 @@
 
 This document turns `docs/tabletop_rulebook_v06.md` into an implementation boundary. It is a development directive, not a claim that v0.6 is already playable.
 
+For the approved V0.7 shared commodity-track target only, conflicting commodity
+directions in this file are `SUPERSEDED_AS_FUTURE_COMMODITY_DIRECTION` by the
+V0.7 Commodity Semantic Constitution in `AGENTS.md`. They remain the active
+v0.6 runtime contract until a single atomic Core/AI/player/Save cutover deletes
+the old write paths; `FULL_V0_7_CUTOVER=false` meanwhile.
+
 The atomic sprint order and deletion gates are tracked in `docs/rules_v06_development_plan.md`.
 
 For new gameplay work, the v0.6 rulebook is the semantic authority. v0.5 rules, resources, controllers and tests remain historical/runtime evidence until their owning domain is cut over, but they must not be expanded as the future design.

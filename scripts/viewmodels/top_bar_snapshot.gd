@@ -10,6 +10,7 @@ var goal_text: String = ""
 var selected_district_text: String = ""
 var primary_action_text: String = ""
 var weather_status_text: String = ""
+var end_turn_offer: Dictionary = {}
 
 
 func apply_dictionary(data: Dictionary) -> RefCounted:
@@ -22,6 +23,9 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	selected_district_text = _first_text(data, ["selected_district", "selected_district_summary", "selected_region", "district"], "未选择")
 	primary_action_text = _first_text(data, ["primary_action", "primary_action_label", "next_action", "action"], "查看地图")
 	weather_status_text = _first_text(data, ["weather_status", "weather", "forecast"], "天气:无影响｜预报:暂无")
+	var offer: Variant = data.get("end_turn_offer", {})
+	end_turn_offer = GameActionOfferV1.detached_copy(offer) \
+		if offer is Dictionary and bool(GameActionOfferV1.validation_report(offer).get("valid", false)) else {}
 	return self
 
 
@@ -38,6 +42,7 @@ func to_ui_dictionary() -> Dictionary:
 		"selected_district": selected_district_text,
 		"primary_action": primary_action_text,
 		"weather_status": weather_status_text,
+		"end_turn_offer": end_turn_offer.duplicate(true),
 		"resources": "%s   GDP %s   目标 %s" % [cash_text, gdp_text, goal_text],
 	}
 

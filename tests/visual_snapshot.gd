@@ -58,15 +58,19 @@ func _run() -> void:
 
 	var game_screen := _instantiate("res://scenes/ui/GameScreen.tscn")
 	var player_board := _instantiate("res://scenes/ui/PlayerBoard.tscn")
+	var player_card_dock := _instantiate("res://scenes/ui/table/PlayerCardDock.tscn")
 	var planet_map := _instantiate("res://scenes/ui/PlanetMapView.tscn")
 	var commodity_track := _instantiate("res://scenes/ui/table/TopCommoditySushiTrack.tscn")
 	var card_track := _instantiate("res://scenes/ui/CardResolutionTrack.tscn")
 	var overlay := _instantiate("res://scenes/ui/OverlayLayer.tscn")
 
-	_expect(_has_nodes(game_screen, ["Background", "TopBar", "TopCommoditySushiTrack", "PlanetBoard", "RightInspector", "PlayerBoard", "OverlayLayer"]), "GameScreen provides the current commodity-led scene-owned table composition")
+	_expect(_has_nodes(game_screen, ["Background", "TopBar", "TopCommoditySushiTrack", "PlanetBoard", "RightInspector", "PlayerBoard", "PlayerCardDock", "OverlayLayer"]), "GameScreen provides the current commodity-led scene-owned table composition and production Player Card Dock")
 	_expect(game_screen != null and game_screen.find_child("PublicTrack", true, false) == null, "GameScreen excludes the retired PublicTrack node")
 	_expect(game_screen != null and game_screen.find_children("TopCommoditySushiTrack", "", true, false).size() == 1, "GameScreen composes exactly one TopCommoditySushiTrack node")
-	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "PlayerHandTableau", "HandRack", "PlayerCommandTableau", "PlayerMainActionDock"]) and player_board.find_child("PlayerBidBoard", true, false) == null, "PlayerBoard has stable resource, hand, and action regions with zero permanent bid footprint")
+	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "PlayerCommandTableau", "PlayerMainActionDock"]) \
+		and player_board.find_child("PlayerHandTableau", true, false) == null \
+		and player_board.find_child("HandRack", true, false) == null, "PlayerBoard retains resource/action regions with no duplicate production hand surface")
+	_expect(_has_nodes(player_card_dock, ["BoundActionCards", "NormalHandCards", "CommodityCards", "CardDockCapacitySummary", "CardDockActionFeedback"]), "PlayerCardDock exposes three readable typed card lanes and feedback")
 	_expect(_has_nodes(planet_map, ["BackdropLayer", "OrbitLayer", "DistrictLayer", "RouteLayer", "MonsterLayer", "SelectionLayer", "EffectLayer", "CalloutLayer", "DebugOverlayLayer"]), "PlanetMapView exposes editable visual layers")
 	_expect(_has_nodes(commodity_track, ["TrackMargin", "HeaderRow", "BeltViewport", "CommodityTrackItemHost", "CommodityTrackEmptyLabel"]), "TopCommoditySushiTrack exposes stable header, belt, item, and empty-state regions")
 	_expect(_has_nodes(card_track, ["HistoryRail", "ActiveResolutionSlot", "QueueRail", "NextQueueRail", "AuctionResponseLayer", "PrivacyHintLayer"]), "CardResolutionTrack exposes stable visual lanes and privacy feedback")
