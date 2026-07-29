@@ -1,7 +1,7 @@
 # Alpha 0.4-C Save/Resume current handoff
 
-Current checkpoint candidate: `2d8543261153bb603641c51d0e66c6638854f3fd` on
-`codex/alpha04c-save-resume-cold-restore-5b8601b`.
+Remote checkpoint: `ca0554d8bc29cf25820134ad6eb9d91d8bdf8ede` on
+`codex/alpha04c-save-resume-cold-restore-5b8601b`, protected by Draft PR #77.
 
 The original 40 tracked modifications and the one new production transaction
 test are now protected by atomic local commits. Thirty-two remaining untracked
@@ -22,8 +22,7 @@ Green checkpoint gates:
 - cold-restore synthetic comparator: 40/40, with execution deliberately
   disabled and official run count still zero.
 
-The next exact action is to create the remote checkpoint and Draft PR. Only
-after that remote protection exists may the driver qualification continue. The
+The remote protection now exists, so driver qualification may continue. The
 driver must select any stable viewer-authorized formal Action Spine offer,
 prove queue empty-to-nonempty in one logical step, and complete validator and
 terminal evidence before its execution switch can become true.
