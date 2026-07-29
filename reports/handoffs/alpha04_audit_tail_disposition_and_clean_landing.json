@@ -2,7 +2,7 @@
   "schema_version": 1,
   "task_id": "ALPHA_0_4_A_AUDIT_TAIL_DISPOSITION_COMPOSITIONAL_ACCEPTANCE_AND_CLEAN_MAIN_LANDING",
   "program_milestone": "ALPHA_0_4_PLAYER_VISIBLE_SAMPLE",
-  "generated_at": "2026-07-29T19:23:00+09:00",
+  "generated_at": "2026-07-29T19:25:47+09:00",
   "status": "GREEN_COMPONENT_ACCEPTED",
   "decision": {
     "audit_tail_classification": "BOUNDED_WINDOW_ENDED_DURING_ACTIVE_AUTHORIZED_AUDIT",
@@ -11,6 +11,8 @@
     "alpha_0_4_a_component_acceptance": "GREEN_COMPONENT_ACCEPTED",
     "clean_landing_pr_allowed": true,
     "merge_to_main_allowed": true,
+    "merged_to_main": true,
+    "main_result_sha": "d5f97baf9a35989d53699f96c04d16072ee367e7",
     "release_level_full_run_deferred": true
   },
   "source_integrity": {
@@ -227,6 +229,9 @@
   "clean_landing": {
     "base_sha": "b5d5682072fd9ff02be700ce9d5503d1df996641",
     "branch": "codex/alpha04a-clean-landing-b5d568",
+    "head_sha": "3ac4b1d8ddcba3559f991451a2fee31dce335dfd",
+    "pull_request": 73,
+    "merge_commit": "d5f97baf9a35989d53699f96c04d16072ee367e7",
     "production_checkpoint_sha": "dbc5ae6eb6fed354fe8d00825a105780ba0ae84b",
     "runtime_capacity_mode": "SHARED_V06",
     "normal_and_commodity_shared_limit": 5,
@@ -368,8 +373,25 @@
     "new_clean_landing_pr_head": "codex/alpha04a-clean-landing-b5d568",
     "new_clean_landing_pr_number": 73,
     "new_clean_landing_pr_ready": true,
+    "new_clean_landing_pr_state": "MERGED",
+    "new_clean_landing_pr_merge_commit": "d5f97baf9a35989d53699f96c04d16072ee367e7",
     "new_clean_landing_pr_number_recording_completed": true,
-    "auto_merge_to_main_allowed_if_remote_main_and_gates_remain_green": true
+    "auto_merge_to_main_allowed_if_remote_main_and_gates_remain_green": true,
+    "auto_merge_condition_satisfied": true,
+    "pr_69_disposition": "superseded",
+    "pr_70_disposition": "draft_reference_only",
+    "pr_71_disposition": "draft_reference_only",
+    "pr_72_disposition": "superseded"
+  },
+  "post_merge_validation": {
+    "origin_main_sha": "d5f97baf9a35989d53699f96c04d16072ee367e7",
+    "clean_landing_head_is_origin_main_ancestor": true,
+    "merge_tree_identical_to_clean_landing_head": true,
+    "smoke_check_only_green": true,
+    "smoke_check_only_run_id": "20260729-102420-687-smoke_test-9dd4af56",
+    "full_smoke": false,
+    "post_merge_formal_full_run": false,
+    "godot_process_count_after": 0
   },
   "next_product_boundary": "ALPHA_0_4_B_PRODUCTION_ROSTER_REGION_POPUP_AND_RIGHT_INSPECTOR_RETIREMENT"
 }

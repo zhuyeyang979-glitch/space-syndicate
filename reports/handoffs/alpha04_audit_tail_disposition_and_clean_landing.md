@@ -274,16 +274,18 @@ completion, and full V0.7 runtime cutover remain false.
 
 ## PR lifecycle
 
-Clean landing PR #73 targets `main` from
-`codex/alpha04a-clean-landing-b5d568`. It is Ready and may be merged only while
-the remote main baseline and every gate above remain valid. A merge commit is
-preferred so the terminal-green ancestor and Alpha 0.4 extraction remain
-auditable.
+Clean landing PR #73 targeted `main` from
+`codex/alpha04a-clean-landing-b5d568` and merged as
+`d5f97baf9a35989d53699f96c04d16072ee367e7`. The clean head
+`3ac4b1d8ddcba3559f991451a2fee31dce335dfd` is its ancestor, and the merge tree
+is identical to that head. Post-merge smoke `--check-only` passed as
+`20260729-102420-687-smoke_test-9dd4af56`. No post-merge Formal or full smoke
+was run.
 
-PR #72 remains the frozen Draft Formal evidence source and must not be rebased,
-retargeted, marked Ready, or merged directly. After the clean PR lands, PR #69
-and PR #72 may be closed as superseded. PR #70 and PR #71 remain open Draft
-reference-only work and are neither merged nor presented as production.
+PR #72 was preserved as the frozen Draft Formal evidence source: it was not
+rebased, retargeted, marked Ready, or merged directly. PR #69 and PR #72 are
+closed as superseded by #73. PR #70 and PR #71 remain open Draft reference-only
+work and are neither merged nor presented as production.
 
 The next product boundary, and only after clean landing, is
 `ALPHA_0_4_B_PRODUCTION_ROSTER_REGION_POPUP_AND_RIGHT_INSPECTOR_RETIREMENT`.
