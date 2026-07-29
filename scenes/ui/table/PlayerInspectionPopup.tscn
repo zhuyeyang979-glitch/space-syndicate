@@ -1,0 +1,231 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/table/player_inspection_popup.gd" id="2_script"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleDismiss"]
+
+[sub_resource type="StyleBoxFlat" id="StyleAvatar"]
+bg_color = Color(0.02, 0.055, 0.11, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.28, 0.53, 0.72, 0.72)
+corner_radius_top_left = 7
+corner_radius_top_right = 7
+corner_radius_bottom_right = 7
+corner_radius_bottom_left = 7
+
+[node name="PlayerInspectionPopup" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="DismissLayer" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+focus_mode = 0
+mouse_default_cursor_shape = 0
+theme_override_styles/normal = SubResource("StyleDismiss")
+theme_override_styles/hover = SubResource("StyleDismiss")
+theme_override_styles/pressed = SubResource("StyleDismiss")
+theme_override_styles/disabled = SubResource("StyleDismiss")
+
+[node name="PopupCard" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(430, 520)
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -454.0
+offset_top = -294.0
+offset_right = -18.0
+offset_bottom = 294.0
+grow_horizontal = 0
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="PopupMargin" type="MarginContainer" parent="PopupCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="PopupRows" type="VBoxContainer" parent="PopupCard/PopupMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="PopupCard/PopupMargin/PopupRows"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AccentStrip" type="ColorRect" parent="PopupCard/PopupMargin/PopupRows/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(5, 0)
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.13, 0.83, 0.93, 1)
+
+[node name="AvatarPanel" type="PanelContainer" parent="PopupCard/PopupMargin/PopupRows/Header"]
+custom_minimum_size = Vector2(54, 54)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleAvatar")
+
+[node name="AvatarGlyph" type="Label" parent="PopupCard/PopupMargin/PopupRows/Header/AvatarPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "?"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.8, 0.93, 1, 1)
+theme_override_font_sizes/font_size = 23
+
+[node name="Identity" type="VBoxContainer" parent="PopupCard/PopupMargin/PopupRows/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="Eyebrow" type="Label" parent="PopupCard/PopupMargin/PopupRows/Header/Identity"]
+layout_mode = 2
+mouse_filter = 2
+text = "公开玩家档案"
+theme_override_colors/font_color = Color(0.41, 0.67, 0.84, 1)
+theme_override_font_sizes/font_size = 9
+
+[node name="PlayerName" type="Label" parent="PopupCard/PopupMargin/PopupRows/Header/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "公开玩家"
+text_overrun_behavior = 3
+clip_text = true
+theme_override_colors/font_color = Color(0.91, 0.97, 1, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="RoleStatus" type="Label" parent="PopupCard/PopupMargin/PopupRows/Header/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = ""
+text_overrun_behavior = 3
+clip_text = true
+theme_override_colors/font_color = Color(0.59, 0.75, 0.86, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="CloseButton" type="Button" parent="PopupCard/PopupMargin/PopupRows/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(34, 34)
+layout_mode = 2
+focus_mode = 2
+mouse_default_cursor_shape = 2
+text = "×"
+tooltip_text = "关闭玩家档案（Esc）"
+theme_override_font_sizes/font_size = 18
+
+[node name="HeaderRule" type="HSeparator" parent="PopupCard/PopupMargin/PopupRows"]
+layout_mode = 2
+
+[node name="ContentScroll" type="ScrollContainer" parent="PopupCard/PopupMargin/PopupRows"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ContentRows" type="VBoxContainer" parent="PopupCard/PopupMargin/PopupRows/ContentScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="AssetsTitle" type="Label" parent="PopupCard/PopupMargin/PopupRows/ContentScroll/ContentRows"]
+layout_mode = 2
+text = "公开资产"
+theme_override_colors/font_color = Color(0.4, 0.82, 0.94, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="AssetsSummary" type="Label" parent="PopupCard/PopupMargin/PopupRows/ContentScroll/ContentRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "暂无公开信息"
+autowrap_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.8, 0.87, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="FacilitiesTitle" type="Label" parent="PopupCard/PopupMargin/PopupRows/ContentScroll/ContentRows"]
+layout_mode = 2
+text = "公开设施"
+theme_override_colors/font_color = Color(0.4, 0.82, 0.94, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="FacilitiesSummary" type="Label" parent="PopupCard/PopupMargin/PopupRows/ContentScroll/ContentRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "暂无公开信息"
+autowrap_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.8, 0.87, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="MilitaryTitle" type="Label" parent="PopupCard/PopupMargin/PopupRows/ContentScroll/ContentRows"]
+layout_mode = 2
+text = "公开军力"
+theme_override_colors/font_color = Color(0.4, 0.82, 0.94, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="MilitarySummary" type="Label" parent="PopupCard/PopupMargin/PopupRows/ContentScroll/ContentRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "暂无公开信息"
+autowrap_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.8, 0.87, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="MonsterTitle" type="Label" parent="PopupCard/PopupMargin/PopupRows/ContentScroll/ContentRows"]
+layout_mode = 2
+text = "公开怪兽"
+theme_override_colors/font_color = Color(0.4, 0.82, 0.94, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="MonsterSummary" type="Label" parent="PopupCard/PopupMargin/PopupRows/ContentScroll/ContentRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "暂无公开信息"
+autowrap_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.8, 0.87, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="NavigationTitle" type="Label" parent="PopupCard/PopupMargin/PopupRows/ContentScroll/ContentRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "公开记录与导航"
+theme_override_colors/font_color = Color(0.4, 0.82, 0.94, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="NavigationRows" type="VBoxContainer" parent="PopupCard/PopupMargin/PopupRows/ContentScroll/ContentRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PrivacyNotice" type="Label" parent="PopupCard/PopupMargin/PopupRows"]
+layout_mode = 2
+text = "仅显示公开事实 · 不含手牌、现金或隐藏计划"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.43, 0.54, 0.64, 1)
+theme_override_font_sizes/font_size = 9
