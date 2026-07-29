@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/save_resume_application_flow_controller.gd" id="1_controller"]
+
+[node name="SaveResumeApplicationFlowController" type="Node"]
+script = ExtResource("1_controller")
+editor_description = "Scene-owned v0.6 save/resume application flow. Submits typed fixed-slot intents to one high-level runtime gateway and exposes only a player-safe public status; owns no envelope, gameplay state, RNG, or file I/O."

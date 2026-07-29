@@ -1,0 +1,17 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/save_resume_application_flow_bench.gd" id="1_bench"]
+[ext_resource type="Script" path="res://scripts/tools/fake_save_resume_runtime_gateway_v06.gd" id="2_fake"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/SaveResumeApplicationFlowController.tscn" id="3_flow"]
+[ext_resource type="PackedScene" path="res://scenes/main.tscn" id="4_main"]
+
+[node name="SaveResumeApplicationFlowBench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="FakeSaveResumeRuntimeGateway" type="Node" parent="."]
+script = ExtResource("2_fake")
+
+[node name="SaveResumeApplicationFlowController" parent="." instance=ExtResource("3_flow")]
+runtime_gateway_path = NodePath("../FakeSaveResumeRuntimeGateway")
+
+[node name="ProductionMain" parent="." instance=ExtResource("4_main")]
