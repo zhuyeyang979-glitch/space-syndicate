@@ -213,11 +213,11 @@ func _build_showcase_ui() -> void:
 	add_child(board_panel)
 	_build_board_stage(board_panel)
 
-	var inspector := _panel("ShowcaseRightInspector", Color("#111827"), Color("#475569"))
+	var inspector := _panel("ShowcaseContextDetail", Color("#111827"), Color("#475569"))
 	_place(inspector, 0.80, 0.17, 0.98, 0.73)
 	add_child(inspector)
 	var inspector_rows := VBoxContainer.new()
-	inspector_rows.name = "ShowcaseRightInspectorRows"
+	inspector_rows.name = "ShowcaseContextDetailRows"
 	inspector_rows.add_theme_constant_override("separation", 10)
 	inspector.add_child(inspector_rows)
 	_inspector_title = _label("当前解释", 15, HORIZONTAL_ALIGNMENT_CENTER)

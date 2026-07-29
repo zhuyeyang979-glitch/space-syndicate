@@ -1,6 +1,8 @@
 extends RefCounted
 class_name SpaceSyndicateRuntimeCardResolutionTrackFlowFixtures
 
+const CONTEXT_DETAIL_PROJECTION := preload("res://scripts/presentation/context_detail_projection_v1.gd")
+
 const CASE_IDS := [
 	"runtime_public_track_loads",
 	"select_runtime_queued_card",
@@ -84,25 +86,13 @@ func table_state_for_case(flow_case: Dictionary) -> Dictionary:
 		"card_resolution_track": track_state,
 		"planet": {
 			"title": "真实主界面牌轨 QA",
-			"hint": "GameScreen / PublicTrack / RightInspector / PlayerBoard",
+			"hint": "GameScreen / PublicTrack / ContextDetailDrawer / PlayerBoard",
 			"table_lanes": [
 				{"title": "公共轨", "detail": "只显示公开线索和响应窗口。"},
 				{"title": "隐私边界", "detail": "隐藏归属不进入可见文本。"},
 			],
 		},
-		"right_inspector": {
-			"title": "牌轨详情",
-			"why": "选择公共牌轨槽位查看公开线索；响应按钮走 GameScreen action_requested。",
-			"district": {
-				"title": "公共结算轨",
-				"summary": "等待选择一个公开槽位。",
-				"detail": "公共区只显示报价、状态、公开标签和匿名来源。",
-				"full_detail": "公共区只显示报价、状态、公开标签和匿名来源。",
-				"chips": [{"text": "公开"}, {"text": "匿名"}],
-			},
-			"actions": [],
-			"logs": ["牌轨 QA fixture 已加载。"],
-		},
+		"context_detail": _context_detail_projection(entries),
 		"player_board": {
 			"title": "玩家板｜牌轨运行 QA",
 			"identity": "你",
@@ -118,14 +108,43 @@ func table_state_for_case(flow_case: Dictionary) -> Dictionary:
 	}
 
 
-func _case(case_id: String, fixture_id: String, interaction: String, clicked_slot_id: String, expected_action_id: String, inspector_text: String, track_state: Dictionary) -> Dictionary:
+func _context_detail_projection(entries: Array) -> Dictionary:
+	if entries.is_empty() or not (entries[0] is Dictionary):
+		return {}
+	var entry := entries[0] as Dictionary
+	var resolution_number := maxi(0, int(entry.get("resolution_id", 0)))
+	return CONTEXT_DETAIL_PROJECTION.build({
+		"schema_version": CONTEXT_DETAIL_PROJECTION.SCHEMA_VERSION,
+		"viewer_index": 0,
+		"authorization_revision": 1,
+		"source_revision": resolution_number,
+		"context_id": "detail.runtime-track-%d" % resolution_number,
+		"context_kind": CONTEXT_DETAIL_PROJECTION.KIND_PUBLIC_TRACK,
+		"visibility_scope": "public",
+		"title": str(entry.get("display_name", entry.get("title", "公共牌轨"))),
+		"subtitle": "公共结算轨只读详情",
+		"content": {
+			"resolution_id": "resolution.%d" % resolution_number,
+			"card_semantic_id": "card.runtime-track-%d" % resolution_number,
+			"display_name": str(entry.get("display_name", entry.get("title", "公共牌轨"))),
+			"illustration_key": "track.public-card",
+			"public_status": "available",
+			"summary": str(entry.get("summary", "等待选择一个公开槽位。")),
+			"detail": str(entry.get("detail", "公共区只显示报价、状态、公开标签和匿名来源。")),
+			"keyword_tokens": ["keyword.public", "keyword.anonymous"],
+		},
+		"navigation_intents": [],
+	})
+
+
+func _case(case_id: String, fixture_id: String, interaction: String, clicked_slot_id: String, expected_action_id: String, context_detail_text: String, track_state: Dictionary) -> Dictionary:
 	return {
 		"case_id": case_id,
 		"fixture_id": fixture_id,
 		"interaction": interaction,
 		"clicked_slot_id": clicked_slot_id,
 		"expected_action_id": expected_action_id,
-		"expected_inspector_text": inspector_text,
+		"expected_context_detail_text": context_detail_text,
 		"track_state": track_state,
 		"notes": "Runtime GameScreen integration gate for CardResolutionTrack.",
 	}

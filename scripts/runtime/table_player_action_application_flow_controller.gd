@@ -527,6 +527,18 @@ func _dispatch_district_supply(intent: Dictionary, actor_index: int) -> Dictiona
 func _source_revision_current(intent: Dictionary, actor_kind: String) -> bool:
 	var authorization := intent.get("actor_authorization", {}) as Dictionary
 	var actor_index := int(authorization.get("actor_index", -1))
+	var action_id := str(intent.get("semantic_action_id", ""))
+	if actor_kind == "human" and action_id in [
+		INTENT.ACTION_DISTRICT_SUPPLY_QUOTE,
+		INTENT.ACTION_DISTRICT_SUPPLY_PURCHASE,
+	]:
+		var source := get_node_or_null(action_offer_source_path)
+		if source != null and source.has_method("district_supply_offer_revision_is_current"):
+			return bool(source.call(
+				"district_supply_offer_revision_is_current",
+				actor_index,
+				int(intent.get("source_revision", -1))
+			))
 	var expected := current_ai_source_revision(actor_index) if actor_kind == "ai" else _current_human_source_revision(actor_index)
 	return expected > 0 and int(intent.get("source_revision", -1)) == expected
 

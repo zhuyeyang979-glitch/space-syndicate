@@ -147,7 +147,7 @@ func _run_case(screen: Control, case: Dictionary) -> Dictionary:
 	var clicked_slot_id := str(case.get("clicked_slot_id", ""))
 	var expected_action_id := str(case.get("expected_action_id", ""))
 	var interaction := str(case.get("interaction", ""))
-	var expected_text := str(case.get("expected_inspector_text", ""))
+	var expected_text := str(case.get("expected_context_detail_text", ""))
 	_set_status("Running %s / %s..." % [case_id, fixture_id])
 	var table_state := _table_state_for_case(case)
 	if screen.has_method("apply_state"):
@@ -181,7 +181,7 @@ func _run_case(screen: Control, case: Dictionary) -> Dictionary:
 			_failures.append("Unknown runtime card-resolution interaction: %s" % interaction)
 	await _pump_frames(5)
 	var emitted_action_id := _latest_since(_emitted_action_ids, before_count)
-	var inspector_checked := _inspector_checked(screen, expected_text, interaction)
+	var context_detail_checked := _context_detail_checked(screen, expected_text, interaction)
 	var privacy_checked := _privacy_checked(screen)
 	var layout_checked := _layout_checked(track, case_id)
 	var group_window_checked := _group_window_checked(case)
@@ -193,12 +193,12 @@ func _run_case(screen: Control, case: Dictionary) -> Dictionary:
 	var legacy_state_fallback_used := bool(controller_state.get("legacy_state_fallback_used", true))
 	if interaction == "disabled_response_action":
 		disabled_checked = disabled_checked and emitted_action_id == ""
-	var passed := track != null and inspector_checked and disabled_checked and privacy_checked and layout_checked and group_window_checked and game_screen_signal_checked and controller_checked and not controller_missing and controller_authoritative and not legacy_state_fallback_used
+	var passed := track != null and context_detail_checked and disabled_checked and privacy_checked and layout_checked and group_window_checked and game_screen_signal_checked and controller_checked and not controller_missing and controller_authoritative and not legacy_state_fallback_used
 	var notes := "runtime GameScreen card-resolution flow ok"
 	if not passed:
-		notes = "track=%s inspector=%s disabled=%s privacy=%s layout=%s group_window=%s game_screen_signal=%s controller=%s missing=%s authoritative=%s fallback=%s expected=%s emitted=%s selected=%s opened=%s track_actions=%s" % [
+		notes = "track=%s context_detail=%s disabled=%s privacy=%s layout=%s group_window=%s game_screen_signal=%s controller=%s missing=%s authoritative=%s fallback=%s expected=%s emitted=%s selected=%s opened=%s track_actions=%s" % [
 			str(track != null),
-			str(inspector_checked),
+			str(context_detail_checked),
 			str(disabled_checked),
 			str(privacy_checked),
 			str(layout_checked),
@@ -221,7 +221,7 @@ func _run_case(screen: Control, case: Dictionary) -> Dictionary:
 		"clicked_slot_id": clicked_slot_id,
 		"clicked_action_id": clicked_action_id,
 		"emitted_action_id": emitted_action_id,
-		"inspector_checked": inspector_checked,
+		"context_detail_checked": context_detail_checked,
 		"disabled_checked": disabled_checked,
 		"privacy_checked": privacy_checked,
 		"layout_checked": layout_checked,
@@ -246,7 +246,7 @@ func _preview_record(case: Dictionary) -> Dictionary:
 		"clicked_slot_id": str(case.get("clicked_slot_id", "")),
 		"clicked_action_id": str(case.get("expected_action_id", "")),
 		"emitted_action_id": "",
-		"inspector_checked": false,
+		"context_detail_checked": false,
 		"disabled_checked": false,
 		"privacy_checked": false,
 		"layout_checked": false,
@@ -380,12 +380,12 @@ func _disabled_response_checked(track: Control, action_id: String) -> bool:
 	return button != null and button.disabled and reason_label != null and reason_label.visible and reason_label.text.strip_edges() != ""
 
 
-func _inspector_checked(screen: Control, expected_text: String, interaction: String) -> bool:
+func _context_detail_checked(screen: Control, expected_text: String, interaction: String) -> bool:
 	if screen == null:
 		return false
 	if expected_text.strip_edges() == "":
 		return true
-	var text := _node_tree_text(screen.find_child("RightInspector", true, false))
+	var text := _node_tree_text(screen.find_child("ContextDetailDrawer", true, false))
 	if interaction in ["response_action", "disabled_response_action", "load_track", "empty_safe"]:
 		text = "%s\n%s" % [text, _node_tree_text(screen.find_child("PublicTrack", true, false))]
 	return text.contains(expected_text.left(mini(expected_text.length(), 10)))
@@ -578,7 +578,7 @@ func _build_markdown_report(manifest: Dictionary) -> String:
 	lines.append("- Screenshot: `%s`" % SCREENSHOT_PATH)
 	lines.append("- Case count: %d" % int(manifest.get("case_count", 0)))
 	lines.append("")
-	lines.append("| Case | Fixture | Slot | Clicked Action | Emitted Action | Inspector | Disabled | Privacy | Layout | Group Window | GameScreen Signal | Controller | Missing | Authority | Fallback | Passed | Notes |")
+	lines.append("| Case | Fixture | Slot | Clicked Action | Emitted Action | Context Detail | Disabled | Privacy | Layout | Group Window | GameScreen Signal | Controller | Missing | Authority | Fallback | Passed | Notes |")
 	lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
 	for record_variant in manifest.get("records", []):
 		var record: Dictionary = record_variant if record_variant is Dictionary else {}
@@ -588,7 +588,7 @@ func _build_markdown_report(manifest: Dictionary) -> String:
 			str(record.get("clicked_slot_id", "")),
 			str(record.get("clicked_action_id", "")),
 			str(record.get("emitted_action_id", "")),
-			str(record.get("inspector_checked", false)),
+			str(record.get("context_detail_checked", false)),
 			str(record.get("disabled_checked", false)),
 			str(record.get("privacy_checked", false)),
 			str(record.get("layout_checked", false)),

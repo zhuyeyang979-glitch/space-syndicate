@@ -1,8 +1,6 @@
 extends RefCounted
 class_name PlanetBoardSnapshot
 
-const PUBLIC_PLAYER_SEAT_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/public_player_seat_snapshot.gd")
-
 const DEFAULT_LEFT_TITLE := "地表情报"
 const DEFAULT_RIGHT_TITLE := "外围压力"
 
@@ -26,7 +24,6 @@ var left_rail: Dictionary = {}
 var right_rail: Dictionary = {}
 var weather: Dictionary = {}
 var flow_compass: Dictionary = {}
-var player_seats: Array = []
 
 
 func apply_dictionary(data: Dictionary) -> RefCounted:
@@ -46,9 +43,6 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	)
 	weather = _weather_source(data)
 	flow_compass = _flow_compass_source(data)
-	player_seats = PUBLIC_PLAYER_SEAT_SNAPSHOT_SCRIPT.new().compose(
-		data.get("public_player_seat_sources", []) if data.get("public_player_seat_sources", []) is Array else []
-	)
 	return self
 
 
@@ -60,7 +54,6 @@ func to_ui_dictionary() -> Dictionary:
 		"right_rail": right_rail.duplicate(true),
 		"weather": weather.duplicate(true),
 		"flow_compass": flow_compass.duplicate(true),
-		"player_seats": player_seats.duplicate(true),
 	}
 
 

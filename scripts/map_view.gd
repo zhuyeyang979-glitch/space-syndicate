@@ -2,6 +2,7 @@ extends Control
 
 signal district_selected(index: int)
 signal district_double_clicked(index: int)
+signal map_background_clicked
 signal camera_presentation_interacted(kind: String)
 
 const GLOBE_MODE_ZOOM_THRESHOLD := 0.58
@@ -33,7 +34,6 @@ const GLOBE_EDGE_DETAIL_STEP_METERS := 28.0
 const GLOBE_EDGE_INTERACTION_STEP_METERS := 90.0
 const BETTING_TABLE_THEME_NAME := "星际赌桌"
 const BETTING_TABLE_CHIP_COUNT := 18
-const BETTING_TABLE_SEAT_COUNT := 8
 const SPACE_BACKDROP_STAR_COUNT := 128
 const LABEL_DENSE_ZOOM_THRESHOLD := 1.52
 const FOCUSED_LABEL_ZOOM_THRESHOLD := 1.20
@@ -152,7 +152,6 @@ func betting_table_theme_report() -> Dictionary:
 		"felt_color": "#052e24",
 		"rim_color": "#d6a440",
 		"chip_count": BETTING_TABLE_CHIP_COUNT,
-		"seat_count": BETTING_TABLE_SEAT_COUNT,
 		"planet_center_policy": "globe_center",
 		"detail_policy": "edge_icons_stay_small_until_clicked",
 		"projection_contract": PLANET_PROJECTION_BLEND_NAME,
@@ -452,6 +451,8 @@ func _gui_input(event: InputEvent) -> void:
 						index = _press_district_index
 					if index >= 0:
 						district_selected.emit(index)
+					else:
+						map_background_clicked.emit()
 				_press_district_index = -1
 				_mark_interaction_detail_dirty()
 				queue_redraw()
@@ -910,14 +911,6 @@ func _draw_betting_table_edge_chips(center: Vector2, preferred_radius: float, gl
 		var chip_mark := Color("#020617")
 		chip_mark.a = 0.42
 		draw_arc(pos, max(2.0, chip_radius - 1.2), 0.0, TAU, 20, chip_mark, 0.9, true)
-	for seat in range(BETTING_TABLE_SEAT_COUNT):
-		var seat_angle: float = -PI * 0.5 + TAU * (float(seat) + 0.5) / float(BETTING_TABLE_SEAT_COUNT)
-		var seat_pos: Vector2 = center + Vector2(cos(seat_angle), sin(seat_angle)) * max(18.0, safe_radius - 18.0)
-		var seat_glow := Color("#facc15")
-		seat_glow.a = 0.14 + globe_blend * 0.05
-		draw_arc(seat_pos, 9.0, 0.0, TAU, 24, seat_glow, 1.4, true)
-
-
 func _draw_projection_transition_backdrop(globe_blend: float) -> void:
 	var center := _globe_center()
 	var radius := _globe_radius()

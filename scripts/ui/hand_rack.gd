@@ -237,7 +237,7 @@ func _render_card_data(card: Control, card_data: Dictionary) -> void:
 	if str(display_data.get("presentation", "")).strip_edges() == "":
 		display_data["presentation"] = "mini_hand"
 	if str(display_data.get("detail_policy", "")).strip_edges() == "":
-		display_data["detail_policy"] = "right_inspector"
+		display_data["detail_policy"] = "context_detail"
 	if card.has_method("set_card_data"):
 		card.call("set_card_data", display_data)
 	card.set_meta("hand_card_drag_disabled", not _card_data_drag_valid(display_data))

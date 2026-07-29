@@ -8,7 +8,7 @@ const PREVIEW_IDS := [
 	"selected_disabled_card",
 	"hovered_card",
 	"drag_preview",
-	"right_inspector_card_detail",
+	"context_detail_card",
 	"public_track_selection",
 	"temporary_decision_pending_hint",
 ]
@@ -29,7 +29,7 @@ func preview_label(id: String) -> String:
 		"selected_disabled_card": "Selected Disabled",
 		"hovered_card": "Hovered Card",
 		"drag_preview": "Invalid Drop",
-		"right_inspector_card_detail": "Inspector Detail",
+		"context_detail_card": "Context Detail",
 		"public_track_selection": "Public Track",
 		"temporary_decision_pending_hint": "Decision Pending",
 	}
@@ -50,8 +50,8 @@ func fixture(id: String) -> Dictionary:
 			return _fixture_hovered_card()
 		"drag_preview":
 			return _fixture_drag_preview()
-		"right_inspector_card_detail":
-			return _fixture_right_inspector_card_detail()
+		"context_detail_card":
+			return _fixture_context_detail_card()
 		"public_track_selection":
 			return _fixture_public_track_selection()
 		"temporary_decision_pending_hint":
@@ -89,7 +89,7 @@ func _fixture_empty_hand() -> Dictionary:
 				{"id": "play", "label": "出牌", "state": "--", "disabled": true, "shortcut": "4"},
 			],
 		},
-		"inspector": _district_context("当前选区", "没有手牌时，右侧仍解释可用的桌面行动。", []),
+		"context_detail": _district_context("当前选区", "没有手牌时，上下文抽屉仍解释可用的桌面行动。", []),
 	})
 
 
@@ -102,7 +102,7 @@ func _fixture_normal_hand() -> Dictionary:
 		"selected_card_id": "",
 		"selected_card": cards[0],
 		"hand_focus": "none",
-		"inspector": _district_context("中央贸易区", "选择一张手牌后，右侧会切换到卡牌详情。", []),
+		"context_detail": _district_context("中央贸易区", "选择一张手牌后，上下文抽屉会切换到卡牌详情。", []),
 	})
 
 
@@ -112,13 +112,13 @@ func _fixture_selected_enabled_card() -> Dictionary:
 	var selected: Dictionary = cards[1].duplicate(true)
 	return _base_fixture("selected_enabled_card", {
 		"title": "选中可出牌",
-		"status": "Selected card exposes an enabled play action and matching inspector detail.",
+		"status": "Selected card exposes an enabled play action and matching context detail.",
 		"hand_cards": cards,
 		"selected_card_id": str(selected.get("id", "")),
 		"selected_card": selected,
 		"hand_focus": "selected",
-		"inspector_mode": "card",
-		"inspector": _card_inspector_context(selected),
+		"context_detail_mode": "card",
+		"context_detail": _card_context(selected),
 	})
 
 
@@ -135,8 +135,8 @@ func _fixture_selected_disabled_card() -> Dictionary:
 		"selected_card": disabled,
 		"disabled_reason": str(disabled.get("disabled_reason", "")),
 		"hand_focus": "selected",
-		"inspector_mode": "card",
-		"inspector": _card_inspector_context(disabled),
+		"context_detail_mode": "card",
+		"context_detail": _card_context(disabled),
 	})
 
 
@@ -150,8 +150,8 @@ func _fixture_hovered_card() -> Dictionary:
 		"selected_card_id": str(hovered.get("id", "")),
 		"selected_card": hovered,
 		"hand_focus": "hovered",
-		"inspector_mode": "card",
-		"inspector": _card_inspector_context(hovered),
+		"context_detail_mode": "card",
+		"context_detail": _card_context(hovered),
 	})
 
 
@@ -172,25 +172,25 @@ func _fixture_drag_preview() -> Dictionary:
 		"selected_card": dragged,
 		"disabled_reason": str(dragged.get("disabled_reason", "")),
 		"hand_focus": "drag_invalid",
-		"inspector_mode": "card",
-		"inspector": _card_inspector_context(dragged),
+		"context_detail_mode": "card",
+		"context_detail": _card_context(dragged),
 	})
 
 
-func _fixture_right_inspector_card_detail() -> Dictionary:
+func _fixture_context_detail_card() -> Dictionary:
 	var cards := _base_cards()
 	var selected := _detail_card()
 	selected["selected"] = true
 	cards[0] = selected
-	return _base_fixture("right_inspector_card_detail", {
+	return _base_fixture("context_detail_card", {
 		"title": "右侧卡牌详情",
-		"status": "RightInspector shows use-case, requirements, actions, and deep links for a selected card.",
+		"status": "ContextDetailDrawer shows read-only use-case, requirements, and card facts; PlayerCardDock owns actions.",
 		"hand_cards": cards,
 		"selected_card_id": str(selected.get("id", "")),
 		"selected_card": selected,
 		"hand_focus": "selected",
-		"inspector_mode": "card",
-		"inspector": _card_inspector_context(selected),
+		"context_detail_mode": "card",
+		"context_detail": _card_context(selected),
 	})
 
 
@@ -208,7 +208,7 @@ func _fixture_public_track_selection() -> Dictionary:
 			{"slot": "#1", "label": "互动牌", "state": "反制窗", "owner_hint": "待猜", "selected": true, "active": true, "hover_action": "track:interaction_a", "badges": ["公开"], "tooltip": "公开线索：匿名互动牌正在等待一层反制。"},
 			{"slot": "#2", "label": "怪兽赌局", "state": "下注中", "owner_hint": "公开", "active": true, "hover_action": "track:wager_b", "badges": ["倒计时"], "tooltip": "公开线索：怪兽赌局正在收集押注。"},
 		],
-		"inspector": _public_track_context(),
+		"context_detail": _public_track_context(),
 	})
 
 
@@ -235,7 +235,7 @@ func _fixture_temporary_decision_pending_hint() -> Dictionary:
 				{"id": "temporary_decision:resume", "label": "继续选择", "disabled": false, "tooltip": "回到临时决策 Overlay。"},
 			],
 		},
-		"inspector": {
+		"context_detail": {
 			"title": "等待目标选择",
 			"why": "卡牌已提交，当前需要在 Overlay 中选择目标。",
 			"district": {
@@ -277,8 +277,8 @@ func _base_fixture(id: String, data: Dictionary) -> Dictionary:
 		"disabled_reason": str(data.get("disabled_reason", selected_card.get("disabled_reason", ""))),
 		"hand_focus": str(data.get("hand_focus", "none")),
 		"public_track": public_track,
-		"inspector_mode": str(data.get("inspector_mode", "context")),
-		"inspector": data.get("inspector", _district_context("当前选区", "选择对象后显示上下文。", [])),
+		"context_detail_mode": str(data.get("context_detail_mode", "context")),
+		"context_detail": data.get("context_detail", _district_context("当前选区", "选择对象后显示上下文。", [])),
 		"temporary_decision_pending": bool(data.get("temporary_decision_pending", false)),
 	}
 
@@ -441,7 +441,7 @@ func _district_context(title: String, why: String, actions: Array) -> Dictionary
 	}
 
 
-func _card_inspector_context(card: Dictionary) -> Dictionary:
+func _card_context(card: Dictionary) -> Dictionary:
 	return {
 		"title": "卡牌详情",
 		"why": str(card.get("disabled_reason", card.get("use_case", "看用途、目标和下一步。"))),

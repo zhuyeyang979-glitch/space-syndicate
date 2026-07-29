@@ -8,7 +8,6 @@ const LAB_STATES := ["normal", "hovered", "selected", "disabled", "drop_valid", 
 @onready var commodity_belt: Control = %CommodityBelt
 @onready var planet_map: Control = %PlanetMapView
 @onready var hand_rack: Control = %HandRack
-@onready var right_inspector: Control = %RightInspector
 @onready var inspector_card: Control = %InspectorCardFace
 @onready var inspector_card_host: Control = %InspectorCardHost
 @onready var hidden_preview: Control = %HiddenCommodityPreview
@@ -377,17 +376,6 @@ func _update_inspector(card_index: int, state_id: String) -> void:
 	hidden_preview.visible = is_hidden
 	if is_hidden:
 		inspector_context_label.text = "隐藏商品｜只公开产业颜色与移动方向"
-		right_inspector.call("set_context", {
-			"title": "隐藏商品",
-			"why": "你当前只能识别产业颜色；不可领取，也不会泄露名称或效果。",
-			"district": {
-				"title": "情报受限",
-				"summary": "排名越高，可清晰看到的履带区段越短。",
-				"full_detail": "下一步｜等待商品进入你的清晰区。",
-				"chips": [{"text": "不可领取"}, {"text": "颜色公开"}],
-			},
-			"actions": [{"id": "skin_lab_wait_hidden", "label": "等待进入清晰区", "disabled": true, "reason": "商品仍在隐藏区"}],
-		})
 		return
 	if card_index < 0 or card_index >= _cards.size():
 		return
@@ -398,7 +386,6 @@ func _update_inspector(card_index: int, state_id: String) -> void:
 	inspector_card.call("set_card_data", preview)
 	inspector_card.call("set_interaction_state", _preview_interaction_state(state_id))
 	inspector_context_label.text = "%s｜%s｜%s" % [str(card.get("type", "卡牌")), str(card.get("industry", "通用")), str(card.get("play_state", ""))]
-	right_inspector.call("show_card", card)
 
 
 func _preview_interaction_state(state_id: String) -> Dictionary:
@@ -534,7 +521,6 @@ func _on_belt_card_focused(card_view_model: Dictionary) -> void:
 		inspector_card.call("set_card_data", preview)
 		inspector_card.call("set_interaction_state", {"hovered": true})
 		inspector_context_label.text = "商品履带｜%s｜可以领取" % str(card_view_model.get("industry", "商品"))
-		right_inspector.call("show_card", card_view_model)
 
 
 func _card_index_from_internal_identity(card_data: Dictionary) -> int:

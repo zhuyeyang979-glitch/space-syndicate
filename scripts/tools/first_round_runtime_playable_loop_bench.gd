@@ -130,7 +130,7 @@ func _run_case(viewport: SubViewport, screen: Control, flow_case: Dictionary) ->
 	var interaction := str(flow_case.get("interaction", ""))
 	var selected_card_id := str(flow_case.get("selected_card_id", ""))
 	var expected_action_id := str(flow_case.get("expected_action_id", ""))
-	var expected_text := str(flow_case.get("expected_inspector_text", ""))
+	var expected_text := str(flow_case.get("expected_context_detail_text", ""))
 	_set_status("Running first-round case: %s / %s..." % [case_id, interaction])
 	var table_state := _table_state_for_case(flow_case)
 	if screen.has_method("apply_state"):
@@ -148,7 +148,7 @@ func _run_case(viewport: SubViewport, screen: Control, flow_case: Dictionary) ->
 	var clicked_action_id := expected_action_id
 	var emitted_action_id := ""
 	var selected_card_checked := _selected_card_ok_for_case(screen, selected_card_id, interaction)
-	var inspector_checked := _inspector_contains(screen, expected_text)
+	var context_detail_checked := _context_detail_contains(screen, expected_text)
 	var player_board_feedback_checked := _player_board_readable(screen)
 	var public_track_checked := _public_track_base_checked(track)
 	var planet_map_checked := _planet_map_base_checked(map_view)
@@ -158,7 +158,7 @@ func _run_case(viewport: SubViewport, screen: Control, flow_case: Dictionary) ->
 		"boot":
 			clicked_action_id = ""
 			selected_card_checked = _hand_has_cards(screen)
-			inspector_checked = _core_surface_present(screen) and _top_bar_mentions_first_turn(screen)
+			context_detail_checked = _core_surface_present(screen) and _top_bar_mentions_first_turn(screen)
 			player_board_feedback_checked = _player_board_readable(screen)
 			public_track_checked = _public_track_base_checked(track)
 			planet_map_checked = _planet_map_base_checked(map_view)
@@ -168,7 +168,7 @@ func _run_case(viewport: SubViewport, screen: Control, flow_case: Dictionary) ->
 			await _click_hand_card(viewport, screen, selected_card_id)
 			await _pump_frames(6)
 			selected_card_checked = _selected_card_visual_stable(screen, selected_card_id)
-			inspector_checked = _right_inspector_has_card(screen, selected_card_id)
+			context_detail_checked = _context_detail_has_card(screen, selected_card_id)
 			player_board_feedback_checked = selected_card_checked and _node_tree_text(screen.find_child("PlayerBoard", true, false)).contains("手牌")
 		"execute_card_action":
 			await _click_hand_card(viewport, screen, selected_card_id)
@@ -178,7 +178,7 @@ func _run_case(viewport: SubViewport, screen: Control, flow_case: Dictionary) ->
 			await _pump_frames(6)
 			emitted_action_id = _latest_string(_emitted_action_ids)
 			selected_card_checked = _selected_card_visual_stable(screen, selected_card_id)
-			inspector_checked = _right_inspector_has_card(screen, selected_card_id)
+			context_detail_checked = _context_detail_has_card(screen, selected_card_id)
 			player_board_feedback_checked = _player_feedback_contains(screen, expected_action_id)
 		"disabled_action_guard":
 			await _click_hand_card(viewport, screen, selected_card_id)
@@ -189,7 +189,7 @@ func _run_case(viewport: SubViewport, screen: Control, flow_case: Dictionary) ->
 			await _pump_frames(4)
 			emitted_action_id = _latest_since(_emitted_action_ids, before_disabled_count)
 			selected_card_checked = _selected_card_visual_stable(screen, selected_card_id)
-			inspector_checked = _inspector_contains(screen, expected_text)
+			context_detail_checked = _context_detail_contains(screen, expected_text)
 			player_board_feedback_checked = disabled_guarded and emitted_action_id == ""
 		"public_track_response":
 			_press_public_track_slot(track, "first_round_track_contract", false)
@@ -198,7 +198,7 @@ func _run_case(viewport: SubViewport, screen: Control, flow_case: Dictionary) ->
 			clicked_action_id = _press_response_action(track, expected_action_id)
 			await _pump_frames(5)
 			emitted_action_id = _latest_since(_emitted_action_ids, before_track_count)
-			inspector_checked = _inspector_contains(screen, "互动牌")
+			context_detail_checked = _context_detail_contains(screen, "互动牌")
 			player_board_feedback_checked = _player_feedback_contains(screen, expected_action_id)
 			public_track_checked = _public_track_response_checked(track)
 		"planet_map_action":
@@ -209,7 +209,7 @@ func _run_case(viewport: SubViewport, screen: Control, flow_case: Dictionary) ->
 				map_view.call("focus_district", 1)
 			await _pump_frames(8)
 			planet_map_checked = district_click_ok and district_double_ok and _planet_map_focus_checked(map_view, 1)
-			inspector_checked = _inspector_contains(screen, "影仓牵引") or _inspector_contains(screen, expected_text)
+			context_detail_checked = _context_detail_contains(screen, "影仓牵引") or _context_detail_contains(screen, expected_text)
 		"temporary_decision":
 			overlay_checked = _temporary_overlay_visible(screen)
 			player_board_feedback_checked = _temporary_feedback_visible(screen)
@@ -228,11 +228,11 @@ func _run_case(viewport: SubViewport, screen: Control, flow_case: Dictionary) ->
 			await _pump_frames(6)
 			emitted_action_id = _latest_string(_end_turn_ids)
 			player_board_feedback_checked = emitted_action_id == "end_turn_requested"
-			inspector_checked = _top_bar_mentions_first_turn(screen)
+			context_detail_checked = _top_bar_mentions_first_turn(screen)
 		"privacy_boundary":
 			clicked_action_id = ""
 			privacy_checked = _privacy_checked(screen, table_state, flow_case)
-			inspector_checked = _inspector_contains(screen, expected_text)
+			context_detail_checked = _context_detail_contains(screen, expected_text)
 			public_track_checked = _public_track_base_checked(track)
 		"recovery_sequence":
 			await _click_hand_card(viewport, screen, selected_card_id)
@@ -251,7 +251,7 @@ func _run_case(viewport: SubViewport, screen: Control, flow_case: Dictionary) ->
 			clicked_action_id = "end_turn"
 			emitted_action_id = _latest_string(_end_turn_ids)
 			selected_card_checked = _selected_card_visual_stable(screen, selected_card_id)
-			inspector_checked = _node_tree_text(screen.find_child("RightInspector", true, false)).strip_edges() != ""
+			context_detail_checked = _node_tree_text(screen.find_child("ContextDetailDrawer", true, false)).strip_edges() != ""
 			player_board_feedback_checked = emitted_action_id == "end_turn_requested"
 			public_track_checked = _public_track_base_checked(track)
 			planet_map_checked = _planet_map_focus_checked(map_view, 1)
@@ -259,12 +259,12 @@ func _run_case(viewport: SubViewport, screen: Control, flow_case: Dictionary) ->
 		_:
 			_failures.append("Unknown first-round runtime interaction: %s" % interaction)
 	var signal_checked := _signal_checked(interaction, expected_action_id, emitted_action_id)
-	var passed := selected_card_checked and inspector_checked and player_board_feedback_checked and public_track_checked and planet_map_checked and overlay_checked and privacy_checked and signal_checked
+	var passed := selected_card_checked and context_detail_checked and player_board_feedback_checked and public_track_checked and planet_map_checked and overlay_checked and privacy_checked and signal_checked
 	var notes := "first-round runtime playable loop ok"
 	if not passed:
-		notes = "selected=%s inspector=%s player=%s track=%s planet=%s overlay=%s privacy=%s signal=%s clicked=%s emitted=%s expected=%s" % [
+		notes = "selected=%s context_detail=%s player=%s track=%s planet=%s overlay=%s privacy=%s signal=%s clicked=%s emitted=%s expected=%s" % [
 			str(selected_card_checked),
-			str(inspector_checked),
+			str(context_detail_checked),
 			str(player_board_feedback_checked),
 			str(public_track_checked),
 			str(planet_map_checked),
@@ -282,7 +282,7 @@ func _run_case(viewport: SubViewport, screen: Control, flow_case: Dictionary) ->
 		"clicked_action_id": clicked_action_id,
 		"emitted_action_id": emitted_action_id,
 		"selected_card_checked": selected_card_checked,
-		"inspector_checked": inspector_checked,
+		"context_detail_checked": context_detail_checked,
 		"player_board_feedback_checked": player_board_feedback_checked,
 		"public_track_checked": public_track_checked,
 		"planet_map_checked": planet_map_checked,
@@ -302,7 +302,7 @@ func _preview_record(flow_case: Dictionary) -> Dictionary:
 		"clicked_action_id": str(flow_case.get("expected_action_id", "")),
 		"emitted_action_id": "",
 		"selected_card_checked": false,
-		"inspector_checked": false,
+		"context_detail_checked": false,
 		"player_board_feedback_checked": false,
 		"public_track_checked": false,
 		"planet_map_checked": false,
@@ -445,7 +445,7 @@ func _click_hand_card(viewport: SubViewport, screen: Control, card_id: String) -
 func _click_card_action(screen: Control, card_id: String, action_id: String, expect_disabled: bool) -> bool:
 	var card := _hand_card_by_id(screen, card_id)
 	var action := _card_action(card, action_id)
-	var button := _button_for_action(screen.find_child("RightInspector", true, false), action)
+	var button := _button_for_action(screen.find_child("PlayerCardDock", true, false), action)
 	if button == null:
 		_failures.append("card action button not found: %s" % action_id)
 		return false
@@ -638,7 +638,7 @@ func _response_action_button(track: Control, action_id: String) -> Button:
 
 
 func _core_surface_present(screen: Control) -> bool:
-	for node_name in ["TopBar", "PlayerBoard", "HandRack", "RightInspector", "PublicTrack", "PlanetBoard", "PlanetMapView", "OverlayLayer"]:
+	for node_name in ["TopBar", "PlayerBoard", "HandRack", "PlayerCardDock", "ContextDetailDrawer", "PublicTrack", "PlanetBoard", "PlanetMapView", "OverlayLayer"]:
 		if screen.find_child(node_name, true, false) == null:
 			return false
 	return true
@@ -680,13 +680,13 @@ func _selected_card_visual_stable(screen: Control, card_id: String) -> bool:
 	return str(data.get("id", data.get("card_id", ""))) == card_id
 
 
-func _right_inspector_has_card(screen: Control, card_id: String) -> bool:
+func _context_detail_has_card(screen: Control, card_id: String) -> bool:
 	var card := _hand_card_by_id(screen, card_id)
 	if card == null or not card.has_method("get_card_data"):
 		return false
 	var value: Variant = card.call("get_card_data")
 	var data: Dictionary = value if value is Dictionary else {}
-	var text := _node_tree_text(screen.find_child("RightInspector", true, false))
+	var text := _node_tree_text(screen.find_child("ContextDetailDrawer", true, false))
 	var matched := 0
 	for key in ["name", "target", "type", "effect"]:
 		var piece := str(data.get(key, "")).strip_edges()
@@ -695,10 +695,10 @@ func _right_inspector_has_card(screen: Control, card_id: String) -> bool:
 	return matched >= 2
 
 
-func _inspector_contains(screen: Control, expected_text: String) -> bool:
+func _context_detail_contains(screen: Control, expected_text: String) -> bool:
 	if expected_text.strip_edges() == "":
 		return true
-	return _node_tree_text(screen.find_child("RightInspector", true, false)).contains(expected_text.left(mini(expected_text.length(), 10))) or _node_tree_text(screen).contains(expected_text.left(mini(expected_text.length(), 10)))
+	return _node_tree_text(screen.find_child("ContextDetailDrawer", true, false)).contains(expected_text.left(mini(expected_text.length(), 10))) or _node_tree_text(screen).contains(expected_text.left(mini(expected_text.length(), 10)))
 
 
 func _player_board_readable(screen: Control) -> bool:
@@ -917,7 +917,7 @@ func _build_markdown_report(manifest: Dictionary) -> String:
 	lines.append("- Case count: %d" % int(manifest.get("case_count", 0)))
 	lines.append("- Passed: %d" % int(manifest.get("passed_count", 0)))
 	lines.append("")
-	lines.append("| Case | Fixture | Clicked | Emitted | Card | Inspector | Player | Track | Map | Overlay | Privacy | Passed |")
+	lines.append("| Case | Fixture | Clicked | Emitted | Card | Context Detail | Player | Track | Map | Overlay | Privacy | Passed |")
 	lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
 	for record_variant in manifest.get("records", []):
 		var record: Dictionary = record_variant if record_variant is Dictionary else {}
@@ -927,7 +927,7 @@ func _build_markdown_report(manifest: Dictionary) -> String:
 			str(record.get("clicked_action_id", "")),
 			str(record.get("emitted_action_id", "")),
 			str(record.get("selected_card_checked", false)),
-			str(record.get("inspector_checked", false)),
+			str(record.get("context_detail_checked", false)),
 			str(record.get("player_board_feedback_checked", false)),
 			str(record.get("public_track_checked", false)),
 			str(record.get("planet_map_checked", false)),

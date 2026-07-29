@@ -2,7 +2,7 @@ extends Control
 class_name TopCommoditySushiTrackProductionWiringBench
 
 const RULESET_V04 := preload("res://resources/rules/space_syndicate_ruleset_v04.tres")
-const SCREENSHOT_PATH := "res://docs/ui_qa/top_commodity_track/commodity_track_right_inspector.png"
+const SCREENSHOT_PATH := "res://docs/ui_qa/top_commodity_track/commodity_track_context_detail_drawer.png"
 
 @export var auto_run := true
 @export var quit_on_finish := false
@@ -106,10 +106,11 @@ func run_checks() -> Dictionary:
 	_check(initial_rendered_count == 12, "all_twelve_active_public_commodity_types_render")
 	_check(track.size.x >= 1000.0 and track.size.y >= 150.0, "top_track_is_wide_and_thick")
 	var planet := game_screen.get_node_or_null("SafeArea/MainRows/TableArea/PlanetBoard") as Control
-	var inspector := game_screen.find_child("RightInspector", true, false) as Control
-	_check(planet != null and inspector != null and planet.size.x > inspector.size.x and planet.size.y > track.size.y, "planet_remains_primary_visual")
+	var detail_drawer := game_screen.find_child("ContextDetailDrawer", true, false) as Control
+	var detail_panel := game_screen.find_child("ContextDetailPanel", true, false) as Control
+	_check(planet != null and detail_drawer != null and detail_panel != null and planet.size.x > detail_panel.size.x and planet.size.y > track.size.y, "planet_remains_primary_visual")
 	_check(planet != null and not planet.get_global_rect().intersects(track.get_global_rect()), "top_track_does_not_cover_planet_input")
-	_check(inspector != null and not inspector.get_global_rect().intersects(track.get_global_rect()), "top_track_does_not_overlap_right_inspector")
+	_check(detail_panel != null and (not detail_drawer.is_visible_in_tree() or not detail_panel.get_global_rect().intersects(track.get_global_rect())), "top_track_does_not_overlap_context_detail")
 	var rendered_ids: Array = track_debug.get("rendered_slot_ids", []) if track_debug.get("rendered_slot_ids", []) is Array else []
 	if not rendered_ids.is_empty():
 		var slot_id := str(rendered_ids[0])
@@ -117,8 +118,10 @@ func run_checks() -> Dictionary:
 		if item_node != null:
 			await _hover_control(item_node as Control)
 		await get_tree().process_frame
-		var inspector_title := inspector.find_child("InspectorTitle", true, false) as Label if inspector != null else null
-		_check(item_node != null and inspector_title != null and inspector_title.text == "公共商品", "item_focus_updates_right_inspector")
+		var detail_debug: Dictionary = detail_drawer.call("debug_snapshot") as Dictionary if detail_drawer != null and detail_drawer.has_method("debug_snapshot") else {}
+		_check(item_node != null and detail_drawer != null \
+			and str(game_screen.get("_selected_commodity_slot_id")) == slot_id \
+			and bool(detail_debug.get("read_only", false)), "item_focus_prepares_context_detail_drawer")
 		var cash_before := int(inventory.player_snapshot("player.0").get("cash", -1))
 		var rng_before := JSON.stringify(coordinator.run_rng_service().debug_snapshot())
 		var market := coordinator.get_node_or_null("ProductMarketRuntimeController")
@@ -137,7 +140,7 @@ func run_checks() -> Dictionary:
 		)
 		_check(int(inventory.player_snapshot("player.0").get("cash", -2)) == cash_before, "free_claim_changes_no_cash")
 		_check(JSON.stringify(coordinator.run_rng_service().debug_snapshot()) == rng_before and (market == null or JSON.stringify(market.public_market_snapshot()) == market_before), "claim_consumes_no_rng_and_does_not_refresh_market")
-		_check(inspector_title != null and inspector_title.text == "公共商品", "claim_result_keeps_public_commodity_inspector_focus")
+		_check(detail_drawer != null and str(game_screen.get("_selected_commodity_slot_id")) == slot_id, "claim_result_keeps_public_commodity_detail_focus")
 	var service_debug: Dictionary = service.debug_snapshot()
 	_check(not bool(service_debug.get("owns_belt_state", true)) and not bool(service_debug.get("references_main", true)), "projection_has_no_second_owner_or_main_fallback")
 	_check(not JSON.stringify(game_screen.current_ui_data).contains("654321") and not JSON.stringify(game_screen.current_ui_data).contains("PRIVATE_HAND") and not JSON.stringify(game_screen.current_ui_data).contains("PRIVATE_PLAN"), "rendered_table_contains_no_rival_private_state")

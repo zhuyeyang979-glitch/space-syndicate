@@ -164,9 +164,25 @@ func _render_projection() -> void:
 	body_label.tooltip_text = body_label.text
 	var keyword_tokens: Array = content.get("keyword_tokens", []) \
 		if content.get("keyword_tokens", []) is Array else []
-	keyword_label.text = "关键词｜%s" % " · ".join(keyword_tokens)
-	keyword_label.visible = not keyword_tokens.is_empty()
+	var display_keywords := _display_keyword_tokens(keyword_tokens)
+	keyword_label.text = "关键词｜%s" % " · ".join(display_keywords)
+	keyword_label.visible = not display_keywords.is_empty()
 	_render_navigation(_navigation_entries(content))
+
+
+func _display_keyword_tokens(keyword_tokens: Array) -> Array[String]:
+	var result: Array[String] = []
+	for token_variant in keyword_tokens:
+		var token := str(token_variant).strip_edges()
+		if token.is_empty():
+			continue
+		if token.begins_with("tag-"):
+			var ordinal_text := token.trim_prefix("tag-")
+			if ordinal_text.is_valid_int():
+				result.append("标签 %d" % (int(ordinal_text) + 1))
+				continue
+		result.append(token.replace("_", " ").replace("-", " "))
+	return result
 
 
 func _kind_title(context_kind: String) -> String:
@@ -181,39 +197,23 @@ func _kind_title(context_kind: String) -> String:
 
 
 func _identity_text(context_kind: String, content: Dictionary) -> String:
+	var visibility_text := "仅当前玩家" \
+		if str(_projection.get("visibility_scope", "")) == "viewer_private" \
+		else "公开信息"
 	match context_kind:
 		PROJECTION.KIND_NORMAL_CARD:
-			return "%s｜%s" % [
-				str(content.get("card_semantic_id", "")),
-				str(content.get("card_instance_id", "")),
-			]
+			return "玩家手牌｜%s" % visibility_text
 		PROJECTION.KIND_COMMODITY_CARD:
-			return "%s｜L%d｜%s" % [
-				str(content.get("commodity_id", "")),
-				int(content.get("level", 1)),
-				str(content.get("commodity_card_instance_id", "")),
-			]
+			return "商品牌｜等级 %d｜%s" % [int(content.get("level", 1)), visibility_text]
 		PROJECTION.KIND_PUBLIC_TRACK:
-			return "%s｜%s" % [
-				str(content.get("resolution_id", "")),
-				str(content.get("card_semantic_id", "")),
-			]
+			return "公共牌轨｜%s" % visibility_text
 		PROJECTION.KIND_REGION_FACILITY:
-			return "%s｜%s" % [
-				str(content.get("region_id", "")),
-				str(content.get("facility_id", "")),
-			]
+			return "区域设施｜%s" % visibility_text
 		PROJECTION.KIND_COMMODITY_SOURCE:
-			return "%s｜%s" % [
-				str(content.get("commodity_id", "")),
-				str(content.get("source_id", "")),
-			]
+			return "商品来源｜%s" % visibility_text
 		PROJECTION.KIND_PUBLIC_EVENT:
-			return "%s｜%s" % [
-				str(content.get("receipt_id", "")),
-				str(content.get("reason_id", "")),
-			]
-	return str(_projection.get("context_id", ""))
+			return "事件详情｜%s" % visibility_text
+	return visibility_text
 
 
 func _status_text(context_kind: String, content: Dictionary) -> String:

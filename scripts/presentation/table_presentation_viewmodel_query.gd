@@ -7,6 +7,11 @@ const COMMODITY_SUSHI_TRACK_SERVICE_SCRIPT := preload("res://scripts/runtime/com
 const V06_ASSET_COST_KEYS := ["life", "energy", "industry", "technology", "commerce", "shipping", "generic"]
 const MAX_EXACT_JSON_INTEGER := 9007199254740991.0
 const PLAYER_CARD_DOCK_HAND_VIEWMODELS_KEY := "__player_card_dock_hand_viewmodels"
+const CURRENT_ACTION_CONTEXT_PROJECTION := preload("res://scripts/presentation/current_action_context_projection_v1.gd")
+const PUBLIC_FEEDBACK_PROJECTION := preload("res://scripts/presentation/public_feedback_projection_v1.gd")
+const CONTEXT_DETAIL_PROJECTION := preload("res://scripts/presentation/context_detail_projection_v1.gd")
+const REGION_SUPPLY_POPUP_PROJECTION := preload("res://scripts/presentation/region_supply_popup_projection_v1.gd")
+const PLAYER_ROSTER_PROJECTION_SERVICE := preload("res://scripts/presentation/public_player_roster_projection_service.gd")
 
 var _ports: TablePresentationQueryPorts
 var _selection: TableSelectionState
@@ -29,14 +34,15 @@ var _card_resolution: CardResolutionRuntimeController
 var _queue: CardResolutionQueueRuntimeService
 var _history: CardResolutionHistoryRuntimeService
 var _card_resolution_presentation: CardResolutionPresentationPort
-var _player_seat_sources: PlayerSeatPublicSourceService
 var _commodity_sushi_track: COMMODITY_SUSHI_TRACK_SERVICE_SCRIPT
 var _district_supply_query: DistrictSupplyViewerQueryPort
+var _player_roster_projection_service := PLAYER_ROSTER_PROJECTION_SERVICE.new()
 var _revision := 0
 var _compose_count := 0
 var _last_visual_event_revision := 0
 var _action_offer_revision := 0
 var _action_offer_revision_by_viewer: Dictionary = {}
+var _region_supply_offer_revision_by_viewer: Dictionary = {}
 
 
 func configure(
@@ -60,7 +66,6 @@ func configure(
 	queue: CardResolutionQueueRuntimeService,
 	history: CardResolutionHistoryRuntimeService,
 	card_resolution_presentation: CardResolutionPresentationPort,
-	player_seat_sources: PlayerSeatPublicSourceService = null,
 	commodity_sushi_track: COMMODITY_SUSHI_TRACK_SERVICE_SCRIPT = null,
 	district_supply_query: DistrictSupplyViewerQueryPort = null,
 	v06_card_catalog: CardRuntimeCatalogV06Resource = null
@@ -86,7 +91,6 @@ func configure(
 	_queue = queue
 	_history = history
 	_card_resolution_presentation = card_resolution_presentation
-	_player_seat_sources = player_seat_sources
 	_commodity_sushi_track = commodity_sushi_track
 	_district_supply_query = district_supply_query
 
@@ -109,11 +113,35 @@ func compose_table_state_bundle(viewer_index: int, include_full: bool) -> Dictio
 	var action := _ports.action_projection(viewer_index).to_dictionary()
 	if public_world.is_empty() or private_world.is_empty() or action.is_empty():
 		return {}
+	var supply_surface := _district_supply_query.snapshot_for_viewer(viewer_index) \
+		if include_full and _district_supply_query != null else {}
+	var source_revision := _ensure_action_offer_revision(viewer_index)
 	var district := _selected_district_source(viewer_index, public_world, action)
 	var actions := _action_entries(viewer_index, public_world, action, district)
 	var logs := _ports.recent_public_log_messages(6)
 	var visual_surface := _next_card_resolution_visual_surface(public_world)
 	var hand_cards := _hand_card_sources(viewer_index, private_world)
+	var authorization_revision := _ports.viewer_context().authorization_revision
+	var public_players := _array(public_world.get("players", []))
+	var inspected_player_index := _selection.inspected_player_index() if _selection != null else viewer_index
+	var roster_projection := _player_roster_projection_service.compose_roster(
+		public_players,
+		viewer_index,
+		authorization_revision,
+		source_revision,
+		inspected_player_index,
+		"unlocked" if bool(_dictionary(action.get("availability", {})).get("card_submissions_open", false)) else "locked"
+	)
+	var inspection_projection := _player_roster_projection_service.compose_inspection_for_player(
+		public_players,
+		inspected_player_index,
+		viewer_index,
+		authorization_revision,
+		source_revision,
+		{},
+		[],
+		[IntelApplicationIntent.open().to_dictionary()]
+	)
 	var table_source := {
 		"selection_context": {
 			"revision": int(_selection.snapshot().get("revision", 0)) if _selection != null else 0,
@@ -128,7 +156,9 @@ func compose_table_state_bundle(viewer_index: int, include_full: bool) -> Dictio
 			"selected_card_resolution_id": _selection.selected_card_resolution_id if _selection != null else -1,
 		},
 		"top_bar": _top_bar_source(viewer_index, public_world, private_world, action, district),
-		"planet": _planet_source(public_world, action, district, public_projection, viewer_index),
+		"planet": _planet_source(public_world, action, district),
+		"player_roster": roster_projection,
+		"player_inspection": inspection_projection,
 		"district": district,
 		"actions": actions,
 		"player_board": _player_board_source(viewer_index, public_world, private_world, action, district, actions),
@@ -145,16 +175,6 @@ func compose_table_state_bundle(viewer_index: int, include_full: bool) -> Dictio
 		"track": _card_track_source(viewer_index, action),
 		"selected_hand_slot": _selection.selected_hand_slot if _selection != null else -1,
 		"selected_resolution_id": _selection.selected_card_resolution_id if _selection != null else -1,
-		"district": district,
-		"fallback_why": str(district.get("detail", "先选择区域或卡牌。")),
-		"fallback_requirements": _district_requirement_chips(action),
-		"fallback_actions": actions,
-		"fallback_deep_links": [
-			{"id": "detail_region", "label": "区域详情"},
-			{"id": "detail_cards", "label": "卡牌/牌架"},
-			{"id": "intel", "label": "情报详情", "application_intent": IntelApplicationIntent.open("", str(district.get("region_id", ""))).to_dictionary()},
-		],
-		"logs": logs,
 	}
 	var composed := _table_viewmodel.compose_table_source({
 		"table_source": table_source,
@@ -164,10 +184,52 @@ func compose_table_state_bundle(viewer_index: int, include_full: bool) -> Dictio
 	var hand_viewmodels: Array = composed.get(PLAYER_CARD_DOCK_HAND_VIEWMODELS_KEY, []) \
 		if composed.get(PLAYER_CARD_DOCK_HAND_VIEWMODELS_KEY, []) is Array else []
 	composed.erase(PLAYER_CARD_DOCK_HAND_VIEWMODELS_KEY)
+	composed["current_action_context"] = _current_action_context_projection(
+		viewer_index,
+		authorization_revision,
+		source_revision,
+		district,
+		action
+	)
+	composed["context_detail"] = _selected_context_detail_projection(
+		viewer_index,
+		authorization_revision,
+		source_revision,
+		hand_cards,
+		hand_viewmodels,
+		_array(composed.get("card_track", []))
+	)
+	var public_feedback := _public_feedback_projections(
+		_ports.recent_public_log_entries(6),
+		viewer_index,
+		authorization_revision,
+		"public"
+	)
 	if include_full:
-		composed["viewer_private_feedback"] = _ports.recent_viewer_private_feedback(viewer_index, 6)
-		composed["district_supply"] = _district_supply_query.snapshot_for_viewer(viewer_index) \
-			if _district_supply_query != null else {}
+		public_feedback.append_array(_public_feedback_projections(
+			_ports.recent_viewer_private_feedback_entries(viewer_index, 6),
+			viewer_index,
+			authorization_revision,
+			"viewer_private"
+		))
+		var region_projection := _region_supply_popup_projection(
+			supply_surface,
+			district,
+			viewer_index,
+			authorization_revision,
+			source_revision
+		)
+		composed["region_supply_popup"] = region_projection
+		if region_projection.is_empty():
+			_region_supply_offer_revision_by_viewer.erase(viewer_index)
+		else:
+			_region_supply_offer_revision_by_viewer[viewer_index] = int(
+				region_projection.get("source_revision", 0)
+			)
+	composed["public_feedback"] = public_feedback
+	composed.erase("district")
+	composed.erase("actions")
+	composed.erase("logs")
 	_revision += 1
 	_compose_count += 1
 	return {
@@ -194,6 +256,11 @@ func hand_presentation_sources_for_viewer(viewer_index: int) -> Array:
 
 func current_action_offer_revision(viewer_index: int) -> int:
 	return int(_action_offer_revision_by_viewer.get(viewer_index, 0))
+
+
+func district_supply_offer_revision_is_current(viewer_index: int, revision: int) -> bool:
+	return viewer_index >= 0 and revision > 0 \
+		and int(_region_supply_offer_revision_by_viewer.get(viewer_index, 0)) == revision
 
 
 func card_track_presentation_source_for_viewer(viewer_index: int) -> Dictionary:
@@ -224,7 +291,7 @@ func debug_snapshot() -> Dictionary:
 		"uses_card_play_eligibility_facts": true,
 		"uses_public_queue_and_history": true,
 		"card_visual_event_revision": _last_visual_event_revision,
-		"uses_public_player_seat_projection": _player_seat_sources != null,
+		"uses_public_player_roster_projection": _player_roster_projection_service != null,
 		"uses_public_commodity_sushi_track_projection": _commodity_sushi_track != null,
 		"uses_viewer_safe_district_supply_projection": _district_supply_query != null,
 		"supports_decision_kinds": ["monster_wager", "counter_response", "discard_purchase", "monster_target_choice", "player_target_choice"],
@@ -611,9 +678,7 @@ func action_choices(viewer_index: int) -> Dictionary:
 func _planet_source(
 	public_world: Dictionary,
 	_action: Dictionary,
-	district: Dictionary,
-	public_projection: WorldSessionPublicProjection,
-	viewer_index: int
+	district: Dictionary
 ) -> Dictionary:
 	var districts := _array(public_world.get("districts", []))
 	var queue_public := _queue.public_snapshot() if _queue != null else {}
@@ -639,7 +704,6 @@ func _planet_source(
 			or bool(queue_public.get("active_present", false))},
 		"weather": {"active": _weather_status_text(), "forecast": _weather_forecast_text(), "impact": _weather_impact_text(), "tooltip": _weather_status_text()},
 		"flow_compass": {},
-		"public_player_seat_sources": _player_seat_sources.compose_sources(public_projection, viewer_index) if _player_seat_sources != null else [],
 		"selected_map_layer_focus": _selection.selected_map_layer_focus if _selection != null else "all",
 	}
 
@@ -1081,6 +1145,474 @@ func _district_region_ids(public_world: Dictionary) -> Array[String]:
 		if not region_id.is_empty():
 			result.append(region_id)
 	return result
+
+
+func _current_action_context_projection(
+	viewer_index: int,
+	authorization_revision: int,
+	source_revision: int,
+	district: Dictionary,
+	action: Dictionary
+) -> Dictionary:
+	var region_id := str(district.get("region_id", "")).strip_edges()
+	var selected := not region_id.is_empty()
+	var availability := _dictionary(action.get("availability", {}))
+	var offers: Array = []
+	var flow := _game_action_flow()
+	if flow != null and selected:
+		var offer := flow.human_action_offer(
+			GameActionIntentV1.ACTION_DISTRICT_SUPPLY_OPEN,
+			source_revision,
+			true,
+			"none",
+			{"region_id": region_id},
+			"full",
+			["action.district-supply.open", "feedback.district-supply.open"]
+		)
+		if bool(GameActionOfferV1.validation_report(offer).get("valid", false)):
+			offers.append(offer)
+	var requirements: Array = [
+		_typed_requirement(
+			"selected-district",
+			selected,
+			"none" if selected else "district-required",
+			"presentation.requirement.selected-district",
+			{"status": "ready" if selected else "missing"}
+		),
+		_typed_requirement(
+			"district-purchase-window",
+			bool(availability.get("can_request_region_purchase", false)),
+			"none" if bool(availability.get("can_request_region_purchase", false)) else "purchase-window-unavailable",
+			"presentation.requirement.district-purchase-window",
+			{"status": "ready" if bool(availability.get("can_request_region_purchase", false)) else "locked"}
+		),
+	]
+	var navigation: Array = []
+	if region_id.begins_with("region."):
+		navigation.append(IntelApplicationIntent.open("", region_id).to_dictionary())
+	return CURRENT_ACTION_CONTEXT_PROJECTION.build({
+		"schema_version": 1,
+		"viewer_index": viewer_index,
+		"authorization_revision": authorization_revision,
+		"context_id": "action-context-district-%d" % maxi(0, int(district.get("id", 0))) if selected else "action-context-table-map",
+		"source_revision": source_revision,
+		"title": str(district.get("title", "当前行动")) if selected else "选择星球区域",
+		"summary": str(district.get("detail", district.get("summary", "点击区域查看公开状态和牌架。"))),
+		"reason_id": "none" if selected else "district-required",
+		"reason_text": "" if selected else "先在地图上选择一个区域。",
+		"costs": [],
+		"requirements": requirements,
+		"consequences": [{
+			"consequence_id": "open-region-supply" if selected else "select-region",
+			"message_token": "presentation.consequence.open-region-supply" if selected else "presentation.consequence.select-region",
+			"arguments": {"region": region_id if selected else "none"},
+		}],
+		"game_action_offers": offers,
+		"navigation_intents": navigation,
+	})
+
+
+func _selected_context_detail_projection(
+	viewer_index: int,
+	authorization_revision: int,
+	source_revision: int,
+	hand_sources: Array,
+	hand_viewmodels: Array,
+	track_entries: Array
+) -> Dictionary:
+	var selected_slot := _selection.selected_hand_slot if _selection != null else -1
+	if selected_slot >= 0:
+		var source := _entry_with_int(hand_sources, "slot", selected_slot)
+		var viewmodel := _entry_with_int(hand_viewmodels, "slot", selected_slot)
+		if not source.is_empty() and not viewmodel.is_empty():
+			return _hand_context_detail_projection(
+				viewer_index,
+				authorization_revision,
+				source_revision,
+				source,
+				viewmodel
+			)
+	var selected_resolution := _selection.selected_card_resolution_id if _selection != null else -1
+	if selected_resolution >= 0:
+		var track_entry := _entry_with_int(track_entries, "resolution_id", selected_resolution)
+		if not track_entry.is_empty():
+			return _track_context_detail_projection(
+				viewer_index,
+				authorization_revision,
+				source_revision,
+				track_entry
+			)
+	return {}
+
+
+func _hand_context_detail_projection(
+	viewer_index: int,
+	authorization_revision: int,
+	source_revision: int,
+	source: Dictionary,
+	viewmodel: Dictionary
+) -> Dictionary:
+	var slot := maxi(0, int(viewmodel.get("slot", source.get("slot", 0))))
+	var card_source := _dictionary(source.get("card", {}))
+	var skill := _dictionary(card_source.get("skill", {}))
+	var machine := _dictionary(skill.get("machine", card_source.get("machine", {})))
+	var effect_payload := _dictionary(machine.get("effect_payload", {}))
+	var offer := _first_game_action_offer(viewmodel.get("actions", []))
+	var target_ids := GameActionOfferV1.target_ids(offer) if not offer.is_empty() else {}
+	var semantic_id := GameActionCardBindingV1.semantic_card_id(skill, slot)
+	semantic_id = _stable_id_or_fallback(semantic_id, "card-semantic-%d" % slot)
+	var instance_id := _stable_id_or_fallback(
+		str(target_ids.get("card_instance_id", viewmodel.get("card_instance_ref", ""))),
+		"card-instance-%d" % slot
+	)
+	var display_name := str(viewmodel.get("name", skill.get("display_name", skill.get("name", "卡牌"))))
+	var illustration_key := str(viewmodel.get("illustration_key", "card.generic")).strip_edges()
+	if illustration_key.is_empty():
+		illustration_key = "card.generic"
+	var disabled_reason := _stable_id_or_fallback(str(viewmodel.get("play_reason_id", "none")), "unavailable")
+	if bool(viewmodel.get("actionable", false)):
+		disabled_reason = "none"
+	var effect_text := str(skill.get("text", skill.get("display_text", viewmodel.get("effect", "")))).strip_edges()
+	if effect_text.is_empty():
+		effect_text = str(viewmodel.get("effect", "")).strip_edges()
+	var kind := str(skill.get("kind", card_source.get("kind", "")))
+	var acquisition_kind := str(machine.get("acquisition_kind", skill.get("acquisition_kind", "")))
+	var context_kind := "commodity_card" \
+		if kind == "commodity" \
+			or acquisition_kind == "commodity_belt_free" \
+			or semantic_id.begins_with("commodity-") \
+		else "normal_card"
+	var content: Dictionary
+	if context_kind == "commodity_card":
+		var commodity_id := str(effect_payload.get("product_id", machine.get("family_id", skill.get("family_id", "commodity"))))
+		content = {
+			"commodity_card_instance_id": instance_id,
+			"card_semantic_id": semantic_id,
+			"commodity_id": _stable_id_or_fallback(commodity_id, "commodity-unknown"),
+			"display_name": display_name,
+			"illustration_key": illustration_key,
+			"level": maxi(1, int(skill.get("rank", machine.get("rank", 1)))),
+			"base_units": maxi(1, int(effect_payload.get("base_units", skill.get("rank", 1)))),
+			"target_text": str(skill.get("target", viewmodel.get("target", ""))),
+			"effect_text": effect_text,
+			"source_text": "Player Card Dock",
+			"disabled_reason_id": disabled_reason,
+			"disabled_reason_text": str(viewmodel.get("block_reason", "")),
+		}
+	else:
+		content = {
+			"card_instance_id": instance_id,
+			"card_semantic_id": semantic_id,
+			"display_name": display_name,
+			"illustration_key": illustration_key,
+			"timing_text": str(skill.get("timing", "")),
+			"target_text": str(skill.get("target", viewmodel.get("target", ""))),
+			"effect_text": effect_text,
+			"duration_text": str(skill.get("duration", "")),
+			"visibility_text": "仅当前玩家",
+			"keyword_tokens": _stable_token_array(skill.get("tags", [])),
+			"disabled_reason_id": disabled_reason,
+			"disabled_reason_text": str(viewmodel.get("block_reason", "")),
+		}
+	return CONTEXT_DETAIL_PROJECTION.build({
+		"schema_version": 1,
+		"viewer_index": viewer_index,
+		"authorization_revision": authorization_revision,
+		"source_revision": source_revision,
+		"context_id": "hand-card-detail-%d" % slot,
+		"context_kind": context_kind,
+		"visibility_scope": "viewer_private",
+		"title": display_name,
+		"subtitle": str(viewmodel.get("why", viewmodel.get("type", ""))),
+		"content": content,
+		"navigation_intents": [],
+	})
+
+
+func _track_context_detail_projection(
+	viewer_index: int,
+	authorization_revision: int,
+	source_revision: int,
+	entry: Dictionary
+) -> Dictionary:
+	var resolution_id := maxi(0, int(entry.get("resolution_id", 0)))
+	var card_name := str(entry.get("card_name", entry.get("label", "公共牌"))).strip_edges()
+	if card_name.is_empty():
+		card_name = "公共牌"
+	var navigation := _typed_navigation_intents(entry.get("deep_links", []))
+	return CONTEXT_DETAIL_PROJECTION.build({
+		"schema_version": 1,
+		"viewer_index": viewer_index,
+		"authorization_revision": authorization_revision,
+		"source_revision": source_revision,
+		"context_id": "public-track-detail-%d" % resolution_id,
+		"context_kind": "public_track",
+		"visibility_scope": "public",
+		"title": card_name,
+		"subtitle": str(entry.get("state", "公共牌轨")),
+		"content": {
+			"resolution_id": "resolution.%d" % resolution_id,
+			"card_semantic_id": _stable_id_or_fallback(str(entry.get("card_semantic_id", entry.get("card_name", ""))), "public-track-card-%d" % resolution_id),
+			"display_name": card_name,
+			"illustration_key": str(entry.get("illustration_key", "card.public-track")),
+			"public_status": _stable_id_or_fallback(str(entry.get("kind", "public")), "public"),
+			"summary": str(entry.get("summary", "")),
+			"detail": str(entry.get("full_detail", entry.get("detail", entry.get("tooltip", "")))),
+			"keyword_tokens": _stable_token_array(entry.get("badges", [])),
+		},
+		"navigation_intents": navigation,
+	})
+
+
+func _public_feedback_projections(
+	entries: Array,
+	viewer_index: int,
+	authorization_revision: int,
+	visibility_scope: String
+) -> Array:
+	var result: Array = []
+	for index in range(entries.size()):
+		var entry := _dictionary(entries[index])
+		var message := str(entries[index]) if entry.is_empty() else str(entry.get("message", entry.get("detail", "")))
+		message = message.strip_edges()
+		if message.is_empty():
+			continue
+		var revision := maxi(0, int(entry.get("source_revision", index)))
+		var reason_id := _stable_id_or_fallback(str(_dictionary(entry.get("public_values", {})).get("reason_code", "none")), "none")
+		var severity := _feedback_severity(message)
+		if severity == "failure" and reason_id == "none":
+			reason_id = "action-rejected"
+		var message_token := _stable_id_or_fallback(
+			str(entry.get("localization_key", "feedback.viewer-private" if visibility_scope == "viewer_private" else "feedback.public")),
+			"feedback.public"
+		)
+		var public_identity := "%s|%d|%d|%s" % [visibility_scope, revision, index, message]
+		var projection := PUBLIC_FEEDBACK_PROJECTION.build({
+			"schema_version": 1,
+			"viewer_index": viewer_index,
+			"authorization_revision": authorization_revision,
+			"receipt_id": "feedback-%s-%s" % [visibility_scope.replace("_", "-"), public_identity.sha256_text().left(16)],
+			"revision": revision,
+			"severity": severity,
+			"reason_id": reason_id,
+			"message_token": message_token,
+			"arguments": {"message": message},
+			"public_or_viewer_private": visibility_scope,
+			"history_link": {},
+		})
+		if not projection.is_empty():
+			result.append(projection)
+	return result
+
+
+func _region_supply_popup_projection(
+	surface: Dictionary,
+	district: Dictionary,
+	viewer_index: int,
+	authorization_revision: int,
+	source_revision: int
+) -> Dictionary:
+	if not bool(surface.get("visible", false)) or not (surface.get("snapshot", {}) is Dictionary):
+		return {}
+	var snapshot := _dictionary(surface.get("snapshot", {}))
+	var region_id := str(surface.get("region_id", "")).strip_edges()
+	var selected_region_id := str(district.get("region_id", "")).strip_edges()
+	var region_index := int(surface.get("district_index", district.get("id", -1)))
+	if region_id.is_empty() or region_index < 0 or region_id != selected_region_id:
+		return {}
+	var rack_revision := _stable_revision_number(str(surface.get("rack_source_revision", "")), source_revision)
+	var card_rows: Array = []
+	var allowed_actions: Array = []
+	var allowed_offer_fingerprints: Dictionary = {}
+	var card_occurrence_by_semantic_id: Dictionary = {}
+	var flow := _game_action_flow()
+	for index in range(_array(snapshot.get("cards", [])).size()):
+		var card := _dictionary(_array(snapshot.get("cards", []))[index])
+		var card_id := str(card.get("card_id", card.get("card_name", ""))).strip_edges()
+		if not SemanticWireV1.is_stable_id(card_id):
+			continue
+		var card_occurrence := int(card_occurrence_by_semantic_id.get(card_id, 0))
+		card_occurrence_by_semantic_id[card_id] = card_occurrence + 1
+		var preview := _dictionary(card.get("preview", {}))
+		var primary_action_id := str(preview.get("primary_action_id", ""))
+		var semantic_action_id := GameActionIntentV1.ACTION_DISTRICT_SUPPLY_QUOTE \
+			if primary_action_id == "district_supply_preview_card" \
+			else GameActionIntentV1.ACTION_DISTRICT_SUPPLY_PURCHASE
+		var offer: Dictionary = {}
+		if flow != null and primary_action_id in [
+			"district_supply_preview_card",
+			"district_supply_purchase_card",
+		]:
+			offer = flow.human_surface_action_offer(
+				semantic_action_id,
+				{"region_id": region_id, "card_id": card_id},
+				"full",
+				["action.district-supply", "feedback.district-supply"]
+			)
+		if bool(GameActionOfferV1.validation_report(offer).get("valid", false)):
+			var offer_revision := int(offer.get("source_revision", source_revision))
+			if offer_revision == source_revision:
+				var offer_fingerprint := str(offer.get("offer_fingerprint", ""))
+				if not allowed_offer_fingerprints.has(offer_fingerprint):
+					allowed_offer_fingerprints[offer_fingerprint] = true
+					allowed_actions.append(offer)
+			else:
+				offer = {}
+		var actionable := not offer.is_empty()
+		var reason_id := _stable_id_or_fallback(
+			str(preview.get("action_reason_code", "browse-only")),
+			"browse-only"
+		)
+		if actionable:
+			reason_id = "none"
+		var illustration_key := str(card.get("illustration_key", "card.region-supply")).strip_edges()
+		if illustration_key.is_empty():
+			illustration_key = "card.region-supply"
+		card_rows.append({
+			"rack_card_id": _stable_id_or_fallback(
+				"%s-%s-rack-copy-%d" % [region_id, card_id, card_occurrence],
+				"rack-card-%d" % index
+			),
+			"card_semantic_id": card_id,
+			"display_name": str(card.get("display_name", card_id)),
+			"illustration_key": illustration_key,
+			"costs": [{
+				"cost_id": "purchase-cash",
+				"resource_id": "cash",
+				"amount_units": maxi(0, int(card.get("price", 0))),
+				"display_token": "currency.cash",
+			}],
+			"availability": {
+				"state_id": "available" if actionable else "disabled",
+				"reason_id": reason_id,
+				"reason_text": str(preview.get("status_text", preview.get("buy_tooltip", ""))),
+			},
+			"detail_context_id": "region-card-detail-%d" % index,
+		})
+	var rack_cards: Array = []
+	for row_variant in card_rows:
+		var row := _dictionary(row_variant)
+		row["source_revision"] = source_revision
+		row["rack_revision"] = rack_revision
+		rack_cards.append(row)
+	var facility_slots: Array = []
+	var infrastructure := _dictionary(district.get("region_infrastructure", {}))
+	for index in range(_array(infrastructure.get("facilities", [])).size()):
+		var facility := _dictionary(_array(infrastructure.get("facilities", []))[index])
+		facility_slots.append({
+			"slot_id": "facility-slot-%d" % index,
+			"display_name": str(facility.get("facility_type", facility.get("display_name", "设施位"))),
+			"public_status": "occupied",
+			"is_occupied": true,
+			"detail_context_id": "region-facility-detail-%d" % index,
+		})
+	var navigation: Array = []
+	if region_id.begins_with("region."):
+		navigation.append(IntelApplicationIntent.open("", region_id).to_dictionary())
+	return REGION_SUPPLY_POPUP_PROJECTION.build({
+		"schema_version": 1,
+		"viewer_index": viewer_index,
+		"authorization_revision": authorization_revision,
+		"region_id": region_id,
+		"region_index": region_index,
+		"display_name": str(snapshot.get("title", district.get("title", "区域牌架"))),
+		"source_revision": source_revision,
+		"rack_revision": rack_revision,
+		"public_status": "open",
+		"availability": {"state_id": "available", "reason_id": "none", "reason_text": ""},
+		"monster_price_pressure": int(district.get("monster_price_pressure", district.get("monster_pressure", 0))),
+		"facility_slots": facility_slots,
+		"rack_cards": rack_cards,
+		"requirements": [_typed_requirement("rack-revision-bound", true, "none", "presentation.requirement.rack-revision-bound", {"revision": rack_revision})],
+		"allowed_actions": allowed_actions,
+		"allowed_navigation_intents": navigation,
+	})
+
+
+func _typed_requirement(
+	requirement_id: String,
+	satisfied: bool,
+	reason_id: String,
+	message_token: String,
+	arguments: Dictionary
+) -> Dictionary:
+	return {
+		"requirement_id": requirement_id,
+		"satisfied": satisfied,
+		"reason_id": reason_id,
+		"message_token": message_token,
+		"arguments": arguments.duplicate(true),
+	}
+
+
+func _entry_with_int(entries: Array, key: String, expected: int) -> Dictionary:
+	for entry_variant in entries:
+		if entry_variant is Dictionary and int((entry_variant as Dictionary).get(key, -1)) == expected:
+			return (entry_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _first_game_action_offer(entries_variant: Variant) -> Dictionary:
+	for entry_variant in _array(entries_variant):
+		var entry := _dictionary(entry_variant)
+		var offer := _dictionary(entry.get("game_action_offer", {}))
+		if bool(GameActionOfferV1.validation_report(offer).get("valid", false)):
+			return offer
+	return {}
+
+
+func _typed_navigation_intents(entries_variant: Variant) -> Array:
+	var result: Array = []
+	for entry_variant in _array(entries_variant):
+		var entry := _dictionary(entry_variant)
+		var intent := _dictionary(entry.get("application_intent", entry.get("navigation_intent", {})))
+		if IntelApplicationIntent.from_dictionary(intent) != null:
+			result.append(intent)
+	return result
+
+
+func _stable_token_array(value: Variant) -> Array:
+	var result: Array = []
+	for index in range(_array(value).size()):
+		var token := _stable_id_or_fallback(str(_array(value)[index]), "tag-%d" % index)
+		if not result.has(token):
+			result.append(token)
+	return result
+
+
+func _stable_id_or_fallback(value: String, fallback: String) -> String:
+	var normalized := value.strip_edges().to_lower()
+	var output := ""
+	var previous_separator := false
+	for index in range(normalized.length()):
+		var code := normalized.unicode_at(index)
+		var valid := (code >= 97 and code <= 122) or (code >= 48 and code <= 57)
+		if valid:
+			output += normalized[index]
+			previous_separator = false
+		elif not output.is_empty() and not previous_separator:
+			output += "-"
+			previous_separator = true
+	output = output.trim_suffix("-")
+	if output.is_empty() or not (output.unicode_at(0) >= 97 and output.unicode_at(0) <= 122):
+		output = fallback
+	return output.left(160).trim_suffix("-")
+
+
+func _stable_revision_number(value: String, fallback: int) -> int:
+	var digest := value.sha256_text() if value.is_empty() or not value.is_valid_hex_number(false) else value
+	var prefix := digest.left(12)
+	return maxi(0, prefix.hex_to_int()) if not prefix.is_empty() else maxi(0, fallback)
+
+
+func _feedback_severity(message: String) -> String:
+	if message.contains("失败") or message.contains("无法") or message.contains("不能") or message.contains("未执行"):
+		return "failure"
+	if message.contains("警告") or message.contains("等待") or message.contains("请先"):
+		return "warning"
+	if message.contains("成功") or message.contains("完成") or message.begins_with("已"):
+		return "success"
+	return "informational"
 
 
 func _ensure_action_offer_revision(viewer_index: int) -> int:

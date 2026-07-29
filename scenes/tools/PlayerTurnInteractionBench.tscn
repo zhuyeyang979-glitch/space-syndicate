@@ -50,7 +50,7 @@ text_overrun_behavior = 3
 
 [node name="PlayerTurnInteractionScopeLabel" type="Label" parent="PlayerTurnInteractionMargin/PlayerTurnInteractionRows/PlayerTurnInteractionHeader"]
 layout_mode = 2
-text = "真实 Preview / PlayerBoard / HandRack / RightInspector"
+text = "真实 Preview / PlayerBoard / HandRack / ContextDetailDrawer"
 text_overrun_behavior = 3
 
 [node name="PlayerTurnInteractionStatusPanel" type="PanelContainer" parent="PlayerTurnInteractionMargin/PlayerTurnInteractionRows"]

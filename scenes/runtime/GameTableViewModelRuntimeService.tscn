@@ -4,4 +4,4 @@
 
 [node name="GameTableViewModelRuntimeService" type="Node"]
 script = ExtResource("1_service")
-editor_description = "Authoritative pure-data table ViewModel composer. It owns hand-card, public-track, resolution-overlay badge, RightInspector, and TableSnapshot assembly while gameplay legality and mutations remain in domain services."
+editor_description = "Authoritative pure-data table ViewModel composer. It owns PlayerCardDock, public-track, resolution-overlay badge, typed context-detail, and TableSnapshot assembly while gameplay legality and mutations remain in domain services."

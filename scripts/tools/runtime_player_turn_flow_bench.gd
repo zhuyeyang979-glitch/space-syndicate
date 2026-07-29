@@ -37,7 +37,7 @@ func output_dir() -> String:
 func flow_cases() -> Array:
 	return [
 		_case_record("empty_hand", "empty_hand_no_card_action", "", "", "Real GameScreen keeps the bottom hand area readable without card actions."),
-		_case_record("normal_hand", "hand_card_click_updates_inspector", "card_orbital_finance", "", "Clicking a real HandRack card updates the real RightInspector."),
+		_case_record("normal_hand", "hand_card_click_updates_context_detail", "card_orbital_finance", "", "Clicking a real HandRack card updates the real ContextDetailDrawer."),
 		_case_record("selected_enabled_card", "enabled_action_emits", "card_shadow_disruption", "play:shadow_disruption", "Enabled card action travels through GameScreen.action_requested."),
 		_case_record("selected_disabled_card", "disabled_action_stays_silent", "card_monster_tip_blocked", "play:monster_tip", "Disabled action remains visible with a reason and does not emit."),
 		_case_record("public_track_selection", "public_track_select_safe_hint", "card_orbital_finance", "track:interaction_a", "Public track click shows public context without hidden-owner fields."),
@@ -123,40 +123,40 @@ func _run_case(viewport: SubViewport, screen: Control, case: Dictionary, emitted
 	var before_count := emitted_action_ids.size()
 	var clicked_action_id := ""
 	var emitted_action_id := ""
-	var right_inspector_checked := _right_inspector_has_expected_detail(screen, fixture)
+	var context_detail_checked := _context_detail_has_expected_detail(screen, fixture)
 	var disabled_reason_visible := _disabled_reason_visible(screen, fixture)
 	var public_hint_safe := _public_hint_safe(screen)
 	var temporary_decision_hint_visible := _temporary_decision_hint_visible(screen)
 	match interaction_name:
 		"empty_hand_no_card_action":
-			right_inspector_checked = _empty_hand_affordance_visible(screen)
+			context_detail_checked = _empty_hand_affordance_visible(screen)
 			disabled_reason_visible = _no_enabled_card_action(screen)
-		"hand_card_click_updates_inspector":
+		"hand_card_click_updates_context_detail":
 			await _click_hand_card(viewport, screen, selected_card_id)
 			await _pump_frames(6)
-			right_inspector_checked = _right_inspector_has_card(screen, selected_card_id)
+			context_detail_checked = _context_detail_has_card(screen, selected_card_id)
 		"enabled_action_emits":
 			await _click_hand_card(viewport, screen, selected_card_id)
 			await _pump_frames(4)
 			clicked_action_id = expected_action_id
 			await _click_card_action(viewport, screen, fixture, selected_card_id, false, emitted_action_ids)
 			emitted_action_id = _latest_since(emitted_action_ids, before_count)
-			right_inspector_checked = _right_inspector_has_card(screen, selected_card_id)
+			context_detail_checked = _context_detail_has_card(screen, selected_card_id)
 		"disabled_action_stays_silent":
 			await _click_hand_card(viewport, screen, selected_card_id)
 			await _pump_frames(4)
 			clicked_action_id = expected_action_id
 			disabled_reason_visible = await _click_card_action(viewport, screen, fixture, selected_card_id, true, emitted_action_ids)
 			emitted_action_id = _latest_since(emitted_action_ids, before_count)
-			right_inspector_checked = _right_inspector_has_card(screen, selected_card_id)
+			context_detail_checked = _context_detail_has_card(screen, selected_card_id)
 		"public_track_select_safe_hint":
 			clicked_action_id = expected_action_id
 			await _click_public_track_slot(viewport, screen)
 			emitted_action_id = _latest_since(emitted_action_ids, before_count)
-			right_inspector_checked = _node_tree_text(screen.find_child("RightInspector", true, false)).contains("互动牌")
+			context_detail_checked = _node_tree_text(screen.find_child("ContextDetailDrawer", true, false)).contains("互动牌")
 			public_hint_safe = _public_hint_safe(screen)
 		"temporary_decision_pending_feedback":
-			right_inspector_checked = true
+			context_detail_checked = true
 			temporary_decision_hint_visible = _temporary_decision_hint_visible(screen)
 			disabled_reason_visible = emitted_action_ids.size() == before_count
 		_:
@@ -166,7 +166,7 @@ func _run_case(viewport: SubViewport, screen: Control, case: Dictionary, emitted
 		emit_ok = emitted_action_id == ""
 	if interaction_name == "disabled_action_stays_silent":
 		emit_ok = emitted_action_id == ""
-	var passed := right_inspector_checked and emit_ok
+	var passed := context_detail_checked and emit_ok
 	match interaction_name:
 		"empty_hand_no_card_action", "disabled_action_stays_silent":
 			passed = passed and disabled_reason_visible
@@ -175,13 +175,13 @@ func _run_case(viewport: SubViewport, screen: Control, case: Dictionary, emitted
 		"temporary_decision_pending_feedback":
 			passed = passed and temporary_decision_hint_visible and disabled_reason_visible
 	if not passed:
-		_failures.append("%s/%s failed: clicked=%s emitted=%s expected=%s inspector=%s disabled_reason=%s public_safe=%s temporary_hint=%s" % [
+		_failures.append("%s/%s failed: clicked=%s emitted=%s expected=%s context_detail=%s disabled_reason=%s public_safe=%s temporary_hint=%s" % [
 			fixture_id,
 			interaction_name,
 			clicked_action_id,
 			emitted_action_id,
 			expected_action_id,
-			str(right_inspector_checked),
+			str(context_detail_checked),
 			str(disabled_reason_visible),
 			str(public_hint_safe),
 			str(temporary_decision_hint_visible),
@@ -192,7 +192,7 @@ func _run_case(viewport: SubViewport, screen: Control, case: Dictionary, emitted
 		"selected_card_id": selected_card_id,
 		"clicked_action_id": clicked_action_id,
 		"emitted_action_id": emitted_action_id,
-		"right_inspector_checked": right_inspector_checked,
+		"context_detail_checked": context_detail_checked,
 		"disabled_reason_visible": disabled_reason_visible,
 		"public_hint_safe": public_hint_safe,
 		"temporary_decision_hint_visible": temporary_decision_hint_visible,
@@ -221,7 +221,7 @@ func _preview_manifest_record(case: Dictionary) -> Dictionary:
 		"selected_card_id": str(case.get("selected_card_id", "")),
 		"clicked_action_id": str(case.get("expected_action_id", "")),
 		"emitted_action_id": "",
-		"right_inspector_checked": false,
+		"context_detail_checked": false,
 		"disabled_reason_visible": false,
 		"public_hint_safe": false,
 		"temporary_decision_hint_visible": false,
@@ -239,7 +239,7 @@ func _connect_game_screen_signals(screen: Control, emitted_action_ids: Array[Str
 
 func _table_state_from_fixture(fixture: Dictionary) -> Dictionary:
 	var player_state: Dictionary = fixture.get("player_state", {}) if fixture.get("player_state", {}) is Dictionary else {}
-	var inspector: Dictionary = fixture.get("inspector", {}) if fixture.get("inspector", {}) is Dictionary else {}
+	var context_detail: Dictionary = fixture.get("context_detail", {}) if fixture.get("context_detail", {}) is Dictionary else {}
 	var public_track: Array = fixture.get("public_track", []) if fixture.get("public_track", []) is Array else []
 	return {
 		"top_bar": {
@@ -255,13 +255,13 @@ func _table_state_from_fixture(fixture: Dictionary) -> Dictionary:
 		"card_track": _public_track_for_runtime(public_track),
 		"planet": {
 			"title": "主游戏表面 QA",
-			"hint": "真实 GameScreen / PlayerBoard / RightInspector / OverlayLayer",
+			"hint": "真实 GameScreen / PlayerBoard / ContextDetailDrawer / OverlayLayer",
 			"table_lanes": [
 				{"title": "玩家操作", "detail": "选牌 -> 详情 -> action_requested"},
 				{"title": "公共线索", "detail": "只显示公开 owner_hint"},
 			],
 		},
-		"right_inspector": inspector,
+		"context_detail": context_detail,
 		"player_board": player_state,
 		"temporary_decision": _temporary_decision_payload() if bool(fixture.get("temporary_decision_pending", false)) else {},
 	}
@@ -317,7 +317,7 @@ func _click_card_action(viewport: SubViewport, screen: Control, fixture: Diction
 	var action := _first_card_action(fixture, card_id, disabled)
 	if action.is_empty():
 		return false
-	var button := _button_for_action(screen.find_child("RightInspector", true, false), action)
+	var button := _button_for_action(screen.find_child("PlayerCardDock", true, false), action)
 	if button == null:
 		_failures.append("action button not found: %s" % str(action.get("id", "")))
 		return false
@@ -367,24 +367,24 @@ func _click_control(viewport: SubViewport, control: Control) -> void:
 	await _pump_frames(4)
 
 
-func _right_inspector_has_expected_detail(screen: Control, fixture: Dictionary) -> bool:
+func _context_detail_has_expected_detail(screen: Control, fixture: Dictionary) -> bool:
 	var selected: Dictionary = fixture.get("selected_card", {}) if fixture.get("selected_card", {}) is Dictionary else {}
 	if selected.is_empty():
 		return true
-	return _right_inspector_text_matches(screen, selected)
+	return _context_detail_text_matches(screen, selected)
 
 
-func _right_inspector_has_card(screen: Control, card_id: String) -> bool:
+func _context_detail_has_card(screen: Control, card_id: String) -> bool:
 	var card := _hand_card_by_id(screen, card_id)
 	if card == null or not card.has_method("get_card_data"):
 		return false
 	var data_variant: Variant = card.call("get_card_data")
 	var card_data: Dictionary = data_variant if data_variant is Dictionary else {}
-	return _right_inspector_text_matches(screen, card_data)
+	return _context_detail_text_matches(screen, card_data)
 
 
-func _right_inspector_text_matches(screen: Control, card_data: Dictionary) -> bool:
-	var text := _node_tree_text(screen.find_child("RightInspector", true, false))
+func _context_detail_text_matches(screen: Control, card_data: Dictionary) -> bool:
+	var text := _node_tree_text(screen.find_child("ContextDetailDrawer", true, false))
 	var matched := 0
 	for key in ["name", "target", "type"]:
 		var value := str(card_data.get(key, "")).strip_edges()
@@ -424,7 +424,7 @@ func _no_enabled_card_action(screen: Control) -> bool:
 
 
 func _public_hint_safe(screen: Control) -> bool:
-	var text := _node_tree_text(screen.find_child("PublicTrack", true, false)) + "\n" + _node_tree_text(screen.find_child("RightInspector", true, false))
+	var text := _node_tree_text(screen.find_child("PublicTrack", true, false)) + "\n" + _node_tree_text(screen.find_child("ContextDetailDrawer", true, false))
 	return text.contains("匿名") and not text.contains("owner") and not text.contains("hidden") and not text.contains("player_index")
 
 
@@ -604,7 +604,7 @@ func _build_markdown_report(manifest: Dictionary) -> String:
 	lines.append("- Screenshot: `%s`" % SCREENSHOT_PATH)
 	lines.append("- Case count: %d" % int(manifest.get("case_count", 0)))
 	lines.append("")
-	lines.append("| Fixture | Flow | Selected Card | Clicked | Emitted | Inspector | Disabled Reason | Public Safe | Decision Hint | Passed |")
+	lines.append("| Fixture | Flow | Selected Card | Clicked | Emitted | Context Detail | Disabled Reason | Public Safe | Decision Hint | Passed |")
 	lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
 	for record_variant in manifest.get("records", []):
 		var record: Dictionary = record_variant if record_variant is Dictionary else {}
@@ -614,7 +614,7 @@ func _build_markdown_report(manifest: Dictionary) -> String:
 			str(record.get("selected_card_id", "")),
 			str(record.get("clicked_action_id", "")),
 			str(record.get("emitted_action_id", "")),
-			str(record.get("right_inspector_checked", false)),
+			str(record.get("context_detail_checked", false)),
 			str(record.get("disabled_reason_visible", false)),
 			str(record.get("public_hint_safe", false)),
 			str(record.get("temporary_decision_hint_visible", false)),

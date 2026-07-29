@@ -2,19 +2,7 @@
 extends Control
 class_name SpaceSyndicatePlanetGlobeBackdrop
 
-const SEAT_DECORATION_ANGLES := {
-	"top": -PI * 0.5,
-	"right_high": -PI * 0.25,
-	"right_mid": 0.0,
-	"right_low": PI * 0.25,
-	"bottom": PI * 0.5,
-	"left_low": PI * 0.75,
-	"left_mid": PI,
-	"left_high": PI * 1.25,
-}
-
 var _payload := {}
-var _seat_decoration_visibility := {}
 
 
 func _ready() -> void:
@@ -36,25 +24,7 @@ func debug_snapshot() -> Dictionary:
 		"mode": str(_payload.get("mode", "")),
 		"district_count": int(_payload.get("district_count", 0)),
 		"sceneized": true,
-		"seat_decoration_visibility": seat_decoration_visibility_snapshot(),
 	}
-
-
-func set_seat_decoration_visibility(value: Dictionary) -> void:
-	var next_visibility := {}
-	for seat_position in SEAT_DECORATION_ANGLES.keys():
-		next_visibility[seat_position] = bool(value.get(seat_position, false))
-	_seat_decoration_visibility = next_visibility
-	queue_redraw()
-
-
-func seat_decoration_visibility_snapshot() -> Dictionary:
-	if _seat_decoration_visibility.is_empty():
-		var defaults := {}
-		for seat_position in SEAT_DECORATION_ANGLES.keys():
-			defaults[seat_position] = true
-		return defaults
-	return _seat_decoration_visibility.duplicate(true)
 
 
 func _draw() -> void:
@@ -66,9 +36,8 @@ func _draw() -> void:
 	var center := _as_vector2(_payload.get("globe_center", viewport_size * 0.5))
 	var radius := maxf(24.0, float(_payload.get("globe_radius", minf(viewport_size.x, viewport_size.y) * 0.34)))
 	var globe_blend := clampf(float(_payload.get("globe_blend", 1.0)), 0.0, 1.0)
-	# PlanetBoard owns the full stage-space fill. Keeping this layer transparent
-	# outside the globe lets BackSeatLayer portraits sit behind the planet disc
-	# without disappearing behind an opaque square map surface.
+	# PlanetBoard owns the full stage-space fill. This layer remains transparent
+	# outside the globe so the board-space nebula can composite behind the map.
 	_draw_nebula(center, radius, globe_blend)
 	_draw_stars(viewport_size)
 	_draw_table_ring(center, radius, globe_blend)
@@ -106,17 +75,6 @@ func _draw_table_ring(center: Vector2, radius: float, globe_blend: float) -> voi
 	var inner := Color("#fde68a")
 	inner.a = 0.08 + globe_blend * 0.08
 	draw_arc(center, radius + 8.0, 0.0, TAU, 128, inner, 1.4, true)
-	var visibility := seat_decoration_visibility_snapshot()
-	for seat_position in SEAT_DECORATION_ANGLES.keys():
-		if not bool(visibility.get(seat_position, false)):
-			continue
-		var angle := float(SEAT_DECORATION_ANGLES[seat_position])
-		var pos := center + Vector2(cos(angle), sin(angle)) * maxf(18.0, rail_radius - 18.0)
-		var glow := Color("#facc15")
-		glow.a = 0.12 + globe_blend * 0.05
-		draw_arc(pos, 8.0, 0.0, TAU, 24, glow, 1.1, true)
-
-
 func _draw_planet_disc(center: Vector2, radius: float, globe_blend: float) -> void:
 	var shadow := Color("#020617")
 	shadow.a = 0.78

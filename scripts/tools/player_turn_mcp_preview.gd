@@ -4,6 +4,7 @@ class_name PlayerTurnMcpPreview
 signal action_requested(action_id: String)
 
 const FixturesScript = preload("res://scripts/tools/player_turn_mcp_preview_fixtures.gd")
+const ContextDetailProjectionScript = preload("res://scripts/presentation/context_detail_projection_v1.gd")
 
 @onready var state_list: ItemList = %PlayerTurnStateList
 @onready var current_state_label: Label = %PlayerTurnCurrentStateLabel
@@ -14,16 +15,19 @@ const FixturesScript = preload("res://scripts/tools/player_turn_mcp_preview_fixt
 @onready var public_track: Node = %PublicTrack
 @onready var player_board: Node = %PlayerBoard
 @onready var selected_card_face: Control = %SelectedCardFace
-@onready var right_inspector: Node = %RightInspector
+@onready var context_detail_drawer: Node = %ContextDetailDrawer
 @onready var last_action_label: Label = %PlayerTurnLastActionLabel
 
 var _fixtures: RefCounted
 var _current_fixture: Dictionary = {}
 var _selected_id := "normal_hand"
+var _context_detail_revision := 0
 
 
 func _ready() -> void:
 	_fixtures = FixturesScript.new()
+	if context_detail_drawer != null and context_detail_drawer.has_method("bind_viewer"):
+		context_detail_drawer.call("bind_viewer", 0, 1)
 	_connect_state_list()
 	_connect_component_signals()
 	_populate_state_list()
@@ -86,8 +90,8 @@ func show_drag_preview() -> void:
 	show_preview_id("drag_preview")
 
 
-func show_right_inspector_card_detail() -> void:
-	show_preview_id("right_inspector_card_detail")
+func show_context_detail_card() -> void:
+	show_preview_id("context_detail_card")
 
 
 func show_public_track_selection() -> void:
@@ -107,7 +111,7 @@ func _connect_state_list() -> void:
 
 
 func _connect_component_signals() -> void:
-	for node in [player_board, right_inspector]:
+	for node in [player_board]:
 		if node == null:
 			continue
 		if node.has_signal("action_requested"):
@@ -142,13 +146,13 @@ func _apply_fixture(data: Dictionary) -> void:
 	var player_state: Dictionary = data.get("player_state", {}) if data.get("player_state", {}) is Dictionary else {}
 	var selected_card: Dictionary = data.get("selected_card", {}) if data.get("selected_card", {}) is Dictionary else {}
 	var public_entries: Array = data.get("public_track", []) if data.get("public_track", []) is Array else []
-	var inspector_context: Dictionary = data.get("inspector", {}) if data.get("inspector", {}) is Dictionary else {}
+	var context_detail: Dictionary = data.get("context_detail", {}) if data.get("context_detail", {}) is Dictionary else {}
 	if player_board != null and player_board.has_method("set_player_state"):
 		player_board.call("set_player_state", player_state)
 	if public_track != null and public_track.has_method("set_entries"):
 		public_track.call("set_entries", public_entries)
 	_apply_selected_card_face(selected_card, str(data.get("hand_focus", "none")))
-	_apply_inspector(data, selected_card, inspector_context)
+	_apply_context_detail(data, selected_card, context_detail)
 	_apply_labels(data, player_state, selected_card)
 	_apply_hand_focus(data)
 
@@ -173,13 +177,107 @@ func _apply_selected_card_face(card: Dictionary, hand_focus: String) -> void:
 		})
 
 
-func _apply_inspector(data: Dictionary, selected_card: Dictionary, fallback_context: Dictionary) -> void:
-	if right_inspector == null:
+func _apply_context_detail(data: Dictionary, selected_card: Dictionary, fallback_context: Dictionary) -> void:
+	if context_detail_drawer == null or not context_detail_drawer.has_method("apply_projection"):
 		return
-	if str(data.get("inspector_mode", "context")) == "card" and not selected_card.is_empty() and right_inspector.has_method("show_card"):
-		right_inspector.call("show_card", selected_card)
-	elif right_inspector.has_method("set_context"):
-		right_inspector.call("set_context", fallback_context)
+	_context_detail_revision += 1
+	var projection := _build_context_detail_projection(data, selected_card, fallback_context)
+	if not projection.is_empty():
+		context_detail_drawer.call("apply_projection", projection)
+
+
+func _build_context_detail_projection(
+	data: Dictionary,
+	selected_card: Dictionary,
+	fallback_context: Dictionary
+) -> Dictionary:
+	if str(data.get("context_detail_mode", "context")) == "card" and not selected_card.is_empty():
+		return _normal_card_projection(selected_card)
+	if str(data.get("id", "")) == "public_track_selection":
+		return _public_track_projection(fallback_context)
+	return _region_context_projection(fallback_context)
+
+
+func _normal_card_projection(card: Dictionary) -> Dictionary:
+	var card_id := str(card.get("id", card.get("card_id", "preview_card")))
+	var disabled_reason := str(card.get("disabled_reason", ""))
+	return ContextDetailProjectionScript.build({
+		"schema_version": ContextDetailProjectionScript.SCHEMA_VERSION,
+		"viewer_index": 0,
+		"authorization_revision": 1,
+		"source_revision": _context_detail_revision,
+		"context_id": card_id,
+		"context_kind": ContextDetailProjectionScript.KIND_NORMAL_CARD,
+		"visibility_scope": "viewer_private",
+		"title": str(card.get("name", "卡牌详情")),
+		"subtitle": str(card.get("use_case", "")),
+		"content": {
+			"card_instance_id": card_id,
+			"card_semantic_id": card_id,
+			"display_name": str(card.get("name", "预览卡牌")),
+			"illustration_key": str(card.get("illustration_key", "preview_card")),
+			"timing_text": str(card.get("requirement", "")),
+			"target_text": str(card.get("target", "")),
+			"effect_text": str(card.get("effect", "")),
+			"duration_text": str(card.get("duration", "单次结算")),
+			"visibility_text": "仅当前查看者",
+			"keyword_tokens": ["preview"],
+			"disabled_reason_id": "preview_blocked" if not disabled_reason.is_empty() else "none",
+			"disabled_reason_text": disabled_reason,
+		},
+		"navigation_intents": [],
+	})
+
+
+func _region_context_projection(context: Dictionary) -> Dictionary:
+	var district: Dictionary = context.get("district", {}) if context.get("district", {}) is Dictionary else {}
+	return ContextDetailProjectionScript.build({
+		"schema_version": ContextDetailProjectionScript.SCHEMA_VERSION,
+		"viewer_index": 0,
+		"authorization_revision": 1,
+		"source_revision": _context_detail_revision,
+		"context_id": "preview_region_facility",
+		"context_kind": ContextDetailProjectionScript.KIND_REGION_FACILITY,
+		"visibility_scope": "public",
+		"title": str(district.get("title", "当前选区")),
+		"subtitle": str(context.get("why", "")),
+		"content": {
+			"facility_id": "preview_facility",
+			"region_id": "preview_region",
+			"display_name": str(district.get("title", "当前选区")),
+			"illustration_key": "preview_region",
+			"public_status": "preview_only",
+			"summary": str(district.get("summary", "桌边上下文预览。")),
+			"detail": str(district.get("full_detail", "只读详情，不调用规则函数。")),
+		},
+		"navigation_intents": [],
+	})
+
+
+func _public_track_projection(context: Dictionary) -> Dictionary:
+	var district: Dictionary = context.get("district", {}) if context.get("district", {}) is Dictionary else {}
+	return ContextDetailProjectionScript.build({
+		"schema_version": ContextDetailProjectionScript.SCHEMA_VERSION,
+		"viewer_index": 0,
+		"authorization_revision": 1,
+		"source_revision": _context_detail_revision,
+		"context_id": "preview_public_track",
+		"context_kind": ContextDetailProjectionScript.KIND_PUBLIC_TRACK,
+		"visibility_scope": "public",
+		"title": str(district.get("title", "公共轨道")),
+		"subtitle": str(context.get("why", "")),
+		"content": {
+			"resolution_id": "preview_resolution",
+			"card_semantic_id": "preview_public_card",
+			"display_name": str(district.get("title", "公共轨道")),
+			"illustration_key": "preview_public_track",
+			"public_status": "preview_only",
+			"summary": str(district.get("summary", "公开线索预览。")),
+			"detail": str(district.get("full_detail", "只展示公开信息。")),
+			"keyword_tokens": ["preview", "public"],
+		},
+		"navigation_intents": [],
+	})
 
 
 func _apply_labels(data: Dictionary, player_state: Dictionary, selected_card: Dictionary) -> void:
@@ -277,10 +375,10 @@ func _on_card_selected(card_data: Dictionary) -> void:
 	updated["selected_card"] = card_data.duplicate(true)
 	updated["selected_card_id"] = str(card_data.get("id", card_data.get("card_id", "")))
 	updated["hand_focus"] = "selected"
+	updated["context_detail_mode"] = "card"
 	_current_fixture = updated
 	_apply_selected_card_face(card_data, "selected")
-	if right_inspector != null and right_inspector.has_method("show_card"):
-		right_inspector.call("show_card", card_data)
+	_apply_context_detail(updated, card_data, {})
 	_apply_labels(updated, updated.get("player_state", {}), card_data)
 
 

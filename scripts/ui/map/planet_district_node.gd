@@ -15,9 +15,19 @@ var _compact_mode := false
 
 
 func _ready() -> void:
-	mouse_filter = Control.MOUSE_FILTER_PASS
+	# The sceneized label owns the district click. Its presentation-only rows must
+	# not consume the event before it reaches this control.
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	_set_descendant_mouse_filter_ignore(self)
 	gui_input.connect(_on_gui_input)
 	set_meta("mcp_sceneized_component", "PlanetDistrictNode")
+
+
+func _set_descendant_mouse_filter_ignore(node: Node) -> void:
+	for child in node.get_children():
+		if child is Control:
+			(child as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_set_descendant_mouse_filter_ignore(child)
 
 
 func configure(data: Dictionary) -> void:

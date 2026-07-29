@@ -31,7 +31,6 @@ func compose_table_source(source: Dictionary) -> Dictionary:
 		player_board["bid_board"] = _dictionary(viewer_surfaces.get("public_bid", {}))
 		table_source["optional_route_presentation"] = _dictionary(viewer_surfaces.get("optional_route_presentation", {}))
 	table_source["player_board"] = player_board
-	table_source["right_inspector"] = _dictionary(surfaces.get("right_inspector", {}))
 	if bool(source.get("include_player_card_dock_bundle", false)):
 		table_source[PLAYER_CARD_DOCK_HAND_VIEWMODELS_KEY] = _array(surfaces.get("hand_cards", []))
 	return table_source
@@ -48,12 +47,10 @@ func compose_card_surfaces(source: Dictionary) -> Dictionary:
 	var hand_cards := _compose_hand_cards(_array(source.get("hand_cards", [])))
 	var track_snapshot := _compose_track(_dictionary(source.get("track", {})))
 	var card_track := _array(track_snapshot.get("entries", []))
-	var right_inspector := _compose_right_inspector(source, hand_cards, card_track)
 	return {
 		"hand_cards": hand_cards,
 		"card_track": card_track,
 		"card_resolution_track": _dictionary(track_snapshot.get("resolution_track", {})),
-		"right_inspector": right_inspector,
 	}
 
 
@@ -99,7 +96,7 @@ func debug_snapshot() -> Dictionary:
 		"owns_table_snapshot_normalization": true,
 		"owns_hand_card_viewmodels": true,
 		"owns_public_track_viewmodels": true,
-		"owns_right_inspector_assembly": true,
+		"owns_contextual_surface_sources": true,
 		"owns_resolution_overlay_badges": true,
 		"owns_viewer_surface_projection": true,
 		"supports_player_card_dock_bundle": true,
@@ -285,45 +282,6 @@ func _compose_track_entry(source: Dictionary, state_text: String, track: Diction
 	}
 
 
-func _compose_right_inspector(source: Dictionary, hand_cards: Array, track_entries: Array) -> Dictionary:
-	var selected_slot := int(source.get("selected_hand_slot", -1))
-	for card_variant in hand_cards:
-		var card := _dictionary(card_variant)
-		if int(card.get("slot", -1)) == selected_slot: return _hand_inspector(card, _array(source.get("logs", [])))
-	var selected_resolution_id := int(source.get("selected_resolution_id", -1))
-	if selected_resolution_id >= 0:
-		for entry_variant in track_entries:
-			var entry := _dictionary(entry_variant)
-			if int(entry.get("resolution_id", -1)) == selected_resolution_id: return _track_inspector(entry, _array(source.get("logs", [])))
-	return {
-		"title":"右侧详情", "why":str(source.get("fallback_why", "先选择区域或卡牌。")), "district":_dictionary(source.get("district", {})),
-		"requirements":_array(source.get("fallback_requirements", [])), "actions":_array(source.get("fallback_actions", [])), "deep_links":_array(source.get("fallback_deep_links", [])), "logs":_array(source.get("logs", [])),
-	}
-
-
-func _hand_inspector(card: Dictionary, logs: Array) -> Dictionary:
-	var chips := []
-	for key in ["rank", "type", "cost", "target"]:
-		var value := str(card.get(key, ""))
-		if value.strip_edges() != "": chips.append({"text":"%s %s" % [_card_fact_label(key), value]})
-	var effect_text := str(card.get("effect", ""))
-	var summary_text := str(card.get("summary", "")).strip_edges()
-	if summary_text == "": summary_text = _short_text(effect_text, 56) if effect_text.strip_edges() != "" else "看费用、目标和当前选区条件。"
-	var why_text := str(card.get("why", effect_text))
-	if why_text.strip_edges() == "": why_text = "先看费用、目标和当前选区条件，再决定是否打出。"
-	return {"title":"卡牌详情", "why":why_text, "district":{"id":str(card.get("id", "")), "title":str(card.get("name", "卡牌")), "summary":summary_text, "detail":summary_text, "full_detail":effect_text, "chips":chips}, "requirements":_array(card.get("requirements", [])), "actions":_array(card.get("actions", [])), "deep_links":[{"id":"detail_cards", "label":"卡牌详情"}, {"id":"detail_region", "label":"区域详情"}], "logs":logs}
-
-
-func _track_inspector(entry: Dictionary, logs: Array) -> Dictionary:
-	var chips := [{"text":"槽 %s" % str(entry.get("slot", "--"))}, {"text":str(entry.get("state", "等待"))}, {"text":"归属:%s" % str(entry.get("owner_hint", "匿名"))}]
-	for badge_variant in _array(entry.get("badges", [])):
-		var badge_text := str(badge_variant).strip_edges()
-		if badge_text != "": chips.append({"text":badge_text})
-		if chips.size() >= 6: break
-	var tooltip := str(entry.get("tooltip", ""))
-	return {"title":str(entry.get("title", "牌轨详情")), "why":str(entry.get("why", tooltip)), "district":{"id":str(entry.get("id", "")), "title":str(entry.get("label", "公共牌槽")), "summary":str(entry.get("summary", tooltip)), "detail":str(entry.get("detail", tooltip)), "full_detail":str(entry.get("full_detail", tooltip)), "chips":chips}, "requirements":_array(entry.get("requirements", [])), "actions":_array(entry.get("actions", [])), "deep_links":_array(entry.get("deep_links", [])), "logs":logs}
-
-
 func _visible_badges(entry: Dictionary, state_text: String, selected: bool) -> Array:
 	var badges := []
 	if selected: badges.append("已选")
@@ -451,10 +409,6 @@ func _real_track_count(entries: Array) -> int:
 	for entry_variant in entries:
 		if entry_variant is Dictionary and str((entry_variant as Dictionary).get("kind", "")) != "event": count += 1
 	return count
-
-
-func _card_fact_label(key: String) -> String:
-	return str({"rank":"等级", "type":"类型", "cost":"费用", "target":"目标"}.get(key, key))
 
 
 func _compose_card(source: Dictionary) -> Dictionary:

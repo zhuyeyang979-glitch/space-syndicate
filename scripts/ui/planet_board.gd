@@ -1,16 +1,11 @@
 extends PanelContainer
 class_name SpaceSyndicatePlanetBoard
 
-signal player_inspection_requested(player_index: int)
-
 @onready var title_label: Label = %PlanetTitle
 @onready var hint_label: Label = %PlanetHint
 @onready var weather_forecast_strip: Control = %WeatherForecastStrip
 @onready var stage_viewport: Control = %PlanetStageViewport
 @onready var map_host: Control = %MapHost
-@onready var role_seat_layer_host: Node = %RoleSeatLayerHost
-@onready var back_seat_layer: Control = %BackSeatLayer
-@onready var front_seat_layer: Control = %FrontSeatLayer
 @onready var embedded_map_view: Control = get_node_or_null("%PlanetMapView") as Control
 @onready var playtest_flow_compass: PanelContainer = %PlaytestFlowCompass
 @onready var playtest_flow_compass_title: Label = %PlaytestFlowCompassTitle
@@ -46,7 +41,6 @@ var _map_presentation_target_count := 0
 var _presentation_authorized_viewer_index := -1
 var _presentation_authorization_revision := 0
 var _fullscreen_map_target: SpaceSyndicatePlanetMapView
-var _seat_side_column_count := 0
 
 
 func _ready() -> void:
@@ -63,10 +57,6 @@ func _ready() -> void:
 	if stage_viewport != null:
 		stage_viewport.clip_contents = false
 		stage_viewport.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if role_seat_layer_host != null and role_seat_layer_host.has_method("set_map_visual_target"):
-		role_seat_layer_host.call("set_map_visual_target", embedded_map_view)
-	if role_seat_layer_host != null and role_seat_layer_host.has_signal("player_inspection_requested"):
-		role_seat_layer_host.connect("player_inspection_requested", Callable(self, "_on_player_inspection_requested"))
 	call_deferred("_fit_square_stage")
 	queue_redraw()
 
@@ -99,10 +89,6 @@ func set_board_state(data: Dictionary) -> void:
 	)
 	_set_weather_strip(data.get("weather", {}))
 	_set_flow_compass(data.get("flow_compass", {}))
-	var seat_descriptors: Array = data.get("player_seats", []) if data.get("player_seats", []) is Array else []
-	_seat_side_column_count = seat_descriptors.size()
-	if role_seat_layer_host != null and role_seat_layer_host.has_method("set_seat_descriptors"):
-		role_seat_layer_host.call("set_seat_descriptors", seat_descriptors)
 	_configure_pointer_passthrough_layers()
 	call_deferred("_fit_square_stage")
 
@@ -155,24 +141,6 @@ func bind_presentation_viewer(viewer_index: int, authorization_revision: int) ->
 	_presentation_authorization_revision = authorization_revision
 
 
-func set_inspected_player_index(player_index: int) -> void:
-	if role_seat_layer_host != null and role_seat_layer_host.has_method("set_inspected_player_index"):
-		role_seat_layer_host.call("set_inspected_player_index", player_index)
-
-
-func inspected_player_index() -> int:
-	return int(role_seat_layer_host.call("inspected_player_index")) if role_seat_layer_host != null and role_seat_layer_host.has_method("inspected_player_index") else -1
-
-
-func focus_inspected_player(player_index: int) -> void:
-	if role_seat_layer_host != null and role_seat_layer_host.has_method("focus_player"):
-		role_seat_layer_host.call("focus_player", player_index)
-
-
-func _on_player_inspection_requested(player_index: int) -> void:
-	player_inspection_requested.emit(player_index)
-
-
 func map_presentation_target_debug_snapshot() -> Dictionary:
 	return {
 		"target_revision": _map_presentation_target_revision,
@@ -210,8 +178,6 @@ func attach_runtime_map(map_node: Control) -> void:
 	map_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	map_host.add_child(map_node)
 	embedded_map_view = map_node
-	if role_seat_layer_host != null and role_seat_layer_host.has_method("set_map_visual_target"):
-		role_seat_layer_host.call("set_map_visual_target", map_node)
 	map_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_fit_square_stage()
 
@@ -223,9 +189,6 @@ func _configure_pointer_passthrough_layers() -> void:
 		right_space_rail,
 	]:
 		_set_mouse_filter_recursive(node, Control.MOUSE_FILTER_IGNORE)
-	for seat_layer in [back_seat_layer, front_seat_layer]:
-		if seat_layer != null:
-			seat_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 func _set_mouse_filter_recursive(node: Node, filter: Control.MouseFilter) -> void:
@@ -274,22 +237,9 @@ func _fit_square_stage() -> void:
 	map_host.position = map_rect.position
 	map_host.size = map_rect.size
 	map_host.custom_minimum_size = Vector2(min_square, min_square)
-	for seat_layer in [back_seat_layer, front_seat_layer]:
-		if seat_layer != null:
-			seat_layer.position = Vector2.ZERO
-			seat_layer.size = available
-	var side_columns_active := _seat_side_column_count >= 3
-	if side_columns_active:
-		for utility in [playtest_flow_compass, left_space_rail, right_space_rail]:
-			if utility != null:
-				utility.visible = false
-				utility.set_meta("suppressed_for_player_side_columns", true)
-	else:
-		_layout_flow_compass(map_rect, available)
-		_layout_space_rail(left_space_rail, true, map_rect, available)
-		_layout_space_rail(right_space_rail, false, map_rect, available)
-	if role_seat_layer_host != null and role_seat_layer_host.has_method("request_layout"):
-		role_seat_layer_host.call("request_layout")
+	_layout_flow_compass(map_rect, available)
+	_layout_space_rail(left_space_rail, true, map_rect, available)
+	_layout_space_rail(right_space_rail, false, map_rect, available)
 
 
 func _layout_flow_compass(map_rect: Rect2, _available: Vector2) -> void:
