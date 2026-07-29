@@ -66,9 +66,16 @@ static func start_configured_session(
 		"qa_save_override_ready": qa_override_ready,
 	}, true)
 	if coordinator == null or world_session == null or game_session == null \
-		or draft_service == null or command_port == null or transaction == null:
+			or draft_service == null or command_port == null or transaction == null:
 		result["reason_code"] = "formal_session_start_composition_unavailable"
 		return result
+	if configuration.has("run_seed"):
+		var runtime_rng := coordinator.run_rng_service()
+		if runtime_rng == null:
+			result["reason_code"] = "configured_run_seed_owner_unavailable"
+			return result
+		runtime_rng.seed = int(configuration.get("run_seed", 0))
+		result["configured_run_seed"] = runtime_rng.seed
 
 	var configure_result := _configure_draft(draft_service, command_port, configuration, request_id)
 	result["draft_command_receipts"] = (configure_result.get("receipts", []) as Array).duplicate(true)
