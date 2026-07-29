@@ -9101,3 +9101,24 @@ deleted. Evidence and the remaining action inventory are recorded in
 - The next player-value boundary is Alpha 0.4-C Save/Resume owner coverage and
   cold restore. UI expansion and a full V0.7 runtime cutover remain deferred
   until the current V0.6 production run can be closed, restored, and continued.
+
+## 2026-07-30 — Alpha 0.4-C dirty-worktree recovery checkpoint (PARTIAL)
+
+- Classified all 40 tracked modifications and 30 starting untracked paths;
+  no ambiguous user work overlaps the Save/Resume boundary. Generated Godot
+  UID sidecars remain excluded from commits.
+- Recovered the 19-owner transactional registry and controlled production
+  Save/Continue flow into atomic commits. The real default session passes
+  19/19 pure preflight, nine cross-section checks, 19/19 injected reverse
+  rollback, apply 19, Registry commit 1, and rebind 1.
+- The v3 envelope uses tagged Int64 and exact Float64 bit patterns and now
+  rejects untagged JSON numeric scalars. Focused evidence passes: envelope
+  62/62, file faults 16/16, Save/Resume flow 40/40, confirmation 10/10, fork
+  parity 14/14, Main composition, project parse, and smoke `--check-only`.
+- The three-process cold-restore comparator remains a PARTIAL harness. Its
+  execution switch is false, it rejects dirty sources, and its shared
+  production slot is isolated under a run-specific temporary user-data root.
+  Official A/B/C count remains zero while arbitrary legal Action Spine queue
+  qualification and validator/terminal evidence are unfinished.
+- No third Formal FullRun, full smoke, official cold restore, or V0.7 code was
+  executed or added.
