@@ -10,8 +10,8 @@ state and must not be maintained as a competing registry.
 - Current production runtime ruleset: **V0.6**
 - Highest target development constitution: **V0.7**
 - Full V0.7 runtime cutover: **false**
-- Registered domains: **24**
-- Core-ready domains: **18**
+- Registered domains: **28**
+- Core-ready domains: **21**
 - Fully three-layer-ready domains: **1**
 - Global three-layer semantics complete: **false**
 
@@ -58,6 +58,25 @@ signal. Screen coordinates remain inside GameScreen and become a stable public
 region ID; the application flow and card submission owner revalidate the
 authoritative district.
 
+## Current Alpha 0.4-A production player slice
+
+The V0.6 production table now composes one viewer-authorized Player Card Dock
+for normal cards, owned commodities, and an honestly empty bound-action
+section. Normal and commodity card actions enter the existing semantic Action
+Spine; the Dock stores no gameplay state and owns no inventory mutation.
+
+Public commodity source cards use direct card-body input instead of a claim
+Button. The V0.6 claim Application Flow binds viewer/request revision and the
+slot/card/snapshot/belt/visibility source identity, rejects collisions and
+duplicates, and redacts hidden-source identities. The source and owned-card
+surfaces resolve the same catalog illustration key. All 12 active commodity
+families and all 48 active rank IDs have authored art with zero fallback.
+
+This slice does not claim a V0.7 commodity cutover. Production capacity remains
+`SHARED_V06`, bound-action authority remains absent, RightInspector remains for
+non-card details, and Save, RNG, AI policy, gameplay values, and commodity rules
+are unchanged. The next product boundary is the production roster/region-popup
+cutover and RightInspector retirement in Alpha 0.4-B.
 ## Domain status matrix
 
 | Domain | Core | AI | Player | Main-free | Cutover | Next atomic boundary |
@@ -83,6 +102,10 @@ authoritative district.
 | save_restore | BLOCKED | CONTRACT_ONLY | CONTRACT_ONLY | BLOCKED | BLOCKED | P1_SAVE_RESUME_OWNER_COVERAGE |
 | rng_replay | CORE_READY | CONTRACT_ONLY | CONTRACT_ONLY | CUTOVER_COMPLETE | CORE_READY | NONE_REPLAY_DEFERRED_UNTIL_COMMAND_COVERAGE |
 | table_presentation | CORE_READY | CONTRACT_ONLY | CORE_PLAYER_READY | CUTOVER_COMPLETE | CUTOVER_COMPLETE | NONE_PRESENTATION_SOURCE_TARGET_STABLE |
+| normal_card_inventory | CORE_READY | CONTRACT_ONLY | CORE_PLAYER_READY | CUTOVER_COMPLETE | CORE_PLAYER_READY | AI_WORLD_TYPED_PORTS_AND_MAIN_BINDING_REMOVAL |
+| commodity_card_inventory | CORE_READY | CONTRACT_ONLY | CORE_PLAYER_READY | CUTOVER_COMPLETE | CORE_PLAYER_READY | V07_INDEPENDENT_CARD_INVENTORY_CORE_CUTOVER_AFTER_REQUIRED_GATES |
+| bound_action_inventory | CONTRACT_ONLY | CONTRACT_ONLY | PASSIVE_PROJECTION_ONLY | CUTOVER_COMPLETE | BLOCKED | V06_BOUND_ACTION_TYPED_ACQUISITION_LIFECYCLE_CUTOVER |
+| player_card_dock | CORE_READY | CONTRACT_ONLY | CORE_PLAYER_READY | CUTOVER_COMPLETE | CUTOVER_COMPLETE | ALPHA_0_4_B_PRODUCTION_ROSTER_REGION_POPUP_AND_RIGHT_INSPECTOR_RETIREMENT |
 | player_action_routing | THREE_LAYER_READY | THREE_LAYER_READY | THREE_LAYER_READY | CUTOVER_COMPLETE | CUTOVER_COMPLETE | AI_WORLD_TYPED_PORTS_AND_MAIN_BINDING_REMOVAL |
 | ai_observation_decision_action | CONTRACT_ONLY | LEGACY_RAW | CONTRACT_ONLY | BLOCKED | BLOCKED | AI_WORLD_TYPED_PORTS_AND_MAIN_BINDING_REMOVAL |
 | application_navigation | CORE_READY | CONTRACT_ONLY | CORE_PLAYER_READY | CUTOVER_COMPLETE | CUTOVER_COMPLETE | NONE_APPLICATION_FLOW_STABLE |
@@ -97,6 +120,7 @@ authoritative district.
 - No replay, rollback, multiplayer synchronization, or second Save system has
   been introduced.
 
-The next minimum boundary is
-`AI_WORLD_TYPED_PORTS_AND_MAIN_BINDING_REMOVAL`. It must consume the action
-spine established here rather than recreate it.
+The next minimum product boundary is
+`ALPHA_0_4_B_PRODUCTION_ROSTER_REGION_POPUP_AND_RIGHT_INSPECTOR_RETIREMENT`.
+It must preserve the action spine established here rather than recreate it;
+the separate AI-world typed-port boundary remains registered and blocked.

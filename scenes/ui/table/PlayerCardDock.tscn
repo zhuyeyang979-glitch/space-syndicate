@@ -29,7 +29,7 @@ corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
 [node name="PlayerCardDock" type="PanelContainer"]
-custom_minimum_size = Vector2(0, 190)
+custom_minimum_size = Vector2(0, 168)
 theme = ExtResource("1_theme")
 theme_override_styles/panel = SubResource("StyleDock")
 script = ExtResource("2_script")
@@ -37,13 +37,13 @@ script = ExtResource("2_script")
 [node name="DockMargin" type="MarginContainer" parent="."]
 layout_mode = 2
 theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 5
+theme_override_constants/margin_top = 3
 theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 5
+theme_override_constants/margin_bottom = 3
 
 [node name="DockRows" type="VBoxContainer" parent="DockMargin"]
 layout_mode = 2
-theme_override_constants/separation = 5
+theme_override_constants/separation = 3
 
 [node name="DockHeader" type="HBoxContainer" parent="DockMargin/DockRows"]
 layout_mode = 2
@@ -51,7 +51,7 @@ layout_mode = 2
 [node name="DockTitle" type="Label" parent="DockMargin/DockRows/DockHeader"]
 layout_mode = 2
 text = "玩家卡牌坞"
-theme_override_font_sizes/font_size = 17
+theme_override_font_sizes/font_size = 14
 
 [node name="CardDockCapacitySummary" type="Label" parent="DockMargin/DockRows/DockHeader"]
 unique_name_in_owner = true
@@ -86,6 +86,7 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "绑定行动 0｜不占上限"
 horizontal_alignment = 1
+theme_override_font_sizes/font_size = 10
 
 [node name="BoundScroll" type="ScrollContainer" parent="DockMargin/DockRows/PoolColumns/BoundPool/BoundRows"]
 layout_mode = 2
@@ -110,6 +111,7 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "普通牌 0"
 horizontal_alignment = 1
+theme_override_font_sizes/font_size = 10
 
 [node name="NormalScroll" type="ScrollContainer" parent="DockMargin/DockRows/PoolColumns/NormalPool/NormalRows"]
 layout_mode = 2
@@ -134,6 +136,7 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "商品牌 0"
 horizontal_alignment = 1
+theme_override_font_sizes/font_size = 10
 
 [node name="CommodityScroll" type="ScrollContainer" parent="DockMargin/DockRows/PoolColumns/CommodityPool/CommodityRows"]
 layout_mode = 2

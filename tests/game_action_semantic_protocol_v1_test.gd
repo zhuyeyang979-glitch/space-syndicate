@@ -452,7 +452,45 @@ func _test_global_three_layer_registry_contract() -> void:
 		if bool(domain.get("core_semantics_ready", false)):
 			core_ready_count += 1
 	var summary: Dictionary = registry.get("summary", {}) if registry.get("summary", {}) is Dictionary else {}
-	_expect(domains.size() == 24 and int(summary.get("registered_domain_count", -1)) == domains.size(), "registry inventories exactly 24 required semantic domains")
+	var required_domain_ids: Array[String] = [
+		"session_setup",
+		"runtime_lifecycle",
+		"ordinary_cards",
+		"card_group_resolution",
+		"commodity_inventory",
+		"commodity_sushi_track",
+		"market_stance_cycle",
+		"economy_gdp",
+		"product_market",
+		"commodity_flow",
+		"routes",
+		"regions_cities_facilities",
+		"monsters",
+		"military",
+		"weather",
+		"intel_history_inference",
+		"victory_audit",
+		"final_settlement",
+		"save_restore",
+		"rng_replay",
+		"table_presentation",
+		"normal_card_inventory",
+		"commodity_card_inventory",
+		"bound_action_inventory",
+		"player_card_dock",
+		"player_action_routing",
+		"ai_observation_decision_action",
+		"application_navigation",
+	]
+	var actual_domain_ids: Array[String] = domain_ids.duplicate()
+	required_domain_ids.sort()
+	actual_domain_ids.sort()
+	_expect(
+		domains.size() == 28 \
+			and int(summary.get("registered_domain_count", -1)) == domains.size() \
+			and actual_domain_ids == required_domain_ids,
+		"registry inventories exactly the 28 required semantic domains"
+	)
 	_expect(fields_complete and domain_ids.size() == domains.size(), "every semantic domain has the closed required field set and a unique identity")
 	_expect(statuses_valid, "every semantic status uses the one approved vocabulary")
 	_expect(ready_flags_consistent, "THREE_LAYER_READY is claimed only when core, AI, and player readiness are all true")

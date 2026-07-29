@@ -284,11 +284,29 @@ var _action_stats := {
 	"attempted": 0,
 	"progressed": 0,
 	"rejected_invalid": 0,
+	"normal_card_was_visible_during_run": false,
+	"commodity_card_was_visible_during_run": false,
+	"commodity_source_art_was_visible": false,
+	"commodity_inventory_art_was_visible": false,
+	"direct_commodity_claim_succeeded": false,
+	"commodity_claim_request_count": 0,
+	"duplicate_commodity_claim_count": 0,
+	"commodity_source_render_p95_ms": 0.0,
+	"commodity_inventory_render_p95_ms": 0.0,
+	"commodity_hover_p95_ms": 0.0,
+	"single_click_to_intent_p95_ms": 0.0,
+	"receipt_to_inventory_refresh_p95_ms": 0.0,
+	"commodity_performance_metrics_recorded": false,
+	"commodity_claim_button_count": -1,
+	"player_card_dock_refresh_count": 0,
+	"duplicate_card_submission_count": 0,
 	"supply_quote_refreshes": 0,
 	"supply_rack_rotations": 0,
 	"supply_rack_advancement_purchases": 0,
 	"reason_codes": {},
 }
+var _submitted_card_offer_fingerprints: Dictionary = {}
+var _commodity_claim_ui_requested := false
 
 
 func _init() -> void:
@@ -319,9 +337,6 @@ func _run() -> void:
 		_emit_summary(_summary(options, missing_instance, "blocked_by_capability", "runtime_composition_unavailable", {}, {}))
 		quit(EXIT_RUNTIME_COMPOSITION_UNAVAILABLE)
 		return
-	if main_instance is CanvasItem:
-		(main_instance as CanvasItem).visible = false
-
 	var coordinator := main_instance.get_node_or_null(COORDINATOR_PATH)
 	var session := coordinator.get_node_or_null(SESSION_PATH) if coordinator != null else null
 	var save_coordinator := session.get_node_or_null(SAVE_COORDINATOR_PATH) if session != null else null
@@ -399,6 +414,12 @@ func _run() -> void:
 	_last_event = "session_started"
 	_session_started_msec = Time.get_ticks_msec()
 	_record_rng_checkpoint("setup", coordinator)
+	_observe_player_card_dock(runtime_screen)
+	if _request_first_public_commodity_claim(runtime_screen):
+		_commodity_claim_ui_requested = true
+		_last_event = "commodity_claim_requested_through_production_ui"
+		await _wait_frames(4)
+		_observe_player_card_dock(runtime_screen)
 	var observation_started_msec := Time.get_ticks_msec()
 	var observation_limit_msec := int(options.get("observation_seconds", DEFAULT_OBSERVATION_SECONDS)) * 1000
 	var max_wall_msec := int(options.get("max_wall_seconds", DEFAULT_MAX_WALL_SECONDS)) * 1000
@@ -425,6 +446,12 @@ func _run() -> void:
 
 	while true:
 		await process_frame
+		_observe_player_card_dock(runtime_screen)
+		if not _commodity_claim_ui_requested \
+				and not bool(_action_stats.get("commodity_card_was_visible_during_run", false)) \
+				and _request_first_public_commodity_claim(runtime_screen):
+			_commodity_claim_ui_requested = true
+			_last_event = "commodity_claim_requested_through_production_ui"
 		var now_msec := Time.get_ticks_msec()
 		var public_progress: Dictionary = final_telemetry.get("progress", {}) if final_telemetry.get("progress", {}) is Dictionary else {}
 		var sale_receipt: Dictionary = final_telemetry.get("sale_receipt", {}) if final_telemetry.get("sale_receipt", {}) is Dictionary else {}
@@ -1067,6 +1094,11 @@ func _run() -> void:
 	_leave_runtime_loop_manual_mode(runtime_loop)
 	final_telemetry = _collect_telemetry(run_seed, coordinator, session, settlement_composition, standings_query_port, runtime_screen, observation_started_msec, _last_event, cached_ui_action)
 	_observe_authoritative_progress(final_telemetry)
+	_observe_player_card_dock(runtime_screen)
+	if final_status == "settled" and not player_card_dock_acceptance_green(_action_stats):
+		final_status = "incomplete"
+		failure_code = "player_card_dock_acceptance_incomplete"
+		_last_event = "blocked:%s" % failure_code
 	_emit_authoritative_progress_checkpoints(seed_index, final_telemetry, coordinator)
 	_emit_heartbeat(seed_index, final_telemetry, final_status)
 	_cleanup_main(main_instance, save_coordinator)
@@ -1564,6 +1596,7 @@ func _scripted_ui_action(
 	var ui_variant: Variant = runtime_screen.get("current_ui_data")
 	var ui: Dictionary = ui_variant if ui_variant is Dictionary else {}
 	var player_board: Dictionary = ui.get("player_board", {}) if ui.get("player_board", {}) is Dictionary else {}
+	var player_card_dock: Dictionary = ui.get("player_card_dock", {}) if ui.get("player_card_dock", {}) is Dictionary else {}
 	var temporary: Dictionary = ui.get("temporary_decision", {}) if ui.get("temporary_decision", {}) is Dictionary else {}
 	if not temporary.is_empty():
 		var temporary_action := _first_enabled_action(temporary.get("actions", []))
@@ -1639,7 +1672,7 @@ func _scripted_ui_action(
 		}
 	_sync_supply_rotation_plan(supply_rotation_state, normalized_plan)
 	var hand_cards := _facility_cards_with_stable_identity(
-		player_board.get("hand_cards", []) if player_board.get("hand_cards", []) is Array else []
+		player_card_dock.get("normal_cards", []) if player_card_dock.get("normal_cards", []) is Array else []
 	)
 	var matching_hand_card := EconomyContinuationPlannerScript.first_matching_facility(
 		hand_cards,
@@ -1994,23 +2027,30 @@ static func _facility_cards_with_stable_identity(cards: Array) -> Array:
 		if not (card_variant is Dictionary):
 			continue
 		var card := (card_variant as Dictionary).duplicate(true)
-		if str(card.get("kind", "")) != "facility_v06":
+		if str(card.get("category_id", "")) not in ["facility", "facility-v06"]:
 			continue
-		var action := _first_enabled_or_disabled_action(card.get("actions", []))
-		var offer: Dictionary = action.get("game_action_offer", {}) \
-			if action.get("game_action_offer", {}) is Dictionary else {}
+		var offer: Dictionary = card.get("game_action_offer", {}) \
+			if card.get("game_action_offer", {}) is Dictionary else {}
+		if not bool(GameActionOfferV1.validation_report(offer).get("valid", false)):
+			continue
 		var target_ids := GameActionOfferV1.target_ids(offer) if not offer.is_empty() else {}
 		var offered_instance_ref := str(target_ids.get("card_instance_id", ""))
-		var projected_instance_ref := str(card.get("card_instance_ref", ""))
+		var projected_instance_ref := str(card.get("card_instance_id", ""))
 		var offered_source_revision := maxi(0, int(offer.get("source_revision", 0)))
-		var projected_source_revision := maxi(0, int(card.get("offer_source_revision", 0)))
+		var projected_source_revision := maxi(0, int(card.get("source_revision", 0)))
 		if (not projected_instance_ref.is_empty() \
 				and projected_instance_ref != offered_instance_ref) \
 				or (projected_source_revision > 0 \
 				and projected_source_revision != offered_source_revision):
 			continue
+		card["card_id"] = str(card.get("card_semantic_id", ""))
 		card["card_instance_ref"] = offered_instance_ref
 		card["source_revision"] = offered_source_revision
+		card["kind"] = "facility_v06"
+		card["actionable"] = str(card.get("play_state", "disabled")) == "available"
+		card["play_reason_id"] = str(
+			card.get("disabled_reason_id", "action-disabled")
+		).replace("-", "_")
 		if not str(card.get("card_id", "")).is_empty() \
 				and not str(card.get("card_instance_ref", "")).is_empty():
 			result.append(card)
@@ -2042,31 +2082,21 @@ static func matching_facility_cards(
 static func _enabled_card_action_request(card: Dictionary) -> Dictionary:
 	if card.is_empty():
 		return {}
-	var action := _first_enabled_action(card.get("actions", []))
-	if action.is_empty():
+	var offer: Dictionary = card.get("game_action_offer", {}) \
+		if card.get("game_action_offer", {}) is Dictionary else {}
+	if not bool(GameActionOfferV1.validation_report(offer).get("valid", false)) \
+			or str(offer.get("legality_state", "")) != "available" \
+			or not bool(card.get("actionable", false)):
 		return {}
 	var request := {
-		"id": str(action.get("id", "")),
+		"id": "card.play.%s" % str(card.get("card_instance_ref", "unknown")),
 		"phase": "play.hand.facility_v06.%s" % str(card.get("action_state", card.get("play_state", "ready"))),
 		"disabled": false,
 		"origin": "game_action",
 	}
-	var offer: Dictionary = action.get("game_action_offer", {}) \
-		if action.get("game_action_offer", {}) is Dictionary else {}
-	if offer.is_empty():
-		return {}
 	request["game_action_offer"] = offer.duplicate(true)
 	request["game_action_required"] = true
 	return request
-
-
-static func _first_enabled_or_disabled_action(value: Variant) -> Dictionary:
-	if not (value is Array):
-		return {}
-	for action_variant in value as Array:
-		if action_variant is Dictionary and not str((action_variant as Dictionary).get("id", "")).is_empty():
-			return (action_variant as Dictionary).duplicate(true)
-	return {}
 
 
 static func production_growth_required(
@@ -3787,7 +3817,169 @@ func _submit_scripted_ui_action(runtime_screen: Node, action: Dictionary) -> boo
 		if action.get("game_action_offer", {}) is Dictionary else {}
 	if action_screen == null or action_id.is_empty() or offer.is_empty():
 		return false
+	if str(offer.get("semantic_action_id", "")) == GameActionIntentV1.ACTION_CARD_PLAY:
+		var offer_fingerprint := str(offer.get("offer_fingerprint", ""))
+		if offer_fingerprint.is_empty():
+			return false
+		if _submitted_card_offer_fingerprints.has(offer_fingerprint):
+			_action_stats["duplicate_card_submission_count"] = int(
+				_action_stats.get("duplicate_card_submission_count", 0)
+			) + 1
+		else:
+			_submitted_card_offer_fingerprints[offer_fingerprint] = true
 	return action_screen.submit_game_action_offer(offer, "human_click", {}, {})
+
+
+func _observe_player_card_dock(runtime_screen: Node) -> void:
+	var screen := runtime_screen as SpaceSyndicateGameScreen
+	if screen == null:
+		return
+	var dock := screen.find_child("PlayerCardDock", true, false) as SpaceSyndicatePlayerCardDock
+	if dock == null:
+		return
+	var claim_performance := screen.commodity_claim_performance_snapshot()
+	for metric in [
+		"commodity_source_render_p95_ms",
+		"commodity_inventory_render_p95_ms",
+		"commodity_hover_p95_ms",
+		"single_click_to_intent_p95_ms",
+		"receipt_to_inventory_refresh_p95_ms",
+	]:
+		_action_stats[metric] = maxf(
+			float(_action_stats.get(metric, 0.0)),
+			float(claim_performance.get(metric, 0.0))
+		)
+	var performance_samples_recorded := true
+	for sample_metric in [
+		"commodity_source_render_sample_count",
+		"commodity_inventory_render_sample_count",
+		"commodity_hover_sample_count",
+		"single_click_to_intent_sample_count",
+		"receipt_to_inventory_refresh_sample_count",
+	]:
+		if int(claim_performance.get(sample_metric, 0)) <= 0:
+			performance_samples_recorded = false
+			break
+	_action_stats["commodity_performance_metrics_recorded"] = bool(
+		_action_stats.get("commodity_performance_metrics_recorded", false)
+	) or performance_samples_recorded
+	var debug := dock.debug_snapshot()
+	_action_stats["player_card_dock_refresh_count"] = maxi(
+		int(_action_stats.get("player_card_dock_refresh_count", 0)),
+		int(debug.get("apply_count", 0))
+	)
+	if not dock.is_visible_in_tree():
+		return
+	_action_stats["normal_card_was_visible_during_run"] = bool(
+		_action_stats.get("normal_card_was_visible_during_run", false)
+	) or _visible_card_face_count(dock, "NormalHandCards") > 0
+	_action_stats["commodity_card_was_visible_during_run"] = bool(
+		_action_stats.get("commodity_card_was_visible_during_run", false)
+	) or _visible_card_face_count(dock, "CommodityCards") > 0
+	_action_stats["commodity_inventory_art_was_visible"] = bool(
+		_action_stats.get("commodity_inventory_art_was_visible", false)
+	) or _visible_authored_card_face_count(dock, "CommodityCards") > 0
+	var track := screen.find_child("TopCommoditySushiTrack", true, false)
+	if track != null and track.has_method("debug_snapshot"):
+		var track_debug: Dictionary = track.call("debug_snapshot") as Dictionary
+		_action_stats["commodity_claim_button_count"] = int(track_debug.get("claim_button_count", -1))
+		_action_stats["commodity_claim_request_count"] = maxi(
+			int(_action_stats.get("commodity_claim_request_count", 0)),
+			int(track_debug.get("claim_submission_count", 0))
+		)
+		_action_stats["direct_commodity_claim_succeeded"] = bool(
+			_action_stats.get("direct_commodity_claim_succeeded", false)
+		) or int(track_debug.get("claim_result_success_count", 0)) > 0
+		_action_stats["duplicate_commodity_claim_count"] = maxi(
+			int(_action_stats.get("duplicate_commodity_claim_count", 0)),
+			maxi(0, int(track_debug.get("claim_result_success_count", 0)) - 1)
+		)
+		if not bool(_action_stats.get("commodity_source_art_was_visible", false)):
+			for item_variant in track.find_children("CommoditySlot_*", "PanelContainer", true, false):
+				var item_node := item_variant as Node
+				if item_node != null and item_node.has_method("debug_snapshot") \
+						and bool((item_node.call("debug_snapshot") as Dictionary).get("illustration_active", false)):
+					_action_stats["commodity_source_art_was_visible"] = true
+					break
+
+
+func _request_first_public_commodity_claim(runtime_screen: Node) -> bool:
+	var screen := runtime_screen as SpaceSyndicateGameScreen
+	if screen == null:
+		return false
+	var track := screen.find_child("TopCommoditySushiTrack", true, false)
+	if track == null:
+		return false
+	for item_variant in track.find_children("CommoditySlot_*", "PanelContainer", true, false):
+		var item_node := item_variant as Control
+		if item_node == null or not item_node.is_visible_in_tree() or not item_node.has_method("debug_snapshot"):
+			continue
+		var item_debug: Dictionary = item_node.call("debug_snapshot") as Dictionary
+		if not bool(item_debug.get("claimable", false)) or bool(item_debug.get("claim_pending", false)):
+			continue
+		var point := item_node.get_global_rect().get_center()
+		item_node.call("notify_pointer_hover")
+		item_node.call("_begin_pointer_interaction", point)
+		item_node.call("_finish_pointer_interaction", point)
+		if is_instance_valid(item_node):
+			item_node.call("_begin_pointer_interaction", point)
+			item_node.call("_finish_pointer_interaction", point)
+		return true
+	return false
+
+
+static func _visible_card_face_count(dock: Node, host_name: String) -> int:
+	var host := dock.find_child(host_name, true, false) if dock != null else null
+	if host == null:
+		return 0
+	var count := 0
+	for child in host.get_children():
+		if child is Control and (child as Control).is_visible_in_tree() \
+				and child.has_method("get_card_data"):
+			count += 1
+	return count
+
+
+static func _visible_authored_card_face_count(dock: Node, host_name: String) -> int:
+	var host := dock.find_child(host_name, true, false) if dock != null else null
+	if host == null:
+		return 0
+	var count := 0
+	for child in host.get_children():
+		if child is Control and (child as Control).is_visible_in_tree() \
+				and bool(child.get_meta("external_illustration_active", false)) \
+				and bool(child.get_meta("authored_illustration_active", false)):
+			count += 1
+	return count
+
+
+static func player_card_dock_acceptance_green(evidence: Dictionary) -> bool:
+	return bool(evidence.get("normal_card_was_visible_during_run", false)) \
+		and bool(evidence.get("commodity_card_was_visible_during_run", false)) \
+		and bool(evidence.get("commodity_source_art_was_visible", false)) \
+		and bool(evidence.get("commodity_inventory_art_was_visible", false)) \
+		and bool(evidence.get("direct_commodity_claim_succeeded", false)) \
+		and int(evidence.get("commodity_claim_request_count", 0)) == 1 \
+		and int(evidence.get("duplicate_commodity_claim_count", -1)) == 0 \
+		and int(evidence.get("commodity_claim_button_count", -1)) == 0 \
+		and bool(evidence.get("commodity_performance_metrics_recorded", false)) \
+		and _commodity_claim_p95_metrics_positive(evidence) \
+		and int(evidence.get("player_card_dock_refresh_count", 0)) > 0 \
+		and int(evidence.get("duplicate_card_submission_count", -1)) == 0
+
+
+static func _commodity_claim_p95_metrics_positive(evidence: Dictionary) -> bool:
+	for metric in [
+		"commodity_source_render_p95_ms",
+		"commodity_inventory_render_p95_ms",
+		"commodity_hover_p95_ms",
+		"single_click_to_intent_p95_ms",
+		"receipt_to_inventory_refresh_p95_ms",
+	]:
+		var value := float(evidence.get(metric, 0.0))
+		if not is_finite(value) or value <= 0.0:
+			return false
+	return true
 
 
 func _scripted_ui_action_rejection_reason(runtime_screen: Node, action: Dictionary) -> String:
@@ -4252,7 +4444,8 @@ func _summary(options: Dictionary, telemetry: Dictionary, status: String, failur
 			and bool((telemetry.get("settlement", {}) as Dictionary).get("quiescence_verified", false)) \
 			and is_zero_approx(float((telemetry.get("settlement", {}) as Dictionary).get("terminal_world_delta", -1.0))) \
 			and bool((telemetry.get("settlement", {}) as Dictionary).get("rng_quiescence_verified", false)) \
-			and bool((telemetry.get("settlement", {}) as Dictionary).get("transition_sequence_complete", false)),
+			and bool((telemetry.get("settlement", {}) as Dictionary).get("transition_sequence_complete", false)) \
+			and player_card_dock_acceptance_green(_action_stats),
 		"status": status,
 		"failure_code": failure_code,
 		"qa_save_scope": qa_save_directory(_head_token(), FIXED_SEEDS[seed_index]),
