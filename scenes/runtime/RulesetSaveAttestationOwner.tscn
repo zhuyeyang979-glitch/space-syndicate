@@ -1,0 +1,17 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/ruleset_save_attestation_owner.gd" id="1_owner"]
+[ext_resource type="Resource" path="res://resources/rules/space_syndicate_ruleset_v06.tres" id="2_active"]
+[ext_resource type="Resource" path="res://resources/rules/space_syndicate_ruleset_v04.tres" id="3_compatibility"]
+[ext_resource type="Resource" path="res://resources/balance/balance_parameter_profile_v1.tres" id="4_balance"]
+[ext_resource type="Resource" path="res://resources/balance/runtime_balance_parameters_v1.tres" id="5_runtime"]
+[ext_resource type="Resource" path="res://resources/content/alpha01/alpha01_content_manifest.tres" id="6_content"]
+
+[node name="RulesetSaveAttestationOwner" type="Node"]
+script = ExtResource("1_owner")
+active_profile = ExtResource("2_active")
+compatibility_profile = ExtResource("3_compatibility")
+balance_profile = ExtResource("4_balance")
+runtime_balance_parameters = ExtResource("5_runtime")
+content_manifest = ExtResource("6_content")
+editor_description = "Immutable v0.6 save attestation owner. It verifies the active v0.6 profile plus current compatibility, balance, and Alpha 0.1 content-manifest fingerprints without duplicating mutable rules or content."

@@ -2,6 +2,8 @@
 extends Node
 class_name MilitaryRuntimeController
 
+const StrictState := preload("res://scripts/runtime/save_owner_state_v2_contract.gd")
+
 var _table_presentation_refresh_port: TablePresentationRefreshPort
 var _public_log_producer_port: PublicLogProducerPort
 var _presentation_world_clock: WorldEffectiveClockRuntimeController
@@ -15,6 +17,29 @@ const UNIT_HISTORY_LIMIT := 16
 const UNIT_COMMAND_COOLDOWN_SECONDS := 5.0
 const WEATHER_MOVEMENT_FLOOR := 0.40
 const WEATHER_RANGED_EFFECT_FLOOR := 0.70
+const SAVE_RULESET_ID := "v0.6"
+const SAVE_STATE_VERSION := 2
+const SAVE_KEYS := [
+	"schema_version",
+	"ruleset_id",
+	"military_units",
+	"next_military_unit_uid",
+	"bankruptcy_estate_journal",
+]
+const REQUIRED_UNIT_KEYS := [
+	"uid", "owner", "position", "world_position", "cooldown_left", "public_owner_revealed",
+	"rank", "name", "source_card", "military_type", "military_domain", "movement_traits",
+	"terrain_move_multiplier", "military_gdp_penalty", "military_gdp_pressure_seconds",
+	"military_strike_gdp_penalty", "military_strike_route_damage", "hp", "max_hp", "damage",
+	"range", "move", "duration", "remaining_time",
+]
+const LINEAR_MOTION_REQUIRED_KEYS := [
+	"linear_move_target_position", "linear_move_target_district", "linear_move_speed_mps",
+	"linear_move_source", "linear_move_mode", "linear_move_damaged_districts",
+	"linear_move_started_at", "linear_move_arrival_action",
+]
+const BANKRUPTCY_RECORD_BASE_KEYS := ["state", "player_indices", "expected_hash", "estate_counts"]
+const BANKRUPTCY_RECORD_OPEN_KEYS := ["state", "player_indices", "expected_hash", "preimage", "postimage", "estate_counts"]
 
 var _world_bridge: MilitaryRuntimeWorldBridge
 var _region_infrastructure_world_bridge: Node
@@ -899,13 +924,219 @@ func force_balance_report() -> Dictionary:
 
 
 func to_save_data() -> Dictionary:
-	return {"military_units": military_units.duplicate(true), "next_military_unit_uid": next_military_unit_uid}
+	return {
+		"schema_version": SAVE_STATE_VERSION,
+		"ruleset_id": SAVE_RULESET_ID,
+		"military_units": military_units.duplicate(true),
+		"next_military_unit_uid": next_military_unit_uid,
+		"bankruptcy_estate_journal": _bankruptcy_estate_journal.duplicate(true),
+	}
+
+
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	var validation := _validate_save_data(data)
+	if not bool(validation.get("valid", false)):
+		var reason_code := str(validation.get("reason_code", "military_save_invalid"))
+		return {"accepted": false, "reason": reason_code, "reason_code": reason_code}
+	return {
+		"accepted": true,
+		"reason": "",
+		"reason_code": "military_save_valid",
+		"normalized_state": data.duplicate(true),
+	}
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
-	military_units = (data.get("military_units", []) as Array).duplicate(true) if data.get("military_units", []) is Array else []
-	next_military_unit_uid = maxi(1, int(data.get("next_military_unit_uid", 1)))
-	return {"applied": true, "unit_count": military_units.size(), "next_uid": next_military_unit_uid}
+	var preflight := preflight_save_data(data)
+	if not bool(preflight.get("accepted", false)):
+		var rejection := str(preflight.get("reason_code", "military_save_invalid"))
+		return {"applied": false, "reason": rejection, "reason_code": rejection}
+	var normalized := (preflight.get("normalized_state", {}) as Dictionary).duplicate(true)
+	military_units = (normalized.get("military_units") as Array).duplicate(true)
+	next_military_unit_uid = int(normalized.get("next_military_unit_uid"))
+	_bankruptcy_estate_journal = (normalized.get("bankruptcy_estate_journal") as Dictionary).duplicate(true)
+	return {
+		"applied": true,
+		"reason": "military_state_restored",
+		"reason_code": "military_state_restored",
+		"unit_count": military_units.size(),
+		"next_uid": next_military_unit_uid,
+	}
+
+
+func capture_runtime_checkpoint() -> Dictionary:
+	return to_save_data()
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	var receipt := apply_save_data(checkpoint)
+	return {
+		"restored": bool(receipt.get("applied", false)),
+		"reason_code": str(receipt.get("reason_code", "military_save_invalid")),
+	}
+
+
+func rollback_save_data(checkpoint: Dictionary) -> Dictionary:
+	return apply_save_data(checkpoint)
+
+
+func _validate_save_data(data: Dictionary) -> Dictionary:
+	if not StrictState.is_codec_data(data) or StrictState.contains_rng_continuation(data):
+		return {"valid": false, "reason_code": "military_save_not_codec_data"}
+	if not StrictState.has_exact_keys(data, SAVE_KEYS):
+		return {"valid": false, "reason_code": "military_save_shape_invalid"}
+	if not (data.get("schema_version") is int) or int(data.get("schema_version")) != SAVE_STATE_VERSION \
+			or not (data.get("ruleset_id") is String) or str(data.get("ruleset_id")) != SAVE_RULESET_ID:
+		return {"valid": false, "reason_code": "military_save_header_invalid"}
+	if not (data.get("military_units") is Array) \
+			or not (data.get("next_military_unit_uid") is int) \
+			or not (data.get("bankruptcy_estate_journal") is Dictionary):
+		return {"valid": false, "reason_code": "military_save_fields_invalid"}
+	var unit_validation := _validate_unit_array(data.get("military_units") as Array)
+	if not bool(unit_validation.get("valid", false)):
+		return unit_validation
+	if int(data.get("next_military_unit_uid")) <= int(unit_validation.get("maximum_uid", 0)):
+		return {"valid": false, "reason_code": "military_next_uid_dangling"}
+	var journal_validation := _validate_bankruptcy_journal(data.get("bankruptcy_estate_journal") as Dictionary)
+	if not bool(journal_validation.get("valid", false)):
+		return journal_validation
+	return {"valid": true, "reason_code": "military_save_valid"}
+
+
+func _validate_unit_array(units: Array) -> Dictionary:
+	var seen_uids: Dictionary = {}
+	var maximum_uid := 0
+	for unit_variant in units:
+		if not (unit_variant is Dictionary):
+			return {"valid": false, "reason_code": "military_unit_not_dictionary"}
+		var unit := unit_variant as Dictionary
+		var validation := _validate_unit(unit)
+		if not bool(validation.get("valid", false)):
+			return validation
+		var uid := int(unit.get("uid"))
+		if seen_uids.has(str(uid)):
+			return {"valid": false, "reason_code": "military_unit_uid_duplicate"}
+		seen_uids[str(uid)] = true
+		maximum_uid = maxi(maximum_uid, uid)
+	return {"valid": true, "reason_code": "military_units_valid", "maximum_uid": maximum_uid}
+
+
+func _validate_unit(unit: Dictionary) -> Dictionary:
+	if not StrictState.is_codec_data(unit) or StrictState.contains_rng_continuation(unit):
+		return {"valid": false, "reason_code": "military_unit_not_codec_data"}
+	for key_variant in REQUIRED_UNIT_KEYS:
+		if not unit.has(str(key_variant)):
+			return {"valid": false, "reason_code": "military_unit_field_missing"}
+	if not (unit.get("uid") is int) or int(unit.get("uid")) <= 0 \
+			or not (unit.get("owner") is int) or int(unit.get("owner")) < 0 \
+			or not (unit.get("position") is int) or int(unit.get("position")) < -1 \
+			or not (unit.get("world_position") is Vector2) \
+			or not (unit.get("public_owner_revealed") is bool) \
+			or not (unit.get("rank") is int) or int(unit.get("rank")) < 1 or int(unit.get("rank")) > 4:
+		return {"valid": false, "reason_code": "military_unit_identity_invalid"}
+	for key in ["name", "source_card", "military_type", "military_domain"]:
+		if not (unit.get(key) is String) or str(unit.get(key)).is_empty():
+			return {"valid": false, "reason_code": "military_unit_identity_invalid"}
+	if not (unit.get("movement_traits") is Array) or not (unit.get("terrain_move_multiplier") is Dictionary):
+		return {"valid": false, "reason_code": "military_unit_mobility_invalid"}
+	var seen_traits: Dictionary = {}
+	for trait_variant in unit.get("movement_traits") as Array:
+		if not (trait_variant is String) or str(trait_variant).is_empty() or seen_traits.has(str(trait_variant)):
+			return {"valid": false, "reason_code": "military_unit_mobility_invalid"}
+		seen_traits[str(trait_variant)] = true
+	for multiplier_variant in (unit.get("terrain_move_multiplier") as Dictionary).values():
+		if not _finite_number(multiplier_variant, 0.0, false):
+			return {"valid": false, "reason_code": "military_unit_mobility_invalid"}
+	for key in ["military_gdp_penalty", "military_strike_gdp_penalty", "military_strike_route_damage"]:
+		if not (unit.get(key) is int) or int(unit.get(key)) < 0:
+			return {"valid": false, "reason_code": "military_unit_stat_invalid"}
+	for key in ["hp", "max_hp", "damage"]:
+		if not (unit.get(key) is int) or int(unit.get(key)) <= 0:
+			return {"valid": false, "reason_code": "military_unit_stat_invalid"}
+	if int(unit.get("hp")) > int(unit.get("max_hp")):
+		return {"valid": false, "reason_code": "military_unit_stat_invalid"}
+	for key in ["cooldown_left", "military_gdp_pressure_seconds", "range", "move", "duration", "remaining_time"]:
+		if not _finite_number(unit.get(key), 0.0, true):
+			return {"valid": false, "reason_code": "military_unit_nonfinite"}
+	if float(unit.get("range")) <= 0.0 or float(unit.get("move")) <= 0.0 or float(unit.get("duration")) <= 0.0 \
+			or float(unit.get("remaining_time")) > float(unit.get("duration")):
+		return {"valid": false, "reason_code": "military_unit_stat_invalid"}
+	var motion_present := false
+	for key_variant in unit.keys():
+		if str(key_variant).begins_with("linear_move_"):
+			motion_present = true
+			break
+	if motion_present:
+		for key_variant in LINEAR_MOTION_REQUIRED_KEYS:
+			if not unit.has(str(key_variant)):
+				return {"valid": false, "reason_code": "military_motion_binding_dangling"}
+		if not (unit.get("linear_move_target_position") is Vector2) \
+				or not (unit.get("linear_move_target_district") is int) \
+				or not _finite_number(unit.get("linear_move_speed_mps"), 0.0, false) \
+				or not _finite_number(unit.get("linear_move_started_at"), 0.0, true) \
+				or not (unit.get("linear_move_source") is String) \
+				or not (unit.get("linear_move_mode") is String) \
+				or not (unit.get("linear_move_arrival_action") is String) \
+				or not (unit.get("linear_move_damaged_districts") is Array):
+			return {"valid": false, "reason_code": "military_motion_binding_dangling"}
+		var seen_districts: Dictionary = {}
+		for district_variant in unit.get("linear_move_damaged_districts") as Array:
+			if not (district_variant is int) or int(district_variant) < 0 or seen_districts.has(str(int(district_variant))):
+				return {"valid": false, "reason_code": "military_motion_binding_dangling"}
+			seen_districts[str(int(district_variant))] = true
+	return {"valid": true, "reason_code": "military_unit_valid"}
+
+
+func _validate_bankruptcy_journal(journal: Dictionary) -> Dictionary:
+	if journal.size() > 512:
+		return {"valid": false, "reason_code": "military_bankruptcy_journal_too_large"}
+	for transaction_id_variant in journal.keys():
+		if not (transaction_id_variant is String or transaction_id_variant is StringName):
+			return {"valid": false, "reason_code": "military_bankruptcy_transaction_invalid"}
+		var transaction_id := str(transaction_id_variant)
+		var record_variant: Variant = journal.get(transaction_id_variant)
+		if transaction_id.is_empty() or transaction_id.length() > 160 or not (record_variant is Dictionary):
+			return {"valid": false, "reason_code": "military_bankruptcy_transaction_invalid"}
+		var record := record_variant as Dictionary
+		var state := str(record.get("state", ""))
+		var expected_keys := BANKRUPTCY_RECORD_BASE_KEYS if state == "finalized" else BANKRUPTCY_RECORD_OPEN_KEYS
+		if not ["prepared", "committed", "rolled_back", "finalized"].has(state) \
+				or not StrictState.has_exact_keys(record, expected_keys) \
+				or not _valid_fingerprint(str(record.get("expected_hash", ""))) \
+				or not (record.get("player_indices") is Array) \
+				or not (record.get("estate_counts") is Dictionary):
+			return {"valid": false, "reason_code": "military_bankruptcy_record_invalid"}
+		var seen_players: Dictionary = {}
+		for player_variant in record.get("player_indices") as Array:
+			if not (player_variant is int) or int(player_variant) < 0 or seen_players.has(str(int(player_variant))):
+				return {"valid": false, "reason_code": "military_bankruptcy_record_invalid"}
+			seen_players[str(int(player_variant))] = true
+		var counts := record.get("estate_counts") as Dictionary
+		if not StrictState.has_exact_keys(counts, ["military_units_removed"]) \
+				or not (counts.get("military_units_removed") is int) or int(counts.get("military_units_removed")) < 0:
+			return {"valid": false, "reason_code": "military_bankruptcy_record_invalid"}
+		if state != "finalized":
+			if not (record.get("preimage") is Array) or not (record.get("postimage") is Array) \
+					or not bool(_validate_unit_array(record.get("preimage") as Array).get("valid", false)) \
+					or not bool(_validate_unit_array(record.get("postimage") as Array).get("valid", false)):
+				return {"valid": false, "reason_code": "military_bankruptcy_record_invalid"}
+	return {"valid": true, "reason_code": "military_bankruptcy_journal_valid"}
+
+
+func _finite_number(value: Variant, lower_bound: float, allow_equal: bool) -> bool:
+	if not (value is int or value is float) or not is_finite(float(value)):
+		return false
+	return float(value) >= lower_bound if allow_equal else float(value) > lower_bound
+
+
+func _valid_fingerprint(value: String) -> bool:
+	if value.length() != 64:
+		return false
+	for index in range(value.length()):
+		var code := value.unicode_at(index)
+		if not (code >= 48 and code <= 57) and not (code >= 97 and code <= 102):
+			return false
+	return true
 
 
 func debug_snapshot(viewer_index: int = -1) -> Dictionary:
@@ -936,6 +1167,9 @@ func debug_snapshot(viewer_index: int = -1) -> Dictionary:
 		"parallel_legacy_owner": false,
 		"unit_count": military_units.size(),
 		"next_uid": next_military_unit_uid,
+		"schema_version": SAVE_STATE_VERSION,
+		"bankruptcy_transaction_count": _bankruptcy_estate_journal.size(),
+		"owns_rng_continuation": false,
 		"roster": public_roster,
 		"inventory_service_bound": _inventory_service != null,
 		"monster_controller_bound": _monster_runtime_controller != null,

@@ -4,6 +4,36 @@ class_name CardResolutionQueueRuntimeService
 
 const SharedCardGroupWindowScript := preload("res://scripts/cards/shared_card_group_window.gd")
 const StableTargetEnvelope := preload("res://scripts/runtime/card_resolution_stable_target_envelope.gd")
+const StrictState := preload("res://scripts/runtime/save_owner_state_v2_contract.gd")
+
+const RULESET_ID := "v0.6"
+const SAVE_STATE_VERSION := 2
+const SAVE_KEYS := [
+	"schema_version",
+	"ruleset_id",
+	"revision",
+	"current_queue",
+	"active_entry",
+	"next_queue",
+	"resolution_sequence",
+	"last_group_window_sequence",
+]
+const CHECKPOINT_KEYS := [
+	"checkpoint_schema_version",
+	"save_state",
+	"plan_count",
+	"commit_count",
+	"rejection_count",
+	"last_reason",
+]
+const REQUIRED_ENTRY_KEYS := [
+	"player_index", "slot_index", "queued_order", "resolution_id", "window_sequence", "group_id",
+	"group_order", "group_size", "queued_behind_resolution", "play_cash_cost_cents",
+	"play_cost_paid_on_queue", "financial_margin_cents", "financial_terms_version",
+	"financial_authorized_cents", "financial_cash_revision", "financial_margin_locked_on_queue",
+	"asset_reservation_id", "asset_cost", "asset_debit", "asset_reservation_required",
+	"consumed_on_queue", "skill",
+]
 
 var _ruleset_id := ""
 var _configured := false
@@ -24,7 +54,7 @@ var _maximum_with_explicit_capability := SharedCardGroupWindowScript.MAXIMUM_WIT
 func configure(ruleset_snapshot: Dictionary) -> void:
 	_ruleset_id = str(ruleset_snapshot.get("ruleset_id", ""))
 	var card_group: Dictionary = ruleset_snapshot.get("card_group", {}) if ruleset_snapshot.get("card_group", {}) is Dictionary else {}
-	_configured = _ruleset_id == "v0.6" \
+	_configured = _ruleset_id == RULESET_ID \
 		and int(card_group.get("group_seconds", -1)) == 30 \
 		and int(card_group.get("planning_seconds", -1)) == 20 \
 		and int(card_group.get("public_bid_seconds", -1)) == 5 \
@@ -53,22 +83,35 @@ func reset_state() -> void:
 
 
 func capture_runtime_checkpoint() -> Dictionary:
-	return {"schema_version": 1, "current_queue": _current_queue.duplicate(true), "next_queue": _next_queue.duplicate(true), "active_entry": _active_entry.duplicate(true), "resolution_sequence": _resolution_sequence, "revision": _revision, "plan_count": _plan_count, "commit_count": _commit_count, "rejection_count": _rejection_count, "last_reason": _last_reason, "last_group_window_sequence": _last_group_window_sequence}
+	return {
+		"checkpoint_schema_version": SAVE_STATE_VERSION,
+		"save_state": to_save_data(),
+		"plan_count": _plan_count,
+		"commit_count": _commit_count,
+		"rejection_count": _rejection_count,
+		"last_reason": _last_reason,
+	}
 
 
 func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
-	if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("current_queue") is Array) or not (checkpoint.get("next_queue") is Array) or not (checkpoint.get("active_entry") is Dictionary):
+	if not StrictState.is_codec_data(checkpoint) or StrictState.contains_rng_continuation(checkpoint) \
+			or not StrictState.has_exact_keys(checkpoint, CHECKPOINT_KEYS) \
+			or not (checkpoint.get("checkpoint_schema_version") is int) \
+			or int(checkpoint.get("checkpoint_schema_version")) != SAVE_STATE_VERSION \
+			or not (checkpoint.get("save_state") is Dictionary) \
+			or not (checkpoint.get("plan_count") is int) or int(checkpoint.get("plan_count")) < 0 \
+			or not (checkpoint.get("commit_count") is int) or int(checkpoint.get("commit_count")) < 0 \
+			or not (checkpoint.get("rejection_count") is int) or int(checkpoint.get("rejection_count")) < 0 \
+			or not (checkpoint.get("last_reason") is String):
 		return {"restored": false, "reason_code": "card_resolution_queue_checkpoint_invalid"}
-	_current_queue = (checkpoint.get("current_queue", []) as Array).duplicate(true)
-	_next_queue = (checkpoint.get("next_queue", []) as Array).duplicate(true)
-	_active_entry = (checkpoint.get("active_entry", {}) as Dictionary).duplicate(true)
-	_resolution_sequence = int(checkpoint.get("resolution_sequence", 0))
-	_revision = int(checkpoint.get("revision", 0))
-	_plan_count = int(checkpoint.get("plan_count", 0))
-	_commit_count = int(checkpoint.get("commit_count", 0))
-	_rejection_count = int(checkpoint.get("rejection_count", 0))
-	_last_reason = str(checkpoint.get("last_reason", ""))
-	_last_group_window_sequence = int(checkpoint.get("last_group_window_sequence", -1))
+	var save_state := checkpoint.get("save_state") as Dictionary
+	if not bool(preflight_save_data(save_state).get("accepted", false)):
+		return {"restored": false, "reason_code": "card_resolution_queue_checkpoint_invalid"}
+	_replace_save_state(save_state)
+	_plan_count = int(checkpoint.get("plan_count"))
+	_commit_count = int(checkpoint.get("commit_count"))
+	_rejection_count = int(checkpoint.get("rejection_count"))
+	_last_reason = str(checkpoint.get("last_reason"))
 	return {"restored": true, "reason_code": "card_resolution_queue_checkpoint_restored"}
 
 
@@ -536,6 +579,71 @@ func public_snapshot() -> Dictionary:
 	}
 
 
+func to_save_data() -> Dictionary:
+	return {
+		"schema_version": SAVE_STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"revision": _revision,
+		"current_queue": current_queue(),
+		"active_entry": active_entry(),
+		"next_queue": next_queue(),
+		"resolution_sequence": _resolution_sequence,
+		"last_group_window_sequence": _last_group_window_sequence,
+	}
+
+
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	var validation := _validate_save_data(data)
+	if not bool(validation.get("valid", false)):
+		var reason_code := str(validation.get("reason_code", "card_resolution_queue_save_invalid"))
+		return {"accepted": false, "reason": reason_code, "reason_code": reason_code}
+	return {
+		"accepted": true,
+		"reason": "",
+		"reason_code": "card_resolution_queue_save_valid",
+		"normalized_state": data.duplicate(true),
+	}
+
+
+func apply_save_data(data: Dictionary) -> Dictionary:
+	var preflight := preflight_save_data(data)
+	if not bool(preflight.get("accepted", false)):
+		var rejection := str(preflight.get("reason_code", "card_resolution_queue_save_invalid"))
+		return {"applied": false, "reason": rejection, "reason_code": rejection}
+	var normalized := (preflight.get("normalized_state", {}) as Dictionary).duplicate(true)
+	_replace_save_state(normalized)
+	_plan_count = 0
+	_commit_count = 0
+	_rejection_count = 0
+	_last_reason = "save_applied"
+	return {
+		"applied": true,
+		"reason": "card_resolution_queue_state_restored",
+		"reason_code": "card_resolution_queue_state_restored",
+		"revision": _revision,
+		"current_count": _current_queue.size(),
+		"active_present": not _active_entry.is_empty(),
+		"next_count": _next_queue.size(),
+	}
+
+
+func capture_save_checkpoint() -> Dictionary:
+	return to_save_data()
+
+
+func rollback_save_data(checkpoint: Dictionary) -> Dictionary:
+	return apply_save_data(checkpoint)
+
+
+func _replace_save_state(normalized: Dictionary) -> void:
+	_current_queue = (normalized.get("current_queue") as Array).duplicate(true)
+	_active_entry = (normalized.get("active_entry") as Dictionary).duplicate(true)
+	_next_queue = (normalized.get("next_queue") as Array).duplicate(true)
+	_resolution_sequence = int(normalized.get("resolution_sequence"))
+	_last_group_window_sequence = int(normalized.get("last_group_window_sequence"))
+	_revision = int(normalized.get("revision"))
+
+
 func to_legacy_save_snapshot() -> Dictionary:
 	return {
 		"card_resolution_queue": current_queue(),
@@ -577,6 +685,8 @@ func debug_snapshot() -> Dictionary:
 		"commit_count": _commit_count,
 		"rejection_count": _rejection_count,
 		"last_reason": _last_reason,
+		"save_state_version": SAVE_STATE_VERSION,
+		"owns_rng_continuation": false,
 		"timing_authority": false,
 		"asset_reservation_authority": false,
 		"priority_bid_authority": false,
@@ -755,17 +865,95 @@ func _normalize_legacy_entry(source: Dictionary) -> Dictionary:
 	return entry
 
 
+func _validate_save_data(data: Dictionary) -> Dictionary:
+	if not StrictState.is_codec_data(data) or StrictState.contains_rng_continuation(data):
+		return {"valid": false, "reason_code": "card_resolution_queue_save_not_codec_data"}
+	if not StrictState.has_exact_keys(data, SAVE_KEYS):
+		return {"valid": false, "reason_code": "card_resolution_queue_save_shape_invalid"}
+	if not (data.get("schema_version") is int) or int(data.get("schema_version")) != SAVE_STATE_VERSION \
+			or not (data.get("ruleset_id") is String) or str(data.get("ruleset_id")) != RULESET_ID:
+		return {"valid": false, "reason_code": "card_resolution_queue_save_header_invalid"}
+	if not (data.get("revision") is int) or int(data.get("revision")) < 0 \
+			or not (data.get("current_queue") is Array) \
+			or not (data.get("active_entry") is Dictionary) \
+			or not (data.get("next_queue") is Array) \
+			or not (data.get("resolution_sequence") is int) or int(data.get("resolution_sequence")) < 0 \
+			or not (data.get("last_group_window_sequence") is int) or int(data.get("last_group_window_sequence")) < -1:
+		return {"valid": false, "reason_code": "card_resolution_queue_save_fields_invalid"}
+	var seen_resolution_ids: Dictionary = {}
+	var maximum_resolution_id := 0
+	var maximum_window_sequence := -1
+	for entries_variant in [data.get("current_queue"), data.get("next_queue")]:
+		for entry_variant in entries_variant as Array:
+			var entry_validation := _validate_save_entry(entry_variant, seen_resolution_ids)
+			if not bool(entry_validation.get("valid", false)):
+				return entry_validation
+			maximum_resolution_id = maxi(maximum_resolution_id, int(entry_validation.get("resolution_id", 0)))
+			maximum_window_sequence = maxi(maximum_window_sequence, int(entry_validation.get("window_sequence", -1)))
+	var active := data.get("active_entry") as Dictionary
+	if not active.is_empty():
+		var active_validation := _validate_save_entry(active, seen_resolution_ids)
+		if not bool(active_validation.get("valid", false)):
+			return active_validation
+		maximum_resolution_id = maxi(maximum_resolution_id, int(active_validation.get("resolution_id", 0)))
+		maximum_window_sequence = maxi(maximum_window_sequence, int(active_validation.get("window_sequence", -1)))
+	if int(data.get("resolution_sequence")) < maximum_resolution_id:
+		return {"valid": false, "reason_code": "card_resolution_queue_sequence_dangling"}
+	if int(data.get("last_group_window_sequence")) < maximum_window_sequence:
+		return {"valid": false, "reason_code": "card_resolution_queue_window_dangling"}
+	return {"valid": true, "reason_code": "card_resolution_queue_save_valid"}
+
+
+func _validate_save_entry(entry_variant: Variant, seen_resolution_ids: Dictionary) -> Dictionary:
+	if not (entry_variant is Dictionary):
+		return {"valid": false, "reason_code": "card_resolution_queue_entry_not_dictionary"}
+	var entry := entry_variant as Dictionary
+	if not StrictState.is_codec_data(entry) or StrictState.contains_rng_continuation(entry):
+		return {"valid": false, "reason_code": "card_resolution_queue_entry_not_codec_data"}
+	for key_variant in REQUIRED_ENTRY_KEYS:
+		if not entry.has(str(key_variant)):
+			return {"valid": false, "reason_code": "card_resolution_queue_entry_field_missing"}
+	for key in ["player_index", "slot_index", "queued_order", "resolution_id", "window_sequence", "group_order", "group_size", "play_cash_cost_cents", "financial_margin_cents", "financial_authorized_cents"]:
+		if not (entry.get(key) is int):
+			return {"valid": false, "reason_code": "card_resolution_queue_entry_type_invalid"}
+	var resolution_id := int(entry.get("resolution_id"))
+	if int(entry.get("player_index")) < 0 or int(entry.get("slot_index")) < 0 \
+			or resolution_id <= 0 or int(entry.get("queued_order")) != resolution_id \
+			or int(entry.get("window_sequence")) < 0 \
+			or int(entry.get("group_order")) <= 0 or int(entry.get("group_size")) <= 0 \
+			or int(entry.get("group_order")) > int(entry.get("group_size")) \
+			or int(entry.get("play_cash_cost_cents")) < 0 \
+			or int(entry.get("financial_margin_cents")) < 0 \
+			or int(entry.get("financial_authorized_cents")) < 0:
+		return {"valid": false, "reason_code": "card_resolution_queue_entry_value_invalid"}
+	if seen_resolution_ids.has(str(resolution_id)):
+		return {"valid": false, "reason_code": "card_resolution_queue_resolution_duplicate"}
+	seen_resolution_ids[str(resolution_id)] = true
+	for key in ["queued_behind_resolution", "play_cost_paid_on_queue", "financial_margin_locked_on_queue", "asset_reservation_required", "consumed_on_queue"]:
+		if not (entry.get(key) is bool):
+			return {"valid": false, "reason_code": "card_resolution_queue_entry_type_invalid"}
+	for key in ["group_id", "financial_terms_version", "financial_cash_revision", "asset_reservation_id"]:
+		if not (entry.get(key) is String):
+			return {"valid": false, "reason_code": "card_resolution_queue_entry_type_invalid"}
+	if str(entry.get("group_id")).is_empty() \
+			or not (entry.get("asset_cost") is Dictionary) \
+			or not (entry.get("asset_debit") is Dictionary) \
+			or not (entry.get("skill") is Dictionary) \
+			or (entry.get("skill") as Dictionary).is_empty():
+		return {"valid": false, "reason_code": "card_resolution_queue_entry_binding_dangling"}
+	if bool(entry.get("asset_reservation_required")) and str(entry.get("asset_reservation_id")).is_empty():
+		return {"valid": false, "reason_code": "card_resolution_queue_reservation_dangling"}
+	if entry.has("stable_target_envelope"):
+		var target_validation := StableTargetEnvelope.validate_entry_binding(entry)
+		if not bool(target_validation.get("valid", false)):
+			return {"valid": false, "reason_code": "card_resolution_queue_target_dangling"}
+	return {
+		"valid": true,
+		"reason_code": "card_resolution_queue_entry_valid",
+		"resolution_id": resolution_id,
+		"window_sequence": int(entry.get("window_sequence")),
+	}
+
+
 func _is_data_only(value: Variant) -> bool:
-	if value == null or value is String or value is StringName or value is bool or value is int or value is float:
-		return true
-	if value is Array:
-		for item in value:
-			if not _is_data_only(item):
-				return false
-		return true
-	if value is Dictionary:
-		for key_variant in value.keys():
-			if not _is_data_only(key_variant) or not _is_data_only(value[key_variant]):
-				return false
-		return true
-	return false
+	return StrictState.is_codec_data(value)

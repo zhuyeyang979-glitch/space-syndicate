@@ -2,14 +2,36 @@
 extends Node
 class_name RouteNetworkRuntimeController
 
+const StrictState := preload("res://scripts/runtime/save_owner_state_v2_contract.gd")
+
 const RULESET_ID := "v0.6"
-const STATE_VERSION := 1
+const STATE_VERSION := 2
+const ROUTE_SEMANTIC_VERSION := 1
 const BASIS_POINTS := 10000
 const DIRECT_CAPACITY_UNITS_PER_MINUTE := 1000000
 const MAX_ROUTES_PER_PAIR := 12
 const MAX_PATH_REGION_COUNT := 9
 const TRANSPORT_MODES := ["land", "sea", "air"]
 const WEATHER_ROUTE_FLOOR := 0.40
+const SAVE_KEYS := [
+	"schema_version",
+	"ruleset_id",
+	"route_semantic_version",
+	"saved_topology_revision",
+	"rebuilt_route_fingerprint",
+]
+const CHECKPOINT_KEYS := [
+	"checkpoint_schema_version",
+	"save_state",
+	"cached_candidates_by_pair",
+	"cached_all_candidates",
+	"cached_legacy_index_by_region_id",
+	"cached_region_weather_context_by_id",
+	"cached_facility_weather_context_by_id",
+	"refresh_count",
+	"rebuild_count",
+	"query_count",
+]
 
 var _configured := false
 var _world_bridge: Node
@@ -186,31 +208,107 @@ func route_load_for_legacy_region(legacy_index: int) -> int:
 
 func to_save_data() -> Dictionary:
 	return {
-		"state_version": STATE_VERSION,
+		"schema_version": STATE_VERSION,
 		"ruleset_id": RULESET_ID,
-		"topology_revision": _cached_topology_revision,
-		"derived_cache_only": true,
+		"route_semantic_version": ROUTE_SEMANTIC_VERSION,
+		"saved_topology_revision": _cached_topology_revision,
+		"rebuilt_route_fingerprint": _route_manifest_fingerprint(_cached_all_candidates),
+	}
+
+
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	var validation := _validate_save_data(data)
+	if not bool(validation.get("valid", false)):
+		var reason_code := str(validation.get("reason_code", "route_save_invalid"))
+		return {"accepted": false, "reason": reason_code, "reason_code": reason_code}
+	return {
+		"accepted": true,
+		"reason": "",
+		"reason_code": "route_save_valid",
+		"normalized_state": data.duplicate(true),
 	}
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
-	if not _is_pure_data(data):
-		return {"applied": false, "reason": "save_not_pure_data"}
-	if int(data.get("state_version", -1)) != STATE_VERSION or str(data.get("ruleset_id", "")) != RULESET_ID:
-		return {"applied": false, "reason": "save_header_invalid"}
-	_cached_topology_revision = ""
-	_cached_candidates_by_pair.clear()
-	_cached_all_candidates.clear()
-	_cached_legacy_index_by_region_id.clear()
-	_cached_region_weather_context_by_id.clear()
-	_cached_facility_weather_context_by_id.clear()
-	var refresh := refresh_routes(true)
+	var preflight := preflight_save_data(data)
+	if not bool(preflight.get("accepted", false)):
+		var rejection := str(preflight.get("reason_code", "route_save_invalid"))
+		return {"applied": false, "reason": rejection, "reason_code": rejection}
+	var normalized := (preflight.get("normalized_state", {}) as Dictionary).duplicate(true)
+	var checkpoint := capture_runtime_checkpoint()
+	var saved_topology_revision := str(normalized.get("saved_topology_revision", ""))
+	if saved_topology_revision.is_empty():
+		_cached_topology_revision = ""
+		_cached_candidates_by_pair.clear()
+		_cached_all_candidates.clear()
+		_cached_legacy_index_by_region_id.clear()
+		_cached_region_weather_context_by_id.clear()
+		_cached_facility_weather_context_by_id.clear()
+	else:
+		var topology := _topology_snapshot()
+		if topology.is_empty():
+			return {"applied": false, "reason": "route_topology_unavailable", "reason_code": "route_topology_unavailable"}
+		if str(topology.get("topology_revision", "")) != saved_topology_revision:
+			return {"applied": false, "reason": "route_topology_revision_mismatch", "reason_code": "route_topology_revision_mismatch"}
+		_rebuild_routes(topology)
+		if _route_manifest_fingerprint(_cached_all_candidates) != str(normalized.get("rebuilt_route_fingerprint", "")):
+			restore_runtime_checkpoint(checkpoint)
+			return {"applied": false, "reason": "route_rebuild_parity_mismatch", "reason_code": "route_rebuild_parity_mismatch"}
 	return {
-		"applied": bool(refresh.get("refreshed", false)),
-		"reason": str(refresh.get("reason", "")),
-		"saved_topology_revision": str(data.get("topology_revision", "")),
-		"current_topology_revision": _cached_topology_revision,
+		"applied": true,
+		"reason": "route_state_rebuilt",
+		"reason_code": "route_state_rebuilt",
+		"route_count": _cached_all_candidates.size(),
 	}
+
+
+func rollback_save_data(checkpoint: Dictionary) -> Dictionary:
+	return apply_save_data(checkpoint)
+
+
+func capture_runtime_checkpoint() -> Dictionary:
+	return {
+		"checkpoint_schema_version": STATE_VERSION,
+		"save_state": to_save_data(),
+		"cached_candidates_by_pair": _cached_candidates_by_pair.duplicate(true),
+		"cached_all_candidates": _cached_all_candidates.duplicate(true),
+		"cached_legacy_index_by_region_id": _cached_legacy_index_by_region_id.duplicate(true),
+		"cached_region_weather_context_by_id": _cached_region_weather_context_by_id.duplicate(true),
+		"cached_facility_weather_context_by_id": _cached_facility_weather_context_by_id.duplicate(true),
+		"refresh_count": _refresh_count,
+		"rebuild_count": _rebuild_count,
+		"query_count": _query_count,
+	}
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if not StrictState.is_codec_data(checkpoint) or StrictState.contains_rng_continuation(checkpoint) \
+			or not StrictState.has_exact_keys(checkpoint, CHECKPOINT_KEYS) \
+			or not (checkpoint.get("checkpoint_schema_version") is int) \
+			or int(checkpoint.get("checkpoint_schema_version")) != STATE_VERSION \
+			or not (checkpoint.get("save_state") is Dictionary):
+		return {"restored": false, "reason_code": "route_checkpoint_invalid"}
+	var save_state := checkpoint.get("save_state") as Dictionary
+	if not bool(preflight_save_data(save_state).get("accepted", false)) \
+			or not (checkpoint.get("cached_candidates_by_pair") is Dictionary) \
+			or not (checkpoint.get("cached_all_candidates") is Array) \
+			or not (checkpoint.get("cached_legacy_index_by_region_id") is Dictionary) \
+			or not (checkpoint.get("cached_region_weather_context_by_id") is Dictionary) \
+			or not (checkpoint.get("cached_facility_weather_context_by_id") is Dictionary):
+		return {"restored": false, "reason_code": "route_checkpoint_invalid"}
+	var all_candidates := checkpoint.get("cached_all_candidates") as Array
+	if _route_manifest_fingerprint(all_candidates) != str(save_state.get("rebuilt_route_fingerprint", "")):
+		return {"restored": false, "reason_code": "route_checkpoint_manifest_mismatch"}
+	_cached_topology_revision = str(save_state.get("saved_topology_revision", ""))
+	_cached_candidates_by_pair = (checkpoint.get("cached_candidates_by_pair") as Dictionary).duplicate(true)
+	_cached_all_candidates = all_candidates.duplicate(true)
+	_cached_legacy_index_by_region_id = (checkpoint.get("cached_legacy_index_by_region_id") as Dictionary).duplicate(true)
+	_cached_region_weather_context_by_id = (checkpoint.get("cached_region_weather_context_by_id") as Dictionary).duplicate(true)
+	_cached_facility_weather_context_by_id = (checkpoint.get("cached_facility_weather_context_by_id") as Dictionary).duplicate(true)
+	_refresh_count = int(checkpoint.get("refresh_count", 0))
+	_rebuild_count = int(checkpoint.get("rebuild_count", 0))
+	_query_count = int(checkpoint.get("query_count", 0))
+	return {"restored": true, "reason_code": "route_checkpoint_restored"}
 
 
 func debug_snapshot(_viewer_index := -1) -> Dictionary:
@@ -220,8 +318,9 @@ func debug_snapshot(_viewer_index := -1) -> Dictionary:
 		"controller_authoritative": _configured,
 		"runtime_owner": "RouteNetworkRuntimeController",
 		"ruleset_id": RULESET_ID,
-		"state_version": STATE_VERSION,
+		"schema_version": STATE_VERSION,
 		"topology_revision": _cached_topology_revision,
+		"route_semantic_version": ROUTE_SEMANTIC_VERSION,
 		"route_count": _cached_all_candidates.size(),
 		"pair_count": _cached_candidates_by_pair.size(),
 		"refresh_count": _refresh_count,
@@ -334,17 +433,17 @@ func _weather_projection_for_candidate(candidate: Dictionary) -> Dictionary:
 			var route_effect: Dictionary = effect.get("route", {}) if effect.get("route", {}) is Dictionary else {}
 			var generic_multiplier := float(route_effect.get("generic_multiplier", 1.0))
 			var domain_multiplier := float(route_effect.get("%s_multiplier" % mode, 1.0)) if ["land", "ocean", "air"].has(mode) else 1.0
-			var multiplier := maxf(0.0, generic_multiplier * domain_multiplier)
+			var effect_multiplier := maxf(0.0, generic_multiplier * domain_multiplier)
 			var event_id := int(effect.get("event_id", 0))
 			var definition_id := str(effect.get("definition_id", "weather"))
 			var event_key := "event:%d" % event_id if event_id > 0 else "definition:%s" % definition_id
 			var current: Dictionary = event_projection_by_key.get(event_key, {}) if event_projection_by_key.get(event_key, {}) is Dictionary else {}
-			if current.is_empty() or _weather_multiplier_is_stronger(multiplier, float(current.get("multiplier", 1.0))):
+			if current.is_empty() or _weather_multiplier_is_stronger(effect_multiplier, float(current.get("multiplier", 1.0))):
 				event_projection_by_key[event_key] = {
 					"event_id": event_id,
 					"definition_id": definition_id,
 					"mode": mode,
-					"multiplier": multiplier,
+					"multiplier": effect_multiplier,
 				}
 	var multiplier := 1.0
 	var explanation_parts: Array[String] = []
@@ -754,21 +853,44 @@ func _rank_table(value: Variant, allow_float: bool) -> Dictionary:
 	return result
 
 
+func _validate_save_data(data: Dictionary) -> Dictionary:
+	if not StrictState.is_codec_data(data) or StrictState.contains_rng_continuation(data):
+		return {"valid": false, "reason_code": "route_save_not_codec_data"}
+	if not StrictState.has_exact_keys(data, SAVE_KEYS):
+		return {"valid": false, "reason_code": "route_save_shape_invalid"}
+	if not (data.get("schema_version") is int) or int(data.get("schema_version")) != STATE_VERSION \
+			or not (data.get("ruleset_id") is String) or str(data.get("ruleset_id")) != RULESET_ID:
+		return {"valid": false, "reason_code": "route_save_header_invalid"}
+	if not (data.get("route_semantic_version") is int) \
+			or int(data.get("route_semantic_version")) != ROUTE_SEMANTIC_VERSION \
+			or not (data.get("saved_topology_revision") is String) \
+			or not (data.get("rebuilt_route_fingerprint") is String) \
+			or not _valid_fingerprint(str(data.get("rebuilt_route_fingerprint"))):
+		return {"valid": false, "reason_code": "route_save_fields_invalid"}
+	var topology_revision := str(data.get("saved_topology_revision"))
+	if topology_revision.is_empty() \
+			and str(data.get("rebuilt_route_fingerprint")) != _route_manifest_fingerprint([]):
+		return {"valid": false, "reason_code": "route_empty_topology_state_invalid"}
+	return {"valid": true, "reason_code": "route_save_valid"}
+
+
+func _route_manifest_fingerprint(candidates: Array) -> String:
+	return StrictState.fingerprint(candidates)
+
+
+func _valid_fingerprint(value: String) -> bool:
+	if value.length() != 64:
+		return false
+	for index in range(value.length()):
+		var code := value.unicode_at(index)
+		if not (code >= 48 and code <= 57) and not (code >= 97 and code <= 102):
+			return false
+	return true
+
+
 func _dictionary(value: Variant) -> Dictionary:
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
 func _is_pure_data(value: Variant) -> bool:
-	if value == null or value is String or value is StringName or value is bool or value is int or value is float:
-		return true
-	if value is Array:
-		for item_variant in value:
-			if not _is_pure_data(item_variant):
-				return false
-		return true
-	if value is Dictionary:
-		for key_variant in value.keys():
-			if not _is_pure_data(key_variant) or not _is_pure_data(value[key_variant]):
-				return false
-		return true
-	return false
+	return StrictState.is_codec_data(value)

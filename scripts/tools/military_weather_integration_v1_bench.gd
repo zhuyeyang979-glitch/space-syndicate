@@ -264,7 +264,7 @@ func _case_fade_end_and_transient_motion() -> void:
 
 func _case_save_shape_and_privacy() -> void:
 	var saved := _controller.to_save_data()
-	_expect(_sorted_keys(saved) == ["military_units", "next_military_unit_uid"], "weather integration does not change military save top-level shape")
+	_expect(_sorted_keys(saved) == ["bankruptcy_estate_journal", "military_units", "next_military_unit_uid", "ruleset_id", "schema_version"], "weather integration preserves the frozen Military save-owner v2 shape")
 	var saved_units: Array = saved.get("military_units", []) if saved.get("military_units", []) is Array else []
 	var saved_unit: Dictionary = saved_units[0] if not saved_units.is_empty() and saved_units[0] is Dictionary else {}
 	var derived_keys := ["weather_effect", "weather_multiplier", "weather_movement_multiplier", "effective_weather_speed", "weather_phase"]
