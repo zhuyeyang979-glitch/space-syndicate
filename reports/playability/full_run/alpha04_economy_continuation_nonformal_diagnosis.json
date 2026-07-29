@@ -145,6 +145,9 @@
   "release": {
     "draft_pull_request": 72,
     "merge_to_main_allowed": false,
-    "next_gate": "SEPARATELY_AUTHORIZED_FORMAL_FULL_RUN_RERUN"
+    "authorized_formal_rerun_consumed": true,
+    "authorized_formal_rerun_result": "INCOMPLETE_AUDIT_NOT_RESOLVED",
+    "superseded_by_report": "reports/playability/full_run/alpha04_authorized_formal_rerun_validation.json",
+    "next_gate": "FORMAL_AUDIT_WINDOW_TERMINAL_GATE_DECISION"
   }
 }
