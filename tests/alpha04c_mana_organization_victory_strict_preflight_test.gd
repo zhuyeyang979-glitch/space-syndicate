@@ -46,9 +46,20 @@ func _test_player_mana_preflight() -> void:
 func _test_player_organization_preflight() -> void:
 	var owner := ORGANIZATION_SCENE.instantiate() as PlayerOrganizationRuntimeController
 	root.add_child(owner)
+	var empty_saved := owner.to_save_data()
+	_exercise_valid_preflight(owner, empty_saved, "PlayerOrganization empty")
 	_expect(bool(owner.configure(["human.alpha", "ai.beta"]).get("configured", false)), "PlayerOrganization configures a stable actor roster")
 	var saved := owner.to_save_data()
 	_exercise_valid_preflight(owner, saved, "PlayerOrganization")
+	var matching_session := _session_roster_state(["player.0", "player.1"])
+	var production_owner := ORGANIZATION_SCENE.instantiate() as PlayerOrganizationRuntimeController
+	root.add_child(production_owner)
+	production_owner.configure(["player.0", "player.1"])
+	var production_saved := production_owner.to_save_data()
+	_expect(bool(production_owner.preflight_restore_dependencies(production_saved, matching_session).get("accepted", false)), "PlayerOrganization cross-section preflight accepts the matching session roster")
+	_expect(not bool(production_owner.preflight_restore_dependencies(empty_saved, matching_session).get("accepted", true)), "PlayerOrganization cross-section preflight rejects an empty organization for a running session")
+	_expect(not bool(production_owner.preflight_restore_dependencies(production_saved, _session_roster_state([])).get("accepted", true)), "PlayerOrganization cross-section preflight rejects configured actors for an empty session")
+	production_owner.queue_free()
 	var missing := saved.duplicate(true)
 	missing.erase("capability_secret")
 	_expect_rejected_without_mutation(owner, missing, "PlayerOrganization rejects a missing field")
@@ -62,6 +73,13 @@ func _test_player_organization_preflight() -> void:
 	_expect_rejected_without_mutation(owner, callable_payload, "PlayerOrganization rejects non-codec objects")
 	_expect(_apply_exact(owner, saved), "PlayerOrganization applies its preflight-normalized state exactly")
 	owner.queue_free()
+
+
+func _session_roster_state(actor_ids: Array[String]) -> Dictionary:
+	var players: Array[Dictionary] = []
+	for index in range(actor_ids.size()):
+		players.append({"id": index, "actor_id": actor_ids[index]})
+	return {"session": {"world_session_state": {"players": players}}}
 
 
 func _test_victory_control_preflight() -> void:

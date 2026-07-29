@@ -101,7 +101,7 @@ $largeStatusFiles = @(
 
 $mainPath = Join-Path $ProjectPath "scripts\main.gd"
 $mainLines = @(Get-Content -LiteralPath $mainPath)
-$defaultSavePath = Join-Path $env:APPDATA ("Godot\app_userdata\{0}\space_syndicate_current_run.save" -f $projectName)
+$defaultSavePath = Join-Path $env:APPDATA ("Godot\app_userdata\{0}\saves\v06\current_run.save" -f $projectName)
 $defaultSaveExists = Test-Path -LiteralPath $defaultSavePath -PathType Leaf
 $defaultSaveItem = if ($defaultSaveExists) { Get-Item -LiteralPath $defaultSavePath } else { $null }
 $nightNoticePath = Join-Path $ProjectPath "assets\third_party\night_patrol\NOTICE.md"

@@ -26,8 +26,9 @@ func _run() -> void:
 	session.call("configure", {"ruleset_id": "v0.6"})
 	var save_snapshot: Dictionary = save.call("operation_snapshot")
 	var explicit_qa_only := str(save_snapshot.get("qa_save_root", "")) == "user://test_runs/" \
-		and str(save_snapshot.get("default_save_path", "not-empty")).is_empty() \
-		and bool(save_snapshot.get("explicit_path_required", false))
+		and str(save_snapshot.get("default_save_path", "")) == "user://saves/v06/current_run.save" \
+		and not bool(save_snapshot.get("explicit_path_required", true)) \
+		and bool(save_snapshot.get("production_single_slot", false))
 	_record("explicit_qa_path_only", explicit_qa_only)
 	var envelope := _fixture_envelope(handshake, "c16a-bench-envelope", "c16a-bench-write", PRIVATE_SENTINEL)
 	var validation: Dictionary = save.call("validate_envelope", envelope)
@@ -47,9 +48,9 @@ func _run() -> void:
 	var legacy_v1: Dictionary = save.call("inspect_legacy", {"version": 1, "players": []})
 	var legacy_v2: Dictionary = save.call("inspect_legacy", {"save_version": 2, "ruleset_id": "v0.5"})
 	_record("legacy_inspect_only", bool(legacy_v1.get("recognized", false)) and not bool(legacy_v1.get("can_resume", true)) and bool(legacy_v2.get("recognized", false)) and not bool(legacy_v2.get("can_resume", true)))
-	var encoded: Dictionary = handshake.call("encode_codec_value", {"position": Vector2(3.0, 4.0), "color": Color(0.1, 0.2, 0.3, 0.4)})
+	var encoded: Dictionary = handshake.call("encode_codec_value", {"position": Vector2(3.0, 4.0), "color": Color(0.1, 0.2, 0.3, 0.4), "rng_state": -5_774_504_975_775_518_280})
 	var decoded: Dictionary = handshake.call("decode_codec_value", encoded.get("value"))
-	_record("explicit_vector_color_codec", bool(encoded.get("ok", false)) and bool(decoded.get("ok", false)) and (decoded.get("value") as Dictionary).get("position") is Vector2 and (decoded.get("value") as Dictionary).get("color") is Color)
+	_record("explicit_vector_color_codec", bool(encoded.get("ok", false)) and bool(decoded.get("ok", false)) and (decoded.get("value") as Dictionary).get("position") is Vector2 and (decoded.get("value") as Dictionary).get("color") is Color and int((decoded.get("value") as Dictionary).get("rng_state", 0)) == -5_774_504_975_775_518_280)
 	var public_receipt: Dictionary = save.call("public_operation_receipt", written)
 	_record("public_receipt_privacy", _privacy_leak_count(public_receipt) == 0 and not JSON.stringify(public_receipt).contains(PRIVATE_SENTINEL))
 	var evidence := {

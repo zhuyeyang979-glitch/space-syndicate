@@ -577,7 +577,7 @@ func _check_runtime_snapshot(main: Control, phase: String) -> void:
 	_expect(bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(table_viewmodel_snapshot.get("service_authoritative", false)) and bool(table_viewmodel_snapshot.get("owns_table_snapshot_normalization", false)) and bool(table_viewmodel_snapshot.get("owns_contextual_surface_sources", false)) and bool(table_viewmodel_snapshot.get("owns_public_track_viewmodels", false)) and bool(table_viewmodel_snapshot.get("owns_resolution_overlay_badges", false)) and not bool(table_viewmodel_snapshot.get("calculates_play_legality", true)) and not bool(table_viewmodel_snapshot.get("mutates_game_state", true)), "%s configures scene-owned TableSnapshot, public track, resolution-overlay badge, and typed contextual sources" % phase)
 	_expect(bool(card_presentation_snapshot.get("owns_resolution_presentation", false)), "%s configures scene-owned card-resolution cinematic presentation" % phase)
 	var save_snapshot: Dictionary = session_snapshot.get("save_operation", {}) if session_snapshot.get("save_operation", {}) is Dictionary else {}
-	_expect(int(save_snapshot.get("save_version", 0)) == 3 and str(save_snapshot.get("default_save_path", "")).is_empty() and bool(save_snapshot.get("explicit_path_required", false)), "%s preserves the v3 fail-closed save version and explicit-path contract" % phase)
+	_expect(int(save_snapshot.get("save_version", 0)) == 3 and str(save_snapshot.get("default_save_path", "")) == "user://saves/v06/current_run.save" and not bool(save_snapshot.get("explicit_path_required", true)) and bool(save_snapshot.get("production_single_slot", false)), "%s preserves v3 with one fixed production slot" % phase)
 
 
 func _check_runtime_signal_bindings(main: Control) -> void:

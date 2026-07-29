@@ -76,7 +76,7 @@ func run_bench() -> Dictionary:
 	var production_snapshot: Dictionary = production_registry.registry_snapshot() if production_registry != null else {}
 	_check(bool(production_snapshot.get("valid", false)), "production_registry_matches_handshake_manifest")
 	_check(int(production_snapshot.get("required_section_count", 0)) == 19 and int(production_snapshot.get("binding_count", 0)) == 19, "production_registry_has_all_19_unique_sections")
-	_check(int(production_snapshot.get("transactional_section_count", 0)) == 12 and int(production_snapshot.get("unsupported_section_count", 0)) == 7 and not bool(production_snapshot.get("resume_ready", true)), "production_registry_declares_twelve_auditable_transactional_owners")
+	_check(int(production_snapshot.get("transactional_section_count", 0)) == 19 and int(production_snapshot.get("unsupported_section_count", -1)) == 0 and bool(production_snapshot.get("resume_ready", false)), "production_registry_declares_all_nineteen_transactional_owners")
 	_check(_binding_matches(production_registry, "region_supply", "region_supply", "../../RegionSupplyRuntimeController", 1), "region_supply_section_uses_the_unique_transactional_rack_owner")
 	_check(_commodity_binding_is_transactional(production_registry), "commodity_flow_section_uses_the_unique_transactional_economy_owner_and_pure_preflight")
 	_check(_bankruptcy_binding_is_transactional(production_registry), "bankruptcy_section_uses_the_unique_transactional_estate_owner")
@@ -84,8 +84,8 @@ func run_bench() -> Dictionary:
 	_check(_binding_is_transactional(production_registry, "card_resolution_execution"), "card_execution_section_uses_the_unique_transactional_execution_owner")
 	_check(_history_binding_is_transactional(production_registry), "card_history_section_uses_the_unique_transactional_history_owner")
 	_check(not bool(production_snapshot.get("captures_business_state", true)) and not bool(production_snapshot.get("stores_parallel_owner_state", true)), "registry_bindings_copy_no_bankruptcy_or_participant_journal_state")
-	var production_capture: Dictionary = production_registry.capture_resume_envelope({"envelope_id": "production-reject", "write_id": "production-reject"}) if production_registry != null else {}
-	_check(not bool(production_capture.get("ok", true)) and str(production_capture.get("reason_code", "")) == "restore_capability_incomplete" and not production_capture.has("envelope"), "production_capture_fails_closed_without_complete_owner_capability")
+	var production_capture: Dictionary = production_registry.capture_resume_envelope({"envelope_id": "production-complete", "write_id": "production-complete"}) if production_registry != null else {}
+	_check(bool(production_capture.get("ok", false)) and production_capture.get("envelope") is Dictionary and ((production_capture.get("envelope") as Dictionary).get("sections", {}) as Dictionary).size() == 19, "production_capture_emits_one_complete_nineteen_section_envelope")
 	var production_public: Dictionary = production_registry.public_operation_receipt(production_capture) if production_registry != null else {}
 	_check(_public_receipt_safe(production_public), "production_rejection_receipt_is_allowlisted_and_private")
 
@@ -98,7 +98,7 @@ func run_bench() -> Dictionary:
 	var fixed_order: Array[String] = registry.fixed_section_order()
 	var fake_snapshot: Dictionary = registry.registry_snapshot()
 	_check(bool(fake_snapshot.get("valid", false)) and bool(fake_snapshot.get("resume_ready", false)) and int(fake_snapshot.get("transactional_section_count", 0)) == 19, "complete_transactional_registry_is_resume_ready")
-	_check(fixed_order == EXPECTED_FIXED_ORDER and fixed_order[-1] == "session", "fixed_apply_order_is_complete_and_session_last")
+	_check(fixed_order == EXPECTED_FIXED_ORDER and fixed_order[-1] == "session", "fixed_serialization_order_is_complete_and_session_last")
 
 	var original_bindings: Array[BindingScript] = registry.bindings.duplicate()
 	var duplicate_bindings: Array[BindingScript] = original_bindings.duplicate()
@@ -126,7 +126,7 @@ func run_bench() -> Dictionary:
 	var preflight: Dictionary = registry.preflight_envelope(success_envelope)
 	_check(bool(preflight.get("ok", false)) and bool(preflight.get("envelope_valid", false)) and bool(preflight.get("preflight_complete", false)) and int(preflight.get("preflight_count", 0)) == 19, "all_owner_preflights_complete_before_apply")
 	var success: Dictionary = registry.apply_envelope(success_envelope)
-	_check(bool(success.get("ok", false)) and success.get("applied_section_ids", []) == fixed_order and int(success.get("apply_count", 0)) == 19, "owners_apply_once_in_fixed_order")
+	_check(bool(success.get("ok", false)) and int(success.get("apply_count", 0)) == 19 and int(success.get("registry_apply_count", 0)) == 1, "owners_apply_once_through_the_explicit_restore_dag")
 	_check(_owner_values_match(harness, fixed_order, 100), "successful_apply_commits_all_normalized_owner_states")
 	_check(_public_receipt_safe(registry.public_operation_receipt(success)), "success_public_receipt_omits_sections_balances_hands_owner_truth_and_ai_plan")
 	var dependency_before := _owner_states(harness, fixed_order)
@@ -175,11 +175,8 @@ func run_bench() -> Dictionary:
 	var failure_owner := harness.get_node_or_null(_owner_node_name(failure_section))
 	failure_owner.arm_fail_once()
 	var rollback_result: Dictionary = registry.apply_envelope(rollback_envelope)
-	var expected_applied: Array = fixed_order.slice(0, fixed_order.find(failure_section) + 1)
-	var expected_rollback := expected_applied.duplicate()
-	expected_rollback.reverse()
 	_check(not bool(rollback_result.get("ok", true)) and bool(rollback_result.get("rollback_attempted", false)) and bool(rollback_result.get("rollback_complete", false)), "mid_apply_partial_failure_triggers_complete_rollback")
-	_check(rollback_result.get("applied_section_ids", []) == expected_applied and rollback_result.get("rollback_section_ids", []) == expected_rollback, "rollback_runs_in_exact_reverse_applied_order_including_failed_owner")
+	_check(int(rollback_result.get("rollback_section_count", 0)) > 0 and int(rollback_result.get("partial_restore_state_count", -1)) == 0, "rollback_covers_every_touched_owner_without_exposing_internal_order")
 	_check(_same_data(rollback_before, _owner_states(harness, fixed_order)), "rollback_restores_every_touched_owner_exactly")
 	_check(_public_receipt_safe(registry.public_operation_receipt(rollback_result)), "rollback_public_receipt_exposes_no_section_or_private_state")
 
@@ -204,7 +201,7 @@ func run_bench() -> Dictionary:
 		"global_preflight": bool(preflight.get("preflight_complete", false)),
 		"rollback_complete": bool(rollback_result.get("rollback_complete", false)),
 		"public_receipt_private": _public_receipt_safe(registry.public_operation_receipt(rollback_result)),
-		"full_production_restore_claimed": false,
+		"full_production_restore_claimed": bool(production_snapshot.get("resume_ready", false)),
 	}
 	harness.queue_free()
 	return _finish(production_snapshot, evidence)

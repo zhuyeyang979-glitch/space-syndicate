@@ -9,6 +9,15 @@ var _run_started := false
 var _last_result: Dictionary = {}
 
 
+func _enter_tree() -> void:
+	# The embedded production composition is used only for UI wiring. Disable
+	# its automatic root-menu inspection before child _ready callbacks so this
+	# QA Bench never reads the real production slot.
+	var lifecycle := get_node_or_null("ProductionMain/RuntimeServices/MenuLifecycleApplicationFlowController")
+	if lifecycle != null:
+		lifecycle.set("open_root_on_ready", false)
+
+
 func _ready() -> void:
 	if auto_run and not Engine.is_editor_hint():
 		call_deferred("_run_auto_bench")
@@ -40,6 +49,7 @@ func run_bench() -> Dictionary:
 	var overlay := production_main.get_node_or_null("RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay") as SpaceSyndicateMenuOverlay if production_main != null else null
 	_expect(flow != null and gateway != null, "flow bench composes the scene-owned controller and one fake high-level gateway")
 	_expect(lifecycle != null and coordinator != null and world != null and overlay != null, "production menu dependencies load in the focused Bench")
+	_expect(lifecycle != null and not bool(lifecycle.get("open_root_on_ready")), "focused Bench disables production-slot inspection before child readiness")
 	if flow == null or gateway == null or lifecycle == null or coordinator == null or world == null or overlay == null:
 		return _finish()
 
@@ -53,7 +63,10 @@ func run_bench() -> Dictionary:
 
 	var intent := SaveResumeIntentV06.save("bench:save:1", &"pause_menu")
 	var roundtrip := SaveResumeIntentV06.from_dictionary(intent.to_dictionary())
-	_expect(intent.is_valid() and roundtrip != null and roundtrip.is_valid(), "typed save intent roundtrips as closed data")
+	_expect(intent.is_valid() and intent.is_valid_for_production() and roundtrip != null and roundtrip.is_valid_for_production(), "typed save intent roundtrips as closed production data")
+	_expect(not SaveResumeIntentV06.save("bench:wrong-root", &"root_menu").is_valid_for_production() \
+		and not SaveResumeIntentV06.resume("bench:wrong-pause", &"pause_menu").is_valid_for_production() \
+		and not SaveResumeIntentV06.save("bench:qa", &"qa_driver").is_valid_for_production(), "wrong-surface and QA intents cannot reach the production slot gateway")
 	var intent_text := JSON.stringify(intent.to_dictionary())
 	_expect(not intent_text.contains("user://") and not intent_text.contains("envelope") and not intent_text.contains("fingerprint"), "typed intent contains no path, envelope, or fingerprint")
 
@@ -124,7 +137,7 @@ func run_bench() -> Dictionary:
 	# direct gateway result through a temporary shim method on the flow contract.
 	var malformed_intent := SaveResumeIntentV06.inspect("bench:malformed", &"root_menu")
 	var malformed := SaveResumeReceiptV06.from_gateway_result(malformed_intent, {
-		"schema_version": 1,
+		"schema_version": SaveResumeReceiptV06.SCHEMA_VERSION,
 		"request_id": malformed_intent.request_id,
 		"operation": "inspect",
 		"slot_id": "current_run",
@@ -139,6 +152,8 @@ func run_bench() -> Dictionary:
 		"playtime_seconds": 1,
 		"seat_count": 4,
 		"ruleset_id": "v0.6",
+		"mission_title": "",
+		"session_state": "running",
 		"envelope": {},
 	})
 	_expect(not malformed.accepted and malformed.reason_code == "gateway_receipt_shape_invalid", "unknown gateway fields fail closed before reaching presentation")
@@ -156,6 +171,9 @@ func run_bench() -> Dictionary:
 	gateway.call("set_response", &"resume", _successful_resume_response())
 	if resume_button != null:
 		resume_button.pressed.emit()
+	_expect(overlay.visible and int(lifecycle.debug_snapshot().get("load_request_count", 0)) == 0 and bool(lifecycle.debug_snapshot().get("resume_confirmation_pending", false)), "dirty active table requires explicit confirmation before Continue can replace it")
+	if resume_button != null:
+		resume_button.pressed.emit()
 	_expect(not overlay.visible, "successful Continue returns to the active table")
 	_expect(int(lifecycle.debug_snapshot().get("load_request_count", 0)) == 1, "Continue submits exactly one typed resume intent")
 
@@ -167,6 +185,11 @@ func run_bench() -> Dictionary:
 		pause_board.set_save_resume_state(SaveResumeReceiptV06.busy_public_snapshot(SaveResumeIntentV06.OPERATION_SAVE))
 		_expect(pause_board.save_game_button.disabled and pause_board.save_game_button.text == "保存中…", "pause summary renders the saving state and blocks duplicate clicks")
 		pause_board.set_save_resume_state(flow.public_snapshot())
+		pause_board.save_game_button.pressed.emit()
+		_expect(bool(pause_board.debug_snapshot().get("confirmation_pending", false)) and int(lifecycle.debug_snapshot().get("save_request_count", 0)) == 0, "occupied slot requires explicit overwrite confirmation before writing")
+		pause_board.cancel_save_confirmation()
+		_expect(not bool(pause_board.debug_snapshot().get("confirmation_pending", true)) and int(lifecycle.debug_snapshot().get("save_request_count", 0)) == 0, "cancelled overwrite confirmation performs no save")
+		pause_board.save_game_button.pressed.emit()
 		pause_board.save_game_button.pressed.emit()
 	_expect(pause_board != null and str(pause_board.save_game_status_label.text) == "存档：已保存当前游戏。", "pause summary reports save success without leaving the menu")
 	_expect(int(lifecycle.debug_snapshot().get("save_request_count", 0)) == 1, "pause save submits exactly one typed save intent")
