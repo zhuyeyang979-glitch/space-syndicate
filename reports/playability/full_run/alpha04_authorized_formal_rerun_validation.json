@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "task_id": "ALPHA_0_4_A_AUTHORIZED_FORMAL_FULL_RUN_RERUN",
+  "updated_at_local": "2026-07-29T18:19:00+09:00",
+  "status": "PARTIAL",
+  "head_sha": "30a6d87c545df2d8de3c369dec5fb2b3d57a1e92",
+  "authorization": {
+    "separate_user_authorization": true,
+    "authorized_run_count": 1,
+    "executed_run_count": 1,
+    "third_run_authorized": false
+  },
+  "command": {
+    "entry": "res://scripts/tools/full_run_quality_driver.gd",
+    "arguments": [
+      "--seed-index",
+      "0",
+      "--observation-seconds",
+      "150",
+      "--max-wall-seconds",
+      "180"
+    ],
+    "seed": 900626424,
+    "formal_command_count_total": 2,
+    "formal_rerun_count_total": 1
+  },
+  "result": {
+    "exit_code": 1,
+    "driver_summary_valid": true,
+    "status": "incomplete",
+    "completed": false,
+    "failure_code": "observation_window_elapsed_before_settlement",
+    "driver_wall_seconds": 181.437,
+    "session_wall_seconds": 174.654,
+    "world_seconds": 185.634705,
+    "script_error_count": 0,
+    "runtime_error_count": 0,
+    "system_godot_process_count_before": 0,
+    "system_godot_process_count_after": 0
+  },
+  "actions": {
+    "attempted": 141,
+    "progressed": 140,
+    "rejected_invalid": 0,
+    "invalid_action_count": 0,
+    "nonfinite_count": 0,
+    "reason_codes": {
+      "district_supply_retryable_receipt": 1
+    },
+    "supply_rack_rotations": 39,
+    "supply_rack_advancement_purchases": 0,
+    "duplicate_card_submission_count": 0
+  },
+  "economy": {
+    "facility_count": 2,
+    "production_installation_count": 2,
+    "peak_production_installation_count": 2,
+    "matched_commodity_count": 1,
+    "settled_matched_commodity_count": 1,
+    "matched_chain": {
+      "commodity_id": "磁核榴莲",
+      "industry_id": "energy",
+      "production_capacity_units_per_minute": 10,
+      "demand_capacity_units_per_minute": 10,
+      "settled_units": 5,
+      "transport_units": 5,
+      "waste_units": 0
+    },
+    "sale_receipt_count": 22,
+    "first_sale_world_seconds": 62.391742,
+    "controlled_region_count": 4,
+    "required_region_count": 3,
+    "top_k_gdp_per_minute": 1612,
+    "required_top_k_gdp_per_minute": 108,
+    "eligible": true,
+    "post_eligibility_production_installation_delta": 0
+  },
+  "player_card_dock": {
+    "normal_card_was_visible_during_run": true,
+    "commodity_card_was_visible_during_run": true,
+    "commodity_source_art_was_visible": true,
+    "commodity_inventory_art_was_visible": true,
+    "direct_commodity_claim_succeeded": true,
+    "commodity_claim_request_count": 1,
+    "duplicate_commodity_claim_count": 0,
+    "commodity_claim_button_count": 0,
+    "duplicate_card_submission_count": 0,
+    "player_card_dock_refresh_count": 675,
+    "commodity_performance_metrics_recorded": true,
+    "performance_p95_ms": {
+      "commodity_source_render": 27.968,
+      "commodity_inventory_render": 13.836,
+      "commodity_hover": 2.913,
+      "single_click_to_intent": 0.25,
+      "receipt_to_inventory_refresh": 70.793
+    }
+  },
+  "victory_and_settlement": {
+    "state_sequence": [
+      "idle",
+      "qualification",
+      "audit"
+    ],
+    "resolved_observed": false,
+    "transition_sequence_complete": false,
+    "final_settlement_count": 0,
+    "final_settlement_presentation_count": 0,
+    "final_settlement_public_log_count": 0,
+    "terminal_quiescent_frames": 0,
+    "terminal_world_delta": -1,
+    "terminal_rng_draw_delta": -1,
+    "timer_evidence_verified": false,
+    "timer_evidence_reason": "timer_trace_state_sequence_incomplete"
+  },
+  "runtime_progress": {
+    "authoritative_step_attempt_count": 159,
+    "authoritative_step_active_count": 159,
+    "authoritative_step_world_seconds": 159,
+    "authoritative_step_wall_msec_average": 564.377358490566,
+    "authoritative_step_wall_msec_max": 3081,
+    "authoritative_last_progress_step": 159,
+    "authoritative_last_progress_reason": "victory_timer_audit",
+    "authoritative_steps_since_progress": 0,
+    "authoritative_progress_extension_used": false,
+    "blocked_realtime_invariant_failure_count": 0,
+    "progress_checkpoint_count": 5,
+    "last_checkpoint": {
+      "step": 150,
+      "world_seconds": 176.634705,
+      "facility_count": 2,
+      "sale_receipt_count": 20,
+      "victory_state": "audit"
+    }
+  },
+  "classification": {
+    "partial_not_blocked": true,
+    "economy_gate_green": true,
+    "player_card_dock_gate_green": true,
+    "victory_resolved": false,
+    "settlement_green": false,
+    "terminal_quiescence_green": false,
+    "full_run_to_settlement_green": false,
+    "merge_to_main_allowed": false,
+    "draft_pr_required": true
+  }
+}

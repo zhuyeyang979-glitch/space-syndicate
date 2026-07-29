@@ -136,7 +136,9 @@ world probes simply prove that the same production path continues through a
 second facility and real sales once it is allowed to cross the missed world-
 time boundary.
 
-## Next gate
+## Subsequent Formal disposition
 
-The next single gate is a separately authorized Formal FullRun rerun. Until
-that terminal run is green, Draft PR #72 must stay draft and must not merge.
+The separately authorized Formal rerun was later executed and remained
+INCOMPLETE in `audit`; see
+`alpha04_authorized_formal_rerun_validation.*`. Draft PR #72 must stay draft
+and must not merge.
