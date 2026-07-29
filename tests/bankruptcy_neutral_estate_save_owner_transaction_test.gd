@@ -32,10 +32,14 @@ func _run() -> void:
 	_expect((normalized.get("journal", {}) as Dictionary).size() == 2 and (normalized.get("neutral_rent_journal", {}) as Dictionary).size() == 2, "bankruptcy estate preserves lifecycle and neutral-rent exact-once journals")
 	_expect(str(normalized.get("last_survivor_transaction_id", "")) == "estate-finalized", "bankruptcy estate preserves the last-survivor exact-once marker")
 
-	var detached_probe := estate.duplicate() as BankruptcyNeutralEstateRuntimeController
-	var probe_receipt: Dictionary = detached_probe.apply_save_data(normalized) if detached_probe != null else {}
-	_expect(bool(probe_receipt.get("applied", false)) and _same_data(normalized, detached_probe.to_save_data()), "detached registry preflight normalizes bankruptcy state exactly")
-	detached_probe.free()
+	var preflight_owner_before := estate.to_save_data()
+	var preflight_input_before := normalized.duplicate(true)
+	var preflight := estate.preflight_save_data(normalized)
+	_expect(bool(preflight.get("accepted", false)) and _same_data(normalized, preflight.get("normalized_state", {})), "live-owner bankruptcy preflight accepts and exactly normalizes the current save schema")
+	_expect(_same_data(preflight_owner_before, estate.to_save_data()) and _same_data(preflight_input_before, normalized), "accepted bankruptcy preflight mutates neither owner nor input")
+	var detached_normalized: Dictionary = (preflight.get("normalized_state", {}) as Dictionary).duplicate(true)
+	detached_normalized["commodity_flow_retired_sequence"] = 999
+	_expect(_same_data(preflight_owner_before, estate.to_save_data()), "preflight returns a detached bankruptcy normalization")
 
 	var cleared := _checkpoint()
 	cleared["journal"] = {}
@@ -48,12 +52,23 @@ func _run() -> void:
 	var before_invalid := estate.to_save_data()
 	var private_injection := before_invalid.duplicate(true)
 	(private_injection.get("journal", {}) as Dictionary)["estate-finalized"]["private_cash_cents"] = 987654321
+	var private_preflight_input := private_injection.duplicate(true)
+	var private_preflight := estate.preflight_save_data(private_injection)
+	_expect(not bool(private_preflight.get("accepted", true)) and str(private_preflight.get("reason_code", "")) == "bankruptcy_journal_record_not_allowlisted", "bankruptcy preflight rejects private participant fields")
+	_expect(_same_data(before_invalid, estate.to_save_data()) and _same_data(private_preflight_input, private_injection), "rejected bankruptcy preflight mutates neither owner nor input")
 	var rejected_private: Dictionary = estate.apply_save_data(private_injection)
 	_expect(not bool(rejected_private.get("applied", true)) and str(rejected_private.get("reason", "")) == "bankruptcy_journal_record_not_allowlisted", "bankruptcy save rejects private participant fields")
 	_expect(_same_data(before_invalid, estate.to_save_data()), "private-field rejection mutates no live bankruptcy state")
 	var bad_reference := before_invalid.duplicate(true)
 	bad_reference["last_survivor_transaction_id"] = "missing-transaction"
+	_expect(not bool(estate.preflight_save_data(bad_reference).get("accepted", true)) and _same_data(before_invalid, estate.to_save_data()), "invalid last-survivor reference fails pure preflight without mutation")
 	_expect(not bool(estate.apply_save_data(bad_reference).get("applied", true)) and _same_data(before_invalid, estate.to_save_data()), "invalid last-survivor reference fails closed without mutation")
+	var nonfinite := before_invalid.duplicate(true)
+	(nonfinite.get("journal", {}) as Dictionary)["estate-finalized"]["occurred_at"] = INF
+	_expect(not bool(estate.preflight_save_data(nonfinite).get("accepted", true)) and is_inf(float((nonfinite.get("journal", {}) as Dictionary)["estate-finalized"]["occurred_at"])), "bankruptcy preflight rejects non-finite data without rewriting its input")
+	var noncanonical := before_invalid.duplicate(true)
+	((noncanonical.get("last_public_receipt", {}) as Dictionary).get("estate_counts", {}) as Dictionary)["hand_cards_removed"] = -1
+	_expect(str(estate.preflight_save_data(noncanonical).get("reason_code", "")) == "bankruptcy_save_not_canonical" and _same_data(before_invalid, estate.to_save_data()), "bankruptcy preflight rejects values that legacy normalization would clamp")
 	var debug := estate.debug_snapshot()
 	_expect(not debug.has("journal") and not debug.has("neutral_rent_journal") and not JSON.stringify(debug).contains("987654321"), "bankruptcy debug snapshot exposes no private save journal")
 	estate.queue_free()

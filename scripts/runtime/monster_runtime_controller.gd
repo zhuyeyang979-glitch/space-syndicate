@@ -51,6 +51,32 @@ const MONSTER_REGION_PUBLIC_ATTRACTION_FACTORS_V06 := [
 	{"part_key": "miasma", "code": "miasma", "label": "瘴气"},
 	{"part_key": "monster", "code": "other_monster", "label": "其他怪兽"},
 ]
+const MONSTER_SAVE_FIELDS_V06 := [
+	"auto_monsters",
+	"next_auto_monster_uid",
+	"next_special_monster_slot",
+	"selected_auto_monster_slot",
+	"active_monster_wagers",
+	"resolved_monster_wager_history",
+	"monster_wager_sequence",
+	"public_card_bid_monster_wager_pool",
+	"monster_wager_settlement_revision",
+	"monster_wager_settlement_terminal_journal",
+	"monster_battle_lifecycle_schema_version",
+	"monster_timer",
+	"special_monster_timer",
+	"monster_card_atomic_schema_version",
+	"monster_card_atomic_owner_revision",
+	"monster_card_atomic_starter_state",
+	"monster_card_atomic_reservations",
+	"monster_card_atomic_terminal_journal",
+	"monster_card_atomic_presentation_journal",
+]
+const MONSTER_SAVE_FORBIDDEN_DUPLICATE_FIELDS_V06 := [
+	"world_player_cash",
+	"visual_cues",
+	"presentation_callouts",
+]
 
 const MONSTER_COMMAND_MOVE_METERS := 220.0
 const NEARBY_RADIUS_METERS := 240.0
@@ -1482,6 +1508,106 @@ func to_save_data() -> Dictionary:
 	}
 
 
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	if not _monster_save_has_exact_fields_v06(data, MONSTER_SAVE_FIELDS_V06) \
+			or not _monster_save_value_is_finite_pure_v06(data):
+		return _monster_save_preflight_rejection_v06("monster_save_shape_invalid")
+	var retired_payload := LegacyContractPayloadGuardV06.validation_report(data)
+	if not bool(retired_payload.get("valid", false)):
+		return _monster_save_preflight_rejection_v06("retired_contract_payload_rejected")
+	if _monster_save_contains_forbidden_duplicate_v06(data):
+		return _monster_save_preflight_rejection_v06("monster_save_authority_duplicate_forbidden")
+	for array_key in ["auto_monsters", "active_monster_wagers", "resolved_monster_wager_history"]:
+		if not (data.get(array_key) is Array):
+			return _monster_save_preflight_rejection_v06("monster_save_%s_invalid" % array_key)
+	for dictionary_key in [
+		"monster_wager_settlement_terminal_journal",
+		"monster_card_atomic_starter_state",
+		"monster_card_atomic_reservations",
+		"monster_card_atomic_terminal_journal",
+		"monster_card_atomic_presentation_journal",
+	]:
+		if not (data.get(dictionary_key) is Dictionary):
+			return _monster_save_preflight_rejection_v06("monster_save_%s_invalid" % dictionary_key)
+	for integer_key in [
+		"next_auto_monster_uid",
+		"next_special_monster_slot",
+		"selected_auto_monster_slot",
+		"monster_wager_sequence",
+		"public_card_bid_monster_wager_pool",
+		"monster_wager_settlement_revision",
+		"monster_card_atomic_owner_revision",
+	]:
+		if not (data.get(integer_key) is int) or int(data.get(integer_key, -1)) < 0:
+			return _monster_save_preflight_rejection_v06("monster_save_%s_invalid" % integer_key)
+	if int(data.get("next_auto_monster_uid", 0)) < 1:
+		return _monster_save_preflight_rejection_v06("monster_save_next_auto_monster_uid_invalid")
+	if not (data.get("monster_battle_lifecycle_schema_version") is int) \
+			or int(data.get("monster_battle_lifecycle_schema_version", -1)) != MONSTER_BATTLE_LIFECYCLE_POLICY_V06.SCHEMA_VERSION \
+			or not (data.get("monster_card_atomic_schema_version") is String) \
+			or str(data.get("monster_card_atomic_schema_version", "")) != MONSTER_CARD_LIFECYCLE_SCHEMA_V06:
+		return _monster_save_preflight_rejection_v06("monster_save_schema_attestation_invalid")
+	for timer_key in ["monster_timer", "special_monster_timer"]:
+		var timer_value: Variant = data.get(timer_key)
+		if not (timer_value is int or timer_value is float) \
+				or not is_finite(float(timer_value)) or float(timer_value) < 0.0:
+			return _monster_save_preflight_rejection_v06("monster_save_%s_invalid" % timer_key)
+	var roster := data.get("auto_monsters", []) as Array
+	for actor_index in range(roster.size()):
+		var actor_variant: Variant = roster[actor_index]
+		if not (actor_variant is Dictionary):
+			return _monster_save_preflight_rejection_v06("monster_save_actor_invalid")
+		var actor := actor_variant as Dictionary
+		if not (actor.get("uid") is int) or int(actor.get("uid", 0)) <= 0 \
+				or not (actor.get("slot") is int) or int(actor.get("slot", -1)) != actor_index \
+				or actor.has("down") and not (actor.get("down") is bool) \
+				or actor.has("monster_family_id") and not (actor.get("monster_family_id") is String):
+			return _monster_save_preflight_rejection_v06("monster_save_actor_invalid")
+	var roster_size := roster.size()
+	if (roster_size == 0 and (int(data.get("next_special_monster_slot", -1)) != 0 \
+			or int(data.get("selected_auto_monster_slot", -1)) != 0)) \
+			or roster_size > 0 and (int(data.get("next_special_monster_slot", -1)) >= roster_size \
+			or int(data.get("selected_auto_monster_slot", -1)) >= roster_size):
+		return _monster_save_preflight_rejection_v06("monster_save_slot_invalid")
+	for wager_variant: Variant in data.get("active_monster_wagers", []) as Array:
+		if not (wager_variant is Dictionary) \
+				or not ((wager_variant as Dictionary).get("lifecycle_schema_version") is int) \
+				or int((wager_variant as Dictionary).get("lifecycle_schema_version", -1)) != MONSTER_BATTLE_LIFECYCLE_POLICY_V06.SCHEMA_VERSION:
+			return _monster_save_preflight_rejection_v06("monster_save_battle_lifecycle_schema_invalid")
+	var prepared := _monster_save_envelope_v06(data)
+	if not bool(prepared.get("valid", false)):
+		return _monster_save_preflight_rejection_v06(str(prepared.get("reason_code", "monster_save_invalid")))
+	var prepared_state: Dictionary = prepared.get("state", {}) if prepared.get("state", {}) is Dictionary else {}
+	var normalized_state := {
+		"auto_monsters": (prepared_state.get("auto_monsters", []) as Array).duplicate(true),
+		"next_auto_monster_uid": int(prepared_state.get("next_auto_monster_uid", 1)),
+		"next_special_monster_slot": int(prepared_state.get("next_special_monster_slot", 0)),
+		"selected_auto_monster_slot": int(prepared_state.get("selected_auto_monster_slot", 0)),
+		"active_monster_wagers": (prepared_state.get("active_monster_wagers", []) as Array).duplicate(true),
+		"resolved_monster_wager_history": (prepared_state.get("resolved_monster_wager_history", []) as Array).duplicate(true),
+		"monster_wager_sequence": int(prepared_state.get("monster_wager_sequence", 0)),
+		"public_card_bid_monster_wager_pool": int(prepared_state.get("public_card_bid_monster_wager_pool", 0)),
+		"monster_wager_settlement_revision": int(prepared_state.get("monster_wager_settlement_revision", 0)),
+		"monster_wager_settlement_terminal_journal": (prepared_state.get("monster_wager_settlement_terminal_journal", {}) as Dictionary).duplicate(true),
+		"monster_battle_lifecycle_schema_version": MONSTER_BATTLE_LIFECYCLE_POLICY_V06.SCHEMA_VERSION,
+		"monster_timer": float(prepared_state.get("monster_timer", 4.0)),
+		"special_monster_timer": float(prepared_state.get("special_monster_timer", 5.0)),
+		"monster_card_atomic_schema_version": MONSTER_CARD_LIFECYCLE_SCHEMA_V06,
+		"monster_card_atomic_owner_revision": int(prepared_state.get("monster_card_atomic_owner_revision", 0)),
+		"monster_card_atomic_starter_state": (prepared_state.get("monster_card_atomic_starter_state", {}) as Dictionary).duplicate(true),
+		"monster_card_atomic_reservations": (prepared_state.get("monster_card_atomic_reservations", {}) as Dictionary).duplicate(true),
+		"monster_card_atomic_terminal_journal": (prepared_state.get("monster_card_atomic_terminal_journal", {}) as Dictionary).duplicate(true),
+		"monster_card_atomic_presentation_journal": (prepared_state.get("monster_card_atomic_presentation_journal", {}) as Dictionary).duplicate(true),
+	}
+	if not _monster_save_values_match_v06(data, normalized_state):
+		return _monster_save_preflight_rejection_v06("monster_save_not_canonical")
+	return {
+		"accepted": true,
+		"reason_code": "monster_save_valid",
+		"normalized_state": normalized_state.duplicate(true),
+	}
+
+
 func apply_save_data(data: Dictionary) -> Dictionary:
 	var normalized := _monster_save_envelope_v06(data)
 	if not bool(normalized.get("valid", false)):
@@ -2293,6 +2419,84 @@ func _monster_battle_lifecycle_save_value_is_pure_v06(value: Variant) -> bool:
 			if not _monster_battle_lifecycle_save_value_is_pure_v06(item_variant):
 				return false
 	return true
+
+
+func _monster_save_preflight_rejection_v06(reason_code: String) -> Dictionary:
+	return {"accepted": false, "reason_code": reason_code}
+
+
+func _monster_save_has_exact_fields_v06(source: Dictionary, expected_fields: Array) -> bool:
+	if source.size() != expected_fields.size():
+		return false
+	for key_variant: Variant in source.keys():
+		if not (key_variant is String) or not expected_fields.has(str(key_variant)):
+			return false
+	return true
+
+
+func _monster_save_value_is_finite_pure_v06(value: Variant) -> bool:
+	match typeof(value):
+		TYPE_NIL, TYPE_BOOL, TYPE_INT, TYPE_STRING:
+			return true
+		TYPE_FLOAT:
+			return is_finite(float(value))
+		TYPE_VECTOR2:
+			var vector := value as Vector2
+			return is_finite(vector.x) and is_finite(vector.y)
+		TYPE_COLOR:
+			var color := value as Color
+			return is_finite(color.r) and is_finite(color.g) \
+				and is_finite(color.b) and is_finite(color.a)
+		TYPE_ARRAY:
+			for item_variant: Variant in value as Array:
+				if not _monster_save_value_is_finite_pure_v06(item_variant):
+					return false
+			return true
+		TYPE_DICTIONARY:
+			for key_variant: Variant in (value as Dictionary).keys():
+				if not (key_variant is String or key_variant is StringName) \
+						or not _monster_save_value_is_finite_pure_v06((value as Dictionary).get(key_variant)):
+					return false
+			return true
+	return false
+
+
+func _monster_save_contains_forbidden_duplicate_v06(value: Variant) -> bool:
+	if value is Dictionary:
+		for key_variant: Variant in (value as Dictionary).keys():
+			if MONSTER_SAVE_FORBIDDEN_DUPLICATE_FIELDS_V06.has(str(key_variant)) \
+					or _monster_save_contains_forbidden_duplicate_v06((value as Dictionary).get(key_variant)):
+				return true
+	elif value is Array:
+		for item_variant: Variant in value as Array:
+			if _monster_save_contains_forbidden_duplicate_v06(item_variant):
+				return true
+	return false
+
+
+func _monster_save_values_match_v06(left: Variant, right: Variant) -> bool:
+	if typeof(left) != typeof(right):
+		return false
+	if left is Dictionary:
+		var left_dictionary := left as Dictionary
+		var right_dictionary := right as Dictionary
+		if left_dictionary.size() != right_dictionary.size():
+			return false
+		for key_variant: Variant in left_dictionary.keys():
+			if not right_dictionary.has(key_variant) \
+					or not _monster_save_values_match_v06(left_dictionary.get(key_variant), right_dictionary.get(key_variant)):
+				return false
+		return true
+	if left is Array:
+		var left_array := left as Array
+		var right_array := right as Array
+		if left_array.size() != right_array.size():
+			return false
+		for index in range(left_array.size()):
+			if not _monster_save_values_match_v06(left_array[index], right_array[index]):
+				return false
+		return true
+	return left == right
 
 
 func _monster_save_envelope_v06(data: Dictionary) -> Dictionary:

@@ -19,6 +19,12 @@ const JOURNAL_RECORD_KEYS := ["state", "reason_code", "player_indices", "estate_
 const JOURNAL_STATES := ["prepared", "committed", "finalized", "rolled_back"]
 const PUBLIC_RECEIPT_KEYS := ["player_indices", "estate_counts", "reason"]
 const CHECKPOINT_REQUEST_KEYS := ["transaction_id", "reason_code", "occurred_at", "source_fingerprint"]
+const SAVE_FORBIDDEN_DUPLICATE_FIELDS := [
+	"player_inventory",
+	"player_cash",
+	"facility_state",
+	"commodity_flow_state",
+]
 
 var _configured := false
 var _world_bridge: Node
@@ -63,6 +69,45 @@ func to_save_data() -> Dictionary:
 		"last_public_receipt": _last_public_receipt.duplicate(true),
 		"last_survivor_transaction_id": _last_survivor_transaction_id,
 		"commodity_flow_retired_sequence": _commodity_flow_retired_sequence,
+	}
+
+
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	if not _save_has_exact_fields(data, SAVE_KEYS) or not _is_finite_pure_save_data(data):
+		return _save_preflight_rejection("bankruptcy_save_shape_invalid")
+	var retired_payload := LegacyContractPayloadGuardV06.validation_report(data)
+	if not bool(retired_payload.get("valid", false)):
+		return _save_preflight_rejection("retired_contract_payload_rejected")
+	if _save_contains_forbidden_duplicate(data):
+		return _save_preflight_rejection("bankruptcy_save_authority_duplicate_forbidden")
+	if not (data.get("state_version") is int) or int(data.get("state_version", -1)) != SAVE_STATE_VERSION \
+			or not (data.get("ruleset_id") is String) or str(data.get("ruleset_id", "")) != RULESET_ID:
+		return _save_preflight_rejection("bankruptcy_save_header_invalid")
+	if not (data.get("journal") is Dictionary) \
+			or not (data.get("neutral_rent_journal") is Dictionary) \
+			or not (data.get("last_public_receipt") is Dictionary) \
+			or not (data.get("last_survivor_transaction_id") is String) \
+			or not (data.get("commodity_flow_retired_sequence") is int) \
+			or int(data.get("commodity_flow_retired_sequence", -1)) < 0:
+		return _save_preflight_rejection("bankruptcy_save_shape_invalid")
+	var prepared := _prepare_save_data(data)
+	if not bool(prepared.get("valid", false)):
+		return _save_preflight_rejection(str(prepared.get("reason", "bankruptcy_save_invalid")))
+	var normalized_state := {
+		"state_version": SAVE_STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"journal": (prepared.get("journal", {}) as Dictionary).duplicate(true),
+		"neutral_rent_journal": (prepared.get("neutral_rent_journal", {}) as Dictionary).duplicate(true),
+		"last_public_receipt": (prepared.get("last_public_receipt", {}) as Dictionary).duplicate(true),
+		"last_survivor_transaction_id": str(prepared.get("last_survivor_transaction_id", "")),
+		"commodity_flow_retired_sequence": int(prepared.get("commodity_flow_retired_sequence", 0)),
+	}
+	if not _save_values_match(data, normalized_state):
+		return _save_preflight_rejection("bankruptcy_save_not_canonical")
+	return {
+		"accepted": true,
+		"reason_code": "bankruptcy_save_valid",
+		"normalized_state": normalized_state.duplicate(true),
 	}
 
 
@@ -699,6 +744,84 @@ func _valid_sha256(value: String) -> bool:
 		if not "0123456789abcdef".contains(value.substr(character_index, 1)):
 			return false
 	return true
+
+
+func _save_preflight_rejection(reason_code: String) -> Dictionary:
+	return {"accepted": false, "reason_code": reason_code}
+
+
+func _save_has_exact_fields(source: Dictionary, expected_fields: Array) -> bool:
+	if source.size() != expected_fields.size():
+		return false
+	for key_variant: Variant in source.keys():
+		if not (key_variant is String) or not expected_fields.has(str(key_variant)):
+			return false
+	return true
+
+
+func _is_finite_pure_save_data(value: Variant) -> bool:
+	match typeof(value):
+		TYPE_NIL, TYPE_BOOL, TYPE_INT, TYPE_STRING:
+			return true
+		TYPE_FLOAT:
+			return is_finite(float(value))
+		TYPE_VECTOR2:
+			var vector := value as Vector2
+			return is_finite(vector.x) and is_finite(vector.y)
+		TYPE_COLOR:
+			var color := value as Color
+			return is_finite(color.r) and is_finite(color.g) \
+				and is_finite(color.b) and is_finite(color.a)
+		TYPE_ARRAY:
+			for item_variant: Variant in value as Array:
+				if not _is_finite_pure_save_data(item_variant):
+					return false
+			return true
+		TYPE_DICTIONARY:
+			for key_variant: Variant in (value as Dictionary).keys():
+				if not (key_variant is String or key_variant is StringName) \
+						or not _is_finite_pure_save_data((value as Dictionary).get(key_variant)):
+					return false
+			return true
+	return false
+
+
+func _save_contains_forbidden_duplicate(value: Variant) -> bool:
+	if value is Dictionary:
+		for key_variant: Variant in (value as Dictionary).keys():
+			if SAVE_FORBIDDEN_DUPLICATE_FIELDS.has(str(key_variant)) \
+					or _save_contains_forbidden_duplicate((value as Dictionary).get(key_variant)):
+				return true
+	elif value is Array:
+		for item_variant: Variant in value as Array:
+			if _save_contains_forbidden_duplicate(item_variant):
+				return true
+	return false
+
+
+func _save_values_match(left: Variant, right: Variant) -> bool:
+	if typeof(left) != typeof(right):
+		return false
+	if left is Dictionary:
+		var left_dictionary := left as Dictionary
+		var right_dictionary := right as Dictionary
+		if left_dictionary.size() != right_dictionary.size():
+			return false
+		for key_variant: Variant in left_dictionary.keys():
+			if not right_dictionary.has(key_variant) \
+					or not _save_values_match(left_dictionary.get(key_variant), right_dictionary.get(key_variant)):
+				return false
+		return true
+	if left is Array:
+		var left_array := left as Array
+		var right_array := right as Array
+		if left_array.size() != right_array.size():
+			return false
+		for index in range(left_array.size()):
+			if not _save_values_match(left_array[index], right_array[index]):
+				return false
+		return true
+	return left == right
 
 
 func _is_pure_data(value: Variant) -> bool:
