@@ -9056,6 +9056,8 @@ deleted. Evidence and the remaining action inventory are recorded in
   and stopped real `main.tscn` with zero new script/runtime errors and zero
   remaining Godot processes.
 - Alpha 0.4-A is `GREEN_COMPONENT_ACCEPTED` while exact-Formal terminal proof
-  and release-level FullRun remain false/deferred. A clean PR to `main` is
-  allowed only while every recorded gate stays green. Alpha 0.4-B is the next
-  product boundary and is not started here.
+  and release-level FullRun remain false/deferred. Clean PR #73 merged to
+  `main` as `d5f97ba`; its merge tree is identical to clean head `3ac4b1d`,
+  and post-merge smoke `--check-only` passed. PR #69/#72 are closed as
+  superseded, while PR #70/#71 remain Draft reference-only. Alpha 0.4-B is the
+  next product boundary and is not started here.
