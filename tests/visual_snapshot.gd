@@ -67,9 +67,9 @@ func _run() -> void:
 	_expect(_has_nodes(game_screen, ["Background", "TopBar", "TopCommoditySushiTrack", "PlayerRosterPanel", "PlanetBoard", "PlayerBoard", "PlayerCardDock", "ContextDetailDrawer", "OverlayLayer"]), "GameScreen provides the contextual scene-owned table composition and production Player Card Dock")
 	_expect(game_screen != null and game_screen.find_child("PublicTrack", true, false) == null, "GameScreen excludes the retired PublicTrack node")
 	_expect(game_screen != null and game_screen.find_children("TopCommoditySushiTrack", "", true, false).size() == 1, "GameScreen composes exactly one TopCommoditySushiTrack node")
-	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "PlayerCommandTableau", "PlayerMainActionDock"]) \
+	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "PlayerCommandTableau", "CompactCurrentActionSurface"]) \
 		and player_board.find_child("PlayerHandTableau", true, false) == null \
-		and player_board.find_child("HandRack", true, false) == null, "PlayerBoard retains resource/action regions with no duplicate production hand surface")
+		and player_board.find_child("HandRack", true, false) == null, "PlayerBoard retains resources and one compact non-card action context with no duplicate production hand surface")
 	_expect(_has_nodes(player_card_dock, ["BoundActionCards", "NormalHandCards", "CommodityCards", "CardDockCapacitySummary", "CardDockActionFeedback"]), "PlayerCardDock exposes three readable typed card lanes and feedback")
 	_expect(_has_nodes(planet_map, ["BackdropLayer", "OrbitLayer", "DistrictLayer", "RouteLayer", "MonsterLayer", "SelectionLayer", "EffectLayer", "CalloutLayer", "DebugOverlayLayer"]), "PlanetMapView exposes editable visual layers")
 	_expect(_has_nodes(commodity_track, ["TrackMargin", "HeaderRow", "BeltViewport", "CommodityTrackItemHost", "CommodityTrackEmptyLabel"]), "TopCommoditySushiTrack exposes stable header, belt, item, and empty-state regions")
