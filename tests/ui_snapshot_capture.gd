@@ -535,7 +535,7 @@ func _capture_hand_card_ui_data(skill: Dictionary) -> Dictionary:
 	var card := skill.duplicate(true)
 	card["id"] = "capture_sample_hand_card"
 	card["presentation"] = "mini_hand"
-	card["detail_policy"] = "right_inspector"
+	card["detail_policy"] = "context_detail"
 	card["type"] = str(card.get("type", card.get("kind", "行动")))
 	card["effect"] = str(card.get("effect", card.get("text", "用于截图验证的真实卡面。")))
 	card["rank"] = str(card.get("rank", "I"))

@@ -64,7 +64,7 @@ func _run() -> void:
 	var card_track := _instantiate("res://scenes/ui/CardResolutionTrack.tscn")
 	var overlay := _instantiate("res://scenes/ui/OverlayLayer.tscn")
 
-	_expect(_has_nodes(game_screen, ["Background", "TopBar", "TopCommoditySushiTrack", "PlanetBoard", "RightInspector", "PlayerBoard", "PlayerCardDock", "OverlayLayer"]), "GameScreen provides the current commodity-led scene-owned table composition and production Player Card Dock")
+	_expect(_has_nodes(game_screen, ["Background", "TopBar", "TopCommoditySushiTrack", "PlayerRosterPanel", "PlanetBoard", "PlayerBoard", "PlayerCardDock", "ContextDetailDrawer", "OverlayLayer"]), "GameScreen provides the contextual scene-owned table composition and production Player Card Dock")
 	_expect(game_screen != null and game_screen.find_child("PublicTrack", true, false) == null, "GameScreen excludes the retired PublicTrack node")
 	_expect(game_screen != null and game_screen.find_children("TopCommoditySushiTrack", "", true, false).size() == 1, "GameScreen composes exactly one TopCommoditySushiTrack node")
 	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "PlayerCommandTableau", "PlayerMainActionDock"]) \

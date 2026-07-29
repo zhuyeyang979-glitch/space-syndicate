@@ -215,7 +215,6 @@ func _run() -> void:
 	var split_action_dock: Control = null
 	var split_status_lamp_row: Control = null
 	var split_readiness_chip_row: Control = null
-	var split_right_inspector: Control = null
 	if runtime_screen != null:
 		split_top_bar = runtime_screen.find_child("TopBar", true, false) as Control
 		split_player_board = runtime_screen.find_child("PlayerBoard", true, false) as Control
@@ -227,7 +226,6 @@ func _run() -> void:
 		split_action_dock = runtime_screen.find_child("PlayerMainActionDock", true, false) as Control
 		split_status_lamp_row = runtime_screen.find_child("PlayerStatusLampRow", true, false) as Control
 		split_readiness_chip_row = runtime_screen.find_child("PlayerReadinessChipRow", true, false) as Control
-		split_right_inspector = runtime_screen.find_child("RightInspector", true, false) as Control
 	var split_first_hand_card := _first_control_child(split_hand_rack)
 	var split_first_hand_card_data: Dictionary = {}
 	if split_first_hand_card != null and split_first_hand_card.has_method("get_card_data"):
@@ -261,7 +259,7 @@ func _run() -> void:
 	)) or (split_status_lamp_row != null and split_readiness_chip_row != null and _container_label_text_contains(split_readiness_chip_row, "手牌")), "hand cards show a board-game style playability state instead of a blind play button")
 	_expect(
 		(player_box != null and _container_has_named_node(player_box, "CardFaceRouteBand") and _container_has_named_node(player_box, "CardFaceRouteColorTick") and _container_has_named_node(player_box, "CardFaceQuickEffect") and _container_label_text_contains(player_box, "路线:") and _container_label_text_contains(player_box, "效果:"))
-		or (split_first_hand_card != null and split_first_hand_card.name.begins_with("MiniHandCardFace") and split_first_hand_card_data.get("presentation") == "mini_hand" and split_first_hand_card_data.get("detail_policy") == "right_inspector"),
+		or (split_first_hand_card != null and split_first_hand_card.name.begins_with("MiniHandCardFace") and split_first_hand_card_data.get("presentation") == "mini_hand" and split_first_hand_card_data.get("detail_policy") == "context_detail"),
 		"hand card faces expose a scan-first route band and one-line effect before cost and long rules text"
 	)
 	_expect(
@@ -6362,7 +6360,7 @@ func _map_view_has_betting_table_theme() -> bool:
 		and String(report.get("felt_color", "")) == "#052e24" \
 		and String(report.get("rim_color", "")) == "#d6a440" \
 		and int(report.get("chip_count", 0)) >= 12 \
-		and int(report.get("seat_count", 0)) >= 6 \
+		and not report.has("seat_count") \
 		and String(report.get("planet_center_policy", "")) == "globe_center" \
 		and String(report.get("detail_policy", "")).contains("edge_icons")
 

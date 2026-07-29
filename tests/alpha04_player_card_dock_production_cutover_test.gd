@@ -19,8 +19,9 @@ func _run() -> void:
 	var dock := screen.find_child("PlayerCardDock", true, false) as SpaceSyndicatePlayerCardDock
 	var player_board := screen.find_child("PlayerBoard", true, false)
 	_expect(dock_nodes.size() == 1 and dock != null, "production GameScreen composes exactly one PlayerCardDock")
-	_expect(screen.find_children("RightInspector", "", true, false).size() == 1, "RightInspector remains in production for this narrow cutover")
-	_expect(screen.find_child("PlayerRoster", true, false) == null 		and screen.find_child("RegionSupplyPopup", true, false) == null 		and screen.find_child("ContextDetailPopup", true, false) == null, "later Alpha 0.4 shell surfaces remain out of scope")
+	_expect(screen.find_children("ContextDetailDrawer", "", true, false).size() == 1 \
+		and screen.find_children("CompactCurrentActionSurface", "", true, false).size() == 1 \
+		and screen.find_children("PlayerRosterPanel", "", true, false).size() == 1, "production table composes one typed detail, current-action, and roster surface")
 	_expect(player_board != null 		and player_board.find_child("HandRack", true, false) == null 		and player_board.find_child("PlayerHandTableau", true, false) == null 		and player_board.find_child("PlayerHandCountChip", true, false) == null, "legacy production HandRack, tableau, and count chip are physically absent")
 	_expect(_has_nodes(dock, [
 		"BoundActionCards",
@@ -42,6 +43,9 @@ func _run() -> void:
 	var screen_source := _source("res://scripts/ui/game_screen.gd")
 	var player_board_source := _source("res://scripts/ui/player_board.gd")
 	var dock_source := _source("res://scripts/ui/table/player_card_dock.gd")
+	var current_action_source := _source("res://scripts/ui/table/compact_current_action_surface.gd")
+	var current_action_projection := _source("res://scripts/presentation/current_action_context_projection_v1.gd")
+	var context_detail_source := _source("res://scripts/ui/table/context_detail_drawer.gd")
 	var projection_source := _source("res://scripts/presentation/player_card_dock_projection_v1.gd")
 	var query_source := _source("res://scripts/presentation/player_card_dock_viewer_query_port.gd")
 	var source_owner := _source("res://scripts/presentation/table_presentation_source_owner.gd")
@@ -58,7 +62,10 @@ func _run() -> void:
 	_expect(not player_board_source.contains("hand_rack") 		and not player_board_source.contains("signal card_selected") 		and not player_board_source.contains("func set_hand_cards"), "PlayerBoard script contains no legacy card action bridge")
 	_expect(screen_source.contains("player_card_dock.game_action_offer_requested.connect") 		and screen_source.contains("func _on_game_action_offer_requested(") 		and screen_source.contains("func submit_game_action_offer("), "Dock routes offers through the existing typed GameScreen action bridge")
 	_expect(not screen_source.contains("player_board.has_signal(\"card_selected\")") 		and not screen_source.contains("&\"hand_rack\"") 		and not screen_source.contains("func _on_card_drag_released"), "GameScreen has no old HandRack or drag submission route")
-	_expect(screen_source.contains("func _retire_right_inspector_card_actions(") 		and screen_source.contains("read_only_details[\"actions\"] = []"), "retained RightInspector is read-only for Dock cards")
+	_expect(current_action_projection.contains("current_action_context_projection_card_play_forbidden") \
+		and current_action_source.contains("\"accepts_card_submission\": false") \
+		and current_action_source.contains("\"emits_card_action_offer\": false") \
+		and context_detail_source.contains("\"accepts_card_submission\": false"), "typed contextual surfaces cannot duplicate Dock card submission")
 	_expect(dock_source.contains("CARD_FACE_SCENE.instantiate()") 		and dock_source.contains("game_action_offer_requested.emit") 		and not dock_source.contains("CommodityCardInventoryRuntimeController") 		and not dock_source.contains("/root/Main"), "Dock renders real CardFace nodes and owns no inventory or Main mutation")
 	_expect(projection_source.contains("CAPACITY_MODE_SHARED_V06") 		and projection_source.contains("CAPACITY_MODE_INDEPENDENT_V07") 		and projection_source.contains("slot_id") 		and projection_source.contains("disabled_reason_text"), "typed projection carries truthful dual-mode capacity and readable card identity")
 	_expect(query_source.contains("can_view_private_subject") 		and query_source.contains("expected_authorization_revision") 		and query_source.contains("stores_card_state\": false"), "viewer query fails closed and stores no cards")
@@ -72,7 +79,10 @@ func _run() -> void:
 	_expect(not main_source.contains("PlayerCardDock") 		and not main_source.contains("player_card_dock"), "main.gd gains no Player Card Dock responsibility")
 	_expect(selection_intent.contains("&\"player_card_dock\"") 		and not selection_intent.contains("&\"hand_rack\""), "typed hand selection accepts only the production Dock surface")
 	_expect(screen_source.contains("player_card_dock.target_selection_active()") 		and screen_source.contains("submit_target_selection(_pending_card_target_region_id)"), "commodity target selection waits for an authoritative refreshed offer")
-	_expect(screen_scene.contains("RightInspector.tscn") 		and screen_scene.contains("PlayerBoard.tscn") 		and not screen_scene.contains("PlayerRoster.tscn"), "narrow scope retains existing V0.6 table shell")
+	_expect(screen_scene.contains("ContextDetailDrawer.tscn") \
+		and screen_scene.contains("PlayerRosterPanel.tscn") \
+		and screen_scene.contains("PlayerBoard.tscn") \
+		and player_board_scene.contains("CompactCurrentActionSurface.tscn"), "production shell mounts the typed contextual surfaces around the single Dock")
 	_expect(projection_source.contains("FORBIDDEN_KEYS") \
 		and projection_source.contains("future_track_sequence") \
 		and projection_source.contains("rival_commodity_inventory") \

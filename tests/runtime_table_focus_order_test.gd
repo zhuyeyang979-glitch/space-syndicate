@@ -28,7 +28,7 @@ func _run() -> void:
 	await _wait_frames(4)
 
 	var snapshot: Array = screen.call("runtime_focus_order_snapshot") if screen.has_method("runtime_focus_order_snapshot") else []
-	var expected_labels := ["顶部状态", "牌轨", "星球地图", "右侧详情", "手牌", "当前行动", "竞价"]
+	var expected_labels := ["顶部状态", "公共商品带", "公开玩家名册", "星球地图", "当前行动", "玩家卡牌坞"]
 	_expect(snapshot.size() >= expected_labels.size(), "runtime table exposes the core focus regions")
 	for index in range(expected_labels.size()):
 		var item: Dictionary = snapshot[index] if index < snapshot.size() and snapshot[index] is Dictionary else {}
@@ -256,13 +256,6 @@ func _table_state() -> Dictionary:
 			"title": "星球牌桌",
 			"hint": "公开星球状态。",
 			"weather": {"active": "现在：无天气", "forecast": "预报：平稳", "impact": "影响：产/交/消"},
-		},
-		"right_inspector": {
-			"title": "右侧详情",
-			"why": "现在可做：建城、牌架、首召。",
-			"district": {"title": "能源塔", "summary": "可城市化", "chips": ["陆地", "可建"]},
-			"actions": [{"id": "build_city", "label": "城市化"}],
-			"logs": [],
 		},
 		"player_board": {
 			"title": "本席 玩家1",

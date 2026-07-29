@@ -4,7 +4,8 @@ const SCENE_PATHS := {
 	"game_screen": "res://scenes/ui/GameScreen.tscn",
 	"top_bar": "res://scenes/ui/TopBar.tscn",
 	"planet_board": "res://scenes/ui/PlanetBoard.tscn",
-	"right_inspector": "res://scenes/ui/RightInspector.tscn",
+	"context_detail": "res://scenes/ui/table/ContextDetailDrawer.tscn",
+	"current_action": "res://scenes/ui/table/CompactCurrentActionSurface.tscn",
 	"player_board": "res://scenes/ui/PlayerBoard.tscn",
 	"player_card_dock": "res://scenes/ui/table/PlayerCardDock.tscn",
 	"hand_rack": "res://scenes/ui/HandRack.tscn",
@@ -57,7 +58,7 @@ func _run() -> void:
 	var planet_board := roots.get("planet_board") as Node
 	var district_supply := roots.get("district_supply") as Node
 
-	_expect(_has_nodes(game_screen, ["TopBar", "TopCommoditySushiTrack", "PlanetBoard", "RightInspector", "PlayerBoard", "PlayerCardDock", "OverlayLayer"]), "GameScreen composes the current commodity-led table scenes and one production Player Card Dock")
+	_expect(_has_nodes(game_screen, ["TopBar", "TopCommoditySushiTrack", "PlayerRosterPanel", "PlanetBoard", "PlayerBoard", "PlayerCardDock", "ContextDetailDrawer", "OverlayLayer"]), "GameScreen composes the contextual table scenes and one production Player Card Dock")
 	_expect(game_screen != null and game_screen.find_child("PublicTrack", true, false) == null, "GameScreen keeps the retired PublicTrack out of active production composition")
 	_expect(game_screen != null and game_screen.find_children("TopCommoditySushiTrack", "", true, false).size() == 1, "GameScreen composes exactly one TopCommoditySushiTrack")
 	_expect(_has_nodes(game_screen, ["RuntimeVisualEventLayer"]) and not _has_nodes(game_screen, ["FirstRunCoach", "ScenarioCoach"]), "GameScreen keeps runtime feedback and removes legacy coach surfaces")

@@ -1,0 +1,917 @@
+{
+	"checks": 53,
+	"deterministic_world_time_hold_after_session_start": true,
+	"evidence": {
+		"eight_player": {
+			"active_inspection_player_id": "",
+			"authorization_revision": 1,
+			"column_assignments": [
+				0,
+				1,
+				0,
+				1,
+				0,
+				1,
+				0,
+				1
+			],
+			"column_count": 2,
+			"compact_entry_count": 8,
+			"conflict_projection_count": 0,
+			"direct_gameplay_mutation_count": 0,
+			"duplicate_projection_count": 0,
+			"inspected_marker_count": 1,
+			"local_marker_count": 1,
+			"maximum_entry_width": 82.0,
+			"node_create_count": 8,
+			"node_instance_ids": [
+				1034449592970,
+				1035070349986,
+				1035691106986,
+				1036311863610,
+				1036932620622,
+				1037553377641,
+				1038174134662,
+				1038794891535
+			],
+			"node_retire_count": 0,
+			"node_reuse_count": 40,
+			"ordered_player_ids": [
+				"player.0",
+				"player.1",
+				"player.2",
+				"player.3",
+				"player.4",
+				"player.5",
+				"player.6",
+				"player.7"
+			],
+			"panel_minimum_width": 184.0,
+			"panel_rendered_width": 184.0,
+			"player_count": 8,
+			"private_fact_read_count": 0,
+			"projection_signature": "715bbfc1ee90035a3cff624349c1b419f490b5e90a611ceb42cf9f0de05fdbda",
+			"public_order_indices": [
+				0,
+				1,
+				2,
+				3,
+				4,
+				5,
+				6,
+				7
+			],
+			"render_count": 6,
+			"rendered_entry_widths": [
+				82.0,
+				82.0,
+				82.0,
+				82.0,
+				82.0,
+				82.0,
+				82.0,
+				82.0
+			],
+			"rng_draw_count": 0,
+			"rotates_for_local_viewer": false,
+			"source_revision": 6,
+			"stale_projection_count": 0,
+			"viewer_index": 0
+		},
+		"four_player": {
+			"action_context": {
+				"accepts_card_submission": false,
+				"action_dock_instance_id": 289004326218,
+				"apply_count": 28,
+				"authorization_revision": 1,
+				"blocked_card_submission_count": 0,
+				"conflict_count": 0,
+				"context_id": "action-context-district-1",
+				"duplicate_count": 0,
+				"emits_card_action_offer": false,
+				"mutates_gameplay": false,
+				"navigation_count": 1,
+				"offer_count": 1,
+				"owns_action_legality": false,
+				"projection_fingerprint": "f01e4c4c9fe7df0d125579df60816742c50e81098ec64807f96a836e480da014",
+				"reject_count": 0,
+				"render_p95_ms": 2.862,
+				"render_sample_count": 28,
+				"source_revision": 28,
+				"stale_count": 0,
+				"viewer_index": 0
+			},
+			"detail": {
+				"accepts_card_submission": false,
+				"apply_count": 4,
+				"authorization_revision": 1,
+				"body_label_instance_id": 294356258437,
+				"close_count": 3,
+				"closed_context_kinds": [
+					"normal_card",
+					"commodity_card",
+					"public_track",
+					"region_facility",
+					"commodity_source",
+					"public_event"
+				],
+				"conflict_count": 0,
+				"context_id": "hand-card-detail-2",
+				"context_kind": "commodity_card",
+				"duplicate_count": 0,
+				"mutates_gameplay": false,
+				"navigation_count": 0,
+				"owns_detail_source": false,
+				"projection_fingerprint": "7e4cd9a841f9eef4f42229a4b320b1e9846f0560c5f3927d781e3b5c078cb904",
+				"read_only": true,
+				"reject_count": 0,
+				"render_p95_ms": 0.56,
+				"render_sample_count": 4,
+				"source_revision": 28,
+				"stale_count": 0,
+				"viewer_index": 0,
+				"visibility_scope": "viewer_private",
+				"visible": true
+			},
+			"dock": {
+				"action_entry_count": 1,
+				"apply_count": 28,
+				"authorization_revision": 1,
+				"bound_action_count": 0,
+				"capacity_mode": "SHARED_V06",
+				"commodity_card_count": 2,
+				"commodity_inventory_render_p95_ms": 12.858,
+				"commodity_inventory_render_sample_count": 28,
+				"conflict_count": 0,
+				"duplicate_count": 0,
+				"mutates_gameplay": false,
+				"normal_card_count": 2,
+				"reads_world_state": false,
+				"reject_count": 0,
+				"selected_identity": "card.instance.650237857f49851d40429d20",
+				"source_revision": 28,
+				"stale_count": 0,
+				"target_selection_active": false,
+				"target_selection_identity": "",
+				"target_selection_summary": "",
+				"viewer_index": 0,
+				"visible_card_count": 4
+			},
+			"history": {
+				"accepts_public_only": true,
+				"accepts_viewer_private": false,
+				"apply_count": 1,
+				"authorization_revision": 1,
+				"conflict_count": 0,
+				"duplicate_count": 27,
+				"entries_label_instance_id": 292326215183,
+				"entry_count": 1,
+				"expanded": false,
+				"history_signature": "1726794c864ab6994b9841a11bf40f86c6c46aa02d1e93bea0366ed0fce24da2",
+				"latest_revision": 0,
+				"mutates_gameplay": false,
+				"owns_public_log": false,
+				"persists_history": false,
+				"private_reject_count": 0,
+				"reject_count": 0,
+				"render_p95_ms": 0.312,
+				"render_sample_count": 1,
+				"stale_count": 0,
+				"viewer_index": 0
+			},
+			"inspection": {
+				"authorization_revision": 1,
+				"close_count": 1,
+				"conflict_projection_count": 0,
+				"direct_gameplay_mutation_count": 0,
+				"duplicate_projection_count": 0,
+				"escape_close_count": 0,
+				"last_close_reason": "same_player",
+				"navigation_node_count": 1,
+				"navigation_node_create_count": 1,
+				"navigation_node_instance_ids": [
+					488586091422
+				],
+				"navigation_node_retire_count": 0,
+				"navigation_node_reuse_count": 1,
+				"navigation_request_count": 0,
+				"open_count": 1,
+				"outside_close_count": 0,
+				"permanent_layout_width": 0,
+				"player_id": "player.2",
+				"private_fact_read_count": 0,
+				"projection_signature": "f62b2d57447ea7311e9ff024b00b747ed7f6f17de634066c5f6138234a838f6a",
+				"render_count": 2,
+				"rng_draw_count": 0,
+				"same_player_close_count": 0,
+				"source_revision": 8,
+				"stale_projection_count": 0,
+				"switch_count": 1,
+				"transient_overlay": true,
+				"viewer_index": 0,
+				"visible": false
+			},
+			"region": {
+				"apply_count": 9,
+				"authorization_revision": 1,
+				"close_count": 3,
+				"conflict_count": 0,
+				"drawer": {
+					"cards": [
+						{
+							"accent": "#34d399ff",
+							"actionable": true,
+							"art_text": "市场设施",
+							"card_art_stats": "现金 ¥4",
+							"card_name": "region-001-facility-market-commerce-rank-1-rack-copy-0",
+							"card_stats": "现金 ¥4",
+							"display_name": "商贸市场",
+							"facts": "现金 ¥4",
+							"facts_tooltip": "区域牌架费用：现金 ¥4",
+							"kind": "market_stabilize",
+							"preview": {
+								"accent": "#34d399ff",
+								"body": "市场设施｜来自当前区域牌架",
+								"body_tooltip": "类别：市场设施；购买前会重新确认牌价与可用状态。",
+								"buy_enabled": true,
+								"buy_text": "获取报价",
+								"buy_tooltip": "请求获取报价；提交时会重新确认费用与牌架状态。",
+								"card_face": {
+									"accent": "#2dd4bfff",
+									"card_kind": "market_stabilize",
+									"card_stats": "现金 ¥4",
+									"cost": "现金 ¥4",
+									"effect": "从当前区域牌架获取报价；提交时重新确认费用。",
+									"illustration_key": "card.region-supply",
+									"illustration_silent_fallback": true,
+									"kind": "market_stabilize",
+									"minimum_height": 164.0,
+									"minimum_width": 150.0,
+									"name": "商贸市场",
+									"play_state": "可请求",
+									"presentation": "inspector_full",
+									"rank": "I",
+									"route": "市场设施",
+									"table_use": "区域牌架获取",
+									"type": "市场设施",
+									"use_case": "区域牌架获取"
+								},
+								"card_name": "region-001-facility-market-commerce-rank-1-rack-copy-0",
+								"chips": [
+									{
+										"accent": "#2dd4bfff",
+										"text": "市场设施",
+										"tooltip": "卡牌类别：市场设施"
+									},
+									{
+										"accent": "#fde68aff",
+										"text": "现金 ¥4",
+										"tooltip": "区域牌架费用：现金 ¥4"
+									}
+								],
+								"facts": "现金 ¥4｜可请求",
+								"primary_action_id": "district_supply_preview_card",
+								"scan_sections": [
+									{
+										"accent": "#2dd4bfff",
+										"body": "市场设施",
+										"title": "类别"
+									},
+									{
+										"accent": "#fde68aff",
+										"body": "现金 ¥4",
+										"title": "费用"
+									},
+									{
+										"accent": "#34d399ff",
+										"body": "可请求",
+										"title": "状态"
+									},
+									{
+										"accent": "#60a5faff",
+										"body": "获取报价",
+										"title": "操作"
+									}
+								],
+								"status_text": "可请求",
+								"status_tooltip": "当前牌架状态：可请求",
+								"theme_color": "#2dd4bfff",
+								"title": "商贸市场",
+								"title_tooltip": "商贸市场"
+							},
+							"rank": "I",
+							"rank_tooltip": "卡牌等级",
+							"route": "市场设施",
+							"route_tooltip": "卡牌类别：市场设施",
+							"state_text": "可请求",
+							"state_tooltip": "当前牌架状态：可请求",
+							"theme_color": "#2dd4bfff",
+							"title": "商贸市场",
+							"title_tooltip": "商贸市场",
+							"tooltip": "商贸市场｜市场设施｜现金 ¥4"
+						},
+						{
+							"accent": "#34d399ff",
+							"actionable": true,
+							"art_text": "怪兽单位",
+							"card_art_stats": "现金 ¥6",
+							"card_name": "region-001-unit-monster-oasis-repairer-rank-1-rack-copy-0",
+							"card_stats": "现金 ¥6",
+							"display_name": "绿洲修复体",
+							"facts": "现金 ¥6",
+							"facts_tooltip": "区域牌架费用：现金 ¥6",
+							"kind": "monster_card",
+							"preview": {
+								"accent": "#34d399ff",
+								"body": "怪兽单位｜来自当前区域牌架",
+								"body_tooltip": "类别：怪兽单位；购买前会重新确认牌价与可用状态。",
+								"buy_enabled": true,
+								"buy_text": "获取报价",
+								"buy_tooltip": "请求获取报价；提交时会重新确认费用与牌架状态。",
+								"card_face": {
+									"accent": "#fb7185ff",
+									"card_kind": "monster_card",
+									"card_stats": "现金 ¥6",
+									"cost": "现金 ¥6",
+									"effect": "从当前区域牌架获取报价；提交时重新确认费用。",
+									"illustration_key": "card.region-supply",
+									"illustration_silent_fallback": true,
+									"kind": "monster_card",
+									"minimum_height": 164.0,
+									"minimum_width": 150.0,
+									"name": "绿洲修复体",
+									"play_state": "可请求",
+									"presentation": "inspector_full",
+									"rank": "I",
+									"route": "怪兽单位",
+									"table_use": "区域牌架获取",
+									"type": "怪兽单位",
+									"use_case": "区域牌架获取"
+								},
+								"card_name": "region-001-unit-monster-oasis-repairer-rank-1-rack-copy-0",
+								"chips": [
+									{
+										"accent": "#fb7185ff",
+										"text": "怪兽单位",
+										"tooltip": "卡牌类别：怪兽单位"
+									},
+									{
+										"accent": "#fde68aff",
+										"text": "现金 ¥6",
+										"tooltip": "区域牌架费用：现金 ¥6"
+									}
+								],
+								"facts": "现金 ¥6｜可请求",
+								"primary_action_id": "district_supply_preview_card",
+								"scan_sections": [
+									{
+										"accent": "#fb7185ff",
+										"body": "怪兽单位",
+										"title": "类别"
+									},
+									{
+										"accent": "#fde68aff",
+										"body": "现金 ¥6",
+										"title": "费用"
+									},
+									{
+										"accent": "#34d399ff",
+										"body": "可请求",
+										"title": "状态"
+									},
+									{
+										"accent": "#60a5faff",
+										"body": "获取报价",
+										"title": "操作"
+									}
+								],
+								"status_text": "可请求",
+								"status_tooltip": "当前牌架状态：可请求",
+								"theme_color": "#fb7185ff",
+								"title": "绿洲修复体",
+								"title_tooltip": "绿洲修复体"
+							},
+							"rank": "I",
+							"rank_tooltip": "卡牌等级",
+							"route": "怪兽单位",
+							"route_tooltip": "卡牌类别：怪兽单位",
+							"state_text": "可请求",
+							"state_tooltip": "当前牌架状态：可请求",
+							"theme_color": "#fb7185ff",
+							"title": "绿洲修复体",
+							"title_tooltip": "绿洲修复体",
+							"tooltip": "绿洲修复体｜怪兽单位｜现金 ¥6"
+						},
+						{
+							"accent": "#34d399ff",
+							"actionable": true,
+							"art_text": "市场设施",
+							"card_art_stats": "现金 ¥4",
+							"card_name": "region-001-facility-market-energy-rank-1-rack-copy-0",
+							"card_stats": "现金 ¥4",
+							"display_name": "能源市场",
+							"facts": "现金 ¥4",
+							"facts_tooltip": "区域牌架费用：现金 ¥4",
+							"kind": "market_stabilize",
+							"preview": {
+								"accent": "#34d399ff",
+								"body": "市场设施｜来自当前区域牌架",
+								"body_tooltip": "类别：市场设施；购买前会重新确认牌价与可用状态。",
+								"buy_enabled": true,
+								"buy_text": "获取报价",
+								"buy_tooltip": "请求获取报价；提交时会重新确认费用与牌架状态。",
+								"card_face": {
+									"accent": "#2dd4bfff",
+									"card_kind": "market_stabilize",
+									"card_stats": "现金 ¥4",
+									"cost": "现金 ¥4",
+									"effect": "从当前区域牌架获取报价；提交时重新确认费用。",
+									"illustration_key": "card.region-supply",
+									"illustration_silent_fallback": true,
+									"kind": "market_stabilize",
+									"minimum_height": 164.0,
+									"minimum_width": 150.0,
+									"name": "能源市场",
+									"play_state": "可请求",
+									"presentation": "inspector_full",
+									"rank": "I",
+									"route": "市场设施",
+									"table_use": "区域牌架获取",
+									"type": "市场设施",
+									"use_case": "区域牌架获取"
+								},
+								"card_name": "region-001-facility-market-energy-rank-1-rack-copy-0",
+								"chips": [
+									{
+										"accent": "#2dd4bfff",
+										"text": "市场设施",
+										"tooltip": "卡牌类别：市场设施"
+									},
+									{
+										"accent": "#fde68aff",
+										"text": "现金 ¥4",
+										"tooltip": "区域牌架费用：现金 ¥4"
+									}
+								],
+								"facts": "现金 ¥4｜可请求",
+								"primary_action_id": "district_supply_preview_card",
+								"scan_sections": [
+									{
+										"accent": "#2dd4bfff",
+										"body": "市场设施",
+										"title": "类别"
+									},
+									{
+										"accent": "#fde68aff",
+										"body": "现金 ¥4",
+										"title": "费用"
+									},
+									{
+										"accent": "#34d399ff",
+										"body": "可请求",
+										"title": "状态"
+									},
+									{
+										"accent": "#60a5faff",
+										"body": "获取报价",
+										"title": "操作"
+									}
+								],
+								"status_text": "可请求",
+								"status_tooltip": "当前牌架状态：可请求",
+								"theme_color": "#2dd4bfff",
+								"title": "能源市场",
+								"title_tooltip": "能源市场"
+							},
+							"rank": "I",
+							"rank_tooltip": "卡牌等级",
+							"route": "市场设施",
+							"route_tooltip": "卡牌类别：市场设施",
+							"state_text": "可请求",
+							"state_tooltip": "当前牌架状态：可请求",
+							"theme_color": "#2dd4bfff",
+							"title": "能源市场",
+							"title_tooltip": "能源市场",
+							"tooltip": "能源市场｜市场设施｜现金 ¥4"
+						},
+						{
+							"accent": "#34d399ff",
+							"actionable": true,
+							"art_text": "互动行动",
+							"card_art_stats": "现金 ¥5",
+							"card_name": "region-001-interaction-shadow-warehouse-traction-rank-1-rack-copy-0",
+							"card_stats": "现金 ¥5",
+							"display_name": "影仓牵引",
+							"facts": "现金 ¥5",
+							"facts_tooltip": "区域牌架费用：现金 ¥5",
+							"kind": "direct_interaction",
+							"preview": {
+								"accent": "#34d399ff",
+								"body": "互动行动｜来自当前区域牌架",
+								"body_tooltip": "类别：互动行动；购买前会重新确认牌价与可用状态。",
+								"buy_enabled": true,
+								"buy_text": "获取报价",
+								"buy_tooltip": "请求获取报价；提交时会重新确认费用与牌架状态。",
+								"card_face": {
+									"accent": "#a78bfaff",
+									"card_kind": "direct_interaction",
+									"card_stats": "现金 ¥5",
+									"cost": "现金 ¥5",
+									"effect": "从当前区域牌架获取报价；提交时重新确认费用。",
+									"illustration_key": "card.region-supply",
+									"illustration_silent_fallback": true,
+									"kind": "direct_interaction",
+									"minimum_height": 164.0,
+									"minimum_width": 150.0,
+									"name": "影仓牵引",
+									"play_state": "可请求",
+									"presentation": "inspector_full",
+									"rank": "I",
+									"route": "互动行动",
+									"table_use": "区域牌架获取",
+									"type": "互动行动",
+									"use_case": "区域牌架获取"
+								},
+								"card_name": "region-001-interaction-shadow-warehouse-traction-rank-1-rack-copy-0",
+								"chips": [
+									{
+										"accent": "#a78bfaff",
+										"text": "互动行动",
+										"tooltip": "卡牌类别：互动行动"
+									},
+									{
+										"accent": "#fde68aff",
+										"text": "现金 ¥5",
+										"tooltip": "区域牌架费用：现金 ¥5"
+									}
+								],
+								"facts": "现金 ¥5｜可请求",
+								"primary_action_id": "district_supply_preview_card",
+								"scan_sections": [
+									{
+										"accent": "#a78bfaff",
+										"body": "互动行动",
+										"title": "类别"
+									},
+									{
+										"accent": "#fde68aff",
+										"body": "现金 ¥5",
+										"title": "费用"
+									},
+									{
+										"accent": "#34d399ff",
+										"body": "可请求",
+										"title": "状态"
+									},
+									{
+										"accent": "#60a5faff",
+										"body": "获取报价",
+										"title": "操作"
+									}
+								],
+								"status_text": "可请求",
+								"status_tooltip": "当前牌架状态：可请求",
+								"theme_color": "#a78bfaff",
+								"title": "影仓牵引",
+								"title_tooltip": "影仓牵引"
+							},
+							"rank": "I",
+							"rank_tooltip": "卡牌等级",
+							"route": "互动行动",
+							"route_tooltip": "卡牌类别：互动行动",
+							"state_text": "可请求",
+							"state_tooltip": "当前牌架状态：可请求",
+							"theme_color": "#a78bfaff",
+							"title": "影仓牵引",
+							"title_tooltip": "影仓牵引",
+							"tooltip": "影仓牵引｜互动行动｜现金 ¥5"
+						}
+					],
+					"empty_state": {
+						"market_text": "当前区域暂无可见供牌。",
+						"preview_text": "选择一张区域供牌查看公开详情。"
+					},
+					"focus_chain": [
+						"region-001-facility-market-commerce-rank-1-rack-copy-0",
+						"region-001-unit-monster-oasis-repairer-rank-1-rack-copy-0",
+						"region-001-facility-market-energy-rank-1-rack-copy-0",
+						"region-001-interaction-shadow-warehouse-traction-rank-1-rack-copy-0"
+					],
+					"header_chips": [
+						{
+							"accent": "#38bdf8ff",
+							"text": "4 张供牌"
+						},
+						{
+							"accent": "#a78bfaff",
+							"text": "1 / 1 设施位"
+						}
+					],
+					"local_preview_card_name": "region-001-facility-market-commerce-rank-1-rack-copy-0",
+					"market_empty_visible": false,
+					"market_status": [
+						{
+							"accent": "#34d399ff",
+							"text": "牌架可用"
+						},
+						{
+							"accent": "#f59e0bff",
+							"text": "怪兽价格压力 +0"
+						},
+						{
+							"accent": "#60a5faff",
+							"text": "要求已满足"
+						}
+					],
+					"passive_preview_only": true,
+					"preview": {
+						"accent": "#34d399ff",
+						"body": "市场设施｜来自当前区域牌架",
+						"body_tooltip": "类别：市场设施；购买前会重新确认牌价与可用状态。",
+						"buy_enabled": true,
+						"buy_text": "获取报价",
+						"buy_tooltip": "请求获取报价；提交时会重新确认费用与牌架状态。",
+						"card_face": {
+							"accent": "#2dd4bfff",
+							"card_kind": "market_stabilize",
+							"card_stats": "现金 ¥4",
+							"cost": "现金 ¥4",
+							"effect": "从当前区域牌架获取报价；提交时重新确认费用。",
+							"illustration_key": "card.region-supply",
+							"illustration_silent_fallback": true,
+							"kind": "market_stabilize",
+							"minimum_height": 164.0,
+							"minimum_width": 150.0,
+							"name": "商贸市场",
+							"play_state": "可请求",
+							"presentation": "inspector_full",
+							"rank": "I",
+							"route": "市场设施",
+							"table_use": "区域牌架获取",
+							"type": "市场设施",
+							"use_case": "区域牌架获取"
+						},
+						"card_name": "region-001-facility-market-commerce-rank-1-rack-copy-0",
+						"chips": [
+							{
+								"accent": "#2dd4bfff",
+								"text": "市场设施",
+								"tooltip": "卡牌类别：市场设施"
+							},
+							{
+								"accent": "#fde68aff",
+								"text": "现金 ¥4",
+								"tooltip": "区域牌架费用：现金 ¥4"
+							}
+						],
+						"facts": "现金 ¥4｜可请求",
+						"primary_action_id": "district_supply_preview_card",
+						"scan_sections": [
+							{
+								"accent": "#2dd4bfff",
+								"body": "市场设施",
+								"title": "类别"
+							},
+							{
+								"accent": "#fde68aff",
+								"body": "现金 ¥4",
+								"title": "费用"
+							},
+							{
+								"accent": "#34d399ff",
+								"body": "可请求",
+								"title": "状态"
+							},
+							{
+								"accent": "#60a5faff",
+								"body": "获取报价",
+								"title": "操作"
+							}
+						],
+						"status_text": "可请求",
+						"status_tooltip": "当前牌架状态：可请求",
+						"theme_color": "#2dd4bfff",
+						"title": "商贸市场",
+						"title_tooltip": "商贸市场"
+					},
+					"preview_empty_visible": false,
+					"privacy_hint": "仅显示当前玩家可见的牌架信息；不会展示手牌或未来供牌。",
+					"purchase_window": {},
+					"rendered_card_count": 4,
+					"rendered_card_names": [
+						"region-001-facility-market-commerce-rank-1-rack-copy-0",
+						"region-001-unit-monster-oasis-repairer-rank-1-rack-copy-0",
+						"region-001-facility-market-energy-rank-1-rack-copy-0",
+						"region-001-interaction-shadow-warehouse-traction-rank-1-rack-copy-0"
+					],
+					"rendered_purchase_window": {},
+					"rule_strip": "单击查看｜双击或按按钮请求报价/购买",
+					"rule_tooltip": "牌价与购买条件会在操作时重新确认，牌架变化后会自动更新。",
+					"title": "区域牌架｜能源塔 · 区域牌架",
+					"visibility_scope": "viewer_private"
+				},
+				"duplicate_count": 0,
+				"emits_game_action_offer": false,
+				"mutates_gameplay": false,
+				"owns_purchase_window": false,
+				"owns_rack": false,
+				"owns_rng": false,
+				"production_drawer_instance_count": 1,
+				"production_drawer_instance_id": 300328947686,
+				"projection_fingerprint": "411eaff6c3014ed2adb8a51adf7ae22b74ad0be971e6dd907689fd390b0dc487",
+				"rack_revision": 32088456905710,
+				"region_id": "region.001",
+				"region_index": 1,
+				"reject_count": 0,
+				"render_p95_ms": 25.012,
+				"render_sample_count": 9,
+				"reuses_production_district_supply_drawer": true,
+				"source_revision": 28,
+				"stale_count": 0,
+				"uses_production_supply_action_port": true,
+				"viewer_index": 0,
+				"visible": true
+			},
+			"roster": {
+				"active_inspection_player_id": "",
+				"authorization_revision": 1,
+				"column_assignments": [
+					0,
+					0,
+					0,
+					0
+				],
+				"column_count": 1,
+				"compact_entry_count": 0,
+				"conflict_projection_count": 0,
+				"direct_gameplay_mutation_count": 0,
+				"duplicate_projection_count": 0,
+				"inspected_marker_count": 0,
+				"local_marker_count": 1,
+				"maximum_entry_width": 170.0,
+				"node_create_count": 4,
+				"node_instance_ids": [
+					445300874088,
+					445854522244,
+					446408170401,
+					446961818558
+				],
+				"node_retire_count": 0,
+				"node_reuse_count": 108,
+				"ordered_player_ids": [
+					"player.0",
+					"player.1",
+					"player.2",
+					"player.3"
+				],
+				"panel_minimum_width": 184.0,
+				"panel_rendered_width": 184.0,
+				"player_count": 4,
+				"private_fact_read_count": 0,
+				"projection_signature": "6039a324e3f7dbe94510ca910a90570860c5b77e8280f445efe68722d16fb181",
+				"public_order_indices": [
+					0,
+					1,
+					2,
+					3
+				],
+				"render_count": 28,
+				"rendered_entry_widths": [
+					170.0,
+					170.0,
+					170.0,
+					170.0
+				],
+				"rng_draw_count": 0,
+				"rotates_for_local_viewer": false,
+				"source_revision": 28,
+				"stale_projection_count": 0,
+				"viewer_index": 0
+			},
+			"toast": {
+				"apply_count": 2,
+				"authorization_revision": 1,
+				"conflict_count": 0,
+				"dismiss_count": 0,
+				"duplicate_count": 26,
+				"forwards_viewer_private_to_public_history": false,
+				"mutates_gameplay": false,
+				"non_blocking": true,
+				"owns_public_log": false,
+				"persists_feedback": false,
+				"projection_fingerprint": "4a5e3c3dd5d1b420fded867d7ac8f6b230b8aa64e1cc88bf7cdb189b906808fc",
+				"public_or_viewer_private": "viewer_private",
+				"receipt_id": "feedback-viewer-private-7741aa9c24ad9b5d",
+				"reject_count": 0,
+				"render_p95_ms": 0.395,
+				"render_sample_count": 2,
+				"revision": 3,
+				"severity": "success",
+				"stale_count": 0,
+				"timer_running": true,
+				"viewer_index": 0,
+				"visible": true
+			}
+		}
+	},
+	"failures": [],
+	"formal_full_run": false,
+	"full_smoke": false,
+	"injected_player_fixture_count": 0,
+	"injected_rack_fixture_count": 0,
+	"main_scene": "res://scenes/main.tscn",
+	"screenshots": [
+		{
+			"absolute_path": "E:/SpaceSyndicateWorkspace/worktrees/alpha04b-production-contextual-table-shell-eef2465/docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_default_planet_map_1920x1080.png",
+			"file_name": "alpha04b_default_planet_map_1920x1080.png",
+			"height": 1080,
+			"render_height": 1080,
+			"render_width": 1920,
+			"resource_path": "res://docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_default_planet_map_1920x1080.png",
+			"width": 1920
+		},
+		{
+			"absolute_path": "E:/SpaceSyndicateWorkspace/worktrees/alpha04b-production-contextual-table-shell-eef2465/docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_roster_4p_1920x1080.png",
+			"file_name": "alpha04b_roster_4p_1920x1080.png",
+			"height": 1080,
+			"render_height": 1080,
+			"render_width": 1920,
+			"resource_path": "res://docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_roster_4p_1920x1080.png",
+			"width": 1920
+		},
+		{
+			"absolute_path": "E:/SpaceSyndicateWorkspace/worktrees/alpha04b-production-contextual-table-shell-eef2465/docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_player_inspection_popup.png",
+			"file_name": "alpha04b_player_inspection_popup.png",
+			"height": 1080,
+			"render_height": 1080,
+			"render_width": 1920,
+			"resource_path": "res://docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_player_inspection_popup.png",
+			"width": 1920
+		},
+		{
+			"absolute_path": "E:/SpaceSyndicateWorkspace/worktrees/alpha04b-production-contextual-table-shell-eef2465/docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_region_popup_1920x1080.png",
+			"file_name": "alpha04b_region_popup_1920x1080.png",
+			"height": 1080,
+			"render_height": 1080,
+			"render_width": 1920,
+			"resource_path": "res://docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_region_popup_1920x1080.png",
+			"width": 1920
+		},
+		{
+			"absolute_path": "E:/SpaceSyndicateWorkspace/worktrees/alpha04b-production-contextual-table-shell-eef2465/docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_full_map_popup_closed.png",
+			"file_name": "alpha04b_full_map_popup_closed.png",
+			"height": 1080,
+			"render_height": 1080,
+			"render_width": 1920,
+			"resource_path": "res://docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_full_map_popup_closed.png",
+			"width": 1920
+		},
+		{
+			"absolute_path": "E:/SpaceSyndicateWorkspace/worktrees/alpha04b-production-contextual-table-shell-eef2465/docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_action_context_surface.png",
+			"file_name": "alpha04b_action_context_surface.png",
+			"height": 1080,
+			"render_height": 1080,
+			"render_width": 1920,
+			"resource_path": "res://docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_action_context_surface.png",
+			"width": 1920
+		},
+		{
+			"absolute_path": "E:/SpaceSyndicateWorkspace/worktrees/alpha04b-production-contextual-table-shell-eef2465/docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_context_detail_drawer.png",
+			"file_name": "alpha04b_context_detail_drawer.png",
+			"height": 1080,
+			"render_height": 1080,
+			"render_width": 1920,
+			"resource_path": "res://docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_context_detail_drawer.png",
+			"width": 1920
+		},
+		{
+			"absolute_path": "E:/SpaceSyndicateWorkspace/worktrees/alpha04b-production-contextual-table-shell-eef2465/docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_card_dock_regression.png",
+			"file_name": "alpha04b_card_dock_regression.png",
+			"height": 1080,
+			"render_height": 1080,
+			"render_width": 1920,
+			"resource_path": "res://docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_card_dock_regression.png",
+			"width": 1920
+		},
+		{
+			"absolute_path": "E:/SpaceSyndicateWorkspace/worktrees/alpha04b-production-contextual-table-shell-eef2465/docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_1366x768.png",
+			"file_name": "alpha04b_1366x768.png",
+			"height": 768,
+			"render_height": 768,
+			"render_width": 1366,
+			"resource_path": "res://docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_1366x768.png",
+			"width": 1366
+		},
+		{
+			"absolute_path": "E:/SpaceSyndicateWorkspace/worktrees/alpha04b-production-contextual-table-shell-eef2465/docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_roster_8p_1920x1080.png",
+			"file_name": "alpha04b_roster_8p_1920x1080.png",
+			"height": 1080,
+			"render_height": 1080,
+			"render_width": 1920,
+			"resource_path": "res://docs/ui_qa/alpha04b_contextual_table_shell/alpha04b_roster_8p_1920x1080.png",
+			"width": 1920
+		}
+	],
+	"status": "PASS",
+	"task_id": "ALPHA_0_4_B_PRODUCTION_CONTEXTUAL_TABLE_SHELL_TYPED_CUTOVER"
+}

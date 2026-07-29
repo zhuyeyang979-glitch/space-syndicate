@@ -156,7 +156,7 @@ func _build_report(main: Node, state_name: String) -> Dictionary:
 		"PlanetBoard",
 		"PlanetMapView",
 		"WeatherForecastStrip",
-		"RightInspector",
+		"ContextDetailDrawer",
 		"DistrictInfoPanel",
 		"HandRack",
 		"MenuModalOverlay",

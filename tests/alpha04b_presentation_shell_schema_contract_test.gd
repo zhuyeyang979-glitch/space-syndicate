@@ -10,6 +10,7 @@ const ACTION_CONTEXT := preload("res://scripts/presentation/current_action_conte
 const FEEDBACK := preload("res://scripts/presentation/public_feedback_projection_v1.gd")
 const DETAIL := preload("res://scripts/presentation/context_detail_projection_v1.gd")
 const MODE := preload("res://scripts/presentation/table_interaction_mode_v1.gd")
+const INTEL := preload("res://scripts/runtime/intel_application_intent.gd")
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -101,6 +102,7 @@ func _test_player_inspection() -> void:
 
 func _test_region_supply_popup() -> void:
 	var source := _region_source()
+	_expect((source.get("allowed_navigation_intents") as Array)[0].get("kind") is String, "region Intel navigation serializes to closed wire data")
 	var projection := REGION.build(source)
 	_expect(_valid(REGION, projection), "region supply popup exact projection validates")
 	_expect(REGION.matches_viewer_authorization(projection, 0, 3), "region popup accepts exact viewer authorization")
@@ -347,7 +349,7 @@ func _region_source() -> Dictionary:
 		}],
 		"requirements": [_requirement(true)],
 		"allowed_actions": [_offer(ACTION_INTENT.ACTION_DISTRICT_SUPPLY_OPEN, 7)],
-		"allowed_navigation_intents": [_table_navigation("region.detail.0")],
+		"allowed_navigation_intents": [INTEL.open("", "region.0").to_dictionary()],
 	}
 
 

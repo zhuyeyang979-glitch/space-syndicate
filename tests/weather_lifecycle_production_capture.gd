@@ -291,7 +291,7 @@ func _table_scene_integrity(main: Node) -> Dictionary:
 	var required_specs := [
 		{"key": "TopBar", "node_name": "TopBar", "min_size": Vector2(1500.0, 48.0)},
 		{"key": "LeftCardShelf", "node_name": "PlanetLeftSpaceRail", "min_size": Vector2(200.0, 220.0)},
-		{"key": "RightInspector", "node_name": "RightInspector", "min_size": Vector2(280.0, 580.0)},
+		{"key": "ContextDetailDrawer", "node_name": "ContextDetailDrawer", "min_size": Vector2(280.0, 360.0)},
 		{"key": "PlayerBoard", "node_name": "PlayerBoard", "min_size": Vector2(1500.0, 185.0)},
 		{"key": "HandRack", "node_name": "HandRack", "min_size": Vector2(900.0, 120.0)},
 	]
@@ -358,7 +358,7 @@ func _table_pixel_integrity_gate(case_id: String, metrics: Dictionary) -> Dictio
 	if float(whole.get("effective_coverage", 0.0)) < 0.18:
 		failure_reasons.append("whole-frame effective content below 18%")
 	var node_regions := metrics.get("node_regions", {}) as Dictionary
-	for node_key in ["TopBar", "LeftCardShelf", "RightInspector", "PlayerBoard", "HandRack"]:
+	for node_key in ["TopBar", "PlayerRosterPanel", "ContextDetailDrawer", "PlayerBoard", "PlayerCardDock"]:
 		var node_metrics := node_regions.get(node_key, {}) as Dictionary
 		if int(node_metrics.get("sample_count", 0)) <= 0:
 			failure_reasons.append("%s has no sampled screenshot pixels" % node_key)

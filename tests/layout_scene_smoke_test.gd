@@ -1,6 +1,8 @@
 extends SceneTree
 
 const V06_RULES_SNAPSHOT := preload("res://scripts/viewmodels/rules_quick_reference_snapshot_v06.gd")
+const CURRENT_ACTION_CONTEXT_PROJECTION := preload("res://scripts/presentation/current_action_context_projection_v1.gd")
+const CONTEXT_DETAIL_PROJECTION := preload("res://scripts/presentation/context_detail_projection_v1.gd")
 
 const CITY_FIXTURES := preload("res://tests/helpers/city_world_fixture_factory.gd")
 
@@ -34,7 +36,9 @@ const SPLIT_UI_SCENE_PATHS := [
 	"res://scenes/ui/PlayerBoard.tscn",
 	"res://scenes/ui/HandRack.tscn",
 	"res://scenes/ui/CardFace.tscn",
-	"res://scenes/ui/RightInspector.tscn",
+	"res://scenes/ui/table/PlayerRosterPanel.tscn",
+	"res://scenes/ui/table/CompactCurrentActionSurface.tscn",
+	"res://scenes/ui/table/ContextDetailDrawer.tscn",
 	"res://scenes/ui/ActionDock.tscn",
 	"res://scenes/ui/BidBoard.tscn",
 	"res://scenes/ui/DistrictInfoPanel.tscn",
@@ -91,7 +95,9 @@ const SPLIT_UI_SCRIPT_PATHS := [
 	"res://scripts/ui/player_board.gd",
 	"res://scripts/ui/hand_rack.gd",
 	"res://scripts/ui/card_face.gd",
-	"res://scripts/ui/right_inspector.gd",
+	"res://scripts/ui/table/player_roster_panel.gd",
+	"res://scripts/ui/table/compact_current_action_surface.gd",
+	"res://scripts/ui/table/context_detail_drawer.gd",
 	"res://scripts/ui/action_dock.gd",
 	"res://scripts/ui/bid_board.gd",
 	"res://scripts/ui/district_info_panel.gd",
@@ -145,7 +151,8 @@ const VIEWMODEL_SCRIPT_PATHS := [
 	"res://scripts/viewmodels/card_codex_browser_snapshot.gd",
 	"res://scripts/viewmodels/card_codex_detail_snapshot.gd",
 	"res://scripts/viewmodels/top_bar_snapshot.gd",
-	"res://scripts/viewmodels/right_inspector_snapshot.gd",
+	"res://scripts/presentation/current_action_context_projection_v1.gd",
+	"res://scripts/presentation/context_detail_projection_v1.gd",
 	"res://scripts/viewmodels/public_track_snapshot.gd",
 	"res://scripts/viewmodels/planet_board_snapshot.gd",
 	"res://scripts/viewmodels/table_snapshot.gd",
@@ -921,7 +928,7 @@ func _check_main_runtime_composition_scene() -> void:
 	for node_path in ["RuntimeGameScreen", "RuntimeServices", "RuntimeServices/TableAudioHost", "RuntimeServices/RuntimeControllerHost", "RuntimeServices/RuntimeControllerHost/CardResolutionRuntimeController", "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator", "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureRuntimeController", "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureWorldBridge", "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ForcedDecisionRuntimeScheduler", "RuntimeServices/RuntimeFallbackHost"]:
 		_expect(main.get_node_or_null(node_path) != null, "main.tscn owns %s before runtime" % node_path)
 	var runtime_screen := main.get_node_or_null("RuntimeGameScreen") as Control
-	for node_name in ["TopBar", "PublicTrack", "PlanetBoard", "PlanetMapView", "RightInspector", "PlayerBoard", "OverlayLayer", "RuntimeSurfaceLayer", "FullscreenMapOverlay", "FullscreenPlanetMapView", "CardResolutionTableBannerOverlay", "BottomCountdownOverlay", "DistrictSupplySideDrawerOverlay", "MenuModalOverlay"]:
+	for node_name in ["TopBar", "TopCommoditySushiTrack", "PlayerRosterPanel", "PlanetBoard", "PlanetMapView", "PlayerBoard", "CompactCurrentActionSurface", "PlayerCardDock", "ContextDetailDrawer", "OverlayLayer", "RuntimeSurfaceLayer", "FullscreenMapOverlay", "FullscreenPlanetMapView", "CardResolutionTableBannerOverlay", "BottomCountdownOverlay", "DistrictSupplySideDrawerOverlay", "MenuModalOverlay"]:
 		_expect(runtime_screen != null and runtime_screen.find_child(node_name, true, false) != null, "sceneized main composition contains %s" % node_name)
 	_expect(main.get_node_or_null("LegacyRuntimeTable") == null, "main.tscn permanently retires LegacyRuntimeTable")
 	var audio_host := main.get_node_or_null("RuntimeServices/TableAudioHost")
@@ -947,7 +954,7 @@ func _check_player_turn_mcp_preview_component() -> void:
 		return
 	var ids_variant: Variant = fixtures.call("preview_ids")
 	var ids: Array = ids_variant if ids_variant is Array else []
-	var expected_ids := ["empty_hand", "normal_hand", "selected_enabled_card", "selected_disabled_card", "hovered_card", "drag_preview", "right_inspector_card_detail", "public_track_selection", "temporary_decision_pending_hint"]
+	var expected_ids := ["empty_hand", "normal_hand", "selected_enabled_card", "selected_disabled_card", "hovered_card", "drag_preview", "context_detail_card", "public_track_selection", "temporary_decision_pending_hint"]
 	var has_expected_ids := ids.size() == expected_ids.size()
 	for id in expected_ids:
 		has_expected_ids = has_expected_ids and ids.has(id)
@@ -974,7 +981,7 @@ func _check_player_turn_mcp_preview_component() -> void:
 	viewport.add_child(preview)
 	await process_frame
 	await process_frame
-	for node_name in ["PlayerTurnStateList", "PlayerBoardPreviewHost", "CardFacePreviewHost", "RightInspectorPreviewHost", "PlayerTurnStatusLabel", "PlayerTurnSelectedCardLabel", "PlayerTurnActionSummaryLabel", "PlayerTurnDisabledReasonLabel", "PlayerBoard", "HandRack", "SelectedCardFace", "RightInspector", "PublicTrack"]:
+	for node_name in ["PlayerTurnStateList", "PlayerBoardPreviewHost", "CardFacePreviewHost", "PlayerTurnPublicTrackHost", "PlayerTurnStatusLabel", "PlayerTurnSelectedCardLabel", "PlayerTurnActionSummaryLabel", "PlayerTurnDisabledReasonLabel", "PlayerBoard", "CompactCurrentActionSurface", "SelectedCardFace", "ContextDetailDrawer", "PublicTrack"]:
 		_expect(preview.find_child(node_name, true, false) != null, "PlayerTurnMcpPreview contains %s" % node_name)
 	_expect(preview.has_method("preview_ids") and preview.has_method("show_preview_id") and preview.has_method("selected_preview_id") and preview.has_method("current_fixture"), "PlayerTurnMcpPreview exposes testable MCP preview methods")
 	var preview_ids_variant: Variant = preview.call("preview_ids") if preview.has_method("preview_ids") else []
@@ -1048,7 +1055,7 @@ func _check_player_turn_interaction_bench_component() -> void:
 		_expect(output_path == PLAYER_TURN_INTERACTION_OUTPUT_DIR and output_path.begins_with("user://") and not output_path.contains("res://reports"), "PlayerTurnInteractionBench writes interaction QA output under user:// instead of res://reports")
 	var cases_variant: Variant = bench.call("interaction_cases") if bench.has_method("interaction_cases") else []
 	var cases: Array = cases_variant if cases_variant is Array else []
-	var expected_ids := ["empty_hand", "normal_hand", "selected_enabled_card", "selected_disabled_card", "hovered_card", "drag_preview", "right_inspector_card_detail", "public_track_selection", "temporary_decision_pending_hint"]
+	var expected_ids := ["empty_hand", "normal_hand", "selected_enabled_card", "selected_disabled_card", "hovered_card", "drag_preview", "context_detail_card", "public_track_selection", "temporary_decision_pending_hint"]
 	var seen_ids := {}
 	var seen_interactions := {}
 	var required_case_fields_ok := cases.size() == expected_ids.size()
@@ -1060,7 +1067,7 @@ func _check_player_turn_interaction_bench_component() -> void:
 	_expect(required_case_fields_ok, "PlayerTurnInteractionBench interaction cases include testable required fields")
 	for id in expected_ids:
 		_expect(seen_ids.has(id), "PlayerTurnInteractionBench includes interaction case for %s" % id)
-	for interaction_name in ["empty_hand_affordance", "select_first_card_and_play", "selected_enabled_action", "disabled_action_silent", "hover_keeps_focus", "invalid_drop_silent", "right_inspector_detail", "public_track_click", "temporary_decision_pending_hint"]:
+	for interaction_name in ["empty_hand_affordance", "select_first_card_and_play", "selected_enabled_action", "disabled_action_silent", "hover_keeps_focus", "invalid_drop_silent", "context_detail_detail", "public_track_click", "temporary_decision_pending_hint"]:
 		_expect(seen_interactions.has(interaction_name), "PlayerTurnInteractionBench includes %s interaction" % interaction_name)
 	var manifest_variant: Variant = bench.call("build_interaction_manifest_preview") if bench.has_method("build_interaction_manifest_preview") else {}
 	var manifest: Dictionary = manifest_variant if manifest_variant is Dictionary else {}
@@ -1068,7 +1075,7 @@ func _check_player_turn_interaction_bench_component() -> void:
 	var manifest_records_ok: bool = manifest.get("output_dir") == PLAYER_TURN_INTERACTION_OUTPUT_DIR and int(manifest.get("case_count", 0)) == expected_ids.size() and records.size() == expected_ids.size()
 	for record_variant in records:
 		var record: Dictionary = record_variant if record_variant is Dictionary else {}
-		manifest_records_ok = manifest_records_ok and record.has("fixture_id") and record.has("interaction_name") and record.has("selected_card_id") and record.has("clicked_action_id") and record.has("emitted_action_id") and record.has("right_inspector_checked") and record.has("disabled_action_checked") and record.has("drag_state_checked") and record.has("passed") and record.has("notes")
+		manifest_records_ok = manifest_records_ok and record.has("fixture_id") and record.has("interaction_name") and record.has("selected_card_id") and record.has("clicked_action_id") and record.has("emitted_action_id") and record.has("context_detail_checked") and record.has("disabled_action_checked") and record.has("drag_state_checked") and record.has("passed") and record.has("notes")
 	_expect(manifest_records_ok, "PlayerTurnInteractionBench manifest preview records include required interaction fields")
 	_expect(not _variant_contains_callable(cases) and not _variant_contains_object(cases) and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "PlayerTurnInteractionBench cases and manifest preview stay data-only")
 	_expect(ResourceLoader.exists(PLAYER_TURN_MCP_PREVIEW_SCENE) and load(PLAYER_TURN_MCP_PREVIEW_SCENE) != null, "PlayerTurnInteractionBench can rely on PlayerTurnMcpPreview.tscn")
@@ -1129,7 +1136,7 @@ func _check_runtime_player_turn_flow_bench_component() -> void:
 	var manifest_records_ok: bool = manifest.get("output_dir") == RUNTIME_PLAYER_TURN_FLOW_OUTPUT_DIR and int(manifest.get("case_count", 0)) == expected_ids.size() and records.size() == expected_ids.size()
 	for record_variant in records:
 		var record: Dictionary = record_variant if record_variant is Dictionary else {}
-		manifest_records_ok = manifest_records_ok and record.has("fixture_id") and record.has("interaction_name") and record.has("selected_card_id") and record.has("clicked_action_id") and record.has("emitted_action_id") and record.has("right_inspector_checked") and record.has("disabled_reason_visible") and record.has("public_hint_safe") and record.has("temporary_decision_hint_visible") and record.has("passed") and record.has("notes")
+		manifest_records_ok = manifest_records_ok and record.has("fixture_id") and record.has("interaction_name") and record.has("selected_card_id") and record.has("clicked_action_id") and record.has("emitted_action_id") and record.has("context_detail_checked") and record.has("disabled_reason_visible") and record.has("public_hint_safe") and record.has("temporary_decision_hint_visible") and record.has("passed") and record.has("notes")
 	_expect(manifest_records_ok, "RuntimePlayerTurnFlowBench manifest preview records include required flow fields")
 	_expect(not _variant_contains_callable(cases) and not _variant_contains_object(cases) and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "RuntimePlayerTurnFlowBench cases and manifest preview stay data-only")
 	_expect(ResourceLoader.exists("res://scenes/ui/GameScreen.tscn") and load("res://scenes/ui/GameScreen.tscn") != null, "RuntimePlayerTurnFlowBench can rely on the real GameScreen.tscn")
@@ -1203,7 +1210,7 @@ func _check_first_playable_loop_bench_component() -> void:
 	var manifest_records_ok: bool = manifest.get("output_dir") == FIRST_PLAYABLE_LOOP_OUTPUT_DIR and int(manifest.get("case_count", 0)) == expected_step_ids.size() and records.size() == expected_step_ids.size()
 	for record_variant in records:
 		var record: Dictionary = record_variant if record_variant is Dictionary else {}
-		manifest_records_ok = manifest_records_ok and record.has("step_id") and record.has("fixture_id") and record.has("expected_surface") and record.has("clicked_action_id") and record.has("emitted_action_id") and record.has("right_inspector_checked") and record.has("player_feedback_checked") and record.has("overlay_checked") and record.has("privacy_checked") and record.has("passed") and record.has("notes")
+		manifest_records_ok = manifest_records_ok and record.has("step_id") and record.has("fixture_id") and record.has("expected_surface") and record.has("clicked_action_id") and record.has("emitted_action_id") and record.has("context_detail_checked") and record.has("player_feedback_checked") and record.has("overlay_checked") and record.has("privacy_checked") and record.has("passed") and record.has("notes")
 	_expect(manifest_records_ok, "FirstPlayableLoopBench manifest preview records include required playable-loop fields")
 	_expect(not _variant_contains_callable(cases) and not _variant_contains_object(cases) and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "FirstPlayableLoopBench cases and manifest preview stay data-only")
 	_expect(ResourceLoader.exists("res://scenes/ui/GameScreen.tscn") and load("res://scenes/ui/GameScreen.tscn") != null, "FirstPlayableLoopBench can rely on the real GameScreen.tscn")
@@ -1616,8 +1623,8 @@ func _check_core_layout_no_overlap() -> void:
 		"horizontal": ["LeftInfoPanel", "CenterTablePanel", "RightInfoPanel"],
 	})
 	await _check_core_layout_for_scene("res://scenes/ui/GameScreen.tscn", {
-		"vertical": ["TopBar", "PublicTrack", "TableArea", "PlayerBoard"],
-		"horizontal": ["PlanetBoard", "RightInspector"],
+		"vertical": ["TopBar", "TopCommoditySushiTrack", "TableArea", "PlayerBoard", "PlayerCardDock"],
+		"horizontal": ["PlayerRosterPanel", "PlanetBoard"],
 	})
 
 
@@ -2123,33 +2130,29 @@ func _check_visible_buttons_inside_viewport(node: Node, path: String, viewport_s
 
 func _check_planet_is_largest_runtime_surface(screen: Control, path: String) -> void:
 	var planet := screen.find_child("PlanetBoard", true, false) as Control
-	var right := screen.find_child("RightInspector", true, false) as Control
+	var roster := screen.find_child("PlayerRosterPanel", true, false) as Control
 	var player := screen.find_child("PlayerBoard", true, false) as Control
-	_expect(planet != null and right != null and player != null, "%s has planet, inspector, and player board for visual-priority check" % path)
-	if planet == null or right == null or player == null:
+	_expect(planet != null and roster != null and player != null, "%s has planet, public roster, and player board for visual-priority check" % path)
+	if planet == null or roster == null or player == null:
 		return
 	var planet_area := planet.get_global_rect().size.x * planet.get_global_rect().size.y
-	var right_area := right.get_global_rect().size.x * right.get_global_rect().size.y
+	var roster_area := roster.get_global_rect().size.x * roster.get_global_rect().size.y
 	var player_area := player.get_global_rect().size.x * player.get_global_rect().size.y
-	_expect(planet_area > right_area and planet_area > player_area, "%s keeps PlanetBoard as the largest visible table surface" % path)
+	_expect(planet_area > roster_area and planet_area > player_area, "%s keeps PlanetBoard as the largest visible table surface" % path)
 
 
-func _check_right_inspector_collapses_empty_panels(screen: Control, path: String) -> void:
-	var reason_panel := screen.find_child("InspectorReasonPanel", true, false) as Control
-	var reason_label := screen.find_child("InspectorReasonLabel", true, false) as Label
-	var requirement_row := screen.find_child("InspectorRequirementChipRow", true, false)
-	var event_log_panel := screen.find_child("EventLogPanel", true, false) as Control
-	var event_log_label := screen.find_child("EventLogLabel", true, false) as Label
-	_expect(reason_panel != null and event_log_panel != null, "%s exposes collapsible RightInspector reason/log panels" % path)
-	if reason_panel != null and reason_panel.visible:
-		var has_reason_text := reason_label != null and reason_label.text.strip_edges() != ""
-		var requirement_text := _node_tree_text(requirement_row).strip_edges() if requirement_row != null else ""
-		var has_requirement_chips := requirement_text != "" and not (requirement_text in ["条件", "暂无条件", "待选择"])
-		_expect(has_reason_text or has_requirement_chips, "%s shows the RightInspector reason panel only when it has why text or requirement chips" % path)
-		_expect(reason_label != null and reason_label.get_global_rect().size.y >= 18.0, "%s gives visible RightInspector reason text enough height to avoid blank-looking panels" % path)
-	if event_log_panel != null and event_log_panel.visible:
-		_expect(event_log_label != null and event_log_label.text.strip_edges() != "" and not event_log_label.text.contains("暂无公开事件"), "%s shows the RightInspector log panel only for real public log lines" % path)
-		_expect(event_log_label != null and event_log_label.get_global_rect().size.y >= 28.0, "%s gives visible RightInspector log text enough height to avoid blank-looking panels" % path)
+func _check_contextual_surface_boundaries(screen: Control, path: String) -> void:
+	var current_action := screen.find_child("CompactCurrentActionSurface", true, false) as Control
+	var detail := screen.find_child("ContextDetailDrawer", true, false) as Control
+	_expect(current_action != null and detail != null, "%s exposes typed current-action and context-detail surfaces" % path)
+	if current_action != null and current_action.has_method("debug_snapshot"):
+		var action_debug: Dictionary = current_action.call("debug_snapshot")
+		_expect(not bool(action_debug.get("accepts_card_submission", true)) \
+			and not bool(action_debug.get("owns_action_legality", true)), "%s keeps Dock submission and legality outside current-action context" % path)
+	if detail != null and detail.has_method("debug_snapshot"):
+		var detail_debug: Dictionary = detail.call("debug_snapshot")
+		_expect(bool(detail_debug.get("read_only", false)) \
+			and not bool(detail_debug.get("accepts_card_submission", true)), "%s keeps context detail read-only" % path)
 
 
 func _check_planet_board_square_stage_priority(screen: Control) -> void:
@@ -2654,14 +2657,14 @@ func _check_runtime_hand_card_drag_to_map_play(main: Node, runtime_screen: Contr
 	await process_frame
 	await process_frame
 	var selected_resolution_id := int(runtime_selection.selected_card_resolution_id)
-	var runtime_right_inspector := runtime_screen.find_child("RightInspector", true, false)
-	var runtime_inspector_text := _node_tree_text(runtime_right_inspector)
+	var runtime_context_detail := runtime_screen.find_child("ContextDetailDrawer", true, false)
+	var runtime_detail_text := _node_tree_text(runtime_context_detail)
 	_expect(selected_resolution_id >= 0, "single-clicking a runtime PublicTrack slot focuses a public card-history entry in the scene-owned selection state")
 	_expect(_selection_intents_have_card_resolution(track_selection_intents, selected_resolution_id), "single-clicking a runtime PublicTrack slot emits one typed card-resolution selection intent")
 	_expect(not _array_has_prefix(track_action_ids, "track_select_"), "single-clicking a runtime PublicTrack slot emits no legacy track_select action toward Main")
-	_expect(runtime_inspector_text.contains("牌轨详情") and runtime_inspector_text.contains("查看履历") and runtime_inspector_text.contains("线索档案"), "runtime PublicTrack click keeps the public-history detail and dossier action in RightInspector after typed refresh")
-	var intel_button := _find_visible_button_containing(runtime_right_inspector, "线索档案")
-	_expect(intel_button != null, "runtime selected PublicTrack detail exposes a direct intel dossier action")
+	_expect(runtime_detail_text.contains("公共轨道详情") and runtime_detail_text.contains("公共"), "runtime PublicTrack click keeps public-history facts in typed context detail after refresh")
+	var intel_button := _find_visible_button_containing(runtime_context_detail, "查看")
+	_expect(intel_button != null, "runtime selected public-track detail exposes typed navigation")
 	if intel_button != null:
 		intel_button.emit_signal("pressed")
 		await process_frame
@@ -3458,7 +3461,8 @@ func _check_viewmodel_contracts() -> void:
 	var public_track_script := load("res://scripts/viewmodels/public_track_snapshot.gd")
 	var planet_script := load("res://scripts/viewmodels/planet_board_snapshot.gd")
 	var top_bar_script := load("res://scripts/viewmodels/top_bar_snapshot.gd")
-	var inspector_script := load("res://scripts/viewmodels/right_inspector_snapshot.gd")
+	var current_action_script := load("res://scripts/presentation/current_action_context_projection_v1.gd")
+	var context_detail_script := load("res://scripts/presentation/context_detail_projection_v1.gd")
 	var table_script := load("res://scripts/viewmodels/table_snapshot.gd")
 	_expect(action_dock_script != null, "ActionDockSnapshot script loads")
 	_expect(bid_board_script != null, "BidBoardSnapshot script loads")
@@ -3471,9 +3475,10 @@ func _check_viewmodel_contracts() -> void:
 	_expect(public_track_script != null, "PublicTrackSnapshot script loads")
 	_expect(planet_script != null, "PlanetBoardSnapshot script loads")
 	_expect(top_bar_script != null, "TopBarSnapshot script loads")
-	_expect(inspector_script != null, "RightInspectorSnapshot script loads")
+	_expect(current_action_script != null, "CurrentActionContextProjectionV1 script loads")
+	_expect(context_detail_script != null, "ContextDetailProjectionV1 script loads")
 	_expect(table_script != null, "TableSnapshot script loads")
-	if action_dock_script == null or bid_board_script == null or overlay_script == null or card_codex_browser_script == null or card_codex_detail_script == null or card_script == null or district_script == null or player_script == null or public_track_script == null or planet_script == null or top_bar_script == null or inspector_script == null or table_script == null:
+	if action_dock_script == null or bid_board_script == null or overlay_script == null or card_codex_browser_script == null or card_codex_detail_script == null or card_script == null or district_script == null or player_script == null or public_track_script == null or planet_script == null or top_bar_script == null or current_action_script == null or context_detail_script == null or table_script == null:
 		return
 	var action_dock: Variant = action_dock_script.new().apply_dictionary({
 		"quick_actions": [{"id": "build", "label": "建城", "state": "ready", "active": true}],
@@ -3507,18 +3512,54 @@ func _check_viewmodel_contracts() -> void:
 		"hand_cards": [card.to_ui_dictionary()],
 	})
 	var top_bar: Variant = top_bar_script.new().apply_dictionary(player.to_ui_dictionary())
-	var inspector: Variant = inspector_script.new().apply_dictionary({
+	var current_action := CURRENT_ACTION_CONTEXT_PROJECTION.build({
+		"schema_version": 1,
+		"viewer_index": 0,
+		"authorization_revision": 1,
+		"context_id": "action-context-mist-port",
+		"source_revision": 1,
+		"title": "雾港区当前行动",
+		"summary": "查看受光区域的公开牌架条件。",
+		"reason_id": "sunlight-available",
+		"reason_text": "因为来源区域中心受光，所以挂牌可买。",
+		"costs": [],
+		"requirements": [
+			{"requirement_id": "monster-nearby", "satisfied": true, "reason_id": "none", "message_token": "requirement.monster-nearby", "arguments": {}},
+			{"requirement_id": "cash-ready", "satisfied": true, "reason_id": "none", "message_token": "requirement.cash-ready", "arguments": {}},
+		],
+		"consequences": [{"consequence_id": "open-rack", "message_token": "consequence.open-rack", "arguments": {"region": "region.mist-port"}}],
+		"game_action_offers": [],
+		"navigation_intents": [],
+	})
+	var context_detail := CONTEXT_DETAIL_PROJECTION.build({
+		"schema_version": 1,
+		"viewer_index": 0,
+		"authorization_revision": 1,
+		"source_revision": 1,
+		"context_id": "region-facility-mist-port",
+		"context_kind": CONTEXT_DETAIL_PROJECTION.KIND_REGION_FACILITY,
+		"visibility_scope": "public",
+		"title": "雾港区",
+		"subtitle": "公开区域设施",
+		"content": {
+			"facility_id": "facility.mist-port.market",
+			"region_id": "region.mist-port",
+			"display_name": "雾港区牌架",
+			"illustration_key": "facility.market-rack",
+			"public_status": "sunlight-open",
+			"summary": "海陆商路交界。",
+			"detail": "海陆商路交界。这里是完整区域说明，会进入详情抽屉而不是常驻主桌。它还包含供需、怪兽路径、历史事件、牌架购买条件、经济线索、城市业主推理、怪兽下注、商路风险和下一步行动原因。",
+		},
+		"navigation_intents": [],
+	})
+	var drawer_source := {
 		"title": "当前说明",
 		"why": "因为来源区域中心受光，所以挂牌可买。",
-		"district": {
-			"title": "雾港区",
-			"detail": "海陆商路交界。这里是完整区域说明，会进入详情抽屉而不是常驻主桌。它还包含供需、怪兽路径、历史事件、牌架购买条件、经济线索、城市业主推理、怪兽下注、商路风险和下一步行动原因。",
-			"chips": [{"text": "日照开放"}],
-		},
+		"district": {"title": "雾港区", "detail": str(context_detail.get("content", {}).get("detail", "")), "chips": [{"text": "日照开放"}]},
 		"requirements": ["怪兽邻近", "现金足够"],
 		"actions": [{"id": "market", "label": "牌架"}],
 		"deep_links": [{"id": "codex_region", "label": "区域详情"}],
-	})
+	}
 	var table: Variant = table_script.new().apply_dictionary({
 		"card_track": [{"label": "公开牌", "slot": 1, "state": "current", "cost": "¥80"}],
 		"district": district.to_ui_dictionary(),
@@ -3528,7 +3569,8 @@ func _check_viewmodel_contracts() -> void:
 			"right_entries": [{"label": "怪兽", "value": "1只", "active": true}],
 		},
 		"player_board": player.to_ui_dictionary(),
-		"right_inspector": inspector.to_ui_dictionary(),
+		"current_action_context": current_action,
+		"context_detail": context_detail,
 	})
 	var temporary_decision_examples := [
 		{"id": "discard_purchase", "kind": "discard_purchase", "title": "私密弃牌确认", "body": "手牌已满。", "chips": [{"text": "私密"}], "actions": [{"id": "discard_purchase_0", "label": "弃掉旧牌"}], "choice": {"mode": "discard", "card": "轨道融资", "privacy": "公开日志不写弃牌。"}},
@@ -3536,7 +3578,7 @@ func _check_viewmodel_contracts() -> void:
 		{"id": "player_target_choice", "kind": "player_target_choice", "title": "请选择目标玩家", "body": "直接互动目标。", "chips": [{"text": "匿名入轨"}], "actions": [{"id": "target_player_1", "label": "玩家2"}], "choice": {"mode": "player_target", "card": "相位否决", "public_after": "目标玩家公开。"}},
 		{"id": "monster_wager_7", "kind": "monster_wager", "title": "怪兽赌局 #7", "body": "全场冻结公开下注。", "chips": [{"text": "全场冻结"}], "actions": [{"id": "monster_wager:7:a:5", "label": "押A 5%"}], "wager": {"matchup": "相位兽 vs 潮汐巨兽", "pool": 50}},
 	]
-	var overlay: Variant = overlay_script.new().apply_side_drawer("detail_region", inspector.to_ui_dictionary())
+	var overlay: Variant = overlay_script.new().apply_side_drawer("detail_region", drawer_source)
 	var card_codex_browser: Variant = card_codex_browser_script.new().apply_dictionary({
 		"names": ["phase_beast_i", "orbital_finance_i", "weather_break_i"],
 		"columns": 2,
@@ -3669,10 +3711,14 @@ func _check_viewmodel_contracts() -> void:
 	_expect(player.to_ui_dictionary().get("identity") == "赤港财团" and player.to_ui_dictionary().get("selected_district_summary") == "雾港区", "PlayerBoardSnapshot keeps first-glance identity and selected district")
 	_expect(player.to_ui_dictionary().get("primary_action") == "牌架" and player.to_ui_dictionary().get("goal_ratio") > 0.2, "PlayerBoardSnapshot keeps market as the primary economic action")
 	_expect(top_bar.to_ui_dictionary().get("identity") == "赤港财团" and top_bar.to_ui_dictionary().get("selected_district") == "雾港区", "TopBarSnapshot derives first-glance fields from player state")
-	_expect(inspector.to_ui_dictionary().get("why").contains("受光") and inspector.to_ui_dictionary().get("requirements", []).size() == 2, "RightInspectorSnapshot keeps sunlight availability why text and requirement chips")
-	_expect(inspector.to_ui_dictionary().get("actions", []).size() == 1 and inspector.to_ui_dictionary().get("actions", [])[0].get("label") == "牌架", "RightInspectorSnapshot routes inspector actions through ActionDockSnapshot")
-	_expect(inspector.to_ui_dictionary().get("district", {}).get("detail") != inspector.to_ui_dictionary().get("district", {}).get("full_detail") and inspector.to_ui_dictionary().get("district", {}).get("full_detail", "").contains("完整区域说明"), "RightInspectorSnapshot separates table summary from full drawer detail")
-	_expect(drawer.get("title") == "区域详情" and str(drawer.get("body", "")).contains("完整区域说明") and str(drawer.get("body", "")).contains("原因："), "OverlayLayerSnapshot builds full 30-second drawer body from inspector snapshot")
+	_expect(bool(CURRENT_ACTION_CONTEXT_PROJECTION.validation_report(current_action).get("valid", false)) \
+		and str(current_action.get("reason_text", "")).contains("受光") \
+		and current_action.get("requirements", []).size() == 2, "CurrentActionContextProjectionV1 keeps availability reason and typed requirements")
+	_expect(current_action.get("game_action_offers", []).is_empty(), "current-action context does not duplicate PlayerCardDock card submission")
+	_expect(bool(CONTEXT_DETAIL_PROJECTION.validation_report(context_detail).get("valid", false)) \
+		and not context_detail.has("actions") \
+		and str(context_detail.get("content", {}).get("detail", "")).contains("完整区域说明"), "ContextDetailProjectionV1 keeps full read-only region detail")
+	_expect(drawer.get("title") == "区域详情" and str(drawer.get("body", "")).contains("完整区域说明") and str(drawer.get("body", "")).contains("原因："), "OverlayLayerSnapshot builds the independent full 30-second drawer body")
 	_expect(drawer_sections.size() >= 3 and str(drawer_sections[0].get("title", "")).contains("对象") and _action_list_has_label(drawer_sections, "完整详情"), "OverlayLayerSnapshot builds sectioned 30-second drawer read order")
 	_expect(drawer_chips.size() >= 2 and drawer_actions.size() == 1 and drawer_actions[0].get("id") == "codex_region", "OverlayLayerSnapshot normalizes drawer chips and Codex follow-up actions")
 	_expect(card_browser_ui.get("page_text") == "第1/2页｜3张卡｜本页1-2" and card_browser_ui.get("selected_card") == "phase_beast_i" and card_browser_cards.size() == 2 and bool(card_browser_cards[0].get("selected", false)), "CardCodexBrowserSnapshot owns thumbnail pagination and selected-card fallback")
@@ -3695,7 +3741,8 @@ func _check_viewmodel_contracts() -> void:
 	_expect(planet_left.get("title") == "地表情报" and planet_left_entries.size() == 1 and planet_left_entries[0].get("label") == "星区", "PlanetBoardSnapshot normalizes public surface rail entries")
 	_expect(planet_right.get("title") == "外围压力" and planet_right_entries.size() == 1 and planet_right_entries[0].get("label") == "怪兽", "PlanetBoardSnapshot normalizes outer-pressure rail entries")
 	_expect(planet_flow_steps.size() == 8 and bool(planet_flow_steps[0].get("done", false)) and bool(planet_flow_steps[1].get("current", false)) and str(planet_flow.get("next_text", "")).contains("日照牌架") and str(planet_flow_steps[5].get("label", "")).contains("牌轨") and str(planet_flow_steps[6].get("label", "")).contains("经济") and str(planet_flow_steps[7].get("label", "")).contains("路线"), "PlanetBoardSnapshot keeps market and economy ahead of optional summon")
-	_expect(table.to_ui_dictionary().has("right_inspector"), "TableSnapshot creates right-inspector UI context")
+	_expect(table.to_ui_dictionary().get("current_action_context", {}).get("context_id", "") == "action-context-mist-port" \
+		and table.to_ui_dictionary().get("context_detail", {}).get("context_id", "") == "region-facility-mist-port", "TableSnapshot preserves typed current-action and context-detail contracts")
 	_expect(table.to_ui_dictionary().get("card_track", []).size() == 1 and table.to_ui_dictionary().get("card_track", [])[0].get("state") == "当前", "TableSnapshot routes public track entries through PublicTrackSnapshot")
 	var table_resolution_track: Dictionary = table.to_ui_dictionary().get("card_resolution_track", {}) if table.to_ui_dictionary().get("card_resolution_track", {}) is Dictionary else {}
 	var table_resolution_entries: Array = table_resolution_track.get("entries", []) if table_resolution_track.get("entries", []) is Array else []
@@ -6989,7 +7036,7 @@ func _check_legacy_player_surface_retirement_component() -> void:
 		root.add_child(bench)
 		await process_frame
 		_expect(bench.has_method("output_dir") and bench.has_method("retired_function_names") and bench.has_method("retirement_cases") and bench.has_method("build_retirement_manifest_preview") and bench.has_method("run_retirement_suite"), "LegacyPlayerSurfaceRetirementBench exposes required QA APIs")
-		var expected_cases := ["real_main_scene_loads", "sceneized_player_board_present", "sceneized_hand_rack_present", "sceneized_action_dock_present", "sceneized_bid_board_present", "legacy_player_refresh_absent", "legacy_seat_renderer_absent", "legacy_hand_renderer_absent", "legacy_action_tray_absent", "legacy_district_renderer_absent", "legacy_first_summon_renderer_absent", "legacy_tableau_renderer_absent", "legacy_contract_ui_wrapper_absent", "runtime_player_snapshot_pure_data", "card_selection_bridge_present", "action_bridge_present", "privacy_boundary_preserved", "card_presentation_service_composition", "table_viewmodel_service_composition", "card_presentation_runtime_source", "hand_card_viewmodel_owned_by_service", "right_inspector_owned_by_service", "public_track_viewmodel_privacy", "coordinator_pure_data_routes", "presentation_rule_boundary_preserved", "legacy_presentation_and_snapshot_owners_absent", "retired_function_set_absent"]
+		var expected_cases := ["real_main_scene_loads", "sceneized_player_board_present", "sceneized_hand_rack_present", "sceneized_action_dock_present", "sceneized_bid_board_present", "legacy_player_refresh_absent", "legacy_seat_renderer_absent", "legacy_hand_renderer_absent", "legacy_action_tray_absent", "legacy_district_renderer_absent", "legacy_first_summon_renderer_absent", "legacy_tableau_renderer_absent", "legacy_contract_ui_wrapper_absent", "runtime_player_snapshot_pure_data", "card_selection_bridge_present", "action_bridge_present", "privacy_boundary_preserved", "card_presentation_service_composition", "table_viewmodel_service_composition", "card_presentation_runtime_source", "hand_card_viewmodel_owned_by_service", "context_detail_owned_by_service", "public_track_viewmodel_privacy", "coordinator_pure_data_routes", "presentation_rule_boundary_preserved", "legacy_presentation_and_snapshot_owners_absent", "retired_function_set_absent"]
 		var cases: Array = bench.call("retirement_cases")
 		var retired_names: Array = bench.call("retired_function_names")
 		var manifest: Dictionary = bench.call("build_retirement_manifest_preview")
