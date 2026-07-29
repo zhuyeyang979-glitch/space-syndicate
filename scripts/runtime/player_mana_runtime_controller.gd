@@ -2,11 +2,25 @@
 extends Node
 class_name PlayerManaRuntimeController
 
+const StrictState := preload("res://scripts/runtime/save_owner_state_v2_contract.gd")
+
 const RULESET_ID := "v0.6"
 const STATE_VERSION := 1
 const MILLIASSET_SCALE := 1000
 const ASSET_IDS := ["life", "energy", "industry", "technology", "commerce", "shipping"]
 const ADVANCE_ONCE_JOURNAL_LIMIT := 128
+const SAVE_KEYS := [
+	"state_version",
+	"ruleset_id",
+	"current_game_time",
+	"revision",
+	"pools_by_player",
+	"recovery_remainders_by_player",
+	"reservations",
+	"terminal_receipts",
+	"advance_once_journal",
+	"advance_once_order",
+]
 
 var _configured := false
 var _currency_scale := 100
@@ -367,46 +381,37 @@ func to_save_data() -> Dictionary:
 	}
 
 
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	var prepared := _prepare_save_data(data)
+	if not bool(prepared.get("valid", false)):
+		var reason_code := str(prepared.get("reason_code", "invalid_asset_save_payload"))
+		return {"accepted": false, "reason": reason_code, "reason_code": reason_code}
+	return {
+		"accepted": true,
+		"reason": "",
+		"reason_code": "asset_save_valid",
+		"normalized_state": _normalized_save_state(prepared),
+	}
+
+
 func apply_save_data(data: Dictionary) -> Dictionary:
 	# Registry preflight applies to a detached duplicate. Business actions still require
 	# configure(), while a complete v0.6 payload can be normalized without world state.
-	if not _is_pure_data(data):
-		return {"applied": false, "reason": "invalid_asset_save_payload"}
-	if int(data.get("state_version", -1)) != STATE_VERSION or str(data.get("ruleset_id", "")) != RULESET_ID:
-		return {"applied": false, "reason": "asset_save_header_invalid"}
-	var saved_revision := int(data.get("revision", -1))
-	if saved_revision < 0:
-		return {"applied": false, "reason": "asset_save_revision_invalid"}
-	var prepared_pools := _normalize_player_rows(data.get("pools_by_player", {}), true)
-	var prepared_remainders := _normalize_player_rows(data.get("recovery_remainders_by_player", {}), false)
-	if not bool(prepared_pools.get("valid", false)) or not bool(prepared_remainders.get("valid", false)):
-		return {"applied": false, "reason": "asset_save_rows_invalid"}
-	var reservations := _dictionary(data.get("reservations", {}))
-	var terminal_receipts := _dictionary(data.get("terminal_receipts", {}))
-	var has_advance_journal := data.has("advance_once_journal") or data.has("advance_once_order")
-	if has_advance_journal and (not (data.get("advance_once_journal") is Dictionary) \
-			or not (data.get("advance_once_order") is Array)):
-		return {"applied": false, "reason": "asset_recovery_journal_shape_invalid"}
-	var advance_journal: Dictionary = (data.get("advance_once_journal", {}) as Dictionary).duplicate(true) \
-		if data.get("advance_once_journal", {}) is Dictionary else {}
-	var advance_order: Array = (data.get("advance_once_order", []) as Array).duplicate() \
-		if data.get("advance_once_order", []) is Array else []
-	var advance_validation := _validate_advance_once_journal(advance_journal, advance_order)
-	if not bool(advance_validation.get("valid", false)):
-		return {"applied": false, "reason": str(advance_validation.get("reason", "asset_recovery_journal_invalid"))}
-	for reservation_variant in reservations.values():
-		if not (reservation_variant is Dictionary) or str((reservation_variant as Dictionary).get("state", "")) != "reserved":
-			return {"applied": false, "reason": "asset_save_reservation_invalid"}
-	_pools_by_player = _dictionary(prepared_pools.get("rows", {}))
-	_recovery_remainders_by_player = _dictionary(prepared_remainders.get("rows", {}))
-	_reservations = reservations
-	_terminal_receipts = terminal_receipts
-	_advance_once_journal = (advance_validation.get("journal", {}) as Dictionary).duplicate(true)
+	var preflight := preflight_save_data(data)
+	if not bool(preflight.get("accepted", false)):
+		var reason_code := str(preflight.get("reason_code", "invalid_asset_save_payload"))
+		return {"applied": false, "reason": reason_code, "reason_code": reason_code}
+	var normalized := (preflight.get("normalized_state", {}) as Dictionary).duplicate(true)
+	_pools_by_player = (normalized.get("pools_by_player") as Dictionary).duplicate(true)
+	_recovery_remainders_by_player = (normalized.get("recovery_remainders_by_player") as Dictionary).duplicate(true)
+	_reservations = (normalized.get("reservations") as Dictionary).duplicate(true)
+	_terminal_receipts = (normalized.get("terminal_receipts") as Dictionary).duplicate(true)
+	_advance_once_journal = (normalized.get("advance_once_journal") as Dictionary).duplicate(true)
 	_advance_once_order.clear()
-	for transaction_id_variant in advance_validation.get("order", []):
+	for transaction_id_variant in normalized.get("advance_once_order") as Array:
 		_advance_once_order.append(str(transaction_id_variant))
-	_current_game_time = maxf(0.0, float(data.get("current_game_time", 0.0)))
-	_revision = saved_revision
+	_current_game_time = float(normalized.get("current_game_time"))
+	_revision = int(normalized.get("revision"))
 	_last_reason = ""
 	return {"applied": true, "reason": "", "player_count": _pools_by_player.size(), "reservation_count": _reservations.size(), "revision": _revision}
 
@@ -458,6 +463,83 @@ func debug_snapshot() -> Dictionary:
 		"queue_authority": false,
 		"asset_balance_authority": true,
 		"legacy_industry_capacity_fallback_used": false,
+	}
+
+
+func _prepare_save_data(data: Dictionary) -> Dictionary:
+	if not StrictState.is_codec_data(data) or StrictState.contains_rng_continuation(data) or not _is_pure_data(data):
+		return {"valid": false, "reason_code": "invalid_asset_save_payload"}
+	if not StrictState.has_exact_keys(data, SAVE_KEYS):
+		return {"valid": false, "reason_code": "asset_save_shape_invalid"}
+	if not (data.get("state_version") is int) or int(data.get("state_version")) != STATE_VERSION \
+			or not (data.get("ruleset_id") is String) or str(data.get("ruleset_id")) != RULESET_ID:
+		return {"valid": false, "reason_code": "asset_save_header_invalid"}
+	if not (data.get("current_game_time") is int or data.get("current_game_time") is float) \
+			or not is_finite(float(data.get("current_game_time"))) \
+			or float(data.get("current_game_time")) < 0.0:
+		return {"valid": false, "reason_code": "asset_save_time_invalid"}
+	if not (data.get("revision") is int) or int(data.get("revision")) < 0:
+		return {"valid": false, "reason_code": "asset_save_revision_invalid"}
+	if not (data.get("pools_by_player") is Dictionary) \
+			or not (data.get("recovery_remainders_by_player") is Dictionary) \
+			or not (data.get("reservations") is Dictionary) \
+			or not (data.get("terminal_receipts") is Dictionary) \
+			or not (data.get("advance_once_journal") is Dictionary) \
+			or not (data.get("advance_once_order") is Array):
+		return {"valid": false, "reason_code": "asset_save_field_type_invalid"}
+	var prepared_pools := _normalize_player_rows(data.get("pools_by_player"), true)
+	var prepared_remainders := _normalize_player_rows(data.get("recovery_remainders_by_player"), false)
+	if not bool(prepared_pools.get("valid", false)) or not bool(prepared_remainders.get("valid", false)):
+		return {"valid": false, "reason_code": "asset_save_rows_invalid"}
+	var pools := prepared_pools.get("rows", {}) as Dictionary
+	var remainders := prepared_remainders.get("rows", {}) as Dictionary
+	var pool_player_ids: Array = pools.keys()
+	var remainder_player_ids: Array = remainders.keys()
+	pool_player_ids.sort()
+	remainder_player_ids.sort()
+	if pool_player_ids != remainder_player_ids:
+		return {"valid": false, "reason_code": "asset_save_player_rows_mismatch"}
+	var reservations := (data.get("reservations") as Dictionary).duplicate(true)
+	for transaction_id_variant in reservations.keys():
+		var transaction_id := str(transaction_id_variant)
+		var reservation_variant: Variant = reservations[transaction_id_variant]
+		if transaction_id.is_empty() or not (reservation_variant is Dictionary) \
+				or str((reservation_variant as Dictionary).get("state", "")) != "reserved":
+			return {"valid": false, "reason_code": "asset_save_reservation_invalid"}
+	var terminal_receipts := (data.get("terminal_receipts") as Dictionary).duplicate(true)
+	for transaction_id_variant in terminal_receipts.keys():
+		if str(transaction_id_variant).is_empty() or not (terminal_receipts[transaction_id_variant] is Dictionary):
+			return {"valid": false, "reason_code": "asset_save_terminal_receipt_invalid"}
+	var advance_journal := (data.get("advance_once_journal") as Dictionary).duplicate(true)
+	var advance_order := (data.get("advance_once_order") as Array).duplicate()
+	var advance_validation := _validate_advance_once_journal(advance_journal, advance_order)
+	if not bool(advance_validation.get("valid", false)):
+		return {"valid": false, "reason_code": str(advance_validation.get("reason", "asset_recovery_journal_invalid"))}
+	return {
+		"valid": true,
+		"current_game_time": float(data.get("current_game_time")),
+		"revision": int(data.get("revision")),
+		"pools_by_player": pools.duplicate(true),
+		"recovery_remainders_by_player": remainders.duplicate(true),
+		"reservations": reservations,
+		"terminal_receipts": terminal_receipts,
+		"advance_once_journal": (advance_validation.get("journal", {}) as Dictionary).duplicate(true),
+		"advance_once_order": (advance_validation.get("order", []) as Array).duplicate(),
+	}
+
+
+func _normalized_save_state(prepared: Dictionary) -> Dictionary:
+	return {
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"current_game_time": float(prepared.get("current_game_time", 0.0)),
+		"revision": int(prepared.get("revision", 0)),
+		"pools_by_player": _dictionary(prepared.get("pools_by_player", {})),
+		"recovery_remainders_by_player": _dictionary(prepared.get("recovery_remainders_by_player", {})),
+		"reservations": _dictionary(prepared.get("reservations", {})),
+		"terminal_receipts": _dictionary(prepared.get("terminal_receipts", {})),
+		"advance_once_journal": _dictionary(prepared.get("advance_once_journal", {})),
+		"advance_once_order": (prepared.get("advance_once_order", []) as Array).duplicate(),
 	}
 
 
@@ -579,15 +661,28 @@ func _normalize_player_rows(value: Variant, enforce_pool_cap: bool) -> Dictionar
 	if not (value is Dictionary):
 		return {"valid": false, "rows": {}}
 	var rows: Dictionary = {}
-	for player_key_variant in (value as Dictionary).keys():
-		var player_index := int(player_key_variant)
-		if player_index < 0 or not ((value as Dictionary)[player_key_variant] is Dictionary):
+	var player_keys: Array = (value as Dictionary).keys()
+	player_keys.sort_custom(func(left: Variant, right: Variant) -> bool: return int(str(left)) < int(str(right)))
+	for player_key_variant in player_keys:
+		if not (player_key_variant is String or player_key_variant is StringName):
+			return {"valid": false, "rows": {}}
+		var player_key := str(player_key_variant)
+		if not player_key.is_valid_int():
+			return {"valid": false, "rows": {}}
+		var player_index := int(player_key)
+		if player_index < 0 or str(player_index) != player_key \
+				or not ((value as Dictionary)[player_key_variant] is Dictionary):
 			return {"valid": false, "rows": {}}
 		var source := (value as Dictionary)[player_key_variant] as Dictionary
+		if not StrictState.has_exact_keys(source, ASSET_IDS):
+			return {"valid": false, "rows": {}}
 		var row := _empty_asset_values()
 		for asset_id_variant in ASSET_IDS:
 			var asset_id := str(asset_id_variant)
-			var amount := int(source.get(asset_id, 0))
+			var amount_variant: Variant = source.get(asset_id)
+			if not (amount_variant is int):
+				return {"valid": false, "rows": {}}
+			var amount := int(amount_variant)
 			if amount < 0 or (enforce_pool_cap and amount > _pool_maximum_milliunits):
 				return {"valid": false, "rows": {}}
 			row[asset_id] = amount

@@ -1,0 +1,15 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/save_owner_strict_preflight_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/PlayerManaRuntimeController.tscn" id="2_mana"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/PlayerOrganizationRuntimeController.tscn" id="3_organization"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/VictoryControlRuntimeController.tscn" id="4_victory"]
+
+[node name="SaveOwnerStrictPreflightBench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="PlayerManaRuntimeController" parent="." instance=ExtResource("2_mana")]
+
+[node name="PlayerOrganizationRuntimeController" parent="." instance=ExtResource("3_organization")]
+
+[node name="VictoryControlRuntimeController" parent="." instance=ExtResource("4_victory")]

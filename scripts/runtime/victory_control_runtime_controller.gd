@@ -2,6 +2,8 @@
 extends Node
 class_name VictoryControlRuntimeController
 
+const StrictState := preload("res://scripts/runtime/save_owner_state_v2_contract.gd")
+
 const CONTROLLER_ID := "victory_control_v06"
 const RULESET_ID := "v0.6"
 const SAVE_SCHEMA_VERSION := 2
@@ -13,6 +15,17 @@ const STATE_RESOLVED := "resolved"
 const VALID_STATES := [STATE_IDLE, STATE_QUALIFICATION, STATE_AUDIT, STATE_RESOLVED]
 const COMPARISON_ORDER := ["top_k_gdp_per_minute_cents", "controlled_region_count", "cash_ledger_cents"]
 const POST_SETTLEMENT_CHECKPOINT := "post_world_settlement"
+const SAVE_KEYS := ["victory_control_runtime"]
+const SAVE_PAYLOAD_KEYS := [
+	"schema_version",
+	"ruleset_id",
+	"state",
+	"qualification_elapsed_by_player",
+	"audit_roster",
+	"audit_remaining_seconds",
+	"outcome_sequence",
+	"outcome_receipt",
+]
 # One microsecond matches the existing qualification boundary tolerance while
 # remaining far below any configured gameplay tick or rule duration.
 const TIMER_BOUNDARY_EPSILON_SECONDS := 0.000001
@@ -380,51 +393,39 @@ func to_save_data() -> Dictionary:
 	}
 
 
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	var prepared := _prepare_save_data(data)
+	if not bool(prepared.get("valid", false)):
+		var reason_code := str(prepared.get("reason_code", "victory_save_invalid"))
+		return {"accepted": false, "reason": reason_code, "reason_code": reason_code}
+	return {
+		"accepted": true,
+		"reason": "",
+		"reason_code": "victory_save_valid",
+		"normalized_state": (prepared.get("normalized_state", {}) as Dictionary).duplicate(true),
+	}
+
+
 func apply_save_data(data: Dictionary) -> Dictionary:
-	var payload: Dictionary = data.get("victory_control_runtime", data) if data.get("victory_control_runtime", data) is Dictionary else {}
-	if payload.is_empty():
+	if data.is_empty():
 		reset_state()
 		return {"applied": true, "legacy_default": true, "state": _state}
-	if not _is_data_only(payload):
-		return {"applied": false, "reason": "victory_save_not_pure_data"}
-	if int(payload.get("schema_version", 0)) != SAVE_SCHEMA_VERSION or str(payload.get("ruleset_id", "")) != RULESET_ID:
-		return {"applied": false, "reason": "victory_save_header_invalid"}
-	var saved_state := str(payload.get("state", STATE_IDLE))
-	if saved_state not in VALID_STATES:
-		return {"applied": false, "reason": "victory_state_invalid"}
-	var qualification_validation := _validated_saved_qualification(payload.get("qualification_elapsed_by_player", null))
-	if not bool(qualification_validation.get("valid", false)):
-		return {"applied": false, "reason": str(qualification_validation.get("reason", "victory_qualification_invalid"))}
-	var roster_validation := _validated_saved_audit_roster(payload.get("audit_roster", null))
-	if not bool(roster_validation.get("valid", false)):
-		return {"applied": false, "reason": str(roster_validation.get("reason", "victory_audit_roster_invalid"))}
-	var next_audit_roster: Array = roster_validation.get("roster", []) as Array
-	if saved_state in [STATE_IDLE, STATE_QUALIFICATION] and not next_audit_roster.is_empty():
-		return {"applied": false, "reason": "victory_audit_roster_state_mismatch"}
-	if saved_state == STATE_AUDIT and next_audit_roster.is_empty():
-		return {"applied": false, "reason": "victory_audit_roster_missing"}
-	var remaining_variant: Variant = payload.get("audit_remaining_seconds", null)
-	if typeof(remaining_variant) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(remaining_variant)):
-		return {"applied": false, "reason": "victory_audit_remaining_invalid"}
-	var public_audit_duration := _timer_duration("public_audit")
-	var next_audit_remaining := float(remaining_variant)
-	if next_audit_remaining < 0.0 or next_audit_remaining > public_audit_duration + TIMER_BOUNDARY_EPSILON_SECONDS:
-		return {"applied": false, "reason": "victory_audit_remaining_out_of_range"}
-	var sequence_variant: Variant = payload.get("outcome_sequence", null)
-	if typeof(sequence_variant) != TYPE_INT or int(sequence_variant) < 0:
-		return {"applied": false, "reason": "victory_outcome_sequence_invalid"}
-	var receipt_validation := _validated_saved_outcome_receipt(payload.get("outcome_receipt", null), saved_state, next_audit_roster)
-	if not bool(receipt_validation.get("valid", false)):
-		return {"applied": false, "reason": str(receipt_validation.get("reason", "victory_outcome_receipt_invalid"))}
+	var strict_data := data if data.has("victory_control_runtime") else {"victory_control_runtime": data.duplicate(true)}
+	var preflight := preflight_save_data(strict_data)
+	if not bool(preflight.get("accepted", false)):
+		var reason_code := str(preflight.get("reason_code", "victory_save_invalid"))
+		return {"applied": false, "reason": reason_code, "reason_code": reason_code}
+	var normalized := preflight.get("normalized_state", {}) as Dictionary
+	var payload := normalized.get("victory_control_runtime", {}) as Dictionary
 	# Apply only after the whole envelope has passed validation. Runtime world facts
 	# are deliberately not restored: the bridge must provide fresh authoritative
 	# candidates before any audit cash can be projected again.
-	_state = saved_state
-	_qualification_elapsed_by_player = (qualification_validation.get("qualification", {}) as Dictionary).duplicate(true)
-	_audit_roster = next_audit_roster.duplicate()
-	_audit_remaining_seconds = _normalized_timer_remaining(next_audit_remaining, public_audit_duration)
-	_outcome_sequence = int(sequence_variant)
-	_outcome_receipt = (receipt_validation.get("receipt", {}) as Dictionary).duplicate(true)
+	_state = str(payload.get("state"))
+	_qualification_elapsed_by_player = (payload.get("qualification_elapsed_by_player") as Dictionary).duplicate(true)
+	_audit_roster = (payload.get("audit_roster") as Array).duplicate()
+	_audit_remaining_seconds = float(payload.get("audit_remaining_seconds"))
+	_outcome_sequence = int(payload.get("outcome_sequence"))
+	_outcome_receipt = (payload.get("outcome_receipt") as Dictionary).duplicate(true)
 	_last_candidates = []
 	_last_player_assets = {}
 	_last_victory_rule = {}
@@ -869,6 +870,64 @@ func _public_outcome_receipt(audit_revealed_player_indices: Array = []) -> Dicti
 		result["cash_visibility"] = "public_audit"
 		result["audit_revealed_player_indices"] = audit_revealed_player_indices.duplicate()
 	return result if _is_data_only(result) else {}
+
+
+func _prepare_save_data(data: Dictionary) -> Dictionary:
+	if not StrictState.is_codec_data(data) or StrictState.contains_rng_continuation(data) or not _is_data_only(data):
+		return {"valid": false, "reason_code": "victory_save_not_pure_data"}
+	if not StrictState.has_exact_keys(data, SAVE_KEYS) or not (data.get("victory_control_runtime") is Dictionary):
+		return {"valid": false, "reason_code": "victory_save_shape_invalid"}
+	var payload := data.get("victory_control_runtime") as Dictionary
+	if not (payload.get("schema_version") is int) or int(payload.get("schema_version")) != SAVE_SCHEMA_VERSION \
+			or not (payload.get("ruleset_id") is String) or str(payload.get("ruleset_id")) != RULESET_ID:
+		return {"valid": false, "reason_code": "victory_save_header_invalid"}
+	if not StrictState.has_exact_keys(payload, SAVE_PAYLOAD_KEYS):
+		return {"valid": false, "reason_code": "victory_save_payload_shape_invalid"}
+	if not (payload.get("state") is String):
+		return {"valid": false, "reason_code": "victory_state_invalid"}
+	var saved_state := str(payload.get("state"))
+	if saved_state not in VALID_STATES:
+		return {"valid": false, "reason_code": "victory_state_invalid"}
+	var qualification_validation := _validated_saved_qualification(payload.get("qualification_elapsed_by_player"))
+	if not bool(qualification_validation.get("valid", false)):
+		return {"valid": false, "reason_code": str(qualification_validation.get("reason", "victory_qualification_invalid"))}
+	var roster_validation := _validated_saved_audit_roster(payload.get("audit_roster"))
+	if not bool(roster_validation.get("valid", false)):
+		return {"valid": false, "reason_code": str(roster_validation.get("reason", "victory_audit_roster_invalid"))}
+	var next_audit_roster := roster_validation.get("roster", []) as Array
+	if saved_state in [STATE_IDLE, STATE_QUALIFICATION] and not next_audit_roster.is_empty():
+		return {"valid": false, "reason_code": "victory_audit_roster_state_mismatch"}
+	if saved_state == STATE_AUDIT and next_audit_roster.is_empty():
+		return {"valid": false, "reason_code": "victory_audit_roster_missing"}
+	var remaining_variant: Variant = payload.get("audit_remaining_seconds")
+	if not (remaining_variant is int or remaining_variant is float) or not is_finite(float(remaining_variant)):
+		return {"valid": false, "reason_code": "victory_audit_remaining_invalid"}
+	var public_audit_duration := _timer_duration("public_audit")
+	var next_audit_remaining := float(remaining_variant)
+	if next_audit_remaining < 0.0 or next_audit_remaining > public_audit_duration + TIMER_BOUNDARY_EPSILON_SECONDS:
+		return {"valid": false, "reason_code": "victory_audit_remaining_out_of_range"}
+	var sequence_variant: Variant = payload.get("outcome_sequence")
+	if not (sequence_variant is int) or int(sequence_variant) < 0:
+		return {"valid": false, "reason_code": "victory_outcome_sequence_invalid"}
+	var receipt_validation := _validated_saved_outcome_receipt(payload.get("outcome_receipt"), saved_state, next_audit_roster)
+	if not bool(receipt_validation.get("valid", false)):
+		return {"valid": false, "reason_code": str(receipt_validation.get("reason", "victory_outcome_receipt_invalid"))}
+	return {
+		"valid": true,
+		"reason_code": "victory_save_valid",
+		"normalized_state": {
+			"victory_control_runtime": {
+				"schema_version": SAVE_SCHEMA_VERSION,
+				"ruleset_id": RULESET_ID,
+				"state": saved_state,
+				"qualification_elapsed_by_player": (qualification_validation.get("qualification", {}) as Dictionary).duplicate(true),
+				"audit_roster": next_audit_roster.duplicate(),
+				"audit_remaining_seconds": _normalized_timer_remaining(next_audit_remaining, public_audit_duration),
+				"outcome_sequence": int(sequence_variant),
+				"outcome_receipt": (receipt_validation.get("receipt", {}) as Dictionary).duplicate(true),
+			},
+		},
+	}
 
 
 func _validated_saved_qualification(value: Variant) -> Dictionary:
