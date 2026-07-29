@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "task_id": "ALPHA_0_4_B_PRODUCTION_CONTEXTUAL_TABLE_SHELL_TYPED_CUTOVER",
+  "status": "GREEN",
+  "base_main_sha": "eef2465fcf61111b888581e1f6d209a5665c9407",
+  "result_head_sha": "c169cb729bae0f085f06d0adb72693afe8b5e5f9",
+  "pull_request": 75,
+  "merge_commit": "29c2cdf96a13d75a5dd62afb2eb69435edbaf895",
+  "main_result_sha": "29c2cdf96a13d75a5dd62afb2eb69435edbaf895",
+  "production_ruleset": "V0.6",
+  "target_constitution": "V0.7",
+  "full_v0_7_runtime_cutover": false,
+  "alpha_0_4_a_player_card_dock": "GREEN_COMPONENT_ACCEPTED",
+  "right_inspector": {
+    "responsibility_count_before": 10,
+    "responsibility_count_migrated": 10,
+    "feature_loss_count": 0,
+    "node_count": 0,
+    "script_reference_count": 0,
+    "signal_connection_count": 0,
+    "dynamic_call_count": 0,
+    "fallback_count": 0
+  },
+  "player_presentation": {
+    "single_side_roster": true,
+    "one_column_3_to_4": true,
+    "two_columns_5_to_8": true,
+    "public_order_preserved": true,
+    "inspection_popup_ready": true,
+    "inspection_privacy_green": true
+  },
+  "contextual_surfaces": {
+    "region_supply_popup_ready": true,
+    "region_popup_non_mutation_ready": true,
+    "target_selection_mode_separated": true,
+    "compact_action_context_ready": true,
+    "public_feedback_ready": true,
+    "context_detail_drawer_ready": true
+  },
+  "legacy_retirement": {
+    "role_seat_layer_host_reference_count": 0,
+    "back_seat_layer_reference_count": 0,
+    "front_seat_layer_reference_count": 0,
+    "legacy_orbit_player_position_count": 0,
+    "visible_orbit_seat_pip_count": 0,
+    "public_seat_position_enum_count": 0,
+    "left_right_player_layout_count": 0
+  },
+  "layout": {
+    "right_permanent_panel_width_before": 292,
+    "right_permanent_panel_width_after": 0,
+    "planet_available_width_delta_1920": 120,
+    "planet_available_area_delta_4p_1920": 68880,
+    "planet_available_area_delta_8p_1920": 68880,
+    "planet_available_area_delta_4p_1366": 46320,
+    "planet_available_area_delta_8p_1366": 46320
+  },
+  "authority_deltas": {
+    "gameplay_value_change_count": 0,
+    "ai_policy_change_count": 0,
+    "new_save_owner_count": 0,
+    "new_save_section_count": 0,
+    "new_rng_owner_count": 0,
+    "new_rng_draw_point_count": 0,
+    "new_main_responsibility_count": 0,
+    "terminal_runtime_owner_diff_count": 0
+  },
+  "validation": {
+    "alpha04_a_regression": "598/598",
+    "roster_inspection_schema_privacy": "268/268",
+    "region_action_semantic_flow": "273/273",
+    "legacy_retirement_architecture": "60/60",
+    "layout_measurement": "28/28",
+    "production_ui_journey": "53/53",
+    "production_screenshot_count": 10,
+    "smoke_check_only_green": true,
+    "godot_mcp_debug_error_count": 0,
+    "godot_mcp_runtime_error_count": 0,
+    "godot_mcp_stopped_cleanly": true,
+    "godot_process_count_after": 0,
+    "component_test_only": true,
+    "third_formal_run_performed": false,
+    "full_smoke": false
+  },
+  "semantic_registry": {
+    "registered_domain_count": 37,
+    "main_dependent_domain_count_before": 12,
+    "main_dependent_domain_count_after": 12,
+    "global_three_layer_complete": false
+  },
+  "pull_request_disposition": {
+    "pr_70": "draft_reference_only",
+    "pr_71": "superseded"
+  },
+  "next_recommended_task": "ALPHA_0_4_C_SAVE_RESUME_OWNER_COVERAGE_AND_COLD_RESTORE_VERTICAL_SLICE"
+}

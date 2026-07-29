@@ -9089,3 +9089,15 @@ deleted. Evidence and the remaining action inventory are recorded in
   Save owners/sections, RNG owners/draw points, and V0.6 rules are unchanged.
   This task ran component and production-journey acceptance only: no third
   Formal FullRun and no full smoke were executed.
+
+## 2026-07-29 — Alpha 0.4-B post-merge program state
+
+- PR #75 merged to `main` as merge commit `29c2cdf`; the production head was
+  `c169cb7`. Post-merge `origin/main` matches that merge, and the feature
+  worktree remains clean.
+- PR #71 is closed as superseded by the production cutover. PR #70 remains an
+  open Draft and reference-only; V0.7 Card Batch/runtime production is still
+  false.
+- The next player-value boundary is Alpha 0.4-C Save/Resume owner coverage and
+  cold restore. UI expansion and a full V0.7 runtime cutover remain deferred
+  until the current V0.6 production run can be closed, restored, and continued.
