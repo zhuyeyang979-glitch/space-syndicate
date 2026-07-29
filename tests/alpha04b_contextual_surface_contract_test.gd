@@ -50,6 +50,36 @@ func _test_region_supply_popup() -> void:
 	var market_grid := drawer.find_child("DistrictSupplyMarketGrid", true, false) as Container
 	var first_card := market_grid.get_child(0) as Control if market_grid != null and market_grid.get_child_count() == 1 else null
 	_expect(first_card != null, "typed region projection adapts into the production drawer card")
+	var drawer_snapshot := debug.get("drawer", {}) as Dictionary
+	var drawer_cards: Array = drawer_snapshot.get("cards", []) as Array
+	var first_card_snapshot: Dictionary = drawer_cards[0] as Dictionary if not drawer_cards.is_empty() else {}
+	_expect(str(first_card_snapshot.get("card_name", "")) == "rack.card.0" \
+		and first_card != null and str(first_card.call("get_card_name")) == "rack.card.0", "Region popup keeps the stable rack identity as its interaction payload")
+	var player_copy := _visible_player_copy(drawer)
+	var market_art := first_card.find_child("DistrictSupplyMarketCardArtView", true, false) as Control if first_card != null else null
+	_expect(player_copy.contains("焰环幼星") and player_copy.contains("怪兽单位") \
+		and player_copy.contains("现金 ¥6"), "market card and preview render display_name, readable category, and localized cash cost")
+	_expect(not _contains_any_text(player_copy, [
+		"unit.monster", "currency.cash", "rack.card", "region-card-detail", "viewer-authorized", "RNG",
+	]), "every visible Region popup label and tooltip hides semantic IDs and debug tokens")
+	_expect(market_art != null and str(market_art.get("card_name")) == "焰环幼星" \
+		and str(market_art.get("card_tags")) == "怪兽单位" \
+		and str(market_art.get("card_stats")) == "现金 ¥6", "canvas-rendered market art also uses player-facing copy")
+	root.size = Vector2i(1366, 768)
+	await process_frame
+	await process_frame
+	var drawer_shell := drawer.find_child("DistrictSupplySideDrawer", true, false) as Control
+	var preview_panel := drawer.find_child("DistrictSupplyPreviewPanel", true, false) as Control
+	var market_panel := drawer.find_child("DistrictSupplyMarketPanel", true, false) as Control
+	var drawer_rect := drawer_shell.get_global_rect() if drawer_shell != null else Rect2()
+	var popup_rect := surface.get_global_rect()
+	_expect(root.size == Vector2i(1366, 768) and drawer_shell != null \
+		and drawer_rect.position.x >= popup_rect.position.x and drawer_rect.position.y >= popup_rect.position.y \
+		and drawer_rect.end.x <= popup_rect.end.x and drawer_rect.end.y <= popup_rect.end.y, "Region popup drawer stays inside the scaled 1366x768 viewport")
+	_expect(preview_panel != null and market_panel != null and preview_panel.size.x <= 204.0 \
+		and market_panel.size.x > preview_panel.size.x, "compact preview column leaves more width for the market without overflow")
+	root.size = Vector2i(1280, 720)
+	await process_frame
 	var drawer_id := drawer.get_instance_id() if drawer != null else 0
 	_expect(surface.apply_projection(projection), "duplicate region projection is idempotent")
 	_expect(int(surface.debug_snapshot().get("duplicate_count", 0)) == 1, "duplicate region projection is counted without rebuilding")
@@ -256,9 +286,9 @@ func _region_source(
 			"is_occupied": false, "detail_context_id": "detail.facility-slot-0",
 		}],
 		"rack_cards": [{
-			"rack_card_id": rack_card_id, "card_semantic_id": "facility.orbital-factory.rank-1",
-			"display_name": "轨道工厂", "illustration_key": "facility.orbital-factory",
-			"costs": [_cost()], "availability": _availability(true), "detail_context_id": "detail.rack-card-0",
+			"rack_card_id": rack_card_id, "card_semantic_id": "unit.monster.flame_ring_proto_star.rank_1",
+			"display_name": "焰环幼星", "illustration_key": "unit.monster.flame_ring_proto_star",
+			"costs": [_cash_cost()], "availability": _availability(true), "detail_context_id": "region-card-detail-0",
 			"source_revision": source_revision, "rack_revision": rack_revision,
 		}],
 		"requirements": [_requirement(true)],
@@ -376,6 +406,13 @@ func _cost() -> Dictionary:
 	}
 
 
+func _cash_cost() -> Dictionary:
+	return {
+		"cost_id": "cost.purchase", "resource_id": "currency.cash", "amount_units": 6,
+		"display_token": "currency.cash",
+	}
+
+
 func _requirement(satisfied: bool) -> Dictionary:
 	return {
 		"requirement_id": "requirement.selected-region", "satisfied": satisfied,
@@ -426,6 +463,34 @@ func _cancel_action() -> InputEventAction:
 	event.action = "ui_cancel"
 	event.pressed = true
 	return event
+
+
+func _visible_player_copy(node: Node) -> String:
+	var parts: Array[String] = []
+	_append_visible_player_copy(node, parts)
+	return "\n".join(parts)
+
+
+func _append_visible_player_copy(node: Node, parts: Array[String]) -> void:
+	if node is CanvasItem and not (node as CanvasItem).is_visible_in_tree():
+		return
+	if node is Label:
+		parts.append((node as Label).text)
+	elif node is BaseButton:
+		parts.append((node as BaseButton).text)
+	if node is Control:
+		var tooltip := (node as Control).tooltip_text
+		if not tooltip.is_empty():
+			parts.append(tooltip)
+	for child in node.get_children():
+		_append_visible_player_copy(child, parts)
+
+
+func _contains_any_text(text: String, needles: Array[String]) -> bool:
+	for needle in needles:
+		if text.contains(needle):
+			return true
+	return false
 
 
 func _expect(condition: bool, label: String) -> void:

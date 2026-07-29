@@ -125,6 +125,8 @@ func debug_snapshot() -> Dictionary:
 	return {
 		"viewer_index": _bound_viewer_index,
 		"authorization_revision": _bound_authorization_revision,
+		"region_id": str(_projection.get("region_id", "")),
+		"region_index": int(_projection.get("region_index", -1)),
 		"source_revision": _source_revision,
 		"rack_revision": _rack_revision,
 		"projection_fingerprint": _last_signature,
@@ -171,6 +173,7 @@ func _render_projection() -> void:
 	var cards: Array = []
 	for card_variant in _projection.get("rack_cards", []) as Array:
 		var card := card_variant as Dictionary
+		_alias_card_action_offers(card)
 		cards.append(_drawer_card(card))
 	var availability := _projection.get("availability", {}) as Dictionary
 	var requirements: Array = _projection.get("requirements", []) as Array
@@ -178,9 +181,9 @@ func _render_projection() -> void:
 	var drawer_snapshot := {
 		"title": "%s · 区域牌架" % str(_projection.get("display_name", "区域")),
 		"visibility_scope": "viewer_private",
-		"rule_strip": "单击预览｜双击或购买按钮提交权威报价/购买请求",
-		"rule_tooltip": "该弹层复用生产区域牌架；报价、购买合法性与牌架刷新仍由原运行时所有者负责。",
-		"privacy_hint": "仅渲染 viewer-authorized typed projection；不读取现金、手牌、未来牌架或 RNG。",
+		"rule_strip": "单击查看｜双击或按按钮请求报价/购买",
+		"rule_tooltip": "牌价与购买条件会在操作时重新确认，牌架变化后会自动更新。",
+		"privacy_hint": "仅显示当前玩家可见的牌架信息；不会展示手牌或未来供牌。",
 		"header_chips": [
 			{"text": "%d 张供牌" % cards.size(), "accent": "#38bdf8ff"},
 			{"text": "%d / %d 设施位" % [_occupied_slot_count(facility_slots), facility_slots.size()], "accent": "#a78bfaff"},
@@ -197,9 +200,32 @@ func _render_projection() -> void:
 	drawer.set_supply(drawer_snapshot)
 
 
+func _alias_card_action_offers(card: Dictionary) -> void:
+	var rack_card_id := str(card.get("rack_card_id", ""))
+	var semantic_card_id := str(card.get("card_semantic_id", ""))
+	if rack_card_id.is_empty() or semantic_card_id.is_empty():
+		return
+	for action_id in [
+		ACTION_INTENT.ACTION_DISTRICT_SUPPLY_PURCHASE,
+		ACTION_INTENT.ACTION_DISTRICT_SUPPLY_QUOTE,
+	]:
+		var offer_variant: Variant = _offer_by_card_and_action.get(
+			_offer_key(semantic_card_id, action_id),
+			{}
+		)
+		if offer_variant is Dictionary and not (offer_variant as Dictionary).is_empty():
+			_offer_by_card_and_action[_offer_key(rack_card_id, action_id)] = (
+				offer_variant as Dictionary
+			).duplicate(true)
+
+
 func _drawer_card(card: Dictionary) -> Dictionary:
 	var card_id := str(card.get("rack_card_id", ""))
 	var display_name := str(card.get("display_name", "区域供牌"))
+	var category := _category_presentation(card)
+	var category_label := str(category.get("label", "区域供牌"))
+	var visual_kind := str(category.get("visual_kind", "card"))
+	var theme_color := str(category.get("theme_color", "#38bdf8ff"))
 	var availability := card.get("availability", {}) as Dictionary
 	var available := str(availability.get("state_id", "disabled")) == "available"
 	var primary_action := _primary_action_for_card(card_id)
@@ -207,37 +233,121 @@ func _drawer_card(card: Dictionary) -> Dictionary:
 	var reason_text := str(availability.get("reason_text", ""))
 	var status_text := "可请求" if available else (reason_text if not reason_text.is_empty() else "暂不可用")
 	var action_id := str(primary_action.get("semantic_action_id", ""))
+	var action_text := "购买" if action_id == ACTION_INTENT.ACTION_DISTRICT_SUPPLY_PURCHASE else "获取报价"
+	var rank_label := _rank_label(str(card.get("card_semantic_id", "")))
+	var state_accent := "#34d399ff" if available else "#64748bff"
 	var legacy_action_id := "district_supply_purchase_card" \
 		if action_id == ACTION_INTENT.ACTION_DISTRICT_SUPPLY_PURCHASE \
 		else "district_supply_preview_card"
 	var preview := {
 		"card_name": card_id,
 		"title": display_name,
-		"body": "公开卡牌 %s｜详情上下文 %s" % [
-			str(card.get("card_semantic_id", "")),
-			str(card.get("detail_context_id", "")),
-		],
+		"title_tooltip": display_name,
+		"body": "%s｜来自当前区域牌架" % category_label,
+		"body_tooltip": "类别：%s；购买前会重新确认牌价与可用状态。" % category_label,
 		"facts": "%s｜%s" % [cost_text, status_text],
 		"status_text": status_text,
-		"buy_text": "购买" if action_id == ACTION_INTENT.ACTION_DISTRICT_SUPPLY_PURCHASE else "获取报价",
+		"status_tooltip": "当前牌架状态：%s" % status_text,
+		"buy_text": action_text,
+		"buy_tooltip": "请求%s；提交时会重新确认费用与牌架状态。" % action_text,
 		"buy_enabled": available and not primary_action.is_empty() \
 			and str(primary_action.get("legality_state", "disabled")) == "available",
 		"primary_action_id": legacy_action_id,
-		"accent": "#34d399ff" if available else "#64748bff",
-		"theme_color": "#38bdf8ff",
+		"accent": state_accent,
+		"theme_color": theme_color,
+		"chips": [
+			{"text": category_label, "accent": theme_color, "tooltip": "卡牌类别：%s" % category_label},
+			{"text": cost_text, "accent": "#fde68aff", "tooltip": "区域牌架费用：%s" % cost_text},
+		],
+		"scan_sections": [
+			{"title": "类别", "body": category_label, "accent": theme_color},
+			{"title": "费用", "body": cost_text, "accent": "#fde68aff"},
+			{"title": "状态", "body": status_text, "accent": state_accent},
+			{"title": "操作", "body": action_text, "accent": "#60a5faff"},
+		],
+		"card_face": {
+			"name": display_name,
+			"illustration_key": str(card.get("illustration_key", "")),
+			"cost": cost_text,
+			"effect": "从当前区域牌架%s；提交时重新确认费用。" % action_text,
+			"use_case": "区域牌架获取",
+			"table_use": "区域牌架获取",
+			"type": category_label,
+			"rank": rank_label,
+			"kind": visual_kind,
+			"card_kind": visual_kind,
+			"route": category_label,
+			"card_stats": cost_text,
+			"play_state": status_text,
+			"presentation": "inspector_full",
+			"accent": theme_color,
+			"minimum_width": 150.0,
+			"minimum_height": 164.0,
+			"illustration_silent_fallback": true,
+		},
 	}
 	return {
 		"card_name": card_id,
+		"display_name": display_name,
 		"title": display_name,
-		"rank": "",
-		"route": str(card.get("card_semantic_id", "")),
+		"title_tooltip": display_name,
+		"rank": rank_label,
+		"rank_tooltip": "卡牌等级",
+		"kind": visual_kind,
+		"route": category_label,
+		"route_tooltip": "卡牌类别：%s" % category_label,
+		"art_text": category_label,
 		"facts": cost_text,
+		"facts_tooltip": "区域牌架费用：%s" % cost_text,
 		"state_text": status_text,
-		"accent": "#34d399ff" if available else "#64748bff",
-		"theme_color": "#38bdf8ff",
+		"state_tooltip": "当前牌架状态：%s" % status_text,
+		"card_stats": cost_text,
+		"card_art_stats": cost_text,
+		"tooltip": "%s｜%s｜%s" % [display_name, category_label, cost_text],
+		"accent": state_accent,
+		"theme_color": theme_color,
 		"actionable": bool(preview.get("buy_enabled", false)),
 		"preview": preview,
 	}
+
+
+func _category_presentation(card: Dictionary) -> Dictionary:
+	var semantic_id := str(card.get("card_semantic_id", "")).to_lower()
+	if semantic_id.begins_with("unit.monster."):
+		return {"label": "怪兽单位", "visual_kind": "monster_card", "theme_color": "#fb7185ff"}
+	if semantic_id.begins_with("unit.military."):
+		return {"label": "军事单位", "visual_kind": "military_unit", "theme_color": "#60a5faff"}
+	if semantic_id.begins_with("facility.factory."):
+		return {"label": "生产设施", "visual_kind": "city_product_upgrade", "theme_color": "#22d3eeff"}
+	if semantic_id.begins_with("facility.market."):
+		return {"label": "市场设施", "visual_kind": "market_stabilize", "theme_color": "#2dd4bfff"}
+	if semantic_id.begins_with("facility."):
+		return {"label": "区域设施", "visual_kind": "city_product_upgrade", "theme_color": "#38bdf8ff"}
+	if semantic_id.begins_with("supply_demand."):
+		return {"label": "供需订单", "visual_kind": "product_contract_boon", "theme_color": "#f59e0bff"}
+	if semantic_id.begins_with("interaction."):
+		return {"label": "互动行动", "visual_kind": "direct_interaction", "theme_color": "#a78bfaff"}
+	if semantic_id.begins_with("weather."):
+		return {"label": "天气事件", "visual_kind": "weather_control", "theme_color": "#818cf8ff"}
+	return {"label": "区域供牌", "visual_kind": "card", "theme_color": "#38bdf8ff"}
+
+
+func _rank_label(semantic_id: String) -> String:
+	var normalized := semantic_id.to_lower().replace("-", "_")
+	var marker_index := normalized.rfind(".rank_")
+	if marker_index < 0:
+		return ""
+	var rank := int(normalized.substr(marker_index + 6))
+	match rank:
+		1:
+			return "I"
+		2:
+			return "II"
+		3:
+			return "III"
+		4:
+			return "IV"
+	return str(rank) if rank > 0 else ""
 
 
 func _primary_action_for_card(card_id: String) -> Dictionary:
@@ -285,17 +395,32 @@ func _occupied_slot_count(slots: Array) -> int:
 func _cost_text(costs_variant: Variant) -> String:
 	var costs: Array = costs_variant if costs_variant is Array else []
 	if costs.is_empty():
-		return "无公开成本"
+		return "无需支付公开费用"
 	var parts: Array[String] = []
 	for cost_variant in costs:
 		if not (cost_variant is Dictionary):
 			continue
 		var cost := cost_variant as Dictionary
-		parts.append("%s %d" % [
-			str(cost.get("display_token", cost.get("resource_id", "cost"))),
-			int(cost.get("amount_units", 0)),
-		])
-	return " · ".join(parts)
+		parts.append(_readable_cost_part(cost))
+	return " · ".join(parts) if not parts.is_empty() else "无需支付公开费用"
+
+
+func _readable_cost_part(cost: Dictionary) -> String:
+	var resource_id := str(cost.get("resource_id", "")).to_lower()
+	var display_token := str(cost.get("display_token", "")).to_lower()
+	var resource_key := "%s|%s" % [resource_id, display_token]
+	var amount := maxi(0, int(cost.get("amount_units", 0)))
+	if resource_id in ["cash", "currency.cash", "commerce"] \
+		or resource_key.contains("currency.cash") \
+		or resource_key.contains("cost.cash"):
+		return "现金 ¥%d" % amount
+	if resource_key.contains("asset"):
+		return "资产 ×%d" % amount
+	if resource_key.contains("share"):
+		return "份额 ×%d" % amount
+	if resource_key.contains("influence"):
+		return "影响力 ×%d" % amount
+	return "资源 ×%d" % amount
 
 
 func _on_supply_action_requested(action_id: String, payload: Dictionary) -> void:
