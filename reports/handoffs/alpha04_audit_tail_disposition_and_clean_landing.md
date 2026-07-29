@@ -274,11 +274,11 @@ completion, and full V0.7 runtime cutover remain false.
 
 ## PR lifecycle
 
-The planned clean landing PR will target `main` from
-`codex/alpha04a-clean-landing-b5d568`. It may be marked Ready and merged only
-while the remote main baseline and every gate above remain valid. A merge
-commit is preferred so the terminal-green ancestor and Alpha 0.4 extraction
-remain auditable.
+Clean landing PR #73 targets `main` from
+`codex/alpha04a-clean-landing-b5d568`. It is Ready and may be merged only while
+the remote main baseline and every gate above remain valid. A merge commit is
+preferred so the terminal-green ancestor and Alpha 0.4 extraction remain
+auditable.
 
 PR #72 remains the frozen Draft Formal evidence source and must not be rebased,
 retargeted, marked Ready, or merged directly. After the clean PR lands, PR #69

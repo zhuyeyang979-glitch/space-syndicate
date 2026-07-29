@@ -1,6 +1,6 @@
 {
   "schema_version": 6,
-  "generated_at": "2026-07-29T19:07:50+09:00",
+  "generated_at": "2026-07-29T19:23:00+09:00",
   "source": {
     "repository": "zhuyeyang979-glitch/space-syndicate",
     "branch": "origin/main",
@@ -9,9 +9,11 @@
     "origin_divergence": {"ahead": 0, "behind": 0},
     "local_candidate_branch": "codex/alpha04a-clean-landing-b5d568",
     "local_candidate_checkpoint_sha": "dbc5ae6eb6fed354fe8d00825a105780ba0ae84b",
+    "clean_landing_pr": 73,
+    "clean_landing_pr_ready": true,
     "local_commits_ahead_before_repair": 0,
     "repair_commit": "b5d5682072fd9ff02be700ce9d5503d1df996641",
-    "open_pull_requests_observed": [69, 70, 71, 72]
+    "open_pull_requests_observed": [69, 70, 71, 72, 73]
   },
   "program": {
     "program_id": "ALPHA_0_4_PLAYER_VISIBLE_SAMPLE",
@@ -87,6 +89,8 @@
     "rng_invariants_green": true,
     "compositional_acceptance_allowed": true,
     "clean_landing_pr_allowed": true,
+    "clean_landing_pr": 73,
+    "clean_landing_pr_ready": true,
     "merge_to_main_allowed": true,
     "component_test_only": true,
     "end_to_end_terminal_proof": false,

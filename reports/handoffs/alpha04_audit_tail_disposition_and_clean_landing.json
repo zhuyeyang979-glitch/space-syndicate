@@ -2,7 +2,7 @@
   "schema_version": 1,
   "task_id": "ALPHA_0_4_A_AUDIT_TAIL_DISPOSITION_COMPOSITIONAL_ACCEPTANCE_AND_CLEAN_MAIN_LANDING",
   "program_milestone": "ALPHA_0_4_PLAYER_VISIBLE_SAMPLE",
-  "generated_at": "2026-07-29T19:30:00+09:00",
+  "generated_at": "2026-07-29T19:23:00+09:00",
   "status": "GREEN_COMPONENT_ACCEPTED",
   "decision": {
     "audit_tail_classification": "BOUNDED_WINDOW_ENDED_DURING_ACTIVE_AUTHORIZED_AUDIT",
@@ -366,7 +366,9 @@
     "pr_71_disposition": "draft_reference_only",
     "new_clean_landing_pr_base": "main",
     "new_clean_landing_pr_head": "codex/alpha04a-clean-landing-b5d568",
-    "new_clean_landing_pr_number_recording_required_after_creation": true,
+    "new_clean_landing_pr_number": 73,
+    "new_clean_landing_pr_ready": true,
+    "new_clean_landing_pr_number_recording_completed": true,
     "auto_merge_to_main_allowed_if_remote_main_and_gates_remain_green": true
   },
   "next_product_boundary": "ALPHA_0_4_B_PRODUCTION_ROSTER_REGION_POPUP_AND_RIGHT_INSPECTOR_RETIREMENT"
