@@ -23,6 +23,8 @@ const GATEWAY_FIELDS := [
 	"playtime_seconds",
 	"seat_count",
 	"ruleset_id",
+	"mission_title",
+	"session_state",
 ]
 
 var schema_version := SCHEMA_VERSION
@@ -40,6 +42,8 @@ var saved_at_unix := 0
 var playtime_seconds := 0
 var seat_count := 0
 var ruleset_id := ""
+var mission_title := ""
+var session_state := ""
 
 
 static func from_gateway_result(intent: SaveResumeIntentV06, value: Variant) -> SaveResumeReceiptV06:
@@ -68,6 +72,8 @@ static func from_gateway_result(intent: SaveResumeIntentV06, value: Variant) -> 
 	receipt.playtime_seconds = int(data.get("playtime_seconds", 0))
 	receipt.seat_count = int(data.get("seat_count", 0))
 	receipt.ruleset_id = str(data.get("ruleset_id", ""))
+	receipt.mission_title = str(data.get("mission_title", ""))
+	receipt.session_state = str(data.get("session_state", ""))
 	if not receipt.is_valid_for(intent):
 		return rejected(intent, "gateway_receipt_invalid")
 	return receipt
@@ -93,6 +99,9 @@ func is_valid_for(intent: SaveResumeIntentV06) -> bool:
 	if saved_at_unix < 0 or playtime_seconds < 0 or seat_count < 0 or seat_count > 8:
 		return false
 	if ruleset_id not in ["", "v0.6"] or (applied and not accepted):
+		return false
+	if mission_title.length() > 96 or mission_title.strip_edges() != mission_title \
+			or session_state not in ["", "idle", "running", "paused", "finished"]:
 		return false
 	if operation == SaveResumeIntentV06.OPERATION_INSPECT and applied:
 		return false
@@ -121,6 +130,8 @@ func to_dictionary() -> Dictionary:
 		"playtime_seconds": playtime_seconds,
 		"seat_count": seat_count,
 		"ruleset_id": ruleset_id,
+		"mission_title": mission_title,
+		"session_state": session_state,
 	}
 
 
@@ -152,12 +163,18 @@ func player_summary() -> String:
 			return "存档：暂无可继续的游戏。"
 		SLOT_READY:
 			var facts: Array[String] = []
+			if not mission_title.is_empty():
+				facts.append(mission_title)
 			if ruleset_id == "v0.6":
 				facts.append("v0.6")
 			if seat_count >= 3:
 				facts.append("%d席" % seat_count)
 			if playtime_seconds > 0:
-				facts.append("游戏%d分钟" % maxi(1, int(float(playtime_seconds) / 60.0)))
+				facts.append("世界时间%d分钟" % maxi(1, int(float(playtime_seconds) / 60.0)))
+			if session_state in ["running", "paused", "finished"]:
+				facts.append({"running": "进行中", "paused": "已暂停", "finished": "已结束"}.get(session_state, session_state))
+			if saved_at_unix > 0:
+				facts.append("保存于%s" % Time.get_datetime_string_from_unix_time(saved_at_unix, true))
 			return "存档：可以继续%s。" % ("｜" + "｜".join(facts) if not facts.is_empty() else "")
 		SLOT_CORRUPT:
 			return "存档：文件无法读取；可尝试备份。" if backup_available else "存档：文件无法读取。"

@@ -16,6 +16,27 @@ const AUTHORIZATION_SCHEMA_VERSION := 1
 const CODEC_KEY := "$codec"
 const CODEC_VECTOR2 := "Vector2"
 const CODEC_COLOR := "Color"
+const PRE_RESUME_SECTION_VERSIONS := {
+	"ruleset": 1,
+	"region_infrastructure": 1,
+	"region_supply": 1,
+	"commodity_flow": 2,
+	"routes": 1,
+	"player_mana": 1,
+	"commodity_belt_visibility": 1,
+	"card_inventory": 1,
+	"player_organization": 1,
+	"monsters": 1,
+	"military": 1,
+	"weather": 1,
+	"card_resolution_queue": 1,
+	"card_resolution_execution": 1,
+	"card_resolution_history": 1,
+	"ai": 1,
+	"bankruptcy_neutral_estate": 1,
+	"victory_control": 1,
+	"session": 2,
+}
 const V06_TOP_LEVEL_KEYS := [
 	"envelope_schema",
 	"save_version",
@@ -158,6 +179,15 @@ func inspect_envelope(payload: Dictionary, target_ruleset_id: String = V06_RULES
 				true,
 				"v06_previous_manifest_resume_forbidden"
 			)
+		if _is_pre_resume_v06_manifest(payload):
+			return _inspection(
+				"v06_pre_resume_manifest",
+				V06_RULESET_ID,
+				target_ruleset_id,
+				false,
+				true,
+				"v06_pre_resume_manifest_resume_forbidden"
+			)
 		var validation := validate_v06_envelope(payload)
 		return {
 			"recognized": true,
@@ -187,6 +217,36 @@ func _is_previous_v06_manifest(payload: Dictionary) -> bool:
 		if not sections.has(section_id):
 			return false
 	return true
+
+
+func _is_pre_resume_v06_manifest(payload: Dictionary) -> bool:
+	var sections: Dictionary = payload.get("sections", {}) if payload.get("sections", {}) is Dictionary else {}
+	var provided_manifest: Dictionary = payload.get("section_manifest", {}) if payload.get("section_manifest", {}) is Dictionary else {}
+	var provided_versions: Dictionary = payload.get("controller_state_versions", {}) if payload.get("controller_state_versions", {}) is Dictionary else {}
+	var current_manifest := required_section_manifest()
+	if sections.size() != PRE_RESUME_SECTION_VERSIONS.size() \
+			or provided_manifest.size() != PRE_RESUME_SECTION_VERSIONS.size() \
+			or provided_versions.size() != PRE_RESUME_SECTION_VERSIONS.size() \
+			or current_manifest.size() != PRE_RESUME_SECTION_VERSIONS.size():
+		return false
+	var expected_manifest: Dictionary = {}
+	var expected_versions: Dictionary = {}
+	for section_id_variant in PRE_RESUME_SECTION_VERSIONS.keys():
+		var section_id := str(section_id_variant)
+		var current_contract: Dictionary = current_manifest.get(section_id, {}) \
+			if current_manifest.get(section_id, {}) is Dictionary else {}
+		var owner_id := str(current_contract.get("owner_id", ""))
+		var version := int(PRE_RESUME_SECTION_VERSIONS.get(section_id, 0))
+		if owner_id.is_empty() or not (sections.get(section_id) is Dictionary):
+			return false
+		var wrapper := sections.get(section_id, {}) as Dictionary
+		if int(wrapper.get("schema_version", 0)) != version \
+				or str(wrapper.get("owner_id", "")) != owner_id:
+			return false
+		expected_manifest[section_id] = {"owner_id": owner_id, "state_version": version, "required": true}
+		expected_versions[owner_id] = version
+	return _same_data(provided_manifest, _canonicalize(expected_manifest)) \
+		and _same_data(provided_versions, _canonicalize(expected_versions))
 
 
 func inspect_legacy(payload: Dictionary) -> Dictionary:

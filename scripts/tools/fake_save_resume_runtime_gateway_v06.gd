@@ -41,4 +41,6 @@ func submit_save_resume_intent(intent: SaveResumeIntentV06) -> Dictionary:
 		"playtime_seconds": int(template.get("playtime_seconds", 0)),
 		"seat_count": int(template.get("seat_count", 0)),
 		"ruleset_id": str(template.get("ruleset_id", "")),
+		"mission_title": str(template.get("mission_title", "")),
+		"session_state": str(template.get("session_state", "")),
 	}

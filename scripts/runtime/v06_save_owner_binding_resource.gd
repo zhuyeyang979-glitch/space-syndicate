@@ -12,6 +12,7 @@ const RESTORE_UNSUPPORTED := "unsupported"
 @export var capture_method := ""
 @export var preflight_method := ""
 @export var apply_method := ""
+@export var checkpoint_method := ""
 @export var rollback_method := ""
 @export_enum("transactional", "unsupported") var restore_mode := RESTORE_UNSUPPORTED
 @export var unsupported_reason := "capability_not_registered"
@@ -28,5 +29,6 @@ func contract_snapshot() -> Dictionary:
 		"state_version": state_version,
 		"restore_mode": restore_mode,
 		"preflight_method": preflight_method,
+		"checkpoint_method": checkpoint_method,
 		"unsupported_reason": "" if is_transactional() else unsupported_reason,
 	}

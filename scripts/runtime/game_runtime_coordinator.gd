@@ -48,6 +48,10 @@ var _card_semantic_source_capability_by_actor: Dictionary = {}
 var _ai_card_interaction_observation_capability_by_actor: Dictionary = {}
 var _ai_actor_economy_facts_capability: AiActorEconomyFactsCapability
 var _game_action_ai_submission_capability: GameActionAiSubmissionCapability
+var _save_restore_rebind_generation := 0
+var _save_restore_rebind_count := 0
+var _save_restore_full_refresh_count := 0
+var _save_resume_gateway_sequence := 0
 
 
 func _enter_tree() -> void:
@@ -1308,6 +1312,99 @@ func card_supply_presentation_state() -> TableCardSupplyPresentationState:
 
 func world_session_state() -> WorldSessionState:
 	return _world_session_state_node()
+
+
+func capture_save_restore_runtime_checkpoint() -> Dictionary:
+	return {
+		"schema_version": 1,
+		"rebind_generation": _save_restore_rebind_generation,
+		"rebind_count": _save_restore_rebind_count,
+		"full_refresh_count": _save_restore_full_refresh_count,
+	}
+
+
+func restore_save_restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	var expected := ["schema_version", "rebind_generation", "rebind_count", "full_refresh_count"]
+	if checkpoint.keys().size() != expected.size():
+		return {"applied": false, "reason_code": "save_restore_coordinator_checkpoint_invalid"}
+	for key in expected:
+		if not checkpoint.has(key) or not (checkpoint.get(key) is int):
+			return {"applied": false, "reason_code": "save_restore_coordinator_checkpoint_invalid"}
+	if int(checkpoint.get("schema_version", 0)) != 1 \
+			or int(checkpoint.get("rebind_generation", -1)) < 0 \
+			or int(checkpoint.get("rebind_count", -1)) < 0 \
+			or int(checkpoint.get("full_refresh_count", -1)) < 0:
+		return {"applied": false, "reason_code": "save_restore_coordinator_checkpoint_invalid"}
+	_save_restore_rebind_generation = int(checkpoint.get("rebind_generation", 0))
+	_save_restore_rebind_count = int(checkpoint.get("rebind_count", 0))
+	_save_restore_full_refresh_count = int(checkpoint.get("full_refresh_count", 0))
+	return {"applied": true, "reason_code": "save_restore_coordinator_checkpoint_restored"}
+
+
+func save_restore_safety_observation() -> Dictionary:
+	var rng_snapshot := _run_rng_service_node().debug_snapshot() if _run_rng_service_node() != null else {}
+	var presentation_snapshot := _table_presentation_query_ports_node().debug_snapshot() if _table_presentation_query_ports_node() != null else {}
+	var public_log: Dictionary = presentation_snapshot.get("public_log", {}) if presentation_snapshot.get("public_log", {}) is Dictionary else {}
+	var private_feedback: Dictionary = presentation_snapshot.get("viewer_private_feedback", {}) if presentation_snapshot.get("viewer_private_feedback", {}) is Dictionary else {}
+	var action_flow := get_node_or_null("TablePlayerActionApplicationFlowController") as TablePlayerActionApplicationFlowController
+	var action_snapshot := action_flow.debug_snapshot() if action_flow != null else {}
+	var annotations := _card_history_private_annotation_service_node()
+	var annotation_snapshot: Dictionary = annotations.debug_snapshot() if annotations != null and annotations.has_method("debug_snapshot") else {}
+	var refresh_scheduler := _table_presentation_refresh_scheduler_node()
+	var scheduler_snapshot: Dictionary = refresh_scheduler.debug_snapshot() if refresh_scheduler != null else {}
+	return {
+		"schema_version": 1,
+		"rng_draw_invocation_count": int(rng_snapshot.get("runtime_draw_invocation_count", 0)),
+		"public_log_entry_count": int(public_log.get("entry_count", 0)),
+		"public_log_revision": int(public_log.get("revision", 0)),
+		"private_feedback_revision": int(private_feedback.get("revision", 0)),
+		"notification_count": int(annotation_snapshot.get("notification_count", 0)),
+		"human_action_submission_count": int(action_snapshot.get("human_submission_count", 0)),
+		"ai_action_submission_count": int(action_snapshot.get("ai_submission_count", 0)),
+		"economic_reward_count": int(annotation_snapshot.get("economic_reward_count", 0)) + int(annotation_snapshot.get("gdp_reward_count", 0)),
+		"presentation_revision": int(scheduler_snapshot.get("revision", 0)),
+	}
+
+
+func post_restore_rebind_after_save() -> Dictionary:
+	var required := [
+		_world_session_state_node(),
+		_session_node(),
+		_ai_runtime_controller_node(),
+		_ai_actor_state_port_node(),
+		_ai_actor_hand_inventory_query_port_node(),
+		_ai_actor_economy_facts_query_port_node(),
+		_table_presentation_refresh_port_node(),
+	]
+	for dependency in required:
+		if dependency == null:
+			return {"applied": false, "reason_code": "post_restore_rebind_dependency_missing"}
+	_wire_world_session_state()
+	_wire_ai_world_typed_ports()
+	_wire_ai_actor_hand_inventory_query_port()
+	_wire_ai_actor_economy_facts_query_port()
+	_wire_game_action_submission_port()
+	_on_game_action_authorization_context_changed(&"save_restore_rebind")
+	var refresh_port := _table_presentation_refresh_port_node()
+	var refresh_debug: Dictionary = refresh_port.debug_snapshot() if refresh_port != null else {}
+	var refresh_applied := false
+	if bool(refresh_debug.get("configured", false)):
+		var refresh_receipt := request_table_presentation_refresh(&"full", &"save_restore_committed")
+		refresh_applied = refresh_receipt != null and refresh_receipt.applied
+	else:
+		var scheduled := request_immediate_presentation_refresh(&"full")
+		refresh_applied = bool(scheduled.get("accepted", false))
+	if not refresh_applied:
+		return {"applied": false, "reason_code": "post_restore_full_refresh_failed"}
+	_save_restore_rebind_generation += 1
+	_save_restore_rebind_count += 1
+	_save_restore_full_refresh_count += 1
+	return {
+		"applied": true,
+		"reason_code": "post_restore_rebind_complete",
+		"rebind_generation": _save_restore_rebind_generation,
+		"full_refresh_count": 1,
+	}
 
 
 func current_runtime_simulation_step_index() -> int:
@@ -4800,6 +4897,150 @@ func request_run_save(path: String, domain_sections: Dictionary) -> Dictionary:
 		return {"ok": false, "error_code": ERR_UNCONFIGURED, "payload": {}}
 	var result_variant: Variant = session.call("request_save", path, domain_sections)
 	return (result_variant as Dictionary).duplicate(true) if result_variant is Dictionary else {}
+
+
+func submit_save_resume_intent(intent: SaveResumeIntentV06) -> Dictionary:
+	if intent == null or not intent.is_valid():
+		return {}
+	var path := SaveSlotPolicyV06.path_for_production_slot(intent.slot_id)
+	if path.is_empty():
+		return _save_resume_gateway_receipt(intent, false, false, "slot_not_allowed", {})
+	_save_resume_gateway_sequence += 1
+	match intent.operation:
+		SaveResumeIntentV06.OPERATION_INSPECT:
+			return _inspect_save_resume_slot(intent, path)
+		SaveResumeIntentV06.OPERATION_SAVE:
+			return _save_current_run_from_intent(intent, path)
+		SaveResumeIntentV06.OPERATION_RESUME:
+			return _resume_current_run_from_intent(intent, path)
+	return _save_resume_gateway_receipt(intent, false, false, "operation_not_supported", {})
+
+
+func _inspect_save_resume_slot(intent: SaveResumeIntentV06, path: String) -> Dictionary:
+	var session := _session_node() as GameSessionRuntimeController
+	var save := session.get_node_or_null("GameSaveRuntimeCoordinator") if session != null else null
+	if session == null or save == null or not save.has_method("public_slot_summary"):
+		return _save_resume_gateway_receipt(intent, false, false, "save_resume_runtime_unavailable", {})
+	var metadata := _call_dictionary_on(save, "public_slot_summary", [path])
+	var inspection := session.inspect_save(path)
+	var slot_state := str(metadata.get("slot_state", "unavailable"))
+	var can_resume := slot_state == "ready" and bool(inspection.get("ok", false)) and bool(inspection.get("applied", false))
+	metadata["can_resume"] = can_resume
+	metadata["can_save"] = _production_save_available()
+	var reason_code: String = "slot_ready" if can_resume else str({
+		"empty": "save_not_found",
+		"corrupt": "save_corrupt",
+	}.get(slot_state, str(inspection.get("reason_code", "resume_unavailable"))))
+	return _save_resume_gateway_receipt(intent, true, false, reason_code, metadata)
+
+
+func _save_current_run_from_intent(intent: SaveResumeIntentV06, path: String) -> Dictionary:
+	if not _production_save_available():
+		return _save_resume_gateway_receipt(intent, false, false, "save_not_available", _current_public_slot_metadata(path))
+	var session := _session_node() as GameSessionRuntimeController
+	var registry := session.get_node_or_null("V06SaveOwnerRegistry") if session != null else null
+	var save := session.get_node_or_null("GameSaveRuntimeCoordinator") if session != null else null
+	if session == null or registry == null or save == null:
+		return _save_resume_gateway_receipt(intent, false, false, "save_resume_runtime_unavailable", {})
+	var unique_suffix := "%d-%d" % [int(Time.get_unix_time_from_system()), _save_resume_gateway_sequence]
+	var capture := _call_dictionary_on(registry, "capture_resume_envelope", [{
+		"envelope_id": "current-run-%s" % unique_suffix,
+		"write_id": "current-run-write-%s" % unique_suffix,
+	}])
+	if not bool(capture.get("ok", false)) or not (capture.get("envelope") is Dictionary):
+		return _save_resume_gateway_receipt(intent, false, false, str(capture.get("reason_code", "owner_capture_failed")), _current_public_slot_metadata(path))
+	var envelope := (capture.get("envelope", {}) as Dictionary).duplicate(true)
+	var authorization := _call_dictionary_on(save, "write_authorization", [path, envelope, {
+		"allow_replace": intent.overwrite_existing,
+		"allow_backup": intent.preserve_incompatible_backup,
+	}])
+	if not bool(authorization.get("allowed", false)):
+		return _save_resume_gateway_receipt(intent, false, false, str(authorization.get("reason_code", "write_authorization_rejected")), _current_public_slot_metadata(path))
+	var written := session.request_save(path, envelope, authorization)
+	var succeeded := bool(written.get("ok", false))
+	var metadata := _current_public_slot_metadata(path)
+	metadata["can_save"] = _production_save_available()
+	metadata["can_resume"] = succeeded and str(metadata.get("slot_state", "")) == "ready"
+	return _save_resume_gateway_receipt(intent, succeeded, succeeded, str(written.get("reason_code", "save_write_failed")), metadata)
+
+
+func _resume_current_run_from_intent(intent: SaveResumeIntentV06, path: String) -> Dictionary:
+	var session := _session_node() as GameSessionRuntimeController
+	if session == null:
+		return _save_resume_gateway_receipt(intent, false, false, "save_resume_runtime_unavailable", {})
+	var loaded := session.request_load(path)
+	var succeeded := bool(loaded.get("ok", false)) and bool(loaded.get("applied", false))
+	var metadata := _current_public_slot_metadata(path)
+	metadata["can_save"] = _production_save_available()
+	metadata["can_resume"] = str(metadata.get("slot_state", "")) == "ready"
+	return _save_resume_gateway_receipt(intent, succeeded, succeeded, str(loaded.get("reason_code", "resume_failed")), metadata)
+
+
+func _current_public_slot_metadata(path: String) -> Dictionary:
+	var session := _session_node()
+	var save := session.get_node_or_null("GameSaveRuntimeCoordinator") if session != null else null
+	return _call_dictionary_on(save, "public_slot_summary", [path])
+
+
+func _production_save_available() -> bool:
+	var session := _session_node() as GameSessionRuntimeController
+	var registry := session.get_node_or_null("V06SaveOwnerRegistry") if session != null else null
+	if session == null or registry == null:
+		return false
+	return session.session_state() in [GameSessionRuntimeController.STATE_RUNNING, GameSessionRuntimeController.STATE_PAUSED] \
+		and bool(_call_dictionary_on(registry, "registry_snapshot").get("resume_ready", false))
+
+
+func _save_resume_gateway_receipt(
+	intent: SaveResumeIntentV06,
+	accepted: bool,
+	applied: bool,
+	reason_code: String,
+	metadata: Dictionary
+) -> Dictionary:
+	var slot_state := str(metadata.get("slot_state", "unavailable"))
+	if slot_state not in ["empty", "ready", "corrupt", "unavailable"]:
+		slot_state = "unavailable"
+	var session_state := str(metadata.get("session_state", ""))
+	if session_state not in ["", "idle", "running", "paused", "finished"]:
+		session_state = ""
+	return {
+		"schema_version": SaveResumeReceiptV06.SCHEMA_VERSION,
+		"request_id": intent.request_id,
+		"operation": String(intent.operation),
+		"slot_id": String(intent.slot_id),
+		"accepted": accepted,
+		"applied": applied,
+		"reason_code": _safe_save_resume_reason(reason_code),
+		"slot_state": slot_state,
+		"can_save": bool(metadata.get("can_save", _production_save_available())),
+		"can_resume": bool(metadata.get("can_resume", false)) and slot_state == "ready",
+		"backup_available": bool(metadata.get("backup_available", false)),
+		"saved_at_unix": maxi(0, int(metadata.get("saved_at_unix", 0))),
+		"playtime_seconds": maxi(0, int(metadata.get("world_time_seconds", 0))),
+		"seat_count": clampi(int(metadata.get("seat_count", 0)), 0, 8),
+		"ruleset_id": str(metadata.get("ruleset_id", "")) if str(metadata.get("ruleset_id", "")) in ["", "v0.6"] else "",
+		"mission_title": str(metadata.get("mission_title", "")).strip_edges().substr(0, 96),
+		"session_state": session_state,
+	}
+
+
+func _safe_save_resume_reason(reason_code: String) -> String:
+	var normalized := reason_code.strip_edges().to_lower().replace("-", "_")
+	if normalized.is_empty():
+		return "save_resume_rejected"
+	for index in range(normalized.length()):
+		var code := normalized.unicode_at(index)
+		if not ((code >= 48 and code <= 57) or (code >= 97 and code <= 122) or code == 95):
+			return "save_resume_rejected"
+	return normalized.substr(0, 128)
+
+
+func _call_dictionary_on(target: Node, method: String, args: Array = []) -> Dictionary:
+	if target == null or not target.has_method(method):
+		return {}
+	var value: Variant = target.callv(method, args)
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
 func request_run_load(path: String = "") -> Dictionary:

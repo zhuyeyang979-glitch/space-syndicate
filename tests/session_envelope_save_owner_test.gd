@@ -59,7 +59,7 @@ func _verify_formal_four_player_capture() -> void:
 		bool(capture.get("captured", false))
 		and (world_state.get("players", []) as Array).size() == 4
 		and not (world_state.get("districts", []) as Array).is_empty(),
-		"formal main four-player world captures through session v2: %s" % str(capture.get("reason_code", "missing_reason"))
+		"formal main four-player world captures through session v3: %s" % str(capture.get("reason_code", "missing_reason"))
 	)
 	_expect(world != null and world.to_save_data() == before, "formal main capture mutates zero world-session state")
 	formal_root.queue_free()

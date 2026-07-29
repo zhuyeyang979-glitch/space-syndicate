@@ -1,4 +1,4 @@
-[gd_scene load_steps=133 format=3]
+[gd_scene load_steps=134 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -96,6 +96,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/presentation/DeveloperBalancePresentationTarget.tscn" id="102_developer_presentation_target"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/presentation/TablePresentationViewModelQuery.tscn" id="103_table_presentation_viewmodel_query"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/RuntimeLoop.tscn" id="104_runtime_loop"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/SaveRestoreRuntimeBarrier.tscn" id="142_restore_barrier"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/RuntimeWorldPorts.tscn" id="105_runtime_world_ports"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/RuntimePhaseCoordinator.tscn" id="106_runtime_phase_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/RuntimeCommandPipeline.tscn" id="107_runtime_command_pipeline"]
@@ -154,6 +155,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="RuntimeLoop" parent="." instance=ExtResource("104_runtime_loop")]
+unique_name_in_owner = true
+
+[node name="SaveRestoreRuntimeBarrier" parent="." instance=ExtResource("142_restore_barrier")]
 unique_name_in_owner = true
 
 [node name="RuntimeWorldPorts" parent="." instance=ExtResource("105_runtime_world_ports")]

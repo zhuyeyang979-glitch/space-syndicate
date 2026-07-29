@@ -63,6 +63,42 @@ func snapshot() -> Dictionary:
 	}
 
 
+func capture_runtime_checkpoint() -> Dictionary:
+	return {
+		"schema_version": 1,
+		"configured": _configured,
+		"world_effective_us": _world_effective_us,
+		"fractional_microseconds": _fractional_microseconds,
+		"advance_count": _advance_count,
+	}
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	var expected := ["schema_version", "configured", "world_effective_us", "fractional_microseconds", "advance_count"]
+	if checkpoint.keys().size() != expected.size():
+		return {"applied": false, "reason_code": "world_clock_checkpoint_invalid"}
+	for key in expected:
+		if not checkpoint.has(key):
+			return {"applied": false, "reason_code": "world_clock_checkpoint_invalid"}
+	if not (checkpoint.get("schema_version") is int) \
+			or int(checkpoint.get("schema_version", 0)) != 1 \
+			or not (checkpoint.get("configured") is bool) \
+			or not (checkpoint.get("world_effective_us") is int) \
+			or int(checkpoint.get("world_effective_us", -1)) < 0 \
+			or not (checkpoint.get("fractional_microseconds") is float) \
+			or not is_finite(float(checkpoint.get("fractional_microseconds", 0.0))) \
+			or float(checkpoint.get("fractional_microseconds", -1.0)) < 0.0 \
+			or float(checkpoint.get("fractional_microseconds", 1.0)) >= 1.0 \
+			or not (checkpoint.get("advance_count") is int) \
+			or int(checkpoint.get("advance_count", -1)) < 0:
+		return {"applied": false, "reason_code": "world_clock_checkpoint_invalid"}
+	_configured = bool(checkpoint.get("configured", false))
+	_world_effective_us = int(checkpoint.get("world_effective_us", 0))
+	_fractional_microseconds = float(checkpoint.get("fractional_microseconds", 0.0))
+	_advance_count = int(checkpoint.get("advance_count", 0))
+	return {"applied": true, "reason_code": "world_clock_checkpoint_restored"}
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"controller_ready": _configured,

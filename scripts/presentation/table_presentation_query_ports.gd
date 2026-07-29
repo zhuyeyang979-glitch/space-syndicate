@@ -450,6 +450,27 @@ func _capture_session_plan_checkpoint() -> Dictionary:
 	}
 
 
+func capture_runtime_checkpoint() -> Dictionary:
+	_resolve_children()
+	return _capture_session_plan_checkpoint()
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if checkpoint.is_empty() or not TablePresentationPureDataPolicy.is_pure_data(checkpoint) \
+			or not _has_exact_keys(checkpoint, SESSION_PLAN_CHECKPOINT_KEYS) \
+			or typeof(checkpoint.get("schema_version")) != TYPE_INT \
+			or int(checkpoint.get("schema_version", 0)) != 1:
+		return {"applied": false, "reason_code": "presentation_query_checkpoint_invalid"}
+	_session_plan_checkpoint = checkpoint.duplicate(true)
+	_session_checkpoint_kind = "save_restore"
+	_restore_session_checkpoint("save_restore")
+	var after := _capture_session_plan_checkpoint()
+	return {
+		"applied": after == checkpoint,
+		"reason_code": "presentation_query_checkpoint_restored" if after == checkpoint else "presentation_query_checkpoint_restore_failed",
+	}
+
+
 func _restore_session_checkpoint(expected_kind: String) -> void:
 	if _session_plan_checkpoint.is_empty() or _session_checkpoint_kind != expected_kind:
 		return

@@ -1,4 +1,4 @@
-[gd_scene load_steps=32 format=3]
+[gd_scene load_steps=33 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/ui/GameScreen.tscn" id="2_game_screen"]
@@ -31,6 +31,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/TableNavigationActionRouter.tscn" id="30_table_navigation_router"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn" id="31_menu_lifecycle_controller"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/presentation/DeveloperBalanceApplicationHost.tscn" id="32_developer_balance_application_host"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/SaveResumeApplicationFlowController.tscn" id="33_save_resume_flow"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -95,6 +96,10 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 menu_overlay_path = NodePath("../../RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay")
 
+[node name="SaveResumeApplicationFlowController" parent="RuntimeServices" instance=ExtResource("33_save_resume_flow")]
+unique_name_in_owner = true
+runtime_gateway_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator")
+
 [node name="MenuLifecycleApplicationFlowController" parent="RuntimeServices" instance=ExtResource("31_menu_lifecycle_controller")]
 unique_name_in_owner = true
 menu_overlay_path = NodePath("../../RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay")
@@ -103,6 +108,7 @@ world_session_state_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordin
 application_flow_port_path = NodePath("../ApplicationFlowPort")
 codex_navigation_owner_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/CodexNavigationRuntimeController")
 game_screen_path = NodePath("../../RuntimeGameScreen")
+save_resume_flow_path = NodePath("../SaveResumeApplicationFlowController")
 
 [node name="TableNavigationActionRouter" parent="RuntimeServices" instance=ExtResource("30_table_navigation_router")]
 unique_name_in_owner = true

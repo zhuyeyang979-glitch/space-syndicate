@@ -125,6 +125,44 @@ func debug_snapshot() -> Dictionary:
 	}
 
 
+func capture_runtime_checkpoint() -> Dictionary:
+	return {
+		"schema_version": 1,
+		"remaining_by_kind": _remaining_by_kind.duplicate(true),
+		"advance_count": _advance_count,
+		"revision": _revision,
+		"receipt_sequence": _receipt_sequence,
+	}
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	var expected := ["schema_version", "remaining_by_kind", "advance_count", "revision", "receipt_sequence"]
+	if checkpoint.keys().size() != expected.size():
+		return {"applied": false, "reason_code": "presentation_scheduler_checkpoint_invalid"}
+	for key in expected:
+		if not checkpoint.has(key):
+			return {"applied": false, "reason_code": "presentation_scheduler_checkpoint_invalid"}
+	if not (checkpoint.get("schema_version") is int) \
+			or int(checkpoint.get("schema_version", 0)) != 1 \
+			or not (checkpoint.get("remaining_by_kind") is Dictionary) \
+			or not (checkpoint.get("advance_count") is int) \
+			or not (checkpoint.get("revision") is int) \
+			or not (checkpoint.get("receipt_sequence") is int):
+		return {"applied": false, "reason_code": "presentation_scheduler_checkpoint_invalid"}
+	var remaining := checkpoint.get("remaining_by_kind", {}) as Dictionary
+	if remaining.keys().size() != ORDERED_KINDS.size():
+		return {"applied": false, "reason_code": "presentation_scheduler_checkpoint_invalid"}
+	for kind in ORDERED_KINDS:
+		if not remaining.has(kind) or not (remaining.get(kind) is float) \
+				or not is_finite(float(remaining.get(kind))):
+			return {"applied": false, "reason_code": "presentation_scheduler_checkpoint_invalid"}
+	_remaining_by_kind = remaining.duplicate(true)
+	_advance_count = int(checkpoint.get("advance_count", 0))
+	_revision = int(checkpoint.get("revision", 0))
+	_receipt_sequence = int(checkpoint.get("receipt_sequence", 0))
+	return {"applied": true, "reason_code": "presentation_scheduler_checkpoint_restored"}
+
+
 func _interval_for(kind: StringName) -> float:
 	match kind:
 		LIVE_KIND:

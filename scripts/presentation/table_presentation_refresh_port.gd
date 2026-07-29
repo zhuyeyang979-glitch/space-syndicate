@@ -123,3 +123,40 @@ func debug_snapshot() -> Dictionary:
 		"main_fallback_count": 0,
 		"references_main": false,
 	}
+
+
+func capture_runtime_checkpoint() -> Dictionary:
+	return {
+		"schema_version": 1,
+		"last_sequence": _last_sequence,
+		"applied_receipt_ids": _applied_receipt_ids.duplicate(true),
+		"duplicate_receipt_count": _duplicate_receipt_count,
+		"stale_receipt_count": _stale_receipt_count,
+		"authorization_rejection_count": _authorization_rejection_count,
+		"apply_count_by_kind": _apply_count_by_kind.duplicate(true),
+	}
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	var expected := ["schema_version", "last_sequence", "applied_receipt_ids", "duplicate_receipt_count", "stale_receipt_count", "authorization_rejection_count", "apply_count_by_kind"]
+	if checkpoint.keys().size() != expected.size():
+		return {"applied": false, "reason_code": "presentation_refresh_checkpoint_invalid"}
+	for key in expected:
+		if not checkpoint.has(key):
+			return {"applied": false, "reason_code": "presentation_refresh_checkpoint_invalid"}
+	if not (checkpoint.get("schema_version") is int) \
+			or int(checkpoint.get("schema_version", 0)) != 1 \
+			or not (checkpoint.get("last_sequence") is int) \
+			or not (checkpoint.get("applied_receipt_ids") is Dictionary) \
+			or not (checkpoint.get("duplicate_receipt_count") is int) \
+			or not (checkpoint.get("stale_receipt_count") is int) \
+			or not (checkpoint.get("authorization_rejection_count") is int) \
+			or not (checkpoint.get("apply_count_by_kind") is Dictionary):
+		return {"applied": false, "reason_code": "presentation_refresh_checkpoint_invalid"}
+	_last_sequence = int(checkpoint.get("last_sequence", 0))
+	_applied_receipt_ids = (checkpoint.get("applied_receipt_ids", {}) as Dictionary).duplicate(true)
+	_duplicate_receipt_count = int(checkpoint.get("duplicate_receipt_count", 0))
+	_stale_receipt_count = int(checkpoint.get("stale_receipt_count", 0))
+	_authorization_rejection_count = int(checkpoint.get("authorization_rejection_count", 0))
+	_apply_count_by_kind = (checkpoint.get("apply_count_by_kind", {}) as Dictionary).duplicate(true)
+	return {"applied": true, "reason_code": "presentation_refresh_checkpoint_restored"}

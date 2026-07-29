@@ -174,17 +174,19 @@ unsupported_reason = ""
 script = ExtResource("2_binding")
 section_id = "session"
 owner_id = "game_session"
-state_version = 2
+state_version = 3
 owner_path = NodePath("../SessionEnvelopeSaveOwner")
 capture_method = "to_save_data"
 preflight_method = "preflight_save_data"
 apply_method = "apply_save_data"
-rollback_method = "apply_save_data"
+checkpoint_method = "capture_runtime_checkpoint"
+rollback_method = "restore_runtime_checkpoint"
 restore_mode = "transactional"
 unsupported_reason = ""
 
 [node name="V06SaveOwnerRegistry" type="Node"]
 script = ExtResource("1_registry")
 handshake_path = NodePath("../GameSaveRuntimeCoordinator/RulesetSaveHandshakeService")
+restore_barrier_path = NodePath("../../SaveRestoreRuntimeBarrier")
 bindings = Array[ExtResource("2_binding")]([SubResource("BindingRuleset"), SubResource("BindingRegionInfrastructure"), SubResource("BindingRegionSupply"), SubResource("BindingCommodityFlow"), SubResource("BindingRoutes"), SubResource("BindingPlayerMana"), SubResource("BindingCommodityBelt"), SubResource("BindingCardInventory"), SubResource("BindingPlayerOrganization"), SubResource("BindingMonsters"), SubResource("BindingMilitary"), SubResource("BindingWeather"), SubResource("BindingCardQueue"), SubResource("BindingCardExecution"), SubResource("BindingCardHistory"), SubResource("BindingAi"), SubResource("BindingBankruptcyNeutralEstate"), SubResource("BindingVictory"), SubResource("BindingSession")])
 editor_description = "Unique v0.6 save-section owner registry. It captures no parallel gameplay state and rejects resume until every required owner has transactional preflight/apply/rollback capability."

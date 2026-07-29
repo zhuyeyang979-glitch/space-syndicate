@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/save_restore_runtime_barrier.gd" id="1_barrier"]
+
+[node name="SaveRestoreRuntimeBarrier" type="Node"]
+script = ExtResource("1_barrier")
+game_session_path = NodePath("../GameSessionRuntimeController")
+runtime_loop_path = NodePath("../RuntimeLoop")
+world_clock_path = NodePath("../WorldEffectiveClockRuntimeController")
+presentation_query_ports_path = NodePath("../TablePresentationQueryPorts")
+presentation_scheduler_path = NodePath("../TablePresentationRefreshScheduler")
+presentation_refresh_port_path = NodePath("../TablePresentationRefreshPort")
+coordinator_path = NodePath("..")
+editor_description = "Scene-owned synchronous barrier for staged v0.6 restore. It blocks the authoritative loop, checks the zero-side-effect window, coordinates one post-restore rebind/refresh, and restores global runtime checkpoints on failure."
