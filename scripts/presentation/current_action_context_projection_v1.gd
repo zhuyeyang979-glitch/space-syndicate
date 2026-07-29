@@ -8,6 +8,18 @@ const TABLE_NAVIGATION := preload("res://scripts/runtime/table_navigation_action
 const INTEL_NAVIGATION := preload("res://scripts/runtime/intel_application_intent.gd")
 
 const SCHEMA_VERSION := 1
+const MAX_ARGUMENT_STRING_LENGTH := 1000
+const FORBIDDEN_ARGUMENT_KEYS := [
+	"raw",
+	"raw_payload",
+	"payload",
+	"cash",
+	"cash_cents",
+	"inventory",
+	"commodity_inventory",
+	"private_target",
+	"private_target_id",
+]
 
 const FIELDS := [
 	"schema_version",
@@ -230,9 +242,13 @@ static func _arguments_error(value: Variant) -> String:
 	for key_variant in (value as Dictionary).keys():
 		if not WIRE.is_stable_id(key_variant):
 			return "arguments_key_invalid"
+		if str(key_variant) in FORBIDDEN_ARGUMENT_KEYS:
+			return "arguments_key_forbidden"
 		var argument: Variant = (value as Dictionary).get(key_variant)
 		if not (argument is String or argument is bool or WIRE.is_safe_integer(argument)):
 			return "arguments_value_invalid"
+		if argument is String and str(argument).length() > MAX_ARGUMENT_STRING_LENGTH:
+			return "arguments_string_too_long"
 	return ""
 
 

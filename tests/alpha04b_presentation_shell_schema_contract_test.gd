@@ -118,6 +118,15 @@ func _test_region_supply_popup() -> void:
 	var future_rack := source.duplicate(true)
 	future_rack["future_rack"] = ["secret"]
 	_expect(REGION.build(future_rack).is_empty(), "region popup rejects future rack leakage")
+	for forbidden_key in _private_argument_aliases():
+		var forbidden_arguments := source.duplicate(true)
+		((forbidden_arguments.get("requirements") as Array)[0] as Dictionary)["arguments"] = _single_argument(forbidden_key, 1)
+		_expect(REGION.build(forbidden_arguments).is_empty(), "region popup arguments reject private alias %s" % forbidden_key)
+	var oversized_arguments := source.duplicate(true)
+	((oversized_arguments.get("requirements") as Array)[0] as Dictionary)["arguments"] = {
+		"message": "x".repeat(REGION.MAX_ARGUMENT_STRING_LENGTH + 1),
+	}
+	_expect(REGION.build(oversized_arguments).is_empty(), "region popup arguments reject oversized strings")
 
 
 func _test_current_action_context() -> void:
@@ -159,6 +168,15 @@ func _test_current_action_context() -> void:
 	var method_source := source.duplicate(true)
 	((method_source.get("requirements") as Array)[0] as Dictionary)["arguments"] = {"method_name": "submit"}
 	_expect(ACTION_CONTEXT.build(method_source).is_empty(), "current action context rejects method-name fields")
+	for forbidden_key in _private_argument_aliases():
+		var forbidden_arguments := source.duplicate(true)
+		((forbidden_arguments.get("requirements") as Array)[0] as Dictionary)["arguments"] = _single_argument(forbidden_key, 1)
+		_expect(ACTION_CONTEXT.build(forbidden_arguments).is_empty(), "current action arguments reject private alias %s" % forbidden_key)
+	var oversized_arguments := source.duplicate(true)
+	((oversized_arguments.get("consequences") as Array)[0] as Dictionary)["arguments"] = {
+		"message": "x".repeat(ACTION_CONTEXT.MAX_ARGUMENT_STRING_LENGTH + 1),
+	}
+	_expect(ACTION_CONTEXT.build(oversized_arguments).is_empty(), "current action arguments reject oversized strings")
 
 
 func _test_public_feedback() -> void:
@@ -188,9 +206,15 @@ func _test_public_feedback() -> void:
 	var invalid_severity := source.duplicate(true)
 	invalid_severity["severity"] = "debug"
 	_expect(FEEDBACK.build(invalid_severity).is_empty(), "feedback severity is closed")
-	var private_leak := source.duplicate(true)
-	private_leak["arguments"] = {"cash": 999}
-	_expect(FEEDBACK.build(private_leak).is_empty(), "feedback arguments reject private cash")
+	for forbidden_key in _private_argument_aliases():
+		var private_leak := source.duplicate(true)
+		private_leak["arguments"] = _single_argument(forbidden_key, 999)
+		_expect(FEEDBACK.build(private_leak).is_empty(), "feedback arguments reject private alias %s" % forbidden_key)
+	var oversized_arguments := source.duplicate(true)
+	oversized_arguments["arguments"] = {
+		"message": "x".repeat(FEEDBACK.MAX_ARGUMENT_STRING_LENGTH + 1),
+	}
+	_expect(FEEDBACK.build(oversized_arguments).is_empty(), "feedback arguments reject oversized strings")
 	var object_argument := source.duplicate(true)
 	object_argument["arguments"] = {"bad": RefCounted.new()}
 	_expect(FEEDBACK.build(object_argument).is_empty(), "feedback rejects Object arguments")
@@ -206,6 +230,21 @@ func _test_context_detail_closed_union() -> void:
 	mismatched["context_kind"] = DETAIL.KIND_PUBLIC_TRACK
 	mismatched["visibility_scope"] = "public"
 	_expect(DETAIL.build(mismatched).is_empty(), "context detail rejects content from another closed kind")
+	var public_normal_card := _detail_source(DETAIL.KIND_NORMAL_CARD)
+	public_normal_card["visibility_scope"] = "public"
+	_expect(DETAIL.build(public_normal_card).is_empty(), "normal card detail requires viewer-private visibility")
+	var public_commodity_card := _detail_source(DETAIL.KIND_COMMODITY_CARD)
+	public_commodity_card["visibility_scope"] = "public"
+	_expect(DETAIL.build(public_commodity_card).is_empty(), "commodity card detail requires viewer-private visibility")
+	for forbidden_key in _private_argument_aliases():
+		var forbidden_arguments := _detail_source(DETAIL.KIND_PUBLIC_EVENT)
+		(forbidden_arguments.get("content") as Dictionary)["arguments"] = _single_argument(forbidden_key, 1)
+		_expect(DETAIL.build(forbidden_arguments).is_empty(), "context detail arguments reject private alias %s" % forbidden_key)
+	var oversized_arguments := _detail_source(DETAIL.KIND_PUBLIC_EVENT)
+	(oversized_arguments.get("content") as Dictionary)["arguments"] = {
+		"message": "x".repeat(DETAIL.MAX_ARGUMENT_STRING_LENGTH + 1),
+	}
+	_expect(DETAIL.build(oversized_arguments).is_empty(), "context detail arguments reject oversized strings")
 	var raw_payload := _detail_source(DETAIL.KIND_REGION_FACILITY)
 	(raw_payload.get("content") as Dictionary)["raw_payload"] = {"anything": "forbidden"}
 	_expect(DETAIL.build(raw_payload).is_empty(), "context detail rejects arbitrary raw payload")
@@ -467,6 +506,26 @@ func _offer(action_id: String, revision: int) -> Dictionary:
 		"consequence_spec": {"committed_effect_refs": [], "refresh_scope": "full"},
 		"presentation_token_ids": ["action.fixture"],
 	})
+
+
+func _private_argument_aliases() -> Array[String]:
+	return [
+		"raw",
+		"raw_payload",
+		"payload",
+		"cash",
+		"cash_cents",
+		"inventory",
+		"commodity_inventory",
+		"private_target",
+		"private_target_id",
+	]
+
+
+func _single_argument(key: String, value: Variant) -> Dictionary:
+	var result := {}
+	result[key] = value
+	return result
 
 
 func _valid(schema: Script, projection: Variant) -> bool:
