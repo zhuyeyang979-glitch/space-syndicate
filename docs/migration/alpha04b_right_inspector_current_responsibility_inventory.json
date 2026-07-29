@@ -1,0 +1,557 @@
+{
+  "schema_version": 1,
+  "task_id": "ALPHA_0_4_B_PRODUCTION_CONTEXTUAL_TABLE_SHELL_TYPED_CUTOVER",
+  "status": "AUDIT_COMPLETE_PRODUCTION_MIGRATION_NOT_STARTED",
+  "baseline": {
+    "commit_sha": "eef2465fcf61111b888581e1f6d209a5665c9407",
+    "tree_sha": "20deb979920c72145b24e5a81a098e9fa0642cb4",
+    "branch_reference": "origin/main",
+    "measurement_scope": "tracked files in the baseline tree only"
+  },
+  "hard_counts": {
+    "right_inspector_responsibility_count_before": 10,
+    "fully_retired_responsibility_row_count": 0,
+    "partially_retired_responsibility_row_count": 2,
+    "alpha04a_retired_subpath_count": 3,
+    "right_inspector_script_line_count": 502,
+    "production_scene_instance_count": 1,
+    "right_inspector_fixed_width_pixels": 292,
+    "game_screen_wrapper_minimum_width_pixels": 304,
+    "game_screen_matching_source_line_count": 49,
+    "game_screen_symbol_occurrence_count": 60,
+    "game_screen_dynamic_call_count": 11,
+    "game_screen_has_method_guard_count": 11,
+    "game_screen_signal_connection_line_count": 2,
+    "game_screen_has_signal_guard_count": 1,
+    "game_screen_get_meta_call_count": 1,
+    "right_inspector_snapshot_top_level_field_count": 7,
+    "right_inspector_outbound_signal_count": 2,
+    "baseline_test_file_count_with_right_inspector_reference": 22,
+    "baseline_test_matching_line_count": 94,
+    "nonproduction_tool_dynamic_call_count": 6,
+    "nonproduction_tool_file_count_with_dynamic_calls": 2
+  },
+  "snapshot_top_level_fields": [
+    "title",
+    "why",
+    "district",
+    "requirements",
+    "actions",
+    "logs",
+    "deep_links"
+  ],
+  "production_dynamic_calls": [
+    {
+      "method": "set_context",
+      "count": 6,
+      "game_screen_lines": [184, 1262, 1571, 1582, 1789, 2066]
+    },
+    {
+      "method": "show_public_player",
+      "count": 1,
+      "game_screen_lines": [608]
+    },
+    {
+      "method": "show_public_commodity",
+      "count": 3,
+      "game_screen_lines": [984, 1102, 1159]
+    },
+    {
+      "method": "show_card",
+      "count": 1,
+      "game_screen_lines": [1534]
+    }
+  ],
+  "outbound_signal_inventory": [
+    {
+      "signal": "action_requested(action_id: String)",
+      "source": "scripts/ui/right_inspector.gd:7",
+      "production_connection": "scripts/ui/game_screen.gd:125-126",
+      "typed_status": "generic_string_signal_still_live"
+    },
+    {
+      "signal": "application_intent_requested(intent: IntelApplicationIntent)",
+      "source": "scripts/ui/right_inspector.gd:8",
+      "production_connection": "scripts/ui/game_screen.gd:127",
+      "typed_status": "typed_intent_still_live"
+    }
+  ],
+  "alpha04a_retired_subpaths": [
+    {
+      "subpath_id": "right_inspector_card_play_offer_and_dispatch",
+      "parent_responsibility_id": "action_dispatch",
+      "scope_relation": "counted_as_a_retired_subpath_of_a_still-live_responsibility_row",
+      "current_evidence": [
+        "GameScreen._retire_right_inspector_card_actions removes ACTION_CARD_PLAY offers before set_context",
+        "GameScreen._show_dock_card_details forces actions=[] and actionable=false",
+        "PlayerCardDock is the production card-play offer and submission owner"
+      ],
+      "status": "retired_by_alpha04a"
+    },
+    {
+      "subpath_id": "right_inspector_commodity_claim_action_and_button_dispatch",
+      "parent_responsibility_id": "public_commodity_detail_claim",
+      "scope_relation": "counted_as_a_retired_subpath_of_a_still-live_responsibility_row",
+      "current_evidence": [
+        "RightInspector.show_public_commodity projects actions=[]",
+        "TopCommoditySushiTrack and PlayerCardDock own the direct-card claim request path",
+        "commodity_claim_selected is not emitted by RightInspector"
+      ],
+      "status": "retired_by_alpha04a"
+    },
+    {
+      "subpath_id": "legacy_hand_rack_card_submission_source",
+      "parent_responsibility_id": null,
+      "scope_relation": "adjacent retired production path; not one of the ten RightInspector responsibility rows",
+      "current_evidence": [
+        "PlayerCardDock owns production selection, hover, action offer, target selection and submission",
+        "legacy HandRack is no longer the mounted production submission source",
+        "RightInspector retains only read-only hand-card detail presentation"
+      ],
+      "status": "retired_by_alpha04a"
+    }
+  ],
+  "responsibilities": [
+    {
+      "responsibility_id": "table_context_assembly",
+      "source_owner": [
+        "TablePresentationViewModelQuery.compose_table_state_bundle",
+        "GameTableViewModelRuntimeService._compose_right_inspector",
+        "TableSnapshot.right_inspector",
+        "RightInspectorSnapshot"
+      ],
+      "current_projection_field": [
+        "right_inspector.title",
+        "right_inspector.why",
+        "right_inspector.district",
+        "right_inspector.requirements",
+        "right_inspector.actions",
+        "right_inspector.logs",
+        "right_inspector.deep_links"
+      ],
+      "current_scene_target": "GameScreen/SafeArea/MainRows/TableArea/RightInspectorScroll/RightInspector",
+      "current_signal_or_intent": "No dedicated assembly signal; GameScreen applies the generic dictionary and forwards child action/navigation signals.",
+      "privacy_scope": "Mixed: public table context plus only the authorized viewer's private hand-card context; cross-viewer reuse is forbidden.",
+      "target_surface": "ContextualTableShell typed router feeding RegionSupplyPopup, CompactCurrentActionSurface, TypedToastSurface, contextual detail surfaces and PlayerInspectionPopup without a generic forwarding inspector.",
+      "target_typed_schema": {
+        "proposed": "ContextualTableShellSnapshotV1",
+        "required_shape": "Typed optional per-surface snapshots with viewer/session/revision binding; no Dictionary right_inspector payload.",
+        "existing_inputs": [
+          "DistrictViewSnapshot",
+          "ActionDockSnapshot",
+          "PlayerCardDockProjectionV1",
+          "PublicTrackSnapshot",
+          "CommoditySushiTrackSnapshot",
+          "PublicPlayerSeatSnapshot"
+        ]
+      },
+      "parity_test": {
+        "existing": [
+          "tests/card_presentation_viewmodel_runtime_test.gd",
+          "tests/table_presentation_viewmodel_parity_test.gd",
+          "tests/main_runtime_composition_test.gd",
+          "tests/layout_scene_smoke_test.gd"
+        ],
+        "required_before_delete": "Typed target precedence must match selected hand slot, selected public resolution and district fallback for every viewer-safe state."
+      },
+      "deletion_gate": [
+        "TableSnapshot has no right_inspector field or fallback alias.",
+        "GameTableViewModelRuntimeService has no _compose_right_inspector, _hand_inspector or _track_inspector path.",
+        "All ten responsibility rows have typed production targets and parity coverage.",
+        "No generic forwarding facade is introduced."
+      ],
+      "final_status": "not_migrated"
+    },
+    {
+      "responsibility_id": "region_summary",
+      "source_owner": [
+        "TablePresentationViewModelQuery._selected_district_source",
+        "GameTableViewModelRuntimeService._compose_right_inspector",
+        "RightInspector.set_context"
+      ],
+      "current_projection_field": [
+        "right_inspector.district.title",
+        "right_inspector.district.summary",
+        "right_inspector.district.detail",
+        "right_inspector.district.full_detail",
+        "right_inspector.district.chips"
+      ],
+      "current_scene_target": "RightInspector/InspectorRows/DistrictInfoPanel",
+      "current_signal_or_intent": "Display-only in DistrictInfoPanel; related district actions and deep links leave through the inspector's generic action signal.",
+      "privacy_scope": "Viewer-safe public region facts and public rack context; private hand or rival resources are forbidden.",
+      "target_surface": "RegionSupplyPopup plus the typed district detail drawer.",
+      "target_typed_schema": {
+        "existing": [
+          "DistrictViewSnapshot",
+          "DistrictSupplyViewerQueryPort",
+          "DistrictSupplyRuntimeQueryPort"
+        ],
+        "proposed_if_existing_fields_are_insufficient": "RegionContextSnapshotV1 with region identity, summary/full detail, chips, viewer/session/revision and authorization metadata"
+      },
+      "parity_test": {
+        "existing": [
+          "tests/table_presentation_viewmodel_parity_test.gd",
+          "tests/district_supply_surface_query_cutover_test.gd",
+          "tests/district_supply_drawer_live_refresh_test.gd",
+          "tests/layout_scene_smoke_test.gd"
+        ],
+        "required_before_delete": "Mouse, keyboard and refresh parity for selected district title, summary, full detail, rack facts and chips."
+      },
+      "deletion_gate": [
+        "RegionSupplyPopup/detail drawer renders every currently reachable district field from a typed viewer-safe projection.",
+        "District focus and live refresh never depend on RightInspector.set_context.",
+        "All district-specific RightInspector snapshot and GameScreen fallback references are zero."
+      ],
+      "final_status": "not_migrated"
+    },
+    {
+      "responsibility_id": "action_reason_requirements",
+      "source_owner": [
+        "TablePresentationViewModelQuery._district_requirement_chips",
+        "TablePresentationViewModelQuery._action_entries",
+        "GameTableViewModelRuntimeService._compose_right_inspector"
+      ],
+      "current_projection_field": [
+        "right_inspector.why",
+        "right_inspector.requirements",
+        "right_inspector.actions[].disabled",
+        "right_inspector.actions[].tooltip"
+      ],
+      "current_scene_target": "RightInspector/InspectorRows/InspectorReasonPanel and RightInspector/InspectorRows/CurrentActionPanel",
+      "current_signal_or_intent": "Reason and requirement chips are input-only; action selection leaves through action_requested(String) or application_intent_requested(IntelApplicationIntent).",
+      "privacy_scope": "Viewer-authorized legality, cost, requirement and disabled-reason context; rival-private availability and capability data are forbidden.",
+      "target_surface": "CompactCurrentActionSurface and ActionContextChipRow adjacent to the production PlayerCardDock/PlayerMainActionDock.",
+      "target_typed_schema": {
+        "proposed": "ActionContextSnapshotV1",
+        "required_fields": [
+          "context_id",
+          "why",
+          "requirements",
+          "disabled_reason",
+          "viewer_index",
+          "session_id",
+          "revision"
+        ],
+        "existing_action_schema": [
+          "ActionDockSnapshot",
+          "GameActionOfferV1"
+        ]
+      },
+      "parity_test": {
+        "existing": [
+          "tests/table_presentation_viewmodel_parity_test.gd",
+          "tests/game_action_semantic_protocol_v1_test.gd",
+          "tests/layout_scene_smoke_test.gd"
+        ],
+        "required_before_delete": "All current why text, requirements, enabled/disabled state and tooltip reasons remain identical for valid, stale and unauthorized offers."
+      },
+      "deletion_gate": [
+        "The typed action context is the only production owner of why/requirements/disabled reason.",
+        "It is bound to the same viewer/session/revision as the action offer.",
+        "No target reads generic right_inspector fields."
+      ],
+      "final_status": "not_migrated"
+    },
+    {
+      "responsibility_id": "action_dispatch",
+      "source_owner": [
+        "TablePresentationViewModelQuery._action_entries",
+        "TablePresentationViewModelQuery._district_actions",
+        "RightInspector/CurrentActionPanel (ActionDock)",
+        "GameScreen._on_action_requested"
+      ],
+      "current_projection_field": "right_inspector.actions",
+      "current_scene_target": "RightInspector/InspectorRows/CurrentActionPanel",
+      "current_signal_or_intent": [
+        "RightInspector.action_requested(action_id: String)",
+        "RightInspector.application_intent_requested(intent: IntelApplicationIntent)"
+      ],
+      "privacy_scope": "Viewer-authorized gameplay offers and application intents; capability tokens, offer revision and private legality must never cross viewers.",
+      "target_surface": "PlayerBoard/PlayerMainActionDock plus typed contextual navigation and district-supply action targets.",
+      "target_typed_schema": {
+        "existing": [
+          "ActionDockSnapshot",
+          "GameActionOfferV1",
+          "GameActionIntentV1",
+          "DistrictSupplyActionIntent",
+          "TableNavigationActionIntent",
+          "IntelApplicationIntent"
+        ],
+        "missing": "A complete typed routing map for every non-card action ID still resolved through GameScreen's RightInspector fallback."
+      },
+      "parity_test": {
+        "existing": [
+          "tests/alpha04_player_card_dock_invariants_test.gd",
+          "tests/alpha04_player_card_dock_production_cutover_test.gd",
+          "tests/game_action_semantic_protocol_v1_test.gd",
+          "tests/table_navigation_action_router_test.gd",
+          "tests/layout_scene_smoke_test.gd"
+        ],
+        "required_before_delete": "Every remaining non-card action and application intent has one typed owner, one dispatch, stale-revision rejection and no duplicate card-play path."
+      },
+      "deletion_gate": [
+        "RightInspector action_requested and application_intent_requested connections are zero.",
+        "GameScreen._game_action_entry and _action_label_for_id contain no RightInspector fallback.",
+        "Every live non-card inspector action ID is represented by a typed production offer or intent.",
+        "Alpha0.4-A card-play and commodity-claim retirement tests remain green."
+      ],
+      "final_status": "partially_retired_not_migrated"
+    },
+    {
+      "responsibility_id": "event_feedback",
+      "source_owner": [
+        "TablePresentationViewModelQuery via recent_public_log_messages(6)",
+        "GameTableViewModelRuntimeService inspector composition",
+        "RightInspector._set_event_log"
+      ],
+      "current_projection_field": "right_inspector.logs",
+      "current_scene_target": "RightInspector/InspectorRows/EventLogPanel/EventLogLabel",
+      "current_signal_or_intent": "Input-only latest-public-line display; no dedicated typed event feedback signal exists.",
+      "privacy_scope": "Public event messages only; private receipt detail, hidden card identity, rival resources and plans are forbidden.",
+      "target_surface": "TypedToastSurface for the latest non-blocking event plus expandable public event history.",
+      "target_typed_schema": {
+        "proposed": "PublicEventFeedbackSnapshotV1",
+        "required_fields": [
+          "event_id",
+          "public_text",
+          "severity",
+          "sequence_or_revision",
+          "created_at_or_turn",
+          "visibility_scope"
+        ],
+        "rule": "Must be derived from public projection/typed receipt data, not raw private runtime events."
+      },
+      "parity_test": {
+        "existing": [
+          "tests/layout_scene_smoke_test.gd",
+          "tests/ui_text_smoke_test.gd",
+          "tests/ui_snapshot_capture.gd"
+        ],
+        "required_before_delete": "Latest-line ordering, empty collapse, stale-event handling, expansion order and public-only privacy are explicitly covered."
+      },
+      "deletion_gate": [
+        "TypedToastSurface and public history consume only typed public feedback snapshots.",
+        "The latest public line and ordered history preserve current visible behavior.",
+        "No event log reader remains under RightInspector or right_inspector snapshot fields."
+      ],
+      "final_status": "not_migrated"
+    },
+    {
+      "responsibility_id": "deep_navigation_intel",
+      "source_owner": [
+        "TablePresentationViewModelQuery fallback_deep_links",
+        "GameTableViewModelRuntimeService _hand_inspector/_track_inspector",
+        "RightInspector._set_deep_links"
+      ],
+      "current_projection_field": "right_inspector.deep_links",
+      "current_scene_target": "RightInspector/InspectorRows/InspectorDeepLinkRow",
+      "current_signal_or_intent": [
+        "Generic deep-link id forwarded as action_requested(String)",
+        "Typed IntelApplicationIntent forwarded as application_intent_requested(IntelApplicationIntent)"
+      ],
+      "privacy_scope": "Public navigation context plus viewer-authorized Intel application context; hidden intel payloads and unauthorized targets are forbidden.",
+      "target_surface": "Context buttons, top navigation and detail drawer actions owned by the destination surface.",
+      "target_typed_schema": {
+        "existing": [
+          "TableNavigationActionIntent",
+          "IntelApplicationIntent"
+        ],
+        "proposed_if_labels_need_projection": "ContextualNavigationSnapshotV1 containing typed intent, label, tooltip, viewer/session/revision and authorization state"
+      },
+      "parity_test": {
+        "existing": [
+          "tests/table_navigation_action_router_test.gd",
+          "tests/intel_query_command_cutover_test.gd",
+          "tests/card_presentation_viewmodel_runtime_test.gd",
+          "tests/public_card_track_focus_selection_cutover_test.gd"
+        ],
+        "required_before_delete": "Region detail, card browser, card detail, compendium and Intel navigation each route once through a typed intent with stale/unauthorized rejection."
+      },
+      "deletion_gate": [
+        "No deep-link button is created from a generic dictionary id.",
+        "Every destination uses TableNavigationActionIntent or IntelApplicationIntent directly.",
+        "RightInspector deep_links, dynamic buttons and navigation signals have zero production references."
+      ],
+      "final_status": "not_migrated"
+    },
+    {
+      "responsibility_id": "hand_card_detail",
+      "source_owner": [
+        "TablePresentationViewModelQuery._hand_card_sources",
+        "GameTableViewModelRuntimeService._hand_inspector",
+        "GameScreen._show_dock_card_details",
+        "RightInspector.show_card"
+      ],
+      "current_projection_field": [
+        "right_inspector title/why/district/requirements derived from a selected hand card",
+        "GameScreen read_only_details with actions=[] and actionable=false"
+      ],
+      "current_scene_target": "The full RightInspector child stack through show_card; action presentation is intentionally suppressed by Alpha0.4-A.",
+      "current_signal_or_intent": "Read-only hover/focus presentation only; card-play dispatch is retired from RightInspector and owned by PlayerCardDock.",
+      "privacy_scope": "Authorized current viewer's private hand only; rival hand identity, text, targets, offers and capability data are forbidden.",
+      "target_surface": "PlayerCardDock hover/focus preview plus a viewer-bound ContextDetailPopup.",
+      "target_typed_schema": {
+        "existing": [
+          "PlayerCardDockProjectionV1",
+          "CardCodexDetailSnapshot"
+        ],
+        "proposed_if_private_context_is_not_covered": "CardContextDetailSnapshotV1 with timing, target, effect, duration, visibility, keywords, disabled reason, viewer/session/revision and no action offer field"
+      },
+      "parity_test": {
+        "existing": [
+          "tests/alpha04_player_card_dock_invariants_test.gd",
+          "tests/alpha04_player_card_dock_production_cutover_test.gd",
+          "tests/player_card_dock_projection_v1_test.gd",
+          "tests/card_presentation_viewmodel_runtime_test.gd"
+        ],
+        "required_before_delete": "Hover, keyboard focus, selection, full readable detail and privacy parity are preserved while the detail target always exposes zero card-play actions."
+      },
+      "deletion_gate": [
+        "One typed preview/detail owner covers all currently rendered card fields.",
+        "The target is bound to the authorized viewer/session/revision.",
+        "No show_card or hand-derived set_context call remains.",
+        "Card-play submission remains exclusively owned by PlayerCardDock."
+      ],
+      "final_status": "not_migrated"
+    },
+    {
+      "responsibility_id": "public_track_detail",
+      "source_owner": [
+        "TablePresentationViewModelQuery._card_track_source",
+        "GameTableViewModelRuntimeService._track_inspector",
+        "GameScreen._track_entry_inspector_context",
+        "RightInspector.set_context"
+      ],
+      "current_projection_field": "right_inspector generic context synthesized from the selected or hovered PublicTrackSnapshot entry",
+      "current_scene_target": "The full RightInspector child stack during public-track focus, hover and selection.",
+      "current_signal_or_intent": [
+        "TableSelectionIntent with source_surface=right_inspector for resolution selection",
+        "IntelApplicationIntent for Intel detail",
+        "Generic action_requested(String) for remaining contextual actions"
+      ],
+      "privacy_scope": "Sanitized public track facts only; hidden card identity and viewer-private track knowledge are forbidden.",
+      "target_surface": "Transient public-track detail popup and focus ribbon adjacent to the public track.",
+      "target_typed_schema": {
+        "existing": [
+          "PublicTrackSnapshot",
+          "TableSelectionIntent",
+          "TableSelectionReceipt",
+          "IntelApplicationIntent",
+          "TableNavigationActionIntent"
+        ],
+        "proposed": "PublicTrackDetailSnapshotV1 for the currently synthesized summary, detail, chips, actions and links"
+      },
+      "parity_test": {
+        "existing": [
+          "tests/public_card_track_focus_selection_cutover_test.gd",
+          "tests/public_track_real_interaction_test.gd",
+          "tests/runtime_table_focus_order_test.gd",
+          "tests/layout_scene_smoke_test.gd"
+        ],
+        "required_before_delete": "Hover/focus/selection, refresh, stale receipt rejection, zero gameplay intent on selection, keyboard focus and privacy all target the new typed surface."
+      },
+      "deletion_gate": [
+        "GameScreen._track_entry_inspector_context, _restore_right_inspector_context and related inspector sync paths are deleted.",
+        "Public track detail no longer calls RightInspector.set_context.",
+        "right_inspector is removed from TableSelectionIntent and PlayerIdentityActionRequest source-surface allowlists after all producers are migrated.",
+        "All public-track tests assert the new typed surface rather than physical inspector presence."
+      ],
+      "final_status": "not_migrated"
+    },
+    {
+      "responsibility_id": "public_commodity_detail_claim",
+      "source_owner": [
+        "TopCommoditySushiTrack focus",
+        "GameScreen._on_commodity_item_focused/apply_commodity_claim_result/_restore_selected_commodity_focus",
+        "RightInspector.show_public_commodity"
+      ],
+      "current_projection_field": "Ad hoc public commodity item dictionary plus viewer action_result dictionary; show_public_commodity forces actions=[]",
+      "current_scene_target": "The full RightInspector child stack during commodity focus and claim-result feedback.",
+      "current_signal_or_intent": "Inspector is now input-only for this row; CommoditySushiTrackClaimRequest is emitted by the direct-card production path, not by RightInspector.",
+      "privacy_scope": "Public commodity facts plus the authorized viewer's claim-result feedback; rival inventory, private target state and hidden capability data are forbidden.",
+      "target_surface": "Commodity contextual detail and claim-feedback surface beside PlayerCardDock/TopCommoditySushiTrack.",
+      "target_typed_schema": {
+        "existing": [
+          "CommoditySushiTrackItemSnapshot",
+          "CommoditySushiTrackSnapshot",
+          "CommoditySushiTrackClaimRequest"
+        ],
+        "proposed": "CommodityContextDetailSnapshotV1 with public item detail plus a separately viewer-bound typed claim receipt"
+      },
+      "parity_test": {
+        "existing": [
+          "tests/alpha04_player_card_dock_invariants_test.gd",
+          "tests/alpha04_commodity_direct_claim_test.gd",
+          "tests/public_track_real_interaction_test.gd",
+          "tests/commodity_sushi_track_runtime_test.gd"
+        ],
+        "required_before_delete": "Focus, refresh, stale-result rejection, public/private separation and claim consequence feedback are preserved while the detail surface exposes zero claim actions."
+      },
+      "deletion_gate": [
+        "All three show_public_commodity dynamic calls are replaced by a typed commodity detail target.",
+        "Claim result feedback is a viewer/session/revision-bound typed receipt.",
+        "RightInspector remains absent from commodity claim dispatch and never regains an action button.",
+        "Commodity focus/refresh/privacy tests assert the new surface."
+      ],
+      "final_status": "partially_retired_not_migrated"
+    },
+    {
+      "responsibility_id": "public_player_inspection",
+      "source_owner": [
+        "PlayerSeatPublicSourceService/PublicPlayerSeatSnapshot",
+        "GameScreen._public_player_descriptor",
+        "GameScreen._apply_inspected_player_presentation",
+        "RightInspector.show_public_player"
+      ],
+      "current_projection_field": [
+        "player_index",
+        "public_player_name",
+        "role_name",
+        "player_color",
+        "public_status",
+        "is_local_player"
+      ],
+      "current_scene_target": "The full RightInspector child stack in context_kind=public_player.",
+      "current_signal_or_intent": "TableSelectionIntent/TableSelectionReceipt selects the inspected player outside the inspector; show_public_player itself is input-only.",
+      "privacy_scope": "Public player identity/status only; rival cash, hand, plans, private resources and capability data are explicitly forbidden.",
+      "target_surface": "Production single-side public player roster plus a typed PlayerInspectionPopup.",
+      "target_typed_schema": {
+        "existing": [
+          "PublicPlayerSeatSnapshot",
+          "PlayerSeatPublicSourceService",
+          "TableSelectionIntent",
+          "TableSelectionReceipt"
+        ],
+        "proposed_if_popup_needs_a_distinct_contract": "PublicPlayerInspectionSnapshotV1 derived only from the public player source service"
+      },
+      "parity_test": {
+        "existing": [
+          "tests/selected_player_actor_authority_split_test.gd",
+          "tests/player_seat_host_production_test.gd",
+          "tests/main_runtime_composition_test.gd",
+          "tests/runtime_table_focus_order_test.gd"
+        ],
+        "required_before_delete": "Mouse, keyboard, controller, focus, ordering, stale receipt and public-only privacy parity are covered, including explicit absence of rival cash and hand."
+      },
+      "deletion_gate": [
+        "Single-side roster and PlayerInspectionPopup consume only typed public player snapshots.",
+        "show_public_player, right_inspector_public_only metadata checks and inspector focus-order entries are zero.",
+        "All public player input methods reach the same typed selection/receipt path.",
+        "Privacy tests prove rival cash, hand and plans are absent."
+      ],
+      "final_status": "not_migrated"
+    }
+  ],
+  "global_deletion_gate": {
+    "required": [
+      "All ten rows have production typed targets and their parity tests pass.",
+      "The eleven production dynamic calls and two RightInspector signal connections are zero.",
+      "GameScreen, TableSnapshot, GameTableViewModelRuntimeService, OverlayLayerSnapshot and production scenes contain no RightInspector/right_inspector ownership dependency.",
+      "No generic forwarding wrapper, duplicate action authority or dual writer is introduced.",
+      "Alpha0.4-A retired card-play, commodity-claim and HandRack submission subpaths remain retired.",
+      "Viewer/session/revision binding and public/private privacy boundaries are preserved for every new typed schema.",
+      "Physical RightInspector scene removal happens only after zero-reference and layout/focus/capture parity are proven."
+    ],
+    "current_result": "blocked_by_unmigrated_responsibilities"
+  }
+}
