@@ -2,8 +2,8 @@
 
 ```text
 FORMAL_FULL_RUN=false
-DRIVER_EXECUTION_READY=false
-CONTRACT_SCHEMA_VERSION=2
+DRIVER_EXECUTION_READY=true
+CONTRACT_SCHEMA_VERSION=4
 CURRENT_RUNTIME_RULE_VERSION=v0.6
 SAVE_SECTION_COUNT=19
 NEW_SAVE_SECTION_COUNT=0
@@ -42,13 +42,15 @@ NEW_RNG_OWNER_COUNT=0
 4. The external orchestrator compares only the three allowlisted manifests and
    process exit results. It never parses the save envelope.
 
-All 19 owners and the restore barrier are integrated, but the current recovery
-checkpoint is deliberately non-executable while Process A is migrated to an
-arbitrary formal Action Spine offer and Process C/terminal evidence is completed.
-The orchestrator also rejects a dirty worktree and places the production slot in
-one run-specific isolated user-data root shared by A, B, and C. This checkpoint
-must never be cited as cold-restore or full-run evidence while
-`DRIVER_EXECUTION_READY=false`.
+All 19 owners and the restore barrier are integrated. The fixed depth-1,
+seed-900626424 non-official qualification reached a real production facility
+offer through the Action Spine, captured one pending Queue entry, and observed
+zero world, card-resolution, and RNG advance after submission. Qualification
+wrote no Save and did not create the shared official ledger. The orchestrator
+rejects a dirty worktree, requires the one shared ledger plus PID-bound launch
+attestations, and places the production slot in one run-specific isolated
+user-data root shared by A, B, and C. `DRIVER_EXECUTION_READY=true` authorizes
+only that guarded one-shot protocol; it is not itself cold-restore evidence.
 
 ## High-level application gateway
 

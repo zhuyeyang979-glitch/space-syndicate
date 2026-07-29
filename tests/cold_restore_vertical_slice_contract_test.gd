@@ -42,8 +42,8 @@ func _init() -> void:
 func _run() -> void:
 	var source := FileAccess.get_file_as_string(ORCHESTRATOR_PATH)
 	var driver_source := FileAccess.get_file_as_string(DRIVER_PATH)
-	_expect(source.contains("$ORCHESTRATOR_SCHEMA_VERSION = 4") and source.contains('driver_id = "alpha04c_cold_restore_vertical_slice_orchestrator_v4"') and source.contains("$FORMAL_FULL_RUN = $false") and source.contains("$DriverExecutionReady = $false"), "orchestrator checkpoints a disabled non-Formal v4 contract before qualification")
-	_expect(driver_source.contains("const SCHEMA_VERSION := 4") and driver_source.contains("const EXECUTION_READY := false") and driver_source.contains('"driver_id": "alpha04c_cold_restore_vertical_slice_v4"'), "driver and orchestrator share one disabled v4 contract")
+	_expect(source.contains("$ORCHESTRATOR_SCHEMA_VERSION = 4") and source.contains('driver_id = "alpha04c_cold_restore_vertical_slice_orchestrator_v4"') and source.contains("$FORMAL_FULL_RUN = $false") and source.contains("$DriverExecutionReady = $true"), "orchestrator exposes the qualified non-Formal v4 contract")
+	_expect(driver_source.contains("const SCHEMA_VERSION := 4") and driver_source.contains("const EXECUTION_READY := true") and driver_source.contains('"driver_id": "alpha04c_cold_restore_vertical_slice_v4"'), "driver and orchestrator share one qualified v4 contract")
 	_expect(driver_source.contains("--cold-restore-expected-queue-resolution-id=") and driver_source.contains("--cold-restore-expected-queue-stable-target-fingerprint=") and driver_source.contains("--cold-restore-official-claim-path=") and driver_source.contains("--cold-restore-launch-attestation-path=") and driver_source.contains("--cold-restore-launch-nonce=") and driver_source.contains('"unknown_option"') and driver_source.contains('"duplicate_option"'), "driver accepts only the closed expected-identity and launch-attestation option surface")
 	_expect(driver_source.contains("await _authorize_official_launch(validation") and driver_source.find("await _authorize_official_launch(validation") < driver_source.find("await _run_role(validation") and driver_source.contains('"official_claim_path_mismatch"') and driver_source.contains('"launch_attestation_binding_invalid"'), "driver requires the fixed ledger and PID-bound launch attestation before any role")
 	_expect(not driver_source.contains(".tick_ai(") and not driver_source.contains("_tick_ai_until_nontrivial_queue") and driver_source.contains("AUTHORITATIVE_STEPPER.advance_bounded") and driver_source.contains("TERMINAL_EVIDENCE.acquire_manual_lease"), "all AI progress uses the bounded authoritative RuntimeLoop lease with no direct tick fallback")
@@ -156,9 +156,9 @@ func _run() -> void:
 	var ledger_path := _official_ledger_path()
 	_expect(not ledger_path.is_empty(), "fixed shared official ledger path resolves without creating it")
 	var ledger_before := _file_snapshot(ledger_path)
-	var disabled_execution := _invoke_disabled_official_orchestrator()
-	var disabled_result: Dictionary = disabled_execution.get("result", {}) if disabled_execution.get("result", {}) is Dictionary else {}
-	_expect(int(disabled_execution.get("exit_code", 0)) != 0 and str(disabled_result.get("failure_code", "")) == "driver_execution_not_ready", "real EnableColdRestoreExecution request rejects before preflight and claim while readiness is false")
+	var nonofficial_execution := _invoke_nonofficial_orchestrator()
+	var nonofficial_result: Dictionary = nonofficial_execution.get("result", {}) if nonofficial_execution.get("result", {}) is Dictionary else {}
+	_expect(int(nonofficial_execution.get("exit_code", -1)) == 0 and bool(nonofficial_result.get("success", false)) and bool(nonofficial_result.get("execution_ready", false)) and not bool(nonofficial_result.get("executed", true)), "real non-official check-only request exits before preflight and claim while reporting qualified readiness")
 	var cleanup_probe := _invoke_cleanup_probe()
 	var cleanup_result: Dictionary = cleanup_probe.get("result", {}) if cleanup_probe.get("result", {}) is Dictionary else {}
 	_expect(int(cleanup_probe.get("exit_code", -1)) == 0 and bool(cleanup_result.get("success", false)) and bool(cleanup_result.get("wrapper_cleanup_continued", false)) and bool(cleanup_result.get("residual_failure_reported", false)) and int(cleanup_result.get("final_owned_process_count", -1)) == 0, "real cleanup probe continues to wrapper after an engine-leg failure, reports the residual, and leaves zero owned processes: %s" % JSON.stringify(cleanup_probe))
@@ -562,7 +562,7 @@ func _file_snapshot(path: String) -> Dictionary:
 	}
 
 
-func _invoke_disabled_official_orchestrator() -> Dictionary:
+func _invoke_nonofficial_orchestrator() -> Dictionary:
 	var output: Array = []
 	var project_path := ProjectSettings.globalize_path("res://").trim_suffix("/").trim_suffix("\\")
 	var script_path := ProjectSettings.globalize_path(ORCHESTRATOR_PATH)
@@ -573,8 +573,7 @@ func _invoke_disabled_official_orchestrator() -> Dictionary:
 		"-ProjectPath",
 		project_path,
 		"-RunId",
-		"disabled-official-probe",
-		"-EnableColdRestoreExecution",
+		"qualified-nonofficial-probe",
 	]), output, true)
 	return {
 		"exit_code": exit_code,
