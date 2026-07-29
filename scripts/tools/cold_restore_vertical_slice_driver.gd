@@ -12,7 +12,7 @@ const TERMINAL_EVIDENCE := preload("res://scripts/tools/cold_restore_terminal_ev
 const AUTHORITATIVE_STEPPER := preload("res://scripts/tools/full_run_authoritative_runtime_stepper.gd")
 
 const FORMAL_FULL_RUN := false
-const EXECUTION_READY := true
+const EXECUTION_READY := false
 const ACCEPTANCE_SEED := 900626424
 const ACCEPTANCE_CHALLENGE_DEPTH := 1
 const SCHEMA_VERSION := 4

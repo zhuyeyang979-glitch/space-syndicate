@@ -15,7 +15,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $ORCHESTRATOR_SCHEMA_VERSION = 4
 $FORMAL_FULL_RUN = $false
-$DriverExecutionReady = $true
+$DriverExecutionReady = $false
 $DriverScript = "res://scripts/tools/cold_restore_vertical_slice_driver.gd"
 $ArtifactRoot = "user://test_runs/alpha04c/$RunId/evidence"
 $OfficialClaimSchemaVersion = 2

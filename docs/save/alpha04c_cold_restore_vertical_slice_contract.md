@@ -2,7 +2,7 @@
 
 ```text
 FORMAL_FULL_RUN=false
-DRIVER_EXECUTION_READY=true
+DRIVER_EXECUTION_READY=false
 CONTRACT_SCHEMA_VERSION=4
 CURRENT_RUNTIME_RULE_VERSION=v0.6
 SAVE_SECTION_COUNT=19
@@ -49,8 +49,13 @@ zero world, card-resolution, and RNG advance after submission. Qualification
 wrote no Save and did not create the shared official ledger. The orchestrator
 rejects a dirty worktree, requires the one shared ledger plus PID-bound launch
 attestations, and places the production slot in one run-specific isolated
-user-data root shared by A, B, and C. `DRIVER_EXECUTION_READY=true` authorizes
-only that guarded one-shot protocol; it is not itself cold-restore evidence.
+user-data root shared by A, B, and C. The one authorized official invocation at
+`ab6f6d8ceed92824b864dc54be628ffd3c262b59` failed during the driver contract
+preflight with `driver_contract_preflight_process_failed`. The driver emitted a
+valid v4 contract, but the wrapper/engine exit-code assertion rejected before
+Process A, before Save, and before ledger creation. The authorization is treated
+as consumed; `DRIVER_EXECUTION_READY=false` is a post-attempt safety latch and
+must not be reopened without a new explicit task and authorization.
 
 ## High-level application gateway
 
