@@ -1,13 +1,14 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-07-29T08:40:00+09:00",
+  "generated_at": "2026-07-29T13:37:00+09:00",
   "source": {
     "repository": "zhuyeyang979-glitch/space-syndicate",
     "branch": "codex/alpha04-production-player-card-dock-cde98ae",
     "main_sha": "b5763bbfb96994aa55ab36ae4335db332d9818a8",
     "integration_base_sha": "e6dc983be8154908e77d3a11bdee353a1b705152",
     "implementation_evidence_commit": "b230833979d268b0c6d50ca52af1b7669847dee8",
-    "upstream_commit": "b230833979d268b0c6d50ca52af1b7669847dee8",
+    "diagnostic_evidence_commit": "9ed2bb6202a679f0589d9aefc131ecfe31fb7b17",
+    "upstream_commit": "9ed2bb6202a679f0589d9aefc131ecfe31fb7b17",
     "pull_request": 72,
     "draft": true,
     "pull_request_base": "codex/v07-table-shell-orbit-retirement-e19eb4a",
@@ -23,7 +24,7 @@
   "program": {
     "program_id": "ALPHA_0_4_PLAYER_VISIBLE_SAMPLE",
     "status": "ACTIVE",
-    "current_phase": "ALPHA_0_4_A_PLAYER_CARD_DOCK_PARTIAL_FORMAL_FULL_RUN",
+    "current_phase": "ALPHA_0_4_A_ECONOMY_DIAGNOSIS_COMPLETE_FORMAL_RERUN_AWAITING_AUTHORIZATION",
     "active_program_milestone": "ALPHA_0_4_PLAYER_VISIBLE_SAMPLE",
     "alpha_0_4_a_player_card_dock": "PARTIAL",
     "current_production_runtime_ruleset": "V0.6",
@@ -60,10 +61,11 @@
     },
     {
       "task_id": "ALPHA_0_4_A_PLAYER_CARD_DOCK_CONTINUATION_DIRECT_COMMODITY_CLAIM_AND_ART",
-      "status": "PARTIAL_DRAFT_PR",
+      "status": "PARTIAL_DRAFT_PR_DIAGNOSIS_GREEN",
       "base_sha": "e6dc983be8154908e77d3a11bdee353a1b705152",
       "branch": "codex/alpha04-production-player-card-dock-cde98ae",
       "implementation_evidence_commit": "b230833979d268b0c6d50ca52af1b7669847dee8",
+      "diagnostic_evidence_commit": "9ed2bb6202a679f0589d9aefc131ecfe31fb7b17",
       "pull_request": 72,
       "pushed": true,
       "merged_to_main": false,
@@ -137,8 +139,8 @@
   "validation": {
     "focused_alpha_0_4_a_regression": {
       "status": "GREEN",
-      "suite_count": 13,
-      "checks": 948,
+      "suite_count": 15,
+      "checks": 1013,
       "failures": 0
     },
     "semantic_protocol": {
@@ -165,6 +167,26 @@
       "runtime_error_count": 0,
       "stopped_cleanly": true,
       "godot_process_count_after_cleanup": 0
+    },
+    "economy_continuation_nonformal_diagnosis": {
+      "status": "GREEN",
+      "report": "reports/playability/full_run/alpha04_economy_continuation_nonformal_diagnosis.json",
+      "formal_full_run": false,
+      "terminal_settlement_required": false,
+      "planner_parity": "GREEN_45_OF_45",
+      "claim_to_sale_integration": "GREEN_20_OF_20_REPEAT_2",
+      "formal_stop_world_seconds": 55.647202,
+      "claim_on_second_facility_world_seconds": 55.661847,
+      "formal_stop_to_second_facility_delta_world_seconds": 0.014645,
+      "claim_on_first_sale_world_seconds": 62.804056,
+      "claim_off_first_sale_world_seconds": 62.192524,
+      "claim_on_world_80_facilities_sales_invalid": "2_3_0",
+      "claim_off_world_80_facilities_sales_invalid": "2_3_0",
+      "dock_adapter_regression": false,
+      "direct_claim_capacity_blocker": false,
+      "visible_dock_observation_primary_throughput_cause": false,
+      "production_fix_required": false,
+      "formal_gate_result_changed": false
     },
     "formal_full_run": {
       "status": "INCOMPLETE",
@@ -203,18 +225,25 @@
       "performance_metrics_recorded": true,
       "claim_capacity_cause_excluded": true,
       "planner_observation": "The installed shipping factory supplied 20 while the largest anonymous demand gap was energy 70. The continuation planner selected energy/missing_matching_factory and never obtained and played that factory inside the observation window, so no same-commodity matched row or sale formed.",
-      "diagnostic_classification": "THROUGHPUT_CONFOUNDED_BEFORE_HISTORICAL_FIRST_SALE_WINDOW_WITH_NO_DOCK_ADAPTER_REGRESSION_EVIDENCE",
+      "diagnostic_classification": "FORMAL_OBSERVATION_ENDED_IMMEDIATELY_BEFORE_SALE_ENABLING_FACILITY",
       "historical_first_sale_world_seconds": [
         62.486,
         70.596
       ],
       "observed_world_to_session_wall_ratio": 0.3616,
-      "missing_integration_test": "claim -> normal-card purchase/discard -> facility install -> matched sale",
+      "missing_integration_test": null,
+      "closed_integration_test": "claim -> normal-card purchase/discard -> facility install -> matched sale",
+      "nonformal_second_facility_world_seconds": 55.661847,
+      "formal_stop_to_second_facility_delta_world_seconds": 0.014645,
+      "production_fix_required": false,
       "environment_note": "A pre-existing district_supply_purchase_projection_receipt_test Godot process had consumed about 3500 CPU seconds and was still running concurrently. It was stopped after the formal run. This is a material confound but does not convert the formal result into a pass."
     }
   },
   "known_test_state": {
-    "alpha_0_4_a_focused": "GREEN_948_OF_948",
+    "alpha_0_4_a_focused": "GREEN_1013_OF_1013",
+    "dock_legacy_planner_parity": "GREEN_45_OF_45",
+    "claim_to_sale_integration": "GREEN_20_OF_20_REPEAT_2",
+    "economy_continuation_nonformal_diagnosis": "GREEN_FORMAL_STOP_0.014645_WORLD_SECONDS_BEFORE_SECOND_FACILITY",
     "production_capture": "GREEN_176_OF_176",
     "action_protocol": "GREEN_119_OF_119",
     "table_action_flow": "GREEN_57_OF_57",
@@ -230,7 +259,8 @@
     "global_stale_baselines": "NOT_CLAIMED_GREEN"
   },
   "next_boundaries": {
-    "required_repair": "ALPHA_0_4_A_FULL_RUN_ECONOMY_CONTINUATION_DIAGNOSIS",
+    "required_repair": "ALPHA_0_4_A_SEPARATELY_AUTHORIZED_FORMAL_FULL_RUN_RERUN",
+    "formal_rerun_authorized": false,
     "product_after_repair": "ALPHA_0_4_B_PRODUCTION_ROSTER_REGION_POPUP_AND_RIGHT_INSPECTOR_RETIREMENT",
     "architecture_blocked": "P0_AI_WORLD_TYPED_PORTS_MAIN_HOST_DETACHMENT",
     "save_resume": "P1_SAVE_RESUME_OWNER_COVERAGE_AND_COLD_RESTORE_VERTICAL_SLICE",

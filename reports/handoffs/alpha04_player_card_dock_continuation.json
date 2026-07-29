@@ -1,8 +1,8 @@
 {
   "task_id": "ALPHA_0_4_A_PLAYER_CARD_DOCK_CONTINUATION_DIRECT_COMMODITY_CLAIM_AND_ART",
-  "updated_at_local": "2026-07-29T08:40:00+09:00",
+  "updated_at_local": "2026-07-29T13:37:00+09:00",
   "status": "partial",
-  "status_reason": "The production UI, direct claim, commodity art, focused tests, production capture, semantic protocol, and MCP launch are green, but the single authorized formal FullRun ended incomplete before sale, victory, settlement, and terminal quiescence.",
+  "status_reason": "The production slice and non-Formal economy diagnosis are green with no production repair required, but the single authorized Formal FullRun remains incomplete and was not formally rerun.",
   "resume": {
     "mode": "EXISTING_DIRTY_TASK_WORKTREE",
     "effective_base_sha": "e6dc983be8154908e77d3a11bdee353a1b705152",
@@ -14,11 +14,14 @@
   },
   "release": {
     "implementation_evidence_commit": "b230833979d268b0c6d50ca52af1b7669847dee8",
+    "diagnostic_evidence_commit": "9ed2bb6202a679f0589d9aefc131ecfe31fb7b17",
     "checkpoint_commits": [
       "9b2efd8",
       "b6430d6",
       "a815b31",
-      "b230833"
+      "b230833",
+      "c0b2108",
+      "9ed2bb6"
     ],
     "pushed": true,
     "pull_request": 72,
@@ -107,8 +110,8 @@
   "validation": {
     "focused_regression": {
       "status": "pass",
-      "suite_count": 13,
-      "checks": 948,
+      "suite_count": 15,
+      "checks": 1013,
       "failures": 0
     },
     "semantic_protocol": {
@@ -144,6 +147,26 @@
       "runtime_error_count": 0,
       "stopped_cleanly": true,
       "process_count_after": 0
+    },
+    "economy_continuation_nonformal_diagnosis": {
+      "status": "pass",
+      "report": "reports/playability/full_run/alpha04_economy_continuation_nonformal_diagnosis.json",
+      "formal_full_run": false,
+      "terminal_settlement_required": false,
+      "planner_parity_checks": 45,
+      "claim_to_sale_integration_checks": 20,
+      "claim_to_sale_repeat_pass_count": 2,
+      "claim_on_second_facility_world_seconds": 55.661847,
+      "formal_stop_to_claim_on_second_facility_delta_world_seconds": 0.014645,
+      "claim_on_first_sale_world_seconds": 62.804056,
+      "claim_off_first_sale_world_seconds": 62.192524,
+      "claim_on_facility_count_at_world_80": 2,
+      "claim_off_facility_count_at_world_80": 2,
+      "claim_on_sale_receipt_count_at_world_80": 3,
+      "claim_off_sale_receipt_count_at_world_80": 3,
+      "dock_adapter_regression": false,
+      "direct_claim_capacity_blocker": false,
+      "production_fix_required": false
     }
   },
   "formal_full_run": {
@@ -185,7 +208,7 @@
     "commodity_performance_metrics_recorded": true,
     "claim_capacity_cause_excluded": true,
     "dock_adapter_regression_evidence": false,
-    "diagnostic_classification": "throughput_confounded_before_historical_first_sale_window",
+    "diagnostic_classification": "formal_observation_ended_immediately_before_sale_enabling_facility",
     "historical_first_sale_world_seconds": [
       62.486,
       70.596
@@ -200,7 +223,11 @@
       "matching_factory_obtained_in_window": false,
       "same_commodity_matched_row_formed": false
     },
-    "missing_integration_test": "claim -> normal-card purchase/discard -> facility install -> matched sale",
+    "missing_integration_test": null,
+    "closed_integration_test": "claim -> normal-card purchase/discard -> facility install -> matched sale",
+    "nonformal_second_facility_world_seconds": 55.661847,
+    "formal_stop_to_second_facility_delta_world_seconds": 0.014645,
+    "production_fix_required": false,
     "environment_confound": {
       "present": true,
       "process": "district_supply_purchase_projection_receipt_test.gd",
@@ -209,6 +236,7 @@
       "changes_gate_result": false
     }
   },
-  "next_single_task": "ALPHA_0_4_A_FULL_RUN_ECONOMY_CONTINUATION_DIAGNOSIS",
+  "next_single_task": "ALPHA_0_4_A_SEPARATELY_AUTHORIZED_FORMAL_FULL_RUN_RERUN",
+  "formal_rerun_authorized": false,
   "next_product_boundary_after_green": "ALPHA_0_4_B_PRODUCTION_ROSTER_REGION_POPUP_AND_RIGHT_INSPECTOR_RETIREMENT"
 }

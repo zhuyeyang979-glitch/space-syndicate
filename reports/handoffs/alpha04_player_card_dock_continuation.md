@@ -1,16 +1,17 @@
 # Alpha 0.4-A Player Card Dock continuation
 
-Updated: 2026-07-29 08:40 (Asia/Tokyo)
+Updated: 2026-07-29 13:37 (Asia/Tokyo)
 
 ## Outcome
 
 `STATUS=PARTIAL`.
 
 The production Player Card Dock, direct commodity claim interaction, commodity
-art, focused tests, production capture, semantic registry, and Godot MCP launch
-are complete and pushed. The task cannot be marked GREEN because the one
-authorized formal FullRun ended `INCOMPLETE` before sale, victory, settlement,
-or terminal quiescence. It was not rerun.
+art, focused tests, production capture, semantic registry, Godot MCP launch,
+and non-Formal economy-continuation diagnosis are complete. The diagnosis is
+green and found no production fix to make. The parent task cannot be marked
+GREEN because the one authorized Formal FullRun remains `INCOMPLETE` before
+sale, victory, settlement, or terminal quiescence. It was not formally rerun.
 
 - Draft PR: https://github.com/zhuyeyang979-glitch/space-syndicate/pull/72
 - Draft base: `codex/v07-table-shell-orbit-retirement-e19eb4a` (PR #71 head)
@@ -38,8 +39,10 @@ excluded from every commit.
 2. `b6430d6 art(commodities): add abstract illustration coverage`
 3. `a815b31 feat(ui): cut over card dock and direct commodity claims`
 4. `b230833 test(playability): prove production card dock and direct claims`
+5. `c0b2108 docs(program): record partial Alpha 0.4-A formal handoff`
+6. `9ed2bb6 test(playability): diagnose card dock economy continuation`
 
-All four checkpoints are pushed to
+The checkpoints are pushed to
 `origin/codex/alpha04-production-player-card-dock-cde98ae`.
 
 ## Production implementation
@@ -109,7 +112,7 @@ player text, rules, AI inputs, Save fields, or RNG calls.
 
 ### Focused regression
 
-Thirteen suites passed: `948 checks / 0 failures`.
+Fifteen suites passed: `1013 checks / 0 failures`.
 
 - commodity art coverage: 403
 - direct claim: 53
@@ -124,6 +127,8 @@ Thirteen suites passed: `948 checks / 0 failures`.
 - target-mode GameScreen integration: 10
 - commodity target selection: 18
 - FullRun driver contract: 220
+- Dock/legacy Planner parity: 45
+- claim-to-sale forced-capacity integration: 20
 
 The semantic action protocol separately passed `119 / 119`. Main architecture
 remains `219` checks green. Focused privacy, Save/RNG ownership, UI text, and
@@ -220,16 +225,57 @@ evidence of a Dock adapter regression: the Dock path successfully submitted the
 first facility card, 130 of 134 actions progressed with zero invalid actions,
 and the mapped fields match the planner contract.
 
-The strongest classification is wall-time/throughput confounding before the
-historical first-sale window. This run advanced only 55.647 world seconds in
+The original classification was wall-time/throughput confounding before the
+historical first-sale window. The run advanced only 55.647 world seconds in
 153.906 session-wall seconds (about 0.36x), while same-seed historical traces
-first sold around world 62.486 and 70.596 seconds at roughly 1.18-1.20x
-throughput. A pre-existing orphan
+first sold around world 62.486 and 70.596 seconds. A pre-existing orphan
 `district_supply_purchase_projection_receipt_test.gd` Godot process had been
 running since 03:17 and had accumulated about 3500 CPU seconds while the formal
 run executed. It was stopped afterward and the final Godot process count is
 zero. This is a material environment confound, not proof of external causation;
 it does not turn the formal result into a pass or authorize a rerun.
+
+## Non-Formal economy-continuation diagnosis
+
+The focused diagnosis is green. Its full machine-readable and narrative
+evidence is in
+`reports/playability/full_run/alpha04_economy_continuation_nonformal_diagnosis.*`.
+
+- Dock/legacy Planner parity: `45 / 45`.
+- Claim-to-sale forced-capacity integration: `20 / 20`, passed twice from a
+  fixed session seed.
+- Claim-on world-80 probe: 2 facilities, 3 Sale Receipts, 0 invalid actions,
+  claim request/success/duplicate `1 / 1 / 0`.
+- Claim-off world-80 probe: 2 facilities, 3 Sale Receipts, 0 invalid actions.
+- Claim-on first Sale Receipt: world `62.804056`.
+- Claim-off first Sale Receipt: world `62.192524`.
+- Neither arm recorded pending discard or rack-advancement purchase during the
+  natural continuation path.
+
+Most importantly, the claim-on arm installed its second, sale-enabling facility
+at world `55.661847`. The Formal run stopped at world `55.647202`, only
+`0.014645` world seconds earlier. It had reached the correct continuation path
+and ended immediately before the facility boundary.
+
+The forced-capacity integration independently proves that a real typed claim
+can fill `SHARED_V06` to 5, enter real Drawer quote/purchase, open pending
+discard, discard a chosen filler while preserving the claim, install the
+factory and market, consume the original claim into matching demand, and
+produce a positive Sale Receipt, cash delta, and GDP.
+
+A world-15 presentation A/B recorded `0.494677` world/wall with visible Main
+plus explicit Dock observation and `0.476920` with hidden Main and no explicit
+Dock observation. Both arms used the same 82/79/0 action trace and 22 rack
+rotations. This does not isolate Dock composition, but it excludes rendering
+plus the explicit per-frame Dock observer as the dominant throughput cause.
+
+Final diagnosis:
+
+- Dock adapter regression: false.
+- direct-claim capacity blocker: false.
+- production repair required: false.
+- Formal gate result changed: false.
+- Formal command count / rerun count: `1 / 0`.
 
 ## Invariants
 
@@ -244,25 +290,14 @@ it does not turn the formal result into a pass or authorize a rerun.
 - new Main responsibilities: 0
 - `scripts/main.gd`, `scenes/main.tscn`, and `project.godot` diff: 0
 
-## Next single task
+## Next single gate
 
-`ALPHA_0_4_A_FULL_RUN_ECONOMY_CONTINUATION_DIAGNOSIS`
+`ALPHA_0_4_A_SEPARATELY_AUTHORIZED_FORMAL_FULL_RUN_RERUN`
 
-Use only non-Formal probes:
-
-1. compare old Hand DTO and Dock rows from the same real hand source and require
-   identical planner selection, availability, reason, and offer fingerprint;
-2. advance seed `900626424` to 75-80 world seconds instead of a wall-time
-   budget and prove a first sale with Dock plus early commodity claim;
-3. A/B early claim on that short fixed-world probe and compare facility, first
-   sale, rack search, and discard trace;
-4. measure 10-20 seconds of clean-process throughput for hidden Main versus
-   visible Main plus per-frame Dock observation.
-
-Also add the missing
-`claim -> purchase/discard -> facility -> matched sale` integration test. A
-new terminal FullRun requires explicit separate authorization because this
-task's one formal run has already been consumed.
+The diagnosis is complete; there is no production patch to apply first. A new
+terminal FullRun still requires explicit separate authorization because this
+task's one Formal run has already been consumed. Until that run is authorized
+and green, PR #72 remains Draft/PARTIAL and must not merge.
 
 After that gate is green, the next product boundary remains
 `ALPHA_0_4_B_PRODUCTION_ROSTER_REGION_POPUP_AND_RIGHT_INSPECTOR_RETIREMENT`.
