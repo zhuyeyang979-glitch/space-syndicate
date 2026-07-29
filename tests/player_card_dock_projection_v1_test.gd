@@ -358,4 +358,3 @@ func _finish() -> void:
 		push_error("PLAYER_CARD_DOCK_PROJECTION_V1_TEST: %s" % failure)
 	print("PLAYER_CARD_DOCK_PROJECTION_V1_TEST|status=FAIL|checks=%d|failures=%d" % [_checks, _failures.size()])
 	quit(1)
-

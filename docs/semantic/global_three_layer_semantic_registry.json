@@ -1014,7 +1014,7 @@
       "player_feedback_schema": "res://scenes/ui/table/CardDockActionFeedback.tscn",
       "visibility_policy": "Capability revision, actor identity and source revision are validated before one pure-data projection is applied.",
       "privacy_policy": "viewer_private with stale-capability rejection",
-      "capacity_mode": "SHARED_V06 production and INDEPENDENT_V07 reference rendering",
+      "capacity_mode": "SHARED_V06 production only; independent 5+5 is deferred and is not rendered as production truth",
       "runtime_ruleset": "V0.6",
       "rng_policy": "The source, target, hover, focus, sort and feedback paths consume zero RNG.",
       "save_owner": "none; presentation is not persistence",
