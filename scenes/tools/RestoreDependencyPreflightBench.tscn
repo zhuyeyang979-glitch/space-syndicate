@@ -1,0 +1,15 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/restore_dependency_preflight_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RouteNetworkRuntimeController.tscn" id="2_routes"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MilitaryRuntimeController.tscn" id="3_military"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionQueueRuntimeService.tscn" id="4_queue"]
+
+[node name="RestoreDependencyPreflightBench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="RouteNetworkRuntimeController" parent="." instance=ExtResource("2_routes")]
+
+[node name="MilitaryRuntimeController" parent="." instance=ExtResource("3_military")]
+
+[node name="CardResolutionQueueRuntimeService" parent="." instance=ExtResource("4_queue")]

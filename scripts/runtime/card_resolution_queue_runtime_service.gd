@@ -605,6 +605,62 @@ func preflight_save_data(data: Dictionary) -> Dictionary:
 	}
 
 
+## Candidate-only registry preflight. Player slots and resolution lineage are
+## checked against normalized sections without reading live queue consumers.
+func preflight_restore_dependencies(section_state: Dictionary, all_normalized_states: Dictionary) -> Dictionary:
+	var section_preflight := preflight_save_data(section_state)
+	if not bool(section_preflight.get("accepted", false)):
+		return _restore_dependency_rejection("card_resolution_queue_dependency_section_invalid")
+	if not (all_normalized_states.get("session") is Dictionary) \
+			or not (all_normalized_states.get("card_resolution_execution") is Dictionary) \
+			or not (all_normalized_states.get("card_resolution_history") is Dictionary):
+		return _restore_dependency_rejection("card_resolution_queue_dependency_section_missing")
+	var context := _queue_restore_dependency_context(
+		all_normalized_states.get("session") as Dictionary,
+		all_normalized_states.get("card_resolution_execution") as Dictionary,
+		all_normalized_states.get("card_resolution_history") as Dictionary
+	)
+	if not bool(context.get("valid", false)):
+		return _restore_dependency_rejection(str(context.get("reason_code", "card_resolution_queue_dependency_context_invalid")))
+	var queue_entries: Array = []
+	for entry_variant in section_state.get("current_queue") as Array:
+		queue_entries.append({"lane": "current", "entry": entry_variant})
+	if not (section_state.get("active_entry") as Dictionary).is_empty():
+		queue_entries.append({"lane": "active", "entry": section_state.get("active_entry")})
+	for entry_variant in section_state.get("next_queue") as Array:
+		queue_entries.append({"lane": "next", "entry": entry_variant})
+	var queue_ids: Dictionary = {}
+	var active_resolution_id := -1
+	for row_variant in queue_entries:
+		var row := row_variant as Dictionary
+		var lane := str(row.get("lane", ""))
+		var entry := row.get("entry") as Dictionary
+		var slot_result := _validate_queue_restore_slot(entry, context)
+		if not bool(slot_result.get("valid", false)):
+			return _restore_dependency_rejection(str(slot_result.get("reason_code", "card_resolution_queue_dependency_slot_invalid")))
+		var resolution_id := int(entry.get("resolution_id", -1))
+		queue_ids[str(resolution_id)] = lane
+		if lane == "active":
+			active_resolution_id = resolution_id
+	var lineage_result := _validate_queue_restore_lineage(
+		queue_ids,
+		active_resolution_id,
+		int(section_state.get("resolution_sequence", 0)),
+		section_state.get("active_entry") as Dictionary,
+		context
+	)
+	if not bool(lineage_result.get("valid", false)):
+		return _restore_dependency_rejection(str(lineage_result.get("reason_code", "card_resolution_queue_dependency_lineage_invalid")))
+	return {
+		"accepted": true,
+		"reason": "",
+		"reason_code": "card_resolution_queue_restore_dependencies_valid",
+		"queue_reference_count": queue_ids.size(),
+		"execution_lineage_count": int(lineage_result.get("execution_lineage_count", 0)),
+		"history_lineage_count": int(lineage_result.get("history_lineage_count", 0)),
+	}
+
+
 func apply_save_data(data: Dictionary) -> Dictionary:
 	var preflight := preflight_save_data(data)
 	if not bool(preflight.get("accepted", false)):
@@ -863,6 +919,178 @@ func _normalize_legacy_entry(source: Dictionary) -> Dictionary:
 	entry.erase("tip_paid")
 	entry.erase("tip_paid_amount")
 	return entry
+
+
+func _queue_restore_dependency_context(
+	session_state: Dictionary,
+	execution_state: Dictionary,
+	history_state: Dictionary
+) -> Dictionary:
+	if not (session_state.get("world_session_state") is Dictionary):
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_context_shape_invalid"}
+	var world_state := session_state.get("world_session_state") as Dictionary
+	if not (world_state.get("players") is Array):
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_player_roster_invalid"}
+	var players_by_index: Dictionary = {}
+	var players := world_state.get("players") as Array
+	for player_index in range(players.size()):
+		var player_variant: Variant = players[player_index]
+		if not (player_variant is Dictionary) \
+				or not ((player_variant as Dictionary).get("id") is int) \
+				or int((player_variant as Dictionary).get("id")) != player_index \
+				or not ((player_variant as Dictionary).get("slots") is Array):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_player_roster_invalid"}
+		players_by_index[str(player_index)] = player_variant
+
+	var completed_result := _restore_id_set(execution_state.get("completed_resolution_ids"), "execution_completed")
+	var inflight_result := _restore_id_set(execution_state.get("inflight_resolution_ids"), "execution_inflight")
+	var history_result := _restore_id_set(history_state.get("appended_resolution_ids"), "history")
+	if not bool(completed_result.get("valid", false)):
+		return completed_result
+	if not bool(inflight_result.get("valid", false)):
+		return inflight_result
+	if not bool(history_result.get("valid", false)):
+		return history_result
+	if not (execution_state.get("inflight_execution_transactions") is Array) \
+			or not (execution_state.get("pending_settlements") is Array) \
+			or not (history_state.get("history") is Array):
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_lineage_shape_invalid"}
+	var completed_ids := completed_result.get("ids") as Dictionary
+	var inflight_ids := inflight_result.get("ids") as Dictionary
+	for resolution_key_variant in completed_ids.keys():
+		if inflight_ids.has(str(resolution_key_variant)):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_execution_overlap"}
+	var inflight_transactions: Dictionary = {}
+	for transaction_variant in execution_state.get("inflight_execution_transactions") as Array:
+		if not (transaction_variant is Dictionary):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_execution_record_invalid"}
+		var transaction := transaction_variant as Dictionary
+		var resolution_id := int(transaction.get("resolution_id", -1))
+		var resolution_key := str(resolution_id)
+		if resolution_id <= 0 or inflight_transactions.has(resolution_key) or not inflight_ids.has(resolution_key):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_execution_record_invalid"}
+		inflight_transactions[resolution_key] = transaction
+	if inflight_transactions.size() != inflight_ids.size():
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_execution_record_missing"}
+	var pending_ids: Dictionary = {}
+	for pending_variant in execution_state.get("pending_settlements") as Array:
+		if not (pending_variant is Dictionary):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_settlement_record_invalid"}
+		var resolution_id := int((pending_variant as Dictionary).get("resolution_id", -1))
+		var resolution_key := str(resolution_id)
+		if resolution_id <= 0 or pending_ids.has(resolution_key) or not completed_ids.has(resolution_key):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_settlement_record_invalid"}
+		pending_ids[resolution_key] = true
+	var history_ids := history_result.get("ids") as Dictionary
+	var authored_history_ids: Dictionary = {}
+	for entry_variant in history_state.get("history") as Array:
+		if not (entry_variant is Dictionary):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_history_record_invalid"}
+		var resolution_id := int((entry_variant as Dictionary).get("resolution_id", (entry_variant as Dictionary).get("queued_order", -1)))
+		var resolution_key := str(resolution_id)
+		if resolution_id <= 0 or authored_history_ids.has(resolution_key) or not history_ids.has(resolution_key):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_history_record_invalid"}
+		authored_history_ids[resolution_key] = true
+	if authored_history_ids.size() != history_ids.size():
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_history_record_missing"}
+	return {
+		"valid": true,
+		"reason_code": "card_resolution_queue_dependency_context_valid",
+		"players_by_index": players_by_index,
+		"completed_ids": completed_ids,
+		"inflight_ids": inflight_ids,
+		"inflight_transactions": inflight_transactions,
+		"pending_ids": pending_ids,
+		"history_ids": history_ids,
+	}
+
+
+func _restore_id_set(value: Variant, label: String) -> Dictionary:
+	if not (value is Array):
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_%s_ids_invalid" % label, "ids": {}}
+	var ids: Dictionary = {}
+	for id_variant in value as Array:
+		if not (id_variant is int) or int(id_variant) <= 0 or ids.has(str(int(id_variant))):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_%s_ids_invalid" % label, "ids": {}}
+		ids[str(int(id_variant))] = true
+	return {"valid": true, "ids": ids}
+
+
+func _validate_queue_restore_slot(entry: Dictionary, context: Dictionary) -> Dictionary:
+	var player_key := str(int(entry.get("player_index", -1)))
+	var players_by_index := context.get("players_by_index") as Dictionary
+	if not players_by_index.has(player_key):
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_player_missing"}
+	var player := players_by_index.get(player_key) as Dictionary
+	var slots := player.get("slots") as Array
+	var slot_index := int(entry.get("slot_index", -1))
+	if slot_index < 0 or slot_index >= slots.size():
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_slot_missing"}
+	if bool(entry.get("consumed_on_queue", false)):
+		return {"valid": true, "reason_code": "card_resolution_queue_dependency_consumed_slot_valid"}
+	var slot_variant: Variant = slots[slot_index]
+	if not (slot_variant is Dictionary):
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_persistent_slot_missing"}
+	var slot := slot_variant as Dictionary
+	var skill := entry.get("skill") as Dictionary
+	if not bool(slot.get("queued_for_resolution", false)) \
+			or str(slot.get("name", "")).is_empty() \
+			or str(slot.get("name", "")) != str(skill.get("name", "")):
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_persistent_slot_mismatch"}
+	for identity_key in ["card_instance_id", "instance_id", "card_id"]:
+		if (slot.has(identity_key) or skill.has(identity_key)) and slot.get(identity_key) != skill.get(identity_key):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_persistent_slot_mismatch"}
+	return {"valid": true, "reason_code": "card_resolution_queue_dependency_slot_valid"}
+
+
+func _validate_queue_restore_lineage(
+	queue_ids: Dictionary,
+	active_resolution_id: int,
+	authoritative_resolution_sequence: int,
+	candidate_active_entry: Dictionary,
+	context: Dictionary
+) -> Dictionary:
+	var completed_ids := context.get("completed_ids") as Dictionary
+	var inflight_ids := context.get("inflight_ids") as Dictionary
+	var inflight_transactions := context.get("inflight_transactions") as Dictionary
+	var pending_ids := context.get("pending_ids") as Dictionary
+	var history_ids := context.get("history_ids") as Dictionary
+	var maximum_resolution_id := 0
+	for source in [queue_ids, completed_ids, inflight_ids, pending_ids, history_ids]:
+		for resolution_key_variant in (source as Dictionary).keys():
+			maximum_resolution_id = maxi(maximum_resolution_id, int(str(resolution_key_variant)))
+	if maximum_resolution_id > authoritative_resolution_sequence:
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_sequence_precedes_lineage"}
+	for resolution_key_variant in queue_ids.keys():
+		var resolution_key := str(resolution_key_variant)
+		var lane := str(queue_ids.get(resolution_key_variant, ""))
+		if completed_ids.has(resolution_key) or history_ids.has(resolution_key):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_terminal_id_still_queued"}
+		if lane != "active" and inflight_ids.has(resolution_key):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_inflight_id_waiting"}
+	if active_resolution_id > 0 and inflight_ids.has(str(active_resolution_id)):
+		var transaction := inflight_transactions.get(str(active_resolution_id)) as Dictionary
+		var transaction_entry: Dictionary = transaction.get("active_entry", {}) if transaction.get("active_entry", {}) is Dictionary else {}
+		if int(transaction_entry.get("resolution_id", -1)) != active_resolution_id \
+				or str(transaction.get("entry_fingerprint", "")) != JSON.stringify(candidate_active_entry).sha256_text():
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_active_execution_mismatch"}
+	for history_key_variant in history_ids.keys():
+		var history_key := str(history_key_variant)
+		if completed_ids.has(history_key):
+			continue
+		if not inflight_transactions.has(history_key) \
+				or not bool((inflight_transactions.get(history_key) as Dictionary).get("history_appended", false)):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_history_orphan"}
+	return {
+		"valid": true,
+		"reason_code": "card_resolution_queue_dependency_lineage_valid",
+		"execution_lineage_count": completed_ids.size() + inflight_ids.size(),
+		"history_lineage_count": history_ids.size(),
+	}
+
+
+func _restore_dependency_rejection(reason_code: String) -> Dictionary:
+	return {"accepted": false, "reason": reason_code, "reason_code": reason_code}
 
 
 func _validate_save_data(data: Dictionary) -> Dictionary:

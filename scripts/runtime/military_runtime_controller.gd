@@ -946,6 +946,49 @@ func preflight_save_data(data: Dictionary) -> Dictionary:
 	}
 
 
+## Candidate-only registry preflight. All roster and geography references are
+## resolved from normalized save sections, never from a partially applied world.
+func preflight_restore_dependencies(section_state: Dictionary, all_normalized_states: Dictionary) -> Dictionary:
+	var section_preflight := preflight_save_data(section_state)
+	if not bool(section_preflight.get("accepted", false)):
+		return _restore_dependency_rejection("military_dependency_section_invalid")
+	if not (all_normalized_states.get("session") is Dictionary) \
+			or not (all_normalized_states.get("region_infrastructure") is Dictionary):
+		return _restore_dependency_rejection("military_dependency_section_missing")
+	var context := _military_restore_dependency_context(
+		all_normalized_states.get("session") as Dictionary,
+		all_normalized_states.get("region_infrastructure") as Dictionary
+	)
+	if not bool(context.get("valid", false)):
+		return _restore_dependency_rejection(str(context.get("reason_code", "military_dependency_context_invalid")))
+	var referenced_unit_count := 0
+	for unit_variant in section_state.get("military_units") as Array:
+		var unit_result := _validate_military_restore_unit(unit_variant as Dictionary, context)
+		if not bool(unit_result.get("valid", false)):
+			return _restore_dependency_rejection(str(unit_result.get("reason_code", "military_dependency_unit_invalid")))
+		referenced_unit_count += 1
+	var journal := section_state.get("bankruptcy_estate_journal") as Dictionary
+	for record_variant in journal.values():
+		var record := record_variant as Dictionary
+		for player_variant in record.get("player_indices") as Array:
+			if not (context.get("player_indices") as Dictionary).has(str(int(player_variant))):
+				return _restore_dependency_rejection("military_dependency_bankruptcy_player_missing")
+		for snapshot_field in ["preimage", "postimage"]:
+			if not record.has(snapshot_field):
+				continue
+			for unit_variant in record.get(snapshot_field) as Array:
+				var unit_result := _validate_military_restore_unit(unit_variant as Dictionary, context)
+				if not bool(unit_result.get("valid", false)):
+					return _restore_dependency_rejection(str(unit_result.get("reason_code", "military_dependency_journal_unit_invalid")))
+				referenced_unit_count += 1
+	return {
+		"accepted": true,
+		"reason": "",
+		"reason_code": "military_restore_dependencies_valid",
+		"referenced_unit_count": referenced_unit_count,
+	}
+
+
 func apply_save_data(data: Dictionary) -> Dictionary:
 	var preflight := preflight_save_data(data)
 	if not bool(preflight.get("accepted", false)):
@@ -978,6 +1021,101 @@ func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
 
 func rollback_save_data(checkpoint: Dictionary) -> Dictionary:
 	return apply_save_data(checkpoint)
+
+
+func _military_restore_dependency_context(session_state: Dictionary, infrastructure_state: Dictionary) -> Dictionary:
+	if not (session_state.get("world_session_state") is Dictionary) \
+			or not (infrastructure_state.get("regions") is Array):
+		return {"valid": false, "reason_code": "military_dependency_context_shape_invalid"}
+	var world_state := session_state.get("world_session_state") as Dictionary
+	if not (world_state.get("players") is Array) or not (world_state.get("districts") is Array):
+		return {"valid": false, "reason_code": "military_dependency_session_world_invalid"}
+	var players := world_state.get("players") as Array
+	var districts := world_state.get("districts") as Array
+	var player_indices: Dictionary = {}
+	for player_index in range(players.size()):
+		var player_variant: Variant = players[player_index]
+		if not (player_variant is Dictionary) \
+				or not ((player_variant as Dictionary).get("id") is int) \
+				or int((player_variant as Dictionary).get("id")) != player_index:
+			return {"valid": false, "reason_code": "military_dependency_player_roster_invalid"}
+		player_indices[str(player_index)] = true
+	var district_region_by_index: Dictionary = {}
+	for district_index in range(districts.size()):
+		var district_variant: Variant = districts[district_index]
+		if not (district_variant is Dictionary):
+			return {"valid": false, "reason_code": "military_dependency_district_roster_invalid"}
+		var region_id := str((district_variant as Dictionary).get("region_id", ""))
+		if region_id.is_empty():
+			return {"valid": false, "reason_code": "military_dependency_district_roster_invalid"}
+		district_region_by_index[str(district_index)] = region_id
+	var infrastructure_region_by_index: Dictionary = {}
+	var infrastructure_region_ids: Dictionary = {}
+	for region_variant in infrastructure_state.get("regions") as Array:
+		if not (region_variant is Dictionary):
+			return {"valid": false, "reason_code": "military_dependency_region_roster_invalid"}
+		var region := region_variant as Dictionary
+		var region_id := str(region.get("region_id", ""))
+		var legacy_index := int(region.get("legacy_index", -1))
+		if region_id.is_empty() or infrastructure_region_ids.has(region_id):
+			return {"valid": false, "reason_code": "military_dependency_region_roster_invalid"}
+		infrastructure_region_ids[region_id] = true
+		if legacy_index < 0:
+			continue
+		var legacy_key := str(legacy_index)
+		if infrastructure_region_by_index.has(legacy_key) \
+				or not district_region_by_index.has(legacy_key) \
+				or str(district_region_by_index.get(legacy_key)) != region_id:
+			return {"valid": false, "reason_code": "military_dependency_region_district_mismatch"}
+		infrastructure_region_by_index[legacy_key] = region_id
+	return {
+		"valid": true,
+		"reason_code": "military_dependency_context_valid",
+		"player_indices": player_indices,
+		"district_region_by_index": district_region_by_index,
+		"infrastructure_region_by_index": infrastructure_region_by_index,
+		"infrastructure_region_ids": infrastructure_region_ids,
+	}
+
+
+func _validate_military_restore_unit(unit: Dictionary, context: Dictionary) -> Dictionary:
+	var owner_key := str(int(unit.get("owner", -1)))
+	if not (context.get("player_indices") as Dictionary).has(owner_key):
+		return {"valid": false, "reason_code": "military_dependency_unit_owner_missing"}
+	var position := int(unit.get("position", -1))
+	if position >= 0 and not _military_restore_district_valid(position, context):
+		return {"valid": false, "reason_code": "military_dependency_unit_district_missing"}
+	if unit.has("region_id"):
+		var region_id := str(unit.get("region_id", ""))
+		if region_id.is_empty() or not (context.get("infrastructure_region_ids") as Dictionary).has(region_id) \
+				or position >= 0 and str((context.get("district_region_by_index") as Dictionary).get(str(position), "")) != region_id:
+			return {"valid": false, "reason_code": "military_dependency_unit_region_missing"}
+	var motion_present := false
+	for key_variant in unit.keys():
+		if str(key_variant).begins_with("linear_move_"):
+			motion_present = true
+			break
+	if motion_present:
+		var target_district := int(unit.get("linear_move_target_district", -1))
+		if not _military_restore_district_valid(target_district, context):
+			return {"valid": false, "reason_code": "military_dependency_motion_target_missing"}
+		for district_variant in unit.get("linear_move_damaged_districts", []) as Array:
+			if not _military_restore_district_valid(int(district_variant), context):
+				return {"valid": false, "reason_code": "military_dependency_motion_district_missing"}
+	return {"valid": true, "reason_code": "military_dependency_unit_valid"}
+
+
+func _military_restore_district_valid(district_index: int, context: Dictionary) -> bool:
+	var key := str(district_index)
+	return district_index >= 0 \
+		and (context.get("district_region_by_index") as Dictionary).has(key) \
+		and (context.get("infrastructure_region_by_index") as Dictionary).has(key) \
+		and str((context.get("district_region_by_index") as Dictionary).get(key, "")) \
+			== str((context.get("infrastructure_region_by_index") as Dictionary).get(key, ""))
+
+
+func _restore_dependency_rejection(reason_code: String) -> Dictionary:
+	return {"accepted": false, "reason": reason_code, "reason_code": reason_code}
 
 
 func _validate_save_data(data: Dictionary) -> Dictionary:
