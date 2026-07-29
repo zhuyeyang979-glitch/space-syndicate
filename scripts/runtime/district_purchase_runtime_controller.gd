@@ -8,6 +8,23 @@ signal window_closed(player_index: int, district_index: int, reason: String)
 const STATE_ACTIVE := "active"
 const STATE_PENDING_DISCARD := "pending_discard"
 const STATE_CLOSED := "closed"
+const ROOT_SAVE_FIELDS := ["district_purchase_runtime"]
+const SAVE_PAYLOAD_FIELDS := ["schema_version", "sessions"]
+const SESSION_SAVE_FIELDS := [
+	"schema_version",
+	"player_index",
+	"district_index",
+	"state",
+	"supply_revision",
+	"selected_card_id",
+	"selected_supply_revision",
+	"requires_reselection",
+	"reserved_card_id",
+	"decision_sequence",
+	"pending_payload",
+	"active_quote",
+]
+const FORBIDDEN_NESTED_FIELDS := ["slots", "player_slots", "cash", "player_cash", "ai_profile", "ai_memory"]
 
 var _configured := false
 var _quote_authority: Node
@@ -283,40 +300,106 @@ func apply_legacy_save_snapshot(snapshot: Dictionary, _current_game_time: float 
 
 func to_save_data() -> Dictionary:
 	var sessions: Array = []
-	for player_variant: Variant in _windows_by_player.keys():
+	var player_indices: Array = _windows_by_player.keys()
+	player_indices.sort()
+	for player_variant: Variant in player_indices:
 		var snapshot := to_legacy_save_snapshot(int(player_variant))
 		if not snapshot.is_empty():
 			sessions.append(snapshot)
-	return {"district_purchase_runtime": {"schema_version": 2, "sessions": sessions}}
+	var candidate := {"district_purchase_runtime": {"schema_version": 2, "sessions": sessions}}
+	var preflight := preflight_save_data(candidate)
+	return (preflight.get("normalized_state", {}) as Dictionary).duplicate(true) \
+			if bool(preflight.get("accepted", false)) else {}
+
+
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	if not _configured or not _is_data_only(data) or _contains_forbidden_nested_field(data):
+		return {"accepted": false, "reason_code": "purchase_session_save_invalid"}
+	var payload: Dictionary = {}
+	if _has_exact_keys(data, ROOT_SAVE_FIELDS) and data.get("district_purchase_runtime") is Dictionary:
+		payload = data.get("district_purchase_runtime", {}) as Dictionary
+	elif _has_exact_keys(data, SAVE_PAYLOAD_FIELDS):
+		payload = data
+	else:
+		return {"accepted": false, "reason_code": "purchase_session_save_invalid"}
+	if not _has_exact_keys(payload, SAVE_PAYLOAD_FIELDS) \
+			or not (payload.get("schema_version") is int) or int(payload.get("schema_version", 0)) != 2 \
+			or not (payload.get("sessions") is Array):
+		return {"accepted": false, "reason_code": "purchase_session_save_invalid"}
+	var sessions_by_player: Dictionary = {}
+	for snapshot_variant in payload.get("sessions", []) as Array:
+		if not (snapshot_variant is Dictionary):
+			return {"accepted": false, "reason_code": "purchase_session_snapshot_invalid"}
+		var session_preflight := _preflight_session(snapshot_variant as Dictionary)
+		if not bool(session_preflight.get("accepted", false)):
+			return session_preflight
+		var normalized_session := session_preflight.get("normalized_state", {}) as Dictionary
+		var player_index := int(normalized_session.get("player_index", -1))
+		if sessions_by_player.has(player_index):
+			return {"accepted": false, "reason_code": "purchase_session_player_duplicate"}
+		sessions_by_player[player_index] = normalized_session
+	var player_indices: Array = sessions_by_player.keys()
+	player_indices.sort()
+	var normalized_sessions: Array = []
+	for player_index_variant in player_indices:
+		normalized_sessions.append((sessions_by_player.get(player_index_variant, {}) as Dictionary).duplicate(true))
+	return {
+		"accepted": true,
+		"reason_code": "purchase_session_save_valid",
+		"normalized_state": {"district_purchase_runtime": {"schema_version": 2, "sessions": normalized_sessions}},
+	}
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
-	var payload: Dictionary = data.get("district_purchase_runtime", data) if data.get("district_purchase_runtime", data) is Dictionary else {}
-	if payload.is_empty():
-		reset_state()
-		return {"applied": true, "session_count": 0}
-	if not _is_data_only(payload) or int(payload.get("schema_version", 0)) != 2 or not (payload.get("sessions", []) is Array):
-		return {"applied": false, "reason": "purchase_session_save_invalid"}
+	var preflight := preflight_save_data(data)
+	if not bool(preflight.get("accepted", false)):
+		return {"applied": false, "reason_code": str(preflight.get("reason_code", "purchase_session_save_invalid")), "reason": str(preflight.get("reason_code", "purchase_session_save_invalid")), "rollback_attempted": false, "rollback_complete": true}
+	var normalized := preflight.get("normalized_state", {}) as Dictionary
+	var payload := normalized.get("district_purchase_runtime", {}) as Dictionary
+	var checkpoint := capture_runtime_checkpoint()
 	reset_state()
+	if _quote_authority != null and _quote_authority.has_method("reset_state"):
+		_quote_authority.call("reset_state")
 	var restored_count := 0
-	var quote_restore_failures := 0
-	var invalid_session_count := 0
 	for snapshot_variant: Variant in payload.get("sessions", []):
-		if not (snapshot_variant is Dictionary):
-			invalid_session_count += 1
-			continue
 		var result := apply_legacy_save_snapshot(snapshot_variant as Dictionary)
-		if bool(result.get("restored", false)):
-			restored_count += 1
-			var active_quote_variant: Variant = (snapshot_variant as Dictionary).get("active_quote", {})
-			if not bool(result.get("quote_restored", false)) and active_quote_variant is Dictionary and not (active_quote_variant as Dictionary).is_empty():
-				quote_restore_failures += 1
+		var saved_active_quote := (snapshot_variant as Dictionary).get("active_quote", {}) as Dictionary
+		if not bool(result.get("restored", false)) \
+				or (not saved_active_quote.is_empty() and not bool(result.get("quote_restored", false))):
+			var rollback := restore_runtime_checkpoint(checkpoint)
+			return {"applied": false, "session_count": 0, "reason_code": str(result.get("reason", "purchase_session_restore_failed")), "reason": str(result.get("reason", "purchase_session_restore_failed")), "rollback_attempted": true, "rollback_complete": bool(rollback.get("applied", false))}
+		restored_count += 1
+	return {"applied": true, "session_count": restored_count, "quote_restore_failures": 0, "invalid_session_count": 0, "reason_code": "purchase_sessions_restored", "reason": "purchase_sessions_restored", "rollback_attempted": false, "rollback_complete": true}
+
+
+func capture_runtime_checkpoint() -> Dictionary:
+	var quote_checkpoint: Dictionary = _quote_authority.call("capture_runtime_checkpoint") \
+			if _quote_authority != null and _quote_authority.has_method("capture_runtime_checkpoint") else {}
+	return {
+		"schema_version": 1,
+		"windows_by_player": _windows_by_player.duplicate(true),
+		"decision_sequence": _decision_sequence,
+		"quote_checkpoint": quote_checkpoint.duplicate(true),
+		"quote_checkpoint_supported": _quote_authority != null and _quote_authority.has_method("restore_runtime_checkpoint"),
+	}
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("windows_by_player") is Dictionary) \
+			or not (checkpoint.get("quote_checkpoint") is Dictionary):
+		return {"applied": false, "reason_code": "purchase_runtime_checkpoint_invalid"}
+	var quote_restored := true
+	if bool(checkpoint.get("quote_checkpoint_supported", false)):
+		if _quote_authority == null or not _quote_authority.has_method("restore_runtime_checkpoint"):
+			quote_restored = false
 		else:
-			invalid_session_count += 1
-	if quote_restore_failures > 0 or invalid_session_count > 0:
-		reset_state()
-		return {"applied": false, "session_count": 0, "quote_restore_failures": quote_restore_failures, "invalid_session_count": invalid_session_count, "reason": "quote_restore_failed" if quote_restore_failures > 0 else "purchase_session_restore_failed"}
-	return {"applied": true, "session_count": restored_count, "quote_restore_failures": 0, "invalid_session_count": 0, "reason": "purchase_sessions_restored"}
+			var quote_restore_variant: Variant = _quote_authority.call("restore_runtime_checkpoint", checkpoint.get("quote_checkpoint", {}))
+			quote_restored = quote_restore_variant is Dictionary \
+					and (bool((quote_restore_variant as Dictionary).get("restored", false)) \
+					or bool((quote_restore_variant as Dictionary).get("applied", false)))
+	_windows_by_player = (checkpoint.get("windows_by_player", {}) as Dictionary).duplicate(true)
+	_decision_sequence = int(checkpoint.get("decision_sequence", 0))
+	return {"applied": quote_restored, "reason_code": "purchase_runtime_checkpoint_restored" if quote_restored else "purchase_quote_checkpoint_restore_failed"}
 
 
 func private_ui_snapshot(viewer_index: int) -> Dictionary:
@@ -344,6 +427,95 @@ func debug_snapshot() -> Dictionary:
 	}
 
 
+func _preflight_session(snapshot: Dictionary) -> Dictionary:
+	if not _has_exact_keys(snapshot, SESSION_SAVE_FIELDS) or not _is_data_only(snapshot):
+		return {"accepted": false, "reason_code": "purchase_session_snapshot_invalid"}
+	if not (snapshot.get("schema_version") is int) or int(snapshot.get("schema_version", 0)) != 2 \
+			or not (snapshot.get("player_index") is int) or int(snapshot.get("player_index", -1)) < 0 \
+			or not (snapshot.get("district_index") is int) or int(snapshot.get("district_index", -1)) < 0 \
+			or not (snapshot.get("decision_sequence") is int) or int(snapshot.get("decision_sequence", -1)) < 0 \
+			or not (snapshot.get("requires_reselection") is bool) \
+			or not (snapshot.get("pending_payload") is Dictionary) \
+			or not (snapshot.get("active_quote") is Dictionary):
+		return {"accepted": false, "reason_code": "purchase_session_field_type_invalid"}
+	for string_field in [
+		"state",
+		"supply_revision",
+		"selected_card_id",
+		"selected_supply_revision",
+		"reserved_card_id",
+	]:
+		if not (snapshot.get(string_field) is String):
+			return {"accepted": false, "reason_code": "purchase_session_field_type_invalid"}
+	var player_index := int(snapshot.get("player_index", -1))
+	var district_index := int(snapshot.get("district_index", -1))
+	var state := str(snapshot.get("state", ""))
+	var supply_revision := str(snapshot.get("supply_revision", "")).strip_edges()
+	var selected_card_id := str(snapshot.get("selected_card_id", "")).strip_edges()
+	var selected_supply_revision := str(snapshot.get("selected_supply_revision", "")).strip_edges()
+	var reserved_card_id := str(snapshot.get("reserved_card_id", "")).strip_edges()
+	var pending_payload := snapshot.get("pending_payload", {}) as Dictionary
+	var saved_active_quote := snapshot.get("active_quote", {}) as Dictionary
+	if state not in [STATE_ACTIVE, STATE_PENDING_DISCARD] or supply_revision.is_empty():
+		return {"accepted": false, "reason_code": "purchase_session_binding_invalid"}
+	if selected_card_id.is_empty() != selected_supply_revision.is_empty():
+		return {"accepted": false, "reason_code": "purchase_session_selection_invalid"}
+	if bool(snapshot.get("requires_reselection", false)) and (not selected_card_id.is_empty() or not selected_supply_revision.is_empty()):
+		return {"accepted": false, "reason_code": "purchase_session_selection_invalid"}
+	if not saved_active_quote.is_empty():
+		if _quote_authority == null or not _quote_authority.has_method("preflight_quote_from_session"):
+			return {"accepted": false, "reason_code": "quote_authority_preflight_unavailable"}
+		var quote_preflight_variant: Variant = _quote_authority.call("preflight_quote_from_session", saved_active_quote)
+		var quote_preflight: Dictionary = quote_preflight_variant if quote_preflight_variant is Dictionary else {}
+		if not bool(quote_preflight.get("accepted", false)):
+			return {"accepted": false, "reason_code": str(quote_preflight.get("reason_code", "quote_snapshot_invalid"))}
+		saved_active_quote = (quote_preflight.get("normalized_state", {}) as Dictionary).duplicate(true)
+		if int(saved_active_quote.get("player_index", -1)) != player_index \
+				or int(saved_active_quote.get("district_index", -1)) != district_index \
+				or str(saved_active_quote.get("supply_revision", "")) != supply_revision \
+				or (not selected_card_id.is_empty() and str(saved_active_quote.get("card_id", "")) != selected_card_id):
+			return {"accepted": false, "reason_code": "quote_session_binding_invalid"}
+	if state == STATE_PENDING_DISCARD:
+		if reserved_card_id.is_empty() or saved_active_quote.is_empty() \
+				or reserved_card_id != str(saved_active_quote.get("card_id", "")) \
+				or pending_payload.is_empty() \
+				or int(pending_payload.get("player_index", -1)) != player_index \
+				or int(pending_payload.get("district_index", -1)) != district_index \
+				or str(pending_payload.get("card_id", "")) != reserved_card_id:
+			return {"accepted": false, "reason_code": "pending_discard_quote_invalid"}
+	elif not reserved_card_id.is_empty() or not pending_payload.is_empty():
+		return {"accepted": false, "reason_code": "purchase_session_pending_payload_invalid"}
+	var normalized := snapshot.duplicate(true)
+	normalized["supply_revision"] = supply_revision
+	normalized["selected_card_id"] = selected_card_id
+	normalized["selected_supply_revision"] = selected_supply_revision
+	normalized["reserved_card_id"] = reserved_card_id
+	normalized["active_quote"] = saved_active_quote.duplicate(true)
+	return {"accepted": true, "reason_code": "purchase_session_snapshot_valid", "normalized_state": normalized}
+
+
+func _contains_forbidden_nested_field(value: Variant) -> bool:
+	if value is Dictionary:
+		for key_variant in (value as Dictionary).keys():
+			var key := str(key_variant)
+			if key in FORBIDDEN_NESTED_FIELDS or _contains_forbidden_nested_field((value as Dictionary).get(key_variant)):
+				return true
+	elif value is Array:
+		for item_variant in value as Array:
+			if _contains_forbidden_nested_field(item_variant):
+				return true
+	return false
+
+
+func _has_exact_keys(dictionary: Dictionary, fields: Array) -> bool:
+	if dictionary.size() != fields.size():
+		return false
+	for field_variant in fields:
+		if not dictionary.has(str(field_variant)):
+			return false
+	return true
+
+
 func _safe_window_snapshot(record: Dictionary, include_quote: bool) -> Dictionary:
 	if record.is_empty():
 		return {}
@@ -361,6 +533,8 @@ func _safe_window_snapshot(record: Dictionary, include_quote: bool) -> Dictionar
 
 func _is_data_only(value: Variant) -> bool:
 	if value is Callable or value is Object:
+		return false
+	if value is float and not is_finite(value):
 		return false
 	if value is Dictionary:
 		for key in (value as Dictionary):

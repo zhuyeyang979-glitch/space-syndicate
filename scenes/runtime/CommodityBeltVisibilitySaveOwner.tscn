@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/commodity_belt_visibility_save_owner.gd" id="1_owner"]
+
+[node name="CommodityBeltVisibilitySaveOwner" type="Node"]
+script = ExtResource("1_owner")
+commodity_card_inventory_path = NodePath("../CommodityCardInventoryRuntimeController")
+commodity_sushi_track_path = NodePath("../CommoditySushiTrackRuntimeService")
+editor_description = "Immutable v0.6 commodity-belt visibility attestation. Persists only the item-ID set and ACL fingerprint; CardFlow remains the sole belt and ACL authority."

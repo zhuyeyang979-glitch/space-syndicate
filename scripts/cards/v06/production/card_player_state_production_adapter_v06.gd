@@ -25,6 +25,20 @@ const ASSET_IDS: Array[String] = [
 const META_REVISION := "card_player_state_v06_revision"
 const META_FINGERPRINT := "card_player_state_v06_observed_fingerprint"
 const ASSET_TRANSACTION_PREFIX := "card-player-state-v06"
+const SAVE_FIELDS := ["state_version", "ruleset_id", "journal", "next_reservation_sequence"]
+const JOURNAL_RECORD_FIELDS := ["intent_hash", "result"]
+const FORBIDDEN_JOURNAL_STATE_FIELDS := [
+	"player_state",
+	"player_states",
+	"player_snapshot",
+	"previous_player_state",
+	"inventory",
+	"slots",
+	"cash",
+	"cash_cents",
+	"runtime_instance_id",
+	"result_instance_id",
+]
 
 var _catalog: Resource
 var _asset_controller: Node
@@ -660,27 +674,137 @@ func replay_result(transaction_id: String, intent_hash: String) -> Dictionary:
 
 
 func to_save_data() -> Dictionary:
-	return {
+	var candidate := {
 		"state_version": STATE_VERSION,
 		"ruleset_id": RULESET_ID,
-		"journal": _journal.duplicate(true),
+		"journal": _journal_save_snapshot(),
 		"next_reservation_sequence": _next_reservation_sequence,
+	}
+	var preflight := preflight_save_data(candidate)
+	return (preflight.get("normalized_state", {}) as Dictionary).duplicate(true) \
+			if bool(preflight.get("accepted", false)) else {}
+
+
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	if not _has_exact_keys(data, SAVE_FIELDS) or not _is_finite_pure_data(data) \
+			or not (data.get("state_version") is int) or int(data.get("state_version", 0)) != STATE_VERSION \
+			or not (data.get("ruleset_id") is String) or str(data.get("ruleset_id", "")) != RULESET_ID \
+			or not (data.get("journal") is Dictionary) \
+			or not (data.get("next_reservation_sequence") is int) \
+			or int(data.get("next_reservation_sequence", 0)) < 1:
+		return {"accepted": false, "reason_code": "production_state_port_save_invalid"}
+	var normalized_journal: Dictionary = {}
+	var transaction_ids: Array = (data.get("journal", {}) as Dictionary).keys()
+	transaction_ids.sort_custom(func(left: Variant, right: Variant) -> bool: return str(left) < str(right))
+	for transaction_id_variant in transaction_ids:
+		if not (transaction_id_variant is String or transaction_id_variant is StringName):
+			return {"accepted": false, "reason_code": "production_state_port_transaction_id_invalid"}
+		var transaction_id := str(transaction_id_variant).strip_edges()
+		var record_variant: Variant = (data.get("journal", {}) as Dictionary).get(transaction_id_variant)
+		if transaction_id.is_empty() or not (record_variant is Dictionary):
+			return {"accepted": false, "reason_code": "production_state_port_journal_invalid"}
+		var record := record_variant as Dictionary
+		if not _has_exact_keys(record, JOURNAL_RECORD_FIELDS) or not (record.get("intent_hash") is String) \
+				or str(record.get("intent_hash", "")).is_empty() or not (record.get("result") is Dictionary) \
+				or _contains_forbidden_journal_state(record.get("result", {})):
+			return {"accepted": false, "reason_code": "production_state_port_journal_invalid"}
+		normalized_journal[transaction_id] = record.duplicate(true)
+	return {
+		"accepted": true,
+		"reason_code": "production_state_port_save_valid",
+		"normalized_state": {
+			"state_version": STATE_VERSION,
+			"ruleset_id": RULESET_ID,
+			"journal": normalized_journal,
+			"next_reservation_sequence": int(data.get("next_reservation_sequence", 1)),
+		},
 	}
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
-	if int(data.get("state_version", 0)) != STATE_VERSION \
-	or str(data.get("ruleset_id", "")) != RULESET_ID \
-	or not (data.get("journal", {}) is Dictionary):
-		return {"applied": false, "reason_code": "production_state_port_save_invalid"}
-	_journal = (data.get("journal", {}) as Dictionary).duplicate(true)
-	_next_reservation_sequence = maxi(1, int(data.get("next_reservation_sequence", 1)))
+	var preflight := preflight_save_data(data)
+	if not bool(preflight.get("accepted", false)):
+		return {"applied": false, "reason_code": str(preflight.get("reason_code", "production_state_port_save_invalid"))}
+	var normalized := preflight.get("normalized_state", {}) as Dictionary
+	_journal = (normalized.get("journal", {}) as Dictionary).duplicate(true)
+	_next_reservation_sequence = int(normalized.get("next_reservation_sequence", 1))
 	_reservations.clear()
 	_prepared_mutations.clear()
 	_player_locks.clear()
 	_inflight_transactions.clear()
 	_reservation_results.clear()
+	_bankruptcy_estate_journal.clear()
 	return {"applied": true, "reason_code": "", "journal_count": _journal.size()}
+
+
+func checkpoint_status() -> Dictionary:
+	var pending_bankruptcy_transaction_count := 0
+	for record_variant in _bankruptcy_estate_journal.values():
+		if not (record_variant is Dictionary) \
+				or str((record_variant as Dictionary).get("state", "")) not in ["finalized", "rolled_back"]:
+			pending_bankruptcy_transaction_count += 1
+	var pending := not _reservations.is_empty() or not _prepared_mutations.is_empty() \
+			or not _player_locks.is_empty() or not _inflight_transactions.is_empty() \
+			or pending_bankruptcy_transaction_count > 0
+	return {
+		"can_checkpoint": not pending,
+		"reason_code": "card_player_state_checkpoint_ready" if not pending else "card_player_state_transaction_inflight",
+		"reservation_count": _reservations.size(),
+		"prepared_mutation_count": _prepared_mutations.size(),
+		"player_lock_count": _player_locks.size(),
+		"inflight_transaction_count": _inflight_transactions.size(),
+		"bankruptcy_transaction_count": _bankruptcy_estate_journal.size(),
+		"pending_bankruptcy_transaction_count": pending_bankruptcy_transaction_count,
+	}
+
+
+func capture_runtime_checkpoint() -> Dictionary:
+	return {
+		"schema_version": 1,
+		"reservations": _reservations.duplicate(true),
+		"prepared_mutations": _prepared_mutations.duplicate(true),
+		"player_locks": _player_locks.duplicate(true),
+		"inflight_transactions": _inflight_transactions.duplicate(true),
+		"journal": _journal.duplicate(true),
+		"reservation_results": _reservation_results.duplicate(true),
+		"bankruptcy_estate_journal": _bankruptcy_estate_journal.duplicate(true),
+		"next_reservation_sequence": _next_reservation_sequence,
+		"reserve_count": _reserve_count,
+		"commit_count": _commit_count,
+		"abort_count": _abort_count,
+		"reject_count": _reject_count,
+		"last_reason_code": _last_reason_code,
+	}
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	for field in [
+		"reservations",
+		"prepared_mutations",
+		"player_locks",
+		"inflight_transactions",
+		"journal",
+		"reservation_results",
+		"bankruptcy_estate_journal",
+	]:
+		if not (checkpoint.get(field) is Dictionary):
+			return {"applied": false, "reason_code": "card_player_state_runtime_checkpoint_invalid"}
+	if int(checkpoint.get("schema_version", 0)) != 1:
+		return {"applied": false, "reason_code": "card_player_state_runtime_checkpoint_invalid"}
+	_reservations = (checkpoint.get("reservations", {}) as Dictionary).duplicate(true)
+	_prepared_mutations = (checkpoint.get("prepared_mutations", {}) as Dictionary).duplicate(true)
+	_player_locks = (checkpoint.get("player_locks", {}) as Dictionary).duplicate(true)
+	_inflight_transactions = (checkpoint.get("inflight_transactions", {}) as Dictionary).duplicate(true)
+	_journal = (checkpoint.get("journal", {}) as Dictionary).duplicate(true)
+	_reservation_results = (checkpoint.get("reservation_results", {}) as Dictionary).duplicate(true)
+	_bankruptcy_estate_journal = (checkpoint.get("bankruptcy_estate_journal", {}) as Dictionary).duplicate(true)
+	_next_reservation_sequence = int(checkpoint.get("next_reservation_sequence", 1))
+	_reserve_count = int(checkpoint.get("reserve_count", 0))
+	_commit_count = int(checkpoint.get("commit_count", 0))
+	_abort_count = int(checkpoint.get("abort_count", 0))
+	_reject_count = int(checkpoint.get("reject_count", 0))
+	_last_reason_code = str(checkpoint.get("last_reason_code", ""))
+	return {"applied": true, "reason_code": "card_player_state_runtime_checkpoint_restored"}
 
 
 func player_feedback(reason_code: String) -> Dictionary:
@@ -1240,3 +1364,71 @@ func _canonicalize(value: Variant) -> Variant:
 			result.append(_canonicalize(item))
 		return result
 	return value
+
+
+func _has_exact_keys(dictionary: Dictionary, fields: Array) -> bool:
+	if dictionary.size() != fields.size():
+		return false
+	for field_variant in fields:
+		if not dictionary.has(str(field_variant)):
+			return false
+	return true
+
+
+func _journal_save_snapshot() -> Dictionary:
+	var sanitized: Variant = _sanitize_journal_value(_journal)
+	return sanitized as Dictionary if sanitized is Dictionary else {}
+
+
+func _sanitize_journal_value(value: Variant) -> Variant:
+	if value is Dictionary:
+		var sanitized: Dictionary = {}
+		for key_variant in (value as Dictionary).keys():
+			var key := str(key_variant)
+			if key in FORBIDDEN_JOURNAL_STATE_FIELDS:
+				continue
+			sanitized[key] = _sanitize_journal_value((value as Dictionary).get(key_variant))
+		return sanitized
+	if value is Array:
+		var sanitized_array: Array = []
+		for item_variant in value as Array:
+			sanitized_array.append(_sanitize_journal_value(item_variant))
+		return sanitized_array
+	return value
+
+
+func _contains_forbidden_journal_state(value: Variant) -> bool:
+	if value is Dictionary:
+		for key_variant in (value as Dictionary).keys():
+			if str(key_variant) in FORBIDDEN_JOURNAL_STATE_FIELDS \
+					or _contains_forbidden_journal_state((value as Dictionary).get(key_variant)):
+				return true
+	elif value is Array:
+		for item_variant in value as Array:
+			if _contains_forbidden_journal_state(item_variant):
+				return true
+	return false
+
+
+func _is_finite_pure_data(value: Variant) -> bool:
+	if typeof(value) == TYPE_OBJECT or value is Callable:
+		return false
+	if value is float and not is_finite(value):
+		return false
+	if value is Vector2:
+		var vector := value as Vector2
+		if not is_finite(vector.x) or not is_finite(vector.y):
+			return false
+	if value is Color:
+		var color := value as Color
+		if not is_finite(color.r) or not is_finite(color.g) or not is_finite(color.b) or not is_finite(color.a):
+			return false
+	if value is Dictionary:
+		for key_variant in (value as Dictionary).keys():
+			if not _is_finite_pure_data(key_variant) or not _is_finite_pure_data((value as Dictionary).get(key_variant)):
+				return false
+	elif value is Array:
+		for item_variant in value as Array:
+			if not _is_finite_pure_data(item_variant):
+				return false
+	return true

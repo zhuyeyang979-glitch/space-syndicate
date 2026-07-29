@@ -7,6 +7,27 @@ const BASE_MULTIPLIER_Q2 := 2
 const SAME_REGION_Q2_STEP := 2
 const ADJACENT_Q2_STEP := 1
 const MAX_MULTIPLIER_Q2 := 10
+const SESSION_QUOTE_FIELDS := [
+	"schema_version",
+	"quote_id",
+	"quote_key",
+	"player_index",
+	"district_index",
+	"card_id",
+	"supply_revision",
+	"base_price",
+	"final_price",
+	"multiplier_q2",
+	"same_region_alive_count",
+	"directly_adjacent_alive_count",
+	"eligible",
+	"viewable",
+	"availability_kind",
+	"opened_at_world_us",
+	"expires_at_world_us",
+	"quote_fingerprint",
+	"quote_binding_fingerprint",
+]
 
 var _clock: Node
 var _solar: Node
@@ -191,46 +212,79 @@ func export_quote_for_session(quote_id: String) -> Dictionary:
 
 
 func restore_quote_from_session(snapshot: Dictionary) -> Dictionary:
-	if not _configured or not _is_data_only(snapshot) or snapshot.is_empty():
+	if not _configured:
 		return {"restored": false, "reason": "quote_snapshot_invalid"}
-	if int(snapshot.get("schema_version", 0)) != 1:
-		return {"restored": false, "reason": "quote_schema_invalid"}
+	var preflight := preflight_quote_from_session(snapshot)
+	if not bool(preflight.get("accepted", false)):
+		return {"restored": false, "reason": str(preflight.get("reason_code", "quote_snapshot_invalid"))}
+	var normalized := preflight.get("normalized_state", {}) as Dictionary
+	var quote_id := str(normalized.get("quote_id", ""))
+	var quote_key := str(normalized.get("quote_key", ""))
+	var binding_fingerprint := str(normalized.get("quote_binding_fingerprint", ""))
+	var now_us := _now_us()
+	var opened_at_us := int(normalized.get("opened_at_world_us", -1))
+	var expires_at_us := int(normalized.get("expires_at_world_us", -1))
+	if opened_at_us > now_us or now_us >= expires_at_us:
+		return {"restored": false, "reason": "quote_expired"}
+	var existing_by_id: Dictionary = _quotes_by_id.get(quote_id, {}) if _quotes_by_id.get(quote_id, {}) is Dictionary else {}
+	var existing_by_key: Dictionary = _quotes_by_key.get(quote_key, {}) if _quotes_by_key.get(quote_key, {}) is Dictionary else {}
+	if (not existing_by_id.is_empty() and str(existing_by_id.get("quote_binding_fingerprint", "")) != binding_fingerprint) \
+			or (not existing_by_key.is_empty() and str(existing_by_key.get("quote_binding_fingerprint", "")) != binding_fingerprint):
+		return {"restored": false, "reason": "quote_identity_conflict"}
+	_quotes_by_key[quote_key] = normalized.duplicate(true)
+	_quotes_by_id[quote_id] = normalized.duplicate(true)
+	return {"restored": true, "reason": "quote_restored", "quote": _public_quote(normalized, now_us)}
+
+
+func preflight_quote_from_session(snapshot: Dictionary) -> Dictionary:
+	if snapshot.is_empty() or not _is_data_only(snapshot) or not _has_exact_keys(snapshot, SESSION_QUOTE_FIELDS):
+		return {"accepted": false, "reason_code": "quote_snapshot_invalid"}
+	if not (snapshot.get("schema_version") is int) or int(snapshot.get("schema_version", 0)) != 1:
+		return {"accepted": false, "reason_code": "quote_schema_invalid"}
 	var quote_id := str(snapshot.get("quote_id", ""))
 	var quote_key := str(snapshot.get("quote_key", ""))
 	var fingerprint := str(snapshot.get("quote_fingerprint", ""))
 	if quote_id.is_empty() or quote_key.is_empty() or fingerprint.is_empty() or fingerprint != _quote_fingerprint(snapshot):
-		return {"restored": false, "reason": "quote_fingerprint_invalid"}
+		return {"accepted": false, "reason_code": "quote_fingerprint_invalid"}
 	var binding_fingerprint := str(snapshot.get("quote_binding_fingerprint", ""))
 	if binding_fingerprint.is_empty() or binding_fingerprint != _quote_binding_fingerprint(snapshot):
-		return {"restored": false, "reason": "quote_binding_fingerprint_invalid"}
+		return {"accepted": false, "reason_code": "quote_binding_fingerprint_invalid"}
 	var player_index := int(snapshot.get("player_index", -1))
 	var district_index := int(snapshot.get("district_index", -1))
 	var card_id := str(snapshot.get("card_id", ""))
 	var supply_revision := str(snapshot.get("supply_revision", ""))
 	if quote_key != _quote_key(player_index, district_index, card_id, supply_revision):
-		return {"restored": false, "reason": "quote_key_invalid"}
-	var now_us := _now_us()
+		return {"accepted": false, "reason_code": "quote_key_invalid"}
 	var opened_at_us := int(snapshot.get("opened_at_world_us", -1))
 	var expires_at_us := int(snapshot.get("expires_at_world_us", -1))
-	if opened_at_us < 0 or expires_at_us != opened_at_us + QUOTE_LIFETIME_US or opened_at_us > now_us or now_us >= expires_at_us:
-		return {"restored": false, "reason": "quote_expired"}
+	if opened_at_us < 0 or expires_at_us != opened_at_us + QUOTE_LIFETIME_US:
+		return {"accepted": false, "reason_code": "quote_lifetime_invalid"}
 	if player_index < 0 or district_index < 0 or card_id.is_empty() or supply_revision.is_empty():
-		return {"restored": false, "reason": "quote_binding_invalid"}
+		return {"accepted": false, "reason_code": "quote_binding_invalid"}
 	var base_price := int(snapshot.get("base_price", -1))
 	var same_count := int(snapshot.get("same_region_alive_count", -1))
 	var adjacent_count := int(snapshot.get("directly_adjacent_alive_count", -1))
 	var multiplier_q2 := int(snapshot.get("multiplier_q2", -1))
 	var expected_q2 := mini(MAX_MULTIPLIER_Q2, BASE_MULTIPLIER_Q2 + same_count * SAME_REGION_Q2_STEP + adjacent_count * ADJACENT_Q2_STEP)
 	if base_price < 0 or same_count < 0 or adjacent_count < 0 or multiplier_q2 != expected_q2 or int(snapshot.get("final_price", -1)) != _ceil_scaled_price(base_price, expected_q2):
-		return {"restored": false, "reason": "quote_price_snapshot_invalid"}
-	var existing_by_id: Dictionary = _quotes_by_id.get(quote_id, {}) if _quotes_by_id.get(quote_id, {}) is Dictionary else {}
-	var existing_by_key: Dictionary = _quotes_by_key.get(quote_key, {}) if _quotes_by_key.get(quote_key, {}) is Dictionary else {}
-	if (not existing_by_id.is_empty() and str(existing_by_id.get("quote_binding_fingerprint", "")) != binding_fingerprint) \
-			or (not existing_by_key.is_empty() and str(existing_by_key.get("quote_binding_fingerprint", "")) != binding_fingerprint):
-		return {"restored": false, "reason": "quote_identity_conflict"}
-	_quotes_by_key[quote_key] = snapshot.duplicate(true)
-	_quotes_by_id[quote_id] = snapshot.duplicate(true)
-	return {"restored": true, "reason": "quote_restored", "quote": _public_quote(snapshot, now_us)}
+		return {"accepted": false, "reason_code": "quote_price_snapshot_invalid"}
+	for int_field in [
+		"player_index",
+		"district_index",
+		"base_price",
+		"final_price",
+		"multiplier_q2",
+		"same_region_alive_count",
+		"directly_adjacent_alive_count",
+		"opened_at_world_us",
+		"expires_at_world_us",
+	]:
+		if not (snapshot.get(int_field) is int):
+			return {"accepted": false, "reason_code": "quote_field_type_invalid"}
+	for bool_field in ["eligible", "viewable"]:
+		if not (snapshot.get(bool_field) is bool):
+			return {"accepted": false, "reason_code": "quote_field_type_invalid"}
+	return {"accepted": true, "reason_code": "quote_snapshot_valid", "normalized_state": snapshot.duplicate(true)}
 
 
 func debug_snapshot() -> Dictionary:
@@ -429,4 +483,13 @@ func _is_data_only(value: Variant) -> bool:
 		for item in (value as Array):
 			if not _is_data_only(item):
 				return false
+	return true
+
+
+func _has_exact_keys(dictionary: Dictionary, fields: Array) -> bool:
+	if dictionary.size() != fields.size():
+		return false
+	for field_variant in fields:
+		if not dictionary.has(str(field_variant)):
+			return false
 	return true

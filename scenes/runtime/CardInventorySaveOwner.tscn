@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_inventory_save_owner.gd" id="1_owner"]
+
+[node name="CardInventorySaveOwner" type="Node"]
+script = ExtResource("1_owner")
+commodity_card_inventory_path = NodePath("../CommodityCardInventoryRuntimeController")
+product_market_path = NodePath("../ProductMarketRuntimeController")
+district_purchase_path = NodePath("../DistrictPurchaseRuntimeController")
+editor_description = "Transactional v0.6 card-inventory save owner. Coordinates non-World card state while player slots, card instances, cash, and AI state remain with their dedicated authorities."

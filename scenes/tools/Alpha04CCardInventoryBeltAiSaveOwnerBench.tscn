@@ -1,0 +1,15 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/alpha04c_card_inventory_belt_ai_save_owner_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GameRuntimeCoordinator.tscn" id="2_coordinator"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardInventorySaveOwner.tscn" id="3_card_owner"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CommodityBeltVisibilitySaveOwner.tscn" id="4_belt_owner"]
+
+[node name="Alpha04CCardInventoryBeltAiSaveOwnerBench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="GameRuntimeCoordinator" parent="." instance=ExtResource("2_coordinator")]
+
+[node name="CardInventorySaveOwner" parent="GameRuntimeCoordinator" instance=ExtResource("3_card_owner")]
+
+[node name="CommodityBeltVisibilitySaveOwner" parent="GameRuntimeCoordinator" instance=ExtResource("4_belt_owner")]
