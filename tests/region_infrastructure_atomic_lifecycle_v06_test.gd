@@ -13,12 +13,46 @@ func _init() -> void:
 
 func _run() -> void:
 	_verify_capability_and_request_failures()
+	_verify_strict_save_preflight()
 	_verify_build_rollback_exact_once()
 	_verify_pending_save_finalize_and_closed_rollback()
 	_verify_upgrade_repair_and_terminal_save_load()
 	_verify_corrupt_save_is_zero_effect()
 	_verify_third_party_progression_fails_closed()
 	_finish()
+
+
+func _verify_strict_save_preflight() -> void:
+	var controller := _controller()
+	var build := controller.apply_facility_action(_request("strict-save-build", "region.alpha", "factory", "life", 1))
+	controller.finalize_facility_action(build)
+	var saved := controller.to_save_data()
+	var before := _state_fingerprint(controller)
+	var first := controller.preflight_save_data(saved)
+	var second := controller.preflight_save_data(saved)
+	_expect(bool(first.get("accepted", false)) and bool(second.get("accepted", false)), "strict infrastructure save preflight accepts its exact owner payload repeatedly")
+	_expect(before == _state_fingerprint(controller), "repeated infrastructure preflight does not mutate regions journals revisions or receipts")
+	_expect(_fingerprint(first.get("normalized_state", {})) == _fingerprint(second.get("normalized_state", {})), "infrastructure preflight normalization is deterministic")
+	var detached := (first.get("normalized_state", {}) as Dictionary).duplicate(true)
+	((detached.get("regions") as Array)[0] as Dictionary)["damage_taken"] = 99
+	_expect(before == _state_fingerprint(controller), "mutating normalized infrastructure output cannot alias live owner state")
+
+	var unknown_root := saved.duplicate(true)
+	unknown_root["private_hand"] = []
+	_expect(_preflight_rejects_without_mutation(controller, unknown_root), "infrastructure preflight rejects unknown root fields without mutation")
+	var wrong_type := saved.duplicate(true)
+	wrong_type["revision"] = str(wrong_type.get("revision"))
+	_expect(_preflight_rejects_without_mutation(controller, wrong_type), "infrastructure preflight rejects coercible revision strings")
+	var unknown_region_field := saved.duplicate(true)
+	((unknown_region_field.get("regions") as Array)[0] as Dictionary)["private_heat"] = 1
+	_expect(_preflight_rejects_without_mutation(controller, unknown_region_field), "infrastructure preflight rejects private nested region fields")
+	var unknown_lifecycle_field := saved.duplicate(true)
+	((unknown_lifecycle_field.get("facility_action_lifecycles") as Dictionary).get("strict-save-build") as Dictionary)["private_checkpoint"] = {}
+	_expect(_preflight_rejects_without_mutation(controller, unknown_lifecycle_field), "infrastructure preflight rejects private nested lifecycle fields")
+	var nonfinite_facility := saved.duplicate(true)
+	((nonfinite_facility.get("facilities") as Array)[0] as Dictionary)["built_at"] = INF
+	_expect(_preflight_rejects_without_mutation(controller, nonfinite_facility), "infrastructure preflight rejects non-finite codec values")
+	controller.free()
 
 
 func _verify_capability_and_request_failures() -> void:
@@ -251,6 +285,16 @@ func _facility(controller: RegionInfrastructureRuntimeController, facility_id: S
 
 func _state_fingerprint(controller: RegionInfrastructureRuntimeController) -> String:
 	return JSON.stringify(controller.to_save_data())
+
+
+func _fingerprint(value: Variant) -> String:
+	return JSON.stringify(value, "", true)
+
+
+func _preflight_rejects_without_mutation(controller: RegionInfrastructureRuntimeController, candidate: Dictionary) -> bool:
+	var before := _state_fingerprint(controller)
+	var result := controller.preflight_save_data(candidate)
+	return not bool(result.get("accepted", true)) and before == _state_fingerprint(controller)
 
 
 func _expect(condition: bool, message: String) -> void:

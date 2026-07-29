@@ -7,6 +7,8 @@ signal region_lifecycle_changed(receipt: Dictionary)
 signal facility_action_rolled_back(receipt: Dictionary)
 signal facility_action_finalized(receipt: Dictionary)
 
+const StrictState := preload("res://scripts/runtime/save_owner_state_v2_contract.gd")
+
 const SAVE_VERSION := 1
 const RULESET_ID := "v0.6"
 const FACILITY_ACTION_LIFECYCLE_VERSION := 2
@@ -16,6 +18,156 @@ const FACILITY_TYPES := ["factory", "market", "road", "port", "spaceport", "ware
 const INDUSTRY_IDS := ["life", "energy", "industry", "technology", "commerce", "shipping"]
 const DAMAGE_SOURCE_KINDS := ["monster", "military"]
 const REPAIR_SOURCE_KINDS := ["facility_card", "military"]
+const SAVE_KEYS := [
+	"state_version",
+	"ruleset_id",
+	"facility_action_lifecycle_version",
+	"revision",
+	"receipt_sequence",
+	"regions",
+	"facilities",
+	"facility_tombstones",
+	"slot_generations",
+	"transaction_receipts",
+	"facility_action_lifecycles",
+	"processed_transaction_ids",
+	"rolled_back_facility_action_transaction_ids",
+	"finalized_facility_action_transaction_ids",
+]
+const REGION_SAVE_KEYS := [
+	"region_id",
+	"terrain_id",
+	"neighbor_region_ids",
+	"facility_slot_ids",
+	"lifecycle_state",
+	"damage_taken",
+	"generation",
+	"revision",
+	"legacy_index",
+]
+const FACILITY_SAVE_KEYS := [
+	"facility_id",
+	"slot_id",
+	"region_id",
+	"facility_type",
+	"industry_id",
+	"owner_kind",
+	"owner_player_index",
+	"rank",
+	"generation",
+	"active",
+	"built_at",
+]
+const FACILITY_TOMBSTONE_SAVE_KEYS := [
+	"facility_id",
+	"slot_id",
+	"region_id",
+	"generation",
+	"destroyed_at",
+	"active",
+]
+const FACILITY_LIFECYCLE_SAVE_KEYS := [
+	"facility_action_lifecycle_version",
+	"transaction_id",
+	"intent_fingerprint",
+	"state",
+	"rollback_open",
+	"owner_binding",
+	"owner_binding_fingerprint",
+	"preimage",
+	"postimage",
+	"original_receipt",
+	"terminal_receipt",
+]
+const FACILITY_LIFECYCLE_TERMINAL_SAVE_KEYS := [
+	"preimage_cleared",
+	"terminal_revision",
+	"terminal_receipt_sequence",
+]
+const FACILITY_OWNER_BINDING_SAVE_KEYS := [
+	"receipt_kind",
+	"transaction_id",
+	"intent_fingerprint",
+	"action_kind",
+	"region_id",
+	"slot_id",
+	"facility_id",
+	"facility_type",
+	"industry_id",
+	"owner_kind",
+	"owner_player_index",
+	"generation",
+	"controller_revision_before",
+	"controller_revision_after",
+	"region_revision_before",
+	"region_revision_after",
+	"receipt_sequence",
+]
+const FACILITY_PREIMAGE_SAVE_KEYS := [
+	"region_before",
+	"slot_mapping_before_present",
+	"slot_mapping_before",
+	"facility_before_present",
+	"facility_before",
+	"slot_generation_before_present",
+	"slot_generation_before",
+	"controller_revision_before",
+]
+const FACILITY_POSTIMAGE_SAVE_KEYS := [
+	"region_after",
+	"facility_after",
+	"slot_mapping_after",
+	"slot_generation_after",
+	"controller_revision_after",
+]
+const TRANSACTION_RECEIPT_ALLOWED_KEYS := [
+	"receipt_kind",
+	"facility_action_lifecycle_version",
+	"transaction_id",
+	"committed",
+	"rolled_back",
+	"finalized",
+	"rollback_open",
+	"duplicate",
+	"replayed",
+	"reason",
+	"reason_code",
+	"action_kind",
+	"region_id",
+	"slot_id",
+	"facility_id",
+	"facility_type",
+	"industry_id",
+	"owner_kind",
+	"owner_player_index",
+	"old_rank",
+	"new_rank",
+	"repaired_amount",
+	"max_hp_before",
+	"max_hp_after",
+	"current_hp_before",
+	"current_hp_after",
+	"lifecycle_changed",
+	"lifecycle_state",
+	"revision",
+	"receipt_sequence",
+	"original_receipt_sequence",
+	"intent_fingerprint",
+	"owner_binding",
+	"owner_binding_fingerprint",
+	"post_commit_intents",
+	"source_kind",
+	"source_entity_id",
+	"source_event_id",
+	"requested_damage",
+	"applied_damage",
+	"accounted_total",
+	"damage_taken_after",
+	"region_ruined",
+	"destroyed_facility_ids",
+	"requested_repair",
+	"applied_repair",
+]
 
 var _configured := false
 var _maximum_rank := 4
@@ -962,6 +1114,23 @@ func to_save_data() -> Dictionary:
 	}
 
 
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	if not _configured:
+		return _save_preflight_rejection("controller_not_configured")
+	var strict_validation := _validate_strict_save_data(data)
+	if not bool(strict_validation.get("valid", false)):
+		return _save_preflight_rejection(str(strict_validation.get("reason_code", "region_infrastructure_save_invalid")))
+	var prepared := _prepare_save_state(data)
+	if not bool(prepared.get("valid", false)):
+		return _save_preflight_rejection(str(prepared.get("reason", "region_infrastructure_save_invalid")))
+	return {
+		"accepted": true,
+		"reason": "",
+		"reason_code": "region_infrastructure_save_valid",
+		"normalized_state": data.duplicate(true),
+	}
+
+
 func apply_save_data(data: Dictionary) -> Dictionary:
 	if not _configured:
 		return {"applied": false, "reason": "controller_not_configured"}
@@ -1588,6 +1757,236 @@ func _prepare_save_state(data: Dictionary) -> Dictionary:
 		"revision": revision,
 		"receipt_sequence": receipt_sequence,
 	}
+
+
+func _validate_strict_save_data(data: Dictionary) -> Dictionary:
+	if not StrictState.is_codec_data(data):
+		return {"valid": false, "reason_code": "region_infrastructure_save_not_codec_data"}
+	if not StrictState.has_exact_keys(data, SAVE_KEYS):
+		return {"valid": false, "reason_code": "region_infrastructure_save_shape_invalid"}
+	if not (data.get("state_version") is int) or int(data.get("state_version")) != SAVE_VERSION \
+			or not (data.get("ruleset_id") is String) or str(data.get("ruleset_id")) != RULESET_ID \
+			or not (data.get("facility_action_lifecycle_version") is int) \
+			or int(data.get("facility_action_lifecycle_version")) != FACILITY_ACTION_LIFECYCLE_VERSION:
+		return {"valid": false, "reason_code": "region_infrastructure_save_header_invalid"}
+	if not (data.get("revision") is int) or int(data.get("revision")) < 0 \
+			or not (data.get("receipt_sequence") is int) or int(data.get("receipt_sequence")) < 0:
+		return {"valid": false, "reason_code": "region_infrastructure_save_revision_invalid"}
+	for array_key in [
+		"regions",
+		"facilities",
+		"facility_tombstones",
+		"processed_transaction_ids",
+		"rolled_back_facility_action_transaction_ids",
+		"finalized_facility_action_transaction_ids",
+	]:
+		if not (data.get(array_key) is Array):
+			return {"valid": false, "reason_code": "region_infrastructure_save_fields_invalid"}
+	for dictionary_key in ["slot_generations", "transaction_receipts", "facility_action_lifecycles"]:
+		if not (data.get(dictionary_key) is Dictionary):
+			return {"valid": false, "reason_code": "region_infrastructure_save_fields_invalid"}
+
+	var region_ids: Dictionary = {}
+	var slots_by_region: Dictionary = {}
+	for region_variant in data.get("regions") as Array:
+		if not (region_variant is Dictionary):
+			return {"valid": false, "reason_code": "region_infrastructure_region_record_invalid"}
+		var region := region_variant as Dictionary
+		if not StrictState.has_exact_keys(region, REGION_SAVE_KEYS):
+			return {"valid": false, "reason_code": "region_infrastructure_region_shape_invalid"}
+		var region_id_variant: Variant = region.get("region_id")
+		var terrain_id_variant: Variant = region.get("terrain_id")
+		var lifecycle_variant: Variant = region.get("lifecycle_state")
+		if not _strict_nonempty_string(region_id_variant) or region_ids.has(str(region_id_variant)) \
+				or not (terrain_id_variant is String) \
+				or not (lifecycle_variant is String) \
+				or not ["undeveloped", "active", "ruined"].has(str(lifecycle_variant)):
+			return {"valid": false, "reason_code": "region_infrastructure_region_record_invalid"}
+		if not _strict_unique_string_array(region.get("neighbor_region_ids"), false) \
+				or not _strict_unique_string_array(region.get("facility_slot_ids"), false):
+			return {"valid": false, "reason_code": "region_infrastructure_region_record_invalid"}
+		if not (region.get("damage_taken") is int) or int(region.get("damage_taken")) < 0 \
+				or not (region.get("generation") is int) or int(region.get("generation")) < 1 \
+				or not (region.get("revision") is int) or int(region.get("revision")) < 1 \
+				or not (region.get("legacy_index") is int):
+			return {"valid": false, "reason_code": "region_infrastructure_region_record_invalid"}
+		region_ids[str(region_id_variant)] = true
+		slots_by_region[str(region_id_variant)] = (region.get("facility_slot_ids") as Array).duplicate()
+
+	var facility_ids: Dictionary = {}
+	var occupied_slots: Dictionary = {}
+	for facility_variant in data.get("facilities") as Array:
+		if not (facility_variant is Dictionary):
+			return {"valid": false, "reason_code": "region_infrastructure_facility_record_invalid"}
+		var facility := facility_variant as Dictionary
+		if not StrictState.has_exact_keys(facility, FACILITY_SAVE_KEYS):
+			return {"valid": false, "reason_code": "region_infrastructure_facility_shape_invalid"}
+		for string_key in ["facility_id", "slot_id", "region_id", "facility_type", "industry_id", "owner_kind"]:
+			if not (facility.get(string_key) is String):
+				return {"valid": false, "reason_code": "region_infrastructure_facility_record_invalid"}
+		var facility_id := str(facility.get("facility_id"))
+		var target_slot_id := str(facility.get("slot_id"))
+		var region_id := str(facility.get("region_id"))
+		if not _strict_nonempty_string(facility_id) or not _strict_nonempty_string(target_slot_id) \
+				or not region_ids.has(region_id) or facility_ids.has(facility_id) or occupied_slots.has(target_slot_id) \
+				or not (slots_by_region.get(region_id, []) as Array).has(target_slot_id):
+			return {"valid": false, "reason_code": "region_infrastructure_facility_record_invalid"}
+		if not (facility.get("owner_player_index") is int) or not (facility.get("rank") is int) \
+				or not (facility.get("generation") is int) or not (facility.get("active") is bool) \
+				or not bool(facility.get("active")) or not (facility.get("built_at") is float):
+			return {"valid": false, "reason_code": "region_infrastructure_facility_record_invalid"}
+		facility_ids[facility_id] = true
+		occupied_slots[target_slot_id] = true
+
+	var slot_generations := data.get("slot_generations") as Dictionary
+	for slot_variant in slot_generations.keys():
+		if not _strict_nonempty_string(slot_variant) or not (slot_generations.get(slot_variant) is int) \
+				or int(slot_generations.get(slot_variant)) < 1 or not _saved_slot_exists(str(slot_variant), slots_by_region):
+			return {"valid": false, "reason_code": "region_infrastructure_slot_generation_invalid"}
+
+	var tombstone_ids: Dictionary = {}
+	for tombstone_variant in data.get("facility_tombstones") as Array:
+		if not (tombstone_variant is Dictionary):
+			return {"valid": false, "reason_code": "region_infrastructure_tombstone_invalid"}
+		var tombstone := tombstone_variant as Dictionary
+		if not StrictState.has_exact_keys(tombstone, FACILITY_TOMBSTONE_SAVE_KEYS):
+			return {"valid": false, "reason_code": "region_infrastructure_tombstone_shape_invalid"}
+		for string_key in ["facility_id", "slot_id", "region_id"]:
+			if not _strict_nonempty_string(tombstone.get(string_key)):
+				return {"valid": false, "reason_code": "region_infrastructure_tombstone_invalid"}
+		var tombstone_id := str(tombstone.get("facility_id"))
+		var tombstone_region_id := str(tombstone.get("region_id"))
+		if tombstone_ids.has(tombstone_id) or not region_ids.has(tombstone_region_id) \
+				or not (slots_by_region.get(tombstone_region_id, []) as Array).has(str(tombstone.get("slot_id"))) \
+				or not (tombstone.get("generation") is int) or int(tombstone.get("generation")) < 1 \
+				or not (tombstone.get("destroyed_at") is float) \
+				or not (tombstone.get("active") is bool) or bool(tombstone.get("active")):
+			return {"valid": false, "reason_code": "region_infrastructure_tombstone_invalid"}
+		tombstone_ids[tombstone_id] = true
+
+	var receipts := data.get("transaction_receipts") as Dictionary
+	for transaction_id_variant in receipts.keys():
+		if not _strict_nonempty_string(transaction_id_variant) or not (receipts.get(transaction_id_variant) is Dictionary) \
+				or not _strict_transaction_receipt_shape(receipts.get(transaction_id_variant) as Dictionary):
+			return {"valid": false, "reason_code": "region_infrastructure_receipt_record_invalid"}
+	var lifecycles := data.get("facility_action_lifecycles") as Dictionary
+	for transaction_id_variant in lifecycles.keys():
+		if not _strict_nonempty_string(transaction_id_variant) or not (lifecycles.get(transaction_id_variant) is Dictionary) \
+				or not _strict_facility_lifecycle_shape(lifecycles.get(transaction_id_variant) as Dictionary):
+			return {"valid": false, "reason_code": "region_infrastructure_lifecycle_record_invalid"}
+	var processed := data.get("processed_transaction_ids") as Array
+	var rolled_back := data.get("rolled_back_facility_action_transaction_ids") as Array
+	var finalized := data.get("finalized_facility_action_transaction_ids") as Array
+	if not _strict_unique_string_array(processed, false) or not _strict_unique_string_array(rolled_back, false) \
+			or not _strict_unique_string_array(finalized, false) \
+			or not _string_array_is_sorted(processed) or not _string_array_is_sorted(rolled_back) \
+			or not _string_array_is_sorted(finalized):
+		return {"valid": false, "reason_code": "region_infrastructure_transaction_index_invalid"}
+	var expected_rolled_back: Array = []
+	var expected_finalized: Array = []
+	for lifecycle_variant in (data.get("facility_action_lifecycles") as Dictionary).values():
+		var lifecycle := lifecycle_variant as Dictionary
+		match str(lifecycle.get("state", "")):
+			"rolled_back": expected_rolled_back.append(str(lifecycle.get("transaction_id", "")))
+			"finalized": expected_finalized.append(str(lifecycle.get("transaction_id", "")))
+	expected_rolled_back.sort()
+	expected_finalized.sort()
+	if rolled_back != expected_rolled_back or finalized != expected_finalized:
+		return {"valid": false, "reason_code": "region_infrastructure_lifecycle_index_invalid"}
+	return {"valid": true, "reason_code": "region_infrastructure_save_shape_valid"}
+
+
+func _save_preflight_rejection(reason_code: String) -> Dictionary:
+	return {"accepted": false, "reason": reason_code, "reason_code": reason_code}
+
+
+func _strict_transaction_receipt_shape(receipt: Dictionary) -> bool:
+	for key_variant in receipt.keys():
+		if not (key_variant is String) or not TRANSACTION_RECEIPT_ALLOWED_KEYS.has(str(key_variant)):
+			return false
+	if receipt.has("owner_binding") and (
+			not (receipt.get("owner_binding") is Dictionary)
+			or not StrictState.has_exact_keys(receipt.get("owner_binding") as Dictionary, FACILITY_OWNER_BINDING_SAVE_KEYS)
+	):
+		return false
+	if receipt.has("post_commit_intents"):
+		if not (receipt.get("post_commit_intents") is Array):
+			return false
+		for intent_variant in receipt.get("post_commit_intents") as Array:
+			if not (intent_variant is Dictionary) or not StrictState.has_exact_keys(intent_variant as Dictionary, ["intent_id", "region_id"]) \
+					or not _strict_nonempty_string((intent_variant as Dictionary).get("intent_id")) \
+					or not _strict_nonempty_string((intent_variant as Dictionary).get("region_id")):
+				return false
+	if receipt.has("destroyed_facility_ids") and not _strict_unique_string_array(receipt.get("destroyed_facility_ids"), false):
+		return false
+	return true
+
+
+func _strict_facility_lifecycle_shape(lifecycle: Dictionary) -> bool:
+	var expected_keys := FACILITY_LIFECYCLE_SAVE_KEYS.duplicate()
+	if str(lifecycle.get("state", "")) in ["rolled_back", "finalized"]:
+		expected_keys.append_array(FACILITY_LIFECYCLE_TERMINAL_SAVE_KEYS)
+	if not StrictState.has_exact_keys(lifecycle, expected_keys) \
+			or not (lifecycle.get("owner_binding") is Dictionary) \
+			or not StrictState.has_exact_keys(lifecycle.get("owner_binding") as Dictionary, FACILITY_OWNER_BINDING_SAVE_KEYS) \
+			or not (lifecycle.get("preimage") is Dictionary) \
+			or not (lifecycle.get("postimage") is Dictionary) \
+			or not (lifecycle.get("original_receipt") is Dictionary) \
+			or not (lifecycle.get("terminal_receipt") is Dictionary):
+		return false
+	if not _strict_transaction_receipt_shape(lifecycle.get("original_receipt") as Dictionary) \
+			or (not (lifecycle.get("terminal_receipt") as Dictionary).is_empty() \
+			and not _strict_transaction_receipt_shape(lifecycle.get("terminal_receipt") as Dictionary)):
+		return false
+	var postimage := lifecycle.get("postimage") as Dictionary
+	if not StrictState.has_exact_keys(postimage, FACILITY_POSTIMAGE_SAVE_KEYS) \
+			or not (postimage.get("region_after") is Dictionary) \
+			or not StrictState.has_exact_keys(postimage.get("region_after") as Dictionary, REGION_SAVE_KEYS) \
+			or not (postimage.get("facility_after") is Dictionary) \
+			or not StrictState.has_exact_keys(postimage.get("facility_after") as Dictionary, FACILITY_SAVE_KEYS):
+		return false
+	var preimage := lifecycle.get("preimage") as Dictionary
+	if preimage.is_empty():
+		return str(lifecycle.get("state", "")) in ["rolled_back", "finalized"]
+	if not StrictState.has_exact_keys(preimage, FACILITY_PREIMAGE_SAVE_KEYS) \
+			or not (preimage.get("region_before") is Dictionary) \
+			or not StrictState.has_exact_keys(preimage.get("region_before") as Dictionary, REGION_SAVE_KEYS) \
+			or not (preimage.get("facility_before") is Dictionary):
+		return false
+	var facility_before := preimage.get("facility_before") as Dictionary
+	return facility_before.is_empty() or StrictState.has_exact_keys(facility_before, FACILITY_SAVE_KEYS)
+
+
+func _strict_nonempty_string(value: Variant) -> bool:
+	return value is String and not str(value).is_empty() and str(value) == str(value).strip_edges()
+
+
+func _strict_unique_string_array(value: Variant, allow_empty_strings: bool) -> bool:
+	if not (value is Array):
+		return false
+	var seen: Dictionary = {}
+	for item_variant in value as Array:
+		if not (item_variant is String):
+			return false
+		var item := str(item_variant)
+		if item != item.strip_edges() or (item.is_empty() and not allow_empty_strings) or seen.has(item):
+			return false
+		seen[item] = true
+	return true
+
+
+func _string_array_is_sorted(value: Array) -> bool:
+	for index in range(1, value.size()):
+		if str(value[index - 1]) > str(value[index]):
+			return false
+	return true
+
+
+func _saved_slot_exists(slot_id_value: String, slots_by_region: Dictionary) -> bool:
+	for slot_array_variant in slots_by_region.values():
+		if slot_array_variant is Array and (slot_array_variant as Array).has(slot_id_value):
+			return true
+	return false
 
 
 func _values_match(first: Variant, second: Variant) -> bool:

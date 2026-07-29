@@ -2,6 +2,8 @@
 extends Node
 class_name WeatherRuntimeController
 
+const StrictState := preload("res://scripts/runtime/save_owner_state_v2_contract.gd")
+
 var _table_presentation_refresh_port: TablePresentationRefreshPort
 var _public_log_producer_port: PublicLogProducerPort
 var _presentation_world_clock: WorldEffectiveClockRuntimeController
@@ -595,6 +597,28 @@ func to_save_data() -> Dictionary:
 	}
 
 
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	if not StrictState.is_codec_data(data):
+		return _weather_save_preflight_rejection("weather_save_not_codec_data")
+	if not StrictState.has_exact_keys(data, WeatherRuntimeState.SAVE_KEYS):
+		return _weather_save_preflight_rejection("save_keys_invalid")
+	if not (data.get("schema_version") is int) \
+			or int(data.get("schema_version")) != WeatherRuntimeState.SCHEMA_VERSION:
+		return _weather_save_preflight_rejection("schema_version_invalid")
+	var strict_validation := _validate_strict_weather_save_shape(data)
+	if not bool(strict_validation.get("valid", false)):
+		return _weather_save_preflight_rejection(str(strict_validation.get("reason", "weather_save_shape_invalid")))
+	var validation := WeatherRuntimeState.validate_save_payload(data, _save_definition_ids())
+	if not bool(validation.get("valid", false)):
+		return _weather_save_preflight_rejection(str(validation.get("reason", "invalid_payload")))
+	return {
+		"accepted": true,
+		"reason": "",
+		"reason_code": "weather_save_valid",
+		"normalized_state": data.duplicate(true),
+	}
+
+
 func apply_save_data(data: Dictionary) -> Dictionary:
 	if data.is_empty():
 		reset_state()
@@ -605,23 +629,25 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 		_increment_telemetry("flat_shape_failclosed_migration")
 		_refresh_legacy_projection()
 		return {"applied": true, "migrated_from_v1": true, "fail_closed": true, "forecast_present": false, "active_zone_count": 0, "sequence": weather_sequence}
-	var validation := WeatherRuntimeState.validate_save_payload(data, weather_type_ids())
-	if not bool(validation.get("valid", false)):
-		return {"applied": false, "reason": str(validation.get("reason", "invalid_payload")), "schema_version": data.get("schema_version", null)}
-	var next_events := WeatherRuntimeState.duplicate_events(data.get("events", []))
-	var next_queue: Array = (data.get("queue", []) as Array).duplicate(true)
-	var next_history: Array = (data.get("history", []) as Array).duplicate(true)
-	var next_region_history: Dictionary = (data.get("region_history", {}) as Dictionary).duplicate(true)
-	var next_telemetry: Dictionary = (data.get("telemetry", {}) as Dictionary).duplicate(true)
+	var preflight := preflight_save_data(data)
+	if not bool(preflight.get("accepted", false)):
+		var rejection := str(preflight.get("reason_code", "invalid_payload"))
+		return {"applied": false, "reason": rejection, "reason_code": rejection, "schema_version": data.get("schema_version", null)}
+	var normalized := (preflight.get("normalized_state", {}) as Dictionary).duplicate(true)
+	var next_events := WeatherRuntimeState.duplicate_events(normalized.get("events", []))
+	var next_queue: Array = (normalized.get("queue") as Array).duplicate(true)
+	var next_history: Array = (normalized.get("history") as Array).duplicate(true)
+	var next_region_history: Dictionary = (normalized.get("region_history") as Dictionary).duplicate(true)
+	var next_telemetry: Dictionary = (normalized.get("telemetry") as Dictionary).duplicate(true)
 	_events = next_events
 	_queue = next_queue
 	_history = next_history
 	_region_history = next_region_history
 	_telemetry = next_telemetry
-	_next_generation_world_us = int(data.get("next_generation_world_us", WeatherSystem.START_GRACE_US))
-	weather_sequence = maxi(0, int(data.get("sequence", 0)))
+	_next_generation_world_us = int(normalized.get("next_generation_world_us"))
+	weather_sequence = int(normalized.get("sequence"))
 	_refresh_legacy_projection()
-	return {"applied": true, "schema_version": WeatherRuntimeState.SCHEMA_VERSION, "forecast_present": not weather_forecast.is_empty(), "active_zone_count": active_weather_zones.size(), "sequence": weather_sequence}
+	return {"applied": true, "reason_code": "weather_save_applied", "schema_version": WeatherRuntimeState.SCHEMA_VERSION, "forecast_present": not weather_forecast.is_empty(), "active_zone_count": active_weather_zones.size(), "sequence": weather_sequence}
 
 
 func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
@@ -990,6 +1016,80 @@ func _catalog() -> WeatherDefinitionCatalog:
 	if definition_catalog == null:
 		definition_catalog = DEFAULT_DEFINITION_CATALOG
 	return definition_catalog as WeatherDefinitionCatalog
+
+
+func _save_definition_ids() -> Array:
+	var catalog := definition_catalog as WeatherDefinitionCatalog
+	if catalog == null:
+		catalog = DEFAULT_DEFINITION_CATALOG as WeatherDefinitionCatalog
+	return catalog.definition_ids() if catalog != null else []
+
+
+func _validate_strict_weather_save_shape(data: Dictionary) -> Dictionary:
+	if not (data.get("events") is Array) or not (data.get("queue") is Array) \
+			or not (data.get("next_generation_world_us") is int) \
+			or not (data.get("sequence") is int) \
+			or not (data.get("history") is Array) \
+			or not (data.get("region_history") is Dictionary) \
+			or not (data.get("telemetry") is Dictionary):
+		return {"valid": false, "reason": "weather_save_fields_invalid"}
+	var maximum_event_id := 0
+	for event_variant in data.get("events") as Array:
+		if not (event_variant is Dictionary):
+			return {"valid": false, "reason": "event_not_dictionary"}
+		var event := event_variant as Dictionary
+		if not (event.get("event_schema_version") is int) \
+				or not (event.get("definition_id") is String) \
+				or not (event.get("type") is String) \
+				or str(event.get("definition_id")) != str(event.get("type")) \
+				or not (event.get("phase") is String) \
+				or not (event.get("source_type") is String):
+			return {"valid": false, "reason": "event_field_type_invalid"}
+		if not _strict_weather_region_array(event.get("region_indices")) \
+				or not _strict_weather_region_array(event.get("districts")) \
+				or event.get("region_indices") != event.get("districts"):
+			return {"valid": false, "reason": "region_indices_invalid"}
+		for bool_key in ["lifecycle_end_recorded", "telemetry_end_recorded"]:
+			if event.has(bool_key) and not (event.get(bool_key) is bool):
+				return {"valid": false, "reason": "%s_invalid" % bool_key}
+		maximum_event_id = maxi(maximum_event_id, int(event.get("id", 0)))
+	for queue_id_variant in data.get("queue") as Array:
+		if not (queue_id_variant is int) or int(queue_id_variant) < 0:
+			return {"valid": false, "reason": "queue_entry_invalid"}
+	for history_variant in data.get("history") as Array:
+		if not (history_variant is Dictionary):
+			return {"valid": false, "reason": "history_entry_invalid"}
+		var history := history_variant as Dictionary
+		if not (history.get("id") is int) or not (history.get("definition_id") is String) \
+				or not _strict_weather_region_array(history.get("region_indices")) \
+				or not (history.get("ended_at_world_us") is int):
+			return {"valid": false, "reason": "history_entry_invalid"}
+		maximum_event_id = maxi(maximum_event_id, int(history.get("id")))
+	for index_key in (data.get("region_history") as Dictionary).keys():
+		if not (index_key is String) or not str(index_key).is_valid_int() \
+				or str(index_key) != str(int(str(index_key))):
+			return {"valid": false, "reason": "region_history_entry_invalid"}
+	for telemetry_key in (data.get("telemetry") as Dictionary).keys():
+		if not (telemetry_key is String):
+			return {"valid": false, "reason": "telemetry_entry_invalid"}
+	if int(data.get("sequence")) < maximum_event_id:
+		return {"valid": false, "reason": "sequence_regressed"}
+	return {"valid": true}
+
+
+func _strict_weather_region_array(value: Variant) -> bool:
+	if not (value is Array) or (value as Array).is_empty():
+		return false
+	var seen: Dictionary = {}
+	for region_variant in value as Array:
+		if not (region_variant is int) or int(region_variant) < 0 or seen.has(int(region_variant)):
+			return false
+		seen[int(region_variant)] = true
+	return true
+
+
+func _weather_save_preflight_rejection(reason_code: String) -> Dictionary:
+	return {"accepted": false, "reason": reason_code, "reason_code": reason_code}
 
 
 func _definition(type_id: String) -> WeatherDefinition:
