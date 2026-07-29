@@ -682,12 +682,27 @@ func _prepare_save_data(data: Dictionary) -> Dictionary:
 	var players := (data.get("players") as Dictionary).duplicate(true)
 	if raw_actor_ids.size() != actor_ids.size():
 		return {"valid": false, "reason_code": "organization_save_actor_shape_invalid"}
+	var configured := bool(data.get("configured", false))
+	var journal := (data.get("transaction_journal") as Dictionary).duplicate(true)
+	var secret := str(data.get("capability_secret"))
+	if not configured:
+		if not actor_ids.is_empty() or not players.is_empty() or not journal.is_empty() \
+				or int(data.get("revision")) != 0 or not secret.is_empty():
+			return {"valid": false, "reason_code": "organization_save_unconfigured_state_invalid"}
+		return {
+			"valid": true,
+			"configured": false,
+			"actor_ids": [],
+			"players": {},
+			"transaction_journal": {},
+			"revision": 0,
+			"capability_secret": "",
+		}
 	if actor_ids.is_empty() or players.size() != actor_ids.size():
 		return {"valid": false, "reason_code": "organization_save_actor_shape_invalid"}
 	for actor_id in actor_ids:
 		if not players.has(actor_id) or not _player_state_valid(actor_id, _dictionary(players[actor_id])):
 			return {"valid": false, "reason_code": "organization_save_player_invalid"}
-	var journal := (data.get("transaction_journal") as Dictionary).duplicate(true)
 	for transaction_id_variant in journal.keys():
 		var transaction_id := str(transaction_id_variant)
 		var lifecycle := _dictionary(journal[transaction_id_variant])
@@ -695,7 +710,6 @@ func _prepare_save_data(data: Dictionary) -> Dictionary:
 			or str(lifecycle.get("actor_id", "")) not in actor_ids \
 			or not _binding_complete(_dictionary(lifecycle.get("binding", {}))):
 			return {"valid": false, "reason_code": "organization_save_journal_invalid"}
-	var secret := str(data.get("capability_secret"))
 	if secret.is_empty():
 		return {"valid": false, "reason_code": "organization_save_capability_secret_missing"}
 	return {
@@ -706,6 +720,37 @@ func _prepare_save_data(data: Dictionary) -> Dictionary:
 		"transaction_journal": journal,
 		"revision": int(data.get("revision")),
 		"capability_secret": secret,
+	}
+
+
+func preflight_restore_dependencies(section_state: Dictionary, all_normalized_states: Dictionary) -> Dictionary:
+	var session_state: Dictionary = all_normalized_states.get("session", {}) \
+		if all_normalized_states.get("session", {}) is Dictionary else {}
+	var world_state: Dictionary = session_state.get("world_session_state", {}) \
+		if session_state.get("world_session_state", {}) is Dictionary else {}
+	if not (world_state.get("players", null) is Array):
+		return {"accepted": false, "reason_code": "organization_session_roster_missing"}
+	var expected_actor_ids: Array[String] = []
+	for player_variant in world_state.get("players", []) as Array:
+		if not (player_variant is Dictionary):
+			return {"accepted": false, "reason_code": "organization_session_roster_invalid"}
+		var player := player_variant as Dictionary
+		var player_index := int(player.get("id", -1))
+		var actor_id := str(player.get("actor_id", "player.%d" % player_index)).strip_edges()
+		if player_index < 0 or actor_id.is_empty() or expected_actor_ids.has(actor_id):
+			return {"accepted": false, "reason_code": "organization_session_roster_invalid"}
+		expected_actor_ids.append(actor_id)
+	expected_actor_ids.sort()
+	var section_actor_ids := _normalized_actor_ids(
+		section_state.get("actor_ids", []) as Array if section_state.get("actor_ids", []) is Array else []
+	)
+	var section_configured := bool(section_state.get("configured", false))
+	var accepted := (not section_configured and section_actor_ids.is_empty()) \
+		if expected_actor_ids.is_empty() \
+		else section_configured and section_actor_ids == expected_actor_ids
+	return {
+		"accepted": accepted,
+		"reason_code": "organization_session_roster_matches" if accepted else "organization_session_roster_mismatch",
 	}
 
 

@@ -1,4 +1,4 @@
-[gd_scene load_steps=134 format=3]
+[gd_scene load_steps=136 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -97,6 +97,8 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/presentation/TablePresentationViewModelQuery.tscn" id="103_table_presentation_viewmodel_query"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/RuntimeLoop.tscn" id="104_runtime_loop"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/SaveRestoreRuntimeBarrier.tscn" id="142_restore_barrier"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardInventorySaveOwner.tscn" id="143_card_inventory_save_owner"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CommodityBeltVisibilitySaveOwner.tscn" id="144_belt_visibility_save_owner"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/RuntimeWorldPorts.tscn" id="105_runtime_world_ports"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/RuntimePhaseCoordinator.tscn" id="106_runtime_phase_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/RuntimeCommandPipeline.tscn" id="107_runtime_command_pipeline"]
@@ -324,6 +326,12 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="CommodityCardInventoryRuntimeController" parent="." instance=ExtResource("63_commodity_card_inventory")]
+unique_name_in_owner = true
+
+[node name="CardInventorySaveOwner" parent="." instance=ExtResource("143_card_inventory_save_owner")]
+unique_name_in_owner = true
+
+[node name="CommodityBeltVisibilitySaveOwner" parent="." instance=ExtResource("144_belt_visibility_save_owner")]
 unique_name_in_owner = true
 
 [node name="CommoditySushiTrackRuntimeService" parent="." instance=ExtResource("115_commodity_sushi_track")]

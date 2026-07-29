@@ -20,6 +20,7 @@ const PUBLIC_REASON_CODES := [
 	"envelope_validation_failed",
 	"section_wrapper_invalid",
 	"owner_preflight_rejected",
+	"ruleset_attestation_mismatch",
 	"cross_section_dependency_rejected",
 	"all_owner_preflights_passed",
 	"owner_checkpoint_capture_failed",
@@ -112,7 +113,12 @@ var _post_restore_rebind_count := 0
 var _last_restore_phase := 0
 var _last_apply_duration_us := 0
 var _last_preflight_duration_us := 0
+var _last_owner_apply_count := 0
+var _last_registry_apply_count := 0
+var _last_internal_preflight_failure_section := ""
+var _last_internal_preflight_failure_reason := ""
 var _test_apply_failure_once := ""
+var _last_internal_rollback_order: Array[String] = []
 
 
 func fixed_section_order() -> Array[String]:
@@ -185,6 +191,7 @@ func preflight_envelope(envelope: Dictionary) -> Dictionary:
 		"preflight_count": int(internal.get("preflight_count", 0)),
 		"cross_section_check_count": int(internal.get("cross_section_check_count", 0)),
 		"unsupported_count": int(internal.get("unsupported_count", 0)),
+		"requires_backup": bool(internal.get("requires_backup", false)),
 		"duration_us": _last_preflight_duration_us,
 	}
 
@@ -194,6 +201,8 @@ func apply_envelope(envelope: Dictionary) -> Dictionary:
 		return _result("apply", false, "registry_busy")
 	_operation_in_progress = true
 	_operation_sequence += 1
+	_last_owner_apply_count = 0
+	_last_registry_apply_count = 0
 	_last_restore_phase = 0
 	var apply_started_us := Time.get_ticks_usec()
 	var preflight_started_us := Time.get_ticks_usec()
@@ -320,6 +329,8 @@ func apply_envelope(envelope: Dictionary) -> Dictionary:
 	success["preflight_count"] = int(preflight.get("preflight_count", 0))
 	success["apply_count"] = owner_apply_count
 	success["registry_apply_count"] = 1
+	_last_owner_apply_count = owner_apply_count
+	_last_registry_apply_count = 1
 	success["rollback_attempted"] = false
 	success["rollback_complete"] = true
 	success["restore_phase_count"] = 10
@@ -358,7 +369,7 @@ func public_operation_receipt(receipt: Dictionary) -> Dictionary:
 		"registry_version": REGISTRY_VERSION,
 		"operation_sequence": _public_nonnegative_int(receipt.get("operation_sequence")),
 	}
-	for key in ["envelope_valid", "preflight_complete", "rollback_attempted", "rollback_complete"]:
+	for key in ["envelope_valid", "preflight_complete", "rollback_attempted", "rollback_complete", "requires_backup"]:
 		if receipt.has(key):
 			result[key] = _public_bool(receipt.get(key))
 	for key in ["preflight_count", "apply_count", "unsupported_count", "registry_apply_count", "restore_phase_count", "post_restore_rebind_count", "post_restore_full_refresh_count"]:
@@ -388,6 +399,11 @@ func debug_snapshot() -> Dictionary:
 	snapshot["last_restore_phase"] = _last_restore_phase
 	snapshot["last_preflight_duration_us"] = _last_preflight_duration_us
 	snapshot["last_apply_duration_us"] = _last_apply_duration_us
+	snapshot["last_owner_apply_count"] = _last_owner_apply_count
+	snapshot["last_registry_apply_count"] = _last_registry_apply_count
+	snapshot["last_internal_preflight_failure_section"] = _last_internal_preflight_failure_section
+	snapshot["last_internal_preflight_failure_reason"] = _last_internal_preflight_failure_reason
+	snapshot["last_internal_rollback_order"] = _last_internal_rollback_order.duplicate()
 	snapshot["public_receipt_allowlisted"] = true
 	return snapshot
 
@@ -432,6 +448,8 @@ func _capture_resume_envelope_internal(identity: Dictionary) -> Dictionary:
 
 func _preflight_envelope_internal(envelope: Dictionary) -> Dictionary:
 	_last_restore_phase = 0
+	_last_internal_preflight_failure_section = ""
+	_last_internal_preflight_failure_reason = ""
 	var analysis := _registry_analysis()
 	if not bool(analysis.get("valid", false)):
 		return {"ok": false, "reason_code": "owner_registry_invalid", "envelope_valid": false, "preflight_complete": false}
@@ -455,11 +473,19 @@ func _preflight_envelope_internal(envelope: Dictionary) -> Dictionary:
 		var binding := binding_by_section.get(section_id) as BindingScript
 		var decoded := _decode_section_wrapper(sections.get(section_id), binding)
 		if not bool(decoded.get("ok", false)):
+			_last_internal_preflight_failure_section = section_id
+			_last_internal_preflight_failure_reason = str(decoded.get("reason_code", "section_wrapper_invalid"))
 			return {"ok": false, "reason_code": "section_wrapper_invalid", "envelope_valid": true, "preflight_complete": false, "preflight_count": preflight_count}
 		var owner := get_node_or_null(binding.owner_path)
 		var owner_preflight := _preflight_owner(owner, binding, decoded.get("owner_state", {}) as Dictionary)
 		if not bool(owner_preflight.get("ok", false)):
-			return {"ok": false, "reason_code": "owner_preflight_rejected", "envelope_valid": true, "preflight_complete": false, "preflight_count": preflight_count, "failing_section_id": section_id}
+			var owner_reason := str(owner_preflight.get("reason_code", "owner_preflight_rejected"))
+			_last_internal_preflight_failure_section = section_id
+			_last_internal_preflight_failure_reason = owner_reason
+			var public_reason := "ruleset_attestation_mismatch" \
+				if section_id == "ruleset" and owner_reason == "ruleset_attestation_mismatch" \
+				else "owner_preflight_rejected"
+			return {"ok": false, "reason_code": public_reason, "envelope_valid": true, "preflight_complete": false, "preflight_count": preflight_count, "failing_section_id": section_id, "requires_backup": bool(owner_preflight.get("requires_backup", false))}
 		plan[section_id] = {
 			"decoded_owner_state": (decoded.get("owner_state", {}) as Dictionary).duplicate(true),
 			"normalized_owner_state": (owner_preflight.get("normalized_owner_state", {}) as Dictionary).duplicate(true),
@@ -469,6 +495,8 @@ func _preflight_envelope_internal(envelope: Dictionary) -> Dictionary:
 	var dependency_preflight := _preflight_cross_section_dependencies(plan, binding_by_section)
 	if not bool(dependency_preflight.get("accepted", false)):
 		_cross_section_rejection_count += 1
+		_last_internal_preflight_failure_section = "cross_section"
+		_last_internal_preflight_failure_reason = str(dependency_preflight.get("reason_code", "cross_section_dependency_rejected"))
 		return {
 			"ok": false,
 			"reason_code": "cross_section_dependency_rejected",
@@ -494,7 +522,7 @@ func _preflight_owner(owner: Node, binding: BindingScript, owner_state: Dictiona
 	if not binding.preflight_method.is_empty():
 		var preflight_receipt := _call_dictionary(owner, binding.preflight_method, [owner_state.duplicate(true)])
 		if not bool(preflight_receipt.get("accepted", false)):
-			return {"ok": false}
+			return {"ok": false, "reason_code": str(preflight_receipt.get("reason_code", "owner_preflight_rejected")), "requires_backup": bool(preflight_receipt.get("requires_backup", false))}
 		var normalized: Dictionary = (preflight_receipt.get("normalized_state", {}) as Dictionary).duplicate(true) \
 			if preflight_receipt.get("normalized_state", {}) is Dictionary else owner_state.duplicate(true)
 		var encoded := _encode_owner_state(normalized)
@@ -629,6 +657,9 @@ func _rollback_failed_apply(
 	reason_code := "owner_apply_failed"
 ) -> Dictionary:
 	var rollback := _rollback_sections(touched_sections, checkpoints, binding_by_section)
+	_last_internal_rollback_order.clear()
+	for section_variant in rollback.get("section_ids", []) as Array:
+		_last_internal_rollback_order.append(str(section_variant))
 	var global_rollback := _rollback_restore_barrier(operation_id)
 	var residual := _verify_checkpoints_exact(checkpoints, binding_by_section)
 	var complete := bool(rollback.get("complete", false)) \
@@ -828,6 +859,7 @@ func _apply_rejection_from_preflight(preflight: Dictionary) -> Dictionary:
 	rejected["preflight_complete"] = false
 	rejected["preflight_count"] = int(preflight.get("preflight_count", 0))
 	rejected["unsupported_count"] = int(preflight.get("unsupported_count", 0))
+	rejected["requires_backup"] = bool(preflight.get("requires_backup", false))
 	return rejected
 
 
