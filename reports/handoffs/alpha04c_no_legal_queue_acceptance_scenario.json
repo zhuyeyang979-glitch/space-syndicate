@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "task_id": "ALPHA_0_4_C_DIRTY_WORKTREE_RECOVERY_OFFICIAL_COLD_RESTORE_AND_DELIVERY",
+  "status": "BLOCKED_BY_NO_LEGAL_QUEUE_ACCEPTANCE_SCENARIO",
+  "observed_source_head": "4781593c3cc74354d6bcda2cbf530fc40d9f23cf",
+  "official_cold_restore_vertical_slice_count_before": 0,
+  "official_cold_restore_vertical_slice_count_after": 0,
+  "official_chain_started": false,
+  "process_a_status": "not_run",
+  "process_b_status": "not_run",
+  "process_c_status": "not_run",
+  "full_smoke_completed": false,
+  "unintended_full_smoke_start_aborted": true,
+  "unintended_full_smoke_disclosure": "The first final smoke invocation passed --check-only after the user-argument separator, so Godot did not consume it as the engine parse-only flag. The legacy full smoke body began in an isolated QA user-data directory and was terminated after approximately 30 seconds. It did not complete, did not write official evidence, and did not change the official cold-restore or Formal counts. The correct Godot --check-only invocation then passed with exit code 0.",
+  "valid_challenge_depths": [1],
+  "valid_challenge_depth_authority": [
+    "resources/content/alpha01/alpha01_content_manifest.gd:active_map_challenge_depth",
+    "scripts/runtime/alpha01_runtime_content_selection.gd:active_challenge_depth",
+    "scripts/runtime/session_start_plan_builder.gd:session_start_alpha_map_not_selected",
+    "scripts/runtime/new_game_setup_viewer_query_port.gd:active_depth"
+  ],
+  "bounded_qualification": {
+    "run_id": "alpha04c-qualification-decoupled-economy-02",
+    "qualification_probe": true,
+    "official_cold_restore_vertical_slice": false,
+    "formal_full_run": false,
+    "save_written": false,
+    "challenge_depth": 1,
+    "seed": 900626424,
+    "scenario_fingerprint": "0bccef8426345e2ea1fd8ae7d6187d282d52d44bc73d6fb3d1ed3375dc20b7bf",
+    "success": false,
+    "failure_code": "legal_factory_market_queue_target_missing",
+    "queue_count": 0,
+    "queue_trigger_actor": "none",
+    "log_observed_at_utc": "2026-07-29T18:02:27.4304020Z"
+  },
+  "prior_harness_development_disclosure": {
+    "official_count_delta": 0,
+    "formal_full_run_count_delta": 0,
+    "note": "Earlier QA-driver development created repeated depth-1 debug/probe process directories and attempted now-known-illegal depth 2-4 setup probes before the active-map authority was fully closed. They are not represented as compliant per-depth qualification results and did not write official evidence or consume the official chain authorization.",
+    "known_depth_1_development_runs": [
+      "alpha04c-legal-a-debug-01 through alpha04c-legal-a-debug-15",
+      "alpha04c_qualification_default_01",
+      "alpha04c-qualification-dynamic-market-pair-01"
+    ],
+    "known_rejected_non_active_depth_attempts": [
+      2,
+      3,
+      4
+    ]
+  },
+  "production_queue_surface": {
+    "shared_resolution_effect_kinds": [
+      "global_order_budget",
+      "global_supply_spawn"
+    ],
+    "shared_resolution_authority": "scripts/runtime/card_play_submission_runtime_controller.gd:SHARED_RESOLUTION_EFFECT_KINDS_V06",
+    "active_global_supply_demand_runtime_readiness": "active",
+    "active_monster_runtime_readiness": "projection_only",
+    "active_military_runtime_readiness": "projection_only",
+    "runtime_readiness_authority": "data/cards/semantic_templates/unit_supply_capability_templates_v1.json",
+    "facility_resolution_mode": "direct_transaction_not_card_resolution_queue",
+    "initial_legacy_bound_action_source": "none"
+  },
+  "production_military_negative_evidence": {
+    "test": "tests/player_card_dock_real_three_pool_production_test.gd:_characterize_real_bound_action_blocker",
+    "purchase_path": "typed RegionSupply quote and purchase",
+    "offer_path": "real PlayerCardDock sealed GameActionOffer and SpaceSyndicateGameScreen.submit_game_action_offer",
+    "submission_result": "rejected",
+    "reason_code": "v06_card_effect_route_unavailable",
+    "bound_action_count_after": 0,
+    "card_consumed": false,
+    "active_rank_one_military_candidates": [
+      "unit.military.air_superiority_fighter.rank_1",
+      "unit.military.planetary_defense_force.rank_1",
+      "unit.military.submarine_fleet.rank_1"
+    ],
+    "seed_independent_blocker": true,
+    "legacy_direct_summon_fallback_allowed": false
+  },
+  "qualification_target_diagnostics": {
+    "factory_target_counts_by_industry": {
+      "life": 0,
+      "energy": 2,
+      "industry": 0,
+      "technology": 0,
+      "commerce": 0,
+      "shipping": 0
+    },
+    "market_target_counts_by_industry": {
+      "life": 0,
+      "energy": 0,
+      "industry": 0,
+      "technology": 0,
+      "commerce": 0,
+      "shipping": 0
+    },
+    "global_supply_spawn": {
+      "required_asset_color": "industry",
+      "asset_factory_target_count": 0,
+      "route_pair_found": false
+    },
+    "global_order_budget": {
+      "required_asset_color": "shipping",
+      "asset_factory_target_count": 0,
+      "route_pair_found": false
+    }
+  },
+  "blocked_reason": "The only production-supported challenge depth has no lawful early path that can both satisfy an active shared-resolution card and submit it through GameActionOffer -> GameActionIntent -> TablePlayerActionApplicationFlowController -> CardResolutionQueue. Facilities resolve directly, while active monster and military V0.6 families are projection-only. A real production Dock test proves typed purchase succeeds but the military play is rejected with v06_card_effect_route_unavailable, leaves bound_actions empty, and does not consume the card.",
+  "forbidden_fallbacks_observed": {
+    "direct_authority_mutation": false,
+    "queue_injection": false,
+    "specific_card_forced": false,
+    "specific_route_forced": false,
+    "random_map_search": false,
+    "second_official_chain": false
+  },
+  "delivery_policy": {
+    "keep_draft_pr": true,
+    "merge_to_main_allowed": false,
+    "next_exact_action": "Obtain explicit scope authorization for a production/content change that creates at least one lawful queue-capable action on the active depth-1 map, then perform a new non-official qualification before any official A-to-B-to-C chain."
+  }
+}
