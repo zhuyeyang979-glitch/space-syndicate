@@ -677,7 +677,7 @@ function Get-ColdRestoreProcessSnapshot {
         return @(Get-CimInstance Win32_Process -ErrorAction Stop | Select-Object ProcessId, ParentProcessId, Name, CommandLine)
     }
     catch {
-        return @()
+        throw "process_snapshot_failed"
     }
 }
 

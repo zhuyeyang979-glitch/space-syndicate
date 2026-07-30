@@ -5,6 +5,7 @@ param(
     [string]$GodotPath = "godot",
     [string]$RunId = "alpha04c-cold-restore",
     [switch]$QualificationProbe,
+    [switch]$TargetedOwnerCaptureDiagnostic,
     [switch]$NonOfficialProcessA,
     [ValidateSet("diagnostic", "rehearsal")][string]$NonOfficialProcessAKind = "diagnostic",
     [switch]$EnableColdRestoreExecution,
@@ -22,14 +23,61 @@ $FORMAL_FULL_RUN = $false
 $DriverExecutionReady = $true
 $OfficialAuthorizationId = "alpha04c-p0-cold-restore-depth1-seed900626424-v1"
 $OfficialClaimRelativePath = "codex\cold_restore_v3\official-alpha04c-depth1-seed900626424\official_claim_ledger.json"
+$TargetedOwnerCaptureQuotaLedgerRelativePath = "codex\cold_restore_v3\non-official-alpha04c-production-save-completion-repair-0240dae\targeted_owner_capture_quota_ledger.json"
 $DriverScript = "res://scripts/tools/cold_restore_vertical_slice_driver.gd"
 $ArtifactRoot = "user://test_runs/alpha04c/$RunId/evidence"
-$UserDataPrefix = if ($NonOfficialProcessA) { "space_syndicate_alpha04c_cold_restore_non_official" } else { "space_syndicate_alpha04c_cold_restore" }
+$UserDataPrefix = if ($TargetedOwnerCaptureDiagnostic) {
+    "space_syndicate_alpha04c_owner_capture_diagnostic"
+}
+elseif ($NonOfficialProcessA) {
+    "space_syndicate_alpha04c_cold_restore_non_official"
+}
+else {
+    "space_syndicate_alpha04c_cold_restore"
+}
 $UserDataRoot = Join-Path ([IO.Path]::GetTempPath()) "$UserDataPrefix`_$RunId"
 $IsolatedAppData = Join-Path $UserDataRoot "appdata-roaming"
 $IsolatedLocalAppData = Join-Path $UserDataRoot "appdata-local"
 $ManifestPrefix = "COLD_RESTORE_MANIFEST|"
 $QualificationPrefix = "COLD_RESTORE_QUALIFICATION|"
+$TargetedOwnerCaptureScenarioFingerprint = "0bccef8426345e2ea1fd8ae7d6187d282d52d44bc73d6fb3d1ed3375dc20b7bf"
+$TargetedOwnerCapturePhases = @(
+    "session_started",
+    "real_commodity_claim_complete",
+    "real_normal_card_purchase_complete",
+    "real_facility_economy_complete",
+    "first_sale_receipt_complete",
+    "ai_nondefault_state_complete",
+    "queue_entry_committed",
+    "restore_barrier_entered"
+)
+$SaveSectionOrder = @(
+    "ruleset", "region_infrastructure", "region_supply", "commodity_flow",
+    "routes", "player_mana", "commodity_belt_visibility", "card_inventory",
+    "player_organization", "monsters", "military", "weather",
+    "card_resolution_queue", "card_resolution_execution", "card_resolution_history",
+    "ai", "bankruptcy_neutral_estate", "victory_control", "session"
+)
+$SaveOwnerOrder = @(
+    "ruleset_runtime", "public_facility_region", "region_supply", "commodity_flow",
+    "route_network", "player_mana", "commodity_belt_visibility", "card_inventory",
+    "player_organization", "monster_runtime", "military_runtime", "weather_runtime",
+    "card_resolution_queue", "card_resolution_execution", "card_resolution_history",
+    "ai_runtime", "bankruptcy_neutral_estate", "victory_control", "game_session"
+)
+$OwnerCaptureFailureClasses = @(
+    "OWNER_NODE_MISSING",
+    "OWNER_METHOD_MISSING",
+    "OWNER_CAPTURE_EXCEPTION",
+    "OWNER_CAPTURE_WRONG_TYPE",
+    "OWNER_CAPTURE_EMPTY",
+    "OWNER_CAPTURE_NOT_PURE_DATA",
+    "OWNER_CAPTURE_HEADER_INVALID",
+    "OWNER_CAPTURE_VERSION_INVALID",
+    "OWNER_CAPTURE_RULESET_INVALID",
+    "OWNER_CAPTURE_MUTATED_RUNTIME",
+    "REGISTRY_INTERNAL_ERROR"
+)
 $RoleSequence = @("producer", "consumer", "validator")
 $ProcessSequence = @(
     "qualification_exit_attested",
@@ -273,6 +321,33 @@ $ParentExitAttestationFields = @(
     "wrapper_exit_green",
     "wrapper_reason_code"
 )
+$OwnerCaptureDiagnosticFields = @(
+    "schema_version", "diagnostic_id", "run_id", "repository_head",
+    "scenario_fingerprint", "official", "formal", "challenge_depth", "seed",
+    "local_player_count", "ai_player_count", "ai_action_count", "ai_state_digest_changed",
+    "audit_count", "phase_audits",
+    "first_phase_with_capture_failure", "first_failure", "safety_green",
+    "save_file_exists", "official_claim_path_present"
+)
+$OwnerCaptureAuditFields = @(
+    "phase_id", "captured", "section_count", "section_results", "first_failure",
+    "world_fingerprint_match", "safety_observation_match", "world_advance_delta",
+    "rng_draw_delta", "public_log_delta", "private_feedback_delta",
+    "sale_receipt_delta", "human_action_delta", "ai_action_delta",
+    "notification_delta", "safety_green"
+)
+$OwnerCaptureSectionResultFields = @(
+    "section_id", "owner_id", "captured", "reason_code", "state_version",
+    "payload_fingerprint"
+)
+$OwnerCaptureFailureFields = @(
+    "schema_version", "registry_operation_id", "capture_sequence", "section_index",
+    "section_id", "owner_id", "failure_class", "reason_code", "result_empty",
+    "result_not_dictionary", "result_not_pure_data", "result_header_invalid",
+    "result_version_invalid", "result_ruleset_invalid", "state_version_observed",
+    "ruleset_id_observed", "live_state_mutated_during_capture",
+    "private_payload_redacted"
+)
 $LaunchAttestationFields = @(
     "schema_version",
     "authorization_id",
@@ -348,6 +423,75 @@ function Test-ExactFieldSet {
     $actual = @($Value.PSObject.Properties.Name | Sort-Object)
     $expected = @($ExpectedFields | Sort-Object)
     return @(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -eq 0
+}
+
+function Test-OwnerCaptureFailureIdentity {
+    param([Parameter(Mandatory = $true)]$Failure)
+    if (-not (Test-ExactFieldSet $Failure $OwnerCaptureFailureFields)) {
+        return $false
+    }
+    $index = [int]$Failure.section_index
+    return [int]$Failure.schema_version -eq 1 `
+        -and $index -ge 0 `
+        -and $index -lt $SaveSectionOrder.Count `
+        -and [string]$Failure.section_id -ceq $SaveSectionOrder[$index] `
+        -and [string]$Failure.owner_id -ceq $SaveOwnerOrder[$index] `
+        -and [string]$Failure.failure_class -cin $OwnerCaptureFailureClasses `
+        -and [string]$Failure.reason_code -cmatch '^[a-z0-9_]{1,128}$' `
+        -and [bool]$Failure.private_payload_redacted
+}
+
+function Test-OwnerCaptureAuditRelationship {
+    param([Parameter(Mandatory = $true)]$Audit)
+    if (-not (Test-ExactFieldSet $Audit $OwnerCaptureAuditFields)) {
+        return $false
+    }
+    $results = @($Audit.section_results)
+    $successfulCount = [int]$Audit.section_count
+    if ($successfulCount -lt 0 -or $successfulCount -gt $SaveSectionOrder.Count `
+        -or $results.Count -gt $SaveSectionOrder.Count) {
+        return $false
+    }
+    for ($index = 0; $index -lt $results.Count; $index += 1) {
+        $row = $results[$index]
+        if (-not (Test-ExactFieldSet $row $OwnerCaptureSectionResultFields) `
+            -or [string]$row.section_id -cne $SaveSectionOrder[$index] `
+            -or [string]$row.owner_id -cne $SaveOwnerOrder[$index] `
+            -or [string]$row.reason_code -cnotmatch '^[a-z0-9_]{1,128}$' `
+            -or ([bool]$row.captured -and [string]$row.payload_fingerprint -cnotmatch '^[0-9a-f]{64}$') `
+            -or (-not [string]::IsNullOrEmpty([string]$row.payload_fingerprint) `
+                -and [string]$row.payload_fingerprint -cnotmatch '^[0-9a-f]{64}$')) {
+            return $false
+        }
+    }
+    $failureFields = @($Audit.first_failure.PSObject.Properties.Name)
+    if ([bool]$Audit.captured) {
+        return $successfulCount -eq $SaveSectionOrder.Count `
+            -and $results.Count -eq $SaveSectionOrder.Count `
+            -and @($results | Where-Object { -not [bool]$_.captured }).Count -eq 0 `
+            -and $failureFields.Count -eq 0
+    }
+    if ($failureFields.Count -eq 0 -or -not (Test-OwnerCaptureFailureIdentity $Audit.first_failure)) {
+        return $false
+    }
+    $failureIndex = [int]$Audit.first_failure.section_index
+    if ($successfulCount -eq $SaveSectionOrder.Count) {
+        return $results.Count -eq $SaveSectionOrder.Count `
+            -and @($results | Where-Object { -not [bool]$_.captured }).Count -eq 0
+    }
+    if ($results.Count -ne ($successfulCount + 1) -or $failureIndex -ne $successfulCount) {
+        return $false
+    }
+    for ($index = 0; $index -lt $successfulCount; $index += 1) {
+        if (-not [bool]$results[$index].captured) {
+            return $false
+        }
+    }
+    $failureRow = $results[$successfulCount]
+    return -not [bool]$failureRow.captured `
+        -and [string]$failureRow.section_id -ceq [string]$Audit.first_failure.section_id `
+        -and [string]$failureRow.owner_id -ceq [string]$Audit.first_failure.owner_id `
+        -and [string]$failureRow.reason_code -ceq [string]$Audit.first_failure.reason_code
 }
 
 function Assert-ColdRestoreManifest {
@@ -632,6 +776,218 @@ function Invoke-ColdRestoreNonOfficialProcessA {
         timeline = $timeline
         paths = $paths
         save_path = $savePath
+    }
+}
+
+function Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic {
+    param(
+        [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
+        [Parameter(Mandatory = $true)][string]$HeadSha
+    )
+
+    Assert-ColdRestoreCondition ($RunId -cmatch '^alpha04c-owner-capture-diagnostic-[0-9a-f]{12}$' `
+        -and $RunId -ceq "alpha04c-owner-capture-diagnostic-$($HeadSha.Substring(0, 12))") "targeted_owner_capture_run_id_invalid"
+    Assert-ColdRestoreCondition ($AuthorizedOfficialColdRestoreCount -eq 0) "targeted_owner_capture_official_authorization_forbidden"
+    Assert-ColdRestoreCondition ($ChildTimeoutSeconds -eq 180) "targeted_owner_capture_timeout_must_be_180"
+    Assert-ColdRestoreCondition ($ExpectedScenarioFingerprint -ceq $TargetedOwnerCaptureScenarioFingerprint) "expected_scenario_fingerprint_invalid"
+    $diagnosticQuota = Consume-ColdRestoreTargetedOwnerCaptureDiagnosticQuota $ResolvedProjectPath $HeadSha
+    Assert-ColdRestoreCondition ([IO.File]::Exists([string]$diagnosticQuota.path) `
+        -and [string]$diagnosticQuota.fingerprint -cmatch '^[0-9a-f]{64}$') "targeted_owner_capture_diagnostic_quota_ledger_invalid"
+    $paths = Get-ColdRestoreRolePaths $ResolvedProjectPath "producer"
+    $arguments = New-ColdRestoreGodotArgumentList `
+        -EngineArgumentList @("--headless", "--path", $ResolvedProjectPath, "--script", $DriverScript) `
+        -UserArgumentList @(
+            "--cold-restore-non-official-process-a",
+            "--cold-restore-targeted-owner-capture-diagnostic",
+            "--cold-restore-role=producer",
+            "--cold-restore-run-id=$RunId",
+            "--cold-restore-head-sha=$HeadSha",
+            "--cold-restore-artifact-root=$ArtifactRoot",
+            "--cold-restore-scenario-fingerprint=$ExpectedScenarioFingerprint"
+        )
+    $run = Invoke-ColdRestoreAttestedProcess `
+        -ExecutablePath $GodotPath `
+        -WorkingDirectory $ResolvedProjectPath `
+        -ArgumentList $arguments `
+        -RunId $RunId `
+        -Role "producer" `
+        -RepositoryHead $HeadSha `
+        -ChildAttestationPath $paths.child_attestation `
+        -ParentAttestationPath $paths.parent_attestation `
+        -StdoutPath $paths.stdout `
+        -StderrPath $paths.stderr `
+        -TimeoutSeconds $ChildTimeoutSeconds `
+        -EnvironmentVariables @{ APPDATA = $IsolatedAppData; LOCALAPPDATA = $IsolatedLocalAppData } `
+        -PhaseTimelineEventDirectory $paths.phase_timeline_events `
+        -PhaseTimelinePath $paths.phase_timeline
+    Assert-ColdRestoreCondition ([bool]$run.wrapper_exit_green) "targeted_owner_capture_$($run.wrapper_reason_code)"
+    Assert-ColdRestoreCondition (-not [bool]$run.child.official `
+        -and -not [bool]$run.child.formal `
+        -and -not [bool]$run.child.official_count_consumed `
+        -and -not [bool]$run.child.save_written `
+        -and [bool]$run.parent.child_attestation_valid `
+        -and [int]$run.parent.exit_code -eq 0 `
+        -and -not [bool]$run.parent.timed_out `
+        -and -not [bool]$run.parent.terminated_by_parent `
+        -and [int]$run.parent.task_owned_process_count_after -eq 0) "targeted_owner_capture_exit_attestation_invalid"
+    $timeline = $run.phase_timeline
+    $cleanupRows = if ($null -ne $timeline) { @($timeline.phase_rows | Where-Object { [string]$_.phase_id -ceq "runtime_cleanup_complete" }) } else { @() }
+    $quitRows = if ($null -ne $timeline) { @($timeline.phase_rows | Where-Object { [string]$_.phase_id -ceq "quit_requested" }) } else { @() }
+    Assert-ColdRestoreCondition ($null -ne $timeline `
+        -and [int]$timeline.schema_version -eq 1 `
+        -and [string]$timeline.timeline_id -ceq "ProcessAPhaseTimelineV1" `
+        -and @($timeline.phase_rows).Count -eq 19 `
+        -and [string]$timeline.last_completed_phase -ceq "quit_requested" `
+        -and -not [bool]$timeline.save_file_exists `
+        -and [bool]$timeline.allowlisted_manifest_written `
+        -and [bool]$timeline.child_completion_written `
+        -and [bool]$timeline.quit_requested `
+        -and $cleanupRows.Count -eq 1 -and [bool]$cleanupRows[0].success `
+        -and $quitRows.Count -eq 1 -and [bool]$quitRows[0].success) "targeted_owner_capture_timeline_cleanup_invalid"
+    $manifest = Read-ColdRestoreJsonArtifact $paths.child_result
+    Assert-ColdRestoreManifest $manifest "producer" $RunId
+    Assert-ColdRestoreCondition (-not [bool]$manifest.success `
+        -and [string]$manifest.failure_code -in @("targeted_owner_capture_diagnostic_complete", "save_coordinator_or_envelope_capture_path_divergence")) "targeted_owner_capture_manifest_invalid"
+    $diagnosticPath = Join-Path $ResolvedProjectPath ".godot\cold_restore_attestation_v1\$RunId\diagnostics\owner_capture_audit.json"
+    $diagnostic = Read-ColdRestoreJsonArtifact $diagnosticPath
+    $diagnosticSha256 = (Get-FileHash -LiteralPath $diagnosticPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    Assert-ColdRestoreCondition ([string]$run.child.product_blocker -ceq "TARGETED_OWNER_CAPTURE_DIAGNOSTIC_SHA256:$diagnosticSha256" `
+        -and [string]$run.child.final_reason_code -ceq "targeted_owner_capture_diagnostic_sha256_$diagnosticSha256") "targeted_owner_capture_child_diagnostic_binding_invalid"
+    Assert-ColdRestoreCondition (Test-ExactFieldSet $diagnostic $OwnerCaptureDiagnosticFields) "targeted_owner_capture_field_set_invalid"
+    $actualPhases = @($diagnostic.phase_audits | ForEach-Object { [string]$_.phase_id })
+    $phaseDifferences = @(Compare-Object $TargetedOwnerCapturePhases $actualPhases -SyncWindow 0)
+    Assert-ColdRestoreCondition ([int]$diagnostic.schema_version -eq 1 `
+        -and [string]$diagnostic.diagnostic_id -ceq "TargetedOwnerCaptureDiagnosticV1" `
+        -and [string]$diagnostic.run_id -ceq $RunId `
+        -and [string]$diagnostic.repository_head -ceq $HeadSha `
+        -and [string]$diagnostic.scenario_fingerprint -ceq $ExpectedScenarioFingerprint `
+        -and -not [bool]$diagnostic.official `
+        -and -not [bool]$diagnostic.formal `
+        -and [int]$diagnostic.challenge_depth -eq 1 `
+        -and [int64]$diagnostic.seed -eq 900626424 `
+        -and [int]$diagnostic.local_player_count -eq 1 `
+        -and [int]$diagnostic.ai_player_count -eq 3 `
+        -and [int]$diagnostic.ai_action_count -ge 1 `
+        -and [bool]$diagnostic.ai_state_digest_changed `
+        -and [int]$diagnostic.audit_count -eq 8 `
+        -and $phaseDifferences.Count -eq 0 `
+        -and [bool]$diagnostic.safety_green `
+        -and -not [bool]$diagnostic.save_file_exists `
+        -and -not [bool]$diagnostic.official_claim_path_present) "targeted_owner_capture_diagnostic_invalid"
+    $observedFirstFailure = $null
+    $observedFirstFailurePhase = "none"
+    foreach ($audit in @($diagnostic.phase_audits)) {
+        Assert-ColdRestoreCondition (Test-OwnerCaptureAuditRelationship $audit) "targeted_owner_capture_audit_relationship_invalid"
+        if ($null -eq $observedFirstFailure -and @($audit.first_failure.PSObject.Properties).Count -gt 0) {
+            $observedFirstFailure = $audit.first_failure
+            $observedFirstFailurePhase = [string]$audit.phase_id
+        }
+        Assert-ColdRestoreCondition ([bool]$audit.safety_green `
+            -and [bool]$audit.world_fingerprint_match `
+            -and [bool]$audit.safety_observation_match `
+            -and [int]$audit.world_advance_delta -eq 0 `
+            -and [int]$audit.rng_draw_delta -eq 0 `
+            -and [int]$audit.public_log_delta -eq 0 `
+            -and [int]$audit.private_feedback_delta -eq 0 `
+            -and [int]$audit.sale_receipt_delta -eq 0 `
+            -and [int]$audit.human_action_delta -eq 0 `
+            -and [int]$audit.ai_action_delta -eq 0 `
+            -and [int]$audit.notification_delta -eq 0) "targeted_owner_capture_audit_mutated_runtime"
+    }
+    $topFailureFields = @($diagnostic.first_failure.PSObject.Properties.Name)
+    $observedFailureJson = if ($null -eq $observedFirstFailure) { "{}" } else { $observedFirstFailure | ConvertTo-Json -Compress -Depth 6 }
+    $topFailureJson = if ($topFailureFields.Count -eq 0) { "{}" } else { $diagnostic.first_failure | ConvertTo-Json -Compress -Depth 6 }
+    Assert-ColdRestoreCondition ($topFailureJson -ceq $observedFailureJson `
+        -and [string]$diagnostic.first_phase_with_capture_failure -ceq $observedFirstFailurePhase) "targeted_owner_capture_first_failure_binding_invalid"
+    Assert-ColdRestoreCondition (($topFailureFields.Count -gt 0 `
+            -and [string]$manifest.failure_code -ceq "targeted_owner_capture_diagnostic_complete") `
+        -or ($topFailureFields.Count -eq 0 `
+            -and [string]$manifest.failure_code -ceq "save_coordinator_or_envelope_capture_path_divergence")) "targeted_owner_capture_manifest_failure_binding_invalid"
+    $diagnosticJson = $diagnostic | ConvertTo-Json -Compress -Depth 12
+    foreach ($forbiddenDiagnosticToken in @('"owner_state"', '"section_payloads"', '"plan"', '"envelope"', '"private_hand"', '"ai_memory"', '"commodity_inventory"')) {
+        Assert-ColdRestoreCondition (-not $diagnosticJson.Contains($forbiddenDiagnosticToken, [StringComparison]::OrdinalIgnoreCase)) "targeted_owner_capture_private_payload_exposed"
+    }
+    $stdoutText = if (Test-Path -LiteralPath $paths.stdout -PathType Leaf) { Get-Content -LiteralPath $paths.stdout -Raw } else { "" }
+    $stderrText = if (Test-Path -LiteralPath $paths.stderr -PathType Leaf) { Get-Content -LiteralPath $paths.stderr -Raw } else { "" }
+    foreach ($forbiddenLogToken in @('"owner_state"', '"section_payloads"', '"private_hand"', '"ai_memory"', 'COLD_RESTORE_CARD_INVENTORY_CAPTURE_PROBE')) {
+        Assert-ColdRestoreCondition (-not ($stdoutText + $stderrText).Contains($forbiddenLogToken, [StringComparison]::OrdinalIgnoreCase)) "targeted_owner_capture_private_log_exposed"
+    }
+    $saveArtifacts = @(Get-ChildItem -LiteralPath $UserDataRoot -Recurse -File | Where-Object {
+        $_.FullName -match '[\\/]saves[\\/]' -or $_.Name -like '*.save*'
+    })
+    Assert-ColdRestoreCondition ($saveArtifacts.Count -eq 0) "targeted_owner_capture_unexpected_save"
+    return [pscustomobject]@{
+        run = $run
+        manifest = $manifest
+        diagnostic = $diagnostic
+        paths = $paths
+        diagnostic_path = $diagnosticPath
+    }
+}
+
+function Assert-ColdRestoreTargetedOwnerCapturePostconditions {
+    param([Parameter(Mandatory = $true)][string]$ResolvedProjectPath)
+
+    $paths = Get-ColdRestoreRolePaths $ResolvedProjectPath "producer"
+    $retainedLogText = ""
+    foreach ($logPath in @($paths.stdout, $paths.stderr)) {
+        if (Test-Path -LiteralPath $logPath -PathType Leaf) {
+            $retainedLogText += Get-Content -LiteralPath $logPath -Raw
+        }
+    }
+    foreach ($forbiddenLogToken in @(
+        '"owner_state"', '"section_payloads"', '"plan"', '"envelope"',
+        '"private_hand"', '"ai_memory"', '"commodity_inventory"',
+        'V06_OWNER_REGISTRY_PRIVATE_HAND', 'V06_OWNER_REGISTRY_OWNER_TRUTH',
+        'V06_OWNER_REGISTRY_AI_PLAN', 'COLD_RESTORE_CARD_INVENTORY_CAPTURE_PROBE'
+    )) {
+        Assert-ColdRestoreCondition (-not $retainedLogText.Contains($forbiddenLogToken, [StringComparison]::OrdinalIgnoreCase)) "targeted_owner_capture_private_log_exposed"
+    }
+    $saveArtifacts = if (Test-Path -LiteralPath $UserDataRoot -PathType Container) {
+        @(Get-ChildItem -LiteralPath $UserDataRoot -Recurse -File | Where-Object {
+            $_.FullName -match '[\\/]saves[\\/]' -or $_.Name -like '*.save*' `
+                -or $_.Name -like '*.tmp*' -or $_.Name -like '*.backup*'
+        })
+    }
+    else {
+        @()
+    }
+    Assert-ColdRestoreCondition ($saveArtifacts.Count -eq 0) "targeted_owner_capture_unexpected_save"
+}
+
+function New-ColdRestoreTargetedOwnerCaptureOutput {
+    param([Parameter(Mandatory = $true)]$Result)
+
+    $failure = $Result.diagnostic.first_failure
+    $failureFields = if ($null -ne $failure) { @($failure.PSObject.Properties.Name) } else { @() }
+    return [ordered]@{
+        schema_version = 1
+        driver_id = "alpha04c_targeted_owner_capture_diagnostic_v1"
+        formal_full_run = $false
+        official_cold_restore_vertical_slice = $false
+        targeted_owner_capture_diagnostic = $true
+        run_id = $RunId
+        repository_head = [string]$Result.diagnostic.repository_head
+        scenario_fingerprint = $ExpectedScenarioFingerprint
+        audit_count = [int]$Result.diagnostic.audit_count
+        ai_action_count = [int]$Result.diagnostic.ai_action_count
+        ai_state_digest_changed = [bool]$Result.diagnostic.ai_state_digest_changed
+        first_phase_with_capture_failure = [string]$Result.diagnostic.first_phase_with_capture_failure
+        failing_section_id = $(if ($failureFields -contains "section_id") { [string]$failure.section_id } else { "" })
+        failing_owner_id = $(if ($failureFields -contains "owner_id") { [string]$failure.owner_id } else { "" })
+        failing_failure_class = $(if ($failureFields -contains "failure_class") { [string]$failure.failure_class } else { "" })
+        failing_reason_code = $(if ($failureFields -contains "reason_code") { [string]$failure.reason_code } else { "" })
+        child_completion_attestation_valid = [bool]$Result.run.parent.child_attestation_valid
+        parent_exit_attestation_green = [bool]$Result.run.parent.wrapper_exit_green
+        exit_code = [int]$Result.run.parent.exit_code
+        timed_out = [bool]$Result.run.parent.timed_out
+        terminated_by_parent = [bool]$Result.run.parent.terminated_by_parent
+        task_owned_process_count_after = [int]$Result.run.parent.task_owned_process_count_after
+        save_written = $false
+        official_count_consumed = $false
+        diagnostic_path = [string]$Result.diagnostic_path
+        success = $true
+        failure_code = ""
     }
 }
 
@@ -1020,6 +1376,48 @@ function Get-ColdRestoreOrchestratorCreationTimeTicks {
     }
 }
 
+function Consume-ColdRestoreTargetedOwnerCaptureDiagnosticQuota {
+    param(
+        [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
+        [Parameter(Mandatory = $true)][string]$HeadSha
+    )
+
+    $gitCommonDirectory = Resolve-ColdRestoreGitCommonDirectory $ResolvedProjectPath
+    $ledgerPath = Join-Path $gitCommonDirectory $TargetedOwnerCaptureQuotaLedgerRelativePath
+    $ledger = [ordered]@{
+        schema_version = 1
+        ledger_id = "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV1"
+        task_id = "ALPHA_0_4_C_PRODUCTION_SAVE_COMPLETION_DEFECT_REPAIR_AND_GREEN_PROCESS_A_REHEARSAL"
+        created_at_utc = [DateTime]::UtcNow.ToString("O", [Globalization.CultureInfo]::InvariantCulture)
+        run_id = $RunId
+        repository_head = $HeadSha
+        scenario_fingerprint = $ExpectedScenarioFingerprint
+        authorized_diagnostic_count = 1
+        diagnostic_count_before = 0
+        diagnostic_count_after = 1
+        official = $false
+        formal = $false
+        official_authorization_consumed = $false
+        orchestrator_script_sha256 = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        orchestrator_process_id = $PID
+        status = "consumed"
+    }
+    try {
+        $ledgerFingerprint = Write-ColdRestoreExclusiveJson $ledgerPath ([pscustomobject]$ledger)
+    }
+    catch {
+        $ledgerFailure = [string]$_.Exception.Message
+        if ($ledgerFailure -eq "exclusive_evidence_create_new_failed" -and [IO.File]::Exists($ledgerPath)) {
+            throw "targeted_owner_capture_diagnostic_already_consumed"
+        }
+        throw "targeted_owner_capture_diagnostic_quota_ledger_failed"
+    }
+    return [pscustomobject]@{
+        path = $ledgerPath
+        fingerprint = [string]$ledgerFingerprint
+    }
+}
+
 function Assert-AndConsumeOfficialColdRestoreAuthorization {
     param(
         [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
@@ -1162,6 +1560,7 @@ try {
     Assert-ColdRestoreCondition ($RunId -match '^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$') "run_id_invalid"
     $selectedModeCount = @(
         [bool]$QualificationProbe,
+        [bool]$TargetedOwnerCaptureDiagnostic,
         [bool]$NonOfficialProcessA,
         [bool]$EnableColdRestoreExecution,
         ($ContractManifestPath -ne "")
@@ -1175,7 +1574,8 @@ try {
         exit 0
     }
 
-    if (-not $QualificationProbe -and -not $NonOfficialProcessA -and -not $EnableColdRestoreExecution) {
+    if (-not $QualificationProbe -and -not $TargetedOwnerCaptureDiagnostic `
+        -and -not $NonOfficialProcessA -and -not $EnableColdRestoreExecution) {
         Write-AllowlistedResult (New-AllowlistedResult $false $false $true "")
         exit 0
     }
@@ -1188,12 +1588,32 @@ try {
     Assert-ColdRestoreCondition ($headSha -match '^[0-9a-f]{40,64}$') "head_sha_unavailable"
     $dirtyPaths = @(& git -C $resolvedProjectPath status --porcelain=v1 2>$null)
     Assert-ColdRestoreCondition ($dirtyPaths.Count -eq 0) "worktree_not_clean"
+    if ($TargetedOwnerCaptureDiagnostic) {
+        $diagnosticEvidenceRoot = Join-Path $resolvedProjectPath ".godot\cold_restore_attestation_v1\$RunId"
+        Assert-ColdRestoreCondition (-not (Test-Path -LiteralPath $UserDataRoot) `
+            -and -not (Test-Path -LiteralPath $diagnosticEvidenceRoot)) "targeted_owner_capture_evidence_collision"
+    }
     New-Item -ItemType Directory -Path $IsolatedAppData -Force | Out-Null
     New-Item -ItemType Directory -Path $IsolatedLocalAppData -Force | Out-Null
 
     if ($QualificationProbe) {
         $qualification = Invoke-ColdRestoreQualification $resolvedProjectPath $headSha
         Write-AllowlistedResult (New-ColdRestoreQualificationOutput $qualification.run $qualification.result)
+        exit 0
+    }
+
+    if ($TargetedOwnerCaptureDiagnostic) {
+        Assert-ColdRestoreCondition (-not $QualificationProbe `
+            -and -not $NonOfficialProcessA `
+            -and -not $EnableColdRestoreExecution `
+            -and [string]::IsNullOrEmpty($ContractManifestPath)) "targeted_owner_capture_mode_collision"
+        try {
+            $targetedDiagnostic = Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic $resolvedProjectPath $headSha
+        }
+        finally {
+            Assert-ColdRestoreTargetedOwnerCapturePostconditions $resolvedProjectPath
+        }
+        Write-AllowlistedResult (New-ColdRestoreTargetedOwnerCaptureOutput $targetedDiagnostic)
         exit 0
     }
 
@@ -1244,6 +1664,18 @@ catch {
             product_blocker = ""
             queue_count = 0
             task_owned_process_count_after = -1
+            success = $false
+            failure_code = $safeFailureCode
+        })
+    }
+    elseif ($TargetedOwnerCaptureDiagnostic) {
+        Write-AllowlistedResult ([ordered]@{
+            schema_version = 1
+            driver_id = "alpha04c_targeted_owner_capture_diagnostic_v1"
+            formal_full_run = $false
+            official_cold_restore_vertical_slice = $false
+            targeted_owner_capture_diagnostic = $true
+            run_id = $(if ($RunId -match '^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$') { $RunId } else { "" })
             success = $false
             failure_code = $safeFailureCode
         })
