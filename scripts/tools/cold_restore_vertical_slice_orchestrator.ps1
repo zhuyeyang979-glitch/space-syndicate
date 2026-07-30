@@ -846,8 +846,18 @@ function Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic {
         -and $quitRows.Count -eq 1 -and [bool]$quitRows[0].success) "targeted_owner_capture_timeline_cleanup_invalid"
     $manifest = Read-ColdRestoreJsonArtifact $paths.child_result
     Assert-ColdRestoreManifest $manifest "producer" $RunId
-    Assert-ColdRestoreCondition (-not [bool]$manifest.success `
-        -and [string]$manifest.failure_code -in @("targeted_owner_capture_diagnostic_complete", "save_coordinator_or_envelope_capture_path_divergence")) "targeted_owner_capture_manifest_invalid"
+    $expectedDiagnosticManifest = -not [bool]$manifest.success `
+        -and [string]$manifest.failure_code -in @("targeted_owner_capture_diagnostic_complete", "save_coordinator_or_envelope_capture_path_divergence")
+    if (-not $expectedDiagnosticManifest) {
+        $childFailureCode = [string]$manifest.failure_code
+        $safeChildFailureCode = if ($childFailureCode -cmatch '^[a-z0-9_]{1,88}$') {
+            "targeted_owner_capture_child_$childFailureCode"
+        }
+        else {
+            "targeted_owner_capture_manifest_invalid"
+        }
+        throw $safeChildFailureCode
+    }
     $diagnosticPath = Join-Path $ResolvedProjectPath ".godot\cold_restore_attestation_v1\$RunId\diagnostics\owner_capture_audit.json"
     $diagnostic = Read-ColdRestoreJsonArtifact $diagnosticPath
     $diagnosticSha256 = (Get-FileHash -LiteralPath $diagnosticPath -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -909,7 +919,12 @@ function Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic {
     }
     $stdoutText = if (Test-Path -LiteralPath $paths.stdout -PathType Leaf) { Get-Content -LiteralPath $paths.stdout -Raw } else { "" }
     $stderrText = if (Test-Path -LiteralPath $paths.stderr -PathType Leaf) { Get-Content -LiteralPath $paths.stderr -Raw } else { "" }
-    foreach ($forbiddenLogToken in @('"owner_state"', '"section_payloads"', '"private_hand"', '"ai_memory"', 'COLD_RESTORE_CARD_INVENTORY_CAPTURE_PROBE')) {
+    foreach ($forbiddenLogToken in @(
+        '"owner_state"', '"section_payloads"', '"private_hand"', '"ai_memory"',
+        '"left_scalar"', '"right_scalar"', '"next_quote_sequence":',
+        '"next_listing_sequence":', '"next_transaction_sequence":',
+        'COLD_RESTORE_CARD_INVENTORY_CAPTURE_PROBE'
+    )) {
         Assert-ColdRestoreCondition (-not ($stdoutText + $stderrText).Contains($forbiddenLogToken, [StringComparison]::OrdinalIgnoreCase)) "targeted_owner_capture_private_log_exposed"
     }
     $saveArtifacts = @(Get-ChildItem -LiteralPath $UserDataRoot -Recurse -File | Where-Object {
@@ -938,6 +953,8 @@ function Assert-ColdRestoreTargetedOwnerCapturePostconditions {
     foreach ($forbiddenLogToken in @(
         '"owner_state"', '"section_payloads"', '"plan"', '"envelope"',
         '"private_hand"', '"ai_memory"', '"commodity_inventory"',
+        '"left_scalar"', '"right_scalar"', '"next_quote_sequence":',
+        '"next_listing_sequence":', '"next_transaction_sequence":',
         'V06_OWNER_REGISTRY_PRIVATE_HAND', 'V06_OWNER_REGISTRY_OWNER_TRUTH',
         'V06_OWNER_REGISTRY_AI_PLAN', 'COLD_RESTORE_CARD_INVENTORY_CAPTURE_PROBE'
     )) {

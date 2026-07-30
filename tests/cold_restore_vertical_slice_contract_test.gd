@@ -109,6 +109,12 @@ func _run() -> void:
 	var save_failure_source := driver_source.substr(save_failure_start, save_failure_end - save_failure_start) \
 			if save_failure_start >= 0 and save_failure_end > save_failure_start else ""
 	_expect(save_failure_source.contains("mismatch_path_fingerprint") and save_failure_source.contains("sha256_text().substr(0, 12)") and not save_failure_source.contains('trim_prefix("root.sections.")'), "Process A public readback failure fingerprints the mismatch path and never emits a raw Owner field path")
+	var session_start_start := driver_source.find("func _start_default_session")
+	var session_start_end := driver_source.find("\nfunc ", session_start_start + 1)
+	var session_start_source := driver_source.substr(session_start_start, session_start_end - session_start_start) \
+			if session_start_start >= 0 and session_start_end > session_start_start else ""
+	_expect(session_start_source.contains('var challenge_depth := int(setup.get("challenge_depth", 0))') and session_start_source.contains('"challenge_depth": challenge_depth') and session_start_source.contains('"player_count": int(setup.get("player_count", 0))') and not session_start_source.contains('committed_setup.get("challenge_depth"'), "targeted scenario identity uses the exact committed draft fields because GameSession's reduced setup summary intentionally omits challenge depth")
+	_expect(source.contains('"left_scalar"') and source.contains('"right_scalar"') and source.contains('"next_quote_sequence":') and source.contains('targeted_owner_capture_child_$childFailureCode'), "targeted Parent evidence rejects raw mismatch scalars and preserves a bounded child setup failure code")
 	_expect(source.contains("save_green = [bool]$Result.timeline.save_file_exists `") and source.contains("$Result.timeline.allowlisted_manifest_written") and source.contains("$Result.run.parent.child_attestation_valid") and source.contains("$Result.run.parent.task_owned_process_count_after -eq 0"), "non-official save_green requires Save fingerprint, manifest, both attestations, normal exit, and process cleanup instead of file existence alone")
 	var forged_boolean := _invoke_driver_with_forged_boolean()
 	_expect(int(forged_boolean.get("exit_code", 0)) != 0 and str(forged_boolean.get("output", "")).contains("unknown_option"), "the retired official-count boolean is rejected before runtime or Save access")

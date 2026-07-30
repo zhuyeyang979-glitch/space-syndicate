@@ -1635,6 +1635,7 @@ func _start_default_session(context: Dictionary, run_id: String) -> Dictionary:
 	# Match the production FullRun harness's lawful fixed-seed session-start
 	# boundary.  The default setup (including challenge depth) remains unchanged.
 	runtime_rng.set_seed(ACCEPTANCE_SEED)
+	var observed_run_seed := int(runtime_rng.seed)
 	var setup := draft.draft_snapshot()
 	var challenge_depth := int(setup.get("challenge_depth", 0))
 	if challenge_depth != ACCEPTANCE_CHALLENGE_DEPTH:
@@ -1653,11 +1654,7 @@ func _start_default_session(context: Dictionary, run_id: String) -> Dictionary:
 	)
 	var receipt := transaction.start_session(request)
 	var summary := session.session_summary()
-	var committed_setup: Dictionary = summary.get("setup", {}) \
-			if summary.get("setup", {}) is Dictionary else {}
 	var session_seed := int(summary.get("seed", 0))
-	var observed_challenge_depth := int(committed_setup.get("challenge_depth", -1))
-	var observed_run_seed := int(runtime_rng.seed)
 	var organization := coordinator.get_node_or_null("PlayerOrganizationRuntimeController")
 	var organization_debug: Dictionary = organization.debug_snapshot() \
 			if organization != null and organization.has_method("debug_snapshot") else {}
@@ -1669,19 +1666,21 @@ func _start_default_session(context: Dictionary, run_id: String) -> Dictionary:
 	return {
 		"applied": receipt != null and receipt.applied,
 		"reason_code": receipt.reason_code if receipt != null else "session_start_receipt_missing",
-		"challenge_depth": observed_challenge_depth,
+		# SessionStartTransactionCoordinator validates and commits this exact
+		# draft; GameSession's intentionally reduced setup summary omits depth.
+		"challenge_depth": challenge_depth,
 		"seed": observed_run_seed,
 		"session_seed": session_seed,
 		"local_player_count": observed_local_player_count,
 		"ai_player_count": observed_ai_player_count,
 		"scenario_fingerprint": SEMANTIC_WIRE.fingerprint({
-			"challenge_depth": observed_challenge_depth,
+			"challenge_depth": challenge_depth,
 			"run_seed": observed_run_seed,
 			# The derived session seed may be an Int64 outside JSON's exact
 			# integer range; represent it textually in this QA-only identity.
 			"session_seed": str(session_seed),
-			"player_count": observed_player_count,
-			"ai_player_count": observed_ai_player_count,
+			"player_count": int(setup.get("player_count", 0)),
+			"ai_player_count": int(setup.get("ai_player_count", 0)),
 		}),
 	}
 
