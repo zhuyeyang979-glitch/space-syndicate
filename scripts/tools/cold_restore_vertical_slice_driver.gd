@@ -12,11 +12,15 @@ const TERMINAL_EVIDENCE := preload("res://scripts/tools/cold_restore_terminal_ev
 const AUTHORITATIVE_STEPPER := preload("res://scripts/tools/full_run_authoritative_runtime_stepper.gd")
 const CHILD_ATTESTATION := preload("res://scripts/tools/cold_restore_child_completion_attestation.gd")
 const PROCESS_A_TIMELINE := preload("res://scripts/tools/cold_restore_process_a_phase_timeline.gd")
+const CAPTURE_FAILURE := preload("res://scripts/runtime/save_owner_capture_failure_v1.gd")
 
 const FORMAL_FULL_RUN := false
 const EXECUTION_READY := true
 const ACCEPTANCE_SEED := 900626424
 const ACCEPTANCE_CHALLENGE_DEPTH := 1
+const ACCEPTANCE_LOCAL_PLAYER_COUNT := 1
+const ACCEPTANCE_AI_PLAYER_COUNT := 3
+const TARGETED_OWNER_CAPTURE_SCENARIO_FINGERPRINT := "0bccef8426345e2ea1fd8ae7d6187d282d52d44bc73d6fb3d1ed3375dc20b7bf"
 const SCHEMA_VERSION := 3
 const OFFICIAL_CLAIM_SCHEMA_VERSION := 1
 const OFFICIAL_AUTHORIZATION_ID := "alpha04c-p0-cold-restore-depth1-seed900626424-v1"
@@ -33,6 +37,30 @@ const MAX_SUPPLY_CHURN := 40
 const MAX_SALE_SECONDS := 180
 const MAX_QUEUE_ASSET_SECONDS := 30
 const MAX_QUEUE_PURCHASE_FUNDING_CYCLES := 4
+const TARGETED_OWNER_CAPTURE_PHASES := [
+	"session_started",
+	"real_commodity_claim_complete",
+	"real_normal_card_purchase_complete",
+	"real_facility_economy_complete",
+	"first_sale_receipt_complete",
+	"ai_nondefault_state_complete",
+	"queue_entry_committed",
+	"restore_barrier_entered",
+]
+const SAVE_SECTION_ORDER := [
+	"ruleset", "region_infrastructure", "region_supply", "commodity_flow",
+	"routes", "player_mana", "commodity_belt_visibility", "card_inventory",
+	"player_organization", "monsters", "military", "weather",
+	"card_resolution_queue", "card_resolution_execution", "card_resolution_history",
+	"ai", "bankruptcy_neutral_estate", "victory_control", "session",
+]
+const SAVE_OWNER_ORDER := [
+	"ruleset_runtime", "public_facility_region", "region_supply", "commodity_flow",
+	"route_network", "player_mana", "commodity_belt_visibility", "card_inventory",
+	"player_organization", "monster_runtime", "military_runtime", "weather_runtime",
+	"card_resolution_queue", "card_resolution_execution", "card_resolution_history",
+	"ai_runtime", "bankruptcy_neutral_estate", "victory_control", "game_session",
+]
 const PUBLIC_MANIFEST_FIELDS := [
 	"schema_version",
 	"visibility_scope",
@@ -157,6 +185,11 @@ var _process_started_monotonic_ms := 0
 var _process_a_timeline: RefCounted
 var _process_a_timeline_failure := ""
 var _active_main: Node
+var _targeted_owner_capture_diagnostic := false
+var _targeted_owner_capture_audits: Array[Dictionary] = []
+var _targeted_owner_capture_first_failure: Dictionary = {}
+var _targeted_owner_capture_first_phase := ""
+var _targeted_owner_capture_observed_scenario: Dictionary = {}
 
 
 func _init() -> void:
@@ -229,14 +262,18 @@ func _update_process_a_save_timeline(save_path: String) -> void:
 	_record_timeline_result(_process_a_timeline.call("update_save_file", save_path))
 
 
-func _cleanup_active_runtime() -> void:
+func _cleanup_active_runtime() -> bool:
 	if _active_main == null or not is_instance_valid(_active_main):
 		_active_main = null
-		return
-	_active_main.queue_free()
+		return true
+	var runtime_to_release := _active_main
+	runtime_to_release.queue_free()
 	await process_frame
 	await process_frame
-	_active_main = null
+	var released := not is_instance_valid(runtime_to_release)
+	if released:
+		_active_main = null
+	return released
 
 
 func _run_entry() -> void:
@@ -309,6 +346,7 @@ func _run_entry() -> void:
 		quit(10)
 		return
 	if str(validation.get("process_role", "")) == "producer":
+		_targeted_owner_capture_diagnostic = bool(validation.get("targeted_owner_capture_diagnostic", false))
 		_process_a_timeline = PROCESS_A_TIMELINE.new()
 		_record_timeline_result(_process_a_timeline.call(
 			"initialize",
@@ -356,6 +394,14 @@ func _run_entry() -> void:
 	})
 	_enter_process_a_phase("child_completion_attestation_complete")
 	var role_success := bool(manifest.get("success", false))
+	var diagnostic_sha256 := str(result.get("_targeted_owner_capture_diagnostic_sha256", ""))
+	var role_product_blocker := "TARGETED_OWNER_CAPTURE_DIAGNOSTIC_SHA256:%s" % diagnostic_sha256 \
+			if _targeted_owner_capture_diagnostic and _is_lower_sha256(diagnostic_sha256) \
+			else _product_blocker(
+				role_success,
+				int(manifest.get("queue_entry_count", 0)),
+				str(manifest.get("failure_code", "role_failed"))
+			)
 	var role_attestation := CHILD_ATTESTATION.build({
 		"run_id": str(validation.get("run_id", "")),
 		"role": str(validation.get("process_role", "")),
@@ -365,11 +411,7 @@ func _run_entry() -> void:
 		"formal": false,
 		"qualification_completed": true,
 		"qualification_green": role_success,
-		"product_blocker": _product_blocker(
-			role_success,
-			int(manifest.get("queue_entry_count", 0)),
-			str(manifest.get("failure_code", "role_failed"))
-		),
+		"product_blocker": role_product_blocker,
 		"queue_count": int(manifest.get("queue_entry_count", 0)),
 		"queue_revision": int(result.get("_attestation_queue_revision", 0)),
 		"queue_trigger_actor": str(result.get("_attestation_queue_trigger_actor", "none")),
@@ -385,7 +427,9 @@ func _run_entry() -> void:
 			+ int(manifest.get("sale_receipt_count", 0)),
 		"direct_authority_mutation_count": 0,
 		"queue_injection_count": 0,
-		"final_reason_code": "role_completed" if role_success else str(manifest.get("failure_code", "role_failed")),
+		"final_reason_code": "targeted_owner_capture_diagnostic_sha256_%s" % diagnostic_sha256 \
+				if _targeted_owner_capture_diagnostic and _is_lower_sha256(diagnostic_sha256) \
+				else ("role_completed" if role_success else str(manifest.get("failure_code", "role_failed"))),
 		"child_ready_to_exit": true,
 	})
 	var role_attestation_write := CHILD_ATTESTATION.write_completion(role_attestation)
@@ -398,8 +442,12 @@ func _run_entry() -> void:
 		"attestation_sha256": str(role_attestation_write.get("sha256", "")),
 	})
 	_enter_process_a_phase("runtime_cleanup_complete")
-	await _cleanup_active_runtime()
-	_complete_process_a_phase("runtime_cleanup_complete", {"active_main_released": _active_main == null})
+	var runtime_cleanup_green := await _cleanup_active_runtime()
+	_complete_process_a_phase("runtime_cleanup_complete", {"active_main_released": runtime_cleanup_green})
+	if not runtime_cleanup_green:
+		push_error("Cold restore runtime cleanup did not release the task-owned main scene")
+		quit(19)
+		return
 	_enter_process_a_phase("quit_requested")
 	_mark_process_a_timeline("mark_quit_requested")
 	_complete_process_a_phase("quit_requested", {"exit_code": 0})
@@ -425,6 +473,10 @@ static func contract_snapshot() -> Dictionary:
 		"terminal_quiescent_frames": 8,
 		"official_ledger_required": true,
 		"launch_attestation_required": true,
+		"targeted_owner_capture_diagnostic": true,
+		"targeted_owner_capture_diagnostic_writes_save": false,
+		"targeted_owner_capture_diagnostic_touches_official_claim": false,
+		"targeted_owner_capture_phase_count": TARGETED_OWNER_CAPTURE_PHASES.size(),
 		"caller_boolean_authorization_accepted": false,
 	}
 
@@ -433,6 +485,7 @@ static func validate_options(options: Dictionary) -> Dictionary:
 	var run_id := str(options.get("run_id", ""))
 	var process_role := str(options.get("process_role", ""))
 	var non_official_process_a := bool(options.get("non_official_process_a", false))
+	var targeted_owner_capture_diagnostic := bool(options.get("targeted_owner_capture_diagnostic", false))
 	if not str(options.get("parse_error", "")).is_empty():
 		return {"valid": false, "reason_code": str(options.get("parse_error", "options_parse_invalid"))}
 	if process_role not in PROCESS_ROLES:
@@ -456,7 +509,16 @@ static func validate_options(options: Dictionary) -> Dictionary:
 				or not launch_attestation_path.is_empty() \
 				or not launch_nonce.is_empty():
 			return {"valid": false, "reason_code": "non_official_process_a_authority_state_invalid"}
+		if targeted_owner_capture_diagnostic and process_role != "producer":
+			return {"valid": false, "reason_code": "targeted_owner_capture_role_invalid"}
+		if targeted_owner_capture_diagnostic and not _is_targeted_owner_capture_run_id(run_id):
+			return {"valid": false, "reason_code": "targeted_owner_capture_run_id_invalid"}
+		if targeted_owner_capture_diagnostic \
+				and run_id != "alpha04c-owner-capture-diagnostic-%s" % head_sha.left(12):
+			return {"valid": false, "reason_code": "targeted_owner_capture_run_head_mismatch"}
 	else:
+		if targeted_owner_capture_diagnostic:
+			return {"valid": false, "reason_code": "targeted_owner_capture_official_forbidden"}
 		if official_claim_path.is_empty() or not official_claim_path.is_absolute_path():
 			return {"valid": false, "reason_code": "official_claim_path_invalid"}
 		if launch_attestation_path.is_empty() or not launch_attestation_path.is_absolute_path():
@@ -473,6 +535,9 @@ static func validate_options(options: Dictionary) -> Dictionary:
 	var scenario_fingerprint := str(options.get("scenario_fingerprint", ""))
 	if not _is_lower_sha256(scenario_fingerprint):
 		return {"valid": false, "reason_code": "scenario_fingerprint_invalid"}
+	if targeted_owner_capture_diagnostic \
+			and scenario_fingerprint != TARGETED_OWNER_CAPTURE_SCENARIO_FINGERPRINT:
+		return {"valid": false, "reason_code": "targeted_owner_capture_scenario_fingerprint_invalid"}
 	return {
 		"valid": true,
 		"reason_code": "ok",
@@ -489,6 +554,7 @@ static func validate_options(options: Dictionary) -> Dictionary:
 		"scenario_fingerprint": scenario_fingerprint,
 		"official": not non_official_process_a,
 		"non_official_process_a": non_official_process_a,
+		"targeted_owner_capture_diagnostic": targeted_owner_capture_diagnostic,
 		"official_count_consumed": false,
 	}
 
@@ -535,6 +601,14 @@ static func _is_lower_hex(value: String) -> bool:
 
 static func _is_lower_sha256(value: String) -> bool:
 	return value.length() == 64 and _is_lower_hex(value)
+
+
+static func _is_targeted_owner_capture_run_id(value: String) -> bool:
+	const PREFIX := "alpha04c-owner-capture-diagnostic-"
+	if not value.begins_with(PREFIX):
+		return false
+	var suffix := value.trim_prefix(PREFIX)
+	return suffix.length() == 12 and _is_lower_hex(suffix)
 
 
 func _authorize_official_launch(options: Dictionary, head_sha: String) -> Dictionary:
@@ -1113,6 +1187,10 @@ static func _safe_reason_code(value: String) -> String:
 	return (result if not result.is_empty() else "role_failed").left(128)
 
 
+static func _safe_owner_capture_reason_code(value: Variant) -> String:
+	return CAPTURE_FAILURE.sanitize_reason_code(value)
+
+
 func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -> Dictionary:
 	var save_path := str(options.get("save_path", ""))
 	if FileAccess.file_exists(save_path):
@@ -1121,7 +1199,24 @@ func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -
 	var started := _start_default_session(context, str(options.get("run_id", "")))
 	if not bool(started.get("applied", false)):
 		return _fail(base, str(started.get("reason_code", "session_start_failed")))
+	if _targeted_owner_capture_diagnostic and (
+			int(started.get("challenge_depth", -1)) != ACCEPTANCE_CHALLENGE_DEPTH
+			or int(started.get("seed", -1)) != ACCEPTANCE_SEED
+			or int(started.get("local_player_count", -1)) != ACCEPTANCE_LOCAL_PLAYER_COUNT
+			or int(started.get("ai_player_count", -1)) != ACCEPTANCE_AI_PLAYER_COUNT
+			or str(started.get("scenario_fingerprint", "")) != str(options.get("scenario_fingerprint", ""))
+	):
+		return _fail(base, "targeted_owner_capture_observed_scenario_mismatch")
+	if _targeted_owner_capture_diagnostic:
+		_targeted_owner_capture_observed_scenario = {
+			"scenario_fingerprint": str(started.get("scenario_fingerprint", "")),
+			"challenge_depth": int(started.get("challenge_depth", -1)),
+			"seed": int(started.get("seed", -1)),
+			"local_player_count": int(started.get("local_player_count", -1)),
+			"ai_player_count": int(started.get("ai_player_count", -1)),
+		}
 	_complete_process_a_phase("session_started", {"challenge_depth": ACCEPTANCE_CHALLENGE_DEPTH, "seed": ACCEPTANCE_SEED})
+	_record_targeted_owner_capture_audit(context, "session_started")
 	var initial_ai_digest := _ai_state_digest(context)
 	var human := _submit_human_selection(context, "producer-human", 1)
 	_enter_process_a_phase("real_commodity_claim_complete")
@@ -1133,10 +1228,16 @@ func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -
 	(context.get("coordinator") as GameRuntimeCoordinator).resume_session()
 	var ai_actions := _tick_ai_until_action(context, 120)
 	var final_ai_digest := _ai_state_digest(context)
+	if ai_actions < 1 or initial_ai_digest.is_empty() or final_ai_digest == initial_ai_digest:
+		return _fail(base, "ai_nondefault_state_not_observed")
+	if _targeted_owner_capture_diagnostic:
+		_targeted_owner_capture_observed_scenario["ai_action_count"] = ai_actions
+		_targeted_owner_capture_observed_scenario["ai_state_digest_changed"] = true
 	_complete_process_a_phase("ai_nondefault_state_complete", {
 		"ai_action_count": ai_actions,
 		"ai_state_changed": not initial_ai_digest.is_empty() and final_ai_digest != initial_ai_digest,
 	})
+	_record_targeted_owner_capture_audit(context, "ai_nondefault_state_complete")
 	var drain := _drain_pending_queue(context, 120)
 	if not bool(drain.get("drained", false)):
 		return _fail(base, "pre_trigger_queue_not_empty")
@@ -1179,7 +1280,39 @@ func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -
 		"queue_resolution_id": queue_target_resolution_id,
 		"stable_target_fingerprint": queue_target_fingerprint,
 	})
+	_record_targeted_owner_capture_audit(context, "queue_entry_committed")
 	_enter_process_a_phase("restore_barrier_entered")
+	if _targeted_owner_capture_diagnostic:
+		var barrier := context.get("barrier") as SaveRestoreRuntimeBarrier
+		var diagnostic_barrier_operation_id := "targeted-owner-capture-%s" % str(options.get("run_id", ""))
+		var diagnostic_global_checkpoint := barrier.capture_global_checkpoint(diagnostic_barrier_operation_id) \
+				if barrier != null else {"accepted": false, "reason_code": "restore_barrier_missing"}
+		if not bool(diagnostic_global_checkpoint.get("accepted", false)):
+			return _fail(base, str(diagnostic_global_checkpoint.get("reason_code", "restore_global_checkpoint_capture_failed")))
+		var diagnostic_barrier_enter := barrier.enter_restore_barrier(
+			diagnostic_barrier_operation_id,
+			(diagnostic_global_checkpoint.get("checkpoint", {}) as Dictionary).duplicate(true)
+		)
+		if not bool(diagnostic_barrier_enter.get("acquired", false)):
+			return _fail(base, str(diagnostic_barrier_enter.get("reason_code", "restore_barrier_acquire_failed")))
+		_complete_process_a_phase("restore_barrier_entered", {
+			"queue_pending_count": int(queue_target_before.get("pending_count", 0)),
+		})
+		_record_targeted_owner_capture_audit(context, "restore_barrier_entered")
+		var diagnostic_quiet := barrier.verify_restore_quiet(diagnostic_barrier_operation_id)
+		var diagnostic_barrier_rollback := barrier.rollback_restore_barrier(diagnostic_barrier_operation_id)
+		var diagnostic_barrier_after := barrier.debug_snapshot()
+		if not bool(diagnostic_quiet.get("accepted", false)) \
+				or not bool(diagnostic_barrier_rollback.get("applied", false)) \
+				or bool(diagnostic_barrier_after.get("active", true)):
+			return _fail(base, "targeted_owner_capture_restore_barrier_cleanup_failed")
+		var diagnostic_write := _write_targeted_owner_capture_diagnostic(options, base)
+		if not bool(diagnostic_write.get("valid", false)):
+			return _fail(base, str(diagnostic_write.get("reason_code", "targeted_owner_capture_diagnostic_write_failed")))
+		base["_targeted_owner_capture_diagnostic_sha256"] = str(diagnostic_write.get("sha256", ""))
+		return _fail(base, "targeted_owner_capture_diagnostic_complete" \
+				if not _targeted_owner_capture_first_failure.is_empty() \
+				else "save_coordinator_or_envelope_capture_path_divergence")
 	_complete_process_a_phase("restore_barrier_entered", {
 		"queue_pending_count": int(queue_target_before.get("pending_count", 0)),
 	})
@@ -1502,6 +1635,7 @@ func _start_default_session(context: Dictionary, run_id: String) -> Dictionary:
 	# Match the production FullRun harness's lawful fixed-seed session-start
 	# boundary.  The default setup (including challenge depth) remains unchanged.
 	runtime_rng.set_seed(ACCEPTANCE_SEED)
+	var observed_run_seed := int(runtime_rng.seed)
 	var setup := draft.draft_snapshot()
 	var challenge_depth := int(setup.get("challenge_depth", 0))
 	if challenge_depth != ACCEPTANCE_CHALLENGE_DEPTH:
@@ -1521,15 +1655,27 @@ func _start_default_session(context: Dictionary, run_id: String) -> Dictionary:
 	var receipt := transaction.start_session(request)
 	var summary := session.session_summary()
 	var session_seed := int(summary.get("seed", 0))
+	var organization := coordinator.get_node_or_null("PlayerOrganizationRuntimeController")
+	var organization_debug: Dictionary = organization.debug_snapshot() \
+			if organization != null and organization.has_method("debug_snapshot") else {}
+	var ai := coordinator.get_node_or_null("AiRuntimeController") as AiRuntimeController
+	var ai_debug: Dictionary = ai.debug_snapshot() if ai != null else {}
+	var observed_player_count := int(organization_debug.get("actor_count", 0))
+	var observed_ai_player_count := int(ai_debug.get("ai_player_count", 0))
+	var observed_local_player_count := observed_player_count - observed_ai_player_count
 	return {
 		"applied": receipt != null and receipt.applied,
 		"reason_code": receipt.reason_code if receipt != null else "session_start_receipt_missing",
+		# SessionStartTransactionCoordinator validates and commits this exact
+		# draft; GameSession's intentionally reduced setup summary omits depth.
 		"challenge_depth": challenge_depth,
-		"seed": ACCEPTANCE_SEED,
+		"seed": observed_run_seed,
 		"session_seed": session_seed,
+		"local_player_count": observed_local_player_count,
+		"ai_player_count": observed_ai_player_count,
 		"scenario_fingerprint": SEMANTIC_WIRE.fingerprint({
 			"challenge_depth": challenge_depth,
-			"run_seed": ACCEPTANCE_SEED,
+			"run_seed": observed_run_seed,
 			# The derived session seed may be an Int64 outside JSON's exact
 			# integer range; represent it textually in this QA-only identity.
 			"session_seed": str(session_seed),
@@ -1557,6 +1703,160 @@ func _capture_sections(context: Dictionary, suffix: String) -> Dictionary:
 		"sections_digest": canonical.sha256_text() if not canonical.is_empty() else "",
 		"section_count": sections.size(),
 	}
+
+
+func _record_targeted_owner_capture_audit(context: Dictionary, phase_id: String) -> void:
+	if not _targeted_owner_capture_diagnostic or phase_id not in TARGETED_OWNER_CAPTURE_PHASES:
+		return
+	for existing in _targeted_owner_capture_audits:
+		if str(existing.get("phase_id", "")) == phase_id:
+			return
+	var registry: Node = context.get("registry")
+	var before_observation := _safety_observation(context)
+	var before_world := _world_digest(context)
+	var detailed: Dictionary = registry.call("capture_all_sections_detailed") \
+			if registry != null and registry.has_method("capture_all_sections_detailed") else {
+				"captured": false,
+				"section_count": 0,
+				"section_results": [],
+				"first_failure": {
+					"schema_version": 1,
+					"section_id": "registry",
+					"owner_id": "registry",
+					"failure_class": "REGISTRY_INTERNAL_ERROR",
+					"reason_code": "detailed_capture_unavailable",
+					"state_version_observed": -1,
+					"ruleset_id_observed": "",
+					"private_payload_redacted": true,
+				},
+			}
+	var after_observation := _safety_observation(context)
+	var after_world := _world_digest(context)
+	var safe_failure := _safe_owner_capture_failure(detailed.get("first_failure", {}))
+	var safety_green := before_observation == after_observation and before_world == after_world
+	var audit := {
+		"phase_id": phase_id,
+		"captured": bool(detailed.get("captured", false)),
+		"section_count": maxi(0, int(detailed.get("section_count", 0))),
+		"section_results": _safe_owner_capture_section_results(detailed.get("section_results", [])),
+		"first_failure": safe_failure,
+		"world_fingerprint_match": before_world == after_world,
+		"safety_observation_match": before_observation == after_observation,
+		"world_advance_delta": _delta(before_observation, after_observation, "world_clock_advance_count"),
+		"rng_draw_delta": _delta(before_observation, after_observation, "rng_draw_invocation_count"),
+		"public_log_delta": _delta(before_observation, after_observation, "public_log_entry_count"),
+		"private_feedback_delta": _delta(before_observation, after_observation, "private_feedback_revision"),
+		"sale_receipt_delta": _delta(before_observation, after_observation, "sale_receipt_emission_count"),
+		"human_action_delta": _delta(before_observation, after_observation, "human_action_submission_count"),
+		"ai_action_delta": _delta(before_observation, after_observation, "ai_action_submission_count"),
+		"notification_delta": _delta(before_observation, after_observation, "notification_count"),
+		"safety_green": safety_green,
+	}
+	_targeted_owner_capture_audits.append(audit)
+	if _targeted_owner_capture_first_failure.is_empty() and not safe_failure.is_empty():
+		_targeted_owner_capture_first_failure = safe_failure.duplicate(true)
+		_targeted_owner_capture_first_phase = phase_id
+
+
+func _safe_owner_capture_section_results(value: Variant) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	if not (value is Array):
+		return result
+	var source_rows := value as Array
+	if source_rows.size() > SAVE_SECTION_ORDER.size():
+		return result
+	for row_index in range(source_rows.size()):
+		var row_variant: Variant = source_rows[row_index]
+		if not (row_variant is Dictionary):
+			return []
+		var row := row_variant as Dictionary
+		if str(row.get("section_id", "")) != str(SAVE_SECTION_ORDER[row_index]) \
+				or str(row.get("owner_id", "")) != str(SAVE_OWNER_ORDER[row_index]) \
+				or not (row.get("captured") is bool) \
+				or typeof(row.get("state_version")) != TYPE_INT \
+				or not CAPTURE_FAILURE.is_reason_code(str(row.get("reason_code", ""))):
+			return []
+		result.append({
+			"section_id": str(row.get("section_id", "")),
+			"owner_id": str(row.get("owner_id", "")),
+			"captured": bool(row.get("captured", false)),
+			"reason_code": _safe_owner_capture_reason_code(row.get("reason_code", "capture_result_invalid")),
+			"state_version": int(row.get("state_version", -1)),
+			"payload_fingerprint": str(row.get("payload_fingerprint", "")),
+		})
+	return result
+
+
+func _safe_owner_capture_failure(value: Variant) -> Dictionary:
+	if not (value is Dictionary) or (value as Dictionary).is_empty():
+		return {}
+	var source := value as Dictionary
+	var section_index := int(source.get("section_index", -1)) \
+			if typeof(source.get("section_index")) == TYPE_INT else -1
+	if section_index < 0 or section_index >= SAVE_SECTION_ORDER.size() \
+			or str(source.get("section_id", "")) != str(SAVE_SECTION_ORDER[section_index]) \
+			or str(source.get("owner_id", "")) != str(SAVE_OWNER_ORDER[section_index]) \
+			or not CAPTURE_FAILURE.is_failure_class(str(source.get("failure_class", ""))) \
+			or not CAPTURE_FAILURE.is_reason_code(str(source.get("reason_code", ""))) \
+			or not bool(source.get("private_payload_redacted", false)):
+		return {}
+	return {
+		"schema_version": int(source.get("schema_version", 0)),
+		"registry_operation_id": str(source.get("registry_operation_id", "")),
+		"capture_sequence": maxi(0, int(source.get("capture_sequence", 0))),
+		"section_index": section_index,
+		"section_id": str(source.get("section_id", "")),
+		"owner_id": str(source.get("owner_id", "")),
+		"failure_class": str(source.get("failure_class", "REGISTRY_INTERNAL_ERROR")),
+		"reason_code": _safe_owner_capture_reason_code(source.get("reason_code", "registry_internal_error")),
+		"result_empty": bool(source.get("result_empty", false)),
+		"result_not_dictionary": bool(source.get("result_not_dictionary", false)),
+		"result_not_pure_data": bool(source.get("result_not_pure_data", false)),
+		"result_header_invalid": bool(source.get("result_header_invalid", false)),
+		"result_version_invalid": bool(source.get("result_version_invalid", false)),
+		"result_ruleset_invalid": bool(source.get("result_ruleset_invalid", false)),
+		"state_version_observed": int(source.get("state_version_observed", -1)),
+		"ruleset_id_observed": str(source.get("ruleset_id_observed", "")),
+		"live_state_mutated_during_capture": bool(source.get("live_state_mutated_during_capture", false)),
+		"private_payload_redacted": true,
+	}
+
+
+func _write_targeted_owner_capture_diagnostic(options: Dictionary, base: Dictionary) -> Dictionary:
+	var phases: Array[String] = []
+	var safety_green := _targeted_owner_capture_audits.size() == TARGETED_OWNER_CAPTURE_PHASES.size()
+	for audit in _targeted_owner_capture_audits:
+		phases.append(str(audit.get("phase_id", "")))
+		safety_green = safety_green and bool(audit.get("safety_green", false))
+	if phases != TARGETED_OWNER_CAPTURE_PHASES:
+		return {"valid": false, "reason_code": "targeted_owner_capture_phase_set_invalid"}
+	var diagnostic := {
+		"schema_version": 1,
+		"diagnostic_id": "TargetedOwnerCaptureDiagnosticV1",
+		"run_id": str(options.get("run_id", "")),
+		"repository_head": str(base.get("head_sha", "")),
+		"scenario_fingerprint": str(_targeted_owner_capture_observed_scenario.get("scenario_fingerprint", "")),
+		"official": false,
+		"formal": false,
+		"challenge_depth": int(_targeted_owner_capture_observed_scenario.get("challenge_depth", -1)),
+		"seed": int(_targeted_owner_capture_observed_scenario.get("seed", -1)),
+		"local_player_count": int(_targeted_owner_capture_observed_scenario.get("local_player_count", -1)),
+		"ai_player_count": int(_targeted_owner_capture_observed_scenario.get("ai_player_count", -1)),
+		"ai_action_count": int(_targeted_owner_capture_observed_scenario.get("ai_action_count", 0)),
+		"ai_state_digest_changed": bool(_targeted_owner_capture_observed_scenario.get("ai_state_digest_changed", false)),
+		"audit_count": _targeted_owner_capture_audits.size(),
+		"phase_audits": _targeted_owner_capture_audits.duplicate(true),
+		"first_phase_with_capture_failure": _targeted_owner_capture_first_phase \
+				if not _targeted_owner_capture_first_phase.is_empty() else "none",
+		"first_failure": _targeted_owner_capture_first_failure.duplicate(true),
+		"safety_green": safety_green,
+		"save_file_exists": FileAccess.file_exists(SaveSlotPolicyV06.PRODUCTION_PATH),
+		"official_claim_path_present": not str(options.get("official_claim_path", "")).is_empty(),
+	}
+	return CHILD_ATTESTATION.write_owner_capture_diagnostic(
+		str(options.get("run_id", "")),
+		diagnostic
+	)
 
 
 func _save_via_player_flow(context: Dictionary, save_path: String, destructive_confirmed: bool) -> Dictionary:
@@ -1590,9 +1890,10 @@ func _save_via_player_flow(context: Dictionary, save_path: String, destructive_c
 			internal_reason = "capture:%s:%s" % [capture_section, capture_reason]
 		if not bool(save_debug.get("last_readback_fingerprint_match", true)):
 			var first_mismatch: Dictionary = save_debug.get("last_readback_first_mismatch", {}) if save_debug.get("last_readback_first_mismatch", {}) is Dictionary else {}
-			internal_reason = "readback:%s:%s:%s>%s:%s>%s" % [
+			var mismatch_path_fingerprint := str(first_mismatch.get("path", "")).sha256_text().substr(0, 12)
+			internal_reason = "readback:%s:path_%s:%s>%s:%s>%s" % [
 				",".join(mismatch_sections),
-				str(first_mismatch.get("path", "")).trim_prefix("root.sections."),
+				mismatch_path_fingerprint,
 				str(first_mismatch.get("left_type", "")),
 				str(first_mismatch.get("right_type", "")),
 				str(first_mismatch.get("left_scalar", "")),
@@ -1842,6 +2143,7 @@ func _prepare_facility_queue_checkpoint(context: Dictionary) -> Dictionary:
 	_complete_process_a_phase("real_commodity_claim_complete", {
 		"commodity_card_id": str(claim.get("commodity_card_id", "")),
 	})
+	_record_targeted_owner_capture_audit(context, "real_commodity_claim_complete")
 	_enter_process_a_phase("real_normal_card_purchase_complete")
 	var protected_card_ids: Array = [
 		str(claim.get("commodity_card_id", "")),
@@ -1875,6 +2177,7 @@ func _prepare_facility_queue_checkpoint(context: Dictionary) -> Dictionary:
 		"purchase_count": int(first_purchase.get("purchase_count", 0)),
 		"card_id": str(selected_plan.get("first_card_id", "")),
 	})
+	_record_targeted_owner_capture_audit(context, "real_normal_card_purchase_complete")
 	_enter_process_a_phase("real_facility_economy_complete")
 	var first_target := selected_plan.get("first_target", {}) as Dictionary
 	var first_play := await _play_facility_through_formal_submission(
@@ -1893,6 +2196,7 @@ func _prepare_facility_queue_checkpoint(context: Dictionary) -> Dictionary:
 		"card_id": str(selected_plan.get("first_card_id", "")),
 		"target_region_id": str(first_target.get("region_id", "")),
 	})
+	_record_targeted_owner_capture_audit(context, "real_facility_economy_complete")
 	_enter_process_a_phase("first_sale_receipt_complete")
 	coordinator.resume_session()
 	var sales := _advance_until_product_sale(context, str(selected_plan.get("product_id", "")))
@@ -1907,6 +2211,7 @@ func _prepare_facility_queue_checkpoint(context: Dictionary) -> Dictionary:
 		"owned_sale_receipt_count": int(sales.get("owned_sale_receipt_count", 0)),
 		"product_id": str(selected_plan.get("product_id", "")),
 	})
+	_record_targeted_owner_capture_audit(context, "first_sale_receipt_complete")
 	_enter_process_a_phase("ai_nondefault_state_complete")
 	var queue_purchase: Dictionary = {}
 	var queue_purchase_count := 0
@@ -3456,11 +3761,10 @@ func _formal_public_queue_resolution_report(snapshot: Dictionary) -> Dictionary:
 
 func _ai_state_digest(context: Dictionary) -> String:
 	var coordinator := context.get("coordinator") as GameRuntimeCoordinator
-	var handshake := context.get("handshake") as Node
 	var ai := coordinator.get_node_or_null("AiRuntimeController") if coordinator != null else null
-	var state: Dictionary = ai.call("to_save_data") if ai != null and ai.has_method("to_save_data") else {}
-	var canonical := str(handshake.call("canonical_json", state)) if handshake != null and not state.is_empty() else ""
-	return canonical.sha256_text() if not canonical.is_empty() else ""
+	var state: Dictionary = ai.call("debug_snapshot") \
+			if ai != null and ai.has_method("debug_snapshot") else {}
+	return Marshalls.raw_to_base64(var_to_bytes(state)).sha256_text() if not state.is_empty() else ""
 
 
 func _prepare_legal_checkpoint(context: Dictionary) -> Dictionary:
@@ -4820,6 +5124,7 @@ func _parse_options(args: PackedStringArray) -> Dictionary:
 		"expected_queue_stable_target_fingerprint": "",
 		"scenario_fingerprint": "",
 		"non_official_process_a": false,
+		"targeted_owner_capture_diagnostic": false,
 		"parse_error": "",
 	}
 	var seen: Dictionary = {}
@@ -4833,6 +5138,13 @@ func _parse_options(args: PackedStringArray) -> Dictionary:
 			else:
 				seen["non_official_process_a"] = true
 				result["non_official_process_a"] = true
+			continue
+		if text == "--cold-restore-targeted-owner-capture-diagnostic":
+			if seen.has("targeted_owner_capture_diagnostic"):
+				result["parse_error"] = "duplicate_option"
+			else:
+				seen["targeted_owner_capture_diagnostic"] = true
+				result["targeted_owner_capture_diagnostic"] = true
 			continue
 		var option_key := ""
 		var option_value: Variant = ""

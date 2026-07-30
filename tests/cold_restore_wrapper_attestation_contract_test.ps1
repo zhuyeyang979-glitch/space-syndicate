@@ -6,6 +6,7 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $modulePath = Join-Path $projectRoot "scripts/tools/cold_restore_attested_process.psm1"
+$orchestratorPath = Join-Path $projectRoot "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1"
 $fixturePath = Join-Path $projectRoot "tests/fixtures/cold_restore_attestation_fixture_child.ps1"
 $godotFixturePath = "res://tests/fixtures/cold_restore_godot_attestation_fixture.gd"
 Import-Module $modulePath -Force
@@ -21,6 +22,54 @@ function Assert-WrapperCondition {
     $script:checks += 1
     if (-not $Condition) {
         $script:failures.Add($Message)
+    }
+}
+
+function Get-OrchestratorFunctionSource {
+    param(
+        [Parameter(Mandatory = $true)]$Ast,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    $functions = @($Ast.FindAll({
+        param($Node)
+        $Node -is [Management.Automation.Language.FunctionDefinitionAst]
+    }, $true))
+    $matches = @($functions | Where-Object { [string]$_.Name -ceq $Name })
+    if ($matches.Count -ne 1) {
+        return ""
+    }
+    return [string]$matches[0].Extent.Text
+}
+
+function Invoke-TargetedModeConflictFixture {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][string[]]$Arguments
+    )
+
+    $runId = "wrapper-targeted-conflict-$Name-$([Guid]::NewGuid().ToString('N'))"
+    $output = @(& (Get-Command pwsh).Source `
+        -NoProfile `
+        -File $orchestratorPath `
+        -ProjectPath $projectRoot `
+        -RunId $runId `
+        -TargetedOwnerCaptureDiagnostic `
+        @Arguments 2>&1)
+    $exitCode = $LASTEXITCODE
+    $jsonLine = @($output | ForEach-Object { [string]$_ } | Where-Object { $_.StartsWith("{") } | Select-Object -Last 1)
+    $result = $null
+    if ($jsonLine.Count -eq 1) {
+        try {
+            $result = $jsonLine[0] | ConvertFrom-Json
+        }
+        catch {
+            $result = $null
+        }
+    }
+    return [pscustomobject]@{
+        exit_code = $exitCode
+        result = $result
     }
 }
 
@@ -73,6 +122,100 @@ function Invoke-FixtureCase {
 }
 
 try {
+    $orchestratorTokens = $null
+    $orchestratorParseErrors = $null
+    $orchestratorAst = [Management.Automation.Language.Parser]::ParseFile(
+        $orchestratorPath,
+        [ref]$orchestratorTokens,
+        [ref]$orchestratorParseErrors
+    )
+    $orchestratorSource = Get-Content -LiteralPath $orchestratorPath -Raw -Encoding UTF8
+    $moduleSource = Get-Content -LiteralPath $modulePath -Raw -Encoding UTF8
+    Assert-WrapperCondition ($orchestratorParseErrors.Count -eq 0) "orchestrator source must parse before targeted diagnostic contracts are inspected"
+
+    $targetedParameter = @($orchestratorAst.ParamBlock.Parameters | Where-Object {
+        [string]$_.Name.VariablePath.UserPath -ceq "TargetedOwnerCaptureDiagnostic"
+    })
+    $authorizationParameter = @($orchestratorAst.ParamBlock.Parameters | Where-Object {
+        [string]$_.Name.VariablePath.UserPath -ceq "AuthorizedOfficialColdRestoreCount"
+    })
+    Assert-WrapperCondition ($targetedParameter.Count -eq 1) "TargetedOwnerCaptureDiagnostic must remain an explicit orchestrator mode"
+    Assert-WrapperCondition ($authorizationParameter.Count -eq 1 `
+        -and [string]$authorizationParameter[0].DefaultValue.Extent.Text -ceq "0") "Targeted diagnostics must inherit AuthorizedOfficialColdRestoreCount=0"
+
+    $modeGateStart = $orchestratorSource.IndexOf('$selectedModeCount = @(', [StringComparison]::Ordinal)
+    $modeGateEnd = if ($modeGateStart -ge 0) {
+        $orchestratorSource.IndexOf('if ($ContractManifestPath -ne "")', $modeGateStart, [StringComparison]::Ordinal)
+    }
+    else {
+        -1
+    }
+    $modeGate = if ($modeGateStart -ge 0 -and $modeGateEnd -gt $modeGateStart) {
+        $orchestratorSource.Substring($modeGateStart, $modeGateEnd - $modeGateStart)
+    }
+    else {
+        ""
+    }
+    $modeGateFragments = @(
+        '[bool]$QualificationProbe',
+        '[bool]$TargetedOwnerCaptureDiagnostic',
+        '[bool]$NonOfficialProcessA',
+        '[bool]$EnableColdRestoreExecution',
+        '($ContractManifestPath -ne "")',
+        'Assert-ColdRestoreCondition ($selectedModeCount -le 1) "execution_mode_conflict"'
+    )
+    Assert-WrapperCondition (@($modeGateFragments | Where-Object { -not $modeGate.Contains($_) }).Count -eq 0) "TargetedOwnerCaptureDiagnostic must share the mutually exclusive execution-mode gate"
+
+    foreach ($conflict in @(
+        [pscustomobject]@{ name = "qualification"; arguments = @("-QualificationProbe") },
+        [pscustomobject]@{ name = "non-official-a"; arguments = @("-NonOfficialProcessA") },
+        [pscustomobject]@{ name = "official"; arguments = @("-EnableColdRestoreExecution") },
+        [pscustomobject]@{ name = "manifest"; arguments = @("-ContractManifestPath", (Join-Path $root "unused-manifest.json")) }
+    )) {
+        $conflictResult = Invoke-TargetedModeConflictFixture $conflict.name $conflict.arguments
+        Assert-WrapperCondition ($conflictResult.exit_code -ne 0 `
+            -and $null -ne $conflictResult.result `
+            -and -not [bool]$conflictResult.result.success `
+            -and [string]$conflictResult.result.failure_code -ceq "execution_mode_conflict") "TargetedOwnerCaptureDiagnostic must reject the $($conflict.name) mode before launch"
+    }
+
+    $targetedFunctionSource = Get-OrchestratorFunctionSource $orchestratorAst "Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic"
+    Assert-WrapperCondition ($targetedFunctionSource.Contains('($AuthorizedOfficialColdRestoreCount -eq 0) "targeted_owner_capture_official_authorization_forbidden"')) "Targeted diagnostics must require AuthorizedOfficialColdRestoreCount=0"
+    Assert-WrapperCondition (-not $targetedFunctionSource.Contains("Assert-AndConsumeOfficialColdRestoreAuthorization") `
+        -and -not $targetedFunctionSource.Contains("LaunchAuthorization") `
+        -and -not $targetedFunctionSource.Contains("LaunchAttestationPath")) "Targeted diagnostics must not invoke or propagate official authorization"
+
+    $cleanExitFragments = @(
+        '[bool]$run.wrapper_exit_green',
+        '-not [bool]$run.child.save_written',
+        '[bool]$run.parent.child_attestation_valid',
+        '[int]$run.parent.exit_code -eq 0',
+        '-not [bool]$run.parent.timed_out',
+        '-not [bool]$run.parent.terminated_by_parent',
+        '[int]$run.parent.task_owned_process_count_after -eq 0',
+        '-not [bool]$diagnostic.save_file_exists',
+        '$saveArtifacts.Count -eq 0'
+    )
+    Assert-WrapperCondition (@($cleanExitFragments | Where-Object { -not $targetedFunctionSource.Contains($_) }).Count -eq 0) "Targeted diagnostics must require zero Save files and a clean attested exit"
+    Assert-WrapperCondition ($moduleSource.Contains('catch {`r`n        throw "process_snapshot_failed"'.Replace('`r`n', [Environment]::NewLine)) `
+        -or $moduleSource.Contains("catch {`n        throw `"process_snapshot_failed`"")) "Process enumeration failure must fail closed"
+    Assert-WrapperCondition ($targetedFunctionSource.Contains('($ChildTimeoutSeconds -eq 180) "targeted_owner_capture_timeout_must_be_180"')) "Targeted diagnostics must require the authorized 180-second timeout exactly"
+    Assert-WrapperCondition ($targetedFunctionSource.Contains('$RunId -ceq "alpha04c-owner-capture-diagnostic-$($HeadSha.Substring(0, 12))"')) "Targeted diagnostic identity must bind its run id to the measured HEAD"
+    Assert-WrapperCondition ($orchestratorSource.Contains('finally {') `
+        -and $orchestratorSource.Contains('Assert-ColdRestoreTargetedOwnerCapturePostconditions $resolvedProjectPath')) "Targeted Save and privacy scans must run from a post-launch finally block"
+
+    $targetedInvocationIndex = $orchestratorSource.IndexOf('$targetedDiagnostic = Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic', [StringComparison]::Ordinal)
+    $targetedExitIndex = if ($targetedInvocationIndex -ge 0) {
+        $orchestratorSource.IndexOf('exit 0', $targetedInvocationIndex, [StringComparison]::Ordinal)
+    }
+    else {
+        -1
+    }
+    $officialAuthorizationIndex = $orchestratorSource.IndexOf('$authorization = Assert-AndConsumeOfficialColdRestoreAuthorization', [StringComparison]::Ordinal)
+    Assert-WrapperCondition ($targetedInvocationIndex -ge 0 `
+        -and $targetedExitIndex -gt $targetedInvocationIndex `
+        -and $officialAuthorizationIndex -gt $targetedExitIndex) "Targeted diagnostic dispatch must exit before the official authorization path"
+
     $green = Invoke-FixtureCase "valid_green"
     Assert-WrapperCondition ([bool]$green.result.wrapper_exit_green) "valid child must produce a green wrapper"
     Assert-WrapperCondition ([bool]$green.result.parent.observed_exit -and [int]$green.result.parent.exit_code -eq 0) "parent must observe exact zero exit"

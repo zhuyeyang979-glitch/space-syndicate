@@ -4,6 +4,7 @@ const ORCHESTRATOR_PATH := "res://scripts/tools/cold_restore_vertical_slice_orch
 const DRIVER_PATH := "res://scripts/tools/cold_restore_vertical_slice_driver.gd"
 const ATTESTED_PROCESS_PATH := "res://scripts/tools/cold_restore_attested_process.psm1"
 const CHILD_ATTESTATION_PATH := "res://scripts/tools/cold_restore_child_completion_attestation.gd"
+const SAVE_OWNER_REGISTRY_PATH := "res://scripts/runtime/v06_save_owner_registry.gd"
 const SAFE_RESULT_FIELDS := [
 	"schema_version",
 	"driver_id",
@@ -46,6 +47,7 @@ func _run() -> void:
 	var driver_source := FileAccess.get_file_as_string(DRIVER_PATH)
 	var wrapper_source := FileAccess.get_file_as_string(ATTESTED_PROCESS_PATH)
 	var child_attestation_source := FileAccess.get_file_as_string(CHILD_ATTESTATION_PATH)
+	var registry_source := FileAccess.get_file_as_string(SAVE_OWNER_REGISTRY_PATH)
 	_expect(source.contains("$ORCHESTRATOR_SCHEMA_VERSION = 3") and source.contains("$FORMAL_FULL_RUN = $false") and source.contains("$DriverExecutionReady = $true"), "orchestrator exposes a non-Formal v3 role contract behind explicit qualification and official authorization gates")
 	_expect(driver_source.contains("const SCHEMA_VERSION := 3") and driver_source.contains("const EXECUTION_READY := true") and driver_source.contains('"driver_id": "alpha04c_cold_restore_vertical_slice_v3"'), "driver and orchestrator share one executable Harness-only v3 contract")
 	_expect(driver_source.contains("--cold-restore-expected-queue-resolution-id=") and driver_source.contains("--cold-restore-expected-queue-stable-target-fingerprint=") and driver_source.contains("--cold-restore-scenario-fingerprint=") and driver_source.contains("--cold-restore-official-claim-path=") and driver_source.contains("--cold-restore-launch-attestation-path=") and driver_source.contains("--cold-restore-launch-nonce=") and driver_source.contains('"unknown_option"') and driver_source.contains('"duplicate_option"'), "driver accepts only the closed expected-identity and attested authorization option surface")
@@ -56,9 +58,63 @@ func _run() -> void:
 	_expect(wrapper_source.contains("[IO.FileMode]::CreateNew") and wrapper_source.contains("Write-ColdRestoreExclusiveJson") and wrapper_source.contains("Write-ColdRestoreLaunchAttestation"), "the claim final path is created exclusively and each child receives a PID-bound launch attestation")
 	var claim_call_index := source.rfind("Assert-AndConsumeOfficialColdRestoreAuthorization $resolvedProjectPath $headSha")
 	_expect(source.find('if ($ContractManifestPath -ne "")') < claim_call_index and source.find("if (-not $QualificationProbe -and -not $NonOfficialProcessA -and -not $EnableColdRestoreExecution)") < claim_call_index and source.find("if ($QualificationProbe)") < claim_call_index and source.find("if ($NonOfficialProcessA)") < claim_call_index, "contract fixture, default check-only, qualification, and non-official Process A all exit before the fixed claim boundary")
+	var targeted_mode_index := source.find("if ($TargetedOwnerCaptureDiagnostic)")
+	_expect(source.contains("[switch]$TargetedOwnerCaptureDiagnostic") and targeted_mode_index >= 0 and targeted_mode_index < claim_call_index and source.contains("targeted_owner_capture_mode_collision") and driver_source.contains('if text == "--cold-restore-targeted-owner-capture-diagnostic":') and driver_source.contains("targeted_owner_capture_official_forbidden"), "targeted Owner capture has a dedicated mutually exclusive CLI mode that cannot cross the official claim boundary")
+	var targeted_phases := [
+		"session_started",
+		"real_commodity_claim_complete",
+		"real_normal_card_purchase_complete",
+		"real_facility_economy_complete",
+		"first_sale_receipt_complete",
+		"ai_nondefault_state_complete",
+		"queue_entry_committed",
+		"restore_barrier_entered",
+	]
+	var targeted_phase_contract_green := targeted_phases.size() == 8 \
+			and driver_source.contains("const TARGETED_OWNER_CAPTURE_PHASES := [") \
+			and driver_source.contains("if phases != TARGETED_OWNER_CAPTURE_PHASES:") \
+			and source.contains("[int]$diagnostic.audit_count -eq 8") \
+			and source.contains("$phaseDifferences.Count -eq 0")
+	for phase_id in targeted_phases:
+		targeted_phase_contract_green = targeted_phase_contract_green \
+				and driver_source.contains('"%s"' % phase_id) \
+				and source.contains('"%s"' % phase_id)
+	_expect(targeted_phase_contract_green, "targeted Owner capture audits exactly the eight authorized production phases in stable order")
+	_expect(driver_source.contains('registry.call("capture_all_sections_detailed")') and registry_source.contains("func capture_all_sections_detailed() -> Dictionary:") and registry_source.contains("var result := _capture_all_sections_detailed_internal({}, true)") and registry_source.contains("var detailed := _capture_all_sections_detailed_internal(analysis)"), "targeted diagnostics and production Save share the Registry capture_all_sections_detailed implementation")
+	var targeted_driver_branch_index := driver_source.find("if _targeted_owner_capture_diagnostic:")
+	var targeted_driver_return_index := driver_source.find('return _fail(base, "targeted_owner_capture_diagnostic_complete"', targeted_driver_branch_index)
+	var save_intent_index := driver_source.find('_enter_process_a_phase("save_intent_submitted")', targeted_driver_branch_index)
+	_expect(targeted_driver_branch_index >= 0 and targeted_driver_return_index > targeted_driver_branch_index and targeted_driver_return_index < save_intent_index and driver_source.contains('"targeted_owner_capture_diagnostic_writes_save": false') and source.contains("-and -not [bool]$run.child.save_written") and source.contains('$saveArtifacts.Count -eq 0) "targeted_owner_capture_unexpected_save"'), "targeted Owner capture exits before Save Intent and the parent rejects every Save-directory artifact")
+	_expect(source.contains('$AuthorizedOfficialColdRestoreCount -eq 0) "targeted_owner_capture_official_authorization_forbidden"') and driver_source.contains("or not official_claim_path.is_empty()") and driver_source.contains('"official_claim_path_present": not str(options.get("official_claim_path", "")).is_empty()') and source.contains('$TargetedOwnerCaptureQuotaLedgerRelativePath = "codex\\cold_restore_v3\\non-official-') and source.contains("Consume-ColdRestoreTargetedOwnerCaptureDiagnosticQuota") and source.contains("official_count_consumed = $false"), "targeted Owner capture requires zero official authorization and uses only its independent non-official exact-once quota ledger")
+	var ai_digest_start := driver_source.find("func _ai_state_digest")
+	var ai_digest_end := driver_source.find("\nfunc ", ai_digest_start + 1)
+	var ai_digest_source := driver_source.substr(ai_digest_start, ai_digest_end - ai_digest_start) \
+			if ai_digest_start >= 0 and ai_digest_end > ai_digest_start else ""
+	_expect(not ai_digest_source.contains("to_save_data") and ai_digest_source.contains("debug_snapshot") and ai_digest_source.contains("var_to_bytes") and driver_source.contains('"ai_action_count"') and driver_source.contains('"ai_state_digest_changed"') and child_attestation_source.contains('"ai_action_count", "ai_state_digest_changed"') and source.contains("[int]$diagnostic.ai_action_count -ge 1") and source.contains("[bool]$diagnostic.ai_state_digest_changed"), "targeted AI qualification uses an independent runtime observation and is bound through Driver, Child, and Parent evidence")
+	var targeted_artifact_start := driver_source.find("func _record_targeted_owner_capture_audit")
+	var targeted_artifact_end := driver_source.find("func _save_via_player_flow", targeted_artifact_start)
+	var targeted_artifact_source := driver_source.substr(targeted_artifact_start, targeted_artifact_end - targeted_artifact_start) \
+			if targeted_artifact_start >= 0 and targeted_artifact_end > targeted_artifact_start else ""
+	_expect(targeted_artifact_source.contains("_safe_owner_capture_section_results") and targeted_artifact_source.contains("_safe_owner_capture_failure") and targeted_artifact_source.contains('"private_payload_redacted": true') and targeted_artifact_source.contains("CHILD_ATTESTATION.write_owner_capture_diagnostic") and not targeted_artifact_source.contains("owner_node_path") and not targeted_artifact_source.contains("owner_script_path") and not targeted_artifact_source.contains("raw_owner_state") and child_attestation_source.contains("static func write_owner_capture_diagnostic") and child_attestation_source.contains("OWNER_CAPTURE_DIAGNOSTIC_FIELDS") and child_attestation_source.contains("_has_exact_fields"), "targeted Owner capture writes only exact-schema redacted diagnostic evidence without raw Owner payloads")
+	var targeted_orchestrator_start := source.find("function Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic")
+	var targeted_orchestrator_end := source.find("function New-ColdRestoreTargetedOwnerCaptureOutput", targeted_orchestrator_start)
+	var targeted_orchestrator_source := source.substr(targeted_orchestrator_start, targeted_orchestrator_end - targeted_orchestrator_start) \
+			if targeted_orchestrator_start >= 0 and targeted_orchestrator_end > targeted_orchestrator_start else ""
+	_expect(targeted_orchestrator_source.contains("Invoke-ColdRestoreAttestedProcess") and targeted_orchestrator_source.contains("$run.parent.child_attestation_valid") and targeted_orchestrator_source.contains("$run.parent.exit_code -eq 0") and targeted_orchestrator_source.contains("-not [bool]$run.parent.timed_out") and targeted_orchestrator_source.contains("-not [bool]$run.parent.terminated_by_parent") and targeted_orchestrator_source.contains("$run.parent.task_owned_process_count_after -eq 0"), "targeted Owner capture completes through the normal child completion and parent exit attestation path")
 	_expect(driver_source.contains("cold_restore_process_a_phase_timeline.gd") and driver_source.contains("allowlisted_manifest_complete") and driver_source.contains("child_completion_attestation_complete") and wrapper_source.contains("Sync-ColdRestoreProcessAPhaseTimeline"), "Process A emits a parent-synchronized nineteen-phase timeline without treating progress as completion")
 	_expect(driver_source.contains("_close_process_a_failure_phases") and driver_source.contains("_safe_reason_code") and source.contains('$NonOfficialProcessAKind -eq "rehearsal"'), "diagnostic failure preserves a closed timeline and safe manifest while rehearsal still requires product success")
 	_expect(driver_source.contains("last_internal_capture_failure_section") and driver_source.contains("last_internal_capture_failure_reason") and driver_source.contains('internal_reason = "capture:%s:%s"'), "Process A QA evidence retains the failing Registry section and internal reason without widening the public Save receipt")
+	var save_failure_start := driver_source.find("func _save_via_player_flow")
+	var save_failure_end := driver_source.find("\nfunc ", save_failure_start + 1)
+	var save_failure_source := driver_source.substr(save_failure_start, save_failure_end - save_failure_start) \
+			if save_failure_start >= 0 and save_failure_end > save_failure_start else ""
+	_expect(save_failure_source.contains("mismatch_path_fingerprint") and save_failure_source.contains("sha256_text().substr(0, 12)") and not save_failure_source.contains('trim_prefix("root.sections.")'), "Process A public readback failure fingerprints the mismatch path and never emits a raw Owner field path")
+	var session_start_start := driver_source.find("func _start_default_session")
+	var session_start_end := driver_source.find("\nfunc ", session_start_start + 1)
+	var session_start_source := driver_source.substr(session_start_start, session_start_end - session_start_start) \
+			if session_start_start >= 0 and session_start_end > session_start_start else ""
+	_expect(session_start_source.contains('var challenge_depth := int(setup.get("challenge_depth", 0))') and session_start_source.contains('"challenge_depth": challenge_depth') and session_start_source.contains('"player_count": int(setup.get("player_count", 0))') and not session_start_source.contains('committed_setup.get("challenge_depth"'), "targeted scenario identity uses the exact committed draft fields because GameSession's reduced setup summary intentionally omits challenge depth")
+	_expect(source.contains('"left_scalar"') and source.contains('"right_scalar"') and source.contains('"next_quote_sequence":') and source.contains('targeted_owner_capture_child_$childFailureCode'), "targeted Parent evidence rejects raw mismatch scalars and preserves a bounded child setup failure code")
 	_expect(source.contains("save_green = [bool]$Result.timeline.save_file_exists `") and source.contains("$Result.timeline.allowlisted_manifest_written") and source.contains("$Result.run.parent.child_attestation_valid") and source.contains("$Result.run.parent.task_owned_process_count_after -eq 0"), "non-official save_green requires Save fingerprint, manifest, both attestations, normal exit, and process cleanup instead of file existence alone")
 	var forged_boolean := _invoke_driver_with_forged_boolean()
 	_expect(int(forged_boolean.get("exit_code", 0)) != 0 and str(forged_boolean.get("output", "")).contains("unknown_option"), "the retired official-count boolean is rejected before runtime or Save access")

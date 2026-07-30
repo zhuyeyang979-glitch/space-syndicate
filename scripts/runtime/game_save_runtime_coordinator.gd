@@ -560,8 +560,11 @@ func _first_canonical_mismatch(left: Variant, right: Variant, handshake: Node, p
 
 
 func _safe_scalar_diagnostic(value: Variant) -> String:
-	if value == null or value is bool or value is int or value is float:
-		return str(value)
+	if value == null:
+		return "nil"
+	if value is bool or value is int or value is float:
+		var scalar_text := str(value)
+		return "%s:%s" % [type_string(typeof(value)), scalar_text.sha256_text().substr(0, 12)]
 	if value is String or value is StringName:
 		return "string:%d:%s" % [str(value).length(), str(value).sha256_text().substr(0, 12)]
 	return type_string(typeof(value))
