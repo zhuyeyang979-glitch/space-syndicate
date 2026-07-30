@@ -5,12 +5,108 @@ param(
     [Parameter(Mandatory = $true)][string]$Role,
     [Parameter(Mandatory = $true)][string]$RepositoryHead,
     [Parameter(Mandatory = $true)][string]$ChildAttestationPath,
-    [Parameter(Mandatory = $true)][string]$Mode
+    [Parameter(Mandatory = $true)][string]$Mode,
+    [string]$ProgressHeartbeatEventDirectory = "",
+    [string]$PolicyRole = "",
+    [string]$PolicyFingerprint = ""
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 Import-Module $ModulePath -Force
+
+function Write-FixtureProgressHeartbeat {
+    param(
+        [Parameter(Mandatory = $true)][int]$Sequence,
+        [Parameter(Mandatory = $true)][string]$Phase,
+        [Parameter(Mandatory = $true)][int64]$WorldTime,
+        [Parameter(Mandatory = $true)][int64]$OwnerIndex,
+        [Parameter(Mandatory = $true)][int64]$QueueRevision,
+        [Parameter(Mandatory = $true)][string]$SavePhase,
+        [string]$HeartbeatRunId = $RunId,
+        [string]$HeartbeatRepositoryHead = $RepositoryHead,
+        [string]$HeartbeatPolicyFingerprint = $PolicyFingerprint,
+        [string]$HeartbeatId = "ColdRestoreRoleProgressHeartbeatV1",
+        [switch]$CorruptFingerprint
+    )
+
+    $heartbeat = [pscustomobject][ordered]@{
+        schema_version = 1
+        heartbeat_id = $HeartbeatId
+        run_id = $HeartbeatRunId
+        role_id = $PolicyRole
+        repository_head = $HeartbeatRepositoryHead
+        policy_fingerprint = $HeartbeatPolicyFingerprint
+        heartbeat_sequence = $Sequence
+        phase = $Phase
+        world_time = $WorldTime
+        owner_index = $OwnerIndex
+        queue_revision = $QueueRevision
+        save_phase = $SavePhase
+        last_evidence_write_time = [Environment]::TickCount64
+        semantic_progress_fingerprint = ""
+        evidence_fingerprint = ""
+    }
+    $heartbeat.semantic_progress_fingerprint = Get-ColdRestoreProgressSemanticFingerprint $heartbeat
+    $heartbeat.evidence_fingerprint = Get-ColdRestoreEvidenceFingerprint $heartbeat "evidence_fingerprint"
+    if ($CorruptFingerprint) {
+        $heartbeat.evidence_fingerprint = "0" * 64
+    }
+    $eventPath = Join-Path $ProgressHeartbeatEventDirectory ("{0:D4}.snapshot.json" -f $Sequence)
+    Write-ColdRestoreAtomicJson $eventPath $heartbeat | Out-Null
+}
+
+if ($Mode -like "policy_*") {
+    if ($ProgressHeartbeatEventDirectory -eq "" `
+        -or $PolicyRole -eq "" `
+        -or $PolicyFingerprint -notmatch '^[0-9a-f]{64}$') {
+        throw "fixture_policy_parameters_invalid"
+    }
+    if ($Mode -ne "policy_missing") {
+        $heartbeatRunId = if ($Mode -eq "policy_wrong_run") { "$RunId-wrong" } else { $RunId }
+        $heartbeatRepositoryHead = if ($Mode -eq "policy_wrong_head") { "e" * 40 } else { $RepositoryHead }
+        $heartbeatPolicyFingerprint = if ($Mode -eq "policy_wrong_policy") { "f" * 64 } else { $PolicyFingerprint }
+        $heartbeatId = if ($Mode -eq "policy_wrong_heartbeat_id") { "ColdRestoreRoleProgressHeartbeatV0" } else { "ColdRestoreRoleProgressHeartbeatV1" }
+        Write-FixtureProgressHeartbeat 1 "child_bootstrap" 0 -1 0 "not_started" `
+            -HeartbeatRunId $heartbeatRunId `
+            -HeartbeatRepositoryHead $heartbeatRepositoryHead `
+            -HeartbeatPolicyFingerprint $heartbeatPolicyFingerprint `
+            -HeartbeatId $heartbeatId `
+            -CorruptFingerprint:($Mode -eq "policy_bad_fingerprint")
+    }
+    switch ($Mode) {
+        "policy_green" {
+            Start-Sleep -Milliseconds 150
+            Write-FixtureProgressHeartbeat 2 "work" 1 0 0 "not_started"
+            Start-Sleep -Milliseconds 150
+            Write-FixtureProgressHeartbeat 3 "quit_requested" 1 0 1 "quit_requested"
+        }
+        "policy_no_progress" {
+            for ($sequence = 2; $sequence -le 60; $sequence += 1) {
+                Write-Output "fixture stdout without semantic progress sequence=$sequence"
+                Start-Sleep -Milliseconds 100
+                Write-FixtureProgressHeartbeat $sequence "child_bootstrap" 0 -1 0 "not_started"
+            }
+        }
+        "policy_absolute" {
+            for ($sequence = 2; $sequence -le 60; $sequence += 1) {
+                Start-Sleep -Milliseconds 100
+                Write-FixtureProgressHeartbeat $sequence "work" $sequence 0 0 "not_started"
+            }
+        }
+        "policy_sequence_gap" {
+            Start-Sleep -Milliseconds 100
+            Write-FixtureProgressHeartbeat 3 "work" 1 0 0 "not_started"
+            Start-Sleep -Seconds 5
+        }
+        "policy_bad_fingerprint" { Start-Sleep -Seconds 5 }
+        "policy_wrong_run" { Start-Sleep -Seconds 5 }
+        "policy_wrong_head" { Start-Sleep -Seconds 5 }
+        "policy_wrong_policy" { Start-Sleep -Seconds 5 }
+        "policy_wrong_heartbeat_id" { Start-Sleep -Seconds 5 }
+        "policy_missing" { }
+    }
+}
 
 if ($Mode -eq "residual_sleep") {
     Start-Sleep -Seconds 30

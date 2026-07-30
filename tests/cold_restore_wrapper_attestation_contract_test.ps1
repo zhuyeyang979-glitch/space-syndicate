@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param()
+param([switch]$SupervisionOnly)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -14,6 +14,7 @@ Import-Module $modulePath -Force
 $script:checks = 0
 $script:failures = [Collections.Generic.List[string]]::new()
 $repositoryHead = "d" * 40
+$measurementHead = "c" * 40
 $root = Join-Path ([IO.Path]::GetTempPath()) ("space syndicate wrapper 测试 " + [Guid]::NewGuid().ToString("N"))
 [IO.Directory]::CreateDirectory($root) | Out-Null
 
@@ -121,7 +122,146 @@ function Invoke-FixtureCase {
     }
 }
 
+function New-WrapperTimeoutPolicy {
+    param(
+        [int]$ProcessAAbsoluteTimeoutSeconds = 5,
+        [int]$ProcessANoProgressTimeoutSeconds = 1
+    )
+
+    function New-RoleEntry {
+        param(
+            [int]$AbsoluteTimeoutSeconds,
+            [int]$NoProgressTimeoutSeconds,
+            [string]$TimeoutReason,
+            [bool]$ContractOnly
+        )
+        return [pscustomobject][ordered]@{
+            absolute_timeout_seconds = $AbsoluteTimeoutSeconds
+            no_progress_timeout_seconds = $NoProgressTimeoutSeconds
+            timeout_reason_code = $TimeoutReason
+            cleanup_policy = "kill_task_tree_then_verify_pid_and_creation_time"
+            contract_only_in_this_task = $ContractOnly
+        }
+    }
+
+    $policy = [pscustomobject][ordered]@{
+        schema_version = 1
+        policy_id = "ColdRestoreRoleTimeoutPolicyV1"
+        policy_source = "alpha04c_wrapper_fixture"
+        measurement_head = $measurementHead
+        measurement_run_id = "wrapper-policy-fixture"
+        poll_interval_ms = 50
+        normal_exit_grace_seconds = 2
+        stream_drain_grace_seconds = 2
+        process_tree_cleanup_grace_seconds = 2
+        progress_heartbeat_fields = @(
+            "phase",
+            "world_time",
+            "owner_index",
+            "queue_revision",
+            "save_phase",
+            "last_evidence_write_time"
+        )
+        roles = [pscustomobject][ordered]@{
+            targeted_owner_diagnostic = New-RoleEntry 5 2 "targeted_owner_diagnostic_timeout" $false
+            process_a = New-RoleEntry `
+                $ProcessAAbsoluteTimeoutSeconds `
+                $ProcessANoProgressTimeoutSeconds `
+                "process_a_timeout" `
+                $false
+            process_b = New-RoleEntry 5 2 "process_b_timeout" $true
+            process_c = New-RoleEntry 5 2 "process_c_timeout" $true
+        }
+    }
+    return $policy
+}
+
+function Invoke-PolicyFixtureCase {
+    param(
+        [Parameter(Mandatory = $true)][string]$Mode,
+        [int]$AbsoluteTimeoutSeconds = 5,
+        [int]$NoProgressTimeoutSeconds = 1,
+        [string]$PathSuffix = ""
+    )
+
+    $policyRole = "process_a"
+    $runId = "wrapper-$Mode-$([Guid]::NewGuid().ToString('N'))"
+    $caseRoot = Join-Path $root ("policy case $Mode $PathSuffix")
+    if ($PathSuffix -ne "") {
+        $caseRoot = Join-Path $caseRoot ("long-segment-" + ("y" * 80))
+    }
+    $childPath = Join-Path $caseRoot "child/producer.completion.json"
+    $parentPath = Join-Path $caseRoot "parent/producer.exit.json"
+    $stdoutPath = Join-Path $caseRoot "parent/producer.stdout.log"
+    $stderrPath = Join-Path $caseRoot "parent/producer.stderr.log"
+    $heartbeatRoot = Join-Path $caseRoot "diagnostics"
+    $heartbeatEventDirectory = Join-Path $heartbeatRoot "$policyRole.heartbeat.events"
+    $heartbeatPath = Join-Path $heartbeatRoot "$policyRole.heartbeat.json"
+    $policy = New-WrapperTimeoutPolicy $AbsoluteTimeoutSeconds $NoProgressTimeoutSeconds
+    $policyPath = Join-Path $caseRoot "policy/ColdRestoreRoleTimeoutPolicyV1.json"
+    [IO.Directory]::CreateDirectory((Split-Path -Parent $policyPath)) | Out-Null
+    [IO.File]::WriteAllText(
+        $policyPath,
+        ($policy | ConvertTo-Json -Depth 12),
+        [Text.UTF8Encoding]::new($false)
+    )
+    $policyFingerprint = (Get-FileHash -LiteralPath $policyPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $policy = [IO.File]::ReadAllText($policyPath, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
+    $arguments = @(
+        "-NoProfile",
+        "-File", $fixturePath,
+        "-ModulePath", $modulePath,
+        "-RunId", $runId,
+        "-Role", "producer",
+        "-RepositoryHead", $repositoryHead,
+        "-ChildAttestationPath", $childPath,
+        "-Mode", $Mode,
+        "-ProgressHeartbeatEventDirectory", $heartbeatEventDirectory,
+        "-PolicyRole", $policyRole,
+        "-PolicyFingerprint", $policyFingerprint
+    )
+    $result = Invoke-ColdRestoreAttestedProcess `
+        -ExecutablePath (Get-Command pwsh).Source `
+        -WorkingDirectory $projectRoot `
+        -ArgumentList $arguments `
+        -RunId $runId `
+        -Role "producer" `
+        -RepositoryHead $repositoryHead `
+        -ChildAttestationPath $childPath `
+        -ParentAttestationPath $parentPath `
+        -StdoutPath $stdoutPath `
+        -StderrPath $stderrPath `
+        -TimeoutPolicy $policy `
+        -ExpectedPolicyFingerprint $policyFingerprint `
+        -PolicyRole $policyRole `
+        -ProgressHeartbeatEventDirectory $heartbeatEventDirectory `
+        -ProgressHeartbeatPath $heartbeatPath
+    return [pscustomobject]@{
+        result = $result
+        policy = $policy
+        policy_fingerprint = $policyFingerprint
+        policy_path = $policyPath
+        parent_path = $parentPath
+        heartbeat_path = $heartbeatPath
+        stdout_path = $stdoutPath
+        stderr_path = $stderrPath
+    }
+}
+
 try {
+    $invokeParameters = (Get-Command Invoke-ColdRestoreAttestedProcess).Parameters.Keys
+    $requiredInvokeParameters = @(
+        "TimeoutPolicy",
+        "ExpectedPolicyFingerprint",
+        "PolicyRole",
+        "ProgressHeartbeatEventDirectory",
+        "ProgressHeartbeatPath"
+    )
+    Assert-WrapperCondition (@($requiredInvokeParameters | Where-Object {
+        $_ -notin $invokeParameters
+    }).Count -eq 0) "Invoke-ColdRestoreAttestedProcess must expose the complete role-policy and heartbeat API"
+
+    if (-not $SupervisionOnly) {
     $orchestratorTokens = $null
     $orchestratorParseErrors = $null
     $orchestratorAst = [Management.Automation.Language.Parser]::ParseFile(
@@ -215,6 +355,7 @@ try {
     Assert-WrapperCondition ($targetedInvocationIndex -ge 0 `
         -and $targetedExitIndex -gt $targetedInvocationIndex `
         -and $officialAuthorizationIndex -gt $targetedExitIndex) "Targeted diagnostic dispatch must exit before the official authorization path"
+    }
 
     $green = Invoke-FixtureCase "valid_green"
     Assert-WrapperCondition ([bool]$green.result.wrapper_exit_green) "valid child must produce a green wrapper"
@@ -261,9 +402,141 @@ try {
     Assert-WrapperCondition (-not [bool]$residual.result.wrapper_exit_green) "a surviving descendant must fail the wrapper"
     Assert-WrapperCondition ([bool]$residual.result.parent.terminated_by_parent) "descendant cleanup must be recorded"
     Assert-WrapperCondition ([int]$residual.result.parent.task_owned_process_count_after -eq 0) "descendant cleanup must finish at zero"
+    Assert-WrapperCondition (@($residual.result.observed_task_process_identities).Count -ge 2 `
+        -and @($residual.result.observed_task_process_identities | Where-Object {
+            [int]$_.process_id -le 0 `
+                -or [string]$_.creation_time_utc_ticks -notmatch '^[1-9][0-9]{0,18}$' `
+                -or ([int64]$_.creation_time_utc_ticks % 10) -ne 0
+        }).Count -eq 0) "task ownership must bind every observed PID to exact creation-time ticks"
 
     $pathCase = Invoke-FixtureCase "valid_green" 5 "中文 path"
     Assert-WrapperCondition ([bool]$pathCase.result.wrapper_exit_green) "space, Unicode, and long paths must round-trip"
+
+    $validPolicy = New-WrapperTimeoutPolicy
+    $validPolicyFingerprint = Get-ColdRestoreTextSha256 ($validPolicy | ConvertTo-Json -Depth 12)
+    $validPolicyReport = Test-ColdRestoreRoleTimeoutPolicy `
+        -Value $validPolicy `
+        -ExpectedRepositoryHead $repositoryHead `
+        -ExpectedPolicyFingerprint $validPolicyFingerprint `
+        -PolicyRole "process_a" `
+        -ExpectedProcessRole "producer"
+    Assert-WrapperCondition ([bool]$validPolicyReport.valid `
+        -and [string]$validPolicyReport.fingerprint -eq $validPolicyFingerprint `
+        -and [string]$validPolicy.measurement_head -ne $repositoryHead) "ColdRestoreRoleTimeoutPolicyV1 accepts a distinct measured baseline and binds the supplied raw-file fingerprint"
+
+    $invalidMeasurementPolicy = $validPolicy | ConvertTo-Json -Depth 12 | ConvertFrom-Json
+    $invalidMeasurementPolicy.measurement_head = "not-a-sha"
+    $invalidMeasurementReport = Test-ColdRestoreRoleTimeoutPolicy `
+        -Value $invalidMeasurementPolicy `
+        -ExpectedRepositoryHead $repositoryHead `
+        -ExpectedPolicyFingerprint $validPolicyFingerprint `
+        -PolicyRole "process_a" `
+        -ExpectedProcessRole "producer"
+    Assert-WrapperCondition (-not [bool]$invalidMeasurementReport.valid `
+        -and [string]$invalidMeasurementReport.reason_code -eq "role_timeout_policy_measurement_head_invalid") "measurement_head must remain a legal SHA without equaling the execution HEAD"
+
+    $overCapPolicy = $validPolicy | ConvertTo-Json -Depth 12 | ConvertFrom-Json
+    $overCapPolicy.roles.targeted_owner_diagnostic.absolute_timeout_seconds = 121
+    $overCapReport = Test-ColdRestoreRoleTimeoutPolicy `
+        -Value $overCapPolicy `
+        -ExpectedRepositoryHead $repositoryHead `
+        -ExpectedPolicyFingerprint $validPolicyFingerprint `
+        -PolicyRole "targeted_owner_diagnostic" `
+        -ExpectedProcessRole "producer"
+    Assert-WrapperCondition (-not [bool]$overCapReport.valid `
+        -and [string]$overCapReport.reason_code -eq "role_timeout_policy_entry_bound_invalid") "role policy rejects a targeted diagnostic absolute timeout above 120 seconds"
+
+    foreach ($capCase in @(
+        [pscustomobject]@{ role = "process_a"; value = 181; process_role = "producer" },
+        [pscustomobject]@{ role = "process_b"; value = 361; process_role = "consumer" },
+        [pscustomobject]@{ role = "process_c"; value = 181; process_role = "validator" }
+    )) {
+        $overRoleCapPolicy = $validPolicy | ConvertTo-Json -Depth 12 | ConvertFrom-Json
+        $overRoleCapPolicy.roles.($capCase.role).absolute_timeout_seconds = $capCase.value
+        $overRoleCapReport = Test-ColdRestoreRoleTimeoutPolicy `
+            -Value $overRoleCapPolicy `
+            -ExpectedRepositoryHead $repositoryHead `
+            -ExpectedPolicyFingerprint $validPolicyFingerprint `
+            -PolicyRole $capCase.role `
+            -ExpectedProcessRole $capCase.process_role
+        Assert-WrapperCondition (-not [bool]$overRoleCapReport.valid `
+            -and [string]$overRoleCapReport.reason_code -eq "role_timeout_policy_entry_bound_invalid") "$($capCase.role) rejects an absolute timeout above its authorized cap"
+    }
+
+    $extraFieldPolicy = $validPolicy | ConvertTo-Json -Depth 12 | ConvertFrom-Json
+    $extraFieldPolicy | Add-Member -NotePropertyName unexpected_timeout_override -NotePropertyValue 9
+    $extraFieldReport = Test-ColdRestoreRoleTimeoutPolicy `
+        -Value $extraFieldPolicy `
+        -ExpectedRepositoryHead $repositoryHead `
+        -ExpectedPolicyFingerprint $validPolicyFingerprint `
+        -PolicyRole "process_a" `
+        -ExpectedProcessRole "producer"
+    Assert-WrapperCondition (-not [bool]$extraFieldReport.valid `
+        -and [string]$extraFieldReport.reason_code -eq "role_timeout_policy_field_set_invalid") "role policy rejects unknown override fields"
+
+    $wrongCaseRoleReport = Test-ColdRestoreRoleTimeoutPolicy `
+        -Value $validPolicy `
+        -ExpectedRepositoryHead $repositoryHead `
+        -ExpectedPolicyFingerprint $validPolicyFingerprint `
+        -PolicyRole "PROCESS_A" `
+        -ExpectedProcessRole "producer"
+    Assert-WrapperCondition (-not [bool]$wrongCaseRoleReport.valid `
+        -and [string]$wrongCaseRoleReport.reason_code -eq "role_timeout_policy_role_invalid") "role IDs are exact and case-sensitive"
+
+    $policyGreen = Invoke-PolicyFixtureCase "policy_green" 5 1 "中文 heartbeat path"
+    $policyGreenHeartbeat = Get-Content -LiteralPath $policyGreen.heartbeat_path -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert-WrapperCondition ([bool]$policyGreen.result.wrapper_exit_green `
+        -and [int]$policyGreen.result.parent.schema_version -eq 2 `
+        -and [string]$policyGreen.result.parent.policy_role -eq "process_a" `
+        -and [string]$policyGreen.result.parent.timeout_kind -eq "none") "semantic heartbeat progress produces a green ParentExitAttestationV2"
+    Assert-WrapperCondition ([string]$policyGreen.result.parent.timeout_policy_fingerprint -eq [string]$policyGreen.policy_fingerprint `
+        -and [string]$policyGreen.result.timeout_policy_fingerprint -eq ((Get-FileHash -LiteralPath $policyGreen.policy_path -Algorithm SHA256).Hash.ToLowerInvariant()) `
+        -and [string]$policyGreen.policy.measurement_head -eq $measurementHead `
+        -and [string]$policyGreenHeartbeat.repository_head -eq $repositoryHead `
+        -and [string]$policyGreen.result.parent.progress_heartbeat_fingerprint -eq [string]$policyGreenHeartbeat.evidence_fingerprint `
+        -and [string]$policyGreen.result.parent.progress_semantic_fingerprint -match '^[0-9a-f]{64}$' `
+        -and [int]$policyGreen.result.parent.progress_heartbeat_sequence -eq 3 `
+        -and [string]$policyGreen.result.parent.progress_phase -eq "quit_requested") "Parent Exit binds the exact timeout policy and final heartbeat evidence"
+    Assert-WrapperCondition ([string]$policyGreen.result.parent.task_owned_process_identity_fingerprint -match '^[0-9a-f]{64}$' `
+        -and @($policyGreen.result.observed_task_process_identities).Count -ge 1) "Parent Exit fingerprints PID plus creation-time ownership"
+
+    $noProgress = Invoke-PolicyFixtureCase "policy_no_progress" 4 1
+    Assert-WrapperCondition (-not [bool]$noProgress.result.wrapper_exit_green `
+        -and [bool]$noProgress.result.parent.timed_out `
+        -and [bool]$noProgress.result.parent.terminated_by_parent `
+        -and [string]$noProgress.result.parent.timeout_kind -eq "no_progress" `
+        -and [string]$noProgress.result.wrapper_reason_code -eq "process_a_no_progress_timeout" `
+        -and [int]$noProgress.result.parent.task_owned_process_count_after -eq 0) "timestamp-only heartbeat writes and stdout cannot renew the semantic progress lease"
+
+    $absolute = Invoke-PolicyFixtureCase "policy_absolute" 2 1
+    Assert-WrapperCondition (-not [bool]$absolute.result.wrapper_exit_green `
+        -and [bool]$absolute.result.parent.timed_out `
+        -and [string]$absolute.result.parent.timeout_kind -eq "absolute" `
+        -and [string]$absolute.result.wrapper_reason_code -eq "process_a_absolute_timeout" `
+        -and [int]$absolute.result.parent.progress_heartbeat_sequence -ge 2) "semantic progress cannot extend the absolute role deadline"
+
+    $heartbeatFaults = [ordered]@{
+        policy_bad_fingerprint = "progress_heartbeat_fingerprint_invalid"
+        policy_wrong_run = "progress_heartbeat_run_id_mismatch"
+        policy_wrong_head = "progress_heartbeat_repository_head_mismatch"
+        policy_wrong_policy = "progress_heartbeat_policy_fingerprint_mismatch"
+        policy_wrong_heartbeat_id = "progress_heartbeat_schema_invalid"
+        policy_sequence_gap = "progress_heartbeat_sequence_invalid"
+    }
+    foreach ($mode in $heartbeatFaults.Keys) {
+        $heartbeatFault = Invoke-PolicyFixtureCase $mode 5 2
+        Assert-WrapperCondition (-not [bool]$heartbeatFault.result.wrapper_exit_green `
+            -and -not [bool]$heartbeatFault.result.parent.timed_out `
+            -and [bool]$heartbeatFault.result.parent.terminated_by_parent `
+            -and [string]$heartbeatFault.result.wrapper_reason_code -eq [string]$heartbeatFaults[$mode] `
+            -and [int]$heartbeatFault.result.parent.task_owned_process_count_after -eq 0) "$mode must fail closed and clean only the identity-pinned process tree"
+    }
+
+    $missingHeartbeat = Invoke-PolicyFixtureCase "policy_missing" 5 2
+    Assert-WrapperCondition (-not [bool]$missingHeartbeat.result.wrapper_exit_green `
+        -and [string]$missingHeartbeat.result.wrapper_reason_code -eq "progress_heartbeat_missing" `
+        -and [bool]$missingHeartbeat.result.parent.child_attestation_valid `
+        -and -not [bool]$missingHeartbeat.result.parent.progress_heartbeat_found) "a zero-exit child without heartbeat evidence fails closed"
 
     $exclusivePath = Join-Path $root "exclusive/official_claim_ledger.json"
     $exclusiveValue = [pscustomobject][ordered]@{ schema_version = 1; authorization_id = "fixture" }
