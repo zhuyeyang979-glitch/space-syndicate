@@ -1184,6 +1184,9 @@ func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -
 		"queue_pending_count": int(queue_target_before.get("pending_count", 0)),
 	})
 	var checkpoint := _checkpoint_summary(context)
+	print("COLD_RESTORE_CARD_INVENTORY_CAPTURE_PROBE|%s" % JSON.stringify(
+		_card_inventory_capture_probe(context)
+	))
 	_enter_process_a_phase("save_intent_submitted")
 	_complete_process_a_phase("save_intent_submitted", {"source_surface": "pause_menu"})
 	var save := _save_via_player_flow(context, save_path, false)
@@ -4515,6 +4518,31 @@ func _finish_to_settlement(context: Dictionary) -> Dictionary:
 			"rng_delta": -1,
 		}
 	return await TERMINAL_EVIDENCE.finish_to_settlement(self, context, lease_frame)
+
+
+func _card_inventory_capture_probe(context: Dictionary) -> Dictionary:
+	var coordinator := context.get("coordinator") as GameRuntimeCoordinator
+	if coordinator == null:
+		return {"captured": false, "reason_code": "coordinator_missing"}
+	var owner := coordinator.get_node_or_null("CardInventorySaveOwner") as CardInventorySaveOwner
+	var inventory := coordinator.commodity_card_inventory_runtime_controller()
+	var state_port := coordinator.card_player_state_production_adapter_v06()
+	if owner == null or inventory == null or state_port == null:
+		return {
+			"captured": false,
+			"reason_code": "card_inventory_probe_dependency_missing",
+			"owner_present": owner != null,
+			"inventory_present": inventory != null,
+			"state_port_present": state_port != null,
+		}
+	var capture := owner.capture_composite_state()
+	return {
+		"captured": bool(capture.get("captured", false)),
+		"reason_code": str(capture.get("reason_code", "card_inventory_capture_unknown")),
+		"owner": owner.debug_snapshot(),
+		"commodity_checkpoint": inventory.checkpoint_status(),
+		"state_port_checkpoint": state_port.checkpoint_status(),
+	}
 
 
 func _checkpoint_summary(context: Dictionary) -> Dictionary:
