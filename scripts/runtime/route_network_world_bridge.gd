@@ -2,6 +2,8 @@
 extends Node
 class_name RouteNetworkWorldBridge
 
+signal topology_changed(receipt: Dictionary)
+
 var _world: Node
 var _world_session_state: WorldSessionState
 var _region_infrastructure_controller: Node
@@ -21,7 +23,23 @@ func world_session_state() -> WorldSessionState:
 
 
 func set_region_infrastructure_controller(controller: Node) -> void:
+	var committed_callback := Callable(self, "_on_infrastructure_topology_changed")
+	var rollback_callback := Callable(self, "_on_infrastructure_topology_changed")
+	if _region_infrastructure_controller != null:
+		if _region_infrastructure_controller.has_signal("infrastructure_receipt_committed") \
+				and _region_infrastructure_controller.is_connected("infrastructure_receipt_committed", committed_callback):
+			_region_infrastructure_controller.disconnect("infrastructure_receipt_committed", committed_callback)
+		if _region_infrastructure_controller.has_signal("facility_action_rolled_back") \
+				and _region_infrastructure_controller.is_connected("facility_action_rolled_back", rollback_callback):
+			_region_infrastructure_controller.disconnect("facility_action_rolled_back", rollback_callback)
 	_region_infrastructure_controller = controller
+	if _region_infrastructure_controller != null:
+		if _region_infrastructure_controller.has_signal("infrastructure_receipt_committed") \
+				and not _region_infrastructure_controller.is_connected("infrastructure_receipt_committed", committed_callback):
+			_region_infrastructure_controller.connect("infrastructure_receipt_committed", committed_callback)
+		if _region_infrastructure_controller.has_signal("facility_action_rolled_back") \
+				and not _region_infrastructure_controller.is_connected("facility_action_rolled_back", rollback_callback):
+			_region_infrastructure_controller.connect("facility_action_rolled_back", rollback_callback)
 
 
 func has_world() -> bool:
@@ -79,3 +97,7 @@ func debug_snapshot() -> Dictionary:
 		"owns_cash": false,
 		"pure_data": true,
 	}
+
+
+func _on_infrastructure_topology_changed(receipt: Dictionary) -> void:
+	topology_changed.emit(receipt.duplicate(true))

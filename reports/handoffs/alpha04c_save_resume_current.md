@@ -1,89 +1,128 @@
 # Alpha 0.4-C Save/Resume current handoff
 
-Status: `BLOCKED_BY_PRODUCTION_SAVE_COMPLETION_DEFECT_OUTSIDE_AUTHORIZATION`.
+Status: `BLOCKED_BY_PROCESS_A_COMPLETION_REHEARSAL`.
 
-PR #77 remains Draft. Alpha 0.4-C is not GREEN and may not merge to `main`.
-The newly authorized official retry was not consumed.
+PR #77 remains Draft. Alpha 0.4-C is not GREEN and may not merge to
+`main`. The newly authorized official retry was not consumed.
 
 ## Baseline and scope
 
-The task started from exact remote PR #77 HEAD
-`d75fcec3793fe8a92b82e2376ab3b3122503c3e2`. Main constitution commit
-`6b5568429b82ddab3400ee0d5076ac6ac3411a20` is an ancestor. The diff from
-tested Queue-bridge head `ca3b7cf4222a6145bed81606fc4f04b7076ae0d9`
-contains seven documentation/report files and zero production, Queue, or Save
-behavior changes, so the lawful Queue qualification remains applicable.
+This continuation started from exact remote PR #77 HEAD
+`f4350d7425f69cdd2d7ee14f3a3dd25f5345dd6a`. Main constitution commit
+`6b5568429b82ddab3400ee0d5076ac6ac3411a20` remains an ancestor.
 
-V0.7 constitution content and runtime were not changed. Production remains
-V0.6.
+The card-inventory repair is committed at
+`aadbba39f9d564fc59dea8e99f27ae36c52ea8a1`. The non-official rehearsal
+ran from `5f52b600da9eb653af2dc3d3746039cfc6a1a509`. Five production files
+changed, but no Save section, RNG owner, RNG draw point, Main responsibility,
+V0.7 constitution content, or V0.7 runtime was added. Production remains V0.6.
 
-## Process A diagnosis
+## Diagnostic run 1
 
-One non-official diagnostic ran from instrumentation head
-`c2f74154433bcc1471b1239d0cbdf65f91d93abc` with the authorized scenario:
-depth 1, seed `900626424`, one local player, three AI players, real
-`main.tscn`, the production Action Spine, and the real facility Queue bridge.
-Its user data was isolated below a `non_official` root. It did not read, create,
-or mutate an official claim.
+The first non-official run established the timeout classification
+`NORMAL_CARD_SEARCH_DOMINANT`. It used the fixed depth-1, seed-900626424,
+one-local-plus-three-AI scenario, exited naturally in about 63.9 seconds, and
+showed that the two legal normal-card acquisition intervals dominated the old
+60-second budget. Save I/O was not the dominant phase.
 
-The run used a bounded 180-second parent timeout and exited naturally in about
-63.9 seconds. Parent exit and Child Completion attestations were valid, exit
-code was zero, the parent did not terminate it, and task-owned process count
-returned to zero.
+That run atomically installed a 605,513-byte Save, but readback failed because
+`card_inventory.owner_state` was empty. This was a historical production
+capture defect, not a completion-signaling deadlock.
 
-The recovered phase timeline shows:
+## Repair evidence
 
-| Phase | Duration |
-|---|---:|
-| scene load | 4.451 s |
-| session start | 1.729 s |
-| first legal normal-card search | 18.642 s |
-| first facility action | 0.998 s |
-| first Sale Receipt | 0.131 s |
-| second legal normal-card acquisition plus AI check | 23.685 s |
-| Queue commit | 0.184 s |
-| Save flow call | 2.606 s |
+The repair binds district quotes to the selected slot revision, performs all
+19 semantic owner preflights before envelope composition, rejects invalid
+capture before write authorization, refreshes Route attestation after facility
+topology changes, omits ordinary expired quotes, and preserves expired quotes
+that already belong to a pending-discard transaction.
 
-The two legal normal-card acquisition intervals dominate the run. Product
-setup reaches Save close to the old 60-second parent boundary; Save I/O itself
-is not dominant. The formal timeout classification is therefore
-`NORMAL_CARD_SEARCH_DOMINANT`.
+Focused evidence is green:
 
-## Blocking Save defect
+- district purchase revision binding `7/7`
+- card inventory composite `30/30`
+- production Registry transaction `53/53`
+- market clock and Save production `32/32`
+- Save confirmation `13/13`
+- fork parity `14/14`
+- cold-restore source contract `122/122`
+- Godot MCP GDScript check: 486 files, 0 script errors
 
-The diagnostic did more than explain the timeout. It installed a 605,513-byte
-Save with SHA-256
-`50c6703eda09e4870a65406a9f76a989fd84968b548e79916fe0c3eca4da6259`.
-The typed Save intent returned and the file was atomically installed, so this
-is not a completion-signal deadlock.
+The real `main.tscn` MCP run found exactly one Facility Queue Adapter, Queue,
+Execution service, Save Registry, Route Controller, and Route WorldBridge.
+The Queue Adapter and Route Controller were configured, the Registry exposed
+19 bindings, and the run stopped cleanly with zero task-owned Godot processes.
+Six inherited `Unexpected NUL character` log entries remain disclosed; they
+did not produce a script error or a fatal runtime stack.
 
-The following driver readback and 19-owner Registry preflight failed with
-`card_inventory_v2_invalid`. The envelope contains exactly one empty owner
-state: `sections.card_inventory.owner_state={}`. The other 18 owner states are
-nonempty. Repairing that capture changes a production Save owner/section
-contract and is explicitly outside this task's authorization, which permits at
-most completion signaling after a valid write.
+## Completion rehearsal
 
-The Harness now preserves failed-role phase evidence with safe reason codes;
-that correction is covered by source and timeline contracts. The product
-defect itself was not changed.
+The second and final permitted non-official Process A run was
+`alpha04c-process-a-rehearsal-5f52b600`. It used the same fixed scenario and a
+bounded 180-second parent timeout. Attempt 1's claim was unchanged before and
+after the run.
 
-## Official authorization
+| Phase | Duration | Result |
+|---|---:|---|
+| child bootstrap | 0.003 s | OK |
+| scene load | 3.837 s | OK |
+| session start | 1.578 s | OK |
+| commodity claim | 0.100 s | OK |
+| normal-card acquisition | 16.857 s | OK |
+| facility economy | 0.890 s | OK |
+| first Sale Receipt | 0.125 s | OK |
+| AI non-default qualification | 21.122 s | OK |
+| Queue commit | 0.165 s | OK |
+| Restore Barrier | 0.003 s | OK |
+| Save intent submission | 0.004 s | OK |
+| Save capture call | 0.901 s | owner capture rejected |
+| envelope encode | 0.004 s | skipped after failure |
+| atomic write | 0.004 s | skipped after failure |
+| Save readback | 0.004 s | skipped after failure |
+| failure manifest | 0.009 s | written |
+| Child Completion | 0.011 s | structurally valid failure proof |
+| runtime cleanup | 0.133 s | OK |
+| quit request | 0.008 s | OK |
 
-Attempt 1 remains immutable at SHA-256
-`80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458`
-and last-write time `2026-07-30T06:09:56.4387012Z`. Its original `0 -> 1`
-claim, failed Process A, and absence of B/C remain intact.
+The child timeline covered 46.621 seconds and the child result reported
+46.385 seconds. The observed parent command took about 52.55 seconds.
 
-No completion rehearsal was run because production Save readback is not green.
-No Attempt 2 claim was created, the new authorization was not consumed, and
-Process B/C were not started. Official cold-restore count remains one.
+The product verdict is `owner_capture_failed`. No Save file was written, so
+Save GREEN is false. The Card Inventory probe itself was captured and its
+combined preflight was accepted; the tested Harness did not attest the next
+failing Registry section or internal reason. QA-only propagation for that
+internal section/reason was added after the rehearsal and is covered by the
+122/122 source contract, but no third Process A run is permitted.
+
+Child Completion is structurally valid, but it records
+`qualification_green=false` and `save_written=false`; therefore Child GREEN is
+false. Parent Exit is GREEN: exit code 0, no timeout, no parent termination,
+and zero task-owned processes after exit.
+
+## Remaining gates
+
+- Both permitted non-official Process A runs have been consumed.
+- The exact remaining Registry owner-capture failure needs a new authorized
+  continuation; it cannot be guessed from the public Save receipt.
+- The private quote allocator cursor is not fully persisted when later expired
+  quotes are omitted. A complete fix requires an explicitly authorized Save
+  payload field; no such field was added here.
+- `ColdRestoreRoleTimeoutPolicyV1` is not implemented. A/B/C still share the
+  legacy child-timeout parameter.
+- Attempt 2 still has no independent claim path and the current official path
+  still names Attempt 1. Official execution is prohibited.
+
+Attempt 1 remains the only claim: 1,133 bytes, SHA-256
+`80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458`,
+last written `2026-07-30T06:09:56.4387012Z`. No Attempt 2 claim or claim temp
+file exists. Process B and Process C were not run. Official count remains one.
 
 ## Preserved boundaries
 
 - `TRANSACTIONAL_SAVE_OWNER_COUNT=19`
 - `UNSUPPORTED_SAVE_OWNER_COUNT=0`
-- `PRODUCTION_CODE_CHANGE_COUNT=0`
+- `PRODUCTION_CODE_CHANGE_COUNT=5`
+- `PRODUCTION_SAVE_COMPLETION_SIGNALING_CHANGE_COUNT=0`
 - `NEW_SAVE_SECTION_COUNT=0`
 - `NEW_RNG_OWNER_COUNT=0`
 - `NEW_RNG_DRAW_POINT_COUNT=0`
@@ -95,5 +134,7 @@ Next exact task:
 
 `ALPHA_0_4_C_PRODUCTION_SAVE_COMPLETION_DEFECT_REPAIR`
 
-That task must repair and prove the `card_inventory` capture/preflight contract
-before a fresh completion rehearsal or any official retry can be considered.
+It must identify and repair the remaining Owner capture failure, explicitly
+authorize any required Save payload change, preserve the quote allocator
+cursor exactly, then earn a new completion-rehearsal allowance before role
+timeouts or an independent Attempt 2 claim can be used.

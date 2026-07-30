@@ -13,10 +13,17 @@ var _failures: Array[String] = []
 
 class FakeRouteBridge:
 	extends Node
+	signal topology_changed(receipt: Dictionary)
 	var topology: Dictionary = {}
+	var capture_count := 0
 
 	func capture_route_topology() -> Dictionary:
+		capture_count += 1
 		return topology.duplicate(true)
+
+	func replace_topology(value: Dictionary) -> void:
+		topology = value.duplicate(true)
+		topology_changed.emit({"reason_code": "fixture_topology_changed"})
 
 
 func _init() -> void:
@@ -80,11 +87,24 @@ func _test_routes_v2() -> void:
 	_expect(_preflight_rejects_without_mutation(routes, _with(saved, "schema_version", 1)), "Routes reject a wrong schema version")
 	_expect(_preflight_rejects_without_mutation(routes, _with(saved, "route_semantic_version", INF)), "Routes reject a non-finite value")
 	var runtime_checkpoint := routes.capture_runtime_checkpoint()
+	var bridge_capture_count_before_save := bridge.capture_count
+	var pure_save := routes.to_save_data()
+	_expect(pure_save == saved and bridge.capture_count == bridge_capture_count_before_save, "Routes Save capture reads only its synchronized cache and does not mutate or query the world bridge")
 	var forged_manifest := saved.duplicate(true)
 	forged_manifest["rebuilt_route_fingerprint"] = "0".repeat(64)
 	var forged_result := routes.apply_save_data(forged_manifest)
 	_expect(not bool(forged_result.get("applied", true)) and routes.capture_runtime_checkpoint() == runtime_checkpoint, "Routes reject rebuild mismatch and restore the exact internal checkpoint")
-	bridge.topology = _route_topology("different-topology")
+	bridge.replace_topology(_route_topology("different-topology"))
+	var changed_save := routes.to_save_data()
+	var changed_checkpoint := routes.capture_runtime_checkpoint()
+	_expect(str(changed_save.get("saved_topology_revision", "")) == "different-topology" \
+			and bool(routes.preflight_save_data(changed_save).get("accepted", false)) \
+			and changed_save != saved, "Routes synchronously rebuild their full attestation when authoritative infrastructure topology changes")
+	routes.reset_state()
+	var changed_checkpoint_restore := routes.restore_runtime_checkpoint(changed_checkpoint)
+	_expect(bool(changed_checkpoint_restore.get("restored", false)) \
+			and routes.capture_runtime_checkpoint() == changed_checkpoint \
+			and routes.to_save_data() == changed_save, "Routes restore an exact synchronized internal rollback checkpoint and full Save attestation")
 	var before_dangling := routes.to_save_data()
 	var dangling_result := routes.apply_save_data(saved)
 	_expect(not bool(dangling_result.get("applied", true)) and routes.to_save_data() == before_dangling, "Routes reject a dangling topology binding with zero mutation")

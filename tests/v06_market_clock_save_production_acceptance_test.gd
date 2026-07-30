@@ -26,6 +26,7 @@ func _run() -> void:
 		_test_nineteen_owner_registry_has_no_solar_section(coordinator)
 		_test_session_clock_restore_reproduces_sunlight(coordinator)
 		_test_purchase_session_restore_never_live_reprices(coordinator)
+		_test_expired_pending_discard_roundtrip(coordinator)
 		_test_true_pause_and_open_market_clock_domain(coordinator)
 	if main != null:
 		main.queue_free()
@@ -57,7 +58,9 @@ func _test_nineteen_owner_registry_has_no_solar_section(coordinator: GameRuntime
 	_expect(manifest.size() == 19 and order.size() == 19 and owner_ids.size() == 19 and not owner_ids.has(""), "save manifest and fixed apply order retain exactly nineteen unique owners")
 	_expect(not forbidden_solar_section, "solar and rotation phase remain derived facts instead of a twentieth save section")
 	var registry_snapshot: Dictionary = registry.call("registry_snapshot")
-	_expect(bool(registry_snapshot.get("valid", false)) and not bool(registry_snapshot.get("resume_ready", true)), "owner registry remains valid and explicitly fail-closed while restore coverage is incomplete")
+	_expect(bool(registry_snapshot.get("valid", false)) and bool(registry_snapshot.get("resume_ready", false)) \
+			and int(registry_snapshot.get("transactional_section_count", 0)) == 19 \
+			and int(registry_snapshot.get("unsupported_section_count", -1)) == 0, "owner registry remains valid and resume-ready at the completed 19-of-19 transactional boundary")
 
 
 func _test_session_clock_restore_reproduces_sunlight(coordinator: GameRuntimeCoordinator) -> void:
@@ -112,6 +115,30 @@ func _test_purchase_session_restore_never_live_reprices(coordinator: GameRuntime
 	var purchase_save: Dictionary = coordinator.call("district_purchase_legacy_save_snapshot", 0)
 	var saved_quote: Dictionary = purchase_save.get("active_quote", {}) if purchase_save.get("active_quote", {}) is Dictionary else {}
 	_expect(int(original.get("final_price", -1)) == 101 and not saved_quote.is_empty(), "purchase-session owner captures one active base-price quote")
+	var clock := coordinator.get_node_or_null("WorldEffectiveClockRuntimeController")
+	var expires_at_us := int(saved_quote.get("expires_at_world_us", -1))
+	var purchase_checkpoint: Dictionary = purchase.call("capture_runtime_checkpoint")
+	if clock != null:
+		clock.call("restore_micros", expires_at_us - 1)
+	var before_expiry_save: Dictionary = purchase.call("to_save_data")
+	if clock != null:
+		clock.call("restore_micros", expires_at_us)
+	var at_expiry_save: Dictionary = purchase.call("to_save_data")
+	var before_expiry_quote := _first_saved_purchase_quote(before_expiry_save)
+	var at_expiry_quote := _first_saved_purchase_quote(at_expiry_save)
+	_expect(expires_at_us > 0 and not before_expiry_quote.is_empty() and at_expiry_quote.is_empty() \
+			and bool(purchase.call("preflight_save_data", at_expiry_save).get("accepted", false)) \
+			and purchase.call("capture_runtime_checkpoint") == purchase_checkpoint, "quote save projection keeps t-1us and omits the half-open expiry boundary without runtime mutation")
+	pricing.call("reset_state")
+	purchase.call("reset_state")
+	var at_expiry_apply: Dictionary = purchase.call("apply_save_data", at_expiry_save)
+	_expect(bool(at_expiry_apply.get("applied", false)) \
+			and int(at_expiry_apply.get("session_count", 0)) == 1 \
+			and purchase.call("to_save_data") == at_expiry_save, "quote-free Generation 2 boundary applies and exact-recaptures like a fresh Process C")
+	var purchase_checkpoint_restore: Dictionary = purchase.call("restore_runtime_checkpoint", purchase_checkpoint)
+	_expect(bool(purchase_checkpoint_restore.get("applied", false)), "market-clock fixture restores its exact pre-boundary purchase and quote checkpoint")
+	if clock != null:
+		clock.call("restore_micros", 1_000_000)
 
 	var pressured_monster_state := empty_monster_state.duplicate(true)
 	pressured_monster_state["auto_monsters"] = [{
@@ -139,8 +166,6 @@ func _test_purchase_session_restore_never_live_reprices(coordinator: GameRuntime
 
 	pricing.call("reset_state")
 	purchase.call("reset_state")
-	var expires_at_us := int(saved_quote.get("expires_at_world_us", -1))
-	var clock := coordinator.get_node_or_null("WorldEffectiveClockRuntimeController")
 	if clock != null:
 		clock.call("restore_micros", expires_at_us)
 	var expired_restore: Dictionary = coordinator.call("apply_district_purchase_legacy_save_snapshot", purchase_save, float(expires_at_us) / 1_000_000.0)
@@ -166,6 +191,62 @@ func _test_true_pause_and_open_market_clock_domain(coordinator: GameRuntimeCoord
 		var after_market_tick: Dictionary = coordinator.call("world_effective_clock_snapshot")
 		_expect(after_pause == before_pause, "true pause freezes world_effective time")
 		_expect(int(after_market_tick.get("world_effective_us", 0)) > int(after_pause.get("world_effective_us", 0)), "an open market does not freeze world_effective time")
+
+
+func _test_expired_pending_discard_roundtrip(coordinator: GameRuntimeCoordinator) -> void:
+	var pricing := coordinator.get_node_or_null("CardMarketPricingRuntimeController") if coordinator != null else null
+	var purchase := coordinator.get_node_or_null("DistrictPurchaseRuntimeController") if coordinator != null else null
+	var clock := coordinator.get_node_or_null("WorldEffectiveClockRuntimeController") if coordinator != null else null
+	_expect(pricing != null and purchase != null and clock != null, "pending-discard expiry fixture owns pricing, purchase, and world clock")
+	if pricing == null or purchase == null or clock == null:
+		return
+	pricing.call("reset_state")
+	purchase.call("reset_state")
+	clock.call("restore_micros", 2_000_000)
+	var source_district := _first_purchasable_district_index(coordinator)
+	var prior_quote_a: Dictionary = coordinator.call("card_market_quote", _listing(source_district, "card.qa.prior-a", "qa-prior-a", 101, 0))
+	var prior_quote_b: Dictionary = coordinator.call("card_market_quote", _listing(source_district, "card.qa.prior-b", "qa-prior-b", 101, 0))
+	var aggregate_revision := "qa-pending-rack:2,4,6,8"
+	var selected_revision := "qa-pending-rack:slot:2:revision:6"
+	var card_id := "card.qa.pending-expiry"
+	coordinator.call("open_district_purchase_window", 0, source_district, {"supply_revision": aggregate_revision})
+	coordinator.call("acknowledge_district_purchase_selection", 0, source_district, card_id, selected_revision)
+	var quote: Dictionary = coordinator.call("card_market_quote", _listing(source_district, card_id, selected_revision, 101, 0))
+	var reserved: Dictionary = purchase.call("reserve_pending_discard", {
+		"player_index": 0,
+		"district_index": source_district,
+		"skill_name": card_id,
+		"card_id": card_id,
+		"price": int(quote.get("final_price", -1)),
+		"quote_id": str(quote.get("quote_id", "")),
+		"opened_at": 2.0,
+	})
+	var expires_at_us := int(quote.get("expires_at_world_us", -1))
+	clock.call("restore_micros", expires_at_us)
+	var expired_pending_save: Dictionary = purchase.call("to_save_data")
+	_expect(source_district >= 0 and not prior_quote_a.is_empty() and not prior_quote_b.is_empty() \
+			and not quote.is_empty() and not reserved.is_empty() \
+			and not expired_pending_save.is_empty() \
+			and not _first_saved_purchase_quote(expired_pending_save).is_empty(), "expired pending-discard capture retains its already-authorized quote instead of producing an invalid empty Owner")
+	var future_request := _listing(source_district, "card.qa.after-restore", "qa-after-restore", 101, 0)
+	var uninterrupted_future_quote: Dictionary = coordinator.call("card_market_quote", future_request)
+	pricing.call("reset_state")
+	purchase.call("reset_state")
+	var applied: Dictionary = purchase.call("apply_save_data", expired_pending_save)
+	var pending_after: Dictionary = purchase.call("pending_discard_private_snapshot", 0)
+	var quote_after: Dictionary = coordinator.call("card_market_active_quote", 0, source_district)
+	var restored_future_quote: Dictionary = coordinator.call("card_market_quote", future_request)
+	_expect(bool(applied.get("applied", false)) and int(applied.get("session_count", 0)) == 1 \
+			and str(pending_after.get("quote_id", "")) == str(quote.get("quote_id", "")) \
+			and str(quote_after.get("quote_id", "")) == str(quote.get("quote_id", "")) \
+			and not bool(quote_after.get("quote_active", true)), "expired pending-discard restores exactly as a non-authorizable forced decision")
+	_expect(not uninterrupted_future_quote.is_empty() \
+			and str(restored_future_quote.get("quote_id", "")) == str(uninterrupted_future_quote.get("quote_id", "")) \
+			and str(restored_future_quote.get("quote_fingerprint", "")) == str(uninterrupted_future_quote.get("quote_fingerprint", "")), "restored pending quote advances the private quote sequence so the next forked transaction identity remains exact")
+	_expect(purchase.call("to_save_data") == expired_pending_save, "expired pending-discard capture/apply/capture roundtrip is exact")
+	purchase.call("reset_state")
+	pricing.call("reset_state")
+	clock.call("restore_micros", 1_000_000)
 
 
 func _first_purchasable_district_index(coordinator: GameRuntimeCoordinator) -> int:
@@ -205,6 +286,16 @@ func _listing(district_index: int, card_id: String, supply_revision: String, bas
 		"supply_revision": supply_revision,
 		"base_price": base_price,
 	}
+
+
+func _first_saved_purchase_quote(save_data: Dictionary) -> Dictionary:
+	var payload: Dictionary = save_data.get("district_purchase_runtime", {}) \
+			if save_data.get("district_purchase_runtime", {}) is Dictionary else {}
+	var sessions: Array = payload.get("sessions", []) if payload.get("sessions", []) is Array else []
+	if sessions.is_empty() or not (sessions[0] is Dictionary):
+		return {}
+	var quote: Variant = (sessions[0] as Dictionary).get("active_quote", {})
+	return (quote as Dictionary).duplicate(true) if quote is Dictionary else {}
 
 
 func _wait_frames(count: int) -> void:

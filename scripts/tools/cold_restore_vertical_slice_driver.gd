@@ -1184,6 +1184,9 @@ func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -
 		"queue_pending_count": int(queue_target_before.get("pending_count", 0)),
 	})
 	var checkpoint := _checkpoint_summary(context)
+	print("COLD_RESTORE_CARD_INVENTORY_CAPTURE_PROBE|%s" % JSON.stringify(
+		_card_inventory_capture_probe(context)
+	))
 	_enter_process_a_phase("save_intent_submitted")
 	_complete_process_a_phase("save_intent_submitted", {"source_surface": "pause_menu"})
 	var save := _save_via_player_flow(context, save_path, false)
@@ -1577,6 +1580,14 @@ func _save_via_player_flow(context: Dictionary, save_path: String, destructive_c
 		var save_debug: Dictionary = (context.get("save") as Node).call("debug_snapshot")
 		var internal_reason := str(save_debug.get("last_readback_validation_reason", ""))
 		var mismatch_sections: Array = save_debug.get("last_readback_mismatch_sections", []) if save_debug.get("last_readback_mismatch_sections", []) is Array else []
+		var registry_for_failure: Node = context.get("registry")
+		var registry_debug: Dictionary = registry_for_failure.call("debug_snapshot") \
+				if registry_for_failure != null and registry_for_failure.has_method("debug_snapshot") else {}
+		var capture_section := str(registry_debug.get("last_internal_capture_failure_section", ""))
+		var capture_reason := str(registry_debug.get("last_internal_capture_failure_reason", ""))
+		if receipt != null and receipt.reason_code == "owner_capture_failed" \
+				and not capture_section.is_empty() and not capture_reason.is_empty():
+			internal_reason = "capture:%s:%s" % [capture_section, capture_reason]
 		if not bool(save_debug.get("last_readback_fingerprint_match", true)):
 			var first_mismatch: Dictionary = save_debug.get("last_readback_first_mismatch", {}) if save_debug.get("last_readback_first_mismatch", {}) is Dictionary else {}
 			internal_reason = "readback:%s:%s:%s>%s:%s>%s" % [
@@ -4515,6 +4526,79 @@ func _finish_to_settlement(context: Dictionary) -> Dictionary:
 			"rng_delta": -1,
 		}
 	return await TERMINAL_EVIDENCE.finish_to_settlement(self, context, lease_frame)
+
+
+func _card_inventory_capture_probe(context: Dictionary) -> Dictionary:
+	var coordinator := context.get("coordinator") as GameRuntimeCoordinator
+	if coordinator == null:
+		return {"captured": false, "reason_code": "coordinator_missing"}
+	var owner := coordinator.get_node_or_null("CardInventorySaveOwner") as CardInventorySaveOwner
+	var inventory := coordinator.commodity_card_inventory_runtime_controller()
+	var state_port := coordinator.card_player_state_production_adapter_v06()
+	var district_purchase := coordinator.get_node_or_null("DistrictPurchaseRuntimeController") \
+		as DistrictPurchaseRuntimeController
+	if owner == null or inventory == null or state_port == null or district_purchase == null:
+		return {
+			"captured": false,
+			"reason_code": "card_inventory_probe_dependency_missing",
+			"owner_present": owner != null,
+			"inventory_present": inventory != null,
+			"state_port_present": state_port != null,
+			"district_purchase_present": district_purchase != null,
+		}
+	var capture := owner.capture_composite_state()
+	return {
+		"captured": bool(capture.get("captured", false)),
+		"reason_code": str(capture.get("reason_code", "card_inventory_capture_unknown")),
+		"owner": owner.debug_snapshot(),
+		"commodity_checkpoint": inventory.checkpoint_status(),
+		"state_port_checkpoint": state_port.checkpoint_status(),
+		"district_purchase": _district_purchase_capture_probe(district_purchase),
+	}
+
+
+func _district_purchase_capture_probe(controller: DistrictPurchaseRuntimeController) -> Dictionary:
+	var checkpoint := controller.capture_runtime_checkpoint()
+	var windows: Dictionary = checkpoint.get("windows_by_player", {}) \
+		if checkpoint.get("windows_by_player", {}) is Dictionary else {}
+	var player_indices: Array = windows.keys()
+	player_indices.sort()
+	var sessions: Array = []
+	var rows: Array = []
+	for player_index_variant in player_indices:
+		var player_index := int(player_index_variant)
+		var snapshot := controller.to_legacy_save_snapshot(player_index)
+		var single_preflight := controller.preflight_save_data({
+			"district_purchase_runtime": {
+				"schema_version": 2,
+				"sessions": [snapshot.duplicate(true)] if not snapshot.is_empty() else [],
+			},
+		})
+		if not snapshot.is_empty():
+			sessions.append(snapshot.duplicate(true))
+		rows.append({
+			"player_index": player_index,
+			"window": (windows.get(player_index_variant, {}) as Dictionary).duplicate(true) \
+				if windows.get(player_index_variant, {}) is Dictionary else {},
+			"snapshot": snapshot.duplicate(true),
+			"snapshot_present": not snapshot.is_empty(),
+			"preflight_accepted": bool(single_preflight.get("accepted", false)),
+			"preflight_reason_code": str(single_preflight.get("reason_code", "")),
+		})
+	var combined_preflight := controller.preflight_save_data({
+		"district_purchase_runtime": {
+			"schema_version": 2,
+			"sessions": sessions.duplicate(true),
+		},
+	})
+	return {
+		"debug": controller.debug_snapshot(),
+		"window_count": windows.size(),
+		"session_count": sessions.size(),
+		"rows": rows,
+		"combined_preflight_accepted": bool(combined_preflight.get("accepted", false)),
+		"combined_preflight_reason_code": str(combined_preflight.get("reason_code", "")),
+	}
 
 
 func _checkpoint_summary(context: Dictionary) -> Dictionary:

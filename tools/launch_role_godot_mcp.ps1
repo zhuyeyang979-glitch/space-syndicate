@@ -115,6 +115,7 @@ $startProcessParameters = @{
     ArgumentList = $argumentString
     Environment = $environment
     PassThru = $true
+    WindowStyle = "Hidden"
 }
 $process = Start-Process @startProcessParameters
 [System.IO.File]::WriteAllText($pidPath, [string]$process.Id, [System.Text.UTF8Encoding]::new($false))

@@ -52,7 +52,14 @@ var _query_count := 0
 
 
 func set_world_bridge(bridge: Node) -> void:
+	var callback := Callable(self, "_on_topology_changed")
+	if _world_bridge != null and _world_bridge.has_signal("topology_changed") \
+			and _world_bridge.is_connected("topology_changed", callback):
+		_world_bridge.disconnect("topology_changed", callback)
 	_world_bridge = bridge
+	if _world_bridge != null and _world_bridge.has_signal("topology_changed") \
+			and not _world_bridge.is_connected("topology_changed", callback):
+		_world_bridge.connect("topology_changed", callback)
 
 
 func set_weather_runtime_controller(controller: Node) -> void:
@@ -323,6 +330,11 @@ func capture_runtime_checkpoint() -> Dictionary:
 		"rebuild_count": _rebuild_count,
 		"query_count": _query_count,
 	}
+
+
+func _on_topology_changed(_receipt: Dictionary = {}) -> void:
+	if _configured:
+		refresh_routes(true)
 
 
 func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:

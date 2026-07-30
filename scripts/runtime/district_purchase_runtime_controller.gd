@@ -103,8 +103,10 @@ func attach_quote(player_index: int, district_index: int, quote: Dictionary) -> 
 	var record := active_window(player_index)
 	if not is_window_active(player_index, district_index) or not _is_data_only(quote) or str(quote.get("quote_id", "")).is_empty():
 		return {}
-	var selected_revision := str(record.get("selected_supply_revision", ""))
-	var expected_revision := selected_revision if not selected_revision.is_empty() else str(record.get("supply_revision", ""))
+	var expected_revision := _expected_quote_supply_revision(
+		str(record.get("supply_revision", "")),
+		str(record.get("selected_supply_revision", ""))
+	)
 	if int(quote.get("district_index", -1)) != district_index or str(quote.get("supply_revision", "")) != expected_revision:
 		return {}
 	var selected_card_id := str(record.get("selected_card_id", ""))
@@ -228,7 +230,11 @@ func to_legacy_save_snapshot(player_index: int) -> Dictionary:
 	var quote_id := str(record.get("active_quote_id", ""))
 	var quote_snapshot: Dictionary = {}
 	if not quote_id.is_empty() and _quote_authority != null and _quote_authority.has_method("export_quote_for_session"):
-		var quote_variant: Variant = _quote_authority.call("export_quote_for_session", quote_id)
+		var export_method := "export_quote_for_pending_session" \
+				if str(record.get("state", "")) == STATE_PENDING_DISCARD \
+				and _quote_authority.has_method("export_quote_for_pending_session") \
+				else "export_quote_for_session"
+		var quote_variant: Variant = _quote_authority.call(export_method, quote_id)
 		quote_snapshot = (quote_variant as Dictionary).duplicate(true) if quote_variant is Dictionary else {}
 	return {
 		"schema_version": 2,
@@ -275,14 +281,22 @@ func apply_legacy_save_snapshot(snapshot: Dictionary, _current_game_time: float 
 	}
 	var quote_snapshot: Dictionary = snapshot.get("active_quote", {}) if snapshot.get("active_quote", {}) is Dictionary else {}
 	if not quote_snapshot.is_empty():
+		var expected_quote_revision := _expected_quote_supply_revision(
+			str(record.get("supply_revision", "")),
+			str(record.get("selected_supply_revision", ""))
+		)
 		if int(quote_snapshot.get("player_index", -1)) != player_index \
 				or int(quote_snapshot.get("district_index", -1)) != district_index \
-				or str(quote_snapshot.get("supply_revision", "")) != str(record.get("supply_revision", "")) \
+				or str(quote_snapshot.get("supply_revision", "")) != expected_quote_revision \
 				or (not str(record.get("selected_card_id", "")).is_empty() and str(quote_snapshot.get("card_id", "")) != str(record.get("selected_card_id", ""))):
 			return {"restored": false, "reason": "quote_session_binding_invalid"}
 		if _quote_authority == null or not _quote_authority.has_method("restore_quote_from_session"):
 			return {"restored": false, "reason": "quote_authority_unavailable"}
-		var restored_variant: Variant = _quote_authority.call("restore_quote_from_session", quote_snapshot)
+		var restore_method := "restore_pending_quote_from_session" \
+				if restored_state == STATE_PENDING_DISCARD \
+				and _quote_authority.has_method("restore_pending_quote_from_session") \
+				else "restore_quote_from_session"
+		var restored_variant: Variant = _quote_authority.call(restore_method, quote_snapshot)
 		var restored: Dictionary = restored_variant if restored_variant is Dictionary else {}
 		if not bool(restored.get("restored", false)):
 			record["state"] = STATE_ACTIVE
@@ -463,6 +477,7 @@ func _preflight_session(snapshot: Dictionary) -> Dictionary:
 	if bool(snapshot.get("requires_reselection", false)) and (not selected_card_id.is_empty() or not selected_supply_revision.is_empty()):
 		return {"accepted": false, "reason_code": "purchase_session_selection_invalid"}
 	if not saved_active_quote.is_empty():
+		var expected_quote_revision := _expected_quote_supply_revision(supply_revision, selected_supply_revision)
 		if _quote_authority == null or not _quote_authority.has_method("preflight_quote_from_session"):
 			return {"accepted": false, "reason_code": "quote_authority_preflight_unavailable"}
 		var quote_preflight_variant: Variant = _quote_authority.call("preflight_quote_from_session", saved_active_quote)
@@ -472,7 +487,7 @@ func _preflight_session(snapshot: Dictionary) -> Dictionary:
 		saved_active_quote = (quote_preflight.get("normalized_state", {}) as Dictionary).duplicate(true)
 		if int(saved_active_quote.get("player_index", -1)) != player_index \
 				or int(saved_active_quote.get("district_index", -1)) != district_index \
-				or str(saved_active_quote.get("supply_revision", "")) != supply_revision \
+				or str(saved_active_quote.get("supply_revision", "")) != expected_quote_revision \
 				or (not selected_card_id.is_empty() and str(saved_active_quote.get("card_id", "")) != selected_card_id):
 			return {"accepted": false, "reason_code": "quote_session_binding_invalid"}
 	if state == STATE_PENDING_DISCARD:
@@ -492,6 +507,10 @@ func _preflight_session(snapshot: Dictionary) -> Dictionary:
 	normalized["reserved_card_id"] = reserved_card_id
 	normalized["active_quote"] = saved_active_quote.duplicate(true)
 	return {"accepted": true, "reason_code": "purchase_session_snapshot_valid", "normalized_state": normalized}
+
+
+func _expected_quote_supply_revision(supply_revision: String, selected_supply_revision: String) -> String:
+	return selected_supply_revision if not selected_supply_revision.is_empty() else supply_revision
 
 
 func _contains_forbidden_nested_field(value: Variant) -> bool:

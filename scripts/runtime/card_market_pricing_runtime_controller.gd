@@ -205,13 +205,32 @@ func quote_snapshot(quote_id: String) -> Dictionary:
 
 
 func export_quote_for_session(quote_id: String) -> Dictionary:
+	return _export_quote_for_session(quote_id, false)
+
+
+func export_quote_for_pending_session(quote_id: String) -> Dictionary:
+	return _export_quote_for_session(quote_id, true)
+
+
+func _export_quote_for_session(quote_id: String, allow_expired: bool) -> Dictionary:
 	var record: Dictionary = (_quotes_by_id.get(quote_id, {}) as Dictionary).duplicate(true) if _quotes_by_id.get(quote_id, {}) is Dictionary else {}
-	return record if not record.is_empty() \
-			and str(record.get("quote_fingerprint", "")) == _quote_fingerprint(record) \
-			and str(record.get("quote_binding_fingerprint", "")) == _quote_binding_fingerprint(record) else {}
+	if record.is_empty() \
+			or str(record.get("quote_fingerprint", "")) != _quote_fingerprint(record) \
+			or str(record.get("quote_binding_fingerprint", "")) != _quote_binding_fingerprint(record) \
+			or (not allow_expired and _now_us() >= int(record.get("expires_at_world_us", -1))):
+		return {}
+	return record
 
 
 func restore_quote_from_session(snapshot: Dictionary) -> Dictionary:
+	return _restore_quote_from_session(snapshot, false)
+
+
+func restore_pending_quote_from_session(snapshot: Dictionary) -> Dictionary:
+	return _restore_quote_from_session(snapshot, true)
+
+
+func _restore_quote_from_session(snapshot: Dictionary, allow_expired: bool) -> Dictionary:
 	if not _configured:
 		return {"restored": false, "reason": "quote_snapshot_invalid"}
 	var preflight := preflight_quote_from_session(snapshot)
@@ -224,7 +243,7 @@ func restore_quote_from_session(snapshot: Dictionary) -> Dictionary:
 	var now_us := _now_us()
 	var opened_at_us := int(normalized.get("opened_at_world_us", -1))
 	var expires_at_us := int(normalized.get("expires_at_world_us", -1))
-	if opened_at_us > now_us or now_us >= expires_at_us:
+	if opened_at_us > now_us or (not allow_expired and now_us >= expires_at_us):
 		return {"restored": false, "reason": "quote_expired"}
 	var existing_by_id: Dictionary = _quotes_by_id.get(quote_id, {}) if _quotes_by_id.get(quote_id, {}) is Dictionary else {}
 	var existing_by_key: Dictionary = _quotes_by_key.get(quote_key, {}) if _quotes_by_key.get(quote_key, {}) is Dictionary else {}
@@ -233,6 +252,7 @@ func restore_quote_from_session(snapshot: Dictionary) -> Dictionary:
 		return {"restored": false, "reason": "quote_identity_conflict"}
 	_quotes_by_key[quote_key] = normalized.duplicate(true)
 	_quotes_by_id[quote_id] = normalized.duplicate(true)
+	_advance_quote_sequence_from_id(quote_id)
 	return {"restored": true, "reason": "quote_restored", "quote": _public_quote(normalized, now_us)}
 
 
@@ -332,6 +352,18 @@ func _next_available_quote_id(now_us: int) -> String:
 		if not _quotes_by_id.has(candidate):
 			return candidate
 	return ""
+
+
+func _advance_quote_sequence_from_id(quote_id: String) -> void:
+	var separator_index := quote_id.rfind("-")
+	if separator_index < 0 or separator_index + 1 >= quote_id.length():
+		return
+	var sequence_text := quote_id.substr(separator_index + 1)
+	if not sequence_text.is_valid_int():
+		return
+	var restored_sequence := int(sequence_text)
+	if restored_sequence > 0:
+		_next_quote_sequence = maxi(_next_quote_sequence, restored_sequence + 1)
 
 
 func _evaluate_listing(district_index: int, base_price: int) -> Dictionary:

@@ -115,6 +115,8 @@ var _last_apply_duration_us := 0
 var _last_preflight_duration_us := 0
 var _last_owner_apply_count := 0
 var _last_registry_apply_count := 0
+var _last_internal_capture_failure_section := ""
+var _last_internal_capture_failure_reason := ""
 var _last_internal_preflight_failure_section := ""
 var _last_internal_preflight_failure_reason := ""
 var _test_apply_failure_once := ""
@@ -401,6 +403,8 @@ func debug_snapshot() -> Dictionary:
 	snapshot["last_apply_duration_us"] = _last_apply_duration_us
 	snapshot["last_owner_apply_count"] = _last_owner_apply_count
 	snapshot["last_registry_apply_count"] = _last_registry_apply_count
+	snapshot["last_internal_capture_failure_section"] = _last_internal_capture_failure_section
+	snapshot["last_internal_capture_failure_reason"] = _last_internal_capture_failure_reason
 	snapshot["last_internal_preflight_failure_section"] = _last_internal_preflight_failure_section
 	snapshot["last_internal_preflight_failure_reason"] = _last_internal_preflight_failure_reason
 	snapshot["last_internal_rollback_order"] = _last_internal_rollback_order.duplicate()
@@ -409,6 +413,8 @@ func debug_snapshot() -> Dictionary:
 
 
 func _capture_resume_envelope_internal(identity: Dictionary) -> Dictionary:
+	_last_internal_capture_failure_section = ""
+	_last_internal_capture_failure_reason = ""
 	var analysis := _registry_analysis()
 	if not bool(analysis.get("valid", false)):
 		return _result("capture", false, "owner_registry_invalid")
@@ -421,20 +427,37 @@ func _capture_resume_envelope_internal(identity: Dictionary) -> Dictionary:
 	var binding_by_section: Dictionary = analysis.get("binding_by_section", {})
 	var session_section: Dictionary = {}
 	var domain_sections: Dictionary = {}
+	var plan: Dictionary = {}
 	for section_id in FIXED_SECTION_ORDER:
 		var binding := binding_by_section.get(section_id) as BindingScript
 		var captured := _capture_owner_checkpoint(binding)
 		if not bool(captured.get("ok", false)):
-			return _result("capture", false, "owner_capture_failed")
+			return _capture_rejection(section_id, str(captured.get("reason_code", "owner_checkpoint_capture_failed")))
+		var owner := get_node_or_null(binding.owner_path) if binding != null else null
+		var owner_preflight := _preflight_owner(owner, binding, captured.get("raw_owner_state", {}) as Dictionary)
+		if not bool(owner_preflight.get("ok", false)):
+			return _capture_rejection(section_id, str(owner_preflight.get("reason_code", "owner_preflight_rejected")))
+		plan[section_id] = {
+			"decoded_owner_state": (captured.get("raw_owner_state", {}) as Dictionary).duplicate(true),
+			"normalized_owner_state": (owner_preflight.get("normalized_owner_state", {}) as Dictionary).duplicate(true),
+			"normalized_encoded_owner_state": owner_preflight.get("normalized_encoded_owner_state"),
+		}
 		var wrapper := {
 			"schema_version": binding.state_version,
 			"owner_id": binding.owner_id,
-			"owner_state": captured.get("encoded_owner_state"),
+			"owner_state": owner_preflight.get("normalized_encoded_owner_state"),
 		}
 		if section_id == "session":
 			session_section = wrapper
 		else:
 			domain_sections[section_id] = wrapper
+	var dependency_preflight := _preflight_cross_section_dependencies(plan, binding_by_section)
+	if not bool(dependency_preflight.get("accepted", false)):
+		_cross_section_rejection_count += 1
+		return _capture_rejection(
+			str(dependency_preflight.get("failing_section_id", "cross_section")),
+			str(dependency_preflight.get("internal_reason_code", dependency_preflight.get("reason_code", "cross_section_dependency_rejected")))
+		)
 	var envelope := _call_dictionary(handshake, "compose_v06_envelope", [session_section, domain_sections, identity])
 	var validation := _call_dictionary(handshake, "validate_envelope", [envelope])
 	if envelope.is_empty() or not bool(validation.get("valid", false)):
@@ -444,6 +467,15 @@ func _capture_resume_envelope_internal(identity: Dictionary) -> Dictionary:
 	success["envelope"] = envelope
 	success["fingerprint"] = str(validation.get("fingerprint", ""))
 	return success
+
+
+func _capture_rejection(section_id: String, internal_reason_code: String) -> Dictionary:
+	_last_internal_capture_failure_section = section_id
+	_last_internal_capture_failure_reason = internal_reason_code
+	var rejected := _result("capture", false, "owner_capture_failed")
+	rejected["failing_section_id"] = section_id
+	rejected["internal_reason_code"] = internal_reason_code
+	return rejected
 
 
 func _preflight_envelope_internal(envelope: Dictionary) -> Dictionary:
@@ -495,8 +527,8 @@ func _preflight_envelope_internal(envelope: Dictionary) -> Dictionary:
 	var dependency_preflight := _preflight_cross_section_dependencies(plan, binding_by_section)
 	if not bool(dependency_preflight.get("accepted", false)):
 		_cross_section_rejection_count += 1
-		_last_internal_preflight_failure_section = "cross_section"
-		_last_internal_preflight_failure_reason = str(dependency_preflight.get("reason_code", "cross_section_dependency_rejected"))
+		_last_internal_preflight_failure_section = str(dependency_preflight.get("failing_section_id", "cross_section"))
+		_last_internal_preflight_failure_reason = str(dependency_preflight.get("internal_reason_code", dependency_preflight.get("reason_code", "cross_section_dependency_rejected")))
 		return {
 			"ok": false,
 			"reason_code": "cross_section_dependency_rejected",
@@ -523,11 +555,15 @@ func _preflight_owner(owner: Node, binding: BindingScript, owner_state: Dictiona
 		var preflight_receipt := _call_dictionary(owner, binding.preflight_method, [owner_state.duplicate(true)])
 		if not bool(preflight_receipt.get("accepted", false)):
 			return {"ok": false, "reason_code": str(preflight_receipt.get("reason_code", "owner_preflight_rejected")), "requires_backup": bool(preflight_receipt.get("requires_backup", false))}
-		var normalized: Dictionary = (preflight_receipt.get("normalized_state", {}) as Dictionary).duplicate(true) \
-			if preflight_receipt.get("normalized_state", {}) is Dictionary else owner_state.duplicate(true)
+		var normalized := owner_state.duplicate(true)
+		if preflight_receipt.has("normalized_state"):
+			if not (preflight_receipt.get("normalized_state") is Dictionary):
+				return {"ok": false, "reason_code": "owner_preflight_normalized_state_invalid"}
+			normalized = (preflight_receipt.get("normalized_state") as Dictionary).duplicate(true)
 		var encoded := _encode_owner_state(normalized)
 		return {
 			"ok": bool(encoded.get("ok", false)),
+			"reason_code": "owner_state_encode_failed" if not bool(encoded.get("ok", false)) else "owner_preflight_accepted",
 			"normalized_owner_state": normalized,
 			"normalized_encoded_owner_state": encoded.get("value"),
 		}
@@ -567,7 +603,13 @@ func _preflight_cross_section_dependencies(plan: Dictionary, binding_by_section:
 	var history_dependency := CardHistoryRestoreDependencyContractScript.validate_annotation_dependency(annotation_state, history_state)
 	check_count += 1
 	if not bool(history_dependency.get("accepted", false)):
-		return {"accepted": false, "reason_code": "cross_section_dependency_rejected", "check_count": check_count}
+		return {
+			"accepted": false,
+			"reason_code": "cross_section_dependency_rejected",
+			"failing_section_id": "card_resolution_history",
+			"internal_reason_code": str(history_dependency.get("reason_code", "card_history_annotation_dependency_rejected")),
+			"check_count": check_count,
+		}
 
 	var commodity_dependency := CommodityFlowPostCommitRestoreDependencyContractScript.validate_dependencies(
 		(normalized_states.get("commodity_flow", {}) as Dictionary).duplicate(true),
@@ -577,7 +619,13 @@ func _preflight_cross_section_dependencies(plan: Dictionary, binding_by_section:
 	)
 	check_count += 1
 	if not bool(commodity_dependency.get("accepted", false)):
-		return {"accepted": false, "reason_code": "cross_section_dependency_rejected", "check_count": check_count}
+		return {
+			"accepted": false,
+			"reason_code": "cross_section_dependency_rejected",
+			"failing_section_id": "commodity_flow",
+			"internal_reason_code": str(commodity_dependency.get("reason_code", "commodity_flow_dependency_rejected")),
+			"check_count": check_count,
+		}
 
 	for section_id in FIXED_SECTION_ORDER:
 		var binding := binding_by_section.get(section_id) as BindingScript
@@ -590,7 +638,13 @@ func _preflight_cross_section_dependencies(plan: Dictionary, binding_by_section:
 		])
 		check_count += 1
 		if not bool(dependency.get("accepted", false)):
-			return {"accepted": false, "reason_code": "cross_section_dependency_rejected", "check_count": check_count}
+			return {
+				"accepted": false,
+				"reason_code": "cross_section_dependency_rejected",
+				"failing_section_id": section_id,
+				"internal_reason_code": str(dependency.get("reason_code", "owner_restore_dependency_rejected")),
+				"check_count": check_count,
+			}
 	return {"accepted": true, "reason_code": "cross_section_dependencies_valid", "check_count": check_count}
 
 
