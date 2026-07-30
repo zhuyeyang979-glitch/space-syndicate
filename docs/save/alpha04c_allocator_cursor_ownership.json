@@ -1,0 +1,191 @@
+{
+  "schema_version": 1,
+  "document_id": "space_syndicate.alpha04c.allocator_cursor_ownership",
+  "task_id": "ALPHA_0_4_C_PRODUCTION_SAVE_COMPLETION_DEFECT_REPAIR_AND_GREEN_PROCESS_A_REHEARSAL",
+  "ruleset_id": "v0.6",
+  "status": "ownership_frozen_implementation_pending",
+  "source_head": "0240dae2d03581791a27826a8472576b5b543502",
+  "machine_readable_authority": true,
+  "required_save_section_count": 19,
+  "new_save_section_required": false,
+  "envelope_schema_version": 3,
+  "envelope_schema_version_changed": false,
+  "required_record_fields": [
+    "cursor_id",
+    "authoritative_owner",
+    "generated_identity_kind",
+    "current_runtime_field",
+    "current_save_field",
+    "expired_entry_policy",
+    "restore_policy",
+    "minimum_legal_value",
+    "next_allocation_test"
+  ],
+  "ownership_invariants": {
+    "expired_quote_payload_may_be_omitted": true,
+    "allocator_cursor_must_be_persisted": true,
+    "quote_cursor_has_one_authoritative_owner": true,
+    "listing_cursor_has_one_authoritative_owner": true,
+    "purchase_transaction_has_independent_allocator": false,
+    "purchased_card_instance_has_independent_allocator": false,
+    "unowned_cursor_count": 0,
+    "multiple_authoritative_owner_count": 0,
+    "silent_defaulted_save_field_count": 0
+  },
+  "quote_cursor_repair_contract": {
+    "authoritative_owner": "CardMarketPricingRuntimeController",
+    "save_section_id": "card_inventory",
+    "current_card_inventory_section_version": 2,
+    "target_card_inventory_section_version": 3,
+    "current_district_purchase_payload_version": 2,
+    "target_district_purchase_payload_version": 3,
+    "current_save_field": null,
+    "proposed_save_field": "card_inventory.district_purchase.district_purchase_runtime.next_quote_sequence",
+    "legacy_v2_restore_policy": "fail_closed",
+    "legacy_v2_reason_code": "allocator_cursor_missing_requires_backup",
+    "legacy_v2_deterministic_migration_available": false,
+    "legacy_v2_policy_reason": "An omitted expired quote can contain the greatest allocated sequence, so retained quotes and journals do not uniquely reconstruct the next sequence.",
+    "default_when_missing": null,
+    "new_save_section_required": false,
+    "envelope_schema_version_changed": false
+  },
+  "cursor_records": [
+    {
+      "cursor_id": "market_quote_next_sequence",
+      "authoritative_owner": "CardMarketPricingRuntimeController",
+      "generated_identity_kind": "market_quote_id",
+      "current_runtime_field": "CardMarketPricingRuntimeController._next_quote_sequence",
+      "current_save_field": null,
+      "proposed_save_field": "card_inventory.district_purchase.district_purchase_runtime.next_quote_sequence",
+      "save_section_id": "card_inventory",
+      "persistence_status": "missing_repair_required",
+      "expired_entry_policy": "Ordinary expired quote payloads may be omitted. An expired quote bound to a pending-discard session remains persisted. Either policy preserves the consumed identity space through next_quote_sequence.",
+      "restore_policy": "Card-inventory v3 must restore the exact persisted integer before another quote allocation. The value must be greater than every retained or journaled market-quote sequence. Card-inventory v2 is rejected with allocator_cursor_missing_requires_backup; it is never defaulted to 1 or inferred from retained quotes.",
+      "minimum_legal_value": 1,
+      "next_allocation_test": "Create a lower retained quote, allocate and omit a higher expired quote, restore, then assert that the next quote ID and fingerprint equal an uninterrupted fork and that no expired quote ID is reused.",
+      "source_paths": [
+        "scripts/runtime/card_market_pricing_runtime_controller.gd",
+        "scripts/runtime/district_purchase_runtime_controller.gd",
+        "scripts/runtime/card_inventory_save_owner.gd"
+      ]
+    },
+    {
+      "cursor_id": "region_supply_refill_sequence",
+      "authoritative_owner": "RegionSupplyRuntimeController",
+      "generated_identity_kind": "normal_card_listing_id",
+      "current_runtime_field": "RegionSupplyRuntimeController._refill_sequence",
+      "current_save_field": "region_supply.refill_sequence",
+      "supporting_save_fields": [
+        "region_supply.slot_revisions_by_region",
+        "region_supply.racks_by_region",
+        "region_supply.pending_transactions",
+        "region_supply.terminal_transactions"
+      ],
+      "save_section_id": "region_supply",
+      "persistence_status": "persisted",
+      "expired_entry_policy": "Not applicable. Listing identity continuation is retained by refill_sequence, while current racks and transaction lineage retain materialized listings and slot revisions.",
+      "restore_policy": "Restore refill_sequence and slot_revisions_by_region exactly through RegionSupplyRuntimeController strict preflight and apply. No other owner may allocate a normal-card listing ID or supply revision.",
+      "minimum_legal_value": 0,
+      "next_allocation_test": "After restore, refill the same legal slot in forked runs and assert identical item_id, refill_sequence, slot revision, rack revision, and owner fingerprint.",
+      "source_paths": [
+        "scripts/runtime/region_supply_runtime_controller.gd"
+      ]
+    },
+    {
+      "cursor_id": "card_resolution_execution_transaction_sequence",
+      "authoritative_owner": "CardResolutionExecutionRuntimeService",
+      "generated_identity_kind": "card_resolution_execution_id",
+      "current_runtime_field": "CardResolutionExecutionRuntimeService._transaction_sequence",
+      "current_save_field": "card_resolution_execution.transaction_sequence",
+      "save_section_id": "card_resolution_execution",
+      "persistence_status": "persisted",
+      "expired_entry_policy": "Not applicable. Exact-once completion and inflight lineage are validated against the saved sequence.",
+      "restore_policy": "Strictly restore the nonnegative transaction_sequence together with completed, inflight, and pending-settlement lineage; reject a sequence that precedes any retained execution ID.",
+      "minimum_legal_value": 0,
+      "next_allocation_test": "Restore a nontrivial execution section, allocate the next execution in both restored and uninterrupted forks, and assert identical execution ID with no duplicate transaction.",
+      "source_paths": [
+        "scripts/runtime/card_resolution_execution_runtime_service.gd"
+      ]
+    },
+    {
+      "cursor_id": "card_player_state_next_reservation_sequence",
+      "authoritative_owner": "CardPlayerStateProductionAdapterV06",
+      "generated_identity_kind": "production_player_state_reservation_id",
+      "current_runtime_field": "CardPlayerStateProductionAdapterV06._next_reservation_sequence",
+      "current_save_field": "card_inventory.commodity_card_inventory.state_port.next_reservation_sequence",
+      "save_section_id": "card_inventory",
+      "persistence_status": "persisted",
+      "expired_entry_policy": "Not applicable. The next sequence and terminal state-port journal are persisted even though transient reservations must be absent at a legal checkpoint.",
+      "restore_policy": "Strictly restore the positive next_reservation_sequence through the card-inventory commodity child and production state-port contract. Repeated apply must not advance it.",
+      "minimum_legal_value": 1,
+      "next_allocation_test": "Restore the same state-port payload in forked runs, reserve the same transaction, and assert identical reservation ID; repeated apply and rollback retain the exact cursor.",
+      "source_paths": [
+        "scripts/runtime/commodity_card_inventory_runtime_controller.gd",
+        "scripts/cards/v06/production/card_player_state_production_adapter_v06.gd"
+      ]
+    }
+  ],
+  "derived_identity_records": [
+    {
+      "cursor_id": "district_purchase_transaction_derivation",
+      "authoritative_owner": "DistrictSupplyActionPort",
+      "generated_identity_kind": "district_purchase_transaction_id",
+      "current_runtime_field": "deterministic:district-purchase:<quote_id>",
+      "current_save_field": null,
+      "independent_allocator": false,
+      "derivation_inputs": [
+        "CardMarketPricingRuntimeController market quote ID"
+      ],
+      "materialized_persistence": [
+        "card_inventory.commodity_card_inventory.transaction_journal",
+        "region_supply.pending_transactions",
+        "region_supply.terminal_transactions"
+      ],
+      "expired_entry_policy": "No transaction cursor is discarded or reconstructed. The transaction identity is determined by the quote ID; preserving the quote cursor preserves the future transaction namespace.",
+      "restore_policy": "Do not add or default an independent transaction cursor. Recompute only from the authoritative restored quote ID and validate any materialized journal identity against it.",
+      "minimum_legal_value": null,
+      "next_allocation_test": "Use the first post-restore quote for a real purchase and assert that district-purchase:<quote_id> equals the uninterrupted fork transaction ID.",
+      "source_paths": [
+        "scripts/runtime/district_supply_action_port.gd"
+      ]
+    },
+    {
+      "cursor_id": "region_supply_card_instance_derivation",
+      "authoritative_owner": "CardFlowTransactionServiceV06",
+      "generated_identity_kind": "purchased_normal_card_runtime_instance_id",
+      "current_runtime_field": "deterministic:region-supply:<listing_item_id>:<district_purchase_transaction_id>",
+      "current_save_field": "session.world_session_state.players[].slots[].runtime_instance_id",
+      "independent_allocator": false,
+      "derivation_inputs": [
+        "RegionSupplyRuntimeController listing item ID",
+        "DistrictSupplyActionPort purchase transaction ID"
+      ],
+      "expired_entry_policy": "Not applicable. A materialized card instance is saved by the session owner; a future instance derives from authoritative listing and transaction identities.",
+      "restore_policy": "Do not create an independent card-instance cursor. Existing instances restore from session state, and new purchase instances derive from the restored listing item ID and deterministic purchase transaction ID.",
+      "minimum_legal_value": null,
+      "next_allocation_test": "Complete the same post-restore purchase in forked runs and assert identical runtime_instance_id, transaction journal fingerprint, and session owner fingerprint.",
+      "source_paths": [
+        "scripts/cards/v06/card_flow_transaction_service_v06.gd",
+        "scripts/runtime/session_envelope_save_owner.gd"
+      ]
+    }
+  ],
+  "acceptance_tests": [
+    "NEXT_QUOTE_ID_PARITY",
+    "NEXT_LISTING_ID_PARITY",
+    "NEXT_TRANSACTION_ID_PARITY",
+    "NEXT_CARD_INSTANCE_ID_PARITY",
+    "NEXT_EXECUTION_ID_PARITY",
+    "NEXT_RESERVATION_ID_PARITY",
+    "NO_REUSED_EXPIRED_ID",
+    "REPEATED_APPLY_DOES_NOT_ADVANCE_CURSOR",
+    "ROLLBACK_RESTORES_EXACT_CURSOR",
+    "CORRUPTED_CURSOR_REJECTED_WITH_ZERO_MUTATION",
+    "V2_MISSING_QUOTE_CURSOR_REQUIRES_BACKUP"
+  ],
+  "related_documents": [
+    "docs/save/alpha04c_allocator_cursor_ownership.md",
+    "docs/save/alpha04c_save_field_ownership_ledger.json",
+    "docs/save/v06_restore_dependency_graph.json"
+  ]
+}
