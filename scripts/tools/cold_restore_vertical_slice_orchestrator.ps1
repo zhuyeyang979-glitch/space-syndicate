@@ -650,7 +650,20 @@ function New-ColdRestoreNonOfficialProcessAOutput {
         scenario_fingerprint = $ExpectedScenarioFingerprint
         timeout_seconds = $ChildTimeoutSeconds
         wall_elapsed_ms = [int64]$Result.run.wall_elapsed_ms
-        save_green = [bool]$Result.timeline.save_file_exists
+        save_green = [bool]$Result.timeline.save_file_exists `
+            -and [int64]$Result.timeline.save_file_bytes -gt 0 `
+            -and [string]$Result.timeline.save_file_sha256 -match '^[0-9a-f]{64}$' `
+            -and [bool]$Result.timeline.allowlisted_manifest_written `
+            -and [bool]$Result.timeline.child_completion_written `
+            -and [bool]$Result.timeline.quit_requested `
+            -and [bool]$Result.manifest.success `
+            -and [bool]$Result.run.child.save_written `
+            -and [bool]$Result.run.parent.child_attestation_valid `
+            -and [bool]$Result.run.parent.wrapper_exit_green `
+            -and [int]$Result.run.parent.exit_code -eq 0 `
+            -and -not [bool]$Result.run.parent.timed_out `
+            -and -not [bool]$Result.run.parent.terminated_by_parent `
+            -and [int]$Result.run.parent.task_owned_process_count_after -eq 0
         save_file_bytes = [int64]$Result.timeline.save_file_bytes
         save_file_sha256 = [string]$Result.timeline.save_file_sha256
         phase_timeline_green = @($Result.timeline.phase_rows).Count -eq 19

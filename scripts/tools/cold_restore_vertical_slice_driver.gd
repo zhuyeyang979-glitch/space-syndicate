@@ -1580,6 +1580,14 @@ func _save_via_player_flow(context: Dictionary, save_path: String, destructive_c
 		var save_debug: Dictionary = (context.get("save") as Node).call("debug_snapshot")
 		var internal_reason := str(save_debug.get("last_readback_validation_reason", ""))
 		var mismatch_sections: Array = save_debug.get("last_readback_mismatch_sections", []) if save_debug.get("last_readback_mismatch_sections", []) is Array else []
+		var registry_for_failure: Node = context.get("registry")
+		var registry_debug: Dictionary = registry_for_failure.call("debug_snapshot") \
+				if registry_for_failure != null and registry_for_failure.has_method("debug_snapshot") else {}
+		var capture_section := str(registry_debug.get("last_internal_capture_failure_section", ""))
+		var capture_reason := str(registry_debug.get("last_internal_capture_failure_reason", ""))
+		if receipt != null and receipt.reason_code == "owner_capture_failed" \
+				and not capture_section.is_empty() and not capture_reason.is_empty():
+			internal_reason = "capture:%s:%s" % [capture_section, capture_reason]
 		if not bool(save_debug.get("last_readback_fingerprint_match", true)):
 			var first_mismatch: Dictionary = save_debug.get("last_readback_first_mismatch", {}) if save_debug.get("last_readback_first_mismatch", {}) is Dictionary else {}
 			internal_reason = "readback:%s:%s:%s>%s:%s>%s" % [
