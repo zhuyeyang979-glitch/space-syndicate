@@ -23,6 +23,7 @@ class PrivateViewerWorldStub:
 
 class QuoteAuthorityStub:
 	extends Node
+	var next_quote_sequence := 1
 
 	func export_quote_for_session(_quote: Dictionary) -> Dictionary:
 		return {}
@@ -32,6 +33,19 @@ class QuoteAuthorityStub:
 
 	func quote_snapshot(_quote_id: String) -> Dictionary:
 		return {}
+
+
+	func capture_allocator_cursor() -> Dictionary:
+		return {"schema_version": 1, "next_quote_sequence": next_quote_sequence}
+
+
+	func restore_allocator_cursor(cursor: Dictionary) -> Dictionary:
+		if int(cursor.get("schema_version", 0)) != 1 \
+				or not (cursor.get("next_quote_sequence") is int) \
+				or int(cursor.get("next_quote_sequence", 0)) < 1:
+			return {"restored": false, "reason_code": "allocator_cursor_invalid"}
+		next_quote_sequence = int(cursor.get("next_quote_sequence", 0))
+		return {"restored": true, "reason_code": "allocator_cursor_restored"}
 
 
 func _init() -> void:

@@ -116,7 +116,9 @@ func _test_cursor_validation_fails_closed() -> void:
 	missing_payload.erase(CURSOR_FIELD)
 	missing["district_purchase_runtime"] = missing_payload
 	var missing_result := purchase.preflight_save_data(missing)
-	_expect(not bool(missing_result.get("accepted", true)) and str(missing_result.get("reason_code", "")) == MISSING_CURSOR_REASON, "legacy v2 payload without allocator cursor fails closed with allocator_cursor_missing_requires_backup")
+	_expect(not bool(missing_result.get("accepted", true)) \
+			and str(missing_result.get("reason_code", "")) == MISSING_CURSOR_REASON \
+			and bool(missing_result.get("requires_backup", false)), "legacy v2 payload without allocator cursor fails closed with allocator_cursor_missing_requires_backup")
 	_expect(purchase.capture_runtime_checkpoint() == before, "missing-cursor preflight is mutation-free")
 
 	var negative := _save_with_cursor(save, -1)
