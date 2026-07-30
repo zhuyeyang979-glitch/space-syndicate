@@ -11,6 +11,7 @@ const ALPHA_CONTENT_LOADER := preload("res://scripts/runtime/alpha01_content_man
 const TERMINAL_EVIDENCE := preload("res://scripts/tools/cold_restore_terminal_evidence.gd")
 const AUTHORITATIVE_STEPPER := preload("res://scripts/tools/full_run_authoritative_runtime_stepper.gd")
 const CHILD_ATTESTATION := preload("res://scripts/tools/cold_restore_child_completion_attestation.gd")
+const PROCESS_A_TIMELINE := preload("res://scripts/tools/cold_restore_process_a_phase_timeline.gd")
 
 const FORMAL_FULL_RUN := false
 const EXECUTION_READY := true
@@ -152,10 +153,90 @@ const LAUNCH_ATTESTATION_FIELDS := [
 	"status",
 ]
 var _district_supply_request_revision := 0
+var _process_started_monotonic_ms := 0
+var _process_a_timeline: RefCounted
+var _process_a_timeline_failure := ""
+var _active_main: Node
 
 
 func _init() -> void:
+	_process_started_monotonic_ms = Time.get_ticks_msec()
 	call_deferred("_run_entry")
+
+
+func _record_timeline_result(result: Dictionary) -> void:
+	if bool(result.get("valid", false)):
+		return
+	_process_a_timeline_failure = str(result.get("reason_code", "phase_timeline_update_failed"))
+	push_error("Process A phase timeline failed: %s" % _process_a_timeline_failure)
+
+
+func _enter_process_a_phase(phase_id: String) -> void:
+	if _process_a_timeline == null or not _process_a_timeline_failure.is_empty():
+		return
+	_record_timeline_result(_process_a_timeline.call("enter_phase", phase_id))
+
+
+func _complete_process_a_phase(phase_id: String, evidence: Dictionary = {}) -> void:
+	if _process_a_timeline == null or not _process_a_timeline_failure.is_empty():
+		return
+	_record_timeline_result(_process_a_timeline.call("complete_phase", phase_id, true, "ok", evidence))
+
+
+func _close_process_a_failure_phases(result: Dictionary) -> void:
+	if _process_a_timeline == null or bool(result.get("success", false)) \
+			or not _process_a_timeline_failure.is_empty():
+		return
+	var failure_code := _safe_reason_code(str(result.get("failure_code", "role_failed")))
+	var snapshot: Dictionary = _process_a_timeline.call("snapshot")
+	var current_phase := str(snapshot.get("current_phase", ""))
+	if not current_phase.is_empty():
+		_record_timeline_result(_process_a_timeline.call(
+			"complete_phase",
+			current_phase,
+			false,
+			failure_code,
+			{"failure_code": failure_code}
+		))
+	while _process_a_timeline_failure.is_empty():
+		snapshot = _process_a_timeline.call("snapshot")
+		var rows: Array = snapshot.get("phase_rows", [])
+		var manifest_index := PROCESS_A_TIMELINE.PHASE_IDS.find("allowlisted_manifest_complete")
+		if rows.size() >= manifest_index:
+			break
+		var skipped_phase := str(PROCESS_A_TIMELINE.PHASE_IDS[rows.size()])
+		_record_timeline_result(_process_a_timeline.call("enter_phase", skipped_phase))
+		if not _process_a_timeline_failure.is_empty():
+			break
+		_record_timeline_result(_process_a_timeline.call(
+			"complete_phase",
+			skipped_phase,
+			false,
+			"skipped_after_role_failure",
+			{"failure_code": failure_code}
+		))
+
+
+func _mark_process_a_timeline(method_name: String) -> void:
+	if _process_a_timeline == null or not _process_a_timeline_failure.is_empty():
+		return
+	_record_timeline_result(_process_a_timeline.call(method_name))
+
+
+func _update_process_a_save_timeline(save_path: String) -> void:
+	if _process_a_timeline == null or not _process_a_timeline_failure.is_empty():
+		return
+	_record_timeline_result(_process_a_timeline.call("update_save_file", save_path))
+
+
+func _cleanup_active_runtime() -> void:
+	if _active_main == null or not is_instance_valid(_active_main):
+		_active_main = null
+		return
+	_active_main.queue_free()
+	await process_frame
+	await process_frame
+	_active_main = null
 
 
 func _run_entry() -> void:
@@ -227,15 +308,34 @@ func _run_entry() -> void:
 		push_error("Cold restore options rejected: %s" % str(validation.get("reason_code", "options_invalid")))
 		quit(10)
 		return
-	var launch_authorization := await _authorize_official_launch(validation, str(parsed.get("head_sha", "")))
-	if not bool(launch_authorization.get("authorized", false)):
-		push_error("Cold restore launch rejected: %s" % str(launch_authorization.get("reason_code", "official_launch_unauthorized")))
-		quit(2)
-		return
-	validation["official_count_consumed"] = true
+	if str(validation.get("process_role", "")) == "producer":
+		_process_a_timeline = PROCESS_A_TIMELINE.new()
+		_record_timeline_result(_process_a_timeline.call(
+			"initialize",
+			str(validation.get("run_id", "")),
+			str(parsed.get("head_sha", "")),
+			str(validation.get("scenario_fingerprint", "")),
+			bool(validation.get("official", false)),
+			_process_started_monotonic_ms
+		))
+		if not _process_a_timeline_failure.is_empty():
+			quit(18)
+			return
+	if bool(validation.get("official", false)):
+		var launch_authorization := await _authorize_official_launch(validation, str(parsed.get("head_sha", "")))
+		if not bool(launch_authorization.get("authorized", false)):
+			push_error("Cold restore launch rejected: %s" % str(launch_authorization.get("reason_code", "official_launch_unauthorized")))
+			quit(2)
+			return
+		validation["official_count_consumed"] = true
+	else:
+		validation["official_count_consumed"] = false
+	_complete_process_a_phase("child_bootstrap", {"official": bool(validation.get("official", false))})
 	var started_ms := Time.get_ticks_msec()
 	var result: Dictionary = await _run_role(validation, str(parsed.get("head_sha", "")))
 	result["elapsed_ms"] = maxi(0, Time.get_ticks_msec() - started_ms)
+	_close_process_a_failure_phases(result)
+	_enter_process_a_phase("allowlisted_manifest_complete")
 	var manifest := sanitize_public_manifest(result)
 	if manifest.is_empty():
 		push_error("Cold restore public manifest sanitization failed")
@@ -250,13 +350,18 @@ func _run_entry() -> void:
 		push_error("Cold restore public manifest write failed: %s" % str(manifest_write.get("reason_code", "child_result_write_failed")))
 		quit(_evidence_exit_code(manifest_write))
 		return
+	_mark_process_a_timeline("mark_allowlisted_manifest_written")
+	_complete_process_a_phase("allowlisted_manifest_complete", {
+		"manifest_sha256": str(manifest_write.get("sha256", "")),
+	})
+	_enter_process_a_phase("child_completion_attestation_complete")
 	var role_success := bool(manifest.get("success", false))
 	var role_attestation := CHILD_ATTESTATION.build({
 		"run_id": str(validation.get("run_id", "")),
 		"role": str(validation.get("process_role", "")),
 		"repository_head": str(parsed.get("head_sha", "")),
 		"scenario_fingerprint": str(validation.get("scenario_fingerprint", "")),
-		"official": true,
+		"official": bool(validation.get("official", false)),
 		"formal": false,
 		"qualification_completed": true,
 		"qualification_green": role_success,
@@ -288,6 +393,16 @@ func _run_entry() -> void:
 		push_error("Cold restore role attestation failed: %s" % str(role_attestation_write.get("reason_code", "child_attestation_write_failed")))
 		quit(_evidence_exit_code(role_attestation_write))
 		return
+	_mark_process_a_timeline("mark_child_completion_written")
+	_complete_process_a_phase("child_completion_attestation_complete", {
+		"attestation_sha256": str(role_attestation_write.get("sha256", "")),
+	})
+	_enter_process_a_phase("runtime_cleanup_complete")
+	await _cleanup_active_runtime()
+	_complete_process_a_phase("runtime_cleanup_complete", {"active_main_released": _active_main == null})
+	_enter_process_a_phase("quit_requested")
+	_mark_process_a_timeline("mark_quit_requested")
+	_complete_process_a_phase("quit_requested", {"exit_code": 0})
 	print("COLD_RESTORE_MANIFEST|%s" % JSON.stringify(manifest))
 	quit(0)
 
@@ -317,6 +432,7 @@ static func contract_snapshot() -> Dictionary:
 static func validate_options(options: Dictionary) -> Dictionary:
 	var run_id := str(options.get("run_id", ""))
 	var process_role := str(options.get("process_role", ""))
+	var non_official_process_a := bool(options.get("non_official_process_a", false))
 	if not str(options.get("parse_error", "")).is_empty():
 		return {"valid": false, "reason_code": str(options.get("parse_error", "options_parse_invalid"))}
 	if process_role not in PROCESS_ROLES:
@@ -332,14 +448,21 @@ static func validate_options(options: Dictionary) -> Dictionary:
 	if artifact_root != expected_artifact_root:
 		return {"valid": false, "reason_code": "artifact_root_invalid"}
 	var official_claim_path := str(options.get("official_claim_path", ""))
-	if official_claim_path.is_empty() or not official_claim_path.is_absolute_path():
-		return {"valid": false, "reason_code": "official_claim_path_invalid"}
 	var launch_attestation_path := str(options.get("launch_attestation_path", ""))
-	if launch_attestation_path.is_empty() or not launch_attestation_path.is_absolute_path():
-		return {"valid": false, "reason_code": "launch_attestation_path_invalid"}
 	var launch_nonce := str(options.get("launch_nonce", ""))
-	if launch_nonce.length() != 32 or not _is_lower_hex(launch_nonce):
-		return {"valid": false, "reason_code": "launch_nonce_invalid"}
+	if non_official_process_a:
+		if process_role != "producer" \
+				or not official_claim_path.is_empty() \
+				or not launch_attestation_path.is_empty() \
+				or not launch_nonce.is_empty():
+			return {"valid": false, "reason_code": "non_official_process_a_authority_state_invalid"}
+	else:
+		if official_claim_path.is_empty() or not official_claim_path.is_absolute_path():
+			return {"valid": false, "reason_code": "official_claim_path_invalid"}
+		if launch_attestation_path.is_empty() or not launch_attestation_path.is_absolute_path():
+			return {"valid": false, "reason_code": "launch_attestation_path_invalid"}
+		if launch_nonce.length() != 32 or not _is_lower_hex(launch_nonce):
+			return {"valid": false, "reason_code": "launch_nonce_invalid"}
 	var expected_resolution_id := int(options.get("expected_queue_resolution_id", 0))
 	var expected_stable_fingerprint := str(options.get("expected_queue_stable_target_fingerprint", ""))
 	if process_role == "producer":
@@ -364,6 +487,8 @@ static func validate_options(options: Dictionary) -> Dictionary:
 		"expected_queue_resolution_id": expected_resolution_id,
 		"expected_queue_stable_target_fingerprint": expected_stable_fingerprint,
 		"scenario_fingerprint": scenario_fingerprint,
+		"official": not non_official_process_a,
+		"non_official_process_a": non_official_process_a,
 		"official_count_consumed": false,
 	}
 
@@ -387,7 +512,8 @@ static func validate_qualification_options(options: Dictionary) -> Dictionary:
 			or not str(options.get("scenario_fingerprint", "")).is_empty() \
 			or not str(options.get("official_claim_path", "")).is_empty() \
 			or not str(options.get("launch_attestation_path", "")).is_empty() \
-			or not str(options.get("launch_nonce", "")).is_empty():
+			or not str(options.get("launch_nonce", "")).is_empty() \
+			or bool(options.get("non_official_process_a", false)):
 		return {"valid": false, "reason_code": "qualification_official_state_forbidden"}
 	return {
 		"valid": true,
@@ -653,7 +779,7 @@ static func sanitize_public_manifest(source: Dictionary) -> Dictionary:
 		"write_fingerprint": str(source.get("write_fingerprint", "")),
 		"elapsed_ms": maxi(0, int(source.get("elapsed_ms", 0))),
 		"success": bool(source.get("success", false)),
-		"failure_code": str(source.get("failure_code", "")),
+		"failure_code": _safe_reason_code(str(source.get("failure_code", ""))),
 	}
 	return result if _manifest_shape_valid(result) else {}
 
@@ -682,7 +808,9 @@ static func _manifest_shape_valid(manifest: Dictionary) -> bool:
 func _run_role(options: Dictionary, head_sha: String) -> Dictionary:
 	var role := str(options.get("process_role", ""))
 	var base := _manifest_base(str(options.get("run_id", "")), role, head_sha)
+	_enter_process_a_phase("scene_loaded")
 	var main := MAIN_SCENE.instantiate()
+	_active_main = main
 	var lifecycle := main.get_node_or_null("RuntimeServices/MenuLifecycleApplicationFlowController")
 	if lifecycle != null:
 		lifecycle.set("open_root_on_ready", false)
@@ -699,6 +827,7 @@ func _run_role(options: Dictionary, head_sha: String) -> Dictionary:
 			or int(registry_snapshot.get("unsupported_section_count", -1)) != 0 \
 			or not bool(registry_snapshot.get("restore_barrier_ready", false)):
 		return _fail(base, "registry_not_resume_ready")
+	_complete_process_a_phase("scene_loaded", {"transactional_section_count": 19})
 	var result: Dictionary
 	match role:
 		"producer":
@@ -709,8 +838,6 @@ func _run_role(options: Dictionary, head_sha: String) -> Dictionary:
 			result = await _run_validator(context, options, base)
 		_:
 			result = _fail(base, "process_role_invalid")
-	main.queue_free()
-	await process_frame
 	return result
 
 
@@ -973,15 +1100,31 @@ static func _evidence_exit_code(write_result: Dictionary) -> int:
 	return 13
 
 
+static func _safe_reason_code(value: String) -> String:
+	var normalized := value.strip_edges().to_lower()
+	var result := ""
+	for index in range(normalized.length()):
+		var character := normalized.substr(index, 1)
+		if "abcdefghijklmnopqrstuvwxyz0123456789_".contains(character):
+			result += character
+		elif not result.ends_with("_"):
+			result += "_"
+	result = result.trim_prefix("_").trim_suffix("_")
+	return (result if not result.is_empty() else "role_failed").left(128)
+
+
 func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -> Dictionary:
 	var save_path := str(options.get("save_path", ""))
 	if FileAccess.file_exists(save_path):
 		return _fail(base, "producer_slot_must_start_empty")
+	_enter_process_a_phase("session_started")
 	var started := _start_default_session(context, str(options.get("run_id", "")))
 	if not bool(started.get("applied", false)):
 		return _fail(base, str(started.get("reason_code", "session_start_failed")))
+	_complete_process_a_phase("session_started", {"challenge_depth": ACCEPTANCE_CHALLENGE_DEPTH, "seed": ACCEPTANCE_SEED})
 	var initial_ai_digest := _ai_state_digest(context)
 	var human := _submit_human_selection(context, "producer-human", 1)
+	_enter_process_a_phase("real_commodity_claim_complete")
 	var legal_checkpoint: Dictionary = await _prepare_facility_queue_checkpoint(context)
 	if not bool(legal_checkpoint.get("ready", false)):
 		return _fail(base, str(legal_checkpoint.get("reason_code", "legal_checkpoint_failed")))
@@ -990,6 +1133,10 @@ func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -
 	(context.get("coordinator") as GameRuntimeCoordinator).resume_session()
 	var ai_actions := _tick_ai_until_action(context, 120)
 	var final_ai_digest := _ai_state_digest(context)
+	_complete_process_a_phase("ai_nondefault_state_complete", {
+		"ai_action_count": ai_actions,
+		"ai_state_changed": not initial_ai_digest.is_empty() and final_ai_digest != initial_ai_digest,
+	})
 	var drain := _drain_pending_queue(context, 120)
 	if not bool(drain.get("drained", false)):
 		return _fail(base, "pre_trigger_queue_not_empty")
@@ -1002,6 +1149,7 @@ func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -
 	(context.get("coordinator") as GameRuntimeCoordinator).request_table_presentation_refresh(&"full", &"cold_restore_queue_offer_sync")
 	await process_frame
 	await process_frame
+	_enter_process_a_phase("queue_entry_committed")
 	var queue_submission := _submit_first_formal_queue_offer(
 		context,
 		str(legal_checkpoint.get("queue_facility_card_id", "")),
@@ -1026,7 +1174,18 @@ func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -
 			or int(queue_target_before.get("history_count", -1)) != 0 \
 			or str(queue_target_before.get("stable_target_fingerprint", "")) != queue_target_fingerprint:
 		return _fail(base, "producer_queue_target_before_save_invalid")
+	_complete_process_a_phase("queue_entry_committed", {
+		"queue_count": _queue_entry_count(context),
+		"queue_resolution_id": queue_target_resolution_id,
+		"stable_target_fingerprint": queue_target_fingerprint,
+	})
+	_enter_process_a_phase("restore_barrier_entered")
+	_complete_process_a_phase("restore_barrier_entered", {
+		"queue_pending_count": int(queue_target_before.get("pending_count", 0)),
+	})
 	var checkpoint := _checkpoint_summary(context)
+	_enter_process_a_phase("save_intent_submitted")
+	_complete_process_a_phase("save_intent_submitted", {"source_surface": "pause_menu"})
 	var save := _save_via_player_flow(context, save_path, false)
 	if not bool(save.get("ok", false)):
 		return _fail(base, str(save.get("reason_code", "producer_save_failed")))
@@ -1405,7 +1564,13 @@ func _save_via_player_flow(context: Dictionary, save_path: String, destructive_c
 		return {"ok": false, "reason_code": "save_resume_flow_missing"}
 	var before_observation := _safety_observation(context)
 	var before_world := _world_digest(context)
+	_enter_process_a_phase("save_capture_complete")
 	var receipt := flow.request_save_game(&"pause_menu", destructive_confirmed)
+	_complete_process_a_phase("save_capture_complete", {
+		"receipt_present": receipt != null,
+		"accepted": receipt != null and receipt.accepted,
+		"applied": receipt != null and receipt.applied,
+	})
 	var after_observation := _safety_observation(context)
 	var after_world := _world_digest(context)
 	if receipt == null or not receipt.accepted or not receipt.applied:
@@ -1427,6 +1592,12 @@ func _save_via_player_flow(context: Dictionary, save_path: String, destructive_c
 			"ok": false,
 			"reason_code": internal_reason if not internal_reason.is_empty() and internal_reason != "ok" else (receipt.reason_code if receipt != null else "save_receipt_missing"),
 		}
+	_enter_process_a_phase("envelope_encode_complete")
+	_complete_process_a_phase("envelope_encode_complete", {"save_receipt_reason_code": receipt.reason_code})
+	_enter_process_a_phase("atomic_write_complete")
+	_update_process_a_save_timeline(save_path)
+	_complete_process_a_phase("atomic_write_complete", {"save_file_exists": FileAccess.file_exists(save_path)})
+	_enter_process_a_phase("save_readback_complete")
 	var read := _read_slot(context, save_path)
 	if not bool(read.get("ok", false)):
 		return read
@@ -1442,6 +1613,10 @@ func _save_via_player_flow(context: Dictionary, save_path: String, destructive_c
 				str(registry_debug.get("last_internal_preflight_failure_reason", preflight.get("reason_code", "preflight_failed"))),
 			],
 		}
+	_complete_process_a_phase("save_readback_complete", {
+		"section_count": int(read.get("section_count", 0)),
+		"preflight_count": int(preflight.get("preflight_count", 0)),
+	})
 	return {
 		"ok": true,
 		"reason_code": receipt.reason_code,
@@ -1653,6 +1828,10 @@ func _prepare_facility_queue_checkpoint(context: Dictionary) -> Dictionary:
 	var claim := _claim_first_visible_commodity(context, maxi(1, Time.get_ticks_msec()))
 	if not bool(claim.get("success", false)):
 		return {"ready": false, "reason_code": "facility_checkpoint_commodity_claim_failed"}
+	_complete_process_a_phase("real_commodity_claim_complete", {
+		"commodity_card_id": str(claim.get("commodity_card_id", "")),
+	})
+	_enter_process_a_phase("real_normal_card_purchase_complete")
 	var protected_card_ids: Array = [
 		str(claim.get("commodity_card_id", "")),
 		str(selected_plan.get("first_card_id", "")),
@@ -1681,6 +1860,11 @@ func _prepare_facility_queue_checkpoint(context: Dictionary) -> Dictionary:
 			"reason_code": "facility_checkpoint_first_purchase_failed",
 			"diagnostics": {"first_purchase": first_purchase.duplicate(true)},
 		}
+	_complete_process_a_phase("real_normal_card_purchase_complete", {
+		"purchase_count": int(first_purchase.get("purchase_count", 0)),
+		"card_id": str(selected_plan.get("first_card_id", "")),
+	})
+	_enter_process_a_phase("real_facility_economy_complete")
 	var first_target := selected_plan.get("first_target", {}) as Dictionary
 	var first_play := await _play_facility_through_formal_submission(
 		context,
@@ -1694,6 +1878,11 @@ func _prepare_facility_queue_checkpoint(context: Dictionary) -> Dictionary:
 			"reason_code": "facility_checkpoint_first_play_failed",
 			"diagnostics": first_play.duplicate(true),
 		}
+	_complete_process_a_phase("real_facility_economy_complete", {
+		"card_id": str(selected_plan.get("first_card_id", "")),
+		"target_region_id": str(first_target.get("region_id", "")),
+	})
+	_enter_process_a_phase("first_sale_receipt_complete")
 	coordinator.resume_session()
 	var sales := _advance_until_product_sale(context, str(selected_plan.get("product_id", "")))
 	coordinator.pause_session()
@@ -1703,6 +1892,11 @@ func _prepare_facility_queue_checkpoint(context: Dictionary) -> Dictionary:
 			"reason_code": str(sales.get("reason_code", "facility_checkpoint_sale_missing")),
 			"diagnostics": {"sales": sales.duplicate(true)},
 		}
+	_complete_process_a_phase("first_sale_receipt_complete", {
+		"owned_sale_receipt_count": int(sales.get("owned_sale_receipt_count", 0)),
+		"product_id": str(selected_plan.get("product_id", "")),
+	})
+	_enter_process_a_phase("ai_nondefault_state_complete")
 	var queue_purchase: Dictionary = {}
 	var queue_purchase_count := 0
 	for funding_cycle in range(MAX_QUEUE_PURCHASE_FUNDING_CYCLES + 1):
@@ -4525,7 +4719,7 @@ func _manifest_base(run_id: String, role: String, head_sha: String) -> Dictionar
 func _fail(base: Dictionary, reason_code: String) -> Dictionary:
 	base["slot_state"] = "failed"
 	base["success"] = false
-	base["failure_code"] = reason_code
+	base["failure_code"] = _safe_reason_code(reason_code)
 	return base
 
 
@@ -4541,12 +4735,20 @@ func _parse_options(args: PackedStringArray) -> Dictionary:
 		"expected_queue_resolution_id": 0,
 		"expected_queue_stable_target_fingerprint": "",
 		"scenario_fingerprint": "",
+		"non_official_process_a": false,
 		"parse_error": "",
 	}
 	var seen: Dictionary = {}
 	for argument in args:
 		var text := str(argument)
 		if text in ["--cold-restore-contract-only", "--cold-restore-qualification-probe"]:
+			continue
+		if text == "--cold-restore-non-official-process-a":
+			if seen.has("non_official_process_a"):
+				result["parse_error"] = "duplicate_option"
+			else:
+				seen["non_official_process_a"] = true
+				result["non_official_process_a"] = true
 			continue
 		var option_key := ""
 		var option_value: Variant = ""

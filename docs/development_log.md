@@ -9122,3 +9122,30 @@ deleted. Evidence and the remaining action inventory are recorded in
   qualification and validator/terminal evidence are unfinished.
 - No third Formal FullRun, full smoke, official cold restore, or V0.7 code was
   executed or added.
+
+## 2026-07-30 — Alpha 0.4-C Process A timeout diagnosis (BLOCKED)
+
+- Continued from exact PR #77 remote HEAD `d75fcec3`. The diff after tested
+  Queue-bridge head `ca3b7cf4` contains only documentation/report changes, so
+  no production Queue or Save behavior evidence was displaced.
+- Added `ProcessAPhaseTimelineV1` as immutable child snapshots synchronized by
+  the parent through validated atomic replacement. Wrong run/HEAD, truncation,
+  non-monotonic progress, mutation, and partial JSON fail closed. A dedicated
+  non-official Process A mode uses isolated `non_official` user data and exits
+  before official claim consumption.
+- The one permitted diagnostic Process A used depth 1, seed `900626424`, one
+  local player, three AI players, real `main.tscn`, Action Spine, and facility
+  Queue bridge. It exited naturally with valid child/parent attestations and
+  zero task-owned processes. Legal normal-card acquisition dominated: the
+  first search took 18.642 seconds and the second acquisition plus AI check
+  took 23.685 seconds; the Save flow itself took 2.606 seconds.
+- The diagnostic atomically installed a 605,513-byte Save, then failed the
+  driver's 19-owner readback/preflight with `card_inventory_v2_invalid`.
+  `sections.card_inventory.owner_state` is the only empty owner state; the
+  other 18 are nonempty. The Save intent returned, so no completion-signaling
+  deadlock was observed.
+- Repairing that production owner capture is outside this task's authorization.
+  No rehearsal, Attempt 2 claim, Process B/C, third Formal, or full Smoke was
+  run. Attempt 1 remains immutable and the new official authorization remains
+  unconsumed. Next boundary is
+  `ALPHA_0_4_C_PRODUCTION_SAVE_COMPLETION_DEFECT_REPAIR`.

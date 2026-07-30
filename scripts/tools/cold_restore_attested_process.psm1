@@ -61,6 +61,61 @@ $script:LaunchAuthorizationContextFields = @(
     "orchestrator_creation_time_utc_ticks"
 )
 
+$script:ProcessAPhaseTimelineFields = @(
+    "schema_version",
+    "timeline_id",
+    "run_id",
+    "role",
+    "repository_head",
+    "scenario_fingerprint",
+    "official",
+    "process_start_monotonic_ms",
+    "snapshot_sequence",
+    "phase_rows",
+    "current_phase",
+    "last_completed_phase",
+    "last_progress_monotonic_ms",
+    "save_file_exists",
+    "save_file_bytes",
+    "save_file_sha256",
+    "child_completion_written",
+    "allowlisted_manifest_written",
+    "quit_requested",
+    "timeline_fingerprint"
+)
+
+$script:ProcessAPhaseRowFields = @(
+    "phase_id",
+    "entered_monotonic_ms",
+    "completed_monotonic_ms",
+    "duration_ms",
+    "success",
+    "reason_code",
+    "evidence_fingerprint"
+)
+
+$script:ProcessAPhaseIds = @(
+    "child_bootstrap",
+    "scene_loaded",
+    "session_started",
+    "real_commodity_claim_complete",
+    "real_normal_card_purchase_complete",
+    "real_facility_economy_complete",
+    "first_sale_receipt_complete",
+    "ai_nondefault_state_complete",
+    "queue_entry_committed",
+    "restore_barrier_entered",
+    "save_intent_submitted",
+    "save_capture_complete",
+    "envelope_encode_complete",
+    "atomic_write_complete",
+    "save_readback_complete",
+    "allowlisted_manifest_complete",
+    "child_completion_attestation_complete",
+    "runtime_cleanup_complete",
+    "quit_requested"
+)
+
 function ConvertTo-ColdRestoreCanonicalJson {
     param([AllowNull()]$Value)
 
@@ -252,6 +307,262 @@ function Write-ColdRestoreExclusiveJson {
         throw "exclusive_evidence_consumed_readback_failed"
     }
     return Get-ColdRestoreTextSha256 $json
+}
+
+function Write-ColdRestoreReplacingAtomicJson {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)]$Value
+    )
+
+    $parent = Split-Path -Parent $Path
+    [IO.Directory]::CreateDirectory($parent) | Out-Null
+    $tempPath = "$Path.tmp.$PID.$([Guid]::NewGuid().ToString('N'))"
+    $backupPath = "$Path.swap.$PID.$([Guid]::NewGuid().ToString('N'))"
+    $json = ConvertTo-ColdRestoreCanonicalJson $Value
+    $bytes = [Text.UTF8Encoding]::new($false).GetBytes($json)
+    try {
+        $stream = [IO.FileStream]::new(
+            $tempPath,
+            [IO.FileMode]::CreateNew,
+            [IO.FileAccess]::Write,
+            [IO.FileShare]::None,
+            4096,
+            [IO.FileOptions]::WriteThrough
+        )
+        try {
+            $stream.Write($bytes, 0, $bytes.Length)
+            $stream.Flush($true)
+        }
+        finally {
+            $stream.Dispose()
+        }
+        $readback = [IO.File]::ReadAllText($tempPath, [Text.UTF8Encoding]::new($false))
+        if ($readback -cne $json) {
+            throw "replacing_evidence_readback_failed"
+        }
+        $null = $readback | ConvertFrom-Json
+        if ([IO.File]::Exists($Path)) {
+            [IO.File]::Replace($tempPath, $Path, $backupPath, $true)
+        }
+        else {
+            [IO.File]::Move($tempPath, $Path)
+        }
+        $finalReadback = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false))
+        if ($finalReadback -cne $json) {
+            throw "replacing_evidence_final_readback_failed"
+        }
+    }
+    finally {
+        foreach ($candidate in @($tempPath, $backupPath)) {
+            if ([IO.File]::Exists($candidate)) {
+                [IO.File]::Delete($candidate)
+            }
+        }
+    }
+    return Get-ColdRestoreTextSha256 $json
+}
+
+function Test-ColdRestoreProcessAPhaseTimeline {
+    param(
+        [Parameter(Mandatory = $true)]$Value,
+        [Parameter(Mandatory = $true)][string]$ExpectedRunId,
+        [Parameter(Mandatory = $true)][string]$ExpectedRepositoryHead,
+        $Previous = $null
+    )
+
+    if (-not (Test-ColdRestoreExactFieldSet $Value $script:ProcessAPhaseTimelineFields)) {
+        return [pscustomobject]@{ valid = $false; reason_code = "phase_timeline_field_set_invalid"; value = $Value }
+    }
+    $reason = "ok"
+    if ([int]$Value.schema_version -ne 1 -or [string]$Value.timeline_id -cne "ProcessAPhaseTimelineV1") {
+        $reason = "phase_timeline_schema_invalid"
+    }
+    elseif ([string]$Value.run_id -cne $ExpectedRunId) {
+        $reason = "phase_timeline_run_id_mismatch"
+    }
+    elseif ([string]$Value.role -cne "producer") {
+        $reason = "phase_timeline_role_invalid"
+    }
+    elseif ([string]$Value.repository_head -cne $ExpectedRepositoryHead) {
+        $reason = "phase_timeline_repository_head_mismatch"
+    }
+    elseif ([string]$Value.scenario_fingerprint -notmatch '^[0-9a-f]{64}$') {
+        $reason = "phase_timeline_scenario_fingerprint_invalid"
+    }
+    elseif ($Value.official -isnot [bool] `
+        -or $Value.save_file_exists -isnot [bool] `
+        -or $Value.child_completion_written -isnot [bool] `
+        -or $Value.allowlisted_manifest_written -isnot [bool] `
+        -or $Value.quit_requested -isnot [bool]) {
+        $reason = "phase_timeline_boolean_invalid"
+    }
+    elseif ([int64]$Value.process_start_monotonic_ms -lt 0 `
+        -or [int64]$Value.snapshot_sequence -le 0 `
+        -or [int64]$Value.last_progress_monotonic_ms -lt [int64]$Value.process_start_monotonic_ms `
+        -or [int64]$Value.save_file_bytes -lt 0) {
+        $reason = "phase_timeline_integer_invalid"
+    }
+    elseif ([bool]$Value.save_file_exists -ne (
+        [int64]$Value.save_file_bytes -gt 0 -and [string]$Value.save_file_sha256 -match '^[0-9a-f]{64}$'
+    )) {
+        $reason = "phase_timeline_save_state_invalid"
+    }
+    elseif (@($Value.phase_rows).Count -lt 1 -or @($Value.phase_rows).Count -gt $script:ProcessAPhaseIds.Count) {
+        $reason = "phase_timeline_rows_invalid"
+    }
+
+    $lastCompleted = ""
+    $incompleteCount = 0
+    $previousEntered = [int64]$Value.process_start_monotonic_ms
+    if ($reason -eq "ok") {
+        for ($index = 0; $index -lt @($Value.phase_rows).Count; $index += 1) {
+            $row = @($Value.phase_rows)[$index]
+            if (-not (Test-ColdRestoreExactFieldSet $row $script:ProcessAPhaseRowFields) `
+                -or [string]$row.phase_id -cne [string]$script:ProcessAPhaseIds[$index]) {
+                $reason = "phase_timeline_phase_order_invalid"
+                break
+            }
+            $entered = [int64]$row.entered_monotonic_ms
+            $completed = [int64]$row.completed_monotonic_ms
+            $duration = [int64]$row.duration_ms
+            if ($entered -lt $previousEntered -or $completed -lt 0 -or $duration -lt 0) {
+                $reason = "phase_timeline_monotonicity_invalid"
+                break
+            }
+            if ($completed -eq 0) {
+                $incompleteCount += 1
+                if ($index -ne @($Value.phase_rows).Count - 1 `
+                    -or $duration -ne 0 `
+                    -or [string]$row.reason_code -cne "in_progress") {
+                    $reason = "phase_timeline_incomplete_row_invalid"
+                    break
+                }
+            }
+            else {
+                if ($completed -lt $entered -or $duration -ne ($completed - $entered)) {
+                    $reason = "phase_timeline_duration_invalid"
+                    break
+                }
+                if ([string]::IsNullOrEmpty([string]$row.reason_code) `
+                    -or (-not [string]::IsNullOrEmpty([string]$row.evidence_fingerprint) `
+                        -and [string]$row.evidence_fingerprint -notmatch '^[0-9a-f]{64}$')) {
+                    $reason = "phase_timeline_row_value_invalid"
+                    break
+                }
+                $lastCompleted = [string]$row.phase_id
+                $previousEntered = $completed
+            }
+        }
+    }
+    if ($reason -eq "ok") {
+        $lastRow = @($Value.phase_rows)[@($Value.phase_rows).Count - 1]
+        $expectedCurrent = if ([int64]$lastRow.completed_monotonic_ms -eq 0) { [string]$lastRow.phase_id } else { "" }
+        if ($incompleteCount -gt 1 `
+            -or [string]$Value.current_phase -cne $expectedCurrent `
+            -or [string]$Value.last_completed_phase -cne $lastCompleted) {
+            $reason = "phase_timeline_cursor_invalid"
+        }
+    }
+    if ($reason -eq "ok") {
+        $fingerprint = Get-ColdRestoreEvidenceFingerprint $Value "timeline_fingerprint"
+        if ([string]$Value.timeline_fingerprint -cne $fingerprint) {
+            $reason = "phase_timeline_fingerprint_invalid"
+        }
+    }
+    if ($reason -eq "ok" -and $null -ne $Previous) {
+        if ([string]$Previous.run_id -cne [string]$Value.run_id `
+            -or [string]$Previous.repository_head -cne [string]$Value.repository_head `
+            -or [string]$Previous.scenario_fingerprint -cne [string]$Value.scenario_fingerprint `
+            -or [bool]$Previous.official -ne [bool]$Value.official) {
+            $reason = "phase_timeline_identity_mutation"
+        }
+        elseif ([int64]$Value.snapshot_sequence -ne ([int64]$Previous.snapshot_sequence + 1)) {
+            $reason = "phase_timeline_sequence_invalid"
+        }
+        elseif (@($Value.phase_rows).Count -lt @($Previous.phase_rows).Count) {
+            $reason = "phase_timeline_truncated"
+        }
+        elseif ([int64]$Value.last_progress_monotonic_ms -lt [int64]$Previous.last_progress_monotonic_ms) {
+            $reason = "phase_timeline_progress_regressed"
+        }
+        else {
+            for ($index = 0; $index -lt @($Previous.phase_rows).Count; $index += 1) {
+                $previousRow = @($Previous.phase_rows)[$index]
+                if ([int64]$previousRow.completed_monotonic_ms -gt 0 `
+                    -and (ConvertTo-ColdRestoreCanonicalJson $previousRow) -cne (ConvertTo-ColdRestoreCanonicalJson @($Value.phase_rows)[$index])) {
+                    $reason = "phase_timeline_completed_row_mutation"
+                    break
+                }
+            }
+            if ($reason -eq "ok") {
+                foreach ($flag in @("save_file_exists", "child_completion_written", "allowlisted_manifest_written", "quit_requested")) {
+                    if ([bool]$Previous.$flag -and -not [bool]$Value.$flag) {
+                        $reason = "phase_timeline_flag_regressed"
+                        break
+                    }
+                }
+            }
+        }
+    }
+    return [pscustomobject]@{
+        valid = $reason -eq "ok"
+        reason_code = $reason
+        value = $Value
+    }
+}
+
+function Sync-ColdRestoreProcessAPhaseTimeline {
+    param(
+        [Parameter(Mandatory = $true)][string]$EventDirectory,
+        [Parameter(Mandatory = $true)][string]$TimelinePath,
+        [Parameter(Mandatory = $true)][string]$ExpectedRunId,
+        [Parameter(Mandatory = $true)][string]$ExpectedRepositoryHead
+    )
+
+    $previous = $null
+    if ([IO.File]::Exists($TimelinePath)) {
+        try {
+            $previous = [IO.File]::ReadAllText($TimelinePath, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
+        }
+        catch {
+            return [pscustomobject]@{ valid = $false; found = $true; reason_code = "phase_timeline_stable_json_invalid"; value = $null }
+        }
+        $stableValidation = Test-ColdRestoreProcessAPhaseTimeline $previous $ExpectedRunId $ExpectedRepositoryHead
+        if (-not [bool]$stableValidation.valid) {
+            return [pscustomobject]@{ valid = $false; found = $true; reason_code = [string]$stableValidation.reason_code; value = $previous }
+        }
+    }
+    if (-not [IO.Directory]::Exists($EventDirectory)) {
+        return [pscustomobject]@{ valid = $true; found = $null -ne $previous; reason_code = "ok"; value = $previous }
+    }
+    $events = @(
+        Get-ChildItem -LiteralPath $EventDirectory -File -Filter "*.snapshot.json" |
+            Sort-Object Name
+    )
+    foreach ($event in $events) {
+        try {
+            $candidate = [IO.File]::ReadAllText($event.FullName, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
+        }
+        catch {
+            return [pscustomobject]@{ valid = $false; found = $true; reason_code = "phase_timeline_event_json_invalid"; value = $previous }
+        }
+        if ($null -ne $previous -and [int64]$candidate.snapshot_sequence -le [int64]$previous.snapshot_sequence) {
+            continue
+        }
+        $validation = Test-ColdRestoreProcessAPhaseTimeline $candidate $ExpectedRunId $ExpectedRepositoryHead $previous
+        if (-not [bool]$validation.valid) {
+            return [pscustomobject]@{ valid = $false; found = $true; reason_code = [string]$validation.reason_code; value = $candidate }
+        }
+        try {
+            $null = Write-ColdRestoreReplacingAtomicJson $TimelinePath $candidate
+        }
+        catch {
+            return [pscustomobject]@{ valid = $false; found = $true; reason_code = "phase_timeline_atomic_replace_failed"; value = $candidate }
+        }
+        $previous = $candidate
+    }
+    return [pscustomobject]@{ valid = $true; found = $null -ne $previous; reason_code = "ok"; value = $previous }
 }
 
 function New-ColdRestoreChildCompletionFixture {
@@ -486,16 +797,26 @@ function Invoke-ColdRestoreAttestedProcess {
         [Parameter(Mandatory = $true)][ValidateRange(1, 3600)][int]$TimeoutSeconds,
         [hashtable]$EnvironmentVariables = @{},
         [string]$LaunchAttestationPath = "",
-        $LaunchAuthorization = $null
+        $LaunchAuthorization = $null,
+        [string]$PhaseTimelineEventDirectory = "",
+        [string]$PhaseTimelinePath = ""
     )
 
+    $wallStopwatch = [Diagnostics.Stopwatch]::StartNew()
     $launchAuthorizationEnabled = $LaunchAttestationPath -ne "" -and $null -ne $LaunchAuthorization
     if (($LaunchAttestationPath -ne "") -ne ($null -ne $LaunchAuthorization)) {
         throw "launch_authorization_parameter_mismatch"
     }
+    $phaseTimelineEnabled = $PhaseTimelineEventDirectory -ne "" -and $PhaseTimelinePath -ne ""
+    if (($PhaseTimelineEventDirectory -ne "") -ne ($PhaseTimelinePath -ne "")) {
+        throw "phase_timeline_parameter_mismatch"
+    }
     $evidencePaths = @($ChildAttestationPath, $ParentAttestationPath, $StdoutPath, $StderrPath)
     if ($launchAuthorizationEnabled) {
         $evidencePaths += $LaunchAttestationPath
+    }
+    if ($phaseTimelineEnabled) {
+        $evidencePaths += $PhaseTimelinePath
     }
     foreach ($path in $evidencePaths) {
         [IO.Directory]::CreateDirectory((Split-Path -Parent $path)) | Out-Null
@@ -511,6 +832,7 @@ function Invoke-ColdRestoreAttestedProcess {
     $stderr = ""
     $captureComplete = $false
     $launchFailureCode = ""
+    $phaseTimelineSync = [pscustomobject]@{ valid = $true; found = $false; reason_code = "ok"; value = $null }
     $ownedIds = [Collections.Generic.HashSet[int]]::new()
     $launchCollision = @(
         $evidencePaths |
@@ -554,16 +876,37 @@ function Invoke-ColdRestoreAttestedProcess {
             $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
             while (-not $process.HasExited -and [DateTime]::UtcNow -lt $deadline) {
                 Add-ColdRestoreOwnedProcesses $ownedIds (Get-ColdRestoreProcessSnapshot) $RunId
+                if ($phaseTimelineEnabled) {
+                    $phaseTimelineSync = Sync-ColdRestoreProcessAPhaseTimeline `
+                        -EventDirectory $PhaseTimelineEventDirectory `
+                        -TimelinePath $PhaseTimelinePath `
+                        -ExpectedRunId $RunId `
+                        -ExpectedRepositoryHead $RepositoryHead
+                    if (-not [bool]$phaseTimelineSync.valid) {
+                        $launchFailureCode = [string]$phaseTimelineSync.reason_code
+                        break
+                    }
+                }
                 Start-Sleep -Milliseconds 100
             }
             if (-not $process.HasExited) {
-                $timedOut = $true
+                $timedOut = $launchFailureCode -eq ""
                 $terminatedByParent = $true
                 $process.Kill($true)
             }
             if ($process.WaitForExit(5000)) {
                 $observedExit = $true
                 $exitCode = $process.ExitCode
+            }
+            if ($phaseTimelineEnabled) {
+                $phaseTimelineSync = Sync-ColdRestoreProcessAPhaseTimeline `
+                    -EventDirectory $PhaseTimelineEventDirectory `
+                    -TimelinePath $PhaseTimelinePath `
+                    -ExpectedRunId $RunId `
+                    -ExpectedRepositoryHead $RepositoryHead
+                if (-not [bool]$phaseTimelineSync.valid -and $launchFailureCode -eq "") {
+                    $launchFailureCode = [string]$phaseTimelineSync.reason_code
+                }
             }
             Add-ColdRestoreOwnedProcesses $ownedIds (Get-ColdRestoreProcessSnapshot) $RunId
             $stdoutReady = $stdoutTask.Wait(2000)
@@ -624,6 +967,8 @@ function Invoke-ColdRestoreAttestedProcess {
         "evidence_collision"
     } elseif ($launchFailureCode -ne "") {
         $launchFailureCode
+    } elseif ($phaseTimelineEnabled -and -not [bool]$phaseTimelineSync.found) {
+        "phase_timeline_missing"
     } elseif ($timedOut) {
         "child_process_timeout"
     } elseif (-not $observedExit) {
@@ -665,6 +1010,7 @@ function Invoke-ColdRestoreAttestedProcess {
         throw "parent_attestation_field_set_invalid"
     }
     Write-ColdRestoreAtomicJson $ParentAttestationPath ([pscustomobject]$parent) | Out-Null
+    $wallStopwatch.Stop()
     return [pscustomobject]@{
         wrapper_exit_green = $wrapperGreen
         wrapper_reason_code = $wrapperReason
@@ -674,6 +1020,9 @@ function Invoke-ColdRestoreAttestedProcess {
         observed_task_process_ids = @($ownedIds | Sort-Object)
         stdout = $stdout
         stderr = $stderr
+        phase_timeline = $phaseTimelineSync.value
+        phase_timeline_validation = $phaseTimelineSync
+        wall_elapsed_ms = [int64]$wallStopwatch.ElapsedMilliseconds
     }
 }
 
@@ -684,6 +1033,9 @@ Export-ModuleMember -Function @(
     "Test-ColdRestoreExactFieldSet",
     "Write-ColdRestoreAtomicJson",
     "Write-ColdRestoreExclusiveJson",
+    "Write-ColdRestoreReplacingAtomicJson",
+    "Test-ColdRestoreProcessAPhaseTimeline",
+    "Sync-ColdRestoreProcessAPhaseTimeline",
     "New-ColdRestoreChildCompletionFixture",
     "Test-ColdRestoreChildCompletionAttestation",
     "New-ColdRestoreGodotArgumentList",
