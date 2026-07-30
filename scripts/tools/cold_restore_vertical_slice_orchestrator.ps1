@@ -5,6 +5,8 @@ param(
     [string]$GodotPath = "godot",
     [string]$RunId = "alpha04c-cold-restore",
     [switch]$QualificationProbe,
+    [switch]$NonOfficialProcessA,
+    [ValidateSet("diagnostic", "rehearsal")][string]$NonOfficialProcessAKind = "diagnostic",
     [switch]$EnableColdRestoreExecution,
     [string]$ContractManifestPath = "",
     [ValidateRange(1, 3600)][int]$ChildTimeoutSeconds = 60,
@@ -22,7 +24,8 @@ $OfficialAuthorizationId = "alpha04c-p0-cold-restore-depth1-seed900626424-v1"
 $OfficialClaimRelativePath = "codex\cold_restore_v3\official-alpha04c-depth1-seed900626424\official_claim_ledger.json"
 $DriverScript = "res://scripts/tools/cold_restore_vertical_slice_driver.gd"
 $ArtifactRoot = "user://test_runs/alpha04c/$RunId/evidence"
-$UserDataRoot = Join-Path ([IO.Path]::GetTempPath()) "space_syndicate_alpha04c_cold_restore_$RunId"
+$UserDataPrefix = if ($NonOfficialProcessA) { "space_syndicate_alpha04c_cold_restore_non_official" } else { "space_syndicate_alpha04c_cold_restore" }
+$UserDataRoot = Join-Path ([IO.Path]::GetTempPath()) "$UserDataPrefix`_$RunId"
 $IsolatedAppData = Join-Path $UserDataRoot "appdata-roaming"
 $IsolatedLocalAppData = Join-Path $UserDataRoot "appdata-local"
 $ManifestPrefix = "COLD_RESTORE_MANIFEST|"
@@ -427,6 +430,8 @@ function Get-ColdRestoreRolePaths {
         parent_attestation = Join-Path $root "parent\$Role.exit.json"
         stdout = Join-Path $root "parent\$Role.stdout.log"
         stderr = Join-Path $root "parent\$Role.stderr.log"
+        phase_timeline = Join-Path $root "diagnostics\producer.phase_timeline.json"
+        phase_timeline_events = Join-Path $root "diagnostics\producer.phase_timeline.events"
     }
 }
 
@@ -560,6 +565,106 @@ function Invoke-ColdRestoreQualification {
     return [pscustomobject]@{ run = $run; result = $result; paths = $paths }
 }
 
+function Invoke-ColdRestoreNonOfficialProcessA {
+    param(
+        [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
+        [Parameter(Mandatory = $true)][string]$HeadSha
+    )
+
+    Assert-ColdRestoreCondition ($ChildTimeoutSeconds -le 180) "diagnostic_timeout_exceeds_limit"
+    Assert-ColdRestoreCondition ($ExpectedScenarioFingerprint -match '^[0-9a-f]{64}$') "expected_scenario_fingerprint_invalid"
+    $paths = Get-ColdRestoreRolePaths $ResolvedProjectPath "producer"
+    $arguments = New-ColdRestoreGodotArgumentList `
+        -EngineArgumentList @("--headless", "--path", $ResolvedProjectPath, "--script", $DriverScript) `
+        -UserArgumentList @(
+            "--cold-restore-non-official-process-a",
+            "--cold-restore-role=producer",
+            "--cold-restore-run-id=$RunId",
+            "--cold-restore-head-sha=$HeadSha",
+            "--cold-restore-artifact-root=$ArtifactRoot",
+            "--cold-restore-scenario-fingerprint=$ExpectedScenarioFingerprint"
+        )
+    $run = Invoke-ColdRestoreAttestedProcess `
+        -ExecutablePath $GodotPath `
+        -WorkingDirectory $ResolvedProjectPath `
+        -ArgumentList $arguments `
+        -RunId $RunId `
+        -Role "producer" `
+        -RepositoryHead $HeadSha `
+        -ChildAttestationPath $paths.child_attestation `
+        -ParentAttestationPath $paths.parent_attestation `
+        -StdoutPath $paths.stdout `
+        -StderrPath $paths.stderr `
+        -TimeoutSeconds $ChildTimeoutSeconds `
+        -EnvironmentVariables @{ APPDATA = $IsolatedAppData; LOCALAPPDATA = $IsolatedLocalAppData } `
+        -PhaseTimelineEventDirectory $paths.phase_timeline_events `
+        -PhaseTimelinePath $paths.phase_timeline
+    Assert-ColdRestoreCondition ([bool]$run.wrapper_exit_green) "producer_$($run.wrapper_reason_code)"
+    $manifest = Read-ColdRestoreJsonArtifact $paths.child_result
+    Assert-ColdRestoreManifest $manifest "producer" $RunId
+    Assert-ColdRestoreCondition ([bool]$manifest.success) "producer_manifest_failed"
+    Assert-ColdRestoreCondition (-not [bool]$run.child.official `
+        -and -not [bool]$run.child.formal `
+        -and -not [bool]$run.child.official_count_consumed `
+        -and [bool]$run.child.save_written `
+        -and [bool]$run.child.qualification_green) "non_official_process_a_child_binding_invalid"
+    $timeline = $run.phase_timeline
+    Assert-ColdRestoreCondition ($null -ne $timeline `
+        -and [int]$timeline.schema_version -eq 1 `
+        -and [string]$timeline.timeline_id -eq "ProcessAPhaseTimelineV1" `
+        -and @($timeline.phase_rows).Count -eq 19 `
+        -and [string]$timeline.last_completed_phase -eq "quit_requested" `
+        -and [bool]$timeline.save_file_exists `
+        -and [bool]$timeline.allowlisted_manifest_written `
+        -and [bool]$timeline.child_completion_written `
+        -and [bool]$timeline.quit_requested) "process_a_phase_timeline_incomplete"
+    $saveFiles = @(Get-ChildItem -LiteralPath $UserDataRoot -Recurse -File -Filter "current_run.save")
+    Assert-ColdRestoreCondition ($saveFiles.Count -eq 1) "non_official_process_a_save_count_invalid"
+    $savePath = [IO.Path]::GetFullPath($saveFiles[0].FullName)
+    Assert-ColdRestoreCondition ($savePath.StartsWith([IO.Path]::GetFullPath($UserDataRoot), [StringComparison]::OrdinalIgnoreCase)) "non_official_process_a_save_scope_invalid"
+    Assert-ColdRestoreCondition ([int64]$saveFiles[0].Length -eq [int64]$timeline.save_file_bytes `
+        -and (Get-FileHash -LiteralPath $savePath -Algorithm SHA256).Hash.ToLowerInvariant() -eq [string]$timeline.save_file_sha256) "non_official_process_a_save_fingerprint_mismatch"
+    return [pscustomobject]@{
+        run = $run
+        manifest = $manifest
+        timeline = $timeline
+        paths = $paths
+        save_path = $savePath
+    }
+}
+
+function New-ColdRestoreNonOfficialProcessAOutput {
+    param([Parameter(Mandatory = $true)]$Result)
+
+    return [ordered]@{
+        schema_version = 1
+        driver_id = "alpha04c_non_official_process_a_v1"
+        formal_full_run = $false
+        official_cold_restore_vertical_slice = $false
+        non_official_process_a = $true
+        run_kind = $NonOfficialProcessAKind
+        run_id = $RunId
+        repository_head = [string]$Result.manifest.head_sha
+        scenario_fingerprint = $ExpectedScenarioFingerprint
+        timeout_seconds = $ChildTimeoutSeconds
+        wall_elapsed_ms = [int64]$Result.run.wall_elapsed_ms
+        save_green = [bool]$Result.timeline.save_file_exists
+        save_file_bytes = [int64]$Result.timeline.save_file_bytes
+        save_file_sha256 = [string]$Result.timeline.save_file_sha256
+        phase_timeline_green = @($Result.timeline.phase_rows).Count -eq 19
+        phase_timeline_path = [string]$Result.paths.phase_timeline
+        child_completion_attestation_green = [bool]$Result.run.parent.child_attestation_valid
+        parent_exit_attestation_green = [bool]$Result.run.parent.wrapper_exit_green
+        exit_code = [int]$Result.run.parent.exit_code
+        timed_out = [bool]$Result.run.parent.timed_out
+        terminated_by_parent = [bool]$Result.run.parent.terminated_by_parent
+        task_owned_process_count_after = [int]$Result.run.parent.task_owned_process_count_after
+        phase_rows = @($Result.timeline.phase_rows)
+        success = [bool]$Result.run.wrapper_exit_green -and [bool]$Result.manifest.success
+        failure_code = ""
+    }
+}
+
 function Assert-ColdRestoreLaunchAttestation {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
@@ -664,7 +769,9 @@ function Invoke-ColdRestoreRole {
             launch_nonce = $launchNonce
             orchestrator_process_id = [int]$Authorization.orchestrator_process_id
             orchestrator_creation_time_utc_ticks = [string]$Authorization.orchestrator_creation_time_utc_ticks
-        })
+        }) `
+        -PhaseTimelineEventDirectory $(if ($Role -eq "producer") { $paths.phase_timeline_events } else { "" }) `
+        -PhaseTimelinePath $(if ($Role -eq "producer") { $paths.phase_timeline } else { "" })
     Assert-ColdRestoreCondition ([bool]$run.wrapper_exit_green) "${Role}_$($run.wrapper_reason_code)"
     $launchEvidence = Assert-ColdRestoreLaunchAttestation `
         -Path $launchAttestationPath `
@@ -1040,6 +1147,7 @@ try {
     Assert-ColdRestoreCondition ($RunId -match '^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$') "run_id_invalid"
     $selectedModeCount = @(
         [bool]$QualificationProbe,
+        [bool]$NonOfficialProcessA,
         [bool]$EnableColdRestoreExecution,
         ($ContractManifestPath -ne "")
     ).Where({ $_ }).Count
@@ -1052,7 +1160,7 @@ try {
         exit 0
     }
 
-    if (-not $QualificationProbe -and -not $EnableColdRestoreExecution) {
+    if (-not $QualificationProbe -and -not $NonOfficialProcessA -and -not $EnableColdRestoreExecution) {
         Write-AllowlistedResult (New-AllowlistedResult $false $false $true "")
         exit 0
     }
@@ -1071,6 +1179,12 @@ try {
     if ($QualificationProbe) {
         $qualification = Invoke-ColdRestoreQualification $resolvedProjectPath $headSha
         Write-AllowlistedResult (New-ColdRestoreQualificationOutput $qualification.run $qualification.result)
+        exit 0
+    }
+
+    if ($NonOfficialProcessA) {
+        $processA = Invoke-ColdRestoreNonOfficialProcessA $resolvedProjectPath $headSha
+        Write-AllowlistedResult (New-ColdRestoreNonOfficialProcessAOutput $processA)
         exit 0
     }
 
@@ -1115,6 +1229,19 @@ catch {
             product_blocker = ""
             queue_count = 0
             task_owned_process_count_after = -1
+            success = $false
+            failure_code = $safeFailureCode
+        })
+    }
+    elseif ($NonOfficialProcessA) {
+        Write-AllowlistedResult ([ordered]@{
+            schema_version = 1
+            driver_id = "alpha04c_non_official_process_a_v1"
+            formal_full_run = $false
+            official_cold_restore_vertical_slice = $false
+            non_official_process_a = $true
+            run_kind = $NonOfficialProcessAKind
+            run_id = $(if ($RunId -match '^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$') { $RunId } else { "" })
             success = $false
             failure_code = $safeFailureCode
         })
