@@ -5,6 +5,9 @@ class_name CardResolutionQueueRuntimeService
 const SharedCardGroupWindowScript := preload("res://scripts/cards/shared_card_group_window.gd")
 const StableTargetEnvelope := preload("res://scripts/runtime/card_resolution_stable_target_envelope.gd")
 const StrictState := preload("res://scripts/runtime/save_owner_state_v2_contract.gd")
+const FacilityBinding := preload("res://scripts/cards/v06/queued_facility_card_action_v1.gd")
+const FacilityRestoreDependencies := preload("res://scripts/runtime/queued_facility_card_restore_dependency_contract_v06.gd")
+const SemanticWire := preload("res://scripts/semantic/semantic_wire_v1.gd")
 
 const RULESET_ID := "v0.6"
 const SAVE_STATE_VERSION := 2
@@ -34,6 +37,23 @@ const REQUIRED_ENTRY_KEYS := [
 	"asset_reservation_id", "asset_cost", "asset_debit", "asset_reservation_required",
 	"consumed_on_queue", "skill",
 ]
+const FACILITY_SUBMISSION_ROLLBACK_SCHEMA_VERSION := 1
+const FACILITY_SUBMISSION_ROLLBACK_KIND_ID := "facility_queue_submission_rollback"
+const FACILITY_SUBMISSION_ROLLBACK_SOURCE_SCRIPT := \
+	"res://scripts/runtime/facility_card_queue_adapter_v06.gd"
+const FACILITY_SUBMISSION_ROLLBACK_REQUEST_FIELDS := [
+	"schema_version",
+	"request_id",
+	"intent_fingerprint",
+	"actor_id",
+	"actor_player_index",
+	"hand_slot_id",
+	"card_instance_id",
+	"card_semantic_id",
+	"escrow_id",
+	"expected_resolution_id",
+	"reason_code",
+]
 
 var _ruleset_id := ""
 var _configured := false
@@ -49,6 +69,8 @@ var _last_reason := ""
 var _last_group_window_sequence := -1
 var _ordinary_card_limit := SharedCardGroupWindowScript.ORDINARY_MAX_CARDS
 var _maximum_with_explicit_capability := SharedCardGroupWindowScript.MAXIMUM_WITH_EXPLICIT_CAPABILITY
+var _facility_submission_rollback_source: Node
+var _facility_submission_rollback_capability: RefCounted
 
 
 func configure(ruleset_snapshot: Dictionary) -> void:
@@ -80,6 +102,37 @@ func reset_state() -> void:
 	_rejection_count = 0
 	_last_reason = ""
 	_last_group_window_sequence = -1
+
+
+func bind_facility_submission_rollback_source(
+	source: Node,
+	capability: RefCounted
+) -> Dictionary:
+	var source_script: Script = source.get_script() if source != null else null
+	if source == null or capability == null or source_script == null \
+			or str(source_script.resource_path) != FACILITY_SUBMISSION_ROLLBACK_SOURCE_SCRIPT:
+		return {
+			"bound": false,
+			"reason_code": "facility_queue_submission_rollback_source_invalid",
+		}
+	if _facility_submission_rollback_source != null \
+			or _facility_submission_rollback_capability != null:
+		if _facility_submission_rollback_source == source \
+				and _facility_submission_rollback_capability == capability:
+			return {
+				"bound": true,
+				"reason_code": "facility_queue_submission_rollback_source_already_bound",
+			}
+		return {
+			"bound": false,
+			"reason_code": "facility_queue_submission_rollback_source_rebind_rejected",
+		}
+	_facility_submission_rollback_source = source
+	_facility_submission_rollback_capability = capability
+	return {
+		"bound": true,
+		"reason_code": "facility_queue_submission_rollback_source_bound",
+	}
 
 
 func capture_runtime_checkpoint() -> Dictionary:
@@ -262,6 +315,181 @@ func commit_submission(plan: Dictionary, commit_receipt: Dictionary) -> Dictiona
 	}
 
 
+func rollback_facility_submission(
+	capability: RefCounted,
+	request: Dictionary
+) -> Dictionary:
+	if capability == null or capability != _facility_submission_rollback_capability \
+			or _facility_submission_rollback_source == null:
+		return _facility_submission_rollback_result(
+			false,
+			false,
+			false,
+			false,
+			-1,
+			"unauthorized",
+			"facility_queue_submission_rollback_unauthorized"
+		)
+	var validation := _validate_facility_submission_rollback_request(request)
+	if not bool(validation.get("valid", false)):
+		return _facility_submission_rollback_result(
+			false,
+			false,
+			false,
+			false,
+			-1,
+			"request_invalid",
+			str(validation.get(
+				"reason_code",
+				"facility_queue_submission_rollback_request_invalid"
+			))
+		)
+	var located := _locate_facility_submission_rollback_entry(request)
+	if not bool(located.get("valid", false)):
+		return _facility_submission_rollback_result(
+			false,
+			bool(located.get("commitment_found", false)),
+			false,
+			false,
+			int(located.get("resolution_id", -1)),
+			str(located.get("outcome_id", "binding_collision")),
+			str(located.get(
+				"reason_code",
+				"facility_queue_submission_rollback_binding_collision"
+			))
+		)
+	if not bool(located.get("commitment_found", false)):
+		return _facility_submission_rollback_result(
+			true,
+			false,
+			false,
+			true,
+			-1,
+			"not_committed",
+			"facility_queue_submission_not_committed",
+			true
+		)
+	var route_id := str(located.get("route_id", ""))
+	var resolution_id := int(located.get("resolution_id", -1))
+	if route_id == "active":
+		return _facility_submission_rollback_result(
+			false,
+			true,
+			false,
+			false,
+			resolution_id,
+			"active",
+			"facility_queue_submission_rollback_active"
+		)
+	var entry_index := int(located.get("entry_index", -1))
+	if route_id == "current" and entry_index >= 0 and entry_index < _current_queue.size():
+		_current_queue.remove_at(entry_index)
+		_reindex_current_groups()
+	elif route_id == "next" and entry_index >= 0 and entry_index < _next_queue.size():
+		_next_queue.remove_at(entry_index)
+		_reindex_queue_groups(_next_queue)
+	else:
+		return _facility_submission_rollback_result(
+			false,
+			true,
+			false,
+			false,
+			resolution_id,
+			"route_invalid",
+			"facility_queue_submission_rollback_route_invalid"
+		)
+	_revision += 1
+	_last_reason = str(request.get("reason_code", ""))
+	var postcondition := _locate_facility_submission_rollback_entry(request)
+	var state_verified := bool(postcondition.get("valid", false)) \
+		and not bool(postcondition.get("commitment_found", true)) \
+		and entry_by_id(resolution_id).is_empty()
+	return _facility_submission_rollback_result(
+		state_verified,
+		true,
+		true,
+		state_verified,
+		resolution_id,
+		"rolled_back" if state_verified else "rollback_incomplete",
+		"facility_queue_submission_rolled_back" if state_verified \
+			else "facility_queue_submission_rollback_incomplete"
+	)
+
+
+func facility_submission_status(
+	capability: RefCounted,
+	request: Dictionary
+) -> Dictionary:
+	if capability == null or capability != _facility_submission_rollback_capability \
+			or _facility_submission_rollback_source == null:
+		return _facility_submission_status_result(
+			false,
+			false,
+			false,
+			false,
+			-1,
+			"",
+			"unauthorized",
+			"facility_queue_submission_status_unauthorized"
+		)
+	var validation := _validate_facility_submission_rollback_request(request)
+	if not bool(validation.get("valid", false)):
+		return _facility_submission_status_result(
+			false,
+			false,
+			false,
+			false,
+			-1,
+			"",
+			"request_invalid",
+			str(validation.get(
+				"reason_code",
+				"facility_queue_submission_status_request_invalid"
+			))
+		)
+	var located := _locate_facility_submission_rollback_entry(request)
+	if not bool(located.get("valid", false)):
+		return _facility_submission_status_result(
+			false,
+			bool(located.get("commitment_found", false)),
+			str(located.get("route_id", "")) == "active",
+			false,
+			int(located.get("resolution_id", -1)),
+			"",
+			str(located.get("outcome_id", "binding_collision")),
+			str(located.get(
+				"reason_code",
+				"facility_queue_submission_status_binding_collision"
+			))
+		)
+	if not bool(located.get("commitment_found", false)):
+		return _facility_submission_status_result(
+			true,
+			false,
+			false,
+			true,
+			-1,
+			"",
+			"not_committed",
+			"facility_queue_submission_not_committed"
+		)
+	var entry: Dictionary = located.get("entry", {}) \
+		if located.get("entry", {}) is Dictionary else {}
+	var binding: Dictionary = entry.get("v06_facility_action", {}) \
+		if entry.get("v06_facility_action", {}) is Dictionary else {}
+	var active := str(located.get("route_id", "")) == "active"
+	return _facility_submission_status_result(
+		true,
+		true,
+		active,
+		true,
+		int(located.get("resolution_id", -1)),
+		str(binding.get("binding_fingerprint", "")),
+		"active" if active else "pending",
+		"facility_queue_submission_status_found"
+	)
+
+
 func lock_batch(facts: Dictionary) -> Dictionary:
 	if not _configured or not _is_data_only(facts) or _current_queue.is_empty() or not _active_entry.is_empty():
 		return {"locked": false, "reason": "queue_not_lockable"}
@@ -318,6 +546,35 @@ func start_next(facts: Dictionary = {}) -> Dictionary:
 		"revision": _revision,
 		"skipped_entries": skipped,
 		"batch_empty": true,
+	}
+
+
+func start_immediate_facility(resolution_id: int, facts: Dictionary = {}) -> Dictionary:
+	if not _configured or not _is_data_only(facts) or resolution_id <= 0:
+		return {"started": false, "reason": "invalid_immediate_facility_request"}
+	if not _active_entry.is_empty():
+		return {"started": false, "reason": "active_present"}
+	if _current_queue.is_empty() or not (_current_queue[0] is Dictionary):
+		return {"started": false, "reason": "immediate_facility_entry_missing"}
+	var entry := (_current_queue[0] as Dictionary).duplicate(true)
+	if int(entry.get("resolution_id", -1)) != resolution_id:
+		return {"started": false, "reason": "immediate_facility_not_queue_front"}
+	var binding: Dictionary = entry.get("v06_facility_action", {}) \
+		if entry.get("v06_facility_action", {}) is Dictionary else {}
+	if not bool(FacilityBinding.validation_report(binding).get("valid", false)) \
+			or int(binding.get("resolution_id", -1)) != resolution_id:
+		return {"started": false, "reason": "immediate_facility_binding_invalid"}
+	_current_queue.pop_front()
+	_reindex_current_groups()
+	entry["started_time"] = float(facts.get("game_time", 0.0))
+	_active_entry = entry
+	_revision += 1
+	return {
+		"started": true,
+		"reason": "",
+		"revision": _revision,
+		"active_entry": active_entry(),
+		"current_count": _current_queue.size(),
 	}
 
 
@@ -611,6 +868,14 @@ func preflight_restore_dependencies(section_state: Dictionary, all_normalized_st
 	var section_preflight := preflight_save_data(section_state)
 	if not bool(section_preflight.get("accepted", false)):
 		return _restore_dependency_rejection("card_resolution_queue_dependency_section_invalid")
+	var facility_dependencies := FacilityRestoreDependencies.validate(
+		section_state.duplicate(true),
+		all_normalized_states.duplicate(true)
+	)
+	if not bool(facility_dependencies.get("accepted", false)):
+		return _restore_dependency_rejection(str(facility_dependencies.get(
+			"reason_code", "card_resolution_queue_facility_dependency_invalid"
+		)))
 	if not (all_normalized_states.get("session") is Dictionary) \
 			or not (all_normalized_states.get("card_resolution_execution") is Dictionary) \
 			or not (all_normalized_states.get("card_resolution_history") is Dictionary):
@@ -651,7 +916,7 @@ func preflight_restore_dependencies(section_state: Dictionary, all_normalized_st
 	)
 	if not bool(lineage_result.get("valid", false)):
 		return _restore_dependency_rejection(str(lineage_result.get("reason_code", "card_resolution_queue_dependency_lineage_invalid")))
-	return {
+	var receipt := {
 		"accepted": true,
 		"reason": "",
 		"reason_code": "card_resolution_queue_restore_dependencies_valid",
@@ -659,6 +924,14 @@ func preflight_restore_dependencies(section_state: Dictionary, all_normalized_st
 		"execution_lineage_count": int(lineage_result.get("execution_lineage_count", 0)),
 		"history_lineage_count": int(lineage_result.get("history_lineage_count", 0)),
 	}
+	for field_id in [
+		"facility_reference_count",
+		"facility_escrow_reference_count",
+		"facility_reservation_reference_count",
+		"facility_target_catalog_count",
+	]:
+		receipt[field_id] = int(facility_dependencies.get(field_id, 0))
+	return receipt
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
@@ -767,6 +1040,192 @@ func _commit_rejection(reason: String) -> Dictionary:
 	return {"committed": false, "reason": reason, "revision": _revision}
 
 
+func _validate_facility_submission_rollback_request(request: Dictionary) -> Dictionary:
+	if not _configured or not SemanticWire.is_closed_data(request) \
+			or not SemanticWire.exact_fields(
+				request,
+				FACILITY_SUBMISSION_ROLLBACK_REQUEST_FIELDS
+			):
+		return {
+			"valid": false,
+			"reason_code": "facility_queue_submission_rollback_request_invalid",
+		}
+	if request.get("schema_version") != FACILITY_SUBMISSION_ROLLBACK_SCHEMA_VERSION \
+			or not SemanticWire.is_session_id(request.get("request_id")) \
+			or not SemanticWire.is_fingerprint(request.get("intent_fingerprint")) \
+			or not SemanticWire.is_stable_id(request.get("actor_id")) \
+			or not SemanticWire.is_nonnegative_integer(request.get("actor_player_index")) \
+			or str(request.get("actor_id", "")) \
+				!= "player.%d" % int(request.get("actor_player_index", -1)) \
+			or not SemanticWire.is_stable_id(request.get("hand_slot_id")) \
+			or not SemanticWire.is_session_id(request.get("card_instance_id")) \
+			or not SemanticWire.is_stable_id(request.get("card_semantic_id")) \
+			or not SemanticWire.is_session_id(request.get("escrow_id")) \
+			or not (request.get("expected_resolution_id") is int) \
+			or int(request.get("expected_resolution_id", -2)) < -1 \
+			or int(request.get("expected_resolution_id", -1)) == 0 \
+			or not SemanticWire.is_stable_id(request.get("reason_code")):
+		return {
+			"valid": false,
+			"reason_code": "facility_queue_submission_rollback_binding_invalid",
+		}
+	return {
+		"valid": true,
+		"reason_code": "facility_queue_submission_rollback_request_valid",
+	}
+
+
+func _locate_facility_submission_rollback_entry(request: Dictionary) -> Dictionary:
+	var matches: Array[Dictionary] = []
+	var collision := false
+	var rows := [
+		{"route_id": "active", "entry_index": -1, "entry": _active_entry},
+	]
+	for index in range(_current_queue.size()):
+		rows.append({
+			"route_id": "current",
+			"entry_index": index,
+			"entry": _current_queue[index],
+		})
+	for index in range(_next_queue.size()):
+		rows.append({
+			"route_id": "next",
+			"entry_index": index,
+			"entry": _next_queue[index],
+		})
+	for row_variant in rows:
+		var row: Dictionary = row_variant if row_variant is Dictionary else {}
+		var entry_variant: Variant = row.get("entry", {})
+		if not (entry_variant is Dictionary) or (entry_variant as Dictionary).is_empty():
+			continue
+		var entry := entry_variant as Dictionary
+		var binding: Dictionary = entry.get("v06_facility_action", {}) \
+			if entry.get("v06_facility_action", {}) is Dictionary else {}
+		if binding.is_empty():
+			continue
+		var escrow_ref: Dictionary = binding.get("card_escrow", {}) \
+			if binding.get("card_escrow", {}) is Dictionary else {}
+		var same_request_id := str(binding.get("request_id", "")) \
+			== str(request.get("request_id", ""))
+		var same_escrow_id := str(escrow_ref.get("escrow_id", "")) \
+			== str(request.get("escrow_id", ""))
+		if not same_request_id and not same_escrow_id:
+			continue
+		if not _facility_submission_rollback_binding_matches(entry, binding, request):
+			collision = true
+			continue
+		var match_row := row.duplicate(true)
+		match_row["resolution_id"] = int(binding.get("resolution_id", -1))
+		matches.append(match_row)
+	if collision or matches.size() > 1:
+		return {
+			"valid": false,
+			"commitment_found": not matches.is_empty(),
+			"resolution_id": int(matches[0].get("resolution_id", -1)) \
+				if not matches.is_empty() else -1,
+			"outcome_id": "binding_collision",
+			"reason_code": "facility_queue_submission_rollback_binding_collision",
+		}
+	if matches.is_empty():
+		return {
+			"valid": true,
+			"commitment_found": false,
+			"resolution_id": -1,
+			"outcome_id": "not_committed",
+			"reason_code": "facility_queue_submission_not_committed",
+		}
+	var match_row := matches[0]
+	return {
+		"valid": true,
+		"commitment_found": true,
+		"route_id": str(match_row.get("route_id", "")),
+		"entry_index": int(match_row.get("entry_index", -1)),
+		"entry": (match_row.get("entry", {}) as Dictionary).duplicate(true) \
+			if match_row.get("entry", {}) is Dictionary else {},
+		"resolution_id": int(match_row.get("resolution_id", -1)),
+		"outcome_id": "active" if str(match_row.get("route_id", "")) == "active" \
+			else "pending",
+		"reason_code": "facility_queue_submission_found",
+	}
+
+
+func _facility_submission_rollback_binding_matches(
+	entry: Dictionary,
+	binding: Dictionary,
+	request: Dictionary
+) -> bool:
+	if not bool(FacilityBinding.validation_report(binding).get("valid", false)):
+		return false
+	var escrow_ref: Dictionary = binding.get("card_escrow", {}) \
+		if binding.get("card_escrow", {}) is Dictionary else {}
+	var expected_resolution_id := int(request.get("expected_resolution_id", -1))
+	return str(binding.get("request_id", "")) == str(request.get("request_id", "")) \
+		and str(binding.get("intent_fingerprint", "")) \
+			== str(request.get("intent_fingerprint", "")) \
+		and str(binding.get("actor_id", "")) == str(request.get("actor_id", "")) \
+		and int(binding.get("actor_player_index", -1)) \
+			== int(request.get("actor_player_index", -2)) \
+		and str(binding.get("hand_slot_id", "")) \
+			== str(request.get("hand_slot_id", "")) \
+		and str(binding.get("card_instance_id", "")) \
+			== str(request.get("card_instance_id", "")) \
+		and str(binding.get("card_semantic_id", "")) \
+			== str(request.get("card_semantic_id", "")) \
+		and str(escrow_ref.get("escrow_id", "")) == str(request.get("escrow_id", "")) \
+		and int(binding.get("resolution_id", -1)) == _entry_id(entry) \
+		and (expected_resolution_id < 0 \
+			or int(binding.get("resolution_id", -1)) == expected_resolution_id)
+
+
+func _facility_submission_rollback_result(
+	settled: bool,
+	commitment_found: bool,
+	rolled_back: bool,
+	state_verified: bool,
+	resolution_id: int,
+	outcome_id: String,
+	reason_code: String,
+	idempotent_replay: bool = false
+) -> Dictionary:
+	return {
+		"schema_version": FACILITY_SUBMISSION_ROLLBACK_SCHEMA_VERSION,
+		"settlement_kind_id": FACILITY_SUBMISSION_ROLLBACK_KIND_ID,
+		"settled": settled,
+		"commitment_found": commitment_found,
+		"rolled_back": rolled_back,
+		"state_verified": state_verified,
+		"resolution_id": resolution_id,
+		"outcome_id": outcome_id,
+		"reason_code": reason_code,
+		"idempotent_replay": idempotent_replay,
+	}
+
+
+func _facility_submission_status_result(
+	valid: bool,
+	commitment_found: bool,
+	active: bool,
+	state_verified: bool,
+	resolution_id: int,
+	binding_fingerprint: String,
+	outcome_id: String,
+	reason_code: String
+) -> Dictionary:
+	return {
+		"schema_version": FACILITY_SUBMISSION_ROLLBACK_SCHEMA_VERSION,
+		"status_kind_id": "facility_queue_submission_status",
+		"valid": valid,
+		"commitment_found": commitment_found,
+		"active": active,
+		"state_verified": state_verified,
+		"resolution_id": resolution_id,
+		"queue_revision": _revision,
+		"binding_fingerprint": binding_fingerprint,
+		"outcome_id": outcome_id,
+		"reason_code": reason_code,
+	}
+
+
 func _sort_current(reference_player: int, player_count: int) -> void:
 	_current_queue = SharedCardGroupWindowScript.flatten_groups(
 		SharedCardGroupWindowScript.groups_from_entries(_current_queue, reference_player, player_count)
@@ -778,6 +1237,30 @@ func _group_count_in_prefix(entries: Array, player_index: int, end_exclusive: in
 	for index in range(clampi(end_exclusive, 0, entries.size())):
 		prefix.append(entries[index])
 	return SharedCardGroupWindowScript.group_card_count(prefix, player_index)
+
+
+func _reindex_current_groups() -> void:
+	_reindex_queue_groups(_current_queue)
+
+
+func _reindex_queue_groups(entries: Array) -> void:
+	var group_sizes: Dictionary = {}
+	for entry_variant in entries:
+		if entry_variant is Dictionary:
+			var player_index := int((entry_variant as Dictionary).get("player_index", -1))
+			group_sizes[str(player_index)] = int(group_sizes.get(str(player_index), 0)) + 1
+	var group_orders: Dictionary = {}
+	for index in range(entries.size()):
+		if not (entries[index] is Dictionary):
+			continue
+		var entry := (entries[index] as Dictionary).duplicate(true)
+		var player_index := int(entry.get("player_index", -1))
+		var player_key := str(player_index)
+		var group_order := int(group_orders.get(player_key, 0)) + 1
+		group_orders[player_key] = group_order
+		entry["group_order"] = group_order
+		entry["group_size"] = int(group_sizes.get(player_key, group_order))
+		entries[index] = entry
 
 
 func _authoritative_submission_capability(player_index: int, window_sequence: int, request: Dictionary, facts: Dictionary) -> Dictionary:
@@ -1113,14 +1596,14 @@ func _validate_save_data(data: Dictionary) -> Dictionary:
 	var maximum_window_sequence := -1
 	for entries_variant in [data.get("current_queue"), data.get("next_queue")]:
 		for entry_variant in entries_variant as Array:
-			var entry_validation := _validate_save_entry(entry_variant, seen_resolution_ids)
+			var entry_validation := _validate_save_entry(entry_variant, seen_resolution_ids, int(data.get("revision", -1)))
 			if not bool(entry_validation.get("valid", false)):
 				return entry_validation
 			maximum_resolution_id = maxi(maximum_resolution_id, int(entry_validation.get("resolution_id", 0)))
 			maximum_window_sequence = maxi(maximum_window_sequence, int(entry_validation.get("window_sequence", -1)))
 	var active := data.get("active_entry") as Dictionary
 	if not active.is_empty():
-		var active_validation := _validate_save_entry(active, seen_resolution_ids)
+		var active_validation := _validate_save_entry(active, seen_resolution_ids, int(data.get("revision", -1)))
 		if not bool(active_validation.get("valid", false)):
 			return active_validation
 		maximum_resolution_id = maxi(maximum_resolution_id, int(active_validation.get("resolution_id", 0)))
@@ -1132,7 +1615,7 @@ func _validate_save_data(data: Dictionary) -> Dictionary:
 	return {"valid": true, "reason_code": "card_resolution_queue_save_valid"}
 
 
-func _validate_save_entry(entry_variant: Variant, seen_resolution_ids: Dictionary) -> Dictionary:
+func _validate_save_entry(entry_variant: Variant, seen_resolution_ids: Dictionary, queue_revision: int) -> Dictionary:
 	if not (entry_variant is Dictionary):
 		return {"valid": false, "reason_code": "card_resolution_queue_entry_not_dictionary"}
 	var entry := entry_variant as Dictionary
@@ -1175,6 +1658,24 @@ func _validate_save_entry(entry_variant: Variant, seen_resolution_ids: Dictionar
 		var target_validation := StableTargetEnvelope.validate_entry_binding(entry)
 		if not bool(target_validation.get("valid", false)):
 			return {"valid": false, "reason_code": "card_resolution_queue_target_dangling"}
+	if entry.has("v06_facility_action"):
+		var facility_report := FacilityBinding.validation_report(entry.get("v06_facility_action"))
+		if not bool(facility_report.get("valid", false)):
+			return {"valid": false, "reason_code": "card_resolution_queue_facility_binding_invalid"}
+		var binding := entry.get("v06_facility_action") as Dictionary
+		var skill := entry.get("skill") as Dictionary
+		if int(binding.get("resolution_id", -1)) != resolution_id \
+				or int(binding.get("actor_player_index", -1)) != int(entry.get("player_index", -2)) \
+				or int(binding.get("source_slot_index", -1)) != int(entry.get("slot_index", -2)) \
+				or int(binding.get("queue_revision_at_commit", -1)) <= 0 \
+				or int(binding.get("queue_revision_at_commit", -1)) > queue_revision \
+				or str(skill.get("kind", "")) != "public_facility" \
+				or int(skill.get("rank", -1)) != int(binding.get("rank", -2)) \
+				or bool(entry.get("asset_reservation_required", false)) \
+					!= bool((binding.get("asset_reservation") as Dictionary).get("required", false)) \
+				or str(entry.get("asset_reservation_id", "")) \
+					!= str((binding.get("asset_reservation") as Dictionary).get("reservation_id", "")):
+			return {"valid": false, "reason_code": "card_resolution_queue_facility_binding_mismatch"}
 	return {
 		"valid": true,
 		"reason_code": "card_resolution_queue_entry_valid",

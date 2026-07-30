@@ -27,6 +27,83 @@ const META_FINGERPRINT := "card_player_state_v06_observed_fingerprint"
 const ASSET_TRANSACTION_PREFIX := "card-player-state-v06"
 const SAVE_FIELDS := ["state_version", "ruleset_id", "journal", "next_reservation_sequence"]
 const JOURNAL_RECORD_FIELDS := ["intent_hash", "result"]
+const FACILITY_ESCROWS_FIELD := "facility_card_escrows"
+const FACILITY_ESCROW_RECEIPTS_FIELD := "facility_card_escrow_receipts"
+const FACILITY_ESCROW_SCHEMA_VERSION := 1
+const FACILITY_ESCROW_COMMITTED_STATE := "committed_resolution_escrow"
+const FACILITY_ESCROW_CONSUMED_PENDING_STATE := "consumed_pending_finalization"
+const FACILITY_ESCROW_FINALIZED_STATE := "consumed_finalized"
+const FACILITY_ESCROW_RELEASED_STATE := "released"
+const FACILITY_ESCROW_REQUEST_FIELDS: Array[String] = [
+	"request_id",
+	"intent_fingerprint",
+	"actor_id",
+	"actor_player_index",
+	"source_slot_index",
+	"hand_slot_id",
+	"card_semantic_id",
+	"runtime_instance_id",
+	"source_record_fingerprint",
+	"source_slot_fingerprint",
+	"escrow_id",
+]
+const FACILITY_ESCROW_PLAN_FIELDS: Array[String] = [
+	"schema_version",
+	"state_id",
+	"planned",
+	"reason_code",
+	"idempotent_replay",
+	"existing_state_id",
+	"request_id",
+	"intent_fingerprint",
+	"actor_id",
+	"actor_player_index",
+	"source_slot_index",
+	"hand_slot_id",
+	"card_semantic_id",
+	"runtime_instance_id",
+	"source_record_fingerprint",
+	"source_slot_fingerprint",
+	"escrow_id",
+	"player_revision",
+	"plan_fingerprint",
+]
+const FACILITY_ESCROW_RECORD_FIELDS: Array[String] = [
+	"schema_version",
+	"state_id",
+	"request_id",
+	"intent_fingerprint",
+	"actor_id",
+	"actor_player_index",
+	"source_slot_index",
+	"hand_slot_id",
+	"card_semantic_id",
+	"runtime_instance_id",
+	"source_record_fingerprint",
+	"source_slot_fingerprint",
+	"escrow_id",
+	"card_record",
+	"predecessor_escrow_fingerprint",
+	"escrow_fingerprint",
+]
+const FACILITY_ESCROW_RECEIPT_FIELDS: Array[String] = [
+	"schema_version",
+	"state_id",
+	"request_id",
+	"intent_fingerprint",
+	"actor_id",
+	"actor_player_index",
+	"source_slot_index",
+	"hand_slot_id",
+	"card_semantic_id",
+	"runtime_instance_id",
+	"source_record_fingerprint",
+	"source_slot_fingerprint",
+	"escrow_id",
+	"reason_code",
+	"escrow_fingerprint",
+	"receipt_fingerprint",
+]
 const FORBIDDEN_JOURNAL_STATE_FIELDS := [
 	"player_state",
 	"player_states",
@@ -230,6 +307,409 @@ func actor_player_indices() -> Dictionary:
 		if players[player_index] is Dictionary:
 			result[_actor_id(player_index, players[player_index] as Dictionary)] = player_index
 	return result
+
+
+func plan_facility_card_escrow(request: Dictionary) -> Dictionary:
+	if not _facility_escrow_ready():
+		return _reject("facility_card_escrow_owner_missing")
+	var normalized := _normalize_facility_escrow_request(request)
+	if not bool(normalized.get("valid", false)):
+		return _reject(str(normalized.get("reason_code", "facility_card_escrow_request_invalid")))
+	var binding: Dictionary = normalized.get("request", {}) as Dictionary
+	var players := _world_players()
+	var identity := _facility_escrow_identity_match(players, binding)
+	if not bool(identity.get("valid", false)):
+		return _reject(str(identity.get("reason_code", "facility_card_escrow_collision")))
+	if bool(identity.get("found", false)):
+		if str(identity.get("kind", "")) == "receipt":
+			return _facility_escrow_terminal_result(identity.get("value", {}) as Dictionary, "plan", true)
+		var existing_validation := _validate_facility_escrow_record(identity.get("value", {}) as Dictionary)
+		if not bool(existing_validation.get("valid", false)):
+			return _reject(str(existing_validation.get("reason_code", "facility_card_escrow_record_invalid")))
+		var existing: Dictionary = existing_validation.get("record", {}) as Dictionary
+		if not _same_facility_escrow_binding(existing, binding):
+			return _reject("facility_card_escrow_collision")
+		var existing_player_index := int(identity.get("player_index", -1))
+		var existing_player: Dictionary = players[existing_player_index] as Dictionary
+		return _facility_escrow_plan(binding, maxi(0, int(existing_player.get(META_REVISION, 0))), true, str(existing.get("state_id", "")))
+	var source := _validate_facility_escrow_source(players, binding)
+	if not bool(source.get("valid", false)):
+		return _reject(str(source.get("reason_code", "facility_card_escrow_source_invalid")))
+	var player: Dictionary = source.get("player", {}) as Dictionary
+	var container_check := _validate_facility_escrow_containers(player)
+	if not bool(container_check.get("valid", false)):
+		return _reject(str(container_check.get("reason_code", "facility_card_escrow_state_invalid")))
+	return _facility_escrow_plan(binding, maxi(0, int(player.get(META_REVISION, 0))), false, "")
+
+
+func commit_facility_card_escrow(plan: Dictionary) -> Dictionary:
+	if not _facility_escrow_ready():
+		return _reject("facility_card_escrow_owner_missing")
+	var normalized := _normalize_facility_escrow_plan(plan)
+	if not bool(normalized.get("valid", false)):
+		return _reject(str(normalized.get("reason_code", "facility_card_escrow_plan_invalid")))
+	var binding: Dictionary = normalized.get("request", {}) as Dictionary
+	var players := _world_players()
+	var identity := _facility_escrow_identity_match(players, binding)
+	if not bool(identity.get("valid", false)):
+		return _reject(str(identity.get("reason_code", "facility_card_escrow_collision")))
+	if bool(identity.get("found", false)):
+		if str(identity.get("kind", "")) == "receipt":
+			return _facility_escrow_terminal_result(identity.get("value", {}) as Dictionary, "commit", true)
+		var existing_validation := _validate_facility_escrow_record(identity.get("value", {}) as Dictionary)
+		if not bool(existing_validation.get("valid", false)):
+			return _reject(str(existing_validation.get("reason_code", "facility_card_escrow_record_invalid")))
+		var existing: Dictionary = existing_validation.get("record", {}) as Dictionary
+		if not _same_facility_escrow_binding(existing, binding):
+			return _reject("facility_card_escrow_collision")
+		return _facility_escrow_commit_result(existing, true)
+	var source := _validate_facility_escrow_source(players, binding)
+	if not bool(source.get("valid", false)):
+		return _reject(str(source.get("reason_code", "facility_card_escrow_source_invalid")))
+	var player_index := int(binding.get("actor_player_index", -1))
+	var player: Dictionary = source.get("player", {}) as Dictionary
+	if maxi(0, int(player.get(META_REVISION, 0))) != int(plan.get("player_revision", -1)):
+		return _reject("facility_card_escrow_player_revision_changed")
+	var container_check := _validate_facility_escrow_containers(player)
+	if not bool(container_check.get("valid", false)):
+		return _reject(str(container_check.get("reason_code", "facility_card_escrow_state_invalid")))
+	var runtime_unique := _facility_escrow_runtime_instance_unique(
+		players,
+		str(binding.get("runtime_instance_id", "")),
+		player_index,
+		int(binding.get("source_slot_index", -1))
+	)
+	if not bool(runtime_unique.get("valid", false)):
+		return _reject(str(runtime_unique.get("reason_code", "facility_card_escrow_instance_collision")))
+	var next_player := player.duplicate(true)
+	var next_slots: Array = (next_player.get("slots", []) as Array).duplicate(true)
+	next_slots[int(binding.get("source_slot_index", -1))] = null
+	next_player["slots"] = next_slots
+	var escrows: Dictionary = (container_check.get("escrows", {}) as Dictionary).duplicate(true)
+	var record := _build_facility_escrow_record(binding, source.get("card", {}) as Dictionary)
+	escrows[str(binding.get("escrow_id", ""))] = record.duplicate(true)
+	next_player[FACILITY_ESCROWS_FIELD] = escrows
+	next_player[FACILITY_ESCROW_RECEIPTS_FIELD] = (container_check.get("receipts", {}) as Dictionary).duplicate(true)
+	var touched := _touch_facility_escrow_player_metadata(player_index, next_player)
+	if not bool(touched.get("valid", false)):
+		return _reject(str(touched.get("reason_code", "facility_card_escrow_metadata_invalid")))
+	players[player_index] = (touched.get("player", {}) as Dictionary).duplicate(true)
+	_write_world_players(players)
+	return _facility_escrow_commit_result(record, false)
+
+
+func facility_card_escrow_snapshot(escrow_id: String) -> Dictionary:
+	var normalized_id := escrow_id.strip_edges()
+	if not _facility_escrow_ready() or not _valid_facility_escrow_wire_id(normalized_id):
+		return {"found": false, "reason_code": "facility_card_escrow_id_invalid", "escrow": {}}
+	var lookup := _facility_escrow_lookup_by_id(_world_players(), normalized_id)
+	if not bool(lookup.get("valid", false)):
+		return {"found": false, "reason_code": str(lookup.get("reason_code", "facility_card_escrow_collision")), "escrow": {}}
+	if not bool(lookup.get("found", false)):
+		return {"found": false, "reason_code": "facility_card_escrow_missing", "escrow": {}}
+	if str(lookup.get("kind", "")) == "receipt":
+		var receipt_validation := _validate_facility_escrow_receipt(lookup.get("value", {}) as Dictionary)
+		return {
+			"found": false,
+			"terminal": bool(receipt_validation.get("valid", false)),
+			"reason_code": "facility_card_escrow_terminal" if bool(receipt_validation.get("valid", false)) else str(receipt_validation.get("reason_code", "facility_card_escrow_receipt_invalid")),
+			"escrow": {},
+			"receipt": (receipt_validation.get("receipt", {}) as Dictionary).duplicate(true),
+		}
+	var validation := _validate_facility_escrow_record(lookup.get("value", {}) as Dictionary)
+	if not bool(validation.get("valid", false)):
+		return {"found": false, "reason_code": str(validation.get("reason_code", "facility_card_escrow_record_invalid")), "escrow": {}}
+	return {
+		"found": true,
+		"terminal": false,
+		"reason_code": "facility_card_escrow_found",
+		"escrow": (validation.get("record", {}) as Dictionary).duplicate(true),
+	}
+
+
+func preflight_facility_card_escrow_world_state(world_state: Dictionary) -> Dictionary:
+	if not _facility_escrow_ready() or not _is_finite_pure_data(world_state) \
+			or not (world_state.get("players") is Array):
+		return {"accepted": false, "reason_code": "facility_card_escrow_world_state_invalid"}
+	var players := world_state.get("players") as Array
+	var active_ids: Dictionary = {}
+	var terminal_ids: Dictionary = {}
+	var request_ids: Dictionary = {}
+	var active_runtime_ids: Dictionary = {}
+	for player_index in range(players.size()):
+		if not (players[player_index] is Dictionary):
+			return {"accepted": false, "reason_code": "facility_card_escrow_player_missing"}
+		var player := players[player_index] as Dictionary
+		var escrows_variant: Variant = player.get(FACILITY_ESCROWS_FIELD, {})
+		var receipts_variant: Variant = player.get(FACILITY_ESCROW_RECEIPTS_FIELD, {})
+		if not (escrows_variant is Dictionary) or not (receipts_variant is Dictionary):
+			return {"accepted": false, "reason_code": "facility_card_escrow_state_invalid"}
+		var escrows := escrows_variant as Dictionary
+		var receipts := receipts_variant as Dictionary
+		for escrow_id_variant in escrows.keys():
+			var escrow_id := str(escrow_id_variant)
+			var record_variant: Variant = escrows.get(escrow_id_variant)
+			if not (record_variant is Dictionary) or active_ids.has(escrow_id) \
+					or terminal_ids.has(escrow_id):
+				return {"accepted": false, "reason_code": "facility_card_escrow_collision"}
+			var validation := _validate_facility_escrow_record(record_variant as Dictionary)
+			if not bool(validation.get("valid", false)):
+				return {"accepted": false, "reason_code": str(validation.get("reason_code", "facility_card_escrow_record_invalid"))}
+			var record := validation.get("record", {}) as Dictionary
+			if escrow_id != str(record.get("escrow_id", "")) \
+					or int(record.get("actor_player_index", -1)) != player_index \
+					or str(record.get("actor_id", "")) != "player.%d" % player_index:
+				return {"accepted": false, "reason_code": "facility_card_escrow_owner_binding_invalid"}
+			# Save barriers are stable boundaries. A consumed card may only be
+			# captured after it has reached a terminal receipt.
+			if str(record.get("state_id", "")) != FACILITY_ESCROW_COMMITTED_STATE:
+				return {"accepted": false, "reason_code": "facility_card_escrow_checkpoint_unstable"}
+			var request_id := str(record.get("request_id", ""))
+			var runtime_instance_id := str(record.get("runtime_instance_id", ""))
+			if request_ids.has(request_id) or active_runtime_ids.has(runtime_instance_id):
+				return {"accepted": false, "reason_code": "facility_card_escrow_collision"}
+			var slots: Array = player.get("slots", []) if player.get("slots", []) is Array else []
+			var source_slot_index := int(record.get("source_slot_index", -1))
+			if source_slot_index < 0 or source_slot_index >= slots.size() \
+					or slots[source_slot_index] != null:
+				return {"accepted": false, "reason_code": "facility_card_escrow_source_slot_not_empty"}
+			active_ids[escrow_id] = true
+			request_ids[request_id] = true
+			active_runtime_ids[runtime_instance_id] = true
+		for escrow_id_variant in receipts.keys():
+			var escrow_id := str(escrow_id_variant)
+			var receipt_variant: Variant = receipts.get(escrow_id_variant)
+			if not (receipt_variant is Dictionary) or active_ids.has(escrow_id) \
+					or terminal_ids.has(escrow_id):
+				return {"accepted": false, "reason_code": "facility_card_escrow_collision"}
+			var validation := _validate_facility_escrow_receipt(receipt_variant as Dictionary)
+			if not bool(validation.get("valid", false)):
+				return {"accepted": false, "reason_code": str(validation.get("reason_code", "facility_card_escrow_receipt_invalid"))}
+			var receipt := validation.get("receipt", {}) as Dictionary
+			if escrow_id != str(receipt.get("escrow_id", "")) \
+					or int(receipt.get("actor_player_index", -1)) != player_index \
+					or str(receipt.get("actor_id", "")) != "player.%d" % player_index:
+				return {"accepted": false, "reason_code": "facility_card_escrow_owner_binding_invalid"}
+			var request_id := str(receipt.get("request_id", ""))
+			if request_ids.has(request_id):
+				return {"accepted": false, "reason_code": "facility_card_escrow_collision"}
+			terminal_ids[escrow_id] = true
+			request_ids[request_id] = true
+	for player_variant in players:
+		var player := player_variant as Dictionary
+		var slots: Array = player.get("slots", []) if player.get("slots", []) is Array else []
+		for slot_variant in slots:
+			if slot_variant is Dictionary \
+					and active_runtime_ids.has(str((slot_variant as Dictionary).get("runtime_instance_id", ""))):
+				return {"accepted": false, "reason_code": "facility_card_escrow_instance_collision"}
+	return {
+		"accepted": true,
+		"reason_code": "facility_card_escrow_world_state_valid",
+		"active_escrow_count": active_ids.size(),
+		"terminal_receipt_count": terminal_ids.size(),
+	}
+
+
+func consume_facility_card_escrow(escrow_id: String, expected_fingerprint: String) -> Dictionary:
+	var located := _locate_facility_escrow_for_transition(escrow_id, expected_fingerprint, "consume")
+	if not bool(located.get("valid", false)):
+		return _reject(str(located.get("reason_code", "facility_card_escrow_consume_invalid")))
+	if bool(located.get("terminal", false)):
+		return _facility_escrow_terminal_result(located.get("receipt", {}) as Dictionary, "consume", true)
+	var record: Dictionary = located.get("record", {}) as Dictionary
+	var current_fingerprint := str(record.get("escrow_fingerprint", ""))
+	var expected := expected_fingerprint.strip_edges()
+	if str(record.get("state_id", "")) == FACILITY_ESCROW_CONSUMED_PENDING_STATE:
+		if expected != current_fingerprint and expected != str(record.get("predecessor_escrow_fingerprint", "")):
+			return _reject("facility_card_escrow_fingerprint_mismatch")
+		return _facility_escrow_consume_result(record, true)
+	if str(record.get("state_id", "")) != FACILITY_ESCROW_COMMITTED_STATE:
+		return _reject("facility_card_escrow_state_invalid")
+	if expected != current_fingerprint:
+		return _reject("facility_card_escrow_fingerprint_mismatch")
+	var pending := record.duplicate(true)
+	pending["state_id"] = FACILITY_ESCROW_CONSUMED_PENDING_STATE
+	pending["predecessor_escrow_fingerprint"] = current_fingerprint
+	pending["escrow_fingerprint"] = _facility_escrow_record_fingerprint(pending)
+	var applied := _replace_facility_escrow_record(located, pending)
+	if not bool(applied.get("valid", false)):
+		return _reject(str(applied.get("reason_code", "facility_card_escrow_consume_failed")))
+	return _facility_escrow_consume_result(pending, false)
+
+
+func finalize_facility_card_escrow(escrow_id: String, expected_fingerprint: String) -> Dictionary:
+	var located := _locate_facility_escrow_for_transition(escrow_id, expected_fingerprint, "finalize")
+	if not bool(located.get("valid", false)):
+		return _reject(str(located.get("reason_code", "facility_card_escrow_finalize_invalid")))
+	if bool(located.get("terminal", false)):
+		return _facility_escrow_terminal_result(located.get("receipt", {}) as Dictionary, "finalize", true)
+	var record: Dictionary = located.get("record", {}) as Dictionary
+	if str(record.get("state_id", "")) != FACILITY_ESCROW_CONSUMED_PENDING_STATE:
+		return _reject("facility_card_escrow_not_consumed")
+	if str(record.get("escrow_fingerprint", "")) != expected_fingerprint.strip_edges():
+		return _reject("facility_card_escrow_fingerprint_mismatch")
+	var receipt := _build_facility_escrow_receipt(
+		record,
+		FACILITY_ESCROW_FINALIZED_STATE,
+		"facility_card_escrow_finalized"
+	)
+	var applied := _remove_facility_escrow_with_receipt(located, receipt, null)
+	if not bool(applied.get("valid", false)):
+		return _reject(str(applied.get("reason_code", "facility_card_escrow_finalize_failed")))
+	return _facility_escrow_terminal_result(receipt, "finalize", false)
+
+
+func compensate_finalized_facility_card_escrow(
+	escrow_id: String,
+	expected_receipt_fingerprint: String,
+	card_record: Dictionary,
+	reason_code: String
+) -> Dictionary:
+	var normalized_id := escrow_id.strip_edges()
+	var normalized_receipt_fingerprint := expected_receipt_fingerprint.strip_edges()
+	var normalized_reason := reason_code.strip_edges()
+	if not _facility_escrow_ready() \
+			or not _valid_facility_escrow_wire_id(normalized_id) \
+			or not _valid_facility_escrow_sha256(normalized_receipt_fingerprint) \
+			or not _valid_facility_escrow_wire_id(normalized_reason) \
+			or not _is_finite_pure_data(card_record):
+		return _reject("facility_card_escrow_compensation_invalid")
+	var players := _world_players()
+	var lookup := _facility_escrow_lookup_by_id(players, normalized_id)
+	if not bool(lookup.get("valid", false)) or not bool(lookup.get("found", false)) \
+			or str(lookup.get("kind", "")) != "receipt":
+		return _reject(str(lookup.get("reason_code", "facility_card_escrow_compensation_missing")))
+	var receipt_validation := _validate_facility_escrow_receipt(
+		lookup.get("value", {}) as Dictionary
+	)
+	if not bool(receipt_validation.get("valid", false)):
+		return _reject(str(receipt_validation.get("reason_code", "facility_card_escrow_receipt_invalid")))
+	var finalized_receipt := receipt_validation.get("receipt", {}) as Dictionary
+	if str(finalized_receipt.get("state_id", "")) != FACILITY_ESCROW_FINALIZED_STATE \
+			or str(finalized_receipt.get("receipt_fingerprint", "")) != normalized_receipt_fingerprint:
+		return _reject("facility_card_escrow_compensation_binding_mismatch")
+	var request: Dictionary = {}
+	for field_id in FACILITY_ESCROW_REQUEST_FIELDS:
+		request[field_id] = finalized_receipt.get(field_id)
+	var static_check := _validate_facility_escrow_static_card(card_record, request)
+	if not bool(static_check.get("valid", false)) \
+			or str(card_record.get("runtime_instance_id", "")) != str(finalized_receipt.get("runtime_instance_id", "")) \
+			or _stable_hash(card_record) != str(finalized_receipt.get("source_slot_fingerprint", "")):
+		return _reject("facility_card_escrow_compensation_card_mismatch")
+	var player_index := int(lookup.get("player_index", -1))
+	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
+		return _reject("facility_card_escrow_player_missing")
+	var player := (players[player_index] as Dictionary).duplicate(true)
+	if _actor_id(player_index, player) != str(finalized_receipt.get("actor_id", "")):
+		return _reject("facility_card_escrow_actor_mismatch")
+	var container_check := _validate_facility_escrow_containers(player)
+	if not bool(container_check.get("valid", false)):
+		return _reject(str(container_check.get("reason_code", "facility_card_escrow_state_invalid")))
+	var source_slot_index := int(finalized_receipt.get("source_slot_index", -1))
+	var slots: Array = (player.get("slots", []) as Array).duplicate(true) \
+		if player.get("slots", []) is Array else []
+	if source_slot_index < 0 or source_slot_index >= slots.size() or slots[source_slot_index] != null:
+		return _reject("facility_card_escrow_release_slot_occupied")
+	var released_receipt := _build_facility_escrow_receipt(
+		finalized_receipt,
+		FACILITY_ESCROW_RELEASED_STATE,
+		normalized_reason
+	)
+	var released_validation := _validate_facility_escrow_receipt(released_receipt)
+	if not bool(released_validation.get("valid", false)):
+		return _reject(str(released_validation.get("reason_code", "facility_card_escrow_compensation_receipt_invalid")))
+	slots[source_slot_index] = _released_facility_escrow_card(card_record)
+	player["slots"] = slots
+	var receipts := (container_check.get("receipts", {}) as Dictionary).duplicate(true)
+	receipts[normalized_id] = released_receipt.duplicate(true)
+	player[FACILITY_ESCROW_RECEIPTS_FIELD] = receipts
+	var touched := _touch_facility_escrow_player_metadata(player_index, player)
+	if not bool(touched.get("valid", false)):
+		return _reject(str(touched.get("reason_code", "facility_card_escrow_metadata_invalid")))
+	players[player_index] = (touched.get("player", {}) as Dictionary).duplicate(true)
+	var identity_check := _validate_global_world_instances(players)
+	if not bool(identity_check.get("valid", false)):
+		return _reject(str(identity_check.get("reason_code", "facility_card_escrow_instance_collision")))
+	_write_world_players(players)
+	var result := _facility_escrow_terminal_result(released_receipt, "compensate", false)
+	result["compensated"] = true
+	return result
+
+
+func preflight_finalize_facility_card_escrow(
+	escrow_id: String,
+	expected_fingerprint: String
+) -> Dictionary:
+	var located := _locate_facility_escrow_for_transition(
+		escrow_id,
+		expected_fingerprint,
+		"finalize"
+	)
+	if not bool(located.get("valid", false)):
+		return {
+			"ready": false,
+			"reason_code": str(located.get(
+				"reason_code",
+				"facility_card_escrow_finalize_invalid"
+			)),
+		}
+	if bool(located.get("terminal", false)):
+		var receipt: Dictionary = located.get("receipt", {}) as Dictionary
+		var finalized := str(receipt.get("state_id", "")) \
+			== FACILITY_ESCROW_FINALIZED_STATE
+		return {
+			"ready": finalized,
+			"already_finalized": finalized,
+			"reason_code": "facility_card_escrow_finalize_ready" if finalized \
+				else "facility_card_escrow_finalize_after_release",
+		}
+	var record: Dictionary = located.get("record", {}) as Dictionary
+	var ready := str(record.get("state_id", "")) \
+		== FACILITY_ESCROW_CONSUMED_PENDING_STATE \
+		and str(record.get("escrow_fingerprint", "")) \
+			== expected_fingerprint.strip_edges()
+	return {
+		"ready": ready,
+		"already_finalized": false,
+		"reason_code": "facility_card_escrow_finalize_ready" if ready \
+			else "facility_card_escrow_finalize_preflight_failed",
+	}
+
+
+func release_facility_card_escrow(
+	escrow_id: String,
+	expected_fingerprint: String,
+	reason_code: String
+) -> Dictionary:
+	var normalized_reason := reason_code.strip_edges()
+	if not _valid_facility_escrow_wire_id(normalized_reason):
+		return _reject("facility_card_escrow_release_reason_invalid")
+	var located := _locate_facility_escrow_for_transition(escrow_id, expected_fingerprint, "release")
+	if not bool(located.get("valid", false)):
+		return _reject(str(located.get("reason_code", "facility_card_escrow_release_invalid")))
+	if bool(located.get("terminal", false)):
+		var terminal_receipt: Dictionary = located.get("receipt", {}) as Dictionary
+		if str(terminal_receipt.get("reason_code", "")) != normalized_reason:
+			return _reject("facility_card_escrow_release_collision")
+		return _facility_escrow_terminal_result(terminal_receipt, "release", true)
+	var record: Dictionary = located.get("record", {}) as Dictionary
+	if not [FACILITY_ESCROW_COMMITTED_STATE, FACILITY_ESCROW_CONSUMED_PENDING_STATE].has(str(record.get("state_id", ""))):
+		return _reject("facility_card_escrow_state_invalid")
+	if str(record.get("escrow_fingerprint", "")) != expected_fingerprint.strip_edges():
+		return _reject("facility_card_escrow_fingerprint_mismatch")
+	var player: Dictionary = located.get("player", {}) as Dictionary
+	var source_slot_index := int(record.get("source_slot_index", -1))
+	var slots_variant: Variant = player.get("slots", [])
+	if not (slots_variant is Array) or source_slot_index < 0 or source_slot_index >= (slots_variant as Array).size():
+		return _reject("facility_card_escrow_release_slot_missing")
+	if (slots_variant as Array)[source_slot_index] != null:
+		return _reject("facility_card_escrow_release_slot_occupied")
+	var restored_card := _released_facility_escrow_card(record.get("card_record", {}) as Dictionary)
+	var receipt := _build_facility_escrow_receipt(record, FACILITY_ESCROW_RELEASED_STATE, normalized_reason)
+	var applied := _remove_facility_escrow_with_receipt(located, receipt, restored_card)
+	if not bool(applied.get("valid", false)):
+		return _reject(str(applied.get("reason_code", "facility_card_escrow_release_failed")))
+	return _facility_escrow_terminal_result(receipt, "release", false)
 
 
 func register_player(actor_id: String, _initial_state: Dictionary) -> Dictionary:
@@ -1259,6 +1739,557 @@ func _journal_replay(transaction_id: String, intent_hash: String, from_reserve: 
 	if from_reserve:
 		result["handled"] = true
 	return result
+
+
+func _facility_escrow_ready() -> bool:
+	return _catalog != null and _catalog.has_method("card_snapshot") and _world_has_players() and _asset_owner_ready()
+
+
+func _normalize_facility_escrow_request(request: Dictionary) -> Dictionary:
+	if not _has_exact_keys(request, FACILITY_ESCROW_REQUEST_FIELDS) or not _is_finite_pure_data(request):
+		return {"valid": false, "reason_code": "facility_card_escrow_request_invalid"}
+	for field_id in ["request_id", "actor_id", "hand_slot_id", "card_semantic_id", "runtime_instance_id", "escrow_id"]:
+		if not (request.get(field_id) is String or request.get(field_id) is StringName) \
+				or not _valid_facility_escrow_wire_id(str(request.get(field_id, ""))):
+			return {"valid": false, "reason_code": "facility_card_escrow_%s_invalid" % field_id}
+	for field_id in ["intent_fingerprint", "source_record_fingerprint", "source_slot_fingerprint"]:
+		if not (request.get(field_id) is String or request.get(field_id) is StringName) \
+				or not _valid_facility_escrow_sha256(str(request.get(field_id, ""))):
+			return {"valid": false, "reason_code": "facility_card_escrow_%s_invalid" % field_id}
+	if not (request.get("actor_player_index") is int) or int(request.get("actor_player_index", -1)) < 0:
+		return {"valid": false, "reason_code": "facility_card_escrow_actor_player_index_invalid"}
+	if not (request.get("source_slot_index") is int) or int(request.get("source_slot_index", -1)) < 0:
+		return {"valid": false, "reason_code": "facility_card_escrow_source_slot_index_invalid"}
+	if str(request.get("hand_slot_id", "")) != "hand.slot.%d" % int(request.get("source_slot_index", -1)):
+		return {"valid": false, "reason_code": "facility_card_escrow_hand_slot_mismatch"}
+	return {"valid": true, "reason_code": "facility_card_escrow_request_valid", "request": request.duplicate(true)}
+
+
+func _facility_escrow_plan(
+	binding: Dictionary,
+	player_revision: int,
+	idempotent_replay: bool,
+	existing_state_id: String
+) -> Dictionary:
+	var plan := {
+		"schema_version": FACILITY_ESCROW_SCHEMA_VERSION,
+		"state_id": "facility_card_escrow_plan",
+		"planned": true,
+		"reason_code": "facility_card_escrow_planned",
+		"idempotent_replay": idempotent_replay,
+		"existing_state_id": existing_state_id,
+		"player_revision": player_revision,
+		"plan_fingerprint": "",
+	}
+	for field_id in FACILITY_ESCROW_REQUEST_FIELDS:
+		plan[field_id] = binding.get(field_id)
+	plan["plan_fingerprint"] = _facility_escrow_plan_fingerprint(plan)
+	return plan
+
+
+func _normalize_facility_escrow_plan(plan: Dictionary) -> Dictionary:
+	if not _has_exact_keys(plan, FACILITY_ESCROW_PLAN_FIELDS) or not _is_finite_pure_data(plan) \
+			or int(plan.get("schema_version", 0)) != FACILITY_ESCROW_SCHEMA_VERSION \
+			or str(plan.get("state_id", "")) != "facility_card_escrow_plan" \
+			or not (plan.get("planned") is bool) or not bool(plan.get("planned", false)) \
+			or str(plan.get("reason_code", "")) != "facility_card_escrow_planned" \
+			or not (plan.get("idempotent_replay") is bool) \
+			or not (plan.get("existing_state_id") is String or plan.get("existing_state_id") is StringName) \
+			or not (plan.get("player_revision") is int) or int(plan.get("player_revision", -1)) < 0 \
+			or not _valid_facility_escrow_sha256(str(plan.get("plan_fingerprint", ""))) \
+			or str(plan.get("plan_fingerprint", "")) != _facility_escrow_plan_fingerprint(plan):
+		return {"valid": false, "reason_code": "facility_card_escrow_plan_invalid"}
+	var request: Dictionary = {}
+	for field_id in FACILITY_ESCROW_REQUEST_FIELDS:
+		request[field_id] = plan.get(field_id)
+	var normalized := _normalize_facility_escrow_request(request)
+	if not bool(normalized.get("valid", false)):
+		return normalized
+	return {"valid": true, "reason_code": "facility_card_escrow_plan_valid", "request": request}
+
+
+func _facility_escrow_plan_fingerprint(plan: Dictionary) -> String:
+	var material := plan.duplicate(true)
+	material.erase("plan_fingerprint")
+	return _stable_hash(material)
+
+
+func _validate_facility_escrow_source(players: Array, binding: Dictionary) -> Dictionary:
+	var player_index := int(binding.get("actor_player_index", -1))
+	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
+		return {"valid": false, "reason_code": "facility_card_escrow_player_missing"}
+	var player := (players[player_index] as Dictionary).duplicate(true)
+	if _actor_id(player_index, player) != str(binding.get("actor_id", "")):
+		return {"valid": false, "reason_code": "facility_card_escrow_actor_mismatch"}
+	var slots_variant: Variant = player.get("slots", [])
+	var source_slot_index := int(binding.get("source_slot_index", -1))
+	if not (slots_variant is Array) or source_slot_index < 0 or source_slot_index >= (slots_variant as Array).size():
+		return {"valid": false, "reason_code": "facility_card_escrow_source_slot_missing"}
+	var card_variant: Variant = (slots_variant as Array)[source_slot_index]
+	if not (card_variant is Dictionary) or not _is_finite_pure_data(card_variant):
+		return {"valid": false, "reason_code": "facility_card_escrow_source_card_invalid"}
+	var card := (card_variant as Dictionary).duplicate(true)
+	if str(card.get("runtime_instance_id", "")) != str(binding.get("runtime_instance_id", "")):
+		return {"valid": false, "reason_code": "facility_card_escrow_runtime_instance_mismatch"}
+	var static_check := _validate_facility_escrow_static_card(card, binding)
+	if not bool(static_check.get("valid", false)):
+		return static_check
+	if _stable_hash(card) != str(binding.get("source_slot_fingerprint", "")):
+		return {"valid": false, "reason_code": "facility_card_escrow_source_slot_fingerprint_mismatch"}
+	return {
+		"valid": true,
+		"reason_code": "facility_card_escrow_source_valid",
+		"player": player,
+		"card": card,
+	}
+
+
+func _validate_facility_escrow_static_card(card: Dictionary, binding: Dictionary) -> Dictionary:
+	if not _is_finite_pure_data(card) or not (card.get("machine") is Dictionary) \
+			or not (card.get("player") is Dictionary) or not (card.get("developer") is Dictionary):
+		return {"valid": false, "reason_code": "facility_card_escrow_card_not_pure_data"}
+	var machine: Dictionary = card.get("machine", {}) as Dictionary
+	var card_id := str(machine.get("card_id", ""))
+	if card_id != str(binding.get("card_semantic_id", "")):
+		return {"valid": false, "reason_code": "facility_card_escrow_card_semantic_mismatch"}
+	if str(machine.get("category_id", "")) != "facility":
+		return {"valid": false, "reason_code": "facility_card_escrow_card_kind_invalid"}
+	var catalog_variant: Variant = _catalog.call("card_snapshot", card_id)
+	if not (catalog_variant is Dictionary) or (catalog_variant as Dictionary).is_empty() \
+			or not _is_finite_pure_data(catalog_variant):
+		return {"valid": false, "reason_code": "facility_card_escrow_catalog_card_missing"}
+	var catalog_card := (catalog_variant as Dictionary).duplicate(true)
+	if not (catalog_card.get("machine") is Dictionary) or not (catalog_card.get("player") is Dictionary) \
+			or not (catalog_card.get("developer") is Dictionary):
+		return {"valid": false, "reason_code": "facility_card_escrow_catalog_card_invalid"}
+	for block_id in ["machine", "player", "developer"]:
+		if card.get(block_id) != catalog_card.get(block_id):
+			return {"valid": false, "reason_code": "facility_card_escrow_catalog_record_mismatch"}
+	if _stable_hash(catalog_card) != str(binding.get("source_record_fingerprint", "")):
+		return {"valid": false, "reason_code": "facility_card_escrow_source_record_fingerprint_mismatch"}
+	return {"valid": true, "reason_code": "facility_card_escrow_static_card_valid"}
+
+
+func _validate_facility_escrow_containers(player: Dictionary) -> Dictionary:
+	var escrows_variant: Variant = player.get(FACILITY_ESCROWS_FIELD, {})
+	var receipts_variant: Variant = player.get(FACILITY_ESCROW_RECEIPTS_FIELD, {})
+	if not (escrows_variant is Dictionary) or not (receipts_variant is Dictionary) \
+			or not _is_finite_pure_data(escrows_variant) or not _is_finite_pure_data(receipts_variant):
+		return {"valid": false, "reason_code": "facility_card_escrow_state_invalid"}
+	return {
+		"valid": true,
+		"reason_code": "facility_card_escrow_state_valid",
+		"escrows": (escrows_variant as Dictionary).duplicate(true),
+		"receipts": (receipts_variant as Dictionary).duplicate(true),
+	}
+
+
+func _facility_escrow_identity_match(players: Array, binding: Dictionary) -> Dictionary:
+	var matches: Array[Dictionary] = []
+	var escrow_id := str(binding.get("escrow_id", ""))
+	var request_id := str(binding.get("request_id", ""))
+	for player_index in range(players.size()):
+		if not (players[player_index] is Dictionary):
+			continue
+		var player := players[player_index] as Dictionary
+		for field_id in [FACILITY_ESCROWS_FIELD, FACILITY_ESCROW_RECEIPTS_FIELD]:
+			var container_variant: Variant = player.get(field_id, {})
+			if not (container_variant is Dictionary):
+				return {"valid": false, "reason_code": "facility_card_escrow_state_invalid"}
+			var kind := "escrow" if field_id == FACILITY_ESCROWS_FIELD else "receipt"
+			for key_variant in (container_variant as Dictionary).keys():
+				var value_variant: Variant = (container_variant as Dictionary).get(key_variant)
+				if str(key_variant) == escrow_id \
+						or (value_variant is Dictionary and str((value_variant as Dictionary).get("request_id", "")) == request_id):
+					matches.append({
+						"kind": kind,
+						"player_index": player_index,
+						"value": (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {},
+					})
+	if matches.size() > 1:
+		return {"valid": false, "reason_code": "facility_card_escrow_collision"}
+	if matches.is_empty():
+		return {"valid": true, "found": false, "reason_code": "facility_card_escrow_identity_available"}
+	var match_row: Dictionary = matches[0]
+	if (match_row.get("value", {}) as Dictionary).is_empty() \
+			or not _same_facility_escrow_binding(match_row.get("value", {}) as Dictionary, binding):
+		return {"valid": false, "reason_code": "facility_card_escrow_collision"}
+	match_row["valid"] = true
+	match_row["found"] = true
+	match_row["reason_code"] = "facility_card_escrow_identity_replay"
+	return match_row
+
+
+func _facility_escrow_lookup_by_id(players: Array, escrow_id: String) -> Dictionary:
+	var matches: Array[Dictionary] = []
+	for player_index in range(players.size()):
+		if not (players[player_index] is Dictionary):
+			continue
+		var player := players[player_index] as Dictionary
+		for field_id in [FACILITY_ESCROWS_FIELD, FACILITY_ESCROW_RECEIPTS_FIELD]:
+			var container_variant: Variant = player.get(field_id, {})
+			if not (container_variant is Dictionary):
+				return {"valid": false, "reason_code": "facility_card_escrow_state_invalid"}
+			if not (container_variant as Dictionary).has(escrow_id):
+				continue
+			var value_variant: Variant = (container_variant as Dictionary).get(escrow_id)
+			if not (value_variant is Dictionary):
+				return {"valid": false, "reason_code": "facility_card_escrow_state_invalid"}
+			matches.append({
+				"kind": "escrow" if field_id == FACILITY_ESCROWS_FIELD else "receipt",
+				"player_index": player_index,
+				"player": player.duplicate(true),
+				"value": (value_variant as Dictionary).duplicate(true),
+			})
+	if matches.size() > 1:
+		return {"valid": false, "reason_code": "facility_card_escrow_collision"}
+	if matches.is_empty():
+		return {"valid": true, "found": false, "reason_code": "facility_card_escrow_missing"}
+	var result: Dictionary = matches[0]
+	result["valid"] = true
+	result["found"] = true
+	result["reason_code"] = "facility_card_escrow_found"
+	return result
+
+
+func _facility_escrow_runtime_instance_unique(
+	players: Array,
+	runtime_instance_id: String,
+	expected_player_index: int,
+	expected_slot_index: int
+) -> Dictionary:
+	var source_matches := 0
+	for player_index in range(players.size()):
+		if not (players[player_index] is Dictionary):
+			continue
+		var player := players[player_index] as Dictionary
+		var slots: Array = player.get("slots", []) if player.get("slots", []) is Array else []
+		for slot_index in range(slots.size()):
+			var slot_variant: Variant = slots[slot_index]
+			if slot_variant is Dictionary and str((slot_variant as Dictionary).get("runtime_instance_id", "")) == runtime_instance_id:
+				if player_index != expected_player_index or slot_index != expected_slot_index:
+					return {"valid": false, "reason_code": "facility_card_escrow_instance_collision"}
+				source_matches += 1
+		var escrows_variant: Variant = player.get(FACILITY_ESCROWS_FIELD, {})
+		if not (escrows_variant is Dictionary):
+			return {"valid": false, "reason_code": "facility_card_escrow_state_invalid"}
+		for record_variant in (escrows_variant as Dictionary).values():
+			if record_variant is Dictionary and str((record_variant as Dictionary).get("runtime_instance_id", "")) == runtime_instance_id:
+				return {"valid": false, "reason_code": "facility_card_escrow_instance_collision"}
+	if source_matches != 1:
+		return {"valid": false, "reason_code": "facility_card_escrow_runtime_instance_mismatch"}
+	return {"valid": true, "reason_code": "facility_card_escrow_instance_unique"}
+
+
+func _build_facility_escrow_record(binding: Dictionary, card: Dictionary) -> Dictionary:
+	var record := {
+		"schema_version": FACILITY_ESCROW_SCHEMA_VERSION,
+		"state_id": FACILITY_ESCROW_COMMITTED_STATE,
+		"card_record": card.duplicate(true),
+		"predecessor_escrow_fingerprint": "",
+		"escrow_fingerprint": "",
+	}
+	for field_id in FACILITY_ESCROW_REQUEST_FIELDS:
+		record[field_id] = binding.get(field_id)
+	record["escrow_fingerprint"] = _facility_escrow_record_fingerprint(record)
+	return record
+
+
+func _validate_facility_escrow_record(record: Dictionary) -> Dictionary:
+	if not _has_exact_keys(record, FACILITY_ESCROW_RECORD_FIELDS) or not _is_finite_pure_data(record) \
+			or int(record.get("schema_version", 0)) != FACILITY_ESCROW_SCHEMA_VERSION \
+			or not [FACILITY_ESCROW_COMMITTED_STATE, FACILITY_ESCROW_CONSUMED_PENDING_STATE].has(str(record.get("state_id", ""))) \
+			or not (record.get("card_record") is Dictionary) \
+			or not _valid_facility_escrow_sha256(str(record.get("escrow_fingerprint", ""))) \
+			or str(record.get("escrow_fingerprint", "")) != _facility_escrow_record_fingerprint(record):
+		return {"valid": false, "reason_code": "facility_card_escrow_record_invalid"}
+	var request: Dictionary = {}
+	for field_id in FACILITY_ESCROW_REQUEST_FIELDS:
+		request[field_id] = record.get(field_id)
+	var normalized := _normalize_facility_escrow_request(request)
+	if not bool(normalized.get("valid", false)):
+		return normalized
+	var static_check := _validate_facility_escrow_static_card(record.get("card_record", {}) as Dictionary, request)
+	if not bool(static_check.get("valid", false)):
+		return static_check
+	if str((record.get("card_record", {}) as Dictionary).get("runtime_instance_id", "")) != str(record.get("runtime_instance_id", "")) \
+			or _stable_hash(record.get("card_record", {})) != str(record.get("source_slot_fingerprint", "")):
+		return {"valid": false, "reason_code": "facility_card_escrow_card_record_mismatch"}
+	var predecessor := str(record.get("predecessor_escrow_fingerprint", ""))
+	if str(record.get("state_id", "")) == FACILITY_ESCROW_COMMITTED_STATE:
+		if not predecessor.is_empty():
+			return {"valid": false, "reason_code": "facility_card_escrow_predecessor_invalid"}
+	else:
+		if not _valid_facility_escrow_sha256(predecessor):
+			return {"valid": false, "reason_code": "facility_card_escrow_predecessor_invalid"}
+		var committed := record.duplicate(true)
+		committed["state_id"] = FACILITY_ESCROW_COMMITTED_STATE
+		committed["predecessor_escrow_fingerprint"] = ""
+		committed["escrow_fingerprint"] = _facility_escrow_record_fingerprint(committed)
+		if str(committed.get("escrow_fingerprint", "")) != predecessor:
+			return {"valid": false, "reason_code": "facility_card_escrow_predecessor_invalid"}
+	return {"valid": true, "reason_code": "facility_card_escrow_record_valid", "record": record.duplicate(true)}
+
+
+func _facility_escrow_record_fingerprint(record: Dictionary) -> String:
+	var material := record.duplicate(true)
+	material.erase("escrow_fingerprint")
+	return _stable_hash(material)
+
+
+func _build_facility_escrow_receipt(record: Dictionary, state_id: String, reason_code: String) -> Dictionary:
+	var receipt := {
+		"schema_version": FACILITY_ESCROW_SCHEMA_VERSION,
+		"state_id": state_id,
+		"reason_code": reason_code,
+		"escrow_fingerprint": str(record.get("escrow_fingerprint", "")),
+		"receipt_fingerprint": "",
+	}
+	for field_id in FACILITY_ESCROW_REQUEST_FIELDS:
+		receipt[field_id] = record.get(field_id)
+	receipt["receipt_fingerprint"] = _facility_escrow_receipt_fingerprint(receipt)
+	return receipt
+
+
+func _validate_facility_escrow_receipt(receipt: Dictionary) -> Dictionary:
+	if not _has_exact_keys(receipt, FACILITY_ESCROW_RECEIPT_FIELDS) or not _is_finite_pure_data(receipt) \
+			or int(receipt.get("schema_version", 0)) != FACILITY_ESCROW_SCHEMA_VERSION \
+			or not [FACILITY_ESCROW_FINALIZED_STATE, FACILITY_ESCROW_RELEASED_STATE].has(str(receipt.get("state_id", ""))) \
+			or not _valid_facility_escrow_wire_id(str(receipt.get("reason_code", ""))) \
+			or not _valid_facility_escrow_sha256(str(receipt.get("escrow_fingerprint", ""))) \
+			or not _valid_facility_escrow_sha256(str(receipt.get("receipt_fingerprint", ""))) \
+			or str(receipt.get("receipt_fingerprint", "")) != _facility_escrow_receipt_fingerprint(receipt):
+		return {"valid": false, "reason_code": "facility_card_escrow_receipt_invalid"}
+	var request: Dictionary = {}
+	for field_id in FACILITY_ESCROW_REQUEST_FIELDS:
+		request[field_id] = receipt.get(field_id)
+	var normalized := _normalize_facility_escrow_request(request)
+	if not bool(normalized.get("valid", false)):
+		return normalized
+	return {"valid": true, "reason_code": "facility_card_escrow_receipt_valid", "receipt": receipt.duplicate(true)}
+
+
+func _facility_escrow_receipt_fingerprint(receipt: Dictionary) -> String:
+	var material := receipt.duplicate(true)
+	material.erase("receipt_fingerprint")
+	return _stable_hash(material)
+
+
+func _same_facility_escrow_binding(left: Dictionary, right: Dictionary) -> bool:
+	for field_id in FACILITY_ESCROW_REQUEST_FIELDS:
+		if left.get(field_id) != right.get(field_id):
+			return false
+	return true
+
+
+func _touch_facility_escrow_player_metadata(player_index: int, player: Dictionary) -> Dictionary:
+	var assets_result := _asset_snapshot(player_index)
+	if not bool(assets_result.get("valid", false)):
+		return {"valid": false, "reason_code": "asset_owner_unavailable"}
+	var next_player := player.duplicate(true)
+	next_player[META_REVISION] = maxi(0, int(next_player.get(META_REVISION, 0))) + 1
+	next_player[META_FINGERPRINT] = _resource_fingerprint(
+		next_player,
+		_canonical_inventory(next_player),
+		assets_result.get("assets", {}) as Dictionary
+	)
+	return {"valid": true, "reason_code": "facility_card_escrow_metadata_updated", "player": next_player}
+
+
+func _locate_facility_escrow_for_transition(
+	escrow_id: String,
+	expected_fingerprint: String,
+	operation: String
+) -> Dictionary:
+	var normalized_id := escrow_id.strip_edges()
+	var normalized_fingerprint := expected_fingerprint.strip_edges()
+	if not _facility_escrow_ready():
+		return {"valid": false, "reason_code": "facility_card_escrow_owner_missing"}
+	if not _valid_facility_escrow_wire_id(normalized_id):
+		return {"valid": false, "reason_code": "facility_card_escrow_id_invalid"}
+	if not _valid_facility_escrow_sha256(normalized_fingerprint):
+		return {"valid": false, "reason_code": "facility_card_escrow_fingerprint_invalid"}
+	var players := _world_players()
+	var lookup := _facility_escrow_lookup_by_id(players, normalized_id)
+	if not bool(lookup.get("valid", false)) or not bool(lookup.get("found", false)):
+		return {"valid": false, "reason_code": str(lookup.get("reason_code", "facility_card_escrow_missing"))}
+	if str(lookup.get("kind", "")) == "receipt":
+		var receipt_validation := _validate_facility_escrow_receipt(lookup.get("value", {}) as Dictionary)
+		if not bool(receipt_validation.get("valid", false)):
+			return receipt_validation
+		var receipt: Dictionary = receipt_validation.get("receipt", {}) as Dictionary
+		if str(receipt.get("escrow_fingerprint", "")) != normalized_fingerprint:
+			return {"valid": false, "reason_code": "facility_card_escrow_fingerprint_mismatch"}
+		var terminal_state := str(receipt.get("state_id", ""))
+		if operation == "release" and terminal_state != FACILITY_ESCROW_RELEASED_STATE:
+			return {"valid": false, "reason_code": "facility_card_escrow_already_finalized"}
+		if operation in ["consume", "finalize"] and terminal_state != FACILITY_ESCROW_FINALIZED_STATE:
+			return {"valid": false, "reason_code": "facility_card_escrow_already_released"}
+		return {"valid": true, "terminal": true, "receipt": receipt}
+	var record_validation := _validate_facility_escrow_record(lookup.get("value", {}) as Dictionary)
+	if not bool(record_validation.get("valid", false)):
+		return record_validation
+	var record: Dictionary = record_validation.get("record", {}) as Dictionary
+	var player_index := int(lookup.get("player_index", -1))
+	var player: Dictionary = lookup.get("player", {}) as Dictionary
+	if int(record.get("actor_player_index", -1)) != player_index \
+			or _actor_id(player_index, player) != str(record.get("actor_id", "")):
+		return {"valid": false, "reason_code": "facility_card_escrow_actor_mismatch"}
+	return {
+		"valid": true,
+		"terminal": false,
+		"players": players,
+		"player_index": player_index,
+		"player": player,
+		"record": record,
+	}
+
+
+func _replace_facility_escrow_record(located: Dictionary, next_record: Dictionary) -> Dictionary:
+	var validation := _validate_facility_escrow_record(next_record)
+	if not bool(validation.get("valid", false)):
+		return validation
+	var players: Array = (located.get("players", []) as Array).duplicate(true)
+	var player_index := int(located.get("player_index", -1))
+	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
+		return {"valid": false, "reason_code": "facility_card_escrow_player_missing"}
+	var player := (players[player_index] as Dictionary).duplicate(true)
+	var container_check := _validate_facility_escrow_containers(player)
+	if not bool(container_check.get("valid", false)):
+		return container_check
+	var escrows: Dictionary = (container_check.get("escrows", {}) as Dictionary).duplicate(true)
+	var escrow_id := str(next_record.get("escrow_id", ""))
+	if not escrows.has(escrow_id):
+		return {"valid": false, "reason_code": "facility_card_escrow_missing"}
+	escrows[escrow_id] = next_record.duplicate(true)
+	player[FACILITY_ESCROWS_FIELD] = escrows
+	var touched := _touch_facility_escrow_player_metadata(player_index, player)
+	if not bool(touched.get("valid", false)):
+		return touched
+	players[player_index] = (touched.get("player", {}) as Dictionary).duplicate(true)
+	_write_world_players(players)
+	return {"valid": true, "reason_code": "facility_card_escrow_record_replaced"}
+
+
+func _remove_facility_escrow_with_receipt(
+	located: Dictionary,
+	receipt: Dictionary,
+	restored_card: Variant
+) -> Dictionary:
+	var receipt_validation := _validate_facility_escrow_receipt(receipt)
+	if not bool(receipt_validation.get("valid", false)):
+		return receipt_validation
+	var players: Array = (located.get("players", []) as Array).duplicate(true)
+	var player_index := int(located.get("player_index", -1))
+	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
+		return {"valid": false, "reason_code": "facility_card_escrow_player_missing"}
+	var player := (players[player_index] as Dictionary).duplicate(true)
+	var container_check := _validate_facility_escrow_containers(player)
+	if not bool(container_check.get("valid", false)):
+		return container_check
+	var escrow_id := str(receipt.get("escrow_id", ""))
+	var escrows: Dictionary = (container_check.get("escrows", {}) as Dictionary).duplicate(true)
+	var receipts: Dictionary = (container_check.get("receipts", {}) as Dictionary).duplicate(true)
+	if not escrows.has(escrow_id) or receipts.has(escrow_id):
+		return {"valid": false, "reason_code": "facility_card_escrow_collision"}
+	if restored_card is Dictionary:
+		var source_slot_index := int(receipt.get("source_slot_index", -1))
+		var slots_variant: Variant = player.get("slots", [])
+		if not (slots_variant is Array) or source_slot_index < 0 or source_slot_index >= (slots_variant as Array).size() \
+				or (slots_variant as Array)[source_slot_index] != null:
+			return {"valid": false, "reason_code": "facility_card_escrow_release_slot_occupied"}
+		var slots := (slots_variant as Array).duplicate(true)
+		slots[source_slot_index] = (restored_card as Dictionary).duplicate(true)
+		player["slots"] = slots
+	escrows.erase(escrow_id)
+	receipts[escrow_id] = receipt.duplicate(true)
+	player[FACILITY_ESCROWS_FIELD] = escrows
+	player[FACILITY_ESCROW_RECEIPTS_FIELD] = receipts
+	var touched := _touch_facility_escrow_player_metadata(player_index, player)
+	if not bool(touched.get("valid", false)):
+		return touched
+	players[player_index] = (touched.get("player", {}) as Dictionary).duplicate(true)
+	_write_world_players(players)
+	return {"valid": true, "reason_code": "facility_card_escrow_terminal_applied"}
+
+
+func _released_facility_escrow_card(card: Dictionary) -> Dictionary:
+	var restored := card.duplicate(true)
+	if restored.has("queued_for_resolution"):
+		restored["queued_for_resolution"] = false
+	for field_id in [
+		"facility_card_escrow_id",
+		"facility_card_escrow_state",
+		"facility_card_escrow_fingerprint",
+		"committed_resolution_escrow",
+		"resolution_escrow_id",
+		"queue_escrow_id",
+	]:
+		restored.erase(field_id)
+	return restored
+
+
+func _facility_escrow_commit_result(record: Dictionary, replayed: bool) -> Dictionary:
+	return {
+		"committed": true,
+		"consumed": str(record.get("state_id", "")) == FACILITY_ESCROW_CONSUMED_PENDING_STATE,
+		"terminal": false,
+		"reason_code": "facility_card_escrow_commit_replay" if replayed else "facility_card_escrow_committed",
+		"escrow_id": str(record.get("escrow_id", "")),
+		"state_id": str(record.get("state_id", "")),
+		"escrow_fingerprint": str(record.get("escrow_fingerprint", "")),
+		"idempotent_replay": replayed,
+	}
+
+
+func _facility_escrow_consume_result(record: Dictionary, replayed: bool) -> Dictionary:
+	return {
+		"committed": true,
+		"consumed": true,
+		"finalized": false,
+		"terminal": false,
+		"reason_code": "facility_card_escrow_consume_replay" if replayed else "facility_card_escrow_consumed_pending_finalization",
+		"escrow_id": str(record.get("escrow_id", "")),
+		"state_id": str(record.get("state_id", "")),
+		"escrow_fingerprint": str(record.get("escrow_fingerprint", "")),
+		"predecessor_escrow_fingerprint": str(record.get("predecessor_escrow_fingerprint", "")),
+		"idempotent_replay": replayed,
+	}
+
+
+func _facility_escrow_terminal_result(receipt: Dictionary, operation: String, replayed: bool) -> Dictionary:
+	var state_id := str(receipt.get("state_id", ""))
+	return {
+		"committed": state_id == FACILITY_ESCROW_FINALIZED_STATE,
+		"consumed": state_id == FACILITY_ESCROW_FINALIZED_STATE,
+		"finalized": state_id == FACILITY_ESCROW_FINALIZED_STATE,
+		"released": state_id == FACILITY_ESCROW_RELEASED_STATE,
+		"terminal": true,
+		"reason_code": "facility_card_escrow_%s_replay" % operation if replayed else str(receipt.get("reason_code", "facility_card_escrow_terminal")),
+		"escrow_id": str(receipt.get("escrow_id", "")),
+		"state_id": state_id,
+		"escrow_fingerprint": str(receipt.get("escrow_fingerprint", "")),
+		"receipt_fingerprint": str(receipt.get("receipt_fingerprint", "")),
+		"idempotent_replay": replayed,
+	}
+
+
+func _valid_facility_escrow_wire_id(value: String) -> bool:
+	if value.is_empty() or value.length() > 192:
+		return false
+	for character_index in range(value.length()):
+		if not "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.:-".contains(value.substr(character_index, 1)):
+			return false
+	return true
+
+
+func _valid_facility_escrow_sha256(value: String) -> bool:
+	if value.length() != 64:
+		return false
+	for character_index in range(value.length()):
+		if not "0123456789abcdef".contains(value.substr(character_index, 1)):
+			return false
+	return true
 
 
 func _reject(reason_code: String, extra: Dictionary = {}) -> Dictionary:

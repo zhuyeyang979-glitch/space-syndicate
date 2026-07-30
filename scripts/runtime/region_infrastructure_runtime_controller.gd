@@ -8,6 +8,7 @@ signal facility_action_rolled_back(receipt: Dictionary)
 signal facility_action_finalized(receipt: Dictionary)
 
 const StrictState := preload("res://scripts/runtime/save_owner_state_v2_contract.gd")
+const SemanticWire := preload("res://scripts/semantic/semantic_wire_v1.gd")
 
 const SAVE_VERSION := 1
 const RULESET_ID := "v0.6"
@@ -385,6 +386,30 @@ func slot_id(region_id: String, facility_type: String, industry_id: String = "")
 	if facility_type == "factory" or facility_type == "market" or facility_type == "warehouse":
 		key = "%s.%s" % [facility_type, industry_id]
 	return "%s::%s" % [region_id, key]
+
+
+func facility_target_binding_snapshot(
+	region_id: String,
+	facility_type: String,
+	industry_id: String = ""
+) -> Dictionary:
+	var normalized_region_id := region_id.strip_edges()
+	if not _configured or not FACILITY_TYPES.has(facility_type) \
+			or not _facility_kind_valid(facility_type, industry_id):
+		return {}
+	var region := region_snapshot(normalized_region_id)
+	var target_slot_id := slot_id(normalized_region_id, facility_type, industry_id)
+	if region.is_empty() or target_slot_id.is_empty() \
+			or not (region.get("facility_slot_ids", []) as Array).has(target_slot_id):
+		return {}
+	return SemanticWire.sealed_copy({
+		"schema_version": 1,
+		"target_kind_id": "region_unique_facility_slot",
+		"region_id": normalized_region_id,
+		"region_revision": int(region.get("revision", 0)),
+		"target_slot_id": target_slot_id,
+		"target_slot_generation": int(_slot_generations.get(target_slot_id, 0)),
+	}, "target_state_fingerprint")
 
 
 func region_id_for_legacy_index(legacy_index: int) -> String:

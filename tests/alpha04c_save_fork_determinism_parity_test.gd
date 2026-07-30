@@ -206,6 +206,7 @@ func _continue_stack(stack: Dictionary, bankrupt_owner: int) -> Dictionary:
 	var summary := _critical_summary(save_state, route_candidates.size())
 	var identity := SimulationIdentityScript.new()
 	var identity_result := identity.identify(save_state, trace)
+	identity.free()
 	var ok := bool(route_refresh.get("refreshed", false)) \
 		and not route_candidates.is_empty() \
 		and bool(queue_submission.get("committed", false)) \

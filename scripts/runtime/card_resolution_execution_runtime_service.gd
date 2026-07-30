@@ -2,6 +2,8 @@
 extends Node
 class_name CardResolutionExecutionRuntimeService
 
+const FacilityBinding := preload("res://scripts/cards/v06/queued_facility_card_action_v1.gd")
+
 const STATUS_READY := "ready"
 const STATUS_RETRYABLE := "retryable"
 const STATUS_REJECTED := "rejected"
@@ -205,8 +207,36 @@ func advance_execution(transaction: Dictionary, receipt: Dictionary) -> Dictiona
 			updated["failure_reason"] = "" if bool(updated["resolved"]) else str(receipt.get("reason", "effect_not_resolved"))
 			updated["continuation_kind"] = str(receipt.get("continuation_kind", "normal"))
 			updated["next_intent"] = _intent_for(updated, INTENT_FINISH_COMMITMENT)
+			if bool(receipt.get("retryable_commitment", false)):
+				updated["status"] = STATUS_RETRYABLE
+				updated["ready"] = false
+				updated["reason"] = "facility_commitment_retry_required"
+				updated["failure_reason"] = str(updated["reason"])
+				_store_inflight_transaction(updated)
+				_last_resolution_id = int(updated.get("resolution_id", -1))
+				_last_phase = "retryable_commitment"
+				_last_reason = str(updated["reason"])
+				_last_summary = _transaction_summary(updated)
+				return updated
 		INTENT_FINISH_COMMITMENT:
-			updated["commitment_checked"] = bool(receipt.get("committed", false))
+			var facility_commitment := _dictionary(updated.get("active_entry", {})).has("v06_facility_action")
+			var commitment_settled := bool(receipt.get("committed", false)) \
+				and (not facility_commitment or bool(receipt.get("commitment_settled", false)))
+			if not commitment_settled:
+				completed.pop_back()
+				updated["completed_intents"] = completed
+				updated["status"] = STATUS_RETRYABLE
+				updated["ready"] = false
+				updated["reason"] = str(receipt.get("reason", "card_commitment_unsettled"))
+				updated["failure_reason"] = str(updated["reason"])
+				updated["next_intent"] = _intent_for(updated, INTENT_FINISH_COMMITMENT)
+				_store_inflight_transaction(updated)
+				_last_resolution_id = int(updated.get("resolution_id", -1))
+				_last_phase = "retryable_commitment"
+				_last_reason = str(updated["reason"])
+				_last_summary = _transaction_summary(updated)
+				return updated
+			updated["commitment_checked"] = true
 			updated["next_intent"] = _intent_for(updated, INTENT_CREATE_AFTERMATH if bool(updated.get("countered", false)) or bool(updated.get("aftermath_required", false)) else INTENT_RESTORE_CONTEXT)
 		INTENT_CREATE_AFTERMATH:
 			var active_entry := _dictionary(updated.get("active_entry", {}))
@@ -293,6 +323,48 @@ func pending_settlement(resolution_id: int) -> Dictionary:
 	return _dictionary(_pending_settlements.get(str(resolution_id), {}))
 
 
+func immediate_facility_resolution_snapshot() -> Dictionary:
+	var candidates: Array[Dictionary] = []
+	for pending_variant in _pending_settlements.values():
+		if not (pending_variant is Dictionary):
+			continue
+		var transaction: Dictionary = (pending_variant as Dictionary).get("transaction", {}) \
+			if (pending_variant as Dictionary).get("transaction", {}) is Dictionary else {}
+		var candidate := _facility_execution_candidate(transaction, "pending_settlement")
+		if not candidate.is_empty():
+			candidates.append(candidate)
+	for transaction_variant in _inflight_execution_transactions.values():
+		if not (transaction_variant is Dictionary):
+			continue
+		var candidate := _facility_execution_candidate(transaction_variant as Dictionary, "inflight")
+		if not candidate.is_empty():
+			candidates.append(candidate)
+	if candidates.is_empty():
+		return {"pending": false, "reason_code": "facility_execution_not_pending"}
+	if candidates.size() != 1:
+		return {"pending": false, "reason_code": "facility_execution_collision"}
+	return candidates[0].duplicate(true)
+
+
+func _facility_execution_candidate(transaction: Dictionary, stage_id: String) -> Dictionary:
+	var entry: Dictionary = transaction.get("active_entry", {}) \
+		if transaction.get("active_entry", {}) is Dictionary else {}
+	var binding: Dictionary = entry.get("v06_facility_action", {}) \
+		if entry.get("v06_facility_action", {}) is Dictionary else {}
+	if not bool(FacilityBinding.validation_report(binding).get("valid", false)):
+		return {}
+	var resolution_id := int(transaction.get("resolution_id", -1))
+	if resolution_id <= 0 or resolution_id != int(entry.get("resolution_id", -2)) \
+			or resolution_id != int(binding.get("resolution_id", -3)):
+		return {}
+	return {
+		"pending": true,
+		"reason_code": "facility_execution_pending",
+		"resolution_id": resolution_id,
+		"stage_id": stage_id,
+	}
+
+
 func ensure_pending_settlement(transaction: Dictionary, finalized: Dictionary) -> Dictionary:
 	if not _is_data_only(transaction) or not _is_data_only(finalized):
 		return {"registered": false, "reason": "pending_settlement_not_data"}
@@ -363,7 +435,9 @@ func finalize_execution(transaction: Dictionary) -> Dictionary:
 		return _finalize_rejection(str(transaction.get("failure_reason", transaction.get("reason", "execution_aborted"))), resolution_id)
 	if not _dictionary(transaction.get("next_intent", {})).is_empty():
 		return _finalize_rejection("execution_incomplete", resolution_id)
-	if not bool(transaction.get("active_released", false)) or not bool(transaction.get("history_appended", false)):
+	if not bool(transaction.get("active_released", false)) \
+			or not bool(transaction.get("commitment_checked", false)) \
+			or not bool(transaction.get("history_appended", false)):
 		return _finalize_rejection("execution_incomplete", resolution_id)
 	_completed_resolution_ids[resolution_key] = true
 	_inflight_resolution_ids.erase(resolution_key)
@@ -733,8 +807,15 @@ func _validate_execution_transaction(transaction: Dictionary, require_pending_in
 			return {"valid": false, "reason": "continuation_intent_missing_history"}
 		if next_intent_type == INTENT_PROMOTE_NEXT_BATCH and not seen_intents.has(INTENT_FINISH_BATCH):
 			return {"valid": false, "reason": "promotion_intent_missing_batch_finish"}
-		if status == STATUS_RETRYABLE and next_intent_type != INTENT_APPEND_HISTORY:
+		if status == STATUS_RETRYABLE and next_intent_type not in [
+			INTENT_FINISH_COMMITMENT,
+			INTENT_APPEND_HISTORY,
+		]:
 			return {"valid": false, "reason": "retryable_intent_invalid"}
+		if status == STATUS_RETRYABLE \
+				and next_intent_type == INTENT_FINISH_COMMITMENT \
+				and bool(transaction.get("commitment_checked", false)):
+			return {"valid": false, "reason": "retryable_commitment_already_checked"}
 	if bool(transaction.get("active_released", false)) != seen_intents.has(INTENT_RELEASE_ACTIVE):
 		return {"valid": false, "reason": "active_release_flag_inconsistent"}
 	if bool(transaction.get("history_appended", false)) != seen_intents.has(INTENT_APPEND_HISTORY):

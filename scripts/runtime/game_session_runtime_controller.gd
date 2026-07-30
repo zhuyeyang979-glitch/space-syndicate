@@ -4,6 +4,8 @@ class_name GameSessionRuntimeController
 
 signal authorization_context_changed(reason_id: String)
 
+const SemanticWire := preload("res://scripts/semantic/semantic_wire_v1.gd")
+
 const STATE_IDLE := "idle"
 const STATE_STARTING := "starting"
 const STATE_RUNNING := "running"
@@ -111,6 +113,16 @@ func session_summary() -> Dictionary:
 
 func session_start_revision() -> int:
 	return int(hash(JSON.stringify({"state": _session_state, "session_id": _session_id, "scenario_id": _scenario_id, "seed": _seed, "setup": _setup_summary, "outcome": _outcome_receipt, "operation_sequence": _operation_sequence}))) & 0x7fffffff
+
+
+func persistent_session_identity_fingerprint() -> String:
+	return SemanticWire.fingerprint({
+		"ruleset_id": _ruleset_id,
+		"session_id": _session_id,
+		"scenario_id": _scenario_id,
+		"seed": str(_seed),
+		"setup": _setup_summary.duplicate(true),
+	})
 
 
 func preflight_new_session(setup_snapshot: Dictionary, expected_revision: int) -> Dictionary:

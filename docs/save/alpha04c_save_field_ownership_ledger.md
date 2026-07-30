@@ -43,7 +43,7 @@ though they are not persisted in the player save.
 | 10 | `monsters` | `MonsterRuntimeController` | monsters, wagers, timers, card lifecycle and lineage | Phase 5 authoritative |
 | 11 | `military` | `MilitaryRuntimeController` | units, next UID, cooldown/duration and bankruptcy journal | Phase 5 authoritative |
 | 12 | `weather` | `WeatherRuntimeController` | event/forecast queue, generation cursor and history | Phase 5 authoritative |
-| 13 | `card_resolution_queue` | `CardResolutionQueueRuntimeService` | current/next/active queue, sequences and stable target bindings | Phase 5 authoritative |
+| 13 | `card_resolution_queue` | `CardResolutionQueueRuntimeService` | current/next/active queue, sequences, stable targets, and sealed facility request/escrow/reservation references | Phase 5 authoritative after session, infrastructure, mana, and inventory |
 | 14 | `card_resolution_execution` | `CardResolutionExecutionRuntimeService` | active execution, continuation and exact-once settlement lineage | Phase 5 authoritative |
 | 15 | `card_resolution_history` | `CardResolutionHistoryRuntimeService` | public resolved history and retained resolution IDs | Phase 5 authoritative |
 | 16 | `ai` | `AiRuntimeController` | AI profile/memory, decision timers, enabled state and policy attestation | Phase 5 late authoritative |
@@ -79,6 +79,18 @@ though they are not persisted in the player save.
 8. `session` owns the sole shared gameplay RNG continuation. Region supply may
    persist an already-materialized deterministic bag cursor, never the shared
    RNG object or a competing global cursor.
+9. A queued facility remains one cross-owner bundle rather than a twentieth
+   section. `session` owns the escrowed card instance, `player_mana` owns its
+   reservation, and `region_infrastructure` owns the target revision and slot
+   generation. `card_resolution_queue` owns only the sealed references and
+   request identity. `card_resolution_execution` and
+   `card_resolution_history` must show collision-free absence before the first
+   legal resolution step; after that step they own completion and public
+   history respectively.
+10. Queue facility metadata is not a synthetic top-level Save field. It is the
+    closed `v06_facility_action` object nested on entries in `current_queue[]`,
+    `next_queue[]`, or `active_entry`; the machine ledger records those exact
+    persisted paths.
 
 ## Privacy boundary
 

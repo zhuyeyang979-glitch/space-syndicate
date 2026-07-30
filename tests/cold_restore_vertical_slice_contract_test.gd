@@ -48,7 +48,16 @@ func _run() -> void:
 	var child_attestation_source := FileAccess.get_file_as_string(CHILD_ATTESTATION_PATH)
 	_expect(source.contains("$ORCHESTRATOR_SCHEMA_VERSION = 3") and source.contains("$FORMAL_FULL_RUN = $false") and source.contains("$DriverExecutionReady = $true"), "orchestrator exposes a non-Formal v3 role contract behind explicit qualification and official authorization gates")
 	_expect(driver_source.contains("const SCHEMA_VERSION := 3") and driver_source.contains("const EXECUTION_READY := true") and driver_source.contains('"driver_id": "alpha04c_cold_restore_vertical_slice_v3"'), "driver and orchestrator share one executable Harness-only v3 contract")
-	_expect(driver_source.contains("--cold-restore-expected-queue-resolution-id=") and driver_source.contains("--cold-restore-expected-queue-stable-target-fingerprint=") and driver_source.contains("--cold-restore-scenario-fingerprint=") and driver_source.contains("--cold-restore-official-count-consumed=") and driver_source.contains('"unknown_option"') and driver_source.contains('"duplicate_option"'), "driver accepts only the closed expected-identity and authorization option surface")
+	_expect(driver_source.contains("--cold-restore-expected-queue-resolution-id=") and driver_source.contains("--cold-restore-expected-queue-stable-target-fingerprint=") and driver_source.contains("--cold-restore-scenario-fingerprint=") and driver_source.contains("--cold-restore-official-claim-path=") and driver_source.contains("--cold-restore-launch-attestation-path=") and driver_source.contains("--cold-restore-launch-nonce=") and driver_source.contains('"unknown_option"') and driver_source.contains('"duplicate_option"'), "driver accepts only the closed expected-identity and attested authorization option surface")
+	_expect(not driver_source.contains("--cold-restore-official-count-consumed=") and driver_source.contains("caller_boolean_authorization_accepted\": false"), "direct driver invocation cannot forge official authorization with a caller boolean")
+	_expect(driver_source.contains("official-alpha04c-depth1-seed900626424/official_claim_ledger.json") and driver_source.contains("_resolve_git_common_dir") and driver_source.contains("_authorize_official_launch") and driver_source.contains("OS.get_process_id()"), "driver requires the fixed cross-worktree claim and a launch attestation bound to the actual engine PID")
+	_expect(source.contains("$OfficialClaimRelativePath = \"codex\\cold_restore_v3\\official-alpha04c-depth1-seed900626424\\official_claim_ledger.json\"") and source.contains("Resolve-ColdRestoreGitCommonDirectory") and source.contains("Write-ColdRestoreExclusiveJson"), "orchestrator consumes one RunId-independent claim below the Git common directory")
+	_expect(not source.contains('Join-Path $paths.root "official_ledger.json"') and not source.contains('run_id = $RunId\n        repository_head'), "changing RunId cannot select or mint a second official authorization ledger")
+	_expect(wrapper_source.contains("[IO.FileMode]::CreateNew") and wrapper_source.contains("Write-ColdRestoreExclusiveJson") and wrapper_source.contains("Write-ColdRestoreLaunchAttestation"), "the claim final path is created exclusively and each child receives a PID-bound launch attestation")
+	var claim_call_index := source.rfind("Assert-AndConsumeOfficialColdRestoreAuthorization $resolvedProjectPath $headSha")
+	_expect(source.find('if ($ContractManifestPath -ne "")') < claim_call_index and source.find("if (-not $QualificationProbe -and -not $EnableColdRestoreExecution)") < claim_call_index and source.find("if ($QualificationProbe)") < claim_call_index, "contract fixture, default check-only, and qualification all exit before the fixed claim boundary")
+	var forged_boolean := _invoke_driver_with_forged_boolean()
+	_expect(int(forged_boolean.get("exit_code", 0)) != 0 and str(forged_boolean.get("output", "")).contains("unknown_option"), "the retired official-count boolean is rejected before runtime or Save access")
 	_expect(not driver_source.contains(".tick_ai(") and not driver_source.contains("_tick_ai_until_nontrivial_queue") and driver_source.contains("AUTHORITATIVE_STEPPER.advance_bounded") and driver_source.contains("TERMINAL_EVIDENCE.acquire_manual_lease"), "all AI progress uses the bounded authoritative RuntimeLoop lease with no direct tick fallback")
 	_expect(driver_source.contains("consumer_restored_queue_target_identity_invalid") and driver_source.contains("consumer_queue_target_exact_once_invalid") and driver_source.contains("validator_queue_target_lineage_invalid"), "driver validates A identity in B before continuation and proves completed Generation-2 lineage in C")
 	_expect(source.contains('[ValidateSet("producer", "consumer", "validator")]') and source.contains('$RoleSequence = @("producer", "consumer", "validator")'), "v3 contract has three closed process roles")
@@ -467,6 +476,26 @@ func _invoke_orchestrator(fixture_path: String) -> Dictionary:
 			if value is Dictionary:
 				parsed = value as Dictionary
 	return {"exit_code": exit_code, "result": parsed, "raw_output": output}
+
+
+func _invoke_driver_with_forged_boolean() -> Dictionary:
+	var output: Array = []
+	var project_path := ProjectSettings.globalize_path("res://").trim_suffix("/").trim_suffix("\\")
+	var exit_code := OS.execute(OS.get_executable_path(), PackedStringArray([
+		"--headless",
+		"--path",
+		project_path,
+		"--script",
+		DRIVER_PATH,
+		"--",
+		"--cold-restore-role=producer",
+		"--cold-restore-run-id=forged-boolean",
+		"--cold-restore-head-sha=%s" % "a".repeat(40),
+		"--cold-restore-artifact-root=user://test_runs/alpha04c/forged-boolean/evidence",
+		"--cold-restore-scenario-fingerprint=%s" % "b".repeat(64),
+		"--cold-restore-official-count-consumed=true",
+	]), output, true)
+	return {"exit_code": exit_code, "output": "\n".join(output)}
 
 
 func _has_exact_fields(value: Dictionary, expected: Array) -> bool:

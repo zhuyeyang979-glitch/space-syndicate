@@ -89,7 +89,7 @@ func _run() -> void:
 	var registry := coordinator.get_node_or_null("GameSessionRuntimeController/V06SaveOwnerRegistry")
 	var registry_snapshot: Dictionary = registry.registry_snapshot() if registry != null else {}
 	_expect(registry != null and bool(registry_snapshot.get("valid", false)), "production save registry remains structurally valid")
-	_expect(int(registry_snapshot.get("transactional_section_count", 0)) >= 6 and int(registry_snapshot.get("unsupported_section_count", 0)) <= 12, "player mana remains one of the registered transactional owners")
+	_expect(int(registry_snapshot.get("transactional_section_count", 0)) == 19 and int(registry_snapshot.get("unsupported_section_count", -1)) == 0, "player mana remains one of nineteen registered transactional owners")
 	var mana_binding: Resource
 	if registry != null:
 		for binding in registry.bindings:
@@ -97,7 +97,7 @@ func _run() -> void:
 				mana_binding = binding
 				break
 	_expect(mana_binding != null and mana_binding.is_transactional() and str(mana_binding.owner_path) == "../../PlayerManaRuntimeController", "registry binds player mana to the unique production owner")
-	_expect(not bool(registry_snapshot.get("resume_ready", true)), "full resume remains fail-closed while twelve sections are unsupported")
+	_expect(bool(registry_snapshot.get("resume_ready", false)), "all nineteen existing owners are restore-ready")
 	coordinator.queue_free()
 	await process_frame
 	_finish()

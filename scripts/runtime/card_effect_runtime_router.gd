@@ -54,6 +54,7 @@ func dispatch(transaction: Dictionary) -> Dictionary:
 	var player: Dictionary = players[player_index]
 	var resolved := false
 	var continuation_kind := "normal"
+	var facility_commitment_settled := true
 	if handler_id in ["global_order_budget", "global_supply_spawn"]:
 		if _runtime_coordinator == null or not _runtime_coordinator.has_method("resolve_queued_v06_automatic_supply_demand"):
 			return _receipt(true, false, "queued_supply_demand_runtime_unavailable")
@@ -62,6 +63,25 @@ func dispatch(transaction: Dictionary) -> Dictionary:
 		resolved = bool(v06_result.get("resolved", false)) and bool(v06_result.get("committed", false)) and bool(v06_result.get("finalized", false))
 		if not resolved:
 			return _receipt(true, false, str(v06_result.get("reason_code", "queued_supply_demand_effect_failed")))
+	elif handler_id == "public_facility":
+		if _runtime_coordinator == null or not entry.has("v06_facility_action"):
+			return _receipt(true, false, "queued_facility_binding_missing")
+		var facility_result := _runtime_coordinator.resolve_queued_v06_facility_card_action(
+			entry.duplicate(true)
+		)
+		resolved = bool(facility_result.get("resolved", false)) \
+			and bool(facility_result.get("committed", false)) \
+			and bool(facility_result.get("finalized", false))
+		facility_commitment_settled = bool(facility_result.get(
+			"commitment_settled",
+			resolved
+		))
+		if not resolved:
+			return _receipt(
+				true,
+				false,
+				str(facility_result.get("reason_code", "queued_facility_effect_failed"))
+			)
 	elif handler_id == "target_monster":
 		resolved = _resolve_targeted_skill(skill, player, _resolved_monster_target_slot(entry), player_index, int(entry.get("selected_district", -1)), entry)
 	elif handler_id == "target_player":
@@ -75,7 +95,16 @@ func dispatch(transaction: Dictionary) -> Dictionary:
 			resolved = _dispatch_domain_handler(handler_id, player_index, player, entry, skill)
 	if _monster_controller != null and _monster_controller.open_wager_decision_count() > int(transaction.get("monster_wager_decision_count_before", 0)):
 		continuation_kind = "forced_decision_handoff"
-	return _receipt(true, resolved, "resolved" if resolved else "effect_not_resolved", continuation_kind)
+	var receipt := _receipt(
+		true,
+		resolved,
+		"resolved" if resolved else "effect_not_resolved",
+		continuation_kind
+	)
+	if handler_id == "public_facility":
+		receipt["commitment_settled"] = facility_commitment_settled
+		receipt["retryable_commitment"] = resolved and not facility_commitment_settled
+	return receipt
 
 
 func supported_handler_ids() -> Array:
@@ -130,18 +159,6 @@ func _dispatch_domain_handler(handler_id: String, player_index: int, player: Dic
 	match handler_id:
 		"monster_card":
 			return _monster_controller != null and _monster_controller._summon_monster_from_card(player_index, skill)
-		"public_facility":
-			if _runtime_coordinator == null:
-				return false
-			var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
-			var result := _runtime_coordinator.submit_public_facility_card({
-				"transaction_id": "card-resolution-%d-public-facility" % resolution_id if resolution_id >= 0 else "",
-				"player_index": player_index,
-				"target_region_index": int(skill.get("target_region_index", entry.get("selected_district", -1))),
-				"occurred_at": _world_session_state.game_time,
-				"skill": skill,
-			})
-			return bool(result.get("committed", false))
 		"monster_bound_action":
 			return _monster_controller != null and _monster_controller._trigger_bound_monster_skill(skill, player)
 		"military_force":

@@ -56,6 +56,39 @@ func _run() -> void:
 	failed_release = service.call("advance_execution", failed_release, {"intent_type": "release_active", "completed": false, "reason": "active_resolution_mismatch"}) as Dictionary
 	_expect(str(failed_release.get("status", "")) == "aborted" and _next_kind(failed_release) == "" and not bool(failed_release.get("effect_dispatched", false)), "failed active release blocks effect dispatch")
 
+	var retryable_commitment := service.call("plan_execution", _request(3706, "cash_gain")) as Dictionary
+	while _next_kind(retryable_commitment) != "finish_card_commitment":
+		var intent_kind := _next_kind(retryable_commitment)
+		var receipt := {"intent_type": intent_kind}
+		match intent_kind:
+			"counter_check": receipt["countered"] = false
+			"release_active": receipt["completed"] = true
+			"finish_presentation": receipt["finished"] = true
+			"revalidate_requirement", "revalidate_target": receipt["valid"] = true
+			"dispatch_effect":
+				receipt["dispatched"] = true
+				receipt["resolved"] = true
+		retryable_commitment = service.call("advance_execution", retryable_commitment, receipt) as Dictionary
+	retryable_commitment = service.call("advance_execution", retryable_commitment, {
+		"intent_type": "finish_card_commitment",
+		"committed": false,
+		"reason": "injected_commitment_unsettled",
+	}) as Dictionary
+	_expect(str(retryable_commitment.get("status", "")) == "retryable" \
+			and _next_kind(retryable_commitment) == "finish_card_commitment", "unsettled commitment retains the exact failed intent")
+	var retryable_save := service.call("to_save_data") as Dictionary
+	var retryable_preflight := service.call("preflight_save_data", retryable_save) as Dictionary
+	_expect(bool(retryable_preflight.get("accepted", false)), "service-generated retryable commitment state passes its own Save v3 preflight")
+	var restored_service := packed.instantiate() as Node
+	root.add_child(restored_service)
+	restored_service.call("configure", {"ruleset_id": "v0.4"})
+	var retryable_apply := restored_service.call("apply_save_data", retryable_save) as Dictionary
+	var resumed_commitment := restored_service.call("resume_inflight_execution", 3706) as Dictionary
+	_expect(bool(retryable_apply.get("applied", false)) \
+			and bool(resumed_commitment.get("ready", false)) \
+			and _next_kind(resumed_commitment) == "finish_card_commitment", "cold-restored commitment resumes only the failed owner leg")
+	restored_service.queue_free()
+
 	var promoted := service.call("plan_execution", _request(3705, "product_speculation")) as Dictionary
 	var promoted_order: Array[String] = []
 	promoted = _drive(service, promoted, promoted_order, {"next_queue_count": 1})

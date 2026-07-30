@@ -28,6 +28,13 @@ func advance_card_resolution_frame(delta_seconds: float) -> Dictionary:
 	}
 
 
+func immediate_facility_resolution_pending() -> Dictionary:
+	return _frame_driver.immediate_transition_snapshot() if _frame_driver != null else {
+		"pending": false,
+		"reason_code": "card_resolution_frame_driver_unavailable",
+	}
+
+
 func advance_card_cooldowns(delta_seconds: float) -> Dictionary:
 	return _cooldowns.advance_world(delta_seconds) if _cooldowns != null else {
 		"advanced": false,

@@ -71,7 +71,7 @@ func run_bench() -> Dictionary:
 	if registry != null:
 		var snapshot: Dictionary = registry.registry_snapshot()
 		_check(registry.fixed_section_order() == EXPECTED_ORDER and EXPECTED_ORDER[-1] == "session", "production registry uses the fixed 19-owner order with session last")
-		_check(int(snapshot.get("required_section_count", 0)) == 19 and int(snapshot.get("transactional_section_count", 0)) == 12 and int(snapshot.get("unsupported_section_count", 0)) == 7 and not bool(snapshot.get("resume_ready", true)), "production registry exposes the 12/7 fail-closed capability boundary")
+		_check(int(snapshot.get("required_section_count", 0)) == 19 and int(snapshot.get("transactional_section_count", 0)) == 19 and int(snapshot.get("unsupported_section_count", -1)) == 0 and bool(snapshot.get("resume_ready", false)), "production registry exposes nineteen transactionally restore-ready owners")
 		_check(_history_binding_valid(registry), "production registry binds history once with pure preflight and transactional rollback")
 	if execution != null and session != null:
 		_check(not execution.to_save_data().has("history") and not execution.to_save_data().has("card_resolution_history"), "execution save owns no history payload")

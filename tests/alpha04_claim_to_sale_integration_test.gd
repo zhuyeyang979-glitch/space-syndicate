@@ -3,6 +3,7 @@ extends SceneTree
 const SESSION_DRIVER := preload("res://tests/support/production_session_start_driver.gd")
 const CLAIM_REQUEST := preload("res://scripts/runtime/commodity_sushi_track_claim_request.gd")
 const GAME_ACTION_INTENT := preload("res://scripts/semantic/game_action_intent_v1.gd")
+const GAME_ACTION_OFFER := preload("res://scripts/semantic/game_action_offer_v1.gd")
 
 const QA_SAVE_PATH := "user://test_runs/alpha04_claim_to_sale_integration.save"
 const REGION_SUPPLY_SEED := 904_062_611
@@ -272,8 +273,9 @@ func _run() -> void:
 		"discard+receive keeps capacity at five, preserves the claim, removes only the chosen filler, and commits purchase exactly once"
 	)
 
-	var factory_play := _play_facility_through_formal_submission(
+	var factory_play := await _play_facility_through_formal_submission(
 		coordinator,
+		screen,
 		actor_id,
 		factory_card_id,
 		str(factory_target.get("region_id", ""))
@@ -333,8 +335,9 @@ func _run() -> void:
 		"complementary market uses the same real quote/purchase path without a second discard: %s" % JSON.stringify(second_purchase)
 	)
 
-	var market_play := _play_facility_through_formal_submission(
+	var market_play := await _play_facility_through_formal_submission(
 		coordinator,
+		screen,
 		actor_id,
 		market_card_id,
 		str(market_target.get("region_id", ""))
@@ -793,27 +796,98 @@ func _receipt_slice(receipts: Array[DistrictSupplyActionReceipt], start: int) ->
 
 func _play_facility_through_formal_submission(
 	coordinator: GameRuntimeCoordinator,
+	screen: SpaceSyndicateGameScreen,
 	actor_id: String,
 	card_id: String,
 	region_id: String
 ) -> Dictionary:
-	var submission := coordinator.card_play_submission_controller()
-	var before := submission.debug_snapshot()
-	var public_result := coordinator.execute_v06_facility_play_action(actor_id, card_id, region_id)
-	var after := submission.debug_snapshot()
-	var receipt: Dictionary = after.get("last_receipt", {}) if after.get("last_receipt", {}) is Dictionary else {}
-	var v06_receipt: Dictionary = receipt.get("v06_receipt", {}) if receipt.get("v06_receipt", {}) is Dictionary else {}
-	var finalization: Dictionary = v06_receipt.get("effect_finalization", {}) if v06_receipt.get("effect_finalization", {}) is Dictionary else {}
+	var flow := coordinator.get_node_or_null("TablePlayerActionApplicationFlowController") \
+		as TablePlayerActionApplicationFlowController
+	var queue := coordinator.get_node_or_null("CardResolutionQueueRuntimeService") \
+		as CardResolutionQueueRuntimeService
+	var adapter := coordinator.facility_card_queue_adapter_v06()
+	var actor_binding := coordinator.actor_id_for_player_index(0)
+	if screen == null or flow == null or queue == null or adapter == null \
+			or str(actor_binding.get("actor_id", "")) != actor_id:
+		return {"success": false, "reason_code": "facility_formal_dependency_missing"}
+	coordinator.resume_session()
+	var world := coordinator.world_session_state()
+	var target_district := -1
+	if world != null:
+		for district_index in range(world.districts.size()):
+			if world.districts[district_index] is Dictionary \
+					and str((world.districts[district_index] as Dictionary).get("region_id", "")) == region_id:
+				target_district = district_index
+				break
+	if target_district < 0 \
+			or not screen.request_district_selection(target_district, &"qa_driver"):
+		coordinator.pause_session()
+		return {"success": false, "reason_code": "facility_formal_target_selection_failed"}
+	coordinator.request_table_presentation_refresh(&"full", &"claim_sale_facility_offer_sync")
+	await process_frame
+	await process_frame
+	var dock: Dictionary = screen.current_ui_data.get("player_card_dock", {}) \
+		if screen.current_ui_data.get("player_card_dock", {}) is Dictionary else {}
+	var offer: Dictionary = {}
+	var target_overrides: Dictionary = {}
+	for row_variant in dock.get("normal_cards", []) if dock.get("normal_cards", []) is Array else []:
+		if not (row_variant is Dictionary):
+			continue
+		var row := row_variant as Dictionary
+		var candidate: Dictionary = row.get("game_action_offer", {}) \
+			if row.get("game_action_offer", {}) is Dictionary else {}
+		var targets := GAME_ACTION_OFFER.target_ids(candidate)
+		if str(row.get("card_semantic_id", "")) == card_id \
+				and (str(targets.get("region_id", "")).is_empty() \
+					or str(targets.get("region_id", "")) == region_id) \
+				and str(candidate.get("legality_state", "")) == "available":
+			offer = candidate.duplicate(true)
+			if str(targets.get("region_id", "")).is_empty():
+				target_overrides["region_id"] = region_id
+			break
+	if offer.is_empty() or _public_queue_count(queue) != 0:
+		return {"success": false, "reason_code": "facility_formal_offer_missing"}
+	var receipts: Array[Dictionary] = []
+	var capture := func(receipt: Dictionary) -> void:
+		receipts.append(receipt.duplicate(true))
+	flow.receipt_ready.connect(capture)
+	var adapter_before := adapter.debug_snapshot()
+	var submitted := screen.submit_game_action_offer(
+		offer,
+		"human_click",
+		{},
+		target_overrides
+	)
+	coordinator.pause_session()
+	if flow.receipt_ready.is_connected(capture):
+		flow.receipt_ready.disconnect(capture)
+	var receipt: Dictionary = receipts[0] if receipts.size() == 1 else {}
+	var queued := submitted and receipts.size() == 1 \
+		and bool(receipt.get("accepted", false)) \
+		and str(receipt.get("reason_id", "")) == "facility-card-queued" \
+		and _public_queue_count(queue) == 1
+	if queued:
+		coordinator.advance_card_resolution_frame(0.0)
+	var adapter_after := adapter.debug_snapshot()
+	var resolved_once := int(adapter_after.get("resolution_count", 0)) \
+		== int(adapter_before.get("resolution_count", 0)) + 1
 	return {
-		"success": bool(public_result.get("success", false)) \
-			and int(after.get("submission_count", 0)) == int(before.get("submission_count", 0)) + 1 \
-			and int(after.get("accepted_count", 0)) == int(before.get("accepted_count", 0)) + 1 \
-			and bool(receipt.get("accepted", false)) \
-			and bool(v06_receipt.get("committed", false)) \
-			and bool(finalization.get("finalized", v06_receipt.get("finalized", false))),
-		"public_result": public_result,
-		"receipt": receipt,
+		"success": queued and resolved_once and _public_queue_count(queue) == 0,
+		"reason_code": "facility_formal_queue_resolved" if queued and resolved_once \
+			else str(receipt.get("reason_id", "facility_formal_queue_failed")),
+		"receipt": receipt.duplicate(true),
+		"resolution_delta": int(adapter_after.get("resolution_count", 0)) \
+			- int(adapter_before.get("resolution_count", 0)),
 	}
+
+
+func _public_queue_count(queue: CardResolutionQueueRuntimeService) -> int:
+	if queue == null:
+		return -1
+	var snapshot := queue.public_snapshot()
+	return int(snapshot.get("current_count", 0)) \
+		+ (1 if bool(snapshot.get("active_present", false)) else 0) \
+		+ int(snapshot.get("next_count", 0))
 
 
 func _matching_installation(
