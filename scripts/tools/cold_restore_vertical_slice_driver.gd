@@ -4527,13 +4527,16 @@ func _card_inventory_capture_probe(context: Dictionary) -> Dictionary:
 	var owner := coordinator.get_node_or_null("CardInventorySaveOwner") as CardInventorySaveOwner
 	var inventory := coordinator.commodity_card_inventory_runtime_controller()
 	var state_port := coordinator.card_player_state_production_adapter_v06()
-	if owner == null or inventory == null or state_port == null:
+	var district_purchase := coordinator.get_node_or_null("DistrictPurchaseRuntimeController") \
+		as DistrictPurchaseRuntimeController
+	if owner == null or inventory == null or state_port == null or district_purchase == null:
 		return {
 			"captured": false,
 			"reason_code": "card_inventory_probe_dependency_missing",
 			"owner_present": owner != null,
 			"inventory_present": inventory != null,
 			"state_port_present": state_port != null,
+			"district_purchase_present": district_purchase != null,
 		}
 	var capture := owner.capture_composite_state()
 	return {
@@ -4542,6 +4545,51 @@ func _card_inventory_capture_probe(context: Dictionary) -> Dictionary:
 		"owner": owner.debug_snapshot(),
 		"commodity_checkpoint": inventory.checkpoint_status(),
 		"state_port_checkpoint": state_port.checkpoint_status(),
+		"district_purchase": _district_purchase_capture_probe(district_purchase),
+	}
+
+
+func _district_purchase_capture_probe(controller: DistrictPurchaseRuntimeController) -> Dictionary:
+	var checkpoint := controller.capture_runtime_checkpoint()
+	var windows: Dictionary = checkpoint.get("windows_by_player", {}) \
+		if checkpoint.get("windows_by_player", {}) is Dictionary else {}
+	var player_indices: Array = windows.keys()
+	player_indices.sort()
+	var sessions: Array = []
+	var rows: Array = []
+	for player_index_variant in player_indices:
+		var player_index := int(player_index_variant)
+		var snapshot := controller.to_legacy_save_snapshot(player_index)
+		var single_preflight := controller.preflight_save_data({
+			"district_purchase_runtime": {
+				"schema_version": 2,
+				"sessions": [snapshot.duplicate(true)] if not snapshot.is_empty() else [],
+			},
+		})
+		if not snapshot.is_empty():
+			sessions.append(snapshot.duplicate(true))
+		rows.append({
+			"player_index": player_index,
+			"window": (windows.get(player_index_variant, {}) as Dictionary).duplicate(true) \
+				if windows.get(player_index_variant, {}) is Dictionary else {},
+			"snapshot": snapshot.duplicate(true),
+			"snapshot_present": not snapshot.is_empty(),
+			"preflight_accepted": bool(single_preflight.get("accepted", false)),
+			"preflight_reason_code": str(single_preflight.get("reason_code", "")),
+		})
+	var combined_preflight := controller.preflight_save_data({
+		"district_purchase_runtime": {
+			"schema_version": 2,
+			"sessions": sessions.duplicate(true),
+		},
+	})
+	return {
+		"debug": controller.debug_snapshot(),
+		"window_count": windows.size(),
+		"session_count": sessions.size(),
+		"rows": rows,
+		"combined_preflight_accepted": bool(combined_preflight.get("accepted", false)),
+		"combined_preflight_reason_code": str(combined_preflight.get("reason_code", "")),
 	}
 
 
