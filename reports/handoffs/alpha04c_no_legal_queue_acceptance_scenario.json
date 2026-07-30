@@ -119,5 +119,22 @@
     "keep_draft_pr": true,
     "merge_to_main_allowed": false,
     "next_exact_action": "Obtain explicit scope authorization for a production/content change that creates at least one lawful queue-capable action on the active depth-1 map, then perform a new non-official qualification before any official A-to-B-to-C chain."
+  },
+  "trusted_wrapper_confirmation": {
+    "tested_harness_head": "4a42f81c7cec9565bdd50810289ee77106a86759",
+    "run_id": "alpha04c-qualification-attested-01",
+    "child_completion_attestation_green": true,
+    "parent_exit_attestation_green": true,
+    "wrapper_exit_attestation_green": true,
+    "child_exit_code": 0,
+    "task_owned_process_count_after": 0,
+    "product_queue_qualification_green": false,
+    "product_blocker": "BLOCKED_BY_NO_LEGAL_QUEUE_ACCEPTANCE_SCENARIO",
+    "queue_count": 0,
+    "rejected_offer_count": 2,
+    "official_authorization_consumed": false,
+    "official_ledger_created": false,
+    "official_chain_started": false,
+    "next_recommended_task": "ALPHA_0_4_C_P0_QUEUEABLE_FACILITY_ACTION_BRIDGE_AND_COLD_RESTORE_CLOSURE"
   }
 }

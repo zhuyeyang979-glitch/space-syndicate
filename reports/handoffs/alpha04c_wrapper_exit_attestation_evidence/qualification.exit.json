@@ -1,0 +1,19 @@
+{
+  "child_attestation_fingerprint": "8f6f908d6a7921196b9d25850896d5b1da10011797b25a01902317f2440e147b",
+  "child_attestation_found": true,
+  "child_attestation_valid": true,
+  "child_pid": 16208,
+  "exit_code": 0,
+  "observed_exit": true,
+  "role": "qualification",
+  "run_id": "alpha04c-qualification-attested-01",
+  "schema_version": 1,
+  "stderr_sha256": "8caefc174ea0897d5432e18f5a7136e8fb62215f5162d3cb28dabc8c05b84e9d",
+  "stdout_sha256": "de6a55e3b5318cf81c6b3028d5ac2d1237acb89307cb0fd7e4cb781239522f6e",
+  "task_owned_process_count_after": 0,
+  "terminated_by_parent": false,
+  "timed_out": false,
+  "unrelated_preexisting_process_count": 0,
+  "wrapper_exit_green": true,
+  "wrapper_reason_code": "ok"
+}
