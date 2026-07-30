@@ -1,8 +1,8 @@
 # Alpha 0.4-C allocator cursor ownership
 
-Status: ownership frozen; implementation pending
+Status: ownership frozen; implementation complete
 
-Source head: `0240dae2d03581791a27826a8472576b5b543502`
+Source head: `12691a8bc7ad2c5a9f4c175c95a8c214ea346a74`
 
 Runtime ruleset: `v0.6`
 
@@ -27,7 +27,7 @@ space. It does not add a twentieth Save section or change the v3 envelope.
 
 | Cursor | Sole authority | Runtime field | Current Save field | Status | Minimum |
 | --- | --- | --- | --- | --- | ---: |
-| Market quote sequence | `CardMarketPricingRuntimeController` | `_next_quote_sequence` | none in v2; proposed `card_inventory.district_purchase.district_purchase_runtime.next_quote_sequence` | repair required | 1 |
+| Market quote sequence | `CardMarketPricingRuntimeController` | `_next_quote_sequence` | `card_inventory.district_purchase.district_purchase_runtime.next_quote_sequence` in v3 | persisted | 1 |
 | Region listing/refill sequence | `RegionSupplyRuntimeController` | `_refill_sequence` | `region_supply.refill_sequence` | persisted | 0 |
 | Resolution execution sequence | `CardResolutionExecutionRuntimeService` | `_transaction_sequence` | `card_resolution_execution.transaction_sequence` | persisted | 0 |
 | Player-state reservation sequence | `CardPlayerStateProductionAdapterV06` | `_next_reservation_sequence` | `card_inventory.commodity_card_inventory.state_port.next_reservation_sequence` | persisted | 1 |

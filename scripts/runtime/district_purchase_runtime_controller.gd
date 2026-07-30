@@ -8,8 +8,10 @@ signal window_closed(player_index: int, district_index: int, reason: String)
 const STATE_ACTIVE := "active"
 const STATE_PENDING_DISCARD := "pending_discard"
 const STATE_CLOSED := "closed"
+const SAVE_SCHEMA_VERSION := 3
+const LEGACY_SAVE_SCHEMA_VERSION := 2
 const ROOT_SAVE_FIELDS := ["district_purchase_runtime"]
-const SAVE_PAYLOAD_FIELDS := ["schema_version", "sessions"]
+const SAVE_PAYLOAD_FIELDS := ["schema_version", "next_quote_sequence", "sessions"]
 const SESSION_SAVE_FIELDS := [
 	"schema_version",
 	"player_index",
@@ -38,8 +40,10 @@ func set_quote_authority(authority: Node) -> void:
 
 func configure(_timing_rules: Dictionary = {}) -> void:
 	_configured = _quote_authority != null \
-		and _quote_authority.has_method("export_quote_for_session") \
-		and _quote_authority.has_method("restore_quote_from_session")
+			and _quote_authority.has_method("export_quote_for_session") \
+			and _quote_authority.has_method("restore_quote_from_session") \
+			and _quote_authority.has_method("capture_allocator_cursor") \
+			and _quote_authority.has_method("restore_allocator_cursor")
 
 
 func reset_state() -> void:
@@ -320,7 +324,16 @@ func to_save_data() -> Dictionary:
 		var snapshot := to_legacy_save_snapshot(int(player_variant))
 		if not snapshot.is_empty():
 			sessions.append(snapshot)
-	var candidate := {"district_purchase_runtime": {"schema_version": 2, "sessions": sessions}}
+	var cursor_variant: Variant = _quote_authority.call("capture_allocator_cursor") \
+			if _quote_authority != null and _quote_authority.has_method("capture_allocator_cursor") else {}
+	var cursor: Dictionary = cursor_variant if cursor_variant is Dictionary else {}
+	if not (cursor.get("next_quote_sequence") is int):
+		return {}
+	var candidate := {"district_purchase_runtime": {
+		"schema_version": SAVE_SCHEMA_VERSION,
+		"next_quote_sequence": int(cursor.get("next_quote_sequence", 0)),
+		"sessions": sessions,
+	}}
 	var preflight := preflight_save_data(candidate)
 	return (preflight.get("normalized_state", {}) as Dictionary).duplicate(true) \
 			if bool(preflight.get("accepted", false)) else {}
@@ -332,15 +345,29 @@ func preflight_save_data(data: Dictionary) -> Dictionary:
 	var payload: Dictionary = {}
 	if _has_exact_keys(data, ROOT_SAVE_FIELDS) and data.get("district_purchase_runtime") is Dictionary:
 		payload = data.get("district_purchase_runtime", {}) as Dictionary
-	elif _has_exact_keys(data, SAVE_PAYLOAD_FIELDS):
+	elif data.has("schema_version") and data.has("sessions"):
 		payload = data
 	else:
 		return {"accepted": false, "reason_code": "purchase_session_save_invalid"}
+	if not (payload.get("schema_version") is int):
+		return {"accepted": false, "reason_code": "purchase_session_save_invalid"}
+	if int(payload.get("schema_version", 0)) == LEGACY_SAVE_SCHEMA_VERSION \
+			and not payload.has("next_quote_sequence"):
+		return {
+			"accepted": false,
+			"reason_code": "allocator_cursor_missing_requires_backup",
+			"requires_backup": true,
+		}
 	if not _has_exact_keys(payload, SAVE_PAYLOAD_FIELDS) \
-			or not (payload.get("schema_version") is int) or int(payload.get("schema_version", 0)) != 2 \
+			or int(payload.get("schema_version", 0)) != SAVE_SCHEMA_VERSION \
+			or not (payload.get("next_quote_sequence") is int) \
 			or not (payload.get("sessions") is Array):
 		return {"accepted": false, "reason_code": "purchase_session_save_invalid"}
+	var next_quote_sequence := int(payload.get("next_quote_sequence", 0))
+	if next_quote_sequence < 1:
+		return {"accepted": false, "reason_code": "allocator_cursor_invalid"}
 	var sessions_by_player: Dictionary = {}
+	var maximum_retained_quote_sequence := 0
 	for snapshot_variant in payload.get("sessions", []) as Array:
 		if not (snapshot_variant is Dictionary):
 			return {"accepted": false, "reason_code": "purchase_session_snapshot_invalid"}
@@ -352,6 +379,15 @@ func preflight_save_data(data: Dictionary) -> Dictionary:
 		if sessions_by_player.has(player_index):
 			return {"accepted": false, "reason_code": "purchase_session_player_duplicate"}
 		sessions_by_player[player_index] = normalized_session
+		var active_quote: Dictionary = normalized_session.get("active_quote", {}) \
+				if normalized_session.get("active_quote", {}) is Dictionary else {}
+		if not active_quote.is_empty():
+			maximum_retained_quote_sequence = maxi(
+				maximum_retained_quote_sequence,
+				_quote_sequence(str(active_quote.get("quote_id", "")))
+			)
+	if next_quote_sequence <= maximum_retained_quote_sequence:
+		return {"accepted": false, "reason_code": "allocator_cursor_regressed"}
 	var player_indices: Array = sessions_by_player.keys()
 	player_indices.sort()
 	var normalized_sessions: Array = []
@@ -360,7 +396,11 @@ func preflight_save_data(data: Dictionary) -> Dictionary:
 	return {
 		"accepted": true,
 		"reason_code": "purchase_session_save_valid",
-		"normalized_state": {"district_purchase_runtime": {"schema_version": 2, "sessions": normalized_sessions}},
+		"normalized_state": {"district_purchase_runtime": {
+			"schema_version": SAVE_SCHEMA_VERSION,
+			"next_quote_sequence": next_quote_sequence,
+			"sessions": normalized_sessions,
+		}},
 	}
 
 
@@ -374,6 +414,21 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	reset_state()
 	if _quote_authority != null and _quote_authority.has_method("reset_state"):
 		_quote_authority.call("reset_state")
+	var cursor_restore_variant: Variant = _quote_authority.call("restore_allocator_cursor", {
+		"schema_version": 1,
+		"next_quote_sequence": int(payload.get("next_quote_sequence", 0)),
+	}) if _quote_authority != null and _quote_authority.has_method("restore_allocator_cursor") else {}
+	var cursor_restore: Dictionary = cursor_restore_variant if cursor_restore_variant is Dictionary else {}
+	if not bool(cursor_restore.get("restored", false)):
+		var cursor_rollback := restore_runtime_checkpoint(checkpoint)
+		return {
+			"applied": false,
+			"session_count": 0,
+			"reason_code": str(cursor_restore.get("reason_code", "allocator_cursor_restore_failed")),
+			"reason": str(cursor_restore.get("reason_code", "allocator_cursor_restore_failed")),
+			"rollback_attempted": true,
+			"rollback_complete": bool(cursor_rollback.get("applied", false)),
+		}
 	var restored_count := 0
 	for snapshot_variant: Variant in payload.get("sessions", []):
 		var result := apply_legacy_save_snapshot(snapshot_variant as Dictionary)
@@ -414,6 +469,14 @@ func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
 	_windows_by_player = (checkpoint.get("windows_by_player", {}) as Dictionary).duplicate(true)
 	_decision_sequence = int(checkpoint.get("decision_sequence", 0))
 	return {"applied": quote_restored, "reason_code": "purchase_runtime_checkpoint_restored" if quote_restored else "purchase_quote_checkpoint_restore_failed"}
+
+
+func _quote_sequence(quote_id: String) -> int:
+	var separator := quote_id.rfind("-")
+	if separator < 0 or separator + 1 >= quote_id.length():
+		return -1
+	var sequence_text := quote_id.substr(separator + 1)
+	return int(sequence_text) if sequence_text.is_valid_int() else -1
 
 
 func private_ui_snapshot(viewer_index: int) -> Dictionary:

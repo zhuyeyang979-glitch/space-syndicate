@@ -12,6 +12,7 @@ var _failures: Array[String] = []
 
 class QuoteAuthorityFixture extends Node:
 	var _quotes_by_id: Dictionary = {}
+	var _next_quote_sequence := 2
 
 
 	func install_quote(quote: Dictionary) -> void:
@@ -52,16 +53,32 @@ class QuoteAuthorityFixture extends Node:
 
 	func reset_state() -> void:
 		_quotes_by_id.clear()
+		_next_quote_sequence = 1
+
+
+	func capture_allocator_cursor() -> Dictionary:
+		return {"schema_version": 1, "next_quote_sequence": _next_quote_sequence}
+
+
+	func restore_allocator_cursor(cursor: Dictionary) -> Dictionary:
+		if int(cursor.get("schema_version", 0)) != 1 \
+				or not (cursor.get("next_quote_sequence") is int) \
+				or int(cursor.get("next_quote_sequence", 0)) < 1:
+			return {"restored": false, "reason_code": "allocator_cursor_invalid"}
+		_next_quote_sequence = int(cursor.get("next_quote_sequence", 0))
+		return {"restored": true, "reason_code": "allocator_cursor_restored"}
 
 
 	func capture_runtime_checkpoint() -> Dictionary:
-		return {"schema_version": 1, "quotes_by_id": _quotes_by_id.duplicate(true)}
+		return {"schema_version": 1, "quotes_by_id": _quotes_by_id.duplicate(true), "next_quote_sequence": _next_quote_sequence}
 
 
 	func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
-		if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("quotes_by_id") is Dictionary):
+		if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("quotes_by_id") is Dictionary) \
+				or not (checkpoint.get("next_quote_sequence") is int):
 			return {"restored": false, "reason_code": "quote_checkpoint_invalid"}
 		_quotes_by_id = (checkpoint.get("quotes_by_id", {}) as Dictionary).duplicate(true)
+		_next_quote_sequence = int(checkpoint.get("next_quote_sequence", 1))
 		return {"restored": true, "reason_code": "quote_checkpoint_restored"}
 
 

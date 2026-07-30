@@ -65,6 +65,29 @@ func capture_runtime_checkpoint() -> Dictionary:
 	return {"schema_version": 1, "next_quote_sequence": _next_quote_sequence, "quotes_by_key": _quotes_by_key.duplicate(true), "quotes_by_id": _quotes_by_id.duplicate(true), "quote_count": _quote_count, "authorization_count": _authorization_count}
 
 
+func capture_allocator_cursor() -> Dictionary:
+	return {
+		"schema_version": 1,
+		"next_quote_sequence": _next_quote_sequence,
+	}
+
+
+func restore_allocator_cursor(cursor: Dictionary) -> Dictionary:
+	if not _has_exact_keys(cursor, ["schema_version", "next_quote_sequence"]) \
+			or not (cursor.get("schema_version") is int) \
+			or int(cursor.get("schema_version", 0)) != 1 \
+			or not (cursor.get("next_quote_sequence") is int) \
+			or int(cursor.get("next_quote_sequence", 0)) < 1:
+		return {"restored": false, "reason_code": "allocator_cursor_invalid"}
+	var next_sequence := int(cursor.get("next_quote_sequence", 0))
+	for quote_id_variant in _quotes_by_id.keys():
+		var retained_sequence := _quote_sequence(str(quote_id_variant))
+		if retained_sequence >= next_sequence:
+			return {"restored": false, "reason_code": "allocator_cursor_regressed"}
+	_next_quote_sequence = next_sequence
+	return {"restored": true, "reason_code": "allocator_cursor_restored"}
+
+
 func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
 	if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("quotes_by_key") is Dictionary) or not (checkpoint.get("quotes_by_id") is Dictionary):
 		return {"restored": false, "reason_code": "card_market_checkpoint_invalid"}
@@ -355,15 +378,17 @@ func _next_available_quote_id(now_us: int) -> String:
 
 
 func _advance_quote_sequence_from_id(quote_id: String) -> void:
-	var separator_index := quote_id.rfind("-")
-	if separator_index < 0 or separator_index + 1 >= quote_id.length():
-		return
-	var sequence_text := quote_id.substr(separator_index + 1)
-	if not sequence_text.is_valid_int():
-		return
-	var restored_sequence := int(sequence_text)
+	var restored_sequence := _quote_sequence(quote_id)
 	if restored_sequence > 0:
 		_next_quote_sequence = maxi(_next_quote_sequence, restored_sequence + 1)
+
+
+func _quote_sequence(quote_id: String) -> int:
+	var separator_index := quote_id.rfind("-")
+	if separator_index < 0 or separator_index + 1 >= quote_id.length():
+		return -1
+	var sequence_text := quote_id.substr(separator_index + 1)
+	return int(sequence_text) if sequence_text.is_valid_int() else -1
 
 
 func _evaluate_listing(district_index: int, base_price: int) -> Dictionary:

@@ -167,8 +167,12 @@ func _test_next_quote_id_fork_parity() -> void:
 	var restored := _fixture(int(source.get("save_world_us", INITIAL_WORLD_US)))
 	var applied := _purchase(restored).apply_save_data(save)
 	var resumed := _pricing(restored).quote_listing(future_request)
+	var uninterrupted_transaction_id := "district-purchase:%s" % str(uninterrupted.get("quote_id", ""))
+	var resumed_transaction_id := "district-purchase:%s" % str(resumed.get("quote_id", ""))
 	_expect(bool(applied.get("applied", false)), "cursor-bearing mixed Save restores before fork parity is measured")
-	_expect(not uninterrupted.is_empty() and not resumed.is_empty() and str(resumed.get("quote_id", "")) == str(uninterrupted.get("quote_id", "")), "the next quote ID is identical across uninterrupted and restored forks")
+	_expect(not uninterrupted.is_empty() and not resumed.is_empty() \
+			and str(resumed.get("quote_id", "")) == str(uninterrupted.get("quote_id", "")) \
+			and resumed_transaction_id == uninterrupted_transaction_id, "the next quote and its deterministic district-purchase transaction ID are identical across uninterrupted and restored forks")
 	_expect(_quote_sequence(str(uninterrupted.get("quote_id", ""))) == 3 and _quote_sequence(str(resumed.get("quote_id", ""))) == 3, "the omitted expired quote sequence is never reused after restore")
 
 
