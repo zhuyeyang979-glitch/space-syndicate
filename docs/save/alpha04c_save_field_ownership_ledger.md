@@ -38,7 +38,7 @@ though they are not persisted in the player save.
 | 5 | `routes` | no independent topology; `RouteNetworkRuntimeController` owns derived cache | semantic/topology/rebuild attestation | Phase 6 rebuild |
 | 6 | `player_mana` | `PlayerManaRuntimeController` | six-color pools, recovery remainders, reservations and journals | Phase 5 authoritative |
 | 7 | `commodity_belt_visibility` | no second ACL; card inventory owns item ACL | item-ID set and ACL fingerprint | Phase 6 attestation |
-| 8 | `card_inventory` | `CardInventorySaveOwner` transactionally coordinates existing non-World card owners | belt/market items, journals, terminal operations, pending discard, locks/CAS metadata | Phase 5 authoritative |
+| 8 | `card_inventory` | `CardInventorySaveOwner` transactionally coordinates existing non-World card owners | belt/market items, journals, terminal operations, pending discard, locks/CAS metadata, market-quote allocator cursor | Phase 5 authoritative |
 | 9 | `player_organization` | `PlayerOrganizationRuntimeController` | organization assets, bindings and journal | Phase 5 authoritative |
 | 10 | `monsters` | `MonsterRuntimeController` | monsters, wagers, timers, card lifecycle and lineage | Phase 5 authoritative |
 | 11 | `military` | `MilitaryRuntimeController` | units, next UID, cooldown/duration and bankruptcy journal | Phase 5 authoritative |

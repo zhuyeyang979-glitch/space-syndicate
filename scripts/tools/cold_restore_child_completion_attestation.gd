@@ -2,6 +2,7 @@ extends RefCounted
 
 const SEMANTIC_WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
 const CAPTURE_FAILURE := preload("res://scripts/runtime/save_owner_capture_failure_v1.gd")
+const TARGETED_DIAGNOSTIC_V2 := preload("res://scripts/tools/targeted_owner_capture_diagnostic_v2.gd")
 
 const SCHEMA_VERSION := 1
 const EVIDENCE_ROOT := "res://.godot/cold_restore_attestation_v1"
@@ -78,11 +79,20 @@ const OWNER_CAPTURE_SECTION_RESULT_FIELDS := [
 ]
 const OWNER_CAPTURE_FAILURE_FIELDS := [
 	"schema_version", "registry_operation_id", "capture_sequence", "section_index",
-	"section_id", "owner_id", "failure_class", "reason_code", "result_empty",
-	"result_not_dictionary", "result_not_pure_data", "result_header_invalid",
-	"result_version_invalid", "result_ruleset_invalid", "state_version_observed",
-	"ruleset_id_observed", "live_state_mutated_during_capture",
-	"private_payload_redacted",
+	"section_id", "owner_id", "owner_node_path", "owner_script_path", "capture_method",
+	"failure_class", "reason_code", "method_missing", "method_exception",
+	"result_not_dictionary", "result_empty", "result_not_pure_data",
+	"result_header_invalid", "result_version_invalid", "result_ruleset_invalid",
+	"state_version_observed", "ruleset_id_observed",
+	"live_state_mutated_during_capture", "private_payload_redacted",
+]
+const TARGETED_DIAGNOSTIC_ARTIFACT_BINDING_ID := "TargetedOwnerCaptureDiagnosticArtifactBindingV1"
+const TARGETED_DIAGNOSTIC_ARTIFACT_BINDING_FIELDS := [
+	"schema_version", "binding_id", "diagnostic_id", "run_id", "repository_head",
+	"scenario_fingerprint", "scenario_identity_attested", "diagnostic_evidence_fingerprint",
+	"diagnostic_artifact_sha256", "timeline_id", "timeline_evidence_fingerprint",
+	"timeline_row_count", "terminal_phase", "terminal_reason_code", "terminal_success",
+	"terminal_evidence_fingerprint", "private_payload_redacted", "binding_fingerprint",
 ]
 
 
@@ -217,10 +227,42 @@ static func write_result(run_id: String, role: String, result: Dictionary) -> Di
 	return _write_atomic_json(result_path(run_id, role), result)
 
 
-static func write_owner_capture_diagnostic(run_id: String, result: Dictionary) -> Dictionary:
-	if not _targeted_owner_capture_run_id(run_id) or not _valid_owner_capture_diagnostic(result):
-		return {"valid": false, "reason_code": "child_diagnostic_invalid"}
-	return _write_atomic_json(diagnostic_path(run_id, "owner_capture_audit"), result)
+static func write_owner_capture_diagnostic(
+	run_id: String,
+	result: Dictionary,
+	expected_repository_head: String = "",
+	expected_scenario_fingerprint: String = ""
+) -> Dictionary:
+	var validation := _owner_capture_diagnostic_binding_report(
+		run_id,
+		result,
+		expected_repository_head,
+		expected_scenario_fingerprint
+	)
+	if not bool(validation.get("valid", false)):
+		return validation
+	var write := _write_atomic_json(diagnostic_path(run_id, "owner_capture_audit"), result)
+	if bool(write.get("valid", false)) and validation.get("artifact_binding", {}) is Dictionary:
+		var artifact_binding := validation.get("artifact_binding", {}) as Dictionary
+		if not artifact_binding.is_empty():
+			write["artifact_binding"] = artifact_binding.duplicate(true)
+	return write
+
+
+static func write_owner_capture_phase_snapshot(run_id: String, sequence: int, timeline: Dictionary) -> Dictionary:
+	var repository_head := str(timeline.get("repository_head", ""))
+	if not _targeted_owner_capture_run_id(run_id) or sequence < 1 \
+			or not SEMANTIC_WIRE.is_closed_data(timeline) \
+			or not bool(TARGETED_DIAGNOSTIC_V2.timeline_validation_report(timeline).get("valid", false)) \
+			or str(timeline.get("run_id", "")) != run_id \
+			or not _lower_hex(repository_head, 40, 64) \
+			or run_id != "alpha04c-owner-capture-diagnostic-%s" % repository_head.left(12) \
+			or (timeline.get("phase_rows", []) as Array).size() != sequence:
+		return {"valid": false, "reason_code": "child_diagnostic_phase_snapshot_invalid"}
+	return _write_atomic_json(
+		diagnostic_path(run_id, "phase_events/%04d.snapshot" % sequence),
+		timeline
+	)
 
 
 static func _write_atomic_json(path: String, value: Dictionary) -> Dictionary:
@@ -293,7 +335,172 @@ static func _safe_artifact_id(value: String) -> bool:
 	return true
 
 
-static func _valid_owner_capture_diagnostic(value: Dictionary) -> bool:
+static func _valid_owner_capture_diagnostic(
+	value: Dictionary,
+	expected_run_id: String = "",
+	expected_repository_head: String = "",
+	expected_scenario_fingerprint: String = ""
+) -> bool:
+	var bound_run_id := expected_run_id if not expected_run_id.is_empty() \
+			else str(value.get("run_id", ""))
+	return bool(_owner_capture_diagnostic_binding_report(
+		bound_run_id,
+		value,
+		expected_repository_head,
+		expected_scenario_fingerprint
+	).get("valid", false))
+
+
+static func _owner_capture_diagnostic_binding_report(
+	run_id: String,
+	value: Dictionary,
+	expected_repository_head: String = "",
+	expected_scenario_fingerprint: String = ""
+) -> Dictionary:
+	if not _targeted_owner_capture_run_id(run_id):
+		return _diagnostic_rejected("child_diagnostic_run_id_invalid")
+	if str(value.get("run_id", "")) != run_id:
+		return _diagnostic_rejected("child_diagnostic_run_id_mismatch")
+	if str(value.get("diagnostic_id", "")) != TARGETED_DIAGNOSTIC_V2.DIAGNOSTIC_ID:
+		if not _valid_owner_capture_diagnostic_v1(value):
+			return _diagnostic_rejected("child_diagnostic_invalid")
+		if not expected_repository_head.is_empty() \
+				and (not _lower_hex(expected_repository_head, 40, 64) \
+				or str(value.get("repository_head", "")) != expected_repository_head):
+			return _diagnostic_rejected("child_diagnostic_repository_head_mismatch")
+		if not expected_scenario_fingerprint.is_empty() \
+				and (not _lower_hex(expected_scenario_fingerprint, 64, 64) \
+				or str(value.get("scenario_fingerprint", "")) != expected_scenario_fingerprint):
+			return _diagnostic_rejected("child_diagnostic_scenario_fingerprint_mismatch")
+		return {"valid": true, "reason_code": "ok", "artifact_binding": {}}
+	if expected_repository_head.is_empty():
+		return _diagnostic_rejected("child_diagnostic_expected_repository_head_missing")
+	if not _lower_hex(expected_repository_head, 40, 64):
+		return _diagnostic_rejected("child_diagnostic_expected_repository_head_invalid")
+	if expected_scenario_fingerprint.is_empty():
+		return _diagnostic_rejected("child_diagnostic_expected_scenario_fingerprint_missing")
+	if not _lower_hex(expected_scenario_fingerprint, 64, 64):
+		return _diagnostic_rejected("child_diagnostic_expected_scenario_fingerprint_invalid")
+	if str(value.get("repository_head", "")) != expected_repository_head:
+		return _diagnostic_rejected("child_diagnostic_repository_head_mismatch")
+	if run_id != "alpha04c-owner-capture-diagnostic-%s" % expected_repository_head.left(12):
+		return _diagnostic_rejected("child_diagnostic_run_head_binding_invalid")
+	if not SEMANTIC_WIRE.is_closed_data(value) or not _v2_diagnostic_redaction_valid(value):
+		return _diagnostic_rejected("child_diagnostic_redaction_invalid")
+	var timeline: Dictionary = value.get("diagnostic_phase_timeline", {}) \
+			if value.get("diagnostic_phase_timeline", {}) is Dictionary else {}
+	if str(timeline.get("run_id", "")) != run_id:
+		return _diagnostic_rejected("child_diagnostic_timeline_run_id_mismatch")
+	if str(timeline.get("repository_head", "")) != expected_repository_head:
+		return _diagnostic_rejected("child_diagnostic_timeline_repository_head_mismatch")
+	var phase_rows: Array = timeline.get("phase_rows", []) \
+			if timeline.get("phase_rows", []) is Array else []
+	if phase_rows.is_empty() or not (phase_rows.back() is Dictionary):
+		return _diagnostic_rejected("child_diagnostic_terminal_timeline_invalid")
+	var terminal_row := phase_rows.back() as Dictionary
+	if str(timeline.get("last_completed_phase", "")) != "diagnostic_completed" \
+			or str(timeline.get("current_phase", "")) != "diagnostic_completed" \
+			or str(timeline.get("next_expected_phase", "")) != "none" \
+			or str(value.get("last_completed_diagnostic_phase", "")) != "diagnostic_completed" \
+			or str(value.get("current_diagnostic_phase", "")) != "diagnostic_completed" \
+			or str(value.get("next_expected_diagnostic_phase", "")) != "none" \
+			or int(terminal_row.get("sequence", -1)) != phase_rows.size() \
+			or str(terminal_row.get("phase_id", "")) != "diagnostic_completed" \
+			or int(terminal_row.get("owner_index", 0)) != -1 \
+			or not _lower_reason_code(str(terminal_row.get("reason_code", ""))):
+		return _diagnostic_rejected("child_diagnostic_terminal_timeline_invalid")
+	var validation := TARGETED_DIAGNOSTIC_V2.validation_report(
+		value,
+		run_id,
+		expected_repository_head,
+		expected_scenario_fingerprint
+	)
+	if not bool(validation.get("valid", false)):
+		return _diagnostic_rejected(str(validation.get("reason_code", "child_diagnostic_invalid")))
+	var artifact_binding := _targeted_diagnostic_artifact_binding(
+		value,
+		timeline,
+		terminal_row,
+		expected_scenario_fingerprint
+	)
+	if not _has_exact_fields(artifact_binding, TARGETED_DIAGNOSTIC_ARTIFACT_BINDING_FIELDS) \
+			or not bool(artifact_binding.get("private_payload_redacted", false)):
+		return _diagnostic_rejected("child_diagnostic_artifact_binding_invalid")
+	return {
+		"valid": true,
+		"reason_code": "ok",
+		"artifact_binding": artifact_binding,
+	}
+
+
+static func _targeted_diagnostic_artifact_binding(
+	diagnostic: Dictionary,
+	timeline: Dictionary,
+	terminal_row: Dictionary,
+	expected_scenario_fingerprint: String
+) -> Dictionary:
+	var canonical := SEMANTIC_WIRE.canonical_json(diagnostic)
+	if canonical.is_empty():
+		return {}
+	return SEMANTIC_WIRE.sealed_copy({
+		"schema_version": 1,
+		"binding_id": TARGETED_DIAGNOSTIC_ARTIFACT_BINDING_ID,
+		"diagnostic_id": TARGETED_DIAGNOSTIC_V2.DIAGNOSTIC_ID,
+		"run_id": str(diagnostic.get("run_id", "")),
+		"repository_head": str(diagnostic.get("repository_head", "")),
+		"scenario_fingerprint": expected_scenario_fingerprint,
+		"scenario_identity_attested": bool(diagnostic.get("scenario_identity_attested", false)),
+		"diagnostic_evidence_fingerprint": str(diagnostic.get("evidence_fingerprint", "")),
+		"diagnostic_artifact_sha256": canonical.sha256_text().to_lower(),
+		"timeline_id": str(timeline.get("timeline_id", "")),
+		"timeline_evidence_fingerprint": str(timeline.get("evidence_fingerprint", "")),
+		"timeline_row_count": (timeline.get("phase_rows", []) as Array).size(),
+		"terminal_phase": str(terminal_row.get("phase_id", "")),
+		"terminal_reason_code": str(terminal_row.get("reason_code", "")),
+		"terminal_success": bool(terminal_row.get("success", false)),
+		"terminal_evidence_fingerprint": str(terminal_row.get("evidence_fingerprint", "")),
+		"private_payload_redacted": true,
+	}, "binding_fingerprint")
+
+
+static func _v2_diagnostic_redaction_valid(value: Dictionary) -> bool:
+	for failure_field in ["scenario_identity_failure", "first_failure", "post_capture_failure"]:
+		var failure: Variant = value.get(failure_field, {})
+		if not (failure is Dictionary):
+			return false
+		if not (failure as Dictionary).is_empty() \
+				and (not ((failure as Dictionary).get("private_payload_redacted") is bool) \
+				or not bool((failure as Dictionary).get("private_payload_redacted", false))):
+			return false
+	var owner_rows: Variant = value.get("owner_capture_rows", [])
+	if not (owner_rows is Array):
+		return false
+	for row_variant in owner_rows as Array:
+		if not (row_variant is Dictionary) \
+				or not ((row_variant as Dictionary).get("private_payload_redacted") is bool) \
+				or not bool((row_variant as Dictionary).get("private_payload_redacted", false)):
+			return false
+	return true
+
+
+static func _diagnostic_rejected(reason_code: String) -> Dictionary:
+	return {
+		"valid": false,
+		"reason_code": reason_code,
+		"private_payload_redacted": true,
+	}
+
+
+static func _lower_reason_code(value: String) -> bool:
+	if value.is_empty() or value.length() > 128:
+		return false
+	for index in range(value.length()):
+		if not "abcdefghijklmnopqrstuvwxyz0123456789_".contains(value.substr(index, 1)):
+			return false
+	return true
+
+
+static func _valid_owner_capture_diagnostic_v1(value: Dictionary) -> bool:
 	if not SEMANTIC_WIRE.is_closed_data(value) \
 			or not _has_exact_fields(value, OWNER_CAPTURE_DIAGNOSTIC_FIELDS) \
 			or typeof(value.get("schema_version")) != TYPE_INT \
@@ -399,20 +606,17 @@ static func _valid_owner_capture_audit(audit: Dictionary) -> bool:
 static func _valid_owner_capture_failure(failure: Dictionary) -> bool:
 	if not _has_exact_fields(failure, OWNER_CAPTURE_FAILURE_FIELDS) \
 			or typeof(failure.get("schema_version")) != TYPE_INT \
-			or int(failure.get("schema_version", 0)) != 1 \
+			or int(failure.get("schema_version", 0)) != int(CAPTURE_FAILURE.SCHEMA_VERSION) \
 			or not CAPTURE_FAILURE.is_failure_class(str(failure.get("failure_class", ""))) \
 			or not CAPTURE_FAILURE.is_reason_code(str(failure.get("reason_code", ""))) \
 			or not bool(failure.get("private_payload_redacted", false)):
 		return false
-	for flag in [
-		"result_empty", "result_not_dictionary", "result_not_pure_data",
-		"result_header_invalid", "result_version_invalid", "result_ruleset_invalid",
-		"live_state_mutated_during_capture", "private_payload_redacted",
-	]:
-		if not (failure.get(flag) is bool):
-			return false
-	for count_field in ["capture_sequence", "section_index", "state_version_observed"]:
-		if typeof(failure.get(count_field)) != TYPE_INT:
+	var canonical := CAPTURE_FAILURE.build(failure)
+	if not _has_exact_fields(canonical, OWNER_CAPTURE_FAILURE_FIELDS):
+		return false
+	for field_variant in OWNER_CAPTURE_FAILURE_FIELDS:
+		var field := str(field_variant)
+		if canonical.get(field) != failure.get(field):
 			return false
 	return true
 

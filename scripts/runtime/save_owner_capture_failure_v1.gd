@@ -16,6 +16,9 @@ const FAILURE_CLASSES := [
 	"REGISTRY_INTERNAL_ERROR",
 ]
 const REASON_CODES := [
+	"allocator_cursor_invalid",
+	"allocator_cursor_missing_requires_backup",
+	"allocator_cursor_regressed",
 	"active_boundary_invalid",
 	"active_duration_world_us_invalid",
 	"active_ends_at_world_us_invalid",
@@ -81,6 +84,7 @@ const REASON_CODES := [
 	"card_flow_restore_preflight_failed",
 	"card_inventory_child_contract_missing",
 	"card_inventory_v2_invalid",
+	"card_inventory_v3_invalid",
 	"card_inventory_world_authority_duplicate_forbidden",
 	"card_inventory_save_owner_dependency_missing",
 	"commodity_card_inventory_checkpoint_blocked",

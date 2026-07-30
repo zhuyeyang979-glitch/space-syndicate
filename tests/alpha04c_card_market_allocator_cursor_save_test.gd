@@ -116,7 +116,9 @@ func _test_cursor_validation_fails_closed() -> void:
 	missing_payload.erase(CURSOR_FIELD)
 	missing["district_purchase_runtime"] = missing_payload
 	var missing_result := purchase.preflight_save_data(missing)
-	_expect(not bool(missing_result.get("accepted", true)) and str(missing_result.get("reason_code", "")) == MISSING_CURSOR_REASON, "legacy v2 payload without allocator cursor fails closed with allocator_cursor_missing_requires_backup")
+	_expect(not bool(missing_result.get("accepted", true)) \
+			and str(missing_result.get("reason_code", "")) == MISSING_CURSOR_REASON \
+			and bool(missing_result.get("requires_backup", false)), "legacy v2 payload without allocator cursor fails closed with allocator_cursor_missing_requires_backup")
 	_expect(purchase.capture_runtime_checkpoint() == before, "missing-cursor preflight is mutation-free")
 
 	var negative := _save_with_cursor(save, -1)
@@ -165,8 +167,12 @@ func _test_next_quote_id_fork_parity() -> void:
 	var restored := _fixture(int(source.get("save_world_us", INITIAL_WORLD_US)))
 	var applied := _purchase(restored).apply_save_data(save)
 	var resumed := _pricing(restored).quote_listing(future_request)
+	var uninterrupted_transaction_id := "district-purchase:%s" % str(uninterrupted.get("quote_id", ""))
+	var resumed_transaction_id := "district-purchase:%s" % str(resumed.get("quote_id", ""))
 	_expect(bool(applied.get("applied", false)), "cursor-bearing mixed Save restores before fork parity is measured")
-	_expect(not uninterrupted.is_empty() and not resumed.is_empty() and str(resumed.get("quote_id", "")) == str(uninterrupted.get("quote_id", "")), "the next quote ID is identical across uninterrupted and restored forks")
+	_expect(not uninterrupted.is_empty() and not resumed.is_empty() \
+			and str(resumed.get("quote_id", "")) == str(uninterrupted.get("quote_id", "")) \
+			and resumed_transaction_id == uninterrupted_transaction_id, "the next quote and its deterministic district-purchase transaction ID are identical across uninterrupted and restored forks")
 	_expect(_quote_sequence(str(uninterrupted.get("quote_id", ""))) == 3 and _quote_sequence(str(resumed.get("quote_id", ""))) == 3, "the omitted expired quote sequence is never reused after restore")
 
 

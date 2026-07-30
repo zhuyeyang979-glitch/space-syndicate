@@ -2,7 +2,7 @@
 extends Node
 class_name CardInventorySaveOwner
 
-const SCHEMA_VERSION := 2
+const SCHEMA_VERSION := 3
 const RULESET_ID := "v0.6"
 const ROOT_FIELDS := [
 	"schema_version",
@@ -92,11 +92,15 @@ func capture_composite_state() -> Dictionary:
 
 
 func preflight_save_data(data: Dictionary) -> Dictionary:
+	if _has_exact_keys(data, ROOT_FIELDS) \
+			and data.get("schema_version") is int \
+			and int(data.get("schema_version", 0)) == 2:
+		return _preflight_rejection("allocator_cursor_missing_requires_backup", "district_purchase")
 	if not _dependencies_ready() or not _has_exact_keys(data, ROOT_FIELDS) \
 			or not _is_finite_pure_data(data) \
 			or not (data.get("schema_version") is int) or int(data.get("schema_version", 0)) != SCHEMA_VERSION \
 			or not (data.get("ruleset_id") is String) or str(data.get("ruleset_id", "")) != RULESET_ID:
-		return _preflight_rejection("card_inventory_v2_invalid")
+		return _preflight_rejection("card_inventory_v3_invalid")
 	var retired_payload := LegacyContractPayloadGuardV06.validation_report(data)
 	if not bool(retired_payload.get("valid", false)):
 		return _preflight_rejection("retired_contract_payload_rejected")
@@ -124,13 +128,21 @@ func preflight_save_data(data: Dictionary) -> Dictionary:
 				child_id
 			)
 		normalized_children[child_id] = (child_preflight.get("normalized_state", {}) as Dictionary).duplicate(true)
+	var maximum_quote_sequence := _maximum_market_quote_sequence(normalized_children)
+	var district_state: Dictionary = normalized_children.get("district_purchase", {}) \
+			if normalized_children.get("district_purchase", {}) is Dictionary else {}
+	var district_payload: Dictionary = district_state.get("district_purchase_runtime", {}) \
+			if district_state.get("district_purchase_runtime", {}) is Dictionary else {}
+	if not (district_payload.get("next_quote_sequence") is int) \
+			or int(district_payload.get("next_quote_sequence", 0)) <= maximum_quote_sequence:
+		return _preflight_rejection("allocator_cursor_regressed", "district_purchase")
 	var normalized := {"schema_version": SCHEMA_VERSION, "ruleset_id": RULESET_ID}
 	for child_id_variant in CHILD_IDS:
 		var child_id := str(child_id_variant)
 		normalized[child_id] = (normalized_children.get(child_id, {}) as Dictionary).duplicate(true)
 	return {
 		"accepted": true,
-		"reason_code": "card_inventory_v2_valid",
+		"reason_code": "card_inventory_v3_valid",
 		"normalized_state": normalized,
 	}
 
@@ -154,8 +166,21 @@ func preflight_restore_dependencies(
 		return {"accepted": false, "reason_code": "card_inventory_session_roster_missing", "failing_dependency": "session"}
 	var player_count := ((world_variant as Dictionary).get("players", []) as Array).size()
 	var normalized := own_preflight.get("normalized_state", {}) as Dictionary
+	var region_supply: Dictionary = all_normalized_states.get("region_supply", {}) \
+			if all_normalized_states.get("region_supply", {}) is Dictionary else {}
 	var district_state := normalized.get("district_purchase", {}) as Dictionary
 	var district_payload := district_state.get("district_purchase_runtime", {}) as Dictionary
+	var next_quote_sequence := int(district_payload.get("next_quote_sequence", 0))
+	var maximum_saved_quote_sequence := maxi(
+		_maximum_market_quote_sequence(normalized),
+		_maximum_market_quote_sequence(region_supply)
+	)
+	if next_quote_sequence <= maximum_saved_quote_sequence:
+		return {
+			"accepted": false,
+			"reason_code": "allocator_cursor_regressed",
+			"failing_dependency": "region_supply" if _maximum_market_quote_sequence(region_supply) >= next_quote_sequence else "card_inventory",
+		}
 	for session_row_variant in district_payload.get("sessions", []) as Array:
 		if not (session_row_variant is Dictionary):
 			return {"accepted": false, "reason_code": "card_inventory_district_purchase_invalid", "failing_dependency": "session"}
@@ -392,7 +417,12 @@ func _capture_rejection(reason_code: String) -> Dictionary:
 
 
 func _preflight_rejection(reason_code: String, failing_child: String = "card_inventory") -> Dictionary:
-	return {"accepted": false, "reason_code": reason_code, "failing_child": failing_child}
+	return {
+		"accepted": false,
+		"reason_code": reason_code,
+		"failing_child": failing_child,
+		"requires_backup": reason_code == "allocator_cursor_missing_requires_backup",
+	}
 
 
 func _has_exact_keys(dictionary: Dictionary, fields: Array) -> bool:
@@ -416,6 +446,38 @@ func _contains_forbidden_duplicate(value: Variant) -> bool:
 			if _contains_forbidden_duplicate(item_variant):
 				return true
 	return false
+
+
+func _maximum_market_quote_sequence(value: Variant) -> int:
+	var maximum := 0
+	if value is Dictionary:
+		for key_variant in (value as Dictionary).keys():
+			maximum = maxi(maximum, _market_quote_sequence_from_identity(str(key_variant)))
+			var child_variant: Variant = (value as Dictionary).get(key_variant)
+			maximum = maxi(maximum, _maximum_market_quote_sequence(child_variant))
+	elif value is Array:
+		for child_variant in value as Array:
+			maximum = maxi(maximum, _maximum_market_quote_sequence(child_variant))
+	elif value is String:
+		maximum = maxi(maximum, _market_quote_sequence_from_identity(str(value)))
+	return maximum
+
+
+func _market_quote_sequence_from_identity(value: String) -> int:
+	var prefix_index := value.find("market-quote-")
+	if prefix_index < 0:
+		return 0
+	var quote_identity := value.substr(prefix_index)
+	var transaction_suffix := quote_identity.find(":")
+	if transaction_suffix >= 0:
+		quote_identity = quote_identity.left(transaction_suffix)
+	var final_separator := quote_identity.rfind("-")
+	if final_separator < 0 or final_separator + 1 >= quote_identity.length():
+		return 0
+	var sequence_text := quote_identity.substr(final_separator + 1)
+	if not sequence_text.is_valid_int():
+		return 0
+	return maxi(0, int(sequence_text))
 
 
 func _is_finite_pure_data(value: Variant) -> bool:

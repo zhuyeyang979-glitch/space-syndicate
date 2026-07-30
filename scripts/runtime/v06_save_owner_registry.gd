@@ -119,9 +119,17 @@ var _last_registry_apply_count := 0
 var _last_internal_capture_failure_section := ""
 var _last_internal_capture_failure_reason := ""
 var _last_internal_capture_failure: Dictionary = {}
+var _last_capture_operation_sequence := 0
+var _last_capture_section_count := 0
+var _last_capture_sections_fingerprint := ""
+var _last_capture_envelope_fingerprint := ""
+var _last_capture_write_id := ""
+var _capture_diagnostic_progress_sink: Variant
+var _capture_diagnostic_row_context: Dictionary = {}
 var _last_internal_preflight_failure_section := ""
 var _last_internal_preflight_failure_reason := ""
 var _test_apply_failure_once := ""
+var _test_capture_live_fingerprint_failure_once := ""
 var _last_internal_rollback_order: Array[String] = []
 
 
@@ -174,7 +182,7 @@ func capture_resume_envelope(identity: Dictionary) -> Dictionary:
 	return result
 
 
-func capture_all_sections_detailed() -> Dictionary:
+func capture_all_sections_detailed(progress_sink: Variant = null) -> Dictionary:
 	if _operation_in_progress:
 		return {
 			"captured": false,
@@ -190,7 +198,15 @@ func capture_all_sections_detailed() -> Dictionary:
 		}
 	_operation_in_progress = true
 	_operation_sequence += 1
+	_capture_diagnostic_progress_sink = progress_sink
+	_capture_diagnostic_row_context.clear()
 	var result := _capture_all_sections_detailed_internal({}, true)
+	result["section_results"] = _complete_diagnostic_section_rows(
+		result.get("section_results", []) as Array,
+		_registry_analysis().get("binding_by_section", {}) as Dictionary
+	)
+	_capture_diagnostic_progress_sink = null
+	_capture_diagnostic_row_context.clear()
 	_operation_in_progress = false
 	result.erase("plan")
 	result.erase("section_payloads")
@@ -381,6 +397,18 @@ func clear_test_apply_failure() -> void:
 	_test_apply_failure_once = ""
 
 
+func arm_test_capture_live_fingerprint_failure_once(section_id: String) -> bool:
+	var normalized := section_id.strip_edges()
+	if normalized not in FIXED_SECTION_ORDER:
+		return false
+	_test_capture_live_fingerprint_failure_once = normalized
+	return true
+
+
+func clear_test_capture_live_fingerprint_failure() -> void:
+	_test_capture_live_fingerprint_failure_once = ""
+
+
 func public_operation_receipt(receipt: Dictionary) -> Dictionary:
 	var operation := str(receipt.get("operation", ""))
 	var reason_code := str(receipt.get("reason_code", ""))
@@ -431,6 +459,11 @@ func debug_snapshot() -> Dictionary:
 	snapshot["last_internal_capture_failure_section"] = _last_internal_capture_failure_section
 	snapshot["last_internal_capture_failure_reason"] = _last_internal_capture_failure_reason
 	snapshot["last_internal_capture_failure"] = _last_internal_capture_failure.duplicate(true)
+	snapshot["last_capture_operation_sequence"] = _last_capture_operation_sequence
+	snapshot["last_capture_section_count"] = _last_capture_section_count
+	snapshot["last_capture_sections_fingerprint"] = _last_capture_sections_fingerprint
+	snapshot["last_capture_envelope_fingerprint"] = _last_capture_envelope_fingerprint
+	snapshot["last_capture_write_id"] = _last_capture_write_id
 	snapshot["last_internal_preflight_failure_section"] = _last_internal_preflight_failure_section
 	snapshot["last_internal_preflight_failure_reason"] = _last_internal_preflight_failure_reason
 	snapshot["last_internal_rollback_order"] = _last_internal_rollback_order.duplicate()
@@ -456,6 +489,8 @@ func _capture_resume_envelope_internal(identity: Dictionary) -> Dictionary:
 	if not bool(detailed.get("captured", false)):
 		var first_failure: Dictionary = detailed.get("first_failure", {}) \
 				if detailed.get("first_failure", {}) is Dictionary else {}
+		if first_failure.is_empty() and detailed.get("post_capture_failure", {}) is Dictionary:
+			first_failure = (detailed.get("post_capture_failure", {}) as Dictionary).duplicate(true)
 		return _capture_rejection(
 			str(first_failure.get("section_id", "registry")),
 			str(first_failure.get("reason_code", "owner_checkpoint_capture_failed")),
@@ -478,6 +513,16 @@ func _capture_resume_envelope_internal(identity: Dictionary) -> Dictionary:
 	if envelope.is_empty() or not bool(validation.get("valid", false)):
 		return _result("capture", false, "captured_envelope_invalid")
 	var success := _result("capture", true, "resume_envelope_captured")
+	var captured_sections: Dictionary = envelope.get("sections", {}) \
+			if envelope.get("sections", {}) is Dictionary else {}
+	var captured_sections_canonical := str(handshake.call("canonical_json", captured_sections)) \
+			if handshake != null and handshake.has_method("canonical_json") else ""
+	_last_capture_operation_sequence = _operation_sequence
+	_last_capture_section_count = int(detailed.get("section_count", 0))
+	_last_capture_sections_fingerprint = captured_sections_canonical.sha256_text() \
+			if not captured_sections_canonical.is_empty() else ""
+	_last_capture_envelope_fingerprint = str(validation.get("fingerprint", ""))
+	_last_capture_write_id = str(envelope.get("write_id", ""))
 	success["envelope_valid"] = true
 	success["envelope"] = envelope
 	success["fingerprint"] = str(validation.get("fingerprint", ""))
@@ -511,6 +556,7 @@ func _capture_all_sections_detailed_internal(
 		"sections": [],
 		"section_results": [],
 		"first_failure": {},
+		"post_capture_failure": {},
 		"plan": {},
 		"section_payloads": {},
 	}
@@ -540,8 +586,20 @@ func _capture_all_sections_detailed_internal(
 		var baseline_section_id := str(FIXED_SECTION_ORDER[baseline_index])
 		var baseline_binding := binding_by_section.get(baseline_section_id) as BindingScript
 		var baseline_owner := get_node_or_null(baseline_binding.owner_path) if baseline_binding != null else null
-		var baseline := _capture_owner_live_fingerprint(baseline_owner)
+		var baseline_started_ms := Time.get_ticks_msec()
+		var baseline_observation := _capture_progress_observation()
+		var baseline := {
+			"ok": false,
+			"reason_code": "owner_live_fingerprint_unavailable",
+		} if _consume_test_capture_live_fingerprint_failure(baseline_section_id) \
+				else _capture_owner_live_fingerprint(baseline_owner)
 		if not bool(baseline.get("ok", false)):
+			_begin_capture_diagnostic_row_from_observation(
+				baseline_binding,
+				baseline_index,
+				baseline_started_ms,
+				baseline_observation
+			)
 			var baseline_failure := _capture_failure_for_binding(
 				baseline_binding,
 				baseline_index,
@@ -558,6 +616,7 @@ func _capture_all_sections_detailed_internal(
 	for section_index in range(FIXED_SECTION_ORDER.size()):
 		var section_id := str(FIXED_SECTION_ORDER[section_index])
 		var binding := binding_by_section.get(section_id) as BindingScript
+		_begin_capture_diagnostic_row(binding, section_index)
 		var captured := _capture_owner_checkpoint_detailed(
 			binding,
 			section_index,
@@ -678,7 +737,7 @@ func _capture_all_sections_detailed_internal(
 					else "owner_capture_mutation_rollback_failed",
 			{"live_state_mutated_during_capture": true}
 		)
-		result["first_failure"] = final_failure.duplicate(true)
+		result["post_capture_failure"] = final_failure.duplicate(true)
 		result["section_count"] = sections.size()
 		_last_internal_capture_failure_section = final_section_id
 		_last_internal_capture_failure_reason = str(final_failure.get("reason_code", "registry_internal_error"))
@@ -696,7 +755,7 @@ func _capture_all_sections_detailed_internal(
 			internal_reason
 		)
 		var safe_internal_reason := str(failure.get("reason_code", "registry_internal_error"))
-		result["first_failure"] = failure.duplicate(true)
+		result["post_capture_failure"] = failure.duplicate(true)
 		result["section_count"] = sections.size()
 		_last_internal_capture_failure_section = failing_section_id
 		_last_internal_capture_failure_reason = safe_internal_reason
@@ -749,14 +808,19 @@ func _finalize_capture_failure(
 		"owner_capture_cross_owner_mutation" if rollback_exact else "owner_capture_mutation_rollback_failed",
 		{"live_state_mutated_during_capture": true}
 	)
-	result["first_failure"] = mutation_failure.duplicate(true)
+	result["post_capture_failure"] = mutation_failure.duplicate(true)
 	var section_results: Array = result.get("section_results", []) \
 			if result.get("section_results", []) is Array else []
 	for row_variant in section_results:
 		if row_variant is Dictionary \
 				and str((row_variant as Dictionary).get("section_id", "")) == source_section_id:
-			(row_variant as Dictionary)["captured"] = false
-			(row_variant as Dictionary)["reason_code"] = str(mutation_failure.get("reason_code", "registry_internal_error"))
+			# The Owner capture returned a valid payload; the independent post-capture
+			# fingerprint sweep detected mutation afterwards. Preserve that temporal
+			# distinction and bind the unsafe row through mutation_count plus the
+			# typed post_capture_failure above.
+			(row_variant as Dictionary)["mutation_count"] = maxi(1, int((row_variant as Dictionary).get("mutation_count", 0)))
+			(row_variant as Dictionary).erase("row_evidence_fingerprint")
+			(row_variant as Dictionary)["row_evidence_fingerprint"] = _encoded_payload_fingerprint(row_variant as Dictionary)
 			break
 	_last_internal_capture_failure_section = source_section_id
 	_last_internal_capture_failure_reason = str(mutation_failure.get("reason_code", "registry_internal_error"))
@@ -773,6 +837,19 @@ func _preflight_envelope_internal(envelope: Dictionary) -> Dictionary:
 		return {"ok": false, "reason_code": "owner_registry_invalid", "envelope_valid": false, "preflight_complete": false}
 	var validation := _call_dictionary(_handshake_node(), "validate_envelope", [envelope])
 	if not bool(validation.get("valid", false)):
+		var validation_reason := CaptureFailureScript.sanitize_reason_code(
+			validation.get("reason_code", "envelope_validation_failed")
+		)
+		if validation_reason == "allocator_cursor_missing_requires_backup":
+			_last_internal_preflight_failure_section = "card_inventory"
+			_last_internal_preflight_failure_reason = validation_reason
+			return {
+				"ok": false,
+				"reason_code": validation_reason,
+				"envelope_valid": false,
+				"preflight_complete": false,
+				"requires_backup": true,
+			}
 		return {"ok": false, "reason_code": "envelope_validation_failed", "envelope_valid": false, "preflight_complete": false}
 	if not bool(analysis.get("resume_ready", false)) or not bool(registry_snapshot().get("resume_ready", false)):
 		return {
@@ -1326,14 +1403,150 @@ func _section_capture_result(
 	state_version: int,
 	payload_fingerprint: String
 ) -> Dictionary:
-	return {
+	var owner_index := FIXED_SECTION_ORDER.find(binding.section_id) if binding != null else -1
+	var row_context := _capture_diagnostic_row_context.duplicate(true) \
+			if int(_capture_diagnostic_row_context.get("owner_index", -2)) == owner_index else {}
+	var after_observation := _capture_progress_observation()
+	var before_observation: Dictionary = row_context.get("observation", {}) \
+			if row_context.get("observation", {}) is Dictionary else {}
+	var rng_delta := _observation_delta(before_observation, after_observation, "rng_draw_invocation_count")
+	var world_delta := _observation_delta(before_observation, after_observation, "world_clock_advance_count")
+	var log_delta := _observation_delta(before_observation, after_observation, "public_log_entry_count")
+	var elapsed_ms := maxi(0, Time.get_ticks_msec() - int(row_context.get("started_ms", Time.get_ticks_msec())))
+	var mutation_count := 1 if reason_code in [
+		"owner_capture_mutated_runtime", "owner_preflight_mutated_runtime",
+		"owner_capture_cross_owner_mutation", "owner_capture_mutation_rollback_failed",
+	] or rng_delta != 0 or world_delta != 0 or log_delta != 0 else 0
+	var unsealed := {
+		"owner_index": owner_index,
 		"section_id": binding.section_id if binding != null else "",
 		"owner_id": binding.owner_id if binding != null else "",
-		"captured": captured,
-		"reason_code": CaptureFailureScript.sanitize_reason_code(reason_code),
-		"state_version": state_version,
+		"owner_path": str(binding.owner_path) if binding != null else "",
+		"capture_started": not row_context.is_empty(),
+		"capture_completed": not row_context.is_empty(),
+		"capture_result_kind": "CAPTURED" if captured else "FAILED",
+		"payload_schema_version": state_version,
 		"payload_fingerprint": payload_fingerprint,
+		"payload_pure_data": captured and not payload_fingerprint.is_empty(),
+		"elapsed_milliseconds": elapsed_ms,
+		"mutation_count": mutation_count,
+		"rng_draw_delta": rng_delta,
+		"world_time_delta": world_delta,
+		"public_log_delta": log_delta,
+		"reason_code": CaptureFailureScript.sanitize_reason_code(reason_code),
+		"private_payload_redacted": true,
 	}
+	unsealed["row_evidence_fingerprint"] = _encoded_payload_fingerprint(unsealed)
+	_emit_capture_diagnostic_progress(
+		owner_index,
+		str(unsealed.get("section_id", "")),
+		str(unsealed.get("owner_id", "")),
+		str(unsealed.get("capture_result_kind", "")),
+		str(unsealed.get("reason_code", ""))
+	)
+	_capture_diagnostic_row_context.clear()
+	return unsealed
+
+
+func _begin_capture_diagnostic_row(binding: BindingScript, owner_index: int) -> void:
+	_begin_capture_diagnostic_row_from_observation(
+		binding,
+		owner_index,
+		Time.get_ticks_msec(),
+		_capture_progress_observation()
+	)
+
+
+func _begin_capture_diagnostic_row_from_observation(
+		binding: BindingScript,
+		owner_index: int,
+		started_ms: int,
+		observation: Dictionary
+) -> void:
+	_capture_diagnostic_row_context = {
+		"owner_index": owner_index,
+		"started_ms": started_ms,
+		"observation": observation.duplicate(true),
+	}
+	_emit_capture_diagnostic_progress(
+		owner_index,
+		binding.section_id if binding != null else "",
+		binding.owner_id if binding != null else "",
+		"STARTED",
+		"owner_capture_started"
+	)
+
+
+func _capture_progress_observation() -> Dictionary:
+	if _capture_diagnostic_progress_sink != null \
+			and _capture_diagnostic_progress_sink.has_method("capture_owner_diagnostic_snapshot"):
+		var value: Variant = _capture_diagnostic_progress_sink.call("capture_owner_diagnostic_snapshot")
+		return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	return {}
+
+
+func _emit_capture_diagnostic_progress(
+	owner_index: int,
+	section_id: String,
+	owner_id: String,
+	result_kind: String,
+	reason_code: String
+) -> void:
+	if _capture_diagnostic_progress_sink != null \
+			and _capture_diagnostic_progress_sink.has_method("record_owner_capture_progress"):
+		_capture_diagnostic_progress_sink.call(
+			"record_owner_capture_progress",
+			owner_index,
+			section_id,
+			owner_id,
+			result_kind,
+			reason_code
+		)
+
+
+func _observation_delta(before: Dictionary, after: Dictionary, field: String) -> int:
+	if before.is_empty() or after.is_empty():
+		return 0
+	return int(after.get(field, 0)) - int(before.get(field, 0))
+
+
+func _complete_diagnostic_section_rows(rows: Array, binding_by_section: Dictionary) -> Array:
+	var rows_by_index: Dictionary = {}
+	for row_variant in rows:
+		if row_variant is Dictionary:
+			rows_by_index[int((row_variant as Dictionary).get("owner_index", -1))] = (row_variant as Dictionary).duplicate(true)
+	var complete: Array = []
+	var failure_seen := false
+	for owner_index in range(FIXED_SECTION_ORDER.size()):
+		if rows_by_index.has(owner_index):
+			var row := (rows_by_index.get(owner_index, {}) as Dictionary).duplicate(true)
+			complete.append(row)
+			failure_seen = failure_seen or str(row.get("capture_result_kind", "")) == "FAILED"
+			continue
+		var section_id := str(FIXED_SECTION_ORDER[owner_index])
+		var binding := binding_by_section.get(section_id) as BindingScript
+		var skipped := {
+			"owner_index": owner_index,
+			"section_id": section_id,
+			"owner_id": binding.owner_id if binding != null else "",
+			"owner_path": str(binding.owner_path) if binding != null else "",
+			"capture_started": false,
+			"capture_completed": false,
+			"capture_result_kind": "NOT_ATTEMPTED_AFTER_FIRST_FAILURE",
+			"payload_schema_version": -1,
+			"payload_fingerprint": "",
+			"payload_pure_data": false,
+			"elapsed_milliseconds": 0,
+			"mutation_count": 0,
+			"rng_draw_delta": 0,
+			"world_time_delta": 0,
+			"public_log_delta": 0,
+			"reason_code": "not_attempted_after_first_failure" if failure_seen else "not_attempted",
+			"private_payload_redacted": true,
+		}
+		skipped["row_evidence_fingerprint"] = _encoded_payload_fingerprint(skipped)
+		complete.append(skipped)
+	return complete
 
 
 func _encoded_payload_fingerprint(encoded_value: Variant) -> String:
@@ -1576,6 +1789,13 @@ func _consume_test_failure(section_or_phase_id: String) -> bool:
 	if _test_apply_failure_once != section_or_phase_id:
 		return false
 	_test_apply_failure_once = ""
+	return true
+
+
+func _consume_test_capture_live_fingerprint_failure(section_id: String) -> bool:
+	if _test_capture_live_fingerprint_failure_once != section_id:
+		return false
+	_test_capture_live_fingerprint_failure_once = ""
 	return true
 
 

@@ -100,7 +100,7 @@ func _run() -> void:
 	var envelope: Dictionary = capture.get("envelope", {}) if capture.get("envelope") is Dictionary else {}
 	_expect(bool(capture.get("ok", false)) and not envelope.is_empty() and (envelope.get("sections", {}) as Dictionary).size() == 19, "production composition captures a complete 19-owner envelope")
 	var card_inventory_state := _decoded_section(handshake, envelope, "card_inventory")
-	_expect(not card_inventory_state.is_empty() and int(card_inventory_state.get("schema_version", 0)) == 2, "production capture encodes one nonempty card-inventory v2 owner state")
+	_expect(not card_inventory_state.is_empty() and int(card_inventory_state.get("schema_version", 0)) == 3, "production capture encodes one nonempty card-inventory v3 owner state")
 	_assert_queued_facility_envelope(handshake, envelope, facility_case, "capture")
 	_test_restore_barrier_blocks_facility(coordinator, facility_case)
 	var preflight: Dictionary = registry.preflight_envelope(envelope)
@@ -544,7 +544,7 @@ func _detailed_capture_fingerprints(capture: Dictionary, expected_section_order:
 		var section_id := str(result.get("section_id", ""))
 		var owner_id := str(result.get("owner_id", ""))
 		var payload_fingerprint := str(result.get("payload_fingerprint", ""))
-		if not bool(result.get("captured", false)) \
+		if str(result.get("capture_result_kind", "")) != "CAPTURED" \
 				or section_id != expected_section_order[index] \
 				or owner_id.is_empty() or owner_ids.has(owner_id) \
 				or payload_fingerprint.length() != 64:

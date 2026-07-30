@@ -243,7 +243,15 @@ func _test_expired_pending_discard_roundtrip(coordinator: GameRuntimeCoordinator
 	_expect(not uninterrupted_future_quote.is_empty() \
 			and str(restored_future_quote.get("quote_id", "")) == str(uninterrupted_future_quote.get("quote_id", "")) \
 			and str(restored_future_quote.get("quote_fingerprint", "")) == str(uninterrupted_future_quote.get("quote_fingerprint", "")), "restored pending quote advances the private quote sequence so the next forked transaction identity remains exact")
-	_expect(purchase.call("to_save_data") == expired_pending_save, "expired pending-discard capture/apply/capture roundtrip is exact")
+	var post_future_save: Dictionary = purchase.call("to_save_data")
+	var saved_runtime: Dictionary = expired_pending_save.get("district_purchase_runtime", {}) \
+			if expired_pending_save.get("district_purchase_runtime", {}) is Dictionary else {}
+	var post_future_runtime: Dictionary = post_future_save.get("district_purchase_runtime", {}) \
+			if post_future_save.get("district_purchase_runtime", {}) is Dictionary else {}
+	_expect(post_future_runtime.get("sessions", []) == saved_runtime.get("sessions", []) \
+			and int(post_future_runtime.get("next_quote_sequence", 0)) \
+				== int(saved_runtime.get("next_quote_sequence", 0)) + 1,
+			"expired pending-discard restore preserves the session while one legal future quote advances the cursor exactly once")
 	purchase.call("reset_state")
 	pricing.call("reset_state")
 	clock.call("restore_micros", 1_000_000)

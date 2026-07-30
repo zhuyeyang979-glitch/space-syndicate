@@ -88,12 +88,23 @@ func _verify_card_and_belt_owners(coordinator: GameRuntimeCoordinator, world: Wo
 	root.add_child(owner)
 	owner.configure_dependencies(commodity, product_market, district_purchase)
 	var save := owner.to_save_data()
-	_expect(not save.is_empty() and int(save.get("schema_version", 0)) == 2, "card-inventory v2 composite captures")
+	_expect(not save.is_empty() and int(save.get("schema_version", 0)) == 3, "card-inventory v3 composite captures")
 	var save_text := JSON.stringify(save)
 	_expect(not save_text.contains("\"slots\"") and not save_text.contains("runtime_instance_id") and not save_text.contains("\"cash\"") and not save_text.contains("ai_profile") and not save_text.contains("ai_memory"), "card-inventory payload contains no World-owned slots, instances, cash, or AI state")
 	var session_dependency := {"session": {"world_session_state": {"players": world.capture_envelope_save_data().get("normalized_state", {}).get("players", [])}}}
 	var dependency_preflight := owner.preflight_restore_dependencies(save, session_dependency)
 	_expect(bool(dependency_preflight.get("accepted", false)), "card-inventory dependency preflight accepts the restored session roster")
+	var cursor_before_dependency_rejection := owner.to_save_data()
+	var stale_cursor_dependencies := session_dependency.duplicate(true)
+	stale_cursor_dependencies["region_supply"] = {
+		"terminal_transactions": {
+			"district-purchase:market-quote-1000000-9": {"transaction_id": "district-purchase:market-quote-1000000-9"},
+		},
+	}
+	var stale_cursor := owner.preflight_restore_dependencies(save, stale_cursor_dependencies)
+	_expect(not bool(stale_cursor.get("accepted", true)) \
+			and str(stale_cursor.get("reason_code", "")) == "allocator_cursor_regressed" \
+			and owner.to_save_data() == cursor_before_dependency_rejection, "card-inventory rejects a quote cursor behind Region Supply transaction lineage without mutation")
 
 	var players_without_card := world.players.duplicate(true)
 	(players_without_card[1] as Dictionary)["slots"] = []

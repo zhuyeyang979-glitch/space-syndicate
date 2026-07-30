@@ -11,6 +11,15 @@ var _checks := 0
 var _failures: Array[String] = []
 var _capture_failure_section := ""
 var _capture_failure_reason := ""
+var _capture_operation_delta := -1
+var _captured_section_count := -1
+var _preflight_count := -1
+var _tagged_int64_count := -1
+var _world_time_delta_us := -1
+var _rng_draw_delta := -1
+var _public_log_entry_delta := -1
+var _public_log_revision_delta := -1
+var _remaining_artifact_count := -1
 
 
 func _init() -> void:
@@ -81,25 +90,39 @@ func _run() -> void:
 		"production lifecycle port creates a deterministic non-default world state before capture"
 	)
 
+	var registry_before_capture: Dictionary = registry.debug_snapshot()
+	var capture_operation_before := int(registry_before_capture.get("operation_sequence", -1))
+	var safety_before_save_chain: Dictionary = coordinator.save_restore_safety_observation()
 	var capture: Dictionary = registry.capture_resume_envelope({
 		"envelope_id": "alpha04c-production-capture-readback-envelope",
 		"write_id": "alpha04c-production-capture-readback-write",
 	})
+	var registry_after_capture: Dictionary = registry.debug_snapshot()
+	var capture_operation_after := int(registry_after_capture.get("operation_sequence", -1))
+	_capture_operation_delta = capture_operation_after - capture_operation_before
+	_captured_section_count = int(registry_after_capture.get("last_capture_section_count", -1))
 	var envelope: Dictionary = capture.get("envelope", {}) if capture.get("envelope", {}) is Dictionary else {}
 	if not bool(capture.get("ok", false)):
-		var capture_debug: Dictionary = registry.debug_snapshot()
 		_capture_failure_section = str(capture.get(
 			"failing_section_id",
-			capture_debug.get("last_internal_capture_failure_section", "")
+			registry_after_capture.get("last_internal_capture_failure_section", "")
 		))
 		_capture_failure_reason = str(capture.get(
 			"internal_reason_code",
-			capture_debug.get("last_internal_capture_failure_reason", "")
+			registry_after_capture.get("last_internal_capture_failure_reason", "")
 		))
 	_expect(
 		bool(capture.get("ok", false)) and not envelope.is_empty(),
 		"production Registry captures the live session|section=%s|reason=%s"
 			% [_capture_failure_section, _capture_failure_reason]
+	)
+	_expect(
+		_capture_operation_delta == 1
+				and int(capture.get("operation_sequence", -1)) == capture_operation_after
+				and int(registry_after_capture.get("last_capture_operation_sequence", -1)) == capture_operation_after
+				and str(registry_after_capture.get("last_capture_write_id", ""))
+						== "alpha04c-production-capture-readback-write",
+		"production Save performs exactly one new Registry capture operation with the requested write identity"
 	)
 	if envelope.is_empty():
 		await _release_main(main)
@@ -109,7 +132,9 @@ func _run() -> void:
 
 	var sections: Dictionary = envelope.get("sections", {}) if envelope.get("sections", {}) is Dictionary else {}
 	_expect(
-		sections.size() == EXPECTED_SECTION_COUNT and _has_exact_manifest_sections(sections, manifest),
+		_captured_section_count == EXPECTED_SECTION_COUNT
+				and sections.size() == EXPECTED_SECTION_COUNT
+				and _has_exact_manifest_sections(sections, manifest),
 		"captured v3 envelope contains every required Owner section exactly once"
 	)
 	_expect(
@@ -172,10 +197,11 @@ func _run() -> void:
 
 	var preflight: Dictionary = registry.preflight_envelope(readback_envelope)
 	var preflight_debug: Dictionary = registry.debug_snapshot()
+	_preflight_count = int(preflight.get("preflight_count", -1))
 	_expect(
 		bool(preflight.get("ok", false))
 				and bool(preflight.get("preflight_complete", false))
-				and int(preflight.get("preflight_count", 0)) == EXPECTED_SECTION_COUNT,
+				and _preflight_count == EXPECTED_SECTION_COUNT,
 		"Registry strictly preflights all 19 readback sections|section=%s|reason=%s"
 			% [
 				str(preflight_debug.get("last_internal_preflight_failure_section", "")),
@@ -195,14 +221,63 @@ func _run() -> void:
 		"capture, validation, atomic write, readback, and section fingerprints remain exact"
 	)
 	_expect(
-		coordinator.world_effective_clock_snapshot() == clock_after_advance,
-		"capture, write, readback, and Registry preflight do not advance world time"
+		str(registry_after_capture.get("last_capture_envelope_fingerprint", ""))
+				== str(readback.get("fingerprint", ""))
+				and str(registry_after_capture.get("last_capture_sections_fingerprint", ""))
+						== readback_sections_fingerprint,
+		"Registry capture envelope and section fingerprints bind exactly to disk readback"
+	)
+
+	var captured_int64_audit := _tagged_int64_audit(sections, handshake)
+	var readback_int64_audit := _tagged_int64_audit(readback_sections, handshake)
+	var captured_int64_entries: Dictionary = captured_int64_audit.get("entries", {}) \
+			if captured_int64_audit.get("entries", {}) is Dictionary else {}
+	var readback_int64_entries: Dictionary = readback_int64_audit.get("entries", {}) \
+			if readback_int64_audit.get("entries", {}) is Dictionary else {}
+	_tagged_int64_count = captured_int64_entries.size()
+	_expect(
+		bool(captured_int64_audit.get("valid", false))
+				and bool(readback_int64_audit.get("valid", false))
+				and _tagged_int64_count > 0
+				and captured_int64_entries == readback_int64_entries,
+		"every captured tagged Int64 remains structurally valid and exact after disk readback"
+	)
+
+	var safety_after_save_chain: Dictionary = coordinator.save_restore_safety_observation()
+	var clock_after_save_chain: Dictionary = coordinator.world_effective_clock_snapshot()
+	_world_time_delta_us = int(clock_after_save_chain.get("world_effective_us", -1)) \
+			- int(clock_after_advance.get("world_effective_us", -1))
+	_rng_draw_delta = int(safety_after_save_chain.get("rng_draw_invocation_count", -1)) \
+			- int(safety_before_save_chain.get("rng_draw_invocation_count", -1))
+	_public_log_entry_delta = int(safety_after_save_chain.get("public_log_entry_count", -1)) \
+			- int(safety_before_save_chain.get("public_log_entry_count", -1))
+	_public_log_revision_delta = int(safety_after_save_chain.get("public_log_revision", -1)) \
+			- int(safety_before_save_chain.get("public_log_revision", -1))
+	_expect(
+		_world_time_delta_us == 0
+				and int(safety_after_save_chain.get("world_clock_advance_count", -1))
+						== int(safety_before_save_chain.get("world_clock_advance_count", -2))
+				and clock_after_save_chain == clock_after_advance,
+		"capture, write, readback, and Registry preflight have zero world-time delta"
+	)
+	_expect(
+		_rng_draw_delta == 0,
+		"capture, write, readback, and Registry preflight have zero RNG-draw delta"
+	)
+	_expect(
+		_public_log_entry_delta == 0 and _public_log_revision_delta == 0,
+		"capture, write, readback, and Registry preflight have zero public-log delta"
 	)
 
 	await _release_main(main)
-	var remaining_artifacts := _cleanup_test_artifacts()
-	_expect(remaining_artifacts == 0 and not FileAccess.file_exists(QA_SAVE_PATH) \
-			and _atomic_fragment_count() == 0, "task-owned Save, temp, swap, and backup artifacts are removed after verification")
+	_remaining_artifact_count = _cleanup_test_artifacts()
+	_expect(
+		not is_instance_valid(main)
+				and _remaining_artifact_count == 0
+				and not FileAccess.file_exists(QA_SAVE_PATH)
+				and _atomic_fragment_count() == 0,
+		"production main and task-owned Save, temp, swap, and backup artifacts are removed after verification"
+	)
 	_finish()
 
 
@@ -226,6 +301,59 @@ func _atomic_fragment_count() -> int:
 		if candidate.begins_with(file_name + ".tmp-") or candidate.begins_with(file_name + ".swap-"):
 			count += 1
 	return count
+
+
+func _tagged_int64_audit(value: Variant, handshake: Node) -> Dictionary:
+	var entries: Dictionary = {}
+	return {
+		"valid": _collect_tagged_int64_entries(value, "$", handshake, entries),
+		"entries": entries,
+	}
+
+
+func _collect_tagged_int64_entries(
+	value: Variant,
+	path: String,
+	handshake: Node,
+	entries: Dictionary
+) -> bool:
+	if value is Array:
+		var values := value as Array
+		for index in range(values.size()):
+			if not _collect_tagged_int64_entries(values[index], "%s/%d" % [path, index], handshake, entries):
+				return false
+		return true
+	if not (value is Dictionary):
+		return true
+	var dictionary := value as Dictionary
+	if dictionary.has("$codec"):
+		if str(dictionary.get("$codec", "")) != "Int64":
+			return true
+		var encoded_value: Variant = dictionary.get("value")
+		if dictionary.size() != 2 or not (encoded_value is String) \
+				or not str(encoded_value).is_valid_int():
+			return false
+		var decoded_variant: Variant = handshake.call("decode_codec_value", dictionary)
+		if not (decoded_variant is Dictionary):
+			return false
+		var decoded := decoded_variant as Dictionary
+		if not bool(decoded.get("ok", false)) or not (decoded.get("value") is int):
+			return false
+		var reencoded_variant: Variant = handshake.call("encode_codec_value", decoded.get("value"))
+		if not (reencoded_variant is Dictionary):
+			return false
+		var reencoded := reencoded_variant as Dictionary
+		if not bool(reencoded.get("ok", false)) \
+				or str(handshake.call("canonical_json", reencoded.get("value"))) \
+						!= str(handshake.call("canonical_json", dictionary)):
+			return false
+		entries[path] = str(encoded_value)
+		return true
+	for key_variant in dictionary.keys():
+		var key := str(key_variant)
+		if not _collect_tagged_int64_entries(dictionary[key_variant], "%s/%s" % [path, key], handshake, entries):
+			return false
+	return true
 
 
 func _cleanup_test_artifacts() -> int:
@@ -272,10 +400,19 @@ func _expect(condition: bool, label: String) -> void:
 
 func _finish() -> void:
 	var status := "PASS" if _failures.is_empty() else "FAIL"
-	print("ALPHA04C_PRODUCTION_SAVE_CAPTURE_READBACK_TEST|status=%s|checks=%d|failures=%d|capture_failure_section=%s|capture_failure_reason=%s" % [
+	print("ALPHA04C_PRODUCTION_SAVE_CAPTURE_READBACK_TEST|status=%s|checks=%d|failures=%d|capture_operation_delta=%d|captured_sections=%d|strict_preflights=%d|tagged_int64_count=%d|world_time_delta_us=%d|rng_draw_delta=%d|public_log_entry_delta=%d|public_log_revision_delta=%d|remaining_artifacts=%d|capture_failure_section=%s|capture_failure_reason=%s" % [
 		status,
 		_checks,
 		_failures.size(),
+		_capture_operation_delta,
+		_captured_section_count,
+		_preflight_count,
+		_tagged_int64_count,
+		_world_time_delta_us,
+		_rng_draw_delta,
+		_public_log_entry_delta,
+		_public_log_revision_delta,
+		_remaining_artifact_count,
 		_capture_failure_section,
 		_capture_failure_reason,
 	])

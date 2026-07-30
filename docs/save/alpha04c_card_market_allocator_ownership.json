@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "document_id": "space_syndicate.alpha04c.card_market_allocator_ownership",
+  "task_id": "ALPHA_0_4_C_OWNER_CAPTURE_ATTESTATION_CURSOR_PERSISTENCE_AND_PROCESS_A_REHEARSAL",
+  "source_head": "12691a8bc7ad2c5a9f4c175c95a8c214ea346a74",
+  "ruleset_id": "v0.6",
+  "save_section_id": "card_inventory",
+  "save_section_version": 3,
+  "envelope_schema_version": 3,
+  "expired_quote_payload_may_be_omitted": true,
+  "allocator_cursor_must_be_persisted": true,
+  "identity_records": [
+    {
+      "identity_kind": "market_quote_id",
+      "generator_owner": "CardMarketPricingRuntimeController",
+      "runtime_field": "CardMarketPricingRuntimeController._next_quote_sequence",
+      "save_field": "card_inventory.district_purchase.district_purchase_runtime.next_quote_sequence",
+      "monotonic": true,
+      "derived_or_authoritative": "authoritative_allocator",
+      "restore_requirement": "Restore the exact positive next sequence before allocation; reject missing v2 cursor with allocator_cursor_missing_requires_backup."
+    },
+    {
+      "identity_kind": "normal_card_listing_id",
+      "generator_owner": "RegionSupplyRuntimeController",
+      "runtime_field": "RegionSupplyRuntimeController._refill_sequence",
+      "save_field": "region_supply.refill_sequence",
+      "monotonic": true,
+      "derived_or_authoritative": "authoritative_allocator",
+      "restore_requirement": "Restore refill_sequence and slot revisions exactly before the next legal rack refill."
+    },
+    {
+      "identity_kind": "district_purchase_transaction_id",
+      "generator_owner": "DistrictSupplyActionPort",
+      "runtime_field": "deterministic:district-purchase:<quote_id>",
+      "save_field": null,
+      "monotonic": false,
+      "derived_or_authoritative": "derived_from_authoritative_quote_id",
+      "restore_requirement": "Derive from the restored quote ID and validate any materialized journal identity; no independent transaction cursor exists."
+    }
+  ],
+  "acceptance": {
+    "next_quote_id_parity": true,
+    "next_listing_id_parity": true,
+    "next_transaction_id_parity": true,
+    "reused_expired_id_count": 0,
+    "silent_defaulted_save_field_count": 0
+  }
+}

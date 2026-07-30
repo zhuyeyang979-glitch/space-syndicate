@@ -52,6 +52,33 @@ var _checks := 0
 var _failures: Array[String] = []
 
 
+class CaptureProgressProbe:
+	extends RefCounted
+	var events: Array[Dictionary] = []
+
+	func capture_owner_diagnostic_snapshot() -> Dictionary:
+		return {
+			"rng_draw_invocation_count": 0,
+			"world_clock_advance_count": 0,
+			"public_log_entry_count": 0,
+		}
+
+	func record_owner_capture_progress(
+			owner_index: int,
+			section_id: String,
+			owner_id: String,
+			result_kind: String,
+			reason_code: String
+	) -> void:
+		events.append({
+			"owner_index": owner_index,
+			"section_id": section_id,
+			"owner_id": owner_id,
+			"result_kind": result_kind,
+			"reason_code": reason_code,
+		})
+
+
 func _ready() -> void:
 	if auto_run_on_ready and not Engine.is_editor_hint():
 		call_deferred("_run_from_scene")
@@ -124,7 +151,7 @@ func run_bench() -> Dictionary:
 	for section_result_variant in detailed_results:
 		var section_result: Dictionary = section_result_variant if section_result_variant is Dictionary else {}
 		detailed_fingerprints_valid = detailed_fingerprints_valid \
-				and bool(section_result.get("captured", false)) \
+				and str(section_result.get("capture_result_kind", "")) == "CAPTURED" \
 				and str(section_result.get("payload_fingerprint", "")).length() == 64
 	_check(bool(detailed_capture.get("captured", false)) \
 			and int(detailed_capture.get("section_count", 0)) == 19 \
@@ -279,6 +306,37 @@ func run_bench() -> Dictionary:
 	_check(int(rollback_result.get("rollback_section_count", 0)) > 0 and int(rollback_result.get("partial_restore_state_count", -1)) == 0, "rollback_covers_every_touched_owner_without_exposing_internal_order")
 	_check(_same_data(rollback_before, _owner_states(harness, fixed_order)), "rollback_restores_every_touched_owner_exactly")
 	_check(_public_receipt_safe(registry.public_operation_receipt(rollback_result)), "rollback_public_receipt_exposes_no_section_or_private_state")
+
+	var baseline_probe := CaptureProgressProbe.new()
+	var baseline_fault_armed := bool(registry.call(
+		"arm_test_capture_live_fingerprint_failure_once",
+		"ruleset"
+	))
+	var baseline_capture: Dictionary = registry.capture_all_sections_detailed(baseline_probe)
+	var baseline_failure: Dictionary = baseline_capture.get("first_failure", {}) \
+			if baseline_capture.get("first_failure", {}) is Dictionary else {}
+	var baseline_rows: Array = baseline_capture.get("section_results", []) \
+			if baseline_capture.get("section_results", []) is Array else []
+	var baseline_row: Dictionary = baseline_rows[0] as Dictionary if baseline_rows.size() == 19 else {}
+	_check(baseline_fault_armed \
+			and not bool(baseline_capture.get("captured", true)) \
+			and str(baseline_failure.get("section_id", "")) == "ruleset" \
+			and str(baseline_failure.get("owner_id", "")) == "ruleset_runtime" \
+			and str(baseline_failure.get("reason_code", "")) == "owner_live_fingerprint_unavailable" \
+			and bool(baseline_row.get("capture_started", false)) \
+			and bool(baseline_row.get("capture_completed", false)) \
+			and str(baseline_row.get("capture_result_kind", "")) == "FAILED" \
+			and int(baseline_row.get("mutation_count", -1)) == 0 \
+			and int(baseline_row.get("rng_draw_delta", -1)) == 0 \
+			and int(baseline_row.get("world_time_delta", -1)) == 0 \
+			and int(baseline_row.get("public_log_delta", -1)) == 0 \
+			and baseline_probe.events.size() == 2 \
+			and str(baseline_probe.events[0].get("result_kind", "")) == "STARTED" \
+			and str(baseline_probe.events[1].get("result_kind", "")) == "FAILED", "baseline fingerprint failure emits one typed started-to-failed zero-mutation Owner row|failure=%s|row=%s|events=%s" % [
+			JSON.stringify(baseline_failure),
+			JSON.stringify(baseline_row),
+			JSON.stringify(baseline_probe.events),
+		])
 
 	var evidence := {
 		"production_required_sections": int(production_snapshot.get("required_section_count", 0)),

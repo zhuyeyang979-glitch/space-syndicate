@@ -1,163 +1,160 @@
 # Alpha 0.4-C Save/Resume current handoff
 
-Status: `BLOCKED_BY_UNATTESTED_OWNER_CAPTURE_FAILURE`.
+Status: `BLOCKED_BY_OWNER_DIAGNOSTIC_PRE_AUDIT_FAILURE`.
 
-PR #77 remains Draft. Alpha 0.4-C is still PARTIAL and may not merge to
-`main`. The new official retry authorization remains unconsumed. Attempt 2,
-Process B, and Process C were not started.
+PR #77 remains Draft. Alpha 0.4-C remains PARTIAL and may not merge to
+`main`. Official Attempt 2 was not created, its authorization remains
+unconsumed, and Process B/C were not started.
 
 ## Scope and baseline
 
-This task started from exact remote PR #77 HEAD
-`0240dae2d03581791a27826a8472576b5b543502` in the isolated branch
-`codex/alpha04c-production-save-completion-repair-0240dae`. Main constitution
-commit `6b5568429b82ddab3400ee0d5076ac6ac3411a20` remains unchanged.
+This task started from PR #77 HEAD
+`12691a8bc7ad2c5a9f4c175c95a8c214ea346a74` in the isolated branch
+`codex/alpha04c-owner-capture-attestation-12691a8`.
 
-The Queue bridge, Action routing, gameplay values, AI policy, Main, scenes,
-RNG ownership, and V0.7 constitution were not changed. The production changes
-before the diagnostic are limited to the Registry capture failure boundary and
-redacted Save readback diagnostics. No Owner payload or section version was
-changed.
+The Queue bridge, Action routing, facility gameplay, AI policy, Main, RNG draw
+points, and V0.7 constitution were not changed. The task added only Save
+allocator continuity, redacted Owner diagnostics, role timeout/heartbeat
+supervision, and non-official rehearsal evidence contracts.
 
-## Completed pre-diagnostic work
+## Completed implementation
 
-`SaveOwnerCaptureFailureV1` now reports a closed, redacted tuple containing
-section, Owner, reason, observed state version, and payload fingerprint. The
-production Save path and `capture_all_sections_detailed()` share one capture
-worker. Raw Owner state, the Registry plan, and section payloads do not cross
-the public evidence boundary.
+The production Card Inventory section is now version 3 and strictly persists
+`next_quote_sequence`. Legacy version 2 fails closed with
+`allocator_cursor_missing_requires_backup`; no field is silently defaulted.
+Expired quote bodies may be omitted while consumed identity space remains
+authoritative.
 
-Focused gates passed before the one authorized diagnostic:
+Allocator evidence is GREEN:
 
-- Save Owner capture failure contract `63/63`
-- Registry wrapper `12/12`
-- production Registry transaction `59/59`
-- production 19-Owner capture, v3 encode, atomic write, readback, and preflight `20/20`
-- Child Completion contract `19/19`
-- cold-restore contract `131/131`
-- Wrapper attestation `68/68`
-- PowerShell parse `3/3`
+- cursor contract `34/34`
+- closure contract `13/13`
+- legacy v2 backup gate `6/6`
+- quote/listing/transaction identity parity `21/21`
+- restored quote/listing/transaction reuse count `0/0/0`
 
-The production capture bench proves 19/19 capture and readback in a real
-`main.tscn` composition, but it does not identify the separate nontrivial
-Process A failure.
+The targeted diagnostic now has a fixed scenario identity, redacted 19-Owner
+rows, Process A timeline and heartbeat, launch PID/creation-tick binding, and
+Child/Parent completion contracts. The Process A rehearsal admission and
+terminal outcome are exact-once and atomically published. Admission source
+revalidation runs only after the caller owns the committed admission, and a
+primary failure cannot be replaced by a secondary outcome-write failure.
 
-## One targeted diagnostic
+## Authorized targeted diagnostic
 
-The exact-once quota ledger consumed its only transition `0 -> 1` for:
+The one newly authorized invocation ran exactly once from:
 
-`alpha04c-owner-capture-diagnostic-de24ab322a2a`
+`7fa859dd7ab19dceb1e8036105a689c7e141a8e3`
 
-The run was non-official and non-formal. It used a 180-second parent timeout,
-exited in about 17.676 seconds, wrote no Save, touched no official claim, and
-left no task-owned process.
+Run ID:
 
-The child exited 0 with a structurally valid Child Completion attestation.
-Parent Exit was GREEN: observed exit, no timeout, no parent termination, and
-zero task-owned processes. The 19-row phase timeline closed through
-`quit_requested`.
+`alpha04c-owner-capture-diagnostic-7fa859dd7ab1`
 
-However, the run failed during `session_started` before the first Owner audit:
+Observed result:
 
-`targeted_owner_capture_observed_scenario_mismatch`
+- wall time `1.427s`
+- orchestrator exit code `1`
+- failure code `orchestrator_internal_failure`
+- quota ledger not created
+- evidence root not created
+- isolated user-data root created with zero files
+- Godot not launched
+- Child Completion not written
+- Parent Exit not written
+- Owner audit not started
+- task-owned process count after `0`
+- Save file count `0`
 
-The QA observer read `challenge_depth` from `GameSession`'s intentionally
-reduced setup summary. That summary stores player count, AI count, difficulty,
-and mission title, but not challenge depth, so the observer saw `-1` and
-rejected the otherwise valid fixed scenario. This was a diagnostic contract
-defect, not a production Owner result.
+The targeted postcondition evaluated `.Count` on an empty unrolled
+collection under PowerShell StrictMode. That native exception replaced the
+original typed pre-quota reason with `orchestrator_internal_failure`.
+Because the invocation never reached quota publication, no machine timeline
+or Child/Parent artifacts exist from which the original reason can be
+reconstructed.
 
-Therefore:
+This is a pre-audit harness failure, not an Owner capture result:
 
-- `TARGETED_OWNER_CAPTURE_DIAGNOSTIC_COUNT=1`
-- `OWNER_AUDIT_COUNT=0/8`
-- `FIRST_PHASE_WITH_CAPTURE_FAILURE=NOT_ATTESTED`
+- `SCENARIO_IDENTITY_ATTESTED=false`
+- `OWNER_AUDIT_STARTED=false`
+- `OWNER_AUDIT_COMPLETED=false`
 - `FAILING_SECTION_ID=NOT_ATTESTED`
 - `FAILING_OWNER_ID=NOT_ATTESTED`
 - `FAILING_REASON_CODE=NOT_ATTESTED`
 
-No second diagnostic was run. No Owner was modified by guess.
+The invocation is still the single authorized attempt for this task. It was
+not retried.
 
-## Diagnostic contract repair
+## Process A rehearsal
 
-After preserving the failed run, the QA scenario identity was repaired to use
-the exact setup draft validated and committed by
-`SessionStartTransactionCoordinator`. Runtime actor and AI counts remain an
-independent 1-local-plus-3-AI observation. Parent failures now retain a bounded
-child setup code, while mismatch paths and scalar values remain hashed.
+The diagnostic admission gate did not become GREEN, so the authorized new
+Process A rehearsal was not consumed or started. No Save, readback, manifest,
+Child Completion, or Parent Exit result is claimed for a new rehearsal.
 
-This repair was verified without another diagnostic:
+The role policy remains contract-GREEN:
 
-- cold-restore contract `133/133`
-- Wrapper attestation `68/68`
-- Driver contract-only `PASS`
-- PowerShell parse `PASS`
-- git diff check `PASS`
+- targeted diagnostic: absolute `120s`, no-progress `30s`
+- Process A: absolute `180s`, no-progress `60s`
+- Process B: absolute `360s`, no-progress `60s`
+- Process C: absolute `180s`, no-progress `30s`
 
-These checks validate the repaired contract but do not replace the missing
-eight-phase Owner evidence.
+These bounded values were not used to start Process B/C.
+
+## Focused verification
+
+- production Registry transaction `59/59`
+- production capture/readback `25/25`
+- targeted diagnostic V2 `193/193`
+- Process A admission `115/115`
+- Process A terminal outcome `93/93`
+- admission strict integers `65/65`
+- diagnostic chain binding `60/60`
+- evidence binding `17/17`
+- launch authorization `55/55`
+- vertical slice contract `139/139`
+- Wrapper supervision `76/76`, three consecutive fixed-hash runs
+- Alpha 0.4-A `66/66`
+- Alpha 0.4-B static contracts `76/76` and `60/60`
+- smoke engine `--check-only` PASS
+
+No Formal run or full Smoke was executed.
 
 ## Godot MCP
 
-An isolated role-local Funplay MCP endpoint ran at
-`http://127.0.0.1:8805/` with separate APPDATA and LOCALAPPDATA. It reported
-the exact task worktree, loaded and played real `res://scenes/main.tscn`, and
-found the runtime Main, V06 Save Registry, Facility Queue Adapter, Queue,
-Execution service, and Save/Continue Flow at their production paths.
+The isolated endpoint was `http://127.0.0.1:8815/`. Real
+`res://scenes/main.tscn` loaded and played. Static/runtime inspection found
+one Registry, Queue, Execution service, Facility Queue adapter, Save
+coordinator, and Save/Continue flow.
 
-MCP validation reported zero diagnostics for each of the five changed
-production/diagnostic GDScript files and zero runtime error-log lines. The
-full-project scanner found one unchanged tool bench with two type-inference
-diagnostics; it is outside this task diff. Play mode and the editor were
-stopped through the role-local tools, port 8805 closed, and the final Godot
-process count was zero.
-
-The affected Save evidence privacy assertions are `2/2`. Two broader inherited
-privacy suites remain disclosed: card-market public quote privacy is `3/5`,
-and player-facing privacy is blocked by an unchanged test parse error. Neither
-failure path is in this task's production diff, so no pricing, authorization,
-or retired test contract was changed here.
-
-## Allocator cursor
-
-The ownership ledger identifies `CardMarketPricingRuntimeController` as the
-quote identity authority. The required Save location is
-`card_inventory.district_purchase.district_purchase_runtime.next_quote_sequence`.
-Expired quote payloads may be omitted, but their consumed identity range may
-not be forgotten.
-
-The focused specification currently passes `24/34`; the ten red assertions
-correctly show that cursor persistence, old-payload fail-closed behavior,
-rollback parity, and next quote ID parity are not implemented. Because the
-task requires the actual failing Owner to be attested before any production
-Owner change, no cursor field or section version was added.
+The full scan checked 986 scripts and found two unchanged inherited error
+files. Task-introduced debug and runtime error counts are both zero. Play mode
+and the editor exited normally; the task-owned Godot process count is zero.
 
 ## Preserved authority
 
-Attempt 1 remains immutable at 1,133 bytes with SHA-256
+Attempt 1 remains immutable at SHA-256
 `80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458`.
-The official cold-restore count remains one. Attempt 2 does not exist, and the
-new official authorization remains unconsumed.
+The prior targeted diagnostic ledger remains immutable at SHA-256
+`2dba183fe0e354370802d0f886bf40a88b7e1c0b39ddb0df18ee110821e957a1`.
 
-- `TRANSACTIONAL_SAVE_OWNER_COUNT=19`
-- `UNSUPPORTED_SAVE_OWNER_COUNT=0`
-- `NEW_SAVE_SECTION_COUNT=0`
-- `OWNER_SECTION_VERSION_CHANGED=false`
-- `ENVELOPE_SCHEMA_VERSION_CHANGED=false`
-- `NEW_RNG_OWNER_COUNT=0`
-- `NEW_RNG_DRAW_POINT_COUNT=0`
-- `THIRD_FORMAL_RUN_PERFORMED=false`
-- `FULL_SMOKE=false`
-- `V07_CONSTITUTION_CONTENT_CHANGE_COUNT=0`
+- official cold-restore count: `1`
+- Attempt 2 claim: absent
+- new official authorization consumed: `false`
+- new Process A rehearsal count: `0`
+- Process B/C started: `false/false`
+- transactional Save Owners: `19`
+- unsupported Save Owners: `0`
+- third Formal: `false`
+- full Smoke: `false`
+- V0.7 constitution content changes: `0`
 
 ## Next boundary
 
 Next exact task:
 
-`ALPHA_0_4_C_OWNER_CAPTURE_ATTESTATION_CONTINUATION`
+`ALPHA_0_4_C_OWNER_DIAGNOSTIC_SCENARIO_IDENTITY_CONTINUATION`
 
-It needs an explicit new diagnostic authorization. It should run the repaired
-eight-phase contract exactly once, identify the real section, Owner, and
-reason, then repair only that Owner plus the independently ledgered quote
-allocator cursor. Only after 19/19 production capture and readback are green
-may a new Process A completion rehearsal be consumed.
+It requires a new explicit targeted-diagnostic authorization. It must first
+fix and test the pre-quota/postcondition error-reporting path, then execute one
+new diagnostic to reach the 19-Owner audit. No Owner may be changed until that
+run attests a concrete section, Owner, and reason. Only a 19/19 diagnostic may
+admit the still-unconsumed Process A rehearsal.
