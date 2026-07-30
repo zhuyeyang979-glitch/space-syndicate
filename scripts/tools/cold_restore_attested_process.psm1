@@ -304,6 +304,16 @@ function Test-ColdRestoreIntegerValue {
         -or $Value -is [int64] -or $Value -is [uint64]
 }
 
+function Test-ColdRestoreNonnegativeInt64Value {
+    param([AllowNull()]$Value)
+
+    if (-not (Test-ColdRestoreIntegerValue $Value)) {
+        return $false
+    }
+    $numeric = [decimal]$Value
+    return $numeric -ge 0 -and $numeric -le [int64]::MaxValue
+}
+
 function Test-ColdRestoreClosedIdentifier {
     param(
         [AllowNull()]$Value,
@@ -369,7 +379,9 @@ function Test-ColdRestoreRoleTimeoutPolicy {
     if (-not (Test-ColdRestoreExactFieldSet $Value $script:RoleTimeoutPolicyFields)) {
         return & $invalid "role_timeout_policy_field_set_invalid"
     }
-    if ([int]$Value.schema_version -ne 1 -or [string]$Value.policy_id -cne "ColdRestoreRoleTimeoutPolicyV1") {
+    if (-not (Test-ColdRestoreIntegerValue $Value.schema_version) `
+        -or [int]$Value.schema_version -ne 1 `
+        -or [string]$Value.policy_id -cne "ColdRestoreRoleTimeoutPolicyV1") {
         return & $invalid "role_timeout_policy_schema_invalid"
     }
     if ($ExpectedPolicyFingerprint -cnotmatch '^[0-9a-f]{64}$') {
@@ -819,7 +831,8 @@ function Test-ColdRestoreProcessAPhaseTimeline {
         [Parameter(Mandatory = $true)]$Value,
         [Parameter(Mandatory = $true)][string]$ExpectedRunId,
         [Parameter(Mandatory = $true)][string]$ExpectedRepositoryHead,
-        $Previous = $null
+        $Previous = $null,
+        [string]$ExpectedScenarioFingerprint = ""
     )
 
     if (-not (Test-ColdRestoreExactFieldSet $Value $script:ProcessAPhaseTimelineFields)) {
@@ -840,6 +853,11 @@ function Test-ColdRestoreProcessAPhaseTimeline {
     }
     elseif ([string]$Value.scenario_fingerprint -notmatch '^[0-9a-f]{64}$') {
         $reason = "phase_timeline_scenario_fingerprint_invalid"
+    }
+    elseif ($ExpectedScenarioFingerprint -ne "" `
+        -and ([string]$ExpectedScenarioFingerprint -cnotmatch '^[0-9a-f]{64}$' `
+            -or [string]$Value.scenario_fingerprint -cne $ExpectedScenarioFingerprint)) {
+        $reason = "phase_timeline_scenario_fingerprint_mismatch"
     }
     elseif ($Value.official -isnot [bool] `
         -or $Value.save_file_exists -isnot [bool] `
@@ -968,7 +986,8 @@ function Sync-ColdRestoreProcessAPhaseTimeline {
         [Parameter(Mandatory = $true)][string]$EventDirectory,
         [Parameter(Mandatory = $true)][string]$TimelinePath,
         [Parameter(Mandatory = $true)][string]$ExpectedRunId,
-        [Parameter(Mandatory = $true)][string]$ExpectedRepositoryHead
+        [Parameter(Mandatory = $true)][string]$ExpectedRepositoryHead,
+        [string]$ExpectedScenarioFingerprint = ""
     )
 
     $previous = $null
@@ -979,7 +998,11 @@ function Sync-ColdRestoreProcessAPhaseTimeline {
         catch {
             return [pscustomobject]@{ valid = $false; found = $true; reason_code = "phase_timeline_stable_json_invalid"; value = $null }
         }
-        $stableValidation = Test-ColdRestoreProcessAPhaseTimeline $previous $ExpectedRunId $ExpectedRepositoryHead
+        $stableValidation = Test-ColdRestoreProcessAPhaseTimeline `
+            -Value $previous `
+            -ExpectedRunId $ExpectedRunId `
+            -ExpectedRepositoryHead $ExpectedRepositoryHead `
+            -ExpectedScenarioFingerprint $ExpectedScenarioFingerprint
         if (-not [bool]$stableValidation.valid) {
             return [pscustomobject]@{ valid = $false; found = $true; reason_code = [string]$stableValidation.reason_code; value = $previous }
         }
@@ -1001,7 +1024,12 @@ function Sync-ColdRestoreProcessAPhaseTimeline {
         if ($null -ne $previous -and [int64]$candidate.snapshot_sequence -le [int64]$previous.snapshot_sequence) {
             continue
         }
-        $validation = Test-ColdRestoreProcessAPhaseTimeline $candidate $ExpectedRunId $ExpectedRepositoryHead $previous
+        $validation = Test-ColdRestoreProcessAPhaseTimeline `
+            -Value $candidate `
+            -ExpectedRunId $ExpectedRunId `
+            -ExpectedRepositoryHead $ExpectedRepositoryHead `
+            -Previous $previous `
+            -ExpectedScenarioFingerprint $ExpectedScenarioFingerprint
         if (-not [bool]$validation.valid) {
             return [pscustomobject]@{ valid = $false; found = $true; reason_code = [string]$validation.reason_code; value = $candidate }
         }
@@ -1062,7 +1090,8 @@ function Test-ColdRestoreChildCompletionAttestation {
         [Parameter(Mandatory = $true)][string]$ExpectedRunId,
         [Parameter(Mandatory = $true)][string]$ExpectedRole,
         [Parameter(Mandatory = $true)][string]$ExpectedRepositoryHead,
-        [Parameter(Mandatory = $true)][datetime]$ProcessStartedAtUtc
+        [Parameter(Mandatory = $true)][datetime]$ProcessStartedAtUtc,
+        [string]$ExpectedScenarioFingerprint = ""
     )
 
     if (-not [IO.File]::Exists($Path)) {
@@ -1081,17 +1110,120 @@ function Test-ColdRestoreChildCompletionAttestation {
         return [pscustomobject]@{ valid = $false; found = $true; reason_code = "child_attestation_field_set_invalid"; fingerprint = ""; value = $value }
     }
     $reason = ""
-    if ([int]$value.schema_version -ne 1) { $reason = "child_attestation_schema_invalid" }
-    elseif ([string]$value.run_id -cne $ExpectedRunId) { $reason = "child_attestation_run_id_mismatch" }
-    elseif ([string]$value.role -cne $ExpectedRole) { $reason = "child_attestation_role_mismatch" }
-    elseif ([string]$value.repository_head -cne $ExpectedRepositoryHead) { $reason = "child_attestation_repository_head_mismatch" }
-    elseif ($value.child_ready_to_exit -isnot [bool] -or -not [bool]$value.child_ready_to_exit) { $reason = "child_attestation_not_ready_to_exit" }
-    elseif ($value.qualification_completed -isnot [bool] -or -not [bool]$value.qualification_completed) { $reason = "child_attestation_qualification_incomplete" }
-    elseif ([string]$value.queue_trigger_actor -notin @("local", "ai", "none")) { $reason = "child_attestation_actor_invalid" }
-    elseif ([int64]$value.queue_count -lt 0 -or [int64]$value.queue_revision -lt 0) { $reason = "child_attestation_count_invalid" }
-    elseif ([bool]$value.qualification_green -and -not [string]::IsNullOrEmpty([string]$value.product_blocker)) { $reason = "child_attestation_green_blocker_conflict" }
-    elseif (-not [bool]$value.qualification_green -and [string]::IsNullOrEmpty([string]$value.product_blocker)) { $reason = "child_attestation_blocker_missing" }
-    $fingerprint = Get-ColdRestoreEvidenceFingerprint $value "evidence_fingerprint"
+    if (-not (Test-ColdRestoreIntegerValue $value.schema_version) `
+        -or [decimal]$value.schema_version -ne 1) {
+        $reason = "child_attestation_schema_invalid"
+    }
+    elseif ($value.run_id -isnot [string] `
+        -or ([string]$value.run_id).Length -lt 1 `
+        -or ([string]$value.run_id).Length -gt 96 `
+        -or [string]$value.run_id -cnotmatch '^[A-Za-z0-9._-]+$') {
+        $reason = "child_attestation_run_id_invalid"
+    }
+    elseif ($value.role -isnot [string] `
+        -or [string]$value.role -cnotin @("qualification", "producer", "consumer", "validator")) {
+        $reason = "child_attestation_role_invalid"
+    }
+    elseif ($value.repository_head -isnot [string] `
+        -or [string]$value.repository_head -cnotmatch '^[0-9a-f]{40,64}$') {
+        $reason = "child_attestation_repository_head_invalid"
+    }
+    elseif ($value.scenario_fingerprint -isnot [string] `
+        -or ([string]$value.scenario_fingerprint -ne "" `
+            -and [string]$value.scenario_fingerprint -cnotmatch '^[0-9a-f]{64}$')) {
+        $reason = "child_attestation_scenario_fingerprint_invalid"
+    }
+    else {
+        foreach ($field in @(
+            "official",
+            "formal",
+            "qualification_completed",
+            "qualification_green",
+            "save_written",
+            "official_count_consumed",
+            "child_ready_to_exit"
+        )) {
+            if ($value.$field -isnot [bool]) {
+                $reason = "child_attestation_boolean_invalid"
+                break
+            }
+        }
+    }
+    if ($reason -eq "") {
+        foreach ($field in @(
+            "queue_count",
+            "queue_revision",
+            "product_mutation_count",
+            "direct_authority_mutation_count",
+            "queue_injection_count"
+        )) {
+            if (-not (Test-ColdRestoreNonnegativeInt64Value $value.$field)) {
+                $reason = "child_attestation_integer_invalid"
+                break
+            }
+        }
+    }
+    if ($reason -eq "" `
+        -and ($value.queue_trigger_actor -isnot [string] `
+            -or [string]$value.queue_trigger_actor -cnotin @("local", "ai", "none"))) {
+        $reason = "child_attestation_actor_invalid"
+    }
+    if ($reason -eq "") {
+        foreach ($field in @(
+            "product_blocker",
+            "queue_trigger_semantic_action_id",
+            "queue_trigger_card_semantic_id",
+            "final_reason_code"
+        )) {
+            if ($value.$field -isnot [string] -or ([string]$value.$field).Length -gt 256) {
+                $reason = "child_attestation_text_invalid"
+                break
+            }
+        }
+    }
+    if ($reason -eq "" `
+        -and ($value.queue_trigger_target_fingerprint -isnot [string] `
+            -or ([string]$value.queue_trigger_target_fingerprint -ne "" `
+                -and [string]$value.queue_trigger_target_fingerprint -cnotmatch '^[0-9a-f]{64}$'))) {
+        $reason = "child_attestation_target_fingerprint_invalid"
+    }
+    if ($reason -eq "" `
+        -and ($value.evidence_fingerprint -isnot [string] `
+            -or [string]$value.evidence_fingerprint -cnotmatch '^[0-9a-f]{64}$')) {
+        $reason = "child_attestation_fingerprint_invalid"
+    }
+    if ($reason -eq "" -and [string]$value.run_id -cne $ExpectedRunId) {
+        $reason = "child_attestation_run_id_mismatch"
+    }
+    elseif ($reason -eq "" -and [string]$value.role -cne $ExpectedRole) {
+        $reason = "child_attestation_role_mismatch"
+    }
+    elseif ($reason -eq "" -and [string]$value.repository_head -cne $ExpectedRepositoryHead) {
+        $reason = "child_attestation_repository_head_mismatch"
+    }
+    elseif ($reason -eq "" -and $ExpectedScenarioFingerprint -ne "" `
+        -and ([string]$ExpectedScenarioFingerprint -cnotmatch '^[0-9a-f]{64}$' `
+            -or [string]$value.scenario_fingerprint -cne $ExpectedScenarioFingerprint)) {
+        $reason = "child_attestation_scenario_fingerprint_mismatch"
+    }
+    elseif ($reason -eq "" -and -not [bool]$value.qualification_completed) {
+        $reason = "child_attestation_qualification_incomplete"
+    }
+    elseif ($reason -eq "" -and [bool]$value.qualification_green `
+        -and -not [string]::IsNullOrEmpty([string]$value.product_blocker)) {
+        $reason = "child_attestation_green_blocker_conflict"
+    }
+    elseif ($reason -eq "" -and -not [bool]$value.qualification_green `
+        -and [string]::IsNullOrEmpty([string]$value.product_blocker)) {
+        $reason = "child_attestation_blocker_missing"
+    }
+    elseif ($reason -eq "" -and -not [bool]$value.child_ready_to_exit) {
+        $reason = "child_attestation_not_ready_to_exit"
+    }
+    $fingerprint = ""
+    if ([string]::IsNullOrEmpty($reason)) {
+        $fingerprint = Get-ColdRestoreEvidenceFingerprint $value "evidence_fingerprint"
+    }
     if ([string]::IsNullOrEmpty($reason) -and [string]$value.evidence_fingerprint -cne $fingerprint) {
         $reason = "child_attestation_fingerprint_invalid"
     }
@@ -1277,6 +1409,75 @@ function Get-ColdRestoreProcessCreationTimeTicks {
     }
 }
 
+function Assert-ColdRestoreLaunchAuthorizationBinding {
+    param(
+        [Parameter(Mandatory = $true)]$Authorization,
+        [Parameter(Mandatory = $true)][string]$ExpectedRunId,
+        [Parameter(Mandatory = $true)][string]$ExpectedRepositoryHead,
+        [Parameter(Mandatory = $true)][string]$ExpectedRole,
+        [string]$ExpectedScenarioFingerprint = ""
+    )
+
+    if (-not (Test-ColdRestoreExactFieldSet $Authorization $script:LaunchAuthorizationContextFields)) {
+        throw "launch_authorization_context_field_set_invalid"
+    }
+    if ($Authorization.run_id -isnot [string] `
+        -or [string]$Authorization.run_id -cne $ExpectedRunId) {
+        throw "launch_authorization_run_id_mismatch"
+    }
+    if ($Authorization.source_head_sha -isnot [string] `
+        -or [string]$Authorization.source_head_sha -cne $ExpectedRepositoryHead) {
+        throw "launch_authorization_source_head_mismatch"
+    }
+    if ($Authorization.process_role -isnot [string] `
+        -or [string]$Authorization.process_role -cne $ExpectedRole) {
+        throw "launch_authorization_process_role_mismatch"
+    }
+    # Official callers provide the scenario explicitly. Keep the legacy optional
+    # parameter path intact for existing non-official Wrapper fixtures.
+    if ($ExpectedScenarioFingerprint -ne "" `
+        -and ($Authorization.scenario_fingerprint -isnot [string] `
+            -or [string]$Authorization.scenario_fingerprint -cne $ExpectedScenarioFingerprint)) {
+        throw "launch_authorization_scenario_fingerprint_mismatch"
+    }
+    try {
+        if (-not (Test-ColdRestoreIntegerValue $Authorization.orchestrator_process_id) `
+            -or [decimal]$Authorization.orchestrator_process_id -ne $PID) {
+            throw "launch_orchestrator_process_mismatch"
+        }
+    }
+    catch {
+        if ($_.Exception.Message -eq "launch_orchestrator_process_mismatch") {
+            throw
+        }
+        throw "launch_orchestrator_process_mismatch"
+    }
+
+    $currentProcess = $null
+    try {
+        $currentProcess = [Diagnostics.Process]::GetCurrentProcess()
+        $exactTicks = $currentProcess.StartTime.ToUniversalTime().Ticks.ToString(
+            [Globalization.CultureInfo]::InvariantCulture
+        )
+        $microsecondTicks = ConvertTo-ColdRestoreProcessCreationTimeTicks $currentProcess.StartTime
+    }
+    catch {
+        throw "launch_process_creation_time_unavailable"
+    }
+    finally {
+        if ($null -ne $currentProcess) {
+            $currentProcess.Dispose()
+        }
+    }
+    if ($Authorization.orchestrator_creation_time_utc_ticks -isnot [string]) {
+        throw "launch_orchestrator_creation_time_mismatch"
+    }
+    $authorizedTicks = [string]$Authorization.orchestrator_creation_time_utc_ticks
+    if ($authorizedTicks -cne $microsecondTicks -and $authorizedTicks -cne $exactTicks) {
+        throw "launch_orchestrator_creation_time_mismatch"
+    }
+}
+
 function Write-ColdRestoreLaunchAttestation {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
@@ -1369,7 +1570,9 @@ function Invoke-ColdRestoreAttestedProcess {
         [string]$ExpectedPolicyFingerprint = "",
         [string]$PolicyRole = "",
         [string]$ProgressHeartbeatEventDirectory = "",
-        [string]$ProgressHeartbeatPath = ""
+        [string]$ProgressHeartbeatPath = "",
+        [string]$ExpectedScenarioFingerprint = "",
+        [string]$TimeoutPolicyPath = ""
     )
 
     $wallStopwatch = [Diagnostics.Stopwatch]::StartNew()
@@ -1381,17 +1584,31 @@ function Invoke-ColdRestoreAttestedProcess {
     if (($PhaseTimelineEventDirectory -ne "") -ne ($PhaseTimelinePath -ne "")) {
         throw "phase_timeline_parameter_mismatch"
     }
+    if ($ExpectedScenarioFingerprint -ne "" `
+        -and $ExpectedScenarioFingerprint -cnotmatch '^[0-9a-f]{64}$') {
+        throw "expected_scenario_fingerprint_invalid"
+    }
+    if ($launchAuthorizationEnabled) {
+        Assert-ColdRestoreLaunchAuthorizationBinding `
+            -Authorization $LaunchAuthorization `
+            -ExpectedRunId $RunId `
+            -ExpectedRepositoryHead $RepositoryHead `
+            -ExpectedRole $Role `
+            -ExpectedScenarioFingerprint $ExpectedScenarioFingerprint
+    }
     $timeoutPolicyEnabled = $null -ne $TimeoutPolicy
     $heartbeatParametersPresent = $ExpectedPolicyFingerprint -ne "" `
         -or $PolicyRole -ne "" `
         -or $ProgressHeartbeatEventDirectory -ne "" `
-        -or $ProgressHeartbeatPath -ne ""
+        -or $ProgressHeartbeatPath -ne "" `
+        -or $TimeoutPolicyPath -ne ""
     if ($timeoutPolicyEnabled -ne $heartbeatParametersPresent `
         -or ($timeoutPolicyEnabled -and (
             $ExpectedPolicyFingerprint -eq "" `
             -or $PolicyRole -eq "" `
             -or $ProgressHeartbeatEventDirectory -eq "" `
-            -or $ProgressHeartbeatPath -eq ""
+            -or $ProgressHeartbeatPath -eq "" `
+            -or $TimeoutPolicyPath -eq ""
         ))) {
         throw "role_timeout_policy_parameter_mismatch"
     }
@@ -1409,6 +1626,22 @@ function Invoke-ColdRestoreAttestedProcess {
     $streamDrainGraceSeconds = 2
     $processTreeCleanupGraceSeconds = 5
     if ($timeoutPolicyEnabled) {
+        $resolvedTimeoutPolicyPath = (Resolve-Path -LiteralPath $TimeoutPolicyPath -ErrorAction Stop).Path
+        $rawTimeoutPolicy = [IO.File]::ReadAllText($resolvedTimeoutPolicyPath, [Text.UTF8Encoding]::new($false))
+        if ((Get-FileHash -LiteralPath $resolvedTimeoutPolicyPath -Algorithm SHA256).Hash.ToLowerInvariant() `
+            -cne $ExpectedPolicyFingerprint) {
+            throw "role_timeout_policy_file_fingerprint_mismatch"
+        }
+        try {
+            $parsedTimeoutPolicy = $rawTimeoutPolicy | ConvertFrom-Json
+        }
+        catch {
+            throw "role_timeout_policy_file_json_invalid"
+        }
+        if ((ConvertTo-ColdRestoreCanonicalJson $parsedTimeoutPolicy) `
+            -cne (ConvertTo-ColdRestoreCanonicalJson $TimeoutPolicy)) {
+            throw "role_timeout_policy_content_mismatch"
+        }
         $policyValidation = Test-ColdRestoreRoleTimeoutPolicy `
             -Value $TimeoutPolicy `
             -ExpectedRepositoryHead $RepositoryHead `
@@ -1533,7 +1766,8 @@ function Invoke-ColdRestoreAttestedProcess {
                         -EventDirectory $PhaseTimelineEventDirectory `
                         -TimelinePath $PhaseTimelinePath `
                         -ExpectedRunId $RunId `
-                        -ExpectedRepositoryHead $RepositoryHead
+                        -ExpectedRepositoryHead $RepositoryHead `
+                        -ExpectedScenarioFingerprint $ExpectedScenarioFingerprint
                     if (-not [bool]$phaseTimelineSync.valid) {
                         $supervisionFailureCode = [string]$phaseTimelineSync.reason_code
                         break
@@ -1600,7 +1834,8 @@ function Invoke-ColdRestoreAttestedProcess {
                     -EventDirectory $PhaseTimelineEventDirectory `
                     -TimelinePath $PhaseTimelinePath `
                     -ExpectedRunId $RunId `
-                    -ExpectedRepositoryHead $RepositoryHead
+                    -ExpectedRepositoryHead $RepositoryHead `
+                    -ExpectedScenarioFingerprint $ExpectedScenarioFingerprint
                 if (-not [bool]$phaseTimelineSync.valid -and $supervisionFailureCode -eq "") {
                     $supervisionFailureCode = [string]$phaseTimelineSync.reason_code
                 }
@@ -1671,23 +1906,30 @@ function Invoke-ColdRestoreAttestedProcess {
     try {
         $postExitSnapshot = Get-ColdRestoreProcessSnapshot
         Add-ColdRestoreOwnedProcesses $ownedProcesses $postExitSnapshot
-        $aliveOwned = @(Get-ColdRestoreAliveOwnedProcessRecords $ownedProcesses $postExitSnapshot)
-        if ($aliveOwned.Count -gt 0) {
-            $terminatedByParent = $true
-            foreach ($record in $aliveOwned) {
-                $recordProcessId = [int]$record.ProcessId
-                $null = Stop-ColdRestoreOwnedProcessIdentity `
-                    -ProcessId $recordProcessId `
-                    -ExpectedCreationTimeUtcTicks ([string]$ownedProcesses[$recordProcessId])
+        $cleanupStopwatch = [Diagnostics.Stopwatch]::StartNew()
+        $consecutiveQuietSnapshots = 0
+        do {
+            $cleanupSnapshot = Get-ColdRestoreProcessSnapshot
+            Add-ColdRestoreOwnedProcesses $ownedProcesses $cleanupSnapshot
+            $remainingOwned = @(Get-ColdRestoreAliveOwnedProcessRecords $ownedProcesses $cleanupSnapshot)
+            if ($remainingOwned.Count -eq 0) {
+                $consecutiveQuietSnapshots += 1
             }
-            $cleanupStopwatch = [Diagnostics.Stopwatch]::StartNew()
-            do {
+            else {
+                $consecutiveQuietSnapshots = 0
+                $terminatedByParent = $true
+                foreach ($record in $remainingOwned) {
+                    $recordProcessId = [int]$record.ProcessId
+                    $null = Stop-ColdRestoreOwnedProcessIdentity `
+                        -ProcessId $recordProcessId `
+                        -ExpectedCreationTimeUtcTicks ([string]$ownedProcesses[$recordProcessId])
+                }
+            }
+            if ($consecutiveQuietSnapshots -lt 2) {
                 Start-Sleep -Milliseconds 50
-                $cleanupSnapshot = Get-ColdRestoreProcessSnapshot
-                $remainingOwned = @(Get-ColdRestoreAliveOwnedProcessRecords $ownedProcesses $cleanupSnapshot)
-            } while ($remainingOwned.Count -gt 0 `
-                -and $cleanupStopwatch.ElapsedMilliseconds -lt ($processTreeCleanupGraceSeconds * 1000))
-        }
+            }
+        } while ($consecutiveQuietSnapshots -lt 2 `
+            -and $cleanupStopwatch.ElapsedMilliseconds -lt ($processTreeCleanupGraceSeconds * 1000))
         $finalSnapshot = Get-ColdRestoreProcessSnapshot
         Add-ColdRestoreOwnedProcesses $ownedProcesses $finalSnapshot
         $remainingOwned = @(Get-ColdRestoreAliveOwnedProcessRecords $ownedProcesses $finalSnapshot)
@@ -1709,7 +1951,8 @@ function Invoke-ColdRestoreAttestedProcess {
             -ExpectedRunId $RunId `
             -ExpectedRole $Role `
             -ExpectedRepositoryHead $RepositoryHead `
-            -ProcessStartedAtUtc $startedAt
+            -ProcessStartedAtUtc $startedAt `
+            -ExpectedScenarioFingerprint $ExpectedScenarioFingerprint
     }
 
     $wrapperReason = if ($launchCollision.Count -gt 0) {

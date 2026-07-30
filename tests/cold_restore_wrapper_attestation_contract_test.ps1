@@ -15,6 +15,7 @@ $script:checks = 0
 $script:failures = [Collections.Generic.List[string]]::new()
 $repositoryHead = "d" * 40
 $measurementHead = "c" * 40
+$scenarioFingerprint = "a" * 64
 $root = Join-Path ([IO.Path]::GetTempPath()) ("space syndicate wrapper 测试 " + [Guid]::NewGuid().ToString("N"))
 [IO.Directory]::CreateDirectory($root) | Out-Null
 
@@ -181,7 +182,8 @@ function Invoke-PolicyFixtureCase {
         [Parameter(Mandatory = $true)][string]$Mode,
         [int]$AbsoluteTimeoutSeconds = 5,
         [int]$NoProgressTimeoutSeconds = 1,
-        [string]$PathSuffix = ""
+        [string]$PathSuffix = "",
+        [string]$ExpectedScenarioFingerprint = $scenarioFingerprint
     )
 
     $policyRole = "process_a"
@@ -232,10 +234,12 @@ function Invoke-PolicyFixtureCase {
         -StdoutPath $stdoutPath `
         -StderrPath $stderrPath `
         -TimeoutPolicy $policy `
+        -TimeoutPolicyPath $policyPath `
         -ExpectedPolicyFingerprint $policyFingerprint `
         -PolicyRole $policyRole `
         -ProgressHeartbeatEventDirectory $heartbeatEventDirectory `
-        -ProgressHeartbeatPath $heartbeatPath
+        -ProgressHeartbeatPath $heartbeatPath `
+        -ExpectedScenarioFingerprint $ExpectedScenarioFingerprint
     return [pscustomobject]@{
         result = $result
         policy = $policy
@@ -252,7 +256,9 @@ try {
     $invokeParameters = (Get-Command Invoke-ColdRestoreAttestedProcess).Parameters.Keys
     $requiredInvokeParameters = @(
         "TimeoutPolicy",
+        "TimeoutPolicyPath",
         "ExpectedPolicyFingerprint",
+        "ExpectedScenarioFingerprint",
         "PolicyRole",
         "ProgressHeartbeatEventDirectory",
         "ProgressHeartbeatPath"
@@ -320,10 +326,12 @@ try {
     }
 
     $targetedFunctionSource = Get-OrchestratorFunctionSource $orchestratorAst "Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic"
+    $targetedValidationSource = Get-OrchestratorFunctionSource $orchestratorAst "Assert-ColdRestoreTargetedDiagnosticV2"
     Assert-WrapperCondition ($targetedFunctionSource.Contains('($AuthorizedOfficialColdRestoreCount -eq 0) "targeted_owner_capture_official_authorization_forbidden"')) "Targeted diagnostics must require AuthorizedOfficialColdRestoreCount=0"
     Assert-WrapperCondition (-not $targetedFunctionSource.Contains("Assert-AndConsumeOfficialColdRestoreAuthorization") `
-        -and -not $targetedFunctionSource.Contains("LaunchAuthorization") `
-        -and -not $targetedFunctionSource.Contains("LaunchAttestationPath")) "Targeted diagnostics must not invoke or propagate official authorization"
+        -and $targetedFunctionSource.Contains('$launchAuthorization = $diagnosticQuota.launch_authorization') `
+        -and $targetedFunctionSource.Contains('-LaunchAuthorization $launchAuthorization') `
+        -and $targetedFunctionSource.Contains('-LaunchAttestationPath $launchAttestationPath')) "Targeted diagnostics must use their quota-bound nonofficial launch authorization without consuming official authorization"
 
     $cleanExitFragments = @(
         '[bool]$run.wrapper_exit_green',
@@ -336,10 +344,16 @@ try {
         '-not [bool]$diagnostic.save_file_exists',
         '$saveArtifacts.Count -eq 0'
     )
-    Assert-WrapperCondition (@($cleanExitFragments | Where-Object { -not $targetedFunctionSource.Contains($_) }).Count -eq 0) "Targeted diagnostics must require zero Save files and a clean attested exit"
+    $targetedClosureSource = $targetedFunctionSource + [Environment]::NewLine + $targetedValidationSource
+    Assert-WrapperCondition (@($cleanExitFragments | Where-Object {
+        $targetedClosureSource.IndexOf($_, [StringComparison]::OrdinalIgnoreCase) -lt 0
+    }).Count -eq 0) "Targeted diagnostics must require zero Save files and a clean attested exit"
     Assert-WrapperCondition ($moduleSource.Contains('catch {`r`n        throw "process_snapshot_failed"'.Replace('`r`n', [Environment]::NewLine)) `
         -or $moduleSource.Contains("catch {`n        throw `"process_snapshot_failed`"")) "Process enumeration failure must fail closed"
-    Assert-WrapperCondition ($targetedFunctionSource.Contains('($ChildTimeoutSeconds -eq 180) "targeted_owner_capture_timeout_must_be_180"')) "Targeted diagnostics must require the authorized 180-second timeout exactly"
+    Assert-WrapperCondition ($targetedFunctionSource.Contains('$timeout = Get-ColdRestoreRoleTimeout "targeted_owner_diagnostic"') `
+        -and $targetedFunctionSource.Contains('[int]$timeout.absolute_timeout_seconds -eq 120') `
+        -and $targetedFunctionSource.Contains('[int]$timeout.no_progress_timeout_seconds -eq 30') `
+        -and $targetedFunctionSource.Contains('-ExpectedScenarioFingerprint $ExpectedScenarioFingerprint')) "Targeted diagnostics must bind the authorized 120/30 role policy and scenario"
     Assert-WrapperCondition ($targetedFunctionSource.Contains('$RunId -ceq "alpha04c-owner-capture-diagnostic-$($HeadSha.Substring(0, 12))"')) "Targeted diagnostic identity must bind its run id to the measured HEAD"
     Assert-WrapperCondition ($orchestratorSource.Contains('finally {') `
         -and $orchestratorSource.Contains('Assert-ColdRestoreTargetedOwnerCapturePostconditions $resolvedProjectPath')) "Targeted Save and privacy scans must run from a post-launch finally block"
@@ -499,6 +513,45 @@ try {
         -and [string]$policyGreen.result.parent.progress_phase -eq "quit_requested") "Parent Exit binds the exact timeout policy and final heartbeat evidence"
     Assert-WrapperCondition ([string]$policyGreen.result.parent.task_owned_process_identity_fingerprint -match '^[0-9a-f]{64}$' `
         -and @($policyGreen.result.observed_task_process_identities).Count -ge 1) "Parent Exit fingerprints PID plus creation-time ownership"
+
+    $scenarioMismatch = Invoke-PolicyFixtureCase "policy_green" 5 1 "scenario mismatch" ("b" * 64)
+    Assert-WrapperCondition (-not [bool]$scenarioMismatch.result.wrapper_exit_green `
+        -and [string]$scenarioMismatch.result.wrapper_reason_code -eq "child_attestation_scenario_fingerprint_mismatch" `
+        -and [int]$scenarioMismatch.result.parent.task_owned_process_count_after -eq 0) "Wrapper rejects a Child attestation from a different scenario and leaves no owned process"
+
+    $mutatedPolicyRoot = Join-Path $root "mutated policy object"
+    $mutatedPolicyPath = Join-Path $mutatedPolicyRoot "ColdRestoreRoleTimeoutPolicyV1.json"
+    [IO.Directory]::CreateDirectory($mutatedPolicyRoot) | Out-Null
+    $mutatedPolicy = New-WrapperTimeoutPolicy 5 1
+    [IO.File]::WriteAllText($mutatedPolicyPath, ($mutatedPolicy | ConvertTo-Json -Depth 12), [Text.UTF8Encoding]::new($false))
+    $mutatedPolicyFingerprint = (Get-FileHash -LiteralPath $mutatedPolicyPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $mutatedPolicyObject = [IO.File]::ReadAllText($mutatedPolicyPath, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
+    $mutatedPolicyObject.roles.process_a.absolute_timeout_seconds = 4
+    $mutatedPolicyRejected = $false
+    try {
+        $null = Invoke-ColdRestoreAttestedProcess `
+            -ExecutablePath (Get-Command pwsh).Source `
+            -WorkingDirectory $projectRoot `
+            -ArgumentList @("-NoProfile", "-Command", "exit 0") `
+            -RunId "wrapper-mutated-policy-$([Guid]::NewGuid().ToString('N'))" `
+            -Role "producer" `
+            -RepositoryHead $repositoryHead `
+            -ChildAttestationPath (Join-Path $mutatedPolicyRoot "child/producer.completion.json") `
+            -ParentAttestationPath (Join-Path $mutatedPolicyRoot "parent/producer.exit.json") `
+            -StdoutPath (Join-Path $mutatedPolicyRoot "parent/producer.stdout.log") `
+            -StderrPath (Join-Path $mutatedPolicyRoot "parent/producer.stderr.log") `
+            -TimeoutPolicy $mutatedPolicyObject `
+            -TimeoutPolicyPath $mutatedPolicyPath `
+            -ExpectedPolicyFingerprint $mutatedPolicyFingerprint `
+            -PolicyRole "process_a" `
+            -ProgressHeartbeatEventDirectory (Join-Path $mutatedPolicyRoot "heartbeat.events") `
+            -ProgressHeartbeatPath (Join-Path $mutatedPolicyRoot "heartbeat.json") `
+            -ExpectedScenarioFingerprint $scenarioFingerprint
+    }
+    catch {
+        $mutatedPolicyRejected = [string]$_.Exception.Message -ceq "role_timeout_policy_content_mismatch"
+    }
+    Assert-WrapperCondition $mutatedPolicyRejected "Wrapper independently rejects a mutated policy object even when the policy file and supplied fingerprint still match"
 
     $noProgress = Invoke-PolicyFixtureCase "policy_no_progress" 4 1
     Assert-WrapperCondition (-not [bool]$noProgress.result.wrapper_exit_green `
