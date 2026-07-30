@@ -1,0 +1,62 @@
+{
+  "ai_action_count": 0,
+  "ai_nondefault_state_count": 0,
+  "ai_state_fingerprint_changed": false,
+  "card_resolution_advance_after_trigger": -1,
+  "challenge_depth": 1,
+  "commodity_action_count": 0,
+  "commodity_card_count": 0,
+  "commodity_claim_count": 0,
+  "facility_action_count": 0,
+  "facility_count": 0,
+  "failure_code": "legal_factory_market_queue_target_missing",
+  "formal_full_run": false,
+  "human_action_count": 0,
+  "normal_card_count": 0,
+  "normal_card_purchase_count": 0,
+  "offer_audit": {
+    "legal_offers": [],
+    "queue_capable_offers": [],
+    "rejected_offers": [
+      {
+        "actor": "local",
+        "card_semantic_id": "supply_demand.near_land_supply.rank_1",
+        "offer_fingerprint": "",
+        "reason_code": "legal_factory_market_queue_target_missing",
+        "semantic_action_id": "card.play",
+        "source_revision": 0,
+        "target_fingerprint": "b19b570848c104b521f963c03571bc8c53c9bb5a46cd366e815bc288abbd5c4c"
+      },
+      {
+        "actor": "local",
+        "card_semantic_id": "supply_demand.remote_sea_order.rank_1",
+        "offer_fingerprint": "",
+        "reason_code": "legal_factory_market_queue_target_missing",
+        "semantic_action_id": "card.play",
+        "source_revision": 0,
+        "target_fingerprint": "f6075846aff436f22af007b5a5d50e020a7e034695d5f404bb1e8ef521b601b6"
+      }
+    ]
+  },
+  "official_cold_restore_vertical_slice": false,
+  "product_blocker": "BLOCKED_BY_NO_LEGAL_QUEUE_ACCEPTANCE_SCENARIO",
+  "production_surface_ready": false,
+  "qualification_probe": true,
+  "queue_count": 0,
+  "queue_revision": 0,
+  "queue_trigger_actor": "none",
+  "queue_trigger_card_semantic_id": "",
+  "queue_trigger_semantic_action_id": "",
+  "queue_trigger_target_fingerprint": "",
+  "rng_draw_after_trigger": -1,
+  "route_count": 0,
+  "run_id": "alpha04c-qualification-attested-01",
+  "sale_receipt_count": 0,
+  "save_written": false,
+  "scenario_fingerprint": "0bccef8426345e2ea1fd8ae7d6187d282d52d44bc73d6fb3d1ed3375dc20b7bf",
+  "schema_version": 1,
+  "seed": 900626424,
+  "success": false,
+  "weather_region_count": 0,
+  "world_advance_after_trigger": -1
+}

@@ -1,0 +1,995 @@
+{
+  "schema_version": 1,
+  "constitution_id": "space_syndicate.v07.complete",
+  "ruleset_id": "v0.7",
+  "status": "frozen_target_constitution",
+  "authority_level": "highest_target_rule_authority",
+  "current_production_ruleset": "v0.6",
+  "target_development_ruleset": "v0.7",
+  "authority_precedence": [
+    "latest_explicit_user_rule_decision",
+    "docs/rules/v07_game_constitution.json",
+    "docs/rules/v07_game_constitution.md",
+    "AGENTS.md_v07_summary",
+    "docs/tabletop_rulebook_v06.md_current_production_only",
+    "older_rule_documents",
+    "older_test_oracles",
+    "older_code_behavior"
+  ],
+  "constitutional_rule_value_schema": {
+    "schema_version": 1,
+    "closed_object_keys_by_rule_id": {
+      "v07.track.legacy_sources_retired": ["separate_normal_card_track", "separate_commodity_track", "region_bound_normal_card_pool"],
+      "v07.track.local_segment_visibility": ["visibility", "claim_authority", "overlapping_claim_windows", "viewer_side_tie_breaker"],
+      "v07.track.shared_generation_contract": ["shared_player_order", "shared_movement_cadence", "shared_color_distribution", "card_kind_ratio_independent_of_player_color_stances", "unclaimed_lifecycle", "refill_owner"],
+      "v07.track.distinct_acquisition_owners": ["normal_card_destination", "commodity_card_destination", "commodity_claim_cash_cost", "commodity_claim_asset_cost", "commodity_claim_phase", "full_commodity_inventory_result"],
+      "v07.color_cycle.uniform_reset": ["color_order", "equal_weight_per_color", "total_weight", "previous_cycle_distribution_inherited", "cycle_modifiers_compound"],
+      "v07.color_cycle.gdp_independence": ["gdp_affects_track_color_distribution", "gdp_affects_track_card_type_distribution"],
+      "v07.color_cycle.stance_intent": ["increase_color_count", "decrease_color_count", "colors_must_differ", "applies_to_next_cycle", "last_legal_unlocked_selection_auto_locks_at_boundary"],
+      "v07.color_cycle.reveal_and_privacy": ["stance_directions_public_after_reveal", "stance_actor_identity_public_after_reveal", "next_cycle_stances_hidden_until_reveal", "effective_weights_public", "lead_identity_public", "pre_normalization_contributions_public"],
+      "v07.color_cycle.influence_weight": ["normal_player_influence_basis_points", "lead_player_influence_basis_points", "weight_lead_timing", "cursor_advances_after_distribution_commit"],
+      "v07.color_cycle.active_precommit": ["precommit_during_active_cycle", "simultaneous_reveal_at_boundary", "empty_voting_downtime"],
+      "v07.lead.hidden_fixed_order": ["lead_identity_hidden", "order_fixed_for_match", "generation"],
+      "v07.lead.macro_round_alternation": ["each_player_leads_once_per_macro_round", "macro_round_1", "macro_round_2", "following_rounds", "roster_snapshot_timing", "disconnected_or_eliminated_seat_during_round"],
+      "v07.lead.private_self_notice": ["self_notice_private", "notice_includes_double_influence", "different_public_animation", "different_input_flow"],
+      "v07.lead.track_position_separation": ["market_lead_weight", "track_position_order", "common_order_may_drive_both", "implicitly_coupled"],
+      "v07.normal.acquire_by_card_click": ["interaction", "extra_purchase_button", "payment", "legal_phase", "failed_purchase_result"],
+      "v07.normal.purchase_destination": ["destination", "enters_current_hand", "immediate_use"],
+      "v07.normal.price_independence": ["source_region_modifier", "monster_position_modifier", "monster_range_modifier", "sunlight_modifier", "gdp_modifier", "rank_modifier", "explicit_card_or_global_rule_modifier_allowed"],
+      "v07.normal.authoritative_shuffle": ["shuffle_owner", "saveable", "replayable", "reshuffle_when_draw_pile_insufficient"],
+      "v07.starter.deck_composition": ["deck_size", "level", "factory_per_color", "market_per_color", "colors", "card_ids"],
+      "v07.starter.initial_deal": ["shuffle_before_deal", "initial_hand_size", "remaining_draw_pile_size"],
+      "v07.starter.no_forced_hand_shape": ["forced_factory_market_pair", "forced_factory", "forced_market", "mulligan_to_pattern"],
+      "v07.hand.no_mid_batch_refill": ["refill_during_submission", "refill_during_resolution", "reshuffle_during_submission", "reshuffle_during_resolution"],
+      "v07.hand.maintenance_sequence": ["ordered_steps", "world_time_advances", "timeout_policy", "timeout_seconds_default_id", "already_committed_merges_preserved"],
+      "v07.normal_merge.player_choice": ["automatic", "player_decision", "may_keep_duplicate_lower_levels"],
+      "v07.normal_merge.receipt_and_identity": ["cash_cost", "asset_cost", "authoritative_receipt_required", "new_instance_identity_required"],
+      "v07.commodity.separate_inventory": ["limit", "uses_normal_hand", "uses_normal_deck", "uses_normal_discard"],
+      "v07.commodity.direct_claim": ["interaction", "extra_claim_button"],
+      "v07.commodity_merge.player_choice": ["automatic", "player_decision"],
+      "v07.commodity_merge.edges_and_cap": ["edges", "maximum_level"],
+      "v07.bound_action.lifecycle": ["source_kinds", "shown_in_player_card_dock", "normal_hand_slots", "commodity_inventory_slots", "normal_deck_member", "mergeable", "lifecycle_bound_to_source"],
+      "v07.bound_action.batch_capacity": ["active_bound_action_counts_as_batch_action", "passive_bound_action_counts_as_batch_action"],
+      "v07.batch.one_shot_window": ["duration_seconds", "one_shot"],
+      "v07.batch.shared_active_capacity": ["minimum", "maximum", "shared_kinds", "capacity_modifiers_allowed"],
+      "v07.batch.prebound_targets_and_local_order": ["complete_targets_selected_before_lock", "player_local_order_selected_before_lock", "complete_six_color_cost_visible_before_lock"],
+      "v07.batch.lock_immutability": ["card_mutable_after_lock", "target_mutable_after_lock", "local_order_mutable_after_lock"],
+      "v07.reservation.full_queue": ["full_queue_affordability_required", "lock_is_atomic", "per_action_reservation_required"],
+      "v07.reservation.per_action_outcome": ["successful_resolution", "rule_allowed_fizzle_refund"],
+      "v07.assets.player_term_and_colors": ["player_term", "retired_player_terms", "colors", "localized_player_asset_names_zh"],
+      "v07.assets.no_continuous_recovery": ["continuous_recovery", "recovery_mode"],
+      "v07.assets.frozen_gdp_snapshot": ["snapshot_timing", "source", "reread_after_resolution"],
+      "v07.assets.carry_and_overflow": ["unused_assets_carry_over", "overflow_above_cap_discarded", "fixed_point_remainder_required"],
+      "v07.assets.owner_gdp_scope": ["own_gdp_refreshes_own_assets", "opponent_gdp_refreshes_assets", "gdp_affects_track"],
+      "v07.action_cost.authored_six_color": ["data_declared", "supports_primary_color", "supports_secondary_color", "supports_limited_any_asset"],
+      "v07.counter.retired": ["interactive_counters", "counter_window", "counter_stack", "counter_the_counter"],
+      "v07.resolution.no_new_input": ["accepts_new_gameplay_input", "accepts_new_target_selection", "accepts_normal_card_play"],
+      "v07.resolution.round_robin": ["mode", "player_local_order_preserved", "player_iteration_order", "empty_queue_skipped", "remaining_single_queue_continues"],
+      "v07.resolution.owner_anonymous_public_queue": ["public_fields", "hidden_fields", "owner_specific_animation_or_audio"],
+      "v07.solar.efficiency": ["sunlit_multiplier", "dark_multiplier"],
+      "v07.solar.non_effects_and_authority": ["does_not_affect", "source", "derived_from_render_brightness"],
+      "v07.victory.inherit_qualification": ["inherited_scope", "mid_macro_round_result"],
+      "v07.victory.revalidate_and_exact_once": ["revalidate_at_macro_round_boundary", "failed_revalidation", "successful_revalidation"],
+      "v07.runtime.single_authority_cutover": ["runtime_cutover_now", "v06_and_v07_dual_write", "atomic_owner_cutover_required"]
+    },
+    "closed_string_list_rule_ids": [
+      "v07.track.allowed_card_kinds",
+      "v07.track.primary_color_identity",
+      "v07.normal.personal_dbg_zones",
+      "v07.normal.lifecycle",
+      "v07.normal_merge.eligibility",
+      "v07.normal_merge.edges",
+      "v07.commodity_merge.eligibility",
+      "v07.batch.reopen_gate",
+      "v07.defense.precommitted_or_passive",
+      "v07.world.submission_advances",
+      "v07.world.resolution_pauses",
+      "v07.solar.work_rate_channels",
+      "v07.victory.complete_boundary_gate"
+    ],
+    "bool_rule_ids": [
+      "v07.track.single_unified_track",
+      "v07.starter.zero_deadlock_required",
+      "v07.reservation.no_future_refresh",
+      "v07.action_cost.any_is_not_pool",
+      "v07.world.no_tick_between_cards",
+      "v07.solar.facility_only"
+    ],
+    "number_rule_ids": ["v07.hand.normal_limit", "v07.assets.per_color_cap"],
+    "enum_string_rule_ids": [
+      "v07.track.motion_order",
+      "v07.color_cycle.invalid_stance_neutral",
+      "v07.assets.post_batch_top_up"
+    ]
+  },
+  "constitutional_rules": [
+    {
+      "rule_id": "v07.track.single_unified_track",
+      "domain": "unified_card_track",
+      "value": true,
+      "statement": "One globally ordered cyclic sushi track carries both normal cards and commodity cards."
+    },
+    {
+      "rule_id": "v07.track.allowed_card_kinds",
+      "domain": "unified_card_track",
+      "value": ["normal_card", "commodity_card"],
+      "statement": "Only the closed normal_card and commodity_card kinds are mixed on the unified track."
+    },
+    {
+      "rule_id": "v07.track.legacy_sources_retired",
+      "domain": "unified_card_track",
+      "value": {
+        "separate_normal_card_track": false,
+        "separate_commodity_track": false,
+        "region_bound_normal_card_pool": false
+      },
+      "statement": "Separate tracks and region-bound ordinary-card pools are not V0.7 authorities."
+    },
+    {
+      "rule_id": "v07.track.primary_color_identity",
+      "domain": "unified_card_track",
+      "value": ["life", "energy", "industry", "technology", "commerce", "shipping"],
+      "statement": "Every track card has one primary identity from the closed six-color set."
+    },
+    {
+      "rule_id": "v07.track.local_segment_visibility",
+      "domain": "unified_card_track",
+      "value": {
+        "visibility": "viewer_own_segment_only",
+        "claim_authority": "one_exclusive_segment_per_item",
+        "overlapping_claim_windows": false,
+        "viewer_side_tie_breaker": false
+      },
+      "statement": "A viewer sees and may claim concrete cards only in that viewer's exclusive local segment."
+    },
+    {
+      "rule_id": "v07.track.motion_order",
+      "domain": "unified_card_track",
+      "value": "enter_at_hidden_lead_then_follow_frozen_hidden_lead_order",
+      "statement": "Cards enter nearest the hidden lead and pass local segments in the frozen hidden lead order."
+    },
+    {
+      "rule_id": "v07.track.shared_generation_contract",
+      "domain": "unified_card_track",
+      "value": {
+        "shared_player_order": true,
+        "shared_movement_cadence": true,
+        "shared_color_distribution": true,
+        "card_kind_ratio_independent_of_player_color_stances": true,
+        "unclaimed_lifecycle": "traverse_all_segments_then_exit",
+        "refill_owner": "authoritative_unified_track_supply"
+      },
+      "statement": "Both card kinds share order, movement, and color distribution while the kind ratio remains independently balanced."
+    },
+    {
+      "rule_id": "v07.track.distinct_acquisition_owners",
+      "domain": "unified_card_track",
+      "value": {
+        "normal_card_destination": "personal_discard",
+        "commodity_card_destination": "commodity_inventory",
+        "commodity_claim_cash_cost": 0,
+        "commodity_claim_asset_cost": 0,
+        "commodity_claim_phase": "world_and_track_acquisition_active",
+        "full_commodity_inventory_result": "reject_without_discard_or_auto_merge_and_item_continues"
+      },
+      "statement": "Sharing a track does not merge normal-card and commodity inventory ownership."
+    },
+    {
+      "rule_id": "v07.color_cycle.uniform_reset",
+      "domain": "market_color_cycle",
+      "value": {
+        "color_order": ["life", "energy", "industry", "technology", "commerce", "shipping"],
+        "equal_weight_per_color": 1,
+        "total_weight": 6,
+        "previous_cycle_distribution_inherited": false,
+        "cycle_modifiers_compound": false
+      },
+      "statement": "Every color cycle is recalculated from a uniform six-color baseline without inheritance or compounding."
+    },
+    {
+      "rule_id": "v07.color_cycle.gdp_independence",
+      "domain": "market_color_cycle",
+      "value": {
+        "gdp_affects_track_color_distribution": false,
+        "gdp_affects_track_card_type_distribution": false
+      },
+      "statement": "GDP does not change unified-track color or card-kind supply."
+    },
+    {
+      "rule_id": "v07.color_cycle.stance_intent",
+      "domain": "market_color_cycle",
+      "value": {
+        "increase_color_count": 1,
+        "decrease_color_count": 1,
+        "colors_must_differ": true,
+        "applies_to_next_cycle": true,
+        "last_legal_unlocked_selection_auto_locks_at_boundary": true
+      },
+      "statement": "Each player precommits one increase color and one different decrease color for the next cycle."
+    },
+    {
+      "rule_id": "v07.color_cycle.reveal_and_privacy",
+      "domain": "market_color_cycle",
+      "value": {
+        "stance_directions_public_after_reveal": true,
+        "stance_actor_identity_public_after_reveal": true,
+        "next_cycle_stances_hidden_until_reveal": true,
+        "effective_weights_public": false,
+        "lead_identity_public": false,
+        "pre_normalization_contributions_public": false
+      },
+      "statement": "Revealed directions are public while weights, lead identity, and raw contribution decomposition remain secret."
+    },
+    {
+      "rule_id": "v07.color_cycle.influence_weight",
+      "domain": "market_color_cycle",
+      "value": {
+        "normal_player_influence_basis_points": 300,
+        "lead_player_influence_basis_points": 600,
+        "weight_lead_timing": "lead_at_boundary_entry_before_cursor_advance",
+        "cursor_advances_after_distribution_commit": true
+      },
+      "statement": "The boundary lead has double the normal player's symmetric increase/decrease influence."
+    },
+    {
+      "rule_id": "v07.color_cycle.active_precommit",
+      "domain": "market_color_cycle",
+      "value": {
+        "precommit_during_active_cycle": true,
+        "simultaneous_reveal_at_boundary": true,
+        "empty_voting_downtime": false
+      },
+      "statement": "Players prepare the next stance during active play and all legal stances reveal at the boundary without a waiting phase."
+    },
+    {
+      "rule_id": "v07.color_cycle.invalid_stance_neutral",
+      "domain": "market_color_cycle",
+      "value": "neutral",
+      "statement": "A missing or illegal stance contributes no increase or decrease."
+    },
+    {
+      "rule_id": "v07.lead.hidden_fixed_order",
+      "domain": "hidden_lead_cycle",
+      "value": {
+        "lead_identity_hidden": true,
+        "order_fixed_for_match": true,
+        "generation": "authoritative_rng_once_at_match_start"
+      },
+      "statement": "One hidden order is generated authoritatively and remains fixed for the match."
+    },
+    {
+      "rule_id": "v07.lead.macro_round_alternation",
+      "domain": "hidden_lead_cycle",
+      "value": {
+        "each_player_leads_once_per_macro_round": true,
+        "macro_round_1": "forward",
+        "macro_round_2": "reverse",
+        "following_rounds": "alternate_forward_reverse",
+        "roster_snapshot_timing": "macro_round_boundary",
+        "disconnected_or_eliminated_seat_during_round": "retain_scheduled_position_with_neutral_no_op_until_boundary"
+      },
+      "statement": "Every player leads exactly once per macro round and each following round reverses direction."
+    },
+    {
+      "rule_id": "v07.lead.private_self_notice",
+      "domain": "hidden_lead_cycle",
+      "value": {
+        "self_notice_private": true,
+        "notice_includes_double_influence": true,
+        "different_public_animation": false,
+        "different_input_flow": false
+      },
+      "statement": "Only the current lead receives a private notice and uses the same public interaction flow as every other player."
+    },
+    {
+      "rule_id": "v07.lead.track_position_separation",
+      "domain": "hidden_lead_cycle",
+      "value": {
+        "market_lead_weight": "explicit_semantic",
+        "track_position_order": "explicit_semantic",
+        "common_order_may_drive_both": true,
+        "implicitly_coupled": false
+      },
+      "statement": "Market weight and track position are distinct testable semantics even when driven by the same order."
+    },
+    {
+      "rule_id": "v07.normal.acquire_by_card_click",
+      "domain": "normal_card_acquisition",
+      "value": {
+        "interaction": "click_track_card_body",
+        "extra_purchase_button": false,
+        "payment": "cash",
+        "legal_phase": "world_and_track_acquisition_active",
+        "failed_purchase_result": "reject_and_item_continues"
+      },
+      "statement": "Clicking a normal card in the viewer's segment directly attempts its cash purchase."
+    },
+    {
+      "rule_id": "v07.normal.purchase_destination",
+      "domain": "normal_card_acquisition",
+      "value": {
+        "destination": "personal_discard",
+        "enters_current_hand": false,
+        "immediate_use": false
+      },
+      "statement": "A purchased normal card enters personal discard and cannot be used immediately."
+    },
+    {
+      "rule_id": "v07.normal.price_independence",
+      "domain": "normal_card_acquisition",
+      "value": {
+        "source_region_modifier": false,
+        "monster_position_modifier": false,
+        "monster_range_modifier": false,
+        "sunlight_modifier": false,
+        "gdp_modifier": false,
+        "rank_modifier": false,
+        "explicit_card_or_global_rule_modifier_allowed": true
+      },
+      "statement": "Ordinary-card price has no automatic region, monster, sunlight, or GDP modifier."
+    },
+    {
+      "rule_id": "v07.normal.personal_dbg_zones",
+      "domain": "normal_deck",
+      "value": ["draw_pile", "hand", "committed_escrow", "discard"],
+      "statement": "Each player owns a personal draw pile, normal hand, committed escrow, and discard pile."
+    },
+    {
+      "rule_id": "v07.normal.lifecycle",
+      "domain": "normal_deck",
+      "value": ["draw_pile", "hand", "committed_escrow", "resolution", "discard", "reshuffle_into_draw_pile"],
+      "statement": "Played normal cards cycle through escrow and resolution into discard rather than disappearing."
+    },
+    {
+      "rule_id": "v07.normal.authoritative_shuffle",
+      "domain": "normal_deck",
+      "value": {
+        "shuffle_owner": "authoritative_personal_deck_rng",
+        "saveable": true,
+        "replayable": true,
+        "reshuffle_when_draw_pile_insufficient": true
+      },
+      "statement": "Personal deck shuffle and reshuffle are authoritative, persisted, and replayable."
+    },
+    {
+      "rule_id": "v07.starter.deck_composition",
+      "domain": "starter_deck",
+      "value": {
+        "deck_size": 12,
+        "level": 1,
+        "factory_per_color": 1,
+        "market_per_color": 1,
+        "colors": ["life", "energy", "industry", "technology", "commerce", "shipping"],
+        "card_ids": [
+          "facility.factory.life.rank_1",
+          "facility.market.life.rank_1",
+          "facility.factory.energy.rank_1",
+          "facility.market.energy.rank_1",
+          "facility.factory.industry.rank_1",
+          "facility.market.industry.rank_1",
+          "facility.factory.technology.rank_1",
+          "facility.market.technology.rank_1",
+          "facility.factory.commerce.rank_1",
+          "facility.market.commerce.rank_1",
+          "facility.factory.shipping.rank_1",
+          "facility.market.shipping.rank_1"
+        ]
+      },
+      "statement": "The starter deck contains one level-I factory and one level-I market for each of six colors."
+    },
+    {
+      "rule_id": "v07.starter.initial_deal",
+      "domain": "starter_deck",
+      "value": {
+        "shuffle_before_deal": true,
+        "initial_hand_size": 5,
+        "remaining_draw_pile_size": 7
+      },
+      "statement": "The authoritative RNG shuffles twelve starter cards and deals five at random."
+    },
+    {
+      "rule_id": "v07.starter.no_forced_hand_shape",
+      "domain": "starter_deck",
+      "value": {
+        "forced_factory_market_pair": false,
+        "forced_factory": false,
+        "forced_market": false,
+        "mulligan_to_pattern": false
+      },
+      "statement": "The opening hand is not altered to force an economic combination."
+    },
+    {
+      "rule_id": "v07.starter.zero_deadlock_required",
+      "domain": "starter_deck",
+      "value": true,
+      "statement": "Initial assets or an explicit setup exemption must prevent a zero-economy deadlock without changing the random hand."
+    },
+    {
+      "rule_id": "v07.hand.normal_limit",
+      "domain": "normal_hand",
+      "value": 5,
+      "statement": "The normal hand has an absolute five slots with no capacity modifier and is independent from commodity inventory."
+    },
+    {
+      "rule_id": "v07.hand.no_mid_batch_refill",
+      "domain": "normal_hand",
+      "value": {
+        "refill_during_submission": false,
+        "refill_during_resolution": false,
+        "reshuffle_during_submission": false,
+        "reshuffle_during_resolution": false
+      },
+      "statement": "Normal cards are not replenished or reshuffled during submission or resolution."
+    },
+    {
+      "rule_id": "v07.hand.maintenance_sequence",
+      "domain": "normal_hand",
+      "value": {
+        "ordered_steps": ["discard_used_cards", "draw_to_five_with_reshuffle_if_needed", "offer_optional_merges", "after_each_merge_draw_to_five", "repeat_or_end_maintenance"],
+        "world_time_advances": false,
+        "timeout_policy": "auto_end_without_additional_merge",
+        "timeout_seconds_default_id": "v07.balance.hand_maintenance_timeout_seconds",
+        "already_committed_merges_preserved": true
+      },
+      "statement": "Hand refill and optional merge decisions occur only in the between-batch maintenance phase."
+    },
+    {
+      "rule_id": "v07.normal_merge.player_choice",
+      "domain": "normal_card_merge",
+      "value": {
+        "automatic": false,
+        "player_decision": true,
+        "may_keep_duplicate_lower_levels": true
+      },
+      "statement": "Normal-card merge is always an optional player decision."
+    },
+    {
+      "rule_id": "v07.normal_merge.eligibility",
+      "domain": "normal_card_merge",
+      "value": [
+        "same_primary_color",
+        "same_card_type",
+        "same_merge_family_id",
+        "same_level",
+        "same_player",
+        "both_in_normal_hand",
+        "not_committed_or_transaction_locked"
+      ],
+      "statement": "Only equivalent unlocked cards in the same player's normal hand can merge."
+    },
+    {
+      "rule_id": "v07.normal_merge.edges",
+      "domain": "normal_card_merge",
+      "value": ["L1+L1=L2", "L2+L2=L3", "L3+L3=L4"],
+      "statement": "Normal-card merging uses equal-level pairs and ends at level IV."
+    },
+    {
+      "rule_id": "v07.normal_merge.receipt_and_identity",
+      "domain": "normal_card_merge",
+      "value": {
+        "cash_cost": 0,
+        "asset_cost": 0,
+        "authoritative_receipt_required": true,
+        "new_instance_identity_required": true
+      },
+      "statement": "A merge is free but produces an authoritative receipt and a new card instance identity."
+    },
+    {
+      "rule_id": "v07.commodity.separate_inventory",
+      "domain": "commodity_inventory",
+      "value": {
+        "limit": 5,
+        "uses_normal_hand": false,
+        "uses_normal_deck": false,
+        "uses_normal_discard": false
+      },
+      "statement": "Commodity cards use an independent five-slot inventory."
+    },
+    {
+      "rule_id": "v07.commodity.direct_claim",
+      "domain": "commodity_inventory",
+      "value": {
+        "interaction": "click_track_card_body",
+        "extra_claim_button": false
+      },
+      "statement": "Clicking a commodity card in the viewer's segment directly attempts its claim."
+    },
+    {
+      "rule_id": "v07.commodity_merge.player_choice",
+      "domain": "commodity_merge",
+      "value": {
+        "automatic": false,
+        "player_decision": true
+      },
+      "statement": "Commodity merge is an optional player decision."
+    },
+    {
+      "rule_id": "v07.commodity_merge.edges_and_cap",
+      "domain": "commodity_merge",
+      "value": {
+        "edges": ["L1+L1=L2", "L2+L1=L3"],
+        "maximum_level": 3
+      },
+      "statement": "Commodity levels are linear base units and stop at level III."
+    },
+    {
+      "rule_id": "v07.commodity_merge.eligibility",
+      "domain": "commodity_merge",
+      "value": [
+        "same_commodity_id",
+        "same_color",
+        "same_player",
+        "not_committed_or_facility_transaction_locked"
+      ],
+      "statement": "Only matching unlocked commodities owned by the same player can merge."
+    },
+    {
+      "rule_id": "v07.bound_action.lifecycle",
+      "domain": "bound_actions",
+      "value": {
+        "source_kinds": ["monster", "military"],
+        "shown_in_player_card_dock": true,
+        "normal_hand_slots": 0,
+        "commodity_inventory_slots": 0,
+        "normal_deck_member": false,
+        "mergeable": false,
+        "lifecycle_bound_to_source": true
+      },
+      "statement": "Monster and military sources may grant actions that remain bound to their source and outside both card inventories."
+    },
+    {
+      "rule_id": "v07.bound_action.batch_capacity",
+      "domain": "bound_actions",
+      "value": {
+        "active_bound_action_counts_as_batch_action": true,
+        "passive_bound_action_counts_as_batch_action": false
+      },
+      "statement": "An active bound action consumes one batch action slot while a passive ability does not."
+    },
+    {
+      "rule_id": "v07.batch.one_shot_window",
+      "domain": "card_batch_submission",
+      "value": {
+        "duration_seconds": 30,
+        "one_shot": true
+      },
+      "statement": "Each submission window lasts thirty seconds and locks one batch."
+    },
+    {
+      "rule_id": "v07.batch.reopen_gate",
+      "domain": "card_batch_submission",
+      "value": ["batch_resolved", "assets_refreshed", "hand_maintenance_complete", "optional_merge_flow_complete"],
+      "statement": "A new window opens only after resolution, asset refresh, and hand maintenance are complete."
+    },
+    {
+      "rule_id": "v07.batch.shared_active_capacity",
+      "domain": "card_batch_submission",
+      "value": {
+        "minimum": 0,
+        "maximum": 5,
+        "shared_kinds": ["normal_card", "commodity_card", "monster_action", "military_action"],
+        "capacity_modifiers_allowed": false
+      },
+      "statement": "All active action kinds share a maximum of five actions per player per batch."
+    },
+    {
+      "rule_id": "v07.batch.prebound_targets_and_local_order",
+      "domain": "card_batch_submission",
+      "value": {
+        "complete_targets_selected_before_lock": true,
+        "player_local_order_selected_before_lock": true,
+        "complete_six_color_cost_visible_before_lock": true
+      },
+      "statement": "Every action has complete prebound targets, local order, and visible cost before queue lock."
+    },
+    {
+      "rule_id": "v07.batch.lock_immutability",
+      "domain": "card_batch_submission",
+      "value": {
+        "card_mutable_after_lock": false,
+        "target_mutable_after_lock": false,
+        "local_order_mutable_after_lock": false
+      },
+      "statement": "Cards, targets, and local order are immutable after lock."
+    },
+    {
+      "rule_id": "v07.reservation.full_queue",
+      "domain": "asset_reservations",
+      "value": {
+        "full_queue_affordability_required": true,
+        "lock_is_atomic": true,
+        "per_action_reservation_required": true
+      },
+      "statement": "A local queue locks only if all of its actions can reserve their full six-color costs atomically."
+    },
+    {
+      "rule_id": "v07.reservation.per_action_outcome",
+      "domain": "asset_reservations",
+      "value": {
+        "successful_resolution": "consume_reservation",
+        "rule_allowed_fizzle_refund": "release_reservation"
+      },
+      "statement": "Each action consumes or releases only its own reservation according to its authoritative result."
+    },
+    {
+      "rule_id": "v07.reservation.no_future_refresh",
+      "domain": "asset_reservations",
+      "value": true,
+      "statement": "Assets expected from the next refresh cannot fund the current batch."
+    },
+    {
+      "rule_id": "v07.assets.player_term_and_colors",
+      "domain": "six_color_assets",
+      "value": {
+        "player_term": "six_color_assets",
+        "retired_player_terms": ["mana", "mana_points", "\u6cd5\u529b", "\u6cd5\u529b\u503c", "\u739b\u5a1c"],
+        "colors": ["life", "energy", "industry", "technology", "commerce", "shipping"],
+        "localized_player_asset_names_zh": ["\u751f\u547d\u8d44\u4ea7", "\u80fd\u6e90\u8d44\u4ea7", "\u5de5\u4e1a\u8d44\u4ea7", "\u79d1\u6280\u8d44\u4ea7", "\u5546\u8d38\u8d44\u4ea7", "\u822a\u8fd0\u8d44\u4ea7"]
+      },
+      "statement": "The player-facing resource is six-color assets, not mana."
+    },
+    {
+      "rule_id": "v07.assets.per_color_cap",
+      "domain": "six_color_assets",
+      "value": 6,
+      "statement": "Each color has an independent asset cap of six."
+    },
+    {
+      "rule_id": "v07.assets.no_continuous_recovery",
+      "domain": "six_color_assets",
+      "value": {
+        "continuous_recovery": false,
+        "recovery_mode": "cycle_end_top_up"
+      },
+      "statement": "Assets top up at the cycle boundary rather than recovering continuously."
+    },
+    {
+      "rule_id": "v07.assets.frozen_gdp_snapshot",
+      "domain": "asset_cycle_snapshot",
+      "value": {
+        "snapshot_timing": "card_window_lock",
+        "source": "player_own_per_color_completed_commodity_gdp",
+        "reread_after_resolution": false
+      },
+      "statement": "Queue lock freezes the player's own completed per-color GDP snapshot used for the later refresh."
+    },
+    {
+      "rule_id": "v07.assets.post_batch_top_up",
+      "domain": "asset_cycle_snapshot",
+      "value": "after_batch_resolution_consumption_and_refunds",
+      "statement": "The frozen snapshot is applied once after the entire batch resolves and reservations settle."
+    },
+    {
+      "rule_id": "v07.assets.carry_and_overflow",
+      "domain": "six_color_assets",
+      "value": {
+        "unused_assets_carry_over": true,
+        "overflow_above_cap_discarded": true,
+        "fixed_point_remainder_required": true
+      },
+      "statement": "Unused assets persist, cap overflow is discarded, and fixed-point remainder preserves small accrual."
+    },
+    {
+      "rule_id": "v07.assets.owner_gdp_scope",
+      "domain": "six_color_assets",
+      "value": {
+        "own_gdp_refreshes_own_assets": true,
+        "opponent_gdp_refreshes_assets": false,
+        "gdp_affects_track": false
+      },
+      "statement": "Only the player's own same-color GDP refreshes that player's assets, and GDP never drives track supply."
+    },
+    {
+      "rule_id": "v07.action_cost.authored_six_color",
+      "domain": "action_cost",
+      "value": {
+        "data_declared": true,
+        "supports_primary_color": true,
+        "supports_secondary_color": true,
+        "supports_limited_any_asset": true
+      },
+      "statement": "Every active action declares a complete six-color asset cost in authoritative data."
+    },
+    {
+      "rule_id": "v07.action_cost.any_is_not_pool",
+      "domain": "action_cost",
+      "value": true,
+      "statement": "Any-asset cost is a payment constraint over six colors, not a seventh asset pool."
+    },
+    {
+      "rule_id": "v07.counter.retired",
+      "domain": "anonymous_resolution",
+      "value": {
+        "interactive_counters": false,
+        "counter_window": false,
+        "counter_stack": false,
+        "counter_the_counter": false
+      },
+      "statement": "V0.7 has no interactive counter window or counter stack."
+    },
+    {
+      "rule_id": "v07.resolution.no_new_input",
+      "domain": "anonymous_resolution",
+      "value": {
+        "accepts_new_gameplay_input": false,
+        "accepts_new_target_selection": false,
+        "accepts_normal_card_play": false
+      },
+      "statement": "Resolution accepts no new gameplay input or target selection."
+    },
+    {
+      "rule_id": "v07.defense.precommitted_or_passive",
+      "domain": "anonymous_resolution",
+      "value": ["precommitted_interference", "shield", "insurance", "protection_state", "damage_reduction_state", "passive_source_ability"],
+      "statement": "Defense resolves from precommitted actions or automatic state without opening an input window."
+    },
+    {
+      "rule_id": "v07.resolution.round_robin",
+      "domain": "anonymous_resolution",
+      "value": {
+        "mode": "round_robin_by_local_action_index",
+        "player_local_order_preserved": true,
+        "player_iteration_order": "frozen_hidden_lead_order",
+        "empty_queue_skipped": true,
+        "remaining_single_queue_continues": true
+      },
+      "statement": "Global resolution rotates by local action index through the frozen hidden lead order."
+    },
+    {
+      "rule_id": "v07.resolution.owner_anonymous_public_queue",
+      "domain": "anonymous_resolution",
+      "value": {
+        "public_fields": ["card", "rule_allowed_target", "current_effect", "result"],
+        "hidden_fields": ["actor_id", "player_name", "player_color", "avatar", "seat", "player_skip"],
+        "owner_specific_animation_or_audio": false
+      },
+      "statement": "The public queue reveals allowed action facts but no actor identity or owner-specific cue."
+    },
+    {
+      "rule_id": "v07.world.submission_advances",
+      "domain": "world_time",
+      "value": ["world_effective_time", "gdp", "facilities", "unified_track", "sunlight", "lead_timer", "color_cycle", "victory_timer_unless_authoritatively_paused"],
+      "statement": "World simulation continues during the thirty-second submission window."
+    },
+    {
+      "rule_id": "v07.world.resolution_pauses",
+      "domain": "world_time",
+      "value": ["world_effective_time", "gdp", "facilities", "unified_track", "sunlight", "lead_timer", "color_cycle", "victory_qualification_and_audit"],
+      "statement": "World simulation pauses while cards resolve sequentially."
+    },
+    {
+      "rule_id": "v07.world.no_tick_between_cards",
+      "domain": "world_time",
+      "value": true,
+      "statement": "No ordinary world tick is inserted between resolving cards."
+    },
+    {
+      "rule_id": "v07.solar.facility_only",
+      "domain": "solar_facility_efficiency",
+      "value": true,
+      "statement": "Sunlight affects declared facility work-rate channels only."
+    },
+    {
+      "rule_id": "v07.solar.efficiency",
+      "domain": "solar_facility_efficiency",
+      "value": {
+        "sunlit_multiplier": 2.0,
+        "dark_multiplier": 1.0
+      },
+      "statement": "Sunlit facilities operate at 200 percent and dark facilities at 100 percent."
+    },
+    {
+      "rule_id": "v07.solar.work_rate_channels",
+      "domain": "solar_facility_efficiency",
+      "value": ["factory_production_rate", "market_demand_or_consumption_rate", "warehouse_ingress_throughput", "warehouse_egress_throughput"],
+      "statement": "Only explicitly declared work-rate channels receive the solar multiplier."
+    },
+    {
+      "rule_id": "v07.solar.non_effects_and_authority",
+      "domain": "solar_facility_efficiency",
+      "value": {
+        "does_not_affect": ["card_supply", "track_color", "track_card_kind_ratio", "card_price", "card_purchase_legality", "facility_hp", "facility_level", "facility_slots", "construction_price", "warehouse_capacity", "current_inventory", "monster_attack", "military_power", "asset_cap"],
+        "source": "core_sun_or_world_owner",
+        "derived_from_render_brightness": false
+      },
+      "statement": "Solar state comes from Core and does not alter cards, capacity, stock, combat power, or construction facts."
+    },
+    {
+      "rule_id": "v07.victory.inherit_qualification",
+      "domain": "macro_round_victory_gate",
+      "value": {
+        "inherited_scope": "all_unmodified_v06_end_conditions_and_victory_audit_comparison",
+        "mid_macro_round_result": "pending_without_immediate_final_settlement"
+      },
+      "statement": "V0.7 initially inherits every unmodified V0.6 end condition and comparison, but all triggers enter the same pending macro-round gate."
+    },
+    {
+      "rule_id": "v07.victory.complete_boundary_gate",
+      "domain": "macro_round_victory_gate",
+      "value": ["submission_window_locked", "batch_complete", "asset_refresh_complete", "hand_maintenance_complete", "macro_round_complete", "every_player_led_once"],
+      "statement": "Final settlement is gated by completed batch maintenance and a complete lead macro round."
+    },
+    {
+      "rule_id": "v07.victory.revalidate_and_exact_once",
+      "domain": "macro_round_victory_gate",
+      "value": {
+        "revalidate_at_macro_round_boundary": true,
+        "failed_revalidation": "clear_pending_and_continue",
+        "successful_revalidation": "final_settlement_exact_once"
+      },
+      "statement": "The boundary revalidates victory; failure resumes play and success enters exact-once final settlement."
+    },
+    {
+      "rule_id": "v07.runtime.single_authority_cutover",
+      "domain": "cutover",
+      "value": {
+        "runtime_cutover_now": false,
+        "v06_and_v07_dual_write": false,
+        "atomic_owner_cutover_required": true
+      },
+      "statement": "This frozen target does not change runtime and future production ownership must cut over atomically without dual writers."
+    }
+  ],
+  "balance_defaults_reference": {
+    "path": "docs/rules/v07_balance_defaults.json",
+    "defaults_id": "space_syndicate.v07.balance_defaults.initial",
+    "authority_level": "tunable_initial_values_below_constitution"
+  },
+  "inherited_v06_rules": [
+    {"rule_id": "v07.inherited.player_count", "source_ruleset_id": "v0.6", "semantics_inherited": true, "implementation_inherited": false, "value": "3_to_8_player_pve", "statement": "The supported PVE roster remains three through eight players."},
+    {"rule_id": "v07.inherited.role_selection", "source_ruleset_id": "v0.6", "semantics_inherited": true, "implementation_inherited": false, "value": "public_non_duplicate_roles", "statement": "Alien role selection remains public and non-duplicated."},
+    {"rule_id": "v07.inherited.starter_monster", "source_ruleset_id": "v0.6", "semantics_inherited": true, "implementation_inherited": false, "value": "independent_and_voluntary", "statement": "Starter monster identity remains independent from role identity and summoning remains voluntary."},
+    {"rule_id": "v07.inherited.monster_behavior", "source_ruleset_id": "v0.6", "semantics_inherited": true, "implementation_inherited": false, "value": "authoritative_automatic_behavior", "statement": "Monsters continue to auto-act from authoritative behavior rules."},
+    {"rule_id": "v07.inherited.facility_regions", "source_ruleset_id": "v0.6", "semantics_inherited": true, "implementation_inherited": false, "value": "existing_legal_region_semantics", "statement": "Facility legal-region semantics remain the initial V0.7 basis except where this constitution changes sunlight effects."},
+    {"rule_id": "v07.inherited.routes_transport", "source_ruleset_id": "v0.6", "semantics_inherited": true, "implementation_inherited": false, "value": "existing_route_and_transport_foundation", "statement": "Unmodified route and transport semantics remain the initial basis."},
+    {"rule_id": "v07.inherited.cash_gdp", "source_ruleset_id": "v0.6", "semantics_inherited": true, "implementation_inherited": false, "value": "existing_cash_and_gdp_meaning", "statement": "Cash and GDP retain their existing economic meaning except for the explicitly changed asset and track relationships."},
+    {"rule_id": "v07.inherited.victory", "source_ruleset_id": "v0.6", "semantics_inherited": true, "implementation_inherited": false, "value": "existing_qualification_and_audit_comparison", "statement": "Existing victory qualification and audit comparison are inherited behind the new macro-round gate."},
+    {"rule_id": "v07.inherited.untouched_domains", "source_ruleset_id": "v0.6", "semantics_inherited": true, "implementation_inherited": false, "value": ["monster", "military", "weather", "contracts", "wagers"], "statement": "Rules in untouched domains remain the initial basis until explicitly amended."},
+    {"rule_id": "v07.inherited.anonymous_information", "source_ruleset_id": "v0.6", "semantics_inherited": true, "implementation_inherited": false, "value": "existing_anonymous_card_information_boundary", "statement": "The existing anonymous-play information boundary is inherited and strengthened by owner-anonymous resolution."}
+  ],
+  "retired_rules": [
+    {"rule_id": "v07.retired.separate_normal_track", "active_in_v07": false},
+    {"rule_id": "v07.retired.separate_commodity_track", "active_in_v07": false},
+    {"rule_id": "v07.retired.region_bound_normal_pool", "active_in_v07": false},
+    {"rule_id": "v07.retired.gdp_drives_track_supply", "active_in_v07": false},
+    {"rule_id": "v07.retired.gdp_rank_controls_track_visibility", "active_in_v07": false},
+    {"rule_id": "v07.retired.monster_modifies_normal_card_price", "active_in_v07": false},
+    {"rule_id": "v07.retired.sunlight_controls_card_supply_or_purchase", "active_in_v07": false},
+    {"rule_id": "v07.retired.continuous_mana_recovery", "active_in_v07": false},
+    {"rule_id": "v07.retired.mana_pool_cap_100", "active_in_v07": false},
+    {"rule_id": "v07.retired.mana_player_terminology", "active_in_v07": false},
+    {"rule_id": "v07.retired.purchased_normal_enters_hand", "active_in_v07": false},
+    {"rule_id": "v07.retired.played_normal_card_disappears", "active_in_v07": false},
+    {"rule_id": "v07.retired.normal_hand_limit_modifiers_above_five", "active_in_v07": false},
+    {"rule_id": "v07.retired.batch_action_limit_modifiers_above_five", "active_in_v07": false},
+    {"rule_id": "v07.retired.normal_card_auto_merge", "active_in_v07": false},
+    {"rule_id": "v07.retired.commodity_auto_merge", "active_in_v07": false},
+    {"rule_id": "v07.retired.commodity_level_four", "active_in_v07": false},
+    {"rule_id": "v07.retired.interactive_counter_window", "active_in_v07": false},
+    {"rule_id": "v07.retired.counter_stack", "active_in_v07": false},
+    {"rule_id": "v07.retired.whole_player_queue_resolves_contiguously", "active_in_v07": false},
+    {"rule_id": "v07.retired.region_popup_normal_card_purchase", "active_in_v07": false},
+    {"rule_id": "v07.retired.immediate_game_end_on_qualification", "active_in_v07": false}
+  ],
+  "semantic_obligations": {
+    "three_wings": ["core_semantics", "ai_semantics", "player_semantics"],
+    "required_domains": [
+      "unified_card_track",
+      "market_color_cycle",
+      "hidden_lead_cycle",
+      "normal_draw_pile",
+      "normal_hand",
+      "normal_discard",
+      "normal_card_merge",
+      "commodity_inventory",
+      "commodity_merge",
+      "bound_actions",
+      "six_color_assets",
+      "asset_cycle_snapshot",
+      "asset_reservations",
+      "card_batch_submission",
+      "prebound_targets",
+      "anonymous_resolution",
+      "solar_facility_efficiency",
+      "macro_round_victory_gate"
+    ],
+    "required_domains_x_three_wings_cross_product": true,
+    "typed_intent_required": true,
+    "authoritative_receipt_required": true,
+    "privacy_policy_required": true,
+    "rng_ownership_required": true,
+    "ai_rule_copy_allowed": false,
+    "ui_legality_recalculation_allowed": false,
+    "save_second_authority_allowed": false,
+    "localized_name_rule_inference_allowed": false,
+    "main_business_state_allowed": false,
+    "global_three_layer_complete": false
+  },
+  "save_obligations": {
+    "versioned_v07_schema_required": true,
+    "v06_save_to_v07_direct_resume": false,
+    "v06_save_backup_required": true,
+    "required_state": [
+      "normal_draw_pile_order",
+      "normal_hand",
+      "normal_discard",
+      "committed_escrow",
+      "merge_history_and_instance_identity",
+      "normal_card_levels",
+      "commodity_inventory_and_levels",
+      "bound_action_sources",
+      "six_color_assets_and_fixed_point_remainders",
+      "asset_reservations",
+      "frozen_gdp_snapshot",
+      "submission_window",
+      "player_local_queues",
+      "anonymous_global_queue",
+      "unified_track_items_and_positions",
+      "track_type_supply_state",
+      "track_color_supply_state",
+      "market_color_cycle",
+      "locked_stances",
+      "hidden_lead_order_and_cursor",
+      "macro_round_direction",
+      "solar_state",
+      "victory_macro_round_gate"
+    ],
+    "required_rng_streams": [
+      "starter_deck_shuffle",
+      "normal_deck_reshuffle_by_player",
+      "unified_track_type_draw",
+      "unified_track_color_draw",
+      "unified_track_normal_card_draw",
+      "unified_track_commodity_draw",
+      "initial_hidden_lead_order"
+    ],
+    "ui_ai_hover_drag_animation_rng_draw_allowed": false
+  },
+  "player_presentation_obligations": {
+    "top_surface": {
+      "unified_track_count": 1,
+      "mixed_card_kinds_visually_distinct": true,
+      "shows_current_six_color_distribution": true,
+      "shows_public_stance_directions": true,
+      "shows_public_stance_actor_identity": true,
+      "shows_viewer_local_segment": true,
+      "shows_track_countdown": true,
+      "shows_other_player_segments": false,
+      "shows_future_track": false,
+      "shows_lead_weight_owner": false
+    },
+    "six_color_symbols": {
+      "unique_symbol_per_color": true,
+      "matching_color_base": true,
+      "non_color_discriminator_required": true
+    },
+    "player_card_dock": ["six_color_assets", "normal_hand", "commodity_inventory", "bound_actions", "local_submitted_order"],
+    "asset_display": ["current_over_six", "reserved", "projected_cycle_refresh"],
+    "hand_interaction": ["card_shape", "hover_raise", "keyboard_focus", "click_select", "drag_submit", "drag_reorder", "legal_target_highlight", "illegal_target_return", "insufficient_cost_feedback"],
+    "region_popup_normal_card_purchase": false,
+    "planet_requirements": ["opaque_front_occludes_back", "back_facilities_hidden", "smooth_zoom", "safe_pan", "no_semantically_empty_outer_ring"],
+    "replaceable_baseline_assets_required": ["market", "warehouse", "factory", "monster", "military"],
+    "visual_resource_may_own_rules": false
+  },
+  "privacy_obligations": {
+    "public": ["current_six_color_distribution", "revealed_stances_with_actor_identity", "track_and_cycle_timers", "rule_allowed_resolution_facts"],
+    "viewer_private": ["own_track_segment", "own_hidden_next_stance", "own_stance_lock", "self_lead_notice", "own_hand", "own_commodity_inventory", "own_assets_and_reservations", "own_local_queue"],
+    "authority_secret": ["other_track_segments", "future_track_sequence", "future_supply_bags", "hidden_lead_identity", "hidden_lead_order", "effective_weights", "raw_contribution_breakdown", "other_private_stances", "other_hands", "other_commodity_inventories", "other_exact_assets", "other_reservations", "other_local_queues", "rng_state", "save_payload"],
+    "public_resolution_owner_anonymous": true,
+    "timing_animation_audio_identity_leak_allowed": false
+  },
+  "cutover_obligations": {
+    "docs_only_freeze": true,
+    "runtime_implementation_allowed_by_this_task": false,
+    "reference_runtime_implementation_allowed_by_this_task": false,
+    "production_cutover_allowed_by_this_task": false,
+    "target_rules_pretend_to_be_runtime": false,
+    "current_runtime_overrides_target_constitution": false,
+    "v06_remains_current_player_runtime_until_atomic_cutover": true,
+    "old_tests_may_veto_target_constitution": false,
+    "production_change_requires_explicit_atomic_cutover_task": true,
+    "long_term_compatibility_dual_writer_allowed": false,
+    "old_authority_deletion_required_in_same_domain_cutover": true
+  },
+  "open_constitutional_questions": []
+}

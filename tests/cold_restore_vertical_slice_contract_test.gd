@@ -2,6 +2,8 @@ extends SceneTree
 
 const ORCHESTRATOR_PATH := "res://scripts/tools/cold_restore_vertical_slice_orchestrator.ps1"
 const DRIVER_PATH := "res://scripts/tools/cold_restore_vertical_slice_driver.gd"
+const ATTESTED_PROCESS_PATH := "res://scripts/tools/cold_restore_attested_process.psm1"
+const CHILD_ATTESTATION_PATH := "res://scripts/tools/cold_restore_child_completion_attestation.gd"
 const SAFE_RESULT_FIELDS := [
 	"schema_version",
 	"driver_id",
@@ -42,23 +44,29 @@ func _init() -> void:
 func _run() -> void:
 	var source := FileAccess.get_file_as_string(ORCHESTRATOR_PATH)
 	var driver_source := FileAccess.get_file_as_string(DRIVER_PATH)
-	_expect(source.contains("$ORCHESTRATOR_SCHEMA_VERSION = 3") and source.contains("$FORMAL_FULL_RUN = $false") and source.contains("$DriverExecutionReady = $false"), "orchestrator checkpoints a disabled non-Formal v3 contract before qualification")
-	_expect(driver_source.contains("const SCHEMA_VERSION := 3") and driver_source.contains("const EXECUTION_READY := false") and driver_source.contains('"driver_id": "alpha04c_cold_restore_vertical_slice_v3"'), "driver and orchestrator share one disabled v3 contract")
-	_expect(driver_source.contains("--cold-restore-expected-queue-resolution-id=") and driver_source.contains("--cold-restore-expected-queue-stable-target-fingerprint=") and driver_source.contains('"unknown_option"') and driver_source.contains('"duplicate_option"'), "driver accepts only the closed expected-identity option surface")
+	var wrapper_source := FileAccess.get_file_as_string(ATTESTED_PROCESS_PATH)
+	var child_attestation_source := FileAccess.get_file_as_string(CHILD_ATTESTATION_PATH)
+	_expect(source.contains("$ORCHESTRATOR_SCHEMA_VERSION = 3") and source.contains("$FORMAL_FULL_RUN = $false") and source.contains("$DriverExecutionReady = $true"), "orchestrator exposes a non-Formal v3 role contract behind explicit qualification and official authorization gates")
+	_expect(driver_source.contains("const SCHEMA_VERSION := 3") and driver_source.contains("const EXECUTION_READY := true") and driver_source.contains('"driver_id": "alpha04c_cold_restore_vertical_slice_v3"'), "driver and orchestrator share one executable Harness-only v3 contract")
+	_expect(driver_source.contains("--cold-restore-expected-queue-resolution-id=") and driver_source.contains("--cold-restore-expected-queue-stable-target-fingerprint=") and driver_source.contains("--cold-restore-scenario-fingerprint=") and driver_source.contains("--cold-restore-official-count-consumed=") and driver_source.contains('"unknown_option"') and driver_source.contains('"duplicate_option"'), "driver accepts only the closed expected-identity and authorization option surface")
 	_expect(not driver_source.contains(".tick_ai(") and not driver_source.contains("_tick_ai_until_nontrivial_queue") and driver_source.contains("AUTHORITATIVE_STEPPER.advance_bounded") and driver_source.contains("TERMINAL_EVIDENCE.acquire_manual_lease"), "all AI progress uses the bounded authoritative RuntimeLoop lease with no direct tick fallback")
 	_expect(driver_source.contains("consumer_restored_queue_target_identity_invalid") and driver_source.contains("consumer_queue_target_exact_once_invalid") and driver_source.contains("validator_queue_target_lineage_invalid"), "driver validates A identity in B before continuation and proves completed Generation-2 lineage in C")
 	_expect(source.contains('[ValidateSet("producer", "consumer", "validator")]') and source.contains('$RoleSequence = @("producer", "consumer", "validator")'), "v3 contract has three closed process roles")
-	_expect(source.contains('"worktree_not_clean"') and source.contains("-Environment @{ APPDATA = $IsolatedAppData; LOCALAPPDATA = $IsolatedLocalAppData }"), "official execution rejects dirty sources and isolates the shared production slot from player data")
-	_expect(source.contains("-PassThru -Wait -WindowStyle Hidden") and source.contains("-RedirectStandardOutput") and source.contains("-RedirectStandardError"), "every Godot role redirects stdout/stderr and waits for process exit")
+	_expect(source.contains('"worktree_not_clean"') and source.contains("-EnvironmentVariables @{ APPDATA = $IsolatedAppData; LOCALAPPDATA = $IsolatedLocalAppData }"), "official execution rejects dirty sources and isolates the shared production slot from player data")
+	_expect(wrapper_source.contains("ProcessStartInfo") and wrapper_source.contains("ArgumentList.Add") and wrapper_source.contains("WaitForExit") and wrapper_source.contains("ReadToEndAsync"), "every child uses one quoted-argument-safe bounded process wrapper with explicit stream completion")
+	_expect(wrapper_source.contains("stdout_sha256") and wrapper_source.contains("stderr_sha256") and wrapper_source.contains("task_owned_process_count_after") and wrapper_source.contains("ParentExitFields"), "the parent records log hashes, child validation, and process-tree cleanup")
+	_expect(child_attestation_source.contains("child_attestation_readback_failed") and child_attestation_source.contains("DirAccess.rename_absolute") and child_attestation_source.contains("evidence_fingerprint"), "child completion uses temp write, readback, fingerprint, and atomic install before quit")
 	var producer_index := source.find('Invoke-ColdRestoreRole "producer"')
 	var consumer_index := source.find('Invoke-ColdRestoreRole "consumer"')
 	var validator_index := source.find('Invoke-ColdRestoreRole "validator"')
 	_expect(producer_index >= 0 and producer_index < consumer_index and consumer_index < validator_index, "producer, consumer, and validator launch sequentially")
 	_expect(source.contains("rev-parse HEAD") and source.contains("--cold-restore-head-sha=$HeadSha"), "one repository HEAD attestation is passed to all three roles")
-	_expect(source.contains("[int64]$manifest.process_id -eq [int64]$process.Id") and source.contains("[string]$manifest.head_sha -eq $HeadSha"), "each runtime manifest is bound to the actual orchestrated process and repository HEAD")
+	_expect(source.contains("observed_task_process_ids") and source.contains("manifest.process_id") and source.contains("[string]$manifest.head_sha -eq $HeadSha"), "each runtime manifest is bound to an observed task-owned engine process and repository HEAD")
 	_expect(source.contains("--cold-restore-expected-queue-resolution-id=$ExpectedQueueResolutionId") and source.contains("--cold-restore-expected-queue-stable-target-fingerprint=$ExpectedQueueStableTargetFingerprint"), "A's closed queue identity is passed explicitly into B and B's verified identity is passed into C")
 	_expect(source.contains("$producerRun.manifest.queue_trigger_resolution_id") and source.contains("$producerRun.manifest.queue_trigger_stable_target_fingerprint") and source.contains("$consumerRun.manifest.queue_trigger_resolution_id") and source.contains("$consumerRun.manifest.queue_trigger_stable_target_fingerprint"), "the sequential launcher sources B's expectation from A and C's expectation from B")
-	_expect(source.contains('$ManifestPrefix = "COLD_RESTORE_MANIFEST|"') and source.contains("manifest_marker_count_invalid") and source.contains("manifest_field_set_invalid"), "stdout parser accepts exactly one closed manifest marker")
+	_expect(source.contains("Read-ColdRestoreJsonArtifact $paths.child_result") and source.contains("child_attestation_valid") and source.contains("manifest_field_set_invalid"), "runtime authority is the atomic result plus child and parent attestations, not the stdout tail")
+	_expect(driver_source.contains("quit(0)") and driver_source.contains('"product_blocker"') and driver_source.contains("BLOCKED_BY_NO_LEGAL_QUEUE_ACCEPTANCE_SCENARIO"), "product qualification failure is represented in data while a completed Harness exits zero")
+	_expect(wrapper_source.contains("godot_engine_argument_after_separator") and source.contains("New-ColdRestoreGodotArgumentList"), "engine-only arguments are rejected after the Godot user separator")
 	_expect(source.contains("$generation1Digest -eq [string]$Consumer.source_sections_digest") and source.contains("$generation1Digest -eq [string]$Consumer.restored_sections_digest"), "generation one compares A saved against B source and restored digests")
 	_expect(source.contains("$generation2Digest -eq [string]$Validator.source_sections_digest") and source.contains("$generation2Digest -eq [string]$Validator.restored_sections_digest"), "generation two compares B saved against C source and restored digests")
 	_expect(source.contains("write_id_rotation_invalid") and source.contains("write_fingerprint_rotation_invalid") and source.contains("write_chain_mismatch"), "v3 comparison rotates writes while preserving both source chains")

@@ -24,9 +24,68 @@ Default development habit:
 - If a feature is still temporary, say exactly which hard standard it does not meet yet and what the next gate should protect.
 - A change without a hard standard, reusable skeleton, and acceptance gate is not considered finished, even if the visible feature appears to work.
 
-## Current High-Level Game Loop
+## Rule Authority And Version Precedence
 
-Preserve this loop unless the user explicitly changes it:
+Rule authority is versioned. When target rules conflict, use this order:
+
+1. The user's latest explicit rule decision.
+2. `docs/rules/v07_game_constitution.json`.
+3. `docs/rules/v07_game_constitution.md`.
+4. The V0.7 summary in this file.
+5. `docs/tabletop_rulebook_v06.md`, for current-production V0.6 only.
+6. Older rule and design documents.
+7. Older test oracles.
+8. Older code behavior.
+
+```text
+HIGHEST_TARGET_RULE_AUTHORITY=V0.7_COMPLETE_CONSTITUTION
+CURRENT_PLAYER_RUNTIME_RULE_AUTHORITY=V0.6_RULEBOOK
+TARGET_RULES_DO_NOT_PRETEND_TO_BE_RUNTIME=true
+CURRENT_RUNTIME_DOES_NOT_OVERRIDE_TARGET_CONSTITUTION=true
+```
+
+V0.7 guides all new rule, architecture, AI, player UI, privacy, Save/replay,
+and RNG design. V0.6 still describes what the current player runtime actually
+does. An old test cannot veto the V0.7 target, and this target cannot change
+production without an explicit atomic cutover task. Full details are in
+`docs/rules/v07_rule_precedence.md`.
+
+## Highest Development Constitution - V0.7
+
+The complete highest target authority is:
+
+- `docs/rules/v07_game_constitution.json` - closed machine-readable authority.
+- `docs/rules/v07_game_constitution.md` - human-readable companion.
+- `docs/rules/v07_balance_defaults.json` - tunable initial values below the constitution.
+- `docs/migration/v06_to_v07_rule_delta.json` - atomic migration and legacy-deletion ledger.
+
+V0.7 has one mixed normal/commodity sushi track, uniform non-GDP color-cycle
+baseline, public stances with hidden lead weight, a fixed hidden order that
+reverses each macro round, personal normal-card DBG zones, an independent
+commodity inventory, optional typed merges, six-color assets capped at six per
+color, thirty-second prebound and fully reserved action batches, no interactive
+counters, owner-anonymous round-robin resolution, 2.0/1.0 solar facility work
+rates, and a complete-macro-round Victory gate.
+
+This is a frozen target, not a runtime claim:
+
+```text
+CURRENT_PRODUCTION_RUNTIME_RULESET=V0.6
+TARGET_DEVELOPMENT_CONSTITUTION=V0.7
+FULL_V0_7_RUNTIME_CUTOVER=false
+```
+
+Earlier partial V0.7 commodity-track records are historical migration evidence
+only when they conflict with `space_syndicate.v07.complete`.
+
+<!-- CURRENT_PRODUCTION_V06_ONLY_BEGIN -->
+## Current Production Runtime - V0.6
+
+### Current High-Level Game Loop
+
+The following loop describes the currently executing V0.6 prototype. Preserve
+it while working on V0.6 production unless an explicit cutover task changes it;
+do not promote it over the V0.7 target constitution.
 
 1. Start a 3-8 seat PVE run.
 2. Players publicly choose non-duplicate alien role cards.
@@ -40,7 +99,7 @@ Preserve this loop unless the user explicitly changes it:
 10. Players infer hidden owners and anonymous card sources.
 11. A player who controls the dynamic Top-K share of surviving regions and reaches the required Top-K commodity GDP for 10 seconds enters a 120-second final audit. At audit end, qualifying players compare Top-K commodity GDP, then controlled-region count, then exact cash.
 
-Important rules:
+### Current Runtime Rules
 
 - All seats share the same base starting cash as the general rule, but public alien role cards may explicitly modify their own starting cash through visible role passives. Do not erase role identity by forcing final starting cash to be identical.
 - Monsters are not continuously player-controlled. They auto-act from probability tables.
@@ -170,6 +229,8 @@ When implementing UI or reports, always distinguish:
 
 If unsure, hide the information from players and expose it only in tests/logs/docs.
 
+<!-- CURRENT_PRODUCTION_V06_ONLY_END -->
+
 ## Reference Material
 
 Root reference index:
@@ -205,7 +266,9 @@ Key files and folders:
 - `tests/ui_text_smoke_test.gd` — source-level UI text/contract guard.
 - `tests/visual_snapshot.gd` — source-level visual/layout contract guard.
 - `tests/ui_snapshot_capture.gd` — headed screenshot capture for visual QA.
-- `docs/tabletop_rulebook_v06.md` — authoritative v0.6 player rules; `docs/rules_summary.md` is its current quick-reference companion.
+- `docs/tabletop_rulebook_v06.md` — authoritative current-production V0.6 player rules; `docs/rules_summary.md` is its current quick-reference companion.
+- `docs/rules/v07_game_constitution.json` — highest machine-readable target development authority.
+- `docs/rules/v07_game_constitution.md` — highest V0.7 target development constitution for human readers.
 - `docs/development_log.md` — running development log.
 - `docs/reference_ui_notes.md` — deeper reference notes.
 - `REFERENCE_LINKS.md` — root list of reference URLs.
@@ -368,96 +431,13 @@ If a design choice is ambiguous:
 4. Prefer Terraforming Mars / Gaia Project style board-game clarity over debug density.
 5. Make a small reversible change with tests instead of a broad rewrite.
 
-## V0.7 Commodity Semantic Constitution
+## Historical Partial V0.7 Records
 
-This section is the highest development authority for the approved V0.7
-shared-sushi commodity-track direction. It does not change the current runtime
-rules by itself.
-
-```text
-GAME_SEMANTIC_CONSTITUTION_VERSION=V0.7
-CURRENT_RUNTIME_RULE_VERSION=v0.6
-TARGET_RULE_VERSION=V0.7
-FULL_V0_7_CUTOVER=false
-NON_INTERRUPTING_SCOPE_AMENDMENT=true
-```
-
-Until one atomic production cutover passes Core, AI, player, privacy,
-determinism, persistence, and old-path deletion gates, the v0.6 runtime remains
-the only production authority. V0.6 commodity clauses may continue executing,
-but they are superseded as future commodity design and may not be expanded as
-the target architecture.
-
-The authority order for this V0.7 domain is:
-
-1. the user's latest explicitly approved V0.7 semantic constitution;
-2. the V0.7 Core semantic contract;
-3. the V0.7 AI observation and decision contract;
-4. the V0.7 player/UI projection contract;
-5. feature design records;
-6. conflicting v0.6 commodity rules, which remain runtime-only until cutover;
-7. temporary implementation notes, code, tests, and historical fixtures.
-
-The immutable V0.7 commodity rules are:
-
-- one real, globally ordered, cyclic commodity track is shared by all players;
-- each player and AI sees only its owner-authorized local segment;
-- six-color global supply and GDP baseline aggregates are public;
-- supply starts evenly, GDP drives the long horizon, and player stances drive
-  one 180-second short-horizon cycle;
-- each seat privately precommits one different increase/decrease color during
-  the active cycle, then all valid stances reveal simultaneously with no empty
-  waiting phase;
-- ordinary influence is `+/-300` basis points and the current hidden lead is
-  `+/-600`; the core applies weight, while public projections reveal colors but
-  never lead identity, effective weight, or pre-normalization contribution;
-- one hidden lead order is fixed for the session; every roster player leads
-  exactly once per macro round, and macro rounds alternate exact forward and
-  reverse order without reshuffling;
-- original end conditions become pending mid-round and may finalize only after
-  a complete macro-round boundary revalidation;
-- commodity levels are linear base units: `L1+L1->L2`, `L2+L1->L3`, and
-  `L3+L1->L4`; `L2+L2` and `L3+L3` are not legal upgrade edges;
-- manual merge choice remains the target interaction until a later explicit
-  rule authorizes another policy.
-
-The two card capacities are independent constitutional invariants:
-
-```text
-NORMAL_CARD_HAND_LIMIT=5
-COMMODITY_CARD_HAND_LIMIT=5
-HAND_POOLS_ARE_INDEPENDENT=true
-
-normal_card_count <= 5
-commodity_slot_count <= 5
-```
-
-Five normal cards do not block commodity acquisition, and five commodity
-stacks do not block normal-card acquisition. A valid state may contain five of
-each, but there is no shared `TOTAL_CARD_COUNT<=10` rule. A merged commodity
-still occupies one commodity slot. Core state, AI observation, player
-projection, persistence, and eventual replay/network schemas must carry the
-two counts and limits separately; generic `hand_limit` and mixed-hand authority
-are forbidden in the V0.7 target.
-
-The only legal semantic direction is:
-
-```text
-Core computes and is the sole mutation authority.
-AI receives an owner-bound allowlisted observation, interprets, and submits intent.
-Player UI receives public plus owner-bound private projection and submits the same intent.
-```
-
-AI and UI may not receive the full core object, calculate supply/lead/end facts,
-read another seat's local track or private stance, read the hidden order, or
-maintain a second inventory count. Human and AI seats use the same typed stance,
-claim, merge, capacity, and overflow semantics.
-
-The detailed executable reference and unresolved production decisions live in
-`docs/rules/shared_partial_visibility_commodity_track_contract.md`. Do not wire
-that reference into production. `FULL_V0_7_CUTOVER` stays false unless every
-listed production gate is true and all conflicting v0.6 write paths are deleted
-in the same atomic cutover.
+Pre-constitution V0.7 commodity-track documents and reference tests remain
+historical migration evidence. They are not target authority when they conflict
+with `docs/rules/v07_game_constitution.json`, and they must not be wired into
+production. See `docs/rules/v07_rule_precedence.md` for the exact list and
+conflict-scan boundary.
 
 ## Active Runtime v0.6 Rule Authority Gate
 

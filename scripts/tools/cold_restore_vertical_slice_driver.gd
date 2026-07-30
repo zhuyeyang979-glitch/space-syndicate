@@ -9,9 +9,10 @@ const SEMANTIC_WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
 const ALPHA_CONTENT_LOADER := preload("res://scripts/runtime/alpha01_content_manifest_loader.gd")
 const TERMINAL_EVIDENCE := preload("res://scripts/tools/cold_restore_terminal_evidence.gd")
 const AUTHORITATIVE_STEPPER := preload("res://scripts/tools/full_run_authoritative_runtime_stepper.gd")
+const CHILD_ATTESTATION := preload("res://scripts/tools/cold_restore_child_completion_attestation.gd")
 
 const FORMAL_FULL_RUN := false
-const EXECUTION_READY := false
+const EXECUTION_READY := true
 const ACCEPTANCE_SEED := 900626424
 const ACCEPTANCE_CHALLENGE_DEPTH := 1
 const SCHEMA_VERSION := 3
@@ -111,27 +112,124 @@ func _run_entry() -> void:
 		return
 	var parsed := _parse_options(args)
 	if args.has("--cold-restore-qualification-probe"):
-		var qualification_run_id := str(parsed.get("run_id", ""))
-		if SaveSlotPolicyV06.qa_path(qualification_run_id, "qualification").is_empty():
-			push_error("Cold restore qualification rejected: run_id_invalid")
-			quit(2)
+		var qualification_validation := validate_qualification_options(parsed)
+		if not bool(qualification_validation.get("valid", false)):
+			push_error("Cold restore qualification rejected: %s" % str(qualification_validation.get("reason_code", "options_invalid")))
+			quit(10)
 			return
+		var qualification_run_id := str(qualification_validation.get("run_id", ""))
 		var qualification := await _run_qualification_probe(qualification_run_id)
+		qualification["product_blocker"] = _product_blocker(
+			bool(qualification.get("success", false)),
+			int(qualification.get("queue_count", 0)),
+			str(qualification.get("failure_code", "qualification_incomplete"))
+		)
+		var qualification_result_write := CHILD_ATTESTATION.write_result(
+			qualification_run_id,
+			"qualification",
+			qualification
+		)
+		if not bool(qualification_result_write.get("valid", false)):
+			push_error("Cold restore qualification result write failed: %s" % str(qualification_result_write.get("reason_code", "child_result_write_failed")))
+			quit(_evidence_exit_code(qualification_result_write))
+			return
+		var qualification_attestation := CHILD_ATTESTATION.build({
+			"run_id": qualification_run_id,
+			"role": "qualification",
+			"repository_head": str(qualification_validation.get("head_sha", "")),
+			"scenario_fingerprint": str(qualification.get("scenario_fingerprint", "")),
+			"official": false,
+			"formal": false,
+			"qualification_completed": true,
+			"qualification_green": bool(qualification.get("success", false)),
+			"product_blocker": str(qualification.get("product_blocker", "")),
+			"queue_count": int(qualification.get("queue_count", 0)),
+			"queue_revision": int(qualification.get("queue_revision", 0)),
+			"queue_trigger_actor": str(qualification.get("queue_trigger_actor", "none")),
+			"queue_trigger_semantic_action_id": str(qualification.get("queue_trigger_semantic_action_id", "")),
+			"queue_trigger_card_semantic_id": str(qualification.get("queue_trigger_card_semantic_id", "")),
+			"queue_trigger_target_fingerprint": str(qualification.get("queue_trigger_target_fingerprint", "")),
+			"save_written": false,
+			"official_count_consumed": false,
+			"product_mutation_count": int(qualification.get("human_action_count", 0)) \
+				+ int(qualification.get("ai_action_count", 0)) \
+				+ int(qualification.get("sale_receipt_count", 0)),
+			"direct_authority_mutation_count": 0,
+			"queue_injection_count": 0,
+			"final_reason_code": "qualification_green" if bool(qualification.get("success", false)) \
+				else str(qualification.get("product_blocker", "")),
+			"child_ready_to_exit": true,
+		})
+		var qualification_attestation_write := CHILD_ATTESTATION.write_completion(qualification_attestation)
+		if not bool(qualification_attestation_write.get("valid", false)):
+			push_error("Cold restore qualification attestation failed: %s" % str(qualification_attestation_write.get("reason_code", "child_attestation_write_failed")))
+			quit(_evidence_exit_code(qualification_attestation_write))
+			return
 		print("COLD_RESTORE_QUALIFICATION|%s" % JSON.stringify(qualification))
-		quit(0 if bool(qualification.get("success", false)) else 1)
+		quit(0)
 		return
 	var validation := validate_options(parsed)
 	if not bool(validation.get("valid", false)):
 		push_error("Cold restore options rejected: %s" % str(validation.get("reason_code", "options_invalid")))
-		quit(2)
+		quit(10)
 		return
 	var started_ms := Time.get_ticks_msec()
 	var result: Dictionary = await _run_role(validation, str(parsed.get("head_sha", "")))
 	result["elapsed_ms"] = maxi(0, Time.get_ticks_msec() - started_ms)
 	var manifest := sanitize_public_manifest(result)
-	_write_public_manifest(str(validation.get("run_id", "")), str(validation.get("process_role", "")), manifest)
+	if manifest.is_empty():
+		push_error("Cold restore public manifest sanitization failed")
+		quit(12)
+		return
+	var manifest_write := _write_public_manifest(
+		str(validation.get("run_id", "")),
+		str(validation.get("process_role", "")),
+		manifest
+	)
+	if not bool(manifest_write.get("valid", false)):
+		push_error("Cold restore public manifest write failed: %s" % str(manifest_write.get("reason_code", "child_result_write_failed")))
+		quit(_evidence_exit_code(manifest_write))
+		return
+	var role_success := bool(manifest.get("success", false))
+	var role_attestation := CHILD_ATTESTATION.build({
+		"run_id": str(validation.get("run_id", "")),
+		"role": str(validation.get("process_role", "")),
+		"repository_head": str(parsed.get("head_sha", "")),
+		"scenario_fingerprint": str(validation.get("scenario_fingerprint", "")),
+		"official": true,
+		"formal": false,
+		"qualification_completed": true,
+		"qualification_green": role_success,
+		"product_blocker": _product_blocker(
+			role_success,
+			int(manifest.get("queue_entry_count", 0)),
+			str(manifest.get("failure_code", "role_failed"))
+		),
+		"queue_count": int(manifest.get("queue_entry_count", 0)),
+		"queue_revision": int(result.get("_attestation_queue_revision", 0)),
+		"queue_trigger_actor": str(result.get("_attestation_queue_trigger_actor", "none")),
+		"queue_trigger_semantic_action_id": str(result.get("_attestation_queue_trigger_semantic_action_id", "")),
+		"queue_trigger_card_semantic_id": str(result.get("_attestation_queue_trigger_card_semantic_id", "")),
+		"queue_trigger_target_fingerprint": str(manifest.get("queue_trigger_stable_target_fingerprint", "")),
+		"save_written": role_success and int(manifest.get("generation", 0)) in [1, 2] \
+			and str(validation.get("process_role", "")) in ["producer", "consumer"],
+		"official_count_consumed": bool(validation.get("official_count_consumed", false)),
+		"product_mutation_count": int(manifest.get("human_action_count", 0)) \
+			+ int(manifest.get("commodity_action_count", 0)) \
+			+ int(manifest.get("ai_action_count", 0)) \
+			+ int(manifest.get("sale_receipt_count", 0)),
+		"direct_authority_mutation_count": 0,
+		"queue_injection_count": 0,
+		"final_reason_code": "role_completed" if role_success else str(manifest.get("failure_code", "role_failed")),
+		"child_ready_to_exit": true,
+	})
+	var role_attestation_write := CHILD_ATTESTATION.write_completion(role_attestation)
+	if not bool(role_attestation_write.get("valid", false)):
+		push_error("Cold restore role attestation failed: %s" % str(role_attestation_write.get("reason_code", "child_attestation_write_failed")))
+		quit(_evidence_exit_code(role_attestation_write))
+		return
 	print("COLD_RESTORE_MANIFEST|%s" % JSON.stringify(manifest))
-	quit(0 if bool(manifest.get("success", false)) else 1)
+	quit(0)
 
 
 static func contract_snapshot() -> Dictionary:
@@ -141,7 +239,7 @@ static func contract_snapshot() -> Dictionary:
 		"formal_full_run": FORMAL_FULL_RUN,
 		"cold_restore_vertical_slice": true,
 		"execution_ready": EXECUTION_READY,
-		"process_sequence": ["producer_exit", "consumer_exit", "validator_start", "orchestrator_compare"],
+		"process_sequence": ["atomic_result", "child_completion_attestation", "child_ready_to_exit", "parent_exit_attestation"],
 		"process_roles": PROCESS_ROLES.duplicate(),
 		"qa_save_root": SaveSlotPolicyV06.QA_ROOT,
 		"production_slot_id": String(SaveSlotPolicyV06.PRODUCTION_SLOT_ID),
@@ -177,6 +275,11 @@ static func validate_options(options: Dictionary) -> Dictionary:
 			return {"valid": false, "reason_code": "producer_expected_queue_identity_forbidden"}
 	elif expected_resolution_id <= 0 or not _is_lower_sha256(expected_stable_fingerprint):
 		return {"valid": false, "reason_code": "expected_queue_identity_invalid"}
+	var scenario_fingerprint := str(options.get("scenario_fingerprint", ""))
+	if not _is_lower_sha256(scenario_fingerprint):
+		return {"valid": false, "reason_code": "scenario_fingerprint_invalid"}
+	if not bool(options.get("official_count_consumed", false)):
+		return {"valid": false, "reason_code": "official_count_not_consumed"}
 	return {
 		"valid": true,
 		"reason_code": "ok",
@@ -187,6 +290,36 @@ static func validate_options(options: Dictionary) -> Dictionary:
 		"artifact_root": artifact_root,
 		"expected_queue_resolution_id": expected_resolution_id,
 		"expected_queue_stable_target_fingerprint": expected_stable_fingerprint,
+		"scenario_fingerprint": scenario_fingerprint,
+		"official_count_consumed": true,
+	}
+
+
+static func validate_qualification_options(options: Dictionary) -> Dictionary:
+	if not str(options.get("parse_error", "")).is_empty():
+		return {"valid": false, "reason_code": str(options.get("parse_error", "options_parse_invalid"))}
+	var run_id := str(options.get("run_id", ""))
+	if SaveSlotPolicyV06.qa_path(run_id, "qualification").is_empty():
+		return {"valid": false, "reason_code": "run_id_invalid"}
+	if str(options.get("process_role", "")) != "qualification":
+		return {"valid": false, "reason_code": "qualification_role_invalid"}
+	var head_sha := str(options.get("head_sha", ""))
+	if head_sha.length() < 7 or head_sha.length() > 64 or not _is_lower_hex(head_sha):
+		return {"valid": false, "reason_code": "head_sha_invalid"}
+	var expected_artifact_root := "user://test_runs/alpha04c/%s/evidence" % run_id
+	if str(options.get("artifact_root", "")) != expected_artifact_root:
+		return {"valid": false, "reason_code": "artifact_root_invalid"}
+	if int(options.get("expected_queue_resolution_id", 0)) != 0 \
+			or not str(options.get("expected_queue_stable_target_fingerprint", "")).is_empty() \
+			or not str(options.get("scenario_fingerprint", "")).is_empty() \
+			or bool(options.get("official_count_consumed", false)):
+		return {"valid": false, "reason_code": "qualification_official_state_forbidden"}
+	return {
+		"valid": true,
+		"reason_code": "ok",
+		"run_id": run_id,
+		"head_sha": head_sha,
+		"artifact_root": expected_artifact_root,
 	}
 
 
@@ -361,6 +494,12 @@ func _run_qualification_probe(run_id: String) -> Dictionary:
 		"queue_trigger_card_semantic_id": "",
 		"queue_trigger_target_fingerprint": "",
 		"queue_count": 0,
+		"queue_revision": 0,
+		"offer_audit": {
+			"legal_offers": [],
+			"queue_capable_offers": [],
+			"rejected_offers": [],
+		},
 		"card_resolution_advance_after_trigger": -1,
 		"world_advance_after_trigger": -1,
 		"rng_draw_after_trigger": -1,
@@ -412,6 +551,7 @@ func _run_qualification_probe(run_id: String) -> Dictionary:
 	var legal: Dictionary = await _prepare_generic_legal_checkpoint(context)
 	if not bool(legal.get("ready", false)):
 		result["failure_code"] = str(legal.get("reason_code", "legal_checkpoint_failed"))
+		result["offer_audit"] = _qualification_offer_audit(legal, {})
 		print("COLD_RESTORE_QUALIFICATION_DIAGNOSTIC|" + JSON.stringify({
 			"run_id": run_id,
 			"failure_code": result["failure_code"],
@@ -443,6 +583,9 @@ func _run_qualification_probe(run_id: String) -> Dictionary:
 		ai_actions += int(trigger.get("ai_action_count", 0))
 	if not bool(trigger.get("accepted", false)) or not bool(trigger.get("queued", false)):
 		result["failure_code"] = str(trigger.get("reason_code", "legal_queue_offer_missing"))
+		result["queue_count"] = int(trigger.get("queue_count", 0))
+		result["queue_revision"] = int(trigger.get("queue_revision", 0))
+		result["offer_audit"] = _qualification_offer_audit(legal, trigger)
 		print("COLD_RESTORE_QUALIFICATION_DIAGNOSTIC|" + JSON.stringify({
 			"run_id": run_id,
 			"failure_code": result["failure_code"],
@@ -467,6 +610,8 @@ func _run_qualification_probe(run_id: String) -> Dictionary:
 		"queue_trigger_card_semantic_id": str(trigger.get("card_semantic_id", "")),
 		"queue_trigger_target_fingerprint": str(trigger.get("target_fingerprint", "")),
 		"queue_count": int(trigger.get("queue_count", 0)),
+		"queue_revision": int(trigger.get("queue_revision", 0)),
+		"offer_audit": _qualification_offer_audit(legal, trigger),
 		"card_resolution_advance_after_trigger": int(trigger.get("card_resolution_advance_after_trigger", -1)),
 		"world_advance_after_trigger": int(trigger.get("world_advance_after_trigger", -1)),
 		"rng_draw_after_trigger": int(trigger.get("rng_draw_after_trigger", -1)),
@@ -503,6 +648,78 @@ func _run_qualification_probe(run_id: String) -> Dictionary:
 	main.queue_free()
 	await process_frame
 	return result
+
+
+func _qualification_offer_audit(legal: Dictionary, trigger: Dictionary) -> Dictionary:
+	var legal_offers: Array[Dictionary] = []
+	var queue_capable_offers: Array[Dictionary] = []
+	var rejected_offers: Array[Dictionary] = []
+	var reason_diagnostics: Dictionary = trigger.get("reason_diagnostics", {}) \
+		if trigger.get("reason_diagnostics", {}) is Dictionary else {}
+	if not trigger.is_empty():
+		var entry := {
+			"actor": str(trigger.get("actor", "none")),
+			"source_revision": maxi(0, int(reason_diagnostics.get("dock_source_revision", 0))),
+			"semantic_action_id": str(trigger.get("semantic_action_id", "")),
+			"card_semantic_id": str(trigger.get("card_semantic_id", "")),
+			"offer_fingerprint": str(trigger.get("offer_fingerprint", "")),
+			"target_fingerprint": str(trigger.get("target_fingerprint", "")),
+			"reason_code": str(trigger.get("reason_code", "")),
+		}
+		if bool(trigger.get("accepted", false)):
+			legal_offers.append(entry.duplicate(true))
+		if bool(trigger.get("queued", false)):
+			queue_capable_offers.append(entry.duplicate(true))
+		if not bool(trigger.get("accepted", false)) or not bool(trigger.get("queued", false)):
+			rejected_offers.append(entry.duplicate(true))
+	if not bool(legal.get("ready", false)):
+		var diagnostics: Dictionary = legal.get("diagnostics", {}) \
+			if legal.get("diagnostics", {}) is Dictionary else {}
+		var plans: Array = diagnostics.get("queue_plans", []) \
+			if diagnostics.get("queue_plans", []) is Array else []
+		for plan_variant in plans:
+			if not (plan_variant is Dictionary):
+				continue
+			var plan := plan_variant as Dictionary
+			rejected_offers.append({
+				"actor": "local",
+				"source_revision": 0,
+				"semantic_action_id": GAME_ACTION_INTENT.ACTION_CARD_PLAY,
+				"card_semantic_id": str(plan.get("queue_card_id", "")),
+				"offer_fingerprint": "",
+				"target_fingerprint": SEMANTIC_WIRE.fingerprint(plan),
+				"reason_code": str(legal.get("reason_code", "legal_checkpoint_failed")),
+			})
+	return {
+		"legal_offers": legal_offers,
+		"queue_capable_offers": queue_capable_offers,
+		"rejected_offers": rejected_offers,
+	}
+
+
+static func _product_blocker(success: bool, queue_count: int, reason_code: String) -> String:
+	if success:
+		return ""
+	if queue_count <= 0 and reason_code in [
+		"legal_factory_market_queue_target_missing",
+		"legal_queue_offer_missing",
+		"queue_capability_not_reached",
+		"ai_legal_queue_offer_missing",
+	]:
+		return "BLOCKED_BY_NO_LEGAL_QUEUE_ACCEPTANCE_SCENARIO"
+	var normalized := reason_code.to_upper()
+	for character in ["-", ".", ":", "/", " "]:
+		normalized = normalized.replace(character, "_")
+	return "BLOCKED_BY_%s" % (normalized if not normalized.is_empty() else "PRODUCT_QUALIFICATION_INCOMPLETE")
+
+
+static func _evidence_exit_code(write_result: Dictionary) -> int:
+	var reason_code := str(write_result.get("reason_code", ""))
+	if reason_code.contains("collision"):
+		return 17
+	if reason_code.contains("readback"):
+		return 14
+	return 13
 
 
 func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -> Dictionary:
@@ -543,6 +760,10 @@ func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -
 	var queue_target_fingerprint := str(queue_submission.get("stable_target_envelope_fingerprint", ""))
 	base["queue_trigger_resolution_id"] = maxi(0, queue_target_resolution_id)
 	base["queue_trigger_stable_target_fingerprint"] = queue_target_fingerprint
+	base["_attestation_queue_revision"] = maxi(0, int(queue_submission.get("queue_revision", 0)))
+	base["_attestation_queue_trigger_actor"] = str(queue_submission.get("actor", "none"))
+	base["_attestation_queue_trigger_semantic_action_id"] = str(queue_submission.get("semantic_action_id", ""))
+	base["_attestation_queue_trigger_card_semantic_id"] = str(queue_submission.get("card_semantic_id", ""))
 	var queue_target_before := _queue_target_observation(context, queue_target_resolution_id)
 	if _queue_entry_count(context) != 1 \
 			or not bool(queue_target_before.get("valid", false)) \
@@ -3623,6 +3844,8 @@ func _parse_options(args: PackedStringArray) -> Dictionary:
 		"artifact_root": "",
 		"expected_queue_resolution_id": 0,
 		"expected_queue_stable_target_fingerprint": "",
+		"scenario_fingerprint": "",
+		"official_count_consumed": false,
 		"parse_error": "",
 	}
 	var seen: Dictionary = {}
@@ -3654,6 +3877,16 @@ func _parse_options(args: PackedStringArray) -> Dictionary:
 		elif text.begins_with("--cold-restore-expected-queue-stable-target-fingerprint="):
 			option_key = "expected_queue_stable_target_fingerprint"
 			option_value = text.trim_prefix("--cold-restore-expected-queue-stable-target-fingerprint=")
+		elif text.begins_with("--cold-restore-scenario-fingerprint="):
+			option_key = "scenario_fingerprint"
+			option_value = text.trim_prefix("--cold-restore-scenario-fingerprint=")
+		elif text.begins_with("--cold-restore-official-count-consumed="):
+			option_key = "official_count_consumed"
+			var consumed_text := text.trim_prefix("--cold-restore-official-count-consumed=")
+			if consumed_text not in ["true", "false"]:
+				result["parse_error"] = "official_count_consumed_invalid"
+				continue
+			option_value = consumed_text == "true"
 		else:
 			result["parse_error"] = "unknown_option"
 			continue
@@ -3665,11 +3898,5 @@ func _parse_options(args: PackedStringArray) -> Dictionary:
 	return result
 
 
-func _write_public_manifest(run_id: String, role: String, manifest: Dictionary) -> void:
-	var path := "%s%s/evidence/%s.json" % [SaveSlotPolicyV06.QA_ROOT, run_id, role]
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(path.get_base_dir()))
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	if file != null:
-		file.store_string(JSON.stringify(manifest))
-		file.flush()
-		file.close()
+func _write_public_manifest(run_id: String, role: String, manifest: Dictionary) -> Dictionary:
+	return CHILD_ATTESTATION.write_result(run_id, role, manifest)
