@@ -434,6 +434,12 @@
     "alpha04c_targeted_cold_restore_contract": "GREEN_133_OF_133",
     "alpha04c_targeted_wrapper_attestation": "GREEN_68_OF_68",
     "alpha04c_allocator_cursor_spec": "RED_24_OF_34_PRODUCTION_FIELD_NOT_AUTHORIZED_BEFORE_OWNER_ATTESTATION",
+    "alpha04c_task_changed_godot_mcp_scripts": "GREEN_5_OF_5_ZERO_DIAGNOSTICS",
+    "alpha04c_godot_mcp_runtime_errors": "GREEN_ZERO",
+    "alpha04c_godot_mcp_baseline": "ONE_UNCHANGED_TOOL_BENCH_FILE_TWO_DIAGNOSTICS",
+    "alpha04c_affected_save_privacy": "GREEN_2_OF_2",
+    "alpha04c_broad_card_market_privacy": "INHERITED_RED_3_OF_5_NO_TASK_PRICING_DIFF",
+    "alpha04c_broad_player_privacy": "INHERITED_PARSE_BLOCKED_NO_TASK_DIFF",
     "action_spine_candidate_full_run": "INCOMPLETE_AUDIT_ACTIVE_2_FACILITIES_22_SALES_0_INVALID_0_NONFINITE",
     "full_smoke": "BLOCKED_BY_RETIRED_MAIN_FIXTURES",
     "policy": "Do not restore retired Main wrappers; migrate historical fixture families in their own test-debt boundary."

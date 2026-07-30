@@ -97,6 +97,27 @@ This repair was verified without another diagnostic:
 These checks validate the repaired contract but do not replace the missing
 eight-phase Owner evidence.
 
+## Godot MCP
+
+An isolated role-local Funplay MCP endpoint ran at
+`http://127.0.0.1:8805/` with separate APPDATA and LOCALAPPDATA. It reported
+the exact task worktree, loaded and played real `res://scenes/main.tscn`, and
+found the runtime Main, V06 Save Registry, Facility Queue Adapter, Queue,
+Execution service, and Save/Continue Flow at their production paths.
+
+MCP validation reported zero diagnostics for each of the five changed
+production/diagnostic GDScript files and zero runtime error-log lines. The
+full-project scanner found one unchanged tool bench with two type-inference
+diagnostics; it is outside this task diff. Play mode and the editor were
+stopped through the role-local tools, port 8805 closed, and the final Godot
+process count was zero.
+
+The affected Save evidence privacy assertions are `2/2`. Two broader inherited
+privacy suites remain disclosed: card-market public quote privacy is `3/5`,
+and player-facing privacy is blocked by an unchanged test parse error. Neither
+failure path is in this task's production diff, so no pricing, authorization,
+or retired test contract was changed here.
+
 ## Allocator cursor
 
 The ownership ledger identifies `CardMarketPricingRuntimeController` as the
