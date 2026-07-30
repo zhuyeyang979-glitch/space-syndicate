@@ -71,6 +71,8 @@ func _run() -> void:
 	})
 	var envelope: Dictionary = capture.get("envelope", {}) if capture.get("envelope") is Dictionary else {}
 	_expect(bool(capture.get("ok", false)) and not envelope.is_empty() and (envelope.get("sections", {}) as Dictionary).size() == 19, "production composition captures a complete 19-owner envelope")
+	var card_inventory_state := _decoded_section(handshake, envelope, "card_inventory")
+	_expect(not card_inventory_state.is_empty() and int(card_inventory_state.get("schema_version", 0)) == 2, "production capture encodes one nonempty card-inventory v2 owner state")
 	_assert_queued_facility_envelope(handshake, envelope, facility_case, "capture")
 	_test_restore_barrier_blocks_facility(coordinator, facility_case)
 	var preflight: Dictionary = registry.preflight_envelope(envelope)
@@ -419,7 +421,12 @@ func _test_facility_continues_once_after_restore(coordinator: GameRuntimeCoordin
 		"envelope_id": "alpha04c-production-registry-facility-complete",
 		"write_id": "alpha04c-production-registry-facility-complete-write",
 	})
-	_expect(bool(final_capture.get("ok", false)) and ((final_capture.get("envelope", {}) as Dictionary).get("sections", {}) as Dictionary).size() == 19, "completed facility continuation remains capturable in the same 19-owner envelope")
+	var final_capture_debug: Dictionary = registry.debug_snapshot()
+	_expect(bool(final_capture.get("ok", false)) and ((final_capture.get("envelope", {}) as Dictionary).get("sections", {}) as Dictionary).size() == 19, "completed facility continuation remains capturable in the same 19-owner envelope|reason=%s|section=%s|internal=%s" % [
+		str(final_capture.get("reason_code", "")),
+		str(final_capture_debug.get("last_internal_capture_failure_section", "")),
+		str(final_capture_debug.get("last_internal_capture_failure_reason", "")),
+	])
 	var duplicate_frame := coordinator.advance_card_resolution_frame(0.0)
 	var after_duplicate := _facility_owner_evidence(facility_case)
 	var execution_after_first: Dictionary = after_first.get("execution", {}) as Dictionary

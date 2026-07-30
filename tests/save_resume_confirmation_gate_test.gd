@@ -21,6 +21,7 @@ class GateSession:
 		"dirty": false,
 	}
 	var load_call_count := 0
+	var save_call_count := 0
 	var mutation_revision := 0
 
 	func session_summary() -> Dictionary:
@@ -35,12 +36,41 @@ class GateSession:
 			"reason_code": "resume_applied",
 		}
 
+	func request_save(_path: String, _envelope: Dictionary, _authorization: Dictionary = {}) -> Dictionary:
+		save_call_count += 1
+		return {"ok": true, "reason_code": "unexpected_test_write"}
+
 	func owner_snapshot() -> Dictionary:
 		return {
 			"summary_state": summary_state.duplicate(true),
 			"load_call_count": load_call_count,
+			"save_call_count": save_call_count,
 			"mutation_revision": mutation_revision,
 		}
+
+
+class CaptureRejectingRegistry:
+	extends Node
+	var capture_call_count := 0
+
+	func capture_resume_envelope(_identity: Dictionary) -> Dictionary:
+		capture_call_count += 1
+		return {
+			"operation": "capture",
+			"ok": false,
+			"reason_code": "owner_capture_failed",
+			"failing_section_id": "card_inventory",
+			"internal_reason_code": "card_inventory_v2_invalid",
+		}
+
+
+class SaveAuthorizationSpy:
+	extends Node
+	var write_authorization_call_count := 0
+
+	func write_authorization(_path: String, _envelope: Dictionary, _options: Dictionary = {}) -> Dictionary:
+		write_authorization_call_count += 1
+		return {"allowed": true, "reason_code": "unexpected_test_authorization"}
 
 
 func _init() -> void:
@@ -49,6 +79,12 @@ func _init() -> void:
 
 func _run() -> void:
 	var gate_session := GateSession.new()
+	var rejecting_registry := CaptureRejectingRegistry.new()
+	rejecting_registry.name = "V06SaveOwnerRegistry"
+	gate_session.add_child(rejecting_registry)
+	var save_spy := SaveAuthorizationSpy.new()
+	save_spy.name = "GameSaveRuntimeCoordinator"
+	gate_session.add_child(save_spy)
 	var gate_world := WorldSessionState.new()
 	var coordinator := GATE_COORDINATOR_SCRIPT.new()
 	coordinator.gate_session = gate_session
@@ -80,6 +116,17 @@ func _run() -> void:
 	_expect(_same_value(cancel_before, _production_slot_bytes_snapshot()), "Save cancellation preserves the existing file byte-for-byte")
 	pause_board.queue_free()
 	await process_frame
+
+	var capture_rejection_bytes_before := _production_slot_bytes_snapshot()
+	var capture_rejection_variant: Variant = coordinator.call("submit_save_resume_intent", _save_intent(true))
+	var capture_rejection: Dictionary = capture_rejection_variant if capture_rejection_variant is Dictionary else {}
+	_expect(not bool(capture_rejection.get("accepted", true)) \
+			and not bool(capture_rejection.get("applied", true)) \
+			and str(capture_rejection.get("reason_code", "")) == "owner_capture_failed", "semantic owner capture rejection returns through the production Save gateway")
+	_expect(rejecting_registry.capture_call_count == 1 \
+			and save_spy.write_authorization_call_count == 0 \
+			and gate_session.save_call_count == 0, "semantic owner capture rejection reaches neither write authorization nor Session request_save")
+	_expect(_same_value(capture_rejection_bytes_before, _production_slot_bytes_snapshot()), "semantic owner capture rejection preserves the existing destination byte-for-byte")
 
 	gate_session.summary_state = {
 		"session_state": GameSessionRuntimeController.STATE_RUNNING,

@@ -12,6 +12,8 @@ const SESSION_STATE_KEYS := [
 @export var section_id := ""
 @export var owner_state: Dictionary = {}
 @export var fail_once_live_apply := false
+@export var accept_empty_state := false
+@export var omit_normalized_state := false
 
 var apply_count := 0
 
@@ -52,6 +54,18 @@ func to_save_data() -> Dictionary:
 	return owner_state.duplicate(true)
 
 
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	if not _valid_state(data):
+		return {"accepted": false, "reason_code": "fake_owner_state_invalid"}
+	var receipt := {
+		"accepted": true,
+		"reason_code": "fake_owner_state_valid",
+	}
+	if not omit_normalized_state:
+		receipt["normalized_state"] = data.duplicate(true)
+	return receipt
+
+
 func apply_save_data(data: Dictionary) -> Dictionary:
 	if not _valid_state(data):
 		return {"applied": false, "reason_code": "fake_owner_state_invalid"}
@@ -78,6 +92,8 @@ func current_value() -> int:
 
 
 func _valid_state(data: Dictionary) -> bool:
+	if accept_empty_state and data.is_empty():
+		return true
 	if section_id == "card_resolution_history":
 		return bool(RestoreDependencyContract.normalize_history_state(data).get("accepted", false))
 	if section_id == "session":
