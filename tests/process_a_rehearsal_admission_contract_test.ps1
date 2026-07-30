@@ -635,6 +635,27 @@ function Invoke-TestAdmission {
         -OfficialAttempt1ClaimPath $Fixture.attempt_1_path
 }
 
+function Assert-TestAdmissionSourcesUnchanged {
+    param(
+        [Parameter(Mandatory = $true)]$Fixture,
+        [Parameter(Mandatory = $true)]$Admission
+    )
+
+    return Assert-ProcessARehearsalAdmissionSourcesUnchanged `
+        -Admission $Admission `
+        -TimeoutPolicyPath $Fixture.policy_path `
+        -AdmissionEvidencePath $Fixture.evidence_path `
+        -DiagnosticQuotaLedgerPath $Fixture.diagnostic_quota_path `
+        -DiagnosticLaunchAttestationPath $Fixture.diagnostic_launch_attestation_path `
+        -DiagnosticManifestPath $Fixture.diagnostic_manifest_path `
+        -DiagnosticChildAttestationPath $Fixture.diagnostic_child_path `
+        -DiagnosticParentAttestationPath $Fixture.diagnostic_parent_path `
+        -DiagnosticStdoutPath $Fixture.diagnostic_stdout_path `
+        -DiagnosticStderrPath $Fixture.diagnostic_stderr_path `
+        -OfficialClaimRoot $Fixture.official_root `
+        -OfficialAttempt1ClaimPath $Fixture.attempt_1_path
+}
+
 function New-TestLaunchAttestation {
     param(
         [Parameter(Mandatory = $true)]$Authorization,
@@ -741,6 +762,20 @@ try {
     Assert-ContractCondition ([string]$admission.value.diagnostic_stdout_sha256 -ceq [string]$evidence.diagnostic_stdout_sha256 -and [string]$admission.value.diagnostic_stderr_sha256 -ceq [string]$evidence.diagnostic_stderr_sha256) "admission ledger closes stdout and stderr raw-SHA bindings"
     Assert-ContractCondition ([string]$admission.value.claim_nonce -ne [string]$admission.value.launch_nonce) "claim and launch nonces are independent"
     Assert-ContractCondition (@(Get-ChildItem (Split-Path -Parent $validFixture.admission_path) -Filter '*.tmp.*' -Force).Count -eq 0) "atomic admission leaves no temporary sidecar"
+    Assert-ContractCondition ([bool](Assert-TestAdmissionSourcesUnchanged $validFixture $admission)) "post-commit validator accepts the unchanged diagnostic, policy, and official boundary"
+
+    $postCommitSourceFixture = New-TestFixture "post-commit-source-change"
+    $postCommitSourceAdmission = Invoke-TestAdmission $postCommitSourceFixture
+    [IO.File]::AppendAllText($postCommitSourceFixture.diagnostic_stdout_path, "changed-after-commit" + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
+    Assert-ContractThrows { $null = Assert-TestAdmissionSourcesUnchanged $postCommitSourceFixture $postCommitSourceAdmission } "process_a_rehearsal_admission_source_changed_after_commit" "post-commit diagnostic byte changes fail after the caller owns the admission"
+    Assert-ContractCondition ([string](Read-ProcessARehearsalAdmissionLedger $postCommitSourceFixture.admission_path $postCommitSourceAdmission.fingerprint).value.run_id -ceq $postCommitSourceFixture.run_id) "post-commit source failure leaves one complete immutable admission ledger"
+
+    $postCommitOfficialFixture = New-TestFixture "post-commit-official-change"
+    $postCommitOfficialAdmission = Invoke-TestAdmission $postCommitOfficialFixture
+    $postCommitAttempt2Directory = Join-Path $postCommitOfficialFixture.official_root "official-alpha04c-attempt-2"
+    [IO.Directory]::CreateDirectory($postCommitAttempt2Directory) | Out-Null
+    [IO.File]::WriteAllText((Join-Path $postCommitAttempt2Directory "official_claim_ledger.json"), "{}", [Text.UTF8Encoding]::new($false))
+    Assert-ContractThrows { $null = Assert-TestAdmissionSourcesUnchanged $postCommitOfficialFixture $postCommitOfficialAdmission } "process_a_rehearsal_official_attempt_2_claim_must_be_absent" "post-commit official inventory changes fail after the caller owns the admission"
 
     $readAdmission = Read-ProcessARehearsalAdmissionLedger $validFixture.admission_path $admission.fingerprint
     Assert-ContractCondition ([string]$readAdmission.value.ledger_fingerprint -ceq [string]$admission.value.ledger_fingerprint) "admission readback validates its semantic fingerprint"

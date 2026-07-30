@@ -6,6 +6,7 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $orchestratorPath = Join-Path $projectRoot "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1"
+$admissionModulePath = Join-Path $projectRoot "scripts/tools/process_a_rehearsal_admission_contract.psm1"
 $expectedOutcomeRelativePath = "codex\cold_restore_v3\non-official-alpha04c-process-a-rehearsal-v1\process_a_rehearsal_outcome_ledger.json"
 $expectedOutcomeId = "ProcessARehearsalOutcomeLedgerV1"
 $shaA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -356,10 +357,15 @@ function Write-SyntheticOutcomeExclusive {
 }
 
 try {
+    Import-Module $admissionModulePath -Force
     $tokens = $null
     $parseErrors = $null
     $ast = [Management.Automation.Language.Parser]::ParseFile($orchestratorPath, [ref]$tokens, [ref]$parseErrors)
     Assert-ContractCondition ($parseErrors.Count -eq 0) "Orchestrator parses before outcome integration"
+    $admissionTokens = $null
+    $admissionParseErrors = $null
+    $admissionAst = [Management.Automation.Language.Parser]::ParseFile($admissionModulePath, [ref]$admissionTokens, [ref]$admissionParseErrors)
+    Assert-ContractCondition ($admissionParseErrors.Count -eq 0) "Admission module parses before commit-boundary inspection"
     $orchestratorSource = [IO.File]::ReadAllText($orchestratorPath)
 
     Assert-ContractCondition ($orchestratorSource.IndexOf('$ProcessARehearsalOutcomeLedgerRelativePath = "' + $expectedOutcomeRelativePath + '"', [StringComparison]::Ordinal) -ge 0) "Outcome ledger uses the fixed git-common relative path"
@@ -376,13 +382,17 @@ try {
     Assert-ContractCondition (Test-ContainsAll $outcomeWriterSource @(
         "Resolve-ColdRestoreGitCommonDirectory",
         "ProcessARehearsalOutcomeLedgerRelativePath",
-        "Write-ColdRestoreExclusiveJson",
-        "Get-FileHash",
+        "Write-ProcessARehearsalExclusiveAtomicJson",
         "process_a_rehearsal_outcome_already_written",
         "process_a_rehearsal_outcome_collision",
         "^[a-z0-9_]{1,128}$",
-        "Assert-ColdRestoreOfficialAttemptBoundary"
+        "Get-ColdRestoreOfficialAttemptBoundaryObservation"
     )) "Outcome writer is fixed-path, exclusive, hashed, collision-aware, safe-coded, and official-boundary checked"
+    $outcomePublishOffset = $outcomeWriterSource.IndexOf("Write-ProcessARehearsalExclusiveAtomicJson", [StringComparison]::Ordinal)
+    $outcomePostPublishSource = if ($outcomePublishOffset -ge 0) { $outcomeWriterSource.Substring($outcomePublishOffset) } else { "" }
+    Assert-ContractCondition ($outcomePublishOffset -ge 0 -and
+        $outcomePostPublishSource.IndexOf('Get-FileHash -LiteralPath $outcomePath', [StringComparison]::Ordinal) -lt 0 -and
+        $outcomePostPublishSource.IndexOf("outcome_readback_mismatch", [StringComparison]::Ordinal) -lt 0) "Outcome success performs no fallible final-path I/O after exclusive atomic publication"
 
     foreach ($field in $outcomeFields) {
         Assert-ContractCondition ($outcomeWriterSource.IndexOf($field, [StringComparison]::Ordinal) -ge 0) "Outcome writer binds field $field"
@@ -423,6 +433,7 @@ try {
     $terminalTrySource = if ($null -ne $terminalTry) { [string]$terminalTry.Extent.Text } else { "" }
     $terminalFinallySource = if ($null -ne $terminalTry) { [string]$terminalTry.Finally.Extent.Text } else { "" }
     Assert-ContractCondition (Test-ContainsAll $terminalTrySource @(
+        "Assert-ProcessARehearsalAdmissionSourcesUnchanged",
         "Invoke-ColdRestoreAttestedProcess",
         "wrapper_exit_green",
         '$paths.child_result',
@@ -436,9 +447,7 @@ try {
         $consumeOffset = $consumeCommands[0].Extent.StartOffset
         $tryStart = $terminalTry.Extent.StartOffset
         $tryEnd = $terminalTry.Extent.EndOffset
-        $pathsOffset = $invokeRehearsal.Extent.StartOffset + $invokeSource.IndexOf('$paths = Get-ColdRestoreRolePaths', [StringComparison]::Ordinal)
-        $consumeProtected = ($consumeOffset -ge $tryStart -and $consumeOffset -lt $tryEnd) -or
-            ($tryStart -gt $consumeOffset -and $tryStart -le $pathsOffset)
+        $consumeProtected = $consumeOffset -ge $tryStart -and $consumeOffset -lt $tryEnd
         Assert-ContractCondition $consumeProtected "No fallible post-admission setup escapes terminal outcome protection"
     }
     else {
@@ -446,6 +455,7 @@ try {
     }
 
     Assert-ContractCondition (Test-ContainsAll $terminalFinallySource @(
+        'if ($admissionConsumed)',
         "admission_ledger_sha256",
         "launch_attestation_sha256",
         "child_attestation_sha256",
@@ -461,6 +471,55 @@ try {
         "task_owned_process_count_after",
         "terminal_code"
     )) "Finally supplies every available artifact SHA and process terminal fact"
+
+    $postCommitValidator = Get-FunctionAst $admissionAst "Assert-ProcessARehearsalAdmissionSourcesUnchanged"
+    $postCommitValidatorSource = if ($null -ne $postCommitValidator) { [string]$postCommitValidator.Extent.Text } else { "" }
+    Assert-ContractCondition ($null -ne $postCommitValidator -and (Test-ContainsAll $postCommitValidatorSource @(
+        "Read-ProcessARehearsalAdmissionLedger",
+        "admission_source_changed_after_commit",
+        "official_claim_state_changed_after_admission",
+        "diagnostic_launch_attestation_sha256",
+        "diagnostic_manifest_sha256",
+        "timeout_policy_fingerprint"
+    ))) "Post-commit source validation is explicit and runs after the caller owns the admission"
+
+    $newAdmissionFunction = Get-FunctionAst $admissionAst "New-ProcessARehearsalAdmission"
+    $newAdmissionSource = if ($null -ne $newAdmissionFunction) { [string]$newAdmissionFunction.Extent.Text } else { "" }
+    $publishOffset = $newAdmissionSource.IndexOf("Write-ProcessARehearsalExclusiveAtomicJson", [StringComparison]::Ordinal)
+    $postPublishSource = if ($publishOffset -ge 0) { $newAdmissionSource.Substring($publishOffset) } else { "" }
+    Assert-ContractCondition ($publishOffset -ge 0 -and
+        $postPublishSource.IndexOf("Get-FileHash", [StringComparison]::Ordinal) -lt 0 -and
+        $postPublishSource.IndexOf("Get-ProcessARehearsalOfficialClaimState", [StringComparison]::Ordinal) -lt 0) "Admission creation performs no fallible source or claim I/O after atomic publication"
+
+    $atomicWriterFunction = Get-FunctionAst $admissionAst "Write-ProcessARehearsalExclusiveAtomicJson"
+    $atomicWriterSource = if ($null -ne $atomicWriterFunction) { [string]$atomicWriterFunction.Extent.Text } else { "" }
+    Assert-ContractCondition ($null -ne $atomicWriterFunction -and (Test-ContainsAll $atomicWriterSource @(
+        '$sha256 = Get-ProcessARehearsalTextSha256 $json',
+        '[IO.File]::Move($tempPath, $fullPath)',
+        '$published = $true',
+        'if (-not $published',
+        'return $sha256'
+    )) -and
+        $atomicWriterSource.IndexOf("atomic_final_readback_failed", [StringComparison]::Ordinal) -lt 0 -and
+        $atomicWriterSource.IndexOf('$finalReadback', [StringComparison]::Ordinal) -lt 0) "Exclusive-atomic writer treats Move as the commit point and performs no fallible final-file readback afterward"
+
+    Assert-ContractCondition (Test-ContainsAll $invokeSource @(
+        '$primaryFailure = $_',
+        '$outcomeFailure = $_',
+        'if ($null -ne $primaryFailure)',
+        'throw $primaryFailure',
+        'if ($null -ne $outcomeFailure)',
+        'throw $outcomeFailure'
+    )) "Primary rehearsal failure retains precedence over a secondary outcome-write failure"
+
+    $atomicProductionPath = Join-Path $testRoot "production-atomic.json"
+    $atomicProductionValue = [pscustomobject][ordered]@{ schema_version = 1; value = "complete" }
+    $atomicProductionSha = Write-ProcessARehearsalExclusiveAtomicJson $atomicProductionPath $atomicProductionValue
+    $atomicProductionRaw = [IO.File]::ReadAllText($atomicProductionPath, [Text.UTF8Encoding]::new($false))
+    Assert-ContractCondition ($atomicProductionSha -cmatch '^[0-9a-f]{64}$' -and ($atomicProductionRaw | ConvertFrom-Json).value -ceq "complete") "Production exclusive-atomic writer publishes one complete parseable file"
+    Assert-ContractThrows { $null = Write-ProcessARehearsalExclusiveAtomicJson $atomicProductionPath $atomicProductionValue } "process_a_rehearsal_atomic_target_exists" "Production exclusive-atomic writer rejects target reuse"
+    Assert-ContractCondition (@(Get-ChildItem -LiteralPath $testRoot -File -Filter ".production-atomic.json.tmp.*").Count -eq 0) "Production exclusive-atomic writer leaves no temporary sidecar"
+
     Assert-ContractCondition (Test-ContainsAll $terminalFinallySource @(
         'official = $false',
         'official_attempt_2_claim_present = $false',

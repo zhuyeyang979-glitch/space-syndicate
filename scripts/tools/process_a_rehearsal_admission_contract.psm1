@@ -429,6 +429,8 @@ function Write-ProcessARehearsalExclusiveAtomicJson {
     $tempPath = Join-Path $parent (".{0}.tmp.{1}.{2}" -f [IO.Path]::GetFileName($fullPath), $PID, [Guid]::NewGuid().ToString("N"))
     $json = ConvertTo-ProcessARehearsalCanonicalJson $Value
     $bytes = [Text.UTF8Encoding]::new($false).GetBytes($json)
+    $sha256 = Get-ProcessARehearsalTextSha256 $json
+    $published = $false
     try {
         $stream = [IO.FileStream]::new(
             $tempPath,
@@ -452,6 +454,7 @@ function Write-ProcessARehearsalExclusiveAtomicJson {
         $null = $tempReadback | ConvertFrom-Json
         try {
             [IO.File]::Move($tempPath, $fullPath)
+            $published = $true
         }
         catch {
             if ([IO.File]::Exists($fullPath)) {
@@ -459,17 +462,13 @@ function Write-ProcessARehearsalExclusiveAtomicJson {
             }
             throw "process_a_rehearsal_atomic_publish_failed"
         }
-        $finalReadback = [IO.File]::ReadAllText($fullPath, [Text.UTF8Encoding]::new($false))
-        if ($finalReadback -cne $json) {
-            throw "process_a_rehearsal_atomic_final_readback_failed"
-        }
-        return Get-ProcessARehearsalTextSha256 $json
     }
     finally {
-        if ([IO.File]::Exists($tempPath)) {
+        if (-not $published -and [IO.File]::Exists($tempPath)) {
             [IO.File]::Delete($tempPath)
         }
     }
+    return $sha256
 }
 
 function Get-ProcessARehearsalCurrentCreationTicks {
@@ -1240,6 +1239,30 @@ function Get-ProcessARehearsalAdmissionCollisionReason {
     return "process_a_rehearsal_admission_ledger_collision"
 }
 
+function ConvertTo-ProcessARehearsalLaunchAuthorization {
+    param(
+        [Parameter(Mandatory = $true)]$Ledger,
+        [Parameter(Mandatory = $true)][string]$LedgerSha256
+    )
+
+    $authorization = [ordered]@{
+        authorization_id = [string]$Ledger.authorization_id
+        claim_fingerprint = $LedgerSha256
+        claim_nonce = [string]$Ledger.claim_nonce
+        source_head_sha = [string]$Ledger.repository_head
+        scenario_fingerprint = [string]$Ledger.scenario_fingerprint
+        run_id = [string]$Ledger.run_id
+        process_role = [string]$Ledger.process_role
+        launch_nonce = [string]$Ledger.launch_nonce
+        orchestrator_process_id = [int]$Ledger.orchestrator_process_id
+        orchestrator_creation_time_utc_ticks = [string]$Ledger.orchestrator_creation_time_utc_ticks
+    }
+    if (-not (Test-ProcessARehearsalExactFieldSet ([pscustomobject]$authorization) $script:LaunchAuthorizationFields)) {
+        throw "process_a_rehearsal_launch_authorization_invalid"
+    }
+    return [pscustomobject]$authorization
+}
+
 function Get-ProcessARehearsalLaunchAuthorization {
     [CmdletBinding()]
     param(
@@ -1248,23 +1271,7 @@ function Get-ProcessARehearsalLaunchAuthorization {
     )
 
     $admission = Read-ProcessARehearsalAdmissionLedger $AdmissionLedgerPath $ExpectedAdmissionLedgerSha256
-    $ledger = $admission.value
-    $authorization = [ordered]@{
-        authorization_id = [string]$ledger.authorization_id
-        claim_fingerprint = [string]$admission.fingerprint
-        claim_nonce = [string]$ledger.claim_nonce
-        source_head_sha = [string]$ledger.repository_head
-        scenario_fingerprint = [string]$ledger.scenario_fingerprint
-        run_id = [string]$ledger.run_id
-        process_role = [string]$ledger.process_role
-        launch_nonce = [string]$ledger.launch_nonce
-        orchestrator_process_id = [int]$ledger.orchestrator_process_id
-        orchestrator_creation_time_utc_ticks = [string]$ledger.orchestrator_creation_time_utc_ticks
-    }
-    if (-not (Test-ProcessARehearsalExactFieldSet ([pscustomobject]$authorization) $script:LaunchAuthorizationFields)) {
-        throw "process_a_rehearsal_launch_authorization_invalid"
-    }
-    return [pscustomobject]$authorization
+    return ConvertTo-ProcessARehearsalLaunchAuthorization $admission.value $admission.fingerprint
 }
 
 function New-ProcessARehearsalAdmission {
@@ -1378,22 +1385,7 @@ function New-ProcessARehearsalAdmission {
         throw
     }
 
-    if ((Get-FileHash -LiteralPath $AdmissionEvidencePath -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$evidence.diagnostic_artifact_sha256 `
-        -or (Get-FileHash -LiteralPath $DiagnosticQuotaLedgerPath -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$evidence.diagnostic_quota_ledger_sha256 `
-        -or (Get-FileHash -LiteralPath $DiagnosticLaunchAttestationPath -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$evidence.diagnostic_launch_attestation_sha256 `
-        -or (Get-FileHash -LiteralPath $DiagnosticManifestPath -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$evidence.diagnostic_manifest_sha256 `
-        -or (Get-FileHash -LiteralPath $DiagnosticChildAttestationPath -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$evidence.diagnostic_child_attestation_sha256 `
-        -or (Get-FileHash -LiteralPath $DiagnosticParentAttestationPath -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$evidence.diagnostic_parent_attestation_sha256 `
-        -or (Get-FileHash -LiteralPath $DiagnosticStdoutPath -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$evidence.diagnostic_stdout_sha256 `
-        -or (Get-FileHash -LiteralPath $DiagnosticStderrPath -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$evidence.diagnostic_stderr_sha256 `
-        -or (Get-FileHash -LiteralPath $TimeoutPolicyPath -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$policy.sha256) {
-        throw "process_a_rehearsal_admission_source_changed_during_commit"
-    }
-    $claimStateAfter = Get-ProcessARehearsalOfficialClaimState $OfficialClaimRoot $OfficialAttempt1ClaimPath
-    if ([string]$claimStateAfter.inventory_fingerprint -cne [string]$claimState.inventory_fingerprint) {
-        throw "process_a_rehearsal_official_claim_state_changed_during_admission"
-    }
-    $authorization = Get-ProcessARehearsalLaunchAuthorization $LedgerPath $ledgerSha
+    $authorization = ConvertTo-ProcessARehearsalLaunchAuthorization ([pscustomobject]$ledger) $ledgerSha
     return [pscustomobject]@{
         path = [IO.Path]::GetFullPath($LedgerPath)
         fingerprint = [string]$ledgerSha
@@ -1401,6 +1393,57 @@ function New-ProcessARehearsalAdmission {
         timeout_policy_fingerprint = [string]$policy.sha256
         launch_authorization = $authorization
     }
+}
+
+function Assert-ProcessARehearsalAdmissionSourcesUnchanged {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]$Admission,
+        [Parameter(Mandatory = $true)][string]$TimeoutPolicyPath,
+        [Parameter(Mandatory = $true)][string]$AdmissionEvidencePath,
+        [Parameter(Mandatory = $true)][string]$DiagnosticQuotaLedgerPath,
+        [Parameter(Mandatory = $true)][string]$DiagnosticLaunchAttestationPath,
+        [Parameter(Mandatory = $true)][string]$DiagnosticManifestPath,
+        [Parameter(Mandatory = $true)][string]$DiagnosticChildAttestationPath,
+        [Parameter(Mandatory = $true)][string]$DiagnosticParentAttestationPath,
+        [Parameter(Mandatory = $true)][string]$DiagnosticStdoutPath,
+        [Parameter(Mandatory = $true)][string]$DiagnosticStderrPath,
+        [Parameter(Mandatory = $true)][string]$OfficialClaimRoot,
+        [Parameter(Mandatory = $true)][string]$OfficialAttempt1ClaimPath
+    )
+
+    $ledger = $Admission.value
+    $null = Read-ProcessARehearsalAdmissionLedger $Admission.path $Admission.fingerprint
+    $sourceBindings = @(
+        @($AdmissionEvidencePath, [string]$ledger.admission_evidence_sha256),
+        @($DiagnosticQuotaLedgerPath, [string]$ledger.diagnostic_quota_ledger_sha256),
+        @($DiagnosticLaunchAttestationPath, [string]$ledger.diagnostic_launch_attestation_sha256),
+        @($DiagnosticManifestPath, [string]$ledger.diagnostic_manifest_sha256),
+        @($DiagnosticChildAttestationPath, [string]$ledger.diagnostic_child_attestation_sha256),
+        @($DiagnosticParentAttestationPath, [string]$ledger.diagnostic_parent_attestation_sha256),
+        @($DiagnosticStdoutPath, [string]$ledger.diagnostic_stdout_sha256),
+        @($DiagnosticStderrPath, [string]$ledger.diagnostic_stderr_sha256),
+        @($TimeoutPolicyPath, [string]$ledger.timeout_policy_fingerprint)
+    )
+    foreach ($binding in $sourceBindings) {
+        try {
+            if (-not [IO.File]::Exists([string]$binding[0]) `
+                -or (Get-FileHash -LiteralPath ([string]$binding[0]) -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$binding[1]) {
+                throw "process_a_rehearsal_admission_source_changed_after_commit"
+            }
+        }
+        catch {
+            if ([string]$_.Exception.Message -ceq "process_a_rehearsal_admission_source_changed_after_commit") {
+                throw
+            }
+            throw "process_a_rehearsal_admission_source_changed_after_commit"
+        }
+    }
+    $claimStateAfter = Get-ProcessARehearsalOfficialClaimState $OfficialClaimRoot $OfficialAttempt1ClaimPath
+    if ([string]$claimStateAfter.inventory_fingerprint -cne [string]$ledger.official_claim_inventory_fingerprint) {
+        throw "process_a_rehearsal_official_claim_state_changed_after_admission"
+    }
+    return $true
 }
 
 function Assert-ProcessARehearsalLaunchAttestation {
@@ -1691,7 +1734,9 @@ function Get-ProcessARehearsalAdmissionContractInfo {
 Export-ModuleMember -Function @(
     "Get-ProcessARehearsalAdmissionContractInfo",
     "Get-ProcessARehearsalAdmissionEvidence",
+    "Write-ProcessARehearsalExclusiveAtomicJson",
     "New-ProcessARehearsalAdmission",
+    "Assert-ProcessARehearsalAdmissionSourcesUnchanged",
     "Read-ProcessARehearsalAdmissionLedger",
     "Get-ProcessARehearsalLaunchAuthorization",
     "Complete-ProcessARehearsalLaunch",

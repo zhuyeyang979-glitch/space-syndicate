@@ -783,11 +783,14 @@ function Write-ColdRestoreProcessARehearsalOutcome {
         -and [string]$Admission.value.authorization_id -ceq $ProcessARehearsalAuthorizationId) "process_a_rehearsal_outcome_admission_invalid"
     $gitCommonDirectory = Resolve-ColdRestoreGitCommonDirectory $ResolvedProjectPath
     $outcomePath = Join-Path $gitCommonDirectory $ProcessARehearsalOutcomeLedgerRelativePath
-    $officialBoundary = Assert-ColdRestoreOfficialAttemptBoundary $ResolvedProjectPath
+    $officialBoundary = Get-ColdRestoreOfficialAttemptBoundaryObservation $ResolvedProjectPath
     Assert-ColdRestoreCondition (-not [bool]$Evidence.official `
-        -and -not [bool]$Evidence.official_attempt_2_claim_present `
-        -and -not [bool]$Evidence.official_attempt_2_authorization_consumed `
-        -and [bool]$officialBoundary.attempt_2_absent) "process_a_rehearsal_outcome_official_boundary_invalid"
+        -and -not [bool]$Evidence.official_attempt_2_authorization_consumed) "process_a_rehearsal_outcome_official_boundary_invalid"
+    if ($Success) {
+        Assert-ColdRestoreCondition ([bool]$officialBoundary.attempt_1_valid `
+            -and [int]$officialBoundary.claim_count -eq 1 `
+            -and [bool]$officialBoundary.attempt_2_absent) "process_a_rehearsal_outcome_official_boundary_invalid"
+    }
 
     $launchAttestationSha256 = Get-ColdRestoreOptionalFileSha256 ([string]$Evidence.launch_attestation_path)
     $childAttestationSha256 = Get-ColdRestoreOptionalFileSha256 ([string]$Evidence.child_attestation_path)
@@ -807,7 +810,7 @@ function Write-ColdRestoreProcessARehearsalOutcome {
         scenario_fingerprint = $ExpectedScenarioFingerprint
         official = $false
         formal = $false
-        official_attempt_2_claim_present = $false
+        official_attempt_2_claim_present = [bool]$officialBoundary.attempt_2_claim_present
         official_attempt_2_authorization_consumed = $false
         rehearsal_admission_consumed = $true
         admission_ledger_sha256 = [string]$Admission.fingerprint
@@ -849,7 +852,7 @@ function Write-ColdRestoreProcessARehearsalOutcome {
         throw "process_a_rehearsal_outcome_collision"
     }
     try {
-        $outcomeSha256 = Write-ColdRestoreExclusiveJson $outcomePath ([pscustomobject]$ledger)
+        $outcomeSha256 = Write-ProcessARehearsalExclusiveAtomicJson $outcomePath ([pscustomobject]$ledger)
     }
     catch {
         if ([IO.File]::Exists($outcomePath)) {
@@ -861,7 +864,6 @@ function Write-ColdRestoreProcessARehearsalOutcome {
         }
         throw "process_a_rehearsal_outcome_write_failed"
     }
-    Assert-ColdRestoreCondition ((Get-FileHash -LiteralPath $outcomePath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $outcomeSha256) "process_a_rehearsal_outcome_readback_mismatch"
     return [pscustomobject]@{
         path = $outcomePath
         fingerprint = $outcomeSha256
@@ -1281,8 +1283,32 @@ function Invoke-ColdRestoreNonOfficialProcessA {
     $terminalStage = "pre_wrapper_failure"
     $terminalCode = "process_a_rehearsal_pre_wrapper_failure"
     $terminalSuccess = $false
-    $rehearsalAuthorization = Consume-ColdRestoreProcessARehearsalQuota $ResolvedProjectPath $HeadSha $diagnosticAdmission
+    $primaryFailure = $null
+    $outcomeFailure = $null
+    $gitCommonDirectory = Resolve-ColdRestoreGitCommonDirectory $ResolvedProjectPath
+    $admissionConsumed = $false
     try {
+        $rehearsalAuthorization = Consume-ColdRestoreProcessARehearsalQuota $ResolvedProjectPath $HeadSha $diagnosticAdmission
+        $admissionConsumed = $true
+        $terminalStage = "admission_post_commit_validation_failure"
+        $terminalCode = "process_a_rehearsal_admission_post_commit_validation_failed"
+        $officialClaimRoot = Join-Path $gitCommonDirectory "codex\cold_restore_v3"
+        $officialAttempt1ClaimPath = Join-Path $officialClaimRoot ([string]$rehearsalAuthorization.value.official_attempt_1_claim_relative_path)
+        $null = Assert-ProcessARehearsalAdmissionSourcesUnchanged `
+            -Admission $rehearsalAuthorization `
+            -TimeoutPolicyPath $RoleTimeoutPolicyEvidence.path `
+            -AdmissionEvidencePath $diagnosticAdmission.path `
+            -DiagnosticQuotaLedgerPath $diagnosticAdmission.quota_ledger_path `
+            -DiagnosticLaunchAttestationPath $diagnosticAdmission.launch_attestation_path `
+            -DiagnosticManifestPath $diagnosticAdmission.manifest_path `
+            -DiagnosticChildAttestationPath $diagnosticAdmission.child_attestation_path `
+            -DiagnosticParentAttestationPath $diagnosticAdmission.parent_attestation_path `
+            -DiagnosticStdoutPath $diagnosticAdmission.stdout_path `
+            -DiagnosticStderrPath $diagnosticAdmission.stderr_path `
+            -OfficialClaimRoot $officialClaimRoot `
+            -OfficialAttempt1ClaimPath $officialAttempt1ClaimPath
+        $terminalStage = "pre_wrapper_failure"
+        $terminalCode = "process_a_rehearsal_pre_wrapper_failure"
         $paths = Get-ColdRestoreRolePaths $ResolvedProjectPath "producer"
         $launchAuthorization = $rehearsalAuthorization.launch_authorization
         $launchAttestationPath = Join-Path $paths.root "launch\orchestrator-$($launchAuthorization.orchestrator_process_id)\producer.authorized.json"
@@ -1438,48 +1464,61 @@ function Invoke-ColdRestoreNonOfficialProcessA {
         else {
             "process_a_rehearsal_unknown_failure"
         }
-        throw
+        $primaryFailure = $_
     }
     finally {
-        $wrapperResultPresent = $null -ne $run -and $null -ne $run.parent
-        $outcomeEvidence = [pscustomobject][ordered]@{
-            admission_ledger_sha256 = [string]$rehearsalAuthorization.fingerprint
-            launch_attestation_path = $launchAttestationPath
-            launch_attestation_sha256 = Get-ColdRestoreOptionalFileSha256 $launchAttestationPath
-            child_attestation_path = $childAttestationPath
-            child_attestation_sha256 = Get-ColdRestoreOptionalFileSha256 $childAttestationPath
-            parent_attestation_path = $parentAttestationPath
-            parent_attestation_sha256 = Get-ColdRestoreOptionalFileSha256 $parentAttestationPath
-            stdout_path = $stdoutPath
-            stdout_sha256 = Get-ColdRestoreOptionalFileSha256 $stdoutPath
-            stderr_path = $stderrPath
-            stderr_sha256 = Get-ColdRestoreOptionalFileSha256 $stderrPath
-            manifest_path = $manifestPath
-            manifest_sha256 = Get-ColdRestoreOptionalFileSha256 $manifestPath
-            phase_timeline_path = $phaseTimelinePath
-            phase_timeline_sha256 = Get-ColdRestoreOptionalFileSha256 $phaseTimelinePath
-            completion_path = $completionPath
-            completion_sha256 = Get-ColdRestoreOptionalFileSha256 $completionPath
-            wrapper_result_present = $wrapperResultPresent
-            observed_exit = $(if ($wrapperResultPresent) { [bool]$run.parent.observed_exit } else { $false })
-            exit_code_observed = $(if ($wrapperResultPresent) { [bool]$run.parent.observed_exit } else { $false })
-            exit_code = $(if ($wrapperResultPresent) { [int]$run.parent.exit_code } else { -1 })
-            timed_out = $(if ($wrapperResultPresent) { [bool]$run.parent.timed_out } else { $false })
-            terminated_by_parent = $(if ($wrapperResultPresent) { [bool]$run.parent.terminated_by_parent } else { $false })
-            task_owned_process_count_after = $(if ($wrapperResultPresent) { [int]$run.parent.task_owned_process_count_after } else { -1 })
-            terminal_code = $terminalCode
-            official = $false
-            official_attempt_2_claim_present = $false
-            official_attempt_2_authorization_consumed = $false
+        if ($admissionConsumed) {
+            try {
+                $wrapperResultPresent = $null -ne $run -and $null -ne $run.parent
+                $outcomeEvidence = [pscustomobject][ordered]@{
+                admission_ledger_sha256 = [string]$rehearsalAuthorization.fingerprint
+                launch_attestation_path = $launchAttestationPath
+                launch_attestation_sha256 = Get-ColdRestoreOptionalFileSha256 $launchAttestationPath
+                child_attestation_path = $childAttestationPath
+                child_attestation_sha256 = Get-ColdRestoreOptionalFileSha256 $childAttestationPath
+                parent_attestation_path = $parentAttestationPath
+                parent_attestation_sha256 = Get-ColdRestoreOptionalFileSha256 $parentAttestationPath
+                stdout_path = $stdoutPath
+                stdout_sha256 = Get-ColdRestoreOptionalFileSha256 $stdoutPath
+                stderr_path = $stderrPath
+                stderr_sha256 = Get-ColdRestoreOptionalFileSha256 $stderrPath
+                manifest_path = $manifestPath
+                manifest_sha256 = Get-ColdRestoreOptionalFileSha256 $manifestPath
+                phase_timeline_path = $phaseTimelinePath
+                phase_timeline_sha256 = Get-ColdRestoreOptionalFileSha256 $phaseTimelinePath
+                completion_path = $completionPath
+                completion_sha256 = Get-ColdRestoreOptionalFileSha256 $completionPath
+                wrapper_result_present = $wrapperResultPresent
+                observed_exit = $(if ($wrapperResultPresent) { [bool]$run.parent.observed_exit } else { $false })
+                exit_code_observed = $(if ($wrapperResultPresent) { [bool]$run.parent.observed_exit } else { $false })
+                exit_code = $(if ($wrapperResultPresent) { [int]$run.parent.exit_code } else { -1 })
+                timed_out = $(if ($wrapperResultPresent) { [bool]$run.parent.timed_out } else { $false })
+                terminated_by_parent = $(if ($wrapperResultPresent) { [bool]$run.parent.terminated_by_parent } else { $false })
+                task_owned_process_count_after = $(if ($wrapperResultPresent) { [int]$run.parent.task_owned_process_count_after } else { -1 })
+                terminal_code = $terminalCode
+                official = $false
+                official_attempt_2_claim_present = $false
+                official_attempt_2_authorization_consumed = $false
+                }
+                $outcome = Write-ColdRestoreProcessARehearsalOutcome `
+                    -ResolvedProjectPath $ResolvedProjectPath `
+                    -HeadSha $HeadSha `
+                    -Admission $rehearsalAuthorization `
+                    -Evidence $outcomeEvidence `
+                    -TerminalStage $terminalStage `
+                    -TerminalCode $terminalCode `
+                    -Success $terminalSuccess
+            }
+            catch {
+                $outcomeFailure = $_
+            }
         }
-        $outcome = Write-ColdRestoreProcessARehearsalOutcome `
-            -ResolvedProjectPath $ResolvedProjectPath `
-            -HeadSha $HeadSha `
-            -Admission $rehearsalAuthorization `
-            -Evidence $outcomeEvidence `
-            -TerminalStage $terminalStage `
-            -TerminalCode $terminalCode `
-            -Success $terminalSuccess
+    }
+    if ($null -ne $primaryFailure) {
+        throw $primaryFailure
+    }
+    if ($null -ne $outcomeFailure) {
+        throw $outcomeFailure
     }
     return [pscustomobject]@{
         run = $run
@@ -2175,25 +2214,44 @@ function Resolve-ColdRestoreGitCommonDirectory {
     return $resolved
 }
 
-function Assert-ColdRestoreOfficialAttemptBoundary {
+function Get-ColdRestoreOfficialAttemptBoundaryObservation {
     param([Parameter(Mandatory = $true)][string]$ResolvedProjectPath)
 
     $gitCommonDirectory = Resolve-ColdRestoreGitCommonDirectory $ResolvedProjectPath
     $officialClaimPath = Join-Path $gitCommonDirectory $OfficialClaimRelativePath
-    Assert-ColdRestoreCondition ([IO.File]::Exists($officialClaimPath) `
-        -and (Get-FileHash -LiteralPath $officialClaimPath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $OfficialAttempt1ClaimSha256) "official_attempt_1_claim_mutated"
+    $attempt1Present = [IO.File]::Exists($officialClaimPath)
+    $attempt1Sha256 = if ($attempt1Present) {
+        (Get-FileHash -LiteralPath $officialClaimPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    else {
+        ""
+    }
     $officialRoot = Join-Path $gitCommonDirectory "codex\cold_restore_v3"
     $officialClaims = @(
         Get-ChildItem -LiteralPath $officialRoot -Directory -Filter "official-*" -ErrorAction SilentlyContinue |
             Get-ChildItem -File -Filter "*claim*.json" -ErrorAction SilentlyContinue
     )
-    Assert-ColdRestoreCondition ($officialClaims.Count -eq 1 `
-        -and [IO.Path]::GetFullPath($officialClaims[0].FullName) -ceq [IO.Path]::GetFullPath($officialClaimPath)) "official_attempt_2_claim_must_be_absent"
+    $unexpectedClaims = @($officialClaims | Where-Object {
+        [IO.Path]::GetFullPath($_.FullName) -cne [IO.Path]::GetFullPath($officialClaimPath)
+    })
     return [pscustomobject]@{
         path = $officialClaimPath
-        sha256 = $OfficialAttempt1ClaimSha256
-        attempt_2_absent = $true
+        sha256 = $attempt1Sha256
+        attempt_1_valid = $attempt1Present -and $attempt1Sha256 -ceq $OfficialAttempt1ClaimSha256
+        claim_count = $officialClaims.Count
+        attempt_2_claim_present = $unexpectedClaims.Count -gt 0
+        attempt_2_absent = $unexpectedClaims.Count -eq 0
     }
+}
+
+function Assert-ColdRestoreOfficialAttemptBoundary {
+    param([Parameter(Mandatory = $true)][string]$ResolvedProjectPath)
+
+    $observation = Get-ColdRestoreOfficialAttemptBoundaryObservation $ResolvedProjectPath
+    Assert-ColdRestoreCondition ([bool]$observation.attempt_1_valid) "official_attempt_1_claim_mutated"
+    Assert-ColdRestoreCondition ([int]$observation.claim_count -eq 1 `
+        -and [bool]$observation.attempt_2_absent) "official_attempt_2_claim_must_be_absent"
+    return $observation
 }
 
 function Get-ColdRestoreOrchestratorCreationTimeTicks {
@@ -2349,10 +2407,6 @@ function Consume-ColdRestoreProcessARehearsalQuota {
         }
         throw
     }
-    Assert-ColdRestoreCondition ([IO.Path]::GetFullPath($admission.path) -ceq [IO.Path]::GetFullPath($ledgerPath) `
-        -and [string]$admission.fingerprint -cmatch '^[0-9a-f]{64}$' `
-        -and [string]$admission.value.authorization_id -ceq $ProcessARehearsalAuthorizationId `
-        -and [string]$admission.value.official_attempt_1_claim_sha256 -ceq [string]$officialBoundary.sha256) "process_a_rehearsal_admission_invalid"
     $admission | Add-Member -NotePropertyName launch_ledger_path -NotePropertyValue $launchLedgerPath
     return $admission
 }
