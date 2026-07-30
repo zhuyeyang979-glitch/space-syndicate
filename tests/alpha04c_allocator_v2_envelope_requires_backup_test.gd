@@ -124,6 +124,13 @@ func _expect(condition: bool, message: String) -> void:
 
 
 func _finish() -> void:
+	print("ALPHA04C_ALLOCATOR_V2_ENVELOPE_REQUIRES_BACKUP_EVIDENCE|%s" % JSON.stringify({
+		"envelope_schema_version": 3,
+		"legacy_card_inventory_section_version": 2,
+		"missing_save_field": "card_inventory.district_purchase.district_purchase_runtime.next_quote_sequence",
+		"reason_code": MISSING_CURSOR_REASON,
+		"requires_backup": true,
+	}, "", true))
 	print("ALPHA04C_ALLOCATOR_V2_ENVELOPE_REQUIRES_BACKUP_TEST|status=%s|checks=%d|failures=%d|details=%s" % [
 		"PASS" if _failures.is_empty() else "FAIL",
 		_checks,

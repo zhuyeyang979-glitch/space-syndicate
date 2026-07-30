@@ -323,6 +323,19 @@ func _expect(condition: bool, message: String) -> void:
 
 
 func _finish() -> void:
+	print("ALPHA04C_ALLOCATOR_CONTRACT_CLOSURE_EVIDENCE|%s" % JSON.stringify({
+		"saved_next_quote_sequence": SAVED_CURSOR,
+		"rejected_high_sequence": HIGH_SEQUENCE,
+		"rejected_transaction_id": HIGH_TRANSACTION_ID,
+		"reason_code": REGRESSED_CURSOR_REASON,
+		"dictionary_key_paths": [
+			"card_inventory.commodity_card_inventory.transaction_journal",
+			"card_inventory.commodity_card_inventory.terminal_operations",
+			"card_inventory.commodity_card_inventory.state_port.journal",
+			"region_supply.pending_transactions",
+			"region_supply.terminal_transactions",
+		],
+	}, "", true))
 	print("ALPHA04C_ALLOCATOR_CONTRACT_CLOSURE_TEST|status=%s|checks=%d|failures=%d|details=%s" % [
 		"PASS" if _failures.is_empty() else "FAIL",
 		_checks,
