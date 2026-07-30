@@ -183,6 +183,40 @@ func _complete_process_a_phase(phase_id: String, evidence: Dictionary = {}) -> v
 	_record_timeline_result(_process_a_timeline.call("complete_phase", phase_id, true, "ok", evidence))
 
 
+func _close_process_a_failure_phases(result: Dictionary) -> void:
+	if _process_a_timeline == null or bool(result.get("success", false)) \
+			or not _process_a_timeline_failure.is_empty():
+		return
+	var failure_code := _safe_reason_code(str(result.get("failure_code", "role_failed")))
+	var snapshot: Dictionary = _process_a_timeline.call("snapshot")
+	var current_phase := str(snapshot.get("current_phase", ""))
+	if not current_phase.is_empty():
+		_record_timeline_result(_process_a_timeline.call(
+			"complete_phase",
+			current_phase,
+			false,
+			failure_code,
+			{"failure_code": failure_code}
+		))
+	while _process_a_timeline_failure.is_empty():
+		snapshot = _process_a_timeline.call("snapshot")
+		var rows: Array = snapshot.get("phase_rows", [])
+		var manifest_index := PROCESS_A_TIMELINE.PHASE_IDS.find("allowlisted_manifest_complete")
+		if rows.size() >= manifest_index:
+			break
+		var skipped_phase := str(PROCESS_A_TIMELINE.PHASE_IDS[rows.size()])
+		_record_timeline_result(_process_a_timeline.call("enter_phase", skipped_phase))
+		if not _process_a_timeline_failure.is_empty():
+			break
+		_record_timeline_result(_process_a_timeline.call(
+			"complete_phase",
+			skipped_phase,
+			false,
+			"skipped_after_role_failure",
+			{"failure_code": failure_code}
+		))
+
+
 func _mark_process_a_timeline(method_name: String) -> void:
 	if _process_a_timeline == null or not _process_a_timeline_failure.is_empty():
 		return
@@ -300,6 +334,7 @@ func _run_entry() -> void:
 	var started_ms := Time.get_ticks_msec()
 	var result: Dictionary = await _run_role(validation, str(parsed.get("head_sha", "")))
 	result["elapsed_ms"] = maxi(0, Time.get_ticks_msec() - started_ms)
+	_close_process_a_failure_phases(result)
 	_enter_process_a_phase("allowlisted_manifest_complete")
 	var manifest := sanitize_public_manifest(result)
 	if manifest.is_empty():
@@ -744,7 +779,7 @@ static func sanitize_public_manifest(source: Dictionary) -> Dictionary:
 		"write_fingerprint": str(source.get("write_fingerprint", "")),
 		"elapsed_ms": maxi(0, int(source.get("elapsed_ms", 0))),
 		"success": bool(source.get("success", false)),
-		"failure_code": str(source.get("failure_code", "")),
+		"failure_code": _safe_reason_code(str(source.get("failure_code", ""))),
 	}
 	return result if _manifest_shape_valid(result) else {}
 
@@ -1063,6 +1098,19 @@ static func _evidence_exit_code(write_result: Dictionary) -> int:
 	if reason_code.contains("readback"):
 		return 14
 	return 13
+
+
+static func _safe_reason_code(value: String) -> String:
+	var normalized := value.strip_edges().to_lower()
+	var result := ""
+	for index in range(normalized.length()):
+		var character := normalized.substr(index, 1)
+		if "abcdefghijklmnopqrstuvwxyz0123456789_".contains(character):
+			result += character
+		elif not result.ends_with("_"):
+			result += "_"
+	result = result.trim_prefix("_").trim_suffix("_")
+	return (result if not result.is_empty() else "role_failed").left(128)
 
 
 func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -> Dictionary:
@@ -4671,7 +4719,7 @@ func _manifest_base(run_id: String, role: String, head_sha: String) -> Dictionar
 func _fail(base: Dictionary, reason_code: String) -> Dictionary:
 	base["slot_state"] = "failed"
 	base["success"] = false
-	base["failure_code"] = reason_code
+	base["failure_code"] = _safe_reason_code(reason_code)
 	return base
 
 

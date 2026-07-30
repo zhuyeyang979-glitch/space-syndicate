@@ -602,12 +602,14 @@ function Invoke-ColdRestoreNonOfficialProcessA {
     Assert-ColdRestoreCondition ([bool]$run.wrapper_exit_green) "producer_$($run.wrapper_reason_code)"
     $manifest = Read-ColdRestoreJsonArtifact $paths.child_result
     Assert-ColdRestoreManifest $manifest "producer" $RunId
-    Assert-ColdRestoreCondition ([bool]$manifest.success) "producer_manifest_failed"
     Assert-ColdRestoreCondition (-not [bool]$run.child.official `
         -and -not [bool]$run.child.formal `
         -and -not [bool]$run.child.official_count_consumed `
-        -and [bool]$run.child.save_written `
-        -and [bool]$run.child.qualification_green) "non_official_process_a_child_binding_invalid"
+        -and [bool]$run.child.qualification_green -eq [bool]$manifest.success) "non_official_process_a_child_binding_invalid"
+    if ($NonOfficialProcessAKind -eq "rehearsal") {
+        Assert-ColdRestoreCondition ([bool]$manifest.success `
+            -and [bool]$run.child.save_written) "process_a_rehearsal_product_failed"
+    }
     $timeline = $run.phase_timeline
     Assert-ColdRestoreCondition ($null -ne $timeline `
         -and [int]$timeline.schema_version -eq 1 `
@@ -661,7 +663,7 @@ function New-ColdRestoreNonOfficialProcessAOutput {
         task_owned_process_count_after = [int]$Result.run.parent.task_owned_process_count_after
         phase_rows = @($Result.timeline.phase_rows)
         success = [bool]$Result.run.wrapper_exit_green -and [bool]$Result.manifest.success
-        failure_code = ""
+        failure_code = $(if ([bool]$Result.manifest.success) { "" } else { [string]$Result.manifest.failure_code })
     }
 }
 
