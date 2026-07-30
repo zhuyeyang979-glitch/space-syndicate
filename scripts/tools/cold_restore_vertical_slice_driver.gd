@@ -16,8 +16,8 @@ const FORMAL_FULL_RUN := false
 const EXECUTION_READY := true
 const ACCEPTANCE_SEED := 900626424
 const ACCEPTANCE_CHALLENGE_DEPTH := 1
-const SCHEMA_VERSION := 4
-const OFFICIAL_CLAIM_SCHEMA_VERSION := 2
+const SCHEMA_VERSION := 3
+const OFFICIAL_CLAIM_SCHEMA_VERSION := 1
 const OFFICIAL_AUTHORIZATION_ID := "alpha04c-p0-cold-restore-depth1-seed900626424-v1"
 const OFFICIAL_CLAIM_RELATIVE_PATH := "codex/cold_restore_v3/official-alpha04c-depth1-seed900626424/official_claim_ledger.json"
 const LAUNCH_ATTESTATION_SCHEMA_VERSION := 1
@@ -38,15 +38,6 @@ const PUBLIC_MANIFEST_FIELDS := [
 	"run_id",
 	"process_role",
 	"process_id",
-	"parent_process_id",
-	"process_creation_time_utc_ticks",
-	"wrapper_process_id",
-	"wrapper_parent_process_id",
-	"wrapper_creation_time_utc_ticks",
-	"orchestrator_process_id",
-	"orchestrator_creation_time_utc_ticks",
-	"launch_nonce",
-	"official_claim_fingerprint",
 	"head_sha",
 	"slot_id",
 	"slot_state",
@@ -121,13 +112,24 @@ const OFFICIAL_CLAIM_FIELDS := [
 	"schema_version",
 	"authorization_id",
 	"created_at_utc",
+	"run_id",
 	"source_head_sha",
 	"challenge_depth",
 	"seed",
-	"status",
-	"claim_nonce",
+	"scenario_fingerprint",
+	"qualification_child_attestation_fingerprint",
+	"qualification_parent_attestation_sha256",
+	"qualification_result_sha256",
+	"orchestrator_id",
+	"orchestrator_schema_version",
+	"orchestrator_script_sha256",
 	"orchestrator_process_id",
 	"orchestrator_creation_time_utc_ticks",
+	"claim_nonce",
+	"status",
+	"authorized_official_count",
+	"official_count_before",
+	"official_count_after",
 ]
 const LAUNCH_ATTESTATION_FIELDS := [
 	"schema_version",
@@ -135,6 +137,7 @@ const LAUNCH_ATTESTATION_FIELDS := [
 	"claim_fingerprint",
 	"claim_nonce",
 	"source_head_sha",
+	"scenario_fingerprint",
 	"run_id",
 	"process_role",
 	"launch_nonce",
@@ -148,7 +151,6 @@ const LAUNCH_ATTESTATION_FIELDS := [
 	"engine_creation_time_utc_ticks",
 	"status",
 ]
-
 var _district_supply_request_revision := 0
 
 
@@ -230,10 +232,7 @@ func _run_entry() -> void:
 		push_error("Cold restore launch rejected: %s" % str(launch_authorization.get("reason_code", "official_launch_unauthorized")))
 		quit(2)
 		return
-	for key_variant in launch_authorization.keys():
-		var key := str(key_variant)
-		if key not in ["authorized", "reason_code"]:
-			validation[key] = launch_authorization[key_variant]
+	validation["official_count_consumed"] = true
 	var started_ms := Time.get_ticks_msec()
 	var result: Dictionary = await _run_role(validation, str(parsed.get("head_sha", "")))
 	result["elapsed_ms"] = maxi(0, Time.get_ticks_msec() - started_ms)
@@ -296,7 +295,7 @@ func _run_entry() -> void:
 static func contract_snapshot() -> Dictionary:
 	return {
 		"schema_version": SCHEMA_VERSION,
-		"driver_id": "alpha04c_cold_restore_vertical_slice_v4",
+		"driver_id": "alpha04c_cold_restore_vertical_slice_v3",
 		"formal_full_run": FORMAL_FULL_RUN,
 		"cold_restore_vertical_slice": true,
 		"execution_ready": EXECUTION_READY,
@@ -311,13 +310,11 @@ static func contract_snapshot() -> Dictionary:
 		"terminal_quiescent_frames": 8,
 		"official_ledger_required": true,
 		"launch_attestation_required": true,
-		"manifest_process_identity_bound": true,
+		"caller_boolean_authorization_accepted": false,
 	}
 
 
 static func validate_options(options: Dictionary) -> Dictionary:
-	if not EXECUTION_READY:
-		return {"valid": false, "reason_code": "driver_execution_not_ready"}
 	var run_id := str(options.get("run_id", ""))
 	var process_role := str(options.get("process_role", ""))
 	if not str(options.get("parse_error", "")).is_empty():
@@ -353,8 +350,6 @@ static func validate_options(options: Dictionary) -> Dictionary:
 	var scenario_fingerprint := str(options.get("scenario_fingerprint", ""))
 	if not _is_lower_sha256(scenario_fingerprint):
 		return {"valid": false, "reason_code": "scenario_fingerprint_invalid"}
-	if not bool(options.get("official_count_consumed", false)):
-		return {"valid": false, "reason_code": "official_count_not_consumed"}
 	return {
 		"valid": true,
 		"reason_code": "ok",
@@ -369,7 +364,7 @@ static func validate_options(options: Dictionary) -> Dictionary:
 		"expected_queue_resolution_id": expected_resolution_id,
 		"expected_queue_stable_target_fingerprint": expected_stable_fingerprint,
 		"scenario_fingerprint": scenario_fingerprint,
-		"official_count_consumed": true,
+		"official_count_consumed": false,
 	}
 
 
@@ -390,7 +385,9 @@ static func validate_qualification_options(options: Dictionary) -> Dictionary:
 	if int(options.get("expected_queue_resolution_id", 0)) != 0 \
 			or not str(options.get("expected_queue_stable_target_fingerprint", "")).is_empty() \
 			or not str(options.get("scenario_fingerprint", "")).is_empty() \
-			or bool(options.get("official_count_consumed", false)):
+			or not str(options.get("official_claim_path", "")).is_empty() \
+			or not str(options.get("launch_attestation_path", "")).is_empty() \
+			or not str(options.get("launch_nonce", "")).is_empty():
 		return {"valid": false, "reason_code": "qualification_official_state_forbidden"}
 	return {
 		"valid": true,
@@ -431,14 +428,25 @@ func _authorize_official_launch(options: Dictionary, head_sha: String) -> Dictio
 		return {"authorized": false, "reason_code": "official_claim_field_set_invalid"}
 	if int(claim.get("schema_version", 0)) != OFFICIAL_CLAIM_SCHEMA_VERSION \
 			or str(claim.get("authorization_id", "")) != OFFICIAL_AUTHORIZATION_ID \
+			or str(claim.get("run_id", "")) != str(options.get("run_id", "")) \
 			or str(claim.get("source_head_sha", "")) != head_sha \
 			or int(claim.get("challenge_depth", 0)) != ACCEPTANCE_CHALLENGE_DEPTH \
 			or int(claim.get("seed", 0)) != ACCEPTANCE_SEED \
-			or str(claim.get("status", "")) != "claimed" \
+			or str(claim.get("scenario_fingerprint", "")) != str(options.get("scenario_fingerprint", "")) \
+			or not _is_lower_sha256(str(claim.get("qualification_child_attestation_fingerprint", ""))) \
+			or not _is_lower_sha256(str(claim.get("qualification_parent_attestation_sha256", ""))) \
+			or not _is_lower_sha256(str(claim.get("qualification_result_sha256", ""))) \
+			or str(claim.get("orchestrator_id", "")) != "alpha04c_cold_restore_vertical_slice_orchestrator_v3" \
+			or int(claim.get("orchestrator_schema_version", 0)) != SCHEMA_VERSION \
+			or not _is_lower_sha256(str(claim.get("orchestrator_script_sha256", ""))) \
 			or str(claim.get("claim_nonce", "")).length() != 32 \
 			or not _is_lower_hex(str(claim.get("claim_nonce", ""))) \
 			or int(claim.get("orchestrator_process_id", 0)) <= 0 \
-			or not _is_positive_decimal(str(claim.get("orchestrator_creation_time_utc_ticks", ""))):
+			or not _is_positive_decimal(str(claim.get("orchestrator_creation_time_utc_ticks", ""))) \
+			or str(claim.get("status", "")) != "consumed" \
+			or int(claim.get("authorized_official_count", 0)) != 1 \
+			or int(claim.get("official_count_before", -1)) != 0 \
+			or int(claim.get("official_count_after", 0)) != 1:
 		return {"authorized": false, "reason_code": "official_claim_binding_invalid"}
 	var claim_fingerprint := claim_text.sha256_text()
 	var attestation_path := _normalize_absolute_path(str(options.get("launch_attestation_path", "")))
@@ -455,9 +463,9 @@ func _authorize_official_launch(options: Dictionary, head_sha: String) -> Dictio
 		return {"authorized": false, "reason_code": "launch_attestation_field_set_invalid"}
 	var orchestrator_process_id := int(attestation.get("orchestrator_process_id", 0))
 	var wrapper_process_id := int(attestation.get("wrapper_process_id", 0))
+	var wrapper_parent_process_id := int(attestation.get("wrapper_parent_process_id", 0))
 	var engine_process_id := int(attestation.get("engine_process_id", 0))
 	var engine_parent_process_id := int(attestation.get("engine_parent_process_id", 0))
-	var wrapper_parent_process_id := int(attestation.get("wrapper_parent_process_id", 0))
 	var process_relation_valid := wrapper_parent_process_id == orchestrator_process_id
 	if engine_process_id == wrapper_process_id:
 		process_relation_valid = process_relation_valid \
@@ -476,6 +484,7 @@ func _authorize_official_launch(options: Dictionary, head_sha: String) -> Dictio
 			or str(attestation.get("claim_fingerprint", "")) != claim_fingerprint \
 			or str(attestation.get("claim_nonce", "")) != str(claim.get("claim_nonce", "")) \
 			or str(attestation.get("source_head_sha", "")) != head_sha \
+			or str(attestation.get("scenario_fingerprint", "")) != str(options.get("scenario_fingerprint", "")) \
 			or str(attestation.get("run_id", "")) != str(options.get("run_id", "")) \
 			or str(attestation.get("process_role", "")) != str(options.get("process_role", "")) \
 			or str(attestation.get("launch_nonce", "")) != str(options.get("launch_nonce", "")) \
@@ -496,19 +505,7 @@ func _authorize_official_launch(options: Dictionary, head_sha: String) -> Dictio
 	]:
 		if not _is_positive_decimal(str(attestation.get(ticks_field, ""))):
 			return {"authorized": false, "reason_code": "launch_attestation_creation_time_invalid"}
-	return {
-		"authorized": true,
-		"reason_code": "ok",
-		"parent_process_id": engine_parent_process_id,
-		"process_creation_time_utc_ticks": str(attestation.get("engine_creation_time_utc_ticks", "")),
-		"wrapper_process_id": wrapper_process_id,
-		"wrapper_parent_process_id": wrapper_parent_process_id,
-		"wrapper_creation_time_utc_ticks": str(attestation.get("wrapper_creation_time_utc_ticks", "")),
-		"orchestrator_process_id": orchestrator_process_id,
-		"orchestrator_creation_time_utc_ticks": str(attestation.get("orchestrator_creation_time_utc_ticks", "")),
-		"launch_nonce": str(attestation.get("launch_nonce", "")),
-		"official_claim_fingerprint": claim_fingerprint,
-	}
+	return {"authorized": true, "reason_code": "ok"}
 
 
 static func _has_exact_fields(value: Dictionary, expected_fields: Array) -> bool:
@@ -574,9 +571,11 @@ static func _expected_launch_attestation_path(run_id: String, role: String, orch
 		return ""
 	var project_root := _normalize_absolute_path(ProjectSettings.globalize_path("res://"))
 	return _normalize_absolute_path(project_root.path_join(
-		".godot/cold_restore_v3/%s/orchestrator-%d/%s.launch-attestation.json" \
+		".godot/cold_restore_attestation_v1/%s/launch/orchestrator-%d/%s.authorized.json" \
 			% [run_id, orchestrator_process_id, role]
 	))
+
+
 
 
 static func sanitize_public_manifest(source: Dictionary) -> Dictionary:
@@ -586,15 +585,6 @@ static func sanitize_public_manifest(source: Dictionary) -> Dictionary:
 		"run_id": str(source.get("run_id", "")),
 		"process_role": str(source.get("process_role", "")),
 		"process_id": maxi(0, int(source.get("process_id", 0))),
-		"parent_process_id": maxi(0, int(source.get("parent_process_id", 0))),
-		"process_creation_time_utc_ticks": str(source.get("process_creation_time_utc_ticks", "")),
-		"wrapper_process_id": maxi(0, int(source.get("wrapper_process_id", 0))),
-		"wrapper_parent_process_id": maxi(0, int(source.get("wrapper_parent_process_id", 0))),
-		"wrapper_creation_time_utc_ticks": str(source.get("wrapper_creation_time_utc_ticks", "")),
-		"orchestrator_process_id": maxi(0, int(source.get("orchestrator_process_id", 0))),
-		"orchestrator_creation_time_utc_ticks": str(source.get("orchestrator_creation_time_utc_ticks", "")),
-		"launch_nonce": str(source.get("launch_nonce", "")),
-		"official_claim_fingerprint": str(source.get("official_claim_fingerprint", "")),
 		"head_sha": str(source.get("head_sha", "")),
 		"slot_id": String(SaveSlotPolicyV06.PRODUCTION_SLOT_ID),
 		"slot_state": str(source.get("slot_state", "failed")),
@@ -678,35 +668,9 @@ static func _manifest_shape_valid(manifest: Dictionary) -> bool:
 			or str(manifest.get("process_role", "")) not in PROCESS_ROLES \
 			or str(manifest.get("slot_state", "")) not in ["ready", "restored", "validated", "failed"]:
 		return false
-	if int(manifest.get("process_id", 0)) <= 0 \
-			or int(manifest.get("parent_process_id", 0)) <= 0 \
-			or int(manifest.get("wrapper_process_id", 0)) <= 0 \
-			or int(manifest.get("wrapper_parent_process_id", 0)) <= 0 \
-			or int(manifest.get("orchestrator_process_id", 0)) <= 0:
-		return false
-	for ticks_field in [
-		"process_creation_time_utc_ticks",
-		"wrapper_creation_time_utc_ticks",
-		"orchestrator_creation_time_utc_ticks",
-	]:
-		if not _is_positive_decimal(str(manifest.get(ticks_field, ""))):
-			return false
-	if str(manifest.get("launch_nonce", "")).length() != 32 \
-			or not _is_lower_hex(str(manifest.get("launch_nonce", ""))) \
-			or not _is_lower_sha256(str(manifest.get("official_claim_fingerprint", ""))):
-		return false
-	if int(manifest.get("wrapper_parent_process_id", 0)) != int(manifest.get("orchestrator_process_id", 0)):
-		return false
-	if int(manifest.get("wrapper_process_id", 0)) == int(manifest.get("process_id", 0)):
-		if int(manifest.get("parent_process_id", 0)) != int(manifest.get("orchestrator_process_id", 0)) \
-				or str(manifest.get("process_creation_time_utc_ticks", "")) \
-					!= str(manifest.get("wrapper_creation_time_utc_ticks", "")):
-			return false
-	elif int(manifest.get("parent_process_id", 0)) != int(manifest.get("wrapper_process_id", 0)):
-		return false
 	if (manifest.get("victory_state_sequence", []) as Array).size() > 12:
 		return false
-	for field in ["run_id", "head_sha", "source_sections_digest", "saved_sections_digest", "restored_sections_digest", "source_write_id", "write_id", "source_write_fingerprint", "write_fingerprint", "queue_trigger_stable_target_fingerprint", "failure_code", "launch_nonce", "official_claim_fingerprint"]:
+	for field in ["run_id", "head_sha", "source_sections_digest", "saved_sections_digest", "restored_sections_digest", "source_write_id", "write_id", "source_write_fingerprint", "write_fingerprint", "queue_trigger_stable_target_fingerprint", "failure_code"]:
 		if str(manifest.get(field, "")).length() > 128:
 			return false
 	var queue_target_fingerprint := str(manifest.get("queue_trigger_stable_target_fingerprint", ""))
@@ -717,7 +681,7 @@ static func _manifest_shape_valid(manifest: Dictionary) -> bool:
 
 func _run_role(options: Dictionary, head_sha: String) -> Dictionary:
 	var role := str(options.get("process_role", ""))
-	var base := _manifest_base(options, head_sha)
+	var base := _manifest_base(str(options.get("run_id", "")), role, head_sha)
 	var main := MAIN_SCENE.instantiate()
 	var lifecycle := main.get_node_or_null("RuntimeServices/MenuLifecycleApplicationFlowController")
 	if lifecycle != null:
@@ -4546,20 +4510,11 @@ func _delta(before: Dictionary, after: Dictionary, field: String) -> int:
 	return int(after.get(field, 0)) - int(before.get(field, 0))
 
 
-func _manifest_base(options: Dictionary, head_sha: String) -> Dictionary:
+func _manifest_base(run_id: String, role: String, head_sha: String) -> Dictionary:
 	return {
-		"run_id": str(options.get("run_id", "")),
-		"process_role": str(options.get("process_role", "")),
+		"run_id": run_id,
+		"process_role": role,
 		"process_id": OS.get_process_id(),
-		"parent_process_id": int(options.get("parent_process_id", 0)),
-		"process_creation_time_utc_ticks": str(options.get("process_creation_time_utc_ticks", "")),
-		"wrapper_process_id": int(options.get("wrapper_process_id", 0)),
-		"wrapper_parent_process_id": int(options.get("wrapper_parent_process_id", 0)),
-		"wrapper_creation_time_utc_ticks": str(options.get("wrapper_creation_time_utc_ticks", "")),
-		"orchestrator_process_id": int(options.get("orchestrator_process_id", 0)),
-		"orchestrator_creation_time_utc_ticks": str(options.get("orchestrator_creation_time_utc_ticks", "")),
-		"launch_nonce": str(options.get("launch_nonce", "")),
-		"official_claim_fingerprint": str(options.get("official_claim_fingerprint", "")),
 		"head_sha": head_sha,
 		"slot_state": "failed",
 		"success": false,
@@ -4586,7 +4541,6 @@ func _parse_options(args: PackedStringArray) -> Dictionary:
 		"expected_queue_resolution_id": 0,
 		"expected_queue_stable_target_fingerprint": "",
 		"scenario_fingerprint": "",
-		"official_count_consumed": false,
 		"parse_error": "",
 	}
 	var seen: Dictionary = {}
@@ -4630,13 +4584,6 @@ func _parse_options(args: PackedStringArray) -> Dictionary:
 		elif text.begins_with("--cold-restore-scenario-fingerprint="):
 			option_key = "scenario_fingerprint"
 			option_value = text.trim_prefix("--cold-restore-scenario-fingerprint=")
-		elif text.begins_with("--cold-restore-official-count-consumed="):
-			option_key = "official_count_consumed"
-			var consumed_text := text.trim_prefix("--cold-restore-official-count-consumed=")
-			if consumed_text not in ["true", "false"]:
-				result["parse_error"] = "official_count_consumed_invalid"
-				continue
-			option_value = consumed_text == "true"
 		else:
 			result["parse_error"] = "unknown_option"
 			continue

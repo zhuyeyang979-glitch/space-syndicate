@@ -117,14 +117,25 @@ func _run() -> void:
 		},
 	])
 	controller.reset_state()
-	var mixed_receipt := driver.advance_world(5.0)
-	_expect(_transition_names(sink.batches[-1]) == ["resolve_queued_facility_immediate"], "mixed current Queue selects the facility command without advancing the ordinary card")
-	_expect(bool(mixed_receipt.get("consumes_command_frame", false)) and str(mixed_receipt.get("frame_disposition_id", "")) == "command_only_facility_resolution", "mixed facility command consumes a zero-world-time command frame")
+	var mixed_snapshot := driver.immediate_transition_snapshot()
+	_expect(not bool(mixed_snapshot.get("pending", true)), "a facility behind an ordinary Queue entry cannot preempt the authoritative front")
+	var rejected_preemption := queue.start_immediate_facility(12, {"game_time": 0.0})
+	_expect(not bool(rejected_preemption.get("started", true)) \
+			and str(rejected_preemption.get("reason", "")) == "immediate_facility_not_queue_front" \
+			and queue.current_queue().size() == 2, "Queue rejects arbitrary-index facility extraction without reordering entries: %s" % JSON.stringify(rejected_preemption))
+	var ordinary_start := queue.start_next({"game_time": 0.0})
+	_expect(bool(ordinary_start.get("started", false)) \
+			and int(queue.active_entry().get("resolution_id", -1)) == 11 \
+			and queue.current_queue().size() == 1 \
+			and int((queue.current_queue()[0] as Dictionary).get("resolution_id", -1)) == 12, "authoritative Queue dequeues the ordinary front before the facility: %s" % JSON.stringify(ordinary_start))
+	queue.complete_active(11)
+	var facility_receipt := driver.advance_world(5.0)
+	_expect(_transition_names(sink.batches[-1]) == ["resolve_queued_facility_immediate"], "facility receives the command-only resolution only after reaching Queue front")
+	_expect(bool(facility_receipt.get("consumes_command_frame", false)) and str(facility_receipt.get("frame_disposition_id", "")) == "command_only_facility_resolution", "front facility command consumes a zero-world-time command frame")
 	var immediate_start := queue.start_immediate_facility(12, {"game_time": 0.0})
 	_expect(bool(immediate_start.get("started", false)) \
 			and int(queue.active_entry().get("resolution_id", -1)) == 12 \
-			and queue.current_queue().size() == 1 \
-			and int((queue.current_queue()[0] as Dictionary).get("resolution_id", -1)) == 11, "authoritative Queue extracts only the facility entry and preserves the ordinary remainder: %s" % JSON.stringify(immediate_start))
+			and queue.current_queue().is_empty(), "front facility dequeues without a synthetic batch reopen: %s" % JSON.stringify(immediate_start))
 	queue.complete_active(12)
 
 	queue.replace_current_queue([{"resolution_id": 9, "skill": {"kind": "public_facility"}}])

@@ -35,6 +35,29 @@ Higher commodity ranks are not counted: the audited belt has one unique claimabl
 
 The direct lower bound is backed by committed production facility play evidence. The exact number of simultaneously legal direct offers was not captured, so this audit does not relabel 68 static route-capable identities as 68 live offers. The Queue count is exact for the frozen capture: it ended with `legal_factory_market_queue_target_missing` and `queue_count=0`.
 
+## Post-bridge delta
+
+The table above remains the frozen `a55b938f` before-snapshot. On the current
+bridge descendant, all 48 factory/market identities use one capability-bound
+facility Queue route. Static depth-1 routing is now:
+
+- Queue route identities: `56` (`48` facility plus `8` conditional supply/demand);
+- direct-resolve-capable identities: `20` (`12` commodity plus `8` selected rank-I starters);
+- pre-Queue unsupported identities: `48`;
+- direct facility resolution paths: `0`;
+- facility Queue submission paths: `1`.
+
+The Queue preserves front order: a facility cannot pass an earlier ordinary
+entry. Submission reserves assets, moves the card to escrow, and binds the
+target without applying the facility. RegionInfrastructure remains the only
+facility rule Owner. Card finalization follows facility finalization so a
+post-effect card-owner fault remains a saveable commitment retry instead of
+destroying the only recoverable card record.
+
+Focused route, privacy, rollback, parity, and restore gates are green. A new
+trusted non-official depth-1 qualification at seed `900626424` is still required
+before the post-bridge live legal Queue count is promoted to current evidence.
+
 ## Classification
 
 | Required bucket | Internal bucket | Obtainable IDs | Current resolution | Queue status |

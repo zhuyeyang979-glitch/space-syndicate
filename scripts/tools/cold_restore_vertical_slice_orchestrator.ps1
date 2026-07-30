@@ -18,6 +18,8 @@ Import-Module (Join-Path $PSScriptRoot "cold_restore_attested_process.psm1") -Fo
 $ORCHESTRATOR_SCHEMA_VERSION = 3
 $FORMAL_FULL_RUN = $false
 $DriverExecutionReady = $true
+$OfficialAuthorizationId = "alpha04c-p0-cold-restore-depth1-seed900626424-v1"
+$OfficialClaimRelativePath = "codex\cold_restore_v3\official-alpha04c-depth1-seed900626424\official_claim_ledger.json"
 $DriverScript = "res://scripts/tools/cold_restore_vertical_slice_driver.gd"
 $ArtifactRoot = "user://test_runs/alpha04c/$RunId/evidence"
 $UserDataRoot = Join-Path ([IO.Path]::GetTempPath()) "space_syndicate_alpha04c_cold_restore_$RunId"
@@ -28,7 +30,7 @@ $QualificationPrefix = "COLD_RESTORE_QUALIFICATION|"
 $RoleSequence = @("producer", "consumer", "validator")
 $ProcessSequence = @(
     "qualification_exit_attested",
-    "official_ledger_consumed",
+    "official_fixed_claim_consumed",
     "producer_child_completion",
     "producer_parent_exit",
     "consumer_start",
@@ -267,6 +269,26 @@ $ParentExitAttestationFields = @(
     "unrelated_preexisting_process_count",
     "wrapper_exit_green",
     "wrapper_reason_code"
+)
+$LaunchAttestationFields = @(
+    "schema_version",
+    "authorization_id",
+    "claim_fingerprint",
+    "claim_nonce",
+    "source_head_sha",
+    "scenario_fingerprint",
+    "run_id",
+    "process_role",
+    "launch_nonce",
+    "orchestrator_process_id",
+    "orchestrator_creation_time_utc_ticks",
+    "wrapper_process_id",
+    "wrapper_parent_process_id",
+    "wrapper_creation_time_utc_ticks",
+    "engine_process_id",
+    "engine_parent_process_id",
+    "engine_creation_time_utc_ticks",
+    "status"
 )
 
 function Assert-ColdRestoreCondition {
@@ -538,23 +560,75 @@ function Invoke-ColdRestoreQualification {
     return [pscustomobject]@{ run = $run; result = $result; paths = $paths }
 }
 
+function Assert-ColdRestoreLaunchAttestation {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][ValidateSet("producer", "consumer", "validator")][string]$Role,
+        [Parameter(Mandatory = $true)][string]$HeadSha,
+        [Parameter(Mandatory = $true)][string]$ScenarioFingerprint,
+        [Parameter(Mandatory = $true)][string]$LaunchNonce,
+        [Parameter(Mandatory = $true)]$Authorization,
+        [Parameter(Mandatory = $true)]$Run
+    )
+
+    $launch = Read-ColdRestoreJsonArtifact $Path
+    Assert-ColdRestoreCondition (Test-ExactFieldSet $launch $LaunchAttestationFields) "launch_attestation_field_set_invalid"
+    Assert-ColdRestoreCondition ([int]$launch.schema_version -eq 1 `
+        -and [string]$launch.authorization_id -eq $OfficialAuthorizationId `
+        -and [string]$launch.claim_fingerprint -eq [string]$Authorization.claim_fingerprint `
+        -and [string]$launch.claim_nonce -eq [string]$Authorization.claim_nonce `
+        -and [string]$launch.source_head_sha -eq $HeadSha `
+        -and [string]$launch.scenario_fingerprint -eq $ScenarioFingerprint `
+        -and [string]$launch.run_id -eq $RunId `
+        -and [string]$launch.process_role -eq $Role `
+        -and [string]$launch.launch_nonce -eq $LaunchNonce `
+        -and [int]$launch.orchestrator_process_id -eq [int]$Authorization.orchestrator_process_id `
+        -and [string]$launch.orchestrator_creation_time_utc_ticks -eq [string]$Authorization.orchestrator_creation_time_utc_ticks `
+        -and [string]$launch.status -eq "authorized") "launch_attestation_binding_invalid"
+    foreach ($field in @("orchestrator_creation_time_utc_ticks", "wrapper_creation_time_utc_ticks", "engine_creation_time_utc_ticks")) {
+        Assert-ColdRestoreCondition ([string]$launch.$field -match '^[1-9][0-9]{0,18}$') "launch_attestation_creation_time_invalid"
+    }
+    $processRelationValid = [int]$launch.wrapper_parent_process_id -eq [int]$launch.orchestrator_process_id
+    if ([int]$launch.engine_process_id -eq [int]$launch.wrapper_process_id) {
+        $processRelationValid = $processRelationValid `
+            -and [int]$launch.engine_parent_process_id -eq [int]$launch.orchestrator_process_id `
+            -and [string]$launch.engine_creation_time_utc_ticks -eq [string]$launch.wrapper_creation_time_utc_ticks
+    }
+    else {
+        $processRelationValid = $processRelationValid `
+            -and [int]$launch.engine_parent_process_id -eq [int]$launch.wrapper_process_id
+    }
+    Assert-ColdRestoreCondition ($processRelationValid `
+        -and [int]$launch.wrapper_process_id -eq [int]$Run.parent.child_pid `
+        -and @($Run.observed_task_process_ids) -contains [int]$launch.engine_process_id) "launch_attestation_process_identity_invalid"
+    return [pscustomobject]@{
+        value = $launch
+        sha256 = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+}
+
 function Invoke-ColdRestoreRole {
     param(
         [Parameter(Mandatory = $true)][ValidateSet("producer", "consumer", "validator")][string]$Role,
         [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
         [Parameter(Mandatory = $true)][string]$HeadSha,
         [Parameter(Mandatory = $true)][string]$ScenarioFingerprint,
+        [Parameter(Mandatory = $true)]$Authorization,
         [int64]$ExpectedQueueResolutionId = 0,
         [string]$ExpectedQueueStableTargetFingerprint = ""
     )
     $paths = Get-ColdRestoreRolePaths $ResolvedProjectPath $Role
+    $launchNonce = [Guid]::NewGuid().ToString("N")
+    $launchAttestationPath = Join-Path $paths.root "launch\orchestrator-$($Authorization.orchestrator_process_id)\$Role.authorized.json"
     $userArguments = @(
         "--cold-restore-role=$Role",
         "--cold-restore-run-id=$RunId",
         "--cold-restore-head-sha=$HeadSha",
         "--cold-restore-artifact-root=$ArtifactRoot",
         "--cold-restore-scenario-fingerprint=$ScenarioFingerprint",
-        "--cold-restore-official-count-consumed=true"
+        "--cold-restore-official-claim-path=$($Authorization.ledger_path)",
+        "--cold-restore-launch-attestation-path=$launchAttestationPath",
+        "--cold-restore-launch-nonce=$launchNonce"
     )
     if ($Role -ne "producer") {
         Assert-ColdRestoreCondition ($ExpectedQueueResolutionId -gt 0) "expected_queue_resolution_id_invalid"
@@ -577,11 +651,33 @@ function Invoke-ColdRestoreRole {
         -StdoutPath $paths.stdout `
         -StderrPath $paths.stderr `
         -TimeoutSeconds $ChildTimeoutSeconds `
-        -EnvironmentVariables @{ APPDATA = $IsolatedAppData; LOCALAPPDATA = $IsolatedLocalAppData }
+        -EnvironmentVariables @{ APPDATA = $IsolatedAppData; LOCALAPPDATA = $IsolatedLocalAppData } `
+        -LaunchAttestationPath $launchAttestationPath `
+        -LaunchAuthorization ([pscustomobject][ordered]@{
+            authorization_id = $OfficialAuthorizationId
+            claim_fingerprint = [string]$Authorization.claim_fingerprint
+            claim_nonce = [string]$Authorization.claim_nonce
+            source_head_sha = $HeadSha
+            scenario_fingerprint = $ScenarioFingerprint
+            run_id = $RunId
+            process_role = $Role
+            launch_nonce = $launchNonce
+            orchestrator_process_id = [int]$Authorization.orchestrator_process_id
+            orchestrator_creation_time_utc_ticks = [string]$Authorization.orchestrator_creation_time_utc_ticks
+        })
     Assert-ColdRestoreCondition ([bool]$run.wrapper_exit_green) "${Role}_$($run.wrapper_reason_code)"
+    $launchEvidence = Assert-ColdRestoreLaunchAttestation `
+        -Path $launchAttestationPath `
+        -Role $Role `
+        -HeadSha $HeadSha `
+        -ScenarioFingerprint $ScenarioFingerprint `
+        -LaunchNonce $launchNonce `
+        -Authorization $Authorization `
+        -Run $run
     $manifest = Read-ColdRestoreJsonArtifact $paths.child_result
     Assert-ColdRestoreManifest $manifest $Role $RunId
-    Assert-ColdRestoreCondition (@($run.observed_task_process_ids) -contains [int]$manifest.process_id) "${Role}_manifest_process_id_mismatch"
+    Assert-ColdRestoreCondition (@($run.observed_task_process_ids) -contains [int]$manifest.process_id `
+        -and [int]$launchEvidence.value.engine_process_id -eq [int]$manifest.process_id) "${Role}_manifest_process_id_mismatch"
     Assert-ColdRestoreCondition ([string]$manifest.head_sha -eq $HeadSha) "${Role}_manifest_head_sha_mismatch"
     Assert-ColdRestoreCondition ([bool]$run.child.official `
         -and -not [bool]$run.child.formal `
@@ -595,6 +691,7 @@ function Invoke-ColdRestoreRole {
         manifest = $manifest
         child = $run.child
         parent = $run.parent
+        launch_attestation_sha256 = [string]$launchEvidence.sha256
     }
 }
 
@@ -782,6 +879,25 @@ function Compare-ColdRestoreManifests {
     }
 }
 
+function Resolve-ColdRestoreGitCommonDirectory {
+    param([Parameter(Mandatory = $true)][string]$ResolvedProjectPath)
+
+    $lines = @(& git -C $ResolvedProjectPath rev-parse --path-format=absolute --git-common-dir 2>$null)
+    Assert-ColdRestoreCondition ($LASTEXITCODE -eq 0 -and $lines.Count -eq 1) "git_common_dir_unavailable"
+    $resolved = [IO.Path]::GetFullPath([string]$lines[0])
+    Assert-ColdRestoreCondition ([IO.Directory]::Exists($resolved)) "git_common_dir_invalid"
+    return $resolved
+}
+
+function Get-ColdRestoreOrchestratorCreationTimeTicks {
+    try {
+        return ([Diagnostics.Process]::GetProcessById($PID).StartTime.ToUniversalTime().Ticks).ToString([Globalization.CultureInfo]::InvariantCulture)
+    }
+    catch {
+        throw "orchestrator_creation_time_unavailable"
+    }
+}
+
 function Assert-AndConsumeOfficialColdRestoreAuthorization {
     param(
         [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
@@ -823,22 +939,53 @@ function Assert-AndConsumeOfficialColdRestoreAuthorization {
     $gateCachePath = Join-Path $ResolvedProjectPath "reports\handoffs\alpha04c_gate_cache.json"
     $gateCache = Read-ColdRestoreJsonArtifact $gateCachePath
     Assert-ColdRestoreCondition ([int]$gateCache.official_cold_restore_vertical_slice_count -eq 0) "official_count_before_not_zero"
-    $ledgerPath = Join-Path $paths.root "official_ledger.json"
+    $gitCommonDirectory = Resolve-ColdRestoreGitCommonDirectory $ResolvedProjectPath
+    $ledgerPath = Join-Path $gitCommonDirectory $OfficialClaimRelativePath
+    $orchestratorCreationTimeTicks = Get-ColdRestoreOrchestratorCreationTimeTicks
+    $orchestratorScriptSha256 = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $claimNonce = [Guid]::NewGuid().ToString("N")
     $ledger = [ordered]@{
         schema_version = 1
+        authorization_id = $OfficialAuthorizationId
+        created_at_utc = [DateTime]::UtcNow.ToString("O", [Globalization.CultureInfo]::InvariantCulture)
         run_id = $RunId
-        repository_head = $HeadSha
-        authorized_official_cold_restore_vertical_slice_count = 1
-        official_cold_restore_vertical_slice_count_before = 0
-        official_cold_restore_vertical_slice_count_after = 1
+        source_head_sha = $HeadSha
+        challenge_depth = 1
+        seed = [int64]900626424
+        scenario_fingerprint = [string]$result.scenario_fingerprint
         qualification_child_attestation_fingerprint = [string]$childValidation.fingerprint
         qualification_parent_attestation_sha256 = (Get-FileHash -LiteralPath $paths.parent_attestation -Algorithm SHA256).Hash.ToLowerInvariant()
-        scenario_fingerprint = [string]$result.scenario_fingerprint
-        authorization_consumed = $true
+        qualification_result_sha256 = (Get-FileHash -LiteralPath $paths.child_result -Algorithm SHA256).Hash.ToLowerInvariant()
+        orchestrator_id = "alpha04c_cold_restore_vertical_slice_orchestrator_v3"
+        orchestrator_schema_version = $ORCHESTRATOR_SCHEMA_VERSION
+        orchestrator_script_sha256 = $orchestratorScriptSha256
+        orchestrator_process_id = $PID
+        orchestrator_creation_time_utc_ticks = $orchestratorCreationTimeTicks
+        claim_nonce = $claimNonce
+        status = "consumed"
+        authorized_official_count = 1
+        official_count_before = 0
+        official_count_after = 1
     }
-    Write-ColdRestoreAtomicJson $ledgerPath ([pscustomobject]$ledger) | Out-Null
+    try {
+        $claimFingerprint = Write-ColdRestoreExclusiveJson $ledgerPath ([pscustomobject]$ledger)
+    }
+    catch {
+        $claimFailure = [string]$_.Exception.Message
+        if ($claimFailure -eq "exclusive_evidence_create_new_failed" -and [IO.File]::Exists($ledgerPath)) {
+            throw "official_authorization_already_consumed"
+        }
+        if ($claimFailure -like "exclusive_evidence_consumed_*") {
+            throw "official_authorization_consumed_but_claim_incomplete"
+        }
+        throw "official_claim_create_new_failed"
+    }
     return [pscustomobject]@{
         ledger_path = $ledgerPath
+        claim_fingerprint = [string]$claimFingerprint
+        claim_nonce = $claimNonce
+        orchestrator_process_id = $PID
+        orchestrator_creation_time_utc_ticks = $orchestratorCreationTimeTicks
         scenario_fingerprint = [string]$result.scenario_fingerprint
         qualification_result = $result
     }
@@ -929,13 +1076,13 @@ try {
 
     $authorization = Assert-AndConsumeOfficialColdRestoreAuthorization $resolvedProjectPath $headSha
     $scenarioFingerprint = [string]$authorization.scenario_fingerprint
-    $producerRun = Invoke-ColdRestoreRole "producer" $resolvedProjectPath $headSha $scenarioFingerprint
+    $producerRun = Invoke-ColdRestoreRole "producer" $resolvedProjectPath $headSha $scenarioFingerprint $authorization
     # Process B starts only after Process A exited and its one safe manifest parsed.
-    $consumerRun = Invoke-ColdRestoreRole "consumer" $resolvedProjectPath $headSha $scenarioFingerprint `
+    $consumerRun = Invoke-ColdRestoreRole "consumer" $resolvedProjectPath $headSha $scenarioFingerprint $authorization `
         ([int64]$producerRun.manifest.queue_trigger_resolution_id) `
         ([string]$producerRun.manifest.queue_trigger_stable_target_fingerprint)
     # Process C starts only after Process B exited and its one safe manifest parsed.
-    $validatorRun = Invoke-ColdRestoreRole "validator" $resolvedProjectPath $headSha $scenarioFingerprint `
+    $validatorRun = Invoke-ColdRestoreRole "validator" $resolvedProjectPath $headSha $scenarioFingerprint $authorization `
         ([int64]$consumerRun.manifest.queue_trigger_resolution_id) `
         ([string]$consumerRun.manifest.queue_trigger_stable_target_fingerprint)
     $comparison = Compare-ColdRestoreManifests `

@@ -54,6 +54,7 @@ func dispatch(transaction: Dictionary) -> Dictionary:
 	var player: Dictionary = players[player_index]
 	var resolved := false
 	var continuation_kind := "normal"
+	var facility_commitment_settled := true
 	if handler_id in ["global_order_budget", "global_supply_spawn"]:
 		if _runtime_coordinator == null or not _runtime_coordinator.has_method("resolve_queued_v06_automatic_supply_demand"):
 			return _receipt(true, false, "queued_supply_demand_runtime_unavailable")
@@ -71,6 +72,10 @@ func dispatch(transaction: Dictionary) -> Dictionary:
 		resolved = bool(facility_result.get("resolved", false)) \
 			and bool(facility_result.get("committed", false)) \
 			and bool(facility_result.get("finalized", false))
+		facility_commitment_settled = bool(facility_result.get(
+			"commitment_settled",
+			resolved
+		))
 		if not resolved:
 			return _receipt(
 				true,
@@ -90,7 +95,16 @@ func dispatch(transaction: Dictionary) -> Dictionary:
 			resolved = _dispatch_domain_handler(handler_id, player_index, player, entry, skill)
 	if _monster_controller != null and _monster_controller.open_wager_decision_count() > int(transaction.get("monster_wager_decision_count_before", 0)):
 		continuation_kind = "forced_decision_handoff"
-	return _receipt(true, resolved, "resolved" if resolved else "effect_not_resolved", continuation_kind)
+	var receipt := _receipt(
+		true,
+		resolved,
+		"resolved" if resolved else "effect_not_resolved",
+		continuation_kind
+	)
+	if handler_id == "public_facility":
+		receipt["commitment_settled"] = facility_commitment_settled
+		receipt["retryable_commitment"] = resolved and not facility_commitment_settled
+	return receipt
 
 
 func supported_handler_ids() -> Array:

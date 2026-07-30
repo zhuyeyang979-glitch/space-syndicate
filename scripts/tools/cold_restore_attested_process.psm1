@@ -48,6 +48,19 @@ $script:ParentExitFields = @(
     "wrapper_reason_code"
 )
 
+$script:LaunchAuthorizationContextFields = @(
+    "authorization_id",
+    "claim_fingerprint",
+    "claim_nonce",
+    "source_head_sha",
+    "scenario_fingerprint",
+    "run_id",
+    "process_role",
+    "launch_nonce",
+    "orchestrator_process_id",
+    "orchestrator_creation_time_utc_ticks"
+)
+
 function ConvertTo-ColdRestoreCanonicalJson {
     param([AllowNull()]$Value)
 
@@ -179,6 +192,64 @@ function Write-ColdRestoreAtomicJson {
         if ([IO.File]::Exists($tempPath)) {
             [IO.File]::Delete($tempPath)
         }
+    }
+    return Get-ColdRestoreTextSha256 $json
+}
+
+function Write-ColdRestoreExclusiveJson {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)]$Value
+    )
+
+    $parent = Split-Path -Parent $Path
+    [IO.Directory]::CreateDirectory($parent) | Out-Null
+    $json = ConvertTo-ColdRestoreCanonicalJson $Value
+    $bytes = [Text.UTF8Encoding]::new($false).GetBytes($json)
+    try {
+        $stream = [IO.FileStream]::new(
+            $Path,
+            [IO.FileMode]::CreateNew,
+            [IO.FileAccess]::Write,
+            [IO.FileShare]::None,
+            4096,
+            [IO.FileOptions]::WriteThrough
+        )
+    }
+    catch {
+        throw "exclusive_evidence_create_new_failed"
+    }
+    $consumedFailure = ""
+    try {
+        $stream.Write($bytes, 0, $bytes.Length)
+        $stream.Flush($true)
+    }
+    catch {
+        $consumedFailure = "exclusive_evidence_consumed_write_failed"
+    }
+    try {
+        $stream.Dispose()
+    }
+    catch {
+        if ($consumedFailure -eq "") {
+            $consumedFailure = "exclusive_evidence_consumed_dispose_failed"
+        }
+    }
+    if ($consumedFailure -ne "") {
+        throw $consumedFailure
+    }
+    try {
+        $readback = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false))
+        if ($readback -cne $json) {
+            throw "exclusive_evidence_consumed_readback_failed"
+        }
+        $null = $readback | ConvertFrom-Json
+    }
+    catch {
+        if ($_.Exception.Message -like "exclusive_evidence_consumed_*") {
+            throw
+        }
+        throw "exclusive_evidence_consumed_readback_failed"
     }
     return Get-ColdRestoreTextSha256 $json
 }
@@ -319,6 +390,87 @@ function Add-ColdRestoreOwnedProcesses {
     }
 }
 
+function Get-ColdRestoreProcessCreationTimeTicks {
+    param([Parameter(Mandatory = $true)][int]$ProcessId)
+
+    try {
+        return ([Diagnostics.Process]::GetProcessById($ProcessId).StartTime.ToUniversalTime().Ticks).ToString([Globalization.CultureInfo]::InvariantCulture)
+    }
+    catch {
+        throw "launch_process_creation_time_unavailable"
+    }
+}
+
+function Write-ColdRestoreLaunchAttestation {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)]$Authorization,
+        [Parameter(Mandatory = $true)][Diagnostics.Process]$WrapperProcess
+    )
+
+    if (-not (Test-ColdRestoreExactFieldSet $Authorization $script:LaunchAuthorizationContextFields)) {
+        throw "launch_authorization_context_field_set_invalid"
+    }
+    if ([int]$Authorization.orchestrator_process_id -ne $PID) {
+        throw "launch_orchestrator_process_mismatch"
+    }
+    $wrapperPid = [int]$WrapperProcess.Id
+    $wrapperCreationTicks = Get-ColdRestoreProcessCreationTimeTicks $wrapperPid
+    $enginePid = $wrapperPid
+    $engineParentPid = $PID
+    $engineCreationTicks = $wrapperCreationTicks
+    $wrapperName = [IO.Path]::GetFileNameWithoutExtension($WrapperProcess.StartInfo.FileName)
+    $wrapperIsGodot = $wrapperName -like "Godot*"
+    if ($wrapperIsGodot) {
+        $launchToken = "--cold-restore-launch-nonce=$([string]$Authorization.launch_nonce)"
+        $engineCandidate = @()
+        $discoveryDeadline = [DateTime]::UtcNow.AddSeconds(5)
+        $requiresConsoleChild = $wrapperName.EndsWith("_console", [StringComparison]::OrdinalIgnoreCase)
+        do {
+            $snapshot = Get-ColdRestoreProcessSnapshot
+            $engineCandidate = @($snapshot | Where-Object {
+                [string]$_.Name -like "Godot*" `
+                    -and (([int]$_.ParentProcessId -eq $wrapperPid) `
+                        -or (-not $requiresConsoleChild -and [int]$_.ProcessId -eq $wrapperPid)) `
+                    -and [string]$_.CommandLine -like "*$launchToken*"
+            } | Sort-Object @{ Expression = { if ([int]$_.ParentProcessId -eq $wrapperPid) { 0 } else { 1 } } }, ProcessId | Select-Object -First 1)
+            if ($engineCandidate.Count -eq 1) {
+                break
+            }
+            Start-Sleep -Milliseconds 25
+        } while ([DateTime]::UtcNow -lt $discoveryDeadline -and -not $WrapperProcess.HasExited)
+        if ($engineCandidate.Count -ne 1) {
+            throw "launch_engine_process_unavailable"
+        }
+        $enginePid = [int]$engineCandidate[0].ProcessId
+        $engineParentPid = [int]$engineCandidate[0].ParentProcessId
+        $engineCreationTicks = Get-ColdRestoreProcessCreationTimeTicks $enginePid
+    }
+
+    $attestation = [ordered]@{
+        schema_version = 1
+        authorization_id = [string]$Authorization.authorization_id
+        claim_fingerprint = [string]$Authorization.claim_fingerprint
+        claim_nonce = [string]$Authorization.claim_nonce
+        source_head_sha = [string]$Authorization.source_head_sha
+        scenario_fingerprint = [string]$Authorization.scenario_fingerprint
+        run_id = [string]$Authorization.run_id
+        process_role = [string]$Authorization.process_role
+        launch_nonce = [string]$Authorization.launch_nonce
+        orchestrator_process_id = [int]$Authorization.orchestrator_process_id
+        orchestrator_creation_time_utc_ticks = [string]$Authorization.orchestrator_creation_time_utc_ticks
+        wrapper_process_id = $wrapperPid
+        wrapper_parent_process_id = $PID
+        wrapper_creation_time_utc_ticks = $wrapperCreationTicks
+        engine_process_id = $enginePid
+        engine_parent_process_id = $engineParentPid
+        engine_creation_time_utc_ticks = $engineCreationTicks
+        status = "authorized"
+    }
+    Write-ColdRestoreAtomicJson $Path ([pscustomobject]$attestation) | Out-Null
+    return [pscustomobject]$attestation
+}
+
 function Invoke-ColdRestoreAttestedProcess {
     param(
         [Parameter(Mandatory = $true)][string]$ExecutablePath,
@@ -332,10 +484,20 @@ function Invoke-ColdRestoreAttestedProcess {
         [Parameter(Mandatory = $true)][string]$StdoutPath,
         [Parameter(Mandatory = $true)][string]$StderrPath,
         [Parameter(Mandatory = $true)][ValidateRange(1, 3600)][int]$TimeoutSeconds,
-        [hashtable]$EnvironmentVariables = @{}
+        [hashtable]$EnvironmentVariables = @{},
+        [string]$LaunchAttestationPath = "",
+        $LaunchAuthorization = $null
     )
 
-    foreach ($path in @($ChildAttestationPath, $ParentAttestationPath, $StdoutPath, $StderrPath)) {
+    $launchAuthorizationEnabled = $LaunchAttestationPath -ne "" -and $null -ne $LaunchAuthorization
+    if (($LaunchAttestationPath -ne "") -ne ($null -ne $LaunchAuthorization)) {
+        throw "launch_authorization_parameter_mismatch"
+    }
+    $evidencePaths = @($ChildAttestationPath, $ParentAttestationPath, $StdoutPath, $StderrPath)
+    if ($launchAuthorizationEnabled) {
+        $evidencePaths += $LaunchAttestationPath
+    }
+    foreach ($path in $evidencePaths) {
         [IO.Directory]::CreateDirectory((Split-Path -Parent $path)) | Out-Null
     }
     $preexistingGodotCount = @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like "godot*" }).Count
@@ -348,9 +510,10 @@ function Invoke-ColdRestoreAttestedProcess {
     $stdout = ""
     $stderr = ""
     $captureComplete = $false
+    $launchFailureCode = ""
     $ownedIds = [Collections.Generic.HashSet[int]]::new()
     $launchCollision = @(
-        @($ChildAttestationPath, $ParentAttestationPath, $StdoutPath, $StderrPath) |
+        $evidencePaths |
             Where-Object { [IO.File]::Exists($_) }
     )
 
@@ -378,6 +541,16 @@ function Invoke-ColdRestoreAttestedProcess {
             $null = $ownedIds.Add($childPid)
             $stdoutTask = $process.StandardOutput.ReadToEndAsync()
             $stderrTask = $process.StandardError.ReadToEndAsync()
+            if ($launchAuthorizationEnabled) {
+                try {
+                    $launchAttestation = Write-ColdRestoreLaunchAttestation $LaunchAttestationPath $LaunchAuthorization $process
+                    $null = $ownedIds.Add([int]$launchAttestation.engine_process_id)
+                }
+                catch {
+                    $launchFailureCode = "launch_attestation_write_failed"
+                    throw
+                }
+            }
             $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
             while (-not $process.HasExited -and [DateTime]::UtcNow -lt $deadline) {
                 Add-ColdRestoreOwnedProcesses $ownedIds (Get-ColdRestoreProcessSnapshot) $RunId
@@ -449,6 +622,8 @@ function Invoke-ColdRestoreAttestedProcess {
 
     $wrapperReason = if ($launchCollision.Count -gt 0) {
         "evidence_collision"
+    } elseif ($launchFailureCode -ne "") {
+        $launchFailureCode
     } elseif ($timedOut) {
         "child_process_timeout"
     } elseif (-not $observedExit) {
@@ -508,6 +683,7 @@ Export-ModuleMember -Function @(
     "Get-ColdRestoreEvidenceFingerprint",
     "Test-ColdRestoreExactFieldSet",
     "Write-ColdRestoreAtomicJson",
+    "Write-ColdRestoreExclusiveJson",
     "New-ColdRestoreChildCompletionFixture",
     "Test-ColdRestoreChildCompletionAttestation",
     "New-ColdRestoreGodotArgumentList",

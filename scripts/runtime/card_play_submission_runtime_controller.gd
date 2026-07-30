@@ -12,6 +12,7 @@ const SHARED_RESOLUTION_EFFECT_KINDS_V06 := [
 ]
 const V06_ASSET_COST_KEYS := ["life", "energy", "industry", "technology", "commerce", "shipping", "generic"]
 const MAX_EXACT_JSON_INTEGER := 9_007_199_254_740_991.0
+const FACILITY_RECOVERY_LIMIT := 128
 
 var _world_session_state: WorldSessionState
 var _table_selection_state: TableSelectionState
@@ -30,6 +31,8 @@ var _facility_queue_capability: RefCounted
 var _submission_count := 0
 var _accepted_count := 0
 var _last_receipt: Dictionary = {}
+var _facility_recovery_requests: Dictionary = {}
+var _facility_recovery_order: Array[String] = []
 
 
 func set_dependencies(
@@ -103,6 +106,33 @@ func request_hand_play(request: Dictionary) -> Dictionary:
 	return _remember(_submit_legacy(player_index, slot_index, eligibility, _dictionary(frozen.get("envelope", {}))))
 
 
+func retry_hand_play(request: Dictionary) -> Dictionary:
+	_submission_count += 1
+	var request_id := str(request.get("request_id", ""))
+	var pending: Dictionary = _facility_recovery_requests.get(request_id, {}) \
+		if _facility_recovery_requests.get(request_id, {}) is Dictionary else {}
+	if pending.is_empty():
+		return _remember(_rejection("facility_recovery_request_missing"))
+	var expected_binding: Dictionary = pending.get("source_binding", {}) \
+		if pending.get("source_binding", {}) is Dictionary else {}
+	if expected_binding != _facility_recovery_binding(request):
+		return _remember(_rejection("facility_recovery_request_binding_mismatch"))
+	if _facility_queue_source == null or _facility_queue_capability == null:
+		return _remember(_rejection("facility_queue_source_unavailable"))
+	var adapter_request: Dictionary = pending.get("adapter_request", {}) \
+		if pending.get("adapter_request", {}) is Dictionary else {}
+	if adapter_request.is_empty():
+		_forget_facility_recovery(request_id)
+		return _remember(_rejection("facility_recovery_request_invalid"))
+	var result := _facility_queue_source.submit(
+		_facility_queue_capability,
+		adapter_request.duplicate(true)
+	)
+	if not bool(result.get("requires_recovery", false)):
+		_forget_facility_recovery(request_id)
+	return _remember(_facility_submission_result(result))
+
+
 func submit_card_play(request: Dictionary) -> Dictionary:
 	_submission_count += 1
 	var player_index := int(request.get("player_index", -1))
@@ -135,6 +165,7 @@ func debug_snapshot() -> Dictionary:
 			and _selection_catalog_query_port != null,
 		"submission_count": _submission_count,
 		"accepted_count": _accepted_count,
+		"facility_recovery_request_count": _facility_recovery_requests.size(),
 		"shared_human_ai_entry": true,
 		"stable_target_capture": _selection_catalog_query_port != null,
 		"holds_main_reference": false,
@@ -349,7 +380,7 @@ func _queue_v06_facility(
 		return _rejection("facility_queue_hand_slot_binding_stale")
 	if _facility_queue_source == null or _facility_queue_capability == null:
 		return _rejection("facility_queue_source_unavailable")
-	var result := _facility_queue_source.submit(_facility_queue_capability, {
+	var adapter_request := {
 		"schema_version": 1,
 		"request_id": str(source_request.get("request_id", "")),
 		"intent_fingerprint": str(source_request.get("intent_fingerprint", "")),
@@ -365,7 +396,19 @@ func _queue_v06_facility(
 		"card_semantic_id": str(machine.get("card_id", "")),
 		"region_id": region_id,
 		"stable_target_envelope": stable_target_envelope.duplicate(true),
-	})
+	}
+	var result := _facility_queue_source.submit(
+		_facility_queue_capability,
+		adapter_request
+	)
+	if bool(result.get("requires_recovery", false)):
+		_remember_facility_recovery(source_request, adapter_request)
+	else:
+		_forget_facility_recovery(str(source_request.get("request_id", "")))
+	return _facility_submission_result(result)
+
+
+func _facility_submission_result(result: Dictionary) -> Dictionary:
 	var queued := bool(result.get("accepted", false)) and bool(result.get("queued", false))
 	if queued:
 		_accepted_count += 1
@@ -377,6 +420,46 @@ func _queue_v06_facility(
 		"queue_revision": int(result.get("queue_revision", -1)),
 		"v06_receipt": result.duplicate(true),
 		"player_message": "卡牌已提交，等待结算。" if queued else "卡牌当前未能提交。",
+	}
+
+
+func _remember_facility_recovery(
+	source_request: Dictionary,
+	adapter_request: Dictionary
+) -> void:
+	var request_id := str(source_request.get("request_id", ""))
+	if request_id.is_empty():
+		return
+	var already_present := _facility_recovery_requests.has(request_id)
+	_facility_recovery_requests[request_id] = {
+		"source_binding": _facility_recovery_binding(source_request),
+		"adapter_request": adapter_request.duplicate(true),
+	}
+	if not already_present:
+		_facility_recovery_order.append(request_id)
+	while _facility_recovery_order.size() > FACILITY_RECOVERY_LIMIT:
+		_facility_recovery_requests.erase(_facility_recovery_order.pop_front())
+
+
+func _forget_facility_recovery(request_id: String) -> void:
+	if not _facility_recovery_requests.erase(request_id):
+		return
+	_facility_recovery_order.erase(request_id)
+
+
+func _facility_recovery_binding(request: Dictionary) -> Dictionary:
+	return {
+		"request_id": str(request.get("request_id", "")),
+		"intent_fingerprint": str(request.get("intent_fingerprint", "")),
+		"source_revision": int(request.get("source_revision", -1)),
+		"actor_kind_id": str(request.get("actor_kind_id", "")),
+		"actor_id": str(request.get("actor_id", "")),
+		"player_index": int(request.get("player_index", -1)),
+		"session_id": str(request.get("session_id", "")),
+		"session_revision": int(request.get("session_revision", -1)),
+		"hand_slot_id": str(request.get("hand_slot_id", "")),
+		"card_instance_id": str(request.get("card_instance_id", "")),
+		"slot_index": int(request.get("slot_index", -1)),
 	}
 
 

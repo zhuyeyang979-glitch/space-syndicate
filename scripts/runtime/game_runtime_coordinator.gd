@@ -2623,10 +2623,9 @@ func economic_source_snapshot(actor_id: String) -> Dictionary:
 	var player_index := _ai_v06_actor_player_index(normalized_actor_id)
 	var infrastructure := _region_infrastructure_runtime_controller_node()
 	var flow := _commodity_flow_runtime_controller_node()
-	var inventory := _commodity_card_inventory_runtime_controller_node()
-	if normalized_actor_id.is_empty() or player_index < 0 or infrastructure == null or flow == null or inventory == null \
+	if normalized_actor_id.is_empty() or player_index < 0 or infrastructure == null or flow == null \
 			or not infrastructure.has_method("facilities_snapshot") or not flow.has_method("installations_snapshot") \
-			or not inventory.has_method("transaction_journal_snapshot"):
+			or not infrastructure.has_method("facility_action_lifecycle_snapshot"):
 		return _ai_v06_economy_failure("ai_v06_economic_source_unavailable")
 	var owned_facility_ids: Array[String] = []
 	for facility_variant in infrastructure.call("facilities_snapshot", false):
@@ -2648,20 +2647,18 @@ func economic_source_snapshot(actor_id: String) -> Dictionary:
 			production_installation_ids.append(str(installation.get("installation_id", "")))
 	production_installation_ids.sort()
 	var finalized_transaction_ids: Array[String] = []
-	var journal_variant: Variant = inventory.call("transaction_journal_snapshot")
-	var journal: Dictionary = journal_variant if journal_variant is Dictionary else {}
-	for transaction_id_variant in journal.keys():
-		var record_variant: Variant = journal.get(transaction_id_variant)
-		if not (record_variant is Dictionary):
+	var lifecycles_variant: Variant = infrastructure.call("facility_action_lifecycle_snapshot")
+	var lifecycles: Dictionary = lifecycles_variant if lifecycles_variant is Dictionary else {}
+	for transaction_id_variant in lifecycles.keys():
+		var lifecycle_variant: Variant = lifecycles.get(transaction_id_variant)
+		if not (lifecycle_variant is Dictionary):
 			continue
-		var result_variant: Variant = (record_variant as Dictionary).get("result", {})
-		if not (result_variant is Dictionary):
-			continue
-		var result: Dictionary = result_variant
-		var finalization: Dictionary = result.get("effect_finalization", {}) if result.get("effect_finalization", {}) is Dictionary else {}
-		if str(result.get("operation", "")) == "play_card" and str(result.get("actor_id", "")) == normalized_actor_id \
-				and str(result.get("effect_kind", "")) == "build_upgrade_or_repair_facility" \
-				and bool(result.get("committed", false)) and bool(result.get("finalized", finalization.get("finalized", false))):
+		var lifecycle := lifecycle_variant as Dictionary
+		var owner_binding: Dictionary = lifecycle.get("owner_binding", {}) \
+			if lifecycle.get("owner_binding", {}) is Dictionary else {}
+		if str(lifecycle.get("state", "")) == "finalized" \
+				and str(owner_binding.get("owner_kind", "")) == "player" \
+				and int(owner_binding.get("owner_player_index", -1)) == player_index:
 			finalized_transaction_ids.append(str(transaction_id_variant))
 	finalized_transaction_ids.sort()
 	var source_card := _ai_v06_current_facility_card(normalized_actor_id)

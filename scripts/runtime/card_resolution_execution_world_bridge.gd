@@ -121,23 +121,6 @@ func apply_intent(transaction: Dictionary) -> Dictionary:
 		"finish_batch":
 			_resolution_controller.finish_batch_state()
 			_presentation_port.set_overlay_state({"visible": false, "phase": "idle", "resolution_id": -1})
-			var preempted_entry := _dictionary(transaction.get("active_entry", {}))
-			var remaining_current := _queue_service.current_queue()
-			if bool(preempted_entry.get("facility_immediate_preemption", false)) \
-					and not remaining_current.is_empty() \
-					and remaining_current[0] is Dictionary:
-				var first_entry := remaining_current[0] as Dictionary
-				_resolution_controller.begin_group_window(
-					-1.0,
-					int(first_entry.get("player_index", -1)),
-					int(first_entry.get("window_sequence", -1))
-				)
-				return {
-					"intent_type": intent_type,
-					"finished": true,
-					"next_queue_count": 0,
-					"current_queue_reopened": true,
-				}
 			return {"intent_type": intent_type, "finished": true, "next_queue_count": _queue_service.next_queue().size()}
 		"promote_next_batch":
 			return _promote_next_batch_receipt()
@@ -380,10 +363,8 @@ func _aftermath_receipt(transaction: Dictionary) -> Dictionary:
 
 func _history_receipt(transaction: Dictionary) -> Dictionary:
 	var entry := _dictionary(transaction.get("active_entry", {}))
-	var facility_preempted := bool(entry.get("facility_immediate_preemption", false))
 	entry.erase("stable_target_envelope")
 	entry.erase("v06_facility_action")
-	entry.erase("facility_immediate_preemption")
 	for private_key in [
 		"v06_actor_id",
 		"v06_card_id",
@@ -407,7 +388,7 @@ func _history_receipt(transaction: Dictionary) -> Dictionary:
 		"intent_type": "append_history",
 		"appended": bool(append.get("appended", false)) or bool(append.get("duplicate", false)),
 		"reason": str(append.get("reason", "history_append_failed")),
-		"current_queue_count": 0 if facility_preempted else _queue_service.current_queue().size(),
+		"current_queue_count": _queue_service.current_queue().size(),
 	}
 
 

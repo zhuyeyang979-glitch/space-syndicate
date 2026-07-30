@@ -175,7 +175,8 @@ func _test_production_spine_is_unique() -> void:
 	)
 	_expect(
 		submission_source.contains("func _queue_v06_facility(")
-			and submission_source.contains("_facility_queue_source.submit(_facility_queue_capability")
+			and submission_source.contains("_facility_queue_source.submit(")
+			and submission_source.contains("_facility_queue_capability,")
 			and not coordinator_source.contains("func queue_v06_facility_card_action(")
 			and coordinator_source.contains("func resolve_queued_v06_facility_card_action(")
 			and coordinator_source.contains("func advance_card_resolution_frame("),

@@ -1,9 +1,12 @@
 # v0.6 restore dependency graph
 
-The executable source is
+The machine-readable design mirror is
 [`v06_restore_dependency_graph.json`](v06_restore_dependency_graph.json). The
-registry validates it and uses deterministic topological order; Node-tree order
-and frame waits are not restore dependencies.
+production registry's executable order remains the closed
+`V06SaveOwnerRegistry.RESTORE_DAG_NODE_ORDER` constant. A contract test requires
+the JSON order and every edge to match that production constant, so either side
+drifting fails visibly; production does not load documentation as runtime
+state. Node-tree order and frame waits are not restore dependencies.
 
 | Phase | Work | Mutation allowed |
 | ---: | --- | --- |
@@ -44,9 +47,29 @@ ruleset
 ```
 
 The order is one legal deterministic topological order, not a claim that every
-adjacent pair has an edge. The JSON edge list is authoritative.
+adjacent pair has an edge. The JSON edge list is the machine-readable design
+contract and must remain a valid topological subset of the production order.
+
+## Queued facility bundle
+
+A queued v0.6 facility action stays inside the same 19-owner envelope. Before
+`card_resolution_queue` applies, its card instance and escrow must match the
+`session` foundation, its nonzero cost reservation must match `player_mana`,
+and its target revision and slot generation must match
+`region_infrastructure`. The DAG therefore includes
+`region_infrastructure -> card_resolution_queue`,
+`player_mana -> card_resolution_queue`, and the existing
+`card_inventory -> card_resolution_queue` edge.
+
+Execution and history remain downstream owners:
+`card_resolution_queue -> card_resolution_execution ->
+card_resolution_history`. Cross-section preflight nevertheless inspects their
+detached normalized candidates and requires no execution collision and no
+history entry for a still-queued facility. This is a validation relationship,
+not a reverse apply edge, so it introduces no dependency cycle. The queue
+stores `submitted_at_world_time` as a nearest-integer millisecond and
+resolution reconstructs the same authoritative timestamp from that value.
 
 On failure, touched nodes are rolled back in the exact reverse of the actual
 apply order. Session foundation, clock/RNG, capability generation and the
 pre-load lifecycle state are then restored before the barrier is released.
-

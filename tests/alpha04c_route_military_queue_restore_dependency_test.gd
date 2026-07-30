@@ -64,6 +64,13 @@ func _world_fixture() -> Dictionary:
 		"route_bridge": route_bridge,
 		"infrastructure_state": infrastructure.to_save_data(),
 		"session_state": {
+			"game_session_runtime": {
+				"ruleset_id": "v0.6",
+				"session_id": "session.restore.dependencies",
+				"scenario_id": "scenario.restore.dependencies",
+				"seed": 1,
+				"setup": {},
+			},
 			"world_session_state": {
 				"players": [
 					{"id": 0, "slots": [null, null]},
@@ -231,6 +238,11 @@ func _base_states(fixture: Dictionary) -> Dictionary:
 	return {
 		"region_infrastructure": (fixture.get("infrastructure_state") as Dictionary).duplicate(true),
 		"session": (fixture.get("session_state") as Dictionary).duplicate(true),
+		"player_mana": {
+			"reservations": {},
+			"terminal_receipts": {},
+			"pools_by_player": {},
+		},
 		"weather": (fixture.get("weather_state") as Dictionary).duplicate(true),
 		"card_resolution_execution": _empty_execution_state(),
 		"card_resolution_history": _empty_history_state(),

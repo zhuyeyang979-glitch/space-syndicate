@@ -66,16 +66,41 @@ class FakeOfferSource:
 class FakeCardPlay:
 	extends CardPlaySubmissionRuntimeController
 	var submit_count := 0
+	var retry_count := 0
 	var requests: Array[Dictionary] = []
 	var accept := true
+	var require_recovery := false
 
 	func request_hand_play(request: Dictionary) -> Dictionary:
 		submit_count += 1
 		requests.append(request.duplicate(true))
+		if require_recovery:
+			return {
+				"accepted": false,
+				"queued": false,
+				"reason": "facility_queue_submission_compensation_incomplete",
+				"v06_receipt": {
+					"requires_recovery": true,
+					"idempotent_replay": false,
+				},
+			}
 		return {
 			"accepted": accept,
 			"queued": accept,
 			"reason": "card_play_accepted" if accept else "card_play_rejected",
+		}
+
+	func retry_hand_play(request: Dictionary) -> Dictionary:
+		retry_count += 1
+		requests.append(request.duplicate(true))
+		return {
+			"accepted": false,
+			"queued": false,
+			"reason": "qa_queue_commit_failed",
+			"v06_receipt": {
+				"requires_recovery": false,
+				"idempotent_replay": false,
+			},
 		}
 
 
@@ -220,6 +245,7 @@ func _run() -> void:
 	await _test_game_screen_human_paths()
 	_test_ai_shared_path_and_private_receipt_firewall()
 	_test_authorization_journal_and_exact_once()
+	_test_card_delivery_recovery_reaches_domain_after_escrow()
 	_test_stale_collision_and_invalid_target()
 	_test_group_district_and_refresh_routing()
 	_test_district_quote_post_bind_refresh_order()
@@ -312,6 +338,67 @@ func _test_authorization_journal_and_exact_once() -> void:
 	var replay := controller.submit_intent(valid)
 	_expect(bool(replay.get("accepted", false)) and bool(replay.get("idempotent_replay", false)), "duplicate authorized request returns the committed idempotent receipt")
 	_expect(refresh.request_count == 1 and int(controller.debug_snapshot().get("replay_count", 0)) == 1, "duplicate replay performs zero additional refresh or mutation")
+	_dispose(fixture)
+
+
+func _test_card_delivery_recovery_reaches_domain_after_escrow() -> void:
+	var fixture := _fixture()
+	var controller := fixture.controller as TablePlayerActionApplicationFlowController
+	var card_play := fixture.card_play as FakeCardPlay
+	var world := fixture.world as WorldSessionState
+	var offer := controller.human_card_play_offer(
+		0,
+		0,
+		HUMAN_SOURCE_REVISION,
+		true,
+		"none",
+		"region.beta"
+	)
+	var authorization := controller.human_actor_authorization()
+	var intent := _intent(
+		offer,
+		authorization,
+		"request.card-recovery",
+		"human_click"
+	)
+	card_play.require_recovery = true
+	var first := controller.submit_intent(intent)
+	var collision := controller.submit_intent(_intent(
+		offer,
+		authorization,
+		"request.card-recovery",
+		"human_drag"
+	))
+	var player: Dictionary = world.players[0]
+	var slots: Array = player.get("slots", [])
+	slots[0] = {}
+	player["slots"] = slots
+	world.players[0] = player
+	var recovered := controller.submit_intent(intent)
+	var terminal_replay := controller.submit_intent(intent)
+	var debug := controller.debug_snapshot()
+	_expect(
+		not bool(first.get("accepted", true)) \
+			and str(first.get("reason_id", "")) \
+				== "facility-queue-submission-compensation-incomplete" \
+			and bool(collision.get("request_id_collision", false)),
+		"an unsettled facility submission keeps one fingerprint-bound recovery delivery journal entry"
+	)
+	_expect(
+		not bool(recovered.get("accepted", true)) \
+			and str(recovered.get("reason_id", "")) == "qa-queue-commit-failed" \
+			and not bool(recovered.get("idempotent_replay", true)) \
+			and card_play.submit_count == 1 \
+			and card_play.retry_count == 1,
+		"the identical intent reaches the typed recovery port after escrow removed the private hand card"
+	)
+	_expect(
+		bool(terminal_replay.get("idempotent_replay", false)) \
+			and card_play.retry_count == 1 \
+			and int(debug.get("recovery_delivery_count", 0)) == 1 \
+			and int(debug.get("journal_size", 0)) == 1,
+		"completed compensation becomes one terminal replay and cannot re-enter the domain"
+	)
 	_dispose(fixture)
 
 

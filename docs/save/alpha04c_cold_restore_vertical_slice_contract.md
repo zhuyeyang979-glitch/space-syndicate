@@ -6,6 +6,9 @@ DRIVER_EXECUTION_READY=true
 CONTRACT_SCHEMA_VERSION=3
 CHILD_COMPLETION_ATTESTATION_SCHEMA_VERSION=1
 PARENT_EXIT_ATTESTATION_SCHEMA_VERSION=1
+OFFICIAL_CLAIM_SCHEMA_VERSION=1
+OFFICIAL_CLAIM_PATH=<git-common-dir>/codex/cold_restore_v3/official-alpha04c-depth1-seed900626424/official_claim_ledger.json
+CALLER_BOOLEAN_AUTHORIZATION_ACCEPTED=false
 CURRENT_RUNTIME_RULE_VERSION=v0.6
 SAVE_SECTION_COUNT=19
 NEW_SAVE_SECTION_COUNT=0
@@ -35,23 +38,28 @@ NEW_RNG_OWNER_COUNT=0
 0. One non-official qualification child runs through the same attested process
    helper. A completed Harness exits zero even when the product has no lawful
    Queue offer; `qualification_green` and `product_blocker` carry that product
-   result. Only a green child proof, parent proof, and product result can create
-   the exact-once official authorization ledger.
-1. Process A (`producer`) launches a real production composition with a fixed
+   result. Only a green child proof, parent proof, and product result can cross
+   the exact-once official authorization boundary.
+1. The official boundary is one fixed path below the Git common directory, not
+   the caller-controlled run directory. The orchestrator opens that final path
+   with `FileMode.CreateNew`, `FileShare.None`, `WriteThrough`, and `Flush(true)`.
+   A successful open consumes the sole authorization even if a later write,
+   child, or product step fails. The claim is never deleted or overwritten.
+2. Process A (`producer`) launches a real production composition with a fixed
    seed, reaches a quiescent checkpoint, freezes the runtime loop, invokes the
    high-level save command, emits one allowlisted QA manifest, and exits.
-2. Process B (`consumer`) starts only after A has exited. It launches a fresh
+3. Process B (`consumer`) starts only after A has exited. It launches a fresh
    production composition, restores before the first gameplay tick, verifies
    viewer-safe state and RNG continuation, advances at least one normal tick,
    asserts no duplicate receipt or settlement, emits its manifest, and exits.
-3. Process C (`validator`) launches a third fresh process, restores Generation 2,
+4. Process C (`validator`) launches a third fresh process, restores Generation 2,
    performs exact recapture, and emits the same closed allowlisted manifest.
-4. Every child atomically publishes its closed result and
+5. Every child atomically publishes its closed result and
    `ChildCompletionAttestationV1` before requesting exit. The external parent
    waits for the real process chain, hashes stdout/stderr, validates that child
    proof, proves task-owned process cleanup, and atomically writes
    `ParentExitAttestationV1`.
-5. The external orchestrator compares only the three allowlisted manifests and
+6. The external orchestrator compares only the three allowlisted manifests and
    validated attestations. It never parses the save envelope.
 
 All 19 owners and the restore barrier are integrated. Harness execution is now
@@ -61,6 +69,13 @@ worktree, resolves the Windows Godot console wrapper explicitly, and places the
 production slot in one run-specific isolated user-data root shared by the
 qualification child and A/B/C. A Queue-zero qualification consumes no official
 authorization and must not launch Process A.
+
+The fixed claim binds authorization id, run id, repository HEAD, challenge
+depth, seed, scenario fingerprint, all three qualification artifact hashes, the
+orchestrator script hash/schema/process identity, a nonce, and the exact
+`0 -> 1` count transition. Changing `RunId` therefore cannot mint a second
+claim. Contract-fixture, default check-only, and qualification modes exit before
+the `CreateNew` boundary.
 
 ## Exit and evidence contract
 
@@ -74,6 +89,16 @@ timeout/termination state, stdout/stderr SHA-256, child-attestation fingerprint,
 and the post-cleanup task-owned process count. Qualification and A/B/C share the
 same PowerShell process helper and `ProcessStartInfo.ArgumentList`; engine flags
 such as `--check-only` are rejected if placed after Godot's user-argument `--`.
+
+Each official role additionally requires a closed launch attestation generated
+after the Windows console wrapper starts. It binds the fixed claim fingerprint,
+role nonce, run/HEAD/scenario, orchestrator identity, wrapper PID and creation
+time, and the actual Godot engine child PID and creation time. The driver checks
+that engine PID against `OS.get_process_id()` before instantiating `main.tscn`;
+the orchestrator reads the same launch artifact back and requires that PID to
+match the role manifest. The retired
+`--cold-restore-official-count-consumed=*` option is an unknown option and can
+never authorize a direct driver invocation.
 
 ```text
 HARNESS_COMPLETE + PRODUCT_QUEUE_BLOCKED => EXIT_CODE=0

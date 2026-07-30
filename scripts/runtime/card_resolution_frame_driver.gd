@@ -79,12 +79,8 @@ func immediate_transition_snapshot() -> Dictionary:
 	if not active.is_empty():
 		return _immediate_facility_entry(active, "active")
 	var current := _queue.current_queue()
-	for entry_variant in current:
-		if not (entry_variant is Dictionary):
-			continue
-		var candidate := _immediate_facility_entry(entry_variant as Dictionary, "queued")
-		if bool(candidate.get("pending", false)):
-			return candidate
+	if not current.is_empty() and current[0] is Dictionary:
+		return _immediate_facility_entry(current[0] as Dictionary, "queued")
 	return {"pending": false, "reason_code": "immediate_facility_queue_shape_unavailable"}
 
 

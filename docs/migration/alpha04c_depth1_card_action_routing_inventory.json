@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "task_id": "ALPHA_0_4_C_P0_QUEUEABLE_FACILITY_ACTION_BRIDGE_AND_COLD_RESTORE_CLOSURE",
   "audit_role": "Sub Agent 1 depth-1 action routing audit",
   "source_head": "a55b938f41402be2f3eb510300c483de5ae09458",
@@ -80,6 +80,30 @@
     "preferred_migration_target": "FACILITY_CARD_ACTION_FAMILY",
     "facility_direct_identity_count": 48,
     "existing_conditional_queue_identity_count": 8
+  },
+  "post_bridge_delta": {
+    "status": "focused_gates_green_trusted_qualification_pending",
+    "implementation_commit": "4796c1e1d77c844baf12245dfa449b7c585c5de4",
+    "latest_pr77_merge_commit": "fce3edff",
+    "facility_identity_count_migrated_to_queue": 48,
+    "depth1_queue_route_identity_count_after": 56,
+    "depth1_direct_resolve_capable_identity_count_after": 20,
+    "depth1_unsupported_pre_queue_identity_count_after": 48,
+    "direct_facility_card_resolution_path_count_after": 0,
+    "facility_card_queue_submission_path_count": 1,
+    "queue_front_order_preserved": true,
+    "facility_can_preempt_earlier_queue_entry": false,
+    "facility_rule_owner_unchanged": true,
+    "human_ai_shared_application_flow": true,
+    "public_queue_owner_visible": false,
+    "save_section_count": 19,
+    "new_save_section_count": 0,
+    "trusted_qualification": {
+      "status": "pending",
+      "required_challenge_depth": 1,
+      "required_seed": 900626424,
+      "official": false
+    }
   },
   "bucket_counts": {
     "facility_factory": 24,

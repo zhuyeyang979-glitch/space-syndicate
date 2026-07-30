@@ -65,6 +65,220 @@ class FailOnceFinalizeCardStateProxy:
 		)
 
 
+class FailOnceFacilityFinalizeCoreProxy:
+	extends CoreEconomicCardRuntimeAdapterV06
+
+	var delegate: CoreEconomicCardRuntimeAdapterV06
+	var remaining_failures := 1
+	var finalize_call_count := 0
+
+	func facility_target_context(
+		actor_id: String,
+		slot_index: int,
+		card_id: String,
+		region_id: String,
+		game_time: float
+	) -> Dictionary:
+		return delegate.facility_target_context(
+			actor_id,
+			slot_index,
+			card_id,
+			region_id,
+			game_time
+		)
+
+	func prepare_queued_facility_card(
+		actor_id: String,
+		card: Dictionary,
+		target_context: Dictionary,
+		transaction_id: String
+	) -> Dictionary:
+		return delegate.prepare_queued_facility_card(
+			actor_id,
+			card,
+			target_context,
+			transaction_id
+		)
+
+	func commit_queued_facility_card(preparation: Dictionary) -> Dictionary:
+		return delegate.commit_queued_facility_card(preparation)
+
+	func abort_queued_facility_card(preparation: Dictionary) -> Dictionary:
+		return delegate.abort_queued_facility_card(preparation)
+
+	func rollback_queued_facility_card(effect_receipt: Dictionary) -> Dictionary:
+		return delegate.rollback_queued_facility_card(effect_receipt)
+
+	func preflight_finalize_queued_facility_card(effect_receipt: Dictionary) -> Dictionary:
+		return delegate.preflight_finalize_queued_facility_card(effect_receipt)
+
+	func finalize_queued_facility_card(effect_receipt: Dictionary) -> Dictionary:
+		finalize_call_count += 1
+		if remaining_failures > 0:
+			remaining_failures -= 1
+			return {
+				"finalized": false,
+				"reason_code": "qa_fail_once_facility_effect_finalize",
+			}
+		return delegate.finalize_queued_facility_card(effect_receipt)
+
+
+class SubmissionManaFaultProxy:
+	extends PlayerManaRuntimeController
+
+	var delegate: PlayerManaRuntimeController
+	var fail_commit_receipt := false
+	var fail_release_receipt := false
+	var commit_call_count := 0
+	var release_call_count := 0
+	var last_transaction_id := ""
+
+	func plan_reservation(request: Dictionary) -> Dictionary:
+		return delegate.plan_reservation(request)
+
+	func commit_reservation(plan: Dictionary) -> Dictionary:
+		commit_call_count += 1
+		var receipt := delegate.commit_reservation(plan)
+		last_transaction_id = str(plan.get("transaction_id", "")) \
+			if bool(plan.get("required", false)) else ""
+		if fail_commit_receipt:
+			receipt["committed"] = false
+			receipt["authorized"] = false
+			receipt["reason"] = "qa_mana_commit_receipt_failed"
+		return receipt
+
+	func reservation_snapshot(transaction_id: String) -> Dictionary:
+		return delegate.reservation_snapshot(transaction_id)
+
+	func reservation_settlement_snapshot(transaction_id: String) -> Dictionary:
+		return delegate.reservation_settlement_snapshot(transaction_id)
+
+	func release_reservation(transaction_id: String, reason: String = "released") -> Dictionary:
+		release_call_count += 1
+		if fail_release_receipt:
+			return {
+				"committed": true,
+				"authorized": true,
+				"settled": true,
+				"transaction_id": transaction_id,
+				"outcome": "released",
+				"reason": reason,
+			}
+		return delegate.release_reservation(transaction_id, reason)
+
+
+class SubmissionCardReleaseFaultProxy:
+	extends CardPlayerStateProductionAdapterV06
+
+	var delegate: CardPlayerStateProductionAdapterV06
+	var fail_commit_receipt := false
+	var fail_release_receipt := false
+	var commit_call_count := 0
+	var release_call_count := 0
+	var last_escrow_id := ""
+	var last_escrow_fingerprint := ""
+
+	func actor_player_indices() -> Dictionary:
+		return delegate.actor_player_indices()
+
+	func plan_facility_card_escrow(request: Dictionary) -> Dictionary:
+		return delegate.plan_facility_card_escrow(request)
+
+	func commit_facility_card_escrow(plan: Dictionary) -> Dictionary:
+		commit_call_count += 1
+		var receipt := delegate.commit_facility_card_escrow(plan)
+		last_escrow_id = str(receipt.get("escrow_id", ""))
+		last_escrow_fingerprint = str(receipt.get("escrow_fingerprint", ""))
+		if fail_commit_receipt:
+			receipt["committed"] = false
+			receipt["reason_code"] = "qa_card_escrow_commit_receipt_failed"
+		return receipt
+
+	func facility_card_escrow_snapshot(escrow_id: String) -> Dictionary:
+		return delegate.facility_card_escrow_snapshot(escrow_id)
+
+	func release_facility_card_escrow(
+		escrow_id: String,
+		expected_fingerprint: String,
+		reason_code: String
+	) -> Dictionary:
+		release_call_count += 1
+		if not fail_release_receipt:
+			return delegate.release_facility_card_escrow(
+				escrow_id,
+				expected_fingerprint,
+				reason_code
+			)
+		return {
+			"committed": false,
+			"consumed": false,
+			"finalized": false,
+			"released": true,
+			"terminal": true,
+			"reason_code": reason_code,
+			"escrow_id": escrow_id,
+			"state_id": "released",
+			"escrow_fingerprint": expected_fingerprint,
+			"receipt_fingerprint": "a".repeat(64),
+			"idempotent_replay": false,
+		}
+
+
+class SubmissionQueueCommitFaultProxy:
+	extends CardResolutionQueueRuntimeService
+
+	var delegate: CardResolutionQueueRuntimeService
+	var commit_before_failure := false
+	var forge_successful_rollback_without_delegate := false
+	var commit_call_count := 0
+	var rollback_call_count := 0
+	var status_call_count := 0
+	var last_resolution_id := -1
+
+	func plan_submission(request: Dictionary, facts: Dictionary) -> Dictionary:
+		return delegate.plan_submission(request, facts)
+
+	func commit_submission(plan: Dictionary, commit_receipt: Dictionary) -> Dictionary:
+		commit_call_count += 1
+		if commit_before_failure:
+			var committed := delegate.commit_submission(plan, commit_receipt)
+			last_resolution_id = int((committed.get("entry", {}) as Dictionary).get(
+				"resolution_id",
+				-1
+			)) if committed.get("entry", {}) is Dictionary else -1
+		return {
+			"committed": false,
+			"reason": "qa_queue_commit_failed",
+		}
+
+	func rollback_facility_submission(
+		capability: RefCounted,
+		request: Dictionary
+	) -> Dictionary:
+		rollback_call_count += 1
+		if forge_successful_rollback_without_delegate:
+			return {
+				"schema_version": 1,
+				"settlement_kind_id": "facility_queue_submission_rollback",
+				"settled": true,
+				"commitment_found": true,
+				"rolled_back": true,
+				"state_verified": true,
+				"resolution_id": last_resolution_id,
+				"outcome_id": "rolled_back",
+				"reason_code": "facility_queue_submission_rolled_back",
+				"idempotent_replay": false,
+			}
+		return delegate.rollback_facility_submission(capability, request)
+
+	func facility_submission_status(
+		capability: RefCounted,
+		request: Dictionary
+	) -> Dictionary:
+		status_call_count += 1
+		return delegate.facility_submission_status(capability, request)
+
+
 func _init() -> void:
 	call_deferred("_run")
 
@@ -383,6 +597,30 @@ func _run() -> void:
 	var adapter_capability := adapter.get("_submission_capability") as RefCounted \
 		if adapter != null else null
 	var adapter_request := _adapter_request_from_entry(queued_entry)
+	var queued_replay := adapter.submit(adapter_capability, adapter_request) \
+		if adapter != null and adapter_capability != null else {}
+	_expect(bool(queued_replay.get("accepted", false)) \
+			and bool(queued_replay.get("queued", false)) \
+			and bool(queued_replay.get("idempotent_replay", false)) \
+			and int(queued_replay.get("resolution_id", -1)) == queued_resolution_id \
+			and _public_queue_count(queue_owner.public_snapshot()) == 1, "same successful request returns a queued replay without entering compensation or removing the live Queue entry")
+	var queue_rollback_request_variant: Variant = adapter.call(
+		"_queue_rollback_request",
+		adapter_request,
+		str(escrow_ref.get("escrow_id", "")),
+		queued_resolution_id,
+		"qa_forged_queue_rollback"
+	) if adapter != null else {}
+	var queue_rollback_request: Dictionary = queue_rollback_request_variant \
+		if queue_rollback_request_variant is Dictionary else {}
+	var forged_queue_rollback := queue_owner.rollback_facility_submission(
+		RefCounted.new(),
+		queue_rollback_request
+	) if queue_owner != null else {}
+	_expect(not bool(forged_queue_rollback.get("settled", true)) \
+			and str(forged_queue_rollback.get("reason_code", "")) \
+				== "facility_queue_submission_rollback_unauthorized" \
+			and not queue_owner.entry_by_id(queued_resolution_id).is_empty(), "caller-forged Queue rollback capability cannot remove or inspect the committed facility entry")
 	var forged_submission := adapter.submit(RefCounted.new(), adapter_request) \
 		if adapter != null else {}
 	_expect(not bool(forged_submission.get("accepted", true)) \
@@ -403,46 +641,47 @@ func _run() -> void:
 			and str(hostile_bind.get("reason_code", "")) == "facility_queue_source_rebind_rejected", "the production submission port rejects hostile source/capability rebinding")
 	hostile_source.queue_free()
 	var real_card_state := coordinator.card_player_state_production_adapter_v06()
+	var real_core := coordinator.core_economic_card_runtime_adapter_v06()
 	var mana_owner := coordinator.get_node_or_null("PlayerManaRuntimeController") \
 		as PlayerManaRuntimeController
 	var execution_owner := coordinator.get_node_or_null("CardResolutionExecutionRuntimeService") \
 		as CardResolutionExecutionRuntimeService
-	var history_count_before_failure := coordinator.card_resolution_history_snapshot().size()
+	var history_count_before_finalize_fault := coordinator.card_resolution_history_snapshot().size()
 	var facility_count_before_resolution := infrastructure_owner.facilities_snapshot(true).size() \
 		if infrastructure_owner != null else -1
-	var finalize_proxy := FailOnceFinalizeCardStateProxy.new()
-	finalize_proxy.delegate = real_card_state
-	root.add_child(finalize_proxy)
-	adapter.set("_card_state", finalize_proxy)
-	var failed_step := coordinator.advance_card_resolution_frame(0.0)
-	var execution_after_failure := execution_owner.immediate_facility_resolution_snapshot() \
+	var core_finalize_proxy := FailOnceFacilityFinalizeCoreProxy.new()
+	core_finalize_proxy.delegate = real_core
+	root.add_child(core_finalize_proxy)
+	adapter.set("_core", core_finalize_proxy)
+	var failed_finalize_step := coordinator.advance_card_resolution_frame(0.0)
+	var execution_after_finalize_failure := execution_owner.immediate_facility_resolution_snapshot() \
 		if execution_owner != null else {}
-	var facility_after_failure := infrastructure_owner.facilities_snapshot(true) \
+	var facility_after_finalize_failure := infrastructure_owner.facilities_snapshot(true) \
 		if infrastructure_owner != null else []
-	var reservation_after_failure := mana_owner.reservation_settlement_snapshot(
+	var reservation_after_finalize_failure := mana_owner.reservation_settlement_snapshot(
 		str(reservation_ref.get("reservation_id", ""))
 	) if mana_owner != null else {}
 	var reservation_released := (
-		str(reservation_after_failure.get("outcome_id", "")) == "released"
+		str(reservation_after_finalize_failure.get("outcome_id", "")) == "released"
 	) if bool(reservation_ref.get("required", false)) else (
 		str(reservation_ref.get("reservation_id", "")).is_empty()
-		and str(reservation_after_failure.get("outcome_id", "")) == "missing"
+		and str(reservation_after_finalize_failure.get("outcome_id", "")) == "missing"
 	)
-	var escrow_after_failure := real_card_state.facility_card_escrow_snapshot(
+	var escrow_after_finalize_failure := real_card_state.facility_card_escrow_snapshot(
 		str(escrow_ref.get("escrow_id", ""))
 	) if real_card_state != null else {}
-	_expect(bool(failed_step.get("handled", false)) \
-			and not bool(execution_after_failure.get("pending", false)) \
-			and finalize_proxy.finalize_call_count == 1 \
-			and finalize_proxy.remaining_failures == 0, "escrow finalization failure completes one terminal rejected resolution instead of leaving an unsaveable retry")
-	_expect(facility_after_failure.size() == facility_count_before_resolution \
+	_expect(bool(failed_finalize_step.get("handled", false)) \
+			and not bool(execution_after_finalize_failure.get("pending", false)) \
+			and core_finalize_proxy.finalize_call_count == 1 \
+			and core_finalize_proxy.remaining_failures == 0, "facility finalization failure completes one terminal rollback without leaving an execution retry")
+	_expect(facility_after_finalize_failure.size() == facility_count_before_resolution \
 			and reservation_released \
-			and bool(escrow_after_failure.get("terminal", false)) \
-			and str((escrow_after_failure.get("receipt", {}) as Dictionary).get("state_id", "")) == "released" \
+			and bool(escrow_after_finalize_failure.get("terminal", false)) \
+			and str((escrow_after_finalize_failure.get("receipt", {}) as Dictionary).get("state_id", "")) == "released" \
 			and _inventory_card_count(coordinator.v06_card_player_snapshot(actor_id)) == _inventory_card_count(inventory_before_play) \
-			and coordinator.card_resolution_history_snapshot().size() == history_count_before_failure + 1, "escrow finalization failure rolls back facility, assets and card before the history terminal receipt")
-	adapter.set("_card_state", real_card_state)
-	finalize_proxy.queue_free()
+			and coordinator.card_resolution_history_snapshot().size() == history_count_before_finalize_fault + 1, "facility finalization failure rolls back facility, assets and pending card before the terminal history receipt")
+	adapter.set("_core", real_core)
+	core_finalize_proxy.queue_free()
 	coordinator.advance_card_cooldowns(60.0)
 	coordinator.request_table_presentation_refresh(&"full", &"qa_facility_card_dock_after_finalize_rollback")
 	await process_frame
@@ -454,12 +693,67 @@ func _run() -> void:
 		TARGET_CARD_ID
 	)
 	var retry_action := _first_enabled_play_action(retry_hand)
+	var parity_world_time_before := world.game_time
+	var parity_safety_before := coordinator.save_restore_safety_observation()
+	var parity_gdp_before := coordinator.commodity_flow_region_gdp_snapshot(region_id)
+	var parity_victory_before := coordinator.victory_control_world_snapshot()
+	var parity_cash_before := int((world.players[0] as Dictionary).get("cash", 0))
+	var parity_mana_before := mana_owner.availability_snapshot(0) if mana_owner != null else {}
+	var historical_direct_owner_fixture := _facility_for_slot(
+		infrastructure_owner,
+		occupied_region_id,
+		"market",
+		"technology"
+	)
 	_expect(not retry_action.is_empty() and _submit_game_action(screen, retry_action), "the fully rolled-back authoritative card can be resubmitted through a fresh GameAction offer")
+	var retry_submission := coordinator.card_play_submission_controller().debug_snapshot()
+	var retry_play_receipt: Dictionary = retry_submission.get("last_receipt", {}) \
+		if retry_submission.get("last_receipt", {}) is Dictionary else {}
+	var retry_v06_receipt: Dictionary = retry_play_receipt.get("v06_receipt", {}) \
+		if retry_play_receipt.get("v06_receipt", {}) is Dictionary else {}
+	var retry_entry := queue_owner.entry_by_id(int(retry_v06_receipt.get("resolution_id", -1))) \
+		if queue_owner != null else {}
+	var retry_adapter_request := _adapter_request_from_entry(retry_entry)
+	var retry_binding: Dictionary = retry_entry.get("v06_facility_action", {}) \
+		if retry_entry.get("v06_facility_action", {}) is Dictionary else {}
+	reservation_ref = retry_binding.get("asset_reservation", {}) \
+		if retry_binding.get("asset_reservation", {}) is Dictionary else {}
+	escrow_ref = retry_binding.get("card_escrow", {}) \
+		if retry_binding.get("card_escrow", {}) is Dictionary else {}
+	var history_count_before_card_finalize_retry := coordinator.card_resolution_history_snapshot().size()
+	var card_finalize_proxy := FailOnceFinalizeCardStateProxy.new()
+	card_finalize_proxy.delegate = real_card_state
+	root.add_child(card_finalize_proxy)
+	adapter.set("_card_state", card_finalize_proxy)
+	var retryable_step := coordinator.advance_card_resolution_frame(0.0)
+	var execution_during_card_retry := execution_owner.immediate_facility_resolution_snapshot() \
+		if execution_owner != null else {}
+	var facility_during_card_retry := infrastructure_owner.facilities_snapshot(true) \
+		if infrastructure_owner != null else []
+	var reservation_during_card_retry := mana_owner.reservation_settlement_snapshot(
+		str(reservation_ref.get("reservation_id", ""))
+	) if mana_owner != null else {}
+	var escrow_during_card_retry := real_card_state.facility_card_escrow_snapshot(
+		str(escrow_ref.get("escrow_id", ""))
+	) if real_card_state != null else {}
+	_expect(not bool(retryable_step.get("handled", true)) \
+			and bool(execution_during_card_retry.get("pending", false)) \
+			and card_finalize_proxy.finalize_call_count == 1, "post-facility card finalization fault leaves one retryable commitment instead of compensating an already-finalized facility")
+	_expect(facility_during_card_retry.size() == facility_count_before_resolution + 1 \
+			and (str(reservation_during_card_retry.get("outcome_id", "")) == "consumed" \
+				or not bool(reservation_ref.get("required", false))) \
+			and bool(escrow_during_card_retry.get("found", false)) \
+			and str((escrow_during_card_retry.get("escrow", {}) as Dictionary).get("state_id", "")) == "consumed_pending_finalization" \
+			and coordinator.card_resolution_history_snapshot().size() == history_count_before_card_finalize_retry, "retryable commitment preserves finalized facility, consumed assets and full escrow without premature history")
 	var successful_step := coordinator.advance_card_resolution_frame(0.0)
 	var execution_after_success := execution_owner.immediate_facility_resolution_snapshot() \
 		if execution_owner != null else {}
+	adapter.set("_card_state", real_card_state)
+	card_finalize_proxy.queue_free()
 	_expect(bool(successful_step.get("handled", false)) \
-			and not bool(execution_after_success.get("pending", false)), "the fresh authorized submission resolves once after the injected finalizer fault is removed")
+			and not bool(execution_after_success.get("pending", false)) \
+			and card_finalize_proxy.finalize_call_count == 2 \
+			and coordinator.card_resolution_history_snapshot().size() == history_count_before_card_finalize_retry + 1, "the next authorized logical step settles the pending card exactly once without replaying the finalized facility")
 	coordinator.pause_session()
 	var adapter_after := adapter.debug_snapshot() if adapter != null else {}
 	var economic_after_play := coordinator.economic_source_snapshot(actor_id)
@@ -467,11 +761,94 @@ func _run() -> void:
 	var journal_after: Dictionary = inventory_owner.call("transaction_journal_snapshot") if inventory_owner != null else {}
 	var infrastructure_after_play := infrastructure_owner.region_snapshot(region_id) if infrastructure_owner != null else {}
 	var world_player_after_play: Dictionary = (world.players[0] as Dictionary).duplicate(true) if world.players[0] is Dictionary else {}
+	var parity_safety_after := coordinator.save_restore_safety_observation()
+	var parity_gdp_after := coordinator.commodity_flow_region_gdp_snapshot(region_id)
+	var parity_victory_after := coordinator.victory_control_world_snapshot()
+	var parity_mana_after := mana_owner.availability_snapshot(0) if mana_owner != null else {}
+	var queued_facility := _facility_for_slot(infrastructure_owner, region_id, "market", "technology")
+	var terminal_reservation := mana_owner.reservation_settlement_snapshot(
+		str(reservation_ref.get("reservation_id", ""))
+	) if mana_owner != null else {}
+	var terminal_escrow := real_card_state.facility_card_escrow_snapshot(
+		str(escrow_ref.get("escrow_id", ""))
+	) if real_card_state != null else {}
 	_expect(adapter != null and int(adapter_after.get("resolution_count", 0)) == int(adapter_before.get("resolution_count", 0)) + 1 \
 			and _public_queue_count(queue_owner.public_snapshot()) == 0, "the next authorized command-only card resolution settles the Queue exactly once")
 	_expect(int(economic_after_play.get("owned_facility_count", 0)) == 1 and int(economic_after_play.get("production_installation_count", 0)) == 0, "technology market play creates exactly one market facility and no fake factory production installation")
 	_expect(_inventory_card_count(inventory_after_play) == _inventory_card_count(inventory_before_play) - 1, "successful resolution consumes one escrowed authoritative hand instance")
 	_expect(queue_owner != null and JSON.stringify(queue_owner.public_snapshot()) == queue_before_text, "resolved facility Queue returns to its exact empty public shape")
+	_expect(_facility_rule_projection(queued_facility) == _facility_rule_projection(historical_direct_owner_fixture), "FACILITY_EFFECT_STATE_PARITY: queued Rank-I market matches the characterized direct RegionInfrastructure owner result")
+	_expect(world.game_time == parity_world_time_before \
+			and int(parity_safety_after.get("world_clock_advance_count", -1)) == int(parity_safety_before.get("world_clock_advance_count", -2)) \
+			and int(parity_safety_after.get("rng_draw_invocation_count", -1)) == int(parity_safety_before.get("rng_draw_invocation_count", -2)) \
+			and parity_gdp_after == parity_gdp_before \
+			and _victory_parity_projection(parity_victory_after) \
+				== _victory_parity_projection(parity_victory_before), "FACILITY_RNG_DELTA_PARITY: queued resolution advances no world time, RNG, GDP receipt window, or Victory state|time=%s/%s safety=%s/%s gdp=%s/%s victory=%s/%s" % [parity_world_time_before, world.game_time, JSON.stringify(parity_safety_before), JSON.stringify(parity_safety_after), JSON.stringify(parity_gdp_before), JSON.stringify(parity_gdp_after), JSON.stringify(_victory_parity_projection(parity_victory_before)), JSON.stringify(_victory_parity_projection(parity_victory_after))])
+	_expect(int((world.players[0] as Dictionary).get("cash", -1)) == parity_cash_before \
+			and parity_mana_after == parity_mana_before \
+			and (str(terminal_reservation.get("outcome_id", "")) == "consumed" \
+				or not bool(reservation_ref.get("required", false))), "FACILITY_COST_PARITY: Rank-I activation preserves cash and zero-cost asset pools while settling its reservation once")
+	_expect(bool(terminal_escrow.get("terminal", false)) \
+			and str((terminal_escrow.get("receipt", {}) as Dictionary).get("state_id", "")) == "consumed_finalized" \
+			and _inventory_card_count(inventory_after_play) == _inventory_card_count(inventory_before_play) - 1, "FACILITY_CARD_LIFECYCLE_PARITY: one played card reaches one terminal consumed escrow state")
+
+	coordinator.resume_session()
+	var terminal_request_replay := adapter.submit(adapter_capability, retry_adapter_request)
+	coordinator.pause_session()
+	_expect(_has_exact_fields(terminal_request_replay, [
+			"accepted",
+			"queued",
+			"committed",
+			"terminal",
+			"idempotent_replay",
+			"reason_code",
+		]) \
+			and not bool(terminal_request_replay.get("accepted", true)) \
+			and not bool(terminal_request_replay.get("queued", true)) \
+			and bool(terminal_request_replay.get("committed", false)) \
+			and bool(terminal_request_replay.get("terminal", false)) \
+			and bool(terminal_request_replay.get("idempotent_replay", false)) \
+			and not bool(terminal_request_replay.get("requires_recovery", false)), "same successful request replays the consumed-finalized Card Owner receipt without entering compensation|result=%s" % JSON.stringify(terminal_request_replay))
+
+	var terminal_world_save: Dictionary = world.to_save_data().duplicate(true)
+	var terminal_mana_save: Dictionary = mana_owner.to_save_data().duplicate(true) \
+		if mana_owner != null else {}
+	var terminal_queue_save: Dictionary = queue_owner.to_save_data().duplicate(true) \
+		if queue_owner != null else {}
+	var terminal_world_restore: Dictionary = world.apply_save_data(terminal_world_save)
+	var terminal_mana_restore: Dictionary = mana_owner.apply_save_data(terminal_mana_save) \
+		if mana_owner != null else {}
+	var terminal_queue_restore: Dictionary = queue_owner.apply_save_data(terminal_queue_save) \
+		if queue_owner != null else {}
+	coordinator.resume_session()
+	var cold_terminal_request_replay := adapter.submit(
+		adapter_capability,
+		retry_adapter_request
+	)
+	coordinator.pause_session()
+	var cold_terminal_escrow := real_card_state.facility_card_escrow_snapshot(
+		str(escrow_ref.get("escrow_id", ""))
+	) if real_card_state != null else {}
+	_expect(bool(terminal_world_restore.get("applied", false)) \
+			and bool(terminal_mana_restore.get("applied", false)) \
+			and bool(terminal_queue_restore.get("applied", false)) \
+			and str((cold_terminal_escrow.get("receipt", {}) as Dictionary).get(
+				"state_id",
+				""
+			)) == "consumed_finalized" \
+			and _public_queue_count(queue_owner.public_snapshot()) == 0, "world, mana, and Queue terminal Save data reapply without adding a schema or reviving the settled commitment")
+	_expect(_has_exact_fields(cold_terminal_request_replay, [
+			"accepted",
+			"queued",
+			"committed",
+			"terminal",
+			"idempotent_replay",
+			"reason_code",
+		]) \
+			and bool(cold_terminal_request_replay.get("committed", false)) \
+			and bool(cold_terminal_request_replay.get("terminal", false)) \
+			and bool(cold_terminal_request_replay.get("idempotent_replay", false)) \
+			and not bool(cold_terminal_request_replay.get("requires_recovery", false)), "cold-restored consumed-finalized submission follows the terminal replay path instead of requires_recovery|result=%s" % JSON.stringify(cold_terminal_request_replay))
 
 	coordinator.advance_card_resolution_frame(0.0)
 	var economic_after_replay := coordinator.economic_source_snapshot(actor_id)
@@ -500,6 +877,302 @@ func _run() -> void:
 	var upgrade_grant: Dictionary = (upgrade_grant_variant as Dictionary).duplicate(true) if upgrade_grant_variant is Dictionary else {}
 	var after_upgrade_grant := coordinator.v06_card_player_snapshot(actor_id)
 	var upgrade_slot := _inventory_slot_for_card(after_upgrade_grant, rank_two_card_id)
+	var upgrade_inventory: Dictionary = after_upgrade_grant.get("inventory", {}) \
+		if after_upgrade_grant.get("inventory", {}) is Dictionary else {}
+	var upgrade_slots: Array = upgrade_inventory.get("slots", []) \
+		if upgrade_inventory.get("slots", []) is Array else []
+	var upgrade_card: Dictionary = upgrade_slots[upgrade_slot] \
+		if upgrade_slot >= 0 and upgrade_slot < upgrade_slots.size() \
+			and upgrade_slots[upgrade_slot] is Dictionary else {}
+	var fault_inventory_count := _inventory_card_count(after_upgrade_grant)
+	coordinator.resume_session()
+	var escrow_commit_fault := SubmissionCardReleaseFaultProxy.new()
+	escrow_commit_fault.delegate = real_card_state
+	escrow_commit_fault.fail_commit_receipt = true
+	root.add_child(escrow_commit_fault)
+	adapter.set("_card_state", escrow_commit_fault)
+	var escrow_commit_request := _submission_fault_request(
+		adapter_request,
+		upgrade_card,
+		upgrade_slot,
+		"escrow-commit"
+	)
+	var escrow_commit_fault_result := adapter.submit(
+		adapter_capability,
+		escrow_commit_request
+	)
+	adapter.set("_card_state", real_card_state)
+	var escrow_commit_settlement: Dictionary = escrow_commit_fault_result.get(
+		"submission_settlement",
+		{}
+	) if escrow_commit_fault_result.get("submission_settlement", {}) is Dictionary else {}
+	var escrow_commit_compensation: Dictionary = escrow_commit_settlement.get(
+		"escrow_compensation",
+		{}
+	) if escrow_commit_settlement.get("escrow_compensation", {}) is Dictionary else {}
+	var escrow_commit_terminal := real_card_state.facility_card_escrow_snapshot(
+		escrow_commit_fault.last_escrow_id
+	) if real_card_state != null else {}
+	_expect(_submission_failure_contract_valid(escrow_commit_fault_result) \
+			and str(escrow_commit_fault_result.get("reason_code", "")) \
+				== "qa_card_escrow_commit_receipt_failed" \
+			and str(escrow_commit_fault_result.get("failure_reason_code", "")) \
+				== "qa_card_escrow_commit_receipt_failed" \
+			and str(escrow_commit_settlement.get("original_failure_reason_code", "")) \
+				== "qa_card_escrow_commit_receipt_failed" \
+			and bool(escrow_commit_fault_result.get("commitment_settled", false)), "post-mutation false escrow commit receipt probes and compensates the real Card Owner with the exact dependency reason|result=%s" % JSON.stringify(escrow_commit_fault_result))
+	_expect(escrow_commit_fault.commit_call_count == 1 \
+			and escrow_commit_fault.release_call_count == 1 \
+			and not bool(escrow_commit_compensation.get("commit_expected", true)) \
+			and bool(escrow_commit_compensation.get("attempted", false)) \
+			and bool(escrow_commit_compensation.get("receipt_valid", false)) \
+			and bool(escrow_commit_compensation.get("state_verified", false)) \
+			and str((escrow_commit_terminal.get("receipt", {}) as Dictionary).get(
+				"state_id",
+				""
+			)) == "released" \
+			and _inventory_card_count(coordinator.v06_card_player_snapshot(actor_id)) \
+				== fault_inventory_count \
+			and _public_queue_count(queue_owner.public_snapshot()) == 0, "escrow post-mutation compensation restores the exact card without creating Queue or mana state")
+	escrow_commit_fault.queue_free()
+
+	var mana_commit_fault := SubmissionManaFaultProxy.new()
+	mana_commit_fault.delegate = mana_owner
+	mana_commit_fault.fail_commit_receipt = true
+	root.add_child(mana_commit_fault)
+	adapter.set("_mana", mana_commit_fault)
+	var mana_commit_fault_result := adapter.submit(
+		adapter_capability,
+		_submission_fault_request(adapter_request, upgrade_card, upgrade_slot, "mana-commit")
+	)
+	adapter.set("_mana", mana_owner)
+	var mana_commit_settlement: Dictionary = mana_commit_fault_result.get(
+		"submission_settlement",
+		{}
+	) if mana_commit_fault_result.get("submission_settlement", {}) is Dictionary else {}
+	var mana_commit_reservation: Dictionary = mana_commit_settlement.get(
+		"reservation_compensation",
+		{}
+	) if mana_commit_settlement.get("reservation_compensation", {}) is Dictionary else {}
+	var mana_commit_escrow: Dictionary = mana_commit_settlement.get(
+		"escrow_compensation",
+		{}
+	) if mana_commit_settlement.get("escrow_compensation", {}) is Dictionary else {}
+	var mana_commit_terminal := mana_owner.reservation_settlement_snapshot(
+		mana_commit_fault.last_transaction_id
+	) if mana_owner != null else {}
+	_expect(_submission_failure_contract_valid(mana_commit_fault_result) \
+			and str(mana_commit_fault_result.get("reason_code", "")) \
+				== "qa_mana_commit_receipt_failed" \
+			and bool(mana_commit_fault_result.get("commitment_settled", false)) \
+			and not bool(mana_commit_fault_result.get("requires_recovery", true)), "mana commit post-mutation failure returns one closed, completely compensated submission settlement|result=%s" % JSON.stringify(mana_commit_fault_result))
+	_expect(mana_commit_fault.commit_call_count == 1 \
+			and mana_commit_fault.release_call_count == 1 \
+			and not bool(mana_commit_reservation.get("commit_expected", true)) \
+			and bool(mana_commit_reservation.get("attempted", false)) \
+			and bool(mana_commit_reservation.get("receipt_valid", false)) \
+			and bool(mana_commit_reservation.get("state_verified", false)) \
+			and str(mana_commit_reservation.get("outcome_id", "")) == "released" \
+			and bool(mana_commit_escrow.get("receipt_valid", false)) \
+			and bool(mana_commit_escrow.get("state_verified", false)) \
+			and str(mana_commit_terminal.get("outcome_id", "")) == "released", "mana commit failure validates both reservation and escrow compensation receipts plus terminal Owner states|settlement=%s terminal=%s" % [JSON.stringify(mana_commit_settlement), JSON.stringify(mana_commit_terminal)])
+	_expect(_inventory_card_count(coordinator.v06_card_player_snapshot(actor_id)) == fault_inventory_count \
+			and _public_queue_count(queue_owner.public_snapshot()) == 0, "fully compensated mana commit failure restores the exact card and leaves no Queue entry")
+	mana_commit_fault.queue_free()
+
+	var queue_commit_fault := SubmissionQueueCommitFaultProxy.new()
+	queue_commit_fault.delegate = queue_owner
+	queue_commit_fault.commit_before_failure = true
+	root.add_child(queue_commit_fault)
+	var queue_commit_request := _submission_fault_request(
+		adapter_request,
+		upgrade_card,
+		upgrade_slot,
+		"queue-post-mutation"
+	)
+	adapter.set("_queue", queue_commit_fault)
+	var queue_commit_fault_result := adapter.submit(
+		adapter_capability,
+		queue_commit_request
+	)
+	adapter.set("_queue", queue_owner)
+	var queue_commit_settlement: Dictionary = queue_commit_fault_result.get(
+		"submission_settlement",
+		{}
+	) if queue_commit_fault_result.get("submission_settlement", {}) is Dictionary else {}
+	var queue_commit_compensation: Dictionary = queue_commit_settlement.get(
+		"queue_compensation",
+		{}
+	) if queue_commit_settlement.get("queue_compensation", {}) is Dictionary else {}
+	_expect(_submission_failure_contract_valid(queue_commit_fault_result) \
+			and str(queue_commit_fault_result.get("reason_code", "")) \
+				== "qa_queue_commit_failed" \
+			and str(queue_commit_fault_result.get("failure_reason_code", "")) \
+				== "qa_queue_commit_failed" \
+			and str(queue_commit_settlement.get("original_failure_reason_code", "")) \
+				== "qa_queue_commit_failed" \
+			and bool(queue_commit_fault_result.get("commitment_settled", false)), "post-mutation false Queue commit receipt preserves the exact dependency reason and closes all three Owner settlements|result=%s" % JSON.stringify(queue_commit_fault_result))
+	_expect(queue_commit_fault.commit_call_count == 1 \
+			and queue_commit_fault.rollback_call_count >= 1 \
+			and queue_commit_fault.last_resolution_id > 0 \
+			and bool(queue_commit_compensation.get("attempted", false)) \
+			and bool(queue_commit_compensation.get("receipt_valid", false)) \
+			and bool(queue_commit_compensation.get("state_verified", false)) \
+			and str(queue_commit_compensation.get("outcome_id", "")) == "rolled_back" \
+			and queue_owner.entry_by_id(queue_commit_fault.last_resolution_id).is_empty() \
+			and _public_queue_count(queue_owner.public_snapshot()) == 0 \
+			and _inventory_card_count(coordinator.v06_card_player_snapshot(actor_id)) \
+				== fault_inventory_count, "Queue Owner rolls back its own exact resolution before card and reservation compensation")
+
+	var mana_release_fault := SubmissionManaFaultProxy.new()
+	mana_release_fault.delegate = mana_owner
+	mana_release_fault.fail_release_receipt = true
+	root.add_child(mana_release_fault)
+	adapter.set("_queue", queue_commit_fault)
+	adapter.set("_mana", mana_release_fault)
+	var reservation_release_request := _submission_fault_request(
+		adapter_request,
+		upgrade_card,
+		upgrade_slot,
+		"reservation-release"
+	)
+	var queue_commits_before_reservation_fault := queue_commit_fault.commit_call_count
+	var reservation_release_fault_result := adapter.submit(
+		adapter_capability,
+		reservation_release_request
+	)
+	var reservation_release_settlement: Dictionary = reservation_release_fault_result.get(
+		"submission_settlement",
+		{}
+	) if reservation_release_fault_result.get("submission_settlement", {}) is Dictionary else {}
+	var reservation_release_compensation: Dictionary = reservation_release_settlement.get(
+		"reservation_compensation",
+		{}
+	) if reservation_release_settlement.get("reservation_compensation", {}) is Dictionary else {}
+	var reservation_release_escrow: Dictionary = reservation_release_settlement.get(
+		"escrow_compensation",
+		{}
+	) if reservation_release_settlement.get("escrow_compensation", {}) is Dictionary else {}
+	var pending_reservation := mana_owner.reservation_settlement_snapshot(
+		mana_release_fault.last_transaction_id
+	) if mana_owner != null else {}
+	_expect(_submission_failure_contract_valid(reservation_release_fault_result) \
+			and str(reservation_release_fault_result.get("reason_code", "")) \
+				== "facility_queue_submission_compensation_incomplete" \
+			and str(reservation_release_fault_result.get("failure_reason_code", "")) \
+				== "qa_queue_commit_failed" \
+			and not bool(reservation_release_fault_result.get("commitment_settled", true)) \
+			and bool(reservation_release_fault_result.get("requires_recovery", false)), "reservation release postcondition failure is an explicit fail-closed unsettled result rather than a clean Queue rejection|result=%s" % JSON.stringify(reservation_release_fault_result))
+	_expect(queue_commit_fault.commit_call_count \
+				== queue_commits_before_reservation_fault + 1 \
+			and mana_release_fault.release_call_count == 1 \
+			and bool(reservation_release_compensation.get("receipt_valid", false)) \
+			and not bool(reservation_release_compensation.get("state_verified", true)) \
+			and not bool(reservation_release_compensation.get("settled", true)) \
+			and bool(reservation_release_escrow.get("settled", false)) \
+			and str(pending_reservation.get("outcome_id", "")) == "pending" \
+			and _inventory_card_count(coordinator.v06_card_player_snapshot(actor_id)) \
+				== fault_inventory_count, "fake reservation release receipt is rejected by the terminal Owner-state check while escrow compensation remains exact|settlement=%s pending=%s" % [JSON.stringify(reservation_release_settlement), JSON.stringify(pending_reservation)])
+	mana_release_fault.fail_release_receipt = false
+	var reservation_recovery_result := adapter.submit(
+		adapter_capability,
+		reservation_release_request
+	)
+	adapter.set("_queue", queue_owner)
+	adapter.set("_mana", mana_owner)
+	var reservation_recovery_terminal := mana_owner.reservation_settlement_snapshot(
+		mana_release_fault.last_transaction_id
+	) if mana_owner != null else {}
+	_expect(_submission_failure_contract_valid(reservation_recovery_result) \
+			and str(reservation_recovery_result.get("reason_code", "")) \
+				== "qa_queue_commit_failed" \
+			and str(reservation_recovery_result.get("failure_reason_code", "")) \
+				== "qa_queue_commit_failed" \
+			and bool(reservation_recovery_result.get("commitment_settled", false)) \
+			and not bool(reservation_recovery_result.get("requires_recovery", true)) \
+			and str(reservation_recovery_terminal.get("outcome_id", "")) == "released" \
+			and queue_commit_fault.commit_call_count \
+				== queue_commits_before_reservation_fault + 1 \
+			and _public_queue_count(queue_owner.public_snapshot()) == 0, "same request production replay completes pending reservation compensation without recommitting Queue or using test-only Owner cleanup|result=%s" % JSON.stringify(reservation_recovery_result))
+	mana_release_fault.queue_free()
+
+	var card_release_fault := SubmissionCardReleaseFaultProxy.new()
+	card_release_fault.delegate = real_card_state
+	card_release_fault.fail_release_receipt = true
+	root.add_child(card_release_fault)
+	adapter.set("_queue", queue_commit_fault)
+	adapter.set("_card_state", card_release_fault)
+	var escrow_release_request := _submission_fault_request(
+		adapter_request,
+		upgrade_card,
+		upgrade_slot,
+		"escrow-release"
+	)
+	var queue_commits_before_escrow_fault := queue_commit_fault.commit_call_count
+	var escrow_release_fault_result := adapter.submit(
+		adapter_capability,
+		escrow_release_request
+	)
+	var escrow_release_settlement: Dictionary = escrow_release_fault_result.get(
+		"submission_settlement",
+		{}
+	) if escrow_release_fault_result.get("submission_settlement", {}) is Dictionary else {}
+	var escrow_release_reservation: Dictionary = escrow_release_settlement.get(
+		"reservation_compensation",
+		{}
+	) if escrow_release_settlement.get("reservation_compensation", {}) is Dictionary else {}
+	var escrow_release_compensation: Dictionary = escrow_release_settlement.get(
+		"escrow_compensation",
+		{}
+	) if escrow_release_settlement.get("escrow_compensation", {}) is Dictionary else {}
+	var pending_escrow := real_card_state.facility_card_escrow_snapshot(
+		card_release_fault.last_escrow_id
+	) if real_card_state != null else {}
+	_expect(_submission_failure_contract_valid(escrow_release_fault_result) \
+			and str(escrow_release_fault_result.get("reason_code", "")) \
+				== "facility_queue_submission_compensation_incomplete" \
+			and not bool(escrow_release_fault_result.get("commitment_settled", true)) \
+			and bool(escrow_release_fault_result.get("requires_recovery", false)), "escrow release postcondition failure is an explicit fail-closed unsettled result rather than a clean Queue rejection|result=%s" % JSON.stringify(escrow_release_fault_result))
+	_expect(queue_commit_fault.commit_call_count \
+				== queue_commits_before_escrow_fault + 1 \
+			and card_release_fault.release_call_count == 1 \
+			and bool(escrow_release_compensation.get("receipt_valid", false)) \
+			and not bool(escrow_release_compensation.get("state_verified", true)) \
+			and not bool(escrow_release_compensation.get("settled", true)) \
+			and bool(escrow_release_reservation.get("settled", false)) \
+			and bool(pending_escrow.get("found", false)) \
+			and _inventory_card_count(coordinator.v06_card_player_snapshot(actor_id)) \
+				== fault_inventory_count - 1, "fake escrow release receipt is rejected by the terminal Owner-state check while reservation compensation remains exact|settlement=%s pending=%s" % [JSON.stringify(escrow_release_settlement), JSON.stringify(pending_escrow)])
+	card_release_fault.fail_release_receipt = false
+	var escrow_recovery_result := adapter.submit(
+		adapter_capability,
+		escrow_release_request
+	)
+	adapter.set("_queue", queue_owner)
+	adapter.set("_card_state", real_card_state)
+	var escrow_recovery_terminal := real_card_state.facility_card_escrow_snapshot(
+		card_release_fault.last_escrow_id
+	) if real_card_state != null else {}
+	_expect(_submission_failure_contract_valid(escrow_recovery_result) \
+			and str(escrow_recovery_result.get("reason_code", "")) \
+				== "qa_queue_commit_failed" \
+			and str(escrow_recovery_result.get("failure_reason_code", "")) \
+				== "qa_queue_commit_failed" \
+			and bool(escrow_recovery_result.get("commitment_settled", false)) \
+			and not bool(escrow_recovery_result.get("requires_recovery", true)) \
+			and bool(escrow_recovery_terminal.get("terminal", false)) \
+			and str((escrow_recovery_terminal.get("receipt", {}) as Dictionary).get(
+				"state_id",
+				""
+			)) == "released" \
+			and queue_commit_fault.commit_call_count \
+				== queue_commits_before_escrow_fault + 1 \
+			and _inventory_card_count(coordinator.v06_card_player_snapshot(actor_id)) \
+				== fault_inventory_count \
+			and _public_queue_count(queue_owner.public_snapshot()) == 0, "same request production replay completes pending escrow compensation without recommitting Queue or using test-only Owner cleanup|result=%s" % JSON.stringify(escrow_recovery_result))
+	card_release_fault.queue_free()
+	queue_commit_fault.queue_free()
+	coordinator.pause_session()
 	coordinator.request_table_presentation_refresh(&"full", &"qa_facility_card_dock_upgrade")
 	await process_frame
 	var upgrade_table := screen.current_ui_data.duplicate(true)
@@ -514,6 +1187,86 @@ func _run() -> void:
 			and _dock_slot_index(upgrade_hand) == upgrade_slot \
 			and str(upgrade_hand.get("play_state", "")) == "available" \
 			and not upgrade_action.is_empty(), "owned Rank-II upgrade is actionable on the real GameScreen Dock projection")
+	var application_recovery_queue_fault := SubmissionQueueCommitFaultProxy.new()
+	application_recovery_queue_fault.delegate = queue_owner
+	application_recovery_queue_fault.commit_before_failure = true
+	var application_recovery_card_fault := SubmissionCardReleaseFaultProxy.new()
+	application_recovery_card_fault.delegate = real_card_state
+	application_recovery_card_fault.fail_release_receipt = true
+	root.add_child(application_recovery_queue_fault)
+	root.add_child(application_recovery_card_fault)
+	adapter.set("_queue", application_recovery_queue_fault)
+	adapter.set("_card_state", application_recovery_card_fault)
+	var application_intent_index := intents.size()
+	var application_receipt_index := action_receipts.size()
+	var application_queue_commits_before := application_recovery_queue_fault.commit_call_count
+	coordinator.resume_session()
+	var application_fault_submitted := _submit_game_action(screen, upgrade_action)
+	coordinator.pause_session()
+	var application_fault_intent: Dictionary = intents[application_intent_index] \
+		if application_intent_index < intents.size() else {}
+	var application_fault_receipt: Dictionary = action_receipts[application_receipt_index] \
+		if application_receipt_index < action_receipts.size() else {}
+	var application_pending_escrow := real_card_state.facility_card_escrow_snapshot(
+		application_recovery_card_fault.last_escrow_id
+	) if real_card_state != null else {}
+	var application_submission_pending := coordinator.card_play_submission_controller().debug_snapshot()
+	_expect(application_fault_submitted \
+			and not application_fault_intent.is_empty() \
+			and not bool(application_fault_receipt.get("accepted", true)) \
+			and str(application_fault_receipt.get("reason_id", "")) \
+				== "facility-queue-submission-compensation-incomplete" \
+			and int(application_submission_pending.get(
+				"facility_recovery_request_count",
+				0
+			)) == 1, "real GameScreen submission records one recoverable production intent instead of terminally caching the failed receipt")
+	_expect(bool(application_pending_escrow.get("found", false)) \
+			and _inventory_card_count(coordinator.v06_card_player_snapshot(actor_id)) \
+				== fault_inventory_count - 1, "the production recovery fixture proves the exact card has left its hand slot before identical-intent redelivery")
+	application_recovery_card_fault.fail_release_receipt = false
+	coordinator.resume_session()
+	var application_recovery_receipt := action_flow.submit_intent(
+		application_fault_intent
+	)
+	coordinator.pause_session()
+	adapter.set("_queue", queue_owner)
+	adapter.set("_card_state", real_card_state)
+	var application_submission_recovered := coordinator.card_play_submission_controller().debug_snapshot()
+	var application_flow_recovered := action_flow.debug_snapshot()
+	var application_terminal_escrow := real_card_state.facility_card_escrow_snapshot(
+		application_recovery_card_fault.last_escrow_id
+	) if real_card_state != null else {}
+	_expect(not bool(application_recovery_receipt.get("accepted", true)) \
+			and str(application_recovery_receipt.get("reason_id", "")) \
+				== "qa-queue-commit-failed" \
+			and not bool(application_recovery_receipt.get("idempotent_replay", true)) \
+			and application_recovery_queue_fault.commit_call_count \
+				== application_queue_commits_before + 1 \
+			and int(application_submission_recovered.get(
+				"facility_recovery_request_count",
+				-1
+			)) == 0 \
+			and int(application_flow_recovered.get("recovery_delivery_count", 0)) >= 1, "identical production submit_intent delivery reaches compensation recovery without recommitting Queue")
+	_expect(bool(application_terminal_escrow.get("terminal", false)) \
+			and str((application_terminal_escrow.get("receipt", {}) as Dictionary).get(
+				"state_id",
+				""
+			)) == "released" \
+			and _inventory_card_count(coordinator.v06_card_player_snapshot(actor_id)) \
+				== fault_inventory_count \
+			and _public_queue_count(queue_owner.public_snapshot()) == 0, "production Application Flow recovery restores the exact card and leaves no Queue commitment")
+	application_recovery_queue_fault.queue_free()
+	application_recovery_card_fault.queue_free()
+	coordinator.request_table_presentation_refresh(&"full", &"qa_facility_card_dock_upgrade_recovered")
+	await process_frame
+	upgrade_table = screen.current_ui_data.duplicate(true)
+	upgrade_dock = upgrade_table.get("player_card_dock", {}) \
+		if upgrade_table.get("player_card_dock", {}) is Dictionary else {}
+	upgrade_hand = _first_dock_card(
+		upgrade_dock.get("normal_cards", []) if upgrade_dock.get("normal_cards", []) is Array else [],
+		rank_two_card_id
+	)
+	upgrade_action = _first_enabled_play_action(upgrade_hand)
 	var upgrade_submission_before := coordinator.card_play_submission_controller().debug_snapshot()
 	coordinator.resume_session()
 	_expect(_submit_game_action(screen, upgrade_action), "Rank-II upgrade submits through the same public GameAction offer boundary")
@@ -570,6 +1323,122 @@ func _run() -> void:
 	var public_receipt_text := JSON.stringify(receipts[1].public_summary()) if receipts.size() > 1 else ""
 	var private_quote_id := receipts[0].quote_id if not receipts.is_empty() else ""
 	_expect(not public_receipt_text.is_empty() and not public_receipt_text.contains(TARGET_CARD_ID) and not public_receipt_text.contains(private_quote_id) and not public_receipt_text.contains("locked_quote"), "public receipt omits card, quote credential and private reason")
+
+	var forged_rollback_damage := infrastructure_owner.apply_unit_damage({
+		"transaction_id": "qa-facility-forged-rollback-damage",
+		"source_kind": "monster",
+		"source_entity_id": "monster.qa",
+		"region_id": region_id,
+		"amount": 1,
+		"occurred_at": world.game_time,
+	}) if infrastructure_owner != null else {}
+	var before_forged_rollback_grant := coordinator.v06_card_player_snapshot(actor_id)
+	var forged_rollback_grant_variant: Variant = inventory_owner.call(
+		"grant_card",
+		actor_id,
+		rank_two_card_id,
+		int(before_forged_rollback_grant.get("revision", -1)),
+		"qa-facility-forged-rollback-grant",
+		"qa_forged_rollback"
+	) if inventory_owner != null else {}
+	var forged_rollback_grant: Dictionary = forged_rollback_grant_variant \
+		if forged_rollback_grant_variant is Dictionary else {}
+	var after_forged_rollback_grant := coordinator.v06_card_player_snapshot(actor_id)
+	var forged_rollback_slot := _inventory_slot_for_card(
+		after_forged_rollback_grant,
+		rank_two_card_id
+	)
+	var forged_rollback_inventory: Dictionary = after_forged_rollback_grant.get(
+		"inventory",
+		{}
+	) if after_forged_rollback_grant.get("inventory", {}) is Dictionary else {}
+	var forged_rollback_slots: Array = forged_rollback_inventory.get("slots", []) \
+		if forged_rollback_inventory.get("slots", []) is Array else []
+	var forged_rollback_card: Dictionary = forged_rollback_slots[forged_rollback_slot] \
+		if forged_rollback_slot >= 0 \
+		and forged_rollback_slot < forged_rollback_slots.size() \
+		and forged_rollback_slots[forged_rollback_slot] is Dictionary else {}
+	var forged_queue_rollback_fault := SubmissionQueueCommitFaultProxy.new()
+	forged_queue_rollback_fault.delegate = queue_owner
+	forged_queue_rollback_fault.commit_before_failure = true
+	forged_queue_rollback_fault.forge_successful_rollback_without_delegate = true
+	var forged_queue_mana_probe := SubmissionManaFaultProxy.new()
+	forged_queue_mana_probe.delegate = mana_owner
+	var forged_queue_card_probe := SubmissionCardReleaseFaultProxy.new()
+	forged_queue_card_probe.delegate = real_card_state
+	root.add_child(forged_queue_rollback_fault)
+	root.add_child(forged_queue_mana_probe)
+	root.add_child(forged_queue_card_probe)
+	adapter.set("_queue", forged_queue_rollback_fault)
+	adapter.set("_mana", forged_queue_mana_probe)
+	adapter.set("_card_state", forged_queue_card_probe)
+	var forged_queue_rollback_request := _submission_fault_request(
+		adapter_request,
+		forged_rollback_card,
+		forged_rollback_slot,
+		"queue-rollback-receipt-forged"
+	)
+	coordinator.resume_session()
+	var forged_queue_rollback_result := adapter.submit(
+		adapter_capability,
+		forged_queue_rollback_request
+	)
+	coordinator.pause_session()
+	adapter.set("_queue", queue_owner)
+	adapter.set("_mana", mana_owner)
+	adapter.set("_card_state", real_card_state)
+	var forged_queue_settlement: Dictionary = forged_queue_rollback_result.get(
+		"submission_settlement",
+		{}
+	) if forged_queue_rollback_result.get("submission_settlement", {}) is Dictionary else {}
+	var forged_queue_compensation: Dictionary = forged_queue_settlement.get(
+		"queue_compensation",
+		{}
+	) if forged_queue_settlement.get("queue_compensation", {}) is Dictionary else {}
+	var forged_reservation_compensation: Dictionary = forged_queue_settlement.get(
+		"reservation_compensation",
+		{}
+	) if forged_queue_settlement.get("reservation_compensation", {}) is Dictionary else {}
+	var forged_escrow_compensation: Dictionary = forged_queue_settlement.get(
+		"escrow_compensation",
+		{}
+	) if forged_queue_settlement.get("escrow_compensation", {}) is Dictionary else {}
+	var forged_queue_reservation := mana_owner.reservation_settlement_snapshot(
+		forged_queue_mana_probe.last_transaction_id
+	) if mana_owner != null else {}
+	var forged_queue_escrow := real_card_state.facility_card_escrow_snapshot(
+		forged_queue_card_probe.last_escrow_id
+	) if real_card_state != null else {}
+	_expect(bool(forged_rollback_damage.get("committed", false)) \
+			and bool(forged_rollback_grant.get("committed", false)) \
+			and not forged_rollback_card.is_empty(), "forged Queue rollback fault fixture owns one legal damaged-facility repair card")
+	_expect(_submission_failure_contract_valid(forged_queue_rollback_result) \
+			and str(forged_queue_rollback_result.get("reason_code", "")) \
+				== "facility_queue_submission_compensation_incomplete" \
+			and str(forged_queue_rollback_result.get("failure_reason_code", "")) \
+				== "qa_queue_commit_failed" \
+			and bool(forged_queue_rollback_result.get("requires_recovery", false)) \
+			and bool(forged_queue_compensation.get("receipt_valid", false)) \
+			and not bool(forged_queue_compensation.get("state_verified", true)) \
+			and not bool(forged_queue_compensation.get("settled", true)), "a forged successful Queue rollback receipt fails closed when the capability-bound status still finds its commitment|result=%s" % JSON.stringify(forged_queue_rollback_result))
+	_expect(forged_queue_rollback_fault.rollback_call_count == 1 \
+			and forged_queue_rollback_fault.status_call_count >= 1 \
+			and forged_queue_rollback_fault.last_resolution_id > 0 \
+			and not queue_owner.entry_by_id(
+				forged_queue_rollback_fault.last_resolution_id
+			).is_empty() \
+			and str(forged_queue_reservation.get("outcome_id", "")) == "pending" \
+			and bool(forged_queue_escrow.get("found", false)) \
+			and not bool(forged_queue_escrow.get("terminal", true)) \
+			and forged_queue_mana_probe.release_call_count == 0 \
+			and forged_queue_card_probe.release_call_count == 0 \
+			and str(forged_reservation_compensation.get("outcome_id", "")) \
+				== "blocked_by_queue" \
+			and str(forged_escrow_compensation.get("outcome_id", "")) \
+				== "blocked_by_queue", "unverified Queue rollback leaves the Queue, reservation, and escrow intact and invokes neither dependent release")
+	forged_queue_rollback_fault.queue_free()
+	forged_queue_mana_probe.queue_free()
+	forged_queue_card_probe.queue_free()
 
 	_stop_audio(app_root)
 	app_root.queue_free()
@@ -647,6 +1516,101 @@ func _adapter_request_from_entry(entry: Dictionary) -> Dictionary:
 		"stable_target_envelope": (entry.get("stable_target_envelope", {}) as Dictionary).duplicate(true) \
 			if entry.get("stable_target_envelope", {}) is Dictionary else {},
 	}
+
+
+func _submission_fault_request(
+	base_request: Dictionary,
+	card: Dictionary,
+	slot_index: int,
+	suffix: String
+) -> Dictionary:
+	var machine: Dictionary = card.get("machine", {}) \
+		if card.get("machine", {}) is Dictionary else {}
+	var request := base_request.duplicate(true)
+	request["request_id"] = "qa-facility-submission-%s" % suffix
+	request["intent_fingerprint"] = JSON.stringify([
+		request.get("request_id"),
+		card.get("runtime_instance_id"),
+		slot_index,
+		machine.get("card_id"),
+	]).sha256_text().to_lower()
+	request["source_revision"] = maxi(1, int(base_request.get("source_revision", 1)) + 1)
+	request["hand_slot_id"] = "hand.slot.%d" % slot_index
+	request["card_instance_id"] = str(card.get("runtime_instance_id", ""))
+	request["source_slot_index"] = slot_index
+	request["card_semantic_id"] = str(machine.get("card_id", ""))
+	return request
+
+
+func _submission_failure_contract_valid(result: Dictionary) -> bool:
+	var result_fields := [
+		"accepted",
+		"queued",
+		"committed",
+		"reason_code",
+		"commitment_settled",
+		"requires_recovery",
+		"failure_reason_code",
+		"submission_settlement",
+	]
+	var settlement_fields := [
+		"schema_version",
+		"settlement_kind_id",
+		"settled",
+		"original_failure_reason_code",
+		"reason_code",
+		"queue_compensation",
+		"reservation_compensation",
+		"escrow_compensation",
+	]
+	var compensation_fields := [
+		"schema_version",
+		"compensation_kind_id",
+		"owner_id",
+		"required",
+		"commit_expected",
+		"attempted",
+		"receipt_valid",
+		"state_verified",
+		"settled",
+		"outcome_id",
+		"reason_code",
+	]
+	if not _has_exact_fields(result, result_fields) \
+			or not (result.get("submission_settlement", {}) is Dictionary):
+		return false
+	var settlement := result.get("submission_settlement", {}) as Dictionary
+	if not _has_exact_fields(settlement, settlement_fields) \
+			or settlement.get("schema_version") != 2 \
+			or str(settlement.get("settlement_kind_id", "")) \
+				!= "facility_queue_submission_owner_compensation" \
+			or str(settlement.get("original_failure_reason_code", "")) \
+				!= str(result.get("failure_reason_code", "")):
+		return false
+	for field_id in [
+		"queue_compensation",
+		"reservation_compensation",
+		"escrow_compensation",
+	]:
+		if not (settlement.get(field_id, {}) is Dictionary):
+			return false
+		var compensation := settlement.get(field_id, {}) as Dictionary
+		if not _has_exact_fields(compensation, compensation_fields) \
+				or compensation.get("schema_version") != 2:
+			return false
+	var serialized := JSON.stringify(settlement)
+	return not serialized.contains("transaction_id") \
+		and not serialized.contains("reservation_id") \
+		and not serialized.contains("escrow_id") \
+		and not serialized.contains("receipt_fingerprint")
+
+
+func _has_exact_fields(value: Dictionary, expected_fields: Array) -> bool:
+	var actual: Array = value.keys()
+	var expected := expected_fields.duplicate()
+	actual.sort()
+	expected.sort()
+	return actual == expected
 
 
 func _contains_private_queue_value(snapshot: Dictionary) -> bool:
@@ -751,6 +1715,28 @@ func _facility_for_slot(
 				and str((facility_variant as Dictionary).get("industry_id", "")) == industry_id:
 			return (facility_variant as Dictionary).duplicate(true)
 	return {}
+
+
+func _facility_rule_projection(facility: Dictionary) -> Dictionary:
+	if facility.is_empty():
+		return {}
+	return {
+		"facility_type": str(facility.get("facility_type", "")),
+		"industry_id": str(facility.get("industry_id", "")),
+		"rank": int(facility.get("rank", 0)),
+		"generation": int(facility.get("generation", 0)),
+		"active": bool(facility.get("active", false)),
+	}
+
+
+func _victory_parity_projection(snapshot: Dictionary) -> Dictionary:
+	return {
+		"state": str(snapshot.get("state", "")),
+		"qualification_active": bool(snapshot.get("qualification_active", false)),
+		"audit_active": bool(snapshot.get("audit_active", false)),
+		"resolved": bool(snapshot.get("resolved", false)),
+		"final_settlement_count": int(snapshot.get("final_settlement_count", 0)),
+	}
 
 
 func _stop_audio(root_node: Node) -> void:

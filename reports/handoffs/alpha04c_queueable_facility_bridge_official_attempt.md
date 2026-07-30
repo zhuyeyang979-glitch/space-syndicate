@@ -1,5 +1,13 @@
 # Alpha 0.4-C Queueable Facility Bridge Handoff
 
+> Historical pre-attestation record only. The later trusted
+> `ChildCompletionAttestationV1` / `ParentExitAttestationV1` repair established
+> that this wrapper failure started no Process A, wrote no Save, and created no
+> official ledger. Current authority is
+> `reports/handoffs/alpha04c_save_resume_current.json`: official count remains
+> `0` and the conditional authorization is unconsumed. The values below preserve
+> what the old wrapper reported; they must not be used as current gate evidence.
+
 ```text
 STATUS=ALPHA_0_4_C_P0_QUEUEABLE_FACILITY_ACTION_BRIDGE_AND_COLD_RESTORE_CLOSURE_PARTIAL
 SOURCE_PR=77
@@ -7,7 +15,8 @@ SOURCE_HEAD=a55b938f41402be2f3eb510300c483de5ae09458
 EFFECTIVE_BASE_SHA=a55b938f41402be2f3eb510300c483de5ae09458
 IMPLEMENTATION_COMMIT=4796c1e1d77c844baf12245dfa449b7c585c5de4
 OFFICIAL_ATTEMPT_HEAD=ab6f6d8ceed92824b864dc54be628ffd3c262b59
-OFFICIAL_COLD_RESTORE_VERTICAL_SLICE_COUNT=1
+HISTORICAL_UNTRUSTED_WRAPPER_REPORTED_COUNT=1
+CURRENT_OFFICIAL_COLD_RESTORE_VERTICAL_SLICE_COUNT=0
 OFFICIAL_COLD_RESTORE_FAILURE_CLASS=HARNESS_FAILURE
 OFFICIAL_FAILURE_CODE=driver_contract_preflight_process_failed
 MERGE_TO_MAIN_ALLOWED=false

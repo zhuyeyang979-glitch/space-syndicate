@@ -255,9 +255,11 @@ func _run() -> void:
 	var source_after_resolution: Dictionary = coordinator.call("economic_source_snapshot", actor_id)
 	_expect(
 		bool(source_after_resolution.get("has_source", false))
+			and bool(source_after_resolution.get("bootstrap_finalized", false))
 			and int(source_after_resolution.get("owned_facility_count", 0)) == 1
-			and int(source_after_resolution.get("production_installation_count", 0)) == 1,
-		"economic source projection derives the resolved facility from existing domain owners"
+			and int(source_after_resolution.get("production_installation_count", 0)) == 1
+			and not str(source_after_resolution.get("lineage_transaction_id", "")).is_empty(),
+		"economic source projection derives finalized bootstrap lineage from RegionInfrastructure instead of the retired direct-play journal"
 	)
 
 	var replay_after_resolution := action_flow.submit_intent(intent) if action_flow != null else {}

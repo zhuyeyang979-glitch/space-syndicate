@@ -207,6 +207,17 @@ func advance_execution(transaction: Dictionary, receipt: Dictionary) -> Dictiona
 			updated["failure_reason"] = "" if bool(updated["resolved"]) else str(receipt.get("reason", "effect_not_resolved"))
 			updated["continuation_kind"] = str(receipt.get("continuation_kind", "normal"))
 			updated["next_intent"] = _intent_for(updated, INTENT_FINISH_COMMITMENT)
+			if bool(receipt.get("retryable_commitment", false)):
+				updated["status"] = STATUS_RETRYABLE
+				updated["ready"] = false
+				updated["reason"] = "facility_commitment_retry_required"
+				updated["failure_reason"] = str(updated["reason"])
+				_store_inflight_transaction(updated)
+				_last_resolution_id = int(updated.get("resolution_id", -1))
+				_last_phase = "retryable_commitment"
+				_last_reason = str(updated["reason"])
+				_last_summary = _transaction_summary(updated)
+				return updated
 		INTENT_FINISH_COMMITMENT:
 			var facility_commitment := _dictionary(updated.get("active_entry", {})).has("v06_facility_action")
 			var commitment_settled := bool(receipt.get("committed", false)) \
