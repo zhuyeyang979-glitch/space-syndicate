@@ -279,3 +279,17 @@ The 48 obtainable facility identities are derived from 12 active rank-I families
 - No concrete monster or military bound-action semantic ID is present in the production Dock; localized legacy technique/command generation must not be counted as an active semantic identity.
 
 No full Smoke, Formal FullRun, qualification rerun, or official A -> B -> C chain was executed by this audit.
+
+## Root integration outcome
+
+The root integration later migrated all 48 factory/market facility identities
+to the single authoritative Queue submission path. The trusted depth-1,
+seed-`900626424` qualification captured one real
+`facility.factory.energy.rank_1` entry at Queue revision 6 with no resolution,
+world, or RNG advance after commit. Its child and parent attestations are green.
+
+The one official claim was then consumed. Process A wrote a Save file at its
+60-second timeout boundary but did not publish a child completion attestation
+or manifest before parent termination. Process B and Process C did not start.
+This does not change the routing audit result, but Alpha 0.4-C remains PARTIAL
+until a separately authorized chain closes the timeout boundary.

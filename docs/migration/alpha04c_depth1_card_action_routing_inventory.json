@@ -82,9 +82,10 @@
     "existing_conditional_queue_identity_count": 8
   },
   "post_bridge_delta": {
-    "status": "focused_gates_green_trusted_qualification_pending",
-    "implementation_commit": "4796c1e1d77c844baf12245dfa449b7c585c5de4",
-    "latest_pr77_merge_commit": "fce3edff",
+    "status": "trusted_qualification_green_official_process_a_timeout",
+    "initial_implementation_commit": "4796c1e1d77c844baf12245dfa449b7c585c5de4",
+    "recovery_hardening_commit": "ca3b7cf4222a6145bed81606fc4f04b7076ae0d9",
+    "latest_pr77_merge_commit": "fce3edffd96ffc2eb4b110d5a27dfe203fd2c06d",
     "facility_identity_count_migrated_to_queue": 48,
     "depth1_queue_route_identity_count_after": 56,
     "depth1_direct_resolve_capable_identity_count_after": 20,
@@ -99,10 +100,32 @@
     "save_section_count": 19,
     "new_save_section_count": 0,
     "trusted_qualification": {
-      "status": "pending",
-      "required_challenge_depth": 1,
-      "required_seed": 900626424,
-      "official": false
+      "status": "green",
+      "run_id": "alpha04c-facility-bridge-ca3b7cf4",
+      "challenge_depth": 1,
+      "seed": 900626424,
+      "official": false,
+      "queue_count": 1,
+      "queue_revision": 6,
+      "queue_trigger_actor": "local",
+      "queue_trigger_semantic_action_id": "card.play",
+      "queue_trigger_card_semantic_id": "facility.factory.energy.rank_1",
+      "queue_trigger_target_fingerprint": "fd8d673849aad872ef5c85bcefda9ac2c3423d2d55b0d1f041de8a2e96d38357",
+      "card_resolution_advance_after_trigger": 0,
+      "world_advance_after_trigger": 0,
+      "rng_draw_after_trigger": 0,
+      "child_completion_attestation_green": true,
+      "parent_exit_attestation_green": true
+    },
+    "official_chain": {
+      "count": 1,
+      "status": "failed_process_a_timeout",
+      "failure_code": "producer_child_process_timeout",
+      "process_a_started": true,
+      "process_a_save_file_observed": true,
+      "process_a_save_green": false,
+      "process_b_started": false,
+      "process_c_started": false
     }
   },
   "bucket_counts": {
