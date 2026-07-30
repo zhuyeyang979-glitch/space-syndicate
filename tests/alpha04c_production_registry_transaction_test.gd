@@ -65,6 +65,34 @@ func _run() -> void:
 		_finish()
 		return
 
+	var detailed_state_before := _detailed_capture_mutation_evidence(coordinator, facility_case)
+	var detailed_capture: Dictionary = registry.capture_all_sections_detailed()
+	var detailed_state_between := _detailed_capture_mutation_evidence(coordinator, facility_case)
+	var repeated_detailed_capture: Dictionary = registry.capture_all_sections_detailed()
+	var detailed_state_after := _detailed_capture_mutation_evidence(coordinator, facility_case)
+	var expected_section_order: Array[String] = registry.fixed_section_order()
+	var detailed_fingerprints := _detailed_capture_fingerprints(detailed_capture, expected_section_order)
+	var repeated_detailed_fingerprints := _detailed_capture_fingerprints(repeated_detailed_capture, expected_section_order)
+	_expect(bool(detailed_capture.get("captured", false)) \
+			and int(detailed_capture.get("section_count", 0)) == 19 \
+			and (detailed_capture.get("sections", []) as Array).size() == 19 \
+			and not detailed_capture.has("section_payloads") \
+			and not detailed_capture.has("plan") \
+			and (detailed_capture.get("section_results", []) as Array).size() == 19, "detailed production capture succeeds for all 19 owners in the queued facility state")
+	_expect(detailed_fingerprints.size() == 19, "every detailed capture result has its ordered section, owner, and payload fingerprint")
+	_expect(detailed_capture.get("first_failure", {}) is Dictionary \
+			and (detailed_capture.get("first_failure", {}) as Dictionary).is_empty(), "successful detailed production capture has no first failure")
+	_expect(bool(repeated_detailed_capture.get("captured", false)) \
+			and int(repeated_detailed_capture.get("section_count", 0)) == 19 \
+			and repeated_detailed_capture.get("first_failure", {}) is Dictionary \
+			and (repeated_detailed_capture.get("first_failure", {}) as Dictionary).is_empty() \
+			and repeated_detailed_fingerprints == detailed_fingerprints, "repeated detailed production capture preserves all 19 exact owner fingerprints")
+	_expect(not (detailed_state_before.get("world", {}) as Dictionary).is_empty() \
+			and not (detailed_state_before.get("rng", {}) as Dictionary).is_empty() \
+			and not (detailed_state_before.get("public_log", {}) as Dictionary).is_empty(), "detailed capture mutation probes observe authoritative world, RNG, and public log state")
+	_expect(detailed_state_before == detailed_state_between \
+			and detailed_state_between == detailed_state_after, "repeated detailed capture causes zero world, RNG, or public log mutation")
+
 	var capture: Dictionary = registry.capture_resume_envelope({
 		"envelope_id": "alpha04c-production-registry-base",
 		"write_id": "alpha04c-production-registry-base-write",
@@ -489,6 +517,41 @@ func _facility_owner_evidence(facility_case: Dictionary) -> Dictionary:
 		"history": (facility_case.get("history") as CardResolutionHistoryRuntimeService).to_save_data(),
 		"rng": (rng.call("to_save_data") as Dictionary).duplicate(true) if rng != null else {},
 	}
+
+
+func _detailed_capture_mutation_evidence(coordinator: GameRuntimeCoordinator, facility_case: Dictionary) -> Dictionary:
+	var world := facility_case.get("world") as WorldSessionState
+	var world_capture := world.capture_envelope_save_data() if world != null else {}
+	var rng := coordinator.get_node_or_null("RunRngService") if coordinator != null else null
+	var public_log := coordinator.get_node_or_null("TablePresentationQueryPorts/PublicLogPresentationOwner") if coordinator != null else null
+	return {
+		"world": (world_capture.get("normalized_state", {}) as Dictionary).duplicate(true),
+		"rng": (rng.call("to_save_data") as Dictionary).duplicate(true) if rng != null and rng.has_method("to_save_data") else {},
+		"public_log": (public_log.call("to_save_data") as Dictionary).duplicate(true) if public_log != null and public_log.has_method("to_save_data") else {},
+	}
+
+
+func _detailed_capture_fingerprints(capture: Dictionary, expected_section_order: Array[String]) -> Array[String]:
+	var fingerprints: Array[String] = []
+	var results: Array = capture.get("section_results", []) if capture.get("section_results") is Array else []
+	if results.size() != expected_section_order.size():
+		return fingerprints
+	var owner_ids: Dictionary = {}
+	for index in range(results.size()):
+		if not (results[index] is Dictionary):
+			return []
+		var result := results[index] as Dictionary
+		var section_id := str(result.get("section_id", ""))
+		var owner_id := str(result.get("owner_id", ""))
+		var payload_fingerprint := str(result.get("payload_fingerprint", ""))
+		if not bool(result.get("captured", false)) \
+				or section_id != expected_section_order[index] \
+				or owner_id.is_empty() or owner_ids.has(owner_id) \
+				or payload_fingerprint.length() != 64:
+			return []
+		owner_ids[owner_id] = true
+		fingerprints.append("%s|%s|%s" % [section_id, owner_id, payload_fingerprint])
+	return fingerprints
 
 
 func _decoded_section(handshake: Node, envelope: Dictionary, section_id: String) -> Dictionary:

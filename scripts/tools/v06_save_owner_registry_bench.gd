@@ -118,6 +118,21 @@ func run_bench() -> Dictionary:
 	var envelope: Dictionary = capture.get("envelope", {}) if capture.get("envelope", {}) is Dictionary else {}
 	var validation: Dictionary = handshake.call("validate_envelope", envelope) if not envelope.is_empty() else {}
 	_check(bool(capture.get("ok", false)) and bool(validation.get("valid", false)) and (envelope.get("sections", {}) as Dictionary).size() == 19, "capture_composes_one_valid_full_manifest_envelope")
+	var detailed_capture: Dictionary = registry.capture_all_sections_detailed()
+	var detailed_results: Array = detailed_capture.get("section_results", []) if detailed_capture.get("section_results", []) is Array else []
+	var detailed_fingerprints_valid := detailed_results.size() == 19
+	for section_result_variant in detailed_results:
+		var section_result: Dictionary = section_result_variant if section_result_variant is Dictionary else {}
+		detailed_fingerprints_valid = detailed_fingerprints_valid \
+				and bool(section_result.get("captured", false)) \
+				and str(section_result.get("payload_fingerprint", "")).length() == 64
+	_check(bool(detailed_capture.get("captured", false)) \
+			and int(detailed_capture.get("section_count", 0)) == 19 \
+			and (detailed_capture.get("sections", []) as Array).size() == 19 \
+			and not detailed_capture.has("section_payloads") \
+			and not detailed_capture.has("plan") \
+			and (detailed_capture.get("first_failure", {}) as Dictionary).is_empty() \
+			and detailed_fingerprints_valid, "detailed capture shares the production 19-owner path without exposing section payloads")
 	_check(JSON.stringify(envelope).contains("Vector2") and JSON.stringify(envelope).contains("Color"), "capture_uses_handshake_explicit_variant_codec")
 	_check(_public_receipt_safe(registry.public_operation_receipt(capture)), "capture_public_receipt_omits_envelope_and_private_owner_state")
 	var invalid_capture_owner := harness.get_node_or_null(_owner_node_name("card_inventory")) as V06SaveOwnerRegistryFakeOwner
@@ -133,12 +148,23 @@ func run_bench() -> Dictionary:
 	var capture_owner_apply_counts_before := _owner_apply_counts(harness, fixed_order)
 	if invalid_capture_owner != null:
 		invalid_capture_owner.owner_state = {}
+	var invalid_detailed_capture: Dictionary = registry.capture_all_sections_detailed()
+	var invalid_detailed_failure: Dictionary = invalid_detailed_capture.get("first_failure", {}) \
+			if invalid_detailed_capture.get("first_failure", {}) is Dictionary else {}
+	_check(not bool(invalid_detailed_capture.get("captured", true)) \
+			and str(invalid_detailed_failure.get("section_id", "")) == "card_inventory" \
+			and str(invalid_detailed_failure.get("owner_id", "")) == "card_inventory" \
+			and str(invalid_detailed_failure.get("failure_class", "")) == "OWNER_CAPTURE_EMPTY" \
+			and str(invalid_detailed_failure.get("reason_code", "")) == "owner_capture_empty" \
+			and bool(invalid_detailed_failure.get("result_empty", false)) \
+			and bool(invalid_detailed_failure.get("private_payload_redacted", false)) \
+			and not invalid_detailed_failure.has("owner_state"), "empty owner rejection produces one typed redacted first-failure attestation")
 	var invalid_capture: Dictionary = registry.capture_resume_envelope({"envelope_id": "registry-bench-invalid-capture", "write_id": "registry-bench-invalid-capture-write"})
 	var invalid_capture_public: Dictionary = registry.public_operation_receipt(invalid_capture)
 	_check(not bool(invalid_capture.get("ok", true)) \
 			and str(invalid_capture.get("reason_code", "")) == "owner_capture_failed" \
 			and str(invalid_capture.get("failing_section_id", "")) == "card_inventory" \
-			and str(invalid_capture.get("internal_reason_code", "")) == "fake_owner_state_invalid" \
+			and str(invalid_capture.get("internal_reason_code", "")) == "owner_capture_empty" \
 			and not invalid_capture.has("envelope"), "semantic owner rejection fails capture before envelope composition or write eligibility")
 	_check(_public_receipt_safe(invalid_capture_public), "capture rejection public receipt strips owner section, internal reason, and payload")
 	if invalid_capture_owner != null:
@@ -157,6 +183,20 @@ func run_bench() -> Dictionary:
 		invalid_capture_owner.owner_state = valid_capture_owner_state
 	_check(_same_data(capture_owner_states_before, _owner_states(harness, fixed_order)) \
 			and _same_data(capture_owner_apply_counts_before, _owner_apply_counts(harness, fixed_order)), "capture preflight rejection and accepted normalization mutate no live owner")
+	if invalid_capture_owner != null:
+		invalid_capture_owner.mutate_next_capture = true
+	var mutating_owner_state_before := invalid_capture_owner.owner_state.duplicate(true) if invalid_capture_owner != null else {}
+	var mutating_capture: Dictionary = registry.capture_all_sections_detailed()
+	var mutating_failure: Dictionary = mutating_capture.get("first_failure", {}) \
+			if mutating_capture.get("first_failure", {}) is Dictionary else {}
+	_check(not bool(mutating_capture.get("captured", true)) \
+			and str(mutating_failure.get("section_id", "")) == "card_inventory" \
+			and str(mutating_failure.get("failure_class", "")) == "OWNER_CAPTURE_MUTATED_RUNTIME" \
+			and bool(mutating_failure.get("live_state_mutated_during_capture", false)) \
+			and invalid_capture_owner != null \
+			and invalid_capture_owner.owner_state == mutating_owner_state_before, "detailed capture rejects and rolls back a Save Owner that mutates live state while capturing")
+	if invalid_capture_owner != null:
+		invalid_capture_owner.owner_state = valid_capture_owner_state
 	var capture_after_rejection: Dictionary = registry.capture_resume_envelope({"envelope_id": "registry-bench-after-invalid-capture", "write_id": "registry-bench-after-invalid-capture-write"})
 	_check(bool(capture_after_rejection.get("ok", false)) and capture_after_rejection.get("envelope") is Dictionary, "semantic capture rejection mutates no owner and does not poison the next capture")
 	var session_capture_owner := harness.get_node_or_null(_owner_node_name("session")) as V06SaveOwnerRegistryFakeOwner
