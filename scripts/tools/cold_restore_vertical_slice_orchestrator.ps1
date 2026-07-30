@@ -4,69 +4,39 @@ param(
     [string]$ProjectPath,
     [string]$GodotPath = "godot",
     [string]$RunId = "alpha04c-cold-restore",
+    [switch]$QualificationProbe,
     [switch]$EnableColdRestoreExecution,
     [string]$ContractManifestPath = "",
-    [switch]$ContractCleanupProbe,
-    [ValidateRange(30, 300)]
-    [int]$RoleTimeoutSeconds = 300
+    [ValidateRange(1, 3600)][int]$ChildTimeoutSeconds = 60,
+    [ValidateRange(0, 1)][int]$AuthorizedOfficialColdRestoreCount = 0,
+    [string]$ExpectedScenarioFingerprint = ""
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$ORCHESTRATOR_SCHEMA_VERSION = 4
+Import-Module (Join-Path $PSScriptRoot "cold_restore_attested_process.psm1") -Force
+$ORCHESTRATOR_SCHEMA_VERSION = 3
 $FORMAL_FULL_RUN = $false
-$DriverExecutionReady = $false
+$DriverExecutionReady = $true
 $DriverScript = "res://scripts/tools/cold_restore_vertical_slice_driver.gd"
 $ArtifactRoot = "user://test_runs/alpha04c/$RunId/evidence"
-$OfficialClaimSchemaVersion = 2
-$LaunchAttestationSchemaVersion = 1
-$OfficialAuthorizationId = "alpha04c-p0-cold-restore-depth1-seed900626424-v1"
-$OfficialChallengeDepth = 1
-$OfficialSeed = 900626424
-$OfficialClaimRelativeDirectory = "codex\cold_restore_v3\official-alpha04c-depth1-seed900626424"
-$OfficialClaimLedgerFileName = "official_claim_ledger.json"
-$OfficialClaimFields = @(
-    "schema_version",
-    "authorization_id",
-    "created_at_utc",
-    "source_head_sha",
-    "challenge_depth",
-    "seed",
-    "status",
-    "claim_nonce",
-    "orchestrator_process_id",
-    "orchestrator_creation_time_utc_ticks"
-)
-$LaunchAttestationFields = @(
-    "schema_version",
-    "authorization_id",
-    "claim_fingerprint",
-    "claim_nonce",
-    "source_head_sha",
-    "run_id",
-    "process_role",
-    "launch_nonce",
-    "orchestrator_process_id",
-    "orchestrator_creation_time_utc_ticks",
-    "wrapper_process_id",
-    "wrapper_parent_process_id",
-    "wrapper_creation_time_utc_ticks",
-    "engine_process_id",
-    "engine_parent_process_id",
-    "engine_creation_time_utc_ticks",
-    "status"
-)
 $UserDataRoot = Join-Path ([IO.Path]::GetTempPath()) "space_syndicate_alpha04c_cold_restore_$RunId"
 $IsolatedAppData = Join-Path $UserDataRoot "appdata-roaming"
 $IsolatedLocalAppData = Join-Path $UserDataRoot "appdata-local"
 $ManifestPrefix = "COLD_RESTORE_MANIFEST|"
+$QualificationPrefix = "COLD_RESTORE_QUALIFICATION|"
 $RoleSequence = @("producer", "consumer", "validator")
 $ProcessSequence = @(
-    "producer_exit",
+    "qualification_exit_attested",
+    "official_ledger_consumed",
+    "producer_child_completion",
+    "producer_parent_exit",
     "consumer_start",
-    "consumer_exit",
+    "consumer_child_completion",
+    "consumer_parent_exit",
     "validator_start",
-    "validator_exit",
+    "validator_child_completion",
+    "validator_parent_exit",
     "orchestrator_compare"
 )
 $ManifestFields = @(
@@ -75,15 +45,6 @@ $ManifestFields = @(
     "run_id",
     "process_role",
     "process_id",
-    "parent_process_id",
-    "process_creation_time_utc_ticks",
-    "wrapper_process_id",
-    "wrapper_parent_process_id",
-    "wrapper_creation_time_utc_ticks",
-    "orchestrator_process_id",
-    "orchestrator_creation_time_utc_ticks",
-    "launch_nonce",
-    "official_claim_fingerprint",
     "head_sha",
     "slot_id",
     "slot_state",
@@ -157,10 +118,6 @@ $ManifestFields = @(
 $IntegerManifestFields = @(
     "schema_version",
     "process_id",
-    "parent_process_id",
-    "wrapper_process_id",
-    "wrapper_parent_process_id",
-    "orchestrator_process_id",
     "section_count",
     "preflight_count",
     "owner_apply_count",
@@ -253,6 +210,64 @@ $QueueTargetSideEffectDeltaFields = @(
     "queue_target_public_log_duplicate_delta",
     "queue_target_public_log_collision_delta"
 )
+$QualificationResultFields = @(
+    "schema_version",
+    "qualification_probe",
+    "official_cold_restore_vertical_slice",
+    "formal_full_run",
+    "run_id",
+    "challenge_depth",
+    "seed",
+    "scenario_fingerprint",
+    "human_action_count",
+    "commodity_action_count",
+    "normal_card_purchase_count",
+    "facility_action_count",
+    "sale_receipt_count",
+    "ai_action_count",
+    "ai_state_fingerprint_changed",
+    "queue_trigger_actor",
+    "queue_trigger_semantic_action_id",
+    "queue_trigger_card_semantic_id",
+    "queue_trigger_target_fingerprint",
+    "queue_count",
+    "queue_revision",
+    "offer_audit",
+    "card_resolution_advance_after_trigger",
+    "world_advance_after_trigger",
+    "rng_draw_after_trigger",
+    "normal_card_count",
+    "commodity_card_count",
+    "commodity_claim_count",
+    "facility_count",
+    "route_count",
+    "weather_region_count",
+    "ai_nondefault_state_count",
+    "production_surface_ready",
+    "save_written",
+    "success",
+    "failure_code",
+    "product_blocker"
+)
+$ParentExitAttestationFields = @(
+    "schema_version",
+    "run_id",
+    "role",
+    "child_pid",
+    "observed_exit",
+    "exit_code",
+    "timed_out",
+    "terminated_by_parent",
+    "stdout_sha256",
+    "stderr_sha256",
+    "child_attestation_found",
+    "child_attestation_fingerprint",
+    "child_attestation_valid",
+    "task_owned_process_count_after",
+    "unrelated_preexisting_process_count",
+    "wrapper_exit_green",
+    "wrapper_reason_code"
+)
 
 function Assert-ColdRestoreCondition {
     param(
@@ -262,6 +277,24 @@ function Assert-ColdRestoreCondition {
     if (-not $Condition) {
         throw $FailureCode
     }
+}
+
+function Resolve-ColdRestoreGodotExecutable {
+    param([Parameter(Mandatory = $true)][string]$Candidate)
+    $resolved = if (Test-Path -LiteralPath $Candidate -PathType Leaf) {
+        (Resolve-Path -LiteralPath $Candidate).Path
+    }
+    else {
+        (Get-Command $Candidate -CommandType Application -ErrorAction Stop).Source
+    }
+    if ([IO.Path]::GetFileNameWithoutExtension($resolved).EndsWith("_console", [StringComparison]::OrdinalIgnoreCase)) {
+        return $resolved
+    }
+    $consoleCandidates = @(
+        Get-ChildItem -LiteralPath (Split-Path -Parent $resolved) -Filter "Godot*_console.exe" -File -ErrorAction SilentlyContinue
+    )
+    Assert-ColdRestoreCondition ($consoleCandidates.Count -eq 1) "godot_console_wrapper_unavailable"
+    return $consoleCandidates[0].FullName
 }
 
 function Test-NonnegativeInteger {
@@ -307,25 +340,6 @@ function Assert-ColdRestoreManifest {
     Assert-ColdRestoreCondition ([string]$Manifest.run_id -eq $ExpectedRunId) "manifest_run_id_mismatch"
     Assert-ColdRestoreCondition ([string]$Manifest.process_role -eq $Role) "manifest_role_mismatch"
     Assert-ColdRestoreCondition ([int64]$Manifest.process_id -gt 0) "manifest_process_id_invalid"
-    foreach ($field in @(
-        "process_creation_time_utc_ticks",
-        "wrapper_creation_time_utc_ticks",
-        "orchestrator_creation_time_utc_ticks"
-    )) {
-        Assert-ColdRestoreCondition ([string]$Manifest.$field -match '^[1-9][0-9]{0,18}$') "manifest_creation_time_invalid"
-    }
-    Assert-ColdRestoreCondition ([string]$Manifest.launch_nonce -match '^[0-9a-f]{32}$') "manifest_launch_nonce_invalid"
-    Assert-ColdRestoreCondition ([string]$Manifest.official_claim_fingerprint -match '^[0-9a-f]{64}$') "manifest_claim_fingerprint_invalid"
-    Assert-ColdRestoreCondition ([int64]$Manifest.wrapper_parent_process_id -eq [int64]$Manifest.orchestrator_process_id) "manifest_wrapper_parent_invalid"
-    if ([int64]$Manifest.wrapper_process_id -eq [int64]$Manifest.process_id) {
-        Assert-ColdRestoreCondition (
-            [int64]$Manifest.parent_process_id -eq [int64]$Manifest.orchestrator_process_id `
-                -and [string]$Manifest.process_creation_time_utc_ticks -eq [string]$Manifest.wrapper_creation_time_utc_ticks
-        ) "manifest_single_process_binding_invalid"
-    }
-    else {
-        Assert-ColdRestoreCondition ([int64]$Manifest.parent_process_id -eq [int64]$Manifest.wrapper_process_id) "manifest_engine_parent_invalid"
-    }
     Assert-ColdRestoreCondition ([string]$Manifest.head_sha -match '^[0-9a-f]{7,64}$') "manifest_head_sha_invalid"
     Assert-ColdRestoreCondition ([string]$Manifest.slot_id -eq "current_run") "manifest_slot_id_invalid"
     Assert-ColdRestoreCondition ([string]$Manifest.slot_state -in @("ready", "restored", "validated", "failed")) "manifest_slot_state_invalid"
@@ -378,813 +392,209 @@ function Read-ColdRestoreManifest {
     return $manifest
 }
 
-function Resolve-OfficialClaimDirectory {
-    param([Parameter(Mandatory = $true)][string]$ResolvedProjectPath)
-    $commonDirectoryLines = @(
-        & git -C $ResolvedProjectPath rev-parse --path-format=absolute --git-common-dir 2>$null
-    )
-    $gitExitCode = $LASTEXITCODE
-    Assert-ColdRestoreCondition ($gitExitCode -eq 0 -and $commonDirectoryLines.Count -eq 1) "git_common_dir_unavailable"
-    $commonDirectory = [string]$commonDirectoryLines[0]
-    Assert-ColdRestoreCondition ([IO.Path]::IsPathRooted($commonDirectory)) "git_common_dir_not_absolute"
-    $resolvedCommonDirectory = [IO.Path]::GetFullPath($commonDirectory)
-    Assert-ColdRestoreCondition (Test-Path -LiteralPath $resolvedCommonDirectory -PathType Container) "git_common_dir_invalid"
-    return Join-Path $resolvedCommonDirectory $OfficialClaimRelativeDirectory
-}
-
-function New-OfficialClaimLedger {
-    param(
-        [Parameter(Mandatory = $true)][string]$EvidenceDirectory,
-        [Parameter(Mandatory = $true)][string]$HeadSha,
-        [Parameter(Mandatory = $true)]$OrchestratorRecord,
-        [Parameter(Mandatory = $true)][string]$ClaimNonce
-    )
-    Assert-ColdRestoreCondition ($HeadSha -match '^[0-9a-f]{40,64}$') "official_claim_head_sha_invalid"
-    Assert-ColdRestoreCondition ($ClaimNonce -match '^[0-9a-f]{32}$') "official_claim_nonce_invalid"
-    New-Item -ItemType Directory -Path $EvidenceDirectory -Force | Out-Null
-    $ledgerPath = Join-Path $EvidenceDirectory $OfficialClaimLedgerFileName
-    $claim = [ordered]@{
-        schema_version = $OfficialClaimSchemaVersion
-        authorization_id = $OfficialAuthorizationId
-        created_at_utc = [DateTimeOffset]::UtcNow.ToString("o", [Globalization.CultureInfo]::InvariantCulture)
-        source_head_sha = $HeadSha
-        challenge_depth = $OfficialChallengeDepth
-        seed = $OfficialSeed
-        status = "claimed"
-        claim_nonce = $ClaimNonce
-        orchestrator_process_id = [int64]$OrchestratorRecord.process_id
-        orchestrator_creation_time_utc_ticks = ([int64]$OrchestratorRecord.creation_time_utc_ticks).ToString([Globalization.CultureInfo]::InvariantCulture)
-    }
-    Assert-ColdRestoreCondition (Test-ExactFieldSet ([pscustomobject]$claim) $OfficialClaimFields) "official_claim_field_set_invalid"
-    $json = $claim | ConvertTo-Json -Compress -Depth 2
-    $stream = $null
-    $writer = $null
-    try {
-        try {
-            $stream = [System.IO.FileStream]::new(
-                $ledgerPath,
-                [System.IO.FileMode]::CreateNew,
-                [System.IO.FileAccess]::Write,
-                [System.IO.FileShare]::None
-            )
-        }
-        catch [System.IO.IOException] {
-            if ([System.IO.File]::Exists($ledgerPath)) {
-                throw "official_claim_already_exists"
-            }
-            throw "official_claim_create_failed"
-        }
-        $writer = [System.IO.StreamWriter]::new(
-            $stream,
-            [System.Text.UTF8Encoding]::new($false),
-            1024,
-            $true
-        )
-        $writer.Write($json)
-        $writer.Flush()
-        $stream.Flush($true)
-    }
-    finally {
-        if ($null -ne $writer) {
-            $writer.Dispose()
-        }
-        if ($null -ne $stream) {
-            $stream.Dispose()
-        }
-    }
-    return $ledgerPath
-}
-
-function Resolve-ColdRestoreExecutablePath {
-    param([Parameter(Mandatory = $true)][string]$ExecutablePath)
-    if (Test-Path -LiteralPath $ExecutablePath -PathType Leaf) {
-        return (Resolve-Path -LiteralPath $ExecutablePath).Path
-    }
-    $command = Get-Command $ExecutablePath -CommandType Application -ErrorAction SilentlyContinue |
-        Select-Object -First 1
-    Assert-ColdRestoreCondition ($null -ne $command -and -not [string]::IsNullOrWhiteSpace([string]$command.Source)) "godot_executable_unavailable"
-    return [IO.Path]::GetFullPath([string]$command.Source)
-}
-
-function Get-ColdRestoreEngineExecutablePath {
-    param([Parameter(Mandatory = $true)][string]$WrapperExecutablePath)
-    $resolvedWrapperPath = [IO.Path]::GetFullPath($WrapperExecutablePath)
-    $fileName = [IO.Path]::GetFileName($resolvedWrapperPath)
-    if ($fileName -match '(?i)_console\.exe$') {
-        $engineFileName = $fileName -replace '(?i)_console(?=\.exe$)', ''
-        return Join-Path ([IO.Path]::GetDirectoryName($resolvedWrapperPath)) $engineFileName
-    }
-    return $resolvedWrapperPath
-}
-
-function ConvertTo-ColdRestoreProcessRecord {
-    param([Parameter(Mandatory = $true)]$ProcessInfo)
-    $executablePath = [string]$ProcessInfo.ExecutablePath
-    $commandLine = [string]$ProcessInfo.CommandLine
-    Assert-ColdRestoreCondition (-not [string]::IsNullOrWhiteSpace($executablePath)) "process_executable_path_unavailable"
-    Assert-ColdRestoreCondition (-not [string]::IsNullOrWhiteSpace($commandLine)) "process_command_line_unavailable"
-    $cimCreationTime = ([DateTime]$ProcessInfo.CreationDate).ToUniversalTime().Ticks
-    try {
-        $boundProcess = [System.Diagnostics.Process]::GetProcessById([int]$ProcessInfo.ProcessId)
-        $creationTime = $boundProcess.StartTime.ToUniversalTime().Ticks
-    }
-    catch {
-        throw "process_identity_unavailable"
-    }
-    Assert-ColdRestoreCondition ([Math]::Abs([int64]$creationTime - [int64]$cimCreationTime) `
-        -le [TimeSpan]::TicksPerSecond) "process_creation_time_disagreement"
-    return [pscustomobject]@{
-        process_id = [int64]$ProcessInfo.ProcessId
-        parent_process_id = [int64]$ProcessInfo.ParentProcessId
-        executable_path = [IO.Path]::GetFullPath($executablePath)
-        command_line = $commandLine
-        creation_time_utc_ticks = [int64]$creationTime
-    }
-}
-
-function Get-ColdRestoreProcessRecord {
-    param([Parameter(Mandatory = $true)][int64]$ProcessId)
-    $rows = @(
-        Get-CimInstance -ClassName Win32_Process -Filter ("ProcessId = {0}" -f $ProcessId) `
-            -ErrorAction SilentlyContinue
-    )
-    if ($rows.Count -eq 0) {
-        return $null
-    }
-    Assert-ColdRestoreCondition ($rows.Count -eq 1) "process_identity_ambiguous"
-    return ConvertTo-ColdRestoreProcessRecord $rows[0]
-}
-
-function Get-ColdRestoreChildProcessRecords {
-    param([Parameter(Mandatory = $true)][int64]$ParentProcessId)
-    $records = @()
-    foreach ($row in @(
-        Get-CimInstance -ClassName Win32_Process -Filter ("ParentProcessId = {0}" -f $ParentProcessId) `
-            -ErrorAction SilentlyContinue
-    )) {
-        $records += ConvertTo-ColdRestoreProcessRecord $row
-    }
-    return @($records)
-}
-
-function Test-ColdRestorePathBinding {
-    param(
-        [Parameter(Mandatory = $true)][string]$ActualPath,
-        [Parameter(Mandatory = $true)][string]$ExpectedPath
-    )
-    return [string]::Equals(
-        [IO.Path]::GetFullPath($ActualPath),
-        [IO.Path]::GetFullPath($ExpectedPath),
-        [System.StringComparison]::OrdinalIgnoreCase
-    )
-}
-
-function Test-ColdRestoreCommandLineBinding {
-    param(
-        [Parameter(Mandatory = $true)][string]$CommandLine,
-        [Parameter(Mandatory = $true)][string]$ExpectedExecutablePath,
-        [Parameter(Mandatory = $true)][string]$ExpectedArgumentLine
-    )
-    if ([string]::IsNullOrWhiteSpace($CommandLine) `
-            -or [string]::IsNullOrWhiteSpace($ExpectedArgumentLine)) {
-        return $false
-    }
-
-    $resolvedExecutablePath = [IO.Path]::GetFullPath($ExpectedExecutablePath)
-    foreach ($executablePrefix in @(
-        ('"{0}" ' -f $resolvedExecutablePath),
-        ('{0} ' -f $resolvedExecutablePath)
-    )) {
-        if ($CommandLine.StartsWith($executablePrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
-            $actualArgumentLine = $CommandLine.Substring($executablePrefix.Length)
-            return [string]::Equals(
-                $actualArgumentLine,
-                $ExpectedArgumentLine,
-                [System.StringComparison]::Ordinal
-            )
-        }
-    }
-    return $false
-}
-
-function Test-ColdRestoreProcessRecordBinding {
-    param(
-        [Parameter(Mandatory = $true)]$Record,
-        [Parameter(Mandatory = $true)][int64]$ExpectedParentProcessId,
-        [Parameter(Mandatory = $true)][string]$ExpectedExecutablePath,
-        [Parameter(Mandatory = $true)][string]$ExpectedArgumentLine
-    )
-    return [int64]$Record.parent_process_id -eq $ExpectedParentProcessId `
-        -and (Test-ColdRestorePathBinding ([string]$Record.executable_path) $ExpectedExecutablePath) `
-        -and (Test-ColdRestoreCommandLineBinding ([string]$Record.command_line) `
-            $ExpectedExecutablePath $ExpectedArgumentLine)
-}
-
-function Wait-ColdRestoreProcessRecord {
-    param(
-        [Parameter(Mandatory = $true)][int64]$ProcessId,
-        [ValidateRange(100, 10000)][int]$TimeoutMilliseconds = 5000
-    )
-    $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMilliseconds)
-    do {
-        $record = Get-ColdRestoreProcessRecord $ProcessId
-        if ($null -ne $record) {
-            return $record
-        }
-        Start-Sleep -Milliseconds 25
-    } while ([DateTime]::UtcNow -lt $deadline)
-    throw "process_identity_unavailable"
-}
-
-function Get-ColdRestoreFileSha256 {
-    param([Parameter(Mandatory = $true)][string]$Path)
-    Assert-ColdRestoreCondition (Test-Path -LiteralPath $Path -PathType Leaf) "attested_file_missing"
-    $stream = $null
-    $sha256 = $null
-    try {
-        $stream = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read)
-        $sha256 = [System.Security.Cryptography.SHA256]::Create()
-        return ([System.BitConverter]::ToString($sha256.ComputeHash($stream))).Replace("-", "").ToLowerInvariant()
-    }
-    finally {
-        if ($null -ne $sha256) {
-            $sha256.Dispose()
-        }
-        if ($null -ne $stream) {
-            $stream.Dispose()
-        }
-    }
-}
-
-function Invoke-ColdRestoreExecutionPreflight {
-    param(
-        [Parameter(Mandatory = $true)][string]$RequestedProjectPath,
-        [Parameter(Mandatory = $true)][string]$RequestedGodotPath
-    )
-    $resolvedProjectPath = (Resolve-Path -LiteralPath $RequestedProjectPath).Path
-    Assert-ColdRestoreCondition (Test-Path -LiteralPath (Join-Path $resolvedProjectPath "project.godot") -PathType Leaf) "godot_project_invalid"
-    $resolvedGodotPath = Resolve-ColdRestoreExecutablePath $RequestedGodotPath
-    $resolvedEnginePath = Get-ColdRestoreEngineExecutablePath $resolvedGodotPath
-    Assert-ColdRestoreCondition (Test-Path -LiteralPath $resolvedEnginePath -PathType Leaf) "godot_engine_executable_unavailable"
-
-    $startProcessCommand = Get-Command Start-Process -CommandType Cmdlet -ErrorAction SilentlyContinue
-    Assert-ColdRestoreCondition ($null -ne $startProcessCommand `
-        -and $startProcessCommand.Parameters.ContainsKey("Environment") `
-        -and $startProcessCommand.Parameters.ContainsKey("RedirectStandardOutput") `
-        -and $startProcessCommand.Parameters.ContainsKey("RedirectStandardError") `
-        -and $startProcessCommand.Parameters.ContainsKey("PassThru")) "process_launch_environment_unsupported"
-    $cimCommand = Get-Command Get-CimInstance -CommandType Cmdlet -ErrorAction SilentlyContinue
-    Assert-ColdRestoreCondition ($null -ne $cimCommand) "cim_process_query_unavailable"
-    $orchestratorRecord = Wait-ColdRestoreProcessRecord ([int64]$PID)
-    Assert-ColdRestoreCondition ([int64]$orchestratorRecord.process_id -eq [int64]$PID `
-        -and [int64]$orchestratorRecord.parent_process_id -gt 0 `
-        -and [int64]$orchestratorRecord.creation_time_utc_ticks -gt 0) "orchestrator_process_identity_invalid"
-
-    $headLines = @(& git -C $resolvedProjectPath rev-parse HEAD 2>$null)
-    $headExitCode = $LASTEXITCODE
-    Assert-ColdRestoreCondition ($headExitCode -eq 0 -and $headLines.Count -eq 1) "head_sha_unavailable"
-    $headSha = [string]$headLines[0]
-    Assert-ColdRestoreCondition ($headSha -match '^[0-9a-f]{40,64}$') "head_sha_unavailable"
-    $dirtyPaths = @(& git -C $resolvedProjectPath status --porcelain=v1 2>$null)
-    $statusExitCode = $LASTEXITCODE
-    Assert-ColdRestoreCondition ($statusExitCode -eq 0) "git_status_unavailable"
-    Assert-ColdRestoreCondition ($dirtyPaths.Count -eq 0) "worktree_not_clean"
-
-    $logRoot = Join-Path $resolvedProjectPath ".godot\cold_restore_v3\$RunId\orchestrator-$PID"
-    foreach ($directory in @($logRoot, $IsolatedAppData, $IsolatedLocalAppData)) {
-        New-Item -ItemType Directory -Path $directory -Force | Out-Null
-        Assert-ColdRestoreCondition (Test-Path -LiteralPath $directory -PathType Container) "process_environment_directory_unavailable"
-    }
-    Invoke-ColdRestoreDriverContractPreflight $resolvedProjectPath $resolvedGodotPath $logRoot
-    $officialClaimDirectory = Resolve-OfficialClaimDirectory $resolvedProjectPath
-    $officialClaimLedgerPath = Join-Path $officialClaimDirectory $OfficialClaimLedgerFileName
-    Assert-ColdRestoreCondition (-not [System.IO.File]::Exists($officialClaimLedgerPath)) "official_claim_already_exists"
-    return [pscustomobject]@{
-        resolved_project_path = $resolvedProjectPath
-        resolved_godot_path = $resolvedGodotPath
-        resolved_engine_path = $resolvedEnginePath
-        orchestrator_record = $orchestratorRecord
-        head_sha = $headSha
-        log_root = $logRoot
-        official_claim_directory = $officialClaimDirectory
-        official_claim_ledger_path = $officialClaimLedgerPath
-    }
-}
-
-function Resolve-ColdRestoreOwnedProcessTree {
-    param(
-        [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Wrapper,
-        [Parameter(Mandatory = $true)][string]$WrapperExecutablePath,
-        [Parameter(Mandatory = $true)][string]$ExpectedArgumentLine
-    )
-    $wrapperRecord = Wait-ColdRestoreProcessRecord ([int64]$Wrapper.Id)
-    Assert-ColdRestoreCondition (
-        [int64]$wrapperRecord.parent_process_id -eq [int64]$PID `
-        -and (Test-ColdRestorePathBinding ([string]$wrapperRecord.executable_path) $WrapperExecutablePath) `
-        -and (Test-ColdRestoreCommandLineBinding ([string]$wrapperRecord.command_line) `
-            $WrapperExecutablePath $ExpectedArgumentLine)
-    ) "wrapper_process_binding_invalid"
-
-    $engineExecutablePath = Get-ColdRestoreEngineExecutablePath $WrapperExecutablePath
-    if (Test-ColdRestorePathBinding $engineExecutablePath $WrapperExecutablePath) {
-        return [pscustomobject]@{
-            wrapper_process = $Wrapper
-            wrapper_record = $wrapperRecord
-            wrapper_process_id = [int64]$Wrapper.Id
-            engine_process = $Wrapper
-            engine_record = $wrapperRecord
-            engine_process_id = [int64]$Wrapper.Id
-        }
-    }
-
-    $deadline = [DateTime]::UtcNow.AddSeconds(10)
-    do {
-        $matchingChildren = @(
-            Get-ColdRestoreChildProcessRecords ([int64]$Wrapper.Id) |
-                Where-Object {
-                    Test-ColdRestoreProcessRecordBinding $_ ([int64]$Wrapper.Id) `
-                        $engineExecutablePath $ExpectedArgumentLine
-                }
-        )
-        Assert-ColdRestoreCondition ($matchingChildren.Count -le 1) "engine_process_binding_ambiguous"
-        if ($matchingChildren.Count -eq 1) {
-            $engineRecord = $matchingChildren[0]
-            try {
-                $engineProcess = [System.Diagnostics.Process]::GetProcessById([int]$engineRecord.process_id)
-            }
-            catch {
-                throw "engine_process_exited_before_ownership_capture"
-            }
-            return [pscustomobject]@{
-                wrapper_process = $Wrapper
-                wrapper_record = $wrapperRecord
-                wrapper_process_id = [int64]$Wrapper.Id
-                engine_process = $engineProcess
-                engine_record = $engineRecord
-                engine_process_id = [int64]$engineRecord.process_id
-            }
-        }
-        Start-Sleep -Milliseconds 25
-    } while ([DateTime]::UtcNow -lt $deadline -and -not $Wrapper.HasExited)
-    throw "engine_process_binding_unavailable"
-}
-
-function Write-ColdRestoreLaunchAttestation {
-    param(
-        [Parameter(Mandatory = $true)][string]$Path,
-        [Parameter(Mandatory = $true)][ValidateSet("producer", "consumer", "validator")][string]$Role,
-        [Parameter(Mandatory = $true)][string]$HeadSha,
-        [Parameter(Mandatory = $true)][string]$LaunchNonce,
-        [Parameter(Mandatory = $true)][string]$ClaimFingerprint,
-        [Parameter(Mandatory = $true)][string]$ClaimNonce,
-        [Parameter(Mandatory = $true)]$OrchestratorRecord,
-        [Parameter(Mandatory = $true)]$Ownership
-    )
-    Assert-ColdRestoreCondition ($LaunchNonce -match '^[0-9a-f]{32}$') "launch_nonce_invalid"
-    Assert-ColdRestoreCondition ($ClaimFingerprint -match '^[0-9a-f]{64}$') "official_claim_fingerprint_invalid"
-    $attestation = [ordered]@{
-        schema_version = $LaunchAttestationSchemaVersion
-        authorization_id = $OfficialAuthorizationId
-        claim_fingerprint = $ClaimFingerprint
-        claim_nonce = $ClaimNonce
-        source_head_sha = $HeadSha
-        run_id = $RunId
-        process_role = $Role
-        launch_nonce = $LaunchNonce
-        orchestrator_process_id = [int64]$OrchestratorRecord.process_id
-        orchestrator_creation_time_utc_ticks = ([int64]$OrchestratorRecord.creation_time_utc_ticks).ToString([Globalization.CultureInfo]::InvariantCulture)
-        wrapper_process_id = [int64]$Ownership.wrapper_process_id
-        wrapper_parent_process_id = [int64]$Ownership.wrapper_record.parent_process_id
-        wrapper_creation_time_utc_ticks = ([int64]$Ownership.wrapper_record.creation_time_utc_ticks).ToString([Globalization.CultureInfo]::InvariantCulture)
-        engine_process_id = [int64]$Ownership.engine_process_id
-        engine_parent_process_id = [int64]$Ownership.engine_record.parent_process_id
-        engine_creation_time_utc_ticks = ([int64]$Ownership.engine_record.creation_time_utc_ticks).ToString([Globalization.CultureInfo]::InvariantCulture)
-        status = "authorized"
-    }
-    Assert-ColdRestoreCondition (Test-ExactFieldSet ([pscustomobject]$attestation) $LaunchAttestationFields) "launch_attestation_field_set_invalid"
-    Assert-ColdRestoreCondition (-not [System.IO.File]::Exists($Path)) "launch_attestation_already_exists"
-    $pendingPath = "$Path.pending-$LaunchNonce"
-    Assert-ColdRestoreCondition (-not [System.IO.File]::Exists($pendingPath)) "launch_attestation_pending_exists"
-    $json = $attestation | ConvertTo-Json -Compress -Depth 2
-    $stream = $null
-    $writer = $null
-    try {
-        $stream = [System.IO.FileStream]::new(
-            $pendingPath,
-            [System.IO.FileMode]::CreateNew,
-            [System.IO.FileAccess]::Write,
-            [System.IO.FileShare]::None
-        )
-        $writer = [System.IO.StreamWriter]::new(
-            $stream,
-            [System.Text.UTF8Encoding]::new($false),
-            1024,
-            $true
-        )
-        $writer.Write($json)
-        $writer.Flush()
-        $stream.Flush($true)
-    }
-    finally {
-        if ($null -ne $writer) {
-            $writer.Dispose()
-        }
-        if ($null -ne $stream) {
-            $stream.Dispose()
-        }
-    }
-    [System.IO.File]::Move($pendingPath, $Path)
-    Assert-ColdRestoreCondition ([System.IO.File]::Exists($Path)) "launch_attestation_publish_failed"
-}
-
-function Test-ColdRestoreProcessRecordCurrent {
-    param([Parameter(Mandatory = $true)]$Record)
-    $current = Get-ColdRestoreProcessRecord ([int64]$Record.process_id)
-    if ($null -eq $current) {
-        return $false
-    }
-    return [int64]$current.parent_process_id -eq [int64]$Record.parent_process_id `
-        -and [int64]$current.creation_time_utc_ticks -eq [int64]$Record.creation_time_utc_ticks `
-        -and (Test-ColdRestorePathBinding ([string]$current.executable_path) ([string]$Record.executable_path))
-}
-
-function Stop-ColdRestoreOwnedProcessRecord {
-    param(
-        [Parameter(Mandatory = $true)]$Record,
-        [System.Diagnostics.Process]$Process = $null
-    )
-    if (-not (Test-ColdRestoreProcessRecordCurrent $Record)) {
-        return $true
-    }
-    $boundProcess = $Process
-    try {
-        if ($null -eq $boundProcess) {
-            $boundProcess = [System.Diagnostics.Process]::GetProcessById([int]$Record.process_id)
-        }
-        $boundStartTicks = $boundProcess.StartTime.ToUniversalTime().Ticks
-        if ([int64]$boundProcess.Id -ne [int64]$Record.process_id `
-                -or [int64]$boundStartTicks -ne [int64]$Record.creation_time_utc_ticks) {
-            return $false
-        }
-        $boundProcess.Kill()
-        [void]$boundProcess.WaitForExit(5000)
-    }
-    catch {
-        # A later identity check decides whether this was an already-exited process or a cleanup failure.
-    }
-    $deadline = [DateTime]::UtcNow.AddSeconds(5)
-    while ((Test-ColdRestoreProcessRecordCurrent $Record) -and [DateTime]::UtcNow -lt $deadline) {
-        Start-Sleep -Milliseconds 25
-    }
-    return -not (Test-ColdRestoreProcessRecordCurrent $Record)
-}
-
-function Stop-ColdRestoreOwnedProcessTree {
-    param([Parameter(Mandatory = $true)]$Ownership)
-    $records = @()
-    if ([int64]$Ownership.engine_process_id -ne [int64]$Ownership.wrapper_process_id) {
-        $records += [pscustomobject]@{ record = $Ownership.engine_record; process = $Ownership.engine_process }
-    }
-    $records += [pscustomobject]@{ record = $Ownership.wrapper_record; process = $Ownership.wrapper_process }
-    foreach ($entry in $records) {
-        try {
-            [void](Stop-ColdRestoreOwnedProcessRecord $entry.record $entry.process)
-        }
-        catch {
-            # Continue so one failed leg cannot prevent cleanup of the other owned process.
-        }
-    }
-    $residualCount = 0
-    foreach ($entry in $records) {
-        try {
-            if (Test-ColdRestoreProcessRecordCurrent $entry.record) {
-                $residualCount += 1
-            }
-        }
-        catch {
-            $residualCount += 1
-        }
-    }
-    Assert-ColdRestoreCondition ($residualCount -eq 0) "task_owned_process_cleanup_failed"
-}
-
-function Stop-ColdRestoreLaunchedProcessTree {
-    param(
-        [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Wrapper,
-        [Parameter(Mandatory = $true)][string]$WrapperExecutablePath,
-        [Parameter(Mandatory = $true)][string]$ExpectedArgumentLine
-)
-    $engineExecutablePath = Get-ColdRestoreEngineExecutablePath $WrapperExecutablePath
-    $records = @()
-    foreach ($childRecord in Get-ColdRestoreChildProcessRecords ([int64]$Wrapper.Id)) {
-        if (Test-ColdRestoreProcessRecordBinding $childRecord ([int64]$Wrapper.Id) `
-                $engineExecutablePath $ExpectedArgumentLine) {
-            $records += [pscustomobject]@{ record = $childRecord; process = $null }
-        }
-    }
-    $wrapperRecord = Get-ColdRestoreProcessRecord ([int64]$Wrapper.Id)
-    $wrapperBound = $false
-    if ($null -ne $wrapperRecord `
-            -and [int64]$wrapperRecord.parent_process_id -eq [int64]$PID `
-            -and (Test-ColdRestorePathBinding ([string]$wrapperRecord.executable_path) $WrapperExecutablePath) `
-            -and (Test-ColdRestoreCommandLineBinding ([string]$wrapperRecord.command_line) `
-                $WrapperExecutablePath $ExpectedArgumentLine)) {
-        $records += [pscustomobject]@{ record = $wrapperRecord; process = $Wrapper }
-        $wrapperBound = $true
-    }
-    foreach ($entry in $records) {
-        try {
-            [void](Stop-ColdRestoreOwnedProcessRecord $entry.record $entry.process)
-        }
-        catch {
-            # Best effort continues across all records captured for this exact launch.
-        }
-    }
-    $residualCount = 0
-    foreach ($entry in $records) {
-        try {
-            if (Test-ColdRestoreProcessRecordCurrent $entry.record) {
-                $residualCount += 1
-            }
-        }
-        catch {
-            $residualCount += 1
-        }
-    }
-    if (-not $wrapperBound) {
-        try {
-            if (-not $Wrapper.HasExited) {
-                $residualCount += 1
-            }
-        }
-        catch {
-            $residualCount += 1
-        }
-    }
-    foreach ($childRecord in Get-ColdRestoreChildProcessRecords ([int64]$Wrapper.Id)) {
-        if (Test-ColdRestoreProcessRecordBinding $childRecord ([int64]$Wrapper.Id) `
-                $engineExecutablePath $ExpectedArgumentLine) {
-            $residualCount += 1
-        }
-    }
-    Assert-ColdRestoreCondition ($residualCount -eq 0) "task_owned_process_cleanup_failed"
-}
-
-function Invoke-ColdRestoreDriverContractPreflight {
+function Get-ColdRestoreRolePaths {
     param(
         [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
-        [Parameter(Mandatory = $true)][string]$ResolvedGodotPath,
-        [Parameter(Mandatory = $true)][string]$LogRoot
+        [Parameter(Mandatory = $true)][string]$Role
     )
-    $stdoutPath = Join-Path $LogRoot "driver-contract-preflight.stdout.log"
-    $stderrPath = Join-Path $LogRoot "driver-contract-preflight.stderr.log"
-    $arguments = @(
-        "--headless",
-        "--path", "`"$ResolvedProjectPath`"",
-        "--script", $DriverScript,
-        "--",
-        "--cold-restore-contract-only"
-    )
-    $argumentLine = $arguments -join " "
-    $process = $null
-    $ownership = $null
-    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-    try {
-        $process = Start-Process -FilePath $ResolvedGodotPath -ArgumentList $argumentLine `
-            -PassThru -WindowStyle Hidden `
-            -Environment @{ APPDATA = $IsolatedAppData; LOCALAPPDATA = $IsolatedLocalAppData } `
-            -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
-        $ownership = Resolve-ColdRestoreOwnedProcessTree $process $ResolvedGodotPath $argumentLine
-        $remainingMilliseconds = [Math]::Max([int64]0, 30000 - $stopwatch.ElapsedMilliseconds)
-        Assert-ColdRestoreCondition ($ownership.engine_process.WaitForExit([int]$remainingMilliseconds)) "driver_contract_preflight_timeout"
-        $ownership.engine_process.WaitForExit()
-        if ([int64]$ownership.wrapper_process_id -ne [int64]$ownership.engine_process_id) {
-            $remainingMilliseconds = [Math]::Max([int64]0, 30000 - $stopwatch.ElapsedMilliseconds)
-            Assert-ColdRestoreCondition ($ownership.wrapper_process.WaitForExit([int]$remainingMilliseconds)) "driver_contract_preflight_timeout"
-            $ownership.wrapper_process.WaitForExit()
-        }
+    $root = Join-Path $ResolvedProjectPath ".godot\cold_restore_attestation_v1\$RunId"
+    return [pscustomobject]@{
+        root = $root
+        child_attestation = Join-Path $root "child\$Role.completion.json"
+        child_result = Join-Path $root "child\$Role.result.json"
+        parent_attestation = Join-Path $root "parent\$Role.exit.json"
+        stdout = Join-Path $root "parent\$Role.stdout.log"
+        stderr = Join-Path $root "parent\$Role.stderr.log"
     }
-    catch {
-        $failureCode = [string]$_.Exception.Message
-        if ($null -ne $ownership) {
-            try {
-                Stop-ColdRestoreOwnedProcessTree $ownership
-            }
-            catch {
-                throw "task_owned_process_cleanup_failed"
-            }
-        }
-        elseif ($null -ne $process) {
-            try {
-                Stop-ColdRestoreLaunchedProcessTree $process $ResolvedGodotPath $argumentLine
-            }
-            catch {
-                throw "task_owned_process_cleanup_failed"
-            }
-        }
-        throw $failureCode
-    }
-    finally {
-        $stopwatch.Stop()
-    }
-    Assert-ColdRestoreCondition ($ownership.engine_process.ExitCode -eq 0 `
-        -and $ownership.wrapper_process.ExitCode -eq 0) "driver_contract_preflight_process_failed"
-    Assert-ColdRestoreCondition (-not (Test-ColdRestoreProcessRecordCurrent $ownership.engine_record) `
-        -and -not (Test-ColdRestoreProcessRecordCurrent $ownership.wrapper_record)) "task_owned_process_residual"
-    $contractLines = @(
-        Get-Content -LiteralPath $stdoutPath -Encoding UTF8 |
-            Where-Object { $_.StartsWith("{", [System.StringComparison]::Ordinal) }
-    )
-    Assert-ColdRestoreCondition ($contractLines.Count -eq 1) "driver_contract_preflight_output_invalid"
-    try {
-        $contract = $contractLines[0] | ConvertFrom-Json
-    }
-    catch {
-        throw "driver_contract_preflight_output_invalid"
-    }
-    Assert-ColdRestoreCondition ([int]$contract.schema_version -eq $ORCHESTRATOR_SCHEMA_VERSION `
-        -and [string]$contract.driver_id -eq "alpha04c_cold_restore_vertical_slice_v4" `
-        -and [bool]$contract.official_ledger_required `
-        -and [bool]$contract.launch_attestation_required) "driver_contract_preflight_contract_mismatch"
 }
 
-function Start-ColdRestoreCleanupProbeProcess {
-    $orchestratorRecord = Wait-ColdRestoreProcessRecord ([int64]$PID)
-    $argumentLine = '-NoProfile -Command "Start-Sleep -Seconds 30"'
-    $process = Start-Process -FilePath ([string]$orchestratorRecord.executable_path) `
-        -ArgumentList $argumentLine -PassThru -WindowStyle Hidden
-    $record = Wait-ColdRestoreProcessRecord ([int64]$process.Id)
-    Assert-ColdRestoreCondition ([int64]$record.parent_process_id -eq [int64]$PID `
-        -and (Test-ColdRestorePathBinding ([string]$record.executable_path) ([string]$orchestratorRecord.executable_path))) "cleanup_probe_process_binding_invalid"
-    return [pscustomobject]@{ process = $process; record = $record }
+function Read-ColdRestoreJsonArtifact {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    Assert-ColdRestoreCondition (Test-Path -LiteralPath $Path -PathType Leaf) "evidence_artifact_missing"
+    try {
+        return Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json
+    }
+    catch {
+        throw "evidence_artifact_json_invalid"
+    }
 }
 
-function Invoke-ColdRestoreCleanupContractProbe {
-    $wrapper = $null
-    $engine = $null
-    try {
-        $wrapper = Start-ColdRestoreCleanupProbeProcess
-        $engine = Start-ColdRestoreCleanupProbeProcess
-        Assert-ColdRestoreCondition ([int64]$wrapper.record.process_id -ne [int64]$engine.record.process_id) "cleanup_probe_pid_collision"
-        $ownership = [pscustomobject]@{
-            wrapper_process = $wrapper.process
-            wrapper_record = $wrapper.record
-            wrapper_process_id = [int64]$wrapper.record.process_id
-            engine_process = $wrapper.process
-            engine_record = $engine.record
-            engine_process_id = [int64]$engine.record.process_id
-        }
-        $failureCode = ""
-        try {
-            Stop-ColdRestoreOwnedProcessTree $ownership
-        }
-        catch {
-            $failureCode = [string]$_.Exception.Message
-        }
-        Assert-ColdRestoreCondition ($failureCode -eq "task_owned_process_cleanup_failed") "cleanup_probe_residual_not_reported"
-        Assert-ColdRestoreCondition (-not (Test-ColdRestoreProcessRecordCurrent $wrapper.record)) "cleanup_probe_wrapper_not_stopped"
-        Assert-ColdRestoreCondition (Test-ColdRestoreProcessRecordCurrent $engine.record) "cleanup_probe_engine_residual_missing"
-        Assert-ColdRestoreCondition (Stop-ColdRestoreOwnedProcessRecord $engine.record $engine.process) "cleanup_probe_engine_final_cleanup_failed"
-        Assert-ColdRestoreCondition (-not (Test-ColdRestoreProcessRecordCurrent $engine.record)) "cleanup_probe_engine_still_running"
-        return [ordered]@{
-            schema_version = 1
-            probe_id = "cold_restore_owned_process_cleanup"
-            engine_failure_injected = $true
-            wrapper_cleanup_continued = $true
-            residual_failure_reported = $true
-            final_owned_process_count = 0
-            success = $true
-            failure_code = ""
-        }
+function Assert-ColdRestoreQualificationResult {
+    param(
+        [Parameter(Mandatory = $true)]$Result,
+        [Parameter(Mandatory = $true)]$Child,
+        [Parameter(Mandatory = $true)][string]$HeadSha
+    )
+    Assert-ColdRestoreCondition (Test-ExactFieldSet $Result $QualificationResultFields) "qualification_result_field_set_invalid"
+    Assert-ColdRestoreCondition ([int]$Result.schema_version -eq 1) "qualification_result_schema_invalid"
+    Assert-ColdRestoreCondition ([bool]$Result.qualification_probe `
+        -and -not [bool]$Result.official_cold_restore_vertical_slice `
+        -and -not [bool]$Result.formal_full_run `
+        -and -not [bool]$Result.save_written) "qualification_mode_binding_invalid"
+    Assert-ColdRestoreCondition ([string]$Result.run_id -eq $RunId) "qualification_result_run_id_mismatch"
+    Assert-ColdRestoreCondition ([int]$Result.challenge_depth -eq 1 `
+        -and [int64]$Result.seed -eq 900626424) "qualification_configuration_mismatch"
+    Assert-ColdRestoreCondition ([string]$Result.scenario_fingerprint -match '^[0-9a-f]{64}$') "qualification_scenario_fingerprint_invalid"
+    Assert-ColdRestoreCondition ([string]$Result.queue_trigger_actor -in @("local", "ai", "none")) "qualification_actor_invalid"
+    Assert-ColdRestoreCondition ((Test-NonnegativeInteger $Result.queue_count) `
+        -and (Test-NonnegativeInteger $Result.queue_revision)) "qualification_queue_count_invalid"
+    Assert-ColdRestoreCondition (Test-ExactFieldSet $Result.offer_audit @("legal_offers", "queue_capable_offers", "rejected_offers")) "qualification_offer_audit_invalid"
+    Assert-ColdRestoreCondition ($Result.offer_audit.legal_offers -is [System.Array] `
+        -and $Result.offer_audit.queue_capable_offers -is [System.Array] `
+        -and $Result.offer_audit.rejected_offers -is [System.Array]) "qualification_offer_audit_invalid"
+    Assert-ColdRestoreCondition (([bool]$Result.success `
+            -and [int]$Result.queue_count -ge 1 `
+            -and [string]$Result.product_blocker -eq "") `
+        -or (-not [bool]$Result.success `
+            -and [string]$Result.product_blocker -match '^BLOCKED_BY_[A-Z0-9_]{1,192}$')) "qualification_product_binding_invalid"
+    Assert-ColdRestoreCondition ([string]$Child.repository_head -eq $HeadSha `
+        -and [string]$Child.scenario_fingerprint -eq [string]$Result.scenario_fingerprint `
+        -and [bool]$Child.qualification_green -eq [bool]$Result.success `
+        -and [string]$Child.product_blocker -eq [string]$Result.product_blocker `
+        -and [int]$Child.queue_count -eq [int]$Result.queue_count `
+        -and [int]$Child.queue_revision -eq [int]$Result.queue_revision `
+        -and [string]$Child.queue_trigger_actor -eq [string]$Result.queue_trigger_actor `
+        -and [string]$Child.queue_trigger_semantic_action_id -eq [string]$Result.queue_trigger_semantic_action_id `
+        -and [string]$Child.queue_trigger_card_semantic_id -eq [string]$Result.queue_trigger_card_semantic_id `
+        -and [string]$Child.queue_trigger_target_fingerprint -eq [string]$Result.queue_trigger_target_fingerprint) "qualification_child_result_binding_invalid"
+    Assert-ColdRestoreCondition (-not [bool]$Child.official `
+        -and -not [bool]$Child.formal `
+        -and -not [bool]$Child.save_written `
+        -and -not [bool]$Child.official_count_consumed `
+        -and [int]$Child.direct_authority_mutation_count -eq 0 `
+        -and [int]$Child.queue_injection_count -eq 0) "qualification_forbidden_mutation_evidence_invalid"
+}
+
+function New-ColdRestoreQualificationOutput {
+    param(
+        [Parameter(Mandatory = $true)]$Run,
+        [Parameter(Mandatory = $true)]$Result
+    )
+    $productGreen = [bool]$Result.success
+    return [ordered]@{
+        schema_version = 1
+        driver_id = "alpha04c_cold_restore_qualification_attested_v1"
+        formal_full_run = $false
+        official_cold_restore_vertical_slice = $false
+        run_id = $RunId
+        child_completion_attestation_green = [bool]$Run.parent.child_attestation_valid
+        parent_exit_attestation_green = [bool]$Run.parent.wrapper_exit_green
+        wrapper_exit_attestation_green = [bool]$Run.wrapper_exit_green
+        wrapper_execution_status = $(if ([bool]$Run.wrapper_exit_green) { "GREEN" } else { "FAILED" })
+        wrapper_reason_code = [string]$Run.wrapper_reason_code
+        product_qualification_status = $(if ($productGreen) { "GREEN" } else { "BLOCKED" })
+        product_queue_qualification_green = $productGreen
+        product_blocker = [string]$Result.product_blocker
+        challenge_depth = [int]$Result.challenge_depth
+        seed = [int64]$Result.seed
+        scenario_fingerprint = [string]$Result.scenario_fingerprint
+        queue_count = [int]$Result.queue_count
+        queue_revision = [int]$Result.queue_revision
+        queue_trigger_actor = [string]$Result.queue_trigger_actor
+        queue_trigger_semantic_action_id = [string]$Result.queue_trigger_semantic_action_id
+        queue_trigger_card_semantic_id = [string]$Result.queue_trigger_card_semantic_id
+        queue_trigger_target_fingerprint = [string]$Result.queue_trigger_target_fingerprint
+        legal_offer_count = @($Result.offer_audit.legal_offers).Count
+        queue_capable_offer_count = @($Result.offer_audit.queue_capable_offers).Count
+        rejected_offer_count = @($Result.offer_audit.rejected_offers).Count
+        task_owned_process_count_after = [int]$Run.parent.task_owned_process_count_after
+        unrelated_preexisting_process_count = [int]$Run.parent.unrelated_preexisting_process_count
+        success = [bool]$Run.wrapper_exit_green
+        failure_code = $(if ([bool]$Run.wrapper_exit_green) { "" } else { [string]$Run.wrapper_reason_code })
     }
-    finally {
-        foreach ($entry in @($engine, $wrapper)) {
-            if ($null -eq $entry) {
-                continue
-            }
-            try {
-                [void](Stop-ColdRestoreOwnedProcessRecord $entry.record $entry.process)
-            }
-            catch {
-                # The probe result already fails if either exact owned process remains.
-            }
-        }
-    }
+}
+
+function Invoke-ColdRestoreQualification {
+    param(
+        [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
+        [Parameter(Mandatory = $true)][string]$HeadSha
+    )
+    $paths = Get-ColdRestoreRolePaths $ResolvedProjectPath "qualification"
+    $arguments = New-ColdRestoreGodotArgumentList `
+        -EngineArgumentList @("--headless", "--path", $ResolvedProjectPath, "--script", $DriverScript) `
+        -UserArgumentList @(
+            "--cold-restore-qualification-probe",
+            "--cold-restore-role=qualification",
+            "--cold-restore-run-id=$RunId",
+            "--cold-restore-head-sha=$HeadSha",
+            "--cold-restore-artifact-root=$ArtifactRoot"
+        )
+    $run = Invoke-ColdRestoreAttestedProcess `
+        -ExecutablePath $GodotPath `
+        -WorkingDirectory $ResolvedProjectPath `
+        -ArgumentList $arguments `
+        -RunId $RunId `
+        -Role "qualification" `
+        -RepositoryHead $HeadSha `
+        -ChildAttestationPath $paths.child_attestation `
+        -ParentAttestationPath $paths.parent_attestation `
+        -StdoutPath $paths.stdout `
+        -StderrPath $paths.stderr `
+        -TimeoutSeconds $ChildTimeoutSeconds `
+        -EnvironmentVariables @{ APPDATA = $IsolatedAppData; LOCALAPPDATA = $IsolatedLocalAppData }
+    Assert-ColdRestoreCondition ([bool]$run.wrapper_exit_green) ([string]$run.wrapper_reason_code)
+    $result = Read-ColdRestoreJsonArtifact $paths.child_result
+    Assert-ColdRestoreQualificationResult $result $run.child $HeadSha
+    return [pscustomobject]@{ run = $run; result = $result; paths = $paths }
 }
 
 function Invoke-ColdRestoreRole {
     param(
         [Parameter(Mandatory = $true)][ValidateSet("producer", "consumer", "validator")][string]$Role,
         [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
-        [Parameter(Mandatory = $true)][string]$ResolvedGodotPath,
-        [Parameter(Mandatory = $true)][string]$LogRoot,
         [Parameter(Mandatory = $true)][string]$HeadSha,
-        [Parameter(Mandatory = $true)][string]$OfficialClaimLedgerPath,
-        [Parameter(Mandatory = $true)][string]$OfficialClaimFingerprint,
-        [Parameter(Mandatory = $true)][string]$ClaimNonce,
-        [Parameter(Mandatory = $true)]$OrchestratorRecord,
+        [Parameter(Mandatory = $true)][string]$ScenarioFingerprint,
         [int64]$ExpectedQueueResolutionId = 0,
         [string]$ExpectedQueueStableTargetFingerprint = ""
     )
-    $stdoutPath = Join-Path $LogRoot "$Role.stdout.log"
-    $stderrPath = Join-Path $LogRoot "$Role.stderr.log"
-    $launchNonce = [Guid]::NewGuid().ToString("N")
-    $launchAttestationPath = Join-Path $LogRoot "$Role.launch-attestation.json"
-    $arguments = @(
-        "--headless",
-        "--path", "`"$ResolvedProjectPath`"",
-        "--script", $DriverScript,
-        "--",
+    $paths = Get-ColdRestoreRolePaths $ResolvedProjectPath $Role
+    $userArguments = @(
         "--cold-restore-role=$Role",
         "--cold-restore-run-id=$RunId",
         "--cold-restore-head-sha=$HeadSha",
         "--cold-restore-artifact-root=$ArtifactRoot",
-        "--cold-restore-official-claim-path=`"$OfficialClaimLedgerPath`"",
-        "--cold-restore-launch-attestation-path=`"$launchAttestationPath`"",
-        "--cold-restore-launch-nonce=$launchNonce"
+        "--cold-restore-scenario-fingerprint=$ScenarioFingerprint",
+        "--cold-restore-official-count-consumed=true"
     )
     if ($Role -ne "producer") {
         Assert-ColdRestoreCondition ($ExpectedQueueResolutionId -gt 0) "expected_queue_resolution_id_invalid"
         Assert-ColdRestoreCondition ($ExpectedQueueStableTargetFingerprint -match '^[0-9a-f]{64}$') "expected_queue_stable_target_fingerprint_invalid"
-        $arguments += "--cold-restore-expected-queue-resolution-id=$ExpectedQueueResolutionId"
-        $arguments += "--cold-restore-expected-queue-stable-target-fingerprint=$ExpectedQueueStableTargetFingerprint"
+        $userArguments += "--cold-restore-expected-queue-resolution-id=$ExpectedQueueResolutionId"
+        $userArguments += "--cold-restore-expected-queue-stable-target-fingerprint=$ExpectedQueueStableTargetFingerprint"
     }
-    $argumentLine = $arguments -join " "
-    $process = $null
-    $ownership = $null
-    $roleStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-    try {
-        $process = Start-Process -FilePath $resolvedGodotPath -ArgumentList $argumentLine `
-            -PassThru -WindowStyle Hidden `
-            -Environment @{ APPDATA = $IsolatedAppData; LOCALAPPDATA = $IsolatedLocalAppData } `
-            -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
-        $ownership = Resolve-ColdRestoreOwnedProcessTree $process $resolvedGodotPath $argumentLine
-        Write-ColdRestoreLaunchAttestation $launchAttestationPath $Role $HeadSha $launchNonce `
-            $OfficialClaimFingerprint $ClaimNonce $OrchestratorRecord $ownership
-
-        $remainingTimeoutMilliseconds = [Math]::Max(
-            [int64]0,
-            ([int64]$RoleTimeoutSeconds * 1000) - $roleStopwatch.ElapsedMilliseconds
-        )
-        if (-not $ownership.engine_process.WaitForExit([int]$remainingTimeoutMilliseconds)) {
-            throw "${Role}_process_timeout"
-        }
-        $ownership.engine_process.WaitForExit()
-
-        if ([int64]$ownership.wrapper_process_id -ne [int64]$ownership.engine_process_id) {
-            $remainingTimeoutMilliseconds = [Math]::Max(
-                [int64]0,
-                ([int64]$RoleTimeoutSeconds * 1000) - $roleStopwatch.ElapsedMilliseconds
-            )
-            if (-not $ownership.wrapper_process.WaitForExit([int]$remainingTimeoutMilliseconds)) {
-                throw "${Role}_process_timeout"
-            }
-            $ownership.wrapper_process.WaitForExit()
-        }
-    }
-    catch {
-        $originalFailureCode = [string]$_.Exception.Message
-        if ($null -ne $ownership) {
-            try {
-                Stop-ColdRestoreOwnedProcessTree $ownership
-            }
-            catch {
-                throw "task_owned_process_cleanup_failed"
-            }
-        }
-        elseif ($null -ne $process) {
-            try {
-                Stop-ColdRestoreLaunchedProcessTree $process $resolvedGodotPath $argumentLine
-            }
-            catch {
-                throw "task_owned_process_cleanup_failed"
-            }
-        }
-        throw $originalFailureCode
-    }
-    finally {
-        $roleStopwatch.Stop()
-    }
-    Assert-ColdRestoreCondition ($ownership.engine_process.ExitCode -eq 0) "${Role}_engine_process_failed"
-    Assert-ColdRestoreCondition ($ownership.wrapper_process.ExitCode -eq 0) "${Role}_wrapper_process_failed"
-    Assert-ColdRestoreCondition (-not (Test-ColdRestoreProcessRecordCurrent $ownership.engine_record) `
-        -and -not (Test-ColdRestoreProcessRecordCurrent $ownership.wrapper_record)) "task_owned_process_residual"
-    $manifest = Read-ColdRestoreManifest $stdoutPath $Role $RunId
-    Assert-ColdRestoreCondition ([int64]$manifest.process_id -eq [int64]$ownership.engine_process_id) "${Role}_manifest_process_id_mismatch"
-    Assert-ColdRestoreCondition ([int64]$manifest.parent_process_id -eq [int64]$ownership.engine_record.parent_process_id `
-        -and [string]$manifest.process_creation_time_utc_ticks -eq ([int64]$ownership.engine_record.creation_time_utc_ticks).ToString([Globalization.CultureInfo]::InvariantCulture) `
-        -and [int64]$manifest.wrapper_process_id -eq [int64]$ownership.wrapper_process_id `
-        -and [int64]$manifest.wrapper_parent_process_id -eq [int64]$ownership.wrapper_record.parent_process_id `
-        -and [string]$manifest.wrapper_creation_time_utc_ticks -eq ([int64]$ownership.wrapper_record.creation_time_utc_ticks).ToString([Globalization.CultureInfo]::InvariantCulture)) "${Role}_manifest_process_identity_mismatch"
-    Assert-ColdRestoreCondition ([int64]$manifest.orchestrator_process_id -eq [int64]$OrchestratorRecord.process_id `
-        -and [string]$manifest.orchestrator_creation_time_utc_ticks -eq ([int64]$OrchestratorRecord.creation_time_utc_ticks).ToString([Globalization.CultureInfo]::InvariantCulture) `
-        -and [string]$manifest.launch_nonce -eq $launchNonce `
-        -and [string]$manifest.official_claim_fingerprint -eq $OfficialClaimFingerprint) "${Role}_manifest_launch_attestation_mismatch"
+    $arguments = New-ColdRestoreGodotArgumentList `
+        -EngineArgumentList @("--headless", "--path", $ResolvedProjectPath, "--script", $DriverScript) `
+        -UserArgumentList $userArguments
+    $run = Invoke-ColdRestoreAttestedProcess `
+        -ExecutablePath $GodotPath `
+        -WorkingDirectory $ResolvedProjectPath `
+        -ArgumentList $arguments `
+        -RunId $RunId `
+        -Role $Role `
+        -RepositoryHead $HeadSha `
+        -ChildAttestationPath $paths.child_attestation `
+        -ParentAttestationPath $paths.parent_attestation `
+        -StdoutPath $paths.stdout `
+        -StderrPath $paths.stderr `
+        -TimeoutSeconds $ChildTimeoutSeconds `
+        -EnvironmentVariables @{ APPDATA = $IsolatedAppData; LOCALAPPDATA = $IsolatedLocalAppData }
+    Assert-ColdRestoreCondition ([bool]$run.wrapper_exit_green) "${Role}_$($run.wrapper_reason_code)"
+    $manifest = Read-ColdRestoreJsonArtifact $paths.child_result
+    Assert-ColdRestoreManifest $manifest $Role $RunId
+    Assert-ColdRestoreCondition (@($run.observed_task_process_ids) -contains [int]$manifest.process_id) "${Role}_manifest_process_id_mismatch"
     Assert-ColdRestoreCondition ([string]$manifest.head_sha -eq $HeadSha) "${Role}_manifest_head_sha_mismatch"
+    Assert-ColdRestoreCondition ([bool]$run.child.official `
+        -and -not [bool]$run.child.formal `
+        -and [bool]$run.child.official_count_consumed `
+        -and [string]$run.child.scenario_fingerprint -eq $ScenarioFingerprint `
+        -and [bool]$run.child.qualification_green -eq [bool]$manifest.success `
+        -and [int]$run.child.queue_count -eq [int]$manifest.queue_entry_count `
+        -and [string]$run.child.queue_trigger_target_fingerprint -eq [string]$manifest.queue_trigger_stable_target_fingerprint) "${Role}_child_manifest_binding_invalid"
     return [pscustomobject]@{
-        wrapper_process_id = [int64]$ownership.wrapper_process_id
-        engine_process_id = [int64]$ownership.engine_process_id
+        process_id = [int]$run.parent.child_pid
         manifest = $manifest
+        child = $run.child
+        parent = $run.parent
     }
 }
 
@@ -1217,17 +627,6 @@ function Compare-ColdRestoreManifests {
     Assert-ColdRestoreCondition (@($processIds | Sort-Object -Unique).Count -eq 3) "process_id_reuse"
     Assert-ColdRestoreCondition ([string]$Producer.head_sha -eq [string]$Consumer.head_sha `
         -and [string]$Consumer.head_sha -eq [string]$Validator.head_sha) "head_sha_mismatch"
-    $claimFingerprint = [string]$Producer.official_claim_fingerprint
-    $orchestratorProcessId = [int64]$Producer.orchestrator_process_id
-    $orchestratorCreationTicks = [string]$Producer.orchestrator_creation_time_utc_ticks
-    Assert-ColdRestoreCondition ([string]$Consumer.official_claim_fingerprint -eq $claimFingerprint `
-        -and [string]$Validator.official_claim_fingerprint -eq $claimFingerprint `
-        -and [int64]$Consumer.orchestrator_process_id -eq $orchestratorProcessId `
-        -and [int64]$Validator.orchestrator_process_id -eq $orchestratorProcessId `
-        -and [string]$Consumer.orchestrator_creation_time_utc_ticks -eq $orchestratorCreationTicks `
-        -and [string]$Validator.orchestrator_creation_time_utc_ticks -eq $orchestratorCreationTicks) "launch_attestation_chain_mismatch"
-    $launchNonces = @([string]$Producer.launch_nonce, [string]$Consumer.launch_nonce, [string]$Validator.launch_nonce)
-    Assert-ColdRestoreCondition (@($launchNonces | Sort-Object -Unique).Count -eq 3) "launch_nonce_reuse"
     Assert-ColdRestoreCondition ([int]$Producer.generation -eq 1 -and [int]$Consumer.generation -eq 2 `
         -and [int]$Validator.generation -eq 2) "generation_sequence_invalid"
     Assert-ColdRestoreCondition ([string]$Producer.slot_state -eq "ready" `
@@ -1383,6 +782,68 @@ function Compare-ColdRestoreManifests {
     }
 }
 
+function Assert-AndConsumeOfficialColdRestoreAuthorization {
+    param(
+        [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
+        [Parameter(Mandatory = $true)][string]$HeadSha
+    )
+    Assert-ColdRestoreCondition ($AuthorizedOfficialColdRestoreCount -eq 1) "official_authorization_count_invalid"
+    Assert-ColdRestoreCondition ($ExpectedScenarioFingerprint -match '^[0-9a-f]{64}$') "expected_scenario_fingerprint_invalid"
+    $paths = Get-ColdRestoreRolePaths $ResolvedProjectPath "qualification"
+    Assert-ColdRestoreCondition (Test-Path -LiteralPath $paths.child_attestation -PathType Leaf) "official_qualification_child_attestation_missing"
+    $startedAt = [IO.File]::GetLastWriteTimeUtc($paths.child_attestation).AddSeconds(-1)
+    $childValidation = Test-ColdRestoreChildCompletionAttestation `
+        -Path $paths.child_attestation `
+        -ExpectedRunId $RunId `
+        -ExpectedRole "qualification" `
+        -ExpectedRepositoryHead $HeadSha `
+        -ProcessStartedAtUtc $startedAt
+    Assert-ColdRestoreCondition ([bool]$childValidation.valid) "official_qualification_child_attestation_invalid"
+    $parent = Read-ColdRestoreJsonArtifact $paths.parent_attestation
+    Assert-ColdRestoreCondition (Test-ExactFieldSet $parent $ParentExitAttestationFields) "official_qualification_parent_attestation_field_set_invalid"
+    Assert-ColdRestoreCondition ([int]$parent.schema_version -eq 1 `
+        -and [string]$parent.run_id -eq $RunId `
+        -and [string]$parent.role -eq "qualification" `
+        -and [bool]$parent.observed_exit `
+        -and [int]$parent.exit_code -eq 0 `
+        -and -not [bool]$parent.timed_out `
+        -and -not [bool]$parent.terminated_by_parent `
+        -and [bool]$parent.child_attestation_found `
+        -and [bool]$parent.child_attestation_valid `
+        -and [string]$parent.child_attestation_fingerprint -eq [string]$childValidation.fingerprint `
+        -and [int]$parent.task_owned_process_count_after -eq 0 `
+        -and [bool]$parent.wrapper_exit_green `
+        -and [string]$parent.wrapper_reason_code -eq "ok") "official_qualification_parent_attestation_invalid"
+    $result = Read-ColdRestoreJsonArtifact $paths.child_result
+    Assert-ColdRestoreQualificationResult $result $childValidation.value $HeadSha
+    Assert-ColdRestoreCondition ([bool]$result.success `
+        -and [int]$result.queue_count -ge 1 `
+        -and [string]$result.product_blocker -eq "" `
+        -and [string]$result.scenario_fingerprint -eq $ExpectedScenarioFingerprint) "official_product_qualification_not_green"
+    $gateCachePath = Join-Path $ResolvedProjectPath "reports\handoffs\alpha04c_gate_cache.json"
+    $gateCache = Read-ColdRestoreJsonArtifact $gateCachePath
+    Assert-ColdRestoreCondition ([int]$gateCache.official_cold_restore_vertical_slice_count -eq 0) "official_count_before_not_zero"
+    $ledgerPath = Join-Path $paths.root "official_ledger.json"
+    $ledger = [ordered]@{
+        schema_version = 1
+        run_id = $RunId
+        repository_head = $HeadSha
+        authorized_official_cold_restore_vertical_slice_count = 1
+        official_cold_restore_vertical_slice_count_before = 0
+        official_cold_restore_vertical_slice_count_after = 1
+        qualification_child_attestation_fingerprint = [string]$childValidation.fingerprint
+        qualification_parent_attestation_sha256 = (Get-FileHash -LiteralPath $paths.parent_attestation -Algorithm SHA256).Hash.ToLowerInvariant()
+        scenario_fingerprint = [string]$result.scenario_fingerprint
+        authorization_consumed = $true
+    }
+    Write-ColdRestoreAtomicJson $ledgerPath ([pscustomobject]$ledger) | Out-Null
+    return [pscustomobject]@{
+        ledger_path = $ledgerPath
+        scenario_fingerprint = [string]$result.scenario_fingerprint
+        qualification_result = $result
+    }
+}
+
 function New-AllowlistedResult {
     param(
         [Parameter(Mandatory = $true)][bool]$Executed,
@@ -1395,7 +856,7 @@ function New-AllowlistedResult {
     $safeRunId = if ($RunId -match '^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$') { $RunId } else { "" }
     return [ordered]@{
         schema_version = $ORCHESTRATOR_SCHEMA_VERSION
-        driver_id = "alpha04c_cold_restore_vertical_slice_orchestrator_v4"
+        driver_id = "alpha04c_cold_restore_vertical_slice_orchestrator_v3"
         formal_full_run = $FORMAL_FULL_RUN
         execution_ready = $DriverExecutionReady
         executed = $Executed
@@ -1430,13 +891,12 @@ function Write-AllowlistedResult {
 
 try {
     Assert-ColdRestoreCondition ($RunId -match '^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$') "run_id_invalid"
-    Assert-ColdRestoreCondition (-not ($EnableColdRestoreExecution -and $ContractManifestPath -ne "")) "execution_mode_conflict"
-    Assert-ColdRestoreCondition (-not ($ContractCleanupProbe -and ($EnableColdRestoreExecution -or $ContractManifestPath -ne ""))) "execution_mode_conflict"
-
-    if ($ContractCleanupProbe) {
-        Write-Output ((Invoke-ColdRestoreCleanupContractProbe) | ConvertTo-Json -Compress -Depth 2)
-        exit 0
-    }
+    $selectedModeCount = @(
+        [bool]$QualificationProbe,
+        [bool]$EnableColdRestoreExecution,
+        ($ContractManifestPath -ne "")
+    ).Where({ $_ }).Count
+    Assert-ColdRestoreCondition ($selectedModeCount -le 1) "execution_mode_conflict"
 
     if ($ContractManifestPath -ne "") {
         $fixture = Read-ContractManifestFixture $ContractManifestPath
@@ -1445,41 +905,37 @@ try {
         exit 0
     }
 
-    # Check-only and non-official qualification callers exit before the official claim boundary.
-    if (-not $EnableColdRestoreExecution) {
+    if (-not $QualificationProbe -and -not $EnableColdRestoreExecution) {
         Write-AllowlistedResult (New-AllowlistedResult $false $false $true "")
         exit 0
     }
 
     Assert-ColdRestoreCondition $DriverExecutionReady "driver_execution_not_ready"
-    $executionPreflight = Invoke-ColdRestoreExecutionPreflight $ProjectPath $GodotPath
-    $headSha = [string]$executionPreflight.head_sha
-    $claimNonce = [Guid]::NewGuid().ToString("N")
-    $officialClaimLedgerPath = New-OfficialClaimLedger `
-        ([string]$executionPreflight.official_claim_directory) `
-        $headSha `
-        $executionPreflight.orchestrator_record `
-        $claimNonce
-    Assert-ColdRestoreCondition ([System.IO.File]::Exists($officialClaimLedgerPath)) "official_claim_missing_after_create"
-    Assert-ColdRestoreCondition ([IO.Path]::GetFullPath($officialClaimLedgerPath) -eq [IO.Path]::GetFullPath([string]$executionPreflight.official_claim_ledger_path)) "official_claim_path_mismatch"
-    $officialClaimFingerprint = Get-ColdRestoreFileSha256 $officialClaimLedgerPath
+    $resolvedProjectPath = (Resolve-Path -LiteralPath $ProjectPath).Path
+    Assert-ColdRestoreCondition (Test-Path -LiteralPath (Join-Path $resolvedProjectPath "project.godot") -PathType Leaf) "godot_project_invalid"
+    $GodotPath = Resolve-ColdRestoreGodotExecutable $GodotPath
+    $headSha = [string](& git -C $resolvedProjectPath rev-parse HEAD 2>$null)
+    Assert-ColdRestoreCondition ($headSha -match '^[0-9a-f]{40,64}$') "head_sha_unavailable"
+    $dirtyPaths = @(& git -C $resolvedProjectPath status --porcelain=v1 2>$null)
+    Assert-ColdRestoreCondition ($dirtyPaths.Count -eq 0) "worktree_not_clean"
+    New-Item -ItemType Directory -Path $IsolatedAppData -Force | Out-Null
+    New-Item -ItemType Directory -Path $IsolatedLocalAppData -Force | Out-Null
 
-    $producerRun = Invoke-ColdRestoreRole "producer" `
-        $executionPreflight.resolved_project_path $executionPreflight.resolved_godot_path `
-        $executionPreflight.log_root $headSha $officialClaimLedgerPath $officialClaimFingerprint `
-        $claimNonce $executionPreflight.orchestrator_record
+    if ($QualificationProbe) {
+        $qualification = Invoke-ColdRestoreQualification $resolvedProjectPath $headSha
+        Write-AllowlistedResult (New-ColdRestoreQualificationOutput $qualification.run $qualification.result)
+        exit 0
+    }
+
+    $authorization = Assert-AndConsumeOfficialColdRestoreAuthorization $resolvedProjectPath $headSha
+    $scenarioFingerprint = [string]$authorization.scenario_fingerprint
+    $producerRun = Invoke-ColdRestoreRole "producer" $resolvedProjectPath $headSha $scenarioFingerprint
     # Process B starts only after Process A exited and its one safe manifest parsed.
-    $consumerRun = Invoke-ColdRestoreRole "consumer" `
-        $executionPreflight.resolved_project_path $executionPreflight.resolved_godot_path `
-        $executionPreflight.log_root $headSha $officialClaimLedgerPath $officialClaimFingerprint `
-        $claimNonce $executionPreflight.orchestrator_record `
+    $consumerRun = Invoke-ColdRestoreRole "consumer" $resolvedProjectPath $headSha $scenarioFingerprint `
         ([int64]$producerRun.manifest.queue_trigger_resolution_id) `
         ([string]$producerRun.manifest.queue_trigger_stable_target_fingerprint)
     # Process C starts only after Process B exited and its one safe manifest parsed.
-    $validatorRun = Invoke-ColdRestoreRole "validator" `
-        $executionPreflight.resolved_project_path $executionPreflight.resolved_godot_path `
-        $executionPreflight.log_root $headSha $officialClaimLedgerPath $officialClaimFingerprint `
-        $claimNonce $executionPreflight.orchestrator_record `
+    $validatorRun = Invoke-ColdRestoreRole "validator" $resolvedProjectPath $headSha $scenarioFingerprint `
         ([int64]$consumerRun.manifest.queue_trigger_resolution_id) `
         ([string]$consumerRun.manifest.queue_trigger_stable_target_fingerprint)
     $comparison = Compare-ColdRestoreManifests `
@@ -1495,6 +951,29 @@ catch {
     else {
         "orchestrator_internal_failure"
     }
-    Write-AllowlistedResult (New-AllowlistedResult ([bool]$EnableColdRestoreExecution) ($ContractManifestPath -ne "") $false $safeFailureCode)
+    if ($QualificationProbe) {
+        Write-AllowlistedResult ([ordered]@{
+            schema_version = 1
+            driver_id = "alpha04c_cold_restore_qualification_attested_v1"
+            formal_full_run = $false
+            official_cold_restore_vertical_slice = $false
+            run_id = $(if ($RunId -match '^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$') { $RunId } else { "" })
+            child_completion_attestation_green = $false
+            parent_exit_attestation_green = $false
+            wrapper_exit_attestation_green = $false
+            wrapper_execution_status = "FAILED"
+            wrapper_reason_code = $safeFailureCode
+            product_qualification_status = "UNTRUSTED"
+            product_queue_qualification_green = $false
+            product_blocker = ""
+            queue_count = 0
+            task_owned_process_count_after = -1
+            success = $false
+            failure_code = $safeFailureCode
+        })
+    }
+    else {
+        Write-AllowlistedResult (New-AllowlistedResult ([bool]$EnableColdRestoreExecution) ($ContractManifestPath -ne "") $false $safeFailureCode)
+    }
     exit 1
 }

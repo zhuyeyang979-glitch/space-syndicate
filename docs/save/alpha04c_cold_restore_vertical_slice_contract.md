@@ -2,8 +2,10 @@
 
 ```text
 FORMAL_FULL_RUN=false
-DRIVER_EXECUTION_READY=false
-CONTRACT_SCHEMA_VERSION=4
+DRIVER_EXECUTION_READY=true
+CONTRACT_SCHEMA_VERSION=3
+CHILD_COMPLETION_ATTESTATION_SCHEMA_VERSION=1
+PARENT_EXIT_ATTESTATION_SCHEMA_VERSION=1
 CURRENT_RUNTIME_RULE_VERSION=v0.6
 SAVE_SECTION_COUNT=19
 NEW_SAVE_SECTION_COUNT=0
@@ -30,6 +32,11 @@ NEW_RNG_OWNER_COUNT=0
 
 ## Process protocol
 
+0. One non-official qualification child runs through the same attested process
+   helper. A completed Harness exits zero even when the product has no lawful
+   Queue offer; `qualification_green` and `product_blocker` carry that product
+   result. Only a green child proof, parent proof, and product result can create
+   the exact-once official authorization ledger.
 1. Process A (`producer`) launches a real production composition with a fixed
    seed, reaches a quiescent checkpoint, freezes the runtime loop, invokes the
    high-level save command, emits one allowlisted QA manifest, and exits.
@@ -39,23 +46,44 @@ NEW_RNG_OWNER_COUNT=0
    asserts no duplicate receipt or settlement, emits its manifest, and exits.
 3. Process C (`validator`) launches a third fresh process, restores Generation 2,
    performs exact recapture, and emits the same closed allowlisted manifest.
-4. The external orchestrator compares only the three allowlisted manifests and
-   process exit results. It never parses the save envelope.
+4. Every child atomically publishes its closed result and
+   `ChildCompletionAttestationV1` before requesting exit. The external parent
+   waits for the real process chain, hashes stdout/stderr, validates that child
+   proof, proves task-owned process cleanup, and atomically writes
+   `ParentExitAttestationV1`.
+5. The external orchestrator compares only the three allowlisted manifests and
+   validated attestations. It never parses the save envelope.
 
-All 19 owners and the restore barrier are integrated. The fixed depth-1,
-seed-900626424 non-official qualification reached a real production facility
-offer through the Action Spine, captured one pending Queue entry, and observed
-zero world, card-resolution, and RNG advance after submission. Qualification
-wrote no Save and did not create the shared official ledger. The orchestrator
-rejects a dirty worktree, requires the one shared ledger plus PID-bound launch
-attestations, and places the production slot in one run-specific isolated
-user-data root shared by A, B, and C. The one authorized official invocation at
-`ab6f6d8ceed92824b864dc54be628ffd3c262b59` failed during the driver contract
-preflight with `driver_contract_preflight_process_failed`. The driver emitted a
-valid v4 contract, but the wrapper/engine exit-code assertion rejected before
-Process A, before Save, and before ledger creation. The authorization is treated
-as consumed; `DRIVER_EXECUTION_READY=false` is a post-attempt safety latch and
-must not be reopened without a new explicit task and authorization.
+All 19 owners and the restore barrier are integrated. Harness execution is now
+available only through the closed qualification and authorization gates; merely
+setting the official switch is insufficient. The orchestrator rejects a dirty
+worktree, resolves the Windows Godot console wrapper explicitly, and places the
+production slot in one run-specific isolated user-data root shared by the
+qualification child and A/B/C. A Queue-zero qualification consumes no official
+authorization and must not launch Process A.
+
+## Exit and evidence contract
+
+`ChildCompletionAttestationV1` binds run id, role, repository HEAD, scenario,
+product status, Queue identity, mutation counters, Save/official flags, and a
+self-fingerprint. It is written to a temporary file, flushed, closed, parsed
+back, fingerprint-checked, and atomically installed before `quit()`.
+
+`ParentExitAttestationV1` binds the launched PID, observed exit, exact exit code,
+timeout/termination state, stdout/stderr SHA-256, child-attestation fingerprint,
+and the post-cleanup task-owned process count. Qualification and A/B/C share the
+same PowerShell process helper and `ProcessStartInfo.ArgumentList`; engine flags
+such as `--check-only` are rejected if placed after Godot's user-argument `--`.
+
+```text
+HARNESS_COMPLETE + PRODUCT_QUEUE_BLOCKED => EXIT_CODE=0
+WRAPPER_EXIT_ATTESTATION_GREEN=true
+PRODUCT_QUEUE_QUALIFICATION_GREEN=false
+
+HARNESS_INCOMPLETE => EXIT_CODE!=0
+WRAPPER_EXIT_ATTESTATION_GREEN=false
+PRODUCT_QUEUE_QUALIFICATION_STATUS=UNTRUSTED
+```
 
 ## High-level application gateway
 

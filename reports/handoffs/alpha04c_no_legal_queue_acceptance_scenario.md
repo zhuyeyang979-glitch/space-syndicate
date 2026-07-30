@@ -1,5 +1,18 @@
 # Alpha 0.4-C legal queue acceptance scenario audit
 
+## Trusted Wrapper Confirmation
+
+Harness head `4a42f81c7cec9565bdd50810289ee77106a86759` reran the
+frozen depth-1/seed-`900626424` qualification exactly once through
+`ChildCompletionAttestationV1` and `ParentExitAttestationV1`. The child exited
+zero, the parent observed and validated that exit, and zero task-owned
+processes remained. The trusted product result still had Queue count zero and
+blocker `BLOCKED_BY_NO_LEGAL_QUEUE_ACCEPTANCE_SCENARIO`.
+
+The official ledger was not created, the conditional authorization was not
+consumed, and Processes A/B/C were not started. The next task is
+`ALPHA_0_4_C_P0_QUEUEABLE_FACILITY_ACTION_BRIDGE_AND_COLD_RESTORE_CLOSURE`.
+
 Status: `BLOCKED_BY_NO_LEGAL_QUEUE_ACCEPTANCE_SCENARIO`.
 
 The official cold-restore count remains zero. Process A, B, and C were not
