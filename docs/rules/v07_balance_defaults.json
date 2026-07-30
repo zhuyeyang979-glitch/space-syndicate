@@ -1,0 +1,246 @@
+{
+  "schema_version": 1,
+  "defaults_id": "space_syndicate.v07.balance_defaults.initial",
+  "ruleset_id": "v0.7",
+  "status": "initial_test_defaults_not_balance_final",
+  "authority_level": "tunable_below_frozen_constitution",
+  "default_value_schema": {
+    "schema_version": 1,
+    "closed_object_keys_by_default_id": {
+      "v07.balance.single_color_net_intervention_cap": ["enabled", "absolute_basis_points"],
+      "v07.balance.asset_accrual_at_reference": ["asset_points", "elapsed_seconds"],
+      "v07.balance.presentation_animation_seconds": ["track_step", "card_submit", "resolution_reveal", "merge"]
+    },
+    "bool_default_ids": ["v07.balance.starter_card_setup_cost_exemption"],
+    "number_default_ids": [
+      "v07.balance.market_color_cycle_seconds",
+      "v07.balance.lead_tenure_seconds",
+      "v07.balance.track_scroll_interval_seconds",
+      "v07.balance.track_normal_card_ratio_basis_points",
+      "v07.balance.track_commodity_card_ratio_basis_points",
+      "v07.balance.minimum_color_share_basis_points",
+      "v07.balance.maximum_color_share_basis_points",
+      "v07.balance.asset_gdp_reference_per_minute",
+      "v07.balance.asset_fixed_point_scale",
+      "v07.balance.level_1_primary_asset_cost",
+      "v07.balance.level_2_primary_asset_cost",
+      "v07.balance.level_3_primary_asset_cost",
+      "v07.balance.level_4_primary_asset_cost",
+      "v07.balance.strong_card_asset_cost",
+      "v07.balance.decisive_card_asset_cost_cap",
+      "v07.balance.normal_card_base_purchase_cash",
+      "v07.balance.hand_maintenance_timeout_seconds",
+      "v07.balance.initial_assets_per_color",
+      "v07.balance.track_local_visible_slot_count"
+    ],
+    "enum_string_default_ids": ["v07.balance.color_distribution_normalization"]
+  },
+  "defaults": [
+    {
+      "default_id": "v07.balance.market_color_cycle_seconds",
+      "value": 180,
+      "unit": "seconds",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.color_cycle.active_precommit"
+    },
+    {
+      "default_id": "v07.balance.lead_tenure_seconds",
+      "value": 60,
+      "unit": "seconds",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.lead.macro_round_alternation"
+    },
+    {
+      "default_id": "v07.balance.track_scroll_interval_seconds",
+      "value": 5,
+      "unit": "seconds",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.track.shared_generation_contract"
+    },
+    {
+      "default_id": "v07.balance.track_normal_card_ratio_basis_points",
+      "value": 7000,
+      "unit": "basis_points",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.track.allowed_card_kinds"
+    },
+    {
+      "default_id": "v07.balance.track_commodity_card_ratio_basis_points",
+      "value": 3000,
+      "unit": "basis_points",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.track.allowed_card_kinds"
+    },
+    {
+      "default_id": "v07.balance.minimum_color_share_basis_points",
+      "value": 500,
+      "unit": "basis_points",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.color_cycle.uniform_reset"
+    },
+    {
+      "default_id": "v07.balance.maximum_color_share_basis_points",
+      "value": 4000,
+      "unit": "basis_points",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.color_cycle.uniform_reset"
+    },
+    {
+      "default_id": "v07.balance.color_distribution_normalization",
+      "value": "clamp_then_stable_largest_remainder_in_color_id_order",
+      "unit": "algorithm_id",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.color_cycle.uniform_reset"
+    },
+    {
+      "default_id": "v07.balance.single_color_net_intervention_cap",
+      "value": {"enabled": false, "absolute_basis_points": 10000},
+      "unit": "policy",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.color_cycle.influence_weight"
+    },
+    {
+      "default_id": "v07.balance.asset_gdp_reference_per_minute",
+      "value": 100,
+      "unit": "gdp_per_minute",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.assets.frozen_gdp_snapshot"
+    },
+    {
+      "default_id": "v07.balance.asset_accrual_at_reference",
+      "value": {"asset_points": 1, "elapsed_seconds": 10},
+      "unit": "asset_points_per_elapsed_seconds",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.assets.post_batch_top_up"
+    },
+    {
+      "default_id": "v07.balance.asset_fixed_point_scale",
+      "value": 1000000,
+      "unit": "micro_asset_units_per_asset",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.assets.carry_and_overflow"
+    },
+    {
+      "default_id": "v07.balance.level_1_primary_asset_cost",
+      "value": 1,
+      "unit": "asset_points",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.action_cost.authored_six_color"
+    },
+    {
+      "default_id": "v07.balance.level_2_primary_asset_cost",
+      "value": 2,
+      "unit": "asset_points",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.action_cost.authored_six_color"
+    },
+    {
+      "default_id": "v07.balance.level_3_primary_asset_cost",
+      "value": 3,
+      "unit": "asset_points",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.action_cost.authored_six_color"
+    },
+    {
+      "default_id": "v07.balance.level_4_primary_asset_cost",
+      "value": 4,
+      "unit": "asset_points",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.action_cost.authored_six_color"
+    },
+    {
+      "default_id": "v07.balance.strong_card_asset_cost",
+      "value": 5,
+      "unit": "asset_points",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.action_cost.authored_six_color"
+    },
+    {
+      "default_id": "v07.balance.decisive_card_asset_cost_cap",
+      "value": 6,
+      "unit": "asset_points",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.assets.per_color_cap"
+    },
+    {
+      "default_id": "v07.balance.normal_card_base_purchase_cash",
+      "value": 5,
+      "unit": "cash",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.normal.price_independence"
+    },
+    {
+      "default_id": "v07.balance.hand_maintenance_timeout_seconds",
+      "value": 20,
+      "unit": "seconds",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.hand.maintenance_sequence"
+    },
+    {
+      "default_id": "v07.balance.initial_assets_per_color",
+      "value": 1,
+      "unit": "asset_points",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.starter.zero_deadlock_required"
+    },
+    {
+      "default_id": "v07.balance.starter_card_setup_cost_exemption",
+      "value": false,
+      "unit": "boolean",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.starter.zero_deadlock_required"
+    },
+    {
+      "default_id": "v07.balance.track_local_visible_slot_count",
+      "value": 5,
+      "unit": "cards",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.track.local_segment_visibility"
+    },
+    {
+      "default_id": "v07.balance.presentation_animation_seconds",
+      "value": {"track_step": 0.4, "card_submit": 0.2, "resolution_reveal": 0.6, "merge": 0.5},
+      "unit": "seconds",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.resolution.owner_anonymous_public_queue"
+    }
+  ],
+  "required_balance_tests": [
+    "market_cycle_length",
+    "influence_strength_at_3_4_6_8_players",
+    "single_color_net_cap_need",
+    "whether_balance_evidence_justifies_a_future_constitution_amendment_for_player_count_scaling",
+    "color_floor_ceiling_and_normalization",
+    "asset_gdp_conversion_and_remainder",
+    "five_commodity_slot_pressure",
+    "manual_merge_interaction",
+    "local_track_information_quality",
+    "hidden_order_inference_quality",
+    "macro_round_end_tail_length",
+    "final_macro_round_comeback_opportunity"
+  ]
+}
