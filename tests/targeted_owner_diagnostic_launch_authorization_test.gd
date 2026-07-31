@@ -12,13 +12,17 @@ const OTHER_LAUNCH_NONCE := "66666666666666666666666666666666"
 const OFFICIAL_ATTEMPT_1_SHA256 := "80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458"
 const PREVIOUS_QUOTA_LEDGER_SHA256 := "2dba183fe0e354370802d0f886bf40a88b7e1c0b39ddb0df18ee110821e957a1"
 const TARGETED_QUOTA_LEDGER_RELATIVE_PATH := \
-		"codex/cold_restore_v3/non-official-alpha04c-owner-capture-attestation-12691a8/targeted_owner_capture_quota_ledger.json"
+		"codex/cold_restore_v3/non-official-alpha04c-final-cold-closure-3b30615/targeted_owner_capture_quota_ledger.json"
 
 const QUOTA_LEDGER_FIELDS := [
 	"schema_version", "ledger_id", "authorization_id", "task_id", "created_at_utc", "run_id",
 	"repository_head", "scenario_fingerprint", "authorized_new_diagnostic_count",
 	"diagnostic_count_before", "diagnostic_count_after", "diagnostic_count_maximum",
-	"previous_ledger_sha256", "role_timeout_policy_sha256",
+	"previous_ledger_sha256", "historical_invocation_commit",
+	"historical_invocation_blob_sha1", "historical_invocation_file_sha256",
+	"bootstrap_admission_path", "bootstrap_admission_sha256",
+	"bootstrap_admission_fingerprint", "prequota_attestation_path",
+	"role_timeout_policy_sha256",
 	"official_attempt_1_claim_sha256", "official_attempt_2_claim_absent",
 	"official", "formal", "official_authorization_consumed",
 	"orchestrator_script_sha256", "orchestrator_process_id",
@@ -168,13 +172,13 @@ func _run_source_authorization_contract(source: String) -> void:
 		'targeted_diagnostic_ledger_fingerprint',
 	], "authorization binds the exact quota ledger bytes to the supplied raw SHA-256")
 	_expect_contains_all(authorization_source, [
-		"Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV2",
+		"Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV3",
 		"TARGETED_DIAGNOSTIC_AUTHORIZATION_ID",
-		"ALPHA_0_4_C_OWNER_CAPTURE_ATTESTATION_CURSOR_PERSISTENCE_AND_PROCESS_A_REHEARSAL",
+		"ALPHA_0_4_C_FINAL_HARNESS_REPAIR_REHEARSAL_OFFICIAL_ATTEMPT_2_AND_MAIN_LANDING",
 		"consumed",
 	], "authorization validates quota schema, identity, task, and consumed status")
 	_expect(
-		source.contains('const TARGETED_DIAGNOSTIC_AUTHORIZATION_ID := "alpha04c-targeted-owner-capture-diagnostic-v2"'),
+		source.contains('const TARGETED_DIAGNOSTIC_AUTHORIZATION_ID := "alpha04c-targeted-owner-capture-diagnostic-v3"'),
 		"targeted diagnostic authorization ID is immutable"
 	)
 	_expect_contains_all(authorization_source, [
@@ -188,12 +192,12 @@ func _run_source_authorization_contract(source: String) -> void:
 	], "quota is bound to the requested run, HEAD, scenario, and timeout policy")
 	_expect_contains_all(authorization_source, [
 		'int(ledger.get("authorized_new_diagnostic_count", 0)) != 1',
-		'int(ledger.get("diagnostic_count_before", -1)) != 1',
-		'int(ledger.get("diagnostic_count_after", 0)) != 2',
-		'int(ledger.get("diagnostic_count_maximum", 0)) != 2',
+		'int(ledger.get("diagnostic_count_before", -1)) != 2',
+		'int(ledger.get("diagnostic_count_after", 0)) != 3',
+		'int(ledger.get("diagnostic_count_maximum", 0)) != 3',
 		"previous_ledger_sha256",
 		PREVIOUS_QUOTA_LEDGER_SHA256,
-	], "quota enforces the authorized 1 and historical 1-to-2 count boundary")
+	], "quota enforces the authorized 1 and historical 2-to-3 count boundary")
 	_expect_contains_all(authorization_source, [
 		"official_attempt_1_claim_sha256",
 		OFFICIAL_ATTEMPT_1_SHA256,

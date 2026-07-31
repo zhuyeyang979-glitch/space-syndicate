@@ -173,7 +173,7 @@ func _run_source_authorization_contract() -> void:
 		"rehearsal admission validates the exact ledger file SHA-256"
 	)
 	_expect(
-		rehearsal_authorization.contains("ProcessARehearsalAdmissionLedgerV2") \
+		rehearsal_authorization.contains("ProcessARehearsalAdmissionLedgerV3") \
 				and rehearsal_authorization.contains('ledger.get("status", "")') \
 				and rehearsal_authorization.contains('!= "admitted"'),
 		"rehearsal consumes the V2 admission ledger rather than the legacy quota schema"

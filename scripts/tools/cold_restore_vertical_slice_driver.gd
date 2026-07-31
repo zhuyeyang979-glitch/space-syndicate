@@ -25,14 +25,16 @@ const ACCEPTANCE_CHALLENGE_DEPTH := 1
 const ACCEPTANCE_LOCAL_PLAYER_COUNT := 1
 const ACCEPTANCE_AI_PLAYER_COUNT := 3
 const TARGETED_OWNER_CAPTURE_SCENARIO_FINGERPRINT := "0bccef8426345e2ea1fd8ae7d6187d282d52d44bc73d6fb3d1ed3375dc20b7bf"
-const SCHEMA_VERSION := 3
-const OFFICIAL_CLAIM_SCHEMA_VERSION := 1
-const OFFICIAL_AUTHORIZATION_ID := "alpha04c-p0-cold-restore-depth1-seed900626424-v1"
-const OFFICIAL_CLAIM_RELATIVE_PATH := "codex/cold_restore_v3/official-alpha04c-depth1-seed900626424/official_claim_ledger.json"
+const SCHEMA_VERSION := 4
+const OFFICIAL_CLAIM_SCHEMA_VERSION := 2
+const OFFICIAL_AUTHORIZATION_ID := "alpha04c-official-cold-restore-attempt-2-v1"
+const OFFICIAL_CLAIM_RELATIVE_PATH := "codex/cold_restore_v3/official-alpha04c-attempt-2-depth1-seed900626424/official_attempt_2_claim.json"
+const OFFICIAL_ATTEMPT_1_CLAIM_RELATIVE_PATH := "codex/cold_restore_v3/official-alpha04c-depth1-seed900626424/official_claim_ledger.json"
+const OFFICIAL_ATTEMPT_1_CLAIM_SHA256 := "80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458"
 const REHEARSAL_AUTHORIZATION_ID := "alpha04c-process-a-save-completion-rehearsal-v1"
 const REHEARSAL_LEDGER_RELATIVE_PATH := "codex/cold_restore_v3/non-official-alpha04c-process-a-rehearsal-v1/process_a_rehearsal_quota_ledger.json"
-const TARGETED_DIAGNOSTIC_AUTHORIZATION_ID := "alpha04c-targeted-owner-capture-diagnostic-v2"
-const TARGETED_DIAGNOSTIC_LEDGER_RELATIVE_PATH := "codex/cold_restore_v3/non-official-alpha04c-owner-capture-attestation-12691a8/targeted_owner_capture_quota_ledger.json"
+const TARGETED_DIAGNOSTIC_AUTHORIZATION_ID := "alpha04c-targeted-owner-capture-diagnostic-v3"
+const TARGETED_DIAGNOSTIC_LEDGER_RELATIVE_PATH := "codex/cold_restore_v3/non-official-alpha04c-final-cold-closure-3b30615/targeted_owner_capture_quota_ledger.json"
 const LAUNCH_ATTESTATION_SCHEMA_VERSION := 1
 const PROCESS_ROLES := ["producer", "consumer", "validator"]
 const INDUSTRY_IDS := ["life", "energy", "industry", "technology", "commerce", "shipping"]
@@ -45,6 +47,19 @@ const MAX_SUPPLY_CHURN := 40
 const MAX_SALE_SECONDS := 180
 const MAX_QUEUE_ASSET_SECONDS := 30
 const MAX_QUEUE_PURCHASE_FUNDING_CYCLES := 4
+const PROCESS_A_SAVE_QUIET_FIELDS := [
+	"rng_draw_invocation_count",
+	"world_clock_advance_count",
+	"sale_receipt_emission_count",
+	"public_log_entry_count",
+	"public_log_revision",
+	"private_feedback_revision",
+	"notification_count",
+	"human_action_submission_count",
+	"ai_action_submission_count",
+	"economic_reward_count",
+	"presentation_revision",
+]
 const TARGETED_OWNER_CAPTURE_PHASES := [
 	"session_started",
 	"real_commodity_claim_complete",
@@ -72,6 +87,17 @@ const SAVE_OWNER_ORDER := [
 const SAVE_STATE_VERSION_ORDER := [
 	1, 1, 1, 2, 2, 1, 1, 3, 1, 1, 2, 1, 2, 1, 1, 2, 1, 1, 3,
 ]
+const WORLD_FINGERPRINT_SECTION_IDS := [
+	"region_infrastructure", "region_supply", "commodity_flow", "routes",
+	"monsters", "military", "weather", "bankruptcy_neutral_estate",
+	"victory_control", "session",
+]
+const RNG_CURSOR_SECTION_IDS := ["region_supply", "weather", "session"]
+const AI_STATE_SECTION_IDS := ["ai"]
+const CARD_INVENTORY_SECTION_IDS := ["card_inventory"]
+const QUEUE_SECTION_IDS := [
+	"card_resolution_queue", "card_resolution_execution", "card_resolution_history",
+]
 const PUBLIC_MANIFEST_FIELDS := [
 	"schema_version",
 	"visibility_scope",
@@ -92,6 +118,9 @@ const PUBLIC_MANIFEST_FIELDS := [
 	"preflight_count",
 	"owner_apply_count",
 	"registry_apply_count",
+	"registry_commit_count",
+	"registry_rebind_count",
+	"partial_restore_state_count",
 	"save_capture_world_delta",
 	"save_capture_rng_delta",
 	"save_capture_log_delta",
@@ -105,6 +134,7 @@ const PUBLIC_MANIFEST_FIELDS := [
 	"restore_ai_action_delta",
 	"restore_player_action_delta",
 	"restore_notification_delta",
+	"restore_private_feedback_delta",
 	"human_action_count",
 	"commodity_action_count",
 	"ai_action_count",
@@ -133,6 +163,19 @@ const PUBLIC_MANIFEST_FIELDS := [
 	"queue_target_inventory_queue_commit_delta",
 	"queue_target_public_log_duplicate_delta",
 	"queue_target_public_log_collision_delta",
+	"duplicate_queue_entry_count",
+	"duplicate_facility_creation_count",
+	"duplicate_card_consumption_count",
+	"duplicate_cost_consumption_count",
+	"duplicate_sale_receipt_count",
+	"world_fingerprint_match",
+	"rng_cursor_match",
+	"ai_state_fingerprint_match",
+	"card_inventory_fingerprint_match",
+	"queue_fingerprint_match",
+	"generation_2_recapture_fingerprint_match",
+	"generation_2_rng_cursor_match",
+	"generation_2_duplicate_transaction_count",
 	"victory_unresolved_before_save",
 	"production_surface_ready",
 	"victory_state_sequence",
@@ -144,33 +187,27 @@ const PUBLIC_MANIFEST_FIELDS := [
 	"terminal_rng_draw_delta",
 	"generation",
 	"backup_created",
+	"save_readback_green",
+	"save_fingerprint_parity",
 	"write_fingerprint",
 	"elapsed_ms",
 	"success",
 	"failure_code",
 ]
 const OFFICIAL_CLAIM_FIELDS := [
-	"schema_version",
-	"authorization_id",
-	"created_at_utc",
-	"run_id",
-	"source_head_sha",
-	"challenge_depth",
-	"seed",
-	"scenario_fingerprint",
-	"qualification_child_attestation_fingerprint",
-	"qualification_parent_attestation_sha256",
-	"qualification_result_sha256",
-	"orchestrator_id",
-	"orchestrator_schema_version",
-	"orchestrator_script_sha256",
-	"orchestrator_process_id",
-	"orchestrator_creation_time_utc_ticks",
-	"claim_nonce",
-	"status",
-	"authorized_official_count",
-	"official_count_before",
-	"official_count_after",
+	"schema_version", "claim_id", "attempt_number", "authorization_id", "created_at_utc",
+	"run_id", "source_head", "rehearsal_green_head", "scenario_fingerprint",
+	"challenge_depth", "seed", "local_player_count", "ai_player_count",
+	"timeout_policy_sha256", "prerequisite_evidence_fingerprint",
+	"preclaim_runtime_freeze_fingerprint", "process_role_timeouts", "rehearsal_run_id",
+	"rehearsal_evidence_fingerprint", "rehearsal_outcome_sha256",
+	"rehearsal_admission_sha256", "rehearsal_launch_sha256",
+	"rehearsal_completion_sha256", "rehearsal_child_attestation_sha256",
+	"rehearsal_parent_attestation_sha256", "attempt_1_claim_relative_path",
+	"attempt_1_claim_sha256", "orchestrator_id", "orchestrator_schema_version",
+	"orchestrator_script_sha256", "orchestrator_process_id",
+	"orchestrator_creation_time_utc_ticks", "claim_nonce", "status",
+	"authorized_official_count", "official_count_before", "official_count_after",
 ]
 const LAUNCH_ATTESTATION_FIELDS := [
 	"schema_version",
@@ -197,6 +234,10 @@ const TARGETED_DIAGNOSTIC_LEDGER_FIELDS := [
 	"run_id", "repository_head", "scenario_fingerprint",
 	"authorized_new_diagnostic_count", "diagnostic_count_before",
 	"diagnostic_count_after", "diagnostic_count_maximum", "previous_ledger_sha256",
+	"historical_invocation_commit", "historical_invocation_blob_sha1",
+	"historical_invocation_file_sha256", "bootstrap_admission_path",
+	"bootstrap_admission_sha256", "bootstrap_admission_fingerprint",
+	"prequota_attestation_path",
 	"role_timeout_policy_sha256", "official_attempt_1_claim_sha256",
 	"official_attempt_2_claim_absent", "official", "formal",
 	"official_authorization_consumed", "orchestrator_script_sha256",
@@ -206,7 +247,8 @@ const TARGETED_DIAGNOSTIC_LEDGER_FIELDS := [
 const REHEARSAL_LEDGER_FIELDS := [
 	"schema_version", "ledger_id", "contract_id", "authorization_id", "status",
 	"created_at_utc", "run_id", "repository_head", "scenario_fingerprint",
-	"timeout_policy_fingerprint", "challenge_depth", "seed", "local_player_count",
+	"timeout_policy_fingerprint", "prerequisite_evidence_fingerprint",
+	"challenge_depth", "seed", "local_player_count",
 	"ai_player_count", "rehearsal_only", "nonofficial", "official", "formal",
 	"official_authorization_consumed", "authorized_rehearsal_count",
 	"rehearsal_count_before", "rehearsal_count_after", "admission_evidence_id",
@@ -217,6 +259,8 @@ const REHEARSAL_LEDGER_FIELDS := [
 	"diagnostic_engine_creation_time_utc_ticks", "diagnostic_child_attestation_sha256",
 	"diagnostic_child_attestation_fingerprint", "diagnostic_parent_attestation_sha256",
 	"diagnostic_stdout_sha256", "diagnostic_stderr_sha256",
+	"diagnostic_bootstrap_admission_sha256", "diagnostic_bootstrap_admission_fingerprint",
+	"diagnostic_prequota_attestation_sha256", "diagnostic_prequota_attestation_fingerprint",
 	"official_attempt_1_claim_relative_path", "official_attempt_1_claim_sha256",
 	"official_attempt_1_claim_immutable", "official_attempt_2_claim_absent",
 	"official_claim_inventory_count", "official_claim_inventory_fingerprint",
@@ -272,10 +316,20 @@ func _enter_process_a_phase(phase_id: String) -> void:
 	_emit_role_heartbeat(phase_id, save_phase)
 
 
-func _complete_process_a_phase(phase_id: String, evidence: Dictionary = {}) -> void:
+func _complete_process_a_phase(
+	phase_id: String,
+	evidence: Dictionary = {},
+	reason_code: String = "ok"
+) -> void:
 	if _process_a_timeline == null or not _process_a_timeline_failure.is_empty():
 		return
-	_record_timeline_result(_process_a_timeline.call("complete_phase", phase_id, true, "ok", evidence))
+	_record_timeline_result(_process_a_timeline.call(
+		"complete_phase",
+		phase_id,
+		true,
+		reason_code,
+		evidence
+	))
 
 
 func _close_process_a_failure_phases(result: Dictionary) -> void:
@@ -671,7 +725,7 @@ func _run_entry() -> void:
 static func contract_snapshot() -> Dictionary:
 	return {
 		"schema_version": SCHEMA_VERSION,
-		"driver_id": "alpha04c_cold_restore_vertical_slice_v3",
+		"driver_id": "alpha04c_cold_restore_vertical_slice_v4",
 		"formal_full_run": FORMAL_FULL_RUN,
 		"cold_restore_vertical_slice": true,
 		"execution_ready": EXECUTION_READY,
@@ -894,27 +948,76 @@ func _authorize_official_launch(options: Dictionary, head_sha: String) -> Dictio
 	var claim := claim_variant as Dictionary
 	if not _has_exact_fields(claim, OFFICIAL_CLAIM_FIELDS):
 		return {"authorized": false, "reason_code": "official_claim_field_set_invalid"}
+	for integer_field in [
+		"schema_version", "attempt_number", "challenge_depth", "seed",
+		"local_player_count", "ai_player_count", "orchestrator_schema_version",
+		"orchestrator_process_id", "authorized_official_count",
+		"official_count_before", "official_count_after",
+	]:
+		if typeof(claim.get(integer_field)) != TYPE_INT:
+			return {"authorized": false, "reason_code": "official_claim_integer_type_invalid"}
+	var timeout_entries := claim.get("process_role_timeouts", {}) as Dictionary
+	var timeout_shape_valid := _has_exact_fields(timeout_entries, ["process_a", "process_b", "process_c"])
+	if timeout_shape_valid:
+		var expected_timeouts := {
+			"process_a": [180, 60], "process_b": [360, 60], "process_c": [180, 30],
+		}
+		for timeout_role in ["process_a", "process_b", "process_c"]:
+			var timeout_entry := timeout_entries.get(timeout_role, {}) as Dictionary
+			if not _has_exact_fields(timeout_entry, ["absolute_timeout_seconds", "no_progress_timeout_seconds"]) \
+					or typeof(timeout_entry.get("absolute_timeout_seconds")) != TYPE_INT \
+					or typeof(timeout_entry.get("no_progress_timeout_seconds")) != TYPE_INT \
+					or int(timeout_entry.get("absolute_timeout_seconds", 0)) != int(expected_timeouts[timeout_role][0]) \
+					or int(timeout_entry.get("no_progress_timeout_seconds", 0)) != int(expected_timeouts[timeout_role][1]):
+				timeout_shape_valid = false
+				break
+	var common_dir := _resolve_git_common_dir()
+	var attempt_1_path := _normalize_absolute_path(common_dir.path_join(OFFICIAL_ATTEMPT_1_CLAIM_RELATIVE_PATH))
+	var attempt_1_green := not attempt_1_path.is_empty() and FileAccess.file_exists(attempt_1_path) \
+			and FileAccess.get_file_as_string(attempt_1_path).sha256_text().to_lower() == OFFICIAL_ATTEMPT_1_CLAIM_SHA256
+	var orchestrator_script_sha256 := FileAccess.get_sha256(
+		"res://scripts/tools/cold_restore_vertical_slice_orchestrator.ps1"
+	).to_lower()
 	if int(claim.get("schema_version", 0)) != OFFICIAL_CLAIM_SCHEMA_VERSION \
+			or str(claim.get("claim_id", "")) != "OfficialAttemptClaimV2" \
+			or int(claim.get("attempt_number", 0)) != 2 \
 			or str(claim.get("authorization_id", "")) != OFFICIAL_AUTHORIZATION_ID \
+			or not _is_utc_timestamp(claim.get("created_at_utc")) \
 			or str(claim.get("run_id", "")) != str(options.get("run_id", "")) \
-			or str(claim.get("source_head_sha", "")) != head_sha \
+			or str(claim.get("source_head", "")) != head_sha \
+			or str(claim.get("rehearsal_green_head", "")) != head_sha \
 			or int(claim.get("challenge_depth", 0)) != ACCEPTANCE_CHALLENGE_DEPTH \
 			or int(claim.get("seed", 0)) != ACCEPTANCE_SEED \
+			or int(claim.get("local_player_count", 0)) != ACCEPTANCE_LOCAL_PLAYER_COUNT \
+			or int(claim.get("ai_player_count", 0)) != ACCEPTANCE_AI_PLAYER_COUNT \
 			or str(claim.get("scenario_fingerprint", "")) != str(options.get("scenario_fingerprint", "")) \
-			or not _is_lower_sha256(str(claim.get("qualification_child_attestation_fingerprint", ""))) \
-			or not _is_lower_sha256(str(claim.get("qualification_parent_attestation_sha256", ""))) \
-			or not _is_lower_sha256(str(claim.get("qualification_result_sha256", ""))) \
-			or str(claim.get("orchestrator_id", "")) != "alpha04c_cold_restore_vertical_slice_orchestrator_v3" \
+			or str(claim.get("timeout_policy_sha256", "")) != str(options.get("timeout_policy_fingerprint", "")) \
+			or not _is_lower_sha256(str(claim.get("prerequisite_evidence_fingerprint", ""))) \
+			or not _is_lower_sha256(str(claim.get("preclaim_runtime_freeze_fingerprint", ""))) \
+			or not timeout_shape_valid \
+			or str(claim.get("rehearsal_run_id", "")) != "alpha04c-process-a-rehearsal-%s" % head_sha.left(12) \
+			or not _is_lower_sha256(str(claim.get("rehearsal_evidence_fingerprint", ""))) \
+			or not _is_lower_sha256(str(claim.get("rehearsal_outcome_sha256", ""))) \
+			or not _is_lower_sha256(str(claim.get("rehearsal_admission_sha256", ""))) \
+			or not _is_lower_sha256(str(claim.get("rehearsal_launch_sha256", ""))) \
+			or not _is_lower_sha256(str(claim.get("rehearsal_completion_sha256", ""))) \
+			or not _is_lower_sha256(str(claim.get("rehearsal_child_attestation_sha256", ""))) \
+			or not _is_lower_sha256(str(claim.get("rehearsal_parent_attestation_sha256", ""))) \
+			or str(claim.get("attempt_1_claim_relative_path", "")) != "official-alpha04c-depth1-seed900626424/official_claim_ledger.json" \
+			or str(claim.get("attempt_1_claim_sha256", "")) != OFFICIAL_ATTEMPT_1_CLAIM_SHA256 \
+			or not attempt_1_green \
+			or str(claim.get("orchestrator_id", "")) != "alpha04c_cold_restore_vertical_slice_orchestrator_v4" \
 			or int(claim.get("orchestrator_schema_version", 0)) != SCHEMA_VERSION \
-			or not _is_lower_sha256(str(claim.get("orchestrator_script_sha256", ""))) \
+			or not _is_lower_sha256(orchestrator_script_sha256) \
+			or str(claim.get("orchestrator_script_sha256", "")) != orchestrator_script_sha256 \
 			or str(claim.get("claim_nonce", "")).length() != 32 \
 			or not _is_lower_hex(str(claim.get("claim_nonce", ""))) \
 			or int(claim.get("orchestrator_process_id", 0)) <= 0 \
 			or not _is_positive_decimal(str(claim.get("orchestrator_creation_time_utc_ticks", ""))) \
 			or str(claim.get("status", "")) != "consumed" \
 			or int(claim.get("authorized_official_count", 0)) != 1 \
-			or int(claim.get("official_count_before", -1)) != 0 \
-			or int(claim.get("official_count_after", 0)) != 1:
+			or int(claim.get("official_count_before", -1)) != 1 \
+			or int(claim.get("official_count_after", 0)) != 2:
 		return {"authorized": false, "reason_code": "official_claim_binding_invalid"}
 	var claim_fingerprint := claim_text.sha256_text()
 	var attestation_path := _normalize_absolute_path(str(options.get("launch_attestation_path", "")))
@@ -994,22 +1097,29 @@ func _authorize_targeted_owner_capture_diagnostic(options: Dictionary, head_sha:
 	var ledger_fingerprint := ledger_text.sha256_text().to_lower()
 	if ledger_fingerprint != str(options.get("targeted_diagnostic_ledger_fingerprint", "")) \
 			or typeof(ledger.get("schema_version")) != TYPE_INT \
-			or int(ledger.get("schema_version", 0)) != 2 \
-			or str(ledger.get("ledger_id", "")) != "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV2" \
+			or int(ledger.get("schema_version", 0)) != 3 \
+			or str(ledger.get("ledger_id", "")) != "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV3" \
 			or str(ledger.get("authorization_id", "")) != TARGETED_DIAGNOSTIC_AUTHORIZATION_ID \
-			or str(ledger.get("task_id", "")) != "ALPHA_0_4_C_OWNER_CAPTURE_ATTESTATION_CURSOR_PERSISTENCE_AND_PROCESS_A_REHEARSAL" \
+			or str(ledger.get("task_id", "")) != "ALPHA_0_4_C_FINAL_HARNESS_REPAIR_REHEARSAL_OFFICIAL_ATTEMPT_2_AND_MAIN_LANDING" \
 			or str(ledger.get("run_id", "")) != str(options.get("run_id", "")) \
 			or str(ledger.get("repository_head", "")) != head_sha \
 			or str(ledger.get("scenario_fingerprint", "")) != str(options.get("scenario_fingerprint", "")) \
 			or typeof(ledger.get("authorized_new_diagnostic_count")) != TYPE_INT \
 			or int(ledger.get("authorized_new_diagnostic_count", 0)) != 1 \
 			or typeof(ledger.get("diagnostic_count_before")) != TYPE_INT \
-			or int(ledger.get("diagnostic_count_before", -1)) != 1 \
+			or int(ledger.get("diagnostic_count_before", -1)) != 2 \
 			or typeof(ledger.get("diagnostic_count_after")) != TYPE_INT \
-			or int(ledger.get("diagnostic_count_after", 0)) != 2 \
+			or int(ledger.get("diagnostic_count_after", 0)) != 3 \
 			or typeof(ledger.get("diagnostic_count_maximum")) != TYPE_INT \
-			or int(ledger.get("diagnostic_count_maximum", 0)) != 2 \
+			or int(ledger.get("diagnostic_count_maximum", 0)) != 3 \
 			or str(ledger.get("previous_ledger_sha256", "")) != "2dba183fe0e354370802d0f886bf40a88b7e1c0b39ddb0df18ee110821e957a1" \
+			or str(ledger.get("historical_invocation_commit", "")) != "3b3061508541d0e5f6f4c2d6560b134b7d4ee5f8" \
+			or str(ledger.get("historical_invocation_blob_sha1", "")) != "b54917e54a39e24e1c7288d919394305a4e21c71" \
+			or str(ledger.get("historical_invocation_file_sha256", "")) != "50608e7dc7a362969d0ee7358ba008aa0278342ae34d33cd579fcac7bf8a7306" \
+			or not str(ledger.get("bootstrap_admission_path", "")).is_absolute_path() \
+			or not _is_lower_sha256(str(ledger.get("bootstrap_admission_sha256", ""))) \
+			or not _is_lower_sha256(str(ledger.get("bootstrap_admission_fingerprint", ""))) \
+			or not str(ledger.get("prequota_attestation_path", "")).is_absolute_path() \
 			or str(ledger.get("role_timeout_policy_sha256", "")) != str(options.get("timeout_policy_fingerprint", "")) \
 			or str(ledger.get("official_attempt_1_claim_sha256", "")) != "80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458" \
 			or typeof(ledger.get("official_attempt_2_claim_absent")) != TYPE_BOOL \
@@ -1101,8 +1211,8 @@ func _authorize_process_a_rehearsal(options: Dictionary, head_sha: String) -> Di
 	var ledger_fingerprint := ledger_text.sha256_text().to_lower()
 	if ledger_fingerprint != str(options.get("rehearsal_ledger_fingerprint", "")) \
 			or typeof(ledger.get("schema_version")) != TYPE_INT \
-			or int(ledger.get("schema_version", 0)) != 2 \
-			or str(ledger.get("ledger_id", "")) != "ProcessARehearsalAdmissionLedgerV2" \
+			or int(ledger.get("schema_version", 0)) != 3 \
+			or str(ledger.get("ledger_id", "")) != "ProcessARehearsalAdmissionLedgerV3" \
 			or str(ledger.get("contract_id", "")) != "Alpha04C.ProcessARehearsalAdmissionContractV1" \
 			or str(ledger.get("authorization_id", "")) != REHEARSAL_AUTHORIZATION_ID \
 			or str(ledger.get("status", "")) != "admitted" \
@@ -1110,6 +1220,7 @@ func _authorize_process_a_rehearsal(options: Dictionary, head_sha: String) -> Di
 			or str(ledger.get("repository_head", "")) != head_sha \
 			or str(ledger.get("scenario_fingerprint", "")) != str(options.get("scenario_fingerprint", "")) \
 			or str(ledger.get("timeout_policy_fingerprint", "")) != str(options.get("timeout_policy_fingerprint", "")) \
+			or not _is_lower_sha256(str(ledger.get("prerequisite_evidence_fingerprint", ""))) \
 			or typeof(ledger.get("challenge_depth")) != TYPE_INT \
 			or int(ledger.get("challenge_depth", 0)) != ACCEPTANCE_CHALLENGE_DEPTH \
 			or typeof(ledger.get("seed")) != TYPE_INT \
@@ -1151,6 +1262,10 @@ func _authorize_process_a_rehearsal(options: Dictionary, head_sha: String) -> Di
 			or not _is_lower_sha256(str(ledger.get("diagnostic_parent_attestation_sha256", ""))) \
 			or not _is_lower_sha256(str(ledger.get("diagnostic_stdout_sha256", ""))) \
 			or not _is_lower_sha256(str(ledger.get("diagnostic_stderr_sha256", ""))) \
+			or not _is_lower_sha256(str(ledger.get("diagnostic_bootstrap_admission_sha256", ""))) \
+			or not _is_lower_sha256(str(ledger.get("diagnostic_bootstrap_admission_fingerprint", ""))) \
+			or not _is_lower_sha256(str(ledger.get("diagnostic_prequota_attestation_sha256", ""))) \
+			or not _is_lower_sha256(str(ledger.get("diagnostic_prequota_attestation_fingerprint", ""))) \
 			or str(ledger.get("official_attempt_1_claim_sha256", "")) != "80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458" \
 			or typeof(ledger.get("official_attempt_1_claim_immutable")) != TYPE_BOOL \
 			or not bool(ledger.get("official_attempt_1_claim_immutable", false)) \
@@ -1243,6 +1358,18 @@ static func _is_positive_decimal(value: String) -> bool:
 	return true
 
 
+static func _is_utc_timestamp(value: Variant) -> bool:
+	if not (value is String):
+		return false
+	var text := str(value)
+	if not text.ends_with("Z") or text.length() < 20 or text.length() > 40:
+		return false
+	var regex := RegEx.new()
+	if regex.compile("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,7})?Z$") != OK:
+		return false
+	return regex.search(text) != null and Time.get_unix_time_from_datetime_string(text) > 0
+
+
 static func _normalize_absolute_path(value: String) -> String:
 	if value.is_empty() or not value.is_absolute_path():
 		return ""
@@ -1330,6 +1457,9 @@ static func sanitize_public_manifest(source: Dictionary) -> Dictionary:
 		"preflight_count": maxi(0, int(source.get("preflight_count", 0))),
 		"owner_apply_count": maxi(0, int(source.get("owner_apply_count", 0))),
 		"registry_apply_count": maxi(0, int(source.get("registry_apply_count", 0))),
+		"registry_commit_count": maxi(0, int(source.get("registry_commit_count", 0))),
+		"registry_rebind_count": maxi(0, int(source.get("registry_rebind_count", 0))),
+		"partial_restore_state_count": maxi(0, int(source.get("partial_restore_state_count", 0))),
 		"save_capture_world_delta": int(source.get("save_capture_world_delta", 0)),
 		"save_capture_rng_delta": int(source.get("save_capture_rng_delta", 0)),
 		"save_capture_log_delta": int(source.get("save_capture_log_delta", 0)),
@@ -1343,6 +1473,7 @@ static func sanitize_public_manifest(source: Dictionary) -> Dictionary:
 		"restore_ai_action_delta": int(source.get("restore_ai_action_delta", 0)),
 		"restore_player_action_delta": int(source.get("restore_player_action_delta", 0)),
 		"restore_notification_delta": int(source.get("restore_notification_delta", 0)),
+		"restore_private_feedback_delta": int(source.get("restore_private_feedback_delta", 0)),
 		"human_action_count": maxi(0, int(source.get("human_action_count", 0))),
 		"commodity_action_count": maxi(0, int(source.get("commodity_action_count", 0))),
 		"ai_action_count": maxi(0, int(source.get("ai_action_count", 0))),
@@ -1371,6 +1502,28 @@ static func sanitize_public_manifest(source: Dictionary) -> Dictionary:
 		"queue_target_inventory_queue_commit_delta": maxi(0, int(source.get("queue_target_inventory_queue_commit_delta", 0))),
 		"queue_target_public_log_duplicate_delta": maxi(0, int(source.get("queue_target_public_log_duplicate_delta", 0))),
 		"queue_target_public_log_collision_delta": maxi(0, int(source.get("queue_target_public_log_collision_delta", 0))),
+		"duplicate_queue_entry_count": _required_duplicate_evidence(source, "duplicate_queue_entry_count"),
+		"duplicate_facility_creation_count": _required_duplicate_evidence(source, "duplicate_facility_creation_count"),
+		"duplicate_card_consumption_count": _required_duplicate_evidence(source, "duplicate_card_consumption_count"),
+		"duplicate_cost_consumption_count": _required_duplicate_evidence(source, "duplicate_cost_consumption_count"),
+		"duplicate_sale_receipt_count": _required_duplicate_evidence(source, "duplicate_sale_receipt_count"),
+		"world_fingerprint_match": _required_boolean_evidence(source, "world_fingerprint_match"),
+		"rng_cursor_match": _required_boolean_evidence(source, "rng_cursor_match"),
+		"ai_state_fingerprint_match": _required_boolean_evidence(source, "ai_state_fingerprint_match"),
+		"card_inventory_fingerprint_match": _required_boolean_evidence(source, "card_inventory_fingerprint_match"),
+		"queue_fingerprint_match": _required_boolean_evidence(source, "queue_fingerprint_match"),
+		"generation_2_recapture_fingerprint_match": _required_boolean_evidence(
+			source,
+			"generation_2_recapture_fingerprint_match"
+		),
+		"generation_2_rng_cursor_match": _required_boolean_evidence(
+			source,
+			"generation_2_rng_cursor_match"
+		),
+		"generation_2_duplicate_transaction_count": _required_integer_evidence(
+			source,
+			"generation_2_duplicate_transaction_count"
+		),
 		"victory_unresolved_before_save": bool(source.get("victory_unresolved_before_save", false)),
 		"production_surface_ready": bool(source.get("production_surface_ready", false)),
 		"victory_state_sequence": (source.get("victory_state_sequence", []) as Array).duplicate() if source.get("victory_state_sequence") is Array else [],
@@ -1382,6 +1535,8 @@ static func sanitize_public_manifest(source: Dictionary) -> Dictionary:
 		"terminal_rng_draw_delta": int(source.get("terminal_rng_draw_delta", 0)),
 		"generation": maxi(0, int(source.get("generation", 0))),
 		"backup_created": bool(source.get("backup_created", false)),
+		"save_readback_green": bool(source.get("save_readback_green", false)),
+		"save_fingerprint_parity": bool(source.get("save_fingerprint_parity", false)),
 		"write_fingerprint": str(source.get("write_fingerprint", "")),
 		"elapsed_ms": maxi(0, int(source.get("elapsed_ms", 0))),
 		"success": bool(source.get("success", false)),
@@ -1411,7 +1566,35 @@ static func _manifest_shape_valid(manifest: Dictionary) -> bool:
 	var queue_target_fingerprint := str(manifest.get("queue_trigger_stable_target_fingerprint", ""))
 	if not queue_target_fingerprint.is_empty() and not _is_lower_sha256(queue_target_fingerprint):
 		return false
+	if bool(manifest.get("success", false)):
+		for field in [
+			"duplicate_queue_entry_count",
+			"duplicate_facility_creation_count",
+			"duplicate_card_consumption_count",
+			"duplicate_cost_consumption_count",
+			"duplicate_sale_receipt_count",
+			"generation_2_duplicate_transaction_count",
+		]:
+			if int(manifest.get(field, -1)) < 0:
+				return false
 	return true
+
+
+static func _required_duplicate_evidence(source: Dictionary, field: String) -> int:
+	if source.has(field) and typeof(source.get(field)) == TYPE_INT:
+		return int(source.get(field))
+	return -1 if bool(source.get("success", false)) else 0
+
+
+static func _required_integer_evidence(source: Dictionary, field: String) -> int:
+	if source.has(field) and typeof(source.get(field)) == TYPE_INT:
+		return int(source.get(field))
+	return -1 if bool(source.get("success", false)) else 0
+
+
+static func _required_boolean_evidence(source: Dictionary, field: String) -> bool:
+	return source.has(field) and typeof(source.get(field)) == TYPE_BOOL \
+			and bool(source.get(field))
 
 
 func _run_role(options: Dictionary, head_sha: String) -> Dictionary:
@@ -1829,6 +2012,20 @@ func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -
 			or int(queue_target_before.get("history_count", -1)) != 0 \
 			or str(queue_target_before.get("stable_target_fingerprint", "")) != queue_target_fingerprint:
 		return _fail(base, "producer_queue_target_before_save_invalid")
+	var producer_duplicates := _authoritative_duplicate_observation(context)
+	if not bool(producer_duplicates.get("valid", false)):
+		return _fail(base, str(producer_duplicates.get(
+			"reason_code",
+			"producer_duplicate_observation_invalid"
+		)))
+	for duplicate_field in [
+		"duplicate_queue_entry_count",
+		"duplicate_facility_creation_count",
+		"duplicate_card_consumption_count",
+		"duplicate_cost_consumption_count",
+		"duplicate_sale_receipt_count",
+	]:
+		base[duplicate_field] = int(producer_duplicates.get(duplicate_field, -1))
 	_complete_process_a_phase("queue_entry_committed", {
 		"queue_count": _queue_entry_count(context),
 		"queue_resolution_id": queue_target_resolution_id,
@@ -1882,6 +2079,7 @@ func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -
 					"targeted_owner_capture_post_validation_failed" \
 					if not post_capture_failure.is_empty() else "targeted_owner_capture_all_owners_succeeded"
 				))
+	(context.get("coordinator") as GameRuntimeCoordinator).pause_session()
 	var save_barrier_operation_id := "process-a-save-%s" % str(options.get("run_id", ""))
 	var save_barrier_begin := _acquire_process_a_save_barrier(
 		context,
@@ -1889,24 +2087,36 @@ func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -
 	)
 	if not bool(save_barrier_begin.get("acquired", false)):
 		return _fail(base, str(save_barrier_begin.get("reason_code", "process_a_save_barrier_acquire_failed")))
-	# The production Save gateway only accepts a running/paused session. Prove the
-	# closed Queue state under the real barrier, release it synchronously, then
-	# submit Save without yielding a frame or advancing the authoritative loop.
-	var save_barrier_release := _release_process_a_save_barrier(context, save_barrier_operation_id)
-	if not bool(save_barrier_release.get("released", false)):
-		return _fail(base, str(save_barrier_release.get("reason_code", "process_a_save_barrier_cleanup_failed")))
 	_complete_process_a_phase("restore_barrier_entered", {
 		"queue_pending_count": int(queue_target_before.get("pending_count", 0)),
 		"barrier_acquired": true,
-		"barrier_quiet": bool(save_barrier_release.get("quiet", false)),
-		"barrier_released_without_runtime_advance": true,
+		"restore_barrier_quiet": bool(save_barrier_begin.get("restore_barrier_quiet", false)),
+		"restore_barrier_rolled_back": bool(save_barrier_begin.get("restore_barrier_rolled_back", false)),
+		"save_barrier_kind": "authoritative_runtime_loop_manual_lease",
 	})
 	var checkpoint := _checkpoint_summary(context)
 	_enter_process_a_phase("save_intent_submitted")
 	_complete_process_a_phase("save_intent_submitted", {"source_surface": "pause_menu"})
 	var save := _save_via_player_flow(context, save_path, false)
-	if not bool(save.get("ok", false)):
-		return _fail(base, str(save.get("reason_code", "producer_save_failed")))
+	var save_failure_code := "" if bool(save.get("ok", false)) \
+			else str(save.get("reason_code", "producer_save_failed"))
+	var save_barrier_release := _release_process_a_save_barrier(
+		context,
+		save_barrier_operation_id,
+		save_barrier_begin
+	)
+	var boundary_failures := _ordered_process_a_boundary_failures(
+		save_failure_code,
+		save_barrier_release
+	)
+	if not str(boundary_failures.get("primary_failure_code", "")).is_empty():
+		base["_secondary_failure_codes"] = boundary_failures.get("secondary_failure_codes", [])
+		return _fail(base, str(boundary_failures.get("primary_failure_code")))
+	var readback_phase_evidence: Dictionary = save.get("readback_phase_evidence", {}) \
+			if save.get("readback_phase_evidence", {}) is Dictionary else {}
+	readback_phase_evidence["restore_barrier_quiet"] = bool(save_barrier_release.get("quiet", false))
+	readback_phase_evidence["full_quiet_window"] = true
+	_complete_process_a_phase("save_readback_complete", readback_phase_evidence)
 	var queue_target_after := _queue_target_observation(context, queue_target_resolution_id)
 	var queue_target_evidence := _queue_target_manifest_evidence(
 		queue_target_resolution_id,
@@ -1936,9 +2146,23 @@ func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -
 		"source_write_fingerprint": "",
 		"section_count": int(save.get("section_count", 0)),
 		"preflight_count": int(save.get("preflight_count", 0)),
+		"owner_apply_count": 0,
+		"registry_apply_count": 0,
+		"registry_commit_count": 0,
+		"registry_rebind_count": 0,
+		"partial_restore_state_count": 0,
 		"save_capture_world_delta": int(save.get("save_capture_world_delta", -1)),
 		"save_capture_rng_delta": int(save.get("save_capture_rng_delta", -1)),
 		"save_capture_log_delta": int(save.get("save_capture_log_delta", -1)),
+		"restore_rng_draw_delta": 0,
+		"restore_world_time_delta": 0,
+		"restore_public_log_delta": 0,
+		"restore_sale_receipt_delta": 0,
+		"restore_economic_reward_delta": 0,
+		"restore_ai_action_delta": 0,
+		"restore_player_action_delta": 0,
+		"restore_notification_delta": 0,
+		"restore_private_feedback_delta": 0,
 		"human_action_count": int(legal_checkpoint.get("human_action_count", 0)) + (1 if bool(human.get("accepted", false)) else 0) + 1,
 		"commodity_action_count": int(legal_checkpoint.get("commodity_action_count", 0)),
 		"ai_action_count": ai_actions,
@@ -1953,10 +2177,29 @@ func _run_producer(context: Dictionary, options: Dictionary, base: Dictionary) -
 		"queue_entry_count": int(checkpoint.get("queue_entry_count", 0)),
 		"weather_region_count": int(checkpoint.get("weather_region_count", 0)),
 		"ai_nondefault_state_count": int(checkpoint.get("ai_nondefault_state_count", 0)),
+		"world_fingerprint_match": false,
+		"rng_cursor_match": false,
+		"ai_state_fingerprint_match": false,
+		"card_inventory_fingerprint_match": false,
+		"queue_fingerprint_match": false,
+		"generation_2_recapture_fingerprint_match": false,
+		"generation_2_rng_cursor_match": false,
+		"generation_2_duplicate_transaction_count": 0,
 		"victory_unresolved_before_save": bool(checkpoint.get("victory_unresolved", false)),
 		"production_surface_ready": bool(checkpoint.get("production_surface_ready", false)),
+		"victory_state_sequence": [],
+		"final_settlement_count": 0,
+		"final_settlement_presentation_count": 0,
+		"final_settlement_public_log_count": 0,
+		"terminal_quiescent_frames": 0,
+		"terminal_world_delta": 0,
+		"terminal_rng_draw_delta": 0,
 		"generation": 1,
 		"backup_created": bool(save.get("backup_created", false)),
+		"save_readback_green": int(save.get("section_count", 0)) == 19 \
+				and int(save.get("preflight_count", 0)) == 19 \
+				and bool(save.get("readback_fingerprint_match", false)),
+		"save_fingerprint_parity": bool(save.get("readback_fingerprint_match", false)),
 		"write_fingerprint": str(save.get("write_fingerprint", "")),
 		"rng_draw_count_before": int(save.get("rng_draw_count", 0)),
 		"rng_draw_count_after": int(save.get("rng_draw_count", 0)),
@@ -2056,6 +2299,15 @@ func _run_consumer(context: Dictionary, options: Dictionary, base: Dictionary) -
 	var recapture := _capture_sections(context, "consumer-recapture")
 	if not bool(recapture.get("ok", false)) or str(recapture.get("sections_digest", "")) != source_digest:
 		return _fail(base, "consumer_exact_recapture_mismatch")
+	var restore_fingerprints := _restore_fingerprint_evidence(
+		context,
+		read.get("envelope", {}) as Dictionary,
+		recapture.get("envelope", {}) as Dictionary
+	)
+	var restore_transaction_duplicate_count := _restore_transaction_duplicate_count(load)
+	if not _restore_fingerprint_evidence_green(restore_fingerprints) \
+			or restore_transaction_duplicate_count != 0:
+		return _fail(base, "consumer_typed_restore_evidence_invalid")
 	_emit_role_heartbeat("process_b_generation_1_recaptured", "restore")
 	# The restored target is inspected and drained synchronously before any
 	# post-restore human, AI, economy, render-frame, or RuntimeLoop continuation.
@@ -2073,9 +2325,15 @@ func _run_consumer(context: Dictionary, options: Dictionary, base: Dictionary) -
 			or str(queue_target_before.get("stable_target_fingerprint", "")) != queue_target_fingerprint:
 		base.merge(queue_target_failure_evidence, true)
 		return _fail(base, "consumer_restored_queue_target_identity_invalid")
+	var target_entry: Dictionary = queue_target_before.get("facility_entry", {}) \
+			if queue_target_before.get("facility_entry", {}) is Dictionary else {}
+	var target_commitment_before := _facility_commitment_observation(context, target_entry)
+	if not bool(target_commitment_before.get("valid", false)) \
+			or bool(target_commitment_before.get("settled", true)):
+		return _fail(base, "consumer_facility_commitment_before_invalid")
 	var target_drain := _drain_target_resolution(context, queue_target_resolution_id, 120)
 	var queue_target_after: Dictionary = target_drain.get("observation", {}) \
-		if target_drain.get("observation", {}) is Dictionary else {}
+			if target_drain.get("observation", {}) is Dictionary else {}
 	var queue_target_evidence := _queue_target_manifest_evidence(
 		queue_target_resolution_id,
 		queue_target_fingerprint,
@@ -2091,15 +2349,34 @@ func _run_consumer(context: Dictionary, options: Dictionary, base: Dictionary) -
 	):
 		base.merge(queue_target_evidence, true)
 		return _fail(base, "consumer_queue_target_exact_once_invalid")
+	# History is intentionally privacy-redacted, so the post-drain commitment
+	# check uses the already validated in-process binding captured before drain.
+	var target_commitment_after := _facility_commitment_observation(context, target_entry)
+	if not bool(target_commitment_after.get("valid", false)) \
+			or not bool(target_commitment_after.get("settled", false)) \
+			or not bool(target_commitment_after.get("committed", false)) \
+			or str(target_commitment_after.get("facility_lifecycle_state_id", "")) != "finalized" \
+			or str(target_commitment_after.get("asset_outcome_id", "")) not in ["consumed", "not_required"]:
+		return _fail(base, "consumer_facility_commitment_after_invalid")
+	var duplicates_before_continuation := _authoritative_duplicate_observation(context)
+	if not bool(duplicates_before_continuation.get("valid", false)) \
+			or not _duplicate_observation_is_zero(duplicates_before_continuation):
+		return _fail(base, "consumer_pre_continuation_duplicate_observation_invalid")
 	_emit_role_heartbeat("process_b_queue_continued", "queue_continuation")
 	(context.get("coordinator") as GameRuntimeCoordinator).resume_session()
 	var human := _submit_human_selection(context, "consumer-human", 2)
 	var commodity_action := _claim_first_visible_commodity(context, maxi(1, Time.get_ticks_msec()))
 	var ai_actions := _tick_ai_until_action(context, 120)
 	var post_sales := _advance_sale(context, 60.0)
+	var post_duplicates := _authoritative_duplicate_observation(context)
+	var new_sale_receipt_count := int(post_duplicates.get("sale_receipt_count", 0)) \
+			- int(duplicates_before_continuation.get("sale_receipt_count", 0))
 	if not bool(human.get("accepted", false)) or ai_actions <= 0 \
 			or not bool(commodity_action.get("success", false)) \
-			or int(post_sales.get("sale_receipt_count", 0)) <= 0:
+			or int(post_sales.get("sale_receipt_count", 0)) <= 0 \
+			or not bool(post_duplicates.get("valid", false)) \
+			or not _duplicate_observation_is_zero(post_duplicates) \
+			or new_sale_receipt_count <= 0:
 		return _fail(base, "post_restore_continuation_failed")
 	_emit_role_heartbeat("process_b_post_restore_actions_complete", "continuation")
 	var sale_binding_capture := TERMINAL_EVIDENCE.capture_public_sale_binding(context)
@@ -2116,6 +2393,13 @@ func _run_consumer(context: Dictionary, options: Dictionary, base: Dictionary) -
 	var generation_two := _save_via_player_flow(context, save_path, true)
 	if not bool(generation_two.get("ok", false)):
 		return _fail(base, str(generation_two.get("reason_code", "generation_two_save_failed")))
+	var generation_two_victory_unresolved := _readback_victory_unresolved(
+		context,
+		generation_two.get("readback_envelope", {}) as Dictionary \
+				if generation_two.get("readback_envelope", {}) is Dictionary else {}
+	)
+	if not bool(checkpoint.get("victory_unresolved", false)) or not generation_two_victory_unresolved:
+		return _fail(base, "generation_two_victory_checkpoint_invalid")
 	var terminal_context := context.duplicate()
 	var generation_two_sale_binding: Dictionary = sale_binding_capture.get("binding", {}) \
 		if sale_binding_capture.get("binding", {}) is Dictionary else {}
@@ -2128,6 +2412,12 @@ func _run_consumer(context: Dictionary, options: Dictionary, base: Dictionary) -
 			str(terminal.get("failure_code", "post_restore_settlement_failed"))
 		)
 	_emit_role_heartbeat("process_b_terminal_quiet", "settlement")
+	var queue_target_final := _queue_target_observation(context, queue_target_resolution_id)
+	var final_duplicates := _authoritative_duplicate_observation(context)
+	if not _queue_target_post_continuation_quiet_valid(queue_target_after, queue_target_final) \
+			or not bool(final_duplicates.get("valid", false)) \
+			or not _duplicate_observation_is_zero(final_duplicates):
+		return _fail(base, "consumer_post_continuation_exact_once_invalid")
 	var quiet: Dictionary = load.get("quiet_deltas", {}) if load.get("quiet_deltas", {}) is Dictionary else {}
 	base.merge({
 		"slot_state": "restored",
@@ -2141,6 +2431,9 @@ func _run_consumer(context: Dictionary, options: Dictionary, base: Dictionary) -
 		"preflight_count": int(load.get("preflight_count", 0)),
 		"owner_apply_count": int(load.get("apply_count", 0)),
 		"registry_apply_count": int(load.get("registry_apply_count", 0)),
+		"registry_commit_count": int(load.get("registry_commit_count", 0)),
+		"registry_rebind_count": int(load.get("post_restore_rebind_count", 0)),
+		"partial_restore_state_count": int(load.get("partial_restore_state_count", 0)),
 		"save_capture_world_delta": int(generation_two.get("save_capture_world_delta", -1)),
 		"save_capture_rng_delta": int(generation_two.get("save_capture_rng_delta", -1)),
 		"save_capture_log_delta": int(generation_two.get("save_capture_log_delta", -1)),
@@ -2154,10 +2447,11 @@ func _run_consumer(context: Dictionary, options: Dictionary, base: Dictionary) -
 		"restore_ai_action_delta": int(quiet.get("ai_action_submission_count", -1)),
 		"restore_player_action_delta": int(quiet.get("human_action_submission_count", -1)),
 		"restore_notification_delta": int(quiet.get("notification_count", -1)),
+		"restore_private_feedback_delta": int(quiet.get("private_feedback_revision", -1)),
 		"human_action_count": 1,
 		"commodity_action_count": 1 if bool(commodity_action.get("success", false)) else 0,
 		"ai_action_count": ai_actions,
-		"sale_receipt_count": int(post_sales.get("sale_receipt_count", 0)),
+		"sale_receipt_count": new_sale_receipt_count,
 		"normal_card_count": int(checkpoint.get("normal_card_count", 0)),
 		"commodity_card_count": int(checkpoint.get("commodity_card_count", 0)),
 		"commodity_claim_count": int(checkpoint.get("commodity_claim_count", 0)),
@@ -2167,7 +2461,7 @@ func _run_consumer(context: Dictionary, options: Dictionary, base: Dictionary) -
 		"queue_entry_count": int(checkpoint.get("queue_entry_count", 0)),
 		"weather_region_count": int(checkpoint.get("weather_region_count", 0)),
 		"ai_nondefault_state_count": int(checkpoint.get("ai_nondefault_state_count", 0)),
-		"victory_unresolved_before_save": true,
+		"victory_unresolved_before_save": generation_two_victory_unresolved,
 		"production_surface_ready": bool(checkpoint.get("production_surface_ready", false)),
 		"victory_state_sequence": terminal.get("victory_state_sequence", []),
 		"final_settlement_count": int(terminal.get("settlement_count", 0)),
@@ -2178,7 +2472,24 @@ func _run_consumer(context: Dictionary, options: Dictionary, base: Dictionary) -
 		"terminal_rng_draw_delta": int(terminal.get("rng_delta", 0)),
 		"generation": 2,
 		"backup_created": bool(generation_two.get("backup_created", false)),
+		"save_readback_green": int(generation_two.get("section_count", 0)) == 19 \
+				and int(generation_two.get("preflight_count", 0)) == 19 \
+				and bool(generation_two.get("readback_fingerprint_match", false)),
+		"save_fingerprint_parity": bool(generation_two.get("readback_fingerprint_match", false)),
 		"write_fingerprint": str(generation_two.get("write_fingerprint", "")),
+		"duplicate_queue_entry_count": int(final_duplicates.get("duplicate_queue_entry_count", -1)),
+		"duplicate_facility_creation_count": int(final_duplicates.get("duplicate_facility_creation_count", -1)),
+		"duplicate_card_consumption_count": int(final_duplicates.get("duplicate_card_consumption_count", -1)),
+		"duplicate_cost_consumption_count": int(final_duplicates.get("duplicate_cost_consumption_count", -1)),
+		"duplicate_sale_receipt_count": int(final_duplicates.get("duplicate_sale_receipt_count", -1)),
+		"world_fingerprint_match": bool(restore_fingerprints.get("world_fingerprint_match", false)),
+		"rng_cursor_match": bool(restore_fingerprints.get("rng_cursor_match", false)),
+		"ai_state_fingerprint_match": bool(restore_fingerprints.get("ai_state_fingerprint_match", false)),
+		"card_inventory_fingerprint_match": bool(restore_fingerprints.get("card_inventory_fingerprint_match", false)),
+		"queue_fingerprint_match": bool(restore_fingerprints.get("queue_fingerprint_match", false)),
+		"generation_2_recapture_fingerprint_match": false,
+		"generation_2_rng_cursor_match": false,
+		"generation_2_duplicate_transaction_count": 0,
 		"success": true,
 		"failure_code": "",
 	}, true)
@@ -2200,12 +2511,29 @@ func _run_validator(context: Dictionary, options: Dictionary, base: Dictionary) 
 	var source_digest := str(read.get("sections_digest", ""))
 	_emit_role_heartbeat("process_c_restore_generation_2", "restore")
 	var load := _resume_via_player_flow(context, save_path)
+	if not bool(load.get("ok", false)):
+		return _fail(base, str(load.get("reason_code", "validator_restore_failed")))
 	var after_observation := _safety_observation(context)
 	var recapture := _capture_sections(context, "validator-recapture")
 	_emit_role_heartbeat("process_c_generation_2_recaptured", "recapture")
+	var checkpoint := _checkpoint_summary(context)
+	var source_envelope: Dictionary = read.get("envelope", {}) \
+			if read.get("envelope", {}) is Dictionary else {}
+	var recaptured_envelope: Dictionary = recapture.get("envelope", {}) \
+			if recapture.get("envelope", {}) is Dictionary else {}
+	var restore_fingerprints := _restore_fingerprint_evidence(
+		context,
+		source_envelope,
+		recaptured_envelope
+	)
+	var generation_two_recapture_match := bool(recapture.get("ok", false)) \
+			and str(recapture.get("sections_digest", "")) == source_digest
+	var generation_two_duplicate_transactions := _restore_transaction_duplicate_count(load)
+	var source_victory_unresolved := _readback_victory_unresolved(context, source_envelope)
 	var queue_target_before := _queue_target_observation(context, queue_target_resolution_id)
-	# No continuation is permitted in Process C.  The second observation proves
-	# restore itself did not replay the completed Generation-2 resolution.
+	var no_continuation := await _generation_two_no_continuation_evidence(context)
+	# The second observation is deliberately after the bounded deferred-lifecycle
+	# idle gate, so Process C proves the completed Generation-2 target stayed quiet.
 	var queue_target_after := _queue_target_observation(context, queue_target_resolution_id)
 	var queue_target_evidence := _queue_target_manifest_evidence(
 		queue_target_resolution_id,
@@ -2220,8 +2548,30 @@ func _run_validator(context: Dictionary, options: Dictionary, base: Dictionary) 
 		queue_target_after,
 		queue_target_evidence
 	)
-	var exact := bool(load.get("ok", false)) and bool(recapture.get("ok", false)) \
-		and str(recapture.get("sections_digest", "")) == source_digest and queue_target_exact
+	var validator_target_commitment := _facility_commitment_observation_by_resolution(
+		context,
+		queue_target_resolution_id
+	)
+	var validator_target_commitment_exact := bool(validator_target_commitment.get("valid", false)) \
+			and bool(validator_target_commitment.get("settled", false)) \
+			and bool(validator_target_commitment.get("committed", false)) \
+			and str(validator_target_commitment.get("facility_lifecycle_state_id", "")) == "finalized"
+	var duplicate_observation := _authoritative_duplicate_observation(context)
+	var exact := bool(load.get("ok", false)) and generation_two_recapture_match \
+		and _restore_fingerprint_evidence_green(restore_fingerprints) \
+		and bool(restore_fingerprints.get("rng_cursor_match", false)) \
+		and generation_two_duplicate_transactions == 0 \
+		and source_victory_unresolved and bool(checkpoint.get("victory_unresolved", false)) \
+		and bool(checkpoint.get("production_surface_ready", false)) \
+		and queue_target_exact and validator_target_commitment_exact \
+		and _duplicate_observation_is_zero(duplicate_observation) \
+		and bool(no_continuation.get("accepted", false))
+	var coordinator := context.get("coordinator") as GameRuntimeCoordinator
+	if coordinator != null:
+		coordinator.pause_session()
+	var active_main := context.get("main") as Node
+	if active_main != null:
+		active_main.process_mode = Node.PROCESS_MODE_DISABLED
 	var quiet: Dictionary = load.get("quiet_deltas", {}) if load.get("quiet_deltas", {}) is Dictionary else {}
 	base.merge({
 		"slot_state": "validated" if exact else "failed",
@@ -2236,6 +2586,12 @@ func _run_validator(context: Dictionary, options: Dictionary, base: Dictionary) 
 		"preflight_count": int(load.get("preflight_count", 0)),
 		"owner_apply_count": int(load.get("apply_count", 0)),
 		"registry_apply_count": int(load.get("registry_apply_count", 0)),
+		"registry_commit_count": int(load.get("registry_commit_count", 0)),
+		"registry_rebind_count": int(load.get("post_restore_rebind_count", 0)),
+		"partial_restore_state_count": int(load.get("partial_restore_state_count", 0)),
+		"save_capture_world_delta": 0,
+		"save_capture_rng_delta": 0,
+		"save_capture_log_delta": 0,
 		"rng_draw_count_before": int(before_observation.get("rng_draw_invocation_count", 0)),
 		"rng_draw_count_after": int(after_observation.get("rng_draw_invocation_count", 0)),
 		"restore_rng_draw_delta": int(quiet.get("rng_draw_invocation_count", -1)),
@@ -2246,11 +2602,55 @@ func _run_validator(context: Dictionary, options: Dictionary, base: Dictionary) 
 		"restore_ai_action_delta": int(quiet.get("ai_action_submission_count", -1)),
 		"restore_player_action_delta": int(quiet.get("human_action_submission_count", -1)),
 		"restore_notification_delta": int(quiet.get("notification_count", -1)),
+		"restore_private_feedback_delta": int(quiet.get("private_feedback_revision", -1)),
+		"human_action_count": 0,
+		"commodity_action_count": 0,
+		"ai_action_count": 0,
+		"sale_receipt_count": 0,
+		"normal_card_count": int(checkpoint.get("normal_card_count", 0)),
+		"commodity_card_count": int(checkpoint.get("commodity_card_count", 0)),
+		"commodity_claim_count": int(checkpoint.get("commodity_claim_count", 0)),
+		"facility_count": int(checkpoint.get("facility_count", 0)),
+		"route_count": int(checkpoint.get("route_count", 0)),
+		"military_unit_count": int(checkpoint.get("military_unit_count", 0)),
+		"queue_entry_count": int(checkpoint.get("queue_entry_count", 0)),
+		"weather_region_count": int(checkpoint.get("weather_region_count", 0)),
+		"ai_nondefault_state_count": int(checkpoint.get("ai_nondefault_state_count", 0)),
+		"victory_unresolved_before_save": source_victory_unresolved,
+		"production_surface_ready": bool(checkpoint.get("production_surface_ready", false)),
 		"generation": 2,
+		"backup_created": false,
+		"save_readback_green": bool(read.get("ok", false)) and exact,
+		"save_fingerprint_parity": exact,
+		"duplicate_queue_entry_count": int(duplicate_observation.get("duplicate_queue_entry_count", -1)),
+		"duplicate_facility_creation_count": int(duplicate_observation.get("duplicate_facility_creation_count", -1)),
+		"duplicate_card_consumption_count": int(duplicate_observation.get("duplicate_card_consumption_count", -1)),
+		"duplicate_cost_consumption_count": int(duplicate_observation.get("duplicate_cost_consumption_count", -1)),
+		"duplicate_sale_receipt_count": int(duplicate_observation.get("duplicate_sale_receipt_count", -1)),
+		"world_fingerprint_match": bool(restore_fingerprints.get("world_fingerprint_match", false)),
+		"rng_cursor_match": bool(restore_fingerprints.get("rng_cursor_match", false)),
+		"ai_state_fingerprint_match": bool(restore_fingerprints.get("ai_state_fingerprint_match", false)),
+		"card_inventory_fingerprint_match": bool(restore_fingerprints.get("card_inventory_fingerprint_match", false)),
+		"queue_fingerprint_match": bool(restore_fingerprints.get("queue_fingerprint_match", false)),
+		"generation_2_recapture_fingerprint_match": generation_two_recapture_match,
+		"generation_2_rng_cursor_match": bool(restore_fingerprints.get("rng_cursor_match", false)),
+		"generation_2_duplicate_transaction_count": generation_two_duplicate_transactions,
+		"victory_state_sequence": no_continuation.get("victory_state_sequence", []),
+		"final_settlement_count": int(no_continuation.get("settlement_count", -1)),
+		"final_settlement_presentation_count": int(no_continuation.get("presentation_count", -1)),
+		"final_settlement_public_log_count": int(no_continuation.get("public_log_count", -1)),
+		"terminal_quiescent_frames": int(no_continuation.get("terminal_quiescent_frames", -1)),
+		"terminal_world_delta": int(no_continuation.get("terminal_world_delta", -1)),
+		"terminal_rng_draw_delta": int(no_continuation.get("terminal_rng_draw_delta", -1)),
 		"success": exact,
 		"failure_code": "" if exact else (
-			"validator_queue_target_lineage_invalid" if not queue_target_exact \
-			else "validator_exact_recapture_mismatch"
+			"validator_queue_target_lineage_invalid" \
+			if not queue_target_exact or not validator_target_commitment_exact \
+			else (
+				str(no_continuation.get("reason_code", "validator_no_continuation_evidence_invalid")) \
+				if not bool(no_continuation.get("accepted", false)) \
+				else "validator_exact_recapture_mismatch"
+			)
 		),
 	}, true)
 	base.merge(queue_target_evidence, true)
@@ -2266,8 +2666,9 @@ func _runtime_context(main: Node) -> Dictionary:
 	var handshake := save.get_node_or_null("RulesetSaveHandshakeService") if save != null else null
 	var flow := services.get_node_or_null("SaveResumeApplicationFlowController") if services != null else null
 	var barrier := coordinator.get_node_or_null("SaveRestoreRuntimeBarrier") if coordinator != null else null
+	var runtime_loop := coordinator.get_node_or_null("RuntimeLoop") if coordinator != null else null
 	return {
-		"ready": services != null and coordinator != null and session != null and registry != null and save != null and handshake != null and flow != null and barrier != null,
+		"ready": services != null and coordinator != null and session != null and registry != null and save != null and handshake != null and flow != null and barrier != null and runtime_loop != null,
 		"main": main,
 		"services": services,
 		"coordinator": coordinator,
@@ -2277,6 +2678,7 @@ func _runtime_context(main: Node) -> Dictionary:
 		"handshake": handshake,
 		"flow": flow,
 		"barrier": barrier,
+		"runtime_loop": runtime_loop,
 	}
 
 
@@ -2364,6 +2766,94 @@ func _capture_sections(context: Dictionary, suffix: String) -> Dictionary:
 		"sections_digest": canonical.sha256_text() if not canonical.is_empty() else "",
 		"section_count": sections.size(),
 	}
+
+
+func _restore_fingerprint_evidence(
+	context: Dictionary,
+	source_envelope: Dictionary,
+	recaptured_envelope: Dictionary
+) -> Dictionary:
+	return {
+		"world_fingerprint_match": _section_group_fingerprint_match(
+			context, source_envelope, recaptured_envelope, WORLD_FINGERPRINT_SECTION_IDS
+		),
+		"rng_cursor_match": _section_group_fingerprint_match(
+			context, source_envelope, recaptured_envelope, RNG_CURSOR_SECTION_IDS
+		),
+		"ai_state_fingerprint_match": _section_group_fingerprint_match(
+			context, source_envelope, recaptured_envelope, AI_STATE_SECTION_IDS
+		),
+		"card_inventory_fingerprint_match": _section_group_fingerprint_match(
+			context, source_envelope, recaptured_envelope, CARD_INVENTORY_SECTION_IDS
+		),
+		"queue_fingerprint_match": _section_group_fingerprint_match(
+			context, source_envelope, recaptured_envelope, QUEUE_SECTION_IDS
+		),
+	}
+
+
+func _section_group_fingerprint_match(
+	context: Dictionary,
+	source_envelope: Dictionary,
+	recaptured_envelope: Dictionary,
+	section_ids: Array
+) -> bool:
+	var handshake: Node = context.get("handshake")
+	var source_sections: Dictionary = source_envelope.get("sections", {}) \
+			if source_envelope.get("sections", {}) is Dictionary else {}
+	var recaptured_sections: Dictionary = recaptured_envelope.get("sections", {}) \
+			if recaptured_envelope.get("sections", {}) is Dictionary else {}
+	if handshake == null or not handshake.has_method("canonical_json") \
+			or source_sections.is_empty() or recaptured_sections.is_empty():
+		return false
+	var source_group := {}
+	var recaptured_group := {}
+	for section_id_variant in section_ids:
+		var section_id := str(section_id_variant)
+		if not source_sections.has(section_id) or not recaptured_sections.has(section_id):
+			return false
+		source_group[section_id] = source_sections.get(section_id)
+		recaptured_group[section_id] = recaptured_sections.get(section_id)
+	var source_canonical := str(handshake.call("canonical_json", source_group))
+	var recaptured_canonical := str(handshake.call("canonical_json", recaptured_group))
+	return not source_canonical.is_empty() and source_canonical == recaptured_canonical
+
+
+func _restore_fingerprint_evidence_green(evidence: Dictionary) -> bool:
+	for field in [
+		"world_fingerprint_match",
+		"rng_cursor_match",
+		"ai_state_fingerprint_match",
+		"card_inventory_fingerprint_match",
+		"queue_fingerprint_match",
+	]:
+		if not evidence.has(field) or not bool(evidence.get(field, false)):
+			return false
+	return true
+
+
+func _restore_transaction_duplicate_count(load: Dictionary) -> int:
+	var expected := {
+		"apply_count": SAVE_SECTION_ORDER.size(),
+		"registry_apply_count": 1,
+		"registry_commit_count": 1,
+		"post_restore_rebind_count": 1,
+	}
+	var duplicate_count := 0
+	for field_variant in expected:
+		var field := str(field_variant)
+		if not load.has(field) or typeof(load.get(field)) != TYPE_INT:
+			return -1
+		var observed := int(load.get(field))
+		var required := int(expected.get(field))
+		if observed < required:
+			return -1
+		duplicate_count += observed - required
+	if not load.has("partial_restore_state_count") \
+			or typeof(load.get("partial_restore_state_count")) != TYPE_INT \
+			or int(load.get("partial_restore_state_count")) != 0:
+		return -1
+	return duplicate_count
 
 
 func _record_targeted_owner_capture_audit(_context: Dictionary, _phase_id: String) -> void:
@@ -2671,10 +3161,24 @@ func _attest_targeted_registry_binding(context: Dictionary) -> Dictionary:
 
 func _acquire_process_a_save_barrier(context: Dictionary, operation_id: String) -> Dictionary:
 	var barrier := context.get("barrier") as SaveRestoreRuntimeBarrier
-	if barrier == null:
+	var runtime_loop := context.get("runtime_loop") as RuntimeLoop
+	var session := context.get("session") as GameSessionRuntimeController
+	if barrier == null or runtime_loop == null or session == null:
 		return {"acquired": false, "reason_code": "process_a_save_barrier_missing"}
+	if session.session_state() not in [
+		GameSessionRuntimeController.STATE_RUNNING,
+		GameSessionRuntimeController.STATE_PAUSED,
+	]:
+		return {"acquired": false, "reason_code": "process_a_save_session_state_invalid"}
+	var lease := TERMINAL_EVIDENCE.acquire_manual_lease(context)
+	if not bool(lease.get("accepted", false)):
+		return {
+			"acquired": false,
+			"reason_code": str(lease.get("reason_code", "process_a_save_manual_lease_failed")),
+		}
 	var checkpoint := barrier.capture_global_checkpoint(operation_id)
 	if not bool(checkpoint.get("accepted", false)):
+		TERMINAL_EVIDENCE.release_manual_lease(context)
 		return {
 			"acquired": false,
 			"reason_code": str(checkpoint.get("reason_code", "process_a_save_barrier_checkpoint_failed")),
@@ -2683,28 +3187,182 @@ func _acquire_process_a_save_barrier(context: Dictionary, operation_id: String) 
 		operation_id,
 		(checkpoint.get("checkpoint", {}) as Dictionary).duplicate(true)
 	)
-	return {
-		"acquired": bool(entered.get("acquired", false)),
-		"reason_code": str(entered.get("reason_code", "process_a_save_barrier_acquire_failed")),
-	}
-
-
-func _release_process_a_save_barrier(context: Dictionary, operation_id: String) -> Dictionary:
-	var barrier := context.get("barrier") as SaveRestoreRuntimeBarrier
-	if barrier == null:
-		return {"released": false, "quiet": false, "reason_code": "process_a_save_barrier_missing"}
+	if not bool(entered.get("acquired", false)):
+		TERMINAL_EVIDENCE.release_manual_lease(context)
+		return {
+			"acquired": false,
+			"reason_code": str(entered.get("reason_code", "process_a_save_barrier_acquire_failed")),
+		}
 	var quiet := barrier.verify_restore_quiet(operation_id)
 	var rollback := barrier.rollback_restore_barrier(operation_id)
-	var after := barrier.debug_snapshot()
-	var released := bool(quiet.get("accepted", false)) \
+	var barrier_debug := barrier.debug_snapshot()
+	var session_barrier := session.restore_barrier_snapshot()
+	var loop_debug := runtime_loop.debug_snapshot()
+	var restore_barrier_closed := bool(quiet.get("accepted", false)) \
 			and bool(rollback.get("applied", false)) \
-			and not bool(after.get("active", true))
+			and not bool(barrier_debug.get("active", true)) \
+			and not bool(session_barrier.get("active", true)) \
+			and not bool(loop_debug.get("restore_barrier_held", true)) \
+			and not runtime_loop.is_processing() \
+			and session.session_state() in [
+				GameSessionRuntimeController.STATE_RUNNING,
+				GameSessionRuntimeController.STATE_PAUSED,
+			]
+	if not restore_barrier_closed:
+		var release_failed_lease := TERMINAL_EVIDENCE.release_manual_lease(context)
+		return {
+			"acquired": false,
+			"reason_code": str(quiet.get("reason_code", "process_a_save_restore_quiet_failed")) \
+					if not bool(quiet.get("accepted", false)) else (
+						str(rollback.get("reason_code", "process_a_save_restore_rollback_failed")) \
+						if not bool(rollback.get("applied", false)) else (
+							"process_a_save_manual_lease_release_failed" \
+							if not bool(release_failed_lease.get("released", false)) \
+							else "process_a_save_restore_barrier_cleanup_failed"
+						)
+					),
+		}
+	var checkpoint_value: Dictionary = checkpoint.get("checkpoint", {}) \
+			if checkpoint.get("checkpoint", {}) is Dictionary else {}
 	return {
-		"released": released,
-		"quiet": bool(quiet.get("accepted", false)),
-		"reason_code": "process_a_save_barrier_released" if released \
-				else str(rollback.get("reason_code", quiet.get("reason_code", "process_a_save_barrier_cleanup_failed"))),
+		"acquired": true,
+		"reason_code": "process_a_save_barrier_acquired",
+		"operation_id": operation_id,
+		"safety_observation": (checkpoint_value.get("safety_observation", {}) as Dictionary).duplicate(true),
+		"world_digest": _world_digest(context),
+		"frame_index": int(lease.get("frame_index", -1)),
+		"restore_barrier_quiet": true,
+		"restore_barrier_rolled_back": true,
 	}
+
+
+func _release_process_a_save_barrier(
+	context: Dictionary,
+	operation_id: String,
+	barrier_receipt: Dictionary
+) -> Dictionary:
+	var runtime_loop := context.get("runtime_loop") as RuntimeLoop
+	if runtime_loop == null:
+		return {"released": false, "quiet": false, "reason_code": "process_a_save_barrier_missing"}
+	var before: Dictionary = barrier_receipt.get("safety_observation", {}) \
+			if barrier_receipt.get("safety_observation", {}) is Dictionary else {}
+	var after := _safety_observation(context)
+	var world_digest_after := _world_digest(context)
+	var quiet_report := _evaluate_process_a_quiet_window(
+		operation_id,
+		barrier_receipt,
+		after,
+		world_digest_after
+	)
+	var quiet := bool(quiet_report.get("quiet", false))
+	var loop_debug_before_release := runtime_loop.debug_snapshot()
+	var frame_unchanged := int(loop_debug_before_release.get("frame_index", -1)) \
+			== int(barrier_receipt.get("frame_index", -2)) \
+			and not runtime_loop.is_processing() \
+			and not bool(loop_debug_before_release.get("restore_barrier_held", true))
+	var release := TERMINAL_EVIDENCE.release_manual_lease(context)
+	var loop_debug := runtime_loop.debug_snapshot()
+	var barrier := context.get("barrier") as SaveRestoreRuntimeBarrier
+	var session := context.get("session") as GameSessionRuntimeController
+	var barrier_debug := barrier.debug_snapshot() if barrier != null else {}
+	var session_barrier := session.restore_barrier_snapshot() if session != null else {}
+	var cleanup_released := bool(release.get("released", false)) and runtime_loop.is_processing() \
+			and not bool(loop_debug.get("restore_barrier_held", true)) \
+			and barrier != null and not bool(barrier_debug.get("active", true)) \
+			and session != null and not bool(session_barrier.get("active", true))
+	var failure_codes: Array[String] = []
+	if not quiet:
+		failure_codes.append(str(quiet_report.get(
+			"reason_code",
+			"process_a_save_barrier_quiet_window_violated"
+		)))
+	if not frame_unchanged:
+		failure_codes.append("process_a_save_barrier_frame_advanced")
+	if not bool(release.get("released", false)):
+		failure_codes.append(str(release.get(
+			"reason_code",
+			"process_a_save_manual_lease_release_failed"
+		)))
+	elif not cleanup_released:
+		failure_codes.append("process_a_save_barrier_cleanup_failed")
+	var ordered_failures := _unique_reason_codes(failure_codes)
+	return {
+		"released": ordered_failures.is_empty(),
+		"quiet": quiet and frame_unchanged,
+		"quiet_deltas": quiet_report.get("quiet_deltas", {}),
+		"reason_code": "process_a_save_barrier_released" if ordered_failures.is_empty() \
+				else ordered_failures[0],
+		"secondary_failure_codes": ordered_failures.slice(1),
+	}
+
+
+static func _evaluate_process_a_quiet_window(
+	operation_id: String,
+	barrier_receipt: Dictionary,
+	after: Dictionary,
+	world_digest_after: String
+) -> Dictionary:
+	var before: Dictionary = barrier_receipt.get("safety_observation", {}) \
+			if barrier_receipt.get("safety_observation", {}) is Dictionary else {}
+	var quiet_deltas := {}
+	var observation_valid := not before.is_empty() and not after.is_empty()
+	var deltas_zero := observation_valid
+	for field in PROCESS_A_SAVE_QUIET_FIELDS:
+		var field_valid := before.has(field) and after.has(field) \
+				and typeof(before.get(field)) == TYPE_INT and typeof(after.get(field)) == TYPE_INT
+		var delta := int(after.get(field)) - int(before.get(field)) if field_valid else -1
+		quiet_deltas[field] = delta
+		observation_valid = observation_valid and field_valid
+		deltas_zero = deltas_zero and field_valid and delta == 0
+	var receipt_bound := not operation_id.is_empty() \
+			and str(barrier_receipt.get("operation_id", "")) == operation_id
+	var world_digest_before := str(barrier_receipt.get("world_digest", ""))
+	var world_stable := not world_digest_before.is_empty() \
+			and world_digest_before == world_digest_after
+	var quiet := receipt_bound and observation_valid and world_stable and deltas_zero
+	var reason_code := "process_a_save_barrier_quiet"
+	if not receipt_bound:
+		reason_code = "process_a_save_barrier_operation_mismatch"
+	elif not observation_valid:
+		reason_code = "process_a_save_barrier_observation_invalid"
+	elif not world_stable:
+		reason_code = "process_a_save_barrier_world_drift"
+	elif not deltas_zero:
+		reason_code = "process_a_save_barrier_quiet_window_violated"
+	return {
+		"quiet": quiet,
+		"reason_code": reason_code,
+		"quiet_deltas": quiet_deltas,
+	}
+
+
+static func _ordered_process_a_boundary_failures(
+	save_failure_code: String,
+	release_observation: Dictionary
+) -> Dictionary:
+	var failure_codes: Array[String] = []
+	if not save_failure_code.is_empty():
+		failure_codes.append(save_failure_code)
+	if not bool(release_observation.get("released", false)):
+		failure_codes.append(str(release_observation.get(
+			"reason_code",
+			"process_a_save_barrier_cleanup_failed"
+		)))
+		for secondary_variant in release_observation.get("secondary_failure_codes", []):
+			failure_codes.append(str(secondary_variant))
+	var ordered := _unique_reason_codes(failure_codes)
+	return {
+		"primary_failure_code": "" if ordered.is_empty() else ordered[0],
+		"secondary_failure_codes": ordered.slice(1),
+	}
+
+
+static func _unique_reason_codes(values: Array[String]) -> Array[String]:
+	var result: Array[String] = []
+	for value in values:
+		if not value.is_empty() and not result.has(value):
+			result.append(value)
+	return result
 
 
 func _save_file_metrics(path: String) -> Dictionary:
@@ -2736,11 +3394,6 @@ func _save_via_player_flow(context: Dictionary, save_path: String, destructive_c
 	var before_world := _world_digest(context)
 	_enter_process_a_phase("save_capture_complete")
 	var receipt := flow.request_save_game(&"pause_menu", destructive_confirmed)
-	_complete_process_a_phase("save_capture_complete", {
-		"receipt_present": receipt != null,
-		"accepted": receipt != null and receipt.accepted,
-		"applied": receipt != null and receipt.applied,
-	})
 	var after_observation := _safety_observation(context)
 	var after_world := _world_digest(context)
 	if receipt == null or not receipt.accepted or not receipt.applied:
@@ -2771,11 +3424,22 @@ func _save_via_player_flow(context: Dictionary, save_path: String, destructive_c
 			"ok": false,
 			"reason_code": internal_reason if not internal_reason.is_empty() and internal_reason != "ok" else (receipt.reason_code if receipt != null else "save_receipt_missing"),
 		}
+	_complete_process_a_phase("save_capture_complete", {
+		"receipt_present": true,
+		"accepted": true,
+		"applied": true,
+	})
 	_enter_process_a_phase("envelope_encode_complete")
-	_complete_process_a_phase("envelope_encode_complete", {"save_receipt_reason_code": receipt.reason_code})
+	_complete_process_a_phase("envelope_encode_complete", {
+		"save_receipt_reason_code": receipt.reason_code,
+		"observation_kind": "postcondition_projection",
+	}, "postcondition_projection")
 	_enter_process_a_phase("atomic_write_complete")
 	_update_process_a_save_timeline(save_path)
-	_complete_process_a_phase("atomic_write_complete", {"save_file_exists": FileAccess.file_exists(save_path)})
+	_complete_process_a_phase("atomic_write_complete", {
+		"save_file_exists": FileAccess.file_exists(save_path),
+		"observation_kind": "postcondition_projection",
+	}, "postcondition_projection")
 	_enter_process_a_phase("save_readback_complete")
 	var read := _read_slot(context, save_path)
 	if not bool(read.get("ok", false)):
@@ -2792,10 +3456,6 @@ func _save_via_player_flow(context: Dictionary, save_path: String, destructive_c
 				str(registry_debug.get("last_internal_preflight_failure_reason", preflight.get("reason_code", "preflight_failed"))),
 			],
 		}
-	_complete_process_a_phase("save_readback_complete", {
-		"section_count": int(read.get("section_count", 0)),
-		"preflight_count": int(preflight.get("preflight_count", 0)),
-	})
 	var save_debug_after: Dictionary = save_runtime.call("debug_snapshot") \
 			if save_runtime != null and save_runtime.has_method("debug_snapshot") else {}
 	var registry_after: Dictionary = registry.call("debug_snapshot") \
@@ -2828,7 +3488,34 @@ func _save_via_player_flow(context: Dictionary, save_path: String, destructive_c
 		"save_capture_rng_delta": _delta(before_observation, after_observation, "rng_draw_invocation_count"),
 		"save_capture_log_delta": _delta(before_observation, after_observation, "public_log_entry_count"),
 		"rng_draw_count": int(after_observation.get("rng_draw_invocation_count", 0)),
+		"readback_envelope": envelope.duplicate(true),
+		"readback_phase_evidence": {
+			"section_count": int(read.get("section_count", 0)),
+			"preflight_count": int(preflight.get("preflight_count", 0)),
+		},
 	}
+
+
+func _readback_victory_unresolved(context: Dictionary, envelope: Dictionary) -> bool:
+	var sections: Dictionary = envelope.get("sections", {}) \
+			if envelope.get("sections", {}) is Dictionary else {}
+	var wrapper: Dictionary = sections.get("victory_control", {}) \
+			if sections.get("victory_control", {}) is Dictionary else {}
+	var handshake: Node = context.get("handshake")
+	if handshake == null or not handshake.has_method("decode_codec_value") \
+			or not wrapper.has("owner_state"):
+		return false
+	var decoded_variant: Variant = handshake.call("decode_codec_value", wrapper.get("owner_state"))
+	var decoded: Dictionary = decoded_variant if decoded_variant is Dictionary else {}
+	var owner_state: Dictionary = decoded.get("value", {}) \
+			if decoded.get("value", {}) is Dictionary else {}
+	var runtime: Dictionary = owner_state.get("victory_control_runtime", {}) \
+			if owner_state.get("victory_control_runtime", {}) is Dictionary else {}
+	return bool(decoded.get("ok", false)) \
+			and str(runtime.get("state", "")) in ["idle", "qualification", "audit"] \
+			and int(runtime.get("outcome_sequence", -1)) == 0 \
+			and runtime.get("outcome_receipt", {}) is Dictionary \
+			and (runtime.get("outcome_receipt", {}) as Dictionary).is_empty()
 
 
 func _read_slot(context: Dictionary, save_path: String) -> Dictionary:
@@ -2856,24 +3543,88 @@ func _resume_via_player_flow(context: Dictionary, save_path: String) -> Dictiona
 	var flow := context.get("flow") as SaveResumeApplicationFlowController
 	var registry := context.get("registry") as Node
 	var barrier := context.get("barrier") as SaveRestoreRuntimeBarrier
-	if flow == null or registry == null or barrier == null:
+	var coordinator := context.get("coordinator") as GameRuntimeCoordinator
+	if flow == null or registry == null or barrier == null or coordinator == null:
 		return {"ok": false, "reason_code": "resume_flow_dependency_missing"}
+	var read := _read_slot(context, save_path)
+	var envelope: Dictionary = read.get("envelope", {}) \
+			if read.get("envelope", {}) is Dictionary else {}
+	if not bool(read.get("ok", false)) or envelope.is_empty() \
+			or not registry.has_method("preflight_envelope"):
+		return {"ok": false, "reason_code": "resume_preflight_source_unavailable"}
+	var preflight_variant: Variant = registry.call("preflight_envelope", envelope.duplicate(true))
+	var preflight: Dictionary = preflight_variant if preflight_variant is Dictionary else {}
+	if not bool(preflight.get("ok", false)) \
+			or not bool(preflight.get("preflight_complete", false)) \
+			or int(preflight.get("preflight_count", 0)) != SAVE_SECTION_ORDER.size():
+		return {
+			"ok": false,
+			"reason_code": str(preflight.get("reason_code", "resume_preflight_failed")),
+			"preflight_count": int(preflight.get("preflight_count", 0)),
+		}
 	var inspection := flow.inspect_slot(&"root_menu")
 	if inspection == null or not inspection.accepted or not inspection.can_resume:
 		return {"ok": false, "reason_code": inspection.reason_code if inspection != null else "slot_inspection_failed"}
 	var debug_before: Dictionary = registry.call("debug_snapshot")
+	var barrier_before := barrier.debug_snapshot()
+	var coordinator_before := coordinator.capture_save_restore_runtime_checkpoint()
 	var receipt := flow.request_resume_game(&"root_menu", false)
 	var debug_after: Dictionary = registry.call("debug_snapshot")
+	var barrier_after := barrier.debug_snapshot()
+	var coordinator_after := coordinator.capture_save_restore_runtime_checkpoint()
 	var barrier_debug := barrier.debug_snapshot()
 	var quiet: Dictionary = barrier_debug.get("last_quiet_deltas", {}) if barrier_debug.get("last_quiet_deltas", {}) is Dictionary else {}
-	var ok := receipt != null and receipt.accepted and receipt.applied
+	var registry_commit_delta := int(debug_after.get("restore_commit_count", 0)) \
+			- int(debug_before.get("restore_commit_count", 0))
+	var registry_rebind_delta := int(debug_after.get("post_restore_rebind_count", 0)) \
+			- int(debug_before.get("post_restore_rebind_count", 0))
+	var registry_rollback_delta := int(debug_after.get("restore_rollback_count", 0)) \
+			- int(debug_before.get("restore_rollback_count", 0))
+	var barrier_enter_delta := int(barrier_after.get("enter_count", 0)) \
+			- int(barrier_before.get("enter_count", 0))
+	var barrier_commit_delta := int(barrier_after.get("commit_count", 0)) \
+			- int(barrier_before.get("commit_count", 0))
+	var barrier_rollback_delta := int(barrier_after.get("rollback_count", 0)) \
+			- int(barrier_before.get("rollback_count", 0))
+	var coordinator_rebind_delta := int(coordinator_after.get("rebind_count", 0)) \
+			- int(coordinator_before.get("rebind_count", 0))
+	var coordinator_generation_delta := int(coordinator_after.get("rebind_generation", 0)) \
+			- int(coordinator_before.get("rebind_generation", 0))
+	var coordinator_refresh_delta := int(coordinator_after.get("full_refresh_count", 0)) \
+			- int(coordinator_before.get("full_refresh_count", 0))
+	var registry_operation_delta := int(debug_after.get("operation_sequence", 0)) \
+			- int(debug_before.get("operation_sequence", 0))
+	var cross_owner_exact := registry_commit_delta == 1 and registry_rollback_delta == 0 \
+			and barrier_enter_delta == 1 and barrier_commit_delta == 1 \
+			and barrier_rollback_delta == 0 \
+			and registry_rebind_delta == 1 and coordinator_rebind_delta == 1 \
+			and coordinator_generation_delta == 1 and coordinator_refresh_delta == 1 \
+			and registry_operation_delta == 1 \
+			and int(debug_after.get("last_owner_apply_count", 0)) == SAVE_SECTION_ORDER.size() \
+			and int(debug_after.get("last_registry_apply_count", 0)) == 1 \
+			and int(debug_before.get("partial_restore_state_count", -1)) == 0 \
+			and int(debug_after.get("partial_restore_state_count", -1)) == 0
+	var ok := receipt != null and receipt.accepted and receipt.applied and cross_owner_exact
 	return {
 		"ok": ok,
-		"reason_code": receipt.reason_code if receipt != null else "resume_receipt_missing",
-		"preflight_count": 19 if ok else 0,
+		"reason_code": (
+			receipt.reason_code if receipt != null and cross_owner_exact \
+			else ("resume_cross_owner_commit_rebind_mismatch" if receipt != null \
+			else "resume_receipt_missing")
+		),
+		"preflight_count": int(preflight.get("preflight_count", 0)),
 		"apply_count": int(debug_after.get("last_owner_apply_count", 0)),
-		"registry_apply_count": int(debug_after.get("restore_commit_count", 0)) - int(debug_before.get("restore_commit_count", 0)),
-		"post_restore_rebind_count": int(debug_after.get("post_restore_rebind_count", 0)) - int(debug_before.get("post_restore_rebind_count", 0)),
+		"registry_apply_count": int(debug_after.get("last_registry_apply_count", 0)),
+		"registry_commit_count": registry_commit_delta,
+		"registry_rollback_count": registry_rollback_delta,
+		"post_restore_rebind_count": registry_rebind_delta,
+		"barrier_enter_count": barrier_enter_delta,
+		"barrier_commit_count": barrier_commit_delta,
+		"barrier_rollback_count": barrier_rollback_delta,
+		"coordinator_rebind_count": coordinator_rebind_delta,
+		"coordinator_rebind_generation_count": coordinator_generation_delta,
+		"coordinator_full_refresh_count": coordinator_refresh_delta,
+		"registry_operation_count": registry_operation_delta,
 		"partial_restore_state_count": int(debug_after.get("partial_restore_state_count", -1)),
 		"quiet_deltas": quiet,
 	}
@@ -4012,9 +4763,12 @@ func _queue_target_observation(context: Dictionary, resolution_id: int) -> Dicti
 		matching_entries.append(active.duplicate(true))
 	var pending_count := matching_entries.size()
 	var stable_target_fingerprint := ""
-	var stable_target_valid := pending_count == 0
+	var stable_target_valid := false
+	var history_privacy_redacted := false
+	var target_entry: Dictionary = {}
 	if pending_count == 1:
-		var target_validation := CardResolutionStableTargetEnvelope.validate_entry_binding(matching_entries[0])
+		target_entry = matching_entries[0].duplicate(true)
+		var target_validation := CardResolutionStableTargetEnvelope.validate_entry_binding(target_entry)
 		var envelope: Dictionary = target_validation.get("envelope", {}) \
 			if target_validation.get("envelope", {}) is Dictionary else {}
 		stable_target_valid = bool(target_validation.get("valid", false))
@@ -4029,18 +4783,27 @@ func _queue_target_observation(context: Dictionary, resolution_id: int) -> Dicti
 	var history_lineage: Array = history_state.get("appended_resolution_ids", []) \
 		if history_state.get("appended_resolution_ids", []) is Array else []
 	var history_count := 0
+	var history_entry: Dictionary = {}
 	for row_variant in history_rows:
 		if row_variant is Dictionary \
 				and int((row_variant as Dictionary).get("resolution_id", -1)) == resolution_id:
 			history_count += 1
+			history_entry = (row_variant as Dictionary).duplicate(true)
+	if pending_count == 0 and history_count == 1:
+		target_entry = history_entry.duplicate(true)
+		history_privacy_redacted = not target_entry.has("stable_target_envelope") \
+				and not target_entry.has("v06_facility_action")
 	var history_lineage_count := _resolution_id_occurrence(history_lineage, resolution_id)
 	var execution_debug := execution.debug_snapshot()
 	var history_debug := history.debug_snapshot()
 	var transition_debug := transition.debug_snapshot()
 	var inventory_debug := inventory.debug_snapshot()
 	var public_log_debug := public_log.debug_snapshot()
+	var target_identity_valid := stable_target_valid if pending_count == 1 \
+			else history_privacy_redacted if pending_count == 0 and history_count == 1 \
+			else false
 	var valid := pending_count <= 1 and completed_count <= 1 and history_count <= 1 \
-		and history_lineage_count == history_count and stable_target_valid
+		and history_lineage_count == history_count and target_identity_valid
 	return {
 		"valid": valid,
 		"reason_code": "queue_target_observation_valid" if valid else "queue_target_observation_lineage_invalid",
@@ -4051,6 +4814,7 @@ func _queue_target_observation(context: Dictionary, resolution_id: int) -> Dicti
 		"history_lineage_count": history_lineage_count,
 		"stable_target_valid": stable_target_valid,
 		"stable_target_fingerprint": stable_target_fingerprint,
+		"history_privacy_redacted": history_privacy_redacted,
 		"execution_finalize_count": int(execution_debug.get("finalized_count", -1)),
 		"history_append_count": int(history_debug.get("append_count", -1)),
 		"history_duplicate_count": int(history_debug.get("duplicate_append_count", -1)),
@@ -4058,7 +4822,302 @@ func _queue_target_observation(context: Dictionary, resolution_id: int) -> Dicti
 		"inventory_queue_commit_count": int(inventory_debug.get("queue_committed_count", -1)),
 		"public_log_duplicate_count": int(public_log_debug.get("duplicate_receipt_count", -1)),
 		"public_log_collision_count": int(public_log_debug.get("collision_receipt_count", -1)),
+		"facility_entry": target_entry.duplicate(true) if target_entry.has("v06_facility_action") else {},
 	}
+
+
+func _facility_commitment_observation(context: Dictionary, entry: Dictionary) -> Dictionary:
+	var coordinator := context.get("coordinator") as GameRuntimeCoordinator
+	var adapter := coordinator.get_node_or_null("FacilityCardQueueAdapterV06") if coordinator != null else null
+	if adapter == null or not adapter.has_method("commitment_status") \
+			or not (entry.get("v06_facility_action", {}) is Dictionary):
+		return {"valid": false, "reason_code": "facility_commitment_observation_missing"}
+	var binding := entry.get("v06_facility_action", {}) as Dictionary
+	if not bool(V06QueuedFacilityCardActionV1.validation_report(binding).get("valid", false)):
+		return {"valid": false, "reason_code": "facility_commitment_binding_invalid"}
+	var status_variant: Variant = adapter.call("commitment_status", entry.duplicate(true))
+	var status: Dictionary = status_variant if status_variant is Dictionary else {}
+	return {
+		"valid": not status.is_empty(),
+		"reason_code": str(status.get("reason_code", "facility_commitment_status_missing")),
+		"settled": bool(status.get("settled", false)),
+		"committed": bool(status.get("committed", false)),
+		"released": bool(status.get("released", false)),
+		"asset_outcome_id": str(status.get("asset_outcome_id", "")),
+		"facility_lifecycle_state_id": str(status.get("facility_lifecycle_state_id", "")),
+	}
+
+
+func _facility_commitment_observation_by_resolution(
+	context: Dictionary,
+	resolution_id: int
+) -> Dictionary:
+	var coordinator := context.get("coordinator") as GameRuntimeCoordinator
+	var infrastructure := coordinator.get_node_or_null("RegionInfrastructureRuntimeController") \
+			if coordinator != null else null
+	if resolution_id <= 0 or infrastructure == null \
+			or not infrastructure.has_method("facility_action_lifecycle_snapshot"):
+		return {"valid": false, "reason_code": "facility_resolution_lifecycle_missing"}
+	var lifecycle_variant: Variant = infrastructure.call("facility_action_lifecycle_snapshot")
+	var lifecycles: Dictionary = lifecycle_variant if lifecycle_variant is Dictionary else {}
+	return _facility_commitment_observation_from_lifecycles(lifecycles, resolution_id)
+
+
+static func _facility_commitment_observation_from_lifecycles(
+	lifecycles: Dictionary,
+	resolution_id: int
+) -> Dictionary:
+	if resolution_id <= 0:
+		return {"valid": false, "reason_code": "facility_resolution_lifecycle_missing"}
+	var prefix := "facility-resolution.%d." % resolution_id
+	var matching_ids: Array[String] = []
+	for transaction_id_variant in lifecycles.keys():
+		var transaction_id := str(transaction_id_variant)
+		if transaction_id.begins_with(prefix):
+			matching_ids.append(transaction_id)
+	matching_ids.sort()
+	if matching_ids.size() != 1:
+		return {
+			"valid": false,
+			"reason_code": "facility_resolution_lifecycle_ambiguous",
+			"matching_lifecycle_count": matching_ids.size(),
+		}
+	var transaction_id := matching_ids[0]
+	var lifecycle: Dictionary = lifecycles.get(transaction_id, {}) \
+			if lifecycles.get(transaction_id, {}) is Dictionary else {}
+	var terminal_receipt: Dictionary = lifecycle.get("terminal_receipt", {}) \
+			if lifecycle.get("terminal_receipt", {}) is Dictionary else {}
+	var valid := str(lifecycle.get("transaction_id", "")) == transaction_id \
+			and str(lifecycle.get("state", "")) == "finalized" \
+			and not bool(lifecycle.get("rollback_open", true)) \
+			and str(terminal_receipt.get("transaction_id", "")) == transaction_id \
+			and str(terminal_receipt.get("receipt_kind", "")) == "facility_action_finalize" \
+			and bool(terminal_receipt.get("committed", false)) \
+			and bool(terminal_receipt.get("finalized", false)) \
+			and not bool(terminal_receipt.get("rolled_back", true)) \
+			and not bool(terminal_receipt.get("duplicate", true))
+	return {
+		"valid": valid,
+		"reason_code": "facility_resolution_lifecycle_finalized" if valid \
+				else "facility_resolution_lifecycle_invalid",
+		"settled": valid,
+		"committed": valid,
+		"released": false,
+		"facility_lifecycle_state_id": str(lifecycle.get("state", "")),
+		"matching_lifecycle_count": matching_ids.size(),
+	}
+
+
+static func _authoritative_duplicate_observation(context: Dictionary) -> Dictionary:
+	var coordinator := context.get("coordinator") as GameRuntimeCoordinator
+	if coordinator == null:
+		return {"valid": false, "reason_code": "duplicate_observation_coordinator_missing"}
+	var queue := coordinator.get_node_or_null("CardResolutionQueueRuntimeService") as CardResolutionQueueRuntimeService
+	var execution := coordinator.get_node_or_null("CardResolutionExecutionRuntimeService") as CardResolutionExecutionRuntimeService
+	var history := coordinator.get_node_or_null("CardResolutionHistoryRuntimeService") as CardResolutionHistoryRuntimeService
+	var transition := coordinator.get_node_or_null("CardResolutionTransitionSink") as CardResolutionTransitionSink
+	var inventory := coordinator.get_node_or_null("CardInventoryRuntimeService") as CardInventoryRuntimeService
+	var public_log := coordinator.get_node_or_null("TablePresentationQueryPorts/PublicLogPresentationOwner") \
+			as PublicLogPresentationOwner
+	var infrastructure := coordinator.get_node_or_null("RegionInfrastructureRuntimeController")
+	var mana := coordinator.get_node_or_null("PlayerManaRuntimeController")
+	var commodity := coordinator.get_node_or_null("CommodityFlowRuntimeController")
+	var world := coordinator.world_session_state()
+	if queue == null or execution == null or history == null or transition == null \
+			or inventory == null or public_log == null \
+			or infrastructure == null or mana == null or commodity == null or world == null \
+			or not infrastructure.has_method("to_save_data") \
+			or not mana.has_method("to_save_data") \
+			or not commodity.has_method("recent_sale_receipts_snapshot"):
+		return {"valid": false, "reason_code": "duplicate_observation_owner_missing"}
+
+	var queue_state := queue.queue_state_snapshot()
+	var queue_shape_valid := queue_state.has("current_queue") \
+			and queue_state.get("current_queue") is Array \
+			and queue_state.has("next_queue") and queue_state.get("next_queue") is Array \
+			and queue_state.has("active_entry") and queue_state.get("active_entry") is Dictionary
+	var pending_resolution_ids: Array = []
+	var pending_resolution_ids_typed := true
+	for lane_field in ["current_queue", "next_queue"]:
+		var lane: Array = queue_state.get(lane_field, []) \
+				if queue_state.get(lane_field, []) is Array else []
+		for entry_variant in lane:
+			if entry_variant is Dictionary \
+					and typeof((entry_variant as Dictionary).get("resolution_id")) == TYPE_INT:
+				pending_resolution_ids.append(int((entry_variant as Dictionary).get("resolution_id")))
+			else:
+				pending_resolution_ids_typed = false
+	var active: Dictionary = queue_state.get("active_entry", {}) \
+			if queue_state.get("active_entry", {}) is Dictionary else {}
+	if not active.is_empty():
+		if typeof(active.get("resolution_id")) == TYPE_INT:
+			pending_resolution_ids.append(int(active.get("resolution_id")))
+		else:
+			pending_resolution_ids_typed = false
+	var execution_state := execution.to_save_data()
+	var execution_shape_valid := execution_state.has("completed_resolution_ids") \
+			and execution_state.get("completed_resolution_ids") is Array
+	var completed_resolution_ids: Array = execution_state.get("completed_resolution_ids", []) \
+			if execution_state.get("completed_resolution_ids", []) is Array else []
+	var history_state := history.to_save_data()
+	var history_shape_valid := history_state.has("appended_resolution_ids") \
+			and history_state.get("appended_resolution_ids") is Array
+	var history_resolution_ids: Array = history_state.get("appended_resolution_ids", []) \
+			if history_state.get("appended_resolution_ids", []) is Array else []
+	var duplicate_queue_count := _duplicate_occurrence_count(pending_resolution_ids) \
+			+ _duplicate_occurrence_count(completed_resolution_ids) \
+			+ _duplicate_occurrence_count(history_resolution_ids) \
+			+ _intersection_occurrence_count(pending_resolution_ids, completed_resolution_ids)
+	var history_debug := history.debug_snapshot()
+	var transition_debug := transition.debug_snapshot()
+	var inventory_debug := inventory.debug_snapshot()
+	var public_log_debug := public_log.debug_snapshot()
+	var duplicate_counter_shape_valid := typeof(history_debug.get("duplicate_append_count")) == TYPE_INT \
+			and typeof(transition_debug.get("duplicate_count")) == TYPE_INT \
+			and typeof(inventory_debug.get("queue_committed_count")) == TYPE_INT \
+			and typeof(public_log_debug.get("duplicate_receipt_count")) == TYPE_INT \
+			and typeof(public_log_debug.get("collision_receipt_count")) == TYPE_INT
+	duplicate_queue_count += maxi(0, int(history_debug.get("duplicate_append_count", -1))) \
+			+ maxi(0, int(transition_debug.get("duplicate_count", -1))) \
+			+ maxi(0, int(public_log_debug.get("duplicate_receipt_count", -1))) \
+			+ maxi(0, int(public_log_debug.get("collision_receipt_count", -1)))
+
+	var infrastructure_state_variant: Variant = infrastructure.call("to_save_data")
+	var infrastructure_state: Dictionary = infrastructure_state_variant \
+			if infrastructure_state_variant is Dictionary else {}
+	var infrastructure_shape_valid := infrastructure_state.has("facilities") \
+			and infrastructure_state.get("facilities") is Array \
+			and infrastructure_state.has("processed_transaction_ids") \
+			and infrastructure_state.get("processed_transaction_ids") is Array \
+			and infrastructure_state.has("finalized_facility_action_transaction_ids") \
+			and infrastructure_state.get("finalized_facility_action_transaction_ids") is Array \
+			and infrastructure_state.has("transaction_receipts") \
+			and infrastructure_state.get("transaction_receipts") is Dictionary
+	var facilities: Array = infrastructure_state.get("facilities", []) \
+			if infrastructure_state.get("facilities", []) is Array else []
+	var facility_ids: Array = []
+	for facility_variant in facilities:
+		if facility_variant is Dictionary:
+			facility_ids.append(str((facility_variant as Dictionary).get("facility_id", "")))
+	var processed_ids: Array = infrastructure_state.get("processed_transaction_ids", []) \
+			if infrastructure_state.get("processed_transaction_ids", []) is Array else []
+	var finalized_ids: Array = infrastructure_state.get("finalized_facility_action_transaction_ids", []) \
+			if infrastructure_state.get("finalized_facility_action_transaction_ids", []) is Array else []
+	var transaction_receipts: Dictionary = infrastructure_state.get("transaction_receipts", {}) \
+			if infrastructure_state.get("transaction_receipts", {}) is Dictionary else {}
+	var duplicate_facility_count := _duplicate_occurrence_count(facility_ids) \
+			+ _duplicate_occurrence_count(processed_ids) \
+			+ _duplicate_occurrence_count(finalized_ids)
+	for receipt_variant in transaction_receipts.values():
+		if receipt_variant is Dictionary:
+			var receipt := receipt_variant as Dictionary
+			duplicate_facility_count += 1 if bool(receipt.get("duplicate", false)) \
+					or bool(receipt.get("replayed", false)) else 0
+
+	var active_escrow_ids: Array = []
+	var terminal_escrow_ids: Array = []
+	var consumed_card_instance_ids: Array = []
+	for player_variant in world.players:
+		if not (player_variant is Dictionary):
+			continue
+		var player := player_variant as Dictionary
+		var escrows: Dictionary = player.get("facility_card_escrows", {}) \
+				if player.get("facility_card_escrows", {}) is Dictionary else {}
+		var receipts: Dictionary = player.get("facility_card_escrow_receipts", {}) \
+				if player.get("facility_card_escrow_receipts", {}) is Dictionary else {}
+		active_escrow_ids.append_array(escrows.keys())
+		terminal_escrow_ids.append_array(receipts.keys())
+		for receipt_variant in receipts.values():
+			if receipt_variant is Dictionary \
+					and str((receipt_variant as Dictionary).get("state_id", "")) == "consumed_finalized":
+				consumed_card_instance_ids.append(str((receipt_variant as Dictionary).get("runtime_instance_id", "")))
+	var duplicate_card_count := _duplicate_occurrence_count(active_escrow_ids) \
+			+ _duplicate_occurrence_count(terminal_escrow_ids) \
+			+ _duplicate_occurrence_count(consumed_card_instance_ids) \
+			+ _intersection_occurrence_count(active_escrow_ids, terminal_escrow_ids)
+
+	var mana_state_variant: Variant = mana.call("to_save_data")
+	var mana_state: Dictionary = mana_state_variant if mana_state_variant is Dictionary else {}
+	var mana_shape_valid := mana_state.has("reservations") \
+			and mana_state.get("reservations") is Dictionary \
+			and mana_state.has("terminal_receipts") \
+			and mana_state.get("terminal_receipts") is Dictionary
+	var reservations: Dictionary = mana_state.get("reservations", {}) \
+			if mana_state.get("reservations", {}) is Dictionary else {}
+	var terminal_receipts: Dictionary = mana_state.get("terminal_receipts", {}) \
+			if mana_state.get("terminal_receipts", {}) is Dictionary else {}
+	var duplicate_cost_count := _intersection_occurrence_count(reservations.keys(), terminal_receipts.keys())
+	for receipt_variant in terminal_receipts.values():
+		if receipt_variant is Dictionary and bool((receipt_variant as Dictionary).get("duplicate", false)):
+			duplicate_cost_count += 1
+
+	var sale_receipts_variant: Variant = commodity.call("recent_sale_receipts_snapshot", -1)
+	var sale_receipts: Array = sale_receipts_variant if sale_receipts_variant is Array else []
+	var sale_shape_valid := sale_receipts_variant is Array
+	var sale_receipt_ids: Array = []
+	for receipt_variant in sale_receipts:
+		if receipt_variant is Dictionary:
+			sale_receipt_ids.append(str((receipt_variant as Dictionary).get("receipt_id", "")))
+	var duplicate_sale_count := _duplicate_occurrence_count(sale_receipt_ids)
+	var valid := queue_shape_valid and pending_resolution_ids_typed \
+			and execution_shape_valid and history_shape_valid \
+			and duplicate_counter_shape_valid \
+			and infrastructure_shape_valid and mana_shape_valid and sale_shape_valid \
+			and not infrastructure_state.is_empty() and not mana_state.is_empty() \
+			and pending_resolution_ids.all(func(value: Variant) -> bool: return int(value) >= 0) \
+			and completed_resolution_ids.all(func(value: Variant) -> bool: return typeof(value) == TYPE_INT and int(value) >= 0) \
+			and history_resolution_ids.all(func(value: Variant) -> bool: return typeof(value) == TYPE_INT and int(value) >= 0) \
+			and facility_ids.all(func(value: Variant) -> bool: return not str(value).is_empty()) \
+			and sale_receipt_ids.all(func(value: Variant) -> bool: return not str(value).is_empty())
+	return {
+		"valid": valid,
+		"reason_code": "authoritative_duplicate_observation_valid" if valid \
+				else "authoritative_duplicate_observation_invalid",
+		"duplicate_queue_entry_count": duplicate_queue_count,
+		"duplicate_facility_creation_count": duplicate_facility_count,
+		"duplicate_card_consumption_count": duplicate_card_count,
+		"duplicate_cost_consumption_count": duplicate_cost_count,
+		"duplicate_sale_receipt_count": duplicate_sale_count,
+		"sale_receipt_count": sale_receipt_ids.size(),
+		"sale_receipt_identity_fingerprint": SEMANTIC_WIRE.fingerprint({"receipt_ids": sale_receipt_ids}),
+	}
+
+
+static func _duplicate_occurrence_count(values: Array) -> int:
+	var counts := {}
+	var duplicates := 0
+	for value_variant in values:
+		var key := str(value_variant)
+		counts[key] = int(counts.get(key, 0)) + 1
+		if int(counts[key]) > 1:
+			duplicates += 1
+	return duplicates
+
+
+static func _intersection_occurrence_count(left: Array, right: Array) -> int:
+	var left_set := {}
+	for value_variant in left:
+		left_set[str(value_variant)] = true
+	var count := 0
+	for value_variant in right:
+		if left_set.has(str(value_variant)):
+			count += 1
+	return count
+
+
+static func _duplicate_observation_is_zero(observation: Dictionary) -> bool:
+	if not bool(observation.get("valid", false)):
+		return false
+	for field in [
+		"duplicate_queue_entry_count",
+		"duplicate_facility_creation_count",
+		"duplicate_card_consumption_count",
+		"duplicate_cost_consumption_count",
+		"duplicate_sale_receipt_count",
+	]:
+		if not observation.has(field) or int(observation.get(field, -1)) != 0:
+			return false
+	return true
 
 
 func _resolution_id_occurrence(values: Array, resolution_id: int) -> int:
@@ -4069,7 +5128,7 @@ func _resolution_id_occurrence(values: Array, resolution_id: int) -> int:
 	return count
 
 
-func _queue_target_manifest_evidence(
+static func _queue_target_manifest_evidence(
 	resolution_id: int,
 	stable_target_fingerprint: String,
 	before: Dictionary,
@@ -4094,7 +5153,7 @@ func _queue_target_manifest_evidence(
 	}
 
 
-func _queue_target_role_evidence_valid(
+static func _queue_target_role_evidence_valid(
 	role: String,
 	expected_stable_target_fingerprint: String,
 	before: Dictionary,
@@ -4126,7 +5185,11 @@ func _queue_target_role_evidence_valid(
 			return false
 	match role:
 		"producer":
-			return str(before.get("stable_target_fingerprint", "")) == expected_stable_target_fingerprint \
+			return bool(before.get("stable_target_valid", false)) \
+				and bool(after.get("stable_target_valid", false)) \
+				and not bool(before.get("history_privacy_redacted", true)) \
+				and not bool(after.get("history_privacy_redacted", true)) \
+				and str(before.get("stable_target_fingerprint", "")) == expected_stable_target_fingerprint \
 				and str(after.get("stable_target_fingerprint", "")) == expected_stable_target_fingerprint \
 				and int(evidence.get("queue_target_pending_before_resume", -1)) == 1 \
 				and int(evidence.get("queue_target_pending_after_resume", -1)) == 1 \
@@ -4137,7 +5200,12 @@ func _queue_target_role_evidence_valid(
 				and int(evidence.get("queue_target_execution_finalize_delta", -1)) == 0 \
 				and int(evidence.get("queue_target_history_append_delta", -1)) == 0
 		"consumer":
-			return str(before.get("stable_target_fingerprint", "")) == expected_stable_target_fingerprint \
+			return bool(before.get("stable_target_valid", false)) \
+				and not bool(before.get("history_privacy_redacted", true)) \
+				and not bool(after.get("stable_target_valid", true)) \
+				and bool(after.get("history_privacy_redacted", false)) \
+				and str(before.get("stable_target_fingerprint", "")) == expected_stable_target_fingerprint \
+				and str(after.get("stable_target_fingerprint", "")).is_empty() \
 				and int(evidence.get("queue_target_pending_before_resume", -1)) == 1 \
 				and int(evidence.get("queue_target_pending_after_resume", -1)) == 0 \
 				and int(evidence.get("queue_target_completed_before_resume", -1)) == 0 \
@@ -4147,7 +5215,13 @@ func _queue_target_role_evidence_valid(
 				and int(evidence.get("queue_target_execution_finalize_delta", -1)) == 1 \
 				and int(evidence.get("queue_target_history_append_delta", -1)) == 1
 		"validator":
-			return int(evidence.get("queue_target_pending_before_resume", -1)) == 0 \
+			return not bool(before.get("stable_target_valid", true)) \
+				and not bool(after.get("stable_target_valid", true)) \
+				and bool(before.get("history_privacy_redacted", false)) \
+				and bool(after.get("history_privacy_redacted", false)) \
+				and str(before.get("stable_target_fingerprint", "")).is_empty() \
+				and str(after.get("stable_target_fingerprint", "")).is_empty() \
+				and int(evidence.get("queue_target_pending_before_resume", -1)) == 0 \
 				and int(evidence.get("queue_target_pending_after_resume", -1)) == 0 \
 				and int(evidence.get("queue_target_completed_before_resume", -1)) == 1 \
 				and int(evidence.get("queue_target_completed_after_resume", -1)) == 1 \
@@ -4156,6 +5230,38 @@ func _queue_target_role_evidence_valid(
 				and int(evidence.get("queue_target_execution_finalize_delta", -1)) == 0 \
 				and int(evidence.get("queue_target_history_append_delta", -1)) == 0
 	return false
+
+
+static func _queue_target_post_continuation_quiet_valid(
+	before: Dictionary,
+	after: Dictionary
+) -> bool:
+	if not bool(before.get("valid", false)) or not bool(after.get("valid", false)) \
+			or int(before.get("resolution_id", -1)) <= 0 \
+			or int(after.get("resolution_id", -2)) != int(before.get("resolution_id", -1)):
+		return false
+	for field in [
+		"pending_count",
+		"completed_count",
+		"history_count",
+		"history_lineage_count",
+		"history_duplicate_count",
+		"transition_duplicate_count",
+		"public_log_duplicate_count",
+		"public_log_collision_count",
+	]:
+		if not before.has(field) or not after.has(field) \
+				or typeof(before.get(field)) != TYPE_INT \
+				or typeof(after.get(field)) != TYPE_INT \
+				or int(after.get(field)) != int(before.get(field)):
+			return false
+	return int(after.get("pending_count", -1)) == 0 \
+			and int(after.get("completed_count", -1)) == 1 \
+			and int(after.get("history_count", -1)) == 1 \
+			and int(after.get("history_lineage_count", -1)) == 1 \
+			and bool(after.get("history_privacy_redacted", false)) \
+			and not bool(after.get("stable_target_valid", true)) \
+			and str(after.get("stable_target_fingerprint", "")).is_empty()
 
 
 func _drain_target_resolution(context: Dictionary, resolution_id: int, maximum_steps: int) -> Dictionary:
@@ -5718,6 +6824,69 @@ func _finish_to_settlement(context: Dictionary) -> Dictionary:
 	return await TERMINAL_EVIDENCE.finish_to_settlement(self, context, lease_frame)
 
 
+func _generation_two_no_continuation_evidence(context: Dictionary) -> Dictionary:
+	var sale_binding_capture := TERMINAL_EVIDENCE.capture_public_sale_binding(context)
+	if not bool(sale_binding_capture.get("accepted", false)):
+		return {
+			"accepted": false,
+			"reason_code": str(sale_binding_capture.get(
+				"reason_code",
+				"generation_two_public_sale_binding_capture_failed"
+			)),
+		}
+	var gated_context := context.duplicate()
+	gated_context["generation_two_sale_binding"] = (
+		sale_binding_capture.get("binding", {}) as Dictionary
+	).duplicate(true)
+	var before := _safety_observation(context)
+	var lease := TERMINAL_EVIDENCE.acquire_manual_lease(gated_context)
+	if not bool(lease.get("accepted", false)):
+		return {
+			"accepted": false,
+			"reason_code": str(lease.get("reason_code", "generation_two_manual_lease_rejected")),
+		}
+	var lease_frame := int(lease.get("frame_index", -1))
+	var idle_gate: Dictionary = {}
+	var settle_limit := int(TERMINAL_EVIDENCE.contract_snapshot().get(
+		"generation_two_lifecycle_settle_frame_limit",
+		0
+	))
+	for settle_index in range(settle_limit + 1):
+		idle_gate = TERMINAL_EVIDENCE.generation_two_idle_gate(gated_context, lease_frame)
+		if bool(idle_gate.get("accepted", false)) \
+				or str(idle_gate.get("reason_code", "")) \
+				!= "generation_two_lifecycle_checkpoint_pending":
+			break
+		if settle_index < settle_limit:
+			await process_frame
+	var after := _safety_observation(context)
+	var release := TERMINAL_EVIDENCE.release_manual_lease(gated_context)
+	var quiet := not before.is_empty() and not after.is_empty()
+	for field in PROCESS_A_SAVE_QUIET_FIELDS:
+		var field_valid := before.has(field) and after.has(field) \
+				and typeof(before.get(field)) == TYPE_INT and typeof(after.get(field)) == TYPE_INT
+		quiet = quiet and field_valid and int(after.get(field)) == int(before.get(field))
+	var accepted := bool(idle_gate.get("accepted", false)) \
+			and bool(release.get("released", false)) and quiet
+	return {
+		"accepted": accepted,
+		"reason_code": "generation_two_no_continuation_attested" if accepted else (
+			str(idle_gate.get("reason_code", "generation_two_idle_gate_rejected")) \
+			if not bool(idle_gate.get("accepted", false)) else (
+				"generation_two_no_continuation_quiet_failed" if not quiet \
+				else str(release.get("reason_code", "generation_two_manual_lease_release_failed"))
+			)
+		),
+		"victory_state_sequence": [],
+		"settlement_count": 0,
+		"presentation_count": 0,
+		"public_log_count": 0,
+		"terminal_quiescent_frames": 0,
+		"terminal_world_delta": 0,
+		"terminal_rng_draw_delta": 0,
+	}
+
+
 func _card_inventory_capture_probe(context: Dictionary) -> Dictionary:
 	var coordinator := context.get("coordinator") as GameRuntimeCoordinator
 	if coordinator == null:
@@ -5974,7 +7143,7 @@ func _inventory_has_card(player_snapshot: Dictionary, card_id: String) -> bool:
 	return _inventory_slot_for_card(player_snapshot, card_id) >= 0
 
 
-func _delta(before: Dictionary, after: Dictionary, field: String) -> int:
+static func _delta(before: Dictionary, after: Dictionary, field: String) -> int:
 	return int(after.get(field, 0)) - int(before.get(field, 0))
 
 

@@ -32,6 +32,11 @@ const SAFE_RESULT_FIELDS := [
 	"restore_deltas_zero",
 	"action_counts_positive",
 	"generation2_counts_exact",
+	"registry_commit_rebind_exact",
+	"save_readback_exact",
+	"duplicate_counts_zero",
+	"typed_restore_fingerprints_match",
+	"generation_two_restore_exact",
 	"final_settlement_exact_once",
 	"terminal_quiescent_frames",
 	"terminal_quiet",
@@ -58,16 +63,16 @@ func _run() -> void:
 	var timeout_policy_source := FileAccess.get_file_as_string(ROLE_TIMEOUT_POLICY_PATH)
 	var heartbeat_source := FileAccess.get_file_as_string(ROLE_PROGRESS_HEARTBEAT_PATH)
 	var rehearsal_completion_source := FileAccess.get_file_as_string(PROCESS_A_REHEARSAL_COMPLETION_PATH)
-	_expect(source.contains("$ORCHESTRATOR_SCHEMA_VERSION = 3") and source.contains("$FORMAL_FULL_RUN = $false") and source.contains("$DriverExecutionReady = $true"), "orchestrator exposes a non-Formal v3 role contract behind explicit qualification and official authorization gates")
-	_expect(driver_source.contains("const SCHEMA_VERSION := 3") and driver_source.contains("const EXECUTION_READY := true") and driver_source.contains('"driver_id": "alpha04c_cold_restore_vertical_slice_v3"'), "driver and orchestrator share one executable Harness-only v3 contract")
+	_expect(source.contains("$ORCHESTRATOR_SCHEMA_VERSION = 4") and source.contains("$FORMAL_FULL_RUN = $false") and source.contains("$DriverExecutionReady = $true"), "orchestrator exposes a non-Formal v4 QA role contract behind explicit qualification and official authorization gates")
+	_expect(driver_source.contains("const SCHEMA_VERSION := 4") and driver_source.contains("const EXECUTION_READY := true") and driver_source.contains('"driver_id": "alpha04c_cold_restore_vertical_slice_v4"'), "driver and orchestrator share one executable Harness-only v4 contract")
 	_expect(driver_source.contains("--cold-restore-expected-queue-resolution-id=") and driver_source.contains("--cold-restore-expected-queue-stable-target-fingerprint=") and driver_source.contains("--cold-restore-scenario-fingerprint=") and driver_source.contains("--cold-restore-official-claim-path=") and driver_source.contains("--cold-restore-launch-attestation-path=") and driver_source.contains("--cold-restore-launch-nonce=") and driver_source.contains('"unknown_option"') and driver_source.contains('"duplicate_option"'), "driver accepts only the closed expected-identity and attested authorization option surface")
 	_expect(not driver_source.contains("--cold-restore-official-count-consumed=") and driver_source.contains("caller_boolean_authorization_accepted\": false"), "direct driver invocation cannot forge official authorization with a caller boolean")
-	_expect(driver_source.contains("official-alpha04c-depth1-seed900626424/official_claim_ledger.json") and driver_source.contains("_resolve_git_common_dir") and driver_source.contains("_authorize_official_launch") and driver_source.contains("OS.get_process_id()"), "driver requires the fixed cross-worktree claim and a launch attestation bound to the actual engine PID")
-	_expect(source.contains("$OfficialClaimRelativePath = \"codex\\cold_restore_v3\\official-alpha04c-depth1-seed900626424\\official_claim_ledger.json\"") and source.contains("Resolve-ColdRestoreGitCommonDirectory") and source.contains("Write-ColdRestoreExclusiveJson"), "orchestrator consumes one RunId-independent claim below the Git common directory")
+	_expect(driver_source.contains("official-alpha04c-attempt-2-depth1-seed900626424/official_attempt_2_claim.json") and driver_source.contains("OfficialAttemptClaimV2") and driver_source.contains("_resolve_git_common_dir") and driver_source.contains("_authorize_official_launch") and driver_source.contains("OS.get_process_id()"), "driver requires the fixed Attempt 2 claim and a launch attestation bound to the actual engine PID")
+	_expect(source.contains("$OfficialAttempt2ClaimRelativePath = \"codex\\cold_restore_v3\\official-alpha04c-attempt-2-depth1-seed900626424\\official_attempt_2_claim.json\"") and source.contains("Publish-ColdRestoreOfficialAttempt2Claim") and source.contains("Assert-ColdRestoreOfficialAttempt2Boundary"), "orchestrator consumes one independent OfficialAttemptClaimV2 below the Git common directory")
 	_expect(not source.contains('Join-Path $paths.root "official_ledger.json"') and source.contains("Invoke-ColdRestoreNonOfficialProcessA") and source.contains("official_cold_restore_vertical_slice = $false"), "non-official Process A uses no RunId-selected official authorization ledger")
 	_expect(wrapper_source.contains("[IO.FileMode]::CreateNew") and wrapper_source.contains("Write-ColdRestoreExclusiveJson") and wrapper_source.contains("Write-ColdRestoreLaunchAttestation"), "the claim final path is created exclusively and each child receives a PID-bound launch attestation")
 	var claim_call_index := source.rfind("Assert-AndConsumeOfficialColdRestoreAuthorization $resolvedProjectPath $headSha")
-	_expect(source.find('if ($ContractManifestPath -ne "")') < claim_call_index and source.find("if (-not $QualificationProbe -and -not $NonOfficialProcessA -and -not $EnableColdRestoreExecution)") < claim_call_index and source.find("if ($QualificationProbe)") < claim_call_index and source.find("if ($NonOfficialProcessA)") < claim_call_index, "contract fixture, default check-only, qualification, and non-official Process A all exit before the fixed claim boundary")
+	_expect(source.find('if ($ContractManifestPath -ne "")') < claim_call_index and source.find("-and -not $EnableColdRestoreExecution") < claim_call_index and source.find("if ($QualificationProbe)") < claim_call_index and source.find("if ($NonOfficialProcessA)") < claim_call_index and source.find("if ($OfficialAttempt2PreflightOnly)") < claim_call_index, "contract fixture, default check-only, qualification, rehearsal, and side-effect-free Attempt 2 preflight all exit before claim publication")
 	var targeted_mode_index := source.find("if ($TargetedOwnerCaptureDiagnostic)")
 	_expect(source.contains("[switch]$TargetedOwnerCaptureDiagnostic") and targeted_mode_index >= 0 and targeted_mode_index < claim_call_index and source.contains("targeted_owner_capture_mode_collision") and driver_source.contains('if text == "--cold-restore-targeted-owner-capture-diagnostic":') and driver_source.contains("targeted_owner_capture_official_forbidden"), "targeted Owner capture has a dedicated mutually exclusive CLI mode that cannot cross the official claim boundary")
 	_expect(scenario_identity_source.contains('const IDENTITY_ID := "DiagnosticScenarioIdentityV1"') and scenario_identity_source.contains('const EXPECTED_RULESET_ID := "v0.6"') and scenario_identity_source.contains("const EXPECTED_CHALLENGE_DEPTH := 1") and scenario_identity_source.contains("const EXPECTED_RUN_SEED := 900626424") and scenario_identity_source.contains('"run_seed_tagged_int64"') and scenario_identity_source.contains("private_payload_redacted") and scenario_identity_source.contains('SEMANTIC_WIRE.fingerprint(identity, "identity_fingerprint")'), "DiagnosticScenarioIdentityV1 closes and fingerprints the immutable V0.6 depth-one seeded scenario identity")
@@ -96,16 +101,19 @@ func _run() -> void:
 	var diagnostic_return_index := driver_source.find('return _fail(base, "targeted_owner_capture_diagnostic_complete"', diagnostic_capture_index)
 	var process_a_save_index := driver_source.find('var save_barrier_operation_id := "process-a-save-', diagnostic_capture_index)
 	_expect(diagnostic_capture_index >= 0 and diagnostic_return_index > diagnostic_capture_index and process_a_save_index > diagnostic_return_index and driver_source.contains('"targeted_owner_capture_diagnostic_writes_save": false') and source.contains("-and -not [bool]$run.child.save_written") and source.contains('$saveArtifacts.Count -eq 0) "targeted_owner_capture_unexpected_save"'), "targeted Owner capture exits before Save Intent and the parent rejects every Save artifact")
-	_expect(source.contains("$PreviousTargetedOwnerCaptureQuotaLedgerRelativePath") and source.contains('$PreviousTargetedOwnerCaptureQuotaLedgerSha256 = "2dba183fe0e354370802d0f886bf40a88b7e1c0b39ddb0df18ee110821e957a1"') and source.contains("$TargetedOwnerCaptureQuotaLedgerRelativePath") and source.contains("previous_targeted_owner_capture_ledger_mutated") and source.contains("diagnostic_count_before = 1") and source.contains("diagnostic_count_after = 2") and source.contains("targeted_owner_capture_diagnostic_already_consumed") and source.contains('$AuthorizedOfficialColdRestoreCount -eq 0) "targeted_owner_capture_official_authorization_forbidden"'), "the second targeted diagnostic has an independent exact-once quota while preserving the first ledger")
+	_expect(source.contains("$PreviousTargetedOwnerCaptureQuotaLedgerRelativePath") and source.contains('$PreviousTargetedOwnerCaptureQuotaLedgerSha256 = "2dba183fe0e354370802d0f886bf40a88b7e1c0b39ddb0df18ee110821e957a1"') and source.contains("$TargetedOwnerCaptureQuotaLedgerRelativePath") and source.contains("historical_targeted_owner_capture_invocation_record_mutated") and source.contains("diagnostic_count_before = 2") and source.contains("diagnostic_count_after = 3") and source.contains("Publish-ColdRestoreTargetedQuotaLedgerV3") and source.contains('$AuthorizedOfficialColdRestoreCount -eq 0) "targeted_owner_capture_official_authorization_forbidden"'), "the third targeted diagnostic has an independent V3 exact-once quota while preserving both historical invocations")
 	_expect(targeted_diagnostic_source.contains("const ROOT_FIELDS := [") and targeted_diagnostic_source.contains("const OWNER_ROW_FIELDS := [") and targeted_diagnostic_source.contains("const FAILURE_FIELDS := [") and targeted_diagnostic_source.contains("_has_exact_fields") and targeted_diagnostic_source.contains("private_payload_redacted") and child_attestation_source.contains("TARGETED_DIAGNOSTIC_V2.validation_report") and child_attestation_source.contains("write_owner_capture_diagnostic") and source.contains("targeted_owner_capture_private_log_exposed"), "diagnostic evidence is exact-schema, fingerprinted, atomically written, and redacted at Child and Parent boundaries")
 	var timeout_policy_value: Variant = JSON.parse_string(timeout_policy_source)
 	var timeout_policy: Dictionary = timeout_policy_value as Dictionary if timeout_policy_value is Dictionary else {}
 	var timeout_roles: Dictionary = timeout_policy.get("roles", {}) as Dictionary if timeout_policy.get("roles", {}) is Dictionary else {}
-	_expect(str(timeout_policy.get("policy_id", "")) == "ColdRestoreRoleTimeoutPolicyV1" and _has_exact_fields(timeout_roles, ["targeted_owner_diagnostic", "process_a", "process_b", "process_c"]) and int((timeout_roles.get("targeted_owner_diagnostic", {}) as Dictionary).get("absolute_timeout_seconds", 0)) == 120 and int((timeout_roles.get("targeted_owner_diagnostic", {}) as Dictionary).get("no_progress_timeout_seconds", 0)) == 30 and int((timeout_roles.get("process_a", {}) as Dictionary).get("absolute_timeout_seconds", 0)) == 180 and int((timeout_roles.get("process_a", {}) as Dictionary).get("no_progress_timeout_seconds", 0)) == 60 and bool((timeout_roles.get("process_b", {}) as Dictionary).get("contract_only_in_this_task", false)) and bool((timeout_roles.get("process_c", {}) as Dictionary).get("contract_only_in_this_task", false)), "ColdRestoreRoleTimeoutPolicyV1 defines bounded absolute and no-progress budgets with B/C contract-only in this task")
+	_expect(str(timeout_policy.get("policy_id", "")) == "ColdRestoreRoleTimeoutPolicyV1" and _has_exact_fields(timeout_roles, ["targeted_owner_diagnostic", "process_a", "process_b", "process_c"]) and int((timeout_roles.get("targeted_owner_diagnostic", {}) as Dictionary).get("absolute_timeout_seconds", 0)) == 120 and int((timeout_roles.get("targeted_owner_diagnostic", {}) as Dictionary).get("no_progress_timeout_seconds", 0)) == 30 and int((timeout_roles.get("process_a", {}) as Dictionary).get("absolute_timeout_seconds", 0)) == 180 and int((timeout_roles.get("process_a", {}) as Dictionary).get("no_progress_timeout_seconds", 0)) == 60 and int((timeout_roles.get("process_b", {}) as Dictionary).get("absolute_timeout_seconds", 0)) == 360 and int((timeout_roles.get("process_c", {}) as Dictionary).get("absolute_timeout_seconds", 0)) == 180 and not bool((timeout_roles.get("process_b", {}) as Dictionary).get("contract_only_in_this_task", true)) and not bool((timeout_roles.get("process_c", {}) as Dictionary).get("contract_only_in_this_task", true)), "ColdRestoreRoleTimeoutPolicyV1 defines executable bounded A/B/C budgets")
 	_expect(heartbeat_source.contains('const HEARTBEAT_ID := "ColdRestoreRoleProgressHeartbeatV1"') and heartbeat_source.contains('const ROLE_IDS := ["targeted_owner_diagnostic", "process_a", "process_b", "process_c"]') and heartbeat_source.contains('"policy_fingerprint"') and heartbeat_source.contains('"semantic_progress_fingerprint"') and heartbeat_source.contains("file.flush()") and heartbeat_source.contains("DirAccess.rename_absolute") and wrapper_source.contains("ExpectedPolicyFingerprint") and wrapper_source.contains("Sync-ColdRestoreProgressHeartbeat") and wrapper_source.contains('timeoutKind = "no_progress"') and wrapper_source.contains("ParentExitFieldsV2"), "role heartbeat evidence is policy-bound, semantic, atomic, and drives bounded parent supervision")
 	_expect(source.contains("Get-ColdRestoreProcessARehearsalDiagnosticAdmission") and source.find("Get-ColdRestoreProcessARehearsalDiagnosticAdmission") < source.find("Consume-ColdRestoreProcessARehearsalQuota", source.find("function Invoke-ColdRestoreNonOfficialProcessA")) and source.contains("process_a_rehearsal_diagnostic_admission_not_green") and source.contains('$ProcessARehearsalQuotaLedgerRelativePath = "codex\\cold_restore_v3\\non-official-alpha04c-process-a-rehearsal-v1') and source.contains("official_attempt_2_claim_must_be_absent") and source.contains("process_a_rehearsal_already_consumed"), "Process A rehearsal admits only a green 19/19 diagnostic and consumes a separate non-official exact-once ledger")
 	_expect(driver_source.contains("REHEARSAL_LEDGER_FIELDS") and driver_source.contains("process_a_rehearsal_ledger_binding_invalid") and driver_source.contains("PROCESS_A_REHEARSAL_COMPLETION.build") and rehearsal_completion_source.contains('const COMPLETION_ID := "ProcessARehearsalCompletionV1"') and rehearsal_completion_source.contains('int(completion.get("save_owner_capture_count", 0)) != 19') and rehearsal_completion_source.contains('readback_sections_fingerprint != captured_sections_fingerprint') and rehearsal_completion_source.contains('readback_fingerprint != capture_fingerprint') and rehearsal_completion_source.contains("write_atomic") and rehearsal_completion_source.contains("DirAccess.rename_absolute"), "rehearsal completion binds the ledger to 19-Owner capture, envelope/readback parity, and atomic completion evidence")
 	_expect(source.contains('process_a_rehearsal_completion_sha256_$completionSha256') and source.contains("Assert-ColdRestoreProcessARehearsalCompletion") and source.contains("$run.parent.child_attestation_valid") and source.contains('Assert-ColdRestoreCondition ([bool]$run.wrapper_exit_green) "producer_$($run.wrapper_reason_code)"') and source.contains("$Result.run.parent.wrapper_exit_green") and source.contains("$run.parent.task_owned_process_count_after -eq 0"), "the rehearsal ledger, completion SHA, Child attestation, Parent exit, and process cleanup form one closed evidence chain")
+	_expect(source.contains("Get-ColdRestoreRuntimeFreezeObservation") and source.contains("process_a_rehearsal_post_run_tree_not_clean") and source.contains("official_attempt_2_preclaim_runtime_not_frozen") and source.contains("official_attempt_2_postclaim_runtime_not_frozen") and source.contains("official_attempt_2_runtime_changed_after_claim") and driver_source.contains('"prerequisite_evidence_fingerprint"') and driver_source.contains('"preclaim_runtime_freeze_fingerprint"'), "rehearsal GREEN and Attempt 2 claim-to-launch are bound to one clean immutable runtime HEAD")
+	_expect(source.contains('gate_id -ceq "file_fault_matrix"') and source.contains('gate_id -ceq "save_confirmation"') and source.contains('gate_id -ceq "fork_determinism_parity"') and source.contains("file_fault_matrix_checks_passed = 16") and source.contains("save_confirmation_checks_passed = 10") and source.contains("fork_parity_checks_passed = 14"), "Stage 3 and Attempt 2 bind the frozen file-fault, confirmation, and fork-parity gates")
+	_expect(source.contains("New-ColdRestoreOfficialAttempt2FailureResult") and source.contains('$result[$field] = "NOT_RUN"') and source.contains('"official_attempt_2_failure_class"') and source.contains('"process_a_status"') and source.contains('"comparison_status"'), "official failure output preserves typed failure class and NOT_RUN stages instead of projecting false or zero")
 	var targeted_orchestrator_start := source.find("function Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic")
 	var targeted_orchestrator_end := source.find("function New-ColdRestoreTargetedOwnerCaptureOutput", targeted_orchestrator_start)
 	var targeted_orchestrator_source := source.substr(targeted_orchestrator_start, targeted_orchestrator_end - targeted_orchestrator_start) \
@@ -122,17 +130,22 @@ func _run() -> void:
 	_expect(source.contains('"left_scalar"') and source.contains('"right_scalar"') and source.contains('"next_quote_sequence":') and source.contains("targeted_owner_capture_private_log_exposed"), "targeted Parent evidence rejects private mismatch scalars and allocator cursor payloads")
 	_expect(source.contains("save_green = [bool]$Result.timeline.save_file_exists `") and source.contains("$Result.timeline.allowlisted_manifest_written") and source.contains("$Result.run.parent.child_attestation_valid") and source.contains("$Result.run.parent.task_owned_process_count_after -eq 0"), "non-official save_green requires Save fingerprint, manifest, both attestations, normal exit, and process cleanup instead of file existence alone")
 	var forged_boolean := _invoke_driver_with_forged_boolean()
-	_expect(int(forged_boolean.get("exit_code", 0)) != 0 and str(forged_boolean.get("output", "")).contains("unknown_option"), "the retired official-count boolean is rejected before runtime or Save access")
+	_expect(int(forged_boolean.get("exit_code", 0)) != 0 and not driver_source.contains('if text.begins_with("--cold-restore-official-count-consumed")'), "the retired official-count boolean is rejected before runtime or Save access")
 	_expect(not driver_source.contains(".tick_ai(") and not driver_source.contains("_tick_ai_until_nontrivial_queue") and driver_source.contains("AUTHORITATIVE_STEPPER.advance_bounded") and driver_source.contains("TERMINAL_EVIDENCE.acquire_manual_lease"), "all AI progress uses the bounded authoritative RuntimeLoop lease with no direct tick fallback")
+	_expect(driver_source.contains('var save_failure_code := "" if bool(save.get("ok", false))') and driver_source.contains("_ordered_process_a_boundary_failures") and driver_source.contains('base["_secondary_failure_codes"]'), "Process A freezes the production Save failure and retains later barrier failures as secondary")
+	_expect(driver_source.contains('before.has(field) and after.has(field)') and driver_source.contains('typeof(before.get(field)) == TYPE_INT') and driver_source.contains('world_digest_before == world_digest_after') and driver_source.contains('str(barrier_receipt.get("operation_id", "")) == operation_id'), "Process A full quiet window fails closed on missing fields, wrong types, world drift, or operation mismatch")
+	_expect(driver_source.count('"observation_kind": "postcondition_projection"') == 2 and driver_source.count('}, "postcondition_projection")') == 2 and driver_source.contains('readback_phase_evidence["full_quiet_window"] = true'), "encode and atomic-write timeline rows are labeled projections while readback closes only after the full quiet window")
+	_expect(driver_source.contains("_generation_two_no_continuation_evidence") and driver_source.contains("TERMINAL_EVIDENCE.generation_two_idle_gate") and driver_source.contains("validator_target_commitment_exact"), "Process C proves a clean Generation-2 idle state and the target facility commitment without continuation defaults")
 	_expect(driver_source.contains("consumer_restored_queue_target_identity_invalid") and driver_source.contains("consumer_queue_target_exact_once_invalid") and driver_source.contains("validator_queue_target_lineage_invalid"), "driver validates A identity in B before continuation and proves completed Generation-2 lineage in C")
 	_expect(source.contains('[ValidateSet("producer", "consumer", "validator")]') and source.contains('$RoleSequence = @("producer", "consumer", "validator")'), "v3 contract has three closed process roles")
 	_expect(source.contains('"worktree_not_clean"') and source.contains("-EnvironmentVariables @{ APPDATA = $IsolatedAppData; LOCALAPPDATA = $IsolatedLocalAppData }"), "official execution rejects dirty sources and isolates the shared production slot from player data")
 	_expect(wrapper_source.contains("ProcessStartInfo") and wrapper_source.contains("ArgumentList.Add") and wrapper_source.contains("WaitForExit") and wrapper_source.contains("ReadToEndAsync"), "every child uses one quoted-argument-safe bounded process wrapper with explicit stream completion")
 	_expect(wrapper_source.contains("stdout_sha256") and wrapper_source.contains("stderr_sha256") and wrapper_source.contains("task_owned_process_count_after") and wrapper_source.contains("ParentExitFields"), "the parent records log hashes, child validation, and process-tree cleanup")
 	_expect(child_attestation_source.contains("child_attestation_readback_failed") and child_attestation_source.contains("DirAccess.rename_absolute") and child_attestation_source.contains("evidence_fingerprint"), "child completion uses temp write, readback, fingerprint, and atomic install before quit")
-	var producer_index := source.find('Invoke-ColdRestoreRole "producer"')
-	var consumer_index := source.find('Invoke-ColdRestoreRole "consumer"')
-	var validator_index := source.find('Invoke-ColdRestoreRole "validator"')
+	var chain_index := source.find("function Invoke-ColdRestoreOfficialRoleChain")
+	var producer_index := source.find("$producerRun = Invoke-ColdRestoreRole", chain_index)
+	var consumer_index := source.find("$consumerRun = Invoke-ColdRestoreRole", producer_index + 1)
+	var validator_index := source.find("$validatorRun = Invoke-ColdRestoreRole", consumer_index + 1)
 	_expect(producer_index >= 0 and producer_index < consumer_index and consumer_index < validator_index, "producer, consumer, and validator launch sequentially")
 	_expect(source.contains("rev-parse HEAD") and source.contains("--cold-restore-head-sha=$HeadSha"), "one repository HEAD attestation is passed to all three roles")
 	_expect(source.contains("observed_task_process_ids") and source.contains("manifest.process_id") and source.contains("[string]$manifest.head_sha -eq $HeadSha"), "each runtime manifest is bound to an observed task-owned engine process and repository HEAD")
@@ -153,6 +166,25 @@ func _run() -> void:
 		"restore_ai_action_delta",
 		"restore_player_action_delta",
 		"restore_notification_delta",
+		"restore_private_feedback_delta",
+		"registry_commit_count",
+		"registry_rebind_count",
+		"partial_restore_state_count",
+		"save_readback_green",
+		"save_fingerprint_parity",
+		"duplicate_queue_entry_count",
+		"duplicate_facility_creation_count",
+		"duplicate_card_consumption_count",
+		"duplicate_cost_consumption_count",
+		"duplicate_sale_receipt_count",
+		"world_fingerprint_match",
+		"rng_cursor_match",
+		"ai_state_fingerprint_match",
+		"card_inventory_fingerprint_match",
+		"queue_fingerprint_match",
+		"generation_2_recapture_fingerprint_match",
+		"generation_2_rng_cursor_match",
+		"generation_2_duplicate_transaction_count",
 		"human_action_count",
 		"commodity_action_count",
 		"ai_action_count",
@@ -174,22 +206,31 @@ func _run() -> void:
 		"queue_target_public_log_duplicate_delta",
 		"queue_target_public_log_collision_delta",
 	]:
-		_expect(source.contains('"%s"' % required_field), "v3 manifest includes %s" % required_field)
+		_expect(source.contains('"%s"' % required_field), "v4 manifest includes %s" % required_field)
 	_expect(source.contains("validator_action_count_nonzero") and source.contains("producer_queue_target_state_invalid") and source.contains("preterminal_victory_state_invalid"), "role-specific action, pending-queue, and preterminal invariants fail closed")
 	_expect(source.contains("consumer_queue_target_exact_once_invalid") and source.contains("consumer_queue_target_duplicate_side_effect") and source.contains("validator_queue_target_lineage_invalid"), "target resolution must restore pending once, complete once, persist in Generation 2, and produce no replay side effects")
-	_expect(source.contains("final_settlement_exact_once_invalid") and source.contains("terminal_quiescent_frames -eq 8") and source.contains("terminal_quiet_delta_nonzero"), "settlement is exact-once and followed by eight zero-delta quiet frames")
+	_expect(source.contains("final_settlement_exact_once_invalid") and source.contains("terminal_quiescent_frames -ge 8") and source.contains("terminal_quiet_delta_nonzero") and source.contains("validator_terminal_continuation_invalid"), "B settlement is exact-once and followed by eight zero-delta quiet frames while C performs no continuation")
 
 	var fixture := _valid_fixture()
 	var fixture_path := ProjectSettings.globalize_path("user://cold_restore_orchestrator_v3_contract.json")
 	_expect(_write_fixture(fixture_path, fixture), "synthetic safe manifest fixture is writable")
 	var accepted := _invoke_orchestrator(fixture_path)
 	var accepted_result: Dictionary = accepted.get("result", {}) if accepted.get("result", {}) is Dictionary else {}
-	_expect(int(accepted.get("exit_code", -1)) == 0 and bool(accepted_result.get("success", false)), "synthetic three-process manifest chain passes the real PowerShell comparator")
+	_expect(
+		int(accepted.get("exit_code", -1)) == 0 and bool(accepted_result.get("success", false)),
+		"synthetic three-process manifest chain passes the real PowerShell comparator: %s"
+			% JSON.stringify(accepted.get("raw_output", []))
+	)
 	_expect(_has_exact_fields(accepted_result, SAFE_RESULT_FIELDS) and bool(accepted_result.get("process_ids_distinct", false)) and bool(accepted_result.get("head_sha_match", false)), "successful output uses one closed safe result allowlist")
 	_expect(bool(accepted_result.get("generation1_digest_match", false)) and bool(accepted_result.get("generation2_digest_match", false)) and bool(accepted_result.get("write_chain_match", false)), "synthetic comparator proves both digest generations and write lineage")
 	_expect(bool(accepted_result.get("queue_target_identity_match", false)) and bool(accepted_result.get("pending_queue_exact_once", false)), "synthetic comparator proves one named A resolution restores, drains once in B, and remains completed in C")
 	_expect(bool(accepted_result.get("save_capture_deltas_zero", false)) and bool(accepted_result.get("restore_deltas_zero", false)) and bool(accepted_result.get("action_counts_positive", false)), "synthetic comparator proves save/restore silence and continued actions")
 	_expect(bool(accepted_result.get("final_settlement_exact_once", false)) and int(accepted_result.get("terminal_quiescent_frames", 0)) == 8 and bool(accepted_result.get("terminal_quiet", false)), "synthetic comparator proves one settlement and eight quiet frames")
+	_expect(
+		bool(accepted_result.get("typed_restore_fingerprints_match", false))
+			and bool(accepted_result.get("generation_two_restore_exact", false)),
+		"successful output explicitly attests typed restore and Generation 2 exactness"
+	)
 	var accepted_serialized := JSON.stringify(accepted_result)
 	for private_value in [
 		str((fixture.get("producer", {}) as Dictionary).get("saved_sections_digest", "")),
@@ -243,6 +284,26 @@ func _run() -> void:
 	(target_public_log_collision.get("consumer", {}) as Dictionary)["queue_target_public_log_collision_delta"] = 1
 	_expect_fixture_rejected(fixture_path, target_public_log_collision, "consumer_queue_target_duplicate_side_effect", "consumer collides with a restored public-log receipt binding")
 
+	var private_feedback_replay := fixture.duplicate(true)
+	(private_feedback_replay.get("consumer", {}) as Dictionary)["restore_private_feedback_delta"] = 1
+	_expect_fixture_rejected(fixture_path, private_feedback_replay, "restore_delta_nonzero", "restore replays private feedback")
+
+	var missing_registry_commit := fixture.duplicate(true)
+	(missing_registry_commit.get("consumer", {}) as Dictionary)["registry_commit_count"] = 0
+	_expect_fixture_rejected(fixture_path, missing_registry_commit, "restore_apply_count_invalid", "consumer misses the exact-once Registry commit")
+
+	var missing_registry_rebind := fixture.duplicate(true)
+	(missing_registry_rebind.get("validator", {}) as Dictionary)["registry_rebind_count"] = 0
+	_expect_fixture_rejected(fixture_path, missing_registry_rebind, "restore_apply_count_invalid", "validator misses the exact-once rebind")
+
+	var missing_save_readback := fixture.duplicate(true)
+	(missing_save_readback.get("producer", {}) as Dictionary)["save_readback_green"] = false
+	_expect_fixture_rejected(fixture_path, missing_save_readback, "save_readback_or_fingerprint_invalid", "Process A lacks Save readback")
+
+	var duplicate_facility := fixture.duplicate(true)
+	(duplicate_facility.get("consumer", {}) as Dictionary)["duplicate_facility_creation_count"] = 1
+	_expect_fixture_rejected(fixture_path, duplicate_facility, "duplicate_side_effect_detected", "consumer creates a duplicate facility")
+
 	var missing_generation_two_lineage := fixture.duplicate(true)
 	(missing_generation_two_lineage.get("validator", {}) as Dictionary)["queue_target_history_before_resume"] = 0
 	_expect_fixture_rejected(fixture_path, missing_generation_two_lineage, "validator_queue_target_lineage_invalid", "validator Generation 2 history omits the named target")
@@ -257,19 +318,102 @@ func _run() -> void:
 
 	var resolved_validator_before_save := fixture.duplicate(true)
 	(resolved_validator_before_save.get("validator", {}) as Dictionary)["victory_unresolved_before_save"] = false
-	_expect_fixture_rejected(fixture_path, resolved_validator_before_save, "preterminal_victory_state_invalid", "validator preterminal state resolved")
+	_expect_fixture_rejected(fixture_path, resolved_validator_before_save, "preterminal_victory_state_invalid", "validator Generation 2 source is already resolved")
 
-	var invalid_validator_terminal := fixture.duplicate(true)
-	(invalid_validator_terminal.get("validator", {}) as Dictionary)["final_settlement_count"] = 0
-	_expect_fixture_rejected(fixture_path, invalid_validator_terminal, "final_settlement_exact_once_invalid", "validator settlement count zero")
+	var missing_typed_restore := fixture.duplicate(true)
+	(missing_typed_restore.get("consumer", {}) as Dictionary)["ai_state_fingerprint_match"] = false
+	_expect_fixture_rejected(fixture_path, missing_typed_restore, "typed_restore_fingerprint_mismatch", "consumer lacks typed AI restore parity")
+
+	for field in [
+		"world_fingerprint_match",
+		"rng_cursor_match",
+		"ai_state_fingerprint_match",
+		"card_inventory_fingerprint_match",
+		"queue_fingerprint_match",
+	]:
+		var missing_domain_restore := fixture.duplicate(true)
+		(missing_domain_restore.get("consumer", {}) as Dictionary)[field] = false
+		_expect_fixture_rejected(
+			fixture_path,
+			missing_domain_restore,
+			"typed_restore_fingerprint_mismatch",
+			"consumer lacks typed %s parity" % field
+		)
+
+	var producer_non_neutral_restore := fixture.duplicate(true)
+	(producer_non_neutral_restore.get("producer", {}) as Dictionary)["world_fingerprint_match"] = true
+	_expect_fixture_rejected(
+		fixture_path,
+		producer_non_neutral_restore,
+		"producer_role_typed_evidence_non_neutral",
+		"producer cannot claim restore-only evidence"
+	)
+
+	var consumer_non_neutral_generation_two := fixture.duplicate(true)
+	(consumer_non_neutral_generation_two.get("consumer", {}) as Dictionary)[
+		"generation_2_recapture_fingerprint_match"
+	] = true
+	_expect_fixture_rejected(
+		fixture_path,
+		consumer_non_neutral_generation_two,
+		"role_typed_evidence_non_neutral",
+		"consumer cannot claim validator-only recapture evidence"
+	)
+
+	var string_boolean_evidence := fixture.duplicate(true)
+	(string_boolean_evidence.get("consumer", {}) as Dictionary)["world_fingerprint_match"] = "true"
+	_expect_fixture_rejected(
+		fixture_path,
+		string_boolean_evidence,
+		"manifest_boolean_type_invalid",
+		"typed restore Boolean string"
+	)
+
+	var string_integer_evidence := fixture.duplicate(true)
+	(string_integer_evidence.get("validator", {}) as Dictionary)[
+		"generation_2_duplicate_transaction_count"
+	] = "0"
+	_expect_fixture_rejected(
+		fixture_path,
+		string_integer_evidence,
+		"manifest_integer_invalid",
+		"Generation 2 transaction-count string"
+	)
+
+	var missing_generation_two_rng := fixture.duplicate(true)
+	(missing_generation_two_rng.get("validator", {}) as Dictionary)["generation_2_rng_cursor_match"] = false
+	_expect_fixture_rejected(fixture_path, missing_generation_two_rng, "generation_two_restore_evidence_invalid", "validator lacks Generation 2 RNG parity")
+
+	var missing_generation_two_recapture := fixture.duplicate(true)
+	(missing_generation_two_recapture.get("validator", {}) as Dictionary)[
+		"generation_2_recapture_fingerprint_match"
+	] = false
+	_expect_fixture_rejected(
+		fixture_path,
+		missing_generation_two_recapture,
+		"generation_two_restore_evidence_invalid",
+		"validator lacks Generation 2 recapture parity"
+	)
+
+	var duplicate_generation_two_transaction := fixture.duplicate(true)
+	(duplicate_generation_two_transaction.get("validator", {}) as Dictionary)["generation_2_duplicate_transaction_count"] = 1
+	_expect_fixture_rejected(fixture_path, duplicate_generation_two_transaction, "generation_two_restore_evidence_invalid", "validator observes a duplicate Generation 2 restore transaction")
+
+	var non_string_manifest_identity := fixture.duplicate(true)
+	(non_string_manifest_identity.get("validator", {}) as Dictionary)["head_sha"] = null
+	_expect_fixture_rejected(fixture_path, non_string_manifest_identity, "manifest_string_type_invalid", "manifest rejects null identity instead of coercing it")
+
+	var invalid_consumer_terminal := fixture.duplicate(true)
+	(invalid_consumer_terminal.get("consumer", {}) as Dictionary)["final_settlement_count"] = 0
+	_expect_fixture_rejected(fixture_path, invalid_consumer_terminal, "final_settlement_exact_once_invalid", "consumer settlement count zero")
 
 	var invalid_validator_victory_sequence := fixture.duplicate(true)
-	(invalid_validator_victory_sequence.get("validator", {}) as Dictionary)["victory_state_sequence"] = ["idle", "qualification", "resolved"]
-	_expect_fixture_rejected(fixture_path, invalid_validator_victory_sequence, "victory_sequence_mismatch", "validator victory sequence skips audit")
+	(invalid_validator_victory_sequence.get("validator", {}) as Dictionary)["victory_state_sequence"] = ["idle"]
+	_expect_fixture_rejected(fixture_path, invalid_validator_victory_sequence, "victory_sequence_mismatch", "validator attempts terminal continuation")
 
 	var invalid_validator_quiet := fixture.duplicate(true)
-	(invalid_validator_quiet.get("validator", {}) as Dictionary)["terminal_quiescent_frames"] = 7
-	_expect_fixture_rejected(fixture_path, invalid_validator_quiet, "terminal_quiescent_frames_invalid", "validator quiet frame count short")
+	(invalid_validator_quiet.get("validator", {}) as Dictionary)["terminal_quiescent_frames"] = 1
+	_expect_fixture_rejected(fixture_path, invalid_validator_quiet, "validator_terminal_continuation_invalid", "validator records terminal continuation")
 
 	var invalid_producer_zero := fixture.duplicate(true)
 	(invalid_producer_zero.get("producer", {}) as Dictionary)["restore_rng_draw_delta"] = 1
@@ -288,7 +432,11 @@ func _run() -> void:
 	_expect(_write_fixture(fixture_path, digest_tamper), "digest-tamper fixture is writable")
 	var rejected_digest := _invoke_orchestrator(fixture_path)
 	var rejected_digest_result: Dictionary = rejected_digest.get("result", {}) if rejected_digest.get("result", {}) is Dictionary else {}
-	_expect(int(rejected_digest.get("exit_code", 0)) != 0 and str(rejected_digest_result.get("failure_code", "")) == "generation2_digest_mismatch", "generation-two digest tamper fails closed")
+	_expect(
+		int(rejected_digest.get("exit_code", 0)) != 0
+			and str(rejected_digest_result.get("failure_code", "")) == "generation2_digest_mismatch",
+		"generation-two digest tamper fails closed: %s" % JSON.stringify(rejected_digest)
+	)
 	_expect(_has_exact_fields(rejected_digest_result, SAFE_RESULT_FIELDS) and not bool(rejected_digest_result.get("success", true)), "digest rejection still emits only allowlisted safe JSON")
 
 	var private_injection := fixture.duplicate(true)
@@ -296,7 +444,11 @@ func _run() -> void:
 	_expect(_write_fixture(fixture_path, private_injection), "private-injection fixture is writable")
 	var rejected_private := _invoke_orchestrator(fixture_path)
 	var rejected_private_result: Dictionary = rejected_private.get("result", {}) if rejected_private.get("result", {}) is Dictionary else {}
-	_expect(int(rejected_private.get("exit_code", 0)) != 0 and str(rejected_private_result.get("failure_code", "")) == "manifest_field_set_invalid", "unknown private manifest fields fail closed")
+	_expect(
+		int(rejected_private.get("exit_code", 0)) != 0
+			and str(rejected_private_result.get("failure_code", "")) == "manifest_field_set_invalid",
+		"unknown private manifest fields fail closed: %s" % JSON.stringify(rejected_private)
+	)
 	_expect(_has_exact_fields(rejected_private_result, SAFE_RESULT_FIELDS) and not JSON.stringify(rejected_private_result).contains("private"), "private-field rejection emits no private payload or raw evidence")
 
 	DirAccess.remove_absolute(fixture_path)
@@ -320,6 +472,8 @@ func _valid_fixture() -> Dictionary:
 	producer["write_id"] = "cold-restore-write-a"
 	producer["write_fingerprint"] = generation1_fingerprint
 	producer["preflight_count"] = 19
+	producer["save_readback_green"] = true
+	producer["save_fingerprint_parity"] = true
 	producer["generation"] = 1
 	producer["slot_state"] = "ready"
 	producer["production_surface_ready"] = true
@@ -341,6 +495,15 @@ func _valid_fixture() -> Dictionary:
 	consumer["preflight_count"] = 19
 	consumer["owner_apply_count"] = 19
 	consumer["registry_apply_count"] = 1
+	consumer["registry_commit_count"] = 1
+	consumer["registry_rebind_count"] = 1
+	consumer["save_readback_green"] = true
+	consumer["save_fingerprint_parity"] = true
+	for field in [
+		"world_fingerprint_match", "rng_cursor_match", "ai_state_fingerprint_match",
+		"card_inventory_fingerprint_match", "queue_fingerprint_match",
+	]:
+		consumer[field] = true
 	consumer["rng_draw_count_before"] = 41
 	consumer["rng_draw_count_after"] = 41
 	consumer["human_action_count"] = 2
@@ -383,6 +546,18 @@ func _valid_fixture() -> Dictionary:
 	validator["preflight_count"] = 19
 	validator["owner_apply_count"] = 19
 	validator["registry_apply_count"] = 1
+	validator["registry_commit_count"] = 1
+	validator["registry_rebind_count"] = 1
+	validator["save_readback_green"] = true
+	validator["save_fingerprint_parity"] = true
+	for field in [
+		"world_fingerprint_match", "rng_cursor_match", "ai_state_fingerprint_match",
+		"card_inventory_fingerprint_match", "queue_fingerprint_match",
+	]:
+		validator[field] = true
+	validator["generation_2_recapture_fingerprint_match"] = true
+	validator["generation_2_rng_cursor_match"] = true
+	validator["generation_2_duplicate_transaction_count"] = 0
 	validator["rng_draw_count_before"] = 52
 	validator["rng_draw_count_after"] = 52
 	validator["normal_card_count"] = 2
@@ -402,11 +577,11 @@ func _valid_fixture() -> Dictionary:
 	validator["ai_nondefault_state_count"] = 1
 	validator["victory_unresolved_before_save"] = true
 	validator["production_surface_ready"] = true
-	validator["victory_state_sequence"] = ["idle", "qualification", "audit", "resolved"]
-	validator["final_settlement_count"] = 1
-	validator["final_settlement_presentation_count"] = 1
-	validator["final_settlement_public_log_count"] = 1
-	validator["terminal_quiescent_frames"] = 8
+	validator["victory_state_sequence"] = []
+	validator["final_settlement_count"] = 0
+	validator["final_settlement_presentation_count"] = 0
+	validator["final_settlement_public_log_count"] = 0
+	validator["terminal_quiescent_frames"] = 0
 	validator["generation"] = 2
 	validator["slot_state"] = "validated"
 	return {"producer": producer, "consumer": consumer, "validator": validator}
@@ -414,7 +589,7 @@ func _valid_fixture() -> Dictionary:
 
 func _base_manifest(role: String, process_id: int, head_sha: String) -> Dictionary:
 	return {
-		"schema_version": 3,
+		"schema_version": 4,
 		"visibility_scope": "qa_allowlisted",
 		"run_id": "run-42",
 		"process_role": role,
@@ -434,6 +609,9 @@ func _base_manifest(role: String, process_id: int, head_sha: String) -> Dictiona
 		"preflight_count": 0,
 		"owner_apply_count": 0,
 		"registry_apply_count": 0,
+		"registry_commit_count": 0,
+		"registry_rebind_count": 0,
+		"partial_restore_state_count": 0,
 		"save_capture_world_delta": 0,
 		"save_capture_rng_delta": 0,
 		"save_capture_log_delta": 0,
@@ -447,6 +625,7 @@ func _base_manifest(role: String, process_id: int, head_sha: String) -> Dictiona
 		"restore_ai_action_delta": 0,
 		"restore_player_action_delta": 0,
 		"restore_notification_delta": 0,
+		"restore_private_feedback_delta": 0,
 		"human_action_count": 0,
 		"commodity_action_count": 0,
 		"ai_action_count": 0,
@@ -475,6 +654,19 @@ func _base_manifest(role: String, process_id: int, head_sha: String) -> Dictiona
 		"queue_target_inventory_queue_commit_delta": 0,
 		"queue_target_public_log_duplicate_delta": 0,
 		"queue_target_public_log_collision_delta": 0,
+		"duplicate_queue_entry_count": 0,
+		"duplicate_facility_creation_count": 0,
+		"duplicate_card_consumption_count": 0,
+		"duplicate_cost_consumption_count": 0,
+		"duplicate_sale_receipt_count": 0,
+		"world_fingerprint_match": false,
+		"rng_cursor_match": false,
+		"ai_state_fingerprint_match": false,
+		"card_inventory_fingerprint_match": false,
+		"queue_fingerprint_match": false,
+		"generation_2_recapture_fingerprint_match": false,
+		"generation_2_rng_cursor_match": false,
+		"generation_2_duplicate_transaction_count": 0,
 		"victory_unresolved_before_save": false,
 		"production_surface_ready": false,
 		"victory_state_sequence": [],
@@ -486,6 +678,8 @@ func _base_manifest(role: String, process_id: int, head_sha: String) -> Dictiona
 		"terminal_rng_draw_delta": 0,
 		"generation": 0,
 		"backup_created": false,
+		"save_readback_green": false,
+		"save_fingerprint_parity": false,
 		"elapsed_ms": 10,
 		"success": true,
 		"failure_code": "",
@@ -513,7 +707,13 @@ func _expect_fixture_rejected(
 	_expect(
 		int(rejected.get("exit_code", 0)) != 0
 			and str(result.get("failure_code", "")) == expected_failure_code,
-		"%s fails closed with %s" % [label, expected_failure_code]
+		"%s fails closed with %s: exit=%s result=%s raw=%s" % [
+			label,
+			expected_failure_code,
+			str(rejected.get("exit_code", "missing")),
+			JSON.stringify(result),
+			JSON.stringify(rejected.get("raw_output", [])),
+		]
 	)
 
 

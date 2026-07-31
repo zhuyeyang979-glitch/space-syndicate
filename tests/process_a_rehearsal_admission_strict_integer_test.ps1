@@ -146,7 +146,7 @@ if (@($parseErrors).Count -ne 0) {
 }
 
 $requiredVariables = @(
-    "head", "scenarioFingerprint", "sha", "officialAttempt1Sha",
+    "head", "scenarioFingerprint", "prerequisiteFingerprint", "sha", "officialAttempt1Sha",
     "officialAttempt1Text", "sectionOrder", "ownerOrder"
 )
 $assignmentByName = @{}
@@ -202,8 +202,10 @@ else {
 $realLedgerPaths = @(
     (Join-Path $gitCommonPath "codex\cold_restore_v3\official-alpha04c-depth1-seed900626424\official_claim_ledger.json"),
     (Join-Path $gitCommonPath "codex\cold_restore_v3\non-official-alpha04c-owner-capture-attestation-12691a8\targeted_owner_capture_quota_ledger.json"),
+    (Join-Path $gitCommonPath "codex\cold_restore_v3\non-official-alpha04c-final-cold-closure-3b30615\targeted_owner_capture_quota_ledger.json"),
     (Join-Path $gitCommonPath "codex\cold_restore_v3\non-official-alpha04c-process-a-rehearsal-v1\process_a_rehearsal_quota_ledger.json"),
-    (Join-Path $gitCommonPath "codex\cold_restore_v3\non-official-alpha04c-process-a-rehearsal-v1\process_a_rehearsal_launch_ledger.json")
+    (Join-Path $gitCommonPath "codex\cold_restore_v3\non-official-alpha04c-process-a-rehearsal-v1\process_a_rehearsal_launch_ledger.json"),
+    (Join-Path $gitCommonPath "codex\cold_restore_v3\official-alpha04c-attempt-2-depth1-seed900626424\official_attempt_2_claim.json")
 )
 $realLedgerStateBefore = @{}
 foreach ($path in $realLedgerPaths) {
@@ -246,7 +248,7 @@ try {
     $admissionLedgerFixture = New-TestFixture "admission-ledger-schema-string"
     $admission = Invoke-TestAdmission $admissionLedgerFixture
     $forgedAdmission = Copy-TestValue $admission.value
-    $forgedAdmission.schema_version = "2"
+    $forgedAdmission.schema_version = "3"
     $forgedAdmission.ledger_fingerprint = Get-TestFingerprint $forgedAdmission "ledger_fingerprint"
     $forgedAdmissionPath = Join-Path $admissionLedgerFixture.root "ledger\forged-admission-schema-string.json"
     Write-TestJson $forgedAdmissionPath $forgedAdmission

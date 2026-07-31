@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "policy_id": "ColdRestoreRoleTimeoutPolicyV1",
-  "policy_source": "alpha04c_handoff_measurements_plus_task_caps",
+  "policy_source": "alpha04c_handoff_measurements_promoted_for_attempt2",
   "measurement_head": "12691a8bc7ad2c5a9f4c175c95a8c214ea346a74",
   "measurement_run_id": "alpha04c-process-a-rehearsal-5f52b600",
   "poll_interval_ms": 100,
@@ -36,14 +36,14 @@
       "no_progress_timeout_seconds": 60,
       "timeout_reason_code": "process_b_timeout",
       "cleanup_policy": "kill_task_tree_then_verify_pid_and_creation_time",
-      "contract_only_in_this_task": true
+      "contract_only_in_this_task": false
     },
     "process_c": {
       "absolute_timeout_seconds": 180,
       "no_progress_timeout_seconds": 30,
       "timeout_reason_code": "process_c_timeout",
       "cleanup_policy": "kill_task_tree_then_verify_pid_and_creation_time",
-      "contract_only_in_this_task": true
+      "contract_only_in_this_task": false
     }
   }
 }

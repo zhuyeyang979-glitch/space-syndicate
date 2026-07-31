@@ -23,10 +23,10 @@ if ($null -eq $script:ColdRestoreRoleTimeoutPolicyValidator) {
 }
 
 $script:ContractId = "Alpha04C.ProcessARehearsalAdmissionContractV1"
-$script:AdmissionLedgerId = "ProcessARehearsalAdmissionLedgerV2"
+$script:AdmissionLedgerId = "ProcessARehearsalAdmissionLedgerV3"
 $script:LaunchLedgerId = "ProcessARehearsalLaunchLedgerV1"
 $script:AuthorizationId = "alpha04c-process-a-save-completion-rehearsal-v1"
-$script:TargetedDiagnosticAuthorizationId = "alpha04c-targeted-owner-capture-diagnostic-v2"
+$script:TargetedDiagnosticAuthorizationId = "alpha04c-targeted-owner-capture-diagnostic-v3"
 $script:OfficialAttempt1ClaimSha256 = "80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458"
 $script:PreviousDiagnosticQuotaLedgerSha256 = "2dba183fe0e354370802d0f886bf40a88b7e1c0b39ddb0df18ee110821e957a1"
 $script:ChallengeDepth = 1
@@ -89,7 +89,11 @@ $script:DiagnosticQuotaLedgerFields = @(
     "schema_version", "ledger_id", "authorization_id", "task_id", "created_at_utc", "run_id",
     "repository_head", "scenario_fingerprint", "authorized_new_diagnostic_count",
     "diagnostic_count_before", "diagnostic_count_after", "diagnostic_count_maximum",
-    "previous_ledger_sha256", "role_timeout_policy_sha256",
+    "previous_ledger_sha256", "historical_invocation_commit",
+    "historical_invocation_blob_sha1", "historical_invocation_file_sha256",
+    "bootstrap_admission_path", "bootstrap_admission_sha256", "bootstrap_admission_fingerprint",
+    "prequota_attestation_path",
+    "role_timeout_policy_sha256",
     "official_attempt_1_claim_sha256", "official_attempt_2_claim_absent",
     "official", "formal", "official_authorization_consumed",
     "orchestrator_script_sha256", "orchestrator_process_id",
@@ -121,12 +125,14 @@ $script:DiagnosticManifestFields = @(
     "scenario_fingerprint",
     "slot_id", "slot_state", "source_sections_digest", "restored_sections_digest",
     "saved_sections_digest", "source_write_id", "write_id", "source_write_fingerprint",
-    "write_fingerprint", "section_count", "preflight_count", "owner_apply_count",
-    "registry_apply_count", "save_capture_world_delta", "save_capture_rng_delta",
+    "section_count", "preflight_count", "owner_apply_count", "registry_apply_count",
+    "registry_commit_count", "registry_rebind_count", "partial_restore_state_count",
+    "save_capture_world_delta", "save_capture_rng_delta",
     "save_capture_log_delta", "rng_draw_count_before", "rng_draw_count_after",
     "restore_rng_draw_delta", "restore_world_time_delta", "restore_public_log_delta",
     "restore_sale_receipt_delta", "restore_economic_reward_delta", "restore_ai_action_delta",
-    "restore_player_action_delta", "restore_notification_delta", "human_action_count",
+    "restore_player_action_delta", "restore_notification_delta", "restore_private_feedback_delta",
+    "human_action_count",
     "commodity_action_count", "ai_action_count", "sale_receipt_count", "normal_card_count",
     "commodity_card_count", "commodity_claim_count", "facility_count", "route_count",
     "military_unit_count", "queue_entry_count", "weather_region_count",
@@ -138,19 +144,29 @@ $script:DiagnosticManifestFields = @(
     "queue_target_history_append_delta", "queue_target_history_duplicate_delta",
     "queue_target_transition_duplicate_delta", "queue_target_inventory_queue_commit_delta",
     "queue_target_public_log_duplicate_delta", "queue_target_public_log_collision_delta",
+    "duplicate_queue_entry_count", "duplicate_facility_creation_count",
+    "duplicate_card_consumption_count", "duplicate_cost_consumption_count",
+    "duplicate_sale_receipt_count",
+    "world_fingerprint_match", "rng_cursor_match", "ai_state_fingerprint_match",
+    "card_inventory_fingerprint_match", "queue_fingerprint_match",
+    "generation_2_recapture_fingerprint_match", "generation_2_rng_cursor_match",
+    "generation_2_duplicate_transaction_count",
     "victory_unresolved_before_save", "production_surface_ready", "victory_state_sequence",
     "final_settlement_count", "final_settlement_presentation_count",
     "final_settlement_public_log_count", "terminal_quiescent_frames", "terminal_world_delta",
-    "terminal_rng_draw_delta", "generation", "backup_created", "elapsed_ms", "success",
+    "terminal_rng_draw_delta", "generation", "backup_created", "save_readback_green",
+    "save_fingerprint_parity", "write_fingerprint", "elapsed_ms", "success",
     "failure_code"
 )
 $script:DiagnosticManifestIntegerFields = @(
     "schema_version", "process_id", "section_count", "preflight_count", "owner_apply_count",
-    "registry_apply_count", "save_capture_world_delta", "save_capture_rng_delta",
+    "registry_apply_count", "registry_commit_count", "registry_rebind_count",
+    "partial_restore_state_count", "save_capture_world_delta", "save_capture_rng_delta",
     "save_capture_log_delta", "rng_draw_count_before", "rng_draw_count_after",
     "restore_rng_draw_delta", "restore_world_time_delta", "restore_public_log_delta",
     "restore_sale_receipt_delta", "restore_economic_reward_delta", "restore_ai_action_delta",
-    "restore_player_action_delta", "restore_notification_delta", "human_action_count",
+    "restore_player_action_delta", "restore_notification_delta", "restore_private_feedback_delta",
+    "human_action_count",
     "commodity_action_count", "ai_action_count", "sale_receipt_count", "normal_card_count",
     "commodity_card_count", "commodity_claim_count", "facility_count", "route_count",
     "military_unit_count", "queue_entry_count", "weather_region_count",
@@ -161,7 +177,10 @@ $script:DiagnosticManifestIntegerFields = @(
     "queue_target_execution_finalize_delta", "queue_target_history_append_delta",
     "queue_target_history_duplicate_delta", "queue_target_transition_duplicate_delta",
     "queue_target_inventory_queue_commit_delta", "queue_target_public_log_duplicate_delta",
-    "queue_target_public_log_collision_delta", "final_settlement_count",
+    "queue_target_public_log_collision_delta", "duplicate_queue_entry_count",
+    "duplicate_facility_creation_count", "duplicate_card_consumption_count",
+    "duplicate_cost_consumption_count", "duplicate_sale_receipt_count",
+    "generation_2_duplicate_transaction_count", "final_settlement_count",
     "final_settlement_presentation_count", "final_settlement_public_log_count",
     "terminal_quiescent_frames", "terminal_world_delta", "terminal_rng_draw_delta",
     "generation", "elapsed_ms"
@@ -177,12 +196,15 @@ $script:AdmissionEvidenceBindingFields = @(
     "diagnostic_child_attestation_fingerprint", "diagnostic_parent_attestation_sha256",
     "diagnostic_stdout_sha256", "diagnostic_stderr_sha256",
     "diagnostic_timeout_policy_fingerprint", "diagnostic_parent_exit_green",
+    "diagnostic_bootstrap_admission_sha256", "diagnostic_bootstrap_admission_fingerprint",
+    "diagnostic_prequota_attestation_sha256", "diagnostic_prequota_attestation_fingerprint",
     "binding_fingerprint"
 )
 $script:AdmissionLedgerFields = @(
     "schema_version", "ledger_id", "contract_id", "authorization_id", "status",
     "created_at_utc", "run_id", "repository_head", "scenario_fingerprint",
-    "timeout_policy_fingerprint", "challenge_depth", "seed", "local_player_count",
+    "timeout_policy_fingerprint", "prerequisite_evidence_fingerprint",
+    "challenge_depth", "seed", "local_player_count",
     "ai_player_count", "rehearsal_only", "nonofficial", "official", "formal",
     "official_authorization_consumed", "authorized_rehearsal_count",
     "rehearsal_count_before", "rehearsal_count_after", "admission_evidence_id",
@@ -193,11 +215,30 @@ $script:AdmissionLedgerFields = @(
     "diagnostic_engine_creation_time_utc_ticks", "diagnostic_child_attestation_sha256",
     "diagnostic_child_attestation_fingerprint", "diagnostic_parent_attestation_sha256",
     "diagnostic_stdout_sha256", "diagnostic_stderr_sha256",
+    "diagnostic_bootstrap_admission_sha256", "diagnostic_bootstrap_admission_fingerprint",
+    "diagnostic_prequota_attestation_sha256", "diagnostic_prequota_attestation_fingerprint",
     "official_attempt_1_claim_relative_path", "official_attempt_1_claim_sha256",
     "official_attempt_1_claim_immutable", "official_attempt_2_claim_absent",
     "official_claim_inventory_count", "official_claim_inventory_fingerprint",
     "process_role", "orchestrator_process_id", "orchestrator_creation_time_utc_ticks",
     "claim_nonce", "launch_nonce", "ledger_fingerprint"
+)
+$script:BootstrapAdmissionFields = @(
+    "schema_version", "admission_id", "created_at_utc", "run_id", "role",
+    "repository_head", "branch", "authorization_id", "historical_count",
+    "authorized_increment", "maximum_allowed_count", "official", "formal",
+    "orchestrator_process_id", "orchestrator_creation_time_utc_ticks",
+    "invocation_nonce", "admission_fingerprint"
+)
+$script:PreQuotaAttestationFields = @(
+    "schema_version", "attestation_id", "run_id", "role", "repository_head", "branch",
+    "authorization_checked", "historical_count", "authorized_increment",
+    "maximum_allowed_count", "quota_claim_attempted", "quota_claimed",
+    "quota_ledger_path", "evidence_root_creation_attempted", "evidence_root_created",
+    "godot_launch_attempted", "godot_launched", "primary_failure_phase",
+    "primary_failure_code", "secondary_failure_codes", "task_owned_process_count_after",
+    "bootstrap_admission_sha256", "bootstrap_admission_fingerprint", "updated_at_utc",
+    "attestation_fingerprint"
 )
 $script:LaunchAuthorizationFields = @(
     "authorization_id", "claim_fingerprint", "claim_nonce", "source_head_sha",
@@ -530,7 +571,7 @@ function Assert-ProcessARehearsalDiagnosticManifest {
             throw "process_a_rehearsal_diagnostic_manifest_string_invalid"
         }
     }
-    if ([int]$Manifest.schema_version -ne 3 `
+    if ([int]$Manifest.schema_version -ne 4 `
         -or [string]$Manifest.visibility_scope -cne "qa_allowlisted" `
         -or [string]$Manifest.run_id -cne $ExpectedRunId `
         -or [string]$Manifest.process_role -cne "producer" `
@@ -555,10 +596,28 @@ function Assert-ProcessARehearsalDiagnosticManifest {
             throw "process_a_rehearsal_diagnostic_manifest_write_id_invalid"
         }
     }
-    foreach ($field in @("victory_unresolved_before_save", "production_surface_ready", "backup_created", "success")) {
+    foreach ($field in @(
+        "victory_unresolved_before_save", "production_surface_ready", "backup_created",
+        "save_readback_green", "save_fingerprint_parity", "world_fingerprint_match",
+        "rng_cursor_match", "ai_state_fingerprint_match", "card_inventory_fingerprint_match",
+        "queue_fingerprint_match", "generation_2_recapture_fingerprint_match",
+        "generation_2_rng_cursor_match", "success"
+    )) {
         if ($Manifest.$field -isnot [bool]) {
             throw "process_a_rehearsal_diagnostic_manifest_boolean_invalid"
         }
+    }
+    foreach ($field in @(
+        "world_fingerprint_match", "rng_cursor_match", "ai_state_fingerprint_match",
+        "card_inventory_fingerprint_match", "queue_fingerprint_match",
+        "generation_2_recapture_fingerprint_match", "generation_2_rng_cursor_match"
+    )) {
+        if ([bool]$Manifest.$field) {
+            throw "process_a_rehearsal_diagnostic_manifest_role_evidence_non_neutral"
+        }
+    }
+    if ([int]$Manifest.generation_2_duplicate_transaction_count -ne 0) {
+        throw "process_a_rehearsal_diagnostic_manifest_role_evidence_non_neutral"
     }
     if ([bool]$Manifest.success `
         -or $Manifest.victory_state_sequence -isnot [System.Array] `
@@ -789,10 +848,10 @@ function Get-ProcessARehearsalAdmissionEvidence {
     $quota = $quotaArtifact.value
     if (-not (Test-ProcessARehearsalExactFieldSet $quota $script:DiagnosticQuotaLedgerFields) `
         -or -not (Test-ProcessARehearsalInteger $quota.schema_version) `
-        -or [int]$quota.schema_version -ne 2 `
-        -or [string]$quota.ledger_id -cne "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV2" `
-        -or [string]$quota.authorization_id -cne "alpha04c-targeted-owner-capture-diagnostic-v2" `
-        -or [string]$quota.task_id -cne "ALPHA_0_4_C_OWNER_CAPTURE_ATTESTATION_CURSOR_PERSISTENCE_AND_PROCESS_A_REHEARSAL" `
+        -or [int]$quota.schema_version -ne 3 `
+        -or [string]$quota.ledger_id -cne "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV3" `
+        -or [string]$quota.authorization_id -cne "alpha04c-targeted-owner-capture-diagnostic-v3" `
+        -or [string]$quota.task_id -cne "ALPHA_0_4_C_FINAL_HARNESS_REPAIR_REHEARSAL_OFFICIAL_ATTEMPT_2_AND_MAIN_LANDING" `
         -or -not (Test-ProcessARehearsalUtcTimestamp $quota.created_at_utc) `
         -or [string]$quota.run_id -cne [string]$diagnostic.run_id `
         -or [string]$quota.repository_head -cne $ExpectedRepositoryHead `
@@ -800,12 +859,19 @@ function Get-ProcessARehearsalAdmissionEvidence {
         -or -not (Test-ProcessARehearsalInteger $quota.authorized_new_diagnostic_count) `
         -or [int]$quota.authorized_new_diagnostic_count -ne 1 `
         -or -not (Test-ProcessARehearsalInteger $quota.diagnostic_count_before) `
-        -or [int]$quota.diagnostic_count_before -ne 1 `
+        -or [int]$quota.diagnostic_count_before -ne 2 `
         -or -not (Test-ProcessARehearsalInteger $quota.diagnostic_count_after) `
-        -or [int]$quota.diagnostic_count_after -ne 2 `
+        -or [int]$quota.diagnostic_count_after -ne 3 `
         -or -not (Test-ProcessARehearsalInteger $quota.diagnostic_count_maximum) `
-        -or [int]$quota.diagnostic_count_maximum -ne 2 `
+        -or [int]$quota.diagnostic_count_maximum -ne 3 `
         -or [string]$quota.previous_ledger_sha256 -cne $script:PreviousDiagnosticQuotaLedgerSha256 `
+        -or [string]$quota.historical_invocation_commit -cne "3b3061508541d0e5f6f4c2d6560b134b7d4ee5f8" `
+        -or [string]$quota.historical_invocation_blob_sha1 -cne "b54917e54a39e24e1c7288d919394305a4e21c71" `
+        -or [string]$quota.historical_invocation_file_sha256 -cne "50608e7dc7a362969d0ee7358ba008aa0278342ae34d33cd579fcac7bf8a7306" `
+        -or -not [IO.Path]::IsPathFullyQualified([string]$quota.bootstrap_admission_path) `
+        -or -not (Test-ProcessARehearsalFingerprintValue $quota.bootstrap_admission_sha256) `
+        -or -not (Test-ProcessARehearsalFingerprintValue $quota.bootstrap_admission_fingerprint) `
+        -or -not [IO.Path]::IsPathFullyQualified([string]$quota.prequota_attestation_path) `
         -or [string]$quota.role_timeout_policy_sha256 -cne $ExpectedTimeoutPolicyFingerprint `
         -or [string]$quota.official_attempt_1_claim_sha256 -cne $script:OfficialAttempt1ClaimSha256 `
         -or $quota.official_attempt_2_claim_absent -isnot [bool] -or -not [bool]$quota.official_attempt_2_claim_absent `
@@ -825,6 +891,10 @@ function Get-ProcessARehearsalAdmissionEvidence {
     foreach ($field in @(
         "ledger_id", "authorization_id", "task_id", "created_at_utc", "run_id",
         "repository_head", "scenario_fingerprint", "previous_ledger_sha256",
+        "historical_invocation_commit", "historical_invocation_blob_sha1",
+        "historical_invocation_file_sha256", "bootstrap_admission_path",
+        "bootstrap_admission_sha256", "bootstrap_admission_fingerprint",
+        "prequota_attestation_path",
         "role_timeout_policy_sha256", "official_attempt_1_claim_sha256",
         "orchestrator_script_sha256", "orchestrator_creation_time_utc_ticks",
         "claim_nonce", "launch_nonce", "status"
@@ -832,6 +902,55 @@ function Get-ProcessARehearsalAdmissionEvidence {
         if ($quota.$field -isnot [string]) {
             throw "process_a_rehearsal_diagnostic_quota_invalid"
         }
+    }
+
+    $bootstrapArtifact = Read-ProcessARehearsalJsonArtifact ([string]$quota.bootstrap_admission_path)
+    $bootstrap = $bootstrapArtifact.value
+    if ([string]$bootstrapArtifact.sha256 -cne [string]$quota.bootstrap_admission_sha256 `
+        -or -not (Test-ProcessARehearsalExactFieldSet $bootstrap $script:BootstrapAdmissionFields) `
+        -or [int]$bootstrap.schema_version -ne 1 `
+        -or [string]$bootstrap.admission_id -cne "PreQuotaOrchestratorBootstrapAdmissionV1" `
+        -or [string]$bootstrap.run_id -cne [string]$diagnostic.run_id `
+        -or [string]$bootstrap.role -cne "targeted_owner_diagnostic" `
+        -or [string]$bootstrap.repository_head -cne $ExpectedRepositoryHead `
+        -or [string]$bootstrap.authorization_id -cne $script:TargetedDiagnosticAuthorizationId `
+        -or [int]$bootstrap.historical_count -ne 2 `
+        -or [int]$bootstrap.authorized_increment -ne 1 `
+        -or [int]$bootstrap.maximum_allowed_count -ne 3 `
+        -or $bootstrap.official -isnot [bool] -or [bool]$bootstrap.official `
+        -or $bootstrap.formal -isnot [bool] -or [bool]$bootstrap.formal `
+        -or [string]$bootstrap.admission_fingerprint -cne [string]$quota.bootstrap_admission_fingerprint `
+        -or [string]$bootstrap.admission_fingerprint -cne (Get-ProcessARehearsalFingerprint $bootstrap "admission_fingerprint")) {
+        throw "process_a_rehearsal_diagnostic_bootstrap_admission_invalid"
+    }
+    $prequotaArtifact = Read-ProcessARehearsalJsonArtifact ([string]$quota.prequota_attestation_path)
+    $prequota = $prequotaArtifact.value
+    if (-not (Test-ProcessARehearsalExactFieldSet $prequota $script:PreQuotaAttestationFields) `
+        -or [int]$prequota.schema_version -ne 1 `
+        -or [string]$prequota.attestation_id -cne "PreQuotaOrchestratorAttestationV1" `
+        -or [string]$prequota.run_id -cne [string]$diagnostic.run_id `
+        -or [string]$prequota.role -cne "targeted_owner_diagnostic" `
+        -or [string]$prequota.repository_head -cne $ExpectedRepositoryHead `
+        -or $prequota.authorization_checked -isnot [bool] -or -not [bool]$prequota.authorization_checked `
+        -or [int]$prequota.historical_count -ne 2 `
+        -or [int]$prequota.authorized_increment -ne 1 `
+        -or [int]$prequota.maximum_allowed_count -ne 3 `
+        -or $prequota.quota_claim_attempted -isnot [bool] -or -not [bool]$prequota.quota_claim_attempted `
+        -or $prequota.quota_claimed -isnot [bool] -or -not [bool]$prequota.quota_claimed `
+        -or [IO.Path]::GetFullPath([string]$prequota.quota_ledger_path) -cne [IO.Path]::GetFullPath($DiagnosticQuotaLedgerPath) `
+        -or $prequota.evidence_root_creation_attempted -isnot [bool] -or -not [bool]$prequota.evidence_root_creation_attempted `
+        -or $prequota.evidence_root_created -isnot [bool] -or -not [bool]$prequota.evidence_root_created `
+        -or $prequota.godot_launch_attempted -isnot [bool] -or -not [bool]$prequota.godot_launch_attempted `
+        -or $prequota.godot_launched -isnot [bool] -or -not [bool]$prequota.godot_launched `
+        -or [string]$prequota.primary_failure_phase -cne "" `
+        -or [string]$prequota.primary_failure_code -cne "" `
+        -or $prequota.secondary_failure_codes -isnot [System.Array] `
+        -or @($prequota.secondary_failure_codes).Count -ne 0 `
+        -or [int]$prequota.task_owned_process_count_after -ne 0 `
+        -or [string]$prequota.bootstrap_admission_sha256 -cne [string]$quota.bootstrap_admission_sha256 `
+        -or [string]$prequota.bootstrap_admission_fingerprint -cne [string]$quota.bootstrap_admission_fingerprint `
+        -or [string]$prequota.attestation_fingerprint -cne (Get-ProcessARehearsalFingerprint $prequota "attestation_fingerprint")) {
+        throw "process_a_rehearsal_diagnostic_prequota_attestation_invalid"
     }
 
     $diagnosticLaunchArtifact = Read-ProcessARehearsalJsonArtifact $DiagnosticLaunchAttestationPath
@@ -980,6 +1099,10 @@ function Get-ProcessARehearsalAdmissionEvidence {
         diagnostic_stderr_sha256 = $stderrSha256
         diagnostic_timeout_policy_fingerprint = $ExpectedTimeoutPolicyFingerprint
         diagnostic_parent_exit_green = $true
+        diagnostic_bootstrap_admission_sha256 = [string]$bootstrapArtifact.sha256
+        diagnostic_bootstrap_admission_fingerprint = [string]$bootstrap.admission_fingerprint
+        diagnostic_prequota_attestation_sha256 = [string]$prequotaArtifact.sha256
+        diagnostic_prequota_attestation_fingerprint = [string]$prequota.attestation_fingerprint
         binding_fingerprint = ""
     }
     $binding.binding_fingerprint = Get-ProcessARehearsalFingerprint $binding "binding_fingerprint"
@@ -1020,6 +1143,10 @@ function Assert-ProcessARehearsalAdmissionEvidenceBinding {
         -or -not (Test-ProcessARehearsalFingerprintValue $Binding.diagnostic_timeout_policy_fingerprint) `
         -or $Binding.diagnostic_parent_exit_green -isnot [bool] `
         -or -not [bool]$Binding.diagnostic_parent_exit_green `
+        -or -not (Test-ProcessARehearsalFingerprintValue $Binding.diagnostic_bootstrap_admission_sha256) `
+        -or -not (Test-ProcessARehearsalFingerprintValue $Binding.diagnostic_bootstrap_admission_fingerprint) `
+        -or -not (Test-ProcessARehearsalFingerprintValue $Binding.diagnostic_prequota_attestation_sha256) `
+        -or -not (Test-ProcessARehearsalFingerprintValue $Binding.diagnostic_prequota_attestation_fingerprint) `
         -or [string]$Binding.binding_fingerprint -cne (Get-ProcessARehearsalFingerprint $Binding "binding_fingerprint")) {
         throw "process_a_rehearsal_admission_binding_invalid"
     }
@@ -1121,7 +1248,7 @@ function Assert-ProcessARehearsalAdmissionLedgerValue {
 
     if (-not (Test-ProcessARehearsalExactFieldSet $Ledger $script:AdmissionLedgerFields) `
         -or -not (Test-ProcessARehearsalInteger $Ledger.schema_version) `
-        -or [int]$Ledger.schema_version -ne 2 `
+        -or [int]$Ledger.schema_version -ne 3 `
         -or [string]$Ledger.ledger_id -cne $script:AdmissionLedgerId `
         -or [string]$Ledger.contract_id -cne $script:ContractId `
         -or [string]$Ledger.authorization_id -cne $script:AuthorizationId `
@@ -1132,6 +1259,7 @@ function Assert-ProcessARehearsalAdmissionLedgerValue {
         -or [string]$Ledger.repository_head -cnotmatch '^[0-9a-f]{40}$' `
         -or -not (Test-ProcessARehearsalFingerprintValue $Ledger.scenario_fingerprint) `
         -or -not (Test-ProcessARehearsalFingerprintValue $Ledger.timeout_policy_fingerprint) `
+        -or -not (Test-ProcessARehearsalFingerprintValue $Ledger.prerequisite_evidence_fingerprint) `
         -or -not (Test-ProcessARehearsalInteger $Ledger.challenge_depth) `
         -or [int]$Ledger.challenge_depth -ne $script:ChallengeDepth `
         -or -not (Test-ProcessARehearsalInteger $Ledger.seed) `
@@ -1173,6 +1301,10 @@ function Assert-ProcessARehearsalAdmissionLedgerValue {
         -or -not (Test-ProcessARehearsalFingerprintValue $Ledger.diagnostic_parent_attestation_sha256) `
         -or -not (Test-ProcessARehearsalFingerprintValue $Ledger.diagnostic_stdout_sha256) `
         -or -not (Test-ProcessARehearsalFingerprintValue $Ledger.diagnostic_stderr_sha256) `
+        -or -not (Test-ProcessARehearsalFingerprintValue $Ledger.diagnostic_bootstrap_admission_sha256) `
+        -or -not (Test-ProcessARehearsalFingerprintValue $Ledger.diagnostic_bootstrap_admission_fingerprint) `
+        -or -not (Test-ProcessARehearsalFingerprintValue $Ledger.diagnostic_prequota_attestation_sha256) `
+        -or -not (Test-ProcessARehearsalFingerprintValue $Ledger.diagnostic_prequota_attestation_fingerprint) `
         -or [string]$Ledger.official_attempt_1_claim_relative_path -cnotmatch '^official-[^/]+/official_claim_ledger\.json$' `
         -or [string]$Ledger.official_attempt_1_claim_sha256 -cne $script:OfficialAttempt1ClaimSha256 `
         -or $Ledger.official_attempt_1_claim_immutable -isnot [bool] `
@@ -1225,6 +1357,7 @@ function Get-ProcessARehearsalAdmissionCollisionReason {
             -and [string]$existing.repository_head -ceq [string]$Candidate.repository_head `
             -and [string]$existing.scenario_fingerprint -ceq [string]$Candidate.scenario_fingerprint `
             -and [string]$existing.timeout_policy_fingerprint -ceq [string]$Candidate.timeout_policy_fingerprint `
+            -and [string]$existing.prerequisite_evidence_fingerprint -ceq [string]$Candidate.prerequisite_evidence_fingerprint `
             -and [string]$existing.admission_evidence_sha256 -ceq [string]$Candidate.admission_evidence_sha256 `
             -and [string]$existing.diagnostic_quota_ledger_sha256 -ceq [string]$Candidate.diagnostic_quota_ledger_sha256 `
             -and [string]$existing.diagnostic_launch_attestation_sha256 -ceq [string]$Candidate.diagnostic_launch_attestation_sha256 `
@@ -1281,6 +1414,7 @@ function New-ProcessARehearsalAdmission {
         [Parameter(Mandatory = $true)][string]$RunId,
         [Parameter(Mandatory = $true)][string]$RepositoryHead,
         [Parameter(Mandatory = $true)][string]$ScenarioFingerprint,
+        [Parameter(Mandatory = $true)][string]$PrerequisiteEvidenceFingerprint,
         [Parameter(Mandatory = $true)][string]$TimeoutPolicyPath,
         [Parameter(Mandatory = $true)][string]$AdmissionEvidencePath,
         [Parameter(Mandatory = $true)][string]$DiagnosticQuotaLedgerPath,
@@ -1304,6 +1438,9 @@ function New-ProcessARehearsalAdmission {
     if (-not (Test-ProcessARehearsalFingerprintValue $ScenarioFingerprint)) {
         throw "process_a_rehearsal_scenario_fingerprint_invalid"
     }
+    if (-not (Test-ProcessARehearsalFingerprintValue $PrerequisiteEvidenceFingerprint)) {
+        throw "process_a_rehearsal_prerequisite_evidence_fingerprint_invalid"
+    }
     $policy = Get-ProcessARehearsalTimeoutPolicyBinding `
         -Path $TimeoutPolicyPath `
         -ExpectedRepositoryHead $RepositoryHead
@@ -1323,7 +1460,7 @@ function New-ProcessARehearsalAdmission {
     $claimState = Get-ProcessARehearsalOfficialClaimState $OfficialClaimRoot $OfficialAttempt1ClaimPath
     $orchestratorTicks = Get-ProcessARehearsalCurrentCreationTicks
     $ledger = [ordered]@{
-        schema_version = 2
+        schema_version = 3
         ledger_id = $script:AdmissionLedgerId
         contract_id = $script:ContractId
         authorization_id = $script:AuthorizationId
@@ -1333,6 +1470,7 @@ function New-ProcessARehearsalAdmission {
         repository_head = $RepositoryHead
         scenario_fingerprint = $ScenarioFingerprint
         timeout_policy_fingerprint = [string]$policy.sha256
+        prerequisite_evidence_fingerprint = $PrerequisiteEvidenceFingerprint
         challenge_depth = $script:ChallengeDepth
         seed = $script:Seed
         local_player_count = $script:LocalPlayerCount
@@ -1360,6 +1498,10 @@ function New-ProcessARehearsalAdmission {
         diagnostic_parent_attestation_sha256 = [string]$evidence.diagnostic_parent_attestation_sha256
         diagnostic_stdout_sha256 = [string]$evidence.diagnostic_stdout_sha256
         diagnostic_stderr_sha256 = [string]$evidence.diagnostic_stderr_sha256
+        diagnostic_bootstrap_admission_sha256 = [string]$evidence.diagnostic_bootstrap_admission_sha256
+        diagnostic_bootstrap_admission_fingerprint = [string]$evidence.diagnostic_bootstrap_admission_fingerprint
+        diagnostic_prequota_attestation_sha256 = [string]$evidence.diagnostic_prequota_attestation_sha256
+        diagnostic_prequota_attestation_fingerprint = [string]$evidence.diagnostic_prequota_attestation_fingerprint
         official_attempt_1_claim_relative_path = [string]$claimState.attempt_1_relative_path
         official_attempt_1_claim_sha256 = [string]$claimState.attempt_1_sha256
         official_attempt_1_claim_immutable = $true
@@ -1399,6 +1541,7 @@ function Assert-ProcessARehearsalAdmissionSourcesUnchanged {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]$Admission,
+        [Parameter(Mandatory = $true)][string]$PrerequisiteEvidenceFingerprint,
         [Parameter(Mandatory = $true)][string]$TimeoutPolicyPath,
         [Parameter(Mandatory = $true)][string]$AdmissionEvidencePath,
         [Parameter(Mandatory = $true)][string]$DiagnosticQuotaLedgerPath,
@@ -1414,6 +1557,10 @@ function Assert-ProcessARehearsalAdmissionSourcesUnchanged {
 
     $ledger = $Admission.value
     $null = Read-ProcessARehearsalAdmissionLedger $Admission.path $Admission.fingerprint
+    if (-not (Test-ProcessARehearsalFingerprintValue $PrerequisiteEvidenceFingerprint) `
+        -or [string]$ledger.prerequisite_evidence_fingerprint -cne $PrerequisiteEvidenceFingerprint) {
+        throw "process_a_rehearsal_prerequisite_evidence_changed_after_admission"
+    }
     $sourceBindings = @(
         @($AdmissionEvidencePath, [string]$ledger.admission_evidence_sha256),
         @($DiagnosticQuotaLedgerPath, [string]$ledger.diagnostic_quota_ledger_sha256),
@@ -1617,6 +1764,7 @@ function Complete-ProcessARehearsalLaunch {
         [Parameter(Mandatory = $true)][string]$LaunchLedgerPath,
         [Parameter(Mandatory = $true)][string]$AdmissionLedgerPath,
         [Parameter(Mandatory = $true)][string]$ExpectedAdmissionLedgerSha256,
+        [Parameter(Mandatory = $true)][string]$PrerequisiteEvidenceFingerprint,
         [Parameter(Mandatory = $true)][string]$LaunchAttestationPath,
         [Parameter(Mandatory = $true)][string]$TimeoutPolicyPath,
         [Parameter(Mandatory = $true)][string]$AdmissionEvidencePath,
@@ -1633,7 +1781,9 @@ function Complete-ProcessARehearsalLaunch {
 
     $admission = Read-ProcessARehearsalAdmissionLedger $AdmissionLedgerPath $ExpectedAdmissionLedgerSha256
     $ledger = $admission.value
-    if ((Get-FileHash -LiteralPath $TimeoutPolicyPath -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$ledger.timeout_policy_fingerprint `
+    if (-not (Test-ProcessARehearsalFingerprintValue $PrerequisiteEvidenceFingerprint) `
+        -or [string]$ledger.prerequisite_evidence_fingerprint -cne $PrerequisiteEvidenceFingerprint `
+        -or (Get-FileHash -LiteralPath $TimeoutPolicyPath -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$ledger.timeout_policy_fingerprint `
         -or (Get-FileHash -LiteralPath $AdmissionEvidencePath -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$ledger.admission_evidence_sha256 `
         -or (Get-FileHash -LiteralPath $DiagnosticQuotaLedgerPath -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$ledger.diagnostic_quota_ledger_sha256 `
         -or (Get-FileHash -LiteralPath $DiagnosticLaunchAttestationPath -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$ledger.diagnostic_launch_attestation_sha256 `

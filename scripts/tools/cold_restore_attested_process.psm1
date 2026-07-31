@@ -1,6 +1,132 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+$script:PrimaryFailureRecordFields = @("phase", "reason_code", "safe_details", "recorded_at")
+
+function Get-ColdRestoreSafeCollectionCount {
+    param([AllowNull()]$Value)
+
+    if ($null -eq $Value) {
+        return 0
+    }
+    return @($Value).Count
+}
+
+function Test-ColdRestoreSafeReasonCode {
+    param([AllowNull()]$Value)
+
+    return $Value -is [string] -and [string]$Value -cmatch '^[a-z0-9_]{1,128}$'
+}
+
+function Get-ColdRestoreSafeReasonCode {
+    param(
+        [AllowNull()]$Value,
+        [Parameter(Mandatory = $true)][string]$Fallback
+    )
+
+    if (Test-ColdRestoreSafeReasonCode $Value) {
+        return [string]$Value
+    }
+    if (-not (Test-ColdRestoreSafeReasonCode $Fallback)) {
+        throw "primary_failure_fallback_invalid"
+    }
+    return $Fallback
+}
+
+function New-ColdRestorePrimaryFailureState {
+    return [pscustomobject]@{
+        primary_failure = $null
+        secondary_failures = [Collections.Generic.List[object]]::new()
+        next_observation_sequence = 1
+        primary_failure_overwrite_count = 0
+    }
+}
+
+function Add-ColdRestoreFailureRecord {
+    param(
+        [Parameter(Mandatory = $true)]$State,
+        [Parameter(Mandatory = $true)][string]$Phase,
+        [AllowNull()]$ReasonCode,
+        [Parameter(Mandatory = $true)][string]$FallbackReasonCode,
+        [string]$SourceId = "orchestrator",
+        [datetime]$RecordedAtUtc = [DateTime]::UtcNow
+    )
+
+    $safePhase = Get-ColdRestoreSafeReasonCode $Phase "orchestrator_failure"
+    $normalized = -not (Test-ColdRestoreSafeReasonCode $ReasonCode)
+    $safeReason = Get-ColdRestoreSafeReasonCode $ReasonCode $FallbackReasonCode
+    $sequence = [int]$State.next_observation_sequence
+    $State.next_observation_sequence = $sequence + 1
+    $record = [pscustomobject][ordered]@{
+        phase = $safePhase
+        reason_code = $safeReason
+        safe_details = [pscustomobject][ordered]@{
+            source_id = $(if ($SourceId -cmatch '^[a-z0-9_]{1,64}$') { $SourceId } else { "orchestrator" })
+            observation_sequence = $sequence
+            normalized_from_untyped = $normalized
+        }
+        recorded_at = $RecordedAtUtc.ToUniversalTime().ToString("O", [Globalization.CultureInfo]::InvariantCulture)
+    }
+    if ($null -eq $State.primary_failure) {
+        $State.primary_failure = $record
+    }
+    else {
+        $State.secondary_failures.Add($record)
+    }
+    return $record
+}
+
+function Get-ColdRestoreFailureProjection {
+    param([Parameter(Mandatory = $true)]$State)
+
+    $primary = $State.primary_failure
+    $secondary = @($State.secondary_failures)
+    return [pscustomobject][ordered]@{
+        primary_failure = $primary
+        primary_failure_phase = $(if ($null -eq $primary) { "" } else { [string]$primary.phase })
+        primary_failure_code = $(if ($null -eq $primary) { "" } else { [string]$primary.reason_code })
+        secondary_failures = $secondary
+        secondary_failure_codes = @($secondary | ForEach-Object { [string]$_.reason_code })
+        primary_failure_overwrite_count = [int]$State.primary_failure_overwrite_count
+    }
+}
+
+function New-ColdRestoreFailureException {
+    param([Parameter(Mandatory = $true)]$State)
+
+    $projection = Get-ColdRestoreFailureProjection $State
+    if ([string]::IsNullOrEmpty([string]$projection.primary_failure_code)) {
+        throw "primary_failure_missing"
+    }
+    $exception = [InvalidOperationException]::new([string]$projection.primary_failure_code)
+    $exception.Data["ColdRestoreFailureProjection"] = $projection
+    return $exception
+}
+
+function Get-ColdRestoreFailureProjectionFromError {
+    param([AllowNull()]$ErrorRecord)
+
+    if ($null -ne $ErrorRecord -and $null -ne $ErrorRecord.Exception `
+        -and $ErrorRecord.Exception.Data.Contains("ColdRestoreFailureProjection")) {
+        return $ErrorRecord.Exception.Data["ColdRestoreFailureProjection"]
+    }
+    return $null
+}
+
+function Get-ColdRestoreSecondaryFailureCodesFromError {
+    param([AllowNull()]$ErrorRecord)
+
+    if ($null -eq $ErrorRecord -or $null -eq $ErrorRecord.Exception `
+        -or -not $ErrorRecord.Exception.Data.Contains("ColdRestoreSecondaryFailureCodes")) {
+        return @()
+    }
+    return @(
+        @($ErrorRecord.Exception.Data["ColdRestoreSecondaryFailureCodes"]) |
+            Where-Object { Test-ColdRestoreSafeReasonCode $_ } |
+            ForEach-Object { [string]$_ }
+    )
+}
+
 $script:ChildCompletionFields = @(
     "schema_version",
     "run_id",
@@ -461,7 +587,7 @@ function Test-ColdRestoreRoleTimeoutPolicy {
             return & $invalid "role_timeout_policy_cleanup_invalid"
         }
         if ($entry.contract_only_in_this_task -isnot [bool] `
-            -or [bool]$entry.contract_only_in_this_task -ne ([string]$roleName -in @("process_b", "process_c"))) {
+            -or [bool]$entry.contract_only_in_this_task) {
             return & $invalid "role_timeout_policy_contract_only_invalid"
         }
     }
@@ -724,50 +850,97 @@ function Write-ColdRestoreExclusiveJson {
     [IO.Directory]::CreateDirectory($parent) | Out-Null
     $json = ConvertTo-ColdRestoreCanonicalJson $Value
     $bytes = [Text.UTF8Encoding]::new($false).GetBytes($json)
+    $tempPath = "$Path.tmp.$PID.$([Guid]::NewGuid().ToString('N'))"
+    $failureCode = ""
+    $published = $false
     try {
-        $stream = [IO.FileStream]::new(
-            $Path,
-            [IO.FileMode]::CreateNew,
-            [IO.FileAccess]::Write,
-            [IO.FileShare]::None,
-            4096,
-            [IO.FileOptions]::WriteThrough
-        )
-    }
-    catch {
-        throw "exclusive_evidence_create_new_failed"
-    }
-    $consumedFailure = ""
-    try {
-        $stream.Write($bytes, 0, $bytes.Length)
-        $stream.Flush($true)
-    }
-    catch {
-        $consumedFailure = "exclusive_evidence_consumed_write_failed"
-    }
-    try {
-        $stream.Dispose()
-    }
-    catch {
-        if ($consumedFailure -eq "") {
-            $consumedFailure = "exclusive_evidence_consumed_dispose_failed"
+        try {
+            $stream = [IO.FileStream]::new(
+                $tempPath,
+                [IO.FileMode]::CreateNew,
+                [IO.FileAccess]::Write,
+                [IO.FileShare]::None,
+                4096,
+                [IO.FileOptions]::WriteThrough
+            )
+            try {
+                $stream.Write($bytes, 0, $bytes.Length)
+                $stream.Flush($true)
+            }
+            finally {
+                $stream.Dispose()
+            }
         }
-    }
-    if ($consumedFailure -ne "") {
-        throw $consumedFailure
-    }
-    try {
-        $readback = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false))
-        if ($readback -cne $json) {
+        catch {
+            throw "exclusive_evidence_prepublication_write_failed"
+        }
+        try {
+            $tempReadback = [IO.File]::ReadAllText($tempPath, [Text.UTF8Encoding]::new($false))
+            if ($tempReadback -cne $json) {
+                throw "exclusive_evidence_prepublication_readback_failed"
+            }
+            $null = $tempReadback | ConvertFrom-Json
+        }
+        catch {
+            if ([string]$_.Exception.Message -like "exclusive_evidence_prepublication_*") {
+                throw
+            }
+            throw "exclusive_evidence_prepublication_readback_failed"
+        }
+        try {
+            [IO.File]::Move($tempPath, $Path)
+            $published = $true
+        }
+        catch {
+            if ([IO.File]::Exists($Path)) {
+                throw "exclusive_evidence_create_new_failed"
+            }
+            throw "exclusive_evidence_publish_failed"
+        }
+        try {
+            $readback = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false))
+            if ($readback -cne $json) {
+                throw "exclusive_evidence_consumed_readback_failed"
+            }
+            $null = $readback | ConvertFrom-Json
+        }
+        catch {
+            if ([string]$_.Exception.Message -like "exclusive_evidence_consumed_*") {
+                throw
+            }
             throw "exclusive_evidence_consumed_readback_failed"
         }
-        $null = $readback | ConvertFrom-Json
     }
     catch {
-        if ($_.Exception.Message -like "exclusive_evidence_consumed_*") {
-            throw
+        $candidate = [string]$_.Exception.Message
+        $failureCode = if ($candidate -cmatch '^exclusive_evidence_[a-z0-9_]{1,96}$') {
+            $candidate
         }
-        throw "exclusive_evidence_consumed_readback_failed"
+        elseif ($published) {
+            "exclusive_evidence_consumed_internal_failure"
+        }
+        else {
+            "exclusive_evidence_prepublication_internal_failure"
+        }
+    }
+    finally {
+        try {
+            if ([IO.File]::Exists($tempPath)) {
+                [IO.File]::Delete($tempPath)
+            }
+        }
+        catch {
+            if ($failureCode -eq "") {
+                $failureCode = $(if ($published) {
+                    "exclusive_evidence_consumed_cleanup_failed"
+                } else {
+                    "exclusive_evidence_prepublication_cleanup_failed"
+                })
+            }
+        }
+    }
+    if ($failureCode -ne "") {
+        throw $failureCode
     }
     return Get-ColdRestoreTextSha256 $json
 }
@@ -775,15 +948,30 @@ function Write-ColdRestoreExclusiveJson {
 function Write-ColdRestoreReplacingAtomicJson {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
-        [Parameter(Mandatory = $true)]$Value
+        [Parameter(Mandatory = $true)]$Value,
+        [ValidateSet(
+            "", "before_publish", "after_publish", "after_publish_rollback_failure",
+            "after_publish_rollback_verification_failure", "cleanup",
+            "cleanup_rollback_verification_failure"
+        )]
+        [string]$FailureInjectionPhase = ""
     )
 
     $parent = Split-Path -Parent $Path
     [IO.Directory]::CreateDirectory($parent) | Out-Null
     $tempPath = "$Path.tmp.$PID.$([Guid]::NewGuid().ToString('N'))"
     $backupPath = "$Path.swap.$PID.$([Guid]::NewGuid().ToString('N'))"
+    $rollbackDiscardPath = "$Path.rollback.$PID.$([Guid]::NewGuid().ToString('N'))"
+    $knownGoodPath = "$Path.known-good.$PID.$([Guid]::NewGuid().ToString('N'))"
     $json = ConvertTo-ColdRestoreCanonicalJson $Value
     $bytes = [Text.UTF8Encoding]::new($false).GetBytes($json)
+    $hadExisting = [IO.File]::Exists($Path)
+    $originalBytes = if ($hadExisting) { [IO.File]::ReadAllBytes($Path) } else { $null }
+    $published = $false
+    $verified = $false
+    $rollbackFailed = $false
+    $failureCode = ""
+    $secondaryFailureCodes = [Collections.Generic.List[string]]::new()
     try {
         $stream = [IO.FileStream]::new(
             $tempPath,
@@ -805,23 +993,191 @@ function Write-ColdRestoreReplacingAtomicJson {
             throw "replacing_evidence_readback_failed"
         }
         $null = $readback | ConvertFrom-Json
-        if ([IO.File]::Exists($Path)) {
-            [IO.File]::Replace($tempPath, $Path, $backupPath, $true)
+        if ($FailureInjectionPhase -ceq "before_publish") {
+            throw "replacing_evidence_injected_before_publish"
         }
-        else {
-            [IO.File]::Move($tempPath, $Path)
+        try {
+            if ($hadExisting) {
+                [IO.File]::Replace($tempPath, $Path, $backupPath, $true)
+            }
+            else {
+                [IO.File]::Move($tempPath, $Path)
+            }
+        }
+        catch {
+            throw "replacing_evidence_publish_failed"
+        }
+        $published = $true
+        if ($FailureInjectionPhase -in @(
+            "after_publish", "after_publish_rollback_failure",
+            "after_publish_rollback_verification_failure"
+        )) {
+            throw "replacing_evidence_injected_after_publish"
         }
         $finalReadback = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false))
         if ($finalReadback -cne $json) {
             throw "replacing_evidence_final_readback_failed"
         }
+        $null = $finalReadback | ConvertFrom-Json
+        $verified = $true
     }
-    finally {
-        foreach ($candidate in @($tempPath, $backupPath)) {
-            if ([IO.File]::Exists($candidate)) {
-                [IO.File]::Delete($candidate)
+    catch {
+        $candidate = [string]$_.Exception.Message
+        $failureCode = if ($candidate -cmatch '^replacing_evidence_[a-z0-9_]{1,96}$') {
+            $candidate
+        }
+        else {
+            "replacing_evidence_internal_failure"
+        }
+        if ($published -and -not $verified) {
+            try {
+                if ($hadExisting) {
+                    if (-not [IO.File]::Exists($backupPath)) {
+                        throw "rollback_backup_missing"
+                    }
+                    if ($FailureInjectionPhase -ceq "after_publish_rollback_failure") {
+                        throw "rollback_injected_failure"
+                    }
+                    $knownGoodStream = [IO.FileStream]::new(
+                        $knownGoodPath,
+                        [IO.FileMode]::CreateNew,
+                        [IO.FileAccess]::Write,
+                        [IO.FileShare]::None,
+                        4096,
+                        [IO.FileOptions]::WriteThrough
+                    )
+                    try {
+                        $knownGoodStream.Write($originalBytes, 0, $originalBytes.Length)
+                        $knownGoodStream.Flush($true)
+                    }
+                    finally {
+                        $knownGoodStream.Dispose()
+                    }
+                    $knownGoodBytes = [IO.File]::ReadAllBytes($knownGoodPath)
+                    if ($knownGoodBytes.Length -ne $originalBytes.Length `
+                        -or [Convert]::ToBase64String($knownGoodBytes) -cne [Convert]::ToBase64String($originalBytes)) {
+                        throw "rollback_known_good_copy_invalid"
+                    }
+                    [IO.File]::Replace($backupPath, $Path, $rollbackDiscardPath, $true)
+                    if ($FailureInjectionPhase -ceq "after_publish_rollback_verification_failure") {
+                        throw "rollback_readback_mismatch"
+                    }
+                    $restoredBytes = [IO.File]::ReadAllBytes($Path)
+                    if ($restoredBytes.Length -ne $originalBytes.Length `
+                        -or [Convert]::ToBase64String($restoredBytes) -cne [Convert]::ToBase64String($originalBytes)) {
+                        throw "rollback_readback_mismatch"
+                    }
+                }
+                elseif ([IO.File]::Exists($Path)) {
+                    [IO.File]::Delete($Path)
+                    if ([IO.File]::Exists($Path)) {
+                        throw "rollback_delete_failed"
+                    }
+                }
+            }
+            catch {
+                $rollbackFailed = $true
+                $secondaryFailureCodes.Add("replacing_evidence_rollback_failed")
             }
         }
+    }
+    finally {
+        foreach ($candidatePath in @($tempPath, $backupPath, $rollbackDiscardPath, $knownGoodPath)) {
+            if ($rollbackFailed -and $candidatePath -in @($backupPath, $rollbackDiscardPath, $knownGoodPath)) {
+                continue
+            }
+            try {
+                if ([IO.File]::Exists($candidatePath)) {
+                    if ($FailureInjectionPhase -in @("cleanup", "cleanup_rollback_verification_failure") `
+                        -and $candidatePath -ceq $backupPath) {
+                        throw "cleanup_injected_failure"
+                    }
+                    [IO.File]::Delete($candidatePath)
+                }
+            }
+            catch {
+                if (-not $secondaryFailureCodes.Contains("replacing_evidence_cleanup_failed")) {
+                    $secondaryFailureCodes.Add("replacing_evidence_cleanup_failed")
+                }
+            }
+        }
+    }
+    if ($failureCode -eq "" -and $secondaryFailureCodes.Contains("replacing_evidence_cleanup_failed")) {
+        $failureCode = "replacing_evidence_cleanup_failed"
+        if ($published -and $verified) {
+            try {
+                if ($hadExisting) {
+                    if (-not [IO.File]::Exists($backupPath)) {
+                        throw "cleanup_rollback_backup_missing"
+                    }
+                    $knownGoodStream = [IO.FileStream]::new(
+                        $knownGoodPath,
+                        [IO.FileMode]::CreateNew,
+                        [IO.FileAccess]::Write,
+                        [IO.FileShare]::None,
+                        4096,
+                        [IO.FileOptions]::WriteThrough
+                    )
+                    try {
+                        $knownGoodStream.Write($originalBytes, 0, $originalBytes.Length)
+                        $knownGoodStream.Flush($true)
+                    }
+                    finally {
+                        $knownGoodStream.Dispose()
+                    }
+                    $knownGoodBytes = [IO.File]::ReadAllBytes($knownGoodPath)
+                    if ($knownGoodBytes.Length -ne $originalBytes.Length `
+                        -or [Convert]::ToBase64String($knownGoodBytes) -cne [Convert]::ToBase64String($originalBytes)) {
+                        throw "cleanup_rollback_known_good_copy_invalid"
+                    }
+                    [IO.File]::Replace($backupPath, $Path, $rollbackDiscardPath, $true)
+                    if ($FailureInjectionPhase -ceq "cleanup_rollback_verification_failure") {
+                        throw "cleanup_rollback_readback_mismatch"
+                    }
+                    $restoredBytes = [IO.File]::ReadAllBytes($Path)
+                    if ($restoredBytes.Length -ne $originalBytes.Length `
+                        -or [Convert]::ToBase64String($restoredBytes) -cne [Convert]::ToBase64String($originalBytes)) {
+                        throw "cleanup_rollback_readback_mismatch"
+                    }
+                }
+                elseif ([IO.File]::Exists($Path)) {
+                    [IO.File]::Delete($Path)
+                }
+                $verified = $false
+            }
+            catch {
+                $rollbackFailed = $true
+                if (-not $secondaryFailureCodes.Contains("replacing_evidence_rollback_failed")) {
+                    $secondaryFailureCodes.Add("replacing_evidence_rollback_failed")
+                }
+            }
+            if (-not $rollbackFailed) {
+                foreach ($candidatePath in @($backupPath, $rollbackDiscardPath, $knownGoodPath)) {
+                    try {
+                        if ([IO.File]::Exists($candidatePath)) {
+                            [IO.File]::Delete($candidatePath)
+                        }
+                    }
+                    catch {
+                        $rollbackFailed = $true
+                        if (-not $secondaryFailureCodes.Contains("replacing_evidence_rollback_failed")) {
+                            $secondaryFailureCodes.Add("replacing_evidence_rollback_failed")
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if ($failureCode -ne "") {
+        if ($failureCode -ceq "replacing_evidence_cleanup_failed") {
+            $null = $secondaryFailureCodes.Remove("replacing_evidence_cleanup_failed")
+        }
+        $exception = [InvalidOperationException]::new($failureCode)
+        $exception.Data["ColdRestoreSecondaryFailureCodes"] = @($secondaryFailureCodes)
+        throw $exception
+    }
+    if (-not $verified) {
+        throw "replacing_evidence_verification_missing"
     }
     return Get-ColdRestoreTextSha256 $json
 }
@@ -1572,10 +1928,32 @@ function Invoke-ColdRestoreAttestedProcess {
         [string]$ProgressHeartbeatEventDirectory = "",
         [string]$ProgressHeartbeatPath = "",
         [string]$ExpectedScenarioFingerprint = "",
-        [string]$TimeoutPolicyPath = ""
+        [string]$TimeoutPolicyPath = "",
+        $FailureState = $null
     )
 
     $wallStopwatch = [Diagnostics.Stopwatch]::StartNew()
+    if ($null -eq $FailureState) {
+        $FailureState = New-ColdRestorePrimaryFailureState
+    }
+    $observedFailureCodes = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $recordWrapperFailure = {
+        param(
+            [Parameter(Mandatory = $true)][string]$Phase,
+            [AllowNull()]$ReasonCode,
+            [Parameter(Mandatory = $true)][string]$FallbackReasonCode
+        )
+        $safeReason = Get-ColdRestoreSafeReasonCode $ReasonCode $FallbackReasonCode
+        $observationKey = "$Phase|$safeReason"
+        if ($observedFailureCodes.Add($observationKey)) {
+            $null = Add-ColdRestoreFailureRecord `
+                -State $FailureState `
+                -Phase $Phase `
+                -ReasonCode $safeReason `
+                -FallbackReasonCode $FallbackReasonCode `
+                -SourceId "wrapper"
+        }
+    }
     $launchAuthorizationEnabled = $LaunchAttestationPath -ne "" -and $null -ne $LaunchAuthorization
     if (($LaunchAttestationPath -ne "") -ne ($null -ne $LaunchAuthorization)) {
         throw "launch_authorization_parameter_mismatch"
@@ -1689,6 +2067,7 @@ function Invoke-ColdRestoreAttestedProcess {
     $stdout = ""
     $stderr = ""
     $captureComplete = $false
+    $processDisposeFailed = $false
     $launchFailureCode = ""
     $supervisionFailureCode = ""
     $timeoutReasonCode = ""
@@ -1709,6 +2088,9 @@ function Invoke-ColdRestoreAttestedProcess {
     )
     if ($timeoutPolicyEnabled -and [IO.Directory]::Exists($ProgressHeartbeatEventDirectory)) {
         $launchCollision += $ProgressHeartbeatEventDirectory
+    }
+    if ($launchCollision.Count -gt 0) {
+        & $recordWrapperFailure "launch_admission" "evidence_collision" "evidence_collision"
     }
 
     if ($launchCollision.Count -eq 0) {
@@ -1750,6 +2132,7 @@ function Invoke-ColdRestoreAttestedProcess {
                 }
                 catch {
                     $launchFailureCode = "launch_attestation_write_failed"
+                    & $recordWrapperFailure "launch_attestation" $launchFailureCode "launch_attestation_write_failed"
                     throw
                 }
             }
@@ -1759,6 +2142,7 @@ function Invoke-ColdRestoreAttestedProcess {
                 }
                 catch {
                     $supervisionFailureCode = [string]$_.Exception.Message
+                    & $recordWrapperFailure "process_supervision" $supervisionFailureCode "process_snapshot_failed"
                     break
                 }
                 if ($phaseTimelineEnabled) {
@@ -1770,6 +2154,7 @@ function Invoke-ColdRestoreAttestedProcess {
                         -ExpectedScenarioFingerprint $ExpectedScenarioFingerprint
                     if (-not [bool]$phaseTimelineSync.valid) {
                         $supervisionFailureCode = [string]$phaseTimelineSync.reason_code
+                        & $recordWrapperFailure "phase_timeline" $supervisionFailureCode "phase_timeline_invalid"
                         break
                     }
                 }
@@ -1785,10 +2170,12 @@ function Invoke-ColdRestoreAttestedProcess {
                     }
                     catch {
                         $supervisionFailureCode = "progress_heartbeat_sync_failed"
+                        & $recordWrapperFailure "progress_heartbeat" $supervisionFailureCode "progress_heartbeat_sync_failed"
                         break
                     }
                     if (-not [bool]$progressHeartbeatSync.valid) {
                         $supervisionFailureCode = [string]$progressHeartbeatSync.reason_code
+                        & $recordWrapperFailure "progress_heartbeat" $supervisionFailureCode "progress_heartbeat_invalid"
                         break
                     }
                     if ([bool]$progressHeartbeatSync.semantic_progressed) {
@@ -1805,6 +2192,7 @@ function Invoke-ColdRestoreAttestedProcess {
                     else {
                         "child_process_timeout"
                     }
+                    & $recordWrapperFailure "process_supervision" $timeoutReasonCode "child_process_timeout"
                     break
                 }
                 if ($timeoutPolicyEnabled `
@@ -1812,6 +2200,7 @@ function Invoke-ColdRestoreAttestedProcess {
                     $timedOut = $true
                     $timeoutKind = "no_progress"
                     $timeoutReasonCode = "${PolicyRole}_no_progress_timeout"
+                    & $recordWrapperFailure "process_supervision" $timeoutReasonCode "child_process_timeout"
                     break
                 }
                 Start-Sleep -Milliseconds $pollIntervalMilliseconds
@@ -1824,10 +2213,18 @@ function Invoke-ColdRestoreAttestedProcess {
                 catch [InvalidOperationException] {
                     # The child exited between the HasExited observation and the kill request.
                 }
+                catch {
+                    & $recordWrapperFailure "catch_time_termination" "process_tree_cleanup_failed" "process_tree_cleanup_failed"
+                }
             }
-            if ($process.WaitForExit($normalExitGraceSeconds * 1000)) {
-                $observedExit = $true
-                $exitCode = $process.ExitCode
+            try {
+                if ($process.WaitForExit($normalExitGraceSeconds * 1000)) {
+                    $observedExit = $true
+                    $exitCode = $process.ExitCode
+                }
+            }
+            catch {
+                & $recordWrapperFailure "child_exit_observation" "child_exit_observation_failed" "child_exit_observation_failed"
             }
             if ($phaseTimelineEnabled) {
                 $phaseTimelineSync = Sync-ColdRestoreProcessAPhaseTimeline `
@@ -1838,6 +2235,7 @@ function Invoke-ColdRestoreAttestedProcess {
                     -ExpectedScenarioFingerprint $ExpectedScenarioFingerprint
                 if (-not [bool]$phaseTimelineSync.valid -and $supervisionFailureCode -eq "") {
                     $supervisionFailureCode = [string]$phaseTimelineSync.reason_code
+                    & $recordWrapperFailure "phase_timeline" $supervisionFailureCode "phase_timeline_invalid"
                 }
             }
             if ($timeoutPolicyEnabled -and $supervisionFailureCode -eq "") {
@@ -1851,6 +2249,7 @@ function Invoke-ColdRestoreAttestedProcess {
                         -ExpectedPolicyFingerprint ([string]$policyValidation.fingerprint)
                     if (-not [bool]$progressHeartbeatSync.valid) {
                         $supervisionFailureCode = [string]$progressHeartbeatSync.reason_code
+                        & $recordWrapperFailure "progress_heartbeat" $supervisionFailureCode "progress_heartbeat_invalid"
                     }
                     elseif ([bool]$progressHeartbeatSync.semantic_progressed) {
                         $lastSemanticProgressMilliseconds = [int64]$processStopwatch.ElapsedMilliseconds
@@ -1858,6 +2257,7 @@ function Invoke-ColdRestoreAttestedProcess {
                 }
                 catch {
                     $supervisionFailureCode = "progress_heartbeat_sync_failed"
+                    & $recordWrapperFailure "progress_heartbeat" $supervisionFailureCode "progress_heartbeat_sync_failed"
                 }
             }
             try {
@@ -1866,6 +2266,7 @@ function Invoke-ColdRestoreAttestedProcess {
             catch {
                 if ($supervisionFailureCode -eq "") {
                     $supervisionFailureCode = [string]$_.Exception.Message
+                    & $recordWrapperFailure "process_supervision" $supervisionFailureCode "process_snapshot_failed"
                 }
             }
             $stdoutReady = $stdoutTask.Wait($streamDrainGraceSeconds * 1000)
@@ -1884,22 +2285,80 @@ function Invoke-ColdRestoreAttestedProcess {
                 else {
                     "child_supervision_internal_error"
                 }
+                & $recordWrapperFailure "process_supervision" $supervisionFailureCode "child_supervision_internal_error"
             }
             if ($childPid -gt 0 -and -not $process.HasExited) {
                 $terminatedByParent = $true
-                $process.Kill($true)
-                $null = $process.WaitForExit($normalExitGraceSeconds * 1000)
-                $observedExit = $process.HasExited
-                if ($observedExit) { $exitCode = $process.ExitCode }
+                try {
+                    $process.Kill($true)
+                    $null = $process.WaitForExit($normalExitGraceSeconds * 1000)
+                    $observedExit = $process.HasExited
+                    if ($observedExit) { $exitCode = $process.ExitCode }
+                }
+                catch {
+                    & $recordWrapperFailure "catch_time_termination" "process_tree_cleanup_failed" "process_tree_cleanup_failed"
+                }
             }
         }
         finally {
-            $process.Dispose()
+            try {
+                $process.Dispose()
+            }
+            catch {
+                $processDisposeFailed = $true
+            }
         }
     }
 
-    [IO.File]::WriteAllText($StdoutPath, $stdout, [Text.UTF8Encoding]::new($false))
-    [IO.File]::WriteAllText($StderrPath, $stderr, [Text.UTF8Encoding]::new($false))
+    if (-not $observedExit) {
+        & $recordWrapperFailure "child_exit_observation" "child_exit_not_observed" "child_exit_not_observed"
+    }
+    elseif ($exitCode -ne 0) {
+        & $recordWrapperFailure "child_exit_observation" "child_process_exit_nonzero" "child_process_exit_nonzero"
+    }
+
+    try {
+        $childValidation = if ($launchCollision.Count -gt 0) {
+            [pscustomobject]@{ valid = $false; found = $true; reason_code = "evidence_collision"; fingerprint = ""; value = $null }
+        }
+        else {
+            Test-ColdRestoreChildCompletionAttestation `
+                -Path $ChildAttestationPath `
+                -ExpectedRunId $RunId `
+                -ExpectedRole $Role `
+                -ExpectedRepositoryHead $RepositoryHead `
+                -ProcessStartedAtUtc $startedAt `
+                -ExpectedScenarioFingerprint $ExpectedScenarioFingerprint
+        }
+    }
+    catch {
+        & $recordWrapperFailure "child_attestation_validation" "child_attestation_validation_failed" "child_attestation_validation_failed"
+        $childValidation = [pscustomobject]@{
+            valid = $false
+            found = [IO.File]::Exists($ChildAttestationPath)
+            reason_code = "child_attestation_validation_failed"
+            fingerprint = ""
+            value = $null
+        }
+    }
+    if (-not [bool]$childValidation.valid) {
+        & $recordWrapperFailure "child_attestation_validation" ([string]$childValidation.reason_code) "child_attestation_invalid"
+    }
+    if ($phaseTimelineEnabled -and -not [bool]$phaseTimelineSync.found) {
+        & $recordWrapperFailure "phase_timeline" "phase_timeline_missing" "phase_timeline_missing"
+    }
+    if ($timeoutPolicyEnabled -and -not [bool]$progressHeartbeatSync.found) {
+        & $recordWrapperFailure "progress_heartbeat" "progress_heartbeat_missing" "progress_heartbeat_missing"
+    }
+    elseif ($timeoutPolicyEnabled -and -not [bool]$progressHeartbeatSync.valid) {
+        & $recordWrapperFailure "progress_heartbeat" ([string]$progressHeartbeatSync.reason_code) "progress_heartbeat_invalid"
+    }
+    if (-not $captureComplete) {
+        & $recordWrapperFailure "stream_capture" "child_stream_capture_incomplete" "child_stream_capture_incomplete"
+    }
+    if ($processDisposeFailed) {
+        & $recordWrapperFailure "process_dispose" "process_dispose_failed" "process_dispose_failed"
+    }
 
     $remainingOwned = @()
     $taskOwnedProcessCountAfter = 0
@@ -1920,9 +2379,12 @@ function Invoke-ColdRestoreAttestedProcess {
                 $terminatedByParent = $true
                 foreach ($record in $remainingOwned) {
                     $recordProcessId = [int]$record.ProcessId
-                    $null = Stop-ColdRestoreOwnedProcessIdentity `
+                    $stopped = Stop-ColdRestoreOwnedProcessIdentity `
                         -ProcessId $recordProcessId `
                         -ExpectedCreationTimeUtcTicks ([string]$ownedProcesses[$recordProcessId])
+                    if (-not $stopped) {
+                        & $recordWrapperFailure "process_tree_cleanup" "process_tree_cleanup_failed" "process_tree_cleanup_failed"
+                    }
                 }
             }
             if ($consecutiveQuietSnapshots -lt 2) {
@@ -1937,52 +2399,33 @@ function Invoke-ColdRestoreAttestedProcess {
     }
     catch {
         $taskOwnedProcessCountAfter = -1
-        if ($supervisionFailureCode -eq "") {
-            $supervisionFailureCode = "process_snapshot_failed"
-        }
+        & $recordWrapperFailure "process_tree_cleanup" "process_snapshot_failed" "process_snapshot_failed"
     }
 
-    $childValidation = if ($launchCollision.Count -gt 0) {
-        [pscustomobject]@{ valid = $false; found = $true; reason_code = "evidence_collision"; fingerprint = ""; value = $null }
+    if ($terminatedByParent -and -not $timedOut -and $supervisionFailureCode -eq "") {
+        & $recordWrapperFailure "process_tree_cleanup" "child_process_tree_cleanup_required" "child_process_tree_cleanup_required"
+    }
+    if ($taskOwnedProcessCountAfter -ne 0) {
+        & $recordWrapperFailure "process_tree_cleanup" "child_process_tree_not_clean" "child_process_tree_not_clean"
+    }
+    try {
+        [IO.File]::WriteAllText($StdoutPath, $stdout, [Text.UTF8Encoding]::new($false))
+    }
+    catch {
+        & $recordWrapperFailure "stdout_evidence_write" "stdout_evidence_write_failed" "stdout_evidence_write_failed"
+    }
+    try {
+        [IO.File]::WriteAllText($StderrPath, $stderr, [Text.UTF8Encoding]::new($false))
+    }
+    catch {
+        & $recordWrapperFailure "stderr_evidence_write" "stderr_evidence_write_failed" "stderr_evidence_write_failed"
+    }
+    $failureProjection = Get-ColdRestoreFailureProjection $FailureState
+    $wrapperReason = if ([string]::IsNullOrEmpty([string]$failureProjection.primary_failure_code)) {
+        "ok"
     }
     else {
-        Test-ColdRestoreChildCompletionAttestation `
-            -Path $ChildAttestationPath `
-            -ExpectedRunId $RunId `
-            -ExpectedRole $Role `
-            -ExpectedRepositoryHead $RepositoryHead `
-            -ProcessStartedAtUtc $startedAt `
-            -ExpectedScenarioFingerprint $ExpectedScenarioFingerprint
-    }
-
-    $wrapperReason = if ($launchCollision.Count -gt 0) {
-        "evidence_collision"
-    } elseif ($launchFailureCode -ne "") {
-        $launchFailureCode
-    } elseif ($supervisionFailureCode -ne "") {
-        $supervisionFailureCode
-    } elseif ($timedOut) {
-        $timeoutReasonCode
-    } elseif ($phaseTimelineEnabled -and -not [bool]$phaseTimelineSync.found) {
-        "phase_timeline_missing"
-    } elseif (-not $observedExit) {
-        "child_exit_not_observed"
-    } elseif ($exitCode -ne 0) {
-        "child_process_exit_nonzero"
-    } elseif (-not $captureComplete) {
-        "child_stream_capture_incomplete"
-    } elseif ($timeoutPolicyEnabled -and -not [bool]$progressHeartbeatSync.found) {
-        "progress_heartbeat_missing"
-    } elseif ($timeoutPolicyEnabled -and -not [bool]$progressHeartbeatSync.valid) {
-        [string]$progressHeartbeatSync.reason_code
-    } elseif (-not [bool]$childValidation.valid) {
-        [string]$childValidation.reason_code
-    } elseif ($terminatedByParent) {
-        "child_process_tree_cleanup_required"
-    } elseif ($taskOwnedProcessCountAfter -ne 0) {
-        "child_process_tree_not_clean"
-    } else {
-        "ok"
+        [string]$failureProjection.primary_failure_code
     }
     $wrapperGreen = $wrapperReason -eq "ok"
     $parent = [ordered]@{
@@ -2022,14 +2465,38 @@ function Invoke-ColdRestoreAttestedProcess {
         $parent["task_owned_process_identity_fingerprint"] = Get-ColdRestoreProcessIdentityFingerprint $ownedProcesses
     }
     $expectedParentFields = if ($timeoutPolicyEnabled) { $script:ParentExitFieldsV2 } else { $script:ParentExitFieldsV1 }
-    if (-not (Test-ColdRestoreExactFieldSet ([pscustomobject]$parent) $expectedParentFields)) {
-        throw "parent_attestation_field_set_invalid"
+    $parentAttestationWritten = $false
+    try {
+        if (-not (Test-ColdRestoreExactFieldSet ([pscustomobject]$parent) $expectedParentFields)) {
+            throw "parent_attestation_field_set_invalid"
+        }
+        Write-ColdRestoreAtomicJson $ParentAttestationPath ([pscustomobject]$parent) | Out-Null
+        $parentAttestationWritten = $true
     }
-    Write-ColdRestoreAtomicJson $ParentAttestationPath ([pscustomobject]$parent) | Out-Null
+    catch {
+        $parentWriteReason = if ([string]$_.Exception.Message -ceq "parent_attestation_field_set_invalid") {
+            "parent_attestation_field_set_invalid"
+        }
+        else {
+            "parent_attestation_write_failed"
+        }
+        & $recordWrapperFailure "parent_attestation_write" $parentWriteReason "parent_attestation_write_failed"
+        $failureProjection = Get-ColdRestoreFailureProjection $FailureState
+        $wrapperReason = [string]$failureProjection.primary_failure_code
+        $wrapperGreen = $false
+        $parent.wrapper_exit_green = $false
+        $parent.wrapper_reason_code = $wrapperReason
+    }
     $wallStopwatch.Stop()
+    $failureProjection = Get-ColdRestoreFailureProjection $FailureState
     return [pscustomobject]@{
         wrapper_exit_green = $wrapperGreen
         wrapper_reason_code = $wrapperReason
+        primary_failure = $failureProjection.primary_failure
+        secondary_failures = @($failureProjection.secondary_failures)
+        secondary_failure_codes = @($failureProjection.secondary_failure_codes)
+        primary_failure_overwrite_count = [int]$failureProjection.primary_failure_overwrite_count
+        parent_attestation_written = $parentAttestationWritten
         child = $childValidation.value
         child_validation = $childValidation
         parent = [pscustomobject]$parent
@@ -2057,6 +2524,15 @@ function Invoke-ColdRestoreAttestedProcess {
 }
 
 Export-ModuleMember -Function @(
+    "Get-ColdRestoreSafeCollectionCount",
+    "Test-ColdRestoreSafeReasonCode",
+    "Get-ColdRestoreSafeReasonCode",
+    "New-ColdRestorePrimaryFailureState",
+    "Add-ColdRestoreFailureRecord",
+    "Get-ColdRestoreFailureProjection",
+    "New-ColdRestoreFailureException",
+    "Get-ColdRestoreFailureProjectionFromError",
+    "Get-ColdRestoreSecondaryFailureCodesFromError",
     "ConvertTo-ColdRestoreCanonicalJson",
     "Get-ColdRestoreTextSha256",
     "Get-ColdRestoreEvidenceFingerprint",

@@ -8,6 +8,7 @@ param(
     [switch]$TargetedOwnerCaptureDiagnostic,
     [switch]$NonOfficialProcessA,
     [ValidateSet("diagnostic", "rehearsal")][string]$NonOfficialProcessAKind = "diagnostic",
+    [switch]$OfficialAttempt2PreflightOnly,
     [switch]$EnableColdRestoreExecution,
     [string]$ContractManifestPath = "",
     [string]$RoleTimeoutPolicyPath = "",
@@ -18,23 +19,45 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 Import-Module (Join-Path $PSScriptRoot "cold_restore_attested_process.psm1") -Force
+Import-Module (Join-Path $PSScriptRoot "cold_restore_prequota_bootstrap.psm1") -Force
+Import-Module (Join-Path $PSScriptRoot "cold_restore_official_attempt2_contract.psm1") -Force
 Import-Module (Join-Path $PSScriptRoot "process_a_rehearsal_admission_contract.psm1") -Force
-$ORCHESTRATOR_SCHEMA_VERSION = 3
+$ORCHESTRATOR_SCHEMA_VERSION = 4
 $FORMAL_FULL_RUN = $false
 $DriverExecutionReady = $true
-$OfficialAuthorizationId = "alpha04c-p0-cold-restore-depth1-seed900626424-v1"
-$OfficialClaimRelativePath = "codex\cold_restore_v3\official-alpha04c-depth1-seed900626424\official_claim_ledger.json"
+$OfficialAuthorizationId = "alpha04c-official-cold-restore-attempt-2-v1"
+$OfficialAttempt1ClaimRelativePath = "codex\cold_restore_v3\official-alpha04c-depth1-seed900626424\official_claim_ledger.json"
+$OfficialAttempt2ClaimRelativePath = "codex\cold_restore_v3\official-alpha04c-attempt-2-depth1-seed900626424\official_attempt_2_claim.json"
 $OfficialAttempt1ClaimSha256 = "80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458"
 $PreviousTargetedOwnerCaptureQuotaLedgerRelativePath = "codex\cold_restore_v3\non-official-alpha04c-production-save-completion-repair-0240dae\targeted_owner_capture_quota_ledger.json"
 $PreviousTargetedOwnerCaptureQuotaLedgerSha256 = "2dba183fe0e354370802d0f886bf40a88b7e1c0b39ddb0df18ee110821e957a1"
-$TargetedOwnerCaptureQuotaLedgerRelativePath = "codex\cold_restore_v3\non-official-alpha04c-owner-capture-attestation-12691a8\targeted_owner_capture_quota_ledger.json"
-$TargetedOwnerCaptureAuthorizationId = "alpha04c-targeted-owner-capture-diagnostic-v2"
+$HistoricalTargetedOwnerCaptureInvocationCommit = "3b3061508541d0e5f6f4c2d6560b134b7d4ee5f8"
+$HistoricalTargetedOwnerCaptureInvocationBlobSha1 = "b54917e54a39e24e1c7288d919394305a4e21c71"
+$HistoricalTargetedOwnerCaptureInvocationFileSha256 = "50608e7dc7a362969d0ee7358ba008aa0278342ae34d33cd579fcac7bf8a7306"
+$HistoricalTargetedOwnerCaptureInvocationPath = "reports/handoffs/alpha04c_save_resume_current.json"
+$ExhaustedTargetedOwnerCaptureQuotaLedgerRelativePath = "codex\cold_restore_v3\non-official-alpha04c-owner-capture-attestation-12691a8\targeted_owner_capture_quota_ledger.json"
+$TargetedOwnerCaptureQuotaLedgerRelativePath = "codex\cold_restore_v3\non-official-alpha04c-final-cold-closure-3b30615\targeted_owner_capture_quota_ledger.json"
+$TargetedOwnerCaptureAuthorizationId = "alpha04c-targeted-owner-capture-diagnostic-v3"
+$TargetedOwnerCaptureTaskId = "ALPHA_0_4_C_FINAL_HARNESS_REPAIR_REHEARSAL_OFFICIAL_ATTEMPT_2_AND_MAIN_LANDING"
+$TargetedOwnerCaptureBootstrapRelativeRoot = "codex\cold_restore_v3\bootstrap\targeted-owner-diagnostic-v3"
 $ProcessARehearsalAuthorizationId = "alpha04c-process-a-save-completion-rehearsal-v1"
 $ProcessARehearsalQuotaLedgerRelativePath = "codex\cold_restore_v3\non-official-alpha04c-process-a-rehearsal-v1\process_a_rehearsal_quota_ledger.json"
 $ProcessARehearsalLaunchLedgerRelativePath = "codex\cold_restore_v3\non-official-alpha04c-process-a-rehearsal-v1\process_a_rehearsal_launch_ledger.json"
 $ProcessARehearsalOutcomeLedgerRelativePath = "codex\cold_restore_v3\non-official-alpha04c-process-a-rehearsal-v1\process_a_rehearsal_outcome_ledger.json"
 $DefaultRoleTimeoutPolicyPath = Join-Path $PSScriptRoot "cold_restore_role_timeout_policy_v1.json"
 $RoleTimeoutPolicyEvidence = $null
+$LastTargetedPreQuotaContext = $null
+$script:OfficialAttempt2Progress = [ordered]@{
+    claim_created = $false
+    process_a_started = $false
+    process_a_completed = $false
+    process_b_started = $false
+    process_b_completed = $false
+    process_c_started = $false
+    process_c_completed = $false
+    comparison_started = $false
+    comparison_completed = $false
+}
 $DriverScript = "res://scripts/tools/cold_restore_vertical_slice_driver.gd"
 $ArtifactRoot = "user://test_runs/alpha04c/$RunId/evidence"
 $UserDataPrefix = if ($TargetedOwnerCaptureDiagnostic) {
@@ -119,11 +142,13 @@ $ManifestFields = @(
     "source_write_id",
     "write_id",
     "source_write_fingerprint",
-    "write_fingerprint",
     "section_count",
     "preflight_count",
     "owner_apply_count",
     "registry_apply_count",
+    "registry_commit_count",
+    "registry_rebind_count",
+    "partial_restore_state_count",
     "save_capture_world_delta",
     "save_capture_rng_delta",
     "save_capture_log_delta",
@@ -137,6 +162,7 @@ $ManifestFields = @(
     "restore_ai_action_delta",
     "restore_player_action_delta",
     "restore_notification_delta",
+    "restore_private_feedback_delta",
     "human_action_count",
     "commodity_action_count",
     "ai_action_count",
@@ -165,6 +191,19 @@ $ManifestFields = @(
     "queue_target_inventory_queue_commit_delta",
     "queue_target_public_log_duplicate_delta",
     "queue_target_public_log_collision_delta",
+    "duplicate_queue_entry_count",
+    "duplicate_facility_creation_count",
+    "duplicate_card_consumption_count",
+    "duplicate_cost_consumption_count",
+    "duplicate_sale_receipt_count",
+    "world_fingerprint_match",
+    "rng_cursor_match",
+    "ai_state_fingerprint_match",
+    "card_inventory_fingerprint_match",
+    "queue_fingerprint_match",
+    "generation_2_recapture_fingerprint_match",
+    "generation_2_rng_cursor_match",
+    "generation_2_duplicate_transaction_count",
     "victory_unresolved_before_save",
     "production_surface_ready",
     "victory_state_sequence",
@@ -176,6 +215,9 @@ $ManifestFields = @(
     "terminal_rng_draw_delta",
     "generation",
     "backup_created",
+    "save_readback_green",
+    "save_fingerprint_parity",
+    "write_fingerprint",
     "elapsed_ms",
     "success",
     "failure_code"
@@ -187,6 +229,9 @@ $IntegerManifestFields = @(
     "preflight_count",
     "owner_apply_count",
     "registry_apply_count",
+    "registry_commit_count",
+    "registry_rebind_count",
+    "partial_restore_state_count",
     "save_capture_world_delta",
     "save_capture_rng_delta",
     "save_capture_log_delta",
@@ -200,6 +245,7 @@ $IntegerManifestFields = @(
     "restore_ai_action_delta",
     "restore_player_action_delta",
     "restore_notification_delta",
+    "restore_private_feedback_delta",
     "human_action_count",
     "commodity_action_count",
     "ai_action_count",
@@ -227,6 +273,12 @@ $IntegerManifestFields = @(
     "queue_target_inventory_queue_commit_delta",
     "queue_target_public_log_duplicate_delta",
     "queue_target_public_log_collision_delta",
+    "duplicate_queue_entry_count",
+    "duplicate_facility_creation_count",
+    "duplicate_card_consumption_count",
+    "duplicate_cost_consumption_count",
+    "duplicate_sale_receipt_count",
+    "generation_2_duplicate_transaction_count",
     "final_settlement_count",
     "final_settlement_presentation_count",
     "final_settlement_public_log_count",
@@ -244,7 +296,48 @@ $RestoreDeltaFields = @(
     "restore_economic_reward_delta",
     "restore_ai_action_delta",
     "restore_player_action_delta",
-    "restore_notification_delta"
+    "restore_notification_delta",
+    "restore_private_feedback_delta"
+)
+$DuplicateCountFields = @(
+    "duplicate_queue_entry_count",
+    "duplicate_facility_creation_count",
+    "duplicate_card_consumption_count",
+    "duplicate_cost_consumption_count",
+    "duplicate_sale_receipt_count"
+)
+$StringManifestFields = @(
+    "visibility_scope",
+    "run_id",
+    "process_role",
+    "head_sha",
+    "scenario_fingerprint",
+    "slot_id",
+    "slot_state",
+    "source_sections_digest",
+    "restored_sections_digest",
+    "saved_sections_digest",
+    "source_write_id",
+    "write_id",
+    "source_write_fingerprint",
+    "queue_trigger_stable_target_fingerprint",
+    "write_fingerprint",
+    "failure_code"
+)
+$BooleanManifestFields = @(
+    "backup_created",
+    "save_readback_green",
+    "save_fingerprint_parity",
+    "world_fingerprint_match",
+    "rng_cursor_match",
+    "ai_state_fingerprint_match",
+    "card_inventory_fingerprint_match",
+    "queue_fingerprint_match",
+    "generation_2_recapture_fingerprint_match",
+    "generation_2_rng_cursor_match",
+    "victory_unresolved_before_save",
+    "production_surface_ready",
+    "success"
 )
 $ActionCountFields = @(
     "human_action_count",
@@ -629,6 +722,12 @@ function Assert-ColdRestoreManifest {
     foreach ($field in $IntegerManifestFields) {
         Assert-ColdRestoreCondition (Test-NonnegativeInteger $Manifest.$field) "manifest_integer_invalid"
     }
+    foreach ($field in $StringManifestFields) {
+        Assert-ColdRestoreCondition ($Manifest.$field -is [string]) "manifest_string_type_invalid"
+    }
+    foreach ($field in $BooleanManifestFields) {
+        Assert-ColdRestoreCondition ($Manifest.$field -is [bool]) "manifest_boolean_type_invalid"
+    }
     Assert-ColdRestoreCondition ([int]$Manifest.schema_version -eq $ORCHESTRATOR_SCHEMA_VERSION) "manifest_schema_invalid"
     Assert-ColdRestoreCondition ([string]$Manifest.visibility_scope -eq "qa_allowlisted") "manifest_visibility_invalid"
     Assert-ColdRestoreCondition ([string]$Manifest.run_id -eq $ExpectedRunId) "manifest_run_id_mismatch"
@@ -652,13 +751,16 @@ function Assert-ColdRestoreManifest {
         Assert-ColdRestoreCondition ([string]$Manifest.$field -match '^[A-Za-z0-9._:-]{0,128}$') "manifest_write_id_invalid"
     }
     Assert-ColdRestoreCondition ($Manifest.backup_created -is [bool]) "manifest_backup_flag_invalid"
+    Assert-ColdRestoreCondition ($Manifest.save_readback_green -is [bool] `
+        -and $Manifest.save_fingerprint_parity -is [bool]) "manifest_save_readback_flag_invalid"
     Assert-ColdRestoreCondition ($Manifest.victory_unresolved_before_save -is [bool]) "manifest_victory_flag_invalid"
     Assert-ColdRestoreCondition ($Manifest.production_surface_ready -is [bool]) "manifest_surface_flag_invalid"
     Assert-ColdRestoreCondition ($Manifest.success -is [bool]) "manifest_success_flag_invalid"
     Assert-ColdRestoreCondition ($Manifest.victory_state_sequence -is [System.Array] `
         -and @($Manifest.victory_state_sequence).Count -le 12) "manifest_victory_sequence_invalid"
     foreach ($state in @($Manifest.victory_state_sequence)) {
-        Assert-ColdRestoreCondition ([string]$state -match '^[a-z0-9_]{1,64}$') "manifest_victory_sequence_invalid"
+        Assert-ColdRestoreCondition ($state -is [string] `
+            -and [string]$state -match '^[a-z0-9_]{1,64}$') "manifest_victory_sequence_invalid"
     }
     Assert-ColdRestoreCondition ([string]$Manifest.failure_code -match '^[a-z0-9_]{0,128}$') "manifest_failure_code_invalid"
     Assert-ColdRestoreCondition (([bool]$Manifest.success -and [string]$Manifest.failure_code -eq "") `
@@ -719,7 +821,7 @@ function Read-ColdRestoreJsonArtifact {
     param([Parameter(Mandatory = $true)][string]$Path)
     Assert-ColdRestoreCondition (Test-Path -LiteralPath $Path -PathType Leaf) "evidence_artifact_missing"
     try {
-        return Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json
+        return Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json -DateKind String
     }
     catch {
         throw "evidence_artifact_json_invalid"
@@ -732,6 +834,61 @@ function Get-ColdRestoreOptionalFileSha256 {
         return ""
     }
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+
+function Get-ColdRestoreRuntimeFreezeObservation {
+    param(
+        [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
+        [Parameter(Mandatory = $true)][string]$ExpectedHead
+    )
+
+    $headLines = @(& git -C $ResolvedProjectPath rev-parse HEAD 2>$null)
+    $headExitCode = $LASTEXITCODE
+    $dirtyPaths = @(& git -C $ResolvedProjectPath status --porcelain=v1 2>$null)
+    $statusExitCode = $LASTEXITCODE
+    $diffCheckIssues = @(& git -C $ResolvedProjectPath diff --check 2>&1)
+    $diffCheckExitCode = $LASTEXITCODE
+    $observedHead = if ((Get-ColdRestoreSafeCollectionCount $headLines) -eq 1) {
+        ([string]$headLines[0]).Trim()
+    }
+    else {
+        ""
+    }
+    $observation = [ordered]@{
+        schema_version = 1
+        observation_id = "ColdRestoreRuntimeFreezeObservationV1"
+        expected_head = $ExpectedHead
+        observed_head = $observedHead
+        head_query_green = $headExitCode -eq 0 -and $observedHead -cmatch '^[0-9a-f]{40}$'
+        head_matches = $observedHead -ceq $ExpectedHead
+        status_query_green = $statusExitCode -eq 0
+        tree_clean = $statusExitCode -eq 0 -and (Get-ColdRestoreSafeCollectionCount $dirtyPaths) -eq 0
+        dirty_path_count = Get-ColdRestoreSafeCollectionCount $dirtyPaths
+        git_diff_check_green = $diffCheckExitCode -eq 0 -and (Get-ColdRestoreSafeCollectionCount $diffCheckIssues) -eq 0
+        git_diff_check_issue_count = Get-ColdRestoreSafeCollectionCount $diffCheckIssues
+        evidence_fingerprint = ""
+    }
+    $observation.evidence_fingerprint = Get-ColdRestoreEvidenceFingerprint ([pscustomobject]$observation) "evidence_fingerprint"
+    return [pscustomobject]$observation
+}
+
+function Assert-ColdRestoreRuntimeFreezeGreen {
+    param(
+        [Parameter(Mandatory = $true)]$Observation,
+        [Parameter(Mandatory = $true)][string]$FailureCode
+    )
+
+    Assert-ColdRestoreCondition ([int]$Observation.schema_version -eq 1 `
+        -and [string]$Observation.observation_id -ceq "ColdRestoreRuntimeFreezeObservationV1" `
+        -and [bool]$Observation.head_query_green `
+        -and [bool]$Observation.head_matches `
+        -and [bool]$Observation.status_query_green `
+        -and [bool]$Observation.tree_clean `
+        -and [int]$Observation.dirty_path_count -eq 0 `
+        -and [bool]$Observation.git_diff_check_green `
+        -and [int]$Observation.git_diff_check_issue_count -eq 0 `
+        -and [string]$Observation.evidence_fingerprint -ceq (Get-ColdRestoreEvidenceFingerprint $Observation "evidence_fingerprint")) $FailureCode
+    return $true
 }
 
 function Test-ColdRestoreTargetedDiagnosticTimeline {
@@ -790,6 +947,10 @@ function Write-ColdRestoreProcessARehearsalOutcome {
         Assert-ColdRestoreCondition ([bool]$officialBoundary.attempt_1_valid `
             -and [int]$officialBoundary.claim_count -eq 1 `
             -and [bool]$officialBoundary.attempt_2_absent) "process_a_rehearsal_outcome_official_boundary_invalid"
+        Assert-ColdRestoreCondition ([string]$Evidence.rehearsal_green_head -ceq $HeadSha `
+            -and [bool]$Evidence.rehearsal_green_tree_clean `
+            -and [bool]$Evidence.rehearsal_green_git_diff_check_green `
+            -and [string]$Evidence.rehearsal_green_freeze_fingerprint -cmatch '^[0-9a-f]{64}$') "process_a_rehearsal_outcome_runtime_freeze_invalid"
     }
 
     $launchAttestationSha256 = Get-ColdRestoreOptionalFileSha256 ([string]$Evidence.launch_attestation_path)
@@ -814,6 +975,10 @@ function Write-ColdRestoreProcessARehearsalOutcome {
         official_attempt_2_authorization_consumed = $false
         rehearsal_admission_consumed = $true
         admission_ledger_sha256 = [string]$Admission.fingerprint
+        rehearsal_green_head = [string]$Evidence.rehearsal_green_head
+        rehearsal_green_tree_clean = [bool]$Evidence.rehearsal_green_tree_clean
+        rehearsal_green_git_diff_check_green = [bool]$Evidence.rehearsal_green_git_diff_check_green
+        rehearsal_green_freeze_fingerprint = [string]$Evidence.rehearsal_green_freeze_fingerprint
         launch_attestation_present = ($launchAttestationSha256 -cne "")
         launch_attestation_sha256 = $launchAttestationSha256
         child_attestation_present = ($childAttestationSha256 -cne "")
@@ -915,7 +1080,7 @@ function Read-ColdRestoreRoleTimeoutPolicy {
             -and [string]$rolePolicy.timeout_reason_code -ceq "${roleId}_timeout" `
             -and [string]$rolePolicy.cleanup_policy -ceq "kill_task_tree_then_verify_pid_and_creation_time" `
             -and $rolePolicy.contract_only_in_this_task -is [bool] `
-            -and [bool]$rolePolicy.contract_only_in_this_task -eq ($roleId -in @("process_b", "process_c"))) "role_timeout_policy_role_invalid"
+            -and -not [bool]$rolePolicy.contract_only_in_this_task) "role_timeout_policy_role_invalid"
     }
     return [pscustomobject]@{
         path = $resolvedPath
@@ -1258,7 +1423,11 @@ function Invoke-ColdRestoreNonOfficialProcessA {
     Assert-ColdRestoreCondition ($RunId -ceq "alpha04c-process-a-rehearsal-$($HeadSha.Substring(0, 12))") "process_a_rehearsal_run_id_invalid"
     Assert-ColdRestoreCondition ($ExpectedScenarioFingerprint -ceq $TargetedOwnerCaptureScenarioFingerprint) "expected_scenario_fingerprint_invalid"
     $timeout = Get-ColdRestoreRoleTimeout "process_a"
+    Assert-ColdRestoreCondition ([int]$timeout.absolute_timeout_seconds -eq 180 `
+        -and [int]$timeout.no_progress_timeout_seconds -eq 60) "process_a_rehearsal_timeout_policy_invalid"
+    $stage3Prerequisites = Assert-ColdRestoreProcessARehearsalPrerequisites $ResolvedProjectPath $HeadSha
     $diagnosticAdmission = Get-ColdRestoreProcessARehearsalDiagnosticAdmission $ResolvedProjectPath $HeadSha
+    $diagnosticAdmission | Add-Member -NotePropertyName stage3_prerequisites -NotePropertyValue $stage3Prerequisites
     $paths = $null
     $launchAuthorization = $null
     $launchAttestationPath = ""
@@ -1285,6 +1454,7 @@ function Invoke-ColdRestoreNonOfficialProcessA {
     $terminalSuccess = $false
     $primaryFailure = $null
     $outcomeFailure = $null
+    $postRunFreeze = $null
     $gitCommonDirectory = Resolve-ColdRestoreGitCommonDirectory $ResolvedProjectPath
     $admissionConsumed = $false
     try {
@@ -1294,8 +1464,12 @@ function Invoke-ColdRestoreNonOfficialProcessA {
         $terminalCode = "process_a_rehearsal_admission_post_commit_validation_failed"
         $officialClaimRoot = Join-Path $gitCommonDirectory "codex\cold_restore_v3"
         $officialAttempt1ClaimPath = Join-Path $officialClaimRoot ([string]$rehearsalAuthorization.value.official_attempt_1_claim_relative_path)
+        $revalidatedStage3Prerequisites = Assert-ColdRestoreProcessARehearsalPrerequisites $ResolvedProjectPath $HeadSha
+        Assert-ColdRestoreCondition ([string]$revalidatedStage3Prerequisites.evidence_fingerprint `
+            -ceq [string]$stage3Prerequisites.evidence_fingerprint) "process_a_rehearsal_prerequisites_changed_after_admission"
         $null = Assert-ProcessARehearsalAdmissionSourcesUnchanged `
             -Admission $rehearsalAuthorization `
+            -PrerequisiteEvidenceFingerprint ([string]$revalidatedStage3Prerequisites.evidence_fingerprint) `
             -TimeoutPolicyPath $RoleTimeoutPolicyEvidence.path `
             -AdmissionEvidencePath $diagnosticAdmission.path `
             -DiagnosticQuotaLedgerPath $diagnosticAdmission.quota_ledger_path `
@@ -1436,6 +1610,7 @@ function Invoke-ColdRestoreNonOfficialProcessA {
             -LaunchLedgerPath $rehearsalAuthorization.launch_ledger_path `
             -AdmissionLedgerPath $rehearsalAuthorization.path `
             -ExpectedAdmissionLedgerSha256 $rehearsalAuthorization.fingerprint `
+            -PrerequisiteEvidenceFingerprint ([string]$revalidatedStage3Prerequisites.evidence_fingerprint) `
             -LaunchAttestationPath $launchAttestationPath `
             -TimeoutPolicyPath $RoleTimeoutPolicyEvidence.path `
             -AdmissionEvidencePath $diagnosticAdmission.path `
@@ -1451,6 +1626,9 @@ function Invoke-ColdRestoreNonOfficialProcessA {
         Assert-ColdRestoreCondition ([string]$launchLedger.value.admission_ledger_sha256 -ceq [string]$rehearsalAuthorization.fingerprint `
             -and [string]$launchLedger.value.launch_attestation_sha256 -ceq [string]$launchEvidence.sha256 `
             -and [int]$launchLedger.value.engine_process_id -eq [int]$launchEvidence.value.engine_process_id) "process_a_rehearsal_launch_ledger_invalid"
+        $postRunFreeze = Get-ColdRestoreRuntimeFreezeObservation $ResolvedProjectPath $HeadSha
+        $null = Assert-ColdRestoreRuntimeFreezeGreen `
+            $postRunFreeze "process_a_rehearsal_post_run_tree_not_clean"
         $saveGreen = $true
         $terminalStage = "success"
         $terminalCode = "ok"
@@ -1472,6 +1650,10 @@ function Invoke-ColdRestoreNonOfficialProcessA {
                 $wrapperResultPresent = $null -ne $run -and $null -ne $run.parent
                 $outcomeEvidence = [pscustomobject][ordered]@{
                 admission_ledger_sha256 = [string]$rehearsalAuthorization.fingerprint
+                rehearsal_green_head = $(if ($null -ne $postRunFreeze) { [string]$postRunFreeze.observed_head } else { "" })
+                rehearsal_green_tree_clean = $(if ($null -ne $postRunFreeze) { [bool]$postRunFreeze.tree_clean } else { $false })
+                rehearsal_green_git_diff_check_green = $(if ($null -ne $postRunFreeze) { [bool]$postRunFreeze.git_diff_check_green } else { $false })
+                rehearsal_green_freeze_fingerprint = $(if ($null -ne $postRunFreeze) { [string]$postRunFreeze.evidence_fingerprint } else { "" })
                 launch_attestation_path = $launchAttestationPath
                 launch_attestation_sha256 = Get-ColdRestoreOptionalFileSha256 $launchAttestationPath
                 child_attestation_path = $childAttestationPath
@@ -1539,20 +1721,57 @@ function Invoke-ColdRestoreNonOfficialProcessA {
 function Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic {
     param(
         [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
-        [Parameter(Mandatory = $true)][string]$HeadSha
+        [Parameter(Mandatory = $true)][string]$HeadSha,
+        [Parameter(Mandatory = $true)]$PreQuotaContext,
+        [Parameter(Mandatory = $true)]$FailureState
     )
 
+    $script:TargetedOwnerCaptureCurrentPhase = "authorization_check"
     Assert-ColdRestoreCondition ($RunId -cmatch '^alpha04c-owner-capture-diagnostic-[0-9a-f]{12}$' `
         -and $RunId -ceq "alpha04c-owner-capture-diagnostic-$($HeadSha.Substring(0, 12))") "targeted_owner_capture_run_id_invalid"
     Assert-ColdRestoreCondition ($AuthorizedOfficialColdRestoreCount -eq 0) "targeted_owner_capture_official_authorization_forbidden"
     Assert-ColdRestoreCondition ($ExpectedScenarioFingerprint -ceq $TargetedOwnerCaptureScenarioFingerprint) "expected_scenario_fingerprint_invalid"
+    $dirtyPaths = @(& git -C $ResolvedProjectPath status --porcelain=v1 2>$null)
+    Assert-ColdRestoreCondition ($LASTEXITCODE -eq 0 -and (Get-ColdRestoreSafeCollectionCount $dirtyPaths) -eq 0) "worktree_not_clean"
+    $script:RoleTimeoutPolicyEvidence = Read-ColdRestoreRoleTimeoutPolicy $RoleTimeoutPolicyPath
     $timeout = Get-ColdRestoreRoleTimeout "targeted_owner_diagnostic"
     Assert-ColdRestoreCondition ([int]$timeout.absolute_timeout_seconds -eq 120 `
         -and [int]$timeout.no_progress_timeout_seconds -eq 30) "targeted_owner_capture_timeout_policy_invalid"
-    $diagnosticQuota = Consume-ColdRestoreTargetedOwnerCaptureDiagnosticQuota $ResolvedProjectPath $HeadSha
+    $diagnosticEvidenceRoot = Join-Path $ResolvedProjectPath ".godot\cold_restore_attestation_v1\$RunId"
+    Assert-ColdRestoreCondition (-not (Test-Path -LiteralPath $UserDataRoot) `
+        -and -not (Test-Path -LiteralPath $diagnosticEvidenceRoot)) "targeted_owner_capture_evidence_collision"
+    $null = Update-ColdRestorePreQuotaAttestation `
+        -Context $PreQuotaContext `
+        -Updates ([ordered]@{ authorization_checked = $true }) `
+        -FailureState $FailureState
+    $script:TargetedOwnerCaptureCurrentPhase = "quota_claim"
+    $null = Update-ColdRestorePreQuotaAttestation `
+        -Context $PreQuotaContext `
+        -Updates ([ordered]@{ quota_claim_attempted = $true }) `
+        -FailureState $FailureState
+    $diagnosticQuota = Consume-ColdRestoreTargetedOwnerCaptureDiagnosticQuota `
+        $ResolvedProjectPath $HeadSha $PreQuotaContext
     Assert-ColdRestoreCondition ([IO.File]::Exists([string]$diagnosticQuota.path) `
         -and [string]$diagnosticQuota.fingerprint -cmatch '^[0-9a-f]{64}$') "targeted_owner_capture_diagnostic_quota_ledger_invalid"
+    $null = Update-ColdRestorePreQuotaAttestation `
+        -Context $PreQuotaContext `
+        -Updates ([ordered]@{ quota_claimed = $true }) `
+        -FailureState $FailureState
+    $script:TargetedOwnerCaptureCurrentPhase = "evidence_root_creation"
     $paths = Get-ColdRestoreRolePaths $ResolvedProjectPath "producer"
+    $null = Update-ColdRestorePreQuotaAttestation `
+        -Context $PreQuotaContext `
+        -Updates ([ordered]@{ evidence_root_creation_attempted = $true }) `
+        -FailureState $FailureState
+    [IO.Directory]::CreateDirectory([string]$paths.root) | Out-Null
+    Assert-ColdRestoreCondition ([IO.Directory]::Exists([string]$paths.root)) "targeted_owner_capture_evidence_root_failed"
+    $null = Update-ColdRestorePreQuotaAttestation `
+        -Context $PreQuotaContext `
+        -Updates ([ordered]@{ evidence_root_created = $true }) `
+        -FailureState $FailureState
+    [IO.Directory]::CreateDirectory($IsolatedAppData) | Out-Null
+    [IO.Directory]::CreateDirectory($IsolatedLocalAppData) | Out-Null
+    $GodotPath = Resolve-ColdRestoreGodotExecutable $GodotPath
     $launchAuthorization = $diagnosticQuota.launch_authorization
     $launchAttestationPath = Join-Path $paths.root "launch\orchestrator-$($launchAuthorization.orchestrator_process_id)\producer.authorized.json"
     $arguments = New-ColdRestoreGodotArgumentList `
@@ -1571,6 +1790,11 @@ function Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic {
             "--cold-restore-launch-attestation-path=$launchAttestationPath",
             "--cold-restore-launch-nonce=$($launchAuthorization.launch_nonce)"
         )
+    $script:TargetedOwnerCaptureCurrentPhase = "godot_launch"
+    $null = Update-ColdRestorePreQuotaAttestation `
+        -Context $PreQuotaContext `
+        -Updates ([ordered]@{ godot_launch_attempted = $true }) `
+        -FailureState $FailureState
     $run = Invoke-ColdRestoreAttestedProcess `
         -ExecutablePath $GodotPath `
         -WorkingDirectory $ResolvedProjectPath `
@@ -1594,8 +1818,20 @@ function Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic {
         -PolicyRole "targeted_owner_diagnostic" `
         -ExpectedScenarioFingerprint $ExpectedScenarioFingerprint `
         -ProgressHeartbeatEventDirectory $paths.targeted_heartbeat_events `
-        -ProgressHeartbeatPath $paths.targeted_heartbeat
-    Assert-ColdRestoreCondition ([bool]$run.wrapper_exit_green) "targeted_owner_capture_$($run.wrapper_reason_code)"
+        -ProgressHeartbeatPath $paths.targeted_heartbeat `
+        -FailureState $FailureState
+    $godotLaunched = (Get-ColdRestoreSafeCollectionCount $run.observed_task_process_ids) -gt 0
+    $null = Update-ColdRestorePreQuotaAttestation `
+        -Context $PreQuotaContext `
+        -Updates ([ordered]@{
+            godot_launched = $godotLaunched
+            task_owned_process_count_after = [int]$run.parent.task_owned_process_count_after
+        }) `
+        -FailureState $FailureState
+    $script:TargetedOwnerCaptureCurrentPhase = "diagnostic_validation"
+    if (-not [bool]$run.wrapper_exit_green) {
+        throw (New-ColdRestoreFailureException $FailureState)
+    }
     $launchEvidence = Assert-ColdRestoreLaunchAttestation `
         -Path $launchAttestationPath `
         -Role "producer" `
@@ -1617,8 +1853,16 @@ function Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic {
         -and -not [bool]$run.parent.terminated_by_parent `
         -and [int]$run.parent.task_owned_process_count_after -eq 0) "targeted_owner_capture_exit_attestation_invalid"
     $timeline = $run.phase_timeline
-    $cleanupRows = if ($null -ne $timeline) { @($timeline.phase_rows | Where-Object { [string]$_.phase_id -ceq "runtime_cleanup_complete" }) } else { @() }
-    $quitRows = if ($null -ne $timeline) { @($timeline.phase_rows | Where-Object { [string]$_.phase_id -ceq "quit_requested" }) } else { @() }
+    $cleanupRows = @(
+        if ($null -ne $timeline) {
+            $timeline.phase_rows | Where-Object { [string]$_.phase_id -ceq "runtime_cleanup_complete" }
+        }
+    )
+    $quitRows = @(
+        if ($null -ne $timeline) {
+            $timeline.phase_rows | Where-Object { [string]$_.phase_id -ceq "quit_requested" }
+        }
+    )
     Assert-ColdRestoreCondition ($null -ne $timeline `
         -and [int]$timeline.schema_version -eq 1 `
         -and [string]$timeline.timeline_id -ceq "ProcessAPhaseTimelineV1" `
@@ -1633,8 +1877,8 @@ function Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic {
         -and [bool]$timeline.allowlisted_manifest_written `
         -and [bool]$timeline.child_completion_written `
         -and [bool]$timeline.quit_requested `
-        -and $cleanupRows.Count -eq 1 -and [bool]$cleanupRows[0].success `
-        -and $quitRows.Count -eq 1 -and [bool]$quitRows[0].success) "targeted_owner_capture_timeline_cleanup_invalid"
+        -and (Get-ColdRestoreSafeCollectionCount $cleanupRows) -eq 1 -and [bool]$cleanupRows[0].success `
+        -and (Get-ColdRestoreSafeCollectionCount $quitRows) -eq 1 -and [bool]$quitRows[0].success) "targeted_owner_capture_timeline_cleanup_invalid"
     $manifest = Read-ColdRestoreJsonArtifact $paths.child_result
     $stdoutManifest = Read-ColdRestoreManifest $paths.stdout "producer" $RunId
     Assert-ColdRestoreManifest $manifest "producer" $RunId
@@ -1749,28 +1993,97 @@ function Invoke-ColdRestoreTargetedOwnerCaptureGuarded {
     )
 
     $targetedDiagnostic = $null
-    $primaryFailure = $null
-    $postconditionFailure = $null
+    $failureState = New-ColdRestorePrimaryFailureState
+    $preQuotaContext = $null
+    $script:TargetedOwnerCaptureCurrentPhase = "bootstrap_admission"
     try {
-        $targetedDiagnostic = Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic $ResolvedProjectPath $HeadSha
+        $gitCommonDirectory = Resolve-ColdRestoreGitCommonDirectory $ResolvedProjectPath
+        $branchLines = @(& git -C $ResolvedProjectPath branch --show-current 2>$null)
+        Assert-ColdRestoreCondition ($LASTEXITCODE -eq 0 `
+            -and (Get-ColdRestoreSafeCollectionCount $branchLines) -le 1) "branch_identity_unavailable"
+        $branch = $(if ((Get-ColdRestoreSafeCollectionCount $branchLines) -eq 1) { [string]$branchLines[0] } else { "" })
+        $quotaLedgerPath = Join-Path $gitCommonDirectory $TargetedOwnerCaptureQuotaLedgerRelativePath
+        $bootstrapRoot = Join-Path $gitCommonDirectory $TargetedOwnerCaptureBootstrapRelativeRoot
+        $preQuotaContext = New-ColdRestorePreQuotaContext `
+            -BootstrapRoot $bootstrapRoot `
+            -RunId $RunId `
+            -RepositoryHead $HeadSha `
+            -Branch $branch `
+            -AuthorizationId $TargetedOwnerCaptureAuthorizationId `
+            -QuotaLedgerPath $quotaLedgerPath
+        $script:LastTargetedPreQuotaContext = $preQuotaContext
+        $targetedDiagnostic = Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic `
+            $ResolvedProjectPath $HeadSha $preQuotaContext $failureState
     }
     catch {
-        $primaryFailure = $_
+        $caughtError = $_
+        if ($null -eq (Get-ColdRestoreFailureProjectionFromError $caughtError)) {
+            $null = Add-ColdRestoreFailureRecord `
+                -State $failureState `
+                -Phase $script:TargetedOwnerCaptureCurrentPhase `
+                -ReasonCode ([string]$caughtError.Exception.Message) `
+                -FallbackReasonCode "targeted_owner_capture_orchestrator_failure" `
+                -SourceId "targeted_diagnostic"
+        }
+        foreach ($secondaryCode in @(Get-ColdRestoreSecondaryFailureCodesFromError $caughtError)) {
+            $null = Add-ColdRestoreFailureRecord `
+                -State $failureState `
+                -Phase $script:TargetedOwnerCaptureCurrentPhase `
+                -ReasonCode $secondaryCode `
+                -FallbackReasonCode "targeted_owner_capture_secondary_failure" `
+                -SourceId "targeted_diagnostic"
+        }
     }
     finally {
         try {
             Assert-ColdRestoreTargetedOwnerCapturePostconditions $ResolvedProjectPath
         }
         catch {
-            $postconditionFailure = $_
+            $null = Add-ColdRestoreFailureRecord `
+                -State $failureState `
+                -Phase "postcondition_validation" `
+                -ReasonCode ([string]$_.Exception.Message) `
+                -FallbackReasonCode "targeted_owner_capture_postcondition_failure" `
+                -SourceId "postcondition"
+        }
+        if ($null -ne $preQuotaContext) {
+            try {
+                $null = Update-ColdRestorePreQuotaAttestation `
+                    -Context $preQuotaContext `
+                    -Updates ([ordered]@{}) `
+                    -FailureState $failureState
+            }
+            catch {
+                $caughtError = $_
+                $null = Add-ColdRestoreFailureRecord `
+                    -State $failureState `
+                    -Phase "prequota_evidence_write" `
+                    -ReasonCode ([string]$caughtError.Exception.Message) `
+                    -FallbackReasonCode "prequota_attestation_write_failed" `
+                    -SourceId "evidence_write"
+                foreach ($secondaryCode in @(Get-ColdRestoreSecondaryFailureCodesFromError $caughtError)) {
+                    $null = Add-ColdRestoreFailureRecord `
+                        -State $failureState `
+                        -Phase "prequota_evidence_write" `
+                        -ReasonCode $secondaryCode `
+                        -FallbackReasonCode "prequota_attestation_secondary_failure" `
+                        -SourceId "evidence_write"
+                }
+            }
         }
     }
-    if ($null -ne $primaryFailure) {
-        throw $primaryFailure
+    $failureProjection = Get-ColdRestoreFailureProjection $failureState
+    if (-not [string]::IsNullOrEmpty([string]$failureProjection.primary_failure_code)) {
+        throw (New-ColdRestoreFailureException $failureState)
     }
-    if ($null -ne $postconditionFailure) {
-        throw $postconditionFailure
-    }
+    $targetedDiagnostic | Add-Member -NotePropertyName prequota -NotePropertyValue ([pscustomobject]@{
+        path = [string]$preQuotaContext.attestation_path
+        sha256 = [string]$preQuotaContext.attestation_sha256
+        fingerprint = [string]$preQuotaContext.value.attestation_fingerprint
+        admission_path = [string]$preQuotaContext.admission_path
+        admission_sha256 = [string]$preQuotaContext.admission_sha256
+        admission_fingerprint = [string]$preQuotaContext.admission_fingerprint
+    })
     return $targetedDiagnostic
 }
 
@@ -1785,8 +2098,8 @@ function New-ColdRestoreTargetedOwnerCaptureOutput {
     }
     $failureFields = if ($null -ne $failure) { @($failure.PSObject.Properties.Name) } else { @() }
     return [ordered]@{
-        schema_version = 2
-        driver_id = "alpha04c_targeted_owner_capture_diagnostic_v2"
+        schema_version = 3
+        driver_id = "alpha04c_targeted_owner_capture_diagnostic_v3"
         formal_full_run = $false
         official_cold_restore_vertical_slice = $false
         targeted_owner_capture_diagnostic = $true
@@ -1818,6 +2131,11 @@ function New-ColdRestoreTargetedOwnerCaptureOutput {
         save_written = $false
         official_count_consumed = $false
         diagnostic_path = [string]$Result.diagnostic_path
+        prequota_attestation_path = [string]$Result.prequota.path
+        prequota_attestation_sha256 = [string]$Result.prequota.sha256
+        prequota_attestation_fingerprint = [string]$Result.prequota.fingerprint
+        bootstrap_admission_sha256 = [string]$Result.prequota.admission_sha256
+        bootstrap_admission_fingerprint = [string]$Result.prequota.admission_fingerprint
         success = [string]$Result.diagnostic_result_kind -ne "PRE_OWNER_FAILURE"
         failure_code = $(if ([string]$Result.diagnostic_result_kind -eq "PRE_OWNER_FAILURE") { "owner_diagnostic_pre_audit_failure" } else { "" })
     }
@@ -2000,7 +2318,7 @@ function Invoke-ColdRestoreRole {
         -EnvironmentVariables @{ APPDATA = $IsolatedAppData; LOCALAPPDATA = $IsolatedLocalAppData } `
         -LaunchAttestationPath $launchAttestationPath `
         -LaunchAuthorization ([pscustomobject][ordered]@{
-            authorization_id = $OfficialAuthorizationId
+            authorization_id = [string]$Authorization.authorization_id
             claim_fingerprint = [string]$Authorization.claim_fingerprint
             claim_nonce = [string]$Authorization.claim_nonce
             source_head_sha = $HeadSha
@@ -2042,12 +2360,49 @@ function Invoke-ColdRestoreRole {
         -and [bool]$run.child.qualification_green -eq [bool]$manifest.success `
         -and [int]$run.child.queue_count -eq [int]$manifest.queue_entry_count `
         -and [string]$run.child.queue_trigger_target_fingerprint -eq [string]$manifest.queue_trigger_stable_target_fingerprint) "${Role}_child_manifest_binding_invalid"
+    Assert-ColdRestoreCondition ([bool]$manifest.success) "${Role}_$([string]$manifest.failure_code)"
     return [pscustomobject]@{
         process_id = [int]$run.parent.child_pid
         manifest = $manifest
         child = $run.child
         parent = $run.parent
         launch_attestation_sha256 = [string]$launchEvidence.sha256
+    }
+}
+
+function Invoke-ColdRestoreOfficialRoleChain {
+    param(
+        [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
+        [Parameter(Mandatory = $true)][string]$HeadSha,
+        [Parameter(Mandatory = $true)][string]$ScenarioFingerprint,
+        [Parameter(Mandatory = $true)]$Authorization
+    )
+
+    $script:OfficialAttempt2Progress.process_a_started = $true
+    $producerRun = Invoke-ColdRestoreRole `
+        "producer" $ResolvedProjectPath $HeadSha $ScenarioFingerprint $Authorization
+    $script:OfficialAttempt2Progress.process_a_completed = $true
+    $script:OfficialAttempt2Progress.process_b_started = $true
+    $consumerRun = Invoke-ColdRestoreRole `
+        "consumer" $ResolvedProjectPath $HeadSha $ScenarioFingerprint $Authorization `
+        ([int64]$producerRun.manifest.queue_trigger_resolution_id) `
+        ([string]$producerRun.manifest.queue_trigger_stable_target_fingerprint)
+    $script:OfficialAttempt2Progress.process_b_completed = $true
+    $script:OfficialAttempt2Progress.process_c_started = $true
+    $validatorRun = Invoke-ColdRestoreRole `
+        "validator" $ResolvedProjectPath $HeadSha $ScenarioFingerprint $Authorization `
+        ([int64]$consumerRun.manifest.queue_trigger_resolution_id) `
+        ([string]$consumerRun.manifest.queue_trigger_stable_target_fingerprint)
+    $script:OfficialAttempt2Progress.process_c_completed = $true
+    $script:OfficialAttempt2Progress.comparison_started = $true
+    $comparison = Compare-ColdRestoreManifests `
+        $producerRun.manifest $consumerRun.manifest $validatorRun.manifest
+    $script:OfficialAttempt2Progress.comparison_completed = $true
+    return [pscustomobject]@{
+        producer = $producerRun
+        consumer = $consumerRun
+        validator = $validatorRun
+        comparison = $comparison
     }
 }
 
@@ -2124,15 +2479,45 @@ function Compare-ColdRestoreManifests {
             -and [int]$manifest.save_capture_log_delta -eq 0) "save_capture_delta_nonzero"
     }
     Assert-ColdRestoreCondition ([int]$Producer.owner_apply_count -eq 0 `
-        -and [int]$Producer.registry_apply_count -eq 0) "producer_apply_count_invalid"
+        -and [int]$Producer.registry_apply_count -eq 0 `
+        -and [int]$Producer.registry_commit_count -eq 0 `
+        -and [int]$Producer.registry_rebind_count -eq 0 `
+        -and [int]$Producer.partial_restore_state_count -eq 0) "producer_apply_count_invalid"
     foreach ($manifest in @($Consumer, $Validator)) {
         Assert-ColdRestoreCondition ([int]$manifest.owner_apply_count -eq 19 `
-            -and [int]$manifest.registry_apply_count -eq 1) "restore_apply_count_invalid"
+            -and [int]$manifest.registry_apply_count -eq 1 `
+            -and [int]$manifest.registry_commit_count -eq 1 `
+            -and [int]$manifest.registry_rebind_count -eq 1 `
+            -and [int]$manifest.partial_restore_state_count -eq 0) "restore_apply_count_invalid"
         foreach ($field in $RestoreDeltaFields) {
             Assert-ColdRestoreCondition ([int]$manifest.$field -eq 0) "restore_delta_nonzero"
         }
         Assert-ColdRestoreCondition ([int]$manifest.rng_draw_count_before -eq [int]$manifest.rng_draw_count_after) "restore_rng_count_changed"
+        foreach ($field in @(
+            "world_fingerprint_match",
+            "rng_cursor_match",
+            "ai_state_fingerprint_match",
+            "card_inventory_fingerprint_match",
+            "queue_fingerprint_match"
+        )) {
+            Assert-ColdRestoreCondition ([bool]$manifest.$field) "typed_restore_fingerprint_mismatch"
+        }
     }
+    foreach ($field in @(
+        "world_fingerprint_match",
+        "rng_cursor_match",
+        "ai_state_fingerprint_match",
+        "card_inventory_fingerprint_match",
+        "queue_fingerprint_match",
+        "generation_2_recapture_fingerprint_match",
+        "generation_2_rng_cursor_match"
+    )) {
+        Assert-ColdRestoreCondition (-not [bool]$Producer.$field) "producer_role_typed_evidence_non_neutral"
+    }
+    Assert-ColdRestoreCondition (-not [bool]$Consumer.generation_2_recapture_fingerprint_match `
+        -and -not [bool]$Consumer.generation_2_rng_cursor_match `
+        -and [int]$Consumer.generation_2_duplicate_transaction_count -eq 0 `
+        -and [int]$Producer.generation_2_duplicate_transaction_count -eq 0) "role_typed_evidence_non_neutral"
     foreach ($field in @(
         "source_sections_digest",
         "restored_sections_digest",
@@ -2146,6 +2531,13 @@ function Compare-ColdRestoreManifests {
     }
     foreach ($field in $RestoreDeltaFields) {
         Assert-ColdRestoreCondition ([int]$Producer.$field -eq 0) "producer_role_zero_invalid"
+    }
+    foreach ($manifest in @($Producer, $Consumer, $Validator)) {
+        Assert-ColdRestoreCondition ([bool]$manifest.save_readback_green `
+            -and [bool]$manifest.save_fingerprint_parity) "save_readback_or_fingerprint_invalid"
+        foreach ($field in $DuplicateCountFields) {
+            Assert-ColdRestoreCondition ([int]$manifest.$field -eq 0) "duplicate_side_effect_detected"
+        }
     }
     foreach ($field in $SettlementCountFields) {
         Assert-ColdRestoreCondition ([int]$Producer.$field -eq 0) "producer_role_zero_invalid"
@@ -2201,21 +2593,24 @@ function Compare-ColdRestoreManifests {
     Assert-ColdRestoreCondition ([bool]$Producer.victory_unresolved_before_save `
         -and [bool]$Consumer.victory_unresolved_before_save `
         -and [bool]$Validator.victory_unresolved_before_save) "preterminal_victory_state_invalid"
+    Assert-ColdRestoreCondition ([bool]$Validator.generation_2_recapture_fingerprint_match `
+        -and [bool]$Validator.generation_2_rng_cursor_match `
+        -and [int]$Validator.generation_2_duplicate_transaction_count -eq 0) "generation_two_restore_evidence_invalid"
     $expectedVictorySequence = @("idle", "qualification", "audit", "resolved")
     $consumerVictory = @($Consumer.victory_state_sequence) | ConvertTo-Json -Compress
-    $validatorVictory = @($Validator.victory_state_sequence) | ConvertTo-Json -Compress
     $expectedVictory = $expectedVictorySequence | ConvertTo-Json -Compress
     Assert-ColdRestoreCondition ($consumerVictory -eq $expectedVictory `
-        -and $validatorVictory -eq $consumerVictory) "victory_sequence_mismatch"
+        -and @($Validator.victory_state_sequence).Count -eq 0) "victory_sequence_mismatch"
     foreach ($field in $SettlementCountFields) {
         Assert-ColdRestoreCondition ([int]$Consumer.$field -eq 1 `
-            -and [int]$Validator.$field -eq 1) "final_settlement_exact_once_invalid"
+            -and [int]$Validator.$field -eq 0) "final_settlement_exact_once_invalid"
     }
-    foreach ($manifest in @($Consumer, $Validator)) {
-        Assert-ColdRestoreCondition ([int]$manifest.terminal_quiescent_frames -eq 8) "terminal_quiescent_frames_invalid"
-        Assert-ColdRestoreCondition ([int]$manifest.terminal_world_delta -eq 0 `
-            -and [int]$manifest.terminal_rng_draw_delta -eq 0) "terminal_quiet_delta_nonzero"
-    }
+    Assert-ColdRestoreCondition ([int]$Consumer.terminal_quiescent_frames -ge 8 `
+        -and [int]$Consumer.terminal_world_delta -eq 0 `
+        -and [int]$Consumer.terminal_rng_draw_delta -eq 0) "terminal_quiet_delta_nonzero"
+    Assert-ColdRestoreCondition ([int]$Validator.terminal_quiescent_frames -eq 0 `
+        -and [int]$Validator.terminal_world_delta -eq 0 `
+        -and [int]$Validator.terminal_rng_draw_delta -eq 0) "validator_terminal_continuation_invalid"
     Assert-ColdRestoreCondition (-not [bool]$Producer.backup_created `
         -and [bool]$Consumer.backup_created -and -not [bool]$Validator.backup_created) "backup_generation_binding_invalid"
 
@@ -2232,8 +2627,13 @@ function Compare-ColdRestoreManifests {
         restore_deltas_zero = $true
         action_counts_positive = $true
         generation2_counts_exact = $true
+        registry_commit_rebind_exact = $true
+        save_readback_exact = $true
+        duplicate_counts_zero = $true
+        typed_restore_fingerprints_match = $true
+        generation_two_restore_exact = $true
         final_settlement_exact_once = $true
-        terminal_quiescent_frames = 8
+        terminal_quiescent_frames = [int]$Consumer.terminal_quiescent_frames
         terminal_quiet = $true
     }
 }
@@ -2252,29 +2652,50 @@ function Get-ColdRestoreOfficialAttemptBoundaryObservation {
     param([Parameter(Mandatory = $true)][string]$ResolvedProjectPath)
 
     $gitCommonDirectory = Resolve-ColdRestoreGitCommonDirectory $ResolvedProjectPath
-    $officialClaimPath = Join-Path $gitCommonDirectory $OfficialClaimRelativePath
-    $attempt1Present = [IO.File]::Exists($officialClaimPath)
+    $attempt1Path = Join-Path $gitCommonDirectory $OfficialAttempt1ClaimRelativePath
+    $attempt2Path = Join-Path $gitCommonDirectory $OfficialAttempt2ClaimRelativePath
+    $attempt1Present = [IO.File]::Exists($attempt1Path)
     $attempt1Sha256 = if ($attempt1Present) {
-        (Get-FileHash -LiteralPath $officialClaimPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        (Get-FileHash -LiteralPath $attempt1Path -Algorithm SHA256).Hash.ToLowerInvariant()
     }
     else {
         ""
     }
     $officialRoot = Join-Path $gitCommonDirectory "codex\cold_restore_v3"
-    $officialClaims = @(
-        Get-ChildItem -LiteralPath $officialRoot -Directory -Filter "official-*" -ErrorAction SilentlyContinue |
-            Get-ChildItem -File -Filter "*claim*.json" -ErrorAction SilentlyContinue
-    )
+    try {
+        $officialDirectories = @(Get-ChildItem -LiteralPath $officialRoot -Directory -Filter "official-*" -ErrorAction Stop)
+        $officialClaims = @(
+            $officialDirectories | ForEach-Object {
+                Get-ChildItem -LiteralPath $_.FullName -File -Filter "*claim*.json" -ErrorAction Stop
+            }
+        )
+    }
+    catch {
+        throw "official_claim_inventory_unavailable"
+    }
+    $attempt2Present = [IO.File]::Exists($attempt2Path)
+    $attempt2Sha256 = if ($attempt2Present) {
+        (Get-FileHash -LiteralPath $attempt2Path -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    else {
+        ""
+    }
+    $expectedPaths = @([IO.Path]::GetFullPath($attempt1Path), [IO.Path]::GetFullPath($attempt2Path))
     $unexpectedClaims = @($officialClaims | Where-Object {
-        [IO.Path]::GetFullPath($_.FullName) -cne [IO.Path]::GetFullPath($officialClaimPath)
+        $expectedPaths -cnotcontains [IO.Path]::GetFullPath($_.FullName)
     })
     return [pscustomobject]@{
-        path = $officialClaimPath
+        path = $attempt1Path
         sha256 = $attempt1Sha256
+        attempt_1_path = $attempt1Path
+        attempt_1_sha256 = $attempt1Sha256
         attempt_1_valid = $attempt1Present -and $attempt1Sha256 -ceq $OfficialAttempt1ClaimSha256
-        claim_count = $officialClaims.Count
-        attempt_2_claim_present = $unexpectedClaims.Count -gt 0
-        attempt_2_absent = $unexpectedClaims.Count -eq 0
+        attempt_2_path = $attempt2Path
+        attempt_2_sha256 = $attempt2Sha256
+        attempt_2_claim_present = $attempt2Present
+        attempt_2_absent = -not $attempt2Present
+        claim_count = $(Get-ColdRestoreSafeCollectionCount $officialClaims)
+        unexpected_claim_count = $(Get-ColdRestoreSafeCollectionCount $unexpectedClaims)
     }
 }
 
@@ -2284,7 +2705,23 @@ function Assert-ColdRestoreOfficialAttemptBoundary {
     $observation = Get-ColdRestoreOfficialAttemptBoundaryObservation $ResolvedProjectPath
     Assert-ColdRestoreCondition ([bool]$observation.attempt_1_valid) "official_attempt_1_claim_mutated"
     Assert-ColdRestoreCondition ([int]$observation.claim_count -eq 1 `
-        -and [bool]$observation.attempt_2_absent) "official_attempt_2_claim_must_be_absent"
+        -and [bool]$observation.attempt_2_absent `
+        -and [int]$observation.unexpected_claim_count -eq 0) "official_attempt_2_claim_must_be_absent"
+    return $observation
+}
+
+function Assert-ColdRestoreOfficialAttempt2Boundary {
+    param(
+        [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
+        [Parameter(Mandatory = $true)][string]$ExpectedAttempt2Sha256
+    )
+
+    $observation = Get-ColdRestoreOfficialAttemptBoundaryObservation $ResolvedProjectPath
+    Assert-ColdRestoreCondition ([bool]$observation.attempt_1_valid `
+        -and [bool]$observation.attempt_2_claim_present `
+        -and [string]$observation.attempt_2_sha256 -ceq $ExpectedAttempt2Sha256 `
+        -and [int]$observation.claim_count -eq 2 `
+        -and [int]$observation.unexpected_claim_count -eq 0) "official_attempt_2_claim_boundary_invalid"
     return $observation
 }
 
@@ -2300,7 +2737,8 @@ function Get-ColdRestoreOrchestratorCreationTimeTicks {
 function Consume-ColdRestoreTargetedOwnerCaptureDiagnosticQuota {
     param(
         [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
-        [Parameter(Mandatory = $true)][string]$HeadSha
+        [Parameter(Mandatory = $true)][string]$HeadSha,
+        [Parameter(Mandatory = $true)]$PreQuotaContext
     )
 
     $gitCommonDirectory = Resolve-ColdRestoreGitCommonDirectory $ResolvedProjectPath
@@ -2308,21 +2746,55 @@ function Consume-ColdRestoreTargetedOwnerCaptureDiagnosticQuota {
     $previousLedgerPath = Join-Path $gitCommonDirectory $PreviousTargetedOwnerCaptureQuotaLedgerRelativePath
     Assert-ColdRestoreCondition ([IO.File]::Exists($previousLedgerPath) `
         -and (Get-FileHash -LiteralPath $previousLedgerPath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $PreviousTargetedOwnerCaptureQuotaLedgerSha256) "previous_targeted_owner_capture_ledger_mutated"
+    $exhaustedV2LedgerPath = Join-Path $gitCommonDirectory $ExhaustedTargetedOwnerCaptureQuotaLedgerRelativePath
+    Assert-ColdRestoreCondition (-not [IO.File]::Exists($exhaustedV2LedgerPath)) "exhausted_v2_targeted_owner_capture_ledger_must_remain_absent"
+    $historicalRevision = "$HistoricalTargetedOwnerCaptureInvocationCommit`:$HistoricalTargetedOwnerCaptureInvocationPath"
+    $historicalBlobLines = @(& git -C $ResolvedProjectPath rev-parse $historicalRevision 2>$null)
+    Assert-ColdRestoreCondition ($LASTEXITCODE -eq 0 `
+        -and (Get-ColdRestoreSafeCollectionCount $historicalBlobLines) -eq 1 `
+        -and [string]$historicalBlobLines[0] -ceq $HistoricalTargetedOwnerCaptureInvocationBlobSha1) "historical_targeted_owner_capture_invocation_record_mutated"
+    $historicalJsonLines = @(& git -C $ResolvedProjectPath show $historicalRevision 2>$null)
+    Assert-ColdRestoreCondition ($LASTEXITCODE -eq 0 `
+        -and (Get-ColdRestoreSafeCollectionCount $historicalJsonLines) -gt 0) "historical_targeted_owner_capture_invocation_record_unavailable"
+    try {
+        $historicalRecord = ($historicalJsonLines -join "`n") | ConvertFrom-Json
+    }
+    catch {
+        throw "historical_targeted_owner_capture_invocation_record_invalid"
+    }
+    $historicalDiagnostic = $historicalRecord.targeted_owner_capture_diagnostic
+    Assert-ColdRestoreCondition ([int]$historicalDiagnostic.attempted_count_after -eq 2 `
+        -and [bool]$historicalDiagnostic.second_diagnostic_run_performed `
+        -and [string]$historicalDiagnostic.quota_ledger_status -ceq "NOT_CREATED" `
+        -and -not [bool]$historicalDiagnostic.evidence_root_created `
+        -and -not [bool]$historicalDiagnostic.scenario_identity_attested `
+        -and -not [bool]$historicalDiagnostic.owner_audit_started) "historical_targeted_owner_capture_invocation_count_invalid"
+    Assert-ColdRestoreCondition ([IO.File]::Exists([string]$PreQuotaContext.admission_path) `
+        -and (Get-FileHash -LiteralPath $PreQuotaContext.admission_path -Algorithm SHA256).Hash.ToLowerInvariant() -ceq [string]$PreQuotaContext.admission_sha256 `
+        -and [string]$PreQuotaContext.admission_fingerprint -cmatch '^[0-9a-f]{64}$') "prequota_bootstrap_admission_binding_invalid"
     $ledgerPath = Join-Path $gitCommonDirectory $TargetedOwnerCaptureQuotaLedgerRelativePath
+    Assert-ColdRestoreCondition ([IO.Path]::GetFullPath($ledgerPath) -ceq [IO.Path]::GetFullPath([string]$PreQuotaContext.value.quota_ledger_path)) "prequota_quota_ledger_path_mismatch"
     $ledger = [ordered]@{
-        schema_version = 2
-        ledger_id = "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV2"
+        schema_version = 3
+        ledger_id = "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV3"
         authorization_id = $TargetedOwnerCaptureAuthorizationId
-        task_id = "ALPHA_0_4_C_OWNER_CAPTURE_ATTESTATION_CURSOR_PERSISTENCE_AND_PROCESS_A_REHEARSAL"
+        task_id = $TargetedOwnerCaptureTaskId
         created_at_utc = [DateTime]::UtcNow.ToString("O", [Globalization.CultureInfo]::InvariantCulture)
         run_id = $RunId
         repository_head = $HeadSha
         scenario_fingerprint = $ExpectedScenarioFingerprint
         authorized_new_diagnostic_count = 1
-        diagnostic_count_before = 1
-        diagnostic_count_after = 2
-        diagnostic_count_maximum = 2
+        diagnostic_count_before = 2
+        diagnostic_count_after = 3
+        diagnostic_count_maximum = 3
         previous_ledger_sha256 = $PreviousTargetedOwnerCaptureQuotaLedgerSha256
+        historical_invocation_commit = $HistoricalTargetedOwnerCaptureInvocationCommit
+        historical_invocation_blob_sha1 = $HistoricalTargetedOwnerCaptureInvocationBlobSha1
+        historical_invocation_file_sha256 = $HistoricalTargetedOwnerCaptureInvocationFileSha256
+        bootstrap_admission_path = [IO.Path]::GetFullPath([string]$PreQuotaContext.admission_path)
+        bootstrap_admission_sha256 = [string]$PreQuotaContext.admission_sha256
+        bootstrap_admission_fingerprint = [string]$PreQuotaContext.admission_fingerprint
+        prequota_attestation_path = [IO.Path]::GetFullPath([string]$PreQuotaContext.attestation_path)
         role_timeout_policy_sha256 = [string]$RoleTimeoutPolicyEvidence.sha256
         official_attempt_1_claim_sha256 = [string]$officialBoundary.sha256
         official_attempt_2_claim_absent = [bool]$officialBoundary.attempt_2_absent
@@ -2337,16 +2809,7 @@ function Consume-ColdRestoreTargetedOwnerCaptureDiagnosticQuota {
         status = "consumed"
     }
     Assert-ColdRestoreCondition ([string]$ledger.claim_nonce -cne [string]$ledger.launch_nonce) "targeted_owner_capture_nonce_collision"
-    try {
-        $ledgerFingerprint = Write-ColdRestoreExclusiveJson $ledgerPath ([pscustomobject]$ledger)
-    }
-    catch {
-        $ledgerFailure = [string]$_.Exception.Message
-        if ($ledgerFailure -eq "exclusive_evidence_create_new_failed" -and [IO.File]::Exists($ledgerPath)) {
-            throw "targeted_owner_capture_diagnostic_already_consumed"
-        }
-        throw "targeted_owner_capture_diagnostic_quota_ledger_failed"
-    }
+    $ledgerFingerprint = Publish-ColdRestoreTargetedQuotaLedgerV3 $ledgerPath ([pscustomobject]$ledger)
     return [pscustomobject]@{
         path = $ledgerPath
         fingerprint = [string]$ledgerFingerprint
@@ -2364,6 +2827,112 @@ function Consume-ColdRestoreTargetedOwnerCaptureDiagnosticQuota {
             orchestrator_creation_time_utc_ticks = [string]$ledger.orchestrator_creation_time_utc_ticks
         }
     }
+}
+
+function Assert-ColdRestoreProcessARehearsalPrerequisites {
+    param(
+        [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
+        [Parameter(Mandatory = $true)][string]$HeadSha
+    )
+
+    $handoffPath = Join-Path $ResolvedProjectPath "reports\handoffs\alpha04c_save_resume_current.json"
+    $wrapperPath = Join-Path $ResolvedProjectPath "reports\handoffs\alpha04c_wrapper_exit_attestation_result.json"
+    $gateCachePath = Join-Path $ResolvedProjectPath "reports\handoffs\alpha04c_gate_cache.json"
+    $programStatePath = Join-Path $ResolvedProjectPath "docs\development\current_program_state.json"
+    $handoff = Read-ColdRestoreJsonArtifact $handoffPath
+    $wrapper = Read-ColdRestoreJsonArtifact $wrapperPath
+    $gateCache = Read-ColdRestoreJsonArtifact $gateCachePath
+    $programState = Read-ColdRestoreJsonArtifact $programStatePath
+    Assert-ColdRestoreCondition ([int]$handoff.transactional_save_owner_count -eq 19 `
+        -and [int]$handoff.unsupported_save_owner_count -eq 0 `
+        -and [bool]$handoff.allocator_cursor_repair.persistence_green `
+        -and [bool]$handoff.allocator_cursor_repair.expired_quote_omission_green `
+        -and [bool]$handoff.allocator_cursor_repair.next_quote_id_parity `
+        -and [bool]$handoff.allocator_cursor_repair.next_listing_id_parity `
+        -and [bool]$handoff.allocator_cursor_repair.next_transaction_id_parity `
+        -and [string]$handoff.focused_tests.allocator_cursor_spec -ceq "34/34" `
+        -and [string]$handoff.focused_tests.production_registry_transaction_current -ceq "59/59" `
+        -and [string]$handoff.focused_tests.production_save_capture_readback -ceq "25/25" `
+        -and [bool]$handoff.role_timeout_policy_green `
+        -and [int]$handoff.continuation_action_routing_change_count -eq 0 `
+        -and [int]$handoff.continuation_queue_behavior_change_count -eq 0 `
+        -and -not [bool]$handoff.third_formal_run_performed `
+        -and -not [bool]$handoff.full_smoke) "process_a_rehearsal_save_prerequisites_invalid"
+    Assert-ColdRestoreCondition ([string]$wrapper.short_gates.registry_owner_preflight -ceq "19/19" `
+        -and [string]$wrapper.short_gates.registry_owner_fault_rollback -ceq "19/19" `
+        -and [int]$wrapper.short_gates.registry_owner_apply_count -eq 19 `
+        -and [int]$wrapper.short_gates.registry_commit_count -eq 1 `
+        -and [int]$wrapper.short_gates.registry_rebind_count -eq 1 `
+        -and [int]$wrapper.scope_deltas.production_action_routing_change_count -eq 0 `
+        -and [int]$wrapper.scope_deltas.production_queue_owner_change_count -eq 0) "process_a_rehearsal_registry_prerequisites_invalid"
+    $fileFaultGates = @($gateCache.gates | Where-Object { [string]$_.gate_id -ceq "file_fault_matrix" })
+    $saveConfirmationGates = @($gateCache.gates | Where-Object { [string]$_.gate_id -ceq "save_confirmation" })
+    $forkParityGates = @($gateCache.gates | Where-Object { [string]$_.gate_id -ceq "fork_determinism_parity" })
+    Assert-ColdRestoreCondition ((Get-ColdRestoreSafeCollectionCount $fileFaultGates) -eq 1 `
+        -and [string]$fileFaultGates[0].result.status -ceq "PASS" `
+        -and [int]$fileFaultGates[0].result.checks -eq 16 `
+        -and (Get-ColdRestoreSafeCollectionCount $saveConfirmationGates) -eq 1 `
+        -and [string]$saveConfirmationGates[0].result.status -ceq "PASS" `
+        -and [int]$saveConfirmationGates[0].result.checks -eq 10 `
+        -and (Get-ColdRestoreSafeCollectionCount $forkParityGates) -eq 1 `
+        -and [string]$forkParityGates[0].result.status -ceq "PASS" `
+        -and [int]$forkParityGates[0].result.checks -eq 14 `
+        -and [string]$wrapper.short_gates.save_confirmation -ceq "10/10" `
+        -and [string]$wrapper.short_gates.fork_parity -ceq "14/14") "process_a_rehearsal_frozen_save_gates_invalid"
+    Assert-ColdRestoreCondition ([string]$programState.known_test_state.alpha04_a_regression -ceq "GREEN_598_OF_598" `
+        -and [string]$programState.known_test_state.alpha04_b_roster_inspection_schema_privacy -ceq "GREEN_268_OF_268" `
+        -and [string]$programState.known_test_state.alpha04_b_region_action_semantic_flow -ceq "GREEN_273_OF_273" `
+        -and [string]$programState.known_test_state.alpha04_b_legacy_retirement_architecture -ceq "GREEN_60_OF_60" `
+        -and [string]$programState.known_test_state.alpha04_b_layout_measurement -ceq "GREEN_28_OF_28" `
+        -and [string]$programState.known_test_state.alpha04_b_production_ui_journey -ceq "GREEN_53_OF_53_WITH_10_SCREENSHOTS" `
+        -and [string]$programState.known_test_state.alpha04c_allocator_cursor_spec -ceq "GREEN_34_OF_34" `
+        -and [string]$programState.known_test_state.alpha04c_production_registry_transaction_current -ceq "GREEN_59_OF_59" `
+        -and [string]$programState.known_test_state.alpha04c_production_save_capture_readback -ceq "GREEN_25_OF_25") "process_a_rehearsal_regression_prerequisites_invalid"
+    $changedPaths = @(& git -C $ResolvedProjectPath diff --name-only $HistoricalTargetedOwnerCaptureInvocationCommit $HeadSha 2>$null)
+    Assert-ColdRestoreCondition ($LASTEXITCODE -eq 0) "process_a_rehearsal_scope_diff_unavailable"
+    $forbiddenPaths = @(
+        $changedPaths | Where-Object {
+            [string]$_ -notmatch '^(scripts/tools/|tests/)'
+        }
+    )
+    Assert-ColdRestoreCondition ((Get-ColdRestoreSafeCollectionCount $forbiddenPaths) -eq 0) "process_a_rehearsal_production_scope_changed"
+    $evidence = [ordered]@{
+        schema_version = 1
+        evidence_id = "ProcessARehearsalPrerequisiteEvidenceV1"
+        repository_head = $HeadSha
+        scenario_fingerprint = $ExpectedScenarioFingerprint
+        handoff_sha256 = (Get-FileHash -LiteralPath $handoffPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        wrapper_baseline_sha256 = (Get-FileHash -LiteralPath $wrapperPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        gate_cache_sha256 = (Get-FileHash -LiteralPath $gateCachePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        program_state_sha256 = (Get-FileHash -LiteralPath $programStatePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        changed_path_count = Get-ColdRestoreSafeCollectionCount $changedPaths
+        forbidden_path_count = Get-ColdRestoreSafeCollectionCount $forbiddenPaths
+        registry_owner_capture_count = 19
+        registry_owner_preflight_count = 19
+        registry_owner_fault_rollback_count = 19
+        registry_owner_apply_count = 19
+        registry_commit_count = 1
+        registry_rebind_count = 1
+        allocator_cursor_checks_passed = 34
+        allocator_cursor_checks_total = 34
+        production_capture_checks_passed = 25
+        production_capture_checks_total = 25
+        file_fault_matrix_checks_passed = 16
+        file_fault_matrix_checks_total = 16
+        save_confirmation_checks_passed = 10
+        save_confirmation_checks_total = 10
+        fork_parity_checks_passed = 14
+        fork_parity_checks_total = 14
+        alpha04_a_regression_green = $true
+        alpha04_b_regression_green = $true
+        production_action_routing_change_count = 0
+        production_queue_behavior_change_count = 0
+        third_formal_run_performed = $false
+        full_smoke = $false
+        evidence_fingerprint = ""
+    }
+    $evidence.evidence_fingerprint = Get-ColdRestoreEvidenceFingerprint ([pscustomobject]$evidence) "evidence_fingerprint"
+    return [pscustomobject]$evidence
 }
 
 function Get-ColdRestoreProcessARehearsalDiagnosticAdmission {
@@ -2423,6 +2992,7 @@ function Consume-ColdRestoreProcessARehearsalQuota {
             -RunId $RunId `
             -RepositoryHead $HeadSha `
             -ScenarioFingerprint $ExpectedScenarioFingerprint `
+            -PrerequisiteEvidenceFingerprint ([string]$DiagnosticAdmission.stage3_prerequisites.evidence_fingerprint) `
             -TimeoutPolicyPath $RoleTimeoutPolicyEvidence.path `
             -AdmissionEvidencePath $DiagnosticAdmission.path `
             -DiagnosticQuotaLedgerPath $DiagnosticAdmission.quota_ledger_path `
@@ -2448,62 +3018,250 @@ function Consume-ColdRestoreProcessARehearsalQuota {
 function Assert-AndConsumeOfficialColdRestoreAuthorization {
     param(
         [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
-        [Parameter(Mandatory = $true)][string]$HeadSha
+        [Parameter(Mandatory = $true)][string]$HeadSha,
+        [switch]$PreflightOnly
     )
-    Assert-ColdRestoreCondition ($AuthorizedOfficialColdRestoreCount -eq 1) "official_authorization_count_invalid"
-    Assert-ColdRestoreCondition ($ExpectedScenarioFingerprint -match '^[0-9a-f]{64}$') "expected_scenario_fingerprint_invalid"
-    $paths = Get-ColdRestoreRolePaths $ResolvedProjectPath "qualification"
-    Assert-ColdRestoreCondition (Test-Path -LiteralPath $paths.child_attestation -PathType Leaf) "official_qualification_child_attestation_missing"
-    $startedAt = [IO.File]::GetLastWriteTimeUtc($paths.child_attestation).AddSeconds(-1)
-    $childValidation = Test-ColdRestoreChildCompletionAttestation `
-        -Path $paths.child_attestation `
-        -ExpectedRunId $RunId `
-        -ExpectedRole "qualification" `
+    if ($PreflightOnly) {
+        $null = Assert-ColdRestoreOfficialAttempt2PreflightAuthorizationCount `
+            $AuthorizedOfficialColdRestoreCount
+    }
+    else {
+        Assert-ColdRestoreCondition ($AuthorizedOfficialColdRestoreCount -eq 1) "official_authorization_count_invalid"
+    }
+    Assert-ColdRestoreCondition ($RunId -ceq "alpha04c-cold-retry-$($HeadSha.Substring(0, 12))") "official_attempt_2_run_id_invalid"
+    Assert-ColdRestoreCondition ($ExpectedScenarioFingerprint -ceq $TargetedOwnerCaptureScenarioFingerprint) "expected_scenario_fingerprint_invalid"
+    $gitCommonDirectory = Resolve-ColdRestoreGitCommonDirectory $ResolvedProjectPath
+    $candidateEvidenceRoot = Join-Path $ResolvedProjectPath ".godot\cold_restore_attestation_v1\$RunId"
+    $candidateUserDataRoot = [IO.Path]::GetFullPath($UserDataRoot)
+    $candidateClaimPath = Join-Path $gitCommonDirectory $OfficialAttempt2ClaimRelativePath
+    $officialClaimRoot = Join-Path $gitCommonDirectory "codex\cold_restore_v3"
+    $attempt1ClaimPath = Join-Path $gitCommonDirectory $OfficialAttempt1ClaimRelativePath
+    $sideEffectSnapshotBefore = if ($PreflightOnly) {
+        Get-ColdRestoreOfficialAttempt2SideEffectSnapshot `
+            -OfficialClaimRoot $officialClaimRoot `
+            -Attempt1ClaimPath $attempt1ClaimPath `
+            -CandidateClaimPath $candidateClaimPath `
+            -CandidateEvidenceRoot $candidateEvidenceRoot `
+            -CandidateUserDataRoot $candidateUserDataRoot
+    }
+    else {
+        $null
+    }
+    if ($PreflightOnly) {
+        $null = Assert-ColdRestoreOfficialAttempt2CandidateRootsAbsent $sideEffectSnapshotBefore
+    }
+    else {
+        Assert-ColdRestoreCondition (-not [IO.Directory]::Exists((Split-Path -Parent $candidateClaimPath)) `
+            -and -not [IO.File]::Exists($candidateClaimPath) `
+            -and -not [IO.Directory]::Exists($candidateEvidenceRoot) `
+            -and -not [IO.Directory]::Exists($candidateUserDataRoot)) "official_attempt_2_candidate_root_collision"
+    }
+    $officialBoundary = Assert-ColdRestoreOfficialAttemptBoundary $ResolvedProjectPath
+    $rehearsalRunId = "alpha04c-process-a-rehearsal-$($HeadSha.Substring(0, 12))"
+    $rehearsalRoot = Join-Path $ResolvedProjectPath ".godot\cold_restore_attestation_v1\$rehearsalRunId"
+    $outcomePath = Join-Path $gitCommonDirectory $ProcessARehearsalOutcomeLedgerRelativePath
+    $admissionPath = Join-Path $gitCommonDirectory $ProcessARehearsalQuotaLedgerRelativePath
+    $launchLedgerPath = Join-Path $gitCommonDirectory $ProcessARehearsalLaunchLedgerRelativePath
+    $completionPath = Join-Path $rehearsalRoot "diagnostics\process_a.rehearsal_completion.json"
+    $childPath = Join-Path $rehearsalRoot "child\producer.completion.json"
+    $parentPath = Join-Path $rehearsalRoot "parent\producer.exit.json"
+    $manifestPath = Join-Path $rehearsalRoot "child\producer.result.json"
+    $timelinePath = Join-Path $rehearsalRoot "diagnostics\producer.phase_timeline.json"
+    $stdoutPath = Join-Path $rehearsalRoot "parent\producer.stdout.log"
+    $stderrPath = Join-Path $rehearsalRoot "parent\producer.stderr.log"
+    $outcome = Read-ColdRestoreJsonArtifact $outcomePath
+    $outcomeSha256 = (Get-FileHash -LiteralPath $outcomePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    Assert-ColdRestoreCondition ([int]$outcome.schema_version -eq 1 `
+        -and [string]$outcome.outcome_id -ceq "ProcessARehearsalOutcomeLedgerV1" `
+        -and [string]$outcome.authorization_id -ceq $ProcessARehearsalAuthorizationId `
+        -and [string]$outcome.run_id -ceq $rehearsalRunId `
+        -and [string]$outcome.repository_head -ceq $HeadSha `
+        -and [string]$outcome.scenario_fingerprint -ceq $ExpectedScenarioFingerprint `
+        -and -not [bool]$outcome.official `
+        -and -not [bool]$outcome.formal `
+        -and -not [bool]$outcome.official_attempt_2_claim_present `
+        -and -not [bool]$outcome.official_attempt_2_authorization_consumed `
+        -and [bool]$outcome.rehearsal_admission_consumed `
+        -and [string]$outcome.rehearsal_green_head -ceq $HeadSha `
+        -and [bool]$outcome.rehearsal_green_tree_clean `
+        -and [bool]$outcome.rehearsal_green_git_diff_check_green `
+        -and [string]$outcome.rehearsal_green_freeze_fingerprint -cmatch '^[0-9a-f]{64}$' `
+        -and [bool]$outcome.launch_attestation_present `
+        -and [bool]$outcome.child_attestation_present `
+        -and [bool]$outcome.parent_attestation_present `
+        -and [bool]$outcome.stdout_present `
+        -and [bool]$outcome.stderr_present `
+        -and [bool]$outcome.manifest_present `
+        -and [bool]$outcome.phase_timeline_present `
+        -and [bool]$outcome.completion_present `
+        -and [bool]$outcome.wrapper_result_present `
+        -and [bool]$outcome.observed_exit `
+        -and [bool]$outcome.exit_code_observed `
+        -and [int]$outcome.exit_code -eq 0 `
+        -and -not [bool]$outcome.timed_out `
+        -and -not [bool]$outcome.terminated_by_parent `
+        -and [int]$outcome.task_owned_process_count_after -eq 0 `
+        -and [string]$outcome.terminal_stage -ceq "success" `
+        -and [bool]$outcome.success `
+        -and [string]$outcome.terminal_code -ceq "ok" `
+        -and [string]$outcome.evidence_fingerprint -ceq (Get-ColdRestoreEvidenceFingerprint $outcome "evidence_fingerprint")) "official_attempt_2_rehearsal_outcome_invalid"
+    $admission = Read-ProcessARehearsalAdmissionLedger $admissionPath ([string]$outcome.admission_ledger_sha256)
+    $launchLedger = Read-ProcessARehearsalLaunchLedger $launchLedgerPath
+    Assert-ColdRestoreCondition ([string]$launchLedger.value.admission_ledger_sha256 -ceq [string]$admission.fingerprint `
+        -and [string]$launchLedger.value.repository_head -ceq $HeadSha `
+        -and [string]$launchLedger.value.run_id -ceq $rehearsalRunId `
+        -and [string]$launchLedger.value.timeout_policy_fingerprint -ceq [string]$RoleTimeoutPolicyEvidence.sha256) "official_attempt_2_rehearsal_launch_invalid"
+    $launchAttestationPath = Join-Path $rehearsalRoot "launch\orchestrator-$($launchLedger.value.orchestrator_process_id)\producer.authorized.json"
+    $artifactBindings = @(
+        @($launchAttestationPath, [string]$outcome.launch_attestation_sha256),
+        @($childPath, [string]$outcome.child_attestation_sha256),
+        @($parentPath, [string]$outcome.parent_attestation_sha256),
+        @($stdoutPath, [string]$outcome.stdout_sha256),
+        @($stderrPath, [string]$outcome.stderr_sha256),
+        @($manifestPath, [string]$outcome.manifest_sha256),
+        @($timelinePath, [string]$outcome.phase_timeline_sha256),
+        @($completionPath, [string]$outcome.completion_sha256)
+    )
+    foreach ($binding in $artifactBindings) {
+        Assert-ColdRestoreCondition ([IO.File]::Exists([string]$binding[0]) `
+            -and [string]$binding[1] -cmatch '^[0-9a-f]{64}$' `
+            -and (Get-FileHash -LiteralPath ([string]$binding[0]) -Algorithm SHA256).Hash.ToLowerInvariant() -ceq [string]$binding[1]) "official_attempt_2_rehearsal_artifact_sha256_mismatch"
+    }
+    Assert-ColdRestoreCondition ([string]$launchLedger.value.launch_attestation_sha256 -ceq [string]$outcome.launch_attestation_sha256) "official_attempt_2_rehearsal_launch_sha256_mismatch"
+    $diagnosticAdmission = Get-ColdRestoreProcessARehearsalDiagnosticAdmission $ResolvedProjectPath $HeadSha
+    $stage3Prerequisites = Assert-ColdRestoreProcessARehearsalPrerequisites $ResolvedProjectPath $HeadSha
+    Assert-ColdRestoreCondition ([string]$admission.value.prerequisite_evidence_fingerprint `
+        -ceq [string]$stage3Prerequisites.evidence_fingerprint) "official_attempt_2_prerequisite_evidence_changed"
+    Assert-ProcessARehearsalAdmissionSourcesUnchanged `
+        -Admission $admission `
+        -PrerequisiteEvidenceFingerprint ([string]$stage3Prerequisites.evidence_fingerprint) `
+        -TimeoutPolicyPath $RoleTimeoutPolicyEvidence.path `
+        -AdmissionEvidencePath $diagnosticAdmission.path `
+        -DiagnosticQuotaLedgerPath $diagnosticAdmission.quota_ledger_path `
+        -DiagnosticLaunchAttestationPath $diagnosticAdmission.launch_attestation_path `
+        -DiagnosticManifestPath $diagnosticAdmission.manifest_path `
+        -DiagnosticChildAttestationPath $diagnosticAdmission.child_attestation_path `
+        -DiagnosticParentAttestationPath $diagnosticAdmission.parent_attestation_path `
+        -DiagnosticStdoutPath $diagnosticAdmission.stdout_path `
+        -DiagnosticStderrPath $diagnosticAdmission.stderr_path `
+        -OfficialClaimRoot (Join-Path $gitCommonDirectory "codex\cold_restore_v3") `
+        -OfficialAttempt1ClaimPath ([string]$officialBoundary.path) | Out-Null
+    $manifest = Read-ColdRestoreJsonArtifact $manifestPath
+    Assert-ColdRestoreManifest $manifest "producer" $rehearsalRunId
+    Assert-ColdRestoreCondition ([bool]$manifest.success `
+        -and [int]$manifest.section_count -eq 19 `
+        -and [int]$manifest.preflight_count -eq 19 `
+        -and [bool]$manifest.save_readback_green `
+        -and [bool]$manifest.save_fingerprint_parity `
+        -and [int]$manifest.registry_commit_count -eq 0 `
+        -and [int]$manifest.registry_rebind_count -eq 0 `
+        -and [int]$manifest.partial_restore_state_count -eq 0) "official_attempt_2_rehearsal_manifest_invalid"
+    foreach ($field in $DuplicateCountFields) {
+        Assert-ColdRestoreCondition ([int]$manifest.$field -eq 0) "official_attempt_2_rehearsal_duplicate_count_invalid"
+    }
+    $timeline = Read-ColdRestoreJsonArtifact $timelinePath
+    $timelineValidation = Test-ColdRestoreProcessAPhaseTimeline `
+        -Value $timeline `
+        -ExpectedRunId $rehearsalRunId `
         -ExpectedRepositoryHead $HeadSha `
-        -ProcessStartedAtUtc $startedAt
-    Assert-ColdRestoreCondition ([bool]$childValidation.valid) "official_qualification_child_attestation_invalid"
-    $parent = Read-ColdRestoreJsonArtifact $paths.parent_attestation
-    Assert-ColdRestoreCondition (Test-ExactFieldSet $parent $ParentExitAttestationFields) "official_qualification_parent_attestation_field_set_invalid"
-    Assert-ColdRestoreCondition ([int]$parent.schema_version -eq 1 `
-        -and [string]$parent.run_id -eq $RunId `
-        -and [string]$parent.role -eq "qualification" `
+        -ExpectedScenarioFingerprint $ExpectedScenarioFingerprint
+    Assert-ColdRestoreCondition ([bool]$timelineValidation.valid `
+        -and @($timeline.phase_rows).Count -eq 19 `
+        -and [string]$timeline.last_completed_phase -ceq "quit_requested" `
+        -and [bool]$timeline.save_file_exists `
+        -and [bool]$timeline.allowlisted_manifest_written `
+        -and [bool]$timeline.child_completion_written `
+        -and [bool]$timeline.quit_requested) "official_attempt_2_rehearsal_timeline_invalid"
+    $completion = Read-ColdRestoreJsonArtifact $completionPath
+    $completionSha256 = (Get-FileHash -LiteralPath $completionPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    Assert-ColdRestoreCondition ($completionSha256 -ceq [string]$outcome.completion_sha256) "official_attempt_2_rehearsal_completion_sha256_mismatch"
+    Assert-ColdRestoreProcessARehearsalCompletion $completion $HeadSha ([string]$admission.fingerprint)
+    $childSha256 = (Get-FileHash -LiteralPath $childPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $parentSha256 = (Get-FileHash -LiteralPath $parentPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    Assert-ColdRestoreCondition ($childSha256 -ceq [string]$outcome.child_attestation_sha256 `
+        -and $parentSha256 -ceq [string]$outcome.parent_attestation_sha256) "official_attempt_2_rehearsal_exit_sha256_mismatch"
+    $childValidation = Test-ColdRestoreChildCompletionAttestation `
+        -Path $childPath `
+        -ExpectedRunId $rehearsalRunId `
+        -ExpectedRole "producer" `
+        -ExpectedRepositoryHead $HeadSha `
+        -ProcessStartedAtUtc ([IO.File]::GetLastWriteTimeUtc($childPath).AddMinutes(-10)) `
+        -ExpectedScenarioFingerprint $ExpectedScenarioFingerprint
+    $parent = Read-ColdRestoreJsonArtifact $parentPath
+    Assert-ColdRestoreCondition ([bool]$childValidation.valid `
         -and [bool]$parent.observed_exit `
         -and [int]$parent.exit_code -eq 0 `
         -and -not [bool]$parent.timed_out `
         -and -not [bool]$parent.terminated_by_parent `
-        -and [bool]$parent.child_attestation_found `
         -and [bool]$parent.child_attestation_valid `
-        -and [string]$parent.child_attestation_fingerprint -eq [string]$childValidation.fingerprint `
+        -and [string]$parent.child_attestation_fingerprint -ceq [string]$childValidation.fingerprint `
         -and [int]$parent.task_owned_process_count_after -eq 0 `
         -and [bool]$parent.wrapper_exit_green `
-        -and [string]$parent.wrapper_reason_code -eq "ok") "official_qualification_parent_attestation_invalid"
-    $result = Read-ColdRestoreJsonArtifact $paths.child_result
-    Assert-ColdRestoreQualificationResult $result $childValidation.value $HeadSha
-    Assert-ColdRestoreCondition ([bool]$result.success `
-        -and [int]$result.queue_count -ge 1 `
-        -and [string]$result.product_blocker -eq "" `
-        -and [string]$result.scenario_fingerprint -eq $ExpectedScenarioFingerprint) "official_product_qualification_not_green"
-    $gateCachePath = Join-Path $ResolvedProjectPath "reports\handoffs\alpha04c_gate_cache.json"
-    $gateCache = Read-ColdRestoreJsonArtifact $gateCachePath
-    Assert-ColdRestoreCondition ([int]$gateCache.official_cold_restore_vertical_slice_count -eq 0) "official_count_before_not_zero"
-    $gitCommonDirectory = Resolve-ColdRestoreGitCommonDirectory $ResolvedProjectPath
-    $ledgerPath = Join-Path $gitCommonDirectory $OfficialClaimRelativePath
+        -and [string]$parent.wrapper_reason_code -ceq "ok" `
+        -and [string]$parent.policy_role -ceq "process_a" `
+        -and [string]$parent.timeout_policy_fingerprint -ceq [string]$RoleTimeoutPolicyEvidence.sha256 `
+        -and [int]$parent.absolute_timeout_seconds -eq 180 `
+        -and [int]$parent.no_progress_timeout_seconds -eq 60) "official_attempt_2_rehearsal_exit_invalid"
+    Assert-ColdRestoreCondition ([string]$parent.stdout_sha256 -ceq [string]$outcome.stdout_sha256 `
+        -and [string]$parent.stderr_sha256 -ceq [string]$outcome.stderr_sha256) "official_attempt_2_rehearsal_stream_sha256_mismatch"
+    $expectedRoleTimeouts = @{
+        process_a = @(180, 60)
+        process_b = @(360, 60)
+        process_c = @(180, 30)
+    }
+    foreach ($roleId in @("process_a", "process_b", "process_c")) {
+        $rolePolicy = $RoleTimeoutPolicyEvidence.policy.roles.$roleId
+        Assert-ColdRestoreCondition (-not [bool]$rolePolicy.contract_only_in_this_task `
+            -and [int]$rolePolicy.absolute_timeout_seconds -eq [int]$expectedRoleTimeouts[$roleId][0] `
+            -and [int]$rolePolicy.no_progress_timeout_seconds -eq [int]$expectedRoleTimeouts[$roleId][1]) "official_attempt_2_role_timeout_not_executable"
+    }
+    $preClaimPrerequisites = Assert-ColdRestoreProcessARehearsalPrerequisites $ResolvedProjectPath $HeadSha
+    Assert-ColdRestoreCondition ([string]$preClaimPrerequisites.evidence_fingerprint `
+        -ceq [string]$stage3Prerequisites.evidence_fingerprint `
+        -and [string]$preClaimPrerequisites.evidence_fingerprint `
+        -ceq [string]$admission.value.prerequisite_evidence_fingerprint) "official_attempt_2_preclaim_prerequisite_changed"
+    $preClaimFreeze = Get-ColdRestoreRuntimeFreezeObservation $ResolvedProjectPath $HeadSha
+    $null = Assert-ColdRestoreRuntimeFreezeGreen `
+        $preClaimFreeze "official_attempt_2_preclaim_runtime_not_frozen"
+    Assert-ColdRestoreCondition ([string]$preClaimFreeze.evidence_fingerprint `
+        -ceq [string]$outcome.rehearsal_green_freeze_fingerprint) "official_attempt_2_rehearsal_runtime_freeze_changed"
+    $ledgerPath = $candidateClaimPath
     $orchestratorCreationTimeTicks = Get-ColdRestoreOrchestratorCreationTimeTicks
     $orchestratorScriptSha256 = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash.ToLowerInvariant()
     $claimNonce = [Guid]::NewGuid().ToString("N")
     $ledger = [ordered]@{
-        schema_version = 1
+        schema_version = 2
+        claim_id = "OfficialAttemptClaimV2"
+        attempt_number = 2
         authorization_id = $OfficialAuthorizationId
         created_at_utc = [DateTime]::UtcNow.ToString("O", [Globalization.CultureInfo]::InvariantCulture)
         run_id = $RunId
-        source_head_sha = $HeadSha
+        source_head = $HeadSha
+        rehearsal_green_head = $HeadSha
+        scenario_fingerprint = $ExpectedScenarioFingerprint
         challenge_depth = 1
         seed = [int64]900626424
-        scenario_fingerprint = [string]$result.scenario_fingerprint
-        qualification_child_attestation_fingerprint = [string]$childValidation.fingerprint
-        qualification_parent_attestation_sha256 = (Get-FileHash -LiteralPath $paths.parent_attestation -Algorithm SHA256).Hash.ToLowerInvariant()
-        qualification_result_sha256 = (Get-FileHash -LiteralPath $paths.child_result -Algorithm SHA256).Hash.ToLowerInvariant()
-        orchestrator_id = "alpha04c_cold_restore_vertical_slice_orchestrator_v3"
+        local_player_count = 1
+        ai_player_count = 3
+        timeout_policy_sha256 = [string]$RoleTimeoutPolicyEvidence.sha256
+        prerequisite_evidence_fingerprint = [string]$preClaimPrerequisites.evidence_fingerprint
+        preclaim_runtime_freeze_fingerprint = [string]$preClaimFreeze.evidence_fingerprint
+        process_role_timeouts = [pscustomobject][ordered]@{
+            process_a = [pscustomobject][ordered]@{ absolute_timeout_seconds = 180; no_progress_timeout_seconds = 60 }
+            process_b = [pscustomobject][ordered]@{ absolute_timeout_seconds = 360; no_progress_timeout_seconds = 60 }
+            process_c = [pscustomobject][ordered]@{ absolute_timeout_seconds = 180; no_progress_timeout_seconds = 30 }
+        }
+        rehearsal_run_id = $rehearsalRunId
+        rehearsal_evidence_fingerprint = [string]$outcome.evidence_fingerprint
+        rehearsal_outcome_sha256 = $outcomeSha256
+        rehearsal_admission_sha256 = [string]$admission.fingerprint
+        rehearsal_launch_sha256 = [string]$launchLedger.fingerprint
+        rehearsal_completion_sha256 = $completionSha256
+        rehearsal_child_attestation_sha256 = $childSha256
+        rehearsal_parent_attestation_sha256 = $parentSha256
+        attempt_1_claim_relative_path = "official-alpha04c-depth1-seed900626424/official_claim_ledger.json"
+        attempt_1_claim_sha256 = [string]$officialBoundary.attempt_1_sha256
+        orchestrator_id = "alpha04c_cold_restore_vertical_slice_orchestrator_v4"
         orchestrator_schema_version = $ORCHESTRATOR_SCHEMA_VERSION
         orchestrator_script_sha256 = $orchestratorScriptSha256
         orchestrator_process_id = $PID
@@ -2511,30 +3269,111 @@ function Assert-AndConsumeOfficialColdRestoreAuthorization {
         claim_nonce = $claimNonce
         status = "consumed"
         authorized_official_count = 1
-        official_count_before = 0
-        official_count_after = 1
+        official_count_before = 1
+        official_count_after = 2
     }
+    Assert-ColdRestoreOfficialAttempt2Claim ([pscustomobject]$ledger)
+    if ($PreflightOnly) {
+        $null = Assert-ColdRestoreOfficialAttemptBoundary $ResolvedProjectPath
+        $sideEffectSnapshotAfter = Get-ColdRestoreOfficialAttempt2SideEffectSnapshot `
+            -OfficialClaimRoot $officialClaimRoot `
+            -Attempt1ClaimPath $attempt1ClaimPath `
+            -CandidateClaimPath $candidateClaimPath `
+            -CandidateEvidenceRoot $candidateEvidenceRoot `
+            -CandidateUserDataRoot $candidateUserDataRoot
+        $null = Assert-ColdRestoreOfficialAttempt2SideEffectSnapshotUnchanged `
+            $sideEffectSnapshotBefore $sideEffectSnapshotAfter
+        return [pscustomobject]@{
+            ledger_path = $ledgerPath
+            authorization_id = $OfficialAuthorizationId
+            claim_fingerprint = ""
+            claim_nonce = $claimNonce
+            orchestrator_process_id = $PID
+            orchestrator_creation_time_utc_ticks = $orchestratorCreationTimeTicks
+            scenario_fingerprint = $ExpectedScenarioFingerprint
+            rehearsal_outcome = $outcome
+            candidate = [pscustomobject]$ledger
+            claim_ready = $true
+            claim_created = $false
+            candidate_evidence_root_absent = -not [IO.Directory]::Exists($candidateEvidenceRoot)
+            candidate_user_data_root_absent = -not [IO.Directory]::Exists($candidateUserDataRoot)
+            candidate_claim_root_absent = -not [IO.Directory]::Exists((Split-Path -Parent $candidateClaimPath))
+            side_effect_snapshot_match = $true
+            claim_inventory_count_before = [int]$sideEffectSnapshotBefore.claim_inventory_count
+            claim_inventory_count_after = [int]$sideEffectSnapshotAfter.claim_inventory_count
+            claim_inventory_fingerprint_before = [string]$sideEffectSnapshotBefore.claim_inventory_fingerprint
+            claim_inventory_fingerprint_after = [string]$sideEffectSnapshotAfter.claim_inventory_fingerprint
+            godot_pid_count_before = [int]$sideEffectSnapshotBefore.godot_process_count
+            godot_pid_count_after = [int]$sideEffectSnapshotAfter.godot_process_count
+            godot_pid_fingerprint_before = [string]$sideEffectSnapshotBefore.godot_process_identity_fingerprint
+            godot_pid_fingerprint_after = [string]$sideEffectSnapshotAfter.godot_process_identity_fingerprint
+        }
+    }
+    Assert-ColdRestoreCondition (-not [IO.Directory]::Exists((Split-Path -Parent $candidateClaimPath)) `
+        -and -not [IO.File]::Exists($candidateClaimPath) `
+        -and -not [IO.Directory]::Exists($candidateEvidenceRoot) `
+        -and -not [IO.Directory]::Exists($candidateUserDataRoot)) "official_attempt_2_candidate_root_collision"
     try {
-        $claimFingerprint = Write-ColdRestoreExclusiveJson $ledgerPath ([pscustomobject]$ledger)
+        $claimFingerprint = Publish-ColdRestoreOfficialAttempt2Claim $ledgerPath ([pscustomobject]$ledger)
+        $script:OfficialAttempt2Progress.claim_created = $true
     }
     catch {
-        $claimFailure = [string]$_.Exception.Message
-        if ($claimFailure -eq "exclusive_evidence_create_new_failed" -and [IO.File]::Exists($ledgerPath)) {
-            throw "official_authorization_already_consumed"
+        if ([IO.File]::Exists($ledgerPath)) {
+            $script:OfficialAttempt2Progress.claim_created = $true
         }
-        if ($claimFailure -like "exclusive_evidence_consumed_*") {
-            throw "official_authorization_consumed_but_claim_incomplete"
-        }
-        throw "official_claim_create_new_failed"
+        throw
     }
+    $null = Assert-ColdRestoreOfficialAttempt2Boundary $ResolvedProjectPath $claimFingerprint
     return [pscustomobject]@{
         ledger_path = $ledgerPath
+        authorization_id = $OfficialAuthorizationId
         claim_fingerprint = [string]$claimFingerprint
         claim_nonce = $claimNonce
         orchestrator_process_id = $PID
         orchestrator_creation_time_utc_ticks = $orchestratorCreationTimeTicks
-        scenario_fingerprint = [string]$result.scenario_fingerprint
-        qualification_result = $result
+        scenario_fingerprint = $ExpectedScenarioFingerprint
+        prerequisite_evidence_fingerprint = [string]$preClaimPrerequisites.evidence_fingerprint
+        preclaim_runtime_freeze_fingerprint = [string]$preClaimFreeze.evidence_fingerprint
+        rehearsal_outcome = $outcome
+    }
+}
+
+function New-ColdRestoreOfficialAttempt2PreflightOutput {
+    param([Parameter(Mandatory = $true)]$Admission)
+
+    return [ordered]@{
+        schema_version = 1
+        driver_id = "alpha04c_official_attempt_2_preflight_v1"
+        formal_full_run = $false
+        official_cold_restore_vertical_slice = $false
+        preflight_only = $true
+        run_id = $RunId
+        repository_head = [string]$Admission.candidate.source_head
+        scenario_fingerprint = [string]$Admission.scenario_fingerprint
+        timeout_policy_sha256 = [string]$Admission.candidate.timeout_policy_sha256
+        rehearsal_run_id = [string]$Admission.candidate.rehearsal_run_id
+        rehearsal_evidence_fingerprint = [string]$Admission.candidate.rehearsal_evidence_fingerprint
+        official_attempt_1_claim_sha256 = [string]$Admission.candidate.attempt_1_claim_sha256
+        official_attempt_2_claim_ready = [bool]$Admission.claim_ready
+        official_attempt_2_claim_created = [bool]$Admission.claim_created
+        official_authorization_consumed = $false
+        godot_launch_attempted = $false
+        evidence_root_created = $false
+        user_data_root_created = $false
+        candidate_evidence_root_absent = [bool]$Admission.candidate_evidence_root_absent
+        candidate_user_data_root_absent = [bool]$Admission.candidate_user_data_root_absent
+        candidate_claim_root_absent = [bool]$Admission.candidate_claim_root_absent
+        side_effect_snapshot_match = [bool]$Admission.side_effect_snapshot_match
+        claim_inventory_count_before = [int]$Admission.claim_inventory_count_before
+        claim_inventory_count_after = [int]$Admission.claim_inventory_count_after
+        claim_inventory_fingerprint_before = [string]$Admission.claim_inventory_fingerprint_before
+        claim_inventory_fingerprint_after = [string]$Admission.claim_inventory_fingerprint_after
+        godot_pid_count_before = [int]$Admission.godot_pid_count_before
+        godot_pid_count_after = [int]$Admission.godot_pid_count_after
+        godot_pid_fingerprint_before = [string]$Admission.godot_pid_fingerprint_before
+        godot_pid_fingerprint_after = [string]$Admission.godot_pid_fingerprint_after
+        success = [bool]$Admission.claim_ready -and -not [bool]$Admission.claim_created
+        failure_code = ""
     }
 }
 
@@ -2550,7 +3389,7 @@ function New-AllowlistedResult {
     $safeRunId = if ($RunId -match '^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$') { $RunId } else { "" }
     return [ordered]@{
         schema_version = $ORCHESTRATOR_SCHEMA_VERSION
-        driver_id = "alpha04c_cold_restore_vertical_slice_orchestrator_v3"
+        driver_id = "alpha04c_cold_restore_vertical_slice_orchestrator_v4"
         formal_full_run = $FORMAL_FULL_RUN
         execution_ready = $DriverExecutionReady
         executed = $Executed
@@ -2570,12 +3409,104 @@ function New-AllowlistedResult {
         restore_deltas_zero = $compared -and [bool]$Comparison.restore_deltas_zero
         action_counts_positive = $compared -and [bool]$Comparison.action_counts_positive
         generation2_counts_exact = $compared -and [bool]$Comparison.generation2_counts_exact
+        registry_commit_rebind_exact = $compared -and [bool]$Comparison.registry_commit_rebind_exact
+        save_readback_exact = $compared -and [bool]$Comparison.save_readback_exact
+        duplicate_counts_zero = $compared -and [bool]$Comparison.duplicate_counts_zero
+        typed_restore_fingerprints_match = $compared -and [bool]$Comparison.typed_restore_fingerprints_match
+        generation_two_restore_exact = $compared -and [bool]$Comparison.generation_two_restore_exact
         final_settlement_exact_once = $compared -and [bool]$Comparison.final_settlement_exact_once
         terminal_quiescent_frames = if ($compared) { [int]$Comparison.terminal_quiescent_frames } else { 0 }
         terminal_quiet = $compared -and [bool]$Comparison.terminal_quiet
         success = $Success
         failure_code = $FailureCode
     }
+}
+
+function Get-ColdRestoreOfficialAttempt2RoleStatus {
+    param(
+        [Parameter(Mandatory = $true)][bool]$Started,
+        [Parameter(Mandatory = $true)][bool]$Completed
+    )
+    if ($Completed) { return "GREEN" }
+    if ($Started) { return "FAILED" }
+    return "NOT_RUN"
+}
+
+function Get-ColdRestoreOfficialAttempt2FailureClass {
+    param([Parameter(Mandatory = $true)][string]$FailureCode)
+
+    $progress = $script:OfficialAttempt2Progress
+    if (-not [bool]$progress.claim_created -or -not [bool]$progress.process_a_started) {
+        return "ENVIRONMENT_FAILURE"
+    }
+    if (-not [bool]$progress.process_a_completed) {
+        if ($FailureCode -match 'timeout|wrapper') { return "WRAPPER_FAILURE" }
+        if ($FailureCode -match 'attestation|exit|process_tree|child_process') { return "PROCESS_A_EXIT_ATTESTATION_FAILED" }
+        if ($FailureCode -match 'commodity|normal_card|facility_economy|queue_entry|product_setup|qualification') {
+            return "PROCESS_A_PRODUCT_SETUP_FAILED"
+        }
+        return "PROCESS_A_SAVE_FAILED"
+    }
+    if (-not [bool]$progress.process_b_completed) {
+        if ($FailureCode -match 'attestation|exit|process_tree|timeout|wrapper') { return "PROCESS_B_EXIT_ATTESTATION_FAILED" }
+        if ($FailureCode -match 'restore|recapture|fingerprint|preflight|apply|commit|rebind|readback|(^|_)read(_|$)|generation1|source_envelope|envelope') { return "PROCESS_B_RESTORE_FAILED" }
+        if ($FailureCode -match 'queue|target|facility|resolution') { return "PROCESS_B_QUEUE_CONTINUATION_FAILED" }
+        if ($FailureCode -match 'settlement|terminal|victory|quiescent') { return "PROCESS_B_SETTLEMENT_FAILED" }
+        if ($FailureCode -match 'sale|econom') { return "PROCESS_B_ECONOMY_CONTINUATION_FAILED" }
+        return "PROCESS_B_POST_RESTORE_ACTION_FAILED"
+    }
+    if (-not [bool]$progress.process_c_completed) {
+        if ($FailureCode -match 'attestation|exit|process_tree|timeout|wrapper') { return "PROCESS_C_EXIT_ATTESTATION_FAILED" }
+        return "PROCESS_C_GENERATION2_FAILED"
+    }
+    return "UNKNOWN"
+}
+
+function New-ColdRestoreOfficialAttempt2FailureResult {
+    param([Parameter(Mandatory = $true)][string]$FailureCode)
+
+    $result = New-AllowlistedResult ([bool]$script:OfficialAttempt2Progress.claim_created) $false $false $FailureCode
+    foreach ($field in @(
+        "process_ids_distinct", "head_sha_match", "generation1_digest_match",
+        "generation2_digest_match", "write_chain_match", "queue_target_identity_match",
+        "pending_queue_exact_once", "section_counts_exact", "save_capture_deltas_zero",
+        "restore_deltas_zero", "action_counts_positive", "generation2_counts_exact",
+        "registry_commit_rebind_exact", "save_readback_exact", "duplicate_counts_zero",
+        "typed_restore_fingerprints_match", "generation_two_restore_exact",
+        "final_settlement_exact_once", "terminal_quiescent_frames", "terminal_quiet"
+    )) {
+        $result[$field] = "NOT_RUN"
+    }
+    $result["official_attempt_2_claim_created"] = [bool]$script:OfficialAttempt2Progress.claim_created
+    $result["official_authorization_consumed"] = [bool]$script:OfficialAttempt2Progress.claim_created
+    $result["official_attempt_2_failure_class"] = Get-ColdRestoreOfficialAttempt2FailureClass $FailureCode
+    $result["process_a_status"] = Get-ColdRestoreOfficialAttempt2RoleStatus `
+        ([bool]$script:OfficialAttempt2Progress.process_a_started) `
+        ([bool]$script:OfficialAttempt2Progress.process_a_completed)
+    $result["process_b_status"] = Get-ColdRestoreOfficialAttempt2RoleStatus `
+        ([bool]$script:OfficialAttempt2Progress.process_b_started) `
+        ([bool]$script:OfficialAttempt2Progress.process_b_completed)
+    $result["process_c_status"] = Get-ColdRestoreOfficialAttempt2RoleStatus `
+        ([bool]$script:OfficialAttempt2Progress.process_c_started) `
+        ([bool]$script:OfficialAttempt2Progress.process_c_completed)
+    $result["comparison_status"] = Get-ColdRestoreOfficialAttempt2RoleStatus `
+        ([bool]$script:OfficialAttempt2Progress.comparison_started) `
+        ([bool]$script:OfficialAttempt2Progress.comparison_completed)
+    return $result
+}
+
+function New-ColdRestoreOfficialAttempt2SuccessResult {
+    param([Parameter(Mandatory = $true)]$Comparison)
+
+    $result = New-AllowlistedResult $true $false $true "" $Comparison
+    $result["official_attempt_2_claim_created"] = $true
+    $result["official_authorization_consumed"] = $true
+    $result["official_attempt_2_failure_class"] = ""
+    $result["process_a_status"] = "GREEN"
+    $result["process_b_status"] = "GREEN"
+    $result["process_c_status"] = "GREEN"
+    $result["comparison_status"] = "GREEN"
+    return $result
 }
 
 function Write-AllowlistedResult {
@@ -2589,6 +3520,7 @@ try {
         [bool]$QualificationProbe,
         [bool]$TargetedOwnerCaptureDiagnostic,
         [bool]$NonOfficialProcessA,
+        [bool]$OfficialAttempt2PreflightOnly,
         [bool]$EnableColdRestoreExecution,
         ($ContractManifestPath -ne "")
     ).Where({ $_ }).Count
@@ -2602,7 +3534,8 @@ try {
     }
 
     if (-not $QualificationProbe -and -not $TargetedOwnerCaptureDiagnostic `
-        -and -not $NonOfficialProcessA -and -not $EnableColdRestoreExecution) {
+        -and -not $NonOfficialProcessA -and -not $OfficialAttempt2PreflightOnly `
+        -and -not $EnableColdRestoreExecution) {
         Write-AllowlistedResult (New-AllowlistedResult $false $false $true "")
         exit 0
     }
@@ -2610,32 +3543,33 @@ try {
     Assert-ColdRestoreCondition $DriverExecutionReady "driver_execution_not_ready"
     $resolvedProjectPath = (Resolve-Path -LiteralPath $ProjectPath).Path
     Assert-ColdRestoreCondition (Test-Path -LiteralPath (Join-Path $resolvedProjectPath "project.godot") -PathType Leaf) "godot_project_invalid"
-    $GodotPath = Resolve-ColdRestoreGodotExecutable $GodotPath
+    if (-not $TargetedOwnerCaptureDiagnostic -and -not $OfficialAttempt2PreflightOnly) {
+        $GodotPath = Resolve-ColdRestoreGodotExecutable $GodotPath
+    }
     $headSha = [string](& git -C $resolvedProjectPath rev-parse HEAD 2>$null)
     Assert-ColdRestoreCondition ($headSha -match '^[0-9a-f]{40,64}$') "head_sha_unavailable"
-    $dirtyPaths = @(& git -C $resolvedProjectPath status --porcelain=v1 2>$null)
-    Assert-ColdRestoreCondition ($dirtyPaths.Count -eq 0) "worktree_not_clean"
+    if (-not $TargetedOwnerCaptureDiagnostic) {
+        $dirtyPaths = @(& git -C $resolvedProjectPath status --porcelain=v1 2>$null)
+        Assert-ColdRestoreCondition ((Get-ColdRestoreSafeCollectionCount $dirtyPaths) -eq 0) "worktree_not_clean"
+    }
     $resolvedPolicyPath = if ([string]::IsNullOrWhiteSpace($RoleTimeoutPolicyPath)) {
         $DefaultRoleTimeoutPolicyPath
     }
     else {
         $RoleTimeoutPolicyPath
     }
-    $RoleTimeoutPolicyEvidence = Read-ColdRestoreRoleTimeoutPolicy $resolvedPolicyPath
-    if ($TargetedOwnerCaptureDiagnostic) {
-        $diagnosticEvidenceRoot = Join-Path $resolvedProjectPath ".godot\cold_restore_attestation_v1\$RunId"
-        Assert-ColdRestoreCondition (-not (Test-Path -LiteralPath $UserDataRoot) `
-            -and -not (Test-Path -LiteralPath $diagnosticEvidenceRoot)) "targeted_owner_capture_evidence_collision"
+    $RoleTimeoutPolicyPath = $resolvedPolicyPath
+    if (-not $TargetedOwnerCaptureDiagnostic) {
+        $RoleTimeoutPolicyEvidence = Read-ColdRestoreRoleTimeoutPolicy $resolvedPolicyPath
     }
     if ($NonOfficialProcessA) {
         $rehearsalEvidenceRoot = Join-Path $resolvedProjectPath ".godot\cold_restore_attestation_v1\$RunId"
         Assert-ColdRestoreCondition (-not (Test-Path -LiteralPath $UserDataRoot) `
             -and -not (Test-Path -LiteralPath $rehearsalEvidenceRoot)) "process_a_rehearsal_evidence_collision"
     }
-    New-Item -ItemType Directory -Path $IsolatedAppData -Force | Out-Null
-    New-Item -ItemType Directory -Path $IsolatedLocalAppData -Force | Out-Null
-
     if ($QualificationProbe) {
+        New-Item -ItemType Directory -Path $IsolatedAppData -Force | Out-Null
+        New-Item -ItemType Directory -Path $IsolatedLocalAppData -Force | Out-Null
         $qualification = Invoke-ColdRestoreQualification $resolvedProjectPath $headSha
         Write-AllowlistedResult (New-ColdRestoreQualificationOutput $qualification.run $qualification.result)
         exit 0
@@ -2652,29 +3586,51 @@ try {
     }
 
     if ($NonOfficialProcessA) {
+        New-Item -ItemType Directory -Path $IsolatedAppData -Force | Out-Null
+        New-Item -ItemType Directory -Path $IsolatedLocalAppData -Force | Out-Null
         $processA = Invoke-ColdRestoreNonOfficialProcessA $resolvedProjectPath $headSha
         Write-AllowlistedResult (New-ColdRestoreNonOfficialProcessAOutput $processA)
         exit 0
     }
 
+    if ($OfficialAttempt2PreflightOnly) {
+        $preflight = Assert-AndConsumeOfficialColdRestoreAuthorization `
+            $resolvedProjectPath $headSha -PreflightOnly
+        Write-AllowlistedResult (New-ColdRestoreOfficialAttempt2PreflightOutput $preflight)
+        exit 0
+    }
+
     $authorization = Assert-AndConsumeOfficialColdRestoreAuthorization $resolvedProjectPath $headSha
+    $postClaimFreeze = Get-ColdRestoreRuntimeFreezeObservation $resolvedProjectPath $headSha
+    $null = Assert-ColdRestoreRuntimeFreezeGreen `
+        $postClaimFreeze "official_attempt_2_postclaim_runtime_not_frozen"
+    Assert-ColdRestoreCondition ([string]$postClaimFreeze.evidence_fingerprint `
+        -ceq [string]$authorization.preclaim_runtime_freeze_fingerprint) "official_attempt_2_runtime_changed_after_claim"
+    $postClaimPrerequisites = Assert-ColdRestoreProcessARehearsalPrerequisites $resolvedProjectPath $headSha
+    Assert-ColdRestoreCondition ([string]$postClaimPrerequisites.evidence_fingerprint `
+        -ceq [string]$authorization.prerequisite_evidence_fingerprint) "official_attempt_2_prerequisite_changed_after_claim"
+    $postClaimPolicy = Read-ColdRestoreRoleTimeoutPolicy $RoleTimeoutPolicyEvidence.path
+    Assert-ColdRestoreCondition ([string]$postClaimPolicy.sha256 -ceq [string]$RoleTimeoutPolicyEvidence.sha256) "official_attempt_2_timeout_policy_changed_after_claim"
+    Assert-ColdRestoreCondition ([IO.File]::Exists([string]$authorization.ledger_path) `
+        -and (Get-FileHash -LiteralPath ([string]$authorization.ledger_path) -Algorithm SHA256).Hash.ToLowerInvariant() `
+        -ceq [string]$authorization.claim_fingerprint) "official_attempt_2_claim_changed_before_process_a"
+    New-Item -ItemType Directory -Path $IsolatedAppData -Force | Out-Null
+    New-Item -ItemType Directory -Path $IsolatedLocalAppData -Force | Out-Null
     $scenarioFingerprint = [string]$authorization.scenario_fingerprint
-    $producerRun = Invoke-ColdRestoreRole "producer" $resolvedProjectPath $headSha $scenarioFingerprint $authorization
-    # Process B starts only after Process A exited and its one safe manifest parsed.
-    $consumerRun = Invoke-ColdRestoreRole "consumer" $resolvedProjectPath $headSha $scenarioFingerprint $authorization `
-        ([int64]$producerRun.manifest.queue_trigger_resolution_id) `
-        ([string]$producerRun.manifest.queue_trigger_stable_target_fingerprint)
-    # Process C starts only after Process B exited and its one safe manifest parsed.
-    $validatorRun = Invoke-ColdRestoreRole "validator" $resolvedProjectPath $headSha $scenarioFingerprint $authorization `
-        ([int64]$consumerRun.manifest.queue_trigger_resolution_id) `
-        ([string]$consumerRun.manifest.queue_trigger_stable_target_fingerprint)
-    $comparison = Compare-ColdRestoreManifests `
-        $producerRun.manifest $consumerRun.manifest $validatorRun.manifest
-    Write-AllowlistedResult (New-AllowlistedResult $true $false $true "" $comparison)
+    $chain = Invoke-ColdRestoreOfficialRoleChain `
+        $resolvedProjectPath $headSha $scenarioFingerprint $authorization
+    Write-AllowlistedResult (New-ColdRestoreOfficialAttempt2SuccessResult $chain.comparison)
     exit 0
 }
 catch {
-    $candidateFailureCode = [string]$_.Exception.Message
+    $failureProjection = Get-ColdRestoreFailureProjectionFromError $_
+    $candidateFailureCode = if ($null -ne $failureProjection `
+        -and -not [string]::IsNullOrEmpty([string]$failureProjection.primary_failure_code)) {
+        [string]$failureProjection.primary_failure_code
+    }
+    else {
+        [string]$_.Exception.Message
+    }
     $safeFailureCode = if ($candidateFailureCode -match '^[a-z0-9_]{1,128}$') {
         $candidateFailureCode
     }
@@ -2704,12 +3660,18 @@ catch {
     }
     elseif ($TargetedOwnerCaptureDiagnostic) {
         Write-AllowlistedResult ([ordered]@{
-            schema_version = 1
-            driver_id = "alpha04c_targeted_owner_capture_diagnostic_v2"
+            schema_version = 3
+            driver_id = "alpha04c_targeted_owner_capture_diagnostic_v3"
             formal_full_run = $false
             official_cold_restore_vertical_slice = $false
             targeted_owner_capture_diagnostic = $true
             run_id = $(if ($RunId -match '^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$') { $RunId } else { "" })
+            primary_failure_phase = $(if ($null -ne $failureProjection) { [string]$failureProjection.primary_failure_phase } else { "top_level" })
+            primary_failure_code = $safeFailureCode
+            secondary_failure_codes = $(if ($null -ne $failureProjection) { @($failureProjection.secondary_failure_codes) } else { @() })
+            primary_failure_overwrite_count = $(if ($null -ne $failureProjection) { [int]$failureProjection.primary_failure_overwrite_count } else { 0 })
+            prequota_attestation_path = $(if ($null -ne $LastTargetedPreQuotaContext) { [string]$LastTargetedPreQuotaContext.attestation_path } else { "" })
+            prequota_attestation_sha256 = $(if ($null -ne $LastTargetedPreQuotaContext) { [string]$LastTargetedPreQuotaContext.attestation_sha256 } else { "" })
             success = $false
             failure_code = $safeFailureCode
         })
@@ -2727,8 +3689,33 @@ catch {
             failure_code = $safeFailureCode
         })
     }
+    elseif ($OfficialAttempt2PreflightOnly) {
+        Write-AllowlistedResult ([ordered]@{
+            schema_version = 1
+            driver_id = "alpha04c_official_attempt_2_preflight_v1"
+            formal_full_run = $false
+            official_cold_restore_vertical_slice = $false
+            preflight_only = $true
+            run_id = $(if ($RunId -match '^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$') { $RunId } else { "" })
+            official_attempt_2_claim_ready = $false
+            official_attempt_2_claim_created = $false
+            official_authorization_consumed = $false
+            godot_launch_attempted = $false
+            evidence_root_created = $false
+            user_data_root_created = $false
+            candidate_evidence_root_absent = $false
+            candidate_user_data_root_absent = $false
+            candidate_claim_root_absent = $false
+            side_effect_snapshot_match = $false
+            success = $false
+            failure_code = $safeFailureCode
+        })
+    }
+    elseif ($EnableColdRestoreExecution) {
+        Write-AllowlistedResult (New-ColdRestoreOfficialAttempt2FailureResult $safeFailureCode)
+    }
     else {
-        Write-AllowlistedResult (New-AllowlistedResult ([bool]$EnableColdRestoreExecution) ($ContractManifestPath -ne "") $false $safeFailureCode)
+        Write-AllowlistedResult (New-AllowlistedResult $false ($ContractManifestPath -ne "") $false $safeFailureCode)
     }
     exit 1
 }

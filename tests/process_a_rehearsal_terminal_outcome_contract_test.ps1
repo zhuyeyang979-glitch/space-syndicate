@@ -18,6 +18,8 @@ $outcomeFields = @(
     "official", "formal", "official_attempt_2_claim_present",
     "official_attempt_2_authorization_consumed", "rehearsal_admission_consumed",
     "admission_ledger_sha256",
+    "rehearsal_green_head", "rehearsal_green_tree_clean",
+    "rehearsal_green_git_diff_check_green", "rehearsal_green_freeze_fingerprint",
     "launch_attestation_present", "launch_attestation_sha256",
     "child_attestation_present", "child_attestation_sha256",
     "parent_attestation_present", "parent_attestation_sha256",
@@ -197,6 +199,10 @@ function New-SyntheticOutcome {
         official_attempt_2_authorization_consumed = $false
         rehearsal_admission_consumed = $true
         admission_ledger_sha256 = $shaA
+        rehearsal_green_head = $(if ($Success) { "0123456789abcdef0123456789abcdef01234567" } else { "" })
+        rehearsal_green_tree_clean = $Success
+        rehearsal_green_git_diff_check_green = $Success
+        rehearsal_green_freeze_fingerprint = $(if ($Success) { $shaB } else { "" })
         launch_attestation_present = [bool]$presence.launch_attestation
         launch_attestation_sha256 = $(if ($presence.launch_attestation) { $shaB } else { "" })
         child_attestation_present = [bool]$presence.child_attestation
@@ -266,7 +272,7 @@ function Assert-SyntheticOutcome {
             throw "process_a_rehearsal_outcome_evidence_sha256_invalid"
         }
     }
-    foreach ($field in @("wrapper_result_present", "observed_exit", "exit_code_observed", "timed_out", "terminated_by_parent", "success")) {
+    foreach ($field in @("rehearsal_green_tree_clean", "rehearsal_green_git_diff_check_green", "wrapper_result_present", "observed_exit", "exit_code_observed", "timed_out", "terminated_by_parent", "success")) {
         if ($Value.$field -isnot [bool]) {
             throw "process_a_rehearsal_outcome_boolean_invalid"
         }
@@ -280,6 +286,10 @@ function Assert-SyntheticOutcome {
     }
     if ([bool]$Value.success) {
         if ([string]$Value.terminal_stage -cne "success" -or [string]$Value.terminal_code -cne "ok" -or
+            [string]$Value.rehearsal_green_head -cne [string]$Value.repository_head -or
+            -not [bool]$Value.rehearsal_green_tree_clean -or
+            -not [bool]$Value.rehearsal_green_git_diff_check_green -or
+            [string]$Value.rehearsal_green_freeze_fingerprint -cnotmatch '^[0-9a-f]{64}$' -or
             -not [bool]$Value.wrapper_result_present -or -not [bool]$Value.observed_exit -or
             -not [bool]$Value.exit_code_observed -or [int]$Value.exit_code -ne 0 -or
             [bool]$Value.timed_out -or [bool]$Value.terminated_by_parent -or
@@ -292,8 +302,12 @@ function Assert-SyntheticOutcome {
             }
         }
     }
-    elseif ([string]$Value.terminal_code -ceq "ok") {
-        throw "process_a_rehearsal_outcome_failure_code_invalid"
+    elseif ([string]$Value.terminal_code -ceq "ok" -or
+        [string]$Value.rehearsal_green_head -cne "" -or
+        [bool]$Value.rehearsal_green_tree_clean -or
+        [bool]$Value.rehearsal_green_git_diff_check_green -or
+        [string]$Value.rehearsal_green_freeze_fingerprint -cne "") {
+        throw "process_a_rehearsal_outcome_failure_binding_invalid"
     }
     if ([string]$Value.evidence_fingerprint -cne (Get-SyntheticOutcomeFingerprint $Value)) {
         throw "process_a_rehearsal_outcome_fingerprint_invalid"
@@ -373,7 +387,7 @@ try {
     $outcomeWriters = @($ast.FindAll({
         param($node)
         $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
-            $node.Extent.Text.IndexOf("ProcessARehearsalOutcomeLedgerV1", [StringComparison]::Ordinal) -ge 0
+            [string]$node.Name -ceq "Write-ColdRestoreProcessARehearsalOutcome"
     }, $true))
     Assert-ContractCondition ($outcomeWriters.Count -eq 1) "Exactly one ProcessARehearsalOutcomeLedgerV1 writer exists"
     $outcomeWriter = if ($outcomeWriters.Count -eq 1) { $outcomeWriters[0] } else { $null }

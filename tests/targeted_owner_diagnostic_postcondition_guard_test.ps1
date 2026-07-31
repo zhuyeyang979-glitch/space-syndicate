@@ -6,6 +6,8 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $orchestratorPath = Join-Path $projectRoot "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1"
+$preQuotaModulePath = Join-Path $projectRoot "scripts/tools/cold_restore_prequota_bootstrap.psm1"
+Import-Module $preQuotaModulePath -Force
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) (
     "alpha04c-targeted-postcondition-" + [Guid]::NewGuid().ToString("N")
 )
@@ -76,6 +78,35 @@ function Assert-ColdRestoreOfficialAttemptBoundary {
     return [pscustomobject]@{ attempt_1_valid = $true; attempt_2_absent = $true }
 }
 
+function Resolve-ColdRestoreGitCommonDirectory {
+    param([Parameter(Mandatory = $true)][string]$ResolvedProjectPath)
+    return $testRoot
+}
+
+function New-ColdRestorePreQuotaContext {
+    param(
+        [string]$BootstrapRoot,
+        [string]$RunId,
+        [string]$RepositoryHead,
+        [string]$Branch,
+        [string]$AuthorizationId,
+        [string]$QuotaLedgerPath
+    )
+    return [pscustomobject]@{
+        attestation_path = Join-Path $testRoot "prequota.json"
+        attestation_sha256 = "a" * 64
+        value = [pscustomobject]@{ attestation_fingerprint = "b" * 64 }
+        admission_path = Join-Path $testRoot "bootstrap.json"
+        admission_sha256 = "c" * 64
+        admission_fingerprint = "d" * 64
+    }
+}
+
+function Update-ColdRestorePreQuotaAttestation {
+    param($Context, $Updates, $FailureState)
+    return [pscustomobject]@{ valid = $true }
+}
+
 function Get-ColdRestoreRolePaths {
     param(
         [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
@@ -91,7 +122,9 @@ function Get-ColdRestoreRolePaths {
 function Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic {
     param(
         [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
-        [Parameter(Mandatory = $true)][string]$HeadSha
+        [Parameter(Mandatory = $true)][string]$HeadSha,
+        [Parameter(Mandatory = $true)]$PreQuotaContext,
+        [Parameter(Mandatory = $true)]$FailureState
     )
 
     $script:diagnosticCalls += 1
@@ -191,6 +224,10 @@ try {
 
     if ($null -ne $guarded) {
         . ([scriptblock]::Create($guarded.Extent.Text))
+        $script:RunId = "alpha04c-owner-capture-diagnostic-aaaaaaaaaaaa"
+        $script:TargetedOwnerCaptureQuotaLedgerRelativePath = "quota\fixture.json"
+        $script:TargetedOwnerCaptureBootstrapRelativeRoot = "bootstrap\fixture"
+        $script:TargetedOwnerCaptureAuthorizationId = "alpha04c-targeted-owner-capture-diagnostic-v3"
 
         Reset-SyntheticCase
         $success = Invoke-ColdRestoreTargetedOwnerCaptureGuarded $projectRoot ("a" * 40)
@@ -225,12 +262,20 @@ try {
 
     if ($null -ne $targetedInvoke) {
         . ([scriptblock]::Create($targetedInvoke.Extent.Text))
+        $targetedInvokeSource = [string]$targetedInvoke.Extent.Text
+        Assert-ContractCondition (
+            $targetedInvokeSource.IndexOf('throw (New-ColdRestoreFailureException $FailureState)', [StringComparison]::Ordinal) -ge 0 -and
+            $targetedInvokeSource.IndexOf('$run.secondary_failure_codes', [StringComparison]::Ordinal) -lt 0 -and
+            $targetedInvokeSource.IndexOf('"wrapper_supervision"', [StringComparison]::Ordinal) -lt 0
+        ) "targeted path throws the wrapper-owned shared failure state without replaying secondary reasons"
         $script:RunId = "alpha04c-owner-capture-diagnostic-000000000000"
         $script:AuthorizedOfficialColdRestoreCount = 0
         $script:ExpectedScenarioFingerprint = "f" * 64
         $script:TargetedOwnerCaptureScenarioFingerprint = $script:ExpectedScenarioFingerprint
+        $failureState = New-ColdRestorePrimaryFailureState
         $preQuotaReason = Get-ThrownReason {
-            Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic $projectRoot ("e" * 40) | Out-Null
+            Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic `
+                $projectRoot ("e" * 40) ([pscustomobject]@{}) $failureState | Out-Null
         }
         Assert-ContractCondition ($preQuotaReason -ceq "targeted_owner_capture_run_id_invalid") "real targeted path preserves a typed pre-quota reason"
         Assert-ContractCondition ($script:quotaWrites -eq 0) "real pre-quota rejection does not call the quota writer"
@@ -246,16 +291,16 @@ try {
         ) -ge 0
     ) "top-level targeted mode uses the guarded invocation"
     Assert-ContractCondition (
-        $source.IndexOf("if (`$null -ne `$primaryFailure)", [StringComparison]::Ordinal) -ge 0 -and
-        $source.IndexOf("throw `$primaryFailure", [StringComparison]::Ordinal) -ge 0 -and
-        $source.IndexOf("if (`$null -ne `$postconditionFailure)", [StringComparison]::Ordinal) -ge 0 -and
-        $source.IndexOf("throw `$postconditionFailure", [StringComparison]::Ordinal) -ge 0
+        $source.IndexOf("New-ColdRestorePrimaryFailureState", [StringComparison]::Ordinal) -ge 0 -and
+        $source.IndexOf("postcondition_validation", [StringComparison]::Ordinal) -ge 0 -and
+        $source.IndexOf("Get-ColdRestoreFailureProjection", [StringComparison]::Ordinal) -ge 0 -and
+        $source.IndexOf("New-ColdRestoreFailureException", [StringComparison]::Ordinal) -ge 0
     ) "guarded invocation encodes primary-before-postcondition precedence"
 
     $targetedCatches = @($ast.FindAll({
         param($node)
         $node -is [Management.Automation.Language.CatchClauseAst] -and
-            $node.Extent.Text.IndexOf("alpha04c_targeted_owner_capture_diagnostic_v2", [StringComparison]::Ordinal) -ge 0
+            $node.Extent.Text.IndexOf("alpha04c_targeted_owner_capture_diagnostic_v3", [StringComparison]::Ordinal) -ge 0
     }, $true))
     Assert-ContractCondition ($targetedCatches.Count -eq 1) "top-level targeted allowlist catch exists exactly once"
     $targetedCatchSource = if ($targetedCatches.Count -eq 1) {
@@ -265,7 +310,7 @@ try {
         ""
     }
     Assert-ContractCondition (
-        $targetedCatchSource.IndexOf('$candidateFailureCode = [string]$_.Exception.Message', [StringComparison]::Ordinal) -ge 0 -and
+        $targetedCatchSource.IndexOf('Get-ColdRestoreFailureProjectionFromError', [StringComparison]::Ordinal) -ge 0 -and
         $targetedCatchSource.IndexOf("'^[a-z0-9_]{1,128}$'", [StringComparison]::Ordinal) -ge 0 -and
         $targetedCatchSource.IndexOf('failure_code = $safeFailureCode', [StringComparison]::Ordinal) -ge 0
     ) "top-level targeted allowlist projects the exact safe typed failure code"
