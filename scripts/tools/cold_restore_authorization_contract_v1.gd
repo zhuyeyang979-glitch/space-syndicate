@@ -2,8 +2,10 @@ extends RefCounted
 
 const CONTRACT_PATH := "res://scripts/tools/cold_restore_authorization_contract_v1.json"
 const DEFAULT_EVIDENCE_ROOT := "res://.godot/cold_restore_attestation_v1"
+const TARGETED_AUTHORIZATION_NAME := "targeted_owner_capture_diagnostic_v4_importchain"
 const ENTRY_NAMES := [
 	"targeted_owner_capture_diagnostic_v3",
+	TARGETED_AUTHORIZATION_NAME,
 	"process_a_save_completion_rehearsal_v1",
 	"official_attempt_2",
 ]
@@ -31,7 +33,7 @@ static func run_id(entry_name: String, repository_head: String) -> String:
 
 
 static func is_targeted_run_id(value: String) -> bool:
-	var prefix := str(entry("targeted_owner_capture_diagnostic_v3").get("run_id_prefix", ""))
+	var prefix := str(entry(TARGETED_AUTHORIZATION_NAME).get("run_id_prefix", ""))
 	if prefix.is_empty() or not value.begins_with("%s-" % prefix):
 		return false
 	var suffix := value.trim_prefix("%s-" % prefix)
@@ -57,7 +59,7 @@ static func evidence_run_root(run_id_value: String, test_override: String = "") 
 
 static func targeted_evidence_root() -> String:
 	var common_dir := git_common_dir()
-	var relative_path := str(entry("targeted_owner_capture_diagnostic_v3").get(
+	var relative_path := str(entry(TARGETED_AUTHORIZATION_NAME).get(
 		"evidence_root_relative_path", ""
 	))
 	if common_dir.is_empty() or relative_path.is_empty():

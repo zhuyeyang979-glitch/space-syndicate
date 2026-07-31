@@ -1,10 +1,21 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-Import-Module (Join-Path $PSScriptRoot "cold_restore_authorization_contract_v1.psm1") -Force -ErrorAction Stop
-$script:AuthorizationContract = Get-ColdRestoreAuthorizationContract
+$script:ColdRestoreModuleLoader = Import-Module `
+    (Join-Path $PSScriptRoot "cold_restore_module_loader.psm1") `
+    -PassThru `
+    -ErrorAction Stop
+$script:ColdRestoreAuthorizationModule = cold_restore_module_loader\Import-ColdRestoreModuleOnce `
+    -Path (Join-Path $PSScriptRoot "cold_restore_authorization_contract_v1.psm1") `
+    -RequiredCommands @(
+        "Get-ColdRestoreAuthorizationContract",
+        "Get-ColdRestoreAuthorizationRunId"
+    )
+$script:AuthorizationContract = `
+    cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationContract
 $script:RehearsalAuthorization = $script:AuthorizationContract.process_a_save_completion_rehearsal_v1
-$script:TargetedDiagnosticAuthorization = $script:AuthorizationContract.targeted_owner_capture_diagnostic_v3
+$script:TargetedDiagnosticAuthorization = `
+    $script:AuthorizationContract.targeted_owner_capture_diagnostic_v4_importchain
 $script:OfficialAttempt2Authorization = $script:AuthorizationContract.official_attempt_2
 
 $script:ColdRestoreAttestedProcessModulePath = Join-Path $PSScriptRoot "cold_restore_attested_process.psm1"
@@ -12,12 +23,13 @@ if (-not [IO.File]::Exists($script:ColdRestoreAttestedProcessModulePath)) {
     throw "process_a_rehearsal_timeout_policy_validator_missing"
 }
 try {
-    $script:ColdRestoreAttestedProcessModule = Import-Module `
-        -Name $script:ColdRestoreAttestedProcessModulePath `
-        -Force `
-        -PassThru `
-        -Scope Local `
-        -ErrorAction Stop
+    $script:ColdRestoreAttestedProcessModule = `
+        cold_restore_module_loader\Import-ColdRestoreModuleOnce `
+            -Path $script:ColdRestoreAttestedProcessModulePath `
+            -RequiredCommands @(
+                "Get-ColdRestoreEvidenceFingerprint",
+                "Test-ColdRestoreRoleTimeoutPolicy"
+            )
 }
 catch {
     throw "process_a_rehearsal_timeout_policy_validator_import_failed"
@@ -855,7 +867,7 @@ function Get-ProcessARehearsalAdmissionEvidence {
     $quota = $quotaArtifact.value
     if (-not (Test-ProcessARehearsalExactFieldSet $quota $script:DiagnosticQuotaLedgerFields) `
         -or -not (Test-ProcessARehearsalInteger $quota.schema_version) `
-        -or [int]$quota.schema_version -ne 3 `
+        -or [int]$quota.schema_version -ne 4 `
         -or [string]$quota.ledger_id -cne [string]$script:TargetedDiagnosticAuthorization.ledger_id `
         -or [string]$quota.authorization_id -cne $script:TargetedDiagnosticAuthorizationId `
         -or [string]$quota.task_id -cne [string]$script:TargetedDiagnosticAuthorization.task_id `
@@ -921,9 +933,12 @@ function Get-ProcessARehearsalAdmissionEvidence {
         -or [string]$bootstrap.role -cne "targeted_owner_diagnostic" `
         -or [string]$bootstrap.repository_head -cne $ExpectedRepositoryHead `
         -or [string]$bootstrap.authorization_id -cne $script:TargetedDiagnosticAuthorizationId `
-        -or [int]$bootstrap.historical_count -ne 2 `
-        -or [int]$bootstrap.authorized_increment -ne 1 `
-        -or [int]$bootstrap.maximum_allowed_count -ne 3 `
+        -or [int]$bootstrap.historical_count `
+            -ne [int]$script:TargetedDiagnosticAuthorization.permitted_transition_from `
+        -or [int]$bootstrap.authorized_increment `
+            -ne [int]$script:TargetedDiagnosticAuthorization.authorized_increment `
+        -or [int]$bootstrap.maximum_allowed_count `
+            -ne [int]$script:TargetedDiagnosticAuthorization.maximum_invocation_count `
         -or $bootstrap.official -isnot [bool] -or [bool]$bootstrap.official `
         -or $bootstrap.formal -isnot [bool] -or [bool]$bootstrap.formal `
         -or [string]$bootstrap.admission_fingerprint -cne [string]$quota.bootstrap_admission_fingerprint `
@@ -939,9 +954,12 @@ function Get-ProcessARehearsalAdmissionEvidence {
         -or [string]$prequota.role -cne "targeted_owner_diagnostic" `
         -or [string]$prequota.repository_head -cne $ExpectedRepositoryHead `
         -or $prequota.authorization_checked -isnot [bool] -or -not [bool]$prequota.authorization_checked `
-        -or [int]$prequota.historical_count -ne 2 `
-        -or [int]$prequota.authorized_increment -ne 1 `
-        -or [int]$prequota.maximum_allowed_count -ne 3 `
+        -or [int]$prequota.historical_count `
+            -ne [int]$script:TargetedDiagnosticAuthorization.permitted_transition_from `
+        -or [int]$prequota.authorized_increment `
+            -ne [int]$script:TargetedDiagnosticAuthorization.authorized_increment `
+        -or [int]$prequota.maximum_allowed_count `
+            -ne [int]$script:TargetedDiagnosticAuthorization.maximum_invocation_count `
         -or $prequota.quota_claim_attempted -isnot [bool] -or -not [bool]$prequota.quota_claim_attempted `
         -or $prequota.quota_claimed -isnot [bool] -or -not [bool]$prequota.quota_claimed `
         -or [IO.Path]::GetFullPath([string]$prequota.quota_ledger_path) -cne [IO.Path]::GetFullPath($DiagnosticQuotaLedgerPath) `

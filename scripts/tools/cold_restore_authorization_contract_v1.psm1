@@ -4,6 +4,7 @@ $ErrorActionPreference = "Stop"
 $script:AuthorizationContractPath = Join-Path $PSScriptRoot "cold_restore_authorization_contract_v1.json"
 $script:AuthorizationContractFields = @(
     "schema_version", "contract_id", "targeted_owner_capture_diagnostic_v3",
+    "targeted_owner_capture_diagnostic_v4_importchain",
     "process_a_save_completion_rehearsal_v1", "official_attempt_2"
 )
 $script:TargetedDiagnosticFields = @(
@@ -87,6 +88,23 @@ function Assert-ColdRestoreAuthorizationContract {
         throw "cold_restore_targeted_authorization_contract_invalid"
     }
 
+    $targetedV4 = $Value.targeted_owner_capture_diagnostic_v4_importchain
+    if (-not (Test-ColdRestoreAuthorizationExactFieldSet $targetedV4 $script:TargetedDiagnosticFields) `
+        -or -not (Test-ColdRestoreAuthorizationIdShape $targetedV4.authorization_id) `
+        -or [string]$targetedV4.authorization_id -cne "alpha04c-targeted-owner-capture-diagnostic-v4-importchain" `
+        -or [string]$targetedV4.task_id -cne "ALPHA04C_IMPORT_CHAIN_REPAIR_AND_V07_THREE_WING_KERNEL_PARALLEL_ADVANCE" `
+        -or [string]$targetedV4.ledger_id -cne "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV4" `
+        -or [string]$targetedV4.quota_ledger_relative_path -cne "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v4-importchain/targeted_owner_capture_quota_ledger.json" `
+        -or [string]$targetedV4.evidence_root_relative_path -cne "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v4-importchain/evidence" `
+        -or [string]$targetedV4.bootstrap_root_relative_path -cne "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v4-importchain/prequota" `
+        -or [string]$targetedV4.run_id_prefix -cne "alpha04c-owner-capture-diagnostic-v4-importchain" `
+        -or [int]$targetedV4.permitted_transition_from -ne 3 `
+        -or [int]$targetedV4.permitted_transition_to -ne 4 `
+        -or [int]$targetedV4.authorized_increment -ne 1 `
+        -or [int]$targetedV4.maximum_invocation_count -ne 4) {
+        throw "cold_restore_targeted_v4_authorization_contract_invalid"
+    }
+
     $rehearsal = $Value.process_a_save_completion_rehearsal_v1
     if (-not (Test-ColdRestoreAuthorizationExactFieldSet $rehearsal $script:ProcessARehearsalFields) `
         -or -not (Test-ColdRestoreAuthorizationIdShape $rehearsal.authorization_id) `
@@ -133,6 +151,7 @@ function Get-ColdRestoreAuthorizationEntry {
         [Parameter(Mandatory = $true)]
         [ValidateSet(
             "targeted_owner_capture_diagnostic_v3",
+            "targeted_owner_capture_diagnostic_v4_importchain",
             "process_a_save_completion_rehearsal_v1",
             "official_attempt_2"
         )]
@@ -174,14 +193,19 @@ function Get-ColdRestoreTargetedDiagnosticAuthorizationBinding {
     param(
         [Parameter(Mandatory = $true)][string]$GitCommonDirectory,
         [Parameter(Mandatory = $true)][string]$RepositoryHead,
-        [string]$Path = $script:AuthorizationContractPath
+        [string]$Path = $script:AuthorizationContractPath,
+        [ValidateSet(
+            "targeted_owner_capture_diagnostic_v3",
+            "targeted_owner_capture_diagnostic_v4_importchain"
+        )]
+        [string]$AuthorizationName = "targeted_owner_capture_diagnostic_v3"
     )
 
     if (-not [IO.Path]::IsPathFullyQualified($GitCommonDirectory)) {
         throw "cold_restore_authorization_git_common_invalid"
     }
     $contract = Get-ColdRestoreAuthorizationContract $Path
-    $entry = $contract.targeted_owner_capture_diagnostic_v3
+    $entry = $contract.$AuthorizationName
     $gitCommon = [IO.Path]::GetFullPath($GitCommonDirectory)
     $quotaPath = [IO.Path]::GetFullPath((Join-Path $gitCommon ([string]$entry.quota_ledger_relative_path)))
     $evidenceRoot = [IO.Path]::GetFullPath((Join-Path $gitCommon ([string]$entry.evidence_root_relative_path)))
@@ -199,7 +223,8 @@ function Get-ColdRestoreTargetedDiagnosticAuthorizationBinding {
         authorization_id = [string]$entry.authorization_id
         task_id = [string]$entry.task_id
         ledger_id = [string]$entry.ledger_id
-        run_id = Get-ColdRestoreAuthorizationRunId "targeted_owner_capture_diagnostic_v3" $RepositoryHead $Path
+        authorization_name = $AuthorizationName
+        run_id = Get-ColdRestoreAuthorizationRunId $AuthorizationName $RepositoryHead $Path
         quota_ledger_path = $quotaPath
         evidence_root = $evidenceRoot
         bootstrap_root = $bootstrapRoot

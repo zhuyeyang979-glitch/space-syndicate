@@ -18,6 +18,7 @@ const TARGETED_OWNER_DIAGNOSTIC := preload("res://scripts/tools/targeted_owner_c
 const ROLE_PROGRESS_HEARTBEAT := preload("res://scripts/tools/cold_restore_role_progress_heartbeat.gd")
 const PROCESS_A_REHEARSAL_COMPLETION := preload("res://scripts/tools/process_a_rehearsal_completion_v1.gd")
 const AUTHORIZATION_CONTRACT_PATH := "res://scripts/tools/cold_restore_authorization_contract_v1.json"
+const TARGETED_AUTHORIZATION_NAME := "targeted_owner_capture_diagnostic_v4_importchain"
 
 const FORMAL_FULL_RUN := false
 const EXECUTION_READY := true
@@ -783,7 +784,7 @@ static func validate_options(options: Dictionary) -> Dictionary:
 			return {"valid": false, "reason_code": "targeted_owner_capture_run_id_invalid"}
 		if targeted_owner_capture_diagnostic \
 				and run_id != _authorization_run_id(
-					"targeted_owner_capture_diagnostic_v3", head_sha
+					TARGETED_AUTHORIZATION_NAME, head_sha
 				):
 			return {"valid": false, "reason_code": "targeted_owner_capture_run_head_mismatch"}
 		if targeted_owner_capture_diagnostic:
@@ -923,7 +924,7 @@ static func _is_lower_sha256(value: String) -> bool:
 
 
 static func _is_targeted_owner_capture_run_id(value: String) -> bool:
-	var entry := _authorization_contract_entry("targeted_owner_capture_diagnostic_v3")
+	var entry := _authorization_contract_entry(TARGETED_AUTHORIZATION_NAME)
 	var prefix := str(entry.get("run_id_prefix", ""))
 	if prefix.is_empty() or not value.begins_with("%s-" % prefix):
 		return false
@@ -1090,7 +1091,7 @@ func _authorize_official_launch(options: Dictionary, head_sha: String) -> Dictio
 
 
 func _authorize_targeted_owner_capture_diagnostic(options: Dictionary, head_sha: String) -> Dictionary:
-	var authorization := _authorization_contract_entry("targeted_owner_capture_diagnostic_v3")
+	var authorization := _authorization_contract_entry(TARGETED_AUTHORIZATION_NAME)
 	if authorization.is_empty():
 		return {"authorized": false, "reason_code": "authorization_contract_invalid"}
 	var ledger_path := _normalize_absolute_path(str(options.get("targeted_diagnostic_ledger_path", "")))
@@ -1110,7 +1111,7 @@ func _authorize_targeted_owner_capture_diagnostic(options: Dictionary, head_sha:
 	var ledger_fingerprint := ledger_text.sha256_text().to_lower()
 	if ledger_fingerprint != str(options.get("targeted_diagnostic_ledger_fingerprint", "")) \
 			or typeof(ledger.get("schema_version")) != TYPE_INT \
-			or int(ledger.get("schema_version", 0)) != 3 \
+			or int(ledger.get("schema_version", 0)) != 4 \
 			or str(ledger.get("ledger_id", "")) != str(authorization.get("ledger_id", "")) \
 			or str(ledger.get("authorization_id", "")) != str(authorization.get("authorization_id", "")) \
 			or str(ledger.get("task_id", "")) != str(authorization.get("task_id", "")) \
@@ -1368,6 +1369,7 @@ func _authorize_process_a_rehearsal(options: Dictionary, head_sha: String) -> Di
 static func _authorization_contract_entry(entry_name: String) -> Dictionary:
 	if entry_name not in [
 		"targeted_owner_capture_diagnostic_v3",
+		TARGETED_AUTHORIZATION_NAME,
 		"process_a_save_completion_rehearsal_v1",
 		"official_attempt_2",
 	]:
@@ -1451,7 +1453,7 @@ static func _resolve_rehearsal_ledger_path() -> String:
 
 static func _resolve_targeted_diagnostic_ledger_path() -> String:
 	var common_dir := _resolve_git_common_dir()
-	var authorization := _authorization_contract_entry("targeted_owner_capture_diagnostic_v3")
+	var authorization := _authorization_contract_entry(TARGETED_AUTHORIZATION_NAME)
 	if common_dir.is_empty() or authorization.is_empty():
 		return ""
 	return _normalize_absolute_path(common_dir.path_join(
@@ -1461,7 +1463,7 @@ static func _resolve_targeted_diagnostic_ledger_path() -> String:
 
 static func _resolve_targeted_diagnostic_evidence_root() -> String:
 	var common_dir := _resolve_git_common_dir()
-	var authorization := _authorization_contract_entry("targeted_owner_capture_diagnostic_v3")
+	var authorization := _authorization_contract_entry(TARGETED_AUTHORIZATION_NAME)
 	if common_dir.is_empty() or authorization.is_empty():
 		return ""
 	return _normalize_absolute_path(common_dir.path_join(

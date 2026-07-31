@@ -1,10 +1,28 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-Import-Module (Join-Path $PSScriptRoot "cold_restore_attested_process.psm1") -ErrorAction Stop
-Import-Module (Join-Path $PSScriptRoot "cold_restore_authorization_contract_v1.psm1") -ErrorAction Stop
+$script:ColdRestoreModuleLoader = Import-Module `
+    (Join-Path $PSScriptRoot "cold_restore_module_loader.psm1") `
+    -PassThru `
+    -ErrorAction Stop
+$script:ColdRestoreAttestedProcessModule = cold_restore_module_loader\Import-ColdRestoreModuleOnce `
+    -Path (Join-Path $PSScriptRoot "cold_restore_attested_process.psm1") `
+    -RequiredCommands @(
+        "ConvertTo-ColdRestoreCanonicalJson",
+        "Get-ColdRestoreSafeCollectionCount",
+        "Get-ColdRestoreTextSha256",
+        "Test-ColdRestoreExactFieldSet",
+        "Write-ColdRestoreExclusiveJson"
+    )
+$script:ColdRestoreAuthorizationModule = cold_restore_module_loader\Import-ColdRestoreModuleOnce `
+    -Path (Join-Path $PSScriptRoot "cold_restore_authorization_contract_v1.psm1") `
+    -RequiredCommands @(
+        "Get-ColdRestoreAuthorizationEntry",
+        "Get-ColdRestoreAuthorizationRunId"
+    )
 
-$script:OfficialAttempt2Authorization = Get-ColdRestoreAuthorizationEntry "official_attempt_2"
+$script:OfficialAttempt2Authorization = `
+    cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationEntry "official_attempt_2"
 $script:OfficialClaimRootPrefix = "codex/cold_restore_v3/"
 $script:Attempt1ClaimRelativeToRoot =
     ([string]$script:OfficialAttempt2Authorization.attempt_1_claim_relative_path).Substring(
@@ -52,14 +70,14 @@ function Test-ColdRestoreOfficialAttempt2UtcTimestamp {
 function Assert-ColdRestoreOfficialAttempt2Claim {
     param([Parameter(Mandatory = $true)]$Value)
 
-    if (-not (Test-ColdRestoreExactFieldSet $Value $script:ClaimFields) `
+    if (-not (cold_restore_attested_process\Test-ColdRestoreExactFieldSet $Value $script:ClaimFields) `
         -or [int]$Value.schema_version -ne 2 `
         -or [string]$Value.claim_id -cne "OfficialAttemptClaimV2" `
         -or [int]$Value.attempt_number -ne 2 `
         -or [string]$Value.authorization_id -cne [string]$script:OfficialAttempt2Authorization.authorization_id `
         -or -not (Test-ColdRestoreOfficialAttempt2UtcTimestamp $Value.created_at_utc) `
         -or [string]$Value.source_head -cnotmatch '^[0-9a-f]{40}$' `
-        -or [string]$Value.run_id -cne (Get-ColdRestoreAuthorizationRunId `
+        -or [string]$Value.run_id -cne (cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationRunId `
             "official_attempt_2" ([string]$Value.source_head)) `
         -or [string]$Value.rehearsal_green_head -cne [string]$Value.source_head `
         -or [string]$Value.scenario_fingerprint -cnotmatch '^[0-9a-f]{64}$' `
@@ -70,7 +88,7 @@ function Assert-ColdRestoreOfficialAttempt2Claim {
         -or [string]$Value.timeout_policy_sha256 -cnotmatch '^[0-9a-f]{64}$' `
         -or [string]$Value.prerequisite_evidence_fingerprint -cnotmatch '^[0-9a-f]{64}$' `
         -or [string]$Value.preclaim_runtime_freeze_fingerprint -cnotmatch '^[0-9a-f]{64}$' `
-        -or [string]$Value.rehearsal_run_id -cne (Get-ColdRestoreAuthorizationRunId `
+        -or [string]$Value.rehearsal_run_id -cne (cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationRunId `
             "process_a_save_completion_rehearsal_v1" ([string]$Value.source_head)) `
         -or [string]$Value.rehearsal_evidence_fingerprint -cnotmatch '^[0-9a-f]{64}$' `
         -or [string]$Value.attempt_1_claim_relative_path -cne $script:Attempt1ClaimRelativeToRoot `
@@ -96,7 +114,7 @@ function Assert-ColdRestoreOfficialAttempt2Claim {
             throw "official_attempt_2_rehearsal_evidence_invalid"
         }
     }
-    if (-not (Test-ColdRestoreExactFieldSet $Value.process_role_timeouts $script:RoleIds)) {
+    if (-not (cold_restore_attested_process\Test-ColdRestoreExactFieldSet $Value.process_role_timeouts $script:RoleIds)) {
         throw "official_attempt_2_role_timeout_set_invalid"
     }
     $expected = @{
@@ -106,7 +124,7 @@ function Assert-ColdRestoreOfficialAttempt2Claim {
     }
     foreach ($role in $script:RoleIds) {
         $entry = $Value.process_role_timeouts.$role
-        if (-not (Test-ColdRestoreExactFieldSet $entry $script:RoleTimeoutFields) `
+        if (-not (cold_restore_attested_process\Test-ColdRestoreExactFieldSet $entry $script:RoleTimeoutFields) `
             -or [int]$entry.absolute_timeout_seconds -ne [int]$expected[$role][0] `
             -or [int]$entry.no_progress_timeout_seconds -ne [int]$expected[$role][1]) {
             throw "official_attempt_2_role_timeout_invalid"
@@ -122,7 +140,7 @@ function Publish-ColdRestoreOfficialAttempt2Claim {
 
     Assert-ColdRestoreOfficialAttempt2Claim $Claim
     try {
-        return Write-ColdRestoreExclusiveJson $Path $Claim
+        return cold_restore_attested_process\Write-ColdRestoreExclusiveJson $Path $Claim
     }
     catch {
         $reason = [string]$_.Exception.Message
@@ -203,18 +221,20 @@ function Get-ColdRestoreOfficialAttempt2SideEffectSnapshot {
         attempt_2_claim_exists = [IO.File]::Exists($CandidateClaimPath)
         candidate_evidence_root_exists = [IO.Directory]::Exists($CandidateEvidenceRoot)
         candidate_user_data_root_exists = [IO.Directory]::Exists($CandidateUserDataRoot)
-        claim_inventory_count = Get-ColdRestoreSafeCollectionCount $claimInventory
-        claim_inventory_fingerprint = Get-ColdRestoreTextSha256 (ConvertTo-ColdRestoreCanonicalJson $claimInventory)
+        claim_inventory_count = cold_restore_attested_process\Get-ColdRestoreSafeCollectionCount $claimInventory
+        claim_inventory_fingerprint = cold_restore_attested_process\Get-ColdRestoreTextSha256 `
+            (cold_restore_attested_process\ConvertTo-ColdRestoreCanonicalJson $claimInventory)
         godot_process_identities = $godotIdentities
-        godot_process_count = Get-ColdRestoreSafeCollectionCount $godotIdentities
-        godot_process_identity_fingerprint = Get-ColdRestoreTextSha256 (ConvertTo-ColdRestoreCanonicalJson $godotIdentities)
+        godot_process_count = cold_restore_attested_process\Get-ColdRestoreSafeCollectionCount $godotIdentities
+        godot_process_identity_fingerprint = cold_restore_attested_process\Get-ColdRestoreTextSha256 `
+            (cold_restore_attested_process\ConvertTo-ColdRestoreCanonicalJson $godotIdentities)
     }
 }
 
 function Assert-ColdRestoreOfficialAttempt2CandidateRootsAbsent {
     param([Parameter(Mandatory = $true)]$Snapshot)
 
-    if (-not (Test-ColdRestoreExactFieldSet $Snapshot $script:SideEffectSnapshotFields) `
+    if (-not (cold_restore_attested_process\Test-ColdRestoreExactFieldSet $Snapshot $script:SideEffectSnapshotFields) `
         -or [bool]$Snapshot.attempt_2_claim_root_exists `
         -or [bool]$Snapshot.attempt_2_claim_exists `
         -or [bool]$Snapshot.candidate_evidence_root_exists `
@@ -239,9 +259,10 @@ function Assert-ColdRestoreOfficialAttempt2SideEffectSnapshotUnchanged {
         [Parameter(Mandatory = $true)]$After
     )
 
-    if (-not (Test-ColdRestoreExactFieldSet $Before $script:SideEffectSnapshotFields) `
-        -or -not (Test-ColdRestoreExactFieldSet $After $script:SideEffectSnapshotFields) `
-        -or (ConvertTo-ColdRestoreCanonicalJson $Before) -cne (ConvertTo-ColdRestoreCanonicalJson $After)) {
+    if (-not (cold_restore_attested_process\Test-ColdRestoreExactFieldSet $Before $script:SideEffectSnapshotFields) `
+        -or -not (cold_restore_attested_process\Test-ColdRestoreExactFieldSet $After $script:SideEffectSnapshotFields) `
+        -or (cold_restore_attested_process\ConvertTo-ColdRestoreCanonicalJson $Before) `
+            -cne (cold_restore_attested_process\ConvertTo-ColdRestoreCanonicalJson $After)) {
         throw "official_preflight_side_effect_detected"
     }
     return $true
