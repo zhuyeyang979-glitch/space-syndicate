@@ -1,0 +1,394 @@
+{
+  "schema_version": 1,
+  "registry_id": "space_syndicate.v07.rng_ownership.v1",
+  "constitution_id": "space_syndicate.v07.complete",
+  "ruleset_id": "v0.7",
+  "status": "reference_contract_not_production_wired",
+  "canonical_rng_ledger_adapter_status": "NOT_IMPLEMENTED",
+  "current_production_runtime_ruleset": "v0.6",
+  "v07_production_runtime_connection_count": 0,
+  "v06_rng_owner_reuse_allowed": false,
+  "stream_count": 7,
+  "stream_count_semantics": "logical_stream_id_count",
+  "logical_stream_id_count": 7,
+  "wire_state_profile_count": 2,
+  "concrete_stream_instance_count_formula": "5 + (2 * roster_count)",
+  "concrete_stream_instance_count_explanation": {
+    "match_global_instances": 5,
+    "per_player_logical_stream_ids": 2,
+    "per_player_instances_per_roster_member": 2,
+    "roster_count_symbol": "N",
+    "total": "5 + 2N"
+  },
+  "canonical_rng_ledger": {
+    "status": "future_canonical_adapter_output_NOT_IMPLEMENTED",
+    "shape": "array_sorted_by_stream_id_then_stream_instance_id",
+    "row_required_fields": [
+      "schema_version",
+      "stream_id",
+      "stream_instance_id",
+      "state_profile_id",
+      "authoritative_owner_id",
+      "save_section_id",
+      "state",
+      "state_fingerprint"
+    ],
+    "schema_version": 1,
+    "unknown_fields_allowed": false,
+    "duplicate_logical_id_and_instance_id_allowed": false,
+      "state_fingerprint": {
+        "algorithm_id": "sha256",
+        "canonicalization_id": "rfc8785_jcs_with_tagged_int64_v1",
+        "excluded_fields": ["state_fingerprint"],
+        "excluded_json_pointers": ["/state_fingerprint"],
+        "nested_state_profile_fingerprint_fields_remain_included": true,
+        "hex_output": "lowercase_64_characters"
+      },
+    "local_embedded_state_is_current_authority": true,
+    "canonical_row_must_equal_local_embedded_state": true,
+    "canonical_row_is_second_rng_authority": false
+  },
+  "state_profiles": {
+    "dbg_tagged_sha256_counter_v1": {
+      "current_local_implementation": "V07DbgDeckCore",
+      "algorithm_id": "sha256.owner_bound_counter.v1",
+      "exact_state_fields": [
+        "schema_version",
+        "stream_id",
+        "stream_instance_id",
+        "authoritative_owner_id",
+        "algorithm_id",
+        "seed",
+        "cursor",
+        "stream_revision",
+        "state_fingerprint"
+      ],
+      "seed_type": "tagged_int64",
+      "cursor_type": "tagged_int64_nonnegative",
+      "stream_revision_type": "tagged_int64_nonnegative",
+      "unknown_fields_allowed": false,
+      "cursor_default_allowed": false,
+      "cursor_reconstruction_allowed": false,
+      "state_fingerprint": "sha256_of_canonical_exact_state_excluding_state_fingerprint",
+      "next_value_material": "ruleset_id + ':' + algorithm_id + ':' + stream_id + ':' + stream_instance_id + ':' + seed_decimal + ':' + cursor_decimal",
+      "next_value_mapping": "first_15_hex_digits_as_nonnegative_integer",
+      "draw_transition": "cursor_and_stream_revision_increment_by_exactly_one"
+    },
+    "unified_park_miller_embedded_v1": {
+      "current_local_implementation": "V07UnifiedCardTrackCore",
+      "owning_authority_state_version": 2,
+      "algorithm_id": "park_miller_48271_mod_2147483647.v1",
+      "exact_rng_state_fields_within_owning_state": [
+        "rng_state",
+        "rng_draw_count"
+      ],
+      "rng_state_type": "integer",
+      "rng_state_minimum": 1,
+      "rng_state_maximum": 2147483646,
+      "rng_draw_count_type": "nonnegative_integer",
+      "transition_formula": "next_rng_state = (rng_state * 48271) mod 2147483647",
+      "draw_index_formula": "next_rng_state mod upper_bound",
+      "draw_transition": "rng_draw_count_increments_by_exactly_one",
+      "state_is_embedded_in_supply_or_hidden_lead_owner": true,
+      "standalone_seed_cursor_row_exists_locally": false,
+      "canonical_adapter_must_not_rewrite_or_reconstruct_rng_state": true
+    }
+  },
+  "seed_derivations": {
+    "dbg_sha256_signed_int64_v1": {
+      "root_input": "authoritative_player_root_seed_tagged_int64",
+      "formula": "sha256(ruleset_id + ':' + root_seed_decimal + ':' + stream_id + ':' + stream_instance_id)",
+      "output_mapping": "first_64_bits_with_explicit_signed_twos_complement",
+      "case_sensitive": true,
+      "locale_independent": true,
+      "per_player_instance_id": "stable_player_id"
+    },
+    "unified_iterative_park_miller_seed_v1": {
+      "root_input": "V07UnifiedCardTrackCore_normalized_match_seed",
+      "root_normalization": "((seed mod 2147483646) + 2147483646) mod 2147483646 + 1",
+      "stream_id_iteration": "for each Unicode code point at zero-based index i: value = ((value * 48271 + code_point + i + 1) mod 2147483646) + 1",
+      "output_range": "1..2147483646",
+      "case_sensitive": true,
+      "locale_independent": true,
+      "stream_instance_id": "global"
+    }
+  },
+  "global_invariants": {
+    "stream_aliasing_allowed": false,
+    "same_seed_same_inputs_same_stream": true,
+    "restore_draw_count": 0,
+    "projection_draw_count": 0,
+    "save_capture_draw_count": 0,
+    "failed_intent_draw_count": 0,
+    "cross_stream_state_mutation_allowed": false,
+    "all_concrete_instances_present_exactly_once": true,
+    "per_player_instances_match_exact_saved_roster": true,
+    "unified_match_instance_seed_roster_and_revision_lineage_roundtrip_exact": true,
+    "unified_save_requires_acquisition_transaction_quiescence": true,
+    "transient_authority_ports_own_rng_streams": false
+  },
+  "streams": [
+    {
+      "stream_id": "starter_deck_shuffle",
+      "scope": "per_player_once_at_session_start",
+      "stream_instance_id": "stable_player_id",
+      "instance_count_formula": "roster_count",
+      "authoritative_owner_id": "v07.personal_dbg.core_authority.v1",
+      "save_section_id": "personal_dbg_and_merge",
+      "state_profile_id": "dbg_tagged_sha256_counter_v1",
+      "seed_derivation_id": "dbg_sha256_signed_int64_v1",
+      "local_storage_path": "local_adapter.state.starter_rng",
+      "document_section_storage_path": "local_adapter.document_section.rng_stream_states[stream_id=starter_deck_shuffle]",
+      "draw_event": "fisher_yates_shuffle_of_exact_twelve_card_starter_deck",
+      "allowed_consumers": ["starter_deck_initialization_core"],
+      "forbidden_consumers": [
+        "ai_observation",
+        "player_projection",
+        "ui",
+        "animation",
+        "test_fixture_override"
+      ],
+      "privacy": "core_private_seed_cursor_and_order",
+      "replay_requirement": "initial_five_and_remaining_seven_match_exactly"
+    },
+    {
+      "stream_id": "normal_deck_reshuffle_by_player",
+      "scope": "per_player_persistent",
+      "stream_instance_id": "stable_player_id",
+      "instance_count_formula": "roster_count",
+      "authoritative_owner_id": "v07.personal_dbg.core_authority.v1",
+      "save_section_id": "personal_dbg_and_merge",
+      "state_profile_id": "dbg_tagged_sha256_counter_v1",
+      "seed_derivation_id": "dbg_sha256_signed_int64_v1",
+      "local_storage_path": "local_adapter.state.reshuffle_rng",
+      "document_section_storage_path": "local_adapter.document_section.rng_stream_states[stream_id=normal_deck_reshuffle_by_player]",
+      "draw_event": "fisher_yates_shuffle_of_that_players_discard_when_draw_pile_is_insufficient",
+      "allowed_consumers": ["personal_normal_deck_maintenance_core"],
+      "forbidden_consumers": [
+        "other_player_deck_core",
+        "ai_observation",
+        "player_projection",
+        "ui",
+        "animation",
+        "mid_batch_refill"
+      ],
+      "privacy": "owner_core_private_seed_cursor_and_order",
+      "replay_requirement": "restored_next_reshuffle_matches_uninterrupted_control"
+    },
+    {
+      "stream_id": "unified_track_type_draw",
+      "scope": "match_global_persistent",
+      "stream_instance_id": "global",
+      "instance_count_formula": "1",
+      "authoritative_owner_id": "v07.unified_track.core_authority.v1",
+      "save_section_id": "unified_card_track_cycle",
+      "state_profile_id": "unified_park_miller_embedded_v1",
+      "seed_derivation_id": "unified_iterative_park_miller_seed_v1",
+      "local_storage_path": "local_adapter.authority_state.type_supply_state",
+      "owning_state_required_fields": [
+        "stream_id",
+        "ratio_basis_points",
+        "bag",
+        "cursor",
+        "bag_cycle",
+        "rng_state",
+        "rng_draw_count"
+      ],
+      "draw_event": "select_normal_or_commodity_from_independent_kind_ratio",
+      "allowed_consumers": ["authoritative_unified_track_supply_core"],
+      "forbidden_consumers": [
+        "color_stance_resolution",
+        "gdp",
+        "ai_observation",
+        "player_projection",
+        "ui",
+        "animation"
+      ],
+      "privacy": "core_private_rng_state_bag_cursor_and_future_kind",
+      "replay_requirement": "restored_next_kind_matches_uninterrupted_control"
+    },
+    {
+      "stream_id": "unified_track_color_draw",
+      "scope": "match_global_persistent",
+      "stream_instance_id": "global",
+      "instance_count_formula": "1",
+      "authoritative_owner_id": "v07.unified_track.core_authority.v1",
+      "save_section_id": "unified_card_track_cycle",
+      "state_profile_id": "unified_park_miller_embedded_v1",
+      "seed_derivation_id": "unified_iterative_park_miller_seed_v1",
+      "local_storage_path": "local_adapter.authority_state.color_cycle_state.color_supply_state",
+      "owning_state_required_fields": [
+        "stream_id",
+        "bag",
+        "cursor",
+        "bag_cycle",
+        "rng_state",
+        "rng_draw_count"
+      ],
+      "draw_event": "select_one_of_six_colors_from_current_cycle_distribution",
+      "allowed_consumers": ["authoritative_unified_track_color_supply_core"],
+      "forbidden_consumers": [
+        "card_kind_ratio",
+        "gdp",
+        "ai_observation",
+        "player_projection",
+        "ui",
+        "animation"
+      ],
+      "privacy": "core_private_rng_state_bag_cursor_and_future_color",
+      "replay_requirement": "restored_next_color_matches_uninterrupted_control"
+    },
+    {
+      "stream_id": "unified_track_normal_card_draw",
+      "scope": "match_global_persistent",
+      "stream_instance_id": "global",
+      "instance_count_formula": "1",
+      "authoritative_owner_id": "v07.unified_track.core_authority.v1",
+      "save_section_id": "unified_card_track_cycle",
+      "state_profile_id": "unified_park_miller_embedded_v1",
+      "seed_derivation_id": "unified_iterative_park_miller_seed_v1",
+      "local_storage_path": "local_adapter.authority_state.normal_supply_state",
+      "owning_state_required_fields": [
+        "stream_id",
+        "card_kind",
+        "templates",
+        "bag",
+        "cursor",
+        "bag_cycle",
+        "rng_state",
+        "rng_draw_count"
+      ],
+      "draw_event": "select_next_normal_card_definition_after_kind_and_color_are_selected",
+      "allowed_consumers": ["authoritative_unified_track_normal_supply_core"],
+      "forbidden_consumers": [
+        "commodity_supply_core",
+        "ai_observation",
+        "player_projection",
+        "ui",
+        "animation"
+      ],
+      "privacy": "core_private_rng_state_bag_cursor_and_future_normal_card",
+      "replay_requirement": "restored_next_normal_card_matches_uninterrupted_control"
+    },
+    {
+      "stream_id": "unified_track_commodity_draw",
+      "scope": "match_global_persistent",
+      "stream_instance_id": "global",
+      "instance_count_formula": "1",
+      "authoritative_owner_id": "v07.unified_track.core_authority.v1",
+      "save_section_id": "unified_card_track_cycle",
+      "state_profile_id": "unified_park_miller_embedded_v1",
+      "seed_derivation_id": "unified_iterative_park_miller_seed_v1",
+      "local_storage_path": "local_adapter.authority_state.commodity_supply_state",
+      "owning_state_required_fields": [
+        "stream_id",
+        "card_kind",
+        "templates",
+        "bag",
+        "cursor",
+        "bag_cycle",
+        "rng_state",
+        "rng_draw_count"
+      ],
+      "draw_event": "select_next_commodity_card_definition_after_kind_and_color_are_selected",
+      "allowed_consumers": ["authoritative_unified_track_commodity_supply_core"],
+      "forbidden_consumers": [
+        "normal_supply_core",
+        "ai_observation",
+        "player_projection",
+        "ui",
+        "animation"
+      ],
+      "privacy": "core_private_rng_state_bag_cursor_and_future_commodity_card",
+      "replay_requirement": "restored_next_commodity_card_matches_uninterrupted_control"
+    },
+    {
+      "stream_id": "initial_hidden_lead_order",
+      "scope": "match_global_once",
+      "stream_instance_id": "global",
+      "instance_count_formula": "1",
+      "authoritative_owner_id": "v07.unified_track.core_authority.v1",
+      "save_section_id": "unified_card_track_cycle",
+      "state_profile_id": "unified_park_miller_embedded_v1",
+      "seed_derivation_id": "unified_iterative_park_miller_seed_v1",
+      "local_storage_path": "local_adapter.authority_state.hidden_lead_cycle_state",
+      "owning_state_required_fields": [
+        "state_id",
+        "stream_id",
+        "fixed_order",
+        "macro_round_number",
+        "direction",
+        "round_order",
+        "lead_cursor",
+        "current_lead_id",
+        "completed_lead_ids",
+        "rng_state",
+        "rng_draw_count"
+      ],
+      "draw_event": "fisher_yates_shuffle_of_frozen_match_roster_once",
+      "allowed_consumers": ["hidden_lead_cycle_initialization_core"],
+      "forbidden_consumers": [
+        "macro_round_direction_change",
+        "lead_cursor_advance",
+        "ai_observation",
+        "player_projection",
+        "ui",
+        "animation"
+      ],
+      "privacy": "core_private_rng_state_and_hidden_order",
+      "replay_requirement": "order_and_terminal_rng_state_are_saved_and_never_regenerated_after_restore"
+    }
+  ],
+  "zero_rng_domains": [
+    {
+      "domain_id": "six_color_assets_and_reservations",
+      "draw_count": 0,
+      "reason": "GDP conversion, top-up, reservation, finalize, and refund are deterministic arithmetic."
+    },
+    {
+      "domain_id": "card_batch_and_anonymous_resolution",
+      "draw_count": 0,
+      "reason": "Prebound local order and hidden-lead round robin fully determine the queue order."
+    },
+    {
+      "domain_id": "solar_facility_and_macro_victory",
+      "draw_count": 0,
+      "reason": "Solar 2.0 or 1.0 and macro-round boundary revalidation are deterministic Core facts."
+    },
+    {
+      "domain_id": "three_wing_projection_and_protocol",
+      "draw_count": 0,
+      "reason": "AI observations, Player projections, Intents, Receipts, Save capture, preflight, restore, and rollback never draw RNG."
+    }
+  ],
+  "privacy_contract": {
+    "core_private_fields": [
+      "root_match_seed",
+      "derived_stream_seed",
+      "rng_state",
+      "rng_draw_count",
+      "cursor",
+      "future_draw_result",
+      "personal_deck_order",
+      "future_supply_bag_order",
+      "hidden_lead_order"
+    ],
+    "transient_port_objects_are_rng_or_save_state": false,
+    "ai_visibility": "none_of_seed_cursor_rng_state_future_draw_or_other_player_private_order",
+    "player_visibility": "none_of_seed_cursor_rng_state_future_draw_or_hidden_order",
+    "log_exposure_allowed": false,
+    "receipt_exposure_allowed": false
+  },
+  "verification_contract": {
+    "fixed_test_seed": 900626424,
+    "same_seed_and_same_intent_trace_matches": true,
+    "save_restore_next_draw_parity_required": true,
+    "checkpoint_rollback_cursor_or_rng_state_parity_required": true,
+    "projection_rng_delta": 0,
+    "save_capture_rng_delta": 0,
+    "restore_rng_delta": 0,
+    "failed_intent_rng_delta": 0,
+    "cross_stream_rng_delta": 0,
+    "v06_rng_owner_or_draw_point_reuse_count": 0
+  }
+}
