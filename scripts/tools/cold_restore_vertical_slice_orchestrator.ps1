@@ -1728,16 +1728,50 @@ function Assert-ColdRestoreTargetedOwnerCapturePostconditions {
     )) {
         Assert-ColdRestoreCondition (-not $retainedLogText.Contains($forbiddenLogToken, [StringComparison]::OrdinalIgnoreCase)) "targeted_owner_capture_private_log_exposed"
     }
-    $saveArtifacts = if (Test-Path -LiteralPath $UserDataRoot -PathType Container) {
-        @(Get-ChildItem -LiteralPath $UserDataRoot -Recurse -File | Where-Object {
-            $_.FullName -match '[\\/]saves[\\/]' -or $_.Name -like '*.save*' `
-                -or $_.Name -like '*.tmp*' -or $_.Name -like '*.backup*'
-        })
-    }
-    else {
-        @()
-    }
+    $saveArtifacts = @(
+        if (Test-Path -LiteralPath $UserDataRoot -PathType Container) {
+            Get-ChildItem -LiteralPath $UserDataRoot -Recurse -File | Where-Object {
+                $_.FullName -match '[\\/]saves[\\/]' -or $_.Name -like '*.save*' `
+                    -or $_.Name -like '*.tmp*' -or $_.Name -like '*.backup*'
+            }
+        }
+        else {
+            @()
+        }
+    )
     Assert-ColdRestoreCondition ($saveArtifacts.Count -eq 0) "targeted_owner_capture_unexpected_save"
+}
+
+function Invoke-ColdRestoreTargetedOwnerCaptureGuarded {
+    param(
+        [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
+        [Parameter(Mandatory = $true)][string]$HeadSha
+    )
+
+    $targetedDiagnostic = $null
+    $primaryFailure = $null
+    $postconditionFailure = $null
+    try {
+        $targetedDiagnostic = Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic $ResolvedProjectPath $HeadSha
+    }
+    catch {
+        $primaryFailure = $_
+    }
+    finally {
+        try {
+            Assert-ColdRestoreTargetedOwnerCapturePostconditions $ResolvedProjectPath
+        }
+        catch {
+            $postconditionFailure = $_
+        }
+    }
+    if ($null -ne $primaryFailure) {
+        throw $primaryFailure
+    }
+    if ($null -ne $postconditionFailure) {
+        throw $postconditionFailure
+    }
+    return $targetedDiagnostic
 }
 
 function New-ColdRestoreTargetedOwnerCaptureOutput {
@@ -2612,12 +2646,7 @@ try {
             -and -not $NonOfficialProcessA `
             -and -not $EnableColdRestoreExecution `
             -and [string]::IsNullOrEmpty($ContractManifestPath)) "targeted_owner_capture_mode_collision"
-        try {
-            $targetedDiagnostic = Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic $resolvedProjectPath $headSha
-        }
-        finally {
-            Assert-ColdRestoreTargetedOwnerCapturePostconditions $resolvedProjectPath
-        }
+        $targetedDiagnostic = Invoke-ColdRestoreTargetedOwnerCaptureGuarded $resolvedProjectPath $headSha
         Write-AllowlistedResult (New-ColdRestoreTargetedOwnerCaptureOutput $targetedDiagnostic)
         exit 0
     }
