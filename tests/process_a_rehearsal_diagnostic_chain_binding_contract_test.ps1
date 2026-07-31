@@ -124,13 +124,15 @@ Assert-ContractCondition (Test-ContainsAll $completeSource @(
 $diagnosticSource = [string]$diagnosticAdmission.Extent.Text
 Assert-ContractCondition (Test-ContainsAll $diagnosticSource @(
     '$diagnosticRunId',
-    '.godot\cold_restore_attestation_v1',
+    'Get-ColdRestoreAuthorizationRunId',
+    'Resolve-ColdRestoreGitCommonDirectory',
+    '$TargetedOwnerCaptureEvidenceRootRelativePath',
     'owner_capture_audit.json',
     'producer.completion.json',
     'producer.exit.json',
     'producer.stdout.log',
     'producer.stderr.log'
-)) "Diagnostic evidence paths derive from the fixed HEAD-bound run directory"
+)) "Diagnostic evidence paths bind the HEAD-derived run ID to the authorization-contract root"
 
 $consumeSource = [string]$consumeAdmission.Extent.Text
 Assert-ContractCondition (Test-ContainsAll $consumeSource @(

@@ -1,11 +1,15 @@
 extends SceneTree
 
 const IDENTITY := preload("res://scripts/tools/diagnostic_scenario_identity_v1.gd")
+const AUTHORIZATION_CONTRACT := preload("res://scripts/tools/cold_restore_authorization_contract_v1.gd")
 const WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
 
-const RUN_ID := "alpha04c-owner-capture-diagnostic-0123456789ab"
 const HEAD := "0123456789abcdef0123456789abcdef01234567"
 const SHA := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+var RUN_ID := AUTHORIZATION_CONTRACT.run_id(
+	"targeted_owner_capture_diagnostic_v4_importchain", HEAD
+)
 
 var _checks := 0
 var _failures: Array[String] = []

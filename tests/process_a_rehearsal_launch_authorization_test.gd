@@ -1,5 +1,7 @@
 extends SceneTree
 
+const AUTHORIZATION_CONTRACT := preload("res://scripts/tools/cold_restore_authorization_contract_v1.gd")
+
 const DRIVER := preload("res://scripts/tools/cold_restore_vertical_slice_driver.gd")
 
 const HEAD_SHA := "1234567890abcdef1234567890abcdef12345678"
@@ -10,9 +12,6 @@ const TIMEOUT_POLICY_SHA256 := "222222222222222222222222222222222222222222222222
 const ADMISSION_LEDGER_SHA256 := "3333333333333333333333333333333333333333333333333333333333333333"
 const LAUNCH_NONCE := "44444444444444444444444444444444"
 const OTHER_LAUNCH_NONCE := "55555555555555555555555555555555"
-const REHEARSAL_LEDGER_RELATIVE_PATH := \
-		"codex/cold_restore_v3/non-official-alpha04c-process-a-rehearsal-v1/process_a_rehearsal_quota_ledger.json"
-
 var _checks := 0
 var _failures: Array[String] = []
 
@@ -62,7 +61,9 @@ func _run_callable_option_matrix() -> void:
 	_expect_invalid(malformed_launch_nonce, "rehearsal rejects a malformed launch nonce")
 
 	var wrong_run := rehearsal.duplicate(true)
-	wrong_run["run_id"] = "alpha04c-process-a-rehearsal-deadbeefdead"
+	wrong_run["run_id"] = "%s-deadbeefdead" % str(AUTHORIZATION_CONTRACT.entry(
+		"process_a_save_completion_rehearsal_v1"
+	).get("run_id_prefix", ""))
 	wrong_run["artifact_root"] = _artifact_root(str(wrong_run["run_id"]))
 	_expect_invalid(wrong_run, "rehearsal rejects a run ID that is not derived from HEAD")
 
@@ -173,7 +174,7 @@ func _run_source_authorization_contract() -> void:
 		"rehearsal admission validates the exact ledger file SHA-256"
 	)
 	_expect(
-		rehearsal_authorization.contains("ProcessARehearsalAdmissionLedgerV2") \
+		rehearsal_authorization.contains("ProcessARehearsalAdmissionLedgerV3") \
 				and rehearsal_authorization.contains('ledger.get("status", "")') \
 				and rehearsal_authorization.contains('!= "admitted"'),
 		"rehearsal consumes the V2 admission ledger rather than the legacy quota schema"
@@ -228,7 +229,7 @@ func _run_source_authorization_contract() -> void:
 	)
 	_expect(
 		rehearsal_authorization.contains('attestation.get("authorization_id", "")') \
-				and rehearsal_authorization.contains("REHEARSAL_AUTHORIZATION_ID"),
+				and rehearsal_authorization.contains('authorization.get("authorization_id"'),
 		"rehearsal launch attestation cannot substitute official authorization fields"
 	)
 	_expect(
@@ -272,7 +273,9 @@ func _run_source_authorization_contract() -> void:
 
 
 func _valid_rehearsal_options() -> Dictionary:
-	var run_id := "alpha04c-process-a-rehearsal-%s" % HEAD_SHA.left(12)
+	var run_id := AUTHORIZATION_CONTRACT.run_id(
+		"process_a_save_completion_rehearsal_v1", HEAD_SHA
+	)
 	return {
 		"run_id": run_id,
 		"process_role": "producer",
@@ -295,7 +298,9 @@ func _valid_rehearsal_options() -> Dictionary:
 
 
 func _valid_targeted_diagnostic_options() -> Dictionary:
-	var run_id := "alpha04c-owner-capture-diagnostic-%s" % HEAD_SHA.left(12)
+	var run_id := AUTHORIZATION_CONTRACT.run_id(
+		"targeted_owner_capture_diagnostic_v4_importchain", HEAD_SHA
+	)
 	return {
 		"run_id": run_id,
 		"process_role": "producer",
@@ -372,7 +377,12 @@ func _absolute_fixture_path(file_name: String) -> String:
 
 func _fixed_admission_ledger_path() -> String:
 	var common_dir := _resolve_git_common_dir()
-	return common_dir.path_join(REHEARSAL_LEDGER_RELATIVE_PATH).simplify_path()
+	var authorization := AUTHORIZATION_CONTRACT.entry(
+		"process_a_save_completion_rehearsal_v1"
+	)
+	return common_dir.path_join(
+		str(authorization.get("quota_ledger_relative_path", ""))
+	).simplify_path()
 
 
 func _resolve_git_common_dir() -> String:

@@ -79,11 +79,14 @@ function Invoke-FixtureCase {
     param(
         [Parameter(Mandatory = $true)][string]$Mode,
         [int]$TimeoutSeconds = 5,
-        [string]$PathSuffix = ""
+        [string]$PathSuffix = "",
+        [switch]$StdoutPathAsDirectory,
+        [switch]$StderrPathAsDirectory,
+        [switch]$ParentPathAsDirectory
     )
 
     $runId = "wrapper-$Mode-$([Guid]::NewGuid().ToString('N'))"
-    $caseRoot = Join-Path $root ("case $Mode $PathSuffix")
+    $caseRoot = Join-Path $root ("case $Mode $runId $PathSuffix")
     if ($PathSuffix -ne "") {
         $caseRoot = Join-Path $caseRoot ("long-segment-" + ("x" * 80))
     }
@@ -91,6 +94,15 @@ function Invoke-FixtureCase {
     $parentPath = Join-Path $caseRoot "parent/qualification.exit.json"
     $stdoutPath = Join-Path $caseRoot "parent/qualification.stdout.log"
     $stderrPath = Join-Path $caseRoot "parent/qualification.stderr.log"
+    foreach ($directoryPath in @(
+        $(if ($StdoutPathAsDirectory) { $stdoutPath }),
+        $(if ($StderrPathAsDirectory) { $stderrPath }),
+        $(if ($ParentPathAsDirectory) { $parentPath })
+    )) {
+        if (-not [string]::IsNullOrEmpty([string]$directoryPath)) {
+            [IO.Directory]::CreateDirectory([string]$directoryPath) | Out-Null
+        }
+    }
     $arguments = @(
         "-NoProfile",
         "-File", $fixturePath,
@@ -170,8 +182,8 @@ function New-WrapperTimeoutPolicy {
                 $ProcessANoProgressTimeoutSeconds `
                 "process_a_timeout" `
                 $false
-            process_b = New-RoleEntry 5 2 "process_b_timeout" $true
-            process_c = New-RoleEntry 5 2 "process_c_timeout" $true
+            process_b = New-RoleEntry 5 2 "process_b_timeout" $false
+            process_c = New-RoleEntry 5 2 "process_c_timeout" $false
         }
     }
     return $policy
@@ -306,6 +318,7 @@ try {
         '[bool]$QualificationProbe',
         '[bool]$TargetedOwnerCaptureDiagnostic',
         '[bool]$NonOfficialProcessA',
+        '[bool]$OfficialAttempt2PreflightOnly',
         '[bool]$EnableColdRestoreExecution',
         '($ContractManifestPath -ne "")',
         'Assert-ColdRestoreCondition ($selectedModeCount -le 1) "execution_mode_conflict"'
@@ -315,6 +328,7 @@ try {
     foreach ($conflict in @(
         [pscustomobject]@{ name = "qualification"; arguments = @("-QualificationProbe") },
         [pscustomobject]@{ name = "non-official-a"; arguments = @("-NonOfficialProcessA") },
+        [pscustomobject]@{ name = "attempt2-preflight"; arguments = @("-OfficialAttempt2PreflightOnly") },
         [pscustomobject]@{ name = "official"; arguments = @("-EnableColdRestoreExecution") },
         [pscustomobject]@{ name = "manifest"; arguments = @("-ContractManifestPath", (Join-Path $root "unused-manifest.json")) }
     )) {
@@ -355,12 +369,13 @@ try {
         -and $targetedFunctionSource.Contains('[int]$timeout.absolute_timeout_seconds -eq 120') `
         -and $targetedFunctionSource.Contains('[int]$timeout.no_progress_timeout_seconds -eq 30') `
         -and $targetedFunctionSource.Contains('-ExpectedScenarioFingerprint $ExpectedScenarioFingerprint')) "Targeted diagnostics must bind the authorized 120/30 role policy and scenario"
-    Assert-WrapperCondition ($targetedFunctionSource.Contains('$RunId -ceq "alpha04c-owner-capture-diagnostic-$($HeadSha.Substring(0, 12))"')) "Targeted diagnostic identity must bind its run id to the measured HEAD"
+    Assert-WrapperCondition ($targetedFunctionSource.Contains('Get-ColdRestoreAuthorizationRunId') `
+        -and $targetedFunctionSource.Contains('"targeted_owner_capture_diagnostic_v3" $HeadSha')) "Targeted diagnostic identity must bind its contract run id to the measured HEAD"
     Assert-WrapperCondition ($targetedGuardSource.Contains('Assert-ColdRestoreTargetedOwnerCapturePostconditions $ResolvedProjectPath') `
-        -and $targetedGuardSource.Contains('$primaryFailure = $_') `
-        -and $targetedGuardSource.Contains('$postconditionFailure = $_') `
-        -and $targetedGuardSource.Contains('throw $primaryFailure') `
-        -and $targetedGuardSource.Contains('throw $postconditionFailure')) "Targeted Save and privacy scans must run after launch without replacing a primary failure"
+        -and $targetedGuardSource.Contains('New-ColdRestorePrimaryFailureState') `
+        -and $targetedGuardSource.Contains('Add-ColdRestoreFailureRecord') `
+        -and $targetedGuardSource.Contains('Get-ColdRestoreFailureProjection') `
+        -and $targetedGuardSource.Contains('New-ColdRestoreFailureException')) "Targeted Save and privacy scans must run after launch without replacing a primary failure"
 
     $targetedInvocationIndex = $orchestratorSource.IndexOf('$targetedDiagnostic = Invoke-ColdRestoreTargetedOwnerCaptureGuarded', [StringComparison]::Ordinal)
     $targetedExitIndex = if ($targetedInvocationIndex -ge 0) {
@@ -410,6 +425,35 @@ try {
         Assert-WrapperCondition (-not [bool]$fault.result.wrapper_exit_green -and [int]$fault.result.parent.exit_code -ne 0) "$mode must preserve a nonzero Harness exit"
         Assert-WrapperCondition ([string]$fault.result.wrapper_reason_code -eq "child_process_exit_nonzero") "$mode must be classified as a Harness process failure"
     }
+
+    $nonzeroWithStdoutFailure = Invoke-FixtureCase "nonzero" -StdoutPathAsDirectory
+    Assert-WrapperCondition ([string]$nonzeroWithStdoutFailure.result.wrapper_reason_code -ceq "child_process_exit_nonzero") "nonzero child remains primary when stdout finalization fails"
+    Assert-WrapperCondition (@($nonzeroWithStdoutFailure.result.secondary_failure_codes) -contains "stdout_evidence_write_failed") "stdout finalization failure is retained as secondary"
+    Assert-WrapperCondition ([int]$nonzeroWithStdoutFailure.result.primary_failure_overwrite_count -eq 0) "nonzero plus stdout failure never overwrites primary"
+
+    $missingWithStdoutFailure = Invoke-FixtureCase "missing" -StdoutPathAsDirectory
+    Assert-WrapperCondition ([string]$missingWithStdoutFailure.result.wrapper_reason_code -ceq "child_attestation_missing") "missing Child remains primary when stdout finalization fails"
+    Assert-WrapperCondition (@($missingWithStdoutFailure.result.secondary_failure_codes) -contains "stdout_evidence_write_failed") "missing Child records stdout finalization as secondary"
+
+    $fingerprintWithStdoutFailure = Invoke-FixtureCase "wrong_fingerprint" -StdoutPathAsDirectory
+    Assert-WrapperCondition ([string]$fingerprintWithStdoutFailure.result.wrapper_reason_code -ceq "child_attestation_fingerprint_invalid") "invalid Child fingerprint remains primary when stdout finalization fails"
+    Assert-WrapperCondition (@($fingerprintWithStdoutFailure.result.secondary_failure_codes) -contains "stdout_evidence_write_failed") "invalid Child fingerprint records stdout finalization as secondary"
+
+    $greenWithStreamFailures = Invoke-FixtureCase "valid_green" -StdoutPathAsDirectory -StderrPathAsDirectory
+    Assert-WrapperCondition ([string]$greenWithStreamFailures.result.wrapper_reason_code -ceq "stdout_evidence_write_failed") "first pure stream finalization failure becomes primary"
+    Assert-WrapperCondition ((@($greenWithStreamFailures.result.secondary_failure_codes) -join ',') -ceq "stderr_evidence_write_failed") "second stream finalization failure remains ordered secondary"
+
+    $nonzeroWithParentFailure = Invoke-FixtureCase "nonzero" -ParentPathAsDirectory
+    Assert-WrapperCondition ([string]$nonzeroWithParentFailure.result.wrapper_reason_code -ceq "child_process_exit_nonzero") "nonzero child remains primary when Parent attestation write fails"
+    Assert-WrapperCondition (@($nonzeroWithParentFailure.result.secondary_failure_codes) -contains "parent_attestation_write_failed") "Parent write failure remains secondary"
+    Assert-WrapperCondition (-not [bool]$nonzeroWithParentFailure.result.parent_attestation_written) "Parent write failure is not reported as written"
+
+    $greenWithParentFailure = Invoke-FixtureCase "valid_green" -ParentPathAsDirectory
+    Assert-WrapperCondition ([string]$greenWithParentFailure.result.wrapper_reason_code -ceq "parent_attestation_write_failed") "Parent write failure becomes primary only when the child path is otherwise green"
+    Assert-WrapperCondition (@($greenWithParentFailure.result.secondary_failure_codes).Count -eq 0) "pure Parent write failure has no invented secondary"
+    Assert-WrapperCondition (-not [bool]$greenWithParentFailure.result.parent_attestation_written `
+        -and -not [IO.File]::Exists($greenWithParentFailure.parent_path)) "failed Parent publication never reports a leaf attestation"
+    Assert-WrapperCondition (@(Get-ChildItem -LiteralPath (Split-Path -Parent $greenWithParentFailure.parent_path) -Filter '*.tmp.*' -Force -ErrorAction SilentlyContinue).Count -eq 0) "failed Parent publication leaves no temporary sidecar"
 
     $timeout = Invoke-FixtureCase "timeout" 1
     Assert-WrapperCondition (-not [bool]$timeout.result.wrapper_exit_green -and [bool]$timeout.result.parent.timed_out) "timeout must be explicit"

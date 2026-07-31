@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "contract_id": "ColdRestoreAuthorizationContractV1",
+  "targeted_owner_capture_diagnostic_v3": {
+    "authorization_id": "alpha04c-targeted-owner-capture-diagnostic-v3",
+    "task_id": "ALPHA_0_4_C_REAUTHORIZED_TARGETED_OWNER_DIAGNOSTIC_V3_AND_CONDITIONAL_PROCESS_A_REHEARSAL",
+    "ledger_id": "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV3",
+    "quota_ledger_relative_path": "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v3/targeted_owner_capture_quota_ledger.json",
+    "evidence_root_relative_path": "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v3/evidence",
+    "bootstrap_root_relative_path": "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v3/prequota",
+    "run_id_prefix": "alpha04c-owner-capture-diagnostic-v3",
+    "permitted_transition_from": 2,
+    "permitted_transition_to": 3,
+    "authorized_increment": 1,
+    "maximum_invocation_count": 3
+  },
+  "targeted_owner_capture_diagnostic_v4_importchain": {
+    "authorization_id": "alpha04c-targeted-owner-capture-diagnostic-v4-importchain",
+    "task_id": "ALPHA04C_IMPORT_CHAIN_REPAIR_AND_V07_THREE_WING_KERNEL_PARALLEL_ADVANCE",
+    "ledger_id": "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV4",
+    "quota_ledger_relative_path": "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v4-importchain/targeted_owner_capture_quota_ledger.json",
+    "evidence_root_relative_path": "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v4-importchain/evidence",
+    "bootstrap_root_relative_path": "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v4-importchain/prequota",
+    "run_id_prefix": "alpha04c-owner-capture-diagnostic-v4-importchain",
+    "permitted_transition_from": 3,
+    "permitted_transition_to": 4,
+    "authorized_increment": 1,
+    "maximum_invocation_count": 4
+  },
+  "process_a_save_completion_rehearsal_v1": {
+    "authorization_id": "alpha04c-process-a-save-completion-rehearsal-v1",
+    "quota_ledger_relative_path": "codex/cold_restore_v3/non-official-alpha04c-process-a-rehearsal-v1/process_a_rehearsal_quota_ledger.json",
+    "launch_ledger_relative_path": "codex/cold_restore_v3/non-official-alpha04c-process-a-rehearsal-v1/process_a_rehearsal_launch_ledger.json",
+    "outcome_ledger_relative_path": "codex/cold_restore_v3/non-official-alpha04c-process-a-rehearsal-v1/process_a_rehearsal_outcome_ledger.json",
+    "run_id_prefix": "alpha04c-process-a-rehearsal",
+    "maximum_invocation_count": 1
+  },
+  "official_attempt_2": {
+    "authorization_id": "alpha04c-official-cold-restore-attempt-2-v1",
+    "claim_path": "codex/cold_restore_v3/official-alpha04c-attempt-2-depth1-seed900626424/official_attempt_2_claim.json",
+    "run_id_prefix": "alpha04c-cold-retry",
+    "maximum_attempt_number": 2,
+    "attempt_1_claim_relative_path": "codex/cold_restore_v3/official-alpha04c-depth1-seed900626424/official_claim_ledger.json",
+    "attempt_1_claim_sha256": "80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458"
+  }
+}

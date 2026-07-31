@@ -9,16 +9,18 @@ const QUOTA_LEDGER_SHA256 := "33333333333333333333333333333333333333333333333333
 const OTHER_QUOTA_LEDGER_SHA256 := "4444444444444444444444444444444444444444444444444444444444444444"
 const LAUNCH_NONCE := "55555555555555555555555555555555"
 const OTHER_LAUNCH_NONCE := "66666666666666666666666666666666"
-const OFFICIAL_ATTEMPT_1_SHA256 := "80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458"
 const PREVIOUS_QUOTA_LEDGER_SHA256 := "2dba183fe0e354370802d0f886bf40a88b7e1c0b39ddb0df18ee110821e957a1"
-const TARGETED_QUOTA_LEDGER_RELATIVE_PATH := \
-		"codex/cold_restore_v3/non-official-alpha04c-owner-capture-attestation-12691a8/targeted_owner_capture_quota_ledger.json"
+const AUTHORIZATION_CONTRACT_PATH := "res://scripts/tools/cold_restore_authorization_contract_v1.json"
 
 const QUOTA_LEDGER_FIELDS := [
 	"schema_version", "ledger_id", "authorization_id", "task_id", "created_at_utc", "run_id",
 	"repository_head", "scenario_fingerprint", "authorized_new_diagnostic_count",
 	"diagnostic_count_before", "diagnostic_count_after", "diagnostic_count_maximum",
-	"previous_ledger_sha256", "role_timeout_policy_sha256",
+	"previous_ledger_sha256", "historical_invocation_commit",
+	"historical_invocation_blob_sha1", "historical_invocation_file_sha256",
+	"bootstrap_admission_path", "bootstrap_admission_sha256",
+	"bootstrap_admission_fingerprint", "prequota_attestation_path",
+	"role_timeout_policy_sha256",
 	"official_attempt_1_claim_sha256", "official_attempt_2_claim_absent",
 	"official", "formal", "official_authorization_consumed",
 	"orchestrator_script_sha256", "orchestrator_process_id",
@@ -36,9 +38,18 @@ const LAUNCH_ATTESTATION_FIELDS := [
 var _checks := 0
 var _failures: Array[String] = []
 var _driver_script: Variant
+var _targeted_authorization: Dictionary = {}
 
 
 func _init() -> void:
+	var contract_variant: Variant = JSON.parse_string(
+		FileAccess.get_file_as_string(AUTHORIZATION_CONTRACT_PATH)
+	)
+	var contract: Dictionary = contract_variant if contract_variant is Dictionary else {}
+	_targeted_authorization = (
+		contract.get("targeted_owner_capture_diagnostic_v4_importchain", {}) as Dictionary
+	).duplicate(true)
+	_expect(not _targeted_authorization.is_empty(), "production authorization contract is readable")
 	var source := FileAccess.get_file_as_string(
 		ProjectSettings.globalize_path("res://scripts/tools/cold_restore_vertical_slice_driver.gd")
 	)
@@ -97,7 +108,9 @@ func _run_callable_option_matrix() -> void:
 	_expect_invalid(malformed_launch_nonce, "targeted diagnostic rejects a malformed launch nonce")
 
 	var wrong_run := targeted.duplicate(true)
-	wrong_run["run_id"] = "alpha04c-owner-capture-diagnostic-deadbeefdead"
+	wrong_run["run_id"] = "%s-deadbeefdead" % str(
+		_targeted_authorization.get("run_id_prefix", "")
+	)
 	wrong_run["artifact_root"] = _artifact_root(str(wrong_run["run_id"]))
 	_expect_invalid(wrong_run, "targeted diagnostic rejects a run ID not derived from HEAD")
 
@@ -168,14 +181,16 @@ func _run_source_authorization_contract(source: String) -> void:
 		'targeted_diagnostic_ledger_fingerprint',
 	], "authorization binds the exact quota ledger bytes to the supplied raw SHA-256")
 	_expect_contains_all(authorization_source, [
-		"Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV2",
-		"TARGETED_DIAGNOSTIC_AUTHORIZATION_ID",
-		"ALPHA_0_4_C_OWNER_CAPTURE_ATTESTATION_CURSOR_PERSISTENCE_AND_PROCESS_A_REHEARSAL",
+		'_authorization_contract_entry(TARGETED_AUTHORIZATION_NAME)',
+		'authorization.get("ledger_id"',
+		'authorization.get("authorization_id"',
+		'authorization.get("task_id"',
 		"consumed",
 	], "authorization validates quota schema, identity, task, and consumed status")
 	_expect(
-		source.contains('const TARGETED_DIAGNOSTIC_AUTHORIZATION_ID := "alpha04c-targeted-owner-capture-diagnostic-v2"'),
-		"targeted diagnostic authorization ID is immutable"
+		source.contains("AUTHORIZATION_CONTRACT_PATH")
+				and not source.contains(str(_targeted_authorization.get("authorization_id", ""))),
+		"targeted diagnostic authorization ID has one JSON source"
 	)
 	_expect_contains_all(authorization_source, [
 		'ledger.get("run_id"',
@@ -187,16 +202,16 @@ func _run_source_authorization_contract(source: String) -> void:
 		'options.get("timeout_policy_fingerprint"',
 	], "quota is bound to the requested run, HEAD, scenario, and timeout policy")
 	_expect_contains_all(authorization_source, [
-		'int(ledger.get("authorized_new_diagnostic_count", 0)) != 1',
-		'int(ledger.get("diagnostic_count_before", -1)) != 1',
-		'int(ledger.get("diagnostic_count_after", 0)) != 2',
-		'int(ledger.get("diagnostic_count_maximum", 0)) != 2',
+		'authorization.get("authorized_increment"',
+		'authorization.get("permitted_transition_from"',
+		'authorization.get("permitted_transition_to"',
+		'authorization.get("maximum_invocation_count"',
 		"previous_ledger_sha256",
 		PREVIOUS_QUOTA_LEDGER_SHA256,
-	], "quota enforces the authorized 1 and historical 1-to-2 count boundary")
+	], "quota enforces the authorized 1 and historical 3-to-4 count boundary")
 	_expect_contains_all(authorization_source, [
 		"official_attempt_1_claim_sha256",
-		OFFICIAL_ATTEMPT_1_SHA256,
+		'_authorization_contract_entry("official_attempt_2")',
 		"official_attempt_2_claim_absent",
 		"official_authorization_consumed",
 		"TYPE_BOOL",
@@ -266,7 +281,9 @@ func _run_source_authorization_contract(source: String) -> void:
 
 
 func _valid_targeted_options() -> Dictionary:
-	var run_id := "alpha04c-owner-capture-diagnostic-%s" % HEAD_SHA.left(12)
+	var run_id := "%s-%s" % [
+		str(_targeted_authorization.get("run_id_prefix", "")), HEAD_SHA.left(12),
+	]
 	return {
 		"run_id": run_id,
 		"process_role": "producer",
@@ -357,7 +374,9 @@ func _absolute_fixture_path(file_name: String) -> String:
 
 func _fixed_quota_ledger_path() -> String:
 	var common_dir := _resolve_git_common_dir()
-	return common_dir.path_join(TARGETED_QUOTA_LEDGER_RELATIVE_PATH).simplify_path()
+	return common_dir.path_join(
+		str(_targeted_authorization.get("quota_ledger_relative_path", ""))
+	).simplify_path()
 
 
 func _resolve_git_common_dir() -> String:

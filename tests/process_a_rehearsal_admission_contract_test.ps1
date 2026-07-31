@@ -6,13 +6,21 @@ $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 $modulePath = Join-Path $root "scripts\tools\process_a_rehearsal_admission_contract.psm1"
+$authorizationModulePath = Join-Path $root "scripts\tools\cold_restore_authorization_contract_v1.psm1"
+Import-Module $authorizationModulePath -Force
+$targetedAuthorization = `
+    Get-ColdRestoreAuthorizationEntry "targeted_owner_capture_diagnostic_v4_importchain"
+$rehearsalAuthorization = Get-ColdRestoreAuthorizationEntry "process_a_save_completion_rehearsal_v1"
+$officialAuthorization = Get-ColdRestoreAuthorizationEntry "official_attempt_2"
 Import-Module $modulePath -Force
+Import-Module $authorizationModulePath -Force
 $contractModule = Get-Module process_a_rehearsal_admission_contract
 
 $head = "0123456789abcdef0123456789abcdef01234567"
 $scenarioFingerprint = "0bccef8426345e2ea1fd8ae7d6187d282d52d44bc73d6fb3d1ed3375dc20b7bf"
+$prerequisiteFingerprint = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
 $sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-$officialAttempt1Sha = "80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458"
+$officialAttempt1Sha = [string]$officialAuthorization.attempt_1_claim_sha256
 $officialAttempt1Text = '{"authorization_id":"alpha04c-p0-cold-restore-depth1-seed900626424-v1","authorized_official_count":1,"challenge_depth":1,"claim_nonce":"880e209871804c37871997f4b3177507","created_at_utc":"2026-07-30T06:09:56.4081399Z","official_count_after":1,"official_count_before":0,"orchestrator_creation_time_utc_ticks":"639209885951511870","orchestrator_id":"alpha04c_cold_restore_vertical_slice_orchestrator_v3","orchestrator_process_id":16120,"orchestrator_schema_version":3,"orchestrator_script_sha256":"e3bccd881ee44c76a82118932806a8785bbc4f2bde96afe697941eb23a57c0c8","qualification_child_attestation_fingerprint":"d0d2f437ec4f7a5eb5445053589d809d9c6440cdea1628de5d9f57355cbeb192","qualification_parent_attestation_sha256":"56822a6fb0870239e0b172bca0bdb98219dd8e02b6d72b915037a4ec06155bc5","qualification_result_sha256":"107ca42897f6ca7963ffb42f09df121e1221a7793f32f3dc21eaf0df5fd495ba","run_id":"alpha04c-facility-bridge-ca3b7cf4","scenario_fingerprint":"0bccef8426345e2ea1fd8ae7d6187d282d52d44bc73d6fb3d1ed3375dc20b7bf","schema_version":1,"seed":900626424,"source_head_sha":"ca3b7cf4222a6145bed81606fc4f04b7076ae0d9","status":"consumed"}'
 $sectionOrder = @(
     "ruleset", "region_infrastructure", "region_supply", "commodity_flow",
@@ -120,7 +128,8 @@ function New-TestDiagnostic {
         [object]$FirstPrivatePayloadRedacted = $true
     )
 
-    $diagnosticRunId = "alpha04c-owner-capture-diagnostic-$($RepositoryHead.Substring(0, 12))"
+    $diagnosticRunId = Get-ColdRestoreAuthorizationRunId `
+        "targeted_owner_capture_diagnostic_v4_importchain" $RepositoryHead
     $identity = Seal-TestValue ([ordered]@{
         schema_version = 1
         identity_id = "DiagnosticScenarioIdentityV1"
@@ -280,14 +289,14 @@ function New-TestPolicy {
                 no_progress_timeout_seconds = 60
                 timeout_reason_code = "process_b_timeout"
                 cleanup_policy = "kill_task_tree_then_verify_pid_and_creation_time"
-                contract_only_in_this_task = $true
+                contract_only_in_this_task = $false
             }
             process_c = [pscustomobject][ordered]@{
                 absolute_timeout_seconds = 180
                 no_progress_timeout_seconds = 30
                 timeout_reason_code = "process_c_timeout"
                 cleanup_policy = "kill_task_tree_then_verify_pid_and_creation_time"
-                contract_only_in_this_task = $true
+                contract_only_in_this_task = $false
             }
         }
     }
@@ -298,7 +307,11 @@ function New-TestDiagnosticQuotaLedger {
         [Parameter(Mandatory = $true)][string]$RunId,
         [Parameter(Mandatory = $true)][string]$RepositoryHead,
         [Parameter(Mandatory = $true)][string]$Scenario,
-        [Parameter(Mandatory = $true)][string]$TimeoutPolicyFingerprint
+        [Parameter(Mandatory = $true)][string]$TimeoutPolicyFingerprint,
+        [Parameter(Mandatory = $true)][string]$BootstrapPath,
+        [Parameter(Mandatory = $true)][string]$BootstrapSha256,
+        [Parameter(Mandatory = $true)][string]$BootstrapFingerprint,
+        [Parameter(Mandatory = $true)][string]$PreQuotaPath
     )
 
     $orchestratorCreationTicks = & $script:contractModule {
@@ -310,19 +323,26 @@ function New-TestDiagnosticQuotaLedger {
     } while ($launchNonce -ceq $claimNonce)
 
     return [pscustomobject][ordered]@{
-        schema_version = 2
-        ledger_id = "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV2"
-        authorization_id = "alpha04c-targeted-owner-capture-diagnostic-v2"
-        task_id = "ALPHA_0_4_C_OWNER_CAPTURE_ATTESTATION_CURSOR_PERSISTENCE_AND_PROCESS_A_REHEARSAL"
+        schema_version = 4
+        ledger_id = [string]$targetedAuthorization.ledger_id
+        authorization_id = [string]$targetedAuthorization.authorization_id
+        task_id = [string]$targetedAuthorization.task_id
         created_at_utc = "2026-07-30T15:00:00.0000000Z"
         run_id = $RunId
         repository_head = $RepositoryHead
         scenario_fingerprint = $Scenario
-        authorized_new_diagnostic_count = 1
-        diagnostic_count_before = 1
-        diagnostic_count_after = 2
-        diagnostic_count_maximum = 2
+        authorized_new_diagnostic_count = [int]$targetedAuthorization.authorized_increment
+        diagnostic_count_before = [int]$targetedAuthorization.permitted_transition_from
+        diagnostic_count_after = [int]$targetedAuthorization.permitted_transition_to
+        diagnostic_count_maximum = [int]$targetedAuthorization.maximum_invocation_count
         previous_ledger_sha256 = "2dba183fe0e354370802d0f886bf40a88b7e1c0b39ddb0df18ee110821e957a1"
+        historical_invocation_commit = "3b3061508541d0e5f6f4c2d6560b134b7d4ee5f8"
+        historical_invocation_blob_sha1 = "b54917e54a39e24e1c7288d919394305a4e21c71"
+        historical_invocation_file_sha256 = "50608e7dc7a362969d0ee7358ba008aa0278342ae34d33cd579fcac7bf8a7306"
+        bootstrap_admission_path = [IO.Path]::GetFullPath($BootstrapPath)
+        bootstrap_admission_sha256 = $BootstrapSha256
+        bootstrap_admission_fingerprint = $BootstrapFingerprint
+        prequota_attestation_path = [IO.Path]::GetFullPath($PreQuotaPath)
         role_timeout_policy_sha256 = $TimeoutPolicyFingerprint
         official_attempt_1_claim_sha256 = $officialAttempt1Sha
         official_attempt_2_claim_absent = $true
@@ -348,7 +368,7 @@ function New-TestDiagnosticLaunchAttestation {
 
     return [pscustomobject][ordered]@{
         schema_version = 1
-        authorization_id = "alpha04c-targeted-owner-capture-diagnostic-v2"
+        authorization_id = [string]$targetedAuthorization.authorization_id
         claim_fingerprint = $QuotaRawSha256
         claim_nonce = [string]$Quota.claim_nonce
         source_head_sha = [string]$Quota.repository_head
@@ -378,7 +398,7 @@ function New-TestDiagnosticManifest {
     )
 
     return [pscustomobject][ordered]@{
-        schema_version = 3
+        schema_version = 4
         visibility_scope = "qa_allowlisted"
         run_id = $RunId
         process_role = "producer"
@@ -398,6 +418,9 @@ function New-TestDiagnosticManifest {
         preflight_count = 0
         owner_apply_count = 0
         registry_apply_count = 0
+        registry_commit_count = 0
+        registry_rebind_count = 0
+        partial_restore_state_count = 0
         save_capture_world_delta = 0
         save_capture_rng_delta = 0
         save_capture_log_delta = 0
@@ -411,6 +434,7 @@ function New-TestDiagnosticManifest {
         restore_ai_action_delta = 0
         restore_player_action_delta = 0
         restore_notification_delta = 0
+        restore_private_feedback_delta = 0
         human_action_count = 0
         commodity_action_count = 0
         ai_action_count = 0
@@ -439,6 +463,19 @@ function New-TestDiagnosticManifest {
         queue_target_inventory_queue_commit_delta = 0
         queue_target_public_log_duplicate_delta = 0
         queue_target_public_log_collision_delta = 0
+        duplicate_queue_entry_count = 0
+        duplicate_facility_creation_count = 0
+        duplicate_card_consumption_count = 0
+        duplicate_cost_consumption_count = 0
+        duplicate_sale_receipt_count = 0
+        world_fingerprint_match = $false
+        rng_cursor_match = $false
+        ai_state_fingerprint_match = $false
+        card_inventory_fingerprint_match = $false
+        queue_fingerprint_match = $false
+        generation_2_recapture_fingerprint_match = $false
+        generation_2_rng_cursor_match = $false
+        generation_2_duplicate_transaction_count = 0
         victory_unresolved_before_save = $true
         production_surface_ready = $true
         victory_state_sequence = @()
@@ -450,6 +487,8 @@ function New-TestDiagnosticManifest {
         terminal_rng_draw_delta = 0
         generation = 0
         backup_created = $false
+        save_readback_green = $false
+        save_fingerprint_parity = $false
         elapsed_ms = 1000
         success = $false
         failure_code = $FailureCode
@@ -548,7 +587,9 @@ function New-TestFixture {
     $attempt1Path = Join-Path $attempt1Directory "official_claim_ledger.json"
     $evidencePath = Join-Path $fixtureRoot "evidence\owner_capture_audit.json"
     $policyPath = Join-Path $fixtureRoot "policy\cold_restore_role_timeout_policy_v1.json"
-    $diagnosticQuotaPath = Join-Path $fixtureRoot "ledger\targeted_owner_capture_diagnostic_quota_v2.json"
+    $diagnosticQuotaPath = Join-Path $fixtureRoot "ledger\targeted_owner_capture_diagnostic_quota_v3.json"
+    $bootstrapPath = Join-Path $fixtureRoot "bootstrap\bootstrap.admission.json"
+    $preQuotaPath = Join-Path $fixtureRoot "bootstrap\prequota_orchestrator_attestation.json"
     $diagnosticLaunchAttestationPath = Join-Path $fixtureRoot "evidence\targeted_owner_capture.launch.json"
     $diagnosticManifestPath = Join-Path $fixtureRoot "evidence\targeted_owner_capture.manifest.json"
     $diagnosticChildPath = Join-Path $fixtureRoot "evidence\targeted_owner_capture.child.json"
@@ -566,7 +607,61 @@ function New-TestFixture {
     [IO.Directory]::CreateDirectory((Split-Path -Parent $diagnosticStdoutPath)) | Out-Null
     [IO.File]::WriteAllText($diagnosticStdoutPath, "TARGETED_OWNER_CAPTURE_DIAGNOSTIC|run_id=$diagnosticRunId|status=PASS`n", [Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText($diagnosticStderrPath, "", [Text.UTF8Encoding]::new($false))
-    $diagnosticQuota = New-TestDiagnosticQuotaLedger $diagnosticRunId $head $scenarioFingerprint $policyFingerprint
+    $orchestratorCreationTicks = & $script:contractModule {
+        Get-ProcessARehearsalCurrentCreationTicks
+    }
+    $bootstrap = Seal-TestValue ([ordered]@{
+        schema_version = 1
+        admission_id = "PreQuotaOrchestratorBootstrapAdmissionV1"
+        created_at_utc = "2026-07-30T14:59:59.0000000Z"
+        run_id = $diagnosticRunId
+        role = "targeted_owner_diagnostic"
+        repository_head = $head
+        branch = "codex/fixture"
+        authorization_id = [string]$targetedAuthorization.authorization_id
+        historical_count = [int]$targetedAuthorization.permitted_transition_from
+        authorized_increment = [int]$targetedAuthorization.authorized_increment
+        maximum_allowed_count = [int]$targetedAuthorization.maximum_invocation_count
+        official = $false
+        formal = $false
+        orchestrator_process_id = $PID
+        orchestrator_creation_time_utc_ticks = $orchestratorCreationTicks
+        invocation_nonce = [Guid]::NewGuid().ToString("N")
+        admission_fingerprint = ""
+    }) "admission_fingerprint"
+    Write-TestJson $bootstrapPath $bootstrap
+    $bootstrapSha256 = (Get-FileHash -LiteralPath $bootstrapPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $preQuota = Seal-TestValue ([ordered]@{
+        schema_version = 1
+        attestation_id = "PreQuotaOrchestratorAttestationV1"
+        run_id = $diagnosticRunId
+        role = "targeted_owner_diagnostic"
+        repository_head = $head
+        branch = "codex/fixture"
+        authorization_checked = $true
+        historical_count = [int]$targetedAuthorization.permitted_transition_from
+        authorized_increment = [int]$targetedAuthorization.authorized_increment
+        maximum_allowed_count = [int]$targetedAuthorization.maximum_invocation_count
+        quota_claim_attempted = $true
+        quota_claimed = $true
+        quota_ledger_path = [IO.Path]::GetFullPath($diagnosticQuotaPath)
+        evidence_root_creation_attempted = $true
+        evidence_root_created = $true
+        godot_launch_attempted = $true
+        godot_launched = $true
+        primary_failure_phase = ""
+        primary_failure_code = ""
+        secondary_failure_codes = @()
+        task_owned_process_count_after = 0
+        bootstrap_admission_sha256 = $bootstrapSha256
+        bootstrap_admission_fingerprint = [string]$bootstrap.admission_fingerprint
+        updated_at_utc = "2026-07-30T15:00:01.0000000Z"
+        attestation_fingerprint = ""
+    }) "attestation_fingerprint"
+    Write-TestJson $preQuotaPath $preQuota
+    $diagnosticQuota = New-TestDiagnosticQuotaLedger `
+        $diagnosticRunId $head $scenarioFingerprint $policyFingerprint `
+        $bootstrapPath $bootstrapSha256 ([string]$bootstrap.admission_fingerprint) $preQuotaPath
     Write-TestJson $diagnosticQuotaPath $diagnosticQuota
     $diagnosticQuotaRawSha256 = (Get-FileHash -LiteralPath $diagnosticQuotaPath -Algorithm SHA256).Hash.ToLowerInvariant()
     Write-TestJson $diagnosticLaunchAttestationPath (New-TestDiagnosticLaunchAttestation $diagnosticQuota $diagnosticQuotaRawSha256)
@@ -582,6 +677,8 @@ function New-TestFixture {
         attempt_1_path = $attempt1Path
         evidence_path = $evidencePath
         policy_path = $policyPath
+        bootstrap_path = $bootstrapPath
+        prequota_path = $preQuotaPath
         diagnostic_quota_path = $diagnosticQuotaPath
         diagnostic_launch_attestation_path = $diagnosticLaunchAttestationPath
         diagnostic_manifest_path = $diagnosticManifestPath
@@ -592,7 +689,7 @@ function New-TestFixture {
         admission_path = Join-Path $fixtureRoot "ledger\process_a_rehearsal_admission.json"
         launch_path = Join-Path $fixtureRoot "ledger\process_a_rehearsal_launch.json"
         launch_attestation_path = Join-Path $fixtureRoot "evidence\producer.launch.json"
-        run_id = "alpha04c-process-a-rehearsal-$Name"
+        run_id = "$([string]$rehearsalAuthorization.run_id_prefix)-$Name"
     }
 }
 
@@ -622,6 +719,7 @@ function Invoke-TestAdmission {
         -RunId $Fixture.run_id `
         -RepositoryHead $head `
         -ScenarioFingerprint $scenarioFingerprint `
+        -PrerequisiteEvidenceFingerprint $prerequisiteFingerprint `
         -TimeoutPolicyPath $Fixture.policy_path `
         -AdmissionEvidencePath $Fixture.evidence_path `
         -DiagnosticQuotaLedgerPath $Fixture.diagnostic_quota_path `
@@ -643,6 +741,7 @@ function Assert-TestAdmissionSourcesUnchanged {
 
     return Assert-ProcessARehearsalAdmissionSourcesUnchanged `
         -Admission $Admission `
+        -PrerequisiteEvidenceFingerprint $prerequisiteFingerprint `
         -TimeoutPolicyPath $Fixture.policy_path `
         -AdmissionEvidencePath $Fixture.evidence_path `
         -DiagnosticQuotaLedgerPath $Fixture.diagnostic_quota_path `
@@ -695,6 +794,7 @@ function Complete-TestLaunch {
         -LaunchLedgerPath $Fixture.launch_path `
         -AdmissionLedgerPath $Fixture.admission_path `
         -ExpectedAdmissionLedgerSha256 $Admission.fingerprint `
+        -PrerequisiteEvidenceFingerprint $prerequisiteFingerprint `
         -LaunchAttestationPath $Fixture.launch_attestation_path `
         -TimeoutPolicyPath $Fixture.policy_path `
         -AdmissionEvidencePath $Fixture.evidence_path `
@@ -715,7 +815,7 @@ try {
 
     $info = Get-ProcessARehearsalAdmissionContractInfo
     Assert-ContractCondition ([string]$info.contract_id -ceq "Alpha04C.ProcessARehearsalAdmissionContractV1") "contract ID is closed"
-    Assert-ContractCondition ([string]$info.admission_ledger_id -ceq "ProcessARehearsalAdmissionLedgerV2") "admission ledger schema is V2"
+    Assert-ContractCondition ([string]$info.admission_ledger_id -ceq "ProcessARehearsalAdmissionLedgerV3") "admission ledger schema is V3"
     Assert-ContractCondition ([string]$info.launch_ledger_id -ceq "ProcessARehearsalLaunchLedgerV1") "launch ledger schema is V1"
     Assert-ContractCondition ([int]$info.challenge_depth -eq 1 -and [int64]$info.seed -eq 900626424) "contract fixes challenge depth and seed"
     Assert-ContractCondition ([int]$info.local_player_count -eq 1 -and [int]$info.ai_player_count -eq 3) "contract fixes the 1 local plus 3 AI roster"
@@ -734,8 +834,8 @@ try {
     Assert-ContractCondition ([string]$validChild.product_blocker -ceq "TARGETED_OWNER_CAPTURE_DIAGNOSTIC_SHA256:$validDiagnosticSha256" -and [string]$validChild.final_reason_code -ceq "targeted_owner_capture_diagnostic_sha256_$validDiagnosticSha256") "Child completion reason fields bind the diagnostic raw SHA-256"
     Assert-ContractCondition ([string]$validParent.child_attestation_fingerprint -ceq [string]$validChild.evidence_fingerprint) "Parent exit attestation binds the Child completion fingerprint"
     Assert-ContractCondition ([string]$validParent.stdout_sha256 -ceq (Get-FileHash $validFixture.diagnostic_stdout_path -Algorithm SHA256).Hash.ToLowerInvariant() -and [string]$validParent.stderr_sha256 -ceq (Get-FileHash $validFixture.diagnostic_stderr_path -Algorithm SHA256).Hash.ToLowerInvariant()) "Parent exit attestation binds exact stdout and stderr bytes"
-    Assert-ContractCondition ([string]$evidence.diagnostic_quota_ledger_sha256 -ceq (Get-FileHash $validFixture.diagnostic_quota_path -Algorithm SHA256).Hash.ToLowerInvariant()) "admission evidence binds exact TargetedOwnerCaptureDiagnosticQuotaLedgerV2 bytes"
-    Assert-ContractCondition ([string]$validDiagnosticLaunch.authorization_id -ceq "alpha04c-targeted-owner-capture-diagnostic-v2" -and [string]$validDiagnosticLaunch.claim_fingerprint -ceq [string]$evidence.diagnostic_quota_ledger_sha256) "diagnostic launch binds the targeted authorization ID and exact quota bytes"
+    Assert-ContractCondition ([string]$evidence.diagnostic_quota_ledger_sha256 -ceq (Get-FileHash $validFixture.diagnostic_quota_path -Algorithm SHA256).Hash.ToLowerInvariant()) "admission evidence binds exact TargetedOwnerCaptureDiagnosticQuotaLedgerV3 bytes"
+    Assert-ContractCondition ([string]$validDiagnosticLaunch.authorization_id -ceq [string]$targetedAuthorization.authorization_id -and [string]$validDiagnosticLaunch.claim_fingerprint -ceq [string]$evidence.diagnostic_quota_ledger_sha256) "diagnostic launch binds the targeted authorization ID and exact quota bytes"
     Assert-ContractCondition ([string]$validDiagnosticLaunch.claim_nonce -ceq [string]$validQuota.claim_nonce -and [string]$validDiagnosticLaunch.launch_nonce -ceq [string]$validQuota.launch_nonce) "diagnostic launch binds both quota nonces"
     Assert-ContractCondition ([string]$evidence.diagnostic_launch_attestation_sha256 -ceq (Get-FileHash $validFixture.diagnostic_launch_attestation_path -Algorithm SHA256).Hash.ToLowerInvariant()) "admission evidence binds exact diagnostic LaunchAttestation bytes"
     Assert-ContractCondition ([string]$evidence.diagnostic_manifest_sha256 -ceq (Get-FileHash $validFixture.diagnostic_manifest_path -Algorithm SHA256).Hash.ToLowerInvariant()) "admission evidence binds exact atomic diagnostic manifest bytes"
@@ -815,7 +915,7 @@ try {
 
     $collisionFixture = New-TestFixture "collision"
     $collisionAdmission = Invoke-TestAdmission $collisionFixture
-    $collisionFixture.run_id = "alpha04c-process-a-rehearsal-collision-second"
+    $collisionFixture.run_id = "$([string]$rehearsalAuthorization.run_id_prefix)-collision-second"
     Assert-ContractThrows { $null = Invoke-TestAdmission $collisionFixture } "process_a_rehearsal_admission_ledger_collision" "different run identity cannot collide with a consumed admission"
     Assert-ContractCondition ([string](Read-ProcessARehearsalAdmissionLedger $collisionFixture.admission_path $collisionAdmission.fingerprint).value.timeout_policy_fingerprint -ceq [string]$collisionAdmission.value.timeout_policy_fingerprint) "collision leaves the first admission immutable"
 
@@ -825,7 +925,7 @@ try {
 
     $quotaTamperFixture = New-TestFixture "tampered-quota"
     $tamperedQuota = Read-TestJson $quotaTamperFixture.diagnostic_quota_path
-    $tamperedQuota.diagnostic_count_after = 3
+    $tamperedQuota.diagnostic_count_after = 2
     Write-TestJson $quotaTamperFixture.diagnostic_quota_path $tamperedQuota
     Assert-ContractThrows { $null = Invoke-TestAdmission $quotaTamperFixture } "process_a_rehearsal_diagnostic_quota_invalid" "tampered diagnostic quota ledger cannot admit rehearsal"
     Assert-ContractCondition (-not [IO.File]::Exists($quotaTamperFixture.admission_path)) "quota tampering does not create an admission ledger"
@@ -834,7 +934,7 @@ try {
         [pscustomobject]@{ name = "authorization"; field = "authorization_id"; value = "alpha04c-wrong-authorization" },
         [pscustomobject]@{ name = "claim"; field = "claim_fingerprint"; value = ("b" * 64) },
         [pscustomobject]@{ name = "nonce"; field = "launch_nonce"; value = ("c" * 32) },
-        [pscustomobject]@{ name = "run"; field = "run_id"; value = "alpha04c-owner-capture-diagnostic-wrong" },
+        [pscustomobject]@{ name = "run"; field = "run_id"; value = "$([string]$targetedAuthorization.run_id_prefix)-wrong" },
         [pscustomobject]@{ name = "head"; field = "source_head_sha"; value = "fedcba9876543210fedcba9876543210fedcba98" },
         [pscustomobject]@{ name = "scenario"; field = "scenario_fingerprint"; value = ("d" * 64) }
     )) {
@@ -859,7 +959,7 @@ try {
 
     $diagnosticLaunchTypeFixture = New-TestFixture "diagnostic-launch-string-type"
     $diagnosticLaunchType = Read-TestJson $diagnosticLaunchTypeFixture.diagnostic_launch_attestation_path
-    $diagnosticLaunchType.authorization_id = @("alpha04c-targeted-owner-capture-diagnostic-v2")
+    $diagnosticLaunchType.authorization_id = @([string]$targetedAuthorization.authorization_id)
     Write-TestJson $diagnosticLaunchTypeFixture.diagnostic_launch_attestation_path $diagnosticLaunchType
     Assert-ContractThrows { $null = Invoke-TestAdmission $diagnosticLaunchTypeFixture } "process_a_rehearsal_launch_attestation_authorization_mismatch" "diagnostic launch identity fields require real strings"
 
@@ -876,7 +976,7 @@ try {
     Assert-ContractThrows { $null = Invoke-TestAdmission $diagnosticManifestPidFixture } "process_a_rehearsal_diagnostic_manifest_identity_invalid" "wrong atomic manifest PID cannot admit rehearsal"
 
     foreach ($manifestMismatch in @(
-        [pscustomobject]@{ name = "run"; field = "run_id"; value = "alpha04c-owner-capture-diagnostic-wrong" },
+        [pscustomobject]@{ name = "run"; field = "run_id"; value = "$([string]$targetedAuthorization.run_id_prefix)-wrong" },
         [pscustomobject]@{ name = "head"; field = "head_sha"; value = "fedcba9876543210fedcba9876543210fedcba98" },
         [pscustomobject]@{ name = "scenario"; field = "scenario_fingerprint"; value = ("b" * 64) },
         [pscustomobject]@{ name = "role"; field = "process_role"; value = "consumer" }
@@ -893,6 +993,18 @@ try {
     $diagnosticManifestSuccess.success = $true
     Write-TestJson $diagnosticManifestSuccessFixture.diagnostic_manifest_path $diagnosticManifestSuccess
     Assert-ContractThrows { $null = Invoke-TestAdmission $diagnosticManifestSuccessFixture } "process_a_rehearsal_diagnostic_manifest_failure_binding_invalid" "targeted diagnostic manifest cannot claim production success"
+
+    $diagnosticManifestRestoreClaimFixture = New-TestFixture "diagnostic-manifest-restore-claim"
+    $diagnosticManifestRestoreClaim = Read-TestJson $diagnosticManifestRestoreClaimFixture.diagnostic_manifest_path
+    $diagnosticManifestRestoreClaim.world_fingerprint_match = $true
+    Write-TestJson $diagnosticManifestRestoreClaimFixture.diagnostic_manifest_path $diagnosticManifestRestoreClaim
+    Assert-ContractThrows { $null = Invoke-TestAdmission $diagnosticManifestRestoreClaimFixture } "process_a_rehearsal_diagnostic_manifest_role_evidence_non_neutral" "producer diagnostic cannot claim restore-only fingerprint evidence"
+
+    $diagnosticManifestGenerationTwoClaimFixture = New-TestFixture "diagnostic-manifest-generation-two-claim"
+    $diagnosticManifestGenerationTwoClaim = Read-TestJson $diagnosticManifestGenerationTwoClaimFixture.diagnostic_manifest_path
+    $diagnosticManifestGenerationTwoClaim.generation_2_duplicate_transaction_count = 1
+    Write-TestJson $diagnosticManifestGenerationTwoClaimFixture.diagnostic_manifest_path $diagnosticManifestGenerationTwoClaim
+    Assert-ContractThrows { $null = Invoke-TestAdmission $diagnosticManifestGenerationTwoClaimFixture } "process_a_rehearsal_diagnostic_manifest_role_evidence_non_neutral" "producer diagnostic cannot claim Generation 2 transaction evidence"
 
     $diagnosticManifestReasonFixture = New-TestFixture "diagnostic-manifest-reason"
     $diagnosticManifestReason = Read-TestJson $diagnosticManifestReasonFixture.diagnostic_manifest_path
@@ -932,12 +1044,12 @@ try {
 
     $wrongHeadFixture = New-TestFixture "wrong-head"
     Assert-ContractThrows {
-        $null = New-ProcessARehearsalAdmission -LedgerPath $wrongHeadFixture.admission_path -RunId $wrongHeadFixture.run_id -RepositoryHead "fedcba9876543210fedcba9876543210fedcba98" -ScenarioFingerprint $scenarioFingerprint -TimeoutPolicyPath $wrongHeadFixture.policy_path -AdmissionEvidencePath $wrongHeadFixture.evidence_path -DiagnosticQuotaLedgerPath $wrongHeadFixture.diagnostic_quota_path -DiagnosticLaunchAttestationPath $wrongHeadFixture.diagnostic_launch_attestation_path -DiagnosticManifestPath $wrongHeadFixture.diagnostic_manifest_path -DiagnosticChildAttestationPath $wrongHeadFixture.diagnostic_child_path -DiagnosticParentAttestationPath $wrongHeadFixture.diagnostic_parent_path -DiagnosticStdoutPath $wrongHeadFixture.diagnostic_stdout_path -DiagnosticStderrPath $wrongHeadFixture.diagnostic_stderr_path -OfficialClaimRoot $wrongHeadFixture.official_root -OfficialAttempt1ClaimPath $wrongHeadFixture.attempt_1_path
+        $null = New-ProcessARehearsalAdmission -LedgerPath $wrongHeadFixture.admission_path -RunId $wrongHeadFixture.run_id -RepositoryHead "fedcba9876543210fedcba9876543210fedcba98" -ScenarioFingerprint $scenarioFingerprint -PrerequisiteEvidenceFingerprint $prerequisiteFingerprint -TimeoutPolicyPath $wrongHeadFixture.policy_path -AdmissionEvidencePath $wrongHeadFixture.evidence_path -DiagnosticQuotaLedgerPath $wrongHeadFixture.diagnostic_quota_path -DiagnosticLaunchAttestationPath $wrongHeadFixture.diagnostic_launch_attestation_path -DiagnosticManifestPath $wrongHeadFixture.diagnostic_manifest_path -DiagnosticChildAttestationPath $wrongHeadFixture.diagnostic_child_path -DiagnosticParentAttestationPath $wrongHeadFixture.diagnostic_parent_path -DiagnosticStdoutPath $wrongHeadFixture.diagnostic_stdout_path -DiagnosticStderrPath $wrongHeadFixture.diagnostic_stderr_path -OfficialClaimRoot $wrongHeadFixture.official_root -OfficialAttempt1ClaimPath $wrongHeadFixture.attempt_1_path
     } "process_a_rehearsal_admission_evidence_head_mismatch" "diagnostic HEAD mismatch fails closed"
 
     $wrongScenarioFixture = New-TestFixture "wrong-scenario"
     Assert-ContractThrows {
-        $null = New-ProcessARehearsalAdmission -LedgerPath $wrongScenarioFixture.admission_path -RunId $wrongScenarioFixture.run_id -RepositoryHead $head -ScenarioFingerprint ("b" * 64) -TimeoutPolicyPath $wrongScenarioFixture.policy_path -AdmissionEvidencePath $wrongScenarioFixture.evidence_path -DiagnosticQuotaLedgerPath $wrongScenarioFixture.diagnostic_quota_path -DiagnosticLaunchAttestationPath $wrongScenarioFixture.diagnostic_launch_attestation_path -DiagnosticManifestPath $wrongScenarioFixture.diagnostic_manifest_path -DiagnosticChildAttestationPath $wrongScenarioFixture.diagnostic_child_path -DiagnosticParentAttestationPath $wrongScenarioFixture.diagnostic_parent_path -DiagnosticStdoutPath $wrongScenarioFixture.diagnostic_stdout_path -DiagnosticStderrPath $wrongScenarioFixture.diagnostic_stderr_path -OfficialClaimRoot $wrongScenarioFixture.official_root -OfficialAttempt1ClaimPath $wrongScenarioFixture.attempt_1_path
+        $null = New-ProcessARehearsalAdmission -LedgerPath $wrongScenarioFixture.admission_path -RunId $wrongScenarioFixture.run_id -RepositoryHead $head -ScenarioFingerprint ("b" * 64) -PrerequisiteEvidenceFingerprint $prerequisiteFingerprint -TimeoutPolicyPath $wrongScenarioFixture.policy_path -AdmissionEvidencePath $wrongScenarioFixture.evidence_path -DiagnosticQuotaLedgerPath $wrongScenarioFixture.diagnostic_quota_path -DiagnosticLaunchAttestationPath $wrongScenarioFixture.diagnostic_launch_attestation_path -DiagnosticManifestPath $wrongScenarioFixture.diagnostic_manifest_path -DiagnosticChildAttestationPath $wrongScenarioFixture.diagnostic_child_path -DiagnosticParentAttestationPath $wrongScenarioFixture.diagnostic_parent_path -DiagnosticStdoutPath $wrongScenarioFixture.diagnostic_stdout_path -DiagnosticStderrPath $wrongScenarioFixture.diagnostic_stderr_path -OfficialClaimRoot $wrongScenarioFixture.official_root -OfficialAttempt1ClaimPath $wrongScenarioFixture.attempt_1_path
     } "process_a_rehearsal_admission_identity_binding_invalid" "scenario collision fails closed"
 
     $policyFixture = New-TestFixture "bad-policy" 181
@@ -1040,7 +1152,7 @@ try {
     $raceFixture = New-TestFixture "race"
     $jobArguments = @(
         $modulePath, $raceFixture.admission_path, $raceFixture.run_id, $head,
-        $scenarioFingerprint, $raceFixture.policy_path, $raceFixture.evidence_path,
+        $scenarioFingerprint, $prerequisiteFingerprint, $raceFixture.policy_path, $raceFixture.evidence_path,
         $raceFixture.diagnostic_quota_path, $raceFixture.diagnostic_launch_attestation_path,
         $raceFixture.diagnostic_manifest_path, $raceFixture.diagnostic_child_path,
         $raceFixture.diagnostic_parent_path, $raceFixture.diagnostic_stdout_path,
@@ -1049,11 +1161,11 @@ try {
     $jobs = @(
         1..2 | ForEach-Object {
             Start-Job -ScriptBlock {
-                param($ModulePath, $LedgerPath, $RunId, $Head, $Scenario, $PolicyPath, $EvidencePath, $QuotaPath, $DiagnosticLaunchPath, $DiagnosticManifestPath, $ChildPath, $ParentPath, $StdoutPath, $StderrPath, $OfficialRoot, $Attempt1Path)
+                param($ModulePath, $LedgerPath, $RunId, $Head, $Scenario, $PrerequisiteFingerprint, $PolicyPath, $EvidencePath, $QuotaPath, $DiagnosticLaunchPath, $DiagnosticManifestPath, $ChildPath, $ParentPath, $StdoutPath, $StderrPath, $OfficialRoot, $Attempt1Path)
                 $ErrorActionPreference = "Stop"
                 Import-Module $ModulePath -Force
                 try {
-                    $null = New-ProcessARehearsalAdmission -LedgerPath $LedgerPath -RunId $RunId -RepositoryHead $Head -ScenarioFingerprint $Scenario -TimeoutPolicyPath $PolicyPath -AdmissionEvidencePath $EvidencePath -DiagnosticQuotaLedgerPath $QuotaPath -DiagnosticLaunchAttestationPath $DiagnosticLaunchPath -DiagnosticManifestPath $DiagnosticManifestPath -DiagnosticChildAttestationPath $ChildPath -DiagnosticParentAttestationPath $ParentPath -DiagnosticStdoutPath $StdoutPath -DiagnosticStderrPath $StderrPath -OfficialClaimRoot $OfficialRoot -OfficialAttempt1ClaimPath $Attempt1Path
+                    $null = New-ProcessARehearsalAdmission -LedgerPath $LedgerPath -RunId $RunId -RepositoryHead $Head -ScenarioFingerprint $Scenario -PrerequisiteEvidenceFingerprint $PrerequisiteFingerprint -TimeoutPolicyPath $PolicyPath -AdmissionEvidencePath $EvidencePath -DiagnosticQuotaLedgerPath $QuotaPath -DiagnosticLaunchAttestationPath $DiagnosticLaunchPath -DiagnosticManifestPath $DiagnosticManifestPath -DiagnosticChildAttestationPath $ChildPath -DiagnosticParentAttestationPath $ParentPath -DiagnosticStdoutPath $StdoutPath -DiagnosticStderrPath $StderrPath -OfficialClaimRoot $OfficialRoot -OfficialAttempt1ClaimPath $Attempt1Path
                     "SUCCESS"
                 }
                 catch {

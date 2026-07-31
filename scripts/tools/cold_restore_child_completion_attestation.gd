@@ -3,9 +3,11 @@ extends RefCounted
 const SEMANTIC_WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
 const CAPTURE_FAILURE := preload("res://scripts/runtime/save_owner_capture_failure_v1.gd")
 const TARGETED_DIAGNOSTIC_V2 := preload("res://scripts/tools/targeted_owner_capture_diagnostic_v2.gd")
+const AUTHORIZATION_CONTRACT_PATH := "res://scripts/tools/cold_restore_authorization_contract_v1.json"
+const TARGETED_AUTHORIZATION_NAME := "targeted_owner_capture_diagnostic_v4_importchain"
 
 const SCHEMA_VERSION := 1
-const EVIDENCE_ROOT := "res://.godot/cold_restore_attestation_v1"
+const DEFAULT_EVIDENCE_ROOT := "res://.godot/cold_restore_attestation_v1"
 const ROLES := ["qualification", "producer", "consumer", "validator"]
 const TARGETED_OWNER_CAPTURE_SCENARIO_FINGERPRINT := "0bccef8426345e2ea1fd8ae7d6187d282d52d44bc73d6fb3d1ed3375dc20b7bf"
 const TARGETED_OWNER_CAPTURE_PHASES := [
@@ -96,16 +98,19 @@ const TARGETED_DIAGNOSTIC_ARTIFACT_BINDING_FIELDS := [
 ]
 
 
-static func completion_path(run_id: String, role: String) -> String:
-	return "%s/%s/child/%s.completion.json" % [EVIDENCE_ROOT, run_id, role]
+static func completion_path(run_id: String, role: String, test_root: String = "") -> String:
+	var root := _evidence_run_root(run_id, test_root)
+	return "" if root.is_empty() else "%s/child/%s.completion.json" % [root, role]
 
 
-static func result_path(run_id: String, role: String) -> String:
-	return "%s/%s/child/%s.result.json" % [EVIDENCE_ROOT, run_id, role]
+static func result_path(run_id: String, role: String, test_root: String = "") -> String:
+	var root := _evidence_run_root(run_id, test_root)
+	return "" if root.is_empty() else "%s/child/%s.result.json" % [root, role]
 
 
-static func diagnostic_path(run_id: String, diagnostic_id: String) -> String:
-	return "%s/%s/diagnostics/%s.json" % [EVIDENCE_ROOT, run_id, diagnostic_id]
+static func diagnostic_path(run_id: String, diagnostic_id: String, test_root: String = "") -> String:
+	var root := _evidence_run_root(run_id, test_root)
+	return "" if root.is_empty() else "%s/diagnostics/%s.json" % [root, diagnostic_id]
 
 
 static func build(source: Dictionary) -> Dictionary:
@@ -211,27 +216,30 @@ static func validation_report(value: Variant) -> Dictionary:
 	}
 
 
-static func write_completion(attestation: Dictionary) -> Dictionary:
+static func write_completion(attestation: Dictionary, test_root: String = "") -> Dictionary:
 	var validation := validation_report(attestation)
 	if not bool(validation.get("valid", false)):
 		return validation
 	return _write_atomic_json(
-		completion_path(str(attestation.get("run_id", "")), str(attestation.get("role", ""))),
+		completion_path(
+			str(attestation.get("run_id", "")), str(attestation.get("role", "")), test_root
+		),
 		attestation
 	)
 
 
-static func write_result(run_id: String, role: String, result: Dictionary) -> Dictionary:
+static func write_result(run_id: String, role: String, result: Dictionary, test_root: String = "") -> Dictionary:
 	if not _safe_run_id(run_id) or role not in ROLES or not SEMANTIC_WIRE.is_closed_data(result):
 		return {"valid": false, "reason_code": "child_result_invalid"}
-	return _write_atomic_json(result_path(run_id, role), result)
+	return _write_atomic_json(result_path(run_id, role, test_root), result)
 
 
 static func write_owner_capture_diagnostic(
 	run_id: String,
 	result: Dictionary,
 	expected_repository_head: String = "",
-	expected_scenario_fingerprint: String = ""
+	expected_scenario_fingerprint: String = "",
+	test_root: String = ""
 ) -> Dictionary:
 	var validation := _owner_capture_diagnostic_binding_report(
 		run_id,
@@ -241,7 +249,9 @@ static func write_owner_capture_diagnostic(
 	)
 	if not bool(validation.get("valid", false)):
 		return validation
-	var write := _write_atomic_json(diagnostic_path(run_id, "owner_capture_audit"), result)
+	var write := _write_atomic_json(
+		diagnostic_path(run_id, "owner_capture_audit", test_root), result
+	)
 	if bool(write.get("valid", false)) and validation.get("artifact_binding", {}) is Dictionary:
 		var artifact_binding := validation.get("artifact_binding", {}) as Dictionary
 		if not artifact_binding.is_empty():
@@ -249,23 +259,29 @@ static func write_owner_capture_diagnostic(
 	return write
 
 
-static func write_owner_capture_phase_snapshot(run_id: String, sequence: int, timeline: Dictionary) -> Dictionary:
+static func write_owner_capture_phase_snapshot(
+	run_id: String, sequence: int, timeline: Dictionary, test_root: String = ""
+) -> Dictionary:
 	var repository_head := str(timeline.get("repository_head", ""))
 	if not _targeted_owner_capture_run_id(run_id) or sequence < 1 \
 			or not SEMANTIC_WIRE.is_closed_data(timeline) \
 			or not bool(TARGETED_DIAGNOSTIC_V2.timeline_validation_report(timeline).get("valid", false)) \
 			or str(timeline.get("run_id", "")) != run_id \
 			or not _lower_hex(repository_head, 40, 64) \
-			or run_id != "alpha04c-owner-capture-diagnostic-%s" % repository_head.left(12) \
+			or run_id != _authorization_run_id(
+				TARGETED_AUTHORIZATION_NAME, repository_head
+			) \
 			or (timeline.get("phase_rows", []) as Array).size() != sequence:
 		return {"valid": false, "reason_code": "child_diagnostic_phase_snapshot_invalid"}
 	return _write_atomic_json(
-		diagnostic_path(run_id, "phase_events/%04d.snapshot" % sequence),
+		diagnostic_path(run_id, "phase_events/%04d.snapshot" % sequence, test_root),
 		timeline
 	)
 
 
 static func _write_atomic_json(path: String, value: Dictionary) -> Dictionary:
+	if path.is_empty():
+		return {"valid": false, "reason_code": "child_evidence_path_invalid"}
 	var canonical := SEMANTIC_WIRE.canonical_json(value)
 	if canonical.is_empty():
 		return {"valid": false, "reason_code": "child_evidence_serialization_failed"}
@@ -383,7 +399,9 @@ static func _owner_capture_diagnostic_binding_report(
 		return _diagnostic_rejected("child_diagnostic_expected_scenario_fingerprint_invalid")
 	if str(value.get("repository_head", "")) != expected_repository_head:
 		return _diagnostic_rejected("child_diagnostic_repository_head_mismatch")
-	if run_id != "alpha04c-owner-capture-diagnostic-%s" % expected_repository_head.left(12):
+	if run_id != _authorization_run_id(
+		TARGETED_AUTHORIZATION_NAME, expected_repository_head
+	):
 		return _diagnostic_rejected("child_diagnostic_run_head_binding_invalid")
 	if not SEMANTIC_WIRE.is_closed_data(value) or not _v2_diagnostic_redaction_valid(value):
 		return _diagnostic_rejected("child_diagnostic_redaction_invalid")
@@ -515,8 +533,9 @@ static func _valid_owner_capture_diagnostic_v1(value: Dictionary) -> bool:
 			or not (value.get("save_file_exists") is bool) or bool(value.get("save_file_exists", true)) \
 			or not (value.get("official_claim_path_present") is bool) or bool(value.get("official_claim_path_present", true)):
 		return false
-	if str(value.get("run_id", "")) != "alpha04c-owner-capture-diagnostic-%s" \
-			% str(value.get("repository_head", "")).left(12):
+	if str(value.get("run_id", "")) != _authorization_run_id(
+		TARGETED_AUTHORIZATION_NAME, str(value.get("repository_head", ""))
+	):
 		return false
 	if typeof(value.get("challenge_depth")) != TYPE_INT or int(value.get("challenge_depth", -1)) != 1 \
 			or typeof(value.get("seed")) != TYPE_INT or int(value.get("seed", -1)) != 900626424 \
@@ -689,11 +708,95 @@ static func _safe_run_id(value: String) -> bool:
 	return true
 
 
+static func _authorization_contract_entry(entry_name: String) -> Dictionary:
+	if entry_name not in [
+		"targeted_owner_capture_diagnostic_v3",
+		TARGETED_AUTHORIZATION_NAME,
+		"process_a_save_completion_rehearsal_v1",
+		"official_attempt_2",
+	]:
+		return {}
+	if not FileAccess.file_exists(AUTHORIZATION_CONTRACT_PATH):
+		return {}
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(AUTHORIZATION_CONTRACT_PATH))
+	if not (parsed is Dictionary):
+		return {}
+	var contract := parsed as Dictionary
+	if int(contract.get("schema_version", 0)) != 1 \
+			or str(contract.get("contract_id", "")) != "ColdRestoreAuthorizationContractV1" \
+			or not (contract.get(entry_name) is Dictionary):
+		return {}
+	return (contract.get(entry_name) as Dictionary).duplicate(true)
+
+
+static func _authorization_run_id(entry_name: String, repository_head: String) -> String:
+	if repository_head.length() != 40 \
+			or not _lower_hex(repository_head, repository_head.length(), repository_head.length()):
+		return ""
+	var prefix := str(_authorization_contract_entry(entry_name).get("run_id_prefix", ""))
+	return "" if prefix.is_empty() else "%s-%s" % [prefix, repository_head.left(12)]
+
+
+static func _normalize_absolute_path(value: String) -> String:
+	if value.is_empty() or not value.is_absolute_path():
+		return ""
+	return value.replace("\\", "/").simplify_path().trim_suffix("/")
+
+
+static func _resolve_git_common_dir() -> String:
+	var project_root := _normalize_absolute_path(ProjectSettings.globalize_path("res://"))
+	if project_root.is_empty():
+		return ""
+	var git_marker := project_root.path_join(".git")
+	if DirAccess.dir_exists_absolute(git_marker):
+		return _normalize_absolute_path(git_marker)
+	if not FileAccess.file_exists(git_marker):
+		return ""
+	var marker_text := FileAccess.get_file_as_string(git_marker).strip_edges()
+	if not marker_text.begins_with("gitdir:"):
+		return ""
+	var git_dir := marker_text.trim_prefix("gitdir:").strip_edges()
+	if not git_dir.is_absolute_path():
+		git_dir = project_root.path_join(git_dir)
+	git_dir = _normalize_absolute_path(git_dir)
+	if git_dir.is_empty():
+		return ""
+	var common_dir_path := git_dir.path_join("commondir")
+	if not FileAccess.file_exists(common_dir_path):
+		return git_dir
+	var common_dir := FileAccess.get_file_as_string(common_dir_path).strip_edges()
+	if not common_dir.is_absolute_path():
+		common_dir = git_dir.path_join(common_dir)
+	return _normalize_absolute_path(common_dir)
+
+
+static func _evidence_run_root(run_id: String, test_root: String = "") -> String:
+	if not test_root.is_empty():
+		var normalized_test_root := _normalize_absolute_path(test_root)
+		var authorized_test_root := _normalize_absolute_path(
+			OS.get_environment("SPACE_SYNDICATE_COLD_RESTORE_TEST_EVIDENCE_ROOT")
+		)
+		return normalized_test_root if not normalized_test_root.is_empty() \
+				and normalized_test_root == authorized_test_root else ""
+	if _targeted_owner_capture_run_id(run_id):
+		var authorization := _authorization_contract_entry(TARGETED_AUTHORIZATION_NAME)
+		var common_dir := _resolve_git_common_dir()
+		var expected_root := _normalize_absolute_path(common_dir.path_join(
+			str(authorization.get("evidence_root_relative_path", ""))
+		))
+		var environment_root := _normalize_absolute_path(
+			OS.get_environment("SPACE_SYNDICATE_COLD_RESTORE_EVIDENCE_ROOT")
+		)
+		return expected_root if not expected_root.is_empty() and environment_root == expected_root else ""
+	return "%s/%s" % [DEFAULT_EVIDENCE_ROOT, run_id] if _safe_run_id(run_id) else ""
+
+
 static func _targeted_owner_capture_run_id(value: String) -> bool:
-	const PREFIX := "alpha04c-owner-capture-diagnostic-"
-	if not value.begins_with(PREFIX):
+	var entry := _authorization_contract_entry(TARGETED_AUTHORIZATION_NAME)
+	var prefix := str(entry.get("run_id_prefix", ""))
+	if prefix.is_empty() or not value.begins_with("%s-" % prefix):
 		return false
-	var suffix := value.trim_prefix(PREFIX)
+	var suffix := value.trim_prefix("%s-" % prefix)
 	return suffix.length() == 12 \
 			and _lower_hex(suffix, suffix.length(), suffix.length())
 

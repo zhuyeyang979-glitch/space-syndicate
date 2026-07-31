@@ -4,6 +4,7 @@ const MAIN_SCENE := preload("res://scenes/main.tscn")
 const GAME_ACTION_INTENT := preload("res://scripts/semantic/game_action_intent_v1.gd")
 const GAME_ACTION_OFFER := preload("res://scripts/semantic/game_action_offer_v1.gd")
 const FACILITY_BINDING := preload("res://scripts/cards/v06/queued_facility_card_action_v1.gd")
+const COLD_RESTORE_DRIVER := preload("res://scripts/tools/cold_restore_vertical_slice_driver.gd")
 
 const FACILITY_CARD_ID := "facility.factory.life.rank_2"
 const FACILITY_INDUSTRY_ID := "life"
@@ -418,6 +419,9 @@ func _test_facility_continues_once_after_restore(coordinator: GameRuntimeCoordin
 	var escrow_id := str(facility_case.get("escrow_id", ""))
 	var frame := coordinator.advance_card_resolution_frame(0.0)
 	var after_first := _facility_owner_evidence(facility_case)
+	var duplicate_observation_after_first := COLD_RESTORE_DRIVER._authoritative_duplicate_observation({
+		"coordinator": coordinator,
+	})
 	var mana_settlement := mana.reservation_settlement_snapshot(reservation_id)
 	var history_state := history.to_save_data()
 	var execution_state := execution.to_save_data()
@@ -432,7 +436,9 @@ func _test_facility_continues_once_after_restore(coordinator: GameRuntimeCoordin
 	var balance: Dictionary = ((mana.availability_snapshot(0).get("balances", {}) as Dictionary).get(FACILITY_INDUSTRY_ID, {}) as Dictionary)
 	_expect(bool(frame.get("handled", false)) and _public_queue_count(queue) == 0 \
 			and infrastructure.facilities_snapshot(false).size() == int(facility_case.get("facilities_before_count", -1)) + 1 \
-			and int(adapter.debug_snapshot().get("resolution_count", 0)) == int(facility_case.get("adapter_resolution_count_before", -1)) + 1, "first legal post-barrier resolution step creates exactly one facility and drains the Queue")
+			and int(adapter.debug_snapshot().get("resolution_count", 0)) == int(facility_case.get("adapter_resolution_count_before", -1)) + 1 \
+			and bool(duplicate_observation_after_first.get("valid", false)) \
+			and COLD_RESTORE_DRIVER._duplicate_observation_is_zero(duplicate_observation_after_first), "first legal post-barrier resolution step creates exactly one facility, drains the Queue, and remains zero in the official duplicate observer")
 	_expect(str(mana_settlement.get("state_id", "")) == "terminal" \
 			and str(mana_settlement.get("outcome_id", "")) == "consumed" \
 			and int(balance.get("balance_milliunits", -1)) == 0 \
@@ -457,6 +463,9 @@ func _test_facility_continues_once_after_restore(coordinator: GameRuntimeCoordin
 	])
 	var duplicate_frame := coordinator.advance_card_resolution_frame(0.0)
 	var after_duplicate := _facility_owner_evidence(facility_case)
+	var duplicate_observation_after_idle := COLD_RESTORE_DRIVER._authoritative_duplicate_observation({
+		"coordinator": coordinator,
+	})
 	var execution_after_first: Dictionary = after_first.get("execution", {}) as Dictionary
 	var execution_after_duplicate: Dictionary = after_duplicate.get("execution", {}) as Dictionary
 	var execution_lineage_unchanged: bool = int(execution_after_duplicate.get("transaction_sequence", -1)) == int(execution_after_first.get("transaction_sequence", -2)) \
@@ -468,6 +477,8 @@ func _test_facility_continues_once_after_restore(coordinator: GameRuntimeCoordin
 			and after_duplicate.get("mana") == after_first.get("mana") \
 			and after_duplicate.get("infrastructure") == after_first.get("infrastructure") \
 			and execution_lineage_unchanged \
+			and bool(duplicate_observation_after_idle.get("valid", false)) \
+			and COLD_RESTORE_DRIVER._duplicate_observation_is_zero(duplicate_observation_after_idle) \
 			and after_duplicate.get("history") == after_first.get("history") \
 			and after_duplicate.get("rng") == after_first.get("rng")
 	_expect(not bool(duplicate_frame.get("resolved", false)) and duplicate_side_effect_free \

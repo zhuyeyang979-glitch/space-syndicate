@@ -6,8 +6,15 @@ $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 $modulePath = Join-Path $root "scripts\tools\process_a_rehearsal_admission_contract.psm1"
+$authorizationContractPath = Join-Path $root "scripts\tools\cold_restore_authorization_contract_v1.json"
+$authorizationContract = Get-Content -LiteralPath $authorizationContractPath -Raw | ConvertFrom-Json
+$targetedAuthorization = `
+    $authorizationContract.targeted_owner_capture_diagnostic_v4_importchain
+$rehearsalAuthorization = $authorizationContract.process_a_save_completion_rehearsal_v1
+$officialAuthorization = $authorizationContract.official_attempt_2
 $fixtureSourcePath = Join-Path $PSScriptRoot "process_a_rehearsal_admission_contract_test.ps1"
 $contractModule = Import-Module $modulePath -Force -PassThru
+Import-Module (Join-Path $root "scripts\tools\cold_restore_authorization_contract_v1.psm1") -Force
 
 $checks = 0
 $failures = [Collections.Generic.List[string]]::new()
@@ -146,7 +153,7 @@ if (@($parseErrors).Count -ne 0) {
 }
 
 $requiredVariables = @(
-    "head", "scenarioFingerprint", "sha", "officialAttempt1Sha",
+    "head", "scenarioFingerprint", "prerequisiteFingerprint", "sha", "officialAttempt1Sha",
     "officialAttempt1Text", "sectionOrder", "ownerOrder"
 )
 $assignmentByName = @{}
@@ -200,10 +207,12 @@ else {
     [IO.Path]::GetFullPath((Join-Path $root $gitCommonRaw.Trim()))
 }
 $realLedgerPaths = @(
-    (Join-Path $gitCommonPath "codex\cold_restore_v3\official-alpha04c-depth1-seed900626424\official_claim_ledger.json"),
+    (Join-Path $gitCommonPath ([string]$authorizationContract.official_attempt_2.attempt_1_claim_relative_path)),
     (Join-Path $gitCommonPath "codex\cold_restore_v3\non-official-alpha04c-owner-capture-attestation-12691a8\targeted_owner_capture_quota_ledger.json"),
-    (Join-Path $gitCommonPath "codex\cold_restore_v3\non-official-alpha04c-process-a-rehearsal-v1\process_a_rehearsal_quota_ledger.json"),
-    (Join-Path $gitCommonPath "codex\cold_restore_v3\non-official-alpha04c-process-a-rehearsal-v1\process_a_rehearsal_launch_ledger.json")
+    (Join-Path $gitCommonPath ([string]$authorizationContract.targeted_owner_capture_diagnostic_v4_importchain.quota_ledger_relative_path)),
+    (Join-Path $gitCommonPath ([string]$authorizationContract.process_a_save_completion_rehearsal_v1.quota_ledger_relative_path)),
+    (Join-Path $gitCommonPath ([string]$authorizationContract.process_a_save_completion_rehearsal_v1.launch_ledger_relative_path)),
+    (Join-Path $gitCommonPath ([string]$authorizationContract.official_attempt_2.claim_path))
 )
 $realLedgerStateBefore = @{}
 foreach ($path in $realLedgerPaths) {
@@ -246,7 +255,7 @@ try {
     $admissionLedgerFixture = New-TestFixture "admission-ledger-schema-string"
     $admission = Invoke-TestAdmission $admissionLedgerFixture
     $forgedAdmission = Copy-TestValue $admission.value
-    $forgedAdmission.schema_version = "2"
+    $forgedAdmission.schema_version = "3"
     $forgedAdmission.ledger_fingerprint = Get-TestFingerprint $forgedAdmission "ledger_fingerprint"
     $forgedAdmissionPath = Join-Path $admissionLedgerFixture.root "ledger\forged-admission-schema-string.json"
     Write-TestJson $forgedAdmissionPath $forgedAdmission

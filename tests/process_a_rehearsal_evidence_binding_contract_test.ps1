@@ -177,6 +177,45 @@ if ($null -ne $rehearsalFunction) {
         [string]$_.GetCommandName() -ceq "Assert-ColdRestoreCondition"
     })
 
+    $timeoutReadIndex = $functionSource.IndexOf('$timeout = Get-ColdRestoreRoleTimeout "process_a"', [StringComparison]::Ordinal)
+    $timeoutGateIndex = $functionSource.IndexOf('"process_a_rehearsal_timeout_policy_invalid"', [StringComparison]::Ordinal)
+    $quotaIndex = $functionSource.IndexOf('Consume-ColdRestoreProcessARehearsalQuota', [StringComparison]::Ordinal)
+    Assert-ContractCondition (
+        $timeoutReadIndex -ge 0 -and $timeoutGateIndex -gt $timeoutReadIndex -and $quotaIndex -gt $timeoutGateIndex `
+            -and (Test-SourceContainsAll $functionSource @(
+                '$timeout.absolute_timeout_seconds -eq 180',
+                '$timeout.no_progress_timeout_seconds -eq 60'
+            ))
+    ) "Process A 180/60 timeout is exact and validated before rehearsal quota consumption"
+
+    $initialPrerequisiteIndex = $functionSource.IndexOf(
+        '$stage3Prerequisites = Assert-ColdRestoreProcessARehearsalPrerequisites',
+        [StringComparison]::Ordinal
+    )
+    $revalidatedPrerequisiteIndex = $functionSource.IndexOf(
+        '$revalidatedStage3Prerequisites = Assert-ColdRestoreProcessARehearsalPrerequisites',
+        [StringComparison]::Ordinal
+    )
+    $prerequisiteDriftGateIndex = $functionSource.IndexOf(
+        '"process_a_rehearsal_prerequisites_changed_after_admission"',
+        [StringComparison]::Ordinal
+    )
+    $postCommitSourceGateIndex = $functionSource.IndexOf(
+        'Assert-ProcessARehearsalAdmissionSourcesUnchanged',
+        [StringComparison]::Ordinal
+    )
+    Assert-ContractCondition (
+        $initialPrerequisiteIndex -ge 0 -and $initialPrerequisiteIndex -lt $quotaIndex `
+            -and $revalidatedPrerequisiteIndex -gt $quotaIndex `
+            -and $prerequisiteDriftGateIndex -gt $revalidatedPrerequisiteIndex `
+            -and $postCommitSourceGateIndex -gt $prerequisiteDriftGateIndex
+    ) "Stage 3 prerequisites are recomputed and compared immediately after admission commit"
+    Assert-ContractCondition (
+        $functionSource.Contains(
+            '-PrerequisiteEvidenceFingerprint ([string]$revalidatedStage3Prerequisites.evidence_fingerprint)'
+        )
+    ) "post-admission source and launch gates consume the revalidated prerequisite fingerprint"
+
     $atomicAssignments = @(
         Get-AssignmentVariables $rehearsalFunction @('Read-ColdRestoreJsonArtifact', '$paths.child_result')
     )
@@ -256,18 +295,23 @@ if ($null -ne $rehearsalFunction) {
         Assert-ContractCondition ($dispatchSource -match '(?im)^\s*exit\s+0\s*$') "nonofficial Process A dispatch exits before official roles"
 
         $allCommands = Get-CommandAsts $ast
-        $consumerCalls = @($allCommands | Where-Object {
+        $chainFunction = Get-FunctionAst $ast "Invoke-ColdRestoreOfficialRoleChain"
+        $chainCommands = Get-CommandAsts $chainFunction
+        $consumerCalls = @($chainCommands | Where-Object {
             [string]$_.GetCommandName() -ceq "Invoke-ColdRestoreRole" `
                 -and [string]$_.Extent.Text -match '(?i)["'']consumer["'']'
         })
-        $validatorCalls = @($allCommands | Where-Object {
+        $validatorCalls = @($chainCommands | Where-Object {
             [string]$_.GetCommandName() -ceq "Invoke-ColdRestoreRole" `
                 -and [string]$_.Extent.Text -match '(?i)["'']validator["'']'
         })
+        $officialChainDispatch = @($allCommands | Where-Object {
+            [string]$_.GetCommandName() -ceq "Invoke-ColdRestoreOfficialRoleChain" `
+                -and $_.Extent.StartOffset -gt $dispatchBlocks[0].Extent.EndOffset
+        })
         $officialRolesAfterExit = $consumerCalls.Count -eq 1 `
             -and $validatorCalls.Count -eq 1 `
-            -and $dispatchBlocks[0].Extent.EndOffset -lt $consumerCalls[0].Extent.StartOffset `
-            -and $dispatchBlocks[0].Extent.EndOffset -lt $validatorCalls[0].Extent.StartOffset
+            -and $officialChainDispatch.Count -eq 1
         Assert-ContractCondition $officialRolesAfterExit "Process B and C calls exist only after the exited nonofficial branch"
     }
 }

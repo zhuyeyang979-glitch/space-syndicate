@@ -215,11 +215,13 @@ if ($null -ne $diagnosticAdmission) {
     Assert-ContractCondition (
         (Test-SourceContainsAll $source @(
             '$diagnosticRunId',
-            '$HeadSha.Substring(0, 12)',
+            'Get-ColdRestoreAuthorizationRunId',
+            'Resolve-ColdRestoreGitCommonDirectory',
+            '$TargetedOwnerCaptureEvidenceRootRelativePath',
             '$diagnosticRoot',
-            '.godot\cold_restore_attestation_v1'
+            '$TargetedOwnerCaptureAuthorizationName'
         ))
-    ) "diagnostic evidence root is fixed by the HEAD-derived run ID"
+    ) "diagnostic evidence root binds the HEAD-derived run ID to the authorization contract"
     Assert-ContractCondition (
         (Test-SourceContainsAll $source @(
             'launch_attestation_path',
@@ -239,9 +241,11 @@ if ($null -ne $diagnosticAdmission) {
 
 if ($null -ne $consumeAdmission) {
     $newAdmissionCalls = @(Get-CommandAsts $consumeAdmission | Where-Object {
-        [string]$_.GetCommandName() -ceq "New-ProcessARehearsalAdmission"
+        [string]$_.GetCommandName() -ceq `
+            "process_a_rehearsal_admission_contract\New-ProcessARehearsalAdmission"
     })
-    Assert-ContractCondition ($newAdmissionCalls.Count -eq 1) "rehearsal quota consumer calls New-ProcessARehearsalAdmission exactly once"
+    Assert-ContractCondition ($newAdmissionCalls.Count -eq 1) `
+        "rehearsal quota consumer calls the module-qualified admission command exactly once"
     $newAdmissionSource = if ($newAdmissionCalls.Count -eq 1) {
         [string]$newAdmissionCalls[0].Extent.Text
     }

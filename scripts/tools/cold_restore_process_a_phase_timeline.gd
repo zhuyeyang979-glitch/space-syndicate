@@ -1,10 +1,10 @@
 extends RefCounted
 
 const SEMANTIC_WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
+const AUTHORIZATION_CONTRACT := preload("res://scripts/tools/cold_restore_authorization_contract_v1.gd")
 
 const SCHEMA_VERSION := 1
 const TIMELINE_ID := "ProcessAPhaseTimelineV1"
-const EVIDENCE_ROOT := "res://.godot/cold_restore_attestation_v1"
 const ROLE := "producer"
 const PHASE_IDS := [
 	"child_bootstrap",
@@ -64,11 +64,13 @@ var _event_root := ""
 
 
 static func stable_path(run_id: String) -> String:
-	return "%s/%s/diagnostics/producer.phase_timeline.json" % [EVIDENCE_ROOT, run_id]
+	var root := AUTHORIZATION_CONTRACT.evidence_run_root(run_id)
+	return "" if root.is_empty() else "%s/diagnostics/producer.phase_timeline.json" % root
 
 
 static func event_root(run_id: String) -> String:
-	return "%s/%s/diagnostics/producer.phase_timeline.events" % [EVIDENCE_ROOT, run_id]
+	var root := AUTHORIZATION_CONTRACT.evidence_run_root(run_id)
+	return "" if root.is_empty() else "%s/diagnostics/producer.phase_timeline.events" % root
 
 
 func initialize(
