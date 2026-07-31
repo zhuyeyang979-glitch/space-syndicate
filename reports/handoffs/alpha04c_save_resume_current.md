@@ -1,6 +1,6 @@
 # Alpha 0.4-C Save/Resume current handoff
 
-Status: `BLOCKED_BY_OWNER_DIAGNOSTIC_PRE_AUDIT_FAILURE`.
+Status: `BLOCKED_BY_NEW_TARGETED_OWNER_DIAGNOSTIC_AUTHORIZATION`.
 
 PR #77 remains Draft. Alpha 0.4-C remains PARTIAL and may not merge to
 `main`. Official Attempt 2 was not created, its authorization remains
@@ -8,14 +8,34 @@ unconsumed, and Process B/C were not started.
 
 ## Scope and baseline
 
-This task started from PR #77 HEAD
-`12691a8bc7ad2c5a9f4c175c95a8c214ea346a74` in the isolated branch
-`codex/alpha04c-owner-capture-attestation-12691a8`.
+This continuation started from PR #77 HEAD
+`e9d5726250664c15c4c53f12b3a9ff0b4dd15dbc` in the isolated branch
+`codex/alpha04c-owner-diagnostic-continuation-e9d5726`.
 
 The Queue bridge, Action routing, facility gameplay, AI policy, Main, RNG draw
 points, and V0.7 constitution were not changed. The task added only Save
 allocator continuity, redacted Owner diagnostics, role timeout/heartbeat
 supervision, and non-official rehearsal evidence contracts.
+
+## Continuation checkpoint
+
+Harness repair commit `708122b6ab413037ec1db812d8f73b389e30415c`
+closes the two defects that obscured the previous run:
+
+- the entire Save-artifact conditional is now array-stable under PowerShell
+  StrictMode, including an empty result;
+- targeted diagnostic execution preserves its primary typed failure over a
+  secondary postcondition failure, while still running the postcondition once.
+
+The synthetic guard is GREEN at `28/28`. It covers empty artifacts, primary
+failure with successful postconditions, simultaneous primary/postcondition
+failure, postcondition-only failure, the real pre-quota run-id gate, exact
+allowlisted failure projection, and zero quota/evidence/Godot side effects.
+
+No new targeted diagnostic ran in this continuation. Historical invocation
+count remains `2`; the absent V2 ledger does not make that invocation reusable.
+A third attempted diagnostic requires a new explicit `2 -> 3` authorization,
+a fresh authorization ID, and a fresh exact-once ledger path.
 
 ## Completed implementation
 
@@ -111,7 +131,11 @@ These bounded values were not used to start Process B/C.
 - evidence binding `17/17`
 - launch authorization `55/55`
 - vertical slice contract `139/139`
-- Wrapper supervision `76/76`, three consecutive fixed-hash runs
+- targeted postcondition guard `28/28`
+- targeted launch authorization `43/43`
+- targeted Owner failure projection `91/91`
+- terminal evidence helper/driver `75/75` and `27/27`
+- Wrapper supervision `92/92`, three consecutive fixed-hash runs
 - Alpha 0.4-A `66/66`
 - Alpha 0.4-B static contracts `76/76` and `60/60`
 - smoke engine `--check-only` PASS
@@ -120,7 +144,7 @@ No Formal run or full Smoke was executed.
 
 ## Godot MCP
 
-The isolated endpoint was `http://127.0.0.1:8815/`. Real
+The prior task's isolated endpoint was `http://127.0.0.1:8815/`. Real
 `res://scenes/main.tscn` loaded and played. Static/runtime inspection found
 one Registry, Queue, Execution service, Facility Queue adapter, Save
 coordinator, and Save/Continue flow.
@@ -128,6 +152,11 @@ coordinator, and Save/Continue flow.
 The full scan checked 986 scripts and found two unchanged inherited error
 files. Task-introduced debug and runtime error counts are both zero. Play mode
 and the editor exited normally; the task-owned Godot process count is zero.
+
+No Godot MCP endpoint was callable in this continuation's tool context.
+Bounded isolated CLI runners instead revalidated the changed Harness contracts
+with zero script/runtime errors and zero remaining task-owned processes; this
+does not replace or restate the prior MCP scene evidence.
 
 ## Preserved authority
 
@@ -151,10 +180,11 @@ The prior targeted diagnostic ledger remains immutable at SHA-256
 
 Next exact task:
 
-`ALPHA_0_4_C_OWNER_DIAGNOSTIC_SCENARIO_IDENTITY_CONTINUATION`
+`ALPHA_0_4_C_REAUTHORIZED_TARGETED_OWNER_DIAGNOSTIC_V3`
 
-It requires a new explicit targeted-diagnostic authorization. It must first
-fix and test the pre-quota/postcondition error-reporting path, then execute one
-new diagnostic to reach the 19-Owner audit. No Owner may be changed until that
-run attests a concrete section, Owner, and reason. Only a 19/19 diagnostic may
-admit the still-unconsumed Process A rehearsal.
+It requires the explicit statement
+`AUTHORIZED_NEW_TARGETED_OWNER_CAPTURE_DIAGNOSTIC_COUNT=1`, a new authorization
+identity, a new ledger path, and the closed transition `2 -> 3`. It may then
+execute exactly one diagnostic to reach the 19-Owner audit. No Owner may be
+changed until that run attests a concrete section, Owner, and reason. Only a
+19/19 diagnostic may admit the still-unconsumed Process A rehearsal.
