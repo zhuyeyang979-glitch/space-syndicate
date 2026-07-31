@@ -47,7 +47,7 @@ func _init() -> void:
 	)
 	var contract: Dictionary = contract_variant if contract_variant is Dictionary else {}
 	_targeted_authorization = (
-		contract.get("targeted_owner_capture_diagnostic_v3", {}) as Dictionary
+		contract.get("targeted_owner_capture_diagnostic_v4_importchain", {}) as Dictionary
 	).duplicate(true)
 	_expect(not _targeted_authorization.is_empty(), "production authorization contract is readable")
 	var source := FileAccess.get_file_as_string(
@@ -181,7 +181,7 @@ func _run_source_authorization_contract(source: String) -> void:
 		'targeted_diagnostic_ledger_fingerprint',
 	], "authorization binds the exact quota ledger bytes to the supplied raw SHA-256")
 	_expect_contains_all(authorization_source, [
-		'_authorization_contract_entry("targeted_owner_capture_diagnostic_v3")',
+		'_authorization_contract_entry(TARGETED_AUTHORIZATION_NAME)',
 		'authorization.get("ledger_id"',
 		'authorization.get("authorization_id"',
 		'authorization.get("task_id"',
@@ -208,7 +208,7 @@ func _run_source_authorization_contract(source: String) -> void:
 		'authorization.get("maximum_invocation_count"',
 		"previous_ledger_sha256",
 		PREVIOUS_QUOTA_LEDGER_SHA256,
-	], "quota enforces the authorized 1 and historical 2-to-3 count boundary")
+	], "quota enforces the authorized 1 and historical 3-to-4 count boundary")
 	_expect_contains_all(authorization_source, [
 		"official_attempt_1_claim_sha256",
 		'_authorization_contract_entry("official_attempt_2")',

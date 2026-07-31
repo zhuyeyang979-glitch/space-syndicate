@@ -17,7 +17,9 @@ const FAILURE_FIELDS_EXPECTED := [
 	"ruleset_id_observed", "live_state_mutated_during_capture", "private_payload_redacted",
 ]
 
-var RUN_ID := AUTHORIZATION_CONTRACT.run_id("targeted_owner_capture_diagnostic_v3", HEAD)
+var RUN_ID := AUTHORIZATION_CONTRACT.run_id(
+	"targeted_owner_capture_diagnostic_v4_importchain", HEAD
+)
 
 var _checks := 0
 var _failures: Array[String] = []

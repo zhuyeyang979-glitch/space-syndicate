@@ -7,7 +7,9 @@ const WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
 const HEAD := "0123456789abcdef0123456789abcdef01234567"
 const SHA := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
-var RUN_ID := AUTHORIZATION_CONTRACT.run_id("targeted_owner_capture_diagnostic_v3", HEAD)
+var RUN_ID := AUTHORIZATION_CONTRACT.run_id(
+	"targeted_owner_capture_diagnostic_v4_importchain", HEAD
+)
 
 var _checks := 0
 var _failures: Array[String] = []

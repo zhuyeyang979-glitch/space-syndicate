@@ -510,7 +510,7 @@ func _cleanup_diagnostic(run_id: String) -> void:
 
 func _targeted_run_id(repository_head: String) -> String:
 	return AUTHORIZATION_CONTRACT.run_id(
-		"targeted_owner_capture_diagnostic_v3", repository_head
+		"targeted_owner_capture_diagnostic_v4_importchain", repository_head
 	)
 
 

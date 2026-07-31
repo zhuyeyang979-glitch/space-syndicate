@@ -299,7 +299,7 @@ func _valid_rehearsal_options() -> Dictionary:
 
 func _valid_targeted_diagnostic_options() -> Dictionary:
 	var run_id := AUTHORIZATION_CONTRACT.run_id(
-		"targeted_owner_capture_diagnostic_v3", HEAD_SHA
+		"targeted_owner_capture_diagnostic_v4_importchain", HEAD_SHA
 	)
 	return {
 		"run_id": run_id,
