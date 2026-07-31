@@ -8,7 +8,8 @@ $root = Split-Path -Parent $PSScriptRoot
 $modulePath = Join-Path $root "scripts\tools\process_a_rehearsal_admission_contract.psm1"
 $authorizationModulePath = Join-Path $root "scripts\tools\cold_restore_authorization_contract_v1.psm1"
 Import-Module $authorizationModulePath -Force
-$targetedAuthorization = Get-ColdRestoreAuthorizationEntry "targeted_owner_capture_diagnostic_v3"
+$targetedAuthorization = `
+    Get-ColdRestoreAuthorizationEntry "targeted_owner_capture_diagnostic_v4_importchain"
 $rehearsalAuthorization = Get-ColdRestoreAuthorizationEntry "process_a_save_completion_rehearsal_v1"
 $officialAuthorization = Get-ColdRestoreAuthorizationEntry "official_attempt_2"
 Import-Module $modulePath -Force
@@ -128,7 +129,7 @@ function New-TestDiagnostic {
     )
 
     $diagnosticRunId = Get-ColdRestoreAuthorizationRunId `
-        "targeted_owner_capture_diagnostic_v3" $RepositoryHead
+        "targeted_owner_capture_diagnostic_v4_importchain" $RepositoryHead
     $identity = Seal-TestValue ([ordered]@{
         schema_version = 1
         identity_id = "DiagnosticScenarioIdentityV1"
@@ -322,7 +323,7 @@ function New-TestDiagnosticQuotaLedger {
     } while ($launchNonce -ceq $claimNonce)
 
     return [pscustomobject][ordered]@{
-        schema_version = 3
+        schema_version = 4
         ledger_id = [string]$targetedAuthorization.ledger_id
         authorization_id = [string]$targetedAuthorization.authorization_id
         task_id = [string]$targetedAuthorization.task_id
@@ -638,9 +639,9 @@ function New-TestFixture {
         repository_head = $head
         branch = "codex/fixture"
         authorization_checked = $true
-        historical_count = 2
-        authorized_increment = 1
-        maximum_allowed_count = 3
+        historical_count = [int]$targetedAuthorization.permitted_transition_from
+        authorized_increment = [int]$targetedAuthorization.authorized_increment
+        maximum_allowed_count = [int]$targetedAuthorization.maximum_invocation_count
         quota_claim_attempted = $true
         quota_claimed = $true
         quota_ledger_path = [IO.Path]::GetFullPath($diagnosticQuotaPath)

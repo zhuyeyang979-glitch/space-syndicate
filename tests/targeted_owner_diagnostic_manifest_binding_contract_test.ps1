@@ -219,7 +219,7 @@ if ($null -ne $diagnosticAdmission) {
             'Resolve-ColdRestoreGitCommonDirectory',
             '$TargetedOwnerCaptureEvidenceRootRelativePath',
             '$diagnosticRoot',
-            'targeted_owner_capture_diagnostic_v3'
+            '$TargetedOwnerCaptureAuthorizationName'
         ))
     ) "diagnostic evidence root binds the HEAD-derived run ID to the authorization contract"
     Assert-ContractCondition (
@@ -241,9 +241,11 @@ if ($null -ne $diagnosticAdmission) {
 
 if ($null -ne $consumeAdmission) {
     $newAdmissionCalls = @(Get-CommandAsts $consumeAdmission | Where-Object {
-        [string]$_.GetCommandName() -ceq "New-ProcessARehearsalAdmission"
+        [string]$_.GetCommandName() -ceq `
+            "process_a_rehearsal_admission_contract\New-ProcessARehearsalAdmission"
     })
-    Assert-ContractCondition ($newAdmissionCalls.Count -eq 1) "rehearsal quota consumer calls New-ProcessARehearsalAdmission exactly once"
+    Assert-ContractCondition ($newAdmissionCalls.Count -eq 1) `
+        "rehearsal quota consumer calls the module-qualified admission command exactly once"
     $newAdmissionSource = if ($newAdmissionCalls.Count -eq 1) {
         [string]$newAdmissionCalls[0].Extent.Text
     }

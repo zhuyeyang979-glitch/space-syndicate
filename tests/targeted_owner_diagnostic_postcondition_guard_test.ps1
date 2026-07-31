@@ -9,9 +9,10 @@ $orchestratorPath = Join-Path $projectRoot "scripts/tools/cold_restore_vertical_
 $preQuotaModulePath = Join-Path $projectRoot "scripts/tools/cold_restore_prequota_bootstrap.psm1"
 $authorizationModulePath = Join-Path $projectRoot "scripts/tools/cold_restore_authorization_contract_v1.psm1"
 $authorizationContractPath = Join-Path $projectRoot "scripts/tools/cold_restore_authorization_contract_v1.json"
-Import-Module $authorizationModulePath -Force
-Import-Module $preQuotaModulePath -Force
-$targetedAuthorization = Get-ColdRestoreAuthorizationEntry "targeted_owner_capture_diagnostic_v3"
+Import-Module $authorizationModulePath
+Import-Module $preQuotaModulePath
+$targetedAuthorizationName = "targeted_owner_capture_diagnostic_v4_importchain"
+$targetedAuthorization = Get-ColdRestoreAuthorizationEntry $targetedAuthorizationName
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) (
     "alpha04c-targeted-postcondition-" + [Guid]::NewGuid().ToString("N")
 )
@@ -221,7 +222,7 @@ try {
     if ($null -ne $outputBuilder) {
         . ([scriptblock]::Create($outputBuilder.Extent.Text))
         $script:RunId = Get-ColdRestoreAuthorizationRunId `
-            "targeted_owner_capture_diagnostic_v3" ("a" * 40)
+            $targetedAuthorizationName ("a" * 40)
         foreach ($case in @(
             [pscustomobject]@{ kind = "ALL_OWNERS_CAPTURED"; success = $true; code = "" },
             [pscustomobject]@{ kind = "OWNER_CAPTURE_FAILURE"; success = $false; code = "owner_capture_failed" },
@@ -300,7 +301,8 @@ try {
     if ($null -ne $guarded) {
         . ([scriptblock]::Create($guarded.Extent.Text))
         $script:RunId = Get-ColdRestoreAuthorizationRunId `
-            "targeted_owner_capture_diagnostic_v3" ("a" * 40)
+            $targetedAuthorizationName ("a" * 40)
+        $script:TargetedOwnerCaptureAuthorizationName = $targetedAuthorizationName
         $script:TargetedOwnerCaptureQuotaLedgerRelativePath = [string]$targetedAuthorization.quota_ledger_relative_path
         $script:TargetedOwnerCaptureBootstrapRelativeRoot = [string]$targetedAuthorization.bootstrap_root_relative_path
         $script:TargetedOwnerCaptureAuthorizationId = [string]$targetedAuthorization.authorization_id
@@ -317,7 +319,7 @@ try {
         Reset-SyntheticCase
         $script:primaryReason = "targeted_owner_capture_primary_fixture_failed"
         $script:RunId = Get-ColdRestoreAuthorizationRunId `
-            "targeted_owner_capture_diagnostic_v3" ("b" * 40)
+            $targetedAuthorizationName ("b" * 40)
         $primaryOnly = Get-ThrownReason {
             Invoke-ColdRestoreTargetedOwnerCaptureGuarded $projectRoot ("b" * 40) | Out-Null
         }
@@ -328,7 +330,7 @@ try {
         $script:primaryReason = "targeted_owner_capture_primary_fixture_failed"
         $script:postconditionReason = "targeted_owner_capture_postcondition_fixture_failed"
         $script:RunId = Get-ColdRestoreAuthorizationRunId `
-            "targeted_owner_capture_diagnostic_v3" ("c" * 40)
+            $targetedAuthorizationName ("c" * 40)
         $both = Get-ThrownReason {
             Invoke-ColdRestoreTargetedOwnerCaptureGuarded $projectRoot ("c" * 40) | Out-Null
         }
@@ -338,7 +340,7 @@ try {
         Reset-SyntheticCase
         $script:postconditionReason = "targeted_owner_capture_postcondition_fixture_failed"
         $script:RunId = Get-ColdRestoreAuthorizationRunId `
-            "targeted_owner_capture_diagnostic_v3" ("d" * 40)
+            $targetedAuthorizationName ("d" * 40)
         $postconditionOnly = Get-ThrownReason {
             Invoke-ColdRestoreTargetedOwnerCaptureGuarded $projectRoot ("d" * 40) | Out-Null
         }
@@ -350,7 +352,7 @@ try {
         . ([scriptblock]::Create($targetedInvoke.Extent.Text))
         $targetedInvokeSource = [string]$targetedInvoke.Extent.Text
         Assert-ContractCondition (
-            $targetedInvokeSource.IndexOf('throw (New-ColdRestoreFailureException $FailureState)', [StringComparison]::Ordinal) -ge 0 -and
+            $targetedInvokeSource.IndexOf('throw (cold_restore_attested_process\New-ColdRestoreFailureException $FailureState)', [StringComparison]::Ordinal) -ge 0 -and
             $targetedInvokeSource.IndexOf('$run.secondary_failure_codes', [StringComparison]::Ordinal) -lt 0 -and
             $targetedInvokeSource.IndexOf('"wrapper_supervision"', [StringComparison]::Ordinal) -lt 0
         ) "targeted path throws the wrapper-owned shared failure state without replaying secondary reasons"
@@ -386,7 +388,7 @@ try {
     $targetedCatches = @($ast.FindAll({
         param($node)
         $node -is [Management.Automation.Language.CatchClauseAst] -and
-            $node.Extent.Text.IndexOf("alpha04c_targeted_owner_capture_diagnostic_v3", [StringComparison]::Ordinal) -ge 0
+            $node.Extent.Text.IndexOf("alpha04c_targeted_owner_capture_diagnostic_v4_importchain", [StringComparison]::Ordinal) -ge 0
     }, $true))
     Assert-ContractCondition ($targetedCatches.Count -eq 1) "top-level targeted allowlist catch exists exactly once"
     $targetedCatchSource = if ($targetedCatches.Count -eq 1) {

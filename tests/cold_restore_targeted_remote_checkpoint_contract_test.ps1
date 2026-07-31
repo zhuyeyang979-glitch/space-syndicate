@@ -6,6 +6,7 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $orchestratorPath = Join-Path $projectRoot "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1"
+$attestedModulePath = Join-Path $projectRoot "scripts/tools/cold_restore_attested_process.psm1"
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) (
     "alpha04c-targeted-remote-checkpoint-" + [Guid]::NewGuid().ToString("N")
 )
@@ -49,6 +50,7 @@ function Get-CheckpointThrownReason {
 
 try {
     [IO.Directory]::CreateDirectory($testRoot) | Out-Null
+    Import-Module $attestedModulePath -ErrorAction Stop
     $tokens = $null
     $parseErrors = $null
     $ast = [Management.Automation.Language.Parser]::ParseFile(
@@ -73,7 +75,7 @@ try {
     & git init $repoPath | Out-Null
     & git -C $repoPath config user.name "Cold Restore Contract"
     & git -C $repoPath config user.email "cold-restore-contract@example.invalid"
-    $branch = "codex/alpha04c-targeted-owner-diagnostic-v3-abcdef1"
+    $branch = "codex/alpha04c-import-chain-v4-abcdef1"
     & git -C $repoPath checkout -b $branch | Out-Null
     [IO.File]::WriteAllText(
         (Join-Path $repoPath "checkpoint.txt"),

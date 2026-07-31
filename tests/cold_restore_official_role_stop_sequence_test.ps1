@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $orchestratorPath = Join-Path $projectRoot "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1"
 $authorizationModulePath = Join-Path $projectRoot "scripts/tools/cold_restore_authorization_contract_v1.psm1"
-Import-Module $authorizationModulePath -Force
+Import-Module $authorizationModulePath
 $script:checks = 0
 $script:failures = [Collections.Generic.List[string]]::new()
 $script:roleCalls = [Collections.Generic.List[string]]::new()
@@ -154,7 +154,7 @@ try {
     Assert-SequenceCondition ($authorizationIndex -ge 0 -and $chainIndex -gt $authorizationIndex) "authorization must complete before Process A can start"
     Assert-SequenceCondition (-not $orchestratorSource.Contains('return "HARNESS_FAILURE"') `
         -and $orchestratorSource.Contains('return "ENVIRONMENT_FAILURE"')) "official failure classes stay inside the authorized closed enum"
-    $publishIndex = $orchestratorSource.IndexOf('$claimFingerprint = Publish-ColdRestoreOfficialAttempt2Claim', [StringComparison]::Ordinal)
+    $publishIndex = $orchestratorSource.IndexOf('$claimFingerprint = cold_restore_official_attempt2_contract\Publish-ColdRestoreOfficialAttempt2Claim', [StringComparison]::Ordinal)
     $consumedCatchIndex = $orchestratorSource.IndexOf('if ([IO.File]::Exists($ledgerPath))', $publishIndex, [StringComparison]::Ordinal)
     $progressIndex = $orchestratorSource.IndexOf('$script:OfficialAttempt2Progress.claim_created = $true', $consumedCatchIndex, [StringComparison]::Ordinal)
     Assert-SequenceCondition ($publishIndex -ge 0 -and $consumedCatchIndex -gt $publishIndex -and $progressIndex -gt $consumedCatchIndex) "a published claim is reported consumed even when postpublication validation throws"

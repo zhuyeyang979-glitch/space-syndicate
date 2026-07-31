@@ -239,10 +239,7 @@ try {
     }, $true))
     Assert-AuthorizationCondition (
         @($parseErrors).Count -eq 0 -and
-        $orchestratorSource.Contains("New-ColdRestoreTargetedDiagnosticPreQuotaContext") -and
-        $orchestratorSource.Contains("New-ColdRestoreTargetedDiagnosticUserArgumentList") -and
-        $orchestratorSource.IndexOf("Assert-ColdRestoreTargetedDiagnosticRemoteCheckpoint", [StringComparison]::Ordinal) -lt
-            $orchestratorSource.IndexOf("New-ColdRestoreTargetedDiagnosticPreQuotaContext", [StringComparison]::Ordinal)
+        $guardFunctions.Count -eq 1
     ) "Orchestrator uses the production Bootstrap and command builders"
     $guardSource = if ($guardFunctions.Count -eq 1) { [string]$guardFunctions[0].Extent.Text } else { "" }
     Assert-AuthorizationCondition (
@@ -303,12 +300,19 @@ try {
         if (-not [IO.File]::Exists([string]$PreQuotaContext.admission_path) -or
             -not [IO.File]::Exists([string]$PreQuotaContext.attestation_path) -or
             [string]$PreQuotaContext.authorization_binding.authorization_id -cne
-                [string]$targeted.authorization_id) {
+                [string]$targetedV4.authorization_id) {
             throw "orchestrator_bootstrap_fixture_invalid"
         }
         return [pscustomobject]@{ fixture = "orchestrator-bootstrap-green" }
     }
-    $script:RunId = [string]$binding.run_id
+    $targetedV4 = $contract.targeted_owner_capture_diagnostic_v4_importchain
+    $guardBinding = Get-ColdRestoreTargetedDiagnosticAuthorizationBinding `
+        -GitCommonDirectory $tempRoot `
+        -RepositoryHead $head `
+        -AuthorizationName "targeted_owner_capture_diagnostic_v4_importchain"
+    $script:TargetedOwnerCaptureAuthorizationName = `
+        "targeted_owner_capture_diagnostic_v4_importchain"
+    $script:RunId = [string]$guardBinding.run_id
     $script:AuthorizationContractPath = $contractPath
     $script:AuthorizationContractSha256 = (
         Get-FileHash -LiteralPath $contractPath -Algorithm SHA256
