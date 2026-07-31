@@ -9,23 +9,8 @@ const QUOTA_LEDGER_SHA256 := "33333333333333333333333333333333333333333333333333
 const OTHER_QUOTA_LEDGER_SHA256 := "4444444444444444444444444444444444444444444444444444444444444444"
 const LAUNCH_NONCE := "55555555555555555555555555555555"
 const OTHER_LAUNCH_NONCE := "66666666666666666666666666666666"
-const PREVIOUS_QUOTA_LEDGER_SHA256 := "2dba183fe0e354370802d0f886bf40a88b7e1c0b39ddb0df18ee110821e957a1"
 const AUTHORIZATION_CONTRACT_PATH := "res://scripts/tools/cold_restore_authorization_contract_v1.json"
-
-const QUOTA_LEDGER_FIELDS := [
-	"schema_version", "ledger_id", "authorization_id", "task_id", "created_at_utc", "run_id",
-	"repository_head", "scenario_fingerprint", "authorized_new_diagnostic_count",
-	"diagnostic_count_before", "diagnostic_count_after", "diagnostic_count_maximum",
-	"previous_ledger_sha256", "historical_invocation_commit",
-	"historical_invocation_blob_sha1", "historical_invocation_file_sha256",
-	"bootstrap_admission_path", "bootstrap_admission_sha256",
-	"bootstrap_admission_fingerprint", "prequota_attestation_path",
-	"role_timeout_policy_sha256",
-	"official_attempt_1_claim_sha256", "official_attempt_2_claim_absent",
-	"official", "formal", "official_authorization_consumed",
-	"orchestrator_script_sha256", "orchestrator_process_id",
-	"orchestrator_creation_time_utc_ticks", "claim_nonce", "launch_nonce", "status",
-]
+const BINDING_CONTRACT_PATH := "res://scripts/tools/cold_restore_targeted_ledger_binding_contract_v1.json"
 
 const LAUNCH_ATTESTATION_FIELDS := [
 	"schema_version", "authorization_id", "claim_fingerprint", "claim_nonce",
@@ -39,6 +24,7 @@ var _checks := 0
 var _failures: Array[String] = []
 var _driver_script: Variant
 var _targeted_authorization: Dictionary = {}
+var _binding_contract: Dictionary = {}
 
 
 func _init() -> void:
@@ -50,6 +36,17 @@ func _init() -> void:
 		contract.get("targeted_owner_capture_diagnostic_v4_importchain", {}) as Dictionary
 	).duplicate(true)
 	_expect(not _targeted_authorization.is_empty(), "production authorization contract is readable")
+	var binding_variant: Variant = JSON.parse_string(
+		FileAccess.get_file_as_string(BINDING_CONTRACT_PATH)
+	)
+	_binding_contract = binding_variant if binding_variant is Dictionary else {}
+	_expect(not _binding_contract.is_empty(), "targeted ledger binding contract is readable")
+	_expect(
+		int(_binding_contract.get("ledger_schema_version", 0)) == 4
+			and (_binding_contract.get("field_order", []) as Array).size() == 32
+			and _binding_contract.get("field_order", []) == _binding_contract.get("required_fields", []),
+		"binding contract is the one 32-field V4 source"
+	)
 	var source := FileAccess.get_file_as_string(
 		ProjectSettings.globalize_path("res://scripts/tools/cold_restore_vertical_slice_driver.gd")
 	)
@@ -171,58 +168,37 @@ func _run_source_authorization_contract(source: String) -> void:
 		"_resolve_targeted_diagnostic_ledger_path()",
 		"ledger_path.to_lower() != expected_path.to_lower()",
 		"FileAccess.file_exists",
-		"JSON.parse_string",
-		"_has_exact_fields",
-	], "authorization reads only the fixed git-common quota ledger with a closed field set")
-	var quota_fields_source := _constant_source(source, "const TARGETED_DIAGNOSTIC_LEDGER_FIELDS := [")
-	_expect_contains_all(quota_fields_source, QUOTA_LEDGER_FIELDS, "Driver declares the exact quota ledger field set")
-	_expect_contains_all(authorization_source, [
+		"TARGETED_LEDGER_BINDING_VALIDATOR.validate_ledger_text",
+	], "authorization reads the fixed git-common ledger through the shared validator")
+	_expect(
+		not source.contains("const TARGETED_DIAGNOSTIC_LEDGER_FIELDS := ["),
+		"Driver does not duplicate the shared ledger field list"
+	)
+	var binding_validator_source := FileAccess.get_file_as_string(
+		"res://scripts/tools/cold_restore_targeted_ledger_binding_validator_v1.gd"
+	)
+	_expect_contains_all(binding_validator_source, [
 		"ledger_text.sha256_text()",
 		'targeted_diagnostic_ledger_fingerprint',
 	], "authorization binds the exact quota ledger bytes to the supplied raw SHA-256")
 	_expect_contains_all(authorization_source, [
-		'_authorization_contract_entry(TARGETED_AUTHORIZATION_NAME)',
-		'authorization.get("ledger_id"',
-		'authorization.get("authorization_id"',
-		'authorization.get("task_id"',
-		"consumed",
-	], "authorization validates quota schema, identity, task, and consumed status")
+		"failing_field",
+		"field_reason",
+		"expected_type",
+		"actual_type",
+		"safe_expected_fingerprint",
+		"safe_actual_fingerprint",
+	], "authorization returns redacted structured binding failures")
 	_expect(
 		source.contains("AUTHORIZATION_CONTRACT_PATH")
+				and source.contains("cold_restore_targeted_ledger_binding_validator_v1.gd")
 				and not source.contains(str(_targeted_authorization.get("authorization_id", ""))),
-		"targeted diagnostic authorization ID has one JSON source"
+		"targeted diagnostic identities and fields come from JSON contracts"
 	)
 	_expect_contains_all(authorization_source, [
-		'ledger.get("run_id"',
-		'ledger.get("repository_head"',
-		'ledger.get("scenario_fingerprint"',
-		'ledger.get("role_timeout_policy_sha256"',
-		'options.get("run_id"',
-		'options.get("scenario_fingerprint"',
-		'options.get("timeout_policy_fingerprint"',
-	], "quota is bound to the requested run, HEAD, scenario, and timeout policy")
-	_expect_contains_all(authorization_source, [
-		'authorization.get("authorized_increment"',
-		'authorization.get("permitted_transition_from"',
-		'authorization.get("permitted_transition_to"',
-		'authorization.get("maximum_invocation_count"',
-		"previous_ledger_sha256",
-		PREVIOUS_QUOTA_LEDGER_SHA256,
-	], "quota enforces the authorized 1 and historical 3-to-4 count boundary")
-	_expect_contains_all(authorization_source, [
-		"official_attempt_1_claim_sha256",
-		'_authorization_contract_entry("official_attempt_2")',
-		"official_attempt_2_claim_absent",
-		"official_authorization_consumed",
-		"TYPE_BOOL",
-	], "quota strictly preserves Attempt 1 and forbids Attempt 2, official, and Formal authority")
-	_expect_contains_all(authorization_source, [
-		"claim_nonce",
-		"launch_nonce",
-		"orchestrator_process_id",
-		"orchestrator_creation_time_utc_ticks",
-		"_is_positive_decimal",
-	], "quota binds distinct nonces and the orchestrator process identity")
+		"binding_check_count",
+		"binding_pass_count",
+	], "successful authorization retains shared validator counts")
 
 	_expect_contains_all(authorization_source, [
 		"LAUNCH_ATTESTATION_FIELDS",
@@ -412,13 +388,3 @@ func _function_source(source: String, signature: String) -> String:
 	if next_static >= 0:
 		end = mini(end, next_static)
 	return source.substr(start, end - start)
-
-
-func _constant_source(source: String, signature: String) -> String:
-	var start := source.find(signature)
-	if start < 0:
-		return ""
-	var end := source.find("\n]", start + signature.length())
-	if end < 0:
-		return ""
-	return source.substr(start, end + 2 - start)

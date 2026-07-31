@@ -25,6 +25,12 @@ $script:ColdRestoreAuthorizationModule = cold_restore_module_loader\Import-ColdR
         "Get-ColdRestoreTargetedDiagnosticAuthorizationBinding",
         "Test-ColdRestoreExactAuthorizationId"
     )
+$script:TargetedLedgerBindingModule = cold_restore_module_loader\Import-ColdRestoreModuleOnce `
+    -Path (Join-Path $PSScriptRoot "cold_restore_targeted_ledger_binding_contract_v1.psm1") `
+    -RequiredCommands @(
+        "Assert-ColdRestoreTargetedLedgerPublisherValue",
+        "Get-ColdRestoreTargetedLedgerBindingContract"
+    )
 
 $script:TargetedAuthorizationNames = @(
     "targeted_owner_capture_diagnostic_v3",
@@ -491,43 +497,20 @@ function Assert-ColdRestoreTargetedQuotaLedgerV4 {
             $authorizationName $Value.authorization_id)) {
         throw "authorization_id_invalid"
     }
-    if ([int]$Value.authorized_new_diagnostic_count -ne [int]$authorization.authorized_increment `
-        -or [int]$Value.diagnostic_count_before -ne [int]$authorization.permitted_transition_from `
-        -or [int]$Value.diagnostic_count_after -ne [int]$authorization.permitted_transition_to `
-        -or [int]$Value.diagnostic_count_maximum -ne [int]$authorization.maximum_invocation_count) {
-        throw "quota_transition_invalid"
+    try {
+        $null = cold_restore_targeted_ledger_binding_contract_v1\Assert-ColdRestoreTargetedLedgerPublisherValue `
+            $Value
     }
-    if (-not (cold_restore_attested_process\Test-ColdRestoreExactFieldSet $Value $script:TargetedQuotaLedgerV3Fields) `
-        -or [int]$Value.schema_version -ne 4 `
-        -or [string]$Value.ledger_id -cne [string]$authorization.ledger_id `
-        -or [string]$Value.task_id -cne [string]$authorization.task_id `
-        -or -not (Test-ColdRestoreUtcTimestamp $Value.created_at_utc) `
-        -or [string]$Value.repository_head -cnotmatch '^[0-9a-f]{40}$' `
-        -or [string]$Value.run_id -cne (cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationRunId $authorizationName ([string]$Value.repository_head)) `
-        -or [string]$Value.scenario_fingerprint -cnotmatch '^[0-9a-f]{64}$' `
-        -or [string]$Value.previous_ledger_sha256 -cnotmatch '^[0-9a-f]{64}$' `
-        -or [string]$Value.historical_invocation_commit -cnotmatch '^[0-9a-f]{40}$' `
-        -or [string]$Value.historical_invocation_blob_sha1 -cnotmatch '^[0-9a-f]{40}$' `
-        -or [string]$Value.historical_invocation_file_sha256 -cnotmatch '^[0-9a-f]{64}$' `
-        -or -not [IO.Path]::IsPathFullyQualified([string]$Value.bootstrap_admission_path) `
-        -or [string]$Value.bootstrap_admission_sha256 -cnotmatch '^[0-9a-f]{64}$' `
-        -or [string]$Value.bootstrap_admission_fingerprint -cnotmatch '^[0-9a-f]{64}$' `
-        -or -not [IO.Path]::IsPathFullyQualified([string]$Value.prequota_attestation_path) `
-        -or [string]$Value.role_timeout_policy_sha256 -cnotmatch '^[0-9a-f]{64}$' `
-        -or [string]$Value.official_attempt_1_claim_sha256 -cnotmatch '^[0-9a-f]{64}$' `
-        -or $Value.official_attempt_2_claim_absent -isnot [bool] `
-        -or -not [bool]$Value.official_attempt_2_claim_absent `
-        -or $Value.official -isnot [bool] -or [bool]$Value.official `
-        -or $Value.formal -isnot [bool] -or [bool]$Value.formal `
-        -or $Value.official_authorization_consumed -isnot [bool] `
-        -or [bool]$Value.official_authorization_consumed `
-        -or [string]$Value.orchestrator_script_sha256 -cnotmatch '^[0-9a-f]{64}$' `
-        -or [int]$Value.orchestrator_process_id -le 0 `
-        -or [string]$Value.orchestrator_creation_time_utc_ticks -cnotmatch '^[1-9][0-9]{0,18}$' `
-        -or [string]$Value.claim_nonce -cnotmatch '^[0-9a-f]{32}$' `
-        -or [string]$Value.launch_nonce -cnotmatch '^[0-9a-f]{32}$' `
-        -or [string]$Value.claim_nonce -ceq [string]$Value.launch_nonce `
-        -or [string]$Value.status -cne "consumed") {
+    catch {
+        if ([string]$_.Exception.Message -cmatch '(authorized_increment|diagnostic_count_(before|after|maximum))_mismatch') {
+            throw "quota_transition_invalid"
+        }
+        throw "targeted_owner_capture_quota_v4_invalid"
+    }
+    if ([string]$Value.run_id -cne (
+            cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationRunId `
+                $authorizationName ([string]$Value.repository_head)
+        )) {
         throw "targeted_owner_capture_quota_v4_invalid"
     }
 }

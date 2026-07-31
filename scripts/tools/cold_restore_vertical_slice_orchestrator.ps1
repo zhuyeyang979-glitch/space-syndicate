@@ -40,6 +40,12 @@ $ColdRestorePreQuotaModule = cold_restore_module_loader\Import-ColdRestoreModule
         "Publish-ColdRestoreTargetedQuotaLedgerV4",
         "Update-ColdRestorePreQuotaAttestation"
     )
+$ColdRestoreTargetedLedgerBindingModule = cold_restore_module_loader\Import-ColdRestoreModuleOnce `
+    -Path (Join-Path $PSScriptRoot "cold_restore_targeted_ledger_binding_contract_v1.psm1") `
+    -RequiredCommands @(
+        "Get-ColdRestoreTargetedLedgerBindingContract",
+        "Get-ColdRestoreTargetedLedgerBindingContractPath"
+    )
 $ColdRestoreAttestedProcessModulePath = `
     Join-Path $PSScriptRoot "cold_restore_attested_process.psm1"
 $ColdRestoreAttestedProcessModuleBeforeAdmission = `
@@ -157,11 +163,17 @@ $OfficialAuthorizationId = [string]$OfficialAttempt2Authorization.authorization_
 $OfficialAttempt1ClaimRelativePath = [string]$OfficialAttempt2Authorization.attempt_1_claim_relative_path
 $OfficialAttempt2ClaimRelativePath = [string]$OfficialAttempt2Authorization.claim_path
 $OfficialAttempt1ClaimSha256 = [string]$OfficialAttempt2Authorization.attempt_1_claim_sha256
+$TargetedLedgerBindingContract = `
+    cold_restore_targeted_ledger_binding_contract_v1\Get-ColdRestoreTargetedLedgerBindingContract
 $PreviousTargetedOwnerCaptureQuotaLedgerRelativePath = "codex\cold_restore_v3\non-official-alpha04c-production-save-completion-repair-0240dae\targeted_owner_capture_quota_ledger.json"
-$PreviousTargetedOwnerCaptureQuotaLedgerSha256 = "2dba183fe0e354370802d0f886bf40a88b7e1c0b39ddb0df18ee110821e957a1"
-$HistoricalTargetedOwnerCaptureInvocationCommit = "3b3061508541d0e5f6f4c2d6560b134b7d4ee5f8"
-$HistoricalTargetedOwnerCaptureInvocationBlobSha1 = "b54917e54a39e24e1c7288d919394305a4e21c71"
-$HistoricalTargetedOwnerCaptureInvocationFileSha256 = "50608e7dc7a362969d0ee7358ba008aa0278342ae34d33cd579fcac7bf8a7306"
+$PreviousTargetedOwnerCaptureQuotaLedgerSha256 = `
+    [string]$TargetedLedgerBindingContract.exact_literals.previous_ledger_sha256
+$HistoricalTargetedOwnerCaptureInvocationCommit = `
+    [string]$TargetedLedgerBindingContract.exact_literals.historical_invocation_commit
+$HistoricalTargetedOwnerCaptureInvocationBlobSha1 = `
+    [string]$TargetedLedgerBindingContract.exact_literals.historical_invocation_blob_sha1
+$HistoricalTargetedOwnerCaptureInvocationFileSha256 = `
+    [string]$TargetedLedgerBindingContract.exact_literals.historical_invocation_file_sha256
 $HistoricalTargetedOwnerCaptureInvocationPath = "reports/handoffs/alpha04c_save_resume_current.json"
 $ExhaustedTargetedOwnerCaptureQuotaLedgerRelativePath = "codex\cold_restore_v3\non-official-alpha04c-owner-capture-attestation-12691a8\targeted_owner_capture_quota_ledger.json"
 $TargetedOwnerCaptureQuotaLedgerRelativePath = [string]$TargetedOwnerCaptureAuthorization.quota_ledger_relative_path
@@ -3016,7 +3028,7 @@ function Consume-ColdRestoreTargetedOwnerCaptureDiagnosticQuota {
     $ledgerPath = Join-Path $gitCommonDirectory $TargetedOwnerCaptureQuotaLedgerRelativePath
     Assert-ColdRestoreCondition ([IO.Path]::GetFullPath($ledgerPath) -ceq [IO.Path]::GetFullPath([string]$PreQuotaContext.value.quota_ledger_path)) "prequota_quota_ledger_path_mismatch"
     $ledger = [ordered]@{
-        schema_version = 4
+        schema_version = [int]$TargetedLedgerBindingContract.exact_literals.schema_version
         ledger_id = [string]$TargetedOwnerCaptureAuthorization.ledger_id
         authorization_id = $TargetedOwnerCaptureAuthorizationId
         task_id = $TargetedOwnerCaptureTaskId
@@ -3038,16 +3050,16 @@ function Consume-ColdRestoreTargetedOwnerCaptureDiagnosticQuota {
         prequota_attestation_path = [IO.Path]::GetFullPath([string]$PreQuotaContext.attestation_path)
         role_timeout_policy_sha256 = [string]$RoleTimeoutPolicyEvidence.sha256
         official_attempt_1_claim_sha256 = [string]$officialBoundary.sha256
-        official_attempt_2_claim_absent = [bool]$officialBoundary.attempt_2_absent
-        official = $false
-        formal = $false
-        official_authorization_consumed = $false
+        official_attempt_2_claim_absent = [bool]$TargetedLedgerBindingContract.boolean_rules.official_attempt_2_claim_absent
+        official = [bool]$TargetedLedgerBindingContract.boolean_rules.official
+        formal = [bool]$TargetedLedgerBindingContract.boolean_rules.formal
+        official_authorization_consumed = [bool]$TargetedLedgerBindingContract.boolean_rules.official_authorization_consumed
         orchestrator_script_sha256 = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash.ToLowerInvariant()
         orchestrator_process_id = $PID
         orchestrator_creation_time_utc_ticks = (Get-ColdRestoreOrchestratorCreationTimeTicks)
         claim_nonce = [Guid]::NewGuid().ToString("N")
         launch_nonce = [Guid]::NewGuid().ToString("N")
-        status = "consumed"
+        status = [string]$TargetedLedgerBindingContract.exact_literals.status
     }
     Assert-ColdRestoreCondition ([string]$ledger.claim_nonce -cne [string]$ledger.launch_nonce) "targeted_owner_capture_nonce_collision"
     $ledgerFingerprint = cold_restore_prequota_bootstrap\Publish-ColdRestoreTargetedQuotaLedgerV4 $ledgerPath ([pscustomobject]$ledger)

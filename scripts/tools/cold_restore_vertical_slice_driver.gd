@@ -17,6 +17,9 @@ const DIAGNOSTIC_SCENARIO_IDENTITY := preload("res://scripts/tools/diagnostic_sc
 const TARGETED_OWNER_DIAGNOSTIC := preload("res://scripts/tools/targeted_owner_capture_diagnostic_v2.gd")
 const ROLE_PROGRESS_HEARTBEAT := preload("res://scripts/tools/cold_restore_role_progress_heartbeat.gd")
 const PROCESS_A_REHEARSAL_COMPLETION := preload("res://scripts/tools/process_a_rehearsal_completion_v1.gd")
+const TARGETED_LEDGER_BINDING_VALIDATOR := preload(
+	"res://scripts/tools/cold_restore_targeted_ledger_binding_validator_v1.gd"
+)
 const AUTHORIZATION_CONTRACT_PATH := "res://scripts/tools/cold_restore_authorization_contract_v1.json"
 const TARGETED_AUTHORIZATION_NAME := "targeted_owner_capture_diagnostic_v4_importchain"
 
@@ -222,21 +225,6 @@ const LAUNCH_ATTESTATION_FIELDS := [
 	"engine_parent_process_id",
 	"engine_creation_time_utc_ticks",
 	"status",
-]
-const TARGETED_DIAGNOSTIC_LEDGER_FIELDS := [
-	"schema_version", "ledger_id", "authorization_id", "task_id", "created_at_utc",
-	"run_id", "repository_head", "scenario_fingerprint",
-	"authorized_new_diagnostic_count", "diagnostic_count_before",
-	"diagnostic_count_after", "diagnostic_count_maximum", "previous_ledger_sha256",
-	"historical_invocation_commit", "historical_invocation_blob_sha1",
-	"historical_invocation_file_sha256", "bootstrap_admission_path",
-	"bootstrap_admission_sha256", "bootstrap_admission_fingerprint",
-	"prequota_attestation_path",
-	"role_timeout_policy_sha256", "official_attempt_1_claim_sha256",
-	"official_attempt_2_claim_absent", "official", "formal",
-	"official_authorization_consumed", "orchestrator_script_sha256",
-	"orchestrator_process_id", "orchestrator_creation_time_utc_ticks",
-	"claim_nonce", "launch_nonce", "status",
 ]
 const REHEARSAL_LEDGER_FIELDS := [
 	"schema_version", "ledger_id", "contract_id", "authorization_id", "status",
@@ -617,7 +605,16 @@ func _run_entry() -> void:
 		if bool(validation.get("targeted_owner_capture_diagnostic", false)):
 			var diagnostic_authorization := await _authorize_targeted_owner_capture_diagnostic(validation, str(parsed.get("head_sha", "")))
 			if not bool(diagnostic_authorization.get("authorized", false)):
-				push_error("Targeted Owner diagnostic launch rejected: %s" % str(diagnostic_authorization.get("reason_code", "targeted_owner_capture_unauthorized")))
+				var private_binding_details := {
+					"reason_code": str(diagnostic_authorization.get("reason_code", "targeted_owner_capture_unauthorized")),
+					"failing_field": str(diagnostic_authorization.get("failing_field", "")),
+					"field_reason": str(diagnostic_authorization.get("field_reason", "")),
+					"expected_type": str(diagnostic_authorization.get("expected_type", "")),
+					"actual_type": str(diagnostic_authorization.get("actual_type", "")),
+					"safe_expected_fingerprint": str(diagnostic_authorization.get("safe_expected_fingerprint", "")),
+					"safe_actual_fingerprint": str(diagnostic_authorization.get("safe_actual_fingerprint", "")),
+				}
+				push_error("Targeted Owner diagnostic launch rejected: %s" % JSON.stringify(private_binding_details))
 				quit(2)
 				return
 		elif bool(validation.get("process_a_rehearsal", false)):
@@ -1102,63 +1099,24 @@ func _authorize_targeted_owner_capture_diagnostic(options: Dictionary, head_sha:
 	if not FileAccess.file_exists(ledger_path):
 		return {"authorized": false, "reason_code": "targeted_owner_capture_ledger_missing"}
 	var ledger_text := FileAccess.get_file_as_string(ledger_path)
-	var ledger_variant: Variant = JSON.parse_string(ledger_text)
-	if not (ledger_variant is Dictionary):
-		return {"authorized": false, "reason_code": "targeted_owner_capture_ledger_invalid"}
-	var ledger := ledger_variant as Dictionary
-	if not _has_exact_fields(ledger, TARGETED_DIAGNOSTIC_LEDGER_FIELDS):
-		return {"authorized": false, "reason_code": "targeted_owner_capture_ledger_field_set_invalid"}
 	var ledger_fingerprint := ledger_text.sha256_text().to_lower()
-	if ledger_fingerprint != str(options.get("targeted_diagnostic_ledger_fingerprint", "")) \
-			or typeof(ledger.get("schema_version")) != TYPE_INT \
-			or int(ledger.get("schema_version", 0)) != 4 \
-			or str(ledger.get("ledger_id", "")) != str(authorization.get("ledger_id", "")) \
-			or str(ledger.get("authorization_id", "")) != str(authorization.get("authorization_id", "")) \
-			or str(ledger.get("task_id", "")) != str(authorization.get("task_id", "")) \
-			or str(ledger.get("run_id", "")) != str(options.get("run_id", "")) \
-			or str(ledger.get("repository_head", "")) != head_sha \
-			or str(ledger.get("scenario_fingerprint", "")) != str(options.get("scenario_fingerprint", "")) \
-			or typeof(ledger.get("authorized_new_diagnostic_count")) != TYPE_INT \
-			or int(ledger.get("authorized_new_diagnostic_count", 0)) \
-				!= int(authorization.get("authorized_increment", 0)) \
-			or typeof(ledger.get("diagnostic_count_before")) != TYPE_INT \
-			or int(ledger.get("diagnostic_count_before", -1)) \
-				!= int(authorization.get("permitted_transition_from", -1)) \
-			or typeof(ledger.get("diagnostic_count_after")) != TYPE_INT \
-			or int(ledger.get("diagnostic_count_after", 0)) \
-				!= int(authorization.get("permitted_transition_to", 0)) \
-			or typeof(ledger.get("diagnostic_count_maximum")) != TYPE_INT \
-			or int(ledger.get("diagnostic_count_maximum", 0)) \
-				!= int(authorization.get("maximum_invocation_count", 0)) \
-			or str(ledger.get("previous_ledger_sha256", "")) != "2dba183fe0e354370802d0f886bf40a88b7e1c0b39ddb0df18ee110821e957a1" \
-			or str(ledger.get("historical_invocation_commit", "")) != "3b3061508541d0e5f6f4c2d6560b134b7d4ee5f8" \
-			or str(ledger.get("historical_invocation_blob_sha1", "")) != "b54917e54a39e24e1c7288d919394305a4e21c71" \
-			or str(ledger.get("historical_invocation_file_sha256", "")) != "50608e7dc7a362969d0ee7358ba008aa0278342ae34d33cd579fcac7bf8a7306" \
-			or not str(ledger.get("bootstrap_admission_path", "")).is_absolute_path() \
-			or not _is_lower_sha256(str(ledger.get("bootstrap_admission_sha256", ""))) \
-			or not _is_lower_sha256(str(ledger.get("bootstrap_admission_fingerprint", ""))) \
-			or not str(ledger.get("prequota_attestation_path", "")).is_absolute_path() \
-			or str(ledger.get("role_timeout_policy_sha256", "")) != str(options.get("timeout_policy_fingerprint", "")) \
-			or str(ledger.get("official_attempt_1_claim_sha256", "")) \
-				!= str(_authorization_contract_entry("official_attempt_2").get(
-					"attempt_1_claim_sha256", ""
-				)) \
-			or typeof(ledger.get("official_attempt_2_claim_absent")) != TYPE_BOOL \
-			or not bool(ledger.get("official_attempt_2_claim_absent", false)) \
-			or typeof(ledger.get("official")) != TYPE_BOOL or bool(ledger.get("official", true)) \
-			or typeof(ledger.get("formal")) != TYPE_BOOL or bool(ledger.get("formal", true)) \
-			or typeof(ledger.get("official_authorization_consumed")) != TYPE_BOOL \
-			or bool(ledger.get("official_authorization_consumed", true)) \
-			or not _is_lower_sha256(str(ledger.get("orchestrator_script_sha256", ""))) \
-			or typeof(ledger.get("orchestrator_process_id")) != TYPE_INT \
-			or int(ledger.get("orchestrator_process_id", 0)) <= 0 \
-			or not _is_positive_decimal(str(ledger.get("orchestrator_creation_time_utc_ticks", ""))) \
-			or str(ledger.get("claim_nonce", "")).length() != 32 \
-			or not _is_lower_hex(str(ledger.get("claim_nonce", ""))) \
-			or str(ledger.get("launch_nonce", "")) != str(options.get("launch_nonce", "")) \
-			or str(ledger.get("claim_nonce", "")) == str(ledger.get("launch_nonce", "")) \
-			or str(ledger.get("status", "")) != "consumed":
-		return {"authorized": false, "reason_code": "targeted_owner_capture_ledger_binding_invalid"}
+	var binding_result: Dictionary = TARGETED_LEDGER_BINDING_VALIDATOR.validate_ledger_text(
+		ledger_text,
+		options
+	)
+	if not bool(binding_result.get("valid", false)):
+		return {
+			"authorized": false,
+			"reason_code": "targeted_owner_capture_ledger_binding_invalid",
+			"failing_field": str(binding_result.get("failing_field", "unknown")),
+			"field_reason": str(binding_result.get("field_reason", "binding_failed")),
+			"expected_type": str(binding_result.get("expected_type", "")),
+			"actual_type": str(binding_result.get("actual_type", "")),
+			"safe_expected_fingerprint": str(binding_result.get("safe_expected_fingerprint", "")),
+			"safe_actual_fingerprint": str(binding_result.get("safe_actual_fingerprint", "")),
+		}
+	var ledger_variant: Variant = JSON.parse_string(ledger_text)
+	var ledger := ledger_variant as Dictionary
 	var attestation_path := _normalize_absolute_path(str(options.get("launch_attestation_path", "")))
 	var deadline_ms := Time.get_ticks_msec() + 10000
 	while not FileAccess.file_exists(attestation_path) and Time.get_ticks_msec() < deadline_ms:
@@ -1211,7 +1169,13 @@ func _authorize_targeted_owner_capture_diagnostic(options: Dictionary, head_sha:
 	]:
 		if not _is_positive_decimal(str(attestation.get(ticks_field, ""))):
 			return {"authorized": false, "reason_code": "targeted_owner_capture_launch_creation_time_invalid"}
-	return {"authorized": true, "reason_code": "ok", "fingerprint": ledger_fingerprint}
+	return {
+		"authorized": true,
+		"reason_code": "ok",
+		"fingerprint": ledger_fingerprint,
+		"binding_check_count": int(binding_result.get("check_count", 0)),
+		"binding_pass_count": int(binding_result.get("pass_count", 0)),
+	}
 
 
 func _authorize_process_a_rehearsal(options: Dictionary, head_sha: String) -> Dictionary:

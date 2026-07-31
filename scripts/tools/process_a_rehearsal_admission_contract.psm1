@@ -17,6 +17,11 @@ $script:RehearsalAuthorization = $script:AuthorizationContract.process_a_save_co
 $script:TargetedDiagnosticAuthorization = `
     $script:AuthorizationContract.targeted_owner_capture_diagnostic_v4_importchain
 $script:OfficialAttempt2Authorization = $script:AuthorizationContract.official_attempt_2
+$script:TargetedLedgerBindingModule = cold_restore_module_loader\Import-ColdRestoreModuleOnce `
+    -Path (Join-Path $PSScriptRoot "cold_restore_targeted_ledger_binding_contract_v1.psm1") `
+    -RequiredCommands @(
+        "Assert-ColdRestoreTargetedLedgerPublisherValue"
+    )
 
 $script:ColdRestoreAttestedProcessModulePath = Join-Path $PSScriptRoot "cold_restore_attested_process.psm1"
 if (-not [IO.File]::Exists($script:ColdRestoreAttestedProcessModulePath)) {
@@ -47,7 +52,6 @@ $script:AuthorizationId = [string]$script:RehearsalAuthorization.authorization_i
 $script:RehearsalRunIdPrefix = [string]$script:RehearsalAuthorization.run_id_prefix
 $script:TargetedDiagnosticAuthorizationId = [string]$script:TargetedDiagnosticAuthorization.authorization_id
 $script:OfficialAttempt1ClaimSha256 = [string]$script:OfficialAttempt2Authorization.attempt_1_claim_sha256
-$script:PreviousDiagnosticQuotaLedgerSha256 = "2dba183fe0e354370802d0f886bf40a88b7e1c0b39ddb0df18ee110821e957a1"
 $script:ChallengeDepth = 1
 $script:Seed = 900626424
 $script:LocalPlayerCount = 1
@@ -103,20 +107,6 @@ $script:OwnerRowFields = @(
     "payload_fingerprint", "payload_pure_data", "elapsed_milliseconds",
     "mutation_count", "rng_draw_delta", "world_time_delta", "public_log_delta",
     "reason_code", "private_payload_redacted", "row_evidence_fingerprint"
-)
-$script:DiagnosticQuotaLedgerFields = @(
-    "schema_version", "ledger_id", "authorization_id", "task_id", "created_at_utc", "run_id",
-    "repository_head", "scenario_fingerprint", "authorized_new_diagnostic_count",
-    "diagnostic_count_before", "diagnostic_count_after", "diagnostic_count_maximum",
-    "previous_ledger_sha256", "historical_invocation_commit",
-    "historical_invocation_blob_sha1", "historical_invocation_file_sha256",
-    "bootstrap_admission_path", "bootstrap_admission_sha256", "bootstrap_admission_fingerprint",
-    "prequota_attestation_path",
-    "role_timeout_policy_sha256",
-    "official_attempt_1_claim_sha256", "official_attempt_2_claim_absent",
-    "official", "formal", "official_authorization_consumed",
-    "orchestrator_script_sha256", "orchestrator_process_id",
-    "orchestrator_creation_time_utc_ticks", "claim_nonce", "launch_nonce", "status"
 )
 $script:ChildCompletionFields = @(
     "schema_version", "run_id", "role", "repository_head", "scenario_fingerprint",
@@ -865,64 +855,20 @@ function Get-ProcessARehearsalAdmissionEvidence {
 
     $quotaArtifact = Read-ProcessARehearsalJsonArtifact $DiagnosticQuotaLedgerPath
     $quota = $quotaArtifact.value
-    if (-not (Test-ProcessARehearsalExactFieldSet $quota $script:DiagnosticQuotaLedgerFields) `
-        -or -not (Test-ProcessARehearsalInteger $quota.schema_version) `
-        -or [int]$quota.schema_version -ne 4 `
-        -or [string]$quota.ledger_id -cne [string]$script:TargetedDiagnosticAuthorization.ledger_id `
-        -or [string]$quota.authorization_id -cne $script:TargetedDiagnosticAuthorizationId `
-        -or [string]$quota.task_id -cne [string]$script:TargetedDiagnosticAuthorization.task_id `
-        -or -not (Test-ProcessARehearsalUtcTimestamp $quota.created_at_utc) `
-        -or [string]$quota.run_id -cne [string]$diagnostic.run_id `
-        -or [string]$quota.repository_head -cne $ExpectedRepositoryHead `
-        -or [string]$quota.scenario_fingerprint -cne $ExpectedScenarioFingerprint `
-        -or -not (Test-ProcessARehearsalInteger $quota.authorized_new_diagnostic_count) `
-        -or [int]$quota.authorized_new_diagnostic_count -ne [int]$script:TargetedDiagnosticAuthorization.authorized_increment `
-        -or -not (Test-ProcessARehearsalInteger $quota.diagnostic_count_before) `
-        -or [int]$quota.diagnostic_count_before -ne [int]$script:TargetedDiagnosticAuthorization.permitted_transition_from `
-        -or -not (Test-ProcessARehearsalInteger $quota.diagnostic_count_after) `
-        -or [int]$quota.diagnostic_count_after -ne [int]$script:TargetedDiagnosticAuthorization.permitted_transition_to `
-        -or -not (Test-ProcessARehearsalInteger $quota.diagnostic_count_maximum) `
-        -or [int]$quota.diagnostic_count_maximum -ne [int]$script:TargetedDiagnosticAuthorization.maximum_invocation_count `
-        -or [string]$quota.previous_ledger_sha256 -cne $script:PreviousDiagnosticQuotaLedgerSha256 `
-        -or [string]$quota.historical_invocation_commit -cne "3b3061508541d0e5f6f4c2d6560b134b7d4ee5f8" `
-        -or [string]$quota.historical_invocation_blob_sha1 -cne "b54917e54a39e24e1c7288d919394305a4e21c71" `
-        -or [string]$quota.historical_invocation_file_sha256 -cne "50608e7dc7a362969d0ee7358ba008aa0278342ae34d33cd579fcac7bf8a7306" `
-        -or -not [IO.Path]::IsPathFullyQualified([string]$quota.bootstrap_admission_path) `
-        -or -not (Test-ProcessARehearsalFingerprintValue $quota.bootstrap_admission_sha256) `
-        -or -not (Test-ProcessARehearsalFingerprintValue $quota.bootstrap_admission_fingerprint) `
-        -or -not [IO.Path]::IsPathFullyQualified([string]$quota.prequota_attestation_path) `
-        -or [string]$quota.role_timeout_policy_sha256 -cne $ExpectedTimeoutPolicyFingerprint `
-        -or [string]$quota.official_attempt_1_claim_sha256 -cne $script:OfficialAttempt1ClaimSha256 `
-        -or $quota.official_attempt_2_claim_absent -isnot [bool] -or -not [bool]$quota.official_attempt_2_claim_absent `
-        -or $quota.official -isnot [bool] -or [bool]$quota.official `
-        -or $quota.formal -isnot [bool] -or [bool]$quota.formal `
-        -or $quota.official_authorization_consumed -isnot [bool] -or [bool]$quota.official_authorization_consumed `
-        -or -not (Test-ProcessARehearsalFingerprintValue $quota.orchestrator_script_sha256) `
-        -or -not (Test-ProcessARehearsalInteger $quota.orchestrator_process_id) `
-        -or [int]$quota.orchestrator_process_id -le 0 `
-        -or -not (Test-ProcessARehearsalCreationTicks $quota.orchestrator_creation_time_utc_ticks) `
-        -or [string]$quota.claim_nonce -cnotmatch '^[0-9a-f]{32}$' `
-        -or [string]$quota.launch_nonce -cnotmatch '^[0-9a-f]{32}$' `
-        -or [string]$quota.claim_nonce -ceq [string]$quota.launch_nonce `
-        -or [string]$quota.status -cne "consumed") {
+    try {
+        $null = cold_restore_targeted_ledger_binding_contract_v1\Assert-ColdRestoreTargetedLedgerPublisherValue `
+            $quota
+    }
+    catch {
         throw "process_a_rehearsal_diagnostic_quota_invalid"
     }
-    foreach ($field in @(
-        "ledger_id", "authorization_id", "task_id", "created_at_utc", "run_id",
-        "repository_head", "scenario_fingerprint", "previous_ledger_sha256",
-        "historical_invocation_commit", "historical_invocation_blob_sha1",
-        "historical_invocation_file_sha256", "bootstrap_admission_path",
-        "bootstrap_admission_sha256", "bootstrap_admission_fingerprint",
-        "prequota_attestation_path",
-        "role_timeout_policy_sha256", "official_attempt_1_claim_sha256",
-        "orchestrator_script_sha256", "orchestrator_creation_time_utc_ticks",
-        "claim_nonce", "launch_nonce", "status"
-    )) {
-        if ($quota.$field -isnot [string]) {
-            throw "process_a_rehearsal_diagnostic_quota_invalid"
-        }
+    if ([string]$quota.run_id -cne [string]$diagnostic.run_id `
+        -or [string]$quota.repository_head -cne $ExpectedRepositoryHead `
+        -or [string]$quota.scenario_fingerprint -cne $ExpectedScenarioFingerprint `
+        -or [string]$quota.role_timeout_policy_sha256 -cne $ExpectedTimeoutPolicyFingerprint `
+        -or [string]$quota.official_attempt_1_claim_sha256 -cne $script:OfficialAttempt1ClaimSha256) {
+        throw "process_a_rehearsal_diagnostic_quota_invalid"
     }
-
     $bootstrapArtifact = Read-ProcessARehearsalJsonArtifact ([string]$quota.bootstrap_admission_path)
     $bootstrap = $bootstrapArtifact.value
     if ([string]$bootstrapArtifact.sha256 -cne [string]$quota.bootstrap_admission_sha256 `
