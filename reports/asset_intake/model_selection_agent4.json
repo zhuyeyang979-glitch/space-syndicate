@@ -1,0 +1,240 @@
+{
+  "schema_version": 1,
+  "task_id": "COMMERCIAL_ART_FOUNDATION_DIRECT_SELECTED_ASSET_INTEGRATION_V1",
+  "agent_lane": "agent4_quaternius_models",
+  "status": "GREEN",
+  "generated_at": "2026-08-01T08:12:58.6917471+09:00",
+  "constraints": {
+    "web_asset_search_count": 0,
+    "alternative_source_search_count": 0,
+    "unlisted_source_count": 0,
+    "mirror_download_count": 0,
+    "paid_source_version_download_count": 0,
+    "external_cache_not_committed": true,
+    "external_cache": "C:/Users/zhuye/AppData/Local/Codex/commercial-art-cache/agent4"
+  },
+  "source_pages": [
+    {
+      "asset_id": "quaternius.modular_scifi_megakit",
+      "source_url": "https://quaternius.com/packs/modularscifimegakit.html",
+      "http_status": 200,
+      "page_sha256": "97e7d75db8ce57bb4629803ec964ea5f3657c85923118497e8bab94a4f10833d",
+      "observed_license": "CC0-1.0",
+      "license_match": true,
+      "download_target_kind": "official_page_linked_itch_standard_free",
+      "original_filename": "Modular SciFi MegaKit[Standard].zip",
+      "original_bytes": 48559316,
+      "original_sha256": "6fae60cf5189e44dff0bd91097f094a765acc6d57d64a85a0cc0dd56e03035e3",
+      "retained_license_path": "res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/LICENSE_CC0.txt",
+      "retained_license_sha256": "885b700f02932c08a41163b35cc97d1abe0895a05de29d9a9062fde5132969a8"
+    },
+    {
+      "asset_id": "quaternius.scifi_essentials",
+      "source_url": "https://quaternius.com/packs/scifiessentialskit.html",
+      "http_status": 200,
+      "page_sha256": "66e6c95534511a1ed60fa578aa16296c5ddb45fe0e74435551bd006bc20444b9",
+      "observed_license": "CC0-1.0",
+      "license_match": true,
+      "download_target_kind": "official_page_linked_itch_standard_free",
+      "original_filename": "Sci-Fi Essentials Kit[Standard].zip",
+      "original_bytes": 166910545,
+      "original_sha256": "a08346d538aa39fbea9fa492e03620d1860fc6214eedd62a4f5db373ac6fca01",
+      "retained_license_path": "res://assets/third_party/commercial/models/quaternius/scifi_essentials/LICENSE_CC0.txt",
+      "retained_license_sha256": "2687fba65dca7bbd2f9ab2fb7a8c51dd0c7c8e9acd7579415612bec43f68b3f5"
+    },
+    {
+      "asset_id": "quaternius.ultimate_monsters",
+      "source_url": "https://quaternius.com/packs/ultimatemonsters.html",
+      "http_status": 200,
+      "page_sha256": "b11b6f0a66c01ede2703f88a2812a0edd8b969f30a10aefbd88dc96fcb4dfaf8",
+      "observed_license": "CC0-1.0",
+      "license_match": true,
+      "download_target_kind": "official_page_linked_google_drive_folder",
+      "official_folder_id": "18m4KpzpEzhC9wl7jzr6dUc0N8Jozr79C",
+      "folder_page_sha256": "2ad77c9139903ce2004b8c0f31b2cc7f6d79884bbb726ad9b34e2b4266e66dcd",
+      "retained_license_path": "res://assets/third_party/commercial/models/quaternius/ultimate_monsters/LICENSE_CC0.txt",
+      "retained_license_sha256": "de990ef6fc68cffd7fd1ae342c4d0c823b541b8848d8f76bca5d3339f4de6f6e",
+      "license_note": "The upstream text retains an older Ultimate Platformer Pack heading, while its terms explicitly grant CC0 1.0 and match the official Ultimate Monsters page."
+    },
+    {
+      "asset_id": "quaternius.animated_mech",
+      "source_url": "https://quaternius.com/packs/animatedmech.html",
+      "http_status": 200,
+      "page_sha256": "d8251b8f2d1097bfcc4b97b547f5029928dcf52400669e1299bd3a9720563d7b",
+      "observed_license": "CC0-1.0",
+      "license_match": true,
+      "download_target_kind": "official_page_linked_google_drive_folder",
+      "official_folder_id": "1sueV_4CGMpZC8y30mWfgKK9UaT3mkHBX",
+      "folder_page_sha256": "ba914be311e2cbaee16001daf6d3839a77eccbe6280b0ad6db394851a84c22c1",
+      "retained_license_path": "res://assets/third_party/commercial/models/quaternius/animated_mech/LICENSE_CC0.txt",
+      "retained_license_sha256": "83d8959f9fc56353ed571fbe2dc52e4bcd64508e2399501cd45ac2ce3df0bf8c"
+    },
+    {
+      "asset_id": "quaternius.ultimate_spaceships",
+      "source_url": "https://quaternius.com/packs/ultimatespaceships.html",
+      "http_status": 200,
+      "page_sha256": "944705174a432cff7ce95b57461b72496f8b3c1c899ffbe85b7d1fffa5b3b103",
+      "observed_license": "CC0-1.0",
+      "license_match": true,
+      "download_target_kind": "official_page_linked_google_drive_folder",
+      "official_folder_id": "1NpfT3wqe2k3Jwue2xryi7tzxP4bWzETu",
+      "folder_page_sha256": "8b97abf8e5f8b787b2260d59f0d332c4954bef166e64f51a60e499b4ed8bb742",
+      "retained_license_path": "res://assets/third_party/commercial/models/quaternius/ultimate_spaceships/LICENSE_CC0.txt",
+      "retained_license_sha256": "83d8959f9fc56353ed571fbe2dc52e4bcd64508e2399501cd45ac2ce3df0bf8c"
+    }
+  ],
+  "facility_selections": [
+    {
+      "asset_key": "model.facility.factory.base",
+      "component_scene": "res://scenes/tools/commercial_art/components/models/FacilityFactoryBase.tscn",
+      "source_files": [
+        {"pack": "quaternius.modular_scifi_megakit", "upstream_path": "glTF/Platforms/Platform_DarkPlates.gltf", "sha256": "1fb445848b118fcda47b9c8c4ecd5c25d0120c4633877a0204564b285d3b262b"},
+        {"pack": "quaternius.modular_scifi_megakit", "upstream_path": "glTF/Columns/Column_MetalSupport.gltf", "sha256": "749f009007a20928a0f2596e19e79d4dcdd79f9545bcfd48b7dfaf602521c405"},
+        {"pack": "quaternius.modular_scifi_megakit", "upstream_path": "glTF/Columns/Column_Pipes.gltf", "sha256": "7b5a852e82ae98fdb717a878372b1fa70a4efedc354ad9ac8cc106171d7e97b5"},
+        {"pack": "quaternius.modular_scifi_megakit", "upstream_path": "glTF/Props/Prop_Barrel_Large.gltf", "sha256": "b8655db69eef6db7718f2dcf0ab341d717f0306196449433958b055e87766093"},
+        {"pack": "quaternius.scifi_essentials", "upstream_path": "glTF/Enemy_EyeDrone.gltf", "sha256": "ae39f7a2cc7698aaa774c9c84df3263d833023d69e7638e417d88e79cb3c7005"}
+      ],
+      "composition": "Heavy plate platform, paired supports, two pipe banks, two barrels, and an EyeDrone machinery core. Local emission is isolated to the core and pedestal."
+    },
+    {
+      "asset_key": "model.facility.market.base",
+      "component_scene": "res://scenes/tools/commercial_art/components/models/FacilityMarketBase.tscn",
+      "source_files": [
+        {"pack": "quaternius.modular_scifi_megakit", "upstream_path": "glTF/Platforms/Platform_Round1.gltf", "sha256": "9a1a7765e7ce79c892ad6bc3e000991aa719d271d077c56cdb798150fb54f152"},
+        {"pack": "quaternius.modular_scifi_megakit", "upstream_path": "glTF/Props/Prop_Computer.gltf", "sha256": "724525353d0c24a0596f77d5d461bd3cf58685e6e2c3abc1b5df3141759912f4"},
+        {"pack": "quaternius.modular_scifi_megakit", "upstream_path": "glTF/Props/Prop_AccessPoint.gltf", "sha256": "23281aebdf5904403c71217c5ca45c4e901b978b452ddfba9e968fd01b0aac77"},
+        {"pack": "quaternius.scifi_essentials", "upstream_path": "glTF/Prop_Desk_Medium.gltf", "sha256": "6f26a2a78898ca79e2593fa4bae7bd95ef9e914ca56c0a0492a65ab0217f6a6a"}
+      ],
+      "composition": "Open round platform, central trade desk, paired computers, paired access points, and two presentation-only hologram planes."
+    },
+    {
+      "asset_key": "model.facility.warehouse.base",
+      "component_scene": "res://scenes/tools/commercial_art/components/models/FacilityWarehouseBase.tscn",
+      "source_files": [
+        {"pack": "quaternius.modular_scifi_megakit", "upstream_path": "glTF/Platforms/Platform_Simple2.gltf", "sha256": "102721b83b15234872a0f7aef6e4d5e4139b0a9bba76a041440e475c00e34db6"},
+        {"pack": "quaternius.modular_scifi_megakit", "upstream_path": "glTF/Platforms/Platform_Ramp_2Short.gltf", "sha256": "6a4c3fc917397bc2601b6d72493b7b83fe4906a0d6e6b966b34e3f7fb3b30129"},
+        {"pack": "quaternius.scifi_essentials", "upstream_path": "glTF/Prop_Crate_Large.gltf", "sha256": "2b54a8fd4da534507ff3bd976f97abfe2b8ee2106dd934a73890248e33f8014a"},
+        {"pack": "quaternius.scifi_essentials", "upstream_path": "glTF/Prop_Crate_Tarp_Large.gltf", "sha256": "617c76ecbff5c4d1e147f6af8e248f0f596a1118c56834365598833729662973"},
+        {"pack": "quaternius.scifi_essentials", "upstream_path": "glTF/Prop_Shelves_WideShort.gltf", "sha256": "96f68e5e43fc23f8f781d7d1eb9f96afa82b2988f04dd005e4f963ed2d21e242"}
+      ],
+      "composition": "Low rectangular platform, short loading ramp, two short shelves, two large crates, and one covered cargo unit. No tower silhouette is introduced."
+    },
+    {
+      "asset_key": "model.facility.starport.base",
+      "component_scene": "res://scenes/tools/commercial_art/components/models/FacilityStarportBase.tscn",
+      "source_files": [
+        {"pack": "quaternius.modular_scifi_megakit", "upstream_path": "glTF/Platforms/Platform_Metal2.gltf", "sha256": "5cf0b1fd6b3ff948bbcefa733fa39f6024dc494acdf4c58a27518208338ad24f"},
+        {"pack": "quaternius.modular_scifi_megakit", "upstream_path": "glTF/Props/Prop_Rail_Round_Big.gltf", "sha256": "cf07a59e86878704e0a9687634853241cf17661783c9df76da1ba08355f5b4b5"},
+        {"pack": "quaternius.modular_scifi_megakit", "upstream_path": "glTF/Decals/Decal_XSign.gltf", "sha256": "42909a37463e3a5a216fb94435878321a29fe57189c5657a3a289aa3f1c33000"},
+        {"pack": "quaternius.scifi_essentials", "upstream_path": "glTF/Prop_SatelliteDish.gltf", "sha256": "2d311ee9fa42ebc541036d934de2ceb989364c1e724de14a4b21b2e901a51b21"},
+        {"pack": "quaternius.ultimate_spaceships", "upstream_path": "Striker/glTF/Striker.gltf", "sha256": "2f6c4b1d16f11d5ce02833c5841ff17e19700418c83e52501ed29e3c2bc79359"}
+      ],
+      "composition": "Metal landing platform, round safety rail, neutral X landing marker, communications dish, and the minimum-volume Striker route-marker ship. The ship is explicitly non-authoritative."
+    }
+  ],
+  "monster_selections": [
+    {
+      "asset_key": "model.monster.life",
+      "source_file": "Big/glTF/Monkroose.gltf",
+      "processed_path": "res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose.gltf",
+      "sha256": "4e984e22bef1a49da0ff92154f5747d3e61997637937532bc066867f08e8e719",
+      "animation_count": 14,
+      "requested_category": "organic_quadruped",
+      "selected_shape": "organic_mammalian",
+      "rationale": "Closest full-body organic mammalian silhouette in the fixed Ultimate Monsters set; no alternate source was searched."
+    },
+    {
+      "asset_key": "model.monster.energy",
+      "source_file": "Flying/glTF/Ghost_Skull.gltf",
+      "processed_path": "res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Ghost_Skull.gltf",
+      "sha256": "5bf24cf0f22aa94b0b58315e7d879afc53a0964a5b326aa0c844ba3278cae1da",
+      "animation_count": 8,
+      "requested_category": "floating_or_electrical",
+      "selected_shape": "floating_spectral"
+    },
+    {
+      "asset_key": "model.monster.industry",
+      "source_file": "Big/glTF/Orc_Skull.gltf",
+      "processed_path": "res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull.gltf",
+      "sha256": "e27e3acf826e9f5cad021c647bd3ce6f1c82d2aaa3530c03ee442df4828a710e",
+      "animation_count": 14,
+      "requested_category": "bulky_armored",
+      "selected_shape": "bulky_armored"
+    },
+    {
+      "asset_key": "model.monster.technology",
+      "source_file": "Flying/glTF/Armabee_Evolved.gltf",
+      "processed_path": "res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Armabee_Evolved.gltf",
+      "sha256": "1ad3e42c088e01e0c179d54537c63efad0dd185031df61d2833b9f1709362730",
+      "animation_count": 8,
+      "requested_category": "insectoid_or_precision",
+      "selected_shape": "insectoid_precision"
+    },
+    {
+      "asset_key": "model.monster.commerce",
+      "source_file": "Flying/glTF/Squidle.gltf",
+      "processed_path": "res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle.gltf",
+      "sha256": "ed41b8a3e4a49d0eb9522e52d3055a85e7c051607c6f1092aeb4242e0c87c77b",
+      "animation_count": 8,
+      "requested_category": "serpentine_or_cunning",
+      "selected_shape": "cephalopod_cunning"
+    },
+    {
+      "asset_key": "model.monster.shipping",
+      "source_file": "Flying/glTF/Dragon_Evolved.gltf",
+      "processed_path": "res://assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Dragon_Evolved.gltf",
+      "sha256": "39ba6ea24b5f27acf68bbf4c19fe80ba070dbec167ff14bbe933453303426f5c",
+      "animation_count": 8,
+      "requested_category": "winged_or_aerial",
+      "selected_shape": "winged_aerial"
+    }
+  ],
+  "mech_aabb_order": [
+    {"rank": 1, "tier": "military.tier1", "name": "Leela", "source_file": "Textured/glTF/Leela.gltf", "sha256": "79f9afe3172f9157c91aaa272f7aacc9bbb279bfd947a5f8c18ec3ced44b938b", "aabb_size": [2.958588, 5.275768, 2.674955], "aabb_volume": 41.752896644, "animation_count": 18},
+    {"rank": 2, "tier": "military.tier2", "name": "Mike", "source_file": "Textured/glTF/Mike.gltf", "sha256": "cc742d3b4960e79e7772c06a465e20958353ab7bd3e6e50c3f46ebccb2a94fa5", "aabb_size": [8.535269, 5.334981, 1.663634], "aabb_volume": 75.754419265, "animation_count": 18},
+    {"rank": 3, "tier": "military.tier3", "name": "Stan", "source_file": "Textured/glTF/Stan.gltf", "sha256": "e6903fee7458bbd804395c0d9dcc7545e3716bde865d05138e769d18299610b7", "aabb_size": [8.549878, 6.46177, 1.567976], "aabb_volume": 86.626493402, "animation_count": 18},
+    {"rank": 4, "tier": "military.tier4", "name": "George", "source_file": "Textured/glTF/George.gltf", "sha256": "eccc45d82701f32d67b4480346757b1656c649d9d40e4a1484f57d660596285e", "aabb_size": [7.256681, 6.52764, 2.458047], "aabb_volume": 116.43522414, "animation_count": 20}
+  ],
+  "ship_aabb_order": [
+    {"rank": 1, "name": "Striker", "aabb_size": [5.033617, 2.684645, 8.426167], "aabb_volume": 113.866775381, "selected_use": "model.shipping.route_marker"},
+    {"rank": 2, "name": "Bob", "aabb_size": [10.502223, 2.03533, 5.612261], "aabb_volume": 119.964840004, "selected_use": null},
+    {"rank": 3, "name": "Dispatcher", "aabb_size": [4.903879, 3.086343, 10.262998], "aabb_volume": 155.331004938, "selected_use": null},
+    {"rank": 4, "name": "Executioner", "aabb_size": [10.022121, 1.847164, 9.202171], "aabb_volume": 170.355206445, "selected_use": null},
+    {"rank": 5, "name": "Insurgent", "aabb_size": [5.565521, 2.870522, 10.950497], "aabb_volume": 174.944601408, "selected_use": null},
+    {"rank": 6, "name": "Pancake", "aabb_size": [10.502224, 2.599153, 8.232779], "aabb_volume": 224.729249445, "selected_use": "model.shipping.convoy"},
+    {"rank": 7, "name": "Spitfire", "aabb_size": [10.523688, 3.05518, 7.533308], "aabb_volume": 242.209133127, "selected_use": null},
+    {"rank": 8, "name": "Challenger", "aabb_size": [10.502227, 3.022052, 10.180246], "aabb_volume": 323.103418703, "selected_use": null},
+    {"rank": 9, "name": "Zenith", "aabb_size": [5.627894, 5.43, 12.068501], "aabb_volume": 368.806895614, "selected_use": null},
+    {"rank": 10, "name": "Imperial", "aabb_size": [7.729521, 3.303444, 18.548386], "aabb_volume": 473.615224797, "selected_use": null},
+    {"rank": 11, "name": "Omen", "aabb_size": [12.78441, 3.138607, 12.581446], "aabb_volume": 504.833458044, "selected_use": "model.shipping.starport_showcase"}
+  ],
+  "retained_asset_summary": {
+    "selected_gltf_count": 31,
+    "external_buffer_count": 18,
+    "shared_source_texture_count": 29,
+    "godot_extracted_selected_texture_count": 13,
+    "license_file_count": 5,
+    "source_ledger_file_count": 96,
+    "source_ledger_sha256": "f2e03faa5de5d7117f1994fcdd6f91f2f09b9b320eb445b74ec19338e8341e1c",
+    "source_bytes": 125137620,
+    "source_and_import_metadata_bytes": 125219889,
+    "largest_file_bytes": 12047004,
+    "largest_file": "T_Props_Crates_Normal.png",
+    "component_scene_count": 18,
+    "stable_asset_key_scene_count": 17
+  },
+  "validation": {
+    "godot_version": "4.7.stable.official.5b4e0cb0f",
+    "external_godot_aabb_probe_green": true,
+    "model_contract_tests": "305/305",
+    "isolated_import_groups": 5,
+    "isolated_import_unexpected_nul_count": 0,
+    "isolated_import_broken_resource_count": 0,
+    "animation_preserved": true,
+    "presentation_only": true,
+    "authoritative_route_owner_count": 0,
+    "production_scene_edit_count": 0,
+    "catalog_edit_count": 0,
+    "runtime_network_asset_dependency_count": 0
+  }
+}
