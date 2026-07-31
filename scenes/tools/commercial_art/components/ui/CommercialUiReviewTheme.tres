@@ -1,0 +1,15 @@
+[gd_resource type="Theme" load_steps=4 format=3]
+
+[ext_resource type="FontFile" path="res://assets/third_party/commercial/fonts/noto_sans_cjk/NotoSansCJKsc-Regular.otf" id="1_body"]
+[ext_resource type="FontFile" path="res://assets/third_party/commercial/fonts/noto_sans_cjk/NotoSansCJKsc-Bold.otf" id="2_bold"]
+[ext_resource type="FontFile" path="res://assets/third_party/commercial/fonts/oxanium/Oxanium-SemiBold.ttf" id="3_display"]
+
+[resource]
+default_font = ExtResource("1_body")
+default_font_size = 15
+Label/colors/font_color = Color(0.847059, 0.898039, 0.941176, 1)
+BodyBold/base_type = &"Label"
+BodyBold/font = ExtResource("2_bold")
+DisplayLabel/base_type = &"Label"
+DisplayLabel/font = ExtResource("3_display")
+DisplayLabel/font_size = 18
