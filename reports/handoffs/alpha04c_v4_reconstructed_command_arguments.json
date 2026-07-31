@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "artifact_id": "Alpha04CV4ReconstructedCommandArgumentsV1",
+  "run_id": "alpha04c-owner-capture-diagnostic-v4-importchain-407cbb4501cf",
+  "repository_head": "407cbb4501cf6480cd8752dc52d06e2fccceda0e",
+  "construction_source": "cold_restore_prequota_bootstrap/New-ColdRestoreTargetedDiagnosticUserArgumentList",
+  "construction_source_unchanged_at_review": true,
+  "reconstructed_exactly": true,
+  "private_values_redacted": true,
+  "argument_count": 12,
+  "arguments": [
+    {
+      "index": 0,
+      "name": "--cold-restore-non-official-process-a",
+      "value_fingerprint": "0e4885ba8b017fde55f803d7cb4f837b187be154b93340d0734e17657fa55ead"
+    },
+    {
+      "index": 1,
+      "name": "--cold-restore-targeted-owner-capture-diagnostic",
+      "value_fingerprint": "7c524506f55c934d2732a532181edc5377c027df5b9088afe501e1b38a7d0799"
+    },
+    {
+      "index": 2,
+      "name": "--cold-restore-role",
+      "value_fingerprint": "2455ec663a88dc232f8f373710606f2054c942682899e2c35a77ea1ec0a6a274"
+    },
+    {
+      "index": 3,
+      "name": "--cold-restore-run-id",
+      "value_fingerprint": "b190428e6ba599f33fd7bab6d750477ef34ee8bb40fa5bc96fd251947566b5b2"
+    },
+    {
+      "index": 4,
+      "name": "--cold-restore-head-sha",
+      "value_fingerprint": "9d9b75272d6be252881735c61eb700bc18c481cf4b1cb90ff339204eaf774020"
+    },
+    {
+      "index": 5,
+      "name": "--cold-restore-artifact-root",
+      "value_fingerprint": "60f62e623827c7d91c8b32c59d79e31367dbc4e3ed2ff1638c9a2a8648dde7f3"
+    },
+    {
+      "index": 6,
+      "name": "--cold-restore-scenario-fingerprint",
+      "value_fingerprint": "b507a3b6008c06912bb5450cf51bcde4ee55f4ca4d1c654e5201769a43ef1dcc"
+    },
+    {
+      "index": 7,
+      "name": "--cold-restore-timeout-policy-fingerprint",
+      "value_fingerprint": "1b52059b88b1a8918a9f444b92c56db4c3b7e381e980815a9670d6be5bf28185"
+    },
+    {
+      "index": 8,
+      "name": "--cold-restore-targeted-diagnostic-ledger-path",
+      "value_fingerprint": "704059983c1fbf6ec44a6f19ea0e4bf4f5d16fdc0dd15a028eca0ef955adfc15"
+    },
+    {
+      "index": 9,
+      "name": "--cold-restore-targeted-diagnostic-ledger-fingerprint",
+      "value_fingerprint": "847da661fec975aa1a77fe31a1d4c021f77373f00955670000331290afc3ef86"
+    },
+    {
+      "index": 10,
+      "name": "--cold-restore-launch-attestation-path",
+      "value_fingerprint": "9fdb1b22254b06465174031c88391e36fe6306dd98c35fbe362643237090b8e5"
+    },
+    {
+      "index": 11,
+      "name": "--cold-restore-launch-nonce",
+      "value_fingerprint": "b446b0f9672fdfd3a6161e64bc9ab3ec51b2d294533c86053016e26016afe8f1"
+    }
+  ]
+}
