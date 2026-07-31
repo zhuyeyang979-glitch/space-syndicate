@@ -33,8 +33,8 @@ try {
     $attempt1Path = Join-Path $officialRoot "official-alpha04c-depth1-seed900626424/official_claim_ledger.json"
     $otherClaimPath = Join-Path $officialRoot "official-history/another_claim.json"
     $candidateClaimPath = Join-Path $officialRoot "official-alpha04c-attempt-2-depth1-seed900626424/official_attempt_2_claim.json"
-    $candidateEvidenceRoot = Join-Path $root "project evidence/alpha04c-cold-retry"
-    $candidateUserDataRoot = Join-Path $root "isolated user data/alpha04c-cold-retry"
+    $candidateEvidenceRoot = Join-Path $root "project evidence/candidate"
+    $candidateUserDataRoot = Join-Path $root "isolated user data/candidate"
     [IO.Directory]::CreateDirectory((Split-Path -Parent $attempt1Path)) | Out-Null
     [IO.Directory]::CreateDirectory((Split-Path -Parent $otherClaimPath)) | Out-Null
     [IO.File]::WriteAllText($attempt1Path, "attempt-one-immutable", [Text.UTF8Encoding]::new($false))

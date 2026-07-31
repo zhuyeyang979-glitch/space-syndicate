@@ -6,11 +6,15 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $modulePath = Join-Path $projectRoot "scripts/tools/cold_restore_prequota_bootstrap.psm1"
+$authorizationModulePath = Join-Path $projectRoot "scripts/tools/cold_restore_authorization_contract_v1.psm1"
 $attestedModulePath = Join-Path $projectRoot "scripts/tools/cold_restore_attested_process.psm1"
 $orchestratorPath = Join-Path $projectRoot "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1"
 $root = Join-Path ([IO.Path]::GetTempPath()) ("alpha04c prequota 路径 " + [Guid]::NewGuid().ToString("N"))
 $script:checks = 0
 $script:failures = [Collections.Generic.List[string]]::new()
+Import-Module $authorizationModulePath -Force
+$script:TargetedAuthorization = Get-ColdRestoreAuthorizationEntry "targeted_owner_capture_diagnostic_v3"
+$script:OfficialAuthorization = Get-ColdRestoreAuthorizationEntry "official_attempt_2"
 
 function Assert-PreQuotaCondition {
     param([bool]$Condition, [string]$Message)
@@ -28,23 +32,27 @@ function Get-ThrownReason {
 
 function New-FixtureQuotaLedger {
     param(
-        [string]$RunId = "alpha04c-owner-capture-diagnostic-aaaaaaaaaaaa",
+        [string]$RunId = "",
         [string]$RepositoryHead = ("a" * 40),
         [int]$ProcessId = $PID
     )
+    if ([string]::IsNullOrEmpty($RunId)) {
+        $RunId = Get-ColdRestoreAuthorizationRunId `
+            "targeted_owner_capture_diagnostic_v3" $RepositoryHead
+    }
     return [pscustomobject][ordered]@{
         schema_version = 3
-        ledger_id = "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV3"
-        authorization_id = "alpha04c-targeted-owner-capture-diagnostic-v3"
-        task_id = "ALPHA_0_4_C_FINAL_HARNESS_REPAIR_REHEARSAL_OFFICIAL_ATTEMPT_2_AND_MAIN_LANDING"
+        ledger_id = [string]$script:TargetedAuthorization.ledger_id
+        authorization_id = [string]$script:TargetedAuthorization.authorization_id
+        task_id = [string]$script:TargetedAuthorization.task_id
         created_at_utc = [DateTime]::UtcNow.ToString("O", [Globalization.CultureInfo]::InvariantCulture)
         run_id = $RunId
         repository_head = $RepositoryHead
         scenario_fingerprint = "b" * 64
-        authorized_new_diagnostic_count = 1
-        diagnostic_count_before = 2
-        diagnostic_count_after = 3
-        diagnostic_count_maximum = 3
+        authorized_new_diagnostic_count = [int]$script:TargetedAuthorization.authorized_increment
+        diagnostic_count_before = [int]$script:TargetedAuthorization.permitted_transition_from
+        diagnostic_count_after = [int]$script:TargetedAuthorization.permitted_transition_to
+        diagnostic_count_maximum = [int]$script:TargetedAuthorization.maximum_invocation_count
         previous_ledger_sha256 = "c" * 64
         historical_invocation_commit = "d" * 40
         historical_invocation_blob_sha1 = "e" * 40
@@ -54,7 +62,7 @@ function New-FixtureQuotaLedger {
         bootstrap_admission_fingerprint = "2" * 64
         prequota_attestation_path = Join-Path $root "bootstrap/prequota.json"
         role_timeout_policy_sha256 = "3" * 64
-        official_attempt_1_claim_sha256 = "4" * 64
+        official_attempt_1_claim_sha256 = [string]$script:OfficialAuthorization.attempt_1_claim_sha256
         official_attempt_2_claim_absent = $true
         official = $false
         formal = $false
@@ -102,16 +110,18 @@ try {
     Assert-PreQuotaCondition ([string]$roundTripProjection.primary_failure_code -ceq "diagnostic_quota_unavailable") "exception retains private failure projection"
 
     [IO.Directory]::CreateDirectory($root) | Out-Null
-    $bootstrapRoot = Join-Path $root "bootstrap evidence"
-    $quotaPath = Join-Path $root "quota ledger/targeted_owner_capture_quota_ledger.json"
     $head = "a" * 40
-    $runId = "alpha04c-owner-capture-diagnostic-aaaaaaaaaaaa"
+    $binding = Get-ColdRestoreTargetedDiagnosticAuthorizationBinding $root $head
+    $bootstrapRoot = [string]$binding.bootstrap_root
+    $quotaPath = [string]$binding.quota_ledger_path
+    $runId = [string]$binding.run_id
     $context = New-ColdRestorePreQuotaContext `
+        -GitCommonDirectory $root `
         -BootstrapRoot $bootstrapRoot `
         -RunId $runId `
         -RepositoryHead $head `
         -Branch "codex/fixture branch" `
-        -AuthorizationId "alpha04c_targeted_fixture_v3" `
+        -AuthorizationId $binding.authorization_id `
         -QuotaLedgerPath $quotaPath
     Assert-PreQuotaCondition ([IO.File]::Exists($context.admission_path)) "bootstrap admission is written"
     Assert-PreQuotaCondition ([IO.File]::Exists($context.attestation_path)) "prequota attestation is written"
@@ -269,13 +279,16 @@ try {
     Assert-PreQuotaCondition ($orchestratorSourceAfterRepair.Contains("Get-ColdRestoreSecondaryFailureCodesFromError") `
         -and $orchestratorSourceAfterRepair.Contains('FallbackReasonCode "prequota_attestation_secondary_failure"')) "targeted PreQuota catches attest writer secondary failures"
 
+    $failedHead = "b" * 40
+    $failedBinding = Get-ColdRestoreTargetedDiagnosticAuthorizationBinding $root $failedHead
     $failedContext = New-ColdRestorePreQuotaContext `
-        -BootstrapRoot $bootstrapRoot `
-        -RunId "alpha04c-owner-capture-diagnostic-bbbbbbbbbbbb" `
-        -RepositoryHead ("b" * 40) `
+        -GitCommonDirectory $root `
+        -BootstrapRoot $failedBinding.bootstrap_root `
+        -RunId $failedBinding.run_id `
+        -RepositoryHead $failedHead `
         -Branch "codex/fixture" `
-        -AuthorizationId "alpha04c_targeted_fixture_v3" `
-        -QuotaLedgerPath (Join-Path $root "quota ledger/failed.json")
+        -AuthorizationId $failedBinding.authorization_id `
+        -QuotaLedgerPath $failedBinding.quota_ledger_path
     $failedState = New-ColdRestorePrimaryFailureState
     $null = Add-ColdRestoreFailureRecord $failedState "authorization_check" "expected_scenario_fingerprint_invalid" "parameter_failure" "parameter"
     $null = Add-ColdRestoreFailureRecord $failedState "postcondition_validation" "path_fixture_failed" "path_failure" "postcondition"
@@ -296,7 +309,7 @@ try {
     $quotaSha = Publish-ColdRestoreTargetedQuotaLedgerV3 $quotaFixturePath $quotaLedger
     Assert-PreQuotaCondition ([string]$quotaSha -cmatch '^[0-9a-f]{64}$' -and [IO.File]::Exists($quotaFixturePath)) "V3 third claim publishes atomically"
     $duplicateReason = Get-ThrownReason { Publish-ColdRestoreTargetedQuotaLedgerV3 $quotaFixturePath $quotaLedger | Out-Null }
-    Assert-PreQuotaCondition ($duplicateReason -ceq "targeted_owner_capture_diagnostic_already_consumed") "duplicate and fourth claim are rejected"
+    Assert-PreQuotaCondition ($duplicateReason -ceq "quota_already_consumed") "duplicate and fourth claim are rejected"
 
     $invalidPath = Join-Path $root "quota fixtures/invalid-ledger.json"
     [IO.Directory]::CreateDirectory((Split-Path -Parent $invalidPath)) | Out-Null
@@ -308,11 +321,11 @@ try {
     $invalidLedger = New-FixtureQuotaLedger
     $invalidLedger.diagnostic_count_before = 1
     $preclaimReason = Get-ThrownReason { Publish-ColdRestoreTargetedQuotaLedgerV3 $preclaimPath $invalidLedger | Out-Null }
-    Assert-PreQuotaCondition ($preclaimReason -ceq "targeted_owner_capture_quota_v3_invalid" -and -not [IO.File]::Exists($preclaimPath)) "preclaim failure leaves the count at two"
+    Assert-PreQuotaCondition ($preclaimReason -ceq "quota_transition_invalid" -and -not [IO.File]::Exists($preclaimPath)) "preclaim failure leaves the count at two"
     $postclaimPreserved = $false
     try {
         $postclaimPath = Join-Path $root "quota fixtures/postclaim.json"
-        $null = Publish-ColdRestoreTargetedQuotaLedgerV3 $postclaimPath (New-FixtureQuotaLedger -RunId "alpha04c-owner-capture-diagnostic-cccccccccccc" -RepositoryHead ("c" * 40))
+        $null = Publish-ColdRestoreTargetedQuotaLedgerV3 $postclaimPath (New-FixtureQuotaLedger -RepositoryHead ("c" * 40))
         throw "synthetic_postclaim_failure"
     }
     catch {
@@ -326,21 +339,30 @@ try {
         Start-Job -ScriptBlock {
             param($ModulePath, $TargetPath, $RootPath, $Suffix, $StartTicks)
             Import-Module $ModulePath -Force
+            Import-Module (Join-Path (Split-Path -Parent $ModulePath) "cold_restore_authorization_contract_v1.psm1") -Force
+            $targeted = Get-ColdRestoreAuthorizationEntry "targeted_owner_capture_diagnostic_v3"
+            $official = Get-ColdRestoreAuthorizationEntry "official_attempt_2"
             $start = [DateTime]::new([int64]$StartTicks, [DateTimeKind]::Utc)
             while ([DateTime]::UtcNow -lt $start) { Start-Sleep -Milliseconds 5 }
+            $repositoryHead = $Suffix.Substring(0, 1) * 40
             $ledger = [pscustomobject][ordered]@{
-                schema_version = 3; ledger_id = "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV3"
-                authorization_id = "alpha04c-targeted-owner-capture-diagnostic-v3"
-                task_id = "ALPHA_0_4_C_FINAL_HARNESS_REPAIR_REHEARSAL_OFFICIAL_ATTEMPT_2_AND_MAIN_LANDING"
+                schema_version = 3; ledger_id = [string]$targeted.ledger_id
+                authorization_id = [string]$targeted.authorization_id
+                task_id = [string]$targeted.task_id
                 created_at_utc = [DateTime]::UtcNow.ToString("O", [Globalization.CultureInfo]::InvariantCulture)
-                run_id = "alpha04c-owner-capture-diagnostic-$Suffix"; repository_head = $Suffix.Substring(0, 1) * 40
-                scenario_fingerprint = "b" * 64; authorized_new_diagnostic_count = 1
-                diagnostic_count_before = 2; diagnostic_count_after = 3; diagnostic_count_maximum = 3
+                run_id = Get-ColdRestoreAuthorizationRunId "targeted_owner_capture_diagnostic_v3" $repositoryHead
+                repository_head = $repositoryHead
+                scenario_fingerprint = "b" * 64
+                authorized_new_diagnostic_count = [int]$targeted.authorized_increment
+                diagnostic_count_before = [int]$targeted.permitted_transition_from
+                diagnostic_count_after = [int]$targeted.permitted_transition_to
+                diagnostic_count_maximum = [int]$targeted.maximum_invocation_count
                 previous_ledger_sha256 = "c" * 64; historical_invocation_commit = "d" * 40
                 historical_invocation_blob_sha1 = "e" * 40; historical_invocation_file_sha256 = "f" * 64
                 bootstrap_admission_path = Join-Path $RootPath "admission.json"; bootstrap_admission_sha256 = "1" * 64
                 bootstrap_admission_fingerprint = "2" * 64; prequota_attestation_path = Join-Path $RootPath "prequota.json"
-                role_timeout_policy_sha256 = "3" * 64; official_attempt_1_claim_sha256 = "4" * 64
+                role_timeout_policy_sha256 = "3" * 64
+                official_attempt_1_claim_sha256 = [string]$official.attempt_1_claim_sha256
                 official_attempt_2_claim_absent = $true; official = $false; formal = $false
                 official_authorization_consumed = $false; orchestrator_script_sha256 = "5" * 64
                 orchestrator_process_id = $PID
@@ -359,7 +381,7 @@ try {
     $raceResults = @($raceJobs | Wait-Job | Receive-Job)
     $raceJobs | Remove-Job -Force
     Assert-PreQuotaCondition (@($raceResults | Where-Object { [bool]$_.won }).Count -eq 1 -and @($raceResults | Where-Object { -not [bool]$_.won }).Count -eq 1) "concurrent V3 claim has exactly one winner"
-    Assert-PreQuotaCondition (@($raceResults | Where-Object { -not [bool]$_.won })[0].reason -ceq "targeted_owner_capture_diagnostic_already_consumed") "concurrent loser observes consumed authorization"
+    Assert-PreQuotaCondition (@($raceResults | Where-Object { -not [bool]$_.won })[0].reason -ceq "quota_already_consumed") "concurrent loser observes consumed authorization"
 }
 catch {
     $script:failures.Add("unexpected exception: $($_.Exception.Message)")

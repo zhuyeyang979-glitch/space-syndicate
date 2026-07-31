@@ -6,11 +6,15 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $modulePath = Join-Path $projectRoot "scripts/tools/cold_restore_official_attempt2_contract.psm1"
+$authorizationModulePath = Join-Path $projectRoot "scripts/tools/cold_restore_authorization_contract_v1.psm1"
+$null = Import-Module $authorizationModulePath -Force
+$officialAuthorization = Get-ColdRestoreAuthorizationEntry "official_attempt_2"
+$rehearsalAuthorization = Get-ColdRestoreAuthorizationEntry "process_a_save_completion_rehearsal_v1"
 $orchestratorPath = Join-Path $projectRoot "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1"
 $root = Join-Path ([IO.Path]::GetTempPath()) "alpha04c attempt2 claim $([Guid]::NewGuid().ToString('N'))"
 $script:checks = 0
 $script:failures = [Collections.Generic.List[string]]::new()
-$attempt1Sha = "80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458"
+$attempt1Sha = [string]$officialAuthorization.attempt_1_claim_sha256
 $head = "a" * 40
 $scenario = "b" * 64
 
@@ -34,13 +38,13 @@ function Copy-Value {
 function New-Attempt2Claim {
     param(
         [string]$SourceHead = $head,
-        [string]$RunId = "alpha04c-cold-retry-$($SourceHead.Substring(0, 12))"
+        [string]$RunId = "$([string]$officialAuthorization.run_id_prefix)-$($SourceHead.Substring(0, 12))"
     )
     return [pscustomobject][ordered]@{
         schema_version = 2
         claim_id = "OfficialAttemptClaimV2"
         attempt_number = 2
-        authorization_id = "alpha04c-official-cold-restore-attempt-2-v1"
+        authorization_id = [string]$officialAuthorization.authorization_id
         created_at_utc = [DateTime]::UtcNow.ToString("O", [Globalization.CultureInfo]::InvariantCulture)
         run_id = $RunId
         source_head = $SourceHead
@@ -58,7 +62,7 @@ function New-Attempt2Claim {
             process_b = [pscustomobject][ordered]@{ absolute_timeout_seconds = 360; no_progress_timeout_seconds = 60 }
             process_c = [pscustomobject][ordered]@{ absolute_timeout_seconds = 180; no_progress_timeout_seconds = 30 }
         }
-        rehearsal_run_id = "alpha04c-process-a-rehearsal-$($SourceHead.Substring(0, 12))"
+        rehearsal_run_id = "$([string]$rehearsalAuthorization.run_id_prefix)-$($SourceHead.Substring(0, 12))"
         rehearsal_evidence_fingerprint = "d" * 64
         rehearsal_outcome_sha256 = "e" * 64
         rehearsal_admission_sha256 = "f" * 64
@@ -66,7 +70,7 @@ function New-Attempt2Claim {
         rehearsal_completion_sha256 = "2" * 64
         rehearsal_child_attestation_sha256 = "3" * 64
         rehearsal_parent_attestation_sha256 = "4" * 64
-        attempt_1_claim_relative_path = "official-alpha04c-depth1-seed900626424/official_claim_ledger.json"
+        attempt_1_claim_relative_path = ([string]$officialAuthorization.attempt_1_claim_relative_path).Substring("codex/cold_restore_v3/".Length)
         attempt_1_claim_sha256 = $attempt1Sha
         orchestrator_id = "alpha04c_cold_restore_vertical_slice_orchestrator_v4"
         orchestrator_schema_version = 4
@@ -84,11 +88,12 @@ function New-Attempt2Claim {
 try {
     [IO.Directory]::CreateDirectory($root) | Out-Null
     Import-Module $modulePath -Force
+    Import-Module $authorizationModulePath -Force
     $source = [IO.File]::ReadAllText($orchestratorPath)
     $gitCommonRaw = [string](& git -C $projectRoot rev-parse --path-format=absolute --git-common-dir)
     $gitCommon = [IO.Path]::GetFullPath($gitCommonRaw.Trim())
-    $realAttempt1 = Join-Path $gitCommon "codex\cold_restore_v3\official-alpha04c-depth1-seed900626424\official_claim_ledger.json"
-    $realAttempt2 = Join-Path $gitCommon "codex\cold_restore_v3\official-alpha04c-attempt-2-depth1-seed900626424\official_attempt_2_claim.json"
+    $realAttempt1 = Join-Path $gitCommon ([string]$officialAuthorization.attempt_1_claim_relative_path)
+    $realAttempt2 = Join-Path $gitCommon ([string]$officialAuthorization.claim_path)
     $realAttempt1Before = (Get-FileHash -LiteralPath $realAttempt1 -Algorithm SHA256).Hash.ToLowerInvariant()
     $realAttempt2Before = [IO.File]::Exists($realAttempt2)
 
@@ -142,16 +147,20 @@ try {
     $startTicks = [DateTime]::UtcNow.AddMilliseconds(500).Ticks.ToString([Globalization.CultureInfo]::InvariantCulture)
     $jobs = foreach ($suffix in @("6", "7")) {
         Start-Job -ScriptBlock {
-            param($ModulePath, $TargetPath, $StartTicks, $Suffix)
+            param($ModulePath, $AuthorizationModulePath, $TargetPath, $StartTicks, $Suffix)
+            Import-Module $AuthorizationModulePath -Force
             Import-Module $ModulePath -Force
+            Import-Module $AuthorizationModulePath -Force
+            $official = Get-ColdRestoreAuthorizationEntry "official_attempt_2"
+            $rehearsal = Get-ColdRestoreAuthorizationEntry "process_a_save_completion_rehearsal_v1"
             $start = [DateTime]::new([int64]$StartTicks, [DateTimeKind]::Utc)
             while ([DateTime]::UtcNow -lt $start) { Start-Sleep -Milliseconds 5 }
             $head = $Suffix * 40
             $claim = [pscustomobject][ordered]@{
                 schema_version = 2; claim_id = "OfficialAttemptClaimV2"; attempt_number = 2
-                authorization_id = "alpha04c-official-cold-restore-attempt-2-v1"
+                authorization_id = [string]$official.authorization_id
                 created_at_utc = [DateTime]::UtcNow.ToString("O", [Globalization.CultureInfo]::InvariantCulture)
-                run_id = "alpha04c-cold-retry-$($head.Substring(0, 12))"; source_head = $head; rehearsal_green_head = $head
+                run_id = "$([string]$official.run_id_prefix)-$($head.Substring(0, 12))"; source_head = $head; rehearsal_green_head = $head
                 scenario_fingerprint = "b" * 64; challenge_depth = 1; seed = [int64]900626424
                 local_player_count = 1; ai_player_count = 3; timeout_policy_sha256 = "c" * 64
                 prerequisite_evidence_fingerprint = "8" * 64; preclaim_runtime_freeze_fingerprint = "9" * 64
@@ -160,13 +169,13 @@ try {
                     process_b = [pscustomobject][ordered]@{ absolute_timeout_seconds = 360; no_progress_timeout_seconds = 60 }
                     process_c = [pscustomobject][ordered]@{ absolute_timeout_seconds = 180; no_progress_timeout_seconds = 30 }
                 }
-                rehearsal_run_id = "alpha04c-process-a-rehearsal-$($head.Substring(0, 12))"
+                rehearsal_run_id = "$([string]$rehearsal.run_id_prefix)-$($head.Substring(0, 12))"
                 rehearsal_evidence_fingerprint = "d" * 64; rehearsal_outcome_sha256 = "e" * 64
                 rehearsal_admission_sha256 = "f" * 64; rehearsal_launch_sha256 = "1" * 64
                 rehearsal_completion_sha256 = "2" * 64; rehearsal_child_attestation_sha256 = "3" * 64
                 rehearsal_parent_attestation_sha256 = "4" * 64
-                attempt_1_claim_relative_path = "official-alpha04c-depth1-seed900626424/official_claim_ledger.json"
-                attempt_1_claim_sha256 = "80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458"
+                attempt_1_claim_relative_path = ([string]$official.attempt_1_claim_relative_path).Substring("codex/cold_restore_v3/".Length)
+                attempt_1_claim_sha256 = [string]$official.attempt_1_claim_sha256
                 orchestrator_id = "alpha04c_cold_restore_vertical_slice_orchestrator_v4"; orchestrator_schema_version = 4
                 orchestrator_script_sha256 = "5" * 64; orchestrator_process_id = $PID
                 orchestrator_creation_time_utc_ticks = [DateTime]::UtcNow.Ticks.ToString([Globalization.CultureInfo]::InvariantCulture)
@@ -175,7 +184,7 @@ try {
             }
             try { $null = Publish-ColdRestoreOfficialAttempt2Claim $TargetPath $claim; [pscustomobject]@{ won = $true; reason = "ok" } }
             catch { [pscustomobject]@{ won = $false; reason = [string]$_.Exception.Message } }
-        } -ArgumentList $modulePath, $racePath, $startTicks, $suffix
+        } -ArgumentList $modulePath, $authorizationModulePath, $racePath, $startTicks, $suffix
     }
     $race = @($jobs | Wait-Job | Receive-Job)
     $jobs | Remove-Job -Force

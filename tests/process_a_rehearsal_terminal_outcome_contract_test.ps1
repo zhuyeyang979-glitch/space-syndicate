@@ -7,7 +7,10 @@ $ErrorActionPreference = "Stop"
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $orchestratorPath = Join-Path $projectRoot "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1"
 $admissionModulePath = Join-Path $projectRoot "scripts/tools/process_a_rehearsal_admission_contract.psm1"
-$expectedOutcomeRelativePath = "codex\cold_restore_v3\non-official-alpha04c-process-a-rehearsal-v1\process_a_rehearsal_outcome_ledger.json"
+$authorizationModulePath = Join-Path $projectRoot "scripts/tools/cold_restore_authorization_contract_v1.psm1"
+Import-Module $authorizationModulePath -Force
+$rehearsalAuthorization = Get-ColdRestoreAuthorizationEntry "process_a_save_completion_rehearsal_v1"
+$expectedOutcomeRelativePath = [string]$rehearsalAuthorization.outcome_ledger_relative_path
 $expectedOutcomeId = "ProcessARehearsalOutcomeLedgerV1"
 $shaA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 $shaB = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
@@ -189,8 +192,8 @@ function New-SyntheticOutcome {
         schema_version = 1
         outcome_id = $expectedOutcomeId
         created_at_utc = "2026-07-31T00:00:00.0000000Z"
-        authorization_id = "alpha04c-process-a-save-completion-rehearsal-v1"
-        run_id = "alpha04c-process-a-rehearsal-0123456789ab"
+        authorization_id = [string]$rehearsalAuthorization.authorization_id
+        run_id = "$([string]$rehearsalAuthorization.run_id_prefix)-0123456789ab"
         repository_head = "0123456789abcdef0123456789abcdef01234567"
         scenario_fingerprint = $shaA
         official = $false
@@ -382,7 +385,7 @@ try {
     Assert-ContractCondition ($admissionParseErrors.Count -eq 0) "Admission module parses before commit-boundary inspection"
     $orchestratorSource = [IO.File]::ReadAllText($orchestratorPath)
 
-    Assert-ContractCondition ($orchestratorSource.IndexOf('$ProcessARehearsalOutcomeLedgerRelativePath = "' + $expectedOutcomeRelativePath + '"', [StringComparison]::Ordinal) -ge 0) "Outcome ledger uses the fixed git-common relative path"
+    Assert-ContractCondition ($orchestratorSource.IndexOf('$ProcessARehearsalOutcomeLedgerRelativePath = [string]$ProcessARehearsalAuthorization.outcome_ledger_relative_path', [StringComparison]::Ordinal) -ge 0) "Outcome ledger uses the single authorization-contract path"
 
     $outcomeWriters = @($ast.FindAll({
         param($node)

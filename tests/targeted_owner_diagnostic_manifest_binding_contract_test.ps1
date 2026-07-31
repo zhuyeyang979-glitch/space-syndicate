@@ -215,11 +215,13 @@ if ($null -ne $diagnosticAdmission) {
     Assert-ContractCondition (
         (Test-SourceContainsAll $source @(
             '$diagnosticRunId',
-            '$HeadSha.Substring(0, 12)',
+            'Get-ColdRestoreAuthorizationRunId',
+            'Resolve-ColdRestoreGitCommonDirectory',
+            '$TargetedOwnerCaptureEvidenceRootRelativePath',
             '$diagnosticRoot',
-            '.godot\cold_restore_attestation_v1'
+            'targeted_owner_capture_diagnostic_v3'
         ))
-    ) "diagnostic evidence root is fixed by the HEAD-derived run ID"
+    ) "diagnostic evidence root binds the HEAD-derived run ID to the authorization contract"
     Assert-ContractCondition (
         (Test-SourceContainsAll $source @(
             'launch_attestation_path',

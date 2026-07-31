@@ -7,7 +7,11 @@ $ErrorActionPreference = "Stop"
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $orchestratorPath = Join-Path $projectRoot "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1"
 $preQuotaModulePath = Join-Path $projectRoot "scripts/tools/cold_restore_prequota_bootstrap.psm1"
+$authorizationModulePath = Join-Path $projectRoot "scripts/tools/cold_restore_authorization_contract_v1.psm1"
+$authorizationContractPath = Join-Path $projectRoot "scripts/tools/cold_restore_authorization_contract_v1.json"
+Import-Module $authorizationModulePath -Force
 Import-Module $preQuotaModulePath -Force
+$targetedAuthorization = Get-ColdRestoreAuthorizationEntry "targeted_owner_capture_diagnostic_v3"
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) (
     "alpha04c-targeted-postcondition-" + [Guid]::NewGuid().ToString("N")
 )
@@ -83,8 +87,26 @@ function Resolve-ColdRestoreGitCommonDirectory {
     return $testRoot
 }
 
+function Assert-ColdRestoreTargetedDiagnosticRemoteCheckpoint {
+    param([string]$ResolvedProjectPath, [string]$ExpectedHead)
+    return [pscustomobject]@{ remote_head_matches_local = $true }
+}
+
+function Get-ColdRestoreRuntimeFreezeObservation {
+    param([string]$ResolvedProjectPath, [string]$ExpectedHead)
+
+    return [pscustomobject]@{ expected_head = $ExpectedHead; tree_clean = $true }
+}
+
+function Assert-ColdRestoreRuntimeFreezeGreen {
+    param($Observation, [string]$FailureCode)
+
+    return $true
+}
+
 function New-ColdRestorePreQuotaContext {
     param(
+        [string]$GitCommonDirectory,
         [string]$BootstrapRoot,
         [string]$RunId,
         [string]$RepositoryHead,
@@ -190,9 +212,62 @@ try {
     $postconditions = Get-FunctionAst $ast "Assert-ColdRestoreTargetedOwnerCapturePostconditions"
     $guarded = Get-FunctionAst $ast "Invoke-ColdRestoreTargetedOwnerCaptureGuarded"
     $targetedInvoke = Get-FunctionAst $ast "Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic"
+    $outputBuilder = Get-FunctionAst $ast "New-ColdRestoreTargetedOwnerCaptureOutput"
     Assert-ContractCondition ($null -ne $postconditions) "targeted postconditions exist exactly once"
     Assert-ContractCondition ($null -ne $guarded) "guarded targeted invocation exists exactly once"
     Assert-ContractCondition ($null -ne $targetedInvoke) "targeted diagnostic invocation exists exactly once"
+    Assert-ContractCondition ($null -ne $outputBuilder) "targeted diagnostic output builder exists exactly once"
+
+    if ($null -ne $outputBuilder) {
+        . ([scriptblock]::Create($outputBuilder.Extent.Text))
+        $script:RunId = Get-ColdRestoreAuthorizationRunId `
+            "targeted_owner_capture_diagnostic_v3" ("a" * 40)
+        foreach ($case in @(
+            [pscustomobject]@{ kind = "ALL_OWNERS_CAPTURED"; success = $true; code = "" },
+            [pscustomobject]@{ kind = "OWNER_CAPTURE_FAILURE"; success = $false; code = "owner_capture_failed" },
+            [pscustomobject]@{ kind = "POST_CAPTURE_FAILURE"; success = $false; code = "owner_capture_post_validation_failed" },
+            [pscustomobject]@{ kind = "PRE_OWNER_FAILURE"; success = $false; code = "owner_diagnostic_pre_audit_failure" }
+        )) {
+            $fixture = [pscustomobject]@{
+                diagnostic_result_kind = $case.kind
+                diagnostic_path = Join-Path $testRoot "diagnostic.json"
+                diagnostic = [pscustomobject]@{
+                    first_failure = [pscustomobject]@{}
+                    post_capture_failure = [pscustomobject]@{}
+                    repository_head = "a" * 40
+                    scenario_identity_attested = $false
+                    scenario_identity = [pscustomobject]@{}
+                    scenario_identity_failure = [pscustomobject]@{}
+                    owner_audit_started = $case.kind -ne "PRE_OWNER_FAILURE"
+                    owner_audit_completed = $case.kind -in @("ALL_OWNERS_CAPTURED", "OWNER_CAPTURE_FAILURE", "POST_CAPTURE_FAILURE")
+                    first_owner_capture_index = -1
+                    last_completed_owner_capture_index = $(if ($case.kind -eq "ALL_OWNERS_CAPTURED") { 18 } else { -1 })
+                    owner_capture_attempted_count = $(if ($case.kind -eq "ALL_OWNERS_CAPTURED") { 19 } else { 0 })
+                    owner_capture_succeeded_count = $(if ($case.kind -eq "ALL_OWNERS_CAPTURED") { 19 } else { 0 })
+                    owner_capture_failed_count = $(if ($case.kind -eq "OWNER_CAPTURE_FAILURE") { 1 } else { 0 })
+                    post_capture_validation = $(if ($case.kind -eq "ALL_OWNERS_CAPTURED") { "PASSED" } else { "NOT_RUN" })
+                }
+                run = [pscustomobject]@{ parent = [pscustomobject]@{
+                    child_attestation_valid = $true
+                    wrapper_exit_green = $true
+                    exit_code = 0
+                    timed_out = $false
+                    terminated_by_parent = $false
+                    task_owned_process_count_after = 0
+                } }
+                prequota = [pscustomobject]@{
+                    path = "prequota.json"; sha256 = "1" * 64; fingerprint = "2" * 64
+                    admission_sha256 = "3" * 64; admission_fingerprint = "4" * 64
+                }
+            }
+            $output = New-ColdRestoreTargetedOwnerCaptureOutput $fixture
+            Assert-ContractCondition (
+                [bool]$output.success -eq [bool]$case.success `
+                    -and [bool]$output.process_a_rehearsal_authorized -eq [bool]$case.success `
+                    -and [string]$output.failure_code -ceq [string]$case.code
+            ) "only ALL_OWNERS_CAPTURED authorizes Process A rehearsal ($($case.kind))"
+        }
+    }
 
     if ($null -ne $postconditions) {
         $script:UserDataRoot = $testRoot
@@ -224,10 +299,15 @@ try {
 
     if ($null -ne $guarded) {
         . ([scriptblock]::Create($guarded.Extent.Text))
-        $script:RunId = "alpha04c-owner-capture-diagnostic-aaaaaaaaaaaa"
-        $script:TargetedOwnerCaptureQuotaLedgerRelativePath = "quota\fixture.json"
-        $script:TargetedOwnerCaptureBootstrapRelativeRoot = "bootstrap\fixture"
-        $script:TargetedOwnerCaptureAuthorizationId = "alpha04c-targeted-owner-capture-diagnostic-v3"
+        $script:RunId = Get-ColdRestoreAuthorizationRunId `
+            "targeted_owner_capture_diagnostic_v3" ("a" * 40)
+        $script:TargetedOwnerCaptureQuotaLedgerRelativePath = [string]$targetedAuthorization.quota_ledger_relative_path
+        $script:TargetedOwnerCaptureBootstrapRelativeRoot = [string]$targetedAuthorization.bootstrap_root_relative_path
+        $script:TargetedOwnerCaptureAuthorizationId = [string]$targetedAuthorization.authorization_id
+        $script:AuthorizationContractPath = $authorizationContractPath
+        $script:AuthorizationContractSha256 = (
+            Get-FileHash -LiteralPath $authorizationContractPath -Algorithm SHA256
+        ).Hash.ToLowerInvariant()
 
         Reset-SyntheticCase
         $success = Invoke-ColdRestoreTargetedOwnerCaptureGuarded $projectRoot ("a" * 40)
@@ -236,6 +316,8 @@ try {
 
         Reset-SyntheticCase
         $script:primaryReason = "targeted_owner_capture_primary_fixture_failed"
+        $script:RunId = Get-ColdRestoreAuthorizationRunId `
+            "targeted_owner_capture_diagnostic_v3" ("b" * 40)
         $primaryOnly = Get-ThrownReason {
             Invoke-ColdRestoreTargetedOwnerCaptureGuarded $projectRoot ("b" * 40) | Out-Null
         }
@@ -245,6 +327,8 @@ try {
         Reset-SyntheticCase
         $script:primaryReason = "targeted_owner_capture_primary_fixture_failed"
         $script:postconditionReason = "targeted_owner_capture_postcondition_fixture_failed"
+        $script:RunId = Get-ColdRestoreAuthorizationRunId `
+            "targeted_owner_capture_diagnostic_v3" ("c" * 40)
         $both = Get-ThrownReason {
             Invoke-ColdRestoreTargetedOwnerCaptureGuarded $projectRoot ("c" * 40) | Out-Null
         }
@@ -253,6 +337,8 @@ try {
 
         Reset-SyntheticCase
         $script:postconditionReason = "targeted_owner_capture_postcondition_fixture_failed"
+        $script:RunId = Get-ColdRestoreAuthorizationRunId `
+            "targeted_owner_capture_diagnostic_v3" ("d" * 40)
         $postconditionOnly = Get-ThrownReason {
             Invoke-ColdRestoreTargetedOwnerCaptureGuarded $projectRoot ("d" * 40) | Out-Null
         }
@@ -268,7 +354,7 @@ try {
             $targetedInvokeSource.IndexOf('$run.secondary_failure_codes', [StringComparison]::Ordinal) -lt 0 -and
             $targetedInvokeSource.IndexOf('"wrapper_supervision"', [StringComparison]::Ordinal) -lt 0
         ) "targeted path throws the wrapper-owned shared failure state without replaying secondary reasons"
-        $script:RunId = "alpha04c-owner-capture-diagnostic-000000000000"
+        $script:RunId = "$([string]$targetedAuthorization.run_id_prefix)-000000000000"
         $script:AuthorizedOfficialColdRestoreCount = 0
         $script:ExpectedScenarioFingerprint = "f" * 64
         $script:TargetedOwnerCaptureScenarioFingerprint = $script:ExpectedScenarioFingerprint

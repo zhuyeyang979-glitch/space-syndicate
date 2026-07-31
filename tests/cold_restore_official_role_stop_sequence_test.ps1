@@ -6,6 +6,8 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $orchestratorPath = Join-Path $projectRoot "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1"
+$authorizationModulePath = Join-Path $projectRoot "scripts/tools/cold_restore_authorization_contract_v1.psm1"
+Import-Module $authorizationModulePath -Force
 $script:checks = 0
 $script:failures = [Collections.Generic.List[string]]::new()
 $script:roleCalls = [Collections.Generic.List[string]]::new()
@@ -14,7 +16,7 @@ $script:compareCalls = 0
 $ORCHESTRATOR_SCHEMA_VERSION = 4
 $FORMAL_FULL_RUN = $false
 $DriverExecutionReady = $true
-$RunId = "alpha04c-cold-retry-aaaaaaaaaaaa"
+$RunId = Get-ColdRestoreAuthorizationRunId "official_attempt_2" ("a" * 40)
 $ProcessSequence = @("Process A", "Process B", "Process C")
 
 function Assert-SequenceCondition {

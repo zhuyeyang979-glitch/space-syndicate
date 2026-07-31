@@ -6,14 +6,20 @@ $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 $modulePath = Join-Path $root "scripts\tools\process_a_rehearsal_admission_contract.psm1"
+$authorizationModulePath = Join-Path $root "scripts\tools\cold_restore_authorization_contract_v1.psm1"
+Import-Module $authorizationModulePath -Force
+$targetedAuthorization = Get-ColdRestoreAuthorizationEntry "targeted_owner_capture_diagnostic_v3"
+$rehearsalAuthorization = Get-ColdRestoreAuthorizationEntry "process_a_save_completion_rehearsal_v1"
+$officialAuthorization = Get-ColdRestoreAuthorizationEntry "official_attempt_2"
 Import-Module $modulePath -Force
+Import-Module $authorizationModulePath -Force
 $contractModule = Get-Module process_a_rehearsal_admission_contract
 
 $head = "0123456789abcdef0123456789abcdef01234567"
 $scenarioFingerprint = "0bccef8426345e2ea1fd8ae7d6187d282d52d44bc73d6fb3d1ed3375dc20b7bf"
 $prerequisiteFingerprint = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
 $sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-$officialAttempt1Sha = "80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458"
+$officialAttempt1Sha = [string]$officialAuthorization.attempt_1_claim_sha256
 $officialAttempt1Text = '{"authorization_id":"alpha04c-p0-cold-restore-depth1-seed900626424-v1","authorized_official_count":1,"challenge_depth":1,"claim_nonce":"880e209871804c37871997f4b3177507","created_at_utc":"2026-07-30T06:09:56.4081399Z","official_count_after":1,"official_count_before":0,"orchestrator_creation_time_utc_ticks":"639209885951511870","orchestrator_id":"alpha04c_cold_restore_vertical_slice_orchestrator_v3","orchestrator_process_id":16120,"orchestrator_schema_version":3,"orchestrator_script_sha256":"e3bccd881ee44c76a82118932806a8785bbc4f2bde96afe697941eb23a57c0c8","qualification_child_attestation_fingerprint":"d0d2f437ec4f7a5eb5445053589d809d9c6440cdea1628de5d9f57355cbeb192","qualification_parent_attestation_sha256":"56822a6fb0870239e0b172bca0bdb98219dd8e02b6d72b915037a4ec06155bc5","qualification_result_sha256":"107ca42897f6ca7963ffb42f09df121e1221a7793f32f3dc21eaf0df5fd495ba","run_id":"alpha04c-facility-bridge-ca3b7cf4","scenario_fingerprint":"0bccef8426345e2ea1fd8ae7d6187d282d52d44bc73d6fb3d1ed3375dc20b7bf","schema_version":1,"seed":900626424,"source_head_sha":"ca3b7cf4222a6145bed81606fc4f04b7076ae0d9","status":"consumed"}'
 $sectionOrder = @(
     "ruleset", "region_infrastructure", "region_supply", "commodity_flow",
@@ -121,7 +127,8 @@ function New-TestDiagnostic {
         [object]$FirstPrivatePayloadRedacted = $true
     )
 
-    $diagnosticRunId = "alpha04c-owner-capture-diagnostic-$($RepositoryHead.Substring(0, 12))"
+    $diagnosticRunId = Get-ColdRestoreAuthorizationRunId `
+        "targeted_owner_capture_diagnostic_v3" $RepositoryHead
     $identity = Seal-TestValue ([ordered]@{
         schema_version = 1
         identity_id = "DiagnosticScenarioIdentityV1"
@@ -316,17 +323,17 @@ function New-TestDiagnosticQuotaLedger {
 
     return [pscustomobject][ordered]@{
         schema_version = 3
-        ledger_id = "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV3"
-        authorization_id = "alpha04c-targeted-owner-capture-diagnostic-v3"
-        task_id = "ALPHA_0_4_C_FINAL_HARNESS_REPAIR_REHEARSAL_OFFICIAL_ATTEMPT_2_AND_MAIN_LANDING"
+        ledger_id = [string]$targetedAuthorization.ledger_id
+        authorization_id = [string]$targetedAuthorization.authorization_id
+        task_id = [string]$targetedAuthorization.task_id
         created_at_utc = "2026-07-30T15:00:00.0000000Z"
         run_id = $RunId
         repository_head = $RepositoryHead
         scenario_fingerprint = $Scenario
-        authorized_new_diagnostic_count = 1
-        diagnostic_count_before = 2
-        diagnostic_count_after = 3
-        diagnostic_count_maximum = 3
+        authorized_new_diagnostic_count = [int]$targetedAuthorization.authorized_increment
+        diagnostic_count_before = [int]$targetedAuthorization.permitted_transition_from
+        diagnostic_count_after = [int]$targetedAuthorization.permitted_transition_to
+        diagnostic_count_maximum = [int]$targetedAuthorization.maximum_invocation_count
         previous_ledger_sha256 = "2dba183fe0e354370802d0f886bf40a88b7e1c0b39ddb0df18ee110821e957a1"
         historical_invocation_commit = "3b3061508541d0e5f6f4c2d6560b134b7d4ee5f8"
         historical_invocation_blob_sha1 = "b54917e54a39e24e1c7288d919394305a4e21c71"
@@ -360,7 +367,7 @@ function New-TestDiagnosticLaunchAttestation {
 
     return [pscustomobject][ordered]@{
         schema_version = 1
-        authorization_id = "alpha04c-targeted-owner-capture-diagnostic-v3"
+        authorization_id = [string]$targetedAuthorization.authorization_id
         claim_fingerprint = $QuotaRawSha256
         claim_nonce = [string]$Quota.claim_nonce
         source_head_sha = [string]$Quota.repository_head
@@ -610,10 +617,10 @@ function New-TestFixture {
         role = "targeted_owner_diagnostic"
         repository_head = $head
         branch = "codex/fixture"
-        authorization_id = "alpha04c-targeted-owner-capture-diagnostic-v3"
-        historical_count = 2
-        authorized_increment = 1
-        maximum_allowed_count = 3
+        authorization_id = [string]$targetedAuthorization.authorization_id
+        historical_count = [int]$targetedAuthorization.permitted_transition_from
+        authorized_increment = [int]$targetedAuthorization.authorized_increment
+        maximum_allowed_count = [int]$targetedAuthorization.maximum_invocation_count
         official = $false
         formal = $false
         orchestrator_process_id = $PID
@@ -681,7 +688,7 @@ function New-TestFixture {
         admission_path = Join-Path $fixtureRoot "ledger\process_a_rehearsal_admission.json"
         launch_path = Join-Path $fixtureRoot "ledger\process_a_rehearsal_launch.json"
         launch_attestation_path = Join-Path $fixtureRoot "evidence\producer.launch.json"
-        run_id = "alpha04c-process-a-rehearsal-$Name"
+        run_id = "$([string]$rehearsalAuthorization.run_id_prefix)-$Name"
     }
 }
 
@@ -827,7 +834,7 @@ try {
     Assert-ContractCondition ([string]$validParent.child_attestation_fingerprint -ceq [string]$validChild.evidence_fingerprint) "Parent exit attestation binds the Child completion fingerprint"
     Assert-ContractCondition ([string]$validParent.stdout_sha256 -ceq (Get-FileHash $validFixture.diagnostic_stdout_path -Algorithm SHA256).Hash.ToLowerInvariant() -and [string]$validParent.stderr_sha256 -ceq (Get-FileHash $validFixture.diagnostic_stderr_path -Algorithm SHA256).Hash.ToLowerInvariant()) "Parent exit attestation binds exact stdout and stderr bytes"
     Assert-ContractCondition ([string]$evidence.diagnostic_quota_ledger_sha256 -ceq (Get-FileHash $validFixture.diagnostic_quota_path -Algorithm SHA256).Hash.ToLowerInvariant()) "admission evidence binds exact TargetedOwnerCaptureDiagnosticQuotaLedgerV3 bytes"
-    Assert-ContractCondition ([string]$validDiagnosticLaunch.authorization_id -ceq "alpha04c-targeted-owner-capture-diagnostic-v3" -and [string]$validDiagnosticLaunch.claim_fingerprint -ceq [string]$evidence.diagnostic_quota_ledger_sha256) "diagnostic launch binds the targeted authorization ID and exact quota bytes"
+    Assert-ContractCondition ([string]$validDiagnosticLaunch.authorization_id -ceq [string]$targetedAuthorization.authorization_id -and [string]$validDiagnosticLaunch.claim_fingerprint -ceq [string]$evidence.diagnostic_quota_ledger_sha256) "diagnostic launch binds the targeted authorization ID and exact quota bytes"
     Assert-ContractCondition ([string]$validDiagnosticLaunch.claim_nonce -ceq [string]$validQuota.claim_nonce -and [string]$validDiagnosticLaunch.launch_nonce -ceq [string]$validQuota.launch_nonce) "diagnostic launch binds both quota nonces"
     Assert-ContractCondition ([string]$evidence.diagnostic_launch_attestation_sha256 -ceq (Get-FileHash $validFixture.diagnostic_launch_attestation_path -Algorithm SHA256).Hash.ToLowerInvariant()) "admission evidence binds exact diagnostic LaunchAttestation bytes"
     Assert-ContractCondition ([string]$evidence.diagnostic_manifest_sha256 -ceq (Get-FileHash $validFixture.diagnostic_manifest_path -Algorithm SHA256).Hash.ToLowerInvariant()) "admission evidence binds exact atomic diagnostic manifest bytes"
@@ -907,7 +914,7 @@ try {
 
     $collisionFixture = New-TestFixture "collision"
     $collisionAdmission = Invoke-TestAdmission $collisionFixture
-    $collisionFixture.run_id = "alpha04c-process-a-rehearsal-collision-second"
+    $collisionFixture.run_id = "$([string]$rehearsalAuthorization.run_id_prefix)-collision-second"
     Assert-ContractThrows { $null = Invoke-TestAdmission $collisionFixture } "process_a_rehearsal_admission_ledger_collision" "different run identity cannot collide with a consumed admission"
     Assert-ContractCondition ([string](Read-ProcessARehearsalAdmissionLedger $collisionFixture.admission_path $collisionAdmission.fingerprint).value.timeout_policy_fingerprint -ceq [string]$collisionAdmission.value.timeout_policy_fingerprint) "collision leaves the first admission immutable"
 
@@ -926,7 +933,7 @@ try {
         [pscustomobject]@{ name = "authorization"; field = "authorization_id"; value = "alpha04c-wrong-authorization" },
         [pscustomobject]@{ name = "claim"; field = "claim_fingerprint"; value = ("b" * 64) },
         [pscustomobject]@{ name = "nonce"; field = "launch_nonce"; value = ("c" * 32) },
-        [pscustomobject]@{ name = "run"; field = "run_id"; value = "alpha04c-owner-capture-diagnostic-wrong" },
+        [pscustomobject]@{ name = "run"; field = "run_id"; value = "$([string]$targetedAuthorization.run_id_prefix)-wrong" },
         [pscustomobject]@{ name = "head"; field = "source_head_sha"; value = "fedcba9876543210fedcba9876543210fedcba98" },
         [pscustomobject]@{ name = "scenario"; field = "scenario_fingerprint"; value = ("d" * 64) }
     )) {
@@ -951,7 +958,7 @@ try {
 
     $diagnosticLaunchTypeFixture = New-TestFixture "diagnostic-launch-string-type"
     $diagnosticLaunchType = Read-TestJson $diagnosticLaunchTypeFixture.diagnostic_launch_attestation_path
-    $diagnosticLaunchType.authorization_id = @("alpha04c-targeted-owner-capture-diagnostic-v3")
+    $diagnosticLaunchType.authorization_id = @([string]$targetedAuthorization.authorization_id)
     Write-TestJson $diagnosticLaunchTypeFixture.diagnostic_launch_attestation_path $diagnosticLaunchType
     Assert-ContractThrows { $null = Invoke-TestAdmission $diagnosticLaunchTypeFixture } "process_a_rehearsal_launch_attestation_authorization_mismatch" "diagnostic launch identity fields require real strings"
 
@@ -968,7 +975,7 @@ try {
     Assert-ContractThrows { $null = Invoke-TestAdmission $diagnosticManifestPidFixture } "process_a_rehearsal_diagnostic_manifest_identity_invalid" "wrong atomic manifest PID cannot admit rehearsal"
 
     foreach ($manifestMismatch in @(
-        [pscustomobject]@{ name = "run"; field = "run_id"; value = "alpha04c-owner-capture-diagnostic-wrong" },
+        [pscustomobject]@{ name = "run"; field = "run_id"; value = "$([string]$targetedAuthorization.run_id_prefix)-wrong" },
         [pscustomobject]@{ name = "head"; field = "head_sha"; value = "fedcba9876543210fedcba9876543210fedcba98" },
         [pscustomobject]@{ name = "scenario"; field = "scenario_fingerprint"; value = ("b" * 64) },
         [pscustomobject]@{ name = "role"; field = "process_role"; value = "consumer" }

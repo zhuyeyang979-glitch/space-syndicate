@@ -1,10 +1,10 @@
 extends SceneTree
 
 const DIAGNOSTIC := preload("res://scripts/tools/targeted_owner_capture_diagnostic_v2.gd")
+const AUTHORIZATION_CONTRACT := preload("res://scripts/tools/cold_restore_authorization_contract_v1.gd")
 const IDENTITY := preload("res://scripts/tools/diagnostic_scenario_identity_v1.gd")
 const WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
 
-const RUN_ID := "alpha04c-owner-capture-diagnostic-0123456789ab"
 const HEAD := "0123456789abcdef0123456789abcdef01234567"
 const SHA := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 const PRIVATE_SENTINEL := "PRIVATE_OWNER_PAYLOAD_900626424"
@@ -16,6 +16,8 @@ const FAILURE_FIELDS_EXPECTED := [
 	"result_version_invalid", "result_ruleset_invalid", "state_version_observed",
 	"ruleset_id_observed", "live_state_mutated_during_capture", "private_payload_redacted",
 ]
+
+var RUN_ID := AUTHORIZATION_CONTRACT.run_id("targeted_owner_capture_diagnostic_v3", HEAD)
 
 var _checks := 0
 var _failures: Array[String] = []

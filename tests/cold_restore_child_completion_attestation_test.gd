@@ -4,9 +4,11 @@ const ATTESTATION := preload("res://scripts/tools/cold_restore_child_completion_
 const TARGETED_DIAGNOSTIC_V2 := preload("res://scripts/tools/targeted_owner_capture_diagnostic_v2.gd")
 const DIAGNOSTIC_IDENTITY := preload("res://scripts/tools/diagnostic_scenario_identity_v1.gd")
 const SEMANTIC_WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
+const AUTHORIZATION_CONTRACT := preload("res://scripts/tools/cold_restore_authorization_contract_v1.gd")
 
 var _checks := 0
 var _failures: Array[String] = []
+var _targeted_test_root := ""
 
 
 func _init() -> void:
@@ -69,10 +71,15 @@ func _run() -> void:
 	var blocked := ATTESTATION.build(blocked_source)
 	_expect(bool(ATTESTATION.validation_report(blocked).get("valid", false)), "Queue zero is a valid blocked product attestation")
 	_expect(not bool(blocked.get("qualification_green", true)) and str(blocked.get("product_blocker", "")).begins_with("BLOCKED_BY_"), "product blocker remains separate from Harness readiness")
+	_targeted_test_root = ProjectSettings.globalize_path(
+		"user://cold_restore_child_completion_attestation/%d" % Time.get_ticks_usec()
+	)
+	OS.set_environment("SPACE_SYNDICATE_COLD_RESTORE_TEST_EVIDENCE_ROOT", _targeted_test_root)
 	_test_targeted_owner_capture_diagnostic_contract()
 	_test_targeted_owner_capture_v1_write_compatibility()
 	_test_targeted_owner_capture_v2_child_binding()
 	_cleanup(run_id)
+	OS.unset_environment("SPACE_SYNDICATE_COLD_RESTORE_TEST_EVIDENCE_ROOT")
 	if _failures.is_empty():
 		print("CHILD COMPLETION ATTESTATION PASS %d checks" % _checks)
 		quit(0)
@@ -106,7 +113,7 @@ func _test_targeted_owner_capture_diagnostic_contract() -> void:
 	(contradiction_audits[0] as Dictionary)["section_results"] = []
 	_expect(not ATTESTATION._valid_owner_capture_diagnostic(contradictory), "captured=true with missing section rows fails closed")
 	var wrong_head_binding := diagnostic.duplicate(true)
-	wrong_head_binding["run_id"] = "alpha04c-owner-capture-diagnostic-bbbbbbbbbbbb"
+	wrong_head_binding["run_id"] = _targeted_run_id("b".repeat(40))
 	_expect(not ATTESTATION._valid_owner_capture_diagnostic(wrong_head_binding), "targeted run id must match the repository HEAD prefix")
 	var unknown_reason := diagnostic.duplicate(true)
 	var unknown_audits := unknown_reason.get("phase_audits", []) as Array
@@ -152,18 +159,19 @@ func _test_targeted_owner_capture_diagnostic_contract() -> void:
 
 func _test_targeted_owner_capture_v1_write_compatibility() -> void:
 	var repository_head := _unique_repository_head("legacy-v1")
-	var run_id := "alpha04c-owner-capture-diagnostic-%s" % repository_head.left(12)
+	var run_id := _targeted_run_id(repository_head)
 	var diagnostic := _valid_targeted_diagnostic()
 	diagnostic["run_id"] = run_id
 	diagnostic["repository_head"] = repository_head
-	var wrong_run_id := "alpha04c-owner-capture-diagnostic-%s" \
-			% _unique_repository_head("legacy-v1-wrong").left(12)
+	var wrong_run_id := _targeted_run_id(_unique_repository_head("legacy-v1-wrong"))
 	var rejected := ATTESTATION.write_owner_capture_diagnostic(wrong_run_id, diagnostic)
 	_expect(
 		str(rejected.get("reason_code", "")) == "child_diagnostic_run_id_mismatch",
 		"V1 write rejects an argument run_id that differs from the payload"
 	)
-	var write := ATTESTATION.write_owner_capture_diagnostic(run_id, diagnostic)
+	var write := ATTESTATION.write_owner_capture_diagnostic(
+		run_id, diagnostic, "", "", _targeted_test_root
+	)
 	_expect(
 		bool(write.get("valid", false)) and not write.has("artifact_binding"),
 		"legacy V1 retains its two-argument atomic write contract"
@@ -174,7 +182,7 @@ func _test_targeted_owner_capture_v1_write_compatibility() -> void:
 func _test_targeted_owner_capture_v2_child_binding() -> void:
 	var repository_head := _unique_repository_head("targeted-v2")
 	var scenario_fingerprint := "b".repeat(64)
-	var run_id := "alpha04c-owner-capture-diagnostic-%s" % repository_head.left(12)
+	var run_id := _targeted_run_id(repository_head)
 	var diagnostic := _valid_targeted_diagnostic_v2(repository_head, scenario_fingerprint, true, true)
 	_expect(
 		bool(TARGETED_DIAGNOSTIC_V2.validation_report(
@@ -198,8 +206,9 @@ func _test_targeted_owner_capture_v2_child_binding() -> void:
 				and bool(missing_bindings.get("private_payload_redacted", false)),
 		"V2 write fails closed and redacted when external bindings are absent"
 	)
-	var wrong_argument_run_id := "alpha04c-owner-capture-diagnostic-%s" \
-			% _unique_repository_head("targeted-v2-wrong-run").left(12)
+	var wrong_argument_run_id := _targeted_run_id(
+		_unique_repository_head("targeted-v2-wrong-run")
+	)
 	var wrong_run := ATTESTATION.write_owner_capture_diagnostic(
 		wrong_argument_run_id, diagnostic, repository_head, scenario_fingerprint
 	)
@@ -260,7 +269,7 @@ func _test_targeted_owner_capture_v2_child_binding() -> void:
 		"V2 failure metadata cannot disable private-payload redaction"
 	)
 	var write := ATTESTATION.write_owner_capture_diagnostic(
-		run_id, diagnostic, repository_head, scenario_fingerprint
+		run_id, diagnostic, repository_head, scenario_fingerprint, _targeted_test_root
 	)
 	var binding: Dictionary = write.get("artifact_binding", {}) \
 			if write.get("artifact_binding", {}) is Dictionary else {}
@@ -297,7 +306,7 @@ func _valid_targeted_diagnostic(failing_section_index := -1) -> Dictionary:
 	return {
 		"schema_version": 1,
 		"diagnostic_id": "TargetedOwnerCaptureDiagnosticV1",
-		"run_id": "alpha04c-owner-capture-diagnostic-%s" % repository_head.left(12),
+		"run_id": _targeted_run_id(repository_head),
 		"repository_head": repository_head,
 		"scenario_fingerprint": ATTESTATION.TARGETED_OWNER_CAPTURE_SCENARIO_FINGERPRINT,
 		"official": false,
@@ -387,7 +396,7 @@ func _valid_targeted_diagnostic_v2(
 	terminal: bool,
 	private_payload_redacted: bool
 ) -> Dictionary:
-	var run_id := "alpha04c-owner-capture-diagnostic-%s" % repository_head.left(12)
+	var run_id := _targeted_run_id(repository_head)
 	var timeline := _targeted_diagnostic_v2_timeline(run_id, repository_head, terminal)
 	var scenario_failure := {
 		"schema_version": 1,
@@ -493,10 +502,16 @@ func _reseal(value: Dictionary, fingerprint_field: String) -> Dictionary:
 
 func _cleanup_diagnostic(run_id: String) -> void:
 	var absolute_path := ProjectSettings.globalize_path(
-		ATTESTATION.diagnostic_path(run_id, "owner_capture_audit")
+		ATTESTATION.diagnostic_path(run_id, "owner_capture_audit", _targeted_test_root)
 	)
 	if FileAccess.file_exists(absolute_path):
 		DirAccess.remove_absolute(absolute_path)
+
+
+func _targeted_run_id(repository_head: String) -> String:
+	return AUTHORIZATION_CONTRACT.run_id(
+		"targeted_owner_capture_diagnostic_v3", repository_head
+	)
 
 
 func _same_string_set(left: Array, right: Array) -> bool:

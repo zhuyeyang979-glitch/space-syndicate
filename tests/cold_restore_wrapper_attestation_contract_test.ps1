@@ -369,7 +369,8 @@ try {
         -and $targetedFunctionSource.Contains('[int]$timeout.absolute_timeout_seconds -eq 120') `
         -and $targetedFunctionSource.Contains('[int]$timeout.no_progress_timeout_seconds -eq 30') `
         -and $targetedFunctionSource.Contains('-ExpectedScenarioFingerprint $ExpectedScenarioFingerprint')) "Targeted diagnostics must bind the authorized 120/30 role policy and scenario"
-    Assert-WrapperCondition ($targetedFunctionSource.Contains('$RunId -ceq "alpha04c-owner-capture-diagnostic-$($HeadSha.Substring(0, 12))"')) "Targeted diagnostic identity must bind its run id to the measured HEAD"
+    Assert-WrapperCondition ($targetedFunctionSource.Contains('Get-ColdRestoreAuthorizationRunId') `
+        -and $targetedFunctionSource.Contains('"targeted_owner_capture_diagnostic_v3" $HeadSha')) "Targeted diagnostic identity must bind its contract run id to the measured HEAD"
     Assert-WrapperCondition ($targetedGuardSource.Contains('Assert-ColdRestoreTargetedOwnerCapturePostconditions $ResolvedProjectPath') `
         -and $targetedGuardSource.Contains('New-ColdRestorePrimaryFailureState') `
         -and $targetedGuardSource.Contains('Add-ColdRestoreFailureRecord') `
