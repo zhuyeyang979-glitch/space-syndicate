@@ -18,17 +18,28 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+Import-Module (Join-Path $PSScriptRoot "cold_restore_authorization_contract_v1.psm1") -Force
 Import-Module (Join-Path $PSScriptRoot "cold_restore_attested_process.psm1") -Force
 Import-Module (Join-Path $PSScriptRoot "cold_restore_prequota_bootstrap.psm1") -Force
 Import-Module (Join-Path $PSScriptRoot "cold_restore_official_attempt2_contract.psm1") -Force
 Import-Module (Join-Path $PSScriptRoot "process_a_rehearsal_admission_contract.psm1") -Force
+# The admission module force-reloads this dependency in module scope; restore script-scope exports.
+Import-Module (Join-Path $PSScriptRoot "cold_restore_authorization_contract_v1.psm1") -Force
 $ORCHESTRATOR_SCHEMA_VERSION = 4
 $FORMAL_FULL_RUN = $false
 $DriverExecutionReady = $true
-$OfficialAuthorizationId = "alpha04c-official-cold-restore-attempt-2-v1"
-$OfficialAttempt1ClaimRelativePath = "codex\cold_restore_v3\official-alpha04c-depth1-seed900626424\official_claim_ledger.json"
-$OfficialAttempt2ClaimRelativePath = "codex\cold_restore_v3\official-alpha04c-attempt-2-depth1-seed900626424\official_attempt_2_claim.json"
-$OfficialAttempt1ClaimSha256 = "80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458"
+$AuthorizationContractPath = Get-ColdRestoreAuthorizationContractPath
+$AuthorizationContractSha256 = (
+    Get-FileHash -LiteralPath $AuthorizationContractPath -Algorithm SHA256
+).Hash.ToLowerInvariant()
+$AuthorizationContract = Get-ColdRestoreAuthorizationContract
+$TargetedOwnerCaptureAuthorization = $AuthorizationContract.targeted_owner_capture_diagnostic_v3
+$ProcessARehearsalAuthorization = $AuthorizationContract.process_a_save_completion_rehearsal_v1
+$OfficialAttempt2Authorization = $AuthorizationContract.official_attempt_2
+$OfficialAuthorizationId = [string]$OfficialAttempt2Authorization.authorization_id
+$OfficialAttempt1ClaimRelativePath = [string]$OfficialAttempt2Authorization.attempt_1_claim_relative_path
+$OfficialAttempt2ClaimRelativePath = [string]$OfficialAttempt2Authorization.claim_path
+$OfficialAttempt1ClaimSha256 = [string]$OfficialAttempt2Authorization.attempt_1_claim_sha256
 $PreviousTargetedOwnerCaptureQuotaLedgerRelativePath = "codex\cold_restore_v3\non-official-alpha04c-production-save-completion-repair-0240dae\targeted_owner_capture_quota_ledger.json"
 $PreviousTargetedOwnerCaptureQuotaLedgerSha256 = "2dba183fe0e354370802d0f886bf40a88b7e1c0b39ddb0df18ee110821e957a1"
 $HistoricalTargetedOwnerCaptureInvocationCommit = "3b3061508541d0e5f6f4c2d6560b134b7d4ee5f8"
@@ -36,14 +47,16 @@ $HistoricalTargetedOwnerCaptureInvocationBlobSha1 = "b54917e54a39e24e1c7288d9193
 $HistoricalTargetedOwnerCaptureInvocationFileSha256 = "50608e7dc7a362969d0ee7358ba008aa0278342ae34d33cd579fcac7bf8a7306"
 $HistoricalTargetedOwnerCaptureInvocationPath = "reports/handoffs/alpha04c_save_resume_current.json"
 $ExhaustedTargetedOwnerCaptureQuotaLedgerRelativePath = "codex\cold_restore_v3\non-official-alpha04c-owner-capture-attestation-12691a8\targeted_owner_capture_quota_ledger.json"
-$TargetedOwnerCaptureQuotaLedgerRelativePath = "codex\cold_restore_v3\non-official-alpha04c-final-cold-closure-3b30615\targeted_owner_capture_quota_ledger.json"
-$TargetedOwnerCaptureAuthorizationId = "alpha04c-targeted-owner-capture-diagnostic-v3"
-$TargetedOwnerCaptureTaskId = "ALPHA_0_4_C_FINAL_HARNESS_REPAIR_REHEARSAL_OFFICIAL_ATTEMPT_2_AND_MAIN_LANDING"
-$TargetedOwnerCaptureBootstrapRelativeRoot = "codex\cold_restore_v3\bootstrap\targeted-owner-diagnostic-v3"
-$ProcessARehearsalAuthorizationId = "alpha04c-process-a-save-completion-rehearsal-v1"
-$ProcessARehearsalQuotaLedgerRelativePath = "codex\cold_restore_v3\non-official-alpha04c-process-a-rehearsal-v1\process_a_rehearsal_quota_ledger.json"
-$ProcessARehearsalLaunchLedgerRelativePath = "codex\cold_restore_v3\non-official-alpha04c-process-a-rehearsal-v1\process_a_rehearsal_launch_ledger.json"
-$ProcessARehearsalOutcomeLedgerRelativePath = "codex\cold_restore_v3\non-official-alpha04c-process-a-rehearsal-v1\process_a_rehearsal_outcome_ledger.json"
+$TargetedOwnerCaptureQuotaLedgerRelativePath = [string]$TargetedOwnerCaptureAuthorization.quota_ledger_relative_path
+$TargetedOwnerCaptureEvidenceRootRelativePath = [string]$TargetedOwnerCaptureAuthorization.evidence_root_relative_path
+$TargetedOwnerCaptureBootstrapRelativeRoot = [string]$TargetedOwnerCaptureAuthorization.bootstrap_root_relative_path
+$TargetedOwnerCaptureAuthorizationId = [string]$TargetedOwnerCaptureAuthorization.authorization_id
+$TargetedOwnerCaptureTaskId = [string]$TargetedOwnerCaptureAuthorization.task_id
+$TargetedOwnerCaptureRunIdPrefix = [string]$TargetedOwnerCaptureAuthorization.run_id_prefix
+$ProcessARehearsalAuthorizationId = [string]$ProcessARehearsalAuthorization.authorization_id
+$ProcessARehearsalQuotaLedgerRelativePath = [string]$ProcessARehearsalAuthorization.quota_ledger_relative_path
+$ProcessARehearsalLaunchLedgerRelativePath = [string]$ProcessARehearsalAuthorization.launch_ledger_relative_path
+$ProcessARehearsalOutcomeLedgerRelativePath = [string]$ProcessARehearsalAuthorization.outcome_ledger_relative_path
 $DefaultRoleTimeoutPolicyPath = Join-Path $PSScriptRoot "cold_restore_role_timeout_policy_v1.json"
 $RoleTimeoutPolicyEvidence = $null
 $LastTargetedPreQuotaContext = $null
@@ -602,7 +615,9 @@ function Test-ExactFieldSet {
     if ($null -eq $Value) {
         return $false
     }
-    $actual = @($Value.PSObject.Properties.Name | Sort-Object)
+    $actual = @(
+        $Value.PSObject.Properties | ForEach-Object { [string]$_.Name } | Sort-Object
+    )
     $expected = @($ExpectedFields | Sort-Object)
     return @(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -eq 0
 }
@@ -682,7 +697,7 @@ function Test-OwnerCaptureAuditRelationship {
             return $false
         }
     }
-    $failureFields = @($Audit.first_failure.PSObject.Properties.Name)
+    $failureFields = @($Audit.first_failure.PSObject.Properties | ForEach-Object { [string]$_.Name })
     if ([bool]$Audit.captured) {
         return $successfulCount -eq $SaveSectionOrder.Count `
             -and $results.Count -eq $SaveSectionOrder.Count `
@@ -794,7 +809,13 @@ function Get-ColdRestoreRolePaths {
         [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
         [Parameter(Mandatory = $true)][string]$Role
     )
-    $root = Join-Path $ResolvedProjectPath ".godot\cold_restore_attestation_v1\$RunId"
+    $root = if ($TargetedOwnerCaptureDiagnostic) {
+        Join-Path (Resolve-ColdRestoreGitCommonDirectory $ResolvedProjectPath) `
+            $TargetedOwnerCaptureEvidenceRootRelativePath
+    }
+    else {
+        Join-Path $ResolvedProjectPath ".godot\cold_restore_attestation_v1\$RunId"
+    }
     return [pscustomobject]@{
         root = $root
         child_attestation = Join-Path $root "child\$Role.completion.json"
@@ -870,6 +891,69 @@ function Get-ColdRestoreRuntimeFreezeObservation {
     }
     $observation.evidence_fingerprint = Get-ColdRestoreEvidenceFingerprint ([pscustomobject]$observation) "evidence_fingerprint"
     return [pscustomobject]$observation
+}
+
+function Assert-ColdRestoreTargetedDiagnosticRemoteCheckpoint {
+    param(
+        [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
+        [Parameter(Mandatory = $true)][string]$ExpectedHead
+    )
+
+    $branchLines = @(& git -C $ResolvedProjectPath branch --show-current 2>$null)
+    $localHeadLines = @(& git -C $ResolvedProjectPath rev-parse HEAD 2>$null)
+    Assert-ColdRestoreCondition ((Get-ColdRestoreSafeCollectionCount $branchLines) -eq 1 `
+        -and (Get-ColdRestoreSafeCollectionCount $localHeadLines) -eq 1 `
+        -and [string]$branchLines[0] -cmatch '^codex/alpha04c-targeted-owner-diagnostic-v3-[0-9a-f]{7,12}$' `
+        -and [string]$localHeadLines[0] -ceq $ExpectedHead) "targeted_diagnostic_local_checkpoint_invalid"
+    $branch = [string]$branchLines[0]
+    $remoteLines = @(& git -C $ResolvedProjectPath rev-parse "refs/remotes/origin/$branch" 2>$null)
+    Assert-ColdRestoreCondition ($LASTEXITCODE -eq 0 `
+        -and (Get-ColdRestoreSafeCollectionCount $remoteLines) -eq 1 `
+        -and [string]$remoteLines[0] -ceq $ExpectedHead) "targeted_diagnostic_remote_checkpoint_mismatch"
+    return [pscustomobject]@{
+        branch = $branch
+        local_head = [string]$localHeadLines[0]
+        remote_head = [string]$remoteLines[0]
+        remote_head_matches_local = $true
+    }
+}
+
+function Assert-ColdRestoreTargetedDiagnosticPostClaimBoundary {
+    param(
+        [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
+        [Parameter(Mandatory = $true)][string]$ExpectedHead,
+        [Parameter(Mandatory = $true)]$DiagnosticQuota,
+        [Parameter(Mandatory = $true)][string]$EvidenceRoot
+    )
+
+    $runtimeFreeze = Get-ColdRestoreRuntimeFreezeObservation $ResolvedProjectPath $ExpectedHead
+    $null = Assert-ColdRestoreRuntimeFreezeGreen `
+        $runtimeFreeze "targeted_diagnostic_postclaim_runtime_not_frozen"
+    Assert-ColdRestoreCondition ([IO.File]::Exists($AuthorizationContractPath) `
+        -and (Get-FileHash -LiteralPath $AuthorizationContractPath -Algorithm SHA256).Hash.ToLowerInvariant() `
+            -ceq $AuthorizationContractSha256) "targeted_diagnostic_authorization_contract_changed"
+    $checkpoint = Assert-ColdRestoreTargetedDiagnosticRemoteCheckpoint `
+        $ResolvedProjectPath $ExpectedHead
+    $officialBoundary = Assert-ColdRestoreOfficialAttemptBoundary $ResolvedProjectPath
+    $gitCommonDirectory = Resolve-ColdRestoreGitCommonDirectory $ResolvedProjectPath
+    $previousLedgerPath = Join-Path $gitCommonDirectory $PreviousTargetedOwnerCaptureQuotaLedgerRelativePath
+    $exhaustedV2LedgerPath = Join-Path $gitCommonDirectory $ExhaustedTargetedOwnerCaptureQuotaLedgerRelativePath
+    $expectedQuotaPath = Join-Path $gitCommonDirectory $TargetedOwnerCaptureQuotaLedgerRelativePath
+    $expectedEvidenceRoot = Join-Path $gitCommonDirectory $TargetedOwnerCaptureEvidenceRootRelativePath
+    Assert-ColdRestoreCondition ([bool]$checkpoint.remote_head_matches_local `
+        -and [bool]$officialBoundary.attempt_1_valid `
+        -and [bool]$officialBoundary.attempt_2_absent `
+        -and [IO.File]::Exists($previousLedgerPath) `
+        -and (Get-FileHash -LiteralPath $previousLedgerPath -Algorithm SHA256).Hash.ToLowerInvariant() `
+            -ceq $PreviousTargetedOwnerCaptureQuotaLedgerSha256 `
+        -and -not [IO.File]::Exists($exhaustedV2LedgerPath) `
+        -and [IO.Path]::GetFullPath([string]$DiagnosticQuota.path) -ceq [IO.Path]::GetFullPath($expectedQuotaPath) `
+        -and [IO.File]::Exists([string]$DiagnosticQuota.path) `
+        -and (Get-FileHash -LiteralPath ([string]$DiagnosticQuota.path) -Algorithm SHA256).Hash.ToLowerInvariant() `
+            -ceq [string]$DiagnosticQuota.fingerprint `
+        -and [IO.Path]::GetFullPath($EvidenceRoot) -ceq [IO.Path]::GetFullPath($expectedEvidenceRoot) `
+        -and [IO.Directory]::Exists($EvidenceRoot)) "targeted_diagnostic_postclaim_boundary_changed"
+    return $true
 }
 
 function Assert-ColdRestoreRuntimeFreezeGreen {
@@ -1158,7 +1242,10 @@ function Assert-ColdRestoreTargetedDiagnosticV2 {
         -and [string]$Diagnostic.current_diagnostic_phase -ceq [string]$timeline.current_phase `
         -and [string]$Diagnostic.next_expected_diagnostic_phase -ceq [string]$timeline.next_expected_phase) "targeted_owner_capture_v2_timeline_binding_invalid"
 
-    $identityFailureFields = @($Diagnostic.scenario_identity_failure.PSObject.Properties.Name)
+    $identityFailureFields = @(
+        $Diagnostic.scenario_identity_failure.PSObject.Properties |
+            ForEach-Object { [string]$_.Name }
+    )
     if ([bool]$Diagnostic.scenario_identity_attested) {
         Assert-ColdRestoreCondition (Test-ExactFieldSet $Diagnostic.scenario_identity $DiagnosticScenarioIdentityFields) "targeted_owner_capture_v2_identity_field_set_invalid"
         $identity = $Diagnostic.scenario_identity
@@ -1185,8 +1272,12 @@ function Assert-ColdRestoreTargetedDiagnosticV2 {
     }
 
     $ownerRows = @($Diagnostic.owner_capture_rows)
-    $firstFailureFields = @($Diagnostic.first_failure.PSObject.Properties.Name)
-    $postFailureFields = @($Diagnostic.post_capture_failure.PSObject.Properties.Name)
+    $firstFailureFields = @(
+        $Diagnostic.first_failure.PSObject.Properties | ForEach-Object { [string]$_.Name }
+    )
+    $postFailureFields = @(
+        $Diagnostic.post_capture_failure.PSObject.Properties | ForEach-Object { [string]$_.Name }
+    )
     if ([bool]$Diagnostic.owner_audit_started) {
         Assert-ColdRestoreCondition ([bool]$Diagnostic.scenario_identity_attested `
             -and [bool]$Diagnostic.owner_audit_completed `
@@ -1420,7 +1511,8 @@ function Invoke-ColdRestoreNonOfficialProcessA {
 
     Assert-ColdRestoreCondition ($NonOfficialProcessAKind -ceq "rehearsal") "process_a_diagnostic_not_authorized"
     Assert-ColdRestoreCondition ($AuthorizedOfficialColdRestoreCount -eq 0) "process_a_rehearsal_official_authorization_forbidden"
-    Assert-ColdRestoreCondition ($RunId -ceq "alpha04c-process-a-rehearsal-$($HeadSha.Substring(0, 12))") "process_a_rehearsal_run_id_invalid"
+    Assert-ColdRestoreCondition ($RunId -ceq (Get-ColdRestoreAuthorizationRunId `
+            "process_a_save_completion_rehearsal_v1" $HeadSha)) "process_a_rehearsal_run_id_invalid"
     Assert-ColdRestoreCondition ($ExpectedScenarioFingerprint -ceq $TargetedOwnerCaptureScenarioFingerprint) "expected_scenario_fingerprint_invalid"
     $timeout = Get-ColdRestoreRoleTimeout "process_a"
     Assert-ColdRestoreCondition ([int]$timeout.absolute_timeout_seconds -eq 180 `
@@ -1727,8 +1819,8 @@ function Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic {
     )
 
     $script:TargetedOwnerCaptureCurrentPhase = "authorization_check"
-    Assert-ColdRestoreCondition ($RunId -cmatch '^alpha04c-owner-capture-diagnostic-[0-9a-f]{12}$' `
-        -and $RunId -ceq "alpha04c-owner-capture-diagnostic-$($HeadSha.Substring(0, 12))") "targeted_owner_capture_run_id_invalid"
+    Assert-ColdRestoreCondition ($RunId -ceq (Get-ColdRestoreAuthorizationRunId `
+            "targeted_owner_capture_diagnostic_v3" $HeadSha)) "targeted_owner_capture_run_id_invalid"
     Assert-ColdRestoreCondition ($AuthorizedOfficialColdRestoreCount -eq 0) "targeted_owner_capture_official_authorization_forbidden"
     Assert-ColdRestoreCondition ($ExpectedScenarioFingerprint -ceq $TargetedOwnerCaptureScenarioFingerprint) "expected_scenario_fingerprint_invalid"
     $dirtyPaths = @(& git -C $ResolvedProjectPath status --porcelain=v1 2>$null)
@@ -1737,7 +1829,8 @@ function Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic {
     $timeout = Get-ColdRestoreRoleTimeout "targeted_owner_diagnostic"
     Assert-ColdRestoreCondition ([int]$timeout.absolute_timeout_seconds -eq 120 `
         -and [int]$timeout.no_progress_timeout_seconds -eq 30) "targeted_owner_capture_timeout_policy_invalid"
-    $diagnosticEvidenceRoot = Join-Path $ResolvedProjectPath ".godot\cold_restore_attestation_v1\$RunId"
+    $paths = Get-ColdRestoreRolePaths $ResolvedProjectPath "producer"
+    $diagnosticEvidenceRoot = [string]$paths.root
     Assert-ColdRestoreCondition (-not (Test-Path -LiteralPath $UserDataRoot) `
         -and -not (Test-Path -LiteralPath $diagnosticEvidenceRoot)) "targeted_owner_capture_evidence_collision"
     $null = Update-ColdRestorePreQuotaAttestation `
@@ -1758,7 +1851,6 @@ function Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic {
         -Updates ([ordered]@{ quota_claimed = $true }) `
         -FailureState $FailureState
     $script:TargetedOwnerCaptureCurrentPhase = "evidence_root_creation"
-    $paths = Get-ColdRestoreRolePaths $ResolvedProjectPath "producer"
     $null = Update-ColdRestorePreQuotaAttestation `
         -Context $PreQuotaContext `
         -Updates ([ordered]@{ evidence_root_creation_attempted = $true }) `
@@ -1771,25 +1863,25 @@ function Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic {
         -FailureState $FailureState
     [IO.Directory]::CreateDirectory($IsolatedAppData) | Out-Null
     [IO.Directory]::CreateDirectory($IsolatedLocalAppData) | Out-Null
+    $null = Assert-ColdRestoreTargetedDiagnosticPostClaimBoundary `
+        $ResolvedProjectPath $HeadSha $diagnosticQuota ([string]$paths.root)
     $GodotPath = Resolve-ColdRestoreGodotExecutable $GodotPath
     $launchAuthorization = $diagnosticQuota.launch_authorization
     $launchAttestationPath = Join-Path $paths.root "launch\orchestrator-$($launchAuthorization.orchestrator_process_id)\producer.authorized.json"
+    $targetedUserArguments = New-ColdRestoreTargetedDiagnosticUserArgumentList `
+        -GitCommonDirectory (Resolve-ColdRestoreGitCommonDirectory $ResolvedProjectPath) `
+        -RepositoryHead $HeadSha `
+        -RunId $RunId `
+        -ArtifactRoot $ArtifactRoot `
+        -ScenarioFingerprint $ExpectedScenarioFingerprint `
+        -TimeoutPolicyFingerprint ([string]$RoleTimeoutPolicyEvidence.sha256) `
+        -QuotaLedgerPath ([string]$diagnosticQuota.path) `
+        -QuotaLedgerFingerprint ([string]$diagnosticQuota.fingerprint) `
+        -LaunchAttestationPath $launchAttestationPath `
+        -LaunchNonce ([string]$launchAuthorization.launch_nonce)
     $arguments = New-ColdRestoreGodotArgumentList `
         -EngineArgumentList @("--headless", "--path", $ResolvedProjectPath, "--script", $DriverScript) `
-        -UserArgumentList @(
-            "--cold-restore-non-official-process-a",
-            "--cold-restore-targeted-owner-capture-diagnostic",
-            "--cold-restore-role=producer",
-            "--cold-restore-run-id=$RunId",
-            "--cold-restore-head-sha=$HeadSha",
-            "--cold-restore-artifact-root=$ArtifactRoot",
-            "--cold-restore-scenario-fingerprint=$ExpectedScenarioFingerprint",
-            "--cold-restore-timeout-policy-fingerprint=$($RoleTimeoutPolicyEvidence.sha256)",
-            "--cold-restore-targeted-diagnostic-ledger-path=$($diagnosticQuota.path)",
-            "--cold-restore-targeted-diagnostic-ledger-fingerprint=$($diagnosticQuota.fingerprint)",
-            "--cold-restore-launch-attestation-path=$launchAttestationPath",
-            "--cold-restore-launch-nonce=$($launchAuthorization.launch_nonce)"
-        )
+        -UserArgumentList $targetedUserArguments
     $script:TargetedOwnerCaptureCurrentPhase = "godot_launch"
     $null = Update-ColdRestorePreQuotaAttestation `
         -Context $PreQuotaContext `
@@ -1807,7 +1899,11 @@ function Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic {
         -StdoutPath $paths.stdout `
         -StderrPath $paths.stderr `
         -TimeoutSeconds $timeout.absolute_timeout_seconds `
-        -EnvironmentVariables @{ APPDATA = $IsolatedAppData; LOCALAPPDATA = $IsolatedLocalAppData } `
+        -EnvironmentVariables @{
+            APPDATA = $IsolatedAppData
+            LOCALAPPDATA = $IsolatedLocalAppData
+            SPACE_SYNDICATE_COLD_RESTORE_EVIDENCE_ROOT = [string]$paths.root
+        } `
         -LaunchAttestationPath $launchAttestationPath `
         -LaunchAuthorization $launchAuthorization `
         -PhaseTimelineEventDirectory $paths.phase_timeline_events `
@@ -1899,8 +1995,12 @@ function Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic {
     Assert-ColdRestoreCondition ([string]$run.child.product_blocker -ceq "TARGETED_OWNER_CAPTURE_DIAGNOSTIC_SHA256:$diagnosticSha256" `
         -and [string]$run.child.final_reason_code -ceq "targeted_owner_capture_diagnostic_sha256_$diagnosticSha256") "targeted_owner_capture_child_diagnostic_binding_invalid"
     Assert-ColdRestoreTargetedDiagnosticV2 $diagnostic $HeadSha
-    $firstFailureFields = @($diagnostic.first_failure.PSObject.Properties.Name)
-    $postFailureFields = @($diagnostic.post_capture_failure.PSObject.Properties.Name)
+    $firstFailureFields = @(
+        $diagnostic.first_failure.PSObject.Properties | ForEach-Object { [string]$_.Name }
+    )
+    $postFailureFields = @(
+        $diagnostic.post_capture_failure.PSObject.Properties | ForEach-Object { [string]$_.Name }
+    )
     $diagnosticResultKind = if (-not [bool]$diagnostic.owner_audit_started) {
         "PRE_OWNER_FAILURE"
     }
@@ -2002,15 +2102,21 @@ function Invoke-ColdRestoreTargetedOwnerCaptureGuarded {
         Assert-ColdRestoreCondition ($LASTEXITCODE -eq 0 `
             -and (Get-ColdRestoreSafeCollectionCount $branchLines) -le 1) "branch_identity_unavailable"
         $branch = $(if ((Get-ColdRestoreSafeCollectionCount $branchLines) -eq 1) { [string]$branchLines[0] } else { "" })
-        $quotaLedgerPath = Join-Path $gitCommonDirectory $TargetedOwnerCaptureQuotaLedgerRelativePath
-        $bootstrapRoot = Join-Path $gitCommonDirectory $TargetedOwnerCaptureBootstrapRelativeRoot
-        $preQuotaContext = New-ColdRestorePreQuotaContext `
-            -BootstrapRoot $bootstrapRoot `
-            -RunId $RunId `
+        $null = Assert-ColdRestoreTargetedDiagnosticRemoteCheckpoint $ResolvedProjectPath $HeadSha
+        $preQuotaFreeze = Get-ColdRestoreRuntimeFreezeObservation $ResolvedProjectPath $HeadSha
+        $null = Assert-ColdRestoreRuntimeFreezeGreen `
+            $preQuotaFreeze "targeted_diagnostic_prequota_runtime_not_frozen"
+        Assert-ColdRestoreCondition ([IO.File]::Exists($AuthorizationContractPath) `
+            -and (Get-FileHash -LiteralPath $AuthorizationContractPath -Algorithm SHA256).Hash.ToLowerInvariant() `
+                -ceq $AuthorizationContractSha256) "targeted_diagnostic_authorization_contract_changed"
+        $authorizationBinding = Get-ColdRestoreTargetedDiagnosticAuthorizationBinding `
+            $gitCommonDirectory $HeadSha
+        Assert-ColdRestoreCondition ($RunId -ceq [string]$authorizationBinding.run_id) `
+            "targeted_owner_capture_run_id_invalid"
+        $preQuotaContext = New-ColdRestoreTargetedDiagnosticPreQuotaContext `
+            -GitCommonDirectory $gitCommonDirectory `
             -RepositoryHead $HeadSha `
-            -Branch $branch `
-            -AuthorizationId $TargetedOwnerCaptureAuthorizationId `
-            -QuotaLedgerPath $quotaLedgerPath
+            -Branch $branch
         $script:LastTargetedPreQuotaContext = $preQuotaContext
         $targetedDiagnostic = Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic `
             $ResolvedProjectPath $HeadSha $preQuotaContext $failureState
@@ -2096,7 +2202,20 @@ function New-ColdRestoreTargetedOwnerCaptureOutput {
     else {
         $Result.diagnostic.post_capture_failure
     }
-    $failureFields = if ($null -ne $failure) { @($failure.PSObject.Properties.Name) } else { @() }
+    $failureFields = if ($null -ne $failure) {
+        @($failure.PSObject.Properties | ForEach-Object { [string]$_.Name })
+    }
+    else {
+        @()
+    }
+    $diagnosticGreen = [string]$Result.diagnostic_result_kind -ceq "ALL_OWNERS_CAPTURED"
+    $failureCode = switch ([string]$Result.diagnostic_result_kind) {
+        "ALL_OWNERS_CAPTURED" { "" }
+        "OWNER_CAPTURE_FAILURE" { "owner_capture_failed" }
+        "POST_CAPTURE_FAILURE" { "owner_capture_post_validation_failed" }
+        "PRE_OWNER_FAILURE" { "owner_diagnostic_pre_audit_failure" }
+        default { "owner_diagnostic_result_unknown" }
+    }
     return [ordered]@{
         schema_version = 3
         driver_id = "alpha04c_targeted_owner_capture_diagnostic_v3"
@@ -2130,14 +2249,15 @@ function New-ColdRestoreTargetedOwnerCaptureOutput {
         task_owned_process_count_after = [int]$Result.run.parent.task_owned_process_count_after
         save_written = $false
         official_count_consumed = $false
+        process_a_rehearsal_authorized = $diagnosticGreen
         diagnostic_path = [string]$Result.diagnostic_path
         prequota_attestation_path = [string]$Result.prequota.path
         prequota_attestation_sha256 = [string]$Result.prequota.sha256
         prequota_attestation_fingerprint = [string]$Result.prequota.fingerprint
         bootstrap_admission_sha256 = [string]$Result.prequota.admission_sha256
         bootstrap_admission_fingerprint = [string]$Result.prequota.admission_fingerprint
-        success = [string]$Result.diagnostic_result_kind -ne "PRE_OWNER_FAILURE"
-        failure_code = $(if ([string]$Result.diagnostic_result_kind -eq "PRE_OWNER_FAILURE") { "owner_diagnostic_pre_audit_failure" } else { "" })
+        success = $diagnosticGreen
+        failure_code = $failureCode
     }
 }
 
@@ -2776,17 +2896,17 @@ function Consume-ColdRestoreTargetedOwnerCaptureDiagnosticQuota {
     Assert-ColdRestoreCondition ([IO.Path]::GetFullPath($ledgerPath) -ceq [IO.Path]::GetFullPath([string]$PreQuotaContext.value.quota_ledger_path)) "prequota_quota_ledger_path_mismatch"
     $ledger = [ordered]@{
         schema_version = 3
-        ledger_id = "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV3"
+        ledger_id = [string]$TargetedOwnerCaptureAuthorization.ledger_id
         authorization_id = $TargetedOwnerCaptureAuthorizationId
         task_id = $TargetedOwnerCaptureTaskId
         created_at_utc = [DateTime]::UtcNow.ToString("O", [Globalization.CultureInfo]::InvariantCulture)
         run_id = $RunId
         repository_head = $HeadSha
         scenario_fingerprint = $ExpectedScenarioFingerprint
-        authorized_new_diagnostic_count = 1
-        diagnostic_count_before = 2
-        diagnostic_count_after = 3
-        diagnostic_count_maximum = 3
+        authorized_new_diagnostic_count = [int]$TargetedOwnerCaptureAuthorization.authorized_increment
+        diagnostic_count_before = [int]$TargetedOwnerCaptureAuthorization.permitted_transition_from
+        diagnostic_count_after = [int]$TargetedOwnerCaptureAuthorization.permitted_transition_to
+        diagnostic_count_maximum = [int]$TargetedOwnerCaptureAuthorization.maximum_invocation_count
         previous_ledger_sha256 = $PreviousTargetedOwnerCaptureQuotaLedgerSha256
         historical_invocation_commit = $HistoricalTargetedOwnerCaptureInvocationCommit
         historical_invocation_blob_sha1 = $HistoricalTargetedOwnerCaptureInvocationBlobSha1
@@ -2940,8 +3060,10 @@ function Get-ColdRestoreProcessARehearsalDiagnosticAdmission {
         [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
         [Parameter(Mandatory = $true)][string]$HeadSha
     )
-    $diagnosticRunId = "alpha04c-owner-capture-diagnostic-$($HeadSha.Substring(0, 12))"
-    $diagnosticRoot = Join-Path $ResolvedProjectPath ".godot\cold_restore_attestation_v1\$diagnosticRunId"
+    $diagnosticRunId = Get-ColdRestoreAuthorizationRunId `
+        "targeted_owner_capture_diagnostic_v3" $HeadSha
+    $diagnosticRoot = Join-Path (Resolve-ColdRestoreGitCommonDirectory $ResolvedProjectPath) `
+        $TargetedOwnerCaptureEvidenceRootRelativePath
     $diagnosticPath = Join-Path $diagnosticRoot "diagnostics\owner_capture_audit.json"
     $gitCommonDirectory = Resolve-ColdRestoreGitCommonDirectory $ResolvedProjectPath
     $quotaLedgerPath = Join-Path $gitCommonDirectory $TargetedOwnerCaptureQuotaLedgerRelativePath
@@ -3028,7 +3150,8 @@ function Assert-AndConsumeOfficialColdRestoreAuthorization {
     else {
         Assert-ColdRestoreCondition ($AuthorizedOfficialColdRestoreCount -eq 1) "official_authorization_count_invalid"
     }
-    Assert-ColdRestoreCondition ($RunId -ceq "alpha04c-cold-retry-$($HeadSha.Substring(0, 12))") "official_attempt_2_run_id_invalid"
+    Assert-ColdRestoreCondition ($RunId -ceq (Get-ColdRestoreAuthorizationRunId `
+            "official_attempt_2" $HeadSha)) "official_attempt_2_run_id_invalid"
     Assert-ColdRestoreCondition ($ExpectedScenarioFingerprint -ceq $TargetedOwnerCaptureScenarioFingerprint) "expected_scenario_fingerprint_invalid"
     $gitCommonDirectory = Resolve-ColdRestoreGitCommonDirectory $ResolvedProjectPath
     $candidateEvidenceRoot = Join-Path $ResolvedProjectPath ".godot\cold_restore_attestation_v1\$RunId"
@@ -3057,7 +3180,8 @@ function Assert-AndConsumeOfficialColdRestoreAuthorization {
             -and -not [IO.Directory]::Exists($candidateUserDataRoot)) "official_attempt_2_candidate_root_collision"
     }
     $officialBoundary = Assert-ColdRestoreOfficialAttemptBoundary $ResolvedProjectPath
-    $rehearsalRunId = "alpha04c-process-a-rehearsal-$($HeadSha.Substring(0, 12))"
+    $rehearsalRunId = Get-ColdRestoreAuthorizationRunId `
+        "process_a_save_completion_rehearsal_v1" $HeadSha
     $rehearsalRoot = Join-Path $ResolvedProjectPath ".godot\cold_restore_attestation_v1\$rehearsalRunId"
     $outcomePath = Join-Path $gitCommonDirectory $ProcessARehearsalOutcomeLedgerRelativePath
     $admissionPath = Join-Path $gitCommonDirectory $ProcessARehearsalQuotaLedgerRelativePath

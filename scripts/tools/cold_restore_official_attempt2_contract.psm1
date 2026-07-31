@@ -2,6 +2,14 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 Import-Module (Join-Path $PSScriptRoot "cold_restore_attested_process.psm1") -ErrorAction Stop
+Import-Module (Join-Path $PSScriptRoot "cold_restore_authorization_contract_v1.psm1") -ErrorAction Stop
+
+$script:OfficialAttempt2Authorization = Get-ColdRestoreAuthorizationEntry "official_attempt_2"
+$script:OfficialClaimRootPrefix = "codex/cold_restore_v3/"
+$script:Attempt1ClaimRelativeToRoot =
+    ([string]$script:OfficialAttempt2Authorization.attempt_1_claim_relative_path).Substring(
+        $script:OfficialClaimRootPrefix.Length
+    )
 
 $script:ClaimFields = @(
     "schema_version", "claim_id", "attempt_number", "authorization_id", "created_at_utc",
@@ -48,11 +56,11 @@ function Assert-ColdRestoreOfficialAttempt2Claim {
         -or [int]$Value.schema_version -ne 2 `
         -or [string]$Value.claim_id -cne "OfficialAttemptClaimV2" `
         -or [int]$Value.attempt_number -ne 2 `
-        -or [string]$Value.authorization_id -cne "alpha04c-official-cold-restore-attempt-2-v1" `
+        -or [string]$Value.authorization_id -cne [string]$script:OfficialAttempt2Authorization.authorization_id `
         -or -not (Test-ColdRestoreOfficialAttempt2UtcTimestamp $Value.created_at_utc) `
-        -or [string]$Value.run_id -cnotmatch '^alpha04c-cold-retry-[0-9a-f]{12}$' `
         -or [string]$Value.source_head -cnotmatch '^[0-9a-f]{40}$' `
-        -or [string]$Value.run_id -cne "alpha04c-cold-retry-$(([string]$Value.source_head).Substring(0, 12))" `
+        -or [string]$Value.run_id -cne (Get-ColdRestoreAuthorizationRunId `
+            "official_attempt_2" ([string]$Value.source_head)) `
         -or [string]$Value.rehearsal_green_head -cne [string]$Value.source_head `
         -or [string]$Value.scenario_fingerprint -cnotmatch '^[0-9a-f]{64}$' `
         -or [int]$Value.challenge_depth -ne 1 `
@@ -62,10 +70,11 @@ function Assert-ColdRestoreOfficialAttempt2Claim {
         -or [string]$Value.timeout_policy_sha256 -cnotmatch '^[0-9a-f]{64}$' `
         -or [string]$Value.prerequisite_evidence_fingerprint -cnotmatch '^[0-9a-f]{64}$' `
         -or [string]$Value.preclaim_runtime_freeze_fingerprint -cnotmatch '^[0-9a-f]{64}$' `
-        -or [string]$Value.rehearsal_run_id -cne "alpha04c-process-a-rehearsal-$(([string]$Value.source_head).Substring(0, 12))" `
+        -or [string]$Value.rehearsal_run_id -cne (Get-ColdRestoreAuthorizationRunId `
+            "process_a_save_completion_rehearsal_v1" ([string]$Value.source_head)) `
         -or [string]$Value.rehearsal_evidence_fingerprint -cnotmatch '^[0-9a-f]{64}$' `
-        -or [string]$Value.attempt_1_claim_relative_path -cne "official-alpha04c-depth1-seed900626424/official_claim_ledger.json" `
-        -or [string]$Value.attempt_1_claim_sha256 -cne "80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458" `
+        -or [string]$Value.attempt_1_claim_relative_path -cne $script:Attempt1ClaimRelativeToRoot `
+        -or [string]$Value.attempt_1_claim_sha256 -cne [string]$script:OfficialAttempt2Authorization.attempt_1_claim_sha256 `
         -or [string]$Value.orchestrator_id -cne "alpha04c_cold_restore_vertical_slice_orchestrator_v4" `
         -or [int]$Value.orchestrator_schema_version -ne 4 `
         -or [string]$Value.orchestrator_script_sha256 -cnotmatch '^[0-9a-f]{64}$' `
@@ -242,7 +251,7 @@ function Get-ColdRestoreOfficialAttempt2ContractInfo {
     return [pscustomobject]@{
         schema_version = 2
         claim_id = "OfficialAttemptClaimV2"
-        authorization_id = "alpha04c-official-cold-restore-attempt-2-v1"
+        authorization_id = [string]$script:OfficialAttempt2Authorization.authorization_id
         claim_fields = @($script:ClaimFields)
         role_timeout_fields = @($script:RoleTimeoutFields)
         role_ids = @($script:RoleIds)

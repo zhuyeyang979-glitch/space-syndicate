@@ -2,6 +2,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 Import-Module (Join-Path $PSScriptRoot "cold_restore_attested_process.psm1") -ErrorAction Stop
+Import-Module (Join-Path $PSScriptRoot "cold_restore_authorization_contract_v1.psm1") -ErrorAction Stop
+
+$script:TargetedAuthorization = Get-ColdRestoreAuthorizationEntry "targeted_owner_capture_diagnostic_v3"
 
 $script:PrimaryFailureRecordFields = @("phase", "reason_code", "safe_details", "recorded_at")
 $script:BootstrapAdmissionFields = @(
@@ -70,13 +73,13 @@ function Assert-ColdRestoreBootstrapAdmission {
         -or [int]$Value.schema_version -ne 1 `
         -or [string]$Value.admission_id -cne "PreQuotaOrchestratorBootstrapAdmissionV1" `
         -or -not (Test-ColdRestoreUtcTimestamp $Value.created_at_utc) `
-        -or [string]$Value.run_id -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$' `
+        -or [string]$Value.run_id -cne (Get-ColdRestoreAuthorizationRunId "targeted_owner_capture_diagnostic_v3" ([string]$Value.repository_head)) `
         -or [string]$Value.role -cne "targeted_owner_diagnostic" `
         -or [string]$Value.repository_head -cnotmatch '^[0-9a-f]{40}$' `
-        -or [string]$Value.authorization_id -cnotmatch '^[a-z0-9_]{1,128}$' `
-        -or [int]$Value.historical_count -ne 2 `
-        -or [int]$Value.authorized_increment -ne 1 `
-        -or [int]$Value.maximum_allowed_count -ne 3 `
+        -or -not (Test-ColdRestoreExactAuthorizationId "targeted_owner_capture_diagnostic_v3" $Value.authorization_id) `
+        -or [int]$Value.historical_count -ne [int]$script:TargetedAuthorization.permitted_transition_from `
+        -or [int]$Value.authorized_increment -ne [int]$script:TargetedAuthorization.authorized_increment `
+        -or [int]$Value.maximum_allowed_count -ne [int]$script:TargetedAuthorization.maximum_invocation_count `
         -or $Value.official -isnot [bool] -or [bool]$Value.official `
         -or $Value.formal -isnot [bool] -or [bool]$Value.formal `
         -or [int]$Value.orchestrator_process_id -le 0 `
@@ -140,6 +143,7 @@ function Read-ColdRestorePreQuotaJson {
 
 function New-ColdRestorePreQuotaContext {
     param(
+        [Parameter(Mandatory = $true)][string]$GitCommonDirectory,
         [Parameter(Mandatory = $true)][string]$BootstrapRoot,
         [Parameter(Mandatory = $true)][string]$RunId,
         [Parameter(Mandatory = $true)][string]$RepositoryHead,
@@ -148,12 +152,24 @@ function New-ColdRestorePreQuotaContext {
         [Parameter(Mandatory = $true)][string]$QuotaLedgerPath
     )
 
-    if (-not [IO.Path]::IsPathFullyQualified($BootstrapRoot) `
+    if (-not [IO.Path]::IsPathFullyQualified($GitCommonDirectory) `
+        -or -not [IO.Path]::IsPathFullyQualified($BootstrapRoot) `
         -or $RunId -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$' `
         -or $RepositoryHead -cnotmatch '^[0-9a-f]{40}$' `
-        -or $AuthorizationId -cnotmatch '^[a-z0-9_]{1,128}$' `
         -or -not [IO.Path]::IsPathFullyQualified($QuotaLedgerPath)) {
         throw "prequota_bootstrap_parameter_invalid"
+    }
+    if (-not (Test-ColdRestoreExactAuthorizationId "targeted_owner_capture_diagnostic_v3" $AuthorizationId)) {
+        throw "authorization_id_invalid"
+    }
+    $binding = Get-ColdRestoreTargetedDiagnosticAuthorizationBinding `
+        $GitCommonDirectory $RepositoryHead
+    if ($RunId -cne [string]$binding.run_id) {
+        throw "targeted_owner_capture_run_id_invalid"
+    }
+    if ([IO.Path]::GetFullPath($QuotaLedgerPath) -cne [IO.Path]::GetFullPath([string]$binding.quota_ledger_path) `
+        -or [IO.Path]::GetFullPath($BootstrapRoot) -cne [IO.Path]::GetFullPath([string]$binding.bootstrap_root)) {
+        throw "quota_ledger_path_invalid"
     }
     $ticks = Get-ColdRestoreCurrentProcessCreationTicks
     $nonce = [Guid]::NewGuid().ToString("N")
@@ -169,9 +185,9 @@ function New-ColdRestorePreQuotaContext {
         repository_head = $RepositoryHead
         branch = $Branch
         authorization_id = $AuthorizationId
-        historical_count = 2
-        authorized_increment = 1
-        maximum_allowed_count = 3
+        historical_count = [int]$script:TargetedAuthorization.permitted_transition_from
+        authorized_increment = [int]$script:TargetedAuthorization.authorized_increment
+        maximum_allowed_count = [int]$script:TargetedAuthorization.maximum_invocation_count
         official = $false
         formal = $false
         orchestrator_process_id = $PID
@@ -274,19 +290,23 @@ function Update-ColdRestorePreQuotaAttestation {
 function Assert-ColdRestoreTargetedQuotaLedgerV3 {
     param([Parameter(Mandatory = $true)]$Value)
 
+    if (-not (Test-ColdRestoreExactAuthorizationId "targeted_owner_capture_diagnostic_v3" $Value.authorization_id)) {
+        throw "authorization_id_invalid"
+    }
+    if ([int]$Value.authorized_new_diagnostic_count -ne [int]$script:TargetedAuthorization.authorized_increment `
+        -or [int]$Value.diagnostic_count_before -ne [int]$script:TargetedAuthorization.permitted_transition_from `
+        -or [int]$Value.diagnostic_count_after -ne [int]$script:TargetedAuthorization.permitted_transition_to `
+        -or [int]$Value.diagnostic_count_maximum -ne [int]$script:TargetedAuthorization.maximum_invocation_count) {
+        throw "quota_transition_invalid"
+    }
     if (-not (Test-ColdRestoreExactFieldSet $Value $script:TargetedQuotaLedgerV3Fields) `
         -or [int]$Value.schema_version -ne 3 `
-        -or [string]$Value.ledger_id -cne "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV3" `
-        -or [string]$Value.authorization_id -cne "alpha04c-targeted-owner-capture-diagnostic-v3" `
-        -or [string]$Value.task_id -cne "ALPHA_0_4_C_FINAL_HARNESS_REPAIR_REHEARSAL_OFFICIAL_ATTEMPT_2_AND_MAIN_LANDING" `
+        -or [string]$Value.ledger_id -cne [string]$script:TargetedAuthorization.ledger_id `
+        -or [string]$Value.task_id -cne [string]$script:TargetedAuthorization.task_id `
         -or -not (Test-ColdRestoreUtcTimestamp $Value.created_at_utc) `
-        -or [string]$Value.run_id -cnotmatch '^alpha04c-owner-capture-diagnostic-[0-9a-f]{12}$' `
         -or [string]$Value.repository_head -cnotmatch '^[0-9a-f]{40}$' `
+        -or [string]$Value.run_id -cne (Get-ColdRestoreAuthorizationRunId "targeted_owner_capture_diagnostic_v3" ([string]$Value.repository_head)) `
         -or [string]$Value.scenario_fingerprint -cnotmatch '^[0-9a-f]{64}$' `
-        -or [int]$Value.authorized_new_diagnostic_count -ne 1 `
-        -or [int]$Value.diagnostic_count_before -ne 2 `
-        -or [int]$Value.diagnostic_count_after -ne 3 `
-        -or [int]$Value.diagnostic_count_maximum -ne 3 `
         -or [string]$Value.previous_ledger_sha256 -cnotmatch '^[0-9a-f]{64}$' `
         -or [string]$Value.historical_invocation_commit -cnotmatch '^[0-9a-f]{40}$' `
         -or [string]$Value.historical_invocation_blob_sha1 -cnotmatch '^[0-9a-f]{40}$' `
@@ -332,13 +352,85 @@ function Publish-ColdRestoreTargetedQuotaLedgerV3 {
             catch {
                 throw "targeted_owner_capture_diagnostic_stale_ledger"
             }
-            throw "targeted_owner_capture_diagnostic_already_consumed"
+            throw "quota_already_consumed"
         }
         if ($reason -like "exclusive_evidence_consumed_*") {
             throw "targeted_owner_capture_diagnostic_consumed_but_ledger_invalid"
         }
         throw "targeted_owner_capture_diagnostic_quota_ledger_failed"
     }
+}
+
+function New-ColdRestoreTargetedDiagnosticPreQuotaContext {
+    param(
+        [Parameter(Mandatory = $true)][string]$GitCommonDirectory,
+        [Parameter(Mandatory = $true)][string]$RepositoryHead,
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Branch
+    )
+
+    $binding = Get-ColdRestoreTargetedDiagnosticAuthorizationBinding `
+        $GitCommonDirectory $RepositoryHead
+    $context = New-ColdRestorePreQuotaContext `
+        -GitCommonDirectory $GitCommonDirectory `
+        -BootstrapRoot $binding.bootstrap_root `
+        -RunId $binding.run_id `
+        -RepositoryHead $RepositoryHead `
+        -Branch $Branch `
+        -AuthorizationId $binding.authorization_id `
+        -QuotaLedgerPath $binding.quota_ledger_path
+    $context | Add-Member -NotePropertyName authorization_binding -NotePropertyValue $binding
+    return $context
+}
+
+function New-ColdRestoreTargetedDiagnosticUserArgumentList {
+    param(
+        [Parameter(Mandatory = $true)][string]$GitCommonDirectory,
+        [Parameter(Mandatory = $true)][string]$RepositoryHead,
+        [Parameter(Mandatory = $true)][string]$RunId,
+        [Parameter(Mandatory = $true)][string]$ArtifactRoot,
+        [Parameter(Mandatory = $true)][string]$ScenarioFingerprint,
+        [Parameter(Mandatory = $true)][string]$TimeoutPolicyFingerprint,
+        [Parameter(Mandatory = $true)][string]$QuotaLedgerPath,
+        [Parameter(Mandatory = $true)][string]$QuotaLedgerFingerprint,
+        [Parameter(Mandatory = $true)][string]$LaunchAttestationPath,
+        [Parameter(Mandatory = $true)][string]$LaunchNonce
+    )
+
+    $binding = Get-ColdRestoreTargetedDiagnosticAuthorizationBinding `
+        $GitCommonDirectory $RepositoryHead
+    if ($RunId -cne [string]$binding.run_id) {
+        throw "targeted_owner_capture_run_id_invalid"
+    }
+    if ([IO.Path]::GetFullPath($QuotaLedgerPath) -cne [IO.Path]::GetFullPath([string]$binding.quota_ledger_path)) {
+        throw "quota_ledger_path_invalid"
+    }
+    $evidencePrefix = [IO.Path]::GetFullPath([string]$binding.evidence_root).TrimEnd(
+        [IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar
+    ) + [IO.Path]::DirectorySeparatorChar
+    if (-not [IO.Path]::IsPathFullyQualified($LaunchAttestationPath) `
+        -or -not [IO.Path]::GetFullPath($LaunchAttestationPath).StartsWith(
+            $evidencePrefix, [StringComparison]::OrdinalIgnoreCase
+        ) `
+        -or $ScenarioFingerprint -cnotmatch '^[0-9a-f]{64}$' `
+        -or $TimeoutPolicyFingerprint -cnotmatch '^[0-9a-f]{64}$' `
+        -or $QuotaLedgerFingerprint -cnotmatch '^[0-9a-f]{64}$' `
+        -or $LaunchNonce -cnotmatch '^[0-9a-f]{32}$') {
+        throw "targeted_owner_capture_command_authorization_invalid"
+    }
+    return @(
+        "--cold-restore-non-official-process-a",
+        "--cold-restore-targeted-owner-capture-diagnostic",
+        "--cold-restore-role=producer",
+        "--cold-restore-run-id=$RunId",
+        "--cold-restore-head-sha=$RepositoryHead",
+        "--cold-restore-artifact-root=$ArtifactRoot",
+        "--cold-restore-scenario-fingerprint=$ScenarioFingerprint",
+        "--cold-restore-timeout-policy-fingerprint=$TimeoutPolicyFingerprint",
+        "--cold-restore-targeted-diagnostic-ledger-path=$QuotaLedgerPath",
+        "--cold-restore-targeted-diagnostic-ledger-fingerprint=$QuotaLedgerFingerprint",
+        "--cold-restore-launch-attestation-path=$LaunchAttestationPath",
+        "--cold-restore-launch-nonce=$LaunchNonce"
+    )
 }
 
 Export-ModuleMember -Function @(
@@ -354,5 +446,7 @@ Export-ModuleMember -Function @(
     "Assert-ColdRestoreTargetedQuotaLedgerV3",
     "New-ColdRestorePreQuotaContext",
     "Update-ColdRestorePreQuotaAttestation",
-    "Publish-ColdRestoreTargetedQuotaLedgerV3"
+    "Publish-ColdRestoreTargetedQuotaLedgerV3",
+    "New-ColdRestoreTargetedDiagnosticPreQuotaContext",
+    "New-ColdRestoreTargetedDiagnosticUserArgumentList"
 )

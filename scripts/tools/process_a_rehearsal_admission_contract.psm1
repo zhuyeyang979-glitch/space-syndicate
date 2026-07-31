@@ -1,6 +1,12 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+Import-Module (Join-Path $PSScriptRoot "cold_restore_authorization_contract_v1.psm1") -Force -ErrorAction Stop
+$script:AuthorizationContract = Get-ColdRestoreAuthorizationContract
+$script:RehearsalAuthorization = $script:AuthorizationContract.process_a_save_completion_rehearsal_v1
+$script:TargetedDiagnosticAuthorization = $script:AuthorizationContract.targeted_owner_capture_diagnostic_v3
+$script:OfficialAttempt2Authorization = $script:AuthorizationContract.official_attempt_2
+
 $script:ColdRestoreAttestedProcessModulePath = Join-Path $PSScriptRoot "cold_restore_attested_process.psm1"
 if (-not [IO.File]::Exists($script:ColdRestoreAttestedProcessModulePath)) {
     throw "process_a_rehearsal_timeout_policy_validator_missing"
@@ -25,9 +31,10 @@ if ($null -eq $script:ColdRestoreRoleTimeoutPolicyValidator) {
 $script:ContractId = "Alpha04C.ProcessARehearsalAdmissionContractV1"
 $script:AdmissionLedgerId = "ProcessARehearsalAdmissionLedgerV3"
 $script:LaunchLedgerId = "ProcessARehearsalLaunchLedgerV1"
-$script:AuthorizationId = "alpha04c-process-a-save-completion-rehearsal-v1"
-$script:TargetedDiagnosticAuthorizationId = "alpha04c-targeted-owner-capture-diagnostic-v3"
-$script:OfficialAttempt1ClaimSha256 = "80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458"
+$script:AuthorizationId = [string]$script:RehearsalAuthorization.authorization_id
+$script:RehearsalRunIdPrefix = [string]$script:RehearsalAuthorization.run_id_prefix
+$script:TargetedDiagnosticAuthorizationId = [string]$script:TargetedDiagnosticAuthorization.authorization_id
+$script:OfficialAttempt1ClaimSha256 = [string]$script:OfficialAttempt2Authorization.attempt_1_claim_sha256
 $script:PreviousDiagnosticQuotaLedgerSha256 = "2dba183fe0e354370802d0f886bf40a88b7e1c0b39ddb0df18ee110821e957a1"
 $script:ChallengeDepth = 1
 $script:Seed = 900626424
@@ -849,21 +856,21 @@ function Get-ProcessARehearsalAdmissionEvidence {
     if (-not (Test-ProcessARehearsalExactFieldSet $quota $script:DiagnosticQuotaLedgerFields) `
         -or -not (Test-ProcessARehearsalInteger $quota.schema_version) `
         -or [int]$quota.schema_version -ne 3 `
-        -or [string]$quota.ledger_id -cne "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV3" `
-        -or [string]$quota.authorization_id -cne "alpha04c-targeted-owner-capture-diagnostic-v3" `
-        -or [string]$quota.task_id -cne "ALPHA_0_4_C_FINAL_HARNESS_REPAIR_REHEARSAL_OFFICIAL_ATTEMPT_2_AND_MAIN_LANDING" `
+        -or [string]$quota.ledger_id -cne [string]$script:TargetedDiagnosticAuthorization.ledger_id `
+        -or [string]$quota.authorization_id -cne $script:TargetedDiagnosticAuthorizationId `
+        -or [string]$quota.task_id -cne [string]$script:TargetedDiagnosticAuthorization.task_id `
         -or -not (Test-ProcessARehearsalUtcTimestamp $quota.created_at_utc) `
         -or [string]$quota.run_id -cne [string]$diagnostic.run_id `
         -or [string]$quota.repository_head -cne $ExpectedRepositoryHead `
         -or [string]$quota.scenario_fingerprint -cne $ExpectedScenarioFingerprint `
         -or -not (Test-ProcessARehearsalInteger $quota.authorized_new_diagnostic_count) `
-        -or [int]$quota.authorized_new_diagnostic_count -ne 1 `
+        -or [int]$quota.authorized_new_diagnostic_count -ne [int]$script:TargetedDiagnosticAuthorization.authorized_increment `
         -or -not (Test-ProcessARehearsalInteger $quota.diagnostic_count_before) `
-        -or [int]$quota.diagnostic_count_before -ne 2 `
+        -or [int]$quota.diagnostic_count_before -ne [int]$script:TargetedDiagnosticAuthorization.permitted_transition_from `
         -or -not (Test-ProcessARehearsalInteger $quota.diagnostic_count_after) `
-        -or [int]$quota.diagnostic_count_after -ne 3 `
+        -or [int]$quota.diagnostic_count_after -ne [int]$script:TargetedDiagnosticAuthorization.permitted_transition_to `
         -or -not (Test-ProcessARehearsalInteger $quota.diagnostic_count_maximum) `
-        -or [int]$quota.diagnostic_count_maximum -ne 3 `
+        -or [int]$quota.diagnostic_count_maximum -ne [int]$script:TargetedDiagnosticAuthorization.maximum_invocation_count `
         -or [string]$quota.previous_ledger_sha256 -cne $script:PreviousDiagnosticQuotaLedgerSha256 `
         -or [string]$quota.historical_invocation_commit -cne "3b3061508541d0e5f6f4c2d6560b134b7d4ee5f8" `
         -or [string]$quota.historical_invocation_blob_sha1 -cne "b54917e54a39e24e1c7288d919394305a4e21c71" `
@@ -1255,7 +1262,9 @@ function Assert-ProcessARehearsalAdmissionLedgerValue {
         -or [string]$Ledger.status -cne "admitted" `
         -or -not (Test-ProcessARehearsalUtcTimestamp $Ledger.created_at_utc) `
         -or -not (Test-ProcessARehearsalRunId $Ledger.run_id) `
-        -or -not ([string]$Ledger.run_id).StartsWith("alpha04c-process-a-rehearsal-", [StringComparison]::Ordinal) `
+        -or -not ([string]$Ledger.run_id).StartsWith(
+            "$([string]$script:RehearsalAuthorization.run_id_prefix)-", [StringComparison]::Ordinal
+        ) `
         -or [string]$Ledger.repository_head -cnotmatch '^[0-9a-f]{40}$' `
         -or -not (Test-ProcessARehearsalFingerprintValue $Ledger.scenario_fingerprint) `
         -or -not (Test-ProcessARehearsalFingerprintValue $Ledger.timeout_policy_fingerprint) `
@@ -1429,7 +1438,7 @@ function New-ProcessARehearsalAdmission {
     )
 
     if (-not (Test-ProcessARehearsalRunId $RunId) `
-        -or -not $RunId.StartsWith("alpha04c-process-a-rehearsal-", [StringComparison]::Ordinal)) {
+        -or -not $RunId.StartsWith("$($script:RehearsalRunIdPrefix)-", [StringComparison]::Ordinal)) {
         throw "process_a_rehearsal_run_id_invalid"
     }
     if ($RepositoryHead -cnotmatch '^[0-9a-f]{40}$') {
@@ -1662,7 +1671,7 @@ function Assert-ProcessARehearsalLaunchLedgerValue {
         -or -not (Test-ProcessARehearsalFingerprintValue $Ledger.admission_ledger_sha256) `
         -or [string]$Ledger.claim_fingerprint -cne [string]$Ledger.admission_ledger_sha256 `
         -or -not (Test-ProcessARehearsalRunId $Ledger.run_id) `
-        -or -not ([string]$Ledger.run_id).StartsWith("alpha04c-process-a-rehearsal-", [StringComparison]::Ordinal) `
+        -or -not ([string]$Ledger.run_id).StartsWith("$($script:RehearsalRunIdPrefix)-", [StringComparison]::Ordinal) `
         -or [string]$Ledger.repository_head -cnotmatch '^[0-9a-f]{40}$' `
         -or -not (Test-ProcessARehearsalFingerprintValue $Ledger.scenario_fingerprint) `
         -or -not (Test-ProcessARehearsalFingerprintValue $Ledger.timeout_policy_fingerprint) `

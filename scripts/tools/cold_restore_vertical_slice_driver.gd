@@ -17,6 +17,7 @@ const DIAGNOSTIC_SCENARIO_IDENTITY := preload("res://scripts/tools/diagnostic_sc
 const TARGETED_OWNER_DIAGNOSTIC := preload("res://scripts/tools/targeted_owner_capture_diagnostic_v2.gd")
 const ROLE_PROGRESS_HEARTBEAT := preload("res://scripts/tools/cold_restore_role_progress_heartbeat.gd")
 const PROCESS_A_REHEARSAL_COMPLETION := preload("res://scripts/tools/process_a_rehearsal_completion_v1.gd")
+const AUTHORIZATION_CONTRACT_PATH := "res://scripts/tools/cold_restore_authorization_contract_v1.json"
 
 const FORMAL_FULL_RUN := false
 const EXECUTION_READY := true
@@ -27,14 +28,6 @@ const ACCEPTANCE_AI_PLAYER_COUNT := 3
 const TARGETED_OWNER_CAPTURE_SCENARIO_FINGERPRINT := "0bccef8426345e2ea1fd8ae7d6187d282d52d44bc73d6fb3d1ed3375dc20b7bf"
 const SCHEMA_VERSION := 4
 const OFFICIAL_CLAIM_SCHEMA_VERSION := 2
-const OFFICIAL_AUTHORIZATION_ID := "alpha04c-official-cold-restore-attempt-2-v1"
-const OFFICIAL_CLAIM_RELATIVE_PATH := "codex/cold_restore_v3/official-alpha04c-attempt-2-depth1-seed900626424/official_attempt_2_claim.json"
-const OFFICIAL_ATTEMPT_1_CLAIM_RELATIVE_PATH := "codex/cold_restore_v3/official-alpha04c-depth1-seed900626424/official_claim_ledger.json"
-const OFFICIAL_ATTEMPT_1_CLAIM_SHA256 := "80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458"
-const REHEARSAL_AUTHORIZATION_ID := "alpha04c-process-a-save-completion-rehearsal-v1"
-const REHEARSAL_LEDGER_RELATIVE_PATH := "codex/cold_restore_v3/non-official-alpha04c-process-a-rehearsal-v1/process_a_rehearsal_quota_ledger.json"
-const TARGETED_DIAGNOSTIC_AUTHORIZATION_ID := "alpha04c-targeted-owner-capture-diagnostic-v3"
-const TARGETED_DIAGNOSTIC_LEDGER_RELATIVE_PATH := "codex/cold_restore_v3/non-official-alpha04c-final-cold-closure-3b30615/targeted_owner_capture_quota_ledger.json"
 const LAUNCH_ATTESTATION_SCHEMA_VERSION := 1
 const PROCESS_ROLES := ["producer", "consumer", "validator"]
 const INDUSTRY_IDS := ["life", "energy", "industry", "technology", "commerce", "shipping"]
@@ -789,7 +782,9 @@ static func validate_options(options: Dictionary) -> Dictionary:
 		if targeted_owner_capture_diagnostic and not _is_targeted_owner_capture_run_id(run_id):
 			return {"valid": false, "reason_code": "targeted_owner_capture_run_id_invalid"}
 		if targeted_owner_capture_diagnostic \
-				and run_id != "alpha04c-owner-capture-diagnostic-%s" % head_sha.left(12):
+				and run_id != _authorization_run_id(
+					"targeted_owner_capture_diagnostic_v3", head_sha
+				):
 			return {"valid": false, "reason_code": "targeted_owner_capture_run_head_mismatch"}
 		if targeted_owner_capture_diagnostic:
 			if targeted_diagnostic_ledger_path.is_empty() \
@@ -801,7 +796,9 @@ static func validate_options(options: Dictionary) -> Dictionary:
 					or not _is_lower_hex(launch_nonce):
 				return {"valid": false, "reason_code": "targeted_owner_capture_authorization_invalid"}
 		if process_a_rehearsal:
-			if run_id != "alpha04c-process-a-rehearsal-%s" % head_sha.left(12):
+			if run_id != _authorization_run_id(
+				"process_a_save_completion_rehearsal_v1", head_sha
+			):
 				return {"valid": false, "reason_code": "process_a_rehearsal_run_head_mismatch"}
 			if rehearsal_ledger_path.is_empty() or not rehearsal_ledger_path.is_absolute_path() \
 					or not _is_lower_sha256(rehearsal_ledger_fingerprint) \
@@ -926,14 +923,18 @@ static func _is_lower_sha256(value: String) -> bool:
 
 
 static func _is_targeted_owner_capture_run_id(value: String) -> bool:
-	const PREFIX := "alpha04c-owner-capture-diagnostic-"
-	if not value.begins_with(PREFIX):
+	var entry := _authorization_contract_entry("targeted_owner_capture_diagnostic_v3")
+	var prefix := str(entry.get("run_id_prefix", ""))
+	if prefix.is_empty() or not value.begins_with("%s-" % prefix):
 		return false
-	var suffix := value.trim_prefix(PREFIX)
+	var suffix := value.trim_prefix("%s-" % prefix)
 	return suffix.length() == 12 and _is_lower_hex(suffix)
 
 
 func _authorize_official_launch(options: Dictionary, head_sha: String) -> Dictionary:
+	var authorization := _authorization_contract_entry("official_attempt_2")
+	if authorization.is_empty():
+		return {"authorized": false, "reason_code": "authorization_contract_invalid"}
 	var claim_path := _normalize_absolute_path(str(options.get("official_claim_path", "")))
 	var expected_claim_path := _resolve_official_claim_path()
 	if claim_path.is_empty() or expected_claim_path.is_empty() \
@@ -972,16 +973,19 @@ func _authorize_official_launch(options: Dictionary, head_sha: String) -> Dictio
 				timeout_shape_valid = false
 				break
 	var common_dir := _resolve_git_common_dir()
-	var attempt_1_path := _normalize_absolute_path(common_dir.path_join(OFFICIAL_ATTEMPT_1_CLAIM_RELATIVE_PATH))
+	var attempt_1_path := _normalize_absolute_path(common_dir.path_join(
+		str(authorization.get("attempt_1_claim_relative_path", ""))
+	))
 	var attempt_1_green := not attempt_1_path.is_empty() and FileAccess.file_exists(attempt_1_path) \
-			and FileAccess.get_file_as_string(attempt_1_path).sha256_text().to_lower() == OFFICIAL_ATTEMPT_1_CLAIM_SHA256
+			and FileAccess.get_file_as_string(attempt_1_path).sha256_text().to_lower() \
+				== str(authorization.get("attempt_1_claim_sha256", ""))
 	var orchestrator_script_sha256 := FileAccess.get_sha256(
 		"res://scripts/tools/cold_restore_vertical_slice_orchestrator.ps1"
 	).to_lower()
 	if int(claim.get("schema_version", 0)) != OFFICIAL_CLAIM_SCHEMA_VERSION \
 			or str(claim.get("claim_id", "")) != "OfficialAttemptClaimV2" \
 			or int(claim.get("attempt_number", 0)) != 2 \
-			or str(claim.get("authorization_id", "")) != OFFICIAL_AUTHORIZATION_ID \
+			or str(claim.get("authorization_id", "")) != str(authorization.get("authorization_id", "")) \
 			or not _is_utc_timestamp(claim.get("created_at_utc")) \
 			or str(claim.get("run_id", "")) != str(options.get("run_id", "")) \
 			or str(claim.get("source_head", "")) != head_sha \
@@ -995,7 +999,9 @@ func _authorize_official_launch(options: Dictionary, head_sha: String) -> Dictio
 			or not _is_lower_sha256(str(claim.get("prerequisite_evidence_fingerprint", ""))) \
 			or not _is_lower_sha256(str(claim.get("preclaim_runtime_freeze_fingerprint", ""))) \
 			or not timeout_shape_valid \
-			or str(claim.get("rehearsal_run_id", "")) != "alpha04c-process-a-rehearsal-%s" % head_sha.left(12) \
+			or str(claim.get("rehearsal_run_id", "")) != _authorization_run_id(
+				"process_a_save_completion_rehearsal_v1", head_sha
+			) \
 			or not _is_lower_sha256(str(claim.get("rehearsal_evidence_fingerprint", ""))) \
 			or not _is_lower_sha256(str(claim.get("rehearsal_outcome_sha256", ""))) \
 			or not _is_lower_sha256(str(claim.get("rehearsal_admission_sha256", ""))) \
@@ -1003,8 +1009,12 @@ func _authorize_official_launch(options: Dictionary, head_sha: String) -> Dictio
 			or not _is_lower_sha256(str(claim.get("rehearsal_completion_sha256", ""))) \
 			or not _is_lower_sha256(str(claim.get("rehearsal_child_attestation_sha256", ""))) \
 			or not _is_lower_sha256(str(claim.get("rehearsal_parent_attestation_sha256", ""))) \
-			or str(claim.get("attempt_1_claim_relative_path", "")) != "official-alpha04c-depth1-seed900626424/official_claim_ledger.json" \
-			or str(claim.get("attempt_1_claim_sha256", "")) != OFFICIAL_ATTEMPT_1_CLAIM_SHA256 \
+			or str(claim.get("attempt_1_claim_relative_path", "")) \
+				!= str(authorization.get("attempt_1_claim_relative_path", "")).trim_prefix(
+					"codex/cold_restore_v3/"
+				) \
+			or str(claim.get("attempt_1_claim_sha256", "")) \
+				!= str(authorization.get("attempt_1_claim_sha256", "")) \
 			or not attempt_1_green \
 			or str(claim.get("orchestrator_id", "")) != "alpha04c_cold_restore_vertical_slice_orchestrator_v4" \
 			or int(claim.get("orchestrator_schema_version", 0)) != SCHEMA_VERSION \
@@ -1051,7 +1061,7 @@ func _authorize_official_launch(options: Dictionary, head_sha: String) -> Dictio
 		orchestrator_process_id
 	)
 	if int(attestation.get("schema_version", 0)) != LAUNCH_ATTESTATION_SCHEMA_VERSION \
-			or str(attestation.get("authorization_id", "")) != OFFICIAL_AUTHORIZATION_ID \
+			or str(attestation.get("authorization_id", "")) != str(authorization.get("authorization_id", "")) \
 			or str(attestation.get("claim_fingerprint", "")) != claim_fingerprint \
 			or str(attestation.get("claim_nonce", "")) != str(claim.get("claim_nonce", "")) \
 			or str(attestation.get("source_head_sha", "")) != head_sha \
@@ -1080,6 +1090,9 @@ func _authorize_official_launch(options: Dictionary, head_sha: String) -> Dictio
 
 
 func _authorize_targeted_owner_capture_diagnostic(options: Dictionary, head_sha: String) -> Dictionary:
+	var authorization := _authorization_contract_entry("targeted_owner_capture_diagnostic_v3")
+	if authorization.is_empty():
+		return {"authorized": false, "reason_code": "authorization_contract_invalid"}
 	var ledger_path := _normalize_absolute_path(str(options.get("targeted_diagnostic_ledger_path", "")))
 	var expected_path := _resolve_targeted_diagnostic_ledger_path()
 	if ledger_path.is_empty() or expected_path.is_empty() \
@@ -1098,20 +1111,24 @@ func _authorize_targeted_owner_capture_diagnostic(options: Dictionary, head_sha:
 	if ledger_fingerprint != str(options.get("targeted_diagnostic_ledger_fingerprint", "")) \
 			or typeof(ledger.get("schema_version")) != TYPE_INT \
 			or int(ledger.get("schema_version", 0)) != 3 \
-			or str(ledger.get("ledger_id", "")) != "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV3" \
-			or str(ledger.get("authorization_id", "")) != TARGETED_DIAGNOSTIC_AUTHORIZATION_ID \
-			or str(ledger.get("task_id", "")) != "ALPHA_0_4_C_FINAL_HARNESS_REPAIR_REHEARSAL_OFFICIAL_ATTEMPT_2_AND_MAIN_LANDING" \
+			or str(ledger.get("ledger_id", "")) != str(authorization.get("ledger_id", "")) \
+			or str(ledger.get("authorization_id", "")) != str(authorization.get("authorization_id", "")) \
+			or str(ledger.get("task_id", "")) != str(authorization.get("task_id", "")) \
 			or str(ledger.get("run_id", "")) != str(options.get("run_id", "")) \
 			or str(ledger.get("repository_head", "")) != head_sha \
 			or str(ledger.get("scenario_fingerprint", "")) != str(options.get("scenario_fingerprint", "")) \
 			or typeof(ledger.get("authorized_new_diagnostic_count")) != TYPE_INT \
-			or int(ledger.get("authorized_new_diagnostic_count", 0)) != 1 \
+			or int(ledger.get("authorized_new_diagnostic_count", 0)) \
+				!= int(authorization.get("authorized_increment", 0)) \
 			or typeof(ledger.get("diagnostic_count_before")) != TYPE_INT \
-			or int(ledger.get("diagnostic_count_before", -1)) != 2 \
+			or int(ledger.get("diagnostic_count_before", -1)) \
+				!= int(authorization.get("permitted_transition_from", -1)) \
 			or typeof(ledger.get("diagnostic_count_after")) != TYPE_INT \
-			or int(ledger.get("diagnostic_count_after", 0)) != 3 \
+			or int(ledger.get("diagnostic_count_after", 0)) \
+				!= int(authorization.get("permitted_transition_to", 0)) \
 			or typeof(ledger.get("diagnostic_count_maximum")) != TYPE_INT \
-			or int(ledger.get("diagnostic_count_maximum", 0)) != 3 \
+			or int(ledger.get("diagnostic_count_maximum", 0)) \
+				!= int(authorization.get("maximum_invocation_count", 0)) \
 			or str(ledger.get("previous_ledger_sha256", "")) != "2dba183fe0e354370802d0f886bf40a88b7e1c0b39ddb0df18ee110821e957a1" \
 			or str(ledger.get("historical_invocation_commit", "")) != "3b3061508541d0e5f6f4c2d6560b134b7d4ee5f8" \
 			or str(ledger.get("historical_invocation_blob_sha1", "")) != "b54917e54a39e24e1c7288d919394305a4e21c71" \
@@ -1121,7 +1138,10 @@ func _authorize_targeted_owner_capture_diagnostic(options: Dictionary, head_sha:
 			or not _is_lower_sha256(str(ledger.get("bootstrap_admission_fingerprint", ""))) \
 			or not str(ledger.get("prequota_attestation_path", "")).is_absolute_path() \
 			or str(ledger.get("role_timeout_policy_sha256", "")) != str(options.get("timeout_policy_fingerprint", "")) \
-			or str(ledger.get("official_attempt_1_claim_sha256", "")) != "80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458" \
+			or str(ledger.get("official_attempt_1_claim_sha256", "")) \
+				!= str(_authorization_contract_entry("official_attempt_2").get(
+					"attempt_1_claim_sha256", ""
+				)) \
 			or typeof(ledger.get("official_attempt_2_claim_absent")) != TYPE_BOOL \
 			or not bool(ledger.get("official_attempt_2_claim_absent", false)) \
 			or typeof(ledger.get("official")) != TYPE_BOOL or bool(ledger.get("official", true)) \
@@ -1167,7 +1187,7 @@ func _authorize_targeted_owner_capture_diagnostic(options: Dictionary, head_sha:
 		str(options.get("run_id", "")), "producer", int(ledger.get("orchestrator_process_id", 0))
 	)
 	if int(attestation.get("schema_version", 0)) != LAUNCH_ATTESTATION_SCHEMA_VERSION \
-			or str(attestation.get("authorization_id", "")) != TARGETED_DIAGNOSTIC_AUTHORIZATION_ID \
+			or str(attestation.get("authorization_id", "")) != str(authorization.get("authorization_id", "")) \
 			or str(attestation.get("claim_fingerprint", "")) != ledger_fingerprint \
 			or str(attestation.get("claim_nonce", "")) != str(ledger.get("claim_nonce", "")) \
 			or str(attestation.get("source_head_sha", "")) != head_sha \
@@ -1194,6 +1214,10 @@ func _authorize_targeted_owner_capture_diagnostic(options: Dictionary, head_sha:
 
 
 func _authorize_process_a_rehearsal(options: Dictionary, head_sha: String) -> Dictionary:
+	var authorization := _authorization_contract_entry("process_a_save_completion_rehearsal_v1")
+	var official_authorization := _authorization_contract_entry("official_attempt_2")
+	if authorization.is_empty() or official_authorization.is_empty():
+		return {"authorized": false, "reason_code": "authorization_contract_invalid"}
 	var ledger_path := _normalize_absolute_path(str(options.get("rehearsal_ledger_path", "")))
 	var expected_path := _resolve_rehearsal_ledger_path()
 	if ledger_path.is_empty() or expected_path.is_empty() \
@@ -1214,7 +1238,7 @@ func _authorize_process_a_rehearsal(options: Dictionary, head_sha: String) -> Di
 			or int(ledger.get("schema_version", 0)) != 3 \
 			or str(ledger.get("ledger_id", "")) != "ProcessARehearsalAdmissionLedgerV3" \
 			or str(ledger.get("contract_id", "")) != "Alpha04C.ProcessARehearsalAdmissionContractV1" \
-			or str(ledger.get("authorization_id", "")) != REHEARSAL_AUTHORIZATION_ID \
+			or str(ledger.get("authorization_id", "")) != str(authorization.get("authorization_id", "")) \
 			or str(ledger.get("status", "")) != "admitted" \
 			or str(ledger.get("run_id", "")) != str(options.get("run_id", "")) \
 			or str(ledger.get("repository_head", "")) != head_sha \
@@ -1266,7 +1290,8 @@ func _authorize_process_a_rehearsal(options: Dictionary, head_sha: String) -> Di
 			or not _is_lower_sha256(str(ledger.get("diagnostic_bootstrap_admission_fingerprint", ""))) \
 			or not _is_lower_sha256(str(ledger.get("diagnostic_prequota_attestation_sha256", ""))) \
 			or not _is_lower_sha256(str(ledger.get("diagnostic_prequota_attestation_fingerprint", ""))) \
-			or str(ledger.get("official_attempt_1_claim_sha256", "")) != "80979cf3089e46ebff6025253126b57c1dd4e522cc5f858be8d4f5915ed17458" \
+			or str(ledger.get("official_attempt_1_claim_sha256", "")) \
+				!= str(official_authorization.get("attempt_1_claim_sha256", "")) \
 			or typeof(ledger.get("official_attempt_1_claim_immutable")) != TYPE_BOOL \
 			or not bool(ledger.get("official_attempt_1_claim_immutable", false)) \
 			or typeof(ledger.get("official_attempt_2_claim_absent")) != TYPE_BOOL \
@@ -1312,7 +1337,7 @@ func _authorize_process_a_rehearsal(options: Dictionary, head_sha: String) -> Di
 		str(options.get("run_id", "")), "producer", int(ledger.get("orchestrator_process_id", 0))
 	)
 	if int(attestation.get("schema_version", 0)) != LAUNCH_ATTESTATION_SCHEMA_VERSION \
-			or str(attestation.get("authorization_id", "")) != REHEARSAL_AUTHORIZATION_ID \
+			or str(attestation.get("authorization_id", "")) != str(authorization.get("authorization_id", "")) \
 			or str(attestation.get("claim_fingerprint", "")) != ledger_fingerprint \
 			or str(attestation.get("claim_nonce", "")) != str(ledger.get("claim_nonce", "")) \
 			or str(attestation.get("source_head_sha", "")) != head_sha \
@@ -1338,6 +1363,36 @@ func _authorize_process_a_rehearsal(options: Dictionary, head_sha: String) -> Di
 		if not _is_positive_decimal(str(attestation.get(ticks_field, ""))):
 			return {"authorized": false, "reason_code": "process_a_rehearsal_launch_creation_time_invalid"}
 	return {"authorized": true, "reason_code": "ok", "fingerprint": ledger_fingerprint}
+
+
+static func _authorization_contract_entry(entry_name: String) -> Dictionary:
+	if entry_name not in [
+		"targeted_owner_capture_diagnostic_v3",
+		"process_a_save_completion_rehearsal_v1",
+		"official_attempt_2",
+	]:
+		return {}
+	if not FileAccess.file_exists(AUTHORIZATION_CONTRACT_PATH):
+		return {}
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(AUTHORIZATION_CONTRACT_PATH))
+	if not (parsed is Dictionary):
+		return {}
+	var contract := parsed as Dictionary
+	if int(contract.get("schema_version", 0)) != 1 \
+			or str(contract.get("contract_id", "")) != "ColdRestoreAuthorizationContractV1" \
+			or not (contract.get(entry_name) is Dictionary):
+		return {}
+	return (contract.get(entry_name) as Dictionary).duplicate(true)
+
+
+static func _authorization_run_id(entry_name: String, repository_head: String) -> String:
+	if repository_head.length() != 40 or not _is_lower_hex(repository_head):
+		return ""
+	var entry := _authorization_contract_entry(entry_name)
+	var prefix := str(entry.get("run_id_prefix", ""))
+	if prefix.is_empty():
+		return ""
+	return "%s-%s" % [prefix, repository_head.left(12)]
 
 
 static func _has_exact_fields(value: Dictionary, expected_fields: Array) -> bool:
@@ -1378,23 +1433,40 @@ static func _normalize_absolute_path(value: String) -> String:
 
 static func _resolve_official_claim_path() -> String:
 	var common_dir := _resolve_git_common_dir()
-	if common_dir.is_empty():
+	var authorization := _authorization_contract_entry("official_attempt_2")
+	if common_dir.is_empty() or authorization.is_empty():
 		return ""
-	return _normalize_absolute_path(common_dir.path_join(OFFICIAL_CLAIM_RELATIVE_PATH))
+	return _normalize_absolute_path(common_dir.path_join(str(authorization.get("claim_path", ""))))
 
 
 static func _resolve_rehearsal_ledger_path() -> String:
 	var common_dir := _resolve_git_common_dir()
-	if common_dir.is_empty():
+	var authorization := _authorization_contract_entry("process_a_save_completion_rehearsal_v1")
+	if common_dir.is_empty() or authorization.is_empty():
 		return ""
-	return _normalize_absolute_path(common_dir.path_join(REHEARSAL_LEDGER_RELATIVE_PATH))
+	return _normalize_absolute_path(common_dir.path_join(
+		str(authorization.get("quota_ledger_relative_path", ""))
+	))
 
 
 static func _resolve_targeted_diagnostic_ledger_path() -> String:
 	var common_dir := _resolve_git_common_dir()
-	if common_dir.is_empty():
+	var authorization := _authorization_contract_entry("targeted_owner_capture_diagnostic_v3")
+	if common_dir.is_empty() or authorization.is_empty():
 		return ""
-	return _normalize_absolute_path(common_dir.path_join(TARGETED_DIAGNOSTIC_LEDGER_RELATIVE_PATH))
+	return _normalize_absolute_path(common_dir.path_join(
+		str(authorization.get("quota_ledger_relative_path", ""))
+	))
+
+
+static func _resolve_targeted_diagnostic_evidence_root() -> String:
+	var common_dir := _resolve_git_common_dir()
+	var authorization := _authorization_contract_entry("targeted_owner_capture_diagnostic_v3")
+	if common_dir.is_empty() or authorization.is_empty():
+		return ""
+	return _normalize_absolute_path(common_dir.path_join(
+		str(authorization.get("evidence_root_relative_path", ""))
+	))
 
 
 static func _resolve_git_common_dir() -> String:
@@ -1427,10 +1499,21 @@ static func _resolve_git_common_dir() -> String:
 static func _expected_launch_attestation_path(run_id: String, role: String, orchestrator_process_id: int) -> String:
 	if run_id.is_empty() or role not in PROCESS_ROLES or orchestrator_process_id <= 0:
 		return ""
-	var project_root := _normalize_absolute_path(ProjectSettings.globalize_path("res://"))
-	return _normalize_absolute_path(project_root.path_join(
-		".godot/cold_restore_attestation_v1/%s/launch/orchestrator-%d/%s.authorized.json" \
-			% [run_id, orchestrator_process_id, role]
+	var evidence_root := ""
+	if _is_targeted_owner_capture_run_id(run_id):
+		evidence_root = _resolve_targeted_diagnostic_evidence_root()
+		var environment_root := _normalize_absolute_path(
+			OS.get_environment("SPACE_SYNDICATE_COLD_RESTORE_EVIDENCE_ROOT")
+		)
+		if evidence_root.is_empty() or environment_root != evidence_root:
+			return ""
+	else:
+		var project_root := _normalize_absolute_path(ProjectSettings.globalize_path("res://"))
+		evidence_root = _normalize_absolute_path(project_root.path_join(
+			".godot/cold_restore_attestation_v1/%s" % run_id
+		))
+	return _normalize_absolute_path(evidence_root.path_join(
+		"launch/orchestrator-%d/%s.authorized.json" % [orchestrator_process_id, role]
 	))
 
 

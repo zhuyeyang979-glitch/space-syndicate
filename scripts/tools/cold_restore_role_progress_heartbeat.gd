@@ -1,10 +1,10 @@
 extends RefCounted
 
 const SEMANTIC_WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
+const AUTHORIZATION_CONTRACT := preload("res://scripts/tools/cold_restore_authorization_contract_v1.gd")
 
 const SCHEMA_VERSION := 1
 const HEARTBEAT_ID := "ColdRestoreRoleProgressHeartbeatV1"
-const EVIDENCE_ROOT := "res://.godot/cold_restore_attestation_v1"
 const ROLE_IDS := ["targeted_owner_diagnostic", "process_a", "process_b", "process_c"]
 const FIELDS := [
 	"schema_version", "heartbeat_id", "run_id", "role_id", "repository_head",
@@ -131,8 +131,11 @@ static func validation_report(
 
 
 func _write_atomic_event(heartbeat: Dictionary) -> Dictionary:
-	var path := "%s/%s/diagnostics/%s.heartbeat.events/%04d.snapshot.json" % [
-		EVIDENCE_ROOT, _run_id, _role_id, _sequence,
+	var evidence_root := AUTHORIZATION_CONTRACT.evidence_run_root(_run_id)
+	if evidence_root.is_empty():
+		return {"valid": false, "reason_code": "heartbeat_evidence_root_invalid"}
+	var path := "%s/diagnostics/%s.heartbeat.events/%04d.snapshot.json" % [
+		evidence_root, _role_id, _sequence,
 	]
 	var absolute := ProjectSettings.globalize_path(path)
 	var temp := "%s.tmp.%d" % [absolute, OS.get_process_id()]
