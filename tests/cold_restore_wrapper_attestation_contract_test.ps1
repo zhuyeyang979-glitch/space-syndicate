@@ -327,6 +327,7 @@ try {
 
     $targetedFunctionSource = Get-OrchestratorFunctionSource $orchestratorAst "Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic"
     $targetedValidationSource = Get-OrchestratorFunctionSource $orchestratorAst "Assert-ColdRestoreTargetedDiagnosticV2"
+    $targetedGuardSource = Get-OrchestratorFunctionSource $orchestratorAst "Invoke-ColdRestoreTargetedOwnerCaptureGuarded"
     Assert-WrapperCondition ($targetedFunctionSource.Contains('($AuthorizedOfficialColdRestoreCount -eq 0) "targeted_owner_capture_official_authorization_forbidden"')) "Targeted diagnostics must require AuthorizedOfficialColdRestoreCount=0"
     Assert-WrapperCondition (-not $targetedFunctionSource.Contains("Assert-AndConsumeOfficialColdRestoreAuthorization") `
         -and $targetedFunctionSource.Contains('$launchAuthorization = $diagnosticQuota.launch_authorization') `
@@ -355,10 +356,13 @@ try {
         -and $targetedFunctionSource.Contains('[int]$timeout.no_progress_timeout_seconds -eq 30') `
         -and $targetedFunctionSource.Contains('-ExpectedScenarioFingerprint $ExpectedScenarioFingerprint')) "Targeted diagnostics must bind the authorized 120/30 role policy and scenario"
     Assert-WrapperCondition ($targetedFunctionSource.Contains('$RunId -ceq "alpha04c-owner-capture-diagnostic-$($HeadSha.Substring(0, 12))"')) "Targeted diagnostic identity must bind its run id to the measured HEAD"
-    Assert-WrapperCondition ($orchestratorSource.Contains('finally {') `
-        -and $orchestratorSource.Contains('Assert-ColdRestoreTargetedOwnerCapturePostconditions $resolvedProjectPath')) "Targeted Save and privacy scans must run from a post-launch finally block"
+    Assert-WrapperCondition ($targetedGuardSource.Contains('Assert-ColdRestoreTargetedOwnerCapturePostconditions $ResolvedProjectPath') `
+        -and $targetedGuardSource.Contains('$primaryFailure = $_') `
+        -and $targetedGuardSource.Contains('$postconditionFailure = $_') `
+        -and $targetedGuardSource.Contains('throw $primaryFailure') `
+        -and $targetedGuardSource.Contains('throw $postconditionFailure')) "Targeted Save and privacy scans must run after launch without replacing a primary failure"
 
-    $targetedInvocationIndex = $orchestratorSource.IndexOf('$targetedDiagnostic = Invoke-ColdRestoreTargetedOwnerCaptureDiagnostic', [StringComparison]::Ordinal)
+    $targetedInvocationIndex = $orchestratorSource.IndexOf('$targetedDiagnostic = Invoke-ColdRestoreTargetedOwnerCaptureGuarded', [StringComparison]::Ordinal)
     $targetedExitIndex = if ($targetedInvocationIndex -ge 0) {
         $orchestratorSource.IndexOf('exit 0', $targetedInvocationIndex, [StringComparison]::Ordinal)
     }
