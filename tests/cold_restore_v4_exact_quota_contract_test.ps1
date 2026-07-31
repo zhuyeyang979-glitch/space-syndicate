@@ -47,12 +47,13 @@ function New-V4QuotaLedger {
 
     $official = cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationEntry `
         "official_attempt_2"
+    $wire = cold_restore_targeted_ledger_binding_contract_v1\Get-ColdRestoreTargetedLedgerBindingContract
     $claimNonce = [Guid]::NewGuid().ToString("N")
     do {
         $launchNonce = [Guid]::NewGuid().ToString("N")
     } while ($launchNonce -ceq $claimNonce)
     return [pscustomobject][ordered]@{
-        schema_version = 4
+        schema_version = [int]$wire.exact_literals.schema_version
         ledger_id = [string]$Authorization.ledger_id
         authorization_id = [string]$Authorization.authorization_id
         task_id = [string]$Authorization.task_id
@@ -66,20 +67,20 @@ function New-V4QuotaLedger {
         diagnostic_count_before = [int]$Authorization.permitted_transition_from
         diagnostic_count_after = [int]$Authorization.permitted_transition_to
         diagnostic_count_maximum = [int]$Authorization.maximum_invocation_count
-        previous_ledger_sha256 = "2" * 64
-        historical_invocation_commit = "3" * 40
-        historical_invocation_blob_sha1 = "4" * 40
-        historical_invocation_file_sha256 = "5" * 64
+        previous_ledger_sha256 = [string]$wire.exact_literals.previous_ledger_sha256
+        historical_invocation_commit = [string]$wire.exact_literals.historical_invocation_commit
+        historical_invocation_blob_sha1 = [string]$wire.exact_literals.historical_invocation_blob_sha1
+        historical_invocation_file_sha256 = [string]$wire.exact_literals.historical_invocation_file_sha256
         bootstrap_admission_path = [IO.Path]::GetFullPath([string]$Context.admission_path)
         bootstrap_admission_sha256 = [string]$Context.admission_sha256
         bootstrap_admission_fingerprint = [string]$Context.admission_fingerprint
         prequota_attestation_path = [IO.Path]::GetFullPath([string]$Context.attestation_path)
         role_timeout_policy_sha256 = "6" * 64
         official_attempt_1_claim_sha256 = [string]$official.attempt_1_claim_sha256
-        official_attempt_2_claim_absent = $true
-        official = $false
-        formal = $false
-        official_authorization_consumed = $false
+        official_attempt_2_claim_absent = [bool]$wire.boolean_rules.official_attempt_2_claim_absent
+        official = [bool]$wire.boolean_rules.official
+        formal = [bool]$wire.boolean_rules.formal
+        official_authorization_consumed = [bool]$wire.boolean_rules.official_authorization_consumed
         orchestrator_script_sha256 = "7" * 64
         orchestrator_process_id = $PID
         orchestrator_creation_time_utc_ticks = (
@@ -87,7 +88,7 @@ function New-V4QuotaLedger {
         ).ToString([Globalization.CultureInfo]::InvariantCulture)
         claim_nonce = $claimNonce
         launch_nonce = $launchNonce
-        status = "consumed"
+        status = [string]$wire.exact_literals.status
     }
 }
 
