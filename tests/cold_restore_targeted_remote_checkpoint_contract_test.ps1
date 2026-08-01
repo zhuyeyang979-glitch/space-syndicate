@@ -55,7 +55,7 @@ try {
     Import-Module $authorizationModulePath -ErrorAction Stop
     $currentAuthorizationName = Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName
     $currentAuthorization = Get-ColdRestoreAuthorizationEntry $currentAuthorizationName
-    $checkpointBranchPrefix = "codex/alpha04c-v$([int]$currentAuthorization.permitted_transition_to)-owner-diagnostic-"
+    $checkpointBranchPrefix = "codex/alpha04c-v$([int]$currentAuthorization.permitted_transition_to)-owner-audit-"
     $TargetedOwnerCaptureCheckpointBranchPattern = '^' + `
         [regex]::Escape($checkpointBranchPrefix) + '[0-9a-f]{7,12}$'
     $tokens = $null

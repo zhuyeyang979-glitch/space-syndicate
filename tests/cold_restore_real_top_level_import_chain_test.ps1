@@ -332,10 +332,10 @@ try {
     )
     $result.current_authorization_green = (
         [string]$entryMatches[0].name -ceq $currentAuthorizationName -and
-        [int]$targetedEntry.permitted_transition_from -eq 5 -and
-        [int]$targetedEntry.permitted_transition_to -eq 6 -and
+        [int]$targetedEntry.permitted_transition_from -eq 6 -and
+        [int]$targetedEntry.permitted_transition_to -eq 7 -and
         [int]$targetedEntry.authorized_increment -eq 1 -and
-        [int]$targetedEntry.maximum_invocation_count -eq 6
+        [int]$targetedEntry.maximum_invocation_count -eq 7
     )
     $result.production_authorization_binding_green = (
         $result.current_authorization_green -and
@@ -699,7 +699,7 @@ try {
             [bool](Get-ResultPropertyValue $result "production_module_paths_green" $false) -and
             [bool](Get-ResultPropertyValue $result "production_authorization_binding_green" $false) -and
             [bool](Get-ResultPropertyValue $result "current_authorization_green" $false)
-        ) "fresh process $runIndex used real modules and the current 5-to-6 production authorization"
+        ) "fresh process $runIndex used real modules and the current 6-to-7 production authorization"
         Assert-ImportChainCondition (
             [bool](Get-ResultPropertyValue $result "module_info_reference_preserved" $false) -and
             [bool](Get-ResultPropertyValue $result "module_file_identity_preserved" $false)

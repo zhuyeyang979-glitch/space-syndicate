@@ -7,6 +7,7 @@ $script:AuthorizationContractFields = @(
     "targeted_owner_capture_diagnostic_v4_importchain",
     "targeted_owner_capture_diagnostic_v5_canonical_binding",
     "targeted_owner_capture_diagnostic_v6_launch_context",
+    "targeted_owner_capture_diagnostic_v7_registry_contract",
     "process_a_save_completion_rehearsal_v1", "official_attempt_2"
 )
 $script:TargetedDiagnosticFields = @(
@@ -143,6 +144,23 @@ function Assert-ColdRestoreAuthorizationContract {
         -or [int]$targetedV6.maximum_invocation_count -ne 6 `
         -or [string]$targetedV6.previous_quota_ledger_sha256 -cnotmatch '^[0-9a-f]{64}$') {
         throw "cold_restore_targeted_v6_authorization_contract_invalid"
+    }
+
+    $targetedV7 = $Value.targeted_owner_capture_diagnostic_v7_registry_contract
+    if (-not (Test-ColdRestoreAuthorizationExactFieldSet $targetedV7 $script:TargetedDiagnosticChainedFields) `
+        -or -not (Test-ColdRestoreAuthorizationIdShape $targetedV7.authorization_id) `
+        -or [string]$targetedV7.task_id -cnotmatch '^[A-Z0-9_]{1,160}$' `
+        -or [string]$targetedV7.ledger_id -cnotmatch '^Alpha04C\.TargetedOwnerCaptureDiagnosticQuotaLedgerV[0-9]+$' `
+        -or -not (Test-ColdRestoreAuthorizationRelativePath $targetedV7.quota_ledger_relative_path) `
+        -or -not (Test-ColdRestoreAuthorizationRelativePath $targetedV7.evidence_root_relative_path) `
+        -or -not (Test-ColdRestoreAuthorizationRelativePath $targetedV7.bootstrap_root_relative_path) `
+        -or [string]$targetedV7.run_id_prefix -cnotmatch '^[a-z0-9][a-z0-9-]{1,95}$' `
+        -or [int]$targetedV7.permitted_transition_from -ne 6 `
+        -or [int]$targetedV7.permitted_transition_to -ne 7 `
+        -or [int]$targetedV7.authorized_increment -ne 1 `
+        -or [int]$targetedV7.maximum_invocation_count -ne 7 `
+        -or [string]$targetedV7.previous_quota_ledger_sha256 -cnotmatch '^[0-9a-f]{64}$') {
+        throw "cold_restore_targeted_v7_authorization_contract_invalid"
     }
 
     $rehearsal = $Value.process_a_save_completion_rehearsal_v1

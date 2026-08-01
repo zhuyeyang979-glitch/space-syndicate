@@ -195,7 +195,7 @@ $TargetedOwnerCaptureTaskId = [string]$TargetedOwnerCaptureAuthorization.task_id
 $TargetedOwnerCaptureRunIdPrefix = [string]$TargetedOwnerCaptureAuthorization.run_id_prefix
 $TargetedOwnerCaptureDriverId = "alpha04c_$TargetedOwnerCaptureAuthorizationName"
 $TargetedOwnerCaptureCheckpointBranchPattern = '^' + [regex]::Escape(
-    "codex/alpha04c-v$([int]$TargetedOwnerCaptureAuthorization.permitted_transition_to)-owner-diagnostic-"
+    "codex/alpha04c-v$([int]$TargetedOwnerCaptureAuthorization.permitted_transition_to)-owner-audit-"
 ) + '[0-9a-f]{7,12}$'
 $ProcessARehearsalAuthorizationId = [string]$ProcessARehearsalAuthorization.authorization_id
 $ProcessARehearsalQuotaLedgerRelativePath = [string]$ProcessARehearsalAuthorization.quota_ledger_relative_path

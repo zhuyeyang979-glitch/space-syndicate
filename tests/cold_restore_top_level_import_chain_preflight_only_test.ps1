@@ -136,10 +136,10 @@ try {
     $previousAuthorization = Get-ColdRestoreAuthorizationEntry $previousAuthorizationName
     $runId = Get-ColdRestoreAuthorizationRunId $authorizationName $repositoryHead
     Assert-PreflightOnlyCondition (
-        [int]$authorization.permitted_transition_from -eq 5 -and
-        [int]$authorization.permitted_transition_to -eq 6 -and
-        [int]$authorization.maximum_invocation_count -eq 6
-    ) "preflight binds the current exact 5-to-6 production authorization"
+        [int]$authorization.permitted_transition_from -eq 6 -and
+        [int]$authorization.permitted_transition_to -eq 7 -and
+        [int]$authorization.maximum_invocation_count -eq 7
+    ) "preflight binds the current exact 6-to-7 production authorization"
 
     $gitCommonRaw = (& git -C $projectRoot rev-parse --git-common-dir).Trim()
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($gitCommonRaw)) {
@@ -218,7 +218,7 @@ try {
     ) "all preflights used distinct process identities"
     Assert-PreflightOnlyCondition (
         [string]$protectedBefore.fingerprint -ceq [string]$protectedAfter.fingerprint
-    ) "current V6 roots and retained V5 quota, evidence, and prequota roots are byte-for-byte unchanged"
+    ) "current V7 roots and retained V6 quota, evidence, and prequota roots are byte-for-byte unchanged"
 
     foreach ($result in $results) {
         $runIndex = $results.IndexOf($result) + 1

@@ -106,13 +106,13 @@ try {
     $currentName = cold_restore_authorization_contract_v1\Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName
     $currentAuthorization = cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationEntry $currentName
     Assert-BindingCondition (
-        [int]$currentAuthorization.permitted_transition_from -eq 5 -and
-        [int]$currentAuthorization.permitted_transition_to -eq 6 -and
+        [int]$currentAuthorization.permitted_transition_from -eq 6 -and
+        [int]$currentAuthorization.permitted_transition_to -eq 7 -and
         [int]$currentAuthorization.authorized_increment -eq 1 -and
-        [int]$currentAuthorization.maximum_invocation_count -eq 6 -and
+        [int]$currentAuthorization.maximum_invocation_count -eq 7 -and
         [string]$currentAuthorization.previous_quota_ledger_sha256 -ceq
-            "b7e6c66852540c2b3066f86cd6e9c9d9454c185c4e8ed17d168c6b0dbf466742"
-    ) "current launch-context authorization closes exactly from five to six"
+            "fe843a4a924a12af5553afcb38a579f68a59acdeab0a4c5e5efb006c31e25c60"
+    ) "current Registry-contract authorization closes exactly from six to seven"
     foreach ($singleSourceValue in @(
             [string]$currentAuthorization.authorization_id,
             [string]$currentAuthorization.quota_ledger_relative_path,
