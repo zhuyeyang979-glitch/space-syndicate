@@ -8,6 +8,9 @@ var _failures: Array[String] = []
 
 
 class TestVictoryAuthorityPort extends RefCounted:
+	const SOLAR_CORE := preload(
+		"res://scripts/v07_semantic/v07_solar_victory_core.gd"
+	)
 	var _authority_id: String
 	var _source_authority_id: String
 	var _issuer_instance_id: String
@@ -19,8 +22,8 @@ class TestVictoryAuthorityPort extends RefCounted:
 		issuer_instance_id: String,
 		capability: RefCounted,
 		current_source_revision: int = 0,
-		authority_id: String = V07SolarVictoryCore.TRUSTED_AUTHORITY_ID,
-		source_authority_id: String = V07SolarVictoryCore.TRUSTED_SOURCE_AUTHORITY_ID
+		authority_id: String = SOLAR_CORE.TRUSTED_AUTHORITY_ID,
+		source_authority_id: String = SOLAR_CORE.TRUSTED_SOURCE_AUTHORITY_ID
 	) -> void:
 		_issuer_instance_id = issuer_instance_id
 		_capability = capability
@@ -70,12 +73,12 @@ class TestVictoryAuthorityPort extends RefCounted:
 		qualifies: bool
 	) -> Dictionary:
 		return _record_proof({
-			"schema_version": V07SolarVictoryCore.SCHEMA_VERSION,
+			"schema_version": SOLAR_CORE.SCHEMA_VERSION,
 			"authority_id": _authority_id,
 			"source_authority_id": _source_authority_id,
 			"issuer_instance_id": _issuer_instance_id,
 			"proof_id": proof_id,
-			"proof_kind_id": V07SolarVictoryCore.PROOF_KIND_QUALIFICATION,
+			"proof_kind_id": SOLAR_CORE.PROOF_KIND_QUALIFICATION,
 			"match_instance_id": match_instance_id,
 			"genesis_fingerprint": genesis_fingerprint,
 			"expected_core_revision": expected_core_revision,
@@ -100,12 +103,12 @@ class TestVictoryAuthorityPort extends RefCounted:
 		final_settlement_id: String
 	) -> Dictionary:
 		return _record_proof({
-			"schema_version": V07SolarVictoryCore.SCHEMA_VERSION,
+			"schema_version": SOLAR_CORE.SCHEMA_VERSION,
 			"authority_id": _authority_id,
 			"source_authority_id": _source_authority_id,
 			"issuer_instance_id": _issuer_instance_id,
 			"proof_id": proof_id,
-			"proof_kind_id": V07SolarVictoryCore.PROOF_KIND_BOUNDARY,
+			"proof_kind_id": SOLAR_CORE.PROOF_KIND_BOUNDARY,
 			"match_instance_id": match_instance_id,
 			"genesis_fingerprint": genesis_fingerprint,
 			"expected_core_revision": expected_core_revision,
@@ -170,6 +173,14 @@ func _run() -> void:
 
 
 func _test_solar_facility_contract_and_exact_replay() -> void:
+	var contract := CORE.interface_contract_v2()
+	_expect(
+		str(contract.get("ruleset_id", "")) == "v0.7.2"
+			and int(contract.get("save_section_version", 0)) == 5
+			and int(contract.get("solar_multiplier_application_count_per_channel", 0)) == 1
+			and not bool(contract.get("production_runtime_connected", true)),
+		"solar/victory publishes the detached V0.7.2 interface contract"
+	)
 	var dark := CORE.create_state(false, 1, "match.solar.contract")
 	var sunlit := CORE.create_state(true, 1, "match.solar.sunlit")
 	_expect(CORE.is_valid_state(dark) and CORE.is_valid_state(sunlit), "solar genesis states validate")
@@ -917,6 +928,14 @@ func _test_wrong_entrypoint_exact_replay_rejected() -> void:
 
 func _test_strict_state_receipt_and_save_validation() -> void:
 	var initial := CORE.create_state(false, 1, "match.strict.save")
+	_expect(
+		str(initial.get("ruleset_id", "")) == "v0.7.2"
+			and str(initial.get("balance_profile_id", ""))
+				== "V072_STARTER_FREE_FAST"
+			and str(initial.get("balance_profile_fingerprint", ""))
+				== CORE.BALANCE_PROFILE_FINGERPRINT,
+		"solar/victory state binds the approved V0.7.2 balance profile"
+	)
 	var state := CORE.apply_solar_intent(
 		initial,
 		_solar_intent(initial, "intent.strict.save", true, 9007199254740993)
@@ -958,9 +977,24 @@ func _test_strict_state_receipt_and_save_validation() -> void:
 	truncated.erase("source_state_fingerprint")
 	_expect(CORE.from_save_state(truncated).is_empty(), "Save requires its exact source-state fingerprint field")
 	var wrong_section := save.duplicate(true)
-	wrong_section["section_version"] = 2
+	wrong_section["section_version"] = 3
 	wrong_section["save_fingerprint"] = _fingerprint_without(wrong_section, "save_fingerprint")
-	_expect(CORE.from_save_state(wrong_section).is_empty(), "obsolete v2 Save section fails closed after the ledger contract upgrade")
+	_expect(CORE.from_save_state(wrong_section).is_empty(), "historical V0.7 section version fails closed under V0.7.1")
+
+	var wrong_profile := state.duplicate(true)
+	wrong_profile["balance_profile_fingerprint"] = FORGED_FINGERPRINT
+	_expect(
+		not CORE.is_valid_state(wrong_profile)
+			and CORE.from_save_state(_resealed_save_from_state(wrong_profile)).is_empty(),
+		"wrong V0.7.1 balance-profile fingerprint fails before restore"
+	)
+	var historical_v07 := state.duplicate(true)
+	historical_v07["schema_version"] = 1
+	historical_v07["ruleset_id"] = "v0.7"
+	_expect(
+		CORE.from_save_state(_resealed_save_from_state(historical_v07)).is_empty(),
+		"V0.7 detached state is never silently interpreted as V0.7.1"
+	)
 
 
 func _test_coordinated_ledger_and_wire_attacks() -> void:

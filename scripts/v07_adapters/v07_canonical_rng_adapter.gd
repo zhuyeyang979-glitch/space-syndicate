@@ -6,7 +6,8 @@ class_name V07CanonicalRngAdapter
 ## accepted while it remains byte-for-byte equal to the embedded owner state.
 
 const SCHEMA_VERSION := 2
-const OWNER_SCHEMA_VERSION := 3
+const UNIFIED_OWNER_SCHEMA_VERSION := 2
+const DBG_OWNER_SCHEMA_VERSION := 3
 const UNIFIED_STATE_VERSION := 5
 const DBG_STATE_VERSION := 3
 const ADAPTER_ID := "space_syndicate.v073.canonical_rng_adapter.v3"
@@ -226,6 +227,7 @@ static func adapter_contract() -> Dictionary:
 		"ruleset_id": RULESET_ID,
 		"target_ruleset_id": RULESET_ID,
 		"v07_direct_resume_allowed": false,
+		"v071_direct_resume_allowed": false,
 		"logical_stream_ids": LOGICAL_STREAM_IDS.duplicate(),
 		"logical_stream_id_count": LOGICAL_STREAM_IDS.size(),
 		"state_profile_ids": [DBG_PROFILE_ID, UNIFIED_PROFILE_ID],
@@ -507,7 +509,7 @@ static func _unified_save_error(save_state: Dictionary) -> String:
 		return "save_not_strict_pure_data"
 	if not _exact_fields(save_state, UNIFIED_SAVE_FIELDS):
 		return "save_fields_invalid"
-	if save_state.get("schema_version") != OWNER_SCHEMA_VERSION \
+	if save_state.get("schema_version") != UNIFIED_OWNER_SCHEMA_VERSION \
 			or save_state.get("state_version") != UNIFIED_STATE_VERSION \
 			or save_state.get("interface_id") \
 				!= "v072.unified_track.save_state.v3" \
@@ -523,7 +525,7 @@ static func _unified_save_error(save_state: Dictionary) -> String:
 	var authority := authority_variant as Dictionary
 	if not _exact_fields(authority, UNIFIED_AUTHORITY_STATE_FIELDS):
 		return "authority_state_fields_invalid"
-	if authority.get("schema_version") != OWNER_SCHEMA_VERSION \
+	if authority.get("schema_version") != UNIFIED_OWNER_SCHEMA_VERSION \
 			or authority.get("state_version") != UNIFIED_STATE_VERSION \
 			or authority.get("ruleset_id") != SOURCE_CORE_RULESET_ID \
 			or authority.get("balance_profile_id") != SOURCE_CORE_BALANCE_PROFILE_ID \
@@ -575,7 +577,7 @@ static func _dbg_save_error(save_state: Dictionary) -> String:
 	if not _exact_fields(save_state, DBG_SAVE_FIELDS):
 		return "save_fields_invalid"
 	if save_state.get("schema_id") != "v072.personal_dbg.save_state.v3" \
-			or save_state.get("schema_version") != OWNER_SCHEMA_VERSION \
+			or save_state.get("schema_version") != DBG_OWNER_SCHEMA_VERSION \
 			or save_state.get("state_version") != DBG_STATE_VERSION \
 			or save_state.get("ruleset_id") != SOURCE_CORE_RULESET_ID \
 			or save_state.get("balance_profile_id") != SOURCE_CORE_BALANCE_PROFILE_ID \
@@ -590,7 +592,7 @@ static func _dbg_save_error(save_state: Dictionary) -> String:
 	var state := state_variant as Dictionary
 	if not _exact_fields(state, DBG_STATE_FIELDS):
 		return "state_fields_invalid"
-	if state.get("schema_version") != OWNER_SCHEMA_VERSION \
+	if state.get("schema_version") != DBG_OWNER_SCHEMA_VERSION \
 			or state.get("state_version") != DBG_STATE_VERSION \
 			or state.get("ruleset_id") != SOURCE_CORE_RULESET_ID \
 			or state.get("balance_profile_id") != SOURCE_CORE_BALANCE_PROFILE_ID \
@@ -700,7 +702,7 @@ static func _dbg_rng_state_error(
 ) -> String:
 	if not _exact_fields(rng_state, DBG_RNG_STATE_FIELDS):
 		return "state_fields_invalid"
-	if rng_state.get("schema_version") != OWNER_SCHEMA_VERSION \
+	if rng_state.get("schema_version") != DBG_OWNER_SCHEMA_VERSION \
 			or rng_state.get("stream_id") != expected_stream_id \
 			or rng_state.get("stream_instance_id") != expected_instance_id \
 			or rng_state.get("authoritative_owner_id") != DBG_AUTHORITY_ID \

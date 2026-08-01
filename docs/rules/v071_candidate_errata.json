@@ -1,0 +1,474 @@
+{
+  "schema_version": 2,
+  "document_id": "space_syndicate.v071.candidate_errata",
+  "candidate_ruleset_id": "v0.7.1",
+  "based_on_ruleset_id": "space_syndicate.v07.complete",
+  "status": "PROMOTED_TO_V071_HIGHEST_TARGET_CONSTITUTION",
+  "authority_level": "historical_approved_errata_source",
+  "user_approval_required_before_constitution_freeze": false,
+  "user_approval_recorded": true,
+  "approved_profile_id": "V071_CANDIDATE_A_FAST",
+  "human_fun_proven": false,
+  "human_test_still_required": true,
+  "scope": {
+    "current_production_runtime_ruleset": "V0.6",
+    "target_development_constitution": "V0.7.1",
+    "v071_highest_constitution_frozen": true,
+    "full_v0_7_1_runtime_cutover": false,
+    "detached_reference_only": true,
+    "production_connection_allowed": false,
+    "v06_rule_change_allowed": false,
+    "v07_highest_constitution_change_allowed": false,
+    "v07_constitution_content_change_count": 0
+  },
+  "classification_counts": {
+    "CLASS_A_IMPLEMENTATION_CONTRADICTION": 2,
+    "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA": 6,
+    "CLASS_C_BALANCE_EXPERIMENT": 6,
+    "total": 14
+  },
+  "class_a_implementation_contradictions": [
+    {
+      "errata_id": "V071-A1",
+      "title": "Advance lead and color cycle from independent completed-batch cursors",
+      "classification": "CLASS_A_IMPLEMENTATION_CONTRADICTION",
+      "authority_already_clear": true,
+      "observed_contradiction": {
+        "declared_lead_tenure_seconds": 60,
+        "declared_color_cycle_seconds": 180,
+        "reference_behavior": "lead_advance_occurs_only_inside_color_cycle.commit_boundary",
+        "failure": "the lead advances at the color-cycle cadence instead of its own cadence"
+      },
+      "required_reference_correction": {
+        "boundary_intent": "batch_boundary.commit",
+        "boundary_receipt_source": "authoritative_completed_card_batch_receipt",
+        "lead_advance_unit": "COMPLETED_CARD_BATCH",
+        "color_cycle_advance_unit": "COMPLETED_CARD_BATCH",
+        "ui_timer_may_commit_boundary": false,
+        "lead_advance_implicit_in_color_commit": false,
+        "same_boundary_order": [
+          "freeze_outgoing_current_lead",
+          "calculate_six_percent_weight_with_outgoing_lead",
+          "commit_color_distribution",
+          "clear_published_stances",
+          "advance_lead_cursor",
+          "publish_next_batch_state"
+        ],
+        "required_save_state": [
+          "completed_batch_count",
+          "lead_batch_cursor",
+          "color_cycle_batch_cursor",
+          "current_lead",
+          "macro_round_number",
+          "direction"
+        ],
+        "restore_must_not_repeat_boundary": true
+      },
+      "acceptance_gates": {
+        "COLOR_BOUNDARY_USES_OUTGOING_LEAD": true,
+        "LEAD_ADVANCES_AFTER_COLOR_COMMIT": true,
+        "LEAD_ADVANCE_IMPLICIT_IN_COLOR_COMMIT": false
+      }
+    },
+    {
+      "errata_id": "V071-A2",
+      "title": "Give AI the same self-owned private lead fact as a human player",
+      "classification": "CLASS_A_IMPLEMENTATION_CONTRADICTION",
+      "authority_already_clear": true,
+      "observed_contradiction": {
+        "player_projection_has_self_lead_notice": true,
+        "ai_observation_has_equivalent_self_lead_fact": false,
+        "failure": "AI cannot observe a private fact that the same seat legally owns"
+      },
+      "required_reference_correction": {
+        "ai_private_fields": {
+          "self_is_current_lead": "boolean",
+          "self_influence_class": {
+            "type": "enum",
+            "allowed_values": [
+              "normal",
+              "double"
+            ]
+          }
+        },
+        "semantic_parity_with_player_self_notice": true,
+        "forbidden_ai_fields": [
+          "other_player_lead_identity",
+          "complete_hidden_lead_order",
+          "next_lead_identity",
+          "other_player_unpublished_stance",
+          "raw_influence_weight_breakdown"
+        ]
+      },
+      "acceptance_gates": {
+        "AI_SELF_LEAD_NOTICE_READY": true,
+        "AI_OTHER_LEAD_IDENTITY_EXPOSURE_COUNT": 0,
+        "AI_HIDDEN_ORDER_EXPOSURE_COUNT": 0
+      }
+    }
+  ],
+  "class_b_state_machine_closure_errata": [
+    {
+      "errata_id": "V071-B1",
+      "title": "Lock a replacement track card until the next authoritative scroll",
+      "classification": "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA",
+      "candidate_rule": {
+        "TRACK_REPLACEMENT_ACTIVATES_ON_NEXT_SCROLL": true,
+        "TRACK_REPLACEMENT_CLAIMABLE_SAME_TICK": false,
+        "required_state_field_one_of": [
+          "claimable_from_scroll_sequence",
+          "claimable_from_track_revision"
+        ],
+        "before_activation": {
+          "claimable": false,
+          "player_projection_state": "incoming_locked"
+        },
+        "activation_event": "next_authoritative_track_scroll"
+      },
+      "closure_reason": "prevents click, double-click, mixed-input, and concurrent same-revision claim chains",
+      "required_tests": [
+        "claim_then_immediate_replacement_claim",
+        "double_click",
+        "high_frame_rate_click",
+        "keyboard_and_mouse_concurrent_submit",
+        "eight_player_concurrent_claim",
+        "save_restore_locked_replacement",
+        "exact_once_claim"
+      ]
+    },
+    {
+      "errata_id": "V071-B2",
+      "title": "Reject normal-card merges that reduce the owned normal deck below five",
+      "classification": "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA",
+      "candidate_rule": {
+        "NORMAL_DECK_MINIMUM_TOTAL_CARD_COUNT": 5,
+        "counted_zones": [
+          "draw_pile",
+          "hand",
+          "committed_escrow",
+          "discard"
+        ],
+        "validation_point": "before_merge_commit",
+        "required_post_merge_total_operator": ">=",
+        "rejection_reason_code": "minimum_normal_deck_size_violation",
+        "future_purchase_may_satisfy_current_check": false
+      },
+      "closure_reason": "keeps draw-to-five hand maintenance terminating from owned card instances rather than future supply",
+      "acceptance_gates": {
+        "HAND_MAINTENANCE_CANNOT_DEADLOCK": true,
+        "DRAW_TO_FIVE_TERMINATION_GREEN": true
+      }
+    },
+    {
+      "errata_id": "V071-B3",
+      "title": "Spawn only level-one cards on the unified track",
+      "classification": "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA",
+      "candidate_rule": {
+        "NORMAL_TRACK_SPAWN_LEVEL": 1,
+        "COMMODITY_TRACK_SPAWN_LEVEL": 1,
+        "normal_levels_obtainable_only_by_merge": [
+          2,
+          3,
+          4
+        ],
+        "commodity_levels_obtainable_only_by_merge": [
+          2,
+          3
+        ],
+        "higher_level_card_definitions_remain_valid": true
+      },
+      "closure_reason": "makes merge progression deterministic and prevents the supply generator from bypassing progression",
+      "acceptance_gates": {
+        "TRACK_HIGH_LEVEL_NORMAL_SPAWN_COUNT": 0,
+        "TRACK_HIGH_LEVEL_COMMODITY_SPAWN_COUNT": 0
+      }
+    },
+    {
+      "errata_id": "V071-B4",
+      "title": "Record when a claimed commodity becomes batch-usable",
+      "classification": "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA",
+      "candidate_rule": {
+        "if_local_queue_not_locked": {
+          "COMMODITY_CLAIM_USABLE_BATCH": "current_batch"
+        },
+        "if_local_queue_locked": {
+          "COMMODITY_CLAIM_USABLE_BATCH": "next_batch"
+        },
+        "required_instance_field": "available_from_batch_id",
+        "locked_claim_may_join_locked_queue": false,
+        "locked_claim_may_change_current_reservation": false,
+        "locked_claim_may_change_current_action_limit": false,
+        "save_restore_preserves_available_from_batch_id": true
+      },
+      "closure_reason": "closes the timing boundary between live track acquisition and an immutable submitted batch"
+    },
+    {
+      "errata_id": "V071-B5",
+      "title": "Use an explicit deterministic invalid-target policy",
+      "classification": "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA",
+      "candidate_rule": {
+        "allowed_policy_set": [
+          "FIZZLE_FULL_ASSET_REFUND",
+          "FIZZLE_NO_REFUND",
+          "RESOLVE_LEGAL_REMAINDER",
+          "DETERMINISTIC_FALLBACK"
+        ],
+        "DEFAULT_INVALID_TARGET_POLICY": "FIZZLE_FULL_ASSET_REFUND",
+        "FIZZLED_NORMAL_CARD_DESTINATION": "discard",
+        "target_reselection_allowed": false,
+        "release_all_reserved_assets": true,
+        "return_action_slot": false,
+        "return_card_to_hand": false,
+        "typed_receipt_required": true,
+        "public_causal_history_required": true,
+        "content_without_declared_policy_may_enter_production": false
+      },
+      "closure_reason": "guarantees one deterministic resolution when a prebound target becomes illegal"
+    },
+    {
+      "errata_id": "V071-B6",
+      "title": "Define hidden lead as soft-hidden rather than mathematically opaque",
+      "classification": "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA",
+      "candidate_rule": {
+        "LEAD_IDENTITY_NOT_DIRECTLY_PUBLISHED": true,
+        "LEAD_IDENTITY_MAY_BE_INFERRED_FROM_PUBLIC_INFORMATION": true,
+        "forbidden_public_cues": [
+          "lead_portrait",
+          "lead_specific_animation",
+          "lead_specific_audio",
+          "lead_identity_in_public_queue",
+          "six_percent_weight_owner"
+        ],
+        "mathematical_non_inference_guaranteed": false,
+        "measurement": "LEAD_INFERENCE_UNIQUE_RATE",
+        "unique_inference_is_privacy_failure": false
+      },
+      "closure_reason": "states an enforceable publication boundary without promising information-theoretic secrecy"
+    }
+  ],
+  "class_c_balance_experiments": [
+    {
+      "experiment_id": "V071-C1",
+      "title": "Initial assets per color",
+      "classification": "CLASS_C_BALANCE_EXPERIMENT",
+      "parameter": "initial_assets_per_color",
+      "candidate_values": [
+        1,
+        2
+      ],
+      "constitutional": false
+    },
+    {
+      "experiment_id": "V071-C2",
+      "title": "Unified-track normal and commodity ratio",
+      "classification": "CLASS_C_BALANCE_EXPERIMENT",
+      "parameter_pair": [
+        "normal_card_ratio_basis_points",
+        "commodity_card_ratio_basis_points"
+      ],
+      "candidate_values": [
+        {
+          "normal": 7000,
+          "commodity": 3000
+        },
+        {
+          "normal": 6000,
+          "commodity": 4000
+        },
+        {
+          "normal": 5000,
+          "commodity": 5000
+        }
+      ],
+      "constitutional": false
+    },
+    {
+      "experiment_id": "V071-C3",
+      "title": "Single-color net intervention cap",
+      "classification": "CLASS_C_BALANCE_EXPERIMENT",
+      "parameter": "single_color_net_intervention_cap",
+      "candidate_values": [
+        {
+          "enabled": false,
+          "basis_points": 10000
+        },
+        {
+          "enabled": true,
+          "basis_points": 1200
+        }
+      ],
+      "constitutional": false
+    },
+    {
+      "experiment_id": "V071-C4",
+      "title": "Per-color asset refresh cap per batch",
+      "classification": "CLASS_C_BALANCE_EXPERIMENT",
+      "parameter": "max_asset_refresh_per_color_per_batch",
+      "candidate_values": [
+        null,
+        3
+      ],
+      "null_value_meaning": "no_additional_balance_cap_beyond_constitutional_pool_cap",
+      "constitutional": false
+    },
+    {
+      "experiment_id": "V071-C5",
+      "title": "Hand-maintenance timeout",
+      "classification": "CLASS_C_BALANCE_EXPERIMENT",
+      "parameter": "hand_maintenance_timeout_seconds",
+      "candidate_values": [
+        20,
+        8
+      ],
+      "constitutional": false
+    },
+    {
+      "experiment_id": "V071-C6",
+      "title": "Lead tenure in completed batches",
+      "classification": "CLASS_C_BALANCE_EXPERIMENT",
+      "parameter": "lead_tenure_batches",
+      "candidate_values": [
+        1,
+        2
+      ],
+      "constitutional": false
+    }
+  ],
+  "profile_fingerprint_contract": {
+    "algorithm": "sha256",
+    "encoding": "utf-8",
+    "input_format": "profile_id|key=value in the documented fixed field order",
+    "fixed_field_order": [
+      "initial_assets_per_color",
+      "normal_card_ratio_basis_points",
+      "commodity_card_ratio_basis_points",
+      "single_color_net_intervention_cap_enabled",
+      "single_color_net_intervention_cap_basis_points",
+      "max_asset_refresh_per_color_per_batch",
+      "hand_maintenance_timeout_seconds",
+      "lead_tenure_batches",
+      "color_cycle_batches"
+    ]
+  },
+  "profiles": [
+    {
+      "profile_id": "BASELINE_V07",
+      "profile_fingerprint": "3343a3896df495ca33e927e5fa94cf92d9989874b29c79a6f7d5acda569cc15a",
+      "profile_fingerprint_input": "BASELINE_V07|initial_assets_per_color=1|normal_card_ratio_basis_points=7000|commodity_card_ratio_basis_points=3000|single_color_net_intervention_cap_enabled=false|single_color_net_intervention_cap_basis_points=10000|max_asset_refresh_per_color_per_batch=unbounded|hand_maintenance_timeout_seconds=20|lead_tenure_batches=2|color_cycle_batches=6",
+      "status": "existing_v07_balance_defaults_with_explicit_simulation_timing_translation",
+      "initial_assets_per_color": 1,
+      "normal_card_ratio_basis_points": 7000,
+      "commodity_card_ratio_basis_points": 3000,
+      "single_color_net_intervention_cap_enabled": false,
+      "single_color_net_intervention_cap_basis_points": 10000,
+      "max_asset_refresh_per_color_per_batch": null,
+      "hand_maintenance_timeout_seconds": 20,
+      "lead_tenure_batches": 2,
+      "color_cycle_batches": 6,
+      "baseline_timing_translation": {
+        "source_lead_tenure_seconds": 60,
+        "source_color_cycle_seconds": 180,
+        "simulation_seconds_per_completed_batch": 30,
+        "translation_changes_highest_authority": false
+      }
+    },
+    {
+      "profile_id": "V071_CANDIDATE_A_FAST",
+      "profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+      "profile_fingerprint_input": "V071_CANDIDATE_A_FAST|initial_assets_per_color=2|normal_card_ratio_basis_points=6000|commodity_card_ratio_basis_points=4000|single_color_net_intervention_cap_enabled=true|single_color_net_intervention_cap_basis_points=1200|max_asset_refresh_per_color_per_batch=3|hand_maintenance_timeout_seconds=8|lead_tenure_batches=1|color_cycle_batches=6",
+      "status": "candidate_experiment",
+      "initial_assets_per_color": 2,
+      "normal_card_ratio_basis_points": 6000,
+      "commodity_card_ratio_basis_points": 4000,
+      "single_color_net_intervention_cap_enabled": true,
+      "single_color_net_intervention_cap_basis_points": 1200,
+      "max_asset_refresh_per_color_per_batch": 3,
+      "hand_maintenance_timeout_seconds": 8,
+      "lead_tenure_batches": 1,
+      "color_cycle_batches": 6
+    },
+    {
+      "profile_id": "V071_CANDIDATE_B_STRATEGIC",
+      "profile_fingerprint": "29357f147ef4690fcb94255d5a7ec2fbf6836aab075441d3c65a0367530f80f4",
+      "profile_fingerprint_input": "V071_CANDIDATE_B_STRATEGIC|initial_assets_per_color=2|normal_card_ratio_basis_points=6000|commodity_card_ratio_basis_points=4000|single_color_net_intervention_cap_enabled=true|single_color_net_intervention_cap_basis_points=1200|max_asset_refresh_per_color_per_batch=3|hand_maintenance_timeout_seconds=8|lead_tenure_batches=2|color_cycle_batches=6",
+      "status": "candidate_experiment",
+      "initial_assets_per_color": 2,
+      "normal_card_ratio_basis_points": 6000,
+      "commodity_card_ratio_basis_points": 4000,
+      "single_color_net_intervention_cap_enabled": true,
+      "single_color_net_intervention_cap_basis_points": 1200,
+      "max_asset_refresh_per_color_per_batch": 3,
+      "hand_maintenance_timeout_seconds": 8,
+      "lead_tenure_batches": 2,
+      "color_cycle_batches": 6
+    }
+  ],
+  "profile_selection": {
+    "recommended_profile_id": "V071_CANDIDATE_A_FAST",
+    "recommended_profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+    "selection_policy": "fewest_failed_targets_then_shortest_victory_tail",
+    "simulation_agent_policy_id": "v071.closed_heuristic_policy.v1",
+    "simulation_report_fingerprint": "d664b7ba8d69fe152c7194e2b357db6c996ed36681f2b031433c773ee61d815e",
+    "recommended_failed_fun_targets": [],
+    "selection_pending_deterministic_simulation": false,
+    "selection_pending_human_sample": true,
+    "profile_id_must_be_saved_and_replayed": true,
+    "locale_ui_or_player_count_may_silently_change_profile": false
+  },
+  "presentation_resolution_compression_candidate": {
+    "ACTION_COUNT_1_TO_12": "full_animation",
+    "ACTION_COUNT_13_TO_24": "shortened_common_animation",
+    "ACTION_COUNT_25_TO_40": "summary_for_common_economic_actions",
+    "always_full_animation": [
+      "facility_build",
+      "monster_attack",
+      "military_attack",
+      "major_control_change",
+      "final_settlement"
+    ],
+    "authoritative_cards_still_resolve_one_by_one": true,
+    "receipt_merge_allowed": false,
+    "resolution_order_change_allowed": false,
+    "owner_leak_allowed": false,
+    "presentation_rng_draw_allowed": false,
+    "public_causal_history_remains_complete": true
+  },
+  "solar_multiplier_guard": {
+    "sunlit_multiplier": 2.0,
+    "dark_multiplier": 1.0,
+    "declared_work_rate_channels": [
+      "factory_production_rate",
+      "transport_throughput",
+      "market_demand_or_consumption_rate",
+      "warehouse_ingress_throughput",
+      "warehouse_egress_throughput"
+    ],
+    "SOLAR_MULTIPLIER_APPLICATION_COUNT_PER_CHANNEL": 1,
+    "full_chain": [
+      "factory",
+      "transport",
+      "warehouse",
+      "market"
+    ],
+    "expected_sunlit_chain_throughput_ratio": {
+      "nominal": 2.0,
+      "minimum": 1.8,
+      "maximum": 2.2
+    },
+    "forbidden_compounded_ratios": [
+      4.0,
+      8.0
+    ],
+    "presentation_brightness_may_own_solar_state": false
+  },
+  "approval_gate": {
+    "candidate_may_be_tested_in_detached_reference": true,
+    "candidate_may_become_highest_authority_without_user_approval": false,
+    "explicit_user_approval_received": true,
+    "approved_profile_id": "V071_CANDIDATE_A_FAST",
+    "v071_highest_constitution_frozen": true,
+    "candidate_may_connect_to_production": false,
+    "next_authorized_freeze_task": "completed_by_pr_83",
+    "next_production_task_after_pr77_merge": "ALPHA_0_5_B_V071_ATOMIC_PRODUCTION_CUTOVER"
+  }
+}

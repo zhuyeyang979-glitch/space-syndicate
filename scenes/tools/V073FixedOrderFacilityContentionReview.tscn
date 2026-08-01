@@ -1,0 +1,152 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/v073_simulation/v073_fixed_order_facility_contention_review.gd" id="1_review"]
+
+[node name="V073FixedOrderFacilityContentionReview" type="Control"]
+custom_minimum_size = Vector2(1280, 720)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_review")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.055, 0.071, 0.09, 1)
+
+[node name="SafeMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 18.0
+offset_top = 14.0
+offset_right = -18.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin"]
+layout_mode = 2
+theme_override_constants/separation = 9
+
+[node name="Header" type="HBoxContainer" parent="SafeMargin/Rows"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="SafeMargin/Rows/Header"]
+layout_mode = 2
+text = "V0.7.3 Fixed-Order Facility Contention"
+theme_override_font_sizes/font_size = 23
+
+[node name="ProfileStatus" type="Label" parent="SafeMargin/Rows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "V073_STARTER_FREE_FIXED_ORDER_CONTENTION | detached"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.4, 0.831, 0.741, 1)
+
+[node name="CatalogStatus" type="Label" parent="SafeMargin/Rows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Stable art keys pending"
+
+[node name="ReviewScroll" type="ScrollContainer" parent="SafeMargin/Rows"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Sections" type="VBoxContainer" parent="SafeMargin/Rows/ReviewScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 15
+
+[node name="OrderSection" type="VBoxContainer" parent="SafeMargin/Rows/ReviewScroll/Sections"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="Heading" type="Label" parent="SafeMargin/Rows/ReviewScroll/Sections/OrderSection"]
+layout_mode = 2
+text = "Frozen four-player turn order and local queues"
+theme_override_font_sizes/font_size = 16
+
+[node name="OrderGrid" type="GridContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/OrderSection"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 4
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="OrderSeparator" type="HSeparator" parent="SafeMargin/Rows/ReviewScroll/Sections"]
+layout_mode = 2
+
+[node name="QueueSection" type="VBoxContainer" parent="SafeMargin/Rows/ReviewScroll/Sections"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="Heading" type="Label" parent="SafeMargin/Rows/ReviewScroll/Sections/QueueSection"]
+layout_mode = 2
+text = "Layered anonymous global queue"
+theme_override_font_sizes/font_size = 16
+
+[node name="QueueGrid" type="GridContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/QueueSection"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 4
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="QueueSeparator" type="HSeparator" parent="SafeMargin/Rows/ReviewScroll/Sections"]
+layout_mode = 2
+
+[node name="ContentionSection" type="VBoxContainer" parent="SafeMargin/Rows/ReviewScroll/Sections"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="Heading" type="Label" parent="SafeMargin/Rows/ReviewScroll/Sections/ContentionSection"]
+layout_mode = 2
+text = "Prebound BUILD_NEW contention and Fizzle receipt"
+theme_override_font_sizes/font_size = 16
+
+[node name="ContentionGrid" type="GridContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/ContentionSection"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="ContentionSeparator" type="HSeparator" parent="SafeMargin/Rows/ReviewScroll/Sections"]
+layout_mode = 2
+
+[node name="ContractSection" type="VBoxContainer" parent="SafeMargin/Rows/ReviewScroll/Sections"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="Heading" type="Label" parent="SafeMargin/Rows/ReviewScroll/Sections/ContractSection"]
+layout_mode = 2
+text = "Anonymity, immutable order, and restore parity"
+theme_override_font_sizes/font_size = 16
+
+[node name="ContractGrid" type="GridContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/ContractSection"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="FooterStatus" type="Label" parent="SafeMargin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Frozen V0.7.3 target | human test required"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.72, 0.78, 0.84, 1)
+theme_override_font_sizes/font_size = 11

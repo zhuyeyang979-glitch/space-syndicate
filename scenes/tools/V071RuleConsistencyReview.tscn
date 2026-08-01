@@ -1,0 +1,174 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/v071_simulation/v071_rule_consistency_review.gd" id="1_review"]
+
+[node name="V071RuleConsistencyReview" type="Control"]
+custom_minimum_size = Vector2(1366, 768)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_review")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.0666667, 0.0901961, 0.12549, 1)
+
+[node name="SafeMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 18.0
+offset_top = 14.0
+offset_right = -18.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 2
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 2
+theme_override_constants/margin_bottom = 2
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin"]
+layout_mode = 2
+theme_override_constants/separation = 9
+
+[node name="Header" type="HBoxContainer" parent="SafeMargin/Rows"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="SafeMargin/Rows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "V0.7.1 Rule Consistency Review"
+theme_override_font_sizes/font_size = 24
+
+[node name="ProfileStatus" type="Label" parent="SafeMargin/Rows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Detached V0.7.1 target"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.345098, 0.784314, 0.470588, 1)
+
+[node name="CatalogStatus" type="Label" parent="SafeMargin/Rows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Catalog pending"
+
+[node name="ProfileSelector" type="OptionButton" parent="SafeMargin/Rows/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(244, 38)
+layout_mode = 2
+tooltip_text = "Simulation balance profile"
+
+[node name="PlayerCountSelector" type="OptionButton" parent="SafeMargin/Rows/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(118, 38)
+layout_mode = 2
+tooltip_text = "Detached simulation player count"
+
+[node name="ReviewScroll" type="ScrollContainer" parent="SafeMargin/Rows"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Sections" type="VBoxContainer" parent="SafeMargin/Rows/ReviewScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="TrackSection" type="PanelContainer" parent="SafeMargin/Rows/ReviewScroll/Sections" groups=["v071_review_section"]]
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/TrackSection"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 9
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/TrackSection/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Heading" type="Label" parent="SafeMargin/Rows/ReviewScroll/Sections/TrackSection/Margin/Rows"]
+layout_mode = 2
+text = "Unified track | level-one supply | next-scroll replacement gate"
+theme_override_font_sizes/font_size = 17
+
+[node name="TrackGrid" type="GridContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/TrackSection/Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 5
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="AssetSection" type="PanelContainer" parent="SafeMargin/Rows/ReviewScroll/Sections" groups=["v071_review_section"]]
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/AssetSection"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 9
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/AssetSection/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Heading" type="Label" parent="SafeMargin/Rows/ReviewScroll/Sections/AssetSection/Margin/Rows"]
+layout_mode = 2
+text = "Six-color assets | cap 6 | approved refresh cap 3"
+theme_override_font_sizes/font_size = 17
+
+[node name="AssetGrid" type="GridContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/AssetSection/Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 6
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="StateSection" type="PanelContainer" parent="SafeMargin/Rows/ReviewScroll/Sections" groups=["v071_review_section"]]
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/StateSection"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 9
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/StateSection/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Heading" type="Label" parent="SafeMargin/Rows/ReviewScroll/Sections/StateSection/Margin/Rows"]
+layout_mode = 2
+text = "Frozen state closure | private facts | exact receipts"
+theme_override_font_sizes/font_size = 17
+
+[node name="StateGrid" type="GridContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/StateSection/Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="FooterStatus" type="Label" parent="SafeMargin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Frozen target | detached reference"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.721569, 0.780392, 0.839216, 1)
+theme_override_font_sizes/font_size = 11

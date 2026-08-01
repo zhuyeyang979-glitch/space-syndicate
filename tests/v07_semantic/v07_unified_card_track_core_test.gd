@@ -110,6 +110,7 @@ func _init() -> void:
 
 func _run() -> void:
 	_test_non_node_contract_and_unified_track()
+	_test_candidate_a_profile_fail_closed()
 	_test_fixed_seed_supply_and_kind_independence()
 	_test_rng_stream_adversarial_independence()
 	_test_uniform_reset_and_three_six_percent_influence()
@@ -119,6 +120,7 @@ func _run() -> void:
 	_test_projection_secret_oracle_resistance()
 	_test_intent_receipt_and_exact_once()
 	_test_visible_acquisition_intents_and_receipts()
+	_test_replacement_lock_restore_unlock_and_l1_supply()
 	_test_visible_acquisition_fail_closed()
 	_test_reverse_round_acquisition_lead_entry()
 	_test_checkpoint_rollback_and_save_roundtrip()
@@ -136,8 +138,21 @@ func _test_non_node_contract_and_unified_track() -> void:
 	_expect(
 		bool(contract.get("single_unified_track", false))
 			and bool(contract.get("same_core_source_required", false))
-			and not bool(contract.get("production_runtime_connected", true)),
+			and not bool(contract.get("production_runtime_connected", true))
+			and str(contract.get("ruleset_id", "")) == "v0.7.2"
+			and int(contract.get("state_version", 0)) == 5,
 		"contract declares one reference-only same-source unified track"
+	)
+	_expect(
+		str(contract.get("balance_profile_id", ""))
+				== CORE_SCRIPT.BALANCE_PROFILE_ID
+			and str(contract.get("balance_profile_fingerprint", ""))
+				== CORE_SCRIPT.BALANCE_PROFILE_FINGERPRINT
+			and int(contract.get("default_normal_card_ratio_basis_points", 0)) == 6000
+			and int(contract.get("default_commodity_card_ratio_basis_points", 0)) == 4000
+			and int(contract.get("default_lead_tenure_batches", 0)) == 1
+			and int(contract.get("default_color_cycle_batches", 0)) == 6,
+		"contract freezes the approved Candidate A track profile"
 	)
 	_expect(
 		int(contract.get("normal_player_influence_basis_points", 0)) == 300
@@ -146,18 +161,31 @@ func _test_non_node_contract_and_unified_track() -> void:
 	)
 	var interfaces := contract.get("interfaces", {}) as Dictionary
 	_expect(
-		str(interfaces.get("core", "")) == "v07.unified_track.core_authority.v1"
+		str(interfaces.get("core", "")) == "v072.unified_track.core_authority.v3"
 			and str(interfaces.get("ai_observation", ""))
-				== "v07.unified_track.ai_observation.v1"
+				== "v072.unified_track.ai_observation.v3"
 			and str(interfaces.get("player_projection", ""))
-				== "v07.unified_track.player_projection.v1"
+				== "v072.unified_track.player_projection.v3"
 			and str(interfaces.get("intent", ""))
-				== "v07.unified_track.intent.v1"
+				== "v072.unified_track.intent.v3"
 			and str(interfaces.get("receipt", ""))
-				== "v07.unified_track.authoritative_receipt.v1"
+				== "v072.unified_track.authoritative_receipt.v3"
 			and str(interfaces.get("save_state", ""))
-				== "v07.unified_track.save_state.v1",
-		"all six three-wing interfaces use the frozen unified-track contract IDs"
+				== "v072.unified_track.save_state.v3",
+		"all six three-wing interfaces use the versioned V0.7.2 contract IDs"
+	)
+	_expect(
+		contract.get("track_replacement_activates_on_next_scroll") == true
+			and contract.get("track_replacement_claimable_same_tick") == false
+			and int(contract.get("normal_track_spawn_level", 0)) == 1
+			and int(contract.get("commodity_track_spawn_level", 0)) == 1
+			and contract.get("starter_track_spawn_allowed") == false
+			and (contract.get("normal_track_definition_ids", []) as Array).size() == 12
+			and contract.get("lead_identity_not_directly_published") == true
+			and contract.get(
+				"lead_identity_may_be_inferred_from_public_information"
+			) == true,
+		"contract publishes replacement, L1-only, and soft-hidden rules"
 	)
 	var privacy: Dictionary = core.privacy_policy_v1()
 	_expect(
@@ -178,7 +206,11 @@ func _test_non_node_contract_and_unified_track() -> void:
 				== "allowlisted_viewer_facts_only"
 			and not bool(
 				privacy.get("projection_source_fingerprint_commits_authority_secrets", true)
-			),
+			)
+			and privacy.get("lead_identity_not_directly_published") == true
+			and privacy.get(
+				"lead_identity_may_be_inferred_from_public_information"
+			) == true,
 		"privacy policy enumerates local visibility and authority secrets"
 	)
 	_expect(
@@ -197,7 +229,7 @@ func _test_non_node_contract_and_unified_track() -> void:
 	var items := track.get("items", []) as Array
 	_expect(CORE_SCRIPT.is_pure_data(authority), "CoreAuthorityV1 is detached pure data")
 	_expect(
-		str(track.get("state_id", "")) == "V07UnifiedCardTrackState"
+		str(track.get("state_id", "")) == "V072UnifiedCardTrackState"
 			and items.size() == ROSTER.size() * 5,
 		"one unified state contains the complete mixed track"
 	)
@@ -209,16 +241,28 @@ func _test_non_node_contract_and_unified_track() -> void:
 			kinds.append(kind)
 		_expect(
 			kind in ["normal_card", "commodity_card"]
-				and str(item.get("primary_color", "")) in CORE_SCRIPT.COLOR_IDS,
-			"every unified-track item has one allowed kind and primary color"
+				and str(item.get("primary_color", "")) in CORE_SCRIPT.COLOR_IDS
+				and int(item.get("level", 0)) == 1
+				and int(item.get("claimable_from_scroll_sequence", -1)) == 0,
+			"every initial unified-track item is L1 and immediately claimable"
 		)
+		if kind == "normal_card":
+			_expect(
+				CORE_SCRIPT.CardDefinitions.track_spawn_definition_ids().has(
+					str(item.get("card_definition_id", ""))
+				)
+					and not CORE_SCRIPT.CardDefinitions.is_starter_definition(
+						str(item.get("card_definition_id", ""))
+					),
+				"normal Track supply contains only canonical paid standard L1 definitions"
+			)
 	_expect(kinds.size() == 2, "normal and commodity cards coexist on the one track")
 	var type_supply := state.get("type_supply_state", {}) as Dictionary
 	var type_counts := _count_values(type_supply.get("bag", []) as Array)
 	_expect(
-		int(type_counts.get("normal_card", 0)) == 70
-			and int(type_counts.get("commodity_card", 0)) == 30,
-		"the independent fixed-seed type bag preserves the 70/30 default ratio"
+		int(type_counts.get("normal_card", 0)) == 60
+			and int(type_counts.get("commodity_card", 0)) == 40,
+		"the independent fixed-seed type bag preserves Candidate A's 60/40 ratio"
 	)
 	var stream_ids := [
 		str(type_supply.get("stream_id", "")),
@@ -250,11 +294,66 @@ func _test_non_node_contract_and_unified_track() -> void:
 	var weights := color_cycle.get("distribution_weight_units", {}) as Dictionary
 	_expect(_all_color_values_equal(weights, 10000), "cycle one starts at an exact six-color uniform baseline")
 	_expect(
-		str(state.get("ruleset_id", "")) == "v0.7"
+		str(state.get("ruleset_id", "")) == "v0.7.2"
+			and int(state.get("state_version", 0)) == 5
+			and str(state.get("balance_profile_id", ""))
+				== CORE_SCRIPT.BALANCE_PROFILE_ID
+			and str(state.get("balance_profile_fingerprint", ""))
+				== CORE_SCRIPT.BALANCE_PROFILE_FINGERPRINT
+			and int(track.get("scroll_sequence", -1)) == 0
 			and not state.has("normal_track")
 			and not state.has("commodity_track")
 			and not _contains_key_recursive(state, "gdp"),
 		"state has no retired split track and no GDP supply field"
+	)
+	var public_facts := (
+		core.player_projection_v1(ROSTER[0]).get("public_facts", {}) as Dictionary
+	)
+	_expect(
+		public_facts.get("lead_identity_not_directly_published") == true
+			and public_facts.get(
+				"lead_identity_may_be_inferred_from_public_information"
+			) == true
+			and not _contains_key_recursive(public_facts, "current_lead_id"),
+		"soft-hidden projection exposes policy flags but never direct lead identity"
+	)
+
+
+func _test_candidate_a_profile_fail_closed() -> void:
+	var wrong_id_core := CORE_SCRIPT.new()
+	var wrong_id := wrong_id_core.start_match(ROSTER, FIXED_SEED, {
+		"balance_profile_id": "BASELINE_V07",
+		"balance_profile_fingerprint": CORE_SCRIPT.BALANCE_PROFILE_FINGERPRINT,
+	})
+	_expect(
+		not bool(wrong_id.get("accepted", true))
+			and str(wrong_id.get("reason_code", "")) == "balance_profile_id_invalid"
+			and not wrong_id_core.is_configured(),
+		"a non-approved balance profile ID fails before match creation"
+	)
+	var wrong_fingerprint_core := CORE_SCRIPT.new()
+	var wrong_fingerprint := wrong_fingerprint_core.start_match(ROSTER, FIXED_SEED, {
+		"balance_profile_id": CORE_SCRIPT.BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": "0".repeat(64),
+	})
+	_expect(
+		not bool(wrong_fingerprint.get("accepted", true))
+			and str(wrong_fingerprint.get("reason_code", ""))
+				== "balance_profile_fingerprint_invalid"
+			and not wrong_fingerprint_core.is_configured(),
+		"a wrong Candidate A fingerprint fails before match creation"
+	)
+	var wrong_ratio_core := CORE_SCRIPT.new()
+	var wrong_ratio := wrong_ratio_core.start_match(ROSTER, FIXED_SEED, {
+		"normal_card_ratio_basis_points": 7000,
+		"commodity_card_ratio_basis_points": 3000,
+	})
+	_expect(
+		not bool(wrong_ratio.get("accepted", true))
+			and str(wrong_ratio.get("reason_code", ""))
+				== "v072_starter_free_fast_card_kind_ratio_required"
+			and not wrong_ratio_core.is_configured(),
+		"profile identity cannot be paired with legacy 70/30 values"
 	)
 
 
@@ -350,9 +449,9 @@ func _test_rng_stream_adversarial_independence() -> void:
 	)
 	var refilled_type_counts := _count_values(type_after.get("bag", []) as Array)
 	_expect(
-		int(refilled_type_counts.get("normal_card", 0)) == 70
-			and int(refilled_type_counts.get("commodity_card", 0)) == 30,
-		"every refilled type bag preserves exact 70/30 composition"
+		int(refilled_type_counts.get("normal_card", 0)) == 60
+			and int(refilled_type_counts.get("commodity_card", 0)) == 40,
+		"every refilled type bag preserves exact Candidate A 60/40 composition"
 	)
 	_expect(
 		int(type_after.get("rng_draw_count", 0))
@@ -557,8 +656,12 @@ func _test_hidden_lead_and_reverse_macro_rounds() -> void:
 			and str(hidden.get("direction", "")) == "forward",
 		"macro round one follows the fixed hidden order"
 	)
-	for index in range(ROSTER.size()):
-		_commit_cycle(core, "request.reverse.forward.%02d" % index)
+	for index in range(ROSTER.size() * CORE_SCRIPT.DEFAULT_LEAD_TENURE_BATCHES):
+		_commit_completed_batch(
+			core,
+			"request.reverse.forward.%02d" % index,
+			index + 1
+		)
 	var second_round := (
 		_authority_state(core).get("hidden_lead_cycle_state", {}) as Dictionary
 	)
@@ -574,8 +677,12 @@ func _test_hidden_lead_and_reverse_macro_rounds() -> void:
 		second_round.get("fixed_order", []) == fixed_order,
 		"the authority-secret base order never reshuffles between macro rounds"
 	)
-	for index in range(ROSTER.size()):
-		_commit_cycle(core, "request.reverse.backward.%02d" % index)
+	for index in range(ROSTER.size() * CORE_SCRIPT.DEFAULT_LEAD_TENURE_BATCHES):
+		_commit_completed_batch(
+			core,
+			"request.reverse.backward.%02d" % index,
+			100 + index
+		)
 	var third_round := (
 		_authority_state(core).get("hidden_lead_cycle_state", {}) as Dictionary
 	)
@@ -622,11 +729,18 @@ func _test_three_wing_same_source_and_privacy() -> void:
 		"AI and player consume shared allowlisted Core facts without copied rules"
 	)
 	_expect(
-		not (ai.get("viewer_private_facts", {}) as Dictionary).has("self_lead_notice")
+		(ai.get("viewer_private_facts", {}) as Dictionary).get(
+			"self_is_current_lead",
+			false
+		) == true
+			and str((ai.get("viewer_private_facts", {}) as Dictionary).get(
+				"self_influence_class",
+				""
+			)) == "double"
 			and not (ai.get("viewer_private_facts", {}) as Dictionary).has(
-				"self_lead_notice_token"
+				"self_lead_notice"
 			),
-		"AI observation cannot read even its own hidden-lead identity"
+		"AI receives only its own semantically equivalent private lead fact"
 	)
 	var other := core.player_projection_v1(other_id)
 	_expect(
@@ -641,7 +755,7 @@ func _test_three_wing_same_source_and_privacy() -> void:
 		bool((player.get("viewer_private_facts", {}) as Dictionary).get(
 			"self_lead_notice", false
 		)),
-		"only the Player wing receives the constitutional private self notice"
+		"Player keeps its private self notice while AI receives an equivalent fact"
 	)
 	_expect(own_items.size() == 5, "player projection exposes only the viewer's local five-card segment")
 	for item_variant in own_items:
@@ -1172,6 +1286,215 @@ func _test_visible_acquisition_intents_and_receipts() -> void:
 	)
 
 
+func _test_replacement_lock_restore_unlock_and_l1_supply() -> void:
+	var core := CORE_SCRIPT.new(ROSTER, FIXED_SEED)
+	var fixture := _visible_item_of_kind(core, "commodity_card")
+	_expect(not fixture.is_empty(), "replacement-lock acquisition fixture exists")
+	if fixture.is_empty():
+		return
+	var actor_id := str(fixture.get("actor_id", ""))
+	var source_item := fixture.get("item", {}) as Dictionary
+	var source_id := str(source_item.get("instance_id", ""))
+	var source := core.visible_source_identity_v1(actor_id, source_id)
+	var authorization := _acquisition_authorization(
+		actor_id,
+		source,
+		"replacement.lock.source",
+		"authority.none"
+	)
+	var intent := core.build_visible_acquisition_intent_v1(
+		"request.replacement.lock.source",
+		actor_id,
+		CORE_SCRIPT.ACTION_CLAIM_VISIBLE_COMMODITY,
+		source,
+		authorization
+	)
+	var before := _authority_state(core)
+	var receipt := _transact_track_acquisition(core, intent)
+	var after := _authority_state(core)
+	_expect(bool(receipt.get("accepted", false)), "source claim creates a replacement")
+	var before_ids := _track_instance_ids(before)
+	var replacement_id := ""
+	for candidate_id in _track_instance_ids(after):
+		if not before_ids.has(candidate_id):
+			replacement_id = candidate_id
+			break
+	var after_track := after.get("track_state", {}) as Dictionary
+	var replacement := _track_item_by_id(
+		after_track.get("items", []) as Array,
+		replacement_id
+	)
+	var replacement_owner := str(replacement.get("segment_owner_id", ""))
+	var projected_locked := _projected_item_by_id(
+		core,
+		replacement_owner,
+		replacement_id
+	)
+	_expect(
+		not replacement_id.is_empty()
+			and int(after_track.get("scroll_sequence", -1)) == 0
+			and int(replacement.get("level", 0)) == 1
+			and int(replacement.get("claimable_from_scroll_sequence", -1)) == 1
+			and projected_locked.get("claimable") == false
+			and str(projected_locked.get("claimability_state", ""))
+				== "incoming_locked",
+		"replacement is L1 and projects incoming_locked in the claim tick"
+	)
+
+	var locked_source := core.visible_source_identity_v1(
+		replacement_owner,
+		replacement_id
+	)
+	var locked_action := CORE_SCRIPT.ACTION_CLAIM_VISIBLE_COMMODITY \
+		if str(replacement.get("card_kind", "")) == "commodity_card" \
+		else CORE_SCRIPT.ACTION_PURCHASE_VISIBLE_NORMAL_CARD
+	var locked_authorization := _acquisition_authorization(
+		replacement_owner,
+		locked_source,
+		"replacement.lock.same.tick",
+		"authority.none" if locked_action == CORE_SCRIPT.ACTION_CLAIM_VISIBLE_COMMODITY \
+		else "authority.cash.reference"
+	)
+	var locked_intent := core.build_visible_acquisition_intent_v1(
+		"request.replacement.lock.same.tick",
+		replacement_owner,
+		locked_action,
+		locked_source,
+		locked_authorization
+	)
+	var before_same_tick := core.core_authority_v1()
+	var same_tick_result := _transact_track_acquisition(core, locked_intent)
+	_expect(
+		not bool(same_tick_result.get("accepted", true))
+			and str(same_tick_result.get("reason_code", ""))
+				== "track_replacement_locked_until_next_scroll"
+			and core.core_authority_v1() == before_same_tick,
+		"same-tick replacement claim fails closed without Core mutation"
+	)
+
+	var restored := CORE_SCRIPT.new()
+	var restore_result := restored.restore_save_state_v1(core.save_state_v1())
+	var restored_locked := _projected_item_by_id(
+		restored,
+		replacement_owner,
+		replacement_id
+	)
+	_expect(
+		bool(restore_result.get("accepted", false))
+			and restored_locked.get("claimable") == false
+			and str(restored_locked.get("claimability_state", ""))
+				== "incoming_locked"
+			and int(restored_locked.get("claimable_from_scroll_sequence", -1)) == 1,
+		"Save/Restore preserves the replacement unlock sequence"
+	)
+	var restored_source := restored.visible_source_identity_v1(
+		replacement_owner,
+		replacement_id
+	)
+	var restored_authorization := _acquisition_authorization(
+		replacement_owner,
+		restored_source,
+		"replacement.lock.restored",
+		"authority.none" if locked_action == CORE_SCRIPT.ACTION_CLAIM_VISIBLE_COMMODITY \
+		else "authority.cash.reference"
+	)
+	var restored_intent := restored.build_visible_acquisition_intent_v1(
+		"request.replacement.lock.restored",
+		replacement_owner,
+		locked_action,
+		restored_source,
+		restored_authorization
+	)
+	var restored_before_reject := restored.core_authority_v1()
+	var restored_reject := _transact_track_acquisition(restored, restored_intent)
+	_expect(
+		not bool(restored_reject.get("accepted", true))
+			and str(restored_reject.get("reason_code", ""))
+				== "track_replacement_locked_until_next_scroll"
+			and restored.core_authority_v1() == restored_before_reject,
+		"restored replacement remains unclaimable before the next scroll"
+	)
+
+	_advance_once(restored, "request.replacement.unlock.scroll")
+	var unlocked_state := _authority_state(restored)
+	var unlocked_track := unlocked_state.get("track_state", {}) as Dictionary
+	var unlocked_item := _track_item_by_id(
+		unlocked_track.get("items", []) as Array,
+		replacement_id
+	)
+	var unlocked_owner := str(unlocked_item.get("segment_owner_id", ""))
+	var projected_unlocked := _projected_item_by_id(
+		restored,
+		unlocked_owner,
+		replacement_id
+	)
+	_expect(
+		int(unlocked_track.get("scroll_sequence", -1)) == 1
+			and projected_unlocked.get("claimable") == true
+			and str(projected_unlocked.get("claimability_state", "")) == "claimable",
+		"the next authoritative scroll unlocks the exact replacement instance"
+	)
+	var unlocked_source := restored.visible_source_identity_v1(
+		unlocked_owner,
+		replacement_id
+	)
+	var unlocked_authorization := _acquisition_authorization(
+		unlocked_owner,
+		unlocked_source,
+		"replacement.unlocked",
+		"authority.none" if locked_action == CORE_SCRIPT.ACTION_CLAIM_VISIBLE_COMMODITY \
+		else "authority.cash.reference"
+	)
+	var unlocked_intent := restored.build_visible_acquisition_intent_v1(
+		"request.replacement.unlocked",
+		unlocked_owner,
+		locked_action,
+		unlocked_source,
+		unlocked_authorization
+	)
+	var unlocked_receipt := _transact_track_acquisition(restored, unlocked_intent)
+	_expect(
+		bool(unlocked_receipt.get("accepted", false)),
+		"replacement becomes legally claimable after one authoritative scroll"
+	)
+
+	var l1_core := CORE_SCRIPT.new(ROSTER, FIXED_SEED + 17)
+	var high_level_spawn_count := 0
+	for item_variant in (
+		(_authority_state(l1_core).get("track_state", {}) as Dictionary)
+			.get("items", []) as Array
+	):
+		if int((item_variant as Dictionary).get("level", 0)) > 1:
+			high_level_spawn_count += 1
+	for sequence in range(120):
+		_advance_once(l1_core, "request.l1.only.%03d" % sequence)
+		var incoming := _track_item_at_position(_authority_state(l1_core), 0)
+		if int(incoming.get("level", 0)) > 1:
+			high_level_spawn_count += 1
+	_expect(
+		high_level_spawn_count == 0,
+		"initial and 120 deterministic replacement draws spawn only L1 cards"
+	)
+	var forged_level_save := l1_core.save_state_v1()
+	var forged_level_state := (
+		forged_level_save.get("authority_state", {}) as Dictionary
+	)
+	var forged_items := (
+		forged_level_state.get("track_state", {}) as Dictionary
+	).get("items", []) as Array
+	(forged_items[0] as Dictionary)["level"] = 2
+	_reseal_save(forged_level_save)
+	var forged_level_target := CORE_SCRIPT.new()
+	_expect(
+		not bool(
+			forged_level_target.restore_save_state_v1(forged_level_save)
+				.get("accepted", true)
+		)
+			and not forged_level_target.is_configured(),
+		"a validly resealed higher-level track spawn fails closed on restore"
+	)
+
+
 func _test_visible_acquisition_fail_closed() -> void:
 	var segment_core := CORE_SCRIPT.new(ROSTER, FIXED_SEED)
 	var segment_fixture := _visible_item_of_kind(segment_core, "commodity_card")
@@ -1375,8 +1698,12 @@ func _test_visible_acquisition_fail_closed() -> void:
 
 func _test_reverse_round_acquisition_lead_entry() -> void:
 	var core := CORE_SCRIPT.new(ROSTER, FIXED_SEED)
-	for index in range(ROSTER.size()):
-		_commit_cycle(core, "request.acquisition.reverse.boundary.%02d" % index)
+	for index in range(ROSTER.size() * CORE_SCRIPT.DEFAULT_LEAD_TENURE_BATCHES):
+		_commit_completed_batch(
+			core,
+			"request.acquisition.reverse.boundary.%02d" % index,
+			200 + index
+		)
 	var before := _authority_state(core)
 	var hidden := before.get("hidden_lead_cycle_state", {}) as Dictionary
 	var fixed_order := hidden.get("fixed_order", []) as Array
@@ -1636,9 +1963,59 @@ func _test_checkpoint_rollback_and_save_roundtrip() -> void:
 	var save: Dictionary = core.save_state_v1()
 	_expect(
 		CORE_SCRIPT.is_pure_data(save)
-			and str(save.get("ruleset_id", "")) == "v0.7"
+			and str(save.get("ruleset_id", "")) == "v0.7.2"
+			and int(save.get("state_version", 0)) == 5
+			and str(save.get("balance_profile_id", ""))
+				== CORE_SCRIPT.BALANCE_PROFILE_ID
+			and str(save.get("balance_profile_fingerprint", ""))
+				== CORE_SCRIPT.BALANCE_PROFILE_FINGERPRINT
 			and str(save.get("interface_id", "")) == CORE_SCRIPT.SAVE_INTERFACE_ID,
-		"SaveStateV1 is versioned V0.7 authority-secret pure data"
+		"SaveStateV1 is versioned V0.7.2 authority-secret pure data"
+	)
+	var missing_profile_save := save.duplicate(true)
+	missing_profile_save.erase("balance_profile_id")
+	missing_profile_save["save_fingerprint"] = CORE_SCRIPT.fingerprint(
+		missing_profile_save,
+		"save_fingerprint"
+	)
+	var missing_profile_target := CORE_SCRIPT.new()
+	_expect(
+		not bool(
+			missing_profile_target.restore_save_state_v1(missing_profile_save)
+				.get("accepted", true)
+		)
+			and not missing_profile_target.is_configured(),
+		"V0.7.1 Save rejects a missing balance profile without silent default"
+	)
+	var wrong_profile_save := save.duplicate(true)
+	wrong_profile_save["balance_profile_fingerprint"] = "f".repeat(64)
+	wrong_profile_save["save_fingerprint"] = CORE_SCRIPT.fingerprint(
+		wrong_profile_save,
+		"save_fingerprint"
+	)
+	var wrong_profile_target := CORE_SCRIPT.new()
+	_expect(
+		not bool(
+			wrong_profile_target.restore_save_state_v1(wrong_profile_save)
+				.get("accepted", true)
+		)
+			and not wrong_profile_target.is_configured(),
+		"V0.7.1 Save rejects a mismatched profile fingerprint"
+	)
+	var wrong_state_profile_save := save.duplicate(true)
+	var wrong_state_profile := (
+		wrong_state_profile_save.get("authority_state", {}) as Dictionary
+	)
+	wrong_state_profile["balance_profile_id"] = "BASELINE_V07"
+	_reseal_save(wrong_state_profile_save)
+	var wrong_state_profile_target := CORE_SCRIPT.new()
+	_expect(
+		not bool(
+			wrong_state_profile_target.restore_save_state_v1(wrong_state_profile_save)
+				.get("accepted", true)
+		)
+			and not wrong_state_profile_target.is_configured(),
+		"a resealed authority state cannot substitute another profile"
 	)
 	var secret_injection_save := save.duplicate(true)
 	var secret_injection_state := (
@@ -1897,7 +2274,10 @@ func _expect_acquisition_movement(
 		var expected_origin := fixed_order.find(str(hidden.get("current_lead_id", "")))
 		_expect(
 			int(replacement.get("path_position", -1)) == 0
-				and int(replacement.get("path_origin_index", -1)) == expected_origin,
+				and int(replacement.get("path_origin_index", -1)) == expected_origin
+				and int(replacement.get("level", 0)) == 1
+				and int(replacement.get("claimable_from_scroll_sequence", -1))
+					== int(after_track.get("scroll_sequence", 0)) + 1,
 			"%s replacement enters at zero from the current hidden-lead origin" % label
 		)
 	_expect(
@@ -1910,6 +2290,29 @@ func _expect_acquisition_movement(
 
 func _track_item_by_id(items: Array, instance_id: String) -> Dictionary:
 	for item_variant in items:
+		var item := item_variant as Dictionary
+		if str(item.get("instance_id", "")) == instance_id:
+			return item.duplicate(true)
+	return {}
+
+
+func _track_item_at_position(authority_state: Dictionary, position: int) -> Dictionary:
+	var track := authority_state.get("track_state", {}) as Dictionary
+	for item_variant in track.get("items", []) as Array:
+		var item := item_variant as Dictionary
+		if int(item.get("path_position", -1)) == position:
+			return item.duplicate(true)
+	return {}
+
+
+func _projected_item_by_id(
+	core: RefCounted,
+	actor_id: String,
+	instance_id: String
+) -> Dictionary:
+	var projection: Dictionary = core.call("player_projection_v1", actor_id)
+	var private_facts := projection.get("viewer_private_facts", {}) as Dictionary
+	for item_variant in private_facts.get("own_segment_items", []) as Array:
 		var item := item_variant as Dictionary
 		if str(item.get("instance_id", "")) == instance_id:
 			return item.duplicate(true)
@@ -1945,6 +2348,48 @@ func _commit_cycle(core: RefCounted, request_id: String) -> Dictionary:
 	)
 	var receipt: Dictionary = core.call("apply_intent_v1", intent)
 	_expect(bool(receipt.get("accepted", false)), "%s color boundary commits" % request_id)
+	return receipt
+
+
+func _commit_completed_batch(
+	core: RefCounted,
+	request_id: String,
+	sequence: int
+) -> Dictionary:
+	var batch_id := "batch.core.contract.%03d" % sequence
+	var completed_receipt := CORE_SCRIPT.sealed_copy({
+		"schema_version": CORE_SCRIPT.COMPLETED_BATCH_RECEIPT_SCHEMA_VERSION,
+		"contract_id": CORE_SCRIPT.COMPLETED_BATCH_RECEIPT_ID,
+		"receipt_id": "receipt.%s" % batch_id,
+		"batch_id": batch_id,
+		"lineage_fingerprint": CORE_SCRIPT.fingerprint({"batch_id": batch_id}),
+		"operation_id": "refresh_assets_after_batch",
+		"accepted": true,
+		"reason_code": "frozen_snapshot_applied",
+		"state_revision": sequence,
+		"actor_id": "",
+		"action_id": "",
+		"outcome_id": "assets_refreshed",
+		"invalid_target_policy_id": "none",
+		"public_history_reason_code": "none",
+		"asset_refund_applied": false,
+		"normal_card_destination": "none",
+		"action_slot_refunded": false,
+		"intent_id": "",
+		"intent_fingerprint": "",
+	}, "receipt_fingerprint")
+	var intent: Dictionary = core.call(
+		"build_intent_v1",
+		request_id,
+		"system",
+		CORE_SCRIPT.ACTION_COMMIT_BATCH_BOUNDARY,
+		{"completed_batch_receipt": completed_receipt}
+	)
+	var receipt: Dictionary = core.call("apply_intent_v1", intent)
+	_expect(
+		bool(receipt.get("accepted", false)),
+		"%s completed batch boundary commits" % request_id
+	)
 	return receipt
 
 
