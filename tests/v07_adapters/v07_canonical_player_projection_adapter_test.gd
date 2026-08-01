@@ -274,7 +274,7 @@ func _test_opaque_capability_and_forged_sources() -> void:
 		private_facts.get("self_lead_notice", false)
 	)
 	private_facts["self_lead_notice_token"] = (
-		"v07.lead.double_influence"
+		"v071.lead.double_influence"
 		if bool(private_facts.get("self_lead_notice", false))
 		else "none"
 	)

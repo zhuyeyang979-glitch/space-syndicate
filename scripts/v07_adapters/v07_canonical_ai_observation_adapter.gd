@@ -77,6 +77,10 @@ const CANONICAL_OBSERVATION_FIELDS := [
 const TRACK_OBSERVATION_FIELDS := [
 	"schema_version",
 	"interface_id",
+	"ruleset_id",
+	"state_version",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"domain_id",
 	"source_revision",
 	"source_core_fingerprint",
@@ -89,23 +93,39 @@ const TRACK_PUBLIC_FACT_FIELDS := [
 	"single_unified_track",
 	"allowed_card_kinds",
 	"track_revision",
+	"scroll_sequence",
 	"unified_track_item_count",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"card_kind_ratio_basis_points",
 	"color_cycle_number",
 	"color_distribution_basis_points",
 	"revealed_stances",
+	"completed_batch_count",
+	"lead_batch_cursor",
+	"lead_tenure_batches",
+	"color_cycle_batch_cursor",
+	"color_cycle_batches",
+	"lead_identity_not_directly_published",
+	"lead_identity_may_be_inferred_from_public_information",
 ]
 const TRACK_PRIVATE_FACT_FIELDS := [
 	"own_segment_items",
 	"own_pending_stance",
+	"self_is_current_lead",
+	"self_influence_class",
 ]
 const TRACK_ITEM_FIELDS := [
 	"instance_id",
 	"card_definition_id",
 	"card_kind",
+	"level",
 	"primary_color",
 	"local_slot_index",
 	"track_revision",
+	"claimable_from_scroll_sequence",
+	"claimable",
+	"claimability_state",
 ]
 const TRACK_REVEALED_STANCE_FIELDS := [
 	"actor_id",
@@ -821,6 +841,12 @@ static func _track_observation_reason(
 	if observation.get("schema_version") != TRACK_CORE.SCHEMA_VERSION \
 			or str(observation.get("interface_id", "")) \
 				!= TRACK_CORE.AI_INTERFACE_ID \
+			or str(observation.get("ruleset_id", "")) != TRACK_CORE.RULESET_ID \
+			or observation.get("state_version") != TRACK_CORE.STATE_VERSION \
+			or str(observation.get("balance_profile_id", "")) \
+				!= TRACK_CORE.BALANCE_PROFILE_ID \
+			or str(observation.get("balance_profile_fingerprint", "")) \
+				!= TRACK_CORE.BALANCE_PROFILE_FINGERPRINT \
 			or str(observation.get("domain_id", "")) != TRACK_CORE.DOMAIN_ID:
 		return "track_observation_identity_invalid"
 	if not _is_positive_integer(observation.get("source_revision")) \
@@ -838,6 +864,7 @@ static func _track_observation_reason(
 	var private_reason := _track_private_facts_reason(
 		private_facts,
 		int(public_facts.get("track_revision", -1)),
+		int(public_facts.get("scroll_sequence", -1)),
 		int(public_facts.get("unified_track_item_count", -1))
 	)
 	if not private_reason.is_empty():
@@ -869,10 +896,27 @@ static func _track_public_facts_reason(facts: Dictionary) -> String:
 			or facts.get("single_unified_track") != true \
 			or facts.get("allowed_card_kinds") != CARD_KIND_IDS \
 			or not _is_positive_integer(facts.get("track_revision")) \
+			or not _is_nonnegative_integer(facts.get("scroll_sequence")) \
 			or not _is_nonnegative_integer(
 				facts.get("unified_track_item_count")
 			) \
-			or not _is_positive_integer(facts.get("color_cycle_number")):
+			or str(facts.get("balance_profile_id", "")) \
+				!= TRACK_CORE.BALANCE_PROFILE_ID \
+			or str(facts.get("balance_profile_fingerprint", "")) \
+				!= TRACK_CORE.BALANCE_PROFILE_FINGERPRINT \
+			or not _is_positive_integer(facts.get("color_cycle_number")) \
+			or not _is_nonnegative_integer(facts.get("completed_batch_count")) \
+			or not _is_nonnegative_integer(facts.get("lead_batch_cursor")) \
+			or not _is_positive_integer(facts.get("lead_tenure_batches")) \
+			or int(facts.get("lead_batch_cursor", -1)) \
+				>= int(facts.get("lead_tenure_batches", 0)) \
+			or not _is_nonnegative_integer(facts.get("color_cycle_batch_cursor")) \
+			or not _is_positive_integer(facts.get("color_cycle_batches")) \
+			or int(facts.get("color_cycle_batch_cursor", -1)) \
+				>= int(facts.get("color_cycle_batches", 0)) \
+			or facts.get("lead_identity_not_directly_published") != true \
+			or facts.get("lead_identity_may_be_inferred_from_public_information") \
+				!= true:
 		return "track_public_facts_invalid"
 	if not _integer_map_valid(
 		facts.get("card_kind_ratio_basis_points"),
@@ -909,11 +953,17 @@ static func _track_public_facts_reason(facts: Dictionary) -> String:
 static func _track_private_facts_reason(
 	facts: Dictionary,
 	track_revision: int,
+	scroll_sequence: int,
 	total_item_count: int
 ) -> String:
 	if not CODEC.has_exact_fields(facts, TRACK_PRIVATE_FACT_FIELDS) \
 			or not (facts.get("own_segment_items") is Array) \
-			or not (facts.get("own_pending_stance") is Dictionary):
+			or not (facts.get("own_pending_stance") is Dictionary) \
+			or not (facts.get("self_is_current_lead") is bool) \
+			or str(facts.get("self_influence_class", "")) \
+				not in ["normal", "double"] \
+			or bool(facts.get("self_is_current_lead", false)) \
+				!= (str(facts.get("self_influence_class", "")) == "double"):
 		return "track_private_facts_invalid"
 	var items := facts.get("own_segment_items") as Array
 	if items.size() > total_item_count:
@@ -926,13 +976,23 @@ static func _track_private_facts_reason(
 		var item := item_variant as Dictionary
 		var instance_id := str(item.get("instance_id", ""))
 		var local_slot := int(item.get("local_slot_index", -1))
+		var claimable_from := int(item.get("claimable_from_scroll_sequence", -1))
+		var claimable := bool(item.get("claimable", false))
 		if not CODEC.has_exact_fields(item, TRACK_ITEM_FIELDS) \
 				or not _is_stable_id(instance_id) \
 				or not _is_stable_id(item.get("card_definition_id")) \
 				or str(item.get("card_kind", "")) not in CARD_KIND_IDS \
+				or item.get("level") != TRACK_CORE.TRACK_ITEM_LEVEL \
 				or str(item.get("primary_color", "")) not in COLOR_IDS \
 				or not _is_nonnegative_integer(item.get("local_slot_index")) \
 				or item.get("track_revision") != track_revision \
+				or not _is_nonnegative_integer(
+					item.get("claimable_from_scroll_sequence")
+				) \
+				or not (item.get("claimable") is bool) \
+				or claimable != (scroll_sequence >= claimable_from) \
+				or str(item.get("claimability_state", "")) \
+					!= ("claimable" if claimable else "incoming_locked") \
 				or instance_ids.has(instance_id) \
 				or local_slots.has(local_slot):
 			return "track_segment_item_invalid"
@@ -1004,7 +1064,7 @@ static func _solar_observation_reason(observation: Dictionary) -> String:
 			or observation.get("schema_version") != SOLAR_CORE.SCHEMA_VERSION \
 			or str(observation.get("ruleset_id", "")) != SOLAR_CORE.RULESET_ID \
 			or str(observation.get("observation_id", "")) \
-				!= "v07.solar_victory.ai_observation.v1" \
+				!= SOLAR_CORE.AI_INTERFACE_ID \
 			or not (observation.get("victory_pending") is bool) \
 			or not (observation.get("final_settlement_committed") is bool) \
 			or not _is_positive_integer(observation.get("macro_round_index")):

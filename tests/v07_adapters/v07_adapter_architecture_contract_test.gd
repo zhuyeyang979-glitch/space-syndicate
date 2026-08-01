@@ -70,7 +70,7 @@ const GAMEPLAY_DOMAIN_IDS := [
 const GAMEPLAY_DOMAIN_FIELDS := [
 	"domain_id",
 	"v06_current_owner",
-	"v07_target_owner",
+	"v071_target_owner",
 	"core_port",
 	"ai_port",
 	"player_port",
@@ -190,7 +190,7 @@ func _test_manifest_gameplay_domains(manifest: Dictionary) -> void:
 		seen.append(domain_id)
 		for field in [
 			"v06_current_owner",
-			"v07_target_owner",
+			"v071_target_owner",
 			"core_port",
 			"ai_port",
 			"player_port",

@@ -78,6 +78,10 @@ const PLAYER_PRESENTATION_ASSET_KEYS := [
 const TRACK_PROJECTION_FIELDS := [
 	"schema_version",
 	"interface_id",
+	"ruleset_id",
+	"state_version",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"domain_id",
 	"source_revision",
 	"source_core_fingerprint",
@@ -90,11 +94,21 @@ const TRACK_PUBLIC_FACT_FIELDS := [
 	"single_unified_track",
 	"allowed_card_kinds",
 	"track_revision",
+	"scroll_sequence",
 	"unified_track_item_count",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"card_kind_ratio_basis_points",
 	"color_cycle_number",
 	"color_distribution_basis_points",
 	"revealed_stances",
+	"completed_batch_count",
+	"lead_batch_cursor",
+	"lead_tenure_batches",
+	"color_cycle_batch_cursor",
+	"color_cycle_batches",
+	"lead_identity_not_directly_published",
+	"lead_identity_may_be_inferred_from_public_information",
 ]
 const TRACK_PRIVATE_FACT_FIELDS := [
 	"own_segment_items",
@@ -106,9 +120,13 @@ const TRACK_ITEM_FIELDS := [
 	"instance_id",
 	"card_definition_id",
 	"card_kind",
+	"level",
 	"primary_color",
 	"local_slot_index",
 	"track_revision",
+	"claimable_from_scroll_sequence",
+	"claimable",
+	"claimability_state",
 ]
 const TRACK_REVEALED_STANCE_FIELDS := [
 	"actor_id",
@@ -703,6 +721,12 @@ static func _track_projection_reason(
 	if projection.get("schema_version") != TRACK_CORE.SCHEMA_VERSION \
 			or str(projection.get("interface_id", "")) \
 				!= TRACK_CORE.PLAYER_INTERFACE_ID \
+			or str(projection.get("ruleset_id", "")) != TRACK_CORE.RULESET_ID \
+			or projection.get("state_version") != TRACK_CORE.STATE_VERSION \
+			or str(projection.get("balance_profile_id", "")) \
+				!= TRACK_CORE.BALANCE_PROFILE_ID \
+			or str(projection.get("balance_profile_fingerprint", "")) \
+				!= TRACK_CORE.BALANCE_PROFILE_FINGERPRINT \
 			or str(projection.get("domain_id", "")) != TRACK_CORE.DOMAIN_ID:
 		return "track_projection_identity_invalid"
 	if not WIRE.is_positive_integer(projection.get("source_revision")) \
@@ -720,6 +744,7 @@ static func _track_projection_reason(
 	var private_reason := _track_private_facts_reason(
 		private_facts,
 		int(public_facts.get("track_revision", -1)),
+		int(public_facts.get("scroll_sequence", -1)),
 		int(public_facts.get("unified_track_item_count", -1))
 	)
 	if not private_reason.is_empty():
@@ -750,10 +775,27 @@ static func _track_public_facts_reason(facts: Dictionary) -> String:
 			or facts.get("single_unified_track") != true \
 			or facts.get("allowed_card_kinds") != CARD_KIND_IDS \
 			or not WIRE.is_positive_integer(facts.get("track_revision")) \
+			or not WIRE.is_nonnegative_integer(facts.get("scroll_sequence")) \
 			or not WIRE.is_nonnegative_integer(
 				facts.get("unified_track_item_count")
 			) \
-			or not WIRE.is_positive_integer(facts.get("color_cycle_number")):
+			or str(facts.get("balance_profile_id", "")) \
+				!= TRACK_CORE.BALANCE_PROFILE_ID \
+			or str(facts.get("balance_profile_fingerprint", "")) \
+				!= TRACK_CORE.BALANCE_PROFILE_FINGERPRINT \
+			or not WIRE.is_positive_integer(facts.get("color_cycle_number")) \
+			or not WIRE.is_nonnegative_integer(facts.get("completed_batch_count")) \
+			or not WIRE.is_nonnegative_integer(facts.get("lead_batch_cursor")) \
+			or not WIRE.is_positive_integer(facts.get("lead_tenure_batches")) \
+			or int(facts.get("lead_batch_cursor", -1)) \
+				>= int(facts.get("lead_tenure_batches", 0)) \
+			or not WIRE.is_nonnegative_integer(facts.get("color_cycle_batch_cursor")) \
+			or not WIRE.is_positive_integer(facts.get("color_cycle_batches")) \
+			or int(facts.get("color_cycle_batch_cursor", -1)) \
+				>= int(facts.get("color_cycle_batches", 0)) \
+			or facts.get("lead_identity_not_directly_published") != true \
+			or facts.get("lead_identity_may_be_inferred_from_public_information") \
+				!= true:
 		return "track_public_facts_invalid"
 	if not _integer_map_valid(
 		facts.get("card_kind_ratio_basis_points"),
@@ -790,6 +832,7 @@ static func _track_public_facts_reason(facts: Dictionary) -> String:
 static func _track_private_facts_reason(
 	facts: Dictionary,
 	track_revision: int,
+	scroll_sequence: int,
 	total_item_count: int
 ) -> String:
 	if not WIRE.exact_fields(facts, TRACK_PRIVATE_FACT_FIELDS) \
@@ -798,7 +841,7 @@ static func _track_private_facts_reason(
 			or not (facts.get("self_lead_notice") is bool):
 		return "track_private_facts_invalid"
 	var lead_notice := bool(facts.get("self_lead_notice", false))
-	var expected_token := "v07.lead.double_influence" if lead_notice else "none"
+	var expected_token := "v071.lead.double_influence" if lead_notice else "none"
 	if str(facts.get("self_lead_notice_token", "")) != expected_token:
 		return "track_self_lead_notice_invalid"
 	var items := facts.get("own_segment_items") as Array
@@ -812,15 +855,25 @@ static func _track_private_facts_reason(
 		var item := item_variant as Dictionary
 		var instance_id := str(item.get("instance_id", ""))
 		var local_slot := int(item.get("local_slot_index", -1))
+		var claimable_from := int(item.get("claimable_from_scroll_sequence", -1))
+		var claimable := bool(item.get("claimable", false))
 		if not WIRE.exact_fields(item, TRACK_ITEM_FIELDS) \
 				or not WIRE.is_stable_id(instance_id) \
 				or not WIRE.is_stable_id(item.get("card_definition_id")) \
 				or str(item.get("card_kind", "")) not in CARD_KIND_IDS \
+				or item.get("level") != TRACK_CORE.TRACK_ITEM_LEVEL \
 				or str(item.get("primary_color", "")) not in COLOR_IDS \
 				or not WIRE.is_nonnegative_integer(
 					item.get("local_slot_index")
 				) \
 				or item.get("track_revision") != track_revision \
+				or not WIRE.is_nonnegative_integer(
+					item.get("claimable_from_scroll_sequence")
+				) \
+				or not (item.get("claimable") is bool) \
+				or claimable != (scroll_sequence >= claimable_from) \
+				or str(item.get("claimability_state", "")) \
+					!= ("claimable" if claimable else "incoming_locked") \
 				or instance_ids.has(instance_id) \
 				or local_slots.has(local_slot):
 			return "track_segment_item_invalid"

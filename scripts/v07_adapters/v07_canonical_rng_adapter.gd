@@ -6,13 +6,20 @@ class_name V07CanonicalRngAdapter
 ## accepted while it remains byte-for-byte equal to the embedded owner state.
 
 const SCHEMA_VERSION := 1
+const OWNER_SCHEMA_VERSION := 2
+const UNIFIED_STATE_VERSION := 4
+const DBG_STATE_VERSION := 2
 const ADAPTER_ID := "space_syndicate.v071.canonical_rng_adapter.v1"
 const RULESET_ID := "v0.7.1"
+const BALANCE_PROFILE_ID := "V071_CANDIDATE_A_FAST"
+const BALANCE_PROFILE_FINGERPRINT := (
+	"8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a"
+)
 
 const DBG_PROFILE_ID := "dbg_tagged_sha256_counter_v1"
 const UNIFIED_PROFILE_ID := "unified_park_miller_embedded_v1"
-const DBG_AUTHORITY_ID := "v07.personal_dbg.core_authority.v1"
-const UNIFIED_AUTHORITY_ID := "v07.unified_track.core_authority.v1"
+const DBG_AUTHORITY_ID := "v071.personal_dbg.core_authority.v2"
+const UNIFIED_AUTHORITY_ID := "v071.unified_track.core_authority.v2"
 const DBG_SAVE_SECTION_ID := "personal_dbg_and_merge"
 const UNIFIED_SAVE_SECTION_ID := "unified_card_track_cycle"
 const DBG_ALGORITHM_ID := "sha256.owner_bound_counter.v1"
@@ -71,6 +78,8 @@ const UNIFIED_SAVE_FIELDS := [
 	"schema_version",
 	"interface_id",
 	"ruleset_id",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"domain_id",
 	"state_version",
 	"source_revision",
@@ -82,6 +91,8 @@ const UNIFIED_AUTHORITY_STATE_FIELDS := [
 	"schema_version",
 	"state_version",
 	"ruleset_id",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"domain_id",
 	"revision",
 	"match_seed",
@@ -176,6 +187,7 @@ const DBG_STATE_FIELDS := [
 	"commodity_merge_history",
 	"next_commodity_instance_sequence",
 	"bound_source_state",
+	"local_queue_state",
 	"starter_rng",
 	"reshuffle_rng",
 	"processed_intent_ids",
@@ -187,6 +199,10 @@ const DBG_STATE_FIELDS := [
 const DBG_DOCUMENT_FIELDS := [
 	"section_id",
 	"section_version",
+	"state_version",
+	"ruleset_id",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"semantic_owner",
 	"privacy",
 	"state_revision",
@@ -486,10 +502,14 @@ static func _unified_save_error(save_state: Dictionary) -> String:
 		return "save_not_strict_pure_data"
 	if not _exact_fields(save_state, UNIFIED_SAVE_FIELDS):
 		return "save_fields_invalid"
-	if save_state.get("schema_version") != SCHEMA_VERSION \
-			or save_state.get("state_version") != 4 \
-			or save_state.get("interface_id") != "v07.unified_track.save_state.v1" \
+	if save_state.get("schema_version") != OWNER_SCHEMA_VERSION \
+			or save_state.get("state_version") != UNIFIED_STATE_VERSION \
+			or save_state.get("interface_id") \
+				!= "v071.unified_track.save_state.v2" \
 			or save_state.get("ruleset_id") != RULESET_ID \
+			or save_state.get("balance_profile_id") != BALANCE_PROFILE_ID \
+			or save_state.get("balance_profile_fingerprint") \
+				!= BALANCE_PROFILE_FINGERPRINT \
 			or save_state.get("domain_id") != "unified_card_track":
 		return "save_header_invalid"
 	var authority_variant: Variant = save_state.get("authority_state")
@@ -498,9 +518,12 @@ static func _unified_save_error(save_state: Dictionary) -> String:
 	var authority := authority_variant as Dictionary
 	if not _exact_fields(authority, UNIFIED_AUTHORITY_STATE_FIELDS):
 		return "authority_state_fields_invalid"
-	if authority.get("schema_version") != SCHEMA_VERSION \
-			or authority.get("state_version") != 4 \
+	if authority.get("schema_version") != OWNER_SCHEMA_VERSION \
+			or authority.get("state_version") != UNIFIED_STATE_VERSION \
 			or authority.get("ruleset_id") != RULESET_ID \
+			or authority.get("balance_profile_id") != BALANCE_PROFILE_ID \
+			or authority.get("balance_profile_fingerprint") \
+				!= BALANCE_PROFILE_FINGERPRINT \
 			or authority.get("domain_id") != "unified_card_track":
 		return "authority_state_header_invalid"
 	if not (authority.get("revision") is int) \
@@ -546,10 +569,13 @@ static func _dbg_save_error(save_state: Dictionary) -> String:
 		return "save_not_strict_pure_data"
 	if not _exact_fields(save_state, DBG_SAVE_FIELDS):
 		return "save_fields_invalid"
-	if save_state.get("schema_id") != "v07.personal_dbg.save_state.v1" \
-			or save_state.get("schema_version") != SCHEMA_VERSION \
-			or save_state.get("state_version") != 2 \
+	if save_state.get("schema_id") != "v071.personal_dbg.save_state.v2" \
+			or save_state.get("schema_version") != OWNER_SCHEMA_VERSION \
+			or save_state.get("state_version") != DBG_STATE_VERSION \
 			or save_state.get("ruleset_id") != RULESET_ID \
+			or save_state.get("balance_profile_id") != BALANCE_PROFILE_ID \
+			or save_state.get("balance_profile_fingerprint") \
+				!= BALANCE_PROFILE_FINGERPRINT \
 			or save_state.get("domain_id") != "v07.personal_dbg" \
 			or save_state.get("privacy_scope") != "authority_secret":
 		return "save_header_invalid"
@@ -559,9 +585,12 @@ static func _dbg_save_error(save_state: Dictionary) -> String:
 	var state := state_variant as Dictionary
 	if not _exact_fields(state, DBG_STATE_FIELDS):
 		return "state_fields_invalid"
-	if state.get("schema_version") != SCHEMA_VERSION \
-			or state.get("state_version") != 2 \
+	if state.get("schema_version") != OWNER_SCHEMA_VERSION \
+			or state.get("state_version") != DBG_STATE_VERSION \
 			or state.get("ruleset_id") != RULESET_ID \
+			or state.get("balance_profile_id") != BALANCE_PROFILE_ID \
+			or state.get("balance_profile_fingerprint") \
+				!= BALANCE_PROFILE_FINGERPRINT \
 			or state.get("domain_id") != "v07.personal_dbg" \
 			or not _is_stable_id(state.get("owner_player_id")) \
 			or not _tagged_int64_valid(state.get("root_seed")):
@@ -603,7 +632,12 @@ static func _dbg_save_error(save_state: Dictionary) -> String:
 	var document := document_variant as Dictionary
 	if not _exact_fields(document, DBG_DOCUMENT_FIELDS) \
 			or document.get("section_id") != DBG_SAVE_SECTION_ID \
-			or document.get("section_version") != SCHEMA_VERSION \
+			or document.get("section_version") != DBG_STATE_VERSION \
+			or document.get("state_version") != DBG_STATE_VERSION \
+			or document.get("ruleset_id") != RULESET_ID \
+			or document.get("balance_profile_id") != BALANCE_PROFILE_ID \
+			or document.get("balance_profile_fingerprint") \
+				!= BALANCE_PROFILE_FINGERPRINT \
 			or document.get("semantic_owner") != DBG_AUTHORITY_ID:
 		return "document_section_invalid"
 	var document_rng_variant: Variant = document.get("rng_stream_states")
@@ -661,7 +695,7 @@ static func _dbg_rng_state_error(
 ) -> String:
 	if not _exact_fields(rng_state, DBG_RNG_STATE_FIELDS):
 		return "state_fields_invalid"
-	if rng_state.get("schema_version") != SCHEMA_VERSION \
+	if rng_state.get("schema_version") != OWNER_SCHEMA_VERSION \
 			or rng_state.get("stream_id") != expected_stream_id \
 			or rng_state.get("stream_instance_id") != expected_instance_id \
 			or rng_state.get("authoritative_owner_id") != DBG_AUTHORITY_ID \
