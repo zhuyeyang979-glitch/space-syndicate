@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/audio/commercial_audio_presentation_service.gd" id="1_service"]
+
+[node name="CommercialAudioPresentationService" type="Node"]
+script = ExtResource("1_service")
+editor_description = "Presentation-only fixed SFX resolver. Bind the shared CardIllustrationCatalogResource and AudioEventBus explicitly; missing bindings fail closed."
+
+[node name="SfxPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+bus = &"Master"

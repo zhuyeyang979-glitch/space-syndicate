@@ -23,6 +23,31 @@ grow_vertical = 2
 clip_contents = true
 theme_type_variation = &"SpaceSyndicateCard"
 
+[node name="CommercialFrameTexture" type="NinePatchRect" parent="CardFrame"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+patch_margin_left = 18
+patch_margin_top = 18
+patch_margin_right = 18
+patch_margin_bottom = 18
+
+[node name="CommercialAccentStrip" type="ColorRect" parent="CardFrame"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 4.0
+grow_horizontal = 2
+mouse_filter = 2
+color = Color(0.305882, 0.631373, 1, 1)
+
 [node name="CardMargin" type="MarginContainer" parent="CardFrame"]
 layout_mode = 2
 theme_override_constants/margin_left = 8

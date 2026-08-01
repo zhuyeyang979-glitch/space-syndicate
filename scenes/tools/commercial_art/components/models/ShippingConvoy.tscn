@@ -1,0 +1,40 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/tools/commercial_art/components/models/ModelPedestal.tscn" id="1_pedestal"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake.gltf" id="2_model"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_shipping"]
+albedo_color = Color(0.207843, 0.815686, 0.772549, 1)
+emission_enabled = true
+emission = Color(0.082353, 0.392157, 0.380392, 1)
+emission_energy_multiplier = 1.8
+metallic = 0.45
+roughness = 0.28
+
+[sub_resource type="TorusMesh" id="TorusMesh_shipping"]
+material = SubResource("StandardMaterial3D_shipping")
+inner_radius = 1.36
+outer_radius = 1.51
+rings = 48
+ring_segments = 12
+
+[node name="ShippingConvoy" type="Node3D"]
+metadata/asset_key = "model.shipping.convoy"
+metadata/presentation_only = true
+metadata/source_file = "Pancake.gltf"
+metadata/aabb_volume = 224.729249445
+metadata/aabb_rank = 6
+metadata/selection_rule = "median_aabb_volume_of_11"
+metadata/authoritative_route_owner = false
+metadata/surface_normal_axis = "+Y"
+
+[node name="Pedestal" parent="." instance=ExtResource("1_pedestal")]
+
+[node name="ShippingRing" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.035, 0)
+mesh = SubResource("TorusMesh_shipping")
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+position = Vector3(0, 0.72, 0)
+rotation_degrees = Vector3(0, 24, 0)
+scale = Vector3(0.2, 0.2, 0.2)

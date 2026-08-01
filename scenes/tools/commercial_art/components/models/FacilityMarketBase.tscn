@@ -1,0 +1,66 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/tools/commercial_art/components/models/ModelPedestal.tscn" id="1_pedestal"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Round1.gltf" id="2_platform"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_Computer.gltf" id="3_computer"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_AccessPoint.gltf" id="4_access"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Desk_Medium.gltf" id="5_terminal"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hologram"]
+transparency = 1
+albedo_color = Color(0.713726, 0.423529, 1, 0.58)
+emission_enabled = true
+emission = Color(0.298039, 0.137255, 0.486275, 1)
+emission_energy_multiplier = 2.4
+shading_mode = 0
+cull_mode = 2
+
+[sub_resource type="QuadMesh" id="QuadMesh_hologram"]
+material = SubResource("StandardMaterial3D_hologram")
+size = Vector2(0.75, 0.48)
+
+[node name="FacilityMarketBase" type="Node3D"]
+metadata/asset_key = "model.facility.market.base"
+metadata/presentation_only = true
+metadata/surface_normal_axis = "+Y"
+metadata/source_models = PackedStringArray("Platform_Round1.gltf", "Prop_Computer.gltf", "Prop_AccessPoint.gltf", "Prop_Desk_Medium.gltf")
+
+[node name="Pedestal" parent="." instance=ExtResource("1_pedestal")]
+scale = Vector3(2, 1, 2)
+
+[node name="OpenTradingPlatform" parent="." instance=ExtResource("2_platform")]
+position = Vector3(0, 0.04, 0)
+scale = Vector3(1.05, 1.05, 1.05)
+
+[node name="TradeTerminal" parent="." instance=ExtResource("5_terminal")]
+position = Vector3(0, 0.22, 0.55)
+rotation_degrees = Vector3(0, 180, 0)
+scale = Vector3(0.82, 0.82, 0.82)
+
+[node name="ComputerLeft" parent="." instance=ExtResource("3_computer")]
+position = Vector3(-1.15, 0.45, 0)
+rotation_degrees = Vector3(0, 65, 0)
+scale = Vector3(0.7, 0.7, 0.7)
+
+[node name="ComputerRight" parent="." instance=ExtResource("3_computer")]
+position = Vector3(1.15, 0.45, 0)
+rotation_degrees = Vector3(0, -65, 0)
+scale = Vector3(0.7, 0.7, 0.7)
+
+[node name="AccessPointLeft" parent="." instance=ExtResource("4_access")]
+position = Vector3(-0.9, 0.25, -0.95)
+scale = Vector3(0.7, 0.7, 0.7)
+
+[node name="AccessPointRight" parent="." instance=ExtResource("4_access")]
+position = Vector3(0.9, 0.25, -0.95)
+scale = Vector3(0.7, 0.7, 0.7)
+
+[node name="HologramLeft" type="MeshInstance3D" parent="."]
+position = Vector3(-1.15, 1.28, 0)
+rotation_degrees = Vector3(0, 65, 0)
+mesh = SubResource("QuadMesh_hologram")
+
+[node name="HologramRight" type="MeshInstance3D" parent="."]
+position = Vector3(1.15, 1.28, 0)
+rotation_degrees = Vector3(0, -65, 0)
+mesh = SubResource("QuadMesh_hologram")

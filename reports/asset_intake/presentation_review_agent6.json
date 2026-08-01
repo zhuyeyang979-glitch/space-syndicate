@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "task_id": "COMMERCIAL_ART_FOUNDATION_DIRECT_SELECTED_ASSET_INTEGRATION_V1",
+  "lane_id": "presentation_review_agent6",
+  "status": "GREEN_REVIEW_SKELETON_WITH_EXPLICIT_CATALOG_GATES",
+  "repository": {
+    "branch": "codex/commercial-art-direct-integration-2e38764",
+    "base_sha": "2e38764791cb37cdc45b2eb0836957f550822dd5",
+    "worktree": "C:/Users/zhuye/Documents/New project/space-syndicate-commercial-art-direct-integration-2e38764"
+  },
+  "scope": {
+    "presentation_only": true,
+    "network_access_used": false,
+    "web_asset_search_count": 0,
+    "session_create_count": 0,
+    "save_write_count": 0,
+    "rng_draw_count": 0,
+    "gameplay_mutation_count": 0,
+    "production_connection_count": 0,
+    "main_reference_count": 0
+  },
+  "scene": {
+    "path": "res://scenes/tools/CommercialArtIntegrationReview.tscn",
+    "script": "res://scripts/tools/commercial_art_integration_review.gd",
+    "asset_badge_script": "res://scripts/tools/commercial_art_review_asset_badge.gd",
+    "minimum_size": [1366, 768],
+    "responsive_scroll_layout": true,
+    "tested_physical_window_sizes": [[1366, 768], [1920, 1080]],
+    "production_scene": false,
+    "creates_game_session": false
+  },
+  "catalog_boundary": {
+    "resource_path": "res://resources/presentation/alpha01_card_illustration_catalog.tres",
+    "canonical_owner": "CardIllustrationCatalogResource",
+    "creates_second_catalog": false,
+    "generic_api_name": "resource_for_asset_key",
+    "generic_api_ready_at_validation": true,
+    "legacy_card_api_used": [
+      "presentation_key_for_card",
+      "texture_for_key"
+    ],
+    "required_stable_asset_key_count": 42,
+    "resolved_stable_asset_key_count_at_validation": 0,
+    "missing_stable_asset_key_count_at_validation": 42,
+    "existing_card_art_preview_count": 3,
+    "missing_gate_id": "MISSING_CATALOG_BINDING",
+    "refresh_api": "refresh_catalog_bindings",
+    "stable_ui_9slice_auto_apply": true,
+    "packed_scene_model_auto_preview": true,
+    "vendor_path_reference_count_in_agent6_scene_and_scripts": 0
+  },
+  "coverage": {
+    "six_color_icons": "6/6",
+    "six_color_base_shapes": "6/6",
+    "card_frames": "3/3",
+    "card_back": "1/1",
+    "interaction_states": "6/6",
+    "planet_component": "1/1",
+    "facility_model_slots": "4/4",
+    "monster_model_slots": "6/6",
+    "military_model_slots": "4/4",
+    "shipping_model_slots": "3/3",
+    "font_samples": "3/3",
+    "sfx_preview_buttons": "5/5",
+    "music_preview_buttons": "4/4",
+    "volume_controls": "1/1",
+    "credits_placeholders": "4/4"
+  },
+  "six_color_asset_keys": [
+    "icon.asset.life",
+    "icon.asset.energy",
+    "icon.asset.industry",
+    "icon.asset.technology",
+    "icon.asset.commerce",
+    "icon.asset.shipping"
+  ],
+  "six_color_base_shapes": [
+    "circle_with_leaf_notch",
+    "diamond",
+    "hexagon",
+    "clipped_square",
+    "octagon",
+    "horizontal_capsule_with_chevrons"
+  ],
+  "card_asset_keys": [
+    "card.frame.normal",
+    "card.frame.commodity",
+    "card.frame.bound_action",
+    "card.back.normal"
+  ],
+  "model_asset_keys": [
+    "model.facility.factory.base",
+    "model.facility.market.base",
+    "model.facility.warehouse.base",
+    "model.facility.starport.base",
+    "model.monster.life",
+    "model.monster.energy",
+    "model.monster.industry",
+    "model.monster.technology",
+    "model.monster.commerce",
+    "model.monster.shipping",
+    "model.military.tier1",
+    "model.military.tier2",
+    "model.military.tier3",
+    "model.military.tier4",
+    "model.shipping.route_marker",
+    "model.shipping.convoy",
+    "model.shipping.starport_showcase"
+  ],
+  "audio_asset_keys": [
+    "audio.ui.hover",
+    "audio.ui.confirm",
+    "audio.card.lock",
+    "audio.card.merge",
+    "audio.asset.refresh",
+    "music.menu",
+    "music.gameplay",
+    "music.crisis",
+    "music.military"
+  ],
+  "font_asset_keys": [
+    "font.body.zh",
+    "font.body.ja",
+    "font.display"
+  ],
+  "ui_asset_keys": [
+    "ui.panel.primary",
+    "ui.panel.popup",
+    "ui.button.primary"
+  ],
+  "interaction_contract": {
+    "hover_scale": 1.08,
+    "hover_lift_pixels": 28,
+    "hover_duration_ms": 120,
+    "drag_deadzone_pixels": 8,
+    "drag_lift_duration_ms": 110,
+    "drag_max_tilt_degrees": 4,
+    "selected_outline_pixels": 2,
+    "legal_target_glow_pixels": 3,
+    "submission_signal_count": 0,
+    "queue_mutation_count": 0
+  },
+  "planet_component": {
+    "path": "res://scenes/tools/commercial_art/components/planet/CommercialPlanetReviewComponent.tscn",
+    "reused_from_agent3": true,
+    "planet_opaque": true,
+    "planet_alpha": 1.0,
+    "back_face_culling": true,
+    "depth_test": true,
+    "backside_region_marker_visible_count": 0,
+    "backside_facility_visible_count": 0,
+    "outer_orbit_decoration_count": 0,
+    "zoom_min": 0.72,
+    "zoom_max": 1.85,
+    "zoom_step": 0.08,
+    "camera_state_persisted": false
+  },
+  "credits_placeholders": [
+    "Third-Party Assets",
+    "Licenses",
+    "Music",
+    "Fonts"
+  ],
+  "missing_binding_policy": {
+    "direct_vendor_fallback_allowed": false,
+    "procedural_or_existing_theme_placeholder_allowed": true,
+    "missing_resource_crashes_scene": false,
+    "audio_missing_fails_closed": true,
+    "model_missing_shows_named_slot": true,
+    "font_missing_uses_existing_theme": true,
+    "catalog_refresh_without_scene_rebuild": true
+  },
+  "tests": [
+    {
+      "path": "tests/commercial_art/commercial_art_review_scene_test.gd",
+      "passed": 54,
+      "total": 54,
+      "status": "PASS"
+    },
+    {
+      "path": "tests/commercial_art/commercial_art_architecture_preflight_test.gd",
+      "passed": 287,
+      "total": 287,
+      "status": "PASS"
+    },
+    {
+      "path": "tests/commercial_art/commercial_planet_asset_contract_test.gd",
+      "passed": 59,
+      "total": 59,
+      "status": "PASS"
+    }
+  ],
+  "modified_or_added_files": [
+    "scenes/tools/CommercialArtIntegrationReview.tscn",
+    "scripts/tools/commercial_art_integration_review.gd",
+    "scripts/tools/commercial_art_review_asset_badge.gd",
+    "tests/commercial_art/commercial_art_review_scene_test.gd",
+    "reports/asset_intake/presentation_review_agent6.json",
+    "reports/asset_intake/presentation_review_agent6.md"
+  ],
+  "agent6_forbidden_file_change_count": 0,
+  "shared_worktree_other_lane_hot_file_changes_observed": true,
+  "current_production_runtime_ruleset": "v0.6",
+  "target_development_constitution": "v0.7",
+  "full_v0_7_runtime_cutover": false,
+  "full_smoke_run": false,
+  "formal_run": false
+}

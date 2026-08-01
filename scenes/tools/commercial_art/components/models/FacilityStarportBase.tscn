@@ -1,0 +1,39 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/tools/commercial_art/components/models/ModelPedestal.tscn" id="1_pedestal"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Metal2.gltf" id="2_platform"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_Rail_Round_Big.gltf" id="3_rail"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Decal_XSign.gltf" id="4_marker"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_SatelliteDish.gltf" id="5_dish"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker.gltf" id="6_ship"]
+
+[node name="FacilityStarportBase" type="Node3D"]
+metadata/asset_key = "model.facility.starport.base"
+metadata/presentation_only = true
+metadata/surface_normal_axis = "+Y"
+metadata/source_models = PackedStringArray("Platform_Metal2.gltf", "Prop_Rail_Round_Big.gltf", "Decal_XSign.gltf", "Prop_SatelliteDish.gltf", "Striker.gltf")
+metadata/authoritative_route_owner = false
+
+[node name="Pedestal" parent="." instance=ExtResource("1_pedestal")]
+scale = Vector3(2.2, 1, 2.2)
+
+[node name="LandingPlatform" parent="." instance=ExtResource("2_platform")]
+position = Vector3(0, 0.04, 0)
+scale = Vector3(1.18, 1.18, 1.18)
+
+[node name="SafetyRail" parent="." instance=ExtResource("3_rail")]
+position = Vector3(0, 0.15, -1.28)
+scale = Vector3(0.88, 0.88, 0.88)
+
+[node name="LandingMarker" parent="." instance=ExtResource("4_marker")]
+position = Vector3(0, 0.18, 0)
+scale = Vector3(1.15, 1.15, 1.15)
+
+[node name="CommunicationsDish" parent="." instance=ExtResource("5_dish")]
+position = Vector3(-1.25, 0.24, -0.75)
+scale = Vector3(0.72, 0.72, 0.72)
+
+[node name="RouteMarkerShip" parent="." instance=ExtResource("6_ship")]
+position = Vector3(0.8, 1.18, 0.18)
+rotation_degrees = Vector3(0, -28, 0)
+scale = Vector3(0.22, 0.22, 0.22)

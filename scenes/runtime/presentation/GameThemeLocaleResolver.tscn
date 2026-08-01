@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/game_theme_locale_resolver.gd" id="1_script"]
+
+[node name="GameThemeLocaleResolver" type="Node"]
+editor_description = "Presentation-only locale font resolver. It selects Noto CJK SC or JP through canonical Catalog keys and never reads gameplay or Save state."
+script = ExtResource("1_script")

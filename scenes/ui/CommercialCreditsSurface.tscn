@@ -1,0 +1,79 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/commercial_credits_surface.gd" id="2_script"]
+
+[node name="CommercialCreditsSurface" type="Control"]
+custom_minimum_size = Vector2(760, 500)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="Rows" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 8.0
+offset_right = -12.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Rows"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.847059, 0.898039, 0.941176, 1)
+theme_override_font_sizes/font_size = 24
+text = "Credits"
+
+[node name="CreditsTabs" type="TabContainer" parent="Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Third-Party Assets" type="ScrollContainer" parent="Rows/CreditsTabs"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="ThirdPartyAssetsRows" type="VBoxContainer" parent="Rows/CreditsTabs/Third-Party Assets"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Licenses" type="ScrollContainer" parent="Rows/CreditsTabs"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="LicensesRows" type="VBoxContainer" parent="Rows/CreditsTabs/Licenses"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Music" type="ScrollContainer" parent="Rows/CreditsTabs"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="MusicRows" type="VBoxContainer" parent="Rows/CreditsTabs/Music"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Fonts" type="ScrollContainer" parent="Rows/CreditsTabs"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="FontsRows" type="VBoxContainer" parent="Rows/CreditsTabs/Fonts"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8

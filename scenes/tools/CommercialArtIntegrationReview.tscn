@@ -1,0 +1,288 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/commercial_art_integration_review.gd" id="1_review"]
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="2_theme"]
+[ext_resource type="PackedScene" path="res://scenes/tools/commercial_art/components/planet/CommercialPlanetReviewComponent.tscn" id="3_planet"]
+
+[node name="CommercialArtIntegrationReview" type="Control"]
+custom_minimum_size = Vector2(1366, 768)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_review")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.0666667, 0.0901961, 0.12549, 1)
+
+[node name="SafeMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 18.0
+offset_top = 14.0
+offset_right = -18.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ReviewRows" type="VBoxContainer" parent="SafeMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="SafeMargin/ReviewRows"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="SafeMargin/ReviewRows/Header"]
+layout_mode = 2
+text = "Commercial Art Integration Review"
+theme_override_font_sizes/font_size = 24
+
+[node name="ReviewStatusLabel" type="Label" parent="SafeMargin/ReviewRows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "REFERENCE PRESENTATION"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.345098, 0.784314, 0.470588, 1)
+
+[node name="CatalogStatusLabel" type="Label" parent="SafeMargin/ReviewRows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Catalog: pending"
+theme_override_colors/font_color = Color(0.847059, 0.898039, 0.941176, 1)
+
+[node name="MissingAssetLabel" type="Label" parent="SafeMargin/ReviewRows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Missing gates: pending"
+horizontal_alignment = 2
+theme_override_colors/font_color = Color(1, 0.623529, 0.262745, 1)
+
+[node name="ReviewScroll" type="ScrollContainer" parent="SafeMargin/ReviewRows"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Sections" type="VBoxContainer" parent="SafeMargin/ReviewRows/ReviewScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="OverviewSurface" type="PanelContainer" parent="SafeMargin/ReviewRows"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="SixColorSection" type="PanelContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections" groups=["commercial_art_review_section"]]
+layout_mode = 2
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/SixColorSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Heading" type="Label" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/SixColorSection/Rows"]
+layout_mode = 2
+text = "Six-color assets | icon + base shape + readable state"
+theme_override_font_sizes/font_size = 18
+
+[node name="SixColorGrid" type="GridContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/SixColorSection/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 6
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="CardSection" type="PanelContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections" groups=["commercial_art_review_section"]]
+layout_mode = 2
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/CardSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Heading" type="Label" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/CardSection/Rows"]
+layout_mode = 2
+text = "Card visual language | normal | commodity | bound action | back"
+theme_override_font_sizes/font_size = 18
+
+[node name="CardFrameGrid" type="GridContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/CardSection/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 4
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 8
+
+[node name="InteractionSection" type="PanelContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections" groups=["commercial_art_review_section"]]
+layout_mode = 2
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/InteractionSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Heading" type="Label" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/InteractionSection/Rows"]
+layout_mode = 2
+text = "Interaction states | visual preview only"
+theme_override_font_sizes/font_size = 18
+
+[node name="TransformHeadroom" type="Control" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/InteractionSection/Rows"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="InteractionGrid" type="GridContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/InteractionSection/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 6
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="PlanetSection" type="PanelContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections" groups=["commercial_art_review_section"]]
+custom_minimum_size = Vector2(0, 480)
+layout_mode = 2
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/PlanetSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Heading" type="Label" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/PlanetSection/Rows"]
+layout_mode = 2
+text = "Opaque planet | day/night | zoom | backside occlusion"
+theme_override_font_sizes/font_size = 18
+
+[node name="PlanetReviewComponent" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/PlanetSection/Rows" instance=ExtResource("3_planet")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(960, 420)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="EntitySection" type="PanelContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections" groups=["commercial_art_review_section"]]
+layout_mode = 2
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/EntitySection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Heading" type="Label" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/EntitySection/Rows"]
+layout_mode = 2
+text = "Map entity presentation slots | catalog-bound models only"
+theme_override_font_sizes/font_size = 18
+
+[node name="FacilityTitle" type="Label" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/EntitySection/Rows"]
+layout_mode = 2
+text = "Facilities"
+
+[node name="FacilityGrid" type="GridContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/EntitySection/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 4
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="MonsterTitle" type="Label" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/EntitySection/Rows"]
+layout_mode = 2
+text = "Monsters"
+
+[node name="MonsterGrid" type="GridContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/EntitySection/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 6
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="MilitaryTitle" type="Label" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/EntitySection/Rows"]
+layout_mode = 2
+text = "Military tiers"
+
+[node name="MilitaryGrid" type="GridContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/EntitySection/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 4
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="ShippingTitle" type="Label" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/EntitySection/Rows"]
+layout_mode = 2
+text = "Shipping models"
+
+[node name="ShippingGrid" type="GridContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/EntitySection/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="TypographyAudioSection" type="PanelContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections" groups=["commercial_art_review_section"]]
+layout_mode = 2
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/TypographyAudioSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Heading" type="Label" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/TypographyAudioSection/Rows"]
+layout_mode = 2
+text = "Typography and local audio preview"
+theme_override_font_sizes/font_size = 18
+
+[node name="TypographyGrid" type="GridContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/TypographyAudioSection/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="AudioGrid" type="GridContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/TypographyAudioSection/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 5
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="AudioStatusLabel" type="Label" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/TypographyAudioSection/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Audio preview idle"
+theme_override_colors/font_color = Color(0.721569, 0.780392, 0.839216, 1)
+
+[node name="CreditsSection" type="PanelContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections" groups=["commercial_art_review_section"]]
+layout_mode = 2
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/CreditsSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Heading" type="Label" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/CreditsSection/Rows"]
+layout_mode = 2
+text = "Credits | canonical data preview"
+theme_override_font_sizes/font_size = 18
+
+[node name="CreditsGrid" type="GridContainer" parent="SafeMargin/ReviewRows/ReviewScroll/Sections/CreditsSection/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 4
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="BoundaryFooter" type="Label" parent="SafeMargin/ReviewRows"]
+layout_mode = 2
+text = "Reference-only QA | stable asset keys | no production connection | no gameplay authority"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.721569, 0.780392, 0.839216, 1)
+
+[node name="SfxPreviewPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+
+[node name="MusicPreviewPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true

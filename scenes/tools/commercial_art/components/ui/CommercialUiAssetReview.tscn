@@ -1,0 +1,593 @@
+[gd_scene load_steps=40 format=3]
+
+[ext_resource type="Script" path="res://scenes/tools/commercial_art/components/ui/commercial_ui_asset_review.gd" id="1_script"]
+[ext_resource type="Theme" path="res://scenes/tools/commercial_art/components/ui/CommercialUiReviewTheme.tres" id="2_theme"]
+[ext_resource type="PackedScene" path="res://scenes/tools/commercial_art/components/ui/CommercialAssetToken.tscn" id="3_token"]
+[ext_resource type="PackedScene" path="res://scenes/tools/commercial_art/components/ui/CommercialReviewCard.tscn" id="4_card"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/icons/game_icons/normalized/life_64.png" id="5_life"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/icons/game_icons/normalized/energy_64.png" id="6_energy"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/icons/game_icons/normalized/industry_64.png" id="7_industry"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/icons/game_icons/normalized/technology_64.png" id="8_technology"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/icons/game_icons/normalized/commerce_64.png" id="9_commerce"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/icons/game_icons/normalized/shipping_64.png" id="10_shipping"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_ui_scifi/panel_primary_9slice.svg" id="11_panel"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_ui_scifi/panel_popup_9slice.svg" id="12_popup"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_pattern_pack/card_back_pattern.svg" id="13_back_pattern"]
+[ext_resource type="FontFile" path="res://assets/third_party/commercial/fonts/noto_sans_cjk/NotoSansCJKjp-Regular.otf" id="14_jp"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_input_prompts/icons/mouse_click.svg" id="15_mouse_click"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_input_prompts/icons/mouse_drag.svg" id="16_mouse_drag"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_input_prompts/icons/mouse_zoom.svg" id="17_mouse_zoom"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_input_prompts/icons/keyboard_confirm.svg" id="18_key_confirm"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_input_prompts/icons/keyboard_cancel.svg" id="19_key_cancel"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_input_prompts/icons/keyboard_navigate.svg" id="20_key_nav"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_input_prompts/icons/gamepad_confirm.svg" id="21_pad_confirm"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_input_prompts/icons/gamepad_back.svg" id="22_pad_back"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_input_prompts/icons/gamepad_navigate.svg" id="23_pad_nav"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_board_game_icons/icons/draw_deck.png" id="24_draw"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_board_game_icons/icons/discard_pile.png" id="25_discard"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_board_game_icons/icons/shuffle.png" id="26_shuffle"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_board_game_icons/icons/merge.png" id="27_merge"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_board_game_icons/icons/lock.png" id="28_lock"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_board_game_icons/icons/turn.png" id="29_turn"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_board_game_icons/icons/target.png" id="30_target"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_board_game_icons/icons/card_count.png" id="31_count"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_board_game_icons/icons/gdp.png" id="32_gdp"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_board_game_icons/icons/cash.png" id="33_cash"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_board_game_icons/icons/settlement.png" id="34_settlement"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_board_game_icons/icons/player_order.png" id="35_order"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_back"]
+bg_color = Color(0.0705882, 0.0941176, 0.12549, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.290196, 0.384314, 0.470588, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_target"]
+bg_color = Color(0.0745098, 0.129412, 0.156863, 0.9)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.207843, 0.815686, 0.772549, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+shadow_color = Color(0.207843, 0.815686, 0.772549, 0.28)
+shadow_size = 6
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_none"]
+
+[node name="CommercialUiAssetReview" type="Control"]
+custom_minimum_size = Vector2(1366, 768)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 1366.0
+offset_bottom = 768.0
+theme = ExtResource("2_theme")
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.0666667, 0.0901961, 0.12549, 1)
+
+[node name="SafeMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 22.0
+offset_top = 16.0
+offset_right = -22.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="Control" parent="SafeMargin/Rows"]
+custom_minimum_size = Vector2(0, 46)
+layout_mode = 2
+
+[node name="Title" type="Label" parent="SafeMargin/Rows/Header"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 140.0
+offset_right = -220.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.847059, 0.898039, 0.941176, 1)
+theme_override_font_sizes/font_size = 24
+text = "SPACE SYNDICATE"
+vertical_alignment = 1
+
+[node name="Metrics" type="Label" parent="SafeMargin/Rows/Header"]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -200.0
+offset_bottom = 46.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.207843, 0.815686, 0.772549, 1)
+text = "GDP 12,480"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="AssetsFrame" type="NinePatchRect" parent="SafeMargin/Rows"]
+custom_minimum_size = Vector2(0, 146)
+layout_mode = 2
+texture = ExtResource("11_panel")
+patch_margin_left = 18
+patch_margin_top = 34
+patch_margin_right = 18
+patch_margin_bottom = 12
+
+[node name="AssetMargin" type="MarginContainer" parent="SafeMargin/Rows/AssetsFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = 8.0
+offset_right = -24.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="AssetRow" type="HBoxContainer" parent="SafeMargin/Rows/AssetsFrame/AssetMargin"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 42
+
+[node name="Life" parent="SafeMargin/Rows/AssetsFrame/AssetMargin/AssetRow" instance=ExtResource("3_token")]
+layout_mode = 2
+asset_key = "icon.asset.life"
+display_name = "生命资产"
+icon = ExtResource("5_life")
+current_value = 4
+reserved_value = 1
+
+[node name="Energy" parent="SafeMargin/Rows/AssetsFrame/AssetMargin/AssetRow" instance=ExtResource("3_token")]
+layout_mode = 2
+asset_key = "icon.asset.energy"
+display_name = "能源资产"
+icon = ExtResource("6_energy")
+current_value = 5
+reserved_value = 2
+
+[node name="Industry" parent="SafeMargin/Rows/AssetsFrame/AssetMargin/AssetRow" instance=ExtResource("3_token")]
+layout_mode = 2
+asset_key = "icon.asset.industry"
+display_name = "工业资产"
+icon = ExtResource("7_industry")
+current_value = 3
+reserved_value = 1
+
+[node name="Technology" parent="SafeMargin/Rows/AssetsFrame/AssetMargin/AssetRow" instance=ExtResource("3_token")]
+layout_mode = 2
+asset_key = "icon.asset.technology"
+display_name = "科技资产"
+icon = ExtResource("8_technology")
+current_value = 2
+reserved_value = 0
+
+[node name="Commerce" parent="SafeMargin/Rows/AssetsFrame/AssetMargin/AssetRow" instance=ExtResource("3_token")]
+layout_mode = 2
+asset_key = "icon.asset.commerce"
+display_name = "商贸资产"
+icon = ExtResource("9_commerce")
+current_value = 6
+reserved_value = 2
+
+[node name="Shipping" parent="SafeMargin/Rows/AssetsFrame/AssetMargin/AssetRow" instance=ExtResource("3_token")]
+layout_mode = 2
+asset_key = "icon.asset.shipping"
+display_name = "航运资产"
+icon = ExtResource("10_shipping")
+current_value = 3
+reserved_value = 1
+
+[node name="Body" type="HBoxContainer" parent="SafeMargin/Rows"]
+custom_minimum_size = Vector2(0, 400)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="CardsPanel" type="NinePatchRect" parent="SafeMargin/Rows/Body"]
+custom_minimum_size = Vector2(866, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+texture = ExtResource("11_panel")
+patch_margin_left = 18
+patch_margin_top = 34
+patch_margin_right = 18
+patch_margin_bottom = 12
+
+[node name="CardsMargin" type="MarginContainer" parent="SafeMargin/Rows/Body/CardsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 18.0
+offset_top = 14.0
+offset_right = -18.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CardRow" type="HBoxContainer" parent="SafeMargin/Rows/Body/CardsPanel/CardsMargin"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 10
+
+[node name="NormalSlot" type="Control" parent="SafeMargin/Rows/Body/CardsPanel/CardsMargin/CardRow"]
+custom_minimum_size = Vector2(178, 304)
+layout_mode = 2
+
+[node name="NormalCard" parent="SafeMargin/Rows/Body/CardsPanel/CardsMargin/CardRow/NormalSlot" instance=ExtResource("4_card")]
+layout_mode = 0
+offset_top = 28.0
+offset_right = 178.0
+offset_bottom = 294.0
+card_kind = "normal"
+card_title = "量子工坊"
+rank_text = "III"
+cost_text = "2  +  1"
+status_text = "资产充足"
+accent_color = Color(0.305882, 0.631373, 1, 1)
+frame_texture = ExtResource("11_panel")
+asset_icon = ExtResource("8_technology")
+metadata/card_frame_key = "card.frame.normal"
+
+[node name="CommoditySlot" type="Control" parent="SafeMargin/Rows/Body/CardsPanel/CardsMargin/CardRow"]
+custom_minimum_size = Vector2(178, 304)
+layout_mode = 2
+
+[node name="CommodityCard" parent="SafeMargin/Rows/Body/CardsPanel/CardsMargin/CardRow/CommoditySlot" instance=ExtResource("4_card")]
+layout_mode = 0
+offset_top = 28.0
+offset_right = 178.0
+offset_bottom = 294.0
+card_kind = "commodity"
+card_title = "深空合金"
+rank_text = "II"
+cost_text = "1  +  2"
+status_text = "单击卡面领取"
+accent_color = Color(0.713726, 0.423529, 1, 1)
+frame_texture = ExtResource("12_popup")
+asset_icon = ExtResource("9_commerce")
+metadata/card_frame_key = "card.frame.commodity"
+
+[node name="BoundSlot" type="Control" parent="SafeMargin/Rows/Body/CardsPanel/CardsMargin/CardRow"]
+custom_minimum_size = Vector2(178, 304)
+layout_mode = 2
+
+[node name="BoundCard" parent="SafeMargin/Rows/Body/CardsPanel/CardsMargin/CardRow/BoundSlot" instance=ExtResource("4_card")]
+layout_mode = 0
+offset_top = 28.0
+offset_right = 178.0
+offset_bottom = 294.0
+card_kind = "bound_action"
+card_title = "舰队跃迁"
+rank_text = "IV"
+cost_text = "3  +  1"
+status_text = "不占普通手牌"
+accent_color = Color(0.207843, 0.815686, 0.772549, 1)
+frame_texture = ExtResource("11_panel")
+asset_icon = ExtResource("10_shipping")
+locked = true
+metadata/card_frame_key = "card.frame.bound_action"
+
+[node name="CardBack" type="PanelContainer" parent="SafeMargin/Rows/Body/CardsPanel/CardsMargin/CardRow"]
+custom_minimum_size = Vector2(138, 266)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_card_back")
+metadata/card_frame_key = "card.back.normal"
+
+[node name="Pattern" type="TextureRect" parent="SafeMargin/Rows/Body/CardsPanel/CardsMargin/CardRow/CardBack"]
+layout_mode = 2
+texture = ExtResource("13_back_pattern")
+texture_repeat = 2
+expand_mode = 1
+stretch_mode = 1
+modulate = Color(1, 1, 1, 0.82)
+
+[node name="LegalTarget" type="PanelContainer" parent="SafeMargin/Rows/Body/CardsPanel/CardsMargin/CardRow"]
+custom_minimum_size = Vector2(92, 266)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_target")
+
+[node name="TargetLabel" type="Label" parent="SafeMargin/Rows/Body/CardsPanel/CardsMargin/CardRow/LegalTarget"]
+layout_mode = 2
+theme_type_variation = &"BodyBold"
+theme_override_colors/font_color = Color(0.207843, 0.815686, 0.772549, 1)
+text = "合法\n目标"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SidePanel" type="NinePatchRect" parent="SafeMargin/Rows/Body"]
+custom_minimum_size = Vector2(390, 0)
+layout_mode = 2
+texture = ExtResource("12_popup")
+patch_margin_left = 18
+patch_margin_top = 34
+patch_margin_right = 18
+patch_margin_bottom = 12
+
+[node name="SideMargin" type="MarginContainer" parent="SafeMargin/Rows/Body/SidePanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 14.0
+offset_right = -20.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SideRows" type="VBoxContainer" parent="SafeMargin/Rows/Body/SidePanel/SideMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ChineseSample" type="Label" parent="SafeMargin/Rows/Body/SidePanel/SideMargin/SideRows"]
+layout_mode = 2
+theme_type_variation = &"BodyBold"
+theme_override_font_sizes/font_size = 16
+text = "星际商业网络  ·  生命资产 4/6"
+
+[node name="JapaneseSample" type="Label" parent="SafeMargin/Rows/Body/SidePanel/SideMargin/SideRows"]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("14_jp")
+theme_override_font_sizes/font_size = 15
+text = "宇宙シンジケート  ·  資産 4/6"
+
+[node name="DisplaySample" type="Label" parent="SafeMargin/Rows/Body/SidePanel/SideMargin/SideRows"]
+layout_mode = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(1, 0.623529, 0.262745, 1)
+theme_override_font_sizes/font_size = 20
+text = "GDP 12,480   04:38   IV"
+
+[node name="Divider" type="HSeparator" parent="SafeMargin/Rows/Body/SidePanel/SideMargin/SideRows"]
+layout_mode = 2
+
+[node name="PromptGrid" type="GridContainer" parent="SafeMargin/Rows/Body/SidePanel/SideMargin/SideRows"]
+layout_mode = 2
+size_flags_vertical = 3
+columns = 3
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 8
+
+[node name="MouseClick" type="TextureRect" parent="SafeMargin/Rows/Body/SidePanel/SideMargin/SideRows/PromptGrid"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+tooltip_text = "选择"
+texture = ExtResource("15_mouse_click")
+expand_mode = 3
+stretch_mode = 5
+metadata/prompt_id = "mouse.click"
+
+[node name="MouseDrag" type="TextureRect" parent="SafeMargin/Rows/Body/SidePanel/SideMargin/SideRows/PromptGrid"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+tooltip_text = "拖拽"
+texture = ExtResource("16_mouse_drag")
+expand_mode = 3
+stretch_mode = 5
+metadata/prompt_id = "mouse.drag"
+
+[node name="MouseZoom" type="TextureRect" parent="SafeMargin/Rows/Body/SidePanel/SideMargin/SideRows/PromptGrid"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+tooltip_text = "缩放"
+texture = ExtResource("17_mouse_zoom")
+expand_mode = 3
+stretch_mode = 5
+metadata/prompt_id = "mouse.zoom"
+
+[node name="KeyboardConfirm" type="TextureRect" parent="SafeMargin/Rows/Body/SidePanel/SideMargin/SideRows/PromptGrid"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+tooltip_text = "确认"
+texture = ExtResource("18_key_confirm")
+expand_mode = 3
+stretch_mode = 5
+metadata/prompt_id = "keyboard.confirm"
+
+[node name="KeyboardCancel" type="TextureRect" parent="SafeMargin/Rows/Body/SidePanel/SideMargin/SideRows/PromptGrid"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+tooltip_text = "取消"
+texture = ExtResource("19_key_cancel")
+expand_mode = 3
+stretch_mode = 5
+metadata/prompt_id = "keyboard.cancel"
+
+[node name="KeyboardNavigate" type="TextureRect" parent="SafeMargin/Rows/Body/SidePanel/SideMargin/SideRows/PromptGrid"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+tooltip_text = "移动焦点"
+texture = ExtResource("20_key_nav")
+expand_mode = 3
+stretch_mode = 5
+metadata/prompt_id = "keyboard.navigate"
+
+[node name="GamepadConfirm" type="TextureRect" parent="SafeMargin/Rows/Body/SidePanel/SideMargin/SideRows/PromptGrid"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+tooltip_text = "确认"
+texture = ExtResource("21_pad_confirm")
+expand_mode = 3
+stretch_mode = 5
+metadata/prompt_id = "gamepad.confirm"
+
+[node name="GamepadBack" type="TextureRect" parent="SafeMargin/Rows/Body/SidePanel/SideMargin/SideRows/PromptGrid"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+tooltip_text = "返回"
+texture = ExtResource("22_pad_back")
+expand_mode = 3
+stretch_mode = 5
+metadata/prompt_id = "gamepad.back"
+
+[node name="GamepadNavigate" type="TextureRect" parent="SafeMargin/Rows/Body/SidePanel/SideMargin/SideRows/PromptGrid"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+tooltip_text = "移动焦点"
+texture = ExtResource("23_pad_nav")
+expand_mode = 3
+stretch_mode = 5
+metadata/prompt_id = "gamepad.navigate"
+
+[node name="BoardIconFrame" type="NinePatchRect" parent="SafeMargin/Rows"]
+custom_minimum_size = Vector2(0, 66)
+layout_mode = 2
+texture = ExtResource("11_panel")
+patch_margin_left = 18
+patch_margin_top = 34
+patch_margin_right = 18
+patch_margin_bottom = 12
+
+[node name="BoardIconRow" type="HBoxContainer" parent="SafeMargin/Rows/BoardIconFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 28.0
+offset_top = 8.0
+offset_right = -28.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+theme_override_constants/separation = 44
+
+[node name="Draw" type="TextureRect" parent="SafeMargin/Rows/BoardIconFrame/BoardIconRow"]
+custom_minimum_size = Vector2(42, 42)
+layout_mode = 2
+tooltip_text = "抽牌库"
+texture = ExtResource("24_draw")
+expand_mode = 3
+stretch_mode = 5
+metadata/board_semantic = "draw_deck"
+
+[node name="Discard" type="TextureRect" parent="SafeMargin/Rows/BoardIconFrame/BoardIconRow"]
+custom_minimum_size = Vector2(42, 42)
+layout_mode = 2
+tooltip_text = "弃牌池"
+texture = ExtResource("25_discard")
+expand_mode = 3
+stretch_mode = 5
+metadata/board_semantic = "discard_pile"
+
+[node name="Shuffle" type="TextureRect" parent="SafeMargin/Rows/BoardIconFrame/BoardIconRow"]
+custom_minimum_size = Vector2(42, 42)
+layout_mode = 2
+tooltip_text = "洗牌"
+texture = ExtResource("26_shuffle")
+expand_mode = 3
+stretch_mode = 5
+metadata/board_semantic = "shuffle"
+
+[node name="Merge" type="TextureRect" parent="SafeMargin/Rows/BoardIconFrame/BoardIconRow"]
+custom_minimum_size = Vector2(42, 42)
+layout_mode = 2
+tooltip_text = "合成"
+texture = ExtResource("27_merge")
+expand_mode = 3
+stretch_mode = 5
+metadata/board_semantic = "merge"
+
+[node name="Lock" type="TextureRect" parent="SafeMargin/Rows/BoardIconFrame/BoardIconRow"]
+custom_minimum_size = Vector2(42, 42)
+layout_mode = 2
+tooltip_text = "锁定"
+texture = ExtResource("28_lock")
+expand_mode = 3
+stretch_mode = 5
+metadata/board_semantic = "lock"
+
+[node name="Turn" type="TextureRect" parent="SafeMargin/Rows/BoardIconFrame/BoardIconRow"]
+custom_minimum_size = Vector2(42, 42)
+layout_mode = 2
+tooltip_text = "回合"
+texture = ExtResource("29_turn")
+expand_mode = 3
+stretch_mode = 5
+metadata/board_semantic = "turn"
+
+[node name="Target" type="TextureRect" parent="SafeMargin/Rows/BoardIconFrame/BoardIconRow"]
+custom_minimum_size = Vector2(42, 42)
+layout_mode = 2
+tooltip_text = "目标"
+texture = ExtResource("30_target")
+expand_mode = 3
+stretch_mode = 5
+metadata/board_semantic = "target"
+
+[node name="Count" type="TextureRect" parent="SafeMargin/Rows/BoardIconFrame/BoardIconRow"]
+custom_minimum_size = Vector2(42, 42)
+layout_mode = 2
+tooltip_text = "卡牌数量"
+texture = ExtResource("31_count")
+expand_mode = 3
+stretch_mode = 5
+metadata/board_semantic = "card_count"
+
+[node name="GDP" type="TextureRect" parent="SafeMargin/Rows/BoardIconFrame/BoardIconRow"]
+custom_minimum_size = Vector2(42, 42)
+layout_mode = 2
+tooltip_text = "GDP"
+texture = ExtResource("32_gdp")
+expand_mode = 3
+stretch_mode = 5
+metadata/board_semantic = "gdp"
+
+[node name="Cash" type="TextureRect" parent="SafeMargin/Rows/BoardIconFrame/BoardIconRow"]
+custom_minimum_size = Vector2(42, 42)
+layout_mode = 2
+tooltip_text = "现金"
+texture = ExtResource("33_cash")
+expand_mode = 3
+stretch_mode = 5
+metadata/board_semantic = "cash"
+
+[node name="Settlement" type="TextureRect" parent="SafeMargin/Rows/BoardIconFrame/BoardIconRow"]
+custom_minimum_size = Vector2(42, 42)
+layout_mode = 2
+tooltip_text = "结算"
+texture = ExtResource("34_settlement")
+expand_mode = 3
+stretch_mode = 5
+metadata/board_semantic = "settlement"
+
+[node name="PlayerOrder" type="TextureRect" parent="SafeMargin/Rows/BoardIconFrame/BoardIconRow"]
+custom_minimum_size = Vector2(42, 42)
+layout_mode = 2
+tooltip_text = "玩家顺序"
+texture = ExtResource("35_order")
+expand_mode = 3
+stretch_mode = 5
+metadata/board_semantic = "player_order"
