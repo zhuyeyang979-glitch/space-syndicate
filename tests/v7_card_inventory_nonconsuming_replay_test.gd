@@ -21,7 +21,9 @@ func _init() -> void:
 			and tool.contains('const TARGET_OWNER_ID := "card_inventory"'), "replay pins only the attested Card Inventory row")
 	_expect(tool.contains("SCENARIO_IDENTITY.validation_report") \
 			and tool.contains("REGISTRY_VALIDATOR.validate(contract, registry, 19)") \
-			and tool.contains('registry.call("registry_binding_contract_v1")'), "scenario identity and canonical Registry binding are attested")
+			and tool.contains('registry.call("registry_binding_contract_v1")') \
+			and tool.contains('session.get_node_or_null("RulesetSaveAttestationOwner")') \
+			and not tool.contains('session.get_node_or_null("../RulesetSaveAttestationOwner")'), "scenario identity and canonical Registry binding are attested")
 	_expect(tool.contains('owner.call("to_save_data")') \
 			and tool.contains('owner.call("capture_runtime_checkpoint")') \
 			and tool.contains('owner.call("restore_runtime_checkpoint", checkpoint_a)'), "only the real composite Owner Save and checkpoint APIs are exercised")

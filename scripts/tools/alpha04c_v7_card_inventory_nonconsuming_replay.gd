@@ -281,7 +281,7 @@ func _build_scenario_identity(context: Dictionary, started: Dictionary, reposito
 	var coordinator: GameRuntimeCoordinator = context.get("coordinator")
 	var session: Node = context.get("session")
 	var registry: Node = context.get("registry")
-	var ruleset_owner := session.get_node_or_null("../RulesetSaveAttestationOwner")
+	var ruleset_owner := session.get_node_or_null("RulesetSaveAttestationOwner")
 	var ruleset_state: Dictionary = ruleset_owner.call("to_save_data") \
 			if ruleset_owner != null and ruleset_owner.has_method("to_save_data") else {}
 	var world := coordinator.world_session_state() if coordinator != null else null
