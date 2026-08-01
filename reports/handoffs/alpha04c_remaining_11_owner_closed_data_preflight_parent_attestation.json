@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "preflight_id": "alpha04c_remaining_owner_real_state_closed_data_preflight_v1",
+  "repository_head": "16240228650f3fd1773b28d806d44e3b608c10ba",
+  "child_exit_code": 2,
+  "child_result_sha256": "c17af4a131d6b8528c53ad036ce60d5873d9d2f05dc669e57acd3ce50d1a0471",
+  "child_success": false,
+  "first_remaining_owner_failure_index": 9,
+  "first_remaining_owner_failure_id": "monster_runtime",
+  "first_remaining_owner_failure_reason": "raw_float_timer_not_closed_data",
+  "immutable_v7_evidence_preserved": true,
+  "v8_authorization_root_absent": true,
+  "preflight_diagnostic_count_delta": 0,
+  "preflight_quota_claim_count": 0,
+  "preflight_full_owner_audit_count": 0,
+  "preflight_production_fixed_slot_write_count": 0,
+  "preflight_process_a_count": 0,
+  "task_owned_process_count_after": 0,
+  "parent_execution_attestation_green": true,
+  "private_payload_redacted": true
+}
