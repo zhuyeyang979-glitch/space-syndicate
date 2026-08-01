@@ -1,0 +1,431 @@
+{
+  "schema_version": 1,
+  "amendment_document_id": "space_syndicate.v071.amendment_from_v07",
+  "from_constitution_id": "space_syndicate.v07.complete",
+  "to_constitution_id": "space_syndicate.v071.complete",
+  "from_ruleset_id": "v0.7",
+  "to_ruleset_id": "v0.7.1",
+  "status": "approved_and_frozen",
+  "approval": {
+    "approved_profile_id": "V071_CANDIDATE_A_FAST",
+    "approval_scope": "FIRST_HUMAN_TEST_SAMPLE_RULESET",
+    "human_fun_proven": false,
+    "human_test_required": true
+  },
+  "historical_v07_baseline": {
+    "constitution_id": "space_syndicate.v07.complete",
+    "ruleset_id": "v0.7",
+    "constitution_json_sha256": "81c8ae27eba50f4d68c8a379913baf0592a819412bca0109f7e5fc9ef9a5a5fc",
+    "constitution_markdown_sha256": "a0d2e4324898134bdc3a58cc232ce05e5ca39b8787549b8a55a6ab50f28abb72",
+    "balance_defaults_sha256": "8678cfa88eeff53f60b2e209598e670e2748189c3bb3bd0ebd21bf5c5e20c6f8",
+    "content_change_count": 0,
+    "retained_as_immutable_history": true
+  },
+  "candidate_provenance": {
+    "pr82_head": "061cd90d268cbc1753548679ee5b5ebd79ed5c3e",
+    "candidate_errata_json_blob": "b5594a61f193279a7b7cddf3f34839387bedd779",
+    "candidate_errata_markdown_blob": "41ef09f763672b890542b187eede86f1395dcb20",
+    "risk_register_json_blob": "04eee941bb4a485eda9da88c38b6bd5936d8aede",
+    "risk_register_markdown_blob": "b7c641d831905f1ddbe17114f222f1d49ad8f0bd",
+    "simulation_profile_count": 3,
+    "simulation_player_counts": [
+      3,
+      4,
+      6,
+      8
+    ],
+    "simulation_seeds_per_configuration": 500,
+    "total_simulated_matches": 6000,
+    "simulation_fingerprint": "d664b7ba8d69fe152c7194e2b357db6c996ed36681f2b031433c773ee61d815e",
+    "approved_profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a"
+  },
+  "structural_amendment_count": 8,
+  "structural_amendments": [
+    {
+      "amendment_id": "V071-A1",
+      "classification": "CLASS_A_IMPLEMENTATION_CONTRADICTION",
+      "source_rule_ids": [
+        "v07.color_cycle.influence_weight",
+        "v07.lead.macro_round_alternation"
+      ],
+      "target_rule_id": "v071.batch_boundary.independent_lead_color_cycles",
+      "change_kind": "approved_structural_closure",
+      "approved_value": {
+        "boundary_intent": "batch_boundary.commit",
+        "receipt_source": "authoritative_completed_card_batch_receipt",
+        "lead_advance_unit": "completed_card_batch",
+        "color_cycle_advance_unit": "completed_card_batch",
+        "ui_timer_may_commit": false,
+        "color_boundary_uses_outgoing_lead": true,
+        "same_boundary_order": [
+          "freeze_outgoing_current_lead",
+          "calculate_double_influence_with_outgoing_lead",
+          "commit_color_distribution",
+          "publish_legal_stances",
+          "clear_old_stances",
+          "advance_lead",
+          "publish_next_batch_state"
+        ],
+        "lead_advances_after_color_commit": true,
+        "lead_advance_implicit_in_color_commit": false,
+        "required_save_fields": [
+          "completed_batch_count",
+          "lead_batch_cursor",
+          "color_cycle_batch_cursor",
+          "current_lead",
+          "macro_round_number",
+          "direction"
+        ],
+        "restore_must_not_repeat_boundary": true
+      },
+      "save_impacts": [
+        "completed_batch_count",
+        "lead_batch_cursor",
+        "color_cycle_batch_cursor",
+        "current_lead",
+        "macro_round_number",
+        "direction"
+      ],
+      "ai_impacts": [],
+      "player_impacts": [
+        "lead_and_color_cycle_batch_timers"
+      ],
+      "rng_impacts": [],
+      "migration_required": true,
+      "acceptance_gates": {
+        "COLOR_BOUNDARY_USES_OUTGOING_LEAD": true,
+        "LEAD_ADVANCES_AFTER_COLOR_COMMIT": true,
+        "LEAD_ADVANCE_IMPLICIT_IN_COLOR_COMMIT": false
+      }
+    },
+    {
+      "amendment_id": "V071-A2",
+      "classification": "CLASS_A_IMPLEMENTATION_CONTRADICTION",
+      "source_rule_ids": [
+        "v07.lead.private_self_notice"
+      ],
+      "target_rule_id": "v071.lead.ai_private_self_notice",
+      "change_kind": "approved_structural_closure",
+      "approved_value": {
+        "self_is_current_lead": "boolean",
+        "self_influence_class": [
+          "normal",
+          "double"
+        ],
+        "semantic_parity_with_player_self_notice": true,
+        "other_player_lead_identity_allowed": false,
+        "complete_hidden_order_allowed": false,
+        "next_lead_identity_allowed": false,
+        "other_unpublished_stance_allowed": false,
+        "raw_weight_breakdown_allowed": false
+      },
+      "save_impacts": [],
+      "ai_impacts": [
+        "self_is_current_lead",
+        "self_influence_class"
+      ],
+      "player_impacts": [
+        "semantic_parity_with_human_self_notice"
+      ],
+      "rng_impacts": [],
+      "migration_required": true,
+      "acceptance_gates": {
+        "AI_SELF_LEAD_READY": true,
+        "AI_OTHER_LEAD_IDENTITY_EXPOSURE_COUNT": 0
+      }
+    },
+    {
+      "amendment_id": "V071-B1",
+      "classification": "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA",
+      "source_rule_ids": [
+        "v07.track.shared_generation_contract",
+        "v07.track.local_segment_visibility"
+      ],
+      "target_rule_id": "v071.track.replacement_next_scroll_lock",
+      "change_kind": "approved_structural_closure",
+      "approved_value": {
+        "replacement_activates_on_next_scroll": true,
+        "replacement_claimable_same_tick": false,
+        "required_instance_field": "claimable_from_scroll_sequence",
+        "locked_projection_state": "incoming_locked",
+        "activation_event": "next_authoritative_track_scroll",
+        "save_restore_preserves_lock": true,
+        "exact_once_claim_required": true
+      },
+      "save_impacts": [
+        "claimable_from_scroll_sequence"
+      ],
+      "ai_impacts": [
+        "claimability_projection"
+      ],
+      "player_impacts": [
+        "incoming_locked_projection"
+      ],
+      "rng_impacts": [],
+      "migration_required": true,
+      "acceptance_gates": {
+        "TRACK_REPLACEMENT_ACTIVATES_ON_NEXT_SCROLL": true,
+        "TRACK_REPLACEMENT_CLAIMABLE_SAME_TICK": false
+      }
+    },
+    {
+      "amendment_id": "V071-B2",
+      "classification": "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA",
+      "source_rule_ids": [
+        "v07.normal_merge.player_choice",
+        "v07.hand.maintenance_sequence"
+      ],
+      "target_rule_id": "v071.normal_merge.minimum_total_five",
+      "change_kind": "approved_structural_closure",
+      "approved_value": {
+        "minimum_total_card_count": 5,
+        "counted_zones": [
+          "draw_pile",
+          "hand",
+          "committed_escrow",
+          "discard"
+        ],
+        "validation_point": "before_merge_commit",
+        "rejection_reason_code": "minimum_normal_deck_size_violation",
+        "current_hand_only_check_allowed": false,
+        "future_purchase_may_satisfy_current_check": false,
+        "draw_to_five_termination_required": true
+      },
+      "save_impacts": [
+        "normal_deck_minimum_count_rule_version"
+      ],
+      "ai_impacts": [
+        "merge_legality"
+      ],
+      "player_impacts": [
+        "minimum_deck_rejection"
+      ],
+      "rng_impacts": [],
+      "migration_required": true,
+      "acceptance_gates": {
+        "NORMAL_DECK_MINIMUM_TOTAL_CARD_COUNT": 5,
+        "DRAW_TO_FIVE_TERMINATION_GREEN": true
+      }
+    },
+    {
+      "amendment_id": "V071-B3",
+      "classification": "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA",
+      "source_rule_ids": [
+        "v07.track.shared_generation_contract"
+      ],
+      "target_rule_id": "v071.track.level_one_only_supply",
+      "change_kind": "approved_structural_closure",
+      "approved_value": {
+        "normal_track_spawn_level": 1,
+        "commodity_track_spawn_level": 1,
+        "normal_higher_levels_obtainable_only_by_merge": [
+          2,
+          3,
+          4
+        ],
+        "commodity_higher_levels_obtainable_only_by_merge": [
+          2,
+          3
+        ],
+        "higher_level_definitions_remain_valid": true
+      },
+      "save_impacts": [],
+      "ai_impacts": [
+        "visible_supply_level"
+      ],
+      "player_impacts": [
+        "visible_supply_level"
+      ],
+      "rng_impacts": [
+        "supply_draw_stream_shape_unchanged"
+      ],
+      "migration_required": true,
+      "acceptance_gates": {
+        "TRACK_HIGH_LEVEL_NORMAL_SPAWN_COUNT": 0,
+        "TRACK_HIGH_LEVEL_COMMODITY_SPAWN_COUNT": 0
+      }
+    },
+    {
+      "amendment_id": "V071-B4",
+      "classification": "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA",
+      "source_rule_ids": [
+        "v07.commodity.direct_claim",
+        "v07.batch.lock_immutability"
+      ],
+      "target_rule_id": "v071.commodity.batch_availability",
+      "change_kind": "approved_structural_closure",
+      "approved_value": {
+        "required_instance_field": "available_from_batch_id",
+        "if_local_queue_unlocked": "current_batch",
+        "if_local_queue_locked": "next_batch",
+        "post_lock_claim_may_join_locked_queue": false,
+        "post_lock_claim_may_change_current_reservation": false,
+        "post_lock_claim_may_change_current_action_limit": false,
+        "save_restore_preserves_available_from_batch_id": true
+      },
+      "save_impacts": [
+        "available_from_batch_id"
+      ],
+      "ai_impacts": [
+        "commodity_batch_legality"
+      ],
+      "player_impacts": [
+        "commodity_available_batch_state"
+      ],
+      "rng_impacts": [],
+      "migration_required": true,
+      "acceptance_gates": {
+        "COMMODITY_BATCH_AVAILABILITY_READY": true
+      }
+    },
+    {
+      "amendment_id": "V071-B5",
+      "classification": "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA",
+      "source_rule_ids": [
+        "v07.reservation.per_action_outcome",
+        "v07.resolution.no_new_input"
+      ],
+      "target_rule_id": "v071.resolution.invalid_target_policy",
+      "change_kind": "approved_structural_closure",
+      "approved_value": {
+        "allowed_policy_ids": [
+          "FIZZLE_FULL_ASSET_REFUND",
+          "FIZZLE_NO_REFUND",
+          "RESOLVE_LEGAL_REMAINDER",
+          "DETERMINISTIC_FALLBACK"
+        ],
+        "default_policy_id": "FIZZLE_FULL_ASSET_REFUND",
+        "fizzled_normal_card_destination": "discard",
+        "target_reselection_allowed": false,
+        "release_all_reserved_assets": true,
+        "return_action_slot": false,
+        "return_card_to_hand": false,
+        "typed_receipt_required": true,
+        "public_causal_history_required": true,
+        "undeclared_content_may_enter_production": false
+      },
+      "save_impacts": [
+        "invalid_target_policy_id"
+      ],
+      "ai_impacts": [
+        "invalid_target_outcome"
+      ],
+      "player_impacts": [
+        "fizzle_receipt_and_history"
+      ],
+      "rng_impacts": [],
+      "migration_required": true,
+      "acceptance_gates": {
+        "DEFAULT_INVALID_TARGET_POLICY": "FIZZLE_FULL_ASSET_REFUND",
+        "FIZZLED_NORMAL_CARD_DESTINATION": "discard"
+      }
+    },
+    {
+      "amendment_id": "V071-B6",
+      "classification": "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA",
+      "source_rule_ids": [
+        "v07.lead.hidden_fixed_order",
+        "v07.color_cycle.reveal_and_privacy"
+      ],
+      "target_rule_id": "v071.lead.soft_hidden_publication",
+      "change_kind": "approved_structural_closure",
+      "approved_value": {
+        "identity_directly_published": false,
+        "identity_may_be_inferred_from_public_information": true,
+        "lead_portrait_allowed": false,
+        "lead_specific_public_animation_allowed": false,
+        "lead_specific_public_audio_allowed": false,
+        "lead_identity_in_public_queue_allowed": false,
+        "six_percent_weight_owner_published": false,
+        "mathematical_non_inference_guaranteed": false,
+        "inference_metric_id": "LEAD_INFERENCE_UNIQUE_RATE",
+        "unique_inference_is_privacy_failure": false
+      },
+      "save_impacts": [],
+      "ai_impacts": [
+        "no_other_lead_identity"
+      ],
+      "player_impacts": [
+        "no_direct_lead_cues"
+      ],
+      "rng_impacts": [],
+      "migration_required": true,
+      "acceptance_gates": {
+        "LEAD_IDENTITY_NOT_DIRECTLY_PUBLISHED": true,
+        "LEAD_IDENTITY_MAY_BE_INFERRED_FROM_PUBLIC_INFORMATION": true
+      }
+    }
+  ],
+  "approved_balance_default_count": 8,
+  "balance_amendments": [
+    {
+      "amendment_id": "V071-C1",
+      "default_id": "v071.balance.initial_assets_per_color",
+      "approved_value": 2,
+      "previous_v07_value": 1
+    },
+    {
+      "amendment_id": "V071-C2-NORMAL",
+      "default_id": "v071.balance.track_normal_card_ratio_basis_points",
+      "approved_value": 6000,
+      "previous_v07_value": 7000
+    },
+    {
+      "amendment_id": "V071-C2-COMMODITY",
+      "default_id": "v071.balance.track_commodity_card_ratio_basis_points",
+      "approved_value": 4000,
+      "previous_v07_value": 3000
+    },
+    {
+      "amendment_id": "V071-C3",
+      "default_id": "v071.balance.single_color_net_intervention_cap",
+      "approved_value": {
+        "enabled": true,
+        "absolute_basis_points": 1200
+      },
+      "previous_v07_value": {
+        "enabled": false,
+        "absolute_basis_points": 10000
+      }
+    },
+    {
+      "amendment_id": "V071-C4",
+      "default_id": "v071.balance.max_asset_refresh_per_color_per_batch",
+      "approved_value": 3,
+      "previous_v07_value": null
+    },
+    {
+      "amendment_id": "V071-C5",
+      "default_id": "v071.balance.hand_maintenance_timeout_seconds",
+      "approved_value": 8,
+      "previous_v07_value": 20
+    },
+    {
+      "amendment_id": "V071-C6",
+      "default_id": "v071.balance.lead_tenure_batches",
+      "approved_value": 1,
+      "previous_v07_value": null
+    },
+    {
+      "amendment_id": "V071-COLOR",
+      "default_id": "v071.balance.color_cycle_batches",
+      "approved_value": 6,
+      "previous_v07_value": null
+    }
+  ],
+  "save_migration": {
+    "v07_save_to_v071_direct_resume": false,
+    "v06_save_to_v071_direct_resume": false,
+    "v06_save_backup_required": true,
+    "silent_default_new_fields_allowed": false,
+    "explicit_detached_test_only_migration_allowed": true
+  },
+  "production_boundary": {
+    "current_production_runtime_ruleset": "v0.6",
+    "highest_target_ruleset": "v0.7.1",
+    "full_v0_7_1_runtime_cutover": false,
+    "production_connection_count": 0,
+    "v06_mutation_count": 0,
+    "dual_write_count": 0
+  }
+}
