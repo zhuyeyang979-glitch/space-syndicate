@@ -1,0 +1,355 @@
+{
+  "schema_version": 1,
+  "amendment_document_id": "space_syndicate.v073.amendment_from_v072",
+  "from_constitution_id": "space_syndicate.v072.complete",
+  "to_constitution_id": "space_syndicate.v073.complete",
+  "from_ruleset_id": "v0.7.2",
+  "to_ruleset_id": "v0.7.3",
+  "status": "approved_and_frozen",
+  "approval": {
+    "approved": true,
+    "decision_ids": [
+      "USER_REJECTS_RESOLUTION_ORDER_AUCTION",
+      "USER_REJECTS_INITIATIVE_CASH_BIDDING",
+      "USER_APPROVES_FIXED_ROUND_ROBIN_RESOLUTION",
+      "USER_APPROVES_PREBOUND_FACILITY_CONTENTION",
+      "USER_APPROVES_FACILITY_BUILD_FIZZLE_ON_SLOT_CONTENTION"
+    ],
+    "approved_profile_id": "V073_STARTER_FREE_FIXED_ORDER_CONTENTION",
+    "approval_scope": "FIRST_HUMAN_TEST_SAMPLE_RULESET",
+    "human_fun_proven": false,
+    "human_test_required": true
+  },
+  "historical_baselines": {
+    "v07": {
+      "constitution_json_sha256": "81c8ae27eba50f4d68c8a379913baf0592a819412bca0109f7e5fc9ef9a5a5fc",
+      "constitution_markdown_sha256": "a0d2e4324898134bdc3a58cc232ce05e5ca39b8787549b8a55a6ab50f28abb72",
+      "balance_defaults_sha256": "8678cfa88eeff53f60b2e209598e670e2748189c3bb3bd0ebd21bf5c5e20c6f8",
+      "content_change_count": 0
+    },
+    "v071": {
+      "constitution_json_sha256": "a5a52a88bc5a139dc56accc46897c82ddc7c3ea1aacdcaa6f72a412815429473",
+      "constitution_markdown_sha256": "2b4822b915d46f575ad9f1ff4675bc3741c91a70cf19b4f56fc8f37ac9bed930",
+      "balance_defaults_sha256": "4ef853a914dafc4919848e2f28da824cb4b710058556c2013fd4cdcddc5d555a",
+      "content_change_count": 0
+    },
+    "v072": {
+      "constitution_json_sha256": "d6e93f053e961e6adf1a1410d9343fe9bccd315f429819ef59d75c2ecd6d7a33",
+      "constitution_markdown_sha256": "1e557e3cc3d00bcbe83f671275d90a5a3e829f7e73245f5e0cf818dd323c1304",
+      "balance_defaults_sha256": "91a9ee9bdc796013e4ac64d2ce9893267f65ce285b22551963371be610d67155",
+      "amendment_json_sha256": "91c1fd7d3025b84b566c5beb023e596a90715ec03efe3e85899c6ca7f7a01195",
+      "amendment_markdown_sha256": "9604d2a6d7d3a8e1f20da806054c9e73bb5f30363a484fefd1065c9e0504ec79",
+      "rule_precedence_sha256": "82908f46e882459fe732932258be19f9be506bc32a4a058f2eb8b156bc2139f5",
+      "content_change_count": 0
+    }
+  },
+  "source_authority": {
+    "path": "docs/rules/v072_game_constitution.json",
+    "sha256": "d6e93f053e961e6adf1a1410d9343fe9bccd315f429819ef59d75c2ecd6d7a33",
+    "effective_rule_count": 92,
+    "inheritance_mode": "all_v072_rules_except_explicit_v073_supersessions"
+  },
+  "structural_amendment_count": 5,
+  "structural_amendments": [
+    {
+      "amendment_id": "V073-C1",
+      "classification": "APPROVED_FIXED_ORDER_CONTENTION_AMENDMENT",
+      "source_rule_ids": [
+        "v07.resolution.round_robin",
+        "v07.resolution.owner_anonymous_public_queue"
+      ],
+      "target_rule_id": "v073.resolution.auction_rejected",
+      "change_kind": "close_resolution_order_against_auction_and_cash_bidding",
+      "approved_value": {
+        "initiative_auction_enabled": false,
+        "resolution_order_bidding_enabled": false,
+        "cash_can_change_resolution_order": false,
+        "initiative_auction_core_count": 0,
+        "initiative_bid_owner_count": 0,
+        "initiative_bid_save_field_count": 0,
+        "initiative_bid_ui_surface_count": 0,
+        "ai_initiative_bid_policy_count": 0
+      },
+      "affected_domains": [
+        "anonymous_resolution",
+        "save_state",
+        "ai_observation",
+        "player_projection"
+      ],
+      "save_impacts": [
+        "bid_state_forbidden"
+      ],
+      "ai_impacts": [
+        "initiative_bid_policy_count_zero"
+      ],
+      "player_impacts": [
+        "initiative_auction_ui_surface_count_zero"
+      ],
+      "rng_impacts": [],
+      "migration_required": true,
+      "acceptance_gates": [
+        "auction_core_count_zero",
+        "bid_owner_count_zero",
+        "bid_save_field_count_zero",
+        "bid_ui_surface_count_zero",
+        "ai_bid_policy_count_zero"
+      ]
+    },
+    {
+      "amendment_id": "V073-C2",
+      "classification": "APPROVED_FIXED_ORDER_CONTENTION_AMENDMENT",
+      "source_rule_ids": [
+        "v07.resolution.round_robin",
+        "v07.lead.track_position_separation",
+        "v071.batch_boundary.independent_lead_color_cycles"
+      ],
+      "target_rule_id": "v073.resolution.fixed_hidden_round_robin",
+      "change_kind": "freeze_single_batch_order_source_and_layered_interleave",
+      "approved_value": {
+        "resolution_order_mode": "fixed_hidden_round_robin",
+        "batch_resolution_order_source": "frozen_hidden_lead_order_at_batch_lock",
+        "resolution_order_writer_count": 1,
+        "resolution_order_modifier_count": 0,
+        "resolution_order_mutation_after_batch_lock": false,
+        "local_action_indices": [0, 1, 2, 3, 4],
+        "one_action_per_player_per_layer": true,
+        "empty_queue_skipped": true,
+        "single_remaining_player_tail_continues": true
+      },
+      "affected_domains": [
+        "card_batch",
+        "anonymous_resolution",
+        "hidden_lead_cycle"
+      ],
+      "save_impacts": [
+        "frozen_batch_turn_order",
+        "player_local_queues",
+        "local_action_index",
+        "anonymous_global_queue",
+        "resolution_cursor"
+      ],
+      "ai_impacts": [
+        "self_local_card_order_value",
+        "complete_hidden_order_forbidden"
+      ],
+      "player_impacts": [
+        "local_order_changes_layer_only"
+      ],
+      "rng_impacts": [
+        "no_new_resolution_order_stream"
+      ],
+      "migration_required": true,
+      "acceptance_gates": [
+        "three_four_six_eight_player_layering",
+        "zero_to_five_actions_per_player",
+        "order_immutable_after_lock",
+        "cash_order_modifier_count_zero"
+      ]
+    },
+    {
+      "amendment_id": "V073-C3",
+      "classification": "APPROVED_FIXED_ORDER_CONTENTION_AMENDMENT",
+      "source_rule_ids": [
+        "v07.batch.prebound_targets_and_local_order",
+        "v07.batch.lock_immutability",
+        "v07.inherited.facility_regions"
+      ],
+      "target_rule_id": "v073.facility.prebound_unique_slot_modes",
+      "change_kind": "close_unique_slot_identity_and_prebound_facility_modes",
+      "approved_value": {
+        "facility_slot_unique_key": [
+          "region_id",
+          "facility_type",
+          "industry_id"
+        ],
+        "allowed_facility_action_modes": [
+          "BUILD_NEW",
+          "UPGRADE_OWN",
+          "REPAIR_OWN"
+        ],
+        "facility_action_mode_required": true,
+        "facility_action_mode_mutable_after_lock": false,
+        "omitted_then_inferred_field_allowed": false
+      },
+      "affected_domains": [
+        "card_batch",
+        "region_infrastructure",
+        "facility_target_contention"
+      ],
+      "save_impacts": [
+        "facility_action_mode",
+        "target_slot_identity_and_generation",
+        "expected_facility_identity_and_generation",
+        "expected_owner_rank_damage"
+      ],
+      "ai_impacts": [
+        "legal_facility_action_modes",
+        "current_target_slot_state"
+      ],
+      "player_impacts": [
+        "explicit_build_upgrade_repair_choice",
+        "contention_warning_before_lock"
+      ],
+      "rng_impacts": [],
+      "migration_required": true,
+      "acceptance_gates": [
+        "unique_region_type_industry_slot",
+        "mode_required_before_lock",
+        "closed_none_for_inapplicable_fields"
+      ]
+    },
+    {
+      "amendment_id": "V073-C4",
+      "classification": "APPROVED_FIXED_ORDER_CONTENTION_AMENDMENT",
+      "source_rule_ids": [
+        "v07.batch.lock_immutability",
+        "v07.resolution.no_new_input",
+        "v07.inherited.facility_regions"
+      ],
+      "target_rule_id": "v073.facility.authoritative_revalidation_no_conversion",
+      "change_kind": "require_authoritative_revalidation_and_forbid_mode_conversion",
+      "approved_value": {
+        "authoritative_revalidator": "region_infrastructure_owner",
+        "viewer_snapshot_may_decide_final_legality": false,
+        "build_to_upgrade_auto_conversion": false,
+        "build_to_repair_auto_conversion": false,
+        "upgrade_to_repair_auto_conversion": false,
+        "repair_to_upgrade_auto_conversion": false,
+        "target_reselection_during_resolution": false
+      },
+      "affected_domains": [
+        "region_infrastructure",
+        "facility_target_contention",
+        "anonymous_resolution"
+      ],
+      "save_impacts": [
+        "typed_facility_result",
+        "exact_once_resolution_cursor"
+      ],
+      "ai_impacts": [
+        "same_authoritative_revalidation_as_human"
+      ],
+      "player_impacts": [
+        "no_automatic_build_upgrade_repair_conversion"
+      ],
+      "rng_impacts": [],
+      "migration_required": true,
+      "acceptance_gates": [
+        "slot_and_facility_generation_revalidated",
+        "owner_rank_damage_revalidated",
+        "all_auto_conversion_counts_zero"
+      ]
+    },
+    {
+      "amendment_id": "V073-C5",
+      "classification": "APPROVED_FIXED_ORDER_CONTENTION_AMENDMENT",
+      "source_rule_ids": [
+        "v071.resolution.invalid_target_policy",
+        "v07.resolution.owner_anonymous_public_queue",
+        "v072.starter.persistent_zero_asset_cost"
+      ],
+      "target_rule_id": "v073.facility.contention_fizzle_privacy_and_persistence",
+      "change_kind": "close_contention_fizzle_refund_discard_privacy_and_restore",
+      "approved_value": {
+        "invalid_target_policy_id": "FIZZLE_FULL_ASSET_REFUND",
+        "target_reselected": false,
+        "asset_reservation_released": true,
+        "normal_card_destination": "discard",
+        "action_slot_refunded": false,
+        "starter_uses_same_policy": true,
+        "public_history_owner_anonymous": true,
+        "anonymous_owner_direct_disclosure_rate_required": 0,
+        "v072_save_to_v073_direct_resume": false
+      },
+      "affected_domains": [
+        "facility_target_contention",
+        "asset_reservations",
+        "personal_dbg",
+        "privacy",
+        "save_state"
+      ],
+      "save_impacts": [
+        "frozen_order_and_cursor",
+        "facility_target_contract",
+        "exact_once_refund_and_discard"
+      ],
+      "ai_impacts": [
+        "lawful_competition_probability_only",
+        "rival_targets_forbidden"
+      ],
+      "player_impacts": [
+        "anonymous_contention_fizzle_feedback",
+        "asset_refund_card_discard_action_not_refunded"
+      ],
+      "rng_impacts": [
+        "restore_zero_advance"
+      ],
+      "migration_required": true,
+      "acceptance_gates": [
+        "earlier_build_succeeds_later_build_fizzles",
+        "refund_discard_and_action_consumption_exact",
+        "restore_does_not_repeat_fizzle",
+        "owner_direct_disclosure_rate_zero"
+      ]
+    }
+  ],
+  "approved_profile": {
+    "profile_id": "V073_STARTER_FREE_FIXED_ORDER_CONTENTION",
+    "profile_fingerprint_input": "V073_STARTER_FREE_FIXED_ORDER_CONTENTION|initial_assets_per_color=0|starter_asset_cost=0|standard_l1_asset_cost=1|normal_card_ratio_bps=6000|commodity_card_ratio_bps=4000|intervention_cap_bps=1200|max_asset_refresh_per_color_per_batch=3|hand_maintenance_timeout_seconds=8|lead_tenure_batches=1|color_cycle_batches=6|track_scroll_interval_seconds=5|track_local_visible_slot_count=5|resolution_order_mode=fixed_hidden_round_robin|facility_action_mode_required=true|build_slot_contention_fizzle=true|initiative_bid_mode=retired",
+    "profile_fingerprint": "a413ad0ddd8a06b15ccee943d9cd93c6f7941fc66ce901a1f44934797f50231c",
+    "inherited_v072_values": {
+      "initial_assets_per_color": 0,
+      "starter_asset_cost": 0,
+      "standard_l1_asset_cost": 1,
+      "normal_card_ratio_bps": 6000,
+      "commodity_card_ratio_bps": 4000,
+      "intervention_cap_bps": 1200,
+      "max_asset_refresh_per_color_per_batch": 3,
+      "hand_maintenance_timeout_seconds": 8,
+      "lead_tenure_batches": 1,
+      "color_cycle_batches": 6,
+      "track_scroll_interval_seconds": 5,
+      "track_local_visible_slot_count": 5
+    },
+    "v073_structural_values": {
+      "resolution_order_mode": "fixed_hidden_round_robin",
+      "facility_action_mode_required": true,
+      "build_slot_contention_fizzle": true,
+      "initiative_bid_max_cash": "not_applicable",
+      "initiative_bid_mode": "retired"
+    }
+  },
+  "save_migration": {
+    "v072_save_to_v073_direct_resume": false,
+    "v06_save_to_v073_direct_resume": false,
+    "v06_save_backup_required": true,
+    "detached_test_only_explicit_migration_allowed": true,
+    "silent_default_allowed": false,
+    "restore_rng_draw_delta": 0
+  },
+  "simulation_boundary": {
+    "fresh_v073_simulation_required": true,
+    "minimum_match_count": 6000,
+    "profiles": [
+      "V072_GENERIC_FACILITY_TARGETING",
+      "V073_EXPLICIT_MODES_FIXED_ORDER",
+      "V073_HIGH_CONTENTION_DIAGNOSTIC"
+    ],
+    "player_counts": [3, 4, 6, 8],
+    "seeds_per_configuration": 500,
+    "recommended_facility_build_fizzle_rate_minimum": 0.03,
+    "recommended_facility_build_fizzle_rate_maximum": 0.15,
+    "auction_tuning_allowed": false,
+    "human_fun_proven": false,
+    "human_test_required": true
+  },
+  "production_boundary": {
+    "current_production_runtime_ruleset": "v0.6",
+    "highest_target_ruleset": "v0.7.3",
+    "full_v0_7_3_runtime_cutover": false,
+    "production_connection_count": 0,
+    "v06_mutation_count": 0,
+    "dual_write_count": 0,
+    "pr77_completion_required_before_cutover": true
+  }
+}
