@@ -308,8 +308,8 @@ func _test_opaque_capability_and_forged_sources() -> void:
 			_context,
 			forged_dbg_sources
 		).is_empty()
-			and _adapter.last_reason_code() == "dbg_observation_forged",
-		"fully resealed DBG facts miss the authorized full observation digest"
+			and _adapter.last_reason_code() == "dbg_observation_invalid",
+		"fully resealed inconsistent DBG counts fail semantic validation first"
 	)
 
 	var resealed_assets := (

@@ -30,38 +30,38 @@ Every player-visible cutover below declares presentation dependencies through st
 ## 1. unified_card_track
 
 - **V0.6 current owner:** CommoditySushiTrackRuntimeService, RegionSupplyRuntimeController, and ordinary-card acquisition routes.
-- **V0.7 target owner:** V07UnifiedCardTrackCore.
-- **Core port:** `v07.unified_track.core_authority.v1`.
-- **AI port:** `v07.unified_track.ai_observation.v1`.
-- **Player port:** `v07.unified_track.player_projection.v1`.
+- **V0.7.1 target owner:** V07UnifiedCardTrackCore.
+- **Core port:** `v071.unified_track.core_authority.v2`.
+- **AI port:** `v071.unified_track.ai_observation.v2`.
+- **Player port:** `v071.unified_track.player_projection.v2`.
 - **Save adapter:** `V07CanonicalSaveAdapter#unified_card_track_cycle`.
 - **RNG streams:** unified track type, color, normal-card, commodity, and initial hidden-lead streams.
 - **Required asset keys:** `card.frame.normal`, `card.frame.commodity`, all six `icon.asset.*` keys, and `ui.panel.primary`.
-- **Required player projection:** `v07.unified_track.player_projection.v1`.
-- **Required AI observation:** `v07.unified_track.ai_observation.v1`.
+- **Required player projection:** `v071.unified_track.player_projection.v2`.
+- **Required AI observation:** `v071.unified_track.ai_observation.v2`.
 - **Required Save adapter:** `V07CanonicalSaveAdapter#unified_card_track_cycle`.
 - **Required RNG streams:** `unified_track_type_draw`, `unified_track_color_draw`, `unified_track_normal_card_draw`, `unified_track_commodity_draw`, and `initial_hidden_lead_order`.
 - **Production scene target:** `scenes/ui/PublicTrack.tscn`.
 - **Old-surface deletion gate:** Retire TopCommoditySushiTrack and regional ordinary-card surfaces only after PublicTrack renders the authorized mixed-track projection with every required key.
-- **Rollback surface:** Rebind PublicTrack to the unchanged V0.6 public-track projection and render no candidate V0.7 track state.
+- **Rollback surface:** Rebind PublicTrack to the unchanged V0.6 public-track projection and render no detached V0.7.1 track state.
 - **Pre-cutover gate:** Validate one mixed-track snapshot, stable identities, six-color cycle, hidden lead order, receipts, and five embedded RNG streams.
 - **Cutover step:** Replace every NEW_V071_GAME Core, AI, player, Save, and RNG route in one transaction.
 - **Rollback step:** Restore the detached track checkpoint and retain all V0.6 routes.
-- **Old-path deletion gate:** Delete commodity-only and regional ordinary-card authorities only after the V0.7 Core is the sole published owner.
+- **Old-path deletion gate:** Delete commodity-only and regional ordinary-card authorities only after the V0.7.1 Core is the sole published owner.
 - **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
 
 ## 2. normal_dbg_deck
 
 - **V0.6 current owner:** WorldSessionState card slots, PlayerHandInteractionRuntimeService, and card_inventory Save owner.
-- **V0.7 target owner:** V07DbgDeckCore personal deck and zone authority.
-- **Core port:** `v07.personal_dbg.core_authority.v1#normal_dbg_deck`.
-- **AI port:** `v07.personal_dbg.ai_observation.v1#normal_dbg_deck`.
-- **Player port:** `v07.personal_dbg.player_projection.v1#normal_dbg_deck`.
+- **V0.7.1 target owner:** V07DbgDeckCore personal deck and zone authority.
+- **Core port:** `v071.personal_dbg.core_authority.v2#normal_dbg_deck`.
+- **AI port:** `v071.personal_dbg.ai_observation.v2#normal_dbg_deck`.
+- **Player port:** `v071.personal_dbg.player_projection.v2#normal_dbg_deck`.
 - **Save adapter:** `V07CanonicalSaveAdapter#personal_dbg_and_merge.normal_dbg_deck`.
 - **RNG streams:** starter-deck shuffle and per-player reshuffle.
 - **Required asset keys:** `card.frame.normal`, `card.back.normal`, `icon.board.draw_pile`, `icon.board.discard_pile`, and `icon.board.shuffle`.
-- **Required player projection:** `v07.personal_dbg.player_projection.v1#normal_dbg_deck`.
-- **Required AI observation:** `v07.personal_dbg.ai_observation.v1#normal_dbg_deck`.
+- **Required player projection:** `v071.personal_dbg.player_projection.v2#normal_dbg_deck`.
+- **Required AI observation:** `v071.personal_dbg.ai_observation.v2#normal_dbg_deck`.
 - **Required Save adapter:** `V07CanonicalSaveAdapter#personal_dbg_and_merge.normal_dbg_deck`.
 - **Required RNG streams:** `starter_deck_shuffle` and `normal_deck_reshuffle_by_player`.
 - **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
@@ -76,15 +76,15 @@ Every player-visible cutover below declares presentation dependencies through st
 ## 3. normal_card_merge
 
 - **V0.6 current owner:** Ordinary-card lifecycle and effect routes without one canonical optional merge owner.
-- **V0.7 target owner:** V07DbgDeckCore typed normal-card merge authority.
-- **Core port:** `v07.personal_dbg.core_authority.v1#normal_card_merge`.
-- **AI port:** `v07.personal_dbg.ai_observation.v1#normal_card_merge`.
-- **Player port:** `v07.personal_dbg.player_projection.v1#normal_card_merge`.
+- **V0.7.1 target owner:** V07DbgDeckCore typed normal-card merge authority.
+- **Core port:** `v071.personal_dbg.core_authority.v2#normal_card_merge`.
+- **AI port:** `v071.personal_dbg.ai_observation.v2#normal_card_merge`.
+- **Player port:** `v071.personal_dbg.player_projection.v2#normal_card_merge`.
 - **Save adapter:** `V07CanonicalSaveAdapter#personal_dbg_and_merge.normal_card_merge`.
 - **RNG stream:** `NONE`.
 - **Required asset keys:** `card.frame.normal`, `icon.board.merge`, `audio.card.merge`, and `vfx.card.merge`.
-- **Required player projection:** `v07.personal_dbg.player_projection.v1#normal_card_merge`.
-- **Required AI observation:** `v07.personal_dbg.ai_observation.v1#normal_card_merge`.
+- **Required player projection:** `v071.personal_dbg.player_projection.v2#normal_card_merge`.
+- **Required AI observation:** `v071.personal_dbg.ai_observation.v2#normal_card_merge`.
 - **Required Save adapter:** `V07CanonicalSaveAdapter#personal_dbg_and_merge.normal_card_merge`.
 - **Required RNG stream:** `NONE`.
 - **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
@@ -99,15 +99,15 @@ Every player-visible cutover below declares presentation dependencies through st
 ## 4. commodity_inventory_merge
 
 - **V0.6 current owner:** Commodity inventory fields split across player state, claim routes, and card_inventory Save ownership.
-- **V0.7 target owner:** V07DbgDeckCore independent commodity inventory and typed merge authority.
-- **Core port:** `v07.personal_dbg.core_authority.v1#commodity_inventory_merge`.
-- **AI port:** `v07.personal_dbg.ai_observation.v1#commodity_inventory_merge`.
-- **Player port:** `v07.personal_dbg.player_projection.v1#commodity_inventory_merge`.
+- **V0.7.1 target owner:** V07DbgDeckCore independent commodity inventory and typed merge authority.
+- **Core port:** `v071.personal_dbg.core_authority.v2#commodity_inventory_merge`.
+- **AI port:** `v071.personal_dbg.ai_observation.v2#commodity_inventory_merge`.
+- **Player port:** `v071.personal_dbg.player_projection.v2#commodity_inventory_merge`.
 - **Save adapter:** `V07CanonicalSaveAdapter#personal_dbg_and_merge.commodity_inventory_merge`.
 - **RNG stream:** `NONE`.
 - **Required asset keys:** `card.frame.commodity`, `icon.board.merge`, `audio.card.merge`, and `vfx.card.merge`.
-- **Required player projection:** `v07.personal_dbg.player_projection.v1#commodity_inventory_merge`.
-- **Required AI observation:** `v07.personal_dbg.ai_observation.v1#commodity_inventory_merge`.
+- **Required player projection:** `v071.personal_dbg.player_projection.v2#commodity_inventory_merge`.
+- **Required AI observation:** `v071.personal_dbg.ai_observation.v2#commodity_inventory_merge`.
 - **Required Save adapter:** `V07CanonicalSaveAdapter#personal_dbg_and_merge.commodity_inventory_merge`.
 - **Required RNG stream:** `NONE`.
 - **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
@@ -122,15 +122,15 @@ Every player-visible cutover below declares presentation dependencies through st
 ## 5. six_color_assets
 
 - **V0.6 current owner:** PlayerManaRuntimeController, WorldSessionState resource fields, and player_mana Save owner.
-- **V0.7 target owner:** V07AssetBatchCore six-color asset authority.
-- **Core port:** `v07.six_color_assets.core_authority.v1`.
-- **AI port:** `v07.six_color_assets.ai_observation.v1`.
-- **Player port:** `v07.six_color_assets.player_projection.v1`.
+- **V0.7.1 target owner:** V07AssetBatchCore six-color asset authority.
+- **Core port:** `v071.six_color_assets.core_authority.v2`.
+- **AI port:** `v071.six_color_assets.ai_observation.v2`.
+- **Player port:** `v071.six_color_assets.player_projection.v2`.
 - **Save adapter:** `V07CanonicalSaveAdapter#six_color_assets_and_reservations.assets`.
 - **RNG stream:** `NONE`.
 - **Required asset keys:** `icon.asset.life`, `icon.asset.energy`, `icon.asset.industry`, `icon.asset.technology`, `icon.asset.commerce`, and `icon.asset.shipping`.
-- **Required player projection:** `v07.six_color_assets.player_projection.v1`.
-- **Required AI observation:** `v07.six_color_assets.ai_observation.v1`.
+- **Required player projection:** `v071.six_color_assets.player_projection.v2`.
+- **Required AI observation:** `v071.six_color_assets.ai_observation.v2`.
 - **Required Save adapter:** `V07CanonicalSaveAdapter#six_color_assets_and_reservations.assets`.
 - **Required RNG stream:** `NONE`.
 - **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
@@ -145,15 +145,15 @@ Every player-visible cutover below declares presentation dependencies through st
 ## 6. card_batch
 
 - **V0.6 current owner:** RuntimeLoop action cadence plus card submission and resolution services.
-- **V0.7 target owner:** V07AssetBatchCore 30-second five-action batch authority.
-- **Core port:** `v07.card_batch.core_authority.v1#card_batch`.
-- **AI port:** `v07.card_batch.ai_observation.v1#card_batch`.
-- **Player port:** `v07.card_batch.player_projection.v1#card_batch`.
+- **V0.7.1 target owner:** V07AssetBatchCore 30-second five-action batch authority.
+- **Core port:** `v071.card_batch.core_authority.v2#card_batch`.
+- **AI port:** `v071.card_batch.ai_observation.v2#card_batch`.
+- **Player port:** `v071.card_batch.player_projection.v2#card_batch`.
 - **Save adapter:** `V07CanonicalSaveAdapter#card_batch_and_anonymous_resolution.card_batch`.
 - **RNG stream:** `NONE`.
 - **Required asset keys:** `card.frame.normal`, `card.frame.commodity`, `card.frame.bound_action`, `ui.panel.primary`, `icon.board.card_count`, `icon.board.turn`, and `icon.board.target`.
-- **Required player projection:** `v07.card_batch.player_projection.v1#card_batch`.
-- **Required AI observation:** `v07.card_batch.ai_observation.v1#card_batch`.
+- **Required player projection:** `v071.card_batch.player_projection.v2#card_batch`.
+- **Required AI observation:** `v071.card_batch.ai_observation.v2#card_batch`.
 - **Required Save adapter:** `V07CanonicalSaveAdapter#card_batch_and_anonymous_resolution.card_batch`.
 - **Required RNG stream:** `NONE`.
 - **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
@@ -168,15 +168,15 @@ Every player-visible cutover below declares presentation dependencies through st
 ## 7. asset_reservation
 
 - **V0.6 current owner:** Execution-time affordability and resource consumers without complete pre-reservation.
-- **V0.7 target owner:** V07AssetBatchCore reservation ledger authority.
-- **Core port:** `v07.six_color_assets.core_authority.v1#asset_reservation`.
-- **AI port:** `v07.six_color_assets.ai_observation.v1#asset_reservation`.
-- **Player port:** `v07.six_color_assets.player_projection.v1#asset_reservation`.
+- **V0.7.1 target owner:** V07AssetBatchCore reservation ledger authority.
+- **Core port:** `v071.six_color_assets.core_authority.v2#asset_reservation`.
+- **AI port:** `v071.six_color_assets.ai_observation.v2#asset_reservation`.
+- **Player port:** `v071.six_color_assets.player_projection.v2#asset_reservation`.
 - **Save adapter:** `V07CanonicalSaveAdapter#six_color_assets_and_reservations.reservations`.
 - **RNG stream:** `NONE`.
 - **Required asset keys:** all six `icon.asset.*` keys plus `icon.board.lock`, `audio.card.lock`, and `vfx.card.lock`.
-- **Required player projection:** `v07.six_color_assets.player_projection.v1#asset_reservation`.
-- **Required AI observation:** `v07.six_color_assets.ai_observation.v1#asset_reservation`.
+- **Required player projection:** `v071.six_color_assets.player_projection.v2#asset_reservation`.
+- **Required AI observation:** `v071.six_color_assets.ai_observation.v2#asset_reservation`.
 - **Required Save adapter:** `V07CanonicalSaveAdapter#six_color_assets_and_reservations.reservations`.
 - **Required RNG stream:** `NONE`.
 - **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
@@ -191,15 +191,15 @@ Every player-visible cutover below declares presentation dependencies through st
 ## 8. anonymous_resolution
 
 - **V0.6 current owner:** CardResolutionQueueRuntimeService plus execution and history services.
-- **V0.7 target owner:** V07AssetBatchCore anonymous round-robin resolution authority.
-- **Core port:** `v07.card_batch.core_authority.v1#anonymous_resolution`.
-- **AI port:** `v07.card_batch.ai_observation.v1#anonymous_resolution`.
-- **Player port:** `v07.card_batch.player_projection.v1#anonymous_resolution`.
+- **V0.7.1 target owner:** V07AssetBatchCore anonymous round-robin resolution authority.
+- **Core port:** `v071.card_batch.core_authority.v2#anonymous_resolution`.
+- **AI port:** `v071.card_batch.ai_observation.v2#anonymous_resolution`.
+- **Player port:** `v071.card_batch.player_projection.v2#anonymous_resolution`.
 - **Save adapter:** `V07CanonicalSaveAdapter#card_batch_and_anonymous_resolution.anonymous_resolution`.
 - **RNG stream:** `NONE`.
 - **Required asset keys:** `card.frame.bound_action`, `ui.panel.primary`, `icon.board.player_order`, and `icon.board.target`.
-- **Required player projection:** `v07.card_batch.player_projection.v1#anonymous_resolution`.
-- **Required AI observation:** `v07.card_batch.ai_observation.v1#anonymous_resolution`.
+- **Required player projection:** `v071.card_batch.player_projection.v2#anonymous_resolution`.
+- **Required AI observation:** `v071.card_batch.ai_observation.v2#anonymous_resolution`.
 - **Required Save adapter:** `V07CanonicalSaveAdapter#card_batch_and_anonymous_resolution.anonymous_resolution`.
 - **Required RNG stream:** `NONE`.
 - **Production scene target:** `scenes/ui/CardResolutionTrack.tscn`.
@@ -214,20 +214,20 @@ Every player-visible cutover below declares presentation dependencies through st
 ## 9. solar_efficiency
 
 - **V0.6 current owner:** SolarAvailabilityRuntimeService and world-time-derived facility efficiency.
-- **V0.7 target owner:** V07SolarVictoryCore solar facility efficiency authority.
-- **Core port:** `v07.solar_victory.core_authority.v1#solar_facility_efficiency_state_v1`.
-- **AI port:** `v07.solar_victory.ai_observation.v1#solar`.
-- **Player port:** `v07.solar_victory.player_projection.v1#solar`.
+- **V0.7.1 target owner:** V07SolarVictoryCore solar facility efficiency authority.
+- **Core port:** `v071.solar_victory.core_authority.v2#solar_facility_efficiency_state_v1`.
+- **AI port:** `v071.solar_victory.ai_observation.v2#solar`.
+- **Player port:** `v071.solar_victory.player_projection.v2#solar`.
 - **Save adapter:** `V07CanonicalSaveAdapter#solar_facility_and_macro_victory.solar`.
 - **RNG stream:** `NONE`.
 - **Required asset keys:** `shader.planet.body`, `shader.planet.cloud`, `shader.planet.atmosphere`, `environment.night_sky_hdri_001`, and the four stable `model.facility.*.base` keys.
-- **Required player projection:** `v07.solar_victory.player_projection.v1#solar`.
-- **Required AI observation:** `v07.solar_victory.ai_observation.v1#solar`.
+- **Required player projection:** `v071.solar_victory.player_projection.v2#solar`.
+- **Required AI observation:** `v071.solar_victory.ai_observation.v2#solar`.
 - **Required Save adapter:** `V07CanonicalSaveAdapter#solar_facility_and_macro_victory.solar`.
 - **Required RNG stream:** `NONE`.
 - **Production scene target:** `scenes/ui/PlanetBoard.tscn`.
 - **Old-surface deletion gate:** Retire V0.6 solar-rate presentation bindings only after PlanetBoard renders the public Core projection on the opaque day/night planet and facility models without becoming the sunlight owner.
-- **Rollback surface:** Restore the V0.6 public solar snapshot on PlanetBoard; keep the opaque planet presentation while removing candidate V0.7 efficiency labels.
+- **Rollback surface:** Restore the V0.6 public solar snapshot on PlanetBoard; keep the opaque planet presentation while removing detached V0.7.1 efficiency labels.
 - **Pre-cutover gate:** Validate tagged time, sunlit state, 2.0/1.0 rates, revision, and no card or presentation authority.
 - **Cutover step:** Replace facility efficiency queries without advancing world time.
 - **Rollback step:** Restore solar state without ticking facilities, time, cards, or presentation.
@@ -237,15 +237,15 @@ Every player-visible cutover below declares presentation dependencies through st
 ## 10. macro_round_victory_gate
 
 - **V0.6 current owner:** VictoryControlRuntimeController, RuntimeVictoryPort, and RuntimeLoop settlement routing.
-- **V0.7 target owner:** V07SolarVictoryCore complete-macro-round victory and FinalSettlement authority.
-- **Core port:** `v07.solar_victory.core_authority.v1#macro_round_victory_gate_state_v1`.
-- **AI port:** `v07.solar_victory.ai_observation.v1#victory_gate`.
-- **Player port:** `v07.solar_victory.player_projection.v1#victory_gate`.
+- **V0.7.1 target owner:** V07SolarVictoryCore complete-macro-round victory and FinalSettlement authority.
+- **Core port:** `v071.solar_victory.core_authority.v2#macro_round_victory_gate_state_v1`.
+- **AI port:** `v071.solar_victory.ai_observation.v2#victory_gate`.
+- **Player port:** `v071.solar_victory.player_projection.v2#victory_gate`.
 - **Save adapter:** `V07CanonicalSaveAdapter#solar_facility_and_macro_victory.victory_gate`.
 - **RNG stream:** `NONE`.
 - **Required asset keys:** `ui.panel.popup`, `icon.board.settlement`, `audio.settlement.complete`, `vfx.settlement.complete`, and `font.display`.
-- **Required player projection:** `v07.solar_victory.player_projection.v1#victory_gate`.
-- **Required AI observation:** `v07.solar_victory.ai_observation.v1#victory_gate`.
+- **Required player projection:** `v071.solar_victory.player_projection.v2#victory_gate`.
+- **Required AI observation:** `v071.solar_victory.ai_observation.v2#victory_gate`.
 - **Required Save adapter:** `V07CanonicalSaveAdapter#solar_facility_and_macro_victory.victory_gate`.
 - **Required RNG stream:** `NONE`.
 - **Production scene target:** `scenes/ui/FinalSettlementBoard.tscn`.

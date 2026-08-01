@@ -29,7 +29,9 @@ func _run() -> void:
 		_finish()
 		return
 	_test_static_contract()
-	_test_capture_and_shape(fixture)
+	if not _test_capture_and_shape(fixture):
+		_finish()
+		return
 	_test_roundtrip_and_replay_parity(fixture)
 	_test_strict_rejections(fixture)
 	_test_isolation_and_no_second_authority(fixture)
@@ -94,19 +96,25 @@ func _test_static_contract() -> void:
 	_expect(not nonstatic_method_found, "every adapter method is static")
 
 
-func _test_capture_and_shape(fixture: Dictionary) -> void:
+func _test_capture_and_shape(fixture: Dictionary) -> bool:
 	var unified_save := fixture.get("unified_save", {}) as Dictionary
 	var personal_saves := fixture.get("personal_saves", []) as Array
 	var unified_before := unified_save.duplicate(true)
 	var personal_before := personal_saves.duplicate(true)
 	var captured := Adapter.capture_ledger(unified_save, personal_saves)
 	var ledger := captured.get("rng_stream_states", []) as Array
-	_expect(
+	var capture_ready := (
 		bool(captured.get("accepted", false))
 			and str(captured.get("reason_code", ""))
-				== "canonical_rng_ledger_captured",
-		"valid local Save payloads capture a canonical RNG ledger"
+				== "canonical_rng_ledger_captured"
 	)
+	_expect(
+		capture_ready,
+		"valid local Save payloads capture a canonical RNG ledger (reason=%s)"
+			% str(captured.get("reason_code", "missing"))
+	)
+	if not capture_ready:
+		return false
 	_expect(
 		int(captured.get("logical_stream_id_count", 0)) == 7
 			and int(captured.get("concrete_stream_instance_count", 0)) == 11
@@ -149,6 +157,7 @@ func _test_capture_and_shape(fixture: Dictionary) -> void:
 		Adapter.is_strict_pure_data(captured),
 		"capture result is detached strict pure data"
 	)
+	return true
 
 
 func _test_roundtrip_and_replay_parity(fixture: Dictionary) -> void:

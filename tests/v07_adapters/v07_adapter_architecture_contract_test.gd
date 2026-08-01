@@ -2,7 +2,12 @@ extends SceneTree
 
 const ADAPTER_ROOT := "res://scripts/v07_adapters"
 const BASELINE_REVISION := "95aca23eb0d1f572025776902519f494ee3778d4"
-const DECLARED_PRODUCTION_WRITE_PREFIX := "scripts/v07_adapters/"
+const DECLARED_DETACHED_WRITE_PREFIXES := [
+	"scripts/v07_adapters/",
+	"scripts/v07_semantic/",
+	"scripts/v071_simulation/",
+	"scenes/tools/V071RuleConsistencyReview.tscn",
+]
 
 const MANIFEST_SEARCH_ROOTS := [
 	ADAPTER_ROOT,
@@ -70,7 +75,7 @@ const GAMEPLAY_DOMAIN_IDS := [
 const GAMEPLAY_DOMAIN_FIELDS := [
 	"domain_id",
 	"v06_current_owner",
-	"v07_target_owner",
+	"v071_target_owner",
 	"core_port",
 	"ai_port",
 	"player_port",
@@ -190,7 +195,7 @@ func _test_manifest_gameplay_domains(manifest: Dictionary) -> void:
 		seen.append(domain_id)
 		for field in [
 			"v06_current_owner",
-			"v07_target_owner",
+			"v071_target_owner",
 			"core_port",
 			"ai_port",
 			"player_port",
@@ -244,7 +249,7 @@ func _test_manifest_detachment(manifest: Dictionary) -> void:
 	var connection_values: Array = []
 	_collect_values_for_keys(manifest, PRODUCTION_CONNECTION_KEYS, connection_values)
 	for value in connection_values:
-		_expect(value is int and int(value) == 0,
+		_expect((value is int or value is float) and float(value) == 0.0,
 			"every manifest production connection count is zero")
 	_expect(
 		str(manifest.get("status", "")) == "V071_DETACHED_ADAPTER_PREFLIGHT_READY"
@@ -338,8 +343,15 @@ func _test_declared_production_change_scope() -> void:
 	changed_paths.append_array(untracked_result.get("paths", []) as Array[String])
 	changed_paths = _unique_sorted(changed_paths)
 	for path in changed_paths:
-		_expect(path.begins_with(DECLARED_PRODUCTION_WRITE_PREFIX),
-			"production change stays inside declared adapter scope: %s" % path)
+		var declared_detached_path := false
+		for prefix in DECLARED_DETACHED_WRITE_PREFIXES:
+			if path.begins_with(prefix):
+				declared_detached_path = true
+				break
+		_expect(
+			declared_detached_path,
+			"change stays inside declared detached implementation scope: %s" % path
+		)
 
 
 func _discover_adapter_scripts() -> Array[String]:

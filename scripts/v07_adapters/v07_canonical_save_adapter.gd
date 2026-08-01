@@ -335,7 +335,7 @@ static func build_rng_stream_states(sections: Dictionary) -> Dictionary:
 				str(spec.get("stream_id", "")),
 				player_id,
 				"dbg_tagged_sha256_counter_v1",
-				"v07.personal_dbg.core_authority.v1",
+				DBG_CORE.RNG_AUTHORITY_OWNER_ID,
 				SECTION_DBG,
 				embedded
 			))
@@ -383,7 +383,7 @@ static func build_rng_stream_states(sections: Dictionary) -> Dictionary:
 			str(spec.get("stream_id", "")),
 			"global",
 			"unified_park_miller_embedded_v1",
-			"v07.unified_track.core_authority.v1",
+			UNIFIED_CORE.CORE_INTERFACE_ID,
 			SECTION_UNIFIED,
 			{
 				"rng_state": int(embedded.get("rng_state", 0)),
