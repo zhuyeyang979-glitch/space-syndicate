@@ -26,6 +26,7 @@ const REQUIRED_STABLE_ASSET_KEYS := [
 	"card.frame.commodity",
 	"card.frame.bound_action",
 	"card.back.normal",
+	"card.badge.starter",
 	"model.facility.factory.base",
 	"model.facility.market.base",
 	"model.facility.warehouse.base",
@@ -62,6 +63,7 @@ const PLAYER_PROJECTION_ASSET_KEYS := [
 	"card.frame.commodity",
 	"card.frame.bound_action",
 	"card.back.normal",
+	"card.badge.starter",
 ]
 
 const FORBIDDEN_RAW_ASSET_TOKENS := [
@@ -356,7 +358,7 @@ func _test_cutover_manifest_asset_key_boundary() -> void:
 			"card.frame.normal", "card.frame.commodity", "ui.panel.primary",
 		]) and _domain_has_keys(domain_map, "normal_dbg_deck", [
 			"card.frame.normal", "card.back.normal", "icon.board.draw_pile",
-			"icon.board.discard_pile", "icon.board.shuffle",
+			"icon.board.discard_pile", "icon.board.shuffle", "card.badge.starter",
 		]),
 		"track and DBG cutovers declare their complete card presentation foundation"
 	)

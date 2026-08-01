@@ -1,25 +1,25 @@
 extends RefCounted
 class_name V07CanonicalRngAdapter
 
-## Pure adapter between detached V0.7.1 local Save payloads and the canonical
+## Pure adapter between detached V0.7.2 local Save payloads and the canonical
 ## RNG ledger. It stores, advances, seeds, and restores no RNG. A ledger is only
 ## accepted while it remains byte-for-byte equal to the embedded owner state.
 
-const SCHEMA_VERSION := 1
-const OWNER_SCHEMA_VERSION := 2
-const UNIFIED_STATE_VERSION := 4
-const DBG_STATE_VERSION := 2
-const ADAPTER_ID := "space_syndicate.v071.canonical_rng_adapter.v1"
-const RULESET_ID := "v0.7.1"
-const BALANCE_PROFILE_ID := "V071_CANDIDATE_A_FAST"
+const SCHEMA_VERSION := 2
+const OWNER_SCHEMA_VERSION := 3
+const UNIFIED_STATE_VERSION := 5
+const DBG_STATE_VERSION := 3
+const ADAPTER_ID := "space_syndicate.v072.canonical_rng_adapter.v2"
+const RULESET_ID := "v0.7.2"
+const BALANCE_PROFILE_ID := "V072_STARTER_FREE_FAST"
 const BALANCE_PROFILE_FINGERPRINT := (
-	"8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a"
+	"b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48"
 )
 
 const DBG_PROFILE_ID := "dbg_tagged_sha256_counter_v1"
 const UNIFIED_PROFILE_ID := "unified_park_miller_embedded_v1"
-const DBG_AUTHORITY_ID := "v071.personal_dbg.core_authority.v2"
-const UNIFIED_AUTHORITY_ID := "v071.unified_track.core_authority.v2"
+const DBG_AUTHORITY_ID := "v072.personal_dbg.core_authority.v3"
+const UNIFIED_AUTHORITY_ID := "v072.unified_track.core_authority.v3"
 const DBG_SAVE_SECTION_ID := "personal_dbg_and_merge"
 const UNIFIED_SAVE_SECTION_ID := "unified_card_track_cycle"
 const DBG_ALGORITHM_ID := "sha256.owner_bound_counter.v1"
@@ -505,7 +505,7 @@ static func _unified_save_error(save_state: Dictionary) -> String:
 	if save_state.get("schema_version") != OWNER_SCHEMA_VERSION \
 			or save_state.get("state_version") != UNIFIED_STATE_VERSION \
 			or save_state.get("interface_id") \
-				!= "v071.unified_track.save_state.v2" \
+				!= "v072.unified_track.save_state.v3" \
 			or save_state.get("ruleset_id") != RULESET_ID \
 			or save_state.get("balance_profile_id") != BALANCE_PROFILE_ID \
 			or save_state.get("balance_profile_fingerprint") \
@@ -569,7 +569,7 @@ static func _dbg_save_error(save_state: Dictionary) -> String:
 		return "save_not_strict_pure_data"
 	if not _exact_fields(save_state, DBG_SAVE_FIELDS):
 		return "save_fields_invalid"
-	if save_state.get("schema_id") != "v071.personal_dbg.save_state.v2" \
+	if save_state.get("schema_id") != "v072.personal_dbg.save_state.v3" \
 			or save_state.get("schema_version") != OWNER_SCHEMA_VERSION \
 			or save_state.get("state_version") != DBG_STATE_VERSION \
 			or save_state.get("ruleset_id") != RULESET_ID \
