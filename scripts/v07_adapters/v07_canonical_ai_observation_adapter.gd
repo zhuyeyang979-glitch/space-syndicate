@@ -1,7 +1,7 @@
 extends RefCounted
 class_name V07CanonicalAiObservationAdapter
 
-## Capability-gated, read-only adapter over all five detached V0.7.1 observations.
+## Capability-gated, read-only adapter over all five detached V0.7.2 observations.
 ## Authorization retains only identity, revisions, and source fingerprints.
 
 const CODEC := preload(
@@ -18,10 +18,10 @@ const SOLAR_CORE := preload(
 	"res://scripts/v07_semantic/v07_solar_victory_core.gd"
 )
 
-const SCHEMA_VERSION := 2
-const RULESET_ID := "v0.7.1"
-const ADAPTER_ID := "v071.canonical.ai_observation_adapter.v2"
-const OBSERVATION_ID := "v071.canonical.ai_observation.v2"
+const SCHEMA_VERSION := 3
+const RULESET_ID := "v0.7.2"
+const ADAPTER_ID := "v072.canonical.ai_observation_adapter.v3"
+const OBSERVATION_ID := "v072.canonical.ai_observation.v3"
 const VISIBILITY_SCOPE_ID := "ai_actor_authorized_plus_public"
 
 const AUTHORIZATION_CONTEXT_FIELDS := [
@@ -126,6 +126,12 @@ const TRACK_ITEM_FIELDS := [
 	"claimable_from_scroll_sequence",
 	"claimable",
 	"claimability_state",
+]
+const TRACK_NORMAL_ITEM_FIELDS := TRACK_ITEM_FIELDS + [
+	"origin_class",
+	"asset_cost_profile",
+	"primary_asset_cost",
+	"starter_badge",
 ]
 const TRACK_REVEALED_STANCE_FIELDS := [
 	"actor_id",
@@ -978,7 +984,12 @@ static func _track_private_facts_reason(
 		var local_slot := int(item.get("local_slot_index", -1))
 		var claimable_from := int(item.get("claimable_from_scroll_sequence", -1))
 		var claimable := bool(item.get("claimable", false))
-		if not CODEC.has_exact_fields(item, TRACK_ITEM_FIELDS) \
+		var target_v072_normal := TRACK_CORE.RULESET_ID == "v0.7.2" \
+			and str(item.get("card_kind", "")) == "normal_card"
+		var expected_fields := TRACK_NORMAL_ITEM_FIELDS \
+			if target_v072_normal \
+			else TRACK_ITEM_FIELDS
+		if not CODEC.has_exact_fields(item, expected_fields) \
 				or not _is_stable_id(instance_id) \
 				or not _is_stable_id(item.get("card_definition_id")) \
 				or str(item.get("card_kind", "")) not in CARD_KIND_IDS \
@@ -996,6 +1007,12 @@ static func _track_private_facts_reason(
 				or instance_ids.has(instance_id) \
 				or local_slots.has(local_slot):
 			return "track_segment_item_invalid"
+		if target_v072_normal \
+				and (str(item.get("origin_class", "")) != "standard" \
+				or str(item.get("asset_cost_profile", "")) != "standard_rank_1" \
+				or int(item.get("primary_asset_cost", -1)) != 1 \
+				or item.get("starter_badge") != false):
+			return "track_normal_item_cost_semantics_invalid"
 		instance_ids.append(instance_id)
 		local_slots.append(local_slot)
 	var pending := facts.get("own_pending_stance", {}) as Dictionary

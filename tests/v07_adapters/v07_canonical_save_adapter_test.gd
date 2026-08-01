@@ -40,7 +40,7 @@ func _run() -> void:
 	_expect(
 		bool(capture.get("captured", false))
 			and str(capture.get("source_kind", "")) == ADAPTER.SOURCE_NEW_V07_GAME,
-		"NEW_V071_GAME capture accepts the five detached Core payloads"
+		"NEW_V072_GAME capture accepts the five detached Core payloads"
 	)
 	var envelope := capture.get("envelope", {}) as Dictionary
 	_expect(
@@ -350,22 +350,22 @@ func _test_source_gate(envelope: Dictionary) -> void:
 		"V06 Save direct resume fails closed with the backup-required reason"
 	)
 	_expect(
-		bool(rejected.get("new_v071_game_required", false))
+		bool(rejected.get("new_v072_game_required", false))
 			and not bool(rejected.get("direct_resume_allowed", true)),
-		"V06 rejection requires a new V071 game and never reports direct resume"
+		"V06 rejection requires a new V072 game and never reports direct resume"
 	)
-	var wrong_source := ADAPTER.preflight_restore(envelope, "V07_SAVE")
+	var wrong_source := ADAPTER.preflight_restore(envelope, ADAPTER.SOURCE_V07_SAVE)
 	_expect(
 		not bool(wrong_source.get("accepted", true))
 			and str(wrong_source.get("reason_code", ""))
 				== ADAPTER.V07_DIRECT_RESUME_REJECTED_REASON
 			and not bool(wrong_source.get("requires_backup", true)),
-		"V0.7 Save direct resume fails closed; only NEW_V071_GAME is accepted"
+		"V0.7.1 Save direct resume fails closed; only NEW_V072_GAME is accepted"
 	)
 	var contract := ADAPTER.adapter_contract()
 	_expect(
 		contract.get("source_kinds_allowed") == [ADAPTER.SOURCE_NEW_V07_GAME]
-			and contract.get("target_ruleset_id") == "v0.7.1"
+			and contract.get("target_ruleset_id") == "v0.7.2"
 			and contract.get("v07_direct_resume_allowed") == false
 			and contract.get("v06_direct_resume_allowed") == false
 			and contract.get("v06_backup_required") == true,
@@ -501,17 +501,17 @@ func _expect(condition: bool, message: String) -> void:
 func _finish() -> void:
 	if _failures.is_empty():
 		print(
-			"V071_CANONICAL_SAVE_ADAPTER_READY|status=PASS|checks=%d"
+			"V072_CANONICAL_SAVE_ADAPTER_READY|status=PASS|checks=%d"
 			% _checks
 		)
 		print(
-			"V071_CANONICAL_SAVE_ADAPTER_TEST|status=PASS|checks=%d|failures=0|sections=5|rng_streams=11|restore_nodes=10"
+			"V072_CANONICAL_SAVE_ADAPTER_TEST|status=PASS|checks=%d|failures=0|sections=5|rng_streams=11|restore_nodes=10"
 			% _checks
 		)
 		quit(0)
 		return
 	print(
-		"V071_CANONICAL_SAVE_ADAPTER_TEST|status=FAIL|checks=%d|failures=%d|sections=5|rng_streams=11|restore_nodes=10"
+		"V072_CANONICAL_SAVE_ADAPTER_TEST|status=FAIL|checks=%d|failures=%d|sections=5|rng_streams=11|restore_nodes=10"
 		% [_checks, _failures.size()]
 	)
 	for failure in _failures:

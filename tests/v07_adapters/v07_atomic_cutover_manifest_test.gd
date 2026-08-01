@@ -2,7 +2,7 @@ extends SceneTree
 
 const MANIFEST_PATH := "res://docs/migration/v07_atomic_cutover_manifest.json"
 const MARKDOWN_PATH := "res://docs/migration/v07_atomic_cutover_manifest.md"
-const BASELINE_SHA := "95aca23eb0d1f572025776902519f494ee3778d4"
+const BASELINE_SHA := "76ffcbf1df5c122955e620b7b4a4339e3dd9a2cb"
 
 const TOP_LEVEL_KEYS := [
 	"schema_version",
@@ -18,16 +18,16 @@ const TOP_LEVEL_KEYS := [
 	"production_scene_change",
 	"main_change",
 	"dual_write_allowed",
-	"V06_SAVE_TO_V071_DIRECT_LOAD",
-	"V07_SAVE_TO_V071_DIRECT_RESUME",
+	"V06_SAVE_TO_V072_DIRECT_RESUME",
+	"V071_SAVE_TO_V072_DIRECT_RESUME",
 	"v06_save_rejection_reason",
 	"allowed_session_entrypoints",
 	"source_contracts",
-	"required_v071_pre_cutover_gates",
-	"v071_pre_cutover_gate_contracts_declared",
-	"v071_production_connection_count",
-	"v071_v06_mutation_count",
-	"v071_dual_write_count",
+	"required_v072_pre_cutover_gates",
+	"v072_pre_cutover_gate_contracts_declared",
+	"v072_production_connection_count",
+	"v072_v06_mutation_count",
+	"v072_dual_write_count",
 	"domain_count",
 	"required_domain_ids",
 	"domain_entry_required_fields",
@@ -36,7 +36,7 @@ const TOP_LEVEL_KEYS := [
 const DOMAIN_KEYS := [
 	"domain_id",
 	"v06_current_owner",
-	"v071_target_owner",
+	"v072_target_owner",
 	"core_port",
 	"ai_port",
 	"player_port",
@@ -78,16 +78,16 @@ const ADAPTER_IMPLEMENTATION_PATHS := [
 	"scripts/v07_adapters/v07_canonical_player_projection_adapter.gd",
 ]
 const SOURCE_CONTRACTS := [
-	"docs/rules/v071_game_constitution.json",
-	"docs/rules/v071_balance_defaults.json",
-	"docs/rules/v071_amendment_from_v07.json",
-	"docs/migration/v07_to_v071_contract_version_matrix.json",
-	"docs/semantic/v071_three_wing_domain_registry.json",
-	"docs/save/v071_save_schema.json",
-	"docs/save/v071_restore_dependency_graph.json",
-	"docs/save/v071_rng_ownership.json",
+	"docs/rules/v072_game_constitution.json",
+	"docs/rules/v072_balance_defaults.json",
+	"docs/rules/v072_amendment_from_v071.json",
+	"docs/migration/v071_to_v072_contract_version_matrix.json",
+	"docs/semantic/v072_three_wing_domain_registry.json",
+	"docs/save/v072_save_schema.json",
+	"docs/save/v072_restore_dependency_graph.json",
+	"docs/save/v072_rng_ownership.json",
 ]
-const V071_PRE_CUTOVER_GATES := [
+const V072_PRE_CUTOVER_GATES := [
 	"batch_boundary_owner_ready",
 	"replacement_claim_lock_ready",
 	"minimum_deck_count_ready",
@@ -96,12 +96,20 @@ const V071_PRE_CUTOVER_GATES := [
 	"invalid_target_policy_ready",
 	"soft_hidden_lead_ready",
 	"balance_profile_ready",
+	"starter_definition_registry_ready",
+	"zero_initial_assets_ready",
+	"starter_zero_cost_profile_ready",
+	"standard_l1_asset_cost_ready",
+	"starter_merge_privilege_consumption_ready",
+	"starter_player_badge_ready",
+	"starter_ai_cost_semantics_ready",
+	"starter_save_identity_ready",
 ]
 const EXPECTED_BINDINGS := {
 	"unified_card_track": {
-		"core_port": "v071.unified_track.core_authority.v2",
-		"ai_port": "v071.unified_track.ai_observation.v2",
-		"player_port": "v071.unified_track.player_projection.v2",
+		"core_port": "v072.unified_track.core_authority.v3",
+		"ai_port": "v072.unified_track.ai_observation.v3",
+		"player_port": "v072.unified_track.player_projection.v3",
 		"save_adapter": "V07CanonicalSaveAdapter#unified_card_track_cycle",
 		"rng_stream": [
 			"unified_track_type_draw",
@@ -112,65 +120,65 @@ const EXPECTED_BINDINGS := {
 		],
 	},
 	"normal_dbg_deck": {
-		"core_port": "v071.personal_dbg.core_authority.v2#normal_dbg_deck",
-		"ai_port": "v071.personal_dbg.ai_observation.v2#normal_dbg_deck",
-		"player_port": "v071.personal_dbg.player_projection.v2#normal_dbg_deck",
+		"core_port": "v072.personal_dbg.core_authority.v3#normal_dbg_deck",
+		"ai_port": "v072.personal_dbg.ai_observation.v3#normal_dbg_deck",
+		"player_port": "v072.personal_dbg.player_projection.v3#normal_dbg_deck",
 		"save_adapter": "V07CanonicalSaveAdapter#personal_dbg_and_merge.normal_dbg_deck",
 		"rng_stream": ["starter_deck_shuffle", "normal_deck_reshuffle_by_player"],
 	},
 	"normal_card_merge": {
-		"core_port": "v071.personal_dbg.core_authority.v2#normal_card_merge",
-		"ai_port": "v071.personal_dbg.ai_observation.v2#normal_card_merge",
-		"player_port": "v071.personal_dbg.player_projection.v2#normal_card_merge",
+		"core_port": "v072.personal_dbg.core_authority.v3#normal_card_merge",
+		"ai_port": "v072.personal_dbg.ai_observation.v3#normal_card_merge",
+		"player_port": "v072.personal_dbg.player_projection.v3#normal_card_merge",
 		"save_adapter": "V07CanonicalSaveAdapter#personal_dbg_and_merge.normal_card_merge",
 		"rng_stream": "NONE",
 	},
 	"commodity_inventory_merge": {
-		"core_port": "v071.personal_dbg.core_authority.v2#commodity_inventory_merge",
-		"ai_port": "v071.personal_dbg.ai_observation.v2#commodity_inventory_merge",
-		"player_port": "v071.personal_dbg.player_projection.v2#commodity_inventory_merge",
+		"core_port": "v072.personal_dbg.core_authority.v3#commodity_inventory_merge",
+		"ai_port": "v072.personal_dbg.ai_observation.v3#commodity_inventory_merge",
+		"player_port": "v072.personal_dbg.player_projection.v3#commodity_inventory_merge",
 		"save_adapter": "V07CanonicalSaveAdapter#personal_dbg_and_merge.commodity_inventory_merge",
 		"rng_stream": "NONE",
 	},
 	"six_color_assets": {
-		"core_port": "v071.six_color_assets.core_authority.v2",
-		"ai_port": "v071.six_color_assets.ai_observation.v2",
-		"player_port": "v071.six_color_assets.player_projection.v2",
+		"core_port": "v072.six_color_assets.core_authority.v3",
+		"ai_port": "v072.six_color_assets.ai_observation.v3",
+		"player_port": "v072.six_color_assets.player_projection.v3",
 		"save_adapter": "V07CanonicalSaveAdapter#six_color_assets_and_reservations.assets",
 		"rng_stream": "NONE",
 	},
 	"card_batch": {
-		"core_port": "v071.card_batch.core_authority.v2#card_batch",
-		"ai_port": "v071.card_batch.ai_observation.v2#card_batch",
-		"player_port": "v071.card_batch.player_projection.v2#card_batch",
+		"core_port": "v072.card_batch.core_authority.v3#card_batch",
+		"ai_port": "v072.card_batch.ai_observation.v3#card_batch",
+		"player_port": "v072.card_batch.player_projection.v3#card_batch",
 		"save_adapter": "V07CanonicalSaveAdapter#card_batch_and_anonymous_resolution.card_batch",
 		"rng_stream": "NONE",
 	},
 	"asset_reservation": {
-		"core_port": "v071.six_color_assets.core_authority.v2#asset_reservation",
-		"ai_port": "v071.six_color_assets.ai_observation.v2#asset_reservation",
-		"player_port": "v071.six_color_assets.player_projection.v2#asset_reservation",
+		"core_port": "v072.six_color_assets.core_authority.v3#asset_reservation",
+		"ai_port": "v072.six_color_assets.ai_observation.v3#asset_reservation",
+		"player_port": "v072.six_color_assets.player_projection.v3#asset_reservation",
 		"save_adapter": "V07CanonicalSaveAdapter#six_color_assets_and_reservations.reservations",
 		"rng_stream": "NONE",
 	},
 	"anonymous_resolution": {
-		"core_port": "v071.card_batch.core_authority.v2#anonymous_resolution",
-		"ai_port": "v071.card_batch.ai_observation.v2#anonymous_resolution",
-		"player_port": "v071.card_batch.player_projection.v2#anonymous_resolution",
+		"core_port": "v072.card_batch.core_authority.v3#anonymous_resolution",
+		"ai_port": "v072.card_batch.ai_observation.v3#anonymous_resolution",
+		"player_port": "v072.card_batch.player_projection.v3#anonymous_resolution",
 		"save_adapter": "V07CanonicalSaveAdapter#card_batch_and_anonymous_resolution.anonymous_resolution",
 		"rng_stream": "NONE",
 	},
 	"solar_efficiency": {
-		"core_port": "v071.solar_victory.core_authority.v2#solar_facility_efficiency_state_v1",
-		"ai_port": "v071.solar_victory.ai_observation.v2#solar",
-		"player_port": "v071.solar_victory.player_projection.v2#solar",
+		"core_port": "v072.solar_victory.core_authority.v3#solar_facility_efficiency_state_v1",
+		"ai_port": "v072.solar_victory.ai_observation.v3#solar",
+		"player_port": "v072.solar_victory.player_projection.v3#solar",
 		"save_adapter": "V07CanonicalSaveAdapter#solar_facility_and_macro_victory.solar",
 		"rng_stream": "NONE",
 	},
 	"macro_round_victory_gate": {
-		"core_port": "v071.solar_victory.core_authority.v2#macro_round_victory_gate_state_v1",
-		"ai_port": "v071.solar_victory.ai_observation.v2#victory_gate",
-		"player_port": "v071.solar_victory.player_projection.v2#victory_gate",
+		"core_port": "v072.solar_victory.core_authority.v3#macro_round_victory_gate_state_v1",
+		"ai_port": "v072.solar_victory.ai_observation.v3#victory_gate",
+		"player_port": "v072.solar_victory.player_projection.v3#victory_gate",
 		"save_adapter": "V07CanonicalSaveAdapter#solar_facility_and_macro_victory.victory_gate",
 		"rng_stream": "NONE",
 	},
@@ -197,15 +205,15 @@ func _run() -> void:
 func _test_top_level(manifest: Dictionary) -> void:
 	_expect(_same_key_set(manifest, TOP_LEVEL_KEYS), "manifest top-level keys are exact")
 	_expect(
-		int(manifest.get("schema_version", 0)) == 2
+		int(manifest.get("schema_version", 0)) == 3
 			and str(manifest.get("manifest_id", ""))
-				== "space_syndicate.v071.atomic_cutover_manifest"
+				== "space_syndicate.v072.atomic_cutover_manifest"
 			and str(manifest.get("lane", "")) == "B"
 			and str(manifest.get("baseline_sha", "")) == BASELINE_SHA,
 		"manifest identity, lane, and merged-kernel baseline are exact"
 	)
 	_expect(
-		str(manifest.get("status", "")) == "V071_DETACHED_ADAPTER_PREFLIGHT_READY"
+		str(manifest.get("status", "")) == "V072_DETACHED_ADAPTER_PREFLIGHT_READY"
 			and str(manifest.get("canonical_adapter_implementation_status", ""))
 				== "IMPLEMENTED_DETACHED_NOT_CONNECTED"
 			and _is_false(manifest.get("production_cutover_authorized")),
@@ -213,8 +221,8 @@ func _test_top_level(manifest: Dictionary) -> void:
 	)
 	_expect(
 		str(manifest.get("current_production_runtime_ruleset", "")) == "v0.6"
-			and str(manifest.get("target_development_ruleset", "")) == "v0.7.1",
-		"production remains V0.6 while V0.7.1 is the target"
+			and str(manifest.get("target_development_ruleset", "")) == "v0.7.2",
+		"production remains V0.6 while V0.7.2 is the target"
 	)
 	_expect(
 		_is_false(manifest.get("production_scene_change"))
@@ -223,25 +231,25 @@ func _test_top_level(manifest: Dictionary) -> void:
 		"production scene, Main, and dual-write flags remain false"
 	)
 	_expect(
-		_is_false(manifest.get("V06_SAVE_TO_V071_DIRECT_LOAD"))
-			and _is_false(manifest.get("V07_SAVE_TO_V071_DIRECT_RESUME"))
+		_is_false(manifest.get("V06_SAVE_TO_V072_DIRECT_RESUME"))
+			and _is_false(manifest.get("V071_SAVE_TO_V072_DIRECT_RESUME"))
 			and str(manifest.get("v06_save_rejection_reason", ""))
 				== "v06_save_backup_required"
 			and _same_string_array(
-				manifest.get("allowed_session_entrypoints"), ["NEW_V071_GAME"]
+				manifest.get("allowed_session_entrypoints"), ["NEW_V072_GAME"]
 			),
-		"V0.6 and V0.7 Saves fail closed and NEW_V071_GAME is the only entrypoint"
+		"V0.6 and V0.7.1 Saves fail closed and NEW_V072_GAME is the only entrypoint"
 	)
 	_expect(
 		_same_string_array(
-			manifest.get("required_v071_pre_cutover_gates"),
-			V071_PRE_CUTOVER_GATES
+			manifest.get("required_v072_pre_cutover_gates"),
+			V072_PRE_CUTOVER_GATES
 		)
-			and manifest.get("v071_pre_cutover_gate_contracts_declared") == true
-			and int(manifest.get("v071_production_connection_count", -1)) == 0
-			and int(manifest.get("v071_v06_mutation_count", -1)) == 0
-			and int(manifest.get("v071_dual_write_count", -1)) == 0,
-		"all eight V0.7.1 gates are declared without production mutation"
+			and manifest.get("v072_pre_cutover_gate_contracts_declared") == true
+			and int(manifest.get("v072_production_connection_count", -1)) == 0
+			and int(manifest.get("v072_v06_mutation_count", -1)) == 0
+			and int(manifest.get("v072_dual_write_count", -1)) == 0,
+		"all inherited and Starter V0.7.2 gates are declared without production mutation"
 	)
 	_expect(
 		_same_string_array(
@@ -299,7 +307,7 @@ func _test_domains(manifest: Dictionary) -> void:
 func _test_domain_fields(domain_id: String, domain: Dictionary) -> void:
 	for field in [
 		"v06_current_owner",
-		"v071_target_owner",
+		"v072_target_owner",
 		"core_port",
 		"ai_port",
 		"player_port",
@@ -402,25 +410,25 @@ func _test_markdown() -> void:
 	_expect(not markdown.is_empty(), "Markdown companion is nonempty")
 	for token in [
 		"LANE=B",
-		"STATUS=V071_DETACHED_ADAPTER_PREFLIGHT_READY",
+		"STATUS=V072_DETACHED_ADAPTER_PREFLIGHT_READY",
 		"CANONICAL_ADAPTER_IMPLEMENTATION_STATUS=IMPLEMENTED_DETACHED_NOT_CONNECTED",
 		"CURRENT_PRODUCTION_RUNTIME_RULESET=V0.6",
 		"PRODUCTION_CUTOVER_AUTHORIZED=false",
-		"V06_SAVE_TO_V071_DIRECT_LOAD=false",
-		"V07_SAVE_TO_V071_DIRECT_RESUME=false",
+		"V06_SAVE_TO_V072_DIRECT_RESUME=false",
+		"V071_SAVE_TO_V072_DIRECT_RESUME=false",
 		"V06_SAVE_REJECTION_REASON=v06_save_backup_required",
-		"ALLOWED_SESSION_ENTRYPOINTS=[NEW_V071_GAME]",
+		"ALLOWED_SESSION_ENTRYPOINTS=[NEW_V072_GAME]",
 		"PRODUCTION_SCENE_CHANGE=false",
 		"MAIN_CHANGE=false",
 		"DUAL_WRITE_ALLOWED=false",
 	]:
 		_expect(markdown.contains(token), "Markdown declares %s" % token)
 	_expect(
-		not markdown.contains("V06_SAVE_TO_V071_DIRECT_LOAD=true")
-			and not markdown.contains("V07_SAVE_TO_V071_DIRECT_RESUME=true")
+		not markdown.contains("V06_SAVE_TO_V072_DIRECT_RESUME=true")
+			and not markdown.contains("V071_SAVE_TO_V072_DIRECT_RESUME=true")
 			and not markdown.contains("DUAL_WRITE_ALLOWED=true")
 			and markdown.contains(
-				"LATEST_MAIN_BASELINE_SHA=95aca23eb0d1f572025776902519f494ee3778d4"
+				"LATEST_MAIN_BASELINE_SHA=76ffcbf1df5c122955e620b7b4a4339e3dd9a2cb"
 			)
 			and markdown.contains("COMMERCIAL_ART_FOUNDATION=GREEN")
 			and markdown.contains("PRESENTATION_ASSET_CATALOG_READY=true"),
@@ -444,7 +452,7 @@ func _test_markdown() -> void:
 		var section := markdown.substr(start, finish - start)
 		for label in [
 			"**V0.6 current owner:**",
-			"**V0.7.1 target owner:**",
+			"**V0.7.2 target owner:**",
 			"**Core port:**",
 			"**AI port:**",
 			"**Player port:**",
@@ -553,10 +561,10 @@ func _expect(condition: bool, label: String) -> void:
 func _finish() -> void:
 	if _failures.is_empty():
 		print(
-			"V071_ATOMIC_CUTOVER_MANIFEST|status=PASS|checks=%d|domains=10|entry=NEW_V071_GAME"
+			"V072_ATOMIC_CUTOVER_MANIFEST|status=PASS|checks=%d|domains=10|entry=NEW_V072_GAME"
 			% _checks
 		)
-		print("V071_ATOMIC_CUTOVER_MANIFEST_READY | status=PASS")
+		print("V072_ATOMIC_CUTOVER_MANIFEST_READY | status=PASS")
 		quit(0)
 		return
 	for failure in _failures:

@@ -6,6 +6,7 @@ const ADAPTER := preload(
 const TRACK_CORE := preload(
 	"res://scripts/v07_semantic/v07_unified_card_track_core.gd"
 )
+const DBG_CORE := preload("res://scripts/v07_semantic/v07_dbg_deck_core.gd")
 const ASSET_BATCH_CORE := preload(
 	"res://scripts/v07_semantic/v07_asset_batch_core.gd"
 )
@@ -47,6 +48,7 @@ var _failures: Array[String] = []
 var _capability: RefCounted
 var _adapter: Variant
 var _track_core: Variant
+var _dbg_core: Variant
 var _asset_batch_core := ASSET_BATCH_CORE.new()
 var _asset_state: Dictionary = {}
 var _sources: Dictionary = {}
@@ -95,6 +97,10 @@ func _build_fixture() -> void:
 		"track fixture advances the viewer source revision"
 	)
 	var track_projection: Dictionary = _track_core.player_projection_v1(VIEWER_ID)
+	_dbg_core = DBG_CORE.new()
+	var dbg_started: Dictionary = _dbg_core.initialize(VIEWER_ID, 1701)
+	_expect(bool(dbg_started.get("initialized", false)), "DBG fixture initializes the viewer-owned deck")
+	var dbg_projection: Dictionary = _dbg_core.player_projection(VIEWER_ID)
 
 	var assets := {
 		"player.0": _assets(3),
@@ -166,6 +172,7 @@ func _build_fixture() -> void:
 	)
 	_sources = {
 		"unified_track": track_projection,
+		"personal_dbg": dbg_projection,
 		"six_color_assets": asset_projection,
 		"card_batch": batch_projection,
 	}
@@ -176,6 +183,7 @@ func _build_fixture() -> void:
 		AUTHORIZATION_REVISION,
 		SOURCE_REVISION,
 		track_projection,
+		dbg_projection,
 		asset_projection,
 		batch_projection
 	)
@@ -216,12 +224,17 @@ func _test_canonical_happy_path() -> void:
 	)
 	_expect(
 		_projection.get("unified_track") == _sources.get("unified_track")
+			and _projection.get("personal_dbg") == _sources.get("personal_dbg")
 			and _projection.get("six_color_assets") \
 				== _sources.get("six_color_assets")
 			and _projection.get("card_batch") == _sources.get("card_batch")
 			and _projection.get("presentation_assets") \
 				== ADAPTER.presentation_asset_contract(),
 		"adapter preserves Core surfaces and projects only stable presentation asset keys"
+	)
+	_expect(
+		ADAPTER.presentation_asset_contract().has({"asset_key": "card.badge.starter"}),
+		"canonical Player presentation publishes the stable Starter badge key"
 	)
 	_expect(
 		str(_track_core.core_authority_v1().get("core_fingerprint", ""))
@@ -274,7 +287,7 @@ func _test_opaque_capability_and_forged_sources() -> void:
 		private_facts.get("self_lead_notice", false)
 	)
 	private_facts["self_lead_notice_token"] = (
-		"v071.lead.double_influence"
+		"v072.lead.double_influence"
 		if bool(private_facts.get("self_lead_notice", false))
 		else "none"
 	)
@@ -412,6 +425,7 @@ func _test_match_authorization_and_source_staleness() -> void:
 		AUTHORIZATION_REVISION + 1,
 		SOURCE_REVISION + 1,
 		_sources.get("unified_track") as Dictionary,
+		_sources.get("personal_dbg") as Dictionary,
 		_sources.get("six_color_assets") as Dictionary,
 		_sources.get("card_batch") as Dictionary
 	)
@@ -442,8 +456,12 @@ func _test_match_authorization_and_source_staleness() -> void:
 
 
 func _test_rival_projection_rejection() -> void:
+	var rival_dbg := DBG_CORE.new()
+	var rival_dbg_started: Dictionary = rival_dbg.initialize("player.1", 1701)
+	_expect(bool(rival_dbg_started.get("initialized", false)), "rival DBG fixture initializes")
 	var rival_sources := {
 		"unified_track": _track_core.player_projection_v1("player.1"),
+		"personal_dbg": rival_dbg.player_projection("player.1"),
 		"six_color_assets": ASSET_BATCH_CORE.asset_player_projection(
 			_asset_state,
 			"player.1"
@@ -649,11 +667,11 @@ func _expect(condition: bool, message: String) -> void:
 func _finish() -> void:
 	if _failures.is_empty():
 		print(
-			"V071_CANONICAL_PLAYER_PROJECTION_ADAPTER_READY | status=PASS | checks=%d"
+			"V072_CANONICAL_PLAYER_PROJECTION_ADAPTER_READY | status=PASS | checks=%d"
 			% _checks
 		)
 		quit(0)
 		return
 	for failure in _failures:
-		push_error("V071_CANONICAL_PLAYER_PROJECTION_ADAPTER_FAIL: %s" % failure)
+		push_error("V072_CANONICAL_PLAYER_PROJECTION_ADAPTER_FAIL: %s" % failure)
 	quit(1)

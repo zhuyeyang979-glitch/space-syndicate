@@ -17,23 +17,23 @@ const SOLAR_VICTORY_CORE := preload(
 	"res://scripts/v07_semantic/v07_solar_victory_core.gd"
 )
 
-const SCHEMA_VERSION := 2
-const SAVE_SCHEMA_ID := "space_syndicate.v071.semantic_save.v1"
-const CONSTITUTION_ID := "space_syndicate.v071.complete"
-const RULESET_ID := "v0.7.1"
-const RNG_REGISTRY_ID := "space_syndicate.v071.rng_ownership.v1"
-const PLAN_SCHEMA_ID := "space_syndicate.v071.detached_restore_plan.v1"
-const CHECKPOINT_SCHEMA_ID := "space_syndicate.v071.detached_restore_checkpoint.v1"
-const BALANCE_PROFILE_ID := "V071_CANDIDATE_A_FAST"
+const SCHEMA_VERSION := 3
+const SAVE_SCHEMA_ID := "space_syndicate.v072.semantic_save.v2"
+const CONSTITUTION_ID := "space_syndicate.v072.complete"
+const RULESET_ID := "v0.7.2"
+const RNG_REGISTRY_ID := "space_syndicate.v072.rng_ownership.v2"
+const PLAN_SCHEMA_ID := "space_syndicate.v072.detached_restore_plan.v2"
+const CHECKPOINT_SCHEMA_ID := "space_syndicate.v072.detached_restore_checkpoint.v2"
+const BALANCE_PROFILE_ID := "V072_STARTER_FREE_FAST"
 const BALANCE_PROFILE_FINGERPRINT := (
-	"8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a"
+	"b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48"
 )
 
-const SOURCE_NEW_V07_GAME := "NEW_V071_GAME"
-const SOURCE_V07_SAVE := "V07_SAVE"
+const SOURCE_NEW_V07_GAME := "NEW_V072_GAME"
+const SOURCE_V07_SAVE := "V071_SAVE"
 const SOURCE_V06_SAVE := "V06_SAVE"
 const V06_BACKUP_REQUIRED_REASON := "v06_save_backup_required"
-const V07_DIRECT_RESUME_REJECTED_REASON := "v07_save_to_v071_direct_resume_forbidden"
+const V07_DIRECT_RESUME_REJECTED_REASON := "v071_save_to_v072_direct_resume_forbidden"
 
 const SECTION_UNIFIED := "unified_card_track_cycle"
 const SECTION_DBG := "personal_dbg_and_merge"
@@ -228,7 +228,7 @@ static func capture_new_v07_game(
 	return {
 		"accepted": true,
 		"captured": true,
-		"reason_code": "v071_canonical_envelope_captured",
+		"reason_code": "v072_canonical_envelope_captured",
 		"source_kind": SOURCE_NEW_V07_GAME,
 		"requires_backup": false,
 		"section_count": SECTION_IDS.size(),
@@ -262,7 +262,7 @@ static func preflight_restore(
 		)
 	if source_kind != SOURCE_NEW_V07_GAME:
 		return _source_rejection(
-			"new_v071_game_source_required", source_kind, false
+			"new_v072_game_source_required", source_kind, false
 		)
 	if not (candidate is Dictionary):
 		return _preflight_failure("envelope_not_dictionary", 0, 0)
@@ -272,7 +272,7 @@ static func preflight_restore(
 		return envelope_result
 	return {
 		"accepted": true,
-		"reason_code": "v071_canonical_envelope_preflight_green",
+		"reason_code": "v072_canonical_envelope_preflight_green",
 		"source_kind": SOURCE_NEW_V07_GAME,
 		"requires_backup": false,
 		"backup_required": false,
@@ -1228,19 +1228,20 @@ static func _metadata_error(metadata: Dictionary) -> String:
 
 
 static func _looks_like_v07_save(candidate: Variant, source_kind: String) -> bool:
-	if source_kind == SOURCE_V07_SAVE or source_kind.to_upper() == "V07_SAVE":
+	if source_kind == SOURCE_V07_SAVE \
+			or source_kind.to_upper() in ["V07_SAVE", "V071_SAVE"]:
 		return true
 	if not (candidate is Dictionary):
 		return false
 	var value := candidate as Dictionary
-	if str(value.get("ruleset_id", "")) == "v0.7" \
-			or str(value.get("ruleset", "")) == "v0.7":
+	if str(value.get("ruleset_id", "")) in ["v0.7", "v0.7.1"] \
+			or str(value.get("ruleset", "")) in ["v0.7", "v0.7.1"]:
 		return true
 	for field in ["header", "metadata", "manifest"]:
 		var nested_variant: Variant = value.get(field)
 		if nested_variant is Dictionary \
 				and str((nested_variant as Dictionary).get("ruleset_id", "")) \
-					== "v0.7":
+					in ["v0.7", "v0.7.1"]:
 			return true
 	return false
 
@@ -1417,7 +1418,7 @@ static func _source_rejection(
 		"target_ruleset_id": RULESET_ID,
 		"requires_backup": requires_backup,
 		"backup_required": requires_backup,
-		"new_v071_game_required": true,
+		"new_v072_game_required": true,
 		"direct_resume_allowed": false,
 		"envelope_valid": false,
 		"preflight_complete": false,

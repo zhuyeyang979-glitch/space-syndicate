@@ -1,7 +1,7 @@
 extends SceneTree
 
 const ADAPTER_ROOT := "res://scripts/v07_adapters"
-const BASELINE_REVISION := "95aca23eb0d1f572025776902519f494ee3778d4"
+const BASELINE_REVISION := "76ffcbf1df5c122955e620b7b4a4339e3dd9a2cb"
 const DECLARED_PRODUCTION_WRITE_PREFIX := "scripts/v07_adapters/"
 
 const MANIFEST_SEARCH_ROOTS := [
@@ -44,7 +44,7 @@ const FORBIDDEN_SOURCE_TOKENS := [
 	"gameruntimecoordinator",
 ]
 const PRODUCTION_CONNECTION_KEYS := [
-	"v071_production_connection_count",
+	"v072_production_connection_count",
 	"v07_production_runtime_connection_count",
 	"production_runtime_connection_count",
 	"production_connection_count",
@@ -70,7 +70,7 @@ const GAMEPLAY_DOMAIN_IDS := [
 const GAMEPLAY_DOMAIN_FIELDS := [
 	"domain_id",
 	"v06_current_owner",
-	"v071_target_owner",
+	"v072_target_owner",
 	"core_port",
 	"ai_port",
 	"player_port",
@@ -136,7 +136,7 @@ func _test_manifest_inventory(
 ) -> void:
 	_expect(
 		str(manifest.get("manifest_id", ""))
-			== "space_syndicate.v071.atomic_cutover_manifest"
+			== "space_syndicate.v072.atomic_cutover_manifest"
 			and str(manifest.get("baseline_sha", "")) == BASELINE_REVISION,
 		"manifest identity and declared production baseline are exact"
 	)
@@ -190,7 +190,7 @@ func _test_manifest_gameplay_domains(manifest: Dictionary) -> void:
 		seen.append(domain_id)
 		for field in [
 			"v06_current_owner",
-			"v071_target_owner",
+			"v072_target_owner",
 			"core_port",
 			"ai_port",
 			"player_port",
@@ -247,7 +247,7 @@ func _test_manifest_detachment(manifest: Dictionary) -> void:
 		_expect((value is int or value is float) and float(value) == 0.0,
 			"every manifest production connection count is zero")
 	_expect(
-		str(manifest.get("status", "")) == "V071_DETACHED_ADAPTER_PREFLIGHT_READY"
+		str(manifest.get("status", "")) == "V072_DETACHED_ADAPTER_PREFLIGHT_READY"
 			and str(manifest.get("canonical_adapter_implementation_status", ""))
 				== "IMPLEMENTED_DETACHED_NOT_CONNECTED"
 			and not bool(manifest.get("production_cutover_authorized", true))
