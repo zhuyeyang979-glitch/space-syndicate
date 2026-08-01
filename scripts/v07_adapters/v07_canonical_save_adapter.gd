@@ -17,17 +17,23 @@ const SOLAR_VICTORY_CORE := preload(
 	"res://scripts/v07_semantic/v07_solar_victory_core.gd"
 )
 
-const SCHEMA_VERSION := 1
-const SAVE_SCHEMA_ID := "space_syndicate.v07.semantic_save.v1"
-const CONSTITUTION_ID := "space_syndicate.v07.complete"
-const RULESET_ID := "v0.7"
-const RNG_REGISTRY_ID := "space_syndicate.v07.rng_ownership.v1"
-const PLAN_SCHEMA_ID := "space_syndicate.v07.detached_restore_plan.v1"
-const CHECKPOINT_SCHEMA_ID := "space_syndicate.v07.detached_restore_checkpoint.v1"
+const SCHEMA_VERSION := 2
+const SAVE_SCHEMA_ID := "space_syndicate.v071.semantic_save.v1"
+const CONSTITUTION_ID := "space_syndicate.v071.complete"
+const RULESET_ID := "v0.7.1"
+const RNG_REGISTRY_ID := "space_syndicate.v071.rng_ownership.v1"
+const PLAN_SCHEMA_ID := "space_syndicate.v071.detached_restore_plan.v1"
+const CHECKPOINT_SCHEMA_ID := "space_syndicate.v071.detached_restore_checkpoint.v1"
+const BALANCE_PROFILE_ID := "V071_CANDIDATE_A_FAST"
+const BALANCE_PROFILE_FINGERPRINT := (
+	"8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a"
+)
 
-const SOURCE_NEW_V07_GAME := "NEW_V07_GAME"
+const SOURCE_NEW_V07_GAME := "NEW_V071_GAME"
+const SOURCE_V07_SAVE := "V07_SAVE"
 const SOURCE_V06_SAVE := "V06_SAVE"
 const V06_BACKUP_REQUIRED_REASON := "v06_save_backup_required"
+const V07_DIRECT_RESUME_REJECTED_REASON := "v07_save_to_v071_direct_resume_forbidden"
 
 const SECTION_UNIFIED := "unified_card_track_cycle"
 const SECTION_DBG := "personal_dbg_and_merge"
@@ -50,6 +56,8 @@ const ENVELOPE_FIELDS := [
 	"scenario_fingerprint",
 	"repository_head",
 	"created_at_utc",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"sections",
 	"rng_stream_states",
 	"envelope_fingerprint",
@@ -59,6 +67,8 @@ const METADATA_FIELDS := [
 	"scenario_fingerprint",
 	"repository_head",
 	"created_at_utc",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 ]
 const RNG_ROW_FIELDS := [
 	"schema_version",
@@ -200,6 +210,10 @@ static func capture_new_v07_game(
 		"scenario_fingerprint": str(metadata.get("scenario_fingerprint", "")),
 		"repository_head": str(metadata.get("repository_head", "")),
 		"created_at_utc": str(metadata.get("created_at_utc", "")),
+		"balance_profile_id": str(metadata.get("balance_profile_id", "")),
+		"balance_profile_fingerprint": str(
+			metadata.get("balance_profile_fingerprint", "")
+		),
 		"sections": sections.duplicate(true),
 		"rng_stream_states": (
 			rng_result.get("rows", []) as Array
@@ -214,7 +228,7 @@ static func capture_new_v07_game(
 	return {
 		"accepted": true,
 		"captured": true,
-		"reason_code": "v07_canonical_envelope_captured",
+		"reason_code": "v071_canonical_envelope_captured",
 		"source_kind": SOURCE_NEW_V07_GAME,
 		"requires_backup": false,
 		"section_count": SECTION_IDS.size(),
@@ -238,13 +252,17 @@ static func preflight_restore(
 	candidate: Variant,
 	source_kind: String = SOURCE_NEW_V07_GAME
 ) -> Dictionary:
+	if _looks_like_v07_save(candidate, source_kind):
+		return _source_rejection(
+			V07_DIRECT_RESUME_REJECTED_REASON, source_kind, false
+		)
 	if _looks_like_v06_save(candidate, source_kind):
 		return _source_rejection(
 			V06_BACKUP_REQUIRED_REASON, source_kind, true
 		)
 	if source_kind != SOURCE_NEW_V07_GAME:
 		return _source_rejection(
-			"new_v07_game_source_required", source_kind, false
+			"new_v071_game_source_required", source_kind, false
 		)
 	if not (candidate is Dictionary):
 		return _preflight_failure("envelope_not_dictionary", 0, 0)
@@ -254,7 +272,7 @@ static func preflight_restore(
 		return envelope_result
 	return {
 		"accepted": true,
-		"reason_code": "v07_canonical_envelope_preflight_green",
+		"reason_code": "v071_canonical_envelope_preflight_green",
 		"source_kind": SOURCE_NEW_V07_GAME,
 		"requires_backup": false,
 		"backup_required": false,
@@ -706,7 +724,12 @@ static func adapter_contract() -> Dictionary:
 		"save_schema_id": SAVE_SCHEMA_ID,
 		"constitution_id": CONSTITUTION_ID,
 		"ruleset_id": RULESET_ID,
+		"target_ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"source_kinds_allowed": [SOURCE_NEW_V07_GAME],
+		"v07_direct_resume_allowed": false,
+		"v07_test_only_migration_requires_explicit_contract": true,
 		"v06_direct_resume_allowed": false,
 		"v06_backup_required": true,
 		"section_ids": SECTION_IDS.duplicate(),
@@ -1196,7 +1219,30 @@ static func _metadata_error(metadata: Dictionary) -> String:
 		return "repository_head_invalid"
 	if not _utc_timestamp(metadata.get("created_at_utc")):
 		return "created_at_utc_invalid"
+	if str(metadata.get("balance_profile_id", "")) != BALANCE_PROFILE_ID:
+		return "balance_profile_id_invalid"
+	if str(metadata.get("balance_profile_fingerprint", "")) \
+			!= BALANCE_PROFILE_FINGERPRINT:
+		return "balance_profile_fingerprint_invalid"
 	return ""
+
+
+static func _looks_like_v07_save(candidate: Variant, source_kind: String) -> bool:
+	if source_kind == SOURCE_V07_SAVE or source_kind.to_upper() == "V07_SAVE":
+		return true
+	if not (candidate is Dictionary):
+		return false
+	var value := candidate as Dictionary
+	if str(value.get("ruleset_id", "")) == "v0.7" \
+			or str(value.get("ruleset", "")) == "v0.7":
+		return true
+	for field in ["header", "metadata", "manifest"]:
+		var nested_variant: Variant = value.get(field)
+		if nested_variant is Dictionary \
+				and str((nested_variant as Dictionary).get("ruleset_id", "")) \
+					== "v0.7":
+			return true
+	return false
 
 
 static func _looks_like_v06_save(candidate: Variant, source_kind: String) -> bool:
@@ -1371,7 +1417,7 @@ static func _source_rejection(
 		"target_ruleset_id": RULESET_ID,
 		"requires_backup": requires_backup,
 		"backup_required": requires_backup,
-		"new_v07_game_required": true,
+		"new_v071_game_required": true,
 		"direct_resume_allowed": false,
 		"envelope_valid": false,
 		"preflight_complete": false,
