@@ -332,10 +332,10 @@ try {
     )
     $result.current_authorization_green = (
         [string]$entryMatches[0].name -ceq $currentAuthorizationName -and
-        [int]$targetedEntry.permitted_transition_from -eq 4 -and
-        [int]$targetedEntry.permitted_transition_to -eq 5 -and
+        [int]$targetedEntry.permitted_transition_from -eq 6 -and
+        [int]$targetedEntry.permitted_transition_to -eq 7 -and
         [int]$targetedEntry.authorized_increment -eq 1 -and
-        [int]$targetedEntry.maximum_invocation_count -eq 5
+        [int]$targetedEntry.maximum_invocation_count -eq 7
     )
     $result.production_authorization_binding_green = (
         $result.current_authorization_green -and
@@ -480,6 +480,28 @@ try {
     $launchPath = Join-Path ([string]$binding.evidence_root) (
         "launch/orchestrator-$PID/producer.authorized.json"
     )
+    [IO.Directory]::CreateDirectory((Split-Path -Parent ([string]$binding.quota_ledger_path))) |
+        Out-Null
+    $launchContextLedgerFixture = [pscustomobject][ordered]@{
+        authorization_id = [string]$binding.authorization_id
+        run_id = [string]$binding.run_id
+        repository_head = $RepositoryHead
+        scenario_fingerprint = "1" * 64
+        claim_nonce = "5" * 32
+        launch_nonce = "4" * 32
+        orchestrator_process_id = 4242
+        orchestrator_creation_time_utc_ticks = "638000000000000000"
+        role_timeout_policy_sha256 = "2" * 64
+        official_attempt_1_claim_sha256 = "6" * 64
+    }
+    [IO.File]::WriteAllText(
+        [string]$binding.quota_ledger_path,
+        ($launchContextLedgerFixture | ConvertTo-Json -Compress -Depth 8),
+        [Text.UTF8Encoding]::new($false)
+    )
+    $launchContextLedgerFixtureSha256 = (
+        Get-FileHash -LiteralPath ([string]$binding.quota_ledger_path) -Algorithm SHA256
+    ).Hash.ToLowerInvariant()
     $arguments = @(
         New-ColdRestoreTargetedDiagnosticUserArgumentList `
             -GitCommonDirectory $resolvedScratchRoot `
@@ -489,7 +511,7 @@ try {
             -ScenarioFingerprint ("1" * 64) `
             -TimeoutPolicyFingerprint ("2" * 64) `
             -QuotaLedgerPath ([string]$binding.quota_ledger_path) `
-            -QuotaLedgerFingerprint ("3" * 64) `
+            -QuotaLedgerFingerprint $launchContextLedgerFixtureSha256 `
             -LaunchAttestationPath $launchPath `
             -LaunchNonce ("4" * 32) `
             -AuthorizationName $currentAuthorizationName
@@ -508,6 +530,7 @@ try {
     if (-not $result.command_argument_construction_green) {
         throw "production_command_argument_construction_invalid"
     }
+    [IO.File]::Delete([string]$binding.quota_ledger_path)
     $result.command_argument_sha256 = Get-ProbeSha256 (
         ConvertTo-ProbeStableJson @($arguments | ForEach-Object {
             ([string]$_ -replace [regex]::Escape($resolvedScratchRoot), "<SCRATCH_ROOT>") `
@@ -676,7 +699,7 @@ try {
             [bool](Get-ResultPropertyValue $result "production_module_paths_green" $false) -and
             [bool](Get-ResultPropertyValue $result "production_authorization_binding_green" $false) -and
             [bool](Get-ResultPropertyValue $result "current_authorization_green" $false)
-        ) "fresh process $runIndex used real modules and the current 4-to-5 production authorization"
+        ) "fresh process $runIndex used real modules and the current 6-to-7 production authorization"
         Assert-ImportChainCondition (
             [bool](Get-ResultPropertyValue $result "module_info_reference_preserved" $false) -and
             [bool](Get-ResultPropertyValue $result "module_file_identity_preserved" $false)

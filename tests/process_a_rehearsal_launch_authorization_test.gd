@@ -126,10 +126,22 @@ func _run_source_authorization_contract() -> void:
 	for required_option in [
 		"--cold-restore-rehearsal-ledger-path=",
 		"--cold-restore-rehearsal-ledger-fingerprint=",
+	]:
+		_expect(parse_source.contains(required_option), "option parser recognizes %s" % required_option)
+	_expect(
+		parse_source.contains("TARGETED_LAUNCH_CONTEXT.parse_cli_argument(text)")
+				and parse_source.contains('launch_context_argument.get("recognized"'),
+		"option parser delegates shared launch fields to the Launch Context"
+	)
+	var launch_contract := FileAccess.get_file_as_string(
+		"res://scripts/tools/cold_restore_targeted_diagnostic_launch_context_v1.json"
+	)
+	for shared_option in [
 		"--cold-restore-launch-attestation-path=",
 		"--cold-restore-launch-nonce=",
 	]:
-		_expect(parse_source.contains(required_option), "option parser recognizes %s" % required_option)
+		_expect(launch_contract.contains(shared_option), "Launch Context owns %s" % shared_option)
+		_expect(not parse_source.contains(shared_option), "Driver does not duplicate %s" % shared_option)
 
 	var validation_source := _function_source(source, "static func validate_options(")
 	_expect(not validation_source.is_empty(), "static option validation source is discoverable")

@@ -193,10 +193,15 @@ $TargetedOwnerCaptureBootstrapRelativeRoot = [string]$TargetedOwnerCaptureAuthor
 $TargetedOwnerCaptureAuthorizationId = [string]$TargetedOwnerCaptureAuthorization.authorization_id
 $TargetedOwnerCaptureTaskId = [string]$TargetedOwnerCaptureAuthorization.task_id
 $TargetedOwnerCaptureRunIdPrefix = [string]$TargetedOwnerCaptureAuthorization.run_id_prefix
+$TargetedOwnerCaptureDriverId = "alpha04c_$TargetedOwnerCaptureAuthorizationName"
+$TargetedOwnerCaptureCheckpointBranchPattern = '^' + [regex]::Escape(
+    "codex/alpha04c-v$([int]$TargetedOwnerCaptureAuthorization.permitted_transition_to)-owner-audit-"
+) + '[0-9a-f]{7,12}$'
 $ProcessARehearsalAuthorizationId = [string]$ProcessARehearsalAuthorization.authorization_id
 $ProcessARehearsalQuotaLedgerRelativePath = [string]$ProcessARehearsalAuthorization.quota_ledger_relative_path
 $ProcessARehearsalLaunchLedgerRelativePath = [string]$ProcessARehearsalAuthorization.launch_ledger_relative_path
 $ProcessARehearsalOutcomeLedgerRelativePath = [string]$ProcessARehearsalAuthorization.outcome_ledger_relative_path
+$ProcessARehearsalScopeBaselineCommit = [string]$ProcessARehearsalAuthorization.scope_baseline_commit
 $DefaultRoleTimeoutPolicyPath = Join-Path $PSScriptRoot "cold_restore_role_timeout_policy_v1.json"
 $RoleTimeoutPolicyEvidence = $null
 $LastTargetedPreQuotaContext = $null
@@ -1044,7 +1049,7 @@ function Assert-ColdRestoreTargetedDiagnosticRemoteCheckpoint {
     $localHeadLines = @(& git -C $ResolvedProjectPath rev-parse HEAD 2>$null)
     Assert-ColdRestoreCondition ((cold_restore_attested_process\Get-ColdRestoreSafeCollectionCount $branchLines) -eq 1 `
         -and (cold_restore_attested_process\Get-ColdRestoreSafeCollectionCount $localHeadLines) -eq 1 `
-        -and [string]$branchLines[0] -cmatch '^codex/alpha04c-v5-owner-diagnostic-[0-9a-f]{7,12}$' `
+        -and [string]$branchLines[0] -cmatch $TargetedOwnerCaptureCheckpointBranchPattern `
         -and [string]$localHeadLines[0] -ceq $ExpectedHead) "targeted_diagnostic_local_checkpoint_invalid"
     $branch = [string]$branchLines[0]
     $remoteLines = @(& git -C $ResolvedProjectPath rev-parse "refs/remotes/origin/$branch" 2>$null)
@@ -2370,7 +2375,7 @@ function New-ColdRestoreTargetedOwnerCaptureOutput {
     }
     return [ordered]@{
         schema_version = 3
-        driver_id = "alpha04c_targeted_owner_capture_diagnostic_v5_canonical_binding"
+        driver_id = $TargetedOwnerCaptureDriverId
         formal_full_run = $false
         official_cold_restore_vertical_slice = $false
         targeted_owner_capture_diagnostic = $true
@@ -3161,7 +3166,10 @@ function Assert-ColdRestoreProcessARehearsalPrerequisites {
         -and [string]$programState.known_test_state.alpha04c_allocator_cursor_spec -ceq "GREEN_34_OF_34" `
         -and [string]$programState.known_test_state.alpha04c_production_registry_transaction_current -ceq "GREEN_59_OF_59" `
         -and [string]$programState.known_test_state.alpha04c_production_save_capture_readback -ceq "GREEN_25_OF_25") "process_a_rehearsal_regression_prerequisites_invalid"
-    $changedPaths = @(& git -C $ResolvedProjectPath diff --name-only $HistoricalTargetedOwnerCaptureInvocationCommit $HeadSha 2>$null)
+    & git -C $ResolvedProjectPath merge-base --is-ancestor `
+        $ProcessARehearsalScopeBaselineCommit $HeadSha 2>$null
+    Assert-ColdRestoreCondition ($LASTEXITCODE -eq 0) "process_a_rehearsal_scope_baseline_invalid"
+    $changedPaths = @(& git -C $ResolvedProjectPath diff --name-only $ProcessARehearsalScopeBaselineCommit $HeadSha 2>$null)
     Assert-ColdRestoreCondition ($LASTEXITCODE -eq 0) "process_a_rehearsal_scope_diff_unavailable"
     $forbiddenPaths = @(
         $changedPaths | Where-Object {
@@ -3779,6 +3787,9 @@ function New-ColdRestoreTopLevelImportChainPreflightAttestation {
         -QuotaLedgerPath ([string]$binding.quota_ledger_path)
 
     $policy = Read-ColdRestoreRoleTimeoutPolicy $RoleTimeoutPolicyPath
+    $quotaExistsBefore = [IO.File]::Exists([string]$binding.quota_ledger_path)
+    $evidenceRootExistsBefore = [IO.Directory]::Exists([string]$binding.evidence_root)
+    $bootstrapRootExistsBefore = [IO.Directory]::Exists([string]$binding.bootstrap_root)
     $preflightFingerprint = cold_restore_attested_process\Get-ColdRestoreEvidenceFingerprint `
         ([pscustomobject][ordered]@{
             attestation_id = "TopLevelImportChainPreflightAttestationV1"
@@ -3786,21 +3797,75 @@ function New-ColdRestoreTopLevelImportChainPreflightAttestation {
             repository_head = $HeadSha
             authorization_id = [string]$binding.authorization_id
         })
-    $launchNonce = $preflightFingerprint.Substring(0, 32)
-    $launchAttestationPath = Join-Path ([string]$binding.evidence_root) `
+    $claimNonce = (cold_restore_attested_process\Get-ColdRestoreEvidenceFingerprint `
+        ([pscustomobject][ordered]@{ scope = "preflight_claim"; value = $preflightFingerprint })).Substring(0, 32)
+    $launchNonce = (cold_restore_attested_process\Get-ColdRestoreEvidenceFingerprint `
+        ([pscustomobject][ordered]@{ scope = "preflight_launch"; value = $preflightFingerprint })).Substring(0, 32)
+    Assert-ColdRestoreCondition ($claimNonce -cne $launchNonce) `
+        "top_level_preflight_nonce_collision"
+    $preflightScratchParent = Join-Path ([IO.Path]::GetTempPath()) `
+        "space_syndicate_alpha04c_top_level_preflight"
+    $preflightScratchRoot = Join-Path $preflightScratchParent $RunId
+    Assert-ColdRestoreCondition (-not [IO.Directory]::Exists($preflightScratchRoot) `
+        -and -not [IO.File]::Exists($preflightScratchRoot)) `
+        "top_level_preflight_scratch_collision"
+    $preflightBinding = `
+        cold_restore_authorization_contract_v1\Get-ColdRestoreTargetedDiagnosticAuthorizationBinding `
+            -GitCommonDirectory ([IO.Path]::GetFullPath($preflightScratchRoot)) `
+            -RepositoryHead $HeadSha `
+            -AuthorizationName $TargetedOwnerCaptureAuthorizationName
+    [IO.Directory]::CreateDirectory(
+        (Split-Path -Parent ([string]$preflightBinding.quota_ledger_path))
+    ) | Out-Null
+    $preflightLedger = [pscustomobject][ordered]@{
+        authorization_id = [string]$preflightBinding.authorization_id
+        run_id = [string]$preflightBinding.run_id
+        repository_head = $HeadSha
+        scenario_fingerprint = $TargetedOwnerCaptureScenarioFingerprint
+        claim_nonce = $claimNonce
+        launch_nonce = $launchNonce
+        orchestrator_process_id = 1
+        orchestrator_creation_time_utc_ticks = "1"
+        role_timeout_policy_sha256 = [string]$policy.sha256
+        official_attempt_1_claim_sha256 = $OfficialAttempt1ClaimSha256
+    }
+    [IO.File]::WriteAllText(
+        [string]$preflightBinding.quota_ledger_path,
+        ($preflightLedger | ConvertTo-Json -Compress -Depth 8),
+        [Text.UTF8Encoding]::new($false)
+    )
+    $preflightLedgerSha256 = (
+        Get-FileHash -LiteralPath ([string]$preflightBinding.quota_ledger_path) `
+            -Algorithm SHA256
+    ).Hash.ToLowerInvariant()
+    $launchAttestationPath = Join-Path ([string]$preflightBinding.evidence_root) `
         "preflight-only\producer.authorized.json"
-    $userArguments = cold_restore_prequota_bootstrap\New-ColdRestoreTargetedDiagnosticUserArgumentList `
-        -GitCommonDirectory $gitCommonDirectory `
-        -RepositoryHead $HeadSha `
-        -RunId $RunId `
-        -ArtifactRoot "user://test_runs/alpha04c/$RunId/evidence" `
-        -ScenarioFingerprint $TargetedOwnerCaptureScenarioFingerprint `
-        -TimeoutPolicyFingerprint ([string]$policy.sha256) `
-        -QuotaLedgerPath ([string]$binding.quota_ledger_path) `
-        -QuotaLedgerFingerprint $preflightFingerprint `
-        -LaunchAttestationPath $launchAttestationPath `
-        -LaunchNonce $launchNonce `
-        -AuthorizationName $TargetedOwnerCaptureAuthorizationName
+    try {
+        $userArguments = cold_restore_prequota_bootstrap\New-ColdRestoreTargetedDiagnosticUserArgumentList `
+            -GitCommonDirectory ([IO.Path]::GetFullPath($preflightScratchRoot)) `
+            -RepositoryHead $HeadSha `
+            -RunId $RunId `
+            -ArtifactRoot "user://test_runs/alpha04c/$RunId/evidence" `
+            -ScenarioFingerprint $TargetedOwnerCaptureScenarioFingerprint `
+            -TimeoutPolicyFingerprint ([string]$policy.sha256) `
+            -QuotaLedgerPath ([string]$preflightBinding.quota_ledger_path) `
+            -QuotaLedgerFingerprint $preflightLedgerSha256 `
+            -LaunchAttestationPath $launchAttestationPath `
+            -LaunchNonce $launchNonce `
+            -AuthorizationName $TargetedOwnerCaptureAuthorizationName
+    }
+    finally {
+        $resolvedScratch = [IO.Path]::GetFullPath($preflightScratchRoot)
+        $resolvedScratchParent = [IO.Path]::GetFullPath($preflightScratchParent).TrimEnd(
+            [IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar
+        ) + [IO.Path]::DirectorySeparatorChar
+        Assert-ColdRestoreCondition ($resolvedScratch.StartsWith(
+            $resolvedScratchParent, [StringComparison]::OrdinalIgnoreCase
+        )) "top_level_preflight_scratch_escape"
+        Remove-Item -LiteralPath $resolvedScratch -Recurse -Force -ErrorAction Stop
+    }
+    Assert-ColdRestoreCondition (-not [IO.Directory]::Exists($preflightScratchRoot)) `
+        "top_level_preflight_scratch_cleanup_failed"
     $commandArguments = cold_restore_attested_process\New-ColdRestoreGodotArgumentList `
         -EngineArgumentList @(
             "--headless", "--path", $ResolvedProjectPath, "--script", $DriverScript
@@ -3830,9 +3895,6 @@ function New-ColdRestoreTopLevelImportChainPreflightAttestation {
     $commandArgumentFingerprint = cold_restore_attested_process\Get-ColdRestoreEvidenceFingerprint `
         ([pscustomobject][ordered]@{ arguments = @($commandArguments) })
 
-    $quotaExistsBefore = [IO.File]::Exists([string]$binding.quota_ledger_path)
-    $evidenceRootExistsBefore = [IO.Directory]::Exists([string]$binding.evidence_root)
-    $bootstrapRootExistsBefore = [IO.Directory]::Exists([string]$binding.bootstrap_root)
     $attestation = [ordered]@{
         schema_version = 1
         attestation_id = "TopLevelImportChainPreflightAttestationV1"
@@ -4201,7 +4263,7 @@ catch {
     elseif ($TargetedOwnerCaptureDiagnostic) {
         Write-AllowlistedResult ([ordered]@{
             schema_version = 3
-            driver_id = "alpha04c_targeted_owner_capture_diagnostic_v5_canonical_binding"
+            driver_id = $TargetedOwnerCaptureDriverId
             formal_full_run = $false
             official_cold_restore_vertical_slice = $false
             targeted_owner_capture_diagnostic = $true

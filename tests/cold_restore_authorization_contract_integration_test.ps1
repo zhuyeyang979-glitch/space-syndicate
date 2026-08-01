@@ -329,6 +329,15 @@ try {
         [IO.File]::Exists([string]$guardedResult.prequota.path) -and
         [string]$guardedResult.prequota.sha256 -cmatch '^[0-9a-f]{64}$'
     ) "real Orchestrator guarded admission passes its production binding through PreQuota Bootstrap"
+    $currentTargetedName = Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName
+    $currentTargeted = Get-ColdRestoreAuthorizationEntry $currentTargetedName
+    $scopeBaseline = [string]$contract.process_a_save_completion_rehearsal_v1.scope_baseline_commit
+    & git -C $projectRoot merge-base --is-ancestor $scopeBaseline HEAD
+    Assert-AuthorizationCondition ($LASTEXITCODE -eq 0) "Process A scope baseline is an ancestor of the candidate"
+    $scopeChangedPaths = @(& git -C $projectRoot diff --name-only $scopeBaseline HEAD)
+    Assert-AuthorizationCondition (
+        @($scopeChangedPaths | Where-Object { [string]$_ -notmatch '^(scripts/tools/|tests/)' }).Count -eq 0
+    ) "Process A scope baseline excludes inherited main and commercial-art history without widening the allowlist"
     $sourceFiles = @(
         Get-ChildItem (Join-Path $projectRoot "scripts") -Recurse -File |
             Where-Object { $_.Extension -in @(".gd", ".ps1", ".psm1", ".json") }
@@ -336,14 +345,16 @@ try {
             Where-Object { $_.Extension -in @(".gd", ".ps1", ".psm1", ".json") }
     )
     $singleSourceValues = @(
-        [pscustomobject]@{ name = "targeted authorization ID"; value = [string]$targeted.authorization_id },
-        [pscustomobject]@{ name = "targeted quota path"; value = [string]$targeted.quota_ledger_relative_path },
-        [pscustomobject]@{ name = "targeted evidence path"; value = [string]$targeted.evidence_root_relative_path },
-        [pscustomobject]@{ name = "targeted bootstrap path"; value = [string]$targeted.bootstrap_root_relative_path },
+        [pscustomobject]@{ name = "current targeted authorization ID"; value = [string]$currentTargeted.authorization_id },
+        [pscustomobject]@{ name = "current targeted quota path"; value = [string]$currentTargeted.quota_ledger_relative_path },
+        [pscustomobject]@{ name = "current targeted evidence path"; value = [string]$currentTargeted.evidence_root_relative_path },
+        [pscustomobject]@{ name = "current targeted bootstrap path"; value = [string]$currentTargeted.bootstrap_root_relative_path },
+        [pscustomobject]@{ name = "current targeted run prefix"; value = [string]$currentTargeted.run_id_prefix },
         [pscustomobject]@{ name = "rehearsal authorization ID"; value = [string]$contract.process_a_save_completion_rehearsal_v1.authorization_id },
         [pscustomobject]@{ name = "rehearsal quota path"; value = [string]$contract.process_a_save_completion_rehearsal_v1.quota_ledger_relative_path },
         [pscustomobject]@{ name = "rehearsal launch path"; value = [string]$contract.process_a_save_completion_rehearsal_v1.launch_ledger_relative_path },
         [pscustomobject]@{ name = "rehearsal outcome path"; value = [string]$contract.process_a_save_completion_rehearsal_v1.outcome_ledger_relative_path },
+        [pscustomobject]@{ name = "rehearsal scope baseline"; value = [string]$contract.process_a_save_completion_rehearsal_v1.scope_baseline_commit },
         [pscustomobject]@{ name = "official authorization ID"; value = [string]$contract.official_attempt_2.authorization_id },
         [pscustomobject]@{ name = "official claim path"; value = [string]$contract.official_attempt_2.claim_path }
     )
@@ -351,9 +362,9 @@ try {
         $sourceCount = 0
         foreach ($file in $sourceFiles) {
             $text = [IO.File]::ReadAllText($file.FullName)
-            $sourceCount += ([regex]::Matches(
-                $text, [regex]::Escape([string]$singleSource.value)
-            )).Count
+            if ($text.Contains([string]$singleSource.value, [StringComparison]::Ordinal)) {
+                $sourceCount += 1
+            }
         }
         Assert-AuthorizationCondition ($sourceCount -eq 1) "$($singleSource.name) has one source"
     }

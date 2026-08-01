@@ -41,12 +41,41 @@
     "maximum_invocation_count": 5,
     "previous_quota_ledger_sha256": "154ceedf4032404d4c7d355fbd775991e20d29299f6e05e3a8c8e70c64be208c"
   },
+  "targeted_owner_capture_diagnostic_v6_launch_context": {
+    "authorization_id": "alpha04c-targeted-owner-capture-diagnostic-v6-launch-context",
+    "task_id": "ALPHA04C_V6_OWNER_DIAGNOSTIC_PROCESS_A_REHEARSAL_AND_V071_HIGHEST_CONSTITUTION_FREEZE",
+    "ledger_id": "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV6",
+    "quota_ledger_relative_path": "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v6-launch-context/targeted_owner_capture_quota_ledger.json",
+    "evidence_root_relative_path": "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v6-launch-context/evidence",
+    "bootstrap_root_relative_path": "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v6-launch-context/prequota",
+    "run_id_prefix": "alpha04c-owner-capture-diagnostic-v6-launch-context",
+    "permitted_transition_from": 5,
+    "permitted_transition_to": 6,
+    "authorized_increment": 1,
+    "maximum_invocation_count": 6,
+    "previous_quota_ledger_sha256": "b7e6c66852540c2b3066f86cd6e9c9d9454c185c4e8ed17d168c6b0dbf466742"
+  },
+  "targeted_owner_capture_diagnostic_v7_registry_contract": {
+    "authorization_id": "alpha04c-targeted-owner-capture-diagnostic-v7-registry-contract",
+    "task_id": "ALPHA04C_V7_OWNER_AUDIT_PROCESS_A_REHEARSAL_AND_V073_FIXED_ROUND_ROBIN_FACILITY_CONTENTION_FREEZE",
+    "ledger_id": "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV7",
+    "quota_ledger_relative_path": "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v7-registry-contract/targeted_owner_capture_quota_ledger.json",
+    "evidence_root_relative_path": "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v7-registry-contract/evidence",
+    "bootstrap_root_relative_path": "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v7-registry-contract/prequota",
+    "run_id_prefix": "alpha04c-owner-capture-diagnostic-v7-registry-contract",
+    "permitted_transition_from": 6,
+    "permitted_transition_to": 7,
+    "authorized_increment": 1,
+    "maximum_invocation_count": 7,
+    "previous_quota_ledger_sha256": "fe843a4a924a12af5553afcb38a579f68a59acdeab0a4c5e5efb006c31e25c60"
+  },
   "process_a_save_completion_rehearsal_v1": {
     "authorization_id": "alpha04c-process-a-save-completion-rehearsal-v1",
     "quota_ledger_relative_path": "codex/cold_restore_v3/non-official-alpha04c-process-a-rehearsal-v1/process_a_rehearsal_quota_ledger.json",
     "launch_ledger_relative_path": "codex/cold_restore_v3/non-official-alpha04c-process-a-rehearsal-v1/process_a_rehearsal_launch_ledger.json",
     "outcome_ledger_relative_path": "codex/cold_restore_v3/non-official-alpha04c-process-a-rehearsal-v1/process_a_rehearsal_outcome_ledger.json",
     "run_id_prefix": "alpha04c-process-a-rehearsal",
+    "scope_baseline_commit": "f9fe6f614dbbd2750977ad0c1856ab6dd0af4137",
     "maximum_invocation_count": 1
   },
   "official_attempt_2": {

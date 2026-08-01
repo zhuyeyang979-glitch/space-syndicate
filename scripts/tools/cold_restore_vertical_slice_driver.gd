@@ -26,6 +26,9 @@ const TARGETED_LAUNCH_CONTEXT := preload(
 const AUTHORIZATION_CONTRACT := preload(
 	"res://scripts/tools/cold_restore_authorization_contract_v1.gd"
 )
+const REGISTRY_BINDING_VALIDATOR := preload(
+	"res://scripts/tools/alpha04c_registry_binding_contract_validator_v1.gd"
+)
 
 const FORMAL_FULL_RUN := false
 const EXECUTION_READY := true
@@ -84,9 +87,6 @@ const SAVE_OWNER_ORDER := [
 	"player_organization", "monster_runtime", "military_runtime", "weather_runtime",
 	"card_resolution_queue", "card_resolution_execution", "card_resolution_history",
 	"ai_runtime", "bankruptcy_neutral_estate", "victory_control", "game_session",
-]
-const SAVE_STATE_VERSION_ORDER := [
-	1, 1, 1, 2, 2, 1, 1, 3, 1, 1, 2, 1, 2, 1, 1, 2, 1, 1, 3,
 ]
 const WORLD_FINGERPRINT_SECTION_IDS := [
 	"region_infrastructure", "region_supply", "commodity_flow", "routes",
@@ -3192,53 +3192,51 @@ func _diagnostic_value_fingerprint(value: Variant) -> String:
 
 func _attest_targeted_registry_binding(context: Dictionary) -> Dictionary:
 	var registry: Node = context.get("registry")
-	if registry == null or not registry.has_method("registry_snapshot") \
+	if registry == null or not registry.has_method("registry_binding_contract_v1") \
 			or not registry.has_method("fixed_section_order"):
 		return {"attested": false, "failure": _diagnostic_pre_owner_failure(
 			"save_registry", "diagnostic_registry_binding_not_ready", "registry_ready", "missing"
 		)}
-	var snapshot: Dictionary = registry.call("registry_snapshot")
-	var observed_order: Array = registry.call("fixed_section_order")
-	if not bool(snapshot.get("resume_ready", false)) \
-			or int(snapshot.get("transactional_section_count", 0)) != SAVE_SECTION_ORDER.size() \
-			or int(snapshot.get("unsupported_section_count", -1)) != 0:
-		return {"attested": false, "failure": _diagnostic_pre_owner_failure(
-			"save_registry", "diagnostic_registry_binding_count_mismatch",
-			"19_transactional_0_unsupported",
-			"%d_transactional_%d_unsupported" % [int(snapshot.get("transactional_section_count", 0)), int(snapshot.get("unsupported_section_count", -1))]
-		)}
-	if observed_order != SAVE_SECTION_ORDER:
-		return {"attested": false, "failure": _diagnostic_pre_owner_failure(
-			"save_registry", "diagnostic_registry_binding_order_mismatch",
-			SEMANTIC_WIRE.fingerprint(SAVE_SECTION_ORDER).left(12),
-			SEMANTIC_WIRE.fingerprint(observed_order).left(12)
-		)}
-	var contracts: Array = snapshot.get("contracts", []) \
-			if snapshot.get("contracts", []) is Array else []
-	if contracts.size() != SAVE_SECTION_ORDER.size():
+	var contract_variant: Variant = registry.call("registry_binding_contract_v1")
+	if not (contract_variant is Dictionary):
 		return {"attested": false, "failure": _diagnostic_pre_owner_failure(
 			"save_registry", "diagnostic_registry_binding_contract_mismatch",
-			"19_contracts", "%d_contracts" % contracts.size()
+			"canonical_contract_dictionary", "wrong_type"
 		)}
-	for contract_index in range(contracts.size()):
-		if not (contracts[contract_index] is Dictionary):
-			return {"attested": false, "failure": _diagnostic_pre_owner_failure(
-				"save_registry", "diagnostic_registry_binding_contract_mismatch",
-				"dictionary", "invalid_contract_%d" % contract_index
-			)}
-		var contract := contracts[contract_index] as Dictionary
-		if str(contract.get("section_id", "")) != str(SAVE_SECTION_ORDER[contract_index]) \
-				or str(contract.get("owner_id", "")) != str(SAVE_OWNER_ORDER[contract_index]) \
-				or int(contract.get("state_version", 0)) != int(SAVE_STATE_VERSION_ORDER[contract_index]) \
-				or str(contract.get("restore_mode", "")) != "transactional" \
-				or str(contract.get("preflight_method", "")).is_empty() \
-				or str(contract.get("checkpoint_method", "")).is_empty():
-			return {"attested": false, "failure": _diagnostic_pre_owner_failure(
-				"save_registry", "diagnostic_registry_binding_contract_mismatch",
-				"contract_%d" % contract_index,
-				"mismatch_%d" % contract_index
-			)}
-	return {"attested": true, "failure": {}}
+	var contract := (contract_variant as Dictionary).duplicate(true)
+	var validation := REGISTRY_BINDING_VALIDATOR.validate(
+		contract, registry, SAVE_SECTION_ORDER.size()
+	)
+	if not bool(validation.get("valid", false)):
+		return {
+			"attested": false,
+			"failure": REGISTRY_BINDING_VALIDATOR.diagnostic_failure(validation),
+			"validation": validation.duplicate(true),
+		}
+	var observed_order: Array = registry.call("fixed_section_order")
+	if observed_order != SAVE_SECTION_ORDER:
+		var order_failure := {
+			"valid": false,
+			"reason_code": "diagnostic_registry_binding_contract_mismatch",
+			"failing_stage": "diagnostic_projection",
+			"failing_section_id": "save_registry",
+			"failing_owner_id": "",
+			"failing_field": "fixed_section_order",
+			"failing_strategy": "",
+			"typed_reason": "registration_order_mismatch",
+			"private_payload_redacted": true,
+		}
+		return {
+			"attested": false,
+			"failure": REGISTRY_BINDING_VALIDATOR.diagnostic_failure(order_failure),
+			"validation": order_failure,
+		}
+	return {
+		"attested": true,
+		"failure": {},
+		"validation": validation.duplicate(true),
+		"binding_count": int(validation.get("binding_count", 0)),
+	}
 
 
 func _acquire_process_a_save_barrier(context: Dictionary, operation_id: String) -> Dictionary:

@@ -7,6 +7,7 @@ $ErrorActionPreference = "Stop"
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $orchestratorPath = Join-Path $projectRoot "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1"
 $attestedModulePath = Join-Path $projectRoot "scripts/tools/cold_restore_attested_process.psm1"
+$authorizationModulePath = Join-Path $projectRoot "scripts/tools/cold_restore_authorization_contract_v1.psm1"
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) (
     "alpha04c-targeted-remote-checkpoint-" + [Guid]::NewGuid().ToString("N")
 )
@@ -51,6 +52,12 @@ function Get-CheckpointThrownReason {
 try {
     [IO.Directory]::CreateDirectory($testRoot) | Out-Null
     Import-Module $attestedModulePath -ErrorAction Stop
+    Import-Module $authorizationModulePath -ErrorAction Stop
+    $currentAuthorizationName = Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName
+    $currentAuthorization = Get-ColdRestoreAuthorizationEntry $currentAuthorizationName
+    $checkpointBranchPrefix = "codex/alpha04c-v$([int]$currentAuthorization.permitted_transition_to)-owner-audit-"
+    $TargetedOwnerCaptureCheckpointBranchPattern = '^' + `
+        [regex]::Escape($checkpointBranchPrefix) + '[0-9a-f]{7,12}$'
     $tokens = $null
     $parseErrors = $null
     $ast = [Management.Automation.Language.Parser]::ParseFile(
@@ -75,7 +82,7 @@ try {
     & git init $repoPath | Out-Null
     & git -C $repoPath config user.name "Cold Restore Contract"
     & git -C $repoPath config user.email "cold-restore-contract@example.invalid"
-    $branch = "codex/alpha04c-v5-owner-diagnostic-abcdef1"
+    $branch = "${checkpointBranchPrefix}abcdef1"
     & git -C $repoPath checkout -b $branch | Out-Null
     [IO.File]::WriteAllText(
         (Join-Path $repoPath "checkpoint.txt"),

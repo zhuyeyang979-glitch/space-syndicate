@@ -223,6 +223,7 @@ try {
         . ([scriptblock]::Create($outputBuilder.Extent.Text))
         $script:RunId = Get-ColdRestoreAuthorizationRunId `
             $targetedAuthorizationName ("a" * 40)
+        $script:TargetedOwnerCaptureDriverId = "alpha04c_$targetedAuthorizationName"
         foreach ($case in @(
             [pscustomobject]@{ kind = "ALL_OWNERS_CAPTURED"; success = $true; code = "" },
             [pscustomobject]@{ kind = "OWNER_CAPTURE_FAILURE"; success = $false; code = "owner_capture_failed" },
@@ -389,7 +390,7 @@ try {
     $targetedCatches = @($ast.FindAll({
         param($node)
         $node -is [Management.Automation.Language.CatchClauseAst] -and
-            $node.Extent.Text.IndexOf("alpha04c_targeted_owner_capture_diagnostic_v5_canonical_binding", [StringComparison]::Ordinal) -ge 0
+            $node.Extent.Text.IndexOf('$TargetedOwnerCaptureDriverId', [StringComparison]::Ordinal) -ge 0
     }, $true))
     Assert-ContractCondition ($targetedCatches.Count -eq 1) "top-level targeted allowlist catch exists exactly once"
     $targetedCatchSource = if ($targetedCatches.Count -eq 1) {
