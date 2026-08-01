@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "presentation_only": true,
+  "rules_rng_consumed": false,
+  "max_concurrent_transparent_emitters": 12,
+  "events": [
+    {
+      "event_id": "commodity.claim",
+      "texture_path": "res://assets/third_party/commercial/vfx/kenney_particle_pack/events/commodity_claim_star_05.png",
+      "mode": "one_shot",
+      "max_active": 2
+    },
+    {
+      "event_id": "normal_card.purchase",
+      "texture_path": "res://assets/third_party/commercial/vfx/kenney_particle_pack/events/normal_card_purchase_circle_04.png",
+      "mode": "one_shot",
+      "max_active": 2
+    },
+    {
+      "event_id": "card.lock",
+      "texture_path": "res://assets/third_party/commercial/vfx/kenney_particle_pack/events/card_lock_symbol_01.png",
+      "mode": "one_shot",
+      "max_active": 2
+    },
+    {
+      "event_id": "card.merge",
+      "texture_path": "res://assets/third_party/commercial/vfx/kenney_particle_pack/events/card_merge_twirl_02.png",
+      "mode": "one_shot",
+      "max_active": 2
+    },
+    {
+      "event_id": "asset.refresh",
+      "texture_path": "res://assets/third_party/commercial/vfx/kenney_particle_pack/events/asset_refresh_magic_03.png",
+      "mode": "one_shot",
+      "max_active": 2
+    },
+    {
+      "event_id": "settlement.complete",
+      "texture_path": "res://assets/third_party/commercial/vfx/kenney_particle_pack/events/settlement_complete_spark_04.png",
+      "mode": "one_shot",
+      "max_active": 2
+    }
+  ],
+  "sequences": [
+    {
+      "sequence_id": "facility.black_smoke",
+      "directory": "res://assets/third_party/commercial/vfx/kenney_smoke_particles/black_smoke",
+      "frame_count": 9,
+      "loop": true,
+      "max_active": 2
+    },
+    {
+      "sequence_id": "facility.white_puff",
+      "directory": "res://assets/third_party/commercial/vfx/kenney_smoke_particles/white_puff",
+      "frame_count": 9,
+      "loop": false,
+      "max_active": 3
+    },
+    {
+      "sequence_id": "combat.explosion",
+      "directory": "res://assets/third_party/commercial/vfx/kenney_smoke_particles/explosion",
+      "frame_count": 9,
+      "loop": false,
+      "max_active": 3
+    },
+    {
+      "sequence_id": "combat.flash",
+      "directory": "res://assets/third_party/commercial/vfx/kenney_smoke_particles/flash",
+      "frame_count": 9,
+      "loop": false,
+      "max_active": 4
+    }
+  ]
+}

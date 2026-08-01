@@ -2,7 +2,6 @@ extends Control
 class_name SpaceSyndicateMenuPlanetArt
 
 const STAR_COUNT := 120
-const ORBIT_COUNT := 5
 const CITY_LIGHT_COUNT := 34
 const CLOUD_BAND_COUNT := 4
 
@@ -24,7 +23,6 @@ func _draw() -> void:
 	var rect := Rect2(Vector2.ZERO, size)
 	draw_rect(rect, Color("#020617"), true)
 	_draw_stars()
-	_draw_orbits()
 	_draw_planet()
 
 
@@ -39,23 +37,6 @@ func _draw_stars() -> void:
 		var star := Color("#e0f2fe")
 		star.a = 0.22 + float((i * 17) % 7) * 0.07
 		draw_circle(star_position, 0.8 + float(i % 3) * 0.35, star)
-
-
-func _draw_orbits() -> void:
-	var center := _planet_center()
-	var orbit_color := accent.lightened(0.10)
-	for i in range(ORBIT_COUNT):
-		var radius: float = minf(size.x, size.y) * (0.42 + float(i) * 0.082)
-		orbit_color.a = 0.05 + float(i) * 0.025
-		draw_arc(center, radius, -0.16 * PI, 1.16 * PI, 128, orbit_color, 1.0, true)
-	for i in range(8):
-		var angle: float = -0.18 * PI + TAU * float(i) / 8.0
-		var lane_radius: float = minf(size.x, size.y) * (0.53 + float(i % 3) * 0.075)
-		var tick := center + Vector2(cos(angle), sin(angle)) * lane_radius
-		var tick_color := accent.lightened(0.22)
-		tick_color.a = 0.18 + float(i % 2) * 0.08
-		draw_circle(tick, 2.0 + float(i % 3) * 0.45, tick_color)
-
 
 func _draw_planet() -> void:
 	var center := _planet_center()

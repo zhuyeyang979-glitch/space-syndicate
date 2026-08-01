@@ -133,14 +133,7 @@ func _local_grid_lines(viewport_size: Vector2, globe_blend: float) -> Array:
 
 
 func _orbit_rings(center: Vector2, radius: float) -> Array:
-	if radius <= 1.0:
-		return []
-	return [
-		{"center": center, "radius": radius * 0.38, "alpha": 0.16},
-		{"center": center, "radius": radius * 0.64, "alpha": 0.13},
-		{"center": center, "radius": radius, "alpha": 0.20},
-		{"center": center, "radius": radius * 1.12, "alpha": 0.10},
-	]
+	return []
 
 
 func _call_vector2(target: Object, method_name: String, fallback: Vector2) -> Vector2:

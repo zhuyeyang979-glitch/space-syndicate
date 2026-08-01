@@ -21,8 +21,6 @@ class_name SpaceSyndicatePlanetBoard
 @onready var right_rail_fallback: Label = %RightRailText
 
 const STAGE_STAR_COUNT := 54
-const STAGE_ORBIT_LANE_COUNT := 5
-const STAGE_EDGE_TICK_COUNT := 14
 const SIDE_RAIL_GAP := 8.0
 const SIDE_RAIL_MIN_WIDTH := 120.0
 const SIDE_RAIL_MAX_WIDTH := 216.0
@@ -673,7 +671,6 @@ func _draw_stage_space() -> void:
 		return
 	var rect := Rect2(Vector2.ZERO, size)
 	draw_rect(rect, Color("#020617"), true)
-	_draw_stage_orbit_lanes(rect)
 	for i in range(STAGE_STAR_COUNT):
 		var star_position := rect.position + Vector2(
 			fposmod(float(i * 113 + 31), maxf(1.0, rect.size.x)),
@@ -682,35 +679,6 @@ func _draw_stage_space() -> void:
 		var star := Color("#e0f2fe")
 		star.a = 0.16 + float((i * 7) % 6) * 0.05
 		draw_circle(star_position, 0.7 + float(i % 3) * 0.24, star)
-
-
-func _draw_stage_orbit_lanes(rect: Rect2) -> void:
-	var map_rect := Rect2(rect.get_center() - Vector2.ONE * minf(rect.size.x, rect.size.y) * 0.42, Vector2.ONE * minf(rect.size.x, rect.size.y) * 0.84)
-	if map_host != null and is_instance_valid(map_host) and map_host.size.x > 1.0 and map_host.size.y > 1.0:
-		map_rect = Rect2(map_host.position, map_host.size)
-	var center := map_rect.get_center()
-	var base_radius := maxf(map_rect.size.x, map_rect.size.y) * 0.50
-	for lane in range(STAGE_ORBIT_LANE_COUNT):
-		var orbit := Color("#38bdf8") if lane % 2 == 0 else Color("#f59e0b")
-		orbit.a = 0.055 + float(lane) * 0.013
-		draw_arc(center, base_radius + 20.0 + float(lane) * 26.0, -0.12 * PI, 1.12 * PI, 120, orbit, 1.0, true)
-	var tick_color := Color("#f8fafc")
-	for i in range(STAGE_EDGE_TICK_COUNT):
-		var side_left := i % 2 == 0
-		var ratio := float(i) / maxf(1.0, float(STAGE_EDGE_TICK_COUNT - 1))
-		var y := lerpf(map_rect.position.y + 18.0, map_rect.end.y - 18.0, ratio)
-		var x := map_rect.position.x - 28.0 if side_left else map_rect.end.x + 28.0
-		if x < rect.position.x + 8.0 or x > rect.end.x - 8.0:
-			continue
-		tick_color.a = 0.12 + float((i * 3) % 5) * 0.035
-		var tick_start := Vector2(x - 8.0, y) if side_left else Vector2(x, y)
-		var tick_end := Vector2(x, y) if side_left else Vector2(x + 8.0, y)
-		draw_line(tick_start, tick_end, tick_color, 1.0, true)
-		if i % 4 == 0:
-			var beacon := Color("#facc15")
-			beacon.a = 0.20
-			draw_circle(Vector2(x, y), 2.0, beacon)
-
 
 func _panel_style(accent: Color, fill: Color, border_width: int, radius: int) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()

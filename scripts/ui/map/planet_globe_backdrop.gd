@@ -23,6 +23,11 @@ func debug_snapshot() -> Dictionary:
 		"kind": "globe_backdrop",
 		"mode": str(_payload.get("mode", "")),
 		"district_count": int(_payload.get("district_count", 0)),
+		"planet_opaque": true,
+		"planet_alpha": 1.0,
+		"day_brightness": 1.0,
+		"night_brightness": 0.50,
+		"outer_orbit_decoration_count": 0,
 		"sceneized": true,
 	}
 
@@ -38,19 +43,8 @@ func _draw() -> void:
 	var globe_blend := clampf(float(_payload.get("globe_blend", 1.0)), 0.0, 1.0)
 	# PlanetBoard owns the full stage-space fill. This layer remains transparent
 	# outside the globe so the board-space nebula can composite behind the map.
-	_draw_nebula(center, radius, globe_blend)
 	_draw_stars(viewport_size)
-	_draw_table_ring(center, radius, globe_blend)
 	_draw_planet_disc(center, radius, globe_blend)
-
-
-func _draw_nebula(center: Vector2, radius: float, globe_blend: float) -> void:
-	var cyan := Color("#164e63")
-	cyan.a = 0.18 + globe_blend * 0.05
-	draw_circle(center - Vector2(radius * 0.72, radius * 0.48), radius * 0.72, cyan)
-	var amber := Color("#451a03")
-	amber.a = 0.11
-	draw_circle(center + Vector2(radius * 0.82, radius * 0.56), radius * 0.58, amber)
 
 
 func _draw_stars(viewport_size: Vector2) -> void:
@@ -64,29 +58,18 @@ func _draw_stars(viewport_size: Vector2) -> void:
 		draw_circle(star_position, 0.7 + float(i % 3) * 0.24, star)
 
 
-func _draw_table_ring(center: Vector2, radius: float, globe_blend: float) -> void:
-	var rail_radius := radius + 38.0
-	var shadow := Color("#020617")
-	shadow.a = 0.66
-	draw_arc(center, rail_radius + 8.0, 0.0, TAU, 128, shadow, 10.0, true)
-	var rim := Color("#d6a440")
-	rim.a = 0.27 + globe_blend * 0.17
-	draw_arc(center, rail_radius, 0.0, TAU, 128, rim, 2.4, true)
-	var inner := Color("#fde68a")
-	inner.a = 0.08 + globe_blend * 0.08
-	draw_arc(center, radius + 8.0, 0.0, TAU, 128, inner, 1.4, true)
 func _draw_planet_disc(center: Vector2, radius: float, globe_blend: float) -> void:
 	var shadow := Color("#020617")
 	shadow.a = 0.78
 	draw_circle(center, radius + 4.0, shadow)
 	var ocean := Color("#0f172a")
-	ocean.a = 0.36 + globe_blend * 0.30
+	ocean.a = 1.0
 	draw_circle(center, radius, ocean)
 	var atmosphere := Color("#38bdf8")
 	atmosphere.a = 0.13 + globe_blend * 0.22
 	draw_arc(center, radius, 0.0, TAU, 128, atmosphere, 1.6 + globe_blend * 1.6, true)
 	var night := Color("#020617")
-	night.a = 0.14
+	night.a = 0.50
 	draw_circle(center + Vector2(radius * 0.22, radius * 0.04), radius * 0.82, night)
 
 

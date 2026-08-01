@@ -1,0 +1,67 @@
+{
+  "schema_version": "commercial_art.presentation_capture_green_owner.v1",
+  "task_id": "COMMERCIAL_ART_FOUNDATION_DIRECT_SELECTED_ASSET_INTEGRATION_V1",
+  "status": "GREEN",
+  "observed_at": "2026-08-01T16:41:33+09:00",
+  "supersedes": "reports/asset_intake/presentation_capture_final_agent.json",
+  "capture_scene": "res://scenes/tools/CommercialArtIntegrationReview.tscn",
+  "capture_driver": "res://tests/commercial_art/commercial_art_screenshot_capture.gd",
+  "godot": {
+    "version": "4.7.stable.official.5b4e0cb0f",
+    "display_driver": "Windows",
+    "renderer": "Vulkan Forward+",
+    "capture_exit_code": 0,
+    "stderr_error_count": 0,
+    "stderr_nul_diagnostic_count": 0,
+    "process_count_after": 0
+  },
+  "capture": {
+    "required_count": 15,
+    "written_count": 15,
+    "automated_pass_count": 15,
+    "automated_failure_count": 0,
+    "human_visual_pass_count": 15,
+    "human_visual_failure_count": 0,
+    "unique_sha256_count": 15,
+    "total_bytes": 6167271,
+    "placeholder_copy_visible_count": 0,
+    "text_overlap_count": 0,
+    "uninspectable_model_group_count": 0,
+    "incomplete_full_table_count": 0
+  },
+  "repairs_proven": [
+    "card_back_uses_catalog_pattern_without_placeholder_copy",
+    "six_color_state_copy_does_not_orphan_reserved_value",
+    "hover_and_drag_transform_headroom_prevents_heading_overlap",
+    "model_previews_use_local_hierarchy_aabb_fit_and_orthographic_framing",
+    "facility_monster_and_military_shipping_captures_are_isolated",
+    "full_table_1920_uses_three_column_complete_overview",
+    "full_table_1366_uses_two_column_complete_overview",
+    "credits_capture_finalizes_scroll_after_container_layout"
+  ],
+  "files": [
+    {"file_name":"commercial_art_bound_actions.png","width":1920,"height":1080,"bytes":580081,"sha256":"3c075a1e950524b7ca8651aef18e6616247e72f8950b47be2b5e23f9cef559d6"},
+    {"file_name":"commercial_art_commodity_cards.png","width":1920,"height":1080,"bytes":568584,"sha256":"9176ad7dbb0cac23abac6245b6902531402b525dacf94cb9a51304a31ec05673"},
+    {"file_name":"commercial_art_credits.png","width":1920,"height":1080,"bytes":195080,"sha256":"f03f7982a36df212a238be54ffd27cad4a3dc061a5046f1cfdb5d9703717f23d"},
+    {"file_name":"commercial_art_facilities.png","width":1920,"height":1080,"bytes":110807,"sha256":"77e5d1a2f59cd0e812bcf5eaa3928ed4cc580c0adde3bb821bf8a5a81c84f124"},
+    {"file_name":"commercial_art_full_table_1366.png","width":1366,"height":768,"bytes":291424,"sha256":"f13fe3a88b6ae82228453095a9c10545da53f5ff9ee325b0fca88b8e25b6e5cd"},
+    {"file_name":"commercial_art_full_table_1920.png","width":1920,"height":1080,"bytes":300416,"sha256":"80a0aa4244b153e302bcaa41e1d17dc01b0b4019f2afdc2b2f197c8b2c7e9444"},
+    {"file_name":"commercial_art_hand_drag.png","width":1920,"height":1080,"bytes":580847,"sha256":"2915dbc2089d1d5c3d2faf818db7cf6896d08c8bd5faee35232ac0a4e0230f42"},
+    {"file_name":"commercial_art_hand_hover.png","width":1920,"height":1080,"bytes":577983,"sha256":"8ef953ee0b20b8c3aa6e28c7134dad8d2a99358839ed83c128f1cb5fdd4f0320"},
+    {"file_name":"commercial_art_military.png","width":1920,"height":1080,"bytes":176304,"sha256":"b00ab772069d68e77fbd9f0d9f4bcd2bac96b286cfe02d1f2a6a7fa583b7ac6e"},
+    {"file_name":"commercial_art_monsters.png","width":1920,"height":1080,"bytes":104957,"sha256":"5407dd32355ee00089190d65e96b5c1c1aaded40f9f4e3f222258f8b92c6148e"},
+    {"file_name":"commercial_art_normal_cards.png","width":1920,"height":1080,"bytes":575831,"sha256":"71440525b2279471f6bd7b17d268b677faf7d36d013a51ba2c51b15f24f0ac04"},
+    {"file_name":"commercial_art_planet_day.png","width":1920,"height":1080,"bytes":603936,"sha256":"4427204ce9bdfea2ef063bf0230eac65a30ab940c2d3f4c06e97099202ef80a2"},
+    {"file_name":"commercial_art_planet_night.png","width":1920,"height":1080,"bytes":597269,"sha256":"5bd64b426d9d3ecdd68b88cee1b0ea32599bd292a980acee12b8ef62fd0ffa2a"},
+    {"file_name":"commercial_art_planet_zoom.png","width":1920,"height":1080,"bytes":537133,"sha256":"5728e9b36bc2cb14e9053375301e1441ebe547488472b7969e7349972493c43a"},
+    {"file_name":"commercial_art_six_color_assets.png","width":1920,"height":1080,"bytes":366619,"sha256":"d6a0aa7a92b43c47b74e910ca64f1809c9fd435bacb677cc350e7b0b196591e6"}
+  ],
+  "boundaries": {
+    "session_create_count": 0,
+    "save_write_count": 0,
+    "rng_draw_count": 0,
+    "gameplay_mutation_count": 0,
+    "formal_run_performed": false,
+    "full_smoke_performed": false
+  }
+}

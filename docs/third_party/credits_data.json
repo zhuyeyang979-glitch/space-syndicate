@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "credits_id": "space_syndicate.commercial_art_credits.v1",
+  "game_icons_attribution": "Icons: “Leaf Swirl”, “Lightning Electron”, “Cog” and “Circuitry” by Lorc; “Receive Money” and “Spaceship” by Delapouite; available at game-icons.net under CC BY 3.0. Icons were resized, normalized and recolored for Space Syndicate.",
+  "sections": {
+    "third_party_assets": [
+      {
+        "title": "Game-icons.net",
+        "detail": "Leaf Swirl, Lightning Electron, Cog and Circuitry by Lorc; Receive Money and Spaceship by Delapouite. CC BY 3.0. Resized, normalized and recolored for Space Syndicate."
+      },
+      {
+        "title": "Kenney",
+        "detail": "Sci-Fi UI, board-game icons, input prompts, patterns, particles, smoke, interface sounds and sci-fi sounds. CC0-1.0."
+      },
+      {
+        "title": "Quaternius",
+        "detail": "Modular Sci-Fi MegaKit, Sci-Fi Essentials, Ultimate Monsters, Animated Mech and Ultimate Spaceships. CC0-1.0."
+      },
+      {
+        "title": "ambientCG",
+        "detail": "MetalPlates013, PaintedMetal007, SheetMetal003 and NightSkyHDRI001. CC0-1.0."
+      },
+      {
+        "title": "Naejimer",
+        "detail": "Godot 3D Planet Generator shader foundation. MIT License."
+      }
+    ],
+    "licenses": [
+      {
+        "title": "CC BY 3.0",
+        "detail": "Game-icons.net icons by Lorc and Delapouite. https://creativecommons.org/licenses/by/3.0/"
+      },
+      {
+        "title": "CC0-1.0",
+        "detail": "Selected Kenney, Quaternius, ambientCG and OpenGameArt assets."
+      },
+      {
+        "title": "MIT License",
+        "detail": "Naejimer Godot 3D Planet Generator shader foundation."
+      },
+      {
+        "title": "OFL-1.1",
+        "detail": "Noto Sans CJK and Oxanium under the SIL Open Font License 1.1."
+      }
+    ],
+    "music": [
+      {
+        "title": "Pondering the Cosmos",
+        "detail": "Ruskerdax | Main menu | CC0-1.0"
+      },
+      {
+        "title": "Robotic City",
+        "detail": "section31 | Gameplay and economy | CC0-1.0"
+      },
+      {
+        "title": "Space Graveyard",
+        "detail": "TinyWorlds | Crisis presentation | CC0-1.0"
+      },
+      {
+        "title": "Interstellar Fleet 1",
+        "detail": "Zane Little Music | Military and late-game presentation | CC0-1.0"
+      }
+    ],
+    "fonts": [
+      {
+        "title": "Noto Sans CJK",
+        "detail": "SC Regular/Bold and JP Regular/Bold | Noto CJK project authors | OFL-1.1"
+      },
+      {
+        "title": "Oxanium",
+        "detail": "Medium, SemiBold and Bold | The Oxanium Project Authors | OFL-1.1"
+      }
+    ]
+  }
+}
