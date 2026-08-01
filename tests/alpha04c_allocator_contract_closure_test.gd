@@ -44,11 +44,19 @@ class SaveChildFixture extends Node:
 
 
 	func capture_runtime_checkpoint() -> Dictionary:
-		return {"schema_version": 1, "state": state.duplicate(true)}
+		return {"schema_version": 2, "state": state.duplicate(true)}
+
+
+	func preflight_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+		return {
+			"accepted": int(checkpoint.get("schema_version", 0)) == 2 \
+					and checkpoint.get("state") is Dictionary,
+			"reason_code": "fixture_checkpoint_valid",
+		}
 
 
 	func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
-		if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("state") is Dictionary):
+		if not bool(preflight_runtime_checkpoint(checkpoint).get("accepted", false)):
 			return {"restored": false, "reason_code": "fixture_checkpoint_invalid"}
 		state = (checkpoint.get("state", {}) as Dictionary).duplicate(true)
 		return {"restored": true, "applied": true, "reason_code": "fixture_checkpoint_restored"}
@@ -135,8 +143,8 @@ func _run() -> void:
 	var purchase := fixture.get("purchase") as DistrictPurchaseRuntimeController
 	var quote_authority := fixture.get("quote_authority") as QuoteAuthorityFixture
 	var save := owner.to_save_data()
-	_expect(not save.is_empty() and int(save.get("schema_version", 0)) == 3, "card-inventory outer Save captures strict v3")
-	_expect(_saved_cursor(save) == SAVED_CURSOR, "card-inventory v3 captures the exact quote cursor")
+	_expect(not save.is_empty() and int(save.get("schema_version", 0)) == 4, "card-inventory outer Save captures strict v4")
+	_expect(_saved_cursor(save) == SAVED_CURSOR, "card-inventory v4 captures the exact quote cursor")
 
 	_test_card_inventory_journal_high_water(owner, save)
 	_test_region_supply_cross_section_high_water(owner, save)
@@ -217,9 +225,9 @@ func _test_repeated_apply_and_rollback(
 	_expect(
 		bool(first_apply.get("applied", false)) and bool(second_apply.get("applied", false))
 				and quote_authority.next_quote_sequence == SAVED_CURSOR,
-		"repeated card-inventory v3 apply restores without advancing the quote cursor"
+		"repeated card-inventory v4 apply restores without advancing the quote cursor"
 	)
-	_expect(owner.to_save_data() == save, "repeated card-inventory v3 apply exact-recaptures")
+	_expect(owner.to_save_data() == save, "repeated card-inventory v4 apply exact-recaptures")
 
 	quote_authority.next_quote_sequence = 23
 	var before_fault := owner.to_save_data()

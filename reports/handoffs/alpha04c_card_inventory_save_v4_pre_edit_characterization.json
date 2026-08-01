@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "task_id": "ALPHA_0_4_C_ATTESTED_CARD_INVENTORY_SAVE_SCHEMA_V4_CHECKPOINT_V2_REPAIR_AND_V7_OWNER_REPLAY",
+  "status": "PRE_EDIT_CHARACTERIZATION_COMPLETE",
+  "baseline_sha": "9d823a6ad3ba9d5464cc47ec8a96405cc75a9187",
+  "effective_main_sha": "794ccf010e661a4750efca20a4e0d2a5839b7f2b",
+  "composition": "real main.tscn V0.6 session, real CardInventorySaveOwner, and all three real child owners",
+  "state_profile": "default four-seat production state plus one real pending-discard window",
+  "persistent_save": {
+    "leaf_count": 2137,
+    "non_closed_leaf_count": 456,
+    "type_counts": {
+      "float": 456
+    },
+    "children": {
+      "commodity_card_inventory": {
+        "leaf_count": 679,
+        "non_closed_leaf_count": 132,
+        "type_counts": {
+          "float": 132
+        }
+      },
+      "product_market": {
+        "leaf_count": 1421,
+        "non_closed_leaf_count": 323,
+        "type_counts": {
+          "float": 323
+        }
+      },
+      "district_purchase": {
+        "leaf_count": 37,
+        "non_closed_leaf_count": 1,
+        "type_counts": {
+          "float": 1
+        }
+      }
+    }
+  },
+  "runtime_checkpoint": {
+    "leaf_count": 2343,
+    "non_closed_leaf_count": 503,
+    "type_counts": {
+      "float": 502,
+      "int": 1
+    },
+    "children": {
+      "commodity_card_inventory": {
+        "leaf_count": 686,
+        "non_closed_leaf_count": 132,
+        "type_counts": {
+          "float": 132
+        }
+      },
+      "product_market": {
+        "leaf_count": 1570,
+        "non_closed_leaf_count": 369,
+        "type_counts": {
+          "float": 369
+        }
+      },
+      "district_purchase": {
+        "leaf_count": 82,
+        "non_closed_leaf_count": 2,
+        "type_counts": {
+          "float": 1,
+          "int": 1
+        }
+      }
+    }
+  },
+  "redacted_path_families": [
+    {
+      "scope": "persistent_save",
+      "path": "$.commodity_card_inventory.belt.items.<redacted>.<redacted>.<redacted>.<redacted>",
+      "count": 36,
+      "variant_type": "float"
+    },
+    {
+      "scope": "persistent_save",
+      "path": "$.commodity_card_inventory.belt.items.<redacted>.<redacted>.<redacted>.<redacted>.<redacted>",
+      "count": 96,
+      "variant_type": "float"
+    },
+    {
+      "scope": "persistent_save",
+      "path": "$.product_market.market_timer",
+      "count": 1,
+      "variant_type": "float"
+    },
+    {
+      "scope": "persistent_save",
+      "path": "$.product_market.product_market.<redacted>.{base_growth_multiplier,growth_multiplier,growth_seconds,base_route_flow_multiplier,route_flow_multiplier,route_flow_seconds,market_contract_seconds}",
+      "count": 322,
+      "variant_type": "float"
+    },
+    {
+      "scope": "persistent_save",
+      "path": "$.district_purchase.district_purchase_runtime.sessions[*].pending_payload.opened_at",
+      "count": 1,
+      "variant_type": "float"
+    },
+    {
+      "scope": "runtime_checkpoint",
+      "path": "$.children.commodity_card_inventory.flow.belt.items.<redacted>.<redacted>.<redacted>.<redacted>{.<redacted>}",
+      "count": 132,
+      "variant_type": "float"
+    },
+    {
+      "scope": "runtime_checkpoint",
+      "path": "$.children.product_market.market_timer",
+      "count": 1,
+      "variant_type": "float"
+    },
+    {
+      "scope": "runtime_checkpoint",
+      "path": "$.children.product_market.product_market.<redacted>.{save-float-fields,weather_price_growth_multiplier}",
+      "count": 368,
+      "variant_type": "float"
+    },
+    {
+      "scope": "runtime_checkpoint",
+      "path": "$.children.district_purchase.windows_by_player.<non_string_key:int>",
+      "count": 1,
+      "variant_type": "int"
+    },
+    {
+      "scope": "runtime_checkpoint",
+      "path": "$.children.district_purchase.windows_by_player.<non_string_key:int>.pending_payload.opened_at",
+      "count": 1,
+      "variant_type": "float"
+    }
+  ],
+  "required_defects_reconfirmed": {
+    "district_int_key_defect_present": true,
+    "product_growth_float_defect_present": true,
+    "market_timer_float_defect_present": true
+  },
+  "additional_characterized_condition": {
+    "path": "district_purchase.pending_payload.opened_at",
+    "variant_type": "float",
+    "classification": "presentation_only_non_authoritative_metadata",
+    "production_reader_count": 0
+  },
+  "forbidden_dependency_type_count": 0,
+  "complete_redacted_leaf_enumeration_emitted_by_test": true,
+  "characterization_test": "res://tests/alpha04c_card_inventory_full_closed_wire_characterization_test.gd",
+  "immutable_v7": {
+    "targeted_owner_capture_diagnostic_count": 7,
+    "registry_owner_capture": "7/19",
+    "failing_owner_index": 7,
+    "failing_section_id": "card_inventory",
+    "failing_owner_id": "card_inventory",
+    "failure_reason": "owner_checkpoint_not_pure_data",
+    "quota_ledger_sha256": "607f1a15d875321a368ab071b35693857d7acf32063b4ed5578fa4f4aea9f826",
+    "failure_phase_0024_sha256": "eba66bdf8edc55071b862a6b1c9d1ab8073d130335408bcf76be9c373538b778"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "contract_id": "CardInventoryOwnerReplayAuthorizationV1",
+  "authorization_id": "alpha04c-v7-card-inventory-save-v4-checkpoint-v2-replay-v2-scenario-identity",
+  "run_id_prefix": "alpha04c-v7-card-inventory-replay-v2-scenario-identity",
+  "run_id": "alpha04c-v7-card-inventory-replay-v2-scenario-identity-attempt-2",
+  "replay_attempt_count_before": 1,
+  "authorized_new_replay_count": 1,
+  "replay_attempt_count_after": 2,
+  "targeted_owner_capture_diagnostic_count_before": 7,
+  "targeted_owner_capture_diagnostic_count_after": 7
+}

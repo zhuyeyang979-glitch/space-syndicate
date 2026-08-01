@@ -1,6 +1,7 @@
 extends Node
 class_name RulesetSaveHandshakeService
 
+const CLOSED_SCALAR_CODEC := preload("res://scripts/runtime/closed_save_scalar_codec_v1.gd")
 const LEGACY_V04_SAVE_VERSION := 1
 const V05_SAVE_VERSION := 2
 const V06_SAVE_VERSION := 3
@@ -113,6 +114,20 @@ func validate_v06_envelope(payload: Dictionary) -> Dictionary:
 			"valid": false,
 			"reason_code": "allocator_cursor_missing_requires_backup",
 			"errors": ["allocator_cursor_missing_requires_backup"],
+			"save_version": V06_SAVE_VERSION,
+			"ruleset_id": V06_RULESET_ID,
+			"fingerprint": "",
+			"requires_backup": true,
+		}
+	if errors.is_empty() and _is_card_inventory_v3_envelope(
+		payload,
+		expected_manifest,
+		expected_versions
+	):
+		return {
+			"valid": false,
+			"reason_code": "card_inventory_v3_closed_wire_upgrade_requires_backup",
+			"errors": ["card_inventory_v3_closed_wire_upgrade_requires_backup"],
 			"save_version": V06_SAVE_VERSION,
 			"ruleset_id": V06_RULESET_ID,
 			"fingerprint": "",
@@ -284,6 +299,49 @@ func _is_card_inventory_allocator_v2_envelope(
 			and int(district_payload.get("schema_version", 0)) == 2 \
 			and district_payload.get("sessions") is Array \
 			and not district_payload.has("next_quote_sequence")
+
+
+func _is_card_inventory_v3_envelope(
+	payload: Dictionary,
+	expected_manifest: Dictionary,
+	expected_versions: Dictionary
+) -> bool:
+	var provided_manifest: Dictionary = payload.get("section_manifest", {}) \
+			if payload.get("section_manifest", {}) is Dictionary else {}
+	var provided_versions: Dictionary = payload.get("controller_state_versions", {}) \
+			if payload.get("controller_state_versions", {}) is Dictionary else {}
+	var sections: Dictionary = payload.get("sections", {}) \
+			if payload.get("sections", {}) is Dictionary else {}
+	if provided_manifest.size() != expected_manifest.size() \
+			or provided_versions.size() != expected_versions.size() \
+			or sections.size() != expected_manifest.size():
+		return false
+	for section_id_variant in expected_manifest.keys():
+		var section_id := str(section_id_variant)
+		var expected_row := (expected_manifest.get(section_id, {}) as Dictionary).duplicate(true)
+		var controller_id := str(expected_row.get("owner_id", ""))
+		if not provided_manifest.has(section_id) or not provided_versions.has(controller_id) \
+				or not sections.has(section_id) or not (sections.get(section_id) is Dictionary):
+			return false
+		var provided_row := provided_manifest.get(section_id, {}) as Dictionary
+		var wrapper := sections.get(section_id, {}) as Dictionary
+		if section_id == "card_inventory":
+			expected_row["state_version"] = 3
+			if int(provided_versions.get(controller_id, 0)) != 3 \
+					or not _same_data(provided_row, expected_row) \
+					or int(wrapper.get("schema_version", 0)) != 3:
+				return false
+			continue
+		if int(provided_versions.get(controller_id, 0)) != int(expected_versions.get(controller_id, 0)) \
+				or not _same_data(provided_row, expected_row) \
+				or int(wrapper.get("schema_version", 0)) != int(expected_versions.get(controller_id, 0)):
+			return false
+	var card_wrapper := sections.get("card_inventory", {}) as Dictionary
+	var decoded := decode_codec_value(card_wrapper.get("owner_state"))
+	return bool(decoded.get("ok", false)) \
+			and decoded.get("value") is Dictionary \
+			and int((decoded.get("value") as Dictionary).get("schema_version", 0)) == 3 \
+			and str((decoded.get("value") as Dictionary).get("ruleset_id", "")) == V06_RULESET_ID
 
 
 func _is_pre_resume_v06_manifest(payload: Dictionary) -> bool:
@@ -607,20 +665,18 @@ func _decode_codec_value(value: Variant) -> Dictionary:
 
 
 func _float64_bits(value: float) -> String:
-	var bytes := PackedByteArray()
-	bytes.resize(8)
-	bytes.encode_double(0, value)
-	return bytes.hex_encode()
+	return CLOSED_SCALAR_CODEC.f64_bits_hex(value)
 
 
 func _decode_float64_bits(bits: String) -> Dictionary:
-	if bits.length() != 16:
-		return {"ok": false, "reason_code": "codec_float64_bits_invalid"}
-	var bytes := bits.hex_decode()
-	if bytes.size() != 8 or bytes.hex_encode() != bits.to_lower():
-		return {"ok": false, "reason_code": "codec_float64_bits_invalid"}
-	var value := bytes.decode_double(0)
-	return {"ok": is_finite(value), "reason_code": "codec_float64_valid" if is_finite(value) else "codec_float64_nonfinite", "value": value}
+	var decoded := CLOSED_SCALAR_CODEC.decode_f64_bits_hex(bits.to_lower())
+	return {
+		"ok": bool(decoded.get("ok", false)),
+		"reason_code": "codec_float64_valid" if bool(decoded.get("ok", false)) \
+				else "codec_float64_nonfinite" if str(decoded.get("reason_code", "")) == "f64_nonfinite_rejected" \
+				else "codec_float64_bits_invalid",
+		"value": decoded.get("value", 0.0),
+	}
 
 
 func _is_encoded_pure_data(value: Variant) -> bool:

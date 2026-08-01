@@ -20,6 +20,7 @@ const EXPECTED_FIRST_MISMATCH_OWNER := "public_facility_region"
 const EXPECTED_FIRST_MISMATCH_FIELD := "checkpoint_method"
 const EXPECTED_BINDING_COUNT := 19
 const EXPECTED_OMITTED_CHECKPOINT_COUNT := 11
+const HISTORICAL_CARD_INVENTORY_STATE_VERSION := 3
 
 const STRATEGY_EXPLICIT := SaveRegistry.CHECKPOINT_STRATEGY_EXPLICIT_OWNER_METHOD
 const STRATEGY_REGISTRY_MANAGED := SaveRegistry.CHECKPOINT_STRATEGY_REGISTRY_MANAGED
@@ -63,7 +64,9 @@ static func run(evidence_root_override := "") -> Dictionary:
 	var legacy := characterize_legacy_snapshot(legacy_snapshot)
 	result.merge(legacy, true)
 	var retained_identity: Dictionary = evidence.get("scenario_identity", {})
-	var replayed_registry_fingerprint := _legacy_registry_fingerprint(legacy_snapshot)
+	var historical_snapshot := _historical_v6_registry_snapshot(legacy_snapshot)
+	var replayed_registry_fingerprint := _legacy_registry_fingerprint(historical_snapshot)
+	result["historical_state_version_projection_count"] = 1 if not historical_snapshot.is_empty() else 0
 	result["retained_registry_fingerprint_match"] = not replayed_registry_fingerprint.is_empty() \
 			and replayed_registry_fingerprint == str(retained_identity.get("save_registry_fingerprint", ""))
 	if not bool(legacy.get("pre_fix_characterized", false)) \
@@ -310,6 +313,27 @@ static func _legacy_registry_fingerprint(snapshot: Dictionary) -> String:
 		"contracts": snapshot.get("contracts", []),
 		"transactional_section_count": snapshot.get("transactional_section_count", 0),
 	}, "", true, true).sha256_text().to_lower()
+
+
+static func _historical_v6_registry_snapshot(snapshot: Dictionary) -> Dictionary:
+	var projected := snapshot.duplicate(true)
+	var contracts: Array = projected.get("contracts", []) \
+			if projected.get("contracts", []) is Array else []
+	var projected_count := 0
+	for index in range(contracts.size()):
+		if not (contracts[index] is Dictionary):
+			continue
+		var row := (contracts[index] as Dictionary).duplicate(true)
+		if str(row.get("section_id", "")) != "card_inventory" \
+				or str(row.get("owner_id", "")) != "card_inventory":
+			continue
+		row["state_version"] = HISTORICAL_CARD_INVENTORY_STATE_VERSION
+		contracts[index] = row
+		projected_count += 1
+	if projected_count != 1:
+		return {}
+	projected["contracts"] = contracts
+	return projected
 
 
 static func _normalize_scenario_identity_json_types(source: Dictionary) -> Dictionary:

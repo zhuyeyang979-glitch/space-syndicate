@@ -88,7 +88,7 @@ func _verify_card_and_belt_owners(coordinator: GameRuntimeCoordinator, world: Wo
 	root.add_child(owner)
 	owner.configure_dependencies(commodity, product_market, district_purchase)
 	var save := owner.to_save_data()
-	_expect(not save.is_empty() and int(save.get("schema_version", 0)) == 3, "card-inventory v3 composite captures")
+	_expect(not save.is_empty() and int(save.get("schema_version", 0)) == 4, "card-inventory v4 composite captures")
 	var save_text := JSON.stringify(save)
 	_expect(not save_text.contains("\"slots\"") and not save_text.contains("runtime_instance_id") and not save_text.contains("\"cash\"") and not save_text.contains("ai_profile") and not save_text.contains("ai_memory"), "card-inventory payload contains no World-owned slots, instances, cash, or AI state")
 	var session_dependency := {"session": {"world_session_state": {"players": world.capture_envelope_save_data().get("normalized_state", {}).get("players", [])}}}
