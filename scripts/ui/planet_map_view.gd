@@ -612,6 +612,9 @@ func _sync_district_nodes() -> void:
 	var label_positions := _overview_district_label_positions() if overview_compact else {}
 	for index in range(districts.size()):
 		var entry: Dictionary = districts[index]
+		var center_projection := _sceneized_world_projection(entry.get("center", Vector2.ZERO))
+		if not bool(center_projection.get("visible", true)):
+			continue
 		var node := PlanetDistrictNodeScene.instantiate() as Control
 		if node == null:
 			continue
@@ -625,7 +628,7 @@ func _sync_district_nodes() -> void:
 			"hp": int(entry.get("hp", 0)),
 			"panic": int(entry.get("panic", 0)),
 			"products": entry.get("products", []),
-			"screen_position": label_positions.get(index, get_district_control_position(index)),
+			"screen_position": label_positions.get(index, center_projection.get("position", Vector2.ZERO)),
 			"selected": index == selected_district,
 			"compact": overview_compact and index != selected_district,
 			"accent": _palette_hex(index),
@@ -650,7 +653,10 @@ func _overview_district_label_positions() -> Dictionary:
 	if has_method("_globe_center"):
 		globe_center = call("_globe_center") as Vector2
 	for index in ordered_indices:
-		var base := get_district_control_position(index)
+		var projection := _sceneized_world_projection((districts[index] as Dictionary).get("center", Vector2.ZERO))
+		if not bool(projection.get("visible", true)):
+			continue
+		var base := projection.get("position", Vector2.ZERO) as Vector2
 		var selected := index == selected_district
 		var label_size := Vector2(128, 106) if selected else Vector2(92, 28)
 		var radial := (base - globe_center).normalized()
@@ -700,6 +706,9 @@ func _sync_city_markers() -> void:
 		if not (marker_variant is Dictionary):
 			continue
 		var marker: Dictionary = (marker_variant as Dictionary).duplicate(true)
+		var projection := _sceneized_world_projection(marker.get("position", Vector2.ZERO))
+		if not bool(projection.get("visible", true)):
+			continue
 		var node := PlanetCityMarkerScene.instantiate() as Control
 		if node == null:
 			continue
@@ -707,7 +716,7 @@ func _sync_city_markers() -> void:
 		node.set_meta("sceneized_planet_map_kind", "city")
 		district_layer.add_child(node)
 		node.call("configure", {
-			"screen_position": _sceneized_world_to_control(marker.get("position", Vector2.ZERO)),
+			"screen_position": projection.get("position", Vector2.ZERO),
 			"tag": str(marker.get("tag", "C")),
 			"level": int(marker.get("level", 1)),
 			"products": marker.get("products", []),
@@ -753,7 +762,10 @@ func _monster_presentation_entries(overview_compact: bool) -> Array[Dictionary]:
 		if not (marker_variant is Dictionary):
 			continue
 		var marker := (marker_variant as Dictionary).duplicate(true)
-		var screen_position := _sceneized_world_to_control(marker.get("position", Vector2.ZERO))
+		var projection := _sceneized_world_projection(marker.get("position", Vector2.ZERO))
+		if not bool(projection.get("visible", true)):
+			continue
+		var screen_position := projection.get("position", Vector2.ZERO) as Vector2
 		var display_name := str(marker.get("name", "未知怪兽"))
 		if not overview_compact:
 			entries.append({"marker": marker, "screen_position": screen_position, "count": 1, "names": [display_name]})
@@ -911,6 +923,9 @@ func _sync_selection_marker() -> void:
 	if selected_district < 0 or selected_district >= districts.size():
 		return
 	var entry: Dictionary = districts[selected_district]
+	var projection := _sceneized_world_projection(entry.get("center", Vector2.ZERO))
+	if not bool(projection.get("visible", true)):
+		return
 	var node := PlanetSelectionRingScene.instantiate() as Control
 	if node == null:
 		return
@@ -921,7 +936,7 @@ func _sync_selection_marker() -> void:
 		"index": selected_district,
 		"name": str(entry.get("name", "Selected region")),
 		"detail": "当前焦点｜%s" % _terrain_display_label(str(entry.get("terrain", "地表区"))),
-		"screen_position": get_district_control_position(selected_district),
+		"screen_position": projection.get("position", Vector2.ZERO),
 		"accent": "#facc15",
 	})
 	_sceneized_selection_nodes.append(node)
@@ -1168,11 +1183,16 @@ func _on_sceneized_district_double_pressed(index: int) -> void:
 	district_double_clicked.emit(index)
 
 
-func _sceneized_world_to_control(value: Variant) -> Vector2:
+func _sceneized_world_projection(value: Variant) -> Dictionary:
 	var world_position := _as_vector2(value)
 	if size.x <= 1.0 or size.y <= 1.0:
-		return Vector2.ZERO
-	var projection := _map_event_screen_position(world_position)
+		return {"position": Vector2.ZERO, "visible": false, "z": -1.0}
+	return _map_event_screen_position(world_position)
+
+
+func _sceneized_world_to_control(value: Variant) -> Vector2:
+	var world_position := _as_vector2(value)
+	var projection := _sceneized_world_projection(world_position)
 	return projection.get("position", _world_to_screen(world_position))
 
 

@@ -1,0 +1,143 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scenes/tools/commercial_art/components/ui/commercial_review_card.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_ui_scifi/panel_primary_9slice.svg" id="2_frame"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_pattern_pack/asset_base_pattern.svg" id="3_pattern"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_board_game_icons/icons/lock.png" id="4_lock"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_outline"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.847059, 0.898039, 0.941176, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="CommercialReviewCard" type="Control"]
+custom_minimum_size = Vector2(178, 266)
+offset_right = 178.0
+offset_bottom = 266.0
+script = ExtResource("1_script")
+frame_texture = ExtResource("2_frame")
+pattern_texture = ExtResource("3_pattern")
+
+[node name="Frame" type="NinePatchRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_frame")
+patch_margin_left = 18
+patch_margin_top = 34
+patch_margin_right = 18
+patch_margin_bottom = 12
+
+[node name="Accent" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 12.0
+offset_right = 164.0
+offset_bottom = 19.0
+mouse_filter = 2
+color = Color(0.305882, 0.631373, 1, 1)
+
+[node name="CardMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 22.0
+offset_right = -16.0
+offset_bottom = -15.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="CardContent" type="VBoxContainer" parent="CardMargin"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="Header" type="HBoxContainer" parent="CardMargin/CardContent"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="AssetIcon" type="TextureRect" parent="CardMargin/CardContent/Header"]
+custom_minimum_size = Vector2(30, 30)
+layout_mode = 2
+expand_mode = 3
+stretch_mode = 5
+
+[node name="Title" type="Label" parent="CardMargin/CardContent/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"BodyBold"
+theme_override_font_sizes/font_size = 13
+text = "星际契约"
+vertical_alignment = 1
+text_overrun_behavior = 3
+
+[node name="Rank" type="Label" parent="CardMargin/CardContent/Header"]
+layout_mode = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_font_sizes/font_size = 17
+text = "II"
+vertical_alignment = 1
+
+[node name="Art" type="PanelContainer" parent="CardMargin/CardContent"]
+custom_minimum_size = Vector2(0, 124)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Pattern" type="TextureRect" parent="CardMargin/CardContent/Art"]
+layout_mode = 2
+texture = ExtResource("3_pattern")
+texture_repeat = 2
+expand_mode = 1
+stretch_mode = 1
+modulate = Color(1, 1, 1, 0.56)
+
+[node name="Cost" type="Label" parent="CardMargin/CardContent"]
+layout_mode = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.847059, 0.898039, 0.941176, 1)
+theme_override_font_sizes/font_size = 16
+text = "2 + 1"
+horizontal_alignment = 1
+
+[node name="Status" type="Label" parent="CardMargin/CardContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.568627, 0.635294, 0.701961, 1)
+theme_override_font_sizes/font_size = 11
+text = "可用"
+horizontal_alignment = 1
+
+[node name="LockIcon" type="TextureRect" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 137.0
+offset_top = 220.0
+offset_right = 165.0
+offset_bottom = 248.0
+mouse_filter = 2
+texture = ExtResource("4_lock")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="SelectedOutline" type="Panel" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_outline")

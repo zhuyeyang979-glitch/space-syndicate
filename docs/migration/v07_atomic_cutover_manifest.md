@@ -12,10 +12,15 @@ ALLOWED_SESSION_ENTRYPOINTS=[NEW_V07_GAME]
 PRODUCTION_SCENE_CHANGE=false
 MAIN_CHANGE=false
 DUAL_WRITE_ALLOWED=false
+LATEST_MAIN_BASELINE_SHA=054552f0c3748da2960d94440b2062f042401d3e
+COMMERCIAL_ART_FOUNDATION=GREEN
+PRESENTATION_ASSET_CATALOG_READY=true
 
 The canonical Save, RNG, AI-observation, and player-projection adapters are detached `RefCounted` implementations. They consume the merged V0.7 semantic Core but have no production scene, Main, V0.6 runtime, or V06 Save Registry connection. This document is a future atomic owner-replacement checklist, not production cutover authorization.
 
 A V0.6 Save is recognized and rejected with `v06_save_backup_required`. The adapter never guesses the unified track, personal DBG order, independent commodity inventory, 5+5 capacities, asset reservations, anonymous resolution order, or complete-macro-round state. The first production V0.7 release starts only through `NEW_V07_GAME`.
+
+Every player-visible cutover below declares presentation dependencies through stable semantic asset keys owned by the existing Presentation Asset Catalog. The detached Player adapter emits only `asset_key` entries; Core, AI, and Save remain asset-key agnostic, and no adapter or cutover entry names a vendor filename or third-party resource path. Presentation consumes authorized projections; it never becomes a gameplay, sunlight, Save, or RNG owner.
 
 ## 1. unified_card_track
 
@@ -26,6 +31,14 @@ A V0.6 Save is recognized and rejected with `v06_save_backup_required`. The adap
 - **Player port:** `v07.unified_track.player_projection.v1`.
 - **Save adapter:** `V07CanonicalSaveAdapter#unified_card_track_cycle`.
 - **RNG streams:** unified track type, color, normal-card, commodity, and initial hidden-lead streams.
+- **Required asset keys:** `card.frame.normal`, `card.frame.commodity`, all six `icon.asset.*` keys, and `ui.panel.primary`.
+- **Required player projection:** `v07.unified_track.player_projection.v1`.
+- **Required AI observation:** `v07.unified_track.ai_observation.v1`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#unified_card_track_cycle`.
+- **Required RNG streams:** `unified_track_type_draw`, `unified_track_color_draw`, `unified_track_normal_card_draw`, `unified_track_commodity_draw`, and `initial_hidden_lead_order`.
+- **Production scene target:** `scenes/ui/PublicTrack.tscn`.
+- **Old-surface deletion gate:** Retire TopCommoditySushiTrack and regional ordinary-card surfaces only after PublicTrack renders the authorized mixed-track projection with every required key.
+- **Rollback surface:** Rebind PublicTrack to the unchanged V0.6 public-track projection and render no candidate V0.7 track state.
 - **Pre-cutover gate:** Validate one mixed-track snapshot, stable identities, six-color cycle, hidden lead order, receipts, and five embedded RNG streams.
 - **Cutover step:** Replace every NEW_V07_GAME Core, AI, player, Save, and RNG route in one transaction.
 - **Rollback step:** Restore the detached track checkpoint and retain all V0.6 routes.
@@ -41,6 +54,14 @@ A V0.6 Save is recognized and rejected with `v06_save_backup_required`. The adap
 - **Player port:** `v07.personal_dbg.player_projection.v1#normal_dbg_deck`.
 - **Save adapter:** `V07CanonicalSaveAdapter#personal_dbg_and_merge.normal_dbg_deck`.
 - **RNG streams:** starter-deck shuffle and per-player reshuffle.
+- **Required asset keys:** `card.frame.normal`, `card.back.normal`, `icon.board.draw_pile`, `icon.board.discard_pile`, and `icon.board.shuffle`.
+- **Required player projection:** `v07.personal_dbg.player_projection.v1#normal_dbg_deck`.
+- **Required AI observation:** `v07.personal_dbg.ai_observation.v1#normal_dbg_deck`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#personal_dbg_and_merge.normal_dbg_deck`.
+- **Required RNG streams:** `starter_deck_shuffle` and `normal_deck_reshuffle_by_player`.
+- **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
+- **Old-surface deletion gate:** Retire shared-hand zones and disappearance fallbacks only after PlayerCardDock renders the authorized private DBG projection with draw, discard, shuffle, and card-back assets.
+- **Rollback surface:** Rebind PlayerCardDock to the unchanged V0.6 hand projection and expose no candidate DBG order or private zone state.
 - **Pre-cutover gate:** Validate one private 12-card DBG owner per player, all zones, capacities, identities, cursors, and quiescence.
 - **Cutover step:** Atomically replace normal-card commands, observations, projections, Save fields, and draw ownership.
 - **Rollback step:** Restore every per-player DBG checkpoint without a card draw or move.
@@ -56,6 +77,14 @@ A V0.6 Save is recognized and rejected with `v06_save_backup_required`. The adap
 - **Player port:** `v07.personal_dbg.player_projection.v1#normal_card_merge`.
 - **Save adapter:** `V07CanonicalSaveAdapter#personal_dbg_and_merge.normal_card_merge`.
 - **RNG stream:** `NONE`.
+- **Required asset keys:** `card.frame.normal`, `icon.board.merge`, `audio.card.merge`, and `vfx.card.merge`.
+- **Required player projection:** `v07.personal_dbg.player_projection.v1#normal_card_merge`.
+- **Required AI observation:** `v07.personal_dbg.ai_observation.v1#normal_card_merge`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#personal_dbg_and_merge.normal_card_merge`.
+- **Required RNG stream:** `NONE`.
+- **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
+- **Old-surface deletion gate:** Retire automatic, name-based, and independently mutating merge affordances only after PlayerCardDock renders typed candidates and receipt-driven feedback.
+- **Rollback surface:** Restore the pre-cutover PlayerCardDock card projection, clear candidate merge feedback, and publish no output card or receipt.
 - **Pre-cutover gate:** Validate typed inputs, output identity, lineage, cost, capacity, receipts, rollback, and zero RNG draws.
 - **Cutover step:** Replace all optional normal-card merge commands and receipts inside the DBG owner cutover.
 - **Rollback step:** Restore the DBG checkpoint and discard unpublished outputs.
@@ -71,6 +100,14 @@ A V0.6 Save is recognized and rejected with `v06_save_backup_required`. The adap
 - **Player port:** `v07.personal_dbg.player_projection.v1#commodity_inventory_merge`.
 - **Save adapter:** `V07CanonicalSaveAdapter#personal_dbg_and_merge.commodity_inventory_merge`.
 - **RNG stream:** `NONE`.
+- **Required asset keys:** `card.frame.commodity`, `icon.board.merge`, `audio.card.merge`, and `vfx.card.merge`.
+- **Required player projection:** `v07.personal_dbg.player_projection.v1#commodity_inventory_merge`.
+- **Required AI observation:** `v07.personal_dbg.ai_observation.v1#commodity_inventory_merge`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#personal_dbg_and_merge.commodity_inventory_merge`.
+- **Required RNG stream:** `NONE`.
+- **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
+- **Old-surface deletion gate:** Retire shared-capacity commodity surfaces and duplicate inventory writers only after PlayerCardDock renders the independent commodity projection and typed merge receipts.
+- **Rollback surface:** Restore the V0.6 commodity presentation and publish no candidate inventory or merge receipt.
 - **Pre-cutover gate:** Validate independent commodity capacity, typed lineage, privacy, and no implicit V0.6 capacity interpretation.
 - **Cutover step:** Route NEW_V07_GAME acquisition, inventory, merge, projection, and Save through each player's DBG Core.
 - **Rollback step:** Restore the commodity checkpoint and emit no claim or merge receipt.
@@ -86,6 +123,14 @@ A V0.6 Save is recognized and rejected with `v06_save_backup_required`. The adap
 - **Player port:** `v07.six_color_assets.player_projection.v1`.
 - **Save adapter:** `V07CanonicalSaveAdapter#six_color_assets_and_reservations.assets`.
 - **RNG stream:** `NONE`.
+- **Required asset keys:** `icon.asset.life`, `icon.asset.energy`, `icon.asset.industry`, `icon.asset.technology`, `icon.asset.commerce`, and `icon.asset.shipping`.
+- **Required player projection:** `v07.six_color_assets.player_projection.v1`.
+- **Required AI observation:** `v07.six_color_assets.ai_observation.v1`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#six_color_assets_and_reservations.assets`.
+- **Required RNG stream:** `NONE`.
+- **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
+- **Old-surface deletion gate:** Retire mana-named counters and V0.6 resource surfaces only after PlayerCardDock renders all six authorized values with shape-and-icon identification.
+- **Rollback surface:** Restore the V0.6 resource presentation and clear candidate six-color balances, reservations, and refresh feedback.
 - **Pre-cutover gate:** Validate exactly six colors, cap six, remainders, revisions, privacy, and shared asset-batch lineage.
 - **Cutover step:** Replace NEW_V07_GAME resource reads and writes while the candidate remains detached.
 - **Rollback step:** Restore the shared asset-batch checkpoint once and publish no asset delta.
@@ -101,6 +146,14 @@ A V0.6 Save is recognized and rejected with `v06_save_backup_required`. The adap
 - **Player port:** `v07.card_batch.player_projection.v1#card_batch`.
 - **Save adapter:** `V07CanonicalSaveAdapter#card_batch_and_anonymous_resolution.card_batch`.
 - **RNG stream:** `NONE`.
+- **Required asset keys:** `card.frame.normal`, `card.frame.commodity`, `card.frame.bound_action`, `ui.panel.primary`, `icon.board.card_count`, `icon.board.turn`, and `icon.board.target`.
+- **Required player projection:** `v07.card_batch.player_projection.v1#card_batch`.
+- **Required AI observation:** `v07.card_batch.ai_observation.v1#card_batch`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#card_batch_and_anonymous_resolution.card_batch`.
+- **Required RNG stream:** `NONE`.
+- **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
+- **Old-surface deletion gate:** Retire V0.6 multi-window collection and resolution-time targeting surfaces only after PlayerCardDock renders one authorized five-action local ordering projection.
+- **Rollback surface:** Restore the pre-cutover command surface, discard the candidate batch, and consume neither time nor actions.
 - **Pre-cutover gate:** Validate the one-shot window, five-action limit, local order, targets, revision, and exact-once journal.
 - **Cutover step:** Replace NEW_V07_GAME action collection in the same atomic owner switch.
 - **Rollback step:** Restore the shared checkpoint and discard the batch without consuming time or actions.
@@ -116,6 +169,14 @@ A V0.6 Save is recognized and rejected with `v06_save_backup_required`. The adap
 - **Player port:** `v07.six_color_assets.player_projection.v1#asset_reservation`.
 - **Save adapter:** `V07CanonicalSaveAdapter#six_color_assets_and_reservations.reservations`.
 - **RNG stream:** `NONE`.
+- **Required asset keys:** all six `icon.asset.*` keys plus `icon.board.lock`, `audio.card.lock`, and `vfx.card.lock`.
+- **Required player projection:** `v07.six_color_assets.player_projection.v1#asset_reservation`.
+- **Required AI observation:** `v07.six_color_assets.ai_observation.v1#asset_reservation`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#six_color_assets_and_reservations.reservations`.
+- **Required RNG stream:** `NONE`.
+- **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
+- **Old-surface deletion gate:** Retire execution-time affordability and duplicate cost surfaces only after PlayerCardDock renders exact reserved and available six-color values from the authorized projection.
+- **Rollback surface:** Clear candidate reservation highlights and restore the V0.6 affordability presentation without charging or releasing an authoritative asset.
 - **Pre-cutover gate:** Validate one complete reservation identity, six-color cost, batch identity, journal, and balance per action.
 - **Cutover step:** Make reservation acceptance the only NEW_V07_GAME affordability and cost-consumption authority.
 - **Rollback step:** Restore the shared checkpoint and release every candidate reservation without charge.
@@ -131,6 +192,14 @@ A V0.6 Save is recognized and rejected with `v06_save_backup_required`. The adap
 - **Player port:** `v07.card_batch.player_projection.v1#anonymous_resolution`.
 - **Save adapter:** `V07CanonicalSaveAdapter#card_batch_and_anonymous_resolution.anonymous_resolution`.
 - **RNG stream:** `NONE`.
+- **Required asset keys:** `card.frame.bound_action`, `ui.panel.primary`, `icon.board.player_order`, and `icon.board.target`.
+- **Required player projection:** `v07.card_batch.player_projection.v1#anonymous_resolution`.
+- **Required AI observation:** `v07.card_batch.ai_observation.v1#anonymous_resolution`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#card_batch_and_anonymous_resolution.anonymous_resolution`.
+- **Required RNG stream:** `NONE`.
+- **Production scene target:** `scenes/ui/CardResolutionTrack.tscn`.
+- **Old-surface deletion gate:** Retire owner-contiguous queues, counter controls, and late-targeting surfaces only after CardResolutionTrack renders anonymous entries without portraits, player-specific colors, or owner identity.
+- **Rollback surface:** Restore the V0.6 resolution track projection and remove every unpublished anonymous entry, receipt, target, and owner-safe placeholder.
 - **Pre-cutover gate:** Validate anonymous order, hidden owner binding, lead cursor, targets, reservations, receipts, and privacy.
 - **Cutover step:** Replace NEW_V07_GAME queue, execution, and history publication with one anonymous port.
 - **Rollback step:** Restore the shared checkpoint and publish no queue entry, effect, receipt, or owner identity.
@@ -146,6 +215,14 @@ A V0.6 Save is recognized and rejected with `v06_save_backup_required`. The adap
 - **Player port:** `v07.solar_victory.player_projection.v1#solar`.
 - **Save adapter:** `V07CanonicalSaveAdapter#solar_facility_and_macro_victory.solar`.
 - **RNG stream:** `NONE`.
+- **Required asset keys:** `shader.planet.body`, `shader.planet.cloud`, `shader.planet.atmosphere`, `environment.night_sky_hdri_001`, and the four stable `model.facility.*.base` keys.
+- **Required player projection:** `v07.solar_victory.player_projection.v1#solar`.
+- **Required AI observation:** `v07.solar_victory.ai_observation.v1#solar`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#solar_facility_and_macro_victory.solar`.
+- **Required RNG stream:** `NONE`.
+- **Production scene target:** `scenes/ui/PlanetBoard.tscn`.
+- **Old-surface deletion gate:** Retire V0.6 solar-rate presentation bindings only after PlanetBoard renders the public Core projection on the opaque day/night planet and facility models without becoming the sunlight owner.
+- **Rollback surface:** Restore the V0.6 public solar snapshot on PlanetBoard; keep the opaque planet presentation while removing candidate V0.7 efficiency labels.
 - **Pre-cutover gate:** Validate tagged time, sunlit state, 2.0/1.0 rates, revision, and no card or presentation authority.
 - **Cutover step:** Replace facility efficiency queries without advancing world time.
 - **Rollback step:** Restore solar state without ticking facilities, time, cards, or presentation.
@@ -161,6 +238,14 @@ A V0.6 Save is recognized and rejected with `v06_save_backup_required`. The adap
 - **Player port:** `v07.solar_victory.player_projection.v1#victory_gate`.
 - **Save adapter:** `V07CanonicalSaveAdapter#solar_facility_and_macro_victory.victory_gate`.
 - **RNG stream:** `NONE`.
+- **Required asset keys:** `ui.panel.popup`, `icon.board.settlement`, `audio.settlement.complete`, `vfx.settlement.complete`, and `font.display`.
+- **Required player projection:** `v07.solar_victory.player_projection.v1#victory_gate`.
+- **Required AI observation:** `v07.solar_victory.ai_observation.v1#victory_gate`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#solar_facility_and_macro_victory.victory_gate`.
+- **Required RNG stream:** `NONE`.
+- **Production scene target:** `scenes/ui/FinalSettlementBoard.tscn`.
+- **Old-surface deletion gate:** Retire direct audit-to-settlement and duplicate victory surfaces only after FinalSettlementBoard renders one authorized complete-macro-round result and exact-once receipt.
+- **Rollback surface:** Restore the pre-publication settlement surface and render no candidate winner, ranking, effect, or completion receipt.
 - **Pre-cutover gate:** Validate complete-macro-round proof, pending qualification, lead parity, receipts, and zero-or-one settlement.
 - **Cutover step:** Replace victory evaluation and settlement publication in the atomic owner switch.
 - **Rollback step:** Restore the detached checkpoint before publication and never reverse a committed settlement.
@@ -169,4 +254,4 @@ A V0.6 Save is recognized and rejected with `v06_save_backup_required`. The adap
 
 ## Acceptance Gate
 
-The future production cutover may begin only after PR #77 lands, this adapter PR is synchronized with that main, all ten domains pass together, and one authorized task replaces the old owners atomically. Every domain has `dual_write_allowed=false`; no compatibility writer or implicit V0.6 Save migration may survive the commit.
+The future production cutover may begin only after PR #77 lands, this adapter PR is synchronized with that main, all ten domains pass together, and one authorized task replaces the old owners atomically. Every domain has a complete projection, Save, RNG, production-surface, deletion, rollback, and stable-asset-key contract. Every domain has `dual_write_allowed=false`; no compatibility writer or implicit V0.6 Save migration may survive the commit.

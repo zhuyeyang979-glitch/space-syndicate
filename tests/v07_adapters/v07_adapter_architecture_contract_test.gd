@@ -1,7 +1,7 @@
 extends SceneTree
 
 const ADAPTER_ROOT := "res://scripts/v07_adapters"
-const BASELINE_REVISION := "2e38764791cb37cdc45b2eb0836957f550822dd5"
+const BASELINE_REVISION := "054552f0c3748da2960d94440b2062f042401d3e"
 const DECLARED_PRODUCTION_WRITE_PREFIX := "scripts/v07_adapters/"
 
 const MANIFEST_SEARCH_ROOTS := [
@@ -75,6 +75,14 @@ const GAMEPLAY_DOMAIN_FIELDS := [
 	"player_port",
 	"save_adapter",
 	"rng_stream",
+	"required_asset_keys",
+	"required_player_projection",
+	"required_ai_observation",
+	"required_save_adapter",
+	"required_rng_stream",
+	"production_scene_target",
+	"old_surface_deletion_gate",
+	"rollback_surface",
 	"pre_cutover_gate",
 	"cutover_step",
 	"rollback_step",
@@ -192,10 +200,34 @@ func _test_manifest_gameplay_domains(manifest: Dictionary) -> void:
 			"rollback_step",
 			"old_path_deletion_gate",
 		]:
-			_expect(_manifest_field_nonempty(domain.get(field)),
+			var binding_ready := _manifest_field_nonempty(domain.get(field))
+			match field:
+				"ai_port":
+					binding_ready = binding_ready \
+						and domain.get("required_ai_observation") == domain.get(field)
+				"player_port":
+					binding_ready = binding_ready \
+						and domain.get("required_player_projection") == domain.get(field)
+				"save_adapter":
+					binding_ready = binding_ready \
+						and domain.get("required_save_adapter") == domain.get(field)
+				"rng_stream":
+					binding_ready = binding_ready \
+						and domain.get("required_rng_stream") == domain.get(field)
+			_expect(binding_ready,
 				"%s has nonempty %s" % [domain_id, field])
 		_expect(
-			domain.get("production_scene_change") is bool
+			_manifest_field_nonempty(domain.get("required_asset_keys"))
+				and _manifest_field_nonempty(domain.get("production_scene_target"))
+				and _manifest_field_nonempty(domain.get("old_surface_deletion_gate"))
+				and _manifest_field_nonempty(domain.get("rollback_surface"))
+				and str(domain.get("old_surface_deletion_gate", "")).begins_with(
+					"DELETE SURFACE AFTER COMMIT: "
+				)
+				and str(domain.get("rollback_surface", "")).begins_with(
+					"ROLLBACK SURFACE: "
+				)
+				and domain.get("production_scene_change") is bool
 				and not bool(domain.get("production_scene_change"))
 				and domain.get("main_change") is bool
 				and not bool(domain.get("main_change"))

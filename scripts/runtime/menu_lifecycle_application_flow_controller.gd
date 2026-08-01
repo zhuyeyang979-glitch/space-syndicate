@@ -9,6 +9,7 @@ class_name MenuLifecycleApplicationFlowController
 
 const ROOT_LOBBY_SCENE := preload("res://scenes/ui/MenuRootLobby.tscn")
 const PAUSE_SUMMARY_SCENE := preload("res://scenes/ui/PauseMenuSummaryBoard.tscn")
+const COMMERCIAL_CREDITS_SCENE := preload("res://scenes/ui/CommercialCreditsSurface.tscn")
 
 @export var menu_overlay_path: NodePath
 @export var coordinator_path: NodePath
@@ -240,6 +241,8 @@ func _on_root_lobby_action_requested(action_id: String) -> void:
 			close_to_table()
 		"load_run":
 			_load_run_from_menu()
+		"credits":
+			_open_credits()
 		"quit":
 			get_tree().quit()
 
@@ -248,6 +251,23 @@ func _submit_application_action(action_id: String) -> void:
 	var port := _application_flow_port()
 	if port != null:
 		port.submit_action(action_id)
+
+
+func _open_credits() -> void:
+	if not _present_shell("Credits", "第三方素材、许可证、音乐与字体。", false, false, true):
+		return
+	var overlay := _menu_overlay()
+	if overlay == null:
+		return
+	overlay.clear_preview()
+	var host := overlay.get_preview_host()
+	if host == null:
+		return
+	host.visible = true
+	var credits := COMMERCIAL_CREDITS_SCENE.instantiate() as Control
+	if credits != null:
+		host.add_child(credits)
+	_last_shell_kind = &"credits"
 
 
 func _load_run_from_menu() -> void:
@@ -324,6 +344,7 @@ func _root_lobby_snapshot() -> Dictionary:
 			{"id": "continue", "label": "继续牌桌" if can_continue else "暂无牌桌", "tooltip": "回到当前星球" if can_continue else "先开新一桌。", "accent": Color("#22c55e"), "disabled": not can_continue},
 			{"id": "rules", "label": "游戏规则", "accent": Color("#93c5fd")},
 			{"id": "load_run", "label": "读取局面", "accent": Color("#94a3b8")},
+			{"id": "credits", "label": "Credits", "accent": Color("#35d0c5")},
 			{"id": "quit", "label": "退出游戏", "accent": Color("#fb7185")},
 		],
 	}

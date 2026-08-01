@@ -1,0 +1,357 @@
+{
+  "schema_version": "commercial_art.presentation_capture_final_agent.v1",
+  "task_id": "COMMERCIAL_ART_FOUNDATION_DIRECT_SELECTED_ASSET_INTEGRATION_V1",
+  "lane": "real_godot_screenshot_capture_and_first_visual_qa",
+  "status": "BLOCKED_BY_FIRST_ROUND_VISUAL_QA",
+  "observed_at": "2026-08-01T08:44:30.8818867+09:00",
+  "worktree": "C:/Users/zhuye/Documents/New project/space-syndicate-commercial-art-direct-integration-2e38764",
+  "branch": "codex/commercial-art-direct-integration-2e38764",
+  "observed_head": "9d474bdf985286d9dfa92de63f80466f97b18c1c",
+  "scope": {
+    "output_root": "res://docs/art_qa/commercial_art",
+    "screenshot_driver": "res://tests/commercial_art/commercial_art_screenshot_capture.gd",
+    "review_scene": "res://scenes/tools/CommercialArtIntegrationReview.tscn",
+    "review_scene_modified": false,
+    "capture_driver_modified": false,
+    "catalog_modified": false,
+    "production_file_modified": false,
+    "manifest_notices_or_credits_modified": false,
+    "generated_placeholder_image_count": 0,
+    "formal_run_performed": false,
+    "full_smoke_performed": false
+  },
+  "preflight": {
+    "presentation_catalog_contract": {
+      "status": "GREEN",
+      "checks_passed": 988,
+      "checks_total": 988,
+      "stable_asset_keys_resolved": 97
+    },
+    "lightweight_capture_preflight": {
+      "status": "GREEN",
+      "plan_count": 15,
+      "catalog_text_keys_resolved": 42,
+      "catalog_text_keys_required": 42,
+      "credits_section_count": 4,
+      "credits_entry_count": 15,
+      "game_icons_attribution_ready": true
+    },
+    "catalog_binding_preflight": {
+      "status": "GREEN",
+      "resolved_asset_keys": 42,
+      "required_asset_keys": 42,
+      "missing_asset_keys": 0,
+      "resource_type_counts": {
+        "Texture2D": 13,
+        "PackedScene": 17,
+        "AudioStream": 9,
+        "Font": 3,
+        "other": 0
+      }
+    },
+    "real_review_preflight": {
+      "status": "GREEN",
+      "credits_placeholder_count": 0,
+      "screenshot_write_authorized": true
+    }
+  },
+  "capture_execution": {
+    "godot_version": "4.7.stable.official.5b4e0cb0f",
+    "successful_display_driver": "Windows",
+    "successful_renderer": "Vulkan 1.4.349 Forward+",
+    "successful_device": "AMD Radeon(TM) 890M Graphics",
+    "headless_characterization": {
+      "performed": true,
+      "status": "EXPECTED_RENDER_BACKEND_FAILURE",
+      "reason": "Godot headless selected dummy rendering storage; every SubViewport texture readback was empty.",
+      "capture_files_written": 0,
+      "placeholder_files_written": 0
+    },
+    "real_render": {
+      "exit_code": 0,
+      "capture_count": 15,
+      "automated_capture_pass_count": 15,
+      "automated_capture_failure_count": 0,
+      "png_readback_pass_count": 15,
+      "exact_dimension_pass_count": 15,
+      "nonempty_pixel_pass_count": 15,
+      "unique_sha256_count": 15,
+      "total_bytes": 6200277
+    }
+  },
+  "visual_qa": {
+    "status": "BLOCKED_BY_FIRST_ROUND_VISUAL_QA",
+    "inspected_capture_count": 15,
+    "visual_pass_count": 4,
+    "visual_failure_count": 11,
+    "text_overlap_capture_count": 2,
+    "visible_placeholder_copy_capture_count": 6,
+    "model_presence_count": 17,
+    "model_group_capture_count": 3,
+    "model_group_inspectable_framing_pass_count": 0,
+    "planet_capture_pass_count": 3,
+    "credits_capture_pass_count": 1,
+    "primary_failure_codes": [
+      "card_back_placeholder_copy_visible",
+      "interaction_preview_occludes_section_heading",
+      "model_preview_subject_too_small_for_review"
+    ]
+  },
+  "captures": [
+    {
+      "capture_id": "full_table_1920",
+      "file_name": "commercial_art_full_table_1920.png",
+      "path": "res://docs/art_qa/commercial_art/commercial_art_full_table_1920.png",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 392461,
+      "sha256": "50b5fd4b573388e68b04b1ae42e3ffdf249c15f2bf2435b5e39a09c6be1f36b2",
+      "automated_valid": true,
+      "visual_status": "FAIL",
+      "findings": [
+        "The full-table composition only covers the upper review fold and excludes the complete model, typography, audio, and credits surface.",
+        "The card-back tile visibly retains the text ART / PATTERN PLACEHOLDER."
+      ]
+    },
+    {
+      "capture_id": "full_table_1366",
+      "file_name": "commercial_art_full_table_1366.png",
+      "path": "res://docs/art_qa/commercial_art/commercial_art_full_table_1366.png",
+      "width": 1366,
+      "height": 768,
+      "bytes": 195001,
+      "sha256": "edd2680aa846272cd8a21416b0f03e0a4280792e166253f020283234a06c6267",
+      "automated_valid": true,
+      "visual_status": "FAIL",
+      "findings": [
+        "The 1366 capture is nonoverlapping but only shows the upper review fold, so it is not complete full-table evidence.",
+        "The card-back tile visibly retains the text ART / PATTERN PLACEHOLDER."
+      ]
+    },
+    {
+      "capture_id": "six_color_assets",
+      "file_name": "commercial_art_six_color_assets.png",
+      "path": "res://docs/art_qa/commercial_art/commercial_art_six_color_assets.png",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 392382,
+      "sha256": "77542e346b38ff77347183dba016c1786c620e6a7eb5eba0e3ecc53d01376aa0",
+      "automated_valid": true,
+      "visual_status": "FAIL",
+      "findings": [
+        "All six icons and distinct base silhouettes are visible.",
+        "Each Current 4/6 | Reserved 2 state wraps the value 2 onto an isolated second line.",
+        "The visible card-back tile retains placeholder copy."
+      ]
+    },
+    {
+      "capture_id": "normal_cards",
+      "file_name": "commercial_art_normal_cards.png",
+      "path": "res://docs/art_qa/commercial_art/commercial_art_normal_cards.png",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 617711,
+      "sha256": "4fa555adadc81c5af24052d963bf73ede3075fb6ce9cc8da967d30954abb9a6b",
+      "automated_valid": true,
+      "visual_status": "FAIL",
+      "findings": [
+        "The normal-card focus and selected frame are visible and distinct.",
+        "The adjacent card-back tile visibly retains the text ART / PATTERN PLACEHOLDER."
+      ]
+    },
+    {
+      "capture_id": "commodity_cards",
+      "file_name": "commercial_art_commodity_cards.png",
+      "path": "res://docs/art_qa/commercial_art/commercial_art_commodity_cards.png",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 611969,
+      "sha256": "9543c9cf9f179483988926f3ee32d90eeefd84a2bb79e0c39426b9c89ba2e0de",
+      "automated_valid": true,
+      "visual_status": "FAIL",
+      "findings": [
+        "The commodity-card focus and direct-claim distinction are visible.",
+        "The adjacent card-back tile visibly retains the text ART / PATTERN PLACEHOLDER."
+      ]
+    },
+    {
+      "capture_id": "bound_actions",
+      "file_name": "commercial_art_bound_actions.png",
+      "path": "res://docs/art_qa/commercial_art/commercial_art_bound_actions.png",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 622300,
+      "sha256": "3c69a755763ef83d11ad14f68fad4051ffd6c385b21961affcdb1d547fccbefe",
+      "automated_valid": true,
+      "visual_status": "FAIL",
+      "findings": [
+        "The bound-action focus and does-not-occupy-normal-hand copy are visible.",
+        "The adjacent card-back tile visibly retains the text ART / PATTERN PLACEHOLDER."
+      ]
+    },
+    {
+      "capture_id": "hand_hover",
+      "file_name": "commercial_art_hand_hover.png",
+      "path": "res://docs/art_qa/commercial_art/commercial_art_hand_hover.png",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 585043,
+      "sha256": "e5e49d2c83f29b10e8049f51246ff14207c489346b0d38b121bb4d8ef13b43d1",
+      "automated_valid": true,
+      "visual_status": "FAIL",
+      "findings": [
+        "The 1.08 scale and 28 px lift state is visible.",
+        "The lifted tile occludes the Interaction states section heading."
+      ]
+    },
+    {
+      "capture_id": "hand_drag",
+      "file_name": "commercial_art_hand_drag.png",
+      "path": "res://docs/art_qa/commercial_art/commercial_art_hand_drag.png",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 589516,
+      "sha256": "6a47739b8e034c2ce0cce4cc99ea44c727057bf094f54d41ec7cf645321ee333",
+      "automated_valid": true,
+      "visual_status": "FAIL",
+      "findings": [
+        "The drag tilt and lift state is visibly distinct from hover.",
+        "The dragged tile overlaps the Interaction states section heading and upper content boundary."
+      ]
+    },
+    {
+      "capture_id": "planet_day",
+      "file_name": "commercial_art_planet_day.png",
+      "path": "res://docs/art_qa/commercial_art/commercial_art_planet_day.png",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 563391,
+      "sha256": "3beec7b9d37a5b9fc57c65151f5fe59c53c4e3e5de67c928489be0c0c93cc029",
+      "automated_valid": true,
+      "visual_status": "PASS",
+      "findings": [
+        "The opaque day planet is centered and readable against the selected night sky.",
+        "No outer orbit decoration or visible backside marker/facility is present."
+      ]
+    },
+    {
+      "capture_id": "planet_night",
+      "file_name": "commercial_art_planet_night.png",
+      "path": "res://docs/art_qa/commercial_art/commercial_art_planet_night.png",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 559309,
+      "sha256": "c015bc0dbe0d9b14541d7c71f0dd8baa7e6289b14371dfcc1155896afde6a1f0",
+      "automated_valid": true,
+      "visual_status": "PASS",
+      "findings": [
+        "The night state is opaque, darker than the day state, and remains readable.",
+        "No outer orbit decoration or visible backside marker/facility is present."
+      ]
+    },
+    {
+      "capture_id": "planet_zoom",
+      "file_name": "commercial_art_planet_zoom.png",
+      "path": "res://docs/art_qa/commercial_art/commercial_art_planet_zoom.png",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 491390,
+      "sha256": "5957c9cef42ef50134cc365040ca14929034b0f499137e2ca4b930d39b86b43a",
+      "automated_valid": true,
+      "visual_status": "PASS",
+      "findings": [
+        "The zoom state is materially distinct and keeps the planet surface as the intended subject.",
+        "The planet remains opaque at the close framing."
+      ]
+    },
+    {
+      "capture_id": "facilities",
+      "file_name": "commercial_art_facilities.png",
+      "path": "res://docs/art_qa/commercial_art/commercial_art_facilities.png",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 120977,
+      "sha256": "f57490735bcc0397377f23a55d9f36e14506fe0999ec80369ac3d74931812e54",
+      "automated_valid": true,
+      "visual_status": "FAIL",
+      "findings": [
+        "All four facility previews are present, but each model occupies only a very small fraction of its tile and cannot be inspected for composition or material quality.",
+        "All four tiles use the generic label Base instead of identifying factory, market, warehouse, and starport."
+      ]
+    },
+    {
+      "capture_id": "monsters",
+      "file_name": "commercial_art_monsters.png",
+      "path": "res://docs/art_qa/commercial_art/commercial_art_monsters.png",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 137782,
+      "sha256": "45ef73889b60b06b2c585b9385e400165cd410e07e950343273caae2a53d9566",
+      "automated_valid": true,
+      "visual_status": "FAIL",
+      "findings": [
+        "All six monster previews are present, but their silhouettes are only a few pixels tall and cannot demonstrate the required shape differences or material treatment."
+      ]
+    },
+    {
+      "capture_id": "military",
+      "file_name": "commercial_art_military.png",
+      "path": "res://docs/art_qa/commercial_art/commercial_art_military.png",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 160354,
+      "sha256": "14e1ecf34af314c21b9d408041df4c06bb8a194590c7d528388a8e7bba7c3d8b",
+      "automated_valid": true,
+      "visual_status": "FAIL",
+      "findings": [
+        "All four military tiers and three shipping models are present, but the models are too small to inspect AABB-tier visual progression, player markers, or ship framing."
+      ]
+    },
+    {
+      "capture_id": "credits",
+      "file_name": "commercial_art_credits.png",
+      "path": "res://docs/art_qa/commercial_art/commercial_art_credits.png",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 160691,
+      "sha256": "2515963a7bee50d5eb3b632c6989384db515245cb9aa92a8f85665036bc8f5a9",
+      "automated_valid": true,
+      "visual_status": "PASS",
+      "findings": [
+        "Third-Party Assets, Licenses, Music, and Fonts are all visible as canonical data surfaces.",
+        "The mandatory Game-icons names, Lorc, Delapouite, game-icons.net, and CC BY 3.0 attribution are visibly represented; optional rows are summarized with explicit +N more labels rather than placeholders."
+      ]
+    }
+  ],
+  "blocking_findings": [
+    {
+      "finding_id": "visual.card_back.placeholder_copy",
+      "severity": "high",
+      "affected_capture_count": 6,
+      "required_owner_action": "Replace the literal placeholder copy with final card-back presentation content while retaining the selected geometric pattern and stable symbol boundary."
+    },
+    {
+      "finding_id": "visual.interaction.heading_occlusion",
+      "severity": "high",
+      "affected_capture_count": 2,
+      "required_owner_action": "Add sufficient interaction-preview headroom or clipping/layout containment so hover and drag transforms never cover the section heading."
+    },
+    {
+      "finding_id": "visual.models.uninspectable_framing",
+      "severity": "high",
+      "affected_capture_count": 3,
+      "required_owner_action": "Increase model viewport subject coverage and use capture-specific framing so facilities, six monsters, four mechs, and three ships are visually inspectable."
+    },
+    {
+      "finding_id": "visual.full_table.incomplete_overview",
+      "severity": "medium",
+      "affected_capture_count": 2,
+      "required_owner_action": "Provide a deliberate full-table overview composition at both required sizes or rename the evidence to upper-fold captures."
+    }
+  ],
+  "process_cleanup": {
+    "task_owned_godot_process_count_after": 0,
+    "task_owned_godot_process_ids_after": []
+  },
+  "next_action": "The Review/capture owner must repair the three high-severity visual findings, then regenerate all 15 screenshots and repeat manual visual QA. No screenshot should be treated as final commercial evidence before that rerun."
+}

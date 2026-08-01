@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "report_id": "space_syndicate.commercial_audio.production_wiring_review.agent5.v1",
+  "task_id": "COMMERCIAL_ART_FOUNDATION_DIRECT_SELECTED_ASSET_INTEGRATION_V1",
+  "generated_at_utc": "2026-07-31T23:38:27Z",
+  "repository_head_observed": "9d474bdf985286d9dfa92de63f80466f97b18c1c",
+  "status": "GREEN",
+  "scope": "focused_test_and_read_only_production_wiring_review",
+  "edited_production_file_count": 0,
+  "test": {
+    "path": "res://tests/commercial_art/commercial_audio_production_wiring_test.gd",
+    "sha256": "37fcd91b63409c39be3b8eeb51de34640106542b96b40cfd0b789f2bda2ea794",
+    "runner": "Godot 4.7 stable headless SceneTree script",
+    "passed": 710,
+    "total": 710,
+    "exit_code": 0,
+    "script_error_count": 0,
+    "runtime_error_count": 0,
+    "broken_resource_reference_count": 0,
+    "full_smoke": false,
+    "formal_full_run": false
+  },
+  "production_composition": {
+    "root_scene": "res://scenes/ui/GameScreen.tscn",
+    "presentation_host_count": 1,
+    "audio_event_bus_count": 1,
+    "commercial_sfx_service_count": 1,
+    "commercial_music_controller_count": 1,
+    "catalog_resource": "res://resources/presentation/alpha01_card_illustration_catalog.tres",
+    "catalog_shared_by_sfx_and_music": true,
+    "main_script_audio_responsibility_count": 0,
+    "main_scene_audio_responsibility_count": 0
+  },
+  "sfx_contract": {
+    "contract_id": "space_syndicate.commercial_audio.events.v1",
+    "canonical_event_mapping_count": 17,
+    "canonical_event_mapping_pass_count": 17,
+    "stable_catalog_key_count": 17,
+    "stable_catalog_key_pass_count": 17,
+    "fixed_single_file_per_event": true,
+    "randomized_selection": false,
+    "rules_rng_draw_count": 0,
+    "public_resource_path_exposure_count": 0,
+    "public_vendor_path_exposure_count": 0,
+    "production_bus_delivery_count_per_request": 1
+  },
+  "music_contract": {
+    "contract_id": "space_syndicate.commercial_music.playlist.v1",
+    "public_state_count": 4,
+    "stable_catalog_key_count": 4,
+    "crossfade_seconds": 1.5,
+    "crossfade_curve": "equal_power",
+    "live_crossfade_player_count": 2,
+    "completed_crossfade_player_count": 1,
+    "hidden_information_dependency": false,
+    "rules_rng_draw_count": 0,
+    "save_persisted": false,
+    "gameplay_effect": false,
+    "public_resource_path_exposure_count": 0
+  },
+  "menu_signal_audit": {
+    "existing_signals_retained": [
+      "continue_requested",
+      "main_menu_requested",
+      "catalog_step_requested",
+      "catalog_back_requested",
+      "quick_nav_action_requested",
+      "codex_action_requested",
+      "application_intent_requested"
+    ],
+    "button_hover_event": "ui.hover",
+    "button_confirm_event": "ui.confirm",
+    "button_cancel_event": "ui.cancel",
+    "continue_button_delivery_count": 1,
+    "back_button_delivery_count": 1,
+    "music_visibility_source": "public MenuOverlay visibility only"
+  },
+  "player_card_dock_signal_audit": {
+    "existing_signals_retained": [
+      "card_selected",
+      "card_hovered",
+      "card_unhovered",
+      "card_unselected",
+      "card_target_selection_requested",
+      "game_action_offer_requested"
+    ],
+    "presentation_signal": "presentation_audio_event_requested",
+    "presentation_signal_consumer_count": 1,
+    "interaction_event_ids": [
+      "ui.hover",
+      "ui.cancel",
+      "card.select",
+      "card.drag_start",
+      "card.drop"
+    ],
+    "direct_audio_resource_resolution_count": 0,
+    "gameplay_offer_path_count": 1
+  },
+  "authority_boundaries": {
+    "rules_rng_reference_count": 0,
+    "save_owner_reference_count": 0,
+    "gameplay_mutation_count": 0,
+    "main_responsibility_count": 0,
+    "runtime_network_dependency_count": 0,
+    "resource_path_public_leak_count": 0,
+    "vendor_path_public_leak_count": 0,
+    "game_session_create_count": 0,
+    "save_write_count": 0
+  },
+  "changed_files": [
+    "tests/commercial_art/commercial_audio_production_wiring_test.gd",
+    "reports/asset_intake/audio_production_wiring_review_agent5.json",
+    "reports/asset_intake/audio_production_wiring_review_agent5.md"
+  ],
+  "commit_created": false
+}

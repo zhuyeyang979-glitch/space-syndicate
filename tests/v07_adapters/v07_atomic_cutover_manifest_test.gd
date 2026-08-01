@@ -2,7 +2,7 @@ extends SceneTree
 
 const MANIFEST_PATH := "res://docs/migration/v07_atomic_cutover_manifest.json"
 const MARKDOWN_PATH := "res://docs/migration/v07_atomic_cutover_manifest.md"
-const BASELINE_SHA := "2e38764791cb37cdc45b2eb0836957f550822dd5"
+const BASELINE_SHA := "054552f0c3748da2960d94440b2062f042401d3e"
 
 const TOP_LEVEL_KEYS := [
 	"schema_version",
@@ -36,6 +36,14 @@ const DOMAIN_KEYS := [
 	"player_port",
 	"save_adapter",
 	"rng_stream",
+	"required_asset_keys",
+	"required_player_projection",
+	"required_ai_observation",
+	"required_save_adapter",
+	"required_rng_stream",
+	"production_scene_target",
+	"old_surface_deletion_gate",
+	"rollback_surface",
 	"pre_cutover_gate",
 	"cutover_step",
 	"rollback_step",
@@ -275,10 +283,19 @@ func _test_domain_fields(domain_id: String, domain: Dictionary) -> void:
 			"%s has nonempty %s" % [domain_id, field]
 		)
 	var rng_value: Variant = domain.get("rng_stream")
+	var required_rng_value: Variant = domain.get("required_rng_stream")
 	_expect(
-		(rng_value is String and not str(rng_value).strip_edges().is_empty())
-			or _nonempty_string_array(rng_value),
-		"%s has an explicit RNG mapping" % domain_id
+		(
+			rng_value is String and not str(rng_value).strip_edges().is_empty()
+				or _nonempty_string_array(rng_value)
+		)
+			and (
+				required_rng_value is String \
+					and not str(required_rng_value).strip_edges().is_empty()
+					or _nonempty_string_array(required_rng_value)
+			)
+			and _nonempty_string_array(domain.get("required_asset_keys")),
+		"%s has explicit RNG and presentation dependency mappings" % domain_id
 	)
 	_expect(
 		str(domain.get("pre_cutover_gate", "")).begins_with("PASS: ")
@@ -286,13 +303,33 @@ func _test_domain_fields(domain_id: String, domain: Dictionary) -> void:
 			and str(domain.get("rollback_step", "")).begins_with("ROLLBACK: ")
 			and str(domain.get("old_path_deletion_gate", "")).begins_with(
 				"DELETE AFTER COMMIT: "
+			)
+			and str(domain.get("old_surface_deletion_gate", "")).begins_with(
+				"DELETE SURFACE AFTER COMMIT: "
+			)
+			and str(domain.get("rollback_surface", "")).begins_with(
+				"ROLLBACK SURFACE: "
 			),
-		"%s declares explicit gate, apply, rollback, and deletion semantics" % domain_id
+		"%s declares explicit gate, apply, rollback, and code/surface deletion semantics" % domain_id
 	)
 	var expected := EXPECTED_BINDINGS.get(domain_id, {}) as Dictionary
 	for field in ["core_port", "ai_port", "player_port", "save_adapter", "rng_stream"]:
+		var presentation_match := true
+		match field:
+			"ai_port":
+				presentation_match = domain.get("required_ai_observation") \
+					== expected.get(field)
+			"player_port":
+				presentation_match = domain.get("required_player_projection") \
+					== expected.get(field)
+			"save_adapter":
+				presentation_match = domain.get("required_save_adapter") \
+					== expected.get(field)
+			"rng_stream":
+				presentation_match = domain.get("required_rng_stream") \
+					== expected.get(field)
 		_expect(
-			domain.get(field) == expected.get(field),
+			domain.get(field) == expected.get(field) and presentation_match,
 			"%s %s mapping is exact" % [domain_id, field]
 		)
 	_expect(
@@ -348,7 +385,12 @@ func _test_markdown() -> void:
 		_expect(markdown.contains(token), "Markdown declares %s" % token)
 	_expect(
 		not markdown.contains("V06_SAVE_TO_V07_DIRECT_LOAD=true")
-			and not markdown.contains("DUAL_WRITE_ALLOWED=true"),
+			and not markdown.contains("DUAL_WRITE_ALLOWED=true")
+			and markdown.contains(
+				"LATEST_MAIN_BASELINE_SHA=054552f0c3748da2960d94440b2062f042401d3e"
+			)
+			and markdown.contains("COMMERCIAL_ART_FOUNDATION=GREEN")
+			and markdown.contains("PRESENTATION_ASSET_CATALOG_READY=true"),
 		"Markdown contains no direct-load or dual-write authorization"
 	)
 	for index in REQUIRED_DOMAIN_IDS.size():
@@ -387,6 +429,15 @@ func _test_markdown() -> void:
 		_expect(
 			(section.contains("**RNG stream:**")
 				or section.contains("**RNG streams:**"))
+				and section.contains("**Required asset keys:**")
+				and section.contains("**Required player projection:**")
+				and section.contains("**Required AI observation:**")
+				and section.contains("**Required Save adapter:**")
+				and (section.contains("**Required RNG stream:**")
+					or section.contains("**Required RNG streams:**"))
+				and section.contains("**Production scene target:**")
+				and section.contains("**Old-surface deletion gate:**")
+				and section.contains("**Rollback surface:**")
 				and section.contains("production_scene_change=false")
 				and section.contains("main_change=false")
 				and section.contains("dual_write_allowed=false"),
