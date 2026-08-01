@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "contract_id": "ColdRestoreTargetedLedgerBindingContractV1",
-  "authorization_contract_entry": "targeted_owner_capture_diagnostic_v4_importchain",
+  "authorization_entry_resolution": "ledger_authorization_id",
   "ledger_schema_version": 4,
   "field_order": [
     "schema_version",
@@ -106,14 +106,17 @@
     "status": "string"
   },
   "exact_values_from_authorization_contract": {
-    "ledger_id": "targeted_owner_capture_diagnostic_v4_importchain.ledger_id",
-    "authorization_id": "targeted_owner_capture_diagnostic_v4_importchain.authorization_id",
-    "task_id": "targeted_owner_capture_diagnostic_v4_importchain.task_id",
-    "authorized_new_diagnostic_count": "targeted_owner_capture_diagnostic_v4_importchain.authorized_increment",
-    "diagnostic_count_before": "targeted_owner_capture_diagnostic_v4_importchain.permitted_transition_from",
-    "diagnostic_count_after": "targeted_owner_capture_diagnostic_v4_importchain.permitted_transition_to",
-    "diagnostic_count_maximum": "targeted_owner_capture_diagnostic_v4_importchain.maximum_invocation_count",
+    "ledger_id": "ledger_id",
+    "authorization_id": "authorization_id",
+    "task_id": "task_id",
+    "authorized_new_diagnostic_count": "authorized_increment",
+    "diagnostic_count_before": "permitted_transition_from",
+    "diagnostic_count_after": "permitted_transition_to",
+    "diagnostic_count_maximum": "maximum_invocation_count",
     "official_attempt_1_claim_sha256": "official_attempt_2.attempt_1_claim_sha256"
+  },
+  "authorization_override_fields": {
+    "previous_ledger_sha256": "previous_quota_ledger_sha256"
   },
   "option_bindings": {
     "run_id": "run_id",

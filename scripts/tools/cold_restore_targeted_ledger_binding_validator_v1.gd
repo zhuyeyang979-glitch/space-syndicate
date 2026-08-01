@@ -69,6 +69,14 @@ static func validate_ledger_text(ledger_text: String, options: Dictionary) -> Di
 	))
 	if not fingerprint_valid:
 		return _finish(rows)
+	var authorization_entry := _targeted_authorization_entry_for_id(
+		authorization_contract,
+		str(ledger.get("authorization_id", ""))
+	)
+	if authorization_entry.is_empty():
+		return _terminal_failure(
+			rows, "authorization_id", "authorization_id_mismatch", "string", "string"
+		)
 
 	var field_order := _string_array(contract.get("field_order", []))
 	var field_types := contract.get("field_types", {}) as Dictionary
@@ -77,6 +85,9 @@ static func validate_ledger_text(ledger_text: String, options: Dictionary) -> Di
 	) as Dictionary
 	var option_bindings := contract.get("option_bindings", {}) as Dictionary
 	var exact_literals := contract.get("exact_literals", {}) as Dictionary
+	var authorization_overrides := contract.get(
+		"authorization_override_fields", {}
+	) as Dictionary
 	var validation_rules := contract.get("validation_rules", {}) as Dictionary
 	var failure_reasons := contract.get("failure_reason_by_field", {}) as Dictionary
 
@@ -89,18 +100,27 @@ static func validate_ledger_text(ledger_text: String, options: Dictionary) -> Di
 		var option_field := ""
 		var contract_field := ""
 		var comparison_kind := "shape"
+		if exact_literals.has(field):
+			expected_value = exact_literals.get(field)
+			contract_field = "exact_literals.%s" % field
+			comparison_kind = "literal_exact"
 		if authorization_bindings.has(field):
 			contract_field = str(authorization_bindings.get(field, ""))
-			expected_value = _resolve_dotted_value(authorization_contract, contract_field)
+			expected_value = _resolve_dotted_value(
+				authorization_contract if contract_field.contains(".") else authorization_entry,
+				contract_field
+			)
 			comparison_kind = "authorization_contract_exact"
 		elif option_bindings.has(field):
 			option_field = str(option_bindings.get(field, ""))
 			expected_value = options.get(option_field)
 			comparison_kind = "option_exact"
-		elif exact_literals.has(field):
-			expected_value = exact_literals.get(field)
-			contract_field = "exact_literals.%s" % field
-			comparison_kind = "literal_exact"
+		if authorization_overrides.has(field):
+			var override_field := str(authorization_overrides.get(field, ""))
+			if authorization_entry.has(override_field):
+				expected_value = authorization_entry.get(override_field)
+				contract_field = override_field
+				comparison_kind = "authorization_contract_override"
 		var comparison_valid := type_valid
 		if comparison_valid and comparison_kind != "shape":
 			comparison_valid = _wire_values_equal(value, expected_value, expected_type)
@@ -197,7 +217,8 @@ static func characterize_legacy_v4_mismatch(
 
 static func _validate_contract(contract: Dictionary, authorization_contract: Dictionary) -> Dictionary:
 	if int(contract.get("schema_version", 0)) != 1 \
-			or str(contract.get("contract_id", "")) != "ColdRestoreTargetedLedgerBindingContractV1":
+			or str(contract.get("contract_id", "")) != "ColdRestoreTargetedLedgerBindingContractV1" \
+			or str(contract.get("authorization_entry_resolution", "")) != "ledger_authorization_id":
 		return {"valid": false, "reason_code": "binding_contract_identity_invalid"}
 	if int(authorization_contract.get("schema_version", 0)) != 1 \
 			or str(authorization_contract.get("contract_id", "")) != "ColdRestoreAuthorizationContractV1":
@@ -348,6 +369,20 @@ static func _resolve_dotted_value(root: Dictionary, dotted_path: String) -> Vari
 			return null
 		current = (current as Dictionary).get(segment)
 	return current
+
+
+static func _targeted_authorization_entry_for_id(
+	authorization_contract: Dictionary,
+	authorization_id: String
+) -> Dictionary:
+	for key_variant in authorization_contract.keys():
+		var key := str(key_variant)
+		var value: Variant = authorization_contract.get(key)
+		if key.begins_with("targeted_owner_capture_diagnostic_") \
+				and value is Dictionary \
+				and str((value as Dictionary).get("authorization_id", "")) == authorization_id:
+			return (value as Dictionary).duplicate(true)
+	return {}
 
 
 static func _has_exact_fields(value: Dictionary, expected_fields: Array[String]) -> bool:

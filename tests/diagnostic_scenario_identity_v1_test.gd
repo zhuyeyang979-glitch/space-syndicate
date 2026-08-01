@@ -8,7 +8,7 @@ const HEAD := "0123456789abcdef0123456789abcdef01234567"
 const SHA := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 var RUN_ID := AUTHORIZATION_CONTRACT.run_id(
-	"targeted_owner_capture_diagnostic_v4_importchain", HEAD
+	AUTHORIZATION_CONTRACT.current_targeted_authorization_name(), HEAD
 )
 
 var _checks := 0

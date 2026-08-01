@@ -18,7 +18,7 @@ const FAILURE_FIELDS_EXPECTED := [
 ]
 
 var RUN_ID := AUTHORIZATION_CONTRACT.run_id(
-	"targeted_owner_capture_diagnostic_v4_importchain", HEAD
+	AUTHORIZATION_CONTRACT.current_targeted_authorization_name(), HEAD
 )
 
 var _checks := 0
@@ -145,7 +145,7 @@ func _test_all_owners() -> void:
 	bad_row["capture_result_kind"] = "NOT_ATTEMPTED_AFTER_FIRST_FAILURE"
 	bad_row["capture_started"] = false
 	bad_row["capture_completed"] = false
-	bad_row["payload_schema_version"] = -1
+	bad_row["state_version"] = -1
 	bad_row["payload_fingerprint"] = ""
 	bad_row["payload_pure_data"] = false
 	bad_row["elapsed_milliseconds"] = 0
@@ -439,7 +439,7 @@ func _owner_row(index: int, kind: String, reason := "") -> Dictionary:
 		"capture_started": attempted,
 		"capture_completed": attempted,
 		"capture_result_kind": kind,
-		"payload_schema_version": 1 if attempted else -1,
+		"state_version": 1 if attempted else -1,
 		"payload_fingerprint": SHA if kind == "CAPTURED" else "",
 		"payload_pure_data": kind == "CAPTURED",
 		"elapsed_milliseconds": 1 if attempted else 0,

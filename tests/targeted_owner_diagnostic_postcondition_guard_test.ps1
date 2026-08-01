@@ -11,7 +11,7 @@ $authorizationModulePath = Join-Path $projectRoot "scripts/tools/cold_restore_au
 $authorizationContractPath = Join-Path $projectRoot "scripts/tools/cold_restore_authorization_contract_v1.json"
 Import-Module $authorizationModulePath
 Import-Module $preQuotaModulePath
-$targetedAuthorizationName = "targeted_owner_capture_diagnostic_v4_importchain"
+$targetedAuthorizationName = Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName
 $targetedAuthorization = Get-ColdRestoreAuthorizationEntry $targetedAuthorizationName
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) (
     "alpha04c-targeted-postcondition-" + [Guid]::NewGuid().ToString("N")
@@ -237,6 +237,7 @@ try {
                     post_capture_failure = [pscustomobject]@{}
                     repository_head = "a" * 40
                     scenario_identity_attested = $false
+                    registry_binding_attested = $case.kind -ne "PRE_OWNER_FAILURE"
                     scenario_identity = [pscustomobject]@{}
                     scenario_identity_failure = [pscustomobject]@{}
                     owner_audit_started = $case.kind -ne "PRE_OWNER_FAILURE"
@@ -388,7 +389,7 @@ try {
     $targetedCatches = @($ast.FindAll({
         param($node)
         $node -is [Management.Automation.Language.CatchClauseAst] -and
-            $node.Extent.Text.IndexOf("alpha04c_targeted_owner_capture_diagnostic_v4_importchain", [StringComparison]::Ordinal) -ge 0
+            $node.Extent.Text.IndexOf("alpha04c_targeted_owner_capture_diagnostic_v5_canonical_binding", [StringComparison]::Ordinal) -ge 0
     }, $true))
     Assert-ContractCondition ($targetedCatches.Count -eq 1) "top-level targeted allowlist catch exists exactly once"
     $targetedCatchSource = if ($targetedCatches.Count -eq 1) {

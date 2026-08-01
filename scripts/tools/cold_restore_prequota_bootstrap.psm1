@@ -23,6 +23,8 @@ $script:ColdRestoreAuthorizationModule = cold_restore_module_loader\Import-ColdR
         "Get-ColdRestoreAuthorizationEntry",
         "Get-ColdRestoreAuthorizationRunId",
         "Get-ColdRestoreTargetedDiagnosticAuthorizationBinding",
+        "Get-ColdRestoreTargetedDiagnosticAuthorizationNames",
+        "Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName",
         "Test-ColdRestoreExactAuthorizationId"
     )
 $script:TargetedLedgerBindingModule = cold_restore_module_loader\Import-ColdRestoreModuleOnce `
@@ -33,8 +35,7 @@ $script:TargetedLedgerBindingModule = cold_restore_module_loader\Import-ColdRest
     )
 
 $script:TargetedAuthorizationNames = @(
-    "targeted_owner_capture_diagnostic_v3",
-    "targeted_owner_capture_diagnostic_v4_importchain"
+    cold_restore_authorization_contract_v1\Get-ColdRestoreTargetedDiagnosticAuthorizationNames
 )
 $script:TargetedAuthorizationV3 = `
     cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationEntry `
@@ -42,6 +43,11 @@ $script:TargetedAuthorizationV3 = `
 $script:TargetedAuthorizationV4 = `
     cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationEntry `
         "targeted_owner_capture_diagnostic_v4_importchain"
+$script:CurrentTargetedAuthorizationName = `
+    cold_restore_authorization_contract_v1\Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName
+$script:CurrentTargetedAuthorization = `
+    cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationEntry `
+        $script:CurrentTargetedAuthorizationName
 
 $script:PrimaryFailureRecordFields = @("phase", "reason_code", "safe_details", "recorded_at")
 $script:BootstrapAdmissionFields = @(
@@ -547,17 +553,74 @@ function Publish-ColdRestoreTargetedQuotaLedgerV4 {
     }
 }
 
+function Assert-ColdRestoreCurrentTargetedQuotaLedger {
+    param([Parameter(Mandatory = $true)]$Value)
+
+    if (-not (cold_restore_authorization_contract_v1\Test-ColdRestoreExactAuthorizationId `
+            $script:CurrentTargetedAuthorizationName $Value.authorization_id)) {
+        throw "authorization_id_invalid"
+    }
+    try {
+        $null = cold_restore_targeted_ledger_binding_contract_v1\Assert-ColdRestoreTargetedLedgerPublisherValue `
+            $Value
+    }
+    catch {
+        if ([string]$_.Exception.Message -cmatch '(authorized_increment|diagnostic_count_(before|after|maximum))_mismatch') {
+            throw "quota_transition_invalid"
+        }
+        throw "targeted_owner_capture_current_quota_invalid"
+    }
+    if ([string]$Value.run_id -cne (
+            cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationRunId `
+                $script:CurrentTargetedAuthorizationName ([string]$Value.repository_head)
+        )) {
+        throw "targeted_owner_capture_current_quota_invalid"
+    }
+}
+
+function Publish-ColdRestoreCurrentTargetedQuotaLedger {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)]$Ledger
+    )
+
+    Assert-ColdRestoreCurrentTargetedQuotaLedger $Ledger
+    try {
+        return cold_restore_attested_process\Write-ColdRestoreExclusiveJson $Path $Ledger
+    }
+    catch {
+        $reason = [string]$_.Exception.Message
+        if ($reason -eq "exclusive_evidence_create_new_failed" -and [IO.File]::Exists($Path)) {
+            try {
+                $existing = [IO.File]::ReadAllText(
+                    $Path,
+                    [Text.UTF8Encoding]::new($false)
+                ) | ConvertFrom-Json -DateKind String
+                Assert-ColdRestoreCurrentTargetedQuotaLedger $existing
+            }
+            catch {
+                throw "targeted_owner_capture_diagnostic_stale_ledger"
+            }
+            throw "quota_already_consumed"
+        }
+        if ($reason -like "exclusive_evidence_consumed_*") {
+            throw "targeted_owner_capture_diagnostic_consumed_but_ledger_invalid"
+        }
+        throw "targeted_owner_capture_diagnostic_quota_ledger_failed"
+    }
+}
+
 function New-ColdRestoreTargetedDiagnosticPreQuotaContext {
     param(
         [Parameter(Mandatory = $true)][string]$GitCommonDirectory,
         [Parameter(Mandatory = $true)][string]$RepositoryHead,
         [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Branch,
-        [ValidateSet(
-            "targeted_owner_capture_diagnostic_v3",
-            "targeted_owner_capture_diagnostic_v4_importchain"
-        )]
-        [string]$AuthorizationName = "targeted_owner_capture_diagnostic_v3"
+        [string]$AuthorizationName = ""
     )
+
+    if ([string]::IsNullOrEmpty($AuthorizationName)) {
+        $AuthorizationName = $script:CurrentTargetedAuthorizationName
+    }
 
     $binding = cold_restore_authorization_contract_v1\Get-ColdRestoreTargetedDiagnosticAuthorizationBinding `
         -GitCommonDirectory $GitCommonDirectory `
@@ -587,12 +650,12 @@ function New-ColdRestoreTargetedDiagnosticUserArgumentList {
         [Parameter(Mandatory = $true)][string]$QuotaLedgerFingerprint,
         [Parameter(Mandatory = $true)][string]$LaunchAttestationPath,
         [Parameter(Mandatory = $true)][string]$LaunchNonce,
-        [ValidateSet(
-            "targeted_owner_capture_diagnostic_v3",
-            "targeted_owner_capture_diagnostic_v4_importchain"
-        )]
-        [string]$AuthorizationName = "targeted_owner_capture_diagnostic_v3"
+        [string]$AuthorizationName = ""
     )
+
+    if ([string]::IsNullOrEmpty($AuthorizationName)) {
+        $AuthorizationName = $script:CurrentTargetedAuthorizationName
+    }
 
     $binding = cold_restore_authorization_contract_v1\Get-ColdRestoreTargetedDiagnosticAuthorizationBinding `
         -GitCommonDirectory $GitCommonDirectory `
@@ -646,10 +709,12 @@ Export-ModuleMember -Function @(
     "Assert-ColdRestorePreQuotaContextParameters",
     "Assert-ColdRestoreTargetedQuotaLedgerV3",
     "Assert-ColdRestoreTargetedQuotaLedgerV4",
+    "Assert-ColdRestoreCurrentTargetedQuotaLedger",
     "New-ColdRestorePreQuotaContext",
     "Update-ColdRestorePreQuotaAttestation",
     "Publish-ColdRestoreTargetedQuotaLedgerV3",
     "Publish-ColdRestoreTargetedQuotaLedgerV4",
+    "Publish-ColdRestoreCurrentTargetedQuotaLedger",
     "New-ColdRestoreTargetedDiagnosticPreQuotaContext",
     "New-ColdRestoreTargetedDiagnosticUserArgumentList"
 )

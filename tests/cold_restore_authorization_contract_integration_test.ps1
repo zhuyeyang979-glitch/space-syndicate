@@ -83,7 +83,8 @@ try {
     $contract = Get-ColdRestoreAuthorizationContract
     $targeted = $contract.targeted_owner_capture_diagnostic_v3
     $head = "a" * 40
-    $binding = Get-ColdRestoreTargetedDiagnosticAuthorizationBinding $tempRoot $head
+    $binding = Get-ColdRestoreTargetedDiagnosticAuthorizationBinding `
+        $tempRoot $head -AuthorizationName "targeted_owner_capture_diagnostic_v3"
     Assert-AuthorizationCondition (
         [string]$binding.authorization_id -ceq [string]$targeted.authorization_id -and
         [string]$binding.run_id -ceq "$([string]$targeted.run_id_prefix)-$($head.Substring(0, 12))" -and
@@ -99,7 +100,8 @@ try {
     $context = New-ColdRestoreTargetedDiagnosticPreQuotaContext `
         -GitCommonDirectory $tempRoot `
         -RepositoryHead $head `
-        -Branch "codex/authorization integration"
+        -Branch "codex/authorization integration" `
+        -AuthorizationName "targeted_owner_capture_diagnostic_v3"
     Assert-AuthorizationCondition (
         [IO.File]::Exists([string]$context.admission_path) -and
         [IO.File]::Exists([string]$context.attestation_path) -and
@@ -117,7 +119,8 @@ try {
         -QuotaLedgerPath $binding.quota_ledger_path `
         -QuotaLedgerFingerprint ("4" * 64) `
         -LaunchAttestationPath $launchPath `
-        -LaunchNonce ("5" * 32)
+        -LaunchNonce ("5" * 32) `
+        -AuthorizationName "targeted_owner_capture_diagnostic_v3"
     Assert-AuthorizationCondition (
         @($arguments | Where-Object { $_ -ceq "--cold-restore-run-id=$($binding.run_id)" }).Count -eq 1 -and
         @($arguments | Where-Object { $_ -ceq "--cold-restore-targeted-diagnostic-ledger-path=$($binding.quota_ledger_path)" }).Count -eq 1
@@ -185,8 +188,11 @@ try {
     $raceRoot = Join-Path $tempRoot "concurrent claim"
     [IO.Directory]::CreateDirectory($raceRoot) | Out-Null
     $raceHead = "b" * 40
-    $raceBinding = Get-ColdRestoreTargetedDiagnosticAuthorizationBinding $raceRoot $raceHead
-    $raceContext = New-ColdRestoreTargetedDiagnosticPreQuotaContext $raceRoot $raceHead "codex/race"
+    $raceBinding = Get-ColdRestoreTargetedDiagnosticAuthorizationBinding `
+        $raceRoot $raceHead -AuthorizationName "targeted_owner_capture_diagnostic_v3"
+    $raceContext = New-ColdRestoreTargetedDiagnosticPreQuotaContext `
+        $raceRoot $raceHead "codex/race" `
+        -AuthorizationName "targeted_owner_capture_diagnostic_v3"
     $raceLedger = New-AuthorizationQuotaLedger $raceBinding $raceContext $raceHead
     $raceLedgerPath = Join-Path $raceRoot "race-ledger-source.json"
     [IO.File]::WriteAllText(

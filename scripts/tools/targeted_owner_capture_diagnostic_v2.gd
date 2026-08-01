@@ -30,6 +30,7 @@ const OWNER_ORDER := [
 const ROOT_FIELDS := [
 	"schema_version", "diagnostic_id", "run_id", "repository_head", "official", "formal",
 	"scenario_identity", "scenario_identity_attested", "scenario_identity_failure",
+	"registry_binding_attested",
 	"harness_or_scenario_failure_attested", "diagnostic_phase_timeline",
 	"last_completed_diagnostic_phase", "current_diagnostic_phase", "next_expected_diagnostic_phase",
 	"owner_audit_started", "owner_audit_completed", "first_owner_capture_index",
@@ -49,7 +50,7 @@ const PHASE_ROW_FIELDS := [
 ]
 const OWNER_ROW_FIELDS := [
 	"owner_index", "section_id", "owner_id", "owner_path", "capture_started",
-	"capture_completed", "capture_result_kind", "payload_schema_version",
+	"capture_completed", "capture_result_kind", "state_version",
 	"payload_fingerprint", "payload_pure_data", "elapsed_milliseconds",
 	"mutation_count", "rng_draw_delta", "world_time_delta", "public_log_delta",
 	"reason_code", "private_payload_redacted", "row_evidence_fingerprint",
@@ -129,6 +130,8 @@ static func build(source: Dictionary) -> Dictionary:
 			if source.get("owner_capture_rows", []) is Array else []
 	var public_rows := _public_dictionary_array(rows, OWNER_ROW_FIELDS)
 	var counts := _owner_counts(rows)
+	var phase_rows: Array = timeline.get("phase_rows", []) \
+			if timeline.get("phase_rows", []) is Array else []
 	var unsealed := {
 		"schema_version": 2,
 		"diagnostic_id": DIAGNOSTIC_ID,
@@ -139,6 +142,9 @@ static func build(source: Dictionary) -> Dictionary:
 		"scenario_identity": (source.get("scenario_identity", {}) as Dictionary).duplicate(true) if source.get("scenario_identity", {}) is Dictionary else {},
 		"scenario_identity_attested": bool(source.get("scenario_identity_attested", false)),
 		"scenario_identity_failure": (source.get("scenario_identity_failure", {}) as Dictionary).duplicate(true) if source.get("scenario_identity_failure", {}) is Dictionary else {},
+		"registry_binding_attested": _timeline_has_phase(
+			phase_rows, "registry_binding_attested"
+		),
 		"harness_or_scenario_failure_attested": bool(source.get("harness_or_scenario_failure_attested", false)),
 		"diagnostic_phase_timeline": timeline.duplicate(true),
 		"last_completed_diagnostic_phase": str(timeline.get("last_completed_phase", "none")),
@@ -183,6 +189,7 @@ static func validation_report(
 		return {"valid": false, "reason_code": "targeted_diagnostic_header_invalid"}
 	for boolean_field in [
 		"scenario_identity_attested", "harness_or_scenario_failure_attested",
+		"registry_binding_attested",
 		"owner_audit_started", "owner_audit_completed",
 		"owner_capture_failure_attested", "safety_green",
 	]:
@@ -228,9 +235,13 @@ static func validation_report(
 		return {"valid": false, "reason_code": "targeted_diagnostic_terminal_invalid"}
 	var phase_rows := timeline.get("phase_rows", []) as Array
 	var timeline_identity_attested := _timeline_has_phase(phase_rows, "scenario_identity_attested")
+	var timeline_registry_binding_attested := _timeline_has_phase(
+		phase_rows, "registry_binding_attested"
+	)
 	var timeline_owner_audit_started := _timeline_has_phase(phase_rows, "owner_audit_started")
 	var timeline_owner_audit_completed := _timeline_has_phase(phase_rows, "owner_audit_completed")
 	if bool(diagnostic.get("scenario_identity_attested", false)) != timeline_identity_attested \
+			or bool(diagnostic.get("registry_binding_attested", false)) != timeline_registry_binding_attested \
 			or bool(diagnostic.get("owner_audit_started", false)) != timeline_owner_audit_started \
 			or bool(diagnostic.get("owner_audit_completed", false)) != timeline_owner_audit_completed:
 		return {"valid": false, "reason_code": "targeted_diagnostic_phase_state_invalid"}
@@ -488,7 +499,7 @@ static func _valid_owner_row(value: Variant, expected_index: int) -> bool:
 			or not _is_string(row.get("owner_path")) or not _safe_path(str(row.get("owner_path", ""))) \
 			or not (row.get("capture_started") is bool) or not (row.get("capture_completed") is bool) \
 			or not _is_string(row.get("capture_result_kind")) \
-			or not (row.get("payload_schema_version") is int) \
+			or not (row.get("state_version") is int) \
 			or not _is_string(row.get("payload_fingerprint")) \
 			or not (row.get("payload_pure_data") is bool) \
 			or not (row.get("elapsed_milliseconds") is int) or int(row.get("elapsed_milliseconds", -1)) < 0 \
@@ -502,13 +513,13 @@ static func _valid_owner_row(value: Variant, expected_index: int) -> bool:
 	var fingerprint := str(row.get("payload_fingerprint", ""))
 	if kind == "CAPTURED":
 		if not bool(row.get("capture_started", false)) or not bool(row.get("capture_completed", false)) \
-				or int(row.get("payload_schema_version", 0)) < 1 \
+				or int(row.get("state_version", 0)) < 1 \
 				or not bool(row.get("payload_pure_data", false)) or not _lower_sha256(fingerprint) \
 				or str(row.get("reason_code", "")) != "owner_capture_valid":
 			return false
 	elif kind == "FAILED":
 		if not bool(row.get("capture_started", false)) or not bool(row.get("capture_completed", false)) \
-				or int(row.get("payload_schema_version", -2)) < -1 \
+				or int(row.get("state_version", -2)) < -1 \
 				or bool(row.get("payload_pure_data", true)) \
 				or (not fingerprint.is_empty() and not _lower_sha256(fingerprint)) \
 				or not CAPTURE_FAILURE.is_reason_code(str(row.get("reason_code", ""))) \
@@ -516,7 +527,7 @@ static func _valid_owner_row(value: Variant, expected_index: int) -> bool:
 			return false
 	elif kind == "NOT_ATTEMPTED_AFTER_FIRST_FAILURE":
 		if bool(row.get("capture_started", true)) or bool(row.get("capture_completed", true)) \
-				or int(row.get("payload_schema_version", 0)) != -1 \
+				or int(row.get("state_version", 0)) != -1 \
 				or not fingerprint.is_empty() or bool(row.get("payload_pure_data", true)) \
 				or int(row.get("elapsed_milliseconds", -1)) != 0 \
 				or int(row.get("mutation_count", -1)) != 0 \

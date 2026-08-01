@@ -3,8 +3,9 @@ extends RefCounted
 const SEMANTIC_WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
 const CAPTURE_FAILURE := preload("res://scripts/runtime/save_owner_capture_failure_v1.gd")
 const TARGETED_DIAGNOSTIC_V2 := preload("res://scripts/tools/targeted_owner_capture_diagnostic_v2.gd")
-const AUTHORIZATION_CONTRACT_PATH := "res://scripts/tools/cold_restore_authorization_contract_v1.json"
-const TARGETED_AUTHORIZATION_NAME := "targeted_owner_capture_diagnostic_v4_importchain"
+const AUTHORIZATION_CONTRACT := preload(
+	"res://scripts/tools/cold_restore_authorization_contract_v1.gd"
+)
 
 const SCHEMA_VERSION := 1
 const DEFAULT_EVIDENCE_ROOT := "res://.godot/cold_restore_attestation_v1"
@@ -269,7 +270,7 @@ static func write_owner_capture_phase_snapshot(
 			or str(timeline.get("run_id", "")) != run_id \
 			or not _lower_hex(repository_head, 40, 64) \
 			or run_id != _authorization_run_id(
-				TARGETED_AUTHORIZATION_NAME, repository_head
+				_targeted_authorization_name(), repository_head
 			) \
 			or (timeline.get("phase_rows", []) as Array).size() != sequence:
 		return {"valid": false, "reason_code": "child_diagnostic_phase_snapshot_invalid"}
@@ -400,7 +401,7 @@ static func _owner_capture_diagnostic_binding_report(
 	if str(value.get("repository_head", "")) != expected_repository_head:
 		return _diagnostic_rejected("child_diagnostic_repository_head_mismatch")
 	if run_id != _authorization_run_id(
-		TARGETED_AUTHORIZATION_NAME, expected_repository_head
+		_targeted_authorization_name(), expected_repository_head
 	):
 		return _diagnostic_rejected("child_diagnostic_run_head_binding_invalid")
 	if not SEMANTIC_WIRE.is_closed_data(value) or not _v2_diagnostic_redaction_valid(value):
@@ -534,7 +535,7 @@ static func _valid_owner_capture_diagnostic_v1(value: Dictionary) -> bool:
 			or not (value.get("official_claim_path_present") is bool) or bool(value.get("official_claim_path_present", true)):
 		return false
 	if str(value.get("run_id", "")) != _authorization_run_id(
-		TARGETED_AUTHORIZATION_NAME, str(value.get("repository_head", ""))
+		_targeted_authorization_name(), str(value.get("repository_head", ""))
 	):
 		return false
 	if typeof(value.get("challenge_depth")) != TYPE_INT or int(value.get("challenge_depth", -1)) != 1 \
@@ -709,24 +710,11 @@ static func _safe_run_id(value: String) -> bool:
 
 
 static func _authorization_contract_entry(entry_name: String) -> Dictionary:
-	if entry_name not in [
-		"targeted_owner_capture_diagnostic_v3",
-		TARGETED_AUTHORIZATION_NAME,
-		"process_a_save_completion_rehearsal_v1",
-		"official_attempt_2",
-	]:
-		return {}
-	if not FileAccess.file_exists(AUTHORIZATION_CONTRACT_PATH):
-		return {}
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(AUTHORIZATION_CONTRACT_PATH))
-	if not (parsed is Dictionary):
-		return {}
-	var contract := parsed as Dictionary
-	if int(contract.get("schema_version", 0)) != 1 \
-			or str(contract.get("contract_id", "")) != "ColdRestoreAuthorizationContractV1" \
-			or not (contract.get(entry_name) is Dictionary):
-		return {}
-	return (contract.get(entry_name) as Dictionary).duplicate(true)
+	return AUTHORIZATION_CONTRACT.entry(entry_name)
+
+
+static func _targeted_authorization_name() -> String:
+	return AUTHORIZATION_CONTRACT.current_targeted_authorization_name()
 
 
 static func _authorization_run_id(entry_name: String, repository_head: String) -> String:
@@ -779,7 +767,7 @@ static func _evidence_run_root(run_id: String, test_root: String = "") -> String
 		return normalized_test_root if not normalized_test_root.is_empty() \
 				and normalized_test_root == authorized_test_root else ""
 	if _targeted_owner_capture_run_id(run_id):
-		var authorization := _authorization_contract_entry(TARGETED_AUTHORIZATION_NAME)
+		var authorization := _authorization_contract_entry(_targeted_authorization_name())
 		var common_dir := _resolve_git_common_dir()
 		var expected_root := _normalize_absolute_path(common_dir.path_join(
 			str(authorization.get("evidence_root_relative_path", ""))
@@ -792,7 +780,7 @@ static func _evidence_run_root(run_id: String, test_root: String = "") -> String
 
 
 static func _targeted_owner_capture_run_id(value: String) -> bool:
-	var entry := _authorization_contract_entry(TARGETED_AUTHORIZATION_NAME)
+	var entry := _authorization_contract_entry(_targeted_authorization_name())
 	var prefix := str(entry.get("run_id_prefix", ""))
 	if prefix.is_empty() or not value.begins_with("%s-" % prefix):
 		return false

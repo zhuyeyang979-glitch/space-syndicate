@@ -28,7 +28,10 @@ $ColdRestoreAuthorizationModule = cold_restore_module_loader\Import-ColdRestoreM
     -RequiredCommands @(
         "Get-ColdRestoreAuthorizationContract",
         "Get-ColdRestoreAuthorizationContractPath",
+        "Get-ColdRestoreAuthorizationEntry",
         "Get-ColdRestoreAuthorizationRunId",
+        "Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName",
+        "Get-ColdRestorePreviousTargetedDiagnosticAuthorizationName",
         "Get-ColdRestoreTargetedDiagnosticAuthorizationBinding"
     )
 $ColdRestorePreQuotaModule = cold_restore_module_loader\Import-ColdRestoreModuleOnce `
@@ -37,7 +40,7 @@ $ColdRestorePreQuotaModule = cold_restore_module_loader\Import-ColdRestoreModule
         "Assert-ColdRestorePreQuotaContextParameters",
         "New-ColdRestoreTargetedDiagnosticPreQuotaContext",
         "New-ColdRestoreTargetedDiagnosticUserArgumentList",
-        "Publish-ColdRestoreTargetedQuotaLedgerV4",
+        "Publish-ColdRestoreCurrentTargetedQuotaLedger",
         "Update-ColdRestorePreQuotaAttestation"
     )
 $ColdRestoreTargetedLedgerBindingModule = cold_restore_module_loader\Import-ColdRestoreModuleOnce `
@@ -154,9 +157,16 @@ $AuthorizationContractSha256 = (
 ).Hash.ToLowerInvariant()
 $AuthorizationContract = `
     cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationContract
-$TargetedOwnerCaptureAuthorizationName = "targeted_owner_capture_diagnostic_v4_importchain"
+$TargetedOwnerCaptureAuthorizationName = `
+    cold_restore_authorization_contract_v1\Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName
 $TargetedOwnerCaptureAuthorization = `
-    $AuthorizationContract.targeted_owner_capture_diagnostic_v4_importchain
+    cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationEntry `
+        $TargetedOwnerCaptureAuthorizationName
+$PreviousTargetedOwnerCaptureAuthorizationName = `
+    cold_restore_authorization_contract_v1\Get-ColdRestorePreviousTargetedDiagnosticAuthorizationName
+$PreviousTargetedOwnerCaptureAuthorization = `
+    cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationEntry `
+        $PreviousTargetedOwnerCaptureAuthorizationName
 $ProcessARehearsalAuthorization = $AuthorizationContract.process_a_save_completion_rehearsal_v1
 $OfficialAttempt2Authorization = $AuthorizationContract.official_attempt_2
 $OfficialAuthorizationId = [string]$OfficialAttempt2Authorization.authorization_id
@@ -165,9 +175,10 @@ $OfficialAttempt2ClaimRelativePath = [string]$OfficialAttempt2Authorization.clai
 $OfficialAttempt1ClaimSha256 = [string]$OfficialAttempt2Authorization.attempt_1_claim_sha256
 $TargetedLedgerBindingContract = `
     cold_restore_targeted_ledger_binding_contract_v1\Get-ColdRestoreTargetedLedgerBindingContract
-$PreviousTargetedOwnerCaptureQuotaLedgerRelativePath = "codex\cold_restore_v3\non-official-alpha04c-production-save-completion-repair-0240dae\targeted_owner_capture_quota_ledger.json"
+$PreviousTargetedOwnerCaptureQuotaLedgerRelativePath = `
+    [string]$PreviousTargetedOwnerCaptureAuthorization.quota_ledger_relative_path
 $PreviousTargetedOwnerCaptureQuotaLedgerSha256 = `
-    [string]$TargetedLedgerBindingContract.exact_literals.previous_ledger_sha256
+    [string]$TargetedOwnerCaptureAuthorization.previous_quota_ledger_sha256
 $HistoricalTargetedOwnerCaptureInvocationCommit = `
     [string]$TargetedLedgerBindingContract.exact_literals.historical_invocation_commit
 $HistoricalTargetedOwnerCaptureInvocationBlobSha1 = `
@@ -609,7 +620,8 @@ $RoleTimeoutFields = @(
 $TargetedDiagnosticV2Fields = @(
     "schema_version", "diagnostic_id", "run_id", "repository_head", "official",
     "formal", "scenario_identity", "scenario_identity_attested",
-    "scenario_identity_failure", "harness_or_scenario_failure_attested",
+    "scenario_identity_failure", "registry_binding_attested",
+    "harness_or_scenario_failure_attested",
     "diagnostic_phase_timeline", "last_completed_diagnostic_phase",
     "current_diagnostic_phase", "next_expected_diagnostic_phase",
     "owner_audit_started", "owner_audit_completed", "first_owner_capture_index",
@@ -644,7 +656,7 @@ $TargetedDiagnosticPhaseRowFields = @(
 )
 $TargetedDiagnosticOwnerRowFields = @(
     "owner_index", "section_id", "owner_id", "owner_path", "capture_started",
-    "capture_completed", "capture_result_kind", "payload_schema_version",
+    "capture_completed", "capture_result_kind", "state_version",
     "payload_fingerprint", "payload_pure_data", "elapsed_milliseconds",
     "mutation_count", "rng_draw_delta", "world_time_delta", "public_log_delta",
     "reason_code", "private_payload_redacted", "row_evidence_fingerprint"
@@ -1032,7 +1044,7 @@ function Assert-ColdRestoreTargetedDiagnosticRemoteCheckpoint {
     $localHeadLines = @(& git -C $ResolvedProjectPath rev-parse HEAD 2>$null)
     Assert-ColdRestoreCondition ((cold_restore_attested_process\Get-ColdRestoreSafeCollectionCount $branchLines) -eq 1 `
         -and (cold_restore_attested_process\Get-ColdRestoreSafeCollectionCount $localHeadLines) -eq 1 `
-        -and [string]$branchLines[0] -cmatch '^codex/alpha04c-import-chain-v4-[0-9a-f]{7,12}$' `
+        -and [string]$branchLines[0] -cmatch '^codex/alpha04c-v5-owner-diagnostic-[0-9a-f]{7,12}$' `
         -and [string]$localHeadLines[0] -ceq $ExpectedHead) "targeted_diagnostic_local_checkpoint_invalid"
     $branch = [string]$branchLines[0]
     $remoteLines = @(& git -C $ResolvedProjectPath rev-parse "refs/remotes/origin/$branch" 2>$null)
@@ -1393,6 +1405,12 @@ function Assert-ColdRestoreTargetedDiagnosticV2 {
             -and [string]$identity.diagnostic_role -ceq "targeted_owner_diagnostic" `
             -and [string]$identity.identity_fingerprint -cmatch '^[0-9a-f]{64}$') "targeted_owner_capture_v2_identity_invalid"
     }
+    Assert-ColdRestoreCondition ($Diagnostic.registry_binding_attested -is [bool] `
+        -and [bool]$Diagnostic.registry_binding_attested -eq (
+            @($timeline.phase_rows | Where-Object {
+                [string]$_.phase_id -ceq "registry_binding_attested"
+            }).Count -eq 1
+        )) "targeted_owner_capture_v2_registry_binding_invalid"
     if ([bool]$Diagnostic.harness_or_scenario_failure_attested) {
         Assert-ColdRestoreCondition (-not [bool]$Diagnostic.owner_audit_started `
             -and $identityFailureFields.Count -gt 0 `
@@ -1424,6 +1442,7 @@ function Assert-ColdRestoreTargetedDiagnosticV2 {
                 -and [string]$row.owner_id -ceq $SaveOwnerOrder[$ownerIndex] `
                 -and [string]$row.owner_path -cmatch '^[A-Za-z0-9_./-]{1,256}$' `
                 -and [string]$row.capture_result_kind -in @("CAPTURED", "FAILED", "NOT_ATTEMPTED_AFTER_FIRST_FAILURE") `
+                -and [int]$row.state_version -ge -1 `
                 -and [int64]$row.elapsed_milliseconds -ge 0 `
                 -and [int]$row.mutation_count -ge 0 `
                 -and [bool]$row.private_payload_redacted `
@@ -2351,7 +2370,7 @@ function New-ColdRestoreTargetedOwnerCaptureOutput {
     }
     return [ordered]@{
         schema_version = 3
-        driver_id = "alpha04c_targeted_owner_capture_diagnostic_v4_importchain"
+        driver_id = "alpha04c_targeted_owner_capture_diagnostic_v5_canonical_binding"
         formal_full_run = $false
         official_cold_restore_vertical_slice = $false
         targeted_owner_capture_diagnostic = $true
@@ -2360,6 +2379,7 @@ function New-ColdRestoreTargetedOwnerCaptureOutput {
         scenario_fingerprint = $(if ([bool]$Result.diagnostic.scenario_identity_attested) { [string]$Result.diagnostic.scenario_identity.scenario_fingerprint } else { "" })
         diagnostic_result_kind = [string]$Result.diagnostic_result_kind
         scenario_identity_attested = [bool]$Result.diagnostic.scenario_identity_attested
+        registry_binding_attested = [bool]$Result.diagnostic.registry_binding_attested
         scenario_identity_failure_field = $(if (@($Result.diagnostic.scenario_identity_failure.PSObject.Properties).Count -gt 0) { [string]$Result.diagnostic.scenario_identity_failure.failure_field } else { "" })
         scenario_identity_failure_reason = $(if (@($Result.diagnostic.scenario_identity_failure.PSObject.Properties).Count -gt 0) { [string]$Result.diagnostic.scenario_identity_failure.reason_code } else { "" })
         owner_audit_started = [bool]$Result.diagnostic.owner_audit_started
@@ -3062,7 +3082,7 @@ function Consume-ColdRestoreTargetedOwnerCaptureDiagnosticQuota {
         status = [string]$TargetedLedgerBindingContract.exact_literals.status
     }
     Assert-ColdRestoreCondition ([string]$ledger.claim_nonce -cne [string]$ledger.launch_nonce) "targeted_owner_capture_nonce_collision"
-    $ledgerFingerprint = cold_restore_prequota_bootstrap\Publish-ColdRestoreTargetedQuotaLedgerV4 $ledgerPath ([pscustomobject]$ledger)
+    $ledgerFingerprint = cold_restore_prequota_bootstrap\Publish-ColdRestoreCurrentTargetedQuotaLedger $ledgerPath ([pscustomobject]$ledger)
     return [pscustomobject]@{
         path = $ledgerPath
         fingerprint = [string]$ledgerFingerprint
@@ -4181,7 +4201,7 @@ catch {
     elseif ($TargetedOwnerCaptureDiagnostic) {
         Write-AllowlistedResult ([ordered]@{
             schema_version = 3
-            driver_id = "alpha04c_targeted_owner_capture_diagnostic_v4_importchain"
+            driver_id = "alpha04c_targeted_owner_capture_diagnostic_v5_canonical_binding"
             formal_full_run = $false
             official_cold_restore_vertical_slice = $false
             targeted_owner_capture_diagnostic = $true

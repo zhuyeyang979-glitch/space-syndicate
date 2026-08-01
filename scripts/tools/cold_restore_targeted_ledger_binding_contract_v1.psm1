@@ -7,7 +7,11 @@ $script:ModuleLoader = Import-Module `
     -ErrorAction Stop
 $script:AuthorizationModule = cold_restore_module_loader\Import-ColdRestoreModuleOnce `
     -Path (Join-Path $PSScriptRoot "cold_restore_authorization_contract_v1.psm1") `
-    -RequiredCommands @("Get-ColdRestoreAuthorizationContract")
+    -RequiredCommands @(
+        "Get-ColdRestoreAuthorizationContract",
+        "Get-ColdRestoreAuthorizationEntry",
+        "Get-ColdRestoreTargetedDiagnosticAuthorizationNames"
+    )
 $script:AttestedProcessModule = cold_restore_module_loader\Import-ColdRestoreModuleOnce `
     -Path (Join-Path $PSScriptRoot "cold_restore_attested_process.psm1") `
     -RequiredCommands @("Test-ColdRestoreExactFieldSet")
@@ -29,6 +33,7 @@ function Get-ColdRestoreTargetedLedgerBindingContract {
     }
     if ([int]$contract.schema_version -ne 1 `
         -or [string]$contract.contract_id -cne "ColdRestoreTargetedLedgerBindingContractV1" `
+        -or [string]$contract.authorization_entry_resolution -cne "ledger_authorization_id" `
         -or @($contract.field_order).Count -eq 0 `
         -or @(Compare-Object @($contract.field_order) @($contract.required_fields)).Count -ne 0) {
         throw "targeted_ledger_binding_contract_invalid"
@@ -158,12 +163,26 @@ function Assert-ColdRestoreTargetedLedgerPublisherValue {
     param([Parameter(Mandatory = $true)]$Value)
 
     $contract = Get-ColdRestoreTargetedLedgerBindingContract
-    $authorizationContract = `
-        cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationContract
     if (-not (cold_restore_attested_process\Test-ColdRestoreExactFieldSet `
             $Value @($contract.required_fields))) {
         throw "targeted_ledger_binding_field_set_invalid"
     }
+    $authorizationContract = `
+        cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationContract
+    $authorizationNames = @(
+        cold_restore_authorization_contract_v1\Get-ColdRestoreTargetedDiagnosticAuthorizationNames
+    )
+    $authorizationName = @(
+        $authorizationNames | Where-Object {
+            [string](cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationEntry $_).authorization_id `
+                -ceq [string]$Value.authorization_id
+        }
+    )
+    if ($authorizationName.Count -ne 1) {
+        throw "targeted_ledger_binding_authorization_id_mismatch"
+    }
+    $authorizationEntry = cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationEntry `
+        ([string]$authorizationName[0])
     foreach ($fieldValue in @($contract.field_order)) {
         $field = [string]$fieldValue
         $actual = $Value.PSObject.Properties[$field].Value
@@ -173,15 +192,27 @@ function Assert-ColdRestoreTargetedLedgerPublisherValue {
         }
         $expectedSet = $false
         $expected = $null
-        $authorizationBinding = $contract.exact_values_from_authorization_contract.PSObject.Properties[$field]
-        if ($null -ne $authorizationBinding) {
-            $expected = Get-ColdRestoreDottedValue `
-                $authorizationContract ([string]$authorizationBinding.Value)
-            $expectedSet = $true
-        }
         $literal = $contract.exact_literals.PSObject.Properties[$field]
         if ($null -ne $literal) {
             $expected = $literal.Value
+            $expectedSet = $true
+        }
+        $authorizationBinding = $contract.exact_values_from_authorization_contract.PSObject.Properties[$field]
+        if ($null -ne $authorizationBinding) {
+            $bindingPath = [string]$authorizationBinding.Value
+            $expected = if ($bindingPath.Contains(".", [StringComparison]::Ordinal)) {
+                Get-ColdRestoreDottedValue $authorizationContract $bindingPath
+            }
+            else {
+                Get-ColdRestoreDottedValue $authorizationEntry $bindingPath
+            }
+            $expectedSet = $true
+        }
+        $overrideBinding = $contract.authorization_override_fields.PSObject.Properties[$field]
+        if ($null -ne $overrideBinding `
+            -and $authorizationEntry.PSObject.Properties.Name -ccontains [string]$overrideBinding.Value) {
+            $expected = Get-ColdRestoreDottedValue `
+                $authorizationEntry ([string]$overrideBinding.Value)
             $expectedSet = $true
         }
         if ($expectedSet -and -not (Test-ColdRestoreTargetedLedgerExactValue `

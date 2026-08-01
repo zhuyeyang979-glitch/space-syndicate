@@ -27,6 +27,20 @@
     "authorized_increment": 1,
     "maximum_invocation_count": 4
   },
+  "targeted_owner_capture_diagnostic_v5_canonical_binding": {
+    "authorization_id": "alpha04c-targeted-owner-capture-diagnostic-v5-canonical-binding",
+    "task_id": "ALPHA04C_V5_OWNER_DIAGNOSTIC_PROCESS_A_REHEARSAL_AND_V07_ADAPTER_MAIN_ART_RESYNC",
+    "ledger_id": "Alpha04C.TargetedOwnerCaptureDiagnosticQuotaLedgerV5",
+    "quota_ledger_relative_path": "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/targeted_owner_capture_quota_ledger.json",
+    "evidence_root_relative_path": "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/evidence",
+    "bootstrap_root_relative_path": "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/prequota",
+    "run_id_prefix": "alpha04c-owner-capture-diagnostic-v5-canonical-binding",
+    "permitted_transition_from": 4,
+    "permitted_transition_to": 5,
+    "authorized_increment": 1,
+    "maximum_invocation_count": 5,
+    "previous_quota_ledger_sha256": "154ceedf4032404d4c7d355fbd775991e20d29299f6e05e3a8c8e70c64be208c"
+  },
   "process_a_save_completion_rehearsal_v1": {
     "authorization_id": "alpha04c-process-a-save-completion-rehearsal-v1",
     "quota_ledger_relative_path": "codex/cold_restore_v3/non-official-alpha04c-process-a-rehearsal-v1/process_a_rehearsal_quota_ledger.json",
