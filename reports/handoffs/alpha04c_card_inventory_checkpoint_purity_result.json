@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "task_id": "ALPHA_0_4_C_ATTESTED_CARD_INVENTORY_CHECKPOINT_PURITY_REPAIR_AND_V7_NONCONSUMING_REPLAY",
+  "status": "BLOCKED_BY_CARD_INVENTORY_SAVE_SCHEMA_DEFECT",
+  "effective_main_sha": "794ccf010e661a4750efca20a4e0d2a5839b7f2b",
+  "pr77_head_before": "2dbdf277710c8378508c2a31c4408f0d18820d5c",
+  "pr80_head_unchanged": "74bfcaf3331849ce94ac00ab704ad4ea3b6bf7d6",
+  "pr82_head_unchanged": "c74228a2bb414fd743275cc5b1cde6514e216a0d",
+  "branch": "codex/alpha04c-card-inventory-checkpoint-purity-2dbdf27",
+  "main_resync": {
+    "merge_commit": "011173c1",
+    "card_inventory_runtime_diff_count": 0,
+    "save_registry_runtime_diff_count": 0,
+    "queue_behavior_diff_count": 0,
+    "gameplay_value_change_count": 0
+  },
+  "subagents": {
+    "requested": 6,
+    "actual_max_concurrent": 4,
+    "utilization": "4+2 roles across two waves"
+  },
+  "immutable_v7": {
+    "targeted_owner_capture_diagnostic_count": 7,
+    "authorization_id": "alpha04c-targeted-owner-capture-diagnostic-v7-registry-contract",
+    "run_id": "alpha04c-owner-capture-diagnostic-v7-registry-contract-a4608ad9f879",
+    "quota_claimed": true,
+    "scenario_identity_attested": true,
+    "registry_binding_attested": true,
+    "owner_audit_started": true,
+    "owner_audit_completed": true,
+    "registry_owner_capture": "7/19",
+    "failing_owner_index": 7,
+    "failing_section_id": "card_inventory",
+    "failing_owner_id": "card_inventory",
+    "failing_reason": "owner_checkpoint_not_pure_data",
+    "remaining_owner_status": "NOT_ATTEMPTED_AFTER_FIRST_FAILURE",
+    "evidence_file_count": 107,
+    "evidence_bytes": 271918,
+    "quota_ledger_sha256": "607f1a15d875321a368ab071b35693857d7acf32063b4ed5578fa4f4aea9f826",
+    "failure_phase_0024_sha256": "eba66bdf8edc55071b862a6b1c9d1ab8073d130335408bcf76be9c373538b778",
+    "evidence_bytes_modified": false
+  },
+  "validator_contracts": {
+    "v7_owner_codec": "null, String, bool, int, finite float, Vector2, Color, Array, and Dictionary with String or StringName keys",
+    "strict_closed_data": "String, bool, safe int, Array, and Dictionary with String keys",
+    "global_predicate_modified": false
+  },
+  "runtime_checkpoint_characterization": {
+    "scope": "focused real DistrictPurchaseRuntimeController child checkpoint",
+    "full_composite_replay": false,
+    "checkpoint_leaf_count": 24,
+    "v7_non_pure_leaf_count": 1,
+    "first_non_pure_child_id": "district_purchase",
+    "first_non_pure_path": "$.children.district_purchase.windows_by_player.<non_string_key:int>",
+    "first_non_pure_variant_type": "int",
+    "first_non_pure_reason": "dictionary_key_not_owner_codec_compatible",
+    "non_pure_type_counts": {
+      "int": 1
+    },
+    "source_capture_method": "capture_runtime_checkpoint"
+  },
+  "persistent_save_schema_defect": {
+    "attested": true,
+    "composition": "real CardInventorySaveOwner plus real ProductMarketRuntimeController and closed non-target child fixtures",
+    "card_inventory_save_schema_version": 3,
+    "strict_closed_data": false,
+    "v7_owner_codec_pure_data": true,
+    "strict_non_closed_leaf_count": 2,
+    "strict_non_closed_type_counts": {
+      "float": 2
+    },
+    "first_child_id": "product_market",
+    "first_path": "$.product_market.product_market.<redacted:e85b86c2f8c4>.growth_multiplier",
+    "second_path": "$.product_market.market_timer",
+    "variant_type": "float",
+    "reason": "float_not_closed",
+    "source_capture_method": "to_save_data"
+  },
+  "repair_gate": {
+    "runtime_checkpoint_schema_version_before": 1,
+    "runtime_checkpoint_schema_version_after": 1,
+    "card_inventory_save_schema_version_before": 3,
+    "card_inventory_save_schema_version_after": 3,
+    "save_envelope_schema_change_count": 0,
+    "save_section_version_change_count": 0,
+    "new_save_section_count": 0,
+    "information_loss_count": 0,
+    "unattested_field_drop_count": 0,
+    "implicit_type_coercion_count": 0,
+    "runtime_repair": "NOT_RUN",
+    "composite_restore_parity": "NOT_RUN",
+    "fault_rollback_matrix": "NOT_RUN"
+  },
+  "nonconsuming_replay": {
+    "run_id": "none",
+    "status": "NOT_RUN",
+    "diagnostic_count_delta": 0,
+    "quota_claim_count": 0,
+    "full_owner_audit_count": 0,
+    "save_file_write_count": 0
+  },
+  "prohibited_scope": {
+    "new_diagnostic_authorization_created": false,
+    "v8_run_count": 0,
+    "process_a_save_completion_rehearsal_count": 0,
+    "official_attempt_2_claim_created": false,
+    "process_b_started": false,
+    "process_c_started": false,
+    "v073_rule_change_count": 0,
+    "v073_production_connection_count": 0,
+    "main_gd_change_count": 0,
+    "main_tscn_production_wiring_change_count": 0,
+    "gameplay_value_change_count": 0,
+    "ai_policy_change_count": 0,
+    "new_rng_owner_count": 0,
+    "new_rng_draw_point_count": 0,
+    "third_formal_run_performed": false,
+    "full_smoke": false,
+    "web_asset_search_count": 0,
+    "new_external_asset_source_count": 0
+  },
+  "focused_verification": {
+    "v7_failure_path_characterization": "7/7 PASS",
+    "persistent_save_purity_characterization": "11/11 PASS",
+    "engine_check_only": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "next_task": "ALPHA_0_4_C_ATTESTED_CARD_INVENTORY_SAVE_SCHEMA_REPAIR"
+}
