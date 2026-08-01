@@ -3,17 +3,37 @@ extends SceneTree
 const MAIN_SCENE := preload("res://scenes/main.tscn")
 const WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
 const INSPECTOR := preload("res://scripts/tools/card_inventory_checkpoint_purity_inspector_v1.gd")
-const SCENARIO_IDENTITY := preload("res://scripts/tools/diagnostic_scenario_identity_v1.gd")
 const REGISTRY_VALIDATOR := preload("res://scripts/tools/alpha04c_registry_binding_contract_validator_v1.gd")
+const REPLAY_SCENARIO_IDENTITY := preload("res://scripts/tools/card_inventory_owner_replay_scenario_identity_v1.gd")
 
-const REPLAY_RUN_ID := "alpha04c-v7-card-inventory-save-v4-checkpoint-v2-replay"
-const FIXED_SEED := 900626424
-const FIXED_CHALLENGE_DEPTH := 1
-const FIXED_LOCAL_PLAYER_COUNT := 1
-const FIXED_AI_PLAYER_COUNT := 3
-const TARGET_OWNER_INDEX := 7
-const TARGET_SECTION_ID := "card_inventory"
-const TARGET_OWNER_ID := "card_inventory"
+const FIXED_SEED := REPLAY_SCENARIO_IDENTITY.RUN_SEED
+const FIXED_CHALLENGE_DEPTH := REPLAY_SCENARIO_IDENTITY.CHALLENGE_DEPTH
+const FIXED_LOCAL_PLAYER_COUNT := REPLAY_SCENARIO_IDENTITY.LOCAL_PLAYER_COUNT
+const FIXED_AI_PLAYER_COUNT := REPLAY_SCENARIO_IDENTITY.AI_PLAYER_COUNT
+const TARGET_OWNER_INDEX := REPLAY_SCENARIO_IDENTITY.OWNER_INDEX
+const TARGET_SECTION_ID := REPLAY_SCENARIO_IDENTITY.SECTION_ID
+const TARGET_OWNER_ID := REPLAY_SCENARIO_IDENTITY.OWNER_ID
+const REPLAY_CLAIM_FIELDS := [
+	"schema_version",
+	"claim_id",
+	"authorization_id",
+	"run_id",
+	"repository_head",
+	"replay_attempt_count_before",
+	"authorized_new_replay_count",
+	"replay_attempt_count_after",
+	"targeted_owner_capture_diagnostic_count_before",
+	"targeted_owner_capture_diagnostic_count_after",
+	"private_payload_redacted",
+]
+const REPLAY_ADMISSION_FIELDS := [
+	"schema_version",
+	"admission_id",
+	"claim_sha256",
+	"authorization_id",
+	"run_id",
+	"repository_head",
+]
 
 
 func _init() -> void:
@@ -23,12 +43,30 @@ func _init() -> void:
 func _run() -> void:
 	var output_path := _argument_value("--evidence-output=")
 	var repository_head := _argument_value("--repository-head=").to_lower()
-	var result := _base_result(repository_head)
+	var authorization := REPLAY_SCENARIO_IDENTITY.authorization()
+	var replay_run_id := str(authorization.get("run_id", ""))
+	var result := _base_result(repository_head, authorization)
+	if authorization.is_empty():
+		_finish(result, output_path, "replay_v2_authorization_invalid")
+		return
 	if output_path.is_empty() or output_path.contains("current_run.save"):
 		_finish(result, output_path, "replay_evidence_path_invalid")
 		return
+	var expected_output_path := _normalize_absolute_path(ProjectSettings.globalize_path(
+		"res://reports/handoffs/alpha04c_v7_card_inventory_save_v4_checkpoint_v2_replay_v2.json"
+	))
+	if _normalize_absolute_path(output_path) != expected_output_path \
+			or FileAccess.file_exists(expected_output_path):
+		_finish(result, "", "replay_v2_evidence_path_not_canonical")
+		return
 	if not _lower_hex(repository_head, 40, 64):
 		_finish(result, output_path, "replay_repository_head_invalid")
+		return
+	var admission := _consume_replay_admission(repository_head, authorization)
+	result["replay_claim_sha256"] = str(admission.get("claim_sha256", ""))
+	result["replay_admission_consumed"] = bool(admission.get("accepted", false))
+	if not bool(admission.get("accepted", false)):
+		_finish(result, output_path, str(admission.get("reason_code", "replay_v2_admission_invalid")))
 		return
 
 	var main := MAIN_SCENE.instantiate()
@@ -45,7 +83,7 @@ func _run() -> void:
 		_finish(result, output_path, "production_composition_unavailable")
 		return
 
-	var started := _start_fixed_session(context)
+	var started := _start_fixed_session(context, replay_run_id)
 	result["challenge_depth"] = int(started.get("challenge_depth", -1))
 	result["seed"] = int(started.get("seed", 0))
 	result["local_player_count"] = int(started.get("local_player_count", -1))
@@ -57,20 +95,31 @@ func _run() -> void:
 		return
 	main.process_mode = Node.PROCESS_MODE_DISABLED
 
-	var identity := _build_scenario_identity(context, started, repository_head)
-	var identity_report := SCENARIO_IDENTITY.validation_report(
-		identity,
-		REPLAY_RUN_ID,
+	var identity_bundle := _build_scenario_identity(
+		context,
+		started,
 		repository_head,
-		str(started.get("scenario_fingerprint", ""))
+		replay_run_id
 	)
-	result["scenario_identity_attested"] = bool(identity_report.get("valid", false))
-	result["scenario_identity_fingerprint"] = str(identity.get("identity_fingerprint", ""))
-	if not bool(identity_report.get("valid", false)):
+	var replay_identity: Dictionary = identity_bundle.get("replay_identity", {}) \
+			if identity_bundle.get("replay_identity", {}) is Dictionary else {}
+	var replay_identity_report: Dictionary = identity_bundle.get("replay_identity_report", {}) \
+			if identity_bundle.get("replay_identity_report", {}) is Dictionary else {}
+	result["replay_scenario_identity_attested"] = bool(replay_identity_report.get("valid", false))
+	result["replay_scenario_identity_fingerprint"] = str(replay_identity.get("identity_fingerprint", ""))
+	result["production_runtime_ruleset_id"] = str(replay_identity.get("production_runtime_ruleset_id", ""))
+	result["highest_target_ruleset_id"] = str(replay_identity.get("highest_target_ruleset_id", ""))
+	result["highest_target_ruleset_used_as_runtime_identity"] = bool(replay_identity.get(
+		"highest_target_ruleset_used_as_runtime_identity",
+		true
+	))
+	if not bool(replay_identity_report.get("valid", false)):
 		main.queue_free()
 		await process_frame
-		_finish(result, output_path, str(identity_report.get("reason_code", "scenario_identity_invalid")))
+		_finish(result, output_path, str(replay_identity_report.get("reason_code", "replay_scenario_identity_invalid")))
 		return
+	result["scenario_identity_attested"] = bool(replay_identity_report.get("valid", false))
+	result["scenario_identity_fingerprint"] = str(replay_identity.get("identity_fingerprint", ""))
 
 	var registry: Node = context.get("registry")
 	var owner: Node = context.get("owner")
@@ -177,7 +226,8 @@ func _run() -> void:
 		"owner_fingerprint_restore_parity": str(before_roundtrip.get("owner_fingerprint", "")) == str(after_roundtrip.get("owner_fingerprint", "")),
 	}, true)
 
-	var green := bool(result.get("scenario_identity_attested", false)) \
+	var green := bool(result.get("replay_scenario_identity_attested", false)) \
+			and bool(result.get("scenario_identity_attested", false)) \
 			and bool(result.get("registry_binding_attested", false)) \
 			and save_closed and checkpoint_closed \
 			and save_capture_mutation_count == 0 and checkpoint_capture_mutation_count == 0 \
@@ -190,6 +240,10 @@ func _run() -> void:
 	result["v7_card_inventory_save_v4_replay_green"] = green
 	result["v7_card_inventory_checkpoint_v2_replay_green"] = green
 	result["v7_card_inventory_restore_parity"] = checkpoint_roundtrip and restore_quiet
+	result["v7_card_inventory_payload_closed"] = save_closed and checkpoint_closed
+	result["v7_card_inventory_capture_mutation_count"] = (
+		save_capture_mutation_count + checkpoint_capture_mutation_count
+	)
 	result["success"] = green
 	result["status"] = "GREEN" if green else "BLOCKED"
 	result["reason_code"] = "v7_card_inventory_nonconsuming_replay_green" if green else "v7_card_inventory_nonconsuming_replay_failed"
@@ -223,7 +277,7 @@ func _runtime_context(main: Node) -> Dictionary:
 	}
 
 
-func _start_fixed_session(context: Dictionary) -> Dictionary:
+func _start_fixed_session(context: Dictionary, replay_run_id: String) -> Dictionary:
 	var services: Node = context.get("services")
 	var coordinator: GameRuntimeCoordinator = context.get("coordinator")
 	var session: GameSessionRuntimeController = context.get("session")
@@ -240,7 +294,7 @@ func _start_fixed_session(context: Dictionary) -> Dictionary:
 			or int(setup.get("ai_player_count", -1)) != FIXED_AI_PLAYER_COUNT:
 		return {"applied": false, "reason_code": "fixed_setup_mismatch"}
 	var request := SessionStartRequest.create(
-		REPLAY_RUN_ID,
+		replay_run_id,
 		setup,
 		session.session_start_revision(),
 		"quality_driver"
@@ -276,69 +330,54 @@ func _start_fixed_session(context: Dictionary) -> Dictionary:
 	}
 
 
-func _build_scenario_identity(context: Dictionary, started: Dictionary, repository_head: String) -> Dictionary:
+func _build_scenario_identity(
+	context: Dictionary,
+	started: Dictionary,
+	repository_head: String,
+	replay_run_id: String
+) -> Dictionary:
 	var main: Node = context.get("main")
 	var coordinator: GameRuntimeCoordinator = context.get("coordinator")
 	var session: Node = context.get("session")
 	var registry: Node = context.get("registry")
+	var owner: Node = context.get("owner")
 	var ruleset_owner := session.get_node_or_null("RulesetSaveAttestationOwner")
 	var ruleset_state: Dictionary = ruleset_owner.call("to_save_data") \
 			if ruleset_owner != null and ruleset_owner.has_method("to_save_data") else {}
-	var world := coordinator.world_session_state() if coordinator != null else null
-	var geometry: Dictionary = world.public_world_geometry_snapshot() if world != null else {}
-	var lifecycle: Dictionary = world.public_lifecycle_snapshot() if world != null else {}
-	var roster: Array = []
-	var local_count := 0
-	var ai_count := 0
-	if world != null:
-		for player_index in range(world.players.size()):
-			var player: Dictionary = world.players[player_index] if world.players[player_index] is Dictionary else {}
-			var is_ai := bool(player.get("is_ai", false))
-			ai_count += 1 if is_ai else 0
-			local_count += 0 if is_ai else 1
-			roster.append({"player_index": player_index, "actor_id": str(player.get("actor_id", "")), "is_ai": is_ai})
-	var composition_paths := [
-		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator",
-		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/V06SaveOwnerRegistry",
-		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator",
-		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardInventorySaveOwner",
-		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CommodityCardInventoryRuntimeController",
-		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductMarketRuntimeController",
-		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictPurchaseRuntimeController",
-	]
-	var composition_presence: Array = []
-	for path_variant in composition_paths:
-		var path := str(path_variant)
-		var node := main.get_node_or_null(path)
-		composition_presence.append({"path": path, "present": node != null, "class": node.get_class() if node != null else ""})
 	var registry_snapshot: Dictionary = registry.call("registry_snapshot")
-	var world_revision := int(geometry.get("revision", -1))
-	if int(lifecycle.get("session_revision", -2)) != world_revision:
-		world_revision = -1
-	return SCENARIO_IDENTITY.build({
-		"run_id": REPLAY_RUN_ID,
+	var binding_contract: Dictionary = registry.call("registry_binding_contract_v1")
+	var target_binding := _target_binding(binding_contract)
+	var owner_script := owner.get_script() as Script if owner != null else null
+	var owner_constants: Dictionary = owner_script.get_script_constant_map() \
+			if owner_script != null else {}
+	var replay_identity := REPLAY_SCENARIO_IDENTITY.build({
+		"replay_id": replay_run_id,
 		"repository_head": repository_head,
-		"ruleset_id": str(ruleset_state.get("ruleset_id", "")),
-		"ruleset_fingerprint": _fingerprint(ruleset_state),
+		"scene_path": MAIN_SCENE.resource_path,
+		"registry_id": str(registry_snapshot.get("registry_id", "")),
+		"production_runtime_ruleset_id": str(ruleset_state.get("ruleset_id", "")),
+		"highest_target_ruleset_id": REPLAY_SCENARIO_IDENTITY.HIGHEST_TARGET_RULESET_ID,
 		"challenge_depth": int(started.get("challenge_depth", -1)),
 		"run_seed": int(started.get("seed", 0)),
-		"session_seed": int(started.get("session_seed", 0)),
-		"scenario_fingerprint": str(started.get("scenario_fingerprint", "")),
-		"local_player_count": local_count,
-		"ai_player_count": ai_count,
-		"roster_fingerprint": _fingerprint(roster),
-		"session_id": str(started.get("session_id", "")),
-		"session_generation": int(started.get("session_generation", -1)),
-		"session_plan_fingerprint": str(started.get("session_plan_fingerprint", "")),
-		"world_revision": world_revision,
-		"runtime_composition_fingerprint": _fingerprint(composition_presence),
-		"save_registry_fingerprint": _fingerprint({
-			"fixed_section_order": registry_snapshot.get("fixed_capture_order", []),
-			"contracts": registry_snapshot.get("contracts", []),
-			"transactional_section_count": registry_snapshot.get("transactional_section_count", 0),
-		}),
-		"user_data_path_fingerprint": OS.get_user_data_dir().sha256_text().to_lower(),
+		"local_player_count": int(started.get("local_player_count", -1)),
+		"ai_player_count": int(started.get("ai_player_count", -1)),
+		"owner_index": int(target_binding.get("section_index", -1)),
+		"section_id": str(target_binding.get("section_id", "")),
+		"owner_id": str(target_binding.get("owner_id", "")),
+		"card_inventory_save_schema_version": int(target_binding.get("state_version", -1)),
+		"card_inventory_checkpoint_schema_version": int(owner_constants.get(
+			"RUNTIME_CHECKPOINT_VERSION",
+			-1
+		)),
 	})
+	var replay_identity_report := REPLAY_SCENARIO_IDENTITY.validation_report(
+		replay_identity,
+		repository_head
+	)
+	return {
+		"replay_identity": replay_identity,
+		"replay_identity_report": replay_identity_report,
+	}
 
 
 func _target_binding(contract: Dictionary) -> Dictionary:
@@ -430,10 +469,86 @@ func _argument_value(prefix: String) -> String:
 	return ""
 
 
-func _base_result(repository_head: String) -> Dictionary:
+func _consume_replay_admission(repository_head: String, authorization: Dictionary) -> Dictionary:
+	var replay_root := REPLAY_SCENARIO_IDENTITY.authorized_replay_root()
+	var claim_path := _normalize_absolute_path(_argument_value("--replay-claim-path="))
+	var admission_path := _normalize_absolute_path(_argument_value("--replay-admission-path="))
+	var consumed_path := _normalize_absolute_path(_argument_value("--replay-consumed-path="))
+	var claim_sha256 := _argument_value("--replay-claim-sha256=").to_lower()
+	var expected_claim := _normalize_absolute_path(replay_root.path_join("replay_attempt_claim.json"))
+	var expected_admission := _normalize_absolute_path(replay_root.path_join("replay_child_admission.json"))
+	var expected_consumed := _normalize_absolute_path(replay_root.path_join("replay_child_admission_consumed.json"))
+	if replay_root.is_empty() or claim_path != expected_claim \
+			or admission_path != expected_admission or consumed_path != expected_consumed \
+			or not _lower_hex(claim_sha256, 64, 64) \
+			or not FileAccess.file_exists(claim_path) \
+			or not FileAccess.file_exists(admission_path) \
+			or FileAccess.file_exists(consumed_path):
+		return {"accepted": false, "reason_code": "replay_v2_admission_path_invalid"}
+	var claim_text := FileAccess.get_file_as_string(claim_path)
+	if claim_text.is_empty() or claim_text.sha256_text().to_lower() != claim_sha256:
+		return {"accepted": false, "reason_code": "replay_v2_claim_sha256_invalid"}
+	var claim_variant: Variant = JSON.parse_string(claim_text)
+	if not (claim_variant is Dictionary):
+		return {"accepted": false, "reason_code": "replay_v2_claim_invalid"}
+	var claim := claim_variant as Dictionary
+	if not _has_exact_fields(claim, REPLAY_CLAIM_FIELDS) \
+			or int(claim.get("schema_version", 0)) != 1 \
+			or str(claim.get("claim_id", "")) != "CardInventoryOwnerReplayAttemptClaimV1" \
+			or str(claim.get("authorization_id", "")) != str(authorization.get("authorization_id", "")) \
+			or str(claim.get("run_id", "")) != str(authorization.get("run_id", "")) \
+			or str(claim.get("repository_head", "")) != repository_head \
+			or int(claim.get("replay_attempt_count_before", -1)) != 1 \
+			or int(claim.get("authorized_new_replay_count", -1)) != 1 \
+			or int(claim.get("replay_attempt_count_after", -1)) != 2 \
+			or int(claim.get("targeted_owner_capture_diagnostic_count_before", -1)) != 7 \
+			or int(claim.get("targeted_owner_capture_diagnostic_count_after", -1)) != 7 \
+			or not bool(claim.get("private_payload_redacted", false)):
+		return {"accepted": false, "reason_code": "replay_v2_claim_invalid"}
+	var admission_variant: Variant = JSON.parse_string(FileAccess.get_file_as_string(admission_path))
+	if not (admission_variant is Dictionary):
+		return {"accepted": false, "reason_code": "replay_v2_admission_invalid"}
+	var admission := admission_variant as Dictionary
+	if not _has_exact_fields(admission, REPLAY_ADMISSION_FIELDS) \
+			or int(admission.get("schema_version", 0)) != 1 \
+			or str(admission.get("admission_id", "")) != "CardInventoryOwnerReplayChildAdmissionV1" \
+			or str(admission.get("claim_sha256", "")) != claim_sha256 \
+			or str(admission.get("authorization_id", "")) != str(authorization.get("authorization_id", "")) \
+			or str(admission.get("run_id", "")) != str(authorization.get("run_id", "")) \
+			or str(admission.get("repository_head", "")) != repository_head:
+		return {"accepted": false, "reason_code": "replay_v2_admission_invalid"}
+	if DirAccess.rename_absolute(admission_path, consumed_path) != OK:
+		return {"accepted": false, "reason_code": "replay_v2_admission_already_consumed"}
+	return {
+		"accepted": true,
+		"reason_code": "replay_v2_admission_consumed",
+		"claim_sha256": claim_sha256,
+	}
+
+
+func _has_exact_fields(value: Dictionary, fields: Array) -> bool:
+	if value.size() != fields.size():
+		return false
+	for field_variant in fields:
+		if not value.has(str(field_variant)):
+			return false
+	return true
+
+
+func _normalize_absolute_path(value: String) -> String:
+	if value.is_empty() or not value.is_absolute_path():
+		return ""
+	return value.replace("\\", "/").simplify_path().trim_suffix("/")
+
+
+func _base_result(repository_head: String, authorization: Dictionary) -> Dictionary:
 	return {
 		"schema_version": 1,
-		"replay_run_id": REPLAY_RUN_ID,
+		"replay_run_id": str(authorization.get("run_id", "")),
+		"replay_authorization_id": str(authorization.get("authorization_id", "")),
+		"replay_attempt_count_before": int(authorization.get("replay_attempt_count_before", -1)),
+		"authorized_new_replay_count": int(authorization.get("authorized_new_replay_count", -1)),
+		"replay_attempt_count_after": int(authorization.get("replay_attempt_count_after", -1)),
 		"repository_head": repository_head,
 		"status": "BLOCKED",
 		"success": false,
@@ -477,7 +592,7 @@ func _write_result(path: String, result: Dictionary) -> void:
 
 
 func _print_result(result: Dictionary) -> void:
-	print("ALPHA04C_V7_CARD_INVENTORY_NONCONSUMING_REPLAY|%s" % JSON.stringify(result))
+	print("ALPHA04C_V7_CARD_INVENTORY_NONCONSUMING_REPLAY_V2|%s" % JSON.stringify(result))
 
 
 func _lower_hex(value: String, minimum: int, maximum: int) -> bool:
