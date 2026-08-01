@@ -1,6 +1,8 @@
 extends SceneTree
 
 const MAP_SCENE := "res://scenes/ui/PlanetMapView.tscn"
+const PLANET_BOARD_SCRIPT := "res://scripts/ui/planet_board.gd"
+const MENU_PLANET_ART_SCRIPT := "res://scripts/ui/menu_planet_art.gd"
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -37,9 +39,17 @@ func _run() -> void:
 		and int(guide_debug.get("longitude_curve_count", -1)) == 0, "legacy orbit and graticule decoration is retired")
 	var render_model_source := FileAccess.get_file_as_string("res://scripts/ui/map/planet_map_render_model.gd")
 	var globe_source := FileAccess.get_file_as_string("res://scripts/ui/map/planet_globe_backdrop.gd")
+	var board_source := FileAccess.get_file_as_string(PLANET_BOARD_SCRIPT)
+	var menu_planet_source := FileAccess.get_file_as_string(MENU_PLANET_ART_SCRIPT)
 	_expect(render_model_source.contains("func _orbit_rings") \
 		and not render_model_source.contains("radius * 1.12") \
 		and not globe_source.contains("func _draw_table_ring"), "no old orbit geometry remains in the production render path")
+	_expect(not board_source.contains("_draw_stage_orbit_lanes") \
+		and not board_source.contains("STAGE_ORBIT_LANE_COUNT") \
+		and not board_source.contains("STAGE_EDGE_TICK_COUNT"), "production table stage draws no outer orbit lanes, ticks, or beacons")
+	_expect(not menu_planet_source.contains("_draw_orbits") \
+		and not menu_planet_source.contains("ORBIT_COUNT") \
+		and not menu_planet_source.contains("for i in range(8)"), "production main menu draws no outer orbit lanes or eight-seat dots")
 
 	map.set_map(
 		[
