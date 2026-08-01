@@ -10,6 +10,9 @@ const TARGETED_OWNER_DIAGNOSTIC_PATH := "res://scripts/tools/targeted_owner_capt
 const ROLE_TIMEOUT_POLICY_PATH := "res://scripts/tools/cold_restore_role_timeout_policy_v1.json"
 const ROLE_PROGRESS_HEARTBEAT_PATH := "res://scripts/tools/cold_restore_role_progress_heartbeat.gd"
 const PROCESS_A_REHEARSAL_COMPLETION_PATH := "res://scripts/tools/process_a_rehearsal_completion_v1.gd"
+const TARGETED_LAUNCH_CONTEXT_CONTRACT_PATH := (
+	"res://scripts/tools/cold_restore_targeted_diagnostic_launch_context_v1.json"
+)
 const SAFE_RESULT_FIELDS := [
 	"schema_version",
 	"driver_id",
@@ -63,9 +66,18 @@ func _run() -> void:
 	var timeout_policy_source := FileAccess.get_file_as_string(ROLE_TIMEOUT_POLICY_PATH)
 	var heartbeat_source := FileAccess.get_file_as_string(ROLE_PROGRESS_HEARTBEAT_PATH)
 	var rehearsal_completion_source := FileAccess.get_file_as_string(PROCESS_A_REHEARSAL_COMPLETION_PATH)
+	var launch_context_variant: Variant = JSON.parse_string(
+		FileAccess.get_file_as_string(TARGETED_LAUNCH_CONTEXT_CONTRACT_PATH)
+	)
+	var launch_context_contract: Dictionary = (
+		launch_context_variant as Dictionary
+		if launch_context_variant is Dictionary else {}
+	)
+	var launch_cli_names := launch_context_contract.get("cli_argument_names", {}) as Dictionary
+	var launch_option_names := launch_context_contract.get("gdscript_option_names", {}) as Dictionary
 	_expect(source.contains("$ORCHESTRATOR_SCHEMA_VERSION = 4") and source.contains("$FORMAL_FULL_RUN = $false") and source.contains("$DriverExecutionReady = $true"), "orchestrator exposes a non-Formal v4 QA role contract behind explicit qualification and official authorization gates")
 	_expect(driver_source.contains("const SCHEMA_VERSION := 4") and driver_source.contains("const EXECUTION_READY := true") and driver_source.contains('"driver_id": "alpha04c_cold_restore_vertical_slice_v4"'), "driver and orchestrator share one executable Harness-only v4 contract")
-	_expect(driver_source.contains("--cold-restore-expected-queue-resolution-id=") and driver_source.contains("--cold-restore-expected-queue-stable-target-fingerprint=") and driver_source.contains("--cold-restore-scenario-fingerprint=") and driver_source.contains("--cold-restore-official-claim-path=") and driver_source.contains("--cold-restore-launch-attestation-path=") and driver_source.contains("--cold-restore-launch-nonce=") and driver_source.contains('"unknown_option"') and driver_source.contains('"duplicate_option"'), "driver accepts only the closed expected-identity and attested authorization option surface")
+	_expect(driver_source.contains("--cold-restore-expected-queue-resolution-id=") and driver_source.contains("--cold-restore-expected-queue-stable-target-fingerprint=") and driver_source.contains("--cold-restore-official-claim-path=") and driver_source.contains("TARGETED_LAUNCH_CONTEXT.parse_cli_argument") and launch_cli_names.size() == 17 and launch_option_names.size() == 8 and driver_source.contains('"unknown_option"') and driver_source.contains('"duplicate_option"'), "driver accepts the closed direct option surface plus the single canonical targeted Launch Context")
 	_expect(not driver_source.contains("--cold-restore-official-count-consumed=") and driver_source.contains("caller_boolean_authorization_accepted\": false"), "direct driver invocation cannot forge official authorization with a caller boolean")
 	_expect(driver_source.contains("cold_restore_authorization_contract_v1.gd") and driver_source.contains('_authorization_contract_entry("official_attempt_2")') and driver_source.contains("OfficialAttemptClaimV2") and driver_source.contains("_resolve_git_common_dir") and driver_source.contains("_authorize_official_launch") and driver_source.contains("OS.get_process_id()"), "driver requires the contract-bound Attempt 2 claim and a launch attestation bound to the actual engine PID")
 	_expect(source.contains("$OfficialAttempt2ClaimRelativePath = [string]$OfficialAttempt2Authorization.claim_path") and source.contains("Publish-ColdRestoreOfficialAttempt2Claim") and source.contains("Assert-ColdRestoreOfficialAttempt2Boundary"), "orchestrator consumes one contract-bound independent OfficialAttemptClaimV2 below the Git common directory")

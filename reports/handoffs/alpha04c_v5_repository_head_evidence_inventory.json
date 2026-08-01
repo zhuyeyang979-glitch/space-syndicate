@@ -1,0 +1,333 @@
+{
+  "schema_version": 1,
+  "inventory_id": "Alpha04CV5RepositoryHeadEvidenceInventoryV1",
+  "task_id": "ALPHA04C_V5_REPOSITORY_HEAD_LINEAGE_REPAIR_AND_V071_RULE_CONSISTENCY_HUMAN_FUN_PREFLIGHT",
+  "lane": "A",
+  "inspected_worktree_head": "d84739100905a7ef28f9e4859415bce6927509e9",
+  "v5_run_id": "alpha04c-owner-capture-diagnostic-v5-canonical-binding-604264b0af9a",
+  "v5_run_code_head": "604264b0af9a10ca07db58851e8a2d00171dd2f3",
+  "path_notation": {
+    "git_common_dir": "<git-common-dir>",
+    "project_root": "<project-root>",
+    "isolated_user_data_root": "<isolated-user-data-root>",
+    "invocation_id": "<invocation-id-redacted>",
+    "nonce": "<redacted-lower-hex-32>"
+  },
+  "artifacts": [
+    {
+      "artifact_id": "v5_quota_ledger_raw_bytes",
+      "path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/targeted_owner_capture_quota_ledger.json",
+      "exists": true,
+      "sha256": "b7e6c66852540c2b3066f86cd6e9c9d9454c185c4e8ed17d168c6b0dbf466742",
+      "producer": "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1::Consume-ColdRestoreTargetedOwnerCaptureDiagnosticQuota",
+      "consumer": "scripts/tools/cold_restore_vertical_slice_driver.gd::_authorize_targeted_owner_capture_diagnostic via scripts/tools/cold_restore_targeted_ledger_binding_validator_v1.gd",
+      "schema_version": 4,
+      "immutable": true,
+      "safe_to_replay": true,
+      "notes": "Exact 2562-byte retained ledger. Replay must read a copy and must not rewrite, reclaim, or normalize these bytes. Raw nonce and host-path fields remain only in the immutable source artifact."
+    },
+    {
+      "artifact_id": "v5_quota_ledger_sha256",
+      "path": "reports/handoffs/alpha04c_v5_owner_diagnostic_result.json",
+      "exists": true,
+      "sha256": "b7e6c66852540c2b3066f86cd6e9c9d9454c185c4e8ed17d168c6b0dbf466742",
+      "producer": "SHA-256 over v5_quota_ledger_raw_bytes; independently retained as launch claim_fingerprint and result quota_ledger_sha256",
+      "consumer": "PowerShell parent validation, GDScript targeted ledger validation, retained-evidence review",
+      "schema_version": 1,
+      "immutable": true,
+      "safe_to_replay": true,
+      "notes": "The value matches a fresh Get-FileHash calculation over the retained ledger bytes."
+    },
+    {
+      "artifact_id": "v5_authorization_contract",
+      "path": "scripts/tools/cold_restore_authorization_contract_v1.json",
+      "exists": true,
+      "sha256": "a7c4bf6015aeafe93744bb0ffc0beb4359eabea1604123a7844314048c683d36",
+      "producer": "Git commit 604264b0af9a10ca07db58851e8a2d00171dd2f3",
+      "consumer": "scripts/tools/cold_restore_authorization_contract_v1.psm1, scripts/tools/cold_restore_authorization_contract_v1.gd, and the targeted ledger validator",
+      "schema_version": 1,
+      "immutable": true,
+      "safe_to_replay": true,
+      "notes": "The V5 authorization entry binds transition 4 to 5 and the retained V4 predecessor hash. The file is unchanged between the run code HEAD and the inspected HEAD."
+    },
+    {
+      "artifact_id": "v5_bootstrap_admission",
+      "path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/prequota/alpha04c-owner-capture-diagnostic-v5-canonical-binding-604264b0af9a/invocations/<invocation-id-redacted>/bootstrap.admission.json",
+      "exists": true,
+      "sha256": "55f3d379723f157927d578ff48a916f71c78a61d30010024aa138d90039b5a52",
+      "producer": "scripts/tools/cold_restore_prequota_bootstrap.psm1::New-ColdRestorePreQuotaContext",
+      "consumer": "V5 quota publisher and prequota attestation validation",
+      "schema_version": 1,
+      "immutable": true,
+      "safe_to_replay": false,
+      "notes": "Retained and hash-bound by the ledger. Contains a private invocation nonce, so this inventory redacts the invocation directory component. Review-only; it must not be reused as a new admission."
+    },
+    {
+      "artifact_id": "v5_prequota_attestation",
+      "path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/prequota/alpha04c-owner-capture-diagnostic-v5-canonical-binding-604264b0af9a/invocations/<invocation-id-redacted>/prequota_orchestrator_attestation.json",
+      "exists": true,
+      "sha256": "6f5ebf667ac3c7d3ae0c5788f1d0ee4e5511455e7d561b9e96e29a751195a576",
+      "producer": "scripts/tools/cold_restore_prequota_bootstrap.psm1::Update-ColdRestorePreQuotaAttestation",
+      "consumer": "orchestrator postconditions and V5 result reporting",
+      "schema_version": 1,
+      "immutable": true,
+      "safe_to_replay": false,
+      "notes": "Retains correct repository_head, run_id, quota_claimed=true, Godot launch state, and terminal primary/secondary failure projection. Review-only."
+    },
+    {
+      "artifact_id": "v5_launch_attestation",
+      "path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/evidence/launch/orchestrator-<orchestrator-id>/producer.authorized.json",
+      "exists": true,
+      "sha256": "f79cf007878789d3122b588309b99a27fc3231d897a058b85c7ea789ffe3ed1f",
+      "producer": "scripts/tools/cold_restore_attested_process.psm1::Write-ColdRestoreLaunchAttestation",
+      "consumer": "scripts/tools/cold_restore_vertical_slice_driver.gd::_authorize_targeted_owner_capture_diagnostic",
+      "schema_version": 1,
+      "immutable": true,
+      "safe_to_replay": false,
+      "notes": "Retains the HEAD under the launch-attestation alias source_head_sha and binds the original process identities. Nonces are not repeated here. It cannot authorize a new process."
+    },
+    {
+      "artifact_id": "v5_orchestrator_command_line",
+      "path": "not_retained_as_standalone_artifact",
+      "exists": false,
+      "sha256": null,
+      "producer": "original PowerShell caller of scripts/tools/cold_restore_vertical_slice_orchestrator.ps1",
+      "consumer": "PowerShell parameter binder for the V5 orchestrator",
+      "schema_version": null,
+      "immutable": true,
+      "safe_to_replay": false,
+      "notes": "No byte-exact top-level shell command line or transcript was retained. The targeted mode, run identity, repository HEAD, scenario, clean checkpoint, and launch outcome are independently attested, but executable spelling, argument ordering, and private host paths are not recoverable as an original command string."
+    },
+    {
+      "artifact_id": "v5_powershell_argument_dictionary",
+      "path": "not_retained_as_standalone_artifact; deterministic producer at scripts/tools/cold_restore_prequota_bootstrap.psm1::New-ColdRestoreTargetedDiagnosticUserArgumentList",
+      "exists": false,
+      "sha256": null,
+      "producer": "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1 plus New-ColdRestoreTargetedDiagnosticUserArgumentList",
+      "consumer": "scripts/tools/cold_restore_attested_process.psm1::New-ColdRestoreGodotArgumentList",
+      "schema_version": null,
+      "immutable": true,
+      "safe_to_replay": true,
+      "notes": "The runtime PowerShell object was not serialized. Its complete semantic values and deterministic order are reconstructable from immutable code, ledger, launch attestation, policy hash, and run report. Safe reconstruction below redacts nonce and host paths."
+    },
+    {
+      "artifact_id": "v5_child_cli_raw_arguments",
+      "path": "not_retained_as_standalone_artifact; constructed by scripts/tools/cold_restore_attested_process.psm1::New-ColdRestoreGodotArgumentList",
+      "exists": false,
+      "sha256": null,
+      "producer": "PowerShell ProcessStartInfo.ArgumentList",
+      "consumer": "Godot OS.get_cmdline_user_args()",
+      "schema_version": null,
+      "immutable": true,
+      "safe_to_replay": true,
+      "notes": "No raw argv snapshot was written. The ordered child vector is deterministically reconstructable and is included below with private paths and launch nonce redacted."
+    },
+    {
+      "artifact_id": "v5_gdscript_parsed_options",
+      "path": "not_retained_as_standalone_artifact; parser at scripts/tools/cold_restore_vertical_slice_driver.gd::_parse_options",
+      "exists": false,
+      "sha256": null,
+      "producer": "scripts/tools/cold_restore_vertical_slice_driver.gd::_parse_options(OS.get_cmdline_user_args())",
+      "consumer": "scripts/tools/cold_restore_vertical_slice_driver.gd::validate_options",
+      "schema_version": null,
+      "immutable": true,
+      "safe_to_replay": true,
+      "notes": "The full runtime dictionary was not serialized. Its repository head is independently proven correct after parsing by the retained heartbeat and both phase timelines. The safe deterministic reconstruction is included below."
+    },
+    {
+      "artifact_id": "v5_gdscript_canonical_expected_binding",
+      "path": "composite:evidence/parent/producer.stderr.log + scripts/tools/cold_restore_vertical_slice_driver.gd + scripts/tools/cold_restore_targeted_ledger_binding_validator_v1.gd + scripts/tools/cold_restore_targeted_ledger_binding_contract_v1.json",
+      "exists": false,
+      "sha256": null,
+      "producer": "validate_options projection passed to cold_restore_targeted_ledger_binding_validator_v1.gd::validate_ledger_text",
+      "consumer": "targeted ledger option_bindings comparison",
+      "schema_version": 1,
+      "immutable": true,
+      "safe_to_replay": true,
+      "notes": "No full expected-context dictionary was serialized. The retained stderr proves repository_head expected fingerprint 74234e98... (canonical JSON null), while immutable source proves option_bindings maps repository_head to head_sha and validate_options omitted head_sha from its returned projection."
+    },
+    {
+      "artifact_id": "v5_child_stdout",
+      "path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/evidence/parent/producer.stdout.log",
+      "exists": true,
+      "sha256": "bb3bcf7181e550fe37f9235c4aecf24a81b757eddfeff554d88e7974feb2ed1d",
+      "producer": "Godot V5 child process standard output",
+      "consumer": "Invoke-ColdRestoreAttestedProcess and V5 parent/result reporting",
+      "schema_version": null,
+      "immutable": true,
+      "safe_to_replay": false,
+      "notes": "Exact 73-byte retained stdout. It contains only the Godot engine banner and no manifest."
+    },
+    {
+      "artifact_id": "v5_child_stderr",
+      "path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/evidence/parent/producer.stderr.log",
+      "exists": true,
+      "sha256": "00239926e319bb74605786764b6ea06479913b88ce13a1d91a0673200e0ec6fc",
+      "producer": "Godot V5 child process standard error",
+      "consumer": "Invoke-ColdRestoreAttestedProcess and V5 result classification",
+      "schema_version": null,
+      "immutable": true,
+      "safe_to_replay": false,
+      "notes": "Exact 1308-byte retained stderr. It records repository_head_mismatch, actual string fingerprint 066a10f7..., expected canonical-null fingerprint 74234e98..., and driver line 618."
+    },
+    {
+      "artifact_id": "v5_parent_exit_attestation",
+      "path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/evidence/parent/producer.exit.json",
+      "exists": true,
+      "sha256": "8841a3859a0f849bff7b5f07751c9a89568c3a7648ce20b1dd377f1d344644e7",
+      "producer": "scripts/tools/cold_restore_attested_process.psm1::Invoke-ColdRestoreAttestedProcess",
+      "consumer": "V5 orchestrator postconditions and result report",
+      "schema_version": 2,
+      "immutable": true,
+      "safe_to_replay": false,
+      "notes": "Retains observed exit code 2, no timeout, no parent termination, child completion absent, child_bootstrap as last progress, and task-owned process count zero."
+    },
+    {
+      "artifact_id": "v5_run_code_head",
+      "path": "git-object:commit/604264b0af9a10ca07db58851e8a2d00171dd2f3",
+      "exists": true,
+      "sha256": "bbf7b6d55ee9b74ed57f8d17dfddc2bd9d7f8382ad41e86593901435a33d24df",
+      "producer": "Git commit test(qa): authorize canonical-binding targeted diagnostic v5",
+      "consumer": "remote checkpoint gate, runtime freeze, ledger repository_head, and V5 result report",
+      "schema_version": null,
+      "immutable": true,
+      "safe_to_replay": true,
+      "notes": "Git confirms the commit object exists. sha256 is over the lowercase 40-character commit ID encoded as UTF-8 without a newline, not over Git's raw commit-object framing."
+    },
+    {
+      "artifact_id": "v5_validator_code_head",
+      "path": "scripts/tools/cold_restore_targeted_ledger_binding_validator_v1.gd",
+      "exists": true,
+      "sha256": "2950afd29670c9eb912032a0308ccc89e8a769fa6d8e7ae8746a844ac8ea76bf",
+      "producer": "Git commit 604264b0af9a10ca07db58851e8a2d00171dd2f3; Git blob f2acaafa1accf3f9563c732c8b97a0bbcbe3062f",
+      "consumer": "V5 GDScript child bootstrap ledger authorization",
+      "schema_version": 1,
+      "immutable": true,
+      "safe_to_replay": true,
+      "notes": "git rev-list identifies 604264b0... as the last validator change at V5 run time. The validator and its dependent launch code are unchanged at inspected HEAD d8473910...."
+    }
+  ],
+  "safe_command_reconstruction": {
+    "top_level_orchestrator_invocation": {
+      "status": "semantic_context_retained_but_original_command_string_not_retained",
+      "known_mode": "TargetedOwnerCaptureDiagnostic",
+      "known_run_id": "alpha04c-owner-capture-diagnostic-v5-canonical-binding-604264b0af9a",
+      "known_repository_head": "604264b0af9a10ca07db58851e8a2d00171dd2f3",
+      "known_scenario_fingerprint": "0bccef8426345e2ea1fd8ae7d6187d282d52d44bc73d6fb3d1ed3375dc20b7bf",
+      "not_retained": [
+        "byte-exact shell quoting",
+        "argument ordering at the top-level PowerShell invocation",
+        "PowerShell executable path",
+        "Godot executable host path",
+        "isolated user-data host path"
+      ]
+    },
+    "powershell_user_argument_context": {
+      "GitCommonDirectory": "<git-common-dir>",
+      "RepositoryHead": "604264b0af9a10ca07db58851e8a2d00171dd2f3",
+      "RunId": "alpha04c-owner-capture-diagnostic-v5-canonical-binding-604264b0af9a",
+      "ArtifactRoot": "user://test_runs/alpha04c/alpha04c-owner-capture-diagnostic-v5-canonical-binding-604264b0af9a/evidence",
+      "ScenarioFingerprint": "0bccef8426345e2ea1fd8ae7d6187d282d52d44bc73d6fb3d1ed3375dc20b7bf",
+      "TimeoutPolicyFingerprint": "e29a79133d81d85cfab33be88699cfbf947cc9a15ac357fe21255f63d68ffee8",
+      "QuotaLedgerPath": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/targeted_owner_capture_quota_ledger.json",
+      "QuotaLedgerFingerprint": "b7e6c66852540c2b3066f86cd6e9c9d9454c185c4e8ed17d168c6b0dbf466742",
+      "LaunchAttestationPath": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/evidence/launch/orchestrator-<orchestrator-id>/producer.authorized.json",
+      "LaunchNonce": "<redacted-lower-hex-32>",
+      "AuthorizationName": "targeted_owner_capture_diagnostic_v5_canonical_binding"
+    },
+    "godot_child_argument_vector": [
+      "--headless",
+      "--path",
+      "<project-root>",
+      "--script",
+      "res://scripts/tools/cold_restore_vertical_slice_driver.gd",
+      "--",
+      "--cold-restore-non-official-process-a",
+      "--cold-restore-targeted-owner-capture-diagnostic",
+      "--cold-restore-role=producer",
+      "--cold-restore-run-id=alpha04c-owner-capture-diagnostic-v5-canonical-binding-604264b0af9a",
+      "--cold-restore-head-sha=604264b0af9a10ca07db58851e8a2d00171dd2f3",
+      "--cold-restore-artifact-root=user://test_runs/alpha04c/alpha04c-owner-capture-diagnostic-v5-canonical-binding-604264b0af9a/evidence",
+      "--cold-restore-scenario-fingerprint=0bccef8426345e2ea1fd8ae7d6187d282d52d44bc73d6fb3d1ed3375dc20b7bf",
+      "--cold-restore-timeout-policy-fingerprint=e29a79133d81d85cfab33be88699cfbf947cc9a15ac357fe21255f63d68ffee8",
+      "--cold-restore-targeted-diagnostic-ledger-path=<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/targeted_owner_capture_quota_ledger.json",
+      "--cold-restore-targeted-diagnostic-ledger-fingerprint=b7e6c66852540c2b3066f86cd6e9c9d9454c185c4e8ed17d168c6b0dbf466742",
+      "--cold-restore-launch-attestation-path=<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/evidence/launch/orchestrator-<orchestrator-id>/producer.authorized.json",
+      "--cold-restore-launch-nonce=<redacted-lower-hex-32>"
+    ],
+    "gdscript_parsed_options": {
+      "run_id": "alpha04c-owner-capture-diagnostic-v5-canonical-binding-604264b0af9a",
+      "process_role": "producer",
+      "head_sha": "604264b0af9a10ca07db58851e8a2d00171dd2f3",
+      "artifact_root": "user://test_runs/alpha04c/alpha04c-owner-capture-diagnostic-v5-canonical-binding-604264b0af9a/evidence",
+      "official_claim_path": "",
+      "launch_attestation_path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/evidence/launch/orchestrator-<orchestrator-id>/producer.authorized.json",
+      "launch_nonce": "<redacted-lower-hex-32>",
+      "expected_queue_resolution_id": 0,
+      "expected_queue_stable_target_fingerprint": "",
+      "scenario_fingerprint": "0bccef8426345e2ea1fd8ae7d6187d282d52d44bc73d6fb3d1ed3375dc20b7bf",
+      "timeout_policy_fingerprint": "e29a79133d81d85cfab33be88699cfbf947cc9a15ac357fe21255f63d68ffee8",
+      "non_official_process_a": true,
+      "targeted_owner_capture_diagnostic": true,
+      "process_a_rehearsal": false,
+      "targeted_diagnostic_ledger_path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/targeted_owner_capture_quota_ledger.json",
+      "targeted_diagnostic_ledger_fingerprint": "b7e6c66852540c2b3066f86cd6e9c9d9454c185c4e8ed17d168c6b0dbf466742",
+      "rehearsal_ledger_path": "",
+      "rehearsal_ledger_fingerprint": "",
+      "parse_error": ""
+    },
+    "canonical_expected_binding_observation": {
+      "ledger_field": "repository_head",
+      "option_binding": "head_sha",
+      "parsed_option_present": true,
+      "parsed_option_value_kind": "lowercase_hex_string_40",
+      "validate_options_return_projection_contains_head_sha": false,
+      "validator_lookup": "options.get(option_field)",
+      "validator_expected_value_kind": "null",
+      "safe_expected_fingerprint": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "safe_actual_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215"
+    }
+  },
+  "evidence_gaps": [
+    {
+      "gap_id": "original_orchestrator_command_line_not_serialized",
+      "critical_for_repository_head_lineage": false,
+      "mitigation": "Semantic invocation identity is cross-attested by bootstrap, prequota, ledger, run report, and Git checkpoint; host-specific command spelling is not needed for the field lineage."
+    },
+    {
+      "gap_id": "powershell_runtime_argument_list_not_serialized",
+      "critical_for_repository_head_lineage": false,
+      "mitigation": "The list is deterministic at V5 code HEAD and every value is retained by a hashed artifact or immutable source; nonce and paths are redacted only in this inventory."
+    },
+    {
+      "gap_id": "child_raw_argv_not_serialized",
+      "critical_for_repository_head_lineage": false,
+      "mitigation": "The vector is the deterministic concatenation of the engine list, separator, and PowerShell user list. Child heartbeat and timelines prove the head argument reached GDScript correctly."
+    },
+    {
+      "gap_id": "gdscript_full_parsed_options_not_serialized",
+      "critical_for_repository_head_lineage": false,
+      "mitigation": "Immutable parser code reconstructs the dictionary; heartbeat and timelines independently prove parsed head_sha was correct before binding."
+    },
+    {
+      "gap_id": "gdscript_full_expected_binding_context_not_serialized",
+      "critical_for_repository_head_lineage": false,
+      "mitigation": "Retained stderr preserves the typed field failure and both safe fingerprints; immutable contract and validator source deterministically reconstruct the null expected value."
+    }
+  ],
+  "summary": {
+    "required_artifact_count": 16,
+    "retained_or_git_backed_artifact_count": 11,
+    "standalone_runtime_capture_gap_count": 5,
+    "critical_evidence_gap_count": 0,
+    "v5_ledger_bytes_retained": true,
+    "v5_command_arguments_semantically_retained": true,
+    "v5_raw_top_level_command_string_retained": false,
+    "v5_raw_child_argv_snapshot_retained": false,
+    "v5_child_options_reconstructable": true,
+    "v5_stderr_retained": true,
+    "v5_parent_exit_retained": true,
+    "repository_head_lineage_evidence_sufficient": true,
+    "diagnostic_or_session_executed_by_inventory_task": false
+  }
+}

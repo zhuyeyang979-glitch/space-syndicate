@@ -108,24 +108,6 @@ try {
         [string]$context.authorization_binding.authorization_id -ceq [string]$targeted.authorization_id
     ) "real production binding passes the real PreQuota Bootstrap"
 
-    $launchPath = Join-Path $binding.evidence_root "launch/orchestrator-1/producer.authorized.json"
-    $arguments = New-ColdRestoreTargetedDiagnosticUserArgumentList `
-        -GitCommonDirectory $tempRoot `
-        -RepositoryHead $head `
-        -RunId $binding.run_id `
-        -ArtifactRoot "user://test_runs/alpha04c/$($binding.run_id)/evidence" `
-        -ScenarioFingerprint ("2" * 64) `
-        -TimeoutPolicyFingerprint ("3" * 64) `
-        -QuotaLedgerPath $binding.quota_ledger_path `
-        -QuotaLedgerFingerprint ("4" * 64) `
-        -LaunchAttestationPath $launchPath `
-        -LaunchNonce ("5" * 32) `
-        -AuthorizationName "targeted_owner_capture_diagnostic_v3"
-    Assert-AuthorizationCondition (
-        @($arguments | Where-Object { $_ -ceq "--cold-restore-run-id=$($binding.run_id)" }).Count -eq 1 -and
-        @($arguments | Where-Object { $_ -ceq "--cold-restore-targeted-diagnostic-ledger-path=$($binding.quota_ledger_path)" }).Count -eq 1
-    ) "real command fixture uses the same run ID and ledger path as Bootstrap"
-
     $variants = @(
         ([string]$targeted.authorization_id).Replace("-", "_"),
         ([string]$targeted.authorization_id).Replace("v3", "v2"),
@@ -176,6 +158,23 @@ try {
     Assert-AuthorizationCondition (
         $quotaSha -cmatch '^[0-9a-f]{64}$' -and [IO.File]::Exists($binding.quota_ledger_path)
     ) "temporary production-path quota closes exactly from two to three"
+    $launchPath = Join-Path $binding.evidence_root "launch/orchestrator-1/producer.authorized.json"
+    $arguments = New-ColdRestoreTargetedDiagnosticUserArgumentList `
+        -GitCommonDirectory $tempRoot `
+        -RepositoryHead $head `
+        -RunId $binding.run_id `
+        -ArtifactRoot "user://test_runs/alpha04c/$($binding.run_id)/evidence" `
+        -ScenarioFingerprint ([string]$ledger.scenario_fingerprint) `
+        -TimeoutPolicyFingerprint ([string]$ledger.role_timeout_policy_sha256) `
+        -QuotaLedgerPath $binding.quota_ledger_path `
+        -QuotaLedgerFingerprint $quotaSha `
+        -LaunchAttestationPath $launchPath `
+        -LaunchNonce ([string]$ledger.launch_nonce) `
+        -AuthorizationName "targeted_owner_capture_diagnostic_v3"
+    Assert-AuthorizationCondition (
+        @($arguments | Where-Object { $_ -ceq "--cold-restore-run-id=$($binding.run_id)" }).Count -eq 1 -and
+        @($arguments | Where-Object { $_ -ceq "--cold-restore-targeted-diagnostic-ledger-path=$($binding.quota_ledger_path)" }).Count -eq 1
+    ) "real command fixture consumes the published ledger through the shared Launch Context"
     $quotaBeforeDuplicate = (Get-FileHash -LiteralPath $binding.quota_ledger_path -Algorithm SHA256).Hash.ToLowerInvariant()
     $duplicateReason = Get-AuthorizationThrownReason {
         Publish-ColdRestoreTargetedQuotaLedgerV3 $binding.quota_ledger_path $ledger

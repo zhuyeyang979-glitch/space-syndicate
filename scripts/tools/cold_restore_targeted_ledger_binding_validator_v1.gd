@@ -2,6 +2,9 @@ extends RefCounted
 
 const BINDING_CONTRACT_PATH := "res://scripts/tools/cold_restore_targeted_ledger_binding_contract_v1.json"
 const AUTHORIZATION_CONTRACT_PATH := "res://scripts/tools/cold_restore_authorization_contract_v1.json"
+const LAUNCH_CONTEXT := preload(
+	"res://scripts/tools/cold_restore_targeted_diagnostic_launch_context_v1.gd"
+)
 const GENERIC_REASON := "targeted_owner_capture_ledger_binding_invalid"
 const MAXIMUM_EXACT_JSON_INTEGER := 9007199254740991.0
 
@@ -10,6 +13,46 @@ static func validate_ledger_file(ledger_path: String, options: Dictionary) -> Di
 	if ledger_path.is_empty() or not FileAccess.file_exists(ledger_path):
 		return _terminal_failure([], "ledger_file", "ledger_missing", "string", "missing")
 	return validate_ledger_text(FileAccess.get_file_as_string(ledger_path), options)
+
+
+static func validate_ledger_text_with_launch_context(
+	ledger_text: String,
+	launch_context: Dictionary
+) -> Dictionary:
+	var context_report := LAUNCH_CONTEXT.validate_context(
+		launch_context, {}, "ledger_validator_expected_context"
+	)
+	if not bool(context_report.get("valid", false)):
+		return context_report
+	var binding_contract := _read_json_dictionary(BINDING_CONTRACT_PATH)
+	var launch_contract := LAUNCH_CONTEXT.read_contract()
+	if binding_contract.is_empty() or launch_contract.is_empty():
+		return LAUNCH_CONTEXT.validate_context(
+			{}, {}, "ledger_validator_contract_load"
+		)
+	var option_bindings := binding_contract.get("option_bindings", {}) as Dictionary
+	var canonical_bindings := launch_contract.get("canonical_binding_names", {}) as Dictionary
+	var options := {
+		"targeted_diagnostic_ledger_fingerprint": LAUNCH_CONTEXT.quota_ledger_sha256(
+			launch_context
+		),
+	}
+	for ledger_field_variant in canonical_bindings.keys():
+		var ledger_field := str(ledger_field_variant)
+		var context_field := str(canonical_bindings.get(ledger_field, ""))
+		if context_field.is_empty() or not launch_context.has(context_field) \
+				or not option_bindings.has(ledger_field):
+			return {
+				"valid": false,
+				"reason_code": "targeted_owner_capture_launch_context_invalid",
+				"failing_stage": "ledger_validator_expected_context",
+				"failing_field": context_field if not context_field.is_empty() else ledger_field,
+				"field_reason": "missing_binding",
+				"safe_expected_fingerprint": JSON.stringify("canonical_binding").sha256_text().to_lower(),
+				"safe_actual_fingerprint": JSON.stringify(null).sha256_text().to_lower(),
+			}
+		options[str(option_bindings.get(ledger_field, ""))] = launch_context.get(context_field)
+	return validate_ledger_text(ledger_text, options)
 
 
 static func validate_ledger_text(ledger_text: String, options: Dictionary) -> Dictionary:

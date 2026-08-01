@@ -20,6 +20,9 @@ const PROCESS_A_REHEARSAL_COMPLETION := preload("res://scripts/tools/process_a_r
 const TARGETED_LEDGER_BINDING_VALIDATOR := preload(
 	"res://scripts/tools/cold_restore_targeted_ledger_binding_validator_v1.gd"
 )
+const TARGETED_LAUNCH_CONTEXT := preload(
+	"res://scripts/tools/cold_restore_targeted_diagnostic_launch_context_v1.gd"
+)
 const AUTHORIZATION_CONTRACT := preload(
 	"res://scripts/tools/cold_restore_authorization_contract_v1.gd"
 )
@@ -608,6 +611,7 @@ func _run_entry() -> void:
 			if not bool(diagnostic_authorization.get("authorized", false)):
 				var private_binding_details := {
 					"reason_code": str(diagnostic_authorization.get("reason_code", "targeted_owner_capture_unauthorized")),
+					"failing_stage": str(diagnostic_authorization.get("failing_stage", "child_bootstrap")),
 					"failing_field": str(diagnostic_authorization.get("failing_field", "")),
 					"field_reason": str(diagnostic_authorization.get("field_reason", "")),
 					"expected_type": str(diagnostic_authorization.get("expected_type", "")),
@@ -850,6 +854,7 @@ static func validate_options(options: Dictionary) -> Dictionary:
 		"reason_code": "ok",
 		"run_id": run_id,
 		"process_role": process_role,
+		"head_sha": head_sha,
 		"qa_evidence_path": qa_path,
 		"save_path": SaveSlotPolicyV06.PRODUCTION_PATH,
 		"artifact_root": artifact_root,
@@ -1101,14 +1106,34 @@ func _authorize_targeted_owner_capture_diagnostic(options: Dictionary, head_sha:
 		return {"authorized": false, "reason_code": "targeted_owner_capture_ledger_missing"}
 	var ledger_text := FileAccess.get_file_as_string(ledger_path)
 	var ledger_fingerprint := ledger_text.sha256_text().to_lower()
-	var binding_result: Dictionary = TARGETED_LEDGER_BINDING_VALIDATOR.validate_ledger_text(
-		ledger_text,
-		options
+	var ledger_variant: Variant = JSON.parse_string(ledger_text)
+	if not (ledger_variant is Dictionary):
+		return {"authorized": false, "reason_code": "targeted_owner_capture_ledger_invalid"}
+	var ledger := ledger_variant as Dictionary
+	var launch_context_result := TARGETED_LAUNCH_CONTEXT.build_child_context(options, ledger)
+	if not bool(launch_context_result.get("valid", false)):
+		return {
+			"authorized": false,
+			"reason_code": str(launch_context_result.get(
+				"reason_code", "targeted_owner_capture_launch_context_invalid"
+			)),
+			"failing_stage": str(launch_context_result.get("failing_stage", "child_context_builder")),
+			"failing_field": str(launch_context_result.get("failing_field", "unknown")),
+			"field_reason": str(launch_context_result.get("field_reason", "binding_failed")),
+			"safe_expected_fingerprint": str(launch_context_result.get("safe_expected_fingerprint", "")),
+			"safe_actual_fingerprint": str(launch_context_result.get("safe_actual_fingerprint", "")),
+		}
+	var launch_context := launch_context_result.get("context", {}) as Dictionary
+	var binding_result: Dictionary = TARGETED_LEDGER_BINDING_VALIDATOR.validate_ledger_text_with_launch_context(
+		ledger_text, launch_context
 	)
 	if not bool(binding_result.get("valid", false)):
 		return {
 			"authorized": false,
-			"reason_code": "targeted_owner_capture_ledger_binding_invalid",
+			"reason_code": str(binding_result.get(
+				"reason_code", "targeted_owner_capture_ledger_binding_invalid"
+			)),
+			"failing_stage": str(binding_result.get("failing_stage", "ledger_validator")),
 			"failing_field": str(binding_result.get("failing_field", "unknown")),
 			"field_reason": str(binding_result.get("field_reason", "binding_failed")),
 			"expected_type": str(binding_result.get("expected_type", "")),
@@ -1116,8 +1141,6 @@ func _authorize_targeted_owner_capture_diagnostic(options: Dictionary, head_sha:
 			"safe_expected_fingerprint": str(binding_result.get("safe_expected_fingerprint", "")),
 			"safe_actual_fingerprint": str(binding_result.get("safe_actual_fingerprint", "")),
 		}
-	var ledger_variant: Variant = JSON.parse_string(ledger_text)
-	var ledger := ledger_variant as Dictionary
 	var attestation_path := _normalize_absolute_path(str(options.get("launch_attestation_path", "")))
 	var deadline_ms := Time.get_ticks_msec() + 10000
 	while not FileAccess.file_exists(attestation_path) and Time.get_ticks_msec() < deadline_ms:
@@ -1130,6 +1153,21 @@ func _authorize_targeted_owner_capture_diagnostic(options: Dictionary, head_sha:
 	var attestation := attestation_variant as Dictionary
 	if not _has_exact_fields(attestation, LAUNCH_ATTESTATION_FIELDS):
 		return {"authorized": false, "reason_code": "targeted_owner_capture_launch_attestation_field_set_invalid"}
+	var launch_attestation_context := TARGETED_LAUNCH_CONTEXT.validate_launch_attestation(
+		launch_context, attestation, "child_launch_attestation_binding"
+	)
+	if not bool(launch_attestation_context.get("valid", false)):
+		return {
+			"authorized": false,
+			"reason_code": str(launch_attestation_context.get(
+				"reason_code", "targeted_owner_capture_launch_context_invalid"
+			)),
+			"failing_stage": str(launch_attestation_context.get("failing_stage", "child_launch_attestation_binding")),
+			"failing_field": str(launch_attestation_context.get("failing_field", "unknown")),
+			"field_reason": str(launch_attestation_context.get("field_reason", "binding_failed")),
+			"safe_expected_fingerprint": str(launch_attestation_context.get("safe_expected_fingerprint", "")),
+			"safe_actual_fingerprint": str(launch_attestation_context.get("safe_actual_fingerprint", "")),
+		}
 	var orchestrator_process_id := int(attestation.get("orchestrator_process_id", 0))
 	var wrapper_process_id := int(attestation.get("wrapper_process_id", 0))
 	var wrapper_parent_process_id := int(attestation.get("wrapper_parent_process_id", 0))
@@ -7284,27 +7322,22 @@ func _parse_options(args: PackedStringArray) -> Dictionary:
 			continue
 		var option_key := ""
 		var option_value: Variant = ""
+		var launch_context_argument := TARGETED_LAUNCH_CONTEXT.parse_cli_argument(text)
+		if not bool(launch_context_argument.get("valid", false)):
+			result["parse_error"] = "targeted_launch_context_contract_invalid"
+			continue
 		if text.begins_with("--cold-restore-role="):
 			option_key = "process_role"
 			option_value = text.trim_prefix("--cold-restore-role=")
-		elif text.begins_with("--cold-restore-run-id="):
-			option_key = "run_id"
-			option_value = text.trim_prefix("--cold-restore-run-id=")
-		elif text.begins_with("--cold-restore-head-sha="):
-			option_key = "head_sha"
-			option_value = text.trim_prefix("--cold-restore-head-sha=")
+		elif bool(launch_context_argument.get("recognized", false)):
+			option_key = str(launch_context_argument.get("option_name", ""))
+			option_value = launch_context_argument.get("value")
 		elif text.begins_with("--cold-restore-artifact-root="):
 			option_key = "artifact_root"
 			option_value = text.trim_prefix("--cold-restore-artifact-root=")
 		elif text.begins_with("--cold-restore-official-claim-path="):
 			option_key = "official_claim_path"
 			option_value = text.trim_prefix("--cold-restore-official-claim-path=")
-		elif text.begins_with("--cold-restore-launch-attestation-path="):
-			option_key = "launch_attestation_path"
-			option_value = text.trim_prefix("--cold-restore-launch-attestation-path=")
-		elif text.begins_with("--cold-restore-launch-nonce="):
-			option_key = "launch_nonce"
-			option_value = text.trim_prefix("--cold-restore-launch-nonce=")
 		elif text.begins_with("--cold-restore-expected-queue-resolution-id="):
 			option_key = "expected_queue_resolution_id"
 			var resolution_text := text.trim_prefix("--cold-restore-expected-queue-resolution-id=")
@@ -7315,18 +7348,6 @@ func _parse_options(args: PackedStringArray) -> Dictionary:
 		elif text.begins_with("--cold-restore-expected-queue-stable-target-fingerprint="):
 			option_key = "expected_queue_stable_target_fingerprint"
 			option_value = text.trim_prefix("--cold-restore-expected-queue-stable-target-fingerprint=")
-		elif text.begins_with("--cold-restore-scenario-fingerprint="):
-			option_key = "scenario_fingerprint"
-			option_value = text.trim_prefix("--cold-restore-scenario-fingerprint=")
-		elif text.begins_with("--cold-restore-timeout-policy-fingerprint="):
-			option_key = "timeout_policy_fingerprint"
-			option_value = text.trim_prefix("--cold-restore-timeout-policy-fingerprint=")
-		elif text.begins_with("--cold-restore-targeted-diagnostic-ledger-path="):
-			option_key = "targeted_diagnostic_ledger_path"
-			option_value = text.trim_prefix("--cold-restore-targeted-diagnostic-ledger-path=")
-		elif text.begins_with("--cold-restore-targeted-diagnostic-ledger-fingerprint="):
-			option_key = "targeted_diagnostic_ledger_fingerprint"
-			option_value = text.trim_prefix("--cold-restore-targeted-diagnostic-ledger-fingerprint=")
 		elif text.begins_with("--cold-restore-rehearsal-ledger-path="):
 			option_key = "rehearsal_ledger_path"
 			option_value = text.trim_prefix("--cold-restore-rehearsal-ledger-path=")
