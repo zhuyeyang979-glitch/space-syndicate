@@ -529,7 +529,8 @@ func _validate_program_state(program_state: Dictionary) -> void:
 	_expect(program.get("v07_highest_constitution_written", false) == true, "program state records written V0.7 constitution")
 	_expect(program.get("v07_highest_constitution_frozen", false) == true, "program state records frozen V0.7 constitution")
 	_expect(str(program.get("v07_constitution_id", "")) == "space_syndicate.v07.complete", "program state records the frozen constitution ID")
-	_expect(str(program.get("current_production_runtime_ruleset", "")) == "v0.6" and str(program.get("target_development_constitution", "")) == "v0.7", "program state uses canonical IDs and separates current v0.6 from target v0.7")
+	_expect(str(program.get("current_production_runtime_ruleset", "")) == "v0.6" and str(program.get("target_development_constitution", "")) == "v0.7.1", "program state retains V0.7 as history while separating current v0.6 from the V0.7.1 target")
+	_expect(program.get("v07_historical_constitution_retained", false) == true and int(program.get("v07_historical_constitution_content_change_count", -1)) == 0, "program state records byte-stable historical V0.7 authority")
 	_expect(program.get("full_v0_7_runtime_cutover", true) == false and program.get("v07_semantic_kernel_ready", true) == false and program.get("v07_ai_semantics_ready", true) == false and program.get("v07_player_semantics_ready", true) == false and program.get("v07_save_schema_ready", true) == false, "program state makes no V0.7 runtime readiness claim")
 	_expect(str(program.get("alpha04c_save_resume", "")) == "PARTIAL" and program.get("pr77_draft", false) == true, "Alpha 0.4-C remains partial and PR 77 remains draft")
 
@@ -555,7 +556,7 @@ func _validate_agents_precedence_and_conflicts() -> void:
 	_expect(agents.contains("## Rule Authority And Version Precedence"), "AGENTS declares rule precedence near the front")
 	_expect(agents.contains("docs/rules/v07_game_constitution.json") and agents.contains("docs/rules/v07_game_constitution.md"), "AGENTS references both V0.7 constitution authorities")
 	_expect(agents.contains("authoritative current-production V0.6 player rules"), "AGENTS scopes the V0.6 rulebook to current production")
-	_expect(agents.contains("CURRENT_PRODUCTION_RUNTIME_RULESET=V0.6") and agents.contains("FULL_V0_7_RUNTIME_CUTOVER=false"), "AGENTS separates current runtime from target constitution")
+	_expect(agents.contains("CURRENT_PRODUCTION_RUNTIME_RULESET=V0.6") and agents.contains("FULL_V0_7_1_RUNTIME_CUTOVER=false"), "AGENTS separates current runtime from the V0.7.1 target constitution")
 	var begin_index := agents.find(PRODUCTION_BEGIN)
 	var end_index := agents.find(PRODUCTION_END)
 	_expect(begin_index >= 0 and end_index > begin_index, "AGENTS production markers are ordered")
