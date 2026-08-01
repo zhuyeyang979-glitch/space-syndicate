@@ -1,0 +1,1032 @@
+{
+  "schema_version": 1,
+  "inventory_id": "Alpha04CV6RegistryBindingInventoryV1",
+  "task_id": "ALPHA04C_V6_REGISTRY_BINDING_CONTRACT_REPAIR_AND_V072_FREE_STARTER_BOOTSTRAP_FREEZE",
+  "lane": "A",
+  "status": "complete",
+  "inspected_worktree_head": "880e4c562928b448494b7c0dfd29e75a170855a8",
+  "v6_run_id": "alpha04c-owner-capture-diagnostic-v6-launch-context-7f2d7a31a0f0",
+  "v6_run_code_head": "7f2d7a31a0f0ffbd662526ad26122ea66fa59a56",
+  "path_notation": {
+    "git_common_dir": "<git-common-dir>",
+    "invocation_id": "<invocation-id-redacted>",
+    "orchestrator_id": "<orchestrator-id-redacted>"
+  },
+  "retained_v6_artifacts": [
+    {
+      "artifact_id": "v6_quota_ledger_raw_bytes",
+      "path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v6-launch-context/targeted_owner_capture_quota_ledger.json",
+      "exists": true,
+      "byte_length": 2546,
+      "sha256": "fe843a4a924a12af5553afcb38a579f68a59acdeab0a4c5e5efb006c31e25c60",
+      "immutable": true,
+      "notes": "Exact retained bytes. The source contains private host paths and nonces; neither is copied into this inventory."
+    },
+    {
+      "artifact_id": "v6_authorization_contract",
+      "path": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/tools/cold_restore_authorization_contract_v1.json",
+      "exists": true,
+      "byte_length": 5324,
+      "git_blob": "b928e377c05924fdba5017a8cc071903d72670ae",
+      "sha256": "260bfe9dca8cc9a65277c1ae23ad2040cf986749dbfb75e3227b0936dad22f97",
+      "immutable": true,
+      "notes": "The V6 entry binds authorization ID, transition 5-to-6, ledger/evidence roots, run prefix, and the V5 predecessor hash."
+    },
+    {
+      "artifact_id": "v6_bootstrap_admission",
+      "path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v6-launch-context/prequota/alpha04c-owner-capture-diagnostic-v6-launch-context-7f2d7a31a0f0/invocations/<invocation-id-redacted>/bootstrap.admission.json",
+      "exists": true,
+      "byte_length": 774,
+      "sha256": "568f894b8d03689b2ec894bb76c93dca414600e2df5e02e6fcec4b53d096163a",
+      "immutable": true
+    },
+    {
+      "artifact_id": "v6_prequota_attestation",
+      "path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v6-launch-context/prequota/alpha04c-owner-capture-diagnostic-v6-launch-context-7f2d7a31a0f0/invocations/<invocation-id-redacted>/prequota_orchestrator_attestation.json",
+      "exists": true,
+      "byte_length": 1312,
+      "sha256": "d30d63bea9f0e3d419ad99e3ed3f8c10ac20cb55d4ece16011f8235f7e2353c1",
+      "immutable": true
+    },
+    {
+      "artifact_id": "v6_launch_attestation",
+      "path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v6-launch-context/evidence/launch/orchestrator-<orchestrator-id-redacted>/producer.authorized.json",
+      "exists": true,
+      "byte_length": 882,
+      "sha256": "074ff66b43fb77b7cd2b5e48d5aa29225fe75c69ddc1a4207033ccbdd43e847a",
+      "immutable": true
+    },
+    {
+      "artifact_id": "v6_child_result",
+      "path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v6-launch-context/evidence/child/producer.result.json",
+      "exists": true,
+      "byte_length": 2989,
+      "sha256": "0cb96dd36d3b612ea6fb64c0501063c34f3144e7e445c81deec345fa7a55ee15",
+      "immutable": true
+    },
+    {
+      "artifact_id": "v6_child_completion",
+      "path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v6-launch-context/evidence/child/producer.completion.json",
+      "exists": true,
+      "byte_length": 1045,
+      "sha256": "6d0c95ad44d90a0ad6f080a88da0dab86da81c6ace32eb35dc0d0bc6d1bca7a4",
+      "immutable": true
+    },
+    {
+      "artifact_id": "v6_owner_capture_audit",
+      "path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v6-launch-context/evidence/diagnostics/owner_capture_audit.json",
+      "exists": true,
+      "byte_length": 4785,
+      "sha256": "8cd6248c6c4eead7f228ef90163aad7e63058ec78b0c210efe6413a86c2e5d49",
+      "immutable": true
+    },
+    {
+      "artifact_id": "v6_phase_timeline",
+      "path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v6-launch-context/evidence/diagnostics/producer.phase_timeline.json",
+      "exists": true,
+      "byte_length": 5751,
+      "sha256": "2c4059b991a984b29b9592e538942f0c8a1019704c96c7a350e786a4bd26ee1c",
+      "immutable": true
+    },
+    {
+      "artifact_id": "v6_parent_exit",
+      "path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v6-launch-context/evidence/parent/producer.exit.json",
+      "exists": true,
+      "byte_length": 1383,
+      "sha256": "2c37461e53f62babb1cd419aeff0cf13be74cfa9bb8b20070348cfaa6464972c",
+      "immutable": true
+    },
+    {
+      "artifact_id": "v6_child_stdout",
+      "path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v6-launch-context/evidence/parent/producer.stdout.log",
+      "exists": true,
+      "byte_length": 3086,
+      "sha256": "027752d824d68d543d40bb5afb3be504fa9330eec5959e51f8c337ab3dfd8337",
+      "immutable": true
+    },
+    {
+      "artifact_id": "v6_child_stderr",
+      "path": "<git-common-dir>/codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v6-launch-context/evidence/parent/producer.stderr.log",
+      "exists": true,
+      "byte_length": 1257,
+      "sha256": "eddccaeeab66277c71a96520ea9dbaf957977c5cf1f259a8c8a8e4a1cb7901e3",
+      "immutable": true
+    }
+  ],
+  "v6_failure_characterization": {
+    "launch_context_attested": true,
+    "scenario_identity_attested": true,
+    "registry_binding_attested": false,
+    "owner_audit_started": false,
+    "owner_capture_attempted_count": 0,
+    "failure_reason": "diagnostic_registry_binding_contract_mismatch",
+    "first_mismatch_section_index": 1,
+    "first_mismatch_section_id": "region_infrastructure",
+    "first_mismatch_owner_id": "public_facility_region",
+    "first_mismatch_field": "checkpoint_method",
+    "omitted_checkpoint_method_row_count": 11,
+    "root_cause": "The V6 diagnostic required a nonempty checkpoint_method on every row, while the production Registry contract deliberately accepts an omitted checkpoint_method and falls back to the already captured pure to_save_data owner state as the rollback checkpoint.",
+    "v6_validator_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/tools/cold_restore_vertical_slice_driver.gd:3230",
+    "v6_validator_hardcoded_requirement_line": 3235,
+    "production_optional_field_validation_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1740",
+    "production_fallback_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1165"
+  },
+  "production_registry_sources": {
+    "registry_scene": {
+      "path": "scenes/runtime/V06SaveOwnerRegistry.tscn",
+      "v6_git_blob": "f840b28656eec7cf9243f2623696aa758749873b",
+      "sha256": "6ac38ee8c1490127de13fd5e9914fba29b6d3d121ba85b60237f454773d89fc6",
+      "byte_length": 9776
+    },
+    "registry_script": {
+      "path": "scripts/runtime/v06_save_owner_registry.gd",
+      "v6_git_blob": "633bd14caa992303ed590cb1b92c969010ea5c5a",
+      "sha256": "80bcaa8dd728f60b018a9a36019f7b91377cea2cf7222c245be18a561b88c6ee",
+      "byte_length": 83375
+    },
+    "binding_resource": {
+      "path": "scripts/runtime/v06_save_owner_binding_resource.gd",
+      "v6_git_blob": "208ece9eb281aa8cef4a01296b6cbea044c5e268",
+      "sha256": "8a7260b841eb63725110ef5d96b34fe245df6f1ba96e37364e7fdc67bcc80b46",
+      "byte_length": 1000
+    },
+    "restore_dependency_graph": {
+      "path": "docs/save/v06_restore_dependency_graph.json",
+      "v6_git_blob": "11a7c0224cbb957a0188797cfc28de7761aa7886",
+      "sha256": "490c351a1cccc5d1fd088ebc6b0c3c99652838866fb727c8fbe49deacb35e677",
+      "byte_length": 6048
+    },
+    "production_transaction_test": {
+      "path": "tests/alpha04c_production_registry_transaction_test.gd",
+      "v6_git_blob": "f9594b116798e6f098d0a6171bfd190d84817a00",
+      "sha256": "1f97b5f6532f83577aadc765cf75406a61b7b986d355244cb734e375cf5f8c0f",
+      "byte_length": 47102,
+      "proof_lines": "129-151",
+      "retained_gate_result": {
+        "owner_preflight": "19/19",
+        "owner_fault_rollback": "19/19",
+        "owner_apply_count": 19,
+        "registry_commit_count": 1,
+        "partial_restore_state_count": 0
+      }
+    }
+  },
+  "checkpoint_contract_findings": {
+    "binding_count": 19,
+    "explicit_owner_method_count": 8,
+    "registry_managed_checkpoint_count": 11,
+    "owner_internal_transaction_checkpoint_count": 0,
+    "checkpoint_method_omitted_count": 11,
+    "owner_without_checkpoint_or_rollback_semantics_count": 0,
+    "every_owner_capture_method_present": true,
+    "every_owner_preflight_method_present": true,
+    "every_owner_apply_method_present": true,
+    "every_owner_rollback_method_present": true,
+    "all_checkpoints_captured_before_any_apply": true,
+    "rollback_order": "reverse_actual_restore_order",
+    "post_rollback_exact_recapture_required": true,
+    "omitted_field_semantics": "For an omitted checkpoint_method, _capture_owner_checkpoint_detailed first calls to_save_data. If no explicit checkpoint was captured, it duplicates that pure Dictionary into rollback_checkpoint. _rollback_sections then calls the declared rollback_method (apply_save_data for all 11 rows), recaptures the owner, and requires encoded equality. _verify_checkpoints_exact performs the final all-owner residual check."
+  },
+  "binding_contract_fingerprint_algorithm": {
+    "canonicalization": "PowerShell ConvertTo-Json -Compress over an insertion-ordered object",
+    "encoding": "UTF-8 without BOM",
+    "digest": "SHA-256 lowercase hexadecimal",
+    "field_order": [
+      "section_index",
+      "section_id",
+      "owner_id",
+      "owner_path",
+      "capture_method",
+      "preflight_method",
+      "apply_method",
+      "rollback_method",
+      "checkpoint_method_present",
+      "checkpoint_method",
+      "checkpoint_strategy",
+      "state_version",
+      "dependencies",
+      "owner_script_sha256"
+    ],
+    "inventory_fingerprint": "89b13b27d934eeeb49151b6833ea055f1ee19cdd2e523b4b2e5c1a55a1016c0c",
+    "inventory_fingerprint_basis": "sha256(utf8(compact JSON array of the 19 binding_contract_fingerprint values in section_index order))"
+  },
+  "bindings": [
+    {
+      "section_index": 0,
+      "section_id": "ruleset",
+      "owner_id": "ruleset_runtime",
+      "owner_path": "../RulesetSaveAttestationOwner",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "restore_runtime_checkpoint",
+      "checkpoint_method_present": true,
+      "checkpoint_method": "capture_runtime_checkpoint",
+      "checkpoint_strategy": "explicit_owner_method",
+      "checkpoint_source_method": "capture_runtime_checkpoint",
+      "rollback_strategy": "registry_reverse_order_declared_restore_method_then_exact_recapture",
+      "dependencies": {
+        "restore": [],
+        "cross_section": [],
+        "session_tail_finalize_after": []
+      },
+      "state_version": 1,
+      "owner_script_sha256": "e1690e52c7b0e5dc9c4d46611943c8b506f0ba353b35577f334dda495a0ea5d2",
+      "owner_script_git_blob": "a153ae5c53092b8d505370e533a4be854d839960",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:6",
+        "binding_scene_end_line": 18,
+        "owner_script": "scripts/runtime/ruleset_save_attestation_owner.gd",
+        "capture_line": 27,
+        "preflight_line": 31,
+        "apply_line": 52,
+        "checkpoint_line": 68,
+        "rollback_line": 72,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "0addb595777a2f48356ad0065cb3521d0dc41eab2a6904a2af5ac28529b4ec75",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    },
+    {
+      "section_index": 1,
+      "section_id": "region_infrastructure",
+      "owner_id": "public_facility_region",
+      "owner_path": "../../RegionInfrastructureRuntimeController",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "apply_save_data",
+      "checkpoint_method_present": false,
+      "checkpoint_method": "",
+      "checkpoint_strategy": "registry_managed_checkpoint",
+      "checkpoint_source_method": "to_save_data",
+      "rollback_strategy": "registry_reverse_order_apply_save_data_from_captured_owner_state_then_exact_recapture",
+      "dependencies": {
+        "restore": [
+          "session_foundation"
+        ],
+        "cross_section": [],
+        "session_tail_finalize_after": []
+      },
+      "state_version": 1,
+      "owner_script_sha256": "645b1bd666a4f28835f4bd5f20928498d27097dc675a8d9de6014b0f651a1dcf",
+      "owner_script_git_blob": "bde92f97fdfde57486f85d6a0d1db9cc95ace985",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:19",
+        "binding_scene_end_line": 30,
+        "owner_script": "scripts/runtime/region_infrastructure_runtime_controller.gd",
+        "capture_line": 1104,
+        "preflight_line": 1142,
+        "apply_line": 1159,
+        "checkpoint_line": null,
+        "rollback_line": 1159,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "33ba1e6b7b37e005cb5357d146fb0d23a5c74b2cd40f6ec2f6e7d90bc9a6997d",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    },
+    {
+      "section_index": 2,
+      "section_id": "region_supply",
+      "owner_id": "region_supply",
+      "owner_path": "../../RegionSupplyRuntimeController",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "apply_save_data",
+      "checkpoint_method_present": false,
+      "checkpoint_method": "",
+      "checkpoint_strategy": "registry_managed_checkpoint",
+      "checkpoint_source_method": "to_save_data",
+      "rollback_strategy": "registry_reverse_order_apply_save_data_from_captured_owner_state_then_exact_recapture",
+      "dependencies": {
+        "restore": [
+          "session_foundation",
+          "region_infrastructure"
+        ],
+        "cross_section": [],
+        "session_tail_finalize_after": []
+      },
+      "state_version": 1,
+      "owner_script_sha256": "dc3a09b0ae00f13bc54c438acfda50b22678f67e453598a5eefc35abef58cd35",
+      "owner_script_git_blob": "c8d661412ae6ac2bc507db2edfe88a709b30c723",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:31",
+        "binding_scene_end_line": 42,
+        "owner_script": "scripts/runtime/region_supply_runtime_controller.gd",
+        "capture_line": 438,
+        "preflight_line": 459,
+        "apply_line": 472,
+        "checkpoint_line": null,
+        "rollback_line": 472,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "eda3bae392638bc275bdaea84eb7b17264baa8365af65ea7ad65a71b2bcca479",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    },
+    {
+      "section_index": 3,
+      "section_id": "commodity_flow",
+      "owner_id": "commodity_flow",
+      "owner_path": "../../CommodityFlowRuntimeController",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "apply_save_data",
+      "checkpoint_method_present": false,
+      "checkpoint_method": "",
+      "checkpoint_strategy": "registry_managed_checkpoint",
+      "checkpoint_source_method": "to_save_data",
+      "rollback_strategy": "registry_reverse_order_apply_save_data_from_captured_owner_state_then_exact_recapture",
+      "dependencies": {
+        "restore": [
+          "session_foundation",
+          "region_infrastructure"
+        ],
+        "cross_section": [],
+        "session_tail_finalize_after": []
+      },
+      "state_version": 2,
+      "owner_script_sha256": "d4c2f5796f9b64510b11e0ff2e80165d79ec75e4c15e05e4d44f25914d921ded",
+      "owner_script_git_blob": "3bff3c0bde11e13956d12345c728893b26e54673",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:43",
+        "binding_scene_end_line": 55,
+        "owner_script": "scripts/runtime/commodity_flow_runtime_controller.gd",
+        "capture_line": 1385,
+        "preflight_line": 1436,
+        "apply_line": 1469,
+        "checkpoint_line": null,
+        "rollback_line": 1469,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "1c6cb265483f0edb1a936231a0b26411d33e549ec6c4254e6cf95f0c5f75b02b",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    },
+    {
+      "section_index": 4,
+      "section_id": "routes",
+      "owner_id": "route_network",
+      "owner_path": "../../RouteNetworkRuntimeController",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "restore_runtime_checkpoint",
+      "checkpoint_method_present": true,
+      "checkpoint_method": "capture_runtime_checkpoint",
+      "checkpoint_strategy": "explicit_owner_method",
+      "checkpoint_source_method": "capture_runtime_checkpoint",
+      "rollback_strategy": "registry_reverse_order_declared_restore_method_then_exact_recapture",
+      "dependencies": {
+        "restore": [
+          "region_infrastructure",
+          "weather"
+        ],
+        "cross_section": [],
+        "session_tail_finalize_after": []
+      },
+      "state_version": 2,
+      "owner_script_sha256": "0218aa04e054d1a3669cf48d7b2f59660627f096ca5b2953f2bfae80c4a5bc0f",
+      "owner_script_git_blob": "009f87625b6bf8ff1adee4dc81b317cd34ac1106",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:56",
+        "binding_scene_end_line": 69,
+        "owner_script": "scripts/runtime/route_network_runtime_controller.gd",
+        "capture_line": 218,
+        "preflight_line": 228,
+        "apply_line": 283,
+        "checkpoint_line": 320,
+        "rollback_line": 340,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "29138361726a8dc8e5c7444a761bd9229804498aab44a793252bacbf9c126085",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    },
+    {
+      "section_index": 5,
+      "section_id": "player_mana",
+      "owner_id": "player_mana",
+      "owner_path": "../../PlayerManaRuntimeController",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "apply_save_data",
+      "checkpoint_method_present": false,
+      "checkpoint_method": "",
+      "checkpoint_strategy": "registry_managed_checkpoint",
+      "checkpoint_source_method": "to_save_data",
+      "rollback_strategy": "registry_reverse_order_apply_save_data_from_captured_owner_state_then_exact_recapture",
+      "dependencies": {
+        "restore": [
+          "session_foundation"
+        ],
+        "cross_section": [],
+        "session_tail_finalize_after": []
+      },
+      "state_version": 1,
+      "owner_script_sha256": "fb2f5b55ad8775b02074ec275b2913f7495b7e04461162d6372f53c8a513b964",
+      "owner_script_git_blob": "6c1e6a079bbfc340daff271db322674374a73401",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:70",
+        "binding_scene_end_line": 81,
+        "owner_script": "scripts/runtime/player_mana_runtime_controller.gd",
+        "capture_line": 541,
+        "preflight_line": 556,
+        "apply_line": 569,
+        "checkpoint_line": null,
+        "rollback_line": 569,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "ce6803b5e47426904fab495029dd2f53a4c508b28cb94d18bc564c7e3008a420",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    },
+    {
+      "section_index": 6,
+      "section_id": "commodity_belt_visibility",
+      "owner_id": "commodity_belt_visibility",
+      "owner_path": "../../CommodityBeltVisibilitySaveOwner",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "restore_runtime_checkpoint",
+      "checkpoint_method_present": true,
+      "checkpoint_method": "capture_runtime_checkpoint",
+      "checkpoint_strategy": "explicit_owner_method",
+      "checkpoint_source_method": "capture_runtime_checkpoint",
+      "rollback_strategy": "registry_reverse_order_declared_restore_method_then_exact_recapture",
+      "dependencies": {
+        "restore": [
+          "card_inventory"
+        ],
+        "cross_section": [],
+        "session_tail_finalize_after": []
+      },
+      "state_version": 1,
+      "owner_script_sha256": "529cac945c194e6cb3a5c7b10b6bb3decd63b7645ea879f4140f0afc971ae550",
+      "owner_script_git_blob": "c2566b2eddd9065d8b928af37526d8614778ab37",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:82",
+        "binding_scene_end_line": 94,
+        "owner_script": "scripts/runtime/commodity_belt_visibility_save_owner.gd",
+        "capture_line": 36,
+        "preflight_line": 42,
+        "apply_line": 102,
+        "checkpoint_line": 139,
+        "rollback_line": 143,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "65b02be0a647d3394f07d0e37aff4c0a8bd9fd5974e2b1fa8c444eb2b8f6b117",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    },
+    {
+      "section_index": 7,
+      "section_id": "card_inventory",
+      "owner_id": "card_inventory",
+      "owner_path": "../../CardInventorySaveOwner",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "restore_runtime_checkpoint",
+      "checkpoint_method_present": true,
+      "checkpoint_method": "capture_runtime_checkpoint",
+      "checkpoint_strategy": "explicit_owner_method",
+      "checkpoint_source_method": "capture_runtime_checkpoint",
+      "rollback_strategy": "registry_reverse_order_declared_restore_method_then_exact_recapture",
+      "dependencies": {
+        "restore": [
+          "session_foundation",
+          "region_supply",
+          "player_mana"
+        ],
+        "cross_section": [],
+        "session_tail_finalize_after": []
+      },
+      "state_version": 3,
+      "owner_script_sha256": "36e758524b968c98c93f6c74ab3baa05ffdacea61220dceeb3e193395ae521e6",
+      "owner_script_git_blob": "b18c7015139bc6bcd2b7075c59b9316abb2967d3",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:95",
+        "binding_scene_end_line": 108,
+        "owner_script": "scripts/runtime/card_inventory_save_owner.gd",
+        "capture_line": 59,
+        "preflight_line": 94,
+        "apply_line": 197,
+        "checkpoint_line": 243,
+        "rollback_line": 275,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "fcb5872d34271209d2f53c384ad47445f56e989c70850e5e1791d10bb56d1d60",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    },
+    {
+      "section_index": 8,
+      "section_id": "player_organization",
+      "owner_id": "player_organization",
+      "owner_path": "../../PlayerOrganizationRuntimeController",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "apply_save_data",
+      "checkpoint_method_present": false,
+      "checkpoint_method": "",
+      "checkpoint_strategy": "registry_managed_checkpoint",
+      "checkpoint_source_method": "to_save_data",
+      "rollback_strategy": "registry_reverse_order_apply_save_data_from_captured_owner_state_then_exact_recapture",
+      "dependencies": {
+        "restore": [
+          "session_foundation"
+        ],
+        "cross_section": [],
+        "session_tail_finalize_after": []
+      },
+      "state_version": 1,
+      "owner_script_sha256": "572ea73f3032ea0971046ff4c4e0f8e02205de8b3851a4df67c412e3c5a3ec5c",
+      "owner_script_git_blob": "dce446bcad4225e05ffca2e546c908a8f475bc87",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:109",
+        "binding_scene_end_line": 120,
+        "owner_script": "scripts/runtime/player_organization_runtime_controller.gd",
+        "capture_line": 483,
+        "preflight_line": 496,
+        "apply_line": 509,
+        "checkpoint_line": null,
+        "rollback_line": 509,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "06e88ef5d855d6f00a27f07e293235b8867e6c61ec2c0e2f876c8a1d9dd3b4c0",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    },
+    {
+      "section_index": 9,
+      "section_id": "monsters",
+      "owner_id": "monster_runtime",
+      "owner_path": "../../MonsterRuntimeController",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "apply_save_data",
+      "checkpoint_method_present": false,
+      "checkpoint_method": "",
+      "checkpoint_strategy": "registry_managed_checkpoint",
+      "checkpoint_source_method": "to_save_data",
+      "rollback_strategy": "registry_reverse_order_apply_save_data_from_captured_owner_state_then_exact_recapture",
+      "dependencies": {
+        "restore": [
+          "session_foundation",
+          "region_infrastructure",
+          "card_inventory"
+        ],
+        "cross_section": [],
+        "session_tail_finalize_after": []
+      },
+      "state_version": 1,
+      "owner_script_sha256": "e71f6e815034fc48e41d8625a4e8edac0b6e66a6ddbf5d6272b29e852748c912",
+      "owner_script_git_blob": "5b3b0e4f63bd11f9a733d60521ce1dba8ed7deb3",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:121",
+        "binding_scene_end_line": 132,
+        "owner_script": "scripts/runtime/monster_runtime_controller.gd",
+        "capture_line": 1487,
+        "preflight_line": 1511,
+        "apply_line": 1611,
+        "checkpoint_line": null,
+        "rollback_line": 1611,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "c4e11e23fad6afc1c1001432acb7688192cf3601df46a723a1613ff76b2bc86c",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    },
+    {
+      "section_index": 10,
+      "section_id": "military",
+      "owner_id": "military_runtime",
+      "owner_path": "../../MilitaryRuntimeController",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "restore_runtime_checkpoint",
+      "checkpoint_method_present": true,
+      "checkpoint_method": "capture_runtime_checkpoint",
+      "checkpoint_strategy": "explicit_owner_method",
+      "checkpoint_source_method": "capture_runtime_checkpoint",
+      "rollback_strategy": "registry_reverse_order_declared_restore_method_then_exact_recapture",
+      "dependencies": {
+        "restore": [
+          "session_foundation",
+          "region_infrastructure",
+          "card_inventory",
+          "monsters"
+        ],
+        "cross_section": [],
+        "session_tail_finalize_after": []
+      },
+      "state_version": 2,
+      "owner_script_sha256": "9ed7d16372c110a23396d13237956aa3af6b3b312f3a1a7ddaea0956c1a7fddb",
+      "owner_script_git_blob": "08cfbba73a1fda8353d5e7c9eea7efee7081090c",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:133",
+        "binding_scene_end_line": 146,
+        "owner_script": "scripts/runtime/military_runtime_controller.gd",
+        "capture_line": 926,
+        "preflight_line": 936,
+        "apply_line": 992,
+        "checkpoint_line": 1010,
+        "rollback_line": 1014,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "7737b48e2df57b4ffeb0a177ccad1238ca5da998601330b245caf6bbdaaae189",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    },
+    {
+      "section_index": 11,
+      "section_id": "weather",
+      "owner_id": "weather_runtime",
+      "owner_path": "../../WeatherRuntimeController",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "apply_save_data",
+      "checkpoint_method_present": false,
+      "checkpoint_method": "",
+      "checkpoint_strategy": "registry_managed_checkpoint",
+      "checkpoint_source_method": "to_save_data",
+      "rollback_strategy": "registry_reverse_order_apply_save_data_from_captured_owner_state_then_exact_recapture",
+      "dependencies": {
+        "restore": [
+          "session_foundation",
+          "region_infrastructure"
+        ],
+        "cross_section": [],
+        "session_tail_finalize_after": []
+      },
+      "state_version": 1,
+      "owner_script_sha256": "c71e5d8436fc8af35009ecc39adf032b57ce16d021f6ce5fd321a4d3d15a394a",
+      "owner_script_git_blob": "70836ee83eeb98fd8cbcec8124ec3b554bfa1d24",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:147",
+        "binding_scene_end_line": 158,
+        "owner_script": "scripts/runtime/weather_runtime_controller.gd",
+        "capture_line": 587,
+        "preflight_line": 600,
+        "apply_line": 622,
+        "checkpoint_line": null,
+        "rollback_line": 622,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "e73dcc5e5fe97b5e140e3f9fd0222ea180b99beb6c353db2a1b2e7f028454a97",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    },
+    {
+      "section_index": 12,
+      "section_id": "card_resolution_queue",
+      "owner_id": "card_resolution_queue",
+      "owner_path": "../../CardResolutionQueueRuntimeService",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "restore_runtime_checkpoint",
+      "checkpoint_method_present": true,
+      "checkpoint_method": "capture_runtime_checkpoint",
+      "checkpoint_strategy": "explicit_owner_method",
+      "checkpoint_source_method": "capture_runtime_checkpoint",
+      "rollback_strategy": "registry_reverse_order_declared_restore_method_then_exact_recapture",
+      "dependencies": {
+        "restore": [
+          "session_foundation",
+          "region_infrastructure",
+          "player_mana",
+          "card_inventory"
+        ],
+        "cross_section": [
+          "card_resolution_execution",
+          "card_resolution_history"
+        ],
+        "session_tail_finalize_after": []
+      },
+      "state_version": 2,
+      "owner_script_sha256": "6b7f89bfcb848cee8cdb2a88647c0b06f12113289ef6fa5a9fdb5ab828017cfa",
+      "owner_script_git_blob": "6b26e3e4b79b2c6defa6c21dddd84f6600f1030f",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:159",
+        "binding_scene_end_line": 172,
+        "owner_script": "scripts/runtime/card_resolution_queue_runtime_service.gd",
+        "capture_line": 839,
+        "preflight_line": 852,
+        "apply_line": 937,
+        "checkpoint_line": 138,
+        "rollback_line": 149,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "a9740dc2879ff2951c0e74a57fc3051800479f4410b350773ede0b7116328865",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    },
+    {
+      "section_index": 13,
+      "section_id": "card_resolution_execution",
+      "owner_id": "card_resolution_execution",
+      "owner_path": "../../CardResolutionExecutionRuntimeService",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "apply_save_data",
+      "checkpoint_method_present": false,
+      "checkpoint_method": "",
+      "checkpoint_strategy": "registry_managed_checkpoint",
+      "checkpoint_source_method": "to_save_data",
+      "rollback_strategy": "registry_reverse_order_apply_save_data_from_captured_owner_state_then_exact_recapture",
+      "dependencies": {
+        "restore": [
+          "card_resolution_queue",
+          "card_inventory",
+          "player_mana",
+          "commodity_flow"
+        ],
+        "cross_section": [],
+        "session_tail_finalize_after": []
+      },
+      "state_version": 1,
+      "owner_script_sha256": "de7cc646b5d7f2a4d8685dfd66d6784b36c644cf46a33d55afbd340d6ad204ad",
+      "owner_script_git_blob": "6642ba532b814a74acc8e787363f32a7a8aede36",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:173",
+        "binding_scene_end_line": 184,
+        "owner_script": "scripts/runtime/card_resolution_execution_runtime_service.gd",
+        "capture_line": 493,
+        "preflight_line": 505,
+        "apply_line": 516,
+        "checkpoint_line": null,
+        "rollback_line": 516,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "1259b22dbf11585961bd57ae7b2710ee9d94acfcfaa8080831fb65f3953992ef",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    },
+    {
+      "section_index": 14,
+      "section_id": "card_resolution_history",
+      "owner_id": "card_resolution_history",
+      "owner_path": "../../CardResolutionHistoryRuntimeService",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "apply_save_data",
+      "checkpoint_method_present": false,
+      "checkpoint_method": "",
+      "checkpoint_strategy": "registry_managed_checkpoint",
+      "checkpoint_source_method": "to_save_data",
+      "rollback_strategy": "registry_reverse_order_apply_save_data_from_captured_owner_state_then_exact_recapture",
+      "dependencies": {
+        "restore": [
+          "card_resolution_execution"
+        ],
+        "cross_section": [],
+        "session_tail_finalize_after": []
+      },
+      "state_version": 1,
+      "owner_script_sha256": "1012c32684e96df2db01a06dd9e6534be1558c58b0e9cee1784b77509484f4f6",
+      "owner_script_git_blob": "2e72a30ec60f42c45634f25ce66f453603fd5806",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:185",
+        "binding_scene_end_line": 196,
+        "owner_script": "scripts/runtime/card_resolution_history_runtime_service.gd",
+        "capture_line": 170,
+        "preflight_line": 182,
+        "apply_line": 186,
+        "checkpoint_line": null,
+        "rollback_line": 186,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "cf3739aa11b113f3ffe06a0fb13a50e805bf36ec7e1ed8b9ee0f8f48650dfb56",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    },
+    {
+      "section_index": 15,
+      "section_id": "ai",
+      "owner_id": "ai_runtime",
+      "owner_path": "../../AiRuntimeController",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "restore_runtime_checkpoint",
+      "checkpoint_method_present": true,
+      "checkpoint_method": "capture_runtime_checkpoint",
+      "checkpoint_strategy": "explicit_owner_method",
+      "checkpoint_source_method": "capture_runtime_checkpoint",
+      "rollback_strategy": "registry_reverse_order_declared_restore_method_then_exact_recapture",
+      "dependencies": {
+        "restore": [
+          "session_foundation",
+          "card_inventory",
+          "card_resolution_history"
+        ],
+        "cross_section": [],
+        "session_tail_finalize_after": []
+      },
+      "state_version": 2,
+      "owner_script_sha256": "27613077b674bcd412617102b8d6f25d142c7998998538289ac62cc81d63d0f6",
+      "owner_script_git_blob": "707f15a46f008387c0a6fe00c73efe6b3120d5f8",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:197",
+        "binding_scene_end_line": 210,
+        "owner_script": "scripts/runtime/ai_runtime_controller.gd",
+        "capture_line": 418,
+        "preflight_line": 460,
+        "apply_line": 574,
+        "checkpoint_line": 633,
+        "rollback_line": 652,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "01d53f3cf3f3d6ba8c213797609bbbdacfc1e47ff2c66ac72d067dfc44a2fb9c",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    },
+    {
+      "section_index": 16,
+      "section_id": "bankruptcy_neutral_estate",
+      "owner_id": "bankruptcy_neutral_estate",
+      "owner_path": "../../BankruptcyNeutralEstateRuntimeController",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "apply_save_data",
+      "checkpoint_method_present": false,
+      "checkpoint_method": "",
+      "checkpoint_strategy": "registry_managed_checkpoint",
+      "checkpoint_source_method": "to_save_data",
+      "rollback_strategy": "registry_reverse_order_apply_save_data_from_captured_owner_state_then_exact_recapture",
+      "dependencies": {
+        "restore": [
+          "session_foundation",
+          "region_infrastructure",
+          "card_inventory",
+          "commodity_flow",
+          "player_mana",
+          "monsters",
+          "military"
+        ],
+        "cross_section": [],
+        "session_tail_finalize_after": []
+      },
+      "state_version": 1,
+      "owner_script_sha256": "a7af04559ccbe41152c5ae2fda60243c03577e33fefa79c00d70370ed975b385",
+      "owner_script_git_blob": "d9f9575ffef5077ec35dbbc5b853ad9968f9e927",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:211",
+        "binding_scene_end_line": 222,
+        "owner_script": "scripts/runtime/bankruptcy_neutral_estate_runtime_controller.gd",
+        "capture_line": 63,
+        "preflight_line": 75,
+        "apply_line": 114,
+        "checkpoint_line": null,
+        "rollback_line": 114,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "3516f081d06cfe20701b880598cd1c43d28514cf0b480f46e3680899c1fc7f9b",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    },
+    {
+      "section_index": 17,
+      "section_id": "victory_control",
+      "owner_id": "victory_control",
+      "owner_path": "../../VictoryControlRuntimeController",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "apply_save_data",
+      "checkpoint_method_present": false,
+      "checkpoint_method": "",
+      "checkpoint_strategy": "registry_managed_checkpoint",
+      "checkpoint_source_method": "to_save_data",
+      "rollback_strategy": "registry_reverse_order_apply_save_data_from_captured_owner_state_then_exact_recapture",
+      "dependencies": {
+        "restore": [
+          "session_foundation",
+          "region_infrastructure",
+          "commodity_flow",
+          "bankruptcy_neutral_estate"
+        ],
+        "cross_section": [],
+        "session_tail_finalize_after": []
+      },
+      "state_version": 1,
+      "owner_script_sha256": "6ba675307712b2f486905694fc7da9e14684032a4e14b0856828488ae5fa0339",
+      "owner_script_git_blob": "6bb458ed58c297599ef478d059c52a42f8d32042",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:223",
+        "binding_scene_end_line": 234,
+        "owner_script": "scripts/runtime/victory_control_runtime_controller.gd",
+        "capture_line": 381,
+        "preflight_line": 396,
+        "apply_line": 409,
+        "checkpoint_line": null,
+        "rollback_line": 409,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "522164d5bf4c9a255cbd8065ef2e68c8278f5709f605622747536051f18a5143",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    },
+    {
+      "section_index": 18,
+      "section_id": "session",
+      "owner_id": "game_session",
+      "owner_path": "../SessionEnvelopeSaveOwner",
+      "capture_method": "to_save_data",
+      "preflight_method": "preflight_save_data",
+      "apply_method": "apply_save_data",
+      "rollback_method": "restore_runtime_checkpoint",
+      "checkpoint_method_present": true,
+      "checkpoint_method": "capture_runtime_checkpoint",
+      "checkpoint_strategy": "explicit_owner_method",
+      "checkpoint_source_method": "capture_runtime_checkpoint",
+      "rollback_strategy": "registry_reverse_order_declared_restore_method_then_exact_recapture",
+      "dependencies": {
+        "restore": [
+          "ruleset"
+        ],
+        "cross_section": [],
+        "session_tail_finalize_after": [
+          "card_resolution_history",
+          "ai",
+          "victory_control",
+          "routes",
+          "commodity_belt_visibility"
+        ]
+      },
+      "state_version": 3,
+      "owner_script_sha256": "a1c14308f1fa906062a28f4ac5ac851485497ddaebd4ec24daf16f732073e95f",
+      "owner_script_git_blob": "fd12ed5692ff158bb4503da72c1b4def5b594ba5",
+      "method_contract_source": {
+        "binding_scene": "scenes/runtime/V06SaveOwnerRegistry.tscn:235",
+        "binding_scene_end_line": 248,
+        "owner_script": "scripts/runtime/session_envelope_save_owner.gd",
+        "capture_line": 34,
+        "preflight_line": 98,
+        "apply_line": 150,
+        "checkpoint_line": 235,
+        "rollback_line": 251,
+        "registry_checkpoint_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1045",
+        "registry_rollback_source": "git-object:7f2d7a31a0f0ffbd662526ad26122ea66fa59a56/scripts/runtime/v06_save_owner_registry.gd:1607"
+      },
+      "binding_contract_fingerprint": "d49e642f93f8fce662ebc93686b537e96972cfd717c8a829fe536fe86a32df25",
+      "binding_contract_fingerprint_basis": "sha256(utf8(compact ordered JSON of section_index, section_id, owner_id, owner_path, capture_method, preflight_method, apply_method, rollback_method, checkpoint_method_present, checkpoint_method, checkpoint_strategy, state_version, dependencies, owner_script_sha256))",
+      "checkpoint_and_rollback_semantics_complete": true
+    }
+  ],
+  "safety": {
+    "immutable_v6_bytes_modified": false,
+    "v7_diagnostic_run": false,
+    "replay_run": false,
+    "process_a_run": false,
+    "quota_operation_run": false,
+    "owner_capture_run": false,
+    "save_write_run": false,
+    "code_or_test_file_edited_by_inventory_task": false
+  },
+  "summary": {
+    "v6_ledger_bytes_retained": true,
+    "v6_registry_binding_inventory_complete": true,
+    "registry_binding_count": 19,
+    "registry_binding_with_explicit_checkpoint_count": 8,
+    "registry_binding_with_registry_managed_checkpoint_count": 11,
+    "registry_binding_with_owner_internal_checkpoint_count": 0,
+    "registry_binding_with_omitted_checkpoint_method_count": 11,
+    "owner_without_checkpoint_or_rollback_semantics_count": 0,
+    "first_mismatch_field": "checkpoint_method",
+    "evidence_gap_count": 0
+  }
+}
