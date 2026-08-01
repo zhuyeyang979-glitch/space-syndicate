@@ -2,7 +2,7 @@ extends SceneTree
 
 const MANIFEST_PATH := "res://docs/migration/v07_atomic_cutover_manifest.json"
 const MARKDOWN_PATH := "res://docs/migration/v07_atomic_cutover_manifest.md"
-const BASELINE_SHA := "76ffcbf1df5c122955e620b7b4a4339e3dd9a2cb"
+const BASELINE_SHA := "794ccf010e661a4750efca20a4e0d2a5839b7f2b"
 
 const TOP_LEVEL_KEYS := [
 	"schema_version",
@@ -18,25 +18,32 @@ const TOP_LEVEL_KEYS := [
 	"production_scene_change",
 	"main_change",
 	"dual_write_allowed",
-	"V06_SAVE_TO_V072_DIRECT_RESUME",
-	"V071_SAVE_TO_V072_DIRECT_RESUME",
 	"v06_save_rejection_reason",
 	"allowed_session_entrypoints",
 	"source_contracts",
-	"required_v072_pre_cutover_gates",
-	"v072_pre_cutover_gate_contracts_declared",
-	"v072_production_connection_count",
-	"v072_v06_mutation_count",
-	"v072_dual_write_count",
+	"required_v073_pre_cutover_gates",
+	"v073_pre_cutover_gate_contracts_declared",
+	"v073_production_connection_count",
+	"v073_v06_mutation_count",
+	"v073_dual_write_count",
+	"resolution_order_writer_count",
+	"resolution_order_modifier_count",
+	"initiative_auction_core_count",
+	"initiative_bid_save_field_count",
+	"initiative_bid_ui_surface_count",
+	"ai_initiative_bid_policy_count",
 	"domain_count",
 	"required_domain_ids",
 	"domain_entry_required_fields",
+	"atomic_switch_groups",
 	"domains",
+	"V06_SAVE_TO_V073_DIRECT_RESUME",
+	"V072_SAVE_TO_V073_DIRECT_RESUME",
 ]
 const DOMAIN_KEYS := [
 	"domain_id",
 	"v06_current_owner",
-	"v072_target_owner",
+	"v073_target_owner",
 	"core_port",
 	"ai_port",
 	"player_port",
@@ -67,6 +74,8 @@ const REQUIRED_DOMAIN_IDS := [
 	"card_batch",
 	"asset_reservation",
 	"anonymous_resolution",
+	"region_infrastructure",
+	"facility_target_contention",
 	"solar_efficiency",
 	"macro_round_victory_gate",
 ]
@@ -78,6 +87,9 @@ const ADAPTER_IMPLEMENTATION_PATHS := [
 	"scripts/v07_adapters/v07_canonical_player_projection_adapter.gd",
 ]
 const SOURCE_CONTRACTS := [
+	"docs/rules/v073_game_constitution.json",
+	"docs/rules/v073_balance_defaults.json",
+	"docs/rules/v073_amendment_from_v072.json",
 	"docs/rules/v072_game_constitution.json",
 	"docs/rules/v072_balance_defaults.json",
 	"docs/rules/v072_amendment_from_v071.json",
@@ -87,7 +99,7 @@ const SOURCE_CONTRACTS := [
 	"docs/save/v072_restore_dependency_graph.json",
 	"docs/save/v072_rng_ownership.json",
 ]
-const V072_PRE_CUTOVER_GATES := [
+const V073_PRE_CUTOVER_GATES := [
 	"batch_boundary_owner_ready",
 	"replacement_claim_lock_ready",
 	"minimum_deck_count_ready",
@@ -104,6 +116,14 @@ const V072_PRE_CUTOVER_GATES := [
 	"starter_player_badge_ready",
 	"starter_ai_cost_semantics_ready",
 	"starter_save_identity_ready",
+	"fixed_round_robin_ready",
+	"facility_unique_slot_ready",
+	"facility_action_mode_ready",
+	"facility_slot_revalidation_ready",
+	"build_contention_fizzle_ready",
+	"anonymous_resolution_ready",
+	"ai_contention_semantics_ready",
+	"facility_contention_save_ready",
 ]
 const EXPECTED_BINDINGS := {
 	"unified_card_track": {
@@ -148,9 +168,9 @@ const EXPECTED_BINDINGS := {
 		"rng_stream": "NONE",
 	},
 	"card_batch": {
-		"core_port": "v072.card_batch.core_authority.v3#card_batch",
-		"ai_port": "v072.card_batch.ai_observation.v3#card_batch",
-		"player_port": "v072.card_batch.player_projection.v3#card_batch",
+		"core_port": "v073.facility_contention.core_authority.v1#card_batch",
+		"ai_port": "v073.facility_contention.ai_observation.v1#card_batch",
+		"player_port": "v073.facility_contention.player_projection.v1#card_batch",
 		"save_adapter": "V07CanonicalSaveAdapter#card_batch_and_anonymous_resolution.card_batch",
 		"rng_stream": "NONE",
 	},
@@ -162,10 +182,24 @@ const EXPECTED_BINDINGS := {
 		"rng_stream": "NONE",
 	},
 	"anonymous_resolution": {
-		"core_port": "v072.card_batch.core_authority.v3#anonymous_resolution",
-		"ai_port": "v072.card_batch.ai_observation.v3#anonymous_resolution",
-		"player_port": "v072.card_batch.player_projection.v3#anonymous_resolution",
+		"core_port": "v073.facility_contention.core_authority.v1#anonymous_resolution",
+		"ai_port": "v073.facility_contention.ai_observation.v1#anonymous_resolution",
+		"player_port": "v073.facility_contention.player_projection.v1#anonymous_resolution",
 		"save_adapter": "V07CanonicalSaveAdapter#card_batch_and_anonymous_resolution.anonymous_resolution",
+		"rng_stream": "NONE",
+	},
+	"region_infrastructure": {
+		"core_port": "v073.facility_contention.core_authority.v1#region_infrastructure",
+		"ai_port": "v073.facility_contention.ai_observation.v1#region_infrastructure",
+		"player_port": "v073.facility_contention.player_projection.v1#region_infrastructure",
+		"save_adapter": "V07CanonicalSaveAdapter#facility_target_contention.region_infrastructure",
+		"rng_stream": "NONE",
+	},
+	"facility_target_contention": {
+		"core_port": "v073.facility_contention.core_authority.v1#facility_target_contention",
+		"ai_port": "v073.facility_contention.ai_observation.v1#facility_target_contention",
+		"player_port": "v073.facility_contention.player_projection.v1#facility_target_contention",
+		"save_adapter": "V07CanonicalSaveAdapter#facility_target_contention",
 		"rng_stream": "NONE",
 	},
 	"solar_efficiency": {
@@ -197,6 +231,7 @@ func _run() -> void:
 	if not manifest.is_empty():
 		_test_top_level(manifest)
 		_test_domains(manifest)
+		_test_atomic_switch_group(manifest)
 		_test_no_restore_dag_aliases()
 	_test_markdown()
 	_finish()
@@ -205,15 +240,15 @@ func _run() -> void:
 func _test_top_level(manifest: Dictionary) -> void:
 	_expect(_same_key_set(manifest, TOP_LEVEL_KEYS), "manifest top-level keys are exact")
 	_expect(
-		int(manifest.get("schema_version", 0)) == 3
+		int(manifest.get("schema_version", 0)) == 4
 			and str(manifest.get("manifest_id", ""))
-				== "space_syndicate.v072.atomic_cutover_manifest"
+				== "space_syndicate.v073.atomic_cutover_manifest"
 			and str(manifest.get("lane", "")) == "B"
 			and str(manifest.get("baseline_sha", "")) == BASELINE_SHA,
 		"manifest identity, lane, and merged-kernel baseline are exact"
 	)
 	_expect(
-		str(manifest.get("status", "")) == "V072_DETACHED_ADAPTER_PREFLIGHT_READY"
+		str(manifest.get("status", "")) == "V073_DETACHED_ADAPTER_PREFLIGHT_READY"
 			and str(manifest.get("canonical_adapter_implementation_status", ""))
 				== "IMPLEMENTED_DETACHED_NOT_CONNECTED"
 			and _is_false(manifest.get("production_cutover_authorized")),
@@ -221,8 +256,8 @@ func _test_top_level(manifest: Dictionary) -> void:
 	)
 	_expect(
 		str(manifest.get("current_production_runtime_ruleset", "")) == "v0.6"
-			and str(manifest.get("target_development_ruleset", "")) == "v0.7.2",
-		"production remains V0.6 while V0.7.2 is the target"
+			and str(manifest.get("target_development_ruleset", "")) == "v0.7.3",
+		"production remains V0.6 while V0.7.3 is the target"
 	)
 	_expect(
 		_is_false(manifest.get("production_scene_change"))
@@ -231,25 +266,34 @@ func _test_top_level(manifest: Dictionary) -> void:
 		"production scene, Main, and dual-write flags remain false"
 	)
 	_expect(
-		_is_false(manifest.get("V06_SAVE_TO_V072_DIRECT_RESUME"))
-			and _is_false(manifest.get("V071_SAVE_TO_V072_DIRECT_RESUME"))
+		_is_false(manifest.get("V06_SAVE_TO_V073_DIRECT_RESUME"))
+			and _is_false(manifest.get("V072_SAVE_TO_V073_DIRECT_RESUME"))
 			and str(manifest.get("v06_save_rejection_reason", ""))
 				== "v06_save_backup_required"
 			and _same_string_array(
-				manifest.get("allowed_session_entrypoints"), ["NEW_V072_GAME"]
+				manifest.get("allowed_session_entrypoints"), ["NEW_V073_GAME"]
 			),
-		"V0.6 and V0.7.1 Saves fail closed and NEW_V072_GAME is the only entrypoint"
+		"V0.6 and V0.7.2 Saves fail closed and NEW_V073_GAME is the only entrypoint"
 	)
 	_expect(
 		_same_string_array(
-			manifest.get("required_v072_pre_cutover_gates"),
-			V072_PRE_CUTOVER_GATES
+			manifest.get("required_v073_pre_cutover_gates"),
+			V073_PRE_CUTOVER_GATES
 		)
-			and manifest.get("v072_pre_cutover_gate_contracts_declared") == true
-			and int(manifest.get("v072_production_connection_count", -1)) == 0
-			and int(manifest.get("v072_v06_mutation_count", -1)) == 0
-			and int(manifest.get("v072_dual_write_count", -1)) == 0,
-		"all inherited and Starter V0.7.2 gates are declared without production mutation"
+			and manifest.get("v073_pre_cutover_gate_contracts_declared") == true
+			and int(manifest.get("v073_production_connection_count", -1)) == 0
+			and int(manifest.get("v073_v06_mutation_count", -1)) == 0
+			and int(manifest.get("v073_dual_write_count", -1)) == 0,
+		"all inherited and contention V0.7.3 gates are detached"
+	)
+	_expect(
+		int(manifest.get("resolution_order_writer_count", -1)) == 1
+			and int(manifest.get("resolution_order_modifier_count", -1)) == 0
+			and int(manifest.get("initiative_auction_core_count", -1)) == 0
+			and int(manifest.get("initiative_bid_save_field_count", -1)) == 0
+			and int(manifest.get("initiative_bid_ui_surface_count", -1)) == 0
+			and int(manifest.get("ai_initiative_bid_policy_count", -1)) == 0,
+		"fixed order has one writer and every initiative-auction surface count is zero"
 	)
 	_expect(
 		_same_string_array(
@@ -273,7 +317,7 @@ func _test_top_level(manifest: Dictionary) -> void:
 			and _same_string_array(
 				manifest.get("domain_entry_required_fields"), DOMAIN_KEYS
 			),
-		"manifest declares the exact ten gameplay domains and exact fields"
+		"manifest declares the exact twelve gameplay domains and exact fields"
 	)
 
 
@@ -283,7 +327,7 @@ func _test_domains(manifest: Dictionary) -> void:
 	if not domains_variant is Array:
 		return
 	var domains := domains_variant as Array
-	_expect(domains.size() == REQUIRED_DOMAIN_IDS.size(), "domains has ten entries")
+	_expect(domains.size() == REQUIRED_DOMAIN_IDS.size(), "domains has twelve entries")
 	var seen: Array[String] = []
 	for index in domains.size():
 		var domain_variant: Variant = domains[index]
@@ -307,7 +351,7 @@ func _test_domains(manifest: Dictionary) -> void:
 func _test_domain_fields(domain_id: String, domain: Dictionary) -> void:
 	for field in [
 		"v06_current_owner",
-		"v072_target_owner",
+		"v073_target_owner",
 		"core_port",
 		"ai_port",
 		"player_port",
@@ -336,6 +380,8 @@ func _test_domain_fields(domain_id: String, domain: Dictionary) -> void:
 			and _nonempty_string_array(domain.get("required_asset_keys")),
 		"%s has explicit RNG and presentation dependency mappings" % domain_id
 	)
+
+
 	_expect(
 		str(domain.get("pre_cutover_gate", "")).begins_with("PASS: ")
 			and str(domain.get("cutover_step", "")).begins_with("APPLY: ")
@@ -379,6 +425,36 @@ func _test_domain_fields(domain_id: String, domain: Dictionary) -> void:
 	)
 
 
+func _test_atomic_switch_group(manifest: Dictionary) -> void:
+	var groups_variant: Variant = manifest.get("atomic_switch_groups")
+	_expect(groups_variant is Array, "atomic switch groups is an array")
+	if not groups_variant is Array:
+		return
+	var groups := groups_variant as Array
+	_expect(groups.size() == 1, "manifest declares one V0.7.3 atomic switch group")
+	if groups.size() != 1 or not groups[0] is Dictionary:
+		return
+	var group := groups[0] as Dictionary
+	_expect(
+		group.get("group_id") == "v073.fixed_order_facility_contention"
+			and group.get("switch_policy") == "all_or_nothing"
+			and _same_string_array(group.get("required_domain_ids"), [
+				"card_batch",
+				"anonymous_resolution",
+				"region_infrastructure",
+				"facility_target_contention",
+			])
+			and group.get("fixed_round_robin_required") == true
+			and group.get("local_action_layering_required") == true
+			and group.get("facility_action_mode_required") == true
+			and group.get("facility_target_revalidation_required") == true
+			and group.get("contention_fizzle_receipt_required") == true
+			and group.get("legacy_auto_mode_conversion_must_be_removed") == true
+			and _is_false(group.get("dual_write_allowed")),
+		"fixed order, facility modes, revalidation, and Fizzle switch together"
+	)
+
+
 func _test_no_restore_dag_aliases() -> void:
 	var source := FileAccess.get_file_as_string(MANIFEST_PATH)
 	for alias in [
@@ -410,25 +486,25 @@ func _test_markdown() -> void:
 	_expect(not markdown.is_empty(), "Markdown companion is nonempty")
 	for token in [
 		"LANE=B",
-		"STATUS=V072_DETACHED_ADAPTER_PREFLIGHT_READY",
+		"STATUS=V073_DETACHED_ADAPTER_PREFLIGHT_READY",
 		"CANONICAL_ADAPTER_IMPLEMENTATION_STATUS=IMPLEMENTED_DETACHED_NOT_CONNECTED",
 		"CURRENT_PRODUCTION_RUNTIME_RULESET=V0.6",
 		"PRODUCTION_CUTOVER_AUTHORIZED=false",
-		"V06_SAVE_TO_V072_DIRECT_RESUME=false",
-		"V071_SAVE_TO_V072_DIRECT_RESUME=false",
+		"V06_SAVE_TO_V073_DIRECT_RESUME=false",
+		"V072_SAVE_TO_V073_DIRECT_RESUME=false",
 		"V06_SAVE_REJECTION_REASON=v06_save_backup_required",
-		"ALLOWED_SESSION_ENTRYPOINTS=[NEW_V072_GAME]",
+		"ALLOWED_SESSION_ENTRYPOINTS=[NEW_V073_GAME]",
 		"PRODUCTION_SCENE_CHANGE=false",
 		"MAIN_CHANGE=false",
 		"DUAL_WRITE_ALLOWED=false",
 	]:
 		_expect(markdown.contains(token), "Markdown declares %s" % token)
 	_expect(
-		not markdown.contains("V06_SAVE_TO_V072_DIRECT_RESUME=true")
-			and not markdown.contains("V071_SAVE_TO_V072_DIRECT_RESUME=true")
+		not markdown.contains("V06_SAVE_TO_V073_DIRECT_RESUME=true")
+			and not markdown.contains("V072_SAVE_TO_V073_DIRECT_RESUME=true")
 			and not markdown.contains("DUAL_WRITE_ALLOWED=true")
 			and markdown.contains(
-				"LATEST_MAIN_BASELINE_SHA=76ffcbf1df5c122955e620b7b4a4339e3dd9a2cb"
+				"LATEST_MAIN_BASELINE_SHA=794ccf010e661a4750efca20a4e0d2a5839b7f2b"
 			)
 			and markdown.contains("COMMERCIAL_ART_FOUNDATION=GREEN")
 			and markdown.contains("PRESENTATION_ASSET_CATALOG_READY=true"),
@@ -452,7 +528,7 @@ func _test_markdown() -> void:
 		var section := markdown.substr(start, finish - start)
 		for label in [
 			"**V0.6 current owner:**",
-			"**V0.7.2 target owner:**",
+			"**V0.7.3 target owner:**",
 			"**Core port:**",
 			"**AI port:**",
 			"**Player port:**",
@@ -561,10 +637,10 @@ func _expect(condition: bool, label: String) -> void:
 func _finish() -> void:
 	if _failures.is_empty():
 		print(
-			"V072_ATOMIC_CUTOVER_MANIFEST|status=PASS|checks=%d|domains=10|entry=NEW_V072_GAME"
+			"V073_ATOMIC_CUTOVER_MANIFEST|status=PASS|checks=%d|domains=12|entry=NEW_V073_GAME"
 			% _checks
 		)
-		print("V072_ATOMIC_CUTOVER_MANIFEST_READY | status=PASS")
+		print("V073_ATOMIC_CUTOVER_MANIFEST_READY | status=PASS")
 		quit(0)
 		return
 	for failure in _failures:

@@ -17,35 +17,55 @@ const SOLAR_VICTORY_CORE := preload(
 	"res://scripts/v07_semantic/v07_solar_victory_core.gd"
 )
 
-const SCHEMA_VERSION := 3
-const SAVE_SCHEMA_ID := "space_syndicate.v072.semantic_save.v2"
-const CONSTITUTION_ID := "space_syndicate.v072.complete"
-const RULESET_ID := "v0.7.2"
-const RNG_REGISTRY_ID := "space_syndicate.v072.rng_ownership.v2"
-const PLAN_SCHEMA_ID := "space_syndicate.v072.detached_restore_plan.v2"
-const CHECKPOINT_SCHEMA_ID := "space_syndicate.v072.detached_restore_checkpoint.v2"
-const BALANCE_PROFILE_ID := "V072_STARTER_FREE_FAST"
+const SCHEMA_VERSION := 4
+const SAVE_SCHEMA_ID := "space_syndicate.v073.semantic_save.v3"
+const CONSTITUTION_ID := "space_syndicate.v073.complete"
+const RULESET_ID := "v0.7.3"
+const RNG_REGISTRY_ID := "space_syndicate.v073.rng_ownership.v3"
+const PLAN_SCHEMA_ID := "space_syndicate.v073.detached_restore_plan.v3"
+const CHECKPOINT_SCHEMA_ID := "space_syndicate.v073.detached_restore_checkpoint.v3"
+const BALANCE_PROFILE_ID := "V073_STARTER_FREE_FIXED_ORDER_CONTENTION"
 const BALANCE_PROFILE_FINGERPRINT := (
-	"b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48"
+	"a413ad0ddd8a06b15ccee943d9cd93c6f7941fc66ce901a1f44934797f50231c"
 )
 
-const SOURCE_NEW_V07_GAME := "NEW_V072_GAME"
-const SOURCE_V07_SAVE := "V071_SAVE"
+const SOURCE_NEW_V07_GAME := "NEW_V073_GAME"
+const SOURCE_V07_SAVE := "V072_SAVE"
 const SOURCE_V06_SAVE := "V06_SAVE"
 const V06_BACKUP_REQUIRED_REASON := "v06_save_backup_required"
-const V07_DIRECT_RESUME_REJECTED_REASON := "v071_save_to_v072_direct_resume_forbidden"
+const V07_DIRECT_RESUME_REJECTED_REASON := "v072_save_to_v073_direct_resume_forbidden"
 
 const SECTION_UNIFIED := "unified_card_track_cycle"
 const SECTION_DBG := "personal_dbg_and_merge"
 const SECTION_ASSET := "six_color_assets_and_reservations"
 const SECTION_BATCH := "card_batch_and_anonymous_resolution"
+const SECTION_CONTENTION := "facility_target_contention"
 const SECTION_SOLAR := "solar_facility_and_macro_victory"
 const SECTION_IDS := [
 	SECTION_UNIFIED,
 	SECTION_DBG,
 	SECTION_ASSET,
 	SECTION_BATCH,
+	SECTION_CONTENTION,
 	SECTION_SOLAR,
+]
+const CONTENTION_SAVE_FIELDS := [
+	"schema_version", "state_version", "contract_id", "ruleset_id",
+	"balance_profile_id", "v072_direct_resume_allowed", "v06_direct_resume_allowed",
+	"state", "save_fingerprint",
+]
+const CONTENTION_STATE_FIELDS := [
+	"schema_version", "state_version", "ruleset_id", "balance_profile_id",
+	"contract_id", "production_runtime_connected", "batch_id", "revision", "status",
+	"resolution_order_source", "player_ids", "frozen_hidden_lead_order_at_batch_lock",
+	"player_local_queues", "authority_queue", "anonymous_global_queue",
+	"resolution_cursor", "facility_slots", "processed_action_ids",
+	"resolution_receipts", "state_fingerprint",
+]
+const CONTENTION_FORBIDDEN_FIELDS := [
+	"initiative_bid", "bid_cash", "bid_reservation", "bid_rank", "bid_histogram",
+	"auction_status", "auction_receipt", "public_tiebreak_cursor",
+	"resolution_priority_bid_order",
 ]
 
 const ENVELOPE_FIELDS := [
@@ -152,6 +172,16 @@ const RESTORE_NODE_SPECS := [
 		],
 	},
 	{
+		"node_id": "facility_target_contention",
+		"section_id": SECTION_CONTENTION,
+		"depends_on": [
+			"envelope_identity",
+			"hidden_lead_cycle",
+			"six_color_assets_and_reservations",
+			"card_batch_and_anonymous_resolution",
+		],
+	},
+	{
 		"node_id": "solar_facility_state",
 		"section_id": "solar_facility_and_macro_victory.state.solar",
 		"depends_on": ["envelope_identity"],
@@ -178,6 +208,7 @@ const RESTORE_NODE_SPECS := [
 			"unified_card_track_cycle",
 			"six_color_assets_and_reservations",
 			"card_batch_and_anonymous_resolution",
+			"facility_target_contention",
 			"solar_facility_state",
 			"macro_round_victory_gate",
 		],
@@ -228,7 +259,7 @@ static func capture_new_v07_game(
 	return {
 		"accepted": true,
 		"captured": true,
-		"reason_code": "v072_canonical_envelope_captured",
+		"reason_code": "v073_canonical_envelope_captured",
 		"source_kind": SOURCE_NEW_V07_GAME,
 		"requires_backup": false,
 		"section_count": SECTION_IDS.size(),
@@ -262,7 +293,7 @@ static func preflight_restore(
 		)
 	if source_kind != SOURCE_NEW_V07_GAME:
 		return _source_rejection(
-			"new_v072_game_source_required", source_kind, false
+			"new_v073_game_source_required", source_kind, false
 		)
 	if not (candidate is Dictionary):
 		return _preflight_failure("envelope_not_dictionary", 0, 0)
@@ -272,7 +303,7 @@ static func preflight_restore(
 		return envelope_result
 	return {
 		"accepted": true,
-		"reason_code": "v072_canonical_envelope_preflight_green",
+		"reason_code": "v073_canonical_envelope_preflight_green",
 		"source_kind": SOURCE_NEW_V07_GAME,
 		"requires_backup": false,
 		"backup_required": false,
@@ -728,7 +759,7 @@ static func adapter_contract() -> Dictionary:
 		"balance_profile_id": BALANCE_PROFILE_ID,
 		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"source_kinds_allowed": [SOURCE_NEW_V07_GAME],
-		"v07_direct_resume_allowed": false,
+		"v072_direct_resume_allowed": false,
 		"v07_test_only_migration_requires_explicit_contract": true,
 		"v06_direct_resume_allowed": false,
 		"v06_backup_required": true,
@@ -742,6 +773,8 @@ static func adapter_contract() -> Dictionary:
 		"reverse_order_rollback": true,
 		"exact_recapture": true,
 		"production_runtime_connected": false,
+		"facility_contention_save_ready": true,
+		"initiative_bid_save_field_count": 0,
 	}
 
 
@@ -902,6 +935,21 @@ static func _preflight_sections(sections: Dictionary) -> Dictionary:
 			preflight_count
 		)
 
+	var contention_variant: Variant = sections.get(SECTION_CONTENTION)
+	if not (contention_variant is Dictionary):
+		return _section_failure(
+			"section_preflight_failed.%s.payload_invalid" % SECTION_CONTENTION,
+			preflight_count
+		)
+	var contention := contention_variant as Dictionary
+	var contention_reason := _facility_contention_save_error(contention)
+	if not contention_reason.is_empty():
+		return _section_failure(
+			"section_preflight_failed.%s.%s" % [SECTION_CONTENTION, contention_reason],
+			preflight_count
+		)
+	preflight_count += 1
+
 	var solar_variant: Variant = sections.get(SECTION_SOLAR)
 	if not (solar_variant is Dictionary):
 		return _section_failure(
@@ -926,9 +974,87 @@ static func _preflight_sections(sections: Dictionary) -> Dictionary:
 		)
 	return {
 		"accepted": true,
-		"reason_code": "all_five_section_preflights_green",
+		"reason_code": "all_six_section_preflights_green",
 		"preflight_count": preflight_count,
 	}
+
+
+static func _facility_contention_save_error(save_state: Dictionary) -> String:
+	if not CODEC.is_pure_data(save_state) \
+			or not CODEC.has_exact_fields(save_state, CONTENTION_SAVE_FIELDS):
+		return "save_fields_invalid"
+	if not CODEC.is_fingerprint(save_state.get("save_fingerprint")) \
+			or str(save_state.get("save_fingerprint", "")) \
+				!= CODEC.fingerprint(save_state, "save_fingerprint"):
+		return "save_fingerprint_invalid"
+	if save_state.get("schema_version") != 1 \
+			or save_state.get("state_version") != 1 \
+			or save_state.get("contract_id") \
+				!= "v073.facility_contention.save_state.v1" \
+			or save_state.get("ruleset_id") != RULESET_ID \
+			or save_state.get("balance_profile_id") != BALANCE_PROFILE_ID \
+			or save_state.get("v072_direct_resume_allowed") != false \
+			or save_state.get("v06_direct_resume_allowed") != false \
+			or not (save_state.get("state") is Dictionary):
+		return "save_identity_invalid"
+	var state := save_state.get("state") as Dictionary
+	if not CODEC.has_exact_fields(state, CONTENTION_STATE_FIELDS) \
+			or not CODEC.is_fingerprint(state.get("state_fingerprint")) \
+			or str(state.get("state_fingerprint", "")) \
+				!= CODEC.fingerprint(state, "state_fingerprint"):
+		return "state_contract_invalid"
+	if state.get("schema_version") != 1 \
+			or state.get("state_version") != 1 \
+			or state.get("ruleset_id") != RULESET_ID \
+			or state.get("balance_profile_id") != BALANCE_PROFILE_ID \
+			or state.get("contract_id") \
+				!= "v073.facility_contention.core_authority.v1" \
+			or state.get("production_runtime_connected") != false \
+			or state.get("resolution_order_source") \
+				!= "frozen_hidden_lead_order_at_batch_lock" \
+			or str(state.get("status", "")) \
+				not in ["resolution_ready", "resolving", "resolved"]:
+		return "state_identity_invalid"
+	for array_field in [
+		"player_ids", "frozen_hidden_lead_order_at_batch_lock", "authority_queue",
+		"anonymous_global_queue", "processed_action_ids", "resolution_receipts",
+	]:
+		if not (state.get(array_field) is Array):
+			return "state_collection_invalid"
+	for dictionary_field in ["player_local_queues", "facility_slots"]:
+		if not (state.get(dictionary_field) is Dictionary):
+			return "state_collection_invalid"
+	var player_ids := _string_array(state.get("player_ids") as Array)
+	var frozen_order := _string_array(
+		state.get("frozen_hidden_lead_order_at_batch_lock") as Array
+	)
+	if player_ids.size() < 3 or player_ids.size() > 8 \
+			or not _same_string_set(player_ids, frozen_order) \
+			or not (state.get("resolution_cursor") is int) \
+			or int(state.get("resolution_cursor", -1)) < 0:
+		return "state_resolution_order_invalid"
+	if _contains_forbidden_contention_field(save_state):
+		return "initiative_bid_save_field_present"
+	return ""
+
+
+static func _contains_forbidden_contention_field(value: Variant) -> bool:
+	if value is Array:
+		for child in value as Array:
+			if _contains_forbidden_contention_field(child):
+				return true
+	elif value is Dictionary:
+		for key_variant in (value as Dictionary).keys():
+			var key := str(key_variant).to_lower()
+			if CONTENTION_FORBIDDEN_FIELDS.has(key) \
+					or key.begins_with("initiative_bid_") \
+					or key.begins_with("auction_"):
+				return true
+			if _contains_forbidden_contention_field(
+				(value as Dictionary).get(key_variant)
+			):
+				return true
+	return false
 
 
 static func _cross_section_error(
@@ -981,6 +1107,16 @@ static func _cross_section_error(
 	)
 	if not frozen_order.is_empty() and frozen_order != round_order:
 		return "asset_batch_frozen_hidden_lead_order_mismatch"
+	var contention_save := sections.get(SECTION_CONTENTION) as Dictionary
+	var contention_state := contention_save.get("state") as Dictionary
+	if not _same_string_set(
+		_string_array(contention_state.get("player_ids", []) as Array), roster_ids
+	):
+		return "facility_contention_roster_mismatch"
+	if _string_array(
+		contention_state.get("frozen_hidden_lead_order_at_batch_lock", []) as Array
+	) != round_order:
+		return "facility_contention_frozen_order_mismatch"
 
 	if str(solar_state.get("match_instance_id", "")) \
 			!= str(authority.get("match_instance_id", "")):
@@ -1083,6 +1219,10 @@ static func _build_plan_unchecked(envelope: Dictionary) -> Dictionary:
 			"card_batch_and_anonymous_resolution":
 				payload = (
 					sections.get(SECTION_BATCH) as Dictionary
+				).duplicate(true)
+			"facility_target_contention":
+				payload = (
+					sections.get(SECTION_CONTENTION) as Dictionary
 				).duplicate(true)
 			"solar_facility_state":
 				payload = (
@@ -1229,19 +1369,19 @@ static func _metadata_error(metadata: Dictionary) -> String:
 
 static func _looks_like_v07_save(candidate: Variant, source_kind: String) -> bool:
 	if source_kind == SOURCE_V07_SAVE \
-			or source_kind.to_upper() in ["V07_SAVE", "V071_SAVE"]:
+			or source_kind.to_upper() in ["V07_SAVE", "V071_SAVE", "V072_SAVE"]:
 		return true
 	if not (candidate is Dictionary):
 		return false
 	var value := candidate as Dictionary
-	if str(value.get("ruleset_id", "")) in ["v0.7", "v0.7.1"] \
-			or str(value.get("ruleset", "")) in ["v0.7", "v0.7.1"]:
+	if str(value.get("ruleset_id", "")) in ["v0.7", "v0.7.1", "v0.7.2"] \
+			or str(value.get("ruleset", "")) in ["v0.7", "v0.7.1", "v0.7.2"]:
 		return true
 	for field in ["header", "metadata", "manifest"]:
 		var nested_variant: Variant = value.get(field)
 		if nested_variant is Dictionary \
 				and str((nested_variant as Dictionary).get("ruleset_id", "")) \
-					in ["v0.7", "v0.7.1"]:
+					in ["v0.7", "v0.7.1", "v0.7.2"]:
 			return true
 	return false
 
@@ -1418,7 +1558,7 @@ static func _source_rejection(
 		"target_ruleset_id": RULESET_ID,
 		"requires_backup": requires_backup,
 		"backup_required": requires_backup,
-		"new_v072_game_required": true,
+		"new_v073_game_required": true,
 		"direct_resume_allowed": false,
 		"envelope_valid": false,
 		"preflight_complete": false,

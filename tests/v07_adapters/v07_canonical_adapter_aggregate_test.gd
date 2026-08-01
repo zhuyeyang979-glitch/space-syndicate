@@ -2,7 +2,7 @@ extends SceneTree
 
 const ADAPTER_ROOT := "res://scripts/v07_adapters"
 const TEST_ROOT := "res://tests/v07_adapters"
-const BASELINE_REVISION := "76ffcbf1df5c122955e620b7b4a4339e3dd9a2cb"
+const BASELINE_REVISION := "794ccf010e661a4750efca20a4e0d2a5839b7f2b"
 const COMMERCIAL_COMPATIBILITY_TEST := (
 	"res://tests/v07_adapters/v07_commercial_art_asset_key_compatibility_test.gd"
 )
@@ -17,11 +17,11 @@ const MANIFEST_SEARCH_ROOTS := [
 ]
 const READINESS_ORDER := ["save", "rng", "ai", "player", "manifest"]
 const READINESS_OUTPUT_MARKERS := {
-	"save": "V072_CANONICAL_SAVE_ADAPTER_READY",
-	"rng": "V072_CANONICAL_RNG_ADAPTER_READY",
-	"ai": "V072_CANONICAL_AI_OBSERVATION_ADAPTER_READY",
-	"player": "V072_CANONICAL_PLAYER_PROJECTION_ADAPTER_READY",
-	"manifest": "V072_ATOMIC_CUTOVER_MANIFEST_READY",
+	"save": "V073_CANONICAL_SAVE_ADAPTER_READY",
+	"rng": "V073_CANONICAL_RNG_ADAPTER_READY",
+	"ai": "V073_CANONICAL_AI_OBSERVATION_ADAPTER_READY",
+	"player": "V073_CANONICAL_PLAYER_PROJECTION_ADAPTER_READY",
+	"manifest": "V073_ATOMIC_CUTOVER_MANIFEST_READY",
 }
 const GAMEPLAY_DOMAIN_IDS := [
 	"unified_card_track",
@@ -32,13 +32,15 @@ const GAMEPLAY_DOMAIN_IDS := [
 	"card_batch",
 	"asset_reservation",
 	"anonymous_resolution",
+	"region_infrastructure",
+	"facility_target_contention",
 	"solar_efficiency",
 	"macro_round_victory_gate",
 ]
 const GAMEPLAY_DOMAIN_FIELDS := [
 	"domain_id",
 	"v06_current_owner",
-	"v072_target_owner",
+	"v073_target_owner",
 	"core_port",
 	"ai_port",
 	"player_port",
@@ -108,15 +110,15 @@ func _test_manifest_inventory(
 ) -> bool:
 	var manifest_identity_ready := (
 		str(manifest.get("manifest_id", ""))
-			== "space_syndicate.v072.atomic_cutover_manifest"
-		and str(manifest.get("target_development_ruleset", "")) == "v0.7.2"
+			== "space_syndicate.v073.atomic_cutover_manifest"
+		and str(manifest.get("target_development_ruleset", "")) == "v0.7.3"
 		and _resync_focused_gates_declared()
 	)
 	_expect(manifest_identity_ready,
 		"atomic cutover manifest identity and target ruleset are exact")
 	var gameplay_domains_ready := _manifest_gameplay_domains_ready(manifest)
 	_expect(gameplay_domains_ready,
-		"manifest has the exact 10 gameplay IDs and exact per-domain fields")
+		"manifest has the exact 12 gameplay IDs and exact per-domain fields")
 	var inventory_ready := not adapter_scripts.is_empty()
 	return manifest_identity_ready and gameplay_domains_ready and inventory_ready
 
@@ -125,22 +127,22 @@ func _manifest_preflight_ready(manifest: Dictionary) -> bool:
 	if manifest.is_empty():
 		return false
 	var ready: bool = str(manifest.get("manifest_id", "")) \
-			== "space_syndicate.v072.atomic_cutover_manifest" \
+			== "space_syndicate.v073.atomic_cutover_manifest" \
 		and str(manifest.get("baseline_sha", "")) == BASELINE_REVISION \
-		and str(manifest.get("target_development_ruleset", "")) == "v0.7.2" \
+		and str(manifest.get("target_development_ruleset", "")) == "v0.7.3" \
 		and str(manifest.get("status", "")) \
-			== "V072_DETACHED_ADAPTER_PREFLIGHT_READY" \
+			== "V073_DETACHED_ADAPTER_PREFLIGHT_READY" \
 		and str(manifest.get("canonical_adapter_implementation_status", "")) \
 			== "IMPLEMENTED_DETACHED_NOT_CONNECTED" \
 		and not bool(manifest.get("production_cutover_authorized", true)) \
 		and not bool(manifest.get("production_scene_change", true)) \
 		and not bool(manifest.get("main_change", true)) \
 		and not bool(manifest.get("dual_write_allowed", true)) \
-		and manifest.get("V06_SAVE_TO_V072_DIRECT_RESUME") is bool \
-		and not bool(manifest.get("V06_SAVE_TO_V072_DIRECT_RESUME")) \
-		and manifest.get("V071_SAVE_TO_V072_DIRECT_RESUME") is bool \
-		and not bool(manifest.get("V071_SAVE_TO_V072_DIRECT_RESUME")) \
-		and manifest.get("allowed_session_entrypoints") == ["NEW_V072_GAME"]
+		and manifest.get("V06_SAVE_TO_V073_DIRECT_RESUME") is bool \
+		and not bool(manifest.get("V06_SAVE_TO_V073_DIRECT_RESUME")) \
+		and manifest.get("V072_SAVE_TO_V073_DIRECT_RESUME") is bool \
+		and not bool(manifest.get("V072_SAVE_TO_V073_DIRECT_RESUME")) \
+		and manifest.get("allowed_session_entrypoints") == ["NEW_V073_GAME"]
 	return ready and _manifest_gameplay_domains_ready(manifest)
 
 
@@ -173,7 +175,7 @@ func _manifest_gameplay_domains_ready(manifest: Dictionary) -> bool:
 		seen.append(domain_id)
 		for field in [
 			"v06_current_owner",
-			"v072_target_owner",
+			"v073_target_owner",
 			"core_port",
 			"ai_port",
 			"player_port",
@@ -276,12 +278,14 @@ func _save_contract_ready(
 	if not contract_variant is Dictionary:
 		return false
 	var contract := contract_variant as Dictionary
-	return constants.get("RULESET_ID") == "v0.7.2" \
-		and contract.get("ruleset_id") == "v0.7.2" \
-		and contract.get("target_ruleset_id") == "v0.7.2" \
-		and contract.get("source_kinds_allowed") == ["NEW_V072_GAME"] \
+	return constants.get("RULESET_ID") == "v0.7.3" \
+		and contract.get("ruleset_id") == "v0.7.3" \
+		and contract.get("target_ruleset_id") == "v0.7.3" \
+		and contract.get("source_kinds_allowed") == ["NEW_V073_GAME"] \
 		and contract.get("v06_direct_resume_allowed") == false \
-		and contract.get("section_count") == 5 \
+		and contract.get("section_count") == 6 \
+		and contract.get("facility_contention_save_ready") == true \
+		and contract.get("initiative_bid_save_field_count") == 0 \
 		and contract.get("all_preflight_before_apply") == true \
 		and contract.get("detached_restore_only") == true \
 		and contract.get("checkpoint_before_apply") == true \
@@ -302,9 +306,9 @@ func _rng_contract_ready(
 	if not contract_variant is Dictionary:
 		return false
 	var contract := contract_variant as Dictionary
-	return constants.get("RULESET_ID") == "v0.7.2" \
-		and contract.get("ruleset_id") == "v0.7.2" \
-		and contract.get("target_ruleset_id") == "v0.7.2" \
+	return constants.get("RULESET_ID") == "v0.7.3" \
+		and contract.get("ruleset_id") == "v0.7.3" \
+		and contract.get("target_ruleset_id") == "v0.7.3" \
 		and contract.get("logical_stream_id_count") == 7 \
 		and contract.get("canonical_row_is_second_rng_authority") == false \
 		and contract.get("draw_api_count") == 0 \
@@ -316,11 +320,11 @@ func _ai_contract_ready(
 	constants: Dictionary,
 	methods: Array[String]
 ) -> bool:
-	if constants.get("RULESET_ID") != "v0.7.2" \
+	if constants.get("RULESET_ID") != "v0.7.3" \
 			or constants.get("ADAPTER_ID") \
-				!= "v072.canonical.ai_observation_adapter.v3" \
+				!= "v073.canonical.ai_observation_adapter.v4" \
 			or constants.get("OBSERVATION_ID") \
-				!= "v072.canonical.ai_observation.v3" \
+				!= "v073.canonical.ai_observation.v4" \
 			or not _has_methods(methods, [
 				"issue_capability",
 				"bind_authorization",
@@ -338,7 +342,7 @@ func _ai_contract_ready(
 		return false
 	var snapshot := snapshot_variant as Dictionary
 	return snapshot.get("adapter_id") == constants.get("ADAPTER_ID") \
-		and snapshot.get("target_ruleset_id") == "v0.7.2" \
+		and snapshot.get("target_ruleset_id") == "v0.7.3" \
 		and snapshot.get("mutates_core") == false \
 		and snapshot.get("consumes_rng") == false \
 		and snapshot.get("stores_observation_payloads") == false \
@@ -350,9 +354,9 @@ func _player_contract_ready(
 	constants: Dictionary,
 	methods: Array[String]
 ) -> bool:
-	if constants.get("RULESET_ID") != "v0.7.2" \
+	if constants.get("RULESET_ID") != "v0.7.3" \
 			or constants.get("ADAPTER_ID") \
-				!= "v072.canonical.player_projection_adapter.v3" \
+				!= "v073.canonical.player_projection_adapter.v4" \
 			or not _has_methods(methods, [
 				"issue_capability",
 				"bind_authorization",
@@ -370,7 +374,7 @@ func _player_contract_ready(
 		return false
 	var snapshot := snapshot_variant as Dictionary
 	return snapshot.get("adapter_id") == constants.get("ADAPTER_ID") \
-		and snapshot.get("target_ruleset_id") == "v0.7.2" \
+		and snapshot.get("target_ruleset_id") == "v0.7.3" \
 		and snapshot.get("mutates_core") == false \
 		and snapshot.get("consumes_rng") == false \
 		and snapshot.get("capability_is_projection_data") == false
@@ -403,7 +407,7 @@ func _focused_gate_declares_pass(category: String) -> bool:
 		return false
 	var source := FileAccess.get_file_as_string(candidates[0]).to_lower()
 	if category == "manifest":
-		return source.contains("v072_atomic_cutover_manifest|status=pass")
+		return source.contains("v073_atomic_cutover_manifest|status=pass")
 	return source.contains("pass") \
 		and source.contains("canonical") \
 		and source.contains("adapter") \

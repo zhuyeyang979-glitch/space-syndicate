@@ -170,11 +170,13 @@ func _build_fixture() -> void:
 		_asset_state,
 		VIEWER_ID
 	)
+	var contention_projection := _contention_projection(VIEWER_ID)
 	_sources = {
 		"unified_track": track_projection,
 		"personal_dbg": dbg_projection,
 		"six_color_assets": asset_projection,
 		"card_batch": batch_projection,
+		"facility_contention": contention_projection,
 	}
 	_context = ADAPTER.build_authorization_context(
 		MATCH_ID,
@@ -185,7 +187,8 @@ func _build_fixture() -> void:
 		track_projection,
 		dbg_projection,
 		asset_projection,
-		batch_projection
+		batch_projection,
+		contention_projection
 	)
 	_expect(not _context.is_empty(), "adapter builds a closed current-source authorization")
 	_capability = ADAPTER.issue_capability()
@@ -228,6 +231,8 @@ func _test_canonical_happy_path() -> void:
 			and _projection.get("six_color_assets") \
 				== _sources.get("six_color_assets")
 			and _projection.get("card_batch") == _sources.get("card_batch")
+			and _projection.get("facility_contention") \
+				== _sources.get("facility_contention")
 			and _projection.get("presentation_assets") \
 				== ADAPTER.presentation_asset_contract(),
 		"adapter preserves Core surfaces and projects only stable presentation asset keys"
@@ -427,7 +432,8 @@ func _test_match_authorization_and_source_staleness() -> void:
 		_sources.get("unified_track") as Dictionary,
 		_sources.get("personal_dbg") as Dictionary,
 		_sources.get("six_color_assets") as Dictionary,
-		_sources.get("card_batch") as Dictionary
+		_sources.get("card_batch") as Dictionary,
+		_sources.get("facility_contention") as Dictionary
 	)
 	_expect(
 		_adapter.bind_authorization(_capability, next_context),
@@ -470,6 +476,7 @@ func _test_rival_projection_rejection() -> void:
 			_asset_state,
 			"player.1"
 		),
+		"facility_contention": _contention_projection("player.1"),
 	}
 	_expect(
 		_adapter.adapt_player_projection(
@@ -658,6 +665,23 @@ func _zero_cost() -> Dictionary:
 	return cost
 
 
+func _contention_projection(viewer_id: String) -> Dictionary:
+	return WIRE.sealed_copy({
+		"schema_version": 1,
+		"state_version": 1,
+		"ruleset_id": "v0.7.3",
+		"contract_id": "v073.facility_contention.player_projection.v1",
+		"viewer_id": viewer_id,
+		"batch_id": BATCH_ID,
+		"state_revision": 1,
+		"own_local_queue": [],
+		"anonymous_public_queue": [],
+		"public_facility_slots": [],
+		"resolution_cursor": 0,
+		"complete_hidden_order_disclosed": false,
+	}, "projection_fingerprint")
+
+
 func _expect(condition: bool, message: String) -> void:
 	_checks += 1
 	if not condition:
@@ -667,11 +691,11 @@ func _expect(condition: bool, message: String) -> void:
 func _finish() -> void:
 	if _failures.is_empty():
 		print(
-			"V072_CANONICAL_PLAYER_PROJECTION_ADAPTER_READY | status=PASS | checks=%d"
+			"V073_CANONICAL_PLAYER_PROJECTION_ADAPTER_READY | status=PASS | checks=%d"
 			% _checks
 		)
 		quit(0)
 		return
 	for failure in _failures:
-		push_error("V072_CANONICAL_PLAYER_PROJECTION_ADAPTER_FAIL: %s" % failure)
+		push_error("V073_CANONICAL_PLAYER_PROJECTION_ADAPTER_FAIL: %s" % failure)
 	quit(1)

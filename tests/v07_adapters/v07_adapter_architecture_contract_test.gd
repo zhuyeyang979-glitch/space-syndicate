@@ -1,7 +1,7 @@
 extends SceneTree
 
 const ADAPTER_ROOT := "res://scripts/v07_adapters"
-const BASELINE_REVISION := "76ffcbf1df5c122955e620b7b4a4339e3dd9a2cb"
+const BASELINE_REVISION := "794ccf010e661a4750efca20a4e0d2a5839b7f2b"
 const DECLARED_PRODUCTION_WRITE_PREFIX := "scripts/v07_adapters/"
 
 const MANIFEST_SEARCH_ROOTS := [
@@ -44,7 +44,7 @@ const FORBIDDEN_SOURCE_TOKENS := [
 	"gameruntimecoordinator",
 ]
 const PRODUCTION_CONNECTION_KEYS := [
-	"v072_production_connection_count",
+	"v073_production_connection_count",
 	"v07_production_runtime_connection_count",
 	"production_runtime_connection_count",
 	"production_connection_count",
@@ -64,13 +64,15 @@ const GAMEPLAY_DOMAIN_IDS := [
 	"card_batch",
 	"asset_reservation",
 	"anonymous_resolution",
+	"region_infrastructure",
+	"facility_target_contention",
 	"solar_efficiency",
 	"macro_round_victory_gate",
 ]
 const GAMEPLAY_DOMAIN_FIELDS := [
 	"domain_id",
 	"v06_current_owner",
-	"v072_target_owner",
+	"v073_target_owner",
 	"core_port",
 	"ai_port",
 	"player_port",
@@ -136,7 +138,7 @@ func _test_manifest_inventory(
 ) -> void:
 	_expect(
 		str(manifest.get("manifest_id", ""))
-			== "space_syndicate.v072.atomic_cutover_manifest"
+			== "space_syndicate.v073.atomic_cutover_manifest"
 			and str(manifest.get("baseline_sha", "")) == BASELINE_REVISION,
 		"manifest identity and declared production baseline are exact"
 	)
@@ -150,7 +152,7 @@ func _test_manifest_gameplay_domains(manifest: Dictionary) -> void:
 		)
 	_expect(
 		domain_ids_ready,
-		"manifest declares the exact 10 gameplay domain IDs in canonical order"
+		"manifest declares the exact 12 gameplay domain IDs in canonical order"
 	)
 	var field_contract_ready: bool = _same_string_array(
 		manifest.get("domain_entry_required_fields"),
@@ -169,7 +171,7 @@ func _test_manifest_gameplay_domains(manifest: Dictionary) -> void:
 		return
 	var domains := domains_variant as Array
 	_expect(domains.size() == GAMEPLAY_DOMAIN_IDS.size(),
-		"manifest contains exactly 10 gameplay domain entries")
+		"manifest contains exactly 12 gameplay domain entries")
 	var seen: Array[String] = []
 	for index in range(domains.size()):
 		var domain_variant: Variant = domains[index]
@@ -190,7 +192,7 @@ func _test_manifest_gameplay_domains(manifest: Dictionary) -> void:
 		seen.append(domain_id)
 		for field in [
 			"v06_current_owner",
-			"v072_target_owner",
+			"v073_target_owner",
 			"core_port",
 			"ai_port",
 			"player_port",
@@ -247,7 +249,7 @@ func _test_manifest_detachment(manifest: Dictionary) -> void:
 		_expect((value is int or value is float) and float(value) == 0.0,
 			"every manifest production connection count is zero")
 	_expect(
-		str(manifest.get("status", "")) == "V072_DETACHED_ADAPTER_PREFLIGHT_READY"
+		str(manifest.get("status", "")) == "V073_DETACHED_ADAPTER_PREFLIGHT_READY"
 			and str(manifest.get("canonical_adapter_implementation_status", ""))
 				== "IMPLEMENTED_DETACHED_NOT_CONNECTED"
 			and not bool(manifest.get("production_cutover_authorized", true))
