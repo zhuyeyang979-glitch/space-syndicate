@@ -557,8 +557,12 @@ func _test_hidden_lead_and_reverse_macro_rounds() -> void:
 			and str(hidden.get("direction", "")) == "forward",
 		"macro round one follows the fixed hidden order"
 	)
-	for index in range(ROSTER.size()):
-		_commit_cycle(core, "request.reverse.forward.%02d" % index)
+	for index in range(ROSTER.size() * CORE_SCRIPT.DEFAULT_LEAD_TENURE_BATCHES):
+		_commit_completed_batch(
+			core,
+			"request.reverse.forward.%02d" % index,
+			index + 1
+		)
 	var second_round := (
 		_authority_state(core).get("hidden_lead_cycle_state", {}) as Dictionary
 	)
@@ -574,8 +578,12 @@ func _test_hidden_lead_and_reverse_macro_rounds() -> void:
 		second_round.get("fixed_order", []) == fixed_order,
 		"the authority-secret base order never reshuffles between macro rounds"
 	)
-	for index in range(ROSTER.size()):
-		_commit_cycle(core, "request.reverse.backward.%02d" % index)
+	for index in range(ROSTER.size() * CORE_SCRIPT.DEFAULT_LEAD_TENURE_BATCHES):
+		_commit_completed_batch(
+			core,
+			"request.reverse.backward.%02d" % index,
+			100 + index
+		)
 	var third_round := (
 		_authority_state(core).get("hidden_lead_cycle_state", {}) as Dictionary
 	)
@@ -622,11 +630,18 @@ func _test_three_wing_same_source_and_privacy() -> void:
 		"AI and player consume shared allowlisted Core facts without copied rules"
 	)
 	_expect(
-		not (ai.get("viewer_private_facts", {}) as Dictionary).has("self_lead_notice")
+		(ai.get("viewer_private_facts", {}) as Dictionary).get(
+			"self_is_current_lead",
+			false
+		) == true
+			and str((ai.get("viewer_private_facts", {}) as Dictionary).get(
+				"self_influence_class",
+				""
+			)) == "double"
 			and not (ai.get("viewer_private_facts", {}) as Dictionary).has(
-				"self_lead_notice_token"
+				"self_lead_notice"
 			),
-		"AI observation cannot read even its own hidden-lead identity"
+		"AI receives only its own semantically equivalent private lead fact"
 	)
 	var other := core.player_projection_v1(other_id)
 	_expect(
@@ -641,7 +656,7 @@ func _test_three_wing_same_source_and_privacy() -> void:
 		bool((player.get("viewer_private_facts", {}) as Dictionary).get(
 			"self_lead_notice", false
 		)),
-		"only the Player wing receives the constitutional private self notice"
+		"Player keeps its private self notice while AI receives an equivalent fact"
 	)
 	_expect(own_items.size() == 5, "player projection exposes only the viewer's local five-card segment")
 	for item_variant in own_items:
@@ -1375,8 +1390,12 @@ func _test_visible_acquisition_fail_closed() -> void:
 
 func _test_reverse_round_acquisition_lead_entry() -> void:
 	var core := CORE_SCRIPT.new(ROSTER, FIXED_SEED)
-	for index in range(ROSTER.size()):
-		_commit_cycle(core, "request.acquisition.reverse.boundary.%02d" % index)
+	for index in range(ROSTER.size() * CORE_SCRIPT.DEFAULT_LEAD_TENURE_BATCHES):
+		_commit_completed_batch(
+			core,
+			"request.acquisition.reverse.boundary.%02d" % index,
+			200 + index
+		)
 	var before := _authority_state(core)
 	var hidden := before.get("hidden_lead_cycle_state", {}) as Dictionary
 	var fixed_order := hidden.get("fixed_order", []) as Array
@@ -1945,6 +1964,43 @@ func _commit_cycle(core: RefCounted, request_id: String) -> Dictionary:
 	)
 	var receipt: Dictionary = core.call("apply_intent_v1", intent)
 	_expect(bool(receipt.get("accepted", false)), "%s color boundary commits" % request_id)
+	return receipt
+
+
+func _commit_completed_batch(
+	core: RefCounted,
+	request_id: String,
+	sequence: int
+) -> Dictionary:
+	var batch_id := "batch.core.contract.%03d" % sequence
+	var completed_receipt := CORE_SCRIPT.sealed_copy({
+		"schema_version": CORE_SCRIPT.SCHEMA_VERSION,
+		"contract_id": CORE_SCRIPT.COMPLETED_BATCH_RECEIPT_ID,
+		"receipt_id": "receipt.%s" % batch_id,
+		"batch_id": batch_id,
+		"lineage_fingerprint": CORE_SCRIPT.fingerprint({"batch_id": batch_id}),
+		"operation_id": "refresh_assets_after_batch",
+		"accepted": true,
+		"reason_code": "frozen_snapshot_applied",
+		"state_revision": sequence,
+		"actor_id": "",
+		"action_id": "",
+		"outcome_id": "assets_refreshed",
+		"intent_id": "",
+		"intent_fingerprint": "",
+	}, "receipt_fingerprint")
+	var intent: Dictionary = core.call(
+		"build_intent_v1",
+		request_id,
+		"system",
+		CORE_SCRIPT.ACTION_COMMIT_BATCH_BOUNDARY,
+		{"completed_batch_receipt": completed_receipt}
+	)
+	var receipt: Dictionary = core.call("apply_intent_v1", intent)
+	_expect(
+		bool(receipt.get("accepted", false)),
+		"%s completed batch boundary commits" % request_id
+	)
 	return receipt
 
 
