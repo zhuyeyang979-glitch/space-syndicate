@@ -139,8 +139,8 @@ func _test_non_node_contract_and_unified_track() -> void:
 		bool(contract.get("single_unified_track", false))
 			and bool(contract.get("same_core_source_required", false))
 			and not bool(contract.get("production_runtime_connected", true))
-			and str(contract.get("ruleset_id", "")) == "v0.7.1"
-			and int(contract.get("state_version", 0)) == 4,
+			and str(contract.get("ruleset_id", "")) == "v0.7.2"
+			and int(contract.get("state_version", 0)) == 5,
 		"contract declares one reference-only same-source unified track"
 	)
 	_expect(
@@ -161,24 +161,26 @@ func _test_non_node_contract_and_unified_track() -> void:
 	)
 	var interfaces := contract.get("interfaces", {}) as Dictionary
 	_expect(
-		str(interfaces.get("core", "")) == "v071.unified_track.core_authority.v2"
+		str(interfaces.get("core", "")) == "v072.unified_track.core_authority.v3"
 			and str(interfaces.get("ai_observation", ""))
-				== "v071.unified_track.ai_observation.v2"
+				== "v072.unified_track.ai_observation.v3"
 			and str(interfaces.get("player_projection", ""))
-				== "v071.unified_track.player_projection.v2"
+				== "v072.unified_track.player_projection.v3"
 			and str(interfaces.get("intent", ""))
-				== "v071.unified_track.intent.v2"
+				== "v072.unified_track.intent.v3"
 			and str(interfaces.get("receipt", ""))
-				== "v071.unified_track.authoritative_receipt.v2"
+				== "v072.unified_track.authoritative_receipt.v3"
 			and str(interfaces.get("save_state", ""))
-				== "v071.unified_track.save_state.v2",
-		"all six three-wing interfaces use the versioned V0.7.1 contract IDs"
+				== "v072.unified_track.save_state.v3",
+		"all six three-wing interfaces use the versioned V0.7.2 contract IDs"
 	)
 	_expect(
 		contract.get("track_replacement_activates_on_next_scroll") == true
 			and contract.get("track_replacement_claimable_same_tick") == false
 			and int(contract.get("normal_track_spawn_level", 0)) == 1
 			and int(contract.get("commodity_track_spawn_level", 0)) == 1
+			and contract.get("starter_track_spawn_allowed") == false
+			and (contract.get("normal_track_definition_ids", []) as Array).size() == 12
 			and contract.get("lead_identity_not_directly_published") == true
 			and contract.get(
 				"lead_identity_may_be_inferred_from_public_information"
@@ -227,7 +229,7 @@ func _test_non_node_contract_and_unified_track() -> void:
 	var items := track.get("items", []) as Array
 	_expect(CORE_SCRIPT.is_pure_data(authority), "CoreAuthorityV1 is detached pure data")
 	_expect(
-		str(track.get("state_id", "")) == "V071UnifiedCardTrackState"
+		str(track.get("state_id", "")) == "V072UnifiedCardTrackState"
 			and items.size() == ROSTER.size() * 5,
 		"one unified state contains the complete mixed track"
 	)
@@ -244,6 +246,16 @@ func _test_non_node_contract_and_unified_track() -> void:
 				and int(item.get("claimable_from_scroll_sequence", -1)) == 0,
 			"every initial unified-track item is L1 and immediately claimable"
 		)
+		if kind == "normal_card":
+			_expect(
+				CORE_SCRIPT.CardDefinitions.track_spawn_definition_ids().has(
+					str(item.get("card_definition_id", ""))
+				)
+					and not CORE_SCRIPT.CardDefinitions.is_starter_definition(
+						str(item.get("card_definition_id", ""))
+					),
+				"normal Track supply contains only canonical paid standard L1 definitions"
+			)
 	_expect(kinds.size() == 2, "normal and commodity cards coexist on the one track")
 	var type_supply := state.get("type_supply_state", {}) as Dictionary
 	var type_counts := _count_values(type_supply.get("bag", []) as Array)
@@ -282,8 +294,8 @@ func _test_non_node_contract_and_unified_track() -> void:
 	var weights := color_cycle.get("distribution_weight_units", {}) as Dictionary
 	_expect(_all_color_values_equal(weights, 10000), "cycle one starts at an exact six-color uniform baseline")
 	_expect(
-		str(state.get("ruleset_id", "")) == "v0.7.1"
-			and int(state.get("state_version", 0)) == 4
+		str(state.get("ruleset_id", "")) == "v0.7.2"
+			and int(state.get("state_version", 0)) == 5
 			and str(state.get("balance_profile_id", ""))
 				== CORE_SCRIPT.BALANCE_PROFILE_ID
 			and str(state.get("balance_profile_fingerprint", ""))
@@ -339,7 +351,7 @@ func _test_candidate_a_profile_fail_closed() -> void:
 	_expect(
 		not bool(wrong_ratio.get("accepted", true))
 			and str(wrong_ratio.get("reason_code", ""))
-				== "candidate_a_card_kind_ratio_required"
+				== "v072_starter_free_fast_card_kind_ratio_required"
 			and not wrong_ratio_core.is_configured(),
 		"profile identity cannot be paired with legacy 70/30 values"
 	)
@@ -1951,14 +1963,14 @@ func _test_checkpoint_rollback_and_save_roundtrip() -> void:
 	var save: Dictionary = core.save_state_v1()
 	_expect(
 		CORE_SCRIPT.is_pure_data(save)
-			and str(save.get("ruleset_id", "")) == "v0.7.1"
-			and int(save.get("state_version", 0)) == 4
+			and str(save.get("ruleset_id", "")) == "v0.7.2"
+			and int(save.get("state_version", 0)) == 5
 			and str(save.get("balance_profile_id", ""))
 				== CORE_SCRIPT.BALANCE_PROFILE_ID
 			and str(save.get("balance_profile_fingerprint", ""))
 				== CORE_SCRIPT.BALANCE_PROFILE_FINGERPRINT
 			and str(save.get("interface_id", "")) == CORE_SCRIPT.SAVE_INTERFACE_ID,
-		"SaveStateV1 is versioned V0.7.1 authority-secret pure data"
+		"SaveStateV1 is versioned V0.7.2 authority-secret pure data"
 	)
 	var missing_profile_save := save.duplicate(true)
 	missing_profile_save.erase("balance_profile_id")

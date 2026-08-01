@@ -4,20 +4,20 @@ class_name V07TrackAcquisitionAuthorityPort
 const TrackCore := preload("res://scripts/v07_semantic/v07_unified_card_track_core.gd")
 
 const SCHEMA_VERSION := 2
-const RULESET_ID := "v0.7.1"
+const RULESET_ID := "v0.7.2"
 const DOMAIN_ID := "unified_card_track"
-const INTERFACE_ID := "v071.unified_track.acquisition_authority_port.v2"
+const INTERFACE_ID := "v072.unified_track.acquisition_authority_port.v3"
 const PARTICIPANT_REQUEST_INTERFACE_ID := (
-	"v071.unified_track.acquisition_participant_request.v2"
+	"v072.unified_track.acquisition_participant_request.v3"
 )
 const COMPOSITE_RECEIPT_INTERFACE_ID := (
-	"v071.unified_track.acquisition_composite_receipt.v2"
+	"v072.unified_track.acquisition_composite_receipt.v3"
 )
 const RECEIPT_JOURNAL_INTERFACE_ID := (
-	"v071.unified_track.acquisition_receipt_journal.v2"
+	"v072.unified_track.acquisition_receipt_journal.v3"
 )
 const ROLLBACK_RECOVERY_INTERFACE_ID := (
-	"v071.unified_track.acquisition_rollback_recovery.v2"
+	"v072.unified_track.acquisition_rollback_recovery.v3"
 )
 
 const PARTICIPANT_ROLES := ["cash", "personal_discard", "commodity_slot"]

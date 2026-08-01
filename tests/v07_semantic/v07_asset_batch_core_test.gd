@@ -31,6 +31,7 @@ func _init() -> void:
 func _run() -> void:
 	_timed_core.bind_time_attestation_authority(_time_authority)
 	_test_frozen_constitution_contract()
+	_test_v072_zero_asset_genesis()
 	_test_lock_time_hidden_lead_freeze()
 	_test_asset_cycle_freeze_carry_overflow()
 	_test_full_queue_atomic_reservation()
@@ -56,17 +57,19 @@ func _test_frozen_constitution_contract() -> void:
 	var instance: Variant = Core.new()
 	_expect(instance is RefCounted and not is_instance_of(instance, Node), "core is non-Node RefCounted")
 	instance = null
-	_expect(str(contract.get("ruleset_id", "")) == "v0.7.1", "core binds the frozen V0.7.1 target ruleset ID")
-	_expect(int(contract.get("state_version", 0)) == 2, "asset and batch authority state upgrades to V0.7.1 state version two")
+	_expect(str(contract.get("ruleset_id", "")) == "v0.7.2", "core binds the frozen V0.7.2 target ruleset ID")
+	_expect(int(contract.get("state_version", 0)) == 3, "asset and batch authority state upgrades to V0.7.2 state version three")
 	_expect(
-		contract.get("balance_profile_id") == "V071_CANDIDATE_A_FAST"
+		contract.get("balance_profile_id") == "V072_STARTER_FREE_FAST"
 			and contract.get("balance_profile_fingerprint")
-				== "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
-		"Candidate A profile identity is an exact machine contract"
+				== "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48"
+			and Core.PROFILE_FINGERPRINT_INPUT.sha256_text()
+				== Core.BALANCE_PROFILE_FINGERPRINT,
+		"V0.7.2 Starter profile identity is an exact machine contract"
 	)
 	_expect(contract.get("colors", []) == ["life", "energy", "industry", "technology", "commerce", "shipping"], "core exposes exactly six constitutional colors")
 	_expect(int(contract.get("per_color_cap", 0)) == 6, "each color has the independent cap of six")
-	_expect(int(contract.get("max_asset_refresh_per_color_per_batch", 0)) == 3, "Candidate A caps each color refresh at three points per batch")
+	_expect(int(contract.get("max_asset_refresh_per_color_per_batch", 0)) == 3, "V0.7.2 profile caps each color refresh at three points per batch")
 	_expect(
 		contract.get("invalid_target_policy_ids") == [
 			"FIZZLE_FULL_ASSET_REFUND",
@@ -85,16 +88,16 @@ func _test_frozen_constitution_contract() -> void:
 	_expect(not bool(contract.get("interactive_counters", true)), "interactive counters are retired")
 	_expect(str(contract.get("resolution_mode", "")) == "round_robin_by_local_action_index", "resolution layers by local action index")
 	_expect(str(contract.get("player_iteration_order", "")) == "frozen_hidden_lead_order", "resolution uses the frozen hidden lead order")
-	_expect(contract.get("state_contract_ids", []) == ["V071SixColorAssetState", "V071AssetCycleSnapshot", "V071AssetReservationState", "V071CardBatchState", "V071PreboundTargetState", "V071AnonymousResolutionState"], "asset and batch substate contracts have versioned V0.7.1 identities")
+	_expect(contract.get("state_contract_ids", []) == ["V072SixColorAssetState", "V072AssetCycleSnapshot", "V072AssetReservationState", "V072CardBatchState", "V072PreboundTargetState", "V072AnonymousResolutionState"], "asset and batch substate contracts have versioned V0.7.2 identities")
 
 	var state := _state(["player.0", "player.1"], ["player.1", "player.0"], _assets(1))
 	_expect(not state.is_empty() and bool(Core.validation_report(state).get("valid", false)), "valid pure authority state is accepted")
 	_expect(
-		state.get("state_version") == 2
-			and state.get("balance_profile_id") == "V071_CANDIDATE_A_FAST"
+		state.get("state_version") == 3
+			and state.get("balance_profile_id") == "V072_STARTER_FREE_FAST"
 			and state.get("default_invalid_target_policy_id")
 				== "FIZZLE_FULL_ASSET_REFUND",
-		"authority state persists the V0.7.1 profile and default invalid-target policy"
+		"authority state persists the V0.7.2 profile and default invalid-target policy"
 	)
 	_expect(Core.is_pure_data(state), "authority state contains pure data only")
 	_expect((state.get("player_ids") as Array).size() == 2 and (state.get("players") as Dictionary).size() == 2, "authority creates one isolated asset owner per player")
@@ -102,10 +105,105 @@ func _test_frozen_constitution_contract() -> void:
 	_expect((state.get("window") as Dictionary).get("deadline_ms") == 31000, "deadline is exactly thirty seconds after opening")
 
 	var privacy: Dictionary = Core.privacy_contract()
-	_expect(str(privacy.get("contract_id", "")) == "v071.asset_batch.privacy.v2", "privacy policy is an explicit V0.7.1 V2 contract")
+	_expect(str(privacy.get("contract_id", "")) == "v072.asset_batch.privacy.v3", "privacy policy is an explicit V0.7.2 V3 contract")
 	_expect((privacy.get("authority_secret_fields") as Array).has("submission_hidden_lead_order") and (privacy.get("authority_secret_fields") as Array).has("frozen_hidden_lead_order"), "submission and frozen hidden lead orders are authority-secret")
 	_expect((privacy.get("viewer_private_fields") as Array).has("own_assets") and (privacy.get("viewer_private_fields") as Array).has("own_local_queue"), "assets and local queue are viewer-private")
 	_expect(not bool(privacy.get("owner_specific_timing_audio_animation_allowed", true)), "owner-specific timing, audio, and animation leaks are forbidden")
+
+
+func _test_v072_zero_asset_genesis() -> void:
+	var players := ["player.0", "player.1", "player.2"]
+	var state := Core.create_genesis_state(
+		"batch.genesis",
+		players,
+		["player.1", "player.2", "player.0"],
+		1000,
+		1000
+	)
+	_expect(
+		not state.is_empty()
+			and bool(Core.validation_report(state).get("valid", false)),
+		"V0.7.2 genesis creates a valid authority state"
+	)
+	for player_id in players:
+		var player := (state.get("players", {}) as Dictionary).get(
+			player_id,
+			{}
+		) as Dictionary
+		_expect(
+			player.get("assets") == _zero()
+				and player.get("remainders_milli") == _zero(),
+			"genesis creates the six-color owner with six zero balances and remainders"
+		)
+	var contract := Core.contract_snapshot()
+	_expect(
+		contract.get("initial_assets_per_color") == 0
+			and contract.get("initial_remainder_milli_per_color") == 0
+			and contract.get("asset_owner_created_at_genesis") == true
+			and contract.get("zero_deadlock_mechanism") \
+			== "zero_asset_cost_starter_cards",
+		"zero assets mean initialized 0/6 pools, not an absent asset owner"
+	)
+	var ai := Core.asset_ai_observation(state, "player.0")
+	var player_projection := Core.asset_player_projection(state, "player.0")
+	_expect(
+		ai.get("own_exact_assets") == _zero()
+			and player_projection.get("own_exact_assets") == _zero(),
+		"AI and Player projections receive only their own initialized zero balances"
+	)
+	var standard_intent := Core.build_lock_intent(
+		"intent.genesis.standard-l1",
+		"batch.genesis",
+		"player.0",
+		1100,
+		[_action(
+			"action.genesis.standard-l1",
+			0,
+			_cost(1, 0, 0, 0, 0, 0, 0),
+			_zero(),
+			"target.genesis.standard-l1"
+		)]
+	)
+	var standard_rejection := _lock_player_queue(
+		state,
+		standard_intent,
+		_color_map(6000, 0, 0, 0, 0, 0),
+		1100
+	)
+	_expect(
+		not bool(standard_rejection.get("accepted", true))
+			and standard_rejection.get("reason_code") == "full_queue_unaffordable"
+			and standard_rejection.get("state") == state,
+		"zero-asset authority rejects a standard L1 cost even if future refresh is nonzero"
+	)
+	var starter_intent := Core.build_lock_intent(
+		"intent.genesis.starter",
+		"batch.genesis",
+		"player.0",
+		1100,
+		[_action(
+			"action.genesis.starter",
+			0,
+			_cost(0, 0, 0, 0, 0, 0, 0),
+			_zero(),
+			"target.genesis.starter"
+		)]
+	)
+	var starter_lock := _lock_player_queue(
+		state,
+		starter_intent,
+		_zero(),
+		1100
+	)
+	_expect(
+		bool(starter_lock.get("accepted", false))
+			and (((starter_lock.get("state") as Dictionary).get(
+				"players"
+			) as Dictionary).get("player.0") as Dictionary).get(
+				"reserved_totals"
+			) == _zero(),
+		"zero-cost Starter action locks legitimately with no asset injection or reservation"
+	)
 
 
 func _test_lock_time_hidden_lead_freeze() -> void:
@@ -220,7 +318,7 @@ func _test_asset_cycle_freeze_carry_overflow() -> void:
 		int((Core.asset_player_projection(state, "player.0").get(
 			"own_projected_refresh"
 		) as Dictionary).get("shipping", 0)) == 3,
-		"viewer projection applies the Candidate A three-point refresh cap"
+		"viewer projection applies the V0.7.2 three-point refresh cap"
 	)
 
 	var snapshot_1 := _color_map(1000, 0, 0, 0, 0, 0)
@@ -653,7 +751,7 @@ func _test_anonymous_layered_round_robin() -> void:
 	_expect(anonymous_queue.size() == authority_queue.size(), "public queue preserves authoritative resolution length")
 	for entry_variant in anonymous_queue:
 		var entry := entry_variant as Dictionary
-		_expect(_same_string_set(entry.keys(), Core.PUBLIC_QUEUE_FIELDS), "public queue entry uses the V0.7.1 causal-history allowlist")
+		_expect(_same_string_set(entry.keys(), Core.PUBLIC_QUEUE_FIELDS), "public queue entry uses the V0.7.2 causal-history allowlist")
 		_expect(not _contains_key_recursive(entry, ["actor_id", "player_name", "player_color", "avatar", "seat", "player_skip", "source_id", "action_id"]), "public queue entry contains no owner or source clue")
 	_expect(not _contains_value(public, "player.2") and not _contains_value(public, "player.0"), "anonymous public queue does not reveal hidden iteration order")
 	_expect(not bool(public.get("interactive_counters", true)) and not bool(public.get("new_resolution_input_allowed", true)), "resolution opens neither counters nor new input")
@@ -859,7 +957,7 @@ func _test_three_wing_projection_and_privacy() -> void:
 	_expect((state.get("frozen_hidden_lead_order") as Array) == ["player.1", "player.0"], "authority envelope is also a detached snapshot")
 
 	var last_receipt := (state.get("receipts") as Array).back() as Dictionary
-	_expect(str(last_receipt.get("contract_id", "")) == "internal.v071.asset_batch.authoritative_receipt.v2", "internal transition emits a typed V0.7.1 non-public receipt")
+	_expect(str(last_receipt.get("contract_id", "")) == "internal.v072.asset_batch.authoritative_receipt.v3", "internal transition emits a typed V0.7.2 non-public receipt")
 	_expect(not _contains_key_recursive(last_receipt, ["assets", "remainders_milli", "reservations", "frozen_gdp_milli", "submission_hidden_lead_order", "frozen_hidden_lead_order"]), "receipt carries no raw private asset or lead payload")
 	_expect(Core.is_pure_data(ai_0) and Core.is_pure_data(player_0) and Core.is_pure_data(public) and Core.is_pure_data(last_receipt), "projections and receipts remain pure data")
 
@@ -922,18 +1020,18 @@ func _test_exact_domain_contract_adapters() -> void:
 	).get("state") as Dictionary)
 
 	var contracts := {
-		"v071.six_color_assets.core_authority.v2": Core.asset_core_authority(final_state),
-		"v071.six_color_assets.ai_observation.v2": Core.asset_ai_observation(final_state, "player.0"),
-		"v071.six_color_assets.player_projection.v2": Core.asset_player_projection(final_state, "player.0"),
-		"v071.six_color_assets.intent.v2": asset_intent,
-		"v071.six_color_assets.authoritative_receipt.v2": asset_receipt,
-		"v071.six_color_assets.save_state.v2": Core.to_asset_save_state(final_state),
-		"v071.card_batch.core_authority.v2": Core.batch_core_authority(final_state),
-		"v071.card_batch.ai_observation.v2": Core.batch_ai_observation(final_state, "player.0"),
-		"v071.card_batch.player_projection.v2": Core.batch_player_projection(final_state, "player.0"),
-		"v071.card_batch.intent.v2": batch_intent,
-		"v071.card_batch.authoritative_receipt.v2": batch_receipt,
-		"v071.card_batch.save_state.v2": Core.to_batch_save_state(final_state),
+		"v072.six_color_assets.core_authority.v3": Core.asset_core_authority(final_state),
+		"v072.six_color_assets.ai_observation.v3": Core.asset_ai_observation(final_state, "player.0"),
+		"v072.six_color_assets.player_projection.v3": Core.asset_player_projection(final_state, "player.0"),
+		"v072.six_color_assets.intent.v3": asset_intent,
+		"v072.six_color_assets.authoritative_receipt.v3": asset_receipt,
+		"v072.six_color_assets.save_state.v3": Core.to_asset_save_state(final_state),
+		"v072.card_batch.core_authority.v3": Core.batch_core_authority(final_state),
+		"v072.card_batch.ai_observation.v3": Core.batch_ai_observation(final_state, "player.0"),
+		"v072.card_batch.player_projection.v3": Core.batch_player_projection(final_state, "player.0"),
+		"v072.card_batch.intent.v3": batch_intent,
+		"v072.card_batch.authoritative_receipt.v3": batch_receipt,
+		"v072.card_batch.save_state.v3": Core.to_batch_save_state(final_state),
 	}
 	var valid_count := 0
 	for contract_id_variant in contracts.keys():
@@ -947,26 +1045,26 @@ func _test_exact_domain_contract_adapters() -> void:
 	var snapshot: Dictionary = Core.contract_snapshot()
 	var asset_domain := snapshot.get("asset_domain") as Dictionary
 	var batch_domain := snapshot.get("batch_domain") as Dictionary
-	_expect(asset_domain.get("CoreAuthorityV2") == "v071.six_color_assets.core_authority.v2" and asset_domain.get("SaveStateV2") == "v071.six_color_assets.save_state.v2", "asset contract registry snapshot exposes its V0.7.1 six-color domain IDs")
-	_expect(batch_domain.get("CoreAuthorityV2") == "v071.card_batch.core_authority.v2" and batch_domain.get("SaveStateV2") == "v071.card_batch.save_state.v2", "batch contract registry snapshot exposes its V0.7.1 card-batch domain IDs")
+	_expect(asset_domain.get("CoreAuthorityV3") == "v072.six_color_assets.core_authority.v3" and asset_domain.get("SaveStateV3") == "v072.six_color_assets.save_state.v3", "asset contract registry snapshot exposes its V0.7.2 six-color domain IDs")
+	_expect(batch_domain.get("CoreAuthorityV3") == "v072.card_batch.core_authority.v3" and batch_domain.get("SaveStateV3") == "v072.card_batch.save_state.v3", "batch contract registry snapshot exposes its V0.7.2 card-batch domain IDs")
 	_expect(int(asset_intent.get("expected_core_revision", -1)) == 0 and int(asset_intent.get("asset_snapshot_revision", -1)) == 7 and (asset_intent.get("reservation_ids") as Array) == ["reservation.action.domain-contract"], "asset Intent adapter closes revision, snapshot, cost, and reservation semantics")
 	_expect(int(batch_intent.get("expected_core_revision", -1)) == 0 and batch_intent.get("window_id") == "batch.test" and (batch_intent.get("local_action_index") as Array) == [0], "batch Intent adapter closes window, local index, source, target, and reservation semantics")
 	_expect(asset_receipt.get("intent_id") == "intent.domain-contract" and asset_receipt.get("asset_delta_by_color") == _zero() and (asset_receipt.get("reservation_ids") as Array).size() == 1, "asset Receipt adapter binds intent, reservation IDs, committed revision, and exact asset delta")
 	_expect(batch_receipt.get("intent_id") == "intent.domain-contract" and batch_receipt.get("anonymous_action_id") == "action.domain-contract" and batch_receipt.get("window_id") == "batch.test", "batch Receipt adapter binds intent, anonymous action, window, and resolution status")
-	var asset_save := contracts.get("v071.six_color_assets.save_state.v2") as Dictionary
-	var batch_save := contracts.get("v071.card_batch.save_state.v2") as Dictionary
+	var asset_save := contracts.get("v072.six_color_assets.save_state.v3") as Dictionary
+	var batch_save := contracts.get("v072.card_batch.save_state.v3") as Dictionary
 	_expect(asset_save.get("section_id") == "six_color_assets_and_reservations" and asset_save.has("gdp_cycle_snapshot") and asset_save.has("reservation_journal") and asset_save.has("shared_authority_state"), "asset Save adapter has the exact independent section and shared-state semantics")
 	_expect(batch_save.get("section_id") == "card_batch_and_anonymous_resolution" and batch_save.has("private_owner_bindings") and batch_save.has("round_robin_cursor") and batch_save.has("shared_authority_state"), "batch Save adapter has the exact independent queue and shared-state semantics")
 	var tampered_asset_save := asset_save.duplicate(true)
 	(tampered_asset_save.get("per_player_assets_by_color") as Dictionary).erase("player.1")
-	_expect(not bool(Core.domain_contract_validation_report(tampered_asset_save, "v071.six_color_assets.save_state.v2").get("valid", true)), "strict domain Save adapter rejects fingerprint-breaking payload mutation")
+	_expect(not bool(Core.domain_contract_validation_report(tampered_asset_save, "v072.six_color_assets.save_state.v3").get("valid", true)), "strict domain Save adapter rejects fingerprint-breaking payload mutation")
 
 	var wrong_type_intent := asset_intent.duplicate(true)
 	wrong_type_intent["expected_core_revision"] = "zero"
 	_reseal_domain_contract(wrong_type_intent, "intent_fingerprint")
 	var wrong_type_report: Dictionary = Core.domain_contract_validation_report(
 		wrong_type_intent,
-		"v071.six_color_assets.intent.v2"
+		"v072.six_color_assets.intent.v3"
 	)
 	_expect(
 		_domain_fingerprint_matches(wrong_type_intent, "intent_fingerprint")
@@ -988,7 +1086,7 @@ func _test_exact_domain_contract_adapters() -> void:
 	_reseal_domain_contract(out_of_range_save, "save_fingerprint")
 	var out_of_range_report: Dictionary = Core.domain_contract_validation_report(
 		out_of_range_save,
-		"v071.six_color_assets.save_state.v2"
+		"v072.six_color_assets.save_state.v3"
 	)
 	_expect(
 		_domain_fingerprint_matches(out_of_range_save, "save_fingerprint")
@@ -1010,7 +1108,7 @@ func _test_exact_domain_contract_adapters() -> void:
 	_reseal_domain_contract(inconsistent_journal_save, "save_fingerprint")
 	var inconsistent_journal_report: Dictionary = Core.domain_contract_validation_report(
 		inconsistent_journal_save,
-		"v071.six_color_assets.save_state.v2"
+		"v072.six_color_assets.save_state.v3"
 	)
 	_expect(
 		_domain_fingerprint_matches(inconsistent_journal_save, "save_fingerprint")
@@ -1019,8 +1117,8 @@ func _test_exact_domain_contract_adapters() -> void:
 				== "domain_save_shared_state_player_reservations_invalid",
 		"strict asset Save rejects a valid-fingerprint action that is both reserved and journaled"
 	)
-	var asset_player := contracts.get("v071.six_color_assets.player_projection.v2") as Dictionary
-	var batch_player := contracts.get("v071.card_batch.player_projection.v2") as Dictionary
+	var asset_player := contracts.get("v072.six_color_assets.player_projection.v3") as Dictionary
+	var batch_player := contracts.get("v072.card_batch.player_projection.v3") as Dictionary
 	_expect(not _contains_key_recursive(asset_player, ["anonymous_global_queue", "private_owner_bindings", "frozen_hidden_lead_order"]) and not _contains_key_recursive(batch_player, ["own_exact_assets", "gdp_cycle_snapshot", "lineage_fingerprint"]), "domain projections expose only their own allowlisted facts")
 	var source := FileAccess.get_file_as_string("res://scripts/v07_semantic/v07_asset_batch_core.gd")
 	_expect(not source.contains("\"v07.asset_batch.core_authority.v1\"") and not source.contains("\"v07.asset_batch.ai_observation.v1\"") and not source.contains("\"v07.asset_batch.save_state.v1\""), "shared asset_batch IDs no longer masquerade as domain contracts")
@@ -1274,17 +1372,30 @@ func _test_save_checkpoint_and_rollback() -> void:
 	state = (_lock_player_queue(state, Core.build_lock_intent("intent.save.0", "batch.test", "player.0", 100, [_action("action.save.0", 0, _cost(2, 0, 0, 0, 0, 0, 0), _zero(), "target.save.0")]), _color_map(1500, 0, 0, 0, 0, 0), 1000).get("state") as Dictionary)
 	state = (_lock_player_queue(state, Core.build_lock_intent("intent.save.1", "batch.test", "player.1", 100, []), _zero(), 1000).get("state") as Dictionary)
 	var save_state: Dictionary = Core.to_save_state(state)
-	_expect(str(save_state.get("schema_id", "")) == "internal.v071.asset_batch.save_state.v2", "internal combined Save has an explicitly versioned non-domain identity")
-	_expect(str(save_state.get("ruleset_id", "")) == "v0.7.1", "Save binds the exact V0.7.1 ruleset ID")
+	_expect(str(save_state.get("schema_id", "")) == "internal.v072.asset_batch.save_state.v3", "internal combined Save has an explicitly versioned non-domain identity")
+	_expect(str(save_state.get("ruleset_id", "")) == "v0.7.2", "Save binds the exact V0.7.2 ruleset ID")
 	_expect(
-		save_state.get("state_version") == 2
-			and save_state.get("balance_profile_id") == "V071_CANDIDATE_A_FAST"
+		save_state.get("state_version") == 3
+			and save_state.get("balance_profile_id") == "V072_STARTER_FREE_FAST"
 			and save_state.get("balance_profile_fingerprint")
-				== "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a"
+				== "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48"
 			and save_state.get("default_invalid_target_policy_id")
 				== "FIZZLE_FULL_ASSET_REFUND"
 			and save_state.get("max_asset_refresh_per_color_per_batch") == 3,
-		"combined Save explicitly persists the Candidate A profile and policy context"
+		"combined Save explicitly persists the V0.7.2 Starter profile and policy context"
+	)
+	var legacy_v071_save := save_state.duplicate(true)
+	legacy_v071_save["schema_id"] = "internal.v071.asset_batch.save_state.v2"
+	legacy_v071_save["state_version"] = 2
+	legacy_v071_save["ruleset_id"] = "v0.7.1"
+	legacy_v071_save["balance_profile_id"] = "V071_CANDIDATE_A_FAST"
+	legacy_v071_save["balance_profile_fingerprint"] = (
+		"8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a"
+	)
+	_expect(
+		Core.restore_save_state(legacy_v071_save).get("reason_code") \
+		== "save_schema_invalid",
+		"V0.7.1 detached asset Save fails closed instead of silently resuming"
 	)
 	_expect(Core.is_pure_data(save_state) and str(save_state.get("save_fingerprint", "")).length() == 64, "Save state is pure data with a deterministic fingerprint")
 	var restored: Dictionary = Core.restore_save_state(save_state)
@@ -1308,7 +1419,7 @@ func _test_save_checkpoint_and_rollback() -> void:
 			and batch_domain_save.get("shared_lineage_fingerprint")
 				== state.get("lineage_fingerprint")
 			and asset_domain_save.get("balance_profile_id")
-				== "V071_CANDIDATE_A_FAST"
+				== "V072_STARTER_FREE_FAST"
 			and batch_domain_save.get("balance_profile_fingerprint")
 				== Core.BALANCE_PROFILE_FINGERPRINT
 			and asset_domain_save.get("default_invalid_target_policy_id")
@@ -1317,7 +1428,7 @@ func _test_save_checkpoint_and_rollback() -> void:
 	)
 	var asset_domain_restore: Dictionary = Core.restore_domain_save_state(
 		asset_domain_save,
-		"v071.six_color_assets.save_state.v2"
+		"v072.six_color_assets.save_state.v3"
 	)
 	_expect(
 		bool(asset_domain_restore.get("preflight_valid", false))
@@ -1327,7 +1438,7 @@ func _test_save_checkpoint_and_rollback() -> void:
 	)
 	var batch_domain_restore: Dictionary = Core.restore_domain_save_state(
 		batch_domain_save,
-		"v071.card_batch.save_state.v2"
+		"v072.card_batch.save_state.v3"
 	)
 	_expect(
 		bool(batch_domain_restore.get("preflight_valid", false))
@@ -1431,7 +1542,7 @@ func _test_save_checkpoint_and_rollback() -> void:
 	var tampered_asset_before := tampered_asset_domain.duplicate(true)
 	var tampered_asset_restore: Dictionary = Core.restore_domain_save_state(
 		tampered_asset_domain,
-		"v071.six_color_assets.save_state.v2"
+		"v072.six_color_assets.save_state.v3"
 	)
 	_expect(
 		_domain_fingerprint_matches(tampered_asset_domain, "save_fingerprint")
@@ -1450,7 +1561,7 @@ func _test_save_checkpoint_and_rollback() -> void:
 	var tampered_batch_before := tampered_batch_domain.duplicate(true)
 	var tampered_batch_restore: Dictionary = Core.restore_domain_save_state(
 		tampered_batch_domain,
-		"v071.card_batch.save_state.v2"
+		"v072.card_batch.save_state.v3"
 	)
 	_expect(
 		_domain_fingerprint_matches(tampered_batch_domain, "save_fingerprint")
@@ -1476,7 +1587,7 @@ func _test_save_checkpoint_and_rollback() -> void:
 	var wrong_schema := save_state.duplicate(true)
 	wrong_schema["schema_id"] = "internal.v07.asset_batch.save_state.v1"
 	_reseal_domain_contract(wrong_schema, "save_fingerprint")
-	_expect(not bool(Core.restore_save_state(wrong_schema).get("restored", true)), "historical V0.7 Save cannot load silently through the V0.7.1 core")
+	_expect(not bool(Core.restore_save_state(wrong_schema).get("restored", true)), "historical V0.7 Save cannot load silently through the V0.7.2 core")
 	var wrong_profile := save_state.duplicate(true)
 	wrong_profile["balance_profile_fingerprint"] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	_reseal_domain_contract(wrong_profile, "save_fingerprint")
@@ -1498,7 +1609,7 @@ func _test_save_checkpoint_and_rollback() -> void:
 	)
 
 	var saved_checkpoint: Dictionary = Core.checkpoint(state)
-	_expect(str(saved_checkpoint.get("schema_id", "")) == "internal.v071.asset_batch.checkpoint.v2", "checkpoint has an independent V0.7.1 identity")
+	_expect(str(saved_checkpoint.get("schema_id", "")) == "internal.v072.asset_batch.checkpoint.v3", "checkpoint has an independent V0.7.2 identity")
 	var settled: Dictionary = Core.settle_next_action(state, "action.save.0", "success")
 	_expect(bool(settled.get("accepted", false)) and settled.get("state") != state, "post-checkpoint settlement changes the authority state")
 	var rolled_back: Dictionary = Core.rollback(settled.get("state"), saved_checkpoint)

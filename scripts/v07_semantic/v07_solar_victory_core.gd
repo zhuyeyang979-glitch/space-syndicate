@@ -2,22 +2,22 @@ class_name V07SolarVictoryCore
 extends RefCounted
 
 const SCHEMA_VERSION := 2
-const SAVE_SECTION_VERSION := 4
-const RULESET_ID := "v0.7.1"
+const SAVE_SECTION_VERSION := 5
+const RULESET_ID := "v0.7.2"
 const SAVE_SECTION_ID := "solar_facility_and_macro_victory"
-const CHECKPOINT_SCHEMA_ID := "v071.solar_victory.checkpoint.v2"
-const TRUSTED_AUTHORITY_ID := "v071.victory.trusted_authority.reference"
-const TRUSTED_SOURCE_AUTHORITY_ID := "v071.victory.source_authority.reference"
-const BALANCE_PROFILE_ID := "V071_CANDIDATE_A_FAST"
+const CHECKPOINT_SCHEMA_ID := "v072.solar_victory.checkpoint.v3"
+const TRUSTED_AUTHORITY_ID := "v072.victory.trusted_authority.reference"
+const TRUSTED_SOURCE_AUTHORITY_ID := "v072.victory.source_authority.reference"
+const BALANCE_PROFILE_ID := "V072_STARTER_FREE_FAST"
 const BALANCE_PROFILE_FINGERPRINT := (
-	"8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a"
+	"b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48"
 )
-const CORE_INTERFACE_ID := "v071.solar_victory.core_authority.v2"
-const AI_INTERFACE_ID := "v071.solar_victory.ai_observation.v2"
-const PLAYER_INTERFACE_ID := "v071.solar_victory.player_projection.v2"
-const INTENT_INTERFACE_ID := "v071.solar_victory.intent.v2"
-const RECEIPT_INTERFACE_ID := "v071.solar_victory.authoritative_receipt.v2"
-const SAVE_INTERFACE_ID := "v071.solar_victory.save_state.v2"
+const CORE_INTERFACE_ID := "v072.solar_victory.core_authority.v3"
+const AI_INTERFACE_ID := "v072.solar_victory.ai_observation.v3"
+const PLAYER_INTERFACE_ID := "v072.solar_victory.player_projection.v3"
+const INTENT_INTERFACE_ID := "v072.solar_victory.intent.v3"
+const RECEIPT_INTERFACE_ID := "v072.solar_victory.authoritative_receipt.v3"
+const SAVE_INTERFACE_ID := "v072.solar_victory.save_state.v3"
 
 const AUTHORITY_IDENTITY_METHOD := "victory_authority_identity_v1"
 const CAPABILITY_IDENTITY_METHOD := "victory_capability_identity_v1"
@@ -41,8 +41,8 @@ const INTENT_KIND_IDS := [
 const PROOF_KIND_QUALIFICATION := "victory_qualification"
 const PROOF_KIND_BOUNDARY := "victory_boundary_revalidation"
 
-const SOLAR_FACILITY_EFFICIENCY_STATE_ID := "V071SolarFacilityEfficiencyState"
-const MACRO_ROUND_VICTORY_GATE_STATE_ID := "V071MacroRoundVictoryGateState"
+const SOLAR_FACILITY_EFFICIENCY_STATE_ID := "V072SolarFacilityEfficiencyState"
+const MACRO_ROUND_VICTORY_GATE_STATE_ID := "V072MacroRoundVictoryGateState"
 
 const SUNLIT_MULTIPLIER := 2.0
 const DARK_MULTIPLIER := 1.0

@@ -1,47 +1,53 @@
 extends RefCounted
 class_name V07AssetBatchCore
 
-const SCHEMA_VERSION := 1
-const STATE_VERSION := 2
-const RULESET_ID := "v0.7.1"
-const BALANCE_PROFILE_ID := "V071_CANDIDATE_A_FAST"
-const BALANCE_PROFILE_FINGERPRINT := (
-	"8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a"
+const CardDefinitions := preload(
+	"res://scripts/v07_semantic/v072_card_definition_registry.gd"
 )
 
-const ASSET_CORE_AUTHORITY_ID := "v071.six_color_assets.core_authority.v2"
-const ASSET_AI_OBSERVATION_ID := "v071.six_color_assets.ai_observation.v2"
-const ASSET_PLAYER_PROJECTION_ID := "v071.six_color_assets.player_projection.v2"
-const ASSET_INTENT_ID := "v071.six_color_assets.intent.v2"
-const ASSET_RECEIPT_ID := "v071.six_color_assets.authoritative_receipt.v2"
-const ASSET_SAVE_STATE_ID := "v071.six_color_assets.save_state.v2"
+const SCHEMA_VERSION := 1
+const STATE_VERSION := 3
+const RULESET_ID := CardDefinitions.RULESET_ID
+const BALANCE_PROFILE_ID := CardDefinitions.BALANCE_PROFILE_ID
+const BALANCE_PROFILE_FINGERPRINT := CardDefinitions.BALANCE_PROFILE_FINGERPRINT
+const PROFILE_FINGERPRINT_INPUT := CardDefinitions.PROFILE_FINGERPRINT_INPUT
 
-const BATCH_CORE_AUTHORITY_ID := "v071.card_batch.core_authority.v2"
-const BATCH_AI_OBSERVATION_ID := "v071.card_batch.ai_observation.v2"
-const BATCH_PLAYER_PROJECTION_ID := "v071.card_batch.player_projection.v2"
-const BATCH_INTENT_ID := "v071.card_batch.intent.v2"
-const BATCH_RECEIPT_ID := "v071.card_batch.authoritative_receipt.v2"
-const BATCH_SAVE_STATE_ID := "v071.card_batch.save_state.v2"
-const PUBLIC_PROJECTION_ID := "v071.card_batch.public_projection.v2"
+const ASSET_CORE_AUTHORITY_ID := "v072.six_color_assets.core_authority.v3"
+const ASSET_AI_OBSERVATION_ID := "v072.six_color_assets.ai_observation.v3"
+const ASSET_PLAYER_PROJECTION_ID := "v072.six_color_assets.player_projection.v3"
+const ASSET_INTENT_ID := "v072.six_color_assets.intent.v3"
+const ASSET_RECEIPT_ID := "v072.six_color_assets.authoritative_receipt.v3"
+const ASSET_SAVE_STATE_ID := "v072.six_color_assets.save_state.v3"
 
-const INTERNAL_INTENT_ID := "internal.v071.asset_batch.lock_intent.v2"
-const INTERNAL_RECEIPT_ID := "internal.v071.asset_batch.authoritative_receipt.v2"
-const INTERNAL_SAVE_STATE_ID := "internal.v071.asset_batch.save_state.v2"
-const CHECKPOINT_ID := "internal.v071.asset_batch.checkpoint.v2"
-const PRIVACY_POLICY_ID := "v071.asset_batch.privacy.v2"
+const BATCH_CORE_AUTHORITY_ID := "v072.card_batch.core_authority.v3"
+const BATCH_AI_OBSERVATION_ID := "v072.card_batch.ai_observation.v3"
+const BATCH_PLAYER_PROJECTION_ID := "v072.card_batch.player_projection.v3"
+const BATCH_INTENT_ID := "v072.card_batch.intent.v3"
+const BATCH_RECEIPT_ID := "v072.card_batch.authoritative_receipt.v3"
+const BATCH_SAVE_STATE_ID := "v072.card_batch.save_state.v3"
+const PUBLIC_PROJECTION_ID := "v072.card_batch.public_projection.v3"
+
+const INTERNAL_INTENT_ID := "internal.v072.asset_batch.lock_intent.v3"
+const INTERNAL_RECEIPT_ID := "internal.v072.asset_batch.authoritative_receipt.v3"
+const INTERNAL_SAVE_STATE_ID := "internal.v072.asset_batch.save_state.v3"
+const CHECKPOINT_ID := "internal.v072.asset_batch.checkpoint.v3"
+const PRIVACY_POLICY_ID := "v072.asset_batch.privacy.v3"
 const TIME_ATTESTATION_INTERFACE_ID := "v07.time.authoritative_attestation.v1"
 const TIME_ATTESTATION_LOOKUP_METHOD := "authoritative_time_attestation_v1"
 
-const SIX_COLOR_ASSET_STATE_ID := "V071SixColorAssetState"
-const ASSET_CYCLE_SNAPSHOT_ID := "V071AssetCycleSnapshot"
-const ASSET_RESERVATION_STATE_ID := "V071AssetReservationState"
-const CARD_BATCH_STATE_ID := "V071CardBatchState"
-const PREBOUND_TARGET_STATE_ID := "V071PreboundTargetState"
-const ANONYMOUS_RESOLUTION_STATE_ID := "V071AnonymousResolutionState"
+const SIX_COLOR_ASSET_STATE_ID := "V072SixColorAssetState"
+const ASSET_CYCLE_SNAPSHOT_ID := "V072AssetCycleSnapshot"
+const ASSET_RESERVATION_STATE_ID := "V072AssetReservationState"
+const CARD_BATCH_STATE_ID := "V072CardBatchState"
+const PREBOUND_TARGET_STATE_ID := "V072PreboundTargetState"
+const ANONYMOUS_RESOLUTION_STATE_ID := "V072AnonymousResolutionState"
 
 const WINDOW_DURATION_MS := 30000
 const MAX_ACTIONS_PER_PLAYER := 5
 const ASSET_CAP := 6
+const INITIAL_ASSETS_PER_COLOR := 0
+const INITIAL_REMAINDER_MILLI_PER_COLOR := 0
+const ZERO_DEADLOCK_MECHANISM := "zero_asset_cost_starter_cards"
 const MAX_ASSET_REFRESH_PER_COLOR_PER_BATCH := 3
 const DEFAULT_GDP_MILLI_PER_ASSET := 1000
 const MAX_SAFE_INTEGER := 9007199254740991
@@ -444,6 +450,32 @@ static func create_state(
 		"refresh_applied": false,
 	}
 	return state if _state_error(state).is_empty() else {}
+
+
+static func create_genesis_state(
+	batch_id: String,
+	player_ids: Array,
+	hidden_lead_order: Array,
+	opened_at_ms: int = 0,
+	gdp_milli_per_asset: int = DEFAULT_GDP_MILLI_PER_ASSET
+) -> Dictionary:
+	var normalized_players := _string_id_array(player_ids, false)
+	if normalized_players.is_empty():
+		return {}
+	var initial_assets := {}
+	var initial_remainders := {}
+	for player_id in normalized_players:
+		initial_assets[player_id] = _zero_color_map()
+		initial_remainders[player_id] = _zero_color_map()
+	return create_state(
+		batch_id,
+		normalized_players,
+		hidden_lead_order,
+		initial_assets,
+		initial_remainders,
+		opened_at_ms,
+		gdp_milli_per_asset
+	)
 
 
 static func update_submission_hidden_lead_order(
@@ -1077,20 +1109,20 @@ static func contract_snapshot() -> Dictionary:
 		"authoritative_receipt": [ASSET_RECEIPT_ID, BATCH_RECEIPT_ID],
 		"save_state": [ASSET_SAVE_STATE_ID, BATCH_SAVE_STATE_ID],
 		"asset_domain": {
-			"CoreAuthorityV2": ASSET_CORE_AUTHORITY_ID,
-			"AiObservationV2": ASSET_AI_OBSERVATION_ID,
-			"PlayerProjectionV2": ASSET_PLAYER_PROJECTION_ID,
-			"IntentV2": ASSET_INTENT_ID,
-			"AuthoritativeReceiptV2": ASSET_RECEIPT_ID,
-			"SaveStateV2": ASSET_SAVE_STATE_ID,
+			"CoreAuthorityV3": ASSET_CORE_AUTHORITY_ID,
+			"AiObservationV3": ASSET_AI_OBSERVATION_ID,
+			"PlayerProjectionV3": ASSET_PLAYER_PROJECTION_ID,
+			"IntentV3": ASSET_INTENT_ID,
+			"AuthoritativeReceiptV3": ASSET_RECEIPT_ID,
+			"SaveStateV3": ASSET_SAVE_STATE_ID,
 		},
 		"batch_domain": {
-			"CoreAuthorityV2": BATCH_CORE_AUTHORITY_ID,
-			"AiObservationV2": BATCH_AI_OBSERVATION_ID,
-			"PlayerProjectionV2": BATCH_PLAYER_PROJECTION_ID,
-			"IntentV2": BATCH_INTENT_ID,
-			"AuthoritativeReceiptV2": BATCH_RECEIPT_ID,
-			"SaveStateV2": BATCH_SAVE_STATE_ID,
+			"CoreAuthorityV3": BATCH_CORE_AUTHORITY_ID,
+			"AiObservationV3": BATCH_AI_OBSERVATION_ID,
+			"PlayerProjectionV3": BATCH_PLAYER_PROJECTION_ID,
+			"IntentV3": BATCH_INTENT_ID,
+			"AuthoritativeReceiptV3": BATCH_RECEIPT_ID,
+			"SaveStateV3": BATCH_SAVE_STATE_ID,
 		},
 		"privacy_policy": PRIVACY_POLICY_ID,
 		"state_contract_ids": [
@@ -1103,6 +1135,12 @@ static func contract_snapshot() -> Dictionary:
 		],
 		"colors": COLORS.duplicate(),
 		"per_color_cap": ASSET_CAP,
+		"initial_assets_per_color": INITIAL_ASSETS_PER_COLOR,
+		"initial_remainder_milli_per_color": (
+			INITIAL_REMAINDER_MILLI_PER_COLOR
+		),
+		"asset_owner_created_at_genesis": true,
+		"zero_deadlock_mechanism": ZERO_DEADLOCK_MECHANISM,
 		"max_asset_refresh_per_color_per_batch": (
 			MAX_ASSET_REFRESH_PER_COLOR_PER_BATCH
 		),
@@ -1781,7 +1819,7 @@ static func _domain_contract_context_error(contract: Dictionary) -> String:
 				!= BALANCE_PROFILE_FINGERPRINT \
 			or str(contract.get("default_invalid_target_policy_id", "")) \
 				!= DEFAULT_INVALID_TARGET_POLICY_ID:
-		return "domain_contract_v071_context_invalid"
+		return "domain_contract_v072_context_invalid"
 	if contract.has("max_asset_refresh_per_color_per_batch") \
 			and contract.get("max_asset_refresh_per_color_per_batch") \
 				!= MAX_ASSET_REFRESH_PER_COLOR_PER_BATCH:

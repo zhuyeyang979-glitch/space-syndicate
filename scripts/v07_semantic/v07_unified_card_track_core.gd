@@ -1,36 +1,40 @@
 extends RefCounted
 class_name V07UnifiedCardTrackCore
 
+const CardDefinitions := preload(
+	"res://scripts/v07_semantic/v072_card_definition_registry.gd"
+)
+
 const SCHEMA_VERSION := 2
-const STATE_VERSION := 4
-const RULESET_ID := "v0.7.1"
+const STATE_VERSION := 5
+const RULESET_ID := "v0.7.2"
 const DOMAIN_ID := "unified_card_track"
 
-const CORE_INTERFACE_ID := "v071.unified_track.core_authority.v2"
-const AI_INTERFACE_ID := "v071.unified_track.ai_observation.v2"
-const PLAYER_INTERFACE_ID := "v071.unified_track.player_projection.v2"
-const INTENT_INTERFACE_ID := "v071.unified_track.intent.v2"
-const RECEIPT_INTERFACE_ID := "v071.unified_track.authoritative_receipt.v2"
-const SAVE_INTERFACE_ID := "v071.unified_track.save_state.v2"
-const CHECKPOINT_INTERFACE_ID := "v071.unified_track.checkpoint.v2"
-const ACQUISITION_PROPOSAL_INTERFACE_ID := "v071.unified_track.acquisition_proposal.v2"
+const CORE_INTERFACE_ID := "v072.unified_track.core_authority.v3"
+const AI_INTERFACE_ID := "v072.unified_track.ai_observation.v3"
+const PLAYER_INTERFACE_ID := "v072.unified_track.player_projection.v3"
+const INTENT_INTERFACE_ID := "v072.unified_track.intent.v3"
+const RECEIPT_INTERFACE_ID := "v072.unified_track.authoritative_receipt.v3"
+const SAVE_INTERFACE_ID := "v072.unified_track.save_state.v3"
+const CHECKPOINT_INTERFACE_ID := "v072.unified_track.checkpoint.v3"
+const ACQUISITION_PROPOSAL_INTERFACE_ID := "v072.unified_track.acquisition_proposal.v3"
 const ACQUISITION_AUTHORITY_PORT_INTERFACE_ID := (
-	"v071.unified_track.acquisition_authority_port.v2"
+	"v072.unified_track.acquisition_authority_port.v3"
 )
 const ACQUISITION_AUTHORITY_PORT_SCRIPT_PATH := (
 	"res://scripts/v07_semantic/v07_track_acquisition_authority_port.gd"
 )
-const PRIVACY_POLICY_ID := "v071.unified_track.privacy.v2"
+const PRIVACY_POLICY_ID := "v072.unified_track.privacy.v3"
 const ROOT_LINEAGE_PARENT_HASH := (
 	"0000000000000000000000000000000000000000000000000000000000000000"
 )
 
-const UNIFIED_TRACK_STATE_ID := "V071UnifiedCardTrackState"
-const COLOR_CYCLE_STATE_ID := "V071MarketColorCycleState"
-const HIDDEN_LEAD_STATE_ID := "V071HiddenLeadCycleState"
-const BATCH_BOUNDARY_STATE_ID := "V071CompletedCardBatchBoundaryState"
+const UNIFIED_TRACK_STATE_ID := "V072UnifiedCardTrackState"
+const COLOR_CYCLE_STATE_ID := "V072MarketColorCycleState"
+const HIDDEN_LEAD_STATE_ID := "V072HiddenLeadCycleState"
+const BATCH_BOUNDARY_STATE_ID := "V072CompletedCardBatchBoundaryState"
 const COMPLETED_BATCH_RECEIPT_ID := (
-	"internal.v071.asset_batch.authoritative_receipt.v2"
+	"internal.v072.asset_batch.authoritative_receipt.v3"
 )
 const COMPLETED_BATCH_RECEIPT_SCHEMA_VERSION := 1
 
@@ -44,9 +48,9 @@ const COLOR_IDS := [
 ]
 const CARD_KIND_IDS := ["normal_card", "commodity_card"]
 const TRACK_ITEM_LEVEL := 1
-const BALANCE_PROFILE_ID := "V071_CANDIDATE_A_FAST"
+const BALANCE_PROFILE_ID := "V072_STARTER_FREE_FAST"
 const BALANCE_PROFILE_FINGERPRINT := (
-	"8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a"
+	"b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48"
 )
 
 const ACTION_SET_STANCE := "color_cycle.set_stance"
@@ -629,12 +633,17 @@ func interface_contract_v1() -> Dictionary:
 		"track_item_claimability_field": "claimable_from_scroll_sequence",
 		"normal_track_spawn_level": TRACK_ITEM_LEVEL,
 		"commodity_track_spawn_level": TRACK_ITEM_LEVEL,
+		"normal_track_definition_registry_id": CardDefinitions.REGISTRY_ID,
+		"normal_track_definition_ids": (
+			CardDefinitions.track_spawn_definition_ids()
+		),
+		"starter_track_spawn_allowed": false,
 		"lead_identity_not_directly_published": true,
 		"lead_identity_may_be_inferred_from_public_information": true,
 		"acquisition_requires_trusted_authority_port": true,
 		"caller_supplied_acquisition_receipts_trusted": false,
 		"production_runtime_connected": false,
-		"v071_production_cutover_complete": false,
+		"v072_production_cutover_complete": false,
 	}
 
 
@@ -1606,7 +1615,7 @@ func _viewer_projection(interface_id: String, viewer_actor_id: String) -> Dictio
 			item.get("claimable_from_scroll_sequence", -1)
 		)
 		var claimable := scroll_sequence >= claimable_from_scroll_sequence
-		own_items.append({
+		var projected_item := {
 			"instance_id": str(item.get("instance_id", "")),
 			"card_definition_id": str(item.get("card_definition_id", "")),
 			"card_kind": str(item.get("card_kind", "")),
@@ -1618,7 +1627,24 @@ func _viewer_projection(interface_id: String, viewer_actor_id: String) -> Dictio
 			"claimable_from_scroll_sequence": claimable_from_scroll_sequence,
 			"claimable": claimable,
 			"claimability_state": "claimable" if claimable else "incoming_locked",
-		})
+		}
+		if str(item.get("card_kind", "")) == "normal_card":
+			var definition := CardDefinitions.definition(
+				str(item.get("card_definition_id", ""))
+			)
+			projected_item["origin_class"] = str(
+				definition.get("origin_class", "")
+			)
+			projected_item["asset_cost_profile"] = str(
+				definition.get("asset_cost_profile", "")
+			)
+			projected_item["primary_asset_cost"] = int(
+				definition.get("primary_asset_cost", -1)
+			)
+			projected_item["starter_badge"] = bool(
+				definition.get("starter_badge", false)
+			)
+		own_items.append(projected_item)
 	var color_cycle := _state.get("color_cycle_state", {}) as Dictionary
 	var pending := color_cycle.get("pending_stances", {}) as Dictionary
 	var own_pending: Dictionary = {}
@@ -1666,7 +1692,7 @@ func _viewer_projection(interface_id: String, viewer_actor_id: String) -> Dictio
 			str(lead.get("current_lead_id", "")) == viewer_actor_id
 		)
 		viewer_private_facts["self_lead_notice_token"] = (
-			"v071.lead.double_influence"
+			"v072.lead.double_influence"
 			if str(lead.get("current_lead_id", "")) == viewer_actor_id
 			else "none"
 		)
@@ -2076,6 +2102,12 @@ func _draw_supply_card(claimable_from_scroll_sequence: int = -1) -> Dictionary:
 	) as Dictionary
 	var card_definition_id := _draw_definition(definition_supply)
 	if card_kind == "normal_card":
+		var drawn_definition := CardDefinitions.definition(card_definition_id)
+		card_definition_id = CardDefinitions.standard_definition_id(
+			str(drawn_definition.get("card_type", "")),
+			primary_color,
+			TRACK_ITEM_LEVEL
+		)
 		_state["normal_supply_state"] = definition_supply
 	else:
 		_state["commodity_supply_state"] = definition_supply
@@ -2141,8 +2173,11 @@ static func _new_definition_supply(
 	stream_id: String
 ) -> Dictionary:
 	var templates: Array = []
-	for index in range(12):
-		templates.append("%s.reference.%02d" % [card_kind, index])
+	if card_kind == "normal_card":
+		templates.assign(CardDefinitions.track_spawn_definition_ids())
+	else:
+		for index in range(12):
+			templates.append("%s.reference.%02d" % [card_kind, index])
 	var supply := {
 		"stream_id": stream_id,
 		"card_kind": card_kind,
@@ -2843,6 +2878,18 @@ func _state_error(value: Dictionary) -> String:
 			or int(item.get("claimable_from_scroll_sequence", -1)) \
 				> int(track.get("scroll_sequence", 0)) + 1:
 			return "track_item_invalid"
+		if str(item.get("card_kind", "")) == "normal_card":
+			var definition_id := str(item.get("card_definition_id", ""))
+			var definition := CardDefinitions.definition(definition_id)
+			if not CardDefinitions.track_spawn_definition_ids().has(definition_id) \
+					or definition.is_empty() \
+					or str(definition.get("origin_class", "")) != "standard" \
+					or int(definition.get("level", 0)) != TRACK_ITEM_LEVEL \
+					or int(definition.get("primary_asset_cost", -1)) != 1 \
+					or str(definition.get("primary_color", "")) \
+						!= str(item.get("primary_color", "")) \
+					or definition.get("track_spawn_allowed") != true:
+				return "normal_track_definition_invalid"
 		var instance_id := str(item.get("instance_id", ""))
 		if instance_ids.has(instance_id):
 			return "track_instance_duplicate"
@@ -2900,6 +2947,11 @@ func _state_error(value: Dictionary) -> String:
 		for template_id in templates:
 			if not _is_stable_id(template_id):
 				return "%s_template_invalid" % field_name
+		if field_name == "normal_supply_state" \
+				and _array_counts(templates) != _array_counts(
+					CardDefinitions.track_spawn_definition_ids()
+				):
+			return "normal_supply_templates_not_canonical"
 		if _array_counts(templates) \
 			!= _array_counts(supply.get("bag", []) as Array):
 			return "%s_bag_not_template_permutation" % field_name
@@ -3487,8 +3539,8 @@ static func _config_error(config: Dictionary) -> String:
 			!= DISTRIBUTION_BASIS_POINTS:
 		return "card_kind_ratio_invalid"
 	if int(normal_ratio) != DEFAULT_NORMAL_RATIO_BASIS_POINTS \
-		or int(commodity_ratio) != DEFAULT_COMMODITY_RATIO_BASIS_POINTS:
-		return "candidate_a_card_kind_ratio_required"
+			or int(commodity_ratio) != DEFAULT_COMMODITY_RATIO_BASIS_POINTS:
+		return "v072_starter_free_fast_card_kind_ratio_required"
 	if not _is_positive_integer(local_slots) or int(local_slots) > 20:
 		return "local_visible_slot_count_invalid"
 	if not _is_positive_integer(lead_tenure_batches) \
