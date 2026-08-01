@@ -12,13 +12,13 @@ func _init() -> void:
 	var wrapper := FileAccess.get_file_as_string(WRAPPER_PATH)
 	_expect(not tool.is_empty() and not wrapper.is_empty(), "replay tool and parent wrapper exist")
 	_expect(tool.contains('preload("res://scenes/main.tscn")') \
-			and tool.contains("const FIXED_SEED := 900626424") \
-			and tool.contains("const FIXED_CHALLENGE_DEPTH := 1") \
-			and tool.contains("const FIXED_LOCAL_PLAYER_COUNT := 1") \
-			and tool.contains("const FIXED_AI_PLAYER_COUNT := 3"), "replay pins the V7 production composition and setup")
-	_expect(tool.contains("const TARGET_OWNER_INDEX := 7") \
-			and tool.contains('const TARGET_SECTION_ID := "card_inventory"') \
-			and tool.contains('const TARGET_OWNER_ID := "card_inventory"'), "replay pins only the attested Card Inventory row")
+			and tool.contains("const FIXED_SEED := REPLAY_SCENARIO_IDENTITY.RUN_SEED") \
+			and tool.contains("const FIXED_CHALLENGE_DEPTH := REPLAY_SCENARIO_IDENTITY.CHALLENGE_DEPTH") \
+			and tool.contains("const FIXED_LOCAL_PLAYER_COUNT := REPLAY_SCENARIO_IDENTITY.LOCAL_PLAYER_COUNT") \
+			and tool.contains("const FIXED_AI_PLAYER_COUNT := REPLAY_SCENARIO_IDENTITY.AI_PLAYER_COUNT"), "replay pins the V7 production composition and setup")
+	_expect(tool.contains("const TARGET_OWNER_INDEX := REPLAY_SCENARIO_IDENTITY.OWNER_INDEX") \
+			and tool.contains("const TARGET_SECTION_ID := REPLAY_SCENARIO_IDENTITY.SECTION_ID") \
+			and tool.contains("const TARGET_OWNER_ID := REPLAY_SCENARIO_IDENTITY.OWNER_ID"), "replay pins only the attested Card Inventory row")
 	_expect(tool.contains("SCENARIO_IDENTITY.validation_report") \
 			and tool.contains("REGISTRY_VALIDATOR.validate(contract, registry, 19)") \
 			and tool.contains('registry.call("registry_binding_contract_v1")') \
@@ -40,8 +40,8 @@ func _init() -> void:
 			and not tool.contains("apply_envelope"), "replay cannot execute a full Registry Owner audit or restore")
 	_expect(not tool.contains("targeted_owner_capture_diagnostic_v2") \
 			and not tool.contains("cold_restore_vertical_slice_orchestrator") \
-			and not tool.contains("authorization_id") \
-			and not tool.contains("quota_ledger"), "replay cannot create or consume diagnostic authorization")
+			and not tool.contains("quota_ledger") \
+			and tool.contains("REPLAY_SCENARIO_IDENTITY.authorization()"), "replay uses only its dedicated non-diagnostic authorization")
 	_expect(tool.contains('output_path.contains("current_run.save")') \
 			and not tool.contains("write_validated_envelope") \
 			and not tool.contains("request_save"), "replay has no production Save-file write path")
