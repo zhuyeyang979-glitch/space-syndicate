@@ -2,7 +2,13 @@ extends SceneTree
 
 const ADAPTER_ROOT := "res://scripts/v07_adapters"
 const TEST_ROOT := "res://tests/v07_adapters"
-const BASELINE_REVISION := "2e38764791cb37cdc45b2eb0836957f550822dd5"
+const BASELINE_REVISION := "054552f0c3748da2960d94440b2062f042401d3e"
+const COMMERCIAL_COMPATIBILITY_TEST := (
+	"res://tests/v07_adapters/v07_commercial_art_asset_key_compatibility_test.gd"
+)
+const LATEST_MAIN_RESYNC_TEST := (
+	"res://tests/v07_adapters/v07_latest_main_resync_test.gd"
+)
 const MANIFEST_SEARCH_ROOTS := [
 	ADAPTER_ROOT,
 	"res://docs/migration",
@@ -38,6 +44,14 @@ const GAMEPLAY_DOMAIN_FIELDS := [
 	"player_port",
 	"save_adapter",
 	"rng_stream",
+	"required_asset_keys",
+	"required_player_projection",
+	"required_ai_observation",
+	"required_save_adapter",
+	"required_rng_stream",
+	"production_scene_target",
+	"old_surface_deletion_gate",
+	"rollback_surface",
 	"pre_cutover_gate",
 	"cutover_step",
 	"rollback_step",
@@ -96,6 +110,7 @@ func _test_manifest_inventory(
 		str(manifest.get("manifest_id", ""))
 			== "space_syndicate.v07.atomic_cutover_manifest.v1"
 		and str(manifest.get("target_development_ruleset", "")) == "v0.7"
+		and _resync_focused_gates_declared()
 	)
 	_expect(manifest_identity_ready,
 		"atomic cutover manifest identity and target ruleset are exact")
@@ -167,9 +182,27 @@ func _manifest_gameplay_domains_ready(manifest: Dictionary) -> bool:
 			"rollback_step",
 			"old_path_deletion_gate",
 		]:
-			if not _manifest_field_nonempty(domain.get(field)):
+			var binding_ready := _manifest_field_nonempty(domain.get(field))
+			match field:
+				"ai_port":
+					binding_ready = binding_ready \
+						and domain.get("required_ai_observation") == domain.get(field)
+				"player_port":
+					binding_ready = binding_ready \
+						and domain.get("required_player_projection") == domain.get(field)
+				"save_adapter":
+					binding_ready = binding_ready \
+						and domain.get("required_save_adapter") == domain.get(field)
+				"rng_stream":
+					binding_ready = binding_ready \
+						and domain.get("required_rng_stream") == domain.get(field)
+			if not binding_ready:
 				return false
-		if not domain.get("production_scene_change") is bool \
+		if not _manifest_field_nonempty(domain.get("required_asset_keys")) \
+				or not _manifest_field_nonempty(domain.get("production_scene_target")) \
+				or not _manifest_field_nonempty(domain.get("old_surface_deletion_gate")) \
+				or not _manifest_field_nonempty(domain.get("rollback_surface")) \
+				or not domain.get("production_scene_change") is bool \
 				or bool(domain.get("production_scene_change")) \
 				or not domain.get("main_change") is bool \
 				or bool(domain.get("main_change")) \
@@ -177,6 +210,16 @@ func _manifest_gameplay_domains_ready(manifest: Dictionary) -> bool:
 				or bool(domain.get("dual_write_allowed")):
 			return false
 	return seen == GAMEPLAY_DOMAIN_IDS
+
+
+func _resync_focused_gates_declared() -> bool:
+	var compatibility_source := FileAccess.get_file_as_string(
+		COMMERCIAL_COMPATIBILITY_TEST
+	)
+	var resync_source := FileAccess.get_file_as_string(LATEST_MAIN_RESYNC_TEST)
+	return compatibility_source.contains(
+		"V07_COMMERCIAL_ART_ASSET_KEY_COMPATIBILITY"
+	) and resync_source.contains("V07_LATEST_MAIN_RESYNC")
 
 
 func _adapter_category_ready(

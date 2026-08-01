@@ -218,8 +218,10 @@ func _test_canonical_happy_path() -> void:
 		_projection.get("unified_track") == _sources.get("unified_track")
 			and _projection.get("six_color_assets") \
 				== _sources.get("six_color_assets")
-			and _projection.get("card_batch") == _sources.get("card_batch"),
-		"adapter preserves the three PR79 Player surfaces without recomputation"
+			and _projection.get("card_batch") == _sources.get("card_batch")
+			and _projection.get("presentation_assets") \
+				== ADAPTER.presentation_asset_contract(),
+		"adapter preserves Core surfaces and projects only stable presentation asset keys"
 	)
 	_expect(
 		str(_track_core.core_authority_v1().get("core_fingerprint", ""))

@@ -57,7 +57,22 @@ const CANONICAL_PROJECTION_FIELDS := [
 	"unified_track",
 	"six_color_assets",
 	"card_batch",
+	"presentation_assets",
 	"projection_fingerprint",
+]
+
+const PRESENTATION_ASSET_ENTRY_FIELDS := ["asset_key"]
+const PLAYER_PRESENTATION_ASSET_KEYS := [
+	"icon.asset.life",
+	"icon.asset.energy",
+	"icon.asset.industry",
+	"icon.asset.technology",
+	"icon.asset.commerce",
+	"icon.asset.shipping",
+	"card.frame.normal",
+	"card.frame.commodity",
+	"card.frame.bound_action",
+	"card.back.normal",
 ]
 
 const TRACK_PROJECTION_FIELDS := [
@@ -282,6 +297,7 @@ func adapt_player_projection(
 		"unified_track": track.duplicate(true),
 		"six_color_assets": assets.duplicate(true),
 		"card_batch": batch.duplicate(true),
+		"presentation_assets": presentation_asset_contract(),
 	}
 	var projection := WIRE.sealed_copy(unsealed, "projection_fingerprint")
 	var validation := validation_report(projection)
@@ -312,6 +328,13 @@ func player_projection(
 	sources: Dictionary
 ) -> Dictionary:
 	return adapt_player_projection(capability, context, sources)
+
+
+static func presentation_asset_contract() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for asset_key in PLAYER_PRESENTATION_ASSET_KEYS:
+		result.append({"asset_key": asset_key})
+	return result
 
 
 func authorized_context(capability: RefCounted) -> Dictionary:
@@ -401,11 +424,34 @@ static func validation_report(value: Variant) -> Dictionary:
 		return _invalid("component_source_revisions_mismatch")
 	if WIRE.contains_key_recursive(sources, SOURCE_FORBIDDEN_KEYS):
 		return _invalid("canonical_projection_private_field_forbidden")
+	var presentation_reason := _presentation_assets_reason(
+		projection.get("presentation_assets")
+	)
+	if not presentation_reason.is_empty():
+		return _invalid(presentation_reason)
 	if not WIRE.is_fingerprint(projection.get("projection_fingerprint")) \
 			or str(projection.get("projection_fingerprint", "")) \
 			!= WIRE.fingerprint(projection, "projection_fingerprint"):
 		return _invalid("canonical_projection_fingerprint_invalid")
 	return _valid()
+
+
+static func _presentation_assets_reason(value: Variant) -> String:
+	if not value is Array:
+		return "presentation_assets_invalid"
+	var entries := value as Array
+	if entries.size() != PLAYER_PRESENTATION_ASSET_KEYS.size():
+		return "presentation_asset_count_invalid"
+	for index in entries.size():
+		var entry_variant: Variant = entries[index]
+		if not entry_variant is Dictionary:
+			return "presentation_asset_entry_invalid"
+		var entry := entry_variant as Dictionary
+		if not WIRE.exact_fields(entry, PRESENTATION_ASSET_ENTRY_FIELDS) \
+				or str(entry.get("asset_key", "")) \
+					!= str(PLAYER_PRESENTATION_ASSET_KEYS[index]):
+			return "presentation_asset_key_invalid"
+	return ""
 
 
 static func detached_copy(value: Variant) -> Dictionary:
