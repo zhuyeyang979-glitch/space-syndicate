@@ -1,0 +1,656 @@
+{
+  "schema_version": 1,
+  "constitution_id": "space_syndicate.v072.complete",
+  "ruleset_id": "v0.7.2",
+  "status": "frozen_highest_target_constitution",
+  "authority_level": "highest_target_rule_authority",
+  "current_production_ruleset": "v0.6",
+  "target_development_ruleset": "v0.7.2",
+  "authority_precedence": [
+    "latest_explicit_user_rule_decision",
+    "docs/rules/v072_game_constitution.json",
+    "docs/rules/v072_game_constitution.md",
+    "docs/rules/v071_game_constitution.json",
+    "docs/rules/v071_game_constitution.md",
+    "docs/rules/v07_game_constitution.json",
+    "docs/rules/v07_game_constitution.md",
+    "docs/tabletop_rulebook_v06.md_current_production_only",
+    "older_rule_documents",
+    "older_test_oracles",
+    "older_code_behavior"
+  ],
+  "approval": {
+    "approved": true,
+    "approval_decision_id": "USER_APPROVES_V072_FREE_STARTER_BOOTSTRAP",
+    "approved_profile_id": "V072_STARTER_FREE_FAST",
+    "approval_scope": "FIRST_HUMAN_TEST_SAMPLE_RULESET",
+    "latest_user_prompt_constitutes_approval": true,
+    "human_fun_proven": false,
+    "human_test_required": true,
+    "final_commercial_balance": false,
+    "all_player_counts_balanced": false,
+    "tutorial_complete": false
+  },
+  "historical_baselines": {
+    "v07": {
+      "constitution_id": "space_syndicate.v07.complete",
+      "ruleset_id": "v0.7",
+      "constitution_json_sha256": "81c8ae27eba50f4d68c8a379913baf0592a819412bca0109f7e5fc9ef9a5a5fc",
+      "constitution_markdown_sha256": "a0d2e4324898134bdc3a58cc232ce05e5ca39b8787549b8a55a6ab50f28abb72",
+      "balance_defaults_sha256": "8678cfa88eeff53f60b2e209598e670e2748189c3bb3bd0ebd21bf5c5e20c6f8",
+      "content_change_count": 0,
+      "retained_as_immutable_history": true
+    },
+    "v071": {
+      "constitution_id": "space_syndicate.v071.complete",
+      "ruleset_id": "v0.7.1",
+      "constitution_json_sha256": "a5a52a88bc5a139dc56accc46897c82ddc7c3ea1aacdcaa6f72a412815429473",
+      "constitution_markdown_sha256": "2b4822b915d46f575ad9f1ff4675bc3741c91a70cf19b4f56fc8f37ac9bed930",
+      "balance_defaults_sha256": "4ef853a914dafc4919848e2f28da824cb4b710058556c2013fd4cdcddc5d555a",
+      "content_change_count": 0,
+      "retained_as_immutable_history": true
+    }
+  },
+  "inheritance": {
+    "source_constitution_id": "space_syndicate.v071.complete",
+    "source_ruleset_id": "v0.7.1",
+    "source_path": "docs/rules/v071_game_constitution.json",
+    "source_sha256": "a5a52a88bc5a139dc56accc46897c82ddc7c3ea1aacdcaa6f72a412815429473",
+    "inheritance_mode": "all_v071_rules_except_explicit_v072_supersessions",
+    "inherited_constitutional_rule_count": 84,
+    "v072_amendment_rule_count": 8,
+    "effective_constitutional_rule_count": 92,
+    "superseded_rule_ids": [
+      "v07.starter.deck_composition",
+      "v07.starter.zero_deadlock_required"
+    ],
+    "retained_v071_structural_rule_ids": [
+      "v071.batch_boundary.independent_lead_color_cycles",
+      "v071.lead.ai_private_self_notice",
+      "v071.track.replacement_next_scroll_lock",
+      "v071.normal_merge.minimum_total_five",
+      "v071.track.level_one_only_supply",
+      "v071.commodity.batch_availability",
+      "v071.resolution.invalid_target_policy",
+      "v071.lead.soft_hidden_publication"
+    ]
+  },
+  "structural_amendment_rule_ids": [
+    "v072.assets.zero_genesis_balances",
+    "v072.starter.closed_definition_registry",
+    "v072.starter.persistent_zero_asset_cost",
+    "v072.standard.level_one_asset_cost",
+    "v072.starter.standard_merge_consumes_privilege",
+    "v072.starter.zero_deadlock_bootstrap",
+    "v072.starter.private_observation_and_projection",
+    "v072.starter.save_identity_and_migration"
+  ],
+  "constitutional_rules": [
+    {
+      "rule_id": "v072.assets.zero_genesis_balances",
+      "domain": "six_color_assets",
+      "value": {
+        "asset_owner_created_at_genesis": true,
+        "initial_assets_per_color": 0,
+        "initial_fixed_point_remainder_per_color": 0,
+        "colors": [
+          "life",
+          "energy",
+          "industry",
+          "technology",
+          "commerce",
+          "shipping"
+        ],
+        "player_display": "0/6",
+        "uninitialized_state_allowed": false,
+        "absent_owner_state_allowed": false
+      },
+      "supersedes": [
+        "v071.balance.initial_assets_per_color=2"
+      ],
+      "statement": "Every player has an initialized six-color asset Owner at genesis, with all six balances and fixed-point remainders equal to zero."
+    },
+    {
+      "rule_id": "v072.starter.closed_definition_registry",
+      "domain": "starter_deck",
+      "value": {
+        "definition_registry_closed": true,
+        "definition_count": 12,
+        "factory_count": 6,
+        "market_count": 6,
+        "instance_count_per_player_at_genesis": 12,
+        "instances_per_definition": 1,
+        "creation_phase": "player_genesis_only",
+        "creation_allowed_after_genesis": false,
+        "track_spawn_count": 0,
+        "track_spawn_allowed": false,
+        "purchase_allowed": false,
+        "origin_class": "starter_bootstrap",
+        "level": 1,
+        "asset_cost_profile": "starter_zero_asset",
+        "starter_badge": true,
+        "definitions": [
+          {
+            "definition_id": "starter.facility.factory.life.rank_1",
+            "facility_type": "factory",
+            "color": "life",
+            "merge_family_id": "facility.factory.life",
+            "origin_class": "starter_bootstrap",
+            "level": 1,
+            "asset_cost_profile": "starter_zero_asset",
+            "starter_badge": true,
+            "track_spawn_allowed": false,
+            "purchase_allowed": false,
+            "primary_asset_cost": 0,
+            "secondary_asset_cost": 0,
+            "any_asset_cost": 0
+          },
+          {
+            "definition_id": "starter.facility.market.life.rank_1",
+            "facility_type": "market",
+            "color": "life",
+            "merge_family_id": "facility.market.life",
+            "origin_class": "starter_bootstrap",
+            "level": 1,
+            "asset_cost_profile": "starter_zero_asset",
+            "starter_badge": true,
+            "track_spawn_allowed": false,
+            "purchase_allowed": false,
+            "primary_asset_cost": 0,
+            "secondary_asset_cost": 0,
+            "any_asset_cost": 0
+          },
+          {
+            "definition_id": "starter.facility.factory.energy.rank_1",
+            "facility_type": "factory",
+            "color": "energy",
+            "merge_family_id": "facility.factory.energy",
+            "origin_class": "starter_bootstrap",
+            "level": 1,
+            "asset_cost_profile": "starter_zero_asset",
+            "starter_badge": true,
+            "track_spawn_allowed": false,
+            "purchase_allowed": false,
+            "primary_asset_cost": 0,
+            "secondary_asset_cost": 0,
+            "any_asset_cost": 0
+          },
+          {
+            "definition_id": "starter.facility.market.energy.rank_1",
+            "facility_type": "market",
+            "color": "energy",
+            "merge_family_id": "facility.market.energy",
+            "origin_class": "starter_bootstrap",
+            "level": 1,
+            "asset_cost_profile": "starter_zero_asset",
+            "starter_badge": true,
+            "track_spawn_allowed": false,
+            "purchase_allowed": false,
+            "primary_asset_cost": 0,
+            "secondary_asset_cost": 0,
+            "any_asset_cost": 0
+          },
+          {
+            "definition_id": "starter.facility.factory.industry.rank_1",
+            "facility_type": "factory",
+            "color": "industry",
+            "merge_family_id": "facility.factory.industry",
+            "origin_class": "starter_bootstrap",
+            "level": 1,
+            "asset_cost_profile": "starter_zero_asset",
+            "starter_badge": true,
+            "track_spawn_allowed": false,
+            "purchase_allowed": false,
+            "primary_asset_cost": 0,
+            "secondary_asset_cost": 0,
+            "any_asset_cost": 0
+          },
+          {
+            "definition_id": "starter.facility.market.industry.rank_1",
+            "facility_type": "market",
+            "color": "industry",
+            "merge_family_id": "facility.market.industry",
+            "origin_class": "starter_bootstrap",
+            "level": 1,
+            "asset_cost_profile": "starter_zero_asset",
+            "starter_badge": true,
+            "track_spawn_allowed": false,
+            "purchase_allowed": false,
+            "primary_asset_cost": 0,
+            "secondary_asset_cost": 0,
+            "any_asset_cost": 0
+          },
+          {
+            "definition_id": "starter.facility.factory.technology.rank_1",
+            "facility_type": "factory",
+            "color": "technology",
+            "merge_family_id": "facility.factory.technology",
+            "origin_class": "starter_bootstrap",
+            "level": 1,
+            "asset_cost_profile": "starter_zero_asset",
+            "starter_badge": true,
+            "track_spawn_allowed": false,
+            "purchase_allowed": false,
+            "primary_asset_cost": 0,
+            "secondary_asset_cost": 0,
+            "any_asset_cost": 0
+          },
+          {
+            "definition_id": "starter.facility.market.technology.rank_1",
+            "facility_type": "market",
+            "color": "technology",
+            "merge_family_id": "facility.market.technology",
+            "origin_class": "starter_bootstrap",
+            "level": 1,
+            "asset_cost_profile": "starter_zero_asset",
+            "starter_badge": true,
+            "track_spawn_allowed": false,
+            "purchase_allowed": false,
+            "primary_asset_cost": 0,
+            "secondary_asset_cost": 0,
+            "any_asset_cost": 0
+          },
+          {
+            "definition_id": "starter.facility.factory.commerce.rank_1",
+            "facility_type": "factory",
+            "color": "commerce",
+            "merge_family_id": "facility.factory.commerce",
+            "origin_class": "starter_bootstrap",
+            "level": 1,
+            "asset_cost_profile": "starter_zero_asset",
+            "starter_badge": true,
+            "track_spawn_allowed": false,
+            "purchase_allowed": false,
+            "primary_asset_cost": 0,
+            "secondary_asset_cost": 0,
+            "any_asset_cost": 0
+          },
+          {
+            "definition_id": "starter.facility.market.commerce.rank_1",
+            "facility_type": "market",
+            "color": "commerce",
+            "merge_family_id": "facility.market.commerce",
+            "origin_class": "starter_bootstrap",
+            "level": 1,
+            "asset_cost_profile": "starter_zero_asset",
+            "starter_badge": true,
+            "track_spawn_allowed": false,
+            "purchase_allowed": false,
+            "primary_asset_cost": 0,
+            "secondary_asset_cost": 0,
+            "any_asset_cost": 0
+          },
+          {
+            "definition_id": "starter.facility.factory.shipping.rank_1",
+            "facility_type": "factory",
+            "color": "shipping",
+            "merge_family_id": "facility.factory.shipping",
+            "origin_class": "starter_bootstrap",
+            "level": 1,
+            "asset_cost_profile": "starter_zero_asset",
+            "starter_badge": true,
+            "track_spawn_allowed": false,
+            "purchase_allowed": false,
+            "primary_asset_cost": 0,
+            "secondary_asset_cost": 0,
+            "any_asset_cost": 0
+          },
+          {
+            "definition_id": "starter.facility.market.shipping.rank_1",
+            "facility_type": "market",
+            "color": "shipping",
+            "merge_family_id": "facility.market.shipping",
+            "origin_class": "starter_bootstrap",
+            "level": 1,
+            "asset_cost_profile": "starter_zero_asset",
+            "starter_badge": true,
+            "track_spawn_allowed": false,
+            "purchase_allowed": false,
+            "primary_asset_cost": 0,
+            "secondary_asset_cost": 0,
+            "any_asset_cost": 0
+          }
+        ]
+      },
+      "supersedes": [
+        "v07.starter.deck_composition.card_ids"
+      ],
+      "statement": "Genesis creates exactly one instance of each of twelve closed Starter definitions; the unified track and all post-genesis authorities can never create or sell them."
+    },
+    {
+      "rule_id": "v072.starter.persistent_zero_asset_cost",
+      "domain": "action_cost",
+      "value": {
+        "origin_class": "starter_bootstrap",
+        "asset_cost_profile": "starter_zero_asset",
+        "primary_asset_cost": 0,
+        "secondary_asset_cost": 0,
+        "any_asset_cost": 0,
+        "every_legal_play_is_zero_asset_cost": true,
+        "identity_source": "stable_card_definition",
+        "zone_inference_allowed": false,
+        "current_cost_reverse_inference_allowed": false,
+        "persists_through": [
+          "draw_pile",
+          "hand",
+          "committed_escrow",
+          "resolution",
+          "discard",
+          "reshuffle_into_draw_pile",
+          "save",
+          "restore"
+        ],
+        "non_asset_legality_bypassed": false,
+        "first_play_only": false
+      },
+      "supersedes": [
+        "v071.balance.starter_card_setup_cost_exemption=false"
+      ],
+      "statement": "Starter identity is stable definition data and gives zero six-color asset cost on every legal play, without bypassing targets, slots, queue locks, action limits, or other non-asset requirements."
+    },
+    {
+      "rule_id": "v072.standard.level_one_asset_cost",
+      "domain": "action_cost",
+      "value": {
+        "origin_class": "standard",
+        "standard_level_1_primary_asset_cost": 1,
+        "cost_color": "card_definition_color",
+        "level_costs": {
+          "1": 1,
+          "2": 2,
+          "3": 3,
+          "4": 4
+        },
+        "track_definition_prefix_excludes_starter": true,
+        "track_purchase_destination": "personal_discard",
+        "track_purchase_immediate_use": false,
+        "cost_inference_from_display_name_allowed": false,
+        "cost_inference_from_art_allowed": false,
+        "cost_inference_from_historical_zone_allowed": false,
+        "explicit_authored_cost_may_override_rank_default": true
+      },
+      "supersedes": [],
+      "statement": "A standard level-one factory or market costs one asset of its definition color when played; higher standard ranks cost their rank unless an explicit authored definition overrides the default."
+    },
+    {
+      "rule_id": "v072.starter.standard_merge_consumes_privilege",
+      "domain": "normal_merge",
+      "value": {
+        "starter_standard_l1_merge_allowed": true,
+        "player_choice_required": true,
+        "automatic_merge_allowed": false,
+        "required_equal_fields": [
+          "color",
+          "facility_type",
+          "merge_family_id",
+          "level"
+        ],
+        "required_input_level": 1,
+        "required_source_origin_classes": [
+          "starter_bootstrap",
+          "standard"
+        ],
+        "output_origin_class": "standard",
+        "output_level": 2,
+        "output_asset_cost_profile": "standard_rank_2",
+        "output_primary_asset_cost": 2,
+        "starter_zero_cost_privilege_inherited": false,
+        "source_instances_consumed": 2,
+        "minimum_total_normal_card_count_after_merge": 5,
+        "receipt_required_fields": [
+          "source_definition_ids",
+          "source_origin_classes",
+          "output_definition_id",
+          "output_origin_class",
+          "starter_privilege_consumed"
+        ]
+      },
+      "supersedes": [],
+      "statement": "A player may merge a matching Starter L1 with a standard L1 into a standard L2; both sources are consumed and the Starter zero-cost privilege cannot survive the merge."
+    },
+    {
+      "rule_id": "v072.starter.zero_deadlock_bootstrap",
+      "domain": "starter_deck",
+      "value": {
+        "zero_deadlock_mechanism": "zero_asset_cost_starter_cards",
+        "retired_zero_deadlock_mechanism": "initial_assets_per_color_2",
+        "authoritative_shuffle_stream": "starter_deck_shuffle",
+        "opening_hand_size": 5,
+        "opening_hand_starter_card_count": 5,
+        "opening_hand_asset_affordable_card_count": 5,
+        "opening_legal_starter_facility_action_minimum": 1,
+        "first_economic_facility_requires_assets": false,
+        "normal_track_purchase_required_to_start": false,
+        "direct_asset_injection_allowed": false,
+        "runtime_first_batch_cost_exception_allowed": false,
+        "ui_cost_bypass_allowed": false,
+        "first_facility_can_produce_gdp": true,
+        "later_nonzero_asset_refresh_required": true
+      },
+      "supersedes": [
+        "v07.starter.zero_deadlock_required"
+      ],
+      "statement": "A shuffled five-card opening hand contains five asset-affordable Starter cards and at least one legal facility action, so zero initial assets cannot deadlock the first batch."
+    },
+    {
+      "rule_id": "v072.starter.private_observation_and_projection",
+      "domain": "three_wing_semantics",
+      "value": {
+        "player_projection_required_fields": [
+          "definition_id",
+          "origin_class",
+          "asset_cost",
+          "merge_family_id",
+          "level",
+          "starter_badge"
+        ],
+        "starter_badge_key": "card.badge.starter",
+        "ai_self_observation_required_fields": [
+          "definition_id",
+          "origin_class",
+          "asset_cost",
+          "merge_family_id",
+          "level",
+          "legal_targets"
+        ],
+        "ai_must_distinguish_starter_from_standard_l1": true,
+        "ai_must_account_for_privilege_consumption": true,
+        "opponent_forbidden_fields": [
+          "exact_hand",
+          "starter_positions_in_draw_pile",
+          "future_draw_order",
+          "exact_assets"
+        ],
+        "new_external_asset_allowed": false
+      },
+      "supersedes": [],
+      "statement": "Player and AI self-views receive stable Starter identity and cost semantics, while opponent hands, draw order, Starter positions, and exact assets remain private."
+    },
+    {
+      "rule_id": "v072.starter.save_identity_and_migration",
+      "domain": "save_and_replay",
+      "value": {
+        "required_card_fields": [
+          "card_definition_id",
+          "card_instance_id",
+          "origin_class",
+          "asset_cost_profile",
+          "level",
+          "merge_family_id"
+        ],
+        "required_profile_fields": [
+          "balance_profile_id",
+          "balance_profile_fingerprint"
+        ],
+        "starter_identity_source": "closed_definition_contract",
+        "starter_identity_inferred_from_cost": false,
+        "v071_save_to_v072_direct_resume": false,
+        "v06_save_to_v072_direct_resume": false,
+        "v06_save_backup_required": true,
+        "detached_test_only_migration_must_be_explicit": true,
+        "missing_new_field_policy": "fail_closed",
+        "restore_rng_draw_delta": 0
+      },
+      "supersedes": [],
+      "statement": "V0.7.2 Save preserves stable card identity, origin, cost profile, merge family, rank, and balance profile; V0.7.1 and V0.6 Saves cannot silently resume as V0.7.2."
+    }
+  ],
+  "starter_definition_contract": {
+    "contract_id": "space_syndicate.v072.starter_definition_contract.v1",
+    "origin_classes": [
+      "starter_bootstrap",
+      "standard"
+    ],
+    "asset_cost_profiles": [
+      "starter_zero_asset",
+      "standard_rank_1",
+      "standard_rank_2",
+      "standard_rank_3",
+      "standard_rank_4"
+    ],
+    "starter_definition_count": 12,
+    "starter_factory_count": 6,
+    "starter_market_count": 6,
+    "starter_track_spawn_count": 0,
+    "starter_creation_after_genesis_count": 0,
+    "starter_privilege_inheritance_count": 0,
+    "standard_definition_id_format": "facility.<factory_or_market>.<color>.rank_<level>",
+    "starter_definition_id_format": "starter.facility.<factory_or_market>.<color>.rank_1"
+  },
+  "balance_defaults_reference": {
+    "path": "docs/rules/v072_balance_defaults.json",
+    "defaults_id": "space_syndicate.v072.balance_defaults.first_human_sample",
+    "profile_id": "V072_STARTER_FREE_FAST",
+    "profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+    "initial_assets_per_color": 0,
+    "starter_primary_asset_cost": 0,
+    "standard_l1_primary_asset_cost": 1
+  },
+  "retired_v071_runtime_defaults": [
+    {
+      "default_id": "v071.balance.initial_assets_per_color",
+      "historical_value": 2,
+      "v072_runtime_authority": false
+    },
+    {
+      "default_id": "v071.balance.starter_card_setup_cost_exemption",
+      "historical_value": false,
+      "v072_runtime_authority": false
+    },
+    {
+      "default_id": "v071.balance.level_1_primary_asset_cost",
+      "historical_value": 1,
+      "replacement_scope": "standard_origin_class_only",
+      "v072_runtime_authority": false
+    }
+  ],
+  "save_obligations": {
+    "versioned_v072_schema_required": true,
+    "v071_save_to_v072_direct_resume": false,
+    "v06_save_to_v072_direct_resume": false,
+    "v06_save_backup_required": true,
+    "detached_v071_test_only_migration_may_be_explicit": true,
+    "silent_default_of_new_fields_allowed": false,
+    "required_card_state": [
+      "card_definition_id",
+      "card_instance_id",
+      "origin_class",
+      "asset_cost_profile",
+      "level",
+      "merge_family_id"
+    ],
+    "required_deck_state": [
+      "starter_definition_order",
+      "normal_draw_pile_order",
+      "normal_hand",
+      "committed_escrow",
+      "normal_discard"
+    ],
+    "required_merge_state": [
+      "merge_lineage",
+      "starter_privilege_consumed"
+    ],
+    "required_profile_state": [
+      "balance_profile_id",
+      "balance_profile_fingerprint"
+    ],
+    "affected_domain_state_versions_must_increment": [
+      "personal_dbg",
+      "normal_hand",
+      "normal_draw_pile",
+      "normal_discard",
+      "committed_escrow",
+      "normal_merge",
+      "six_color_assets",
+      "balance_profile"
+    ],
+    "restore_rng_draw_delta": 0
+  },
+  "rng_obligations": {
+    "new_rng_stream_count": 0,
+    "starter_shuffle_stream": "starter_deck_shuffle",
+    "starter_cost_rng_allowed": false,
+    "starter_definition_creation_rng_allowed": false,
+    "restore_rng_advance_allowed": false
+  },
+  "detached_implementation_obligations": {
+    "domains": [
+      "DBG Core",
+      "Starter Deck initializer",
+      "Card Definition registry",
+      "Action cost resolver",
+      "Normal merge",
+      "Six-color asset initialization",
+      "AI Observation",
+      "Player Projection",
+      "Intent",
+      "Receipt",
+      "Save State",
+      "Privacy",
+      "Canonical Save Adapter",
+      "Canonical AI Adapter",
+      "Canonical Player Adapter",
+      "Atomic Cutover Manifest"
+    ],
+    "target_ruleset_id": "v0.7.2",
+    "production_connection_count": 0,
+    "v06_mutation_count": 0,
+    "dual_write_count": 0
+  },
+  "cutover_obligations": {
+    "docs_only_freeze": true,
+    "detached_reference_runtime_implementation_allowed_by_this_task": true,
+    "production_cutover_allowed_by_this_task": false,
+    "target_rules_pretend_to_be_runtime": false,
+    "current_runtime_overrides_target_constitution": false,
+    "v06_remains_current_player_runtime_until_atomic_cutover": true,
+    "v072_full_runtime_cutover": false,
+    "v06_and_v072_dual_write_allowed": false,
+    "production_change_requires_explicit_atomic_cutover_task": true,
+    "pr77_completion_required_before_cutover": true
+  },
+  "human_test_obligations": {
+    "human_fun_proven": false,
+    "human_test_required": true,
+    "fresh_deterministic_simulation_required": true,
+    "minimum_simulation_match_count": 6000,
+    "simulation_player_counts": [
+      3,
+      4,
+      6,
+      8
+    ],
+    "risk_ids": [
+      "starter_deck_dominates_long_term_play",
+      "standard_card_asset_economy_too_slow",
+      "starter_badge_comprehension",
+      "starter_privilege_merge_tradeoff_clarity",
+      "zero_asset_opening_target_legality",
+      "asset_overflow_rate",
+      "six_and_eight_player_resolution_fatigue",
+      "maintenance_eight_seconds_newcomer_pressure",
+      "victory_pending_tail"
+    ]
+  },
+  "open_constitutional_questions": []
+}

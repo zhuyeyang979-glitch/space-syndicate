@@ -1,0 +1,432 @@
+{
+  "schema_version": 1,
+  "amendment_document_id": "space_syndicate.v072.amendment_from_v071",
+  "from_constitution_id": "space_syndicate.v071.complete",
+  "to_constitution_id": "space_syndicate.v072.complete",
+  "from_ruleset_id": "v0.7.1",
+  "to_ruleset_id": "v0.7.2",
+  "status": "approved_and_frozen",
+  "approval": {
+    "approved": true,
+    "approval_decision_id": "USER_APPROVES_V072_FREE_STARTER_BOOTSTRAP",
+    "approved_profile_id": "V072_STARTER_FREE_FAST",
+    "approval_scope": "FIRST_HUMAN_TEST_SAMPLE_RULESET",
+    "human_fun_proven": false,
+    "human_test_required": true
+  },
+  "historical_baselines": {
+    "v07": {
+      "constitution_json_sha256": "81c8ae27eba50f4d68c8a379913baf0592a819412bca0109f7e5fc9ef9a5a5fc",
+      "constitution_markdown_sha256": "a0d2e4324898134bdc3a58cc232ce05e5ca39b8787549b8a55a6ab50f28abb72",
+      "balance_defaults_sha256": "8678cfa88eeff53f60b2e209598e670e2748189c3bb3bd0ebd21bf5c5e20c6f8",
+      "content_change_count": 0
+    },
+    "v071": {
+      "constitution_json_sha256": "a5a52a88bc5a139dc56accc46897c82ddc7c3ea1aacdcaa6f72a412815429473",
+      "constitution_markdown_sha256": "2b4822b915d46f575ad9f1ff4675bc3741c91a70cf19b4f56fc8f37ac9bed930",
+      "balance_defaults_sha256": "4ef853a914dafc4919848e2f28da824cb4b710058556c2013fd4cdcddc5d555a",
+      "content_change_count": 0
+    }
+  },
+  "structural_amendment_count": 8,
+  "structural_amendments": [
+    {
+      "amendment_id": "V072-S1",
+      "classification": "APPROVED_STARTER_ECONOMY_AMENDMENT",
+      "source_rule_ids": [
+        "v07.assets.player_term_and_colors",
+        "v07.starter.zero_deadlock_required",
+        "v071.balance.initial_assets_per_color"
+      ],
+      "target_rule_id": "v072.assets.zero_genesis_balances",
+      "change_kind": "supersede_genesis_default",
+      "approved_value": {
+        "asset_owner_exists": true,
+        "initial_assets_per_color": 0,
+        "fixed_point_remainder_per_color": 0,
+        "player_display": "0/6"
+      },
+      "affected_domains": [
+        "six_color_assets",
+        "balance_profile"
+      ],
+      "save_impacts": [
+        "six_color_assets",
+        "asset_fixed_point_remainders",
+        "balance_profile_id",
+        "balance_profile_fingerprint"
+      ],
+      "ai_impacts": [
+        "zero_asset_opening_affordability"
+      ],
+      "player_impacts": [
+        "six_color_assets_display_0_of_6"
+      ],
+      "rng_impacts": [],
+      "migration_required": true,
+      "acceptance_gates": [
+        "all_six_balances_zero",
+        "all_six_remainders_zero",
+        "asset_owner_initialized"
+      ]
+    },
+    {
+      "amendment_id": "V072-S2",
+      "classification": "APPROVED_STARTER_ECONOMY_AMENDMENT",
+      "source_rule_ids": [
+        "v07.starter.deck_composition",
+        "v071.track.level_one_only_supply"
+      ],
+      "target_rule_id": "v072.starter.closed_definition_registry",
+      "change_kind": "replace_shared_standard_ids_with_closed_starter_ids",
+      "approved_value": {
+        "definition_count": 12,
+        "factory_count": 6,
+        "market_count": 6,
+        "instances_per_definition": 1,
+        "origin_class": "starter_bootstrap",
+        "track_spawn_allowed": false,
+        "purchase_allowed": false,
+        "creation_allowed_after_genesis": false
+      },
+      "affected_domains": [
+        "starter_deck",
+        "card_definition_registry",
+        "unified_track"
+      ],
+      "save_impacts": [
+        "card_definition_id",
+        "origin_class"
+      ],
+      "ai_impacts": [
+        "definition_identity"
+      ],
+      "player_impacts": [
+        "starter_badge"
+      ],
+      "rng_impacts": [
+        "starter_deck_shuffle_stream_reused"
+      ],
+      "migration_required": true,
+      "acceptance_gates": [
+        "twelve_unique_starter_definitions",
+        "starter_track_spawn_count_zero",
+        "starter_creation_after_genesis_count_zero"
+      ]
+    },
+    {
+      "amendment_id": "V072-S3",
+      "classification": "APPROVED_STARTER_ECONOMY_AMENDMENT",
+      "source_rule_ids": [
+        "v07.action_cost.authored_six_color",
+        "v071.balance.starter_card_setup_cost_exemption"
+      ],
+      "target_rule_id": "v072.starter.persistent_zero_asset_cost",
+      "change_kind": "stable_origin_scoped_cost_profile",
+      "approved_value": {
+        "asset_cost_profile": "starter_zero_asset",
+        "primary_asset_cost": 0,
+        "secondary_asset_cost": 0,
+        "any_asset_cost": 0,
+        "first_play_only": false
+      },
+      "affected_domains": [
+        "card_definition_registry",
+        "action_cost_resolver",
+        "personal_dbg"
+      ],
+      "save_impacts": [
+        "origin_class",
+        "asset_cost_profile"
+      ],
+      "ai_impacts": [
+        "starter_affordability"
+      ],
+      "player_impacts": [
+        "zero_asset_cost_projection"
+      ],
+      "rng_impacts": [],
+      "migration_required": true,
+      "acceptance_gates": [
+        "starter_free_after_reshuffle",
+        "starter_free_after_restore",
+        "non_asset_legality_preserved"
+      ]
+    },
+    {
+      "amendment_id": "V072-S4",
+      "classification": "APPROVED_STARTER_ECONOMY_AMENDMENT",
+      "source_rule_ids": [
+        "v07.action_cost.authored_six_color",
+        "v071.track.level_one_only_supply",
+        "v071.balance.level_1_primary_asset_cost"
+      ],
+      "target_rule_id": "v072.standard.level_one_asset_cost",
+      "change_kind": "separate_standard_l1_from_starter_cost",
+      "approved_value": {
+        "origin_class": "standard",
+        "standard_l1_primary_asset_cost": 1,
+        "cost_color": "card_definition_color",
+        "purchase_destination": "personal_discard",
+        "immediate_use": false
+      },
+      "affected_domains": [
+        "unified_track",
+        "card_definition_registry",
+        "action_cost_resolver"
+      ],
+      "save_impacts": [
+        "origin_class",
+        "asset_cost_profile"
+      ],
+      "ai_impacts": [
+        "standard_l1_affordability"
+      ],
+      "player_impacts": [
+        "standard_l1_cost_projection"
+      ],
+      "rng_impacts": [],
+      "migration_required": true,
+      "acceptance_gates": [
+        "twelve_standard_l1_definitions_cost_one",
+        "track_never_draws_starter_definition"
+      ]
+    },
+    {
+      "amendment_id": "V072-S5",
+      "classification": "APPROVED_STARTER_ECONOMY_AMENDMENT",
+      "source_rule_ids": [
+        "v07.normal_merge.player_choice",
+        "v07.normal_merge.eligibility",
+        "v071.normal_merge.minimum_total_five"
+      ],
+      "target_rule_id": "v072.starter.standard_merge_consumes_privilege",
+      "change_kind": "close_cross_origin_merge_semantics",
+      "approved_value": {
+        "starter_standard_l1_merge_allowed": true,
+        "automatic_merge_allowed": false,
+        "output_origin_class": "standard",
+        "output_level": 2,
+        "output_primary_asset_cost": 2,
+        "starter_privilege_inherited": false,
+        "minimum_total_normal_card_count_after_merge": 5
+      },
+      "affected_domains": [
+        "normal_merge",
+        "receipt"
+      ],
+      "save_impacts": [
+        "merge_lineage",
+        "origin_class",
+        "asset_cost_profile"
+      ],
+      "ai_impacts": [
+        "starter_privilege_opportunity_cost"
+      ],
+      "player_impacts": [
+        "explicit_merge_choice",
+        "privilege_consumed_receipt"
+      ],
+      "rng_impacts": [],
+      "migration_required": true,
+      "acceptance_gates": [
+        "starter_standard_matching_l1_merge",
+        "output_is_standard_l2_cost_two",
+        "free_privilege_inheritance_count_zero"
+      ]
+    },
+    {
+      "amendment_id": "V072-S6",
+      "classification": "APPROVED_STARTER_ECONOMY_AMENDMENT",
+      "source_rule_ids": [
+        "v07.starter.initial_deal",
+        "v07.starter.no_forced_hand_shape",
+        "v07.starter.zero_deadlock_required"
+      ],
+      "target_rule_id": "v072.starter.zero_deadlock_bootstrap",
+      "change_kind": "replace_asset_grant_with_definition_semantics",
+      "approved_value": {
+        "mechanism": "zero_asset_cost_starter_cards",
+        "opening_hand_starter_card_count": 5,
+        "opening_asset_affordable_card_count": 5,
+        "opening_legal_starter_facility_action_minimum": 1,
+        "asset_injection_allowed": false,
+        "first_batch_runtime_exception_allowed": false
+      },
+      "affected_domains": [
+        "starter_deck",
+        "genesis",
+        "economy_bootstrap"
+      ],
+      "save_impacts": [],
+      "ai_impacts": [
+        "first_batch_legal_action"
+      ],
+      "player_impacts": [
+        "zero_asset_opening_playability"
+      ],
+      "rng_impacts": [
+        "starter_deck_shuffle_stream_unchanged"
+      ],
+      "migration_required": true,
+      "acceptance_gates": [
+        "opening_affordable_count_five",
+        "opening_legal_action_minimum_one",
+        "first_real_gdp_and_asset_refresh"
+      ]
+    },
+    {
+      "amendment_id": "V072-S7",
+      "classification": "APPROVED_STARTER_ECONOMY_AMENDMENT",
+      "source_rule_ids": [
+        "v07.normal.personal_dbg_zones",
+        "v07.color_cycle.reveal_and_privacy",
+        "v071.lead.ai_private_self_notice"
+      ],
+      "target_rule_id": "v072.starter.private_observation_and_projection",
+      "change_kind": "add_owner_scoped_starter_semantics",
+      "approved_value": {
+        "player_starter_badge_key": "card.badge.starter",
+        "ai_self_receives_stable_identity_and_cost": true,
+        "opponent_hand_and_draw_privacy_retained": true
+      },
+      "affected_domains": [
+        "ai_observation",
+        "player_projection",
+        "privacy"
+      ],
+      "save_impacts": [],
+      "ai_impacts": [
+        "origin_class",
+        "asset_cost",
+        "merge_tradeoff",
+        "legal_targets"
+      ],
+      "player_impacts": [
+        "starter_badge",
+        "origin_class",
+        "asset_cost"
+      ],
+      "rng_impacts": [],
+      "migration_required": true,
+      "acceptance_gates": [
+        "ai_distinguishes_starter_and_standard_l1",
+        "player_projects_zero_and_one_costs",
+        "opponent_privacy_unchanged"
+      ]
+    },
+    {
+      "amendment_id": "V072-S8",
+      "classification": "APPROVED_STARTER_ECONOMY_AMENDMENT",
+      "source_rule_ids": [
+        "v07.normal.lifecycle",
+        "v07.normal.authoritative_shuffle",
+        "v07.runtime.single_authority_cutover"
+      ],
+      "target_rule_id": "v072.starter.save_identity_and_migration",
+      "change_kind": "version_and_close_starter_persistence",
+      "approved_value": {
+        "required_card_fields": [
+          "card_definition_id",
+          "card_instance_id",
+          "origin_class",
+          "asset_cost_profile",
+          "level",
+          "merge_family_id"
+        ],
+        "v071_save_to_v072_direct_resume": false,
+        "v06_save_to_v072_direct_resume": false,
+        "restore_rng_draw_delta": 0
+      },
+      "affected_domains": [
+        "save_state",
+        "restore",
+        "balance_profile"
+      ],
+      "save_impacts": [
+        "personal_dbg",
+        "normal_hand",
+        "normal_draw_pile",
+        "normal_discard",
+        "committed_escrow",
+        "normal_merge",
+        "six_color_assets",
+        "balance_profile"
+      ],
+      "ai_impacts": [],
+      "player_impacts": [],
+      "rng_impacts": [
+        "no_new_stream",
+        "restore_zero_advance"
+      ],
+      "migration_required": true,
+      "acceptance_gates": [
+        "stable_starter_identity_after_restore",
+        "profile_fingerprint_exact",
+        "v071_and_v06_fail_closed"
+      ]
+    }
+  ],
+  "approved_profile": {
+    "profile_id": "V072_STARTER_FREE_FAST",
+    "profile_fingerprint_input": "V072_STARTER_FREE_FAST|initial_assets_per_color=0|starter_primary_asset_cost=0|standard_l1_primary_asset_cost=1|normal_card_ratio_basis_points=6000|commodity_card_ratio_basis_points=4000|single_color_net_intervention_cap_enabled=true|single_color_net_intervention_cap_basis_points=1200|max_asset_refresh_per_color_per_batch=3|hand_maintenance_timeout_seconds=8|lead_tenure_batches=1|color_cycle_batches=6",
+    "profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+    "changed_from_v071": {
+      "initial_assets_per_color": {
+        "from": 2,
+        "to": 0
+      },
+      "starter_primary_asset_cost": {
+        "from": "shared_standard_l1_semantics",
+        "to": 0
+      },
+      "standard_l1_primary_asset_cost": {
+        "from": 1,
+        "to": 1,
+        "clarification": "applies_only_to_standard_origin_class"
+      }
+    },
+    "inherited_values": {
+      "normal_card_ratio_basis_points": 6000,
+      "commodity_card_ratio_basis_points": 4000,
+      "single_color_net_intervention_cap_enabled": true,
+      "single_color_net_intervention_cap_basis_points": 1200,
+      "max_asset_refresh_per_color_per_batch": 3,
+      "hand_maintenance_timeout_seconds": 8,
+      "lead_tenure_batches": 1,
+      "color_cycle_batches": 6,
+      "track_scroll_interval_seconds": 5,
+      "track_local_visible_slot_count": 5
+    }
+  },
+  "save_migration": {
+    "v071_save_to_v072_direct_resume": false,
+    "v06_save_to_v072_direct_resume": false,
+    "v06_save_backup_required": true,
+    "detached_test_only_explicit_migration_allowed": true,
+    "silent_default_allowed": false
+  },
+  "simulation_boundary": {
+    "v071_simulation_reusable_as_v072_balance_evidence": false,
+    "fresh_v072_simulation_required": true,
+    "minimum_match_count": 6000,
+    "player_counts": [
+      3,
+      4,
+      6,
+      8
+    ],
+    "seeds_per_configuration": 500,
+    "human_fun_proven": false,
+    "human_test_required": true
+  },
+  "production_boundary": {
+    "current_production_runtime_ruleset": "v0.6",
+    "highest_target_ruleset": "v0.7.2",
+    "full_v0_7_2_runtime_cutover": false,
+    "production_connection_count": 0,
+    "v06_mutation_count": 0,
+    "dual_write_count": 0,
+    "pr77_completion_required_before_cutover": true
+  }
+}
