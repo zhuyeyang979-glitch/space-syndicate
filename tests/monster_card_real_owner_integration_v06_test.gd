@@ -5,6 +5,7 @@ const CONTROLLER_SCRIPT := preload("res://scripts/runtime/monster_runtime_contro
 const WORLD_BRIDGE_SCRIPT := preload("res://scripts/runtime/monster_runtime_world_bridge.gd")
 const ADAPTER_SCRIPT := preload("res://scripts/cards/v06/units/monster_card_effect_adapter_v06.gd")
 const OWNER_PORT_SCRIPT := preload("res://scripts/cards/v06/units/monster_card_owner_port_v06.gd")
+const MONSTER_SAVE_WIRE_CODEC_V2 := preload("res://scripts/runtime/monster_save_wire_codec_v2.gd")
 
 const CARD_RANK_1 := "unit.monster.spore_tide_emperor.rank_1"
 const CARD_RANK_2 := "unit.monster.spore_tide_emperor.rank_2"
@@ -75,6 +76,7 @@ class FixtureWorld:
 			"initial_duration_seconds": 137.0,
 			"move_damage": 2,
 			"collision_damage": 3,
+			"bound_skill_patch": {"skill_id": "fixture.bound_skill"},
 			"starter_play_free": true,
 			"is_starter": true,
 		}
@@ -193,6 +195,7 @@ func _verify_human_and_ai_use_the_same_owner_api() -> void:
 	var human_intent := _intent(owner, world, "tx-human-starter", HUMAN_ACTOR)
 	var human_finalized: Dictionary = adapter.finalize_effect(adapter.commit_effect(adapter.prepare_effect(human_intent)))
 	_expect(bool(human_finalized.get("finalized", false)), "真人 actor_id 通过统一 adapter/port/owner 完成首召")
+	(owner.auto_monsters[0] as Dictionary)["down"] = true
 	var ai_intent := _intent(owner, world, "tx-ai-starter", AI_ACTOR)
 	var ai_finalized: Dictionary = adapter.finalize_effect(adapter.commit_effect(adapter.prepare_effect(ai_intent)))
 	_expect(bool(ai_finalized.get("finalized", false)), "AI actor_id 通过完全相同 API 和校验完成首召")
@@ -212,18 +215,23 @@ func _verify_missing_dependency_stops_before_owner_prepare() -> void:
 	var fixture := _fixture()
 	var owner: MonsterRuntimeController = fixture.owner
 	var world: FixtureWorld = fixture.world
-	world.disabled_capability = "role_cash_ledger.rollback"
+	world.disabled_capability = "bound_skill_inventory.rollback"
 	var owner_capabilities: Dictionary = owner.monster_runtime_capabilities_v06()
-	_expect(not bool(owner_capabilities.get("atomic_mutation_ready", true)) and str(owner_capabilities.get("capability_reason", "")) == "monster_cross_owner_atomicity_unavailable", "任一 participant 缺 rollback 时真实 owner capability fail-closed")
+	var dependency_matrix: Dictionary = owner_capabilities.get("cross_owner_dependency_matrix", {}) if owner_capabilities.get("cross_owner_dependency_matrix", {}) is Dictionary else {}
+	_expect(
+		bool(owner_capabilities.get("atomic_mutation_ready", false))
+		and not bool(dependency_matrix.get("participants_ready", true)),
+		"基础 roster 能力保持可用，同时明确标记 participant 能力缺口"
+	)
 	var adapter = ADAPTER_SCRIPT.new()
 	var configured: Dictionary = adapter.configure(owner)
-	_expect(bool(configured.get("configured", false)) and not bool((configured.get("capability_matrix", {}) as Dictionary).get("atomic_mutation_ready", true)), "port 不把方法存在误判为 production atomic ready")
+	_expect(bool(configured.get("configured", false)) and bool((configured.get("capability_matrix", {}) as Dictionary).get("atomic_mutation_ready", false)), "port 保留由每个 intent 决定 participant 的 production 能力")
 	var before_calls: Dictionary = (owner.monster_card_developer_snapshot_v06().get("call_counts", {}) as Dictionary).duplicate(true)
 	var before_roster := owner.roster_snapshot(true)
 	var rejected: Dictionary = adapter.prepare_effect(_intent(owner, world, "tx-missing-participant", HUMAN_ACTOR))
 	var after_calls: Dictionary = owner.monster_card_developer_snapshot_v06().get("call_counts", {}) as Dictionary
-	_expect(not bool(rejected.get("prepared", true)) and not str(rejected.get("reason_code", "")).is_empty(), "adapter 返回结构化本地化失败而非伪造成功")
-	_expect(int(after_calls.get("prepare", -1)) == int(before_calls.get("prepare", -2)) and int(world.stage_calls.get("prepare", 0)) == 0, "capability 缺口在调用真实 owner prepare 前被 port 截断")
+	_expect(not bool(rejected.get("prepared", true)) and str(rejected.get("reason_code", "")) == "monster_cross_owner_atomicity_unavailable", "adapter 返回 per-intent participant 缺口而非伪造成功")
+	_expect(int(after_calls.get("prepare", -1)) == int(before_calls.get("prepare", -2)) + 1 and int(world.stage_calls.get("prepare", 0)) == 0, "真实 owner 在任何 participant prepare 前拒绝能力缺口")
 	_expect(before_roster == owner.roster_snapshot(true), "跨 owner dependency 缺能力时 roster call count=0 且 before==after")
 	_cleanup(fixture)
 
@@ -284,8 +292,17 @@ func _verify_real_owner_snapshot_private_snapshot_and_save_surface() -> void:
 	_expect(bool(private.get("available", false)) and str(private.get("domain", "")) == "monster" and (private.get("owned_units", []) as Array).size() == 1, "本人 private snapshot 只返回自己的最小单位 rows")
 	_expect(str(private.get("starter_state", "")) == "summoned", "private snapshot 可查看本人的首召状态")
 	var save: Dictionary = owner.unit_card_save_data_v06("monster")
+	var decoded := MONSTER_SAVE_WIRE_CODEC_V2.decode_save_state(save.get("save_state", {}) as Dictionary)
+	var runtime_save: Dictionary = decoded.get("value", {}) if bool(decoded.get("ok", false)) and decoded.get("value") is Dictionary else {}
+	_expect(
+		save.size() == 3
+		and str(save.get("contract_version", "")) == "v0.6"
+		and str(save.get("domain", "")) == "monster"
+		and bool(decoded.get("ok", false)),
+		"真实 owner save envelope 使用版本化 Monster v2 wrapper"
+	)
 	for key in ["monster_card_atomic_schema_version", "monster_card_atomic_owner_revision", "monster_card_atomic_starter_state", "monster_card_atomic_reservations", "monster_card_atomic_terminal_journal", "monster_card_atomic_presentation_journal"]:
-		_expect(save.has(key), "真实 owner save envelope 使用冻结 flat key：%s" % key)
+		_expect(runtime_save.has(key), "真实 owner save v2 runtime 包含权威字段：%s" % key)
 	_expect(bool(owner.unit_card_checkpoint_status_v06("monster").get("can_checkpoint", false)), "finalized production owner 可安全 checkpoint")
 	_cleanup(fixture)
 
