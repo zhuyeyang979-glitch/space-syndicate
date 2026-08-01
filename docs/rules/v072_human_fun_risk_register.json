@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "document_id": "space_syndicate.v072.human_fun_risk_register",
+  "ruleset_id": "v0.7.2",
+  "approved_profile_id": "V072_STARTER_FREE_FAST",
+  "status": "FROZEN_TARGET_HUMAN_TEST_RISK_REGISTER",
+  "human_fun_proven": false,
+  "human_test_required": true,
+  "simulation_report_fingerprint": "14b33e5ec35fcca01adcb6e5f7041b1767e1aa5400611fece8fa66718ea5654d",
+  "failed_balance_targets": [
+    "FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+    "STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+  ],
+  "observed_metrics": {
+    "first_standard_l1_play_median_batch": 5,
+    "first_standard_l1_play_target_maximum": 4,
+    "starter_action_share_batch_10": 0.634132,
+    "starter_action_share_batch_10_limit": 0.70,
+    "free_starter_repeat_build_rate": 0.575579,
+    "standard_card_zero_asset_block_rate": 0.042070,
+    "asset_overflow_rate": 0.003288,
+    "starter_standard_merge_rate": 0.621206,
+    "starter_privilege_consumed_rate": 0.078302
+  },
+  "risks": [
+    {
+      "risk_id": "V072-H1",
+      "severity": "high",
+      "risk": "Paid standard L1 play starts one batch later than the encoded median target.",
+      "evidence": "First standard L1 play median is batch 5 while the target is batch 4 or earlier.",
+      "human_question": "Does the paid-card economy feel delayed after the free opening?"
+    },
+    {
+      "risk_id": "V072-H2",
+      "severity": "high",
+      "risk": "Permanent free Starter loops may dominate long-term choices even below the batch-10 hard limit.",
+      "evidence": "Starter action share is 0.634132 at batch 10 and repeat-build rate is 0.575579.",
+      "human_question": "Do players keep choosing free Starters because they are interesting or because paid cards feel inefficient?"
+    },
+    {
+      "risk_id": "V072-H3",
+      "severity": "high",
+      "risk": "Players may avoid a legal cross-merge because it permanently consumes a free recurring card.",
+      "evidence": "Cross-merge rate is 0.621206 but only 0.078302 of Starter privilege opportunities are consumed.",
+      "human_question": "Is sacrificing a permanent free L1 for a paid L2 a clear and satisfying choice?"
+    },
+    {
+      "risk_id": "V072-H4",
+      "severity": "medium",
+      "risk": "A zero balance may look like an absent or broken resource system rather than an intentional opening state.",
+      "evidence": "All six initialized asset balances begin at zero and the UI shows 0/6.",
+      "human_question": "Do first-time players understand that their asset Owner exists and will refresh after production begins?"
+    },
+    {
+      "risk_id": "V072-H5",
+      "severity": "medium",
+      "risk": "Starter and standard L1 cards share family and rank but have different recurring costs.",
+      "evidence": "Starter L1 costs zero while track-acquired standard L1 costs one matching asset.",
+      "human_question": "Does the Starter badge make the cost distinction immediately legible in hand, discard, and merge views?"
+    },
+    {
+      "risk_id": "V072-H6",
+      "severity": "medium",
+      "risk": "The first nonzero asset refresh may be mechanically fast but causally unclear.",
+      "evidence": "The deterministic median and P95 first refresh are both batch 2.",
+      "human_question": "Can players connect their first facility, GDP snapshot, and later asset refresh without tutorial narration?"
+    },
+    {
+      "risk_id": "V072-H7",
+      "severity": "medium",
+      "risk": "The eight-second maintenance window inherited from V0.7.1 may be too short for the new merge tradeoff.",
+      "evidence": "A cross-merge now asks players to compare permanent free utility with rank compression.",
+      "human_question": "Can a new or slower-reading player evaluate the sacrifice within eight seconds?"
+    },
+    {
+      "risk_id": "V072-H8",
+      "severity": "medium",
+      "risk": "Six- and eight-player resolution may remain tiring despite acceptable deterministic timing.",
+      "evidence": "Aggregate resolution P95 is 7.72 seconds, but simulation does not measure attention or comprehension.",
+      "human_question": "Do large-table players understand repeated Starter resolutions without fatigue?"
+    },
+    {
+      "risk_id": "V072-H9",
+      "severity": "medium",
+      "risk": "A 150-second Victory-pending P95 can still feel like endgame dead time.",
+      "evidence": "The metric passes the 240-second ceiling but remains two and a half minutes at P95.",
+      "human_question": "Does the pending period sustain meaningful decisions until settlement?"
+    }
+  ],
+  "production_guards": {
+    "production_connection_count": 0,
+    "v06_mutation_count": 0,
+    "dual_write_count": 0,
+    "human_review_required_before_commercial_balance_claim": true
+  }
+}

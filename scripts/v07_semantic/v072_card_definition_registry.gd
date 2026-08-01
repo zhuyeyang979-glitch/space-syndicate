@@ -34,7 +34,6 @@ const CARD_TYPES := ["factory", "market"]
 const ORIGIN_STARTER := "starter_bootstrap"
 const ORIGIN_STANDARD := "standard"
 const STARTER_COST_PROFILE := "starter_zero_asset"
-const STARTER_BADGE_ASSET_KEY := "card.badge.starter"
 const MIN_LEVEL := 1
 const MAX_LEVEL := 4
 
@@ -51,7 +50,6 @@ const DEFINITION_FIELDS := [
 	"secondary_asset_cost",
 	"any_asset_cost",
 	"starter_badge",
-	"starter_badge_asset_key",
 	"track_spawn_allowed",
 	"purchase_allowed",
 ]
@@ -159,7 +157,6 @@ static func definition(definition_id: String) -> Dictionary:
 		"secondary_asset_cost": 0,
 		"any_asset_cost": 0,
 		"starter_badge": starter,
-		"starter_badge_asset_key": STARTER_BADGE_ASSET_KEY if starter else "",
 		"track_spawn_allowed": not starter and level == 1,
 		"purchase_allowed": not starter,
 	}

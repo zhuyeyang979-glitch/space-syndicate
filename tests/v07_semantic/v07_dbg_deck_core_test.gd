@@ -277,7 +277,6 @@ func _test_v072_starter_definition_cost_and_privacy_contract() -> void:
 				and card.get("secondary_asset_cost") == 0
 				and card.get("any_asset_cost") == 0
 				and card.get("starter_badge") == true
-				and card.get("starter_badge_asset_key") == "card.badge.starter"
 				and card.get("track_spawn_allowed") == false
 				and card.get("purchase_allowed") == false,
 			"Starter instance retains its canonical zero-cost definition contract"
@@ -294,6 +293,21 @@ func _test_v072_starter_definition_cost_and_privacy_contract() -> void:
 				and card.get("starter_badge") == true,
 			"AI/Player-owned card facts distinguish free Starter cards"
 		)
+	var legal_target_input := _legal_target_input(core)
+	var ai: Dictionary = core.ai_observation(OWNER_ID, legal_target_input)
+	var ai_hand := (ai.get("facts", {}) as Dictionary).get("hand", []) as Array
+	_expect(
+		not legal_target_input.is_empty()
+			and ai_hand.size() == 5
+			and ((ai_hand[0] as Dictionary).get("legal_targets", []) as Array).size() == 1
+			and str(ai.get("legal_target_authority_id", ""))
+				== "v072.map.legal_target_authority.detached",
+		"AI card legality comes from a revision-bound detached target-authority input"
+	)
+	_expect(
+		core.ai_observation(OWNER_ID).is_empty(),
+		"AI observation fails closed when no legal-target authority input is supplied"
+	)
 	_expect(
 		core.ai_observation(OTHER_PLAYER_ID).is_empty()
 			and core.player_projection(OTHER_PLAYER_ID).is_empty(),
@@ -777,8 +791,7 @@ func _test_optional_merge_and_rejections() -> void:
 		paid_l2.get("origin_class") == "standard"
 			and paid_l2.get("asset_cost_profile") == "standard_rank_2"
 			and paid_l2.get("primary_asset_cost") == 2
-			and paid_l2.get("starter_badge") == false
-			and paid_l2.get("starter_badge_asset_key") == "",
+			and paid_l2.get("starter_badge") == false,
 		"Starter plus standard L1 creates paid standard L2 with no inherited privilege"
 	)
 	var restored_merge_core := Core.new()
@@ -1590,7 +1603,7 @@ func _test_commodity_checkpoint_save_exact_once_and_privacy() -> void:
 		== restored_track.call("core_authority_v1"),
 		"paired cold continuation produces identical next Track and DBG authority states"
 	)
-	var ai: Dictionary = restored.ai_observation(OWNER_ID)
+	var ai: Dictionary = _ai_observation(restored)
 	var player: Dictionary = restored.player_projection(OWNER_ID)
 	_expect(
 		Core.is_pure_data(save_state)
@@ -1677,17 +1690,25 @@ func _test_checkpoint_rollback_and_exact_once() -> void:
 
 func _test_three_wing_projection_intent_receipt_and_privacy() -> void:
 	var core := _new_core(FIXED_SEED)
-	var ai: Dictionary = core.ai_observation(OWNER_ID)
+	var ai: Dictionary = _ai_observation(core)
 	var player: Dictionary = core.player_projection(OWNER_ID)
 	_expect(
 		str(ai.get("schema_id", "")) == "v072.personal_dbg.ai_observation.v3"
 		and str(player.get("schema_id", "")) == "v072.personal_dbg.player_projection.v3",
 		"AI and Player wings have distinct typed projection identities"
 	)
+	var ai_cards_have_targets := true
+	for card_variant in (
+		(ai.get("facts", {}) as Dictionary).get("hand", []) as Array
+	):
+		ai_cards_have_targets = ai_cards_have_targets \
+			and card_variant is Dictionary \
+			and (card_variant as Dictionary).has("legal_targets")
 	_expect(
-		ai.get("facts", {}) == player.get("facts", {})
-		and ai.get("facts_fingerprint", "") == player.get("facts_fingerprint", ""),
-		"AI and Player wings project the same authoritative DBG facts"
+		(ai.get("facts", {}) as Dictionary).get("hand_count")
+			== (player.get("facts", {}) as Dictionary).get("hand_count")
+			and ai_cards_have_targets,
+		"AI and Player wings share owned DBG facts while only AI receives attested legal targets"
 	)
 	_expect(
 		core.ai_observation(OTHER_PLAYER_ID).is_empty()
@@ -1757,7 +1778,7 @@ func _test_three_wing_projection_intent_receipt_and_privacy() -> void:
 func _test_six_contract_fact_binding_and_alias_rejection() -> void:
 	var core := _new_core(FIXED_SEED)
 	var authority: Dictionary = core.core_authority_snapshot()
-	var ai: Dictionary = core.ai_observation(OWNER_ID)
+	var ai: Dictionary = _ai_observation(core)
 	var player: Dictionary = core.player_projection(OWNER_ID)
 	var hand := ((player.get("facts", {}) as Dictionary).get("hand", []) as Array)
 	var card_id := str((hand[0] as Dictionary).get("instance_id", ""))
@@ -1903,7 +1924,7 @@ func _test_save_roundtrip_and_rng_continuity() -> void:
 	)
 	_expect(
 		original.player_projection(OWNER_ID) == restored.player_projection(OWNER_ID)
-		and original.ai_observation(OWNER_ID) == restored.ai_observation(OWNER_ID),
+		and _ai_observation(original) == _ai_observation(restored),
 		"restored Core reproduces both three-wing projections exactly"
 	)
 	var restored_starter := _find_card(
@@ -2933,6 +2954,41 @@ func _different_color_pair(cards: Array) -> Array:
 					str(right.get("instance_id", "")),
 				]
 	return []
+
+
+func _legal_target_input(
+	core: RefCounted,
+	owner_id: String = OWNER_ID
+) -> Dictionary:
+	var projection := core.call("player_projection", owner_id) as Dictionary
+	var facts := projection.get("facts", {}) as Dictionary
+	var targets := {}
+	var index := 0
+	for zone_name in ["hand", "discard"]:
+		for card_variant in facts.get(zone_name, []) as Array:
+			var instance_id := str(
+				(card_variant as Dictionary).get("instance_id", "")
+			)
+			targets[instance_id] = ["region.legal.%02d" % index]
+			index += 1
+	return core.call(
+		"build_legal_target_input",
+		owner_id,
+		"v072.map.legal_target_authority.detached",
+		7,
+		targets
+	) as Dictionary
+
+
+func _ai_observation(
+	core: RefCounted,
+	owner_id: String = OWNER_ID
+) -> Dictionary:
+	return core.call(
+		"ai_observation",
+		owner_id,
+		_legal_target_input(core, owner_id)
+	) as Dictionary
 
 
 func _contains_exact_key(value: Variant, key: String) -> bool:

@@ -81,8 +81,6 @@ func _test_starter_definitions() -> void:
 		)
 		_expect(
 			definition.get("starter_badge") == true
-				and str(definition.get("starter_badge_asset_key", ""))
-					== "card.badge.starter"
 				and definition.get("track_spawn_allowed") == false
 				and definition.get("purchase_allowed") == false,
 			"%s is badged, genesis-only, and absent from Track" % definition_id

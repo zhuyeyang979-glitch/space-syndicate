@@ -112,13 +112,28 @@ const CARD_FIELDS := [
 	"secondary_asset_cost",
 	"any_asset_cost",
 	"starter_badge",
-	"starter_badge_asset_key",
 	"track_spawn_allowed",
 	"purchase_allowed",
 	"locked",
 ]
 const CARD_SPEC_FIELDS := CardDefinitions.DEFINITION_FIELDS
 const PROJECTED_CARD_FIELDS := CARD_FIELDS + ["asset_cost"]
+const AI_PROJECTED_CARD_FIELDS := PROJECTED_CARD_FIELDS + ["legal_targets"]
+const LEGAL_TARGET_INPUT_INTERFACE_ID := (
+	"v072.personal_dbg.legal_target_input.v1"
+)
+const LEGAL_TARGET_INPUT_FIELDS := [
+	"schema_version",
+	"interface_id",
+	"ruleset_id",
+	"viewer_player_id",
+	"source_revision",
+	"source_core_fingerprint",
+	"target_authority_id",
+	"target_authority_revision",
+	"targets_by_card_instance_id",
+	"input_fingerprint",
+]
 const COMMODITY_CARD_FIELDS := [
 	"instance_id",
 	"owner_player_id",
@@ -478,6 +493,11 @@ const PROJECTION_FIELDS := [
 	"facts_fingerprint",
 	"allowed_intent_kinds",
 ]
+const AI_PROJECTION_FIELDS := PROJECTION_FIELDS + [
+	"legal_target_authority_id",
+	"legal_target_authority_revision",
+	"legal_target_input_fingerprint",
+]
 const VIEWER_FACT_FIELDS := [
 	"phase",
 	"batch_index",
@@ -627,6 +647,8 @@ const THREE_WING_CONTRACT_FIELDS := [
 	"standard_l1_primary_asset_cost",
 	"starter_standard_l1_merge_allowed",
 	"starter_zero_cost_privilege_inherited",
+	"legal_target_input_interface_id",
+	"legal_target_authority_required",
 ]
 const PRIVATE_PROJECTION_KEYS := [
 	"owner_player_id",
@@ -1195,6 +1217,8 @@ static func three_wing_contract() -> Dictionary:
 		"starter_zero_cost_privilege_inherited": (
 			STARTER_ZERO_COST_PRIVILEGE_INHERITED
 		),
+		"legal_target_input_interface_id": LEGAL_TARGET_INPUT_INTERFACE_ID,
+		"legal_target_authority_required": true,
 	}
 
 
@@ -1219,10 +1243,46 @@ func core_authority_snapshot() -> Dictionary:
 	}
 
 
-func ai_observation(viewer_player_id: String) -> Dictionary:
+func build_legal_target_input(
+	viewer_player_id: String,
+	target_authority_id: String,
+	target_authority_revision: int,
+	targets_by_card_instance_id: Dictionary
+) -> Dictionary:
 	if not _viewer_is_owner(viewer_player_id):
 		return {}
-	var facts := _viewer_private_facts()
+	var input := {
+		"schema_version": 1,
+		"interface_id": LEGAL_TARGET_INPUT_INTERFACE_ID,
+		"ruleset_id": RULESET_ID,
+		"viewer_player_id": viewer_player_id,
+		"source_revision": int(_state.get("revision", -1)),
+		"source_core_fingerprint": _core_fingerprint(_state),
+		"target_authority_id": target_authority_id,
+		"target_authority_revision": target_authority_revision,
+		"targets_by_card_instance_id": targets_by_card_instance_id.duplicate(true),
+	}
+	input["input_fingerprint"] = _fingerprint(input)
+	return input if _legal_target_input_reason(input, viewer_player_id).is_empty() \
+		else {}
+
+
+func ai_observation(
+	viewer_player_id: String,
+	legal_target_input: Dictionary = {}
+) -> Dictionary:
+	if not _viewer_is_owner(viewer_player_id):
+		return {}
+	if not _legal_target_input_reason(
+		legal_target_input,
+		viewer_player_id
+	).is_empty():
+		return {}
+	var targets := legal_target_input.get(
+		"targets_by_card_instance_id",
+		{}
+	) as Dictionary
+	var facts := _viewer_private_facts(targets, true)
 	return {
 		"schema_id": AI_OBSERVATION_SCHEMA_ID,
 		"schema_version": SCHEMA_VERSION,
@@ -1237,6 +1297,15 @@ func ai_observation(viewer_player_id: String) -> Dictionary:
 		"facts": facts,
 		"facts_fingerprint": _fingerprint(facts),
 		"allowed_intent_kinds": _allowed_intent_kinds(),
+		"legal_target_authority_id": str(
+			legal_target_input.get("target_authority_id", "")
+		),
+		"legal_target_authority_revision": int(
+			legal_target_input.get("target_authority_revision", -1)
+		),
+		"legal_target_input_fingerprint": str(
+			legal_target_input.get("input_fingerprint", "")
+		),
 	}
 
 
@@ -1582,7 +1651,10 @@ static func validate_three_wing_contract(value: Dictionary) -> String:
 			or value.get("starter_standard_l1_merge_allowed") \
 			!= STARTER_STANDARD_L1_MERGE_ALLOWED \
 			or value.get("starter_zero_cost_privilege_inherited") \
-			!= STARTER_ZERO_COST_PRIVILEGE_INHERITED:
+			!= STARTER_ZERO_COST_PRIVILEGE_INHERITED \
+			or value.get("legal_target_input_interface_id") \
+			!= LEGAL_TARGET_INPUT_INTERFACE_ID \
+			or value.get("legal_target_authority_required") != true:
 		return "three_wing_contract_rule_flags_invalid"
 	return ""
 
@@ -2307,7 +2379,10 @@ static func _projection_reason(
 	expected_schema_id: String,
 	expected_visibility_scope: String
 ) -> String:
-	if not _pure_data(projection) or not _exact_fields(projection, PROJECTION_FIELDS):
+	var expected_fields := AI_PROJECTION_FIELDS \
+		if expected_schema_id == AI_OBSERVATION_SCHEMA_ID \
+		else PROJECTION_FIELDS
+	if not _pure_data(projection) or not _exact_fields(projection, expected_fields):
 		return "projection_fields_invalid"
 	if projection.get("schema_id") != expected_schema_id \
 			or projection.get("schema_version") != SCHEMA_VERSION \
@@ -2322,11 +2397,20 @@ static func _projection_reason(
 	if not _nonnegative_int(projection.get("revision")) \
 			or not _fingerprint_string(projection.get("core_fingerprint")):
 		return "projection_source_binding_invalid"
+	if expected_schema_id == AI_OBSERVATION_SCHEMA_ID \
+			and (not _stable_id(projection.get("legal_target_authority_id")) \
+				or not _nonnegative_int(
+					projection.get("legal_target_authority_revision")
+				) \
+				or not _fingerprint_string(
+					projection.get("legal_target_input_fingerprint")
+				)):
+		return "projection_legal_target_binding_invalid"
 	var facts_variant: Variant = projection.get("facts")
 	if not (facts_variant is Dictionary):
 		return "projection_facts_invalid"
 	var facts := facts_variant as Dictionary
-	var facts_reason := _viewer_facts_reason(facts)
+	var facts_reason := _viewer_facts_reason(facts, expected_schema_id)
 	if not facts_reason.is_empty():
 		return facts_reason
 	if str(projection.get("facts_fingerprint", "")) != _fingerprint(facts):
@@ -2340,7 +2424,10 @@ static func _projection_reason(
 	return ""
 
 
-static func _viewer_facts_reason(facts: Dictionary) -> String:
+static func _viewer_facts_reason(
+	facts: Dictionary,
+	expected_schema_id: String
+) -> String:
 	if not _pure_data(facts) or not _exact_fields(facts, VIEWER_FACT_FIELDS):
 		return "projection_fact_fields_invalid"
 	var phase := str(facts.get("phase", ""))
@@ -2385,9 +2472,13 @@ static func _viewer_facts_reason(facts: Dictionary) -> String:
 	):
 		return "projection_fact_normal_deck_total_invalid"
 	var seen_ids: Array[String] = []
+	var ai_projection := expected_schema_id == AI_OBSERVATION_SCHEMA_ID
 	for card_variant in hand + discard:
 		if not (card_variant is Dictionary) \
-				or not _projected_card_valid(card_variant as Dictionary):
+				or not _projected_card_valid(
+					card_variant as Dictionary,
+					ai_projection
+				):
 			return "projection_fact_card_invalid"
 		var instance_id := str((card_variant as Dictionary).get("instance_id", ""))
 		if seen_ids.has(instance_id):
@@ -2858,13 +2949,104 @@ func _viewer_is_owner(viewer_player_id: String) -> bool:
 	return is_ready() and viewer_player_id == str(_state.get("owner_player_id", ""))
 
 
-func _viewer_private_facts() -> Dictionary:
+func legal_target_input_reason(
+	legal_target_input: Dictionary,
+	viewer_player_id: String
+) -> String:
+	return _legal_target_input_reason(legal_target_input, viewer_player_id)
+
+
+func _legal_target_input_reason(
+	legal_target_input: Dictionary,
+	viewer_player_id: String
+) -> String:
+	if not _pure_data(legal_target_input) \
+			or not _exact_fields(
+				legal_target_input,
+				LEGAL_TARGET_INPUT_FIELDS
+			):
+		return "legal_target_input_fields_invalid"
+	if legal_target_input.get("schema_version") != 1 \
+			or legal_target_input.get("interface_id") \
+			!= LEGAL_TARGET_INPUT_INTERFACE_ID \
+			or legal_target_input.get("ruleset_id") != RULESET_ID \
+			or legal_target_input.get("viewer_player_id") != viewer_player_id \
+			or not _viewer_is_owner(viewer_player_id):
+		return "legal_target_input_identity_invalid"
+	if legal_target_input.get("source_revision") \
+			!= int(_state.get("revision", -1)) \
+			or legal_target_input.get("source_core_fingerprint") \
+			!= _core_fingerprint(_state):
+		return "legal_target_input_source_stale"
+	if not _stable_id(legal_target_input.get("target_authority_id")) \
+			or not _nonnegative_int(
+				legal_target_input.get("target_authority_revision")
+			):
+		return "legal_target_input_authority_invalid"
+	if not _fingerprint_string(legal_target_input.get("input_fingerprint")) \
+			or legal_target_input.get("input_fingerprint") \
+			!= _fingerprint_without(legal_target_input, "input_fingerprint"):
+		return "legal_target_input_fingerprint_invalid"
+	var mapping_variant: Variant = legal_target_input.get(
+		"targets_by_card_instance_id"
+	)
+	if not (mapping_variant is Dictionary):
+		return "legal_target_input_mapping_invalid"
+	var mapping := mapping_variant as Dictionary
+	var expected_ids := _visible_card_instance_ids()
+	if mapping.size() != expected_ids.size():
+		return "legal_target_input_card_set_mismatch"
+	for instance_id in expected_ids:
+		if not mapping.has(instance_id) \
+				or not (mapping.get(instance_id) is Array):
+			return "legal_target_input_card_set_mismatch"
+		var targets := mapping.get(instance_id) as Array
+		var seen_targets: Array[String] = []
+		for target_variant in targets:
+			var target_id := str(target_variant)
+			if not _stable_id(target_id) or seen_targets.has(target_id):
+				return "legal_target_input_target_invalid"
+			seen_targets.append(target_id)
+	return ""
+
+
+func _visible_card_instance_ids() -> Array[String]:
+	var result: Array[String] = []
+	for zone_name in ["hand", "discard"]:
+		for card_variant in _state.get(zone_name, []) as Array:
+			result.append(str((card_variant as Dictionary).get("instance_id", "")))
+	result.sort()
+	return result
+
+
+func _viewer_private_facts(
+	legal_targets_by_card: Dictionary = {},
+	include_legal_targets: bool = false
+) -> Dictionary:
 	var hand_projection: Array = []
 	for card_variant in _state.get("hand", []) as Array:
-		hand_projection.append(_project_card(card_variant as Dictionary))
+		var card := card_variant as Dictionary
+		hand_projection.append(
+			_project_ai_card(
+				card,
+				legal_targets_by_card.get(
+					str(card.get("instance_id", "")),
+					[]
+				) as Array
+			) if include_legal_targets else _project_card(card)
+		)
 	var discard_projection: Array = []
 	for card_variant in _state.get("discard", []) as Array:
-		discard_projection.append(_project_card(card_variant as Dictionary))
+		var card := card_variant as Dictionary
+		discard_projection.append(
+			_project_ai_card(
+				card,
+				legal_targets_by_card.get(
+					str(card.get("instance_id", "")),
+					[]
+				) as Array
+			) if include_legal_targets else _project_card(card)
+		)
 	var commodity_projection: Array = []
 	for commodity_variant in _state.get("commodity_inventory", []) as Array:
 		commodity_projection.append(_project_commodity(commodity_variant as Dictionary))
@@ -2908,6 +3090,15 @@ func _viewer_private_facts() -> Dictionary:
 static func _project_card(card: Dictionary) -> Dictionary:
 	var projected := card.duplicate(true)
 	projected["asset_cost"] = int(card.get("primary_asset_cost", -1))
+	return projected
+
+
+static func _project_ai_card(
+	card: Dictionary,
+	legal_targets: Array
+) -> Dictionary:
+	var projected := _project_card(card)
+	projected["legal_targets"] = legal_targets.duplicate(true)
 	return projected
 
 
@@ -3295,12 +3486,27 @@ static func _card_valid(card: Dictionary) -> bool:
 	return _card_spec_valid(spec)
 
 
-static func _projected_card_valid(card: Dictionary) -> bool:
-	if not _exact_fields(card, PROJECTED_CARD_FIELDS) \
+static func _projected_card_valid(
+	card: Dictionary,
+	legal_targets_required: bool = false
+) -> bool:
+	var expected_fields := AI_PROJECTED_CARD_FIELDS \
+		if legal_targets_required else PROJECTED_CARD_FIELDS
+	if not _exact_fields(card, expected_fields) \
 			or not _nonnegative_int(card.get("asset_cost")):
 		return false
+	if legal_targets_required:
+		if not (card.get("legal_targets") is Array):
+			return false
+		var seen_targets: Array[String] = []
+		for target_variant in card.get("legal_targets") as Array:
+			var target_id := str(target_variant)
+			if not _stable_id(target_id) or seen_targets.has(target_id):
+				return false
+			seen_targets.append(target_id)
 	var authority_card := card.duplicate(true)
 	authority_card.erase("asset_cost")
+	authority_card.erase("legal_targets")
 	return int(card.get("asset_cost", -1)) \
 		== int(authority_card.get("primary_asset_cost", -2)) \
 		and _card_valid(authority_card)

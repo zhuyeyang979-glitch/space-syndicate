@@ -93,7 +93,7 @@ func _build_fixture() -> void:
 		bool(dbg_started.get("initialized", false)),
 		"DBG fixture initializes the authorized private Core"
 	)
-	var dbg_observation: Dictionary = _dbg_core.ai_observation(VIEWER_ID)
+	var dbg_observation: Dictionary = _dbg_ai_observation(_dbg_core, VIEWER_ID)
 	_rival_dbg_core = DBG_CORE.new()
 	var rival_dbg_started: Dictionary = _rival_dbg_core.initialize(
 		RIVAL_ID,
@@ -103,7 +103,7 @@ func _build_fixture() -> void:
 		bool(rival_dbg_started.get("initialized", false)),
 		"rival DBG fixture initializes independently"
 	)
-	_rival_dbg_observation = _rival_dbg_core.ai_observation(RIVAL_ID)
+	_rival_dbg_observation = _dbg_ai_observation(_rival_dbg_core, RIVAL_ID)
 
 	var initial_assets := {
 		VIEWER_ID: _assets(3),
@@ -210,6 +210,26 @@ func _test_canonical_happy_path() -> void:
 			and _observation.get("solar_victory") \
 				== _sources.get("solar_victory"),
 		"adapter wraps all five existing observations without recomputation"
+	)
+	var dbg_facts := (
+		_observation.get("personal_dbg", {}) as Dictionary
+	).get("facts", {}) as Dictionary
+	var owned_cards_ready := true
+	for card_variant in dbg_facts.get("hand", []) as Array:
+		var card := card_variant as Dictionary
+		owned_cards_ready = owned_cards_ready \
+			and card.has("definition_id") \
+			and card.has("origin_class") \
+			and card.has("asset_cost") \
+			and card.has("merge_family_id") \
+			and card.has("level") \
+			and (card.get("legal_targets", []) as Array).size() == 1
+	_expect(
+		owned_cards_ready
+			and (_observation.get("personal_dbg", {}) as Dictionary).get(
+				"legal_target_authority_id"
+			) == "v072.map.legal_target_authority.detached",
+		"canonical AI preserves authority-attested legal targets for owned cards"
 	)
 	_expect(
 		_track_core.core_authority_v1() == track_before
@@ -619,6 +639,28 @@ func _reseal_domain_observation(observation: Dictionary) -> void:
 	observation["projection_fingerprint"] = ASSET_BATCH_CORE._fingerprint(
 		observation
 	)
+
+
+func _dbg_ai_observation(core: RefCounted, owner_id: String) -> Dictionary:
+	var projection := core.call("player_projection", owner_id) as Dictionary
+	var facts := projection.get("facts", {}) as Dictionary
+	var targets := {}
+	var index := 0
+	for zone_name in ["hand", "discard"]:
+		for card_variant in facts.get(zone_name, []) as Array:
+			var instance_id := str(
+				(card_variant as Dictionary).get("instance_id", "")
+			)
+			targets[instance_id] = ["region.adapter.%02d" % index]
+			index += 1
+	var input := core.call(
+		"build_legal_target_input",
+		owner_id,
+		"v072.map.legal_target_authority.detached",
+		11,
+		targets
+	) as Dictionary
+	return core.call("ai_observation", owner_id, input) as Dictionary
 
 
 func _assets(amount: int) -> Dictionary:

@@ -729,6 +729,7 @@ static func adapter_contract() -> Dictionary:
 		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"source_kinds_allowed": [SOURCE_NEW_V07_GAME],
 		"v07_direct_resume_allowed": false,
+		"v071_direct_resume_allowed": false,
 		"v07_test_only_migration_requires_explicit_contract": true,
 		"v06_direct_resume_allowed": false,
 		"v06_backup_required": true,
