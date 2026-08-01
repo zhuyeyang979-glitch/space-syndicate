@@ -29,57 +29,61 @@ Default development habit:
 Rule authority is versioned. When target rules conflict, use this order:
 
 1. The user's latest explicit rule decision.
-2. `docs/rules/v071_game_constitution.json`.
-3. `docs/rules/v071_game_constitution.md`.
-4. `docs/rules/v07_game_constitution.json`.
-5. `docs/rules/v07_game_constitution.md`.
-6. `docs/tabletop_rulebook_v06.md`, for current-production V0.6 only.
-7. Older rule and design documents.
-8. Older test oracles.
-9. Older code behavior.
+2. `docs/rules/v072_game_constitution.json`.
+3. `docs/rules/v072_game_constitution.md`.
+4. `docs/rules/v071_game_constitution.json`.
+5. `docs/rules/v071_game_constitution.md`.
+6. `docs/rules/v07_game_constitution.json`.
+7. `docs/rules/v07_game_constitution.md`.
+8. `docs/tabletop_rulebook_v06.md`, for current-production V0.6 only.
+9. Older rule and design documents.
+10. Older test oracles.
+11. Older code behavior.
 
 ```text
-HIGHEST_TARGET_RULE_AUTHORITY=V0.7.1_COMPLETE_CONSTITUTION
+HIGHEST_TARGET_RULE_AUTHORITY=V0.7.2_COMPLETE_CONSTITUTION
 CURRENT_PLAYER_RUNTIME_RULE_AUTHORITY=V0.6_RULEBOOK
 TARGET_RULES_DO_NOT_PRETEND_TO_BE_RUNTIME=true
 CURRENT_RUNTIME_DOES_NOT_OVERRIDE_TARGET_CONSTITUTION=true
+HISTORICAL_V071_FREEZE_RECORD=HIGHEST_TARGET_RULE_AUTHORITY=V0.7.1_COMPLETE_CONSTITUTION
 ```
 
-V0.7.1 guides all new rule, architecture, AI, player UI, privacy, Save/replay,
+V0.7.2 guides all new rule, architecture, AI, player UI, privacy, Save/replay,
 and RNG design. V0.6 still describes what the current player runtime actually
-does. An old test cannot veto the V0.7.1 target, and this target cannot change
+does. An old test cannot veto the V0.7.2 target, and this target cannot change
 production without an explicit atomic cutover task. Full details are in
-`docs/rules/v071_rule_precedence.md`.
+`docs/rules/v072_rule_precedence.md`.
 
-## Highest Development Constitution - V0.7.1
+## Highest Development Constitution - V0.7.2
 
 The complete highest target authority is:
 
-- `docs/rules/v071_game_constitution.json` - closed machine-readable authority.
-- `docs/rules/v071_game_constitution.md` - human-readable companion.
-- `docs/rules/v071_balance_defaults.json` - approved first-human-sample defaults.
-- `docs/rules/v071_amendment_from_v07.json` - approved V0.7 to V0.7.1 amendment.
+- `docs/rules/v072_game_constitution.json` - closed machine-readable authority.
+- `docs/rules/v072_game_constitution.md` - human-readable companion.
+- `docs/rules/v072_balance_defaults.json` - approved first-human-sample defaults.
+- `docs/rules/v072_amendment_from_v071.json` - approved V0.7.1 to V0.7.2 amendment.
 
-V0.7.1 preserves the complete V0.7 structure and freezes eight approved
-closures: independent completed-batch lead/color cursors, AI self-lead parity,
-next-scroll replacement locks, a five-card normal-deck minimum, level-one-only
-track supply, saved commodity batch availability, deterministic invalid-target
-policies, and soft-hidden lead publication. `V071_CANDIDATE_A_FAST` is the
-approved tunable profile for the first human sample; human fun remains unproven.
+V0.7.2 inherits the complete, hash-locked V0.7.1 constitution and freezes the
+approved free-Starter bootstrap. Every player begins with an initialized but
+empty six-color asset Owner and twelve stable, permanently zero-asset Starter
+factory/market definitions. Track-acquired standard L1 cards cost one matching
+asset. A matching Starter+standard merge creates a standard L2 and consumes the
+free privilege. `V072_STARTER_FREE_FAST` is the approved profile for the first
+human sample; human fun remains unproven.
 
 This is a frozen target, not a runtime claim:
 
 ```text
 CURRENT_PRODUCTION_RUNTIME_RULESET=V0.6
-TARGET_DEVELOPMENT_CONSTITUTION=V0.7.1
-FULL_V0_7_1_RUNTIME_CUTOVER=false
+TARGET_DEVELOPMENT_CONSTITUTION=V0.7.2
+FULL_V0_7_2_RUNTIME_CUTOVER=false
 HUMAN_FUN_PROVEN=false
 HUMAN_TEST_REQUIRED=true
 ```
 
-The byte-identical V0.7 constitution and balance defaults remain immutable
-historical baseline files. Earlier partial V0.7 records remain historical
-migration evidence when they conflict with `space_syndicate.v071.complete`.
+The byte-identical V0.7 and V0.7.1 constitutions and balance defaults remain
+immutable historical baseline files. V0.7.2 supersedes only the rules named in
+its amendment; all other V0.7.1 rules remain inherited authority.
 
 <!-- CURRENT_PRODUCTION_V06_ONLY_BEGIN -->
 ## Current Production Runtime - V0.6
@@ -88,7 +92,7 @@ migration evidence when they conflict with `space_syndicate.v071.complete`.
 
 The following loop describes the currently executing V0.6 prototype. Preserve
 it while working on V0.6 production unless an explicit cutover task changes it;
-do not promote it over the V0.7 target constitution.
+do not promote it over the V0.7.2 target constitution.
 
 1. Start a 3-8 seat PVE run.
 2. Players publicly choose non-duplicate alien role cards.
@@ -270,8 +274,9 @@ Key files and folders:
 - `tests/visual_snapshot.gd` — source-level visual/layout contract guard.
 - `tests/ui_snapshot_capture.gd` — headed screenshot capture for visual QA.
 - `docs/tabletop_rulebook_v06.md` — authoritative current-production V0.6 player rules; `docs/rules_summary.md` is its current quick-reference companion.
-- `docs/rules/v07_game_constitution.json` — highest machine-readable target development authority.
-- `docs/rules/v07_game_constitution.md` — highest V0.7 target development constitution for human readers.
+- `docs/rules/v072_game_constitution.json` — highest machine-readable target development authority.
+- `docs/rules/v072_game_constitution.md` — highest V0.7.2 target development constitution for human readers.
+- `docs/rules/v071_game_constitution.json` and `docs/rules/v07_game_constitution.json` — immutable historical target constitutions inherited below V0.7.2.
 - `docs/development_log.md` — running development log.
 - `docs/reference_ui_notes.md` — deeper reference notes.
 - `REFERENCE_LINKS.md` — root list of reference URLs.
