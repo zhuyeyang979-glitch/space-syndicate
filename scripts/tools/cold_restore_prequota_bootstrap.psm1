@@ -33,6 +33,12 @@ $script:TargetedLedgerBindingModule = cold_restore_module_loader\Import-ColdRest
         "Assert-ColdRestoreTargetedLedgerPublisherValue",
         "Get-ColdRestoreTargetedLedgerBindingContract"
     )
+$script:TargetedLaunchContextModule = cold_restore_module_loader\Import-ColdRestoreModuleOnce `
+    -Path (Join-Path $PSScriptRoot "cold_restore_targeted_diagnostic_launch_context_v1.psm1") `
+    -RequiredCommands @(
+        "ConvertTo-ColdRestoreTargetedDiagnosticLaunchArgumentList",
+        "New-ColdRestoreTargetedDiagnosticLaunchContext"
+    )
 
 $script:TargetedAuthorizationNames = @(
     cold_restore_authorization_contract_v1\Get-ColdRestoreTargetedDiagnosticAuthorizationNames
@@ -680,20 +686,37 @@ function New-ColdRestoreTargetedDiagnosticUserArgumentList {
         -or $LaunchNonce -cnotmatch '^[0-9a-f]{32}$') {
         throw "targeted_owner_capture_command_authorization_invalid"
     }
-    return @(
-        "--cold-restore-non-official-process-a",
-        "--cold-restore-targeted-owner-capture-diagnostic",
-        "--cold-restore-role=producer",
-        "--cold-restore-run-id=$RunId",
-        "--cold-restore-head-sha=$RepositoryHead",
-        "--cold-restore-artifact-root=$ArtifactRoot",
-        "--cold-restore-scenario-fingerprint=$ScenarioFingerprint",
-        "--cold-restore-timeout-policy-fingerprint=$TimeoutPolicyFingerprint",
-        "--cold-restore-targeted-diagnostic-ledger-path=$QuotaLedgerPath",
-        "--cold-restore-targeted-diagnostic-ledger-fingerprint=$QuotaLedgerFingerprint",
-        "--cold-restore-launch-attestation-path=$LaunchAttestationPath",
-        "--cold-restore-launch-nonce=$LaunchNonce"
+    try {
+        $ledger = [IO.File]::ReadAllText(
+            $QuotaLedgerPath,
+            [Text.UTF8Encoding]::new($false)
+        ) | ConvertFrom-Json -DateKind String
+    }
+    catch {
+        throw "targeted_owner_capture_launch_context_ledger_invalid"
+    }
+    $launchContext = `
+        cold_restore_targeted_diagnostic_launch_context_v1\New-ColdRestoreTargetedDiagnosticLaunchContext `
+            -Ledger $ledger `
+            -RepositoryHead $RepositoryHead `
+            -RunId $RunId `
+            -ScenarioFingerprint $ScenarioFingerprint `
+            -QuotaLedgerPath $QuotaLedgerPath `
+            -QuotaLedgerSha256 $QuotaLedgerFingerprint `
+            -LaunchAttestationPath $LaunchAttestationPath `
+            -LaunchNonce $LaunchNonce `
+            -RoleTimeoutPolicySha256 $TimeoutPolicyFingerprint
+    $arguments = @(
+        cold_restore_targeted_diagnostic_launch_context_v1\ConvertTo-ColdRestoreTargetedDiagnosticLaunchArgumentList `
+            -Context $launchContext
     )
+    $artifactArgument = "--cold-restore-artifact-root=$ArtifactRoot"
+    $roleIndex = [Array]::IndexOf($arguments, "--cold-restore-role=producer")
+    if ($roleIndex -lt 0) {
+        throw "targeted_owner_capture_launch_context_role_missing"
+    }
+    return @($arguments[0..$roleIndex]) + @($artifactArgument) `
+        + @($arguments[($roleIndex + 1)..($arguments.Count - 1)])
 }
 
 Export-ModuleMember -Function @(
