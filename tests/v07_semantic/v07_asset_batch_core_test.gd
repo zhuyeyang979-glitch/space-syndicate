@@ -37,6 +37,7 @@ func _run() -> void:
 	_test_one_shot_window_and_lock_immutability()
 	_test_trusted_time_attestation_boundary()
 	_test_anonymous_layered_round_robin()
+	_test_invalid_target_policy_closure()
 	_test_three_wing_projection_and_privacy()
 	_test_exact_domain_contract_adapters()
 	_test_receipt_adapter_cross_lineage_rejection()
@@ -55,9 +56,28 @@ func _test_frozen_constitution_contract() -> void:
 	var instance: Variant = Core.new()
 	_expect(instance is RefCounted and not is_instance_of(instance, Node), "core is non-Node RefCounted")
 	instance = null
-	_expect(str(contract.get("ruleset_id", "")) == "v0.7", "core binds the frozen V0.7 ruleset ID")
+	_expect(str(contract.get("ruleset_id", "")) == "v0.7.1", "core binds the frozen V0.7.1 target ruleset ID")
+	_expect(int(contract.get("state_version", 0)) == 2, "asset and batch authority state upgrades to V0.7.1 state version two")
+	_expect(
+		contract.get("balance_profile_id") == "V071_CANDIDATE_A_FAST"
+			and contract.get("balance_profile_fingerprint")
+				== "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+		"Candidate A profile identity is an exact machine contract"
+	)
 	_expect(contract.get("colors", []) == ["life", "energy", "industry", "technology", "commerce", "shipping"], "core exposes exactly six constitutional colors")
 	_expect(int(contract.get("per_color_cap", 0)) == 6, "each color has the independent cap of six")
+	_expect(int(contract.get("max_asset_refresh_per_color_per_batch", 0)) == 3, "Candidate A caps each color refresh at three points per batch")
+	_expect(
+		contract.get("invalid_target_policy_ids") == [
+			"FIZZLE_FULL_ASSET_REFUND",
+			"FIZZLE_NO_REFUND",
+			"RESOLVE_LEGAL_REMAINDER",
+			"DETERMINISTIC_FALLBACK",
+		]
+			and contract.get("default_invalid_target_policy_id")
+				== "FIZZLE_FULL_ASSET_REFUND",
+		"invalid-target policy IDs are closed and default to a full asset refund"
+	)
 	_expect(int(contract.get("window_duration_ms", 0)) == 30000 and bool(contract.get("one_shot", false)), "submission is a thirty-second one-shot window")
 	_expect(int(contract.get("maximum_active_actions", 0)) == 5, "all active kinds share the absolute five-action maximum")
 	_expect(bool(contract.get("full_queue_atomic_reservation", false)) and bool(contract.get("per_action_reservation", false)), "contract requires atomic full-queue and per-action reservations")
@@ -65,17 +85,24 @@ func _test_frozen_constitution_contract() -> void:
 	_expect(not bool(contract.get("interactive_counters", true)), "interactive counters are retired")
 	_expect(str(contract.get("resolution_mode", "")) == "round_robin_by_local_action_index", "resolution layers by local action index")
 	_expect(str(contract.get("player_iteration_order", "")) == "frozen_hidden_lead_order", "resolution uses the frozen hidden lead order")
-	_expect(contract.get("state_contract_ids", []) == ["V07SixColorAssetState", "V07AssetCycleSnapshot", "V07AssetReservationState", "V07CardBatchState", "V07PreboundTargetState", "V07AnonymousResolutionState"], "asset and batch substate contracts have stable V0.7 identities")
+	_expect(contract.get("state_contract_ids", []) == ["V071SixColorAssetState", "V071AssetCycleSnapshot", "V071AssetReservationState", "V071CardBatchState", "V071PreboundTargetState", "V071AnonymousResolutionState"], "asset and batch substate contracts have versioned V0.7.1 identities")
 
 	var state := _state(["player.0", "player.1"], ["player.1", "player.0"], _assets(1))
 	_expect(not state.is_empty() and bool(Core.validation_report(state).get("valid", false)), "valid pure authority state is accepted")
+	_expect(
+		state.get("state_version") == 2
+			and state.get("balance_profile_id") == "V071_CANDIDATE_A_FAST"
+			and state.get("default_invalid_target_policy_id")
+				== "FIZZLE_FULL_ASSET_REFUND",
+		"authority state persists the V0.7.1 profile and default invalid-target policy"
+	)
 	_expect(Core.is_pure_data(state), "authority state contains pure data only")
 	_expect((state.get("player_ids") as Array).size() == 2 and (state.get("players") as Dictionary).size() == 2, "authority creates one isolated asset owner per player")
 	_expect((state.get("submission_hidden_lead_order") as Array) == ["player.1", "player.0"] and (state.get("frozen_hidden_lead_order") as Array).is_empty(), "batch creation stores only a mutable submission-time lead order")
 	_expect((state.get("window") as Dictionary).get("deadline_ms") == 31000, "deadline is exactly thirty seconds after opening")
 
 	var privacy: Dictionary = Core.privacy_contract()
-	_expect(str(privacy.get("contract_id", "")) == "v07.asset_batch.privacy.v1", "privacy policy is an explicit V1 contract")
+	_expect(str(privacy.get("contract_id", "")) == "v071.asset_batch.privacy.v2", "privacy policy is an explicit V0.7.1 V2 contract")
 	_expect((privacy.get("authority_secret_fields") as Array).has("submission_hidden_lead_order") and (privacy.get("authority_secret_fields") as Array).has("frozen_hidden_lead_order"), "submission and frozen hidden lead orders are authority-secret")
 	_expect((privacy.get("viewer_private_fields") as Array).has("own_assets") and (privacy.get("viewer_private_fields") as Array).has("own_local_queue"), "assets and local queue are viewer-private")
 	_expect(not bool(privacy.get("owner_specific_timing_audio_animation_allowed", true)), "owner-specific timing, audio, and animation leaks are forbidden")
@@ -177,7 +204,7 @@ func _test_asset_cycle_freeze_carry_overflow() -> void:
 		0,
 		1000
 	)
-	var snapshot_0 := _color_map(2000, 750, 1000, 200, 0, 3500)
+	var snapshot_0 := _color_map(2000, 750, 1000, 200, 0, 7500)
 	var lock_0: Dictionary = _lock_player_queue(
 		state,
 		Core.build_lock_intent("intent.asset.0", "batch.asset-cycle", "player.0", 100, []),
@@ -188,7 +215,13 @@ func _test_asset_cycle_freeze_carry_overflow() -> void:
 	state = lock_0.get("state") as Dictionary
 	snapshot_0["shipping"] = 0
 	var frozen_0 := ((state.get("players") as Dictionary).get("player.0") as Dictionary).get("frozen_gdp_milli") as Dictionary
-	_expect(int(frozen_0.get("shipping", 0)) == 3500, "GDP snapshot is detached and frozen at local lock")
+	_expect(int(frozen_0.get("shipping", 0)) == 7500, "GDP snapshot is detached and frozen at local lock")
+	_expect(
+		int((Core.asset_player_projection(state, "player.0").get(
+			"own_projected_refresh"
+		) as Dictionary).get("shipping", 0)) == 3,
+		"viewer projection applies the Candidate A three-point refresh cap"
+	)
 
 	var snapshot_1 := _color_map(1000, 0, 0, 0, 0, 0)
 	var lock_1: Dictionary = _lock_player_queue(
@@ -215,7 +248,8 @@ func _test_asset_cycle_freeze_carry_overflow() -> void:
 	_expect(int(assets_0.get("industry", 0)) == 6 and int(overflow_0.get("industry", 0)) == 1, "full color pool discards whole-unit overflow")
 	_expect(int(assets_0.get("technology", 0)) == 1 and int(remainder_0.get("technology", 0)) == 100, "fixed-point remainder combines with the frozen snapshot")
 	_expect(int(assets_0.get("commerce", 0)) == 2 and int(remainder_0.get("commerce", 0)) == 100, "unused assets carry over when no whole top-up is earned")
-	_expect(int(assets_0.get("shipping", 0)) == 3 and int(remainder_0.get("shipping", 0)) == 500, "post-lock source mutation cannot change shipping refresh")
+	_expect(int(assets_0.get("shipping", 0)) == 3 and int(remainder_0.get("shipping", 0)) == 500, "post-lock source mutation cannot change the capped shipping refresh")
+	_expect(int(overflow_0.get("shipping", 0)) == 4, "whole refresh units above the per-batch cap are recorded as overflow")
 	_expect(int((player_1.get("assets") as Dictionary).get("life", 0)) == 1, "one player's GDP refreshes only that player's same-color pool")
 	_expect(str((refreshed_state.get("window") as Dictionary).get("status", "")) == "assets_refreshed", "asset refresh has a terminal one-shot state")
 
@@ -619,7 +653,7 @@ func _test_anonymous_layered_round_robin() -> void:
 	_expect(anonymous_queue.size() == authority_queue.size(), "public queue preserves authoritative resolution length")
 	for entry_variant in anonymous_queue:
 		var entry := entry_variant as Dictionary
-		_expect(_same_string_set(entry.keys(), ["card", "rule_allowed_target", "current_effect", "result"]), "public queue entry uses the four-field constitutional allowlist")
+		_expect(_same_string_set(entry.keys(), Core.PUBLIC_QUEUE_FIELDS), "public queue entry uses the V0.7.1 causal-history allowlist")
 		_expect(not _contains_key_recursive(entry, ["actor_id", "player_name", "player_color", "avatar", "seat", "player_skip", "source_id", "action_id"]), "public queue entry contains no owner or source clue")
 	_expect(not _contains_value(public, "player.2") and not _contains_value(public, "player.0"), "anonymous public queue does not reveal hidden iteration order")
 	_expect(not bool(public.get("interactive_counters", true)) and not bool(public.get("new_resolution_input_allowed", true)), "resolution opens neither counters nor new input")
@@ -644,6 +678,134 @@ func _test_anonymous_layered_round_robin() -> void:
 	_expect(int((player_0.get("assets") as Dictionary).get("energy", 0)) == 5 and int((player_0.get("assets") as Dictionary).get("industry", 0)) == 5, "later successful actions consume their independent reservations")
 	_expect((player_0.get("reservations") as Dictionary).is_empty() and (player_2.get("reservations") as Dictionary).is_empty(), "all per-action reservations settle before refresh")
 	_expect(str((state.get("window") as Dictionary).get("status", "")) == "batch_resolved", "last queue receipt closes resolution exactly once")
+
+
+func _test_invalid_target_policy_closure() -> void:
+	var expected_outcome_by_policy := {
+		"FIZZLE_FULL_ASSET_REFUND": "invalid_target_fizzle_full_asset_refund",
+		"FIZZLE_NO_REFUND": "invalid_target_fizzle_no_refund",
+		"RESOLVE_LEGAL_REMAINDER": "invalid_target_resolve_legal_remainder",
+		"DETERMINISTIC_FALLBACK": "invalid_target_deterministic_fallback",
+	}
+	var policy_index := 0
+	for policy_id_variant in expected_outcome_by_policy.keys():
+		var policy_id := str(policy_id_variant)
+		var action_id := "action.invalid-target.%d" % policy_index
+		var state := _state(
+			["player.0"],
+			["player.0"],
+			{"player.0": _assets(4)}
+		)
+		var action := _action(
+			action_id,
+			0,
+			_cost(2, 0, 0, 0, 0, 0, 0),
+			_zero(),
+			"target.invalid-target.%d" % policy_index
+		) if policy_id == Core.DEFAULT_INVALID_TARGET_POLICY_ID else _action(
+			action_id,
+			0,
+			_cost(2, 0, 0, 0, 0, 0, 0),
+			_zero(),
+			"target.invalid-target.%d" % policy_index,
+			policy_id
+		)
+		if policy_id == Core.DEFAULT_INVALID_TARGET_POLICY_ID:
+			_expect(
+				action.get("invalid_target_policy_id")
+					== "FIZZLE_FULL_ASSET_REFUND",
+				"an omitted action policy binds the frozen full-refund default"
+			)
+		state = (_lock_player_queue(
+			state,
+			Core.build_lock_intent(
+				"intent.invalid-target.%d" % policy_index,
+				"batch.test",
+				"player.0",
+				1100,
+				[action]
+			),
+			_zero(),
+			1100,
+			["player.0"]
+		).get("state") as Dictionary)
+		var before_bad_reason := state.duplicate(true)
+		var bad_reason := Core.settle_invalid_target(state, action_id, "pending")
+		_expect(
+			not bool(bad_reason.get("accepted", true))
+				and bad_reason.get("reason_code") == "invalid_target_reason_invalid"
+				and bad_reason.get("state") == before_bad_reason,
+			"invalid-target settlement requires a typed public causal reason"
+		)
+
+		var settled := Core.settle_invalid_target(
+			state,
+			action_id,
+			"prebound_target_unavailable"
+		)
+		_expect(bool(settled.get("accepted", false)), "%s closes invalid-target resolution" % policy_id)
+		state = settled.get("state") as Dictionary
+		var player := (state.get("players") as Dictionary).get("player.0") as Dictionary
+		var expected_refund := policy_id == "FIZZLE_FULL_ASSET_REFUND"
+		_expect(
+			int((player.get("assets") as Dictionary).get("life", -1))
+				== (4 if expected_refund else 2)
+				and (player.get("reservations") as Dictionary).is_empty(),
+			"%s applies its exact reservation refund semantics" % policy_id
+		)
+		var result_record := (player.get("action_results") as Dictionary).get(
+			action_id
+		) as Dictionary
+		_expect(
+			result_record.get("outcome_id")
+				== expected_outcome_by_policy.get(policy_id)
+				and result_record.get("invalid_target_policy_id") == policy_id
+				and result_record.get("reason_code")
+					== "prebound_target_unavailable"
+				and result_record.get("asset_refund_applied") == expected_refund
+				and result_record.get("normal_card_destination") == "discard"
+				and result_record.get("action_slot_refunded") == false,
+			"%s records refund, discard, no-slot-refund, and public reason facts" % policy_id
+		)
+		var receipt := settled.get("receipt") as Dictionary
+		_expect(
+			receipt.get("reason_code") == "invalid_target_resolved"
+				and receipt.get("public_history_reason_code")
+					== "prebound_target_unavailable"
+				and receipt.get("invalid_target_policy_id") == policy_id
+				and receipt.get("normal_card_destination") == "discard"
+				and receipt.get("action_slot_refunded") == false,
+			"%s emits an explicit authoritative invalid-target receipt" % policy_id
+		)
+		var public_entry := (
+			(Core.public_projection(state).get("anonymous_queue") as Array)[0]
+		) as Dictionary
+		_expect(
+			public_entry.get("reason_code") == "prebound_target_unavailable"
+				and public_entry.get("invalid_target_policy_id") == policy_id
+				and public_entry.get("asset_refund_applied") == expected_refund
+				and public_entry.get("normal_card_destination") == "discard"
+				and public_entry.get("action_slot_refunded") == false,
+			"%s publishes anonymous causal history without refund ambiguity" % policy_id
+		)
+		var saved := Core.to_save_state(state)
+		var restored := Core.restore_save_state(saved)
+		_expect(
+			bool(restored.get("restored", false))
+				and restored.get("state") == state,
+			"%s policy and invalid-target outcome survive exact Save restore" % policy_id
+		)
+		policy_index += 1
+
+	var invalid_policy_action := _action(
+		"action.invalid-target-policy",
+		0,
+		_cost(0, 0, 0, 0, 0, 0, 0),
+		_zero(),
+		"target.invalid-target-policy",
+		"FIZZLE_REFUND_CARD_AND_SLOT"
+	)
+	_expect(invalid_policy_action.is_empty(), "undeclared invalid-target policy fails the closed action schema")
 
 
 func _test_three_wing_projection_and_privacy() -> void:
@@ -697,7 +859,7 @@ func _test_three_wing_projection_and_privacy() -> void:
 	_expect((state.get("frozen_hidden_lead_order") as Array) == ["player.1", "player.0"], "authority envelope is also a detached snapshot")
 
 	var last_receipt := (state.get("receipts") as Array).back() as Dictionary
-	_expect(str(last_receipt.get("contract_id", "")) == "internal.v07.asset_batch.authoritative_receipt.v1", "internal transition emits a typed non-public receipt")
+	_expect(str(last_receipt.get("contract_id", "")) == "internal.v071.asset_batch.authoritative_receipt.v2", "internal transition emits a typed V0.7.1 non-public receipt")
 	_expect(not _contains_key_recursive(last_receipt, ["assets", "remainders_milli", "reservations", "frozen_gdp_milli", "submission_hidden_lead_order", "frozen_hidden_lead_order"]), "receipt carries no raw private asset or lead payload")
 	_expect(Core.is_pure_data(ai_0) and Core.is_pure_data(player_0) and Core.is_pure_data(public) and Core.is_pure_data(last_receipt), "projections and receipts remain pure data")
 
@@ -760,18 +922,18 @@ func _test_exact_domain_contract_adapters() -> void:
 	).get("state") as Dictionary)
 
 	var contracts := {
-		"v07.six_color_assets.core_authority.v1": Core.asset_core_authority(final_state),
-		"v07.six_color_assets.ai_observation.v1": Core.asset_ai_observation(final_state, "player.0"),
-		"v07.six_color_assets.player_projection.v1": Core.asset_player_projection(final_state, "player.0"),
-		"v07.six_color_assets.intent.v1": asset_intent,
-		"v07.six_color_assets.authoritative_receipt.v1": asset_receipt,
-		"v07.six_color_assets.save_state.v1": Core.to_asset_save_state(final_state),
-		"v07.card_batch.core_authority.v1": Core.batch_core_authority(final_state),
-		"v07.card_batch.ai_observation.v1": Core.batch_ai_observation(final_state, "player.0"),
-		"v07.card_batch.player_projection.v1": Core.batch_player_projection(final_state, "player.0"),
-		"v07.card_batch.intent.v1": batch_intent,
-		"v07.card_batch.authoritative_receipt.v1": batch_receipt,
-		"v07.card_batch.save_state.v1": Core.to_batch_save_state(final_state),
+		"v071.six_color_assets.core_authority.v2": Core.asset_core_authority(final_state),
+		"v071.six_color_assets.ai_observation.v2": Core.asset_ai_observation(final_state, "player.0"),
+		"v071.six_color_assets.player_projection.v2": Core.asset_player_projection(final_state, "player.0"),
+		"v071.six_color_assets.intent.v2": asset_intent,
+		"v071.six_color_assets.authoritative_receipt.v2": asset_receipt,
+		"v071.six_color_assets.save_state.v2": Core.to_asset_save_state(final_state),
+		"v071.card_batch.core_authority.v2": Core.batch_core_authority(final_state),
+		"v071.card_batch.ai_observation.v2": Core.batch_ai_observation(final_state, "player.0"),
+		"v071.card_batch.player_projection.v2": Core.batch_player_projection(final_state, "player.0"),
+		"v071.card_batch.intent.v2": batch_intent,
+		"v071.card_batch.authoritative_receipt.v2": batch_receipt,
+		"v071.card_batch.save_state.v2": Core.to_batch_save_state(final_state),
 	}
 	var valid_count := 0
 	for contract_id_variant in contracts.keys():
@@ -785,26 +947,26 @@ func _test_exact_domain_contract_adapters() -> void:
 	var snapshot: Dictionary = Core.contract_snapshot()
 	var asset_domain := snapshot.get("asset_domain") as Dictionary
 	var batch_domain := snapshot.get("batch_domain") as Dictionary
-	_expect(asset_domain.get("CoreAuthorityV1") == "v07.six_color_assets.core_authority.v1" and asset_domain.get("SaveStateV1") == "v07.six_color_assets.save_state.v1", "asset contract registry snapshot exposes its own six-color domain IDs")
-	_expect(batch_domain.get("CoreAuthorityV1") == "v07.card_batch.core_authority.v1" and batch_domain.get("SaveStateV1") == "v07.card_batch.save_state.v1", "batch contract registry snapshot exposes its own card-batch domain IDs")
+	_expect(asset_domain.get("CoreAuthorityV2") == "v071.six_color_assets.core_authority.v2" and asset_domain.get("SaveStateV2") == "v071.six_color_assets.save_state.v2", "asset contract registry snapshot exposes its V0.7.1 six-color domain IDs")
+	_expect(batch_domain.get("CoreAuthorityV2") == "v071.card_batch.core_authority.v2" and batch_domain.get("SaveStateV2") == "v071.card_batch.save_state.v2", "batch contract registry snapshot exposes its V0.7.1 card-batch domain IDs")
 	_expect(int(asset_intent.get("expected_core_revision", -1)) == 0 and int(asset_intent.get("asset_snapshot_revision", -1)) == 7 and (asset_intent.get("reservation_ids") as Array) == ["reservation.action.domain-contract"], "asset Intent adapter closes revision, snapshot, cost, and reservation semantics")
 	_expect(int(batch_intent.get("expected_core_revision", -1)) == 0 and batch_intent.get("window_id") == "batch.test" and (batch_intent.get("local_action_index") as Array) == [0], "batch Intent adapter closes window, local index, source, target, and reservation semantics")
 	_expect(asset_receipt.get("intent_id") == "intent.domain-contract" and asset_receipt.get("asset_delta_by_color") == _zero() and (asset_receipt.get("reservation_ids") as Array).size() == 1, "asset Receipt adapter binds intent, reservation IDs, committed revision, and exact asset delta")
 	_expect(batch_receipt.get("intent_id") == "intent.domain-contract" and batch_receipt.get("anonymous_action_id") == "action.domain-contract" and batch_receipt.get("window_id") == "batch.test", "batch Receipt adapter binds intent, anonymous action, window, and resolution status")
-	var asset_save := contracts.get("v07.six_color_assets.save_state.v1") as Dictionary
-	var batch_save := contracts.get("v07.card_batch.save_state.v1") as Dictionary
+	var asset_save := contracts.get("v071.six_color_assets.save_state.v2") as Dictionary
+	var batch_save := contracts.get("v071.card_batch.save_state.v2") as Dictionary
 	_expect(asset_save.get("section_id") == "six_color_assets_and_reservations" and asset_save.has("gdp_cycle_snapshot") and asset_save.has("reservation_journal") and asset_save.has("shared_authority_state"), "asset Save adapter has the exact independent section and shared-state semantics")
 	_expect(batch_save.get("section_id") == "card_batch_and_anonymous_resolution" and batch_save.has("private_owner_bindings") and batch_save.has("round_robin_cursor") and batch_save.has("shared_authority_state"), "batch Save adapter has the exact independent queue and shared-state semantics")
 	var tampered_asset_save := asset_save.duplicate(true)
 	(tampered_asset_save.get("per_player_assets_by_color") as Dictionary).erase("player.1")
-	_expect(not bool(Core.domain_contract_validation_report(tampered_asset_save, "v07.six_color_assets.save_state.v1").get("valid", true)), "strict domain Save adapter rejects fingerprint-breaking payload mutation")
+	_expect(not bool(Core.domain_contract_validation_report(tampered_asset_save, "v071.six_color_assets.save_state.v2").get("valid", true)), "strict domain Save adapter rejects fingerprint-breaking payload mutation")
 
 	var wrong_type_intent := asset_intent.duplicate(true)
 	wrong_type_intent["expected_core_revision"] = "zero"
 	_reseal_domain_contract(wrong_type_intent, "intent_fingerprint")
 	var wrong_type_report: Dictionary = Core.domain_contract_validation_report(
 		wrong_type_intent,
-		"v07.six_color_assets.intent.v1"
+		"v071.six_color_assets.intent.v2"
 	)
 	_expect(
 		_domain_fingerprint_matches(wrong_type_intent, "intent_fingerprint")
@@ -826,7 +988,7 @@ func _test_exact_domain_contract_adapters() -> void:
 	_reseal_domain_contract(out_of_range_save, "save_fingerprint")
 	var out_of_range_report: Dictionary = Core.domain_contract_validation_report(
 		out_of_range_save,
-		"v07.six_color_assets.save_state.v1"
+		"v071.six_color_assets.save_state.v2"
 	)
 	_expect(
 		_domain_fingerprint_matches(out_of_range_save, "save_fingerprint")
@@ -848,7 +1010,7 @@ func _test_exact_domain_contract_adapters() -> void:
 	_reseal_domain_contract(inconsistent_journal_save, "save_fingerprint")
 	var inconsistent_journal_report: Dictionary = Core.domain_contract_validation_report(
 		inconsistent_journal_save,
-		"v07.six_color_assets.save_state.v1"
+		"v071.six_color_assets.save_state.v2"
 	)
 	_expect(
 		_domain_fingerprint_matches(inconsistent_journal_save, "save_fingerprint")
@@ -857,8 +1019,8 @@ func _test_exact_domain_contract_adapters() -> void:
 				== "domain_save_shared_state_player_reservations_invalid",
 		"strict asset Save rejects a valid-fingerprint action that is both reserved and journaled"
 	)
-	var asset_player := contracts.get("v07.six_color_assets.player_projection.v1") as Dictionary
-	var batch_player := contracts.get("v07.card_batch.player_projection.v1") as Dictionary
+	var asset_player := contracts.get("v071.six_color_assets.player_projection.v2") as Dictionary
+	var batch_player := contracts.get("v071.card_batch.player_projection.v2") as Dictionary
 	_expect(not _contains_key_recursive(asset_player, ["anonymous_global_queue", "private_owner_bindings", "frozen_hidden_lead_order"]) and not _contains_key_recursive(batch_player, ["own_exact_assets", "gdp_cycle_snapshot", "lineage_fingerprint"]), "domain projections expose only their own allowlisted facts")
 	var source := FileAccess.get_file_as_string("res://scripts/v07_semantic/v07_asset_batch_core.gd")
 	_expect(not source.contains("\"v07.asset_batch.core_authority.v1\"") and not source.contains("\"v07.asset_batch.ai_observation.v1\"") and not source.contains("\"v07.asset_batch.save_state.v1\""), "shared asset_batch IDs no longer masquerade as domain contracts")
@@ -1112,8 +1274,18 @@ func _test_save_checkpoint_and_rollback() -> void:
 	state = (_lock_player_queue(state, Core.build_lock_intent("intent.save.0", "batch.test", "player.0", 100, [_action("action.save.0", 0, _cost(2, 0, 0, 0, 0, 0, 0), _zero(), "target.save.0")]), _color_map(1500, 0, 0, 0, 0, 0), 1000).get("state") as Dictionary)
 	state = (_lock_player_queue(state, Core.build_lock_intent("intent.save.1", "batch.test", "player.1", 100, []), _zero(), 1000).get("state") as Dictionary)
 	var save_state: Dictionary = Core.to_save_state(state)
-	_expect(str(save_state.get("schema_id", "")) == "internal.v07.asset_batch.save_state.v1", "internal combined Save has an explicitly non-domain identity")
-	_expect(str(save_state.get("ruleset_id", "")) == "v0.7", "Save binds the exact V0.7 ruleset ID")
+	_expect(str(save_state.get("schema_id", "")) == "internal.v071.asset_batch.save_state.v2", "internal combined Save has an explicitly versioned non-domain identity")
+	_expect(str(save_state.get("ruleset_id", "")) == "v0.7.1", "Save binds the exact V0.7.1 ruleset ID")
+	_expect(
+		save_state.get("state_version") == 2
+			and save_state.get("balance_profile_id") == "V071_CANDIDATE_A_FAST"
+			and save_state.get("balance_profile_fingerprint")
+				== "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a"
+			and save_state.get("default_invalid_target_policy_id")
+				== "FIZZLE_FULL_ASSET_REFUND"
+			and save_state.get("max_asset_refresh_per_color_per_batch") == 3,
+		"combined Save explicitly persists the Candidate A profile and policy context"
+	)
 	_expect(Core.is_pure_data(save_state) and str(save_state.get("save_fingerprint", "")).length() == 64, "Save state is pure data with a deterministic fingerprint")
 	var restored: Dictionary = Core.restore_save_state(save_state)
 	_expect(bool(restored.get("restored", false)) and restored.get("state") == state, "Save roundtrip preserves exact queue, reservation, GDP snapshot, and hidden order")
@@ -1134,12 +1306,18 @@ func _test_save_checkpoint_and_rollback() -> void:
 			and asset_domain_save.get("shared_lineage_fingerprint")
 				== state.get("lineage_fingerprint")
 			and batch_domain_save.get("shared_lineage_fingerprint")
-				== state.get("lineage_fingerprint"),
-		"both domain Saves bind the same batch and lineage"
+				== state.get("lineage_fingerprint")
+			and asset_domain_save.get("balance_profile_id")
+				== "V071_CANDIDATE_A_FAST"
+			and batch_domain_save.get("balance_profile_fingerprint")
+				== Core.BALANCE_PROFILE_FINGERPRINT
+			and asset_domain_save.get("default_invalid_target_policy_id")
+				== "FIZZLE_FULL_ASSET_REFUND",
+		"both domain Saves bind the same batch, lineage, profile, and policy"
 	)
 	var asset_domain_restore: Dictionary = Core.restore_domain_save_state(
 		asset_domain_save,
-		"v07.six_color_assets.save_state.v1"
+		"v071.six_color_assets.save_state.v2"
 	)
 	_expect(
 		bool(asset_domain_restore.get("preflight_valid", false))
@@ -1149,7 +1327,7 @@ func _test_save_checkpoint_and_rollback() -> void:
 	)
 	var batch_domain_restore: Dictionary = Core.restore_domain_save_state(
 		batch_domain_save,
-		"v07.card_batch.save_state.v1"
+		"v071.card_batch.save_state.v2"
 	)
 	_expect(
 		bool(batch_domain_restore.get("preflight_valid", false))
@@ -1253,7 +1431,7 @@ func _test_save_checkpoint_and_rollback() -> void:
 	var tampered_asset_before := tampered_asset_domain.duplicate(true)
 	var tampered_asset_restore: Dictionary = Core.restore_domain_save_state(
 		tampered_asset_domain,
-		"v07.six_color_assets.save_state.v1"
+		"v071.six_color_assets.save_state.v2"
 	)
 	_expect(
 		_domain_fingerprint_matches(tampered_asset_domain, "save_fingerprint")
@@ -1272,7 +1450,7 @@ func _test_save_checkpoint_and_rollback() -> void:
 	var tampered_batch_before := tampered_batch_domain.duplicate(true)
 	var tampered_batch_restore: Dictionary = Core.restore_domain_save_state(
 		tampered_batch_domain,
-		"v07.card_batch.save_state.v1"
+		"v071.card_batch.save_state.v2"
 	)
 	_expect(
 		_domain_fingerprint_matches(tampered_batch_domain, "save_fingerprint")
@@ -1296,11 +1474,31 @@ func _test_save_checkpoint_and_rollback() -> void:
 	var corrupt_result: Dictionary = Core.restore_save_state(corrupt)
 	_expect(not bool(corrupt_result.get("restored", true)) and str(corrupt_result.get("reason_code", "")) == "save_fingerprint_invalid", "tampered Save fails closed before state apply")
 	var wrong_schema := save_state.duplicate(true)
-	wrong_schema["schema_id"] = "v06.save"
-	_expect(not bool(Core.restore_save_state(wrong_schema).get("restored", true)), "V0.6 or foreign Save schema cannot load through the V0.7 core")
+	wrong_schema["schema_id"] = "internal.v07.asset_batch.save_state.v1"
+	_reseal_domain_contract(wrong_schema, "save_fingerprint")
+	_expect(not bool(Core.restore_save_state(wrong_schema).get("restored", true)), "historical V0.7 Save cannot load silently through the V0.7.1 core")
+	var wrong_profile := save_state.duplicate(true)
+	wrong_profile["balance_profile_fingerprint"] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	_reseal_domain_contract(wrong_profile, "save_fingerprint")
+	_expect(
+		str(Core.restore_save_state(wrong_profile).get("reason_code", ""))
+			== "save_schema_invalid",
+		"resealed Save with the wrong balance profile fingerprint fails closed"
+	)
+	var wrong_policy := save_state.duplicate(true)
+	wrong_policy["default_invalid_target_policy_id"] = "FIZZLE_NO_REFUND"
+	((wrong_policy.get("state") as Dictionary))["default_invalid_target_policy_id"] = (
+		"FIZZLE_NO_REFUND"
+	)
+	_reseal_domain_contract(wrong_policy, "save_fingerprint")
+	_expect(
+		str(Core.restore_save_state(wrong_policy).get("reason_code", ""))
+			== "save_schema_invalid",
+		"resealed Save cannot silently replace the frozen default invalid-target policy"
+	)
 
 	var saved_checkpoint: Dictionary = Core.checkpoint(state)
-	_expect(str(saved_checkpoint.get("schema_id", "")) == "internal.v07.asset_batch.checkpoint.v1", "checkpoint has an independent internal identity")
+	_expect(str(saved_checkpoint.get("schema_id", "")) == "internal.v071.asset_batch.checkpoint.v2", "checkpoint has an independent V0.7.1 identity")
 	var settled: Dictionary = Core.settle_next_action(state, "action.save.0", "success")
 	_expect(bool(settled.get("accepted", false)) and settled.get("state") != state, "post-checkpoint settlement changes the authority state")
 	var rolled_back: Dictionary = Core.rollback(settled.get("state"), saved_checkpoint)
@@ -1830,7 +2028,8 @@ func _action(
 	local_order: int,
 	cost: Dictionary,
 	any_payment: Dictionary,
-	target_id: String
+	target_id: String,
+	invalid_target_policy_id: String = Core.DEFAULT_INVALID_TARGET_POLICY_ID
 ) -> Dictionary:
 	return Core.build_prebound_action(
 		action_id,
@@ -1841,7 +2040,8 @@ func _action(
 		Core.build_target_binding("binding.%s" % action_id, [target_id], 1),
 		"effect.%s" % action_id,
 		cost,
-		any_payment
+		any_payment,
+		invalid_target_policy_id
 	)
 
 

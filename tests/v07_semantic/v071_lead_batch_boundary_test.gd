@@ -52,9 +52,11 @@ func _test_contract_and_color_boundary_independence() -> void:
 				== "completed_card_batch"
 			and str(contract.get("color_cycle_advance_unit", ""))
 				== "completed_card_batch"
-			and int(contract.get("default_lead_tenure_batches", 0)) == 2
+			and int(contract.get("completed_batch_receipt_schema_version", 0))
+				== BATCH_CORE.SCHEMA_VERSION
+			and int(contract.get("default_lead_tenure_batches", 0)) == 1
 			and contract.get("lead_advance_implicit_in_color_commit") == false,
-		"contract separates batch and color boundaries while preserving 60-second baseline tenure"
+		"contract separates batch and color boundaries under Candidate A one-batch tenure"
 	)
 	var initial_lead := _lead_id(core)
 	var color_intent := core.build_intent_v1(
@@ -92,7 +94,10 @@ func _test_completed_batch_ordering_and_candidate_a_cursors() -> void:
 					"color_cycle_committed",
 					true
 				)),
-			"Candidate A batch %d advances lead without an early color commit" % sequence
+			"Candidate A batch %d advances lead without an early color commit | reason=%s" % [
+				sequence,
+				str(receipt.get("reason_code", "missing")),
+			]
 		)
 	var before_sixth := _authority_state(core)
 	var outgoing_lead := str(
@@ -152,7 +157,7 @@ func _test_save_restore_and_receipt_exact_once() -> void:
 	var core := CORE.new(
 		ROSTER,
 		FIXED_SEED,
-		{"lead_tenure_batches": 2, "color_cycle_batches": 6}
+		{"lead_tenure_batches": 1, "color_cycle_batches": 6}
 	)
 	for sequence in range(1, 4):
 		_commit_batch(
@@ -169,7 +174,7 @@ func _test_save_restore_and_receipt_exact_once() -> void:
 	)
 	_expect(
 		int(saved_boundary.get("completed_batch_count", -1)) == 3
-			and int(saved_boundary.get("lead_batch_cursor", -1)) == 1
+			and int(saved_boundary.get("lead_batch_cursor", -1)) == 0
 			and int(saved_boundary.get("color_cycle_batch_cursor", -1)) == 3,
 		"SaveState carries completed count and both independent cursors"
 	)
@@ -216,7 +221,7 @@ func _test_save_restore_and_receipt_exact_once() -> void:
 	var forged_save := save.duplicate(true)
 	var forged_state := forged_save.get("authority_state", {}) as Dictionary
 	var forged_boundary := forged_state.get("batch_boundary_state", {}) as Dictionary
-	forged_boundary["lead_batch_cursor"] = 0
+	forged_boundary["lead_batch_cursor"] = 1
 	forged_save["source_core_fingerprint"] = CORE.fingerprint(forged_state)
 	forged_save["save_fingerprint"] = CORE.fingerprint(forged_save, "save_fingerprint")
 	var rejected := CORE.new()
@@ -272,6 +277,11 @@ func _commit_batch(
 		CORE.ACTION_COMMIT_BATCH_BOUNDARY,
 		{"completed_batch_receipt": completed_receipt}
 	) as Dictionary
+	if intent.is_empty():
+		print(
+			"V071_LEAD_BATCH_BOUNDARY_TEST|intent_build_failed|receipt=%s"
+			% JSON.stringify(completed_receipt)
+		)
 	return core.call("apply_intent_v1", intent) as Dictionary
 
 

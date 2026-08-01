@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "registry_id": "space_syndicate.v071.rng_ownership.v1",
+  "ruleset_id": "v0.7.1",
+  "status": "frozen_highest_target_detached_contract",
+  "production_runtime_connected": false,
+  "canonical_adapter_id": "space_syndicate.v071.canonical_rng_adapter.v1",
+  "canonical_ledger_is_second_rng_authority": false,
+  "draw_api_count_in_adapter": 0,
+  "required_owner_versions": {
+    "unified_card_track_state_version": 4,
+    "personal_dbg_state_version": 2
+  },
+  "logical_streams": [
+    "starter_deck_shuffle",
+    "normal_deck_reshuffle_by_player",
+    "unified_track_type_draw",
+    "unified_track_color_draw",
+    "unified_track_normal_card_draw",
+    "unified_track_commodity_draw",
+    "initial_hidden_lead_order"
+  ],
+  "state_profiles": [
+    {
+      "state_profile_id": "dbg_tagged_sha256_counter_v1",
+      "authoritative_owner_id": "v071.personal_dbg.core_authority.v2",
+      "save_section_id": "personal_dbg_and_merge",
+      "algorithm_id": "sha256.owner_bound_counter.v1"
+    },
+    {
+      "state_profile_id": "unified_park_miller_embedded_v1",
+      "authoritative_owner_id": "v071.unified_track.core_authority.v2",
+      "save_section_id": "unified_card_track_cycle",
+      "algorithm_id": "park_miller_48271_mod_2147483647.v1"
+    }
+  ],
+  "restore_policy": {
+    "owner_state_is_authoritative": true,
+    "ledger_row_must_equal_embedded_owner_state": true,
+    "stream_set_must_be_exact": true,
+    "duplicate_stream_instance_rejected": true,
+    "wrong_profile_fingerprint_rejected_before_rng_restore": true,
+    "adapter_may_seed_advance_or_draw": false
+  }
+}

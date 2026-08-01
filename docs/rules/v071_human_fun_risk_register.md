@@ -1,14 +1,17 @@
 # V0.7.1 Human-Fun Risk Register
 
 ```text
-STATUS=CANDIDATE_NOT_HIGHEST_AUTHORITY
-USER_APPROVAL_REQUIRED_BEFORE_CONSTITUTION_FREEZE=true
+STATUS=FROZEN_TARGET_HUMAN_TEST_RISK_REGISTER
+USER_APPROVAL_REQUIRED_BEFORE_CONSTITUTION_FREEZE=false
+USER_APPROVES_V071_CANDIDATE_A_FAST=true
+V071_HIGHEST_CONSTITUTION_FROZEN=true
 HUMAN_FUN_PROVEN=false
 HUMAN_TEST_STILL_REQUIRED=true
 ```
 
-This register accompanies `v071_candidate_errata`. It separates deterministic
-closure evidence from questions that only people playing the sample can answer.
+This register accompanies the frozen V0.7.1 target and its approved errata
+source. It separates deterministic closure evidence from questions that only
+people playing the sample can answer.
 Simulation can reject a bad profile; it cannot prove that a passing profile is
 fun, clear, fair, or comfortable.
 
@@ -139,5 +142,6 @@ V07_CONSTITUTION_CONTENT_CHANGE_COUNT=0
 V07_PRODUCTION_CONNECTION_COUNT=0
 ```
 
-Only explicit user approval may authorize a later V0.7.1 highest-constitution
-freeze.
+The highest-target freeze is complete. It does not authorize production
+connection or establish that the sample is fun; the listed human checks remain
+mandatory before any commercial-balance claim.

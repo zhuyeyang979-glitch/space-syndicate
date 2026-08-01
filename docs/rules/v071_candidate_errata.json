@@ -1,17 +1,20 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "document_id": "space_syndicate.v071.candidate_errata",
   "candidate_ruleset_id": "v0.7.1",
   "based_on_ruleset_id": "space_syndicate.v07.complete",
-  "status": "CANDIDATE_NOT_HIGHEST_AUTHORITY",
-  "authority_level": "detached_reference_candidate",
-  "user_approval_required_before_constitution_freeze": true,
+  "status": "PROMOTED_TO_V071_HIGHEST_TARGET_CONSTITUTION",
+  "authority_level": "historical_approved_errata_source",
+  "user_approval_required_before_constitution_freeze": false,
+  "user_approval_recorded": true,
+  "approved_profile_id": "V071_CANDIDATE_A_FAST",
   "human_fun_proven": false,
   "human_test_still_required": true,
   "scope": {
     "current_production_runtime_ruleset": "V0.6",
-    "target_development_constitution": "V0.7",
-    "full_v0_7_runtime_cutover": false,
+    "target_development_constitution": "V0.7.1",
+    "v071_highest_constitution_frozen": true,
+    "full_v0_7_1_runtime_cutover": false,
     "detached_reference_only": true,
     "production_connection_allowed": false,
     "v06_rule_change_allowed": false,
@@ -461,7 +464,11 @@
   "approval_gate": {
     "candidate_may_be_tested_in_detached_reference": true,
     "candidate_may_become_highest_authority_without_user_approval": false,
+    "explicit_user_approval_received": true,
+    "approved_profile_id": "V071_CANDIDATE_A_FAST",
+    "v071_highest_constitution_frozen": true,
     "candidate_may_connect_to_production": false,
-    "next_authorized_freeze_task": "V071_HIGHEST_CONSTITUTION_AMENDMENT_FREEZE_AFTER_USER_APPROVAL"
+    "next_authorized_freeze_task": "completed_by_pr_83",
+    "next_production_task_after_pr77_merge": "ALPHA_0_5_B_V071_ATOMIC_PRODUCTION_CUTOVER"
   }
 }

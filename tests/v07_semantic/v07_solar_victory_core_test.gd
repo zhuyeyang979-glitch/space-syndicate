@@ -170,6 +170,14 @@ func _run() -> void:
 
 
 func _test_solar_facility_contract_and_exact_replay() -> void:
+	var contract := CORE.interface_contract_v2()
+	_expect(
+		str(contract.get("ruleset_id", "")) == "v0.7.1"
+			and int(contract.get("save_section_version", 0)) == 4
+			and int(contract.get("solar_multiplier_application_count_per_channel", 0)) == 1
+			and not bool(contract.get("production_runtime_connected", true)),
+		"solar/victory publishes the detached V0.7.1 interface contract"
+	)
 	var dark := CORE.create_state(false, 1, "match.solar.contract")
 	var sunlit := CORE.create_state(true, 1, "match.solar.sunlit")
 	_expect(CORE.is_valid_state(dark) and CORE.is_valid_state(sunlit), "solar genesis states validate")
@@ -917,6 +925,14 @@ func _test_wrong_entrypoint_exact_replay_rejected() -> void:
 
 func _test_strict_state_receipt_and_save_validation() -> void:
 	var initial := CORE.create_state(false, 1, "match.strict.save")
+	_expect(
+		str(initial.get("ruleset_id", "")) == "v0.7.1"
+			and str(initial.get("balance_profile_id", ""))
+				== "V071_CANDIDATE_A_FAST"
+			and str(initial.get("balance_profile_fingerprint", ""))
+				== CORE.BALANCE_PROFILE_FINGERPRINT,
+		"solar/victory state binds the approved V0.7.1 balance profile"
+	)
 	var state := CORE.apply_solar_intent(
 		initial,
 		_solar_intent(initial, "intent.strict.save", true, 9007199254740993)
@@ -958,9 +974,24 @@ func _test_strict_state_receipt_and_save_validation() -> void:
 	truncated.erase("source_state_fingerprint")
 	_expect(CORE.from_save_state(truncated).is_empty(), "Save requires its exact source-state fingerprint field")
 	var wrong_section := save.duplicate(true)
-	wrong_section["section_version"] = 2
+	wrong_section["section_version"] = 3
 	wrong_section["save_fingerprint"] = _fingerprint_without(wrong_section, "save_fingerprint")
-	_expect(CORE.from_save_state(wrong_section).is_empty(), "obsolete v2 Save section fails closed after the ledger contract upgrade")
+	_expect(CORE.from_save_state(wrong_section).is_empty(), "historical V0.7 section version fails closed under V0.7.1")
+
+	var wrong_profile := state.duplicate(true)
+	wrong_profile["balance_profile_fingerprint"] = FORGED_FINGERPRINT
+	_expect(
+		not CORE.is_valid_state(wrong_profile)
+			and CORE.from_save_state(_resealed_save_from_state(wrong_profile)).is_empty(),
+		"wrong V0.7.1 balance-profile fingerprint fails before restore"
+	)
+	var historical_v07 := state.duplicate(true)
+	historical_v07["schema_version"] = 1
+	historical_v07["ruleset_id"] = "v0.7"
+	_expect(
+		CORE.from_save_state(_resealed_save_from_state(historical_v07)).is_empty(),
+		"V0.7 detached state is never silently interpreted as V0.7.1"
+	)
 
 
 func _test_coordinated_ledger_and_wire_attacks() -> void:

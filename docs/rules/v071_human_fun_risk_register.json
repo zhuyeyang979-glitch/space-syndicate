@@ -1,9 +1,12 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "document_id": "space_syndicate.v071.human_fun_risk_register",
   "candidate_ruleset_id": "v0.7.1",
-  "status": "CANDIDATE_NOT_HIGHEST_AUTHORITY",
-  "user_approval_required_before_constitution_freeze": true,
+  "status": "FROZEN_TARGET_HUMAN_TEST_RISK_REGISTER",
+  "user_approval_required_before_constitution_freeze": false,
+  "user_approval_recorded": true,
+  "approved_profile_id": "V071_CANDIDATE_A_FAST",
+  "v071_highest_constitution_frozen": true,
   "human_fun_proven": false,
   "human_test_still_required": true,
   "classification_counts": {
@@ -279,7 +282,8 @@
       "victory_pending_tail_clarity"
     ],
     "approval_decision_owner": "user",
-    "candidate_freeze_before_human_review_allowed": false
+    "constitution_frozen_before_human_review": true,
+    "human_review_required_before_production_balance_claim": true
   },
   "production_guards": {
     "v07_constitution_content_change_count": 0,

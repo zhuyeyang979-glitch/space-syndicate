@@ -1,37 +1,38 @@
 extends RefCounted
 class_name V07UnifiedCardTrackCore
 
-const SCHEMA_VERSION := 1
-const STATE_VERSION := 3
-const RULESET_ID := "v0.7"
+const SCHEMA_VERSION := 2
+const STATE_VERSION := 4
+const RULESET_ID := "v0.7.1"
 const DOMAIN_ID := "unified_card_track"
 
-const CORE_INTERFACE_ID := "v07.unified_track.core_authority.v1"
-const AI_INTERFACE_ID := "v07.unified_track.ai_observation.v1"
-const PLAYER_INTERFACE_ID := "v07.unified_track.player_projection.v1"
-const INTENT_INTERFACE_ID := "v07.unified_track.intent.v1"
-const RECEIPT_INTERFACE_ID := "v07.unified_track.authoritative_receipt.v1"
-const SAVE_INTERFACE_ID := "v07.unified_track.save_state.v1"
-const CHECKPOINT_INTERFACE_ID := "v07.unified_track.checkpoint.v1"
-const ACQUISITION_PROPOSAL_INTERFACE_ID := "v07.unified_track.acquisition_proposal.v1"
+const CORE_INTERFACE_ID := "v071.unified_track.core_authority.v2"
+const AI_INTERFACE_ID := "v071.unified_track.ai_observation.v2"
+const PLAYER_INTERFACE_ID := "v071.unified_track.player_projection.v2"
+const INTENT_INTERFACE_ID := "v071.unified_track.intent.v2"
+const RECEIPT_INTERFACE_ID := "v071.unified_track.authoritative_receipt.v2"
+const SAVE_INTERFACE_ID := "v071.unified_track.save_state.v2"
+const CHECKPOINT_INTERFACE_ID := "v071.unified_track.checkpoint.v2"
+const ACQUISITION_PROPOSAL_INTERFACE_ID := "v071.unified_track.acquisition_proposal.v2"
 const ACQUISITION_AUTHORITY_PORT_INTERFACE_ID := (
-	"v07.unified_track.acquisition_authority_port.v1"
+	"v071.unified_track.acquisition_authority_port.v2"
 )
 const ACQUISITION_AUTHORITY_PORT_SCRIPT_PATH := (
 	"res://scripts/v07_semantic/v07_track_acquisition_authority_port.gd"
 )
-const PRIVACY_POLICY_ID := "v07.unified_track.privacy.v1"
+const PRIVACY_POLICY_ID := "v071.unified_track.privacy.v2"
 const ROOT_LINEAGE_PARENT_HASH := (
 	"0000000000000000000000000000000000000000000000000000000000000000"
 )
 
-const UNIFIED_TRACK_STATE_ID := "V07UnifiedCardTrackState"
-const COLOR_CYCLE_STATE_ID := "V07MarketColorCycleState"
-const HIDDEN_LEAD_STATE_ID := "V07HiddenLeadCycleState"
+const UNIFIED_TRACK_STATE_ID := "V071UnifiedCardTrackState"
+const COLOR_CYCLE_STATE_ID := "V071MarketColorCycleState"
+const HIDDEN_LEAD_STATE_ID := "V071HiddenLeadCycleState"
 const BATCH_BOUNDARY_STATE_ID := "V071CompletedCardBatchBoundaryState"
 const COMPLETED_BATCH_RECEIPT_ID := (
-	"internal.v07.asset_batch.authoritative_receipt.v1"
+	"internal.v071.asset_batch.authoritative_receipt.v2"
 )
+const COMPLETED_BATCH_RECEIPT_SCHEMA_VERSION := 1
 
 const COLOR_IDS := [
 	"life",
@@ -42,6 +43,11 @@ const COLOR_IDS := [
 	"shipping",
 ]
 const CARD_KIND_IDS := ["normal_card", "commodity_card"]
+const TRACK_ITEM_LEVEL := 1
+const BALANCE_PROFILE_ID := "V071_CANDIDATE_A_FAST"
+const BALANCE_PROFILE_FINGERPRINT := (
+	"8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a"
+)
 
 const ACTION_SET_STANCE := "color_cycle.set_stance"
 const ACTION_COMMIT_COLOR_CYCLE := "color_cycle.commit_boundary"
@@ -74,10 +80,10 @@ const MAXIMUM_COLOR_WEIGHT := 24000
 const COLOR_BAG_SIZE := 600
 const TYPE_BAG_SIZE := 100
 
-const DEFAULT_NORMAL_RATIO_BASIS_POINTS := 7000
-const DEFAULT_COMMODITY_RATIO_BASIS_POINTS := 3000
+const DEFAULT_NORMAL_RATIO_BASIS_POINTS := 6000
+const DEFAULT_COMMODITY_RATIO_BASIS_POINTS := 4000
 const DEFAULT_LOCAL_VISIBLE_SLOT_COUNT := 5
-const DEFAULT_LEAD_TENURE_BATCHES := 2
+const DEFAULT_LEAD_TENURE_BATCHES := 1
 const DEFAULT_COLOR_CYCLE_BATCHES := 6
 const MIN_PLAYER_COUNT := 3
 const MAX_PLAYER_COUNT := 8
@@ -89,6 +95,8 @@ const STATE_FIELDS := [
 	"schema_version",
 	"state_version",
 	"ruleset_id",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"domain_id",
 	"revision",
 	"match_seed",
@@ -120,6 +128,7 @@ const TRACK_FIELDS := [
 	"revision",
 	"capacity",
 	"local_visible_slot_count",
+	"scroll_sequence",
 	"next_instance_sequence",
 	"items",
 ]
@@ -127,11 +136,13 @@ const TRACK_ITEM_FIELDS := [
 	"instance_id",
 	"card_definition_id",
 	"card_kind",
+	"level",
 	"primary_color",
 	"path_origin_index",
 	"path_position",
 	"segment_owner_id",
 	"supply_draw_index",
+	"claimable_from_scroll_sequence",
 ]
 const TYPE_SUPPLY_FIELDS := [
 	"stream_id",
@@ -367,6 +378,11 @@ const COMPLETED_BATCH_RECEIPT_FIELDS := [
 	"actor_id",
 	"action_id",
 	"outcome_id",
+	"invalid_target_policy_id",
+	"public_history_reason_code",
+	"asset_refund_applied",
+	"normal_card_destination",
+	"action_slot_refunded",
 	"intent_id",
 	"intent_fingerprint",
 	"receipt_fingerprint",
@@ -468,6 +484,8 @@ func start_match(roster_ids: Array, seed: int, config: Dictionary = {}) -> Dicti
 		"schema_version": SCHEMA_VERSION,
 		"state_version": STATE_VERSION,
 		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"domain_id": DOMAIN_ID,
 		"revision": 1,
 		"match_seed": normalized_seed,
@@ -479,6 +497,7 @@ func start_match(roster_ids: Array, seed: int, config: Dictionary = {}) -> Dicti
 			"revision": 1,
 			"capacity": roster.size() * local_slots,
 			"local_visible_slot_count": local_slots,
+			"scroll_sequence": 0,
 			"next_instance_sequence": 0,
 			"items": [],
 		},
@@ -559,8 +578,11 @@ func is_configured() -> bool:
 func interface_contract_v1() -> Dictionary:
 	return {
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
 		"domain_id": DOMAIN_ID,
 		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"state_type_ids": [
 			UNIFIED_TRACK_STATE_ID,
 			COLOR_CYCLE_STATE_ID,
@@ -587,18 +609,32 @@ func interface_contract_v1() -> Dictionary:
 		"lead_player_influence_basis_points": LEAD_INFLUENCE_BASIS_POINTS,
 		"completed_card_batch_boundary_action_id": ACTION_COMMIT_BATCH_BOUNDARY,
 		"completed_batch_receipt_id": COMPLETED_BATCH_RECEIPT_ID,
+		"completed_batch_receipt_schema_version": (
+			COMPLETED_BATCH_RECEIPT_SCHEMA_VERSION
+		),
 		"lead_advance_unit": "completed_card_batch",
 		"color_cycle_advance_unit": "completed_card_batch",
 		"default_lead_tenure_batches": DEFAULT_LEAD_TENURE_BATCHES,
 		"default_color_cycle_batches": DEFAULT_COLOR_CYCLE_BATCHES,
+		"default_normal_card_ratio_basis_points": DEFAULT_NORMAL_RATIO_BASIS_POINTS,
+		"default_commodity_card_ratio_basis_points": (
+			DEFAULT_COMMODITY_RATIO_BASIS_POINTS
+		),
 		"batch_boundary_requires_authoritative_receipt": true,
 		"color_boundary_uses_outgoing_lead": true,
 		"lead_advances_after_color_commit": true,
 		"lead_advance_implicit_in_color_commit": false,
+		"track_replacement_activates_on_next_scroll": true,
+		"track_replacement_claimable_same_tick": false,
+		"track_item_claimability_field": "claimable_from_scroll_sequence",
+		"normal_track_spawn_level": TRACK_ITEM_LEVEL,
+		"commodity_track_spawn_level": TRACK_ITEM_LEVEL,
+		"lead_identity_not_directly_published": true,
+		"lead_identity_may_be_inferred_from_public_information": true,
 		"acquisition_requires_trusted_authority_port": true,
 		"caller_supplied_acquisition_receipts_trusted": false,
 		"production_runtime_connected": false,
-		"v07_production_cutover_complete": false,
+		"v071_production_cutover_complete": false,
 	}
 
 
@@ -639,6 +675,13 @@ func privacy_policy_v1() -> Dictionary:
 		"projection_source_fingerprint_commits_authority_secrets": false,
 		"other_unrevealed_stance_changes_viewer_projection": false,
 		"timing_animation_audio_identity_leak_allowed": false,
+		"lead_identity_not_directly_published": true,
+		"lead_identity_may_be_inferred_from_public_information": true,
+		"lead_portrait_allowed": false,
+		"lead_specific_public_animation_allowed": false,
+		"lead_specific_public_audio_allowed": false,
+		"lead_identity_in_public_queue_allowed": false,
+		"lead_influence_owner_published": false,
 	}
 
 
@@ -648,6 +691,10 @@ func core_authority_v1() -> Dictionary:
 	var result := {
 		"schema_version": SCHEMA_VERSION,
 		"interface_id": CORE_INTERFACE_ID,
+		"ruleset_id": RULESET_ID,
+		"state_version": STATE_VERSION,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"domain_id": DOMAIN_ID,
 		"authority_scope": "authority_secret",
 		"source_revision": int(_state.get("revision", 0)),
@@ -1383,6 +1430,8 @@ func save_state_v1() -> Dictionary:
 		"schema_version": SCHEMA_VERSION,
 		"interface_id": SAVE_INTERFACE_ID,
 		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"domain_id": DOMAIN_ID,
 		"state_version": STATE_VERSION,
 		"source_revision": int(_state.get("revision", 0)),
@@ -1432,6 +1481,10 @@ func capture_checkpoint_v1() -> Dictionary:
 	var unsealed := {
 		"schema_version": SCHEMA_VERSION,
 		"interface_id": CHECKPOINT_INTERFACE_ID,
+		"ruleset_id": RULESET_ID,
+		"state_version": STATE_VERSION,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"domain_id": DOMAIN_ID,
 		"match_instance_id": str(_state.get("match_instance_id", "")),
 		"source_revision": int(_state.get("revision", 0)),
@@ -1543,19 +1596,28 @@ func _viewer_projection(interface_id: String, viewer_actor_id: String) -> Dictio
 		or not (_state.get("roster_ids", []) as Array).has(viewer_actor_id):
 		return {}
 	var track := _state.get("track_state", {}) as Dictionary
+	var scroll_sequence := int(track.get("scroll_sequence", 0))
 	var own_items: Array = []
 	for item_variant in track.get("items", []) as Array:
 		var item := item_variant as Dictionary
 		if str(item.get("segment_owner_id", "")) != viewer_actor_id:
 			continue
+		var claimable_from_scroll_sequence := int(
+			item.get("claimable_from_scroll_sequence", -1)
+		)
+		var claimable := scroll_sequence >= claimable_from_scroll_sequence
 		own_items.append({
 			"instance_id": str(item.get("instance_id", "")),
 			"card_definition_id": str(item.get("card_definition_id", "")),
 			"card_kind": str(item.get("card_kind", "")),
+			"level": int(item.get("level", 0)),
 			"primary_color": str(item.get("primary_color", "")),
 			"local_slot_index": int(item.get("path_position", 0)) \
 				% int(track.get("local_visible_slot_count", 1)),
 			"track_revision": int(track.get("revision", 0)),
+			"claimable_from_scroll_sequence": claimable_from_scroll_sequence,
+			"claimable": claimable,
+			"claimability_state": "claimable" if claimable else "incoming_locked",
 		})
 	var color_cycle := _state.get("color_cycle_state", {}) as Dictionary
 	var pending := color_cycle.get("pending_stances", {}) as Dictionary
@@ -1568,7 +1630,10 @@ func _viewer_projection(interface_id: String, viewer_actor_id: String) -> Dictio
 		"single_unified_track": true,
 		"allowed_card_kinds": CARD_KIND_IDS.duplicate(),
 		"track_revision": int(track.get("revision", 0)),
+		"scroll_sequence": scroll_sequence,
 		"unified_track_item_count": (track.get("items", []) as Array).size(),
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"card_kind_ratio_basis_points": (
 			(_state.get("type_supply_state", {}) as Dictionary)
 				.get("ratio_basis_points", {}) as Dictionary
@@ -1589,6 +1654,8 @@ func _viewer_projection(interface_id: String, viewer_actor_id: String) -> Dictio
 			batch_boundary.get("color_cycle_batch_cursor", 0)
 		),
 		"color_cycle_batches": int(batch_boundary.get("color_cycle_batches", 0)),
+		"lead_identity_not_directly_published": true,
+		"lead_identity_may_be_inferred_from_public_information": true,
 	}
 	var viewer_private_facts := {
 		"own_segment_items": own_items,
@@ -1599,7 +1666,7 @@ func _viewer_projection(interface_id: String, viewer_actor_id: String) -> Dictio
 			str(lead.get("current_lead_id", "")) == viewer_actor_id
 		)
 		viewer_private_facts["self_lead_notice_token"] = (
-			"v07.lead.double_influence"
+			"v071.lead.double_influence"
 			if str(lead.get("current_lead_id", "")) == viewer_actor_id
 			else "none"
 		)
@@ -1626,6 +1693,10 @@ func _viewer_projection(interface_id: String, viewer_actor_id: String) -> Dictio
 	var result := {
 		"schema_version": SCHEMA_VERSION,
 		"interface_id": interface_id,
+		"ruleset_id": RULESET_ID,
+		"state_version": STATE_VERSION,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"domain_id": DOMAIN_ID,
 		"source_revision": source_revision,
 		"source_core_fingerprint": source_projection_fingerprint,
@@ -1828,6 +1899,8 @@ func _advance_track(steps: int) -> void:
 	var track := _state.get("track_state", {}) as Dictionary
 	var capacity := int(track.get("capacity", 0))
 	for _step in range(steps):
+		track["scroll_sequence"] = int(track.get("scroll_sequence", 0)) + 1
+		_state["track_state"] = track
 		var moved: Array = []
 		for item_variant in track.get("items", []) as Array:
 			var item := (item_variant as Dictionary).duplicate(true)
@@ -1867,6 +1940,15 @@ func _acquisition_live_error(intent: Dictionary) -> String:
 		return "source_track_revision_stale"
 	var actor_id := str(intent.get("actor_id", ""))
 	var source_instance_id := str(source_identity.get("source_instance_id", ""))
+	for item_variant in track.get("items", []) as Array:
+		var item := item_variant as Dictionary
+		if str(item.get("instance_id", "")) != source_instance_id:
+			continue
+		if int(track.get("scroll_sequence", 0)) < int(
+			item.get("claimable_from_scroll_sequence", -1)
+		):
+			return "track_replacement_locked_until_next_scroll"
+		break
 	var live_identity := visible_source_identity_v1(actor_id, source_instance_id)
 	if live_identity.is_empty():
 		return "source_not_in_actor_visible_segment"
@@ -1935,7 +2017,9 @@ func _commit_visible_acquisition(source_instance_id: String) -> Dictionary:
 		if int(item.get("path_position", -1)) < removed_position:
 			item["path_position"] = int(item.get("path_position", 0)) + 1
 		surviving_items.append(item)
-	var replacement := _draw_supply_card()
+	var replacement := _draw_supply_card(
+		int(track.get("scroll_sequence", 0)) + 1
+	)
 	track = _state.get("track_state", {}) as Dictionary
 	var lead := _state.get("hidden_lead_cycle_state", {}) as Dictionary
 	var fixed_order := lead.get("fixed_order", []) as Array
@@ -1973,7 +2057,7 @@ func _refresh_track_owners() -> void:
 	_state["track_state"] = track
 
 
-func _draw_supply_card() -> Dictionary:
+func _draw_supply_card(claimable_from_scroll_sequence: int = -1) -> Dictionary:
 	var type_supply := _state.get("type_supply_state", {}) as Dictionary
 	var card_kind := _draw_type(type_supply)
 	_state["type_supply_state"] = type_supply
@@ -1996,6 +2080,8 @@ func _draw_supply_card() -> Dictionary:
 	else:
 		_state["commodity_supply_state"] = definition_supply
 	var track := _state.get("track_state", {}) as Dictionary
+	if claimable_from_scroll_sequence < 0:
+		claimable_from_scroll_sequence = int(track.get("scroll_sequence", 0))
 	var sequence := int(track.get("next_instance_sequence", 0))
 	track["next_instance_sequence"] = sequence + 1
 	_state["track_state"] = track
@@ -2003,11 +2089,13 @@ func _draw_supply_card() -> Dictionary:
 		"instance_id": "track.card.%08d" % sequence,
 		"card_definition_id": card_definition_id,
 		"card_kind": card_kind,
+		"level": TRACK_ITEM_LEVEL,
 		"primary_color": primary_color,
 		"path_origin_index": 0,
 		"path_position": 0,
 		"segment_owner_id": "unassigned",
 		"supply_draw_index": sequence,
+		"claimable_from_scroll_sequence": claimable_from_scroll_sequence,
 	}
 
 
@@ -2429,7 +2517,7 @@ static func _completed_batch_receipt_error(receipt: Dictionary) -> String:
 	if not is_pure_data(receipt) \
 		or not _exact_fields(receipt, COMPLETED_BATCH_RECEIPT_FIELDS):
 		return "fields_invalid"
-	if receipt.get("schema_version") != SCHEMA_VERSION \
+	if receipt.get("schema_version") != COMPLETED_BATCH_RECEIPT_SCHEMA_VERSION \
 		or str(receipt.get("contract_id", "")) != COMPLETED_BATCH_RECEIPT_ID:
 		return "identity_invalid"
 	for field_name in ["receipt_id", "batch_id"]:
@@ -2441,7 +2529,12 @@ static func _completed_batch_receipt_error(receipt: Dictionary) -> String:
 	if receipt.get("accepted") != true \
 		or str(receipt.get("operation_id", "")) != "refresh_assets_after_batch" \
 		or str(receipt.get("reason_code", "")) != "frozen_snapshot_applied" \
-		or str(receipt.get("outcome_id", "")) != "assets_refreshed":
+		or str(receipt.get("outcome_id", "")) != "assets_refreshed" \
+		or str(receipt.get("invalid_target_policy_id", "")) != "none" \
+		or str(receipt.get("public_history_reason_code", "")) != "none" \
+		or receipt.get("asset_refund_applied") != false \
+		or str(receipt.get("normal_card_destination", "")) != "none" \
+		or receipt.get("action_slot_refunded") != false:
 		return "completion_semantics_invalid"
 	for empty_field in ["actor_id", "action_id", "intent_id", "intent_fingerprint"]:
 		if not (receipt.get(empty_field) is String) \
@@ -2689,6 +2782,10 @@ func _state_error(value: Dictionary) -> String:
 		or str(value.get("ruleset_id", "")) != RULESET_ID \
 		or str(value.get("domain_id", "")) != DOMAIN_ID:
 		return "header_invalid"
+	if str(value.get("balance_profile_id", "")) != BALANCE_PROFILE_ID \
+		or str(value.get("balance_profile_fingerprint", "")) \
+			!= BALANCE_PROFILE_FINGERPRINT:
+		return "balance_profile_invalid"
 	if not _is_positive_integer(value.get("revision")) \
 		or not _is_valid_rng_state(value.get("match_seed")):
 		return "revision_or_seed_invalid"
@@ -2711,6 +2808,7 @@ func _state_error(value: Dictionary) -> String:
 		or not _is_positive_integer(track.get("revision")) \
 		or not _is_positive_integer(track.get("capacity")) \
 		or not _is_positive_integer(track.get("local_visible_slot_count")) \
+		or not _is_nonnegative_integer(track.get("scroll_sequence")) \
 		or not _is_nonnegative_integer(track.get("next_instance_sequence")) \
 		or not (track.get("items") is Array):
 		return "track_invalid"
@@ -2731,13 +2829,19 @@ func _state_error(value: Dictionary) -> String:
 			or not _is_stable_id(item.get("instance_id")) \
 			or not _is_stable_id(item.get("card_definition_id")) \
 			or str(item.get("card_kind", "")) not in CARD_KIND_IDS \
+			or item.get("level") != TRACK_ITEM_LEVEL \
 			or str(item.get("primary_color", "")) not in COLOR_IDS \
 			or not _is_nonnegative_integer(item.get("path_origin_index")) \
 			or not _is_nonnegative_integer(item.get("path_position")) \
 			or int(item.get("path_origin_index", -1)) >= roster.size() \
 			or int(item.get("path_position", -1)) >= int(track.get("capacity", 0)) \
 			or not roster.has(str(item.get("segment_owner_id", ""))) \
-			or not _is_nonnegative_integer(item.get("supply_draw_index")):
+			or not _is_nonnegative_integer(item.get("supply_draw_index")) \
+			or not _is_nonnegative_integer(
+				item.get("claimable_from_scroll_sequence")
+			) \
+			or int(item.get("claimable_from_scroll_sequence", -1)) \
+				> int(track.get("scroll_sequence", 0)) + 1:
 			return "track_item_invalid"
 		var instance_id := str(item.get("instance_id", ""))
 		if instance_ids.has(instance_id):
@@ -2763,6 +2867,10 @@ func _state_error(value: Dictionary) -> String:
 		or _integer_dictionary_total(ratios, CARD_KIND_IDS) \
 			!= DISTRIBUTION_BASIS_POINTS:
 		return "type_supply_ratio_invalid"
+	if int(ratios.get("normal_card", 0)) != DEFAULT_NORMAL_RATIO_BASIS_POINTS \
+		or int(ratios.get("commodity_card", 0)) \
+			!= DEFAULT_COMMODITY_RATIO_BASIS_POINTS:
+		return "type_supply_profile_ratio_invalid"
 	for card_kind in CARD_KIND_IDS:
 		if not _is_positive_integer(ratios.get(card_kind)):
 			return "type_supply_ratio_invalid"
@@ -2864,6 +2972,9 @@ func _state_error(value: Dictionary) -> String:
 	)
 	var lead_tenure_batches := int(batch_boundary.get("lead_tenure_batches", 0))
 	var color_cycle_batches := int(batch_boundary.get("color_cycle_batches", 0))
+	if lead_tenure_batches != DEFAULT_LEAD_TENURE_BATCHES \
+		or color_cycle_batches != DEFAULT_COLOR_CYCLE_BATCHES:
+		return "batch_boundary_profile_invalid"
 	if int(batch_boundary.get("lead_batch_cursor", -1)) \
 			!= completed_batch_count % lead_tenure_batches \
 		or int(batch_boundary.get("color_cycle_batch_cursor", -1)) \
@@ -3091,6 +3202,8 @@ static func _save_state_error(value: Dictionary) -> String:
 		"schema_version",
 		"interface_id",
 		"ruleset_id",
+		"balance_profile_id",
+		"balance_profile_fingerprint",
 		"domain_id",
 		"state_version",
 		"source_revision",
@@ -3106,6 +3219,10 @@ static func _save_state_error(value: Dictionary) -> String:
 		or str(value.get("ruleset_id", "")) != RULESET_ID \
 		or str(value.get("domain_id", "")) != DOMAIN_ID:
 		return "save_state_header_invalid"
+	if str(value.get("balance_profile_id", "")) != BALANCE_PROFILE_ID \
+		or str(value.get("balance_profile_fingerprint", "")) \
+			!= BALANCE_PROFILE_FINGERPRINT:
+		return "save_state_balance_profile_invalid"
 	if not _is_positive_integer(value.get("source_revision")) \
 		or not (value.get("authority_state") is Dictionary):
 		return "save_state_source_invalid"
@@ -3124,6 +3241,10 @@ static func _checkpoint_error(value: Dictionary) -> String:
 	var fields := [
 		"schema_version",
 		"interface_id",
+		"ruleset_id",
+		"state_version",
+		"balance_profile_id",
+		"balance_profile_fingerprint",
 		"domain_id",
 		"match_instance_id",
 		"source_revision",
@@ -3135,6 +3256,11 @@ static func _checkpoint_error(value: Dictionary) -> String:
 		return "checkpoint_fields_invalid"
 	if value.get("schema_version") != SCHEMA_VERSION \
 		or str(value.get("interface_id", "")) != CHECKPOINT_INTERFACE_ID \
+		or str(value.get("ruleset_id", "")) != RULESET_ID \
+		or value.get("state_version") != STATE_VERSION \
+		or str(value.get("balance_profile_id", "")) != BALANCE_PROFILE_ID \
+		or str(value.get("balance_profile_fingerprint", "")) \
+			!= BALANCE_PROFILE_FINGERPRINT \
 		or str(value.get("domain_id", "")) != DOMAIN_ID \
 		or not _is_stable_id(value.get("match_instance_id")) \
 		or str(value.get("match_instance_id", "")) == "match.unspecified":
@@ -3316,6 +3442,8 @@ static func _config_error(config: Dictionary) -> String:
 		config,
 		[],
 		[
+			"balance_profile_id",
+			"balance_profile_fingerprint",
 			"normal_card_ratio_basis_points",
 			"commodity_card_ratio_basis_points",
 			"local_visible_slot_count",
@@ -3325,6 +3453,14 @@ static func _config_error(config: Dictionary) -> String:
 		]
 	):
 		return "config_fields_invalid"
+	if str(config.get("balance_profile_id", BALANCE_PROFILE_ID)) \
+			!= BALANCE_PROFILE_ID:
+		return "balance_profile_id_invalid"
+	if str(config.get(
+		"balance_profile_fingerprint",
+		BALANCE_PROFILE_FINGERPRINT
+	)) != BALANCE_PROFILE_FINGERPRINT:
+		return "balance_profile_fingerprint_invalid"
 	var normal_ratio: Variant = config.get(
 		"normal_card_ratio_basis_points",
 		DEFAULT_NORMAL_RATIO_BASIS_POINTS
@@ -3350,14 +3486,21 @@ static func _config_error(config: Dictionary) -> String:
 		or int(normal_ratio) + int(commodity_ratio) \
 			!= DISTRIBUTION_BASIS_POINTS:
 		return "card_kind_ratio_invalid"
+	if int(normal_ratio) != DEFAULT_NORMAL_RATIO_BASIS_POINTS \
+		or int(commodity_ratio) != DEFAULT_COMMODITY_RATIO_BASIS_POINTS:
+		return "candidate_a_card_kind_ratio_required"
 	if not _is_positive_integer(local_slots) or int(local_slots) > 20:
 		return "local_visible_slot_count_invalid"
 	if not _is_positive_integer(lead_tenure_batches) \
 		or int(lead_tenure_batches) > 1000:
 		return "lead_tenure_batches_invalid"
+	if int(lead_tenure_batches) != DEFAULT_LEAD_TENURE_BATCHES:
+		return "candidate_a_lead_tenure_batches_required"
 	if not _is_positive_integer(color_cycle_batches) \
 		or int(color_cycle_batches) > 1000:
 		return "color_cycle_batches_invalid"
+	if int(color_cycle_batches) != DEFAULT_COLOR_CYCLE_BATCHES:
+		return "candidate_a_color_cycle_batches_required"
 	if config.has("match_instance_id"):
 		if not _is_stable_id(config.get("match_instance_id")) \
 			or str(config.get("match_instance_id", "")) == "match.unspecified":

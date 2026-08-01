@@ -1,36 +1,46 @@
 extends RefCounted
 class_name V07DbgDeckCore
 
-## Frozen V0.7 personal DBG reference authority. The live state, checkpoints,
+## Frozen V0.7.1 personal DBG reference authority. The live state, checkpoints,
 ## projections, intents, receipts, and Save payloads are closed pure data.
 
 const TrackCore := preload("res://scripts/v07_semantic/v07_unified_card_track_core.gd")
 
-const SCHEMA_VERSION := 1
+const SCHEMA_VERSION := 2
+const STATE_VERSION := 2
 const HAND_LIMIT := 5
 const COMMODITY_INVENTORY_LIMIT := 5
 const MAX_CARD_LEVEL := 4
 const MAX_COMMODITY_LEVEL := 3
 const DOMAIN_ID := "v07.personal_dbg"
-const RULESET_ID := "v0.7"
+const RULESET_ID := "v0.7.1"
 const STARTER_SHUFFLE_DRAW_COUNT := 11
 const RNG_ALGORITHM_ID := "sha256.owner_bound_counter.v1"
-const RNG_AUTHORITY_OWNER_ID := "v07.personal_dbg.core_authority.v1"
+const RNG_AUTHORITY_OWNER_ID := "v071.personal_dbg.core_authority.v2"
+const BALANCE_PROFILE_ID := "V071_CANDIDATE_A_FAST"
+const BALANCE_PROFILE_FINGERPRINT := (
+	"8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a"
+)
+const NORMAL_DECK_MINIMUM_TOTAL_CARD_COUNT := 5
+const NORMAL_DECK_MINIMUM_COUNT_RULE_VERSION := (
+	"v071.normal_merge.minimum_total_five.v1"
+)
 
-const CORE_AUTHORITY_SCHEMA_ID := "v07.personal_dbg.core_authority.v1"
-const AI_OBSERVATION_SCHEMA_ID := "v07.personal_dbg.ai_observation.v1"
-const PLAYER_PROJECTION_SCHEMA_ID := "v07.personal_dbg.player_projection.v1"
-const INTENT_SCHEMA_ID := "v07.personal_dbg.intent.v1"
-const RECEIPT_SCHEMA_ID := "v07.personal_dbg.authoritative_receipt.v1"
-const SAVE_SCHEMA_ID := "v07.personal_dbg.save_state.v1"
-const CHECKPOINT_SCHEMA_ID := "v07.personal_dbg.checkpoint.v1"
+const CORE_AUTHORITY_SCHEMA_ID := "v071.personal_dbg.core_authority.v2"
+const AI_OBSERVATION_SCHEMA_ID := "v071.personal_dbg.ai_observation.v2"
+const PLAYER_PROJECTION_SCHEMA_ID := "v071.personal_dbg.player_projection.v2"
+const INTENT_SCHEMA_ID := "v071.personal_dbg.intent.v2"
+const RECEIPT_SCHEMA_ID := "v071.personal_dbg.authoritative_receipt.v2"
+const SAVE_SCHEMA_ID := "v071.personal_dbg.save_state.v2"
+const CHECKPOINT_SCHEMA_ID := "v071.personal_dbg.checkpoint.v2"
 
-const NORMAL_DECK_STATE_CONTRACT_ID := "V07NormalDeckState"
-const NORMAL_HAND_STATE_CONTRACT_ID := "V07NormalHandState"
-const NORMAL_DISCARD_STATE_CONTRACT_ID := "V07NormalDiscardState"
-const NORMAL_MERGE_STATE_CONTRACT_ID := "V07NormalMergeState"
-const COMMODITY_INVENTORY_STATE_CONTRACT_ID := "V07CommodityInventoryState"
-const BOUND_SOURCE_STATE_CONTRACT_ID := "V07BoundSourceLifecycleState"
+const NORMAL_DECK_STATE_CONTRACT_ID := "V071NormalDeckState"
+const NORMAL_HAND_STATE_CONTRACT_ID := "V071NormalHandState"
+const NORMAL_DISCARD_STATE_CONTRACT_ID := "V071NormalDiscardState"
+const NORMAL_MERGE_STATE_CONTRACT_ID := "V071NormalMergeState"
+const COMMODITY_INVENTORY_STATE_CONTRACT_ID := "V071CommodityInventoryState"
+const BOUND_SOURCE_STATE_CONTRACT_ID := "V071BoundSourceLifecycleState"
+const LOCAL_QUEUE_STATE_CONTRACT_ID := "V071LocalQueueState"
 const TYPED_STATE_CONTRACT_FIELDS := [
 	"normal_deck_state",
 	"normal_hand_state",
@@ -38,6 +48,7 @@ const TYPED_STATE_CONTRACT_FIELDS := [
 	"normal_merge_state",
 	"commodity_inventory_state",
 	"bound_source_state",
+	"local_queue_state",
 ]
 
 const PHASE_BATCH := "batch_active"
@@ -49,6 +60,7 @@ const ACTION_COMPLETE_BATCH := "complete_batch"
 const ACTION_MERGE_CARDS := "merge_cards"
 const ACTION_ACCEPT_COMMODITY_CLAIM := "accept_commodity_track_claim"
 const ACTION_MERGE_COMMODITIES := "merge_commodities"
+const ACTION_LOCK_LOCAL_QUEUE := "lock_local_queue"
 const ACTION_END_MAINTENANCE := "end_maintenance"
 
 const DECISION_PLAYER_EXPLICIT := "player_explicit"
@@ -71,6 +83,7 @@ const ACTION_KINDS := [
 	ACTION_MERGE_CARDS,
 	ACTION_ACCEPT_COMMODITY_CLAIM,
 	ACTION_MERGE_COMMODITIES,
+	ACTION_LOCK_LOCAL_QUEUE,
 	ACTION_END_MAINTENANCE,
 ]
 const CARD_FIELDS := [
@@ -96,6 +109,7 @@ const COMMODITY_CARD_FIELDS := [
 	"primary_color",
 	"level",
 	"locked",
+	"available_from_batch_id",
 	"source_track_instance_ids",
 	"claim_receipt_ids",
 ]
@@ -105,10 +119,11 @@ const PROJECTED_COMMODITY_CARD_FIELDS := [
 	"primary_color",
 	"level",
 	"locked",
+	"available_from_batch_id",
 ]
-const TRACK_CLAIM_RECEIPT_SCHEMA_ID := "v07.unified_track.authoritative_receipt.v1"
-const TRACK_CLAIM_INTENT_SCHEMA_ID := "v07.unified_track.intent.v1"
-const TRACK_AI_OBSERVATION_SCHEMA_ID := "v07.unified_track.ai_observation.v1"
+const TRACK_CLAIM_RECEIPT_SCHEMA_ID := "v071.unified_track.authoritative_receipt.v2"
+const TRACK_CLAIM_INTENT_SCHEMA_ID := "v071.unified_track.intent.v2"
+const TRACK_AI_OBSERVATION_SCHEMA_ID := "v071.unified_track.ai_observation.v2"
 const TRACK_DOMAIN_ID := "unified_card_track"
 const TRACK_CLAIM_ACTION_ID := "claim_visible_commodity"
 const TRACK_RECEIPT_AUTHORITY_METHOD := "authoritative_receipt_v1"
@@ -124,10 +139,10 @@ const TRACK_AUTHORITY_METHODS := [
 	"save_state_v1",
 ]
 const ACQUISITION_PARTICIPANT_REQUEST_INTERFACE_ID := (
-	"v07.unified_track.acquisition_participant_request.v1"
+	"v071.unified_track.acquisition_participant_request.v2"
 )
 const ACQUISITION_PARTICIPANT_CHECKPOINT_SCHEMA_ID := (
-	"v07.personal_dbg.acquisition_participant_checkpoint.v1"
+	"v071.personal_dbg.acquisition_participant_checkpoint.v2"
 )
 const ACQUISITION_PARTICIPANT_REQUEST_FIELDS := [
 	"schema_version",
@@ -149,6 +164,10 @@ const ACQUISITION_PARTICIPANT_REQUEST_FIELDS := [
 const ACQUISITION_PARTICIPANT_CHECKPOINT_FIELDS := [
 	"schema_id",
 	"schema_version",
+	"state_version",
+	"ruleset_id",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"authority_id",
 	"core_checkpoint",
 	"reservations",
@@ -229,6 +248,10 @@ const TRACK_VIEWER_AUTHORIZATION_FIELDS := [
 const TRACK_PROJECTION_FIELDS := [
 	"schema_version",
 	"interface_id",
+	"ruleset_id",
+	"state_version",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"domain_id",
 	"source_revision",
 	"source_core_fingerprint",
@@ -241,20 +264,39 @@ const TRACK_PUBLIC_FACT_FIELDS := [
 	"single_unified_track",
 	"allowed_card_kinds",
 	"track_revision",
+	"scroll_sequence",
 	"unified_track_item_count",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"card_kind_ratio_basis_points",
 	"color_cycle_number",
 	"color_distribution_basis_points",
 	"revealed_stances",
+	"completed_batch_count",
+	"lead_batch_cursor",
+	"lead_tenure_batches",
+	"color_cycle_batch_cursor",
+	"color_cycle_batches",
+	"lead_identity_not_directly_published",
+	"lead_identity_may_be_inferred_from_public_information",
 ]
-const TRACK_AI_PRIVATE_FACT_FIELDS := ["own_segment_items", "own_pending_stance"]
+const TRACK_AI_PRIVATE_FACT_FIELDS := [
+	"own_segment_items",
+	"own_pending_stance",
+	"self_is_current_lead",
+	"self_influence_class",
+]
 const TRACK_VISIBLE_ITEM_FIELDS := [
 	"instance_id",
 	"card_definition_id",
 	"card_kind",
+	"level",
 	"primary_color",
 	"local_slot_index",
 	"track_revision",
+	"claimable_from_scroll_sequence",
+	"claimable",
+	"claimability_state",
 ]
 const TRACK_CASH_DELTA_FIELDS := [
 	"mode",
@@ -280,6 +322,12 @@ const BOUND_SOURCE_STATE_FIELDS := [
 	"entries",
 ]
 const BOUND_SOURCE_ENTRY_FIELDS := ["match_instance_id", "lineage_fingerprint"]
+const LOCAL_QUEUE_STATE_FIELDS := [
+	"schema_version",
+	"contract_id",
+	"batch_id",
+	"locked",
+]
 const TAGGED_INT64_FIELDS := ["type", "decimal"]
 const RNG_FIELDS := [
 	"schema_version",
@@ -302,6 +350,9 @@ const COMMODITY_CLAIM_HISTORY_FIELDS := [
 	"commodity_id",
 	"primary_color",
 	"level",
+	"claim_batch_id",
+	"local_queue_locked_at_claim",
+	"available_from_batch_id",
 	"revision",
 ]
 const COMMODITY_MERGE_HISTORY_FIELDS := [
@@ -312,10 +363,15 @@ const COMMODITY_MERGE_HISTORY_FIELDS := [
 	"commodity_id",
 	"primary_color",
 	"result_level",
+	"available_from_batch_id",
 	"revision",
 ]
 const STATE_FIELDS := [
 	"schema_version",
+	"state_version",
+	"ruleset_id",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"domain_id",
 	"owner_player_id",
 	"root_seed",
@@ -333,6 +389,8 @@ const STATE_FIELDS := [
 	"commodity_merge_history",
 	"next_commodity_instance_sequence",
 	"bound_source_state",
+	"local_queue_state",
+	"normal_deck_minimum_count_rule_version",
 	"starter_rng",
 	"reshuffle_rng",
 	"processed_intent_ids",
@@ -341,6 +399,10 @@ const STATE_FIELDS := [
 const CORE_AUTHORITY_FIELDS := [
 	"schema_id",
 	"schema_version",
+	"state_version",
+	"ruleset_id",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"domain_id",
 	"privacy_scope",
 	"typed_state_contracts",
@@ -352,6 +414,10 @@ const CORE_AUTHORITY_FIELDS := [
 const DOCUMENT_SECTION_FIELDS := [
 	"section_id",
 	"section_version",
+	"state_version",
+	"ruleset_id",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"semantic_owner",
 	"privacy",
 	"state_revision",
@@ -370,11 +436,17 @@ const DOCUMENT_PLAYER_FIELDS := [
 	"merge_results_and_lineage",
 	"commodity_inventory",
 	"bound_source_state",
+	"local_queue_state",
+	"normal_deck_minimum_count_rule_version",
 	"zone_revision",
 ]
 const PROJECTION_FIELDS := [
 	"schema_id",
 	"schema_version",
+	"state_version",
+	"ruleset_id",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"domain_id",
 	"visibility_scope",
 	"revision",
@@ -386,6 +458,12 @@ const PROJECTION_FIELDS := [
 const VIEWER_FACT_FIELDS := [
 	"phase",
 	"batch_index",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
+	"normal_deck_total_card_count",
+	"normal_deck_minimum_total_card_count",
+	"normal_deck_minimum_count_rule_version",
+	"local_queue_state",
 	"hand",
 	"hand_count",
 	"draw_pile_count",
@@ -403,6 +481,10 @@ const VIEWER_FACT_FIELDS := [
 const INTENT_FIELDS := [
 	"schema_id",
 	"schema_version",
+	"state_version",
+	"ruleset_id",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"domain_id",
 	"privacy_scope",
 	"request_id",
@@ -417,6 +499,10 @@ const INTENT_FIELDS := [
 const RECEIPT_FIELDS := [
 	"schema_id",
 	"schema_version",
+	"state_version",
+	"ruleset_id",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"domain_id",
 	"visibility_scope",
 	"request_id",
@@ -448,10 +534,23 @@ const RESULT_FIELDS := [
 	"refill_count",
 	"reshuffle_count",
 ]
-const CHECKPOINT_FIELDS := ["schema_id", "schema_version", "state", "state_fingerprint"]
+const CHECKPOINT_FIELDS := [
+	"schema_id",
+	"schema_version",
+	"state_version",
+	"ruleset_id",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
+	"state",
+	"state_fingerprint",
+]
 const SAVE_FIELDS := [
 	"schema_id",
 	"schema_version",
+	"state_version",
+	"ruleset_id",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"domain_id",
 	"privacy_scope",
 	"typed_state_contracts",
@@ -462,6 +561,10 @@ const SAVE_FIELDS := [
 ]
 const THREE_WING_CONTRACT_FIELDS := [
 	"schema_version",
+	"state_version",
+	"ruleset_id",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"domain_id",
 	"core_authority_schema_id",
 	"ai_observation_schema_id",
@@ -479,6 +582,10 @@ const THREE_WING_CONTRACT_FIELDS := [
 	"commodity_inventory_limit",
 	"commodity_merge_edges",
 	"bound_source_runtime_binding_supported",
+	"normal_deck_minimum_total_card_count",
+	"normal_deck_minimum_count_rule_version",
+	"commodity_available_from_batch_field",
+	"local_queue_state_contract_id",
 ]
 const PRIVATE_PROJECTION_KEYS := [
 	"owner_player_id",
@@ -540,6 +647,10 @@ func initialize(owner_player_id: String, fixed_seed: int) -> Dictionary:
 		hand.append(draw_pile.pop_back())
 	_state = {
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"domain_id": DOMAIN_ID,
 		"owner_player_id": owner_player_id,
 		"root_seed": _tagged_int64(fixed_seed),
@@ -557,6 +668,10 @@ func initialize(owner_player_id: String, fixed_seed: int) -> Dictionary:
 		"commodity_merge_history": [],
 		"next_commodity_instance_sequence": 1,
 		"bound_source_state": _empty_bound_source_state(),
+		"local_queue_state": _new_local_queue_state(1, false),
+		"normal_deck_minimum_count_rule_version": (
+			NORMAL_DECK_MINIMUM_COUNT_RULE_VERSION
+		),
 		"starter_rng": (shuffled.get("cursor", {}) as Dictionary).duplicate(true),
 		"reshuffle_rng": reshuffle_rng,
 		"processed_intent_ids": [],
@@ -889,6 +1004,10 @@ func capture_checkpoint_v1() -> Dictionary:
 	var checkpoint := {
 		"schema_id": ACQUISITION_PARTICIPANT_CHECKPOINT_SCHEMA_ID,
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"authority_id": RNG_AUTHORITY_OWNER_ID,
 		"core_checkpoint": core_checkpoint,
 		"reservations": _commodity_slot_reservations.duplicate(true),
@@ -907,6 +1026,11 @@ func rollback_v1(checkpoint: Dictionary) -> Dictionary:
 			or checkpoint.get("schema_id") \
 			!= ACQUISITION_PARTICIPANT_CHECKPOINT_SCHEMA_ID \
 			or checkpoint.get("schema_version") != SCHEMA_VERSION \
+			or checkpoint.get("state_version") != STATE_VERSION \
+			or checkpoint.get("ruleset_id") != RULESET_ID \
+			or checkpoint.get("balance_profile_id") != BALANCE_PROFILE_ID \
+			or checkpoint.get("balance_profile_fingerprint") \
+			!= BALANCE_PROFILE_FINGERPRINT \
 			or checkpoint.get("authority_id") != RNG_AUTHORITY_OWNER_ID \
 			or not (checkpoint.get("core_checkpoint") is Dictionary) \
 			or not (checkpoint.get("reservations") is Dictionary) \
@@ -966,12 +1090,17 @@ static func typed_state_contracts() -> Dictionary:
 		"normal_merge_state": NORMAL_MERGE_STATE_CONTRACT_ID,
 		"commodity_inventory_state": COMMODITY_INVENTORY_STATE_CONTRACT_ID,
 		"bound_source_state": BOUND_SOURCE_STATE_CONTRACT_ID,
+		"local_queue_state": LOCAL_QUEUE_STATE_CONTRACT_ID,
 	}
 
 
 static func three_wing_contract() -> Dictionary:
 	return {
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"domain_id": DOMAIN_ID,
 		"core_authority_schema_id": CORE_AUTHORITY_SCHEMA_ID,
 		"ai_observation_schema_id": AI_OBSERVATION_SCHEMA_ID,
@@ -992,6 +1121,14 @@ static func three_wing_contract() -> Dictionary:
 		"commodity_inventory_limit": COMMODITY_INVENTORY_LIMIT,
 		"commodity_merge_edges": ["L1+L1=L2", "L2+L1=L3"],
 		"bound_source_runtime_binding_supported": true,
+		"normal_deck_minimum_total_card_count": (
+			NORMAL_DECK_MINIMUM_TOTAL_CARD_COUNT
+		),
+		"normal_deck_minimum_count_rule_version": (
+			NORMAL_DECK_MINIMUM_COUNT_RULE_VERSION
+		),
+		"commodity_available_from_batch_field": "available_from_batch_id",
+		"local_queue_state_contract_id": LOCAL_QUEUE_STATE_CONTRACT_ID,
 	}
 
 
@@ -1002,6 +1139,10 @@ func core_authority_snapshot() -> Dictionary:
 	return {
 		"schema_id": CORE_AUTHORITY_SCHEMA_ID,
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"domain_id": DOMAIN_ID,
 		"privacy_scope": "authority_secret",
 		"typed_state_contracts": typed_state_contracts(),
@@ -1019,6 +1160,10 @@ func ai_observation(viewer_player_id: String) -> Dictionary:
 	return {
 		"schema_id": AI_OBSERVATION_SCHEMA_ID,
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"domain_id": DOMAIN_ID,
 		"visibility_scope": "actor_private",
 		"revision": int(_state.get("revision", 0)),
@@ -1036,6 +1181,10 @@ func player_projection(viewer_player_id: String) -> Dictionary:
 	return {
 		"schema_id": PLAYER_PROJECTION_SCHEMA_ID,
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"domain_id": DOMAIN_ID,
 		"visibility_scope": "viewer_private",
 		"revision": int(_state.get("revision", 0)),
@@ -1058,6 +1207,10 @@ func create_intent(
 	var intent := {
 		"schema_id": INTENT_SCHEMA_ID,
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"domain_id": DOMAIN_ID,
 		"privacy_scope": "actor_to_authority_private",
 		"request_id": request_id,
@@ -1147,6 +1300,10 @@ func capture_checkpoint() -> Dictionary:
 	return {
 		"schema_id": CHECKPOINT_SCHEMA_ID,
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"state": state_copy,
 		"state_fingerprint": _fingerprint(state_copy),
 	}
@@ -1156,7 +1313,12 @@ func rollback_to_checkpoint(checkpoint: Dictionary) -> Dictionary:
 	if not _exact_fields(checkpoint, CHECKPOINT_FIELDS):
 		return {"rolled_back": false, "reason_code": "checkpoint_fields_invalid"}
 	if checkpoint.get("schema_id") != CHECKPOINT_SCHEMA_ID \
-			or checkpoint.get("schema_version") != SCHEMA_VERSION:
+			or checkpoint.get("schema_version") != SCHEMA_VERSION \
+			or checkpoint.get("state_version") != STATE_VERSION \
+			or checkpoint.get("ruleset_id") != RULESET_ID \
+			or checkpoint.get("balance_profile_id") != BALANCE_PROFILE_ID \
+			or checkpoint.get("balance_profile_fingerprint") \
+			!= BALANCE_PROFILE_FINGERPRINT:
 		return {"rolled_back": false, "reason_code": "checkpoint_schema_invalid"}
 	var candidate_variant: Variant = checkpoint.get("state")
 	if not (candidate_variant is Dictionary):
@@ -1197,6 +1359,10 @@ func to_save_state() -> Dictionary:
 	return {
 		"schema_id": SAVE_SCHEMA_ID,
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"domain_id": DOMAIN_ID,
 		"privacy_scope": "authority_secret",
 		"typed_state_contracts": typed_state_contracts(),
@@ -1225,7 +1391,7 @@ func apply_save_state(save_state: Dictionary) -> Dictionary:
 	_state = normalized_state
 	return {
 		"applied": true,
-		"reason_code": "v07_dbg_save_state_restored",
+		"reason_code": "v071_dbg_save_state_restored",
 		"state_fingerprint": _fingerprint(_state),
 		"core_fingerprint": _core_fingerprint(_state),
 	}
@@ -1240,6 +1406,11 @@ static func validate_save_state(save_state: Dictionary) -> String:
 		return "save_state_fields_invalid"
 	if save_state.get("schema_id") != SAVE_SCHEMA_ID \
 			or save_state.get("schema_version") != SCHEMA_VERSION \
+			or save_state.get("state_version") != STATE_VERSION \
+			or save_state.get("ruleset_id") != RULESET_ID \
+			or save_state.get("balance_profile_id") != BALANCE_PROFILE_ID \
+			or save_state.get("balance_profile_fingerprint") \
+			!= BALANCE_PROFILE_FINGERPRINT \
 			or save_state.get("domain_id") != DOMAIN_ID \
 			or save_state.get("privacy_scope") != "authority_secret":
 		return "save_state_schema_invalid"
@@ -1285,7 +1456,8 @@ static func validate_typed_state_contracts(value: Variant) -> String:
 			or contracts.get("normal_merge_state") != NORMAL_MERGE_STATE_CONTRACT_ID \
 			or contracts.get("commodity_inventory_state") \
 			!= COMMODITY_INVENTORY_STATE_CONTRACT_ID \
-			or contracts.get("bound_source_state") != BOUND_SOURCE_STATE_CONTRACT_ID:
+			or contracts.get("bound_source_state") != BOUND_SOURCE_STATE_CONTRACT_ID \
+			or contracts.get("local_queue_state") != LOCAL_QUEUE_STATE_CONTRACT_ID:
 		return "typed_state_contract_identity_invalid"
 	return ""
 
@@ -1294,6 +1466,11 @@ static func validate_three_wing_contract(value: Dictionary) -> String:
 	if not _pure_data(value) or not _exact_fields(value, THREE_WING_CONTRACT_FIELDS):
 		return "three_wing_contract_fields_invalid"
 	if value.get("schema_version") != SCHEMA_VERSION \
+			or value.get("state_version") != STATE_VERSION \
+			or value.get("ruleset_id") != RULESET_ID \
+			or value.get("balance_profile_id") != BALANCE_PROFILE_ID \
+			or value.get("balance_profile_fingerprint") \
+			!= BALANCE_PROFILE_FINGERPRINT \
 			or value.get("domain_id") != DOMAIN_ID \
 			or value.get("core_authority_schema_id") != CORE_AUTHORITY_SCHEMA_ID \
 			or value.get("ai_observation_schema_id") != AI_OBSERVATION_SCHEMA_ID \
@@ -1317,7 +1494,15 @@ static func validate_three_wing_contract(value: Dictionary) -> String:
 			or value.get("save_is_second_authority") != false \
 			or value.get("commodity_inventory_limit") != COMMODITY_INVENTORY_LIMIT \
 			or value.get("commodity_merge_edges") != ["L1+L1=L2", "L2+L1=L3"] \
-			or value.get("bound_source_runtime_binding_supported") != true:
+			or value.get("bound_source_runtime_binding_supported") != true \
+			or value.get("normal_deck_minimum_total_card_count") \
+			!= NORMAL_DECK_MINIMUM_TOTAL_CARD_COUNT \
+			or value.get("normal_deck_minimum_count_rule_version") \
+			!= NORMAL_DECK_MINIMUM_COUNT_RULE_VERSION \
+			or value.get("commodity_available_from_batch_field") \
+			!= "available_from_batch_id" \
+			or value.get("local_queue_state_contract_id") \
+			!= LOCAL_QUEUE_STATE_CONTRACT_ID:
 		return "three_wing_contract_rule_flags_invalid"
 	return ""
 
@@ -1348,6 +1533,11 @@ static func validate_core_authority_snapshot(value: Dictionary) -> String:
 		return "core_authority_fields_invalid"
 	if value.get("schema_id") != CORE_AUTHORITY_SCHEMA_ID \
 			or value.get("schema_version") != SCHEMA_VERSION \
+			or value.get("state_version") != STATE_VERSION \
+			or value.get("ruleset_id") != RULESET_ID \
+			or value.get("balance_profile_id") != BALANCE_PROFILE_ID \
+			or value.get("balance_profile_fingerprint") \
+			!= BALANCE_PROFILE_FINGERPRINT \
 			or value.get("domain_id") != DOMAIN_ID \
 			or value.get("privacy_scope") != "authority_secret":
 		return "core_authority_schema_invalid"
@@ -1461,11 +1651,18 @@ func _track_authority_descriptor(authority: RefCounted) -> Dictionary:
 		return {}
 	var snapshot := snapshot_variant as Dictionary
 	if not _exact_fields(snapshot, [
-		"schema_version", "interface_id", "domain_id", "authority_scope",
-		"source_revision", "authority_state", "core_fingerprint",
+		"schema_version", "interface_id", "ruleset_id", "state_version",
+		"balance_profile_id", "balance_profile_fingerprint", "domain_id",
+		"authority_scope", "source_revision", "authority_state",
+		"core_fingerprint",
 	]) \
 			or snapshot.get("schema_version") != TrackCore.SCHEMA_VERSION \
 			or snapshot.get("interface_id") != TrackCore.CORE_INTERFACE_ID \
+			or snapshot.get("ruleset_id") != TrackCore.RULESET_ID \
+			or snapshot.get("state_version") != TrackCore.STATE_VERSION \
+			or snapshot.get("balance_profile_id") != TrackCore.BALANCE_PROFILE_ID \
+			or snapshot.get("balance_profile_fingerprint") \
+			!= TrackCore.BALANCE_PROFILE_FINGERPRINT \
 			or snapshot.get("domain_id") != TrackCore.DOMAIN_ID \
 			or snapshot.get("authority_scope") != "authority_secret" \
 			or not _positive_int(snapshot.get("source_revision")) \
@@ -1736,6 +1933,12 @@ static func _track_ai_observation_reason(observation: Dictionary) -> String:
 		return "track_claim_observation_fields_invalid"
 	if observation.get("schema_version") != SCHEMA_VERSION \
 			or observation.get("interface_id") != TRACK_AI_OBSERVATION_SCHEMA_ID \
+			or observation.get("ruleset_id") != TrackCore.RULESET_ID \
+			or observation.get("state_version") != TrackCore.STATE_VERSION \
+			or observation.get("balance_profile_id") \
+			!= TrackCore.BALANCE_PROFILE_ID \
+			or observation.get("balance_profile_fingerprint") \
+			!= TrackCore.BALANCE_PROFILE_FINGERPRINT \
 			or observation.get("domain_id") != TRACK_DOMAIN_ID \
 			or not _positive_int(observation.get("source_revision")) \
 			or not _stable_id(observation.get("viewer_actor_id")):
@@ -1752,13 +1955,30 @@ static func _track_ai_observation_reason(observation: Dictionary) -> String:
 			or public_facts.get("allowed_card_kinds") \
 			!= ["normal_card", "commodity_card"] \
 			or not _positive_int(public_facts.get("track_revision")) \
+			or not _nonnegative_int(public_facts.get("scroll_sequence")) \
 			or not _positive_int(public_facts.get("unified_track_item_count")) \
+			or public_facts.get("balance_profile_id") \
+			!= TrackCore.BALANCE_PROFILE_ID \
+			or public_facts.get("balance_profile_fingerprint") \
+			!= TrackCore.BALANCE_PROFILE_FINGERPRINT \
 			or not _positive_int(public_facts.get("color_cycle_number")) \
+			or not _nonnegative_int(public_facts.get("completed_batch_count")) \
+			or not _nonnegative_int(public_facts.get("lead_batch_cursor")) \
+			or not _positive_int(public_facts.get("lead_tenure_batches")) \
+			or not _nonnegative_int(public_facts.get("color_cycle_batch_cursor")) \
+			or not _positive_int(public_facts.get("color_cycle_batches")) \
+			or public_facts.get("lead_identity_not_directly_published") != true \
+			or public_facts.get(
+				"lead_identity_may_be_inferred_from_public_information"
+			) != true \
 			or not (public_facts.get("card_kind_ratio_basis_points") is Dictionary) \
 			or not (public_facts.get("color_distribution_basis_points") is Dictionary) \
 			or not (public_facts.get("revealed_stances") is Array) \
 			or not (private_facts.get("own_segment_items") is Array) \
-			or not (private_facts.get("own_pending_stance") is Dictionary):
+			or not (private_facts.get("own_pending_stance") is Dictionary) \
+			or not (private_facts.get("self_is_current_lead") is bool) \
+			or str(private_facts.get("self_influence_class", "")) \
+			not in ["normal", "double"]:
 		return "track_claim_observation_fact_invalid"
 	var ratio := public_facts.get("card_kind_ratio_basis_points", {}) as Dictionary
 	if not _exact_fields(ratio, ["normal_card", "commodity_card"]) \
@@ -1814,10 +2034,18 @@ static func _track_visible_item_reason(item: Dictionary, track_revision: int) ->
 			or not _stable_id(item.get("instance_id")) \
 			or not _stable_id(item.get("card_definition_id")) \
 			or str(item.get("card_kind", "")) not in ["normal_card", "commodity_card"] \
+			or item.get("level") != 1 \
 			or str(item.get("primary_color", "")) not in COLORS \
 			or not _nonnegative_int(item.get("local_slot_index")) \
-			or item.get("track_revision") != track_revision:
+			or item.get("track_revision") != track_revision \
+			or not _nonnegative_int(item.get("claimable_from_scroll_sequence")) \
+			or not (item.get("claimable") is bool) \
+			or str(item.get("claimability_state", "")) \
+			not in ["claimable", "incoming_locked"]:
 		return "track_visible_item_invalid"
+	if bool(item.get("claimable", false)) \
+			!= (str(item.get("claimability_state", "")) == "claimable"):
+		return "track_visible_item_claimability_invalid"
 	return ""
 
 
@@ -1984,6 +2212,11 @@ static func _projection_reason(
 		return "projection_fields_invalid"
 	if projection.get("schema_id") != expected_schema_id \
 			or projection.get("schema_version") != SCHEMA_VERSION \
+			or projection.get("state_version") != STATE_VERSION \
+			or projection.get("ruleset_id") != RULESET_ID \
+			or projection.get("balance_profile_id") != BALANCE_PROFILE_ID \
+			or projection.get("balance_profile_fingerprint") \
+			!= BALANCE_PROFILE_FINGERPRINT \
 			or projection.get("domain_id") != DOMAIN_ID \
 			or projection.get("visibility_scope") != expected_visibility_scope:
 		return "projection_schema_invalid"
@@ -2014,12 +2247,27 @@ static func _viewer_facts_reason(facts: Dictionary) -> String:
 	var phase := str(facts.get("phase", ""))
 	if phase not in [PHASE_BATCH, PHASE_MAINTENANCE] \
 			or not _positive_int(facts.get("batch_index")) \
+			or facts.get("balance_profile_id") != BALANCE_PROFILE_ID \
+			or facts.get("balance_profile_fingerprint") \
+			!= BALANCE_PROFILE_FINGERPRINT \
+			or not _positive_int(facts.get("normal_deck_total_card_count")) \
+			or int(facts.get("normal_deck_total_card_count", 0)) \
+			< NORMAL_DECK_MINIMUM_TOTAL_CARD_COUNT \
+			or facts.get("normal_deck_minimum_total_card_count") \
+			!= NORMAL_DECK_MINIMUM_TOTAL_CARD_COUNT \
+			or facts.get("normal_deck_minimum_count_rule_version") \
+			!= NORMAL_DECK_MINIMUM_COUNT_RULE_VERSION \
 			or not _nonnegative_int(facts.get("draw_pile_count")) \
 			or not _nonnegative_int(facts.get("committed_escrow_count")) \
 			or not _nonnegative_int(facts.get("merge_history_count")) \
 			or not _nonnegative_int(facts.get("commodity_inventory_count")) \
 			or not _nonnegative_int(facts.get("commodity_merge_history_count")):
 		return "projection_fact_identity_invalid"
+	if not _local_queue_state_valid(facts.get("local_queue_state")) \
+			or int((facts.get("local_queue_state", {}) as Dictionary).get(
+				"batch_id", 0
+			)) != int(facts.get("batch_index", 0)):
+		return "projection_fact_local_queue_state_invalid"
 	var hand_variant: Variant = facts.get("hand")
 	var discard_variant: Variant = facts.get("discard")
 	if not (hand_variant is Array) or not (discard_variant is Array):
@@ -2030,6 +2278,13 @@ static func _viewer_facts_reason(facts: Dictionary) -> String:
 			or facts.get("hand_count") != hand.size() \
 			or facts.get("discard_count") != discard.size():
 		return "projection_fact_zone_counts_invalid"
+	if int(facts.get("normal_deck_total_card_count", 0)) != (
+		hand.size()
+		+ discard.size()
+		+ int(facts.get("draw_pile_count", 0))
+		+ int(facts.get("committed_escrow_count", 0))
+	):
+		return "projection_fact_normal_deck_total_invalid"
 	var seen_ids: Array[String] = []
 	for card_variant in hand + discard:
 		if not (card_variant is Dictionary) or not _card_valid(card_variant as Dictionary):
@@ -2040,7 +2295,10 @@ static func _viewer_facts_reason(facts: Dictionary) -> String:
 		seen_ids.append(instance_id)
 	var pairs_variant: Variant = facts.get("eligible_merge_pairs")
 	if not (pairs_variant is Array) \
-			or pairs_variant != _eligible_pairs_for_hand(hand):
+			or pairs_variant != _eligible_pairs_for_hand(
+				hand,
+				int(facts.get("normal_deck_total_card_count", 0))
+			):
 		return "projection_fact_merge_pairs_invalid"
 	var commodity_variant: Variant = facts.get("commodity_inventory")
 	if not (commodity_variant is Array):
@@ -2062,7 +2320,10 @@ static func _viewer_facts_reason(facts: Dictionary) -> String:
 		commodity_ids.append(commodity_instance_id)
 	var commodity_pairs_variant: Variant = facts.get("eligible_commodity_merge_pairs")
 	if not (commodity_pairs_variant is Array) \
-			or commodity_pairs_variant != _eligible_pairs_for_commodities(commodities):
+			or commodity_pairs_variant != _eligible_pairs_for_commodities(
+				commodities,
+				int(facts.get("batch_index", 0))
+			):
 		return "projection_fact_commodity_merge_pairs_invalid"
 	if not _bound_source_state_valid(facts.get("bound_source_state")):
 		return "projection_fact_bound_source_state_invalid"
@@ -2092,6 +2353,8 @@ func _dispatch_intent(intent: Dictionary) -> Dictionary:
 			return _apply_commodity_claim(intent)
 		ACTION_MERGE_COMMODITIES:
 			return _apply_commodity_merge(intent)
+		ACTION_LOCK_LOCAL_QUEUE:
+			return _apply_lock_local_queue(intent)
 		ACTION_END_MAINTENANCE:
 			return _apply_end_maintenance(intent)
 	return _result(false, "action_kind_unsupported")
@@ -2191,6 +2454,11 @@ func _apply_commodity_claim(intent: Dictionary) -> Dictionary:
 			return _result(false, "track_instance_already_claimed")
 	if inventory.size() >= COMMODITY_INVENTORY_LIMIT:
 		return _result(false, "commodity_inventory_full")
+	var current_batch_id := int(_state.get("batch_index", 0))
+	var local_queue_state := _state.get("local_queue_state", {}) as Dictionary
+	var available_from_batch_id := current_batch_id + (
+		1 if bool(local_queue_state.get("locked", false)) else 0
+	)
 	var instance_id := _allocate_commodity_instance_id()
 	var commodity := {
 		"instance_id": instance_id,
@@ -2199,6 +2467,7 @@ func _apply_commodity_claim(intent: Dictionary) -> Dictionary:
 		"primary_color": str(projected_item.get("primary_color", "")),
 		"level": 1,
 		"locked": false,
+		"available_from_batch_id": available_from_batch_id,
 		"source_track_instance_ids": [track_instance_id],
 		"claim_receipt_ids": [claim_receipt_id],
 	}
@@ -2214,6 +2483,11 @@ func _apply_commodity_claim(intent: Dictionary) -> Dictionary:
 		"commodity_id": str(commodity.get("commodity_id", "")),
 		"primary_color": str(commodity.get("primary_color", "")),
 		"level": int(commodity.get("level", 0)),
+		"claim_batch_id": current_batch_id,
+		"local_queue_locked_at_claim": bool(local_queue_state.get(
+			"locked", false
+		)),
+		"available_from_batch_id": available_from_batch_id,
 		"revision": int(_state.get("revision", 0)) + 1,
 	})
 	return _result(
@@ -2267,6 +2541,8 @@ func _apply_merge(intent: Dictionary) -> Dictionary:
 	var eligibility_reason := _merge_eligibility_reason(left, right)
 	if not eligibility_reason.is_empty():
 		return _result(false, eligibility_reason)
+	if _all_cards(_state).size() - 1 < NORMAL_DECK_MINIMUM_TOTAL_CARD_COUNT:
+		return _result(false, "minimum_normal_deck_size_violation")
 
 	var first_remove := maxi(left_index, right_index)
 	var second_remove := mini(left_index, right_index)
@@ -2329,7 +2605,11 @@ func _apply_commodity_merge(intent: Dictionary) -> Dictionary:
 		return _result(false, "commodity_merge_item_not_in_inventory")
 	var left := inventory[left_index] as Dictionary
 	var right := inventory[right_index] as Dictionary
-	var eligibility_reason := _commodity_merge_eligibility_reason(left, right)
+	var eligibility_reason := _commodity_merge_eligibility_reason(
+		left,
+		right,
+		int(_state.get("batch_index", 0))
+	)
 	if not eligibility_reason.is_empty():
 		return _result(false, eligibility_reason)
 	var result_level := 2 if int(left.get("level", 0)) == 1 \
@@ -2354,6 +2634,10 @@ func _apply_commodity_merge(intent: Dictionary) -> Dictionary:
 		"primary_color": str(left.get("primary_color", "")),
 		"level": result_level,
 		"locked": false,
+		"available_from_batch_id": maxi(
+			int(left.get("available_from_batch_id", 0)),
+			int(right.get("available_from_batch_id", 0))
+		),
 		"source_track_instance_ids": source_tracks,
 		"claim_receipt_ids": claim_receipts,
 	}
@@ -2367,6 +2651,9 @@ func _apply_commodity_merge(intent: Dictionary) -> Dictionary:
 		"commodity_id": str(result_commodity.get("commodity_id", "")),
 		"primary_color": str(result_commodity.get("primary_color", "")),
 		"result_level": result_level,
+		"available_from_batch_id": int(result_commodity.get(
+			"available_from_batch_id", 0
+		)),
 		"revision": int(_state.get("revision", 0)) + 1,
 	})
 	return _result(
@@ -2378,6 +2665,28 @@ func _apply_commodity_merge(intent: Dictionary) -> Dictionary:
 	)
 
 
+func _apply_lock_local_queue(intent: Dictionary) -> Dictionary:
+	if str(_state.get("phase", "")) != PHASE_BATCH:
+		return _result(false, "local_queue_lock_outside_active_batch")
+	if str(intent.get("decision_mode", "")) != DECISION_AUTHORITY:
+		return _result(false, "local_queue_lock_requires_authority")
+	if not _commodity_slot_reservations.is_empty():
+		return _result(false, "local_queue_lock_blocked_by_acquisition_transaction")
+	var arguments := intent.get("arguments", {}) as Dictionary
+	if not _exact_fields(arguments, ["batch_id"]):
+		return _result(false, "local_queue_lock_arguments_invalid")
+	var batch_id_variant: Variant = arguments.get("batch_id")
+	if not _positive_int(batch_id_variant) \
+			or int(batch_id_variant) != int(_state.get("batch_index", 0)):
+		return _result(false, "local_queue_batch_mismatch")
+	var queue_state := _state.get("local_queue_state", {}) as Dictionary
+	if bool(queue_state.get("locked", false)):
+		return _result(false, "local_queue_already_locked")
+	queue_state["locked"] = true
+	_state["local_queue_state"] = queue_state
+	return _result(true, "local_queue_locked", [], "", "local_queue")
+
+
 func _apply_end_maintenance(intent: Dictionary) -> Dictionary:
 	if str(_state.get("phase", "")) != PHASE_MAINTENANCE:
 		return _result(false, "maintenance_not_active")
@@ -2386,7 +2695,9 @@ func _apply_end_maintenance(intent: Dictionary) -> Dictionary:
 	if not (intent.get("arguments", {}) as Dictionary).is_empty():
 		return _result(false, "maintenance_end_arguments_invalid")
 	_state["phase"] = PHASE_BATCH
-	_state["batch_index"] = int(_state.get("batch_index", 0)) + 1
+	var next_batch_id := int(_state.get("batch_index", 0)) + 1
+	_state["batch_index"] = next_batch_id
+	_state["local_queue_state"] = _new_local_queue_state(next_batch_id, false)
 	return _result(true, "maintenance_ended", [], "", "none")
 
 
@@ -2438,6 +2749,18 @@ func _viewer_private_facts() -> Dictionary:
 	return {
 		"phase": str(_state.get("phase", "")),
 		"batch_index": int(_state.get("batch_index", 0)),
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
+		"normal_deck_total_card_count": _all_cards(_state).size(),
+		"normal_deck_minimum_total_card_count": (
+			NORMAL_DECK_MINIMUM_TOTAL_CARD_COUNT
+		),
+		"normal_deck_minimum_count_rule_version": (
+			NORMAL_DECK_MINIMUM_COUNT_RULE_VERSION
+		),
+		"local_queue_state": (
+			_state.get("local_queue_state", {}) as Dictionary
+		).duplicate(true),
 		"hand": hand_projection,
 		"hand_count": hand_projection.size(),
 		"draw_pile_count": (_state.get("draw_pile", []) as Array).size(),
@@ -2479,15 +2802,26 @@ static func _project_commodity(commodity: Dictionary) -> Dictionary:
 		"primary_color": str(commodity.get("primary_color", "")),
 		"level": int(commodity.get("level", 0)),
 		"locked": bool(commodity.get("locked", false)),
+		"available_from_batch_id": int(commodity.get("available_from_batch_id", 0)),
 	}
 
 
 func _eligible_merge_pairs() -> Array:
-	return _eligible_pairs_for_hand(_state.get("hand", []) as Array)
+	return _eligible_pairs_for_hand(
+		_state.get("hand", []) as Array,
+		_all_cards(_state).size()
+	)
 
 
-static func _eligible_pairs_for_hand(hand: Array) -> Array:
+static func _eligible_pairs_for_hand(
+	hand: Array,
+	normal_deck_total_card_count: int = -1
+) -> Array:
 	var pairs: Array = []
+	if normal_deck_total_card_count > 0 \
+			and normal_deck_total_card_count - 1 \
+			< NORMAL_DECK_MINIMUM_TOTAL_CARD_COUNT:
+		return pairs
 	for left_index in range(hand.size()):
 		for right_index in range(left_index + 1, hand.size()):
 			var left := hand[left_index] as Dictionary
@@ -2502,17 +2836,23 @@ static func _eligible_pairs_for_hand(hand: Array) -> Array:
 
 func _eligible_commodity_merge_pairs() -> Array:
 	return _eligible_pairs_for_commodities(
-		_state.get("commodity_inventory", []) as Array
+		_state.get("commodity_inventory", []) as Array,
+		int(_state.get("batch_index", 0))
 	)
 
 
-static func _eligible_pairs_for_commodities(commodities: Array) -> Array:
+static func _eligible_pairs_for_commodities(
+	commodities: Array,
+	current_batch_id: int = -1
+) -> Array:
 	var pairs: Array = []
 	for left_index in range(commodities.size()):
 		for right_index in range(left_index + 1, commodities.size()):
 			var left := commodities[left_index] as Dictionary
 			var right := commodities[right_index] as Dictionary
-			if _commodity_merge_eligibility_reason(left, right).is_empty():
+			if _commodity_merge_eligibility_reason(
+				left, right, current_batch_id
+			).is_empty():
 				pairs.append([
 					str(left.get("instance_id", "")),
 					str(right.get("instance_id", "")),
@@ -2542,7 +2882,8 @@ static func _merge_eligibility_reason(left: Dictionary, right: Dictionary) -> St
 
 static func _commodity_merge_eligibility_reason(
 	left: Dictionary,
-	right: Dictionary
+	right: Dictionary,
+	current_batch_id: int = -1
 ) -> String:
 	if bool(left.get("locked", false)) or bool(right.get("locked", false)):
 		return "commodity_merge_item_locked"
@@ -2553,6 +2894,11 @@ static func _commodity_merge_eligibility_reason(
 		return "commodity_merge_identity_mismatch"
 	if str(left.get("primary_color", "")) != str(right.get("primary_color", "")):
 		return "commodity_merge_color_mismatch"
+	if current_batch_id > 0 and (
+		int(left.get("available_from_batch_id", 0)) > current_batch_id
+		or int(right.get("available_from_batch_id", 0)) > current_batch_id
+	):
+		return "commodity_not_available_in_current_batch"
 	var levels := [int(left.get("level", 0)), int(right.get("level", 0))]
 	levels.sort()
 	if levels == [1, 1] or levels == [1, 2]:
@@ -2567,6 +2913,11 @@ static func _intent_shape_reason(intent: Dictionary) -> String:
 		return "intent_fields_invalid"
 	if intent.get("schema_id") != INTENT_SCHEMA_ID \
 			or intent.get("schema_version") != SCHEMA_VERSION \
+			or intent.get("state_version") != STATE_VERSION \
+			or intent.get("ruleset_id") != RULESET_ID \
+			or intent.get("balance_profile_id") != BALANCE_PROFILE_ID \
+			or intent.get("balance_profile_fingerprint") \
+			!= BALANCE_PROFILE_FINGERPRINT \
 			or intent.get("domain_id") != DOMAIN_ID \
 			or intent.get("privacy_scope") != "actor_to_authority_private":
 		return "intent_schema_invalid"
@@ -2596,6 +2947,10 @@ func _build_receipt(
 	var receipt := {
 		"schema_id": RECEIPT_SCHEMA_ID,
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"domain_id": DOMAIN_ID,
 		"visibility_scope": "actor_private",
 		"request_id": str(intent.get("request_id", "invalid_request")),
@@ -2672,6 +3027,11 @@ static func _state_valid(candidate: Dictionary) -> bool:
 	if not _pure_data(candidate) or not _exact_fields(candidate, STATE_FIELDS):
 		return false
 	if candidate.get("schema_version") != SCHEMA_VERSION \
+			or candidate.get("state_version") != STATE_VERSION \
+			or candidate.get("ruleset_id") != RULESET_ID \
+			or candidate.get("balance_profile_id") != BALANCE_PROFILE_ID \
+			or candidate.get("balance_profile_fingerprint") \
+			!= BALANCE_PROFILE_FINGERPRINT \
 			or candidate.get("domain_id") != DOMAIN_ID \
 			or not _stable_id(candidate.get("owner_player_id")) \
 			or not _tagged_int64_valid(candidate.get("root_seed")) \
@@ -2679,7 +3039,14 @@ static func _state_valid(candidate: Dictionary) -> bool:
 			or str(candidate.get("phase", "")) not in [PHASE_BATCH, PHASE_MAINTENANCE] \
 			or not _positive_int(candidate.get("batch_index")) \
 			or not _positive_int(candidate.get("next_instance_sequence")) \
-			or not _positive_int(candidate.get("next_commodity_instance_sequence")):
+			or not _positive_int(candidate.get("next_commodity_instance_sequence")) \
+			or candidate.get("normal_deck_minimum_count_rule_version") \
+			!= NORMAL_DECK_MINIMUM_COUNT_RULE_VERSION:
+		return false
+	if not _local_queue_state_valid(candidate.get("local_queue_state")) \
+			or int((candidate.get("local_queue_state", {}) as Dictionary).get(
+				"batch_id", 0
+			)) != int(candidate.get("batch_index", 0)):
 		return false
 	var owner_player_id := str(candidate.get("owner_player_id", ""))
 	for zone in ["draw_pile", "hand", "committed_escrow", "discard"]:
@@ -2689,6 +3056,8 @@ static func _state_valid(candidate: Dictionary) -> bool:
 			if not (card_variant is Dictionary) or not _card_valid(card_variant as Dictionary):
 				return false
 	if (candidate.get("hand", []) as Array).size() > HAND_LIMIT:
+		return false
+	if _all_cards(candidate).size() < NORMAL_DECK_MINIMUM_TOTAL_CARD_COUNT:
 		return false
 	if not _rng_valid(
 		candidate.get("starter_rng", {}),
@@ -2835,6 +3204,26 @@ static func _empty_bound_source_state() -> Dictionary:
 	}
 
 
+static func _new_local_queue_state(batch_id: int, locked: bool) -> Dictionary:
+	return {
+		"schema_version": SCHEMA_VERSION,
+		"contract_id": LOCAL_QUEUE_STATE_CONTRACT_ID,
+		"batch_id": batch_id,
+		"locked": locked,
+	}
+
+
+static func _local_queue_state_valid(value: Variant) -> bool:
+	if not (value is Dictionary):
+		return false
+	var queue_state := value as Dictionary
+	return _exact_fields(queue_state, LOCAL_QUEUE_STATE_FIELDS) \
+		and queue_state.get("schema_version") == SCHEMA_VERSION \
+		and queue_state.get("contract_id") == LOCAL_QUEUE_STATE_CONTRACT_ID \
+		and _positive_int(queue_state.get("batch_id")) \
+		and queue_state.get("locked") is bool
+
+
 static func _bound_source_state_valid(value: Variant) -> bool:
 	if not (value is Dictionary):
 		return false
@@ -2866,7 +3255,8 @@ static func _projected_commodity_valid(commodity: Dictionary) -> bool:
 		and str(commodity.get("primary_color", "")) in COLORS \
 		and _positive_int(commodity.get("level")) \
 		and int(commodity.get("level", 0)) <= MAX_COMMODITY_LEVEL \
-		and commodity.get("locked") is bool
+		and commodity.get("locked") is bool \
+		and _positive_int(commodity.get("available_from_batch_id"))
 
 
 static func _commodity_card_valid(
@@ -2881,6 +3271,7 @@ static func _commodity_card_valid(
 			or not _positive_int(commodity.get("level")) \
 			or int(commodity.get("level", 0)) > MAX_COMMODITY_LEVEL \
 			or not (commodity.get("locked") is bool) \
+			or not _positive_int(commodity.get("available_from_batch_id")) \
 			or not (commodity.get("source_track_instance_ids") is Array) \
 			or not (commodity.get("claim_receipt_ids") is Array):
 		return false
@@ -2905,10 +3296,18 @@ static func _commodity_claim_history_row_valid(row: Dictionary) -> bool:
 	]:
 		if not _stable_id(row.get(field)):
 			return false
+	if not _positive_int(row.get("claim_batch_id")) \
+			or not (row.get("local_queue_locked_at_claim") is bool) \
+			or int(row.get("available_from_batch_id", 0)) != (
+				int(row.get("claim_batch_id", 0))
+				+ (1 if bool(row.get("local_queue_locked_at_claim", false)) else 0)
+			):
+		return false
 	return _fingerprint_string(row.get("claim_receipt_fingerprint")) \
 		and _fingerprint_string(row.get("track_intent_fingerprint")) \
 		and str(row.get("primary_color", "")) in COLORS \
 		and row.get("level") == 1 \
+		and _positive_int(row.get("available_from_batch_id")) \
 		and _positive_int(row.get("revision"))
 
 
@@ -2922,6 +3321,7 @@ static func _commodity_merge_history_row_valid(row: Dictionary) -> bool:
 			or not _stable_id(row.get("commodity_id")) \
 			or str(row.get("primary_color", "")) not in COLORS \
 			or int(row.get("result_level", 0)) not in [2, 3] \
+			or not _positive_int(row.get("available_from_batch_id")) \
 			or not _positive_int(row.get("revision")):
 		return false
 	var source_ids := row.get("source_instance_ids") as Array
@@ -2965,6 +3365,7 @@ static func _commodity_lineage_valid(candidate: Dictionary) -> bool:
 			"commodity_id": str(row.get("commodity_id", "")),
 			"primary_color": str(row.get("primary_color", "")),
 			"level": 1,
+			"available_from_batch_id": int(row.get("available_from_batch_id", 0)),
 			"source_track_instance_ids": [track_id],
 			"claim_receipt_ids": [receipt_id],
 			"revision": int(row.get("revision", 0)),
@@ -3003,6 +3404,7 @@ static func _commodity_lineage_valid(candidate: Dictionary) -> bool:
 			"primary_color": left.get("primary_color"),
 			"level": left.get("level"),
 			"locked": false,
+			"available_from_batch_id": left.get("available_from_batch_id"),
 		}
 		var right_card := {
 			"owner_player_id": owner_player_id,
@@ -3010,6 +3412,7 @@ static func _commodity_lineage_valid(candidate: Dictionary) -> bool:
 			"primary_color": right.get("primary_color"),
 			"level": right.get("level"),
 			"locked": false,
+			"available_from_batch_id": right.get("available_from_batch_id"),
 		}
 		if not _commodity_merge_eligibility_reason(left_card, right_card).is_empty():
 			return false
@@ -3017,7 +3420,11 @@ static func _commodity_lineage_valid(candidate: Dictionary) -> bool:
 			and int(right.get("level", 0)) == 1 else 3
 		if row.get("commodity_id") != left.get("commodity_id") \
 				or row.get("primary_color") != left.get("primary_color") \
-				or row.get("result_level") != result_level:
+				or row.get("result_level") != result_level \
+				or row.get("available_from_batch_id") != maxi(
+					int(left.get("available_from_batch_id", 0)),
+					int(right.get("available_from_batch_id", 0))
+				):
 			return false
 		var source_tracks := _unique_stable_ids(
 			(left.get("source_track_instance_ids", []) as Array)
@@ -3039,6 +3446,9 @@ static func _commodity_lineage_valid(candidate: Dictionary) -> bool:
 			"commodity_id": left.get("commodity_id"),
 			"primary_color": left.get("primary_color"),
 			"level": result_level,
+			"available_from_batch_id": int(row.get(
+				"available_from_batch_id", 0
+			)),
 			"source_track_instance_ids": source_tracks,
 			"claim_receipt_ids": claim_receipts,
 			"revision": int(row.get("revision", 0)),
@@ -3059,6 +3469,8 @@ static func _commodity_lineage_valid(candidate: Dictionary) -> bool:
 		if commodity.get("commodity_id") != expected.get("commodity_id") \
 				or commodity.get("primary_color") != expected.get("primary_color") \
 				or commodity.get("level") != expected.get("level") \
+				or commodity.get("available_from_batch_id") \
+				!= expected.get("available_from_batch_id") \
 				or commodity.get("source_track_instance_ids") \
 				!= expected.get("source_track_instance_ids") \
 				or commodity.get("claim_receipt_ids") != expected.get("claim_receipt_ids"):
@@ -3101,6 +3513,11 @@ static func _receipt_valid(receipt: Dictionary) -> bool:
 	if not _exact_fields(receipt, RECEIPT_FIELDS) \
 			or receipt.get("schema_id") != RECEIPT_SCHEMA_ID \
 			or receipt.get("schema_version") != SCHEMA_VERSION \
+			or receipt.get("state_version") != STATE_VERSION \
+			or receipt.get("ruleset_id") != RULESET_ID \
+			or receipt.get("balance_profile_id") != BALANCE_PROFILE_ID \
+			or receipt.get("balance_profile_fingerprint") \
+			!= BALANCE_PROFILE_FINGERPRINT \
 			or receipt.get("domain_id") != DOMAIN_ID \
 			or receipt.get("visibility_scope") != "actor_private" \
 			or not _stable_id(receipt.get("request_id")) \
@@ -3329,6 +3746,12 @@ static func _document_save_section(state: Dictionary) -> Dictionary:
 		"bound_source_state": (
 			state.get("bound_source_state", {}) as Dictionary
 		).duplicate(true),
+		"local_queue_state": (
+			state.get("local_queue_state", {}) as Dictionary
+		).duplicate(true),
+		"normal_deck_minimum_count_rule_version": state.get(
+			"normal_deck_minimum_count_rule_version"
+		),
 		"zone_revision": _tagged_int64(int(state.get("revision", 0))),
 	}
 	var allocator_cursor := maxi(
@@ -3338,6 +3761,10 @@ static func _document_save_section(state: Dictionary) -> Dictionary:
 	return {
 		"section_id": "personal_dbg_and_merge",
 		"section_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"semantic_owner": RNG_AUTHORITY_OWNER_ID,
 		"privacy": "player_private_partitioned",
 		"state_revision": _tagged_int64(int(state.get("revision", 0))),

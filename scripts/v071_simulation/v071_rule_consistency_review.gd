@@ -7,7 +7,13 @@ const CATALOG_RESOURCE_PATH := (
 	"res://resources/presentation/alpha01_card_illustration_catalog.tres"
 )
 
-const REVIEW_ID := "v071.rule_consistency.review.v1"
+const REVIEW_ID := "v071.rule_consistency.review.v2"
+const CONSTITUTION_ID := "space_syndicate.v071.complete"
+const RULESET_ID := "v0.7.1"
+const APPROVED_PROFILE_ID := "V071_CANDIDATE_A_FAST"
+const APPROVED_PROFILE_FINGERPRINT := (
+	"8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a"
+)
 const REQUIRED_ASSET_KEYS := [
 	"ui.panel.primary",
 	"ui.panel.popup",
@@ -130,9 +136,16 @@ func advance_preview_batch() -> bool:
 func debug_snapshot() -> Dictionary:
 	var closure := SIMULATOR.candidate_closure_contract()
 	return {
-		"schema_version": 1,
+		"schema_version": 2,
 		"review_id": REVIEW_ID,
-		"candidate_status": "CANDIDATE_NOT_HIGHEST_AUTHORITY",
+		"constitution_id": CONSTITUTION_ID,
+		"ruleset_id": RULESET_ID,
+		"constitution_status": "FROZEN_HIGHEST_TARGET_CONSTITUTION",
+		"candidate_status": "APPROVED_FIRST_HUMAN_TEST_SAMPLE",
+		"v071_candidate_not_highest_authority": false,
+		"v071_highest_constitution_frozen": true,
+		"approved_profile_id": APPROVED_PROFILE_ID,
+		"approved_profile_fingerprint": APPROVED_PROFILE_FINGERPRINT,
 		"detached_reference_only": true,
 		"production_runtime_connected": false,
 		"production_connection_count": 0,
@@ -469,12 +482,12 @@ func _refresh_profile_state() -> void:
 		"victory_pending_tail",
 		"Remaining macro-round windows: %d" % macro_round_windows
 	)
-	profile_status.text = "%s | %dP | detached candidate" % [
+	profile_status.text = "%s | %dP | detached reference" % [
 		profile_id,
 		_selected_player_count,
 	]
 	footer_status.text = (
-		"Candidate only | deterministic simulation does not prove human fun | "
+		"Frozen target | deterministic simulation does not prove human fun | "
 		+ "no production connection"
 	)
 

@@ -56,7 +56,7 @@ theme_override_font_sizes/font_size = 24
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Detached candidate"
+text = "Detached V0.7.1 target"
 horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.345098, 0.784314, 0.470588, 1)
 
@@ -69,7 +69,7 @@ text = "Catalog pending"
 unique_name_in_owner = true
 custom_minimum_size = Vector2(244, 38)
 layout_mode = 2
-tooltip_text = "Candidate balance profile"
+tooltip_text = "Simulation balance profile"
 
 [node name="PlayerCountSelector" type="OptionButton" parent="SafeMargin/Rows/Header"]
 unique_name_in_owner = true
@@ -129,7 +129,7 @@ theme_override_constants/separation = 8
 
 [node name="Heading" type="Label" parent="SafeMargin/Rows/ReviewScroll/Sections/AssetSection/Margin/Rows"]
 layout_mode = 2
-text = "Six-color assets | cap 6 | candidate refresh cap 3"
+text = "Six-color assets | cap 6 | approved refresh cap 3"
 theme_override_font_sizes/font_size = 17
 
 [node name="AssetGrid" type="GridContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/AssetSection/Margin/Rows"]
@@ -155,7 +155,7 @@ theme_override_constants/separation = 8
 
 [node name="Heading" type="Label" parent="SafeMargin/Rows/ReviewScroll/Sections/StateSection/Margin/Rows"]
 layout_mode = 2
-text = "Candidate state closure | private facts | exact receipts"
+text = "Frozen state closure | private facts | exact receipts"
 theme_override_font_sizes/font_size = 17
 
 [node name="StateGrid" type="GridContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/StateSection/Margin/Rows"]
@@ -168,7 +168,7 @@ theme_override_constants/v_separation = 8
 [node name="FooterStatus" type="Label" parent="SafeMargin/Rows"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Candidate only"
+text = "Frozen target | detached reference"
 horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.721569, 0.780392, 0.839216, 1)
 theme_override_font_sizes/font_size = 11

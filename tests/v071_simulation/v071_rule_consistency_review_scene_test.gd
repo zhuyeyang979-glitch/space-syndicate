@@ -101,11 +101,22 @@ func _test_scene_at_size(viewport_size: Vector2i) -> void:
 	await process_frame
 	await process_frame
 	var snapshot := review.call("debug_snapshot") as Dictionary
-	_expect(str(snapshot.get("review_id", "")) == "v071.rule_consistency.review.v1" \
+	_expect(str(snapshot.get("review_id", "")) == "v071.rule_consistency.review.v2" \
+		and str(snapshot.get("constitution_id", "")) \
+			== "space_syndicate.v071.complete" \
+		and str(snapshot.get("ruleset_id", "")) == "v0.7.1" \
+		and str(snapshot.get("constitution_status", "")) \
+			== "FROZEN_HIGHEST_TARGET_CONSTITUTION" \
 		and str(snapshot.get("candidate_status", "")) \
-			== "CANDIDATE_NOT_HIGHEST_AUTHORITY" \
+			== "APPROVED_FIRST_HUMAN_TEST_SAMPLE" \
+		and not bool(snapshot.get("v071_candidate_not_highest_authority", true)) \
+		and bool(snapshot.get("v071_highest_constitution_frozen", false)) \
+		and str(snapshot.get("approved_profile_id", "")) \
+			== "V071_CANDIDATE_A_FAST" \
+		and str(snapshot.get("approved_profile_fingerprint", "")) \
+			== "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a" \
 		and bool(snapshot.get("detached_reference_only", false)),
-		"Review declares detached candidate authority status")
+		"Review declares the frozen highest-target authority and approved profile")
 	_expect(not bool(snapshot.get("production_runtime_connected", true)) \
 		and int(snapshot.get("production_connection_count", -1)) == 0 \
 		and int(snapshot.get("main_reference_count", -1)) == 0 \

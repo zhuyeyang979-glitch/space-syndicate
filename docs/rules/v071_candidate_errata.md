@@ -1,18 +1,21 @@
-# V0.7.1 Candidate Errata
+# V0.7.1 Approved Errata Source
 
 ```text
-STATUS=CANDIDATE_NOT_HIGHEST_AUTHORITY
-USER_APPROVAL_REQUIRED_BEFORE_CONSTITUTION_FREEZE=true
+STATUS=PROMOTED_TO_V071_HIGHEST_TARGET_CONSTITUTION
+USER_APPROVAL_REQUIRED_BEFORE_CONSTITUTION_FREEZE=false
+USER_APPROVES_V071_CANDIDATE_A_FAST=true
+V071_HIGHEST_CONSTITUTION_FROZEN=true
 HUMAN_FUN_PROVEN=false
 HUMAN_TEST_STILL_REQUIRED=true
 V07_CONSTITUTION_CONTENT_CHANGE_COUNT=0
 V07_PRODUCTION_CONNECTION_COUNT=0
 ```
 
-This document is a detached Reference proposal built on
-`space_syndicate.v07.complete`. It does not amend the frozen V0.7 constitution,
-change the V0.6 production rules, or authorize a production connection. The
-machine-readable companion is `docs/rules/v071_candidate_errata.json`.
+This document is the detached historical errata source promoted into
+`space_syndicate.v071.complete`. It did not overwrite the frozen V0.7 baseline,
+does not change the V0.6 production rules, and does not authorize a production
+connection. The machine-readable companion is
+`docs/rules/v071_candidate_errata.json`.
 
 ## Classification Summary
 
@@ -217,7 +220,7 @@ solar state.
 
 ## Approval Boundary
 
-Detached Reference testing is allowed. Freezing V0.7.1 or connecting any of
-these rules to production is not. The next freeze task is
-`V071_HIGHEST_CONSTITUTION_AMENDMENT_FREEZE_AFTER_USER_APPROVAL`, and only after
-explicit user approval.
+The explicit user approval for `V071_CANDIDATE_A_FAST` promoted these closures
+into the frozen V0.7.1 highest target. Detached Reference testing remains
+allowed; production connection remains forbidden until a later atomic-cutover
+task after PR #77 completes.

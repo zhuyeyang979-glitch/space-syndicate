@@ -2,40 +2,47 @@ extends RefCounted
 class_name V07AssetBatchCore
 
 const SCHEMA_VERSION := 1
-const RULESET_ID := "v0.7"
-const ASSET_CORE_AUTHORITY_ID := "v07.six_color_assets.core_authority.v1"
-const ASSET_AI_OBSERVATION_ID := "v07.six_color_assets.ai_observation.v1"
-const ASSET_PLAYER_PROJECTION_ID := "v07.six_color_assets.player_projection.v1"
-const ASSET_INTENT_ID := "v07.six_color_assets.intent.v1"
-const ASSET_RECEIPT_ID := "v07.six_color_assets.authoritative_receipt.v1"
-const ASSET_SAVE_STATE_ID := "v07.six_color_assets.save_state.v1"
+const STATE_VERSION := 2
+const RULESET_ID := "v0.7.1"
+const BALANCE_PROFILE_ID := "V071_CANDIDATE_A_FAST"
+const BALANCE_PROFILE_FINGERPRINT := (
+	"8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a"
+)
 
-const BATCH_CORE_AUTHORITY_ID := "v07.card_batch.core_authority.v1"
-const BATCH_AI_OBSERVATION_ID := "v07.card_batch.ai_observation.v1"
-const BATCH_PLAYER_PROJECTION_ID := "v07.card_batch.player_projection.v1"
-const BATCH_INTENT_ID := "v07.card_batch.intent.v1"
-const BATCH_RECEIPT_ID := "v07.card_batch.authoritative_receipt.v1"
-const BATCH_SAVE_STATE_ID := "v07.card_batch.save_state.v1"
-const PUBLIC_PROJECTION_ID := "v07.card_batch.public_projection.v1"
+const ASSET_CORE_AUTHORITY_ID := "v071.six_color_assets.core_authority.v2"
+const ASSET_AI_OBSERVATION_ID := "v071.six_color_assets.ai_observation.v2"
+const ASSET_PLAYER_PROJECTION_ID := "v071.six_color_assets.player_projection.v2"
+const ASSET_INTENT_ID := "v071.six_color_assets.intent.v2"
+const ASSET_RECEIPT_ID := "v071.six_color_assets.authoritative_receipt.v2"
+const ASSET_SAVE_STATE_ID := "v071.six_color_assets.save_state.v2"
 
-const INTERNAL_INTENT_ID := "internal.v07.asset_batch.lock_intent.v1"
-const INTERNAL_RECEIPT_ID := "internal.v07.asset_batch.authoritative_receipt.v1"
-const INTERNAL_SAVE_STATE_ID := "internal.v07.asset_batch.save_state.v1"
-const CHECKPOINT_ID := "internal.v07.asset_batch.checkpoint.v1"
-const PRIVACY_POLICY_ID := "v07.asset_batch.privacy.v1"
+const BATCH_CORE_AUTHORITY_ID := "v071.card_batch.core_authority.v2"
+const BATCH_AI_OBSERVATION_ID := "v071.card_batch.ai_observation.v2"
+const BATCH_PLAYER_PROJECTION_ID := "v071.card_batch.player_projection.v2"
+const BATCH_INTENT_ID := "v071.card_batch.intent.v2"
+const BATCH_RECEIPT_ID := "v071.card_batch.authoritative_receipt.v2"
+const BATCH_SAVE_STATE_ID := "v071.card_batch.save_state.v2"
+const PUBLIC_PROJECTION_ID := "v071.card_batch.public_projection.v2"
+
+const INTERNAL_INTENT_ID := "internal.v071.asset_batch.lock_intent.v2"
+const INTERNAL_RECEIPT_ID := "internal.v071.asset_batch.authoritative_receipt.v2"
+const INTERNAL_SAVE_STATE_ID := "internal.v071.asset_batch.save_state.v2"
+const CHECKPOINT_ID := "internal.v071.asset_batch.checkpoint.v2"
+const PRIVACY_POLICY_ID := "v071.asset_batch.privacy.v2"
 const TIME_ATTESTATION_INTERFACE_ID := "v07.time.authoritative_attestation.v1"
 const TIME_ATTESTATION_LOOKUP_METHOD := "authoritative_time_attestation_v1"
 
-const SIX_COLOR_ASSET_STATE_ID := "V07SixColorAssetState"
-const ASSET_CYCLE_SNAPSHOT_ID := "V07AssetCycleSnapshot"
-const ASSET_RESERVATION_STATE_ID := "V07AssetReservationState"
-const CARD_BATCH_STATE_ID := "V07CardBatchState"
-const PREBOUND_TARGET_STATE_ID := "V07PreboundTargetState"
-const ANONYMOUS_RESOLUTION_STATE_ID := "V07AnonymousResolutionState"
+const SIX_COLOR_ASSET_STATE_ID := "V071SixColorAssetState"
+const ASSET_CYCLE_SNAPSHOT_ID := "V071AssetCycleSnapshot"
+const ASSET_RESERVATION_STATE_ID := "V071AssetReservationState"
+const CARD_BATCH_STATE_ID := "V071CardBatchState"
+const PREBOUND_TARGET_STATE_ID := "V071PreboundTargetState"
+const ANONYMOUS_RESOLUTION_STATE_ID := "V071AnonymousResolutionState"
 
 const WINDOW_DURATION_MS := 30000
 const MAX_ACTIONS_PER_PLAYER := 5
 const ASSET_CAP := 6
+const MAX_ASSET_REFRESH_PER_COLOR_PER_BATCH := 3
 const DEFAULT_GDP_MILLI_PER_ASSET := 1000
 const MAX_SAFE_INTEGER := 9007199254740991
 
@@ -53,14 +60,41 @@ const ACTION_KINDS := [
 	"monster_action",
 	"military_action",
 ]
+const DIRECT_SETTLEMENT_OUTCOMES := [
+	"success",
+	"rule_allowed_refundable_failure",
+]
+const INVALID_TARGET_POLICY_IDS := [
+	"FIZZLE_FULL_ASSET_REFUND",
+	"FIZZLE_NO_REFUND",
+	"RESOLVE_LEGAL_REMAINDER",
+	"DETERMINISTIC_FALLBACK",
+]
+const DEFAULT_INVALID_TARGET_POLICY_ID := "FIZZLE_FULL_ASSET_REFUND"
+const INVALID_TARGET_OUTCOME_BY_POLICY := {
+	"FIZZLE_FULL_ASSET_REFUND": "invalid_target_fizzle_full_asset_refund",
+	"FIZZLE_NO_REFUND": "invalid_target_fizzle_no_refund",
+	"RESOLVE_LEGAL_REMAINDER": "invalid_target_resolve_legal_remainder",
+	"DETERMINISTIC_FALLBACK": "invalid_target_deterministic_fallback",
+}
+
 const SETTLEMENT_OUTCOMES := [
 	"success",
 	"rule_allowed_refundable_failure",
+	"invalid_target_fizzle_full_asset_refund",
+	"invalid_target_fizzle_no_refund",
+	"invalid_target_resolve_legal_remainder",
+	"invalid_target_deterministic_fallback",
 ]
 
 const STATE_FIELDS := [
 	"schema_version",
+	"state_version",
 	"ruleset_id",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
+	"default_invalid_target_policy_id",
+	"max_asset_refresh_per_color_per_batch",
 	"core_authority_ids",
 	"revision",
 	"batch_id",
@@ -107,6 +141,7 @@ const ACTION_FIELDS := [
 	"current_effect",
 	"cost",
 	"any_payment",
+	"invalid_target_policy_id",
 	"lock_fingerprint",
 ]
 const TARGET_BINDING_FIELDS := [
@@ -127,6 +162,19 @@ const PUBLIC_QUEUE_FIELDS := [
 	"rule_allowed_target",
 	"current_effect",
 	"result",
+	"reason_code",
+	"invalid_target_policy_id",
+	"asset_refund_applied",
+	"normal_card_destination",
+	"action_slot_refunded",
+]
+const ACTION_RESULT_FIELDS := [
+	"outcome_id",
+	"reason_code",
+	"invalid_target_policy_id",
+	"asset_refund_applied",
+	"normal_card_destination",
+	"action_slot_refunded",
 ]
 const INTENT_FIELDS := [
 	"schema_version",
@@ -151,6 +199,11 @@ const RECEIPT_FIELDS := [
 	"actor_id",
 	"action_id",
 	"outcome_id",
+	"invalid_target_policy_id",
+	"public_history_reason_code",
+	"asset_refund_applied",
+	"normal_card_destination",
+	"action_slot_refunded",
 	"intent_id",
 	"intent_fingerprint",
 	"receipt_fingerprint",
@@ -172,29 +225,44 @@ const INTENT_RECEIPT_LEDGER_ENTRY_FIELDS := [
 	"lineage_fingerprint",
 ]
 const ASSET_CORE_CONTRACT_FIELDS := [
-	"schema_version", "contract_id", "state_revision",
+	"schema_version", "state_version", "ruleset_id", "contract_id",
+	"balance_profile_id", "balance_profile_fingerprint",
+	"default_invalid_target_policy_id",
+	"max_asset_refresh_per_color_per_batch", "state_revision",
 	"per_player_assets_by_color", "per_player_fixed_point_remainders",
 	"gdp_cycle_snapshot", "per_action_reservations", "reservation_journal",
 	"asset_refresh_revision", "authority_fingerprint",
 ]
 const ASSET_VIEW_CONTRACT_FIELDS := [
-	"schema_version", "contract_id", "viewer_id", "state_revision",
+	"schema_version", "state_version", "ruleset_id", "contract_id",
+	"balance_profile_id", "balance_profile_fingerprint",
+	"default_invalid_target_policy_id",
+	"max_asset_refresh_per_color_per_batch", "viewer_id", "state_revision",
 	"own_exact_assets", "own_remainders", "own_reservations",
 	"own_available_assets", "own_projected_refresh", "public_costs",
 	"projection_fingerprint",
 ]
 const ASSET_INTENT_CONTRACT_FIELDS := [
-	"schema_version", "contract_id", "intent_id", "actor_id",
+	"schema_version", "state_version", "ruleset_id", "contract_id",
+	"balance_profile_id", "balance_profile_fingerprint",
+	"default_invalid_target_policy_id",
+	"intent_id", "actor_id",
 	"expected_core_revision", "asset_snapshot_revision", "action_costs",
 	"reservation_ids", "intent_fingerprint",
 ]
 const ASSET_RECEIPT_CONTRACT_FIELDS := [
-	"schema_version", "contract_id", "receipt_id", "intent_id", "accepted",
+	"schema_version", "state_version", "ruleset_id", "contract_id",
+	"balance_profile_id", "balance_profile_fingerprint",
+	"default_invalid_target_policy_id",
+	"receipt_id", "intent_id", "accepted",
 	"reason_code", "committed_core_revision", "reservation_ids",
 	"asset_delta_by_color", "receipt_fingerprint",
 ]
 const ASSET_SAVE_CONTRACT_FIELDS := [
-	"schema_version", "contract_id", "section_id", "ruleset_id",
+	"schema_version", "state_version", "ruleset_id", "contract_id",
+	"balance_profile_id", "balance_profile_fingerprint",
+	"default_invalid_target_policy_id",
+	"max_asset_refresh_per_color_per_batch", "section_id",
 	"state_revision", "per_player_assets_by_color",
 	"per_player_fixed_point_remainders", "gdp_cycle_snapshot",
 	"per_action_reservations", "reservation_journal",
@@ -203,31 +271,46 @@ const ASSET_SAVE_CONTRACT_FIELDS := [
 	"save_fingerprint",
 ]
 const BATCH_CORE_CONTRACT_FIELDS := [
-	"schema_version", "contract_id", "state_revision",
+	"schema_version", "state_version", "ruleset_id", "contract_id",
+	"balance_profile_id", "balance_profile_fingerprint",
+	"default_invalid_target_policy_id",
+	"state_revision",
 	"submission_window_state", "player_local_queues", "prebound_targets",
 	"private_owner_bindings", "anonymous_global_queue", "round_robin_cursor",
 	"resolution_journal", "processed_intent_ids", "intent_receipt_ledger",
 	"authority_fingerprint",
 ]
 const BATCH_VIEW_CONTRACT_FIELDS := [
-	"schema_version", "contract_id", "viewer_id", "state_revision",
+	"schema_version", "state_version", "ruleset_id", "contract_id",
+	"balance_profile_id", "balance_profile_fingerprint",
+	"default_invalid_target_policy_id",
+	"viewer_id", "state_revision",
 	"own_local_queue", "own_prebound_targets", "own_reserved_costs",
 	"anonymous_public_queue", "public_resolution_aftermath",
 	"projection_fingerprint",
 ]
 const BATCH_INTENT_CONTRACT_FIELDS := [
-	"schema_version", "contract_id", "intent_id",
+	"schema_version", "state_version", "ruleset_id", "contract_id",
+	"balance_profile_id", "balance_profile_fingerprint",
+	"default_invalid_target_policy_id",
+	"intent_id",
 	"actor_id_or_authoritative_system", "expected_core_revision", "window_id",
 	"local_action_index", "source_instance_id", "prebound_target_identity",
 	"reservation_id", "intent_fingerprint",
 ]
 const BATCH_RECEIPT_CONTRACT_FIELDS := [
-	"schema_version", "contract_id", "receipt_id", "intent_id", "accepted",
+	"schema_version", "state_version", "ruleset_id", "contract_id",
+	"balance_profile_id", "balance_profile_fingerprint",
+	"default_invalid_target_policy_id",
+	"receipt_id", "intent_id", "accepted",
 	"reason_code", "committed_core_revision", "window_id",
 	"anonymous_action_id", "resolution_status", "receipt_fingerprint",
 ]
 const BATCH_SAVE_CONTRACT_FIELDS := [
-	"schema_version", "contract_id", "section_id", "ruleset_id",
+	"schema_version", "state_version", "ruleset_id", "contract_id",
+	"balance_profile_id", "balance_profile_fingerprint",
+	"default_invalid_target_policy_id",
+	"section_id",
 	"state_revision", "submission_window_state", "player_local_queues",
 	"prebound_targets", "private_owner_bindings", "anonymous_global_queue",
 	"round_robin_cursor", "resolution_journal", "processed_intent_ids",
@@ -310,7 +393,14 @@ static func create_state(
 
 	var lineage_fingerprint := _fingerprint({
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
 		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
+		"default_invalid_target_policy_id": DEFAULT_INVALID_TARGET_POLICY_ID,
+		"max_asset_refresh_per_color_per_batch": (
+			MAX_ASSET_REFRESH_PER_COLOR_PER_BATCH
+		),
 		"batch_id": batch_id,
 		"opened_at_ms": opened_at_ms,
 		"player_ids": normalized_players,
@@ -321,7 +411,14 @@ static func create_state(
 	})
 	var state := {
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
 		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
+		"default_invalid_target_policy_id": DEFAULT_INVALID_TARGET_POLICY_ID,
+		"max_asset_refresh_per_color_per_batch": (
+			MAX_ASSET_REFRESH_PER_COLOR_PER_BATCH
+		),
 		"core_authority_ids": [ASSET_CORE_AUTHORITY_ID, BATCH_CORE_AUTHORITY_ID],
 		"revision": 0,
 		"batch_id": batch_id,
@@ -391,7 +488,8 @@ static func build_prebound_action(
 	target_binding: Dictionary,
 	current_effect: String,
 	cost: Dictionary,
-	any_payment: Dictionary
+	any_payment: Dictionary,
+	invalid_target_policy_id: String = DEFAULT_INVALID_TARGET_POLICY_ID
 ) -> Dictionary:
 	var action := {
 		"action_id": action_id,
@@ -403,6 +501,7 @@ static func build_prebound_action(
 		"current_effect": current_effect,
 		"cost": cost.duplicate(true),
 		"any_payment": any_payment.duplicate(true),
+		"invalid_target_policy_id": invalid_target_policy_id,
 	}
 	if not _action_error_without_fingerprint(action).is_empty():
 		return {}
@@ -735,56 +834,77 @@ static func settle_next_action(
 	action_id: String,
 	outcome_id: String
 ) -> Dictionary:
-	if not _state_error(state).is_empty():
-		return _failure(state, "settle_next_action", "state_invalid", "", action_id)
-	var status := str((state.get("window") as Dictionary).get("status", ""))
-	if not ["resolution_ready", "resolving"].has(status):
-		return _failure(state, "settle_next_action", "resolution_not_active", "", action_id)
-	if not _stable_id(action_id) or not SETTLEMENT_OUTCOMES.has(outcome_id):
+	if not _stable_id(action_id) or not DIRECT_SETTLEMENT_OUTCOMES.has(outcome_id):
 		return _failure(state, "settle_next_action", "resolution_outcome_invalid", "", action_id)
-	var queue := state.get("authority_queue") as Array
-	var cursor := int(state.get("resolution_cursor", -1))
-	if cursor < 0 or cursor >= queue.size():
-		return _failure(state, "settle_next_action", "resolution_cursor_invalid", "", action_id)
-	var current := queue[cursor] as Dictionary
-	if str(current.get("action_id", "")) != action_id:
-		return _failure(state, "settle_next_action", "resolution_order_mismatch", "", action_id)
-
-	var next := state.duplicate(true)
-	var next_queue := next.get("authority_queue") as Array
-	var next_entry := next_queue[cursor] as Dictionary
-	var actor_id := str(next_entry.get("actor_id", ""))
-	var next_player := (next.get("players") as Dictionary).get(actor_id) as Dictionary
-	var reservations := next_player.get("reservations") as Dictionary
-	if not reservations.has(action_id):
-		return _failure(state, "settle_next_action", "action_reservation_missing", actor_id, action_id)
-	var reservation := reservations.get(action_id) as Dictionary
-	if outcome_id == "success":
-		var assets := next_player.get("assets") as Dictionary
-		for color in COLORS:
-			assets[color] = int(assets.get(color, 0)) - int(reservation.get(color, 0))
-	reservations.erase(action_id)
-	_recalculate_reserved_totals(next_player)
-	(next_player.get("action_results") as Dictionary)[action_id] = outcome_id
-	var public_entry := next_entry.get("public") as Dictionary
-	public_entry["result"] = outcome_id
-	next["resolution_cursor"] = cursor + 1
-	_increment_revision(next)
-	var receipt := _receipt(
-		next,
+	var context := _resolution_context(state, action_id, "settle_next_action")
+	if not bool(context.get("valid", false)):
+		return (context.get("failure") as Dictionary).duplicate(true)
+	var action := context.get("action") as Dictionary
+	var result_record := {
+		"outcome_id": outcome_id,
+		"reason_code": "action_resolved_success" \
+			if outcome_id == "success" else "rule_allowed_refundable_failure",
+		"invalid_target_policy_id": action.get("invalid_target_policy_id"),
+		"asset_refund_applied": outcome_id == "rule_allowed_refundable_failure",
+		"normal_card_destination": "not_attested",
+		"action_slot_refunded": false,
+	}
+	return _commit_current_resolution(
+		state,
+		context,
+		result_record,
+		outcome_id == "success",
 		"settle_next_action",
-		true,
-		"action_settled",
-		actor_id,
-		action_id,
-		outcome_id
+		"action_settled"
 	)
-	(next.get("receipts") as Array).append(receipt)
-	if int(next.get("resolution_cursor", 0)) == next_queue.size():
-		(next.get("window") as Dictionary)["status"] = "batch_resolved"
-	else:
-		(next.get("window") as Dictionary)["status"] = "resolving"
-	return _success(next, receipt)
+
+
+static func settle_invalid_target(
+	state: Dictionary,
+	action_id: String,
+	public_history_reason_code: String
+) -> Dictionary:
+	if not _stable_id(action_id) or not _stable_id(public_history_reason_code) \
+			or ["none", "pending"].has(public_history_reason_code):
+		return _failure(
+			state,
+			"settle_invalid_target",
+			"invalid_target_reason_invalid",
+			"",
+			action_id
+		)
+	var context := _resolution_context(state, action_id, "settle_invalid_target")
+	if not bool(context.get("valid", false)):
+		return (context.get("failure") as Dictionary).duplicate(true)
+	var action := context.get("action") as Dictionary
+	var policy_id := str(action.get("invalid_target_policy_id", ""))
+	if not INVALID_TARGET_POLICY_IDS.has(policy_id):
+		return _failure(
+			state,
+			"settle_invalid_target",
+			"invalid_target_policy_invalid",
+			str(context.get("actor_id", "")),
+			action_id
+		)
+	var refund_assets := policy_id == "FIZZLE_FULL_ASSET_REFUND"
+	var result_record := {
+		"outcome_id": str(INVALID_TARGET_OUTCOME_BY_POLICY.get(policy_id, "")),
+		"reason_code": public_history_reason_code,
+		"invalid_target_policy_id": policy_id,
+		"asset_refund_applied": refund_assets,
+		"normal_card_destination": "discard" \
+			if str(action.get("action_kind", "")) == "normal_card" \
+			else "not_applicable",
+		"action_slot_refunded": false,
+	}
+	return _commit_current_resolution(
+		state,
+		context,
+		result_record,
+		not refund_assets,
+		"settle_invalid_target",
+		"invalid_target_resolved"
+	)
 
 
 static func refresh_assets_after_batch(state: Dictionary) -> Dictionary:
@@ -808,10 +928,19 @@ static func refresh_assets_after_batch(state: Dictionary) -> Dictionary:
 		var overflow := player.get("refresh_overflow") as Dictionary
 		for color in COLORS:
 			var accrued_milli := int(remainders.get(color, 0)) + int(snapshot.get(color, 0))
-			var earned_units := accrued_milli / conversion
-			var candidate := int(assets.get(color, 0)) + earned_units
-			overflow[color] = maxi(0, candidate - ASSET_CAP)
-			assets[color] = mini(ASSET_CAP, candidate)
+			var raw_earned_units := accrued_milli / conversion
+			var capped_earned_units := mini(
+				raw_earned_units,
+				int(next.get(
+					"max_asset_refresh_per_color_per_batch",
+					MAX_ASSET_REFRESH_PER_COLOR_PER_BATCH
+				))
+			)
+			var before_assets := int(assets.get(color, 0))
+			var candidate := before_assets + capped_earned_units
+			var refreshed_assets := mini(ASSET_CAP, candidate)
+			overflow[color] = maxi(0, raw_earned_units - (refreshed_assets - before_assets))
+			assets[color] = refreshed_assets
 			remainders[color] = accrued_milli % conversion
 	next["refresh_applied"] = true
 	(next.get("window") as Dictionary)["status"] = "assets_refreshed"
@@ -842,6 +971,10 @@ static func core_authority(state: Dictionary) -> Dictionary:
 		return {}
 	return _seal({
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"contract_ids": [ASSET_CORE_AUTHORITY_ID, BATCH_CORE_AUTHORITY_ID],
 		"state": state.duplicate(true),
 	}, "authority_fingerprint")
@@ -856,6 +989,10 @@ static func public_projection(state: Dictionary) -> Dictionary:
 	var window := state.get("window") as Dictionary
 	return _seal({
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"contract_id": PUBLIC_PROJECTION_ID,
 		"batch_id": state.get("batch_id"),
 		"state_revision": state.get("revision"),
@@ -890,6 +1027,10 @@ static func privacy_contract() -> Dictionary:
 		"schema_version": SCHEMA_VERSION,
 		"contract_id": PRIVACY_POLICY_ID,
 		"public_fields": [
+			"state_version",
+			"ruleset_id",
+			"balance_profile_id",
+			"balance_profile_fingerprint",
 			"batch_id",
 			"window_status",
 			"window_duration_ms",
@@ -925,7 +1066,10 @@ static func privacy_contract() -> Dictionary:
 static func contract_snapshot() -> Dictionary:
 	return {
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
 		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"core_authority": [ASSET_CORE_AUTHORITY_ID, BATCH_CORE_AUTHORITY_ID],
 		"ai_observation": [ASSET_AI_OBSERVATION_ID, BATCH_AI_OBSERVATION_ID],
 		"player_projection": [ASSET_PLAYER_PROJECTION_ID, BATCH_PLAYER_PROJECTION_ID],
@@ -933,20 +1077,20 @@ static func contract_snapshot() -> Dictionary:
 		"authoritative_receipt": [ASSET_RECEIPT_ID, BATCH_RECEIPT_ID],
 		"save_state": [ASSET_SAVE_STATE_ID, BATCH_SAVE_STATE_ID],
 		"asset_domain": {
-			"CoreAuthorityV1": ASSET_CORE_AUTHORITY_ID,
-			"AiObservationV1": ASSET_AI_OBSERVATION_ID,
-			"PlayerProjectionV1": ASSET_PLAYER_PROJECTION_ID,
-			"IntentV1": ASSET_INTENT_ID,
-			"AuthoritativeReceiptV1": ASSET_RECEIPT_ID,
-			"SaveStateV1": ASSET_SAVE_STATE_ID,
+			"CoreAuthorityV2": ASSET_CORE_AUTHORITY_ID,
+			"AiObservationV2": ASSET_AI_OBSERVATION_ID,
+			"PlayerProjectionV2": ASSET_PLAYER_PROJECTION_ID,
+			"IntentV2": ASSET_INTENT_ID,
+			"AuthoritativeReceiptV2": ASSET_RECEIPT_ID,
+			"SaveStateV2": ASSET_SAVE_STATE_ID,
 		},
 		"batch_domain": {
-			"CoreAuthorityV1": BATCH_CORE_AUTHORITY_ID,
-			"AiObservationV1": BATCH_AI_OBSERVATION_ID,
-			"PlayerProjectionV1": BATCH_PLAYER_PROJECTION_ID,
-			"IntentV1": BATCH_INTENT_ID,
-			"AuthoritativeReceiptV1": BATCH_RECEIPT_ID,
-			"SaveStateV1": BATCH_SAVE_STATE_ID,
+			"CoreAuthorityV2": BATCH_CORE_AUTHORITY_ID,
+			"AiObservationV2": BATCH_AI_OBSERVATION_ID,
+			"PlayerProjectionV2": BATCH_PLAYER_PROJECTION_ID,
+			"IntentV2": BATCH_INTENT_ID,
+			"AuthoritativeReceiptV2": BATCH_RECEIPT_ID,
+			"SaveStateV2": BATCH_SAVE_STATE_ID,
 		},
 		"privacy_policy": PRIVACY_POLICY_ID,
 		"state_contract_ids": [
@@ -959,6 +1103,14 @@ static func contract_snapshot() -> Dictionary:
 		],
 		"colors": COLORS.duplicate(),
 		"per_color_cap": ASSET_CAP,
+		"max_asset_refresh_per_color_per_batch": (
+			MAX_ASSET_REFRESH_PER_COLOR_PER_BATCH
+		),
+		"invalid_target_policy_ids": INVALID_TARGET_POLICY_IDS.duplicate(),
+		"default_invalid_target_policy_id": DEFAULT_INVALID_TARGET_POLICY_ID,
+		"invalid_target_normal_card_destination": "discard",
+		"invalid_target_action_slot_refunded": false,
+		"invalid_target_public_history_reason_required": true,
 		"window_duration_ms": WINDOW_DURATION_MS,
 		"maximum_active_actions": MAX_ACTIONS_PER_PLAYER,
 		"one_shot": true,
@@ -1027,6 +1179,11 @@ static func asset_intent_adapter(
 		reservation_ids.append("reservation.%s" % action_id)
 	return _seal({
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
+		"default_invalid_target_policy_id": DEFAULT_INVALID_TARGET_POLICY_ID,
 		"contract_id": ASSET_INTENT_ID,
 		"intent_id": intent.get("intent_id"),
 		"actor_id": intent.get("actor_id"),
@@ -1056,6 +1213,11 @@ static func batch_intent_adapter(
 		reservation_ids.append("reservation.%s" % str(action.get("action_id", "")))
 	return _seal({
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
+		"default_invalid_target_policy_id": DEFAULT_INVALID_TARGET_POLICY_ID,
 		"contract_id": BATCH_INTENT_ID,
 		"intent_id": intent.get("intent_id"),
 		"actor_id_or_authoritative_system": intent.get("actor_id"),
@@ -1102,6 +1264,11 @@ static func asset_receipt_adapter(
 		)
 	return _seal({
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
+		"default_invalid_target_policy_id": DEFAULT_INVALID_TARGET_POLICY_ID,
 		"contract_id": ASSET_RECEIPT_ID,
 		"receipt_id": internal_receipt.get("receipt_id"),
 		"intent_id": intent.get("intent_id"),
@@ -1138,6 +1305,11 @@ static func batch_receipt_adapter(
 		anonymous_action_id = "none"
 	return _seal({
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
+		"default_invalid_target_policy_id": DEFAULT_INVALID_TARGET_POLICY_ID,
 		"contract_id": BATCH_RECEIPT_ID,
 		"receipt_id": internal_receipt.get("receipt_id"),
 		"intent_id": intent.get("intent_id"),
@@ -1191,6 +1363,9 @@ static func domain_contract_validation_report(
 	if contract.get("schema_version") != SCHEMA_VERSION \
 			or str(contract.get("contract_id", "")) != contract_id:
 		return {"valid": false, "reason_code": "domain_contract_identity_invalid"}
+	var context_error := _domain_contract_context_error(contract)
+	if not context_error.is_empty():
+		return {"valid": false, "reason_code": context_error}
 	var fingerprint_field := str(spec.get("fingerprint_field", ""))
 	var unsealed := contract.duplicate(true)
 	unsealed.erase(fingerprint_field)
@@ -1270,8 +1445,15 @@ static func to_save_state(state: Dictionary) -> Dictionary:
 		return {}
 	return _seal({
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
 		"schema_id": INTERNAL_SAVE_STATE_ID,
 		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
+		"default_invalid_target_policy_id": DEFAULT_INVALID_TARGET_POLICY_ID,
+		"max_asset_refresh_per_color_per_batch": (
+			MAX_ASSET_REFRESH_PER_COLOR_PER_BATCH
+		),
 		"state": state.duplicate(true),
 	}, "save_fingerprint")
 
@@ -1296,8 +1478,15 @@ static func checkpoint(state: Dictionary) -> Dictionary:
 		return {}
 	return _seal({
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
 		"schema_id": CHECKPOINT_ID,
 		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
+		"default_invalid_target_policy_id": DEFAULT_INVALID_TARGET_POLICY_ID,
+		"max_asset_refresh_per_color_per_batch": (
+			MAX_ASSET_REFRESH_PER_COLOR_PER_BATCH
+		),
 		"state": state.duplicate(true),
 	}, "checkpoint_fingerprint")
 
@@ -1386,6 +1575,14 @@ static func _asset_authority_payload(state: Dictionary) -> Dictionary:
 		reservations_by_player[player_id] = (player.get("reservations") as Dictionary).duplicate(true)
 		journal_by_player[player_id] = (player.get("action_results") as Dictionary).duplicate(true)
 	return {
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
+		"default_invalid_target_policy_id": DEFAULT_INVALID_TARGET_POLICY_ID,
+		"max_asset_refresh_per_color_per_batch": (
+			MAX_ASSET_REFRESH_PER_COLOR_PER_BATCH
+		),
 		"state_revision": state.get("revision"),
 		"per_player_assets_by_color": assets_by_player,
 		"per_player_fixed_point_remainders": remainders_by_player,
@@ -1423,6 +1620,11 @@ static func _batch_authority_payload(state: Dictionary) -> Dictionary:
 	for entry_variant in state.get("authority_queue") as Array:
 		anonymous_queue.append(((entry_variant as Dictionary).get("public") as Dictionary).duplicate(true))
 	return {
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
+		"default_invalid_target_policy_id": DEFAULT_INVALID_TARGET_POLICY_ID,
 		"state_revision": state.get("revision"),
 		"submission_window_state": window_state,
 		"player_local_queues": local_queues,
@@ -1461,6 +1663,14 @@ static func _asset_view_contract(
 		})
 	return _seal({
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
+		"default_invalid_target_policy_id": DEFAULT_INVALID_TARGET_POLICY_ID,
+		"max_asset_refresh_per_color_per_batch": (
+			MAX_ASSET_REFRESH_PER_COLOR_PER_BATCH
+		),
 		"contract_id": contract_id,
 		"viewer_id": viewer_id,
 		"state_revision": state.get("revision"),
@@ -1500,6 +1710,11 @@ static func _batch_view_contract(
 			aftermath.append(public_entry.duplicate(true))
 	return _seal({
 		"schema_version": SCHEMA_VERSION,
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
+		"default_invalid_target_policy_id": DEFAULT_INVALID_TARGET_POLICY_ID,
 		"contract_id": contract_id,
 		"viewer_id": viewer_id,
 		"state_revision": state.get("revision"),
@@ -1522,7 +1737,14 @@ static func _projected_refresh_after_success(
 			- int((player.get("reserved_totals") as Dictionary).get(color, 0))
 		var accrued := int((player.get("remainders_milli") as Dictionary).get(color, 0)) \
 			+ int((player.get("frozen_gdp_milli") as Dictionary).get(color, 0))
-		result[color] = mini(ASSET_CAP, after_success + accrued / conversion)
+		var earned_units := mini(
+			accrued / conversion,
+			int(state.get(
+				"max_asset_refresh_per_color_per_batch",
+				MAX_ASSET_REFRESH_PER_COLOR_PER_BATCH
+			))
+		)
+		result[color] = mini(ASSET_CAP, after_success + earned_units)
 	return result
 
 
@@ -1549,6 +1771,22 @@ static func _domain_contract_spec(contract_id: String) -> Dictionary:
 		BATCH_SAVE_STATE_ID:
 			return {"fields": BATCH_SAVE_CONTRACT_FIELDS, "fingerprint_field": "save_fingerprint"}
 	return {}
+
+
+static func _domain_contract_context_error(contract: Dictionary) -> String:
+	if contract.get("state_version") != STATE_VERSION \
+			or str(contract.get("ruleset_id", "")) != RULESET_ID \
+			or str(contract.get("balance_profile_id", "")) != BALANCE_PROFILE_ID \
+			or str(contract.get("balance_profile_fingerprint", "")) \
+				!= BALANCE_PROFILE_FINGERPRINT \
+			or str(contract.get("default_invalid_target_policy_id", "")) \
+				!= DEFAULT_INVALID_TARGET_POLICY_ID:
+		return "domain_contract_v071_context_invalid"
+	if contract.has("max_asset_refresh_per_color_per_batch") \
+			and contract.get("max_asset_refresh_per_color_per_batch") \
+				!= MAX_ASSET_REFRESH_PER_COLOR_PER_BATCH:
+		return "domain_contract_balance_profile_invalid"
+	return ""
 
 
 static func _domain_contract_semantic_error(
@@ -1640,7 +1878,9 @@ static func _asset_authority_payload_error(contract: Dictionary) -> String:
 			if not _stable_id(action_id_variant) \
 					or player_reservations.has(action_id_variant) \
 					or global_action_ids.has(action_id) \
-					or not SETTLEMENT_OUTCOMES.has(str(player_journal.get(action_id_variant, ""))):
+					or not _action_result_error(
+						player_journal.get(action_id_variant)
+					).is_empty():
 				return "asset_contract_reservation_journal_inconsistent"
 			global_action_ids.append(action_id)
 	return ""
@@ -1814,10 +2054,14 @@ static func _batch_authority_payload_error(contract: Dictionary) -> String:
 				"action": action,
 			}
 		for action_id_variant in (journal_variant as Dictionary).keys():
-			if not action_ids.has(str(action_id_variant)) \
-					or not SETTLEMENT_OUTCOMES.has(str(
-						(journal_variant as Dictionary).get(action_id_variant, "")
-					)):
+			var journal_action_id := str(action_id_variant)
+			var action_record := actions_by_id.get(journal_action_id, {}) as Dictionary
+			if not action_ids.has(journal_action_id) \
+					or action_record.is_empty() \
+					or not _action_result_error(
+						(journal_variant as Dictionary).get(action_id_variant),
+						action_record.get("action") as Dictionary
+					).is_empty():
 				return "batch_contract_journal_invalid"
 	if not _exact_keys(targets, action_ids) or not _exact_keys(owners, action_ids):
 		return "batch_contract_action_binding_set_invalid"
@@ -1837,14 +2081,8 @@ static func _batch_authority_payload_error(contract: Dictionary) -> String:
 				var action := queue[local_order] as Dictionary
 				var action_id := str(action.get("action_id", ""))
 				var player_journal := journals.get(player_id) as Dictionary
-				expected_public.append({
-					"card": action.get("card"),
-					"rule_allowed_target": (
-						action.get("target_binding") as Dictionary
-					).get("target_ids").duplicate(),
-					"current_effect": action.get("current_effect"),
-					"result": player_journal.get(action_id, "pending"),
-				})
+				var result_record := player_journal.get(action_id, {}) as Dictionary
+				expected_public.append(_public_entry_for_action(action, result_record))
 	var anonymous_queue := contract.get("anonymous_global_queue") as Array
 	if anonymous_queue != expected_public:
 		return "batch_contract_anonymous_queue_invalid"
@@ -2121,11 +2359,27 @@ static func _public_queue_contract_entry_valid(value: Variant) -> bool:
 	var entry := value as Dictionary
 	if not (entry.get("rule_allowed_target") is Array):
 		return false
-	return _stable_id(entry.get("card")) \
-		and _stable_id(entry.get("current_effect")) \
-		and _string_id_array(entry.get("rule_allowed_target"), false).size() \
-			== (entry.get("rule_allowed_target") as Array).size() \
-		and (["pending"] + SETTLEMENT_OUTCOMES).has(str(entry.get("result", "")))
+	if not _stable_id(entry.get("card")) \
+			or not _stable_id(entry.get("current_effect")) \
+			or _string_id_array(entry.get("rule_allowed_target"), false).size() \
+				!= (entry.get("rule_allowed_target") as Array).size():
+		return false
+	if str(entry.get("result", "")) == "pending":
+		return entry.get("reason_code") == "pending" \
+			and INVALID_TARGET_POLICY_IDS.has(str(
+				entry.get("invalid_target_policy_id", "")
+			)) \
+			and entry.get("asset_refund_applied") == false \
+			and entry.get("normal_card_destination") == "pending" \
+			and entry.get("action_slot_refunded") == false
+	return _action_result_error({
+		"outcome_id": entry.get("result"),
+		"reason_code": entry.get("reason_code"),
+		"invalid_target_policy_id": entry.get("invalid_target_policy_id"),
+		"asset_refund_applied": entry.get("asset_refund_applied"),
+		"normal_card_destination": entry.get("normal_card_destination"),
+		"action_slot_refunded": entry.get("action_slot_refunded"),
+	}).is_empty()
 
 
 static func _stable_dictionary_ids(
@@ -2213,6 +2467,176 @@ static func _finalize_submission_if_ready(state: Dictionary) -> void:
 	window["status"] = "batch_resolved" if queue.is_empty() else "resolution_ready"
 
 
+static func _resolution_context(
+	state: Dictionary,
+	action_id: String,
+	operation_id: String
+) -> Dictionary:
+	if not _state_error(state).is_empty():
+		return {
+			"valid": false,
+			"failure": _failure(state, operation_id, "state_invalid", "", action_id),
+		}
+	var status := str((state.get("window") as Dictionary).get("status", ""))
+	if not ["resolution_ready", "resolving"].has(status):
+		return {
+			"valid": false,
+			"failure": _failure(
+				state,
+				operation_id,
+				"resolution_not_active",
+				"",
+				action_id
+			),
+		}
+	var queue := state.get("authority_queue") as Array
+	var cursor := int(state.get("resolution_cursor", -1))
+	if cursor < 0 or cursor >= queue.size():
+		return {
+			"valid": false,
+			"failure": _failure(
+				state,
+				operation_id,
+				"resolution_cursor_invalid",
+				"",
+				action_id
+			),
+		}
+	var current := queue[cursor] as Dictionary
+	if str(current.get("action_id", "")) != action_id:
+		return {
+			"valid": false,
+			"failure": _failure(
+				state,
+				operation_id,
+				"resolution_order_mismatch",
+				"",
+				action_id
+			),
+		}
+	var actor_id := str(current.get("actor_id", ""))
+	var player := (state.get("players") as Dictionary).get(actor_id) as Dictionary
+	var reservations := player.get("reservations") as Dictionary
+	if not reservations.has(action_id):
+		return {
+			"valid": false,
+			"failure": _failure(
+				state,
+				operation_id,
+				"action_reservation_missing",
+				actor_id,
+				action_id
+			),
+		}
+	var action := _action_by_id(player, action_id)
+	if action.is_empty():
+		return {
+			"valid": false,
+			"failure": _failure(
+				state,
+				operation_id,
+				"action_binding_missing",
+				actor_id,
+				action_id
+			),
+		}
+	return {
+		"valid": true,
+		"cursor": cursor,
+		"actor_id": actor_id,
+		"action": action,
+	}
+
+
+static func _commit_current_resolution(
+	state: Dictionary,
+	context: Dictionary,
+	result_record: Dictionary,
+	consume_reservation: bool,
+	operation_id: String,
+	receipt_reason_code: String
+) -> Dictionary:
+	var actor_id := str(context.get("actor_id", ""))
+	var action_id := str((context.get("action") as Dictionary).get("action_id", ""))
+	var action := context.get("action") as Dictionary
+	if not _action_result_error(result_record, action).is_empty():
+		return _failure(
+			state,
+			operation_id,
+			"resolution_result_invalid",
+			actor_id,
+			action_id
+		)
+	var next := state.duplicate(true)
+	var cursor := int(context.get("cursor", -1))
+	var next_queue := next.get("authority_queue") as Array
+	var next_entry := next_queue[cursor] as Dictionary
+	var next_player := (next.get("players") as Dictionary).get(actor_id) as Dictionary
+	var reservations := next_player.get("reservations") as Dictionary
+	var reservation := reservations.get(action_id) as Dictionary
+	if consume_reservation:
+		var assets := next_player.get("assets") as Dictionary
+		for color in COLORS:
+			assets[color] = int(assets.get(color, 0)) - int(reservation.get(color, 0))
+	reservations.erase(action_id)
+	_recalculate_reserved_totals(next_player)
+	(next_player.get("action_results") as Dictionary)[action_id] = (
+		result_record.duplicate(true)
+	)
+	next_entry["public"] = _public_entry_for_action(action, result_record)
+	next["resolution_cursor"] = cursor + 1
+	_increment_revision(next)
+	var receipt := _receipt(
+		next,
+		operation_id,
+		true,
+		receipt_reason_code,
+		actor_id,
+		action_id,
+		str(result_record.get("outcome_id", "")),
+		"",
+		"",
+		result_record
+	)
+	(next.get("receipts") as Array).append(receipt)
+	if int(next.get("resolution_cursor", 0)) == next_queue.size():
+		(next.get("window") as Dictionary)["status"] = "batch_resolved"
+	else:
+		(next.get("window") as Dictionary)["status"] = "resolving"
+	return _success(next, receipt)
+
+
+static func _action_by_id(player: Dictionary, action_id: String) -> Dictionary:
+	for action_variant in player.get("local_queue") as Array:
+		var action := action_variant as Dictionary
+		if str(action.get("action_id", "")) == action_id:
+			return action.duplicate(true)
+	return {}
+
+
+static func _public_entry_for_action(
+	action: Dictionary,
+	result_record: Dictionary = {}
+) -> Dictionary:
+	var pending := result_record.is_empty()
+	return {
+		"card": action.get("card"),
+		"rule_allowed_target": (
+			(action.get("target_binding") as Dictionary).get("target_ids") as Array
+		).duplicate(),
+		"current_effect": action.get("current_effect"),
+		"result": "pending" if pending else result_record.get("outcome_id"),
+		"reason_code": "pending" if pending else result_record.get("reason_code"),
+		"invalid_target_policy_id": action.get("invalid_target_policy_id"),
+		"asset_refund_applied": false \
+			if pending else result_record.get("asset_refund_applied"),
+		"normal_card_destination": "pending" \
+			if pending else result_record.get("normal_card_destination"),
+		"action_slot_refunded": false \
+			if pending else result_record.get("action_slot_refunded"),
+	}
+
+
 static func _build_authority_queue(state: Dictionary) -> Array:
 	var result: Array = []
 	var players := state.get("players") as Dictionary
@@ -2232,12 +2656,7 @@ static func _build_authority_queue(state: Dictionary) -> Array:
 				"actor_id": actor_id,
 				"local_order": local_order,
 				"reservation": _reservation_for_action(action),
-				"public": {
-					"card": action.get("card"),
-					"rule_allowed_target": ((action.get("target_binding") as Dictionary).get("target_ids") as Array).duplicate(),
-					"current_effect": action.get("current_effect"),
-					"result": "pending",
-				},
+				"public": _public_entry_for_action(action),
 			})
 	return result
 
@@ -2332,7 +2751,10 @@ static func _action_error_without_fingerprint(value: Variant) -> String:
 			or not _nonnegative_integer(action.get("local_order")) \
 			or int(action.get("local_order", -1)) >= MAX_ACTIONS_PER_PLAYER \
 			or not _stable_id(action.get("card")) \
-			or not _stable_id(action.get("current_effect")):
+			or not _stable_id(action.get("current_effect")) \
+			or not INVALID_TARGET_POLICY_IDS.has(str(
+				action.get("invalid_target_policy_id", "")
+			)):
 		return "action_identity_invalid"
 	var target_error := _target_binding_error(action.get("target_binding"))
 	if not target_error.is_empty():
@@ -2346,6 +2768,56 @@ static func _action_error_without_fingerprint(value: Variant) -> String:
 		any_paid += int((action.get("any_payment") as Dictionary).get(color, 0))
 	if any_paid != any_cost:
 		return "action_any_payment_invalid"
+	return ""
+
+
+static func _action_result_error(
+	value: Variant,
+	action: Dictionary = {}
+) -> String:
+	if not (value is Dictionary) or not _is_pure_data(value) \
+			or not _exact_fields(value as Dictionary, ACTION_RESULT_FIELDS):
+		return "action_result_fields_invalid"
+	var result := value as Dictionary
+	var outcome_id := str(result.get("outcome_id", ""))
+	var policy_id := str(result.get("invalid_target_policy_id", ""))
+	if not SETTLEMENT_OUTCOMES.has(outcome_id) \
+			or not _stable_id(result.get("reason_code")) \
+			or not INVALID_TARGET_POLICY_IDS.has(policy_id) \
+			or not (result.get("asset_refund_applied") is bool) \
+			or not ["discard", "not_applicable", "not_attested"].has(str(
+				result.get("normal_card_destination", "")
+			)) \
+			or result.get("action_slot_refunded") != false:
+		return "action_result_value_invalid"
+	if not action.is_empty() \
+			and policy_id != str(action.get("invalid_target_policy_id", "")):
+		return "action_result_policy_binding_invalid"
+	var is_invalid_target := INVALID_TARGET_OUTCOME_BY_POLICY.values().has(outcome_id)
+	if is_invalid_target:
+		if str(INVALID_TARGET_OUTCOME_BY_POLICY.get(policy_id, "")) != outcome_id \
+				or ["none", "pending"].has(str(result.get("reason_code", ""))) \
+				or bool(result.get("asset_refund_applied", false)) \
+					!= (policy_id == "FIZZLE_FULL_ASSET_REFUND"):
+			return "invalid_target_result_semantics_invalid"
+		if not action.is_empty():
+			var expected_destination := "discard" \
+				if str(action.get("action_kind", "")) == "normal_card" \
+				else "not_applicable"
+			if str(result.get("normal_card_destination", "")) \
+					!= expected_destination:
+				return "invalid_target_card_destination_invalid"
+		return ""
+	if outcome_id == "success":
+		if result.get("reason_code") != "action_resolved_success" \
+				or result.get("asset_refund_applied") != false \
+				or result.get("normal_card_destination") != "not_attested":
+			return "success_result_semantics_invalid"
+		return ""
+	if result.get("reason_code") != "rule_allowed_refundable_failure" \
+			or result.get("asset_refund_applied") != true \
+			or result.get("normal_card_destination") != "not_attested":
+		return "refundable_result_semantics_invalid"
 	return ""
 
 
@@ -2419,7 +2891,15 @@ static func _state_error(value: Variant) -> String:
 	if not _exact_fields(state, STATE_FIELDS):
 		return "state_fields_invalid"
 	if state.get("schema_version") != SCHEMA_VERSION \
+			or state.get("state_version") != STATE_VERSION \
 			or str(state.get("ruleset_id", "")) != RULESET_ID \
+			or str(state.get("balance_profile_id", "")) != BALANCE_PROFILE_ID \
+			or str(state.get("balance_profile_fingerprint", "")) \
+				!= BALANCE_PROFILE_FINGERPRINT \
+			or str(state.get("default_invalid_target_policy_id", "")) \
+				!= DEFAULT_INVALID_TARGET_POLICY_ID \
+			or state.get("max_asset_refresh_per_color_per_batch") \
+				!= MAX_ASSET_REFRESH_PER_COLOR_PER_BATCH \
 			or state.get("core_authority_ids") \
 			!= [ASSET_CORE_AUTHORITY_ID, BATCH_CORE_AUTHORITY_ID]:
 		return "state_schema_invalid"
@@ -2650,8 +3130,13 @@ static func _player_error(value: Variant, conversion: int) -> String:
 		if int(calculated_totals.get(color, 0)) > int((player.get("assets") as Dictionary).get(color, 0)):
 			return "player_reservation_exceeds_assets"
 	for action_id_variant in (player.get("action_results") as Dictionary).keys():
-		if not local_action_ids.has(str(action_id_variant)) \
-				or not SETTLEMENT_OUTCOMES.has(str((player.get("action_results") as Dictionary).get(action_id_variant, ""))):
+		var action_id := str(action_id_variant)
+		var action := _action_by_id(player, action_id)
+		if not local_action_ids.has(action_id) or action.is_empty() \
+				or not _action_result_error(
+					(player.get("action_results") as Dictionary).get(action_id_variant),
+					action
+				).is_empty():
 			return "player_action_result_invalid"
 	return ""
 
@@ -2689,17 +3174,16 @@ static func _semantic_state_error(
 			if entry.get(field) != expected.get(field):
 				return "authority_queue_binding_invalid"
 		var entry_public := entry.get("public") as Dictionary
-		var expected_public := expected.get("public") as Dictionary
-		for field in ["card", "rule_allowed_target", "current_effect"]:
-			if entry_public.get(field) != expected_public.get(field):
-				return "authority_queue_public_binding_invalid"
 		var actor_id := str(entry.get("actor_id", ""))
 		var action_id := str(entry.get("action_id", ""))
-		var results := ((state.get("players") as Dictionary).get(actor_id) as Dictionary).get("action_results") as Dictionary
-		var expected_result := str(results.get(action_id, "pending"))
-		if str(entry_public.get("result", "")) != expected_result:
-			return "authority_queue_result_binding_invalid"
-		if expected_result == "pending":
+		var player := (state.get("players") as Dictionary).get(actor_id) as Dictionary
+		var action := _action_by_id(player, action_id)
+		var results := player.get("action_results") as Dictionary
+		var result_record := results.get(action_id, {}) as Dictionary
+		var expected_public := _public_entry_for_action(action, result_record)
+		if entry_public != expected_public:
+			return "authority_queue_public_binding_invalid"
+		if result_record.is_empty():
 			if index < cursor:
 				return "authority_queue_pending_prefix_invalid"
 		elif index >= cursor:
@@ -2742,10 +3226,30 @@ static func _authority_queue_entry_error(
 	var public_entry := entry.get("public") as Dictionary
 	if not _stable_id(public_entry.get("card")) \
 			or not _stable_id(public_entry.get("current_effect")) \
-			or not (["pending"] + SETTLEMENT_OUTCOMES).has(str(public_entry.get("result", ""))) \
 			or _string_id_array(public_entry.get("rule_allowed_target"), false).size() \
 			!= (public_entry.get("rule_allowed_target") as Array).size():
 		return "public_queue_entry_invalid"
+	var result_id := str(public_entry.get("result", ""))
+	if result_id == "pending":
+		if public_entry.get("reason_code") != "pending" \
+				or not INVALID_TARGET_POLICY_IDS.has(str(
+					public_entry.get("invalid_target_policy_id", "")
+				)) \
+				or public_entry.get("asset_refund_applied") != false \
+				or public_entry.get("normal_card_destination") != "pending" \
+				or public_entry.get("action_slot_refunded") != false:
+			return "public_queue_pending_semantics_invalid"
+		return ""
+	var result_record := {
+		"outcome_id": result_id,
+		"reason_code": public_entry.get("reason_code"),
+		"invalid_target_policy_id": public_entry.get("invalid_target_policy_id"),
+		"asset_refund_applied": public_entry.get("asset_refund_applied"),
+		"normal_card_destination": public_entry.get("normal_card_destination"),
+		"action_slot_refunded": public_entry.get("action_slot_refunded"),
+	}
+	if not _action_result_error(result_record).is_empty():
+		return "public_queue_result_semantics_invalid"
 	return ""
 
 
@@ -2765,35 +3269,55 @@ static func _state_receipt_binding_error(
 			if receipt.get("reason_code") != "hidden_lead_order_updated" \
 					or outcome_id != "submission_order_updated" \
 					or not actor_id.is_empty() or not action_id.is_empty() \
-					or not intent_id.is_empty() or not intent_fingerprint.is_empty():
+					or not intent_id.is_empty() or not intent_fingerprint.is_empty() \
+					or not _receipt_resolution_detail_is_empty(receipt):
 				return "state_receipt_hidden_lead_binding_invalid"
 		"lock_player_queue":
 			if receipt.get("reason_code") != "queue_locked" \
 					or outcome_id != "reserved" \
 					or not player_ids.has(actor_id) or not action_id.is_empty() \
 					or not _stable_id(intent_id) \
-					or not _fingerprint_valid(intent_fingerprint):
+					or not _fingerprint_valid(intent_fingerprint) \
+					or not _receipt_resolution_detail_is_empty(receipt):
 				return "state_receipt_lock_binding_invalid"
 		"close_expired_window":
 			if receipt.get("reason_code") != "window_closed" \
 					or outcome_id != "empty_queues_locked" \
 					or not actor_id.is_empty() or not action_id.is_empty() \
-					or not intent_id.is_empty() or not intent_fingerprint.is_empty():
+					or not intent_id.is_empty() or not intent_fingerprint.is_empty() \
+					or not _receipt_resolution_detail_is_empty(receipt):
 				return "state_receipt_close_binding_invalid"
-		"settle_next_action":
-			if receipt.get("reason_code") != "action_settled" \
+		"settle_next_action", "settle_invalid_target":
+			var expected_reason := "action_settled" \
+				if operation_id == "settle_next_action" \
+				else "invalid_target_resolved"
+			if receipt.get("reason_code") != expected_reason \
 					or not player_ids.has(actor_id) or not _stable_id(action_id) \
 					or outcome_id not in SETTLEMENT_OUTCOMES \
 					or not intent_id.is_empty() or not intent_fingerprint.is_empty():
 				return "state_receipt_settlement_binding_invalid"
 			var player := (state.get("players") as Dictionary).get(actor_id) as Dictionary
-			if (player.get("action_results") as Dictionary).get(action_id) != outcome_id:
+			var action := _action_by_id(player, action_id)
+			var result_record := _receipt_action_result(receipt)
+			if action.is_empty() \
+					or not _action_result_error(result_record, action).is_empty() \
+					or (player.get("action_results") as Dictionary).get(action_id) \
+						!= result_record \
+					or (
+						operation_id == "settle_next_action" \
+						and not DIRECT_SETTLEMENT_OUTCOMES.has(outcome_id)
+					) \
+					or (
+						operation_id == "settle_invalid_target" \
+						and not INVALID_TARGET_OUTCOME_BY_POLICY.values().has(outcome_id)
+					):
 				return "state_receipt_settlement_result_invalid"
 		"refresh_assets_after_batch":
 			if receipt.get("reason_code") != "frozen_snapshot_applied" \
 					or outcome_id != "assets_refreshed" \
 					or not actor_id.is_empty() or not action_id.is_empty() \
-					or not intent_id.is_empty() or not intent_fingerprint.is_empty():
+					or not intent_id.is_empty() or not intent_fingerprint.is_empty() \
+					or not _receipt_resolution_detail_is_empty(receipt):
 				return "state_receipt_refresh_binding_invalid"
 		_:
 			return "state_receipt_operation_invalid"
@@ -2809,7 +3333,8 @@ static func _receipt(
 	action_id: String,
 	outcome_id: String,
 	intent_id: String = "",
-	intent_fingerprint: String = ""
+	intent_fingerprint: String = "",
+	resolution_detail: Dictionary = {}
 ) -> Dictionary:
 	var receipt := {
 		"schema_version": SCHEMA_VERSION,
@@ -2827,6 +3352,26 @@ static func _receipt(
 		"actor_id": actor_id,
 		"action_id": action_id,
 		"outcome_id": outcome_id,
+		"invalid_target_policy_id": str(resolution_detail.get(
+			"invalid_target_policy_id",
+			"none"
+		)),
+		"public_history_reason_code": str(resolution_detail.get(
+			"reason_code",
+			"none"
+		)),
+		"asset_refund_applied": bool(resolution_detail.get(
+			"asset_refund_applied",
+			false
+		)),
+		"normal_card_destination": str(resolution_detail.get(
+			"normal_card_destination",
+			"none"
+		)),
+		"action_slot_refunded": bool(resolution_detail.get(
+			"action_slot_refunded",
+			false
+		)),
 		"intent_id": intent_id,
 		"intent_fingerprint": intent_fingerprint,
 	}
@@ -2848,6 +3393,15 @@ static func _receipt_error(value: Variant) -> String:
 			or not (receipt.get("accepted") is bool) \
 			or not _stable_id(receipt.get("reason_code")) \
 			or not _nonnegative_integer(receipt.get("state_revision")) \
+			or not (["none"] + INVALID_TARGET_POLICY_IDS).has(str(
+				receipt.get("invalid_target_policy_id", "")
+			)) \
+			or not _stable_id(receipt.get("public_history_reason_code")) \
+			or not (receipt.get("asset_refund_applied") is bool) \
+			or not ["none", "discard", "not_applicable", "not_attested"].has(str(
+				receipt.get("normal_card_destination", "")
+			)) \
+			or not (receipt.get("action_slot_refunded") is bool) \
 			or not (receipt.get("intent_id") is String) \
 			or not (receipt.get("intent_fingerprint") is String):
 		return "receipt_invalid"
@@ -2864,6 +3418,25 @@ static func _receipt_error(value: Variant) -> String:
 			or str(receipt.get("receipt_fingerprint", "")) != _fingerprint(unsealed):
 		return "receipt_fingerprint_invalid"
 	return ""
+
+
+static func _receipt_action_result(receipt: Dictionary) -> Dictionary:
+	return {
+		"outcome_id": receipt.get("outcome_id"),
+		"reason_code": receipt.get("public_history_reason_code"),
+		"invalid_target_policy_id": receipt.get("invalid_target_policy_id"),
+		"asset_refund_applied": receipt.get("asset_refund_applied"),
+		"normal_card_destination": receipt.get("normal_card_destination"),
+		"action_slot_refunded": receipt.get("action_slot_refunded"),
+	}
+
+
+static func _receipt_resolution_detail_is_empty(receipt: Dictionary) -> bool:
+	return receipt.get("invalid_target_policy_id") == "none" \
+		and receipt.get("public_history_reason_code") == "none" \
+		and receipt.get("asset_refund_applied") == false \
+		and receipt.get("normal_card_destination") == "none" \
+		and receipt.get("action_slot_refunded") == false
 
 
 static func _receipt_by_id(receipts: Array, receipt_id: String) -> Dictionary:
@@ -2922,19 +3495,49 @@ static func _saved_envelope_error(
 	var envelope := value as Dictionary
 	if not _exact_fields(
 		envelope,
-		["schema_version", "schema_id", "ruleset_id", "state", fingerprint_field]
+		[
+			"schema_version",
+			"state_version",
+			"schema_id",
+			"ruleset_id",
+			"balance_profile_id",
+			"balance_profile_fingerprint",
+			"default_invalid_target_policy_id",
+			"max_asset_refresh_per_color_per_batch",
+			"state",
+			fingerprint_field,
+		]
 	):
 		return "save_fields_invalid"
 	if envelope.get("schema_version") != SCHEMA_VERSION \
+			or envelope.get("state_version") != STATE_VERSION \
 			or str(envelope.get("schema_id", "")) != schema_id \
-			or str(envelope.get("ruleset_id", "")) != RULESET_ID:
+			or str(envelope.get("ruleset_id", "")) != RULESET_ID \
+			or str(envelope.get("balance_profile_id", "")) != BALANCE_PROFILE_ID \
+			or str(envelope.get("balance_profile_fingerprint", "")) \
+				!= BALANCE_PROFILE_FINGERPRINT \
+			or str(envelope.get("default_invalid_target_policy_id", "")) \
+				!= DEFAULT_INVALID_TARGET_POLICY_ID \
+			or int(envelope.get("max_asset_refresh_per_color_per_batch", -1)) \
+				!= MAX_ASSET_REFRESH_PER_COLOR_PER_BATCH:
 		return "save_schema_invalid"
 	var unsealed := envelope.duplicate(true)
 	unsealed.erase(fingerprint_field)
 	if not _fingerprint_valid(envelope.get(fingerprint_field)) \
 			or str(envelope.get(fingerprint_field, "")) != _fingerprint(unsealed):
 		return "save_fingerprint_invalid"
-	var state_error := _state_error(envelope.get("state"))
+	if not (envelope.get("state") is Dictionary):
+		return "save_state_invalid"
+	var state := envelope.get("state") as Dictionary
+	if state.get("balance_profile_id") != envelope.get("balance_profile_id") \
+			or state.get("balance_profile_fingerprint") \
+				!= envelope.get("balance_profile_fingerprint") \
+			or state.get("default_invalid_target_policy_id") \
+				!= envelope.get("default_invalid_target_policy_id") \
+			or state.get("max_asset_refresh_per_color_per_batch") \
+				!= envelope.get("max_asset_refresh_per_color_per_batch"):
+		return "save_context_binding_invalid"
+	var state_error := _state_error(state)
 	return "" if state_error.is_empty() else "save_state_invalid"
 
 
