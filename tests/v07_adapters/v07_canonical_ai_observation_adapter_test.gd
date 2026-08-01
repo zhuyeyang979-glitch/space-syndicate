@@ -140,12 +140,16 @@ func _build_fixture() -> void:
 		"Solar/Victory fixture is valid Core data"
 	)
 	var solar_observation := SOLAR_CORE.ai_observation(_solar_state)
+	var contention_observation := _contention_observation(
+		"v073.facility_contention.ai_observation.v1", VIEWER_ID
+	)
 
 	_sources = {
 		"unified_track": track_observation,
 		"personal_dbg": dbg_observation,
 		"six_color_assets": asset_observation,
 		"card_batch": batch_observation,
+		"facility_contention": contention_observation,
 		"solar_victory": solar_observation,
 	}
 	_context = ADAPTER.build_authorization_context(
@@ -158,11 +162,12 @@ func _build_fixture() -> void:
 		dbg_observation,
 		asset_observation,
 		batch_observation,
+		contention_observation,
 		solar_observation
 	)
 	_expect(
 		not _context.is_empty(),
-		"adapter builds an exact five-source authorization context"
+		"adapter builds an exact six-source authorization context"
 	)
 	_capability = ADAPTER.issue_capability()
 	_adapter = ADAPTER.new(_capability)
@@ -207,9 +212,11 @@ func _test_canonical_happy_path() -> void:
 			and _observation.get("six_color_assets") \
 				== _sources.get("six_color_assets")
 			and _observation.get("card_batch") == _sources.get("card_batch")
+			and _observation.get("facility_contention") \
+				== _sources.get("facility_contention")
 			and _observation.get("solar_victory") \
 				== _sources.get("solar_victory"),
-		"adapter wraps all five existing observations without recomputation"
+		"adapter wraps all six observations without recomputation"
 	)
 	var dbg_facts := (
 		_observation.get("personal_dbg", {}) as Dictionary
@@ -674,6 +681,23 @@ func _assets(amount: int) -> Dictionary:
 	}
 
 
+func _contention_observation(contract_id: String, viewer_id: String) -> Dictionary:
+	return CODEC.seal({
+		"schema_version": 1,
+		"state_version": 1,
+		"ruleset_id": "v0.7.3",
+		"contract_id": contract_id,
+		"viewer_id": viewer_id,
+		"batch_id": BATCH_ID,
+		"state_revision": 1,
+		"own_local_queue": [],
+		"anonymous_public_queue": [],
+		"public_facility_slots": [],
+		"resolution_cursor": 0,
+		"complete_hidden_order_disclosed": false,
+	}, "projection_fingerprint")
+
+
 func _contains_key_recursive(value: Variant, forbidden_keys: Array) -> bool:
 	if value is Dictionary:
 		for key_variant in (value as Dictionary).keys():
@@ -699,15 +723,15 @@ func _expect(condition: bool, message: String) -> void:
 func _finish() -> void:
 	if _failures.is_empty():
 		print(
-			"V072_CANONICAL_AI_OBSERVATION_ADAPTER_READY | passed=%d total=%d"
+			"V073_CANONICAL_AI_OBSERVATION_ADAPTER_READY | passed=%d total=%d"
 			% [_checks, _checks]
 		)
 		quit(0)
 		return
 	for failure in _failures:
-		push_error("V072_CANONICAL_AI_OBSERVATION_ADAPTER_FAIL: %s" % failure)
+		push_error("V073_CANONICAL_AI_OBSERVATION_ADAPTER_FAIL: %s" % failure)
 	push_error(
-		"V072_CANONICAL_AI_OBSERVATION_ADAPTER_FAIL | passed=%d total=%d"
+		"V073_CANONICAL_AI_OBSERVATION_ADAPTER_FAIL | passed=%d total=%d"
 		% [_checks - _failures.size(), _checks]
 	)
 	quit(1)

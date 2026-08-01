@@ -558,15 +558,15 @@ func _expect(condition: bool, message: String) -> void:
 		print("PASS: %s" % message)
 		return
 	_failures.append(message)
-	push_error("V072 CANONICAL RNG ADAPTER: %s" % message)
+	push_error("V073 CANONICAL RNG ADAPTER: %s" % message)
 
 
 func _finish() -> void:
 	if _failures.is_empty():
-		print("V072_CANONICAL_RNG_ADAPTER_READY | status=PASS | checks=%d" % _checks)
+		print("V073_CANONICAL_RNG_ADAPTER_READY | status=PASS | checks=%d" % _checks)
 		quit(0)
 		return
 	push_error(
-		"V0.7.2 canonical RNG adapter test failed:\n- %s" % "\n- ".join(_failures)
+		"V0.7.3 canonical RNG adapter test failed:\n- %s" % "\n- ".join(_failures)
 	)
 	quit(1)

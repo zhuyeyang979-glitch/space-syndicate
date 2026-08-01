@@ -1,7 +1,7 @@
 extends SceneTree
 
-const LATEST_MAIN_SHA := "76ffcbf1df5c122955e620b7b4a4339e3dd9a2cb"
-const PR80_PRE_RESYNC_HEAD := "dabc19234996dd7862ac3f7c1c14f2912abf807f"
+const LATEST_MAIN_SHA := "794ccf010e661a4750efca20a4e0d2a5839b7f2b"
+const PR80_PRE_RESYNC_HEAD := "743156b686d06ba15511c6035df3ae95ecdcdaf2"
 const MANIFEST_PATH := "res://docs/migration/v07_atomic_cutover_manifest.json"
 const CATALOG_PATH := (
 	"res://resources/presentation/alpha01_card_illustration_catalog.tres"

@@ -1,7 +1,7 @@
 extends RefCounted
 class_name V07CanonicalPlayerProjectionAdapter
 
-## Capability-gated, read-only adapter over detached V0.7.2 Player projections.
+## Capability-gated, read-only adapter over detached V0.7.3 Player projections.
 ## The capability is transient object identity; it is never copied into wire data.
 
 const WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
@@ -13,10 +13,10 @@ const ASSET_BATCH_CORE := preload(
 	"res://scripts/v07_semantic/v07_asset_batch_core.gd"
 )
 
-const SCHEMA_VERSION := 3
-const RULESET_ID := "v0.7.2"
-const ADAPTER_ID := "v072.canonical.player_projection_adapter.v3"
-const PROJECTION_ID := "v072.canonical.player_projection.v3"
+const SCHEMA_VERSION := 4
+const RULESET_ID := "v0.7.3"
+const ADAPTER_ID := "v073.canonical.player_projection_adapter.v4"
+const PROJECTION_ID := "v073.canonical.player_projection.v4"
 const VISIBILITY_SCOPE_ID := "viewer_authorized_plus_public"
 
 const AUTHORIZATION_CONTEXT_FIELDS := [
@@ -30,22 +30,26 @@ const AUTHORIZATION_CONTEXT_FIELDS := [
 	"dbg_source_revision",
 	"asset_source_revision",
 	"batch_source_revision",
+	"contention_source_revision",
 	"track_projection_fingerprint",
 	"dbg_projection_fingerprint",
 	"asset_projection_fingerprint",
 	"batch_projection_fingerprint",
+	"contention_projection_fingerprint",
 ]
 const SOURCE_BUNDLE_FIELDS := [
 	"unified_track",
 	"personal_dbg",
 	"six_color_assets",
 	"card_batch",
+	"facility_contention",
 ]
 const COMPONENT_SOURCE_REVISION_FIELDS := [
 	"unified_track",
 	"personal_dbg",
 	"six_color_assets",
 	"card_batch",
+	"facility_contention",
 ]
 const CANONICAL_PROJECTION_FIELDS := [
 	"schema_version",
@@ -63,6 +67,7 @@ const CANONICAL_PROJECTION_FIELDS := [
 	"personal_dbg",
 	"six_color_assets",
 	"card_batch",
+	"facility_contention",
 	"presentation_assets",
 	"projection_fingerprint",
 ]
@@ -80,6 +85,12 @@ const PLAYER_PRESENTATION_ASSET_KEYS := [
 	"card.frame.bound_action",
 	"card.back.normal",
 	"card.badge.starter",
+]
+const CONTENTION_PROJECTION_FIELDS := [
+	"schema_version", "state_version", "ruleset_id", "contract_id", "viewer_id",
+	"batch_id", "state_revision", "own_local_queue", "anonymous_public_queue",
+	"public_facility_slots", "resolution_cursor", "complete_hidden_order_disclosed",
+	"projection_fingerprint",
 ]
 
 const TRACK_PROJECTION_FIELDS := [
@@ -176,6 +187,11 @@ const SOURCE_FORBIDDEN_KEYS := [
 	"save_payload",
 	"submission_hidden_lead_order",
 	"frozen_hidden_lead_order",
+	"frozen_hidden_lead_order_at_batch_lock",
+	"player_local_queues",
+	"authority_queue",
+	"resolution_receipts",
+	"other_player_targets",
 	"ai_plan",
 	"ai_plans",
 	"ai_score",
@@ -245,13 +261,15 @@ static func build_authorization_context(
 	unified_track_projection: Dictionary,
 	personal_dbg_projection: Dictionary,
 	six_color_asset_projection: Dictionary,
-	card_batch_projection: Dictionary
+	card_batch_projection: Dictionary,
+	facility_contention_projection: Dictionary
 ) -> Dictionary:
 	var sources := {
 		"unified_track": unified_track_projection,
 		"personal_dbg": personal_dbg_projection,
 		"six_color_assets": six_color_asset_projection,
 		"card_batch": card_batch_projection,
+		"facility_contention": facility_contention_projection,
 	}
 	if not _authorization_identity_reason(
 		match_instance_id,
@@ -278,6 +296,9 @@ static func build_authorization_context(
 		"batch_source_revision": int(
 			card_batch_projection.get("state_revision", -1)
 		),
+		"contention_source_revision": int(
+			facility_contention_projection.get("state_revision", -1)
+		),
 		"track_projection_fingerprint": str(
 			unified_track_projection.get("projection_fingerprint", "")
 		),
@@ -289,6 +310,9 @@ static func build_authorization_context(
 		),
 		"batch_projection_fingerprint": str(
 			card_batch_projection.get("projection_fingerprint", "")
+		),
+		"contention_projection_fingerprint": str(
+			facility_contention_projection.get("projection_fingerprint", "")
 		),
 	}
 
@@ -341,6 +365,7 @@ func adapt_player_projection(
 	var dbg := sources.get("personal_dbg", {}) as Dictionary
 	var assets := sources.get("six_color_assets", {}) as Dictionary
 	var batch := sources.get("card_batch", {}) as Dictionary
+	var contention := sources.get("facility_contention", {}) as Dictionary
 	var unsealed := {
 		"schema_version": SCHEMA_VERSION,
 		"projection_id": PROJECTION_ID,
@@ -359,11 +384,13 @@ func adapt_player_projection(
 			"personal_dbg": int(dbg.get("revision", -1)),
 			"six_color_assets": int(assets.get("state_revision", -1)),
 			"card_batch": int(batch.get("state_revision", -1)),
+			"facility_contention": int(contention.get("state_revision", -1)),
 		},
 		"unified_track": track.duplicate(true),
 		"personal_dbg": dbg.duplicate(true),
 		"six_color_assets": assets.duplicate(true),
 		"card_batch": batch.duplicate(true),
+		"facility_contention": contention.duplicate(true),
 		"presentation_assets": presentation_asset_contract(),
 	}
 	var projection := WIRE.sealed_copy(unsealed, "projection_fingerprint")
@@ -472,6 +499,7 @@ static func validation_report(value: Variant) -> Dictionary:
 		"personal_dbg": projection.get("personal_dbg"),
 		"six_color_assets": projection.get("six_color_assets"),
 		"card_batch": projection.get("card_batch"),
+		"facility_contention": projection.get("facility_contention"),
 	}
 	var source_reason := _source_bundle_reason(
 		sources,
@@ -491,7 +519,11 @@ static func validation_report(value: Variant) -> Dictionary:
 			or revisions.get("six_color_assets") \
 				!= (sources.get("six_color_assets") as Dictionary).get("state_revision") \
 			or revisions.get("card_batch") \
-				!= (sources.get("card_batch") as Dictionary).get("state_revision"):
+				!= (sources.get("card_batch") as Dictionary).get("state_revision") \
+			or revisions.get("facility_contention") \
+				!= (sources.get("facility_contention") as Dictionary).get(
+					"state_revision"
+				):
 		return _invalid("component_source_revisions_mismatch")
 	if WIRE.contains_key_recursive(sources, SOURCE_FORBIDDEN_KEYS):
 		return _invalid("canonical_projection_private_field_forbidden")
@@ -585,10 +617,12 @@ func _rebinding_reason(next: Dictionary) -> String:
 		"dbg_source_revision",
 		"asset_source_revision",
 		"batch_source_revision",
+		"contention_source_revision",
 		"track_projection_fingerprint",
 		"dbg_projection_fingerprint",
 		"asset_projection_fingerprint",
 		"batch_projection_fingerprint",
+		"contention_projection_fingerprint",
 	]
 	if next_source == current_source:
 		for field in source_binding_fields:
@@ -600,6 +634,7 @@ func _rebinding_reason(next: Dictionary) -> String:
 		"dbg_source_revision",
 		"asset_source_revision",
 		"batch_source_revision",
+		"contention_source_revision",
 	]:
 		if int(next.get(field, -1)) < int(current.get(field, -1)):
 			return "component_source_revision_stale"
@@ -633,10 +668,12 @@ func _authorization_match_reason(context: Dictionary) -> String:
 		"dbg_source_revision",
 		"asset_source_revision",
 		"batch_source_revision",
+		"contention_source_revision",
 		"track_projection_fingerprint",
 		"dbg_projection_fingerprint",
 		"asset_projection_fingerprint",
 		"batch_projection_fingerprint",
+		"contention_projection_fingerprint",
 	]:
 		if context.get(field) != current.get(field):
 			return "authorized_source_binding_mismatch"
@@ -666,6 +703,9 @@ static func _authorization_context_reason(context: Dictionary) -> String:
 			or not WIRE.is_nonnegative_integer(
 				context.get("batch_source_revision")
 			) \
+			or not WIRE.is_nonnegative_integer(
+				context.get("contention_source_revision")
+			) \
 			or context.get("asset_source_revision") \
 				!= context.get("batch_source_revision"):
 		return "authorization_component_revision_invalid"
@@ -674,6 +714,7 @@ static func _authorization_context_reason(context: Dictionary) -> String:
 		"dbg_projection_fingerprint",
 		"asset_projection_fingerprint",
 		"batch_projection_fingerprint",
+		"contention_projection_fingerprint",
 	]:
 		if not WIRE.is_fingerprint(context.get(field)):
 			return "authorization_source_fingerprint_invalid"
@@ -708,6 +749,7 @@ static func _source_binding_reason(
 	var dbg := sources.get("personal_dbg", {}) as Dictionary
 	var assets := sources.get("six_color_assets", {}) as Dictionary
 	var batch := sources.get("card_batch", {}) as Dictionary
+	var contention := sources.get("facility_contention", {}) as Dictionary
 	if track.get("source_revision") != context.get("track_source_revision"):
 		return "track_source_revision_stale"
 	if dbg.get("revision") != context.get("dbg_source_revision"):
@@ -716,6 +758,8 @@ static func _source_binding_reason(
 		return "asset_source_revision_stale"
 	if batch.get("state_revision") != context.get("batch_source_revision"):
 		return "batch_source_revision_stale"
+	if contention.get("state_revision") != context.get("contention_source_revision"):
+		return "contention_source_revision_stale"
 	if track.get("projection_fingerprint") \
 			!= context.get("track_projection_fingerprint"):
 		return "track_projection_forged"
@@ -727,6 +771,9 @@ static func _source_binding_reason(
 	if batch.get("projection_fingerprint") \
 			!= context.get("batch_projection_fingerprint"):
 		return "batch_projection_forged"
+	if contention.get("projection_fingerprint") \
+			!= context.get("contention_projection_fingerprint"):
+		return "contention_projection_forged"
 	return ""
 
 
@@ -774,8 +821,47 @@ static func _source_bundle_reason(sources: Dictionary, viewer_id: String) -> Str
 		return "asset_batch_reservation_mismatch"
 	if assets.get("public_costs") != _public_costs_from_batch(batch):
 		return "asset_batch_cost_mismatch"
+	var contention_reason := _facility_contention_projection_reason(
+		sources.get("facility_contention", {}) as Dictionary,
+		viewer_id
+	)
+	if not contention_reason.is_empty():
+		return contention_reason
 	if WIRE.contains_key_recursive(sources, SOURCE_FORBIDDEN_KEYS):
 		return "source_private_field_forbidden"
+	return ""
+
+
+static func _facility_contention_projection_reason(
+	projection: Dictionary,
+	viewer_id: String
+) -> String:
+	if not WIRE.exact_fields(projection, CONTENTION_PROJECTION_FIELDS) \
+			or not WIRE.is_closed_data(projection):
+		return "facility_contention_projection_fields_invalid"
+	if projection.get("schema_version") != 1 \
+			or projection.get("state_version") != 1 \
+			or projection.get("ruleset_id") != RULESET_ID \
+			or projection.get("contract_id") \
+				!= "v073.facility_contention.player_projection.v1" \
+			or projection.get("viewer_id") != viewer_id \
+			or projection.get("complete_hidden_order_disclosed") != false \
+			or not (projection.get("own_local_queue") is Array) \
+			or not (projection.get("anonymous_public_queue") is Array) \
+			or not (projection.get("public_facility_slots") is Array) \
+			or not (projection.get("resolution_cursor") is int):
+		return "facility_contention_projection_identity_invalid"
+	if not WIRE.is_fingerprint(projection.get("projection_fingerprint")) \
+			or str(projection.get("projection_fingerprint", "")) \
+				!= WIRE.fingerprint(projection, "projection_fingerprint"):
+		return "facility_contention_projection_fingerprint_invalid"
+	for public_entry_variant in projection.get("anonymous_public_queue") as Array:
+		if not (public_entry_variant is Dictionary):
+			return "facility_contention_public_queue_invalid"
+		var public_entry := public_entry_variant as Dictionary
+		if public_entry.has("actor_id") or public_entry.has("owner_id") \
+				or public_entry.has("target_slot_id"):
+			return "facility_contention_public_owner_or_target_disclosed"
 	return ""
 
 

@@ -34,13 +34,13 @@ func _init() -> void:
 func _run() -> void:
 	_test_codec_contract()
 	var sections := _build_sections()
-	_expect(sections.size() == 5, "fixture builds all five semantic sections")
+	_expect(sections.size() == 6, "fixture builds all six semantic sections")
 	var metadata := _metadata("save.v07.canonical.primary", "2026-08-01T00:00:00Z")
 	var capture := ADAPTER.capture_new_v07_game(metadata, sections)
 	_expect(
 		bool(capture.get("captured", false))
 			and str(capture.get("source_kind", "")) == ADAPTER.SOURCE_NEW_V07_GAME,
-		"NEW_V072_GAME capture accepts the five detached Core payloads"
+		"NEW_V073_GAME capture accepts the six detached Core payloads"
 	)
 	var envelope := capture.get("envelope", {}) as Dictionary
 	_expect(
@@ -49,9 +49,9 @@ func _run() -> void:
 		"capture emits one closed pure-data canonical envelope"
 	)
 	_expect(
-		(envelope.get("sections", {}) as Dictionary).size() == 5
+		(envelope.get("sections", {}) as Dictionary).size() == 6
 			and (envelope.get("rng_stream_states", []) as Array).size() == 11,
-		"envelope contains five sections and 5 + 2N concrete RNG streams"
+		"envelope contains six sections and 5 + 2N concrete RNG streams"
 	)
 	_expect(
 		str(envelope.get("envelope_fingerprint", ""))
@@ -128,8 +128,8 @@ func _test_preflight(envelope: Dictionary) -> void:
 	_expect(
 		bool(preflight.get("accepted", false))
 			and bool(preflight.get("preflight_complete", false))
-			and int(preflight.get("preflight_count", 0)) == 5,
-		"strict envelope preflight validates all five sections before apply"
+			and int(preflight.get("preflight_count", 0)) == 6,
+		"strict envelope preflight validates all six sections before apply"
 	)
 	_expect(
 		str(preflight.get("canonical_text", "")) == CODEC.canonical_json(envelope)
@@ -149,13 +149,13 @@ func _test_detached_plan(envelope: Dictionary, source_sections: Dictionary) -> v
 	var plan_result := ADAPTER.build_detached_restore_plan(envelope)
 	_expect(
 		bool(plan_result.get("accepted", false))
-			and int(plan_result.get("node_count", 0)) == 10,
-		"detached restore planner materializes the ten-node PR79 graph"
+			and int(plan_result.get("node_count", 0)) == 11,
+		"detached restore planner materializes the eleven-node V0.7.3 graph"
 	)
 	var plan := plan_result.get("plan", {}) as Dictionary
 	_expect(
 		bool(ADAPTER.preflight_restore_plan(plan).get("accepted", false))
-			and (plan.get("restore_nodes", []) as Array).size() == 10,
+			and (plan.get("restore_nodes", []) as Array).size() == 11,
 		"detached plan is closed, fingerprinted, and independently preflightable"
 	)
 	var observed_nodes: Array[String] = []
@@ -189,7 +189,7 @@ func _test_detached_plan(envelope: Dictionary, source_sections: Dictionary) -> v
 	_expect(
 		bool(committed.get("committed", false))
 			and committed.get("snapshot") == envelope
-			and (committed.get("applied_node_ids", []) as Array).size() == 10,
+			and (committed.get("applied_node_ids", []) as Array).size() == 11,
 		"successful execution publishes one complete detached snapshot"
 	)
 	_expect(
@@ -245,9 +245,9 @@ func _test_exact_roundtrip(envelope: Dictionary) -> void:
 		"exact roundtrip preserves identity metadata, bytes, and fingerprint"
 	)
 	_expect(
-		int(result.get("section_count", 0)) == 5
+		int(result.get("section_count", 0)) == 6
 			and int(result.get("rng_stream_count", 0)) == 11
-			and int(result.get("node_count", 0)) == 10,
+			and int(result.get("node_count", 0)) == 11,
 		"roundtrip reports the complete section, RNG, and restore-node counts"
 	)
 
@@ -350,9 +350,9 @@ func _test_source_gate(envelope: Dictionary) -> void:
 		"V06 Save direct resume fails closed with the backup-required reason"
 	)
 	_expect(
-		bool(rejected.get("new_v072_game_required", false))
+		bool(rejected.get("new_v073_game_required", false))
 			and not bool(rejected.get("direct_resume_allowed", true)),
-		"V06 rejection requires a new V072 game and never reports direct resume"
+		"V06 rejection requires a new V073 game and never reports direct resume"
 	)
 	var wrong_source := ADAPTER.preflight_restore(envelope, ADAPTER.SOURCE_V07_SAVE)
 	_expect(
@@ -360,13 +360,13 @@ func _test_source_gate(envelope: Dictionary) -> void:
 			and str(wrong_source.get("reason_code", ""))
 				== ADAPTER.V07_DIRECT_RESUME_REJECTED_REASON
 			and not bool(wrong_source.get("requires_backup", true)),
-		"V0.7.1 Save direct resume fails closed; only NEW_V072_GAME is accepted"
+		"V0.7.2 Save direct resume fails closed; only NEW_V073_GAME is accepted"
 	)
 	var contract := ADAPTER.adapter_contract()
 	_expect(
 		contract.get("source_kinds_allowed") == [ADAPTER.SOURCE_NEW_V07_GAME]
-			and contract.get("target_ruleset_id") == "v0.7.2"
-			and contract.get("v07_direct_resume_allowed") == false
+			and contract.get("target_ruleset_id") == "v0.7.3"
+			and contract.get("v072_direct_resume_allowed") == false
 			and contract.get("v06_direct_resume_allowed") == false
 			and contract.get("v06_backup_required") == true,
 		"adapter contract publishes the closed source and backup policy"
@@ -447,8 +447,46 @@ func _build_sections() -> Dictionary:
 		ADAPTER.SECTION_BATCH: ASSET_BATCH_CORE.to_batch_save_state(
 			asset_batch_state
 		),
+		ADAPTER.SECTION_CONTENTION: _contention_save_state(hidden_order),
 		ADAPTER.SECTION_SOLAR: SOLAR_VICTORY_CORE.to_save_state(solar_state),
 	}
+
+
+func _contention_save_state(hidden_order: Array) -> Dictionary:
+	var local_queues := {}
+	for player_id in ROSTER:
+		local_queues[player_id] = []
+	var state := CODEC.seal({
+		"schema_version": 1,
+		"state_version": 1,
+		"ruleset_id": "v0.7.3",
+		"balance_profile_id": ADAPTER.BALANCE_PROFILE_ID,
+		"contract_id": "v073.facility_contention.core_authority.v1",
+		"production_runtime_connected": false,
+		"batch_id": "batch.v07.canonical.primary",
+		"revision": 1,
+		"status": "resolved",
+		"resolution_order_source": "frozen_hidden_lead_order_at_batch_lock",
+		"player_ids": ROSTER.duplicate(),
+		"frozen_hidden_lead_order_at_batch_lock": hidden_order.duplicate(),
+		"player_local_queues": local_queues,
+		"authority_queue": [],
+		"anonymous_global_queue": [],
+		"resolution_cursor": 0,
+		"facility_slots": {},
+		"processed_action_ids": [],
+		"resolution_receipts": [],
+	}, "state_fingerprint")
+	return CODEC.seal({
+		"schema_version": 1,
+		"state_version": 1,
+		"contract_id": "v073.facility_contention.save_state.v1",
+		"ruleset_id": "v0.7.3",
+		"balance_profile_id": ADAPTER.BALANCE_PROFILE_ID,
+		"v072_direct_resume_allowed": false,
+		"v06_direct_resume_allowed": false,
+		"state": state,
+	}, "save_fingerprint")
 
 
 func _hidden_round_order(sections: Dictionary) -> Array:
@@ -501,17 +539,17 @@ func _expect(condition: bool, message: String) -> void:
 func _finish() -> void:
 	if _failures.is_empty():
 		print(
-			"V072_CANONICAL_SAVE_ADAPTER_READY|status=PASS|checks=%d"
+			"V073_CANONICAL_SAVE_ADAPTER_READY|status=PASS|checks=%d"
 			% _checks
 		)
 		print(
-			"V072_CANONICAL_SAVE_ADAPTER_TEST|status=PASS|checks=%d|failures=0|sections=5|rng_streams=11|restore_nodes=10"
+			"V073_CANONICAL_SAVE_ADAPTER_TEST|status=PASS|checks=%d|failures=0|sections=6|rng_streams=11|restore_nodes=11"
 			% _checks
 		)
 		quit(0)
 		return
 	print(
-		"V072_CANONICAL_SAVE_ADAPTER_TEST|status=FAIL|checks=%d|failures=%d|sections=5|rng_streams=11|restore_nodes=10"
+		"V073_CANONICAL_SAVE_ADAPTER_TEST|status=FAIL|checks=%d|failures=%d|sections=6|rng_streams=11|restore_nodes=11"
 		% [_checks, _failures.size()]
 	)
 	for failure in _failures:

@@ -1,7 +1,7 @@
 extends RefCounted
 class_name V07CanonicalAiObservationAdapter
 
-## Capability-gated, read-only adapter over all five detached V0.7.2 observations.
+## Capability-gated, read-only adapter over detached V0.7.3 observations.
 ## Authorization retains only identity, revisions, and source fingerprints.
 
 const CODEC := preload(
@@ -18,10 +18,10 @@ const SOLAR_CORE := preload(
 	"res://scripts/v07_semantic/v07_solar_victory_core.gd"
 )
 
-const SCHEMA_VERSION := 3
-const RULESET_ID := "v0.7.2"
-const ADAPTER_ID := "v072.canonical.ai_observation_adapter.v3"
-const OBSERVATION_ID := "v072.canonical.ai_observation.v3"
+const SCHEMA_VERSION := 4
+const RULESET_ID := "v0.7.3"
+const ADAPTER_ID := "v073.canonical.ai_observation_adapter.v4"
+const OBSERVATION_ID := "v073.canonical.ai_observation.v4"
 const VISIBILITY_SCOPE_ID := "ai_actor_authorized_plus_public"
 
 const AUTHORIZATION_CONTEXT_FIELDS := [
@@ -35,10 +35,12 @@ const AUTHORIZATION_CONTEXT_FIELDS := [
 	"dbg_source_revision",
 	"asset_source_revision",
 	"batch_source_revision",
+	"contention_source_revision",
 	"track_observation_fingerprint",
 	"dbg_observation_fingerprint",
 	"asset_observation_fingerprint",
 	"batch_observation_fingerprint",
+	"contention_observation_fingerprint",
 	"solar_observation_fingerprint",
 ]
 const SOURCE_BUNDLE_FIELDS := [
@@ -46,6 +48,7 @@ const SOURCE_BUNDLE_FIELDS := [
 	"personal_dbg",
 	"six_color_assets",
 	"card_batch",
+	"facility_contention",
 	"solar_victory",
 ]
 const COMPONENT_SOURCE_REVISION_FIELDS := [
@@ -53,6 +56,7 @@ const COMPONENT_SOURCE_REVISION_FIELDS := [
 	"personal_dbg",
 	"six_color_assets",
 	"card_batch",
+	"facility_contention",
 ]
 const CANONICAL_OBSERVATION_FIELDS := [
 	"schema_version",
@@ -70,6 +74,7 @@ const CANONICAL_OBSERVATION_FIELDS := [
 	"personal_dbg",
 	"six_color_assets",
 	"card_batch",
+	"facility_contention",
 	"solar_victory",
 	"observation_fingerprint",
 ]
@@ -158,6 +163,12 @@ const SOLAR_OBSERVATION_FIELDS := [
 	"macro_round_index",
 	"final_settlement_committed",
 ]
+const CONTENTION_OBSERVATION_FIELDS := [
+	"schema_version", "state_version", "ruleset_id", "contract_id", "viewer_id",
+	"batch_id", "state_revision", "own_local_queue", "anonymous_public_queue",
+	"public_facility_slots", "resolution_cursor", "complete_hidden_order_disclosed",
+	"projection_fingerprint",
+]
 
 const SOURCE_FORBIDDEN_KEYS := [
 	"authority_capability",
@@ -178,6 +189,11 @@ const SOURCE_FORBIDDEN_KEYS := [
 	"save_payload",
 	"submission_hidden_lead_order",
 	"frozen_hidden_lead_order",
+	"frozen_hidden_lead_order_at_batch_lock",
+	"player_local_queues",
+	"authority_queue",
+	"resolution_receipts",
+	"other_player_targets",
 	"ai_plan",
 	"ai_plans",
 	"ai_score",
@@ -293,6 +309,7 @@ static func build_authorization_context(
 	personal_dbg_observation: Dictionary,
 	six_color_asset_observation: Dictionary,
 	card_batch_observation: Dictionary,
+	facility_contention_observation: Dictionary,
 	solar_victory_observation: Dictionary
 ) -> Dictionary:
 	var sources := {
@@ -300,6 +317,7 @@ static func build_authorization_context(
 		"personal_dbg": personal_dbg_observation,
 		"six_color_assets": six_color_asset_observation,
 		"card_batch": card_batch_observation,
+		"facility_contention": facility_contention_observation,
 		"solar_victory": solar_victory_observation,
 	}
 	if not _authorization_identity_reason(
@@ -329,6 +347,9 @@ static func build_authorization_context(
 		"batch_source_revision": int(
 			card_batch_observation.get("state_revision", -1)
 		),
+		"contention_source_revision": int(
+			facility_contention_observation.get("state_revision", -1)
+		),
 		"track_observation_fingerprint": str(
 			unified_track_observation.get("projection_fingerprint", "")
 		),
@@ -340,6 +361,9 @@ static func build_authorization_context(
 		),
 		"batch_observation_fingerprint": str(
 			card_batch_observation.get("projection_fingerprint", "")
+		),
+		"contention_observation_fingerprint": str(
+			facility_contention_observation.get("projection_fingerprint", "")
 		),
 		"solar_observation_fingerprint": CODEC.fingerprint(
 			solar_victory_observation
@@ -397,6 +421,7 @@ func adapt_ai_observation(
 	var dbg := sources.get("personal_dbg", {}) as Dictionary
 	var assets := sources.get("six_color_assets", {}) as Dictionary
 	var batch := sources.get("card_batch", {}) as Dictionary
+	var contention := sources.get("facility_contention", {}) as Dictionary
 	var solar := sources.get("solar_victory", {}) as Dictionary
 	var unsealed := {
 		"schema_version": SCHEMA_VERSION,
@@ -416,11 +441,13 @@ func adapt_ai_observation(
 			"personal_dbg": int(dbg.get("revision", -1)),
 			"six_color_assets": int(assets.get("state_revision", -1)),
 			"card_batch": int(batch.get("state_revision", -1)),
+			"facility_contention": int(contention.get("state_revision", -1)),
 		},
 		"unified_track": track.duplicate(true),
 		"personal_dbg": dbg.duplicate(true),
 		"six_color_assets": assets.duplicate(true),
 		"card_batch": batch.duplicate(true),
+		"facility_contention": contention.duplicate(true),
 		"solar_victory": solar.duplicate(true),
 	}
 	var observation := CODEC.seal(unsealed, "observation_fingerprint")
@@ -522,6 +549,7 @@ static func validation_report(value: Variant) -> Dictionary:
 		"personal_dbg": observation.get("personal_dbg"),
 		"six_color_assets": observation.get("six_color_assets"),
 		"card_batch": observation.get("card_batch"),
+		"facility_contention": observation.get("facility_contention"),
 		"solar_victory": observation.get("solar_victory"),
 	}
 	var source_reason := _source_bundle_reason(
@@ -552,6 +580,10 @@ static func validation_report(value: Variant) -> Dictionary:
 				) \
 			or revisions.get("card_batch") \
 				!= (sources.get("card_batch") as Dictionary).get(
+					"state_revision"
+				) \
+			or revisions.get("facility_contention") \
+				!= (sources.get("facility_contention") as Dictionary).get(
 					"state_revision"
 				):
 		return _invalid("component_source_revisions_mismatch")
@@ -624,10 +656,12 @@ func _rebinding_reason(next: Dictionary) -> String:
 		"dbg_source_revision",
 		"asset_source_revision",
 		"batch_source_revision",
+		"contention_source_revision",
 		"track_observation_fingerprint",
 		"dbg_observation_fingerprint",
 		"asset_observation_fingerprint",
 		"batch_observation_fingerprint",
+		"contention_observation_fingerprint",
 		"solar_observation_fingerprint",
 	]
 	if next_source == current_source:
@@ -640,6 +674,7 @@ func _rebinding_reason(next: Dictionary) -> String:
 		"dbg_source_revision",
 		"asset_source_revision",
 		"batch_source_revision",
+		"contention_source_revision",
 	]:
 		if int(next.get(field, -1)) < int(current.get(field, -1)):
 			return "component_source_revision_stale"
@@ -673,10 +708,12 @@ func _authorization_match_reason(context: Dictionary) -> String:
 		"dbg_source_revision",
 		"asset_source_revision",
 		"batch_source_revision",
+		"contention_source_revision",
 		"track_observation_fingerprint",
 		"dbg_observation_fingerprint",
 		"asset_observation_fingerprint",
 		"batch_observation_fingerprint",
+		"contention_observation_fingerprint",
 		"solar_observation_fingerprint",
 	]:
 		if context.get(field) != current.get(field):
@@ -707,6 +744,9 @@ static func _authorization_context_reason(context: Dictionary) -> String:
 			or not _is_nonnegative_integer(
 				context.get("batch_source_revision")
 			) \
+			or not _is_nonnegative_integer(
+				context.get("contention_source_revision")
+			) \
 			or context.get("asset_source_revision") \
 				!= context.get("batch_source_revision"):
 		return "authorization_component_revision_invalid"
@@ -715,6 +755,7 @@ static func _authorization_context_reason(context: Dictionary) -> String:
 		"dbg_observation_fingerprint",
 		"asset_observation_fingerprint",
 		"batch_observation_fingerprint",
+		"contention_observation_fingerprint",
 		"solar_observation_fingerprint",
 	]:
 		if not CODEC.is_fingerprint(context.get(field)):
@@ -750,6 +791,7 @@ static func _source_binding_reason(
 	var dbg := sources.get("personal_dbg", {}) as Dictionary
 	var assets := sources.get("six_color_assets", {}) as Dictionary
 	var batch := sources.get("card_batch", {}) as Dictionary
+	var contention := sources.get("facility_contention", {}) as Dictionary
 	var solar := sources.get("solar_victory", {}) as Dictionary
 	if track.get("source_revision") != context.get("track_source_revision"):
 		return "track_source_revision_stale"
@@ -759,6 +801,8 @@ static func _source_binding_reason(
 		return "asset_source_revision_stale"
 	if batch.get("state_revision") != context.get("batch_source_revision"):
 		return "batch_source_revision_stale"
+	if contention.get("state_revision") != context.get("contention_source_revision"):
+		return "contention_source_revision_stale"
 	if track.get("projection_fingerprint") \
 			!= context.get("track_observation_fingerprint"):
 		return "track_observation_forged"
@@ -770,6 +814,9 @@ static func _source_binding_reason(
 	if batch.get("projection_fingerprint") \
 			!= context.get("batch_observation_fingerprint"):
 		return "batch_observation_forged"
+	if contention.get("projection_fingerprint") \
+			!= context.get("contention_observation_fingerprint"):
+		return "contention_observation_forged"
 	if CODEC.fingerprint(solar) != context.get("solar_observation_fingerprint"):
 		return "solar_observation_forged"
 	return ""
@@ -819,6 +866,12 @@ static func _source_bundle_reason(sources: Dictionary, viewer_id: String) -> Str
 		return "asset_batch_reservation_mismatch"
 	if assets.get("public_costs") != _public_costs_from_batch(batch):
 		return "asset_batch_cost_mismatch"
+	var contention_reason := _facility_contention_observation_reason(
+		sources.get("facility_contention", {}) as Dictionary,
+		viewer_id
+	)
+	if not contention_reason.is_empty():
+		return contention_reason
 	var solar_reason := _solar_observation_reason(
 		sources.get("solar_victory", {}) as Dictionary
 	)
@@ -834,6 +887,39 @@ static func _source_bundle_reason(sources: Dictionary, viewer_id: String) -> Str
 			) \
 			or _contains_key_recursive(sources, SOURCE_FORBIDDEN_KEYS):
 		return "source_private_field_forbidden"
+	return ""
+
+
+static func _facility_contention_observation_reason(
+	observation: Dictionary,
+	viewer_id: String
+) -> String:
+	if not CODEC.has_exact_fields(observation, CONTENTION_OBSERVATION_FIELDS) \
+			or not CODEC.is_pure_data(observation):
+		return "facility_contention_observation_fields_invalid"
+	if observation.get("schema_version") != 1 \
+			or observation.get("state_version") != 1 \
+			or observation.get("ruleset_id") != RULESET_ID \
+			or observation.get("contract_id") \
+				!= "v073.facility_contention.ai_observation.v1" \
+			or observation.get("viewer_id") != viewer_id \
+			or observation.get("complete_hidden_order_disclosed") != false \
+			or not (observation.get("own_local_queue") is Array) \
+			or not (observation.get("anonymous_public_queue") is Array) \
+			or not (observation.get("public_facility_slots") is Array) \
+			or not (observation.get("resolution_cursor") is int):
+		return "facility_contention_observation_identity_invalid"
+	if not CODEC.is_fingerprint(observation.get("projection_fingerprint")) \
+			or str(observation.get("projection_fingerprint", "")) \
+				!= CODEC.fingerprint(observation, "projection_fingerprint"):
+		return "facility_contention_observation_fingerprint_invalid"
+	for public_entry_variant in observation.get("anonymous_public_queue") as Array:
+		if not (public_entry_variant is Dictionary):
+			return "facility_contention_public_queue_invalid"
+		var public_entry := public_entry_variant as Dictionary
+		if public_entry.has("actor_id") or public_entry.has("owner_id") \
+				or public_entry.has("target_slot_id"):
+			return "facility_contention_public_owner_or_target_disclosed"
 	return ""
 
 
