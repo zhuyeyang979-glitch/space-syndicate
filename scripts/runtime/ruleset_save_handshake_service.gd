@@ -1,6 +1,7 @@
 extends Node
 class_name RulesetSaveHandshakeService
 
+const CLOSED_SCALAR_CODEC := preload("res://scripts/runtime/closed_save_scalar_codec_v1.gd")
 const LEGACY_V04_SAVE_VERSION := 1
 const V05_SAVE_VERSION := 2
 const V06_SAVE_VERSION := 3
@@ -607,20 +608,18 @@ func _decode_codec_value(value: Variant) -> Dictionary:
 
 
 func _float64_bits(value: float) -> String:
-	var bytes := PackedByteArray()
-	bytes.resize(8)
-	bytes.encode_double(0, value)
-	return bytes.hex_encode()
+	return CLOSED_SCALAR_CODEC.f64_bits_hex(value)
 
 
 func _decode_float64_bits(bits: String) -> Dictionary:
-	if bits.length() != 16:
-		return {"ok": false, "reason_code": "codec_float64_bits_invalid"}
-	var bytes := bits.hex_decode()
-	if bytes.size() != 8 or bytes.hex_encode() != bits.to_lower():
-		return {"ok": false, "reason_code": "codec_float64_bits_invalid"}
-	var value := bytes.decode_double(0)
-	return {"ok": is_finite(value), "reason_code": "codec_float64_valid" if is_finite(value) else "codec_float64_nonfinite", "value": value}
+	var decoded := CLOSED_SCALAR_CODEC.decode_f64_bits_hex(bits.to_lower())
+	return {
+		"ok": bool(decoded.get("ok", false)),
+		"reason_code": "codec_float64_valid" if bool(decoded.get("ok", false)) \
+				else "codec_float64_nonfinite" if str(decoded.get("reason_code", "")) == "f64_nonfinite_rejected" \
+				else "codec_float64_bits_invalid",
+		"value": decoded.get("value", 0.0),
+	}
 
 
 func _is_encoded_pure_data(value: Variant) -> bool:
