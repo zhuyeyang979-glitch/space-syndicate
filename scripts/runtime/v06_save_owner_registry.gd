@@ -9,6 +9,16 @@ const CaptureFailureScript := preload("res://scripts/runtime/save_owner_capture_
 
 const REGISTRY_ID := "v06_save_owner_registry"
 const REGISTRY_VERSION := 2
+const BINDING_CONTRACT_ID := "v06_save_owner_registry.binding_contract.v1"
+const BINDING_CONTRACT_SCHEMA_VERSION := 1
+const CHECKPOINT_STRATEGY_EXPLICIT_OWNER_METHOD := "explicit_owner_method"
+const CHECKPOINT_STRATEGY_REGISTRY_MANAGED := "registry_managed_checkpoint"
+const CHECKPOINT_STRATEGY_OWNER_INTERNAL := "owner_internal_transaction_checkpoint"
+const CHECKPOINT_STRATEGIES := [
+	CHECKPOINT_STRATEGY_EXPLICIT_OWNER_METHOD,
+	CHECKPOINT_STRATEGY_REGISTRY_MANAGED,
+	CHECKPOINT_STRATEGY_OWNER_INTERNAL,
+]
 const SECTION_WRAPPER_KEYS := ["schema_version", "owner_id", "owner_state"]
 const PUBLIC_OPERATIONS := ["capture", "preflight", "apply"]
 const PUBLIC_REASON_CODES := [
@@ -98,6 +108,53 @@ const RESTORE_DAG_NODE_ORDER := [
 	"commodity_belt_visibility",
 	"session_tail",
 ]
+const RESTORE_DAG_DEPENDENCIES := {
+	"ruleset": [],
+	"session_foundation": ["ruleset"],
+	"region_infrastructure": ["session_foundation"],
+	"region_supply": ["region_infrastructure"],
+	"commodity_flow": ["region_infrastructure"],
+	"player_mana": ["session_foundation"],
+	"card_inventory": ["region_supply", "player_mana"],
+	"player_organization": ["session_foundation"],
+	"monsters": ["region_infrastructure", "card_inventory"],
+	"military": ["region_infrastructure", "card_inventory", "monsters"],
+	"weather": ["region_infrastructure"],
+	"card_resolution_queue": [
+		"region_infrastructure",
+		"player_mana",
+		"card_inventory",
+	],
+	"card_resolution_execution": [
+		"card_resolution_queue",
+		"player_mana",
+		"commodity_flow",
+	],
+	"card_resolution_history": ["card_resolution_execution"],
+	"ai": ["card_inventory", "card_resolution_history"],
+	"bankruptcy_neutral_estate": [
+		"region_infrastructure",
+		"commodity_flow",
+		"player_mana",
+		"card_inventory",
+		"monsters",
+		"military",
+	],
+	"victory_control": [
+		"region_infrastructure",
+		"commodity_flow",
+		"bankruptcy_neutral_estate",
+	],
+	"routes": ["region_infrastructure", "weather"],
+	"commodity_belt_visibility": ["card_inventory"],
+	"session_tail": [
+		"card_resolution_history",
+		"ai",
+		"victory_control",
+		"routes",
+		"commodity_belt_visibility",
+	],
+}
 
 @export var handshake_path: NodePath
 @export var restore_barrier_path: NodePath
@@ -145,6 +202,132 @@ func restore_dag_node_order() -> Array[String]:
 	for node_id in RESTORE_DAG_NODE_ORDER:
 		result.append(str(node_id))
 	return result
+
+
+func registry_binding_contract_v1() -> Dictionary:
+	var analysis := _registry_analysis()
+	var binding_by_section: Dictionary = analysis.get("binding_by_section", {})
+	var handshake := _handshake_node()
+	var manifest: Dictionary = _call_dictionary(handshake, "required_section_manifest")
+	var restore_dag := _registry_binding_restore_dag_v1()
+	var errors: Array[String] = []
+	var rows: Array[Dictionary] = []
+	var configured_section_order: Array[String] = []
+	var strategy_counts := {
+		CHECKPOINT_STRATEGY_EXPLICIT_OWNER_METHOD: 0,
+		CHECKPOINT_STRATEGY_REGISTRY_MANAGED: 0,
+		CHECKPOINT_STRATEGY_OWNER_INTERNAL: 0,
+	}
+	var owner_without_checkpoint_or_rollback_semantics_count := 0
+	for binding in bindings:
+		configured_section_order.append(binding.section_id if binding != null else "")
+	if configured_section_order != fixed_section_order():
+		errors.append("binding_order_mismatch")
+	if not _registry_binding_restore_dag_valid_v1(restore_dag):
+		errors.append("restore_dag_invalid")
+	for section_index in range(FIXED_SECTION_ORDER.size()):
+		var section_id := str(FIXED_SECTION_ORDER[section_index])
+		var binding := binding_by_section.get(section_id) as BindingScript
+		if binding == null:
+			errors.append("binding_missing:%s" % section_id)
+			continue
+		var owner := get_node_or_null(binding.owner_path)
+		var strategy := _registry_binding_checkpoint_strategy_v1(binding)
+		var checkpoint_method_present := not binding.checkpoint_method.strip_edges().is_empty()
+		var capture_method_exists := owner != null and not binding.capture_method.is_empty() \
+			and owner.has_method(binding.capture_method)
+		var preflight_method_exists := owner != null and (binding.preflight_method.is_empty() \
+			or owner.has_method(binding.preflight_method))
+		var apply_method_exists := owner != null and not binding.apply_method.is_empty() \
+			and owner.has_method(binding.apply_method)
+		var checkpoint_method_exists := owner != null and checkpoint_method_present \
+			and owner.has_method(binding.checkpoint_method)
+		var rollback_method_exists := owner != null and not binding.rollback_method.is_empty() \
+			and owner.has_method(binding.rollback_method)
+		var strategy_valid := _registry_binding_checkpoint_strategy_valid_v1(
+			strategy,
+			checkpoint_method_present,
+			capture_method_exists,
+			checkpoint_method_exists,
+			rollback_method_exists
+		)
+		var manifest_contract: Dictionary = manifest.get(section_id, {}) \
+			if manifest.get(section_id, {}) is Dictionary else {}
+		var state_version_valid := binding.state_version > 0 \
+			and str(manifest_contract.get("owner_id", "")) == binding.owner_id \
+			and int(manifest_contract.get("state_version", 0)) == binding.state_version
+		var restore_nodes := _registry_binding_restore_nodes_v1(section_id, restore_dag)
+		var row_valid := binding.is_transactional() \
+			and owner != null \
+			and capture_method_exists \
+			and preflight_method_exists \
+			and apply_method_exists \
+			and rollback_method_exists \
+			and strategy_valid \
+			and state_version_valid \
+			and not restore_nodes.is_empty()
+		if CHECKPOINT_STRATEGIES.has(strategy):
+			strategy_counts[strategy] = int(strategy_counts.get(strategy, 0)) + 1
+		if not strategy_valid or not rollback_method_exists:
+			owner_without_checkpoint_or_rollback_semantics_count += 1
+		if not row_valid:
+			errors.append("binding_contract_invalid:%s" % section_id)
+		var row := {
+			"section_index": section_index,
+			"section_id": binding.section_id,
+			"owner_id": binding.owner_id,
+			"owner_path": str(binding.owner_path),
+			"state_version": binding.state_version,
+			"restore_mode": binding.restore_mode,
+			"capture_method": binding.capture_method,
+			"preflight_method": binding.preflight_method,
+			"apply_method": binding.apply_method,
+			"checkpoint_method_present": checkpoint_method_present,
+			"checkpoint_method": binding.checkpoint_method,
+			"rollback_method": binding.rollback_method,
+			"checkpoint_strategy": strategy,
+			"checkpoint_source_method": binding.checkpoint_method \
+				if strategy == CHECKPOINT_STRATEGY_EXPLICIT_OWNER_METHOD else binding.capture_method,
+			"restore_nodes": restore_nodes,
+			"dependencies": _registry_binding_dependency_ids_v1(restore_nodes),
+			"owner_node_present": owner != null,
+			"capture_method_exists": capture_method_exists,
+			"preflight_method_exists": preflight_method_exists,
+			"apply_method_exists": apply_method_exists,
+			"checkpoint_method_exists": checkpoint_method_exists,
+			"rollback_method_exists": rollback_method_exists,
+			"checkpoint_strategy_valid": strategy_valid,
+			"state_version_valid": state_version_valid,
+			"checkpoint_captured_before_any_apply": true,
+			"rollback_invoked_by_registry": true,
+			"rollback_order": "reverse_restore_dag",
+			"post_rollback_exact_recapture_required": true,
+			"method_contract_source": "V06SaveOwnerRegistry._capture_owner_checkpoint/_rollback_sections",
+			"valid": row_valid,
+		}
+		row["binding_contract_fingerprint"] = _registry_binding_contract_fingerprint_v1(row)
+		rows.append(row)
+	errors = _unique_sorted_strings(errors)
+	return {
+		"schema_version": BINDING_CONTRACT_SCHEMA_VERSION,
+		"contract_id": BINDING_CONTRACT_ID,
+		"registry_id": REGISTRY_ID,
+		"registry_version": REGISTRY_VERSION,
+		"valid": bool(analysis.get("valid", false)) and errors.is_empty(),
+		"reason_code": "registry_binding_contract_valid" \
+			if bool(analysis.get("valid", false)) and errors.is_empty() \
+			else "registry_binding_contract_invalid",
+		"binding_count": rows.size(),
+		"configured_section_order": configured_section_order,
+		"fixed_section_order": fixed_section_order(),
+		"restore_dag_node_order": restore_dag_node_order(),
+		"restore_dag": restore_dag,
+		"checkpoint_strategies": CHECKPOINT_STRATEGIES.duplicate(),
+		"checkpoint_strategy_counts": strategy_counts,
+		"owner_without_checkpoint_or_rollback_semantics_count": owner_without_checkpoint_or_rollback_semantics_count,
+		"bindings": rows,
+		"errors": errors,
+	}
 
 
 func registry_snapshot() -> Dictionary:
@@ -1704,6 +1887,102 @@ func _same_encoded_state(left: Variant, right: Variant) -> bool:
 	var left_canonical := str(handshake.call("canonical_json", left))
 	var right_canonical := str(handshake.call("canonical_json", right))
 	return not left_canonical.is_empty() and left_canonical == right_canonical
+
+
+func _registry_binding_checkpoint_strategy_v1(binding: BindingScript) -> String:
+	if binding == null or not binding.is_transactional():
+		return ""
+	if not binding.checkpoint_method.strip_edges().is_empty():
+		return CHECKPOINT_STRATEGY_EXPLICIT_OWNER_METHOD
+	if not binding.capture_method.strip_edges().is_empty() \
+			and not binding.rollback_method.strip_edges().is_empty():
+		return CHECKPOINT_STRATEGY_REGISTRY_MANAGED
+	return ""
+
+
+func _registry_binding_checkpoint_strategy_valid_v1(
+	strategy: String,
+	checkpoint_method_present: bool,
+	capture_method_exists: bool,
+	checkpoint_method_exists: bool,
+	rollback_method_exists: bool
+) -> bool:
+	match strategy:
+		CHECKPOINT_STRATEGY_EXPLICIT_OWNER_METHOD:
+			return checkpoint_method_present and checkpoint_method_exists and rollback_method_exists
+		CHECKPOINT_STRATEGY_REGISTRY_MANAGED:
+			return not checkpoint_method_present and capture_method_exists and rollback_method_exists
+		CHECKPOINT_STRATEGY_OWNER_INTERNAL:
+			return not checkpoint_method_present and rollback_method_exists
+		_:
+			return false
+
+
+func _registry_binding_restore_dag_v1() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for node_index in range(RESTORE_DAG_NODE_ORDER.size()):
+		var node_id := str(RESTORE_DAG_NODE_ORDER[node_index])
+		var dependencies: Array[String] = []
+		dependencies.assign(RESTORE_DAG_DEPENDENCIES.get(node_id, []))
+		result.append({
+			"node_index": node_index,
+			"node_id": node_id,
+			"section_id": "session" if node_id in ["session_foundation", "session_tail"] else node_id,
+			"dependencies": dependencies,
+		})
+	return result
+
+
+func _registry_binding_restore_dag_valid_v1(restore_dag: Array[Dictionary]) -> bool:
+	if restore_dag.size() != RESTORE_DAG_NODE_ORDER.size():
+		return false
+	var seen_nodes: Dictionary = {}
+	for node_index in range(restore_dag.size()):
+		var node: Dictionary = restore_dag[node_index]
+		var node_id := str(node.get("node_id", ""))
+		var section_id := str(node.get("section_id", ""))
+		var dependencies: Array = node.get("dependencies", []) as Array
+		if node_id != str(RESTORE_DAG_NODE_ORDER[node_index]) \
+				or int(node.get("node_index", -1)) != node_index \
+				or seen_nodes.has(node_id) \
+				or section_id not in FIXED_SECTION_ORDER:
+			return false
+		if dependencies != RESTORE_DAG_DEPENDENCIES.get(node_id, []):
+			return false
+		for dependency_variant in dependencies:
+			if not seen_nodes.has(str(dependency_variant)):
+				return false
+		seen_nodes[node_id] = true
+	return true
+
+
+func _registry_binding_restore_nodes_v1(
+	section_id: String,
+	restore_dag: Array[Dictionary]
+) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for node in restore_dag:
+		if str(node.get("section_id", "")) == section_id:
+			result.append(node.duplicate(true))
+	return result
+
+
+func _registry_binding_dependency_ids_v1(restore_nodes: Array[Dictionary]) -> Array[String]:
+	var result: Array[String] = []
+	for node in restore_nodes:
+		for dependency_variant in node.get("dependencies", []) as Array:
+			var dependency_id := str(dependency_variant)
+			if not result.has(dependency_id):
+				result.append(dependency_id)
+	return result
+
+
+func _registry_binding_contract_fingerprint_v1(row: Dictionary) -> String:
+	var handshake := _handshake_node()
+	if handshake == null or not handshake.has_method("canonical_json"):
+		return ""
+	var canonical := str(handshake.call("canonical_json", row))
+	return canonical.sha256_text() if not canonical.is_empty() else ""
 
 
 func _registry_analysis() -> Dictionary:
