@@ -444,7 +444,7 @@ func _test_markdown() -> void:
 		var section := markdown.substr(start, finish - start)
 		for label in [
 			"**V0.6 current owner:**",
-			"**V0.7 target owner:**",
+			"**V0.7.1 target owner:**",
 			"**Core port:**",
 			"**AI port:**",
 			"**Player port:**",

@@ -244,7 +244,7 @@ func _test_manifest_detachment(manifest: Dictionary) -> void:
 	var connection_values: Array = []
 	_collect_values_for_keys(manifest, PRODUCTION_CONNECTION_KEYS, connection_values)
 	for value in connection_values:
-		_expect(value is int and int(value) == 0,
+		_expect((value is int or value is float) and float(value) == 0.0,
 			"every manifest production connection count is zero")
 	_expect(
 		str(manifest.get("status", "")) == "V071_DETACHED_ADAPTER_PREFLIGHT_READY"
