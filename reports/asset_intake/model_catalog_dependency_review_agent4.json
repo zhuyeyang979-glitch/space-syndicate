@@ -2,6 +2,7 @@
   "schema_version": 1,
   "task_id": "COMMERCIAL_ART_MODEL_CATALOG_DEPENDENCY_REVIEW_AGENT4_PHASE2",
   "status": "PARTIAL",
+  "MODEL_DEPENDENCY_STATUS": "CLEAN",
   "generated_at_utc": "2026-07-31T23:30:49.453742+00:00",
   "snapshot": {
     "branch": "codex/commercial-art-direct-integration-2e38764",
@@ -20,7 +21,7 @@
     ]
   },
   "dependency_closure": {
-    "method": "Parse 17 stable PackedScene text resources recursively, follow ext_resource PackedScene/glTF edges, then parse glTF buffer and image URIs with JSON.",
+    "method": "Parse 17 stable PackedScene text resources recursively, follow ext_resource PackedScene/glTF edges, parse glTF buffer and image URIs with JSON, and retain additional dependencies proven by real Godot resource loading.",
     "stable_scene_count": 17,
     "stable_scenes": [
       {
@@ -455,14 +456,16 @@
     "external_image_edge_count": 83,
     "embedded_buffer_gltf_count": 13,
     "embedded_image_gltf_count": 13,
-    "runtime_dependency_file_count": 78,
-    "godot_import_sidecar_file_count": 60,
+    "runtime_dependency_file_count": 91,
+    "godot_import_sidecar_file_count": 73,
     "license_evidence_file_count": 5,
-    "closure_or_evidence_file_count": 143,
+    "closure_or_evidence_file_count": 169,
     "tracked_model_file_count": 169,
     "tracked_model_bytes": 125219889,
     "classified_once_coverage": "169/169",
-    "classification_ledger_sha256": "817ce530d2e29bc31b3e27a80803a45f0abcfda5ab1894844146469da34cee0f",
+    "classification_ledger_sha256": "cafb86537f00152a25644a2ceecddb63f8dfe613feab7bc625e948ea33df9534",
+    "classification_ledger_canonicalization": "Sort every classification/path pair by classification then path, encode each as classification<TAB>path, join with LF, append a final LF, and hash UTF-8 bytes without BOM using SHA-256.",
+    "pre_correction_classification_ledger_sha256": "817ce530d2e29bc31b3e27a80803a45f0abcfda5ab1894844146469da34cee0f",
     "missing_dependency_paths": [],
     "files_by_classification": {
       "license_evidence": [
@@ -550,7 +553,20 @@
         "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle.gltf",
         "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen.gltf",
         "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake.gltf",
-        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker.gltf"
+        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker.gltf",
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png",
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela_Leela_Texture.png",
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike_Mike_Texture.png",
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan_Stan_Texture.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Armabee_Evolved_Atlas_Monsters.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Dragon_Evolved_Atlas_Monsters.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Ghost_Skull_Atlas_Monsters.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose_Atlas_Monsters.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull_Atlas_Monsters.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle_Atlas_Monsters.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen_Omen_Orange.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png"
       ],
       "godot_import_sidecar_for_runtime_dependency": [
         "assets/third_party/commercial/models/quaternius/animated_mech/gltf/George.gltf.import",
@@ -612,24 +628,7 @@
         "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle.gltf.import",
         "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen.gltf.import",
         "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake.gltf.import",
-        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker.gltf.import"
-      ],
-      "unused_not_in_dependency_closure": [
-        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png",
-        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela_Leela_Texture.png",
-        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike_Mike_Texture.png",
-        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan_Stan_Texture.png",
-        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Armabee_Evolved_Atlas_Monsters.png",
-        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Dragon_Evolved_Atlas_Monsters.png",
-        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Ghost_Skull_Atlas_Monsters.png",
-        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose_Atlas_Monsters.png",
-        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull_Atlas_Monsters.png",
-        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle_Atlas_Monsters.png",
-        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen_Omen_Orange.png",
-        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png",
-        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png"
-      ],
-      "unused_import_sidecar": [
+        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker.gltf.import",
         "assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png.import",
         "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela_Leela_Texture.png.import",
         "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike_Mike_Texture.png.import",
@@ -643,56 +642,41 @@
         "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen_Omen_Orange.png.import",
         "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png.import",
         "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png.import"
-      ]
+      ],
+      "unused_not_in_dependency_closure": [],
+      "unused_import_sidecar": []
     },
     "classification_counts": {
-      "godot_import_sidecar_for_runtime_dependency": 60,
+      "godot_import_sidecar_for_runtime_dependency": 73,
       "license_evidence": 5,
-      "runtime_dependency": 78,
-      "unused_import_sidecar": 13,
-      "unused_not_in_dependency_closure": 13
+      "runtime_dependency": 91,
+      "unused_import_sidecar": 0,
+      "unused_not_in_dependency_closure": 0
     },
     "classification_bytes": {
-      "godot_import_sidecar_for_runtime_dependency": 67881,
+      "godot_import_sidecar_for_runtime_dependency": 82269,
       "license_evidence": 2764,
-      "runtime_dependency": 108799033,
-      "unused_import_sidecar": 14388,
-      "unused_not_in_dependency_closure": 16335823
+      "runtime_dependency": 125134856,
+      "unused_import_sidecar": 0,
+      "unused_not_in_dependency_closure": 0
     },
-    "unused_file_count": 26,
-    "safe_delete_path_count": 26,
-    "safe_delete_bytes": 16350211,
-    "safe_delete_paths": [
-      "assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png",
-      "assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png.import",
-      "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela_Leela_Texture.png",
-      "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela_Leela_Texture.png.import",
-      "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike_Mike_Texture.png",
-      "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike_Mike_Texture.png.import",
-      "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan_Stan_Texture.png",
-      "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan_Stan_Texture.png.import",
-      "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Armabee_Evolved_Atlas_Monsters.png",
-      "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Armabee_Evolved_Atlas_Monsters.png.import",
-      "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Dragon_Evolved_Atlas_Monsters.png",
-      "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Dragon_Evolved_Atlas_Monsters.png.import",
-      "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Ghost_Skull_Atlas_Monsters.png",
-      "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Ghost_Skull_Atlas_Monsters.png.import",
-      "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose_Atlas_Monsters.png",
-      "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose_Atlas_Monsters.png.import",
-      "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull_Atlas_Monsters.png",
-      "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull_Atlas_Monsters.png.import",
-      "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle_Atlas_Monsters.png",
-      "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle_Atlas_Monsters.png.import",
-      "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen_Omen_Orange.png",
-      "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen_Omen_Orange.png.import",
-      "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png",
-      "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png.import",
-      "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png",
-      "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png.import"
-    ],
+    "unused_file_count": 0,
+    "safe_delete_path_count": 0,
+    "safe_delete_bytes": 0,
+    "safe_delete_paths": [],
     "safe_delete_nonself_text_reference_count": 0,
-    "safe_delete_reason": "Each of the 13 selected animated/monster/ship glTF files embeds its image and buffer. The parallel exported PNG is not a glTF URI, scene ext_resource, Catalog resource, or non-self text reference; its .import sidecar is therefore also outside the closure.",
-    "deletion_performed": false
+    "safe_delete_reason": "None. Real Godot resource loading proved that all 13 texture PNG files and all 13 matching .import sidecars are runtime import dependencies. Static glTF URI inspection was insufficient to determine Godot importer dependencies.",
+    "deletion_performed": false,
+    "runtime_import_correction": {
+      "previous_conclusion_corrected": true,
+      "previously_misclassified_texture_count": 13,
+      "previously_misclassified_import_sidecar_count": 13,
+      "previously_misclassified_path_count": 26,
+      "real_godot_loading_proved_required": true,
+      "all_26_paths_restored_and_present": true,
+      "asset_deletion_performed": false,
+      "MODEL_DEPENDENCY_STATUS": "CLEAN"
+    }
   },
   "catalog_review": {
     "catalog_validation_green": true,
@@ -957,7 +941,7 @@
     "uncompressed_rgba_reference_bytes": 120317952,
     "uncompressed_rgba_reference_would_exceed_budget": true,
     "estimate_caveat": "The budget estimate uses 116 existing repository QA PNGs with 16:9 dimensions of at least 1280x700. Actual screenshots must be byte-gated after capture; raw framebuffer bytes are not a PNG-size prediction.",
-    "safe_delete_recovery_not_applied_bytes": 16350211
+    "misclassified_runtime_dependency_bytes_retained": 16350211
   },
   "findings": [
     {
@@ -968,9 +952,10 @@
     },
     {
       "severity": "low",
-      "code": "redundant_embedded_texture_exports",
-      "detail": "Thirteen extracted PNG files and their thirteen .import sidecars are outside the recursive model dependency closure and can recover 16,350,211 bytes.",
-      "recommended_owner": "Main agent after reviewing exact paths"
+      "code": "runtime_import_dependency_misclassification_corrected",
+      "detail": "Real Godot loading disproved the static safe-delete conclusion. The thirteen texture PNG files and thirteen matching .import sidecars are runtime import dependencies; all 26 are restored, retained, and included in the corrected dependency closure.",
+      "resolution_status": "resolved",
+      "recommended_owner": "none"
     }
   ],
   "boundaries": {

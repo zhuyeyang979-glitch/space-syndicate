@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/ui/game_screen.gd" id="2_game_screen"]
@@ -15,6 +15,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/table/NonBlockingToastSurface.tscn" id="17_public_toast"]
 [ext_resource type="PackedScene" path="res://scenes/ui/table/ExpandablePublicHistorySurface.tscn" id="18_public_history"]
 [ext_resource type="PackedScene" path="res://scenes/ui/table/ContextDetailDrawer.tscn" id="19_context_detail"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/CommercialAudioPresentationHost.tscn" id="20_commercial_audio"]
 
 [node name="GameScreen" type="Control"]
 layout_mode = 3
@@ -165,4 +166,7 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="OverlayLayer" parent="." instance=ExtResource("8_overlay")]
+unique_name_in_owner = true
+
+[node name="CommercialAudioPresentationHost" parent="." instance=ExtResource("20_commercial_audio")]
 unique_name_in_owner = true

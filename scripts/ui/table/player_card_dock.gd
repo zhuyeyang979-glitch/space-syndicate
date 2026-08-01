@@ -7,6 +7,7 @@ signal card_hovered(card_data: Dictionary)
 signal card_unhovered
 signal card_unselected(card_data: Dictionary)
 signal card_target_selection_requested(card_data: Dictionary)
+signal presentation_audio_event_requested(event_id: String, payload: Dictionary)
 signal game_action_offer_requested(
 	offer: Dictionary,
 	submission_kind: String,
@@ -18,6 +19,12 @@ const CARD_FACE_SCENE := preload("res://scenes/ui/CardFace.tscn")
 const PERFORMANCE_SAMPLE_LIMIT := 128
 const PROJECTION := preload("res://scripts/presentation/player_card_dock_projection_v1.gd")
 const OFFER := preload("res://scripts/semantic/game_action_offer_v1.gd")
+const HOVER_SCALE := 1.08
+const HOVER_LIFT_PIXELS := 28.0
+const HOVER_DURATION_SECONDS := 0.12
+const DRAG_DEADZONE_PIXELS := 8.0
+const DRAG_LIFT_DURATION_SECONDS := 0.11
+const DRAG_MAX_TILT_RADIANS := deg_to_rad(4.0)
 
 @onready var capacity_summary: Label = %CardDockCapacitySummary
 @onready var bound_title: Label = %BoundActionTitle
@@ -43,6 +50,15 @@ var _stale_count := 0
 var _conflict_count := 0
 var _last_signature := ""
 var _render_usec_samples: Array[int] = []
+var _visual_tweens: Dictionary = {}
+var _local_order_by_pool: Dictionary = {}
+var _pointer_card: Control = null
+var _pointer_pool_id := StringName()
+var _pointer_press_global_position := Vector2.ZERO
+var _pointer_origin_index := -1
+var _pointer_dragging := false
+var _local_reorder_count := 0
+var _invalid_drag_bounce_count := 0
 
 
 func apply_projection(value: Dictionary) -> bool:
@@ -183,6 +199,14 @@ func debug_snapshot() -> Dictionary:
 		"target_selection_identity": _target_selection_identity,
 		"target_selection_summary": _target_selection_summary,
 		"action_entry_count": 1,
+		"hover_scale": HOVER_SCALE,
+		"hover_lift_pixels": HOVER_LIFT_PIXELS,
+		"hover_duration_ms": int(HOVER_DURATION_SECONDS * 1000.0),
+		"drag_deadzone_pixels": DRAG_DEADZONE_PIXELS,
+		"drag_lift_duration_ms": int(DRAG_LIFT_DURATION_SECONDS * 1000.0),
+		"drag_max_tilt_degrees": rad_to_deg(DRAG_MAX_TILT_RADIANS),
+		"local_reorder_count": _local_reorder_count,
+		"invalid_drag_bounce_count": _invalid_drag_bounce_count,
 		"commodity_inventory_render_p95_ms": _p95_milliseconds(_render_usec_samples),
 		"commodity_inventory_render_sample_count": _render_usec_samples.size(),
 		"mutates_gameplay": false,
@@ -235,8 +259,9 @@ func _render_projection() -> void:
 
 func _render_pool(pool_id: StringName, rows: Array, host: HBoxContainer) -> void:
 	var desired: Dictionary = {}
-	for index in range(rows.size()):
-		var row_variant: Variant = rows[index]
+	var ordered_rows := _rows_in_local_order(pool_id, rows)
+	for index in range(ordered_rows.size()):
+		var row_variant: Variant = ordered_rows[index]
 		var row := row_variant as Dictionary
 		var identity := _card_identity(pool_id, row)
 		if identity.is_empty():
@@ -274,13 +299,20 @@ func _create_card_node(pool_id: StringName, identity: String) -> Control:
 	card.focus_mode = Control.FOCUS_ALL
 	card.set_meta("player_card_dock_pool", pool_id)
 	card.set_meta("player_card_dock_identity", identity)
+	card.set_meta("commercial_hovered", false)
+	card.set_meta("commercial_focused", false)
+	card.set_meta("commercial_dragging", false)
 	if card.has_signal("card_clicked"):
 		card.connect("card_clicked", _on_card_clicked.bind(pool_id, card))
 	if card.has_signal("card_double_clicked"):
 		card.connect("card_double_clicked", _on_card_double_clicked.bind(pool_id, card))
 	card.mouse_entered.connect(_on_card_hovered.bind(pool_id, card))
-	card.mouse_exited.connect(_on_card_unhovered)
+	card.mouse_exited.connect(_on_card_unhovered.bind(pool_id, card))
+	card.focus_entered.connect(_on_card_focus_entered.bind(pool_id, card))
+	card.focus_exited.connect(_on_card_focus_exited.bind(pool_id, card))
 	card.gui_input.connect(_on_card_gui_input.bind(pool_id, card))
+	card.resized.connect(_sync_card_pivot.bind(card))
+	call_deferred("_sync_card_rest_position", card)
 	return card
 
 
@@ -302,6 +334,7 @@ func _card_face_data(pool_id: StringName, row: Dictionary) -> Dictionary:
 		"effect": effect,
 		"summary": effect,
 		"presentation": "dock_mini",
+		"card_frame_key": _frame_key_for_pool(pool_id),
 		"play_state": "available" if _card_available(pool_id, row) else "disabled",
 		"block_reason": str(row.get(
 			"disabled_reason_text",
@@ -331,6 +364,7 @@ func _on_card_clicked(_face_data: Dictionary, pool_id: StringName, card: Control
 		if identity == _target_selection_identity:
 			cancel_target_selection()
 		card_unselected.emit(_card_face_data(pool_id, row))
+		_request_presentation_audio("ui.cancel")
 		feedback.clear_feedback()
 	else:
 		if pool_id != &"commodity_cards":
@@ -338,6 +372,7 @@ func _on_card_clicked(_face_data: Dictionary, pool_id: StringName, card: Control
 		_selected_identity = identity
 		var data := _card_face_data(pool_id, row)
 		card_selected.emit(data)
+		_request_presentation_audio("card.select")
 		feedback.show_card_snapshot(pool_id, row)
 	_sync_selection_visuals()
 
@@ -357,20 +392,60 @@ func _on_card_hovered(pool_id: StringName, card: Control) -> void:
 	var row := _row_for_card(card)
 	if row.is_empty():
 		return
+	card.set_meta("commercial_hovered", true)
+	_apply_card_interaction_state(pool_id, card, row)
+	if not bool(card.get_meta("commercial_dragging", false)):
+		_animate_card(card, true, false)
 	var data := _card_face_data(pool_id, row)
 	card_hovered.emit(data)
+	_request_presentation_audio("ui.hover")
 	feedback.show_card_snapshot(pool_id, row)
 
 
-func _on_card_unhovered() -> void:
+func _on_card_unhovered(pool_id: StringName, card: Control) -> void:
+	card.set_meta("commercial_hovered", false)
+	var row := _row_for_card(card)
+	_apply_card_interaction_state(pool_id, card, row)
+	if not bool(card.get_meta("commercial_dragging", false)) \
+			and not bool(card.get_meta("commercial_focused", false)):
+		_animate_card(card, false, false)
 	card_unhovered.emit()
 	if _selected_identity.is_empty():
 		feedback.clear_feedback()
 
 
+func _on_card_focus_entered(pool_id: StringName, card: Control) -> void:
+	card.set_meta("commercial_focused", true)
+	_apply_card_interaction_state(pool_id, card, _row_for_card(card))
+	if not bool(card.get_meta("commercial_dragging", false)):
+		_animate_card(card, true, false)
+	_request_presentation_audio("ui.hover")
+
+
+func _on_card_focus_exited(pool_id: StringName, card: Control) -> void:
+	card.set_meta("commercial_focused", false)
+	_apply_card_interaction_state(pool_id, card, _row_for_card(card))
+	if not bool(card.get_meta("commercial_dragging", false)) \
+			and not bool(card.get_meta("commercial_hovered", false)):
+		_animate_card(card, false, false)
+
+
 func _on_card_gui_input(event: InputEvent, pool_id: StringName, card: Control) -> void:
 	var row := _row_for_card(card)
-	if row.is_empty() or event == null or not event.is_action_pressed("ui_accept"):
+	if row.is_empty() or event == null:
+		return
+	if event is InputEventMouseButton:
+		var mouse_button := event as InputEventMouseButton
+		if mouse_button.button_index == MOUSE_BUTTON_LEFT:
+			if mouse_button.pressed:
+				_begin_pointer_interaction(pool_id, card, mouse_button.global_position)
+			else:
+				_finish_pointer_interaction(mouse_button.global_position)
+			return
+	if event is InputEventMouseMotion and _pointer_card == card:
+		_update_pointer_interaction((event as InputEventMouseMotion).global_position)
+		return
+	if not event.is_action_pressed("ui_accept"):
 		return
 	var key_event := event as InputEventKey
 	if key_event != null and key_event.echo:
@@ -425,13 +500,10 @@ func _submit_offer(pool_id: StringName, row: Dictionary, submission_kind: String
 
 func _sync_selection_visuals() -> void:
 	for card in _card_nodes:
-		if card != null and card.has_method("set_interaction_state"):
+		if card != null:
 			var pool_id := StringName(str(card.get_meta("player_card_dock_pool", "")))
 			var row := _row_for_card(card)
-			card.call("set_interaction_state", {
-				"selected": str(card.get_meta("player_card_dock_identity", "")) == _selected_identity,
-				"disabled": not _card_available(pool_id, row),
-			})
+			_apply_card_interaction_state(pool_id, card, row)
 
 
 func _card_available(pool_id: StringName, row: Dictionary) -> bool:
@@ -494,6 +566,12 @@ func _pool_node_count(host: HBoxContainer) -> int:
 
 
 func _clear_cards() -> void:
+	_cancel_pointer_interaction()
+	for tween_variant in _visual_tweens.values():
+		var tween := tween_variant as Tween
+		if tween != null and tween.is_valid():
+			tween.kill()
+	_visual_tweens.clear()
 	_card_nodes.clear()
 	_card_node_by_identity.clear()
 	for host in [bound_cards, normal_cards, commodity_cards]:
@@ -523,3 +601,210 @@ func _refresh_card_node_cache() -> void:
 		for child in host.get_children():
 			if child is Control:
 				_card_nodes.append(child as Control)
+
+
+func _frame_key_for_pool(pool_id: StringName) -> String:
+	match pool_id:
+		&"normal_cards":
+			return "card.frame.normal"
+		&"commodity_cards":
+			return "card.frame.commodity"
+		&"bound_actions":
+			return "card.frame.bound_action"
+	return ""
+
+
+func _rows_in_local_order(pool_id: StringName, rows: Array) -> Array:
+	var row_by_identity: Dictionary = {}
+	var projection_order: Array[String] = []
+	for row_variant in rows:
+		if not (row_variant is Dictionary):
+			continue
+		var row := row_variant as Dictionary
+		var identity := _card_identity(pool_id, row)
+		if identity.is_empty():
+			continue
+		row_by_identity[identity] = row
+		projection_order.append(identity)
+	var result: Array = []
+	var resolved_order: Array[String] = []
+	var stored_order: Array = _local_order_by_pool.get(str(pool_id), []) as Array
+	for identity_variant in stored_order:
+		var identity := str(identity_variant)
+		if not row_by_identity.has(identity):
+			continue
+		result.append(row_by_identity[identity])
+		resolved_order.append(identity)
+		row_by_identity.erase(identity)
+	for identity in projection_order:
+		if not row_by_identity.has(identity):
+			continue
+		result.append(row_by_identity[identity])
+		resolved_order.append(identity)
+	_local_order_by_pool[str(pool_id)] = resolved_order
+	return result
+
+
+func _begin_pointer_interaction(pool_id: StringName, card: Control, global_position: Vector2) -> void:
+	_cancel_pointer_interaction()
+	_pointer_card = card
+	_pointer_pool_id = pool_id
+	_pointer_press_global_position = global_position
+	_pointer_origin_index = card.get_index()
+	_pointer_dragging = false
+	card.set_meta("commercial_pressed", true)
+	_apply_card_interaction_state(pool_id, card, _row_for_card(card))
+
+
+func _update_pointer_interaction(global_position: Vector2) -> void:
+	if _pointer_card == null or not is_instance_valid(_pointer_card):
+		_cancel_pointer_interaction()
+		return
+	var delta := global_position - _pointer_press_global_position
+	if not _pointer_dragging and delta.length() < DRAG_DEADZONE_PIXELS:
+		return
+	if not _pointer_dragging:
+		_pointer_dragging = true
+		_pointer_card.set_meta("commercial_pressed", false)
+		_pointer_card.set_meta("commercial_dragging", true)
+		_sync_card_rest_position(_pointer_card)
+		_animate_card(_pointer_card, true, true)
+		_request_presentation_audio("card.drag_start")
+	_apply_card_interaction_state(_pointer_pool_id, _pointer_card, _row_for_card(_pointer_card))
+	_pointer_card.rotation = clampf(
+		delta.x / 180.0 * DRAG_MAX_TILT_RADIANS,
+		-DRAG_MAX_TILT_RADIANS,
+		DRAG_MAX_TILT_RADIANS
+	)
+	var host := _pointer_card.get_parent() as HBoxContainer
+	if host == null or not host.get_global_rect().grow(12.0).has_point(global_position):
+		return
+	var target_index := _child_index_for_global_x(host, global_position.x)
+	if target_index != _pointer_card.get_index():
+		host.move_child(_pointer_card, target_index)
+		_capture_host_order(_pointer_pool_id, host)
+
+
+func _finish_pointer_interaction(global_position: Vector2) -> void:
+	if _pointer_card == null or not is_instance_valid(_pointer_card):
+		_cancel_pointer_interaction()
+		return
+	var card := _pointer_card
+	var pool_id := _pointer_pool_id
+	var host := card.get_parent() as HBoxContainer
+	var valid_local_drop := _pointer_dragging and host != null \
+		and host.get_global_rect().grow(12.0).has_point(global_position)
+	if _pointer_dragging and valid_local_drop:
+		_capture_host_order(pool_id, host)
+		_local_reorder_count += 1
+		_request_presentation_audio("card.drop")
+	elif _pointer_dragging:
+		if host != null and _pointer_origin_index >= 0:
+			host.move_child(card, mini(_pointer_origin_index, host.get_child_count() - 1))
+			_capture_host_order(pool_id, host)
+		_invalid_drag_bounce_count += 1
+		_request_presentation_audio("ui.cancel")
+	card.set_meta("commercial_pressed", false)
+	card.set_meta("commercial_dragging", false)
+	card.set_meta("commercial_drop_invalid", _pointer_dragging and not valid_local_drop)
+	_apply_card_interaction_state(pool_id, card, _row_for_card(card))
+	_pointer_card = null
+	_pointer_pool_id = StringName()
+	_pointer_origin_index = -1
+	_pointer_dragging = false
+	call_deferred("_settle_card_after_layout", card, pool_id)
+
+
+func _cancel_pointer_interaction() -> void:
+	if _pointer_card != null and is_instance_valid(_pointer_card):
+		_pointer_card.set_meta("commercial_pressed", false)
+		_pointer_card.set_meta("commercial_dragging", false)
+		_pointer_card.set_meta("commercial_drop_invalid", false)
+	_pointer_card = null
+	_pointer_pool_id = StringName()
+	_pointer_origin_index = -1
+	_pointer_dragging = false
+
+
+func _settle_card_after_layout(card: Control, pool_id: StringName) -> void:
+	if card == null or not is_instance_valid(card):
+		return
+	_sync_card_rest_position(card)
+	card.set_meta("commercial_drop_invalid", false)
+	_apply_card_interaction_state(pool_id, card, _row_for_card(card))
+	var elevated := bool(card.get_meta("commercial_hovered", false)) \
+		or bool(card.get_meta("commercial_focused", false))
+	_animate_card(card, elevated, false)
+
+
+func _request_presentation_audio(event_id: String) -> void:
+	presentation_audio_event_requested.emit(event_id, {"surface": "player_card_dock"})
+
+
+func _child_index_for_global_x(host: HBoxContainer, global_x: float) -> int:
+	var target := maxi(0, host.get_child_count() - 1)
+	for index in range(host.get_child_count()):
+		var sibling := host.get_child(index) as Control
+		if sibling == null or sibling == _pointer_card:
+			continue
+		if global_x < sibling.global_position.x + sibling.size.x * 0.5:
+			return index
+	return target
+
+
+func _capture_host_order(pool_id: StringName, host: HBoxContainer) -> void:
+	var order: Array[String] = []
+	for child in host.get_children():
+		if child is Control:
+			var identity := str((child as Control).get_meta("player_card_dock_identity", ""))
+			if not identity.is_empty():
+				order.append(identity)
+	_local_order_by_pool[str(pool_id)] = order
+
+
+func _apply_card_interaction_state(pool_id: StringName, card: Control, row: Dictionary) -> void:
+	if card == null or not card.has_method("set_interaction_state"):
+		return
+	var identity := str(card.get_meta("player_card_dock_identity", ""))
+	card.call("set_interaction_state", {
+		"hovered": bool(card.get_meta("commercial_hovered", false)) \
+			or bool(card.get_meta("commercial_focused", false)),
+		"selected": identity == _selected_identity,
+		"dragging": bool(card.get_meta("commercial_dragging", false)),
+		"pressed": bool(card.get_meta("commercial_pressed", false)),
+		"returning": bool(card.get_meta("commercial_drop_invalid", false)),
+		"disabled": not _card_available(pool_id, row),
+		"drop_valid": bool(card.get_meta("commercial_dragging", false)),
+		"drop_invalid": bool(card.get_meta("commercial_drop_invalid", false)),
+	})
+
+
+func _sync_card_pivot(card: Control) -> void:
+	if card != null and is_instance_valid(card):
+		card.pivot_offset = card.size * 0.5
+
+
+func _sync_card_rest_position(card: Control) -> void:
+	if card == null or not is_instance_valid(card) or bool(card.get_meta("commercial_dragging", false)):
+		return
+	card.set_meta("commercial_rest_position", card.position)
+	_sync_card_pivot(card)
+
+
+func _animate_card(card: Control, elevated: bool, dragging: bool) -> void:
+	if card == null or not is_instance_valid(card):
+		return
+	var identity := str(card.get_meta("player_card_dock_identity", str(card.get_instance_id())))
+	var previous := _visual_tweens.get(identity) as Tween
+	if previous != null and previous.is_valid():
+		previous.kill()
+	var rest_position: Vector2 = card.get_meta("commercial_rest_position", card.position) as Vector2
+	var target_position := rest_position - Vector2(0.0, HOVER_LIFT_PIXELS) if elevated else rest_position
+	var duration := DRAG_LIFT_DURATION_SECONDS if dragging else HOVER_DURATION_SECONDS
+	var tween := create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(card, "scale", Vector2.ONE * (HOVER_SCALE if elevated else 1.0), duration)
+	tween.tween_property(card, "position", target_position, duration)
+	if not dragging:
+		tween.tween_property(card, "rotation", 0.0, duration)
+	card.z_index = 40 if dragging else (20 if elevated else 0)
+	_visual_tweens[identity] = tween

@@ -2,6 +2,10 @@
 
 Status: **PARTIAL**. The model dependency closure and all 17 model Catalog bindings are proven. The existing generic Catalog contract has a separate hard-coded count drift after four font variant keys were added by another lane.
 
+`MODEL_DEPENDENCY_STATUS=CLEAN`
+
+Correction: the previously committed conclusion that 13 texture PNGs and 13 matching `.import` files were safe to delete was false. Real Godot resource loading proved that all 26 files are runtime import dependencies. They were restored, remain present, and must not be deleted.
+
 ## Snapshot and boundaries
 
 - HEAD: `664a89407bfc411cd6ab7ce86a19f02a70ffbaa6`
@@ -21,21 +25,21 @@ The audit starts from the 17 `model.*` PackedScene components, recursively follo
 | Stable component scenes | 17 |
 | Recursive PackedScene files | 18 |
 | Reachable glTF files | 31 |
-| Unique runtime model files | 78 |
-| Import sidecars for reachable sources | 60 |
+| Unique runtime model files | 91 |
+| Import sidecars for runtime dependencies | 73 |
 | License evidence files | 5 |
-| Closure/evidence files | 143 |
+| Closure/evidence files | 169 |
 | Tracked model files classified | 169/169 |
 | Missing dependencies | 0 |
-| Files outside closure | 26 |
+| Files outside closure | 0 |
 
-The classification ledger SHA-256 is `817ce530d2e29bc31b3e27a80803a45f0abcfda5ab1894844146469da34cee0f`. The JSON report lists all 169 paths exactly once by classification and records all 31 glTF dependency rows.
+The corrected JSON report lists all 169 paths exactly once by classification and records all 31 glTF dependency rows. Its classification ledger SHA-256 is `cafb86537f00152a25644a2ceecddb63f8dfe613feab7bc625e948ea33df9534`. The previous hash, `817ce530d2e29bc31b3e27a80803a45f0abcfda5ab1894844146469da34cee0f`, is retained only as pre-correction provenance and no longer describes the corrected classification.
 
-## Safe deletion candidates
+## Runtime import dependency correction
 
-The 13 affected animated-mech, monster, and ship glTF files each contain an embedded buffer and embedded image. Their parallel exported PNG is not a glTF URI, scene ext-resource, Catalog resource, or non-self repository text reference. The matching PNG `.import` sidecar is therefore also outside the closure.
+The original static audit observed that 13 animated-mech, monster, and ship glTF files contain embedded buffers and images. It incorrectly inferred that each parallel exported PNG and matching `.import` sidecar was outside the runtime closure. Real Godot loading is authoritative here and proved that these files remain importer dependencies even though the static glTF URI walk does not expose the relationship.
 
-Potential recovery: **16,350,211 bytes**. No deletion was performed.
+Safe deletion candidates: **0 files / 0 bytes**. The following **26 runtime dependencies must be retained**:
 
 - `assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png`
 - `assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png.import`
@@ -89,4 +93,4 @@ The exact net working-tree growth versus `2e38764791cb37cdc45b2eb0836957f550822d
 - 15 at observed mean: **5,894,096 bytes**, projected total **232.601 MB**
 - 15 at observed maximum each: **10,861,260 bytes**, projected total **237.568 MB**
 
-The measured PNG estimate remains below 250 MB in both cases. The uncompressed framebuffer reference would exceed the cap, so this is not a substitute for byte-gating the actual 15 PNGs after capture. Applying the reported model cleanup later would recover another **16,350,211 bytes**, but that recovery is not counted here.
+The measured PNG estimate remains below 250 MB in both cases. The uncompressed framebuffer reference would exceed the cap, so this is not a substitute for byte-gating the actual 15 PNGs after capture. The 16,350,211 bytes previously described as recoverable are required runtime import dependencies and remain included in the repository-growth measurement.

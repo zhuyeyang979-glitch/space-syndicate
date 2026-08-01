@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "task_id": "COMMERCIAL_ART_FOUNDATION_DIRECT_SELECTED_ASSET_INTEGRATION_V1",
+  "review_id": "planet_production_review_agent3",
+  "status": "PARTIAL",
+  "failure_code": "BACKSIDE_SCENEIZED_MARKER_RECURRENCE",
+  "generated_at": "2026-08-01T08:22:59+09:00",
+  "production_diff_base_sha": "2e38764791cb37cdc45b2eb0836957f550822dd5",
+  "worktree_head_at_review": "664a89407bfc411cd6ab7ce86a19f02a70ffbaa6",
+  "read_only_hot_file_review": true,
+  "hot_file_edit_count": 0,
+  "session_create_count": 0,
+  "save_create_count": 0,
+  "formal_run_started": false,
+  "full_smoke_started": false,
+  "production_diff": {
+    "changed_path_count": 4,
+    "insertions": 22,
+    "deletions": 90,
+    "changed_paths": [
+      "scripts/map_view.gd",
+      "scripts/ui/map/planet_globe_backdrop.gd",
+      "scripts/ui/map/planet_map_render_model.gd",
+      "scripts/ui/map/planet_orbit_guide.gd"
+    ],
+    "zoom_presentation_changed": true,
+    "opaque_planet_presentation_changed": true,
+    "orbit_graticule_presentation_retired": true,
+    "district_authority_changed": false,
+    "map_payload_authority_changed": false,
+    "target_selection_authority_changed": false,
+    "action_routing_changed": false,
+    "gameplay_value_changed": false,
+    "save_schema_changed": false,
+    "rng_changed": false
+  },
+  "unchanged_authority_blobs": [
+    {
+      "path": "scripts/ui/planet_map_view.gd",
+      "base_blob": "1345f5e7ed9da32c1fbc54f63fd9b646c8c31737",
+      "current_blob": "1345f5e7ed9da32c1fbc54f63fd9b646c8c31737",
+      "equal": true
+    },
+    {
+      "path": "scenes/ui/PlanetMapView.tscn",
+      "base_blob": "6c598a3f8f349332300ed39b2758170165625d77",
+      "current_blob": "6c598a3f8f349332300ed39b2758170165625d77",
+      "equal": true
+    },
+    {
+      "path": "scripts/ui/planet_board.gd",
+      "base_blob": "89a19f352f4458564a4b765714579d6658331cec",
+      "current_blob": "89a19f352f4458564a4b765714579d6658331cec",
+      "equal": true
+    },
+    {
+      "path": "scenes/ui/PlanetBoard.tscn",
+      "base_blob": "a7f2ceb3fd3a695a97ef6bfa1fc2d5311a0b8e41",
+      "current_blob": "a7f2ceb3fd3a695a97ef6bfa1fc2d5311a0b8e41",
+      "equal": true
+    },
+    {
+      "path": "scripts/runtime/table_player_action_application_flow_controller.gd",
+      "base_blob": "75052cfeaedde734fbe6e35405800a5ecd05e477",
+      "current_blob": "75052cfeaedde734fbe6e35405800a5ecd05e477",
+      "equal": true
+    }
+  ],
+  "changed_presentation_blobs": [
+    {
+      "path": "scripts/map_view.gd",
+      "base_blob": "d6a29b3df0d1d8ae1565aa94de40fd64e3bc7107",
+      "current_blob": "0a4064f810e28c21148825c6720d2c3bf23111ea"
+    },
+    {
+      "path": "scripts/ui/map/planet_globe_backdrop.gd",
+      "base_blob": "5d7778c4d755fa1b70f42f9dad5a0972861dd3ff",
+      "current_blob": "48741ec7ff6f53aee7422c40946f0b4215cf3131"
+    },
+    {
+      "path": "scripts/ui/map/planet_map_render_model.gd",
+      "base_blob": "5adfe0fbb935506393089736a24e823b586418ad",
+      "current_blob": "9e00b95288060b0dcf1942322927aea524c106a3"
+    },
+    {
+      "path": "scripts/ui/map/planet_orbit_guide.gd",
+      "base_blob": "ffa00426d108b0355d3ac4212b0b77f00b91a05b",
+      "current_blob": "83c16f22379ce57e319d0b70aa43ffe746b49c18"
+    }
+  ],
+  "tests": {
+    "aggregate_passed": 96,
+    "aggregate_total": 97,
+    "results": [
+      {
+        "path": "tests/commercial_art/commercial_planet_production_presentation_test.gd",
+        "passed": 6,
+        "total": 6,
+        "exit_code": 0,
+        "warning_count": 1
+      },
+      {
+        "path": "tests/commercial_art/commercial_planet_asset_contract_test.gd",
+        "passed": 59,
+        "total": 59,
+        "exit_code": 0,
+        "warning_count": 0
+      },
+      {
+        "path": "tests/map_view_globe_default_test.gd",
+        "passed": 2,
+        "total": 2,
+        "exit_code": 0,
+        "warning_count": 0
+      },
+      {
+        "path": "tests/map_view_focus_rotation_test.gd",
+        "passed": 22,
+        "total": 22,
+        "exit_code": 0,
+        "warning_count": 0
+      },
+      {
+        "path": "tests/planet_map_live_refresh_identity_test.gd",
+        "passed": 7,
+        "total": 8,
+        "exit_code": 1,
+        "warning_count": 0,
+        "baseline_same_failure": true
+      }
+    ],
+    "not_run": [
+      {
+        "path": "tests/planet_solar_camera_presentation_test.gd",
+        "reason": "creates GameSession and touches Save ownership"
+      },
+      {
+        "path": "tests/runtime_pointer_input_layer_test.gd",
+        "reason": "instantiates the full main runtime composition"
+      }
+    ]
+  },
+  "visual_qa": {
+    "capture_runtime": "Godot 4.7.stable.official.5b4e0cb0f Forward+",
+    "viewport": "1366x768",
+    "production_scene": "res://scenes/ui/PlanetMapView.tscn",
+    "opaque_orbit_capture": {
+      "external_cache_name": "production_planet_opaque_orbit_1366x768.png",
+      "sha256": "885aa439a687f212c3eddf2aa5e6fcad3c692ff87186df4efbdb44dd79d99b0e",
+      "center_rgba": "28,35,42,255",
+      "alpha_nonopaque_pixel_count": 0,
+      "magenta_background_pixels_inside_planet_count": 0,
+      "retired_orbit_annulus_cyan_pixel_count": 0,
+      "retired_orbit_annulus_gold_pixel_count": 0,
+      "planet_opaque_green": true,
+      "outer_orbit_retired_green": true
+    },
+    "backside_sentinel_capture": {
+      "external_cache_name": "production_planet_backside_sentinel_1366x768.png",
+      "sha256": "3141e871d546de593f7cbbfe6a204b8ce42e0ce1f25b45604209a4cfa5ec2cf5",
+      "projection_visible": false,
+      "projection_z": -1.0,
+      "visible_magenta_sentinel_pixel_count": 76,
+      "backside_region_marker_visible_count": 1,
+      "backside_city_marker_visible_count": 1,
+      "backside_monster_marker_visible_count": 1,
+      "backside_occlusion_green": false
+    }
+  },
+  "findings": [
+    {
+      "finding_id": "backside_sceneized_marker_recurrence",
+      "severity": "BLOCKER",
+      "introduced_by_current_four_file_diff": false,
+      "description": "The projection reports visible=false and z=-1 for a backside point, but sceneized district, city, and monster Controls are still created and visible over the opaque planet.",
+      "root_cause_paths": [
+        "scripts/ui/planet_map_view.gd:607",
+        "scripts/ui/planet_map_view.gd:695",
+        "scripts/ui/planet_map_view.gd:750",
+        "scripts/ui/planet_map_view.gd:1171"
+      ],
+      "required_main_agent_action": "Make sceneized projection consumers preserve and enforce the projection visible flag before creating or showing backside Controls, then add a production sentinel regression."
+    },
+    {
+      "finding_id": "live_refresh_route_fixture_uses_retired_legacy_input",
+      "severity": "TEST_DEBT",
+      "introduced_by_current_four_file_diff": false,
+      "baseline_reproduced_at": "a1fdfc485815e924f465562d60165500cd436671",
+      "description": "The live-refresh test expects route or route_segment nodes from the legacy direct route payload, while OptionalRoutePresentationRuntimeService intentionally rejects that path without an explicit public snapshot.",
+      "required_main_agent_action": "Update the fixture to use set_optional_route_public_snapshot or public summaries and geometry before asserting route nodes."
+    },
+    {
+      "finding_id": "production_presentation_test_anchor_warning",
+      "severity": "TEST_HYGIENE",
+      "introduced_by_current_four_file_diff": false,
+      "description": "The production presentation test writes size on a full-anchor Control after ready and emits one layout warning.",
+      "required_main_agent_action": "Set PRESET_TOP_LEFT before assigning the test size or defer the assignment."
+    }
+  ],
+  "conclusion": {
+    "map_district_target_authority_unchanged": true,
+    "zoom_opaque_orbit_diff_is_presentation_only": true,
+    "planet_opaque_green": true,
+    "outer_orbit_retired_green": true,
+    "backside_occlusion_green": false,
+    "merge_gate_green": false
+  }
+}

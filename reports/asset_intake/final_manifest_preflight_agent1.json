@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "report_id": "commercial_art.final_manifest_preflight.agent1.v1",
+  "task_id": "COMMERCIAL_ART_FOUNDATION_DIRECT_SELECTED_ASSET_INTEGRATION_V1",
+  "status": "WAITING_FINAL_MANIFEST",
+  "waiting": true,
+  "blocked": false,
+  "generated_at_utc": "2026-07-31T23:22:08.8599711Z",
+  "last_input_poll_at_utc": "2026-07-31T23:31:18.5602366Z",
+  "input_poll_duration_seconds": 480,
+  "base_sha": "2e38764791cb37cdc45b2eb0836957f550822dd5",
+  "test_path": "res://tests/commercial_art/commercial_third_party_manifest_test.gd",
+  "test_compile_green": true,
+  "initial_run": {
+    "godot_version": "4.7.stable.official.5b4e0cb0f",
+    "exit_code": 2,
+    "status_line": "COMMERCIAL_THIRD_PARTY_MANIFEST|status=WAITING_FINAL_MANIFEST",
+    "full_smoke": false,
+    "formal_run": false,
+    "network_access": false
+  },
+  "required_inputs": {
+    "res://docs/third_party/selected_commercial_asset_manifest.json": false,
+    "res://THIRD_PARTY_NOTICES.md": false,
+    "res://docs/third_party/credits_data.json": false,
+    "res://reports/asset_intake/selected_source_verification_agent1.json": true
+  },
+  "missing_inputs": [
+    "res://docs/third_party/selected_commercial_asset_manifest.json",
+    "res://THIRD_PARTY_NOTICES.md",
+    "res://docs/third_party/credits_data.json"
+  ],
+  "source_verification_ready": {
+    "selected_asset_count": 30,
+    "source_http_200_count": 30,
+    "license_match_count": 30,
+    "cc0_1_0_count": 21,
+    "cc_by_3_0_count": 6,
+    "mit_count": 1,
+    "ofl_1_1_count": 2,
+    "unlisted_source_count": 0,
+    "web_asset_search_count": 0,
+    "missing_original_sha256_count": 0
+  },
+  "implemented_final_gates": [
+    "exact_30_asset_ids",
+    "exact_source_urls",
+    "license_classification_21_6_1_2",
+    "original_sha256_nonempty_and_well_formed",
+    "processed_paths_exist",
+    "processed_sha256_matches_file_bytes",
+    "game_icons_mandatory_attribution_complete",
+    "all_license_evidence_exists",
+    "unlisted_source_count_zero",
+    "runtime_network_asset_dependency_count_zero",
+    "individual_repository_file_below_25_mib",
+    "repository_growth_from_base_below_250_mib"
+  ],
+  "final_gate_result": "NOT_RUN_INPUTS_MISSING",
+  "processed_path_count": "NOT_RUN",
+  "processed_hash_match_count": "NOT_RUN",
+  "game_icons_attribution_green": "NOT_RUN",
+  "license_evidence_green": "NOT_RUN",
+  "runtime_network_asset_dependency_count": "NOT_RUN",
+  "largest_repository_file_bytes": "NOT_RUN",
+  "repository_growth_bytes": "NOT_RUN",
+  "next_action": "Automatically rerun the focused Godot test after the three single-writer final files appear; do not modify those files from this lane."
+}

@@ -1,9 +1,10 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/ui/menu_overlay.gd" id="2_script"]
 [ext_resource type="PackedScene" path="res://scenes/ui/MenuQuickNavigation.tscn" id="3_quick_navigation"]
 [ext_resource type="PackedScene" path="res://scenes/ui/CodexCompendiumSurface.tscn" id="4_codex_surface"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/GameThemeLocaleResolver.tscn" id="5_locale_resolver"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_surface"]
 bg_color = Color(0.0323529, 0.0552941, 0.142353, 1)
@@ -65,6 +66,8 @@ mouse_filter = 0
 theme = ExtResource("1_theme")
 color = Color(0.01, 0.015, 0.035, 0.92)
 script = ExtResource("2_script")
+
+[node name="GameThemeLocaleResolver" parent="." instance=ExtResource("5_locale_resolver")]
 
 [node name="MenuSurfacePanel" type="PanelContainer" parent="."]
 unique_name_in_owner = true

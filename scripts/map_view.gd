@@ -8,20 +8,20 @@ signal camera_presentation_interacted(kind: String)
 const GLOBE_MODE_ZOOM_THRESHOLD := 0.58
 const PLANET_PROJECTION_BLEND_NAME := "PlanetProjectionBlend"
 const PLANET_PROJECTION_LOCAL_ZOOM := 0.98
-const PLANET_PROJECTION_GLOBE_ZOOM := 0.48
+const PLANET_PROJECTION_GLOBE_ZOOM := 0.72
 const PLANET_PROJECTION_DEFAULT_ZOOM := PLANET_PROJECTION_GLOBE_ZOOM
 const PLANET_PROJECTION_VISIBILITY_FADE_START := 0.74
 const FLAT_PROJECTION_SPACE_MASK_NAME := "FlatProjectionSpaceMask"
 const LOCAL_PROJECTION_MARGIN_SCALE := 0.80
-const MIN_VIEW_ZOOM := 0.30
-const MAX_VIEW_ZOOM := 5.0
+const MIN_VIEW_ZOOM := 0.72
+const MAX_VIEW_ZOOM := 1.85
 const DRAG_THRESHOLD_PIXELS := 4.0
 const KEYBOARD_NAV_MIN_ALIGNMENT := -0.18
 const KEYBOARD_NAV_DISTANCE_WEIGHT := 0.22
 const KEYBOARD_NAV_VISIBILITY_WEIGHT := 24.0
 const ANIMATED_REDRAW_INTERVAL_SECONDS := 1.0 / 24.0
 const ZOOM_SMOOTHING_SPEED := 12.0
-const ZOOM_WHEEL_STEP := 1.08
+const ZOOM_WHEEL_STEP := 0.08
 const LABEL_INTERACTION_ZOOM_EPSILON := 0.018
 const INTERACTION_DETAIL_SETTLE_SECONDS := 0.28
 const INTERACTION_REDRAW_INTERVAL_SECONDS := 1.0 / 24.0
@@ -416,14 +416,14 @@ func _gui_input(event: InputEvent) -> void:
 		var mouse_event := event as InputEventMouseButton
 		if mouse_event.button_index == MOUSE_BUTTON_WHEEL_UP and mouse_event.pressed:
 			_notify_camera_presentation_interaction("wheel")
-			_target_view_zoom = clamp(_target_view_zoom * ZOOM_WHEEL_STEP, MIN_VIEW_ZOOM, MAX_VIEW_ZOOM)
+			_target_view_zoom = clamp(_target_view_zoom + ZOOM_WHEEL_STEP, MIN_VIEW_ZOOM, MAX_VIEW_ZOOM)
 			_mark_interaction_detail_dirty()
 			queue_redraw()
 			accept_event()
 			return
 		if mouse_event.button_index == MOUSE_BUTTON_WHEEL_DOWN and mouse_event.pressed:
 			_notify_camera_presentation_interaction("wheel")
-			_target_view_zoom = clamp(_target_view_zoom / ZOOM_WHEEL_STEP, MIN_VIEW_ZOOM, MAX_VIEW_ZOOM)
+			_target_view_zoom = clamp(_target_view_zoom - ZOOM_WHEEL_STEP, MIN_VIEW_ZOOM, MAX_VIEW_ZOOM)
 			_mark_interaction_detail_dirty()
 			queue_redraw()
 			accept_event()
@@ -2395,6 +2395,10 @@ func get_projection_debug_snapshot() -> Dictionary:
 		"default_zoom": PLANET_PROJECTION_DEFAULT_ZOOM,
 		"globe_zoom": PLANET_PROJECTION_GLOBE_ZOOM,
 		"local_zoom": PLANET_PROJECTION_LOCAL_ZOOM,
+		"zoom_min": MIN_VIEW_ZOOM,
+		"zoom_max": MAX_VIEW_ZOOM,
+		"zoom_step": ZOOM_WHEEL_STEP,
+		"camera_state_persisted": false,
 		"globe_blend": blend,
 		"mode": mode,
 		"globe_mode": _is_globe_mode(),

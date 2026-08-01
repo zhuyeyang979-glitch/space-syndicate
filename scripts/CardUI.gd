@@ -19,6 +19,7 @@ const PRESENTATION_CODEX_FULL := "codex_full"
 const CARD_FEEL_V3_STATE_KEYS := ["hovered", "selected", "dragging", "pressed", "returning", "disabled", "drop_valid", "drop_invalid", "resolving"]
 const DEFAULT_CARD_THEME: Theme = preload("res://themes/GameTheme.tres")
 const PREMIUM_CARD_THEME: Theme = preload("res://themes/CardUISkinLabTheme.tres")
+const PRESENTATION_ASSET_CATALOG: CardIllustrationCatalogResource = preload("res://resources/presentation/alpha01_card_illustration_catalog.tres")
 const ALLOWED_ILLUSTRATION_PREFIXES := [
 	"res://assets/art/cards/",
 	"res://assets/third_party/game_icons_ccby/",
@@ -40,6 +41,8 @@ var _interaction_state: Dictionary = {
 
 @onready var cost_label: Label = %CostLabel
 @onready var name_label: Label = %NameLabel
+@onready var commercial_frame_texture: NinePatchRect = get_node_or_null("%CommercialFrameTexture") as NinePatchRect
+@onready var commercial_accent_strip: ColorRect = get_node_or_null("%CommercialAccentStrip") as ColorRect
 @onready var route_glyph_badge: PanelContainer = get_node_or_null("%RouteGlyphBadge") as PanelContainer
 @onready var route_glyph_label: Label = get_node_or_null("%RouteGlyphLabel") as Label
 @onready var art_panel: PanelContainer = %ArtPanel
@@ -175,6 +178,7 @@ func _apply_frame_style() -> void:
 			frame_style.shadow_size = 12 if _is_mini_hand_card() else 18
 			frame_style.shadow_offset = Vector2(0, 8)
 		frame.add_theme_stylebox_override("panel", frame_style)
+	_apply_commercial_frame_texture()
 	var art_style := StyleBoxFlat.new()
 	art_style.bg_color = Color(state_accent.r, state_accent.g, state_accent.b, 0.42 if _is_mini_hand_card() else 0.28)
 	art_style.border_color = Color(state_accent.r, state_accent.g, state_accent.b, 0.82)
@@ -203,6 +207,33 @@ func _apply_frame_style() -> void:
 		glyph_style.set_corner_radius_all(6)
 		route_glyph_badge.add_theme_stylebox_override("panel", glyph_style)
 	modulate = Color(0.58, 0.64, 0.72, 0.82) if bool(_interaction_state.get("disabled", false)) else Color.WHITE
+
+
+func _apply_commercial_frame_texture() -> void:
+	if commercial_frame_texture == null:
+		return
+	var frame_key := StringName(str(_card_data.get("card_frame_key", "")).strip_edges())
+	var texture := PRESENTATION_ASSET_CATALOG.resource_for_asset_key(frame_key) as Texture2D \
+		if frame_key != StringName() else null
+	commercial_frame_texture.texture = texture
+	commercial_frame_texture.visible = texture != null
+	commercial_frame_texture.modulate = _commercial_frame_tint(frame_key)
+	if commercial_accent_strip != null:
+		commercial_accent_strip.visible = frame_key != StringName()
+		commercial_accent_strip.color = accent_color
+	set_meta("commercial_card_frame_key", str(frame_key))
+	set_meta("commercial_card_frame_active", texture != null)
+
+
+func _commercial_frame_tint(frame_key: StringName) -> Color:
+	match frame_key:
+		&"card.frame.normal":
+			return Color("#263445")
+		&"card.frame.commodity":
+			return Color("#98a3b3")
+		&"card.frame.bound_action":
+			return Color("#111c2d")
+	return Color.WHITE
 
 
 func _apply_density_for_size() -> void:
