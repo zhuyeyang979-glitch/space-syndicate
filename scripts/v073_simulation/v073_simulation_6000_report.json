@@ -1,0 +1,2586 @@
+{
+	"ai_initiative_bid_policy_count": 0,
+	"approved_profile_failed_balance_targets": [],
+	"approved_profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+	"approved_profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+	"balance_profile_id": "V073_STARTER_FREE_FIXED_ORDER_CONTENTION",
+	"configuration_count": 12,
+	"configuration_results": [
+		{
+			"configuration_fingerprint": "0b451802fe07ae1218b0b6891d642a87e4f269e936c36f3bb96a50a8e2dea341",
+			"configuration_id": "V072_GENERIC_FACILITY_TARGETING.players_3.seeds_500",
+			"failed_balance_targets": [],
+			"match_count": 500,
+			"metrics": {
+				"action_slot_refunded_on_contention": 0,
+				"anonymous_owner_direct_disclosure_rate": 0.0,
+				"asset_refunded_on_contention": 0,
+				"build_success_rate_by_local_action_index": {
+					"0": 1.0,
+					"1": 1.0,
+					"2": 1.0,
+					"3": 1.0,
+					"4": 1.0
+				},
+				"build_to_repair_auto_conversion_count": 0,
+				"build_to_upgrade_auto_conversion_count": 0,
+				"card_discarded_on_contention": 0,
+				"critical_build_local_index_0_success_rate": 1.0,
+				"critical_build_local_index_2_success_rate": 1.0,
+				"critical_build_local_index_4_success_rate": 1.0,
+				"facility_build_attempt_count": 26747,
+				"facility_build_fizzle_rate": 0.0,
+				"facility_build_success_count": 26747,
+				"facility_slot_collision_rate": 0.070849,
+				"first_factory_market_chain_batch": {
+					"maximum": 11.0,
+					"mean": 2.939333,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 6.0,
+					"sample_count": 1500
+				},
+				"first_standard_l1_play_batch": {
+					"maximum": 8.0,
+					"mean": 3.034667,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 6.0,
+					"sample_count": 1500
+				},
+				"fizzle_rate_by_local_action_index": {
+					"0": 0.0,
+					"1": 0.0,
+					"2": 0.0,
+					"3": 0.0,
+					"4": 0.0
+				},
+				"fizzle_rate_by_player_count": {
+					"3": 0.0
+				},
+				"predicted_resolution_seconds": {
+					"maximum": 4.76,
+					"mean": 2.62204,
+					"median": 2.68,
+					"minimum": 1.04,
+					"p95": 4.08,
+					"sample_count": 5000
+				},
+				"repair_target_invalidation_rate": 0.125513,
+				"repeated_contention_same_slot_rate": 0.129288,
+				"resolution_p95_seconds": 4.08,
+				"starter_action_share_batch_10": 0.198613,
+				"target_reselected_during_resolution_count": 1895,
+				"upgrade_target_invalidation_rate": 0.027122,
+				"victory_pending_tail_seconds": {
+					"maximum": 60.0,
+					"mean": 31.32,
+					"median": 30.0,
+					"minimum": 0.0,
+					"p95": 60.0,
+					"sample_count": 500
+				}
+			},
+			"player_count": 3,
+			"profile_fingerprint": "2a8f0cecd6eec0ab699c7ea882c52465f2a6019b98bd21399f4666457b81efa1",
+			"profile_id": "V072_GENERIC_FACILITY_TARGETING",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901026424,
+				"last_seed": 904978005,
+				"profile_fingerprint": "2a8f0cecd6eec0ab699c7ea882c52465f2a6019b98bd21399f4666457b81efa1",
+				"profile_id": "V072_GENERIC_FACILITY_TARGETING",
+				"seed_count": 500,
+				"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+			},
+			"run_fingerprint_chain": "ecf47c69877d3ff7a4b80d48ccd8e513b20152ba1052e94c892b53396ea4d11b",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "c91818d0572ac5f8d94caed09ac143fc2161f8ec44fe304b7c9500e39e938ea7",
+			"configuration_id": "V072_GENERIC_FACILITY_TARGETING.players_4.seeds_500",
+			"failed_balance_targets": [],
+			"match_count": 500,
+			"metrics": {
+				"action_slot_refunded_on_contention": 0,
+				"anonymous_owner_direct_disclosure_rate": 0.0,
+				"asset_refunded_on_contention": 0,
+				"build_success_rate_by_local_action_index": {
+					"0": 1.0,
+					"1": 1.0,
+					"2": 1.0,
+					"3": 1.0,
+					"4": 1.0
+				},
+				"build_to_repair_auto_conversion_count": 0,
+				"build_to_upgrade_auto_conversion_count": 0,
+				"card_discarded_on_contention": 0,
+				"critical_build_local_index_0_success_rate": 1.0,
+				"critical_build_local_index_2_success_rate": 1.0,
+				"critical_build_local_index_4_success_rate": 1.0,
+				"facility_build_attempt_count": 35892,
+				"facility_build_fizzle_rate": 0.0,
+				"facility_build_success_count": 35892,
+				"facility_slot_collision_rate": 0.101137,
+				"first_factory_market_chain_batch": {
+					"maximum": 11.0,
+					"mean": 2.986,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 6.0,
+					"sample_count": 2000
+				},
+				"first_standard_l1_play_batch": {
+					"maximum": 9.0,
+					"mean": 3.051,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 6.0,
+					"sample_count": 2000
+				},
+				"fizzle_rate_by_local_action_index": {
+					"0": 0.0,
+					"1": 0.0,
+					"2": 0.0,
+					"3": 0.0,
+					"4": 0.0
+				},
+				"fizzle_rate_by_player_count": {
+					"4": 0.0
+				},
+				"predicted_resolution_seconds": {
+					"maximum": 5.72,
+					"mean": 3.230632,
+					"median": 3.2,
+					"minimum": 1.28,
+					"p95": 4.84,
+					"sample_count": 5000
+				},
+				"repair_target_invalidation_rate": 0.117965,
+				"repeated_contention_same_slot_rate": 0.188981,
+				"resolution_p95_seconds": 4.84,
+				"starter_action_share_batch_10": 0.205931,
+				"target_reselected_during_resolution_count": 3630,
+				"upgrade_target_invalidation_rate": 0.020801,
+				"victory_pending_tail_seconds": {
+					"maximum": 90.0,
+					"mean": 46.5,
+					"median": 60.0,
+					"minimum": 0.0,
+					"p95": 90.0,
+					"sample_count": 500
+				}
+			},
+			"player_count": 4,
+			"profile_fingerprint": "2a8f0cecd6eec0ab699c7ea882c52465f2a6019b98bd21399f4666457b81efa1",
+			"profile_id": "V072_GENERIC_FACILITY_TARGETING",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901126424,
+				"last_seed": 905078005,
+				"profile_fingerprint": "2a8f0cecd6eec0ab699c7ea882c52465f2a6019b98bd21399f4666457b81efa1",
+				"profile_id": "V072_GENERIC_FACILITY_TARGETING",
+				"seed_count": 500,
+				"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+			},
+			"run_fingerprint_chain": "94a122be146306feefe1816f1a5f31039db29e8a7f86d71d697588e7338253f1",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "6dc5a84a32408a54c67076ee053a6dea5cbc86ea467d0592ae532f055a91012f",
+			"configuration_id": "V072_GENERIC_FACILITY_TARGETING.players_6.seeds_500",
+			"failed_balance_targets": [],
+			"match_count": 500,
+			"metrics": {
+				"action_slot_refunded_on_contention": 0,
+				"anonymous_owner_direct_disclosure_rate": 0.0,
+				"asset_refunded_on_contention": 0,
+				"build_success_rate_by_local_action_index": {
+					"0": 1.0,
+					"1": 1.0,
+					"2": 1.0,
+					"3": 1.0,
+					"4": 1.0
+				},
+				"build_to_repair_auto_conversion_count": 0,
+				"build_to_upgrade_auto_conversion_count": 0,
+				"card_discarded_on_contention": 0,
+				"critical_build_local_index_0_success_rate": 1.0,
+				"critical_build_local_index_2_success_rate": 1.0,
+				"critical_build_local_index_4_success_rate": 1.0,
+				"facility_build_attempt_count": 53498,
+				"facility_build_fizzle_rate": 0.0,
+				"facility_build_success_count": 53498,
+				"facility_slot_collision_rate": 0.122378,
+				"first_factory_market_chain_batch": {
+					"maximum": 11.0,
+					"mean": 3.133667,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 7.0,
+					"sample_count": 3000
+				},
+				"first_standard_l1_play_batch": {
+					"maximum": 9.0,
+					"mean": 3.015,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 6.0,
+					"sample_count": 3000
+				},
+				"fizzle_rate_by_local_action_index": {
+					"0": 0.0,
+					"1": 0.0,
+					"2": 0.0,
+					"3": 0.0,
+					"4": 0.0
+				},
+				"fizzle_rate_by_player_count": {
+					"6": 0.0
+				},
+				"predicted_resolution_seconds": {
+					"maximum": 6.92,
+					"mean": 4.45068,
+					"median": 4.4,
+					"minimum": 2.48,
+					"p95": 6.04,
+					"sample_count": 5000
+				},
+				"repair_target_invalidation_rate": 0.126615,
+				"repeated_contention_same_slot_rate": 0.239346,
+				"resolution_p95_seconds": 6.04,
+				"starter_action_share_batch_10": 0.199644,
+				"target_reselected_during_resolution_count": 6547,
+				"upgrade_target_invalidation_rate": 0.026372,
+				"victory_pending_tail_seconds": {
+					"maximum": 150.0,
+					"mean": 76.68,
+					"median": 90.0,
+					"minimum": 0.0,
+					"p95": 150.0,
+					"sample_count": 500
+				}
+			},
+			"player_count": 6,
+			"profile_fingerprint": "2a8f0cecd6eec0ab699c7ea882c52465f2a6019b98bd21399f4666457b81efa1",
+			"profile_id": "V072_GENERIC_FACILITY_TARGETING",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901326424,
+				"last_seed": 905278005,
+				"profile_fingerprint": "2a8f0cecd6eec0ab699c7ea882c52465f2a6019b98bd21399f4666457b81efa1",
+				"profile_id": "V072_GENERIC_FACILITY_TARGETING",
+				"seed_count": 500,
+				"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+			},
+			"run_fingerprint_chain": "defe402b862fbc467c9d68220779f6808a4e883090b6498e17a62dc3260e9546",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "1e9e2baf312848a4280fb0a6bc8d1c3c3608341c5cd56d662f31129d5e125d6f",
+			"configuration_id": "V072_GENERIC_FACILITY_TARGETING.players_8.seeds_500",
+			"failed_balance_targets": [],
+			"match_count": 500,
+			"metrics": {
+				"action_slot_refunded_on_contention": 0,
+				"anonymous_owner_direct_disclosure_rate": 0.0,
+				"asset_refunded_on_contention": 0,
+				"build_success_rate_by_local_action_index": {
+					"0": 1.0,
+					"1": 1.0,
+					"2": 1.0,
+					"3": 1.0,
+					"4": 1.0
+				},
+				"build_to_repair_auto_conversion_count": 0,
+				"build_to_upgrade_auto_conversion_count": 0,
+				"card_discarded_on_contention": 0,
+				"critical_build_local_index_0_success_rate": 1.0,
+				"critical_build_local_index_2_success_rate": 1.0,
+				"critical_build_local_index_4_success_rate": 1.0,
+				"facility_build_attempt_count": 71278,
+				"facility_build_fizzle_rate": 0.0,
+				"facility_build_success_count": 71278,
+				"facility_slot_collision_rate": 0.160835,
+				"first_factory_market_chain_batch": {
+					"maximum": 11.0,
+					"mean": 3.085,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 7.0,
+					"sample_count": 4000
+				},
+				"first_standard_l1_play_batch": {
+					"maximum": 9.0,
+					"mean": 3.02475,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 6.0,
+					"sample_count": 4000
+				},
+				"fizzle_rate_by_local_action_index": {
+					"0": 0.0,
+					"1": 0.0,
+					"2": 0.0,
+					"3": 0.0,
+					"4": 0.0
+				},
+				"fizzle_rate_by_player_count": {
+					"8": 0.0
+				},
+				"predicted_resolution_seconds": {
+					"maximum": 8.12,
+					"mean": 5.660376,
+					"median": 5.6,
+					"minimum": 3.68,
+					"p95": 7.24,
+					"sample_count": 5000
+				},
+				"repair_target_invalidation_rate": 0.129695,
+				"repeated_contention_same_slot_rate": 0.280792,
+				"resolution_p95_seconds": 7.24,
+				"starter_action_share_batch_10": 0.20361,
+				"target_reselected_during_resolution_count": 11464,
+				"upgrade_target_invalidation_rate": 0.022563,
+				"victory_pending_tail_seconds": {
+					"maximum": 210.0,
+					"mean": 95.34,
+					"median": 90.0,
+					"minimum": 0.0,
+					"p95": 210.0,
+					"sample_count": 500
+				}
+			},
+			"player_count": 8,
+			"profile_fingerprint": "2a8f0cecd6eec0ab699c7ea882c52465f2a6019b98bd21399f4666457b81efa1",
+			"profile_id": "V072_GENERIC_FACILITY_TARGETING",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901526424,
+				"last_seed": 905478005,
+				"profile_fingerprint": "2a8f0cecd6eec0ab699c7ea882c52465f2a6019b98bd21399f4666457b81efa1",
+				"profile_id": "V072_GENERIC_FACILITY_TARGETING",
+				"seed_count": 500,
+				"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+			},
+			"run_fingerprint_chain": "ae0ca6688c66a6f64ad0f16ffecb15348a2a564787d95cb658553f9ab2ec4ff9",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "365363f45d03b862f8d4052ad3913fcffc90ff708ea6a5d34f42e8ec59a131e8",
+			"configuration_id": "V073_EXPLICIT_MODES_FIXED_ORDER.players_3.seeds_500",
+			"failed_balance_targets": [],
+			"match_count": 500,
+			"metrics": {
+				"action_slot_refunded_on_contention": 0,
+				"anonymous_owner_direct_disclosure_rate": 0.0,
+				"asset_refunded_on_contention": 646,
+				"build_success_rate_by_local_action_index": {
+					"0": 0.990913,
+					"1": 0.909497,
+					"2": 0.889399,
+					"3": 0.887647,
+					"4": 0.886655
+				},
+				"build_to_repair_auto_conversion_count": 0,
+				"build_to_upgrade_auto_conversion_count": 0,
+				"card_discarded_on_contention": 1936,
+				"critical_build_local_index_0_success_rate": 0.990913,
+				"critical_build_local_index_2_success_rate": 0.889399,
+				"critical_build_local_index_4_success_rate": 0.886655,
+				"facility_build_attempt_count": 26886,
+				"facility_build_fizzle_rate": 0.072008,
+				"facility_build_success_count": 24950,
+				"facility_slot_collision_rate": 0.072008,
+				"first_factory_market_chain_batch": {
+					"maximum": 11.0,
+					"mean": 3.416667,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 7.0,
+					"sample_count": 1500
+				},
+				"first_standard_l1_play_batch": {
+					"maximum": 8.0,
+					"mean": 3.034667,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 6.0,
+					"sample_count": 1500
+				},
+				"fizzle_rate_by_local_action_index": {
+					"0": 0.009087,
+					"1": 0.090503,
+					"2": 0.110601,
+					"3": 0.112353,
+					"4": 0.113345
+				},
+				"fizzle_rate_by_player_count": {
+					"3": 0.072008
+				},
+				"predicted_resolution_seconds": {
+					"maximum": 6.61,
+					"mean": 2.76112,
+					"median": 2.72,
+					"minimum": 1.04,
+					"p95": 4.49,
+					"sample_count": 5000
+				},
+				"repair_target_invalidation_rate": 0.134543,
+				"repeated_contention_same_slot_rate": 0.132231,
+				"resolution_p95_seconds": 4.49,
+				"starter_action_share_batch_10": 0.198613,
+				"target_reselected_during_resolution_count": 0,
+				"upgrade_target_invalidation_rate": 0.038042,
+				"victory_pending_tail_seconds": {
+					"maximum": 60.0,
+					"mean": 31.32,
+					"median": 30.0,
+					"minimum": 0.0,
+					"p95": 60.0,
+					"sample_count": 500
+				}
+			},
+			"player_count": 3,
+			"profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+			"profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901026424,
+				"last_seed": 904978005,
+				"profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+				"profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+				"seed_count": 500,
+				"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+			},
+			"run_fingerprint_chain": "b55f9f7a91bbede4eabd9e25a0e1a5971a024e266df5e5490b9243dee5a3dcfd",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "d7f23604bc02f3ea9a4fdf3a3814c436b4119b890fb76d74aa2e4b511cd93e56",
+			"configuration_id": "V073_EXPLICIT_MODES_FIXED_ORDER.players_4.seeds_500",
+			"failed_balance_targets": [],
+			"match_count": 500,
+			"metrics": {
+				"action_slot_refunded_on_contention": 0,
+				"anonymous_owner_direct_disclosure_rate": 0.0,
+				"asset_refunded_on_contention": 1140,
+				"build_success_rate_by_local_action_index": {
+					"0": 0.989805,
+					"1": 0.89183,
+					"2": 0.864541,
+					"3": 0.841336,
+					"4": 0.841525
+				},
+				"build_to_repair_auto_conversion_count": 0,
+				"build_to_upgrade_auto_conversion_count": 0,
+				"card_discarded_on_contention": 3273,
+				"critical_build_local_index_0_success_rate": 0.989805,
+				"critical_build_local_index_2_success_rate": 0.864541,
+				"critical_build_local_index_4_success_rate": 0.841525,
+				"facility_build_attempt_count": 36129,
+				"facility_build_fizzle_rate": 0.090592,
+				"facility_build_success_count": 32856,
+				"facility_slot_collision_rate": 0.090592,
+				"first_factory_market_chain_batch": {
+					"maximum": 11.0,
+					"mean": 3.616,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 7.0,
+					"sample_count": 2000
+				},
+				"first_standard_l1_play_batch": {
+					"maximum": 9.0,
+					"mean": 3.051,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 6.0,
+					"sample_count": 2000
+				},
+				"fizzle_rate_by_local_action_index": {
+					"0": 0.010195,
+					"1": 0.10817,
+					"2": 0.135459,
+					"3": 0.158664,
+					"4": 0.158475
+				},
+				"fizzle_rate_by_player_count": {
+					"4": 0.090592
+				},
+				"predicted_resolution_seconds": {
+					"maximum": 8.27,
+					"mean": 3.468302,
+					"median": 3.2,
+					"minimum": 1.28,
+					"p95": 5.56,
+					"sample_count": 5000
+				},
+				"repair_target_invalidation_rate": 0.129215,
+				"repeated_contention_same_slot_rate": 0.186984,
+				"resolution_p95_seconds": 5.56,
+				"starter_action_share_batch_10": 0.205931,
+				"target_reselected_during_resolution_count": 0,
+				"upgrade_target_invalidation_rate": 0.041723,
+				"victory_pending_tail_seconds": {
+					"maximum": 90.0,
+					"mean": 46.5,
+					"median": 60.0,
+					"minimum": 0.0,
+					"p95": 90.0,
+					"sample_count": 500
+				}
+			},
+			"player_count": 4,
+			"profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+			"profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901126424,
+				"last_seed": 905078005,
+				"profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+				"profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+				"seed_count": 500,
+				"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+			},
+			"run_fingerprint_chain": "6e77bed0064f9523bad0c9202f31c196445ebf5d54a4e8807ae03b46e2e97c60",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "497d8d86dedfbfb44945c43e6e976c54da46be23b0deaa293fa89e17a7a944eb",
+			"configuration_id": "V073_EXPLICIT_MODES_FIXED_ORDER.players_6.seeds_500",
+			"failed_balance_targets": [],
+			"match_count": 500,
+			"metrics": {
+				"action_slot_refunded_on_contention": 0,
+				"anonymous_owner_direct_disclosure_rate": 0.0,
+				"asset_refunded_on_contention": 2399,
+				"build_success_rate_by_local_action_index": {
+					"0": 0.986134,
+					"1": 0.864053,
+					"2": 0.820494,
+					"3": 0.791755,
+					"4": 0.795574
+				},
+				"build_to_repair_auto_conversion_count": 0,
+				"build_to_upgrade_auto_conversion_count": 0,
+				"card_discarded_on_contention": 6360,
+				"critical_build_local_index_0_success_rate": 0.986134,
+				"critical_build_local_index_2_success_rate": 0.820494,
+				"critical_build_local_index_4_success_rate": 0.795574,
+				"facility_build_attempt_count": 53856,
+				"facility_build_fizzle_rate": 0.118093,
+				"facility_build_success_count": 47496,
+				"facility_slot_collision_rate": 0.118093,
+				"first_factory_market_chain_batch": {
+					"maximum": 11.0,
+					"mean": 3.729,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 7.0,
+					"sample_count": 3000
+				},
+				"first_standard_l1_play_batch": {
+					"maximum": 9.0,
+					"mean": 3.015,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 6.0,
+					"sample_count": 3000
+				},
+				"fizzle_rate_by_local_action_index": {
+					"0": 0.013866,
+					"1": 0.135947,
+					"2": 0.179506,
+					"3": 0.208245,
+					"4": 0.204426
+				},
+				"fizzle_rate_by_player_count": {
+					"6": 0.118093
+				},
+				"predicted_resolution_seconds": {
+					"maximum": 10.87,
+					"mean": 4.90956,
+					"median": 4.8,
+					"minimum": 2.48,
+					"p95": 7.57,
+					"sample_count": 5000
+				},
+				"repair_target_invalidation_rate": 0.141111,
+				"repeated_contention_same_slot_rate": 0.238679,
+				"resolution_p95_seconds": 7.57,
+				"starter_action_share_batch_10": 0.199644,
+				"target_reselected_during_resolution_count": 0,
+				"upgrade_target_invalidation_rate": 0.047074,
+				"victory_pending_tail_seconds": {
+					"maximum": 150.0,
+					"mean": 76.68,
+					"median": 90.0,
+					"minimum": 0.0,
+					"p95": 150.0,
+					"sample_count": 500
+				}
+			},
+			"player_count": 6,
+			"profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+			"profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901326424,
+				"last_seed": 905278005,
+				"profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+				"profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+				"seed_count": 500,
+				"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+			},
+			"run_fingerprint_chain": "051ac73c70f31f2f64f733e363968c3e440c3b47802174fa098be42564baed77",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "6fdbeb53e8498e3573d2dd2e5a88dfd2e7af22edf069e89016890b081a7fe6b2",
+			"configuration_id": "V073_EXPLICIT_MODES_FIXED_ORDER.players_8.seeds_500",
+			"failed_balance_targets": [],
+			"match_count": 500,
+			"metrics": {
+				"action_slot_refunded_on_contention": 0,
+				"anonymous_owner_direct_disclosure_rate": 0.0,
+				"asset_refunded_on_contention": 4090,
+				"build_success_rate_by_local_action_index": {
+					"0": 0.978456,
+					"1": 0.836409,
+					"2": 0.788741,
+					"3": 0.758469,
+					"4": 0.723126
+				},
+				"build_to_repair_auto_conversion_count": 0,
+				"build_to_upgrade_auto_conversion_count": 0,
+				"card_discarded_on_contention": 10307,
+				"critical_build_local_index_0_success_rate": 0.978456,
+				"critical_build_local_index_2_success_rate": 0.788741,
+				"critical_build_local_index_4_success_rate": 0.723126,
+				"facility_build_attempt_count": 71913,
+				"facility_build_fizzle_rate": 0.143326,
+				"facility_build_success_count": 61606,
+				"facility_slot_collision_rate": 0.143326,
+				"first_factory_market_chain_batch": {
+					"maximum": 11.0,
+					"mean": 3.823,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 7.0,
+					"sample_count": 4000
+				},
+				"first_standard_l1_play_batch": {
+					"maximum": 9.0,
+					"mean": 3.02475,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 6.0,
+					"sample_count": 4000
+				},
+				"fizzle_rate_by_local_action_index": {
+					"0": 0.021544,
+					"1": 0.163591,
+					"2": 0.211259,
+					"3": 0.241531,
+					"4": 0.276874
+				},
+				"fizzle_rate_by_player_count": {
+					"8": 0.143326
+				},
+				"predicted_resolution_seconds": {
+					"maximum": 13.12,
+					"mean": 6.402946,
+					"median": 6.17,
+					"minimum": 3.68,
+					"p95": 9.36,
+					"sample_count": 5000
+				},
+				"repair_target_invalidation_rate": 0.14435,
+				"repeated_contention_same_slot_rate": 0.275638,
+				"resolution_p95_seconds": 9.36,
+				"starter_action_share_batch_10": 0.20361,
+				"target_reselected_during_resolution_count": 0,
+				"upgrade_target_invalidation_rate": 0.048455,
+				"victory_pending_tail_seconds": {
+					"maximum": 210.0,
+					"mean": 95.34,
+					"median": 90.0,
+					"minimum": 0.0,
+					"p95": 210.0,
+					"sample_count": 500
+				}
+			},
+			"player_count": 8,
+			"profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+			"profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901526424,
+				"last_seed": 905478005,
+				"profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+				"profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+				"seed_count": 500,
+				"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+			},
+			"run_fingerprint_chain": "4d377d994a39c83b292a0d80e972529b172e78f7589702291a2d9f82eb3a1c84",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "12b5f769b48323c763c6c239b4c0b429423aaa83509b249d3375333ef1ca633b",
+			"configuration_id": "V073_HIGH_CONTENTION_DIAGNOSTIC.players_3.seeds_500",
+			"failed_balance_targets": [],
+			"match_count": 500,
+			"metrics": {
+				"action_slot_refunded_on_contention": 0,
+				"anonymous_owner_direct_disclosure_rate": 0.0,
+				"asset_refunded_on_contention": 4269,
+				"build_success_rate_by_local_action_index": {
+					"0": 0.851562,
+					"1": 0.718543,
+					"2": 0.485134,
+					"3": 0.437414,
+					"4": 0.406267
+				},
+				"build_to_repair_auto_conversion_count": 0,
+				"build_to_upgrade_auto_conversion_count": 0,
+				"card_discarded_on_contention": 9350,
+				"critical_build_local_index_0_success_rate": 0.851562,
+				"critical_build_local_index_2_success_rate": 0.485134,
+				"critical_build_local_index_4_success_rate": 0.406267,
+				"facility_build_attempt_count": 27279,
+				"facility_build_fizzle_rate": 0.342754,
+				"facility_build_success_count": 17929,
+				"facility_slot_collision_rate": 0.342754,
+				"first_factory_market_chain_batch": {
+					"maximum": 11.0,
+					"mean": 4.348667,
+					"median": 4.0,
+					"minimum": 1.0,
+					"p95": 9.0,
+					"sample_count": 1500
+				},
+				"first_standard_l1_play_batch": {
+					"maximum": 8.0,
+					"mean": 3.034667,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 6.0,
+					"sample_count": 1500
+				},
+				"fizzle_rate_by_local_action_index": {
+					"0": 0.148438,
+					"1": 0.281457,
+					"2": 0.514866,
+					"3": 0.562586,
+					"4": 0.593733
+				},
+				"fizzle_rate_by_player_count": {
+					"3": 0.342754
+				},
+				"predicted_resolution_seconds": {
+					"maximum": 7.31,
+					"mean": 3.28666,
+					"median": 3.18,
+					"minimum": 1.04,
+					"p95": 5.56,
+					"sample_count": 5000
+				},
+				"repair_target_invalidation_rate": 0.161357,
+				"repeated_contention_same_slot_rate": 0.568449,
+				"resolution_p95_seconds": 5.56,
+				"starter_action_share_batch_10": 0.198613,
+				"target_reselected_during_resolution_count": 0,
+				"upgrade_target_invalidation_rate": 0.055582,
+				"victory_pending_tail_seconds": {
+					"maximum": 60.0,
+					"mean": 31.32,
+					"median": 30.0,
+					"minimum": 0.0,
+					"p95": 60.0,
+					"sample_count": 500
+				}
+			},
+			"player_count": 3,
+			"profile_fingerprint": "f9403af180d74a6b23ccec1948781b702a1c18ed6dd18f29591e0978a38136df",
+			"profile_id": "V073_HIGH_CONTENTION_DIAGNOSTIC",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901026424,
+				"last_seed": 904978005,
+				"profile_fingerprint": "f9403af180d74a6b23ccec1948781b702a1c18ed6dd18f29591e0978a38136df",
+				"profile_id": "V073_HIGH_CONTENTION_DIAGNOSTIC",
+				"seed_count": 500,
+				"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+			},
+			"run_fingerprint_chain": "c4f5d9b1e30c3eaab0a28b50e0ce71e24d51e19a171d6b0cef148d3d1ef10207",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "16ed2483a95a1f4046936555e2af269d34538a279985edbfaaf8a425e4bcde8c",
+			"configuration_id": "V073_HIGH_CONTENTION_DIAGNOSTIC.players_4.seeds_500",
+			"failed_balance_targets": [],
+			"match_count": 500,
+			"metrics": {
+				"action_slot_refunded_on_contention": 0,
+				"anonymous_owner_direct_disclosure_rate": 0.0,
+				"asset_refunded_on_contention": 6405,
+				"build_success_rate_by_local_action_index": {
+					"0": 0.804378,
+					"1": 0.665474,
+					"2": 0.450253,
+					"3": 0.417372,
+					"4": 0.359382
+				},
+				"build_to_repair_auto_conversion_count": 0,
+				"build_to_upgrade_auto_conversion_count": 0,
+				"card_discarded_on_contention": 14058,
+				"critical_build_local_index_0_success_rate": 0.804378,
+				"critical_build_local_index_2_success_rate": 0.450253,
+				"critical_build_local_index_4_success_rate": 0.359382,
+				"facility_build_attempt_count": 36660,
+				"facility_build_fizzle_rate": 0.38347,
+				"facility_build_success_count": 22602,
+				"facility_slot_collision_rate": 0.38347,
+				"first_factory_market_chain_batch": {
+					"maximum": 11.0,
+					"mean": 4.648,
+					"median": 4.0,
+					"minimum": 1.0,
+					"p95": 10.0,
+					"sample_count": 2000
+				},
+				"first_standard_l1_play_batch": {
+					"maximum": 9.0,
+					"mean": 3.051,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 6.0,
+					"sample_count": 2000
+				},
+				"fizzle_rate_by_local_action_index": {
+					"0": 0.195622,
+					"1": 0.334526,
+					"2": 0.549747,
+					"3": 0.582628,
+					"4": 0.640618
+				},
+				"fizzle_rate_by_player_count": {
+					"4": 0.38347
+				},
+				"predicted_resolution_seconds": {
+					"maximum": 9.32,
+					"mean": 4.233492,
+					"median": 4.23,
+					"minimum": 1.28,
+					"p95": 7.07,
+					"sample_count": 5000
+				},
+				"repair_target_invalidation_rate": 0.165152,
+				"repeated_contention_same_slot_rate": 0.655285,
+				"resolution_p95_seconds": 7.07,
+				"starter_action_share_batch_10": 0.205931,
+				"target_reselected_during_resolution_count": 0,
+				"upgrade_target_invalidation_rate": 0.059298,
+				"victory_pending_tail_seconds": {
+					"maximum": 90.0,
+					"mean": 46.5,
+					"median": 60.0,
+					"minimum": 0.0,
+					"p95": 90.0,
+					"sample_count": 500
+				}
+			},
+			"player_count": 4,
+			"profile_fingerprint": "f9403af180d74a6b23ccec1948781b702a1c18ed6dd18f29591e0978a38136df",
+			"profile_id": "V073_HIGH_CONTENTION_DIAGNOSTIC",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901126424,
+				"last_seed": 905078005,
+				"profile_fingerprint": "f9403af180d74a6b23ccec1948781b702a1c18ed6dd18f29591e0978a38136df",
+				"profile_id": "V073_HIGH_CONTENTION_DIAGNOSTIC",
+				"seed_count": 500,
+				"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+			},
+			"run_fingerprint_chain": "b10b1e315c0c9fd09e3d307c5759f4337c0ce7b9b6301c553488958d81857798",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "9ba5aa35a1d0d861d66e01fc1ba6674615b958f76b15c2e60260bf6d956dbcb2",
+			"configuration_id": "V073_HIGH_CONTENTION_DIAGNOSTIC.players_6.seeds_500",
+			"failed_balance_targets": [],
+			"match_count": 500,
+			"metrics": {
+				"action_slot_refunded_on_contention": 0,
+				"anonymous_owner_direct_disclosure_rate": 0.0,
+				"asset_refunded_on_contention": 10685,
+				"build_success_rate_by_local_action_index": {
+					"0": 0.766339,
+					"1": 0.573795,
+					"2": 0.442102,
+					"3": 0.399168,
+					"4": 0.355117
+				},
+				"build_to_repair_auto_conversion_count": 0,
+				"build_to_upgrade_auto_conversion_count": 0,
+				"card_discarded_on_contention": 23415,
+				"critical_build_local_index_0_success_rate": 0.766339,
+				"critical_build_local_index_2_success_rate": 0.442102,
+				"critical_build_local_index_4_success_rate": 0.355117,
+				"facility_build_attempt_count": 54936,
+				"facility_build_fizzle_rate": 0.426223,
+				"facility_build_success_count": 31521,
+				"facility_slot_collision_rate": 0.426223,
+				"first_factory_market_chain_batch": {
+					"maximum": 11.0,
+					"mean": 5.093667,
+					"median": 5.0,
+					"minimum": 1.0,
+					"p95": 11.0,
+					"sample_count": 3000
+				},
+				"first_standard_l1_play_batch": {
+					"maximum": 9.0,
+					"mean": 3.015,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 6.0,
+					"sample_count": 3000
+				},
+				"fizzle_rate_by_local_action_index": {
+					"0": 0.233661,
+					"1": 0.426205,
+					"2": 0.557898,
+					"3": 0.600832,
+					"4": 0.644883
+				},
+				"fizzle_rate_by_player_count": {
+					"6": 0.426223
+				},
+				"predicted_resolution_seconds": {
+					"maximum": 11.92,
+					"mean": 6.11721,
+					"median": 6.13,
+					"minimum": 2.48,
+					"p95": 9.17,
+					"sample_count": 5000
+				},
+				"repair_target_invalidation_rate": 0.175025,
+				"repeated_contention_same_slot_rate": 0.741875,
+				"resolution_p95_seconds": 9.17,
+				"starter_action_share_batch_10": 0.199644,
+				"target_reselected_during_resolution_count": 0,
+				"upgrade_target_invalidation_rate": 0.065821,
+				"victory_pending_tail_seconds": {
+					"maximum": 150.0,
+					"mean": 76.68,
+					"median": 90.0,
+					"minimum": 0.0,
+					"p95": 150.0,
+					"sample_count": 500
+				}
+			},
+			"player_count": 6,
+			"profile_fingerprint": "f9403af180d74a6b23ccec1948781b702a1c18ed6dd18f29591e0978a38136df",
+			"profile_id": "V073_HIGH_CONTENTION_DIAGNOSTIC",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901326424,
+				"last_seed": 905278005,
+				"profile_fingerprint": "f9403af180d74a6b23ccec1948781b702a1c18ed6dd18f29591e0978a38136df",
+				"profile_id": "V073_HIGH_CONTENTION_DIAGNOSTIC",
+				"seed_count": 500,
+				"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+			},
+			"run_fingerprint_chain": "a2029f3d8bb1adffe31198861763afbdd668050d29a6e969992792f02530094a",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "73b76074f43d1d5553b5a68dfd59f19f3b2da035e9433897cdeb83d9c4c3687a",
+			"configuration_id": "V073_HIGH_CONTENTION_DIAGNOSTIC.players_8.seeds_500",
+			"failed_balance_targets": [],
+			"match_count": 500,
+			"metrics": {
+				"action_slot_refunded_on_contention": 0,
+				"anonymous_owner_direct_disclosure_rate": 0.0,
+				"asset_refunded_on_contention": 15314,
+				"build_success_rate_by_local_action_index": {
+					"0": 0.741387,
+					"1": 0.517379,
+					"2": 0.429875,
+					"3": 0.384244,
+					"4": 0.339685
+				},
+				"build_to_repair_auto_conversion_count": 0,
+				"build_to_upgrade_auto_conversion_count": 0,
+				"card_discarded_on_contention": 33357,
+				"critical_build_local_index_0_success_rate": 0.741387,
+				"critical_build_local_index_2_success_rate": 0.429875,
+				"critical_build_local_index_4_success_rate": 0.339685,
+				"facility_build_attempt_count": 73401,
+				"facility_build_fizzle_rate": 0.454449,
+				"facility_build_success_count": 40044,
+				"facility_slot_collision_rate": 0.454449,
+				"first_factory_market_chain_batch": {
+					"maximum": 11.0,
+					"mean": 5.322,
+					"median": 5.0,
+					"minimum": 1.0,
+					"p95": 11.0,
+					"sample_count": 4000
+				},
+				"first_standard_l1_play_batch": {
+					"maximum": 9.0,
+					"mean": 3.02475,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 6.0,
+					"sample_count": 4000
+				},
+				"fizzle_rate_by_local_action_index": {
+					"0": 0.258613,
+					"1": 0.482621,
+					"2": 0.570125,
+					"3": 0.615756,
+					"4": 0.660315
+				},
+				"fizzle_rate_by_player_count": {
+					"8": 0.454449
+				},
+				"predicted_resolution_seconds": {
+					"maximum": 14.52,
+					"mean": 8.041126,
+					"median": 7.92,
+					"minimum": 3.68,
+					"p95": 10.96,
+					"sample_count": 5000
+				},
+				"repair_target_invalidation_rate": 0.182634,
+				"repeated_contention_same_slot_rate": 0.793057,
+				"resolution_p95_seconds": 10.96,
+				"starter_action_share_batch_10": 0.20361,
+				"target_reselected_during_resolution_count": 0,
+				"upgrade_target_invalidation_rate": 0.075142,
+				"victory_pending_tail_seconds": {
+					"maximum": 210.0,
+					"mean": 95.34,
+					"median": 90.0,
+					"minimum": 0.0,
+					"p95": 210.0,
+					"sample_count": 500
+				}
+			},
+			"player_count": 8,
+			"profile_fingerprint": "f9403af180d74a6b23ccec1948781b702a1c18ed6dd18f29591e0978a38136df",
+			"profile_id": "V073_HIGH_CONTENTION_DIAGNOSTIC",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901526424,
+				"last_seed": 905478005,
+				"profile_fingerprint": "f9403af180d74a6b23ccec1948781b702a1c18ed6dd18f29591e0978a38136df",
+				"profile_id": "V073_HIGH_CONTENTION_DIAGNOSTIC",
+				"seed_count": 500,
+				"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+			},
+			"run_fingerprint_chain": "41f05d71af9aa286aa0d399c260ff9a422e3526566f7932d1c68c571c034d448",
+			"seed_count": 500,
+			"valid": true
+		}
+	],
+	"detached_reference_only": true,
+	"dual_write_count": 0,
+	"external_asset_source_count": 0,
+	"fixed_seed_schedule": {
+		"base_seed": 900726424,
+		"formula_id": "base_plus_player_count_times_100000_plus_seed_index_times_7919",
+		"profile_independent_for_paired_comparison": true
+	},
+	"human_fun_proven": false,
+	"human_test_required": true,
+	"initiative_auction_core_count": 0,
+	"initiative_bid_save_field_count": 0,
+	"initiative_bid_ui_surface_count": 0,
+	"player_count_coverage": 4,
+	"player_counts": [
+		3,
+		4,
+		6,
+		8
+	],
+	"production_connection_count": 0,
+	"production_rng_used": false,
+	"production_runtime_connected": false,
+	"production_save_used": false,
+	"profile_count": 3,
+	"profile_results": [
+		{
+			"by_player_count": {
+				"3": {
+					"configuration_fingerprint": "0b451802fe07ae1218b0b6891d642a87e4f269e936c36f3bb96a50a8e2dea341",
+					"configuration_id": "V072_GENERIC_FACILITY_TARGETING.players_3.seeds_500",
+					"failed_balance_targets": [],
+					"match_count": 500,
+					"metrics": {
+						"action_slot_refunded_on_contention": 0,
+						"anonymous_owner_direct_disclosure_rate": 0.0,
+						"asset_refunded_on_contention": 0,
+						"build_success_rate_by_local_action_index": {
+							"0": 1.0,
+							"1": 1.0,
+							"2": 1.0,
+							"3": 1.0,
+							"4": 1.0
+						},
+						"build_to_repair_auto_conversion_count": 0,
+						"build_to_upgrade_auto_conversion_count": 0,
+						"card_discarded_on_contention": 0,
+						"critical_build_local_index_0_success_rate": 1.0,
+						"critical_build_local_index_2_success_rate": 1.0,
+						"critical_build_local_index_4_success_rate": 1.0,
+						"facility_build_attempt_count": 26747,
+						"facility_build_fizzle_rate": 0.0,
+						"facility_build_success_count": 26747,
+						"facility_slot_collision_rate": 0.070849,
+						"first_factory_market_chain_batch": {
+							"maximum": 11.0,
+							"mean": 2.939333,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 6.0,
+							"sample_count": 1500
+						},
+						"first_standard_l1_play_batch": {
+							"maximum": 8.0,
+							"mean": 3.034667,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 6.0,
+							"sample_count": 1500
+						},
+						"fizzle_rate_by_local_action_index": {
+							"0": 0.0,
+							"1": 0.0,
+							"2": 0.0,
+							"3": 0.0,
+							"4": 0.0
+						},
+						"fizzle_rate_by_player_count": {
+							"3": 0.0
+						},
+						"predicted_resolution_seconds": {
+							"maximum": 4.76,
+							"mean": 2.62204,
+							"median": 2.68,
+							"minimum": 1.04,
+							"p95": 4.08,
+							"sample_count": 5000
+						},
+						"repair_target_invalidation_rate": 0.125513,
+						"repeated_contention_same_slot_rate": 0.129288,
+						"resolution_p95_seconds": 4.08,
+						"starter_action_share_batch_10": 0.198613,
+						"target_reselected_during_resolution_count": 1895,
+						"upgrade_target_invalidation_rate": 0.027122,
+						"victory_pending_tail_seconds": {
+							"maximum": 60.0,
+							"mean": 31.32,
+							"median": 30.0,
+							"minimum": 0.0,
+							"p95": 60.0,
+							"sample_count": 500
+						}
+					},
+					"player_count": 3,
+					"profile_fingerprint": "2a8f0cecd6eec0ab699c7ea882c52465f2a6019b98bd21399f4666457b81efa1",
+					"profile_id": "V072_GENERIC_FACILITY_TARGETING",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901026424,
+						"last_seed": 904978005,
+						"profile_fingerprint": "2a8f0cecd6eec0ab699c7ea882c52465f2a6019b98bd21399f4666457b81efa1",
+						"profile_id": "V072_GENERIC_FACILITY_TARGETING",
+						"seed_count": 500,
+						"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+					},
+					"run_fingerprint_chain": "ecf47c69877d3ff7a4b80d48ccd8e513b20152ba1052e94c892b53396ea4d11b",
+					"seed_count": 500,
+					"valid": true
+				},
+				"4": {
+					"configuration_fingerprint": "c91818d0572ac5f8d94caed09ac143fc2161f8ec44fe304b7c9500e39e938ea7",
+					"configuration_id": "V072_GENERIC_FACILITY_TARGETING.players_4.seeds_500",
+					"failed_balance_targets": [],
+					"match_count": 500,
+					"metrics": {
+						"action_slot_refunded_on_contention": 0,
+						"anonymous_owner_direct_disclosure_rate": 0.0,
+						"asset_refunded_on_contention": 0,
+						"build_success_rate_by_local_action_index": {
+							"0": 1.0,
+							"1": 1.0,
+							"2": 1.0,
+							"3": 1.0,
+							"4": 1.0
+						},
+						"build_to_repair_auto_conversion_count": 0,
+						"build_to_upgrade_auto_conversion_count": 0,
+						"card_discarded_on_contention": 0,
+						"critical_build_local_index_0_success_rate": 1.0,
+						"critical_build_local_index_2_success_rate": 1.0,
+						"critical_build_local_index_4_success_rate": 1.0,
+						"facility_build_attempt_count": 35892,
+						"facility_build_fizzle_rate": 0.0,
+						"facility_build_success_count": 35892,
+						"facility_slot_collision_rate": 0.101137,
+						"first_factory_market_chain_batch": {
+							"maximum": 11.0,
+							"mean": 2.986,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 6.0,
+							"sample_count": 2000
+						},
+						"first_standard_l1_play_batch": {
+							"maximum": 9.0,
+							"mean": 3.051,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 6.0,
+							"sample_count": 2000
+						},
+						"fizzle_rate_by_local_action_index": {
+							"0": 0.0,
+							"1": 0.0,
+							"2": 0.0,
+							"3": 0.0,
+							"4": 0.0
+						},
+						"fizzle_rate_by_player_count": {
+							"4": 0.0
+						},
+						"predicted_resolution_seconds": {
+							"maximum": 5.72,
+							"mean": 3.230632,
+							"median": 3.2,
+							"minimum": 1.28,
+							"p95": 4.84,
+							"sample_count": 5000
+						},
+						"repair_target_invalidation_rate": 0.117965,
+						"repeated_contention_same_slot_rate": 0.188981,
+						"resolution_p95_seconds": 4.84,
+						"starter_action_share_batch_10": 0.205931,
+						"target_reselected_during_resolution_count": 3630,
+						"upgrade_target_invalidation_rate": 0.020801,
+						"victory_pending_tail_seconds": {
+							"maximum": 90.0,
+							"mean": 46.5,
+							"median": 60.0,
+							"minimum": 0.0,
+							"p95": 90.0,
+							"sample_count": 500
+						}
+					},
+					"player_count": 4,
+					"profile_fingerprint": "2a8f0cecd6eec0ab699c7ea882c52465f2a6019b98bd21399f4666457b81efa1",
+					"profile_id": "V072_GENERIC_FACILITY_TARGETING",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901126424,
+						"last_seed": 905078005,
+						"profile_fingerprint": "2a8f0cecd6eec0ab699c7ea882c52465f2a6019b98bd21399f4666457b81efa1",
+						"profile_id": "V072_GENERIC_FACILITY_TARGETING",
+						"seed_count": 500,
+						"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+					},
+					"run_fingerprint_chain": "94a122be146306feefe1816f1a5f31039db29e8a7f86d71d697588e7338253f1",
+					"seed_count": 500,
+					"valid": true
+				},
+				"6": {
+					"configuration_fingerprint": "6dc5a84a32408a54c67076ee053a6dea5cbc86ea467d0592ae532f055a91012f",
+					"configuration_id": "V072_GENERIC_FACILITY_TARGETING.players_6.seeds_500",
+					"failed_balance_targets": [],
+					"match_count": 500,
+					"metrics": {
+						"action_slot_refunded_on_contention": 0,
+						"anonymous_owner_direct_disclosure_rate": 0.0,
+						"asset_refunded_on_contention": 0,
+						"build_success_rate_by_local_action_index": {
+							"0": 1.0,
+							"1": 1.0,
+							"2": 1.0,
+							"3": 1.0,
+							"4": 1.0
+						},
+						"build_to_repair_auto_conversion_count": 0,
+						"build_to_upgrade_auto_conversion_count": 0,
+						"card_discarded_on_contention": 0,
+						"critical_build_local_index_0_success_rate": 1.0,
+						"critical_build_local_index_2_success_rate": 1.0,
+						"critical_build_local_index_4_success_rate": 1.0,
+						"facility_build_attempt_count": 53498,
+						"facility_build_fizzle_rate": 0.0,
+						"facility_build_success_count": 53498,
+						"facility_slot_collision_rate": 0.122378,
+						"first_factory_market_chain_batch": {
+							"maximum": 11.0,
+							"mean": 3.133667,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 7.0,
+							"sample_count": 3000
+						},
+						"first_standard_l1_play_batch": {
+							"maximum": 9.0,
+							"mean": 3.015,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 6.0,
+							"sample_count": 3000
+						},
+						"fizzle_rate_by_local_action_index": {
+							"0": 0.0,
+							"1": 0.0,
+							"2": 0.0,
+							"3": 0.0,
+							"4": 0.0
+						},
+						"fizzle_rate_by_player_count": {
+							"6": 0.0
+						},
+						"predicted_resolution_seconds": {
+							"maximum": 6.92,
+							"mean": 4.45068,
+							"median": 4.4,
+							"minimum": 2.48,
+							"p95": 6.04,
+							"sample_count": 5000
+						},
+						"repair_target_invalidation_rate": 0.126615,
+						"repeated_contention_same_slot_rate": 0.239346,
+						"resolution_p95_seconds": 6.04,
+						"starter_action_share_batch_10": 0.199644,
+						"target_reselected_during_resolution_count": 6547,
+						"upgrade_target_invalidation_rate": 0.026372,
+						"victory_pending_tail_seconds": {
+							"maximum": 150.0,
+							"mean": 76.68,
+							"median": 90.0,
+							"minimum": 0.0,
+							"p95": 150.0,
+							"sample_count": 500
+						}
+					},
+					"player_count": 6,
+					"profile_fingerprint": "2a8f0cecd6eec0ab699c7ea882c52465f2a6019b98bd21399f4666457b81efa1",
+					"profile_id": "V072_GENERIC_FACILITY_TARGETING",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901326424,
+						"last_seed": 905278005,
+						"profile_fingerprint": "2a8f0cecd6eec0ab699c7ea882c52465f2a6019b98bd21399f4666457b81efa1",
+						"profile_id": "V072_GENERIC_FACILITY_TARGETING",
+						"seed_count": 500,
+						"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+					},
+					"run_fingerprint_chain": "defe402b862fbc467c9d68220779f6808a4e883090b6498e17a62dc3260e9546",
+					"seed_count": 500,
+					"valid": true
+				},
+				"8": {
+					"configuration_fingerprint": "1e9e2baf312848a4280fb0a6bc8d1c3c3608341c5cd56d662f31129d5e125d6f",
+					"configuration_id": "V072_GENERIC_FACILITY_TARGETING.players_8.seeds_500",
+					"failed_balance_targets": [],
+					"match_count": 500,
+					"metrics": {
+						"action_slot_refunded_on_contention": 0,
+						"anonymous_owner_direct_disclosure_rate": 0.0,
+						"asset_refunded_on_contention": 0,
+						"build_success_rate_by_local_action_index": {
+							"0": 1.0,
+							"1": 1.0,
+							"2": 1.0,
+							"3": 1.0,
+							"4": 1.0
+						},
+						"build_to_repair_auto_conversion_count": 0,
+						"build_to_upgrade_auto_conversion_count": 0,
+						"card_discarded_on_contention": 0,
+						"critical_build_local_index_0_success_rate": 1.0,
+						"critical_build_local_index_2_success_rate": 1.0,
+						"critical_build_local_index_4_success_rate": 1.0,
+						"facility_build_attempt_count": 71278,
+						"facility_build_fizzle_rate": 0.0,
+						"facility_build_success_count": 71278,
+						"facility_slot_collision_rate": 0.160835,
+						"first_factory_market_chain_batch": {
+							"maximum": 11.0,
+							"mean": 3.085,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 7.0,
+							"sample_count": 4000
+						},
+						"first_standard_l1_play_batch": {
+							"maximum": 9.0,
+							"mean": 3.02475,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 6.0,
+							"sample_count": 4000
+						},
+						"fizzle_rate_by_local_action_index": {
+							"0": 0.0,
+							"1": 0.0,
+							"2": 0.0,
+							"3": 0.0,
+							"4": 0.0
+						},
+						"fizzle_rate_by_player_count": {
+							"8": 0.0
+						},
+						"predicted_resolution_seconds": {
+							"maximum": 8.12,
+							"mean": 5.660376,
+							"median": 5.6,
+							"minimum": 3.68,
+							"p95": 7.24,
+							"sample_count": 5000
+						},
+						"repair_target_invalidation_rate": 0.129695,
+						"repeated_contention_same_slot_rate": 0.280792,
+						"resolution_p95_seconds": 7.24,
+						"starter_action_share_batch_10": 0.20361,
+						"target_reselected_during_resolution_count": 11464,
+						"upgrade_target_invalidation_rate": 0.022563,
+						"victory_pending_tail_seconds": {
+							"maximum": 210.0,
+							"mean": 95.34,
+							"median": 90.0,
+							"minimum": 0.0,
+							"p95": 210.0,
+							"sample_count": 500
+						}
+					},
+					"player_count": 8,
+					"profile_fingerprint": "2a8f0cecd6eec0ab699c7ea882c52465f2a6019b98bd21399f4666457b81efa1",
+					"profile_id": "V072_GENERIC_FACILITY_TARGETING",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901526424,
+						"last_seed": 905478005,
+						"profile_fingerprint": "2a8f0cecd6eec0ab699c7ea882c52465f2a6019b98bd21399f4666457b81efa1",
+						"profile_id": "V072_GENERIC_FACILITY_TARGETING",
+						"seed_count": 500,
+						"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+					},
+					"run_fingerprint_chain": "ae0ca6688c66a6f64ad0f16ffecb15348a2a564787d95cb658553f9ab2ec4ff9",
+					"seed_count": 500,
+					"valid": true
+				}
+			},
+			"configuration_count": 4,
+			"failed_balance_target_count": 0,
+			"failed_balance_targets": [],
+			"match_count": 2000,
+			"metrics": {
+				"action_slot_refunded_on_contention": 0,
+				"anonymous_owner_direct_disclosure_rate": 0.0,
+				"asset_refunded_on_contention": 0,
+				"build_success_rate_by_local_action_index": {
+					"0": 1.0,
+					"1": 1.0,
+					"2": 1.0,
+					"3": 1.0,
+					"4": 1.0
+				},
+				"build_to_repair_auto_conversion_count": 0,
+				"build_to_upgrade_auto_conversion_count": 0,
+				"card_discarded_on_contention": 0,
+				"critical_build_local_index_0_success_rate": 1.0,
+				"critical_build_local_index_2_success_rate": 1.0,
+				"critical_build_local_index_4_success_rate": 1.0,
+				"facility_build_attempt_count": 187415,
+				"facility_build_fizzle_rate": 0.0,
+				"facility_build_success_count": 187415,
+				"facility_slot_collision_rate": 0.125582,
+				"first_factory_market_chain_batch": {
+					"maximum": 11.0,
+					"mean": 3.059238,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 7.0,
+					"sample_count": 10500
+				},
+				"first_standard_l1_play_batch": {
+					"maximum": 9.0,
+					"mean": 3.028381,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 6.0,
+					"sample_count": 10500
+				},
+				"fizzle_rate_by_local_action_index": {
+					"0": 0.0,
+					"1": 0.0,
+					"2": 0.0,
+					"3": 0.0,
+					"4": 0.0
+				},
+				"fizzle_rate_by_player_count": {
+					"3": 0.0,
+					"4": 0.0,
+					"6": 0.0,
+					"8": 0.0
+				},
+				"predicted_resolution_seconds": {
+					"maximum": 8.12,
+					"mean": 3.990932,
+					"median": 3.92,
+					"minimum": 1.04,
+					"p95": 6.56,
+					"sample_count": 20000
+				},
+				"repair_target_invalidation_rate": 0.126034,
+				"repeated_contention_same_slot_rate": 0.242904,
+				"resolution_p95_seconds": 6.56,
+				"starter_action_share_batch_10": 0.202211,
+				"target_reselected_during_resolution_count": 23536,
+				"upgrade_target_invalidation_rate": 0.023931,
+				"victory_pending_tail_seconds": {
+					"maximum": 210.0,
+					"mean": 62.46,
+					"median": 60.0,
+					"minimum": 0.0,
+					"p95": 180.0,
+					"sample_count": 2000
+				}
+			},
+			"player_counts": [
+				3,
+				4,
+				6,
+				8
+			],
+			"profile_fingerprint": "2a8f0cecd6eec0ab699c7ea882c52465f2a6019b98bd21399f4666457b81efa1",
+			"profile_id": "V072_GENERIC_FACILITY_TARGETING",
+			"profile_result_fingerprint": "5a61e8eaa5d1e95a03c105df3f2449b5db478ae6e7d0fcfe8bd8c76e30697c41",
+			"profile_status": "historical_detached_comparison",
+			"seed_count_per_configuration": 500
+		},
+		{
+			"by_player_count": {
+				"3": {
+					"configuration_fingerprint": "365363f45d03b862f8d4052ad3913fcffc90ff708ea6a5d34f42e8ec59a131e8",
+					"configuration_id": "V073_EXPLICIT_MODES_FIXED_ORDER.players_3.seeds_500",
+					"failed_balance_targets": [],
+					"match_count": 500,
+					"metrics": {
+						"action_slot_refunded_on_contention": 0,
+						"anonymous_owner_direct_disclosure_rate": 0.0,
+						"asset_refunded_on_contention": 646,
+						"build_success_rate_by_local_action_index": {
+							"0": 0.990913,
+							"1": 0.909497,
+							"2": 0.889399,
+							"3": 0.887647,
+							"4": 0.886655
+						},
+						"build_to_repair_auto_conversion_count": 0,
+						"build_to_upgrade_auto_conversion_count": 0,
+						"card_discarded_on_contention": 1936,
+						"critical_build_local_index_0_success_rate": 0.990913,
+						"critical_build_local_index_2_success_rate": 0.889399,
+						"critical_build_local_index_4_success_rate": 0.886655,
+						"facility_build_attempt_count": 26886,
+						"facility_build_fizzle_rate": 0.072008,
+						"facility_build_success_count": 24950,
+						"facility_slot_collision_rate": 0.072008,
+						"first_factory_market_chain_batch": {
+							"maximum": 11.0,
+							"mean": 3.416667,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 7.0,
+							"sample_count": 1500
+						},
+						"first_standard_l1_play_batch": {
+							"maximum": 8.0,
+							"mean": 3.034667,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 6.0,
+							"sample_count": 1500
+						},
+						"fizzle_rate_by_local_action_index": {
+							"0": 0.009087,
+							"1": 0.090503,
+							"2": 0.110601,
+							"3": 0.112353,
+							"4": 0.113345
+						},
+						"fizzle_rate_by_player_count": {
+							"3": 0.072008
+						},
+						"predicted_resolution_seconds": {
+							"maximum": 6.61,
+							"mean": 2.76112,
+							"median": 2.72,
+							"minimum": 1.04,
+							"p95": 4.49,
+							"sample_count": 5000
+						},
+						"repair_target_invalidation_rate": 0.134543,
+						"repeated_contention_same_slot_rate": 0.132231,
+						"resolution_p95_seconds": 4.49,
+						"starter_action_share_batch_10": 0.198613,
+						"target_reselected_during_resolution_count": 0,
+						"upgrade_target_invalidation_rate": 0.038042,
+						"victory_pending_tail_seconds": {
+							"maximum": 60.0,
+							"mean": 31.32,
+							"median": 30.0,
+							"minimum": 0.0,
+							"p95": 60.0,
+							"sample_count": 500
+						}
+					},
+					"player_count": 3,
+					"profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+					"profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901026424,
+						"last_seed": 904978005,
+						"profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+						"profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+						"seed_count": 500,
+						"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+					},
+					"run_fingerprint_chain": "b55f9f7a91bbede4eabd9e25a0e1a5971a024e266df5e5490b9243dee5a3dcfd",
+					"seed_count": 500,
+					"valid": true
+				},
+				"4": {
+					"configuration_fingerprint": "d7f23604bc02f3ea9a4fdf3a3814c436b4119b890fb76d74aa2e4b511cd93e56",
+					"configuration_id": "V073_EXPLICIT_MODES_FIXED_ORDER.players_4.seeds_500",
+					"failed_balance_targets": [],
+					"match_count": 500,
+					"metrics": {
+						"action_slot_refunded_on_contention": 0,
+						"anonymous_owner_direct_disclosure_rate": 0.0,
+						"asset_refunded_on_contention": 1140,
+						"build_success_rate_by_local_action_index": {
+							"0": 0.989805,
+							"1": 0.89183,
+							"2": 0.864541,
+							"3": 0.841336,
+							"4": 0.841525
+						},
+						"build_to_repair_auto_conversion_count": 0,
+						"build_to_upgrade_auto_conversion_count": 0,
+						"card_discarded_on_contention": 3273,
+						"critical_build_local_index_0_success_rate": 0.989805,
+						"critical_build_local_index_2_success_rate": 0.864541,
+						"critical_build_local_index_4_success_rate": 0.841525,
+						"facility_build_attempt_count": 36129,
+						"facility_build_fizzle_rate": 0.090592,
+						"facility_build_success_count": 32856,
+						"facility_slot_collision_rate": 0.090592,
+						"first_factory_market_chain_batch": {
+							"maximum": 11.0,
+							"mean": 3.616,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 7.0,
+							"sample_count": 2000
+						},
+						"first_standard_l1_play_batch": {
+							"maximum": 9.0,
+							"mean": 3.051,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 6.0,
+							"sample_count": 2000
+						},
+						"fizzle_rate_by_local_action_index": {
+							"0": 0.010195,
+							"1": 0.10817,
+							"2": 0.135459,
+							"3": 0.158664,
+							"4": 0.158475
+						},
+						"fizzle_rate_by_player_count": {
+							"4": 0.090592
+						},
+						"predicted_resolution_seconds": {
+							"maximum": 8.27,
+							"mean": 3.468302,
+							"median": 3.2,
+							"minimum": 1.28,
+							"p95": 5.56,
+							"sample_count": 5000
+						},
+						"repair_target_invalidation_rate": 0.129215,
+						"repeated_contention_same_slot_rate": 0.186984,
+						"resolution_p95_seconds": 5.56,
+						"starter_action_share_batch_10": 0.205931,
+						"target_reselected_during_resolution_count": 0,
+						"upgrade_target_invalidation_rate": 0.041723,
+						"victory_pending_tail_seconds": {
+							"maximum": 90.0,
+							"mean": 46.5,
+							"median": 60.0,
+							"minimum": 0.0,
+							"p95": 90.0,
+							"sample_count": 500
+						}
+					},
+					"player_count": 4,
+					"profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+					"profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901126424,
+						"last_seed": 905078005,
+						"profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+						"profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+						"seed_count": 500,
+						"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+					},
+					"run_fingerprint_chain": "6e77bed0064f9523bad0c9202f31c196445ebf5d54a4e8807ae03b46e2e97c60",
+					"seed_count": 500,
+					"valid": true
+				},
+				"6": {
+					"configuration_fingerprint": "497d8d86dedfbfb44945c43e6e976c54da46be23b0deaa293fa89e17a7a944eb",
+					"configuration_id": "V073_EXPLICIT_MODES_FIXED_ORDER.players_6.seeds_500",
+					"failed_balance_targets": [],
+					"match_count": 500,
+					"metrics": {
+						"action_slot_refunded_on_contention": 0,
+						"anonymous_owner_direct_disclosure_rate": 0.0,
+						"asset_refunded_on_contention": 2399,
+						"build_success_rate_by_local_action_index": {
+							"0": 0.986134,
+							"1": 0.864053,
+							"2": 0.820494,
+							"3": 0.791755,
+							"4": 0.795574
+						},
+						"build_to_repair_auto_conversion_count": 0,
+						"build_to_upgrade_auto_conversion_count": 0,
+						"card_discarded_on_contention": 6360,
+						"critical_build_local_index_0_success_rate": 0.986134,
+						"critical_build_local_index_2_success_rate": 0.820494,
+						"critical_build_local_index_4_success_rate": 0.795574,
+						"facility_build_attempt_count": 53856,
+						"facility_build_fizzle_rate": 0.118093,
+						"facility_build_success_count": 47496,
+						"facility_slot_collision_rate": 0.118093,
+						"first_factory_market_chain_batch": {
+							"maximum": 11.0,
+							"mean": 3.729,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 7.0,
+							"sample_count": 3000
+						},
+						"first_standard_l1_play_batch": {
+							"maximum": 9.0,
+							"mean": 3.015,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 6.0,
+							"sample_count": 3000
+						},
+						"fizzle_rate_by_local_action_index": {
+							"0": 0.013866,
+							"1": 0.135947,
+							"2": 0.179506,
+							"3": 0.208245,
+							"4": 0.204426
+						},
+						"fizzle_rate_by_player_count": {
+							"6": 0.118093
+						},
+						"predicted_resolution_seconds": {
+							"maximum": 10.87,
+							"mean": 4.90956,
+							"median": 4.8,
+							"minimum": 2.48,
+							"p95": 7.57,
+							"sample_count": 5000
+						},
+						"repair_target_invalidation_rate": 0.141111,
+						"repeated_contention_same_slot_rate": 0.238679,
+						"resolution_p95_seconds": 7.57,
+						"starter_action_share_batch_10": 0.199644,
+						"target_reselected_during_resolution_count": 0,
+						"upgrade_target_invalidation_rate": 0.047074,
+						"victory_pending_tail_seconds": {
+							"maximum": 150.0,
+							"mean": 76.68,
+							"median": 90.0,
+							"minimum": 0.0,
+							"p95": 150.0,
+							"sample_count": 500
+						}
+					},
+					"player_count": 6,
+					"profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+					"profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901326424,
+						"last_seed": 905278005,
+						"profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+						"profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+						"seed_count": 500,
+						"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+					},
+					"run_fingerprint_chain": "051ac73c70f31f2f64f733e363968c3e440c3b47802174fa098be42564baed77",
+					"seed_count": 500,
+					"valid": true
+				},
+				"8": {
+					"configuration_fingerprint": "6fdbeb53e8498e3573d2dd2e5a88dfd2e7af22edf069e89016890b081a7fe6b2",
+					"configuration_id": "V073_EXPLICIT_MODES_FIXED_ORDER.players_8.seeds_500",
+					"failed_balance_targets": [],
+					"match_count": 500,
+					"metrics": {
+						"action_slot_refunded_on_contention": 0,
+						"anonymous_owner_direct_disclosure_rate": 0.0,
+						"asset_refunded_on_contention": 4090,
+						"build_success_rate_by_local_action_index": {
+							"0": 0.978456,
+							"1": 0.836409,
+							"2": 0.788741,
+							"3": 0.758469,
+							"4": 0.723126
+						},
+						"build_to_repair_auto_conversion_count": 0,
+						"build_to_upgrade_auto_conversion_count": 0,
+						"card_discarded_on_contention": 10307,
+						"critical_build_local_index_0_success_rate": 0.978456,
+						"critical_build_local_index_2_success_rate": 0.788741,
+						"critical_build_local_index_4_success_rate": 0.723126,
+						"facility_build_attempt_count": 71913,
+						"facility_build_fizzle_rate": 0.143326,
+						"facility_build_success_count": 61606,
+						"facility_slot_collision_rate": 0.143326,
+						"first_factory_market_chain_batch": {
+							"maximum": 11.0,
+							"mean": 3.823,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 7.0,
+							"sample_count": 4000
+						},
+						"first_standard_l1_play_batch": {
+							"maximum": 9.0,
+							"mean": 3.02475,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 6.0,
+							"sample_count": 4000
+						},
+						"fizzle_rate_by_local_action_index": {
+							"0": 0.021544,
+							"1": 0.163591,
+							"2": 0.211259,
+							"3": 0.241531,
+							"4": 0.276874
+						},
+						"fizzle_rate_by_player_count": {
+							"8": 0.143326
+						},
+						"predicted_resolution_seconds": {
+							"maximum": 13.12,
+							"mean": 6.402946,
+							"median": 6.17,
+							"minimum": 3.68,
+							"p95": 9.36,
+							"sample_count": 5000
+						},
+						"repair_target_invalidation_rate": 0.14435,
+						"repeated_contention_same_slot_rate": 0.275638,
+						"resolution_p95_seconds": 9.36,
+						"starter_action_share_batch_10": 0.20361,
+						"target_reselected_during_resolution_count": 0,
+						"upgrade_target_invalidation_rate": 0.048455,
+						"victory_pending_tail_seconds": {
+							"maximum": 210.0,
+							"mean": 95.34,
+							"median": 90.0,
+							"minimum": 0.0,
+							"p95": 210.0,
+							"sample_count": 500
+						}
+					},
+					"player_count": 8,
+					"profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+					"profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901526424,
+						"last_seed": 905478005,
+						"profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+						"profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+						"seed_count": 500,
+						"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+					},
+					"run_fingerprint_chain": "4d377d994a39c83b292a0d80e972529b172e78f7589702291a2d9f82eb3a1c84",
+					"seed_count": 500,
+					"valid": true
+				}
+			},
+			"configuration_count": 4,
+			"failed_balance_target_count": 0,
+			"failed_balance_targets": [],
+			"match_count": 2000,
+			"metrics": {
+				"action_slot_refunded_on_contention": 0,
+				"anonymous_owner_direct_disclosure_rate": 0.0,
+				"asset_refunded_on_contention": 8275,
+				"build_success_rate_by_local_action_index": {
+					"0": 0.984586,
+					"1": 0.865298,
+					"2": 0.826713,
+					"3": 0.802289,
+					"4": 0.789857
+				},
+				"build_to_repair_auto_conversion_count": 0,
+				"build_to_upgrade_auto_conversion_count": 0,
+				"card_discarded_on_contention": 21876,
+				"critical_build_local_index_0_success_rate": 0.984586,
+				"critical_build_local_index_2_success_rate": 0.826713,
+				"critical_build_local_index_4_success_rate": 0.789857,
+				"facility_build_attempt_count": 188784,
+				"facility_build_fizzle_rate": 0.115878,
+				"facility_build_success_count": 166908,
+				"facility_slot_collision_rate": 0.115878,
+				"first_factory_market_chain_batch": {
+					"maximum": 11.0,
+					"mean": 3.698667,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 7.0,
+					"sample_count": 10500
+				},
+				"first_standard_l1_play_batch": {
+					"maximum": 9.0,
+					"mean": 3.028381,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 6.0,
+					"sample_count": 10500
+				},
+				"fizzle_rate_by_local_action_index": {
+					"0": 0.015414,
+					"1": 0.134702,
+					"2": 0.173287,
+					"3": 0.197711,
+					"4": 0.210143
+				},
+				"fizzle_rate_by_player_count": {
+					"3": 0.072008,
+					"4": 0.090592,
+					"6": 0.118093,
+					"8": 0.143326
+				},
+				"predicted_resolution_seconds": {
+					"maximum": 13.12,
+					"mean": 4.385482,
+					"median": 4.16,
+					"minimum": 1.04,
+					"p95": 7.74,
+					"sample_count": 20000
+				},
+				"repair_target_invalidation_rate": 0.139127,
+				"repeated_contention_same_slot_rate": 0.238938,
+				"resolution_p95_seconds": 7.74,
+				"starter_action_share_batch_10": 0.202211,
+				"target_reselected_during_resolution_count": 0,
+				"upgrade_target_invalidation_rate": 0.045349,
+				"victory_pending_tail_seconds": {
+					"maximum": 210.0,
+					"mean": 62.46,
+					"median": 60.0,
+					"minimum": 0.0,
+					"p95": 180.0,
+					"sample_count": 2000
+				}
+			},
+			"player_counts": [
+				3,
+				4,
+				6,
+				8
+			],
+			"profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+			"profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+			"profile_result_fingerprint": "da1a3e60355a19eb0f80c6cfdbb0fd7a91454460a69ad9023c77818986e795e3",
+			"profile_status": "approved_first_human_test_sample",
+			"seed_count_per_configuration": 500
+		},
+		{
+			"by_player_count": {
+				"3": {
+					"configuration_fingerprint": "12b5f769b48323c763c6c239b4c0b429423aaa83509b249d3375333ef1ca633b",
+					"configuration_id": "V073_HIGH_CONTENTION_DIAGNOSTIC.players_3.seeds_500",
+					"failed_balance_targets": [],
+					"match_count": 500,
+					"metrics": {
+						"action_slot_refunded_on_contention": 0,
+						"anonymous_owner_direct_disclosure_rate": 0.0,
+						"asset_refunded_on_contention": 4269,
+						"build_success_rate_by_local_action_index": {
+							"0": 0.851562,
+							"1": 0.718543,
+							"2": 0.485134,
+							"3": 0.437414,
+							"4": 0.406267
+						},
+						"build_to_repair_auto_conversion_count": 0,
+						"build_to_upgrade_auto_conversion_count": 0,
+						"card_discarded_on_contention": 9350,
+						"critical_build_local_index_0_success_rate": 0.851562,
+						"critical_build_local_index_2_success_rate": 0.485134,
+						"critical_build_local_index_4_success_rate": 0.406267,
+						"facility_build_attempt_count": 27279,
+						"facility_build_fizzle_rate": 0.342754,
+						"facility_build_success_count": 17929,
+						"facility_slot_collision_rate": 0.342754,
+						"first_factory_market_chain_batch": {
+							"maximum": 11.0,
+							"mean": 4.348667,
+							"median": 4.0,
+							"minimum": 1.0,
+							"p95": 9.0,
+							"sample_count": 1500
+						},
+						"first_standard_l1_play_batch": {
+							"maximum": 8.0,
+							"mean": 3.034667,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 6.0,
+							"sample_count": 1500
+						},
+						"fizzle_rate_by_local_action_index": {
+							"0": 0.148438,
+							"1": 0.281457,
+							"2": 0.514866,
+							"3": 0.562586,
+							"4": 0.593733
+						},
+						"fizzle_rate_by_player_count": {
+							"3": 0.342754
+						},
+						"predicted_resolution_seconds": {
+							"maximum": 7.31,
+							"mean": 3.28666,
+							"median": 3.18,
+							"minimum": 1.04,
+							"p95": 5.56,
+							"sample_count": 5000
+						},
+						"repair_target_invalidation_rate": 0.161357,
+						"repeated_contention_same_slot_rate": 0.568449,
+						"resolution_p95_seconds": 5.56,
+						"starter_action_share_batch_10": 0.198613,
+						"target_reselected_during_resolution_count": 0,
+						"upgrade_target_invalidation_rate": 0.055582,
+						"victory_pending_tail_seconds": {
+							"maximum": 60.0,
+							"mean": 31.32,
+							"median": 30.0,
+							"minimum": 0.0,
+							"p95": 60.0,
+							"sample_count": 500
+						}
+					},
+					"player_count": 3,
+					"profile_fingerprint": "f9403af180d74a6b23ccec1948781b702a1c18ed6dd18f29591e0978a38136df",
+					"profile_id": "V073_HIGH_CONTENTION_DIAGNOSTIC",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901026424,
+						"last_seed": 904978005,
+						"profile_fingerprint": "f9403af180d74a6b23ccec1948781b702a1c18ed6dd18f29591e0978a38136df",
+						"profile_id": "V073_HIGH_CONTENTION_DIAGNOSTIC",
+						"seed_count": 500,
+						"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+					},
+					"run_fingerprint_chain": "c4f5d9b1e30c3eaab0a28b50e0ce71e24d51e19a171d6b0cef148d3d1ef10207",
+					"seed_count": 500,
+					"valid": true
+				},
+				"4": {
+					"configuration_fingerprint": "16ed2483a95a1f4046936555e2af269d34538a279985edbfaaf8a425e4bcde8c",
+					"configuration_id": "V073_HIGH_CONTENTION_DIAGNOSTIC.players_4.seeds_500",
+					"failed_balance_targets": [],
+					"match_count": 500,
+					"metrics": {
+						"action_slot_refunded_on_contention": 0,
+						"anonymous_owner_direct_disclosure_rate": 0.0,
+						"asset_refunded_on_contention": 6405,
+						"build_success_rate_by_local_action_index": {
+							"0": 0.804378,
+							"1": 0.665474,
+							"2": 0.450253,
+							"3": 0.417372,
+							"4": 0.359382
+						},
+						"build_to_repair_auto_conversion_count": 0,
+						"build_to_upgrade_auto_conversion_count": 0,
+						"card_discarded_on_contention": 14058,
+						"critical_build_local_index_0_success_rate": 0.804378,
+						"critical_build_local_index_2_success_rate": 0.450253,
+						"critical_build_local_index_4_success_rate": 0.359382,
+						"facility_build_attempt_count": 36660,
+						"facility_build_fizzle_rate": 0.38347,
+						"facility_build_success_count": 22602,
+						"facility_slot_collision_rate": 0.38347,
+						"first_factory_market_chain_batch": {
+							"maximum": 11.0,
+							"mean": 4.648,
+							"median": 4.0,
+							"minimum": 1.0,
+							"p95": 10.0,
+							"sample_count": 2000
+						},
+						"first_standard_l1_play_batch": {
+							"maximum": 9.0,
+							"mean": 3.051,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 6.0,
+							"sample_count": 2000
+						},
+						"fizzle_rate_by_local_action_index": {
+							"0": 0.195622,
+							"1": 0.334526,
+							"2": 0.549747,
+							"3": 0.582628,
+							"4": 0.640618
+						},
+						"fizzle_rate_by_player_count": {
+							"4": 0.38347
+						},
+						"predicted_resolution_seconds": {
+							"maximum": 9.32,
+							"mean": 4.233492,
+							"median": 4.23,
+							"minimum": 1.28,
+							"p95": 7.07,
+							"sample_count": 5000
+						},
+						"repair_target_invalidation_rate": 0.165152,
+						"repeated_contention_same_slot_rate": 0.655285,
+						"resolution_p95_seconds": 7.07,
+						"starter_action_share_batch_10": 0.205931,
+						"target_reselected_during_resolution_count": 0,
+						"upgrade_target_invalidation_rate": 0.059298,
+						"victory_pending_tail_seconds": {
+							"maximum": 90.0,
+							"mean": 46.5,
+							"median": 60.0,
+							"minimum": 0.0,
+							"p95": 90.0,
+							"sample_count": 500
+						}
+					},
+					"player_count": 4,
+					"profile_fingerprint": "f9403af180d74a6b23ccec1948781b702a1c18ed6dd18f29591e0978a38136df",
+					"profile_id": "V073_HIGH_CONTENTION_DIAGNOSTIC",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901126424,
+						"last_seed": 905078005,
+						"profile_fingerprint": "f9403af180d74a6b23ccec1948781b702a1c18ed6dd18f29591e0978a38136df",
+						"profile_id": "V073_HIGH_CONTENTION_DIAGNOSTIC",
+						"seed_count": 500,
+						"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+					},
+					"run_fingerprint_chain": "b10b1e315c0c9fd09e3d307c5759f4337c0ce7b9b6301c553488958d81857798",
+					"seed_count": 500,
+					"valid": true
+				},
+				"6": {
+					"configuration_fingerprint": "9ba5aa35a1d0d861d66e01fc1ba6674615b958f76b15c2e60260bf6d956dbcb2",
+					"configuration_id": "V073_HIGH_CONTENTION_DIAGNOSTIC.players_6.seeds_500",
+					"failed_balance_targets": [],
+					"match_count": 500,
+					"metrics": {
+						"action_slot_refunded_on_contention": 0,
+						"anonymous_owner_direct_disclosure_rate": 0.0,
+						"asset_refunded_on_contention": 10685,
+						"build_success_rate_by_local_action_index": {
+							"0": 0.766339,
+							"1": 0.573795,
+							"2": 0.442102,
+							"3": 0.399168,
+							"4": 0.355117
+						},
+						"build_to_repair_auto_conversion_count": 0,
+						"build_to_upgrade_auto_conversion_count": 0,
+						"card_discarded_on_contention": 23415,
+						"critical_build_local_index_0_success_rate": 0.766339,
+						"critical_build_local_index_2_success_rate": 0.442102,
+						"critical_build_local_index_4_success_rate": 0.355117,
+						"facility_build_attempt_count": 54936,
+						"facility_build_fizzle_rate": 0.426223,
+						"facility_build_success_count": 31521,
+						"facility_slot_collision_rate": 0.426223,
+						"first_factory_market_chain_batch": {
+							"maximum": 11.0,
+							"mean": 5.093667,
+							"median": 5.0,
+							"minimum": 1.0,
+							"p95": 11.0,
+							"sample_count": 3000
+						},
+						"first_standard_l1_play_batch": {
+							"maximum": 9.0,
+							"mean": 3.015,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 6.0,
+							"sample_count": 3000
+						},
+						"fizzle_rate_by_local_action_index": {
+							"0": 0.233661,
+							"1": 0.426205,
+							"2": 0.557898,
+							"3": 0.600832,
+							"4": 0.644883
+						},
+						"fizzle_rate_by_player_count": {
+							"6": 0.426223
+						},
+						"predicted_resolution_seconds": {
+							"maximum": 11.92,
+							"mean": 6.11721,
+							"median": 6.13,
+							"minimum": 2.48,
+							"p95": 9.17,
+							"sample_count": 5000
+						},
+						"repair_target_invalidation_rate": 0.175025,
+						"repeated_contention_same_slot_rate": 0.741875,
+						"resolution_p95_seconds": 9.17,
+						"starter_action_share_batch_10": 0.199644,
+						"target_reselected_during_resolution_count": 0,
+						"upgrade_target_invalidation_rate": 0.065821,
+						"victory_pending_tail_seconds": {
+							"maximum": 150.0,
+							"mean": 76.68,
+							"median": 90.0,
+							"minimum": 0.0,
+							"p95": 150.0,
+							"sample_count": 500
+						}
+					},
+					"player_count": 6,
+					"profile_fingerprint": "f9403af180d74a6b23ccec1948781b702a1c18ed6dd18f29591e0978a38136df",
+					"profile_id": "V073_HIGH_CONTENTION_DIAGNOSTIC",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901326424,
+						"last_seed": 905278005,
+						"profile_fingerprint": "f9403af180d74a6b23ccec1948781b702a1c18ed6dd18f29591e0978a38136df",
+						"profile_id": "V073_HIGH_CONTENTION_DIAGNOSTIC",
+						"seed_count": 500,
+						"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+					},
+					"run_fingerprint_chain": "a2029f3d8bb1adffe31198861763afbdd668050d29a6e969992792f02530094a",
+					"seed_count": 500,
+					"valid": true
+				},
+				"8": {
+					"configuration_fingerprint": "73b76074f43d1d5553b5a68dfd59f19f3b2da035e9433897cdeb83d9c4c3687a",
+					"configuration_id": "V073_HIGH_CONTENTION_DIAGNOSTIC.players_8.seeds_500",
+					"failed_balance_targets": [],
+					"match_count": 500,
+					"metrics": {
+						"action_slot_refunded_on_contention": 0,
+						"anonymous_owner_direct_disclosure_rate": 0.0,
+						"asset_refunded_on_contention": 15314,
+						"build_success_rate_by_local_action_index": {
+							"0": 0.741387,
+							"1": 0.517379,
+							"2": 0.429875,
+							"3": 0.384244,
+							"4": 0.339685
+						},
+						"build_to_repair_auto_conversion_count": 0,
+						"build_to_upgrade_auto_conversion_count": 0,
+						"card_discarded_on_contention": 33357,
+						"critical_build_local_index_0_success_rate": 0.741387,
+						"critical_build_local_index_2_success_rate": 0.429875,
+						"critical_build_local_index_4_success_rate": 0.339685,
+						"facility_build_attempt_count": 73401,
+						"facility_build_fizzle_rate": 0.454449,
+						"facility_build_success_count": 40044,
+						"facility_slot_collision_rate": 0.454449,
+						"first_factory_market_chain_batch": {
+							"maximum": 11.0,
+							"mean": 5.322,
+							"median": 5.0,
+							"minimum": 1.0,
+							"p95": 11.0,
+							"sample_count": 4000
+						},
+						"first_standard_l1_play_batch": {
+							"maximum": 9.0,
+							"mean": 3.02475,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 6.0,
+							"sample_count": 4000
+						},
+						"fizzle_rate_by_local_action_index": {
+							"0": 0.258613,
+							"1": 0.482621,
+							"2": 0.570125,
+							"3": 0.615756,
+							"4": 0.660315
+						},
+						"fizzle_rate_by_player_count": {
+							"8": 0.454449
+						},
+						"predicted_resolution_seconds": {
+							"maximum": 14.52,
+							"mean": 8.041126,
+							"median": 7.92,
+							"minimum": 3.68,
+							"p95": 10.96,
+							"sample_count": 5000
+						},
+						"repair_target_invalidation_rate": 0.182634,
+						"repeated_contention_same_slot_rate": 0.793057,
+						"resolution_p95_seconds": 10.96,
+						"starter_action_share_batch_10": 0.20361,
+						"target_reselected_during_resolution_count": 0,
+						"upgrade_target_invalidation_rate": 0.075142,
+						"victory_pending_tail_seconds": {
+							"maximum": 210.0,
+							"mean": 95.34,
+							"median": 90.0,
+							"minimum": 0.0,
+							"p95": 210.0,
+							"sample_count": 500
+						}
+					},
+					"player_count": 8,
+					"profile_fingerprint": "f9403af180d74a6b23ccec1948781b702a1c18ed6dd18f29591e0978a38136df",
+					"profile_id": "V073_HIGH_CONTENTION_DIAGNOSTIC",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901526424,
+						"last_seed": 905478005,
+						"profile_fingerprint": "f9403af180d74a6b23ccec1948781b702a1c18ed6dd18f29591e0978a38136df",
+						"profile_id": "V073_HIGH_CONTENTION_DIAGNOSTIC",
+						"seed_count": 500,
+						"simulation_policy_id": "v073.closed_contention_heuristic.v1"
+					},
+					"run_fingerprint_chain": "41f05d71af9aa286aa0d399c260ff9a422e3526566f7932d1c68c571c034d448",
+					"seed_count": 500,
+					"valid": true
+				}
+			},
+			"configuration_count": 4,
+			"failed_balance_target_count": 0,
+			"failed_balance_targets": [],
+			"match_count": 2000,
+			"metrics": {
+				"action_slot_refunded_on_contention": 0,
+				"anonymous_owner_direct_disclosure_rate": 0.0,
+				"asset_refunded_on_contention": 36673,
+				"build_success_rate_by_local_action_index": {
+					"0": 0.776108,
+					"1": 0.590218,
+					"2": 0.445145,
+					"3": 0.402391,
+					"4": 0.357373
+				},
+				"build_to_repair_auto_conversion_count": 0,
+				"build_to_upgrade_auto_conversion_count": 0,
+				"card_discarded_on_contention": 80180,
+				"critical_build_local_index_0_success_rate": 0.776108,
+				"critical_build_local_index_2_success_rate": 0.445145,
+				"critical_build_local_index_4_success_rate": 0.357373,
+				"facility_build_attempt_count": 192276,
+				"facility_build_fizzle_rate": 0.417005,
+				"facility_build_success_count": 112096,
+				"facility_slot_collision_rate": 0.417005,
+				"first_factory_market_chain_batch": {
+					"maximum": 11.0,
+					"mean": 4.989333,
+					"median": 5.0,
+					"minimum": 1.0,
+					"p95": 11.0,
+					"sample_count": 10500
+				},
+				"first_standard_l1_play_batch": {
+					"maximum": 9.0,
+					"mean": 3.028381,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 6.0,
+					"sample_count": 10500
+				},
+				"fizzle_rate_by_local_action_index": {
+					"0": 0.223892,
+					"1": 0.409782,
+					"2": 0.554855,
+					"3": 0.597609,
+					"4": 0.642627
+				},
+				"fizzle_rate_by_player_count": {
+					"3": 0.342754,
+					"4": 0.38347,
+					"6": 0.426223,
+					"8": 0.454449
+				},
+				"predicted_resolution_seconds": {
+					"maximum": 14.52,
+					"mean": 5.419622,
+					"median": 5.21,
+					"minimum": 1.04,
+					"p95": 9.58,
+					"sample_count": 20000
+				},
+				"repair_target_invalidation_rate": 0.173793,
+				"repeated_contention_same_slot_rate": 0.727763,
+				"resolution_p95_seconds": 9.58,
+				"starter_action_share_batch_10": 0.202211,
+				"target_reselected_during_resolution_count": 0,
+				"upgrade_target_invalidation_rate": 0.066741,
+				"victory_pending_tail_seconds": {
+					"maximum": 210.0,
+					"mean": 62.46,
+					"median": 60.0,
+					"minimum": 0.0,
+					"p95": 180.0,
+					"sample_count": 2000
+				}
+			},
+			"player_counts": [
+				3,
+				4,
+				6,
+				8
+			],
+			"profile_fingerprint": "f9403af180d74a6b23ccec1948781b702a1c18ed6dd18f29591e0978a38136df",
+			"profile_id": "V073_HIGH_CONTENTION_DIAGNOSTIC",
+			"profile_result_fingerprint": "490ffc77474286a8617b5cd1c9e374558b731c3e4420fa26887f198ff8986f4a",
+			"profile_status": "diagnostic_not_candidate_authority",
+			"seed_count_per_configuration": 500
+		}
+	],
+	"profiles": [
+		{
+			"build_slot_contention_fizzle": false,
+			"cash_can_change_resolution_order": false,
+			"facility_action_mode_required": false,
+			"generic_target_reselection": true,
+			"hot_target_basis_points": 800,
+			"hot_target_index_step_basis_points": 100,
+			"human_fun_proven": false,
+			"human_test_required": true,
+			"initiative_auction_enabled": false,
+			"profile_fingerprint": "2a8f0cecd6eec0ab699c7ea882c52465f2a6019b98bd21399f4666457b81efa1",
+			"profile_fingerprint_input": "V072_GENERIC_FACILITY_TARGETING|resolution_order_mode=generic_local_queue|facility_action_mode_required=false|build_slot_contention_fizzle=false|generic_target_reselection=true|hot_target_basis_points=800|hot_target_index_step_basis_points=100|initiative_auction_enabled=false|cash_can_change_resolution_order=false",
+			"profile_id": "V072_GENERIC_FACILITY_TARGETING",
+			"profile_status": "historical_detached_comparison",
+			"resolution_order_mode": "generic_local_queue",
+			"resolution_order_source": "v072_generic_reference"
+		},
+		{
+			"build_slot_contention_fizzle": true,
+			"cash_can_change_resolution_order": false,
+			"facility_action_mode_required": true,
+			"generic_target_reselection": false,
+			"hot_target_basis_points": 700,
+			"hot_target_index_step_basis_points": 150,
+			"human_fun_proven": false,
+			"human_test_required": true,
+			"initiative_auction_enabled": false,
+			"profile_fingerprint": "cb1a65b764db662bb230f94e0f1ad9170740a0ae2eb4163a1a26561185fe6694",
+			"profile_fingerprint_input": "V073_EXPLICIT_MODES_FIXED_ORDER|resolution_order_mode=fixed_hidden_round_robin|facility_action_mode_required=true|build_slot_contention_fizzle=true|generic_target_reselection=false|hot_target_basis_points=700|hot_target_index_step_basis_points=150|initiative_auction_enabled=false|cash_can_change_resolution_order=false",
+			"profile_id": "V073_EXPLICIT_MODES_FIXED_ORDER",
+			"profile_status": "approved_first_human_test_sample",
+			"resolution_order_mode": "fixed_hidden_round_robin",
+			"resolution_order_source": "frozen_hidden_lead_order_at_batch_lock"
+		},
+		{
+			"build_slot_contention_fizzle": true,
+			"cash_can_change_resolution_order": false,
+			"facility_action_mode_required": true,
+			"generic_target_reselection": false,
+			"hot_target_basis_points": 4300,
+			"hot_target_index_step_basis_points": 450,
+			"human_fun_proven": false,
+			"human_test_required": true,
+			"initiative_auction_enabled": false,
+			"profile_fingerprint": "f9403af180d74a6b23ccec1948781b702a1c18ed6dd18f29591e0978a38136df",
+			"profile_fingerprint_input": "V073_HIGH_CONTENTION_DIAGNOSTIC|resolution_order_mode=fixed_hidden_round_robin|facility_action_mode_required=true|build_slot_contention_fizzle=true|generic_target_reselection=false|hot_target_basis_points=4300|hot_target_index_step_basis_points=450|initiative_auction_enabled=false|cash_can_change_resolution_order=false",
+			"profile_id": "V073_HIGH_CONTENTION_DIAGNOSTIC",
+			"profile_status": "diagnostic_not_candidate_authority",
+			"resolution_order_mode": "fixed_hidden_round_robin",
+			"resolution_order_source": "frozen_hidden_lead_order_at_batch_lock"
+		}
+	],
+	"qualification_seed_floor": 500,
+	"qualification_seed_floor_met": true,
+	"report_fingerprint": "6dad8bba07112e3c1a4f610a7235d5f235ae987be52fd99d0eebae126275edf4",
+	"required_metric_keys": [
+		"facility_build_attempt_count",
+		"facility_build_success_count",
+		"facility_slot_collision_rate",
+		"facility_build_fizzle_rate",
+		"fizzle_rate_by_player_count",
+		"fizzle_rate_by_local_action_index",
+		"critical_build_local_index_0_success_rate",
+		"critical_build_local_index_2_success_rate",
+		"critical_build_local_index_4_success_rate",
+		"asset_refunded_on_contention",
+		"card_discarded_on_contention",
+		"build_to_upgrade_auto_conversion_count",
+		"build_to_repair_auto_conversion_count",
+		"upgrade_target_invalidation_rate",
+		"repair_target_invalidation_rate",
+		"repeated_contention_same_slot_rate",
+		"first_factory_market_chain_batch",
+		"first_standard_l1_play_batch",
+		"starter_action_share_batch_10",
+		"resolution_p95_seconds",
+		"victory_pending_tail_seconds",
+		"anonymous_owner_direct_disclosure_rate"
+	],
+	"rules_rng_stream_count": 0,
+	"ruleset_id": "v0.7.3",
+	"schema_version": 1,
+	"seed_count_per_configuration": 500,
+	"simulation_batch_count_per_match": 10,
+	"simulation_id": "v073.detached.fixed_order_facility_contention.v1",
+	"simulation_policy_id": "v073.closed_contention_heuristic.v1",
+	"total_match_count": 6000,
+	"v06_mutation_count": 0
+}
