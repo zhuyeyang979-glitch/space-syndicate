@@ -29,61 +29,65 @@ Default development habit:
 Rule authority is versioned. When target rules conflict, use this order:
 
 1. The user's latest explicit rule decision.
-2. `docs/rules/v072_game_constitution.json`.
-3. `docs/rules/v072_game_constitution.md`.
-4. `docs/rules/v071_game_constitution.json`.
-5. `docs/rules/v071_game_constitution.md`.
-6. `docs/rules/v07_game_constitution.json`.
-7. `docs/rules/v07_game_constitution.md`.
-8. `docs/tabletop_rulebook_v06.md`, for current-production V0.6 only.
-9. Older rule and design documents.
-10. Older test oracles.
-11. Older code behavior.
+2. `docs/rules/v073_game_constitution.json`.
+3. `docs/rules/v073_game_constitution.md`.
+4. `docs/rules/v072_game_constitution.json`.
+5. `docs/rules/v072_game_constitution.md`.
+6. `docs/rules/v071_game_constitution.json`.
+7. `docs/rules/v071_game_constitution.md`.
+8. `docs/rules/v07_game_constitution.json`.
+9. `docs/rules/v07_game_constitution.md`.
+10. `docs/tabletop_rulebook_v06.md`, for current-production V0.6 only.
+11. Older rule and design documents.
+12. Older test oracles.
+13. Older code behavior.
 
 ```text
-HIGHEST_TARGET_RULE_AUTHORITY=V0.7.2_COMPLETE_CONSTITUTION
+HIGHEST_TARGET_RULE_AUTHORITY=V0.7.3_COMPLETE_CONSTITUTION
 CURRENT_PLAYER_RUNTIME_RULE_AUTHORITY=V0.6_RULEBOOK
 TARGET_RULES_DO_NOT_PRETEND_TO_BE_RUNTIME=true
 CURRENT_RUNTIME_DOES_NOT_OVERRIDE_TARGET_CONSTITUTION=true
+HISTORICAL_V072_FREEZE_RECORD=HIGHEST_TARGET_RULE_AUTHORITY=V0.7.2_COMPLETE_CONSTITUTION
 HISTORICAL_V071_FREEZE_RECORD=HIGHEST_TARGET_RULE_AUTHORITY=V0.7.1_COMPLETE_CONSTITUTION
 ```
 
-V0.7.2 guides all new rule, architecture, AI, player UI, privacy, Save/replay,
+V0.7.3 guides all new rule, architecture, AI, player UI, privacy, Save/replay,
 and RNG design. V0.6 still describes what the current player runtime actually
-does. An old test cannot veto the V0.7.2 target, and this target cannot change
+does. An old test cannot veto the V0.7.3 target, and this target cannot change
 production without an explicit atomic cutover task. Full details are in
-`docs/rules/v072_rule_precedence.md`.
+`docs/rules/v073_rule_precedence.md`.
 
-## Highest Development Constitution - V0.7.2
+## Highest Development Constitution - V0.7.3
 
 The complete highest target authority is:
 
-- `docs/rules/v072_game_constitution.json` - closed machine-readable authority.
-- `docs/rules/v072_game_constitution.md` - human-readable companion.
-- `docs/rules/v072_balance_defaults.json` - approved first-human-sample defaults.
-- `docs/rules/v072_amendment_from_v071.json` - approved V0.7.1 to V0.7.2 amendment.
+- `docs/rules/v073_game_constitution.json` - closed machine-readable authority.
+- `docs/rules/v073_game_constitution.md` - human-readable companion.
+- `docs/rules/v073_balance_defaults.json` - approved first-human-sample defaults.
+- `docs/rules/v073_amendment_from_v072.json` - approved V0.7.2 to V0.7.3 amendment.
 
-V0.7.2 inherits the complete, hash-locked V0.7.1 constitution and freezes the
-approved free-Starter bootstrap. Every player begins with an initialized but
-empty six-color asset Owner and twelve stable, permanently zero-asset Starter
-factory/market definitions. Track-acquired standard L1 cards cost one matching
-asset. A matching Starter+standard merge creates a standard L2 and consumes the
-free privilege. `V072_STARTER_FREE_FAST` is the approved profile for the first
-human sample; human fun remains unproven.
+V0.7.3 inherits the complete, hash-locked V0.7.2 constitution and freezes one
+resolution-order authority: the hidden lead order captured at batch lock. The
+global anonymous queue interleaves one card per player by local action layer;
+cash cannot purchase or change order. Facility cards prebind BUILD, UPGRADE, or
+REPAIR against a unique region/type/industry slot. A later BUILD that loses the
+slot-contention race fully refunds assets, discards the card, and does not
+refund the action slot or change mode. `V073_STARTER_FREE_FIXED_ORDER_CONTENTION`
+is the approved first-sample profile; human fun remains unproven.
 
 This is a frozen target, not a runtime claim:
 
 ```text
 CURRENT_PRODUCTION_RUNTIME_RULESET=V0.6
-TARGET_DEVELOPMENT_CONSTITUTION=V0.7.2
-FULL_V0_7_2_RUNTIME_CUTOVER=false
+TARGET_DEVELOPMENT_CONSTITUTION=V0.7.3
+FULL_V0_7_3_RUNTIME_CUTOVER=false
 HUMAN_FUN_PROVEN=false
 HUMAN_TEST_REQUIRED=true
 ```
 
-The byte-identical V0.7 and V0.7.1 constitutions and balance defaults remain
-immutable historical baseline files. V0.7.2 supersedes only the rules named in
-its amendment; all other V0.7.1 rules remain inherited authority.
+The byte-identical V0.7, V0.7.1, and V0.7.2 constitutions and balance defaults
+remain immutable historical baseline files. V0.7.3 supersedes only the five
+rules named in its amendment; all other V0.7.2 rules remain inherited authority.
 
 <!-- CURRENT_PRODUCTION_V06_ONLY_BEGIN -->
 ## Current Production Runtime - V0.6
