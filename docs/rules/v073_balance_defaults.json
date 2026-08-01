@@ -1,0 +1,277 @@
+{
+  "schema_version": 1,
+  "defaults_id": "space_syndicate.v073.balance_defaults.first_human_sample",
+  "ruleset_id": "v0.7.3",
+  "status": "frozen_first_human_test_sample_defaults_not_final_commercial_balance",
+  "authority_level": "approved_values_below_frozen_constitution",
+  "source_defaults": {
+    "ruleset_id": "v0.7.2",
+    "path": "docs/rules/v072_balance_defaults.json",
+    "sha256": "91a9ee9bdc796013e4ac64d2ce9893267f65ce285b22551963371be610d67155",
+    "content_change_count": 0,
+    "inheritance_mode": "copy_approved_v072_values_then_add_v073_structural_configuration"
+  },
+  "profile": {
+    "profile_id": "V073_STARTER_FREE_FIXED_ORDER_CONTENTION",
+    "profile_fingerprint_input": "V073_STARTER_FREE_FIXED_ORDER_CONTENTION|initial_assets_per_color=0|starter_asset_cost=0|standard_l1_asset_cost=1|normal_card_ratio_bps=6000|commodity_card_ratio_bps=4000|intervention_cap_bps=1200|max_asset_refresh_per_color_per_batch=3|hand_maintenance_timeout_seconds=8|lead_tenure_batches=1|color_cycle_batches=6|track_scroll_interval_seconds=5|track_local_visible_slot_count=5|resolution_order_mode=fixed_hidden_round_robin|facility_action_mode_required=true|build_slot_contention_fizzle=true|initiative_bid_mode=retired",
+    "profile_fingerprint": "a413ad0ddd8a06b15ccee943d9cd93c6f7941fc66ce901a1f44934797f50231c",
+    "approval_scope": "FIRST_HUMAN_TEST_SAMPLE_RULESET",
+    "human_fun_proven": false,
+    "human_test_required": true,
+    "locale_ui_or_player_count_may_silently_change_profile": false,
+    "save_and_replay_must_persist_profile": true
+  },
+  "inherited_v072_parameters": {
+    "initial_assets_per_color": 0,
+    "starter_asset_cost": 0,
+    "standard_l1_asset_cost": 1,
+    "normal_card_ratio_bps": 6000,
+    "commodity_card_ratio_bps": 4000,
+    "intervention_cap_enabled": true,
+    "intervention_cap_bps": 1200,
+    "max_asset_refresh_per_color_per_batch": 3,
+    "hand_maintenance_timeout_seconds": 8,
+    "lead_tenure_batches": 1,
+    "color_cycle_batches": 6,
+    "track_scroll_interval_seconds": 5,
+    "track_local_visible_slot_count": 5
+  },
+  "structural_configuration": {
+    "resolution_order_mode": "fixed_hidden_round_robin",
+    "resolution_order_source": "frozen_hidden_lead_order_at_batch_lock",
+    "facility_action_mode_required": true,
+    "allowed_facility_action_modes": [
+      "BUILD_NEW",
+      "UPGRADE_OWN",
+      "REPAIR_OWN"
+    ],
+    "build_slot_contention_fizzle": true,
+    "invalid_target_policy_id": "FIZZLE_FULL_ASSET_REFUND",
+    "initiative_auction_enabled": false,
+    "cash_can_change_resolution_order": false
+  },
+  "retired_auction_configuration": {
+    "initiative_bid_max_cash": "not_applicable",
+    "initiative_bid_mode": "retired",
+    "runtime_parameter_count": 0,
+    "save_field_count": 0,
+    "ui_surface_count": 0,
+    "ai_policy_count": 0
+  },
+  "approved_default_ids": [
+    "v073.balance.initial_assets_per_color",
+    "v073.balance.starter_asset_cost",
+    "v073.balance.standard_l1_asset_cost",
+    "v073.balance.normal_card_ratio_bps",
+    "v073.balance.commodity_card_ratio_bps",
+    "v073.balance.intervention_cap_bps",
+    "v073.balance.max_asset_refresh_per_color_per_batch",
+    "v073.balance.hand_maintenance_timeout_seconds",
+    "v073.balance.lead_tenure_batches",
+    "v073.balance.color_cycle_batches",
+    "v073.balance.track_scroll_interval_seconds",
+    "v073.balance.track_local_visible_slot_count",
+    "v073.balance.resolution_order_mode",
+    "v073.balance.facility_action_mode_required",
+    "v073.balance.build_slot_contention_fizzle"
+  ],
+  "frozen_structural_default_ids": [
+    "v073.balance.initial_assets_per_color",
+    "v073.balance.starter_asset_cost",
+    "v073.balance.standard_l1_asset_cost",
+    "v073.balance.resolution_order_mode",
+    "v073.balance.facility_action_mode_required",
+    "v073.balance.build_slot_contention_fizzle"
+  ],
+  "approved_tunable_default_ids": [
+    "v073.balance.normal_card_ratio_bps",
+    "v073.balance.commodity_card_ratio_bps",
+    "v073.balance.intervention_cap_bps",
+    "v073.balance.max_asset_refresh_per_color_per_batch",
+    "v073.balance.hand_maintenance_timeout_seconds",
+    "v073.balance.lead_tenure_batches",
+    "v073.balance.color_cycle_batches",
+    "v073.balance.track_scroll_interval_seconds",
+    "v073.balance.track_local_visible_slot_count"
+  ],
+  "defaults": [
+    {
+      "default_id": "v073.balance.initial_assets_per_color",
+      "value": 0,
+      "unit": "asset_points",
+      "balance_tunable": false,
+      "constitutional": true,
+      "constitutional_anchor": "v072.assets.zero_genesis_balances"
+    },
+    {
+      "default_id": "v073.balance.starter_asset_cost",
+      "value": 0,
+      "unit": "asset_points",
+      "balance_tunable": false,
+      "constitutional": true,
+      "constitutional_anchor": "v072.starter.persistent_zero_asset_cost"
+    },
+    {
+      "default_id": "v073.balance.standard_l1_asset_cost",
+      "value": 1,
+      "unit": "asset_points",
+      "balance_tunable": false,
+      "constitutional": true,
+      "constitutional_anchor": "v072.standard.level_one_asset_cost"
+    },
+    {
+      "default_id": "v073.balance.normal_card_ratio_bps",
+      "value": 6000,
+      "unit": "basis_points",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.track.allowed_card_kinds"
+    },
+    {
+      "default_id": "v073.balance.commodity_card_ratio_bps",
+      "value": 4000,
+      "unit": "basis_points",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.track.allowed_card_kinds"
+    },
+    {
+      "default_id": "v073.balance.intervention_cap_bps",
+      "value": 1200,
+      "unit": "basis_points",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.color_cycle.influence_weight"
+    },
+    {
+      "default_id": "v073.balance.max_asset_refresh_per_color_per_batch",
+      "value": 3,
+      "unit": "asset_points",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.assets.post_batch_top_up"
+    },
+    {
+      "default_id": "v073.balance.hand_maintenance_timeout_seconds",
+      "value": 8,
+      "unit": "seconds",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.hand.maintenance_sequence"
+    },
+    {
+      "default_id": "v073.balance.lead_tenure_batches",
+      "value": 1,
+      "unit": "completed_card_batches",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v071.batch_boundary.independent_lead_color_cycles"
+    },
+    {
+      "default_id": "v073.balance.color_cycle_batches",
+      "value": 6,
+      "unit": "completed_card_batches",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v071.batch_boundary.independent_lead_color_cycles"
+    },
+    {
+      "default_id": "v073.balance.track_scroll_interval_seconds",
+      "value": 5,
+      "unit": "seconds",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.track.shared_generation_contract"
+    },
+    {
+      "default_id": "v073.balance.track_local_visible_slot_count",
+      "value": 5,
+      "unit": "cards",
+      "balance_tunable": true,
+      "constitutional": false,
+      "constitutional_anchor": "v07.track.local_segment_visibility"
+    },
+    {
+      "default_id": "v073.balance.resolution_order_mode",
+      "value": "fixed_hidden_round_robin",
+      "unit": "algorithm_id",
+      "balance_tunable": false,
+      "constitutional": true,
+      "constitutional_anchor": "v073.resolution.fixed_hidden_round_robin"
+    },
+    {
+      "default_id": "v073.balance.facility_action_mode_required",
+      "value": true,
+      "unit": "boolean",
+      "balance_tunable": false,
+      "constitutional": true,
+      "constitutional_anchor": "v073.facility.prebound_unique_slot_modes"
+    },
+    {
+      "default_id": "v073.balance.build_slot_contention_fizzle",
+      "value": true,
+      "unit": "boolean",
+      "balance_tunable": false,
+      "constitutional": true,
+      "constitutional_anchor": "v073.facility.contention_fizzle_privacy_and_persistence"
+    }
+  ],
+  "time_authorities": {
+    "lead": {
+      "authority_field": "v073.balance.lead_tenure_batches",
+      "authority_count": 1,
+      "unit": "completed_card_batches"
+    },
+    "color_cycle": {
+      "authority_field": "v073.balance.color_cycle_batches",
+      "authority_count": 1,
+      "unit": "completed_card_batches"
+    },
+    "batch_resolution_order": {
+      "authority_field": "frozen_hidden_lead_order_at_batch_lock",
+      "authority_count": 1,
+      "cash_modifier_count": 0
+    },
+    "ui_timer_may_drive_core": false
+  },
+  "simulation_sample": {
+    "minimum_match_count": 6000,
+    "player_counts": [3, 4, 6, 8],
+    "seeds_per_configuration": 500,
+    "profiles": [
+      "V072_GENERIC_FACILITY_TARGETING",
+      "V073_EXPLICIT_MODES_FIXED_ORDER",
+      "V073_HIGH_CONTENTION_DIAGNOSTIC"
+    ],
+    "facility_build_fizzle_rate_recommended_minimum": 0.03,
+    "facility_build_fizzle_rate_recommended_maximum": 0.15,
+    "auction_tuning_allowed": false,
+    "human_fun_proven": false,
+    "human_test_required": true
+  },
+  "historical_profiles": [
+    {
+      "profile_id": "V072_STARTER_FREE_FAST",
+      "profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+      "ruleset_id": "v0.7.2",
+      "runtime_authority_for_v073": false,
+      "retained_for_comparison": true
+    },
+    {
+      "profile_id": "V071_CANDIDATE_A_FAST",
+      "profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+      "ruleset_id": "v0.7.1",
+      "runtime_authority_for_v073": false,
+      "retained_for_comparison": true
+    }
+  ],
+  "required_balance_tests": [
+    "profile_fingerprint_exact",
+    "all_v072_sample_parameters_inherited",
+    "fixed_hidden_round_robin_structural",
+    "facility_action_mode_required_structural",
+    "build_contention_fizzle_structural",
+    "auction_runtime_parameter_count_zero",
+    "human_fun_not_claimed"
+  ]
+}
