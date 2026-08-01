@@ -143,11 +143,24 @@ func _run_source_authorization_contract(source: String) -> void:
 	_expect_contains_all(parse_source, [
 		'"targeted_diagnostic_ledger_path": ""',
 		'"targeted_diagnostic_ledger_fingerprint": ""',
+		"TARGETED_LAUNCH_CONTEXT.parse_cli_argument(text)",
+		'launch_context_argument.get("recognized"',
+		'launch_context_argument.get("option_name"',
+	], "option parser delegates targeted wire names to the shared Launch Context")
+	var launch_contract := FileAccess.get_file_as_string(
+		"res://scripts/tools/cold_restore_targeted_diagnostic_launch_context_v1.json"
+	)
+	_expect_contains_all(launch_contract, [
 		"--cold-restore-targeted-diagnostic-ledger-path=",
 		"--cold-restore-targeted-diagnostic-ledger-fingerprint=",
 		"--cold-restore-launch-attestation-path=",
 		"--cold-restore-launch-nonce=",
-	], "option parser accepts the quota and launch authorization quartet")
+	], "shared Launch Context owns the quota and launch authorization quartet")
+	_expect(
+		not parse_source.contains("--cold-restore-targeted-diagnostic-ledger-path=")
+				and not parse_source.contains("--cold-restore-targeted-diagnostic-ledger-fingerprint="),
+		"Driver does not duplicate targeted Launch Context wire names"
+	)
 
 	var validation_source := _function_source(source, "static func validate_options(")
 	_expect(not validation_source.is_empty(), "static option validation source is discoverable")

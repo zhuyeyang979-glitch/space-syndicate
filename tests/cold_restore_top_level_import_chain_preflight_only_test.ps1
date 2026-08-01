@@ -132,12 +132,14 @@ try {
     Import-Module $authorizationModulePath -Force
     $authorizationName = Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName
     $authorization = Get-ColdRestoreAuthorizationEntry $authorizationName
+    $previousAuthorizationName = Get-ColdRestorePreviousTargetedDiagnosticAuthorizationName
+    $previousAuthorization = Get-ColdRestoreAuthorizationEntry $previousAuthorizationName
     $runId = Get-ColdRestoreAuthorizationRunId $authorizationName $repositoryHead
     Assert-PreflightOnlyCondition (
-        [int]$authorization.permitted_transition_from -eq 4 -and
-        [int]$authorization.permitted_transition_to -eq 5 -and
-        [int]$authorization.maximum_invocation_count -eq 5
-    ) "preflight binds the current exact 4-to-5 production authorization"
+        [int]$authorization.permitted_transition_from -eq 5 -and
+        [int]$authorization.permitted_transition_to -eq 6 -and
+        [int]$authorization.maximum_invocation_count -eq 6
+    ) "preflight binds the current exact 5-to-6 production authorization"
 
     $gitCommonRaw = (& git -C $projectRoot rev-parse --git-common-dir).Trim()
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($gitCommonRaw)) {
@@ -153,6 +155,9 @@ try {
         Join-Path $gitCommon ([string]$authorization.quota_ledger_relative_path)
         Join-Path $gitCommon ([string]$authorization.evidence_root_relative_path)
         Join-Path $gitCommon ([string]$authorization.bootstrap_root_relative_path)
+        Join-Path $gitCommon ([string]$previousAuthorization.quota_ledger_relative_path)
+        Join-Path $gitCommon ([string]$previousAuthorization.evidence_root_relative_path)
+        Join-Path $gitCommon ([string]$previousAuthorization.bootstrap_root_relative_path)
     )
     $protectedBefore = Get-ProtectedRootSnapshot $protectedPaths
 
@@ -213,7 +218,7 @@ try {
     ) "all preflights used distinct process identities"
     Assert-PreflightOnlyCondition (
         [string]$protectedBefore.fingerprint -ceq [string]$protectedAfter.fingerprint
-    ) "formal V5 quota, evidence, and prequota roots are byte-for-byte unchanged"
+    ) "current V6 roots and retained V5 quota, evidence, and prequota roots are byte-for-byte unchanged"
 
     foreach ($result in $results) {
         $runIndex = $results.IndexOf($result) + 1
