@@ -1,7 +1,7 @@
 extends RefCounted
 class_name V07CanonicalPlayerProjectionAdapter
 
-## Capability-gated, read-only adapter over the PR79 V0.7 Player projections.
+## Capability-gated, read-only adapter over detached V0.7.1 Player projections.
 ## The capability is transient object identity; it is never copied into wire data.
 
 const WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
@@ -12,10 +12,10 @@ const ASSET_BATCH_CORE := preload(
 	"res://scripts/v07_semantic/v07_asset_batch_core.gd"
 )
 
-const SCHEMA_VERSION := 1
-const RULESET_ID := "v0.7"
-const ADAPTER_ID := "v07.canonical.player_projection_adapter.v1"
-const PROJECTION_ID := "v07.canonical.player_projection.v1"
+const SCHEMA_VERSION := 2
+const RULESET_ID := "v0.7.1"
+const ADAPTER_ID := "v071.canonical.player_projection_adapter.v2"
+const PROJECTION_ID := "v071.canonical.player_projection.v2"
 const VISIBILITY_SCOPE_ID := "viewer_authorized_plus_public"
 
 const AUTHORIZATION_CONTEXT_FIELDS := [
@@ -350,6 +350,7 @@ func last_reason_code() -> String:
 func debug_snapshot() -> Dictionary:
 	return {
 		"adapter_id": ADAPTER_ID,
+		"target_ruleset_id": RULESET_ID,
 		"capability_bound": _capability != null,
 		"authorization_bound": not _authorization_context.is_empty(),
 		"match_instance_id": str(

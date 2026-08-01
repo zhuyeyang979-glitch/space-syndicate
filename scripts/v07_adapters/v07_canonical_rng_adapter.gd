@@ -1,13 +1,13 @@
 extends RefCounted
 class_name V07CanonicalRngAdapter
 
-## Pure adapter between the current V0.7 local Save payloads and the canonical
+## Pure adapter between detached V0.7.1 local Save payloads and the canonical
 ## RNG ledger. It stores, advances, seeds, and restores no RNG. A ledger is only
 ## accepted while it remains byte-for-byte equal to the embedded owner state.
 
 const SCHEMA_VERSION := 1
-const ADAPTER_ID := "space_syndicate.v07.canonical_rng_adapter.v1"
-const RULESET_ID := "v0.7"
+const ADAPTER_ID := "space_syndicate.v071.canonical_rng_adapter.v1"
+const RULESET_ID := "v0.7.1"
 
 const DBG_PROFILE_ID := "dbg_tagged_sha256_counter_v1"
 const UNIFIED_PROFILE_ID := "unified_park_miller_embedded_v1"
@@ -88,11 +88,14 @@ const UNIFIED_AUTHORITY_STATE_FIELDS := [
 	"match_instance_id",
 	"match_instance_id_explicit",
 	"roster_ids",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"track_state",
 	"type_supply_state",
 	"normal_supply_state",
 	"commodity_supply_state",
 	"color_cycle_state",
+	"batch_boundary_state",
 	"hidden_lead_cycle_state",
 	"projection_revisions",
 	"processed_requests",
@@ -142,6 +145,8 @@ const HIDDEN_LEAD_FIELDS := [
 const DBG_SAVE_FIELDS := [
 	"schema_id",
 	"schema_version",
+	"state_version",
+	"ruleset_id",
 	"domain_id",
 	"privacy_scope",
 	"typed_state_contracts",
@@ -152,6 +157,8 @@ const DBG_SAVE_FIELDS := [
 ]
 const DBG_STATE_FIELDS := [
 	"schema_version",
+	"state_version",
+	"ruleset_id",
 	"domain_id",
 	"owner_player_id",
 	"root_seed",
@@ -173,6 +180,9 @@ const DBG_STATE_FIELDS := [
 	"reshuffle_rng",
 	"processed_intent_ids",
 	"receipt_journal",
+	"normal_deck_minimum_count_rule_version",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 ]
 const DBG_DOCUMENT_FIELDS := [
 	"section_id",
@@ -193,6 +203,8 @@ static func adapter_contract() -> Dictionary:
 		"schema_version": SCHEMA_VERSION,
 		"adapter_id": ADAPTER_ID,
 		"ruleset_id": RULESET_ID,
+		"target_ruleset_id": RULESET_ID,
+		"v07_direct_resume_allowed": false,
 		"logical_stream_ids": LOGICAL_STREAM_IDS.duplicate(),
 		"logical_stream_id_count": LOGICAL_STREAM_IDS.size(),
 		"state_profile_ids": [DBG_PROFILE_ID, UNIFIED_PROFILE_ID],
@@ -475,7 +487,7 @@ static func _unified_save_error(save_state: Dictionary) -> String:
 	if not _exact_fields(save_state, UNIFIED_SAVE_FIELDS):
 		return "save_fields_invalid"
 	if save_state.get("schema_version") != SCHEMA_VERSION \
-			or save_state.get("state_version") != 2 \
+			or save_state.get("state_version") != 4 \
 			or save_state.get("interface_id") != "v07.unified_track.save_state.v1" \
 			or save_state.get("ruleset_id") != RULESET_ID \
 			or save_state.get("domain_id") != "unified_card_track":
@@ -487,7 +499,7 @@ static func _unified_save_error(save_state: Dictionary) -> String:
 	if not _exact_fields(authority, UNIFIED_AUTHORITY_STATE_FIELDS):
 		return "authority_state_fields_invalid"
 	if authority.get("schema_version") != SCHEMA_VERSION \
-			or authority.get("state_version") != 2 \
+			or authority.get("state_version") != 4 \
 			or authority.get("ruleset_id") != RULESET_ID \
 			or authority.get("domain_id") != "unified_card_track":
 		return "authority_state_header_invalid"
@@ -536,6 +548,8 @@ static func _dbg_save_error(save_state: Dictionary) -> String:
 		return "save_fields_invalid"
 	if save_state.get("schema_id") != "v07.personal_dbg.save_state.v1" \
 			or save_state.get("schema_version") != SCHEMA_VERSION \
+			or save_state.get("state_version") != 2 \
+			or save_state.get("ruleset_id") != RULESET_ID \
 			or save_state.get("domain_id") != "v07.personal_dbg" \
 			or save_state.get("privacy_scope") != "authority_secret":
 		return "save_header_invalid"
@@ -546,6 +560,8 @@ static func _dbg_save_error(save_state: Dictionary) -> String:
 	if not _exact_fields(state, DBG_STATE_FIELDS):
 		return "state_fields_invalid"
 	if state.get("schema_version") != SCHEMA_VERSION \
+			or state.get("state_version") != 2 \
+			or state.get("ruleset_id") != RULESET_ID \
 			or state.get("domain_id") != "v07.personal_dbg" \
 			or not _is_stable_id(state.get("owner_player_id")) \
 			or not _tagged_int64_valid(state.get("root_seed")):

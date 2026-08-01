@@ -649,11 +649,11 @@ func _expect(condition: bool, message: String) -> void:
 func _finish() -> void:
 	if _failures.is_empty():
 		print(
-			"V07_CANONICAL_PLAYER_PROJECTION_ADAPTER_PASS checks=%d"
+			"V071_CANONICAL_PLAYER_PROJECTION_ADAPTER_READY | status=PASS | checks=%d"
 			% _checks
 		)
 		quit(0)
 		return
 	for failure in _failures:
-		push_error("V07_CANONICAL_PLAYER_PROJECTION_ADAPTER_FAIL: %s" % failure)
+		push_error("V071_CANONICAL_PLAYER_PROJECTION_ADAPTER_FAIL: %s" % failure)
 	quit(1)

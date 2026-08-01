@@ -481,7 +481,7 @@ func _next_value_projection(rows: Array) -> Dictionary:
 		if str(row.get("state_profile_id", "")) \
 				== "dbg_tagged_sha256_counter_v1":
 			var material := "%s:%s:%s:%s:%s:%d" % [
-				"v0.7",
+				"v0.7.1",
 				str(state.get("algorithm_id", "")),
 				stream_id,
 				instance_id,
@@ -549,15 +549,15 @@ func _expect(condition: bool, message: String) -> void:
 		print("PASS: %s" % message)
 		return
 	_failures.append(message)
-	push_error("V07 CANONICAL RNG ADAPTER: %s" % message)
+	push_error("V071 CANONICAL RNG ADAPTER: %s" % message)
 
 
 func _finish() -> void:
 	if _failures.is_empty():
-		print("V0.7 canonical RNG adapter test passed. checks=%d" % _checks)
+		print("V071_CANONICAL_RNG_ADAPTER_READY | status=PASS | checks=%d" % _checks)
 		quit(0)
 		return
 	push_error(
-		"V0.7 canonical RNG adapter test failed:\n- %s" % "\n- ".join(_failures)
+		"V0.7.1 canonical RNG adapter test failed:\n- %s" % "\n- ".join(_failures)
 	)
 	quit(1)

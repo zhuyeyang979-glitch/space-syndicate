@@ -1,7 +1,7 @@
 extends RefCounted
 class_name V07CanonicalAiObservationAdapter
 
-## Capability-gated, read-only adapter over all five PR79 V0.7 AI observations.
+## Capability-gated, read-only adapter over all five detached V0.7.1 observations.
 ## Authorization retains only identity, revisions, and source fingerprints.
 
 const CODEC := preload(
@@ -18,10 +18,10 @@ const SOLAR_CORE := preload(
 	"res://scripts/v07_semantic/v07_solar_victory_core.gd"
 )
 
-const SCHEMA_VERSION := 1
-const RULESET_ID := "v0.7"
-const ADAPTER_ID := "v07.canonical.ai_observation_adapter.v1"
-const OBSERVATION_ID := "v07.canonical.ai_observation.v1"
+const SCHEMA_VERSION := 2
+const RULESET_ID := "v0.7.1"
+const ADAPTER_ID := "v071.canonical.ai_observation_adapter.v2"
+const OBSERVATION_ID := "v071.canonical.ai_observation.v2"
 const VISIBILITY_SCOPE_ID := "ai_actor_authorized_plus_public"
 
 const AUTHORIZATION_CONTEXT_FIELDS := [
@@ -447,6 +447,7 @@ func last_reason_code() -> String:
 func debug_snapshot() -> Dictionary:
 	return {
 		"adapter_id": ADAPTER_ID,
+		"target_ruleset_id": RULESET_ID,
 		"capability_bound": _capability != null,
 		"authorization_bound": not _authorization_context.is_empty(),
 		"match_instance_id": str(

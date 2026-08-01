@@ -40,7 +40,7 @@ func _run() -> void:
 	_expect(
 		bool(capture.get("captured", false))
 			and str(capture.get("source_kind", "")) == ADAPTER.SOURCE_NEW_V07_GAME,
-		"NEW_V07_GAME capture accepts the five real V07 Core payloads"
+		"NEW_V071_GAME capture accepts the five detached Core payloads"
 	)
 	var envelope := capture.get("envelope", {}) as Dictionary
 	_expect(
@@ -350,21 +350,23 @@ func _test_source_gate(envelope: Dictionary) -> void:
 		"V06 Save direct resume fails closed with the backup-required reason"
 	)
 	_expect(
-		bool(rejected.get("new_v07_game_required", false))
+		bool(rejected.get("new_v071_game_required", false))
 			and not bool(rejected.get("direct_resume_allowed", true)),
-		"V06 rejection requires a new V07 game and never reports direct resume"
+		"V06 rejection requires a new V071 game and never reports direct resume"
 	)
 	var wrong_source := ADAPTER.preflight_restore(envelope, "V07_SAVE")
 	_expect(
 		not bool(wrong_source.get("accepted", true))
 			and str(wrong_source.get("reason_code", ""))
-				== "new_v07_game_source_required"
+				== ADAPTER.V07_DIRECT_RESUME_REJECTED_REASON
 			and not bool(wrong_source.get("requires_backup", true)),
-		"valid canonical envelopes are accepted only through NEW_V07_GAME"
+		"V0.7 Save direct resume fails closed; only NEW_V071_GAME is accepted"
 	)
 	var contract := ADAPTER.adapter_contract()
 	_expect(
 		contract.get("source_kinds_allowed") == [ADAPTER.SOURCE_NEW_V07_GAME]
+			and contract.get("target_ruleset_id") == "v0.7.1"
+			and contract.get("v07_direct_resume_allowed") == false
 			and contract.get("v06_direct_resume_allowed") == false
 			and contract.get("v06_backup_required") == true,
 		"adapter contract publishes the closed source and backup policy"
@@ -465,6 +467,8 @@ func _metadata(save_id: String, created_at_utc: String) -> Dictionary:
 		"scenario_fingerprint": "a".repeat(64),
 		"repository_head": "2e38764791cb37cdc45b2eb0836957f550822dd5",
 		"created_at_utc": created_at_utc,
+		"balance_profile_id": ADAPTER.BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": ADAPTER.BALANCE_PROFILE_FINGERPRINT,
 	}
 
 
@@ -497,17 +501,17 @@ func _expect(condition: bool, message: String) -> void:
 func _finish() -> void:
 	if _failures.is_empty():
 		print(
-			"V07_CANONICAL_SAVE_ADAPTER_READY|status=PASS|checks=%d"
+			"V071_CANONICAL_SAVE_ADAPTER_READY|status=PASS|checks=%d"
 			% _checks
 		)
 		print(
-			"V07_CANONICAL_SAVE_ADAPTER_TEST|status=PASS|checks=%d|failures=0|sections=5|rng_streams=11|restore_nodes=10"
+			"V071_CANONICAL_SAVE_ADAPTER_TEST|status=PASS|checks=%d|failures=0|sections=5|rng_streams=11|restore_nodes=10"
 			% _checks
 		)
 		quit(0)
 		return
 	print(
-		"V07_CANONICAL_SAVE_ADAPTER_TEST|status=FAIL|checks=%d|failures=%d|sections=5|rng_streams=11|restore_nodes=10"
+		"V071_CANONICAL_SAVE_ADAPTER_TEST|status=FAIL|checks=%d|failures=%d|sections=5|rng_streams=11|restore_nodes=10"
 		% [_checks, _failures.size()]
 	)
 	for failure in _failures:

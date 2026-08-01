@@ -1,11 +1,11 @@
 {
-  "schema_version": 1,
-  "manifest_id": "space_syndicate.v07.atomic_cutover_manifest.v1",
+  "schema_version": 2,
+  "manifest_id": "space_syndicate.v071.atomic_cutover_manifest",
   "lane": "B",
-  "status": "DETACHED_ADAPTER_PREFLIGHT_READY",
-  "baseline_sha": "054552f0c3748da2960d94440b2062f042401d3e",
+  "status": "V071_DETACHED_ADAPTER_PREFLIGHT_READY",
+  "baseline_sha": "95aca23eb0d1f572025776902519f494ee3778d4",
   "current_production_runtime_ruleset": "v0.6",
-  "target_development_ruleset": "v0.7",
+  "target_development_ruleset": "v0.7.1",
   "canonical_adapter_implementation_status": "IMPLEMENTED_DETACHED_NOT_CONNECTED",
   "adapter_implementation_paths": [
     "scripts/v07_adapters/v07_canonical_data_codec.gd",
@@ -18,18 +18,36 @@
   "production_scene_change": false,
   "main_change": false,
   "dual_write_allowed": false,
-  "V06_SAVE_TO_V07_DIRECT_LOAD": false,
+  "V06_SAVE_TO_V071_DIRECT_LOAD": false,
+  "V07_SAVE_TO_V071_DIRECT_RESUME": false,
   "v06_save_rejection_reason": "v06_save_backup_required",
   "allowed_session_entrypoints": [
-    "NEW_V07_GAME"
+    "NEW_V071_GAME"
   ],
   "source_contracts": [
-    "docs/rules/v07_game_constitution.json",
+    "docs/rules/v071_game_constitution.json",
+    "docs/rules/v071_balance_defaults.json",
+    "docs/rules/v071_amendment_from_v07.json",
+    "docs/migration/v07_to_v071_contract_version_matrix.json",
     "docs/semantic/v07_three_wing_domain_registry.json",
     "docs/save/v07_save_schema.json",
     "docs/save/v07_restore_dependency_graph.json",
     "docs/save/v07_rng_ownership.json"
   ],
+  "required_v071_pre_cutover_gates": [
+    "batch_boundary_owner_ready",
+    "replacement_claim_lock_ready",
+    "minimum_deck_count_ready",
+    "l1_supply_only_ready",
+    "commodity_availability_batch_ready",
+    "invalid_target_policy_ready",
+    "soft_hidden_lead_ready",
+    "balance_profile_ready"
+  ],
+  "v071_pre_cutover_gate_contracts_declared": true,
+  "v071_production_connection_count": 0,
+  "v071_v06_mutation_count": 0,
+  "v071_dual_write_count": 0,
   "domain_count": 10,
   "required_domain_ids": [
     "unified_card_track",

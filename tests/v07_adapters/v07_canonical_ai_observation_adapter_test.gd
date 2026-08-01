@@ -657,15 +657,15 @@ func _expect(condition: bool, message: String) -> void:
 func _finish() -> void:
 	if _failures.is_empty():
 		print(
-			"V07_CANONICAL_AI_OBSERVATION_ADAPTER_READY | passed=%d total=%d"
+			"V071_CANONICAL_AI_OBSERVATION_ADAPTER_READY | passed=%d total=%d"
 			% [_checks, _checks]
 		)
 		quit(0)
 		return
 	for failure in _failures:
-		push_error("V07_CANONICAL_AI_OBSERVATION_ADAPTER_FAIL: %s" % failure)
+		push_error("V071_CANONICAL_AI_OBSERVATION_ADAPTER_FAIL: %s" % failure)
 	push_error(
-		"V07_CANONICAL_AI_OBSERVATION_ADAPTER_FAIL | passed=%d total=%d"
+		"V071_CANONICAL_AI_OBSERVATION_ADAPTER_FAIL | passed=%d total=%d"
 		% [_checks - _failures.size(), _checks]
 	)
 	quit(1)

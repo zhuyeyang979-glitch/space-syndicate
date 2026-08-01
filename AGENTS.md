@@ -29,54 +29,57 @@ Default development habit:
 Rule authority is versioned. When target rules conflict, use this order:
 
 1. The user's latest explicit rule decision.
-2. `docs/rules/v07_game_constitution.json`.
-3. `docs/rules/v07_game_constitution.md`.
-4. The V0.7 summary in this file.
-5. `docs/tabletop_rulebook_v06.md`, for current-production V0.6 only.
-6. Older rule and design documents.
-7. Older test oracles.
-8. Older code behavior.
+2. `docs/rules/v071_game_constitution.json`.
+3. `docs/rules/v071_game_constitution.md`.
+4. `docs/rules/v07_game_constitution.json`.
+5. `docs/rules/v07_game_constitution.md`.
+6. `docs/tabletop_rulebook_v06.md`, for current-production V0.6 only.
+7. Older rule and design documents.
+8. Older test oracles.
+9. Older code behavior.
 
 ```text
-HIGHEST_TARGET_RULE_AUTHORITY=V0.7_COMPLETE_CONSTITUTION
+HIGHEST_TARGET_RULE_AUTHORITY=V0.7.1_COMPLETE_CONSTITUTION
 CURRENT_PLAYER_RUNTIME_RULE_AUTHORITY=V0.6_RULEBOOK
 TARGET_RULES_DO_NOT_PRETEND_TO_BE_RUNTIME=true
 CURRENT_RUNTIME_DOES_NOT_OVERRIDE_TARGET_CONSTITUTION=true
 ```
 
-V0.7 guides all new rule, architecture, AI, player UI, privacy, Save/replay,
+V0.7.1 guides all new rule, architecture, AI, player UI, privacy, Save/replay,
 and RNG design. V0.6 still describes what the current player runtime actually
-does. An old test cannot veto the V0.7 target, and this target cannot change
+does. An old test cannot veto the V0.7.1 target, and this target cannot change
 production without an explicit atomic cutover task. Full details are in
-`docs/rules/v07_rule_precedence.md`.
+`docs/rules/v071_rule_precedence.md`.
 
-## Highest Development Constitution - V0.7
+## Highest Development Constitution - V0.7.1
 
 The complete highest target authority is:
 
-- `docs/rules/v07_game_constitution.json` - closed machine-readable authority.
-- `docs/rules/v07_game_constitution.md` - human-readable companion.
-- `docs/rules/v07_balance_defaults.json` - tunable initial values below the constitution.
-- `docs/migration/v06_to_v07_rule_delta.json` - atomic migration and legacy-deletion ledger.
+- `docs/rules/v071_game_constitution.json` - closed machine-readable authority.
+- `docs/rules/v071_game_constitution.md` - human-readable companion.
+- `docs/rules/v071_balance_defaults.json` - approved first-human-sample defaults.
+- `docs/rules/v071_amendment_from_v07.json` - approved V0.7 to V0.7.1 amendment.
 
-V0.7 has one mixed normal/commodity sushi track, uniform non-GDP color-cycle
-baseline, public stances with hidden lead weight, a fixed hidden order that
-reverses each macro round, personal normal-card DBG zones, an independent
-commodity inventory, optional typed merges, six-color assets capped at six per
-color, thirty-second prebound and fully reserved action batches, no interactive
-counters, owner-anonymous round-robin resolution, 2.0/1.0 solar facility work
-rates, and a complete-macro-round Victory gate.
+V0.7.1 preserves the complete V0.7 structure and freezes eight approved
+closures: independent completed-batch lead/color cursors, AI self-lead parity,
+next-scroll replacement locks, a five-card normal-deck minimum, level-one-only
+track supply, saved commodity batch availability, deterministic invalid-target
+policies, and soft-hidden lead publication. `V071_CANDIDATE_A_FAST` is the
+approved tunable profile for the first human sample; human fun remains unproven.
 
 This is a frozen target, not a runtime claim:
 
 ```text
 CURRENT_PRODUCTION_RUNTIME_RULESET=V0.6
-TARGET_DEVELOPMENT_CONSTITUTION=V0.7
-FULL_V0_7_RUNTIME_CUTOVER=false
+TARGET_DEVELOPMENT_CONSTITUTION=V0.7.1
+FULL_V0_7_1_RUNTIME_CUTOVER=false
+HUMAN_FUN_PROVEN=false
+HUMAN_TEST_REQUIRED=true
 ```
 
-Earlier partial V0.7 commodity-track records are historical migration evidence
-only when they conflict with `space_syndicate.v07.complete`.
+The byte-identical V0.7 constitution and balance defaults remain immutable
+historical baseline files. Earlier partial V0.7 records remain historical
+migration evidence when they conflict with `space_syndicate.v071.complete`.
 
 <!-- CURRENT_PRODUCTION_V06_ONLY_BEGIN -->
 ## Current Production Runtime - V0.6

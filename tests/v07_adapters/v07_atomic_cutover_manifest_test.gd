@@ -2,7 +2,7 @@ extends SceneTree
 
 const MANIFEST_PATH := "res://docs/migration/v07_atomic_cutover_manifest.json"
 const MARKDOWN_PATH := "res://docs/migration/v07_atomic_cutover_manifest.md"
-const BASELINE_SHA := "054552f0c3748da2960d94440b2062f042401d3e"
+const BASELINE_SHA := "95aca23eb0d1f572025776902519f494ee3778d4"
 
 const TOP_LEVEL_KEYS := [
 	"schema_version",
@@ -18,10 +18,16 @@ const TOP_LEVEL_KEYS := [
 	"production_scene_change",
 	"main_change",
 	"dual_write_allowed",
-	"V06_SAVE_TO_V07_DIRECT_LOAD",
+	"V06_SAVE_TO_V071_DIRECT_LOAD",
+	"V07_SAVE_TO_V071_DIRECT_RESUME",
 	"v06_save_rejection_reason",
 	"allowed_session_entrypoints",
 	"source_contracts",
+	"required_v071_pre_cutover_gates",
+	"v071_pre_cutover_gate_contracts_declared",
+	"v071_production_connection_count",
+	"v071_v06_mutation_count",
+	"v071_dual_write_count",
 	"domain_count",
 	"required_domain_ids",
 	"domain_entry_required_fields",
@@ -72,11 +78,24 @@ const ADAPTER_IMPLEMENTATION_PATHS := [
 	"scripts/v07_adapters/v07_canonical_player_projection_adapter.gd",
 ]
 const SOURCE_CONTRACTS := [
-	"docs/rules/v07_game_constitution.json",
+	"docs/rules/v071_game_constitution.json",
+	"docs/rules/v071_balance_defaults.json",
+	"docs/rules/v071_amendment_from_v07.json",
+	"docs/migration/v07_to_v071_contract_version_matrix.json",
 	"docs/semantic/v07_three_wing_domain_registry.json",
 	"docs/save/v07_save_schema.json",
 	"docs/save/v07_restore_dependency_graph.json",
 	"docs/save/v07_rng_ownership.json",
+]
+const V071_PRE_CUTOVER_GATES := [
+	"batch_boundary_owner_ready",
+	"replacement_claim_lock_ready",
+	"minimum_deck_count_ready",
+	"l1_supply_only_ready",
+	"commodity_availability_batch_ready",
+	"invalid_target_policy_ready",
+	"soft_hidden_lead_ready",
+	"balance_profile_ready",
 ]
 const EXPECTED_BINDINGS := {
 	"unified_card_track": {
@@ -178,15 +197,15 @@ func _run() -> void:
 func _test_top_level(manifest: Dictionary) -> void:
 	_expect(_same_key_set(manifest, TOP_LEVEL_KEYS), "manifest top-level keys are exact")
 	_expect(
-		int(manifest.get("schema_version", 0)) == 1
+		int(manifest.get("schema_version", 0)) == 2
 			and str(manifest.get("manifest_id", ""))
-				== "space_syndicate.v07.atomic_cutover_manifest.v1"
+				== "space_syndicate.v071.atomic_cutover_manifest"
 			and str(manifest.get("lane", "")) == "B"
 			and str(manifest.get("baseline_sha", "")) == BASELINE_SHA,
 		"manifest identity, lane, and merged-kernel baseline are exact"
 	)
 	_expect(
-		str(manifest.get("status", "")) == "DETACHED_ADAPTER_PREFLIGHT_READY"
+		str(manifest.get("status", "")) == "V071_DETACHED_ADAPTER_PREFLIGHT_READY"
 			and str(manifest.get("canonical_adapter_implementation_status", ""))
 				== "IMPLEMENTED_DETACHED_NOT_CONNECTED"
 			and _is_false(manifest.get("production_cutover_authorized")),
@@ -194,8 +213,8 @@ func _test_top_level(manifest: Dictionary) -> void:
 	)
 	_expect(
 		str(manifest.get("current_production_runtime_ruleset", "")) == "v0.6"
-			and str(manifest.get("target_development_ruleset", "")) == "v0.7",
-		"production remains V0.6 while V0.7 is the target"
+			and str(manifest.get("target_development_ruleset", "")) == "v0.7.1",
+		"production remains V0.6 while V0.7.1 is the target"
 	)
 	_expect(
 		_is_false(manifest.get("production_scene_change"))
@@ -204,13 +223,25 @@ func _test_top_level(manifest: Dictionary) -> void:
 		"production scene, Main, and dual-write flags remain false"
 	)
 	_expect(
-		_is_false(manifest.get("V06_SAVE_TO_V07_DIRECT_LOAD"))
+		_is_false(manifest.get("V06_SAVE_TO_V071_DIRECT_LOAD"))
+			and _is_false(manifest.get("V07_SAVE_TO_V071_DIRECT_RESUME"))
 			and str(manifest.get("v06_save_rejection_reason", ""))
 				== "v06_save_backup_required"
 			and _same_string_array(
-				manifest.get("allowed_session_entrypoints"), ["NEW_V07_GAME"]
+				manifest.get("allowed_session_entrypoints"), ["NEW_V071_GAME"]
 			),
-		"V0.6 Save fails closed and NEW_V07_GAME is the only entrypoint"
+		"V0.6 and V0.7 Saves fail closed and NEW_V071_GAME is the only entrypoint"
+	)
+	_expect(
+		_same_string_array(
+			manifest.get("required_v071_pre_cutover_gates"),
+			V071_PRE_CUTOVER_GATES
+		)
+			and manifest.get("v071_pre_cutover_gate_contracts_declared") == true
+			and int(manifest.get("v071_production_connection_count", -1)) == 0
+			and int(manifest.get("v071_v06_mutation_count", -1)) == 0
+			and int(manifest.get("v071_dual_write_count", -1)) == 0,
+		"all eight V0.7.1 gates are declared without production mutation"
 	)
 	_expect(
 		_same_string_array(
@@ -371,23 +402,25 @@ func _test_markdown() -> void:
 	_expect(not markdown.is_empty(), "Markdown companion is nonempty")
 	for token in [
 		"LANE=B",
-		"STATUS=DETACHED_ADAPTER_PREFLIGHT_READY",
+		"STATUS=V071_DETACHED_ADAPTER_PREFLIGHT_READY",
 		"CANONICAL_ADAPTER_IMPLEMENTATION_STATUS=IMPLEMENTED_DETACHED_NOT_CONNECTED",
 		"CURRENT_PRODUCTION_RUNTIME_RULESET=V0.6",
 		"PRODUCTION_CUTOVER_AUTHORIZED=false",
-		"V06_SAVE_TO_V07_DIRECT_LOAD=false",
+		"V06_SAVE_TO_V071_DIRECT_LOAD=false",
+		"V07_SAVE_TO_V071_DIRECT_RESUME=false",
 		"V06_SAVE_REJECTION_REASON=v06_save_backup_required",
-		"ALLOWED_SESSION_ENTRYPOINTS=[NEW_V07_GAME]",
+		"ALLOWED_SESSION_ENTRYPOINTS=[NEW_V071_GAME]",
 		"PRODUCTION_SCENE_CHANGE=false",
 		"MAIN_CHANGE=false",
 		"DUAL_WRITE_ALLOWED=false",
 	]:
 		_expect(markdown.contains(token), "Markdown declares %s" % token)
 	_expect(
-		not markdown.contains("V06_SAVE_TO_V07_DIRECT_LOAD=true")
+		not markdown.contains("V06_SAVE_TO_V071_DIRECT_LOAD=true")
+			and not markdown.contains("V07_SAVE_TO_V071_DIRECT_RESUME=true")
 			and not markdown.contains("DUAL_WRITE_ALLOWED=true")
 			and markdown.contains(
-				"LATEST_MAIN_BASELINE_SHA=054552f0c3748da2960d94440b2062f042401d3e"
+				"LATEST_MAIN_BASELINE_SHA=95aca23eb0d1f572025776902519f494ee3778d4"
 			)
 			and markdown.contains("COMMERCIAL_ART_FOUNDATION=GREEN")
 			and markdown.contains("PRESENTATION_ASSET_CATALOG_READY=true"),
@@ -520,10 +553,10 @@ func _expect(condition: bool, label: String) -> void:
 func _finish() -> void:
 	if _failures.is_empty():
 		print(
-			"V07_ATOMIC_CUTOVER_MANIFEST|status=PASS|checks=%d|domains=10|entry=NEW_V07_GAME"
+			"V071_ATOMIC_CUTOVER_MANIFEST|status=PASS|checks=%d|domains=10|entry=NEW_V071_GAME"
 			% _checks
 		)
-		print("V07_ATOMIC_CUTOVER_MANIFEST_READY | status=PASS")
+		print("V071_ATOMIC_CUTOVER_MANIFEST_READY | status=PASS")
 		quit(0)
 		return
 	for failure in _failures:

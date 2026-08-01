@@ -1,24 +1,29 @@
-# V0.7 Canonical Adapter Atomic Cutover Manifest
+# V0.7.1 Canonical Adapter Atomic Cutover Manifest
 
 LANE=B
-STATUS=DETACHED_ADAPTER_PREFLIGHT_READY
+STATUS=V071_DETACHED_ADAPTER_PREFLIGHT_READY
 CANONICAL_ADAPTER_IMPLEMENTATION_STATUS=IMPLEMENTED_DETACHED_NOT_CONNECTED
 CURRENT_PRODUCTION_RUNTIME_RULESET=V0.6
-TARGET_DEVELOPMENT_RULESET=V0.7
+TARGET_DEVELOPMENT_RULESET=V0.7.1
 PRODUCTION_CUTOVER_AUTHORIZED=false
-V06_SAVE_TO_V07_DIRECT_LOAD=false
+V06_SAVE_TO_V071_DIRECT_LOAD=false
+V07_SAVE_TO_V071_DIRECT_RESUME=false
 V06_SAVE_REJECTION_REASON=v06_save_backup_required
-ALLOWED_SESSION_ENTRYPOINTS=[NEW_V07_GAME]
+ALLOWED_SESSION_ENTRYPOINTS=[NEW_V071_GAME]
 PRODUCTION_SCENE_CHANGE=false
 MAIN_CHANGE=false
 DUAL_WRITE_ALLOWED=false
-LATEST_MAIN_BASELINE_SHA=054552f0c3748da2960d94440b2062f042401d3e
+LATEST_MAIN_BASELINE_SHA=95aca23eb0d1f572025776902519f494ee3778d4
+V071_REQUIRED_PRE_CUTOVER_GATES=[batch_boundary_owner_ready,replacement_claim_lock_ready,minimum_deck_count_ready,l1_supply_only_ready,commodity_availability_batch_ready,invalid_target_policy_ready,soft_hidden_lead_ready,balance_profile_ready]
+V071_PRODUCTION_CONNECTION_COUNT=0
+V071_V06_MUTATION_COUNT=0
+V071_DUAL_WRITE_COUNT=0
 COMMERCIAL_ART_FOUNDATION=GREEN
 PRESENTATION_ASSET_CATALOG_READY=true
 
-The canonical Save, RNG, AI-observation, and player-projection adapters are detached `RefCounted` implementations. They consume the merged V0.7 semantic Core but have no production scene, Main, V0.6 runtime, or V06 Save Registry connection. This document is a future atomic owner-replacement checklist, not production cutover authorization.
+The canonical Save, RNG, AI-observation, and player-projection adapters are detached `RefCounted` implementations targeting V0.7.1. They have no production scene, Main, V0.6 runtime, or V06 Save Registry connection. This document is a future atomic owner-replacement checklist, not production cutover authorization.
 
-A V0.6 Save is recognized and rejected with `v06_save_backup_required`. The adapter never guesses the unified track, personal DBG order, independent commodity inventory, 5+5 capacities, asset reservations, anonymous resolution order, or complete-macro-round state. The first production V0.7 release starts only through `NEW_V07_GAME`.
+A V0.6 Save is recognized and rejected with `v06_save_backup_required`; a detached V0.7 Save also fails closed unless a future test-only migration is explicitly selected. The adapter never guesses the unified track, personal DBG order, independent commodity inventory, 5+5 capacities, asset reservations, anonymous resolution order, balance profile, or complete-macro-round state. A future production V0.7.1 release starts only through `NEW_V071_GAME`.
 
 Every player-visible cutover below declares presentation dependencies through stable semantic asset keys owned by the existing Presentation Asset Catalog. The detached Player adapter emits only `asset_key` entries; Core, AI, and Save remain asset-key agnostic, and no adapter or cutover entry names a vendor filename or third-party resource path. Presentation consumes authorized projections; it never becomes a gameplay, sunlight, Save, or RNG owner.
 
@@ -40,7 +45,7 @@ Every player-visible cutover below declares presentation dependencies through st
 - **Old-surface deletion gate:** Retire TopCommoditySushiTrack and regional ordinary-card surfaces only after PublicTrack renders the authorized mixed-track projection with every required key.
 - **Rollback surface:** Rebind PublicTrack to the unchanged V0.6 public-track projection and render no candidate V0.7 track state.
 - **Pre-cutover gate:** Validate one mixed-track snapshot, stable identities, six-color cycle, hidden lead order, receipts, and five embedded RNG streams.
-- **Cutover step:** Replace every NEW_V07_GAME Core, AI, player, Save, and RNG route in one transaction.
+- **Cutover step:** Replace every NEW_V071_GAME Core, AI, player, Save, and RNG route in one transaction.
 - **Rollback step:** Restore the detached track checkpoint and retain all V0.6 routes.
 - **Old-path deletion gate:** Delete commodity-only and regional ordinary-card authorities only after the V0.7 Core is the sole published owner.
 - **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
@@ -109,7 +114,7 @@ Every player-visible cutover below declares presentation dependencies through st
 - **Old-surface deletion gate:** Retire shared-capacity commodity surfaces and duplicate inventory writers only after PlayerCardDock renders the independent commodity projection and typed merge receipts.
 - **Rollback surface:** Restore the V0.6 commodity presentation and publish no candidate inventory or merge receipt.
 - **Pre-cutover gate:** Validate independent commodity capacity, typed lineage, privacy, and no implicit V0.6 capacity interpretation.
-- **Cutover step:** Route NEW_V07_GAME acquisition, inventory, merge, projection, and Save through each player's DBG Core.
+- **Cutover step:** Route NEW_V071_GAME acquisition, inventory, merge, projection, and Save through each player's DBG Core.
 - **Rollback step:** Restore the commodity checkpoint and emit no claim or merge receipt.
 - **Old-path deletion gate:** Delete shared capacity aliases and duplicate inventory writers after parity.
 - **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
@@ -132,7 +137,7 @@ Every player-visible cutover below declares presentation dependencies through st
 - **Old-surface deletion gate:** Retire mana-named counters and V0.6 resource surfaces only after PlayerCardDock renders all six authorized values with shape-and-icon identification.
 - **Rollback surface:** Restore the V0.6 resource presentation and clear candidate six-color balances, reservations, and refresh feedback.
 - **Pre-cutover gate:** Validate exactly six colors, cap six, remainders, revisions, privacy, and shared asset-batch lineage.
-- **Cutover step:** Replace NEW_V07_GAME resource reads and writes while the candidate remains detached.
+- **Cutover step:** Replace NEW_V071_GAME resource reads and writes while the candidate remains detached.
 - **Rollback step:** Restore the shared asset-batch checkpoint once and publish no asset delta.
 - **Old-path deletion gate:** Delete V0.6 mana and resource writers only after Core, ports, Save, and reservation parity.
 - **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
@@ -155,7 +160,7 @@ Every player-visible cutover below declares presentation dependencies through st
 - **Old-surface deletion gate:** Retire V0.6 multi-window collection and resolution-time targeting surfaces only after PlayerCardDock renders one authorized five-action local ordering projection.
 - **Rollback surface:** Restore the pre-cutover command surface, discard the candidate batch, and consume neither time nor actions.
 - **Pre-cutover gate:** Validate the one-shot window, five-action limit, local order, targets, revision, and exact-once journal.
-- **Cutover step:** Replace NEW_V07_GAME action collection in the same atomic owner switch.
+- **Cutover step:** Replace NEW_V071_GAME action collection in the same atomic owner switch.
 - **Rollback step:** Restore the shared checkpoint and discard the batch without consuming time or actions.
 - **Old-path deletion gate:** Delete V0.6 multi-window and resolution-time collection only after timing parity.
 - **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
@@ -178,7 +183,7 @@ Every player-visible cutover below declares presentation dependencies through st
 - **Old-surface deletion gate:** Retire execution-time affordability and duplicate cost surfaces only after PlayerCardDock renders exact reserved and available six-color values from the authorized projection.
 - **Rollback surface:** Clear candidate reservation highlights and restore the V0.6 affordability presentation without charging or releasing an authoritative asset.
 - **Pre-cutover gate:** Validate one complete reservation identity, six-color cost, batch identity, journal, and balance per action.
-- **Cutover step:** Make reservation acceptance the only NEW_V07_GAME affordability and cost-consumption authority.
+- **Cutover step:** Make reservation acceptance the only NEW_V071_GAME affordability and cost-consumption authority.
 - **Rollback step:** Restore the shared checkpoint and release every candidate reservation without charge.
 - **Old-path deletion gate:** Delete execution-time affordability fallbacks and duplicate cost consumers after parity.
 - **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
@@ -201,7 +206,7 @@ Every player-visible cutover below declares presentation dependencies through st
 - **Old-surface deletion gate:** Retire owner-contiguous queues, counter controls, and late-targeting surfaces only after CardResolutionTrack renders anonymous entries without portraits, player-specific colors, or owner identity.
 - **Rollback surface:** Restore the V0.6 resolution track projection and remove every unpublished anonymous entry, receipt, target, and owner-safe placeholder.
 - **Pre-cutover gate:** Validate anonymous order, hidden owner binding, lead cursor, targets, reservations, receipts, and privacy.
-- **Cutover step:** Replace NEW_V07_GAME queue, execution, and history publication with one anonymous port.
+- **Cutover step:** Replace NEW_V071_GAME queue, execution, and history publication with one anonymous port.
 - **Rollback step:** Restore the shared checkpoint and publish no queue entry, effect, receipt, or owner identity.
 - **Old-path deletion gate:** Delete owner-contiguous queues, counters, late targeting, and duplicate writers after parity.
 - **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
