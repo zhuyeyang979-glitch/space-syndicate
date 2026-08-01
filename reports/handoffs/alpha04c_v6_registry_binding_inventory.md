@@ -135,4 +135,3 @@ at `v06_save_owner_registry.gd:1165`.
 `TARGETED_OWNER_CAPTURE_DIAGNOSTIC_COUNT` remains 6. This inventory did not authorize
 or run V7, did not run the nonconsuming replay, did not start Process A, and did not
 modify any V6 evidence bytes, production code, or tests.
-
