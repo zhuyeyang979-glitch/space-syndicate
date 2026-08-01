@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "task_id": "COMMERCIAL_ART_FOUNDATION_DIRECT_SELECTED_ASSET_INTEGRATION_V1",
+  "lane_id": "planet_material_vfx_agent3",
+  "status": "GREEN",
+  "base_sha": "2e38764791cb37cdc45b2eb0836957f550822dd5",
+  "generated_at": "2026-08-01T08:02:27+09:00",
+  "web_asset_search_count": 0,
+  "alternative_source_search_count": 0,
+  "unlisted_asset_source_count": 0,
+  "selected_asset_count": 7,
+  "selected_asset_download_count": 7,
+  "selected_asset_integrated_count": 7,
+  "assets": [
+    {
+      "asset_id": "naejimer.godot_3d_planet_generator",
+      "source_url": "https://godotengine.org/asset-library/asset/1615",
+      "companion_source_url": "https://naejimer.itch.io/godot-3d-planet-generator",
+      "source_available": true,
+      "observed_license": "MIT",
+      "source_page_sha256": "adf9e1ac19fe34eda68063e1331129d7b2c413156c8ee4eba29abae1cbc2b73b",
+      "companion_page_sha256": "863a148b8124b83c0de0dd30d9fdb0415377563b0cec00e89a5f511c2c0818f1",
+      "original_filename": "godot-3d-planet-generator-b8170156.zip",
+      "original_sha256": "21be38c25cc8aa9ff2f1259d67962ed2bc8ca4942318206347fee1d606f66be9",
+      "processed_root": "res://assets/third_party/commercial/planet/naejimer_planet_generator",
+      "retained_upstream_files": [
+        "LICENSE",
+        "source/body.gdshader",
+        "source/clouds.gdshader",
+        "source/atmosphere.gdshader"
+      ],
+      "demo_imported": false
+    },
+    {
+      "asset_id": "ambientcg.metal_plates_013",
+      "source_url": "https://ambientcg.com/view?id=MetalPlates013",
+      "source_available": true,
+      "observed_license": "CC0-1.0",
+      "source_page_sha256": "b65b9f3b6d37fe348b9a822e76ad8e8eea7ccbeb6f48453c6c1f27ecc2a67559",
+      "original_filename": "MetalPlates013_1K-JPG.zip",
+      "original_sha256": "fa2e438b7512470264ebd98c872ca2ea321a0cce4c0ac43264891beec6a21b7d",
+      "download_resolution": "1K-JPG",
+      "processed_root": "res://assets/third_party/commercial/materials/ambientcg/MetalPlates013"
+    },
+    {
+      "asset_id": "ambientcg.painted_metal_007",
+      "source_url": "https://ambientcg.com/view?id=PaintedMetal007",
+      "source_available": true,
+      "observed_license": "CC0-1.0",
+      "source_page_sha256": "dc52e2beab52cbcd0b17c7376b409ea6f1469cfb82ad45027159087afb67654d",
+      "original_filename": "PaintedMetal007_1K-JPG.zip",
+      "original_sha256": "1434c914dbbd7d88afa8acda4977b6180cfa2281f0cbec7900ca2ec49b22a35a",
+      "download_resolution": "1K-JPG",
+      "processed_root": "res://assets/third_party/commercial/materials/ambientcg/PaintedMetal007"
+    },
+    {
+      "asset_id": "ambientcg.sheet_metal_003",
+      "source_url": "https://ambientcg.com/view?id=SheetMetal003",
+      "source_available": true,
+      "observed_license": "CC0-1.0",
+      "source_page_sha256": "e2024e2e323148bf1f25cec501062611ca4d433e4a84e37975604cba0d8818a7",
+      "original_filename": "SheetMetal003_1K-JPG.zip",
+      "original_sha256": "4c128dd028733b0bbced7050b78dfff4e575047c811c2eadb244a9a89d6b2e92",
+      "download_resolution": "1K-JPG",
+      "processed_root": "res://assets/third_party/commercial/materials/ambientcg/SheetMetal003"
+    },
+    {
+      "asset_id": "ambientcg.night_sky_hdri_001",
+      "source_url": "https://ambientcg.com/a/NightSkyHDRI001",
+      "source_available": true,
+      "observed_license": "CC0-1.0",
+      "source_page_sha256": "25a21962cc6b333f1db2111c6c7bb67a9881f6457b606ba119f4810156a9e9a1",
+      "original_filename": "NightSkyHDRI001_2K.zip",
+      "original_sha256": "9c2c7cd4a15b9a7bd9119fce94a5b7b6d5d422aaa1be38ff8ecf11fcdf155b7d",
+      "download_resolution": "2K",
+      "processed_root": "res://assets/third_party/commercial/materials/ambientcg/NightSkyHDRI001"
+    },
+    {
+      "asset_id": "kenney.particle_pack",
+      "source_url": "https://kenney.nl/assets/particle-pack",
+      "source_available": true,
+      "observed_license": "CC0-1.0",
+      "source_page_sha256": "7e668844660359a0439a148080420345c27013692cc16239dc73e5df7c57d058",
+      "original_filename": "kenney_particle-pack.zip",
+      "original_sha256": "b631d4b07f7002549fdcf155f01141ad482f79f3440e4e301eed49ce5f1d8958",
+      "processed_root": "res://assets/third_party/commercial/vfx/kenney_particle_pack",
+      "retained_event_texture_count": 6
+    },
+    {
+      "asset_id": "kenney.smoke_particles",
+      "source_url": "https://kenney.nl/assets/smoke-particles",
+      "source_available": true,
+      "observed_license": "CC0-1.0",
+      "source_page_sha256": "ce337946544c9735b41432ec757ddaea805cd2774e36778e14279348681791b9",
+      "original_filename": "kenney_smoke-particles.zip",
+      "original_sha256": "97a1d09c66e4fd6c247c8ea87f84c0cc59caaeceae19414c995afb1616a1e1c9",
+      "processed_root": "res://assets/third_party/commercial/vfx/kenney_smoke_particles",
+      "retained_sequence_count": 4,
+      "retained_frame_count": 36
+    }
+  ],
+  "integration": {
+    "component_scene": "res://scenes/tools/commercial_art/components/planet/CommercialPlanetReviewComponent.tscn",
+    "component_script": "res://scripts/presentation/commercial_art/planet/commercial_planet_review_component.gd",
+    "planet_opaque": true,
+    "planet_alpha": 1.0,
+    "back_face_culling": true,
+    "depth_test": true,
+    "day_brightness": 1.0,
+    "night_brightness": 0.5,
+    "backside_region_marker_visible_count": 0,
+    "backside_facility_visible_count": 0,
+    "outer_orbit_decoration_count": 0,
+    "zoom_min": 0.72,
+    "zoom_max": 1.85,
+    "zoom_step": 0.08,
+    "camera_state_persisted": false,
+    "vfx_event_map": "res://assets/third_party/commercial/vfx/commercial_vfx_event_map_v1.json",
+    "vfx_event_count": 6,
+    "vfx_sequence_count": 4,
+    "max_concurrent_transparent_emitters": 12,
+    "presentation_rng_draw_count": 0
+  },
+  "processed_tree": {
+    "generated_import_sidecars_excluded": true,
+    "file_count": 78,
+    "bytes": 22005933,
+    "sha256": "63cf807d6bf3bc2ec1cece3a841a563428f8ecb0518886d592085d85f94823ba",
+    "maximum_file": "NightSkyHDRI001_2K_HDR.exr",
+    "maximum_file_bytes": 7101153
+  },
+  "visual_qa": {
+    "capture_960x640_sha256": "cddedd5e0d8d502d37f4310eb5651932e9f6183c82b8c74de99dbd60e070a3d9",
+    "capture_640x420_sha256": "f45b8d9f6e38e60835664b5b51ee43da5c168a8d89eff9a4434397240480ce43",
+    "capture_storage": "external_cache_agent3",
+    "nonblank": true,
+    "left_day_mean_luminance": 80.016,
+    "right_night_mean_luminance": 58.637,
+    "day_night_sample_ratio": 1.365,
+    "layout_overlap_count": 0
+  },
+  "validation": {
+    "focused_test": "res://tests/commercial_art/commercial_planet_asset_contract_test.gd",
+    "focused_test_result": "59/59",
+    "broken_resource_reference_count": 0,
+    "script_error_count": 0,
+    "runtime_error_count": 0
+  },
+  "boundaries": {
+    "production_planet_board_change_count": 0,
+    "production_planet_map_change_count": 0,
+    "main_change_count": 0,
+    "gameplay_value_change_count": 0,
+    "save_owner_change_count": 0,
+    "rng_owner_change_count": 0,
+    "runtime_network_asset_dependency_count": 0
+  }
+}

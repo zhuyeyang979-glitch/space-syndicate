@@ -1,0 +1,17 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/audio/commercial_music_presentation_controller.gd" id="1_controller"]
+
+[node name="CommercialMusicPresentationController" type="Node"]
+script = ExtResource("1_controller")
+editor_description = "Presentation-only two-player music crossfade controller. It accepts only allowlisted public states or stable music asset keys."
+
+[node name="PrimaryPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+volume_db = -80.0
+bus = &"Master"
+
+[node name="SecondaryPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+volume_db = -80.0
+bus = &"Master"

@@ -48,6 +48,35 @@ func presentation_key_for_commodity_family(family_id: String) -> StringName:
 	return key
 
 
+func resource_for_asset_key(asset_key: StringName) -> Resource:
+	_request_count += 1
+	if catalog == null:
+		_fallback_count += 1
+		return null
+	var resource := catalog.resource_for_asset_key(asset_key)
+	if resource == null:
+		_fallback_count += 1
+	else:
+		_rendered_hit_count += 1
+	return resource
+
+
+func asset_kind_for_key(asset_key: StringName) -> StringName:
+	return catalog.asset_kind_for_key(asset_key) if catalog != null else StringName()
+
+
+func asset_scope_for_key(asset_key: StringName) -> StringName:
+	return catalog.asset_scope_for_key(asset_key) if catalog != null else StringName()
+
+
+func has_asset_key(asset_key: StringName) -> bool:
+	return catalog != null and catalog.has_asset_key(asset_key)
+
+
+func all_asset_keys() -> PackedStringArray:
+	return catalog.all_asset_keys() if catalog != null else PackedStringArray()
+
+
 func validation_report() -> Dictionary:
 	return catalog.validation_report() if catalog != null else {
 		"valid": false,
@@ -77,6 +106,8 @@ func debug_snapshot() -> Dictionary:
 		"active_commodity_card_id_count": int(report.get("active_commodity_card_id_count", 0)),
 		"active_commodity_unique_art_count": int(report.get("active_commodity_unique_art_count", 0)),
 		"active_commodity_fallback_count": int(report.get("active_commodity_fallback_count", 0)),
+		"stable_asset_count": int(report.get("stable_asset_count", 0)),
+		"total_asset_key_count": int(report.get("total_asset_key_count", 0)),
 		"request_count": _request_count,
 		"rendered_hit_count": _rendered_hit_count,
 		"semantic_fallback_count": _fallback_count,

@@ -19,6 +19,12 @@ class_name CardIllustrationCatalogResource
 @export var active_commodity_family_ids: PackedStringArray = []
 @export var active_commodity_color_ids: PackedStringArray = []
 @export var active_commodity_levels: PackedInt32Array = []
+@export_group("Stable Presentation Assets")
+@export var stable_asset_schema_version := "commercial.presentation_assets.v1"
+@export var stable_asset_keys: PackedStringArray = []
+@export var stable_asset_resources: Array[Resource] = []
+@export var stable_asset_kinds: PackedStringArray = []
+@export var stable_asset_scopes: PackedStringArray = []
 
 
 func presentation_key_for_card(card_id: String) -> StringName:
@@ -53,8 +59,43 @@ func ranked_active_commodity_card_ids() -> PackedStringArray:
 
 
 func texture_for_key(presentation_key: StringName) -> Texture2D:
-	var index := presentation_keys.find(str(presentation_key))
-	return rendered_textures[index] if index >= 0 and index < rendered_textures.size() else null
+	return resource_for_asset_key(presentation_key) as Texture2D
+
+
+func resource_for_asset_key(asset_key: StringName) -> Resource:
+	var normalized := str(asset_key).strip_edges()
+	var stable_index := stable_asset_keys.find(normalized)
+	if stable_index >= 0 and stable_index < stable_asset_resources.size():
+		return stable_asset_resources[stable_index]
+	var illustration_index := presentation_keys.find(normalized)
+	return rendered_textures[illustration_index] \
+		if illustration_index >= 0 and illustration_index < rendered_textures.size() else null
+
+
+func asset_kind_for_key(asset_key: StringName) -> StringName:
+	var normalized := str(asset_key).strip_edges()
+	var stable_index := stable_asset_keys.find(normalized)
+	if stable_index >= 0 and stable_index < stable_asset_kinds.size():
+		return StringName(stable_asset_kinds[stable_index])
+	return &"Texture2D" if presentation_keys.has(normalized) else StringName()
+
+
+func asset_scope_for_key(asset_key: StringName) -> StringName:
+	var normalized := str(asset_key).strip_edges()
+	var stable_index := stable_asset_keys.find(normalized)
+	if stable_index >= 0 and stable_index < stable_asset_scopes.size():
+		return StringName(stable_asset_scopes[stable_index])
+	return &"legacy_card_illustration" if presentation_keys.has(normalized) else StringName()
+
+
+func has_asset_key(asset_key: StringName) -> bool:
+	return resource_for_asset_key(asset_key) != null
+
+
+func all_asset_keys() -> PackedStringArray:
+	var result := presentation_keys.duplicate()
+	result.append_array(stable_asset_keys)
+	return result
 
 
 func presentation_profile_for_key(presentation_key: StringName) -> Dictionary:
@@ -101,6 +142,7 @@ func validation_report() -> Dictionary:
 		if index >= rendered_textures.size() or rendered_textures[index] == null:
 			errors.append("rendered_texture_missing:%s" % card_id)
 	_validate_active_commodity_coverage(errors)
+	_validate_stable_assets(errors)
 	var rendered_alpha_count := 0
 	for card_id in alpha_card_ids:
 		if presentation_key_for_card(card_id) != StringName():
@@ -125,7 +167,61 @@ func validation_report() -> Dictionary:
 		"active_commodity_card_id_count": active_card_ids.size(),
 		"active_commodity_unique_art_count": active_keys.size(),
 		"active_commodity_fallback_count": active_fallback_count,
+		"stable_asset_count": stable_asset_keys.size(),
+		"total_asset_key_count": all_asset_keys().size(),
 	}
+
+
+func _validate_stable_assets(errors: Array[String]) -> void:
+	if stable_asset_schema_version != "commercial.presentation_assets.v1":
+		errors.append("stable_asset_schema_version_invalid")
+	if _has_duplicates(stable_asset_keys):
+		errors.append("stable_asset_keys_duplicate")
+	var stable_sizes := [
+		stable_asset_resources.size(), stable_asset_kinds.size(), stable_asset_scopes.size(),
+	]
+	for size_variant in stable_sizes:
+		if int(size_variant) != stable_asset_keys.size():
+			errors.append("stable_asset_parallel_array_size_invalid")
+			return
+	for index in range(stable_asset_keys.size()):
+		var asset_key := stable_asset_keys[index].strip_edges()
+		var resource := stable_asset_resources[index]
+		var kind := stable_asset_kinds[index].strip_edges()
+		var scope := stable_asset_scopes[index].strip_edges()
+		if asset_key.is_empty() or asset_key != asset_key.to_lower() \
+				or asset_key.begins_with("res://") or asset_key.contains("\\") \
+				or presentation_keys.has(asset_key):
+			errors.append("stable_asset_key_invalid:%s" % asset_key)
+		if resource == null:
+			errors.append("stable_asset_resource_missing:%s" % asset_key)
+		elif not _resource_matches_kind(resource, kind):
+			errors.append("stable_asset_kind_mismatch:%s:%s" % [asset_key, kind])
+		if not scope.begins_with("production_safe_") and not scope.begins_with("reference_only_"):
+			errors.append("stable_asset_scope_invalid:%s:%s" % [asset_key, scope])
+
+
+func _resource_matches_kind(resource: Resource, kind: String) -> bool:
+	match kind:
+		"Texture2D":
+			return resource is Texture2D
+		"PackedScene":
+			return resource is PackedScene
+		"AudioStream":
+			return resource is AudioStream
+		"Font":
+			return resource is Font
+		"Shader":
+			return resource is Shader
+		"Material":
+			return resource is Material
+		"Environment":
+			return resource is Environment
+		"Sky":
+			return resource is Sky
+		"StyleBox":
+			return resource is StyleBox
+	return false
 
 
 func _validate_active_commodity_coverage(errors: Array[String]) -> void:

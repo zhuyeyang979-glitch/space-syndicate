@@ -1,0 +1,48 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/tools/commercial_art/components/models/ModelPedestal.tscn" id="1_pedestal"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Simple2.gltf" id="2_platform"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Ramp_2Short.gltf" id="3_ramp"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Crate_Large.gltf" id="4_crate"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Crate_Tarp_Large.gltf" id="5_tarp"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Shelves_WideShort.gltf" id="6_shelf"]
+
+[node name="FacilityWarehouseBase" type="Node3D"]
+metadata/asset_key = "model.facility.warehouse.base"
+metadata/presentation_only = true
+metadata/surface_normal_axis = "+Y"
+metadata/source_models = PackedStringArray("Platform_Simple2.gltf", "Platform_Ramp_2Short.gltf", "Prop_Crate_Large.gltf", "Prop_Crate_Tarp_Large.gltf", "Prop_Shelves_WideShort.gltf")
+
+[node name="Pedestal" parent="." instance=ExtResource("1_pedestal")]
+scale = Vector3(2.15, 1, 2.15)
+
+[node name="LowCargoPlatform" parent="." instance=ExtResource("2_platform")]
+position = Vector3(0, 0.04, 0)
+scale = Vector3(1.12, 1.12, 1.12)
+
+[node name="LoadingRamp" parent="." instance=ExtResource("3_ramp")]
+position = Vector3(0, 0.02, 1.48)
+rotation_degrees = Vector3(0, 180, 0)
+scale = Vector3(0.82, 0.82, 0.82)
+
+[node name="ShelfLeft" parent="." instance=ExtResource("6_shelf")]
+position = Vector3(-1.25, 0.2, -0.65)
+rotation_degrees = Vector3(0, 90, 0)
+scale = Vector3(0.7, 0.7, 0.7)
+
+[node name="ShelfRight" parent="." instance=ExtResource("6_shelf")]
+position = Vector3(1.25, 0.2, -0.65)
+rotation_degrees = Vector3(0, -90, 0)
+scale = Vector3(0.7, 0.7, 0.7)
+
+[node name="CrateLeft" parent="." instance=ExtResource("4_crate")]
+position = Vector3(-0.68, 0.2, 0.35)
+scale = Vector3(0.72, 0.72, 0.72)
+
+[node name="CrateRight" parent="." instance=ExtResource("4_crate")]
+position = Vector3(0.68, 0.2, 0.35)
+scale = Vector3(0.72, 0.72, 0.72)
+
+[node name="CoveredCargo" parent="." instance=ExtResource("5_tarp")]
+position = Vector3(0, 0.2, -0.65)
+scale = Vector3(0.65, 0.65, 0.65)
