@@ -54,7 +54,11 @@ func _run() -> void:
 	_expect(market_source.contains("_ai_business_market_pressure_publication_preflight") and market_source.contains("ai_business_market_pressure_publication_pending"), "cash commits only after public destinations preflight and missing exact-once publication remains retryable")
 	_expect(market_source.contains("func retry_pending_ai_business_publications") and market_source.contains("retry_pending_ai_business_publications()\n\tmarket_timer"), "production market cadence owns the bounded public-only retry drain")
 	_expect(ai_source.contains("this action must still count toward the per-cycle cap") and coordinator_source.contains("_drain_ai_business_publications_before_session_finish"), "committed actions count once and session finish drains pending public output")
-	_expect(coordinator_source.contains("new_session_checkpoint_product_market_blocked") and market_source.contains("func to_save_data() -> Dictionary:\n\tretry_pending_ai_business_publications()"), "checkpoint and save paths reject an undrained ProductMarket publication tail")
+	_expect(coordinator_source.contains("new_session_checkpoint_product_market_blocked") \
+			and market_source.contains("func to_save_data() -> Dictionary:\n\tif not bool(ai_business_market_pressure_save_preflight()") \
+			and market_source.contains('"ai_business_market_pressure_journal": _ai_business_market_pressure_journal.duplicate(true)') \
+			and not market_source.contains("func to_save_data() -> Dictionary:\n\tretry_pending_ai_business_publications()"), \
+			"Save fails closed on an undrained publication tail while runtime checkpoint captures it without retry side effects")
 	var formal_source := _read("res://tests/ai_business_cost_formal_four_player_test.gd")
 	_expect(formal_source.contains("res://scenes/main.tscn") and formal_source.contains("RuntimeLoop") and formal_source.contains("_open_monster_wager_for_pair"), "formal QA covers real main, RuntimeLoop, ProductMarket cycle, and monster wager")
 	var request_source := _read("res://scripts/runtime/ai_business_cost_debit_request.gd")

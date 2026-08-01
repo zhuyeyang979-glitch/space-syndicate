@@ -37,8 +37,8 @@ func run_bench() -> Dictionary:
 		return {"passed": false, "checks": checks, "failures": failures}
 	var card_state := card_owner.to_save_data()
 	checks += 1
-	if int(card_state.get("schema_version", 0)) != 3:
-		failures.append("card_inventory_v3_capture_failed")
+	if int(card_state.get("schema_version", 0)) != 4:
+		failures.append("card_inventory_v4_capture_failed")
 	var belt_state := belt_owner.to_save_data()
 	checks += 1
 	if int(belt_state.get("schema_version", 0)) != 1 or belt_state.has("visible_actor_ids"):
