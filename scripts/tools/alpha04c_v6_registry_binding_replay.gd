@@ -4,6 +4,9 @@ class_name Alpha04CV6RegistryBindingReplay
 const DiagnosticScenarioIdentity := preload("res://scripts/tools/diagnostic_scenario_identity_v1.gd")
 const ProductionRegistryComposition := preload("res://scenes/runtime/GameRuntimeCoordinator.tscn")
 const SaveRegistry := preload("res://scripts/runtime/v06_save_owner_registry.gd")
+const RegistryBindingValidator := preload(
+	"res://scripts/tools/alpha04c_registry_binding_contract_validator_v1.gd"
+)
 
 const REPLAY_ID := "Alpha04CV6RegistryBindingReplayV1"
 const REGISTRY_PORT := "registry_binding_contract_v1"
@@ -193,132 +196,7 @@ static func characterize_legacy_snapshot(snapshot: Dictionary) -> Dictionary:
 
 
 static func validate_registry_binding_contract(contract: Dictionary, registry: Node) -> Dictionary:
-	if registry == null:
-		return _contract_rejection({}, "save_registry", "", "registry", "registry_missing")
-	if not (contract.get("schema_version") is int) or int(contract.get("schema_version", 0)) != 1:
-		return _contract_rejection({}, "schema_version", "", "registry", "value_mismatch")
-	if str(contract.get("contract_id", "")).is_empty():
-		return _contract_rejection({}, "contract_id", "", "registry", "missing")
-	if str(contract.get("registry_id", "")) != "v06_save_owner_registry":
-		return _contract_rejection({}, "registry_id", "", "registry", "value_mismatch")
-	if not (contract.get("registry_version") is int) or int(contract.get("registry_version", 0)) < 1:
-		return _contract_rejection({}, "registry_version", "", "registry", "wrong_type_or_range")
-	if not (contract.get("fixed_section_order") is Array):
-		return _contract_rejection({}, "fixed_section_order", "", "registry", "wrong_type")
-	if not (contract.get("bindings") is Array):
-		return _contract_rejection({}, "bindings", "", "registry", "wrong_type")
-	var order := contract.get("fixed_section_order", []) as Array
-	var rows := contract.get("bindings", []) as Array
-	var allowed_strategies := contract.get("checkpoint_strategies", []) as Array
-	if rows.size() != EXPECTED_BINDING_COUNT or order.size() != EXPECTED_BINDING_COUNT:
-		return _contract_rejection({}, "binding_count", "", "registry", "value_mismatch")
-	if contract.has("binding_count") \
-			and (not (contract.get("binding_count") is int) \
-			or int(contract.get("binding_count", -1)) != rows.size()):
-		return _contract_rejection({}, "binding_count", "", "registry", "value_mismatch")
-
-	var section_ids: Dictionary = {}
-	var owner_ids: Dictionary = {}
-	var restore_dag_report := _validate_restore_dag(contract)
-	if not bool(restore_dag_report.get("valid", false)):
-		return restore_dag_report
-	var restore_node_ids: Dictionary = restore_dag_report.get("node_ids", {})
-	var explicit_count := 0
-	var registry_managed_count := 0
-	var owner_internal_count := 0
-	var omitted_count := 0
-	var owner_without_semantics_count := 0
-	for index in range(rows.size()):
-		if not (rows[index] is Dictionary):
-			return _contract_rejection({}, "bindings", "", "registry", "row_wrong_type")
-		var row := rows[index] as Dictionary
-		var section_id := str(row.get("section_id", ""))
-		var owner_id := str(row.get("owner_id", ""))
-		var strategy := str(row.get("checkpoint_strategy", ""))
-		if not (row.get("section_index") is int) or int(row.get("section_index", -1)) != index:
-			return _contract_rejection(row, "section_index", strategy, "registry", "registration_order_mismatch")
-		if section_id.is_empty() or str(order[index]) != section_id:
-			return _contract_rejection(row, "section_id", strategy, "registry", "registration_order_mismatch")
-		if section_ids.has(section_id):
-			return _contract_rejection(row, "section_id", strategy, "registry", "duplicate")
-		if owner_id.is_empty() or owner_ids.has(owner_id):
-			return _contract_rejection(row, "owner_id", strategy, "registry", "duplicate" if not owner_id.is_empty() else "missing")
-		section_ids[section_id] = true
-		owner_ids[owner_id] = true
-		if not (row.get("state_version") is int) or int(row.get("state_version", 0)) < 1:
-			return _contract_rejection(row, "state_version", strategy, "registry", "wrong_type_or_range")
-		if not (row.get("checkpoint_method_present") is bool):
-			return _contract_rejection(row, "checkpoint_method_present", strategy, "registry", "wrong_type")
-		var checkpoint_method := str(row.get("checkpoint_method", ""))
-		var checkpoint_present := bool(row.get("checkpoint_method_present", false))
-		if checkpoint_present != not checkpoint_method.is_empty():
-			return _contract_rejection(row, "checkpoint_method", strategy, "registry", "presence_value_conflict")
-		if not checkpoint_present:
-			omitted_count += 1
-		if strategy not in allowed_strategies:
-			owner_without_semantics_count += 1
-			return _contract_rejection(row, "checkpoint_strategy", strategy, "registry", "unknown_or_none")
-		var owner_path_text := str(row.get("owner_path", ""))
-		if owner_path_text.is_empty():
-			return _contract_rejection(row, "owner_path", strategy, "registry", "missing")
-		var owner := registry.get_node_or_null(NodePath(owner_path_text))
-		if owner == null:
-			return _contract_rejection(row, "owner_path", strategy, "registry", "owner_node_missing")
-		for method_field in ["capture_method", "preflight_method", "apply_method", "rollback_method"]:
-			var method_name := str(row.get(method_field, ""))
-			if method_name.is_empty():
-				if method_field == "rollback_method":
-					owner_without_semantics_count += 1
-				return _contract_rejection(row, method_field, strategy, "owner_api", "missing")
-			if not owner.has_method(method_name):
-				if method_field == "rollback_method":
-					owner_without_semantics_count += 1
-				return _contract_rejection(row, method_field, strategy, "owner_api", "method_missing")
-		if str(row.get("method_contract_source", "")).is_empty():
-			return _contract_rejection(row, "method_contract_source", strategy, "registry", "missing")
-		match strategy:
-			STRATEGY_EXPLICIT:
-				explicit_count += 1
-				if not checkpoint_present:
-					return _contract_rejection(row, "checkpoint_method", strategy, "owner_api", "missing")
-				if not owner.has_method(checkpoint_method):
-					return _contract_rejection(row, "checkpoint_method", strategy, "owner_api", "method_missing")
-			STRATEGY_REGISTRY_MANAGED:
-				registry_managed_count += 1
-				if checkpoint_present:
-					return _contract_rejection(row, "checkpoint_method", strategy, "registry", "strategy_field_conflict")
-			STRATEGY_OWNER_INTERNAL:
-				owner_internal_count += 1
-				if checkpoint_present:
-					return _contract_rejection(row, "checkpoint_method", strategy, "owner_api", "strategy_field_conflict")
-		if not (row.get("dependencies") is Array):
-			return _contract_rejection(row, "dependencies", strategy, "registry", "wrong_type")
-		var dependencies: Array = row.get("dependencies", [])
-		for dependency in dependencies:
-			if not (dependency is String or dependency is StringName) or str(dependency).is_empty():
-				return _contract_rejection(row, "dependencies", strategy, "registry", "invalid_dependency")
-		for dependency in dependencies:
-			if not restore_node_ids.has(str(dependency)):
-				return _contract_rejection(row, "dependencies", strategy, "registry", "missing_dependency")
-		var expected_fingerprint := binding_contract_fingerprint(row)
-		if not _lower_sha256(str(row.get("binding_contract_fingerprint", ""))) \
-				or str(row.get("binding_contract_fingerprint", "")) != expected_fingerprint:
-			return _contract_rejection(row, "binding_contract_fingerprint", strategy, "registry", "value_mismatch")
-
-	if contract.has("contract_fingerprint") \
-			and (not _lower_sha256(str(contract.get("contract_fingerprint", ""))) \
-			or str(contract.get("contract_fingerprint", "")) != registry_contract_fingerprint(contract)):
-		return _contract_rejection({}, "contract_fingerprint", "", "registry", "value_mismatch")
-	return {
-		"valid": true,
-		"reason_code": "registry_binding_contract_valid",
-		"binding_count": rows.size(),
-		"explicit_checkpoint_count": explicit_count,
-		"registry_managed_checkpoint_count": registry_managed_count,
-		"owner_internal_checkpoint_count": owner_internal_count,
-		"omitted_checkpoint_method_count": omitted_count,
-		"owner_without_transaction_semantics_count": owner_without_semantics_count,
-	}
+	return RegistryBindingValidator.validate(contract, registry, EXPECTED_BINDING_COUNT)
 
 
 static func validate_registry_projection(
@@ -326,83 +204,21 @@ static func validate_registry_projection(
 	observed_projection: Dictionary,
 	registry: Node
 ) -> Dictionary:
-	var canonical_validation := validate_registry_binding_contract(canonical_contract, registry)
-	if not bool(canonical_validation.get("valid", false)):
-		return canonical_validation
-	if not (observed_projection.get("bindings") is Array):
-		return _contract_rejection({}, "bindings", "", "diagnostic_projection", "wrong_type")
-	var canonical_rows := canonical_contract.get("bindings", []) as Array
-	var observed_rows := observed_projection.get("bindings", []) as Array
-	if observed_rows.size() != canonical_rows.size():
-		return _contract_rejection({}, "binding_count", "", "diagnostic_projection", "value_mismatch")
-	for index in range(canonical_rows.size()):
-		if not (canonical_rows[index] is Dictionary) or not (observed_rows[index] is Dictionary):
-			return _contract_rejection({}, "bindings", "", "diagnostic_projection", "row_wrong_type")
-		var expected_row := canonical_rows[index] as Dictionary
-		var actual_row := observed_rows[index] as Dictionary
-		var expected_keys := expected_row.keys()
-		var actual_keys := actual_row.keys()
-		expected_keys.sort()
-		actual_keys.sort()
-		if expected_keys != actual_keys:
-			return _contract_rejection(actual_row, "binding_fields", str(actual_row.get("checkpoint_strategy", "")), "diagnostic_projection", "shape_mismatch")
-		for identity_field in ["section_index", "section_id", "owner_id"]:
-			if actual_row.get(identity_field) != expected_row.get(identity_field):
-				return _contract_rejection(actual_row, identity_field, str(actual_row.get("checkpoint_strategy", "")), "diagnostic_projection", "value_mismatch")
-		for field in expected_keys:
-			if str(field) in [
-				"section_index",
-				"section_id",
-				"owner_id",
-				"binding_contract_fingerprint",
-			]:
-				continue
-			if actual_row.get(field) != expected_row.get(field):
-				return _contract_rejection(actual_row, str(field), str(actual_row.get("checkpoint_strategy", "")), "diagnostic_projection", "value_mismatch")
-		if actual_row.get("binding_contract_fingerprint") \
-				!= expected_row.get("binding_contract_fingerprint"):
-			return _contract_rejection(actual_row, "binding_contract_fingerprint", str(actual_row.get("checkpoint_strategy", "")), "diagnostic_projection", "value_mismatch")
-	var expected_top_keys := canonical_contract.keys()
-	var actual_top_keys := observed_projection.keys()
-	expected_top_keys.sort()
-	actual_top_keys.sort()
-	if expected_top_keys != actual_top_keys:
-		return _contract_rejection({}, "contract_fields", "", "diagnostic_projection", "shape_mismatch")
-	for field in expected_top_keys:
-		if str(field) == "bindings":
-			continue
-		if observed_projection.get(field) != canonical_contract.get(field):
-			return _contract_rejection({}, str(field), "", "diagnostic_projection", "value_mismatch")
-	if canonical_contract.has("contract_fingerprint") \
-			and observed_projection.get("contract_fingerprint") != canonical_contract.get("contract_fingerprint"):
-		return _contract_rejection({}, "contract_fingerprint", "", "diagnostic_projection", "value_mismatch")
-	return canonical_validation
+	return RegistryBindingValidator.validate_projection(
+		canonical_contract, observed_projection, registry, EXPECTED_BINDING_COUNT
+	)
 
 
 static func reseal_contract(contract: Dictionary) -> Dictionary:
-	var sealed := contract.duplicate(true)
-	var rows: Array = sealed.get("bindings", []) if sealed.get("bindings", []) is Array else []
-	for index in range(rows.size()):
-		if rows[index] is Dictionary:
-			var row := (rows[index] as Dictionary).duplicate(true)
-			row["binding_contract_fingerprint"] = binding_contract_fingerprint(row)
-			rows[index] = row
-	sealed["bindings"] = rows
-	if sealed.has("contract_fingerprint"):
-		sealed["contract_fingerprint"] = registry_contract_fingerprint(sealed)
-	return sealed
+	return RegistryBindingValidator.reseal_contract(contract)
 
 
 static func binding_contract_fingerprint(row: Dictionary) -> String:
-	var unsealed := row.duplicate(true)
-	unsealed.erase("binding_contract_fingerprint")
-	return JSON.stringify(unsealed, "", true, true).sha256_text().to_lower()
+	return RegistryBindingValidator.binding_contract_fingerprint(row)
 
 
 static func registry_contract_fingerprint(contract: Dictionary) -> String:
-	var unsealed := contract.duplicate(true)
-	unsealed.erase("contract_fingerprint")
-	return JSON.stringify(unsealed, "", true, true).sha256_text().to_lower()
+	return RegistryBindingValidator.registry_contract_fingerprint(contract)
 
 
 static func _validate_retained_evidence(evidence_root: String) -> Dictionary:
@@ -508,95 +324,6 @@ static func _normalize_scenario_identity_json_types(source: Dictionary) -> Dicti
 	return normalized
 
 
-static func _contract_rejection(
-	row: Dictionary,
-	failing_field: String,
-	failing_strategy: String,
-	failing_stage: String,
-	typed_reason: String
-) -> Dictionary:
-	return {
-		"valid": false,
-		"reason_code": EXPECTED_FAILURE_REASON,
-		"failing_stage": failing_stage,
-		"failing_section_id": str(row.get("section_id", "save_registry")),
-		"failing_owner_id": str(row.get("owner_id", "")),
-		"failing_field": failing_field,
-		"failing_strategy": failing_strategy,
-		"typed_reason": typed_reason,
-		"private_payload_redacted": true,
-	}
-
-
-static func _validate_restore_dag(contract: Dictionary) -> Dictionary:
-	if not (contract.get("restore_dag") is Array) \
-			or not (contract.get("restore_dag_node_order") is Array):
-		return _contract_rejection({}, "restore_dag", "", "registry", "wrong_type")
-	var restore_dag := contract.get("restore_dag", []) as Array
-	var declared_order := contract.get("restore_dag_node_order", []) as Array
-	if restore_dag.is_empty() or restore_dag.size() != declared_order.size():
-		return _contract_rejection({}, "restore_dag", "", "registry", "value_mismatch")
-	var node_ids: Dictionary = {}
-	var dependencies_by_node: Dictionary = {}
-	for node_index in range(restore_dag.size()):
-		if not (restore_dag[node_index] is Dictionary):
-			return _contract_rejection({}, "restore_dag", "", "registry", "row_wrong_type")
-		var node := restore_dag[node_index] as Dictionary
-		var node_id := str(node.get("node_id", ""))
-		if not (node.get("node_index") is int) or int(node.get("node_index", -1)) != node_index:
-			return _contract_rejection({}, "restore_dag.node_index", "", "registry", "registration_order_mismatch")
-		if node_id.is_empty() or node_id != str(declared_order[node_index]):
-			return _contract_rejection({}, "restore_dag.node_id", "", "registry", "registration_order_mismatch")
-		if node_ids.has(node_id):
-			return _contract_rejection({}, "restore_dag.node_id", "", "registry", "duplicate")
-		if str(node.get("section_id", "")).is_empty():
-			return _contract_rejection({}, "restore_dag.section_id", "", "registry", "missing")
-		if not (node.get("dependencies") is Array):
-			return _contract_rejection({}, "restore_dag.dependencies", "", "registry", "wrong_type")
-		node_ids[node_id] = true
-		dependencies_by_node[node_id] = (node.get("dependencies", []) as Array).duplicate()
-	for node_id in dependencies_by_node:
-		for dependency in dependencies_by_node[node_id] as Array:
-			if not node_ids.has(str(dependency)):
-				return _contract_rejection({}, "restore_dag.dependencies", "", "registry", "missing_dependency")
-	var cyclic_node := _first_cyclic_node(dependencies_by_node)
-	if not cyclic_node.is_empty():
-		return _contract_rejection({}, "restore_dag.dependencies", "", "registry", "dependency_cycle")
-	return {"valid": true, "node_ids": node_ids}
-
-
-static func _first_cyclic_node(dependencies_by_node: Dictionary) -> String:
-	var resolved: Dictionary = {}
-	var remaining: Array[String] = []
-	for node_id in dependencies_by_node:
-		remaining.append(str(node_id))
-	remaining.sort()
-	while not remaining.is_empty():
-		var progressed := false
-		for node_id in remaining.duplicate():
-			var dependencies := dependencies_by_node.get(node_id, []) as Array
-			var dependencies_resolved := true
-			for dependency in dependencies:
-				if not resolved.has(str(dependency)):
-					dependencies_resolved = false
-					break
-			if dependencies_resolved:
-				resolved[node_id] = true
-				remaining.erase(node_id)
-				progressed = true
-		if not progressed:
-			return remaining[0]
-	return ""
-
-
-static func _find_row(rows: Array, section_id: String) -> Dictionary:
-	for row_variant in rows:
-		if row_variant is Dictionary \
-				and str((row_variant as Dictionary).get("section_id", "")) == section_id:
-			return (row_variant as Dictionary).duplicate(true)
-	return {}
-
-
 static func _resolve_git_common_directory(project_root: String) -> String:
 	var dot_git := project_root.path_join(".git")
 	if DirAccess.dir_exists_absolute(dot_git):
@@ -638,36 +365,86 @@ static func _sha256_file(path: String) -> String:
 
 
 static func _directory_fingerprint(root_path: String) -> String:
+	var relative_paths: Array[String] = []
+	if not _collect_evidence_files(root_path, "", relative_paths):
+		return _windows_long_path_directory_fingerprint(root_path)
+	relative_paths.sort()
 	var rows: Array[Dictionary] = []
-	for relative_path in [
-		"targeted_owner_capture_quota_ledger.json",
-		"evidence/launch/orchestrator-3004/producer.authorized.json",
-		"evidence/diagnostics/owner_capture_audit.json",
-		"evidence/diagnostics/producer.phase_timeline.json",
-		"evidence/child/producer.result.json",
-		"evidence/child/producer.completion.json",
-		"evidence/parent/producer.exit.json",
-		"evidence/parent/producer.stdout.log",
-		"evidence/parent/producer.stderr.log",
-	]:
+	for relative_path in relative_paths:
 		var absolute_path := root_path.path_join(relative_path)
 		if not FileAccess.file_exists(absolute_path):
-			return ""
+			return _windows_long_path_directory_fingerprint(root_path)
+		var file_bytes := FileAccess.get_file_as_bytes(absolute_path)
+		var file_sha256 := _sha256_file(absolute_path)
+		if file_sha256.is_empty():
+			return _windows_long_path_directory_fingerprint(root_path)
 		rows.append({
 			"relative_path": relative_path,
-			"size": FileAccess.get_file_as_bytes(absolute_path).size(),
-			"sha256": _sha256_file(absolute_path),
+			"size": file_bytes.size(),
+			"sha256": file_sha256,
 		})
 	if rows.is_empty():
-		return ""
+		return _windows_long_path_directory_fingerprint(root_path)
 	return JSON.stringify(rows, "", true, true).sha256_text().to_lower()
 
 
-static func _lower_sha256(value: String) -> bool:
-	if value.length() != 64:
+static func _windows_long_path_directory_fingerprint(root_path: String) -> String:
+	if OS.get_name() != "Windows":
+		return ""
+	var encoded_root := Marshalls.raw_to_base64(root_path.to_utf8_buffer())
+	var script := (
+		("$root=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('%s'));" \
+				% encoded_root)
+		+ "$rows=@(Get-ChildItem -LiteralPath $root -Recurse -File | ForEach-Object {"
+		+ "[pscustomobject][ordered]@{"
+		+ "relative_path=[IO.Path]::GetRelativePath($root,$_.FullName).Replace('\\','/');"
+		+ "size=[int64]$_.Length;"
+		+ "sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()"
+		+ "}} | Sort-Object relative_path);"
+		+ "if($rows.Count -eq 0){exit 2};"
+		+ "[Console]::Out.Write(($rows | ConvertTo-Json -Compress -Depth 4 -AsArray))"
+	)
+	var output: Array = []
+	var exit_code := OS.execute(
+		"pwsh.exe",
+		PackedStringArray([
+			"-NoLogo", "-NoProfile", "-NonInteractive", "-Command", script,
+		]),
+		output,
+		false
+	)
+	if exit_code != 0:
+		return ""
+	var manifest_text := "".join(output).strip_edges()
+	var parsed: Variant = JSON.parse_string(manifest_text)
+	if not (parsed is Array) or (parsed as Array).is_empty():
+		return ""
+	return manifest_text.sha256_text().to_lower()
+
+
+static func _collect_evidence_files(
+	root_path: String,
+	relative_directory: String,
+	result: Array[String]
+) -> bool:
+	var absolute_directory := root_path \
+			if relative_directory.is_empty() else root_path.path_join(relative_directory)
+	var directory := DirAccess.open(absolute_directory)
+	if directory == null:
 		return false
-	for index in range(value.length()):
-		if not "0123456789abcdef".contains(value.substr(index, 1)):
+	var files := directory.get_files()
+	files.sort()
+	for file_name in files:
+		result.append(
+			str(file_name) if relative_directory.is_empty() \
+			else relative_directory.path_join(str(file_name)).replace("\\", "/")
+		)
+	var directories := directory.get_directories()
+	directories.sort()
+	for directory_name in directories:
+		var child_relative := str(directory_name) if relative_directory.is_empty() \
+				else relative_directory.path_join(str(directory_name)).replace("\\", "/")
+		if not _collect_evidence_files(root_path, child_relative, result):
 			return false
 	return true
 

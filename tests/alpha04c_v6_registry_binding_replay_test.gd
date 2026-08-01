@@ -1,6 +1,7 @@
 extends SceneTree
 
 const Replay := preload("res://scripts/tools/alpha04c_v6_registry_binding_replay.gd")
+const Validator := preload("res://scripts/tools/alpha04c_registry_binding_contract_validator_v1.gd")
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -179,8 +180,43 @@ func _run() -> void:
 	var replay_source := FileAccess.get_file_as_string(
 		"res://scripts/tools/alpha04c_v6_registry_binding_replay.gd"
 	)
+	var driver_source := FileAccess.get_file_as_string(
+		"res://scripts/tools/cold_restore_vertical_slice_driver.gd"
+	)
+	var validator_source := FileAccess.get_file_as_string(
+		"res://scripts/tools/alpha04c_registry_binding_contract_validator_v1.gd"
+	)
 	_expect(not replay_source.contains("registry.bindings"), "replay consumes the canonical Registry port instead of reading a duplicate binding list")
 	_expect(not replay_source.contains("const ALLOWED_STRATEGIES"), "replay consumes the Registry strategy set instead of defining a second authority")
+	_expect(
+		driver_source.contains("registry_binding_contract_v1") \
+				and driver_source.contains("REGISTRY_BINDING_VALIDATOR.validate"),
+		"live V7 Registry attestation consumes the canonical port through the shared semantic validator"
+	)
+	_expect(
+		not driver_source.contains('str(contract.get("checkpoint_method", "")).is_empty()'),
+		"live V7 Registry attestation has retired the hardcoded checkpoint-method requirement"
+	)
+	_expect(
+		replay_source.contains("RegistryBindingValidator.validate") \
+				and validator_source.count("static func validate(") == 1,
+		"Replay and live attestation share one Registry Binding validator implementation"
+	)
+	var private_failure := Validator.diagnostic_failure({
+		"failing_section_id": "region_infrastructure",
+		"failing_owner_id": "public_facility_region",
+		"failing_field": "checkpoint_method",
+		"failing_strategy": Replay.STRATEGY_REGISTRY_MANAGED,
+		"typed_reason": "strategy_field_conflict",
+	})
+	_expect(
+		str(private_failure.get("failure_field", "")) == "checkpoint_method" \
+				and str(private_failure.get("expected_summary", "")).contains("region_infrastructure") \
+				and str(private_failure.get("expected_summary", "")).contains("public_facility_region") \
+				and str(private_failure.get("actual_summary", "")).contains(Replay.STRATEGY_REGISTRY_MANAGED) \
+				and str(private_failure.get("actual_summary", "")).contains("strategy_field_conflict"),
+		"private live failure preserves section, Owner, field, strategy, and typed reason"
+	)
 	_expect(not replay_source.contains("capture_all_sections_detailed"), "replay cannot enter Owner Capture")
 	_expect(not replay_source.contains("capture_resume_envelope"), "replay cannot capture a Save envelope")
 	_expect(not replay_source.contains("begin_session("), "replay cannot create a production Session")
