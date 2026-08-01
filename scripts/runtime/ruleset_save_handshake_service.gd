@@ -119,6 +119,20 @@ func validate_v06_envelope(payload: Dictionary) -> Dictionary:
 			"fingerprint": "",
 			"requires_backup": true,
 		}
+	if errors.is_empty() and _is_card_inventory_v3_envelope(
+		payload,
+		expected_manifest,
+		expected_versions
+	):
+		return {
+			"valid": false,
+			"reason_code": "card_inventory_v3_closed_wire_upgrade_requires_backup",
+			"errors": ["card_inventory_v3_closed_wire_upgrade_requires_backup"],
+			"save_version": V06_SAVE_VERSION,
+			"ruleset_id": V06_RULESET_ID,
+			"fingerprint": "",
+			"requires_backup": true,
+		}
 	if not _same_data(provided_manifest, expected_manifest):
 		errors.append("section_manifest_mismatch")
 	if not _same_data(provided_versions, expected_versions):
@@ -285,6 +299,49 @@ func _is_card_inventory_allocator_v2_envelope(
 			and int(district_payload.get("schema_version", 0)) == 2 \
 			and district_payload.get("sessions") is Array \
 			and not district_payload.has("next_quote_sequence")
+
+
+func _is_card_inventory_v3_envelope(
+	payload: Dictionary,
+	expected_manifest: Dictionary,
+	expected_versions: Dictionary
+) -> bool:
+	var provided_manifest: Dictionary = payload.get("section_manifest", {}) \
+			if payload.get("section_manifest", {}) is Dictionary else {}
+	var provided_versions: Dictionary = payload.get("controller_state_versions", {}) \
+			if payload.get("controller_state_versions", {}) is Dictionary else {}
+	var sections: Dictionary = payload.get("sections", {}) \
+			if payload.get("sections", {}) is Dictionary else {}
+	if provided_manifest.size() != expected_manifest.size() \
+			or provided_versions.size() != expected_versions.size() \
+			or sections.size() != expected_manifest.size():
+		return false
+	for section_id_variant in expected_manifest.keys():
+		var section_id := str(section_id_variant)
+		var expected_row := (expected_manifest.get(section_id, {}) as Dictionary).duplicate(true)
+		var controller_id := str(expected_row.get("owner_id", ""))
+		if not provided_manifest.has(section_id) or not provided_versions.has(controller_id) \
+				or not sections.has(section_id) or not (sections.get(section_id) is Dictionary):
+			return false
+		var provided_row := provided_manifest.get(section_id, {}) as Dictionary
+		var wrapper := sections.get(section_id, {}) as Dictionary
+		if section_id == "card_inventory":
+			expected_row["state_version"] = 3
+			if int(provided_versions.get(controller_id, 0)) != 3 \
+					or not _same_data(provided_row, expected_row) \
+					or int(wrapper.get("schema_version", 0)) != 3:
+				return false
+			continue
+		if int(provided_versions.get(controller_id, 0)) != int(expected_versions.get(controller_id, 0)) \
+				or not _same_data(provided_row, expected_row) \
+				or int(wrapper.get("schema_version", 0)) != int(expected_versions.get(controller_id, 0)):
+			return false
+	var card_wrapper := sections.get("card_inventory", {}) as Dictionary
+	var decoded := decode_codec_value(card_wrapper.get("owner_state"))
+	return bool(decoded.get("ok", false)) \
+			and decoded.get("value") is Dictionary \
+			and int((decoded.get("value") as Dictionary).get("schema_version", 0)) == 3 \
+			and str((decoded.get("value") as Dictionary).get("ruleset_id", "")) == V06_RULESET_ID
 
 
 func _is_pre_resume_v06_manifest(payload: Dictionary) -> bool:

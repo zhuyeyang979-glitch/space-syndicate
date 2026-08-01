@@ -50,7 +50,7 @@ save_section = "commodity_belt_visibility"
 script = ExtResource("2_entry")
 controller_id = "card_inventory"
 save_section = "card_inventory"
-state_version = 3
+state_version = 4
 
 [sub_resource type="Resource" id="Controller_10"]
 script = ExtResource("2_entry")

@@ -175,6 +175,8 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var purchase := _purchase_node()
 	if purchase != null and purchase.has_method("set_quote_authority"):
 		purchase.call("set_quote_authority", card_market_pricing)
+	if purchase != null and purchase.has_method("set_world_session_state"):
+		purchase.call("set_world_session_state", _world_session_state_node())
 	if purchase != null and purchase.has_method("configure"):
 		var timing_variant: Variant = ruleset_snapshot.get("timing", {})
 		purchase.call("configure", timing_variant if timing_variant is Dictionary else {})

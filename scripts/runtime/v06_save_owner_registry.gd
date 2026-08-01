@@ -1023,7 +1023,10 @@ func _preflight_envelope_internal(envelope: Dictionary) -> Dictionary:
 		var validation_reason := CaptureFailureScript.sanitize_reason_code(
 			validation.get("reason_code", "envelope_validation_failed")
 		)
-		if validation_reason == "allocator_cursor_missing_requires_backup":
+		if validation_reason in [
+			"allocator_cursor_missing_requires_backup",
+			"card_inventory_v3_closed_wire_upgrade_requires_backup",
+		]:
 			_last_internal_preflight_failure_section = "card_inventory"
 			_last_internal_preflight_failure_reason = validation_reason
 			return {

@@ -85,6 +85,8 @@ const REASON_CODES := [
 	"card_inventory_child_contract_missing",
 	"card_inventory_v2_invalid",
 	"card_inventory_v3_invalid",
+	"card_inventory_v3_closed_wire_upgrade_requires_backup",
+	"card_inventory_v4_invalid",
 	"card_inventory_world_authority_duplicate_forbidden",
 	"card_inventory_save_owner_dependency_missing",
 	"commodity_card_inventory_checkpoint_blocked",
@@ -888,6 +890,7 @@ const HEADER_REASON_CODES := [
 	"victory_save_header_invalid",
 ]
 const VERSION_REASON_CODES := [
+	"card_inventory_v3_closed_wire_upgrade_requires_backup",
 	"region_supply_save_header_invalid",
 	"facility_action_lifecycle_version_invalid",
 	"monster_save_schema_attestation_invalid",

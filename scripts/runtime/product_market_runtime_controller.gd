@@ -11,6 +11,12 @@ func set_table_presentation_log_port(log_port: PublicLogProducerPort, clock: Wor
 	_presentation_world_clock = clock
 
 const CONTROLLER_ID := "product_market_runtime_v1"
+const RULESET_ID := "v0.6"
+const SAVE_STATE_VERSION := 2
+const RUNTIME_CHECKPOINT_VERSION := 2
+const RUNTIME_CHECKPOINT_ID := "product_market_runtime_checkpoint_v2"
+const CLOSED_SCALAR_CODEC := preload("res://scripts/runtime/closed_save_scalar_codec_v1.gd")
+const SEMANTIC_WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
 const ECONOMY_LEGACY_TURN_SECONDS := 30.0
 const PRODUCT_PRICE_MIN := 26
 const PRODUCT_PRICE_MAX := 280
@@ -30,10 +36,99 @@ const AI_BUSINESS_PUBLICATION_RETRY_LIMIT_PER_TICK := 8
 const AI_BUSINESS_ACTION_PRICE_PUMP := "price_pump"
 const AI_BUSINESS_ACTION_ROUTE_SABOTAGE := "route_sabotage"
 const SAVE_FIELDS := [
+	"state_version",
+	"ruleset_id",
 	"product_market",
 	"business_cycle_count",
 	"market_timer",
 	"futures_position_sequence",
+]
+const RUNTIME_CHECKPOINT_FIELDS := [
+	"captured",
+	"schema_version",
+	"checkpoint_id",
+	"ruleset_id",
+	"product_market",
+	"business_cycle_count",
+	"market_timer",
+	"futures_position_sequence",
+	"futures_open_count",
+	"futures_settlement_count",
+	"legacy_positions_normalized",
+	"last_futures_receipt",
+	"ai_business_market_pressure_journal",
+	"ai_business_market_pressure_journal_order",
+	"ai_business_market_pressure_prepare_count",
+	"ai_business_market_pressure_commit_count",
+	"ai_business_market_pressure_rollback_count",
+	"ai_business_market_pressure_finalize_count",
+	"ai_business_market_pressure_collision_count",
+	"ai_business_market_pressure_stale_count",
+	"ai_business_market_pressure_recovery_required_count",
+	"ai_business_market_pressure_telemetry_metric_count",
+	"ai_business_market_pressure_recovery_required",
+]
+const PRODUCT_SAVE_ENTRY_FIELDS := [
+	"tier",
+	"base_price",
+	"price",
+	"trend",
+	"raw_trend",
+	"price_step_cap",
+	"volatility",
+	"supply",
+	"demand",
+	"disrupted",
+	"price_history",
+	"base_growth_multiplier",
+	"growth_multiplier",
+	"growth_seconds",
+	"growth_turns",
+	"growth_source",
+	"base_growth_source",
+	"base_route_flow_multiplier",
+	"route_flow_multiplier",
+	"route_flow_seconds",
+	"route_flow_turns",
+	"route_flow_source",
+	"base_route_flow_source",
+	"market_contract_demand",
+	"market_contract_supply",
+	"market_contract_seconds",
+	"market_contract_turns",
+	"market_contract_source",
+	"futures_positions",
+	"driver_summary",
+]
+const PRODUCT_RUNTIME_EXTRA_FIELDS := [
+	"weather_price_growth_multiplier",
+	"weather_modifier",
+	"weather_contributions",
+	"weather_driver_summary",
+]
+const FUTURES_POSITION_FIELDS := [
+	"position_id",
+	"owner",
+	"source",
+	"card_id",
+	"product_id",
+	"direction",
+	"baseline_price",
+	"opened_at",
+	"expires_at",
+	"duration_seconds",
+	"multiplier",
+	"units",
+	"warehouse_district",
+	"warehouse_region_id",
+	"action_fee_cash",
+	"locked_margin",
+	"maximum_gain",
+	"maximum_loss",
+	"terms_version",
+	"settlement_formula_id",
+	"warehouse_loss_formula_id",
+	"settled",
 ]
 const DERIVED_WEATHER_SAVE_FIELDS := [
 	"weather_price_growth_multiplier",
@@ -1640,7 +1735,18 @@ func market_tick() -> void:
 func to_save_data() -> Dictionary:
 	if not bool(ai_business_market_pressure_save_preflight().get("accepted", false)):
 		return {}
-	var candidate := {"product_market": _product_market_save_snapshot(), "business_cycle_count": business_cycle_count, "market_timer": market_timer, "futures_position_sequence": futures_position_sequence}
+	var raw_candidate := {
+		"state_version": SAVE_STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"product_market": _product_market_save_snapshot(),
+		"business_cycle_count": business_cycle_count,
+		"market_timer": market_timer,
+		"futures_position_sequence": futures_position_sequence,
+	}
+	var encoded := CLOSED_SCALAR_CODEC.encode_tree(raw_candidate)
+	if not bool(encoded.get("ok", false)) or not (encoded.get("value") is Dictionary):
+		return {}
+	var candidate := encoded.get("value", {}) as Dictionary
 	var preflight := preflight_save_data(candidate)
 	return (preflight.get("normalized_state", {}) as Dictionary).duplicate(true) \
 			if bool(preflight.get("accepted", false)) else {}
@@ -1650,37 +1756,51 @@ func preflight_save_data(data: Dictionary) -> Dictionary:
 	var transaction_preflight := ai_business_market_pressure_save_preflight()
 	if not bool(transaction_preflight.get("accepted", false)):
 		return {"accepted": false, "reason_code": str(transaction_preflight.get("reason_code", "ai_business_market_pressure_restore_blocked"))}
-	if not _has_exact_keys(data, SAVE_FIELDS) or not _is_finite_pure_data(data) \
-			or not (data.get("product_market") is Dictionary) \
-			or not (data.get("business_cycle_count") is int) or int(data.get("business_cycle_count", -1)) < 0 \
-			or not (data.get("market_timer") is float or data.get("market_timer") is int) \
-			or float(data.get("market_timer", -1.0)) < 0.0 \
-			or not (data.get("futures_position_sequence") is int) \
-			or int(data.get("futures_position_sequence", -1)) < 0:
-		return {"accepted": false, "reason_code": "product_market_save_invalid"}
+	if not _has_exact_keys(data, SAVE_FIELDS) or not SEMANTIC_WIRE.is_closed_data(data) \
+			or not (data.get("state_version") is int) \
+			or int(data.get("state_version", 0)) != SAVE_STATE_VERSION \
+			or not (data.get("ruleset_id") is String) \
+			or str(data.get("ruleset_id", "")) != RULESET_ID:
+		return {"accepted": false, "reason_code": "product_market_save_v2_invalid"}
+	var decoded := CLOSED_SCALAR_CODEC.decode_tree(data)
+	if not bool(decoded.get("ok", false)) or not (decoded.get("value") is Dictionary):
+		return {"accepted": false, "reason_code": "product_market_save_v2_invalid"}
+	var raw_data := decoded.get("value", {}) as Dictionary
+	if not (raw_data.get("product_market") is Dictionary) \
+			or not (raw_data.get("business_cycle_count") is int) or int(raw_data.get("business_cycle_count", -1)) < 0 \
+			or not (raw_data.get("market_timer") is float) or float(raw_data.get("market_timer", -1.0)) < 0.0 \
+			or not (raw_data.get("futures_position_sequence") is int) \
+			or int(raw_data.get("futures_position_sequence", -1)) < 0 \
+			or not _product_market_shape_valid(raw_data.get("product_market", {}) as Dictionary, false):
+		return {"accepted": false, "reason_code": "product_market_save_v2_invalid"}
 	var normalized_market: Dictionary = {}
-	var product_ids: Array = (data.get("product_market", {}) as Dictionary).keys()
+	var product_ids: Array = (raw_data.get("product_market", {}) as Dictionary).keys()
 	product_ids.sort_custom(func(left: Variant, right: Variant) -> bool: return str(left) < str(right))
 	for product_id_variant in product_ids:
 		if not (product_id_variant is String or product_id_variant is StringName):
 			return {"accepted": false, "reason_code": "product_market_id_invalid"}
 		var product_id := str(product_id_variant).strip_edges()
-		var entry_variant: Variant = (data.get("product_market", {}) as Dictionary).get(product_id_variant)
+		var entry_variant: Variant = (raw_data.get("product_market", {}) as Dictionary).get(product_id_variant)
 		if product_id.is_empty() or not (entry_variant is Dictionary):
 			return {"accepted": false, "reason_code": "product_market_entry_invalid"}
-		var entry := (entry_variant as Dictionary).duplicate(true)
-		for field_variant in DERIVED_WEATHER_SAVE_FIELDS:
-			entry.erase(str(field_variant))
-		normalized_market[product_id] = entry
+		normalized_market[product_id] = (entry_variant as Dictionary).duplicate(true)
+	var normalized_raw := {
+		"state_version": SAVE_STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"product_market": normalized_market,
+		"business_cycle_count": int(raw_data.get("business_cycle_count", 0)),
+		"market_timer": float(raw_data.get("market_timer", 0.0)),
+		"futures_position_sequence": int(raw_data.get("futures_position_sequence", 0)),
+	}
+	var normalized_encoded := CLOSED_SCALAR_CODEC.encode_tree(normalized_raw)
+	if not bool(normalized_encoded.get("ok", false)) \
+			or not (normalized_encoded.get("value") is Dictionary) \
+			or not SEMANTIC_WIRE.is_closed_data(normalized_encoded.get("value")):
+		return {"accepted": false, "reason_code": "product_market_save_v2_invalid"}
 	return {
 		"accepted": true,
-		"reason_code": "product_market_save_valid",
-		"normalized_state": {
-			"product_market": normalized_market,
-			"business_cycle_count": int(data.get("business_cycle_count", 0)),
-			"market_timer": float(data.get("market_timer", 0.0)),
-			"futures_position_sequence": int(data.get("futures_position_sequence", 0)),
-		},
+		"reason_code": "product_market_save_v2_valid",
+		"normalized_state": (normalized_encoded.get("value", {}) as Dictionary).duplicate(true),
 	}
 
 
@@ -1691,7 +1811,14 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 		blocked["applied"] = false
 		blocked["reason_code"] = str(preflight.get("reason_code", "product_market_save_invalid"))
 		return blocked
-	var normalized := preflight.get("normalized_state", {}) as Dictionary
+	var normalized_wire := preflight.get("normalized_state", {}) as Dictionary
+	var decoded := CLOSED_SCALAR_CODEC.decode_tree(normalized_wire)
+	if not bool(decoded.get("ok", false)) or not (decoded.get("value") is Dictionary):
+		var invalid := runtime_state_snapshot()
+		invalid["applied"] = false
+		invalid["reason_code"] = "product_market_save_v2_invalid"
+		return invalid
+	var normalized := decoded.get("value", {}) as Dictionary
 	_reset_ai_business_market_pressure_transactions()
 	product_market = (normalized.get("product_market", {}) as Dictionary).duplicate(true)
 	_clear_weather_projection(product_market)
@@ -1705,8 +1832,11 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 
 
 func capture_runtime_checkpoint() -> Dictionary:
-	return {
-		"schema_version": 1,
+	var raw_checkpoint := {
+		"captured": true,
+		"schema_version": RUNTIME_CHECKPOINT_VERSION,
+		"checkpoint_id": RUNTIME_CHECKPOINT_ID,
+		"ruleset_id": RULESET_ID,
 		"product_market": product_market.duplicate(true),
 		"business_cycle_count": business_cycle_count,
 		"market_timer": market_timer,
@@ -1727,34 +1857,73 @@ func capture_runtime_checkpoint() -> Dictionary:
 		"ai_business_market_pressure_telemetry_metric_count": _ai_business_market_pressure_telemetry_metric_count,
 		"ai_business_market_pressure_recovery_required": _ai_business_market_pressure_recovery_required,
 	}
+	var encoded := CLOSED_SCALAR_CODEC.encode_tree(raw_checkpoint)
+	if not bool(encoded.get("ok", false)) or not (encoded.get("value") is Dictionary) \
+			or not SEMANTIC_WIRE.is_closed_data(encoded.get("value")):
+		return {}
+	return (encoded.get("value", {}) as Dictionary).duplicate(true)
 
 
 func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
-	if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("product_market") is Dictionary) \
-			or not (checkpoint.get("last_futures_receipt") is Dictionary) \
-			or not (checkpoint.get("ai_business_market_pressure_journal") is Dictionary) \
-			or not (checkpoint.get("ai_business_market_pressure_journal_order") is Array):
-		return {"applied": false, "reason_code": "product_market_runtime_checkpoint_invalid"}
-	product_market = (checkpoint.get("product_market", {}) as Dictionary).duplicate(true)
-	business_cycle_count = int(checkpoint.get("business_cycle_count", 0))
-	market_timer = float(checkpoint.get("market_timer", 8.0))
-	futures_position_sequence = int(checkpoint.get("futures_position_sequence", 0))
-	_futures_open_count = int(checkpoint.get("futures_open_count", 0))
-	_futures_settlement_count = int(checkpoint.get("futures_settlement_count", 0))
-	_legacy_positions_normalized = int(checkpoint.get("legacy_positions_normalized", 0))
-	_last_futures_receipt = (checkpoint.get("last_futures_receipt", {}) as Dictionary).duplicate(true)
-	_ai_business_market_pressure_journal = (checkpoint.get("ai_business_market_pressure_journal", {}) as Dictionary).duplicate(true)
-	_ai_business_market_pressure_journal_order.assign(checkpoint.get("ai_business_market_pressure_journal_order", []) as Array)
-	_ai_business_market_pressure_prepare_count = int(checkpoint.get("ai_business_market_pressure_prepare_count", 0))
-	_ai_business_market_pressure_commit_count = int(checkpoint.get("ai_business_market_pressure_commit_count", 0))
-	_ai_business_market_pressure_rollback_count = int(checkpoint.get("ai_business_market_pressure_rollback_count", 0))
-	_ai_business_market_pressure_finalize_count = int(checkpoint.get("ai_business_market_pressure_finalize_count", 0))
-	_ai_business_market_pressure_collision_count = int(checkpoint.get("ai_business_market_pressure_collision_count", 0))
-	_ai_business_market_pressure_stale_count = int(checkpoint.get("ai_business_market_pressure_stale_count", 0))
-	_ai_business_market_pressure_recovery_required_count = int(checkpoint.get("ai_business_market_pressure_recovery_required_count", 0))
-	_ai_business_market_pressure_telemetry_metric_count = int(checkpoint.get("ai_business_market_pressure_telemetry_metric_count", 0))
-	_ai_business_market_pressure_recovery_required = bool(checkpoint.get("ai_business_market_pressure_recovery_required", false))
-	return {"applied": true, "reason_code": "product_market_runtime_checkpoint_restored"}
+	var preflight := _preflight_runtime_checkpoint(checkpoint)
+	if not bool(preflight.get("accepted", false)):
+		return {"applied": false, "restored": false, "reason_code": "product_market_runtime_checkpoint_v2_invalid"}
+	var raw := preflight.get("normalized_state", {}) as Dictionary
+	product_market = (raw.get("product_market", {}) as Dictionary).duplicate(true)
+	business_cycle_count = int(raw.get("business_cycle_count", 0))
+	market_timer = float(raw.get("market_timer", 8.0))
+	futures_position_sequence = int(raw.get("futures_position_sequence", 0))
+	_futures_open_count = int(raw.get("futures_open_count", 0))
+	_futures_settlement_count = int(raw.get("futures_settlement_count", 0))
+	_legacy_positions_normalized = int(raw.get("legacy_positions_normalized", 0))
+	_last_futures_receipt = (raw.get("last_futures_receipt", {}) as Dictionary).duplicate(true)
+	_ai_business_market_pressure_journal = (raw.get("ai_business_market_pressure_journal", {}) as Dictionary).duplicate(true)
+	_ai_business_market_pressure_journal_order.assign(raw.get("ai_business_market_pressure_journal_order", []) as Array)
+	_ai_business_market_pressure_prepare_count = int(raw.get("ai_business_market_pressure_prepare_count", 0))
+	_ai_business_market_pressure_commit_count = int(raw.get("ai_business_market_pressure_commit_count", 0))
+	_ai_business_market_pressure_rollback_count = int(raw.get("ai_business_market_pressure_rollback_count", 0))
+	_ai_business_market_pressure_finalize_count = int(raw.get("ai_business_market_pressure_finalize_count", 0))
+	_ai_business_market_pressure_collision_count = int(raw.get("ai_business_market_pressure_collision_count", 0))
+	_ai_business_market_pressure_stale_count = int(raw.get("ai_business_market_pressure_stale_count", 0))
+	_ai_business_market_pressure_recovery_required_count = int(raw.get("ai_business_market_pressure_recovery_required_count", 0))
+	_ai_business_market_pressure_telemetry_metric_count = int(raw.get("ai_business_market_pressure_telemetry_metric_count", 0))
+	_ai_business_market_pressure_recovery_required = bool(raw.get("ai_business_market_pressure_recovery_required", false))
+	return {"applied": true, "restored": true, "reason_code": "product_market_runtime_checkpoint_v2_restored"}
+
+
+func _preflight_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if not _has_exact_keys(checkpoint, RUNTIME_CHECKPOINT_FIELDS) \
+			or not SEMANTIC_WIRE.is_closed_data(checkpoint) \
+			or not (checkpoint.get("captured") is bool) or not bool(checkpoint.get("captured", false)) \
+			or not (checkpoint.get("schema_version") is int) \
+			or int(checkpoint.get("schema_version", 0)) != RUNTIME_CHECKPOINT_VERSION \
+			or not (checkpoint.get("checkpoint_id") is String) \
+			or str(checkpoint.get("checkpoint_id", "")) != RUNTIME_CHECKPOINT_ID \
+			or not (checkpoint.get("ruleset_id") is String) \
+			or str(checkpoint.get("ruleset_id", "")) != RULESET_ID:
+		return {"accepted": false, "reason_code": "product_market_runtime_checkpoint_v2_invalid"}
+	var decoded := CLOSED_SCALAR_CODEC.decode_tree(checkpoint)
+	if not bool(decoded.get("ok", false)) or not (decoded.get("value") is Dictionary):
+		return {"accepted": false, "reason_code": "product_market_runtime_checkpoint_v2_invalid"}
+	var raw := decoded.get("value", {}) as Dictionary
+	if not (raw.get("product_market") is Dictionary) \
+			or not _product_market_shape_valid(raw.get("product_market", {}) as Dictionary, true) \
+			or not (raw.get("market_timer") is float) \
+			or not is_finite(float(raw.get("market_timer", 0.0))) \
+			or not (raw.get("last_futures_receipt") is Dictionary) \
+			or not (raw.get("ai_business_market_pressure_journal") is Dictionary) \
+			or not (raw.get("ai_business_market_pressure_journal_order") is Array) \
+			or not _runtime_counter_fields_valid(raw) \
+			or not _ai_business_checkpoint_journal_valid(
+				raw.get("ai_business_market_pressure_journal", {}) as Dictionary,
+				raw.get("ai_business_market_pressure_journal_order", []) as Array
+			):
+		return {"accepted": false, "reason_code": "product_market_runtime_checkpoint_v2_invalid"}
+	return {"accepted": true, "normalized_state": raw}
+
+
+func preflight_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	return _preflight_runtime_checkpoint(checkpoint)
 
 
 func restore_new_session_checkpoint(checkpoint: Dictionary) -> Dictionary:
@@ -2480,6 +2649,163 @@ func _sanitize_entry(entry: Dictionary) -> Dictionary:
 	sanitized["futures_positions"] = public_futures
 	sanitized["weather_contributions"] = _sanitize_weather_contributions(sanitized.get("weather_contributions", []))
 	return sanitized
+
+
+func _product_market_shape_valid(market: Dictionary, allow_weather: bool) -> bool:
+	var allowed_fields: Array = PRODUCT_SAVE_ENTRY_FIELDS.duplicate()
+	if allow_weather:
+		allowed_fields.append_array(PRODUCT_RUNTIME_EXTRA_FIELDS)
+	for product_id_variant in market.keys():
+		if not (product_id_variant is String) or str(product_id_variant).strip_edges().is_empty():
+			return false
+		var entry_variant: Variant = market.get(product_id_variant)
+		if not (entry_variant is Dictionary):
+			return false
+		var entry := entry_variant as Dictionary
+		for field_variant in entry.keys():
+			if not (field_variant is String) or str(field_variant) not in allowed_fields:
+				return false
+		for field in [
+			"base_growth_multiplier",
+			"growth_multiplier",
+			"growth_seconds",
+			"base_route_flow_multiplier",
+			"route_flow_multiplier",
+			"route_flow_seconds",
+			"market_contract_seconds",
+			"weather_price_growth_multiplier",
+		]:
+			if entry.has(field) and (not (entry.get(field) is float) or not is_finite(float(entry.get(field)))):
+				return false
+		for field in [
+			"base_price",
+			"price",
+			"trend",
+			"raw_trend",
+			"price_step_cap",
+			"volatility",
+			"supply",
+			"demand",
+			"disrupted",
+			"growth_turns",
+			"route_flow_turns",
+			"market_contract_demand",
+			"market_contract_supply",
+			"market_contract_turns",
+			"weather_modifier",
+		]:
+			if entry.has(field) and (not (entry.get(field) is int) or not SEMANTIC_WIRE.is_safe_integer(entry.get(field))):
+				return false
+		for field in [
+			"tier",
+			"growth_source",
+			"base_growth_source",
+			"route_flow_source",
+			"base_route_flow_source",
+			"market_contract_source",
+			"driver_summary",
+			"weather_driver_summary",
+		]:
+			if entry.has(field) and not (entry.get(field) is String):
+				return false
+		if entry.has("price_history"):
+			if not (entry.get("price_history") is Array):
+				return false
+			for price_variant in entry.get("price_history", []) as Array:
+				if not (price_variant is int) or not SEMANTIC_WIRE.is_safe_integer(price_variant):
+					return false
+		if entry.has("futures_positions"):
+			if not (entry.get("futures_positions") is Array):
+				return false
+			for position_variant in entry.get("futures_positions", []) as Array:
+				if not (position_variant is Dictionary) \
+						or not _futures_position_shape_valid(position_variant as Dictionary):
+					return false
+		if entry.has("weather_contributions"):
+			if not allow_weather or not (entry.get("weather_contributions") is Array):
+				return false
+			for contribution_variant in entry.get("weather_contributions", []) as Array:
+				if not (contribution_variant is Dictionary) \
+						or not _has_exact_keys(contribution_variant as Dictionary, WEATHER_PUBLIC_CONTRIBUTION_KEYS) \
+						or not _is_finite_pure_data(contribution_variant):
+					return false
+	return true
+
+
+func _futures_position_shape_valid(position: Dictionary) -> bool:
+	if not _has_exact_keys(position, FUTURES_POSITION_FIELDS):
+		return false
+	for field in ["opened_at", "expires_at", "duration_seconds", "multiplier"]:
+		if not (position.get(field) is float) or not is_finite(float(position.get(field))):
+			return false
+	for field in [
+		"position_id",
+		"owner",
+		"baseline_price",
+		"units",
+		"warehouse_district",
+		"action_fee_cash",
+		"locked_margin",
+		"maximum_gain",
+		"maximum_loss",
+	]:
+		if not (position.get(field) is int) or not SEMANTIC_WIRE.is_safe_integer(position.get(field)):
+			return false
+	for field in [
+		"source",
+		"card_id",
+		"product_id",
+		"direction",
+		"warehouse_region_id",
+		"terms_version",
+		"settlement_formula_id",
+		"warehouse_loss_formula_id",
+	]:
+		if not (position.get(field) is String):
+			return false
+	return position.get("settled") is bool
+
+
+func _runtime_counter_fields_valid(raw: Dictionary) -> bool:
+	for field in [
+		"business_cycle_count",
+		"futures_position_sequence",
+		"futures_open_count",
+		"futures_settlement_count",
+		"legacy_positions_normalized",
+		"ai_business_market_pressure_prepare_count",
+		"ai_business_market_pressure_commit_count",
+		"ai_business_market_pressure_rollback_count",
+		"ai_business_market_pressure_finalize_count",
+		"ai_business_market_pressure_collision_count",
+		"ai_business_market_pressure_stale_count",
+		"ai_business_market_pressure_recovery_required_count",
+		"ai_business_market_pressure_telemetry_metric_count",
+	]:
+		if not (raw.get(field) is int) or not SEMANTIC_WIRE.is_safe_integer(raw.get(field)) \
+				or int(raw.get(field, -1)) < 0:
+			return false
+	return raw.get("ai_business_market_pressure_recovery_required") is bool
+
+
+func _ai_business_checkpoint_journal_valid(journal: Dictionary, order: Array) -> bool:
+	if journal.size() != order.size():
+		return false
+	var seen: Dictionary = {}
+	for transaction_id_variant in order:
+		if not (transaction_id_variant is String):
+			return false
+		var transaction_id := str(transaction_id_variant)
+		if transaction_id.is_empty() or seen.has(transaction_id) or not journal.has(transaction_id):
+			return false
+		var record_variant: Variant = journal.get(transaction_id)
+		if not (record_variant is Dictionary) or not _is_finite_pure_data(record_variant):
+			return false
+		seen[transaction_id] = true
+	for transaction_id_variant in journal.keys():
+		if not (transaction_id_variant is String) or not seen.has(str(transaction_id_variant)):
+			return false
+	return true
 
 
 func _has_exact_keys(dictionary: Dictionary, fields: Array) -> bool:

@@ -10,6 +10,11 @@ const STATE_PENDING_DISCARD := "pending_discard"
 const STATE_CLOSED := "closed"
 const SAVE_SCHEMA_VERSION := 3
 const LEGACY_SAVE_SCHEMA_VERSION := 2
+const RULESET_ID := "v0.6"
+const RUNTIME_CHECKPOINT_VERSION := 2
+const RUNTIME_CHECKPOINT_ID := "district_purchase_runtime_checkpoint_v2"
+const PLAYER_INDEX_MAP := preload("res://scripts/runtime/canonical_player_index_map_v1.gd")
+const SEMANTIC_WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
 const ROOT_SAVE_FIELDS := ["district_purchase_runtime"]
 const SAVE_PAYLOAD_FIELDS := ["schema_version", "next_quote_sequence", "sessions"]
 const SESSION_SAVE_FIELDS := [
@@ -27,15 +32,46 @@ const SESSION_SAVE_FIELDS := [
 	"active_quote",
 ]
 const FORBIDDEN_NESTED_FIELDS := ["slots", "player_slots", "cash", "player_cash", "ai_profile", "ai_memory"]
+const RUNTIME_CHECKPOINT_FIELDS := [
+	"captured",
+	"schema_version",
+	"checkpoint_id",
+	"ruleset_id",
+	"captured_player_count",
+	"windows_by_player",
+	"decision_sequence",
+	"quote_checkpoint",
+]
+const RUNTIME_WINDOW_FIELDS := [
+	"player_index",
+	"district_index",
+	"state",
+	"supply_revision",
+	"selected_card_id",
+	"selected_supply_revision",
+	"requires_reselection",
+	"reserved_card_id",
+	"active_quote_id",
+	"active_quote",
+	"close_reason",
+	"decision_sequence",
+	"pending_payload",
+]
+const PRESENTATION_ONLY_PENDING_FIELDS := ["opened_at"]
 
 var _configured := false
 var _quote_authority: Node
+var _world_session_state: WorldSessionState
 var _windows_by_player: Dictionary = {}
 var _decision_sequence := 0
 
 
 func set_quote_authority(authority: Node) -> void:
 	_quote_authority = authority
+
+
+func set_world_session_state(state: WorldSessionState) -> void:
+	_world_session_state = state
 
 
 func configure(_timing_rules: Dictionary = {}) -> void:
@@ -52,7 +88,11 @@ func reset_state() -> void:
 
 
 func open_window(player_index: int, district_index: int, session_snapshot: Dictionary = {}) -> Dictionary:
-	if not _configured or player_index < 0 or district_index < 0 or not _is_data_only(session_snapshot) or str(session_snapshot.get("supply_revision", "")).is_empty():
+	var player_count := _runtime_player_count()
+	if not _configured or player_index < 0 \
+			or (_world_session_state != null and player_count > 0 and player_index >= player_count) \
+			or district_index < 0 or not _is_data_only(session_snapshot) \
+			or str(session_snapshot.get("supply_revision", "")).is_empty():
 		return {}
 	_decision_sequence += 1
 	var record := {
@@ -171,7 +211,7 @@ func reserve_pending_discard(request_snapshot: Dictionary) -> Dictionary:
 		return {}
 	record["state"] = STATE_PENDING_DISCARD
 	record["reserved_card_id"] = card_id
-	record["pending_payload"] = request_snapshot.duplicate(true)
+	record["pending_payload"] = _authoritative_pending_payload(request_snapshot)
 	_windows_by_player[player_index] = record
 	return _safe_window_snapshot(record, true)
 
@@ -340,7 +380,8 @@ func to_save_data() -> Dictionary:
 
 
 func preflight_save_data(data: Dictionary) -> Dictionary:
-	if not _configured or not _is_data_only(data) or _contains_forbidden_nested_field(data):
+	if not _configured or not SEMANTIC_WIRE.is_closed_data(data) \
+			or not _is_data_only(data) or _contains_forbidden_nested_field(data):
 		return {"accepted": false, "reason_code": "purchase_session_save_invalid"}
 	var payload: Dictionary = {}
 	if _has_exact_keys(data, ROOT_SAVE_FIELDS) and data.get("district_purchase_runtime") is Dictionary:
@@ -444,31 +485,163 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 func capture_runtime_checkpoint() -> Dictionary:
 	var quote_checkpoint: Dictionary = _quote_authority.call("capture_runtime_checkpoint") \
 			if _quote_authority != null and _quote_authority.has_method("capture_runtime_checkpoint") else {}
-	return {
-		"schema_version": 1,
-		"windows_by_player": _windows_by_player.duplicate(true),
+	var player_count := _runtime_player_count()
+	var encoded_windows := PLAYER_INDEX_MAP.encode(_windows_by_player, player_count)
+	if not bool(encoded_windows.get("ok", false)) or quote_checkpoint.is_empty():
+		return {}
+	var checkpoint := {
+		"captured": true,
+		"schema_version": RUNTIME_CHECKPOINT_VERSION,
+		"checkpoint_id": RUNTIME_CHECKPOINT_ID,
+		"ruleset_id": RULESET_ID,
+		"captured_player_count": player_count,
+		"windows_by_player": (encoded_windows.get("value", {}) as Dictionary).duplicate(true),
 		"decision_sequence": _decision_sequence,
 		"quote_checkpoint": quote_checkpoint.duplicate(true),
-		"quote_checkpoint_supported": _quote_authority != null and _quote_authority.has_method("restore_runtime_checkpoint"),
 	}
+	return checkpoint if SEMANTIC_WIRE.is_closed_data(checkpoint) else {}
 
 
 func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
-	if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("windows_by_player") is Dictionary) \
-			or not (checkpoint.get("quote_checkpoint") is Dictionary):
-		return {"applied": false, "reason_code": "purchase_runtime_checkpoint_invalid"}
-	var quote_restored := true
-	if bool(checkpoint.get("quote_checkpoint_supported", false)):
-		if _quote_authority == null or not _quote_authority.has_method("restore_runtime_checkpoint"):
-			quote_restored = false
-		else:
-			var quote_restore_variant: Variant = _quote_authority.call("restore_runtime_checkpoint", checkpoint.get("quote_checkpoint", {}))
-			quote_restored = quote_restore_variant is Dictionary \
-					and (bool((quote_restore_variant as Dictionary).get("restored", false)) \
-					or bool((quote_restore_variant as Dictionary).get("applied", false)))
-	_windows_by_player = (checkpoint.get("windows_by_player", {}) as Dictionary).duplicate(true)
-	_decision_sequence = int(checkpoint.get("decision_sequence", 0))
-	return {"applied": quote_restored, "reason_code": "purchase_runtime_checkpoint_restored" if quote_restored else "purchase_quote_checkpoint_restore_failed"}
+	var preflight := _preflight_runtime_checkpoint(checkpoint)
+	if not bool(preflight.get("accepted", false)):
+		return {"applied": false, "restored": false, "reason_code": "district_purchase_checkpoint_v2_invalid"}
+	if _quote_authority == null or not _quote_authority.has_method("capture_runtime_checkpoint") \
+			or not _quote_authority.has_method("restore_runtime_checkpoint"):
+		return {"applied": false, "restored": false, "reason_code": "district_purchase_checkpoint_v2_invalid"}
+	var quote_backup_variant: Variant = _quote_authority.call("capture_runtime_checkpoint")
+	var quote_backup: Dictionary = quote_backup_variant if quote_backup_variant is Dictionary else {}
+	if quote_backup.is_empty():
+		return {"applied": false, "restored": false, "reason_code": "district_purchase_checkpoint_v2_invalid"}
+	var normalized := preflight.get("normalized_state", {}) as Dictionary
+	var quote_restore_variant: Variant = _quote_authority.call(
+		"restore_runtime_checkpoint",
+		normalized.get("quote_checkpoint", {}) as Dictionary
+	)
+	var quote_restore: Dictionary = quote_restore_variant if quote_restore_variant is Dictionary else {}
+	if not (bool(quote_restore.get("restored", false)) or bool(quote_restore.get("applied", false))):
+		var rollback_variant: Variant = _quote_authority.call("restore_runtime_checkpoint", quote_backup)
+		var rollback: Dictionary = rollback_variant if rollback_variant is Dictionary else {}
+		return {
+			"applied": false,
+			"restored": false,
+			"reason_code": "district_purchase_quote_checkpoint_restore_failed",
+			"rollback_attempted": true,
+			"rollback_complete": bool(rollback.get("restored", false)) or bool(rollback.get("applied", false)),
+		}
+	_windows_by_player = (normalized.get("windows_by_player", {}) as Dictionary).duplicate(true)
+	_decision_sequence = int(normalized.get("decision_sequence", 0))
+	return {"applied": true, "restored": true, "reason_code": "district_purchase_runtime_checkpoint_v2_restored"}
+
+
+func _preflight_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if not _configured or not _has_exact_keys(checkpoint, RUNTIME_CHECKPOINT_FIELDS) \
+			or not SEMANTIC_WIRE.is_closed_data(checkpoint) \
+			or not (checkpoint.get("captured") is bool) or not bool(checkpoint.get("captured", false)) \
+			or not (checkpoint.get("schema_version") is int) \
+			or int(checkpoint.get("schema_version", 0)) != RUNTIME_CHECKPOINT_VERSION \
+			or not (checkpoint.get("checkpoint_id") is String) \
+			or str(checkpoint.get("checkpoint_id", "")) != RUNTIME_CHECKPOINT_ID \
+			or not (checkpoint.get("ruleset_id") is String) \
+			or str(checkpoint.get("ruleset_id", "")) != RULESET_ID \
+			or not (checkpoint.get("captured_player_count") is int) \
+			or not (checkpoint.get("decision_sequence") is int) \
+			or not SEMANTIC_WIRE.is_nonnegative_integer(checkpoint.get("decision_sequence")) \
+			or not (checkpoint.get("quote_checkpoint") is Dictionary) \
+			or not _quote_checkpoint_shape_valid(checkpoint.get("quote_checkpoint", {}) as Dictionary):
+		return {"accepted": false, "reason_code": "district_purchase_checkpoint_v2_invalid"}
+	var player_count := int(checkpoint.get("captured_player_count", -1))
+	var decoded_windows := PLAYER_INDEX_MAP.decode(checkpoint.get("windows_by_player"), player_count)
+	if not bool(decoded_windows.get("ok", false)):
+		return {"accepted": false, "reason_code": str(decoded_windows.get("reason_code", "district_purchase_checkpoint_v2_invalid"))}
+	var windows := decoded_windows.get("value", {}) as Dictionary
+	var decision_sequence := int(checkpoint.get("decision_sequence", 0))
+	for player_index_variant in windows.keys():
+		var player_index := int(player_index_variant)
+		if not (windows.get(player_index_variant) is Dictionary) \
+				or not _runtime_window_valid(windows.get(player_index_variant, {}) as Dictionary, player_index, decision_sequence):
+			return {"accepted": false, "reason_code": "district_purchase_window_record_invalid"}
+	return {
+		"accepted": true,
+		"normalized_state": {
+			"windows_by_player": windows.duplicate(true),
+			"decision_sequence": decision_sequence,
+			"quote_checkpoint": (checkpoint.get("quote_checkpoint", {}) as Dictionary).duplicate(true),
+		},
+	}
+
+
+func preflight_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	return _preflight_runtime_checkpoint(checkpoint)
+
+
+func _runtime_window_valid(record: Dictionary, player_index: int, maximum_decision_sequence: int) -> bool:
+	if not _has_exact_keys(record, RUNTIME_WINDOW_FIELDS) \
+			or not (record.get("player_index") is int) or int(record.get("player_index", -1)) != player_index \
+			or not (record.get("district_index") is int) or int(record.get("district_index", -1)) < 0 \
+			or not (record.get("state") is String) \
+			or str(record.get("state", "")) not in [STATE_ACTIVE, STATE_PENDING_DISCARD, STATE_CLOSED] \
+			or not (record.get("supply_revision") is String) \
+			or not (record.get("selected_card_id") is String) \
+			or not (record.get("selected_supply_revision") is String) \
+			or not (record.get("requires_reselection") is bool) \
+			or not (record.get("reserved_card_id") is String) \
+			or not (record.get("active_quote_id") is String) \
+			or not (record.get("active_quote") is Dictionary) \
+			or not (record.get("close_reason") is String) \
+			or not (record.get("decision_sequence") is int) \
+			or int(record.get("decision_sequence", -1)) < 0 \
+			or int(record.get("decision_sequence", -1)) > maximum_decision_sequence \
+			or not (record.get("pending_payload") is Dictionary) \
+			or _contains_presentation_only_pending_field(record.get("pending_payload", {}) as Dictionary):
+		return false
+	return true
+
+
+func _quote_checkpoint_shape_valid(checkpoint: Dictionary) -> bool:
+	if not (checkpoint.get("schema_version") is int) or int(checkpoint.get("schema_version", 0)) != 1 \
+			or not (checkpoint.get("next_quote_sequence") is int) \
+			or int(checkpoint.get("next_quote_sequence", 0)) < 1 \
+			or not (checkpoint.get("quotes_by_id") is Dictionary):
+		return false
+	if checkpoint.has("quotes_by_key") and not (checkpoint.get("quotes_by_key") is Dictionary):
+		return false
+	for counter_field in ["quote_count", "authorization_count"]:
+		if checkpoint.has(counter_field) \
+				and (not (checkpoint.get(counter_field) is int) or int(checkpoint.get(counter_field, -1)) < 0):
+			return false
+	return true
+
+
+func _runtime_player_count() -> int:
+	if _world_session_state != null:
+		var players_variant: Variant = _world_session_state.get("players")
+		if players_variant is Array:
+			var count := (players_variant as Array).size()
+			if count >= PLAYER_INDEX_MAP.MIN_ACTIVE_PLAYER_COUNT \
+					and count <= PLAYER_INDEX_MAP.MAX_ACTIVE_PLAYER_COUNT:
+				return count
+	if _windows_by_player.is_empty():
+		return 0
+	var maximum_index := -1
+	for player_index_variant in _windows_by_player.keys():
+		if player_index_variant is int:
+			maximum_index = maxi(maximum_index, int(player_index_variant))
+	return clampi(maximum_index + 1, PLAYER_INDEX_MAP.MIN_ACTIVE_PLAYER_COUNT, PLAYER_INDEX_MAP.MAX_ACTIVE_PLAYER_COUNT)
+
+
+func _authoritative_pending_payload(request_snapshot: Dictionary) -> Dictionary:
+	var result := request_snapshot.duplicate(true)
+	for field_variant in PRESENTATION_ONLY_PENDING_FIELDS:
+		result.erase(str(field_variant))
+	return result
+
+
+func _contains_presentation_only_pending_field(payload: Dictionary) -> bool:
+	for field_variant in PRESENTATION_ONLY_PENDING_FIELDS:
+		if payload.has(str(field_variant)):
+			return true
+	return false
 
 
 func _quote_sequence(quote_id: String) -> int:
@@ -533,6 +706,8 @@ func _preflight_session(snapshot: Dictionary) -> Dictionary:
 	var reserved_card_id := str(snapshot.get("reserved_card_id", "")).strip_edges()
 	var pending_payload := snapshot.get("pending_payload", {}) as Dictionary
 	var saved_active_quote := snapshot.get("active_quote", {}) as Dictionary
+	if _contains_presentation_only_pending_field(pending_payload):
+		return {"accepted": false, "reason_code": "purchase_session_pending_payload_invalid"}
 	if state not in [STATE_ACTIVE, STATE_PENDING_DISCARD] or supply_revision.is_empty():
 		return {"accepted": false, "reason_code": "purchase_session_binding_invalid"}
 	if selected_card_id.is_empty() != selected_supply_revision.is_empty():
