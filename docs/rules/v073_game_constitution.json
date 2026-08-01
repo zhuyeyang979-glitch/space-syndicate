@@ -1,0 +1,566 @@
+{
+  "schema_version": 1,
+  "constitution_id": "space_syndicate.v073.complete",
+  "ruleset_id": "v0.7.3",
+  "status": "frozen_highest_target_constitution",
+  "authority_level": "highest_target_rule_authority",
+  "current_production_ruleset": "v0.6",
+  "target_development_ruleset": "v0.7.3",
+  "authority_precedence": [
+    "latest_explicit_user_rule_decision",
+    "docs/rules/v073_game_constitution.json",
+    "docs/rules/v073_game_constitution.md",
+    "docs/rules/v072_game_constitution.json",
+    "docs/rules/v072_game_constitution.md",
+    "docs/rules/v071_game_constitution.json",
+    "docs/rules/v071_game_constitution.md",
+    "docs/rules/v07_game_constitution.json",
+    "docs/rules/v07_game_constitution.md",
+    "docs/tabletop_rulebook_v06.md_current_production_only",
+    "older_rule_documents",
+    "older_test_oracles",
+    "older_code_behavior"
+  ],
+  "approval": {
+    "approved": true,
+    "decision_ids": [
+      "USER_REJECTS_RESOLUTION_ORDER_AUCTION",
+      "USER_REJECTS_INITIATIVE_CASH_BIDDING",
+      "USER_APPROVES_FIXED_ROUND_ROBIN_RESOLUTION",
+      "USER_APPROVES_PREBOUND_FACILITY_CONTENTION",
+      "USER_APPROVES_FACILITY_BUILD_FIZZLE_ON_SLOT_CONTENTION"
+    ],
+    "user_rejects_resolution_order_auction": true,
+    "user_rejects_initiative_cash_bidding": true,
+    "user_approves_fixed_round_robin_resolution": true,
+    "user_approves_prebound_facility_contention": true,
+    "user_approves_facility_build_fizzle_on_slot_contention": true,
+    "approved_profile_id": "V073_STARTER_FREE_FIXED_ORDER_CONTENTION",
+    "approval_scope": "FIRST_HUMAN_TEST_SAMPLE_RULESET",
+    "human_fun_proven": false,
+    "human_test_required": true
+  },
+  "historical_baselines": {
+    "v07": {
+      "constitution_id": "space_syndicate.v07.complete",
+      "ruleset_id": "v0.7",
+      "constitution_json_sha256": "81c8ae27eba50f4d68c8a379913baf0592a819412bca0109f7e5fc9ef9a5a5fc",
+      "constitution_markdown_sha256": "a0d2e4324898134bdc3a58cc232ce05e5ca39b8787549b8a55a6ab50f28abb72",
+      "balance_defaults_sha256": "8678cfa88eeff53f60b2e209598e670e2748189c3bb3bd0ebd21bf5c5e20c6f8",
+      "content_change_count": 0,
+      "retained_as_immutable_history": true
+    },
+    "v071": {
+      "constitution_id": "space_syndicate.v071.complete",
+      "ruleset_id": "v0.7.1",
+      "constitution_json_sha256": "a5a52a88bc5a139dc56accc46897c82ddc7c3ea1aacdcaa6f72a412815429473",
+      "constitution_markdown_sha256": "2b4822b915d46f575ad9f1ff4675bc3741c91a70cf19b4f56fc8f37ac9bed930",
+      "balance_defaults_sha256": "4ef853a914dafc4919848e2f28da824cb4b710058556c2013fd4cdcddc5d555a",
+      "content_change_count": 0,
+      "retained_as_immutable_history": true
+    },
+    "v072": {
+      "constitution_id": "space_syndicate.v072.complete",
+      "ruleset_id": "v0.7.2",
+      "constitution_json_sha256": "d6e93f053e961e6adf1a1410d9343fe9bccd315f429819ef59d75c2ecd6d7a33",
+      "constitution_markdown_sha256": "1e557e3cc3d00bcbe83f671275d90a5a3e829f7e73245f5e0cf818dd323c1304",
+      "balance_defaults_sha256": "91a9ee9bdc796013e4ac64d2ce9893267f65ce285b22551963371be610d67155",
+      "amendment_json_sha256": "91c1fd7d3025b84b566c5beb023e596a90715ec03efe3e85899c6ca7f7a01195",
+      "amendment_markdown_sha256": "9604d2a6d7d3a8e1f20da806054c9e73bb5f30363a484fefd1065c9e0504ec79",
+      "rule_precedence_sha256": "82908f46e882459fe732932258be19f9be506bc32a4a058f2eb8b156bc2139f5",
+      "content_change_count": 0,
+      "retained_as_immutable_history": true
+    }
+  },
+  "inheritance": {
+    "source_constitution_id": "space_syndicate.v072.complete",
+    "source_ruleset_id": "v0.7.2",
+    "source_path": "docs/rules/v072_game_constitution.json",
+    "source_sha256": "d6e93f053e961e6adf1a1410d9343fe9bccd315f429819ef59d75c2ecd6d7a33",
+    "inheritance_mode": "all_v072_rules_except_explicit_v073_supersessions",
+    "inherited_constitutional_rule_count": 92,
+    "v073_amendment_rule_count": 5,
+    "effective_constitutional_rule_count": 97,
+    "superseded_interpretations": [
+      "resolution_order_may_be_changed_by_auction_or_cash",
+      "facility_action_mode_may_be_inferred_at_resolution",
+      "build_may_auto_convert_to_upgrade_or_repair"
+    ],
+    "retained_v072_rule_ids": [
+      "v072.assets.zero_genesis_balances",
+      "v072.starter.closed_definition_registry",
+      "v072.starter.persistent_zero_asset_cost",
+      "v072.standard.level_one_asset_cost",
+      "v072.starter.standard_merge_consumes_privilege",
+      "v072.starter.zero_deadlock_bootstrap",
+      "v072.starter.private_observation_and_projection",
+      "v072.starter.save_identity_and_migration"
+    ]
+  },
+  "structural_amendment_rule_ids": [
+    "v073.resolution.auction_rejected",
+    "v073.resolution.fixed_hidden_round_robin",
+    "v073.facility.prebound_unique_slot_modes",
+    "v073.facility.authoritative_revalidation_no_conversion",
+    "v073.facility.contention_fizzle_privacy_and_persistence"
+  ],
+  "constitutional_rules": [
+    {
+      "rule_id": "v073.resolution.auction_rejected",
+      "domain": "anonymous_resolution",
+      "value": {
+        "initiative_auction_enabled": false,
+        "resolution_order_bidding_enabled": false,
+        "cash_can_change_resolution_order": false,
+        "resolution_order_writer_count": 1,
+        "resolution_order_modifier_count": 0,
+        "initiative_auction_core_count": 0,
+        "initiative_bid_intent_count": 0,
+        "initiative_bid_owner_count": 0,
+        "initiative_bid_save_field_count": 0,
+        "initiative_bid_ui_surface_count": 0,
+        "ai_initiative_bid_policy_count": 0,
+        "ai_resolution_order_purchase_action_count": 0,
+        "prohibited_runtime_types": [
+          "V073InitiativeAuctionCore",
+          "InitiativeBidIntent",
+          "InitiativeBidReservation",
+          "InitiativeAuctionReceipt",
+          "ResolutionPriorityBidOrder"
+        ],
+        "prohibited_save_fields": [
+          "initiative_bid",
+          "bid_cash",
+          "bid_reservation",
+          "bid_rank",
+          "bid_histogram",
+          "auction_status",
+          "auction_receipt",
+          "public_tiebreak_cursor"
+        ],
+        "historical_proposal_status": "REJECTED_RULE_PROPOSAL",
+        "historical_proposal_runtime_authority": false
+      },
+      "supersedes": [
+        "any_unfrozen_resolution_order_auction_proposal",
+        "any_unfrozen_cash_initiative_proposal"
+      ],
+      "statement": "Resolution order is never auctioned or purchased: no Core, Owner, intent, reservation, Receipt, Save field, UI surface, or AI policy may introduce initiative bidding."
+    },
+    {
+      "rule_id": "v073.resolution.fixed_hidden_round_robin",
+      "domain": "anonymous_resolution",
+      "value": {
+        "resolution_order_mode": "fixed_hidden_round_robin",
+        "batch_resolution_order_source": "frozen_hidden_lead_order_at_batch_lock",
+        "frozen_batch_turn_order_created_at_batch_lock": true,
+        "resolution_order_writer_count": 1,
+        "resolution_order_modifier_count": 0,
+        "resolution_order_mutation_after_batch_lock": false,
+        "local_action_index_minimum": 0,
+        "local_action_index_maximum": 4,
+        "algorithm": [
+          "for_each_local_action_index_ascending",
+          "for_each_player_in_frozen_batch_turn_order",
+          "append_action_if_present"
+        ],
+        "player_local_order_preserved": true,
+        "one_action_per_player_per_layer": true,
+        "empty_queue_skipped": true,
+        "single_remaining_player_tail_continues": true,
+        "whole_player_queue_contiguous_before_next_player": false,
+        "additional_order_confirmation_phase": false,
+        "cash_order_modifier_allowed": false,
+        "six_color_asset_order_modifier_allowed": false,
+        "card_order_modifier_allowed": false,
+        "role_order_modifier_allowed": false,
+        "organization_order_modifier_allowed": false,
+        "facility_order_modifier_allowed": false,
+        "typed_order_semantics": [
+          "MARKET_LEAD_WEIGHT",
+          "TRACK_POSITION_ORDER",
+          "BATCH_RESOLUTION_TURN_ORDER"
+        ],
+        "typed_order_reverse_inference_allowed": false,
+        "market_lead_affected_by_bid": false,
+        "track_order_affected_by_bid": false,
+        "batch_order_affected_by_bid": false,
+        "victory_macro_round_affected_by_bid": false,
+        "public_initiative_tiebreak_order_created": false,
+        "example": {
+          "frozen_batch_turn_order": ["A", "B", "C", "D"],
+          "player_local_queues": {
+            "A": ["A1", "A2", "A3"],
+            "B": ["B1", "B2"],
+            "C": ["C1"],
+            "D": ["D1", "D2", "D3", "D4"]
+          },
+          "anonymous_global_queue": ["A1", "B1", "C1", "D1", "A2", "B2", "D2", "A3", "D3", "D4"]
+        }
+      },
+      "supersedes": [
+        "v07.resolution.round_robin_underspecified_order_mutability"
+      ],
+      "statement": "At batch lock, the current authoritative hidden lead order is frozen as the sole batch turn order; resolution then interleaves one card per player by ascending local action index."
+    },
+    {
+      "rule_id": "v073.facility.prebound_unique_slot_modes",
+      "domain": "facility_target_contention",
+      "value": {
+        "facility_slot_kind": "region_unique_facility_slot",
+        "facility_slot_unique_key": [
+          "region_id",
+          "facility_type",
+          "industry_id"
+        ],
+        "facility_action_mode_required": true,
+        "allowed_facility_action_modes": [
+          "BUILD_NEW",
+          "UPGRADE_OWN",
+          "REPAIR_OWN"
+        ],
+        "facility_action_mode_mutable_after_lock": false,
+        "target_reselection_during_resolution": false,
+        "required_prebound_fields": [
+          "region_id",
+          "region_revision",
+          "facility_type",
+          "industry_id",
+          "target_slot_id",
+          "target_slot_generation",
+          "facility_action_mode",
+          "expected_occupancy",
+          "expected_facility_id",
+          "expected_facility_generation",
+          "expected_owner_id",
+          "expected_rank",
+          "expected_damage_revision"
+        ],
+        "inapplicable_field_encoding": "closed_none",
+        "omitted_then_inferred_field_allowed": false,
+        "submission_requirements": {
+          "BUILD_NEW": {
+            "expected_occupancy": "empty",
+            "target_slot_must_be_empty": true,
+            "target_slot_generation_required": true
+          },
+          "UPGRADE_OWN": {
+            "expected_occupancy": "occupied",
+            "expected_owner_id": "self",
+            "facility_identity_required": true,
+            "facility_generation_required": true,
+            "expected_rank_required": true,
+            "same_facility_type_required": true,
+            "same_industry_id_required": true,
+            "legal_rank_transition_required": true
+          },
+          "REPAIR_OWN": {
+            "expected_occupancy": "occupied",
+            "expected_owner_id": "self",
+            "facility_identity_required": true,
+            "facility_generation_required": true,
+            "expected_damage_revision_required": true,
+            "legal_damage_required": true,
+            "card_may_repair_target_required": true
+          }
+        }
+      },
+      "supersedes": [
+        "facility_mode_inferred_at_resolution",
+        "facility_target_inferred_from_partial_fields"
+      ],
+      "statement": "Every facility action binds one unique region/type/industry slot and exactly one BUILD_NEW, UPGRADE_OWN, or REPAIR_OWN mode before queue lock, with closed none values for inapplicable target fields."
+    },
+    {
+      "rule_id": "v073.facility.authoritative_revalidation_no_conversion",
+      "domain": "region_infrastructure",
+      "value": {
+        "authoritative_revalidator": "region_infrastructure_owner",
+        "viewer_snapshot_may_decide_final_legality": false,
+        "ui_may_decide_final_legality": false,
+        "revalidated_fields": [
+          "region_id",
+          "region_revision",
+          "target_slot_id",
+          "target_slot_generation",
+          "occupancy",
+          "facility_type",
+          "industry_id",
+          "facility_id",
+          "facility_generation",
+          "owner_id",
+          "facility_action_mode",
+          "rank",
+          "damage_revision"
+        ],
+        "typed_results": [
+          "facility_action_resolved",
+          "facility_target_invalid_slot_occupied",
+          "facility_target_invalid_generation_changed",
+          "facility_target_invalid_owner_changed",
+          "facility_target_invalid_rank_changed",
+          "facility_target_invalid_damage_changed"
+        ],
+        "build_to_upgrade_auto_conversion": false,
+        "build_to_repair_auto_conversion": false,
+        "upgrade_to_repair_auto_conversion": false,
+        "repair_to_upgrade_auto_conversion": false,
+        "build_to_upgrade_auto_conversion_count": 0,
+        "build_to_repair_auto_conversion_count": 0,
+        "target_reselection_during_resolution": false,
+        "different_region_fallback_allowed": false,
+        "different_industry_fallback_allowed": false,
+        "different_facility_type_fallback_allowed": false,
+        "other_players_facility_fallback_allowed": false
+      },
+      "supersedes": [
+        "v06_automatic_build_upgrade_repair_interpretation_for_v073_target"
+      ],
+      "statement": "The authoritative infrastructure Owner revalidates the exact locked target and mode at resolution; no invalid BUILD, UPGRADE, or REPAIR may convert mode, retarget, or fall back."
+    },
+    {
+      "rule_id": "v073.facility.contention_fizzle_privacy_and_persistence",
+      "domain": "facility_target_contention",
+      "value": {
+        "build_slot_contention_fizzle": true,
+        "invalid_target_policy_id": "FIZZLE_FULL_ASSET_REFUND",
+        "target_reselected": false,
+        "asset_reservation_released": true,
+        "normal_card_destination": "discard",
+        "action_slot_refunded": false,
+        "card_returned_to_hand": false,
+        "facility_created": false,
+        "facility_upgraded": false,
+        "facility_repaired": false,
+        "starter_facility_uses_same_policy": true,
+        "starter_refund_asset_value": 0,
+        "starter_card_destination": "discard",
+        "starter_action_slot_refunded": false,
+        "initiative_cash_spent": 0,
+        "initiative_cash_refund": "not_applicable",
+        "public_history_message_key": "facility.contention.target_slot_occupied",
+        "public_history_owner_anonymous": true,
+        "public_history_forbidden_fields": [
+          "occupying_owner_id",
+          "failing_owner_id",
+          "player_name",
+          "player_color",
+          "avatar",
+          "seat"
+        ],
+        "anonymous_owner_direct_disclosure_rate_required": 0,
+        "save_required_fields": [
+          "frozen_hidden_lead_order",
+          "frozen_batch_turn_order",
+          "player_local_queues",
+          "local_action_index",
+          "anonymous_global_queue",
+          "resolution_cursor",
+          "facility_action_mode",
+          "target_slot_id",
+          "target_slot_generation",
+          "expected_occupancy",
+          "expected_facility_id",
+          "expected_facility_generation",
+          "expected_owner_id",
+          "expected_rank",
+          "expected_damage_revision",
+          "invalid_target_policy_id"
+        ],
+        "save_forbidden_fields": [
+          "initiative_bid",
+          "bid_cash",
+          "bid_reservation",
+          "bid_rank",
+          "bid_histogram",
+          "auction_status",
+          "auction_receipt",
+          "public_tiebreak_cursor"
+        ],
+        "restore_must_not_reorder_batch_players": true,
+        "restore_must_not_reselect_target": true,
+        "restore_must_not_convert_facility_mode": true,
+        "restore_must_not_repeat_build": true,
+        "restore_must_not_repeat_fizzle": true,
+        "restore_must_not_repeat_asset_refund": true,
+        "restore_must_not_repeat_card_discard": true,
+        "v072_save_to_v073_direct_resume": false,
+        "v06_save_to_v073_direct_resume": false,
+        "v06_save_backup_required": true,
+        "ai_allowed_contention_inputs": [
+          "self_is_current_lead",
+          "public_slot_contention_history",
+          "public_region_and_industry_demand",
+          "self_local_card_order",
+          "current_target_slot_state",
+          "estimated_competition_probability",
+          "legal_facility_action_modes"
+        ],
+        "ai_forbidden_contention_inputs": [
+          "other_player_locked_facility_targets",
+          "other_player_local_card_order",
+          "other_player_hands",
+          "complete_hidden_turn_order",
+          "future_action_owner",
+          "anonymous_queue_owner"
+        ],
+        "player_ui_auction_surface_count": 0,
+        "player_ui_must_explain_local_order_only": true
+      },
+      "supersedes": [
+        "facility_contention_target_fallback",
+        "facility_contention_action_slot_refund"
+      ],
+      "statement": "When an earlier action occupies a locked BUILD slot, the later action uses the existing full-asset-refund Fizzle: discard the card, consume the action slot, reveal no owner, and persist exact-once resolution state."
+    }
+  ],
+  "balance_defaults_reference": {
+    "path": "docs/rules/v073_balance_defaults.json",
+    "defaults_id": "space_syndicate.v073.balance_defaults.first_human_sample",
+    "profile_id": "V073_STARTER_FREE_FIXED_ORDER_CONTENTION",
+    "human_fun_proven": false,
+    "human_test_required": true
+  },
+  "auction_absence_contract": {
+    "initiative_auction_core_count": 0,
+    "initiative_bid_owner_count": 0,
+    "initiative_bid_intent_count": 0,
+    "initiative_bid_save_field_count": 0,
+    "initiative_bid_ui_surface_count": 0,
+    "ai_initiative_bid_policy_count": 0,
+    "cash_can_change_resolution_order": false
+  },
+  "save_obligations": {
+    "versioned_v073_schema_required": true,
+    "v072_save_to_v073_direct_resume": false,
+    "v06_save_to_v073_direct_resume": false,
+    "v06_save_backup_required": true,
+    "detached_v072_test_only_migration_may_be_explicit": true,
+    "silent_default_of_new_fields_allowed": false,
+    "required_batch_state": [
+      "frozen_hidden_lead_order",
+      "frozen_batch_turn_order",
+      "player_local_queues",
+      "local_action_index",
+      "anonymous_global_queue",
+      "resolution_cursor"
+    ],
+    "required_facility_action_state": [
+      "facility_action_mode",
+      "target_slot_id",
+      "target_slot_generation",
+      "expected_occupancy",
+      "expected_facility_id",
+      "expected_facility_generation",
+      "expected_owner_id",
+      "expected_rank",
+      "expected_damage_revision",
+      "invalid_target_policy_id"
+    ],
+    "forbidden_auction_state_count": 0,
+    "exact_once_effects": [
+      "facility_build",
+      "facility_fizzle",
+      "asset_refund",
+      "card_discard"
+    ],
+    "restore_rng_draw_delta": 0
+  },
+  "ai_player_privacy_obligations": {
+    "ai_initiative_bid_policy_count": 0,
+    "ai_resolution_order_purchase_action_count": 0,
+    "player_initiative_auction_ui_surface_count": 0,
+    "public_queue_owner_anonymous": true,
+    "complete_hidden_order_public": false,
+    "other_player_targets_public": false,
+    "owner_specific_animation_or_audio_allowed": false,
+    "ai_and_human_contention_information_parity": true
+  },
+  "rng_obligations": {
+    "new_rng_stream_count": 0,
+    "resolution_order_rng_stream_count": 0,
+    "facility_contention_rng_stream_count": 0,
+    "restore_rng_advance_allowed": false
+  },
+  "detached_implementation_obligations": {
+    "domains": [
+      "card_batch",
+      "anonymous_resolution",
+      "region_infrastructure",
+      "facility_target_contention",
+      "AI Observation",
+      "Player Projection",
+      "Intent",
+      "Receipt",
+      "Save State",
+      "Privacy",
+      "Canonical Save Adapter",
+      "Canonical AI Adapter",
+      "Canonical Player Adapter",
+      "Atomic Cutover Manifest"
+    ],
+    "target_ruleset_id": "v0.7.3",
+    "production_connection_count": 0,
+    "v06_mutation_count": 0,
+    "dual_write_count": 0
+  },
+  "atomic_cutover_obligations": {
+    "atomic_group_id": "v073.fixed_order_facility_contention",
+    "domains": [
+      "card_batch",
+      "anonymous_resolution",
+      "region_infrastructure",
+      "facility_target_contention"
+    ],
+    "simultaneous_semantics": [
+      "fixed_hidden_round_robin",
+      "local_action_layering",
+      "prebound_facility_action_mode",
+      "authoritative_target_revalidation",
+      "contention_fizzle_receipt",
+      "old_facility_auto_conversion_removed"
+    ],
+    "mixed_v06_v073_facility_interpretation_allowed": false,
+    "dual_write_allowed": false
+  },
+  "simulation_obligations": {
+    "minimum_match_count": 6000,
+    "profiles": [
+      "V072_GENERIC_FACILITY_TARGETING",
+      "V073_EXPLICIT_MODES_FIXED_ORDER",
+      "V073_HIGH_CONTENTION_DIAGNOSTIC"
+    ],
+    "player_counts": [3, 4, 6, 8],
+    "seeds_per_configuration": 500,
+    "recommended_facility_build_fizzle_rate_minimum": 0.03,
+    "recommended_facility_build_fizzle_rate_maximum": 0.15,
+    "auction_may_be_added_to_hit_target_range": false,
+    "human_fun_proven": false,
+    "human_test_required": true
+  },
+  "cutover_obligations": {
+    "docs_only_freeze": true,
+    "production_cutover_allowed_by_this_task": false,
+    "target_rules_pretend_to_be_runtime": false,
+    "current_runtime_overrides_target_constitution": false,
+    "v06_remains_current_player_runtime_until_atomic_cutover": true,
+    "v073_full_runtime_cutover": false,
+    "v06_and_v073_dual_write_allowed": false,
+    "production_change_requires_explicit_atomic_cutover_task": true,
+    "pr77_completion_required_before_cutover": true
+  },
+  "human_test_obligations": {
+    "human_fun_proven": false,
+    "human_test_required": true,
+    "risk_register": [
+      "facility_contention_may_be_too_rare_below_three_percent",
+      "facility_contention_may_feel_wasteful_above_fifteen_percent",
+      "local_card_ordering_must_be_understandable",
+      "build_upgrade_repair_mode_choice_must_be_clear",
+      "anonymous_fizzle_feedback_must_explain_refund_discard_and_lost_action",
+      "ai_contention_behavior_must_feel_fair_without_hidden_target_access",
+      "six_and_eight_player_resolution_may_feel_slow"
+    ]
+  },
+  "open_constitutional_questions": []
+}
