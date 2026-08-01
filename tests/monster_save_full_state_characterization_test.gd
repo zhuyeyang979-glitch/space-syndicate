@@ -2,6 +2,8 @@ extends SceneTree
 
 const FIXTURE := preload("res://tests/fixtures/monster_save_full_state_fixture.gd")
 const INSPECTOR := preload("res://scripts/tools/monster_save_full_state_inspector_v1.gd")
+const CODEC := preload("res://scripts/runtime/monster_save_wire_codec_v2.gd")
+const WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
 const EVIDENCE_PATH := "res://reports/handoffs/alpha04c_monster_save_v2_pre_edit_characterization.json"
 const BASELINE_SHA := "1964e6e8d86543f88781b91a239064d1a87b3e89"
 const DEPENDENCY_FIELDS := [
@@ -82,6 +84,11 @@ func _run() -> void:
 	var empty_fixture := FIXTURE.create(self)
 	var empty_owner = empty_fixture.get("owner")
 	var empty_save: Dictionary = empty_owner.call("to_save_data")
+	if empty_save.has("monster_save_schema_version"):
+		FIXTURE.cleanup(empty_fixture)
+		await process_frame
+		await _run_v2_characterization_regression()
+		return
 	var empty_report := INSPECTOR.inspect(empty_save)
 	_expect(int(empty_report.get("non_closed_leaf_count", -1)) == 2, "empty Monster v1 Save has exactly two non-closed leaves")
 	_expect(int(empty_report.get("raw_float_count", -1)) == 2, "both empty-state non-closed leaves are raw floats")
@@ -187,6 +194,54 @@ func _run() -> void:
 	if not _failures.is_empty():
 		push_error("Monster Save full-state characterization failed:\n- " + "\n- ".join(_failures))
 	quit(0 if _failures.is_empty() else 1)
+
+
+func _run_v2_characterization_regression() -> void:
+	var frozen := _read_evidence()
+	_expect(str(frozen.get("status", "")) == "PRE_EDIT_CHARACTERIZATION_COMPLETE", "frozen pre-edit characterization remains readable")
+	var evidence_text := FileAccess.get_file_as_string(EVIDENCE_PATH)
+	var private_sentinels_absent := true
+	for sentinel in ["human.alpha", "ai.beta", "tx-characterize", "C:/Users/", "C:\\Users\\"]:
+		private_sentinels_absent = private_sentinels_absent and not evidence_text.contains(sentinel)
+	_expect(private_sentinels_absent, "frozen characterization contains no actor, transaction, or absolute-path sentinel")
+	var frozen_empty := frozen.get("empty_save", {}) as Dictionary
+	var frozen_rich := frozen.get("nontrivial_save", {}) as Dictionary
+	_expect(int(frozen_empty.get("leaf_count", -1)) == 11 and int(frozen_empty.get("non_closed_leaf_count", -1)) == 2, "frozen empty v1 evidence remains 11 leaves with two float defects")
+	_expect(int(frozen_rich.get("leaf_count", -1)) == 673 and int(frozen_rich.get("non_closed_leaf_count", -1)) == 82, "frozen nontrivial v1 evidence remains 673 leaves with 82 non-closed values")
+	_expect(int(frozen_rich.get("raw_float_count", -1)) == 70 and int(frozen_rich.get("vector2_count", -1)) == 12, "frozen nontrivial defect types remain 70 float plus 12 Vector2")
+	_expect(int(frozen_rich.get("forbidden_dependency_type_count", -1)) == 0, "frozen Characterization contains no rebind dependency")
+	var fixture := FIXTURE.create(self)
+	var owner = fixture.get("owner")
+	var rich := FIXTURE.build_nontrivial_state(fixture)
+	_expect(bool(rich.get("ok", false)), "the same full-state fixture remains constructible after v2")
+	var save: Dictionary = rich.get("save", {}) if rich.get("save", {}) is Dictionary else {}
+	var preflight: Dictionary = owner.call("preflight_save_data", save)
+	var wire_report := INSPECTOR.inspect(save)
+	_expect(bool(preflight.get("accepted", false)), "full-state Monster Save v2 passes strict preflight")
+	_expect(WIRE.is_closed_data(save) and int(wire_report.get("non_closed_leaf_count", -1)) == 0, "full-state Monster Save v2 has zero non-closed leaves")
+	var decoded := CODEC.decode_save_state(save)
+	var raw: Dictionary = decoded.get("value", {}) if decoded.get("value", {}) is Dictionary else {}
+	_expect(bool(decoded.get("ok", false)) and int(raw.get("monster_save_schema_version", -1)) == 2 and str(raw.get("ruleset_id", "")) == "v0.6", "v2 schema and production ruleset attestations decode exactly")
+	_expect(raw.has("autonomous_move_sequence") and raw.has("auto_monster_action_sequence") and raw.has("bankruptcy_estate_journal"), "all three formerly omitted authoritative fields are captured")
+	FIXTURE.cleanup(fixture)
+	await process_frame
+	print("MONSTER_SAVE_FULL_STATE_CHARACTERIZATION_TEST|status=%s|checks=%d|failures=%d|frozen_non_closed=82|v2_non_closed=%d" % [
+		"PASS" if _failures.is_empty() else "FAIL",
+		_checks,
+		_failures.size(),
+		int(wire_report.get("non_closed_leaf_count", -1)),
+	])
+	if not _failures.is_empty():
+		push_error("Monster Save characterization regression failed:\n- " + "\n- ".join(_failures))
+	quit(0 if _failures.is_empty() else 1)
+
+
+func _read_evidence() -> Dictionary:
+	var file := FileAccess.open(EVIDENCE_PATH, FileAccess.READ)
+	if file == null:
+		return {}
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	return parsed as Dictionary if parsed is Dictionary else {}
 
 
 func _argument_value(prefix: String) -> String:

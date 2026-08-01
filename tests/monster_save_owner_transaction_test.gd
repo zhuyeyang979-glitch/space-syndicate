@@ -47,25 +47,26 @@ func _run() -> void:
 
 	var extra_field := populated.duplicate(true)
 	extra_field["world_player_cash"] = [123]
-	_expect_rejected_without_mutation(owner, extra_field, "monster_save_shape_invalid", "monster preflight rejects non-ledger root fields")
+	_expect_rejected_without_mutation(owner, extra_field, "monster_save_v2_shape_invalid", "monster preflight rejects non-ledger root fields")
 	var nested_duplicate := populated.duplicate(true)
 	(nested_duplicate.get("auto_monsters", []) as Array)[0]["visual_cues"] = []
 	_expect_rejected_without_mutation(owner, nested_duplicate, "monster_save_authority_duplicate_forbidden", "monster preflight rejects nested duplicate authority")
 	var stale_uid := populated.duplicate(true)
-	stale_uid["next_auto_monster_uid"] = 41
+	(stale_uid.get("next_auto_monster_uid") as Dictionary)["value"] = "41"
 	_expect_rejected_without_mutation(owner, stale_uid, "monster_save_uid_allocator_stale", "monster preflight rejects a stale UID allocator")
 	var wrong_slot := populated.duplicate(true)
-	(wrong_slot.get("auto_monsters", []) as Array)[0]["slot"] = 1
+	(((wrong_slot.get("auto_monsters", []) as Array)[0] as Dictionary).get("slot") as Dictionary)["value"] = "1"
 	_expect_rejected_without_mutation(owner, wrong_slot, "monster_save_actor_invalid", "monster preflight rejects a non-canonical roster slot")
 	var wrong_schema := populated.duplicate(true)
 	wrong_schema["monster_card_atomic_schema_version"] = "forged-monster-schema"
 	_expect_rejected_without_mutation(owner, wrong_schema, "monster_save_schema_attestation_invalid", "monster preflight rejects forged schema attestation")
 	var nonfinite := populated.duplicate(true)
-	(nonfinite.get("auto_monsters", []) as Array)[0]["world_position"] = Vector2(INF, 0.0)
-	_expect_rejected_without_mutation(owner, nonfinite, "monster_save_shape_invalid", "monster preflight rejects non-finite actor state")
+	var nonfinite_position := ((nonfinite.get("auto_monsters", []) as Array)[0] as Dictionary).get("world_position") as Dictionary
+	(nonfinite_position.get("x") as Dictionary)["bits"] = "000000000000f07f"
+	_expect_rejected_without_mutation(owner, nonfinite, "monster_save_vector2_component_invalid", "monster preflight rejects non-finite actor state")
 	var noncanonical_numeric := populated.duplicate(true)
 	noncanonical_numeric["monster_timer"] = 3
-	_expect_rejected_without_mutation(owner, noncanonical_numeric, "monster_save_not_canonical", "monster preflight rejects a value requiring numeric canonicalization")
+	_expect_rejected_without_mutation(owner, noncanonical_numeric, "monster_save_raw_integer_rejected", "monster preflight rejects an untagged numeric value")
 	var retired_contract := populated.duplicate(true)
 	(retired_contract.get("auto_monsters", []) as Array)[0]["contract_response"] = "accept"
 	_expect_rejected_without_mutation(owner, retired_contract, "retired_contract_payload_rejected", "monster preflight rejects retired contract payloads")

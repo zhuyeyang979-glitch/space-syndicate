@@ -5,6 +5,7 @@ const SCHEMA := preload("res://scripts/cards/v06/units/unit_card_runtime_schema_
 const CONTROLLER_SCRIPT := preload("res://scripts/runtime/monster_runtime_controller.gd")
 const WORLD_BRIDGE_SCRIPT := preload("res://scripts/runtime/monster_runtime_world_bridge.gd")
 const WORLD_STATE_SCRIPT := preload("res://scripts/runtime/world_session_state.gd")
+const RNG_SERVICE_SCRIPT := preload("res://scripts/runtime/run_rng_service.gd")
 const BATTLE_LIFECYCLE_POLICY := preload("res://scripts/runtime/monster_battle_lifecycle_policy_v06.gd")
 
 const CARD_RANK_1 := "unit.monster.spore_tide_emperor.rank_1"
@@ -26,6 +27,9 @@ class FixtureWorld:
 	var presentation_events: Array = []
 	var economic_events: Array = []
 	var cash_snapshots: Array = []
+	var public_log_revision := 5
+	var private_feedback_revision := 7
+	var presentation_revision := 11
 	var bound_owner: Node
 
 	func monster_deploy_region_snapshot_v06(region_id: String) -> Dictionary:
@@ -134,6 +138,7 @@ class FixtureWorld:
 
 	func _on_monster_runtime_event(event: Dictionary) -> Dictionary:
 		presentation_events.append(event.duplicate(true))
+		presentation_revision += 1
 		return {"accepted": true, "event_id": str(event.get("event_id", ""))}
 
 	func _entity_world_position(entity: Dictionary) -> Vector2:
@@ -175,13 +180,18 @@ static func create(tree: SceneTree) -> Dictionary:
 	bridge.name = "MonsterRuntimeWorldBridge"
 	bridge.bind_world(world)
 	bridge.call("set_world_session_state", world_state)
+	var rng = RNG_SERVICE_SCRIPT.new()
+	rng.name = "RunRngService"
+	rng.set_seed(900626424)
+	host.add_child(rng)
+	bridge.call("set_rng_service", rng)
 	host.add_child(bridge)
 	var owner = CONTROLLER_SCRIPT.new()
 	owner.name = "MonsterRuntimeController"
 	owner.call("set_world_bridge", bridge)
 	host.add_child(owner)
 	world.bound_owner = owner
-	return {"host": host, "world_state": world_state, "world": world, "bridge": bridge, "owner": owner}
+	return {"host": host, "world_state": world_state, "world": world, "rng": rng, "bridge": bridge, "owner": owner}
 
 
 static func cleanup(fixture: Dictionary) -> void:
