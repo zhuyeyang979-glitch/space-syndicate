@@ -122,6 +122,7 @@ unsupported_reason = ""
 script = ExtResource("2_binding")
 section_id = "monsters"
 owner_id = "monster_runtime"
+state_version = 2
 owner_path = NodePath("../../MonsterRuntimeController")
 capture_method = "to_save_data"
 preflight_method = "preflight_save_data"
