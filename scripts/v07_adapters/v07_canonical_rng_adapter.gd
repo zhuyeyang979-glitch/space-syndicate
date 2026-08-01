@@ -832,7 +832,7 @@ static func _derive_dbg_seed(
 	stream_instance_id: String
 ) -> int:
 	var digest := ("%s:%s:%s:%s" % [
-		RULESET_ID,
+		SOURCE_CORE_RULESET_ID,
 		str(root_seed),
 		stream_id,
 		stream_instance_id,
