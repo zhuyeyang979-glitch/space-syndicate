@@ -11,6 +11,9 @@ const LAUNCH_NONCE := "55555555555555555555555555555555"
 const OTHER_LAUNCH_NONCE := "66666666666666666666666666666666"
 const AUTHORIZATION_CONTRACT_PATH := "res://scripts/tools/cold_restore_authorization_contract_v1.json"
 const BINDING_CONTRACT_PATH := "res://scripts/tools/cold_restore_targeted_ledger_binding_contract_v1.json"
+const AUTHORIZATION_CONTRACT := preload(
+	"res://scripts/tools/cold_restore_authorization_contract_v1.gd"
+)
 
 const LAUNCH_ATTESTATION_FIELDS := [
 	"schema_version", "authorization_id", "claim_fingerprint", "claim_nonce",
@@ -32,8 +35,11 @@ func _init() -> void:
 		FileAccess.get_file_as_string(AUTHORIZATION_CONTRACT_PATH)
 	)
 	var contract: Dictionary = contract_variant if contract_variant is Dictionary else {}
+	var targeted_authorization_name := (
+		AUTHORIZATION_CONTRACT.current_targeted_authorization_name()
+	)
 	_targeted_authorization = (
-		contract.get("targeted_owner_capture_diagnostic_v4_importchain", {}) as Dictionary
+		contract.get(targeted_authorization_name, {}) as Dictionary
 	).duplicate(true)
 	_expect(not _targeted_authorization.is_empty(), "production authorization contract is readable")
 	var binding_variant: Variant = JSON.parse_string(
@@ -190,7 +196,7 @@ func _run_source_authorization_contract(source: String) -> void:
 		"safe_actual_fingerprint",
 	], "authorization returns redacted structured binding failures")
 	_expect(
-		source.contains("AUTHORIZATION_CONTRACT_PATH")
+		source.contains("cold_restore_authorization_contract_v1.gd")
 				and source.contains("cold_restore_targeted_ledger_binding_validator_v1.gd")
 				and not source.contains(str(_targeted_authorization.get("authorization_id", ""))),
 		"targeted diagnostic identities and fields come from JSON contracts"

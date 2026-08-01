@@ -7,6 +7,7 @@ $ErrorActionPreference = "Stop"
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $orchestratorPath = Join-Path $projectRoot "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1"
 $contractPath = Join-Path $projectRoot "scripts/tools/cold_restore_authorization_contract_v1.json"
+$authorizationModulePath = Join-Path $projectRoot "scripts/tools/cold_restore_authorization_contract_v1.psm1"
 $pwshPath = (Get-Command pwsh -CommandType Application -ErrorAction Stop).Source
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) (
     "alpha04c preflight only 中文 空格 " + [Guid]::NewGuid().ToString("N")
@@ -124,18 +125,19 @@ try {
     if ($LASTEXITCODE -ne 0 -or $repositoryHead -cnotmatch '^[0-9a-f]{40}$') {
         throw "preflight repository HEAD unavailable"
     }
-    $runId = "alpha04c-owner-capture-diagnostic-v4-importchain-$($repositoryHead.Substring(0, 12))"
     $contract = [IO.File]::ReadAllText(
         $contractPath,
         [Text.UTF8Encoding]::new($false)
     ) | ConvertFrom-Json -DateKind String
-    $authorization = $contract.targeted_owner_capture_diagnostic_v4_importchain
+    Import-Module $authorizationModulePath -Force
+    $authorizationName = Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName
+    $authorization = Get-ColdRestoreAuthorizationEntry $authorizationName
+    $runId = Get-ColdRestoreAuthorizationRunId $authorizationName $repositoryHead
     Assert-PreflightOnlyCondition (
-        [string]$authorization.authorization_id -ceq
-            "alpha04c-targeted-owner-capture-diagnostic-v4-importchain" -and
-        [string]$authorization.run_id_prefix -ceq
-            "alpha04c-owner-capture-diagnostic-v4-importchain"
-    ) "preflight binds the exact V4 production authorization"
+        [int]$authorization.permitted_transition_from -eq 4 -and
+        [int]$authorization.permitted_transition_to -eq 5 -and
+        [int]$authorization.maximum_invocation_count -eq 5
+    ) "preflight binds the current exact 4-to-5 production authorization"
 
     $gitCommonRaw = (& git -C $projectRoot rev-parse --git-common-dir).Trim()
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($gitCommonRaw)) {
@@ -211,7 +213,7 @@ try {
     ) "all preflights used distinct process identities"
     Assert-PreflightOnlyCondition (
         [string]$protectedBefore.fingerprint -ceq [string]$protectedAfter.fingerprint
-    ) "formal V4 quota, evidence, and prequota roots are byte-for-byte unchanged"
+    ) "formal V5 quota, evidence, and prequota roots are byte-for-byte unchanged"
 
     foreach ($result in $results) {
         $runIndex = $results.IndexOf($result) + 1
@@ -227,11 +229,9 @@ try {
         Assert-PreflightOnlyCondition (
             [string]$result.run_id -ceq $runId -and
             [string]$result.repository_head -ceq $repositoryHead -and
-            [string]$result.authorization_name -ceq
-                "targeted_owner_capture_diagnostic_v4_importchain" -and
-            [string]$result.authorization_id -ceq
-                "alpha04c-targeted-owner-capture-diagnostic-v4-importchain"
-        ) "preflight run $runIndex binds exact V4 identity and HEAD"
+            [string]$result.authorization_name -ceq $authorizationName -and
+            [string]$result.authorization_id -ceq [string]$authorization.authorization_id
+        ) "preflight run $runIndex binds exact current identity and HEAD"
         Assert-PreflightOnlyCondition (
             [int]$result.runtime_import_force_count -eq 0 -and
             [int]$result.runtime_local_force_import_count -eq 0 -and

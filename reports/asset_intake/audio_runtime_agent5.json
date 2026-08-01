@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "report_id": "space_syndicate.commercial_audio.runtime.agent5.v1",
+  "task_id": "COMMERCIAL_ART_FOUNDATION_DIRECT_SELECTED_ASSET_INTEGRATION_V1",
+  "phase": "audio_runtime_presentation_services",
+  "generated_at_utc": "2026-07-31T23:19:57Z",
+  "status": "GREEN",
+  "contracts_consumed": [
+    "res://resources/audio/commercial/commercial_audio_event_map.json",
+    "res://resources/audio/commercial/commercial_music_playlist.json"
+  ],
+  "event_registry": {
+    "canonical_commercial_event_count": 17,
+    "legacy_underscore_alias_count": 16,
+    "semantic_silent_canonical_count": 7,
+    "public_metadata_fields": ["asset_key", "volume_db", "loop"],
+    "caller_payload_path_redaction": "recursive",
+    "resource_path_exposure_count": 0,
+    "vendor_path_exposure_count": 0
+  },
+  "sfx_service": {
+    "scene": "res://scenes/runtime/presentation/CommercialAudioPresentationService.tscn",
+    "script": "res://scripts/audio/commercial_audio_presentation_service.gd",
+    "audio_stream_player_count": 1,
+    "catalog_api": ["resource_for_asset_key", "asset_kind_for_key"],
+    "fixed_single_file": true,
+    "randomized_selection": false,
+    "rules_rng_draw_count": 0,
+    "missing_catalog_policy": "fail_closed",
+    "missing_catalog_script_error_count": 0
+  },
+  "music_controller": {
+    "scene": "res://scenes/runtime/presentation/CommercialMusicPresentationController.tscn",
+    "script": "res://scripts/audio/commercial_music_presentation_controller.gd",
+    "audio_stream_player_count": 2,
+    "crossfade_seconds": 1.5,
+    "crossfade_curve": "equal_power_cosine_sine",
+    "accepted_public_states": ["menu", "gameplay", "crisis", "military"],
+    "accepted_asset_keys": ["music.menu", "music.gameplay", "music.crisis", "music.military"],
+    "hidden_information_read_count": 0,
+    "rules_rng_draw_count": 0,
+    "save_persistence_count": 0,
+    "missing_catalog_policy": "fail_closed",
+    "missing_catalog_script_error_count": 0
+  },
+  "tests": {
+    "commercial_audio_runtime_service": {"passed": 232, "total": 232, "clean_exit": true},
+    "commercial_audio_asset_contract": {"passed": 361, "total": 361, "clean_exit": true},
+    "vertical_slice_showcase": {"status": "PASS"},
+    "visual_event_focused_smoke": {"passed": 38, "total": 38, "clean_exit": true},
+    "commercial_art_architecture_preflight": {
+      "passed": 286,
+      "total": 287,
+      "status": "UNRELATED_CONCURRENT_PLANET_CHARACTERIZATION_FAILURE",
+      "failure": "audit characterizes the current ring and translucent planet implementation",
+      "audio_failure_count": 0
+    }
+  },
+  "boundaries": {
+    "catalog_file_change_count": 0,
+    "game_screen_change_count": 0,
+    "player_card_dock_change_count": 0,
+    "menu_change_count": 0,
+    "main_change_count": 0,
+    "final_manifest_change_count": 0,
+    "third_party_notices_change_count": 0,
+    "credits_change_count": 0,
+    "gameplay_change_count": 0,
+    "save_change_count": 0,
+    "rng_change_count": 0,
+    "full_smoke": false,
+    "formal_full_run": false
+  }
+}

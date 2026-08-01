@@ -9,13 +9,18 @@ $script:ColdRestoreAuthorizationModule = cold_restore_module_loader\Import-ColdR
     -Path (Join-Path $PSScriptRoot "cold_restore_authorization_contract_v1.psm1") `
     -RequiredCommands @(
         "Get-ColdRestoreAuthorizationContract",
+        "Get-ColdRestoreAuthorizationEntry",
+        "Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName",
         "Get-ColdRestoreAuthorizationRunId"
     )
 $script:AuthorizationContract = `
     cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationContract
 $script:RehearsalAuthorization = $script:AuthorizationContract.process_a_save_completion_rehearsal_v1
+$script:TargetedDiagnosticAuthorizationName = `
+    cold_restore_authorization_contract_v1\Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName
 $script:TargetedDiagnosticAuthorization = `
-    $script:AuthorizationContract.targeted_owner_capture_diagnostic_v4_importchain
+    cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationEntry `
+        $script:TargetedDiagnosticAuthorizationName
 $script:OfficialAttempt2Authorization = $script:AuthorizationContract.official_attempt_2
 $script:TargetedLedgerBindingModule = cold_restore_module_loader\Import-ColdRestoreModuleOnce `
     -Path (Join-Path $PSScriptRoot "cold_restore_targeted_ledger_binding_contract_v1.psm1") `
@@ -75,6 +80,7 @@ $script:OwnerOrder = @(
 $script:DiagnosticFields = @(
     "schema_version", "diagnostic_id", "run_id", "repository_head", "official", "formal",
     "scenario_identity", "scenario_identity_attested", "scenario_identity_failure",
+    "registry_binding_attested",
     "harness_or_scenario_failure_attested", "diagnostic_phase_timeline",
     "last_completed_diagnostic_phase", "current_diagnostic_phase", "next_expected_diagnostic_phase",
     "owner_audit_started", "owner_audit_completed", "first_owner_capture_index",
@@ -103,7 +109,7 @@ $script:TimelineRowFields = @(
 )
 $script:OwnerRowFields = @(
     "owner_index", "section_id", "owner_id", "owner_path", "capture_started",
-    "capture_completed", "capture_result_kind", "payload_schema_version",
+    "capture_completed", "capture_result_kind", "state_version",
     "payload_fingerprint", "payload_pure_data", "elapsed_milliseconds",
     "mutation_count", "rng_draw_delta", "world_time_delta", "public_log_delta",
     "reason_code", "private_payload_redacted", "row_evidence_fingerprint"
@@ -790,7 +796,9 @@ function Get-ProcessARehearsalAdmissionEvidence {
         throw "process_a_rehearsal_admission_timeline_incomplete"
     }
 
-    if ($diagnostic.owner_audit_started -isnot [bool] -or -not [bool]$diagnostic.owner_audit_started `
+    if ($diagnostic.registry_binding_attested -isnot [bool] `
+        -or -not [bool]$diagnostic.registry_binding_attested `
+        -or $diagnostic.owner_audit_started -isnot [bool] -or -not [bool]$diagnostic.owner_audit_started `
         -or $diagnostic.owner_audit_completed -isnot [bool] -or -not [bool]$diagnostic.owner_audit_completed `
         -or -not (Test-ProcessARehearsalInteger $diagnostic.first_owner_capture_index) `
         -or [int]$diagnostic.first_owner_capture_index -ne 0 `
@@ -832,8 +840,8 @@ function Get-ProcessARehearsalAdmissionEvidence {
             -or $row.capture_started -isnot [bool] -or -not [bool]$row.capture_started `
             -or $row.capture_completed -isnot [bool] -or -not [bool]$row.capture_completed `
             -or [string]$row.capture_result_kind -cne "CAPTURED" `
-            -or -not (Test-ProcessARehearsalInteger $row.payload_schema_version) `
-            -or [int]$row.payload_schema_version -lt 1 `
+            -or -not (Test-ProcessARehearsalInteger $row.state_version) `
+            -or [int]$row.state_version -lt 1 `
             -or -not (Test-ProcessARehearsalFingerprintValue $row.payload_fingerprint) `
             -or $row.payload_pure_data -isnot [bool] -or -not [bool]$row.payload_pure_data `
             -or -not (Test-ProcessARehearsalInteger $row.elapsed_milliseconds) `

@@ -8,13 +8,15 @@ $root = Split-Path -Parent $PSScriptRoot
 $modulePath = Join-Path $root "scripts\tools\process_a_rehearsal_admission_contract.psm1"
 $authorizationContractPath = Join-Path $root "scripts\tools\cold_restore_authorization_contract_v1.json"
 $authorizationContract = Get-Content -LiteralPath $authorizationContractPath -Raw | ConvertFrom-Json
+$authorizationModulePath = Join-Path $root "scripts\tools\cold_restore_authorization_contract_v1.psm1"
+Import-Module $authorizationModulePath -Force
+$targetedAuthorizationName = Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName
 $targetedAuthorization = `
-    $authorizationContract.targeted_owner_capture_diagnostic_v4_importchain
+    Get-ColdRestoreAuthorizationEntry $targetedAuthorizationName
 $rehearsalAuthorization = $authorizationContract.process_a_save_completion_rehearsal_v1
 $officialAuthorization = $authorizationContract.official_attempt_2
 $fixtureSourcePath = Join-Path $PSScriptRoot "process_a_rehearsal_admission_contract_test.ps1"
 $contractModule = Import-Module $modulePath -Force -PassThru
-Import-Module (Join-Path $root "scripts\tools\cold_restore_authorization_contract_v1.psm1") -Force
 
 $checks = 0
 $failures = [Collections.Generic.List[string]]::new()
@@ -209,7 +211,7 @@ else {
 $realLedgerPaths = @(
     (Join-Path $gitCommonPath ([string]$authorizationContract.official_attempt_2.attempt_1_claim_relative_path)),
     (Join-Path $gitCommonPath "codex\cold_restore_v3\non-official-alpha04c-owner-capture-attestation-12691a8\targeted_owner_capture_quota_ledger.json"),
-    (Join-Path $gitCommonPath ([string]$authorizationContract.targeted_owner_capture_diagnostic_v4_importchain.quota_ledger_relative_path)),
+    (Join-Path $gitCommonPath ([string]$targetedAuthorization.quota_ledger_relative_path)),
     (Join-Path $gitCommonPath ([string]$authorizationContract.process_a_save_completion_rehearsal_v1.quota_ledger_relative_path)),
     (Join-Path $gitCommonPath ([string]$authorizationContract.process_a_save_completion_rehearsal_v1.launch_ledger_relative_path)),
     (Join-Path $gitCommonPath ([string]$authorizationContract.official_attempt_2.claim_path))

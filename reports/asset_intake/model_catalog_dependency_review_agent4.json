@@ -1,0 +1,972 @@
+{
+  "schema_version": 1,
+  "task_id": "COMMERCIAL_ART_MODEL_CATALOG_DEPENDENCY_REVIEW_AGENT4_PHASE2",
+  "status": "PARTIAL",
+  "MODEL_DEPENDENCY_STATUS": "CLEAN",
+  "generated_at_utc": "2026-07-31T23:30:49.453742+00:00",
+  "snapshot": {
+    "branch": "codex/commercial-art-direct-integration-2e38764",
+    "head_sha": "664a89407bfc411cd6ab7ce86a19f02a70ffbaa6",
+    "growth_base_sha": "2e38764791cb37cdc45b2eb0836957f550822dd5",
+    "catalog_resource_path": "res://resources/presentation/alpha01_card_illustration_catalog.tres",
+    "catalog_sha256": "e3e980665a09d71bef50b047c18c566dc0b6b149deaf2041939cc57ef273f3f2",
+    "model_tree_worktree_change_count": 0,
+    "network_access_count": 0,
+    "web_search_count": 0,
+    "formal_run_count": 0,
+    "full_smoke_count": 0,
+    "report_paths_excluded_from_growth_measurement": [
+      "reports/asset_intake/model_catalog_dependency_review_agent4.json",
+      "reports/asset_intake/model_catalog_dependency_review_agent4.md"
+    ]
+  },
+  "dependency_closure": {
+    "method": "Parse 17 stable PackedScene text resources recursively, follow ext_resource PackedScene/glTF edges, parse glTF buffer and image URIs with JSON, and retain additional dependencies proven by real Godot resource loading.",
+    "stable_scene_count": 17,
+    "stable_scenes": [
+      {
+        "asset_key": "model.facility.factory.base",
+        "scene_path": "scenes/tools/commercial_art/components/models/FacilityFactoryBase.tscn"
+      },
+      {
+        "asset_key": "model.facility.market.base",
+        "scene_path": "scenes/tools/commercial_art/components/models/FacilityMarketBase.tscn"
+      },
+      {
+        "asset_key": "model.facility.starport.base",
+        "scene_path": "scenes/tools/commercial_art/components/models/FacilityStarportBase.tscn"
+      },
+      {
+        "asset_key": "model.facility.warehouse.base",
+        "scene_path": "scenes/tools/commercial_art/components/models/FacilityWarehouseBase.tscn"
+      },
+      {
+        "asset_key": "model.military.tier1",
+        "scene_path": "scenes/tools/commercial_art/components/models/MilitaryTier1.tscn"
+      },
+      {
+        "asset_key": "model.military.tier2",
+        "scene_path": "scenes/tools/commercial_art/components/models/MilitaryTier2.tscn"
+      },
+      {
+        "asset_key": "model.military.tier3",
+        "scene_path": "scenes/tools/commercial_art/components/models/MilitaryTier3.tscn"
+      },
+      {
+        "asset_key": "model.military.tier4",
+        "scene_path": "scenes/tools/commercial_art/components/models/MilitaryTier4.tscn"
+      },
+      {
+        "asset_key": "model.monster.commerce",
+        "scene_path": "scenes/tools/commercial_art/components/models/MonsterCommerce.tscn"
+      },
+      {
+        "asset_key": "model.monster.energy",
+        "scene_path": "scenes/tools/commercial_art/components/models/MonsterEnergy.tscn"
+      },
+      {
+        "asset_key": "model.monster.industry",
+        "scene_path": "scenes/tools/commercial_art/components/models/MonsterIndustry.tscn"
+      },
+      {
+        "asset_key": "model.monster.life",
+        "scene_path": "scenes/tools/commercial_art/components/models/MonsterLife.tscn"
+      },
+      {
+        "asset_key": "model.monster.shipping",
+        "scene_path": "scenes/tools/commercial_art/components/models/MonsterShipping.tscn"
+      },
+      {
+        "asset_key": "model.monster.technology",
+        "scene_path": "scenes/tools/commercial_art/components/models/MonsterTechnology.tscn"
+      },
+      {
+        "asset_key": "model.shipping.convoy",
+        "scene_path": "scenes/tools/commercial_art/components/models/ShippingConvoy.tscn"
+      },
+      {
+        "asset_key": "model.shipping.route_marker",
+        "scene_path": "scenes/tools/commercial_art/components/models/ShippingRouteMarker.tscn"
+      },
+      {
+        "asset_key": "model.shipping.starport_showcase",
+        "scene_path": "scenes/tools/commercial_art/components/models/ShippingStarportShowcase.tscn"
+      }
+    ],
+    "recursive_scene_count": 18,
+    "gltf_count": 31,
+    "gltf_dependency_rows": [
+      {
+        "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/George.gltf",
+        "external_buffers": [],
+        "external_images": [],
+        "embedded_buffer_count": 1,
+        "embedded_image_count": 1
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela.gltf",
+        "external_buffers": [],
+        "external_images": [],
+        "embedded_buffer_count": 1,
+        "embedded_image_count": 1
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike.gltf",
+        "external_buffers": [],
+        "external_images": [],
+        "embedded_buffer_count": 1,
+        "embedded_image_count": 1
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan.gltf",
+        "external_buffers": [],
+        "external_images": [],
+        "embedded_buffer_count": 1,
+        "embedded_image_count": 1
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Column_MetalSupport.gltf",
+        "external_buffers": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Column_MetalSupport.bin"
+        ],
+        "external_images": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_BaseColor.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_Normal.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_ORM.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_BaseColor_Red.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png"
+        ],
+        "embedded_buffer_count": 0,
+        "embedded_image_count": 0
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Column_Pipes.gltf",
+        "external_buffers": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Column_Pipes.bin"
+        ],
+        "external_images": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_BaseColor.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_Normal.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_ORM.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_BaseColor_Red.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png"
+        ],
+        "embedded_buffer_count": 0,
+        "embedded_image_count": 0
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Decal_XSign.gltf",
+        "external_buffers": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Decal_XSign.bin"
+        ],
+        "external_images": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Decals.png"
+        ],
+        "embedded_buffer_count": 0,
+        "embedded_image_count": 0
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_DarkPlates.gltf",
+        "external_buffers": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_DarkPlates.bin"
+        ],
+        "external_images": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png"
+        ],
+        "embedded_buffer_count": 0,
+        "embedded_image_count": 0
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Metal2.gltf",
+        "external_buffers": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Metal2.bin"
+        ],
+        "external_images": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_BaseColor_Red.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png"
+        ],
+        "embedded_buffer_count": 0,
+        "embedded_image_count": 0
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Ramp_2Short.gltf",
+        "external_buffers": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Ramp_2Short.bin"
+        ],
+        "external_images": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Decals.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_BaseColor_Red.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png"
+        ],
+        "embedded_buffer_count": 0,
+        "embedded_image_count": 0
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Round1.gltf",
+        "external_buffers": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Round1.bin"
+        ],
+        "external_images": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_BaseColor_Red.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png"
+        ],
+        "embedded_buffer_count": 0,
+        "embedded_image_count": 0
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Simple2.gltf",
+        "external_buffers": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Simple2.bin"
+        ],
+        "external_images": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_BaseColor.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_Normal.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_ORM.png"
+        ],
+        "embedded_buffer_count": 0,
+        "embedded_image_count": 0
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_AccessPoint.gltf",
+        "external_buffers": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_AccessPoint.bin"
+        ],
+        "external_images": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Decals.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png"
+        ],
+        "embedded_buffer_count": 0,
+        "embedded_image_count": 0
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_Barrel_Large.gltf",
+        "external_buffers": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_Barrel_Large.bin"
+        ],
+        "external_images": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_BaseColor_Red.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png"
+        ],
+        "embedded_buffer_count": 0,
+        "embedded_image_count": 0
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_Computer.gltf",
+        "external_buffers": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_Computer.bin"
+        ],
+        "external_images": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Decals.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png"
+        ],
+        "embedded_buffer_count": 0,
+        "embedded_image_count": 0
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_Rail_Round_Big.gltf",
+        "external_buffers": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_Rail_Round_Big.bin"
+        ],
+        "external_images": [
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_BaseColor_Red.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png",
+          "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png"
+        ],
+        "embedded_buffer_count": 0,
+        "embedded_image_count": 0
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Enemy_EyeDrone.gltf",
+        "external_buffers": [
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Enemy_EyeDrone.bin"
+        ],
+        "external_images": [
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_BaseColor_png.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_Normal.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_ORM.png"
+        ],
+        "embedded_buffer_count": 0,
+        "embedded_image_count": 0
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Crate_Large.gltf",
+        "external_buffers": [
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Crate_Large.bin"
+        ],
+        "external_images": [
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_BaseColor.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_Normal.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_ORM.png"
+        ],
+        "embedded_buffer_count": 0,
+        "embedded_image_count": 0
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Crate_Tarp_Large.gltf",
+        "external_buffers": [
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Crate_Tarp_Large.bin"
+        ],
+        "external_images": [
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_BaseColor.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_Normal.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_ORM.png"
+        ],
+        "embedded_buffer_count": 0,
+        "embedded_image_count": 0
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Desk_Medium.gltf",
+        "external_buffers": [
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Desk_Medium.bin"
+        ],
+        "external_images": [
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_BaseColor_Red.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_ORM.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_BaseColor.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Cables.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Normal.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_ORM.png"
+        ],
+        "embedded_buffer_count": 0,
+        "embedded_image_count": 0
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_SatelliteDish.gltf",
+        "external_buffers": [
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_SatelliteDish.bin"
+        ],
+        "external_images": [
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_BaseColor_Red.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_ORM.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_BaseColor_Red.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_Normal.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_ORM.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Cables.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Normal.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_ORM.png"
+        ],
+        "embedded_buffer_count": 0,
+        "embedded_image_count": 0
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Shelves_WideShort.gltf",
+        "external_buffers": [
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Shelves_WideShort.bin"
+        ],
+        "external_images": [
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_BaseColor_Red.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.png",
+          "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_ORM.png"
+        ],
+        "embedded_buffer_count": 0,
+        "embedded_image_count": 0
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Armabee_Evolved.gltf",
+        "external_buffers": [],
+        "external_images": [],
+        "embedded_buffer_count": 1,
+        "embedded_image_count": 1
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Dragon_Evolved.gltf",
+        "external_buffers": [],
+        "external_images": [],
+        "embedded_buffer_count": 1,
+        "embedded_image_count": 1
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Ghost_Skull.gltf",
+        "external_buffers": [],
+        "external_images": [],
+        "embedded_buffer_count": 1,
+        "embedded_image_count": 1
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose.gltf",
+        "external_buffers": [],
+        "external_images": [],
+        "embedded_buffer_count": 1,
+        "embedded_image_count": 1
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull.gltf",
+        "external_buffers": [],
+        "external_images": [],
+        "embedded_buffer_count": 1,
+        "embedded_image_count": 1
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle.gltf",
+        "external_buffers": [],
+        "external_images": [],
+        "embedded_buffer_count": 1,
+        "embedded_image_count": 1
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen.gltf",
+        "external_buffers": [],
+        "external_images": [],
+        "embedded_buffer_count": 1,
+        "embedded_image_count": 1
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake.gltf",
+        "external_buffers": [],
+        "external_images": [],
+        "embedded_buffer_count": 1,
+        "embedded_image_count": 1
+      },
+      {
+        "path": "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker.gltf",
+        "external_buffers": [],
+        "external_images": [],
+        "embedded_buffer_count": 1,
+        "embedded_image_count": 1
+      }
+    ],
+    "dependency_edge_count": 150,
+    "external_buffer_edge_count": 18,
+    "external_image_edge_count": 83,
+    "embedded_buffer_gltf_count": 13,
+    "embedded_image_gltf_count": 13,
+    "runtime_dependency_file_count": 91,
+    "godot_import_sidecar_file_count": 73,
+    "license_evidence_file_count": 5,
+    "closure_or_evidence_file_count": 169,
+    "tracked_model_file_count": 169,
+    "tracked_model_bytes": 125219889,
+    "classified_once_coverage": "169/169",
+    "classification_ledger_sha256": "cafb86537f00152a25644a2ceecddb63f8dfe613feab7bc625e948ea33df9534",
+    "classification_ledger_canonicalization": "Sort every classification/path pair by classification then path, encode each as classification<TAB>path, join with LF, append a final LF, and hash UTF-8 bytes without BOM using SHA-256.",
+    "pre_correction_classification_ledger_sha256": "817ce530d2e29bc31b3e27a80803a45f0abcfda5ab1894844146469da34cee0f",
+    "missing_dependency_paths": [],
+    "files_by_classification": {
+      "license_evidence": [
+        "assets/third_party/commercial/models/quaternius/animated_mech/LICENSE_CC0.txt",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/LICENSE_CC0.txt",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/LICENSE_CC0.txt",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/LICENSE_CC0.txt",
+        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/LICENSE_CC0.txt"
+      ],
+      "runtime_dependency": [
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/George.gltf",
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela.gltf",
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike.gltf",
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan.gltf",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Column_MetalSupport.bin",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Column_MetalSupport.gltf",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Column_Pipes.bin",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Column_Pipes.gltf",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Decal_XSign.bin",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Decal_XSign.gltf",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_DarkPlates.bin",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_DarkPlates.gltf",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Metal2.bin",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Metal2.gltf",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Ramp_2Short.bin",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Ramp_2Short.gltf",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Round1.bin",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Round1.gltf",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Simple2.bin",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Simple2.gltf",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_AccessPoint.bin",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_AccessPoint.gltf",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_Barrel_Large.bin",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_Barrel_Large.gltf",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_Computer.bin",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_Computer.gltf",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_Rail_Round_Big.bin",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_Rail_Round_Big.gltf",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Decals.png",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_BaseColor.png",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_Normal.png",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_ORM.png",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_BaseColor_Red.png",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_BaseColor.png",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_Normal.png",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_ORM.png",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Enemy_EyeDrone.bin",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Enemy_EyeDrone.gltf",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Crate_Large.bin",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Crate_Large.gltf",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Crate_Tarp_Large.bin",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Crate_Tarp_Large.gltf",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Desk_Medium.bin",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Desk_Medium.gltf",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_SatelliteDish.bin",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_SatelliteDish.gltf",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Shelves_WideShort.bin",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Shelves_WideShort.gltf",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_BaseColor_png.png",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_Normal.png",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_ORM.png",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_BaseColor.png",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_Normal.png",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_ORM.png",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_BaseColor_Red.png",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.png",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_ORM.png",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_BaseColor_Red.png",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_Normal.png",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_ORM.png",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_BaseColor.png",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Cables.png",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Normal.png",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_ORM.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Armabee_Evolved.gltf",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Dragon_Evolved.gltf",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Ghost_Skull.gltf",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose.gltf",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull.gltf",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle.gltf",
+        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen.gltf",
+        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake.gltf",
+        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker.gltf",
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png",
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela_Leela_Texture.png",
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike_Mike_Texture.png",
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan_Stan_Texture.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Armabee_Evolved_Atlas_Monsters.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Dragon_Evolved_Atlas_Monsters.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Ghost_Skull_Atlas_Monsters.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose_Atlas_Monsters.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull_Atlas_Monsters.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle_Atlas_Monsters.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen_Omen_Orange.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png",
+        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png"
+      ],
+      "godot_import_sidecar_for_runtime_dependency": [
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/George.gltf.import",
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela.gltf.import",
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike.gltf.import",
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan.gltf.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Column_MetalSupport.gltf.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Column_Pipes.gltf.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Decal_XSign.gltf.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_DarkPlates.gltf.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Metal2.gltf.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Ramp_2Short.gltf.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Round1.gltf.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_Simple2.gltf.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_AccessPoint.gltf.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_Barrel_Large.gltf.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_Computer.gltf.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_Rail_Round_Big.gltf.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Decals.png.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_BaseColor.png.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_Normal.png.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_ORM.png.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_BaseColor_Red.png.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_BaseColor.png.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_Normal.png.import",
+        "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_ORM.png.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Enemy_EyeDrone.gltf.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Crate_Large.gltf.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Crate_Tarp_Large.gltf.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Desk_Medium.gltf.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_SatelliteDish.gltf.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Prop_Shelves_WideShort.gltf.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_BaseColor_png.png.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_Normal.png.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_ORM.png.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_BaseColor.png.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_Normal.png.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_ORM.png.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_BaseColor_Red.png.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.png.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_ORM.png.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_BaseColor_Red.png.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_Normal.png.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_ORM.png.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_BaseColor.png.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Cables.png.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Normal.png.import",
+        "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_ORM.png.import",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Armabee_Evolved.gltf.import",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Dragon_Evolved.gltf.import",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Ghost_Skull.gltf.import",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose.gltf.import",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull.gltf.import",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle.gltf.import",
+        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen.gltf.import",
+        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake.gltf.import",
+        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker.gltf.import",
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png.import",
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela_Leela_Texture.png.import",
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike_Mike_Texture.png.import",
+        "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan_Stan_Texture.png.import",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Armabee_Evolved_Atlas_Monsters.png.import",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Dragon_Evolved_Atlas_Monsters.png.import",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Ghost_Skull_Atlas_Monsters.png.import",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose_Atlas_Monsters.png.import",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull_Atlas_Monsters.png.import",
+        "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle_Atlas_Monsters.png.import",
+        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen_Omen_Orange.png.import",
+        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png.import",
+        "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png.import"
+      ],
+      "unused_not_in_dependency_closure": [],
+      "unused_import_sidecar": []
+    },
+    "classification_counts": {
+      "godot_import_sidecar_for_runtime_dependency": 73,
+      "license_evidence": 5,
+      "runtime_dependency": 91,
+      "unused_import_sidecar": 0,
+      "unused_not_in_dependency_closure": 0
+    },
+    "classification_bytes": {
+      "godot_import_sidecar_for_runtime_dependency": 82269,
+      "license_evidence": 2764,
+      "runtime_dependency": 125134856,
+      "unused_import_sidecar": 0,
+      "unused_not_in_dependency_closure": 0
+    },
+    "unused_file_count": 0,
+    "safe_delete_path_count": 0,
+    "safe_delete_bytes": 0,
+    "safe_delete_paths": [],
+    "safe_delete_nonself_text_reference_count": 0,
+    "safe_delete_reason": "None. Real Godot resource loading proved that all 13 texture PNG files and all 13 matching .import sidecars are runtime import dependencies. Static glTF URI inspection was insufficient to determine Godot importer dependencies.",
+    "deletion_performed": false,
+    "runtime_import_correction": {
+      "previous_conclusion_corrected": true,
+      "previously_misclassified_texture_count": 13,
+      "previously_misclassified_import_sidecar_count": 13,
+      "previously_misclassified_path_count": 26,
+      "real_godot_loading_proved_required": true,
+      "all_26_paths_restored_and_present": true,
+      "asset_deletion_performed": false,
+      "MODEL_DEPENDENCY_STATUS": "CLEAN"
+    }
+  },
+  "catalog_review": {
+    "catalog_validation_green": true,
+    "stable_asset_count_actual": 97,
+    "model_stable_key_count": 17,
+    "model_stable_keys": [
+      "model.facility.factory.base",
+      "model.facility.market.base",
+      "model.facility.starport.base",
+      "model.facility.warehouse.base",
+      "model.military.tier1",
+      "model.military.tier2",
+      "model.military.tier3",
+      "model.military.tier4",
+      "model.monster.commerce",
+      "model.monster.energy",
+      "model.monster.industry",
+      "model.monster.life",
+      "model.monster.shipping",
+      "model.monster.technology",
+      "model.shipping.convoy",
+      "model.shipping.route_marker",
+      "model.shipping.starport_showcase"
+    ],
+    "generic_catalog_contract_test": {
+      "path": "res://tests/commercial_art/commercial_presentation_catalog_contract_test.gd",
+      "checks": 11,
+      "passed": 8,
+      "failed": 3,
+      "green": false,
+      "failures": [
+        "all verified commercial presentation assets are registered",
+        "typed stable asset row validates",
+        "existing scene service exposes the generic catalog API"
+      ],
+      "log_sha256": "61748a8318a38652f01efb94f729662e1c336ee228b326798aa3e779a7f02611",
+      "diagnosis": "The resource has 97 stable assets after four font-variant keys were added by another lane, while this uncommitted test still hard-codes production/fixture/service counts of 93/94/94. Legacy validation and generic lookup behavior pass; the failure is cardinality fixture drift.",
+      "new_font_variant_keys_causing_count_delta": [
+        "font.body.zh.bold",
+        "font.body.ja.bold",
+        "font.display.medium",
+        "font.display.bold"
+      ]
+    },
+    "model_catalog_readonly_audit": {
+      "checks": 105,
+      "passed": 105,
+      "failed": 0,
+      "green": true,
+      "packed_scene_resolution": "17/17",
+      "instantiation": "17/17",
+      "presentation_only": "17/17",
+      "root_asset_key_parity": "17/17",
+      "true_route_owner_count": 0,
+      "rows": [
+        {
+          "asset_key": "model.facility.factory.base",
+          "instantiated": true,
+          "kind": "PackedScene",
+          "presentation_only": true,
+          "resource_path": "res://scenes/tools/commercial_art/components/models/FacilityFactoryBase.tscn",
+          "root_asset_key": "model.facility.factory.base",
+          "scope": "production_safe_existing_fact_only",
+          "true_route_owner_paths": []
+        },
+        {
+          "asset_key": "model.facility.market.base",
+          "instantiated": true,
+          "kind": "PackedScene",
+          "presentation_only": true,
+          "resource_path": "res://scenes/tools/commercial_art/components/models/FacilityMarketBase.tscn",
+          "root_asset_key": "model.facility.market.base",
+          "scope": "production_safe_existing_fact_only",
+          "true_route_owner_paths": []
+        },
+        {
+          "asset_key": "model.facility.warehouse.base",
+          "instantiated": true,
+          "kind": "PackedScene",
+          "presentation_only": true,
+          "resource_path": "res://scenes/tools/commercial_art/components/models/FacilityWarehouseBase.tscn",
+          "root_asset_key": "model.facility.warehouse.base",
+          "scope": "production_safe_existing_fact_only",
+          "true_route_owner_paths": []
+        },
+        {
+          "asset_key": "model.facility.starport.base",
+          "instantiated": true,
+          "kind": "PackedScene",
+          "presentation_only": true,
+          "resource_path": "res://scenes/tools/commercial_art/components/models/FacilityStarportBase.tscn",
+          "root_asset_key": "model.facility.starport.base",
+          "scope": "production_safe_existing_fact_only",
+          "true_route_owner_paths": []
+        },
+        {
+          "asset_key": "model.monster.life",
+          "instantiated": true,
+          "kind": "PackedScene",
+          "presentation_only": true,
+          "resource_path": "res://scenes/tools/commercial_art/components/models/MonsterLife.tscn",
+          "root_asset_key": "model.monster.life",
+          "scope": "production_safe_existing_fact_only",
+          "true_route_owner_paths": []
+        },
+        {
+          "asset_key": "model.monster.energy",
+          "instantiated": true,
+          "kind": "PackedScene",
+          "presentation_only": true,
+          "resource_path": "res://scenes/tools/commercial_art/components/models/MonsterEnergy.tscn",
+          "root_asset_key": "model.monster.energy",
+          "scope": "production_safe_existing_fact_only",
+          "true_route_owner_paths": []
+        },
+        {
+          "asset_key": "model.monster.industry",
+          "instantiated": true,
+          "kind": "PackedScene",
+          "presentation_only": true,
+          "resource_path": "res://scenes/tools/commercial_art/components/models/MonsterIndustry.tscn",
+          "root_asset_key": "model.monster.industry",
+          "scope": "production_safe_existing_fact_only",
+          "true_route_owner_paths": []
+        },
+        {
+          "asset_key": "model.monster.technology",
+          "instantiated": true,
+          "kind": "PackedScene",
+          "presentation_only": true,
+          "resource_path": "res://scenes/tools/commercial_art/components/models/MonsterTechnology.tscn",
+          "root_asset_key": "model.monster.technology",
+          "scope": "production_safe_existing_fact_only",
+          "true_route_owner_paths": []
+        },
+        {
+          "asset_key": "model.monster.commerce",
+          "instantiated": true,
+          "kind": "PackedScene",
+          "presentation_only": true,
+          "resource_path": "res://scenes/tools/commercial_art/components/models/MonsterCommerce.tscn",
+          "root_asset_key": "model.monster.commerce",
+          "scope": "production_safe_existing_fact_only",
+          "true_route_owner_paths": []
+        },
+        {
+          "asset_key": "model.monster.shipping",
+          "instantiated": true,
+          "kind": "PackedScene",
+          "presentation_only": true,
+          "resource_path": "res://scenes/tools/commercial_art/components/models/MonsterShipping.tscn",
+          "root_asset_key": "model.monster.shipping",
+          "scope": "production_safe_existing_fact_only",
+          "true_route_owner_paths": []
+        },
+        {
+          "asset_key": "model.military.tier1",
+          "instantiated": true,
+          "kind": "PackedScene",
+          "presentation_only": true,
+          "resource_path": "res://scenes/tools/commercial_art/components/models/MilitaryTier1.tscn",
+          "root_asset_key": "model.military.tier1",
+          "scope": "production_safe_existing_fact_only",
+          "true_route_owner_paths": []
+        },
+        {
+          "asset_key": "model.military.tier2",
+          "instantiated": true,
+          "kind": "PackedScene",
+          "presentation_only": true,
+          "resource_path": "res://scenes/tools/commercial_art/components/models/MilitaryTier2.tscn",
+          "root_asset_key": "model.military.tier2",
+          "scope": "production_safe_existing_fact_only",
+          "true_route_owner_paths": []
+        },
+        {
+          "asset_key": "model.military.tier3",
+          "instantiated": true,
+          "kind": "PackedScene",
+          "presentation_only": true,
+          "resource_path": "res://scenes/tools/commercial_art/components/models/MilitaryTier3.tscn",
+          "root_asset_key": "model.military.tier3",
+          "scope": "production_safe_existing_fact_only",
+          "true_route_owner_paths": []
+        },
+        {
+          "asset_key": "model.military.tier4",
+          "instantiated": true,
+          "kind": "PackedScene",
+          "presentation_only": true,
+          "resource_path": "res://scenes/tools/commercial_art/components/models/MilitaryTier4.tscn",
+          "root_asset_key": "model.military.tier4",
+          "scope": "production_safe_existing_fact_only",
+          "true_route_owner_paths": []
+        },
+        {
+          "asset_key": "model.shipping.route_marker",
+          "instantiated": true,
+          "kind": "PackedScene",
+          "presentation_only": true,
+          "resource_path": "res://scenes/tools/commercial_art/components/models/ShippingRouteMarker.tscn",
+          "root_asset_key": "model.shipping.route_marker",
+          "scope": "production_safe_decorative_only",
+          "true_route_owner_paths": []
+        },
+        {
+          "asset_key": "model.shipping.convoy",
+          "instantiated": true,
+          "kind": "PackedScene",
+          "presentation_only": true,
+          "resource_path": "res://scenes/tools/commercial_art/components/models/ShippingConvoy.tscn",
+          "root_asset_key": "model.shipping.convoy",
+          "scope": "production_safe_decorative_only",
+          "true_route_owner_paths": []
+        },
+        {
+          "asset_key": "model.shipping.starport_showcase",
+          "instantiated": true,
+          "kind": "PackedScene",
+          "presentation_only": true,
+          "resource_path": "res://scenes/tools/commercial_art/components/models/ShippingStarportShowcase.tscn",
+          "root_asset_key": "model.shipping.starport_showcase",
+          "scope": "production_safe_decorative_only",
+          "true_route_owner_paths": []
+        }
+      ],
+      "log_sha256": "3fb8ab7843ab21d31f81e3e82d2306071cb1b65c5283304cfb720375094edb69"
+    },
+    "catalog_edit_performed_by_agent4": false
+  },
+  "repository_growth": {
+    "measurement": "Net working-tree content bytes versus the clean integration base, including committed changes and every nonignored untracked file, excluding this self-referential report pair.",
+    "baseline_tracked_file_count": 4165,
+    "baseline_content_bytes": 118725924,
+    "current_tracked_file_count": 4504,
+    "current_tracked_content_bytes": 311437049,
+    "current_nonignored_untracked_file_count": 283,
+    "current_nonignored_untracked_bytes": 33995413,
+    "current_repository_content_bytes": 345432462,
+    "current_net_growth_bytes": 226706538,
+    "current_net_growth_decimal_mb": 226.706538,
+    "current_net_growth_mib": 216.20420265197754,
+    "changed_or_untracked_path_count": 638,
+    "largest_current_file_path": "assets/third_party/commercial/fonts/noto_sans_cjk/NotoSansCJKjp-Bold.otf",
+    "largest_current_file_bytes": 17032620,
+    "largest_current_file_decimal_mb": 17.03262,
+    "individual_file_under_25_mb": true,
+    "budget_decimal_bytes": 250000000,
+    "remaining_budget_before_screenshots_bytes": 23293462,
+    "required_average_max_for_15_screenshots_bytes": 1552897.4666666666,
+    "existing_qa_png_sample_count": 116,
+    "existing_qa_png_mean_bytes": 392939.75,
+    "existing_qa_png_max_bytes": 724084,
+    "estimated_15_screenshot_bytes_at_observed_mean": 5894096,
+    "estimated_15_screenshot_bytes_at_observed_max_each": 10861260,
+    "projected_growth_at_observed_mean_bytes": 232600634,
+    "projected_growth_at_observed_mean_decimal_mb": 232.600634,
+    "projected_growth_at_observed_max_each_bytes": 237567798,
+    "projected_growth_at_observed_max_each_decimal_mb": 237.567798,
+    "estimated_under_250_mb_at_observed_mean": true,
+    "estimated_under_250_mb_at_observed_max_each": true,
+    "uncompressed_rgba_reference_bytes": 120317952,
+    "uncompressed_rgba_reference_would_exceed_budget": true,
+    "estimate_caveat": "The budget estimate uses 116 existing repository QA PNGs with 16:9 dimensions of at least 1280x700. Actual screenshots must be byte-gated after capture; raw framebuffer bytes are not a PNG-size prediction.",
+    "misclassified_runtime_dependency_bytes_retained": 16350211
+  },
+  "findings": [
+    {
+      "severity": "medium",
+      "code": "catalog_contract_cardinality_fixture_drift",
+      "detail": "The generic Catalog contract test is 8/11 because it hard-codes 93/94/94 after another lane raised the valid stable asset count to 97. The 17 model bindings themselves pass 105/105.",
+      "recommended_owner": "Catalog single writer"
+    },
+    {
+      "severity": "low",
+      "code": "runtime_import_dependency_misclassification_corrected",
+      "detail": "Real Godot loading disproved the static safe-delete conclusion. The thirteen texture PNG files and thirteen matching .import sidecars are runtime import dependencies; all 26 are restored, retained, and included in the corrected dependency closure.",
+      "resolution_status": "resolved",
+      "recommended_owner": "none"
+    }
+  ],
+  "boundaries": {
+    "model_file_edit_count": 0,
+    "catalog_edit_count": 0,
+    "production_map_edit_count": 0,
+    "final_manifest_edit_count": 0,
+    "notices_edit_count": 0,
+    "credits_edit_count": 0,
+    "network_access_count": 0,
+    "formal_run_count": 0,
+    "full_smoke_count": 0
+  }
+}

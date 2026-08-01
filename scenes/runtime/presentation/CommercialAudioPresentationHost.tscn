@@ -1,0 +1,24 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/audio/commercial_audio_presentation_host.gd" id="1_host"]
+[ext_resource type="Script" path="res://scripts/audio/audio_event_bus.gd" id="2_bus"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/CommercialAudioPresentationService.tscn" id="3_sfx"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/CommercialMusicPresentationController.tscn" id="4_music"]
+[ext_resource type="Resource" path="res://resources/presentation/alpha01_card_illustration_catalog.tres" id="5_catalog"]
+
+[node name="CommercialAudioPresentationHost" type="Node"]
+script = ExtResource("1_host")
+catalog = ExtResource("5_catalog")
+player_card_dock_path = NodePath("../SafeArea/MainRows/PlayerCardDock")
+menu_overlay_path = NodePath("../OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay")
+editor_description = "Presentation-only commercial audio composition. It consumes public UI signals and stable Catalog keys without gameplay, Save, or RNG authority."
+
+[node name="AudioEventBus" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("2_bus")
+
+[node name="CommercialAudioPresentationService" parent="." instance=ExtResource("3_sfx")]
+unique_name_in_owner = true
+
+[node name="CommercialMusicPresentationController" parent="." instance=ExtResource("4_music")]
+unique_name_in_owner = true

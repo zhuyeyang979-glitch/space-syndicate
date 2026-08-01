@@ -1,10 +1,31 @@
 # Alpha 0.4-C Save/Resume current handoff
 
-Status: `BLOCKED_BY_NEW_TARGETED_OWNER_DIAGNOSTIC_AUTHORIZATION`.
+Status: `BLOCKED_BY_V5_PRE_OWNER_REPOSITORY_HEAD_BINDING`.
 
 PR #77 remains Draft. Alpha 0.4-C remains PARTIAL and may not merge to
 `main`. Official Attempt 2 was not created, its authorization remains
-unconsumed, and Process B/C were not started.
+unconsumed, and Process B/C were not started. V5 consumed the exact `4 -> 5`
+diagnostic quota once; Process A was not started.
+
+## Latest V5 result
+
+V5 ran once at `604264b0af9a10ca07db58851e8a2d00171dd2f3`.
+Godot launched, but child bootstrap rejected `repository_head` before scenario
+identity, Registry binding, or Owner Audit. The ledger contains the correct
+HEAD string; the validator's expected safe fingerprint is the fingerprint of
+canonical JSON `null`. Owner Capture therefore remains `0/19`, with no
+attested failing section or Owner.
+
+The V5 ledger is consumed at SHA-256
+`b7e6c66852540c2b3066f86cd6e9c9d9454c185c4e8ed17d168c6b0dbf466742`.
+Parent observed exit code `2`, no timeout, no parent termination, and zero
+remaining task processes. Child Completion is absent. Process A, Attempt 2,
+Process B, and Process C were not started. No V6 authorization exists.
+
+Canonical details and evidence fingerprints are in
+`alpha04c_v5_owner_diagnostic_result.json` and its Markdown companion. Older
+diagnostic sections below remain historical evidence and are not the latest
+run.
 
 ## Scope and baseline
 
@@ -180,11 +201,9 @@ The prior targeted diagnostic ledger remains immutable at SHA-256
 
 Next exact task:
 
-`ALPHA_0_4_C_REAUTHORIZED_TARGETED_OWNER_DIAGNOSTIC_V3`
+`ALPHA_0_4_C_POST_CANONICAL_PRE_OWNER_FAILURE_ARCHITECTURE_REVIEW`
 
-It requires the explicit statement
-`AUTHORIZED_NEW_TARGETED_OWNER_CAPTURE_DIAGNOSTIC_COUNT=1`, a new authorization
-identity, a new ledger path, and the closed transition `2 -> 3`. It may then
-execute exactly one diagnostic to reach the 19-Owner audit. No Owner may be
-changed until that run attests a concrete section, Owner, and reason. Only a
-19/19 diagnostic may admit the still-unconsumed Process A rehearsal.
+The next task must inspect why the real child-bootstrap expected
+`repository_head=null` while the V5 ledger and launch attestation both bind
+the correct HEAD. It may not infer an Owner failure, run Process A, or create
+an automatic V6 authorization.

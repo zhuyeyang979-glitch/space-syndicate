@@ -1,0 +1,9 @@
+Icons:
+"Leaf Swirl", "Lightning Electron", "Cog" and "Circuitry"
+by Lorc;
+
+"Receive Money" and "Spaceship"
+by Delapouite;
+
+available at game-icons.net under CC BY 3.0.
+Icons were resized, normalized and recolored for Space Syndicate.

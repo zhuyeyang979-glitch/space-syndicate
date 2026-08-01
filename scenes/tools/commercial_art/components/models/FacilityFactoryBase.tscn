@@ -1,0 +1,70 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/tools/commercial_art/components/models/ModelPedestal.tscn" id="1_pedestal"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Platform_DarkPlates.gltf" id="2_platform"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Column_MetalSupport.gltf" id="3_support"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Column_Pipes.gltf" id="4_pipes"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/Prop_Barrel_Large.gltf" id="5_barrel"]
+[ext_resource type="PackedScene" path="res://assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/Enemy_EyeDrone.gltf" id="6_machine"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_core"]
+albedo_color = Color(0.596078, 0.639216, 0.701961, 1)
+emission_enabled = true
+emission = Color(0.27451, 0.337255, 0.419608, 1)
+emission_energy_multiplier = 2.2
+metallic = 0.75
+roughness = 0.24
+
+[sub_resource type="SphereMesh" id="SphereMesh_core"]
+material = SubResource("StandardMaterial3D_core")
+radius = 0.38
+height = 0.76
+radial_segments = 24
+rings = 12
+
+[node name="FacilityFactoryBase" type="Node3D"]
+metadata/asset_key = "model.facility.factory.base"
+metadata/presentation_only = true
+metadata/surface_normal_axis = "+Y"
+metadata/source_models = PackedStringArray("Platform_DarkPlates.gltf", "Column_MetalSupport.gltf", "Column_Pipes.gltf", "Prop_Barrel_Large.gltf", "Enemy_EyeDrone.gltf")
+
+[node name="Pedestal" parent="." instance=ExtResource("1_pedestal")]
+scale = Vector3(2.1, 1, 2.1)
+
+[node name="IndustrialPlatform" parent="." instance=ExtResource("2_platform")]
+position = Vector3(0, 0.05, 0)
+scale = Vector3(1.1, 1.1, 1.1)
+
+[node name="SupportNW" parent="." instance=ExtResource("3_support")]
+position = Vector3(-1.35, 0.25, -1.1)
+scale = Vector3(0.65, 0.65, 0.65)
+
+[node name="SupportNE" parent="." instance=ExtResource("3_support")]
+position = Vector3(1.35, 0.25, -1.1)
+scale = Vector3(0.65, 0.65, 0.65)
+
+[node name="PipeBankLeft" parent="." instance=ExtResource("4_pipes")]
+position = Vector3(-1.4, 0.25, 0.85)
+rotation_degrees = Vector3(0, 90, 0)
+scale = Vector3(0.72, 0.72, 0.72)
+
+[node name="PipeBankRight" parent="." instance=ExtResource("4_pipes")]
+position = Vector3(1.4, 0.25, 0.85)
+rotation_degrees = Vector3(0, -90, 0)
+scale = Vector3(0.72, 0.72, 0.72)
+
+[node name="BarrelLeft" parent="." instance=ExtResource("5_barrel")]
+position = Vector3(-0.95, 0.22, 1.25)
+scale = Vector3(0.62, 0.62, 0.62)
+
+[node name="BarrelRight" parent="." instance=ExtResource("5_barrel")]
+position = Vector3(0.95, 0.22, 1.25)
+scale = Vector3(0.62, 0.62, 0.62)
+
+[node name="MachineCore" parent="." instance=ExtResource("6_machine")]
+position = Vector3(0, 0.95, 0)
+scale = Vector3(0.72, 0.72, 0.72)
+
+[node name="LocalizedIndustryGlow" type="MeshInstance3D" parent="."]
+position = Vector3(0, 1.2, 0)
+mesh = SubResource("SphereMesh_core")

@@ -33,6 +33,7 @@ try {
     Assert-BindingCondition (
         [int]$contract.schema_version -eq 1 -and
         [string]$contract.contract_id -ceq "ColdRestoreTargetedLedgerBindingContractV1" -and
+        [string]$contract.authorization_entry_resolution -ceq "ledger_authorization_id" -and
         [int]$contract.ledger_schema_version -eq 4
     ) "binding contract identity is exact"
     Assert-BindingCondition (
@@ -45,8 +46,9 @@ try {
     ) "every field has one wire type and typed reason"
     Assert-BindingCondition (
         @($contract.exact_values_from_authorization_contract.PSObject.Properties).Count -eq 8 -and
+        @($contract.authorization_override_fields.PSObject.Properties).Count -eq 1 -and
         @($contract.option_bindings.PSObject.Properties).Count -eq 5
-    ) "authorization and child option bindings are explicit"
+    ) "authorization, historical override, and child option bindings are explicit"
     Assert-BindingCondition (
         @($contract.integer_encoding_rules.json_integer_number_fields).Count -eq 6 -and
         @($contract.integer_encoding_rules.decimal_string_fields).Count -eq 1 -and
@@ -95,19 +97,38 @@ try {
         ) "binding literal $($fixedValue.Substring(0, 8)) has one source"
     }
 
-    $authorizationContract = [IO.File]::ReadAllText(
-        (Join-Path $toolsRoot "cold_restore_authorization_contract_v1.json"),
-        [Text.UTF8Encoding]::new($false)
-    ) | ConvertFrom-Json -DateKind String
-    Assert-BindingCondition (
-        $null -eq $authorizationContract.PSObject.Properties["targeted_owner_capture_diagnostic_v5"]
-    ) "no V5 authorization exists"
-
     Import-Module $modulePath -ErrorAction Stop
+    Import-Module (Join-Path $toolsRoot "cold_restore_authorization_contract_v1.psm1") -Force
     $moduleContract = cold_restore_targeted_ledger_binding_contract_v1\Get-ColdRestoreTargetedLedgerBindingContract
     Assert-BindingCondition (
         [string]$moduleContract.contract_id -ceq [string]$contract.contract_id
     ) "PowerShell module reads the same contract bytes"
+    $currentName = cold_restore_authorization_contract_v1\Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName
+    $currentAuthorization = cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationEntry $currentName
+    Assert-BindingCondition (
+        [int]$currentAuthorization.permitted_transition_from -eq 4 -and
+        [int]$currentAuthorization.permitted_transition_to -eq 5 -and
+        [int]$currentAuthorization.authorized_increment -eq 1 -and
+        [int]$currentAuthorization.maximum_invocation_count -eq 5 -and
+        [string]$currentAuthorization.previous_quota_ledger_sha256 -ceq
+            "154ceedf4032404d4c7d355fbd775991e20d29299f6e05e3a8c8e70c64be208c"
+    ) "current canonical authorization closes exactly from four to five"
+    foreach ($singleSourceValue in @(
+            [string]$currentAuthorization.authorization_id,
+            [string]$currentAuthorization.quota_ledger_relative_path,
+            [string]$currentAuthorization.evidence_root_relative_path,
+            [string]$currentAuthorization.run_id_prefix
+        )) {
+        $matches = @(Get-ChildItem -LiteralPath $toolsRoot -File | Where-Object {
+            $_.Extension -in @(".ps1", ".psm1", ".gd", ".json")
+        } | Select-String -SimpleMatch $singleSourceValue |
+            Select-Object -ExpandProperty Path -Unique)
+        Assert-BindingCondition (
+            $matches.Count -eq 1 -and
+            [IO.Path]::GetFullPath([string]$matches[0]) -ceq
+                [IO.Path]::GetFullPath((Join-Path $toolsRoot "cold_restore_authorization_contract_v1.json"))
+        ) "current authorization literal has one machine source"
+    }
 
     $common = (& git -C $projectRoot rev-parse --git-common-dir).Trim()
     $ledgerPath = Join-Path $common "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v4-importchain/targeted_owner_capture_quota_ledger.json"

@@ -63,7 +63,7 @@ $result = [ordered]@{
     scratch_root_has_non_ascii = $false
     production_module_paths_green = $false
     production_authorization_binding_green = $false
-    exact_v4_authorization_green = $false
+    current_authorization_green = $false
     module_info_reference_preserved = $false
     module_file_identity_preserved = $false
     authorization_entry_name = ""
@@ -246,6 +246,7 @@ try {
         -RequiredCommands @(
             "Get-ColdRestoreAuthorizationContract",
             "Get-ColdRestoreAuthorizationContractPath",
+            "Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName",
             "Get-ColdRestoreTargetedDiagnosticAuthorizationBinding"
         )
     $contractPath = cold_restore_authorization_contract_v1\Get-ColdRestoreAuthorizationContractPath
@@ -278,6 +279,7 @@ try {
         authorization = @(
             "Get-ColdRestoreAuthorizationContract",
             "Get-ColdRestoreAuthorizationContractPath",
+            "Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName",
             "Get-ColdRestoreTargetedDiagnosticAuthorizationBinding"
         )
         attested_process = @(
@@ -290,10 +292,12 @@ try {
         )
     }
 
+    $currentAuthorizationName = `
+        cold_restore_authorization_contract_v1\Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName
     $binding = cold_restore_authorization_contract_v1\Get-ColdRestoreTargetedDiagnosticAuthorizationBinding `
         -GitCommonDirectory $resolvedScratchRoot `
         -RepositoryHead $RepositoryHead `
-        -AuthorizationName "targeted_owner_capture_diagnostic_v4_importchain"
+        -AuthorizationName $currentAuthorizationName
     $entryMatches = @(
         foreach ($property in $contract.PSObject.Properties) {
             if ($null -ne $property.Value -and
@@ -311,17 +315,6 @@ try {
     $targetedEntry = $entryMatches[0].value
     $result.authorization_entry_name = [string]$entryMatches[0].name
     $result.authorization_id = [string]$binding.authorization_id
-    $expectedV4 = [pscustomobject][ordered]@{
-        authorization_id = "alpha04c-targeted-owner-capture-diagnostic-v4-importchain"
-        quota_ledger_relative_path = "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v4-importchain/targeted_owner_capture_quota_ledger.json"
-        evidence_root_relative_path = "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v4-importchain/evidence"
-        bootstrap_root_relative_path = "codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v4-importchain/prequota"
-        run_id_prefix = "alpha04c-owner-capture-diagnostic-v4-importchain"
-        transition_from = 3
-        transition_to = 4
-        authorized_increment = 1
-        maximum_invocation_count = 4
-    }
     $bindingProjection = [pscustomobject][ordered]@{
         authorization_id = [string]$binding.authorization_id
         task_id = [string]$binding.task_id
@@ -337,33 +330,28 @@ try {
     $result.authorization_binding_semantic_fingerprint = Get-ProbeSha256 (
         ConvertTo-ProbeStableJson $bindingProjection
     )
-    $result.exact_v4_authorization_green = (
-        [string]$entryMatches[0].name -ceq "targeted_owner_capture_diagnostic_v4_importchain" -and
-        [string]$targetedEntry.authorization_id -ceq [string]$expectedV4.authorization_id -and
-        [string]$targetedEntry.quota_ledger_relative_path -ceq [string]$expectedV4.quota_ledger_relative_path -and
-        [string]$targetedEntry.evidence_root_relative_path -ceq [string]$expectedV4.evidence_root_relative_path -and
-        [string]$targetedEntry.bootstrap_root_relative_path -ceq [string]$expectedV4.bootstrap_root_relative_path -and
-        [string]$targetedEntry.run_id_prefix -ceq [string]$expectedV4.run_id_prefix -and
-        [int]$targetedEntry.permitted_transition_from -eq [int]$expectedV4.transition_from -and
-        [int]$targetedEntry.permitted_transition_to -eq [int]$expectedV4.transition_to -and
-        [int]$targetedEntry.authorized_increment -eq [int]$expectedV4.authorized_increment -and
-        [int]$targetedEntry.maximum_invocation_count -eq [int]$expectedV4.maximum_invocation_count
+    $result.current_authorization_green = (
+        [string]$entryMatches[0].name -ceq $currentAuthorizationName -and
+        [int]$targetedEntry.permitted_transition_from -eq 4 -and
+        [int]$targetedEntry.permitted_transition_to -eq 5 -and
+        [int]$targetedEntry.authorized_increment -eq 1 -and
+        [int]$targetedEntry.maximum_invocation_count -eq 5
     )
     $result.production_authorization_binding_green = (
-        $result.exact_v4_authorization_green -and
-        [string]$binding.authorization_name -ceq "targeted_owner_capture_diagnostic_v4_importchain" -and
-        [string]$binding.authorization_id -ceq [string]$expectedV4.authorization_id -and
-        [string]$binding.run_id -ceq "$([string]$expectedV4.run_id_prefix)-$($RepositoryHead.Substring(0, 12))" -and
-        [int]$binding.transition_from -eq [int]$expectedV4.transition_from -and
-        [int]$binding.transition_to -eq [int]$expectedV4.transition_to -and
-        [int]$binding.authorized_increment -eq [int]$expectedV4.authorized_increment -and
-        [int]$binding.maximum_invocation_count -eq [int]$expectedV4.maximum_invocation_count -and
+        $result.current_authorization_green -and
+        [string]$binding.authorization_name -ceq $currentAuthorizationName -and
+        [string]$binding.authorization_id -ceq [string]$targetedEntry.authorization_id -and
+        [string]$binding.run_id -ceq "$([string]$targetedEntry.run_id_prefix)-$($RepositoryHead.Substring(0, 12))" -and
+        [int]$binding.transition_from -eq [int]$targetedEntry.permitted_transition_from -and
+        [int]$binding.transition_to -eq [int]$targetedEntry.permitted_transition_to -and
+        [int]$binding.authorized_increment -eq [int]$targetedEntry.authorized_increment -and
+        [int]$binding.maximum_invocation_count -eq [int]$targetedEntry.maximum_invocation_count -and
         [IO.Path]::GetFullPath([string]$binding.quota_ledger_path) -ceq
-            [IO.Path]::GetFullPath((Join-Path $resolvedScratchRoot ([string]$expectedV4.quota_ledger_relative_path))) -and
+            [IO.Path]::GetFullPath((Join-Path $resolvedScratchRoot ([string]$targetedEntry.quota_ledger_relative_path))) -and
         [IO.Path]::GetFullPath([string]$binding.evidence_root) -ceq
-            [IO.Path]::GetFullPath((Join-Path $resolvedScratchRoot ([string]$expectedV4.evidence_root_relative_path))) -and
+            [IO.Path]::GetFullPath((Join-Path $resolvedScratchRoot ([string]$targetedEntry.evidence_root_relative_path))) -and
         [IO.Path]::GetFullPath([string]$binding.bootstrap_root) -ceq
-            [IO.Path]::GetFullPath((Join-Path $resolvedScratchRoot ([string]$expectedV4.bootstrap_root_relative_path)))
+            [IO.Path]::GetFullPath((Join-Path $resolvedScratchRoot ([string]$targetedEntry.bootstrap_root_relative_path)))
     )
     if (-not $result.production_authorization_binding_green) {
         throw "production_targeted_authorization_binding_invalid"
@@ -478,7 +466,7 @@ try {
         -GitCommonDirectory $resolvedScratchRoot `
         -RepositoryHead $RepositoryHead `
         -Branch "codex/顶层 导入链 run-$RunIndex" `
-        -AuthorizationName "targeted_owner_capture_diagnostic_v4_importchain"
+        -AuthorizationName $currentAuthorizationName
     $result.prequota_context_green = (
         [IO.File]::Exists([string]$prequotaContext.admission_path) -and
         [IO.File]::Exists([string]$prequotaContext.attestation_path) -and
@@ -504,7 +492,7 @@ try {
             -QuotaLedgerFingerprint ("3" * 64) `
             -LaunchAttestationPath $launchPath `
             -LaunchNonce ("4" * 32) `
-            -AuthorizationName "targeted_owner_capture_diagnostic_v4_importchain"
+            -AuthorizationName $currentAuthorizationName
     )
     $result.command_argument_construction_green = (
         @($arguments | Where-Object {
@@ -687,8 +675,8 @@ try {
         Assert-ImportChainCondition (
             [bool](Get-ResultPropertyValue $result "production_module_paths_green" $false) -and
             [bool](Get-ResultPropertyValue $result "production_authorization_binding_green" $false) -and
-            [bool](Get-ResultPropertyValue $result "exact_v4_authorization_green" $false)
-        ) "fresh process $runIndex used real modules and exact V4 production authorization"
+            [bool](Get-ResultPropertyValue $result "current_authorization_green" $false)
+        ) "fresh process $runIndex used real modules and the current 4-to-5 production authorization"
         Assert-ImportChainCondition (
             [bool](Get-ResultPropertyValue $result "module_info_reference_preserved" $false) -and
             [bool](Get-ResultPropertyValue $result "module_file_identity_preserved" $false)

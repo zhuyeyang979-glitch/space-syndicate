@@ -2,27 +2,48 @@ extends RefCounted
 
 const CONTRACT_PATH := "res://scripts/tools/cold_restore_authorization_contract_v1.json"
 const DEFAULT_EVIDENCE_ROOT := "res://.godot/cold_restore_attestation_v1"
-const TARGETED_AUTHORIZATION_NAME := "targeted_owner_capture_diagnostic_v4_importchain"
-const ENTRY_NAMES := [
-	"targeted_owner_capture_diagnostic_v3",
-	TARGETED_AUTHORIZATION_NAME,
+const FIXED_ENTRY_NAMES := [
 	"process_a_save_completion_rehearsal_v1",
 	"official_attempt_2",
 ]
 
 
 static func entry(entry_name: String) -> Dictionary:
-	if entry_name not in ENTRY_NAMES or not FileAccess.file_exists(CONTRACT_PATH):
+	var contract := _contract()
+	if contract.is_empty() or not contract.has(entry_name):
 		return {}
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(CONTRACT_PATH))
-	if not (parsed is Dictionary):
+	if entry_name not in FIXED_ENTRY_NAMES and entry_name not in targeted_entry_names():
 		return {}
-	var contract := parsed as Dictionary
-	if int(contract.get("schema_version", 0)) != 1 \
-			or str(contract.get("contract_id", "")) != "ColdRestoreAuthorizationContractV1" \
-			or not (contract.get(entry_name) is Dictionary):
+	if not (contract.get(entry_name) is Dictionary):
 		return {}
 	return (contract.get(entry_name) as Dictionary).duplicate(true)
+
+
+static func targeted_entry_names() -> Array[String]:
+	var result: Array[String] = []
+	var contract := _contract()
+	for key_variant in contract.keys():
+		var key := str(key_variant)
+		var value: Variant = contract.get(key)
+		if key.begins_with("targeted_owner_capture_diagnostic_") \
+				and value is Dictionary \
+				and (value as Dictionary).has("permitted_transition_to"):
+			result.append(key)
+	return result
+
+
+static func current_targeted_authorization_name() -> String:
+	var contract := _contract()
+	var result := ""
+	var highest_transition := -1
+	for entry_name in targeted_entry_names():
+		var transition := int((contract.get(entry_name) as Dictionary).get(
+			"permitted_transition_to", -1
+		))
+		if transition > highest_transition:
+			highest_transition = transition
+			result = entry_name
+	return result
 
 
 static func run_id(entry_name: String, repository_head: String) -> String:
@@ -33,7 +54,7 @@ static func run_id(entry_name: String, repository_head: String) -> String:
 
 
 static func is_targeted_run_id(value: String) -> bool:
-	var prefix := str(entry(TARGETED_AUTHORIZATION_NAME).get("run_id_prefix", ""))
+	var prefix := str(entry(current_targeted_authorization_name()).get("run_id_prefix", ""))
 	if prefix.is_empty() or not value.begins_with("%s-" % prefix):
 		return false
 	var suffix := value.trim_prefix("%s-" % prefix)
@@ -59,7 +80,7 @@ static func evidence_run_root(run_id_value: String, test_override: String = "") 
 
 static func targeted_evidence_root() -> String:
 	var common_dir := git_common_dir()
-	var relative_path := str(entry(TARGETED_AUTHORIZATION_NAME).get(
+	var relative_path := str(entry(current_targeted_authorization_name()).get(
 		"evidence_root_relative_path", ""
 	))
 	if common_dir.is_empty() or relative_path.is_empty():
@@ -109,6 +130,19 @@ static func _safe_run_id(value: String) -> bool:
 		):
 			return false
 	return true
+
+
+static func _contract() -> Dictionary:
+	if not FileAccess.file_exists(CONTRACT_PATH):
+		return {}
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(CONTRACT_PATH))
+	if not (parsed is Dictionary):
+		return {}
+	var contract := parsed as Dictionary
+	if int(contract.get("schema_version", 0)) != 1 \
+			or str(contract.get("contract_id", "")) != "ColdRestoreAuthorizationContractV1":
+		return {}
+	return contract
 
 
 static func _is_lower_hex(value: String) -> bool:

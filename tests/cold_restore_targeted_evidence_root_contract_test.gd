@@ -9,12 +9,13 @@ var _failures: Array[String] = []
 
 
 func _init() -> void:
+	var authorization_name := AUTHORIZATION_CONTRACT.current_targeted_authorization_name()
 	var authorization := AUTHORIZATION_CONTRACT.entry(
-		"targeted_owner_capture_diagnostic_v4_importchain"
+		authorization_name
 	)
 	var head := "a".repeat(40)
 	var run_id := AUTHORIZATION_CONTRACT.run_id(
-		"targeted_owner_capture_diagnostic_v4_importchain", head
+		authorization_name, head
 	)
 	var expected_root := AUTHORIZATION_CONTRACT.targeted_evidence_root()
 	_expect(not authorization.is_empty(), "targeted authorization contract is readable")

@@ -8,8 +8,9 @@ $root = Split-Path -Parent $PSScriptRoot
 $modulePath = Join-Path $root "scripts\tools\process_a_rehearsal_admission_contract.psm1"
 $authorizationModulePath = Join-Path $root "scripts\tools\cold_restore_authorization_contract_v1.psm1"
 Import-Module $authorizationModulePath -Force
+$targetedAuthorizationName = Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName
 $targetedAuthorization = `
-    Get-ColdRestoreAuthorizationEntry "targeted_owner_capture_diagnostic_v4_importchain"
+    Get-ColdRestoreAuthorizationEntry $targetedAuthorizationName
 $rehearsalAuthorization = Get-ColdRestoreAuthorizationEntry "process_a_save_completion_rehearsal_v1"
 $officialAuthorization = Get-ColdRestoreAuthorizationEntry "official_attempt_2"
 Import-Module $modulePath -Force
@@ -129,7 +130,7 @@ function New-TestDiagnostic {
     )
 
     $diagnosticRunId = Get-ColdRestoreAuthorizationRunId `
-        "targeted_owner_capture_diagnostic_v4_importchain" $RepositoryHead
+        $targetedAuthorizationName $RepositoryHead
     $identity = Seal-TestValue ([ordered]@{
         schema_version = 1
         identity_id = "DiagnosticScenarioIdentityV1"
@@ -201,7 +202,7 @@ function New-TestDiagnostic {
             capture_started = $true
             capture_completed = $true
             capture_result_kind = "CAPTURED"
-            payload_schema_version = 3
+            state_version = 3
             payload_fingerprint = $sha
             payload_pure_data = $true
             elapsed_milliseconds = 1
@@ -224,6 +225,7 @@ function New-TestDiagnostic {
         scenario_identity = $identity
         scenario_identity_attested = $true
         scenario_identity_failure = [pscustomobject]@{}
+        registry_binding_attested = $true
         harness_or_scenario_failure_attested = $false
         diagnostic_phase_timeline = $timeline
         last_completed_diagnostic_phase = "diagnostic_completed"
@@ -335,7 +337,7 @@ function New-TestDiagnosticQuotaLedger {
         diagnostic_count_before = [int]$targetedAuthorization.permitted_transition_from
         diagnostic_count_after = [int]$targetedAuthorization.permitted_transition_to
         diagnostic_count_maximum = [int]$targetedAuthorization.maximum_invocation_count
-        previous_ledger_sha256 = "2dba183fe0e354370802d0f886bf40a88b7e1c0b39ddb0df18ee110821e957a1"
+        previous_ledger_sha256 = [string]$targetedAuthorization.previous_quota_ledger_sha256
         historical_invocation_commit = "3b3061508541d0e5f6f4c2d6560b134b7d4ee5f8"
         historical_invocation_blob_sha1 = "b54917e54a39e24e1c7288d919394305a4e21c71"
         historical_invocation_file_sha256 = "50608e7dc7a362969d0ee7358ba008aa0278342ae34d33cd579fcac7bf8a7306"

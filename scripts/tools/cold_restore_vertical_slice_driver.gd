@@ -20,8 +20,9 @@ const PROCESS_A_REHEARSAL_COMPLETION := preload("res://scripts/tools/process_a_r
 const TARGETED_LEDGER_BINDING_VALIDATOR := preload(
 	"res://scripts/tools/cold_restore_targeted_ledger_binding_validator_v1.gd"
 )
-const AUTHORIZATION_CONTRACT_PATH := "res://scripts/tools/cold_restore_authorization_contract_v1.json"
-const TARGETED_AUTHORIZATION_NAME := "targeted_owner_capture_diagnostic_v4_importchain"
+const AUTHORIZATION_CONTRACT := preload(
+	"res://scripts/tools/cold_restore_authorization_contract_v1.gd"
+)
 
 const FORMAL_FULL_RUN := false
 const EXECUTION_READY := true
@@ -781,7 +782,7 @@ static func validate_options(options: Dictionary) -> Dictionary:
 			return {"valid": false, "reason_code": "targeted_owner_capture_run_id_invalid"}
 		if targeted_owner_capture_diagnostic \
 				and run_id != _authorization_run_id(
-					TARGETED_AUTHORIZATION_NAME, head_sha
+					_targeted_authorization_name(), head_sha
 				):
 			return {"valid": false, "reason_code": "targeted_owner_capture_run_head_mismatch"}
 		if targeted_owner_capture_diagnostic:
@@ -921,7 +922,7 @@ static func _is_lower_sha256(value: String) -> bool:
 
 
 static func _is_targeted_owner_capture_run_id(value: String) -> bool:
-	var entry := _authorization_contract_entry(TARGETED_AUTHORIZATION_NAME)
+	var entry := _authorization_contract_entry(_targeted_authorization_name())
 	var prefix := str(entry.get("run_id_prefix", ""))
 	if prefix.is_empty() or not value.begins_with("%s-" % prefix):
 		return false
@@ -1088,7 +1089,7 @@ func _authorize_official_launch(options: Dictionary, head_sha: String) -> Dictio
 
 
 func _authorize_targeted_owner_capture_diagnostic(options: Dictionary, head_sha: String) -> Dictionary:
-	var authorization := _authorization_contract_entry(TARGETED_AUTHORIZATION_NAME)
+	var authorization := _authorization_contract_entry(_targeted_authorization_name())
 	if authorization.is_empty():
 		return {"authorized": false, "reason_code": "authorization_contract_invalid"}
 	var ledger_path := _normalize_absolute_path(str(options.get("targeted_diagnostic_ledger_path", "")))
@@ -1331,24 +1332,11 @@ func _authorize_process_a_rehearsal(options: Dictionary, head_sha: String) -> Di
 
 
 static func _authorization_contract_entry(entry_name: String) -> Dictionary:
-	if entry_name not in [
-		"targeted_owner_capture_diagnostic_v3",
-		TARGETED_AUTHORIZATION_NAME,
-		"process_a_save_completion_rehearsal_v1",
-		"official_attempt_2",
-	]:
-		return {}
-	if not FileAccess.file_exists(AUTHORIZATION_CONTRACT_PATH):
-		return {}
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(AUTHORIZATION_CONTRACT_PATH))
-	if not (parsed is Dictionary):
-		return {}
-	var contract := parsed as Dictionary
-	if int(contract.get("schema_version", 0)) != 1 \
-			or str(contract.get("contract_id", "")) != "ColdRestoreAuthorizationContractV1" \
-			or not (contract.get(entry_name) is Dictionary):
-		return {}
-	return (contract.get(entry_name) as Dictionary).duplicate(true)
+	return AUTHORIZATION_CONTRACT.entry(entry_name)
+
+
+static func _targeted_authorization_name() -> String:
+	return AUTHORIZATION_CONTRACT.current_targeted_authorization_name()
 
 
 static func _authorization_run_id(entry_name: String, repository_head: String) -> String:
@@ -1417,7 +1405,7 @@ static func _resolve_rehearsal_ledger_path() -> String:
 
 static func _resolve_targeted_diagnostic_ledger_path() -> String:
 	var common_dir := _resolve_git_common_dir()
-	var authorization := _authorization_contract_entry(TARGETED_AUTHORIZATION_NAME)
+	var authorization := _authorization_contract_entry(_targeted_authorization_name())
 	if common_dir.is_empty() or authorization.is_empty():
 		return ""
 	return _normalize_absolute_path(common_dir.path_join(
@@ -1427,7 +1415,7 @@ static func _resolve_targeted_diagnostic_ledger_path() -> String:
 
 static func _resolve_targeted_diagnostic_evidence_root() -> String:
 	var common_dir := _resolve_git_common_dir()
-	var authorization := _authorization_contract_entry(TARGETED_AUTHORIZATION_NAME)
+	var authorization := _authorization_contract_entry(_targeted_authorization_name())
 	if common_dir.is_empty() or authorization.is_empty():
 		return ""
 	return _normalize_absolute_path(common_dir.path_join(
@@ -2913,6 +2901,11 @@ func _record_targeted_owner_capture_audit(_context: Dictionary, _phase_id: Strin
 
 func _safe_owner_capture_v2_rows(value: Variant) -> Array:
 	var result: Array = []
+	var source_fields: Array = TARGETED_OWNER_DIAGNOSTIC.OWNER_ROW_FIELDS.duplicate()
+	var state_version_index := source_fields.find("state_version")
+	if state_version_index < 0:
+		return result
+	source_fields[state_version_index] = "payload_schema_version"
 	if not (value is Array) or (value as Array).size() != SAVE_SECTION_ORDER.size():
 		return result
 	for row_index in range((value as Array).size()):
@@ -2920,7 +2913,7 @@ func _safe_owner_capture_v2_rows(value: Variant) -> Array:
 		if not (row_variant is Dictionary):
 			return []
 		var row := row_variant as Dictionary
-		if row.size() != TARGETED_OWNER_DIAGNOSTIC.OWNER_ROW_FIELDS.size() \
+		if not _has_exact_fields(row, source_fields) \
 				or int(row.get("owner_index", -1)) != row_index \
 				or str(row.get("section_id", "")) != str(SAVE_SECTION_ORDER[row_index]) \
 				or str(row.get("owner_id", "")) != str(SAVE_OWNER_ORDER[row_index]) \
@@ -2929,10 +2922,12 @@ func _safe_owner_capture_v2_rows(value: Variant) -> Array:
 		var safe_row: Dictionary = {}
 		for field_variant in TARGETED_OWNER_DIAGNOSTIC.OWNER_ROW_FIELDS:
 			var field := str(field_variant)
-			if not row.has(field):
+			var source_field := "payload_schema_version" if field == "state_version" else field
+			if not row.has(source_field):
 				return []
-			safe_row[field] = row.get(field)
-		result.append(safe_row)
+			safe_row[field] = row.get(source_field)
+		safe_row["row_evidence_fingerprint"] = ""
+		result.append(SEMANTIC_WIRE.sealed_copy(safe_row, "row_evidence_fingerprint"))
 	return result
 
 

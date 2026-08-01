@@ -1,0 +1,1409 @@
+{
+  "schema_version": 1,
+  "registry_id": "space_syndicate.v07.three_wing_domain_registry",
+  "constitution_id": "space_syndicate.v07.complete",
+  "constitution_schema_version": 1,
+  "source_main_sha": "6b5568429b82ddab3400ee0d5076ac6ac3411a20",
+  "current_production_runtime_ruleset": "v0.6",
+  "target_development_ruleset": "v0.7",
+  "status": "pure_reference_semantic_contracts_executable",
+  "global_three_layer_complete": false,
+  "v07_production_cutover_complete": false,
+  "v07_production_runtime_connection_count": 0,
+  "v06_runtime_wiring": "forbidden",
+  "contract_surface_order": [
+    "CoreAuthorityV1",
+    "AiObservationV1",
+    "PlayerProjectionV1",
+    "IntentV1",
+    "AuthoritativeReceiptV1",
+    "SaveStateV1"
+  ],
+  "surface_execution_status": "PURE_REFERENCE_EXECUTABLE",
+  "aggregate_test": "res://tests/v07_semantic/v07_three_wing_contract_aggregate_test.gd",
+  "save_contract_boundary": {
+    "domain_local_save_state_roundtrip_status": "PURE_REFERENCE_IMPLEMENTED",
+    "domain_local_save_state_roundtrip_count": 5,
+    "canonical_envelope_contract": "res://docs/save/v07_save_schema.json",
+    "canonical_envelope_role": "future_atomic_cutover_contract",
+    "canonical_envelope_adapter_status": "NOT_IMPLEMENTED",
+    "canonical_envelope_production_connection_count": 0,
+    "v06_save_adapter_connection_count": 0
+  },
+  "common_invariants": {
+    "core_is_only_mutation_authority": true,
+    "ai_and_player_derive_from_same_core_state": true,
+    "projection_specific_fingerprints_may_differ": true,
+    "ai_or_player_projection_may_mutate_core": false,
+    "intent_is_request_not_authority": true,
+    "receipt_is_result_not_command": true,
+    "domain_local_save_state_is_versioned_pure_data": true,
+    "domain_local_save_roundtrip_advances_rng": false,
+    "transient_authority_port_objects_are_save_or_projection_data": false,
+    "domain_save_capture_requires_transactional_quiescence": true,
+    "canonical_envelope_is_currently_wired": false,
+    "deterministic": true,
+    "ui_ai_hover_drag_animation_rng_draws": 0,
+    "main_connection_allowed": false,
+    "game_runtime_coordinator_connection_allowed": false,
+    "v06_save_owner_connection_allowed": false,
+    "v06_and_v07_dual_write_allowed": false
+  },
+  "domains": [
+    {
+      "domain_id": "unified_card_track_cycle",
+      "implementation_status": "PURE_REFERENCE_IMPLEMENTED",
+      "implementation_file": "res://scripts/v07_semantic/v07_unified_card_track_core.gd",
+      "focused_test": "res://tests/v07_semantic/v07_unified_card_track_core_test.gd",
+      "schema_version": 1,
+      "authority_state_version": 2,
+      "transient_acquisition_authority_port": {
+        "interface_id": "v07.unified_track.acquisition_authority_port.v1",
+        "implementation_file": "res://scripts/v07_semantic/v07_track_acquisition_authority_port.gd",
+        "participant_roles": ["cash", "personal_discard", "commodity_slot"],
+        "entrypoints": [
+          "configure_v1",
+          "prepare_v1",
+          "commit_v1",
+          "abort_v1",
+          "receipt_v1",
+          "recovery_v1",
+          "recover_rollback_v1",
+          "capture_receipt_journal_v1",
+          "apply_receipt_journal_v1",
+          "transact_v1"
+        ],
+        "receipt_journal_contract_id": "v07.unified_track.acquisition_receipt_journal.v1",
+        "receipt_journal_exact_fields": [
+          "schema_version",
+          "interface_id",
+          "ruleset_id",
+          "domain_id",
+          "match_instance_id",
+          "authority_binding_fingerprint",
+          "composite_receipts",
+          "journal_fingerprint"
+        ],
+        "save_capture_requires_no_active_transactions": true,
+        "port_and_participant_objects_persisted": false,
+        "port_and_participant_objects_projected": false
+      },
+      "privacy_policy_contract": {
+        "policy_id": "v07.unified_track.privacy.v1",
+        "public_facts": [
+          "current_color_distribution",
+          "revealed_stances_with_actor_identity",
+          "track_and_cycle_revision",
+          "card_kind_ratio"
+        ],
+        "ai_private_facts": ["own_track_segment", "own_pending_stance"],
+        "player_private_facts": [
+          "own_track_segment",
+          "own_pending_stance",
+          "self_lead_notice_without_numeric_weight"
+        ],
+        "authority_secret_facts": [
+          "other_track_segments",
+          "future_track_sequence",
+          "future_supply_bags",
+          "hidden_lead_identity_and_order",
+          "effective_weights",
+          "rng_state",
+          "save_payload"
+        ]
+      },
+      "rng_stream_ids": [
+        "unified_track_type_draw",
+        "unified_track_color_draw",
+        "unified_track_normal_card_draw",
+        "unified_track_commodity_draw",
+        "initial_hidden_lead_order"
+      ],
+      "contracts": {
+        "CoreAuthorityV1": {
+          "contract_id": "v07.unified_track.core_authority.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["core_authority_v1"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "interface_id",
+            "value": "v07.unified_track.core_authority.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "interface_id",
+            "domain_id",
+            "authority_scope",
+            "source_revision",
+            "authority_state",
+            "core_fingerprint"
+          ],
+          "privacy_scope": "authority_secret"
+        },
+        "AiObservationV1": {
+          "contract_id": "v07.unified_track.ai_observation.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["ai_observation_v1"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "interface_id",
+            "value": "v07.unified_track.ai_observation.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "interface_id",
+            "domain_id",
+            "source_revision",
+            "source_core_fingerprint",
+            "viewer_actor_id",
+            "public_facts",
+            "viewer_private_facts",
+            "projection_fingerprint"
+          ],
+          "private_fact_keys": ["own_segment_items", "own_pending_stance"],
+          "forbidden_fields": [
+            "authority_state",
+            "hidden_lead_cycle_state",
+            "fixed_order",
+            "round_order",
+            "current_lead_id",
+            "rng_state",
+            "bag",
+            "processed_requests",
+            "match_seed",
+            "self_lead_notice",
+            "self_lead_notice_token"
+          ],
+          "privacy_scope": "actor_authorized_plus_public"
+        },
+        "PlayerProjectionV1": {
+          "contract_id": "v07.unified_track.player_projection.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["player_projection_v1"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "interface_id",
+            "value": "v07.unified_track.player_projection.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "interface_id",
+            "domain_id",
+            "source_revision",
+            "source_core_fingerprint",
+            "viewer_actor_id",
+            "public_facts",
+            "viewer_private_facts",
+            "projection_fingerprint"
+          ],
+          "private_fact_keys": [
+            "own_segment_items",
+            "own_pending_stance",
+            "self_lead_notice",
+            "self_lead_notice_token"
+          ],
+          "player_only_private_fact_keys": [
+            "self_lead_notice",
+            "self_lead_notice_token"
+          ],
+          "forbidden_fields": [
+            "authority_state",
+            "hidden_lead_cycle_state",
+            "fixed_order",
+            "round_order",
+            "current_lead_id",
+            "rng_state",
+            "bag",
+            "processed_requests",
+            "match_seed"
+          ],
+          "privacy_scope": "viewer_authorized_plus_public"
+        },
+        "IntentV1": {
+          "contract_id": "v07.unified_track.intent.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["build_intent_v1", "apply_intent_v1"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "interface_id",
+            "value": "v07.unified_track.intent.v1"
+          },
+          "intent_kind_field": "action_id",
+          "intent_kinds": [
+            "color_cycle.set_stance",
+            "color_cycle.commit_boundary",
+            "unified_track.advance",
+            "claim_visible_commodity",
+            "purchase_visible_normal_card"
+          ],
+          "exact_fields": [
+            "schema_version",
+            "interface_id",
+            "domain_id",
+            "request_id",
+            "intent_id",
+            "actor_id",
+            "action_id",
+            "source_revision",
+            "expected_core_revision",
+            "source_core_fingerprint",
+            "source_identity",
+            "viewer_segment_authorization",
+            "parameters",
+            "intent_fingerprint"
+          ],
+          "forbidden_fields": ["forced_rng_result", "future_item_identity"]
+        },
+        "AuthoritativeReceiptV1": {
+          "contract_id": "v07.unified_track.authoritative_receipt.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": [
+            "apply_intent_v1",
+            "authoritative_receipt_v1"
+          ],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "interface_id",
+            "value": "v07.unified_track.authoritative_receipt.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "interface_id",
+            "domain_id",
+            "request_id",
+            "receipt_id",
+            "intent_id",
+            "action_id",
+            "intent_fingerprint",
+            "accepted",
+            "reason_code",
+            "source_revision",
+            "result_revision",
+            "committed_core_revision",
+            "destination_zone",
+            "cash_delta",
+            "inventory_commit",
+            "external_authority_commit_required",
+            "public_facts",
+            "receipt_fingerprint"
+          ],
+          "exact_once_key": "request_id",
+          "privacy_scope": "public_result_only"
+        },
+        "SaveStateV1": {
+          "contract_id": "v07.unified_track.save_state.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["save_state_v1", "restore_save_state_v1"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "interface_id",
+            "value": "v07.unified_track.save_state.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "interface_id",
+            "ruleset_id",
+            "domain_id",
+            "state_version",
+            "source_revision",
+            "source_core_fingerprint",
+            "authority_state",
+            "save_fingerprint"
+          ],
+          "section_id": "unified_card_track_cycle",
+          "section_version": 2,
+          "authority_state_exact_fields": [
+            "schema_version",
+            "state_version",
+            "ruleset_id",
+            "domain_id",
+            "revision",
+            "match_seed",
+            "match_instance_id",
+            "match_instance_id_explicit",
+            "roster_ids",
+            "track_state",
+            "type_supply_state",
+            "normal_supply_state",
+            "commodity_supply_state",
+            "color_cycle_state",
+            "hidden_lead_cycle_state",
+            "projection_revisions",
+            "processed_requests",
+            "revision_lineage"
+          ],
+          "revision_lineage_entry_exact_fields": [
+            "revision",
+            "request_id",
+            "action_id",
+            "intent_fingerprint",
+            "parent_lineage_hash",
+            "state_payload_fingerprint",
+            "lineage_hash"
+          ],
+          "capture_requires_quiescent_acquisition_port": true,
+          "half_committed_acquisition_save_allowed": false,
+          "composite_receipt_journal_is_pure_data": true,
+          "privacy_at_rest": "core_private",
+          "local_roundtrip": {
+            "status": "PURE_REFERENCE_IMPLEMENTED",
+            "capture_entrypoint": "save_state_v1",
+            "restore_entrypoint": "restore_save_state_v1",
+            "recapture_entrypoint": "save_state_v1",
+            "restore_transport": "v07.unified_track.save_state.v1"
+          },
+          "v06_owner": "none"
+        }
+      }
+    },
+    {
+      "domain_id": "personal_dbg_and_merge",
+      "implementation_status": "PURE_REFERENCE_IMPLEMENTED",
+      "implementation_file": "res://scripts/v07_semantic/v07_dbg_deck_core.gd",
+      "focused_test": "res://tests/v07_semantic/v07_dbg_deck_core_test.gd",
+      "schema_version": 1,
+      "trusted_track_binding": {
+        "required_script": "res://scripts/v07_semantic/v07_unified_card_track_core.gd",
+        "required_track_core_interface_id": "v07.unified_track.core_authority.v1",
+        "required_match_identity_fields": ["match_instance_id", "match_seed", "roster_ids"],
+        "persisted_bound_source_contract_id": "V07BoundSourceLifecycleState",
+        "persisted_entry_exact_fields": ["match_instance_id", "lineage_fingerprint"],
+        "commodity_slot_participant_role": "commodity_slot",
+        "participant_prepare_required_before_track_commit": true,
+        "runtime_port_object_persisted": false,
+        "restore_clears_runtime_binding": true,
+        "restore_requires_explicit_rebind_to_matching_track_lineage": true
+      },
+      "rng_stream_ids": [
+        "starter_deck_shuffle",
+        "normal_deck_reshuffle_by_player"
+      ],
+      "contracts": {
+        "CoreAuthorityV1": {
+          "contract_id": "v07.personal_dbg.core_authority.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["core_authority_snapshot"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "schema_id",
+            "value": "v07.personal_dbg.core_authority.v1"
+          },
+          "exact_fields": [
+            "schema_id",
+            "schema_version",
+            "domain_id",
+            "privacy_scope",
+            "typed_state_contracts",
+            "state",
+            "document_section",
+            "state_fingerprint",
+            "core_fingerprint"
+          ],
+          "privacy_scope": "authority_secret"
+        },
+        "AiObservationV1": {
+          "contract_id": "v07.personal_dbg.ai_observation.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["ai_observation"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "schema_id",
+            "value": "v07.personal_dbg.ai_observation.v1"
+          },
+          "exact_fields": [
+            "schema_id",
+            "schema_version",
+            "domain_id",
+            "visibility_scope",
+            "revision",
+            "core_fingerprint",
+            "facts",
+            "facts_fingerprint",
+            "allowed_intent_kinds"
+          ],
+          "forbidden_fields": [
+            "owner_player_id",
+            "root_seed",
+            "draw_pile",
+            "discard_order",
+            "committed_escrow",
+            "starter_rng",
+            "reshuffle_rng",
+            "seed",
+            "cursor",
+            "stream_revision",
+            "state_fingerprint",
+            "rng_state",
+            "rng_seed",
+            "receipt_journal",
+            "save_state",
+            "save_payload",
+            "checkpoint",
+            "other_hand",
+            "other_player_hand",
+            "other_commodity_inventory",
+            "commodity_claim_history",
+            "commodity_merge_history",
+            "source_track_instance_ids",
+            "claim_receipt_ids",
+            "processed_intent_ids",
+            "future_draw"
+          ],
+          "privacy_scope": "actor_private"
+        },
+        "PlayerProjectionV1": {
+          "contract_id": "v07.personal_dbg.player_projection.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["player_projection"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "schema_id",
+            "value": "v07.personal_dbg.player_projection.v1"
+          },
+          "exact_fields": [
+            "schema_id",
+            "schema_version",
+            "domain_id",
+            "visibility_scope",
+            "revision",
+            "core_fingerprint",
+            "facts",
+            "facts_fingerprint",
+            "allowed_intent_kinds"
+          ],
+          "forbidden_fields": [
+            "owner_player_id",
+            "root_seed",
+            "draw_pile",
+            "discard_order",
+            "committed_escrow",
+            "starter_rng",
+            "reshuffle_rng",
+            "seed",
+            "cursor",
+            "stream_revision",
+            "state_fingerprint",
+            "rng_state",
+            "rng_seed",
+            "receipt_journal",
+            "save_state",
+            "save_payload",
+            "checkpoint",
+            "other_hand",
+            "other_player_hand",
+            "other_commodity_inventory",
+            "commodity_claim_history",
+            "commodity_merge_history",
+            "source_track_instance_ids",
+            "claim_receipt_ids",
+            "processed_intent_ids",
+            "future_draw"
+          ],
+          "privacy_scope": "viewer_private"
+        },
+        "IntentV1": {
+          "contract_id": "v07.personal_dbg.intent.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["create_intent", "apply_intent"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "schema_id",
+            "value": "v07.personal_dbg.intent.v1"
+          },
+          "intent_kind_field": "action_kind",
+          "intent_kinds": [
+            "play_card",
+            "accept_purchase",
+            "complete_batch",
+            "merge_cards",
+            "accept_commodity_track_claim",
+            "merge_commodities",
+            "end_maintenance"
+          ],
+          "exact_fields": [
+            "schema_id",
+            "schema_version",
+            "domain_id",
+            "privacy_scope",
+            "request_id",
+            "actor_player_id",
+            "action_kind",
+            "source_revision",
+            "source_core_fingerprint",
+            "decision_mode",
+            "arguments",
+            "intent_fingerprint"
+          ]
+        },
+        "AuthoritativeReceiptV1": {
+          "contract_id": "v07.personal_dbg.authoritative_receipt.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["apply_intent"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "schema_id",
+            "value": "v07.personal_dbg.authoritative_receipt.v1"
+          },
+          "exact_fields": [
+            "schema_id",
+            "schema_version",
+            "domain_id",
+            "visibility_scope",
+            "request_id",
+            "action_kind",
+            "intent_fingerprint",
+            "source_core_fingerprint",
+            "result_core_fingerprint",
+            "success",
+            "reason_code",
+            "revision_before",
+            "revision_after",
+            "changed_instance_ids",
+            "created_instance_id",
+            "destination_zone",
+            "hand_count",
+            "draw_pile_count",
+            "discard_count",
+            "commodity_inventory_count",
+            "refill_count",
+            "reshuffle_count",
+            "receipt_fingerprint"
+          ],
+          "exact_once_key": "request_id",
+          "privacy_scope": "actor_private_result"
+        },
+        "SaveStateV1": {
+          "contract_id": "v07.personal_dbg.save_state.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["to_save_state", "apply_save_state"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "schema_id",
+            "value": "v07.personal_dbg.save_state.v1"
+          },
+          "exact_fields": [
+            "schema_id",
+            "schema_version",
+            "domain_id",
+            "privacy_scope",
+            "typed_state_contracts",
+            "state",
+            "document_section",
+            "state_fingerprint",
+            "core_fingerprint"
+          ],
+          "section_id": "personal_dbg_and_merge",
+          "section_version": 1,
+          "restore_rebind_required": true,
+          "runtime_track_authority_object_persisted": false,
+          "privacy_at_rest": "player_private_partitioned",
+          "local_roundtrip": {
+            "status": "PURE_REFERENCE_IMPLEMENTED",
+            "capture_entrypoint": "to_save_state",
+            "restore_entrypoint": "apply_save_state",
+            "recapture_entrypoint": "to_save_state",
+            "restore_transport": "v07.personal_dbg.save_state.v1"
+          },
+          "v06_owner": "none"
+        }
+      }
+    },
+    {
+      "domain_id": "six_color_assets_and_reservations",
+      "implementation_status": "PURE_REFERENCE_IMPLEMENTED",
+      "implementation_file": "res://scripts/v07_semantic/v07_asset_batch_core.gd",
+      "focused_test": "res://tests/v07_semantic/v07_asset_batch_core_test.gd",
+      "schema_version": 1,
+      "ruleset_id": "v0.7",
+      "shared_asset_batch_lineage": {
+        "pair_id": "v07.asset_batch.shared_lineage.v1",
+        "required_save_fields": [
+          "shared_batch_id",
+          "shared_lineage_fingerprint",
+          "shared_authority_state"
+        ],
+        "single_section_restore_mode": "preflight_only",
+        "paired_apply_entrypoint": "restore_domain_save_pair",
+        "pair_must_match_batch_lineage_and_full_authority_state": true
+      },
+      "transient_time_authority": {
+        "interface_id": "v07.time.authoritative_attestation.v1",
+        "lookup_method": "authoritative_time_attestation_v1",
+        "observed_time_source": "validated_authority_observed_at_ms",
+        "persisted_watermark_field": "window.time_observation_watermark_ms",
+        "port_object_persisted_or_projected": false
+      },
+      "privacy_policy_contract": {
+        "policy_id": "v07.asset_batch.privacy.v1",
+        "authority_secret_fields": [
+          "submission_hidden_lead_order",
+          "frozen_hidden_lead_order",
+          "actor_id",
+          "lineage_fingerprint",
+          "lock_fingerprint",
+          "other_exact_assets",
+          "other_reservations",
+          "other_local_queues",
+          "save_payload"
+        ],
+        "owner_specific_timing_audio_animation_allowed": false
+      },
+      "rng_stream_ids": [],
+      "contracts": {
+        "CoreAuthorityV1": {
+          "contract_id": "v07.six_color_assets.core_authority.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["asset_core_authority"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "contract_id",
+            "value": "v07.six_color_assets.core_authority.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "contract_id",
+            "state_revision",
+            "per_player_assets_by_color",
+            "per_player_fixed_point_remainders",
+            "gdp_cycle_snapshot",
+            "per_action_reservations",
+            "reservation_journal",
+            "asset_refresh_revision",
+            "authority_fingerprint"
+          ],
+          "privacy_scope": "authority_secret"
+        },
+        "AiObservationV1": {
+          "contract_id": "v07.six_color_assets.ai_observation.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["asset_ai_observation"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "contract_id",
+            "value": "v07.six_color_assets.ai_observation.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "contract_id",
+            "viewer_id",
+            "state_revision",
+            "own_exact_assets",
+            "own_remainders",
+            "own_reservations",
+            "own_available_assets",
+            "own_projected_refresh",
+            "public_costs",
+            "projection_fingerprint"
+          ],
+          "forbidden_fields": [
+            "submission_hidden_lead_order",
+            "frozen_hidden_lead_order",
+            "actor_id",
+            "lineage_fingerprint",
+            "lock_fingerprint",
+            "other_exact_assets",
+            "other_reservations",
+            "other_local_queues",
+            "save_payload"
+          ],
+          "privacy_scope": "actor_private_plus_public_costs"
+        },
+        "PlayerProjectionV1": {
+          "contract_id": "v07.six_color_assets.player_projection.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["asset_player_projection"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "contract_id",
+            "value": "v07.six_color_assets.player_projection.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "contract_id",
+            "viewer_id",
+            "state_revision",
+            "own_exact_assets",
+            "own_remainders",
+            "own_reservations",
+            "own_available_assets",
+            "own_projected_refresh",
+            "public_costs",
+            "projection_fingerprint"
+          ],
+          "forbidden_fields": [
+            "submission_hidden_lead_order",
+            "frozen_hidden_lead_order",
+            "actor_id",
+            "lineage_fingerprint",
+            "lock_fingerprint",
+            "other_exact_assets",
+            "other_reservations",
+            "other_local_queues",
+            "save_payload"
+          ],
+          "privacy_scope": "viewer_private_plus_public_costs"
+        },
+        "IntentV1": {
+          "contract_id": "v07.six_color_assets.intent.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["asset_intent_adapter"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "contract_id",
+            "value": "v07.six_color_assets.intent.v1"
+          },
+          "intent_kind_source": "internal_lock_player_queue_adapter",
+          "intent_kinds": ["lock_player_queue"],
+          "exact_fields": [
+            "schema_version",
+            "contract_id",
+            "intent_id",
+            "actor_id",
+            "expected_core_revision",
+            "asset_snapshot_revision",
+            "action_costs",
+            "reservation_ids",
+            "intent_fingerprint"
+          ]
+        },
+        "AuthoritativeReceiptV1": {
+          "contract_id": "v07.six_color_assets.authoritative_receipt.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["asset_receipt_adapter"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "contract_id",
+            "value": "v07.six_color_assets.authoritative_receipt.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "contract_id",
+            "receipt_id",
+            "intent_id",
+            "accepted",
+            "reason_code",
+            "committed_core_revision",
+            "reservation_ids",
+            "asset_delta_by_color",
+            "receipt_fingerprint"
+          ],
+          "exact_once_key": "intent_id",
+          "privacy_scope": "actor_authorized_result"
+        },
+        "SaveStateV1": {
+          "contract_id": "v07.six_color_assets.save_state.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": [
+            "to_asset_save_state",
+            "restore_domain_save_state",
+            "restore_domain_save_pair"
+          ],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "contract_id",
+            "value": "v07.six_color_assets.save_state.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "contract_id",
+            "section_id",
+            "ruleset_id",
+            "state_revision",
+            "per_player_assets_by_color",
+            "per_player_fixed_point_remainders",
+            "gdp_cycle_snapshot",
+            "per_action_reservations",
+            "reservation_journal",
+            "asset_refresh_revision",
+            "shared_batch_id",
+            "shared_lineage_fingerprint",
+            "shared_authority_state",
+            "save_fingerprint"
+          ],
+          "section_id": "six_color_assets_and_reservations",
+          "section_version": 1,
+          "ruleset_id": "v0.7",
+          "single_section_restore": "PREFLIGHT_ONLY",
+          "paired_apply_entrypoint": "restore_domain_save_pair",
+          "shared_authority_state_exact_fields": [
+            "schema_version",
+            "ruleset_id",
+            "core_authority_ids",
+            "revision",
+            "batch_id",
+            "lineage_fingerprint",
+            "window",
+            "player_ids",
+            "submission_hidden_lead_order",
+            "frozen_hidden_lead_order",
+            "gdp_milli_per_asset",
+            "players",
+            "authority_queue",
+            "resolution_cursor",
+            "seen_intent_ids",
+            "intent_receipt_ledger",
+            "receipts",
+            "refresh_applied"
+          ],
+          "privacy_at_rest": "player_private_partitioned",
+          "local_roundtrip": {
+            "status": "PURE_REFERENCE_IMPLEMENTED",
+            "capture_entrypoint": "to_asset_save_state",
+            "restore_entrypoint": "restore_domain_save_pair",
+            "recapture_entrypoint": "to_asset_save_state",
+            "restore_transport": "paired_asset_and_batch_domain_save_states",
+            "single_section_preflight_entrypoint": "restore_domain_save_state",
+            "proof": "paired_domain_save_restore_and_exact_recapture"
+          },
+          "v06_owner": "none"
+        }
+      }
+    },
+    {
+      "domain_id": "card_batch_and_anonymous_resolution",
+      "implementation_status": "PURE_REFERENCE_IMPLEMENTED",
+      "implementation_file": "res://scripts/v07_semantic/v07_asset_batch_core.gd",
+      "focused_test": "res://tests/v07_semantic/v07_asset_batch_core_test.gd",
+      "schema_version": 1,
+      "ruleset_id": "v0.7",
+      "shared_asset_batch_lineage": {
+        "pair_id": "v07.asset_batch.shared_lineage.v1",
+        "required_save_fields": [
+          "shared_batch_id",
+          "shared_lineage_fingerprint",
+          "shared_authority_state"
+        ],
+        "single_section_restore_mode": "preflight_only",
+        "paired_apply_entrypoint": "restore_domain_save_pair",
+        "pair_must_match_batch_lineage_and_full_authority_state": true
+      },
+      "transient_time_authority": {
+        "interface_id": "v07.time.authoritative_attestation.v1",
+        "lookup_method": "authoritative_time_attestation_v1",
+        "observed_time_source": "validated_authority_observed_at_ms",
+        "persisted_watermark_field": "window.time_observation_watermark_ms",
+        "port_object_persisted_or_projected": false
+      },
+      "privacy_policy_contract": {
+        "policy_id": "v07.asset_batch.privacy.v1",
+        "authority_secret_fields": [
+          "submission_hidden_lead_order",
+          "frozen_hidden_lead_order",
+          "actor_id",
+          "lineage_fingerprint",
+          "lock_fingerprint",
+          "other_exact_assets",
+          "other_reservations",
+          "other_local_queues",
+          "save_payload"
+        ],
+        "owner_specific_timing_audio_animation_allowed": false
+      },
+      "rng_stream_ids": [],
+      "contracts": {
+        "CoreAuthorityV1": {
+          "contract_id": "v07.card_batch.core_authority.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["batch_core_authority"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "contract_id",
+            "value": "v07.card_batch.core_authority.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "contract_id",
+            "state_revision",
+            "submission_window_state",
+            "player_local_queues",
+            "prebound_targets",
+            "private_owner_bindings",
+            "anonymous_global_queue",
+            "round_robin_cursor",
+            "resolution_journal",
+            "processed_intent_ids",
+            "intent_receipt_ledger",
+            "authority_fingerprint"
+          ],
+          "privacy_scope": "authority_secret"
+        },
+        "AiObservationV1": {
+          "contract_id": "v07.card_batch.ai_observation.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["batch_ai_observation"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "contract_id",
+            "value": "v07.card_batch.ai_observation.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "contract_id",
+            "viewer_id",
+            "state_revision",
+            "own_local_queue",
+            "own_prebound_targets",
+            "own_reserved_costs",
+            "anonymous_public_queue",
+            "public_resolution_aftermath",
+            "projection_fingerprint"
+          ],
+          "forbidden_fields": [
+            "submission_hidden_lead_order",
+            "frozen_hidden_lead_order",
+            "actor_id",
+            "lineage_fingerprint",
+            "lock_fingerprint",
+            "other_exact_assets",
+            "other_reservations",
+            "other_local_queues",
+            "save_payload"
+          ],
+          "privacy_scope": "actor_private_plus_anonymous_public"
+        },
+        "PlayerProjectionV1": {
+          "contract_id": "v07.card_batch.player_projection.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["batch_player_projection"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "contract_id",
+            "value": "v07.card_batch.player_projection.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "contract_id",
+            "viewer_id",
+            "state_revision",
+            "own_local_queue",
+            "own_prebound_targets",
+            "own_reserved_costs",
+            "anonymous_public_queue",
+            "public_resolution_aftermath",
+            "projection_fingerprint"
+          ],
+          "forbidden_fields": [
+            "submission_hidden_lead_order",
+            "frozen_hidden_lead_order",
+            "actor_id",
+            "lineage_fingerprint",
+            "lock_fingerprint",
+            "other_exact_assets",
+            "other_reservations",
+            "other_local_queues",
+            "save_payload"
+          ],
+          "privacy_scope": "viewer_private_plus_anonymous_public"
+        },
+        "IntentV1": {
+          "contract_id": "v07.card_batch.intent.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["batch_intent_adapter"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "contract_id",
+            "value": "v07.card_batch.intent.v1"
+          },
+          "intent_kind_source": "internal_lock_player_queue_adapter",
+          "intent_kinds": ["lock_player_queue"],
+          "exact_fields": [
+            "schema_version",
+            "contract_id",
+            "intent_id",
+            "actor_id_or_authoritative_system",
+            "expected_core_revision",
+            "window_id",
+            "local_action_index",
+            "source_instance_id",
+            "prebound_target_identity",
+            "reservation_id",
+            "intent_fingerprint"
+          ]
+        },
+        "AuthoritativeReceiptV1": {
+          "contract_id": "v07.card_batch.authoritative_receipt.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["batch_receipt_adapter"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "contract_id",
+            "value": "v07.card_batch.authoritative_receipt.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "contract_id",
+            "receipt_id",
+            "intent_id",
+            "accepted",
+            "reason_code",
+            "committed_core_revision",
+            "window_id",
+            "anonymous_action_id",
+            "resolution_status",
+            "receipt_fingerprint"
+          ],
+          "exact_once_key": "intent_id",
+          "privacy_scope": "anonymous_public_result"
+        },
+        "SaveStateV1": {
+          "contract_id": "v07.card_batch.save_state.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": [
+            "to_batch_save_state",
+            "restore_domain_save_state",
+            "restore_domain_save_pair"
+          ],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "contract_id",
+            "value": "v07.card_batch.save_state.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "contract_id",
+            "section_id",
+            "ruleset_id",
+            "state_revision",
+            "submission_window_state",
+            "player_local_queues",
+            "prebound_targets",
+            "private_owner_bindings",
+            "anonymous_global_queue",
+            "round_robin_cursor",
+            "resolution_journal",
+            "processed_intent_ids",
+            "intent_receipt_ledger",
+            "shared_batch_id",
+            "shared_lineage_fingerprint",
+            "shared_authority_state",
+            "save_fingerprint"
+          ],
+          "section_id": "card_batch_and_anonymous_resolution",
+          "section_version": 1,
+          "ruleset_id": "v0.7",
+          "single_section_restore": "PREFLIGHT_ONLY",
+          "paired_apply_entrypoint": "restore_domain_save_pair",
+          "shared_authority_state_exact_fields": [
+            "schema_version",
+            "ruleset_id",
+            "core_authority_ids",
+            "revision",
+            "batch_id",
+            "lineage_fingerprint",
+            "window",
+            "player_ids",
+            "submission_hidden_lead_order",
+            "frozen_hidden_lead_order",
+            "gdp_milli_per_asset",
+            "players",
+            "authority_queue",
+            "resolution_cursor",
+            "seen_intent_ids",
+            "intent_receipt_ledger",
+            "receipts",
+            "refresh_applied"
+          ],
+          "privacy_at_rest": "core_private_owner_bindings",
+          "local_roundtrip": {
+            "status": "PURE_REFERENCE_IMPLEMENTED",
+            "capture_entrypoint": "to_batch_save_state",
+            "restore_entrypoint": "restore_domain_save_pair",
+            "recapture_entrypoint": "to_batch_save_state",
+            "restore_transport": "paired_asset_and_batch_domain_save_states",
+            "single_section_preflight_entrypoint": "restore_domain_save_state",
+            "proof": "paired_domain_save_restore_and_exact_recapture"
+          },
+          "v06_owner": "none"
+        }
+      }
+    },
+    {
+      "domain_id": "solar_facility_and_macro_victory",
+      "implementation_status": "PURE_REFERENCE_IMPLEMENTED",
+      "implementation_file": "res://scripts/v07_semantic/v07_solar_victory_core.gd",
+      "focused_test": "res://tests/v07_semantic/v07_solar_victory_core_test.gd",
+      "schema_version": 1,
+      "save_section_version": 3,
+      "transient_victory_proof_port": {
+        "required_runtime_type": "RefCounted",
+        "canonical_authority_id": "v07.victory.trusted_authority.reference",
+        "canonical_source_authority_id": "v07.victory.source_authority.reference",
+        "required_methods": [
+          "victory_authority_identity_v1",
+          "victory_capability_identity_v1",
+          "victory_current_source_revision_v1",
+          "victory_lookup_issued_proof_v1"
+        ],
+        "opaque_capability_object_identity_required": true,
+        "issuer_source_and_current_revision_continuity_required": true,
+        "port_and_capability_objects_persisted": false,
+        "port_and_capability_objects_projected": false
+      },
+      "rng_stream_ids": [],
+      "contracts": {
+        "CoreAuthorityV1": {
+          "contract_id": "v07.solar_victory.core_authority.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": [
+            "checkpoint",
+            "solar_facility_efficiency_state_v1",
+            "macro_round_victory_gate_state_v1"
+          ],
+          "wire_identity": {
+            "mode": "registry_declared",
+            "field": null,
+            "value": "v07.solar_victory.core_authority.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "ruleset_id",
+            "match_instance_id",
+            "genesis_fingerprint",
+            "genesis_solar_sunlit",
+            "genesis_macro_round_index",
+            "revision",
+            "solar",
+            "victory_gate",
+            "processed_intent_ids",
+            "receipt_ledger"
+          ],
+          "state_contract_ids": [
+            "V07SolarFacilityEfficiencyState",
+            "V07MacroRoundVictoryGateState"
+          ],
+          "privacy_scope": "authority_secret"
+        },
+        "AiObservationV1": {
+          "contract_id": "v07.solar_victory.ai_observation.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["ai_observation"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "observation_id",
+            "value": "v07.solar_victory.ai_observation.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "ruleset_id",
+            "observation_id",
+            "solar_phase_id",
+            "facility_work_rate_multiplier",
+            "victory_pending",
+            "macro_round_index",
+            "final_settlement_committed"
+          ],
+          "forbidden_fields": [
+            "pending_condition_id",
+            "pending_trigger_intent_id",
+            "pending_trigger_revision",
+            "pending_qualification_proof_id",
+            "pending_qualification_proof_fingerprint",
+            "pending_qualification_authority_id",
+            "pending_qualification_source_authority_id",
+            "pending_qualification_issuer_instance_id",
+            "pending_qualification_source_revision",
+            "processed_intent_ids",
+            "receipt_ledger",
+            "hidden_lead_identity_or_order",
+            "trusted_authority_port",
+            "authority_capability"
+          ],
+          "privacy_scope": "public_core_facts_only"
+        },
+        "PlayerProjectionV1": {
+          "contract_id": "v07.solar_victory.player_projection.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["player_projection"],
+          "wire_identity": {
+            "mode": "embedded",
+            "field": "projection_id",
+            "value": "v07.solar_victory.player_projection.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "ruleset_id",
+            "projection_id",
+            "visibility_scope_id",
+            "solar_phase_id",
+            "facility_work_rate_multiplier",
+            "victory_pending",
+            "macro_round_index",
+            "final_settlement_committed"
+          ],
+          "forbidden_fields": [
+            "pending_condition_id",
+            "pending_trigger_intent_id",
+            "pending_trigger_revision",
+            "pending_qualification_proof_id",
+            "pending_qualification_proof_fingerprint",
+            "pending_qualification_authority_id",
+            "pending_qualification_source_authority_id",
+            "pending_qualification_issuer_instance_id",
+            "pending_qualification_source_revision",
+            "processed_intent_ids",
+            "receipt_ledger",
+            "hidden_lead_identity_or_order",
+            "trusted_authority_port",
+            "authority_capability"
+          ],
+          "privacy_scope": "public_core_facts_only"
+        },
+        "IntentV1": {
+          "contract_id": "v07.solar_victory.intent.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": [
+            "apply_solar_intent",
+            "submit_victory_qualification",
+            "revalidate_victory_at_boundary"
+          ],
+          "wire_identity": {
+            "mode": "registry_declared",
+            "field": null,
+            "value": "v07.solar_victory.intent.v1"
+          },
+          "intent_kind_field": "intent_kind_id",
+          "intent_kinds": [
+            "set_solar_phase",
+            "submit_victory_qualification",
+            "revalidate_victory_at_macro_round_boundary"
+          ],
+          "exact_fields_by_intent_kind": {
+            "set_solar_phase": [
+              "schema_version",
+              "intent_id",
+              "intent_kind_id",
+              "expected_revision",
+              "sunlit",
+              "source_revision"
+            ],
+            "submit_victory_qualification": [
+              "schema_version",
+              "intent_id",
+              "intent_kind_id",
+              "expected_revision",
+              "condition_id",
+              "proof_id",
+              "proof_fingerprint"
+            ],
+            "revalidate_victory_at_macro_round_boundary": [
+              "schema_version",
+              "intent_id",
+              "intent_kind_id",
+              "expected_revision",
+              "condition_id",
+              "macro_round_index",
+              "proof_id",
+              "proof_fingerprint"
+            ]
+          },
+          "forbidden_fields": [
+            "render_brightness",
+            "card_supply_modifier",
+            "card_price_modifier",
+            "forced_settlement_without_boundary"
+          ]
+        },
+        "AuthoritativeReceiptV1": {
+          "contract_id": "v07.solar_victory.authoritative_receipt.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": [
+            "apply_solar_intent",
+            "submit_victory_qualification",
+            "revalidate_victory_at_boundary"
+          ],
+          "wire_identity": {
+            "mode": "registry_declared",
+            "field": null,
+            "value": "v07.solar_victory.authoritative_receipt.v1"
+          },
+          "exact_fields": [
+            "schema_version",
+            "ruleset_id",
+            "receipt_id",
+            "intent_id",
+            "intent_kind_id",
+            "intent_fingerprint",
+            "intent_payload",
+            "predecessor_receipt_fingerprint",
+            "source_state_fingerprint",
+            "accepted",
+            "committed",
+            "reason_code",
+            "state_revision_before",
+            "state_revision_after",
+            "victory_pending",
+            "final_settlement_committed",
+            "final_settlement_id",
+            "final_settlement_count",
+            "condition_id",
+            "proof_id",
+            "proof_fingerprint",
+            "proof_authority_id",
+            "proof_source_authority_id",
+            "proof_issuer_instance_id",
+            "proof_source_revision",
+            "result_state_fingerprint",
+            "receipt_fingerprint"
+          ],
+          "exact_once_key": "intent_id",
+          "receipt_chain_fields": [
+            "predecessor_receipt_fingerprint",
+            "source_state_fingerprint",
+            "result_state_fingerprint",
+            "receipt_fingerprint"
+          ],
+          "strict_integer_type_after_tagged_decode": true,
+          "privacy_scope": "public_result_only"
+        },
+        "SaveStateV1": {
+          "contract_id": "v07.solar_victory.save_state.v1",
+          "execution_status": "PURE_REFERENCE_EXECUTABLE",
+          "implementation_entrypoints": ["to_save_state", "from_save_state"],
+          "wire_identity": {
+            "mode": "registry_declared",
+            "field": null,
+            "value": "v07.solar_victory.save_state.v1"
+          },
+          "wire_discriminator": {
+            "field": "section_id",
+            "value": "solar_facility_and_macro_victory"
+          },
+          "exact_fields": [
+            "schema_version",
+            "section_id",
+            "section_version",
+            "ruleset_id",
+            "source_state_fingerprint",
+            "state",
+            "save_fingerprint"
+          ],
+          "section_id": "solar_facility_and_macro_victory",
+          "section_version": 3,
+          "wire_integer_profile": "strict_tagged_int64_recursive_v1",
+          "raw_float_for_integer_field_allowed": false,
+          "noncanonical_int64_tag_allowed": false,
+          "privacy_at_rest": "core_private",
+          "local_roundtrip": {
+            "status": "PURE_REFERENCE_IMPLEMENTED",
+            "capture_entrypoint": "to_save_state",
+            "restore_entrypoint": "from_save_state",
+            "recapture_entrypoint": "to_save_state",
+            "restore_transport": "v07.solar_victory.save_state.v1"
+          },
+          "v06_owner": "none"
+        }
+      }
+    }
+  ],
+  "completion_assertions": {
+    "domain_count": 5,
+    "contracts_per_domain": 6,
+    "executable_surface_count": 30,
+    "domain_local_save_roundtrip_count": 5,
+    "canonical_envelope_adapter_status": "NOT_IMPLEMENTED",
+    "global_three_layer_complete": false,
+    "v07_production_cutover_complete": false,
+    "v07_production_runtime_connection_count": 0,
+    "no_v06_wiring": true
+  }
+}

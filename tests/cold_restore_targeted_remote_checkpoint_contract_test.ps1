@@ -75,7 +75,7 @@ try {
     & git init $repoPath | Out-Null
     & git -C $repoPath config user.name "Cold Restore Contract"
     & git -C $repoPath config user.email "cold-restore-contract@example.invalid"
-    $branch = "codex/alpha04c-import-chain-v4-abcdef1"
+    $branch = "codex/alpha04c-v5-owner-diagnostic-abcdef1"
     & git -C $repoPath checkout -b $branch | Out-Null
     [IO.File]::WriteAllText(
         (Join-Path $repoPath "checkpoint.txt"),

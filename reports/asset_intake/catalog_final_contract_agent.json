@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "task_id": "COMMERCIAL_ART_CANONICAL_CATALOG_FINAL_97_KEY_CONTRACT_REPAIR",
+  "status": "GREEN",
+  "generated_at_utc": "2026-07-31T23:39:45.1157082Z",
+  "snapshot": {
+    "branch": "codex/commercial-art-direct-integration-2e38764",
+    "head_sha": "9d474bdf985286d9dfa92de63f80466f97b18c1c",
+    "catalog_resource_path": "res://resources/presentation/alpha01_card_illustration_catalog.tres",
+    "catalog_sha256": "e3e980665a09d71bef50b047c18c566dc0b6b149deaf2041939cc57ef273f3f2",
+    "catalog_resource_script_sha256": "830692d1b38be1b9c5802e4f7b11e2c1145f5e7a9d0141ed4f2dc941dc931fe6",
+    "catalog_service_script_sha256": "2b3b071b7449ac3e8a64bb00a71f331d16631b76bf68c8dd053209c8f565157b",
+    "test_path": "res://tests/commercial_art/commercial_presentation_catalog_contract_test.gd",
+    "test_sha256": "7b824fc43184f0c516de302b1989a19446be47ca0851a6ba1b084df4e8fd56c2"
+  },
+  "repair": {
+    "prior_recorded_contract_count": 93,
+    "incoming_count_only_contract_count": 97,
+    "final_explicit_contract_count": 97,
+    "stale_fixture_literal_removed": true,
+    "fixture_count_is_derived_from_final_contract": true,
+    "exact_key_set_is_explicit": true,
+    "kind_contract_is_explicit": true,
+    "scope_contract_is_explicit": true,
+    "catalog_resource_edited_by_this_agent": false,
+    "catalog_script_edited_by_this_agent": false,
+    "production_code_edited_by_this_agent": false
+  },
+  "stable_asset_contract": {
+    "schema_version": "commercial.presentation_assets.v1",
+    "expected_key_count": 97,
+    "actual_key_count": 97,
+    "unique_key_count": 97,
+    "duplicate_key_count": 0,
+    "missing_key_count": 0,
+    "unexpected_key_count": 0,
+    "resource_row_count": 97,
+    "kind_row_count": 97,
+    "scope_row_count": 97,
+    "kind_counts": {
+      "Texture2D": 45,
+      "AudioStream": 21,
+      "Font": 7,
+      "Shader": 3,
+      "Material": 3,
+      "Sky": 1,
+      "PackedScene": 17
+    },
+    "scope_counts": {
+      "production_safe_global_presentation": 10,
+      "reference_only_until_v07_projection": 7,
+      "production_safe_existing_fact_only": 29,
+      "production_safe_presentation_event": 6,
+      "reference_only_until_v07_receipt": 6,
+      "production_safe_receipt_driven": 6,
+      "production_safe_public_event": 2,
+      "production_safe_public_state_only": 4,
+      "production_safe_supported_device_only": 9,
+      "production_safe_receipt_or_public_event": 8,
+      "production_safe_presentation_only": 7,
+      "production_safe_decorative_only": 3
+    },
+    "final_font_variant_keys": [
+      "font.body.zh.bold",
+      "font.body.ja.bold",
+      "font.display.medium",
+      "font.display.bold"
+    ]
+  },
+  "verification": {
+    "godot_version": "4.7.stable.official.5b4e0cb0f",
+    "command": "Godot_v4.7-stable_win64_console.exe --headless --path . --script res://tests/commercial_art/commercial_presentation_catalog_contract_test.gd",
+    "exit_code": 0,
+    "check_count": 988,
+    "pass_count": 988,
+    "failure_count": 0,
+    "catalog_validation_green": true,
+    "key_uniqueness_green": true,
+    "exact_key_set_green": true,
+    "parallel_array_shape_green": true,
+    "resource_resolution": "97/97",
+    "kind_parity": "97/97",
+    "scope_parity": "97/97",
+    "local_resource_path_exists": "97/97",
+    "resource_reload_type_parity": "97/97",
+    "legacy_api_compatibility_green": true,
+    "single_catalog_owner_green": true,
+    "kind_mismatch_fail_closed_green": true,
+    "vendor_path_public_key_rejection_green": true
+  },
+  "execution_boundaries": {
+    "smoke_run_count": 0,
+    "formal_run_count": 0,
+    "network_access_count": 0,
+    "commit_created": false,
+    "allowed_file_scope_respected": true
+  }
+}

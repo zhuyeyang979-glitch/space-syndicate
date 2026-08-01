@@ -1,0 +1,407 @@
+{
+  "schema_version": 1,
+  "task_id": "COMMERCIAL_ART_FOUNDATION_DIRECT_SELECTED_ASSET_INTEGRATION_V1",
+  "lane_id": "presentation_catalog_production_reference_boundary_agent6",
+  "audit_only": true,
+  "network_access_used": false,
+  "web_asset_search_count": 0,
+  "asset_download_count": 0,
+  "repository": {
+    "branch": "codex/commercial-art-direct-integration-2e38764",
+    "base_sha": "2e38764791cb37cdc45b2eb0836957f550822dd5",
+    "worktree": "C:/Users/zhuye/Documents/New project/space-syndicate-commercial-art-direct-integration-2e38764"
+  },
+  "runtime_boundary": {
+    "current_production_runtime_ruleset": "v0.6",
+    "target_development_constitution": "v0.7",
+    "v07_semantic_kernel_on_main": true,
+    "v07_player_presentation_connected_to_production": false,
+    "full_v0_7_runtime_cutover": false,
+    "evidence": [
+      "docs/rules/v07_game_constitution.json",
+      "scripts/v07_semantic/",
+      "scenes/ui/GameScreen.tscn",
+      "scripts/main.gd"
+    ]
+  },
+  "canonical_owner_decision": {
+    "canonical_owner_id": "CardIllustrationCatalogResource",
+    "service_owner_id": "CardIllustrationCatalog",
+    "resource_path": "res://resources/presentation/alpha01_card_illustration_catalog.tres",
+    "resource_script_path": "res://scripts/presentation/card_illustration_catalog_resource.gd",
+    "service_scene_path": "res://scenes/runtime/CardIllustrationCatalog.tscn",
+    "service_script_path": "res://scripts/presentation/card_illustration_catalog.gd",
+    "strategy": "extend_in_place_keep_compatibility_api",
+    "second_catalog_allowed": false,
+    "reason": [
+      "It is the only existing runtime presentation resource that maps semantic identities to opaque presentation keys and resolves those keys to local Godot Resources.",
+      "It is already consumed by CardPresentationRuntimeService, CardCodexPublicSourceService, and CardIllustrationLayer.",
+      "It is read-only, presentation-only, and explicitly owns no card state or gameplay mutation.",
+      "Promoting this resource in place avoids a second cross-domain Presentation Asset Catalog while preserving all Alpha 0.1 and Alpha 0.4 card APIs."
+    ],
+    "compatibility_api_to_preserve": [
+      "presentation_key_for_card",
+      "presentation_key_for_commodity_id",
+      "presentation_key_for_commodity_family",
+      "texture_for_key",
+      "presentation_profile_for_key",
+      "is_authored_key",
+      "validation_report"
+    ],
+    "generic_api_to_add_in_second_phase": [
+      "resource_for_asset_key",
+      "asset_kind_for_key",
+      "asset_scope_for_key",
+      "has_asset_key",
+      "all_asset_keys"
+    ],
+    "implementation_constraint": "Add generic stable-key/resource rows to the same resource and service. Existing texture_for_key must delegate to the generic resolver for texture entries. Do not create PresentationAssetCatalog.gd, a second catalog scene, or an autoload."
+  },
+  "existing_owner_inventory": [
+    {
+      "owner_id": "CardIllustrationCatalogResource",
+      "role": "canonical_cross_domain_presentation_asset_owner_candidate",
+      "decision": "extend_in_place",
+      "notes": "Existing opaque key to Texture2D resolution and presentation profile ownership are the correct compatibility base."
+    },
+    {
+      "owner_id": "Alpha01ContentManifestResource",
+      "role": "gameplay_content_selection_owner",
+      "decision": "do_not_extend_with_art_resources",
+      "notes": "It selects card, role, monster, and product content. Third-party resources, paths, licenses, fonts, models, and audio do not belong here."
+    },
+    {
+      "owner_id": "AudioEventRegistry",
+      "role": "audio_event_routing_owner",
+      "decision": "retain_as_router_only",
+      "notes": "Event definitions may point to stable catalog asset keys. The registry must not become a second resource-path catalog. Preserve legacy underscore event IDs as compatibility aliases while adding canonical dot event IDs."
+    },
+    {
+      "owner_id": "RolePortraitCatalog",
+      "role": "legacy_role_portrait_domain_resolver",
+      "decision": "leave_scoped_and_unchanged",
+      "notes": "The task preserves existing character portraits. This temporary path-based role resolver is not the commercial cross-domain catalog."
+    },
+    {
+      "owner_id": "GameTheme",
+      "role": "production_theme_consumer",
+      "decision": "consume_catalog_resources_not_own_them",
+      "notes": "It is referenced by 105 scenes and is the production-safe target for fonts and common UI styling."
+    },
+    {
+      "owner_id": "selected_commercial_asset_manifest",
+      "role": "license_and_provenance_evidence",
+      "decision": "never_runtime_owner",
+      "notes": "The final third-party manifest records source, hashes, modifications, and attribution only. Core, UI, AI, Save, and RNG must not load it as gameplay data."
+    }
+  ],
+  "stable_asset_key_wiring": [
+    {"asset_key":"ui.panel.primary","kind":"Texture2D_or_StyleBoxTexture","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"GameTheme","consumer":"production_common_panels","scope":"production_safe_global_presentation","source_asset_id":"kenney.ui.scifi"},
+    {"asset_key":"ui.panel.popup","kind":"Texture2D_or_StyleBoxTexture","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"GameTheme","consumer":"production_popups_and_credits","scope":"production_safe_global_presentation","source_asset_id":"kenney.ui.scifi"},
+    {"asset_key":"ui.button.primary","kind":"Texture2D_or_StyleBoxTexture","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"GameTheme","consumer":"production_buttons","scope":"production_safe_global_presentation","source_asset_id":"kenney.ui.scifi"},
+
+    {"asset_key":"icon.asset.life","kind":"Texture2D","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"typed_color_id_presenter","consumer":"six_color_asset_surfaces","scope":"reference_only_until_v07_projection","source_asset_id":"icon.asset.life"},
+    {"asset_key":"icon.asset.energy","kind":"Texture2D","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"typed_color_id_presenter","consumer":"six_color_asset_surfaces","scope":"reference_only_until_v07_projection","source_asset_id":"icon.asset.energy"},
+    {"asset_key":"icon.asset.industry","kind":"Texture2D","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"typed_color_id_presenter","consumer":"six_color_asset_surfaces","scope":"reference_only_until_v07_projection","source_asset_id":"icon.asset.industry"},
+    {"asset_key":"icon.asset.technology","kind":"Texture2D","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"typed_color_id_presenter","consumer":"six_color_asset_surfaces","scope":"reference_only_until_v07_projection","source_asset_id":"icon.asset.technology"},
+    {"asset_key":"icon.asset.commerce","kind":"Texture2D","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"typed_color_id_presenter","consumer":"six_color_asset_surfaces","scope":"reference_only_until_v07_projection","source_asset_id":"icon.asset.commerce"},
+    {"asset_key":"icon.asset.shipping","kind":"Texture2D","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"typed_color_id_presenter","consumer":"six_color_asset_surfaces","scope":"reference_only_until_v07_projection","source_asset_id":"icon.asset.shipping"},
+
+    {"asset_key":"card.frame.normal","kind":"Texture2D_or_StyleBoxTexture","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"CardFace","consumer":"PlayerCardDock_normal_cards","scope":"production_safe_existing_fact_only","source_asset_id":"kenney.ui.scifi"},
+    {"asset_key":"card.frame.commodity","kind":"Texture2D_or_StyleBoxTexture","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"CardFace","consumer":"PlayerCardDock_commodity_cards","scope":"production_safe_existing_fact_only","source_asset_id":"kenney.ui.scifi"},
+    {"asset_key":"card.frame.bound_action","kind":"Texture2D_or_StyleBoxTexture","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"CardFace","consumer":"PlayerCardDock_bound_actions","scope":"production_safe_existing_fact_only","source_asset_id":"kenney.ui.scifi"},
+    {"asset_key":"card.back.normal","kind":"Texture2D","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"CardFace","consumer":"review_draw_and_discard_backs","scope":"reference_only_until_v07_projection","source_asset_id":"kenney.pattern_pack"},
+
+    {"asset_key":"model.facility.factory.base","kind":"PackedScene","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PlanetMapVisualProxy","consumer":"public_factory_entity_visual","scope":"production_safe_existing_fact_only","source_asset_id":"quaternius.modular_scifi_megakit"},
+    {"asset_key":"model.facility.market.base","kind":"PackedScene","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PlanetMapVisualProxy","consumer":"public_market_entity_visual","scope":"production_safe_existing_fact_only","source_asset_id":"quaternius.modular_scifi_megakit"},
+    {"asset_key":"model.facility.warehouse.base","kind":"PackedScene","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PlanetMapVisualProxy","consumer":"public_warehouse_entity_visual","scope":"production_safe_existing_fact_only","source_asset_id":"quaternius.scifi_essentials"},
+    {"asset_key":"model.facility.starport.base","kind":"PackedScene","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PlanetMapVisualProxy","consumer":"public_starport_entity_visual","scope":"production_safe_existing_fact_only","source_asset_id":"quaternius.modular_scifi_megakit"},
+
+    {"asset_key":"model.monster.life","kind":"PackedScene","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PlanetMapVisualProxy","consumer":"public_monster_visual","scope":"production_safe_existing_fact_only","source_asset_id":"quaternius.ultimate_monsters"},
+    {"asset_key":"model.monster.energy","kind":"PackedScene","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PlanetMapVisualProxy","consumer":"public_monster_visual","scope":"production_safe_existing_fact_only","source_asset_id":"quaternius.ultimate_monsters"},
+    {"asset_key":"model.monster.industry","kind":"PackedScene","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PlanetMapVisualProxy","consumer":"public_monster_visual","scope":"production_safe_existing_fact_only","source_asset_id":"quaternius.ultimate_monsters"},
+    {"asset_key":"model.monster.technology","kind":"PackedScene","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PlanetMapVisualProxy","consumer":"public_monster_visual","scope":"production_safe_existing_fact_only","source_asset_id":"quaternius.ultimate_monsters"},
+    {"asset_key":"model.monster.commerce","kind":"PackedScene","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PlanetMapVisualProxy","consumer":"public_monster_visual","scope":"production_safe_existing_fact_only","source_asset_id":"quaternius.ultimate_monsters"},
+    {"asset_key":"model.monster.shipping","kind":"PackedScene","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PlanetMapVisualProxy","consumer":"public_monster_visual","scope":"production_safe_existing_fact_only","source_asset_id":"quaternius.ultimate_monsters"},
+
+    {"asset_key":"model.military.tier1","kind":"PackedScene","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PlanetMapVisualProxy","consumer":"public_military_visual","scope":"production_safe_existing_fact_only","source_asset_id":"quaternius.animated_mech"},
+    {"asset_key":"model.military.tier2","kind":"PackedScene","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PlanetMapVisualProxy","consumer":"public_military_visual","scope":"production_safe_existing_fact_only","source_asset_id":"quaternius.animated_mech"},
+    {"asset_key":"model.military.tier3","kind":"PackedScene","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PlanetMapVisualProxy","consumer":"public_military_visual","scope":"production_safe_existing_fact_only","source_asset_id":"quaternius.animated_mech"},
+    {"asset_key":"model.military.tier4","kind":"PackedScene","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PlanetMapVisualProxy","consumer":"public_military_visual","scope":"production_safe_existing_fact_only","source_asset_id":"quaternius.animated_mech"},
+
+    {"asset_key":"model.shipping.route_marker","kind":"PackedScene","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PlanetMapVisualProxy","consumer":"route_feedback_decoration","scope":"production_safe_decorative_only","source_asset_id":"quaternius.ultimate_spaceships"},
+    {"asset_key":"model.shipping.convoy","kind":"PackedScene","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PlanetMapVisualProxy","consumer":"shipping_feedback_decoration","scope":"production_safe_decorative_only","source_asset_id":"quaternius.ultimate_spaceships"},
+    {"asset_key":"model.shipping.starport_showcase","kind":"PackedScene","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PlanetMapVisualProxy","consumer":"starport_showcase_decoration","scope":"production_safe_decorative_only","source_asset_id":"quaternius.ultimate_spaceships"},
+
+    {"asset_key":"audio.ui.hover","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"AudioEventRegistry","consumer":"ui.hover","scope":"production_safe_presentation_event","source_asset_id":"kenney.interface_sounds"},
+    {"asset_key":"audio.ui.confirm","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"AudioEventRegistry","consumer":"ui.confirm","scope":"production_safe_presentation_event","source_asset_id":"kenney.interface_sounds"},
+    {"asset_key":"audio.ui.cancel","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"AudioEventRegistry","consumer":"ui.cancel","scope":"production_safe_presentation_event","source_asset_id":"kenney.interface_sounds"},
+    {"asset_key":"audio.card.select","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"AudioEventRegistry","consumer":"card.select","scope":"production_safe_presentation_event","source_asset_id":"kenney.interface_sounds"},
+    {"asset_key":"audio.card.drag_start","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"AudioEventRegistry","consumer":"card.drag_start","scope":"production_safe_presentation_event","source_asset_id":"kenney.interface_sounds"},
+    {"asset_key":"audio.card.drop","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"AudioEventRegistry","consumer":"card.drop","scope":"production_safe_presentation_event","source_asset_id":"kenney.interface_sounds"},
+    {"asset_key":"audio.card.lock","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"AudioEventRegistry","consumer":"card.lock","scope":"reference_only_until_v07_receipt","source_asset_id":"kenney.interface_sounds"},
+    {"asset_key":"audio.card.merge","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"AudioEventRegistry","consumer":"card.merge","scope":"reference_only_until_v07_receipt","source_asset_id":"kenney.interface_sounds"},
+    {"asset_key":"audio.asset.refresh","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"AudioEventRegistry","consumer":"asset.refresh","scope":"reference_only_until_v07_receipt","source_asset_id":"kenney.interface_sounds"},
+    {"asset_key":"audio.commodity.claim","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"AudioEventRegistry","consumer":"commodity.claim","scope":"production_safe_receipt_driven","source_asset_id":"kenney.scifi_sounds"},
+    {"asset_key":"audio.normal_card.purchase","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"AudioEventRegistry","consumer":"normal_card.purchase","scope":"production_safe_receipt_driven","source_asset_id":"kenney.scifi_sounds"},
+    {"asset_key":"audio.facility.factory_build","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"AudioEventRegistry","consumer":"facility.factory_build","scope":"production_safe_receipt_driven","source_asset_id":"kenney.scifi_sounds"},
+    {"asset_key":"audio.facility.market_build","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"AudioEventRegistry","consumer":"facility.market_build","scope":"production_safe_receipt_driven","source_asset_id":"kenney.scifi_sounds"},
+    {"asset_key":"audio.facility.warehouse_build","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"AudioEventRegistry","consumer":"facility.warehouse_build","scope":"production_safe_receipt_driven","source_asset_id":"kenney.scifi_sounds"},
+    {"asset_key":"audio.monster.attack","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"AudioEventRegistry","consumer":"monster.attack","scope":"production_safe_public_event","source_asset_id":"kenney.scifi_sounds"},
+    {"asset_key":"audio.military.action","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"AudioEventRegistry","consumer":"military.action","scope":"production_safe_public_event","source_asset_id":"kenney.scifi_sounds"},
+    {"asset_key":"audio.settlement.complete","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"AudioEventRegistry","consumer":"settlement.complete","scope":"production_safe_receipt_driven","source_asset_id":"kenney.scifi_sounds"},
+
+    {"asset_key":"music.menu","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PresentationMusicController","consumer":"public_menu_state","scope":"production_safe_public_state_only","source_asset_id":"music.menu.pondering_the_cosmos"},
+    {"asset_key":"music.gameplay","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PresentationMusicController","consumer":"public_gameplay_phase","scope":"production_safe_public_state_only","source_asset_id":"music.gameplay.robotic_city"},
+    {"asset_key":"music.crisis","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PresentationMusicController","consumer":"public_crisis_state","scope":"production_safe_public_state_only","source_asset_id":"music.crisis.space_graveyard"},
+    {"asset_key":"music.military","kind":"AudioStream","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"PresentationMusicController","consumer":"public_military_or_late_phase","scope":"production_safe_public_state_only","source_asset_id":"music.military.interstellar_fleet_1"},
+
+    {"asset_key":"font.body.zh","kind":"Font","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"GameThemeLocaleResolver","consumer":"zh_SC_body_copy","scope":"production_safe_global_presentation","source_asset_id":"font.noto_sans_cjk"},
+    {"asset_key":"font.body.ja","kind":"Font","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"GameThemeLocaleResolver","consumer":"ja_JP_body_copy","scope":"production_safe_global_presentation","source_asset_id":"font.noto_sans_cjk"},
+    {"asset_key":"font.display","kind":"Font","catalog_owner":"CardIllustrationCatalogResource","routing_owner":"GameThemeLocaleResolver","consumer":"latin_titles_and_numbers_only","scope":"production_safe_global_presentation","source_asset_id":"font.oxanium"}
+  ],
+  "supporting_key_groups": [
+    {
+      "group_id": "board_game_icons",
+      "catalog_owner": "CardIllustrationCatalogResource",
+      "source_asset_id": "kenney.board_game_icons",
+      "scope": "production_safe_existing_fact_only",
+      "asset_keys": [
+        "icon.board.draw_pile", "icon.board.discard_pile", "icon.board.shuffle", "icon.board.merge",
+        "icon.board.lock", "icon.board.turn", "icon.board.target", "icon.board.card_count",
+        "icon.board.gdp", "icon.board.cash", "icon.board.settlement", "icon.board.player_order"
+      ]
+    },
+    {
+      "group_id": "input_prompts",
+      "catalog_owner": "CardIllustrationCatalogResource",
+      "source_asset_id": "kenney.input_prompts",
+      "scope": "production_safe_supported_device_only",
+      "asset_keys": [
+        "icon.input.mouse_click", "icon.input.mouse_drag", "icon.input.mouse_wheel",
+        "icon.input.keyboard_confirm", "icon.input.keyboard_cancel", "icon.input.gamepad_confirm",
+        "icon.input.gamepad_back", "icon.input.gamepad_zoom"
+      ]
+    },
+    {
+      "group_id": "presentation_vfx",
+      "catalog_owner": "CardIllustrationCatalogResource",
+      "source_asset_id": "kenney.particle_pack_and_smoke_particles",
+      "scope": "receipt_or_public_event_driven_only",
+      "asset_keys": [
+        "vfx.commodity.claim", "vfx.normal_card.purchase", "vfx.card.lock", "vfx.card.merge",
+        "vfx.asset.refresh", "vfx.settlement.complete", "vfx.facility.damaged_smoke",
+        "vfx.facility.factory_smoke", "vfx.monster.attack_smoke", "vfx.military.attack_smoke",
+        "vfx.facility.destroyed_smoke"
+      ]
+    },
+    {
+      "group_id": "planet_material_environment",
+      "catalog_owner": "CardIllustrationCatalogResource",
+      "scope": "production_safe_presentation_only",
+      "asset_keys": [
+        "shader.planet.body", "shader.planet.cloud", "shader.planet.atmosphere",
+        "material.metal_plates_013", "material.painted_metal_007", "material.sheet_metal_003",
+        "environment.night_sky_hdri_001"
+      ]
+    }
+  ],
+  "production_safe_connections": [
+    {
+      "feature": "global_ui_theme_and_locale_fonts",
+      "target": "res://themes/GameTheme.tres",
+      "guard": "Resolve resources through the canonical catalog; SC is the default body font, JP is selected only for Japanese locale, and Oxanium is never used for CJK body copy."
+    },
+    {
+      "feature": "normal_commodity_bound_action_card_frames",
+      "target": "res://scenes/ui/CardFace.tscn and res://scenes/ui/table/PlayerCardDock.tscn",
+      "guard": "Use existing typed pool identity and illustration_key. No semantic ID, price, legality, action offer, or receipt changes."
+    },
+    {
+      "feature": "card_hover_focus_selection_and_visual_drag",
+      "target": "res://scripts/ui/table/player_card_dock.gd",
+      "guard": "Implement inside the production PlayerCardDock. Do not restore legacy HandRack, do not create drag-to-play submission, and keep the one game_action_offer_requested route."
+    },
+    {
+      "feature": "planet_body_day_night_zoom_and_occlusion",
+      "target": "PlanetBoard -> PlanetMapView presentation subtree",
+      "guard": "Consume public map and solar presentation snapshots only. Camera state is presentation-local and never saved."
+    },
+    {
+      "feature": "facility_monster_military_visual_proxies",
+      "target": "PlanetMapView sceneized layers",
+      "guard": "Models mirror existing public entity IDs and transforms. They never own target legality, routes, entity lifecycle, combat, or player ownership."
+    },
+    {
+      "feature": "shipping_models",
+      "target": "PlanetMapView decorative route and starport layers",
+      "guard": "Decorative feedback only; ships cannot become route owners or Save state."
+    },
+    {
+      "feature": "ui_sfx_public_receipt_sfx_and_music",
+      "target": "AudioEventRegistry plus presentation-only playback services",
+      "guard": "The registry stores event-to-asset-key routing; streams resolve through the canonical catalog. Music uses public state only and presentation RNG remains zero."
+    },
+    {
+      "feature": "credits_and_licenses",
+      "target": "MenuRootLobby/MenuOverlay presentation flow",
+      "guard": "A new read-only Credits surface may consume credits_data.json. No Main responsibility and no gameplay/session dependency."
+    }
+  ],
+  "review_reference_only_connections": [
+    {"feature":"six_color_asset_current_reserved_cost_shortage_ratio_and_settlement_values","reason":"Current production remains V0.6 and has no active V0.7 six-color typed projection."},
+    {"feature":"unified_card_track","reason":"V0.7 semantic kernel is on main but no production player projection or runtime cutover exists."},
+    {"feature":"normal_dbg_draw_pile_and_discard_pile","reason":"No production V0.7 DBG owner or projection is connected."},
+    {"feature":"five_action_local_queue_ordering","reason":"Production PlayerCardDock has no V0.7 batch-order projection or intent contract."},
+    {"feature":"asset_reservation_and_lock_feedback","reason":"No production V0.7 reservation receipt is connected."},
+    {"feature":"anonymous_resolution_queue","reason":"No production V0.7 anonymous player projection is connected."}
+  ],
+  "v07_reference_observation": {
+    "existing_visual_reference_presentation_found": false,
+    "existing_reference_semantics_bench": "res://scenes/tools/SharedCommodityTrackThreeLayerSemanticsBench.tscn",
+    "bench_dependencies": [
+      "res://tests/support/shared_commodity_track_core_semantics_reference.gd",
+      "res://tests/support/shared_commodity_track_ai_semantics_reference.gd",
+      "res://tests/support/shared_commodity_track_player_semantics_reference.gd",
+      "res://tests/support/shared_commodity_track_semantic_query_source_reference.gd"
+    ],
+    "decision": "Use the new CommercialArtIntegrationReview scene for V0.7-only visuals. Do not attach tests/support reference code, six-color numeric widgets, unified-track widgets, DBG widgets, batch ordering, or anonymous queue visuals to production."
+  },
+  "observed_gaps": [
+    {
+      "gap_id": "catalog_is_card_named_and_texture_typed",
+      "detail": "The canonical resource currently resolves Texture2D card illustrations only. It needs an in-place generic Resource table and type/scope validation while preserving the existing card API."
+    },
+    {
+      "gap_id": "audio_registry_is_silent_router",
+      "detail": "data/audio/audio_event_map.json currently contains mode/category only and legacy underscore IDs. It has no stable asset_key or playback resource."
+    },
+    {
+      "gap_id": "credits_surface_absent",
+      "detail": "No existing Credits, Third-Party Assets, Licenses, Music, or Fonts player-facing surface was found in MenuRootLobby or MenuOverlay."
+    },
+    {
+      "gap_id": "production_dock_has_no_drag_layout",
+      "detail": "Production PlayerCardDock uses three HBox pools and one Action Spine route. The legacy HandRack has drag behavior but is intentionally retired from production and must not be reattached."
+    },
+    {
+      "gap_id": "planet_backdrop_is_translucent_and_ringed",
+      "detail": "PlanetGlobeBackdrop draws the ocean with alpha below 1, draws a table ring, and PlanetMapView instantiates PlanetOrbitGuide. Those are the exact presentation nodes to replace/remove for opacity and OUTER_ORBIT_DECORATION_COUNT=0."
+    },
+    {
+      "gap_id": "backside_markers_are_not_3d_occluded",
+      "detail": "The current sceneized map is a 2D Control layer stack. A presentation proxy must cull backside facilities, markers, and models against camera-facing hemisphere without changing authoritative region/entity data."
+    }
+  ],
+  "second_phase_file_change_plan": [
+    {
+      "owner": "canonical_catalog_hot_file_single_writer",
+      "paths": [
+        "scripts/presentation/card_illustration_catalog_resource.gd",
+        "scripts/presentation/card_illustration_catalog.gd",
+        "resources/presentation/alpha01_card_illustration_catalog.tres",
+        "scenes/runtime/CardIllustrationCatalog.tscn"
+      ],
+      "change": "Extend in place with generic stable-key Resources and strict kind/scope validation. Preserve card compatibility APIs and all legacy opaque illustration keys."
+    },
+    {
+      "owner": "card_presentation_single_writer",
+      "paths": [
+        "scenes/ui/CardFace.tscn",
+        "scripts/ui/card_face.gd",
+        "scripts/ui/card_illustration_layer.gd",
+        "scenes/ui/table/PlayerCardDock.tscn",
+        "scripts/ui/table/player_card_dock.gd"
+      ],
+      "change": "Apply frames and in-Dock presentation interactions. Keep typed projection validation and the single Action Spine emitter. Do not reconnect HandRack."
+    },
+    {
+      "owner": "planet_presentation_single_writer",
+      "paths": [
+        "scenes/ui/PlanetBoard.tscn",
+        "scripts/ui/planet_board.gd",
+        "scenes/ui/PlanetMapView.tscn",
+        "scripts/ui/planet_map_view.gd",
+        "scenes/ui/map/PlanetGlobeBackdrop.tscn",
+        "scripts/ui/map/planet_globe_backdrop.gd",
+        "scenes/ui/map/PlanetOrbitGuide.tscn",
+        "scripts/ui/map/planet_solar_camera_controller.gd"
+      ],
+      "change": "Integrate the opaque day/night planet and presentation proxies, remove orbit decoration, preserve public snapshot input and unsaved camera state."
+    },
+    {
+      "owner": "theme_and_menu_single_writer",
+      "paths": [
+        "themes/GameTheme.tres",
+        "scenes/ui/MenuRootLobby.tscn",
+        "scripts/ui/menu_root_lobby.gd",
+        "scenes/ui/MenuOverlay.tscn",
+        "scripts/ui/menu_overlay.gd",
+        "scripts/runtime/menu_lifecycle_application_flow_controller.gd"
+      ],
+      "change": "Apply global fonts/UI and add a read-only Credits route without Main changes."
+    },
+    {
+      "owner": "audio_presentation_single_writer",
+      "paths": [
+        "data/audio/audio_event_map.json",
+        "scripts/audio/audio_event_registry.gd",
+        "scripts/audio/audio_event_bus.gd"
+      ],
+      "change": "Route canonical dot event IDs to stable audio asset keys, preserve legacy compatibility hooks, and keep playback presentation-only."
+    },
+    {
+      "owner": "review_reference_single_writer",
+      "paths": [
+        "scenes/tools/CommercialArtIntegrationReview.tscn",
+        "scripts/tools/commercial_art_integration_review.gd"
+      ],
+      "change": "Show V0.7-only assets with detached fixtures. Do not create a Session, Save, RNG draw, or production connection."
+    }
+  ],
+  "files_that_must_not_change_for_this_integration": [
+    "scripts/main.gd",
+    "scenes/main.tscn",
+    "resources/content/alpha01/alpha01_content_manifest.gd",
+    "resources/content/alpha01/alpha01_content_manifest.tres",
+    "scripts/v07_semantic/",
+    "docs/rules/v07_game_constitution.json",
+    "docs/rules/v07_game_constitution.md",
+    "scripts/presentation/player_card_dock_projection_v1.gd"
+  ],
+  "focused_regression_plan": [
+    "tests/commercial_art/commercial_art_architecture_preflight_test.gd",
+    "tests/alpha01_card_illustration_production_cutover_test.gd",
+    "tests/card_illustration_layer_test.gd",
+    "tests/alpha04_player_card_dock_invariants_test.gd",
+    "tests/alpha04_player_card_dock_production_cutover_test.gd",
+    "tests/alpha04_player_card_dock_target_test.gd",
+    "tests/player_card_dock_projection_v1_test.gd",
+    "tests/player_card_dock_real_three_pool_production_test.gd",
+    "tests/planet_solar_camera_presentation_test.gd",
+    "tests/planet_map_live_refresh_identity_test.gd",
+    "tests/visual_event_smoke_test.gd",
+    "tests/menu_lifecycle_application_flow_cutover_test.gd",
+    "tests/main_runtime_composition_test.gd",
+    "tests/v07_semantic/v07_three_wing_contract_aggregate_test.gd",
+    "engine --check-only"
+  ],
+  "architecture_invariants": {
+    "presentation_asset_catalog_owner_count": 1,
+    "second_presentation_asset_catalog_count": 0,
+    "runtime_network_asset_dependency_count": 0,
+    "core_third_party_filename_reference_count": 0,
+    "ai_third_party_filename_reference_count": 0,
+    "save_resource_path_field_count": 0,
+    "presentation_rng_draw_count": 0,
+    "new_main_responsibility_count": 0,
+    "new_save_owner_count": 0,
+    "new_rng_owner_count": 0,
+    "v07_reference_production_connection_count": 0
+  },
+  "authorized_output_paths": [
+    "reports/asset_intake/presentation_catalog_boundary_agent6.json",
+    "reports/asset_intake/presentation_catalog_boundary_agent6.md",
+    "tests/commercial_art/commercial_art_architecture_preflight_test.gd"
+  ]
+}

@@ -5,6 +5,7 @@ $script:AuthorizationContractPath = Join-Path $PSScriptRoot "cold_restore_author
 $script:AuthorizationContractFields = @(
     "schema_version", "contract_id", "targeted_owner_capture_diagnostic_v3",
     "targeted_owner_capture_diagnostic_v4_importchain",
+    "targeted_owner_capture_diagnostic_v5_canonical_binding",
     "process_a_save_completion_rehearsal_v1", "official_attempt_2"
 )
 $script:TargetedDiagnosticFields = @(
@@ -12,6 +13,9 @@ $script:TargetedDiagnosticFields = @(
     "evidence_root_relative_path", "bootstrap_root_relative_path", "run_id_prefix",
     "permitted_transition_from",
     "permitted_transition_to", "authorized_increment", "maximum_invocation_count"
+)
+$script:TargetedDiagnosticV5Fields = @(
+    $script:TargetedDiagnosticFields + "previous_quota_ledger_sha256"
 )
 $script:ProcessARehearsalFields = @(
     "authorization_id", "quota_ledger_relative_path", "launch_ledger_relative_path",
@@ -105,6 +109,23 @@ function Assert-ColdRestoreAuthorizationContract {
         throw "cold_restore_targeted_v4_authorization_contract_invalid"
     }
 
+    $targetedV5 = $Value.targeted_owner_capture_diagnostic_v5_canonical_binding
+    if (-not (Test-ColdRestoreAuthorizationExactFieldSet $targetedV5 $script:TargetedDiagnosticV5Fields) `
+        -or -not (Test-ColdRestoreAuthorizationIdShape $targetedV5.authorization_id) `
+        -or [string]$targetedV5.task_id -cnotmatch '^[A-Z0-9_]{1,160}$' `
+        -or [string]$targetedV5.ledger_id -cnotmatch '^Alpha04C\.TargetedOwnerCaptureDiagnosticQuotaLedgerV[0-9]+$' `
+        -or -not (Test-ColdRestoreAuthorizationRelativePath $targetedV5.quota_ledger_relative_path) `
+        -or -not (Test-ColdRestoreAuthorizationRelativePath $targetedV5.evidence_root_relative_path) `
+        -or -not (Test-ColdRestoreAuthorizationRelativePath $targetedV5.bootstrap_root_relative_path) `
+        -or [string]$targetedV5.run_id_prefix -cnotmatch '^[a-z0-9][a-z0-9-]{1,95}$' `
+        -or [int]$targetedV5.permitted_transition_from -ne 4 `
+        -or [int]$targetedV5.permitted_transition_to -ne 5 `
+        -or [int]$targetedV5.authorized_increment -ne 1 `
+        -or [int]$targetedV5.maximum_invocation_count -ne 5 `
+        -or [string]$targetedV5.previous_quota_ledger_sha256 -cnotmatch '^[0-9a-f]{64}$') {
+        throw "cold_restore_targeted_v5_authorization_contract_invalid"
+    }
+
     $rehearsal = $Value.process_a_save_completion_rehearsal_v1
     if (-not (Test-ColdRestoreAuthorizationExactFieldSet $rehearsal $script:ProcessARehearsalFields) `
         -or -not (Test-ColdRestoreAuthorizationIdShape $rehearsal.authorization_id) `
@@ -146,21 +167,69 @@ function Get-ColdRestoreAuthorizationContract {
     return Assert-ColdRestoreAuthorizationContract $value
 }
 
+function Get-ColdRestoreTargetedDiagnosticAuthorizationNames {
+    param([string]$Path = $script:AuthorizationContractPath)
+
+    $contract = Get-ColdRestoreAuthorizationContract $Path
+    return @(
+        $contract.PSObject.Properties |
+            Where-Object {
+                [string]$_.Name -cmatch '^targeted_owner_capture_diagnostic_[a-z0-9_]+$' `
+                    -and $null -ne $_.Value `
+                    -and $_.Value.PSObject.Properties.Name -ccontains "permitted_transition_to"
+            } |
+            Sort-Object { [int]$_.Value.permitted_transition_to } |
+            ForEach-Object { [string]$_.Name }
+    )
+}
+
+function Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName {
+    param([string]$Path = $script:AuthorizationContractPath)
+
+    $names = @(Get-ColdRestoreTargetedDiagnosticAuthorizationNames $Path)
+    if ($names.Count -eq 0) {
+        throw "cold_restore_targeted_authorization_missing"
+    }
+    return [string]$names[-1]
+}
+
+function Get-ColdRestorePreviousTargetedDiagnosticAuthorizationName {
+    param([string]$Path = $script:AuthorizationContractPath)
+
+    $contract = Get-ColdRestoreAuthorizationContract $Path
+    $currentName = Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName $Path
+    $current = $contract.$currentName
+    $matches = @(
+        Get-ColdRestoreTargetedDiagnosticAuthorizationNames $Path |
+            Where-Object {
+                [int]$contract.$_.permitted_transition_to -eq
+                    [int]$current.permitted_transition_from
+            }
+    )
+    if ($matches.Count -ne 1) {
+        throw "cold_restore_previous_targeted_authorization_invalid"
+    }
+    return [string]$matches[0]
+}
+
 function Get-ColdRestoreAuthorizationEntry {
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet(
-            "targeted_owner_capture_diagnostic_v3",
-            "targeted_owner_capture_diagnostic_v4_importchain",
-            "process_a_save_completion_rehearsal_v1",
-            "official_attempt_2"
-        )]
         [string]$Name,
         [string]$Path = $script:AuthorizationContractPath
     )
 
     $contract = Get-ColdRestoreAuthorizationContract $Path
-    return $contract.$Name
+    $fixedNames = @("process_a_save_completion_rehearsal_v1", "official_attempt_2")
+    $targetedNames = @(Get-ColdRestoreTargetedDiagnosticAuthorizationNames $Path)
+    if ($Name -cnotin $fixedNames -and $Name -cnotin $targetedNames) {
+        throw "cold_restore_authorization_entry_invalid"
+    }
+    $property = $contract.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        throw "cold_restore_authorization_entry_invalid"
+    }
+    return $property.Value
 }
 
 function Test-ColdRestoreExactAuthorizationId {
@@ -194,18 +263,17 @@ function Get-ColdRestoreTargetedDiagnosticAuthorizationBinding {
         [Parameter(Mandatory = $true)][string]$GitCommonDirectory,
         [Parameter(Mandatory = $true)][string]$RepositoryHead,
         [string]$Path = $script:AuthorizationContractPath,
-        [ValidateSet(
-            "targeted_owner_capture_diagnostic_v3",
-            "targeted_owner_capture_diagnostic_v4_importchain"
-        )]
-        [string]$AuthorizationName = "targeted_owner_capture_diagnostic_v3"
+        [string]$AuthorizationName = ""
     )
 
     if (-not [IO.Path]::IsPathFullyQualified($GitCommonDirectory)) {
         throw "cold_restore_authorization_git_common_invalid"
     }
+    if ([string]::IsNullOrEmpty($AuthorizationName)) {
+        $AuthorizationName = Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName $Path
+    }
     $contract = Get-ColdRestoreAuthorizationContract $Path
-    $entry = $contract.$AuthorizationName
+    $entry = Get-ColdRestoreAuthorizationEntry $AuthorizationName $Path
     $gitCommon = [IO.Path]::GetFullPath($GitCommonDirectory)
     $quotaPath = [IO.Path]::GetFullPath((Join-Path $gitCommon ([string]$entry.quota_ledger_relative_path)))
     $evidenceRoot = [IO.Path]::GetFullPath((Join-Path $gitCommon ([string]$entry.evidence_root_relative_path)))
@@ -243,6 +311,9 @@ Export-ModuleMember -Function @(
     "Assert-ColdRestoreAuthorizationContract",
     "Get-ColdRestoreAuthorizationContract",
     "Get-ColdRestoreAuthorizationEntry",
+    "Get-ColdRestoreTargetedDiagnosticAuthorizationNames",
+    "Get-ColdRestoreCurrentTargetedDiagnosticAuthorizationName",
+    "Get-ColdRestorePreviousTargetedDiagnosticAuthorizationName",
     "Test-ColdRestoreExactAuthorizationId",
     "Get-ColdRestoreAuthorizationRunId",
     "Get-ColdRestoreTargetedDiagnosticAuthorizationBinding",

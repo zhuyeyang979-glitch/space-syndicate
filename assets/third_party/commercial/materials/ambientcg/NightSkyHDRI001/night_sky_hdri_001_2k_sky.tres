@@ -1,0 +1,11 @@
+[gd_resource type="Sky" load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/materials/ambientcg/NightSkyHDRI001/NightSkyHDRI001_2K_HDR.exr" id="1_panorama"]
+
+[sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_commercial"]
+panorama = ExtResource("1_panorama")
+energy_multiplier = 0.42
+
+[resource]
+sky_material = SubResource("PanoramaSkyMaterial_commercial")
+radiance_size = 3

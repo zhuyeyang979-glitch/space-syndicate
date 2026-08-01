@@ -1,0 +1,118 @@
+{
+  "schema_version": "commercial_art.presentation_capture_agent6.v1",
+  "task_id": "COMMERCIAL_ART_FOUNDATION_DIRECT_SELECTED_ASSET_INTEGRATION_V1",
+  "lane": "presentation_review_capture_qa",
+  "phase": 3,
+  "status": "BLOCKED_BY_CAPTURE_PREFLIGHT_CREDITS_DATA_MISSING",
+  "observed_at": "2026-08-01T08:36:09.3175488+09:00",
+  "worktree": "C:/Users/zhuye/Documents/New project/space-syndicate-commercial-art-direct-integration-2e38764",
+  "branch": "codex/commercial-art-direct-integration-2e38764",
+  "observed_head": "9d474bdf985286d9dfa92de63f80466f97b18c1c",
+  "scope": {
+    "review_qa_only": true,
+    "network_access_used": false,
+    "web_asset_search_count": 0,
+    "catalog_modified_by_agent6": false,
+    "production_scene_modified_by_agent6": false,
+    "main_modified_by_agent6": false,
+    "final_manifest_modified_by_agent6": false,
+    "notices_modified_by_agent6": false,
+    "credits_owner_modified_by_agent6": false,
+    "formal_run_performed": false,
+    "full_smoke_performed": false
+  },
+  "capture_plan": {
+    "valid": true,
+    "capture_count": 15,
+    "supports_1920x1080": true,
+    "supports_1366x768": true,
+    "output_root_default": "user://commercial_art_capture",
+    "repository_output_root_allowed": "res://docs/art_qa/commercial_art",
+    "captures": [
+      {"capture_id": "full_table_1920", "file_name": "commercial_art_full_table_1920.png", "width": 1920, "height": 1080},
+      {"capture_id": "full_table_1366", "file_name": "commercial_art_full_table_1366.png", "width": 1366, "height": 768},
+      {"capture_id": "six_color_assets", "file_name": "commercial_art_six_color_assets.png", "width": 1920, "height": 1080},
+      {"capture_id": "normal_cards", "file_name": "commercial_art_normal_cards.png", "width": 1920, "height": 1080},
+      {"capture_id": "commodity_cards", "file_name": "commercial_art_commodity_cards.png", "width": 1920, "height": 1080},
+      {"capture_id": "bound_actions", "file_name": "commercial_art_bound_actions.png", "width": 1920, "height": 1080},
+      {"capture_id": "hand_hover", "file_name": "commercial_art_hand_hover.png", "width": 1920, "height": 1080},
+      {"capture_id": "hand_drag", "file_name": "commercial_art_hand_drag.png", "width": 1920, "height": 1080},
+      {"capture_id": "planet_day", "file_name": "commercial_art_planet_day.png", "width": 1920, "height": 1080},
+      {"capture_id": "planet_night", "file_name": "commercial_art_planet_night.png", "width": 1920, "height": 1080},
+      {"capture_id": "planet_zoom", "file_name": "commercial_art_planet_zoom.png", "width": 1920, "height": 1080},
+      {"capture_id": "facilities", "file_name": "commercial_art_facilities.png", "width": 1920, "height": 1080},
+      {"capture_id": "monsters", "file_name": "commercial_art_monsters.png", "width": 1920, "height": 1080},
+      {"capture_id": "military", "file_name": "commercial_art_military.png", "width": 1920, "height": 1080},
+      {"capture_id": "credits", "file_name": "commercial_art_credits.png", "width": 1920, "height": 1080}
+    ]
+  },
+  "capture_contract": {
+    "real_scene_path": "res://scenes/tools/CommercialArtIntegrationReview.tscn",
+    "fixed_subviewport": true,
+    "awaits_process_frames_before_readback": true,
+    "awaits_or_forces_render_frame_before_readback": true,
+    "png_reload_validation": true,
+    "sha256_recorded_on_success": true,
+    "minimum_file_bytes": 4096,
+    "minimum_sample_count": 512,
+    "minimum_visible_pixel_ratio": 0.9,
+    "minimum_luminance_variance": 0.0005,
+    "minimum_unique_color_buckets": 24,
+    "exact_dimensions_required": true,
+    "placeholder_capture_allowed": false
+  },
+  "preflight": {
+    "plan_green": true,
+    "catalog_text_contract_green": true,
+    "catalog_schema": "commercial.presentation_assets.v1",
+    "catalog_required_asset_keys": 42,
+    "catalog_textually_declared_asset_keys": 42,
+    "catalog_missing_asset_keys": 0,
+    "catalog_runtime_contract_tests": "11/11",
+    "credits_data_path": "res://docs/third_party/credits_data.json",
+    "credits_data_exists": false,
+    "credits_required_sections": 4,
+    "credits_ready_sections": 0,
+    "heavy_resource_load_authorized": false,
+    "screenshot_write_authorized": false,
+    "primary_reason_code": "credits_data_missing"
+  },
+  "capture_result": {
+    "attempt_status": "BLOCKED_BY_CAPTURE_PREFLIGHT_CREDITS_DATA_MISSING",
+    "repository_png_count": 0,
+    "capture_output_count": 0,
+    "validated_capture_count": 0,
+    "placeholder_capture_count": 0,
+    "task_owned_godot_process_count_after": 0
+  },
+  "verification": {
+    "godot_version": "4.7.stable.official.5b4e0cb0f",
+    "review_script_check_only": "PASS",
+    "capture_driver_check_only": "PASS",
+    "review_scene_test": "54/54",
+    "review_scene_runtime_error_count_after_fix": 0,
+    "presentation_catalog_contract_test": "11/11",
+    "architecture_preflight": "286/287",
+    "architecture_preflight_note": "The sole stale assertion still characterizes _draw_table_ring and translucent ocean alpha after the parallel Planet lane retired that old presentation state.",
+    "git_diff_check": "PASS"
+  },
+  "authority_boundary": {
+    "creates_session": false,
+    "loads_main_scene": false,
+    "writes_save": false,
+    "consumes_rng": false,
+    "mutates_gameplay": false,
+    "connects_production": false,
+    "uses_vendor_paths_in_review_or_capture_code": false
+  },
+  "unblock_condition": {
+    "owner": "final credits and third-party notices lane",
+    "required_artifact": "res://docs/third_party/credits_data.json",
+    "requirements": [
+      "four nonempty sections: third_party_assets, licenses, music, fonts",
+      "mandatory Game-icons attribution tokens and dedicated attribution field",
+      "selected music and font tokens"
+    ],
+    "rerun_command": "Godot_v4.7-stable_win64_console.exe --headless --path . --script tests/commercial_art/commercial_art_screenshot_capture.gd -- --commercial-art-output-root=res://docs/art_qa/commercial_art"
+  }
+}
