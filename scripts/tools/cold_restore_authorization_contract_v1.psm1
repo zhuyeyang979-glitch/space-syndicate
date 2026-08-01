@@ -6,6 +6,7 @@ $script:AuthorizationContractFields = @(
     "schema_version", "contract_id", "targeted_owner_capture_diagnostic_v3",
     "targeted_owner_capture_diagnostic_v4_importchain",
     "targeted_owner_capture_diagnostic_v5_canonical_binding",
+    "targeted_owner_capture_diagnostic_v6_launch_context",
     "process_a_save_completion_rehearsal_v1", "official_attempt_2"
 )
 $script:TargetedDiagnosticFields = @(
@@ -14,12 +15,13 @@ $script:TargetedDiagnosticFields = @(
     "permitted_transition_from",
     "permitted_transition_to", "authorized_increment", "maximum_invocation_count"
 )
-$script:TargetedDiagnosticV5Fields = @(
+$script:TargetedDiagnosticChainedFields = @(
     $script:TargetedDiagnosticFields + "previous_quota_ledger_sha256"
 )
 $script:ProcessARehearsalFields = @(
     "authorization_id", "quota_ledger_relative_path", "launch_ledger_relative_path",
-    "outcome_ledger_relative_path", "run_id_prefix", "maximum_invocation_count"
+    "outcome_ledger_relative_path", "run_id_prefix", "scope_baseline_commit",
+    "maximum_invocation_count"
 )
 $script:OfficialAttempt2Fields = @(
     "authorization_id", "claim_path", "run_id_prefix", "maximum_attempt_number",
@@ -110,7 +112,7 @@ function Assert-ColdRestoreAuthorizationContract {
     }
 
     $targetedV5 = $Value.targeted_owner_capture_diagnostic_v5_canonical_binding
-    if (-not (Test-ColdRestoreAuthorizationExactFieldSet $targetedV5 $script:TargetedDiagnosticV5Fields) `
+    if (-not (Test-ColdRestoreAuthorizationExactFieldSet $targetedV5 $script:TargetedDiagnosticChainedFields) `
         -or -not (Test-ColdRestoreAuthorizationIdShape $targetedV5.authorization_id) `
         -or [string]$targetedV5.task_id -cnotmatch '^[A-Z0-9_]{1,160}$' `
         -or [string]$targetedV5.ledger_id -cnotmatch '^Alpha04C\.TargetedOwnerCaptureDiagnosticQuotaLedgerV[0-9]+$' `
@@ -126,6 +128,23 @@ function Assert-ColdRestoreAuthorizationContract {
         throw "cold_restore_targeted_v5_authorization_contract_invalid"
     }
 
+    $targetedV6 = $Value.targeted_owner_capture_diagnostic_v6_launch_context
+    if (-not (Test-ColdRestoreAuthorizationExactFieldSet $targetedV6 $script:TargetedDiagnosticChainedFields) `
+        -or -not (Test-ColdRestoreAuthorizationIdShape $targetedV6.authorization_id) `
+        -or [string]$targetedV6.task_id -cnotmatch '^[A-Z0-9_]{1,160}$' `
+        -or [string]$targetedV6.ledger_id -cnotmatch '^Alpha04C\.TargetedOwnerCaptureDiagnosticQuotaLedgerV[0-9]+$' `
+        -or -not (Test-ColdRestoreAuthorizationRelativePath $targetedV6.quota_ledger_relative_path) `
+        -or -not (Test-ColdRestoreAuthorizationRelativePath $targetedV6.evidence_root_relative_path) `
+        -or -not (Test-ColdRestoreAuthorizationRelativePath $targetedV6.bootstrap_root_relative_path) `
+        -or [string]$targetedV6.run_id_prefix -cnotmatch '^[a-z0-9][a-z0-9-]{1,95}$' `
+        -or [int]$targetedV6.permitted_transition_from -ne 5 `
+        -or [int]$targetedV6.permitted_transition_to -ne 6 `
+        -or [int]$targetedV6.authorized_increment -ne 1 `
+        -or [int]$targetedV6.maximum_invocation_count -ne 6 `
+        -or [string]$targetedV6.previous_quota_ledger_sha256 -cnotmatch '^[0-9a-f]{64}$') {
+        throw "cold_restore_targeted_v6_authorization_contract_invalid"
+    }
+
     $rehearsal = $Value.process_a_save_completion_rehearsal_v1
     if (-not (Test-ColdRestoreAuthorizationExactFieldSet $rehearsal $script:ProcessARehearsalFields) `
         -or -not (Test-ColdRestoreAuthorizationIdShape $rehearsal.authorization_id) `
@@ -133,6 +152,7 @@ function Assert-ColdRestoreAuthorizationContract {
         -or -not (Test-ColdRestoreAuthorizationRelativePath $rehearsal.launch_ledger_relative_path) `
         -or -not (Test-ColdRestoreAuthorizationRelativePath $rehearsal.outcome_ledger_relative_path) `
         -or [string]$rehearsal.run_id_prefix -cnotmatch '^[a-z0-9][a-z0-9-]{1,95}$' `
+        -or [string]$rehearsal.scope_baseline_commit -cnotmatch '^[0-9a-f]{40}$' `
         -or [int]$rehearsal.maximum_invocation_count -ne 1) {
         throw "cold_restore_rehearsal_authorization_contract_invalid"
     }

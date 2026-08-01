@@ -193,10 +193,15 @@ $TargetedOwnerCaptureBootstrapRelativeRoot = [string]$TargetedOwnerCaptureAuthor
 $TargetedOwnerCaptureAuthorizationId = [string]$TargetedOwnerCaptureAuthorization.authorization_id
 $TargetedOwnerCaptureTaskId = [string]$TargetedOwnerCaptureAuthorization.task_id
 $TargetedOwnerCaptureRunIdPrefix = [string]$TargetedOwnerCaptureAuthorization.run_id_prefix
+$TargetedOwnerCaptureDriverId = "alpha04c_$TargetedOwnerCaptureAuthorizationName"
+$TargetedOwnerCaptureCheckpointBranchPattern = '^' + [regex]::Escape(
+    "codex/alpha04c-v$([int]$TargetedOwnerCaptureAuthorization.permitted_transition_to)-owner-diagnostic-"
+) + '[0-9a-f]{7,12}$'
 $ProcessARehearsalAuthorizationId = [string]$ProcessARehearsalAuthorization.authorization_id
 $ProcessARehearsalQuotaLedgerRelativePath = [string]$ProcessARehearsalAuthorization.quota_ledger_relative_path
 $ProcessARehearsalLaunchLedgerRelativePath = [string]$ProcessARehearsalAuthorization.launch_ledger_relative_path
 $ProcessARehearsalOutcomeLedgerRelativePath = [string]$ProcessARehearsalAuthorization.outcome_ledger_relative_path
+$ProcessARehearsalScopeBaselineCommit = [string]$ProcessARehearsalAuthorization.scope_baseline_commit
 $DefaultRoleTimeoutPolicyPath = Join-Path $PSScriptRoot "cold_restore_role_timeout_policy_v1.json"
 $RoleTimeoutPolicyEvidence = $null
 $LastTargetedPreQuotaContext = $null
@@ -1044,7 +1049,7 @@ function Assert-ColdRestoreTargetedDiagnosticRemoteCheckpoint {
     $localHeadLines = @(& git -C $ResolvedProjectPath rev-parse HEAD 2>$null)
     Assert-ColdRestoreCondition ((cold_restore_attested_process\Get-ColdRestoreSafeCollectionCount $branchLines) -eq 1 `
         -and (cold_restore_attested_process\Get-ColdRestoreSafeCollectionCount $localHeadLines) -eq 1 `
-        -and [string]$branchLines[0] -cmatch '^codex/alpha04c-v5-owner-diagnostic-[0-9a-f]{7,12}$' `
+        -and [string]$branchLines[0] -cmatch $TargetedOwnerCaptureCheckpointBranchPattern `
         -and [string]$localHeadLines[0] -ceq $ExpectedHead) "targeted_diagnostic_local_checkpoint_invalid"
     $branch = [string]$branchLines[0]
     $remoteLines = @(& git -C $ResolvedProjectPath rev-parse "refs/remotes/origin/$branch" 2>$null)
@@ -2370,7 +2375,7 @@ function New-ColdRestoreTargetedOwnerCaptureOutput {
     }
     return [ordered]@{
         schema_version = 3
-        driver_id = "alpha04c_targeted_owner_capture_diagnostic_v5_canonical_binding"
+        driver_id = $TargetedOwnerCaptureDriverId
         formal_full_run = $false
         official_cold_restore_vertical_slice = $false
         targeted_owner_capture_diagnostic = $true
@@ -3161,7 +3166,10 @@ function Assert-ColdRestoreProcessARehearsalPrerequisites {
         -and [string]$programState.known_test_state.alpha04c_allocator_cursor_spec -ceq "GREEN_34_OF_34" `
         -and [string]$programState.known_test_state.alpha04c_production_registry_transaction_current -ceq "GREEN_59_OF_59" `
         -and [string]$programState.known_test_state.alpha04c_production_save_capture_readback -ceq "GREEN_25_OF_25") "process_a_rehearsal_regression_prerequisites_invalid"
-    $changedPaths = @(& git -C $ResolvedProjectPath diff --name-only $HistoricalTargetedOwnerCaptureInvocationCommit $HeadSha 2>$null)
+    & git -C $ResolvedProjectPath merge-base --is-ancestor `
+        $ProcessARehearsalScopeBaselineCommit $HeadSha 2>$null
+    Assert-ColdRestoreCondition ($LASTEXITCODE -eq 0) "process_a_rehearsal_scope_baseline_invalid"
+    $changedPaths = @(& git -C $ResolvedProjectPath diff --name-only $ProcessARehearsalScopeBaselineCommit $HeadSha 2>$null)
     Assert-ColdRestoreCondition ($LASTEXITCODE -eq 0) "process_a_rehearsal_scope_diff_unavailable"
     $forbiddenPaths = @(
         $changedPaths | Where-Object {
@@ -4201,7 +4209,7 @@ catch {
     elseif ($TargetedOwnerCaptureDiagnostic) {
         Write-AllowlistedResult ([ordered]@{
             schema_version = 3
-            driver_id = "alpha04c_targeted_owner_capture_diagnostic_v5_canonical_binding"
+            driver_id = $TargetedOwnerCaptureDriverId
             formal_full_run = $false
             official_cold_restore_vertical_slice = $false
             targeted_owner_capture_diagnostic = $true
