@@ -1026,8 +1026,10 @@ func _preflight_envelope_internal(envelope: Dictionary) -> Dictionary:
 		if validation_reason in [
 			"allocator_cursor_missing_requires_backup",
 			"card_inventory_v3_closed_wire_upgrade_requires_backup",
+			"ai_save_v2_closed_wire_upgrade_requires_backup",
 		]:
-			_last_internal_preflight_failure_section = "card_inventory"
+			_last_internal_preflight_failure_section = "ai" \
+					if validation_reason == "ai_save_v2_closed_wire_upgrade_requires_backup" else "card_inventory"
 			_last_internal_preflight_failure_reason = validation_reason
 			return {
 				"ok": false,

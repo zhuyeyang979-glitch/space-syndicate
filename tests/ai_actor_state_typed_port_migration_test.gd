@@ -1,6 +1,7 @@
 extends SceneTree
 
 const COORDINATOR_SCENE := preload("res://scenes/runtime/GameRuntimeCoordinator.tscn")
+const AI_SAVE_CODEC := preload("res://scripts/runtime/ai_runtime_save_wire_codec_v3.gd")
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -202,11 +203,13 @@ func _run() -> void:
 	malformed_ai["ai_card_decision_timer"] = timer_before + 99.0
 	var malformed_receipt := ai.apply_save_data(malformed_ai)
 	_expect(not bool(malformed_receipt.get("applied", true)) and world.to_save_data() == before_malformed and is_equal_approx(ai.ai_card_decision_timer, timer_before), "malformed checkpoint fails before actor or timer mutation")
-	var truncated_ai := saved_ai.duplicate(true)
+	var truncated_decoded := AI_SAVE_CODEC.decode_save_state(saved_ai)
+	var truncated_ai := (truncated_decoded.get("value", {}) as Dictionary).duplicate(true)
 	(truncated_ai.get("player_states", []) as Array).pop_back()
 	truncated_ai["ai_card_decision_timer"] = timer_before + 77.0
+	var truncated_encoded := AI_SAVE_CODEC.encode_save_state(truncated_ai)
 	var before_truncated := world.to_save_data()
-	var truncated_receipt := ai.apply_save_data(truncated_ai)
+	var truncated_receipt := ai.apply_save_data(truncated_encoded.get("value", {}) as Dictionary)
 	_expect(not bool(truncated_receipt.get("applied", true)) and str(truncated_receipt.get("reason_code", "")) == "ai_save_actor_roster_mismatch" and world.to_save_data() == before_truncated and is_equal_approx(ai.ai_card_decision_timer, timer_before), "truncated actor roster fails closed before actor or timer mutation")
 
 	var valid_world_checkpoint := world.to_save_data()
@@ -222,11 +225,13 @@ func _run() -> void:
 	world.apply_save_data(valid_world_checkpoint)
 
 	var local_checkpoint := ai.capture_new_session_checkpoint()
+	var local_decoded := AI_SAVE_CODEC.decode_new_session_checkpoint(local_checkpoint)
+	var local_runtime := local_decoded.get("value", {}) as Dictionary
 	var old_world_checkpoint := world.to_save_data()
 	world.replace_players([world.players[0], world.players[1]], true)
 	ai.ai_card_decision_timer += 20.0
 	var local_restore := ai.restore_new_session_checkpoint(local_checkpoint)
-	_expect(int(local_checkpoint.get("schema_version", 0)) == 2 and not local_checkpoint.has("save_data") and bool(local_restore.get("restored", false)), "new-session rollback restores controller-local state independently of the replacement roster")
+	_expect(bool(local_decoded.get("ok", false)) and int(local_runtime.get("schema_version", 0)) == 3 and not local_checkpoint.has("save_data") and bool(local_restore.get("restored", false)), "new-session v3 rollback restores controller-local state independently of the replacement roster")
 	world.apply_save_data(old_world_checkpoint)
 
 	var profile_indices: Array = []
@@ -263,7 +268,7 @@ func _player(catalog: RoleCatalogRuntimeService, player_index: int, name: String
 		"city_guesses": {},
 		"city_guess_confidence": {},
 		"city_guess_reasons": {},
-		"ai_profile": {"profile_index": profile_index, "name": "profile-%d" % profile_index, "private_marker": marker} if is_ai else {"private_marker": marker},
+		"ai_profile": {} if is_ai else {"private_marker": marker},
 		"ai_memory": {"private_marker": marker, "decision_samples": [], "action_counts": {}},
 	}
 
@@ -281,7 +286,7 @@ func _run_source_negative_gates() -> void:
 		_expect(body != "MISSING", "%s exists for source-negative inspection" % function_name)
 		_expect(not body.contains("player.get(\"ai_memory\"") and not body.contains("player[\"ai_memory\"]") and not body.contains("players[player_index] = player"), "%s contains no direct world-record AI memory access" % function_name)
 		_expect(body.contains("_ai_actor_state_snapshot") or body.contains("_ai_memory_for_player") or body.contains("_commit_ai_memory"), "%s consumes the actor-state typed boundary" % function_name)
-	_expect(_function_body(controller_source, "to_save_data").contains("capture_ai_state_batch") and _function_body(controller_source, "apply_save_data").contains("apply_ai_state_batch"), "controller checkpoint capture/apply uses the atomic actor-state batch port")
+	_expect(_function_body(controller_source, "_capture_save_runtime_state").contains("capture_ai_state_batch") and _function_body(controller_source, "apply_save_data").contains("apply_ai_state_batch"), "controller checkpoint capture/apply uses the atomic actor-state batch port")
 	_expect(not controller_source.contains("player[\"ai_profile\"]") and not controller_source.contains("player[\"ai_memory\"]"), "controller has no direct whole-player actor-state write")
 	_expect(not _function_body(controller_source, "capture_new_session_checkpoint").contains("to_save_data") and not _function_body(controller_source, "restore_new_session_checkpoint").contains("apply_save_data"), "new-session rollback leaves player-record restoration to WorldSession authority")
 	for function_name in ["_ai_refresh_game_phase", "_record_ai_decision", "_ai_refresh_economic_focus", "_ai_refresh_strategy_intent", "_ai_refresh_route_plan"]:

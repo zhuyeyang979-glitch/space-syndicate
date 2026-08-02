@@ -4,6 +4,8 @@ const COORDINATOR_SCENE := preload("res://scenes/runtime/GameRuntimeCoordinator.
 const CARD_OWNER_SCENE := preload("res://scenes/runtime/CardInventorySaveOwner.tscn")
 const BELT_OWNER_SCENE := preload("res://scenes/runtime/CommodityBeltVisibilitySaveOwner.tscn")
 const RULESET_V04 := preload("res://resources/rules/space_syndicate_ruleset_v04.tres")
+const AI_SAVE_CODEC := preload("res://scripts/runtime/ai_runtime_save_wire_codec_v3.gd")
+const SEMANTIC_WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -159,9 +161,11 @@ func _verify_ai_owner(
 	var port_before := port.debug_snapshot()
 	var rng_before := rng.capture_plan_checkpoint()
 	var ai_save := ai.to_save_data()
+	var ai_decoded := AI_SAVE_CODEC.decode_save_state(ai_save)
+	var ai_runtime_state := ai_decoded.get("value", {}) as Dictionary
 	var port_after_capture := port.debug_snapshot()
-	_expect(_exact_keys(ai_save, ["schema_version", "ruleset_id", "policy_profile_id", "policy_fingerprint", "request_sequence", "ai_card_decision_timer", "ai_auction_reaction_timer", "ai_intel_decision_timer", "ai_card_decision_enabled", "player_states"]), "AI v2 save uses the exact frozen field set")
-	_expect((ai_save.get("player_states", []) as Array).map(func(row: Dictionary) -> int: return int(row.get("player_index", -1))) == [1, 2], "AI save rows are canonically sorted and exclude human seats")
+	_expect(_exact_keys(ai_save, ["schema_version", "ruleset_id", "policy_profile_id", "policy_fingerprint", "request_sequence", "ai_card_decision_timer", "ai_auction_reaction_timer", "ai_intel_decision_timer", "ai_card_decision_enabled", "player_states"]) and bool(ai_decoded.get("ok", false)) and int(ai_runtime_state.get("schema_version", 0)) == 3 and SEMANTIC_WIRE.is_closed_data(ai_save), "AI v3 save uses the exact closed field set")
+	_expect((ai_runtime_state.get("player_states", []) as Array).map(func(row: Dictionary) -> int: return int(row.get("player_index", -1))) == [1, 2], "AI save rows are canonically sorted and exclude human seats")
 	_expect(port_before == port_after_capture and rng.capture_plan_checkpoint() == rng_before, "AI capture mutates no typed-port telemetry and consumes no RNG")
 	var envelope_capture := world.capture_envelope_save_data()
 	var envelope := envelope_capture.get("normalized_state", {}) as Dictionary
@@ -225,7 +229,7 @@ func _player(
 		"name": "AI-%d" % player_index if is_ai else "Human-%d" % player_index,
 		"seat_type": "ai" if is_ai else "human",
 		"is_ai": is_ai,
-		"ai_profile": {"profile_index": player_index, "private_marker": marker} if is_ai else {},
+		"ai_profile": {},
 		"ai_memory": {"private_marker": marker, "decision_samples": [], "action_counts": {}},
 		"role_index": player_index,
 		"role_card": role,
