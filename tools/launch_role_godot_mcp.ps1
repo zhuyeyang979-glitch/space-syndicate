@@ -9,6 +9,8 @@ param(
 
     [string]$Worktree = (Get-Location).Path,
 
+    [string]$RuntimeDataBase = "",
+
     [string]$GodotPath = "C:\Users\zhuye\AppData\Local\Programs\Godot\4.7\Godot_v4.7-stable_win64.exe",
 
     [ValidateSet("compatibility", "compatibility_angle", "forward_plus")]
@@ -59,9 +61,19 @@ if (Test-Path -LiteralPath $sessionRoot) {
     throw "MCP_SESSION_ID_ALREADY_EXISTS|session_id=$SessionId|path=$sessionRoot"
 }
 
-$roamingRoot = Join-Path $sessionRoot "appdata-roaming"
-$localAppDataRoot = Join-Path $sessionRoot "appdata-local"
-$tempRoot = Join-Path $sessionRoot "temp"
+$runtimeDataBasePath = if ($RuntimeDataBase -eq "") {
+    Join-Path ([System.IO.Path]::GetTempPath()) "space-syndicate-mcp"
+} else {
+    [System.IO.Path]::GetFullPath($RuntimeDataBase)
+}
+$runtimeDataRoot = Join-Path $runtimeDataBasePath $SessionId
+if (Test-Path -LiteralPath $runtimeDataRoot) {
+    throw "MCP_RUNTIME_DATA_ID_ALREADY_EXISTS|session_id=$SessionId|path=$runtimeDataRoot"
+}
+
+$roamingRoot = Join-Path $runtimeDataRoot "r"
+$localAppDataRoot = Join-Path $runtimeDataRoot "l"
+$tempRoot = Join-Path $runtimeDataRoot "t"
 $logRoot = Join-Path $sessionRoot "logs"
 $tokenPath = Join-Path $sessionRoot "auth.token"
 $endpointPath = Join-Path $sessionRoot "endpoint.txt"
@@ -69,7 +81,7 @@ $connectionPath = Join-Path $sessionRoot "connection.json"
 $pidPath = Join-Path $sessionRoot "godot.pid"
 $failurePath = Join-Path $sessionRoot "launch-failure.json"
 $activeSessionPath = Join-Path $controlRoot "active-session.json"
-foreach ($directory in @($controlRoot, $sessionsRoot, $sessionRoot, $roamingRoot, $localAppDataRoot, $tempRoot, $logRoot)) {
+foreach ($directory in @($controlRoot, $sessionsRoot, $sessionRoot, $runtimeDataBasePath, $runtimeDataRoot, $roamingRoot, $localAppDataRoot, $tempRoot, $logRoot)) {
     [System.IO.Directory]::CreateDirectory($directory) | Out-Null
 }
 
@@ -96,6 +108,10 @@ $projectText = [System.IO.File]::ReadAllText((Join-Path $root "project.godot"))
 $projectNameMatch = [regex]::Match($projectText, '(?m)^config/name="([^"]+)"')
 $projectName = if ($projectNameMatch.Success) { $projectNameMatch.Groups[1].Value } else { "SpaceSyndicate" }
 $settingsDirectory = Join-Path $roamingRoot ("Godot\app_userdata\{0}" -f $projectName)
+$shaderCachePathProbe = Join-Path $settingsDirectory ("shader_cache\SceneForwardClusteredShaderRD\{0}" -f ("0" * 64))
+if ($shaderCachePathProbe.Length -ge 240) {
+    throw "MCP_RUNTIME_DATA_PATH_TOO_LONG|length=$($shaderCachePathProbe.Length)|path=$shaderCachePathProbe"
+}
 [System.IO.Directory]::CreateDirectory($settingsDirectory) | Out-Null
 $filesystemReadinessPath = Join-Path $settingsDirectory "funplay_mcp_filesystem_readiness.json"
 $settingsText = @"
@@ -298,9 +314,13 @@ try {
         worktree = $root
         project_cache_path = $projectCachePath
         project_cache_was_fresh = $RequireFreshProjectCache
+        runtime_data_root = $runtimeDataRoot
         user_data_path = $roamingRoot
+        project_user_data_path = $settingsDirectory
         local_app_data_path = $localAppDataRoot
         temp_path = $tempRoot
+        runtime_path_length_probe = $shaderCachePathProbe.Length
+        runtime_path_length_headroom_green = $true
         session_root = $sessionRoot
         token_path = $tokenPath
         log_path = $logPath
@@ -350,6 +370,7 @@ try {
         endpoint = $endpoint
         endpoint_alive = (Get-McpEndpointOwnerPid -Port $Port) -ne 0
         cleanup = $cleanup
+        runtime_data_root = $runtimeDataRoot
         log_path = $logPath
         failed_at = [DateTimeOffset]::Now.ToString("o")
     }

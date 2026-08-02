@@ -37,6 +37,9 @@ func _init() -> void:
 	_expect(execute_block.contains("_filesystem_execution_active = true"), "scan execution raises the nested-frame guard")
 	_expect(core_source.contains("func _publish_filesystem_readiness("), "state owner publishes out-of-band initial readiness")
 	_expect(core_source.contains("FunplayMcpFilesystemReadinessV1"), "readiness sentinel has a typed schema")
+	var validate_block := _function_block(core_source, "func validate_gdscript_file(")
+	_expect(not validate_block.contains("script.resource_path = path"), "validation never replaces an already cached production resource path")
+	_expect(validate_block.contains('"resource_path": path'), "validation reports the requested production path without registering it")
 	var state_source := _read("res://addons/funplay_mcp/core/funplay_filesystem_reload_state.gd")
 	_expect(state_source.contains("DEFAULT_INITIAL_SCAN_TIMEOUT_MSEC := 300000"), "state owner allows the bounded full-project import window")
 
@@ -76,6 +79,9 @@ func _init() -> void:
 	_expect(launcher_source.contains("http_request_count_before_readiness = 0"), "connection evidence attests zero pre-readiness HTTP requests")
 	_expect(launcher_source.contains("InitialReadyStabilitySeconds = 15"), "launcher holds a bounded post-import stability window")
 	_expect(launcher_source.contains('"TEMP" = $tempRoot'), "launcher isolates editor temporary files per session")
+	_expect(launcher_source.contains("[System.IO.Path]::GetTempPath()"), "launcher uses a short machine-local runtime-data base")
+	_expect(launcher_source.contains("MCP_RUNTIME_DATA_PATH_TOO_LONG"), "launcher rejects runtime-data paths without shader-cache headroom")
+	_expect(launcher_source.contains("runtime_data_root = $runtimeDataRoot"), "connection evidence records the isolated runtime-data root")
 
 	var invoke_source := _read("res://tools/invoke_role_godot_mcp.ps1")
 	_expect(invoke_source.contains('[guid]::NewGuid().ToString("N")'), "wrapper assigns unique JSON-RPC IDs")

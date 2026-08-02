@@ -3073,12 +3073,8 @@ func validate_gdscript_file(arguments: Dictionary) -> String:
 
 	var source = FileAccess.get_file_as_string(path)
 	var script = GDScript.new()
-	script.resource_path = path
 	script.source_code = source
 	var err = script.reload()
-	var resource_path: String = script.resource_path
-	# Temporary validation scripts must not remain registered in ResourceCache.
-	script.resource_path = ""
 	var diagnostics: Array = []
 	if err != OK and bool(arguments.get("include_diagnostics", true)):
 		diagnostics = _get_gdscript_diagnostics(path)
@@ -3089,7 +3085,7 @@ func validate_gdscript_file(arguments: Dictionary) -> String:
 		"path": path,
 		"ok": err == OK,
 		"error_code": err,
-		"resource_path": resource_path,
+		"resource_path": path,
 		"diagnostic_count": diagnostics.size(),
 		"diagnostics": diagnostics,
 	}
