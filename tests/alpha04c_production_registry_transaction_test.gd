@@ -250,7 +250,15 @@ func _prepare_rank_two_facility_queue(coordinator: GameRuntimeCoordinator) -> Di
 	)
 	var player_after_grant := inventory.player_snapshot(actor_id)
 	var card := _card_binding(player_after_grant, FACILITY_CARD_ID)
-	_expect(bool(grant.get("committed", false)) and not card.is_empty() and not target_region_id.is_empty(), "production Inventory grants one stable Rank-II facility instance and RegionInfrastructure supplies its target")
+	_expect(
+		bool(grant.get("committed", false)) and not card.is_empty() and not target_region_id.is_empty(),
+		"production Inventory grants one stable Rank-II facility instance and RegionInfrastructure supplies its target|grant=%s|reason=%s|card_bound=%s|target_available=%s" % [
+			bool(grant.get("committed", false)),
+			str(grant.get("reason", grant.get("reason_code", ""))),
+			not card.is_empty(),
+			not target_region_id.is_empty(),
+		]
+	)
 	if not bool(grant.get("committed", false)) or card.is_empty() or target_region_id.is_empty():
 		return {}
 
