@@ -1,0 +1,1521 @@
+{
+  "schema": "McpInitialScanTaskGeneratedManifestV1",
+  "task_id": "ALPHA_0_4_C_PR77_MCP_INITIAL_SCAN_SIGNAL_11_ROOT_CAUSE_ISOLATION_AND_HARDENING_CONTINUATION",
+  "captured_at": "2026-08-02T22:25:57.4257654+09:00",
+  "repair_worktree": {
+    "root": "space-syndicate-mcp-resource-rescan-reentrancy-78c7770",
+    "base_head": "08daa52cbcd4f33472ab4edc7d416c5fdcba77ef",
+    "generated_status_entries": [
+      {
+        "status": "??",
+        "path": "reports/handoffs/alpha04c_mcp_initial_scan_attempt_ledger.json"
+      },
+      {
+        "status": "??",
+        "path": "reports/handoffs/alpha04c_mcp_initial_scan_diagnostic_classification.json"
+      },
+      {
+        "status": "??",
+        "path": "reports/handoffs/alpha04c_mcp_initial_scan_signal11_isolation_result.json"
+      },
+      {
+        "status": "??",
+        "path": "reports/handoffs/alpha04c_mcp_initial_scan_signal11_isolation_result.md"
+      },
+      {
+        "status": "??",
+        "path": "tools/run_mcp_initial_scan_isolation_attempt.ps1"
+      },
+      {
+        "status": "??",
+        "path": "reports/handoffs/alpha04c_mcp_initial_scan_task_generated_manifest.json"
+      }
+    ]
+  },
+  "invalid_attempt_cleanup": {
+    "erroneously_generated_uid_count": 226,
+    "exact_prior_manifest_match": true,
+    "deleted_from_repair_worktree": true,
+    "tracked_import_diff_count_after": 0,
+    "ambiguous_user_file_delete_count": 0,
+    "unmanifested_generated_file_delete_count": 0
+  },
+  "isolation_worktrees": [
+    {
+      "cell_id": "B0",
+      "root": "space-syndicate-mcp-signal11-b0-main-794ccf0",
+      "source_sha": "794ccf010e661a4750efca20a4e0d2a5839b7f2b",
+      "retained_for_native_evidence": true,
+      "status_entry_count": 89,
+      "tracked_modified_count": 44,
+      "untracked_count": 45,
+      "status_entries": [
+        {
+          "status": "M ",
+          "path": "ssets/third_party/commercial/materials/ambientcg/NightSkyHDRI001/NightSkyHDRI001_2K_HDR.exr.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela_Leela_Texture.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike_Mike_Texture.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan_Stan_Texture.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Decals.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_BaseColor.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_Normal.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_ORM.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_BaseColor_Red.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_BaseColor.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_Normal.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_ORM.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_BaseColor_png.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_Normal.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_ORM.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_BaseColor.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_Normal.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_ORM.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_BaseColor_Red.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_ORM.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_BaseColor_Red.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_Normal.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_ORM.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_BaseColor.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Cables.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Normal.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_ORM.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Armabee_Evolved_Atlas_Monsters.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Dragon_Evolved_Atlas_Monsters.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Ghost_Skull_Atlas_Monsters.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose_Atlas_Monsters.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull_Atlas_Monsters.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle_Atlas_Monsters.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen_Omen_Orange.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png.import"
+        },
+        {
+          "status": " M",
+          "path": "project.godot"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/ai_business_action_transaction_boundary_bench.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/ai_business_action_transaction_fake_weather.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/ai_business_cost_fail_once_public_log_port.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/alpha01_manifest_runtime_activation_bench.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/v07_semantic/v07_asset_batch_core.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/v07_semantic/v07_dbg_deck_core.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/v07_semantic/v07_solar_victory_core.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/v07_semantic/v07_track_acquisition_authority_port.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/v07_semantic/v07_unified_card_track_core.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_business_action_transaction_boundary_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_business_cost_formal_four_player_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_card_play_context_reuse_performance_parity_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_city_guess_candidate_performance_parity_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_saturated_route_plan_learning_cache_parity_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha01_content_manifest_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha01_manifest_runtime_activation_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha01_product_art_manifest_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha01_selected_role_consumer_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04_claim_to_sale_integration_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04_dock_legacy_planner_parity_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04_player_card_dock_production_capture.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_inventory_receive_plan_batch_parity_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/commodity_flow_postcommit_registry_preflight_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/district_supply_purchase_projection_receipt_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/full_run_facility_acquisition_policy_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/full_run_observation_window_policy_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/full_run_progress_budget_policy_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/full_run_progress_checkpoint_privacy_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/gameplay_balance_diagnostics_card_route_index_session_start_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v071_balance_defaults_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v071_constitution_contract_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v071_to_v072_amendment_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v072_balance_defaults_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v072_constitution_contract_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v072_to_v073_amendment_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v073_balance_defaults_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v073_constitution_contract_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v07_constitution_contract_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v07_semantic/v07_asset_batch_core_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v07_semantic/v07_dbg_deck_core_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v07_semantic/v07_solar_victory_core_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v07_semantic/v07_three_wing_contract_aggregate_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v07_semantic/v07_track_acquisition_authority_port_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v07_semantic/v07_unified_card_track_core_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v07_to_v071_amendment_test.gd.uid"
+        }
+      ]
+    },
+    {
+      "cell_id": "P0",
+      "root": "space-syndicate-mcp-signal11-p0-pr77-78c7770",
+      "source_sha": "78c777010a75cdc1a8d407fde6705f9a51ac3b56",
+      "retained_for_native_evidence": true,
+      "status_entry_count": 266,
+      "tracked_modified_count": 44,
+      "untracked_count": 222,
+      "status_entries": [
+        {
+          "status": "M ",
+          "path": "ssets/third_party/commercial/materials/ambientcg/NightSkyHDRI001/NightSkyHDRI001_2K_HDR.exr.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela_Leela_Texture.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike_Mike_Texture.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan_Stan_Texture.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Decals.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_BaseColor.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_Normal.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_ORM.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_BaseColor_Red.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_BaseColor.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_Normal.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_ORM.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_BaseColor_png.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_Normal.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_ORM.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_BaseColor.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_Normal.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_ORM.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_BaseColor_Red.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_ORM.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_BaseColor_Red.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_Normal.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_ORM.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_BaseColor.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Cables.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Normal.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_ORM.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Armabee_Evolved_Atlas_Monsters.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Dragon_Evolved_Atlas_Monsters.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Ghost_Skull_Atlas_Monsters.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose_Atlas_Monsters.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull_Atlas_Monsters.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle_Atlas_Monsters.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen_Omen_Orange.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png.import"
+        },
+        {
+          "status": " M",
+          "path": "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png.import"
+        },
+        {
+          "status": " M",
+          "path": "project.godot"
+        },
+        {
+          "status": "??",
+          "path": "scripts/cards/v06/queued_facility_card_action_v1.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/runtime/ai_runtime_save_wire_codec_v3.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/runtime/card_resolution_execution_save_wire_codec_v4.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/runtime/facility_card_queue_adapter_v06.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/runtime/monster_save_wire_codec_v2.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/runtime/queued_facility_card_restore_dependency_contract_v06.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/runtime/save_owner_capture_failure_v1.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/runtime/victory_control_save_wire_codec_v3.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/ai_business_action_transaction_boundary_bench.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/ai_business_action_transaction_fake_weather.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/ai_business_cost_fail_once_public_log_port.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/ai_runtime_owner_replay_scenario_identity_v1.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/alpha01_manifest_runtime_activation_bench.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/alpha04c_ai_runtime_nonconsuming_replay.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/alpha04c_card_resolution_execution_nonconsuming_replay.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/alpha04c_card_resolution_execution_nonconsuming_replay_v2.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/alpha04c_monster_bankruptcy_save_preflight_bench.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/alpha04c_monster_runtime_nonconsuming_replay.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/alpha04c_registry_binding_contract_validator_v1.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/alpha04c_remaining_index_10_18_owner_closed_data_preflight.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/alpha04c_remaining_index_14_18_owner_closed_data_preflight_v2.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/alpha04c_remaining_index_16_18_owner_closed_data_preflight_v3.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/alpha04c_remaining_index_18_owner_closed_data_preflight_v4.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/alpha04c_remaining_owner_closed_data_preflight.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/alpha04c_v6_registry_binding_replay.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/alpha04c_v7_card_inventory_nonconsuming_replay.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/alpha04c_victory_control_nonconsuming_replay.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/card_inventory_checkpoint_purity_inspector_v1.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/card_resolution_execution_full_state_inspector_v1.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/card_resolution_execution_owner_replay_scenario_identity_v1.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/card_resolution_execution_owner_replay_scenario_identity_v2.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/cold_restore_authorization_contract_v1.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/cold_restore_process_a_phase_timeline.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/cold_restore_role_progress_heartbeat.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/cold_restore_targeted_ledger_binding_validator_v1.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/cold_restore_targeted_ledger_replay.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/cold_restore_terminal_evidence.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/diagnostic_scenario_identity_v1.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/execution_authoritative_restore_projection_v1.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/execution_restore_exact_once_probe_v1.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/monster_runtime_owner_replay_scenario_identity_v1.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/monster_save_full_state_inspector_v1.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/process_a_rehearsal_completion_v1.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/remaining_owner_closed_data_inspector_v1.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/remaining_owner_closed_data_preflight_attempt_v2.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/remaining_owner_closed_data_preflight_attempt_v3.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/remaining_owner_closed_data_preflight_attempt_v4.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/restore_dependency_preflight_bench.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/save_owner_strict_preflight_bench.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/targeted_owner_capture_diagnostic_v2.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/victory_authoritative_restore_projection_v1.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/tools/victory_control_owner_replay_scenario_identity_v1.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/v07_semantic/v07_asset_batch_core.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/v07_semantic/v07_dbg_deck_core.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/v07_semantic/v07_solar_victory_core.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/v07_semantic/v07_track_acquisition_authority_port.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "scripts/v07_semantic/v07_unified_card_track_core.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_business_action_transaction_boundary_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_business_cost_formal_four_player_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_card_play_context_reuse_performance_parity_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_city_guess_candidate_performance_parity_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_decision_sample_roundtrip_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_learning_state_roundtrip_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_memory_wire_roundtrip_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_new_session_checkpoint_v3_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_profile_wire_roundtrip_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_runtime_checkpoint_restore_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_runtime_checkpoint_v2_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_runtime_exact_once_restore_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_runtime_fault_rollback_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_runtime_field_authority_matrix_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_runtime_full_state_characterization_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_runtime_legal_runtime_characterization_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_runtime_nonconsuming_replay_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_runtime_save_v3_fixture.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_runtime_save_v3_suite.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_runtime_save_v3_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_runtime_save_v3_test_base.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_runtime_save_wire_v3_codec_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_saturated_route_plan_learning_cache_parity_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_save_capture_zero_side_effect_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_save_legacy_fail_closed_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_save_v3_regression_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/ai_timer_bit_parity_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha01_content_manifest_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha01_manifest_runtime_activation_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha01_product_art_manifest_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha01_selected_role_consumer_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04_claim_to_sale_integration_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04_dock_legacy_planner_parity_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04_player_card_dock_production_capture.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04c_allocator_contract_closure_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04c_allocator_identity_restore_parity_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04c_allocator_v2_envelope_requires_backup_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04c_card_inventory_full_closed_wire_characterization_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04c_card_inventory_persistent_save_purity_characterization_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04c_card_inventory_v7_failure_path_characterization_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04c_card_market_allocator_cursor_save_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04c_mana_organization_victory_strict_preflight_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04c_production_save_capture_readback_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04c_registry_binding_contract_v1_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04c_remaining_index_10_18_owner_closed_data_preflight_contract_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04c_remaining_owner_closed_data_preflight_contract_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04c_route_military_queue_restore_dependency_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04c_save_fork_determinism_parity_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/alpha04c_v6_registry_binding_replay_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_inventory_receive_plan_batch_parity_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_inventory_save_v4_regression_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_inventory_v3_fail_closed_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_player_state_facility_escrow_v06_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_authoritative_projection_redaction_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_authoritative_restore_projection_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_capture_zero_side_effect_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_fault_rollback_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_field_authority_matrix_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_full_state_characterization_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_legacy_fail_closed_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_nonconsuming_replay_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_nonconsuming_replay_v2_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_nontrivial_roundtrip_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_owner_replay_scenario_identity_v1_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_pending_settlement_restore_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_post_restore_diagnostic_canonicalization_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_registry_managed_checkpoint_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_replay_v2_contract_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_restore_difference_characterization_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_restore_exact_once_probe_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_retryable_commitment_restore_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_retryable_history_restore_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_save_v4_regression_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_save_v4_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_save_wire_v4_codec_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_execution_transition_lineage_exact_once_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/card_resolution_transition_state_wire_v2_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/closed_save_scalar_codec_v1_regression_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/cold_restore_owner_capture_failure_projection_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/cold_restore_process_a_phase_timeline_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/cold_restore_process_a_save_boundary_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/cold_restore_process_bc_evidence_contract_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/cold_restore_role_progress_heartbeat_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/cold_restore_targeted_evidence_root_contract_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/cold_restore_targeted_ledger_binding_replay_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/cold_restore_terminal_evidence_contract_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/commodity_flow_postcommit_registry_preflight_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/diagnostic_scenario_identity_v1_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/district_purchase_save_revision_binding_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/district_supply_purchase_projection_receipt_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/facility_card_queue_restore_dependency_v06_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/fixtures/card_resolution_execution_save_full_state_fixture.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/fixtures/cold_restore_godot_attestation_fixture.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/fixtures/monster_save_full_state_fixture.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/full_run_facility_acquisition_policy_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/full_run_observation_window_policy_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/full_run_progress_budget_policy_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/full_run_progress_checkpoint_privacy_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/gameplay_balance_diagnostics_card_route_index_session_start_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/monster_registry_managed_checkpoint_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/monster_runtime_nonconsuming_replay_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/monster_runtime_owner_replay_scenario_identity_v1_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/monster_save_capture_zero_side_effect_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/monster_save_fault_rollback_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/monster_save_full_state_characterization_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/monster_save_nontrivial_json_roundtrip_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/monster_save_owner_transaction_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/monster_save_v1_fail_closed_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/monster_save_v2_regression_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/monster_save_wire_v2_codec_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/player_mana_reservation_binding_v06_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/process_a_rehearsal_completion_v1_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/process_a_rehearsal_launch_authorization_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/production_registry_transaction_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/registry_owner_fault_rollback_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/registry_owner_preflight_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/remaining_owner_closed_data_inspector_v1_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/remaining_owner_closed_data_preflight_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/remaining_owner_preflight_attempt_v2_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/remaining_owner_preflight_attempt_v3_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/remaining_owner_preflight_attempt_v4_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/save_owner_capture_failure_v1_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/targeted_owner_capture_diagnostic_v2_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/targeted_owner_diagnostic_launch_authorization_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v06_queued_facility_card_action_v1_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v06_save_file_fault_matrix_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v071_balance_defaults_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v071_constitution_contract_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v071_to_v072_amendment_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v072_balance_defaults_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v072_constitution_contract_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v072_to_v073_amendment_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v073_balance_defaults_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v073_constitution_contract_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v07_constitution_contract_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v07_semantic/v07_asset_batch_core_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v07_semantic/v07_dbg_deck_core_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v07_semantic/v07_solar_victory_core_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v07_semantic/v07_three_wing_contract_aggregate_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v07_semantic/v07_track_acquisition_authority_port_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v07_semantic/v07_unified_card_track_core_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v07_to_v071_amendment_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/v7_card_inventory_nonconsuming_replay_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_audit_roundtrip_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_audit_zero_boundary_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_capture_zero_side_effect_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_fault_rollback_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_field_authority_matrix_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_final_settlement_exact_once_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_fresh_world_facts_gate_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_full_state_characterization_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_idle_roundtrip_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_legacy_fail_closed_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_nonconsuming_replay_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_outcome_exact_once_restore_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_qualification_roundtrip_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_registry_managed_checkpoint_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_resolved_roundtrip_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_save_v3_fixture.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_save_v3_suite.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_save_v3_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_save_v3_test_base.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_save_wire_v3_codec_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_session_restore_dependency_test.gd.uid"
+        },
+        {
+          "status": "??",
+          "path": "tests/victory_control_special_outcome_roundtrip_test.gd.uid"
+        }
+      ]
+    }
+  ],
+  "isolated_evidence_root": {
+    "root": "alpha04c-mcp-signal11-isolation-evidence",
+    "retained": true,
+    "attempt_ids": [
+      "m0-20260802T220354230-1089ac02",
+      "m0-20260802T220554489-c8d49b3c",
+      "m1-20260802T220613394-cc5707c1",
+      "m1-20260802T220712873-aba3270b",
+      "m2-20260802T220744301-6dd4899b",
+      "m3-20260802T220851178-6b240ccc",
+      "b0-20260802T221003112-ce28ef15",
+      "p0-20260802T221649935-cee516a2"
+    ],
+    "native_dumps": [
+      {
+        "editor_pid": 32056,
+        "sha256": "aa4ab469f3668fa5d128e81e460f6b2d057a9cdaf7c008af8a1fb4f7eaeb16d0",
+        "size_bytes": 11198538
+      },
+      {
+        "editor_pid": 32972,
+        "sha256": "3d75bba9a8414b4d50a00f5ff314022163fc2649797fa456fb0425b667147583",
+        "size_bytes": 11405678
+      }
+    ]
+  },
+  "cleanup_attestation": {
+    "user_original_cache_deleted": false,
+    "isolation_cache_deleted": false,
+    "isolated_worktrees_deleted": false,
+    "task_owned_editor_process_count_after": 0,
+    "task_owned_endpoint_listener_count_after": 0
+  },
+  "task_generated_file_manifest_complete": true
+}

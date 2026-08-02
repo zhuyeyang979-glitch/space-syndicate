@@ -1,0 +1,188 @@
+{
+  "task_id": "ALPHA_0_4_C_PR77_MCP_INITIAL_SCAN_SIGNAL_11_ROOT_CAUSE_ISOLATION_AND_HARDENING_CONTINUATION",
+  "status": "blocked",
+  "effective_main_sha": "794ccf010e661a4750efca20a4e0d2a5839b7f2b",
+  "effective_pr77_head": "78c777010a75cdc1a8d407fde6705f9a51ac3b56",
+  "mcp_build": {
+    "upstream_version": "0.9.6",
+    "local_patch_id": "alpha04c-initial-scan-signal11-v1",
+    "effective_build_id": "0.9.6+alpha04c.signal11.1",
+    "source_hash_before": "ae9c02b0ab3a43b7f64c46a5949f067697d09ae6",
+    "source_hash_after_candidate": "cb518f5983711a737bf67e1a4fc9a33ff2448975",
+    "candidate_patch_commit": "e1fc5d1a201e9717d284e6e18c63bd4c5bf3cd34",
+    "candidate_evidence_commit": "08daa52cbcd4f33472ab4edc7d416c5fdcba77ef",
+    "push_allowed": false,
+    "merge_allowed": false
+  },
+  "matrix": {
+    "complete_for_blocking_classification": true,
+    "all_green": false,
+    "cells": [
+      {
+        "cell_id": "M0",
+        "attempt_id": "m0-20260802T220554489-c8d49b3c",
+        "project": "minimal",
+        "mcp_addon_enabled": false,
+        "endpoint_enabled": false,
+        "wrapper_request_count": 0,
+        "result": "green",
+        "native_exit_signal": 0
+      },
+      {
+        "cell_id": "M1",
+        "attempt_id": "m1-20260802T220712873-aba3270b",
+        "project": "minimal",
+        "mcp_addon_enabled": true,
+        "endpoint_enabled": false,
+        "wrapper_request_count": 0,
+        "result": "green",
+        "native_exit_signal": 0
+      },
+      {
+        "cell_id": "M2",
+        "attempt_id": "m2-20260802T220744301-6dd4899b",
+        "project": "minimal",
+        "mcp_addon_enabled": true,
+        "endpoint_enabled": true,
+        "endpoint_observed_during_scan": true,
+        "wrapper_request_count": 0,
+        "result": "green",
+        "native_exit_signal": 0
+      },
+      {
+        "cell_id": "M3",
+        "attempt_id": "m3-20260802T220851178-6b240ccc",
+        "project": "minimal",
+        "mcp_addon_enabled": true,
+        "endpoint_enabled": true,
+        "wrapper_request_count": 3,
+        "wrapper_request_names": [
+          "get_godot_version",
+          "get_project_info",
+          "filesystem_scan_status"
+        ],
+        "result": "green",
+        "native_exit_signal": 0
+      },
+      {
+        "cell_id": "B0",
+        "attempt_id": "b0-20260802T221003112-ce28ef15",
+        "project": "origin_main",
+        "project_source_sha": "794ccf010e661a4750efca20a4e0d2a5839b7f2b",
+        "mcp_addon_enabled": false,
+        "endpoint_enabled": false,
+        "wrapper_request_count": 0,
+        "result": "native_crash",
+        "native_exit_signal": 11,
+        "native_exception_code": "0xc0000005",
+        "native_fault_offset": "0x327d10a"
+      },
+      {
+        "cell_id": "B1",
+        "result": "skipped",
+        "reason_code": "b0_green_required"
+      },
+      {
+        "cell_id": "P0",
+        "attempt_id": "p0-20260802T221649935-cee516a2",
+        "project": "pr77",
+        "project_source_sha": "78c777010a75cdc1a8d407fde6705f9a51ac3b56",
+        "mcp_addon_enabled": false,
+        "endpoint_enabled": false,
+        "wrapper_request_count": 0,
+        "result": "native_crash",
+        "native_exit_signal": 11,
+        "native_exception_code": "0xc0000005",
+        "native_fault_offset": "0x327d10a"
+      },
+      {
+        "cell_id": "P1",
+        "result": "skipped",
+        "reason_code": "p0_green_required"
+      }
+    ],
+    "invalid_attempts_retained": [
+      {
+        "attempt_id": "m0-20260802T220354230-1089ac02",
+        "reason_code": "wrapper_argument_serialization_project_path_not_honored"
+      },
+      {
+        "attempt_id": "m1-20260802T220613394-cc5707c1",
+        "reason_code": "observer_assumed_filesystem_cache8_but_godot47_wrote_filesystem_cache10"
+      }
+    ]
+  },
+  "root_cause": {
+    "class": "godot_4_7_angle_full_project_post_import_texture_reconfiguration_access_violation",
+    "failure_stage": "filesystem_import_post_import_3d_texture_reconfiguration",
+    "signal11_failure_stage_attested": true,
+    "signal11_first_error_attested": true,
+    "reproduced_without_mcp": true,
+    "pr77_specific": false,
+    "mcp_addon_required": false,
+    "mcp_endpoint_required": false,
+    "wrapper_request_required": false,
+    "native_stack_available": true,
+    "native_stack_symbolized": false,
+    "native_exit_signal": 11,
+    "native_exit_code": -1073741819,
+    "native_exception_code": "0xc0000005",
+    "native_fault_offset": "0x327d10a",
+    "first_engine_warning": "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT",
+    "last_successful_stage": "3D texture detection and post-import reconfiguration",
+    "last_logged_resource_is_not_claimed_as_root_cause": true
+  },
+  "native_evidence": [
+    {
+      "attempt_id": "b0-20260802T221003112-ce28ef15",
+      "editor_pid": 32056,
+      "dump_sha256": "aa4ab469f3668fa5d128e81e460f6b2d057a9cdaf7c008af8a1fb4f7eaeb16d0",
+      "dump_size_bytes": 11198538
+    },
+    {
+      "attempt_id": "p0-20260802T221649935-cee516a2",
+      "editor_pid": 32972,
+      "dump_sha256": "3d75bba9a8414b4d50a00f5ff314022163fc2649797fa456fb0425b667147583",
+      "dump_size_bytes": 11405678
+    }
+  ],
+  "diagnostic_summary": {
+    "unicode_diagnostic_recorded_count": 9,
+    "unicode_diagnostic_classified_count": 0,
+    "script_error_classified_count": 10,
+    "failed_script_load_classified_count": 5,
+    "real_project_error_count": 15,
+    "real_project_root_file_count": 5,
+    "unicode_log_rendering_error_count": 0,
+    "interrupted_scan_artifact_count": 0,
+    "stale_cache_artifact_count": 0,
+    "mcp_addon_error_count": 0,
+    "unclassified_diagnostic_count": 9,
+    "p0_vs_prior_pr77_sequence_equal": true
+  },
+  "gates": {
+    "mcp_signal11_isolation_matrix_all_green": false,
+    "mcp_minimal_fixture_self_test_green": false,
+    "mcp_main_baseline_self_test_green": false,
+    "mcp_pr77_initial_scan_self_test_green": false,
+    "pr77_retroactive_mcp_acceptance_green": false,
+    "pr77_script_validation": "0/15",
+    "pr77_scene_load": "0/5",
+    "v8_authorization_created": false,
+    "process_a_started": false,
+    "formal_started": false,
+    "full_smoke_started": false,
+    "smoke_test_script_invocation_count": 0
+  },
+  "scope_attestation": {
+    "gameplay_code_change_count": 0,
+    "save_schema_change_count": 0,
+    "save_owner_change_count": 0,
+    "main_gd_change_count": 0,
+    "main_tscn_change_count": 0,
+    "v073_rule_change_count": 0,
+    "pr80_head_change_count": 0,
+    "pr82_head_change_count": 0
+  },
+  "next_task": "ALPHA_0_4_C_PR77_MCP_ATTESTED_SCRIPT_OR_RESOURCE_REPAIR"
+}
