@@ -74,6 +74,8 @@ func _init() -> void:
 		"launcher sends no HTTP request before out-of-band initial readiness"
 	)
 	_expect(launcher_source.contains("http_request_count_before_readiness = 0"), "connection evidence attests zero pre-readiness HTTP requests")
+	_expect(launcher_source.contains("InitialReadyStabilitySeconds = 15"), "launcher holds a bounded post-import stability window")
+	_expect(launcher_source.contains('"TEMP" = $tempRoot'), "launcher isolates editor temporary files per session")
 
 	var invoke_source := _read("res://tools/invoke_role_godot_mcp.ps1")
 	_expect(invoke_source.contains('[guid]::NewGuid().ToString("N")'), "wrapper assigns unique JSON-RPC IDs")

@@ -20,6 +20,9 @@ param(
     [ValidateRange(1, 30)]
     [int]$HttpTimeoutSeconds = 3,
 
+    [ValidateRange(5, 60)]
+    [int]$InitialReadyStabilitySeconds = 15,
+
     [bool]$RequireFreshProjectCache = $true,
 
     [ValidatePattern("^[a-zA-Z0-9._-]*$")]
@@ -58,6 +61,7 @@ if (Test-Path -LiteralPath $sessionRoot) {
 
 $roamingRoot = Join-Path $sessionRoot "appdata-roaming"
 $localAppDataRoot = Join-Path $sessionRoot "appdata-local"
+$tempRoot = Join-Path $sessionRoot "temp"
 $logRoot = Join-Path $sessionRoot "logs"
 $tokenPath = Join-Path $sessionRoot "auth.token"
 $endpointPath = Join-Path $sessionRoot "endpoint.txt"
@@ -65,7 +69,7 @@ $connectionPath = Join-Path $sessionRoot "connection.json"
 $pidPath = Join-Path $sessionRoot "godot.pid"
 $failurePath = Join-Path $sessionRoot "launch-failure.json"
 $activeSessionPath = Join-Path $controlRoot "active-session.json"
-foreach ($directory in @($controlRoot, $sessionsRoot, $sessionRoot, $roamingRoot, $localAppDataRoot, $logRoot)) {
+foreach ($directory in @($controlRoot, $sessionsRoot, $sessionRoot, $roamingRoot, $localAppDataRoot, $tempRoot, $logRoot)) {
     [System.IO.Directory]::CreateDirectory($directory) | Out-Null
 }
 
@@ -134,6 +138,8 @@ $argumentString = $arguments -join " "
 $environment = @{
     "APPDATA" = $roamingRoot
     "LOCALAPPDATA" = $localAppDataRoot
+    "TEMP" = $tempRoot
+    "TMP" = $tempRoot
 }
 $startProcessParameters = @{
     FilePath = $GodotPath
@@ -159,6 +165,7 @@ try {
     $deadline = [DateTimeOffset]::Now.AddSeconds($StartupTimeoutSeconds)
     $filesystemReadiness = $null
     $endpointObserved = $false
+    $readyObservedAt = $null
     while ([DateTimeOffset]::Now -lt $deadline) {
         $process.Refresh()
         if ($process.HasExited) {
@@ -185,7 +192,14 @@ try {
                     throw "mcp_initial_scan_failed|path=$filesystemReadinessPath"
                 }
                 if ([bool]$filesystemReadiness.initial_scan_completed -and [string]$filesystemReadiness.state -eq "ready") {
-                    break
+                    if ($null -eq $readyObservedAt) {
+                        $readyObservedAt = [DateTimeOffset]::Now
+                    }
+                    if (([DateTimeOffset]::Now - $readyObservedAt).TotalSeconds -ge $InitialReadyStabilitySeconds) {
+                        break
+                    }
+                } else {
+                    $readyObservedAt = $null
                 }
             } catch {
                 if ($_.Exception.Message -like "mcp_*_mismatch*" -or $_.Exception.Message -like "mcp_initial_scan_failed*") {
@@ -199,6 +213,9 @@ try {
 
     if ($null -eq $filesystemReadiness -or -not [bool]$filesystemReadiness.initial_scan_completed) {
         throw "initial_scan_timeout|pid=$($process.Id)|endpoint=$endpoint|readiness=$filesystemReadinessPath|log=$logPath"
+    }
+    if ($null -eq $readyObservedAt -or ([DateTimeOffset]::Now - $readyObservedAt).TotalSeconds -lt $InitialReadyStabilitySeconds) {
+        throw "initial_scan_stability_timeout|pid=$($process.Id)|readiness=$filesystemReadinessPath|log=$logPath"
     }
     if (-not $endpointObserved) {
         throw "mcp_endpoint_not_ready_after_initial_scan|pid=$($process.Id)|endpoint=$endpoint|log=$logPath"
@@ -283,6 +300,7 @@ try {
         project_cache_was_fresh = $RequireFreshProjectCache
         user_data_path = $roamingRoot
         local_app_data_path = $localAppDataRoot
+        temp_path = $tempRoot
         session_root = $sessionRoot
         token_path = $tokenPath
         log_path = $logPath
@@ -299,6 +317,7 @@ try {
         readiness_file_path = $filesystemReadinessPath
         pre_http_readiness_green = $true
         http_request_count_before_readiness = 0
+        initial_ready_stability_seconds = $InitialReadyStabilitySeconds
         launched_at = [DateTimeOffset]::Now.ToString("o")
     }
     Write-McpUtf8File -Path $connectionPath -Text ($connection | ConvertTo-Json -Depth 8)
