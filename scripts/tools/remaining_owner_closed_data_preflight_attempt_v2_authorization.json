@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "contract_id": "RemainingOwnerClosedDataPreflightAttemptV2Authorization",
+  "attempt_id": "alpha04c-remaining-owner-preflight-index14-18-attempt-v2",
+  "start_index": 14,
+  "end_index": 18,
+  "attempt_count_before": 0,
+  "authorized_new_attempt_count": 1,
+  "attempt_count_after": 1,
+  "targeted_owner_capture_diagnostic_count_before": 7,
+  "targeted_owner_capture_diagnostic_count_after": 7
+}
