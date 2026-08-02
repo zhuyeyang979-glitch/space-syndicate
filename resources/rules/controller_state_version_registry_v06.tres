@@ -91,6 +91,7 @@ state_version = 3
 script = ExtResource("2_entry")
 controller_id = "victory_control"
 save_section = "victory_control"
+state_version = 2
 
 [sub_resource type="Resource" id="Controller_17"]
 script = ExtResource("2_entry")
