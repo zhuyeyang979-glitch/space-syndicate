@@ -102,6 +102,13 @@ try {
     $active = Get-McpActiveSession -ControlRoot $controlRoot
     Assert-Lifecycle -Condition ([string]$active.active.session_id -eq "offline") -Name "active_session_manifest_is_resolved"
 
+    $launcherSource = [System.IO.File]::ReadAllText((Join-Path (Split-Path $PSScriptRoot -Parent) "tools\launch_role_godot_mcp.ps1"))
+    Assert-Lifecycle -Condition $launcherSource.Contains('"--recovery-mode"') -Name "fresh_cache_uses_recovery_import"
+    Assert-Lifecycle -Condition $launcherSource.Contains("recovery_import_unexpected_endpoint") -Name "recovery_import_forbids_endpoint"
+    Assert-Lifecycle -Condition $launcherSource.Contains("recovery_import_process_exited_before_monitor") -Name "recovery_import_exit_is_typed"
+    Assert-Lifecycle -Condition $launcherSource.Contains("recovery_import_timeout") -Name "recovery_import_timeout_is_bounded"
+    Assert-Lifecycle -Condition $launcherSource.Contains("recovery_import_green") -Name "recovery_import_evidence_is_persisted"
+
     Stop-Process -Id $child.Id -Force
     $child.WaitForExit(5000) | Out-Null
     $deadCheck = Test-McpProcessIdentity -Connection $connection

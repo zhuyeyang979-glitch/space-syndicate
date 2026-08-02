@@ -19,6 +19,9 @@ param(
     [ValidateRange(30, 900)]
     [int]$StartupTimeoutSeconds = 300,
 
+    [ValidateRange(30, 900)]
+    [int]$RecoveryImportTimeoutSeconds = 300,
+
     [ValidateRange(1, 30)]
     [int]$HttpTimeoutSeconds = 3,
 
@@ -46,7 +49,8 @@ if (-not (Test-Path -LiteralPath $GodotPath)) {
 }
 
 $projectCachePath = Join-Path $root ".godot"
-if ($RequireFreshProjectCache -and (Test-Path -LiteralPath $projectCachePath)) {
+$projectCacheWasFresh = -not (Test-Path -LiteralPath $projectCachePath)
+if ($RequireFreshProjectCache -and -not $projectCacheWasFresh) {
     throw "MCP_PROJECT_CACHE_NOT_FRESH|path=$projectCachePath"
 }
 
@@ -79,6 +83,7 @@ $tokenPath = Join-Path $sessionRoot "auth.token"
 $endpointPath = Join-Path $sessionRoot "endpoint.txt"
 $connectionPath = Join-Path $sessionRoot "connection.json"
 $pidPath = Join-Path $sessionRoot "godot.pid"
+$recoveryImportPidPath = Join-Path $sessionRoot "recovery-import.pid"
 $failurePath = Join-Path $sessionRoot "launch-failure.json"
 $activeSessionPath = Join-Path $controlRoot "active-session.json"
 foreach ($directory in @($controlRoot, $sessionsRoot, $sessionRoot, $runtimeDataBasePath, $runtimeDataRoot, $roamingRoot, $localAppDataRoot, $tempRoot, $logRoot)) {
@@ -135,13 +140,16 @@ Write-McpUtf8File -Path $endpointPath -Text $endpoint
 $logPath = Join-Path $logRoot "godot.log"
 $stdoutPath = Join-Path $logRoot "editor.stdout.log"
 $stderrPath = Join-Path $logRoot "editor.stderr.log"
+$recoveryImportLogPath = Join-Path $logRoot "recovery-import.godot.log"
+$recoveryImportStdoutPath = Join-Path $logRoot "recovery-import.stdout.log"
+$recoveryImportStderrPath = Join-Path $logRoot "recovery-import.stderr.log"
 $renderingMethod = if ($Renderer -eq "forward_plus") { "forward_plus" } else { "gl_compatibility" }
 $renderingDriver = switch ($Renderer) {
     "compatibility" { "opengl3" }
     "compatibility_angle" { "opengl3_angle" }
     default { "vulkan" }
 }
-$arguments = @(
+$editorArguments = @(
     "--editor",
     "--path", ('"' + $root + '"'),
     "--log-file", ('"' + $logPath + '"'),
@@ -150,7 +158,16 @@ $arguments = @(
     "--resolution", "1600x960",
     "--position", "40,40"
 )
-$argumentString = $arguments -join " "
+$argumentString = $editorArguments -join " "
+$recoveryImportArguments = @(
+    "--import",
+    "--recovery-mode",
+    "--path", ('"' + $root + '"'),
+    "--log-file", ('"' + $recoveryImportLogPath + '"'),
+    "--rendering-method", $renderingMethod,
+    "--rendering-driver", $renderingDriver
+)
+$recoveryImportArgumentString = $recoveryImportArguments -join " "
 $environment = @{
     "APPDATA" = $roamingRoot
     "LOCALAPPDATA" = $localAppDataRoot
@@ -167,10 +184,64 @@ $startProcessParameters = @{
     PassThru = $true
     WindowStyle = "Hidden"
 }
+$recoveryImportStartProcessParameters = @{
+    FilePath = $GodotPath
+    ArgumentList = $recoveryImportArgumentString
+    Environment = $environment
+    RedirectStandardOutput = $recoveryImportStdoutPath
+    RedirectStandardError = $recoveryImportStderrPath
+    WorkingDirectory = $root
+    PassThru = $true
+    WindowStyle = "Hidden"
+}
 
 $process = $null
+$recoveryImportProcess = $null
+$recoveryImportIdentity = $null
+$recoveryImportCompleted = -not $RequireFreshProjectCache
+$recoveryImportStartedAt = $null
+$recoveryImportCompletedAt = $null
 $launchSucceeded = $false
 try {
+    if ($RequireFreshProjectCache) {
+        $recoveryImportStartedAt = [DateTimeOffset]::Now
+        $recoveryImportProcess = Start-Process @recoveryImportStartProcessParameters
+        $recoveryImportIdentity = Get-McpProcessIdentity -Process $recoveryImportProcess
+        if ($null -eq $recoveryImportIdentity) {
+            throw "recovery_import_process_exited_before_monitor|stage=launch"
+        }
+        Write-McpUtf8File -Path $recoveryImportPidPath -Text ([string]$recoveryImportProcess.Id)
+
+        $recoveryImportDeadline = [DateTimeOffset]::Now.AddSeconds($RecoveryImportTimeoutSeconds)
+        while (-not $recoveryImportProcess.HasExited -and [DateTimeOffset]::Now -lt $recoveryImportDeadline) {
+            if ((Get-McpEndpointOwnerPid -Port $Port) -ne 0) {
+                throw "recovery_import_unexpected_endpoint|pid=$($recoveryImportProcess.Id)|endpoint=$endpoint"
+            }
+            Start-Sleep -Milliseconds 100
+            $recoveryImportProcess.Refresh()
+        }
+        if (-not $recoveryImportProcess.HasExited) {
+            $recoveryCleanup = Stop-McpBoundProcess -Process $recoveryImportProcess -TimeoutSeconds 10 -AllowForcedCleanup
+            throw "recovery_import_timeout|pid=$($recoveryImportProcess.Id)|timeout_seconds=$RecoveryImportTimeoutSeconds|cleanup=$($recoveryCleanup | ConvertTo-Json -Compress)"
+        }
+        $recoveryImportProcess.WaitForExit()
+        $recoveryImportNative = Get-McpNativeExitEvidence -LogPath $recoveryImportLogPath -ExitCode $recoveryImportProcess.ExitCode
+        if ($recoveryImportProcess.ExitCode -ne 0) {
+            throw "recovery_import_failed|exit_code=$($recoveryImportNative.exit_code)|signal=$($recoveryImportNative.signal)|log=$recoveryImportLogPath"
+        }
+        if (-not (Test-Path -LiteralPath $projectCachePath)) {
+            throw "recovery_import_cache_missing|path=$projectCachePath|log=$recoveryImportLogPath"
+        }
+        if ((Get-McpEndpointOwnerPid -Port $Port) -ne 0) {
+            throw "recovery_import_endpoint_leaked|pid=$($recoveryImportProcess.Id)|endpoint=$endpoint"
+        }
+        if (Test-Path -LiteralPath $filesystemReadinessPath) {
+            throw "recovery_import_plugin_not_disabled|readiness=$filesystemReadinessPath"
+        }
+        $recoveryImportCompleted = $true
+        $recoveryImportCompletedAt = [DateTimeOffset]::Now
+    }
+
     $process = Start-Process @startProcessParameters
     $identity = Get-McpProcessIdentity -Process $process
     if ($null -eq $identity) {
@@ -313,7 +384,18 @@ try {
         godot_path = [string]$identity.executable_path
         worktree = $root
         project_cache_path = $projectCachePath
-        project_cache_was_fresh = $RequireFreshProjectCache
+        project_cache_was_fresh = $projectCacheWasFresh
+        recovery_import_performed = $RequireFreshProjectCache
+        recovery_import_green = $recoveryImportCompleted
+        recovery_import_pid = if ($null -ne $recoveryImportProcess) { $recoveryImportProcess.Id } else { 0 }
+        recovery_import_process_start_time_utc = if ($null -ne $recoveryImportIdentity) { [string]$recoveryImportIdentity.start_time_utc } else { "" }
+        recovery_import_started_at = if ($null -ne $recoveryImportStartedAt) { $recoveryImportStartedAt.ToString("o") } else { "" }
+        recovery_import_completed_at = if ($null -ne $recoveryImportCompletedAt) { $recoveryImportCompletedAt.ToString("o") } else { "" }
+        recovery_import_timeout_seconds = $RecoveryImportTimeoutSeconds
+        recovery_import_log_path = $recoveryImportLogPath
+        recovery_import_stdout_path = $recoveryImportStdoutPath
+        recovery_import_stderr_path = $recoveryImportStderrPath
+        recovery_import_endpoint_count = 0
         runtime_data_root = $runtimeDataRoot
         user_data_path = $roamingRoot
         project_user_data_path = $settingsDirectory
@@ -352,14 +434,23 @@ try {
 } catch {
     $failureMessage = $_.Exception.Message
     $cleanup = $null
+    $recoveryCleanup = $null
     if ($null -ne $process) {
         $process.Refresh()
         if (-not $process.HasExited) {
             $cleanup = Stop-McpBoundProcess -Process $process -TimeoutSeconds 10 -AllowForcedCleanup
         }
     }
-    $exitCode = if ($null -ne $process -and $process.HasExited) { $process.ExitCode } else { 0 }
-    $native = Get-McpNativeExitEvidence -LogPath $logPath -ExitCode $exitCode
+    if ($null -ne $recoveryImportProcess) {
+        $recoveryImportProcess.Refresh()
+        if (-not $recoveryImportProcess.HasExited) {
+            $recoveryCleanup = Stop-McpBoundProcess -Process $recoveryImportProcess -TimeoutSeconds 10 -AllowForcedCleanup
+        }
+    }
+    $failureProcess = if ($null -ne $process) { $process } else { $recoveryImportProcess }
+    $failureLogPath = if ($null -ne $process) { $logPath } else { $recoveryImportLogPath }
+    $exitCode = if ($null -ne $failureProcess -and $failureProcess.HasExited) { $failureProcess.ExitCode } else { 0 }
+    $native = Get-McpNativeExitEvidence -LogPath $failureLogPath -ExitCode $exitCode
     $failure = [ordered]@{
         schema = "RoleGodotMcpLaunchFailureV1"
         session_id = $SessionId
@@ -370,8 +461,13 @@ try {
         endpoint = $endpoint
         endpoint_alive = (Get-McpEndpointOwnerPid -Port $Port) -ne 0
         cleanup = $cleanup
+        recovery_import_cleanup = $recoveryCleanup
+        recovery_import_performed = $RequireFreshProjectCache
+        recovery_import_green = $recoveryImportCompleted
+        recovery_import_pid = if ($null -ne $recoveryImportProcess) { $recoveryImportProcess.Id } else { 0 }
+        recovery_import_log_path = $recoveryImportLogPath
         runtime_data_root = $runtimeDataRoot
-        log_path = $logPath
+        log_path = $failureLogPath
         failed_at = [DateTimeOffset]::Now.ToString("o")
     }
     Write-McpUtf8File -Path $failurePath -Text ($failure | ConvertTo-Json -Depth 8)
