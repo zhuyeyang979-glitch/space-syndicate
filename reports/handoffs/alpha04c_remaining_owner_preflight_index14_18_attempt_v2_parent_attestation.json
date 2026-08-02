@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "attempt_id": "alpha04c-remaining-owner-preflight-index14-18-attempt-v2",
+  "frozen_code_head": "7dc98296eb6b384ad498288ae3a137dd6d57ed32",
+  "child_exit_code": 2,
+  "child_completion_sha256": "1ad9fa14fcb803039f690beddacf8d2a30c4fad9f7577c009b1dca63029761f2",
+  "child_success": false,
+  "child_attestation_green": true,
+  "immutable_v7_evidence_preserved": true,
+  "v8_authorization_root_absent": true,
+  "remaining_owner_preflight_attempt_count_delta": 1,
+  "remaining_owner_preflight_concurrent_execution_count": 1,
+  "task_owned_process_count_after": 0,
+  "first_failure": {
+    "owner_index": 15,
+    "owner_id": "ai_runtime",
+    "reason_code": "raw_float_not_closed_data"
+  },
+  "parent_attestation_green": true,
+  "private_payload_redacted": true,
+  "parent_exit_sha256": "e2829c0d6a51b61f28a6fdd15700eb4cc367cc70b00c15fdc60c8f82903ec8bb",
+  "attempt_ledger_sha256": "14c5b6644406611ed7d74c94e3db9b225f972f1ac237dd685fcb3ccb28a89e71"
+}
