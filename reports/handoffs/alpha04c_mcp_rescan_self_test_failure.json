@@ -1,0 +1,31 @@
+{
+  "task_id": "ALPHA_0_4_C_PR77_MCP_RESOURCE_RESCAN_REENTRANCY_CRASH_REPAIR_AND_RETROACTIVE_ACCEPTANCE",
+  "status": "blocked_at_mcp_self_test_initial_scan",
+  "mcp_repair_code_head": "e1fc5d1a201e9717d284e6e18c63bd4c5bf3cd34",
+  "endpoint": "http://127.0.0.1:8805/",
+  "editor_pid": 32892,
+  "failed_endpoint_reused": false,
+  "failed_pid_reused": false,
+  "initial_scan_green": false,
+  "reload_operation_1_started": false,
+  "reload_operation_2_started": false,
+  "self_test_green": false,
+  "process_count_after": 0,
+  "evidence": {
+    "log_path": ".codex-godot/logs/godot_20260802_211404.log",
+    "log_sha256": "0086c79fe4d59bd1499381fa1b03d090410e7c0734c529d662de21b6695f4b90",
+    "log_size_bytes": 23187
+  },
+  "observations": {
+    "first_scan_collision_count": 0,
+    "stack_overflow_count": 0,
+    "signal_11_count": 1,
+    "unicode_parse_diagnostic_count": 9,
+    "script_error_count": 10,
+    "failed_script_load_count": 5
+  },
+  "root_cause_disposition": "old_http_reentrancy_not_reproduced_but_self_test_blocked_by_godot_initial_import_signal_11_and_preexisting_project_parse_errors",
+  "pr77_retroactive_acceptance_started": false,
+  "v8_authorization_created": false,
+  "process_a_started": false
+}

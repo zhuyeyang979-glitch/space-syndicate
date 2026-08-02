@@ -1,0 +1,1754 @@
+{
+  "captured_at": "2026-08-02T21:17:53.0691194+09:00",
+  "effective_pr77_head": "78c777010a75cdc1a8d407fde6705f9a51ac3b56",
+  "mcp_repair_code_head": "e1fc5d1a201e9717d284e6e18c63bd4c5bf3cd34",
+  "manifest_kind": "task_generated_files",
+  "baseline": {
+    "untracked_file_count": 0,
+    "ignored_mcp_root_existed": false,
+    "ignored_godot_cache_existed": false,
+    "ignored_import_cache_existed": false,
+    "ignored_test_roots": []
+  },
+  "generated_untracked_file_count": 226,
+  "generated_untracked_files": [
+    {
+      "path": "addons/funplay_mcp/core/funplay_filesystem_reload_state.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/cards/v06/queued_facility_card_action_v1.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/runtime/ai_runtime_save_wire_codec_v3.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/runtime/card_resolution_execution_save_wire_codec_v4.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/runtime/facility_card_queue_adapter_v06.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/runtime/monster_save_wire_codec_v2.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/runtime/queued_facility_card_restore_dependency_contract_v06.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/runtime/save_owner_capture_failure_v1.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/runtime/victory_control_save_wire_codec_v3.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/ai_business_action_transaction_boundary_bench.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/ai_business_action_transaction_fake_weather.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/ai_business_cost_fail_once_public_log_port.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/ai_runtime_owner_replay_scenario_identity_v1.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/alpha01_manifest_runtime_activation_bench.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/alpha04c_ai_runtime_nonconsuming_replay.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/alpha04c_card_resolution_execution_nonconsuming_replay.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/alpha04c_card_resolution_execution_nonconsuming_replay_v2.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/alpha04c_monster_bankruptcy_save_preflight_bench.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/alpha04c_monster_runtime_nonconsuming_replay.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/alpha04c_registry_binding_contract_validator_v1.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/alpha04c_remaining_index_10_18_owner_closed_data_preflight.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/alpha04c_remaining_index_14_18_owner_closed_data_preflight_v2.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/alpha04c_remaining_index_16_18_owner_closed_data_preflight_v3.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/alpha04c_remaining_index_18_owner_closed_data_preflight_v4.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/alpha04c_remaining_owner_closed_data_preflight.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/alpha04c_v6_registry_binding_replay.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/alpha04c_v7_card_inventory_nonconsuming_replay.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/alpha04c_victory_control_nonconsuming_replay.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/card_inventory_checkpoint_purity_inspector_v1.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/card_resolution_execution_full_state_inspector_v1.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/card_resolution_execution_owner_replay_scenario_identity_v1.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/card_resolution_execution_owner_replay_scenario_identity_v2.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/cold_restore_authorization_contract_v1.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/cold_restore_process_a_phase_timeline.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/cold_restore_role_progress_heartbeat.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/cold_restore_targeted_ledger_binding_validator_v1.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/cold_restore_targeted_ledger_replay.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/cold_restore_terminal_evidence.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/diagnostic_scenario_identity_v1.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/execution_authoritative_restore_projection_v1.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/execution_restore_exact_once_probe_v1.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/monster_runtime_owner_replay_scenario_identity_v1.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/monster_save_full_state_inspector_v1.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/process_a_rehearsal_completion_v1.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/remaining_owner_closed_data_inspector_v1.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/remaining_owner_closed_data_preflight_attempt_v2.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/remaining_owner_closed_data_preflight_attempt_v3.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/remaining_owner_closed_data_preflight_attempt_v4.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/restore_dependency_preflight_bench.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/save_owner_strict_preflight_bench.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/targeted_owner_capture_diagnostic_v2.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/victory_authoritative_restore_projection_v1.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/tools/victory_control_owner_replay_scenario_identity_v1.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/v07_semantic/v07_asset_batch_core.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/v07_semantic/v07_dbg_deck_core.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/v07_semantic/v07_solar_victory_core.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/v07_semantic/v07_track_acquisition_authority_port.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "scripts/v07_semantic/v07_unified_card_track_core.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_business_action_transaction_boundary_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_business_cost_formal_four_player_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_card_play_context_reuse_performance_parity_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_city_guess_candidate_performance_parity_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_decision_sample_roundtrip_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_learning_state_roundtrip_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_memory_wire_roundtrip_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_new_session_checkpoint_v3_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_profile_wire_roundtrip_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_runtime_checkpoint_restore_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_runtime_checkpoint_v2_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_runtime_exact_once_restore_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_runtime_fault_rollback_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_runtime_field_authority_matrix_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_runtime_full_state_characterization_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_runtime_legal_runtime_characterization_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_runtime_nonconsuming_replay_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_runtime_save_v3_fixture.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_runtime_save_v3_suite.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_runtime_save_v3_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_runtime_save_v3_test_base.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_runtime_save_wire_v3_codec_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_saturated_route_plan_learning_cache_parity_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_save_capture_zero_side_effect_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_save_legacy_fail_closed_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_save_v3_regression_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/ai_timer_bit_parity_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha01_content_manifest_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha01_manifest_runtime_activation_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha01_product_art_manifest_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha01_selected_role_consumer_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha04_claim_to_sale_integration_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha04_dock_legacy_planner_parity_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha04_player_card_dock_production_capture.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha04c_allocator_contract_closure_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha04c_allocator_identity_restore_parity_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha04c_allocator_v2_envelope_requires_backup_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha04c_card_inventory_full_closed_wire_characterization_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha04c_card_inventory_persistent_save_purity_characterization_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha04c_card_inventory_v7_failure_path_characterization_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha04c_card_market_allocator_cursor_save_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha04c_mana_organization_victory_strict_preflight_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha04c_production_save_capture_readback_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha04c_registry_binding_contract_v1_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha04c_remaining_index_10_18_owner_closed_data_preflight_contract_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha04c_remaining_owner_closed_data_preflight_contract_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha04c_route_military_queue_restore_dependency_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha04c_save_fork_determinism_parity_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/alpha04c_v6_registry_binding_replay_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_inventory_receive_plan_batch_parity_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_inventory_save_v4_regression_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_inventory_v3_fail_closed_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_player_state_facility_escrow_v06_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_authoritative_projection_redaction_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_authoritative_restore_projection_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_capture_zero_side_effect_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_fault_rollback_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_field_authority_matrix_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_full_state_characterization_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_legacy_fail_closed_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_nonconsuming_replay_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_nonconsuming_replay_v2_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_nontrivial_roundtrip_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_owner_replay_scenario_identity_v1_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_pending_settlement_restore_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_post_restore_diagnostic_canonicalization_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_registry_managed_checkpoint_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_replay_v2_contract_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_restore_difference_characterization_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_restore_exact_once_probe_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_retryable_commitment_restore_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_retryable_history_restore_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_save_v4_regression_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_save_v4_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_save_wire_v4_codec_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_execution_transition_lineage_exact_once_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/card_resolution_transition_state_wire_v2_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/closed_save_scalar_codec_v1_regression_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/cold_restore_owner_capture_failure_projection_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/cold_restore_process_a_phase_timeline_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/cold_restore_process_a_save_boundary_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/cold_restore_process_bc_evidence_contract_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/cold_restore_role_progress_heartbeat_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/cold_restore_targeted_evidence_root_contract_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/cold_restore_targeted_ledger_binding_replay_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/cold_restore_terminal_evidence_contract_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/commodity_flow_postcommit_registry_preflight_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/diagnostic_scenario_identity_v1_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/district_purchase_save_revision_binding_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/district_supply_purchase_projection_receipt_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/facility_card_queue_restore_dependency_v06_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/fixtures/card_resolution_execution_save_full_state_fixture.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/fixtures/cold_restore_godot_attestation_fixture.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/fixtures/monster_save_full_state_fixture.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/full_run_facility_acquisition_policy_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/full_run_observation_window_policy_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/full_run_progress_budget_policy_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/full_run_progress_checkpoint_privacy_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/funplay_mcp_http_reentrancy_guard_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/funplay_mcp_resource_rescan_source_contract_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/funplay_mcp_resource_rescan_state_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/gameplay_balance_diagnostics_card_route_index_session_start_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/monster_registry_managed_checkpoint_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/monster_runtime_nonconsuming_replay_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/monster_runtime_owner_replay_scenario_identity_v1_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/monster_save_capture_zero_side_effect_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/monster_save_fault_rollback_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/monster_save_full_state_characterization_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/monster_save_nontrivial_json_roundtrip_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/monster_save_owner_transaction_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/monster_save_v1_fail_closed_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/monster_save_v2_regression_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/monster_save_wire_v2_codec_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/player_mana_reservation_binding_v06_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/process_a_rehearsal_completion_v1_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/process_a_rehearsal_launch_authorization_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/production_registry_transaction_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/registry_owner_fault_rollback_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/registry_owner_preflight_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/remaining_owner_closed_data_inspector_v1_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/remaining_owner_closed_data_preflight_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/remaining_owner_preflight_attempt_v2_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/remaining_owner_preflight_attempt_v3_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/remaining_owner_preflight_attempt_v4_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/save_owner_capture_failure_v1_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/targeted_owner_capture_diagnostic_v2_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/targeted_owner_diagnostic_launch_authorization_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v06_queued_facility_card_action_v1_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v06_save_file_fault_matrix_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v071_balance_defaults_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v071_constitution_contract_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v071_to_v072_amendment_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v072_balance_defaults_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v072_constitution_contract_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v072_to_v073_amendment_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v073_balance_defaults_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v073_constitution_contract_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v07_constitution_contract_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v07_semantic/v07_asset_batch_core_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v07_semantic/v07_dbg_deck_core_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v07_semantic/v07_solar_victory_core_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v07_semantic/v07_three_wing_contract_aggregate_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v07_semantic/v07_track_acquisition_authority_port_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v07_semantic/v07_unified_card_track_core_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v07_to_v071_amendment_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/v7_card_inventory_nonconsuming_replay_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_audit_roundtrip_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_audit_zero_boundary_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_capture_zero_side_effect_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_fault_rollback_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_field_authority_matrix_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_final_settlement_exact_once_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_fresh_world_facts_gate_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_full_state_characterization_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_idle_roundtrip_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_legacy_fail_closed_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_nonconsuming_replay_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_outcome_exact_once_restore_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_qualification_roundtrip_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_registry_managed_checkpoint_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_resolved_roundtrip_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_save_v3_fixture.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_save_v3_suite.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_save_v3_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_save_v3_test_base.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_save_wire_v3_codec_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_session_restore_dependency_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    },
+    {
+      "path": "tests/victory_control_special_outcome_roundtrip_test.gd.uid",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "baseline_absent": true,
+      "decision": "delete_after_manifest"
+    }
+  ],
+  "generated_tracked_file_count": 43,
+  "generated_tracked_files": [
+    {
+      "path": "assets/third_party/commercial/materials/ambientcg/NightSkyHDRI001/NightSkyHDRI001_2K_HDR.exr.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "109592acea0f13d8872cf6f829cd47ee1fc11063",
+      "task_generated_blob_sha1": "4de9f324eea6d4d6c31557979c34f1f58d6f0f50",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "fc88d2928c1763cacf95febfd105ad28127c91e9",
+      "task_generated_blob_sha1": "a16c230b62aeaeae5fb1ec293f6c83a2b9fbd675",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela_Leela_Texture.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "8e1369f073f4a9cdb7a0f2f2cd613edbefa59a51",
+      "task_generated_blob_sha1": "951087c568e7329bfd9d2e1b50e036e0d9c868d8",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike_Mike_Texture.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "0fa3db3615db34a4699be4171fcf119aef791ed0",
+      "task_generated_blob_sha1": "4c95d6d29cef39d148e601d13e0392ec3d278bbb",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan_Stan_Texture.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "22aa2422879a3ae7a111a2b80c390febb1b07ad4",
+      "task_generated_blob_sha1": "c0b92e5c644ce4d927287cf8b1f335bb8f20fc7c",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Decals.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "74670bbc2a942f441a821f602dc959df2b4fe4ed",
+      "task_generated_blob_sha1": "6b9133973faee02dc58915cc5a4b913ea470479f",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_BaseColor.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "a4b492ca2d335c3aba6b3b05c20011161b70eb49",
+      "task_generated_blob_sha1": "2c69ec0171fbbd54830872c0db48d99c2f7608e1",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_Normal.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "5701fa1fac8dc4c3544214844a6209f21fb11154",
+      "task_generated_blob_sha1": "6694d8fc553ecb903b1f0ec9d6a02e72f789fdeb",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_ORM.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "3a293f2d56ea9f9b3d4b129c32cdd4cc98bf4ebf",
+      "task_generated_blob_sha1": "6d3389c62e05ba2dfbf9c08326bfab10a16f8b53",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "4082e96dd2eb6d222e510966a296f1710429bca4",
+      "task_generated_blob_sha1": "922817d88f72a0c3dfd21b9cab6efbe246f737a7",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "3034aab65746d71cc2c64d6327097b53a51addd6",
+      "task_generated_blob_sha1": "b949c2149d20b75aa52020a8bcb7032b34b872dd",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "065850b64bc395c47ba9b2db676ddad6969a6246",
+      "task_generated_blob_sha1": "b2a2696b400c667da98ae702630c61901a91fc4f",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_BaseColor_Red.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "b387f8fd957f7958bc88de2b4ffab3e1975ca931",
+      "task_generated_blob_sha1": "13570d75fd9d8df22272da647b04fe0d3aa81fe9",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "3b0546412d1a0c62450d305244f227a6b74c8470",
+      "task_generated_blob_sha1": "a97f07226ad566efe2fcb16fc80c46cb668c5660",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "ddf5049ef6e1c29d64d907d49d915f70d63ae124",
+      "task_generated_blob_sha1": "d3420251f8e68f1b2205854f49ce7f931cf91444",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_BaseColor.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "9e675434c082f62dd61ed2be00e52e6a70d7efbf",
+      "task_generated_blob_sha1": "60449f0d38c1318be06311c3f66117239a6956b1",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_Normal.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "5171e9441981cfd571c856299112542798d174e9",
+      "task_generated_blob_sha1": "46458f778c66fcede0b6b9eda8cf87bc153adbb9",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_ORM.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "460779d312d925f1bee5b75f15e9c09adbb6b858",
+      "task_generated_blob_sha1": "31976fc9c039a8f62b8365cb05a6024af622d135",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_BaseColor_png.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "6d188d145ba0345517e401d9ee16c50aa4f8ed86",
+      "task_generated_blob_sha1": "f99c12ca73d617be6cfeb7b6256daedcae11d22d",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_Normal.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "08c3d907b297973a1cf2432844d577df46fe4a12",
+      "task_generated_blob_sha1": "422d57213ab972a5bf90c930f20283b6d6ef6b07",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_ORM.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "da5c3cfdb2c5b89594932208c130913df550017f",
+      "task_generated_blob_sha1": "576e2678896a3ff6e9e4b995ea47baf2836bc624",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_BaseColor.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "c08fed3e235118db71dcf36a8cf09b38dd546d87",
+      "task_generated_blob_sha1": "e1e33f8b7ea55a2cf9d3723c3a95a07d7f21e039",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_Normal.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "7202ef087fe566276658cc34236ec31e57077d92",
+      "task_generated_blob_sha1": "900a4883caa3439b01ae682d6a3998d06ccbac20",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_ORM.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "63111332a65b4ca12f4d11abad24af2d31c2a52a",
+      "task_generated_blob_sha1": "84123081dd1c55d44cfc14cb86ab6e39ea16cb2b",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_BaseColor_Red.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "b4a93d14cc3e8c318e5ca7647673eb5e980793c2",
+      "task_generated_blob_sha1": "8df0bf7503dd030b1b0ced0a743b3e58a86ff73b",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "8abfb461c90445d87485817cef04a5f2c0f7c3b8",
+      "task_generated_blob_sha1": "0aead74690a8ef6b4d099f4fcabb9f20a63d1a11",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_ORM.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "738732e94489cfe6055ad8c9f1633bad3ffff784",
+      "task_generated_blob_sha1": "0e4ce5ea3ee80e554f6c05b9c9de78790974c5e4",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_BaseColor_Red.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "4289f2b5a054bccf3f37d04fd771a3174b9d7dcf",
+      "task_generated_blob_sha1": "be1d0e074d2a14718a79b1df4d18ea4de86e5589",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_Normal.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "0e189c37c129156b92936db104109edc3c54db61",
+      "task_generated_blob_sha1": "db1f4c5366c06d522293d48c25238b0c663f957e",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_ORM.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "449be3ad7b7a3390bddac849f801dff437c398a9",
+      "task_generated_blob_sha1": "c39a257d2a8cb4a0358dabe29787a3cde769b328",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_BaseColor.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "b04cb0cd5136452b5477a1ad154957a0abf2bf8f",
+      "task_generated_blob_sha1": "0fa671f09760674df932e1135335f2028d1ed7fc",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Cables.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "995714bdcaac196a10b1ec746651dafc86ce43b8",
+      "task_generated_blob_sha1": "d17dd9b0e3b92eb98308438369c196836f6e0cce",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Normal.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "eddd710453838c4531453315b40d5073d3a58ced",
+      "task_generated_blob_sha1": "6a8faab7e19607b56176d1d8d3f9c82c378fbed4",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_ORM.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "471330174568ae24e5e1a242e750797423ae1f4a",
+      "task_generated_blob_sha1": "e1ba4ab9d68b1fbb96dddee427d83bae062b0bfd",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Armabee_Evolved_Atlas_Monsters.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "70b6bc0ec6e33fdfa15872706d7367b0f039bd0f",
+      "task_generated_blob_sha1": "852172536bd0a219d2609af960d5063843e75806",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Dragon_Evolved_Atlas_Monsters.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "7c98c805ee203d4fb455a312511bc3e270976f2b",
+      "task_generated_blob_sha1": "4f4e8434045d2c7e94f877bb6b67f57780058a0b",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Ghost_Skull_Atlas_Monsters.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "fc70c599199aa7ecdbac277b4a2951a744cdd371",
+      "task_generated_blob_sha1": "c2f9429e8a95efa9c1d333a0fff0f49c54bb820d",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose_Atlas_Monsters.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "98d74cc91e75df909f2c2e2e3c6ddd25141f2af1",
+      "task_generated_blob_sha1": "78fef80bfc15110ba7ac809938c383e600d4375c",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull_Atlas_Monsters.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "f5019eb755a916ad1b70442a7c3689b856f4ff59",
+      "task_generated_blob_sha1": "1a0509f2f2aacc1bef053983d2a8ea249eb2f566",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle_Atlas_Monsters.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "93232e393dc2404d1cc1cfde9b159a05b9fae98f",
+      "task_generated_blob_sha1": "48b85fe4e6c3123dde0a651fe69f598172c1f55e",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen_Omen_Orange.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "44ff6e72ae2671fe9e27e0dd5a9a3aca700758bc",
+      "task_generated_blob_sha1": "2328fb6dfd8d2d2575098aaf2a94bf97a12b894e",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "486609779835b060b508dad6b16e2ab9fe0813e0",
+      "task_generated_blob_sha1": "4afba7c51b503e2093ed303aea643eb67273ec93",
+      "decision": "restore_exact_head_blob_after_manifest"
+    },
+    {
+      "path": "assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png.import",
+      "producer": "godot_editor_initial_filesystem_scan_pid_32892",
+      "head_blob_sha1": "58e9c1c39502885b9dfac4db0f6c6366bacb6586",
+      "task_generated_blob_sha1": "4857bd3bc975fda53f5254ae1596a33c00d761a9",
+      "decision": "restore_exact_head_blob_after_manifest"
+    }
+  ]
+  ,
+  "retained_ignored_artifacts": [
+    {
+      "path": ".codex-godot/logs/godot_20260802_211404.log",
+      "producer": "godot_editor_pid_32892",
+      "baseline_absent": true,
+      "decision": "retain_failure_evidence",
+      "sha256": "0086c79fe4d59bd1499381fa1b03d090410e7c0734c529d662de21b6695f4b90",
+      "size_bytes": 23187
+    },
+    {
+      "path": ".codex-godot/auth.token",
+      "producer": "launch_role_godot_mcp",
+      "baseline_absent": true,
+      "decision": "retain_local_secret_ignored"
+    },
+    {
+      "path": ".codex-godot/endpoint.txt",
+      "producer": "launch_role_godot_mcp",
+      "baseline_absent": true,
+      "decision": "retain_failure_evidence"
+    },
+    {
+      "path": ".codex-godot/appdata-roaming",
+      "producer": "godot_editor_pid_32892",
+      "baseline_absent": true,
+      "decision": "retain_isolated_user_data"
+    },
+    {
+      "path": ".codex-godot/appdata-local",
+      "producer": "godot_editor_pid_32892",
+      "baseline_absent": true,
+      "decision": "retain_isolated_user_data"
+    },
+    {
+      "path": ".godot",
+      "producer": "offline_tests_and_godot_editor_pid_32892",
+      "baseline_absent": true,
+      "decision": "retain_ignored_import_cache"
+    },
+    {
+      "path": ".test-appdata-mcp-http",
+      "producer": "funplay_mcp_http_reentrancy_guard_test",
+      "baseline_absent": true,
+      "decision": "retain_ignored_isolated_test_user_data"
+    },
+    {
+      "path": ".test-appdata-mcp-lifecycle",
+      "producer": "funplay_mcp_file_handle_lifecycle_test",
+      "baseline_absent": true,
+      "decision": "retain_ignored_isolated_test_user_data"
+    },
+    {
+      "path": ".test-appdata-mcp-source",
+      "producer": "funplay_mcp_resource_rescan_source_contract_test",
+      "baseline_absent": true,
+      "decision": "retain_ignored_isolated_test_user_data"
+    },
+    {
+      "path": ".test-appdata-mcp-state",
+      "producer": "funplay_mcp_resource_rescan_state_test",
+      "baseline_absent": true,
+      "decision": "retain_ignored_isolated_test_user_data"
+    }
+  ],
+  "cleanup": {
+    "generated_untracked_deleted_count": 226,
+    "generated_tracked_restored_count": 43,
+    "tracked_import_diff_count_after": 0,
+    "remaining_untracked_evidence_files": [
+      "reports/handoffs/alpha04c_mcp_rescan_self_test_failure.json",
+      "reports/handoffs/alpha04c_mcp_rescan_task_generated_file_manifest.json"
+    ],
+    "editor_process_count_after": 0,
+    "endpoint_listener_count_after": 0
+  },
+  "ambiguous_user_file_delete_count": 0,
+  "unmanifested_generated_file_delete_count": 0
+}
