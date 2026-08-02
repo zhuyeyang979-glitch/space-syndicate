@@ -46,6 +46,7 @@ const REASON_CODES := [
 	"ai_save_request_sequence_invalid",
 	"ai_save_shape_invalid",
 	"ai_save_timer_invalid",
+	"ai_save_v2_closed_wire_upgrade_requires_backup",
 	"bankruptcy_save_header_invalid",
 	"bankruptcy_save_invalid",
 	"bankruptcy_save_shape_invalid",
@@ -932,6 +933,7 @@ const HEADER_REASON_CODES := [
 	"victory_save_header_invalid",
 ]
 const VERSION_REASON_CODES := [
+	"ai_save_v2_closed_wire_upgrade_requires_backup",
 	"card_inventory_v3_closed_wire_upgrade_requires_backup",
 	"region_supply_save_header_invalid",
 	"facility_action_lifecycle_version_invalid",

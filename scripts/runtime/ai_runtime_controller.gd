@@ -4,6 +4,8 @@ class_name AiRuntimeController
 
 const CardPlayRequirementPolicyScript := preload("res://scripts/cards/card_play_requirement_policy.gd")
 const DEFAULT_POLICY_PROFILE := preload("res://resources/ai/ai_policy_profile_v1.tres")
+const AI_SAVE_WIRE_CODEC := preload("res://scripts/runtime/ai_runtime_save_wire_codec_v3.gd")
+const SEMANTIC_WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
 const ACTIVE_RESPONSE_KINDS := [
 	"counter_response",
 	"monster_wager",
@@ -13,7 +15,9 @@ const ACTIVE_RESPONSE_KINDS := [
 	"public_bid",
 	"card_order_bid",
 ]
-const AI_SAVE_SCHEMA_VERSION := 2
+const AI_SAVE_SCHEMA_VERSION := 3
+const AI_RUNTIME_CHECKPOINT_SCHEMA_VERSION := 2
+const AI_NEW_SESSION_CHECKPOINT_SCHEMA_VERSION := 3
 const AI_SAVE_RULESET_ID := "v0.6"
 const AI_SAVE_FIELDS := [
 	"schema_version",
@@ -28,6 +32,19 @@ const AI_SAVE_FIELDS := [
 	"player_states",
 ]
 const AI_PLAYER_SAVE_FIELDS := ["player_index", "ai_profile", "ai_memory"]
+const AI_PROFILE_REQUIRED_FIELDS := [
+	"profile_index",
+	"name",
+	"style",
+	"build_bias",
+	"business_bias",
+	"monster_bias",
+	"economy_bias",
+	"bid_aggression",
+	"exploration",
+	"route_preferences",
+]
+const AI_LAST_RECEIPT_FIELDS := ["intent_id", "action_id", "applied", "reason", "context_revision"]
 const AI_RUNTIME_CHECKPOINT_FIELDS := [
 	"schema_version",
 	"save_state",
@@ -289,31 +306,53 @@ func reset_state() -> void:
 
 
 func capture_new_session_checkpoint() -> Dictionary:
-	return {
-		"schema_version": 2,
+	if _actor_state_tick_cache_active or not _actor_state_tick_cache.is_empty() \
+			or not _last_receipts_valid(_last_receipts):
+		return {}
+	var runtime_checkpoint := {
+		"schema_version": AI_NEW_SESSION_CHECKPOINT_SCHEMA_VERSION,
+		"request_sequence": _game_action_request_sequence,
 		"ai_card_decision_timer": ai_card_decision_timer,
 		"ai_auction_reaction_timer": ai_auction_reaction_timer,
 		"ai_intel_decision_timer": ai_intel_decision_timer,
 		"ai_card_decision_enabled": ai_card_decision_enabled,
 		"last_receipts": _last_receipts.duplicate(true),
 	}
+	var encoded := AI_SAVE_WIRE_CODEC.encode_new_session_checkpoint(runtime_checkpoint)
+	return (encoded.get("value", {}) as Dictionary).duplicate(true) \
+			if bool(encoded.get("ok", false)) else {}
 
 
 func restore_new_session_checkpoint(checkpoint: Dictionary) -> Dictionary:
-	if int(checkpoint.get("schema_version", 0)) != 2 \
-			or not TablePresentationPureDataPolicy.is_pure_data(checkpoint) \
-			or not (checkpoint.get("last_receipts", []) is Array) \
-			or not (checkpoint.get("ai_card_decision_enabled") is bool):
+	var authored_schema: Variant = checkpoint.get("schema_version")
+	if authored_schema is int and int(authored_schema) == 2:
+		return {
+			"restored": false,
+			"reason_code": "ai_new_session_checkpoint_v2_closed_wire_upgrade_requires_backup",
+			"requires_backup": true,
+		}
+	var decoded := AI_SAVE_WIRE_CODEC.decode_new_session_checkpoint(checkpoint)
+	if not bool(decoded.get("ok", false)):
+		return {"restored": false, "reason_code": "ai_new_session_checkpoint_invalid"}
+	var runtime_checkpoint := decoded.get("value", {}) as Dictionary
+	if not _finite_pure_save_data(runtime_checkpoint) \
+			or not (runtime_checkpoint.get("request_sequence") is int) \
+			or int(runtime_checkpoint.get("request_sequence", -1)) < 0 \
+			or not (runtime_checkpoint.get("last_receipts", []) is Array) \
+			or not _last_receipts_valid(runtime_checkpoint.get("last_receipts", []) as Array) \
+			or not (runtime_checkpoint.get("ai_card_decision_enabled") is bool):
 		return {"restored": false, "reason_code": "ai_new_session_checkpoint_invalid"}
 	for timer_key in ["ai_card_decision_timer", "ai_auction_reaction_timer", "ai_intel_decision_timer"]:
-		var timer_value: Variant = checkpoint.get(timer_key)
-		if not (timer_value is int or timer_value is float) or not is_finite(float(timer_value)):
+		var timer_value: Variant = runtime_checkpoint.get(timer_key)
+		if not (timer_value is float) or not is_finite(float(timer_value)) \
+				or float(timer_value) < 0.0:
 			return {"restored": false, "reason_code": "ai_new_session_checkpoint_invalid"}
-	ai_card_decision_timer = float(checkpoint.get("ai_card_decision_timer", 0.0))
-	ai_auction_reaction_timer = float(checkpoint.get("ai_auction_reaction_timer", 0.0))
-	ai_intel_decision_timer = float(checkpoint.get("ai_intel_decision_timer", 0.0))
-	ai_card_decision_enabled = bool(checkpoint.get("ai_card_decision_enabled", true))
-	_last_receipts = (checkpoint.get("last_receipts", []) as Array).duplicate(true)
+	ai_card_decision_timer = float(runtime_checkpoint.get("ai_card_decision_timer", 0.0))
+	ai_auction_reaction_timer = float(runtime_checkpoint.get("ai_auction_reaction_timer", 0.0))
+	ai_intel_decision_timer = float(runtime_checkpoint.get("ai_intel_decision_timer", 0.0))
+	ai_card_decision_enabled = bool(runtime_checkpoint.get("ai_card_decision_enabled", true))
+	_game_action_request_sequence = int(runtime_checkpoint.get("request_sequence"))
+	_last_receipts = (runtime_checkpoint.get("last_receipts", []) as Array).duplicate(true)
 	return {"restored": true, "reason_code": "ai_new_session_checkpoint_restored"}
 
 
@@ -416,6 +455,18 @@ func route_intent(intent: Dictionary) -> Dictionary:
 
 
 func to_save_data() -> Dictionary:
+	var runtime_state := _capture_save_runtime_state()
+	if runtime_state.is_empty():
+		return {}
+	var encoded := AI_SAVE_WIRE_CODEC.encode_save_state(runtime_state)
+	if not bool(encoded.get("ok", false)) or not (encoded.get("value") is Dictionary):
+		return {}
+	var preflight := preflight_save_data(encoded.get("value", {}) as Dictionary)
+	return (preflight.get("normalized_state", {}) as Dictionary).duplicate(true) \
+			if bool(preflight.get("accepted", false)) else {}
+
+
+func _capture_save_runtime_state() -> Dictionary:
 	var player_states: Array = []
 	var policy_attestation := _policy_save_attestation()
 	if not _actor_state_ready() or policy_attestation.is_empty() \
@@ -432,12 +483,14 @@ func to_save_data() -> Dictionary:
 		if not (row_variant is Dictionary):
 			return {}
 		var player := row_variant as Dictionary
+		var profile_result := _canonical_ai_profile_for_save(player.get("ai_profile", {}))
 		var memory_result := _canonical_ai_memory_for_save(player.get("ai_memory", {}))
-		if not bool(memory_result.get("valid", false)):
+		if not bool(profile_result.get("valid", false)) \
+				or not bool(memory_result.get("valid", false)):
 			return {}
 		player_states.append({
 			"player_index": int(player.get("player_index", -1)),
-			"ai_profile": _canonical_save_value(player.get("ai_profile", {})),
+			"ai_profile": profile_result.get("value", {}),
 			"ai_memory": memory_result.get("value", {}),
 		})
 	player_states.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
@@ -458,75 +511,101 @@ func to_save_data() -> Dictionary:
 
 
 func preflight_save_data(data: Dictionary) -> Dictionary:
-	if not _finite_pure_save_data(data) or not _has_exact_save_fields(data, AI_SAVE_FIELDS):
+	var authored_schema: Variant = data.get("schema_version")
+	if authored_schema is int and int(authored_schema) in [1, 2]:
+		return {
+			"accepted": false,
+			"reason_code": "ai_save_v2_closed_wire_upgrade_requires_backup",
+			"requires_backup": true,
+		}
+	if not _has_exact_save_fields(data, AI_SAVE_FIELDS) \
+			or not SEMANTIC_WIRE.is_closed_data(data):
 		return {"accepted": false, "reason_code": "ai_save_shape_invalid"}
 	var retired_payload := LegacyContractPayloadGuardV06.validation_report(data)
 	if not bool(retired_payload.get("valid", false)):
 		return {"accepted": false, "reason_code": "retired_contract_payload_rejected"}
-	if int(data.get("schema_version", -1)) != AI_SAVE_SCHEMA_VERSION \
-			or str(data.get("ruleset_id", "")) != AI_SAVE_RULESET_ID:
+	var decoded := AI_SAVE_WIRE_CODEC.decode_save_state(data)
+	if not bool(decoded.get("ok", false)) or not (decoded.get("value") is Dictionary):
+		return {"accepted": false, "reason_code": "ai_save_shape_invalid"}
+	var runtime_data := decoded.get("value", {}) as Dictionary
+	if not _finite_pure_save_data(runtime_data) \
+			or int(runtime_data.get("schema_version", -1)) != AI_SAVE_SCHEMA_VERSION \
+			or str(runtime_data.get("ruleset_id", "")) != AI_SAVE_RULESET_ID:
 		return {"accepted": false, "reason_code": "ai_save_header_invalid"}
-	if not (data.get("policy_profile_id") is String) \
-			or str(data.get("policy_profile_id", "")).is_empty() \
-			or not (data.get("policy_fingerprint") is String) \
-			or not _is_sha256_hex(str(data.get("policy_fingerprint", ""))):
+	if not (runtime_data.get("policy_profile_id") is String) \
+			or str(runtime_data.get("policy_profile_id", "")).is_empty() \
+			or not (runtime_data.get("policy_fingerprint") is String) \
+			or not _is_sha256_hex(str(runtime_data.get("policy_fingerprint", ""))):
 		return {"accepted": false, "reason_code": "ai_save_policy_attestation_invalid"}
 	var policy_attestation := _policy_save_attestation()
 	if policy_attestation.is_empty() \
-			or str(data.get("policy_profile_id", "")) != str(policy_attestation.get("policy_profile_id", "")) \
-			or str(data.get("policy_fingerprint", "")) != str(policy_attestation.get("policy_fingerprint", "")):
+			or str(runtime_data.get("policy_profile_id", "")) != str(policy_attestation.get("policy_profile_id", "")) \
+			or str(runtime_data.get("policy_fingerprint", "")) != str(policy_attestation.get("policy_fingerprint", "")):
 		return {"accepted": false, "reason_code": "ai_save_policy_mismatch"}
-	if not (data.get("request_sequence") is int) or int(data.get("request_sequence", -1)) < 0:
+	if not (runtime_data.get("request_sequence") is int) \
+			or int(runtime_data.get("request_sequence", -1)) < 0:
 		return {"accepted": false, "reason_code": "ai_save_request_sequence_invalid"}
 	for timer_key in ["ai_card_decision_timer", "ai_auction_reaction_timer", "ai_intel_decision_timer"]:
-		var timer_value: Variant = data.get(timer_key)
-		if not (timer_value is int or timer_value is float) \
-				or not is_finite(float(timer_value)) or float(timer_value) < 0.1:
+		var timer_value: Variant = runtime_data.get(timer_key)
+		if not (timer_value is float) \
+				or not is_finite(float(timer_value)) or float(timer_value) < 0.0:
 			return {"accepted": false, "reason_code": "ai_save_timer_invalid"}
-	if not (data.get("ai_card_decision_enabled") is bool) or not (data.get("player_states") is Array):
+	if not (runtime_data.get("ai_card_decision_enabled") is bool) \
+			or not (runtime_data.get("player_states") is Array):
 		return {"accepted": false, "reason_code": "ai_save_shape_invalid"}
 	var normalized_states: Array = []
 	var seen_player_indices: Dictionary = {}
-	for state_variant in data.get("player_states", []) as Array:
+	var previous_player_index := -1
+	for state_variant in runtime_data.get("player_states", []) as Array:
 		if not (state_variant is Dictionary):
 			return {"accepted": false, "reason_code": "ai_player_save_invalid"}
 		var state := state_variant as Dictionary
 		if not _has_exact_save_fields(state, AI_PLAYER_SAVE_FIELDS) \
 				or not (state.get("player_index") is int) \
 				or int(state.get("player_index", -1)) < 0 \
+				or int(state.get("player_index", -1)) >= 8 \
 				or not (state.get("ai_profile") is Dictionary) \
 				or not (state.get("ai_memory") is Dictionary):
 			return {"accepted": false, "reason_code": "ai_player_save_invalid"}
 		var player_index := int(state.get("player_index", -1))
 		if seen_player_indices.has(player_index):
 			return {"accepted": false, "reason_code": "ai_player_save_duplicate"}
+		if player_index <= previous_player_index:
+			return {"accepted": false, "reason_code": "ai_player_save_order_invalid"}
+		var profile_result := _canonical_ai_profile_for_save(state.get("ai_profile", {}))
 		var memory_result := _canonical_ai_memory_for_save(state.get("ai_memory", {}))
-		if not bool(memory_result.get("valid", false)):
+		if not bool(profile_result.get("valid", false)) \
+				or not bool(memory_result.get("valid", false)):
 			return {"accepted": false, "reason_code": "ai_player_save_invalid"}
 		seen_player_indices[player_index] = true
+		previous_player_index = player_index
 		normalized_states.append({
 			"player_index": player_index,
-			"ai_profile": _canonical_save_value(state.get("ai_profile", {})),
+			"ai_profile": profile_result.get("value", {}),
 			"ai_memory": memory_result.get("value", {}),
 		})
-	normalized_states.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
-		return int(left.get("player_index", -1)) < int(right.get("player_index", -1))
-	)
+	var normalized_runtime := {
+		"schema_version": AI_SAVE_SCHEMA_VERSION,
+		"ruleset_id": AI_SAVE_RULESET_ID,
+		"policy_profile_id": str(policy_attestation.get("policy_profile_id", "")),
+		"policy_fingerprint": str(policy_attestation.get("policy_fingerprint", "")),
+		"request_sequence": int(runtime_data.get("request_sequence", 0)),
+		"ai_card_decision_timer": float(runtime_data.get("ai_card_decision_timer", 0.0)),
+		"ai_auction_reaction_timer": float(runtime_data.get("ai_auction_reaction_timer", 0.0)),
+		"ai_intel_decision_timer": float(runtime_data.get("ai_intel_decision_timer", 0.0)),
+		"ai_card_decision_enabled": bool(runtime_data.get("ai_card_decision_enabled", true)),
+		"player_states": normalized_states,
+	}
+	var normalized_encoded := AI_SAVE_WIRE_CODEC.encode_save_state(normalized_runtime)
+	if not bool(normalized_encoded.get("ok", false)) \
+			or not (normalized_encoded.get("value") is Dictionary) \
+			or not SEMANTIC_WIRE.is_closed_data(normalized_encoded.get("value")):
+		return {"accepted": false, "reason_code": "ai_save_shape_invalid"}
 	return {
 		"accepted": true,
 		"reason_code": "ai_save_valid",
-		"normalized_state": {
-			"schema_version": AI_SAVE_SCHEMA_VERSION,
-			"ruleset_id": AI_SAVE_RULESET_ID,
-			"policy_profile_id": str(policy_attestation.get("policy_profile_id", "")),
-			"policy_fingerprint": str(policy_attestation.get("policy_fingerprint", "")),
-			"request_sequence": int(data.get("request_sequence", 0)),
-			"ai_card_decision_timer": float(data.get("ai_card_decision_timer", 2.2)),
-			"ai_auction_reaction_timer": float(data.get("ai_auction_reaction_timer", 0.7)),
-			"ai_intel_decision_timer": float(data.get("ai_intel_decision_timer", 5.5)),
-			"ai_card_decision_enabled": bool(data.get("ai_card_decision_enabled", true)),
-			"player_states": normalized_states,
-		},
+		"normalized_state": (normalized_encoded.get("value", {}) as Dictionary).duplicate(true),
+		"runtime_state": normalized_runtime,
 	}
 
 
@@ -558,7 +637,8 @@ func preflight_restore_dependencies(
 			expected_indices.append(player_index)
 	var saved_indices: Array = []
 	var normalized := own_preflight.get("normalized_state", {}) as Dictionary
-	for row_variant in normalized.get("player_states", []) as Array:
+	var normalized_runtime := own_preflight.get("runtime_state", {}) as Dictionary
+	for row_variant in normalized_runtime.get("player_states", []) as Array:
 		saved_indices.append(int((row_variant as Dictionary).get("player_index", -1)))
 	expected_indices.sort()
 	saved_indices.sort()
@@ -574,8 +654,13 @@ func preflight_restore_dependencies(
 func apply_save_data(data: Dictionary) -> Dictionary:
 	var preflight := preflight_save_data(data)
 	if not bool(preflight.get("accepted", false)):
-		return {"applied": false, "reason_code": str(preflight.get("reason_code", "ai_save_invalid")), "player_state_count": 0}
-	var normalized := preflight.get("normalized_state", {}) as Dictionary
+		return {
+			"applied": false,
+			"reason_code": str(preflight.get("reason_code", "ai_save_invalid")),
+			"player_state_count": 0,
+			"requires_backup": bool(preflight.get("requires_backup", false)),
+		}
+	var normalized := preflight.get("runtime_state", {}) as Dictionary
 	if not _actor_state_ready() \
 			or not _ai_actor_state_port.has_method("capture_ai_state_batch_for_save") \
 			or not _ai_actor_state_port.has_method("apply_ai_state_batch_for_restore"):
@@ -620,59 +705,93 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	)
 	if not bool(batch_receipt.get("accepted", false)):
 		return {"applied": false, "reason_code": str(batch_receipt.get("reason_code", "ai_save_actor_batch_rejected")), "player_state_count": 0}
-	ai_card_decision_timer = float(normalized.get("ai_card_decision_timer", _policy_value("timing", "card_decision_interval_seconds", 2.2)))
-	ai_auction_reaction_timer = float(normalized.get("ai_auction_reaction_timer", _policy_value("timing", "auction_reaction_interval_seconds", 0.7)))
-	ai_intel_decision_timer = float(normalized.get("ai_intel_decision_timer", _policy_value("timing", "intel_decision_interval_seconds", 5.5)))
-	ai_card_decision_enabled = bool(normalized.get("ai_card_decision_enabled", true))
-	_game_action_request_sequence = int(normalized.get("request_sequence", 0))
+	ai_card_decision_timer = float(normalized.get("ai_card_decision_timer"))
+	ai_auction_reaction_timer = float(normalized.get("ai_auction_reaction_timer"))
+	ai_intel_decision_timer = float(normalized.get("ai_intel_decision_timer"))
+	ai_card_decision_enabled = bool(normalized.get("ai_card_decision_enabled"))
+	_game_action_request_sequence = int(normalized.get("request_sequence"))
 	_actor_state_tick_cache.clear()
 	_actor_state_tick_cache_active = false
 	return {"applied": true, "reason_code": "ai_save_applied", "player_state_count": int((normalized.get("player_states", []) as Array).size())}
 
 
 func capture_runtime_checkpoint() -> Dictionary:
-	var save_state := to_save_data()
-	if save_state.is_empty():
+	if _actor_state_tick_cache_active or not _actor_state_tick_cache.is_empty() \
+			or not _last_receipts_valid(_last_receipts):
 		return {}
-	return {
-		"schema_version": 1,
-		"save_state": save_state,
+	var runtime_save_state := _capture_save_runtime_state()
+	if runtime_save_state.is_empty():
+		return {}
+	var runtime_checkpoint := {
+		"schema_version": AI_RUNTIME_CHECKPOINT_SCHEMA_VERSION,
+		"save_state": runtime_save_state,
 		"last_receipts": _last_receipts.duplicate(true),
 		"card_target_pre_submit_rejection_count": _card_target_pre_submit_rejection_count,
 		"tick_timing_count": _tick_timing_count.duplicate(true),
 		"tick_timing_total_usec": _tick_timing_total_usec.duplicate(true),
 		"tick_timing_max_usec": _tick_timing_max_usec.duplicate(true),
-		"actor_state_tick_cache": _actor_state_tick_cache.duplicate(true),
-		"actor_state_tick_cache_active": _actor_state_tick_cache_active,
+		"actor_state_tick_cache": {},
+		"actor_state_tick_cache_active": false,
 		"actor_state_tick_cache_hit_count": _actor_state_tick_cache_hit_count,
 		"actor_state_tick_cache_miss_count": _actor_state_tick_cache_miss_count,
 	}
+	var encoded := AI_SAVE_WIRE_CODEC.encode_runtime_checkpoint(runtime_checkpoint)
+	return (encoded.get("value", {}) as Dictionary).duplicate(true) \
+			if bool(encoded.get("ok", false)) else {}
 
 
 func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
-	if not _has_exact_save_fields(checkpoint, AI_RUNTIME_CHECKPOINT_FIELDS) \
-			or int(checkpoint.get("schema_version", 0)) != 1 \
-			or not _finite_pure_save_data(checkpoint) \
-			or not (checkpoint.get("save_state") is Dictionary) \
-			or not (checkpoint.get("last_receipts") is Array) \
-			or not (checkpoint.get("tick_timing_count") is Dictionary) \
-			or not (checkpoint.get("tick_timing_total_usec") is Dictionary) \
-			or not (checkpoint.get("tick_timing_max_usec") is Dictionary) \
-			or not (checkpoint.get("actor_state_tick_cache") is Dictionary) \
-			or not (checkpoint.get("actor_state_tick_cache_active") is bool):
+	var authored_schema: Variant = checkpoint.get("schema_version")
+	if authored_schema is int and int(authored_schema) == 1:
+		return {
+			"restored": false,
+			"reason_code": "ai_runtime_checkpoint_v1_closed_wire_upgrade_requires_backup",
+			"requires_backup": true,
+		}
+	var decoded := AI_SAVE_WIRE_CODEC.decode_runtime_checkpoint(checkpoint)
+	if not bool(decoded.get("ok", false)) or not (decoded.get("value") is Dictionary):
 		return {"restored": false, "reason_code": "ai_runtime_checkpoint_invalid"}
-	var applied := apply_save_data(checkpoint.get("save_state", {}) as Dictionary)
+	var runtime_checkpoint := decoded.get("value", {}) as Dictionary
+	if not _finite_pure_save_data(runtime_checkpoint) \
+			or not (runtime_checkpoint.get("save_state") is Dictionary) \
+			or not (runtime_checkpoint.get("last_receipts") is Array) \
+			or not _last_receipts_valid(runtime_checkpoint.get("last_receipts", []) as Array) \
+			or not _nonnegative_integer_dictionary(runtime_checkpoint.get("tick_timing_count")) \
+			or not _nonnegative_integer_dictionary(runtime_checkpoint.get("tick_timing_total_usec")) \
+			or not _nonnegative_integer_dictionary(runtime_checkpoint.get("tick_timing_max_usec")) \
+			or not (runtime_checkpoint.get("actor_state_tick_cache") is Dictionary) \
+			or not (runtime_checkpoint.get("actor_state_tick_cache") as Dictionary).is_empty() \
+			or not (runtime_checkpoint.get("actor_state_tick_cache_active") is bool) \
+			or bool(runtime_checkpoint.get("actor_state_tick_cache_active", true)):
+		return {"restored": false, "reason_code": "ai_runtime_checkpoint_invalid"}
+	for count_key in [
+		"card_target_pre_submit_rejection_count",
+		"actor_state_tick_cache_hit_count",
+		"actor_state_tick_cache_miss_count",
+	]:
+		if not (runtime_checkpoint.get(count_key) is int) \
+				or int(runtime_checkpoint.get(count_key, -1)) < 0:
+			return {"restored": false, "reason_code": "ai_runtime_checkpoint_invalid"}
+	var encoded_save := AI_SAVE_WIRE_CODEC.encode_save_state(
+		runtime_checkpoint.get("save_state", {}) as Dictionary
+	)
+	if not bool(encoded_save.get("ok", false)) or not (encoded_save.get("value") is Dictionary):
+		return {"restored": false, "reason_code": "ai_runtime_checkpoint_invalid"}
+	var save_preflight := preflight_save_data(encoded_save.get("value", {}) as Dictionary)
+	if not bool(save_preflight.get("accepted", false)):
+		return {"restored": false, "reason_code": str(save_preflight.get("reason_code", "ai_runtime_checkpoint_invalid"))}
+	var applied := apply_save_data(save_preflight.get("normalized_state", {}) as Dictionary)
 	if not bool(applied.get("applied", false)):
 		return {"restored": false, "reason_code": str(applied.get("reason_code", "ai_runtime_checkpoint_apply_failed"))}
-	_last_receipts = (checkpoint.get("last_receipts", []) as Array).duplicate(true)
-	_card_target_pre_submit_rejection_count = int(checkpoint.get("card_target_pre_submit_rejection_count", 0))
-	_tick_timing_count = (checkpoint.get("tick_timing_count", {}) as Dictionary).duplicate(true)
-	_tick_timing_total_usec = (checkpoint.get("tick_timing_total_usec", {}) as Dictionary).duplicate(true)
-	_tick_timing_max_usec = (checkpoint.get("tick_timing_max_usec", {}) as Dictionary).duplicate(true)
-	_actor_state_tick_cache = (checkpoint.get("actor_state_tick_cache", {}) as Dictionary).duplicate(true)
-	_actor_state_tick_cache_active = bool(checkpoint.get("actor_state_tick_cache_active", false))
-	_actor_state_tick_cache_hit_count = int(checkpoint.get("actor_state_tick_cache_hit_count", 0))
-	_actor_state_tick_cache_miss_count = int(checkpoint.get("actor_state_tick_cache_miss_count", 0))
+	_last_receipts = (runtime_checkpoint.get("last_receipts", []) as Array).duplicate(true)
+	_card_target_pre_submit_rejection_count = int(runtime_checkpoint.get("card_target_pre_submit_rejection_count"))
+	_tick_timing_count = (runtime_checkpoint.get("tick_timing_count", {}) as Dictionary).duplicate(true)
+	_tick_timing_total_usec = (runtime_checkpoint.get("tick_timing_total_usec", {}) as Dictionary).duplicate(true)
+	_tick_timing_max_usec = (runtime_checkpoint.get("tick_timing_max_usec", {}) as Dictionary).duplicate(true)
+	_actor_state_tick_cache.clear()
+	_actor_state_tick_cache_active = false
+	_actor_state_tick_cache_hit_count = int(runtime_checkpoint.get("actor_state_tick_cache_hit_count"))
+	_actor_state_tick_cache_miss_count = int(runtime_checkpoint.get("actor_state_tick_cache_miss_count"))
 	return {"restored": true, "reason_code": "ai_runtime_checkpoint_restored"}
 
 
@@ -716,6 +835,45 @@ func _policy_save_attestation() -> Dictionary:
 	}
 
 
+func _canonical_ai_profile_for_save(source: Variant) -> Dictionary:
+	if not (source is Dictionary) or not _finite_pure_save_data(source):
+		return {"valid": false}
+	var profile := source as Dictionary
+	for field_variant in AI_PROFILE_REQUIRED_FIELDS:
+		if not profile.has(str(field_variant)):
+			return {"valid": false}
+	if not (profile.get("profile_index") is int) \
+			or int(profile.get("profile_index", -1)) < 0 \
+			or int(profile.get("profile_index", -1)) >= 6 \
+			or not (profile.get("name") is String) \
+			or str(profile.get("name", "")).is_empty() \
+			or not (profile.get("style") is String) \
+			or str(profile.get("style", "")).is_empty() \
+			or not (profile.get("route_preferences") is Dictionary) \
+			or (profile.get("route_preferences") as Dictionary).is_empty():
+		return {"valid": false}
+	for field in [
+		"build_bias",
+		"business_bias",
+		"monster_bias",
+		"economy_bias",
+		"bid_aggression",
+		"exploration",
+	]:
+		var value: Variant = profile.get(field)
+		if not (value is float) or not is_finite(float(value)) \
+				or float(value) < 0.0 or float(value) > 2.5:
+			return {"valid": false}
+	if float(profile.get("exploration", -1.0)) > 1.0:
+		return {"valid": false}
+	for route_variant in (profile.get("route_preferences") as Dictionary).keys():
+		var route_value: Variant = (profile.get("route_preferences") as Dictionary).get(route_variant)
+		if not (route_variant is String) or str(route_variant).is_empty() \
+				or not (route_value is float) or not is_finite(float(route_value)):
+			return {"valid": false}
+	return {"valid": true, "value": _canonical_save_value(profile)}
+
+
 func _canonical_ai_memory_for_save(source: Variant) -> Dictionary:
 	if not (source is Dictionary) or not _finite_pure_save_data(source):
 		return {"valid": false}
@@ -725,14 +883,55 @@ func _canonical_ai_memory_for_save(source: Variant) -> Dictionary:
 		var key := str(key_variant)
 		var default_value: Variant = defaults.get(key_variant)
 		if not memory.has(key):
-			memory[key] = TablePresentationPureDataPolicy.detached_copy(default_value)
-			continue
+			return {"valid": false}
 		var value: Variant = memory.get(key)
-		if default_value is Array and not (value is Array) \
-				or default_value is Dictionary and not (value is Dictionary) \
-				or default_value is String and not (value is String):
+		if not _save_field_type_matches(default_value, value):
 			return {"valid": false}
 	return {"valid": true, "value": _canonical_save_value(memory)}
+
+
+func _save_field_type_matches(template: Variant, value: Variant) -> bool:
+	if template is Array:
+		return value is Array
+	if template is Dictionary:
+		return value is Dictionary
+	if template is String:
+		return value is String
+	if template is bool:
+		return value is bool
+	if template is int:
+		return value is int
+	if template is float:
+		return value is float and is_finite(float(value))
+	return typeof(template) == typeof(value)
+
+
+func _last_receipts_valid(receipts: Array) -> bool:
+	if receipts.size() > 24:
+		return false
+	for receipt_variant in receipts:
+		if not (receipt_variant is Dictionary):
+			return false
+		var receipt := receipt_variant as Dictionary
+		if not _has_exact_save_fields(receipt, AI_LAST_RECEIPT_FIELDS) \
+				or not (receipt.get("intent_id") is String) \
+				or not (receipt.get("action_id") is String) \
+				or not (receipt.get("applied") is bool) \
+				or not (receipt.get("reason") is String) \
+				or not (receipt.get("context_revision") is int):
+			return false
+	return true
+
+
+func _nonnegative_integer_dictionary(value: Variant) -> bool:
+	if not (value is Dictionary):
+		return false
+	for key_variant in (value as Dictionary).keys():
+		var child: Variant = (value as Dictionary).get(key_variant)
+		if not (key_variant is String) or str(key_variant).is_empty() \
+				or not (child is int) or int(child) < 0:
+			return false
+	return true
 
 
 func _canonical_save_value(value: Variant) -> Variant:

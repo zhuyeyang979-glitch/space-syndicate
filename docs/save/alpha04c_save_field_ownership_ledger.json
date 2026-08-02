@@ -406,7 +406,7 @@
       "owner_id": "ai_runtime",
       "owner_scene_path": "res://scenes/runtime/AiRuntimeController.tscn",
       "owner_script_path": "res://scripts/runtime/ai_runtime_controller.gd",
-      "state_version": 2,
+      "state_version": 3,
       "mechanic_id": "v06_ai_continuation",
       "rule_source": "docs/tabletop_rulebook_v06.md AI opponent rules and resources/ai/ai_policy_profile_v1.tres",
       "authoritative_fields": ["ai_card_decision_timer", "ai_auction_reaction_timer", "ai_intel_decision_timer", "ai_card_decision_enabled", "player_states.ai_profile", "player_states.ai_memory"],

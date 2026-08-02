@@ -85,7 +85,7 @@ save_section = "weather"
 script = ExtResource("2_entry")
 controller_id = "ai_runtime"
 save_section = "ai"
-state_version = 2
+state_version = 3
 
 [sub_resource type="Resource" id="Controller_16"]
 script = ExtResource("2_entry")
