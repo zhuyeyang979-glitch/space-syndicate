@@ -3072,9 +3072,12 @@ func validate_gdscript_file(arguments: Dictionary) -> String:
 		return "Error: File not found: %s" % path
 
 	var source = FileAccess.get_file_as_string(path)
-	var script = GDScript.new()
-	script.source_code = source
-	var err = script.reload()
+	var loaded_script = ResourceLoader.load(path, "GDScript", ResourceLoader.CACHE_MODE_REUSE)
+	var script := loaded_script as GDScript
+	var err := ERR_PARSE_ERROR
+	if script != null:
+		script.source_code = source
+		err = script.reload()
 	var diagnostics: Array = []
 	if err != OK and bool(arguments.get("include_diagnostics", true)):
 		diagnostics = _get_gdscript_diagnostics(path)

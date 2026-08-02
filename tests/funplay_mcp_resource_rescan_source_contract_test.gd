@@ -40,6 +40,8 @@ func _init() -> void:
 	var validate_block := _function_block(core_source, "func validate_gdscript_file(")
 	_expect(not validate_block.contains("script.resource_path = path"), "validation never replaces an already cached production resource path")
 	_expect(validate_block.contains('"resource_path": path'), "validation reports the requested production path without registering it")
+	_expect(validate_block.contains("ResourceLoader.CACHE_MODE_REUSE"), "validation reuses the canonical ResourceCache script instance")
+	_expect(not validate_block.contains("GDScript.new()"), "validation never creates a second global-class script instance")
 	var state_source := _read("res://addons/funplay_mcp/core/funplay_filesystem_reload_state.gd")
 	_expect(state_source.contains("DEFAULT_INITIAL_SCAN_TIMEOUT_MSEC := 300000"), "state owner allows the bounded full-project import window")
 
