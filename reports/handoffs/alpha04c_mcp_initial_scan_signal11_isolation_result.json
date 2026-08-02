@@ -8,9 +8,11 @@
     "local_patch_id": "alpha04c-initial-scan-signal11-v1",
     "effective_build_id": "0.9.6+alpha04c.signal11.1",
     "source_hash_before": "ae9c02b0ab3a43b7f64c46a5949f067697d09ae6",
-    "source_hash_after_candidate": "cb518f5983711a737bf67e1a4fc9a33ff2448975",
+    "source_hash_after_candidate": "3ee2dd169db12a2a99bb866d394b9a95ec107e78",
     "candidate_patch_commit": "e1fc5d1a201e9717d284e6e18c63bd4c5bf3cd34",
     "candidate_evidence_commit": "08daa52cbcd4f33472ab4edc7d416c5fdcba77ef",
+    "effective_repair_commit": "5aeb7960df962254fc179edff4d91de85c03ba9d",
+    "effective_patch_diff_hash": "ea8900c1d328b203cdd2927684af2581086feda3",
     "push_allowed": false,
     "merge_allowed": false
   },
@@ -79,8 +81,12 @@
       },
       {
         "cell_id": "B1",
-        "result": "skipped",
-        "reason_code": "b0_green_required"
+        "attempt_id": "main-5aeb7960-selftest-1",
+        "result": "green_after_two_stage_recovery_import",
+        "native_exit_signal": 0,
+        "recovery_import_pid": 9508,
+        "editor_pid": 31064,
+        "endpoint": "http://127.0.0.1:8847/"
       },
       {
         "cell_id": "P0",
@@ -97,8 +103,12 @@
       },
       {
         "cell_id": "P1",
-        "result": "skipped",
-        "reason_code": "p0_green_required"
+        "attempt_id": "pr77-5aeb7960-acceptance-1",
+        "result": "green_initial_scan_after_two_stage_recovery_import",
+        "native_exit_signal": 0,
+        "recovery_import_pid": 30548,
+        "editor_pid": 32416,
+        "endpoint": "http://127.0.0.1:8848/"
       }
     ],
     "invalid_attempts_retained": [
@@ -113,7 +123,7 @@
     ]
   },
   "root_cause": {
-    "class": "godot_4_7_angle_full_project_post_import_texture_reconfiguration_access_violation",
+    "class": "godot_4_7_full_project_cold_import_post_import_texture_reconfiguration_access_violation",
     "failure_stage": "filesystem_import_post_import_3d_texture_reconfiguration",
     "signal11_failure_stage_attested": true,
     "signal11_first_error_attested": true,
@@ -130,7 +140,10 @@
     "native_fault_offset": "0x327d10a",
     "first_engine_warning": "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT",
     "last_successful_stage": "3D texture detection and post-import reconfiguration",
-    "last_logged_resource_is_not_claimed_as_root_cause": true
+    "last_logged_resource_is_not_claimed_as_root_cause": true,
+    "parse_errors_were_independent_prerequisite_repairs": true,
+    "mcp_transport_was_not_required_for_signal11": true,
+    "stabilization_contract": "plugin_disabled_recovery_import_then_distinct_mcp_editor_process"
   },
   "native_evidence": [
     {
@@ -144,30 +157,95 @@
       "editor_pid": 32972,
       "dump_sha256": "3d75bba9a8414b4d50a00f5ff314022163fc2649797fa456fb0425b667147583",
       "dump_size_bytes": 11405678
+    },
+    {
+      "attempt_id": "pr77-post-parse-single-process-import-pid-20212",
+      "editor_pid": 20212,
+      "dump_sha256": "ab65c309e78733817129abb40fb23d40c2d1c18ef9bcdfed389094b2d3d11c9b"
+    },
+    {
+      "attempt_id": "main-post-parse-single-process-import-pid-32556",
+      "editor_pid": 32556,
+      "dump_sha256": "593c8af250f4904c8ec92f02cdb69fe483d62ce26ca3eae09256012cc0d27ea7"
     }
   ],
   "diagnostic_summary": {
     "unicode_diagnostic_recorded_count": 9,
-    "unicode_diagnostic_classified_count": 0,
+    "unicode_diagnostic_classified_count": 9,
     "script_error_classified_count": 10,
     "failed_script_load_classified_count": 5,
-    "real_project_error_count": 15,
+    "historical_real_project_diagnostic_record_count": 15,
     "real_project_root_file_count": 5,
-    "unicode_log_rendering_error_count": 0,
+    "historical_parse_error_count_after_repair": 0,
+    "historical_failed_load_count_after_repair": 0,
+    "current_real_project_error_count": 1,
+    "unicode_log_rendering_error_count": 9,
     "interrupted_scan_artifact_count": 0,
     "stale_cache_artifact_count": 0,
     "mcp_addon_error_count": 0,
-    "unclassified_diagnostic_count": 9,
+    "unclassified_diagnostic_count": 0,
     "p0_vs_prior_pr77_sequence_equal": true
   },
+  "post_repair_verification": {
+    "minimal_fixture": {
+      "attempt_id": "minimal-5aeb7960-selftest-1",
+      "recovery_pid": 30112,
+      "editor_pid": 33424,
+      "endpoint": "http://127.0.0.1:8846/",
+      "initial_scan_green": true,
+      "reload_operation_1_green": true,
+      "reload_operation_2_green": true,
+      "signal11_count": 0,
+      "process_count_after": 0
+    },
+    "origin_main": {
+      "attempt_id": "main-5aeb7960-selftest-1",
+      "recovery_pid": 9508,
+      "editor_pid": 31064,
+      "endpoint": "http://127.0.0.1:8847/",
+      "initial_scan_green": true,
+      "reload_operation_1_green": true,
+      "reload_operation_2_green": true,
+      "signal11_count": 0,
+      "process_count_after": 0
+    },
+    "pr77": {
+      "attempt_id": "pr77-5aeb7960-acceptance-1",
+      "recovery_pid": 30548,
+      "editor_pid": 32416,
+      "endpoint": "http://127.0.0.1:8848/",
+      "initial_scan_green": true,
+      "reload_operation_1_green": true,
+      "reload_operation_2_green": true,
+      "signal11_count": 0,
+      "target_script_validation": "15/15",
+      "target_scene_load": "5/5",
+      "main_instantiation_green": true,
+      "main_runtime_frame_lower_bound": 9,
+      "registry_owner_binding": "19/19",
+      "registry_bench_green": true,
+      "card_inventory_characterization_bench_green": false,
+      "attested_error": "CardInventoryRuntimeCharacterizationBench line 927 calls removed main.gd method _new_game.",
+      "stopped_cleanly": true,
+      "process_count_after": 0
+    }
+  },
   "gates": {
+    "mcp_signal11_isolation_matrix_complete": true,
     "mcp_signal11_isolation_matrix_all_green": false,
-    "mcp_minimal_fixture_self_test_green": false,
-    "mcp_main_baseline_self_test_green": false,
-    "mcp_pr77_initial_scan_self_test_green": false,
+    "mcp_minimal_fixture_self_test_green": true,
+    "mcp_main_baseline_self_test_green": true,
+    "mcp_pr77_initial_scan_self_test_green": true,
     "pr77_retroactive_mcp_acceptance_green": false,
-    "pr77_script_validation": "0/15",
-    "pr77_scene_load": "0/5",
+    "pr77_script_validation": "15/15",
+    "pr77_scene_load": "5/5",
+    "pr77_main_instantiation_green": true,
+    "pr77_main_runtime_frames": 9,
+    "pr77_owner_binding": "19/19",
+    "pr77_debug_error_count": 1,
+    "pr77_runtime_error_count": 1,
+    "pr77_stopped_cleanly": true,
+    "pr77_process_count_after": 0,
     "v8_authorization_created": false,
     "process_a_started": false,
     "formal_started": false,
@@ -184,5 +262,5 @@
     "pr80_head_change_count": 0,
     "pr82_head_change_count": 0
   },
-  "next_task": "ALPHA_0_4_C_PR77_MCP_ATTESTED_SCRIPT_OR_RESOURCE_REPAIR"
+  "next_task": "ALPHA_0_4_C_PR77_MCP_ATTESTED_CARD_INVENTORY_RUNTIME_CHARACTERIZATION_BENCH_REPAIR"
 }

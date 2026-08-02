@@ -6,24 +6,27 @@
   "fresh_project_cache": true,
   "summary": {
     "unicode_diagnostic_recorded_count": 9,
-    "unicode_diagnostic_classified_count": 0,
+    "unicode_diagnostic_classified_count": 9,
     "script_error_classified_count": 10,
     "failed_script_load_classified_count": 5,
-    "real_project_error_count": 15,
-    "unicode_log_rendering_error_count": 0,
+    "historical_real_project_diagnostic_record_count": 15,
+    "historical_real_project_root_file_count": 5,
+    "repaired_historical_project_diagnostic_count": 15,
+    "current_real_project_error_count": 1,
+    "unicode_log_rendering_error_count": 9,
     "interrupted_scan_artifact_count": 0,
-    "unclassified_diagnostic_count": 9
+    "unclassified_diagnostic_count": 0
   },
   "diagnostics": [
-    {"diagnostic_id":"U01","path":null,"first_seen_attempt":"legacy_recursive_pr77_pid_21996","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"reproducible":true,"classification":"unclassified"},
-    {"diagnostic_id":"U02","path":null,"first_seen_attempt":"legacy_recursive_pr77_pid_21996","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"reproducible":true,"classification":"unclassified"},
-    {"diagnostic_id":"U03","path":null,"first_seen_attempt":"legacy_recursive_pr77_pid_21996","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"reproducible":true,"classification":"unclassified"},
-    {"diagnostic_id":"U04","path":null,"first_seen_attempt":"legacy_recursive_pr77_pid_21996","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"reproducible":true,"classification":"unclassified"},
-    {"diagnostic_id":"U05","path":null,"first_seen_attempt":"legacy_recursive_pr77_pid_21996","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"reproducible":true,"classification":"unclassified"},
-    {"diagnostic_id":"U06","path":null,"first_seen_attempt":"legacy_recursive_pr77_pid_21996","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"reproducible":true,"classification":"unclassified"},
-    {"diagnostic_id":"U07","path":null,"first_seen_attempt":"legacy_recursive_pr77_pid_21996","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"reproducible":true,"classification":"unclassified"},
-    {"diagnostic_id":"U08","path":null,"first_seen_attempt":"legacy_patched_pr77_pid_32892","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"reproducible":true,"classification":"unclassified"},
-    {"diagnostic_id":"U09","path":null,"first_seen_attempt":"legacy_patched_pr77_pid_32892","seen_without_mcp":true,"seen_on_origin_main":false,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"reproducible":true,"classification":"unclassified"},
+    {"diagnostic_id":"U01","path":null,"first_seen_attempt":"legacy_recursive_pr77_pid_21996","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"seen_after_parse_repair":true,"reproducible":true,"classification":"unicode_log_rendering_error"},
+    {"diagnostic_id":"U02","path":null,"first_seen_attempt":"legacy_recursive_pr77_pid_21996","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"seen_after_parse_repair":true,"reproducible":true,"classification":"unicode_log_rendering_error"},
+    {"diagnostic_id":"U03","path":null,"first_seen_attempt":"legacy_recursive_pr77_pid_21996","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"seen_after_parse_repair":true,"reproducible":true,"classification":"unicode_log_rendering_error"},
+    {"diagnostic_id":"U04","path":null,"first_seen_attempt":"legacy_recursive_pr77_pid_21996","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"seen_after_parse_repair":true,"reproducible":true,"classification":"unicode_log_rendering_error"},
+    {"diagnostic_id":"U05","path":null,"first_seen_attempt":"legacy_recursive_pr77_pid_21996","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"seen_after_parse_repair":true,"reproducible":true,"classification":"unicode_log_rendering_error"},
+    {"diagnostic_id":"U06","path":null,"first_seen_attempt":"legacy_recursive_pr77_pid_21996","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"seen_after_parse_repair":true,"reproducible":true,"classification":"unicode_log_rendering_error"},
+    {"diagnostic_id":"U07","path":null,"first_seen_attempt":"legacy_recursive_pr77_pid_21996","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"seen_after_parse_repair":true,"reproducible":true,"classification":"unicode_log_rendering_error"},
+    {"diagnostic_id":"U08","path":null,"first_seen_attempt":"legacy_patched_pr77_pid_32892","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"seen_after_parse_repair":true,"reproducible":true,"classification":"unicode_log_rendering_error"},
+    {"diagnostic_id":"U09","path":null,"first_seen_attempt":"legacy_patched_pr77_pid_32892","seen_without_mcp":true,"seen_on_origin_main":false,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"seen_after_parse_repair":true,"reproducible":true,"classification":"unicode_log_rendering_error"},
     {"diagnostic_id":"S01","path":"scripts/tools/district_supply_surface_query_cutover_bench.gd","line":113,"message_key":"private_target_type_inference","first_seen_attempt":"legacy_patched_pr77_pid_32892","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"reproducible":true,"classification":"real_project_error"},
     {"diagnostic_id":"S02","path":"scripts/tools/district_supply_surface_query_cutover_bench.gd","line":147,"message_key":"public_target_type_inference","first_seen_attempt":"legacy_patched_pr77_pid_32892","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"reproducible":true,"classification":"real_project_error"},
     {"diagnostic_id":"S03","path":"tests/card_resolution_stable_target_envelope_test.gd","line":197,"message_key":"set_dependencies_argument_9_type","first_seen_attempt":"legacy_patched_pr77_pid_32892","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"reproducible":true,"classification":"real_project_error"},
@@ -40,9 +43,28 @@
     {"diagnostic_id":"F04","path":"tests/human_normal_table_playability_v06_test.gd","first_seen_attempt":"legacy_patched_pr77_pid_32892","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"reproducible":true,"classification":"real_project_error"},
     {"diagnostic_id":"F05","path":"tests/player_facing_privacy_boundary_test.gd","first_seen_attempt":"legacy_patched_pr77_pid_32892","seen_without_mcp":true,"seen_on_origin_main":true,"seen_on_pr77":true,"seen_before_native_crash":true,"seen_after_native_crash":false,"reproducible":true,"classification":"real_project_error"}
   ],
+  "repair_verification": {
+    "repair_commit": "5805f2d3465cfe47cd9417d746cae7e3aafc6a30",
+    "verified_code_commit": "5aeb7960df962254fc179edff4d91de85c03ba9d",
+    "pr77_recovery_import_pid": 30548,
+    "pr77_recovery_import_endpoint_count": 0,
+    "script_parse_error_count_after": 0,
+    "failed_script_load_count_after": 0,
+    "unicode_diagnostic_count_after": 9,
+    "native_signal11_count_after": 0,
+    "acceptance_runtime_error": {
+      "path": "scripts/tools/card_inventory_runtime_characterization_bench.gd",
+      "line": 927,
+      "message": "Invalid call to removed main.gd method _new_game.",
+      "classification": "real_project_error",
+      "present_at_effective_pr77_head": true,
+      "introduced_by_bootstrap_repair": false
+    }
+  },
   "notes": [
     "The five failed-load diagnostics are consequences of the five affected script files and are not five additional root causes.",
-    "The Unicode diagnostics have no source paths. They are proven non-MCP, fresh-cache, and pre-crash, but their source remains unclassified.",
-    "All 24 diagnostics occur before the native crash and are not interrupted-scan aftermath."
+    "The nine Unicode diagnostics are pathless Godot UTF decoding/log-rendering diagnostics. They reproduce in the fresh, plugin-disabled PR77 recovery import after all ten script parse errors and five failed loads are gone; they do not identify a script or failed resource load.",
+    "All original 24 records occur before the historical native crash and are not interrupted-scan aftermath.",
+    "The later Card Inventory bench error is a separate retrospective-acceptance finding and is not folded into the original ten-parse/five-load mapping."
   ]
 }

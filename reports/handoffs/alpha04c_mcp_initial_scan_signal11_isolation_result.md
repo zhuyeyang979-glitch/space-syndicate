@@ -1,51 +1,59 @@
 # Alpha 0.4-C MCP initial-scan isolation result
 
-Status: BLOCKED.
+Status: BLOCKED by an attested PR77 focused-bench error after MCP recovery.
 
-## Matrix result
+## Isolation result
 
-The minimal cells M0, M1, M2, and M3 all completed with no native crash and no
-diagnostics. M2 observed the endpoint with zero requests. M3 sent exactly the
-three permitted read-only requests.
+The frozen M0-M3 cells remain GREEN. The original B0 and P0 controls remain
+preserved as signal-11 evidence: both crashed with MCP disabled, no endpoint,
+and no wrapper request. Windows reported access violation `0xc0000005` at the
+same fault offset during full-project texture post-import reconfiguration.
+Neither the final HDR path nor any single imported texture is claimed as the
+individual root cause.
 
-Both full-project no-MCP controls failed:
+The ten parse diagnostics were mapped to five root files and repaired under the
+bootstrap exception. Their five failed loads were consequential, not five more
+roots. A fresh PR77 recovery import then completed with zero parse errors, zero
+failed loads, and zero signal 11. The nine pathless Unicode/NUL messages remain
+reproducible without MCP; they are classified as Godot UTF log-rendering
+diagnostics because they identify no path or failed load and do not prevent a
+complete import.
 
-- B0: origin/main, Funplay disabled, zero endpoint and requests, signal 11.
-- P0: PR77, Funplay disabled, zero endpoint and requests, signal 11.
+## Lifecycle hardening
 
-B1 was skipped because B0 was not GREEN. P1 was skipped because P0 was not
-GREEN. This is a gate-driven skip, not missing evidence.
+Fresh caches now use two processes. A plugin-disabled `--import
+--recovery-mode` process completes the heavy import with endpoint count zero.
+Only after exit code 0 does a distinct editor PID start the MCP addon and
+endpoint. Initial scan and reload remain single-flight asynchronous operations,
+all mutation requests require request IDs, and the wrapper independently owns
+editor/endpoint liveness detection.
 
-## Native failure
+Final self-tests were GREEN:
 
-Both B0 and P0 failed during 3D texture post-import reconfiguration. Windows
-reported access violation 0xc0000005 at fault offset 0x327d10a. Both Godot logs
-contain the same 41-frame raw backtrace, without symbols.
+- Minimal: recovery PID 30112, editor PID 33424, endpoint 8846, two reloads.
+- origin/main: recovery PID 9508, editor PID 31064, endpoint 8847, two reloads.
+- PR77 candidate: recovery PID 30548, editor PID 32416, endpoint 8848, two reloads.
 
-The crash is reproducible without the Funplay addon, endpoint, transport poll,
-or wrapper request. The isolated trigger class is therefore the Godot 4.7 ANGLE
-full-project import path, not MCP request reentrancy. The final logged HDR
-resource is not claimed as the individual root cause.
+All three stopped cleanly with zero remaining task process.
 
-## Project diagnostics
+## PR77 retrospective acceptance
 
-P0 reproduced the prior PR77 sequence exactly:
+The PR77-derived candidate validated 15/15 target scripts and loaded 5/5 target
+scenes. `main.tscn` instantiated, emitted nine distinct running heartbeats
+(a conservative nine-frame lower bound), and exposed 929 runtime nodes. The
+registry bench passed 48/48 checks and attested all 19 owner bindings.
 
-- 9 pathless Unicode/NUL diagnostics whose source remains unclassified.
-- 10 real GDScript parse diagnostics in five files.
-- 5 failed loads caused by those parse diagnostics.
+Acceptance then stopped on the first focused-bench failure:
+`CardInventoryRuntimeCharacterizationBench` line 927 calls `_new_game`, but the
+same PR77 `main.gd` has no such method. Those two files are byte-identical from
+PR77 through the tested candidate, so this is an existing PR77 bench/runtime
+contract error, not an MCP, cache, parse-root, or bootstrap-repair regression.
+The remaining focused benches were not run after the stop gate.
 
-These all occur before signal 11. The parse and load diagnostics are real
-project errors because P0 used a fresh cache with MCP disabled. They are not
-MCP errors or interrupted-scan aftermath.
-
-## Stop boundary
-
-The task stops before B1, P1, reload self-tests, or PR77 retrospective
-acceptance. No Session, Save, gameplay, main.gd, main.tscn, V0.7.3, PR80, or
-PR82 code was changed. V8, Process A, Formal, FullRun, Smoke, and smoke_test.gd
-were not started.
+No Session, Save, gameplay, `main.gd`, `main.tscn`, V0.7.3, PR80, or PR82 code
+was changed. V8, Process A, Formal, FullRun, Smoke, and `smoke_test.gd` were not
+started.
 
 Next task:
 
-ALPHA_0_4_C_PR77_MCP_ATTESTED_SCRIPT_OR_RESOURCE_REPAIR
+`ALPHA_0_4_C_PR77_MCP_ATTESTED_CARD_INVENTORY_RUNTIME_CHARACTERIZATION_BENCH_REPAIR`
