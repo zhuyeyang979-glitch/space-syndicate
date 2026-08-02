@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "attempt_id": "alpha04c-remaining-owner-preflight-index16-18-attempt-v3",
+  "frozen_code_head": "540d14846665d00fa37a5e74cbdd7b3af925c0b6",
+  "child_exit_code": 2,
+  "child_completion_sha256": "bb300f27140082b4f4062fcac9e2738c2fdc834c3371c0d5bb2221cbac049a70",
+  "child_success": false,
+  "child_attestation_green": true,
+  "immutable_v7_evidence_preserved": true,
+  "immutable_ai_replay_evidence_preserved": true,
+  "v8_authorization_root_absent": true,
+  "preflight_production_fixed_slot_write_count": 0,
+  "remaining_owner_preflight_attempt_count_delta": 1,
+  "remaining_owner_preflight_concurrent_execution_count": 1,
+  "task_owned_process_count_after": 0,
+  "first_failure": {
+    "owner_index": 17,
+    "owner_id": "victory_control",
+    "reason_code": "raw_float_not_closed_data"
+  },
+  "parent_attestation_green": true,
+  "private_payload_redacted": true,
+  "parent_exit_sha256": "3991085dbbd9e3de274e935722c962d42a82fb5525f7fb2dc988fbf283ebe752",
+  "attempt_ledger_sha256": "8653bf287aed81f62bd5b827b134541e3ed554dbeefc5c798e154ce4d9a71ff6"
+}
