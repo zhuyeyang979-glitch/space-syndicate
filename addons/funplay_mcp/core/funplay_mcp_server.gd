@@ -98,6 +98,10 @@ func poll() -> void:
 	_transport.poll(Callable(self, "_handle_http_request"))
 
 
+func is_dispatch_active() -> bool:
+	return _transport != null and _transport.is_dispatch_active()
+
+
 func is_running() -> bool:
 	return _is_running
 
@@ -156,6 +160,8 @@ func _handle_http_request(
 				health["project_name"] = str(ProjectSettings.get_setting("application/config/name", ""))
 				health["project_identity"] = _project_identity_hash()
 				health["transport_diagnostics"] = _transport.get_diagnostics()
+				if _plugin != null and _plugin.has_method("get_lifecycle_diagnostics"):
+					health["lifecycle_diagnostics"] = _plugin.get_lifecycle_diagnostics()
 			return {
 				"status": 200,
 				"content_type": "application/json",

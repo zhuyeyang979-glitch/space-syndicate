@@ -94,6 +94,7 @@ $finalStatus = Invoke-McpTool -Name "filesystem_scan_status"
 $health = Invoke-RestMethod -Uri ([string]$connection.endpoint) -Method Get -Headers $headers -TimeoutSec 10
 $identityAfter = Test-McpProcessIdentity -Connection $connection
 $transport = $health.transport_diagnostics
+$lifecycle = $health.lifecycle_diagnostics
 $operation1 = $operation1Status.operation
 
 $failures = @()
@@ -111,6 +112,9 @@ if ($null -eq $missingRequest.error -or [string]$missingRequest.error.message -n
 if ([int]$transport.max_handler_depth -gt 1) { $failures += "handler_depth_exceeded_one" }
 if ([int]$transport.nested_http_dispatch_count -ne 0) { $failures += "nested_http_dispatch_detected" }
 if ([int]$transport.reentrant_handler_entry_count -ne 0) { $failures += "reentrant_handler_entry_detected" }
+if ([int]$lifecycle.transport_poll_before_initial_ready_count -ne 0) { $failures += "transport_polled_before_initial_ready" }
+if ([int]$lifecycle.transport_poll_during_filesystem_callback_count -ne 0) { $failures += "transport_polled_during_filesystem_callback" }
+if ([int]$lifecycle.transport_poll_during_handler_count -ne 0) { $failures += "transport_polled_during_handler" }
 
 $result = [ordered]@{
     self_test_green = $failures.Count -eq 0
@@ -128,6 +132,7 @@ $result = [ordered]@{
     endpoint_alive_after_reload = (Get-McpEndpointOwnerPid -Port ([int]$connection.port)) -eq $editorPidBefore
     filesystem_status = $finalStatus
     transport_diagnostics = $transport
+    lifecycle_diagnostics = $lifecycle
     failures = $failures
 }
 $result | ConvertTo-Json -Depth 20

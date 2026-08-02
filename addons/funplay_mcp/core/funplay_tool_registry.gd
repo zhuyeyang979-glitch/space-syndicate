@@ -40,6 +40,12 @@ func is_filesystem_reload_execution_active() -> bool:
 	return bool(_core_tools.is_filesystem_reload_execution_active())
 
 
+func is_transport_poll_ready(now_msec: int, stability_msec: int) -> bool:
+	if _core_tools == null or not _core_tools.has_method("is_transport_poll_ready"):
+		return false
+	return bool(_core_tools.is_transport_poll_ready(now_msec, stability_msec))
+
+
 func list_tools(profile: String) -> Array:
 	var selected_profile: String = profile if profile in _profiles else "core"
 	var tools: Array = []

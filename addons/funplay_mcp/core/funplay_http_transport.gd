@@ -50,6 +50,10 @@ func get_port() -> int:
 	return _port
 
 
+func is_dispatch_active() -> bool:
+	return _poll_active or _handler_depth > 0
+
+
 func poll(request_callback: Callable) -> void:
 	if not _is_listening:
 		return

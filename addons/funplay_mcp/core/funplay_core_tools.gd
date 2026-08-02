@@ -262,6 +262,13 @@ func is_filesystem_reload_execution_active() -> bool:
 	return _filesystem_execution_active or _filesystem_callback_active
 
 
+func is_transport_poll_ready(now_msec: int, stability_msec: int) -> bool:
+	if is_filesystem_reload_execution_active() or _filesystem_reload_state == null:
+		return false
+	_sync_filesystem_state()
+	return _filesystem_reload_state.is_transport_poll_ready(now_msec, stability_msec)
+
+
 func execute_code(arguments: Dictionary) -> String:
 	var code = str(arguments.get("code", "")).strip_edges()
 	if code == "":

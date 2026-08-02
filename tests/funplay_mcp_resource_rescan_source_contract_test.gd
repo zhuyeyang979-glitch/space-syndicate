@@ -54,6 +54,11 @@ func _init() -> void:
 		"queued reload executes on a later top-level plugin tick"
 	)
 	_expect(process_block.contains("is_filesystem_reload_execution_active()"), "nested editor frames skip HTTP polling during scan")
+	_expect(process_block.contains("is_transport_poll_ready("), "transport polling waits for stable initial readiness")
+	_expect(process_block.find("is_transport_poll_ready(") < process_block.find("_server.poll()"), "readiness gate precedes transport polling")
+	_expect(plugin_source.contains("TRANSPORT_READY_STABILITY_MSEC := 30000"), "transport uses a bounded post-import stability window")
+	_expect(plugin_source.contains('"transport_poll_before_initial_ready_count"'), "plugin exposes pre-readiness transport-poll evidence")
+	_expect(plugin_source.contains('"transport_poll_during_filesystem_callback_count"'), "plugin exposes filesystem-callback transport-poll evidence")
 	_expect(plugin_source.count("FunplayCoreTools.new(") == 1, "plugin constructs one shared filesystem state owner")
 	_expect(plugin_source.contains("FunplayResourceProvider.new(self, _settings, _core_tools)"), "resource provider shares the state owner")
 	_expect(plugin_source.contains("FunplayPromptProvider.new(self, _settings, _core_tools)"), "prompt provider shares the state owner")
@@ -67,6 +72,7 @@ func _init() -> void:
 	)
 	_expect(transport_source.contains("if _poll_active:"), "transport suppresses nested poll")
 	_expect(transport_source.contains('"max_handler_depth"'), "transport exposes handler depth evidence")
+	_expect(transport_source.contains("func is_dispatch_active()"), "transport exposes active dispatch for the plugin guard")
 
 	var launcher_source := _read("res://tools/launch_role_godot_mcp.ps1")
 	_expect(launcher_source.contains('name = "filesystem_scan_status"'), "launcher queries filesystem readiness")

@@ -10,6 +10,8 @@ const FunplayMcpServer = preload("res://addons/funplay_mcp/core/funplay_mcp_serv
 const FunplayClientConfigWriter = preload("res://addons/funplay_mcp/core/funplay_client_config_writer.gd")
 const FunplayMcpDock = preload("res://addons/funplay_mcp/ui/funplay_mcp_dock.gd")
 
+const TRANSPORT_READY_STABILITY_MSEC := 30000
+
 var _settings
 var _core_tools
 var _tool_registry
@@ -18,6 +20,12 @@ var _prompt_provider
 var _server
 var _dock
 var _client_config_writer
+var _transport_poll_execution_count := 0
+var _transport_poll_suppressed_not_ready_count := 0
+var _transport_poll_suppressed_during_handler_count := 0
+var _transport_poll_before_initial_ready_count := 0
+var _transport_poll_during_filesystem_callback_count := 0
+var _transport_poll_during_handler_count := 0
 
 
 func _enter_tree() -> void:
@@ -68,6 +76,10 @@ func _exit_tree() -> void:
 
 
 func _process(_delta: float) -> void:
+	if _server != null and _server.is_dispatch_active():
+		_transport_poll_suppressed_during_handler_count += 1
+		return
+
 	if _tool_registry != null and _tool_registry.is_filesystem_reload_execution_active():
 		return
 
@@ -77,8 +89,32 @@ func _process(_delta: float) -> void:
 	if _tool_registry != null and _tool_registry.is_filesystem_reload_execution_active():
 		return
 
+	var transport_ready: bool = (
+		_tool_registry != null
+		and _tool_registry.is_transport_poll_ready(
+			Time.get_ticks_msec(),
+			TRANSPORT_READY_STABILITY_MSEC
+		)
+	)
+	if not transport_ready:
+		_transport_poll_suppressed_not_ready_count += 1
+		return
+
 	if _server != null:
 		_server.poll()
+		_transport_poll_execution_count += 1
 
 	if _dock != null:
 		_dock.refresh_live_state()
+
+
+func get_lifecycle_diagnostics() -> Dictionary:
+	return {
+		"transport_ready_stability_msec": TRANSPORT_READY_STABILITY_MSEC,
+		"transport_poll_execution_count": _transport_poll_execution_count,
+		"transport_poll_suppressed_not_ready_count": _transport_poll_suppressed_not_ready_count,
+		"transport_poll_suppressed_during_handler_count": _transport_poll_suppressed_during_handler_count,
+		"transport_poll_before_initial_ready_count": _transport_poll_before_initial_ready_count,
+		"transport_poll_during_filesystem_callback_count": _transport_poll_during_filesystem_callback_count,
+		"transport_poll_during_handler_count": _transport_poll_during_handler_count,
+	}

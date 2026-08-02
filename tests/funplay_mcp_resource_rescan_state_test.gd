@@ -11,6 +11,8 @@ var _async_total := 0
 var _async_passed := 0
 var _fake_scan_total := 0
 var _fake_scan_passed := 0
+var _transport_gate_total := 0
+var _transport_gate_passed := 0
 
 
 func _init() -> void:
@@ -30,6 +32,7 @@ func _init() -> void:
 	_test_failure_cold_recovery()
 	_test_async_protocol_contract()
 	_test_completion_callback_followup_reload()
+	_test_transport_poll_readiness_gate()
 	_finish()
 
 
@@ -277,6 +280,20 @@ func _test_completion_callback_followup_reload() -> void:
 	_fake_scan_check(state.get_status().get("state") == ReloadState.STATE_READY)
 
 
+func _test_transport_poll_readiness_gate() -> void:
+	var state = _new_state(10000, 10000, 10000)
+	state.observe_editor(true, false, true, 0)
+	_transport_gate_check(not state.is_transport_poll_ready(500, 1000))
+	state.observe_editor(false, true, true, 1000, true)
+	_transport_gate_check(not state.is_transport_poll_ready(1999, 1000))
+	_transport_gate_check(state.is_transport_poll_ready(2000, 1000))
+	state.request_reload("transport-gate-reload", "", 2001)
+	_transport_gate_check(not state.is_transport_poll_ready(3000, 1000))
+	var begin: Dictionary = state.begin_queued_reload(3001)
+	state.complete_reload(str(begin.get("operation_id", "")), 3002, "test_complete")
+	_transport_gate_check(state.is_transport_poll_ready(3002, 1000))
+
+
 func _new_state(initial_timeout := 100, reload_timeout := 100, stop_timeout := 100):
 	var state = ReloadState.new()
 	state.configure_timeouts(initial_timeout, reload_timeout, stop_timeout)
@@ -316,6 +333,12 @@ func _fake_scan_check(condition: bool) -> void:
 		_fake_scan_passed += 1
 
 
+func _transport_gate_check(condition: bool) -> void:
+	_transport_gate_total += 1
+	if condition:
+		_transport_gate_passed += 1
+
+
 func _finish() -> void:
 	print("MCP_RESCAN_STATE_MACHINE_TESTS|passed=%d|total=%d" % [
 		_scenario_passed,
@@ -333,6 +356,10 @@ func _finish() -> void:
 		_fake_scan_passed,
 		_fake_scan_total,
 	])
+	print("MCP_TRANSPORT_READINESS_GATE_TESTS|passed=%d|total=%d" % [
+		_transport_gate_passed,
+		_transport_gate_total,
+	])
 	print("MCP_MAX_TEST_HANDLER_DEPTH|value=1")
 	print("MCP_TEST_STACK_OVERFLOW_COUNT|value=0")
 	if (
@@ -340,6 +367,7 @@ func _finish() -> void:
 		or _idempotence_passed != _idempotence_total
 		or _async_passed != _async_total
 		or _fake_scan_passed != _fake_scan_total
+		or _transport_gate_passed != _transport_gate_total
 	):
 		for failure in _scenario_failures:
 			push_error("Funplay MCP rescan state scenario failed: %s" % failure)

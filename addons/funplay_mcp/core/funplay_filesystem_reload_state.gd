@@ -22,6 +22,7 @@ var _reload_generation := 0
 var _initial_scan_started := false
 var _initial_scan_completed := false
 var _initial_scan_started_msec := 0
+var _initial_ready_since_msec := -1
 var _initial_scan_operation_id := ""
 var _initial_scan_start_count := 0
 var _initial_scan_completion_count := 0
@@ -51,6 +52,17 @@ func configure_timeouts(initial_scan_msec: int, reload_msec: int, stop_msec: int
 	_initial_scan_timeout_msec = max(1, initial_scan_msec)
 	_reload_timeout_msec = max(1, reload_msec)
 	_stop_timeout_msec = max(1, stop_msec)
+
+
+func is_transport_poll_ready(now_msec: int, stability_msec: int) -> bool:
+	return (
+		_initial_scan_completed
+		and _state == STATE_READY
+		and _active_scan_count == 0
+		and _active_reload_count == 0
+		and _initial_ready_since_msec >= 0
+		and now_msec - _initial_ready_since_msec >= maxi(0, stability_msec)
+	)
 
 
 func begin_editor_booting(now_msec: int) -> void:
@@ -253,6 +265,7 @@ func reset_after_failure(now_msec: int) -> Dictionary:
 	_initial_scan_started = false
 	_initial_scan_completed = false
 	_initial_scan_started_msec = now_msec
+	_initial_ready_since_msec = -1
 	_initial_scan_operation_id = ""
 	_initial_scan_start_count = 0
 	_initial_scan_completion_count = 0
@@ -280,6 +293,7 @@ func get_status() -> Dictionary:
 		"reload_generation": _reload_generation,
 		"initial_scan_started": _initial_scan_started,
 		"initial_scan_completed": _initial_scan_completed,
+		"initial_ready_since_msec": _initial_ready_since_msec,
 		"initial_scan_operation_id": _initial_scan_operation_id,
 		"initial_scan_start_count": _initial_scan_start_count,
 		"initial_scan_completion_count": _initial_scan_completion_count,
@@ -350,6 +364,7 @@ func _complete_initial_scan(now_msec: int, completion_signal: bool) -> void:
 	if _initial_scan_completed:
 		return
 	_initial_scan_completed = true
+	_initial_ready_since_msec = now_msec
 	_initial_scan_completion_count += 1
 	if completion_signal:
 		_first_scan_completion_signal_count = min(1, _first_scan_completion_signal_count + 1)
