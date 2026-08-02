@@ -2,6 +2,16 @@ extends RefCounted
 class_name SessionStartRequest
 
 const SCHEMA_VERSION := 1
+const SOURCE_CONTEXT_SETUP_UI := "setup_ui"
+const SOURCE_CONTEXT_QUALITY_DRIVER := "quality_driver"
+const SOURCE_CONTEXT_FOCUSED_TEST := "focused_test"
+const SOURCE_CONTEXT_CARD_INVENTORY_BENCH := "card_inventory_runtime_characterization_bench"
+const ALLOWED_SOURCE_CONTEXTS := [
+	SOURCE_CONTEXT_SETUP_UI,
+	SOURCE_CONTEXT_QUALITY_DRIVER,
+	SOURCE_CONTEXT_FOCUSED_TEST,
+	SOURCE_CONTEXT_CARD_INVENTORY_BENCH,
+]
 
 var request_id := ""
 var expected_draft_revision := -1
@@ -22,7 +32,7 @@ static func create(id: String, draft: Dictionary, active_revision: int, context:
 
 func is_valid() -> bool:
 	return not request_id.is_empty() and expected_draft_revision >= 0 and expected_active_session_revision >= 0 \
-		and int(setup_draft.get("schema_version", 0)) == 1 and source_context in ["setup_ui", "quality_driver", "focused_test"] \
+		and int(setup_draft.get("schema_version", 0)) == 1 and source_context in ALLOWED_SOURCE_CONTEXTS \
 		and _is_data_only(setup_draft)
 
 

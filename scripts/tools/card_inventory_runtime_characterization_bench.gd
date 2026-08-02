@@ -11,6 +11,13 @@ const SCREENSHOT_PATH := "user://space_syndicate_design_qa/card_inventory_runtim
 const CHARACTERIZATION_CASE_COUNT := 20
 const CUTOVER_CASE_COUNT := 20
 const CASE_COUNT := CHARACTERIZATION_CASE_COUNT + CUTOVER_CASE_COUNT
+const RUNTIME_SERVICES_PATH := "RuntimeServices"
+const COORDINATOR_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator"
+const DRAFT_SERVICE_PATH := "RuntimeServices/NewGameSetupDraftService"
+const SESSION_TRANSACTION_PATH := "RuntimeServices/SessionStartTransactionCoordinator"
+const MENU_LIFECYCLE_PATH := "RuntimeServices/MenuLifecycleApplicationFlowController"
+const GAME_SESSION_PATH := COORDINATOR_PATH + "/GameSessionRuntimeController"
+const RUNTIME_LOOP_PATH := COORDINATOR_PATH + "/RuntimeLoop"
 
 @export var auto_run := true
 
@@ -23,6 +30,17 @@ const CASE_COUNT := CHARACTERIZATION_CASE_COUNT + CUTOVER_CASE_COUNT
 var _runtime_main: Control = null
 var _records: Array = []
 var _failures: Array[String] = []
+var _session_reset_sequence := 0
+var _session_start_success_count := 0
+var _session_start_failure_count := 0
+var _session_start_request_id_collision_count := 0
+var _session_start_idempotent_replay_count := 0
+var _cross_case_card_inventory_leak_count := 0
+var _cross_case_queue_leak_count := 0
+var _cross_case_transaction_leak_count := 0
+var _cross_case_private_annotation_leak_count := 0
+var _session_start_request_ids: Dictionary = {}
+var _case_session_revisions: Dictionary = {}
 
 
 func _ready() -> void:
@@ -124,6 +142,7 @@ func build_characterization_manifest_preview() -> Dictionary:
 func run_characterization_suite() -> void:
 	_records.clear()
 	_failures.clear()
+	_reset_session_start_evidence()
 	_prepare_output_dir()
 	if not await _ensure_runtime_main():
 		push_error("CardInventoryRuntimeCharacterizationBench could not instantiate real main.tscn")
@@ -132,8 +151,19 @@ func run_characterization_suite() -> void:
 		return
 	for case_id_variant in all_cases():
 		var case_id := str(case_id_variant)
-		await _reset_runtime_main()
+		var session_start: Dictionary = await _reset_runtime_session_via_transaction(case_id)
+		if not bool(session_start.get("ok", false)):
+			var failure_record := _session_start_failure_record(case_id, session_start)
+			failure_record["pure_data_checked"] = _is_data_only(failure_record)
+			_records.append(failure_record)
+			_failures.append("%s: session start failed at %s (%s)" % [
+				case_id,
+				str(session_start.get("failing_stage", "unknown")),
+				str(session_start.get("reason_code", "session_start_failed")),
+			])
+			break
 		var record: Dictionary = _run_case(case_id)
+		record["session_start"] = session_start.duplicate(true)
 		record["pure_data_checked"] = _is_data_only(record)
 		_records.append(record)
 		if str(record.get("phase", "characterization")) == "cutover":
@@ -156,6 +186,18 @@ func run_characterization_suite() -> void:
 		"needs_design_decision_count": _design_decision_count(),
 		"record_count": _records.size(),
 		"passed_count": _characterization_aligned_count() + _cutover_passed_count(),
+		"session_start_api": "SessionStartTransactionCoordinator.start_session",
+		"session_start_count": _session_reset_sequence,
+		"session_start_success_count": _session_start_success_count,
+		"session_start_failure_count": _session_start_failure_count,
+		"session_start_request_id_unique_count": _session_start_request_ids.size(),
+		"session_start_request_id_collision_count": _session_start_request_id_collision_count,
+		"session_start_idempotent_replay_count": _session_start_idempotent_replay_count,
+		"case_session_revision_unique_count": _case_session_revisions.size(),
+		"cross_case_card_inventory_leak_count": _cross_case_card_inventory_leak_count,
+		"cross_case_queue_leak_count": _cross_case_queue_leak_count,
+		"cross_case_transaction_leak_count": _cross_case_transaction_leak_count,
+		"cross_case_private_annotation_leak_count": _cross_case_private_annotation_leak_count,
 		"records": _records.duplicate(true),
 	}
 	_write_text(MANIFEST_PATH, JSON.stringify(manifest, "\t"))
@@ -171,6 +213,8 @@ func run_characterization_suite() -> void:
 	print("CardInventoryRuntimeCharacterizationBench aligned: %d/%d; mismatches=%d; design_decisions=%d" % [_characterization_aligned_count(), CHARACTERIZATION_CASE_COUNT, CHARACTERIZATION_CASE_COUNT - _characterization_aligned_count(), _design_decision_count()])
 	print("CardInventoryRuntimeCharacterizationBench cutover: %d/%d" % [_cutover_passed_count(), CUTOVER_CASE_COUNT])
 	print("CardInventoryRuntimeCharacterizationBench total: %d/%d" % [_characterization_aligned_count() + _cutover_passed_count(), CASE_COUNT])
+	print("CardInventoryRuntimeCharacterizationBench session starts: %d/%d; unique_requests=%d; unique_revisions=%d" % [_session_start_success_count, _session_reset_sequence, _session_start_request_ids.size(), _case_session_revisions.size()])
+	print("CardInventoryRuntimeCharacterizationBench isolation leaks: card=%d queue=%d transaction=%d annotation=%d" % [_cross_case_card_inventory_leak_count, _cross_case_queue_leak_count, _cross_case_transaction_leak_count, _cross_case_private_annotation_leak_count])
 	if not _failures.is_empty():
 		push_error("CardInventoryRuntimeCharacterizationBench failed:\n- %s" % "\n- ".join(_failures))
 	if DisplayServer.get_name() == "headless":
@@ -920,15 +964,335 @@ func _ensure_runtime_main() -> bool:
 	return true
 
 
-func _reset_runtime_main() -> void:
-	if _runtime_main == null:
-		return
+func _reset_session_start_evidence() -> void:
+	_session_reset_sequence = 0
+	_session_start_success_count = 0
+	_session_start_failure_count = 0
+	_session_start_request_id_collision_count = 0
+	_session_start_idempotent_replay_count = 0
+	_cross_case_card_inventory_leak_count = 0
+	_cross_case_queue_leak_count = 0
+	_cross_case_transaction_leak_count = 0
+	_cross_case_private_annotation_leak_count = 0
+	_session_start_request_ids.clear()
+	_case_session_revisions.clear()
+
+
+func _reset_runtime_session_via_transaction(case_id: String) -> Dictionary:
+	_session_reset_sequence += 1
+	if _runtime_main == null or not is_instance_valid(_runtime_main):
+		return _session_start_failure(case_id, "", "runtime_main_unavailable", "dependencies", [])
+	_runtime_main.process_mode = Node.PROCESS_MODE_INHERIT
 	_runtime_main.set_process(true)
-	_runtime_main.call("_new_game")
+	var services := _runtime_main.get_node_or_null(RUNTIME_SERVICES_PATH)
+	var coordinator := _runtime_main.get_node_or_null(COORDINATOR_PATH) as GameRuntimeCoordinator
+	var draft := _runtime_main.get_node_or_null(DRAFT_SERVICE_PATH) as NewGameSetupDraftService
+	var transaction := _runtime_main.get_node_or_null(SESSION_TRANSACTION_PATH) as SessionStartTransactionCoordinator
+	var game_session := _runtime_main.get_node_or_null(GAME_SESSION_PATH) as GameSessionRuntimeController
+	var menu_lifecycle := _runtime_main.get_node_or_null(MENU_LIFECYCLE_PATH) as MenuLifecycleApplicationFlowController
+	var runtime_loop := _runtime_main.get_node_or_null(RUNTIME_LOOP_PATH) as RuntimeLoop
+	var world := coordinator.world_session_state() if coordinator != null else null
+	if services == null or coordinator == null or draft == null or transaction == null \
+			or game_session == null or menu_lifecycle == null or runtime_loop == null or world == null:
+		return _session_start_failure(case_id, "", "session_start_dependencies_unavailable", "dependencies", [])
+
+	var draft_snapshot := draft.draft_snapshot()
+	var draft_revision := int(draft_snapshot.get("draft_revision", -1))
+	var active_session_revision := game_session.session_start_revision()
+	var request_id := "card-inventory-bench-reset:%d:%d:%d" % [
+		_session_reset_sequence,
+		draft_revision,
+		active_session_revision,
+	]
+	if _session_start_request_ids.has(request_id):
+		_session_start_request_id_collision_count += 1
+		return _session_start_failure(case_id, request_id, "bench_session_start_request_id_collision", "request_identity", [])
+	_session_start_request_ids[request_id] = case_id
+	var request := SessionStartRequest.create(
+		request_id,
+		draft_snapshot,
+		active_session_revision,
+		SessionStartRequest.SOURCE_CONTEXT_CARD_INVENTORY_BENCH
+	)
+	if not request.is_valid():
+		return _session_start_failure(case_id, request_id, "session_start_request_invalid", "request_validation", [])
+	var transaction_before := transaction.operation_snapshot()
+	var operation_before := int(transaction_before.get("operation_sequence", -1))
+	var terminal_request_count_before := int(transaction_before.get("terminal_request_count", -1))
+	var receipt := transaction.start_session(request)
+	if receipt == null:
+		return _session_start_failure(case_id, request_id, "session_start_receipt_missing", "receipt", [])
+	if receipt.idempotent:
+		_session_start_idempotent_replay_count += 1
+	if receipt.reason_code == "session_start_request_collision":
+		_session_start_request_id_collision_count += 1
+	var receipt_trace: Array = receipt.trace.duplicate()
+	if not receipt.accepted or not receipt.applied:
+		return _session_start_failure(
+			case_id,
+			request_id,
+			receipt.reason_code,
+			receipt.failing_stage,
+			receipt_trace,
+			{"receipt": receipt.to_dictionary()}
+		)
+
+	var session_revision := game_session.session_start_revision()
+	var transaction_after := transaction.operation_snapshot()
+	var operation_after := int(transaction_after.get("operation_sequence", -1))
+	var terminal_request_count_after := int(transaction_after.get("terminal_request_count", -1))
+	var session_state := game_session.session_state()
+	var receipt_details: Dictionary = receipt.details.duplicate(true)
+	var commit_only: Dictionary = receipt_details.get("commit_only", {}) if receipt_details.get("commit_only", {}) is Dictionary else {}
+	var runtime_debug := coordinator.debug_snapshot()
+	var loop_debug := runtime_loop.debug_snapshot()
+	var trace_has_rollback := false
+	for trace_stage_variant in receipt_trace:
+		if str(trace_stage_variant).begins_with("rollback:"):
+			trace_has_rollback = true
+			break
+	var receipt_gate := {
+		"request_valid": request.is_valid(),
+		"request_id_matches": receipt.request_id == request_id,
+		"accepted": receipt.accepted,
+		"applied": receipt.applied,
+		"idempotent": receipt.idempotent,
+		"in_progress": receipt.in_progress,
+		"reason_code": receipt.reason_code,
+		"failing_stage": receipt.failing_stage,
+		"plan_fingerprint_present": not receipt.plan_fingerprint.is_empty(),
+		"rollback_not_applicable_on_success": receipt.failing_stage.is_empty() and not trace_has_rollback,
+		"operation_sequence_delta": operation_after - operation_before,
+		"terminal_request_count_delta": terminal_request_count_after - terminal_request_count_before,
+		"session_revision_changed": session_revision != active_session_revision,
+		"receipt_session_revision_matches": int(receipt_details.get("session_revision", -1)) == session_revision,
+		"world_player_count": world.players.size(),
+		"world_district_count": world.districts.size(),
+		"game_session_state": session_state,
+		"runtime_coordinator_configured": bool(runtime_debug.get("coordinator_ready", false)),
+		"runtime_loop_barrier_released": not bool(loop_debug.get("session_start_barrier_held", true)),
+		"commit_only_committed": bool(commit_only.get("committed", false)),
+	}
+	var receipt_gate_green := bool(receipt_gate.get("request_valid", false)) \
+		and bool(receipt_gate.get("request_id_matches", false)) \
+		and bool(receipt_gate.get("accepted", false)) \
+		and bool(receipt_gate.get("applied", false)) \
+		and not bool(receipt_gate.get("idempotent", true)) \
+		and not bool(receipt_gate.get("in_progress", true)) \
+		and str(receipt_gate.get("reason_code", "")) == "session_start_committed" \
+		and str(receipt_gate.get("failing_stage", "")).is_empty() \
+		and bool(receipt_gate.get("plan_fingerprint_present", false)) \
+		and bool(receipt_gate.get("rollback_not_applicable_on_success", false)) \
+		and int(receipt_gate.get("operation_sequence_delta", 0)) == 1 \
+		and int(receipt_gate.get("terminal_request_count_delta", 0)) == 1 \
+		and bool(receipt_gate.get("session_revision_changed", false)) \
+		and bool(receipt_gate.get("receipt_session_revision_matches", false)) \
+		and int(receipt_gate.get("world_player_count", 0)) >= 3 \
+		and int(receipt_gate.get("world_district_count", 0)) > 0 \
+		and str(receipt_gate.get("game_session_state", "")) in [GameSessionRuntimeController.STATE_RUNNING, GameSessionRuntimeController.STATE_PAUSED] \
+		and bool(receipt_gate.get("runtime_coordinator_configured", false)) \
+		and bool(receipt_gate.get("runtime_loop_barrier_released", false)) \
+		and bool(receipt_gate.get("commit_only_committed", false))
+	if not receipt_gate_green:
+		return _session_start_failure(
+			case_id,
+			request_id,
+			"bench_session_start_postcondition_failed",
+			"bench_postcondition",
+			receipt_trace,
+			{"receipt": receipt.to_dictionary(), "receipt_gate": receipt_gate}
+		)
+
+	var revision_key := str(session_revision)
+	if _case_session_revisions.has(revision_key):
+		return _session_start_failure(
+			case_id,
+			request_id,
+			"bench_session_revision_reused",
+			"session_identity",
+			receipt_trace,
+			{"receipt": receipt.to_dictionary(), "session_revision": session_revision}
+		)
+	var defaults_snapshot := draft.reset_to_defaults()
+	var menu_closed := menu_lifecycle.close_to_table()
+	if not menu_closed:
+		return _session_start_failure(
+			case_id,
+			request_id,
+			"bench_menu_close_to_table_failed",
+			"menu_lifecycle",
+			receipt_trace,
+			{"receipt": receipt.to_dictionary()}
+		)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var isolation := _session_isolation_snapshot(coordinator, world)
+	if bool(isolation.get("card_inventory_leaked", false)):
+		_cross_case_card_inventory_leak_count += 1
+	if bool(isolation.get("queue_leaked", false)):
+		_cross_case_queue_leak_count += 1
+	if bool(isolation.get("transaction_leaked", false)):
+		_cross_case_transaction_leak_count += 1
+	if bool(isolation.get("private_annotation_leaked", false)):
+		_cross_case_private_annotation_leak_count += 1
+	if not bool(isolation.get("clean", false)):
+		return _session_start_failure(
+			case_id,
+			request_id,
+			"bench_cross_case_state_leak",
+			"case_isolation",
+			receipt_trace,
+			{"receipt": receipt.to_dictionary(), "isolation": isolation}
+		)
 	_hide_runtime_canvas_layers()
-	await get_tree().process_frame
-	await get_tree().process_frame
 	_runtime_main.set_process(false)
+	_runtime_main.process_mode = Node.PROCESS_MODE_DISABLED
+	_case_session_revisions[revision_key] = case_id
+	_session_start_success_count += 1
+	return {
+		"ok": true,
+		"case_id": case_id,
+		"request_id": request_id,
+		"draft_revision": draft_revision,
+		"draft_reset_revision": int(defaults_snapshot.get("draft_revision", -1)),
+		"active_session_revision_before": active_session_revision,
+		"session_revision": session_revision,
+		"session_revision_delta": 1,
+		"operation_sequence": receipt.operation_sequence,
+		"rollback_complete": "not_applicable_on_success",
+		"receipt": receipt.to_dictionary(),
+		"receipt_gate": receipt_gate,
+		"isolation": isolation,
+		"menu_closed_to_table": menu_closed,
+	}
+
+
+func _session_isolation_snapshot(coordinator: GameRuntimeCoordinator, world: WorldSessionState) -> Dictionary:
+	var card_inventory_leaked := false
+	var player_transaction_leaked := false
+	for player_variant in world.players:
+		if not (player_variant is Dictionary):
+			card_inventory_leaked = true
+			continue
+		var player: Dictionary = player_variant
+		var slots: Array = player.get("slots", []) if player.get("slots", []) is Array else []
+		if slots.size() != 1:
+			card_inventory_leaked = true
+		if int(player.get("card_purchase_count", -1)) != 0 or int(player.get("total_card_spend", -1)) != 0:
+			card_inventory_leaked = true
+		var economic_ledger: Array = player.get("economic_ledger", []) if player.get("economic_ledger", []) is Array else []
+		var transaction_ledger: Array = player.get("v06_transaction_ledger", []) if player.get("v06_transaction_ledger", []) is Array else []
+		if not economic_ledger.is_empty() or not transaction_ledger.is_empty():
+			player_transaction_leaked = true
+		for slot_variant in slots:
+			if not (slot_variant is Dictionary):
+				card_inventory_leaked = true
+				continue
+			var slot: Dictionary = slot_variant
+			if bool(slot.get("queued_for_resolution", false)) or float(slot.get("lock_left", 0.0)) > 0.0:
+				card_inventory_leaked = true
+	var inventory_debug := _inventory_debug()
+	for counter in ["receive_plan_count", "remove_plan_count", "lock_plan_count", "transfer_plan_count", "queue_commit_plan_count", "queue_committed_count", "commit_attempt_count", "committed_count", "rejected_count"]:
+		if int(inventory_debug.get(counter, -1)) != 0:
+			card_inventory_leaked = true
+	if not str(inventory_debug.get("last_reason", "")).is_empty() \
+			or not str(inventory_debug.get("last_operation", "")).is_empty() \
+			or not str(inventory_debug.get("last_outcome", "")).is_empty():
+		card_inventory_leaked = true
+
+	var queue := coordinator.get_node_or_null("CardResolutionQueueRuntimeService")
+	var queue_debug: Dictionary = queue.call("debug_snapshot") if queue != null and queue.has_method("debug_snapshot") else {}
+	var queue_leaked := queue == null \
+		or int(queue_debug.get("current_count", -1)) != 0 \
+		or bool(queue_debug.get("active_present", true)) \
+		or int(queue_debug.get("next_count", -1)) != 0 \
+		or int(queue_debug.get("resolution_sequence", -1)) != 0 \
+		or int(queue_debug.get("plan_count", -1)) != 0 \
+		or int(queue_debug.get("commit_count", -1)) != 0 \
+		or int(queue_debug.get("rejection_count", -1)) != 0
+
+	var commodity_inventory := coordinator.get_node_or_null("CommodityCardInventoryRuntimeController")
+	var commodity_debug: Dictionary = commodity_inventory.call("debug_snapshot") if commodity_inventory != null and commodity_inventory.has_method("debug_snapshot") else {}
+	var ai_cash_port := coordinator.get_node_or_null("AiBusinessCostCashPort")
+	var ai_cash_debug: Dictionary = ai_cash_port.call("debug_snapshot") if ai_cash_port != null and ai_cash_port.has_method("debug_snapshot") else {}
+	var execution := coordinator.get_node_or_null("CardResolutionExecutionRuntimeService")
+	var execution_debug: Dictionary = execution.call("debug_snapshot") if execution != null and execution.has_method("debug_snapshot") else {}
+	var transaction_leaked := player_transaction_leaked \
+		or commodity_inventory == null \
+		or int(commodity_debug.get("transaction_journal_count", -1)) != 0 \
+		or ai_cash_port == null \
+		or int(ai_cash_debug.get("journal_size", -1)) != 0 \
+		or execution == null \
+		or int(execution_debug.get("plan_count", -1)) != 0 \
+		or int(execution_debug.get("advance_count", -1)) != 0 \
+		or int(execution_debug.get("finalized_count", -1)) != 0 \
+		or int(execution_debug.get("inflight_count", -1)) != 0 \
+		or int(execution_debug.get("recoverable_inflight_count", -1)) != 0 \
+		or int(execution_debug.get("pending_settlement_count", -1)) != 0 \
+		or int(execution_debug.get("completed_count", -1)) != 0
+
+	var annotation_service := coordinator.get_node_or_null("CardHistoryPrivateAnnotationService")
+	var annotation_debug: Dictionary = annotation_service.call("debug_snapshot") if annotation_service != null and annotation_service.has_method("debug_snapshot") else {}
+	var history_service := coordinator.get_node_or_null("CardResolutionHistoryRuntimeService")
+	var history_debug: Dictionary = history_service.call("debug_snapshot") if history_service != null and history_service.has_method("debug_snapshot") else {}
+	var private_annotation_leaked := annotation_service == null \
+		or int(annotation_debug.get("viewer_count", -1)) != 0 \
+		or int(annotation_debug.get("revision", -1)) != 0 \
+		or int(annotation_debug.get("notification_count", -1)) != 0 \
+		or history_service == null \
+		or int(history_debug.get("history_count", -1)) != 0 \
+		or int(history_debug.get("lineage_count", -1)) != 0
+	return {
+		"clean": not card_inventory_leaked and not queue_leaked and not transaction_leaked and not private_annotation_leaked,
+		"card_inventory_leaked": card_inventory_leaked,
+		"queue_leaked": queue_leaked,
+		"transaction_leaked": transaction_leaked,
+		"private_annotation_leaked": private_annotation_leaked,
+		"card_inventory": inventory_debug,
+		"queue": queue_debug,
+		"transaction": {"player_ledger_leaked": player_transaction_leaked, "commodity_inventory": commodity_debug, "ai_cash_port": ai_cash_debug, "execution": execution_debug},
+		"private_annotations": {"annotations": annotation_debug, "history": history_debug},
+	}
+
+
+func _session_start_failure(
+	case_id: String,
+	request_id: String,
+	reason_code: String,
+	failing_stage: String,
+	trace: Array,
+	details: Dictionary = {}
+) -> Dictionary:
+	_session_start_failure_count += 1
+	if _runtime_main != null and is_instance_valid(_runtime_main):
+		_hide_runtime_canvas_layers()
+		_runtime_main.set_process(false)
+		_runtime_main.process_mode = Node.PROCESS_MODE_DISABLED
+	var result := {
+		"ok": false,
+		"case_id": case_id,
+		"request_id": request_id,
+		"reason_code": reason_code,
+		"failing_stage": failing_stage,
+		"trace": trace.duplicate(),
+		"details": details.duplicate(true),
+	}
+	push_error("CardInventoryRuntimeCharacterizationBench session start failed: %s" % JSON.stringify(result))
+	return result
+
+
+func _session_start_failure_record(case_id: String, session_start: Dictionary) -> Dictionary:
+	var is_cutover := cutover_cases().has(case_id)
+	var record := _record(case_id, "SessionStartTransactionCoordinator.start_session", "session_start_failure", {}, {}, {}, {}, {
+		"phase": "cutover" if is_cutover else "characterization",
+		"observed": false,
+		"contract_aligned": false,
+		"cutover_passed": false,
+		"risk": "case was not executed because the authoritative session-start transaction failed closed",
+		"notes": "session start failed at %s (%s)" % [str(session_start.get("failing_stage", "unknown")), str(session_start.get("reason_code", "session_start_failed"))],
+	})
+	record["session_start"] = session_start.duplicate(true)
+	return record
 
 
 func _hide_runtime_canvas_layers() -> void:
