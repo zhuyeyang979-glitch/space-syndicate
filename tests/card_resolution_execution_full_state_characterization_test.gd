@@ -3,6 +3,7 @@ extends SceneTree
 const FIXTURE := preload("res://tests/fixtures/card_resolution_execution_save_full_state_fixture.gd")
 const INSPECTOR := preload("res://scripts/tools/card_resolution_execution_full_state_inspector_v1.gd")
 const WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
+const SAVE_CODEC_V4 := preload("res://scripts/runtime/card_resolution_execution_save_wire_codec_v4.gd")
 const EVIDENCE_PATH := "res://reports/handoffs/alpha04c_card_resolution_execution_save_v4_pre_edit_characterization.json"
 const BASELINE_SHA := "4c3787d16a7488d314bcaf50104cd361136d32f5"
 const EXPECTED_TRANSITION_FLOAT_PATHS := [
@@ -28,7 +29,9 @@ func _run() -> void:
 	var empty_fixture := FIXTURE.create(self)
 	var empty_owner := empty_fixture.get("execution") as CardResolutionExecutionRuntimeService
 	var empty_save := empty_owner.to_save_data()
-	if int(empty_save.get("schema_version", -1)) == 4:
+	var empty_v4_decode := SAVE_CODEC_V4.decode_save_state(empty_save)
+	if bool(empty_v4_decode.get("ok", false)) \
+			and int((empty_v4_decode.get("value") as Dictionary).get("schema_version", -1)) == 4:
 		FIXTURE.cleanup(empty_fixture)
 		await process_frame
 		await _run_v4_regression()
@@ -141,9 +144,12 @@ func _run_v4_regression() -> void:
 	var owner := fixture.get("execution") as CardResolutionExecutionRuntimeService
 	var preflight := owner.preflight_save_data(save)
 	var wire_report := INSPECTOR.inspect(save)
+	var decoded := SAVE_CODEC_V4.decode_save_state(save)
 	_expect(bool(preflight.get("accepted", false)), "full-state Execution Save v4 passes strict preflight")
 	_expect(WIRE.is_closed_data(save) and int(wire_report.get("non_closed_leaf_count", -1)) == 0, "full-state Execution Save v4 has zero non-closed leaves")
-	_expect(int(save.get("schema_version", -1)) == 4 and int(save.get("execution_wire_version", -1)) == 1, "v4 schema and Execution wire versions are explicit")
+	_expect(bool(decoded.get("ok", false)) \
+		and int((decoded.get("value") as Dictionary).get("schema_version", -1)) == 4 \
+		and int((decoded.get("value") as Dictionary).get("execution_wire_version", -1)) == 1, "v4 schema and Execution wire versions are explicit")
 	FIXTURE.cleanup(fixture)
 	await process_frame
 	print("CARD_RESOLUTION_EXECUTION_FULL_STATE_CHARACTERIZATION_TEST|status=%s|checks=%d|failures=%d|v4_non_closed=%d" % [

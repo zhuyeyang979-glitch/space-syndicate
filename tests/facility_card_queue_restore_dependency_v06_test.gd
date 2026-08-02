@@ -1,5 +1,7 @@
 extends SceneTree
 
+const EXECUTION_SAVE_CODEC := preload("res://scripts/runtime/card_resolution_execution_save_wire_codec_v4.gd")
+
 const RULESET := preload("res://resources/rules/space_syndicate_ruleset_v06.tres")
 const QUEUE_SCENE := preload("res://scenes/runtime/CardResolutionQueueRuntimeService.tscn")
 const INFRASTRUCTURE_SCENE := preload("res://scenes/runtime/RegionInfrastructureRuntimeController.tscn")
@@ -390,14 +392,15 @@ func _post_effect_transaction(
 
 
 func _install_inflight(case_fixture: Dictionary, transaction: Dictionary) -> void:
-	var execution := (case_fixture.get("all_states") as Dictionary).get("card_resolution_execution") as Dictionary
+	var execution := _execution_runtime_state(case_fixture)
 	execution["inflight_resolution_ids"] = [int(transaction.get("resolution_id", -1))]
 	execution["inflight_execution_transactions"] = [transaction.duplicate(true)]
 	execution["pending_settlements"] = []
+	_store_execution_runtime_state(case_fixture, execution)
 
 
 func _install_pending_settlement(case_fixture: Dictionary, transaction: Dictionary) -> void:
-	var execution := (case_fixture.get("all_states") as Dictionary).get("card_resolution_execution") as Dictionary
+	var execution := _execution_runtime_state(case_fixture)
 	execution["completed_resolution_ids"] = [int(transaction.get("resolution_id", -1))]
 	execution["inflight_resolution_ids"] = []
 	execution["inflight_execution_transactions"] = []
@@ -407,6 +410,21 @@ func _install_pending_settlement(case_fixture: Dictionary, transaction: Dictiona
 		"transaction": transaction.duplicate(true),
 		"finalized": {"completed": true},
 	}]
+	_store_execution_runtime_state(case_fixture, execution)
+
+
+func _execution_runtime_state(case_fixture: Dictionary) -> Dictionary:
+	var all_states := case_fixture.get("all_states") as Dictionary
+	var decoded := EXECUTION_SAVE_CODEC.decode_save_state(all_states.get("card_resolution_execution") as Dictionary)
+	return (decoded.get("value", {}) as Dictionary).duplicate(true) \
+			if bool(decoded.get("ok", false)) and decoded.get("value") is Dictionary else {}
+
+
+func _store_execution_runtime_state(case_fixture: Dictionary, runtime_state: Dictionary) -> void:
+	var encoded := EXECUTION_SAVE_CODEC.encode_save_state(runtime_state)
+	if bool(encoded.get("ok", false)) and encoded.get("value") is Dictionary:
+		(case_fixture.get("all_states") as Dictionary)["card_resolution_execution"] = \
+			(encoded.get("value") as Dictionary).duplicate(true)
 
 
 func _resign_forged_post_effect_owner(all_states: Dictionary, binding: Dictionary) -> void:
@@ -681,12 +699,17 @@ func _fixture() -> Dictionary:
 		},
 		"player_mana": mana.to_save_data(),
 		"region_infrastructure": infrastructure.to_save_data(),
-		"card_resolution_execution": {
+		"card_resolution_execution": (EXECUTION_SAVE_CODEC.encode_save_state({
+			"schema_version": 4,
+			"execution_wire_version": 1,
+			"ruleset_id": "v0.6",
+			"transaction_sequence": 0,
 			"completed_resolution_ids": [],
 			"inflight_resolution_ids": [],
 			"inflight_execution_transactions": [],
 			"pending_settlements": [],
-		},
+			"transition_controller": {},
+		}).get("value", {}) as Dictionary).duplicate(true),
 		"card_resolution_history": {"history": [], "appended_resolution_ids": []},
 	}
 	return {
