@@ -15,11 +15,15 @@ func _init() -> void:
 		_expect(first != null, "canonical script loads: %s" % path)
 		if first == null:
 			continue
+		var live_instance = first.new()
+		_expect(live_instance != null, "canonical script creates a live instance: %s" % path)
 		var source := FileAccess.get_file_as_string(path)
 		first.source_code = source
-		_expect(first.reload() == OK, "canonical script reloads: %s" % path)
+		_expect(first.reload(true) == OK, "canonical script reloads with live state: %s" % path)
 		var second := ResourceLoader.load(path, "GDScript", ResourceLoader.CACHE_MODE_REUSE) as GDScript
 		_expect(second == first, "ResourceCache returns one script instance: %s" % path)
+		if live_instance is Node:
+			live_instance.free()
 
 	print("MCP_VALIDATE_SCRIPT_CACHE_TESTS|passed=%d|total=%d" % [
 		_checks - _failures.size(),
