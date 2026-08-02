@@ -35,6 +35,8 @@ func _init() -> void:
 	_expect(not refresh_block.contains("resource_filesystem.scan()"), "legacy refresh helper delegates to state owner")
 	_expect(execute_block.contains("resource_filesystem.scan()"), "single execution function owns EditorFileSystem.scan")
 	_expect(execute_block.contains("_filesystem_execution_active = true"), "scan execution raises the nested-frame guard")
+	_expect(core_source.contains("func _publish_filesystem_readiness("), "state owner publishes out-of-band initial readiness")
+	_expect(core_source.contains("FunplayMcpFilesystemReadinessV1"), "readiness sentinel has a typed schema")
 
 	var plugin_source := _read("res://addons/funplay_mcp/plugin.gd")
 	var process_block := _function_block(plugin_source, "func _process(")
@@ -64,6 +66,12 @@ func _init() -> void:
 	_expect(launcher_source.contains('"opengl3"'), "launcher defaults compatibility validation to native OpenGL")
 	_expect(launcher_source.contains("StartupTimeoutSeconds = 300"), "launcher uses a bounded full-project startup timeout")
 	_expect(launcher_source.contains("active-session.json"), "launcher isolates and records one session instance")
+	_expect(launcher_source.contains("funplay_mcp_filesystem_readiness.json"), "launcher watches the isolated readiness sentinel")
+	_expect(
+		launcher_source.find("initial_scan_completed") < launcher_source.find("Invoke-RestMethod"),
+		"launcher sends no HTTP request before out-of-band initial readiness"
+	)
+	_expect(launcher_source.contains("http_request_count_before_readiness = 0"), "connection evidence attests zero pre-readiness HTTP requests")
 
 	var invoke_source := _read("res://tools/invoke_role_godot_mcp.ps1")
 	_expect(invoke_source.contains('[guid]::NewGuid().ToString("N")'), "wrapper assigns unique JSON-RPC IDs")

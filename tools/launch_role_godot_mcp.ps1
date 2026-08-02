@@ -93,6 +93,7 @@ $projectNameMatch = [regex]::Match($projectText, '(?m)^config/name="([^"]+)"')
 $projectName = if ($projectNameMatch.Success) { $projectNameMatch.Groups[1].Value } else { "SpaceSyndicate" }
 $settingsDirectory = Join-Path $roamingRoot ("Godot\app_userdata\{0}" -f $projectName)
 [System.IO.Directory]::CreateDirectory($settingsDirectory) | Out-Null
+$filesystemReadinessPath = Join-Path $settingsDirectory "funplay_mcp_filesystem_readiness.json"
 $settingsText = @"
 [server]
 
@@ -155,13 +156,8 @@ try {
     }
     Write-McpUtf8File -Path $pidPath -Text ([string]$process.Id)
 
-    $headers = @{
-        "X-Funplay-MCP-Token" = $token
-        "MCP-Protocol-Version" = "2025-11-25"
-    }
     $deadline = [DateTimeOffset]::Now.AddSeconds($StartupTimeoutSeconds)
-    $projectInfo = $null
-    $filesystemStatus = $null
+    $filesystemReadiness = $null
     $endpointObserved = $false
     while ([DateTimeOffset]::Now -lt $deadline) {
         $process.Refresh()
@@ -178,6 +174,49 @@ try {
             }
         }
 
+        if (Test-Path -LiteralPath $filesystemReadinessPath) {
+            try {
+                $candidateReadiness = Get-Content -Raw -LiteralPath $filesystemReadinessPath | ConvertFrom-Json
+                if ([int]$candidateReadiness.editor_pid -ne $process.Id) {
+                    throw "mcp_readiness_editor_pid_mismatch|expected_pid=$($process.Id)|actual_pid=$($candidateReadiness.editor_pid)"
+                }
+                $filesystemReadiness = $candidateReadiness
+                if ([string]$filesystemReadiness.state -eq "failed") {
+                    throw "mcp_initial_scan_failed|path=$filesystemReadinessPath"
+                }
+                if ([bool]$filesystemReadiness.initial_scan_completed -and [string]$filesystemReadiness.state -eq "ready") {
+                    break
+                }
+            } catch {
+                if ($_.Exception.Message -like "mcp_*_mismatch*" -or $_.Exception.Message -like "mcp_initial_scan_failed*") {
+                    throw
+                }
+                $filesystemReadiness = $null
+            }
+        }
+        Start-Sleep -Milliseconds 250
+    }
+
+    if ($null -eq $filesystemReadiness -or -not [bool]$filesystemReadiness.initial_scan_completed) {
+        throw "initial_scan_timeout|pid=$($process.Id)|endpoint=$endpoint|readiness=$filesystemReadinessPath|log=$logPath"
+    }
+    if (-not $endpointObserved) {
+        throw "mcp_endpoint_not_ready_after_initial_scan|pid=$($process.Id)|endpoint=$endpoint|log=$logPath"
+    }
+
+    $headers = @{
+        "X-Funplay-MCP-Token" = $token
+        "MCP-Protocol-Version" = "2025-11-25"
+    }
+    $projectInfo = $null
+    $filesystemStatus = $null
+    $postReadyDeadline = [DateTimeOffset]::Now.AddSeconds(30)
+    while ([DateTimeOffset]::Now -lt $postReadyDeadline) {
+        $process.Refresh()
+        if ($process.HasExited) {
+            $native = Get-McpNativeExitEvidence -LogPath $logPath -ExitCode $process.ExitCode
+            throw "editor_process_exited_after_ready|exit_code=$($native.exit_code)|signal=$($native.signal)|log=$logPath"
+        }
         try {
             $body = @{
                 jsonrpc = "2.0"
@@ -216,14 +255,7 @@ try {
     }
 
     if ($null -eq $projectInfo) {
-        $endpointOwnerAtTimeout = Get-McpEndpointOwnerPid -Port $Port
-        $reason = if ($endpointObserved -and $endpointOwnerAtTimeout -eq 0) {
-            "mcp_endpoint_died_before_ready"
-        } elseif ($endpointObserved) {
-            "mcp_endpoint_unresponsive_before_ready"
-        } else {
-            "mcp_endpoint_not_ready_timeout"
-        }
+        $reason = if ((Get-McpEndpointOwnerPid -Port $Port) -eq 0) { "mcp_endpoint_died_after_ready" } else { "mcp_endpoint_unresponsive_after_ready" }
         throw "$reason|pid=$($process.Id)|endpoint=$endpoint|log=$logPath"
     }
     if ($null -eq $filesystemStatus -or -not [bool]$filesystemStatus.initial_scan_completed) {
@@ -264,6 +296,9 @@ try {
         filesystem_state = [string]$filesystemStatus.state
         filesystem_generation = [int]$filesystemStatus.filesystem_generation
         filesystem_state_writer_count = [int]$filesystemStatus.filesystem_state_writer_count
+        readiness_file_path = $filesystemReadinessPath
+        pre_http_readiness_green = $true
+        http_request_count_before_readiness = 0
         launched_at = [DateTimeOffset]::Now.ToString("o")
     }
     Write-McpUtf8File -Path $connectionPath -Text ($connection | ConvertTo-Json -Depth 8)

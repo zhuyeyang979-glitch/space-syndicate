@@ -3,6 +3,7 @@ extends RefCounted
 
 const FunplayProjectSkillManager = preload("res://addons/funplay_mcp/core/funplay_project_skill_manager.gd")
 const FunplayFilesystemReloadState = preload("res://addons/funplay_mcp/core/funplay_filesystem_reload_state.gd")
+const FILESYSTEM_READINESS_PATH := "user://funplay_mcp_filesystem_readiness.json"
 
 static var _filesystem_state_writer_count := 0
 
@@ -204,6 +205,7 @@ var _filesystem_execution_active := false
 var _filesystem_callback_active := false
 var _internal_filesystem_operation_sequence := 0
 var _filesystem_writer_registered := false
+var _filesystem_readiness_fingerprint := ""
 
 
 func _init(plugin, settings) -> void:
@@ -227,6 +229,7 @@ func teardown() -> void:
 	_disconnect_filesystem_signal()
 	if _filesystem_reload_state != null:
 		_filesystem_reload_state.complete_stopping(Time.get_ticks_msec())
+		_publish_filesystem_readiness(_filesystem_reload_state.get_status())
 	if _filesystem_writer_registered:
 		_filesystem_state_writer_count = maxi(0, _filesystem_state_writer_count - 1)
 		_filesystem_writer_registered = false
@@ -361,6 +364,7 @@ func filesystem_scan_status(arguments: Dictionary) -> String:
 	status["filesystem_state_writer_count"] = _filesystem_state_writer_count
 	status["filesystem_callback_active"] = _filesystem_callback_active
 	status["filesystem_execution_active"] = _filesystem_execution_active
+	status["readiness_file_path"] = ProjectSettings.globalize_path(FILESYSTEM_READINESS_PATH)
 	return _render_variant(status)
 
 
@@ -5519,25 +5523,64 @@ func _sync_filesystem_state(completion_signal: bool = false) -> Dictionary:
 	if _filesystem_reload_state == null:
 		return {}
 	var resource_filesystem = _resource_filesystem()
+	var status: Dictionary
 	if resource_filesystem == null:
-		return _filesystem_reload_state.observe_editor(
+		status = _filesystem_reload_state.observe_editor(
 			false,
 			false,
 			false,
 			Time.get_ticks_msec(),
 			completion_signal
 		)
-	var initial_snapshot_ready: bool = (
-		resource_filesystem.get_filesystem() != null
-		and not resource_filesystem.is_importing()
-	)
-	return _filesystem_reload_state.observe_editor(
-		resource_filesystem.is_scanning(),
-		initial_snapshot_ready,
-		true,
-		Time.get_ticks_msec(),
-		completion_signal
-	)
+	else:
+		var initial_snapshot_ready: bool = (
+			resource_filesystem.get_filesystem() != null
+			and not resource_filesystem.is_importing()
+		)
+		status = _filesystem_reload_state.observe_editor(
+			resource_filesystem.is_scanning(),
+			initial_snapshot_ready,
+			true,
+			Time.get_ticks_msec(),
+			completion_signal
+		)
+	_publish_filesystem_readiness(status)
+	return status
+
+
+func _publish_filesystem_readiness(status: Dictionary) -> void:
+	var payload := {
+		"schema": "FunplayMcpFilesystemReadinessV1",
+		"state": str(status.get("state", "cold")),
+		"filesystem_generation": int(status.get("filesystem_generation", 0)),
+		"initial_scan_started": bool(status.get("initial_scan_started", false)),
+		"initial_scan_completed": bool(status.get("initial_scan_completed", false)),
+		"initial_scan_start_count": int(status.get("initial_scan_start_count", 0)),
+		"initial_scan_completion_count": int(status.get("initial_scan_completion_count", 0)),
+		"reload_pending": bool(status.get("reload_pending", false)),
+		"reload_running": bool(status.get("reload_running", false)),
+		"last_error": status.get("last_error", {}),
+		"filesystem_state_writer_count": _filesystem_state_writer_count,
+		"editor_pid": OS.get_process_id(),
+		"updated_at_msec": Time.get_ticks_msec(),
+	}
+	var fingerprint_payload: Dictionary = payload.duplicate(true)
+	fingerprint_payload.erase("updated_at_msec")
+	var fingerprint := JSON.stringify(fingerprint_payload)
+	if fingerprint == _filesystem_readiness_fingerprint:
+		return
+
+	var target_path := ProjectSettings.globalize_path(FILESYSTEM_READINESS_PATH)
+	var temporary_path := "%s.%d.tmp" % [target_path, OS.get_process_id()]
+	var file := FileAccess.open(temporary_path, FileAccess.WRITE)
+	if file == null:
+		return
+	file.store_string(JSON.stringify(payload, "\t") + "\n")
+	file.close()
+	if FileAccess.file_exists(target_path):
+		DirAccess.remove_absolute(target_path)
+	if DirAccess.rename_absolute(temporary_path, target_path) == OK:
+		_filesystem_readiness_fingerprint = fingerprint
 
 
 func _execute_filesystem_reload(operation_id: String) -> void:
