@@ -1,4 +1,4 @@
-extends SceneTree
+extends Node
 
 const MAIN_SCENE := preload("res://scenes/main.tscn")
 const BenchScript := preload("res://scripts/tools/card_inventory_runtime_characterization_bench.gd")
@@ -11,7 +11,7 @@ var _checks := 0
 var _failures: Array[String] = []
 
 
-func _init() -> void:
+func _ready() -> void:
 	call_deferred("_run")
 
 
@@ -55,8 +55,8 @@ func _test_source_contract() -> void:
 func _test_forty_session_transactions() -> void:
 	var main := MAIN_SCENE.instantiate()
 	main.process_mode = Node.PROCESS_MODE_DISABLED
-	root.add_child(main)
-	await process_frame
+	get_tree().root.add_child(main)
+	await get_tree().process_frame
 	var coordinator := main.get_node_or_null(COORDINATOR_PATH) as GameRuntimeCoordinator
 	var draft := main.get_node_or_null("RuntimeServices/NewGameSetupDraftService") as NewGameSetupDraftService
 	var transaction := main.get_node_or_null("RuntimeServices/SessionStartTransactionCoordinator") as SessionStartTransactionCoordinator
@@ -69,7 +69,7 @@ func _test_forty_session_transactions() -> void:
 	if coordinator == null or draft == null or transaction == null or session == null \
 			or lifecycle == null or runtime_loop == null or world == null or rng == null:
 		main.queue_free()
-		await process_frame
+		await get_tree().process_frame
 		return
 
 	var request_ids: Dictionary = {}
@@ -145,7 +145,7 @@ func _test_forty_session_transactions() -> void:
 	_expect(world.to_save_data() == world_before and rng.capture_plan_checkpoint() == rng_before and session.capture_new_session_checkpoint() == session_before, "failed transaction preserves the prior World, RNG, and GameSession state")
 	_expect(not bool(runtime_loop.debug_snapshot().get("session_start_barrier_held", true)), "failed transaction releases the RuntimeLoop barrier")
 	main.queue_free()
-	await process_frame
+	await get_tree().process_frame
 
 
 func _isolation_snapshot(coordinator: GameRuntimeCoordinator, world: WorldSessionState) -> Dictionary:
@@ -237,4 +237,4 @@ func _finish() -> void:
 	print("CARD_INVENTORY_BENCH_SESSION_START_TRANSACTION_CONTRACT_TEST|status=%s|checks=%d|failures=%d" % ["PASS" if _failures.is_empty() else "FAIL", _checks, _failures.size()])
 	if not _failures.is_empty():
 		push_error("Card Inventory Bench transaction contract failures:\n- " + "\n- ".join(_failures))
-	quit(0 if _failures.is_empty() else 1)
+	get_tree().quit(0 if _failures.is_empty() else 1)
