@@ -38,6 +38,24 @@ try {
     Assert-Signal -Condition ($signalEvidence.signal -eq 11) -Name "signal_11_is_parsed"
     Assert-Signal -Condition ($signalEvidence.exit_code -eq -1073741819) -Name "native_exit_code_is_preserved"
     Assert-Signal -Condition ($signalEvidence.log_path -eq $signalLog) -Name "last_log_path_is_preserved"
+    Assert-Signal -Condition ($signalEvidence.evidence_source -eq "log") -Name "native_signal_prefers_log_evidence"
+
+    $lockedLog = Join-Path $testRoot "locked-signal11.log"
+    Write-McpUtf8File -Path $lockedLog -Text "Godot log is still locked`n"
+    $exclusiveStream = [System.IO.File]::Open(
+        $lockedLog,
+        [System.IO.FileMode]::Open,
+        [System.IO.FileAccess]::ReadWrite,
+        [System.IO.FileShare]::None
+    )
+    try {
+        $lockedEvidence = Get-McpNativeExitEvidence -LogPath $lockedLog -ExitCode (-1073741819)
+        Assert-Signal -Condition ($lockedEvidence.signal -eq 11) -Name "locked_log_falls_back_to_access_violation_signal"
+        Assert-Signal -Condition ($lockedEvidence.evidence_source -eq "exit_code") -Name "locked_log_records_exit_code_evidence_source"
+        Assert-Lifecycle -Condition (-not [string]::IsNullOrWhiteSpace($lockedEvidence.log_read_error)) -Name "locked_log_read_failure_is_preserved"
+    } finally {
+        $exclusiveStream.Dispose()
+    }
 
     $normalLog = Join-Path $testRoot "normal.log"
     Write-McpUtf8File -Path $normalLog -Text "Godot exited normally`n"

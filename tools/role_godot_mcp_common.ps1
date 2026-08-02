@@ -115,15 +115,44 @@ function Get-McpNativeExitEvidence {
     )
 
     $logText = ""
+    $logReadError = ""
     if ($LogPath -ne "" -and (Test-Path -LiteralPath $LogPath)) {
-        $logText = [System.IO.File]::ReadAllText($LogPath)
+        $stream = $null
+        $reader = $null
+        try {
+            $share = [System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete
+            $stream = [System.IO.File]::Open(
+                $LogPath,
+                [System.IO.FileMode]::Open,
+                [System.IO.FileAccess]::Read,
+                $share
+            )
+            $reader = [System.IO.StreamReader]::new($stream, [System.Text.Encoding]::UTF8, $true)
+            $logText = $reader.ReadToEnd()
+        } catch {
+            $logReadError = $_.Exception.Message
+        } finally {
+            if ($null -ne $reader) {
+                $reader.Dispose()
+            } elseif ($null -ne $stream) {
+                $stream.Dispose()
+            }
+        }
     }
     $signalMatch = [regex]::Match($logText, 'Program crashed with signal\s+(\d+)')
-    $signal = if ($signalMatch.Success) { [int]$signalMatch.Groups[1].Value } else { 0 }
+    $signal = if ($signalMatch.Success) {
+        [int]$signalMatch.Groups[1].Value
+    } elseif ($ExitCode -eq -1073741819) {
+        11
+    } else {
+        0
+    }
     return [ordered]@{
         exit_code = $ExitCode
         signal = $signal
         log_path = $LogPath
+        log_read_error = $logReadError
+        evidence_source = if ($signalMatch.Success) { "log" } elseif ($signal -ne 0) { "exit_code" } else { "none" }
     }
 }
 

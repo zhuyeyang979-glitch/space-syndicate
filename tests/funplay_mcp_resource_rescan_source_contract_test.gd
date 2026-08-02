@@ -82,6 +82,9 @@ func _init() -> void:
 	_expect(launcher_source.contains("[System.IO.Path]::GetTempPath()"), "launcher uses a short machine-local runtime-data base")
 	_expect(launcher_source.contains("MCP_RUNTIME_DATA_PATH_TOO_LONG"), "launcher rejects runtime-data paths without shader-cache headroom")
 	_expect(launcher_source.contains("runtime_data_root = $runtimeDataRoot"), "connection evidence records the isolated runtime-data root")
+	var common_source := _read("res://tools/role_godot_mcp_common.ps1")
+	_expect(common_source.contains("[System.IO.FileShare]::ReadWrite"), "native exit evidence tolerates a writer-held Godot log")
+	_expect(common_source.contains("$ExitCode -eq -1073741819"), "native exit evidence maps Windows access violations to signal 11")
 
 	var invoke_source := _read("res://tools/invoke_role_godot_mcp.ps1")
 	_expect(invoke_source.contains('[guid]::NewGuid().ToString("N")'), "wrapper assigns unique JSON-RPC IDs")
