@@ -2,13 +2,111 @@
 extends Node
 class_name CardResolutionExecutionRuntimeService
 
+const FacilityBinding := preload("res://scripts/cards/v06/queued_facility_card_action_v1.gd")
+const SaveWireCodecV4 := preload("res://scripts/runtime/card_resolution_execution_save_wire_codec_v4.gd")
+const SemanticWireV1 := preload("res://scripts/semantic/semantic_wire_v1.gd")
+
 const STATUS_READY := "ready"
 const STATUS_RETRYABLE := "retryable"
 const STATUS_REJECTED := "rejected"
 const STATUS_ABORTED := "aborted"
-const SAVE_SCHEMA_VERSION := 3
-const TRANSITION_CHECKPOINT_SAVE_SCHEMA_VERSION := 2
-const LEGACY_SAVE_SCHEMA_VERSION := 1
+const SAVE_SCHEMA_VERSION := 4
+const EXECUTION_WIRE_VERSION := 1
+const TRANSITION_STATE_WIRE_VERSION := 2
+const SAVE_RULESET_ID := "v0.6"
+const LEGACY_SAVE_SCHEMA_VERSIONS := [1, 2, 3]
+const LEGACY_CLOSED_WIRE_REASON := "card_resolution_execution_v3_closed_wire_upgrade_requires_backup"
+const RUNTIME_SAVE_FIELDS := [
+	"schema_version",
+	"execution_wire_version",
+	"ruleset_id",
+	"transaction_sequence",
+	"completed_resolution_ids",
+	"inflight_resolution_ids",
+	"inflight_execution_transactions",
+	"pending_settlements",
+	"transition_controller",
+]
+const TRANSITION_STATE_FIELDS := [
+	"transition_state_wire_version",
+	"card_group_cadence_version",
+	"card_group_cadence",
+	"card_group_window_phase",
+	"card_resolution_timer",
+	"card_resolution_counter_window_active",
+	"card_resolution_counter_timer",
+	"card_resolution_simultaneous_timer",
+	"card_resolution_auction_timer",
+	"card_resolution_auction_open",
+	"card_resolution_batch_locked",
+	"card_resolution_batch_reference_player",
+	"card_group_window_sequence",
+	"last_card_resolution_player_index",
+	"card_group_ready_players",
+	"card_transition_command_schema_version",
+	"card_transition_command_revision",
+	"card_transition_command_next_order_index",
+	"card_transition_applied_lineage",
+	"card_transition_last_applied_revision",
+	"card_transition_last_applied_order_index",
+]
+const EXECUTION_TRANSACTION_FIELDS := [
+	"status",
+	"ready",
+	"reason",
+	"execution_id",
+	"resolution_id",
+	"entry_fingerprint",
+	"execution_kind",
+	"current_phase",
+	"next_intent",
+	"completed_intents",
+	"countered",
+	"resolved",
+	"failure_reason",
+	"history_required",
+	"history_appended",
+	"active_released",
+	"effect_dispatched",
+	"commitment_checked",
+	"context_restored",
+	"continuation_kind",
+	"continuation_checked",
+	"aftermath_required",
+	"counter_resolution_id",
+	"counter_card_name",
+	"target_kind",
+	"handler_id",
+	"active_entry",
+	"skill",
+	"selection_context",
+	"monster_wager_decision_count_before",
+	"recovered",
+]
+const NEXT_INTENT_FIELDS := ["intent_type", "execution_id", "resolution_id", "handler_id"]
+const PENDING_SETTLEMENT_FIELDS := ["resolution_id", "execution_id", "transaction", "finalized"]
+const FINALIZED_FIELDS := [
+	"completed",
+	"reason",
+	"resolution_id",
+	"execution_id",
+	"countered",
+	"resolved",
+	"effect_dispatched",
+	"history_appended",
+	"continuation_kind",
+	"settlement_binding",
+	"settlement_binding_fingerprint",
+]
+const SETTLEMENT_BINDING_FIELDS := [
+	"resolution_id",
+	"execution_id",
+	"resolved",
+	"countered",
+	"effect_dispatched",
+	"history_appended",
+	"continuation_kind",
+]
 
 const INTENT_COUNTER_CHECK := "counter_check"
 const INTENT_RELEASE_ACTIVE := "release_active"
@@ -205,14 +303,43 @@ func advance_execution(transaction: Dictionary, receipt: Dictionary) -> Dictiona
 			updated["failure_reason"] = "" if bool(updated["resolved"]) else str(receipt.get("reason", "effect_not_resolved"))
 			updated["continuation_kind"] = str(receipt.get("continuation_kind", "normal"))
 			updated["next_intent"] = _intent_for(updated, INTENT_FINISH_COMMITMENT)
+			if bool(receipt.get("retryable_commitment", false)):
+				updated["status"] = STATUS_RETRYABLE
+				updated["ready"] = false
+				updated["reason"] = "facility_commitment_retry_required"
+				updated["failure_reason"] = str(updated["reason"])
+				_store_inflight_transaction(updated)
+				_last_resolution_id = int(updated.get("resolution_id", -1))
+				_last_phase = "retryable_commitment"
+				_last_reason = str(updated["reason"])
+				_last_summary = _transaction_summary(updated)
+				return updated
 		INTENT_FINISH_COMMITMENT:
-			updated["commitment_checked"] = bool(receipt.get("committed", false))
+			var facility_commitment := _dictionary(updated.get("active_entry", {})).has("v06_facility_action")
+			var commitment_settled := bool(receipt.get("committed", false)) \
+				and (not facility_commitment or bool(receipt.get("commitment_settled", false)))
+			if not commitment_settled:
+				completed.pop_back()
+				updated["completed_intents"] = completed
+				updated["status"] = STATUS_RETRYABLE
+				updated["ready"] = false
+				updated["reason"] = str(receipt.get("reason", "card_commitment_unsettled"))
+				updated["failure_reason"] = str(updated["reason"])
+				updated["next_intent"] = _intent_for(updated, INTENT_FINISH_COMMITMENT)
+				_store_inflight_transaction(updated)
+				_last_resolution_id = int(updated.get("resolution_id", -1))
+				_last_phase = "retryable_commitment"
+				_last_reason = str(updated["reason"])
+				_last_summary = _transaction_summary(updated)
+				return updated
+			updated["commitment_checked"] = true
 			updated["next_intent"] = _intent_for(updated, INTENT_CREATE_AFTERMATH if bool(updated.get("countered", false)) or bool(updated.get("aftermath_required", false)) else INTENT_RESTORE_CONTEXT)
 		INTENT_CREATE_AFTERMATH:
 			var active_entry := _dictionary(updated.get("active_entry", {}))
 			var entry_patch := _dictionary(receipt.get("entry_patch", {}))
 			active_entry.merge(entry_patch, true)
 			updated["active_entry"] = active_entry
+			updated["entry_fingerprint"] = JSON.stringify(active_entry).sha256_text()
 			updated["next_intent"] = _intent_for(updated, INTENT_RESTORE_CONTEXT)
 		INTENT_RESTORE_CONTEXT:
 			updated["context_restored"] = bool(receipt.get("restored", false))
@@ -293,6 +420,48 @@ func pending_settlement(resolution_id: int) -> Dictionary:
 	return _dictionary(_pending_settlements.get(str(resolution_id), {}))
 
 
+func immediate_facility_resolution_snapshot() -> Dictionary:
+	var candidates: Array[Dictionary] = []
+	for pending_variant in _pending_settlements.values():
+		if not (pending_variant is Dictionary):
+			continue
+		var transaction: Dictionary = (pending_variant as Dictionary).get("transaction", {}) \
+			if (pending_variant as Dictionary).get("transaction", {}) is Dictionary else {}
+		var candidate := _facility_execution_candidate(transaction, "pending_settlement")
+		if not candidate.is_empty():
+			candidates.append(candidate)
+	for transaction_variant in _inflight_execution_transactions.values():
+		if not (transaction_variant is Dictionary):
+			continue
+		var candidate := _facility_execution_candidate(transaction_variant as Dictionary, "inflight")
+		if not candidate.is_empty():
+			candidates.append(candidate)
+	if candidates.is_empty():
+		return {"pending": false, "reason_code": "facility_execution_not_pending"}
+	if candidates.size() != 1:
+		return {"pending": false, "reason_code": "facility_execution_collision"}
+	return candidates[0].duplicate(true)
+
+
+func _facility_execution_candidate(transaction: Dictionary, stage_id: String) -> Dictionary:
+	var entry: Dictionary = transaction.get("active_entry", {}) \
+		if transaction.get("active_entry", {}) is Dictionary else {}
+	var binding: Dictionary = entry.get("v06_facility_action", {}) \
+		if entry.get("v06_facility_action", {}) is Dictionary else {}
+	if not bool(FacilityBinding.validation_report(binding).get("valid", false)):
+		return {}
+	var resolution_id := int(transaction.get("resolution_id", -1))
+	if resolution_id <= 0 or resolution_id != int(entry.get("resolution_id", -2)) \
+			or resolution_id != int(binding.get("resolution_id", -3)):
+		return {}
+	return {
+		"pending": true,
+		"reason_code": "facility_execution_pending",
+		"resolution_id": resolution_id,
+		"stage_id": stage_id,
+	}
+
+
 func ensure_pending_settlement(transaction: Dictionary, finalized: Dictionary) -> Dictionary:
 	if not _is_data_only(transaction) or not _is_data_only(finalized):
 		return {"registered": false, "reason": "pending_settlement_not_data"}
@@ -363,7 +532,9 @@ func finalize_execution(transaction: Dictionary) -> Dictionary:
 		return _finalize_rejection(str(transaction.get("failure_reason", transaction.get("reason", "execution_aborted"))), resolution_id)
 	if not _dictionary(transaction.get("next_intent", {})).is_empty():
 		return _finalize_rejection("execution_incomplete", resolution_id)
-	if not bool(transaction.get("active_released", false)) or not bool(transaction.get("history_appended", false)):
+	if not bool(transaction.get("active_released", false)) \
+			or not bool(transaction.get("commitment_checked", false)) \
+			or not bool(transaction.get("history_appended", false)):
 		return _finalize_rejection("execution_incomplete", resolution_id)
 	_completed_resolution_ids[resolution_key] = true
 	_inflight_resolution_ids.erase(resolution_key)
@@ -417,42 +588,80 @@ func resolution_completed(resolution_id: int) -> bool:
 
 
 func to_save_data() -> Dictionary:
-	return {
+	if _transition_checkpoint_owner == null:
+		push_error("Execution Save v4 capture requires its registry-managed Transition checkpoint owner.")
+		return {}
+	var transition_state := {"transition_state_wire_version": TRANSITION_STATE_WIRE_VERSION}
+	transition_state.merge(_transition_checkpoint_owner.to_save_data(), true)
+	var runtime_state := {
 		"schema_version": SAVE_SCHEMA_VERSION,
+		"execution_wire_version": EXECUTION_WIRE_VERSION,
+		"ruleset_id": SAVE_RULESET_ID,
 		"transaction_sequence": _transaction_sequence,
 		"completed_resolution_ids": _sorted_nonnegative_id_keys(_completed_resolution_ids),
 		"inflight_resolution_ids": _sorted_nonnegative_id_keys(_inflight_resolution_ids),
 		"inflight_execution_transactions": _sorted_execution_records(_inflight_execution_transactions),
 		"pending_settlements": _sorted_execution_records(_pending_settlements),
-		"transition_controller": _transition_checkpoint_owner.to_save_data() if _transition_checkpoint_owner != null else {},
+		"transition_controller": transition_state,
 	}
+	var encoded := SaveWireCodecV4.encode_save_state(runtime_state)
+	if not bool(encoded.get("ok", false)) or not (encoded.get("value") is Dictionary) \
+			or not SemanticWireV1.is_closed_data(encoded.get("value")):
+		push_error("Execution Save v4 capture failed: %s" % str(encoded.get("reason_code", "execution_save_v4_encode_failed")))
+		return {}
+	return (encoded.get("value") as Dictionary).duplicate(true)
 
 
 func preflight_save_data(data: Dictionary) -> Dictionary:
-	var normalization := _normalize_save_data(data)
-	if not bool(normalization.get("accepted", false)):
-		return {"accepted": false, "reason": str(normalization.get("reason", "execution_save_invalid"))}
+	if _looks_like_legacy_execution_save(data):
+		return _save_preflight_rejection(LEGACY_CLOSED_WIRE_REASON, true)
+	if not SemanticWireV1.is_closed_data(data):
+		return _save_preflight_rejection("execution_save_v4_not_closed_data")
+	var decoded := SaveWireCodecV4.decode_save_state(data)
+	if not bool(decoded.get("ok", false)) or not (decoded.get("value") is Dictionary):
+		return _save_preflight_rejection(str(decoded.get("reason_code", "execution_save_v4_decode_invalid")))
+	var runtime_state := decoded.get("value") as Dictionary
+	var validation := _validate_runtime_save_v4(runtime_state)
+	if not bool(validation.get("valid", false)):
+		return _save_preflight_rejection(str(validation.get("reason", "execution_save_v4_invalid")))
+	var canonical := SaveWireCodecV4.encode_save_state(runtime_state)
+	if not bool(canonical.get("ok", false)) or not (canonical.get("value") is Dictionary) \
+			or canonical.get("value") != data:
+		return _save_preflight_rejection("execution_save_v4_not_canonical")
 	return {
 		"accepted": true,
 		"reason": "",
-		"normalized_state": (normalization.get("normalized_state", {}) as Dictionary).duplicate(true),
+		"reason_code": "execution_save_v4_valid",
+		"normalized_state": (canonical.get("value") as Dictionary).duplicate(true),
 	}
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
-	var normalization := _normalize_save_data(data)
-	if not bool(normalization.get("accepted", false)):
-		return {"applied": false, "reason": str(normalization.get("reason", "execution_save_invalid"))}
-	var normalized := (normalization.get("normalized_state", {}) as Dictionary).duplicate(true)
-	var completed := _validated_id_dictionary(normalized.get("completed_resolution_ids", []), true)
-	var inflight_transactions := _validated_execution_records(normalized.get("inflight_execution_transactions", []), false)
-	var pending_settlements := _validated_execution_records(normalized.get("pending_settlements", []), true)
-	var restored_sequence := int(normalized.get("transaction_sequence", 0))
-	var transition_checkpoint := (normalized.get("transition_controller", {}) as Dictionary).duplicate(true)
-	if not transition_checkpoint.is_empty():
-		var checkpoint_apply := _transition_checkpoint_owner.apply_save_data(transition_checkpoint)
-		if not bool(checkpoint_apply.get("applied", false)):
-			return {"applied": false, "reason": str(checkpoint_apply.get("reason", "transition_checkpoint_apply_failed"))}
+	var preflight := preflight_save_data(data)
+	if not bool(preflight.get("accepted", false)):
+		return {
+			"applied": false,
+			"reason": str(preflight.get("reason_code", preflight.get("reason", "execution_save_v4_invalid"))),
+			"reason_code": str(preflight.get("reason_code", preflight.get("reason", "execution_save_v4_invalid"))),
+			"requires_backup": bool(preflight.get("requires_backup", false)),
+		}
+	var decoded := SaveWireCodecV4.decode_save_state(preflight.get("normalized_state", {}) as Dictionary)
+	if not bool(decoded.get("ok", false)) or not (decoded.get("value") is Dictionary):
+		return {"applied": false, "reason": "execution_save_v4_decode_invalid", "reason_code": "execution_save_v4_decode_invalid"}
+	var normalized := (decoded.get("value") as Dictionary).duplicate(true)
+	var completed := _validated_id_dictionary(normalized.get("completed_resolution_ids"), true)
+	var inflight_transactions := _validated_execution_records(normalized.get("inflight_execution_transactions"), false)
+	var pending_settlements := _validated_execution_records(normalized.get("pending_settlements"), true)
+	var restored_sequence := int(normalized.get("transaction_sequence"))
+	var transition_state := (normalized.get("transition_controller") as Dictionary).duplicate(true)
+	transition_state.erase("transition_state_wire_version")
+	var transition_apply := _transition_checkpoint_owner.apply_execution_save_transition_state(transition_state)
+	if not bool(transition_apply.get("applied", false)):
+		return {
+			"applied": false,
+			"reason": str(transition_apply.get("reason", "execution_transition_state_apply_failed")),
+			"reason_code": str(transition_apply.get("reason", "execution_transition_state_apply_failed")),
+		}
 	_transaction_sequence = restored_sequence
 	_completed_resolution_ids = (completed.get("values", {}) as Dictionary).duplicate(true)
 	_inflight_execution_transactions = (inflight_transactions.get("values", {}) as Dictionary).duplicate(true)
@@ -468,117 +677,95 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	_last_summary = {}
 	return {
 		"applied": true,
-		"reason": "execution_and_transition_lineage_restored" if not transition_checkpoint.is_empty() else "execution_lineage_restored",
-		"transition_checkpoint_restored": not transition_checkpoint.is_empty(),
+		"reason": "execution_save_v4_restored",
+		"reason_code": "execution_save_v4_restored",
+		"transition_checkpoint_restored": true,
 	}
 
 
-func _normalize_save_data(data: Dictionary) -> Dictionary:
-	var validation := _validate_save_data(data)
-	if not bool(validation.get("valid", false)):
-		return {"accepted": false, "reason": str(validation.get("reason", "execution_save_invalid")), "normalized_state": {}}
-	var completed := _validated_id_dictionary(data.get("completed_resolution_ids", []), true)
-	var inflight_transactions := {"valid": true, "values": {}}
-	var pending_settlements := {"valid": true, "values": {}}
-	# Schema-v1 saves predate transition-command lineage. Their migration must
-	# start from a canonical empty producer checkpoint; inheriting the live
-	# controller would silently claim commands that the save never authored.
-	var normalized_checkpoint: Dictionary = _canonical_empty_transition_checkpoint()
-	if _transition_checkpoint_owner != null and normalized_checkpoint.is_empty():
-		return {
-			"accepted": false,
-			"reason": "canonical_transition_checkpoint_unavailable",
-			"normalized_state": {},
-		}
-	var schema_version := int(validation.get("schema_version", LEGACY_SAVE_SCHEMA_VERSION))
-	if schema_version >= SAVE_SCHEMA_VERSION:
-		inflight_transactions = _validated_execution_records(data.get("inflight_execution_transactions", []), false)
-		pending_settlements = _validated_execution_records(data.get("pending_settlements", []), true)
-	if schema_version >= TRANSITION_CHECKPOINT_SAVE_SCHEMA_VERSION:
-		var checkpoint := (data.get("transition_controller", {}) as Dictionary).duplicate(true)
-		if not checkpoint.is_empty():
-			var checkpoint_normalization := _transition_checkpoint_owner.normalize_transition_checkpoint(checkpoint)
-			if not bool(checkpoint_normalization.get("accepted", false)):
-				return {
-					"accepted": false,
-					"reason": str(checkpoint_normalization.get("reason", "transition_checkpoint_invalid")),
-					"normalized_state": {},
-				}
-			normalized_checkpoint = (checkpoint_normalization.get("normalized_state", {}) as Dictionary).duplicate(true)
-	return {
-		"accepted": true,
-		"reason": "",
-		"normalized_state": {
-			"schema_version": SAVE_SCHEMA_VERSION,
-			"transaction_sequence": int(data.get("transaction_sequence", 0)),
-			"completed_resolution_ids": _sorted_nonnegative_id_keys(completed.get("values", {}) as Dictionary),
-			"inflight_resolution_ids": _sorted_nonnegative_id_keys(inflight_transactions.get("values", {}) as Dictionary),
-			"inflight_execution_transactions": _sorted_execution_records(inflight_transactions.get("values", {}) as Dictionary),
-			"pending_settlements": _sorted_execution_records(pending_settlements.get("values", {}) as Dictionary),
-			"transition_controller": normalized_checkpoint,
-		},
-	}
-
-
-func _canonical_empty_transition_checkpoint() -> Dictionary:
-	if _transition_checkpoint_owner == null:
-		return {}
-	var probe_variant: Variant = _transition_checkpoint_owner.duplicate()
-	if not probe_variant is CardResolutionRuntimeController:
-		return {}
-	var probe := probe_variant as CardResolutionRuntimeController
-	probe.reset_state()
-	var checkpoint := probe.to_save_data()
-	probe.free()
-	var validation := _transition_checkpoint_owner.validate_transition_checkpoint(checkpoint)
-	return checkpoint if bool(validation.get("valid", false)) else {}
-
-
-func _validate_save_data(data: Dictionary) -> Dictionary:
-	var schema_version := int(data.get("schema_version", LEGACY_SAVE_SCHEMA_VERSION))
-	if not [LEGACY_SAVE_SCHEMA_VERSION, TRANSITION_CHECKPOINT_SAVE_SCHEMA_VERSION, SAVE_SCHEMA_VERSION].has(schema_version):
-		return {"valid": false, "reason": "execution_save_schema_unsupported"}
-	var completed := _validated_id_dictionary(data.get("completed_resolution_ids", []), true)
-	var inflight := _validated_id_dictionary(data.get("inflight_resolution_ids", []), false)
+func _validate_runtime_save_v4(data: Dictionary) -> Dictionary:
+	if not _has_exact_keys(data, RUNTIME_SAVE_FIELDS):
+		return {"valid": false, "reason": "execution_save_v4_runtime_shape_invalid"}
+	if not (data.get("schema_version") is int) or int(data.get("schema_version")) != SAVE_SCHEMA_VERSION \
+			or not (data.get("execution_wire_version") is int) or int(data.get("execution_wire_version")) != EXECUTION_WIRE_VERSION \
+			or not (data.get("ruleset_id") is String) or str(data.get("ruleset_id")) != SAVE_RULESET_ID \
+			or not (data.get("transaction_sequence") is int) or int(data.get("transaction_sequence")) < 0:
+		return {"valid": false, "reason": "execution_save_v4_identity_invalid"}
+	var completed := _validated_id_dictionary(data.get("completed_resolution_ids"), true)
+	var inflight := _validated_id_dictionary(data.get("inflight_resolution_ids"), false)
 	if not bool(completed.get("valid", false)) or not bool(inflight.get("valid", false)):
 		return {"valid": false, "reason": "execution_lineage_invalid"}
-	if int(data.get("transaction_sequence", 0)) < 0:
-		return {"valid": false, "reason": "execution_sequence_invalid"}
-	if schema_version < SAVE_SCHEMA_VERSION and not (inflight.get("values", {}) as Dictionary).is_empty():
-		return {"valid": false, "reason": "legacy_inflight_transaction_unrecoverable"}
-	if schema_version >= SAVE_SCHEMA_VERSION:
-		var inflight_transactions := _validated_execution_records(data.get("inflight_execution_transactions", []), false)
-		var pending_settlements := _validated_execution_records(data.get("pending_settlements", []), true)
-		if not bool(inflight_transactions.get("valid", false)):
-			return {"valid": false, "reason": str(inflight_transactions.get("reason", "inflight_transactions_invalid"))}
-		if not bool(pending_settlements.get("valid", false)):
-			return {"valid": false, "reason": str(pending_settlements.get("reason", "pending_settlements_invalid"))}
-		var authored_inflight_ids := _sorted_nonnegative_id_keys(inflight.get("values", {}) as Dictionary)
-		var transaction_ids := _sorted_nonnegative_id_keys(inflight_transactions.get("values", {}) as Dictionary)
-		if authored_inflight_ids != transaction_ids:
-			return {"valid": false, "reason": "inflight_transaction_ids_mismatch"}
-		var completed_values := completed.get("values", {}) as Dictionary
-		for resolution_key_variant in (pending_settlements.get("values", {}) as Dictionary).keys():
-			if not completed_values.has(str(resolution_key_variant)):
-				return {"valid": false, "reason": "pending_settlement_not_finalized"}
-		for record_values in [inflight_transactions.get("values", {}) as Dictionary, pending_settlements.get("values", {}) as Dictionary]:
-			for record_variant in (record_values as Dictionary).values():
-				var record := record_variant as Dictionary
-				var execution_id := int(record.get("execution_id", _dictionary(record.get("transaction", {})).get("execution_id", -1)))
-				if execution_id > int(data.get("transaction_sequence", 0)):
-					return {"valid": false, "reason": "execution_sequence_precedes_record"}
-	if schema_version >= TRANSITION_CHECKPOINT_SAVE_SCHEMA_VERSION:
-		var checkpoint_variant: Variant = data.get("transition_controller", {})
-		if not (checkpoint_variant is Dictionary):
-			return {"valid": false, "reason": "transition_checkpoint_invalid"}
-		var transition_checkpoint := (checkpoint_variant as Dictionary).duplicate(true)
-		if not transition_checkpoint.is_empty():
-			if _transition_checkpoint_owner == null:
-				return {"valid": false, "reason": "transition_checkpoint_owner_missing"}
-			var checkpoint_validation := _transition_checkpoint_owner.validate_transition_checkpoint(transition_checkpoint)
-			if not bool(checkpoint_validation.get("valid", false)):
-				return {"valid": false, "reason": str(checkpoint_validation.get("reason", "transition_checkpoint_invalid"))}
-	return {"valid": true, "reason": "", "schema_version": schema_version}
+	var inflight_transactions := _validated_execution_records(data.get("inflight_execution_transactions"), false)
+	var pending_settlements := _validated_execution_records(data.get("pending_settlements"), true)
+	if not bool(inflight_transactions.get("valid", false)):
+		return {"valid": false, "reason": str(inflight_transactions.get("reason", "inflight_transactions_invalid"))}
+	if not bool(pending_settlements.get("valid", false)):
+		return {"valid": false, "reason": str(pending_settlements.get("reason", "pending_settlements_invalid"))}
+	var authored_inflight_ids := _sorted_nonnegative_id_keys(inflight.get("values", {}) as Dictionary)
+	var transaction_ids := _sorted_nonnegative_id_keys(inflight_transactions.get("values", {}) as Dictionary)
+	if authored_inflight_ids != transaction_ids:
+		return {"valid": false, "reason": "inflight_transaction_ids_mismatch"}
+	var completed_values := completed.get("values", {}) as Dictionary
+	var inflight_values := inflight_transactions.get("values", {}) as Dictionary
+	var pending_values := pending_settlements.get("values", {}) as Dictionary
+	var seen_execution_ids: Dictionary = {}
+	for resolution_key_variant: Variant in inflight_values.keys():
+		var resolution_key := str(resolution_key_variant)
+		if completed_values.has(resolution_key) or pending_values.has(resolution_key):
+			return {"valid": false, "reason": "execution_resolution_lineage_overlap"}
+	for resolution_key_variant: Variant in pending_values.keys():
+		if not completed_values.has(str(resolution_key_variant)):
+			return {"valid": false, "reason": "pending_settlement_not_finalized"}
+	for record_variant: Variant in inflight_values.values():
+		var execution_id := int((record_variant as Dictionary).get("execution_id"))
+		if execution_id > int(data.get("transaction_sequence")):
+			return {"valid": false, "reason": "execution_sequence_precedes_record"}
+		if seen_execution_ids.has(str(execution_id)):
+			return {"valid": false, "reason": "execution_id_duplicate"}
+		seen_execution_ids[str(execution_id)] = true
+	for record_variant: Variant in pending_values.values():
+		var pending_transaction := (record_variant as Dictionary).get("transaction") as Dictionary
+		var pending_execution_id := int(pending_transaction.get("execution_id"))
+		if pending_execution_id > int(data.get("transaction_sequence")):
+			return {"valid": false, "reason": "execution_sequence_precedes_record"}
+		if seen_execution_ids.has(str(pending_execution_id)):
+			return {"valid": false, "reason": "execution_id_duplicate"}
+		seen_execution_ids[str(pending_execution_id)] = true
+	var transition_variant: Variant = data.get("transition_controller")
+	if not (transition_variant is Dictionary):
+		return {"valid": false, "reason": "execution_transition_state_invalid"}
+	var transition_state := (transition_variant as Dictionary).duplicate(true)
+	if not _has_exact_keys(transition_state, TRANSITION_STATE_FIELDS) \
+			or not (transition_state.get("transition_state_wire_version") is int) \
+			or int(transition_state.get("transition_state_wire_version")) != TRANSITION_STATE_WIRE_VERSION:
+		return {"valid": false, "reason": "execution_transition_state_wire_version_invalid"}
+	if _transition_checkpoint_owner == null:
+		return {"valid": false, "reason": "execution_transition_state_owner_missing"}
+	transition_state.erase("transition_state_wire_version")
+	var transition_validation := _transition_checkpoint_owner.validate_execution_save_transition_state(transition_state)
+	if not bool(transition_validation.get("valid", false)):
+		return {"valid": false, "reason": str(transition_validation.get("reason", "execution_transition_state_invalid"))}
+	return {"valid": true, "reason": ""}
+
+
+func _looks_like_legacy_execution_save(data: Dictionary) -> bool:
+	var schema_variant: Variant = data.get("schema_version")
+	if schema_variant is int and LEGACY_SAVE_SCHEMA_VERSIONS.has(int(schema_variant)):
+		return true
+	return not data.has("execution_wire_version") \
+			and data.has("transaction_sequence") \
+			and data.has("completed_resolution_ids") \
+			and data.has("inflight_resolution_ids")
+
+
+func _save_preflight_rejection(reason_code: String, requires_backup := false) -> Dictionary:
+	return {
+		"accepted": false,
+		"reason": reason_code,
+		"reason_code": reason_code,
+		"requires_backup": requires_backup,
+		"normalized_state": {},
+	}
 
 
 func debug_snapshot() -> Dictionary:
@@ -649,6 +836,8 @@ func _validated_execution_records(value: Variant, pending_settlement_records: bo
 		if not record_variant is Dictionary or not _is_data_only(record_variant):
 			return {"valid": false, "reason": "execution_record_not_data", "values": {}}
 		var authored_record := record_variant as Dictionary
+		if pending_settlement_records and not _has_exact_keys(authored_record, PENDING_SETTLEMENT_FIELDS):
+			return {"valid": false, "reason": "pending_settlement_shape_invalid", "values": {}}
 		var transaction := _dictionary(authored_record.get("transaction", {})) if pending_settlement_records else authored_record.duplicate(true)
 		var transaction_validation := _validate_execution_transaction(transaction, not pending_settlement_records)
 		if not bool(transaction_validation.get("valid", false)):
@@ -663,13 +852,37 @@ func _validated_execution_records(value: Variant, pending_settlement_records: bo
 		if pending_settlement_records:
 			var finalized := _dictionary(authored_record.get("finalized", {}))
 			var expected_binding := _settlement_binding(transaction, finalized)
-			if not bool(finalized.get("completed", false)) \
+			if not _has_exact_keys(finalized, FINALIZED_FIELDS) \
+					or not _has_exact_keys(_dictionary(finalized.get("settlement_binding", {})), SETTLEMENT_BINDING_FIELDS) \
+					or not (authored_record.get("resolution_id") is int) \
+					or not (authored_record.get("execution_id") is int) \
+					or not (finalized.get("completed") is bool) \
+					or not bool(finalized.get("completed")) \
+					or not (finalized.get("reason") is String) \
+					or not (finalized.get("resolution_id") is int) \
+					or not (finalized.get("execution_id") is int) \
+					or not (finalized.get("countered") is bool) \
+					or not (finalized.get("resolved") is bool) \
+					or not (finalized.get("effect_dispatched") is bool) \
+					or not (finalized.get("history_appended") is bool) \
+					or not (finalized.get("continuation_kind") is String) \
 					or int(finalized.get("resolution_id", -1)) != resolution_id \
 					or int(authored_record.get("resolution_id", -1)) != resolution_id \
 					or int(authored_record.get("execution_id", -1)) != int(transaction.get("execution_id", -1)) \
+					or not (finalized.get("settlement_binding_fingerprint") is String) \
+					or not SemanticWireV1.is_fingerprint(finalized.get("settlement_binding_fingerprint")) \
 					or not _finalized_matches_settlement_binding(finalized, expected_binding) \
 					or _dictionary(finalized.get("settlement_binding", {})) != expected_binding \
 					or str(finalized.get("settlement_binding_fingerprint", "")) != _settlement_binding_fingerprint(expected_binding):
+				return {"valid": false, "reason": "pending_settlement_binding_invalid", "values": {}}
+			var settlement_binding := finalized.get("settlement_binding") as Dictionary
+			for settlement_integer_field in ["resolution_id", "execution_id"]:
+				if not (settlement_binding.get(settlement_integer_field) is int):
+					return {"valid": false, "reason": "pending_settlement_binding_invalid", "values": {}}
+			for settlement_boolean_field in ["resolved", "countered", "effect_dispatched", "history_appended"]:
+				if not (settlement_binding.get(settlement_boolean_field) is bool):
+					return {"valid": false, "reason": "pending_settlement_binding_invalid", "values": {}}
+			if not (settlement_binding.get("continuation_kind") is String):
 				return {"valid": false, "reason": "pending_settlement_binding_invalid", "values": {}}
 			result[resolution_key] = authored_record.duplicate(true)
 		else:
@@ -678,26 +891,94 @@ func _validated_execution_records(value: Variant, pending_settlement_records: bo
 
 
 func _validate_execution_transaction(transaction: Dictionary, require_pending_intent: bool) -> Dictionary:
-	if transaction.is_empty() or not _is_data_only(transaction):
+	if transaction.is_empty() or not _is_data_only(transaction) \
+			or not _has_exact_keys(transaction, EXECUTION_TRANSACTION_FIELDS):
 		return {"valid": false, "reason": "execution_transaction_not_data"}
+	for string_field in [
+		"status",
+		"reason",
+		"entry_fingerprint",
+		"execution_kind",
+		"current_phase",
+		"failure_reason",
+		"continuation_kind",
+		"counter_card_name",
+		"target_kind",
+		"handler_id",
+	]:
+		if not (transaction.get(string_field) is String):
+			return {"valid": false, "reason": "execution_transaction_string_field_invalid"}
+	for boolean_field in [
+		"ready",
+		"countered",
+		"resolved",
+		"history_required",
+		"history_appended",
+		"active_released",
+		"effect_dispatched",
+		"commitment_checked",
+		"context_restored",
+		"continuation_checked",
+		"aftermath_required",
+		"recovered",
+	]:
+		if not (transaction.get(boolean_field) is bool):
+			return {"valid": false, "reason": "execution_transaction_boolean_field_invalid"}
+	for integer_field in [
+		"execution_id",
+		"resolution_id",
+		"counter_resolution_id",
+		"monster_wager_decision_count_before",
+	]:
+		if not (transaction.get(integer_field) is int):
+			return {"valid": false, "reason": "execution_transaction_integer_field_invalid"}
+	for dictionary_field in ["next_intent", "active_entry", "skill", "selection_context"]:
+		if not (transaction.get(dictionary_field) is Dictionary):
+			return {"valid": false, "reason": "execution_transaction_dictionary_field_invalid"}
 	var resolution_id := int(transaction.get("resolution_id", -1))
 	var execution_id := int(transaction.get("execution_id", -1))
 	if resolution_id < 0 or execution_id <= 0:
 		return {"valid": false, "reason": "execution_transaction_identity_invalid"}
 	var status := str(transaction.get("status", ""))
+	if bool(transaction.get("ready")) != (status == STATUS_READY):
+		return {"valid": false, "reason": "execution_transaction_ready_status_mismatch"}
 	if require_pending_intent and not [STATUS_READY, STATUS_RETRYABLE].has(status):
 		return {"valid": false, "reason": "inflight_transaction_status_invalid"}
 	if not require_pending_intent and (status != STATUS_READY \
 			or not bool(transaction.get("active_released", false)) \
+			or not bool(transaction.get("commitment_checked", false)) \
 			or not bool(transaction.get("history_appended", false))):
 		return {"valid": false, "reason": "finalized_transaction_state_invalid"}
+	var active_entry := transaction.get("active_entry") as Dictionary
+	if active_entry.is_empty() \
+			or not (active_entry.get("resolution_id") is int) \
+			or int(active_entry.get("resolution_id")) != resolution_id \
+			or not SemanticWireV1.is_fingerprint(transaction.get("entry_fingerprint")) \
+			or str(transaction.get("entry_fingerprint")) != JSON.stringify(active_entry).sha256_text():
+		return {"valid": false, "reason": "execution_transaction_entry_fingerprint_invalid"}
+	if active_entry.has("v06_facility_action"):
+		var facility_binding_variant: Variant = active_entry.get("v06_facility_action")
+		if not (facility_binding_variant is Dictionary) \
+				or not bool(FacilityBinding.validation_report(facility_binding_variant as Dictionary).get("valid", false)) \
+				or int((facility_binding_variant as Dictionary).get("resolution_id", -1)) != resolution_id:
+			return {"valid": false, "reason": "execution_transaction_facility_binding_invalid"}
 	var next_intent := _dictionary(transaction.get("next_intent", {}))
 	if require_pending_intent:
 		var intent_type := str(next_intent.get("intent_type", ""))
-		if not SUPPORTED_INTENTS.has(intent_type) \
+		if not _has_exact_keys(next_intent, NEXT_INTENT_FIELDS) \
+				or not (next_intent.get("intent_type") is String) \
+				or not (next_intent.get("execution_id") is int) \
+				or not (next_intent.get("resolution_id") is int) \
+				or not (next_intent.get("handler_id") is String) \
+				or not SUPPORTED_INTENTS.has(intent_type) \
 				or int(next_intent.get("execution_id", -1)) != execution_id \
 				or int(next_intent.get("resolution_id", -1)) != resolution_id:
 			return {"valid": false, "reason": "inflight_next_intent_invalid"}
+		if intent_type == INTENT_DISPATCH_EFFECT:
+			if str(next_intent.get("handler_id")) != str(transaction.get("handler_id")):
+				return {"valid": false, "reason": "inflight_next_intent_handler_invalid"}
+		elif not str(next_intent.get("handler_id")).is_empty():
+			return {"valid": false, "reason": "inflight_next_intent_handler_invalid"}
 	elif not next_intent.is_empty():
 		return {"valid": false, "reason": "finalized_transaction_has_next_intent"}
 	var completed_intents: Variant = transaction.get("completed_intents", [])
@@ -716,6 +997,16 @@ func _validate_execution_transaction(transaction: Dictionary, require_pending_in
 			return {"valid": false, "reason": "completed_intents_out_of_order"}
 		seen_intents[completed_intent] = true
 		previous_rank = completed_rank
+	var current_phase := str(transaction.get("current_phase"))
+	if (completed_intents as Array).is_empty():
+		if current_phase != "planned":
+			return {"valid": false, "reason": "execution_current_phase_invalid"}
+	else:
+		var last_completed_intent := str((completed_intents as Array).back())
+		var next_phase := str(next_intent.get("intent_type", ""))
+		if current_phase != last_completed_intent \
+				and not (status == STATUS_RETRYABLE and current_phase == next_phase):
+			return {"valid": false, "reason": "execution_current_phase_invalid"}
 	if require_pending_intent:
 		var next_intent_type := str(next_intent.get("intent_type", ""))
 		var next_rank := _intent_order_rank(next_intent_type)
@@ -733,14 +1024,23 @@ func _validate_execution_transaction(transaction: Dictionary, require_pending_in
 			return {"valid": false, "reason": "continuation_intent_missing_history"}
 		if next_intent_type == INTENT_PROMOTE_NEXT_BATCH and not seen_intents.has(INTENT_FINISH_BATCH):
 			return {"valid": false, "reason": "promotion_intent_missing_batch_finish"}
-		if status == STATUS_RETRYABLE and next_intent_type != INTENT_APPEND_HISTORY:
+		if status == STATUS_RETRYABLE and next_intent_type not in [
+			INTENT_FINISH_COMMITMENT,
+			INTENT_APPEND_HISTORY,
+		]:
 			return {"valid": false, "reason": "retryable_intent_invalid"}
+		if status == STATUS_RETRYABLE \
+				and next_intent_type == INTENT_FINISH_COMMITMENT \
+				and bool(transaction.get("commitment_checked", false)):
+			return {"valid": false, "reason": "retryable_commitment_already_checked"}
 	if bool(transaction.get("active_released", false)) != seen_intents.has(INTENT_RELEASE_ACTIVE):
 		return {"valid": false, "reason": "active_release_flag_inconsistent"}
 	if bool(transaction.get("history_appended", false)) != seen_intents.has(INTENT_APPEND_HISTORY):
 		return {"valid": false, "reason": "history_flag_inconsistent"}
 	if (bool(transaction.get("effect_dispatched", false)) or bool(transaction.get("resolved", false))) and not seen_intents.has(INTENT_DISPATCH_EFFECT):
 		return {"valid": false, "reason": "effect_flag_inconsistent"}
+	if bool(transaction.get("resolved", false)) and not bool(transaction.get("effect_dispatched", false)):
+		return {"valid": false, "reason": "resolved_without_effect_dispatch"}
 	if bool(transaction.get("countered", false)) and not seen_intents.has(INTENT_COUNTER_CHECK):
 		return {"valid": false, "reason": "counter_flag_inconsistent"}
 	if bool(transaction.get("commitment_checked", false)) and not seen_intents.has(INTENT_FINISH_COMMITMENT):
@@ -909,6 +1209,15 @@ func _finalize_rejection(reason: String, resolution_id: int = -1) -> Dictionary:
 
 func _dictionary(value: Variant) -> Dictionary:
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func _has_exact_keys(value: Dictionary, expected: Array) -> bool:
+	if value.size() != expected.size():
+		return false
+	for key_variant: Variant in expected:
+		if not value.has(str(key_variant)):
+			return false
+	return true
 
 
 func _is_data_only(value: Variant) -> bool:

@@ -28,13 +28,13 @@ func _run() -> void:
 	_expect(bool(result.get("passed", false)), "save owner registry transaction and privacy checks pass: %s" % JSON.stringify(result.get("failures", [])))
 	_expect(int(result.get("checks", 0)) >= 20, "save owner registry Bench executes the complete contract matrix")
 	var evidence: Dictionary = result.get("evidence", {}) if result.get("evidence", {}) is Dictionary else {}
-	_expect(int(evidence.get("production_required_sections", 0)) == 19 and int(evidence.get("production_transactional_sections", 0)) == 12 and int(evidence.get("production_unsupported_sections", 0)) == 7, "production registry exposes the audited 12/7 capability boundary")
+	_expect(int(evidence.get("production_required_sections", 0)) == 19 and int(evidence.get("production_transactional_sections", 0)) == 19 and int(evidence.get("production_unsupported_sections", -1)) == 0, "production registry exposes the completed 19/19 capability boundary")
 	_expect(bool(evidence.get("region_supply_section_transactional", false)) and bool(evidence.get("commodity_flow_section_transactional", false)), "regional supply and commodity flow are bound to their unique transactional owners")
 	_expect(bool(evidence.get("bankruptcy_section_registered", false)) and bool(evidence.get("bankruptcy_section_transactional", false)) and str(evidence.get("bankruptcy_unsupported_reason", "")) == "", "bankruptcy neutral estate is bound to its unique transactional owner")
 	_expect(bool(evidence.get("weather_section_transactional", false)) and str(evidence.get("weather_unsupported_reason", "")) == "", "weather is bound to its unique transactional owner")
 	_expect(bool(evidence.get("card_execution_section_transactional", false)) and str(evidence.get("card_execution_unsupported_reason", "")) == "", "card execution lineage is bound to its unique transactional owner")
 	_expect(bool(evidence.get("card_history_section_transactional", false)) and str(evidence.get("card_history_unsupported_reason", "")) == "", "card resolution history is bound to its unique transactional owner")
-	_expect(not bool(evidence.get("production_resume_ready", true)) and not bool(evidence.get("full_production_restore_claimed", true)), "production resume stays fail-closed and makes no full-restore claim")
+	_expect(bool(evidence.get("production_resume_ready", false)) and bool(evidence.get("full_production_restore_claimed", false)), "production registry is resume-ready only after all owner bindings land")
 	_expect(bool(evidence.get("global_preflight", false)) and bool(evidence.get("rollback_complete", false)) and bool(evidence.get("public_receipt_private", false)), "global preflight, rollback, and public receipt privacy are proven")
 	bench.queue_free()
 	await process_frame

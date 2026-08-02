@@ -332,6 +332,126 @@ func capture_ai_state_batch_receipt(
 	}
 
 
+func capture_ai_state_batch_for_save(
+	capability: AiActorStateCapability,
+	include_eliminated := true
+) -> Dictionary:
+	# Save capture and restore planning must not connect signals, rotate capability
+	# generations, increment query counters, or read an engine clock. The port is
+	# still the only code allowed to read the private actor fields from World.
+	var world := _world()
+	if world == null or capability == null or capability != _capability:
+		return {
+			"captured": false,
+			"reason_code": "ai_actor_state_capture_unauthorized",
+			"rows": [],
+			"actor_indices": [],
+		}
+	var rows: Array = []
+	var actor_indices: Array = []
+	for player_index in range(world.players.size()):
+		var source_variant: Variant = world.players[player_index]
+		if not (source_variant is Dictionary):
+			return {
+				"captured": false,
+				"reason_code": "ai_actor_state_capture_incomplete",
+				"rows": [],
+				"actor_indices": actor_indices,
+			}
+		var source := source_variant as Dictionary
+		var is_ai := bool(source.get("is_ai", false)) \
+			or str(source.get("seat_type", "human")) == "ai"
+		if not is_ai or not include_eliminated and bool(source.get("eliminated", false)):
+			continue
+		var profile: Variant = source.get("ai_profile", {})
+		var memory: Variant = source.get("ai_memory", {})
+		if not (profile is Dictionary) or not (memory is Dictionary) \
+				or not _safe_state_payload(profile) or not _safe_state_payload(memory):
+			return {
+				"captured": false,
+				"reason_code": "ai_actor_state_capture_incomplete",
+				"rows": [],
+				"actor_indices": actor_indices,
+			}
+		actor_indices.append(player_index)
+		rows.append({
+			"player_index": player_index,
+			"ai_profile": (profile as Dictionary).duplicate(true),
+			"ai_memory": (memory as Dictionary).duplicate(true),
+			"expected_revision": _state_revision(source, player_index),
+		})
+	return {
+		"captured": true,
+		"reason_code": "ai_actor_state_captured",
+		"rows": rows,
+		"actor_indices": actor_indices,
+	}
+
+
+func apply_ai_state_batch_for_restore(
+	capability: AiActorStateCapability,
+	rows: Array
+) -> Dictionary:
+	# Restore is an authoritative state replacement, not a gameplay commit. Keep
+	# the typed boundary and full batch validation without changing query/commit
+	# counters or capability generations.
+	var world := _world()
+	if world == null or capability == null or capability != _capability or not _pure(rows):
+		return _batch_receipt(false, false, "ai_actor_state_restore_batch_invalid", 0)
+	var expected_actor_indices: Array = []
+	for player_index in range(world.players.size()):
+		var source_variant: Variant = world.players[player_index]
+		if not (source_variant is Dictionary):
+			return _batch_receipt(false, false, "ai_actor_state_restore_batch_invalid", 0)
+		var source := source_variant as Dictionary
+		if bool(source.get("is_ai", false)) or str(source.get("seat_type", "human")) == "ai":
+			expected_actor_indices.append(player_index)
+	var seen_indices: Dictionary = {}
+	var normalized_rows: Array = []
+	for row_variant in rows:
+		if not (row_variant is Dictionary) or not _exact_batch_row(row_variant as Dictionary):
+			return _batch_receipt(false, false, "ai_actor_state_restore_batch_invalid", 0)
+		var row := row_variant as Dictionary
+		var player_index := int(row.get("player_index", -1))
+		if player_index < 0 or player_index >= world.players.size() or seen_indices.has(player_index) \
+				or not (world.players[player_index] is Dictionary):
+			return _batch_receipt(false, false, "ai_actor_state_restore_batch_roster_mismatch", 0)
+		var source := world.players[player_index] as Dictionary
+		if not (bool(source.get("is_ai", false)) or str(source.get("seat_type", "human")) == "ai") \
+				or str(row.get("expected_revision", "")) != _state_revision(source, player_index):
+			return _batch_receipt(false, false, "ai_actor_state_restore_batch_revision_changed", 0)
+		var profile := (row.get("ai_profile", {}) as Dictionary).duplicate(true)
+		var memory := (row.get("ai_memory", {}) as Dictionary).duplicate(true)
+		if not _safe_state_payload(profile) or not _safe_state_payload(memory):
+			return _batch_receipt(false, false, "ai_actor_state_restore_batch_not_serializable", 0)
+		seen_indices[player_index] = true
+		normalized_rows.append({"player_index": player_index, "ai_profile": profile, "ai_memory": memory})
+	var provided_actor_indices: Array = seen_indices.keys()
+	provided_actor_indices.sort()
+	expected_actor_indices.sort()
+	if provided_actor_indices != expected_actor_indices:
+		return _batch_receipt(false, false, "ai_actor_state_restore_batch_roster_mismatch", 0)
+	var next_players := world.players.duplicate(true)
+	var changed_count := 0
+	for row_variant in normalized_rows:
+		var row := row_variant as Dictionary
+		var player_index := int(row.get("player_index", -1))
+		var source := (next_players[player_index] as Dictionary).duplicate(true)
+		var profile := row.get("ai_profile", {}) as Dictionary
+		var memory := row.get("ai_memory", {}) as Dictionary
+		if source.get("ai_profile", {}) == profile and source.get("ai_memory", {}) == memory:
+			continue
+		source["ai_profile"] = profile.duplicate(true)
+		source["ai_memory"] = memory.duplicate(true)
+		next_players[player_index] = source
+		changed_count += 1
+	if changed_count > 0:
+		_actor_state_write_in_progress = true
+		world.players = next_players
+		_actor_state_write_in_progress = false
+	return _batch_receipt(true, changed_count > 0, "ai_actor_state_restore_batch_applied" if changed_count > 0 else "ai_actor_state_restore_batch_unchanged", changed_count)
+
+
 func apply_ai_state_batch(
 	capability: AiActorStateCapability,
 	rows: Array

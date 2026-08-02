@@ -5,6 +5,21 @@ const POLICY_SCRIPT := preload("res://scripts/cards/v06/card_flow_policy_v06.gd"
 const STATE_PORT_SCRIPT := preload("res://scripts/cards/v06/card_player_state_port_v06.gd")
 const HAND_LIMIT := 5
 const COLORED_ASSET_KEYS := ["life", "energy", "industry", "technology", "commerce", "shipping"]
+const RESTORE_STATE_FIELDS := ["belt", "market", "journal"]
+const BELT_FIELDS := ["revision", "items"]
+const BELT_ITEM_FIELDS := ["item_id", "card", "claimable", "visible_actor_ids"]
+const MARKET_FIELDS := ["revision", "listing"]
+const MARKET_LISTING_FIELDS := [
+	"item_id",
+	"card",
+	"price_cash",
+	"claimable",
+	"legal_actor_ids",
+	"source_district_index",
+	"source_region_id",
+	"supply_revision",
+]
+const JOURNAL_RECORD_FIELDS := ["intent_hash", "result"]
 
 var _catalog: CardRuntimeCatalogV06Resource
 var _policy: CardFlowPolicyV06
@@ -268,6 +283,129 @@ func market_snapshot() -> Dictionary:
 
 func journal_snapshot() -> Dictionary:
 	return _journal.duplicate(true)
+
+
+func capture_restore_state() -> Dictionary:
+	return {
+		"belt": _belt.duplicate(true),
+		"market": _market.duplicate(true),
+		"journal": _journal.duplicate(true),
+	}
+
+
+func preflight_restore_state(data: Dictionary) -> Dictionary:
+	if not _catalog_ready() or not _has_exact_keys(data, RESTORE_STATE_FIELDS) or not _is_finite_pure_data(data):
+		return {"accepted": false, "reason_code": "card_flow_restore_state_invalid"}
+	var belt_variant: Variant = data.get("belt")
+	var market_variant: Variant = data.get("market")
+	var journal_variant: Variant = data.get("journal")
+	if not (belt_variant is Dictionary) or not (market_variant is Dictionary) or not (journal_variant is Dictionary):
+		return {"accepted": false, "reason_code": "card_flow_restore_children_invalid"}
+	var belt := belt_variant as Dictionary
+	var market := market_variant as Dictionary
+	var journal := journal_variant as Dictionary
+	if not _has_exact_keys(belt, BELT_FIELDS) or not (belt.get("revision") is int) \
+			or int(belt.get("revision", -1)) < 0 or not (belt.get("items") is Dictionary):
+		return {"accepted": false, "reason_code": "card_flow_restore_belt_invalid"}
+	var normalized_items: Dictionary = {}
+	var item_ids: Array = (belt.get("items", {}) as Dictionary).keys()
+	item_ids.sort_custom(func(left: Variant, right: Variant) -> bool: return str(left) < str(right))
+	for item_id_variant in item_ids:
+		if not (item_id_variant is String or item_id_variant is StringName):
+			return {"accepted": false, "reason_code": "card_flow_restore_belt_item_id_invalid"}
+		var item_id := str(item_id_variant).strip_edges()
+		var item_variant: Variant = (belt.get("items", {}) as Dictionary).get(item_id_variant)
+		if item_id.is_empty() or not (item_variant is Dictionary):
+			return {"accepted": false, "reason_code": "card_flow_restore_belt_item_invalid"}
+		var item := item_variant as Dictionary
+		if not _has_exact_keys(item, BELT_ITEM_FIELDS) or str(item.get("item_id", "")).strip_edges() != item_id \
+				or not (item.get("claimable") is bool) or not (item.get("visible_actor_ids") is Array):
+			return {"accepted": false, "reason_code": "card_flow_restore_belt_item_invalid"}
+		var normalized := _normalize_source_item(item, "commodity_belt")
+		if not bool(normalized.get("valid", false)):
+			return {"accepted": false, "reason_code": str(normalized.get("reason_code", "card_flow_restore_belt_item_invalid"))}
+		var normalized_item: Dictionary = (normalized.get("item", {}) as Dictionary).duplicate(true)
+		var visible_actor_ids := _canonical_string_set(normalized_item.get("visible_actor_ids", []))
+		if not bool(visible_actor_ids.get("valid", false)):
+			return {"accepted": false, "reason_code": "card_flow_restore_visibility_acl_invalid"}
+		normalized_item["visible_actor_ids"] = (visible_actor_ids.get("values", []) as Array).duplicate()
+		normalized_items[item_id] = normalized_item
+	if not _has_exact_keys(market, MARKET_FIELDS) or not (market.get("revision") is int) \
+			or int(market.get("revision", -1)) < 0 or not (market.get("listing") is Dictionary):
+		return {"accepted": false, "reason_code": "card_flow_restore_market_invalid"}
+	var normalized_listing: Dictionary = {}
+	var listing := market.get("listing", {}) as Dictionary
+	if not listing.is_empty():
+		if not _has_exact_keys(listing, MARKET_LISTING_FIELDS) or not (listing.get("claimable") is bool) \
+				or not (listing.get("legal_actor_ids") is Array) or not (listing.get("price_cash") is int) \
+				or not (listing.get("source_district_index") is int):
+			return {"accepted": false, "reason_code": "card_flow_restore_market_listing_invalid"}
+		var market_normalized := _normalize_market_listing(listing)
+		if not bool(market_normalized.get("valid", false)):
+			return {"accepted": false, "reason_code": str(market_normalized.get("reason_code", "card_flow_restore_market_listing_invalid"))}
+		normalized_listing = (market_normalized.get("listing", {}) as Dictionary).duplicate(true)
+		var legal_actor_ids := _canonical_string_set(normalized_listing.get("legal_actor_ids", []))
+		if not bool(legal_actor_ids.get("valid", false)):
+			return {"accepted": false, "reason_code": "card_flow_restore_market_acl_invalid"}
+		normalized_listing["legal_actor_ids"] = (legal_actor_ids.get("values", []) as Array).duplicate()
+	var normalized_journal: Dictionary = {}
+	var transaction_ids: Array = journal.keys()
+	transaction_ids.sort_custom(func(left: Variant, right: Variant) -> bool: return str(left) < str(right))
+	for transaction_id_variant in transaction_ids:
+		if not (transaction_id_variant is String or transaction_id_variant is StringName):
+			return {"accepted": false, "reason_code": "card_flow_restore_transaction_id_invalid"}
+		var transaction_id := str(transaction_id_variant).strip_edges()
+		var record_variant: Variant = journal.get(transaction_id_variant)
+		if transaction_id.is_empty() or not (record_variant is Dictionary):
+			return {"accepted": false, "reason_code": "card_flow_restore_journal_invalid"}
+		var record := record_variant as Dictionary
+		if not _has_exact_keys(record, JOURNAL_RECORD_FIELDS) or not (record.get("intent_hash") is String) \
+				or str(record.get("intent_hash", "")).is_empty() or not (record.get("result") is Dictionary):
+			return {"accepted": false, "reason_code": "card_flow_restore_journal_invalid"}
+		normalized_journal[transaction_id] = record.duplicate(true)
+	return {
+		"accepted": true,
+		"reason_code": "card_flow_restore_state_valid",
+		"normalized_state": {
+			"belt": {"revision": int(belt.get("revision", 0)), "items": normalized_items},
+			"market": {"revision": int(market.get("revision", 0)), "listing": normalized_listing},
+			"journal": normalized_journal,
+		},
+	}
+
+
+func apply_restore_state(data: Dictionary) -> Dictionary:
+	var preflight := preflight_restore_state(data)
+	if not bool(preflight.get("accepted", false)):
+		return {"applied": false, "reason_code": str(preflight.get("reason_code", "card_flow_restore_state_invalid"))}
+	var state := preflight.get("normalized_state", {}) as Dictionary
+	_belt = (state.get("belt", {}) as Dictionary).duplicate(true)
+	_market = (state.get("market", {}) as Dictionary).duplicate(true)
+	_journal = (state.get("journal", {}) as Dictionary).duplicate(true)
+	_inflight_transactions.clear()
+	return {"applied": true, "reason_code": "card_flow_restore_state_applied"}
+
+
+func capture_runtime_checkpoint() -> Dictionary:
+	return {
+		"schema_version": 1,
+		"belt": _belt.duplicate(true),
+		"market": _market.duplicate(true),
+		"journal": _journal.duplicate(true),
+		"inflight_transactions": _inflight_transactions.duplicate(true),
+	}
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("belt") is Dictionary) \
+			or not (checkpoint.get("market") is Dictionary) or not (checkpoint.get("journal") is Dictionary) \
+			or not (checkpoint.get("inflight_transactions") is Dictionary):
+		return {"applied": false, "reason_code": "card_flow_runtime_checkpoint_invalid"}
+	_belt = (checkpoint.get("belt", {}) as Dictionary).duplicate(true)
+	_market = (checkpoint.get("market", {}) as Dictionary).duplicate(true)
+	_journal = (checkpoint.get("journal", {}) as Dictionary).duplicate(true)
+	_inflight_transactions = (checkpoint.get("inflight_transactions", {}) as Dictionary).duplicate(true)
+	return {"applied": true, "reason_code": "card_flow_runtime_checkpoint_restored"}
 
 
 func claim_belt_card(
@@ -1443,6 +1581,56 @@ func _normalize_market_listing(listing: Dictionary) -> Dictionary:
 			"supply_revision": supply_revision,
 		},
 	}
+
+
+func _canonical_string_set(value: Variant) -> Dictionary:
+	if not (value is Array):
+		return {"valid": false, "values": []}
+	var seen: Dictionary = {}
+	var values: Array[String] = []
+	for item_variant in value as Array:
+		if not (item_variant is String or item_variant is StringName):
+			return {"valid": false, "values": []}
+		var item := str(item_variant).strip_edges()
+		if item.is_empty() or seen.has(item):
+			return {"valid": false, "values": []}
+		seen[item] = true
+		values.append(item)
+	values.sort()
+	return {"valid": true, "values": values}
+
+
+func _has_exact_keys(dictionary: Dictionary, fields: Array) -> bool:
+	if dictionary.size() != fields.size():
+		return false
+	for field_variant in fields:
+		if not dictionary.has(str(field_variant)):
+			return false
+	return true
+
+
+func _is_finite_pure_data(value: Variant) -> bool:
+	if typeof(value) == TYPE_OBJECT or value is Callable:
+		return false
+	if value is float and not is_finite(value):
+		return false
+	if value is Vector2:
+		var vector := value as Vector2
+		if not is_finite(vector.x) or not is_finite(vector.y):
+			return false
+	if value is Color:
+		var color := value as Color
+		if not is_finite(color.r) or not is_finite(color.g) or not is_finite(color.b) or not is_finite(color.a):
+			return false
+	if value is Dictionary:
+		for key_variant in (value as Dictionary).keys():
+			if not _is_finite_pure_data(key_variant) or not _is_finite_pure_data((value as Dictionary).get(key_variant)):
+				return false
+	elif value is Array:
+		for item_variant in value as Array:
+			if not _is_finite_pure_data(item_variant):
+				return false
+	return true
 
 
 func _listing_intent_descriptor(listing: Dictionary) -> Dictionary:

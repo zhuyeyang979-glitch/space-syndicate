@@ -4,6 +4,8 @@ class_name GameSessionRuntimeController
 
 signal authorization_context_changed(reason_id: String)
 
+const SemanticWire := preload("res://scripts/semantic/semantic_wire_v1.gd")
+
 const STATE_IDLE := "idle"
 const STATE_STARTING := "starting"
 const STATE_RUNNING := "running"
@@ -37,6 +39,10 @@ var _operation_sequence := 0
 var _active_operation: Dictionary = {}
 var _last_operation: Dictionary = {}
 var _world_effective_clock: Node
+var _restore_barrier_id := ""
+var _restore_target_state := STATE_IDLE
+var _restore_previous_save_state := "clean"
+var _restore_previous_dirty_reason := ""
 
 
 func set_world_effective_clock(clock: Node) -> void:
@@ -109,6 +115,16 @@ func session_start_revision() -> int:
 	return int(hash(JSON.stringify({"state": _session_state, "session_id": _session_id, "scenario_id": _scenario_id, "seed": _seed, "setup": _setup_summary, "outcome": _outcome_receipt, "operation_sequence": _operation_sequence}))) & 0x7fffffff
 
 
+func persistent_session_identity_fingerprint() -> String:
+	return SemanticWire.fingerprint({
+		"ruleset_id": _ruleset_id,
+		"session_id": _session_id,
+		"scenario_id": _scenario_id,
+		"seed": str(_seed),
+		"setup": _setup_summary.duplicate(true),
+	})
+
+
 func preflight_new_session(setup_snapshot: Dictionary, expected_revision: int) -> Dictionary:
 	if not _configured or not _is_data_only(setup_snapshot) or not bool(LegacyContractPayloadGuardV06.validation_report(setup_snapshot).get("valid", false)):
 		return {"accepted": false, "reason_code": "game_session_start_payload_invalid"}
@@ -177,12 +193,16 @@ func mark_dirty(reason: String = "runtime_change") -> void:
 
 
 func pause_session() -> void:
+	if not _restore_barrier_id.is_empty():
+		return
 	if _session_state == STATE_RUNNING:
 		_session_state = STATE_PAUSED
 		_emit_authorization_context_changed("session_paused")
 
 
 func resume_session() -> void:
+	if not _restore_barrier_id.is_empty():
+		return
 	if _session_state == STATE_PAUSED:
 		_session_state = STATE_RUNNING
 		_emit_authorization_context_changed("session_resumed")
@@ -222,7 +242,24 @@ func to_save_data() -> Dictionary:
 	}
 
 
+func restore_target_save_data() -> Dictionary:
+	var captured := to_save_data()
+	if _restore_barrier_id.is_empty() or not (captured.get("game_session_runtime") is Dictionary):
+		return captured
+	var payload := (captured.get("game_session_runtime", {}) as Dictionary).duplicate(true)
+	payload["session_state"] = _restore_target_state
+	captured["game_session_runtime"] = payload
+	return captured
+
+
 func apply_save_data(data: Dictionary) -> Dictionary:
+	var foundation := apply_restore_foundation(data)
+	if not bool(foundation.get("applied", false)):
+		return foundation
+	return finalize_restore_tail(data)
+
+
+func apply_restore_foundation(data: Dictionary) -> Dictionary:
 	var normalization := _normalize_save_data(data)
 	if not bool(normalization.get("accepted", false)):
 		return {
@@ -231,24 +268,98 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 			"reason_code": str(normalization.get("reason_code", "session_save_invalid")),
 		}
 	var payload: Dictionary = normalization.get("normalized_state", {})
-	var restored_state := str(payload.get("session_state", STATE_IDLE))
-	var restored_world_us := int(payload.get("world_effective_us", 0))
-	var next_session_id := str(payload.get("session_id", ""))
-	var next_scenario_id := str(payload.get("scenario_id", ""))
-	var next_seed := int(payload.get("seed", 0))
-	var next_setup := (payload.get("setup", {}) as Dictionary).duplicate(true)
-	var next_outcome := (payload.get("outcome_receipt", {}) as Dictionary).duplicate(true)
-	_world_effective_clock.call("restore_micros", restored_world_us)
-	_session_state = restored_state
-	_session_id = next_session_id
-	_scenario_id = next_scenario_id
-	_seed = next_seed
-	_setup_summary = next_setup
-	_outcome_receipt = next_outcome
+	var clock_receipt: Dictionary = _world_effective_clock.call(
+		"restore_micros", int(payload.get("world_effective_us", 0))
+	) if _world_effective_clock != null else {}
+	if int(clock_receipt.get("world_effective_us", -1)) != int(payload.get("world_effective_us", 0)):
+		return {"applied": false, "reason_code": "world_effective_clock_restore_failed"}
+	_session_id = str(payload.get("session_id", ""))
+	_scenario_id = str(payload.get("scenario_id", ""))
+	_seed = int(payload.get("seed", 0))
+	_setup_summary = (payload.get("setup", {}) as Dictionary).duplicate(true)
+	_restore_target_state = str(payload.get("session_state", STATE_IDLE))
+	_session_state = STATE_LOADING if not _restore_barrier_id.is_empty() else _restore_target_state
+	_save_state = "loading" if not _restore_barrier_id.is_empty() else "clean"
+	_dirty_reason = ""
+	return {
+		"applied": true,
+		"reason_code": "session_foundation_restored",
+		"target_session_state": _restore_target_state,
+	}
+
+
+func finalize_restore_tail(data: Dictionary) -> Dictionary:
+	var normalization := _normalize_save_data(data)
+	if not bool(normalization.get("accepted", false)):
+		return {
+			"applied": false,
+			"reason": str(normalization.get("reason_code", "session_save_invalid")),
+			"reason_code": str(normalization.get("reason_code", "session_save_invalid")),
+		}
+	var payload: Dictionary = normalization.get("normalized_state", {})
+	_outcome_receipt = (payload.get("outcome_receipt", {}) as Dictionary).duplicate(true)
+	_restore_target_state = str(payload.get("session_state", STATE_IDLE))
+	_session_state = STATE_LOADING if not _restore_barrier_id.is_empty() else _restore_target_state
+	_save_state = "loading" if not _restore_barrier_id.is_empty() else "clean"
+	_dirty_reason = ""
+	if _restore_barrier_id.is_empty():
+		_emit_authorization_context_changed("session_save_applied")
+	return {
+		"applied": true,
+		"legacy_default": false,
+		"session_state": _session_state,
+		"target_session_state": _restore_target_state,
+		"reason_code": "session_runtime_tail_restored",
+	}
+
+
+func enter_restore_barrier(operation_id: String) -> Dictionary:
+	var normalized := operation_id.strip_edges()
+	if normalized.is_empty():
+		return {"acquired": false, "reason_code": "restore_barrier_id_missing"}
+	if not _restore_barrier_id.is_empty():
+		return {
+			"acquired": _restore_barrier_id == normalized,
+			"reason_code": "restore_barrier_replayed" if _restore_barrier_id == normalized else "restore_barrier_busy",
+		}
+	_restore_barrier_id = normalized
+	_restore_target_state = _session_state
+	_restore_previous_save_state = _save_state
+	_restore_previous_dirty_reason = _dirty_reason
+	_session_state = STATE_LOADING
+	_save_state = "loading"
+	return {"acquired": true, "reason_code": "restore_barrier_acquired"}
+
+
+func commit_restore_barrier(operation_id: String) -> Dictionary:
+	if _restore_barrier_id != operation_id.strip_edges():
+		return {"committed": false, "reason_code": "restore_barrier_not_owned"}
+	_restore_barrier_id = ""
+	_session_state = _restore_target_state
 	_save_state = "clean"
 	_dirty_reason = ""
-	_emit_authorization_context_changed("session_save_applied")
-	return {"applied": true, "legacy_default": false, "session_state": _session_state, "reason_code": "session_runtime_restored"}
+	_emit_authorization_context_changed("session_restore_committed")
+	return {"committed": true, "reason_code": "restore_barrier_committed", "session_state": _session_state}
+
+
+func abort_restore_barrier(operation_id: String) -> Dictionary:
+	if _restore_barrier_id != operation_id.strip_edges():
+		return {"aborted": false, "reason_code": "restore_barrier_not_owned"}
+	_restore_barrier_id = ""
+	_session_state = _restore_target_state
+	_save_state = _restore_previous_save_state
+	_dirty_reason = _restore_previous_dirty_reason
+	_emit_authorization_context_changed("session_restore_aborted")
+	return {"aborted": true, "reason_code": "restore_barrier_aborted", "session_state": _session_state}
+
+
+func restore_barrier_snapshot() -> Dictionary:
+	return {
+		"active": not _restore_barrier_id.is_empty(),
+		"operation_id": _restore_barrier_id,
+		"target_session_state": _restore_target_state,
+		"session_state": _session_state,
+	}
 
 
 func preflight_save_data(data: Dictionary) -> Dictionary:
@@ -327,6 +438,7 @@ func request_load(path: String = "") -> Dictionary:
 	var summary := "存档：已通过 v0.6 Owner Registry 完成事务恢复。" if applied else _registry_unavailable_summary(owner_registry, reason_code)
 	var receipt := _load_result(applied, applied, error_code, reason_code, summary)
 	receipt["registry_apply_count"] = 1
+	receipt["requires_backup"] = bool(apply_receipt.get("requires_backup", false))
 	_finish_operation(receipt)
 	return receipt
 
@@ -352,7 +464,9 @@ func inspect_save(path: String = "") -> Dictionary:
 	var applicable := bool(preflight.get("ok", false))
 	var reason_code := str(preflight.get("reason_code", "owner_registry_preflight_failed"))
 	var summary := "存档：格式有效，可以继续本局。" if applicable else _registry_unavailable_summary(owner_registry, reason_code)
-	return _load_result(true, applicable, OK if applicable else ERR_UNAVAILABLE, reason_code, summary)
+	var inspection_receipt := _load_result(true, applicable, OK if applicable else ERR_UNAVAILABLE, reason_code, summary)
+	inspection_receipt["requires_backup"] = bool(preflight.get("requires_backup", false))
+	return inspection_receipt
 
 
 func complete_load(error_code: int) -> void:
@@ -428,6 +542,10 @@ func reset_state() -> void:
 	_dirty_reason = ""
 	_active_operation = {}
 	_last_operation = {}
+	_restore_barrier_id = ""
+	_restore_previous_save_state = "clean"
+	_restore_previous_dirty_reason = ""
+	_restore_target_state = STATE_IDLE
 	if _world_effective_clock != null and _world_effective_clock.has_method("reset_state"):
 		_world_effective_clock.call("reset_state")
 	_emit_authorization_context_changed("session_reset")
@@ -446,6 +564,7 @@ func debug_snapshot() -> Dictionary:
 		"operation_lifecycle": operation_lifecycle_snapshot(),
 		"dirty_reason": _dirty_reason,
 		"world_effective_clock_bound": _world_effective_clock != null and _world_effective_clock.has_method("world_effective_micros"),
+		"restore_barrier": restore_barrier_snapshot(),
 	}
 
 

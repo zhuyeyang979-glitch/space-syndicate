@@ -2,9 +2,48 @@ extends Node
 class_name CardResolutionRuntimeController
 
 const SharedCardGroupWindowScript := preload("res://scripts/cards/shared_card_group_window.gd")
+const SemanticWireScript := preload("res://scripts/semantic/semantic_wire_v1.gd")
 const CADENCE_VERSION := 2
 const TRANSITION_COMMAND_SCHEMA_VERSION := 1
 const TRANSITION_COMMAND_LINEAGE_LIMIT := 256
+const EXECUTION_SAVE_TRANSITION_FIELDS := [
+	"card_group_cadence_version",
+	"card_group_cadence",
+	"card_group_window_phase",
+	"card_resolution_timer",
+	"card_resolution_counter_window_active",
+	"card_resolution_counter_timer",
+	"card_resolution_simultaneous_timer",
+	"card_resolution_auction_timer",
+	"card_resolution_auction_open",
+	"card_resolution_batch_locked",
+	"card_resolution_batch_reference_player",
+	"card_group_window_sequence",
+	"last_card_resolution_player_index",
+	"card_group_ready_players",
+	"card_transition_command_schema_version",
+	"card_transition_command_revision",
+	"card_transition_command_next_order_index",
+	"card_transition_applied_lineage",
+	"card_transition_last_applied_revision",
+	"card_transition_last_applied_order_index",
+]
+const EXECUTION_SAVE_CADENCE_FIELDS := [
+	"cadence_version",
+	"window_sequence",
+	"extended",
+	"total_seconds",
+	"planning_seconds",
+	"public_bid_seconds",
+	"lock_seconds",
+]
+const EXECUTION_SAVE_LINEAGE_FIELDS := [
+	"command_id",
+	"command_fingerprint",
+	"batch_revision",
+	"order_index",
+	"receipt_fingerprint",
+]
 const TRANSITION_COMMAND_KINDS := {
 	"show_active": true,
 	"begin_counter": true,
@@ -17,6 +56,7 @@ const TRANSITION_COMMAND_KINDS := {
 	"all_ready_lock": true,
 	"all_ready_lock_batch": true,
 	"lock_batch": true,
+	"resolve_queued_facility_immediate": true,
 	"hide_overlay": true,
 }
 
@@ -226,6 +266,13 @@ func tick(delta: float, facts: Dictionary) -> Array:
 	_prepare_transition_latches(_last_facts)
 	var commands: Array = []
 	var step := maxf(0.0, delta)
+	if bool(_last_facts.get("immediate_facility_pending", false)):
+		commands.append(_command("resolve_queued_facility_immediate", {
+			"resolution_id": int(_last_facts.get("immediate_facility_resolution_id", -1)),
+			"stage_id": str(_last_facts.get("immediate_facility_stage_id", "queued")),
+		}))
+		_publish_state(_last_facts)
+		return commands
 	var active_present := bool(_last_facts.get("active_present", false))
 	if active_present:
 		if counter_window_active:
@@ -307,6 +354,8 @@ func tick(delta: float, facts: Dictionary) -> Array:
 
 func current_phase(facts: Dictionary = {}) -> String:
 	var state_facts := _sanitize_facts(facts) if not facts.is_empty() else _last_facts
+	if bool(state_facts.get("immediate_facility_pending", false)):
+		return "resolving"
 	if bool(state_facts.get("active_present", false)):
 		return "counter" if counter_window_active else "resolving"
 	if batch_locked:
@@ -378,6 +427,153 @@ func to_save_data() -> Dictionary:
 		"card_transition_last_applied_revision": _last_applied_transition_command_revision,
 		"card_transition_last_applied_order_index": _last_applied_transition_command_order_index,
 	}
+
+
+## Strict native candidate boundary used only by the Execution Save v4 owner.
+## The controller remains nested state; it is not registered as another owner.
+func validate_execution_save_transition_state(data: Dictionary) -> Dictionary:
+	if not _has_exact_keys(data, EXECUTION_SAVE_TRANSITION_FIELDS):
+		return {"valid": false, "reason": "execution_transition_state_shape_invalid"}
+	if not (data.get("card_group_cadence_version") is int) \
+			or int(data.get("card_group_cadence_version")) != CADENCE_VERSION \
+			or not (data.get("card_group_cadence") is Dictionary) \
+			or not (data.get("card_group_window_phase") is String):
+		return {"valid": false, "reason": "execution_transition_cadence_shape_invalid"}
+	var cadence := data.get("card_group_cadence") as Dictionary
+	if not _has_exact_keys(cadence, EXECUTION_SAVE_CADENCE_FIELDS) \
+			or not (cadence.get("cadence_version") is int) \
+			or int(cadence.get("cadence_version")) != CADENCE_VERSION \
+			or not (cadence.get("window_sequence") is int) \
+			or not (cadence.get("extended") is bool):
+		return {"valid": false, "reason": "execution_transition_cadence_shape_invalid"}
+	for timer_field in [
+		"card_resolution_timer",
+		"card_resolution_counter_timer",
+		"card_resolution_simultaneous_timer",
+		"card_resolution_auction_timer",
+	]:
+		var timer_value: Variant = data.get(timer_field)
+		if not (timer_value is float) or not is_finite(float(timer_value)) or float(timer_value) < 0.0:
+			return {"valid": false, "reason": "execution_transition_timer_invalid"}
+	for cadence_field in ["total_seconds", "planning_seconds", "public_bid_seconds", "lock_seconds"]:
+		var cadence_value: Variant = cadence.get(cadence_field)
+		if not (cadence_value is float) or not is_finite(float(cadence_value)) or float(cadence_value) < 0.0:
+			return {"valid": false, "reason": "execution_transition_cadence_value_invalid"}
+	for boolean_field in [
+		"card_resolution_counter_window_active",
+		"card_resolution_auction_open",
+		"card_resolution_batch_locked",
+	]:
+		if not (data.get(boolean_field) is bool):
+			return {"valid": false, "reason": "execution_transition_boolean_invalid"}
+	for integer_field in [
+		"card_resolution_batch_reference_player",
+		"card_group_window_sequence",
+		"last_card_resolution_player_index",
+		"card_transition_command_schema_version",
+		"card_transition_command_revision",
+		"card_transition_command_next_order_index",
+		"card_transition_last_applied_revision",
+		"card_transition_last_applied_order_index",
+	]:
+		if not (data.get(integer_field) is int):
+			return {"valid": false, "reason": "execution_transition_integer_invalid"}
+	var authored_window_sequence := int(data.get("card_group_window_sequence"))
+	if authored_window_sequence < 0 \
+			or int(cadence.get("window_sequence")) != authored_window_sequence \
+			or cadence != cadence_snapshot(authored_window_sequence):
+		return {"valid": false, "reason": "execution_transition_cadence_mismatch"}
+	if int(data.get("card_resolution_batch_reference_player")) < -1 \
+			or int(data.get("last_card_resolution_player_index")) < -1:
+		return {"valid": false, "reason": "execution_transition_player_cursor_invalid"}
+	var ready_players_variant: Variant = data.get("card_group_ready_players")
+	if not (ready_players_variant is Dictionary):
+		return {"valid": false, "reason": "execution_transition_ready_players_invalid"}
+	for player_key_variant: Variant in (ready_players_variant as Dictionary).keys():
+		if not (player_key_variant is String) \
+				or not str(player_key_variant).is_valid_int() \
+				or str(int(str(player_key_variant))) != str(player_key_variant) \
+				or int(str(player_key_variant)) < 0 \
+				or not ((ready_players_variant as Dictionary).get(player_key_variant) is bool) \
+				or not bool((ready_players_variant as Dictionary).get(player_key_variant)):
+			return {"valid": false, "reason": "execution_transition_ready_players_invalid"}
+	var simultaneous := float(data.get("card_resolution_simultaneous_timer"))
+	var authored_phase := str(data.get("card_group_window_phase"))
+	var expected_phase := "resolving" if bool(data.get("card_resolution_batch_locked")) else \
+		SharedCardGroupWindowScript.phase_for_remaining(
+			simultaneous,
+			float(cadence.get("lock_seconds")),
+			float(cadence.get("public_bid_seconds"))
+		)
+	if authored_phase != expected_phase:
+		return {"valid": false, "reason": "execution_transition_phase_mismatch"}
+	var expected_auction_open := authored_phase == "public_bid"
+	var expected_auction_timer := maxf(0.0, simultaneous - float(cadence.get("lock_seconds"))) \
+			if expected_auction_open else 0.0
+	if bool(data.get("card_resolution_auction_open")) != expected_auction_open \
+			or float(data.get("card_resolution_auction_timer")) != expected_auction_timer:
+		return {"valid": false, "reason": "execution_transition_public_bid_clock_mismatch"}
+	if not bool(data.get("card_resolution_counter_window_active")) \
+			and float(data.get("card_resolution_counter_timer")) != 0.0:
+		return {"valid": false, "reason": "execution_transition_counter_clock_mismatch"}
+	var lineage_variant: Variant = data.get("card_transition_applied_lineage")
+	if not (lineage_variant is Array):
+		return {"valid": false, "reason": "execution_transition_lineage_invalid"}
+	for entry_variant: Variant in lineage_variant as Array:
+		if not (entry_variant is Dictionary):
+			return {"valid": false, "reason": "execution_transition_lineage_entry_invalid"}
+		var entry := entry_variant as Dictionary
+		if not _has_exact_keys(entry, EXECUTION_SAVE_LINEAGE_FIELDS) \
+				or not (entry.get("command_id") is String) \
+				or not SemanticWireScript.is_fingerprint(entry.get("command_fingerprint")) \
+				or not SemanticWireScript.is_fingerprint(entry.get("receipt_fingerprint")) \
+				or not (entry.get("batch_revision") is int) \
+				or not (entry.get("order_index") is int):
+			return {"valid": false, "reason": "execution_transition_lineage_entry_invalid"}
+		var command_prefix := "card-transition:v%d:r%d:o%d:" % [
+			TRANSITION_COMMAND_SCHEMA_VERSION,
+			int(entry.get("batch_revision")),
+			int(entry.get("order_index")),
+		]
+		var command_suffix := ":%s" % str(entry.get("command_fingerprint")).left(16)
+		var command_id := str(entry.get("command_id"))
+		if not command_id.begins_with(command_prefix) or not command_id.ends_with(command_suffix):
+			return {"valid": false, "reason": "execution_transition_lineage_identity_invalid"}
+	var lineage_validation := validate_transition_checkpoint(data)
+	if not bool(lineage_validation.get("valid", false)):
+		return lineage_validation
+	return {"valid": true, "reason": ""}
+
+
+func apply_execution_save_transition_state(data: Dictionary) -> Dictionary:
+	var validation := validate_execution_save_transition_state(data)
+	if not bool(validation.get("valid", false)):
+		return {"applied": false, "reason": str(validation.get("reason", "execution_transition_state_invalid"))}
+	active_display_timer = float(data.get("card_resolution_timer"))
+	counter_window_active = bool(data.get("card_resolution_counter_window_active"))
+	counter_timer = float(data.get("card_resolution_counter_timer"))
+	simultaneous_timer = float(data.get("card_resolution_simultaneous_timer"))
+	auction_timer = float(data.get("card_resolution_auction_timer"))
+	auction_open = bool(data.get("card_resolution_auction_open"))
+	batch_locked = bool(data.get("card_resolution_batch_locked"))
+	batch_reference_player = int(data.get("card_resolution_batch_reference_player"))
+	window_sequence = int(data.get("card_group_window_sequence"))
+	last_resolution_player_index = int(data.get("last_card_resolution_player_index"))
+	ready_players = (data.get("card_group_ready_players") as Dictionary).duplicate(true)
+	_transition_command_revision = int(data.get("card_transition_command_revision"))
+	_transition_command_next_order_index = int(data.get("card_transition_command_next_order_index"))
+	_restore_applied_transition_command_lineage(data.get("card_transition_applied_lineage"))
+	_last_applied_transition_command_revision = int(data.get("card_transition_last_applied_revision"))
+	_last_applied_transition_command_order_index = int(data.get("card_transition_last_applied_order_index"))
+	_save_migration_reason = ""
+	_last_facts = {}
+	_last_phase = "idle"
+	_reset_transition_latches()
+	_cadence_window_sequence = window_sequence
+	var restored_phase := str(data.get("card_group_window_phase"))
+	_public_bid_entry_announced = restored_phase in ["public_bid", "lock"]
+	_lock_entry_announced = restored_phase == "lock"
+	return {"applied": true, "reason": "execution_transition_state_restored"}
 
 
 func validate_transition_checkpoint(data: Dictionary) -> Dictionary:
@@ -773,6 +969,9 @@ func _sanitize_facts(facts: Dictionary) -> Dictionary:
 		"public_bid_duration": maxf(0.0, float(facts.get("public_bid_duration", public_bid_seconds))),
 		"counter_duration": maxf(0.0, float(facts.get("counter_duration", counter_seconds))),
 		"active_player_indices": (facts.get("active_player_indices", []) as Array).duplicate() if facts.get("active_player_indices", []) is Array else [],
+		"immediate_facility_pending": bool(facts.get("immediate_facility_pending", false)),
+		"immediate_facility_resolution_id": int(facts.get("immediate_facility_resolution_id", -1)),
+		"immediate_facility_stage_id": str(facts.get("immediate_facility_stage_id", "")),
 	}
 
 
@@ -836,7 +1035,7 @@ func _command(transition: String, details: Dictionary = {}) -> Dictionary:
 		"window_sequence": window_sequence,
 		"resolution_id": _safe_resolution_id(active_token),
 		"visibility_scope": "public",
-		"requires_gameplay_mutation": ["complete_active", "start_next", "lock_batch"].has(transition),
+		"requires_gameplay_mutation": ["complete_active", "start_next", "lock_batch", "resolve_queued_facility_immediate"].has(transition),
 		"requires_presentation_receipt": true,
 	}
 	for key_variant in details.keys():
@@ -1015,6 +1214,15 @@ func _restore_applied_transition_command_lineage(value: Variant) -> void:
 		}
 		_applied_transition_command_lineage.append(restored_entry)
 		_applied_transition_command_lookup[command_id] = restored_entry
+
+
+func _has_exact_keys(value: Dictionary, expected: Array) -> bool:
+	if value.size() != expected.size():
+		return false
+	for key_variant: Variant in expected:
+		if not value.has(str(key_variant)):
+			return false
+	return true
 
 
 func _publish_state(facts: Dictionary) -> void:

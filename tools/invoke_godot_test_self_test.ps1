@@ -69,7 +69,7 @@ function Get-PlayerStateFingerprint {
     )
 
     $paths = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-    foreach ($name in @("space_syndicate_current_run.save")) {
+    foreach ($name in @("space_syndicate_current_run.save", "saves\v06\current_run.save")) {
         $paths.Add((Join-Path $Root $name)) | Out-Null
     }
     if (Test-Path -LiteralPath $Root -PathType Container) {

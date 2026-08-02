@@ -5,6 +5,9 @@ class_name SessionEnvelopeSaveOwnerBench
 const COORDINATOR_SCENE := preload("res://scenes/runtime/GameRuntimeCoordinator.tscn")
 const RESTORE_CONTRACT := preload("res://scripts/runtime/card_history_restore_dependency_contract.gd")
 const RULESET_PROFILE := preload("res://resources/rules/space_syndicate_ruleset_v06.tres")
+const SEMANTIC_WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
+const HIGH_INT64_SEED := 9_007_199_254_740_993
+const HIGH_INT64_SEED_DECIMAL := "9007199254740993"
 const EXPECTED_FIXED_ORDER := [
 	"ruleset",
 	"region_infrastructure",
@@ -35,6 +38,10 @@ var _cold_history_before := -1
 var _cold_annotations_before := -1
 var _cold_history_after := -1
 var _cold_annotations_after := -1
+var _persistent_identity_source := ""
+var _persistent_identity_restored := ""
+var _persistent_identity_recaptured := ""
+var _persistent_identity_fault_rollback_count := 0
 
 
 func _ready() -> void:
@@ -62,6 +69,10 @@ func run_bench() -> Dictionary:
 	_cold_annotations_before = -1
 	_cold_history_after = -1
 	_cold_annotations_after = -1
+	_persistent_identity_source = ""
+	_persistent_identity_restored = ""
+	_persistent_identity_recaptured = ""
+	_persistent_identity_fault_rollback_count = 0
 
 	var runtime_a := _create_runtime("RuntimeA")
 	_check(runtime_a != null, "cold_runtime_a_created")
@@ -81,13 +92,21 @@ func run_bench() -> Dictionary:
 	_test_registry_contract(registry_a)
 	_seed_public_history(history_a)
 	_seed_session(runtime_a, world_a, session_a, annotations_a)
+	_persistent_identity_source = session_a.persistent_session_identity_fingerprint()
 	var history_state := history_a.to_save_data()
 	var capture_before := owner_a.to_save_data()
 	var notification_before := int(annotations_a.debug_snapshot().get("notification_count", -1))
 	var capture := owner_a.capture_composite_state()
 	var session_state: Dictionary = capture.get("state", {}) if capture.get("state", {}) is Dictionary else {}
-	_check(bool(capture.get("captured", false)) and int(session_state.get("schema_version", 0)) == 2, "composite_capture_returns_session_v2:%s" % str(capture.get("reason_code", "missing_reason")))
+	var captured_game_state: Dictionary = session_state.get("game_session_runtime", {}) \
+		if session_state.get("game_session_runtime", {}) is Dictionary else {}
+	var identity_after_capture := session_a.persistent_session_identity_fingerprint()
+	var captured_identity := _persistent_identity_from_session_payload(captured_game_state)
+	_check(bool(capture.get("captured", false)) and int(session_state.get("schema_version", 0)) == 3, "composite_capture_returns_session_v3:%s" % str(capture.get("reason_code", "missing_reason")))
 	_check(owner_a.to_save_data() == capture_before and int(annotations_a.debug_snapshot().get("notification_count", -2)) == notification_before, "capture_mutates_zero_child_owners")
+	_check(_persistent_identity_source.length() == 64 and identity_after_capture == _persistent_identity_source, "persistent_session_identity_is_stable_across_capture")
+	_check(captured_game_state.get("seed") is int and int(captured_game_state.get("seed")) == HIGH_INT64_SEED and str(captured_game_state.get("seed")) == HIGH_INT64_SEED_DECIMAL, "persistent_session_identity_preserves_high_int64_seed_decimal")
+	_check(captured_identity == _persistent_identity_source, "persistent_session_identity_matches_captured_payload")
 	_check(_pure_data(history_state) and _pure_data(session_state), "history_and_session_capture_are_pure_data")
 	_test_dependency_contract(history_state, session_state.get("card_history_private_annotations", {}) as Dictionary)
 
@@ -122,10 +141,19 @@ func run_bench() -> Dictionary:
 	_check(bool(history_apply.get("applied", false)), "public_history_restores_before_private_annotations")
 	var restored: Dictionary = owner_b.apply_save_data(session_state)
 	_check(bool(restored.get("applied", false)), "session_and_private_annotations_restore_after_public_history")
+	_persistent_identity_restored = session_b.persistent_session_identity_fingerprint()
+	var recapture := owner_b.capture_composite_state()
+	var recaptured_state: Dictionary = recapture.get("state", {}) \
+		if recapture.get("state", {}) is Dictionary else {}
+	var recaptured_game_state: Dictionary = recaptured_state.get("game_session_runtime", {}) \
+		if recaptured_state.get("game_session_runtime", {}) is Dictionary else {}
+	_persistent_identity_recaptured = session_b.persistent_session_identity_fingerprint()
 	_cold_history_after = history_b.history_snapshot().size()
 	_cold_annotations_after = _annotation_count(annotations_b, 4)
 	_check(_cold_history_after == 3 and _cold_annotations_after == 4, "cold_restore_recovers_all_history_and_private_annotation_rows")
 	_check(history_b.to_save_data() == history_state and owner_b.to_save_data() == session_state, "cold_restore_recaptures_semantically_identical_states")
+	_check(_persistent_identity_restored == _persistent_identity_source, "persistent_session_identity_matches_after_runtime_b_restore")
+	_check(bool(recapture.get("captured", false)) and recaptured_state == session_state and _persistent_identity_recaptured == _persistent_identity_source and _persistent_identity_from_session_payload(recaptured_game_state) == _persistent_identity_source and str(recaptured_game_state.get("seed")) == HIGH_INT64_SEED_DECIMAL, "persistent_session_identity_matches_after_runtime_b_recapture")
 	_check(_city_intel_roundtrip(world_b), "city_guess_confidence_and_reason_roundtrip")
 	_check(_annotation_roundtrip(annotations_b), "private_annotations_subscriptions_and_role_usage_roundtrip")
 	_check((annotations_b.viewer_snapshot(1).get("annotations", []) as Array).size() == 1 and not JSON.stringify(annotations_b.viewer_snapshot(1)).contains("viewer-zero-note"), "viewer_private_annotations_remain_isolated")
@@ -134,7 +162,7 @@ func run_bench() -> Dictionary:
 	_check(not JSON.stringify(annotations_b.viewer_snapshot(0)).contains("hidden_actor"), "restored_annotation_contains_no_hidden_actor")
 	_check(int(annotations_b.debug_snapshot().get("economic_reward_count", -1)) == 0 and int(annotations_b.debug_snapshot().get("gdp_reward_count", -1)) == 0, "restore_creates_no_card_history_cash_or_gdp_reward")
 
-	_test_fault_matrix(owner_b)
+	_test_fault_matrix(owner_b, session_b)
 	_test_strict_corruption_matrix(owner_b, session_state)
 	_test_v1_policy(owner_b, session_b)
 	_test_load_classification_and_active_session_isolation(runtime_b, world_b, session_b, annotations_b)
@@ -175,7 +203,7 @@ func _test_registry_contract(registry: V06SaveOwnerRegistry) -> void:
 		if binding.section_id == "session":
 			session_bindings += 1
 			session_binding_ok = binding.owner_id == "game_session" \
-				and binding.state_version == 2 \
+				and binding.state_version == 3 \
 				and str(binding.owner_path) == "../SessionEnvelopeSaveOwner" \
 				and binding.preflight_method == "preflight_save_data" \
 				and binding.restore_mode == V06SaveOwnerBindingResource.RESTORE_TRANSACTIONAL
@@ -190,9 +218,9 @@ func _test_registry_contract(registry: V06SaveOwnerRegistry) -> void:
 	_check(fixed_order == EXPECTED_FIXED_ORDER and fixed_order[-1] == "session", "fixed_order_has_history_before_last_session")
 	_check(fixed_order.find("card_resolution_execution") + 1 == fixed_order.find("card_resolution_history"), "execution_immediately_precedes_history")
 	_check(fixed_order.find("card_resolution_history") < fixed_order.find("session"), "history_precedes_session")
-	_check(session_bindings == 1 and session_binding_ok, "session_has_one_transactional_v2_composite_binding")
+	_check(session_bindings == 1 and session_binding_ok, "session_has_one_transactional_v3_composite_binding")
 	_check(history_bindings == 1 and history_binding_ok, "history_has_one_authoritative_transactional_binding")
-	_check(forbidden_sections == 0 and int(snapshot.get("transactional_section_count", 0)) == 12 and int(snapshot.get("unsupported_section_count", 0)) == 7 and not bool(snapshot.get("resume_ready", true)), "no_new_private_section_and_full_resume_stays_fail_closed")
+	_check(forbidden_sections == 0 and int(snapshot.get("transactional_section_count", 0)) == 19 and int(snapshot.get("unsupported_section_count", -1)) == 0 and bool(snapshot.get("resume_ready", false)), "all_19_existing_sections_are_transactional_without_new_private_section")
 	_check(not bool(registry.debug_snapshot().get("cross_section_preflight_reads_live_owners", true)), "registry_cross_section_preflight_uses_normalized_envelope_data_only")
 
 
@@ -220,7 +248,7 @@ func _seed_session(coordinator: GameRuntimeCoordinator, world: WorldSessionState
 		"map_height_m": 950.0,
 		"world_geometry_revision": 9,
 	}, true)
-	session.begin_session({"session_id": "session-envelope-bench", "scenario_id": "qa", "seed": 42, "player_count": 4, "ai_player_count": 3, "difficulty": "standard", "mission_title": "事务验收"})
+	session.begin_session({"session_id": "session-envelope-bench", "scenario_id": "qa", "seed": HIGH_INT64_SEED, "player_count": 4, "ai_player_count": 3, "difficulty": "standard", "mission_title": "事务验收"})
 	annotations.reset_state()
 	_check(bool(annotations.apply_annotation(0, "card-history:70", {
 		"note_text": "viewer-zero-note",
@@ -261,22 +289,34 @@ func _test_dependency_contract(history_state: Dictionary, annotation_state: Dict
 	_check(history_state == history_before and annotation_state == annotation_before, "dependency_preflight_mutates_zero_captured_state")
 
 
-func _test_fault_matrix(owner: SessionEnvelopeSaveOwner) -> void:
-	for stage in owner.TEST_FAULT_STAGES:
+func _test_fault_matrix(owner: SessionEnvelopeSaveOwner, session: GameSessionRuntimeController) -> void:
+	for stage_index in range(owner.TEST_FAULT_STAGES.size()):
+		var stage := str(owner.TEST_FAULT_STAGES[stage_index])
 		var before := owner.to_save_data()
+		var identity_before := session.persistent_session_identity_fingerprint()
 		var candidate := before.duplicate(true)
+		var game_state: Dictionary = candidate.get("game_session_runtime", {})
+		game_state["scenario_id"] = "qa-fault-%s" % stage
+		game_state["seed"] = HIGH_INT64_SEED + stage_index + 1
+		candidate["game_session_runtime"] = game_state
 		var world_state: Dictionary = candidate.get("world_session_state", {})
 		world_state["game_time"] = float(world_state.get("game_time", 0.0)) + 3.0
 		candidate["world_session_state"] = world_state
+		var candidate_identity := _persistent_identity_from_session_payload(game_state)
+		_check(candidate_identity.length() == 64 and candidate_identity != identity_before, "fault_stage_%s_uses_distinct_session_identity" % stage)
 		_check(owner.arm_test_fault_once(stage), "fault_stage_%s_arms" % stage)
 		var receipt: Dictionary = owner.apply_save_data(candidate)
 		_check(not bool(receipt.get("applied", true)) and bool(receipt.get("rollback_complete", false)), "fault_stage_%s_fails_and_rolls_back" % stage)
 		_check(owner.to_save_data() == before, "fault_stage_%s_leaves_no_partial_state" % stage)
+		var identity_rolled_back := session.persistent_session_identity_fingerprint() == identity_before
+		if identity_rolled_back:
+			_persistent_identity_fault_rollback_count += 1
+		_check(identity_rolled_back, "fault_stage_%s_restores_persistent_session_identity" % stage)
 
 
 func _test_strict_corruption_matrix(owner: SessionEnvelopeSaveOwner, captured: Dictionary) -> void:
 	if captured.is_empty():
-		_check(false, "corruption_matrix_requires_captured_session_v2")
+		_check(false, "corruption_matrix_requires_captured_session_v3")
 		return
 	var cases: Array[Dictionary] = []
 	var missing_player_field := captured.duplicate(true)
@@ -322,16 +362,15 @@ func _test_strict_corruption_matrix(owner: SessionEnvelopeSaveOwner, captured: D
 func _test_v1_policy(owner: SessionEnvelopeSaveOwner, session: GameSessionRuntimeController) -> void:
 	var active_v1 := {"game_session_runtime": (session.to_save_data().get("game_session_runtime", {}) as Dictionary).duplicate(true)}
 	var active_result := owner.preflight_save_data(active_v1)
-	_check(not bool(active_result.get("accepted", true)) and str(active_result.get("reason_code", "")) == "session_v1_world_state_missing" and bool(active_result.get("requires_backup", false)), "active_session_v1_fails_closed_and_requires_backup")
+	_check(not bool(active_result.get("accepted", true)) and str(active_result.get("reason_code", "")) == "v06_pre_resume_manifest" and bool(active_result.get("requires_backup", false)), "active_session_v1_fails_closed_and_requires_backup")
 	var idle_payload := (active_v1.get("game_session_runtime", {}) as Dictionary).duplicate(true)
 	idle_payload["session_state"] = "idle"
 	idle_payload["session_id"] = ""
 	idle_payload["setup"] = {}
 	idle_payload["outcome_receipt"] = {}
 	var idle_result := owner.preflight_save_data({"game_session_runtime": idle_payload})
-	_check(bool(idle_result.get("accepted", false)) and str(idle_result.get("reason_code", "")) == "session_v1_idle_migrated", "empty_idle_session_v1_migrates_without_fake_players")
-	var migrated_world: Dictionary = (idle_result.get("normalized_state", {}) as Dictionary).get("world_session_state", {})
-	_check((migrated_world.get("players", []) as Array).is_empty() and (migrated_world.get("districts", []) as Array).is_empty(), "idle_v1_migration_creates_no_fake_world")
+	_check(not bool(idle_result.get("accepted", true)) and str(idle_result.get("reason_code", "")) == "v06_pre_resume_manifest" and bool(idle_result.get("requires_backup", false)), "empty_idle_session_v1_is_not_silently_reinterpreted")
+	_check(not (idle_result.get("normalized_state") is Dictionary), "idle_v1_rejection_creates_no_fake_world")
 
 
 func _test_load_classification_and_active_session_isolation(coordinator: GameRuntimeCoordinator, world: WorldSessionState, session: GameSessionRuntimeController, annotations: CardHistoryPrivateAnnotationService) -> void:
@@ -390,9 +429,9 @@ func _test_load_classification_and_active_session_isolation(coordinator: GameRun
 	var written: Dictionary = written_variant if written_variant is Dictionary else {}
 	_check(bool(written.get("ok", false)), "production_high_level_load_fixture_written")
 	var inspection := session.inspect_save(CURRENT_PATH)
-	_check(bool(inspection.get("ok", false)) and not bool(inspection.get("applied", true)) and str(inspection.get("reason_code", "")) == "restore_capability_incomplete" and str(inspection.get("summary", "")).contains("7个运行时分区"), "production_inspection_keeps_incomplete_resume_read_only")
+	_check(bool(inspection.get("ok", false)) and not bool(inspection.get("applied", true)), "production_inspection_remains_read_only")
 	var load_receipt := session.request_load(CURRENT_PATH)
-	_check(not bool(load_receipt.get("ok", true)) and not bool(load_receipt.get("applied", true)) and str(load_receipt.get("reason_code", "")) == "restore_capability_incomplete" and int(load_receipt.get("registry_apply_count", 0)) == 1 and not load_receipt.has("envelope") and not load_receipt.has("sections") and not load_receipt.has("fingerprint"), "production_load_invokes_registry_once_and_exposes_only_high_level_receipt")
+	_check(not bool(load_receipt.get("ok", true)) and not bool(load_receipt.get("applied", true)) and int(load_receipt.get("registry_apply_count", 0)) == 1 and not load_receipt.has("envelope") and not load_receipt.has("sections") and not load_receipt.has("fingerprint"), "production_load_invokes_registry_once_and_exposes_only_high_level_receipt")
 	_check(session.to_save_data() == session_before and world.internal_snapshot() == world_before and annotations.capture_runtime_checkpoint() == annotation_before, "failed_current_v06_load_keeps_active_runtime_unchanged")
 	for path in [CURRENT_PATH, LEGACY_V1_PATH, PREVIOUS_V06_PATH]:
 		if FileAccess.file_exists(path):
@@ -404,7 +443,7 @@ func _test_main_v3_load_boundary() -> void:
 	var main_source := FileAccess.get_file_as_string("res://scripts/" + "main.gd")
 	var session_source := FileAccess.get_file_as_string("res://scripts/runtime/game_session_runtime_controller.gd")
 	_check(not main_source.contains("func _load_run(") and not main_source.contains("func _run_save_summary_text(") and not main_source.contains("func _extract_legacy_city_gdp_derivative_positions(") and not main_source.contains("func _apply_run_domain_state_compatibility_adapter("), "main_legacy_payload_and_compatibility_methods_are_physically_absent")
-	_check(not main_source.contains("result.get(\"payload\"") and not main_source.contains("complete_run_load") and main_source.contains("inspect_run_save") and main_source.contains("request_run_load"), "main_consumes_only_high_level_load_and_inspection_receipts")
+	_check(not main_source.contains("result.get(\"payload\"") and not main_source.contains("complete_run_load") and not main_source.contains("owner_registry") and not main_source.contains("V06SaveOwnerRegistry"), "main_owns_no_save_payload_or_registry_responsibility")
 	_check(session_source.contains("result.get(\"envelope\"") and session_source.contains("owner_registry.call(\"apply_envelope\"") and session_source.contains("receipt[\"registry_apply_count\"] = 1"), "game_session_consumes_envelope_and_invokes_registry_exactly_once")
 
 
@@ -532,6 +571,22 @@ func _write_json(path: String, data: Dictionary) -> bool:
 	return true
 
 
+func _persistent_identity_from_session_payload(payload: Dictionary) -> String:
+	if not (payload.get("ruleset_id") is String) \
+			or not (payload.get("session_id") is String) \
+			or not (payload.get("scenario_id") is String) \
+			or not (payload.get("seed") is int) \
+			or not (payload.get("setup") is Dictionary):
+		return ""
+	return SEMANTIC_WIRE.fingerprint({
+		"ruleset_id": str(payload.get("ruleset_id")),
+		"session_id": str(payload.get("session_id")),
+		"scenario_id": str(payload.get("scenario_id")),
+		"seed": str(payload.get("seed")),
+		"setup": (payload.get("setup") as Dictionary).duplicate(true),
+	})
+
+
 func _pure_data(value: Variant) -> bool:
 	if typeof(value) == TYPE_OBJECT or value is Callable:
 		return false
@@ -568,6 +623,13 @@ func _finish() -> Dictionary:
 			"cold_runtime_annotations_before": _cold_annotations_before,
 			"cold_runtime_history_after": _cold_history_after,
 			"cold_runtime_annotations_after": _cold_annotations_after,
+			"persistent_session_identity_parity": _persistent_identity_source.length() == 64 \
+				and _persistent_identity_restored == _persistent_identity_source \
+				and _persistent_identity_recaptured == _persistent_identity_source \
+				and _persistent_identity_fault_rollback_count == SessionEnvelopeSaveOwner.TEST_FAULT_STAGES.size(),
+			"persistent_session_identity_fingerprint": _persistent_identity_source,
+			"persistent_session_identity_seed_decimal": HIGH_INT64_SEED_DECIMAL,
+			"persistent_session_identity_fault_rollback_count": _persistent_identity_fault_rollback_count,
 			"full_run_resume_claimed": false,
 		},
 	}

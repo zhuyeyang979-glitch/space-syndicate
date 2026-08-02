@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "matrix_id": "alpha04c_victory_control_field_authority_matrix_v1",
+  "characterization_id": "alpha04c_victory_control_full_state_pre_v3",
+  "victory_authority_matrix_complete": true,
+  "unclassified_victory_field_count": 0,
+  "victory_derived_world_fact_persisted_count": 0,
+  "victory_private_asset_persisted_count": 0,
+  "victory_diagnostic_gameplay_reader_count": 0,
+  "victory_diagnostic_exact_once_reader_count": 0,
+  "private_payload_redacted": true,
+  "fields": [
+    {
+      "field_path": "_state",
+      "authority_class": "persisted_authority",
+      "writers": ["reset_state", "_advance_qualification", "_advance_audit", "_finalize_outcome", "apply_save_data"],
+      "readers": ["advance_world_effective", "public_snapshot", "private_snapshot", "to_save_data"],
+      "restore_policy": "exact_from_save_v3",
+      "persisted": true,
+      "privacy_sensitive": false,
+      "exact_once_required": true
+    },
+    {
+      "field_path": "_qualification_elapsed_by_player",
+      "authority_class": "persisted_authority",
+      "writers": ["reset_state", "_advance_qualification", "_advance_audit", "apply_save_data"],
+      "readers": ["private_snapshot", "_advance_qualification", "_advance_audit", "_qualification_remaining_seconds", "to_save_data"],
+      "restore_policy": "bit_exact_f64_per_canonical_player_key",
+      "persisted": true,
+      "privacy_sensitive": false,
+      "exact_once_required": true
+    },
+    {
+      "field_path": "_audit_roster",
+      "authority_class": "persisted_authority",
+      "writers": ["reset_state", "_advance_qualification", "_advance_audit", "_add_player_to_roster", "apply_save_data"],
+      "readers": ["public_snapshot", "_advance_audit", "_finalize_outcome", "_authoritative_audit_visibility_player_indices", "to_save_data"],
+      "restore_policy": "exact_stable_unique_order",
+      "persisted": true,
+      "privacy_sensitive": false,
+      "exact_once_required": true
+    },
+    {
+      "field_path": "_audit_remaining_seconds",
+      "authority_class": "persisted_authority",
+      "writers": ["reset_state", "_advance_qualification", "_advance_audit", "apply_save_data"],
+      "readers": ["advance_world_effective", "public_snapshot", "to_save_data"],
+      "restore_policy": "bit_exact_f64_except_existing_epsilon_to_positive_zero",
+      "persisted": true,
+      "privacy_sensitive": false,
+      "exact_once_required": true
+    },
+    {
+      "field_path": "_outcome_sequence",
+      "authority_class": "persisted_authority",
+      "writers": ["reset_state", "_finalize_outcome", "apply_save_data"],
+      "readers": ["_finalize_outcome", "to_save_data", "debug_snapshot"],
+      "restore_policy": "exact_and_bound_to_outcome_id",
+      "persisted": true,
+      "privacy_sensitive": false,
+      "exact_once_required": true
+    },
+    {
+      "field_path": "_outcome_receipt",
+      "authority_class": "persisted_authority",
+      "writers": ["reset_state", "_finalize_outcome", "apply_save_data"],
+      "readers": ["resolve_special_outcome", "public_snapshot", "outcome_receipt", "_advance_result", "to_save_data"],
+      "restore_policy": "exact_closed_tree_with_strict_receipt_identity",
+      "persisted": true,
+      "privacy_sensitive": true,
+      "exact_once_required": true
+    },
+    {
+      "field_path": "_last_candidates",
+      "authority_class": "derived_world_fact",
+      "writers": ["reset_state", "_capture_world_facts", "apply_save_data"],
+      "readers": ["resolve_special_outcome", "_advance_qualification", "_advance_audit", "_candidate_for"],
+      "restore_policy": "canonical_empty_until_fresh_typed_world_snapshot",
+      "persisted": false,
+      "privacy_sensitive": true,
+      "exact_once_required": false
+    },
+    {
+      "field_path": "_last_player_assets",
+      "authority_class": "derived_world_fact",
+      "writers": ["reset_state", "_capture_world_facts", "apply_save_data"],
+      "readers": ["_private_assets_for", "private_snapshot"],
+      "restore_policy": "canonical_empty_until_fresh_typed_world_snapshot",
+      "persisted": false,
+      "privacy_sensitive": true,
+      "exact_once_required": false
+    },
+    {
+      "field_path": "_last_victory_rule",
+      "authority_class": "derived_world_fact",
+      "writers": ["reset_state", "_capture_world_facts", "apply_save_data"],
+      "readers": ["public_snapshot", "debug_snapshot", "_finalize_outcome"],
+      "restore_policy": "canonical_empty_until_fresh_typed_world_snapshot",
+      "persisted": false,
+      "privacy_sensitive": false,
+      "exact_once_required": false
+    },
+    {
+      "field_path": "_last_pause_reasons",
+      "authority_class": "derived_world_fact",
+      "writers": ["reset_state", "advance_world_effective", "resolve_special_outcome", "apply_save_data"],
+      "readers": ["advance_world_effective", "public_snapshot"],
+      "restore_policy": "canonical_empty_until_current_runtime_barrier_snapshot",
+      "persisted": false,
+      "privacy_sensitive": false,
+      "exact_once_required": false
+    },
+    {
+      "field_path": "_last_settlement_checkpoint",
+      "authority_class": "derived_world_fact",
+      "writers": ["reset_state", "advance_world_effective", "resolve_special_outcome", "apply_save_data"],
+      "readers": ["public_snapshot", "_finalize_outcome"],
+      "restore_policy": "canonical_empty_until_fresh_post_settlement_snapshot",
+      "persisted": false,
+      "privacy_sensitive": false,
+      "exact_once_required": false
+    },
+    {
+      "field_path": "_advance_count",
+      "authority_class": "diagnostic_only",
+      "writers": ["reset_state", "advance_world_effective", "apply_save_data"],
+      "readers": ["debug_snapshot"],
+      "restore_policy": "canonical_zero",
+      "persisted": false,
+      "privacy_sensitive": false,
+      "exact_once_required": false
+    },
+    {
+      "field_path": "_fresh_world_facts_required",
+      "authority_class": "restore_transient_guard",
+      "writers": ["reset_state", "apply_save_data", "advance_world_effective", "resolve_special_outcome"],
+      "readers": ["advance_world_effective", "resolve_special_outcome", "_authoritative_audit_visibility_player_indices"],
+      "restore_policy": "true_after_apply_until_post_floor_capture_sequence",
+      "persisted": false,
+      "privacy_sensitive": false,
+      "exact_once_required": true
+    },
+    {
+      "field_path": "_restore_capture_floor",
+      "authority_class": "restore_transient_guard",
+      "writers": ["reset_state", "apply_save_data"],
+      "readers": ["_world_snapshot_is_fresh_after_restore"],
+      "restore_policy": "capture_current_bridge_sequence_at_apply",
+      "persisted": false,
+      "privacy_sensitive": false,
+      "exact_once_required": true
+    },
+    {
+      "field_path": "_restored_outcome_dispatch_suppressed",
+      "authority_class": "restore_transient_guard",
+      "writers": ["reset_state", "apply_save_data", "_finalize_outcome"],
+      "readers": ["resolve_special_outcome", "_advance_result"],
+      "restore_policy": "true_for_resolved_restore",
+      "persisted": false,
+      "privacy_sensitive": false,
+      "exact_once_required": true
+    }
+  ]
+}

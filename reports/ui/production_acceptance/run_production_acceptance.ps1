@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 $ReportDir = $PSScriptRoot
 $RepoRoot = (Resolve-Path (Join-Path $ReportDir "..\..\..")).Path
-$DefaultSavePath = Join-Path $env:APPDATA "Godot\app_userdata\太空辛迪加\space_syndicate_current_run.save"
+$DefaultSavePath = Join-Path $env:APPDATA "Godot\app_userdata\太空辛迪加\saves\v06\current_run.save"
 $QaRoot = Join-Path ([IO.Path]::GetTempPath()) ("space_syndicate_production_acceptance_" + [Guid]::NewGuid().ToString("N"))
 $QaAppData = Join-Path $QaRoot "AppData\Roaming"
 $QaSavePath = Join-Path $QaAppData "Godot\app_userdata\太空辛迪加\qa_current_run.save"

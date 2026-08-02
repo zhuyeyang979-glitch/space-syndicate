@@ -1,6 +1,7 @@
 extends SceneTree
 
 const CONTROLLER_SCENE_PATH := "res://scenes/runtime/VictoryControlRuntimeController.tscn"
+const SAVE_FIXTURE := preload("res://tests/victory_control_save_v3_fixture.gd")
 const POST_SETTLEMENT_CHECKPOINT := "post_world_settlement"
 const PLAYER_ZERO_AVAILABLE := 91234000
 const PLAYER_ZERO_ESCROW := 567
@@ -140,7 +141,7 @@ func _test_save_load_requires_fresh_audit_facts() -> void:
 	var stale_cash_paths: Array[String] = []
 	_collect_key_paths(immediately_after_load, "cash_ledger_cents", "public", stale_cash_paths)
 	_expect(stale_cash_paths.is_empty() and not _contains_exact_value(immediately_after_load, 77777777), "previous runtime cash cache cannot leak after load")
-	target.call("advance_world_effective", 0.0, source_world)
+	target.call("advance_world_effective", 0.0, SAVE_FIXTURE.issue_world(target, source_world))
 	var refreshed: Dictionary = target.call("public_snapshot")
 	_expect(str(refreshed.get("cash_visibility", "")) == "public_audit" and (refreshed.get("audit_revealed_player_indices", []) as Array) == [0], "fresh authoritative world facts restore the saved audit authorization")
 	_expect(_contains_exact_value(refreshed, PLAYER_ZERO_CASH), "fresh candidate cash is used after load")
@@ -154,19 +155,9 @@ func _test_save_load_requires_fresh_audit_facts() -> void:
 
 
 func _new_controller(label: String) -> Node:
-	var packed := load(CONTROLLER_SCENE_PATH) as PackedScene
-	_expect(packed != null, "%s scene loads" % label)
-	if packed == null:
-		return null
-	var controller := packed.instantiate()
+	var controller := SAVE_FIXTURE.controller(self)
 	_expect(controller != null, "%s scene instantiates" % label)
 	if controller == null:
-		return null
-	root.add_child(controller)
-	var configured: Dictionary = controller.call("configure")
-	_expect(bool(configured.get("configured", false)), "%s configures from v0.6 resources" % label)
-	if not bool(configured.get("configured", false)):
-		controller.free()
 		return null
 	return controller
 

@@ -155,8 +155,7 @@ func _run() -> void:
 	_verify_facility_preflight_requires_abort_capability()
 	_verify_occupied_facility_target_preflight()
 	_verify_owned_facility_upgrade_and_repair_preflight()
-	_verify_real_facility_card_unlock_and_exact_once()
-	_verify_finalize_failure_blocks_checkpoint_then_retries()
+	_verify_direct_facility_play_is_closed_and_queue_lifecycle_remains_available()
 	_verify_missing_capability_remains_fail_closed()
 	_verify_player_state_failure_compensates()
 	_verify_owner_progression_reports_compensation_failure()
@@ -183,7 +182,9 @@ func _verify_facility_target_preflight_contract() -> void:
 	var inventory: CommodityCardInventoryRuntimeController = fixture.get("inventory")
 	var player := inventory.player_snapshot("A")
 	var play := core.play_card("A", 0, _target(), int(player.get("revision", -1)), "v06-play:A:preflight-empty-card:region.alpha")
-	_expect(bool(ui.get("actionable", false)) and bool(play.get("committed", false)), "enabled facility hand action agrees with immediate formal execution using the same target and transaction binding|ui=%s|play=%s" % [JSON.stringify(ui), JSON.stringify(play)])
+	var after_direct := _preflight_owner_snapshots(fixture)
+	_expect(bool(ui.get("actionable", false)) and not bool(play.get("committed", true)) and str(play.get("reason_code", "")) == "v06_facility_requires_game_action_spine", "facility target eligibility remains readable while the retired direct runtime play surface fails closed|ui=%s|play=%s" % [JSON.stringify(ui), JSON.stringify(play)])
+	_expect(after == after_direct, "rejected direct facility play changes no facility, flow, player, or journal state")
 	_expect(bool(ui.get("privacy_safe", false)), "facility hand eligibility exposes no machine, runtime-instance, actor, or owner truth")
 	_cleanup(fixture)
 
@@ -230,7 +231,7 @@ func _verify_occupied_facility_target_preflight() -> void:
 		var inventory: CommodityCardInventoryRuntimeController = fixture.get("inventory")
 		var player := inventory.player_snapshot("A")
 		var play := core.play_card("A", 0, _target(), int(player.get("revision", -1)), "v06-play:A:preflight-%s-card:region.alpha" % label)
-		_expect(not bool(ui.get("actionable", true)) and not bool(play.get("committed", true)), "%s disabled facility hand action agrees with immediate formal execution" % label)
+		_expect(not bool(ui.get("actionable", true)) and not bool(play.get("committed", true)) and str(play.get("reason_code", "")) == "v06_facility_requires_game_action_spine", "%s disabled facility hand action and the retired direct runtime surface both fail closed" % label)
 		_expect(str(ui.get("reason_code", "")) == "public_facility_slot_occupied" and bool(ui.get("readable", false)), "%s hand state carries a readable, target-specific rejection" % label)
 		var ui_facts: Dictionary = ui.get("facts", {}) if ui.get("facts", {}) is Dictionary else {}
 		_expect(int(ui_facts.get("selected_district", -1)) == 0 and str(ui.get("reason_code", "")) == "public_facility_slot_occupied", "%s keeps the invalid current selection instead of silently switching to the empty second region" % label)
@@ -249,8 +250,8 @@ func _verify_owned_facility_upgrade_and_repair_preflight() -> void:
 	var upgrade_player := upgrade_inventory.player_snapshot("A")
 	var upgrade_play := upgrade_core.play_card("A", 0, _target(), int(upgrade_player.get("revision", -1)), "v06-play:A:preflight-upgrade-card:region.alpha")
 	_expect(bool(upgrade.get("ready", false)), "higher-rank card remains eligible against the viewer's own matching facility")
-	_expect(bool(upgrade_ui.get("actionable", false)) and bool(upgrade_play.get("committed", false)), "actionable owned Rank-II upgrade reaches the formal CardFlow play|ui=%s|play=%s" % [JSON.stringify(upgrade_ui), JSON.stringify(upgrade_play)])
-	_expect(_facility_rank(upgrade_infrastructure) == 2 and _facility_count_for_region(upgrade_infrastructure, "region.alpha") == 1 and _facility_count_for_region(upgrade_infrastructure, "region.beta") == 0, "formal upgrade mutates only the explicitly selected region.alpha slot")
+	_expect(bool(upgrade_ui.get("actionable", false)) and not bool(upgrade_play.get("committed", true)) and str(upgrade_play.get("reason_code", "")) == "v06_facility_requires_game_action_spine", "actionable owned Rank-II upgrade is still required to enter through the GameAction spine|ui=%s|play=%s" % [JSON.stringify(upgrade_ui), JSON.stringify(upgrade_play)])
+	_expect(_facility_rank(upgrade_infrastructure) == 1 and _facility_count_for_region(upgrade_infrastructure, "region.alpha") == 1 and _facility_count_for_region(upgrade_infrastructure, "region.beta") == 0, "rejected direct upgrade leaves the selected facility unchanged")
 	_expect(int((upgrade_core.debug_snapshot().get("router", {}) as Dictionary).get("pending_transaction_count", -1)) == 0, "owned upgrade leaves no prepared router record")
 	_cleanup(upgrade_fixture)
 
@@ -274,57 +275,71 @@ func _verify_owned_facility_upgrade_and_repair_preflight() -> void:
 	var repair_play := repair_core.play_card("A", 0, _target(), int(repair_player.get("revision", -1)), "v06-play:A:preflight-repair-card:region.alpha")
 	var damage_after_repair := int(repair_infrastructure.region_snapshot("region.alpha").get("damage_taken", -1))
 	_expect(bool(damage.get("committed", false)) and bool(repair.get("ready", false)), "same-rank card remains eligible to repair the viewer's damaged matching facility")
-	_expect(bool(repair_ui.get("actionable", false)) and bool(repair_play.get("committed", false)), "actionable owned same-rank repair reaches the formal CardFlow play")
-	_expect(damage_before_repair > 0 and damage_after_repair < damage_before_repair and _facility_count_for_region(repair_infrastructure, "region.beta") == 0, "formal repair restores only the explicitly selected region.alpha")
+	_expect(bool(repair_ui.get("actionable", false)) and not bool(repair_play.get("committed", true)) and str(repair_play.get("reason_code", "")) == "v06_facility_requires_game_action_spine", "actionable owned same-rank repair is still required to enter through the GameAction spine")
+	_expect(damage_before_repair > 0 and damage_after_repair == damage_before_repair and _facility_count_for_region(repair_infrastructure, "region.beta") == 0, "rejected direct repair leaves facility damage unchanged")
 	_expect(int((repair_core.debug_snapshot().get("router", {}) as Dictionary).get("pending_transaction_count", -1)) == 0, "owned repair leaves no prepared router record")
 	_cleanup(repair_fixture)
 
 
-func _verify_real_facility_card_unlock_and_exact_once() -> void:
-	var fixture := _production_fixture("success")
+func _verify_direct_facility_play_is_closed_and_queue_lifecycle_remains_available() -> void:
+	var fixture := _production_fixture("direct-closed")
 	var inventory: CommodityCardInventoryRuntimeController = fixture.get("inventory")
-	var core: Node = fixture.get("core")
+	var core: CoreEconomicCardRuntimeAdapterV06 = fixture.get("core")
 	var infrastructure: RegionInfrastructureRuntimeController = fixture.get("infrastructure")
 	var world: RuntimeWorld = fixture.get("world")
-	var assets: Node = fixture.get("assets")
-	var before := inventory.player_snapshot("A")
-	var play: Dictionary = core.call("play_card", "A", 0, _target(), int(before.get("revision", -1)), "facility-unlock-success")
-	var finalization: Dictionary = play.get("effect_finalization", {}) if play.get("effect_finalization", {}) is Dictionary else {}
-	_expect(bool(play.get("committed", false)), "real public facility card is unlocked through the unique inventory CardFlow path")
-	_expect(bool(finalization.get("finalized", false)), "successful player-state commit explicitly finalizes the facility owner")
-	_expect(infrastructure.facilities_snapshot(false).size() == 1 and _world_card_count(world) == 0, "one card creates exactly one facility and is consumed exactly once")
-	_expect(_life_assets(assets) == 3, "rank-I facility card leaves the six-color asset owner unchanged")
-	var facility: Dictionary = (infrastructure.facilities_snapshot(false)[0] as Dictionary).duplicate(true)
-	var lifecycle := infrastructure.facility_action_lifecycle_snapshot("facility-unlock-success")
-	_expect(str(facility.get("facility_type", "")) == "factory" and str(facility.get("industry_id", "")) == "life" and str(lifecycle.get("state", "")) == "finalized", "owner roster and lifecycle agree on the committed factory")
-	_expect(bool(inventory.checkpoint_status().get("can_checkpoint", false)), "fully finalized facility transaction is checkpoint-safe")
-	var replay: Dictionary = core.call("play_card", "A", 0, _target(), int(before.get("revision", -1)), "facility-unlock-success")
-	_expect(bool(replay.get("idempotent_replay", false)) and infrastructure.facilities_snapshot(false).size() == 1 and _life_assets(assets) == 3 and _world_card_count(world) == 0, "terminal replay checks the journal before the now-empty hand slot")
+	var before := _preflight_owner_snapshots(fixture)
+	var player := inventory.player_snapshot("A")
+	var direct := core.play_card(
+		"A",
+		0,
+		_target(),
+		int(player.get("revision", -1)),
+		"facility-direct-path-must-stay-closed"
+	)
+	var after := _preflight_owner_snapshots(fixture)
+	_expect(not bool(direct.get("committed", true)) and str(direct.get("reason_code", "")) == "v06_facility_requires_game_action_spine", "public Core adapter play_card rejects facility effects with the stable Action Spine reason")
+	_expect(before == after and infrastructure.facilities_snapshot(false).is_empty() and _world_card_count(world) == 1, "direct facility rejection reaches neither CardFlow nor the facility router handler")
+
+	var source := FileAccess.get_file_as_string("res://scripts/cards/v06/production/core_economic_card_runtime_adapter_v06.gd")
+	var play_offset := source.find("func play_card(")
+	var debug_offset := source.find("func debug_snapshot()", play_offset)
+	var play_body := source.substr(play_offset, debug_offset - play_offset) if play_offset >= 0 and debug_offset > play_offset else ""
+	var guard_offset := play_body.find("if effect_kind == FACILITY_EFFECT_KIND:")
+	var delegation_offset := play_body.find("\"play_core_card\",")
+	_expect(guard_offset >= 0 and delegation_offset > guard_offset and play_body.count("FACILITY_ACTION_SPINE_REQUIRED_REASON") == 1, "source scan proves the facility guard dominates the only legacy CardFlow delegation; direct path count=0")
+
+	for method_name in [
+		"prepare_queued_facility_card",
+		"commit_queued_facility_card",
+		"rollback_queued_facility_card",
+		"finalize_queued_facility_card",
+	]:
+		_expect(core.has_method(method_name), "Queue-only facility lifecycle retains %s" % method_name)
+	var target_result := core.facility_target_context("A", 0, "facility.factory.life.rank_1", "region.alpha", 2.0)
+	var target_context: Dictionary = target_result.get("target_context", {}) if target_result.get("target_context", {}) is Dictionary else {}
+	var card := _card("facility.factory.life.rank_1", "direct-closed-card")
+	var prepared := core.prepare_queued_facility_card("A", card, target_context, "facility-queue-finalize")
+	var committed := core.commit_queued_facility_card(prepared)
+	var effect_receipt: Dictionary = committed.get("effect_receipt", {}) if committed.get("effect_receipt", {}) is Dictionary else {}
+	var finalize_preflight := core.preflight_finalize_queued_facility_card(effect_receipt)
+	var finalized := core.finalize_queued_facility_card(effect_receipt)
+	_expect(bool(target_result.get("ready", false)) and bool(prepared.get("prepared", false)) and bool(committed.get("committed", false)), "Queue-only prepare and commit remain operational")
+	_expect(bool(finalize_preflight.get("ready", false)) and bool(finalized.get("finalized", false)), "Queue-only finalize remains operational")
+	_expect(infrastructure.facilities_snapshot(false).size() == 1 and _world_card_count(world) == 1, "Queue effect lifecycle mutates only the facility Owner and leaves card escrow to the Queue bridge")
 	_cleanup(fixture)
 
-
-func _verify_finalize_failure_blocks_checkpoint_then_retries() -> void:
-	var real_owner := _new_infrastructure()
-	var flaky := FlakyFinalizeInfrastructurePort.new(real_owner)
-	root.add_child(flaky)
-	var fixture := _production_fixture("retry", flaky, real_owner)
-	var inventory: CommodityCardInventoryRuntimeController = fixture.get("inventory")
-	var core: Node = fixture.get("core")
-	var world: RuntimeWorld = fixture.get("world")
-	var assets: Node = fixture.get("assets")
-	var before := inventory.player_snapshot("A")
-	var first: Dictionary = core.call("play_card", "A", 0, _target(), int(before.get("revision", -1)), "facility-finalize-retry")
-	var first_finalization: Dictionary = first.get("effect_finalization", {}) if first.get("effect_finalization", {}) is Dictionary else {}
-	_expect(bool(first.get("committed", false)) and not bool(first_finalization.get("finalized", true)), "finalize failure preserves the already committed player and owner facts|first=%s" % JSON.stringify(first))
-	_expect(_world_card_count(world) == 0 and _life_assets(assets) == 3 and real_owner.facilities_snapshot(false).size() == 1, "failed finalize never double-spends or rolls back a successful player commit")
-	_expect(not bool(inventory.checkpoint_status().get("can_checkpoint", true)), "failed finalize remains an explicit checkpoint blocker|status=%s" % JSON.stringify(inventory.checkpoint_status()))
-	var replay: Dictionary = core.call("play_card", "A", 0, _target(), int(before.get("revision", -1)), "facility-finalize-retry")
-	var replay_finalization: Dictionary = replay.get("effect_finalization", {}) if replay.get("effect_finalization", {}) is Dictionary else {}
-	_expect(bool(replay.get("idempotent_replay", false)) and bool(replay_finalization.get("finalized", false)), "same transaction replay retries only finalization")
-	_expect(flaky.finalize_attempts == 2 and _world_card_count(world) == 0 and _life_assets(assets) == 3 and real_owner.facilities_snapshot(false).size() == 1, "finalization retry does not repeat card asset or facility mutation")
-	_expect(bool(inventory.checkpoint_status().get("can_checkpoint", false)) and str(real_owner.facility_action_lifecycle_snapshot("facility-finalize-retry").get("state", "")) == "finalized", "owner-confirmed finalize closes the checkpoint blocker")
-	_cleanup(fixture)
-	flaky.free()
+	var rollback_fixture := _production_fixture("queue-rollback")
+	var rollback_core: CoreEconomicCardRuntimeAdapterV06 = rollback_fixture.get("core")
+	var rollback_owner: RegionInfrastructureRuntimeController = rollback_fixture.get("infrastructure")
+	var rollback_target_result := rollback_core.facility_target_context("A", 0, "facility.factory.life.rank_1", "region.alpha", 2.0)
+	var rollback_target: Dictionary = rollback_target_result.get("target_context", {}) if rollback_target_result.get("target_context", {}) is Dictionary else {}
+	var rollback_prepared := rollback_core.prepare_queued_facility_card("A", _card("facility.factory.life.rank_1", "queue-rollback-card"), rollback_target, "facility-queue-rollback")
+	var rollback_committed := rollback_core.commit_queued_facility_card(rollback_prepared)
+	var rollback_receipt: Dictionary = rollback_committed.get("effect_receipt", {}) if rollback_committed.get("effect_receipt", {}) is Dictionary else {}
+	var rolled_back := rollback_core.rollback_queued_facility_card(rollback_receipt)
+	_expect(bool(rollback_committed.get("committed", false)) and bool(rolled_back.get("rolled_back", false)), "Queue-only rollback remains operational")
+	_expect(rollback_owner.facilities_snapshot(false).is_empty(), "Queue rollback removes the unfinalized facility mutation")
+	_cleanup(rollback_fixture)
 
 
 func _verify_missing_capability_remains_fail_closed() -> void:
@@ -339,7 +354,7 @@ func _verify_missing_capability_remains_fail_closed() -> void:
 	var before := inventory.player_snapshot("A")
 	var before_world := JSON.stringify(world.players)
 	var result: Dictionary = core.call("play_card", "A", 0, _target(), int(before.get("revision", -1)), "facility-legacy-blocked")
-	_expect(not bool(result.get("committed", true)) and str(result.get("reason_code", "")) == "facility_rollback_atomicity_unavailable", "missing finalize/readiness capability keeps the public facility card fail-closed")
+	_expect(not bool(result.get("committed", true)) and str(result.get("reason_code", "")) == "v06_facility_requires_game_action_spine", "legacy infrastructure capability cannot reopen the retired direct facility surface")
 	_expect(before_world == JSON.stringify(world.players) and _life_assets(assets) == 3 and real_owner.facilities_snapshot(false).is_empty(), "capability rejection changes no card asset cash or facility state")
 	_cleanup(fixture)
 	legacy.free()
@@ -597,6 +612,8 @@ func _asset_owner() -> Node:
 		"recovery_remainders_by_player": {"0": remainders},
 		"reservations": {},
 		"terminal_receipts": {},
+		"advance_once_journal": {},
+		"advance_once_order": [],
 	})
 	_expect(bool(result.get("applied", false)), "test assets load into the authoritative owner")
 	return assets

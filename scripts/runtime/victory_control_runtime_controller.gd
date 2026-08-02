@@ -2,9 +2,13 @@
 extends Node
 class_name VictoryControlRuntimeController
 
+const StrictState := preload("res://scripts/runtime/save_owner_state_v2_contract.gd")
+const SaveWireCodec := preload("res://scripts/runtime/victory_control_save_wire_codec_v3.gd")
+const PlayerIndexMap := preload("res://scripts/runtime/canonical_player_index_map_v1.gd")
+
 const CONTROLLER_ID := "victory_control_v06"
 const RULESET_ID := "v0.6"
-const SAVE_SCHEMA_VERSION := 2
+const SAVE_SCHEMA_VERSION := 3
 const OUTCOME_SCHEMA_VERSION := 2
 const STATE_IDLE := "idle"
 const STATE_QUALIFICATION := "qualification"
@@ -13,6 +17,48 @@ const STATE_RESOLVED := "resolved"
 const VALID_STATES := [STATE_IDLE, STATE_QUALIFICATION, STATE_AUDIT, STATE_RESOLVED]
 const COMPARISON_ORDER := ["top_k_gdp_per_minute_cents", "controlled_region_count", "cash_ledger_cents"]
 const POST_SETTLEMENT_CHECKPOINT := "post_world_settlement"
+const SAVE_KEYS := ["victory_control_runtime"]
+const SAVE_PAYLOAD_KEYS := [
+	"schema_version",
+	"ruleset_id",
+	"state",
+	"qualification_elapsed_by_player",
+	"audit_roster",
+	"audit_remaining_seconds",
+	"outcome_sequence",
+	"outcome_receipt",
+]
+const OUTCOME_RECEIPT_KEYS := [
+	"outcome_id",
+	"schema_version",
+	"ruleset_id",
+	"reason_code",
+	"winner_player_indices",
+	"co_victory",
+	"comparison_order",
+	"rankings",
+	"audit_evidence",
+	"visibility_scope",
+]
+const OUTCOME_RANKING_KEYS := [
+	"player_index",
+	"top_k_gdp_per_minute_cents",
+	"top_k_gdp_per_minute",
+	"top_n_gdp_per_minute",
+	"controlled_region_count",
+	"cash_ledger_cents",
+	"winner",
+]
+const AUDIT_EVIDENCE_KEYS := ["victory_rule", "audit_roster", "settlement_checkpoint"]
+const VICTORY_RULE_KEYS := [
+	"surviving_region_count",
+	"coverage_basis_points",
+	"required_region_count",
+	"gdp_per_required_region_per_minute",
+	"required_top_k_gdp_per_minute",
+	"required_top_k_gdp_per_minute_cents",
+	"ordinary_victory_paused",
+]
 # One microsecond matches the existing qualification boundary tolerance while
 # remaining far below any configured gameplay tick or rule duration.
 const TIMER_BOUNDARY_EPSILON_SECONDS := 0.000001
@@ -37,6 +83,9 @@ var _last_victory_rule: Dictionary = {}
 var _last_pause_reasons: Array = []
 var _last_settlement_checkpoint := ""
 var _advance_count := 0
+var _fresh_world_facts_required := false
+var _restore_capture_floor := 0
+var _restored_outcome_dispatch_suppressed := false
 
 
 func set_world_bridge(bridge: Node) -> void:
@@ -73,6 +122,9 @@ func reset_state() -> void:
 	_last_pause_reasons = []
 	_last_settlement_checkpoint = ""
 	_advance_count = 0
+	_fresh_world_facts_required = false
+	_restore_capture_floor = 0
+	_restored_outcome_dispatch_suppressed = false
 
 
 func evaluate_region_control(region_snapshot: Dictionary) -> Dictionary:
@@ -260,6 +312,10 @@ func evaluate_candidates(world_snapshot: Dictionary) -> Array:
 func advance_world_effective(delta_seconds: float, world_snapshot: Dictionary) -> Dictionary:
 	if not _configured or not _is_data_only(world_snapshot):
 		return _advance_result(false, "controller_not_ready_or_snapshot_invalid")
+	if _fresh_world_facts_required:
+		if not _world_snapshot_is_fresh_after_restore(world_snapshot):
+			return _advance_result(true, "awaiting_fresh_world_facts_after_restore")
+		_fresh_world_facts_required = false
 	_capture_world_facts(world_snapshot)
 	_last_pause_reasons = _pause_reasons(world_snapshot)
 	_last_settlement_checkpoint = str(world_snapshot.get("settlement_checkpoint", ""))
@@ -279,9 +335,18 @@ func advance_world_effective(delta_seconds: float, world_snapshot: Dictionary) -
 
 
 func resolve_special_outcome(reason_code: String, world_snapshot: Dictionary) -> Dictionary:
-	if not _configured or not _is_data_only(world_snapshot) or not _outcome_receipt.is_empty():
-		return _outcome_receipt.duplicate(true)
+	if not _configured or not _is_data_only(world_snapshot):
+		return {}
+	if not _outcome_receipt.is_empty():
+		return {} if _restored_outcome_dispatch_suppressed else _outcome_receipt.duplicate(true)
+	if _fresh_world_facts_required:
+		if not _world_snapshot_is_fresh_after_restore(world_snapshot):
+			return {}
+		_fresh_world_facts_required = false
 	_capture_world_facts(world_snapshot)
+	_last_pause_reasons = _pause_reasons(world_snapshot)
+	# Special outcomes are not public-audit checkpoint completions.
+	_last_settlement_checkpoint = ""
 	var active_candidates: Array = []
 	for candidate_variant in _last_candidates:
 		if candidate_variant is Dictionary and not bool((candidate_variant as Dictionary).get("eliminated", false)):
@@ -366,72 +431,99 @@ func outcome_receipt() -> Dictionary:
 
 
 func to_save_data() -> Dictionary:
-	return {
+	var runtime_state := {
 		"victory_control_runtime": {
 			"schema_version": SAVE_SCHEMA_VERSION,
 			"ruleset_id": RULESET_ID,
 			"state": _state,
 			"qualification_elapsed_by_player": _qualification_elapsed_by_player.duplicate(true),
 			"audit_roster": _audit_roster.duplicate(),
-			"audit_remaining_seconds": _audit_remaining_seconds,
+			"audit_remaining_seconds": _normalized_timer_remaining(
+				_audit_remaining_seconds,
+				_timer_duration("public_audit")
+			),
 			"outcome_sequence": _outcome_sequence,
 			"outcome_receipt": _outcome_receipt.duplicate(true),
 		}
 	}
+	var encoded := SaveWireCodec.encode_save_state(runtime_state)
+	return (encoded.get("value", {}) as Dictionary).duplicate(true) \
+			if bool(encoded.get("ok", false)) and encoded.get("value") is Dictionary else {}
+
+
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	var prepared := _prepare_save_data(data)
+	if not bool(prepared.get("valid", false)):
+		var reason_code := str(prepared.get("reason_code", "victory_save_invalid"))
+		return {
+			"accepted": false,
+			"reason": reason_code,
+			"reason_code": reason_code,
+			"requires_backup": bool(prepared.get("requires_backup", false)),
+		}
+	return {
+		"accepted": true,
+		"reason": "",
+		"reason_code": "victory_save_valid",
+		"normalized_state": (prepared.get("normalized_state", {}) as Dictionary).duplicate(true),
+	}
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
-	var payload: Dictionary = data.get("victory_control_runtime", data) if data.get("victory_control_runtime", data) is Dictionary else {}
-	if payload.is_empty():
-		reset_state()
-		return {"applied": true, "legacy_default": true, "state": _state}
-	if not _is_data_only(payload):
-		return {"applied": false, "reason": "victory_save_not_pure_data"}
-	if int(payload.get("schema_version", 0)) != SAVE_SCHEMA_VERSION or str(payload.get("ruleset_id", "")) != RULESET_ID:
-		return {"applied": false, "reason": "victory_save_header_invalid"}
-	var saved_state := str(payload.get("state", STATE_IDLE))
-	if saved_state not in VALID_STATES:
-		return {"applied": false, "reason": "victory_state_invalid"}
-	var qualification_validation := _validated_saved_qualification(payload.get("qualification_elapsed_by_player", null))
-	if not bool(qualification_validation.get("valid", false)):
-		return {"applied": false, "reason": str(qualification_validation.get("reason", "victory_qualification_invalid"))}
-	var roster_validation := _validated_saved_audit_roster(payload.get("audit_roster", null))
-	if not bool(roster_validation.get("valid", false)):
-		return {"applied": false, "reason": str(roster_validation.get("reason", "victory_audit_roster_invalid"))}
-	var next_audit_roster: Array = roster_validation.get("roster", []) as Array
-	if saved_state in [STATE_IDLE, STATE_QUALIFICATION] and not next_audit_roster.is_empty():
-		return {"applied": false, "reason": "victory_audit_roster_state_mismatch"}
-	if saved_state == STATE_AUDIT and next_audit_roster.is_empty():
-		return {"applied": false, "reason": "victory_audit_roster_missing"}
-	var remaining_variant: Variant = payload.get("audit_remaining_seconds", null)
-	if typeof(remaining_variant) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(remaining_variant)):
-		return {"applied": false, "reason": "victory_audit_remaining_invalid"}
-	var public_audit_duration := _timer_duration("public_audit")
-	var next_audit_remaining := float(remaining_variant)
-	if next_audit_remaining < 0.0 or next_audit_remaining > public_audit_duration + TIMER_BOUNDARY_EPSILON_SECONDS:
-		return {"applied": false, "reason": "victory_audit_remaining_out_of_range"}
-	var sequence_variant: Variant = payload.get("outcome_sequence", null)
-	if typeof(sequence_variant) != TYPE_INT or int(sequence_variant) < 0:
-		return {"applied": false, "reason": "victory_outcome_sequence_invalid"}
-	var receipt_validation := _validated_saved_outcome_receipt(payload.get("outcome_receipt", null), saved_state, next_audit_roster)
-	if not bool(receipt_validation.get("valid", false)):
-		return {"applied": false, "reason": str(receipt_validation.get("reason", "victory_outcome_receipt_invalid"))}
+	var prepared := _prepare_save_data(data)
+	if not bool(prepared.get("valid", false)):
+		var reason_code := str(prepared.get("reason_code", "victory_save_invalid"))
+		return {
+			"applied": false,
+			"reason": reason_code,
+			"reason_code": reason_code,
+			"requires_backup": bool(prepared.get("requires_backup", false)),
+		}
+	var decoded := prepared.get("decoded_state", {}) as Dictionary
+	var payload := decoded.get("victory_control_runtime", {}) as Dictionary
 	# Apply only after the whole envelope has passed validation. Runtime world facts
 	# are deliberately not restored: the bridge must provide fresh authoritative
 	# candidates before any audit cash can be projected again.
-	_state = saved_state
-	_qualification_elapsed_by_player = (qualification_validation.get("qualification", {}) as Dictionary).duplicate(true)
-	_audit_roster = next_audit_roster.duplicate()
-	_audit_remaining_seconds = _normalized_timer_remaining(next_audit_remaining, public_audit_duration)
-	_outcome_sequence = int(sequence_variant)
-	_outcome_receipt = (receipt_validation.get("receipt", {}) as Dictionary).duplicate(true)
+	_state = str(payload.get("state"))
+	_qualification_elapsed_by_player = (payload.get("qualification_elapsed_by_player") as Dictionary).duplicate(true)
+	_audit_roster = (payload.get("audit_roster") as Array).duplicate()
+	_audit_remaining_seconds = float(payload.get("audit_remaining_seconds"))
+	_outcome_sequence = int(payload.get("outcome_sequence"))
+	_outcome_receipt = (payload.get("outcome_receipt") as Dictionary).duplicate(true)
 	_last_candidates = []
 	_last_player_assets = {}
 	_last_victory_rule = {}
 	_last_pause_reasons = []
 	_last_settlement_checkpoint = ""
 	_advance_count = 0
+	_restore_capture_floor = _world_bridge_capture_count()
+	_fresh_world_facts_required = true
+	_restored_outcome_dispatch_suppressed = _state == STATE_RESOLVED
 	return {"applied": true, "legacy_default": false, "state": _state}
+
+
+func preflight_restore_dependencies(owner_state: Dictionary, all_sections: Dictionary) -> Dictionary:
+	var prepared := _prepare_save_data(owner_state)
+	if not bool(prepared.get("valid", false)):
+		return {"accepted": false, "reason_code": str(prepared.get("reason_code", "victory_save_invalid"))}
+	var session_state: Dictionary = all_sections.get("session", {}) \
+			if all_sections.get("session", {}) is Dictionary else {}
+	var session_payload: Dictionary = session_state.get("game_session_runtime", {}) \
+			if session_state.get("game_session_runtime", {}) is Dictionary else {}
+	if session_payload.is_empty():
+		return {"accepted": false, "reason_code": "victory_session_dependency_missing"}
+	var victory_payload := (prepared.get("decoded_state", {}) as Dictionary).get("victory_control_runtime", {}) as Dictionary
+	var victory_resolved := str(victory_payload.get("state", "")) == STATE_RESOLVED
+	var victory_outcome := victory_payload.get("outcome_receipt", {}) as Dictionary
+	var session_finished := str(session_payload.get("session_state", "")) == "finished"
+	var session_outcome: Dictionary = session_payload.get("outcome_receipt", {}) \
+			if session_payload.get("outcome_receipt", {}) is Dictionary else {}
+	if victory_resolved:
+		if not session_finished or victory_outcome.is_empty() or session_outcome != victory_outcome:
+			return {"accepted": false, "reason_code": "victory_session_outcome_dependency_mismatch"}
+	elif session_finished or not session_outcome.is_empty():
+		return {"accepted": false, "reason_code": "victory_session_outcome_state_mismatch"}
+	return {"accepted": true, "reason_code": "victory_session_dependency_valid"}
 
 
 func debug_snapshot() -> Dictionary:
@@ -448,6 +540,8 @@ func debug_snapshot() -> Dictionary:
 		"outcome_emitted": not _outcome_receipt.is_empty(),
 		"outcome_sequence": _outcome_sequence,
 		"advance_count": _advance_count,
+		"fresh_world_facts_required": _fresh_world_facts_required,
+		"restored_outcome_dispatch_suppressed": _restored_outcome_dispatch_suppressed,
 		"timer_boundary_epsilon_seconds": TIMER_BOUNDARY_EPSILON_SECONDS,
 		"world_bridge_ready": _world_bridge != null,
 		"owns_gdp_formula": false,
@@ -537,6 +631,7 @@ func _advance_audit(delta_seconds: float, world_snapshot: Dictionary) -> String:
 func _finalize_outcome(reason_code: String, ranked_candidates: Array, winner_player_indices: Array, comparison_order: Array) -> void:
 	if not _outcome_receipt.is_empty():
 		return
+	_restored_outcome_dispatch_suppressed = false
 	_sort_candidates_by_order(ranked_candidates, comparison_order)
 	_outcome_sequence += 1
 	var rankings: Array = []
@@ -675,8 +770,26 @@ func _advance_result(valid: bool, reason: String) -> Dictionary:
 		"reason": reason,
 		"state": _state,
 		"public_snapshot": public_snapshot(),
-		"outcome_receipt": _outcome_receipt.duplicate(true),
+		"outcome_receipt": {} if _restored_outcome_dispatch_suppressed else _outcome_receipt.duplicate(true),
 	}
+
+
+func _world_bridge_capture_count() -> int:
+	if _world_bridge == null or not _world_bridge.has_method("debug_snapshot"):
+		return 0
+	var debug_variant: Variant = _world_bridge.call("debug_snapshot")
+	return int((debug_variant as Dictionary).get("capture_count", 0)) \
+			if debug_variant is Dictionary else 0
+
+
+func _world_snapshot_is_fresh_after_restore(world_snapshot: Dictionary) -> bool:
+	if _world_bridge == null or not _world_bridge.has_method("is_fresh_snapshot_after_restore"):
+		return false
+	return bool(_world_bridge.call(
+		"is_fresh_snapshot_after_restore",
+		world_snapshot.duplicate(true),
+		_restore_capture_floor
+	))
 
 
 func _profile_from_resource() -> Dictionary:
@@ -768,7 +881,9 @@ func _private_assets_for(player_index: int) -> Dictionary:
 
 
 func _authoritative_audit_visibility_player_indices() -> Array:
-	if _state not in [STATE_AUDIT, STATE_RESOLVED] or _audit_roster.is_empty():
+	if _fresh_world_facts_required \
+			or _state not in [STATE_AUDIT, STATE_RESOLVED] \
+			or _audit_roster.is_empty():
 		return []
 	var result: Array = []
 	var previous_player_index := -1
@@ -871,17 +986,127 @@ func _public_outcome_receipt(audit_revealed_player_indices: Array = []) -> Dicti
 	return result if _is_data_only(result) else {}
 
 
+func _prepare_save_data(data: Dictionary) -> Dictionary:
+	if StrictState.has_exact_keys(data, SAVE_KEYS) and data.get("victory_control_runtime") is Dictionary:
+		var legacy_payload := data.get("victory_control_runtime") as Dictionary
+		if legacy_payload.get("schema_version") is int \
+				and int(legacy_payload.get("schema_version", 0)) in [1, 2]:
+			return {
+				"valid": false,
+				"reason_code": "victory_save_v2_closed_wire_upgrade_requires_backup",
+				"requires_backup": true,
+			}
+	if StrictState.contains_rng_continuation(data):
+		return {"valid": false, "reason_code": "victory_save_not_pure_data"}
+	var decoded := SaveWireCodec.decode_save_state(data)
+	if not bool(decoded.get("ok", false)):
+		return {"valid": false, "reason_code": str(decoded.get("reason_code", "victory_save_v3_wire_invalid"))}
+	var runtime_state := decoded.get("value", {}) as Dictionary
+	var validation := _validated_decoded_save_state(runtime_state)
+	if not bool(validation.get("valid", false)):
+		return validation
+	var normalized_runtime := validation.get("normalized_runtime_state", {}) as Dictionary
+	var canonical := SaveWireCodec.encode_save_state(normalized_runtime)
+	if not bool(canonical.get("ok", false)) or not (canonical.get("value") is Dictionary):
+		return {"valid": false, "reason_code": str(canonical.get("reason_code", "victory_save_v3_wire_invalid"))}
+	return {
+		"valid": true,
+		"reason_code": "victory_save_valid",
+		"normalized_state": (canonical.get("value", {}) as Dictionary).duplicate(true),
+		"decoded_state": normalized_runtime.duplicate(true),
+	}
+
+
+func _validated_decoded_save_state(runtime_state: Dictionary) -> Dictionary:
+	if not StrictState.has_exact_keys(runtime_state, SAVE_KEYS) \
+			or not (runtime_state.get("victory_control_runtime") is Dictionary):
+		return {"valid": false, "reason_code": "victory_save_shape_invalid"}
+	var payload := runtime_state.get("victory_control_runtime") as Dictionary
+	if not StrictState.has_exact_keys(payload, SAVE_PAYLOAD_KEYS):
+		return {"valid": false, "reason_code": "victory_save_payload_shape_invalid"}
+	if not (payload.get("schema_version") is int) \
+			or int(payload.get("schema_version", 0)) != SAVE_SCHEMA_VERSION \
+			or not (payload.get("ruleset_id") is String) \
+			or str(payload.get("ruleset_id", "")) != RULESET_ID:
+		return {"valid": false, "reason_code": "victory_save_header_invalid"}
+	if not (payload.get("state") is String):
+		return {"valid": false, "reason_code": "victory_state_invalid"}
+	var saved_state := str(payload.get("state"))
+	if saved_state not in VALID_STATES:
+		return {"valid": false, "reason_code": "victory_state_invalid"}
+	var qualification_validation := _validated_saved_qualification(payload.get("qualification_elapsed_by_player"))
+	if not bool(qualification_validation.get("valid", false)):
+		return {"valid": false, "reason_code": str(qualification_validation.get("reason", "victory_qualification_invalid"))}
+	var roster_validation := _validated_saved_audit_roster(payload.get("audit_roster"))
+	if not bool(roster_validation.get("valid", false)):
+		return {"valid": false, "reason_code": str(roster_validation.get("reason", "victory_audit_roster_invalid"))}
+	var next_audit_roster := roster_validation.get("roster", []) as Array
+	if saved_state in [STATE_IDLE, STATE_QUALIFICATION] and not next_audit_roster.is_empty():
+		return {"valid": false, "reason_code": "victory_audit_roster_state_mismatch"}
+	if saved_state == STATE_AUDIT and next_audit_roster.is_empty():
+		return {"valid": false, "reason_code": "victory_audit_roster_missing"}
+	var remaining_variant: Variant = payload.get("audit_remaining_seconds")
+	if not (remaining_variant is float) or not is_finite(float(remaining_variant)):
+		return {"valid": false, "reason_code": "victory_audit_remaining_invalid"}
+	var public_audit_duration := _timer_duration("public_audit")
+	var next_audit_remaining := float(remaining_variant)
+	if next_audit_remaining < 0.0 or next_audit_remaining > public_audit_duration + TIMER_BOUNDARY_EPSILON_SECONDS:
+		return {"valid": false, "reason_code": "victory_audit_remaining_out_of_range"}
+	var sequence_variant: Variant = payload.get("outcome_sequence")
+	if not (sequence_variant is int) or int(sequence_variant) < 0:
+		return {"valid": false, "reason_code": "victory_outcome_sequence_invalid"}
+	var receipt_validation := _validated_saved_outcome_receipt(
+		payload.get("outcome_receipt"),
+		saved_state,
+		next_audit_roster,
+		int(sequence_variant)
+	)
+	if not bool(receipt_validation.get("valid", false)):
+		return {"valid": false, "reason_code": str(receipt_validation.get("reason", "victory_outcome_receipt_invalid"))}
+	var next_qualification := (qualification_validation.get("qualification", {}) as Dictionary).duplicate(true)
+	for player_key in next_qualification.keys():
+		if next_audit_roster.has(int(str(player_key))):
+			return {"valid": false, "reason_code": "victory_qualification_audit_roster_overlap"}
+	var canonical_audit_remaining := _normalized_timer_remaining(next_audit_remaining, public_audit_duration)
+	if saved_state == STATE_IDLE:
+		if not next_qualification.is_empty() or canonical_audit_remaining != 0.0 or int(sequence_variant) != 0:
+			return {"valid": false, "reason_code": "victory_idle_state_mismatch"}
+	elif saved_state == STATE_QUALIFICATION:
+		if next_qualification.is_empty() or canonical_audit_remaining != 0.0 or int(sequence_variant) != 0:
+			return {"valid": false, "reason_code": "victory_qualification_state_mismatch"}
+	elif saved_state == STATE_AUDIT and int(sequence_variant) != 0:
+		return {"valid": false, "reason_code": "victory_audit_state_mismatch"}
+	elif saved_state == STATE_RESOLVED and int(sequence_variant) <= 0:
+		return {"valid": false, "reason_code": "victory_resolved_sequence_missing"}
+	return {
+		"valid": true,
+		"reason_code": "victory_save_valid",
+		"normalized_runtime_state": {
+			"victory_control_runtime": {
+				"schema_version": SAVE_SCHEMA_VERSION,
+				"ruleset_id": RULESET_ID,
+				"state": saved_state,
+				"qualification_elapsed_by_player": next_qualification,
+				"audit_roster": next_audit_roster.duplicate(),
+				"audit_remaining_seconds": canonical_audit_remaining,
+				"outcome_sequence": int(sequence_variant),
+				"outcome_receipt": (receipt_validation.get("receipt", {}) as Dictionary).duplicate(true),
+			},
+		},
+	}
+
+
 func _validated_saved_qualification(value: Variant) -> Dictionary:
 	if not (value is Dictionary) or not _is_data_only(value):
 		return {"valid": false, "reason": "victory_qualification_invalid"}
 	var result := {}
 	var qualification_duration := _timer_duration("victory_qualification")
 	for key_variant in (value as Dictionary).keys():
-		var key := str(key_variant)
-		if not key.is_valid_int() or int(key) < 0:
+		if not (key_variant is String):
 			return {"valid": false, "reason": "victory_qualification_player_invalid"}
+		var key := str(key_variant)
 		var elapsed_variant: Variant = (value as Dictionary)[key_variant]
-		if typeof(elapsed_variant) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(elapsed_variant)):
+		if not (elapsed_variant is float) or not is_finite(float(elapsed_variant)):
 			return {"valid": false, "reason": "victory_qualification_elapsed_invalid"}
 		var elapsed := float(elapsed_variant)
 		if elapsed < 0.0 or elapsed >= qualification_duration + TIMER_BOUNDARY_EPSILON_SECONDS:
@@ -899,43 +1124,132 @@ func _validated_saved_audit_roster(value: Variant) -> Dictionary:
 		if typeof(player_index_variant) != TYPE_INT:
 			return {"valid": false, "reason": "victory_audit_roster_player_invalid"}
 		var player_index := int(player_index_variant)
-		if player_index < 0 or player_index <= previous_player_index:
+		if player_index < 0 \
+				or player_index >= PlayerIndexMap.MAX_ACTIVE_PLAYER_COUNT \
+				or player_index <= previous_player_index:
 			return {"valid": false, "reason": "victory_audit_roster_not_stable_unique"}
 		result.append(player_index)
 		previous_player_index = player_index
 	return {"valid": true, "roster": result}
 
 
-func _validated_saved_outcome_receipt(value: Variant, saved_state: String, audit_roster: Array) -> Dictionary:
+func _validated_saved_outcome_receipt(
+	value: Variant,
+	saved_state: String,
+	audit_roster: Array,
+	outcome_sequence: int
+) -> Dictionary:
 	if not (value is Dictionary) or not _is_data_only(value):
 		return {"valid": false, "reason": "victory_outcome_receipt_invalid"}
 	var receipt := (value as Dictionary).duplicate(true)
 	if saved_state != STATE_RESOLVED:
 		return {"valid": receipt.is_empty(), "reason": "" if receipt.is_empty() else "victory_outcome_receipt_state_mismatch", "receipt": {}}
-	if receipt.is_empty() or str(receipt.get("ruleset_id", "")) != RULESET_ID:
+	if receipt.is_empty() or not StrictState.has_exact_keys(receipt, OUTCOME_RECEIPT_KEYS):
 		return {"valid": false, "reason": "victory_resolved_receipt_missing"}
-	if not receipt.get("rankings", null) is Array or not receipt.get("winner_player_indices", null) is Array:
+	if not (receipt.get("outcome_id") is String) \
+			or str(receipt.get("outcome_id", "")) != "victory.v06.%d" % outcome_sequence \
+			or not (receipt.get("schema_version") is int) \
+			or int(receipt.get("schema_version", 0)) != OUTCOME_SCHEMA_VERSION \
+			or not (receipt.get("ruleset_id") is String) \
+			or str(receipt.get("ruleset_id", "")) != RULESET_ID \
+			or not (receipt.get("reason_code") is String) \
+			or str(receipt.get("reason_code", "")) not in ["public_audit_complete", "last_survivor", "planet_destroyed"] \
+			or not (receipt.get("co_victory") is bool) \
+			or not (receipt.get("visibility_scope") is String) \
+			or str(receipt.get("visibility_scope", "")) != "public" \
+			or not (receipt.get("rankings") is Array) \
+			or not (receipt.get("winner_player_indices") is Array) \
+			or not (receipt.get("comparison_order") is Array) \
+			or not (receipt.get("audit_evidence") is Dictionary):
 		return {"valid": false, "reason": "victory_outcome_rankings_invalid"}
+	var reason_code := str(receipt.get("reason_code", ""))
+	var comparison_order := receipt.get("comparison_order", []) as Array
+	var expected_order: Array = ["cash_ledger_cents"] if reason_code == "planet_destroyed" else COMPARISON_ORDER
+	if comparison_order != expected_order:
+		return {"valid": false, "reason": "victory_outcome_comparison_order_invalid"}
+	var winners := receipt.get("winner_player_indices", []) as Array
+	if winners.is_empty() or bool(receipt.get("co_victory", false)) != (winners.size() > 1):
+		return {"valid": false, "reason": "victory_outcome_winner_invalid"}
 	var ranking_players: Array = []
-	for ranking_variant in receipt.get("rankings", []):
-		if not (ranking_variant is Dictionary):
+	var ranking_winners: Array = []
+	var rankings := receipt.get("rankings", []) as Array
+	if rankings.is_empty():
+		return {"valid": false, "reason": "victory_outcome_rankings_invalid"}
+	for ranking_variant in rankings:
+		if not (ranking_variant is Dictionary) \
+				or not StrictState.has_exact_keys(ranking_variant as Dictionary, OUTCOME_RANKING_KEYS):
 			return {"valid": false, "reason": "victory_outcome_ranking_invalid"}
 		var ranking: Dictionary = ranking_variant
 		var player_index_variant: Variant = ranking.get("player_index", null)
-		var cash_variant: Variant = ranking.get("cash_ledger_cents", null)
-		if typeof(player_index_variant) != TYPE_INT or int(player_index_variant) < 0 or ranking_players.has(int(player_index_variant)):
+		if not (player_index_variant is int) \
+				or int(player_index_variant) < 0 \
+				or int(player_index_variant) >= PlayerIndexMap.MAX_ACTIVE_PLAYER_COUNT \
+				or ranking_players.has(int(player_index_variant)):
 			return {"valid": false, "reason": "victory_outcome_ranking_player_invalid"}
-		if typeof(cash_variant) != TYPE_INT:
-			return {"valid": false, "reason": "victory_outcome_ranking_cash_invalid"}
+		for integer_field in ["top_k_gdp_per_minute_cents", "top_k_gdp_per_minute", "top_n_gdp_per_minute", "controlled_region_count", "cash_ledger_cents"]:
+			if not (ranking.get(integer_field) is int):
+				return {"valid": false, "reason": "victory_outcome_ranking_value_invalid"}
+		if not (ranking.get("winner") is bool):
+			return {"valid": false, "reason": "victory_outcome_ranking_winner_invalid"}
 		ranking_players.append(int(player_index_variant))
-	for winner_variant in receipt.get("winner_player_indices", []):
-		if typeof(winner_variant) != TYPE_INT or not ranking_players.has(int(winner_variant)):
+		if bool(ranking.get("winner", false)):
+			ranking_winners.append(int(player_index_variant))
+	var sorted_rankings := rankings.duplicate(true)
+	_sort_candidates_by_order(sorted_rankings, comparison_order)
+	if sorted_rankings != rankings or ranking_winners != winners:
+		return {"valid": false, "reason": "victory_outcome_ranking_order_invalid"}
+	var best := rankings[0] as Dictionary
+	for ranking_variant in rankings:
+		var ranking := ranking_variant as Dictionary
+		if bool(ranking.get("winner", false)) != _rankings_tied_by_order(ranking, best, comparison_order):
+			return {"valid": false, "reason": "victory_outcome_winner_order_invalid"}
+	for winner_variant in winners:
+		if not (winner_variant is int) or not ranking_players.has(int(winner_variant)):
 			return {"valid": false, "reason": "victory_outcome_winner_invalid"}
 	var evidence: Dictionary = receipt.get("audit_evidence", {}) if receipt.get("audit_evidence", {}) is Dictionary else {}
+	if not StrictState.has_exact_keys(evidence, AUDIT_EVIDENCE_KEYS) \
+			or not (evidence.get("victory_rule") is Dictionary) \
+			or not _validated_saved_victory_rule(evidence.get("victory_rule", {}) as Dictionary) \
+			or not (evidence.get("settlement_checkpoint") is String):
+		return {"valid": false, "reason": "victory_outcome_audit_evidence_invalid"}
 	var evidence_roster_validation := _validated_saved_audit_roster(evidence.get("audit_roster", null))
 	if not bool(evidence_roster_validation.get("valid", false)) or (evidence_roster_validation.get("roster", []) as Array) != audit_roster:
 		return {"valid": false, "reason": "victory_outcome_audit_roster_mismatch"}
+	var settlement_checkpoint := str(evidence.get("settlement_checkpoint", ""))
+	if reason_code == "public_audit_complete":
+		if settlement_checkpoint != POST_SETTLEMENT_CHECKPOINT or audit_roster.is_empty():
+			return {"valid": false, "reason": "victory_outcome_settlement_checkpoint_invalid"}
+		for player_index in ranking_players:
+			if not audit_roster.has(player_index):
+				return {"valid": false, "reason": "victory_outcome_audit_roster_mismatch"}
+	elif not settlement_checkpoint.is_empty():
+		return {"valid": false, "reason": "victory_special_outcome_checkpoint_invalid"}
 	return {"valid": true, "receipt": receipt}
+
+
+func _validated_saved_victory_rule(rule: Dictionary) -> bool:
+	if not StrictState.has_exact_keys(rule, VICTORY_RULE_KEYS) \
+			or not (rule.get("ordinary_victory_paused") is bool):
+		return false
+	for integer_field in [
+		"surviving_region_count",
+		"coverage_basis_points",
+		"required_region_count",
+		"gdp_per_required_region_per_minute",
+		"required_top_k_gdp_per_minute",
+		"required_top_k_gdp_per_minute_cents",
+	]:
+		if not (rule.get(integer_field) is int) or int(rule.get(integer_field, -1)) < 0:
+			return false
+	return true
+
+
+func _rankings_tied_by_order(left: Dictionary, right: Dictionary, comparison_order: Array) -> bool:
+	for field_variant in comparison_order:
+		var field := str(field_variant)
+		if int(left.get(field, 0)) != int(right.get(field, 0)):
+			return false
+	return true
 
 
 func _is_data_only(value: Variant) -> bool:

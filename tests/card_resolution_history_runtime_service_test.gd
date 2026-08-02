@@ -69,6 +69,12 @@ func _run() -> void:
 	var private_invalid: Dictionary = before_bad_load.duplicate(true)
 	(private_invalid.get("history", []) as Array)[0]["ai_plan"] = "DO_NOT_RESTORE"
 	_expect(not bool(restored.preflight_save_data(private_invalid).get("accepted", true)), "private save fields fail owner preflight")
+	var facility_binding_invalid: Dictionary = before_bad_load.duplicate(true)
+	(facility_binding_invalid.get("history", []) as Array)[0]["v06_facility_action"] = {
+		"card_escrow": {"escrow_id": "private.escrow"},
+		"asset_reservation": {"reservation_id": "private.reservation"},
+	}
+	_expect(not bool(restored.preflight_save_data(facility_binding_invalid).get("accepted", true)), "facility Queue binding and escrow/reservation refs fail History preflight")
 	var legacy: Dictionary = before_bad_load.duplicate(true)
 	legacy["history"] = (legacy.get("history", []) as Array).duplicate(true)
 	(legacy["history"][0] as Dictionary)["guessers"] = [0, 1]

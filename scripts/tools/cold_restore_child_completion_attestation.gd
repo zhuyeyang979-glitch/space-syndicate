@@ -1,0 +1,798 @@
+extends RefCounted
+
+const SEMANTIC_WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
+const CAPTURE_FAILURE := preload("res://scripts/runtime/save_owner_capture_failure_v1.gd")
+const TARGETED_DIAGNOSTIC_V2 := preload("res://scripts/tools/targeted_owner_capture_diagnostic_v2.gd")
+const AUTHORIZATION_CONTRACT := preload(
+	"res://scripts/tools/cold_restore_authorization_contract_v1.gd"
+)
+
+const SCHEMA_VERSION := 1
+const DEFAULT_EVIDENCE_ROOT := "res://.godot/cold_restore_attestation_v1"
+const ROLES := ["qualification", "producer", "consumer", "validator"]
+const TARGETED_OWNER_CAPTURE_SCENARIO_FINGERPRINT := "0bccef8426345e2ea1fd8ae7d6187d282d52d44bc73d6fb3d1ed3375dc20b7bf"
+const TARGETED_OWNER_CAPTURE_PHASES := [
+	"session_started",
+	"real_commodity_claim_complete",
+	"real_normal_card_purchase_complete",
+	"real_facility_economy_complete",
+	"first_sale_receipt_complete",
+	"ai_nondefault_state_complete",
+	"queue_entry_committed",
+	"restore_barrier_entered",
+]
+const SAVE_SECTION_ORDER := [
+	"ruleset", "region_infrastructure", "region_supply", "commodity_flow",
+	"routes", "player_mana", "commodity_belt_visibility", "card_inventory",
+	"player_organization", "monsters", "military", "weather",
+	"card_resolution_queue", "card_resolution_execution", "card_resolution_history",
+	"ai", "bankruptcy_neutral_estate", "victory_control", "session",
+]
+const SAVE_OWNER_ORDER := [
+	"ruleset_runtime", "public_facility_region", "region_supply", "commodity_flow",
+	"route_network", "player_mana", "commodity_belt_visibility", "card_inventory",
+	"player_organization", "monster_runtime", "military_runtime", "weather_runtime",
+	"card_resolution_queue", "card_resolution_execution", "card_resolution_history",
+	"ai_runtime", "bankruptcy_neutral_estate", "victory_control", "game_session",
+]
+const FIELDS := [
+	"schema_version",
+	"run_id",
+	"role",
+	"repository_head",
+	"scenario_fingerprint",
+	"official",
+	"formal",
+	"qualification_completed",
+	"qualification_green",
+	"product_blocker",
+	"queue_count",
+	"queue_revision",
+	"queue_trigger_actor",
+	"queue_trigger_semantic_action_id",
+	"queue_trigger_card_semantic_id",
+	"queue_trigger_target_fingerprint",
+	"save_written",
+	"official_count_consumed",
+	"product_mutation_count",
+	"direct_authority_mutation_count",
+	"queue_injection_count",
+	"final_reason_code",
+	"evidence_fingerprint",
+	"child_ready_to_exit",
+]
+const OWNER_CAPTURE_DIAGNOSTIC_FIELDS := [
+	"schema_version", "diagnostic_id", "run_id", "repository_head",
+	"scenario_fingerprint", "official", "formal", "challenge_depth", "seed",
+	"local_player_count", "ai_player_count", "ai_action_count", "ai_state_digest_changed",
+	"audit_count", "phase_audits",
+	"first_phase_with_capture_failure", "first_failure", "safety_green",
+	"save_file_exists", "official_claim_path_present",
+]
+const OWNER_CAPTURE_AUDIT_FIELDS := [
+	"phase_id", "captured", "section_count", "section_results", "first_failure",
+	"world_fingerprint_match", "safety_observation_match", "world_advance_delta",
+	"rng_draw_delta", "public_log_delta", "private_feedback_delta",
+	"sale_receipt_delta", "human_action_delta", "ai_action_delta",
+	"notification_delta", "safety_green",
+]
+const OWNER_CAPTURE_SECTION_RESULT_FIELDS := [
+	"section_id", "owner_id", "captured", "reason_code", "state_version",
+	"payload_fingerprint",
+]
+const OWNER_CAPTURE_FAILURE_FIELDS := [
+	"schema_version", "registry_operation_id", "capture_sequence", "section_index",
+	"section_id", "owner_id", "owner_node_path", "owner_script_path", "capture_method",
+	"failure_class", "reason_code", "method_missing", "method_exception",
+	"result_not_dictionary", "result_empty", "result_not_pure_data",
+	"result_header_invalid", "result_version_invalid", "result_ruleset_invalid",
+	"state_version_observed", "ruleset_id_observed",
+	"live_state_mutated_during_capture", "private_payload_redacted",
+]
+const TARGETED_DIAGNOSTIC_ARTIFACT_BINDING_ID := "TargetedOwnerCaptureDiagnosticArtifactBindingV1"
+const TARGETED_DIAGNOSTIC_ARTIFACT_BINDING_FIELDS := [
+	"schema_version", "binding_id", "diagnostic_id", "run_id", "repository_head",
+	"scenario_fingerprint", "scenario_identity_attested", "diagnostic_evidence_fingerprint",
+	"diagnostic_artifact_sha256", "timeline_id", "timeline_evidence_fingerprint",
+	"timeline_row_count", "terminal_phase", "terminal_reason_code", "terminal_success",
+	"terminal_evidence_fingerprint", "private_payload_redacted", "binding_fingerprint",
+]
+
+
+static func completion_path(run_id: String, role: String, test_root: String = "") -> String:
+	var root := _evidence_run_root(run_id, test_root)
+	return "" if root.is_empty() else "%s/child/%s.completion.json" % [root, role]
+
+
+static func result_path(run_id: String, role: String, test_root: String = "") -> String:
+	var root := _evidence_run_root(run_id, test_root)
+	return "" if root.is_empty() else "%s/child/%s.result.json" % [root, role]
+
+
+static func diagnostic_path(run_id: String, diagnostic_id: String, test_root: String = "") -> String:
+	var root := _evidence_run_root(run_id, test_root)
+	return "" if root.is_empty() else "%s/diagnostics/%s.json" % [root, diagnostic_id]
+
+
+static func build(source: Dictionary) -> Dictionary:
+	var unsealed := {
+		"schema_version": SCHEMA_VERSION,
+		"run_id": str(source.get("run_id", "")),
+		"role": str(source.get("role", "")),
+		"repository_head": str(source.get("repository_head", "")),
+		"scenario_fingerprint": str(source.get("scenario_fingerprint", "")),
+		"official": bool(source.get("official", false)),
+		"formal": bool(source.get("formal", false)),
+		"qualification_completed": bool(source.get("qualification_completed", false)),
+		"qualification_green": bool(source.get("qualification_green", false)),
+		"product_blocker": str(source.get("product_blocker", "")),
+		"queue_count": maxi(0, int(source.get("queue_count", 0))),
+		"queue_revision": maxi(0, int(source.get("queue_revision", 0))),
+		"queue_trigger_actor": str(source.get("queue_trigger_actor", "none")),
+		"queue_trigger_semantic_action_id": str(source.get("queue_trigger_semantic_action_id", "")),
+		"queue_trigger_card_semantic_id": str(source.get("queue_trigger_card_semantic_id", "")),
+		"queue_trigger_target_fingerprint": str(source.get("queue_trigger_target_fingerprint", "")),
+		"save_written": bool(source.get("save_written", false)),
+		"official_count_consumed": bool(source.get("official_count_consumed", false)),
+		"product_mutation_count": maxi(0, int(source.get("product_mutation_count", 0))),
+		"direct_authority_mutation_count": maxi(0, int(source.get("direct_authority_mutation_count", 0))),
+		"queue_injection_count": maxi(0, int(source.get("queue_injection_count", 0))),
+		"final_reason_code": str(source.get("final_reason_code", "")),
+		"child_ready_to_exit": bool(source.get("child_ready_to_exit", true)),
+	}
+	return SEMANTIC_WIRE.sealed_copy(unsealed, "evidence_fingerprint")
+
+
+static func validation_report(value: Variant) -> Dictionary:
+	if not (value is Dictionary):
+		return {"valid": false, "reason_code": "child_attestation_not_dictionary"}
+	var attestation := value as Dictionary
+	if attestation.size() != FIELDS.size():
+		return {"valid": false, "reason_code": "child_attestation_field_set_invalid"}
+	for field_variant in FIELDS:
+		if not attestation.has(str(field_variant)):
+			return {"valid": false, "reason_code": "child_attestation_field_set_invalid"}
+	if int(attestation.get("schema_version", 0)) != SCHEMA_VERSION:
+		return {"valid": false, "reason_code": "child_attestation_schema_invalid"}
+	if not _safe_run_id(str(attestation.get("run_id", ""))):
+		return {"valid": false, "reason_code": "child_attestation_run_id_invalid"}
+	if str(attestation.get("role", "")) not in ROLES:
+		return {"valid": false, "reason_code": "child_attestation_role_invalid"}
+	if not _lower_hex(str(attestation.get("repository_head", "")), 40, 64):
+		return {"valid": false, "reason_code": "child_attestation_repository_head_invalid"}
+	var scenario_fingerprint := str(attestation.get("scenario_fingerprint", ""))
+	if not scenario_fingerprint.is_empty() and not _lower_hex(scenario_fingerprint, 64, 64):
+		return {"valid": false, "reason_code": "child_attestation_scenario_fingerprint_invalid"}
+	for flag in [
+		"official",
+		"formal",
+		"qualification_completed",
+		"qualification_green",
+		"save_written",
+		"official_count_consumed",
+		"child_ready_to_exit",
+	]:
+		if not (attestation.get(flag) is bool):
+			return {"valid": false, "reason_code": "child_attestation_boolean_invalid"}
+	for count_field in [
+		"queue_count",
+		"queue_revision",
+		"product_mutation_count",
+		"direct_authority_mutation_count",
+		"queue_injection_count",
+	]:
+		if not (attestation.get(count_field) is int) or int(attestation.get(count_field, -1)) < 0:
+			return {"valid": false, "reason_code": "child_attestation_integer_invalid"}
+	if str(attestation.get("queue_trigger_actor", "")) not in ["local", "ai", "none"]:
+		return {"valid": false, "reason_code": "child_attestation_actor_invalid"}
+	for text_field in [
+		"product_blocker",
+		"queue_trigger_semantic_action_id",
+		"queue_trigger_card_semantic_id",
+		"final_reason_code",
+	]:
+		if str(attestation.get(text_field, "")).length() > 256:
+			return {"valid": false, "reason_code": "child_attestation_text_invalid"}
+	var target_fingerprint := str(attestation.get("queue_trigger_target_fingerprint", ""))
+	if not target_fingerprint.is_empty() and not _lower_hex(target_fingerprint, 64, 64):
+		return {"valid": false, "reason_code": "child_attestation_target_fingerprint_invalid"}
+	if not bool(attestation.get("qualification_completed", false)):
+		return {"valid": false, "reason_code": "child_attestation_qualification_incomplete"}
+	if bool(attestation.get("qualification_green", false)) \
+			and not str(attestation.get("product_blocker", "")).is_empty():
+		return {"valid": false, "reason_code": "child_attestation_green_blocker_conflict"}
+	if not bool(attestation.get("qualification_green", false)) \
+			and str(attestation.get("product_blocker", "")).is_empty():
+		return {"valid": false, "reason_code": "child_attestation_blocker_missing"}
+	if not bool(attestation.get("child_ready_to_exit", false)):
+		return {"valid": false, "reason_code": "child_attestation_not_ready_to_exit"}
+	var expected_fingerprint := SEMANTIC_WIRE.fingerprint(attestation, "evidence_fingerprint")
+	if expected_fingerprint.is_empty() \
+			or str(attestation.get("evidence_fingerprint", "")) != expected_fingerprint:
+		return {"valid": false, "reason_code": "child_attestation_fingerprint_invalid"}
+	return {
+		"valid": true,
+		"reason_code": "ok",
+		"evidence_fingerprint": expected_fingerprint,
+	}
+
+
+static func write_completion(attestation: Dictionary, test_root: String = "") -> Dictionary:
+	var validation := validation_report(attestation)
+	if not bool(validation.get("valid", false)):
+		return validation
+	return _write_atomic_json(
+		completion_path(
+			str(attestation.get("run_id", "")), str(attestation.get("role", "")), test_root
+		),
+		attestation
+	)
+
+
+static func write_result(run_id: String, role: String, result: Dictionary, test_root: String = "") -> Dictionary:
+	if not _safe_run_id(run_id) or role not in ROLES or not SEMANTIC_WIRE.is_closed_data(result):
+		return {"valid": false, "reason_code": "child_result_invalid"}
+	return _write_atomic_json(result_path(run_id, role, test_root), result)
+
+
+static func write_owner_capture_diagnostic(
+	run_id: String,
+	result: Dictionary,
+	expected_repository_head: String = "",
+	expected_scenario_fingerprint: String = "",
+	test_root: String = ""
+) -> Dictionary:
+	var validation := _owner_capture_diagnostic_binding_report(
+		run_id,
+		result,
+		expected_repository_head,
+		expected_scenario_fingerprint
+	)
+	if not bool(validation.get("valid", false)):
+		return validation
+	var write := _write_atomic_json(
+		diagnostic_path(run_id, "owner_capture_audit", test_root), result
+	)
+	if bool(write.get("valid", false)) and validation.get("artifact_binding", {}) is Dictionary:
+		var artifact_binding := validation.get("artifact_binding", {}) as Dictionary
+		if not artifact_binding.is_empty():
+			write["artifact_binding"] = artifact_binding.duplicate(true)
+	return write
+
+
+static func write_owner_capture_phase_snapshot(
+	run_id: String, sequence: int, timeline: Dictionary, test_root: String = ""
+) -> Dictionary:
+	var repository_head := str(timeline.get("repository_head", ""))
+	if not _targeted_owner_capture_run_id(run_id) or sequence < 1 \
+			or not SEMANTIC_WIRE.is_closed_data(timeline) \
+			or not bool(TARGETED_DIAGNOSTIC_V2.timeline_validation_report(timeline).get("valid", false)) \
+			or str(timeline.get("run_id", "")) != run_id \
+			or not _lower_hex(repository_head, 40, 64) \
+			or run_id != _authorization_run_id(
+				_targeted_authorization_name(), repository_head
+			) \
+			or (timeline.get("phase_rows", []) as Array).size() != sequence:
+		return {"valid": false, "reason_code": "child_diagnostic_phase_snapshot_invalid"}
+	return _write_atomic_json(
+		diagnostic_path(run_id, "phase_events/%04d.snapshot" % sequence, test_root),
+		timeline
+	)
+
+
+static func _write_atomic_json(path: String, value: Dictionary) -> Dictionary:
+	if path.is_empty():
+		return {"valid": false, "reason_code": "child_evidence_path_invalid"}
+	var canonical := SEMANTIC_WIRE.canonical_json(value)
+	if canonical.is_empty():
+		return {"valid": false, "reason_code": "child_evidence_serialization_failed"}
+	var absolute_path := ProjectSettings.globalize_path(path)
+	var temp_path := "%s.tmp.%d" % [absolute_path, OS.get_process_id()]
+	if FileAccess.file_exists(absolute_path) or FileAccess.file_exists(temp_path):
+		return {"valid": false, "reason_code": "child_evidence_collision"}
+	var directory_error := DirAccess.make_dir_recursive_absolute(absolute_path.get_base_dir())
+	if directory_error != OK:
+		return {"valid": false, "reason_code": "child_evidence_directory_failed"}
+	var file := FileAccess.open(temp_path, FileAccess.WRITE)
+	if file == null:
+		return {"valid": false, "reason_code": "child_attestation_write_failed"}
+	file.store_string(canonical)
+	file.flush()
+	file.close()
+	var temp_readback := _read_text(temp_path)
+	if temp_readback != canonical:
+		_remove_if_present(temp_path)
+		return {
+			"valid": false,
+			"reason_code": "child_attestation_readback_failed",
+			"expected_length": canonical.length(),
+			"actual_length": temp_readback.length(),
+			"open_error": FileAccess.get_open_error(),
+		}
+	var parsed_temp: Variant = JSON.parse_string(temp_readback)
+	var normalized_temp: Variant = _normalize_json_value(parsed_temp)
+	var parsed_canonical := SEMANTIC_WIRE.canonical_json(normalized_temp) \
+		if parsed_temp is Dictionary else ""
+	if not (parsed_temp is Dictionary) or parsed_canonical != canonical:
+		_remove_if_present(temp_path)
+		return {
+			"valid": false,
+			"reason_code": "child_attestation_readback_failed",
+			"expected_length": canonical.length(),
+			"actual_length": parsed_canonical.length(),
+			"parsed_type": typeof(parsed_temp),
+		}
+	var rename_error := DirAccess.rename_absolute(temp_path, absolute_path)
+	if rename_error != OK:
+		_remove_if_present(temp_path)
+		return {"valid": false, "reason_code": "child_attestation_atomic_replace_failed"}
+	var final_readback := _read_text(absolute_path)
+	if final_readback != canonical:
+		return {"valid": false, "reason_code": "child_attestation_final_readback_failed"}
+	return {
+		"valid": true,
+		"reason_code": "ok",
+		"path": path,
+		"sha256": canonical.sha256_text().to_lower(),
+	}
+
+
+static func _remove_if_present(absolute_path: String) -> void:
+	if FileAccess.file_exists(absolute_path):
+		DirAccess.remove_absolute(absolute_path)
+
+
+static func _safe_artifact_id(value: String) -> bool:
+	if value.is_empty() or value.length() > 96:
+		return false
+	for index in range(value.length()):
+		var character := value.substr(index, 1)
+		if not "abcdefghijklmnopqrstuvwxyz0123456789_-".contains(character):
+			return false
+	return true
+
+
+static func _valid_owner_capture_diagnostic(
+	value: Dictionary,
+	expected_run_id: String = "",
+	expected_repository_head: String = "",
+	expected_scenario_fingerprint: String = ""
+) -> bool:
+	var bound_run_id := expected_run_id if not expected_run_id.is_empty() \
+			else str(value.get("run_id", ""))
+	return bool(_owner_capture_diagnostic_binding_report(
+		bound_run_id,
+		value,
+		expected_repository_head,
+		expected_scenario_fingerprint
+	).get("valid", false))
+
+
+static func _owner_capture_diagnostic_binding_report(
+	run_id: String,
+	value: Dictionary,
+	expected_repository_head: String = "",
+	expected_scenario_fingerprint: String = ""
+) -> Dictionary:
+	if not _targeted_owner_capture_run_id(run_id):
+		return _diagnostic_rejected("child_diagnostic_run_id_invalid")
+	if str(value.get("run_id", "")) != run_id:
+		return _diagnostic_rejected("child_diagnostic_run_id_mismatch")
+	if str(value.get("diagnostic_id", "")) != TARGETED_DIAGNOSTIC_V2.DIAGNOSTIC_ID:
+		if not _valid_owner_capture_diagnostic_v1(value):
+			return _diagnostic_rejected("child_diagnostic_invalid")
+		if not expected_repository_head.is_empty() \
+				and (not _lower_hex(expected_repository_head, 40, 64) \
+				or str(value.get("repository_head", "")) != expected_repository_head):
+			return _diagnostic_rejected("child_diagnostic_repository_head_mismatch")
+		if not expected_scenario_fingerprint.is_empty() \
+				and (not _lower_hex(expected_scenario_fingerprint, 64, 64) \
+				or str(value.get("scenario_fingerprint", "")) != expected_scenario_fingerprint):
+			return _diagnostic_rejected("child_diagnostic_scenario_fingerprint_mismatch")
+		return {"valid": true, "reason_code": "ok", "artifact_binding": {}}
+	if expected_repository_head.is_empty():
+		return _diagnostic_rejected("child_diagnostic_expected_repository_head_missing")
+	if not _lower_hex(expected_repository_head, 40, 64):
+		return _diagnostic_rejected("child_diagnostic_expected_repository_head_invalid")
+	if expected_scenario_fingerprint.is_empty():
+		return _diagnostic_rejected("child_diagnostic_expected_scenario_fingerprint_missing")
+	if not _lower_hex(expected_scenario_fingerprint, 64, 64):
+		return _diagnostic_rejected("child_diagnostic_expected_scenario_fingerprint_invalid")
+	if str(value.get("repository_head", "")) != expected_repository_head:
+		return _diagnostic_rejected("child_diagnostic_repository_head_mismatch")
+	if run_id != _authorization_run_id(
+		_targeted_authorization_name(), expected_repository_head
+	):
+		return _diagnostic_rejected("child_diagnostic_run_head_binding_invalid")
+	if not SEMANTIC_WIRE.is_closed_data(value) or not _v2_diagnostic_redaction_valid(value):
+		return _diagnostic_rejected("child_diagnostic_redaction_invalid")
+	var timeline: Dictionary = value.get("diagnostic_phase_timeline", {}) \
+			if value.get("diagnostic_phase_timeline", {}) is Dictionary else {}
+	if str(timeline.get("run_id", "")) != run_id:
+		return _diagnostic_rejected("child_diagnostic_timeline_run_id_mismatch")
+	if str(timeline.get("repository_head", "")) != expected_repository_head:
+		return _diagnostic_rejected("child_diagnostic_timeline_repository_head_mismatch")
+	var phase_rows: Array = timeline.get("phase_rows", []) \
+			if timeline.get("phase_rows", []) is Array else []
+	if phase_rows.is_empty() or not (phase_rows.back() is Dictionary):
+		return _diagnostic_rejected("child_diagnostic_terminal_timeline_invalid")
+	var terminal_row := phase_rows.back() as Dictionary
+	if str(timeline.get("last_completed_phase", "")) != "diagnostic_completed" \
+			or str(timeline.get("current_phase", "")) != "diagnostic_completed" \
+			or str(timeline.get("next_expected_phase", "")) != "none" \
+			or str(value.get("last_completed_diagnostic_phase", "")) != "diagnostic_completed" \
+			or str(value.get("current_diagnostic_phase", "")) != "diagnostic_completed" \
+			or str(value.get("next_expected_diagnostic_phase", "")) != "none" \
+			or int(terminal_row.get("sequence", -1)) != phase_rows.size() \
+			or str(terminal_row.get("phase_id", "")) != "diagnostic_completed" \
+			or int(terminal_row.get("owner_index", 0)) != -1 \
+			or not _lower_reason_code(str(terminal_row.get("reason_code", ""))):
+		return _diagnostic_rejected("child_diagnostic_terminal_timeline_invalid")
+	var validation := TARGETED_DIAGNOSTIC_V2.validation_report(
+		value,
+		run_id,
+		expected_repository_head,
+		expected_scenario_fingerprint
+	)
+	if not bool(validation.get("valid", false)):
+		return _diagnostic_rejected(str(validation.get("reason_code", "child_diagnostic_invalid")))
+	var artifact_binding := _targeted_diagnostic_artifact_binding(
+		value,
+		timeline,
+		terminal_row,
+		expected_scenario_fingerprint
+	)
+	if not _has_exact_fields(artifact_binding, TARGETED_DIAGNOSTIC_ARTIFACT_BINDING_FIELDS) \
+			or not bool(artifact_binding.get("private_payload_redacted", false)):
+		return _diagnostic_rejected("child_diagnostic_artifact_binding_invalid")
+	return {
+		"valid": true,
+		"reason_code": "ok",
+		"artifact_binding": artifact_binding,
+	}
+
+
+static func _targeted_diagnostic_artifact_binding(
+	diagnostic: Dictionary,
+	timeline: Dictionary,
+	terminal_row: Dictionary,
+	expected_scenario_fingerprint: String
+) -> Dictionary:
+	var canonical := SEMANTIC_WIRE.canonical_json(diagnostic)
+	if canonical.is_empty():
+		return {}
+	return SEMANTIC_WIRE.sealed_copy({
+		"schema_version": 1,
+		"binding_id": TARGETED_DIAGNOSTIC_ARTIFACT_BINDING_ID,
+		"diagnostic_id": TARGETED_DIAGNOSTIC_V2.DIAGNOSTIC_ID,
+		"run_id": str(diagnostic.get("run_id", "")),
+		"repository_head": str(diagnostic.get("repository_head", "")),
+		"scenario_fingerprint": expected_scenario_fingerprint,
+		"scenario_identity_attested": bool(diagnostic.get("scenario_identity_attested", false)),
+		"diagnostic_evidence_fingerprint": str(diagnostic.get("evidence_fingerprint", "")),
+		"diagnostic_artifact_sha256": canonical.sha256_text().to_lower(),
+		"timeline_id": str(timeline.get("timeline_id", "")),
+		"timeline_evidence_fingerprint": str(timeline.get("evidence_fingerprint", "")),
+		"timeline_row_count": (timeline.get("phase_rows", []) as Array).size(),
+		"terminal_phase": str(terminal_row.get("phase_id", "")),
+		"terminal_reason_code": str(terminal_row.get("reason_code", "")),
+		"terminal_success": bool(terminal_row.get("success", false)),
+		"terminal_evidence_fingerprint": str(terminal_row.get("evidence_fingerprint", "")),
+		"private_payload_redacted": true,
+	}, "binding_fingerprint")
+
+
+static func _v2_diagnostic_redaction_valid(value: Dictionary) -> bool:
+	for failure_field in ["scenario_identity_failure", "first_failure", "post_capture_failure"]:
+		var failure: Variant = value.get(failure_field, {})
+		if not (failure is Dictionary):
+			return false
+		if not (failure as Dictionary).is_empty() \
+				and (not ((failure as Dictionary).get("private_payload_redacted") is bool) \
+				or not bool((failure as Dictionary).get("private_payload_redacted", false))):
+			return false
+	var owner_rows: Variant = value.get("owner_capture_rows", [])
+	if not (owner_rows is Array):
+		return false
+	for row_variant in owner_rows as Array:
+		if not (row_variant is Dictionary) \
+				or not ((row_variant as Dictionary).get("private_payload_redacted") is bool) \
+				or not bool((row_variant as Dictionary).get("private_payload_redacted", false)):
+			return false
+	return true
+
+
+static func _diagnostic_rejected(reason_code: String) -> Dictionary:
+	return {
+		"valid": false,
+		"reason_code": reason_code,
+		"private_payload_redacted": true,
+	}
+
+
+static func _lower_reason_code(value: String) -> bool:
+	if value.is_empty() or value.length() > 128:
+		return false
+	for index in range(value.length()):
+		if not "abcdefghijklmnopqrstuvwxyz0123456789_".contains(value.substr(index, 1)):
+			return false
+	return true
+
+
+static func _valid_owner_capture_diagnostic_v1(value: Dictionary) -> bool:
+	if not SEMANTIC_WIRE.is_closed_data(value) \
+			or not _has_exact_fields(value, OWNER_CAPTURE_DIAGNOSTIC_FIELDS) \
+			or typeof(value.get("schema_version")) != TYPE_INT \
+			or int(value.get("schema_version", 0)) != 1 \
+			or str(value.get("diagnostic_id", "")) != "TargetedOwnerCaptureDiagnosticV1" \
+			or not _targeted_owner_capture_run_id(str(value.get("run_id", ""))) \
+			or not _lower_hex(str(value.get("repository_head", "")), 40, 64) \
+			or str(value.get("scenario_fingerprint", "")) != TARGETED_OWNER_CAPTURE_SCENARIO_FINGERPRINT \
+			or not (value.get("official") is bool) or bool(value.get("official", true)) \
+			or not (value.get("formal") is bool) or bool(value.get("formal", true)) \
+			or not (value.get("safety_green") is bool) or not bool(value.get("safety_green", false)) \
+			or not (value.get("save_file_exists") is bool) or bool(value.get("save_file_exists", true)) \
+			or not (value.get("official_claim_path_present") is bool) or bool(value.get("official_claim_path_present", true)):
+		return false
+	if str(value.get("run_id", "")) != _authorization_run_id(
+		_targeted_authorization_name(), str(value.get("repository_head", ""))
+	):
+		return false
+	if typeof(value.get("challenge_depth")) != TYPE_INT or int(value.get("challenge_depth", -1)) != 1 \
+			or typeof(value.get("seed")) != TYPE_INT or int(value.get("seed", -1)) != 900626424 \
+			or typeof(value.get("local_player_count")) != TYPE_INT or int(value.get("local_player_count", -1)) != 1 \
+			or typeof(value.get("ai_player_count")) != TYPE_INT or int(value.get("ai_player_count", -1)) != 3 \
+			or typeof(value.get("ai_action_count")) != TYPE_INT or int(value.get("ai_action_count", 0)) < 1 \
+			or not (value.get("ai_state_digest_changed") is bool) or not bool(value.get("ai_state_digest_changed", false)) \
+			or typeof(value.get("audit_count")) != TYPE_INT or int(value.get("audit_count", -1)) != TARGETED_OWNER_CAPTURE_PHASES.size():
+		return false
+	var audits: Array = value.get("phase_audits", []) if value.get("phase_audits", []) is Array else []
+	if audits.size() != TARGETED_OWNER_CAPTURE_PHASES.size():
+		return false
+	var observed_first_failure: Dictionary = {}
+	var observed_first_phase := "none"
+	for audit_index in range(audits.size()):
+		var audit_variant: Variant = audits[audit_index]
+		if not (audit_variant is Dictionary):
+			return false
+		var audit := audit_variant as Dictionary
+		if str(audit.get("phase_id", "")) != str(TARGETED_OWNER_CAPTURE_PHASES[audit_index]) \
+				or not _valid_owner_capture_audit(audit):
+			return false
+		var audit_failure: Dictionary = audit.get("first_failure", {}) \
+				if audit.get("first_failure", {}) is Dictionary else {}
+		if observed_first_failure.is_empty() and not audit_failure.is_empty():
+			observed_first_failure = audit_failure.duplicate(true)
+			observed_first_phase = str(audit.get("phase_id", ""))
+	var first_failure: Dictionary = value.get("first_failure", {}) \
+			if value.get("first_failure", {}) is Dictionary else {}
+	return (first_failure.is_empty() or _valid_owner_capture_failure(first_failure)) \
+			and first_failure == observed_first_failure \
+			and str(value.get("first_phase_with_capture_failure", "")) == observed_first_phase
+
+
+static func _valid_owner_capture_audit(audit: Dictionary) -> bool:
+	if not _has_exact_fields(audit, OWNER_CAPTURE_AUDIT_FIELDS):
+		return false
+	for flag in ["captured", "world_fingerprint_match", "safety_observation_match", "safety_green"]:
+		if not (audit.get(flag) is bool):
+			return false
+	for count_field in [
+		"section_count", "world_advance_delta", "rng_draw_delta", "public_log_delta",
+		"private_feedback_delta", "sale_receipt_delta", "human_action_delta",
+		"ai_action_delta", "notification_delta",
+	]:
+		if typeof(audit.get(count_field)) != TYPE_INT:
+			return false
+	var results: Array = audit.get("section_results", []) if audit.get("section_results", []) is Array else []
+	if int(audit.get("section_count", -1)) < 0 or int(audit.get("section_count", -1)) > SAVE_SECTION_ORDER.size() \
+			or results.size() > SAVE_SECTION_ORDER.size():
+		return false
+	for result_index in range(results.size()):
+		var result_variant: Variant = results[result_index]
+		if not (result_variant is Dictionary) or not _has_exact_fields(result_variant as Dictionary, OWNER_CAPTURE_SECTION_RESULT_FIELDS):
+			return false
+		var result := result_variant as Dictionary
+		if not (result.get("captured") is bool) or typeof(result.get("state_version")) != TYPE_INT \
+				or str(result.get("section_id", "")) != str(SAVE_SECTION_ORDER[result_index]) \
+				or str(result.get("owner_id", "")) != str(SAVE_OWNER_ORDER[result_index]) \
+				or not CAPTURE_FAILURE.is_reason_code(str(result.get("reason_code", ""))):
+			return false
+		var fingerprint := str(result.get("payload_fingerprint", ""))
+		if (bool(result.get("captured", false)) and not _lower_hex(fingerprint, 64, 64)) \
+				or (not fingerprint.is_empty() and not _lower_hex(fingerprint, 64, 64)):
+			return false
+	var failure: Dictionary = audit.get("first_failure", {}) if audit.get("first_failure", {}) is Dictionary else {}
+	if bool(audit.get("captured", false)):
+		return int(audit.get("section_count", -1)) == SAVE_SECTION_ORDER.size() \
+				and results.size() == SAVE_SECTION_ORDER.size() \
+				and failure.is_empty() \
+				and _all_section_results_captured(results)
+	if failure.is_empty() or not _valid_owner_capture_failure(failure):
+		return false
+	var failure_index := int(failure.get("section_index", -1))
+	if failure_index < 0 or failure_index >= SAVE_SECTION_ORDER.size() \
+			or str(failure.get("section_id", "")) != str(SAVE_SECTION_ORDER[failure_index]) \
+			or str(failure.get("owner_id", "")) != str(SAVE_OWNER_ORDER[failure_index]):
+		return false
+	var successful_count := int(audit.get("section_count", -1))
+	if successful_count == SAVE_SECTION_ORDER.size():
+		return results.size() == SAVE_SECTION_ORDER.size() and _all_section_results_captured(results)
+	return results.size() == successful_count + 1 \
+			and failure_index == successful_count \
+			and _section_result_prefix_valid(results, successful_count, failure)
+
+
+static func _valid_owner_capture_failure(failure: Dictionary) -> bool:
+	if not _has_exact_fields(failure, OWNER_CAPTURE_FAILURE_FIELDS) \
+			or typeof(failure.get("schema_version")) != TYPE_INT \
+			or int(failure.get("schema_version", 0)) != int(CAPTURE_FAILURE.SCHEMA_VERSION) \
+			or not CAPTURE_FAILURE.is_failure_class(str(failure.get("failure_class", ""))) \
+			or not CAPTURE_FAILURE.is_reason_code(str(failure.get("reason_code", ""))) \
+			or not bool(failure.get("private_payload_redacted", false)):
+		return false
+	var canonical := CAPTURE_FAILURE.build(failure)
+	if not _has_exact_fields(canonical, OWNER_CAPTURE_FAILURE_FIELDS):
+		return false
+	for field_variant in OWNER_CAPTURE_FAILURE_FIELDS:
+		var field := str(field_variant)
+		if canonical.get(field) != failure.get(field):
+			return false
+	return true
+
+
+static func _all_section_results_captured(results: Array) -> bool:
+	for result_variant in results:
+		if not bool((result_variant as Dictionary).get("captured", false)):
+			return false
+	return true
+
+
+static func _section_result_prefix_valid(results: Array, successful_count: int, failure: Dictionary) -> bool:
+	for result_index in range(results.size()):
+		var result := results[result_index] as Dictionary
+		if result_index < successful_count:
+			if not bool(result.get("captured", false)):
+				return false
+		else:
+			if bool(result.get("captured", true)) \
+					or str(result.get("section_id", "")) != str(failure.get("section_id", "")) \
+					or str(result.get("owner_id", "")) != str(failure.get("owner_id", "")) \
+					or str(result.get("reason_code", "")) != str(failure.get("reason_code", "")):
+				return false
+	return true
+
+
+static func _has_exact_fields(value: Dictionary, expected: Array) -> bool:
+	if value.size() != expected.size():
+		return false
+	for field_variant in expected:
+		if not value.has(str(field_variant)):
+			return false
+	return true
+
+
+static func _read_text(path: String) -> String:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return ""
+	var content := file.get_as_text()
+	file.close()
+	return content
+
+
+static func _normalize_json_value(value: Variant) -> Variant:
+	if value is float and is_equal_approx(value, roundf(value)):
+		return int(value)
+	if value is Array:
+		var normalized_array: Array = []
+		for item in value as Array:
+			normalized_array.append(_normalize_json_value(item))
+		return normalized_array
+	if value is Dictionary:
+		var normalized_dictionary: Dictionary = {}
+		for key_variant in (value as Dictionary).keys():
+			normalized_dictionary[str(key_variant)] = _normalize_json_value(
+				(value as Dictionary).get(key_variant)
+			)
+		return normalized_dictionary
+	return value
+
+
+static func _safe_run_id(value: String) -> bool:
+	if value.is_empty() or value.length() > 96:
+		return false
+	for index in range(value.length()):
+		var character := value.substr(index, 1)
+		if not "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-".contains(character):
+			return false
+	return true
+
+
+static func _authorization_contract_entry(entry_name: String) -> Dictionary:
+	return AUTHORIZATION_CONTRACT.entry(entry_name)
+
+
+static func _targeted_authorization_name() -> String:
+	return AUTHORIZATION_CONTRACT.current_targeted_authorization_name()
+
+
+static func _authorization_run_id(entry_name: String, repository_head: String) -> String:
+	if repository_head.length() != 40 \
+			or not _lower_hex(repository_head, repository_head.length(), repository_head.length()):
+		return ""
+	var prefix := str(_authorization_contract_entry(entry_name).get("run_id_prefix", ""))
+	return "" if prefix.is_empty() else "%s-%s" % [prefix, repository_head.left(12)]
+
+
+static func _normalize_absolute_path(value: String) -> String:
+	if value.is_empty() or not value.is_absolute_path():
+		return ""
+	return value.replace("\\", "/").simplify_path().trim_suffix("/")
+
+
+static func _resolve_git_common_dir() -> String:
+	var project_root := _normalize_absolute_path(ProjectSettings.globalize_path("res://"))
+	if project_root.is_empty():
+		return ""
+	var git_marker := project_root.path_join(".git")
+	if DirAccess.dir_exists_absolute(git_marker):
+		return _normalize_absolute_path(git_marker)
+	if not FileAccess.file_exists(git_marker):
+		return ""
+	var marker_text := FileAccess.get_file_as_string(git_marker).strip_edges()
+	if not marker_text.begins_with("gitdir:"):
+		return ""
+	var git_dir := marker_text.trim_prefix("gitdir:").strip_edges()
+	if not git_dir.is_absolute_path():
+		git_dir = project_root.path_join(git_dir)
+	git_dir = _normalize_absolute_path(git_dir)
+	if git_dir.is_empty():
+		return ""
+	var common_dir_path := git_dir.path_join("commondir")
+	if not FileAccess.file_exists(common_dir_path):
+		return git_dir
+	var common_dir := FileAccess.get_file_as_string(common_dir_path).strip_edges()
+	if not common_dir.is_absolute_path():
+		common_dir = git_dir.path_join(common_dir)
+	return _normalize_absolute_path(common_dir)
+
+
+static func _evidence_run_root(run_id: String, test_root: String = "") -> String:
+	if not test_root.is_empty():
+		var normalized_test_root := _normalize_absolute_path(test_root)
+		var authorized_test_root := _normalize_absolute_path(
+			OS.get_environment("SPACE_SYNDICATE_COLD_RESTORE_TEST_EVIDENCE_ROOT")
+		)
+		return normalized_test_root if not normalized_test_root.is_empty() \
+				and normalized_test_root == authorized_test_root else ""
+	if _targeted_owner_capture_run_id(run_id):
+		var authorization := _authorization_contract_entry(_targeted_authorization_name())
+		var common_dir := _resolve_git_common_dir()
+		var expected_root := _normalize_absolute_path(common_dir.path_join(
+			str(authorization.get("evidence_root_relative_path", ""))
+		))
+		var environment_root := _normalize_absolute_path(
+			OS.get_environment("SPACE_SYNDICATE_COLD_RESTORE_EVIDENCE_ROOT")
+		)
+		return expected_root if not expected_root.is_empty() and environment_root == expected_root else ""
+	return "%s/%s" % [DEFAULT_EVIDENCE_ROOT, run_id] if _safe_run_id(run_id) else ""
+
+
+static func _targeted_owner_capture_run_id(value: String) -> bool:
+	var entry := _authorization_contract_entry(_targeted_authorization_name())
+	var prefix := str(entry.get("run_id_prefix", ""))
+	if prefix.is_empty() or not value.begins_with("%s-" % prefix):
+		return false
+	var suffix := value.trim_prefix("%s-" % prefix)
+	return suffix.length() == 12 \
+			and _lower_hex(suffix, suffix.length(), suffix.length())
+
+
+static func _lower_hex(value: String, minimum_length: int, maximum_length: int) -> bool:
+	if value.length() < minimum_length or value.length() > maximum_length:
+		return false
+	for index in range(value.length()):
+		if not "0123456789abcdef".contains(value.substr(index, 1)):
+			return false
+	return true

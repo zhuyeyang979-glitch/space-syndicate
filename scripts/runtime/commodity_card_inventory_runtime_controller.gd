@@ -3,10 +3,49 @@ extends Node
 class_name CommodityCardInventoryRuntimeController
 
 const RULESET_ID := "v0.6"
-const STATE_VERSION := 1
+const STATE_VERSION := 2
+const RUNTIME_CHECKPOINT_VERSION := 2
+const RUNTIME_CHECKPOINT_ID := "commodity_card_inventory_runtime_checkpoint_v2"
+const CLOSED_SCALAR_CODEC := preload("res://scripts/runtime/closed_save_scalar_codec_v1.gd")
+const SEMANTIC_WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
 const CATALOG := preload("res://resources/cards/runtime/card_runtime_catalog_v06.tres")
 const TRANSACTION_SERVICE_SCRIPT := preload("res://scripts/cards/v06/card_flow_transaction_service_v06.gd")
 const AlphaContentLoader := preload("res://scripts/runtime/alpha01_content_manifest_loader.gd")
+const SAVE_FIELDS := [
+	"state_version",
+	"ruleset_id",
+	"belt",
+	"market",
+	"transaction_journal",
+	"terminal_operations",
+	"state_port",
+]
+const RUNTIME_CHECKPOINT_FIELDS := [
+	"captured",
+	"schema_version",
+	"checkpoint_id",
+	"ruleset_id",
+	"flow",
+	"state_port",
+	"state_port_runtime_checkpoint",
+	"terminal_operations",
+	"restored_transaction_journal",
+	"operation_count",
+	"last_reason",
+]
+const JOURNAL_RECORD_FIELDS := ["intent_hash", "result"]
+const FORBIDDEN_JOURNAL_STATE_FIELDS := [
+	"player_state",
+	"player_states",
+	"player_snapshot",
+	"previous_player_state",
+	"inventory",
+	"slots",
+	"cash",
+	"cash_cents",
+	"runtime_instance_id",
+	"result_instance_id",
+]
 
 @onready var effect_bridge: CommodityCardEffectRuntimeBridge = %CommodityCardEffectRuntimeBridge
 
@@ -698,45 +737,286 @@ func _play_core_card(
 
 
 func to_save_data() -> Dictionary:
-	return {
+	var checkpoint := checkpoint_status()
+	if not bool(checkpoint.get("can_checkpoint", false)):
+		return {}
+	if _state_port != null and _state_port.has_method("checkpoint_status"):
+		var state_port_status_variant: Variant = _state_port.call("checkpoint_status")
+		if not (state_port_status_variant is Dictionary) \
+				or not bool((state_port_status_variant as Dictionary).get("can_checkpoint", false)):
+			return {}
+	var raw_candidate := {
 		"state_version": STATE_VERSION,
 		"ruleset_id": RULESET_ID,
 		"belt": belt_snapshot(),
 		"market": market_snapshot(),
-		"transaction_journal": transaction_journal_snapshot(),
-		"terminal_operations": _terminal_operations.duplicate(true),
+		"transaction_journal": _journal_save_snapshot(transaction_journal_snapshot()),
+		"terminal_operations": _journal_save_snapshot(_terminal_operations),
 		"state_port": _state_port.call("to_save_data") if _state_port != null and _state_port.has_method("to_save_data") else {},
+	}
+	var encoded := CLOSED_SCALAR_CODEC.encode_tree(raw_candidate)
+	if not bool(encoded.get("ok", false)) or not (encoded.get("value") is Dictionary):
+		return {}
+	var candidate := encoded.get("value", {}) as Dictionary
+	var preflight := preflight_save_data(candidate)
+	return (preflight.get("normalized_state", {}) as Dictionary).duplicate(true) \
+			if bool(preflight.get("accepted", false)) else {}
+
+
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	if not _service_ready() or not _has_exact_keys(data, SAVE_FIELDS) \
+			or not SEMANTIC_WIRE.is_closed_data(data) \
+			or not (data.get("state_version") is int) or int(data.get("state_version", 0)) != STATE_VERSION \
+			or not (data.get("ruleset_id") is String) or str(data.get("ruleset_id", "")) != RULESET_ID:
+		return {"accepted": false, "reason_code": "commodity_card_inventory_save_invalid"}
+	var decoded := CLOSED_SCALAR_CODEC.decode_tree(data)
+	if not bool(decoded.get("ok", false)) or not (decoded.get("value") is Dictionary):
+		return {"accepted": false, "reason_code": "commodity_card_inventory_save_invalid"}
+	var raw_data := decoded.get("value", {}) as Dictionary
+	if not _is_pure_data(raw_data):
+		return {"accepted": false, "reason_code": "commodity_card_inventory_save_invalid"}
+	for field in ["belt", "market", "transaction_journal", "terminal_operations", "state_port"]:
+		if not (raw_data.get(field) is Dictionary):
+			return {"accepted": false, "reason_code": "commodity_card_inventory_save_children_invalid", "failing_child": field}
+	if _contains_forbidden_journal_state(raw_data.get("transaction_journal", {})):
+		return {"accepted": false, "reason_code": "transaction_journal_world_state_forbidden", "failing_child": "transaction_journal"}
+	if not _transaction_service.has_method("preflight_restore_state"):
+		return {"accepted": false, "reason_code": "card_flow_restore_contract_missing"}
+	var flow_preflight_variant: Variant = _transaction_service.call("preflight_restore_state", {
+		"belt": (raw_data.get("belt", {}) as Dictionary).duplicate(true),
+		"market": (raw_data.get("market", {}) as Dictionary).duplicate(true),
+		"journal": (raw_data.get("transaction_journal", {}) as Dictionary).duplicate(true),
+	})
+	var flow_preflight: Dictionary = flow_preflight_variant if flow_preflight_variant is Dictionary else {}
+	if not bool(flow_preflight.get("accepted", false)):
+		return {"accepted": false, "reason_code": str(flow_preflight.get("reason_code", "card_flow_restore_preflight_failed")), "failing_child": "card_flow"}
+	var normalized_flow := flow_preflight.get("normalized_state", {}) as Dictionary
+	var terminal_preflight := _preflight_terminal_operations(raw_data.get("terminal_operations", {}) as Dictionary)
+	if not bool(terminal_preflight.get("accepted", false)):
+		return terminal_preflight
+	var normalized_terminals := terminal_preflight.get("normalized_state", {}) as Dictionary
+	var normalized_journal := normalized_flow.get("journal", {}) as Dictionary
+	for transaction_id_variant in normalized_terminals.keys():
+		var transaction_id := str(transaction_id_variant)
+		if not normalized_journal.has(transaction_id) \
+				or normalized_journal.get(transaction_id) != normalized_terminals.get(transaction_id):
+			return {"accepted": false, "reason_code": "terminal_operation_journal_mismatch", "failing_child": "terminal_operations"}
+	var state_port_preflight: Dictionary = {}
+	if _state_port.has_method("preflight_save_data"):
+		var state_port_variant: Variant = _state_port.call("preflight_save_data", raw_data.get("state_port", {}))
+		state_port_preflight = state_port_variant if state_port_variant is Dictionary else {}
+	else:
+		var state_port_data := raw_data.get("state_port", {}) as Dictionary
+		state_port_preflight = {
+			"accepted": int(state_port_data.get("state_version", 0)) == 1 \
+					and str(state_port_data.get("ruleset_id", "")) == RULESET_ID \
+					and state_port_data.get("journal", {}) is Dictionary,
+			"normalized_state": state_port_data.duplicate(true),
+			"reason_code": "production_state_port_save_valid",
+		}
+	if not bool(state_port_preflight.get("accepted", false)):
+		return {"accepted": false, "reason_code": str(state_port_preflight.get("reason_code", "state_port_restore_preflight_failed")), "failing_child": "state_port"}
+	var normalized_raw := {
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"belt": (normalized_flow.get("belt", {}) as Dictionary).duplicate(true),
+		"market": (normalized_flow.get("market", {}) as Dictionary).duplicate(true),
+		"transaction_journal": normalized_journal.duplicate(true),
+		"terminal_operations": normalized_terminals.duplicate(true),
+		"state_port": (state_port_preflight.get("normalized_state", {}) as Dictionary).duplicate(true),
+	}
+	var normalized_encoded := CLOSED_SCALAR_CODEC.encode_tree(normalized_raw)
+	if not bool(normalized_encoded.get("ok", false)) \
+			or not (normalized_encoded.get("value") is Dictionary) \
+			or not SEMANTIC_WIRE.is_closed_data(normalized_encoded.get("value")):
+		return {"accepted": false, "reason_code": "commodity_card_inventory_save_invalid"}
+	return {
+		"accepted": true,
+		"reason_code": "commodity_card_inventory_save_valid",
+		"normalized_state": (normalized_encoded.get("value", {}) as Dictionary).duplicate(true),
 	}
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
-	if int(data.get("state_version", 0)) != STATE_VERSION or str(data.get("ruleset_id", "")) != RULESET_ID:
-		return {"applied": false, "reason": "commodity_card_inventory_save_invalid"}
-	var belt: Dictionary = data.get("belt", {}) if data.get("belt", {}) is Dictionary else {}
-	var entries: Array = []
-	var items: Dictionary = belt.get("items", {}) if belt.get("items", {}) is Dictionary else {}
-	for item_variant in items.values():
-		if item_variant is Dictionary:
-			entries.append((item_variant as Dictionary).duplicate(true))
-	var belt_result := configure_belt(int(belt.get("revision", 0)), entries)
-	if not bool(belt_result.get("configured", false)):
-		return {"applied": false, "reason": str(belt_result.get("reason_code", "belt_restore_failed"))}
-	var market: Dictionary = data.get("market", {}) if data.get("market", {}) is Dictionary else {}
-	var market_listing: Dictionary = market.get("listing", {}) if market.get("listing", {}) is Dictionary else {}
-	if not market_listing.is_empty():
-		var market_result := configure_market(int(market.get("revision", 0)), market_listing)
-		if not bool(market_result.get("configured", false)):
-			return {"applied": false, "reason": str(market_result.get("reason_code", "market_restore_failed"))}
-	var journal_variant: Variant = data.get("transaction_journal", {})
-	if not (journal_variant is Dictionary) or not _is_pure_data(journal_variant):
-		return {"applied": false, "reason": "transaction_journal_restore_invalid"}
-	_restored_transaction_journal = (journal_variant as Dictionary).duplicate(true)
-	_terminal_operations = (data.get("terminal_operations", {}) as Dictionary).duplicate(true) if data.get("terminal_operations", {}) is Dictionary else {}
-	if _state_port != null and _state_port.has_method("apply_save_data"):
-		var state_result_variant: Variant = _state_port.call("apply_save_data", data.get("state_port", {}) as Dictionary)
-		if not (state_result_variant is Dictionary) or not bool((state_result_variant as Dictionary).get("applied", false)):
-			return {"applied": false, "reason": "state_port_restore_failed"}
-	return {"applied": true, "reason": "", "terminal_operation_count": _terminal_operations.size()}
+	var preflight := preflight_save_data(data)
+	if not bool(preflight.get("accepted", false)):
+		return {"applied": false, "reason_code": str(preflight.get("reason_code", "commodity_card_inventory_save_invalid")), "reason": str(preflight.get("reason_code", "commodity_card_inventory_save_invalid")), "rollback_attempted": false, "rollback_complete": true}
+	var current_status := checkpoint_status()
+	if not bool(current_status.get("can_checkpoint", false)):
+		return {"applied": false, "reason_code": str(current_status.get("reason_code", "commodity_card_inventory_checkpoint_blocked")), "reason": str(current_status.get("reason_code", "commodity_card_inventory_checkpoint_blocked")), "rollback_attempted": false, "rollback_complete": true}
+	if _state_port.has_method("checkpoint_status"):
+		var state_port_status_variant: Variant = _state_port.call("checkpoint_status")
+		if not (state_port_status_variant is Dictionary) \
+				or not bool((state_port_status_variant as Dictionary).get("can_checkpoint", false)):
+			return {"applied": false, "reason_code": "card_player_state_checkpoint_blocked", "reason": "card_player_state_checkpoint_blocked", "rollback_attempted": false, "rollback_complete": true}
+	var normalized_wire := preflight.get("normalized_state", {}) as Dictionary
+	var decoded := CLOSED_SCALAR_CODEC.decode_tree(normalized_wire)
+	if not bool(decoded.get("ok", false)) or not (decoded.get("value") is Dictionary):
+		return {"applied": false, "reason_code": "commodity_card_inventory_save_invalid", "reason": "commodity_card_inventory_save_invalid", "rollback_attempted": false, "rollback_complete": true}
+	var normalized := decoded.get("value", {}) as Dictionary
+	var checkpoint := capture_runtime_checkpoint()
+	var flow_apply_variant: Variant = _transaction_service.call("apply_restore_state", {
+		"belt": normalized.get("belt", {}),
+		"market": normalized.get("market", {}),
+		"journal": normalized.get("transaction_journal", {}),
+	})
+	var flow_apply: Dictionary = flow_apply_variant if flow_apply_variant is Dictionary else {}
+	if not bool(flow_apply.get("applied", false)):
+		return _apply_restore_failure("card_flow", str(flow_apply.get("reason_code", "card_flow_restore_failed")), checkpoint, false)
+	var state_result_variant: Variant = _state_port.call("apply_save_data", normalized.get("state_port", {}) as Dictionary)
+	var state_result: Dictionary = state_result_variant if state_result_variant is Dictionary else {}
+	if not bool(state_result.get("applied", false)):
+		return _apply_restore_failure("state_port", str(state_result.get("reason_code", "state_port_restore_failed")), checkpoint, true)
+	_restored_transaction_journal = (normalized.get("transaction_journal", {}) as Dictionary).duplicate(true)
+	_terminal_operations = (normalized.get("terminal_operations", {}) as Dictionary).duplicate(true)
+	return {"applied": true, "reason_code": "commodity_card_inventory_restored", "reason": "", "terminal_operation_count": _terminal_operations.size(), "rollback_attempted": false, "rollback_complete": true}
+
+
+func capture_runtime_checkpoint() -> Dictionary:
+	var raw_checkpoint := _capture_runtime_checkpoint_raw()
+	if raw_checkpoint.is_empty():
+		return {}
+	var encoded := CLOSED_SCALAR_CODEC.encode_tree(raw_checkpoint)
+	if not bool(encoded.get("ok", false)) or not (encoded.get("value") is Dictionary) \
+			or not SEMANTIC_WIRE.is_closed_data(encoded.get("value")):
+		return {}
+	return (encoded.get("value", {}) as Dictionary).duplicate(true)
+
+
+func _capture_runtime_checkpoint_raw() -> Dictionary:
+	var flow_checkpoint: Dictionary = _transaction_service.call("capture_runtime_checkpoint") \
+			if _transaction_service != null and _transaction_service.has_method("capture_runtime_checkpoint") else {}
+	var state_port_checkpoint: Dictionary = _state_port.call("capture_runtime_checkpoint") \
+			if _state_port != null and _state_port.has_method("capture_runtime_checkpoint") else {
+				"save_data": _state_port.call("to_save_data") if _state_port != null and _state_port.has_method("to_save_data") else {},
+			}
+	return {
+		"captured": true,
+		"schema_version": RUNTIME_CHECKPOINT_VERSION,
+		"checkpoint_id": RUNTIME_CHECKPOINT_ID,
+		"ruleset_id": RULESET_ID,
+		"flow": flow_checkpoint.duplicate(true),
+		"state_port": state_port_checkpoint.duplicate(true),
+		"state_port_runtime_checkpoint": _state_port != null and _state_port.has_method("restore_runtime_checkpoint"),
+		"terminal_operations": _terminal_operations.duplicate(true),
+		"restored_transaction_journal": _restored_transaction_journal.duplicate(true),
+		"operation_count": _operation_count,
+		"last_reason": _last_reason,
+	}
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	var preflight := _preflight_runtime_checkpoint(checkpoint)
+	if not bool(preflight.get("accepted", false)):
+		return {"applied": false, "restored": false, "reason_code": "commodity_card_inventory_checkpoint_invalid"}
+	var raw := preflight.get("normalized_state", {}) as Dictionary
+	var backup := _capture_runtime_checkpoint_raw()
+	var result := _apply_runtime_checkpoint_raw(raw)
+	if bool(result.get("applied", false)):
+		return result
+	var rollback := _apply_runtime_checkpoint_raw(backup)
+	result["rollback_attempted"] = true
+	result["rollback_complete"] = bool(rollback.get("applied", false))
+	return result
+
+
+func _preflight_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if not _service_ready() or not _has_exact_keys(checkpoint, RUNTIME_CHECKPOINT_FIELDS) \
+			or not SEMANTIC_WIRE.is_closed_data(checkpoint) \
+			or not (checkpoint.get("captured") is bool) or not bool(checkpoint.get("captured", false)) \
+			or not (checkpoint.get("schema_version") is int) \
+			or int(checkpoint.get("schema_version", 0)) != RUNTIME_CHECKPOINT_VERSION \
+			or not (checkpoint.get("checkpoint_id") is String) \
+			or str(checkpoint.get("checkpoint_id", "")) != RUNTIME_CHECKPOINT_ID \
+			or not (checkpoint.get("ruleset_id") is String) \
+			or str(checkpoint.get("ruleset_id", "")) != RULESET_ID:
+		return {"accepted": false, "reason_code": "commodity_card_inventory_checkpoint_invalid"}
+	var decoded := CLOSED_SCALAR_CODEC.decode_tree(checkpoint)
+	if not bool(decoded.get("ok", false)) or not (decoded.get("value") is Dictionary):
+		return {"accepted": false, "reason_code": "commodity_card_inventory_checkpoint_invalid"}
+	var raw := decoded.get("value", {}) as Dictionary
+	if not (raw.get("flow") is Dictionary) or not (raw.get("state_port") is Dictionary) \
+			or not (raw.get("state_port_runtime_checkpoint") is bool) \
+			or not (raw.get("terminal_operations") is Dictionary) \
+			or not (raw.get("restored_transaction_journal") is Dictionary) \
+			or not (raw.get("operation_count") is int) or int(raw.get("operation_count", -1)) < 0 \
+			or not (raw.get("last_reason") is String) \
+			or not _flow_checkpoint_shape_valid(raw.get("flow", {}) as Dictionary) \
+			or not _state_port_checkpoint_shape_valid(
+				raw.get("state_port", {}) as Dictionary,
+				bool(raw.get("state_port_runtime_checkpoint", false))
+			):
+		return {"accepted": false, "reason_code": "commodity_card_inventory_checkpoint_invalid"}
+	return {"accepted": true, "normalized_state": raw}
+
+
+func preflight_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	return _preflight_runtime_checkpoint(checkpoint)
+
+
+func _apply_runtime_checkpoint_raw(checkpoint: Dictionary) -> Dictionary:
+	var failures: Array[String] = []
+	if bool(checkpoint.get("state_port_runtime_checkpoint", false)) and _state_port.has_method("restore_runtime_checkpoint"):
+		var state_restore_variant: Variant = _state_port.call("restore_runtime_checkpoint", checkpoint.get("state_port", {}))
+		if not (state_restore_variant is Dictionary) or not bool((state_restore_variant as Dictionary).get("applied", false)):
+			failures.append("state_port")
+	elif _state_port.has_method("apply_save_data"):
+		var state_port_checkpoint := checkpoint.get("state_port", {}) as Dictionary
+		var fallback_state: Dictionary = state_port_checkpoint.get("save_data", {}) \
+				if state_port_checkpoint.get("save_data", {}) is Dictionary else {}
+		var fallback_variant: Variant = _state_port.call("apply_save_data", fallback_state)
+		if not (fallback_variant is Dictionary) or not bool((fallback_variant as Dictionary).get("applied", false)):
+			failures.append("state_port")
+	if _transaction_service == null or not _transaction_service.has_method("restore_runtime_checkpoint"):
+		failures.append("card_flow")
+	else:
+		var flow_restore_variant: Variant = _transaction_service.call("restore_runtime_checkpoint", checkpoint.get("flow", {}))
+		if not (flow_restore_variant is Dictionary) or not bool((flow_restore_variant as Dictionary).get("applied", false)):
+			failures.append("card_flow")
+	_terminal_operations = (checkpoint.get("terminal_operations", {}) as Dictionary).duplicate(true)
+	_restored_transaction_journal = (checkpoint.get("restored_transaction_journal", {}) as Dictionary).duplicate(true)
+	_operation_count = int(checkpoint.get("operation_count", 0))
+	_last_reason = str(checkpoint.get("last_reason", ""))
+	return {"applied": failures.is_empty(), "restored": failures.is_empty(), "reason_code": "commodity_card_inventory_checkpoint_restored" if failures.is_empty() else "commodity_card_inventory_checkpoint_restore_failed", "failures": failures}
+
+
+func _flow_checkpoint_shape_valid(checkpoint: Dictionary) -> bool:
+	return _has_exact_keys(checkpoint, ["schema_version", "belt", "market", "journal", "inflight_transactions"]) \
+			and checkpoint.get("schema_version") is int \
+			and int(checkpoint.get("schema_version", 0)) == 1 \
+			and checkpoint.get("belt") is Dictionary \
+			and checkpoint.get("market") is Dictionary \
+			and checkpoint.get("journal") is Dictionary \
+			and checkpoint.get("inflight_transactions") is Dictionary
+
+
+func _state_port_checkpoint_shape_valid(checkpoint: Dictionary, runtime_checkpoint: bool) -> bool:
+	if not runtime_checkpoint:
+		if not _has_exact_keys(checkpoint, ["save_data"]) or not (checkpoint.get("save_data") is Dictionary):
+			return false
+		if not _state_port.has_method("preflight_save_data"):
+			return true
+		var save_preflight_variant: Variant = _state_port.call("preflight_save_data", checkpoint.get("save_data", {}))
+		return save_preflight_variant is Dictionary \
+				and bool((save_preflight_variant as Dictionary).get("accepted", false))
+	var dictionary_fields := [
+		"reservations",
+		"prepared_mutations",
+		"player_locks",
+		"inflight_transactions",
+		"journal",
+		"reservation_results",
+		"bankruptcy_estate_journal",
+	]
+	if not (checkpoint.get("schema_version") is int) or int(checkpoint.get("schema_version", 0)) != 1:
+		return false
+	for field in dictionary_fields:
+		if not (checkpoint.get(field) is Dictionary):
+			return false
+	for field in ["next_reservation_sequence", "reserve_count", "commit_count", "abort_count", "reject_count"]:
+		if not (checkpoint.get(field) is int) or int(checkpoint.get(field, -1)) < 0:
+			return false
+	return checkpoint.get("last_reason_code") is String
 
 
 func debug_snapshot() -> Dictionary:
@@ -1042,6 +1322,46 @@ func _failure(reason_code: String) -> Dictionary:
 	}
 
 
+func _preflight_terminal_operations(data: Dictionary) -> Dictionary:
+	var normalized: Dictionary = {}
+	var transaction_ids: Array = data.keys()
+	transaction_ids.sort_custom(func(left: Variant, right: Variant) -> bool: return str(left) < str(right))
+	for transaction_id_variant in transaction_ids:
+		if not (transaction_id_variant is String or transaction_id_variant is StringName):
+			return {"accepted": false, "reason_code": "terminal_operation_transaction_id_invalid", "failing_child": "terminal_operations"}
+		var transaction_id := str(transaction_id_variant).strip_edges()
+		var record_variant: Variant = data.get(transaction_id_variant)
+		if transaction_id.is_empty() or not (record_variant is Dictionary):
+			return {"accepted": false, "reason_code": "terminal_operation_invalid", "failing_child": "terminal_operations"}
+		var record := record_variant as Dictionary
+		if not _has_exact_keys(record, JOURNAL_RECORD_FIELDS) or not (record.get("intent_hash") is String) \
+				or str(record.get("intent_hash", "")).is_empty() or not (record.get("result") is Dictionary) \
+				or not _is_pure_data(record) or _contains_forbidden_journal_state(record.get("result", {})):
+			return {"accepted": false, "reason_code": "terminal_operation_invalid", "failing_child": "terminal_operations"}
+		normalized[transaction_id] = record.duplicate(true)
+	return {"accepted": true, "reason_code": "terminal_operations_valid", "normalized_state": normalized}
+
+
+func _apply_restore_failure(
+	failing_child: String,
+	reason_code: String,
+	checkpoint: Dictionary,
+	rollback_needed: bool
+) -> Dictionary:
+	var rollback := {"applied": true, "failures": []}
+	if rollback_needed:
+		rollback = restore_runtime_checkpoint(checkpoint)
+	return {
+		"applied": false,
+		"reason_code": reason_code,
+		"reason": reason_code,
+		"failing_child": failing_child,
+		"rollback_attempted": rollback_needed,
+		"rollback_complete": bool(rollback.get("applied", false)),
+		"rollback_failures": (rollback.get("failures", []) as Array).duplicate(),
+	}
+
+
 func _stable_hash(value: Variant) -> String:
 	var context := HashingContext.new()
 	context.start(HashingContext.HASH_SHA256)
@@ -1067,7 +1387,9 @@ func _canonicalize(value: Variant) -> Variant:
 
 
 func _is_pure_data(value: Variant) -> bool:
-	if value == null or value is bool or value is int or value is float or value is String:
+	if value is float:
+		return is_finite(value)
+	if value == null or value is bool or value is int or value is String or value is StringName:
 		return true
 	if value is Array:
 		for item_variant in value:
@@ -1076,7 +1398,51 @@ func _is_pure_data(value: Variant) -> bool:
 		return true
 	if value is Dictionary:
 		for key_variant in (value as Dictionary).keys():
-			if not (key_variant is String) or not _is_pure_data((value as Dictionary).get(key_variant)):
+			if not (key_variant is String or key_variant is StringName) or not _is_pure_data((value as Dictionary).get(key_variant)):
 				return false
 		return true
+	return false
+
+
+func _has_exact_keys(dictionary: Dictionary, fields: Array) -> bool:
+	if dictionary.size() != fields.size():
+		return false
+	for field_variant in fields:
+		if not dictionary.has(str(field_variant)):
+			return false
+	return true
+
+
+func _journal_save_snapshot(source: Dictionary) -> Dictionary:
+	var sanitized: Variant = _sanitize_journal_value(source)
+	return sanitized as Dictionary if sanitized is Dictionary else {}
+
+
+func _sanitize_journal_value(value: Variant) -> Variant:
+	if value is Dictionary:
+		var sanitized: Dictionary = {}
+		for key_variant in (value as Dictionary).keys():
+			var key := str(key_variant)
+			if key in FORBIDDEN_JOURNAL_STATE_FIELDS:
+				continue
+			sanitized[key] = _sanitize_journal_value((value as Dictionary).get(key_variant))
+		return sanitized
+	if value is Array:
+		var sanitized_array: Array = []
+		for item_variant in value as Array:
+			sanitized_array.append(_sanitize_journal_value(item_variant))
+		return sanitized_array
+	return value
+
+
+func _contains_forbidden_journal_state(value: Variant) -> bool:
+	if value is Dictionary:
+		for key_variant in (value as Dictionary).keys():
+			if str(key_variant) in FORBIDDEN_JOURNAL_STATE_FIELDS \
+					or _contains_forbidden_journal_state((value as Dictionary).get(key_variant)):
+				return true
+	elif value is Array:
+		for item_variant in value as Array:
+			if _contains_forbidden_journal_state(item_variant):
+				return true
 	return false

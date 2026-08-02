@@ -4,6 +4,57 @@ class_name CardResolutionQueueRuntimeService
 
 const SharedCardGroupWindowScript := preload("res://scripts/cards/shared_card_group_window.gd")
 const StableTargetEnvelope := preload("res://scripts/runtime/card_resolution_stable_target_envelope.gd")
+const StrictState := preload("res://scripts/runtime/save_owner_state_v2_contract.gd")
+const FacilityBinding := preload("res://scripts/cards/v06/queued_facility_card_action_v1.gd")
+const FacilityRestoreDependencies := preload("res://scripts/runtime/queued_facility_card_restore_dependency_contract_v06.gd")
+const ExecutionSaveWireCodecV4 := preload("res://scripts/runtime/card_resolution_execution_save_wire_codec_v4.gd")
+const SemanticWire := preload("res://scripts/semantic/semantic_wire_v1.gd")
+
+const RULESET_ID := "v0.6"
+const SAVE_STATE_VERSION := 2
+const SAVE_KEYS := [
+	"schema_version",
+	"ruleset_id",
+	"revision",
+	"current_queue",
+	"active_entry",
+	"next_queue",
+	"resolution_sequence",
+	"last_group_window_sequence",
+]
+const CHECKPOINT_KEYS := [
+	"checkpoint_schema_version",
+	"save_state",
+	"plan_count",
+	"commit_count",
+	"rejection_count",
+	"last_reason",
+]
+const REQUIRED_ENTRY_KEYS := [
+	"player_index", "slot_index", "queued_order", "resolution_id", "window_sequence", "group_id",
+	"group_order", "group_size", "queued_behind_resolution", "play_cash_cost_cents",
+	"play_cost_paid_on_queue", "financial_margin_cents", "financial_terms_version",
+	"financial_authorized_cents", "financial_cash_revision", "financial_margin_locked_on_queue",
+	"asset_reservation_id", "asset_cost", "asset_debit", "asset_reservation_required",
+	"consumed_on_queue", "skill",
+]
+const FACILITY_SUBMISSION_ROLLBACK_SCHEMA_VERSION := 1
+const FACILITY_SUBMISSION_ROLLBACK_KIND_ID := "facility_queue_submission_rollback"
+const FACILITY_SUBMISSION_ROLLBACK_SOURCE_SCRIPT := \
+	"res://scripts/runtime/facility_card_queue_adapter_v06.gd"
+const FACILITY_SUBMISSION_ROLLBACK_REQUEST_FIELDS := [
+	"schema_version",
+	"request_id",
+	"intent_fingerprint",
+	"actor_id",
+	"actor_player_index",
+	"hand_slot_id",
+	"card_instance_id",
+	"card_semantic_id",
+	"escrow_id",
+	"expected_resolution_id",
+	"reason_code",
+]
 
 var _ruleset_id := ""
 var _configured := false
@@ -19,12 +70,14 @@ var _last_reason := ""
 var _last_group_window_sequence := -1
 var _ordinary_card_limit := SharedCardGroupWindowScript.ORDINARY_MAX_CARDS
 var _maximum_with_explicit_capability := SharedCardGroupWindowScript.MAXIMUM_WITH_EXPLICIT_CAPABILITY
+var _facility_submission_rollback_source: Node
+var _facility_submission_rollback_capability: RefCounted
 
 
 func configure(ruleset_snapshot: Dictionary) -> void:
 	_ruleset_id = str(ruleset_snapshot.get("ruleset_id", ""))
 	var card_group: Dictionary = ruleset_snapshot.get("card_group", {}) if ruleset_snapshot.get("card_group", {}) is Dictionary else {}
-	_configured = _ruleset_id == "v0.6" \
+	_configured = _ruleset_id == RULESET_ID \
 		and int(card_group.get("group_seconds", -1)) == 30 \
 		and int(card_group.get("planning_seconds", -1)) == 20 \
 		and int(card_group.get("public_bid_seconds", -1)) == 5 \
@@ -52,23 +105,67 @@ func reset_state() -> void:
 	_last_group_window_sequence = -1
 
 
+func bind_facility_submission_rollback_source(
+	source: Node,
+	capability: RefCounted
+) -> Dictionary:
+	var source_script: Script = source.get_script() if source != null else null
+	if source == null or capability == null or source_script == null \
+			or str(source_script.resource_path) != FACILITY_SUBMISSION_ROLLBACK_SOURCE_SCRIPT:
+		return {
+			"bound": false,
+			"reason_code": "facility_queue_submission_rollback_source_invalid",
+		}
+	if _facility_submission_rollback_source != null \
+			or _facility_submission_rollback_capability != null:
+		if _facility_submission_rollback_source == source \
+				and _facility_submission_rollback_capability == capability:
+			return {
+				"bound": true,
+				"reason_code": "facility_queue_submission_rollback_source_already_bound",
+			}
+		return {
+			"bound": false,
+			"reason_code": "facility_queue_submission_rollback_source_rebind_rejected",
+		}
+	_facility_submission_rollback_source = source
+	_facility_submission_rollback_capability = capability
+	return {
+		"bound": true,
+		"reason_code": "facility_queue_submission_rollback_source_bound",
+	}
+
+
 func capture_runtime_checkpoint() -> Dictionary:
-	return {"schema_version": 1, "current_queue": _current_queue.duplicate(true), "next_queue": _next_queue.duplicate(true), "active_entry": _active_entry.duplicate(true), "resolution_sequence": _resolution_sequence, "revision": _revision, "plan_count": _plan_count, "commit_count": _commit_count, "rejection_count": _rejection_count, "last_reason": _last_reason, "last_group_window_sequence": _last_group_window_sequence}
+	return {
+		"checkpoint_schema_version": SAVE_STATE_VERSION,
+		"save_state": to_save_data(),
+		"plan_count": _plan_count,
+		"commit_count": _commit_count,
+		"rejection_count": _rejection_count,
+		"last_reason": _last_reason,
+	}
 
 
 func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
-	if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("current_queue") is Array) or not (checkpoint.get("next_queue") is Array) or not (checkpoint.get("active_entry") is Dictionary):
+	if not StrictState.is_codec_data(checkpoint) or StrictState.contains_rng_continuation(checkpoint) \
+			or not StrictState.has_exact_keys(checkpoint, CHECKPOINT_KEYS) \
+			or not (checkpoint.get("checkpoint_schema_version") is int) \
+			or int(checkpoint.get("checkpoint_schema_version")) != SAVE_STATE_VERSION \
+			or not (checkpoint.get("save_state") is Dictionary) \
+			or not (checkpoint.get("plan_count") is int) or int(checkpoint.get("plan_count")) < 0 \
+			or not (checkpoint.get("commit_count") is int) or int(checkpoint.get("commit_count")) < 0 \
+			or not (checkpoint.get("rejection_count") is int) or int(checkpoint.get("rejection_count")) < 0 \
+			or not (checkpoint.get("last_reason") is String):
 		return {"restored": false, "reason_code": "card_resolution_queue_checkpoint_invalid"}
-	_current_queue = (checkpoint.get("current_queue", []) as Array).duplicate(true)
-	_next_queue = (checkpoint.get("next_queue", []) as Array).duplicate(true)
-	_active_entry = (checkpoint.get("active_entry", {}) as Dictionary).duplicate(true)
-	_resolution_sequence = int(checkpoint.get("resolution_sequence", 0))
-	_revision = int(checkpoint.get("revision", 0))
-	_plan_count = int(checkpoint.get("plan_count", 0))
-	_commit_count = int(checkpoint.get("commit_count", 0))
-	_rejection_count = int(checkpoint.get("rejection_count", 0))
-	_last_reason = str(checkpoint.get("last_reason", ""))
-	_last_group_window_sequence = int(checkpoint.get("last_group_window_sequence", -1))
+	var save_state := checkpoint.get("save_state") as Dictionary
+	if not bool(preflight_save_data(save_state).get("accepted", false)):
+		return {"restored": false, "reason_code": "card_resolution_queue_checkpoint_invalid"}
+	_replace_save_state(save_state)
+	_plan_count = int(checkpoint.get("plan_count"))
+	_commit_count = int(checkpoint.get("commit_count"))
+	_rejection_count = int(checkpoint.get("rejection_count"))
+	_last_reason = str(checkpoint.get("last_reason"))
 	return {"restored": true, "reason_code": "card_resolution_queue_checkpoint_restored"}
 
 
@@ -219,6 +316,181 @@ func commit_submission(plan: Dictionary, commit_receipt: Dictionary) -> Dictiona
 	}
 
 
+func rollback_facility_submission(
+	capability: RefCounted,
+	request: Dictionary
+) -> Dictionary:
+	if capability == null or capability != _facility_submission_rollback_capability \
+			or _facility_submission_rollback_source == null:
+		return _facility_submission_rollback_result(
+			false,
+			false,
+			false,
+			false,
+			-1,
+			"unauthorized",
+			"facility_queue_submission_rollback_unauthorized"
+		)
+	var validation := _validate_facility_submission_rollback_request(request)
+	if not bool(validation.get("valid", false)):
+		return _facility_submission_rollback_result(
+			false,
+			false,
+			false,
+			false,
+			-1,
+			"request_invalid",
+			str(validation.get(
+				"reason_code",
+				"facility_queue_submission_rollback_request_invalid"
+			))
+		)
+	var located := _locate_facility_submission_rollback_entry(request)
+	if not bool(located.get("valid", false)):
+		return _facility_submission_rollback_result(
+			false,
+			bool(located.get("commitment_found", false)),
+			false,
+			false,
+			int(located.get("resolution_id", -1)),
+			str(located.get("outcome_id", "binding_collision")),
+			str(located.get(
+				"reason_code",
+				"facility_queue_submission_rollback_binding_collision"
+			))
+		)
+	if not bool(located.get("commitment_found", false)):
+		return _facility_submission_rollback_result(
+			true,
+			false,
+			false,
+			true,
+			-1,
+			"not_committed",
+			"facility_queue_submission_not_committed",
+			true
+		)
+	var route_id := str(located.get("route_id", ""))
+	var resolution_id := int(located.get("resolution_id", -1))
+	if route_id == "active":
+		return _facility_submission_rollback_result(
+			false,
+			true,
+			false,
+			false,
+			resolution_id,
+			"active",
+			"facility_queue_submission_rollback_active"
+		)
+	var entry_index := int(located.get("entry_index", -1))
+	if route_id == "current" and entry_index >= 0 and entry_index < _current_queue.size():
+		_current_queue.remove_at(entry_index)
+		_reindex_current_groups()
+	elif route_id == "next" and entry_index >= 0 and entry_index < _next_queue.size():
+		_next_queue.remove_at(entry_index)
+		_reindex_queue_groups(_next_queue)
+	else:
+		return _facility_submission_rollback_result(
+			false,
+			true,
+			false,
+			false,
+			resolution_id,
+			"route_invalid",
+			"facility_queue_submission_rollback_route_invalid"
+		)
+	_revision += 1
+	_last_reason = str(request.get("reason_code", ""))
+	var postcondition := _locate_facility_submission_rollback_entry(request)
+	var state_verified := bool(postcondition.get("valid", false)) \
+		and not bool(postcondition.get("commitment_found", true)) \
+		and entry_by_id(resolution_id).is_empty()
+	return _facility_submission_rollback_result(
+		state_verified,
+		true,
+		true,
+		state_verified,
+		resolution_id,
+		"rolled_back" if state_verified else "rollback_incomplete",
+		"facility_queue_submission_rolled_back" if state_verified \
+			else "facility_queue_submission_rollback_incomplete"
+	)
+
+
+func facility_submission_status(
+	capability: RefCounted,
+	request: Dictionary
+) -> Dictionary:
+	if capability == null or capability != _facility_submission_rollback_capability \
+			or _facility_submission_rollback_source == null:
+		return _facility_submission_status_result(
+			false,
+			false,
+			false,
+			false,
+			-1,
+			"",
+			"unauthorized",
+			"facility_queue_submission_status_unauthorized"
+		)
+	var validation := _validate_facility_submission_rollback_request(request)
+	if not bool(validation.get("valid", false)):
+		return _facility_submission_status_result(
+			false,
+			false,
+			false,
+			false,
+			-1,
+			"",
+			"request_invalid",
+			str(validation.get(
+				"reason_code",
+				"facility_queue_submission_status_request_invalid"
+			))
+		)
+	var located := _locate_facility_submission_rollback_entry(request)
+	if not bool(located.get("valid", false)):
+		return _facility_submission_status_result(
+			false,
+			bool(located.get("commitment_found", false)),
+			str(located.get("route_id", "")) == "active",
+			false,
+			int(located.get("resolution_id", -1)),
+			"",
+			str(located.get("outcome_id", "binding_collision")),
+			str(located.get(
+				"reason_code",
+				"facility_queue_submission_status_binding_collision"
+			))
+		)
+	if not bool(located.get("commitment_found", false)):
+		return _facility_submission_status_result(
+			true,
+			false,
+			false,
+			true,
+			-1,
+			"",
+			"not_committed",
+			"facility_queue_submission_not_committed"
+		)
+	var entry: Dictionary = located.get("entry", {}) \
+		if located.get("entry", {}) is Dictionary else {}
+	var binding: Dictionary = entry.get("v06_facility_action", {}) \
+		if entry.get("v06_facility_action", {}) is Dictionary else {}
+	var active := str(located.get("route_id", "")) == "active"
+	return _facility_submission_status_result(
+		true,
+		true,
+		active,
+		true,
+		int(located.get("resolution_id", -1)),
+		str(binding.get("binding_fingerprint", "")),
+		"active" if active else "pending",
+		"facility_queue_submission_status_found"
+	)
+
+
 func lock_batch(facts: Dictionary) -> Dictionary:
 	if not _configured or not _is_data_only(facts) or _current_queue.is_empty() or not _active_entry.is_empty():
 		return {"locked": false, "reason": "queue_not_lockable"}
@@ -275,6 +547,35 @@ func start_next(facts: Dictionary = {}) -> Dictionary:
 		"revision": _revision,
 		"skipped_entries": skipped,
 		"batch_empty": true,
+	}
+
+
+func start_immediate_facility(resolution_id: int, facts: Dictionary = {}) -> Dictionary:
+	if not _configured or not _is_data_only(facts) or resolution_id <= 0:
+		return {"started": false, "reason": "invalid_immediate_facility_request"}
+	if not _active_entry.is_empty():
+		return {"started": false, "reason": "active_present"}
+	if _current_queue.is_empty() or not (_current_queue[0] is Dictionary):
+		return {"started": false, "reason": "immediate_facility_entry_missing"}
+	var entry := (_current_queue[0] as Dictionary).duplicate(true)
+	if int(entry.get("resolution_id", -1)) != resolution_id:
+		return {"started": false, "reason": "immediate_facility_not_queue_front"}
+	var binding: Dictionary = entry.get("v06_facility_action", {}) \
+		if entry.get("v06_facility_action", {}) is Dictionary else {}
+	if not bool(FacilityBinding.validation_report(binding).get("valid", false)) \
+			or int(binding.get("resolution_id", -1)) != resolution_id:
+		return {"started": false, "reason": "immediate_facility_binding_invalid"}
+	_current_queue.pop_front()
+	_reindex_current_groups()
+	entry["started_time"] = float(facts.get("game_time", 0.0))
+	_active_entry = entry
+	_revision += 1
+	return {
+		"started": true,
+		"reason": "",
+		"revision": _revision,
+		"active_entry": active_entry(),
+		"current_count": _current_queue.size(),
 	}
 
 
@@ -536,6 +837,150 @@ func public_snapshot() -> Dictionary:
 	}
 
 
+func to_save_data() -> Dictionary:
+	return {
+		"schema_version": SAVE_STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"revision": _revision,
+		"current_queue": current_queue(),
+		"active_entry": active_entry(),
+		"next_queue": next_queue(),
+		"resolution_sequence": _resolution_sequence,
+		"last_group_window_sequence": _last_group_window_sequence,
+	}
+
+
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	var validation := _validate_save_data(data)
+	if not bool(validation.get("valid", false)):
+		var reason_code := str(validation.get("reason_code", "card_resolution_queue_save_invalid"))
+		return {"accepted": false, "reason": reason_code, "reason_code": reason_code}
+	return {
+		"accepted": true,
+		"reason": "",
+		"reason_code": "card_resolution_queue_save_valid",
+		"normalized_state": data.duplicate(true),
+	}
+
+
+## Candidate-only registry preflight. Player slots and resolution lineage are
+## checked against normalized sections without reading live queue consumers.
+func preflight_restore_dependencies(section_state: Dictionary, all_normalized_states: Dictionary) -> Dictionary:
+	var section_preflight := preflight_save_data(section_state)
+	if not bool(section_preflight.get("accepted", false)):
+		return _restore_dependency_rejection("card_resolution_queue_dependency_section_invalid")
+	if not (all_normalized_states.get("session") is Dictionary) \
+			or not (all_normalized_states.get("card_resolution_execution") is Dictionary) \
+			or not (all_normalized_states.get("card_resolution_history") is Dictionary):
+		return _restore_dependency_rejection("card_resolution_queue_dependency_section_missing")
+	var execution_decode := ExecutionSaveWireCodecV4.decode_save_state(
+		all_normalized_states.get("card_resolution_execution") as Dictionary
+	)
+	if not bool(execution_decode.get("ok", false)) or not (execution_decode.get("value") is Dictionary):
+		return _restore_dependency_rejection("card_resolution_queue_execution_projection_invalid")
+	var projected_states := all_normalized_states.duplicate(true)
+	projected_states["card_resolution_execution"] = (execution_decode.get("value") as Dictionary).duplicate(true)
+	var facility_dependencies := FacilityRestoreDependencies.validate(
+		section_state.duplicate(true),
+		projected_states.duplicate(true)
+	)
+	if not bool(facility_dependencies.get("accepted", false)):
+		return _restore_dependency_rejection(str(facility_dependencies.get(
+			"reason_code", "card_resolution_queue_facility_dependency_invalid"
+		)))
+	var context := _queue_restore_dependency_context(
+		projected_states.get("session") as Dictionary,
+		projected_states.get("card_resolution_execution") as Dictionary,
+		projected_states.get("card_resolution_history") as Dictionary
+	)
+	if not bool(context.get("valid", false)):
+		return _restore_dependency_rejection(str(context.get("reason_code", "card_resolution_queue_dependency_context_invalid")))
+	var queue_entries: Array = []
+	for entry_variant in section_state.get("current_queue") as Array:
+		queue_entries.append({"lane": "current", "entry": entry_variant})
+	if not (section_state.get("active_entry") as Dictionary).is_empty():
+		queue_entries.append({"lane": "active", "entry": section_state.get("active_entry")})
+	for entry_variant in section_state.get("next_queue") as Array:
+		queue_entries.append({"lane": "next", "entry": entry_variant})
+	var queue_ids: Dictionary = {}
+	var active_resolution_id := -1
+	for row_variant in queue_entries:
+		var row := row_variant as Dictionary
+		var lane := str(row.get("lane", ""))
+		var entry := row.get("entry") as Dictionary
+		var slot_result := _validate_queue_restore_slot(entry, context)
+		if not bool(slot_result.get("valid", false)):
+			return _restore_dependency_rejection(str(slot_result.get("reason_code", "card_resolution_queue_dependency_slot_invalid")))
+		var resolution_id := int(entry.get("resolution_id", -1))
+		queue_ids[str(resolution_id)] = lane
+		if lane == "active":
+			active_resolution_id = resolution_id
+	var lineage_result := _validate_queue_restore_lineage(
+		queue_ids,
+		active_resolution_id,
+		int(section_state.get("resolution_sequence", 0)),
+		section_state.get("active_entry") as Dictionary,
+		context
+	)
+	if not bool(lineage_result.get("valid", false)):
+		return _restore_dependency_rejection(str(lineage_result.get("reason_code", "card_resolution_queue_dependency_lineage_invalid")))
+	var receipt := {
+		"accepted": true,
+		"reason": "",
+		"reason_code": "card_resolution_queue_restore_dependencies_valid",
+		"queue_reference_count": queue_ids.size(),
+		"execution_lineage_count": int(lineage_result.get("execution_lineage_count", 0)),
+		"history_lineage_count": int(lineage_result.get("history_lineage_count", 0)),
+	}
+	for field_id in [
+		"facility_reference_count",
+		"facility_escrow_reference_count",
+		"facility_reservation_reference_count",
+		"facility_target_catalog_count",
+	]:
+		receipt[field_id] = int(facility_dependencies.get(field_id, 0))
+	return receipt
+
+
+func apply_save_data(data: Dictionary) -> Dictionary:
+	var preflight := preflight_save_data(data)
+	if not bool(preflight.get("accepted", false)):
+		var rejection := str(preflight.get("reason_code", "card_resolution_queue_save_invalid"))
+		return {"applied": false, "reason": rejection, "reason_code": rejection}
+	var normalized := (preflight.get("normalized_state", {}) as Dictionary).duplicate(true)
+	_replace_save_state(normalized)
+	_plan_count = 0
+	_commit_count = 0
+	_rejection_count = 0
+	_last_reason = "save_applied"
+	return {
+		"applied": true,
+		"reason": "card_resolution_queue_state_restored",
+		"reason_code": "card_resolution_queue_state_restored",
+		"revision": _revision,
+		"current_count": _current_queue.size(),
+		"active_present": not _active_entry.is_empty(),
+		"next_count": _next_queue.size(),
+	}
+
+
+func capture_save_checkpoint() -> Dictionary:
+	return to_save_data()
+
+
+func rollback_save_data(checkpoint: Dictionary) -> Dictionary:
+	return apply_save_data(checkpoint)
+
+
+func _replace_save_state(normalized: Dictionary) -> void:
+	_current_queue = (normalized.get("current_queue") as Array).duplicate(true)
+	_active_entry = (normalized.get("active_entry") as Dictionary).duplicate(true)
+	_next_queue = (normalized.get("next_queue") as Array).duplicate(true)
+	_resolution_sequence = int(normalized.get("resolution_sequence"))
+	_last_group_window_sequence = int(normalized.get("last_group_window_sequence"))
+	_revision = int(normalized.get("revision"))
+
+
 func to_legacy_save_snapshot() -> Dictionary:
 	return {
 		"card_resolution_queue": current_queue(),
@@ -577,6 +1022,8 @@ func debug_snapshot() -> Dictionary:
 		"commit_count": _commit_count,
 		"rejection_count": _rejection_count,
 		"last_reason": _last_reason,
+		"save_state_version": SAVE_STATE_VERSION,
+		"owns_rng_continuation": false,
 		"timing_authority": false,
 		"asset_reservation_authority": false,
 		"priority_bid_authority": false,
@@ -601,6 +1048,192 @@ func _commit_rejection(reason: String) -> Dictionary:
 	return {"committed": false, "reason": reason, "revision": _revision}
 
 
+func _validate_facility_submission_rollback_request(request: Dictionary) -> Dictionary:
+	if not _configured or not SemanticWire.is_closed_data(request) \
+			or not SemanticWire.exact_fields(
+				request,
+				FACILITY_SUBMISSION_ROLLBACK_REQUEST_FIELDS
+			):
+		return {
+			"valid": false,
+			"reason_code": "facility_queue_submission_rollback_request_invalid",
+		}
+	if request.get("schema_version") != FACILITY_SUBMISSION_ROLLBACK_SCHEMA_VERSION \
+			or not SemanticWire.is_session_id(request.get("request_id")) \
+			or not SemanticWire.is_fingerprint(request.get("intent_fingerprint")) \
+			or not SemanticWire.is_stable_id(request.get("actor_id")) \
+			or not SemanticWire.is_nonnegative_integer(request.get("actor_player_index")) \
+			or str(request.get("actor_id", "")) \
+				!= "player.%d" % int(request.get("actor_player_index", -1)) \
+			or not SemanticWire.is_stable_id(request.get("hand_slot_id")) \
+			or not SemanticWire.is_session_id(request.get("card_instance_id")) \
+			or not SemanticWire.is_stable_id(request.get("card_semantic_id")) \
+			or not SemanticWire.is_session_id(request.get("escrow_id")) \
+			or not (request.get("expected_resolution_id") is int) \
+			or int(request.get("expected_resolution_id", -2)) < -1 \
+			or int(request.get("expected_resolution_id", -1)) == 0 \
+			or not SemanticWire.is_stable_id(request.get("reason_code")):
+		return {
+			"valid": false,
+			"reason_code": "facility_queue_submission_rollback_binding_invalid",
+		}
+	return {
+		"valid": true,
+		"reason_code": "facility_queue_submission_rollback_request_valid",
+	}
+
+
+func _locate_facility_submission_rollback_entry(request: Dictionary) -> Dictionary:
+	var matches: Array[Dictionary] = []
+	var collision := false
+	var rows := [
+		{"route_id": "active", "entry_index": -1, "entry": _active_entry},
+	]
+	for index in range(_current_queue.size()):
+		rows.append({
+			"route_id": "current",
+			"entry_index": index,
+			"entry": _current_queue[index],
+		})
+	for index in range(_next_queue.size()):
+		rows.append({
+			"route_id": "next",
+			"entry_index": index,
+			"entry": _next_queue[index],
+		})
+	for row_variant in rows:
+		var row: Dictionary = row_variant if row_variant is Dictionary else {}
+		var entry_variant: Variant = row.get("entry", {})
+		if not (entry_variant is Dictionary) or (entry_variant as Dictionary).is_empty():
+			continue
+		var entry := entry_variant as Dictionary
+		var binding: Dictionary = entry.get("v06_facility_action", {}) \
+			if entry.get("v06_facility_action", {}) is Dictionary else {}
+		if binding.is_empty():
+			continue
+		var escrow_ref: Dictionary = binding.get("card_escrow", {}) \
+			if binding.get("card_escrow", {}) is Dictionary else {}
+		var same_request_id := str(binding.get("request_id", "")) \
+			== str(request.get("request_id", ""))
+		var same_escrow_id := str(escrow_ref.get("escrow_id", "")) \
+			== str(request.get("escrow_id", ""))
+		if not same_request_id and not same_escrow_id:
+			continue
+		if not _facility_submission_rollback_binding_matches(entry, binding, request):
+			collision = true
+			continue
+		var match_row := row.duplicate(true)
+		match_row["resolution_id"] = int(binding.get("resolution_id", -1))
+		matches.append(match_row)
+	if collision or matches.size() > 1:
+		return {
+			"valid": false,
+			"commitment_found": not matches.is_empty(),
+			"resolution_id": int(matches[0].get("resolution_id", -1)) \
+				if not matches.is_empty() else -1,
+			"outcome_id": "binding_collision",
+			"reason_code": "facility_queue_submission_rollback_binding_collision",
+		}
+	if matches.is_empty():
+		return {
+			"valid": true,
+			"commitment_found": false,
+			"resolution_id": -1,
+			"outcome_id": "not_committed",
+			"reason_code": "facility_queue_submission_not_committed",
+		}
+	var match_row := matches[0]
+	return {
+		"valid": true,
+		"commitment_found": true,
+		"route_id": str(match_row.get("route_id", "")),
+		"entry_index": int(match_row.get("entry_index", -1)),
+		"entry": (match_row.get("entry", {}) as Dictionary).duplicate(true) \
+			if match_row.get("entry", {}) is Dictionary else {},
+		"resolution_id": int(match_row.get("resolution_id", -1)),
+		"outcome_id": "active" if str(match_row.get("route_id", "")) == "active" \
+			else "pending",
+		"reason_code": "facility_queue_submission_found",
+	}
+
+
+func _facility_submission_rollback_binding_matches(
+	entry: Dictionary,
+	binding: Dictionary,
+	request: Dictionary
+) -> bool:
+	if not bool(FacilityBinding.validation_report(binding).get("valid", false)):
+		return false
+	var escrow_ref: Dictionary = binding.get("card_escrow", {}) \
+		if binding.get("card_escrow", {}) is Dictionary else {}
+	var expected_resolution_id := int(request.get("expected_resolution_id", -1))
+	return str(binding.get("request_id", "")) == str(request.get("request_id", "")) \
+		and str(binding.get("intent_fingerprint", "")) \
+			== str(request.get("intent_fingerprint", "")) \
+		and str(binding.get("actor_id", "")) == str(request.get("actor_id", "")) \
+		and int(binding.get("actor_player_index", -1)) \
+			== int(request.get("actor_player_index", -2)) \
+		and str(binding.get("hand_slot_id", "")) \
+			== str(request.get("hand_slot_id", "")) \
+		and str(binding.get("card_instance_id", "")) \
+			== str(request.get("card_instance_id", "")) \
+		and str(binding.get("card_semantic_id", "")) \
+			== str(request.get("card_semantic_id", "")) \
+		and str(escrow_ref.get("escrow_id", "")) == str(request.get("escrow_id", "")) \
+		and int(binding.get("resolution_id", -1)) == _entry_id(entry) \
+		and (expected_resolution_id < 0 \
+			or int(binding.get("resolution_id", -1)) == expected_resolution_id)
+
+
+func _facility_submission_rollback_result(
+	settled: bool,
+	commitment_found: bool,
+	rolled_back: bool,
+	state_verified: bool,
+	resolution_id: int,
+	outcome_id: String,
+	reason_code: String,
+	idempotent_replay: bool = false
+) -> Dictionary:
+	return {
+		"schema_version": FACILITY_SUBMISSION_ROLLBACK_SCHEMA_VERSION,
+		"settlement_kind_id": FACILITY_SUBMISSION_ROLLBACK_KIND_ID,
+		"settled": settled,
+		"commitment_found": commitment_found,
+		"rolled_back": rolled_back,
+		"state_verified": state_verified,
+		"resolution_id": resolution_id,
+		"outcome_id": outcome_id,
+		"reason_code": reason_code,
+		"idempotent_replay": idempotent_replay,
+	}
+
+
+func _facility_submission_status_result(
+	valid: bool,
+	commitment_found: bool,
+	active: bool,
+	state_verified: bool,
+	resolution_id: int,
+	binding_fingerprint: String,
+	outcome_id: String,
+	reason_code: String
+) -> Dictionary:
+	return {
+		"schema_version": FACILITY_SUBMISSION_ROLLBACK_SCHEMA_VERSION,
+		"status_kind_id": "facility_queue_submission_status",
+		"valid": valid,
+		"commitment_found": commitment_found,
+		"active": active,
+		"state_verified": state_verified,
+		"resolution_id": resolution_id,
+		"queue_revision": _revision,
+		"binding_fingerprint": binding_fingerprint,
+		"outcome_id": outcome_id,
+		"reason_code": reason_code,
+	}
+
+
 func _sort_current(reference_player: int, player_count: int) -> void:
 	_current_queue = SharedCardGroupWindowScript.flatten_groups(
 		SharedCardGroupWindowScript.groups_from_entries(_current_queue, reference_player, player_count)
@@ -612,6 +1245,30 @@ func _group_count_in_prefix(entries: Array, player_index: int, end_exclusive: in
 	for index in range(clampi(end_exclusive, 0, entries.size())):
 		prefix.append(entries[index])
 	return SharedCardGroupWindowScript.group_card_count(prefix, player_index)
+
+
+func _reindex_current_groups() -> void:
+	_reindex_queue_groups(_current_queue)
+
+
+func _reindex_queue_groups(entries: Array) -> void:
+	var group_sizes: Dictionary = {}
+	for entry_variant in entries:
+		if entry_variant is Dictionary:
+			var player_index := int((entry_variant as Dictionary).get("player_index", -1))
+			group_sizes[str(player_index)] = int(group_sizes.get(str(player_index), 0)) + 1
+	var group_orders: Dictionary = {}
+	for index in range(entries.size()):
+		if not (entries[index] is Dictionary):
+			continue
+		var entry := (entries[index] as Dictionary).duplicate(true)
+		var player_index := int(entry.get("player_index", -1))
+		var player_key := str(player_index)
+		var group_order := int(group_orders.get(player_key, 0)) + 1
+		group_orders[player_key] = group_order
+		entry["group_order"] = group_order
+		entry["group_size"] = int(group_sizes.get(player_key, group_order))
+		entries[index] = entry
 
 
 func _authoritative_submission_capability(player_index: int, window_sequence: int, request: Dictionary, facts: Dictionary) -> Dictionary:
@@ -755,17 +1412,285 @@ func _normalize_legacy_entry(source: Dictionary) -> Dictionary:
 	return entry
 
 
+func _queue_restore_dependency_context(
+	session_state: Dictionary,
+	execution_state: Dictionary,
+	history_state: Dictionary
+) -> Dictionary:
+	if not (session_state.get("world_session_state") is Dictionary):
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_context_shape_invalid"}
+	var world_state := session_state.get("world_session_state") as Dictionary
+	if not (world_state.get("players") is Array):
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_player_roster_invalid"}
+	var players_by_index: Dictionary = {}
+	var players := world_state.get("players") as Array
+	for player_index in range(players.size()):
+		var player_variant: Variant = players[player_index]
+		if not (player_variant is Dictionary) \
+				or not ((player_variant as Dictionary).get("id") is int) \
+				or int((player_variant as Dictionary).get("id")) != player_index \
+				or not ((player_variant as Dictionary).get("slots") is Array):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_player_roster_invalid"}
+		players_by_index[str(player_index)] = player_variant
+
+	var completed_result := _restore_id_set(execution_state.get("completed_resolution_ids"), "execution_completed")
+	var inflight_result := _restore_id_set(execution_state.get("inflight_resolution_ids"), "execution_inflight")
+	var history_result := _restore_id_set(history_state.get("appended_resolution_ids"), "history")
+	if not bool(completed_result.get("valid", false)):
+		return completed_result
+	if not bool(inflight_result.get("valid", false)):
+		return inflight_result
+	if not bool(history_result.get("valid", false)):
+		return history_result
+	if not (execution_state.get("inflight_execution_transactions") is Array) \
+			or not (execution_state.get("pending_settlements") is Array) \
+			or not (history_state.get("history") is Array):
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_lineage_shape_invalid"}
+	var completed_ids := completed_result.get("ids") as Dictionary
+	var inflight_ids := inflight_result.get("ids") as Dictionary
+	for resolution_key_variant in completed_ids.keys():
+		if inflight_ids.has(str(resolution_key_variant)):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_execution_overlap"}
+	var inflight_transactions: Dictionary = {}
+	for transaction_variant in execution_state.get("inflight_execution_transactions") as Array:
+		if not (transaction_variant is Dictionary):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_execution_record_invalid"}
+		var transaction := transaction_variant as Dictionary
+		var resolution_id := int(transaction.get("resolution_id", -1))
+		var resolution_key := str(resolution_id)
+		if resolution_id <= 0 or inflight_transactions.has(resolution_key) or not inflight_ids.has(resolution_key):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_execution_record_invalid"}
+		inflight_transactions[resolution_key] = transaction
+	if inflight_transactions.size() != inflight_ids.size():
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_execution_record_missing"}
+	var pending_ids: Dictionary = {}
+	for pending_variant in execution_state.get("pending_settlements") as Array:
+		if not (pending_variant is Dictionary):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_settlement_record_invalid"}
+		var resolution_id := int((pending_variant as Dictionary).get("resolution_id", -1))
+		var resolution_key := str(resolution_id)
+		if resolution_id <= 0 or pending_ids.has(resolution_key) or not completed_ids.has(resolution_key):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_settlement_record_invalid"}
+		pending_ids[resolution_key] = true
+	var history_ids := history_result.get("ids") as Dictionary
+	var authored_history_ids: Dictionary = {}
+	for entry_variant in history_state.get("history") as Array:
+		if not (entry_variant is Dictionary):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_history_record_invalid"}
+		var resolution_id := int((entry_variant as Dictionary).get("resolution_id", (entry_variant as Dictionary).get("queued_order", -1)))
+		var resolution_key := str(resolution_id)
+		if resolution_id <= 0 or authored_history_ids.has(resolution_key) or not history_ids.has(resolution_key):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_history_record_invalid"}
+		authored_history_ids[resolution_key] = true
+	if authored_history_ids.size() != history_ids.size():
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_history_record_missing"}
+	return {
+		"valid": true,
+		"reason_code": "card_resolution_queue_dependency_context_valid",
+		"players_by_index": players_by_index,
+		"completed_ids": completed_ids,
+		"inflight_ids": inflight_ids,
+		"inflight_transactions": inflight_transactions,
+		"pending_ids": pending_ids,
+		"history_ids": history_ids,
+	}
+
+
+func _restore_id_set(value: Variant, label: String) -> Dictionary:
+	if not (value is Array):
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_%s_ids_invalid" % label, "ids": {}}
+	var ids: Dictionary = {}
+	for id_variant in value as Array:
+		if not (id_variant is int) or int(id_variant) <= 0 or ids.has(str(int(id_variant))):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_%s_ids_invalid" % label, "ids": {}}
+		ids[str(int(id_variant))] = true
+	return {"valid": true, "ids": ids}
+
+
+func _validate_queue_restore_slot(entry: Dictionary, context: Dictionary) -> Dictionary:
+	var player_key := str(int(entry.get("player_index", -1)))
+	var players_by_index := context.get("players_by_index") as Dictionary
+	if not players_by_index.has(player_key):
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_player_missing"}
+	var player := players_by_index.get(player_key) as Dictionary
+	var slots := player.get("slots") as Array
+	var slot_index := int(entry.get("slot_index", -1))
+	if slot_index < 0 or slot_index >= slots.size():
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_slot_missing"}
+	if bool(entry.get("consumed_on_queue", false)):
+		return {"valid": true, "reason_code": "card_resolution_queue_dependency_consumed_slot_valid"}
+	var slot_variant: Variant = slots[slot_index]
+	if not (slot_variant is Dictionary):
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_persistent_slot_missing"}
+	var slot := slot_variant as Dictionary
+	var skill := entry.get("skill") as Dictionary
+	if not bool(slot.get("queued_for_resolution", false)) \
+			or str(slot.get("name", "")).is_empty() \
+			or str(slot.get("name", "")) != str(skill.get("name", "")):
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_persistent_slot_mismatch"}
+	for identity_key in ["card_instance_id", "instance_id", "card_id"]:
+		if (slot.has(identity_key) or skill.has(identity_key)) and slot.get(identity_key) != skill.get(identity_key):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_persistent_slot_mismatch"}
+	return {"valid": true, "reason_code": "card_resolution_queue_dependency_slot_valid"}
+
+
+func _validate_queue_restore_lineage(
+	queue_ids: Dictionary,
+	active_resolution_id: int,
+	authoritative_resolution_sequence: int,
+	candidate_active_entry: Dictionary,
+	context: Dictionary
+) -> Dictionary:
+	var completed_ids := context.get("completed_ids") as Dictionary
+	var inflight_ids := context.get("inflight_ids") as Dictionary
+	var inflight_transactions := context.get("inflight_transactions") as Dictionary
+	var pending_ids := context.get("pending_ids") as Dictionary
+	var history_ids := context.get("history_ids") as Dictionary
+	var maximum_resolution_id := 0
+	for source in [queue_ids, completed_ids, inflight_ids, pending_ids, history_ids]:
+		for resolution_key_variant in (source as Dictionary).keys():
+			maximum_resolution_id = maxi(maximum_resolution_id, int(str(resolution_key_variant)))
+	if maximum_resolution_id > authoritative_resolution_sequence:
+		return {"valid": false, "reason_code": "card_resolution_queue_dependency_sequence_precedes_lineage"}
+	for resolution_key_variant in queue_ids.keys():
+		var resolution_key := str(resolution_key_variant)
+		var lane := str(queue_ids.get(resolution_key_variant, ""))
+		if completed_ids.has(resolution_key) or history_ids.has(resolution_key):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_terminal_id_still_queued"}
+		if lane != "active" and inflight_ids.has(resolution_key):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_inflight_id_waiting"}
+	if active_resolution_id > 0 and inflight_ids.has(str(active_resolution_id)):
+		var transaction := inflight_transactions.get(str(active_resolution_id)) as Dictionary
+		var transaction_entry: Dictionary = transaction.get("active_entry", {}) if transaction.get("active_entry", {}) is Dictionary else {}
+		if int(transaction_entry.get("resolution_id", -1)) != active_resolution_id \
+				or str(transaction.get("entry_fingerprint", "")) != JSON.stringify(candidate_active_entry).sha256_text():
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_active_execution_mismatch"}
+	for history_key_variant in history_ids.keys():
+		var history_key := str(history_key_variant)
+		if completed_ids.has(history_key):
+			continue
+		if not inflight_transactions.has(history_key) \
+				or not bool((inflight_transactions.get(history_key) as Dictionary).get("history_appended", false)):
+			return {"valid": false, "reason_code": "card_resolution_queue_dependency_history_orphan"}
+	return {
+		"valid": true,
+		"reason_code": "card_resolution_queue_dependency_lineage_valid",
+		"execution_lineage_count": completed_ids.size() + inflight_ids.size(),
+		"history_lineage_count": history_ids.size(),
+	}
+
+
+func _restore_dependency_rejection(reason_code: String) -> Dictionary:
+	return {"accepted": false, "reason": reason_code, "reason_code": reason_code}
+
+
+func _validate_save_data(data: Dictionary) -> Dictionary:
+	if not StrictState.is_codec_data(data) or StrictState.contains_rng_continuation(data):
+		return {"valid": false, "reason_code": "card_resolution_queue_save_not_codec_data"}
+	if not StrictState.has_exact_keys(data, SAVE_KEYS):
+		return {"valid": false, "reason_code": "card_resolution_queue_save_shape_invalid"}
+	if not (data.get("schema_version") is int) or int(data.get("schema_version")) != SAVE_STATE_VERSION \
+			or not (data.get("ruleset_id") is String) or str(data.get("ruleset_id")) != RULESET_ID:
+		return {"valid": false, "reason_code": "card_resolution_queue_save_header_invalid"}
+	if not (data.get("revision") is int) or int(data.get("revision")) < 0 \
+			or not (data.get("current_queue") is Array) \
+			or not (data.get("active_entry") is Dictionary) \
+			or not (data.get("next_queue") is Array) \
+			or not (data.get("resolution_sequence") is int) or int(data.get("resolution_sequence")) < 0 \
+			or not (data.get("last_group_window_sequence") is int) or int(data.get("last_group_window_sequence")) < -1:
+		return {"valid": false, "reason_code": "card_resolution_queue_save_fields_invalid"}
+	var seen_resolution_ids: Dictionary = {}
+	var maximum_resolution_id := 0
+	var maximum_window_sequence := -1
+	for entries_variant in [data.get("current_queue"), data.get("next_queue")]:
+		for entry_variant in entries_variant as Array:
+			var entry_validation := _validate_save_entry(entry_variant, seen_resolution_ids, int(data.get("revision", -1)))
+			if not bool(entry_validation.get("valid", false)):
+				return entry_validation
+			maximum_resolution_id = maxi(maximum_resolution_id, int(entry_validation.get("resolution_id", 0)))
+			maximum_window_sequence = maxi(maximum_window_sequence, int(entry_validation.get("window_sequence", -1)))
+	var active := data.get("active_entry") as Dictionary
+	if not active.is_empty():
+		var active_validation := _validate_save_entry(active, seen_resolution_ids, int(data.get("revision", -1)))
+		if not bool(active_validation.get("valid", false)):
+			return active_validation
+		maximum_resolution_id = maxi(maximum_resolution_id, int(active_validation.get("resolution_id", 0)))
+		maximum_window_sequence = maxi(maximum_window_sequence, int(active_validation.get("window_sequence", -1)))
+	if int(data.get("resolution_sequence")) < maximum_resolution_id:
+		return {"valid": false, "reason_code": "card_resolution_queue_sequence_dangling"}
+	if int(data.get("last_group_window_sequence")) < maximum_window_sequence:
+		return {"valid": false, "reason_code": "card_resolution_queue_window_dangling"}
+	return {"valid": true, "reason_code": "card_resolution_queue_save_valid"}
+
+
+func _validate_save_entry(entry_variant: Variant, seen_resolution_ids: Dictionary, queue_revision: int) -> Dictionary:
+	if not (entry_variant is Dictionary):
+		return {"valid": false, "reason_code": "card_resolution_queue_entry_not_dictionary"}
+	var entry := entry_variant as Dictionary
+	if not StrictState.is_codec_data(entry) or StrictState.contains_rng_continuation(entry):
+		return {"valid": false, "reason_code": "card_resolution_queue_entry_not_codec_data"}
+	for key_variant in REQUIRED_ENTRY_KEYS:
+		if not entry.has(str(key_variant)):
+			return {"valid": false, "reason_code": "card_resolution_queue_entry_field_missing"}
+	for key in ["player_index", "slot_index", "queued_order", "resolution_id", "window_sequence", "group_order", "group_size", "play_cash_cost_cents", "financial_margin_cents", "financial_authorized_cents"]:
+		if not (entry.get(key) is int):
+			return {"valid": false, "reason_code": "card_resolution_queue_entry_type_invalid"}
+	var resolution_id := int(entry.get("resolution_id"))
+	if int(entry.get("player_index")) < 0 or int(entry.get("slot_index")) < 0 \
+			or resolution_id <= 0 or int(entry.get("queued_order")) != resolution_id \
+			or int(entry.get("window_sequence")) < 0 \
+			or int(entry.get("group_order")) <= 0 or int(entry.get("group_size")) <= 0 \
+			or int(entry.get("group_order")) > int(entry.get("group_size")) \
+			or int(entry.get("play_cash_cost_cents")) < 0 \
+			or int(entry.get("financial_margin_cents")) < 0 \
+			or int(entry.get("financial_authorized_cents")) < 0:
+		return {"valid": false, "reason_code": "card_resolution_queue_entry_value_invalid"}
+	if seen_resolution_ids.has(str(resolution_id)):
+		return {"valid": false, "reason_code": "card_resolution_queue_resolution_duplicate"}
+	seen_resolution_ids[str(resolution_id)] = true
+	for key in ["queued_behind_resolution", "play_cost_paid_on_queue", "financial_margin_locked_on_queue", "asset_reservation_required", "consumed_on_queue"]:
+		if not (entry.get(key) is bool):
+			return {"valid": false, "reason_code": "card_resolution_queue_entry_type_invalid"}
+	for key in ["group_id", "financial_terms_version", "financial_cash_revision", "asset_reservation_id"]:
+		if not (entry.get(key) is String):
+			return {"valid": false, "reason_code": "card_resolution_queue_entry_type_invalid"}
+	if str(entry.get("group_id")).is_empty() \
+			or not (entry.get("asset_cost") is Dictionary) \
+			or not (entry.get("asset_debit") is Dictionary) \
+			or not (entry.get("skill") is Dictionary) \
+			or (entry.get("skill") as Dictionary).is_empty():
+		return {"valid": false, "reason_code": "card_resolution_queue_entry_binding_dangling"}
+	if bool(entry.get("asset_reservation_required")) and str(entry.get("asset_reservation_id")).is_empty():
+		return {"valid": false, "reason_code": "card_resolution_queue_reservation_dangling"}
+	if entry.has("stable_target_envelope"):
+		var target_validation := StableTargetEnvelope.validate_entry_binding(entry)
+		if not bool(target_validation.get("valid", false)):
+			return {"valid": false, "reason_code": "card_resolution_queue_target_dangling"}
+	if entry.has("v06_facility_action"):
+		var facility_report := FacilityBinding.validation_report(entry.get("v06_facility_action"))
+		if not bool(facility_report.get("valid", false)):
+			return {"valid": false, "reason_code": "card_resolution_queue_facility_binding_invalid"}
+		var binding := entry.get("v06_facility_action") as Dictionary
+		var skill := entry.get("skill") as Dictionary
+		if int(binding.get("resolution_id", -1)) != resolution_id \
+				or int(binding.get("actor_player_index", -1)) != int(entry.get("player_index", -2)) \
+				or int(binding.get("source_slot_index", -1)) != int(entry.get("slot_index", -2)) \
+				or int(binding.get("queue_revision_at_commit", -1)) <= 0 \
+				or int(binding.get("queue_revision_at_commit", -1)) > queue_revision \
+				or str(skill.get("kind", "")) != "public_facility" \
+				or int(skill.get("rank", -1)) != int(binding.get("rank", -2)) \
+				or bool(entry.get("asset_reservation_required", false)) \
+					!= bool((binding.get("asset_reservation") as Dictionary).get("required", false)) \
+				or str(entry.get("asset_reservation_id", "")) \
+					!= str((binding.get("asset_reservation") as Dictionary).get("reservation_id", "")):
+			return {"valid": false, "reason_code": "card_resolution_queue_facility_binding_mismatch"}
+	return {
+		"valid": true,
+		"reason_code": "card_resolution_queue_entry_valid",
+		"resolution_id": resolution_id,
+		"window_sequence": int(entry.get("window_sequence")),
+	}
+
+
 func _is_data_only(value: Variant) -> bool:
-	if value == null or value is String or value is StringName or value is bool or value is int or value is float:
-		return true
-	if value is Array:
-		for item in value:
-			if not _is_data_only(item):
-				return false
-		return true
-	if value is Dictionary:
-		for key_variant in value.keys():
-			if not _is_data_only(key_variant) or not _is_data_only(value[key_variant]):
-				return false
-		return true
-	return false
+	return StrictState.is_codec_data(value)

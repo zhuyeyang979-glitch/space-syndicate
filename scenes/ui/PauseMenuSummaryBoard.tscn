@@ -1,6 +1,7 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/pause_menu_summary_board.gd" id="2_script"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_continue"]
 bg_color = Color(0.015, 0.092, 0.071, 0.92)
@@ -51,11 +52,12 @@ corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
 
 [node name="PauseMenuSummaryBoard" type="VBoxContainer"]
-custom_minimum_size = Vector2(0, 276)
+custom_minimum_size = Vector2(0, 316)
 layout_mode = 2
 size_flags_horizontal = 3
 theme = ExtResource("1_theme")
 theme_override_constants/separation = 10
+script = ExtResource("2_script")
 
 [node name="Heading" type="Label" parent="."]
 layout_mode = 2
@@ -170,35 +172,50 @@ text = "长说明收进资料页。"
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.847, 0.71, 0.992, 1)
 
-[node name="RestartCard" type="PanelContainer" parent="Cards"]
-custom_minimum_size = Vector2(0, 112)
+[node name="SaveCard" type="PanelContainer" parent="Cards"]
+custom_minimum_size = Vector2(0, 176)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBox_restart")
 
-[node name="Margin" type="MarginContainer" parent="Cards/RestartCard"]
+[node name="Margin" type="MarginContainer" parent="Cards/SaveCard"]
 layout_mode = 2
 theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 10
 
-[node name="Stack" type="VBoxContainer" parent="Cards/RestartCard/Margin"]
+[node name="Stack" type="VBoxContainer" parent="Cards/SaveCard/Margin"]
 layout_mode = 2
 theme_override_constants/separation = 5
 
-[node name="Title" type="Label" parent="Cards/RestartCard/Margin/Stack"]
+[node name="Title" type="Label" parent="Cards/SaveCard/Margin/Stack"]
 layout_mode = 2
-text = "保存 / 重开"
+text = "保存游戏"
 theme_override_font_sizes/font_size = 13
 
-[node name="Body" type="Label" parent="Cards/RestartCard/Margin/Stack"]
+[node name="Body" type="Label" parent="Cards/SaveCard/Margin/Stack"]
 layout_mode = 2
-text = "保存设置或当前局面；也可以回到开局准备，调整席位、对手和角色后重开。"
+text = "把当前牌桌写入本机固定存档位，之后可从主菜单继续。"
 autowrap_mode = 3
 
-[node name="Meta" type="Label" parent="Cards/RestartCard/Margin/Stack"]
+[node name="SaveGameStatusLabel" type="Label" parent="Cards/SaveCard/Margin/Stack"]
+unique_name_in_owner = true
 layout_mode = 2
-text = "想换一颗星球，就从这里再开一桌。"
+text = "存档：正在检查…"
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.796, 0.835, 0.894, 1)
+
+[node name="SaveGameButton" type="Button" parent="Cards/SaveCard/Margin/Stack"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "保存游戏"
+disabled = true
+
+[node name="CancelSaveConfirmationButton" type="Button" parent="Cards/SaveCard/Margin/Stack"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+text = "取消覆盖"
+visible = false

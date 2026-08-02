@@ -49,7 +49,7 @@ func _test_scene_and_registry() -> void:
 	_session.call("configure", {"ruleset_id": "v0.6"})
 	var save_snapshot: Dictionary = _save.call("operation_snapshot")
 	_expect(bool(save_snapshot.get("configured", false)) and int(save_snapshot.get("save_version", 0)) == 3 and str(save_snapshot.get("ruleset_id", "")) == "v0.6" and int(save_snapshot.get("currency_scale", 0)) == 100, "production envelope identity is v3/v0.6/currency 100")
-	_expect(str(save_snapshot.get("default_save_path", "not-empty")).is_empty() and bool(save_snapshot.get("explicit_path_required", false)) and str(save_snapshot.get("qa_save_root", "")) == "user://test_runs/", "save I/O requires an explicit isolated QA path")
+	_expect(str(save_snapshot.get("default_save_path", "")) == "user://saves/v06/current_run.save" and not bool(save_snapshot.get("explicit_path_required", true)) and bool(save_snapshot.get("production_single_slot", false)) and str(save_snapshot.get("qa_save_root", "")) == "user://test_runs/", "save I/O exposes one fixed production slot plus isolated QA paths")
 	_expect(not bool(save_snapshot.get("captures_business_state", true)) and not bool((_session.call("operation_lifecycle_snapshot") as Dictionary).get("captures_business_state", true)), "Save and Session do not capture business owners")
 	var manifest: Dictionary = _handshake.call("required_section_manifest")
 	var owners: Dictionary = {}
@@ -93,12 +93,16 @@ func _test_codec_and_determinism() -> void:
 	var source := {
 		"position": Vector2(12.5, -3.0),
 		"color": Color(0.1, 0.2, 0.3, 0.4),
+		"large_positive_int": 9_223_372_036_854_775_000,
+		"large_negative_int": -5_774_504_975_775_518_280,
 		"nested": [{"value": 4}],
 	}
 	var encoded: Dictionary = _handshake.call("encode_codec_value", source)
 	var decoded: Dictionary = _handshake.call("decode_codec_value", encoded.get("value"))
 	var decoded_value: Dictionary = decoded.get("value", {}) if decoded.get("value", {}) is Dictionary else {}
 	_expect(bool(encoded.get("ok", false)) and bool(decoded.get("ok", false)) and decoded_value.get("position") == source.position and decoded_value.get("color") == source.color, "Vector2 and Color use the explicit tagged codec")
+	_expect(decoded_value.get("large_positive_int") == source.large_positive_int and decoded_value.get("large_negative_int") == source.large_negative_int and (encoded.get("value") as Dictionary).get("large_negative_int") is Dictionary, "out-of-range JSON integers use exact tagged Int64 encoding")
+	_expect(not bool((_handshake.call("decode_codec_value", 42) as Dictionary).get("ok", true)) and not bool((_handshake.call("decode_codec_value", 0.5) as Dictionary).get("ok", true)), "codec v2 rejects untagged JSON numeric scalars")
 	var forbidden_node := Node.new()
 	_expect(not bool((_handshake.call("encode_codec_value", forbidden_node) as Dictionary).get("ok", true)), "arbitrary Object codec input rejects")
 	forbidden_node.free()
@@ -137,7 +141,7 @@ func _test_roundtrip_replay_and_session_lifecycle() -> void:
 	var unauthorized := _save.call("write_validated_envelope", QA_ROOT + "unauthorized.save", envelope, {}) as Dictionary
 	_expect(not bool(unauthorized.get("ok", true)) and str(unauthorized.get("reason_code", "")) == "write_authorization_invalid", "write without handshake authorization rejects")
 	var outside := _save.call("write_authorization", "user://not_test_runs/c16a.save", envelope) as Dictionary
-	_expect(not bool(outside.get("allowed", true)), "default player save path is never accessed by C16a")
+	_expect(not bool(outside.get("allowed", true)), "paths outside the production slot and QA root are rejected")
 	var session_path := QA_ROOT + "session_lifecycle.save"
 	var session_envelope := _fixture_envelope("session-envelope", "session-write", "session-private")
 	var session_auth: Dictionary = _save.call("write_authorization", session_path, session_envelope)

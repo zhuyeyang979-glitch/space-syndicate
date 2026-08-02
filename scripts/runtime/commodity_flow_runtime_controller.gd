@@ -80,6 +80,10 @@ var _recent_flow_loss_events: Array = []
 var _recent_flow_events: Array = []
 var _legacy_backpressure_migration_version := 0
 var _recent_sale_receipts: Array = []
+## Runtime-only proof counter. Unlike the authoritative receipt collection, this
+## value is never serialized or restored; it records only receipts emitted by
+## live commodity advancement in the current process.
+var _runtime_sale_receipt_emission_count := 0
 var _warehouse_inventory: Dictionary = {}
 var _pending_one_shot_supplies: Dictionary = {}
 var _one_shot_transaction_receipts: Dictionary = {}
@@ -192,6 +196,7 @@ func reset_state() -> void:
 	_recent_flow_events.clear()
 	_legacy_backpressure_migration_version = 0
 	_recent_sale_receipts.clear()
+	_runtime_sale_receipt_emission_count = 0
 	_warehouse_inventory.clear()
 	_pending_one_shot_supplies.clear()
 	_one_shot_transaction_receipts.clear()
@@ -1708,6 +1713,8 @@ func debug_snapshot() -> Dictionary:
 		"inactive_installation_count": installations_snapshot(true).size() - installations_snapshot(false).size(),
 		"installation_rollback_count": _installation_rollback_receipts.size(),
 		"recent_sale_receipt_count": _recent_sale_receipts.size(),
+		"runtime_sale_receipt_emission_count": _runtime_sale_receipt_emission_count,
+		"runtime_sale_receipt_emission_count_saved": false,
 		"warehouse_bucket_count": _warehouse_inventory.size(),
 		"warehouse_stored_milliunits": _warehouse_inventory_total(_warehouse_inventory),
 		"market_backlog_record_count": _market_backlog_by_key.size(),
@@ -3456,6 +3463,8 @@ func _storage_rent_in_receipt(receipt: Dictionary, warehouse_id: String) -> int:
 
 
 func _commit_flow_plan(plan: Dictionary) -> void:
+	var emitted_receipts: Array = plan.get("receipts", []) if plan.get("receipts", []) is Array else []
+	_runtime_sale_receipt_emission_count += emitted_receipts.size()
 	_installations = (plan.get("next_installations", {}) as Dictionary).duplicate(true)
 	_rate_remainders = (plan.get("next_rate_remainders", {}) as Dictionary).duplicate(true)
 	_pair_remainders = (plan.get("next_pair_remainders", {}) as Dictionary).duplicate(true)

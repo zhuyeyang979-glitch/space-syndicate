@@ -3,6 +3,7 @@ extends SceneTree
 const SCHEMA := preload("res://scripts/cards/v06/units/unit_card_runtime_schema_v06.gd")
 const CONTROLLER_SCRIPT := preload("res://scripts/runtime/monster_runtime_controller.gd")
 const WORLD_BRIDGE_SCRIPT := preload("res://scripts/runtime/monster_runtime_world_bridge.gd")
+const MONSTER_SAVE_WIRE_CODEC_V2 := preload("res://scripts/runtime/monster_save_wire_codec_v2.gd")
 
 const CARD_RANK_1 := "unit.monster.spore_tide_emperor.rank_1"
 const CARD_RANK_2 := "unit.monster.spore_tide_emperor.rank_2"
@@ -307,18 +308,18 @@ func _verify_starter_state_snapshot_is_pure_and_non_recursive() -> void:
 
 	var legacy_fixture := _fixture()
 	var legacy_owner: MonsterRuntimeController = legacy_fixture.owner
-	var legacy_apply: Dictionary = legacy_owner.apply_save_data({
-		"auto_monsters": [{"uid": 91, "slot": 0, "owner": 0, "rank": 1, "hp": 10, "max_hp": 10}],
-		"next_auto_monster_uid": 92,
-	})
+	var legacy_before := legacy_owner.to_save_data()
+	var legacy_apply: Dictionary = legacy_owner.apply_save_data(_legacy_v1_state())
 	var legacy_snapshot: Dictionary = legacy_owner.monster_starter_state_snapshot_v06(HUMAN_ACTOR)
 	var legacy_private: Dictionary = legacy_owner.monster_private_snapshot_v06(HUMAN_ACTOR)
 	_expect(
-		bool(legacy_apply.get("applied", false))
-		and not bool(legacy_snapshot.get("available", true))
-		and str(legacy_snapshot.get("state", "")) == "legacy_unknown"
-		and not bool(legacy_private.get("available", true)),
-		"缺少 marker/actor_id 的旧 roster fail-closed 为 legacy_unknown"
+		not bool(legacy_apply.get("applied", true))
+		and str(legacy_apply.get("reason_code", "")) == "monster_save_v1_closed_wire_upgrade_requires_backup"
+		and legacy_before == legacy_owner.to_save_data()
+		and bool(legacy_snapshot.get("available", false))
+		and str(legacy_snapshot.get("state", "")) == "not_summoned"
+		and bool(legacy_private.get("available", false)),
+		"缺少 marker/actor_id 的 v1 roster 保留备份且零应用"
 	)
 	_cleanup(fixture)
 	_cleanup(restored_fixture)
@@ -549,8 +550,10 @@ func _verify_pending_and_terminal_save_load() -> void:
 	var pending_intent := _starter_intent(pending_owner, pending_world, "tx-save-pending", HUMAN_ACTOR)
 	var pending_receipt: Dictionary = pending_owner.prepare_unit_card_intent_v06(pending_intent)
 	var pending_save: Dictionary = pending_owner.unit_card_save_data_v06("monster")
+	var pending_runtime := _decoded_unit_save_state(pending_save)
+	_expect(_unit_save_wrapper_valid(pending_save), "pending save 使用版本化 Monster v2 wrapper")
 	for save_key in SAVE_KEYS:
-		_expect(pending_save.has(save_key), "pending save 使用冻结 flat key：%s" % save_key)
+		_expect(pending_runtime.has(save_key), "pending save v2 runtime 包含权威字段：%s" % save_key)
 	var restored_pending := _fixture()
 	var pending_restore: Dictionary = restored_pending.owner.apply_unit_card_save_data_v06(pending_save, "monster")
 	_expect(bool(pending_restore.get("applied", false)) and not bool(restored_pending.owner.unit_card_checkpoint_status_v06("monster").get("can_checkpoint", true)), "prepared association 连同 checkpoint gate 原子恢复")
@@ -583,11 +586,13 @@ func _verify_corrupt_save_has_zero_effect() -> void:
 	var source_world: FixtureWorld = source_fixture.world
 	source_owner.prepare_unit_card_intent_v06(_starter_intent(source_owner, source_world, "tx-corrupt-source", HUMAN_ACTOR))
 	var corrupt: Dictionary = source_owner.unit_card_save_data_v06("monster")
-	var reservations: Dictionary = (corrupt.get("monster_card_atomic_reservations", {}) as Dictionary).duplicate(true)
+	var corrupt_runtime := _decoded_unit_save_state(corrupt)
+	var reservations: Dictionary = (corrupt_runtime.get("monster_card_atomic_reservations", {}) as Dictionary).duplicate(true)
 	var row: Dictionary = (reservations.get("tx-corrupt-source", {}) as Dictionary).duplicate(true)
 	row["reservation_fingerprint"] = "tampered"
 	reservations["tx-corrupt-source"] = row
-	corrupt["monster_card_atomic_reservations"] = reservations
+	corrupt_runtime["monster_card_atomic_reservations"] = reservations
+	corrupt = _unit_save_with_runtime(corrupt, corrupt_runtime)
 
 	var target_fixture := _fixture()
 	var target_owner: MonsterRuntimeController = target_fixture.owner
@@ -599,11 +604,13 @@ func _verify_corrupt_save_has_zero_effect() -> void:
 	_expect(not bool(rejected.get("applied", true)) and before == _whole_save_fingerprint(target_owner), "损坏 reservation 先全量验证再拒绝，目标 owner before==after")
 
 	var bad_terminal: Dictionary = target_owner.unit_card_save_data_v06("monster")
-	var terminal: Dictionary = (bad_terminal.get("monster_card_atomic_terminal_journal", {}) as Dictionary).duplicate(true)
+	var bad_terminal_runtime := _decoded_unit_save_state(bad_terminal)
+	var terminal: Dictionary = (bad_terminal_runtime.get("monster_card_atomic_terminal_journal", {}) as Dictionary).duplicate(true)
 	var terminal_row: Dictionary = (terminal.get("tx-stable-target", {}) as Dictionary).duplicate(true)
 	terminal_row["intent_binding"] = {"transaction_id": "tampered"}
 	terminal["tx-stable-target"] = terminal_row
-	bad_terminal["monster_card_atomic_terminal_journal"] = terminal
+	bad_terminal_runtime["monster_card_atomic_terminal_journal"] = terminal
+	bad_terminal = _unit_save_with_runtime(bad_terminal, bad_terminal_runtime)
 	var rejected_terminal: Dictionary = target_owner.apply_unit_card_save_data_v06(bad_terminal, "monster")
 	_expect(not bool(rejected_terminal.get("applied", true)) and before == _whole_save_fingerprint(target_owner), "损坏 terminal binding 不能部分替换 roster、marker 或 journal")
 	_cleanup(source_fixture)
@@ -688,7 +695,8 @@ func _monster_fields(rank: int) -> Dictionary:
 
 
 func _business_fingerprint(owner: MonsterRuntimeController) -> String:
-	var save: Dictionary = owner.to_save_data()
+	var decoded := MONSTER_SAVE_WIRE_CODEC_V2.decode_save_state(owner.to_save_data())
+	var save: Dictionary = decoded.get("value", {}) if bool(decoded.get("ok", false)) and decoded.get("value") is Dictionary else {}
 	return SCHEMA.fingerprint({
 		"auto_monsters": save.get("auto_monsters", []),
 		"next_auto_monster_uid": save.get("next_auto_monster_uid", -1),
@@ -700,6 +708,54 @@ func _business_fingerprint(owner: MonsterRuntimeController) -> String:
 
 func _whole_save_fingerprint(owner: MonsterRuntimeController) -> String:
 	return SCHEMA.fingerprint(owner.unit_card_save_data_v06("monster"))
+
+
+func _unit_save_wrapper_valid(save: Dictionary) -> bool:
+	return save.size() == 3 \
+		and str(save.get("contract_version", "")) == "v0.6" \
+		and str(save.get("domain", "")) == "monster" \
+		and save.get("save_state") is Dictionary
+
+
+func _decoded_unit_save_state(save: Dictionary) -> Dictionary:
+	if not _unit_save_wrapper_valid(save):
+		return {}
+	var decoded := MONSTER_SAVE_WIRE_CODEC_V2.decode_save_state(save.get("save_state") as Dictionary)
+	return (decoded.get("value") as Dictionary).duplicate(true) \
+		if bool(decoded.get("ok", false)) and decoded.get("value") is Dictionary else {}
+
+
+func _unit_save_with_runtime(wrapper: Dictionary, runtime_state: Dictionary) -> Dictionary:
+	var encoded := MONSTER_SAVE_WIRE_CODEC_V2.encode_save_state(runtime_state)
+	if not bool(encoded.get("ok", false)) or not (encoded.get("value") is Dictionary):
+		return {}
+	var result := wrapper.duplicate(true)
+	result["save_state"] = (encoded.get("value") as Dictionary).duplicate(true)
+	return result
+
+
+func _legacy_v1_state() -> Dictionary:
+	return {
+		"auto_monsters": [{"uid": 91, "slot": 0, "owner": 0, "rank": 1, "hp": 10, "max_hp": 10}],
+		"next_auto_monster_uid": 92,
+		"next_special_monster_slot": 0,
+		"selected_auto_monster_slot": 0,
+		"active_monster_wagers": [],
+		"resolved_monster_wager_history": [],
+		"monster_wager_sequence": 0,
+		"public_card_bid_monster_wager_pool": 0,
+		"monster_wager_settlement_revision": 0,
+		"monster_wager_settlement_terminal_journal": {},
+		"monster_battle_lifecycle_schema_version": 1,
+		"monster_timer": 1.0,
+		"special_monster_timer": 1.0,
+		"monster_card_atomic_schema_version": "monster_deploy_atomic_lifecycle_v06",
+		"monster_card_atomic_owner_revision": 0,
+		"monster_card_atomic_starter_state": {},
+		"monster_card_atomic_reservations": {},
+		"monster_card_atomic_terminal_journal": {},
+		"monster_card_atomic_presentation_journal": {},
+	}
 
 
 func _expect(condition: bool, message: String) -> void:

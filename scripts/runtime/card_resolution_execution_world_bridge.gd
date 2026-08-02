@@ -84,6 +84,24 @@ func apply_intent(transaction: Dictionary) -> Dictionary:
 		"dispatch_effect":
 			return _effect_router.dispatch(transaction)
 		"finish_card_commitment":
+			var commitment_entry := _dictionary(transaction.get("active_entry", {}))
+			if commitment_entry.has("v06_facility_action"):
+				var status := _runtime_coordinator.settle_queued_v06_facility_commitment(
+					commitment_entry,
+					not bool(transaction.get("resolved", false)),
+					str(transaction.get("failure_reason", "facility_queue_commitment_unsettled"))
+				) if _runtime_coordinator != null else {
+					"settled": false,
+					"reason_code": "facility_queue_runtime_unavailable",
+				}
+				return {
+					"intent_type": intent_type,
+					"committed": bool(status.get("settled", false)),
+					"commitment_settled": bool(status.get("settled", false)),
+					"released": bool(status.get("released", false)),
+					"reason": str(status.get("reason_code", "facility_queue_commitment_unsettled")),
+					"resolution_id": int(transaction.get("resolution_id", -1)),
+				}
 			return _commitment_service.finalize_commitment({
 				"transaction_id": "card-commitment:%d" % int(transaction.get("resolution_id", -1)),
 				"entry": _dictionary(transaction.get("active_entry", {})),
@@ -159,6 +177,20 @@ func settle_finalized_execution(transaction: Dictionary, finalized: Dictionary) 
 	if _runtime_coordinator == null:
 		return {"settled": false, "reason": "runtime_coordinator_missing"}
 	var entry := _dictionary(transaction.get("active_entry", {}))
+	if entry.has("v06_facility_action"):
+		var status := _runtime_coordinator.queued_v06_facility_commitment_status(entry)
+		var settled := bool(status.get("settled", false))
+		return {
+			"settled": settled,
+			"committed": bool(status.get("committed", false)),
+			"released": bool(status.get("released", false)),
+			"commitment_settled": settled,
+			"reason": str(status.get("reason_code", "facility_queue_commitment_unsettled")),
+			"resolution_id": int(finalized.get("resolution_id", -1)),
+			"execution_id": int(finalized.get("execution_id", -1)),
+			"settlement_binding": _dictionary(finalized.get("settlement_binding", {})),
+			"settlement_binding_fingerprint": str(finalized.get("settlement_binding_fingerprint", "")),
+		}
 	var coordinator_receipt := _runtime_coordinator.settle_card_mana_reservation(entry, finalized)
 	if not coordinator_receipt is Dictionary:
 		return {"settled": false, "reason": "mana_settlement_receipt_invalid"}
@@ -195,6 +227,24 @@ func _requirement_receipt(transaction: Dictionary) -> Dictionary:
 	var entry := _dictionary(transaction.get("active_entry", {}))
 	var skill := _dictionary(transaction.get("skill", {}))
 	var player_index := int(entry.get("player_index", -1))
+	if entry.has("v06_facility_action"):
+		var facility_result := _runtime_coordinator.revalidate_queued_v06_facility_card_action(
+			entry
+		) if _runtime_coordinator != null else {
+			"valid": false,
+			"reason_code": "facility_queue_runtime_unavailable",
+		}
+		if not bool(facility_result.get("valid", false)) and _runtime_coordinator != null:
+			_runtime_coordinator.reject_queued_v06_facility_card_action(
+				entry,
+				str(facility_result.get("reason_code", "facility_queue_revalidation_failed"))
+			)
+		return {
+			"intent_type": "revalidate_requirement",
+			"valid": bool(facility_result.get("valid", false)),
+			"reason": str(facility_result.get("reason_code", "facility_queue_revalidation_failed")),
+			"skill": skill,
+		}
 	if _world_session_state == null or player_index < 0 or player_index >= _world_session_state.players.size():
 		return {"intent_type": "revalidate_requirement", "valid": false, "reason": "invalid_player", "skill": skill}
 	if skill.is_empty():
@@ -236,6 +286,23 @@ func _target_receipt(transaction: Dictionary) -> Dictionary:
 	var skill := _dictionary(transaction.get("skill", {}))
 	var player_index := int(entry.get("player_index", -1))
 	var target_kind := str(transaction.get("target_kind", "none"))
+	if entry.has("v06_facility_action"):
+		var facility_result := _runtime_coordinator.revalidate_queued_v06_facility_card_action(
+			entry
+		) if _runtime_coordinator != null else {
+			"valid": false,
+			"reason_code": "facility_queue_runtime_unavailable",
+		}
+		if not bool(facility_result.get("valid", false)) and _runtime_coordinator != null:
+			_runtime_coordinator.reject_queued_v06_facility_card_action(
+				entry,
+				str(facility_result.get("reason_code", "facility_queue_target_changed"))
+			)
+		return {
+			"intent_type": "revalidate_target",
+			"valid": bool(facility_result.get("valid", false)),
+			"reason": str(facility_result.get("reason_code", "facility_queue_target_changed")),
+		}
 	var valid := player_index >= 0 and _world_session_state != null and player_index < _world_session_state.players.size() and not skill.is_empty()
 	var reason := "valid" if valid else "invalid_actor"
 	if valid and target_kind == "monster":
@@ -297,6 +364,7 @@ func _aftermath_receipt(transaction: Dictionary) -> Dictionary:
 func _history_receipt(transaction: Dictionary) -> Dictionary:
 	var entry := _dictionary(transaction.get("active_entry", {}))
 	entry.erase("stable_target_envelope")
+	entry.erase("v06_facility_action")
 	for private_key in [
 		"v06_actor_id",
 		"v06_card_id",
@@ -328,8 +396,14 @@ func _start_next_receipt() -> Dictionary:
 	var start := _queue_service.start_next({"game_time": _world_session_state.game_time if _world_session_state != null else 0.0})
 	for skipped_variant in start.get("skipped_entries", []):
 		if skipped_variant is Dictionary:
-			_clear_queued_flag(skipped_variant as Dictionary)
-			_runtime_coordinator.settle_card_mana_reservation(skipped_variant as Dictionary, {"resolved": false, "reason": "queue_entry_invalid"})
+			if (skipped_variant as Dictionary).has("v06_facility_action"):
+				_runtime_coordinator.reject_queued_v06_facility_card_action(
+					skipped_variant as Dictionary,
+					"queue_entry_invalid"
+				)
+			else:
+				_clear_queued_flag(skipped_variant as Dictionary)
+				_runtime_coordinator.settle_card_mana_reservation(skipped_variant as Dictionary, {"resolved": false, "reason": "queue_entry_invalid"})
 	if not bool(start.get("started", false)):
 		return {"intent_type": "start_next", "started": false, "reason": str(start.get("reason", "batch_empty"))}
 	var entry := _dictionary(start.get("active_entry", {}))

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "attempt_id": "alpha04c-remaining-owner-preflight-index18-attempt-v4",
+  "frozen_code_head": "32ff54230bf2874011e66688af3b5f782cbe0b90",
+  "child_exit_code": 2,
+  "child_completion_sha256": "f94c2846c39ce901adf6a33603e5d3dfc04a7772d842c27e885644ef049341d8",
+  "child_success": false,
+  "child_attestation_green": false,
+  "immutable_v7_evidence_preserved": true,
+  "immutable_attempt_v3_evidence_preserved": true,
+  "immutable_victory_replay_evidence_preserved": true,
+  "v8_authorization_root_absent": true,
+  "preflight_production_fixed_slot_write_count": 0,
+  "remaining_owner_preflight_attempt_count_delta": 1,
+  "remaining_owner_preflight_concurrent_execution_count": 1,
+  "task_owned_process_count_after": 0,
+  "first_failure": {
+    "owner_index": 18,
+    "owner_id": "game_session",
+    "reason_code": "unsafe_integer_not_closed_data"
+  },
+  "parent_attestation_green": false,
+  "private_payload_redacted": true,
+  "parent_exit_sha256": "2606902ab9851fffbbf2a80357d2c5b9cdefd0d086fd39ccfeeee7e11995927a",
+  "attempt_ledger_sha256": "0b3c876d10205824243df939294cbad39ec9b99880b7ca0ec3f6ef50d830de4f"
+}

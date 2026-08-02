@@ -37,7 +37,7 @@ func _run() -> void:
 	if save != null and handshake != null and registry != null:
 		_test_v3_transport_identity(save)
 		_test_exact_owner_manifest(handshake, registry)
-		_test_resume_fails_closed(registry)
+		_test_resume_ready(registry)
 	root.remove_child(coordinator)
 	coordinator.queue_free()
 	_finish()
@@ -47,7 +47,7 @@ func _test_v3_transport_identity(save: Node) -> void:
 	var operation: Dictionary = save.call("operation_snapshot")
 	_expect(int(operation.get("save_version", 0)) == 3, "GameSave transport identity is v3")
 	_expect(str(operation.get("ruleset_id", "")) == "v0.6" and int(operation.get("currency_scale", 0)) == 100, "GameSave transport identity is v0.6 with integer cents")
-	_expect(str(operation.get("default_save_path", "not-empty")).is_empty() and bool(operation.get("explicit_path_required", false)), "production transport has no implicit player save path")
+	_expect(str(operation.get("default_save_path", "")) == "user://saves/v06/current_run.save" and not bool(operation.get("explicit_path_required", true)) and bool(operation.get("production_single_slot", false)), "production transport exposes exactly one controlled local slot")
 	_expect(str(operation.get("qa_save_root", "")) == "user://test_runs/", "QA writes are isolated under the authoritative test root")
 	_expect(not bool(operation.get("captures_business_state", true)), "GameSave remains transport-only and does not capture business owners")
 
@@ -70,13 +70,13 @@ func _test_exact_owner_manifest(handshake: Node, registry: Node) -> void:
 	_expect(not forbidden_section, "derived solar state is not serialized as a twentieth section")
 
 
-func _test_resume_fails_closed(registry: Node) -> void:
+func _test_resume_ready(registry: Node) -> void:
 	var snapshot: Dictionary = registry.call("registry_snapshot")
 	_expect(bool(snapshot.get("valid", false)), "owner registry is structurally valid")
-	_expect(not bool(snapshot.get("resume_ready", true)) and int(snapshot.get("unsupported_section_count", 0)) > 0, "incomplete owner capabilities remain explicitly non-resumable")
+	_expect(bool(snapshot.get("resume_ready", false)) and int(snapshot.get("transactional_section_count", 0)) == 19 and int(snapshot.get("unsupported_section_count", -1)) == 0, "all nineteen owner capabilities are transactionally resumable")
 	_expect(not bool(snapshot.get("captures_business_state", true)) and not bool(snapshot.get("stores_parallel_owner_state", true)), "registry owns orchestration without parallel gameplay state")
 	var capture: Dictionary = registry.call("capture_resume_envelope", {"envelope_id": "characterization", "write_id": "characterization"})
-	_expect(not bool(capture.get("ok", true)) and str(capture.get("reason_code", "")) == "restore_capability_incomplete", "resume capture fails closed until every owner is transactional")
+	_expect(bool(capture.get("ok", false)) and capture.get("envelope") is Dictionary, "resume capture emits one complete production envelope")
 	var public_receipt: Dictionary = registry.call("public_operation_receipt", capture)
 	_expect(not public_receipt.has("sections") and not public_receipt.has("envelope") and not public_receipt.has("unsupported_section_ids"), "public failure receipt omits envelope sections and internal owner detail")
 
@@ -89,7 +89,7 @@ func _expect(condition: bool, label: String) -> void:
 
 func _finish() -> void:
 	if _failures.is_empty():
-		print("GAME_SESSION_SAVE_CHARACTERIZATION|status=PASS|checks=%d|failures=0|owner_sections=%d|resume_ready=false" % [_checks, EXPECTED_SECTION_COUNT])
+		print("GAME_SESSION_SAVE_CHARACTERIZATION|status=PASS|checks=%d|failures=0|owner_sections=%d|resume_ready=true" % [_checks, EXPECTED_SECTION_COUNT])
 		quit(0)
 		return
 	for failure in _failures:

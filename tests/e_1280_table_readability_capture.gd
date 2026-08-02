@@ -5,7 +5,7 @@ const OUTPUT_DIR := "res://reports/ui/production_acceptance/e_1280_table_readabi
 const DEFAULT_CAPTURE_SIZE := Vector2i(1280, 720)
 const QA_GAMEPLAY_SEED := 1280720
 const QA_SAVE_PATH := "user://test_runs/e_1280_table_readability_v2.save"
-const PLAYER_DEFAULT_SAVE_PATH := "user://space_syndicate_current_run.save"
+const PLAYER_DEFAULT_SAVE_PATH := "user://saves/v06/current_run.save"
 const SAVE_COORDINATOR_NODE_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator"
 const RUNTIME_COORDINATOR_NODE_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator"
 

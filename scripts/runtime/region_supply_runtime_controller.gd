@@ -4,6 +4,8 @@ class_name RegionSupplyRuntimeController
 
 signal rack_changed(region_id: String, slot_index: int, snapshot: Dictionary)
 
+const StrictState := preload("res://scripts/runtime/save_owner_state_v2_contract.gd")
+
 const STATE_VERSION := 1
 const DEFAULT_SLOT_COUNT := 4
 const MAX_SLOT_COUNT := 12
@@ -23,6 +25,87 @@ const PUBLIC_CARD_FIELDS := [
 	"industry_id",
 	"route_tags",
 	"art_key",
+]
+const SAVE_KEYS := [
+	"state_version",
+	"configured",
+	"gameplay_seed",
+	"state_revision",
+	"refill_sequence",
+	"regions_by_id",
+	"region_order",
+	"cards_by_id",
+	"card_order",
+	"racks_by_region",
+	"slot_revisions_by_region",
+	"bags_by_region",
+	"rng_state_by_region",
+	"claimed_unique_keys",
+	"pending_transactions",
+	"terminal_transactions",
+]
+const REGION_SAVE_KEYS := ["region_id", "region_index", "display_name", "terrain", "mode_tags"]
+const CARD_SAVE_KEYS := [
+	"card_id",
+	"family_id",
+	"card_type",
+	"region_supply_weight",
+	"global_unique",
+	"unique_key",
+	"legal_region_ids",
+	"disabled_region_ids",
+	"allowed_terrain",
+	"required_mode_tags",
+	"public_card",
+]
+const LISTING_SAVE_KEYS := [
+	"item_id",
+	"card_id",
+	"card",
+	"source_region_id",
+	"source_district_index",
+	"slot_index",
+	"price_cash",
+	"supply_revision",
+]
+const PENDING_TRANSACTION_SAVE_KEYS := [
+	"transaction_id",
+	"intent_fingerprint",
+	"stage",
+	"region_id",
+	"slot_index",
+	"expected_state_revision",
+	"expected_item_id",
+	"expected_supply_revision",
+	"pre_listing",
+	"pre_bag",
+	"pre_rng_state",
+	"pre_claimed_unique_keys",
+	"pre_slot_revision",
+	"pre_refill_sequence",
+	"post_listing",
+	"post_bag",
+	"post_rng_state",
+	"post_claimed_unique_keys",
+	"post_slot_revision",
+	"post_refill_sequence",
+]
+const TERMINAL_TRANSACTION_SAVE_KEYS := [
+	"ok",
+	"prepared",
+	"committed",
+	"rolled_back",
+	"finalized",
+	"stage",
+	"reason_code",
+	"transaction_id",
+	"intent_fingerprint",
+	"region_id",
+	"slot_index",
+	"source_item_id",
+	"next_listing",
+	"state_revision",
+	"replayed",
 ]
 
 @export_range(1, MAX_SLOT_COUNT, 1) var default_slots_per_region := DEFAULT_SLOT_COUNT
@@ -373,48 +456,43 @@ func to_save_data() -> Dictionary:
 	}
 
 
-func apply_save_data(data: Dictionary) -> Dictionary:
-	if int(data.get("state_version", 0)) != STATE_VERSION or not _is_pure_data(data):
-		return {"applied": false, "reason_code": "region_supply_save_invalid"}
-	var prepared_region_order := _string_array(data.get("region_order", []))
-	var prepared_card_order := _string_array(data.get("card_order", []))
-	var prepared_regions := _dictionary(data.get("regions_by_id", {}))
-	var prepared_cards := _dictionary(data.get("cards_by_id", {}))
-	var prepared_racks := _dictionary(data.get("racks_by_region", {}))
-	var prepared_slot_revisions := _dictionary(data.get("slot_revisions_by_region", {}))
-	var prepared_bags := _dictionary(data.get("bags_by_region", {}))
-	var prepared_rng_states := _dictionary(data.get("rng_state_by_region", {}))
-	if bool(data.get("configured", false)) and (
-			prepared_region_order.is_empty()
-			or prepared_card_order.is_empty()
-			or not _saved_region_state_valid(
-				prepared_region_order,
-				prepared_regions,
-				prepared_racks,
-				prepared_slot_revisions,
-				prepared_bags,
-				prepared_rng_states
-			)
-	):
-		return {"applied": false, "reason_code": "region_supply_save_shape_invalid"}
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	var validation := _validate_save_data(data)
+	if not bool(validation.get("valid", false)):
+		var reason_code := str(validation.get("reason_code", "region_supply_save_invalid"))
+		return {"accepted": false, "reason": reason_code, "reason_code": reason_code}
+	return {
+		"accepted": true,
+		"reason": "",
+		"reason_code": "region_supply_save_valid",
+		"normalized_state": data.duplicate(true),
+	}
 
-	_configured = bool(data.get("configured", false))
-	_gameplay_seed = int(data.get("gameplay_seed", 0))
-	_state_revision = maxi(0, int(data.get("state_revision", 0)))
-	_refill_sequence = maxi(0, int(data.get("refill_sequence", 0)))
-	_regions_by_id = prepared_regions
-	_region_order = prepared_region_order
-	_cards_by_id = prepared_cards
-	_card_order = prepared_card_order
-	_racks_by_region = prepared_racks
-	_slot_revisions_by_region = prepared_slot_revisions
-	_bags_by_region = prepared_bags
-	_rng_state_by_region = prepared_rng_states
-	_claimed_unique_keys = _dictionary(data.get("claimed_unique_keys", {}))
-	_pending_transactions = _dictionary(data.get("pending_transactions", {}))
-	_terminal_transactions = _dictionary(data.get("terminal_transactions", {}))
+
+func apply_save_data(data: Dictionary) -> Dictionary:
+	var preflight := preflight_save_data(data)
+	if not bool(preflight.get("accepted", false)):
+		var rejection := str(preflight.get("reason_code", "region_supply_save_invalid"))
+		return {"applied": false, "reason": rejection, "reason_code": rejection}
+	var normalized := (preflight.get("normalized_state", {}) as Dictionary).duplicate(true)
+	_configured = bool(normalized.get("configured"))
+	_gameplay_seed = int(normalized.get("gameplay_seed"))
+	_state_revision = int(normalized.get("state_revision"))
+	_refill_sequence = int(normalized.get("refill_sequence"))
+	_regions_by_id = (normalized.get("regions_by_id") as Dictionary).duplicate(true)
+	_region_order = _string_array(normalized.get("region_order"))
+	_cards_by_id = (normalized.get("cards_by_id") as Dictionary).duplicate(true)
+	_card_order = _string_array(normalized.get("card_order"))
+	_racks_by_region = (normalized.get("racks_by_region") as Dictionary).duplicate(true)
+	_slot_revisions_by_region = (normalized.get("slot_revisions_by_region") as Dictionary).duplicate(true)
+	_bags_by_region = (normalized.get("bags_by_region") as Dictionary).duplicate(true)
+	_rng_state_by_region = (normalized.get("rng_state_by_region") as Dictionary).duplicate(true)
+	_claimed_unique_keys = (normalized.get("claimed_unique_keys") as Dictionary).duplicate(true)
+	_pending_transactions = (normalized.get("pending_transactions") as Dictionary).duplicate(true)
+	_terminal_transactions = (normalized.get("terminal_transactions") as Dictionary).duplicate(true)
 	return {
 		"applied": true,
+		"reason": "region_supply_save_applied",
 		"reason_code": "region_supply_save_applied",
 		"state_revision": _state_revision,
 	}
@@ -680,22 +758,363 @@ func _stage_receipt(pending: Dictionary, replayed: bool) -> Dictionary:
 	}
 
 
-func _saved_region_state_valid(
-	region_order: Array[String],
-	regions: Dictionary,
-	racks: Dictionary,
-	slot_revisions: Dictionary,
-	bags: Dictionary,
-	rng_states: Dictionary
-) -> bool:
-	for region_id in region_order:
-		if not regions.has(region_id) \
-				or not (racks.get(region_id) is Array) \
-				or not (slot_revisions.get(region_id) is Array) \
-				or not (bags.get(region_id) is Array) \
-				or typeof(rng_states.get(region_id)) != TYPE_INT:
+func _validate_save_data(data: Dictionary) -> Dictionary:
+	if not StrictState.is_codec_data(data):
+		return {"valid": false, "reason_code": "region_supply_save_not_codec_data"}
+	if not StrictState.has_exact_keys(data, SAVE_KEYS):
+		return {"valid": false, "reason_code": "region_supply_save_shape_invalid"}
+	if not (data.get("state_version") is int) or int(data.get("state_version")) != STATE_VERSION:
+		return {"valid": false, "reason_code": "region_supply_save_header_invalid"}
+	if not (data.get("configured") is bool) or not (data.get("gameplay_seed") is int) \
+			or not (data.get("state_revision") is int) or int(data.get("state_revision")) < 0 \
+			or not (data.get("refill_sequence") is int) or int(data.get("refill_sequence")) < 0:
+		return {"valid": false, "reason_code": "region_supply_save_fields_invalid"}
+	for array_key in ["region_order", "card_order"]:
+		if not (data.get(array_key) is Array) or not _strict_string_array(data.get(array_key)):
+			return {"valid": false, "reason_code": "region_supply_save_fields_invalid"}
+	for dictionary_key in [
+		"regions_by_id",
+		"cards_by_id",
+		"racks_by_region",
+		"slot_revisions_by_region",
+		"bags_by_region",
+		"rng_state_by_region",
+		"claimed_unique_keys",
+		"pending_transactions",
+		"terminal_transactions",
+	]:
+		if not (data.get(dictionary_key) is Dictionary):
+			return {"valid": false, "reason_code": "region_supply_save_fields_invalid"}
+
+	var region_order := data.get("region_order") as Array
+	var card_order := data.get("card_order") as Array
+	if not _string_array_is_sorted(region_order) or not _string_array_is_sorted(card_order):
+		return {"valid": false, "reason_code": "region_supply_save_order_invalid"}
+	if not bool(data.get("configured")):
+		if int(data.get("state_revision")) != 0 or int(data.get("refill_sequence")) != 0 \
+				or not region_order.is_empty() or not card_order.is_empty():
+			return {"valid": false, "reason_code": "region_supply_unconfigured_state_invalid"}
+		for dictionary_key in SAVE_KEYS.slice(5):
+			if data.get(dictionary_key) is Dictionary and not (data.get(dictionary_key) as Dictionary).is_empty():
+				return {"valid": false, "reason_code": "region_supply_unconfigured_state_invalid"}
+		return {"valid": true, "reason_code": "region_supply_save_shape_valid"}
+	if region_order.is_empty() or card_order.is_empty() or int(data.get("state_revision")) < 1:
+		return {"valid": false, "reason_code": "region_supply_configured_state_invalid"}
+
+	var regions := data.get("regions_by_id") as Dictionary
+	var cards := data.get("cards_by_id") as Dictionary
+	if not _dictionary_has_exact_ids(regions, region_order) or not _dictionary_has_exact_ids(cards, card_order):
+		return {"valid": false, "reason_code": "region_supply_catalog_index_invalid"}
+	for region_id_variant in region_order:
+		var region_id := str(region_id_variant)
+		var region_variant: Variant = regions.get(region_id)
+		if not (region_variant is Dictionary):
+			return {"valid": false, "reason_code": "region_supply_region_record_invalid"}
+		var region := region_variant as Dictionary
+		if not StrictState.has_exact_keys(region, REGION_SAVE_KEYS) \
+				or not _strict_nonempty_string(region.get("region_id")) or str(region.get("region_id")) != region_id \
+				or not (region.get("region_index") is int) \
+				or not (region.get("display_name") is String) or not (region.get("terrain") is String) \
+				or not _strict_string_array(region.get("mode_tags")):
+			return {"valid": false, "reason_code": "region_supply_region_record_invalid"}
+	for card_id_variant in card_order:
+		var card_id := str(card_id_variant)
+		var card_variant: Variant = cards.get(card_id)
+		if not (card_variant is Dictionary) or not _card_record_valid(card_id, card_variant as Dictionary):
+			return {"valid": false, "reason_code": "region_supply_card_record_invalid"}
+
+	var racks := data.get("racks_by_region") as Dictionary
+	var slot_revisions := data.get("slot_revisions_by_region") as Dictionary
+	var bags := data.get("bags_by_region") as Dictionary
+	var rng_states := data.get("rng_state_by_region") as Dictionary
+	for region_map in [racks, slot_revisions, bags, rng_states]:
+		if not _dictionary_has_exact_ids(region_map as Dictionary, region_order):
+			return {"valid": false, "reason_code": "region_supply_region_state_index_invalid"}
+	for region_id_variant in region_order:
+		var region_id := str(region_id_variant)
+		var rack_variant: Variant = racks.get(region_id)
+		var revisions_variant: Variant = slot_revisions.get(region_id)
+		var bag_variant: Variant = bags.get(region_id)
+		var rng_variant: Variant = rng_states.get(region_id)
+		if not (rack_variant is Array) or not (revisions_variant is Array) or not (bag_variant is Array) \
+				or not (rng_variant is int):
+			return {"valid": false, "reason_code": "region_supply_region_state_type_invalid"}
+		var rack := rack_variant as Array
+		var revisions := revisions_variant as Array
+		if rack.is_empty() or rack.size() > MAX_SLOT_COUNT or revisions.size() != rack.size() \
+				or not _card_id_array_valid(bag_variant as Array, cards):
+			return {"valid": false, "reason_code": "region_supply_region_state_content_invalid"}
+		for slot_index in range(rack.size()):
+			if not (revisions[slot_index] is int) or int(revisions[slot_index]) < 0 \
+					or not (rack[slot_index] is Dictionary) \
+					or not _listing_record_valid(
+						rack[slot_index] as Dictionary,
+						region_id,
+						slot_index,
+						int(revisions[slot_index]),
+						regions,
+						cards,
+						int(data.get("refill_sequence"))
+					):
+				return {"valid": false, "reason_code": "region_supply_rack_listing_invalid"}
+	if not _claimed_unique_map_valid(data.get("claimed_unique_keys") as Dictionary, cards):
+		return {"valid": false, "reason_code": "region_supply_claimed_unique_invalid"}
+	if not _transaction_journals_valid(data, regions, cards):
+		return {"valid": false, "reason_code": "region_supply_transaction_journal_invalid"}
+	return {"valid": true, "reason_code": "region_supply_save_shape_valid"}
+
+
+func _card_record_valid(card_id: String, card: Dictionary) -> bool:
+	if not StrictState.has_exact_keys(card, CARD_SAVE_KEYS) \
+			or not _strict_nonempty_string(card.get("card_id")) or str(card.get("card_id")) != card_id:
+		return false
+	for string_key in ["family_id", "card_type", "unique_key"]:
+		if not (card.get(string_key) is String):
 			return false
-		if (racks.get(region_id) as Array).size() != (slot_revisions.get(region_id) as Array).size():
+	if not (card.get("region_supply_weight") is int) \
+			or int(card.get("region_supply_weight")) < 1 or int(card.get("region_supply_weight")) > MAX_WEIGHT \
+			or not (card.get("global_unique") is bool):
+		return false
+	for array_key in ["legal_region_ids", "disabled_region_ids", "allowed_terrain", "required_mode_tags"]:
+		if not _strict_string_array(card.get(array_key)):
+			return false
+	var public_variant: Variant = card.get("public_card")
+	if not (public_variant is Dictionary):
+		return false
+	var public_card := public_variant as Dictionary
+	for key_variant in public_card.keys():
+		if not (key_variant is String) or not PUBLIC_CARD_FIELDS.has(str(key_variant)):
+			return false
+	if not _strict_nonempty_string(public_card.get("card_id")) or str(public_card.get("card_id")) != card_id \
+			or not public_card.has("rank") or not ((public_card.get("rank") is String) or (public_card.get("rank") is int)) \
+			or not _rank_is_one(public_card.get("rank")):
+		return false
+	return true
+
+
+func _listing_record_valid(
+	listing: Dictionary,
+	region_id: String,
+	slot_index: int,
+	expected_slot_revision: int,
+	regions: Dictionary,
+	cards: Dictionary,
+	maximum_listing_sequence: int
+) -> bool:
+	if listing.is_empty():
+		return true
+	if not StrictState.has_exact_keys(listing, LISTING_SAVE_KEYS):
+		return false
+	for string_key in ["item_id", "card_id", "source_region_id", "supply_revision"]:
+		if not _strict_nonempty_string(listing.get(string_key)):
+			return false
+	var card_id := str(listing.get("card_id"))
+	if not cards.has(card_id) or str(listing.get("source_region_id")) != region_id \
+			or not (listing.get("source_district_index") is int) \
+			or int(listing.get("source_district_index")) != int((regions.get(region_id) as Dictionary).get("region_index")) \
+			or not (listing.get("slot_index") is int) or int(listing.get("slot_index")) != slot_index \
+			or not (listing.get("price_cash") is int) or not (listing.get("card") is Dictionary):
+		return false
+	var card := cards.get(card_id) as Dictionary
+	var public_card := card.get("public_card") as Dictionary
+	if StrictState.fingerprint(listing.get("card")) != StrictState.fingerprint(public_card) \
+			or int(listing.get("price_cash")) != int(public_card.get("price_cash", 0)):
+		return false
+	var revision_prefix := "region:%s:slot:%d:revision:" % [region_id, slot_index]
+	var revision_text := str(listing.get("supply_revision"))
+	if not revision_text.begins_with(revision_prefix):
+		return false
+	var revision_suffix := revision_text.substr(revision_prefix.length())
+	if not revision_suffix.is_valid_int() or int(revision_suffix) < 0 \
+			or (expected_slot_revision >= 0 and int(revision_suffix) != expected_slot_revision):
+		return false
+	var item_prefix := "region-supply:%s:%d:" % [region_id, slot_index]
+	var item_suffix := ":%s" % card_id
+	var item_id := str(listing.get("item_id"))
+	if not item_id.begins_with(item_prefix) or not item_id.ends_with(item_suffix) \
+			or item_id.length() <= item_prefix.length() + item_suffix.length():
+		return false
+	var sequence_text := item_id.substr(
+		item_prefix.length(),
+		item_id.length() - item_prefix.length() - item_suffix.length()
+	)
+	return sequence_text.is_valid_int() and int(sequence_text) > 0 and int(sequence_text) <= maximum_listing_sequence
+
+
+func _transaction_journals_valid(data: Dictionary, regions: Dictionary, cards: Dictionary) -> bool:
+	var pending := data.get("pending_transactions") as Dictionary
+	var terminal := data.get("terminal_transactions") as Dictionary
+	for transaction_id_variant in pending.keys():
+		if not _strict_nonempty_string(transaction_id_variant) or terminal.has(transaction_id_variant) \
+				or not (pending.get(transaction_id_variant) is Dictionary):
+			return false
+		var transaction_id := str(transaction_id_variant)
+		var record := pending.get(transaction_id_variant) as Dictionary
+		var stage_variant: Variant = record.get("stage")
+		if not (stage_variant is String) or not ["prepared", "committed"].has(str(stage_variant)):
+			return false
+		var expected_keys := PENDING_TRANSACTION_SAVE_KEYS.duplicate()
+		if str(stage_variant) == "committed":
+			expected_keys.append("committed_state_revision")
+		if not StrictState.has_exact_keys(record, expected_keys) \
+				or not _strict_nonempty_string(record.get("transaction_id")) \
+				or str(record.get("transaction_id")) != transaction_id:
+			return false
+		for string_key in ["intent_fingerprint", "region_id", "expected_item_id", "expected_supply_revision"]:
+			if not _strict_nonempty_string(record.get(string_key)):
+				return false
+		var region_id := str(record.get("region_id"))
+		if not regions.has(region_id) or not (record.get("slot_index") is int):
+			return false
+		var slot_index := int(record.get("slot_index"))
+		var region_racks := (data.get("racks_by_region") as Dictionary).get(region_id) as Array
+		if slot_index < 0 or slot_index >= region_racks.size():
+			return false
+		for int_key in [
+			"expected_state_revision",
+			"pre_rng_state",
+			"pre_slot_revision",
+			"pre_refill_sequence",
+			"post_rng_state",
+			"post_slot_revision",
+			"post_refill_sequence",
+		]:
+			if not (record.get(int_key) is int) or int(record.get(int_key)) < 0:
+				return false
+		if int(record.get("expected_state_revision")) > int(data.get("state_revision")) \
+				or int(record.get("post_slot_revision")) != int(record.get("pre_slot_revision")) + 1:
+			return false
+		if str(stage_variant) == "committed":
+			if not (record.get("committed_state_revision") is int) \
+					or int(record.get("committed_state_revision")) != int(record.get("expected_state_revision")) + 1 \
+					or int(record.get("committed_state_revision")) > int(data.get("state_revision")):
+				return false
+		for listing_key in ["pre_listing", "post_listing"]:
+			if not (record.get(listing_key) is Dictionary):
+				return false
+		var pre_listing := record.get("pre_listing") as Dictionary
+		var post_listing := record.get("post_listing") as Dictionary
+		if pre_listing.is_empty() \
+				or not _listing_record_valid(pre_listing, region_id, slot_index, int(record.get("pre_slot_revision")), regions, cards, int(data.get("refill_sequence")) + 1) \
+				or not _listing_record_valid(post_listing, region_id, slot_index, int(record.get("post_slot_revision")), regions, cards, int(data.get("refill_sequence")) + 1):
+			return false
+		if str(record.get("expected_item_id")) != str(pre_listing.get("item_id")) \
+				or str(record.get("expected_supply_revision")) != str(pre_listing.get("supply_revision")) \
+				or str(record.get("intent_fingerprint")) != _intent_fingerprint(
+					region_id,
+					slot_index,
+					str(record.get("expected_item_id")),
+					str(record.get("expected_supply_revision"))
+				):
+			return false
+		if not (record.get("pre_bag") is Array) or not (record.get("post_bag") is Array) \
+				or not _card_id_array_valid(record.get("pre_bag") as Array, cards) \
+				or not _card_id_array_valid(record.get("post_bag") as Array, cards) \
+				or not (record.get("pre_claimed_unique_keys") is Dictionary) \
+				or not (record.get("post_claimed_unique_keys") is Dictionary) \
+				or not _claimed_unique_map_valid(record.get("pre_claimed_unique_keys") as Dictionary, cards) \
+				or not _claimed_unique_map_valid(record.get("post_claimed_unique_keys") as Dictionary, cards):
+			return false
+		var expected_refill_delta := 0 if post_listing.is_empty() else 1
+		if int(record.get("post_refill_sequence")) != int(record.get("pre_refill_sequence")) + expected_refill_delta:
+			return false
+
+	for transaction_id_variant in terminal.keys():
+		if not _strict_nonempty_string(transaction_id_variant) or not (terminal.get(transaction_id_variant) is Dictionary):
+			return false
+		var transaction_id := str(transaction_id_variant)
+		var record := terminal.get(transaction_id_variant) as Dictionary
+		if not StrictState.has_exact_keys(record, TERMINAL_TRANSACTION_SAVE_KEYS) \
+				or not _strict_nonempty_string(record.get("transaction_id")) \
+				or str(record.get("transaction_id")) != transaction_id:
+			return false
+		for bool_key in ["ok", "prepared", "committed", "rolled_back", "finalized", "replayed"]:
+			if not (record.get(bool_key) is bool):
+				return false
+		for string_key in ["stage", "reason_code", "intent_fingerprint", "region_id", "source_item_id"]:
+			if not _strict_nonempty_string(record.get(string_key)):
+				return false
+		var stage := str(record.get("stage"))
+		if not ["rolled_back", "finalized"].has(stage) or not bool(record.get("ok")) \
+				or bool(record.get("prepared")) or bool(record.get("replayed")) \
+				or bool(record.get("rolled_back")) != (stage == "rolled_back") \
+				or bool(record.get("finalized")) != (stage == "finalized") \
+				or bool(record.get("committed")) != (stage == "finalized") \
+				or str(record.get("reason_code")) != "region_supply_%s" % stage:
+			return false
+		var region_id := str(record.get("region_id"))
+		if not regions.has(region_id) or not (record.get("slot_index") is int) \
+				or not (record.get("state_revision") is int) or int(record.get("state_revision")) < 0 \
+				or not (record.get("next_listing") is Dictionary):
+			return false
+		var slot_index := int(record.get("slot_index"))
+		var region_racks := (data.get("racks_by_region") as Dictionary).get(region_id) as Array
+		if slot_index < 0 or slot_index >= region_racks.size() \
+				or not _terminal_intent_binding_valid(record, region_id, slot_index) \
+				or not _listing_record_valid(record.get("next_listing") as Dictionary, region_id, slot_index, -1, regions, cards, int(data.get("refill_sequence")) + 1):
+			return false
+	return true
+
+
+func _terminal_intent_binding_valid(record: Dictionary, region_id: String, slot_index: int) -> bool:
+	var parts := str(record.get("intent_fingerprint")).split("|", true)
+	if parts.size() != 4 or str(parts[0]) != region_id or not str(parts[1]).is_valid_int() \
+			or int(parts[1]) != slot_index or str(parts[2]) != str(record.get("source_item_id")):
+		return false
+	var revision_prefix := "region:%s:slot:%d:revision:" % [region_id, slot_index]
+	var revision := str(parts[3])
+	return revision.begins_with(revision_prefix) \
+		and revision.substr(revision_prefix.length()).is_valid_int() \
+		and int(revision.substr(revision_prefix.length())) >= 0
+
+
+func _claimed_unique_map_valid(claimed: Dictionary, cards: Dictionary) -> bool:
+	var legal_keys: Dictionary = {}
+	for card_variant in cards.values():
+		var card := card_variant as Dictionary
+		if bool(card.get("global_unique")):
+			legal_keys[str(card.get("unique_key"))] = true
+	for key_variant in claimed.keys():
+		if not _strict_nonempty_string(key_variant) or not legal_keys.has(str(key_variant)) \
+				or not (claimed.get(key_variant) is bool) or not bool(claimed.get(key_variant)):
+			return false
+	return true
+
+
+func _card_id_array_valid(card_ids: Array, cards: Dictionary) -> bool:
+	for card_id_variant in card_ids:
+		if not _strict_nonempty_string(card_id_variant) or not cards.has(str(card_id_variant)):
+			return false
+	return true
+
+
+func _dictionary_has_exact_ids(value: Dictionary, ids: Array) -> bool:
+	if value.size() != ids.size():
+		return false
+	for key_variant in value.keys():
+		if not _strict_nonempty_string(key_variant) or not ids.has(str(key_variant)):
+			return false
+	return true
+
+
+func _strict_nonempty_string(value: Variant) -> bool:
+	return value is String and not str(value).is_empty() and str(value) == str(value).strip_edges()
+
+
+func _strict_string_array(value: Variant) -> bool:
+	if not (value is Array):
+		return false
+	var seen: Dictionary = {}
+	for item_variant in value as Array:
+		if not _strict_nonempty_string(item_variant) or seen.has(str(item_variant)):
+			return false
+		seen[str(item_variant)] = true
+	return true
+
+
+func _string_array_is_sorted(value: Array) -> bool:
+	for index in range(1, value.size()):
+		if str(value[index - 1]) > str(value[index]):
 			return false
 	return true
 
@@ -712,10 +1131,6 @@ func _public_value(value: Variant) -> Variant:
 	return value
 
 
-func _dictionary(value: Variant) -> Dictionary:
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
 func _string_array(value: Variant) -> Array[String]:
 	var result: Array[String] = []
 	if not (value is Array):
@@ -725,27 +1140,6 @@ func _string_array(value: Variant) -> Array[String]:
 		if not item.is_empty() and not result.has(item):
 			result.append(item)
 	return result
-
-
-func _is_pure_data(value: Variant) -> bool:
-	if value == null or value is String or value is StringName or value is bool or value is int or value is float:
-		return true
-	if value is Vector2 or value is Vector2i or value is Color:
-		return true
-	if value is Array:
-		for item_variant in value:
-			if not _is_pure_data(item_variant):
-				return false
-		return true
-	if value is Dictionary:
-		for key_variant in (value as Dictionary).keys():
-			if not (key_variant is String or key_variant is StringName):
-				return false
-			if not _is_pure_data((value as Dictionary).get(key_variant)):
-				return false
-		return true
-	return false
-
 
 func _result(ok: bool, reason_code: String) -> Dictionary:
 	return {

@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_session_runtime_controller.gd" id="1_session"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/GameSaveRuntimeCoordinator.tscn" id="2_save"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/V06SaveOwnerRegistry.tscn" id="3_owner_registry"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/SessionEnvelopeSaveOwner.tscn" id="4_session_envelope_owner"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RulesetSaveAttestationOwner.tscn" id="5_ruleset_attestation"]
 
 [node name="GameSessionRuntimeController" type="Node"]
 script = ExtResource("1_session")
@@ -13,6 +14,9 @@ editor_description = "Owns session lifecycle, safe session identity, and save-op
 unique_name_in_owner = true
 
 [node name="SessionEnvelopeSaveOwner" parent="." instance=ExtResource("4_session_envelope_owner")]
+unique_name_in_owner = true
+
+[node name="RulesetSaveAttestationOwner" parent="." instance=ExtResource("5_ruleset_attestation")]
 unique_name_in_owner = true
 
 [node name="V06SaveOwnerRegistry" parent="." instance=ExtResource("3_owner_registry")]

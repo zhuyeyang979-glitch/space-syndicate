@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "contract_id": "AiRuntimeOwnerReplayAuthorizationV1",
+  "authorization_id": "alpha04c-ai-runtime-save-v3-checkpoint-v2-replay-v1",
+  "run_id_prefix": "alpha04c-ai-runtime-replay-v1",
+  "run_id": "alpha04c-ai-runtime-replay-v1-attempt-1",
+  "replay_attempt_count_before": 0,
+  "authorized_new_replay_count": 1,
+  "replay_attempt_count_after": 1,
+  "targeted_owner_capture_diagnostic_count_before": 7,
+  "targeted_owner_capture_diagnostic_count_after": 7,
+  "characterization_sha256": "71946f1d82d09c0307f62fc786986741cbac5fffb0ace5ac8d6b3041fcc9e50c",
+  "authority_matrix_sha256": "98e35db0ab1fd953c242c707a28e6644725b92a81f0e45eced39a7db65f8c9d2"
+}

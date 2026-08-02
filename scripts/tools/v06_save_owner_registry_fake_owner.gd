@@ -12,6 +12,9 @@ const SESSION_STATE_KEYS := [
 @export var section_id := ""
 @export var owner_state: Dictionary = {}
 @export var fail_once_live_apply := false
+@export var accept_empty_state := false
+@export var omit_normalized_state := false
+@export var mutate_next_capture := false
 
 var apply_count := 0
 
@@ -49,7 +52,36 @@ func configure(configured_section_id: String, initial_value: int) -> void:
 
 
 func to_save_data() -> Dictionary:
-	return owner_state.duplicate(true)
+	var captured := owner_state.duplicate(true)
+	if mutate_next_capture:
+		mutate_next_capture = false
+		if section_id == "card_resolution_history":
+			owner_state["revision"] = int(owner_state.get("revision", 0)) + 1
+		elif section_id == "session":
+			owner_state["fixture_value"] = int(owner_state.get("fixture_value", 0)) + 1
+		else:
+			owner_state["value"] = int(owner_state.get("value", 0)) + 1
+	return captured
+
+
+func debug_snapshot() -> Dictionary:
+	return {
+		"section_id": section_id,
+		"owner_state": owner_state.duplicate(true),
+		"mutate_next_capture": mutate_next_capture,
+	}
+
+
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	if not _valid_state(data):
+		return {"accepted": false, "reason_code": "fake_owner_state_invalid"}
+	var receipt := {
+		"accepted": true,
+		"reason_code": "fake_owner_state_valid",
+	}
+	if not omit_normalized_state:
+		receipt["normalized_state"] = data.duplicate(true)
+	return receipt
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
@@ -78,6 +110,8 @@ func current_value() -> int:
 
 
 func _valid_state(data: Dictionary) -> bool:
+	if accept_empty_state and data.is_empty():
+		return true
 	if section_id == "card_resolution_history":
 		return bool(RestoreDependencyContract.normalize_history_state(data).get("accepted", false))
 	if section_id == "session":

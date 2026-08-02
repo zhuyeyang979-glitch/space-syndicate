@@ -14,7 +14,7 @@ const MALFORMED_PATH := OUTPUT_DIR + "malformed_variant.save"
 const REAL_MAIN_PATH := OUTPUT_DIR + "real_main_delegation_v1.save"
 const QA_DEFAULT_PATH := "user://space_syndicate_design_qa/test_runs/game_session_save_ownership.save"
 const EXPECTED_SAVE_VERSION := 1
-const EXPECTED_DEFAULT_PATH := "user://space_syndicate_current_run.save"
+const EXPECTED_DEFAULT_PATH := "user://saves/v06/current_run.save"
 
 @export var auto_run := true
 

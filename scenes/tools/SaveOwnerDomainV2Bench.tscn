@@ -1,0 +1,18 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/save_owner_domain_v2_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RulesetSaveAttestationOwner.tscn" id="2_ruleset"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RouteNetworkRuntimeController.tscn" id="3_routes"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MilitaryRuntimeController.tscn" id="4_military"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionQueueRuntimeService.tscn" id="5_queue"]
+
+[node name="SaveOwnerDomainV2Bench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="RulesetSaveAttestationOwner" parent="." instance=ExtResource("2_ruleset")]
+
+[node name="RouteNetworkRuntimeController" parent="." instance=ExtResource("3_routes")]
+
+[node name="MilitaryRuntimeController" parent="." instance=ExtResource("4_military")]
+
+[node name="CardResolutionQueueRuntimeService" parent="." instance=ExtResource("5_queue")]

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "contract_id": "MonsterRuntimeOwnerReplayAuthorizationV1",
+  "authorization_id": "alpha04c-monster-runtime-save-v2-replay-v1",
+  "run_id_prefix": "alpha04c-monster-runtime-replay-v1",
+  "run_id": "alpha04c-monster-runtime-replay-v1-attempt-1",
+  "replay_attempt_count_before": 0,
+  "authorized_new_replay_count": 1,
+  "replay_attempt_count_after": 1,
+  "targeted_owner_capture_diagnostic_count_before": 7,
+  "targeted_owner_capture_diagnostic_count_after": 7
+}

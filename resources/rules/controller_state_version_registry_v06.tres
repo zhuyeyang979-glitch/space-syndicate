@@ -12,7 +12,7 @@ save_section = "ruleset"
 script = ExtResource("2_entry")
 controller_id = "game_session"
 save_section = "session"
-state_version = 2
+state_version = 3
 
 [sub_resource type="Resource" id="Controller_03"]
 script = ExtResource("2_entry")
@@ -28,6 +28,7 @@ save_section = "region_supply"
 script = ExtResource("2_entry")
 controller_id = "route_network"
 save_section = "routes"
+state_version = 2
 
 [sub_resource type="Resource" id="Controller_06"]
 script = ExtResource("2_entry")
@@ -49,26 +50,31 @@ save_section = "commodity_belt_visibility"
 script = ExtResource("2_entry")
 controller_id = "card_inventory"
 save_section = "card_inventory"
+state_version = 4
 
 [sub_resource type="Resource" id="Controller_10"]
 script = ExtResource("2_entry")
 controller_id = "card_resolution_queue"
 save_section = "card_resolution_queue"
+state_version = 2
 
 [sub_resource type="Resource" id="Controller_11"]
 script = ExtResource("2_entry")
 controller_id = "card_resolution_execution"
 save_section = "card_resolution_execution"
+state_version = 2
 
 [sub_resource type="Resource" id="Controller_12"]
 script = ExtResource("2_entry")
 controller_id = "monster_runtime"
 save_section = "monsters"
+state_version = 2
 
 [sub_resource type="Resource" id="Controller_13"]
 script = ExtResource("2_entry")
 controller_id = "military_runtime"
 save_section = "military"
+state_version = 2
 
 [sub_resource type="Resource" id="Controller_14"]
 script = ExtResource("2_entry")
@@ -79,11 +85,13 @@ save_section = "weather"
 script = ExtResource("2_entry")
 controller_id = "ai_runtime"
 save_section = "ai"
+state_version = 3
 
 [sub_resource type="Resource" id="Controller_16"]
 script = ExtResource("2_entry")
 controller_id = "victory_control"
 save_section = "victory_control"
+state_version = 2
 
 [sub_resource type="Resource" id="Controller_17"]
 script = ExtResource("2_entry")

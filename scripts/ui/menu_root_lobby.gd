@@ -92,8 +92,25 @@ func get_load_run_button() -> Button:
 	return _buttons_by_id.get("load_run", null) as Button
 
 
+func get_resume_run_button() -> Button:
+	return get_load_run_button()
+
+
 func get_action_button(action_id: String) -> Button:
 	return _buttons_by_id.get(action_id, null) as Button
+
+
+func set_action_state(action_id: String, data: Dictionary) -> bool:
+	var button := get_action_button(action_id)
+	if button == null:
+		return false
+	if data.has("label"):
+		button.text = str(data.get("label", button.text))
+	if data.has("tooltip"):
+		button.tooltip_text = str(data.get("tooltip", button.tooltip_text))
+	if data.has("disabled"):
+		button.disabled = bool(data.get("disabled", button.disabled))
+	return true
 
 
 func _render_chips(entries_variant: Variant) -> void:

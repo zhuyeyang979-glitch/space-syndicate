@@ -28,6 +28,9 @@ const FORBIDDEN_PRIVATE_KEYS := {
 	"discard": true,
 	"private_hand": true,
 	"slot_index": true,
+	"v06_facility_action": true,
+	"card_escrow": true,
+	"asset_reservation": true,
 }
 const RETIRED_CARD_OWNER_FIELDS := [
 	"guessers",

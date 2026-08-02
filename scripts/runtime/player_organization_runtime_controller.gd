@@ -2,6 +2,8 @@
 extends Node
 class_name PlayerOrganizationRuntimeController
 
+const StrictState := preload("res://scripts/runtime/save_owner_state_v2_contract.gd")
+
 const RULESET_ID := "v0.6"
 const STATE_VERSION := 1
 const EFFECT_KIND := "install_organization_upgrade"
@@ -15,6 +17,16 @@ const BASE_MONSTER_COUNT_LIMIT := 1
 const BASE_MONSTER_PRIMARY_RANK_LIMIT := 2
 const BASE_MILITARY_COUNT_LIMIT := 1
 const BASE_MILITARY_PRIMARY_RANK_LIMIT := 2
+const SAVE_KEYS := [
+	"state_version",
+	"ruleset_id",
+	"configured",
+	"actor_ids",
+	"players",
+	"transaction_journal",
+	"revision",
+	"capability_secret",
+]
 
 const AXIS_ASSET_CONVERSION := "asset_conversion"
 const AXIS_ACTION_BANDWIDTH := "action_bandwidth"
@@ -481,16 +493,33 @@ func to_save_data() -> Dictionary:
 	}
 
 
-func apply_save_data(data: Dictionary) -> Dictionary:
+func preflight_save_data(data: Dictionary) -> Dictionary:
 	var prepared := _prepare_save_data(data)
 	if not bool(prepared.get("valid", false)):
-		return {"applied": false, "reason_code": str(prepared.get("reason_code", "organization_save_invalid"))}
-	_configured = bool(prepared.get("configured", false))
-	_actor_ids = prepared.get("actor_ids", []) as Array[String]
-	_players = _dictionary(prepared.get("players", {})).duplicate(true)
-	_transaction_journal = _dictionary(prepared.get("transaction_journal", {})).duplicate(true)
-	_revision = int(prepared.get("revision", 0))
-	_capability_secret = str(prepared.get("capability_secret", ""))
+		var reason_code := str(prepared.get("reason_code", "organization_save_invalid"))
+		return {"accepted": false, "reason": reason_code, "reason_code": reason_code}
+	return {
+		"accepted": true,
+		"reason": "",
+		"reason_code": "organization_save_valid",
+		"normalized_state": _normalized_save_state(prepared),
+	}
+
+
+func apply_save_data(data: Dictionary) -> Dictionary:
+	var preflight := preflight_save_data(data)
+	if not bool(preflight.get("accepted", false)):
+		var reason_code := str(preflight.get("reason_code", "organization_save_invalid"))
+		return {"applied": false, "reason": reason_code, "reason_code": reason_code}
+	var normalized := (preflight.get("normalized_state", {}) as Dictionary).duplicate(true)
+	_configured = bool(normalized.get("configured", false))
+	_actor_ids.clear()
+	for actor_id_variant in normalized.get("actor_ids", []) as Array:
+		_actor_ids.append(str(actor_id_variant))
+	_players = _dictionary(normalized.get("players", {})).duplicate(true)
+	_transaction_journal = _dictionary(normalized.get("transaction_journal", {})).duplicate(true)
+	_revision = int(normalized.get("revision", 0))
+	_capability_secret = str(normalized.get("capability_secret", ""))
 	return {"applied": true, "reason_code": "organization_save_applied", "checkpoint": checkpoint_status()}
 
 
@@ -633,18 +662,47 @@ func _unit_payload_error(payload: Dictionary, rank: int, prefix: String) -> Stri
 
 
 func _prepare_save_data(data: Dictionary) -> Dictionary:
-	if int(data.get("state_version", -1)) != STATE_VERSION or str(data.get("ruleset_id", "")) != RULESET_ID:
-		return {"valid": false, "reason_code": "organization_save_version_mismatch"}
-	if not _is_pure_data(data):
+	if not StrictState.is_codec_data(data) or StrictState.contains_rng_continuation(data) or not _is_pure_data(data):
 		return {"valid": false, "reason_code": "organization_save_not_pure_data"}
-	var actor_ids := _normalized_actor_ids(_array(data.get("actor_ids", [])))
-	var players := _dictionary(data.get("players", {}))
+	if not StrictState.has_exact_keys(data, SAVE_KEYS):
+		return {"valid": false, "reason_code": "organization_save_shape_invalid"}
+	if not (data.get("state_version") is int) or int(data.get("state_version")) != STATE_VERSION \
+			or not (data.get("ruleset_id") is String) or str(data.get("ruleset_id")) != RULESET_ID:
+		return {"valid": false, "reason_code": "organization_save_version_mismatch"}
+	if not (data.get("configured") is bool) or not (data.get("actor_ids") is Array) \
+			or not (data.get("players") is Dictionary) or not (data.get("transaction_journal") is Dictionary) \
+			or not (data.get("revision") is int) or int(data.get("revision")) < 0 \
+			or not (data.get("capability_secret") is String):
+		return {"valid": false, "reason_code": "organization_save_field_type_invalid"}
+	var raw_actor_ids := data.get("actor_ids") as Array
+	for actor_id_variant in raw_actor_ids:
+		if not (actor_id_variant is String or actor_id_variant is StringName):
+			return {"valid": false, "reason_code": "organization_save_actor_shape_invalid"}
+	var actor_ids := _normalized_actor_ids(raw_actor_ids)
+	var players := (data.get("players") as Dictionary).duplicate(true)
+	if raw_actor_ids.size() != actor_ids.size():
+		return {"valid": false, "reason_code": "organization_save_actor_shape_invalid"}
+	var configured := bool(data.get("configured", false))
+	var journal := (data.get("transaction_journal") as Dictionary).duplicate(true)
+	var secret := str(data.get("capability_secret"))
+	if not configured:
+		if not actor_ids.is_empty() or not players.is_empty() or not journal.is_empty() \
+				or int(data.get("revision")) != 0 or not secret.is_empty():
+			return {"valid": false, "reason_code": "organization_save_unconfigured_state_invalid"}
+		return {
+			"valid": true,
+			"configured": false,
+			"actor_ids": [],
+			"players": {},
+			"transaction_journal": {},
+			"revision": 0,
+			"capability_secret": "",
+		}
 	if actor_ids.is_empty() or players.size() != actor_ids.size():
 		return {"valid": false, "reason_code": "organization_save_actor_shape_invalid"}
 	for actor_id in actor_ids:
 		if not players.has(actor_id) or not _player_state_valid(actor_id, _dictionary(players[actor_id])):
 			return {"valid": false, "reason_code": "organization_save_player_invalid"}
-	var journal := _dictionary(data.get("transaction_journal", {}))
 	for transaction_id_variant in journal.keys():
 		var transaction_id := str(transaction_id_variant)
 		var lifecycle := _dictionary(journal[transaction_id_variant])
@@ -652,7 +710,6 @@ func _prepare_save_data(data: Dictionary) -> Dictionary:
 			or str(lifecycle.get("actor_id", "")) not in actor_ids \
 			or not _binding_complete(_dictionary(lifecycle.get("binding", {}))):
 			return {"valid": false, "reason_code": "organization_save_journal_invalid"}
-	var secret := str(data.get("capability_secret", ""))
 	if secret.is_empty():
 		return {"valid": false, "reason_code": "organization_save_capability_secret_missing"}
 	return {
@@ -661,8 +718,52 @@ func _prepare_save_data(data: Dictionary) -> Dictionary:
 		"actor_ids": actor_ids,
 		"players": players,
 		"transaction_journal": journal,
-		"revision": maxi(0, int(data.get("revision", 0))),
+		"revision": int(data.get("revision")),
 		"capability_secret": secret,
+	}
+
+
+func preflight_restore_dependencies(section_state: Dictionary, all_normalized_states: Dictionary) -> Dictionary:
+	var session_state: Dictionary = all_normalized_states.get("session", {}) \
+		if all_normalized_states.get("session", {}) is Dictionary else {}
+	var world_state: Dictionary = session_state.get("world_session_state", {}) \
+		if session_state.get("world_session_state", {}) is Dictionary else {}
+	if not (world_state.get("players", null) is Array):
+		return {"accepted": false, "reason_code": "organization_session_roster_missing"}
+	var expected_actor_ids: Array[String] = []
+	for player_variant in world_state.get("players", []) as Array:
+		if not (player_variant is Dictionary):
+			return {"accepted": false, "reason_code": "organization_session_roster_invalid"}
+		var player := player_variant as Dictionary
+		var player_index := int(player.get("id", -1))
+		var actor_id := str(player.get("actor_id", "player.%d" % player_index)).strip_edges()
+		if player_index < 0 or actor_id.is_empty() or expected_actor_ids.has(actor_id):
+			return {"accepted": false, "reason_code": "organization_session_roster_invalid"}
+		expected_actor_ids.append(actor_id)
+	expected_actor_ids.sort()
+	var section_actor_ids := _normalized_actor_ids(
+		section_state.get("actor_ids", []) as Array if section_state.get("actor_ids", []) is Array else []
+	)
+	var section_configured := bool(section_state.get("configured", false))
+	var accepted := (not section_configured and section_actor_ids.is_empty()) \
+		if expected_actor_ids.is_empty() \
+		else section_configured and section_actor_ids == expected_actor_ids
+	return {
+		"accepted": accepted,
+		"reason_code": "organization_session_roster_matches" if accepted else "organization_session_roster_mismatch",
+	}
+
+
+func _normalized_save_state(prepared: Dictionary) -> Dictionary:
+	return {
+		"state_version": STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"configured": bool(prepared.get("configured", false)),
+		"actor_ids": (prepared.get("actor_ids", []) as Array).duplicate(),
+		"players": _dictionary(prepared.get("players", {})).duplicate(true),
+		"transaction_journal": _dictionary(prepared.get("transaction_journal", {})).duplicate(true),
+		"revision": int(prepared.get("revision", 0)),
+		"capability_secret": str(prepared.get("capability_secret", "")),
 	}
 
 

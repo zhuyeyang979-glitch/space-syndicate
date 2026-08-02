@@ -1,6 +1,7 @@
 extends Node
 class_name RulesetSaveHandshakeService
 
+const CLOSED_SCALAR_CODEC := preload("res://scripts/runtime/closed_save_scalar_codec_v1.gd")
 const LEGACY_V04_SAVE_VERSION := 1
 const V05_SAVE_VERSION := 2
 const V06_SAVE_VERSION := 3
@@ -10,12 +11,35 @@ const CURRENCY_SCALE := 100
 const PROFILE_SCHEMA_VERSION := 1
 const ENVELOPE_SCHEMA := "space_syndicate.v06.save.v3"
 const FORMAT_ID := "space_syndicate_json"
-const CODEC_ID := "explicit_tagged_json_v1"
+const CODEC_ID := "explicit_tagged_json_v2"
 const MIGRATION_POLICY := "new_session_only"
 const AUTHORIZATION_SCHEMA_VERSION := 1
 const CODEC_KEY := "$codec"
 const CODEC_VECTOR2 := "Vector2"
 const CODEC_COLOR := "Color"
+const CODEC_INT64 := "Int64"
+const CODEC_FLOAT64 := "Float64"
+const PRE_RESUME_SECTION_VERSIONS := {
+	"ruleset": 1,
+	"region_infrastructure": 1,
+	"region_supply": 1,
+	"commodity_flow": 2,
+	"routes": 1,
+	"player_mana": 1,
+	"commodity_belt_visibility": 1,
+	"card_inventory": 1,
+	"player_organization": 1,
+	"monsters": 1,
+	"military": 1,
+	"weather": 1,
+	"card_resolution_queue": 1,
+	"card_resolution_execution": 1,
+	"card_resolution_history": 1,
+	"ai": 1,
+	"bankruptcy_neutral_estate": 1,
+	"victory_control": 1,
+	"session": 2,
+}
 const V06_TOP_LEVEL_KEYS := [
 	"envelope_schema",
 	"save_version",
@@ -81,6 +105,76 @@ func validate_v06_envelope(payload: Dictionary) -> Dictionary:
 	var expected_versions := required_controller_versions()
 	var provided_manifest: Dictionary = payload.get("section_manifest", {}) if payload.get("section_manifest", {}) is Dictionary else {}
 	var provided_versions: Dictionary = payload.get("controller_state_versions", {}) if payload.get("controller_state_versions", {}) is Dictionary else {}
+	if errors.is_empty() and _is_card_inventory_allocator_v2_envelope(
+		payload,
+		expected_manifest,
+		expected_versions
+	):
+		return {
+			"valid": false,
+			"reason_code": "allocator_cursor_missing_requires_backup",
+			"errors": ["allocator_cursor_missing_requires_backup"],
+			"save_version": V06_SAVE_VERSION,
+			"ruleset_id": V06_RULESET_ID,
+			"fingerprint": "",
+			"requires_backup": true,
+		}
+	if errors.is_empty() and _is_card_inventory_v3_envelope(
+		payload,
+		expected_manifest,
+		expected_versions
+	):
+		return {
+			"valid": false,
+			"reason_code": "card_inventory_v3_closed_wire_upgrade_requires_backup",
+			"errors": ["card_inventory_v3_closed_wire_upgrade_requires_backup"],
+			"save_version": V06_SAVE_VERSION,
+			"ruleset_id": V06_RULESET_ID,
+			"fingerprint": "",
+			"requires_backup": true,
+		}
+	if errors.is_empty() and _is_card_resolution_execution_v3_envelope(
+		payload,
+		expected_manifest,
+		expected_versions
+	):
+		return {
+			"valid": false,
+			"reason_code": "card_resolution_execution_v3_closed_wire_upgrade_requires_backup",
+			"errors": ["card_resolution_execution_v3_closed_wire_upgrade_requires_backup"],
+			"save_version": V06_SAVE_VERSION,
+			"ruleset_id": V06_RULESET_ID,
+			"fingerprint": "",
+			"requires_backup": true,
+		}
+	if errors.is_empty() and _is_ai_save_v2_envelope(
+		payload,
+		expected_manifest,
+		expected_versions
+	):
+		return {
+			"valid": false,
+			"reason_code": "ai_save_v2_closed_wire_upgrade_requires_backup",
+			"errors": ["ai_save_v2_closed_wire_upgrade_requires_backup"],
+			"save_version": V06_SAVE_VERSION,
+			"ruleset_id": V06_RULESET_ID,
+			"fingerprint": "",
+			"requires_backup": true,
+		}
+	if errors.is_empty() and _is_victory_save_v2_envelope(
+		payload,
+		expected_manifest,
+		expected_versions
+	):
+		return {
+			"valid": false,
+			"reason_code": "victory_save_v2_closed_wire_upgrade_requires_backup",
+			"errors": ["victory_save_v2_closed_wire_upgrade_requires_backup"],
+			"save_version": V06_SAVE_VERSION,
+			"ruleset_id": V06_RULESET_ID,
+			"fingerprint": "",
+			"requires_backup": true,
+		}
 	if not _same_data(provided_manifest, expected_manifest):
 		errors.append("section_manifest_mismatch")
 	if not _same_data(provided_versions, expected_versions):
@@ -158,6 +252,15 @@ func inspect_envelope(payload: Dictionary, target_ruleset_id: String = V06_RULES
 				true,
 				"v06_previous_manifest_resume_forbidden"
 			)
+		if _is_pre_resume_v06_manifest(payload):
+			return _inspection(
+				"v06_pre_resume_manifest",
+				V06_RULESET_ID,
+				target_ruleset_id,
+				false,
+				true,
+				"v06_pre_resume_manifest_resume_forbidden"
+			)
 		var validation := validate_v06_envelope(payload)
 		return {
 			"recognized": true,
@@ -187,6 +290,264 @@ func _is_previous_v06_manifest(payload: Dictionary) -> bool:
 		if not sections.has(section_id):
 			return false
 	return true
+
+
+func _is_card_inventory_allocator_v2_envelope(
+	payload: Dictionary,
+	expected_manifest: Dictionary,
+	expected_versions: Dictionary
+) -> bool:
+	var provided_manifest: Dictionary = payload.get("section_manifest", {}) \
+			if payload.get("section_manifest", {}) is Dictionary else {}
+	var provided_versions: Dictionary = payload.get("controller_state_versions", {}) \
+			if payload.get("controller_state_versions", {}) is Dictionary else {}
+	var sections: Dictionary = payload.get("sections", {}) \
+			if payload.get("sections", {}) is Dictionary else {}
+	if provided_manifest.size() != expected_manifest.size() \
+			or provided_versions.size() != expected_versions.size() \
+			or sections.size() != expected_manifest.size():
+		return false
+	for section_id_variant in expected_manifest.keys():
+		var section_id := str(section_id_variant)
+		var expected_row := (expected_manifest.get(section_id, {}) as Dictionary).duplicate(true)
+		var controller_id := str(expected_row.get("owner_id", ""))
+		if not provided_manifest.has(section_id) or not provided_versions.has(controller_id) \
+				or not sections.has(section_id) or not (sections.get(section_id) is Dictionary):
+			return false
+		var provided_row: Dictionary = provided_manifest.get(section_id, {}) as Dictionary
+		var wrapper: Dictionary = sections.get(section_id, {}) as Dictionary
+		if section_id == "card_inventory":
+			expected_row["state_version"] = 2
+			if int(provided_versions.get(controller_id, 0)) != 2 \
+					or not _same_data(provided_row, expected_row) \
+					or int(wrapper.get("schema_version", 0)) != 2:
+				return false
+			continue
+		if int(provided_versions.get(controller_id, 0)) != int(expected_versions.get(controller_id, 0)) \
+				or not _same_data(provided_row, expected_row) \
+				or int(wrapper.get("schema_version", 0)) != int(expected_versions.get(controller_id, 0)):
+			return false
+	var card_wrapper: Dictionary = sections.get("card_inventory", {}) as Dictionary
+	var decoded := decode_codec_value(card_wrapper.get("owner_state"))
+	if not bool(decoded.get("ok", false)) or not (decoded.get("value") is Dictionary):
+		return false
+	var owner_state: Dictionary = decoded.get("value", {}) as Dictionary
+	var district: Dictionary = owner_state.get("district_purchase", {}) \
+			if owner_state.get("district_purchase", {}) is Dictionary else {}
+	var district_payload: Dictionary = district.get("district_purchase_runtime", {}) \
+			if district.get("district_purchase_runtime", {}) is Dictionary else {}
+	return int(owner_state.get("schema_version", 0)) == 2 \
+			and str(owner_state.get("ruleset_id", "")) == V06_RULESET_ID \
+			and int(district_payload.get("schema_version", 0)) == 2 \
+			and district_payload.get("sessions") is Array \
+			and not district_payload.has("next_quote_sequence")
+
+
+func _is_card_inventory_v3_envelope(
+	payload: Dictionary,
+	expected_manifest: Dictionary,
+	expected_versions: Dictionary
+) -> bool:
+	var provided_manifest: Dictionary = payload.get("section_manifest", {}) \
+			if payload.get("section_manifest", {}) is Dictionary else {}
+	var provided_versions: Dictionary = payload.get("controller_state_versions", {}) \
+			if payload.get("controller_state_versions", {}) is Dictionary else {}
+	var sections: Dictionary = payload.get("sections", {}) \
+			if payload.get("sections", {}) is Dictionary else {}
+	if provided_manifest.size() != expected_manifest.size() \
+			or provided_versions.size() != expected_versions.size() \
+			or sections.size() != expected_manifest.size():
+		return false
+	for section_id_variant in expected_manifest.keys():
+		var section_id := str(section_id_variant)
+		var expected_row := (expected_manifest.get(section_id, {}) as Dictionary).duplicate(true)
+		var controller_id := str(expected_row.get("owner_id", ""))
+		if not provided_manifest.has(section_id) or not provided_versions.has(controller_id) \
+				or not sections.has(section_id) or not (sections.get(section_id) is Dictionary):
+			return false
+		var provided_row := provided_manifest.get(section_id, {}) as Dictionary
+		var wrapper := sections.get(section_id, {}) as Dictionary
+		if section_id == "card_inventory":
+			expected_row["state_version"] = 3
+			if int(provided_versions.get(controller_id, 0)) != 3 \
+					or not _same_data(provided_row, expected_row) \
+					or int(wrapper.get("schema_version", 0)) != 3:
+				return false
+			continue
+		if int(provided_versions.get(controller_id, 0)) != int(expected_versions.get(controller_id, 0)) \
+				or not _same_data(provided_row, expected_row) \
+				or int(wrapper.get("schema_version", 0)) != int(expected_versions.get(controller_id, 0)):
+			return false
+	var card_wrapper := sections.get("card_inventory", {}) as Dictionary
+	var decoded := decode_codec_value(card_wrapper.get("owner_state"))
+	return bool(decoded.get("ok", false)) \
+			and decoded.get("value") is Dictionary \
+			and int((decoded.get("value") as Dictionary).get("schema_version", 0)) == 3 \
+			and str((decoded.get("value") as Dictionary).get("ruleset_id", "")) == V06_RULESET_ID
+
+
+func _is_card_resolution_execution_v3_envelope(
+	payload: Dictionary,
+	expected_manifest: Dictionary,
+	expected_versions: Dictionary
+) -> bool:
+	var provided_manifest: Dictionary = payload.get("section_manifest", {}) \
+			if payload.get("section_manifest", {}) is Dictionary else {}
+	var provided_versions: Dictionary = payload.get("controller_state_versions", {}) \
+			if payload.get("controller_state_versions", {}) is Dictionary else {}
+	var sections: Dictionary = payload.get("sections", {}) \
+			if payload.get("sections", {}) is Dictionary else {}
+	if provided_manifest.size() != expected_manifest.size() \
+			or provided_versions.size() != expected_versions.size() \
+			or sections.size() != expected_manifest.size():
+		return false
+	for section_id_variant in expected_manifest.keys():
+		var section_id := str(section_id_variant)
+		var expected_row := (expected_manifest.get(section_id, {}) as Dictionary).duplicate(true)
+		var controller_id := str(expected_row.get("owner_id", ""))
+		if not provided_manifest.has(section_id) or not provided_versions.has(controller_id) \
+				or not sections.has(section_id) or not (sections.get(section_id) is Dictionary):
+			return false
+		var provided_row := provided_manifest.get(section_id, {}) as Dictionary
+		var wrapper := sections.get(section_id, {}) as Dictionary
+		if section_id == "card_resolution_execution":
+			expected_row["state_version"] = 1
+			if int(provided_versions.get(controller_id, 0)) != 1 \
+					or not _same_data(provided_row, expected_row) \
+					or int(wrapper.get("schema_version", 0)) != 1:
+				return false
+			continue
+		if int(provided_versions.get(controller_id, 0)) != int(expected_versions.get(controller_id, 0)) \
+				or not _same_data(provided_row, expected_row) \
+				or int(wrapper.get("schema_version", 0)) != int(expected_versions.get(controller_id, 0)):
+			return false
+	var execution_wrapper := sections.get("card_resolution_execution", {}) as Dictionary
+	var decoded := decode_codec_value(execution_wrapper.get("owner_state"))
+	return bool(decoded.get("ok", false)) \
+			and decoded.get("value") is Dictionary \
+			and int((decoded.get("value") as Dictionary).get("schema_version", 0)) == 3 \
+			and not (decoded.get("value") as Dictionary).has("execution_wire_version")
+
+
+func _is_ai_save_v2_envelope(
+	payload: Dictionary,
+	expected_manifest: Dictionary,
+	expected_versions: Dictionary
+) -> bool:
+	var provided_manifest: Dictionary = payload.get("section_manifest", {}) \
+			if payload.get("section_manifest", {}) is Dictionary else {}
+	var provided_versions: Dictionary = payload.get("controller_state_versions", {}) \
+			if payload.get("controller_state_versions", {}) is Dictionary else {}
+	var sections: Dictionary = payload.get("sections", {}) \
+			if payload.get("sections", {}) is Dictionary else {}
+	if provided_manifest.size() != expected_manifest.size() \
+			or provided_versions.size() != expected_versions.size() \
+			or sections.size() != expected_manifest.size():
+		return false
+	for section_id_variant in expected_manifest.keys():
+		var section_id := str(section_id_variant)
+		var expected_row := (expected_manifest.get(section_id, {}) as Dictionary).duplicate(true)
+		var controller_id := str(expected_row.get("owner_id", ""))
+		if not provided_manifest.has(section_id) or not provided_versions.has(controller_id) \
+				or not sections.has(section_id) or not (sections.get(section_id) is Dictionary):
+			return false
+		var provided_row := provided_manifest.get(section_id, {}) as Dictionary
+		var wrapper := sections.get(section_id, {}) as Dictionary
+		if section_id == "ai":
+			expected_row["state_version"] = 2
+			if int(provided_versions.get(controller_id, 0)) != 2 \
+					or not _same_data(provided_row, expected_row) \
+					or int(wrapper.get("schema_version", 0)) != 2:
+				return false
+			continue
+		if int(provided_versions.get(controller_id, 0)) != int(expected_versions.get(controller_id, 0)) \
+				or not _same_data(provided_row, expected_row) \
+				or int(wrapper.get("schema_version", 0)) != int(expected_versions.get(controller_id, 0)):
+			return false
+	var ai_wrapper := sections.get("ai", {}) as Dictionary
+	var decoded := decode_codec_value(ai_wrapper.get("owner_state"))
+	return bool(decoded.get("ok", false)) \
+			and decoded.get("value") is Dictionary \
+			and int((decoded.get("value") as Dictionary).get("schema_version", 0)) == 2 \
+			and str((decoded.get("value") as Dictionary).get("ruleset_id", "")) == V06_RULESET_ID
+
+
+func _is_victory_save_v2_envelope(
+	payload: Dictionary,
+	expected_manifest: Dictionary,
+	expected_versions: Dictionary
+) -> bool:
+	var provided_manifest: Dictionary = payload.get("section_manifest", {}) \
+			if payload.get("section_manifest", {}) is Dictionary else {}
+	var provided_versions: Dictionary = payload.get("controller_state_versions", {}) \
+			if payload.get("controller_state_versions", {}) is Dictionary else {}
+	var sections: Dictionary = payload.get("sections", {}) \
+			if payload.get("sections", {}) is Dictionary else {}
+	if provided_manifest.size() != expected_manifest.size() \
+			or provided_versions.size() != expected_versions.size() \
+			or sections.size() != expected_manifest.size():
+		return false
+	for section_id_variant in expected_manifest.keys():
+		var section_id := str(section_id_variant)
+		var expected_row := (expected_manifest.get(section_id, {}) as Dictionary).duplicate(true)
+		var controller_id := str(expected_row.get("owner_id", ""))
+		if not provided_manifest.has(section_id) \
+				or not provided_versions.has(controller_id) \
+				or not sections.has(section_id) \
+				or not (sections.get(section_id) is Dictionary):
+			return false
+		var provided_row := provided_manifest.get(section_id, {}) as Dictionary
+		var wrapper := sections.get(section_id, {}) as Dictionary
+		if section_id == "victory_control":
+			expected_row["state_version"] = 1
+			if int(provided_versions.get(controller_id, 0)) != 1 \
+					or not _same_data(provided_row, expected_row) \
+					or int(wrapper.get("schema_version", 0)) != 1:
+				return false
+			continue
+		if int(provided_versions.get(controller_id, 0)) != int(expected_versions.get(controller_id, 0)) \
+				or not _same_data(provided_row, expected_row) \
+				or int(wrapper.get("schema_version", 0)) != int(expected_versions.get(controller_id, 0)):
+			return false
+	var victory_wrapper := sections.get("victory_control", {}) as Dictionary
+	var decoded := decode_codec_value(victory_wrapper.get("owner_state"))
+	if not bool(decoded.get("ok", false)) or not (decoded.get("value") is Dictionary):
+		return false
+	var owner_state := decoded.get("value", {}) as Dictionary
+	var victory_state: Dictionary = owner_state.get("victory_control_runtime", {}) \
+			if owner_state.get("victory_control_runtime", {}) is Dictionary else {}
+	return int(victory_state.get("schema_version", 0)) == 2 \
+			and str(victory_state.get("ruleset_id", "")) == V06_RULESET_ID
+
+
+func _is_pre_resume_v06_manifest(payload: Dictionary) -> bool:
+	var sections: Dictionary = payload.get("sections", {}) if payload.get("sections", {}) is Dictionary else {}
+	var provided_manifest: Dictionary = payload.get("section_manifest", {}) if payload.get("section_manifest", {}) is Dictionary else {}
+	var provided_versions: Dictionary = payload.get("controller_state_versions", {}) if payload.get("controller_state_versions", {}) is Dictionary else {}
+	var current_manifest := required_section_manifest()
+	if sections.size() != PRE_RESUME_SECTION_VERSIONS.size() \
+			or provided_manifest.size() != PRE_RESUME_SECTION_VERSIONS.size() \
+			or provided_versions.size() != PRE_RESUME_SECTION_VERSIONS.size() \
+			or current_manifest.size() != PRE_RESUME_SECTION_VERSIONS.size():
+		return false
+	var expected_manifest: Dictionary = {}
+	var expected_versions: Dictionary = {}
+	for section_id_variant in PRE_RESUME_SECTION_VERSIONS.keys():
+		var section_id := str(section_id_variant)
+		var current_contract: Dictionary = current_manifest.get(section_id, {}) \
+			if current_manifest.get(section_id, {}) is Dictionary else {}
+		var owner_id := str(current_contract.get("owner_id", ""))
+		var version := int(PRE_RESUME_SECTION_VERSIONS.get(section_id, 0))
+		if owner_id.is_empty() or not (sections.get(section_id) is Dictionary):
+			return false
+		var wrapper := sections.get(section_id, {}) as Dictionary
+		if int(wrapper.get("schema_version", 0)) != version \
+				or str(wrapper.get("owner_id", "")) != owner_id:
+			return false
+		expected_manifest[section_id] = {"owner_id": owner_id, "state_version": version, "required": true}
+		expected_versions[owner_id] = version
+	return _same_data(provided_manifest, _canonicalize(expected_manifest)) \
+		and _same_data(provided_versions, _canonicalize(expected_versions))
 
 
 func inspect_legacy(payload: Dictionary) -> Dictionary:
@@ -394,10 +755,14 @@ func _inspection(classification: String, source_ruleset_id: String, target_rules
 
 func _encode_codec_value(value: Variant) -> Dictionary:
 	if value is Vector2:
-		return {"ok": true, "value": {CODEC_KEY: CODEC_VECTOR2, "x": value.x, "y": value.y}}
+		return {"ok": true, "value": {CODEC_KEY: CODEC_VECTOR2, "x": _float64_bits(value.x), "y": _float64_bits(value.y)}}
 	if value is Color:
-		return {"ok": true, "value": {CODEC_KEY: CODEC_COLOR, "r": value.r, "g": value.g, "b": value.b, "a": value.a}}
-	if value == null or value is String or value is bool or value is int or (value is float and is_finite(value)):
+		return {"ok": true, "value": {CODEC_KEY: CODEC_COLOR, "r": _float64_bits(value.r), "g": _float64_bits(value.g), "b": _float64_bits(value.b), "a": _float64_bits(value.a)}}
+	if value is int:
+		return {"ok": true, "value": {CODEC_KEY: CODEC_INT64, "value": str(value)}}
+	if value is float and is_finite(value):
+		return {"ok": true, "value": {CODEC_KEY: CODEC_FLOAT64, "bits": _float64_bits(value)}}
+	if value == null or value is String or value is bool:
 		return {"ok": true, "value": value}
 	if value is Array:
 		var encoded_array: Array = []
@@ -421,8 +786,13 @@ func _encode_codec_value(value: Variant) -> Dictionary:
 
 
 func _decode_codec_value(value: Variant) -> Dictionary:
-	if value == null or value is String or value is bool or value is int or (value is float and is_finite(value)):
+	# Codec v2 never transports numbers as JSON number scalars. Rejecting bare
+	# numeric values here makes the codec id an enforceable wire contract and
+	# prevents a seed/RNG cursor from silently passing through JSON precision.
+	if value == null or value is String or value is bool:
 		return {"ok": true, "value": value}
+	if value is int or value is float:
+		return {"ok": false, "reason_code": "codec_numeric_scalar_untagged"}
 	if value is Array:
 		var decoded_array: Array = []
 		for item in value:
@@ -435,10 +805,28 @@ func _decode_codec_value(value: Variant) -> Dictionary:
 		var dictionary := value as Dictionary
 		if dictionary.has(CODEC_KEY):
 			var codec_type := str(dictionary.get(CODEC_KEY, ""))
-			if codec_type == CODEC_VECTOR2 and dictionary.keys().size() == 3 and dictionary.has("x") and dictionary.has("y"):
-				return {"ok": true, "value": Vector2(float(dictionary.x), float(dictionary.y))}
-			if codec_type == CODEC_COLOR and dictionary.keys().size() == 5 and dictionary.has("r") and dictionary.has("g") and dictionary.has("b") and dictionary.has("a"):
-				return {"ok": true, "value": Color(float(dictionary.r), float(dictionary.g), float(dictionary.b), float(dictionary.a))}
+			if codec_type == CODEC_FLOAT64 and dictionary.keys().size() == 2 and dictionary.get("bits") is String:
+				return _decode_float64_bits(str(dictionary.get("bits", "")))
+			if codec_type == CODEC_INT64 and dictionary.keys().size() == 2 and dictionary.get("value") is String:
+				var integer_text := str(dictionary.get("value", ""))
+				if not integer_text.is_valid_int():
+					return {"ok": false, "reason_code": "codec_int64_invalid"}
+				var integer_value := integer_text.to_int()
+				if str(integer_value) != integer_text:
+					return {"ok": false, "reason_code": "codec_int64_noncanonical"}
+				return {"ok": true, "value": integer_value}
+			if codec_type == CODEC_VECTOR2 and dictionary.keys().size() == 3 and dictionary.get("x") is String and dictionary.get("y") is String:
+				var x_result := _decode_float64_bits(str(dictionary.get("x", "")))
+				var y_result := _decode_float64_bits(str(dictionary.get("y", "")))
+				return {"ok": true, "value": Vector2(float(x_result.get("value", 0.0)), float(y_result.get("value", 0.0)))} \
+					if bool(x_result.get("ok", false)) and bool(y_result.get("ok", false)) else {"ok": false, "reason_code": "codec_vector2_invalid"}
+			if codec_type == CODEC_COLOR and dictionary.keys().size() == 5 and dictionary.get("r") is String and dictionary.get("g") is String and dictionary.get("b") is String and dictionary.get("a") is String:
+				var r_result := _decode_float64_bits(str(dictionary.get("r", "")))
+				var g_result := _decode_float64_bits(str(dictionary.get("g", "")))
+				var b_result := _decode_float64_bits(str(dictionary.get("b", "")))
+				var a_result := _decode_float64_bits(str(dictionary.get("a", "")))
+				return {"ok": true, "value": Color(float(r_result.get("value", 0.0)), float(g_result.get("value", 0.0)), float(b_result.get("value", 0.0)), float(a_result.get("value", 0.0)))} \
+					if bool(r_result.get("ok", false)) and bool(g_result.get("ok", false)) and bool(b_result.get("ok", false)) and bool(a_result.get("ok", false)) else {"ok": false, "reason_code": "codec_color_invalid"}
 			return {"ok": false, "reason_code": "codec_tag_invalid"}
 		var decoded_dictionary: Dictionary = {}
 		for key_variant in dictionary.keys():
@@ -450,6 +838,21 @@ func _decode_codec_value(value: Variant) -> Dictionary:
 			decoded_dictionary[str(key_variant)] = decoded_item.get("value")
 		return {"ok": true, "value": decoded_dictionary}
 	return {"ok": false, "reason_code": "codec_variant_type_forbidden"}
+
+
+func _float64_bits(value: float) -> String:
+	return CLOSED_SCALAR_CODEC.f64_bits_hex(value)
+
+
+func _decode_float64_bits(bits: String) -> Dictionary:
+	var decoded := CLOSED_SCALAR_CODEC.decode_f64_bits_hex(bits.to_lower())
+	return {
+		"ok": bool(decoded.get("ok", false)),
+		"reason_code": "codec_float64_valid" if bool(decoded.get("ok", false)) \
+				else "codec_float64_nonfinite" if str(decoded.get("reason_code", "")) == "f64_nonfinite_rejected" \
+				else "codec_float64_bits_invalid",
+		"value": decoded.get("value", 0.0),
+	}
 
 
 func _is_encoded_pure_data(value: Variant) -> bool:

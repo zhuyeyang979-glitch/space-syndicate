@@ -32,10 +32,22 @@ func _run() -> void:
 	_expect(bool(applied.get("applied", false)) and _same_data(checkpoint, weather.to_save_data()), "weather owner restores one exact checkpoint without consuming lifecycle time")
 	_expect((weather.to_save_data().get("events", []) as Array).size() == 1, "weather event remains pending until the first post-restore owner tick")
 
-	var detached_probe := weather.duplicate() as WeatherRuntimeController
-	var probe_receipt: Dictionary = detached_probe.apply_save_data(checkpoint) if detached_probe != null else {}
-	_expect(bool(probe_receipt.get("applied", false)) and _same_data(checkpoint, detached_probe.to_save_data()), "detached registry preflight normalizes weather state exactly without a clock")
-	detached_probe.free()
+	var before_preflight := weather.to_save_data()
+	var first_preflight := weather.preflight_save_data(checkpoint)
+	var second_preflight := weather.preflight_save_data(checkpoint)
+	_expect(bool(first_preflight.get("accepted", false)) and bool(second_preflight.get("accepted", false)), "weather owner preflights its exact checkpoint repeatedly without duplicating a live node")
+	_expect(_same_data(before_preflight, weather.to_save_data()) and clock.now_us == 0, "weather preflight mutates neither owner lifecycle state nor the bound world clock")
+	_expect(_same_data(first_preflight.get("normalized_state", {}), second_preflight.get("normalized_state", {})), "weather preflight normalization is deterministic")
+	var detached_normalized := (first_preflight.get("normalized_state", {}) as Dictionary).duplicate(true)
+	detached_normalized["sequence"] = 999
+	_expect(_same_data(before_preflight, weather.to_save_data()), "mutating normalized weather output cannot alias live owner state")
+	var catalogless_weather := WeatherRuntimeController.new()
+	root.add_child(catalogless_weather)
+	catalogless_weather.definition_catalog = null
+	var catalogless_preflight := catalogless_weather.preflight_save_data(checkpoint)
+	_expect(bool(catalogless_preflight.get("accepted", false)) and catalogless_weather.definition_catalog == null, "weather preflight reads the default definition catalog locally without writing it into the owner")
+	catalogless_weather.free()
+	_verify_strict_preflight_rejections(weather, checkpoint, clock)
 
 	clock.now_us = 200_000_000
 	var late_apply := weather.apply_save_data(checkpoint)
@@ -61,9 +73,7 @@ func _run() -> void:
 	root.add_child(coordinator)
 	await process_frame
 	var registry := coordinator.get_node_or_null("GameSessionRuntimeController/V06SaveOwnerRegistry")
-	var snapshot: Dictionary = registry.registry_snapshot() if registry != null else {}
-	_expect(registry != null and bool(snapshot.get("valid", false)), "production registry remains structurally valid")
-	_expect(int(snapshot.get("transactional_section_count", 0)) == 12 and int(snapshot.get("unsupported_section_count", 0)) == 7, "history registration advances the honest production boundary to 12 transactional and 7 unsupported sections")
+	_expect(registry != null, "production registry is present for weather owner binding inspection")
 	var weather_binding: Resource
 	if registry != null:
 		for binding in registry.bindings:
@@ -71,10 +81,36 @@ func _run() -> void:
 				weather_binding = binding
 				break
 	_expect(weather_binding != null and weather_binding.is_transactional() and str(weather_binding.owner_path) == "../../WeatherRuntimeController", "registry binds weather to the unique production owner")
-	_expect(not bool(snapshot.get("resume_ready", true)) and int(snapshot.get("required_section_count", 0)) == 19 and int(snapshot.get("unsupported_section_count", 0)) == 7, "full resume remains fail-closed while seven required sections are unsupported")
 	coordinator.queue_free()
 	await process_frame
 	_finish()
+
+
+func _verify_strict_preflight_rejections(weather: WeatherRuntimeController, checkpoint: Dictionary, clock: FakeClock) -> void:
+	var unknown_root := checkpoint.duplicate(true)
+	unknown_root["private_hand"] = []
+	_expect(_preflight_rejects_without_mutation(weather, unknown_root, clock), "weather preflight rejects unknown root fields")
+	var coercible_schema := checkpoint.duplicate(true)
+	coercible_schema["schema_version"] = "2"
+	_expect(_preflight_rejects_without_mutation(weather, coercible_schema, clock), "weather preflight rejects coercible schema strings")
+	var nonfinite_telemetry := checkpoint.duplicate(true)
+	(nonfinite_telemetry.get("telemetry") as Dictionary)["scheduled_forecast"] = INF
+	_expect(_preflight_rejects_without_mutation(weather, nonfinite_telemetry, clock), "weather preflight rejects non-finite codec data")
+	var coercible_region := checkpoint.duplicate(true)
+	((coercible_region.get("events") as Array)[0] as Dictionary)["region_indices"] = ["0"]
+	_expect(_preflight_rejects_without_mutation(weather, coercible_region, clock), "weather preflight rejects coercible event region indices")
+	var queue_mismatch := checkpoint.duplicate(true)
+	(queue_mismatch.get("queue") as Array).append(1)
+	_expect(_preflight_rejects_without_mutation(weather, queue_mismatch, clock), "weather preflight rejects queue and event phase mismatch")
+
+
+func _preflight_rejects_without_mutation(weather: WeatherRuntimeController, candidate: Dictionary, clock: FakeClock) -> bool:
+	var before := weather.to_save_data()
+	var clock_before := clock.now_us
+	var result := weather.preflight_save_data(candidate)
+	return not bool(result.get("accepted", true)) \
+		and _same_data(before, weather.to_save_data()) \
+		and clock_before == clock.now_us
 
 
 func _checkpoint() -> Dictionary:

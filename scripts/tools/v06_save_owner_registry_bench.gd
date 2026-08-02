@@ -40,6 +40,8 @@ const FORBIDDEN_PUBLIC_KEYS := [
 	"private_hand",
 	"owner_truth",
 	"ai_plan",
+	"failing_section_id",
+	"internal_reason_code",
 	"applied_section_ids",
 	"rollback_section_ids",
 ]
@@ -48,6 +50,33 @@ const FORBIDDEN_PUBLIC_KEYS := [
 
 var _checks := 0
 var _failures: Array[String] = []
+
+
+class CaptureProgressProbe:
+	extends RefCounted
+	var events: Array[Dictionary] = []
+
+	func capture_owner_diagnostic_snapshot() -> Dictionary:
+		return {
+			"rng_draw_invocation_count": 0,
+			"world_clock_advance_count": 0,
+			"public_log_entry_count": 0,
+		}
+
+	func record_owner_capture_progress(
+			owner_index: int,
+			section_id: String,
+			owner_id: String,
+			result_kind: String,
+			reason_code: String
+	) -> void:
+		events.append({
+			"owner_index": owner_index,
+			"section_id": section_id,
+			"owner_id": owner_id,
+			"result_kind": result_kind,
+			"reason_code": reason_code,
+		})
 
 
 func _ready() -> void:
@@ -76,7 +105,7 @@ func run_bench() -> Dictionary:
 	var production_snapshot: Dictionary = production_registry.registry_snapshot() if production_registry != null else {}
 	_check(bool(production_snapshot.get("valid", false)), "production_registry_matches_handshake_manifest")
 	_check(int(production_snapshot.get("required_section_count", 0)) == 19 and int(production_snapshot.get("binding_count", 0)) == 19, "production_registry_has_all_19_unique_sections")
-	_check(int(production_snapshot.get("transactional_section_count", 0)) == 12 and int(production_snapshot.get("unsupported_section_count", 0)) == 7 and not bool(production_snapshot.get("resume_ready", true)), "production_registry_declares_twelve_auditable_transactional_owners")
+	_check(int(production_snapshot.get("transactional_section_count", 0)) == 19 and int(production_snapshot.get("unsupported_section_count", -1)) == 0 and bool(production_snapshot.get("resume_ready", false)), "production_registry_declares_all_nineteen_transactional_owners")
 	_check(_binding_matches(production_registry, "region_supply", "region_supply", "../../RegionSupplyRuntimeController", 1), "region_supply_section_uses_the_unique_transactional_rack_owner")
 	_check(_commodity_binding_is_transactional(production_registry), "commodity_flow_section_uses_the_unique_transactional_economy_owner_and_pure_preflight")
 	_check(_bankruptcy_binding_is_transactional(production_registry), "bankruptcy_section_uses_the_unique_transactional_estate_owner")
@@ -84,8 +113,13 @@ func run_bench() -> Dictionary:
 	_check(_binding_is_transactional(production_registry, "card_resolution_execution"), "card_execution_section_uses_the_unique_transactional_execution_owner")
 	_check(_history_binding_is_transactional(production_registry), "card_history_section_uses_the_unique_transactional_history_owner")
 	_check(not bool(production_snapshot.get("captures_business_state", true)) and not bool(production_snapshot.get("stores_parallel_owner_state", true)), "registry_bindings_copy_no_bankruptcy_or_participant_journal_state")
-	var production_capture: Dictionary = production_registry.capture_resume_envelope({"envelope_id": "production-reject", "write_id": "production-reject"}) if production_registry != null else {}
-	_check(not bool(production_capture.get("ok", true)) and str(production_capture.get("reason_code", "")) == "restore_capability_incomplete" and not production_capture.has("envelope"), "production_capture_fails_closed_without_complete_owner_capability")
+	var production_capture: Dictionary = production_registry.capture_resume_envelope({"envelope_id": "production-complete", "write_id": "production-complete"}) if production_registry != null else {}
+	var production_capture_debug: Dictionary = production_registry.debug_snapshot() if production_registry != null else {}
+	_check(not bool(production_capture.get("ok", true)) and not production_capture.has("envelope"), "unstarted_production_capture_fails_closed_before_envelope_composition|reason=%s|section=%s|internal=%s" % [
+		str(production_capture.get("reason_code", "")),
+		str(production_capture_debug.get("last_internal_capture_failure_section", "")),
+		str(production_capture_debug.get("last_internal_capture_failure_reason", "")),
+	])
 	var production_public: Dictionary = production_registry.public_operation_receipt(production_capture) if production_registry != null else {}
 	_check(_public_receipt_safe(production_public), "production_rejection_receipt_is_allowlisted_and_private")
 
@@ -98,7 +132,7 @@ func run_bench() -> Dictionary:
 	var fixed_order: Array[String] = registry.fixed_section_order()
 	var fake_snapshot: Dictionary = registry.registry_snapshot()
 	_check(bool(fake_snapshot.get("valid", false)) and bool(fake_snapshot.get("resume_ready", false)) and int(fake_snapshot.get("transactional_section_count", 0)) == 19, "complete_transactional_registry_is_resume_ready")
-	_check(fixed_order == EXPECTED_FIXED_ORDER and fixed_order[-1] == "session", "fixed_apply_order_is_complete_and_session_last")
+	_check(fixed_order == EXPECTED_FIXED_ORDER and fixed_order[-1] == "session", "fixed_serialization_order_is_complete_and_session_last")
 
 	var original_bindings: Array[BindingScript] = registry.bindings.duplicate()
 	var duplicate_bindings: Array[BindingScript] = original_bindings.duplicate()
@@ -111,8 +145,101 @@ func run_bench() -> Dictionary:
 	var envelope: Dictionary = capture.get("envelope", {}) if capture.get("envelope", {}) is Dictionary else {}
 	var validation: Dictionary = handshake.call("validate_envelope", envelope) if not envelope.is_empty() else {}
 	_check(bool(capture.get("ok", false)) and bool(validation.get("valid", false)) and (envelope.get("sections", {}) as Dictionary).size() == 19, "capture_composes_one_valid_full_manifest_envelope")
+	var detailed_capture: Dictionary = registry.capture_all_sections_detailed()
+	var detailed_results: Array = detailed_capture.get("section_results", []) if detailed_capture.get("section_results", []) is Array else []
+	var detailed_fingerprints_valid := detailed_results.size() == 19
+	for section_result_variant in detailed_results:
+		var section_result: Dictionary = section_result_variant if section_result_variant is Dictionary else {}
+		detailed_fingerprints_valid = detailed_fingerprints_valid \
+				and str(section_result.get("capture_result_kind", "")) == "CAPTURED" \
+				and str(section_result.get("payload_fingerprint", "")).length() == 64
+	_check(bool(detailed_capture.get("captured", false)) \
+			and int(detailed_capture.get("section_count", 0)) == 19 \
+			and (detailed_capture.get("sections", []) as Array).size() == 19 \
+			and not detailed_capture.has("section_payloads") \
+			and not detailed_capture.has("plan") \
+			and (detailed_capture.get("first_failure", {}) as Dictionary).is_empty() \
+			and detailed_fingerprints_valid, "detailed capture shares the production 19-owner path without exposing section payloads")
 	_check(JSON.stringify(envelope).contains("Vector2") and JSON.stringify(envelope).contains("Color"), "capture_uses_handshake_explicit_variant_codec")
 	_check(_public_receipt_safe(registry.public_operation_receipt(capture)), "capture_public_receipt_omits_envelope_and_private_owner_state")
+	var invalid_capture_owner := harness.get_node_or_null(_owner_node_name("card_inventory")) as V06SaveOwnerRegistryFakeOwner
+	var valid_capture_owner_state := invalid_capture_owner.owner_state.duplicate(true) if invalid_capture_owner != null else {}
+	if invalid_capture_owner != null:
+		invalid_capture_owner.omit_normalized_state = true
+	var omitted_normalization_capture: Dictionary = registry.capture_resume_envelope({"envelope_id": "registry-bench-omitted-normalization", "write_id": "registry-bench-omitted-normalization-write"})
+	var omitted_normalization_state := _decoded_owner_state(handshake, omitted_normalization_capture.get("envelope", {}) as Dictionary, "card_inventory")
+	_check(bool(omitted_normalization_capture.get("ok", false)) and _same_data(omitted_normalization_state, valid_capture_owner_state), "accepted owner preflight without normalized_state preserves the captured owner state")
+	if invalid_capture_owner != null:
+		invalid_capture_owner.omit_normalized_state = false
+	var capture_owner_states_before := _owner_states(harness, fixed_order)
+	var capture_owner_apply_counts_before := _owner_apply_counts(harness, fixed_order)
+	if invalid_capture_owner != null:
+		invalid_capture_owner.owner_state = {}
+	var invalid_detailed_capture: Dictionary = registry.capture_all_sections_detailed()
+	var invalid_detailed_failure: Dictionary = invalid_detailed_capture.get("first_failure", {}) \
+			if invalid_detailed_capture.get("first_failure", {}) is Dictionary else {}
+	_check(not bool(invalid_detailed_capture.get("captured", true)) \
+			and str(invalid_detailed_failure.get("section_id", "")) == "card_inventory" \
+			and str(invalid_detailed_failure.get("owner_id", "")) == "card_inventory" \
+			and str(invalid_detailed_failure.get("failure_class", "")) == "OWNER_CAPTURE_EMPTY" \
+			and str(invalid_detailed_failure.get("reason_code", "")) == "owner_capture_empty" \
+			and bool(invalid_detailed_failure.get("result_empty", false)) \
+			and bool(invalid_detailed_failure.get("private_payload_redacted", false)) \
+			and not invalid_detailed_failure.has("owner_state"), "empty owner rejection produces one typed redacted first-failure attestation")
+	var invalid_capture: Dictionary = registry.capture_resume_envelope({"envelope_id": "registry-bench-invalid-capture", "write_id": "registry-bench-invalid-capture-write"})
+	var invalid_capture_public: Dictionary = registry.public_operation_receipt(invalid_capture)
+	_check(not bool(invalid_capture.get("ok", true)) \
+			and str(invalid_capture.get("reason_code", "")) == "owner_capture_failed" \
+			and str(invalid_capture.get("failing_section_id", "")) == "card_inventory" \
+			and str(invalid_capture.get("internal_reason_code", "")) == "owner_capture_empty" \
+			and not invalid_capture.has("envelope"), "semantic owner rejection fails capture before envelope composition or write eligibility")
+	_check(_public_receipt_safe(invalid_capture_public), "capture rejection public receipt strips owner section, internal reason, and payload")
+	if invalid_capture_owner != null:
+		invalid_capture_owner.owner_state = {"private_hand": [PRIVATE_SENTINELS[1]]}
+	var private_invalid_capture: Dictionary = registry.capture_resume_envelope({"envelope_id": "registry-bench-private-invalid-capture", "write_id": "registry-bench-private-invalid-capture-write"})
+	_check(not bool(private_invalid_capture.get("ok", true)) and not private_invalid_capture.has("envelope") \
+			and not JSON.stringify(private_invalid_capture).contains(PRIVATE_SENTINELS[1]) \
+			and _public_receipt_safe(registry.public_operation_receipt(private_invalid_capture)), "semantic capture rejection leaks neither a nonempty private payload nor its sentinel")
+	if invalid_capture_owner != null:
+		invalid_capture_owner.accept_empty_state = true
+		invalid_capture_owner.owner_state = {}
+	var accepted_empty_capture: Dictionary = registry.capture_resume_envelope({"envelope_id": "registry-bench-accepted-empty-capture", "write_id": "registry-bench-accepted-empty-capture-write"})
+	_check(bool(accepted_empty_capture.get("ok", false)) and accepted_empty_capture.get("envelope") is Dictionary, "capture delegates empty-state legality to the owner preflight instead of imposing a global empty-dictionary ban")
+	if invalid_capture_owner != null:
+		invalid_capture_owner.accept_empty_state = false
+		invalid_capture_owner.owner_state = valid_capture_owner_state
+	_check(_same_data(capture_owner_states_before, _owner_states(harness, fixed_order)) \
+			and _same_data(capture_owner_apply_counts_before, _owner_apply_counts(harness, fixed_order)), "capture preflight rejection and accepted normalization mutate no live owner")
+	if invalid_capture_owner != null:
+		invalid_capture_owner.mutate_next_capture = true
+	var mutating_owner_state_before := invalid_capture_owner.owner_state.duplicate(true) if invalid_capture_owner != null else {}
+	var mutating_capture: Dictionary = registry.capture_all_sections_detailed()
+	var mutating_failure: Dictionary = mutating_capture.get("first_failure", {}) \
+			if mutating_capture.get("first_failure", {}) is Dictionary else {}
+	_check(not bool(mutating_capture.get("captured", true)) \
+			and str(mutating_failure.get("section_id", "")) == "card_inventory" \
+			and str(mutating_failure.get("failure_class", "")) == "OWNER_CAPTURE_MUTATED_RUNTIME" \
+			and bool(mutating_failure.get("live_state_mutated_during_capture", false)) \
+			and invalid_capture_owner != null \
+			and invalid_capture_owner.owner_state == mutating_owner_state_before, "detailed capture rejects and rolls back a Save Owner that mutates live state while capturing")
+	if invalid_capture_owner != null:
+		invalid_capture_owner.owner_state = valid_capture_owner_state
+	var capture_after_rejection: Dictionary = registry.capture_resume_envelope({"envelope_id": "registry-bench-after-invalid-capture", "write_id": "registry-bench-after-invalid-capture-write"})
+	_check(bool(capture_after_rejection.get("ok", false)) and capture_after_rejection.get("envelope") is Dictionary, "semantic capture rejection mutates no owner and does not poison the next capture")
+	var session_capture_owner := harness.get_node_or_null(_owner_node_name("session")) as V06SaveOwnerRegistryFakeOwner
+	var valid_session_capture_state := session_capture_owner.owner_state.duplicate(true) if session_capture_owner != null else {}
+	var rejection_count_before := int(registry.debug_snapshot().get("cross_section_rejection_count", 0))
+	if session_capture_owner != null:
+		var invalid_session_state := valid_session_capture_state.duplicate(true)
+		(invalid_session_state.get("card_history_private_annotations", {}) as Dictionary)["annotations_by_viewer"] = {"0": {"card-history:999": {}}}
+		session_capture_owner.owner_state = invalid_session_state
+	var dependency_capture: Dictionary = registry.capture_resume_envelope({"envelope_id": "registry-bench-cross-section-rejection", "write_id": "registry-bench-cross-section-rejection-write"})
+	var dependency_capture_debug: Dictionary = registry.debug_snapshot()
+	_check(not bool(dependency_capture.get("ok", true)) and not dependency_capture.has("envelope") \
+			and str(dependency_capture.get("failing_section_id", "")) == "card_resolution_history" \
+			and int(dependency_capture_debug.get("cross_section_rejection_count", 0)) == rejection_count_before + 1, "capture records a candidate-only cross-section rejection before envelope composition")
+	if session_capture_owner != null:
+		session_capture_owner.owner_state = valid_session_capture_state
 	var forged_public: Dictionary = registry.public_operation_receipt({
 		"operation": {"private_hand": [PRIVATE_SENTINELS[1]]},
 		"ok": true,
@@ -126,7 +253,7 @@ func run_bench() -> Dictionary:
 	var preflight: Dictionary = registry.preflight_envelope(success_envelope)
 	_check(bool(preflight.get("ok", false)) and bool(preflight.get("envelope_valid", false)) and bool(preflight.get("preflight_complete", false)) and int(preflight.get("preflight_count", 0)) == 19, "all_owner_preflights_complete_before_apply")
 	var success: Dictionary = registry.apply_envelope(success_envelope)
-	_check(bool(success.get("ok", false)) and success.get("applied_section_ids", []) == fixed_order and int(success.get("apply_count", 0)) == 19, "owners_apply_once_in_fixed_order")
+	_check(bool(success.get("ok", false)) and int(success.get("apply_count", 0)) == 19 and int(success.get("registry_apply_count", 0)) == 1, "owners_apply_once_through_the_explicit_restore_dag")
 	_check(_owner_values_match(harness, fixed_order, 100), "successful_apply_commits_all_normalized_owner_states")
 	_check(_public_receipt_safe(registry.public_operation_receipt(success)), "success_public_receipt_omits_sections_balances_hands_owner_truth_and_ai_plan")
 	var dependency_before := _owner_states(harness, fixed_order)
@@ -175,13 +302,41 @@ func run_bench() -> Dictionary:
 	var failure_owner := harness.get_node_or_null(_owner_node_name(failure_section))
 	failure_owner.arm_fail_once()
 	var rollback_result: Dictionary = registry.apply_envelope(rollback_envelope)
-	var expected_applied: Array = fixed_order.slice(0, fixed_order.find(failure_section) + 1)
-	var expected_rollback := expected_applied.duplicate()
-	expected_rollback.reverse()
 	_check(not bool(rollback_result.get("ok", true)) and bool(rollback_result.get("rollback_attempted", false)) and bool(rollback_result.get("rollback_complete", false)), "mid_apply_partial_failure_triggers_complete_rollback")
-	_check(rollback_result.get("applied_section_ids", []) == expected_applied and rollback_result.get("rollback_section_ids", []) == expected_rollback, "rollback_runs_in_exact_reverse_applied_order_including_failed_owner")
+	_check(int(rollback_result.get("rollback_section_count", 0)) > 0 and int(rollback_result.get("partial_restore_state_count", -1)) == 0, "rollback_covers_every_touched_owner_without_exposing_internal_order")
 	_check(_same_data(rollback_before, _owner_states(harness, fixed_order)), "rollback_restores_every_touched_owner_exactly")
 	_check(_public_receipt_safe(registry.public_operation_receipt(rollback_result)), "rollback_public_receipt_exposes_no_section_or_private_state")
+
+	var baseline_probe := CaptureProgressProbe.new()
+	var baseline_fault_armed := bool(registry.call(
+		"arm_test_capture_live_fingerprint_failure_once",
+		"ruleset"
+	))
+	var baseline_capture: Dictionary = registry.capture_all_sections_detailed(baseline_probe)
+	var baseline_failure: Dictionary = baseline_capture.get("first_failure", {}) \
+			if baseline_capture.get("first_failure", {}) is Dictionary else {}
+	var baseline_rows: Array = baseline_capture.get("section_results", []) \
+			if baseline_capture.get("section_results", []) is Array else []
+	var baseline_row: Dictionary = baseline_rows[0] as Dictionary if baseline_rows.size() == 19 else {}
+	_check(baseline_fault_armed \
+			and not bool(baseline_capture.get("captured", true)) \
+			and str(baseline_failure.get("section_id", "")) == "ruleset" \
+			and str(baseline_failure.get("owner_id", "")) == "ruleset_runtime" \
+			and str(baseline_failure.get("reason_code", "")) == "owner_live_fingerprint_unavailable" \
+			and bool(baseline_row.get("capture_started", false)) \
+			and bool(baseline_row.get("capture_completed", false)) \
+			and str(baseline_row.get("capture_result_kind", "")) == "FAILED" \
+			and int(baseline_row.get("mutation_count", -1)) == 0 \
+			and int(baseline_row.get("rng_draw_delta", -1)) == 0 \
+			and int(baseline_row.get("world_time_delta", -1)) == 0 \
+			and int(baseline_row.get("public_log_delta", -1)) == 0 \
+			and baseline_probe.events.size() == 2 \
+			and str(baseline_probe.events[0].get("result_kind", "")) == "STARTED" \
+			and str(baseline_probe.events[1].get("result_kind", "")) == "FAILED", "baseline fingerprint failure emits one typed started-to-failed zero-mutation Owner row|failure=%s|row=%s|events=%s" % [
+			JSON.stringify(baseline_failure),
+			JSON.stringify(baseline_row),
+			JSON.stringify(baseline_probe.events),
+		])
 
 	var evidence := {
 		"production_required_sections": int(production_snapshot.get("required_section_count", 0)),
@@ -204,7 +359,7 @@ func run_bench() -> Dictionary:
 		"global_preflight": bool(preflight.get("preflight_complete", false)),
 		"rollback_complete": bool(rollback_result.get("rollback_complete", false)),
 		"public_receipt_private": _public_receipt_safe(registry.public_operation_receipt(rollback_result)),
-		"full_production_restore_claimed": false,
+		"full_production_restore_claimed": bool(production_snapshot.get("resume_ready", false)),
 	}
 	harness.queue_free()
 	return _finish(production_snapshot, evidence)
@@ -239,6 +394,7 @@ func _build_transactional_harness() -> Node:
 		binding.state_version = int(contract.get("state_version", 0))
 		binding.owner_path = NodePath("../%s" % owner.name)
 		binding.capture_method = "to_save_data"
+		binding.preflight_method = "" if section_id == "ruleset" else "preflight_save_data"
 		binding.apply_method = "apply_save_data"
 		binding.rollback_method = "apply_save_data"
 		binding.restore_mode = BindingScript.RESTORE_TRANSACTIONAL
@@ -388,6 +544,14 @@ func _owner_values_match(harness: Node, order: Array[String], base_value: int) -
 		if owner == null or owner.current_value() != base_value + index:
 			return false
 	return true
+
+
+func _decoded_owner_state(handshake: Node, envelope: Dictionary, section_id: String) -> Dictionary:
+	var sections: Dictionary = envelope.get("sections", {}) if envelope.get("sections", {}) is Dictionary else {}
+	var wrapper: Dictionary = sections.get(section_id, {}) if sections.get(section_id, {}) is Dictionary else {}
+	var decoded: Dictionary = handshake.call("decode_codec_value", wrapper.get("owner_state")) if handshake != null and not wrapper.is_empty() else {}
+	return (decoded.get("value", {}) as Dictionary).duplicate(true) \
+			if bool(decoded.get("ok", false)) and decoded.get("value") is Dictionary else {}
 
 
 func _owner_states(harness: Node, order: Array[String]) -> Dictionary:

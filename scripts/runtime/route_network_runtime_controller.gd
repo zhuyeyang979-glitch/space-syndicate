@@ -2,14 +2,36 @@
 extends Node
 class_name RouteNetworkRuntimeController
 
+const StrictState := preload("res://scripts/runtime/save_owner_state_v2_contract.gd")
+
 const RULESET_ID := "v0.6"
-const STATE_VERSION := 1
+const STATE_VERSION := 2
+const ROUTE_SEMANTIC_VERSION := 1
 const BASIS_POINTS := 10000
 const DIRECT_CAPACITY_UNITS_PER_MINUTE := 1000000
 const MAX_ROUTES_PER_PAIR := 12
 const MAX_PATH_REGION_COUNT := 9
 const TRANSPORT_MODES := ["land", "sea", "air"]
 const WEATHER_ROUTE_FLOOR := 0.40
+const SAVE_KEYS := [
+	"schema_version",
+	"ruleset_id",
+	"route_semantic_version",
+	"saved_topology_revision",
+	"rebuilt_route_fingerprint",
+]
+const CHECKPOINT_KEYS := [
+	"checkpoint_schema_version",
+	"save_state",
+	"cached_candidates_by_pair",
+	"cached_all_candidates",
+	"cached_legacy_index_by_region_id",
+	"cached_region_weather_context_by_id",
+	"cached_facility_weather_context_by_id",
+	"refresh_count",
+	"rebuild_count",
+	"query_count",
+]
 
 var _configured := false
 var _world_bridge: Node
@@ -17,6 +39,7 @@ var _weather_runtime_controller: Node
 var _weather_telemetry_runtime_service: Node
 var _transport_throughput_by_rank: Dictionary = {}
 var _transport_speed_by_rank: Dictionary = {}
+var _facility_hp_by_rank: Dictionary = {}
 var _cached_topology_revision := ""
 var _cached_candidates_by_pair: Dictionary = {}
 var _cached_all_candidates: Array = []
@@ -29,7 +52,14 @@ var _query_count := 0
 
 
 func set_world_bridge(bridge: Node) -> void:
+	var callback := Callable(self, "_on_topology_changed")
+	if _world_bridge != null and _world_bridge.has_signal("topology_changed") \
+			and _world_bridge.is_connected("topology_changed", callback):
+		_world_bridge.disconnect("topology_changed", callback)
 	_world_bridge = bridge
+	if _world_bridge != null and _world_bridge.has_signal("topology_changed") \
+			and not _world_bridge.is_connected("topology_changed", callback):
+		_world_bridge.connect("topology_changed", callback)
 
 
 func set_weather_runtime_controller(controller: Node) -> void:
@@ -46,6 +76,7 @@ func configure(profile_snapshot: Dictionary) -> Dictionary:
 	var capabilities := _dictionary(profile_snapshot.get("capabilities", {}))
 	_transport_throughput_by_rank = _rank_table(infrastructure.get("transport_throughput_by_rank", {}), false)
 	_transport_speed_by_rank = _rank_table(infrastructure.get("transport_speed_multiplier_by_rank", {}), true)
+	_facility_hp_by_rank = _rank_table(infrastructure.get("facility_hp_contribution_by_rank", {}), false)
 	_configured = str(identity.get("ruleset_id", "")) == RULESET_ID \
 		and bool(capabilities.get("continuous_commodity_flow_enabled", false)) \
 		and not bool(capabilities.get("legacy_project_slots_enabled", true)) \
@@ -186,31 +217,154 @@ func route_load_for_legacy_region(legacy_index: int) -> int:
 
 func to_save_data() -> Dictionary:
 	return {
-		"state_version": STATE_VERSION,
+		"schema_version": STATE_VERSION,
 		"ruleset_id": RULESET_ID,
-		"topology_revision": _cached_topology_revision,
-		"derived_cache_only": true,
+		"route_semantic_version": ROUTE_SEMANTIC_VERSION,
+		"saved_topology_revision": _cached_topology_revision,
+		"rebuilt_route_fingerprint": _route_manifest_fingerprint(_cached_all_candidates),
+	}
+
+
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	var validation := _validate_save_data(data)
+	if not bool(validation.get("valid", false)):
+		var reason_code := str(validation.get("reason_code", "route_save_invalid"))
+		return {"accepted": false, "reason": reason_code, "reason_code": reason_code}
+	return {
+		"accepted": true,
+		"reason": "",
+		"reason_code": "route_save_valid",
+		"normalized_state": data.duplicate(true),
+	}
+
+
+## Candidate-only registry preflight. It reconstructs topology and routes without
+## consulting the live world bridge or any owner that may already be applied.
+func preflight_restore_dependencies(section_state: Dictionary, all_normalized_states: Dictionary) -> Dictionary:
+	var section_preflight := preflight_save_data(section_state)
+	if not bool(section_preflight.get("accepted", false)):
+		return _restore_dependency_rejection("route_dependency_section_invalid")
+	if not (all_normalized_states.get("region_infrastructure") is Dictionary) \
+			or not (all_normalized_states.get("session") is Dictionary) \
+			or not (all_normalized_states.get("weather") is Dictionary):
+		return _restore_dependency_rejection("route_dependency_section_missing")
+	var infrastructure_state := all_normalized_states.get("region_infrastructure") as Dictionary
+	var session_state := all_normalized_states.get("session") as Dictionary
+	var weather_state := all_normalized_states.get("weather") as Dictionary
+	var topology_result := _candidate_restore_topology(infrastructure_state, session_state)
+	if not bool(topology_result.get("valid", false)):
+		return _restore_dependency_rejection(str(topology_result.get("reason_code", "route_dependency_topology_invalid")))
+	var topology := topology_result.get("topology", {}) as Dictionary
+	var weather_result := _validate_candidate_weather_references(
+		weather_state,
+		topology_result.get("valid_legacy_indices", {}) as Dictionary,
+		int(topology_result.get("district_count", 0))
+	)
+	if not bool(weather_result.get("valid", false)):
+		return _restore_dependency_rejection(str(weather_result.get("reason_code", "route_dependency_weather_invalid")))
+	var saved_topology_revision := str(section_state.get("saved_topology_revision", ""))
+	if not saved_topology_revision.is_empty():
+		if str(topology.get("topology_revision", "")) != saved_topology_revision:
+			return _restore_dependency_rejection("route_dependency_topology_revision_mismatch")
+		if _transport_throughput_by_rank.size() != 4 or _transport_speed_by_rank.size() != 4:
+			return _restore_dependency_rejection("route_dependency_rules_unavailable")
+		var candidate_manifest := _route_manifest_for_topology(topology)
+		if _route_manifest_fingerprint(candidate_manifest) != str(section_state.get("rebuilt_route_fingerprint", "")):
+			return _restore_dependency_rejection("route_dependency_manifest_mismatch")
+	return {
+		"accepted": true,
+		"reason": "",
+		"reason_code": "route_restore_dependencies_valid",
+		"topology_revision": str(topology.get("topology_revision", "")),
+		"weather_reference_count": int(weather_result.get("reference_count", 0)),
 	}
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
-	if not _is_pure_data(data):
-		return {"applied": false, "reason": "save_not_pure_data"}
-	if int(data.get("state_version", -1)) != STATE_VERSION or str(data.get("ruleset_id", "")) != RULESET_ID:
-		return {"applied": false, "reason": "save_header_invalid"}
-	_cached_topology_revision = ""
-	_cached_candidates_by_pair.clear()
-	_cached_all_candidates.clear()
-	_cached_legacy_index_by_region_id.clear()
-	_cached_region_weather_context_by_id.clear()
-	_cached_facility_weather_context_by_id.clear()
-	var refresh := refresh_routes(true)
+	var preflight := preflight_save_data(data)
+	if not bool(preflight.get("accepted", false)):
+		var rejection := str(preflight.get("reason_code", "route_save_invalid"))
+		return {"applied": false, "reason": rejection, "reason_code": rejection}
+	var normalized := (preflight.get("normalized_state", {}) as Dictionary).duplicate(true)
+	var checkpoint := capture_runtime_checkpoint()
+	var saved_topology_revision := str(normalized.get("saved_topology_revision", ""))
+	if saved_topology_revision.is_empty():
+		_cached_topology_revision = ""
+		_cached_candidates_by_pair.clear()
+		_cached_all_candidates.clear()
+		_cached_legacy_index_by_region_id.clear()
+		_cached_region_weather_context_by_id.clear()
+		_cached_facility_weather_context_by_id.clear()
+	else:
+		var topology := _topology_snapshot()
+		if topology.is_empty():
+			return {"applied": false, "reason": "route_topology_unavailable", "reason_code": "route_topology_unavailable"}
+		if str(topology.get("topology_revision", "")) != saved_topology_revision:
+			return {"applied": false, "reason": "route_topology_revision_mismatch", "reason_code": "route_topology_revision_mismatch"}
+		_rebuild_routes(topology)
+		if _route_manifest_fingerprint(_cached_all_candidates) != str(normalized.get("rebuilt_route_fingerprint", "")):
+			restore_runtime_checkpoint(checkpoint)
+			return {"applied": false, "reason": "route_rebuild_parity_mismatch", "reason_code": "route_rebuild_parity_mismatch"}
 	return {
-		"applied": bool(refresh.get("refreshed", false)),
-		"reason": str(refresh.get("reason", "")),
-		"saved_topology_revision": str(data.get("topology_revision", "")),
-		"current_topology_revision": _cached_topology_revision,
+		"applied": true,
+		"reason": "route_state_rebuilt",
+		"reason_code": "route_state_rebuilt",
+		"route_count": _cached_all_candidates.size(),
 	}
+
+
+func rollback_save_data(checkpoint: Dictionary) -> Dictionary:
+	return apply_save_data(checkpoint)
+
+
+func capture_runtime_checkpoint() -> Dictionary:
+	return {
+		"checkpoint_schema_version": STATE_VERSION,
+		"save_state": to_save_data(),
+		"cached_candidates_by_pair": _cached_candidates_by_pair.duplicate(true),
+		"cached_all_candidates": _cached_all_candidates.duplicate(true),
+		"cached_legacy_index_by_region_id": _cached_legacy_index_by_region_id.duplicate(true),
+		"cached_region_weather_context_by_id": _cached_region_weather_context_by_id.duplicate(true),
+		"cached_facility_weather_context_by_id": _cached_facility_weather_context_by_id.duplicate(true),
+		"refresh_count": _refresh_count,
+		"rebuild_count": _rebuild_count,
+		"query_count": _query_count,
+	}
+
+
+func _on_topology_changed(_receipt: Dictionary = {}) -> void:
+	if _configured:
+		refresh_routes(true)
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if not StrictState.is_codec_data(checkpoint) or StrictState.contains_rng_continuation(checkpoint) \
+			or not StrictState.has_exact_keys(checkpoint, CHECKPOINT_KEYS) \
+			or not (checkpoint.get("checkpoint_schema_version") is int) \
+			or int(checkpoint.get("checkpoint_schema_version")) != STATE_VERSION \
+			or not (checkpoint.get("save_state") is Dictionary):
+		return {"restored": false, "reason_code": "route_checkpoint_invalid"}
+	var save_state := checkpoint.get("save_state") as Dictionary
+	if not bool(preflight_save_data(save_state).get("accepted", false)) \
+			or not (checkpoint.get("cached_candidates_by_pair") is Dictionary) \
+			or not (checkpoint.get("cached_all_candidates") is Array) \
+			or not (checkpoint.get("cached_legacy_index_by_region_id") is Dictionary) \
+			or not (checkpoint.get("cached_region_weather_context_by_id") is Dictionary) \
+			or not (checkpoint.get("cached_facility_weather_context_by_id") is Dictionary):
+		return {"restored": false, "reason_code": "route_checkpoint_invalid"}
+	var all_candidates := checkpoint.get("cached_all_candidates") as Array
+	if _route_manifest_fingerprint(all_candidates) != str(save_state.get("rebuilt_route_fingerprint", "")):
+		return {"restored": false, "reason_code": "route_checkpoint_manifest_mismatch"}
+	_cached_topology_revision = str(save_state.get("saved_topology_revision", ""))
+	_cached_candidates_by_pair = (checkpoint.get("cached_candidates_by_pair") as Dictionary).duplicate(true)
+	_cached_all_candidates = all_candidates.duplicate(true)
+	_cached_legacy_index_by_region_id = (checkpoint.get("cached_legacy_index_by_region_id") as Dictionary).duplicate(true)
+	_cached_region_weather_context_by_id = (checkpoint.get("cached_region_weather_context_by_id") as Dictionary).duplicate(true)
+	_cached_facility_weather_context_by_id = (checkpoint.get("cached_facility_weather_context_by_id") as Dictionary).duplicate(true)
+	_refresh_count = int(checkpoint.get("refresh_count", 0))
+	_rebuild_count = int(checkpoint.get("rebuild_count", 0))
+	_query_count = int(checkpoint.get("query_count", 0))
+	return {"restored": true, "reason_code": "route_checkpoint_restored"}
 
 
 func debug_snapshot(_viewer_index := -1) -> Dictionary:
@@ -220,8 +374,9 @@ func debug_snapshot(_viewer_index := -1) -> Dictionary:
 		"controller_authoritative": _configured,
 		"runtime_owner": "RouteNetworkRuntimeController",
 		"ruleset_id": RULESET_ID,
-		"state_version": STATE_VERSION,
+		"schema_version": STATE_VERSION,
 		"topology_revision": _cached_topology_revision,
+		"route_semantic_version": ROUTE_SEMANTIC_VERSION,
 		"route_count": _cached_all_candidates.size(),
 		"pair_count": _cached_candidates_by_pair.size(),
 		"refresh_count": _refresh_count,
@@ -274,6 +429,30 @@ func _rebuild_routes(topology: Dictionary) -> void:
 	)
 	_cached_topology_revision = str(topology.get("topology_revision", ""))
 	_rebuild_count += 1
+
+
+func _route_manifest_for_topology(topology: Dictionary) -> Array:
+	var all_candidates: Array = []
+	var regions := _active_regions(topology)
+	var graph := _mode_graph(topology, regions)
+	var region_ids: Array = regions.keys()
+	region_ids.sort()
+	for source_variant in region_ids:
+		var source_region_id := str(source_variant)
+		for market_variant in region_ids:
+			var candidates := _candidates_for_pair(
+				source_region_id,
+				str(market_variant),
+				topology,
+				regions,
+				graph
+			)
+			for candidate_variant in candidates:
+				all_candidates.append((candidate_variant as Dictionary).duplicate(true))
+	all_candidates.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		return str(left.get("route_id", "")) < str(right.get("route_id", ""))
+	)
+	return all_candidates
 
 
 func _project_weather_candidate(candidate: Dictionary) -> Dictionary:
@@ -334,17 +513,17 @@ func _weather_projection_for_candidate(candidate: Dictionary) -> Dictionary:
 			var route_effect: Dictionary = effect.get("route", {}) if effect.get("route", {}) is Dictionary else {}
 			var generic_multiplier := float(route_effect.get("generic_multiplier", 1.0))
 			var domain_multiplier := float(route_effect.get("%s_multiplier" % mode, 1.0)) if ["land", "ocean", "air"].has(mode) else 1.0
-			var multiplier := maxf(0.0, generic_multiplier * domain_multiplier)
+			var effect_multiplier := maxf(0.0, generic_multiplier * domain_multiplier)
 			var event_id := int(effect.get("event_id", 0))
 			var definition_id := str(effect.get("definition_id", "weather"))
 			var event_key := "event:%d" % event_id if event_id > 0 else "definition:%s" % definition_id
 			var current: Dictionary = event_projection_by_key.get(event_key, {}) if event_projection_by_key.get(event_key, {}) is Dictionary else {}
-			if current.is_empty() or _weather_multiplier_is_stronger(multiplier, float(current.get("multiplier", 1.0))):
+			if current.is_empty() or _weather_multiplier_is_stronger(effect_multiplier, float(current.get("multiplier", 1.0))):
 				event_projection_by_key[event_key] = {
 					"event_id": event_id,
 					"definition_id": definition_id,
 					"mode": mode,
-					"multiplier": multiplier,
+					"multiplier": effect_multiplier,
 				}
 	var multiplier := 1.0
 	var explanation_parts: Array[String] = []
@@ -754,21 +933,197 @@ func _rank_table(value: Variant, allow_float: bool) -> Dictionary:
 	return result
 
 
+func _candidate_restore_topology(infrastructure_state: Dictionary, session_state: Dictionary) -> Dictionary:
+	if not (infrastructure_state.get("regions") is Array) \
+			or not (infrastructure_state.get("facilities") is Array) \
+			or not (session_state.get("world_session_state") is Dictionary):
+		return {"valid": false, "reason_code": "route_dependency_topology_shape_invalid"}
+	var world_state := session_state.get("world_session_state") as Dictionary
+	if not (world_state.get("districts") is Array):
+		return {"valid": false, "reason_code": "route_dependency_session_world_invalid"}
+	var districts := (world_state.get("districts") as Array).duplicate(true)
+	var legacy_world_by_index: Dictionary = {}
+	for district_index in range(districts.size()):
+		var district_variant: Variant = districts[district_index]
+		if not (district_variant is Dictionary):
+			return {"valid": false, "reason_code": "route_dependency_session_district_invalid"}
+		var district := district_variant as Dictionary
+		var city: Dictionary = district.get("city", {}) if district.get("city", {}) is Dictionary else {}
+		legacy_world_by_index[str(district_index)] = {
+			"region_id": str(district.get("region_id", "")),
+			"terrain_id": str(district.get("terrain_id", district.get("terrain", "land"))),
+			"legacy_city_active": not city.is_empty() and not bool(city.get("destroyed", false)),
+		}
+
+	var raw_regions := (infrastructure_state.get("regions") as Array).duplicate(true)
+	var facilities := (infrastructure_state.get("facilities") as Array).duplicate(true)
+	var region_ids: Dictionary = {}
+	var valid_legacy_indices: Dictionary = {}
+	for region_variant in raw_regions:
+		if not (region_variant is Dictionary):
+			return {"valid": false, "reason_code": "route_dependency_region_invalid"}
+		var region := region_variant as Dictionary
+		var region_id := str(region.get("region_id", ""))
+		var legacy_index := int(region.get("legacy_index", -1))
+		if region_id.is_empty() or region_ids.has(region_id) \
+				or not (region.get("facility_slot_ids") is Array):
+			return {"valid": false, "reason_code": "route_dependency_region_invalid"}
+		region_ids[region_id] = true
+		if legacy_index >= 0:
+			var legacy_key := str(legacy_index)
+			if valid_legacy_indices.has(legacy_key) or not legacy_world_by_index.has(legacy_key):
+				return {"valid": false, "reason_code": "route_dependency_region_legacy_index_invalid"}
+			var district_region_id := str((legacy_world_by_index.get(legacy_key) as Dictionary).get("region_id", ""))
+			if not district_region_id.is_empty() and district_region_id != region_id:
+				return {"valid": false, "reason_code": "route_dependency_region_district_mismatch"}
+			valid_legacy_indices[legacy_key] = region_id
+
+	var facility_by_slot: Dictionary = {}
+	for facility_variant in facilities:
+		if not (facility_variant is Dictionary):
+			return {"valid": false, "reason_code": "route_dependency_facility_invalid"}
+		var facility := facility_variant as Dictionary
+		var facility_id := str(facility.get("facility_id", ""))
+		var slot_id := str(facility.get("slot_id", ""))
+		var region_id := str(facility.get("region_id", ""))
+		if facility_id.is_empty() or slot_id.is_empty() or not region_ids.has(region_id) \
+				or facility_by_slot.has(slot_id) or not bool(facility.get("active", false)):
+			return {"valid": false, "reason_code": "route_dependency_facility_invalid"}
+		facility_by_slot[slot_id] = facility.duplicate(true)
+	facilities.sort_custom(func(left: Variant, right: Variant) -> bool:
+		return str((left as Dictionary).get("facility_id", "")) < str((right as Dictionary).get("facility_id", ""))
+	)
+
+	var prepared_regions: Array = []
+	for region_variant in raw_regions:
+		var region := (region_variant as Dictionary).duplicate(true)
+		var active_facilities: Array = []
+		var derived_max_hp := 0
+		for slot_id_variant in region.get("facility_slot_ids") as Array:
+			var slot_id := str(slot_id_variant)
+			if not facility_by_slot.has(slot_id):
+				continue
+			var facility := facility_by_slot.get(slot_id) as Dictionary
+			active_facilities.append(facility.duplicate(true))
+			if _facility_hp_by_rank.size() != 4:
+				return {"valid": false, "reason_code": "route_dependency_rules_unavailable"}
+			derived_max_hp += int(_facility_hp_by_rank.get(clampi(int(facility.get("rank", 1)), 1, 4), 0))
+		var damage_taken := clampi(int(region.get("damage_taken", 0)), 0, derived_max_hp)
+		var current_hp := maxi(0, derived_max_hp - damage_taken)
+		region["facilities"] = active_facilities
+		region["derived_max_hp"] = derived_max_hp
+		region["derived_current_hp"] = current_hp
+		region["integrity_basis_points"] = 10000 if derived_max_hp <= 0 else int(round(float(current_hp) * 10000.0 / float(derived_max_hp)))
+		region["facility_count"] = active_facilities.size()
+		var legacy_key := str(int(region.get("legacy_index", -1)))
+		var legacy: Dictionary = legacy_world_by_index.get(legacy_key, {}) if legacy_world_by_index.get(legacy_key, {}) is Dictionary else {}
+		if str(region.get("terrain_id", "unknown")) == "unknown" and not legacy.is_empty():
+			region["terrain_id"] = str(legacy.get("terrain_id", "land"))
+		region["legacy_city_active"] = bool(legacy.get("legacy_city_active", false))
+		prepared_regions.append(region)
+	prepared_regions.sort_custom(func(left: Variant, right: Variant) -> bool:
+		return str((left as Dictionary).get("region_id", "")) < str((right as Dictionary).get("region_id", ""))
+	)
+	var topology_basis := {"regions": prepared_regions, "facilities": facilities}
+	return {
+		"valid": true,
+		"reason_code": "route_dependency_topology_valid",
+		"district_count": districts.size(),
+		"valid_legacy_indices": valid_legacy_indices,
+		"topology": {
+			"ruleset_id": RULESET_ID,
+			"regions": prepared_regions,
+			"facilities": facilities,
+			"topology_revision": JSON.stringify(topology_basis).sha256_text(),
+		},
+	}
+
+
+func _validate_candidate_weather_references(
+	weather_state: Dictionary,
+	valid_legacy_indices: Dictionary,
+	district_count: int
+) -> Dictionary:
+	if not (weather_state.get("events") is Array) \
+			or not (weather_state.get("queue") is Array) \
+			or not (weather_state.get("history") is Array) \
+			or not (weather_state.get("region_history") is Dictionary):
+		return {"valid": false, "reason_code": "route_dependency_weather_shape_invalid"}
+	var referenced_indices: Dictionary = {}
+	for collection_key in ["events", "queue", "history"]:
+		for event_variant in weather_state.get(collection_key) as Array:
+			if not (event_variant is Dictionary):
+				return {"valid": false, "reason_code": "route_dependency_weather_record_invalid"}
+			var event := event_variant as Dictionary
+			for field in ["region_indices", "districts"]:
+				if not event.has(field):
+					continue
+				if not (event.get(field) is Array):
+					return {"valid": false, "reason_code": "route_dependency_weather_reference_invalid"}
+				for index_variant in event.get(field) as Array:
+					if not (index_variant is int) \
+							or not _candidate_legacy_index_valid(int(index_variant), valid_legacy_indices, district_count):
+						return {"valid": false, "reason_code": "route_dependency_weather_reference_invalid"}
+					referenced_indices[str(int(index_variant))] = true
+	for index_variant in (weather_state.get("region_history") as Dictionary).keys():
+		var index_text := str(index_variant)
+		if not index_text.is_valid_int() or str(int(index_text)) != index_text \
+				or not _candidate_legacy_index_valid(int(index_text), valid_legacy_indices, district_count):
+			return {"valid": false, "reason_code": "route_dependency_weather_history_reference_invalid"}
+		referenced_indices[index_text] = true
+	return {
+		"valid": true,
+		"reason_code": "route_dependency_weather_valid",
+		"reference_count": referenced_indices.size(),
+	}
+
+
+func _candidate_legacy_index_valid(index: int, valid_legacy_indices: Dictionary, district_count: int) -> bool:
+	return index >= 0 and index < district_count and valid_legacy_indices.has(str(index))
+
+
+func _restore_dependency_rejection(reason_code: String) -> Dictionary:
+	return {"accepted": false, "reason": reason_code, "reason_code": reason_code}
+
+
+func _validate_save_data(data: Dictionary) -> Dictionary:
+	if not StrictState.is_codec_data(data) or StrictState.contains_rng_continuation(data):
+		return {"valid": false, "reason_code": "route_save_not_codec_data"}
+	if not StrictState.has_exact_keys(data, SAVE_KEYS):
+		return {"valid": false, "reason_code": "route_save_shape_invalid"}
+	if not (data.get("schema_version") is int) or int(data.get("schema_version")) != STATE_VERSION \
+			or not (data.get("ruleset_id") is String) or str(data.get("ruleset_id")) != RULESET_ID:
+		return {"valid": false, "reason_code": "route_save_header_invalid"}
+	if not (data.get("route_semantic_version") is int) \
+			or int(data.get("route_semantic_version")) != ROUTE_SEMANTIC_VERSION \
+			or not (data.get("saved_topology_revision") is String) \
+			or not (data.get("rebuilt_route_fingerprint") is String) \
+			or not _valid_fingerprint(str(data.get("rebuilt_route_fingerprint"))):
+		return {"valid": false, "reason_code": "route_save_fields_invalid"}
+	var topology_revision := str(data.get("saved_topology_revision"))
+	if topology_revision.is_empty() \
+			and str(data.get("rebuilt_route_fingerprint")) != _route_manifest_fingerprint([]):
+		return {"valid": false, "reason_code": "route_empty_topology_state_invalid"}
+	return {"valid": true, "reason_code": "route_save_valid"}
+
+
+func _route_manifest_fingerprint(candidates: Array) -> String:
+	return StrictState.fingerprint(candidates)
+
+
+func _valid_fingerprint(value: String) -> bool:
+	if value.length() != 64:
+		return false
+	for index in range(value.length()):
+		var code := value.unicode_at(index)
+		if not (code >= 48 and code <= 57) and not (code >= 97 and code <= 102):
+			return false
+	return true
+
+
 func _dictionary(value: Variant) -> Dictionary:
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
 func _is_pure_data(value: Variant) -> bool:
-	if value == null or value is String or value is StringName or value is bool or value is int or value is float:
-		return true
-	if value is Array:
-		for item_variant in value:
-			if not _is_pure_data(item_variant):
-				return false
-		return true
-	if value is Dictionary:
-		for key_variant in value.keys():
-			if not _is_pure_data(key_variant) or not _is_pure_data(value[key_variant]):
-				return false
-		return true
-	return false
+	return StrictState.is_codec_data(value)

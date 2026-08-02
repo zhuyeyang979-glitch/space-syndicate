@@ -5,10 +5,11 @@ class_name GameSaveRuntimeCoordinator
 const CURRENT_SAVE_VERSION := 3
 const RULESET_ID := "v0.6"
 const CURRENCY_SCALE := 100
-const DEFAULT_SAVE_PATH := ""
+const DEFAULT_SAVE_PATH := "user://saves/v06/current_run.save"
+const PRODUCTION_SAVE_PATH := DEFAULT_SAVE_PATH
 const QA_SAVE_ROOT := "user://test_runs/"
 const FORMAT_ID := "space_syndicate_json"
-const QA_FAILURE_STAGES := ["before_temp_write", "after_temp_write", "after_readback", "before_replace", "after_destination_swap"]
+const QA_FAILURE_STAGES := ["before_temp_write", "after_temp_write", "after_readback", "before_replace", "after_destination_swap", "backup_failure", "directory_failure"]
 
 var _save_version := CURRENT_SAVE_VERSION
 var _default_save_path := DEFAULT_SAVE_PATH
@@ -20,6 +21,11 @@ var _last_reason_code := "idle"
 var _last_error_code: int = OK
 var _last_path := ""
 var _operation_sequence := 0
+var _last_readback_validation_reason := ""
+var _last_readback_fingerprint_match := true
+var _last_readback_mismatch_sections: Array[String] = []
+var _last_readback_mismatch_fields: Dictionary = {}
+var _last_readback_first_mismatch: Dictionary = {}
 
 
 func _ready() -> void:
@@ -30,7 +36,7 @@ func configure(configured_save_version: int = CURRENT_SAVE_VERSION, configured_d
 	_save_version = configured_save_version
 	var configured_path := configured_default_save_path.strip_edges()
 	_default_save_path = _qa_default_save_path_override if not _qa_default_save_path_override.is_empty() else configured_path
-	var explicit_path_valid := _default_save_path.is_empty() or _is_qa_save_path(_default_save_path)
+	var explicit_path_valid := _is_allowed_save_path(_default_save_path)
 	_configured = _save_version == CURRENT_SAVE_VERSION and explicit_path_valid and _handshake_api_ready()
 
 
@@ -38,7 +44,7 @@ func set_qa_default_save_path_override(path: String) -> bool:
 	var normalized := path.strip_edges()
 	if normalized.is_empty():
 		_qa_default_save_path_override = ""
-		_default_save_path = ""
+		_default_save_path = PRODUCTION_SAVE_PATH
 		return true
 	if not _is_qa_save_path(normalized):
 		return false
@@ -49,7 +55,7 @@ func set_qa_default_save_path_override(path: String) -> bool:
 
 func clear_qa_default_save_path_override() -> void:
 	_qa_default_save_path_override = ""
-	_default_save_path = ""
+	_default_save_path = PRODUCTION_SAVE_PATH
 
 
 func save_version() -> int:
@@ -74,8 +80,8 @@ func validate_envelope(envelope: Dictionary) -> Dictionary:
 
 func write_authorization(path: String, envelope: Dictionary, options: Dictionary = {}) -> Dictionary:
 	var resolved_path := resolved_save_path(path)
-	if not _is_qa_save_path(resolved_path):
-		return {"allowed": false, "reason_code": "explicit_qa_save_path_required"}
+	if not _is_allowed_save_path(resolved_path):
+		return {"allowed": false, "reason_code": "save_path_not_allowed"}
 	var handshake := _handshake_node()
 	if handshake == null or not handshake.has_method("write_authorization"):
 		return {"allowed": false, "reason_code": "save_handshake_unavailable"}
@@ -83,7 +89,7 @@ func write_authorization(path: String, envelope: Dictionary, options: Dictionary
 	var value_variant: Variant = handshake.call("write_authorization", existing, envelope, options)
 	var authorization: Dictionary = (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {}
 	var qa_failure_stage := str(options.get("qa_failure_stage", ""))
-	if QA_FAILURE_STAGES.has(qa_failure_stage):
+	if _is_qa_save_path(resolved_path) and QA_FAILURE_STAGES.has(qa_failure_stage):
 		authorization["qa_failure_stage"] = qa_failure_stage
 	return authorization
 
@@ -92,8 +98,8 @@ func write_validated_envelope(path: String, envelope: Dictionary, authorization:
 	var resolved_path := resolved_save_path(path)
 	if not _configured:
 		return _receipt("write", false, "save_coordinator_unconfigured", ERR_UNCONFIGURED, resolved_path)
-	if not _is_qa_save_path(resolved_path):
-		return _receipt("write", false, "explicit_qa_save_path_required", ERR_INVALID_PARAMETER, resolved_path)
+	if not _is_allowed_save_path(resolved_path):
+		return _receipt("write", false, "save_path_not_allowed", ERR_INVALID_PARAMETER, resolved_path)
 	var validation := validate_envelope(envelope)
 	if not bool(validation.get("valid", false)):
 		return _receipt("write", false, str(validation.get("reason_code", "envelope_invalid")), ERR_INVALID_DATA, resolved_path)
@@ -108,6 +114,9 @@ func write_validated_envelope(path: String, envelope: Dictionary, authorization:
 		idempotent_receipt["idempotent"] = true
 		return idempotent_receipt
 	var absolute_path := ProjectSettings.globalize_path(resolved_path)
+	var failure_stage := str(authorization.get("qa_failure_stage", ""))
+	if failure_stage == "directory_failure":
+		return _receipt("write", false, "qa_injected_directory_failure", ERR_CANT_CREATE, resolved_path, write_id, fingerprint)
 	var directory_error := DirAccess.make_dir_recursive_absolute(absolute_path.get_base_dir())
 	if directory_error != OK:
 		return _receipt("write", false, "save_directory_create_failed", directory_error, resolved_path, write_id, fingerprint)
@@ -117,7 +126,6 @@ func write_validated_envelope(path: String, envelope: Dictionary, authorization:
 	_cleanup_file(temp_path)
 	if FileAccess.file_exists(swap_path):
 		return _receipt("write", false, "stale_atomic_swap_present", ERR_ALREADY_EXISTS, resolved_path, write_id, fingerprint)
-	var failure_stage := str(authorization.get("qa_failure_stage", ""))
 	if failure_stage == "before_temp_write":
 		return _receipt("write", false, "qa_injected_before_temp_write", ERR_CANT_CREATE, resolved_path, write_id, fingerprint)
 	var canonical := str(handshake.call("canonical_json", envelope))
@@ -130,6 +138,11 @@ func write_validated_envelope(path: String, envelope: Dictionary, authorization:
 		return _receipt("write", false, "qa_injected_after_temp_write", ERR_CANT_CREATE, resolved_path, write_id, fingerprint)
 	var temp_read := _read_document(temp_path)
 	var temp_validation: Dictionary = validate_envelope(temp_read.get("document", {}) as Dictionary) if bool(temp_read.get("parsed", false)) else {}
+	_last_readback_validation_reason = str(temp_validation.get("reason_code", "temporary_document_parse_failed"))
+	_last_readback_fingerprint_match = str(temp_validation.get("fingerprint", "")) == fingerprint
+	_last_readback_mismatch_sections = _mismatched_section_fingerprints(envelope, temp_read.get("document", {}) as Dictionary, handshake)
+	_last_readback_mismatch_fields = _mismatched_section_fields(envelope, temp_read.get("document", {}) as Dictionary, handshake, _last_readback_mismatch_sections)
+	_last_readback_first_mismatch = _first_canonical_mismatch(envelope, temp_read.get("document", {}) as Dictionary, handshake)
 	if not bool(temp_read.get("parsed", false)) or not bool(temp_validation.get("valid", false)) or str(temp_validation.get("fingerprint", "")) != fingerprint:
 		_cleanup_file(temp_path)
 		return _receipt("write", false, "temporary_readback_validation_failed", ERR_INVALID_DATA, resolved_path, write_id, fingerprint)
@@ -139,6 +152,9 @@ func write_validated_envelope(path: String, envelope: Dictionary, authorization:
 	var backup_path := ""
 	var backup_created := false
 	if FileAccess.file_exists(resolved_path) and bool(authorization.get("requires_backup", false)):
+		if failure_stage == "backup_failure":
+			_cleanup_file(temp_path)
+			return _receipt("write", false, "qa_injected_backup_failure", ERR_CANT_CREATE, resolved_path, write_id, fingerprint)
 		backup_path = "%s.backup-%s.save" % [resolved_path, str(authorization.get("existing_fingerprint", "unknown")).substr(0, 16)]
 		var backup_result := _ensure_backup(resolved_path, backup_path)
 		if not bool(backup_result.get("ok", false)):
@@ -172,8 +188,8 @@ func read_and_validate(path: String) -> Dictionary:
 	var resolved_path := resolved_save_path(path)
 	if not _configured:
 		return _read_result(false, "save_coordinator_unconfigured", ERR_UNCONFIGURED, resolved_path)
-	if not _is_qa_save_path(resolved_path):
-		return _read_result(false, "explicit_qa_save_path_required", ERR_INVALID_PARAMETER, resolved_path)
+	if not _is_allowed_save_path(resolved_path):
+		return _read_result(false, "save_path_not_allowed", ERR_INVALID_PARAMETER, resolved_path)
 	if not FileAccess.file_exists(resolved_path):
 		return _read_result(false, "save_not_found", ERR_FILE_NOT_FOUND, resolved_path)
 	var raw := _read_document(resolved_path)
@@ -205,7 +221,7 @@ func inspect_legacy(source: Variant) -> Dictionary:
 	var document: Dictionary = {}
 	if source is Dictionary:
 		document = (source as Dictionary).duplicate(true)
-	elif source is String and _is_qa_save_path(str(source)):
+	elif source is String and _is_allowed_save_path(str(source)):
 		var read_result := _read_document(str(source))
 		if bool(read_result.get("parsed", false)):
 			document = (read_result.get("document", {}) as Dictionary).duplicate(true)
@@ -249,6 +265,39 @@ func has_valid_save(path: String = "") -> bool:
 	return bool(read_and_validate(resolved_save_path(path)).get("ok", false))
 
 
+func public_slot_summary(path: String = "") -> Dictionary:
+	var resolved_path := resolved_save_path(path)
+	var empty := {
+		"slot_state": "empty",
+		"backup_available": false,
+		"saved_at_unix": 0,
+		"world_time_seconds": 0,
+		"seat_count": 0,
+		"ruleset_id": "",
+		"mission_title": "",
+		"session_state": "idle",
+	}
+	if not _is_allowed_save_path(resolved_path):
+		empty["slot_state"] = "unavailable"
+		return empty
+	empty["backup_available"] = _backup_available(resolved_path)
+	if not FileAccess.file_exists(resolved_path):
+		return empty
+	var result := read_and_validate(resolved_path)
+	if not bool(result.get("ok", false)):
+		empty["slot_state"] = "corrupt" if str(result.get("classification", "")) == "corrupt" else "unavailable"
+		return empty
+	var envelope: Dictionary = result.get("envelope", {}) if result.get("envelope", {}) is Dictionary else {}
+	var metadata := _public_metadata_from_envelope(envelope)
+	if metadata.is_empty():
+		empty["slot_state"] = "corrupt"
+		return empty
+	metadata["slot_state"] = "ready"
+	metadata["backup_available"] = _backup_available(resolved_path)
+	metadata["saved_at_unix"] = int(FileAccess.get_modified_time(resolved_path))
+	return metadata
+
+
 func extract_section(envelope: Dictionary, section_id: String) -> Variant:
 	var sections: Dictionary = envelope.get("sections", {}) if envelope.get("sections", {}) is Dictionary else {}
 	var value: Variant = sections.get(section_id)
@@ -257,12 +306,9 @@ func extract_section(envelope: Dictionary, section_id: String) -> Variant:
 
 func build_save_summary(payload: Dictionary, _scoring_rules: Dictionary) -> Dictionary:
 	var validation := validate_envelope(payload)
-	return {
-		"valid": bool(validation.get("valid", false)),
-		"save_version": CURRENT_SAVE_VERSION,
-		"ruleset_id": RULESET_ID,
-		"section_count": (payload.get("sections", {}) as Dictionary).size() if payload.get("sections", {}) is Dictionary else 0,
-	}
+	var summary := _public_metadata_from_envelope(payload) if bool(validation.get("valid", false)) else {}
+	summary["valid"] = bool(validation.get("valid", false))
+	return summary
 
 
 func operation_snapshot() -> Dictionary:
@@ -273,7 +319,9 @@ func operation_snapshot() -> Dictionary:
 		"ruleset_id": RULESET_ID,
 		"currency_scale": CURRENCY_SCALE,
 		"default_save_path": _default_save_path,
-		"explicit_path_required": _default_save_path.is_empty(),
+		"explicit_path_required": false,
+		"production_save_path": PRODUCTION_SAVE_PATH,
+		"production_single_slot": true,
 		"qa_save_path_override_active": not _qa_default_save_path_override.is_empty(),
 		"qa_save_root": QA_SAVE_ROOT,
 		"last_operation": _last_operation,
@@ -282,6 +330,11 @@ func operation_snapshot() -> Dictionary:
 		"last_error_code": _last_error_code,
 		"last_path": _last_path,
 		"operation_sequence": _operation_sequence,
+		"last_readback_validation_reason": _last_readback_validation_reason,
+		"last_readback_fingerprint_match": _last_readback_fingerprint_match,
+		"last_readback_mismatch_sections": _last_readback_mismatch_sections.duplicate(),
+		"last_readback_mismatch_fields": _last_readback_mismatch_fields.duplicate(true),
+		"last_readback_first_mismatch": _last_readback_first_mismatch.duplicate(true),
 		"captures_business_state": false,
 	}
 
@@ -418,6 +471,105 @@ func _record_operation(operation: String, ok: bool, reason_code: String, error_c
 	_last_path = path
 
 
+func _mismatched_section_fingerprints(original: Dictionary, parsed: Dictionary, handshake: Node) -> Array[String]:
+	var result: Array[String] = []
+	if handshake == null or not handshake.has_method("canonical_json"):
+		return result
+	var original_sections: Dictionary = original.get("sections", {}) if original.get("sections", {}) is Dictionary else {}
+	var parsed_sections: Dictionary = parsed.get("sections", {}) if parsed.get("sections", {}) is Dictionary else {}
+	var section_ids: Array = original_sections.keys()
+	section_ids.sort()
+	for section_id_variant in section_ids:
+		var section_id := str(section_id_variant)
+		if str(handshake.call("canonical_json", original_sections.get(section_id_variant))) \
+				!= str(handshake.call("canonical_json", parsed_sections.get(section_id))):
+			result.append(section_id)
+	return result
+
+
+func _mismatched_section_fields(original: Dictionary, parsed: Dictionary, handshake: Node, section_ids: Array[String]) -> Dictionary:
+	var result: Dictionary = {}
+	if handshake == null or not handshake.has_method("canonical_json"):
+		return result
+	var original_sections: Dictionary = original.get("sections", {}) if original.get("sections", {}) is Dictionary else {}
+	var parsed_sections: Dictionary = parsed.get("sections", {}) if parsed.get("sections", {}) is Dictionary else {}
+	for section_id in section_ids:
+		var original_wrapper: Dictionary = original_sections.get(section_id, {}) if original_sections.get(section_id, {}) is Dictionary else {}
+		var parsed_wrapper: Dictionary = parsed_sections.get(section_id, {}) if parsed_sections.get(section_id, {}) is Dictionary else {}
+		var original_state: Dictionary = original_wrapper.get("owner_state", {}) if original_wrapper.get("owner_state", {}) is Dictionary else {}
+		var parsed_state: Dictionary = parsed_wrapper.get("owner_state", {}) if parsed_wrapper.get("owner_state", {}) is Dictionary else {}
+		var mismatches: Array[String] = []
+		var field_names: Array = original_state.keys()
+		field_names.sort()
+		for field_variant in field_names:
+			var field := str(field_variant)
+			if str(handshake.call("canonical_json", original_state.get(field_variant))) \
+					!= str(handshake.call("canonical_json", parsed_state.get(field))):
+				var original_field: Variant = original_state.get(field_variant)
+				var parsed_field: Variant = parsed_state.get(field)
+				if original_field is Dictionary and parsed_field is Dictionary:
+					var child_names: Array = (original_field as Dictionary).keys()
+					child_names.sort()
+					for child_variant in child_names:
+						var child := str(child_variant)
+						if str(handshake.call("canonical_json", (original_field as Dictionary).get(child_variant))) \
+								!= str(handshake.call("canonical_json", (parsed_field as Dictionary).get(child))):
+							mismatches.append("%s.%s" % [field, child])
+				else:
+					mismatches.append(field)
+		result[section_id] = mismatches
+	return result
+
+
+func _first_canonical_mismatch(left: Variant, right: Variant, handshake: Node, path := "root", depth := 0) -> Dictionary:
+	if handshake == null or not handshake.has_method("canonical_json") \
+			or str(handshake.call("canonical_json", left)) == str(handshake.call("canonical_json", right)):
+		return {}
+	if depth < 20 and left is Dictionary and right is Dictionary:
+		var left_dictionary := left as Dictionary
+		var right_dictionary := right as Dictionary
+		var keys: Array[String] = []
+		for key_variant in left_dictionary.keys():
+			var key := str(key_variant)
+			if not keys.has(key):
+				keys.append(key)
+		for key_variant in right_dictionary.keys():
+			var key := str(key_variant)
+			if not keys.has(key):
+				keys.append(key)
+		keys.sort()
+		for key in keys:
+			var child := _first_canonical_mismatch(left_dictionary.get(key), right_dictionary.get(key), handshake, "%s.%s" % [path, key], depth + 1)
+			if not child.is_empty():
+				return child
+	if depth < 20 and left is Array and right is Array:
+		var size := maxi((left as Array).size(), (right as Array).size())
+		for index in range(size):
+			var left_item: Variant = (left as Array)[index] if index < (left as Array).size() else null
+			var right_item: Variant = (right as Array)[index] if index < (right as Array).size() else null
+			var child := _first_canonical_mismatch(left_item, right_item, handshake, "%s[%d]" % [path, index], depth + 1)
+			if not child.is_empty():
+				return child
+	return {
+		"path": path,
+		"left_type": type_string(typeof(left)),
+		"right_type": type_string(typeof(right)),
+		"left_scalar": _safe_scalar_diagnostic(left),
+		"right_scalar": _safe_scalar_diagnostic(right),
+	}
+
+
+func _safe_scalar_diagnostic(value: Variant) -> String:
+	if value == null:
+		return "nil"
+	if value is bool or value is int or value is float:
+		var scalar_text := str(value)
+		return "%s:%s" % [type_string(typeof(value)), scalar_text.sha256_text().substr(0, 12)]
+	if value is String or value is StringName:
+		return "string:%d:%s" % [str(value).length(), str(value).sha256_text().substr(0, 12)]
+	return type_string(typeof(value))
+
+
 func _safe_suffix(value: String) -> String:
 	var result := ""
 	for character in value:
@@ -427,6 +579,64 @@ func _safe_suffix(value: String) -> String:
 
 func _is_qa_save_path(path: String) -> bool:
 	return path.begins_with(QA_SAVE_ROOT) and path.ends_with(".save") and not path.contains("..") and not path.contains("\\")
+
+
+func _is_allowed_save_path(path: String) -> bool:
+	return path == PRODUCTION_SAVE_PATH or _is_qa_save_path(path)
+
+
+func _public_metadata_from_envelope(envelope: Dictionary) -> Dictionary:
+	var sections: Dictionary = envelope.get("sections", {}) if envelope.get("sections", {}) is Dictionary else {}
+	var session_wrapper: Dictionary = sections.get("session", {}) if sections.get("session", {}) is Dictionary else {}
+	var handshake := _handshake_node()
+	if handshake == null or not handshake.has_method("decode_codec_value"):
+		return {}
+	var decoded_variant: Variant = handshake.call("decode_codec_value", session_wrapper.get("owner_state"))
+	var decoded: Dictionary = decoded_variant if decoded_variant is Dictionary else {}
+	if not bool(decoded.get("ok", false)) or not (decoded.get("value") is Dictionary):
+		return {}
+	var session_state := decoded.get("value", {}) as Dictionary
+	var runtime_state: Dictionary = session_state.get("game_session_runtime", {}) \
+		if session_state.get("game_session_runtime", {}) is Dictionary else {}
+	var world_state: Dictionary = session_state.get("world_session_state", {}) \
+		if session_state.get("world_session_state", {}) is Dictionary else {}
+	var setup: Dictionary = runtime_state.get("setup", {}) if runtime_state.get("setup", {}) is Dictionary else {}
+	var players: Array = world_state.get("players", []) if world_state.get("players", []) is Array else []
+	var title := _safe_public_summary_title(str(setup.get("mission_title", setup.get("scenario_title", ""))))
+	return {
+		"slot_state": "ready",
+		"backup_available": false,
+		"saved_at_unix": 0,
+		"world_time_seconds": maxi(0, int(round(float(runtime_state.get("world_effective_us", 0)) / 1_000_000.0))),
+		"seat_count": players.size(),
+		"ruleset_id": str(runtime_state.get("ruleset_id", envelope.get("ruleset_id", ""))),
+		"mission_title": title,
+		"session_state": str(runtime_state.get("session_state", "idle")),
+	}
+
+
+func _safe_public_summary_title(value: String) -> String:
+	var normalized := value.strip_edges()
+	if normalized.is_empty() or normalized.length() > 96 or normalized.contains("|") or normalized.contains("｜"):
+		return ""
+	for index in range(normalized.length()):
+		var code := normalized.unicode_at(index)
+		if code < 32 or code == 127:
+			return ""
+	return normalized
+
+
+func _backup_available(path: String) -> bool:
+	if path.is_empty():
+		return false
+	var directory := DirAccess.open(path.get_base_dir())
+	if directory == null:
+		return false
+	var prefix := "%s.backup-" % path.get_file()
+	for file_name in directory.get_files():
+		if str(file_name).begins_with(prefix) and str(file_name).ends_with(".save"):
+			return true
+	return false
 
 
 func _handshake_api_ready() -> bool:

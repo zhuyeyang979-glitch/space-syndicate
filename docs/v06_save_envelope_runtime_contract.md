@@ -18,7 +18,7 @@ Every resumable envelope has exactly these top-level fields:
 - `profile_schema_version=1`
 - `currency_scale=100`
 - `format_id=space_syndicate_json`
-- `codec_id=explicit_tagged_json_v1`
+- `codec_id=explicit_tagged_json_v2`（所有整数使用显式 `Int64` 标签，所有浮点数使用精确位模式标签，避免 JSON 回读改变类型或 RNG/seed 精度）
 - non-empty deterministic `envelope_id` and `write_id`
 - exact `controller_state_versions`
 - exact `section_manifest`
@@ -56,4 +56,3 @@ Production owner orchestration must consume only:
 - `inspect_legacy(source)`
 
 Owner capture/apply remains a C16b responsibility outside these services. `public_operation_receipt` is an allowlist projection and never contains the envelope, sections, balances, hands, ownership truth, or AI metadata.
-

@@ -1,0 +1,312 @@
+{
+  "schema_version": 1,
+  "matrix_id": "Alpha04CV5RepositoryHeadLineageMatrixV1",
+  "task_id": "ALPHA04C_V5_REPOSITORY_HEAD_LINEAGE_REPAIR_AND_V071_RULE_CONSISTENCY_HUMAN_FUN_PREFLIGHT",
+  "lane": "A",
+  "status": "ROOT_CAUSE_ATTESTED",
+  "v5_run_id": "alpha04c-owner-capture-diagnostic-v5-canonical-binding-604264b0af9a",
+  "v5_code_head": "604264b0af9a10ca07db58851e8a2d00171dd2f3",
+  "validator_code_head": "604264b0af9a10ca07db58851e8a2d00171dd2f3",
+  "review_head": "d84739100905a7ef28f9e4859415bce6927509e9",
+  "v5_ledger_sha256": "b7e6c66852540c2b3066f86cd6e9c9d9454c185c4e8ed17d168c6b0dbf466742",
+  "repository_head_value": "604264b0af9a10ca07db58851e8a2d00171dd2f3",
+  "repository_head_safe_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215",
+  "canonical_json_null_fingerprint": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+  "repository_head_lineage_stage_count": 10,
+  "first_repository_head_loss_stage": "gdscript_validate_options_success_projection",
+  "first_repository_head_loss_reason": "validated_options_projection_omits_head_sha",
+  "typed_root_cause": "GDSCRIPT_VALIDATE_OPTIONS_SUCCESS_PROJECTION_OMITS_HEAD_SHA_THEN_OPTION_BINDING_GET_MATERIALIZES_NULL",
+  "root_cause_classification": {
+    "field_omission": true,
+    "alias_mismatch": false,
+    "dictionary_null_overwrite": false,
+    "wrong_context_read": true,
+    "empty_string_null_confusion": false,
+    "canonicalization_error": false,
+    "launch_attestation_value_loss": false,
+    "implicit_head_fallback_used": false
+  },
+  "source_equivalence": {
+    "v5_to_review_runtime_source_diff_count": 0,
+    "notes": "Only handoff result reports changed between the V5 code HEAD and this review HEAD; the traced Orchestrator, PowerShell modules, GDScript driver, binding contract, and validator are byte-identical across those commits."
+  },
+  "alias_map": [
+    {
+      "boundary": "orchestrator",
+      "names": [
+        "HEAD",
+        "HeadSha",
+        "ExpectedHead",
+        "repository_head"
+      ],
+      "value_preserved": true
+    },
+    {
+      "boundary": "launch_authorization_and_attestation",
+      "names": [
+        "repository_head",
+        "source_head_sha"
+      ],
+      "value_preserved": true
+    },
+    {
+      "boundary": "child_cli_and_parser",
+      "names": [
+        "--cold-restore-head-sha",
+        "head_sha"
+      ],
+      "value_preserved": true
+    },
+    {
+      "boundary": "canonical_ledger_binding",
+      "names": [
+        "repository_head",
+        "head_sha"
+      ],
+      "value_preserved": false,
+      "notes": "The contract mapping is correct, but the validated options projection passed to the validator no longer contains head_sha."
+    }
+  ],
+  "evidence_artifacts": [
+    {
+      "artifact_id": "v5_quota_ledger",
+      "path": "git-common://codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/targeted_owner_capture_quota_ledger.json",
+      "sha256": "b7e6c66852540c2b3066f86cd6e9c9d9454c185c4e8ed17d168c6b0dbf466742"
+    },
+    {
+      "artifact_id": "bootstrap_admission",
+      "path": "git-common://codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/prequota/<run>/invocations/<private>/bootstrap.admission.json",
+      "sha256": "55f3d379723f157927d578ff48a916f71c78a61d30010024aa138d90039b5a52"
+    },
+    {
+      "artifact_id": "prequota_attestation",
+      "path": "git-common://codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/prequota/<run>/invocations/<private>/prequota_orchestrator_attestation.json",
+      "sha256": "6f5ebf667ac3c7d3ae0c5788f1d0ee4e5511455e7d561b9e96e29a751195a576"
+    },
+    {
+      "artifact_id": "launch_attestation",
+      "path": "git-common://codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/evidence/launch/orchestrator-31492/producer.authorized.json",
+      "sha256": "f79cf007878789d3122b588309b99a27fc3231d897a058b85c7ea789ffe3ed1f"
+    },
+    {
+      "artifact_id": "child_bootstrap_heartbeat",
+      "path": "git-common://codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/evidence/diagnostics/targeted_owner_diagnostic.heartbeat.json",
+      "sha256": "72584bad8ac1213f44e6d16a5f0bb7cfd0997afcd7eb715e5dcbeaee5adb8503"
+    },
+    {
+      "artifact_id": "child_phase_timeline",
+      "path": "git-common://codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/evidence/diagnostics/producer.phase_timeline.json",
+      "sha256": "55ed184bf930df7ef9b758c50208eac35b2328b1dbc61b57fc16d27c35e85e0c"
+    },
+    {
+      "artifact_id": "child_stderr",
+      "path": "git-common://codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/evidence/parent/producer.stderr.log",
+      "sha256": "00239926e319bb74605786764b6ea06479913b88ce13a1d91a0673200e0ec6fc"
+    },
+    {
+      "artifact_id": "parent_exit",
+      "path": "git-common://codex/cold_restore_v3/non-official-alpha04c-owner-capture-diagnostic-v5-canonical-binding/evidence/parent/producer.exit.json",
+      "sha256": "8841a3859a0f849bff7b5f07751c9a89568c3a7648ce20b1dd377f1d344644e7"
+    }
+  ],
+  "stages": [
+    {
+      "stage_id": "git_head_resolution",
+      "producer_path": "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1:4075-4076",
+      "consumer_path": "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1:4123",
+      "field_name": "repository_head",
+      "field_aliases": [
+        "HEAD",
+        "headSha"
+      ],
+      "value_present": true,
+      "value_type": "lowercase_hex_string_40",
+      "safe_value_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215",
+      "expected_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215",
+      "normalization": "PowerShell string conversion; lowercase-hex length check",
+      "passed": true,
+      "failure_reason": "none"
+    },
+    {
+      "stage_id": "orchestrator_runtime_freeze",
+      "producer_path": "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1:1001-1034",
+      "consumer_path": "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1:2255-2257",
+      "field_name": "repository_head",
+      "field_aliases": [
+        "ExpectedHead",
+        "observed_head",
+        "HeadSha"
+      ],
+      "value_present": true,
+      "value_type": "lowercase_hex_string_40",
+      "safe_value_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215",
+      "expected_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215",
+      "normalization": "git output Trim(); ordinal equality",
+      "passed": true,
+      "failure_reason": "none"
+    },
+    {
+      "stage_id": "authorization_and_prequota_admission",
+      "producer_path": "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1:2261-2271; scripts/tools/cold_restore_prequota_bootstrap.psm1:311-343",
+      "consumer_path": "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1:3045-3049",
+      "field_name": "repository_head",
+      "field_aliases": [
+        "RepositoryHead",
+        "HeadSha",
+        "repository_head"
+      ],
+      "value_present": true,
+      "value_type": "string",
+      "safe_value_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215",
+      "expected_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215",
+      "normalization": "direct parameter assignment; authorization run_id is derived from this HEAD",
+      "passed": true,
+      "failure_reason": "none"
+    },
+    {
+      "stage_id": "quota_ledger_publication",
+      "producer_path": "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1:3050-3085",
+      "consumer_path": "scripts/tools/cold_restore_targeted_ledger_binding_validator_v1.gd:29-32",
+      "field_name": "repository_head",
+      "field_aliases": [
+        "HeadSha",
+        "repository_head"
+      ],
+      "value_present": true,
+      "value_type": "json_string",
+      "safe_value_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215",
+      "expected_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215",
+      "normalization": "PowerShell ordered object serialized as UTF-8 JSON; no value transformation",
+      "passed": true,
+      "failure_reason": "none"
+    },
+    {
+      "stage_id": "launch_authorization_and_attestation",
+      "producer_path": "scripts/tools/cold_restore_vertical_slice_orchestrator.ps1:3090-3101; scripts/tools/cold_restore_attested_process.psm1:1837-1903",
+      "consumer_path": "scripts/tools/cold_restore_vertical_slice_driver.gd:1121-1165",
+      "field_name": "repository_head",
+      "field_aliases": [
+        "HeadSha",
+        "source_head_sha"
+      ],
+      "value_present": true,
+      "value_type": "json_string",
+      "safe_value_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215",
+      "expected_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215",
+      "normalization": "explicit field rename from HeadSha to source_head_sha; no value change",
+      "passed": true,
+      "failure_reason": "none",
+      "notes": "The attestation retains the correct source_head_sha. It is read only after ledger validation, so it cannot populate the earlier validator expected context."
+    },
+    {
+      "stage_id": "child_cli_argument",
+      "producer_path": "scripts/tools/cold_restore_prequota_bootstrap.psm1:683-695; scripts/tools/cold_restore_attested_process.psm1:1595-1611",
+      "consumer_path": "scripts/tools/cold_restore_attested_process.psm1:2097-2107",
+      "field_name": "repository_head",
+      "field_aliases": [
+        "RepositoryHead",
+        "--cold-restore-head-sha"
+      ],
+      "value_present": true,
+      "value_type": "cli_string",
+      "safe_value_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215",
+      "expected_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215",
+      "normalization": "--cold-restore-head-sha=<value>; passed through ProcessStartInfo.ArgumentList",
+      "passed": true,
+      "failure_reason": "none",
+      "notes": "The ordered argument is reconstructable from retained inputs and unchanged code. Correct downstream heartbeat and timeline HEAD values prove that the real child received and parsed it."
+    },
+    {
+      "stage_id": "gdscript_option_parser",
+      "producer_path": "scripts/tools/cold_restore_vertical_slice_driver.gd:7259-7344",
+      "consumer_path": "scripts/tools/cold_restore_vertical_slice_driver.gd:747-787,555-560",
+      "field_name": "repository_head",
+      "field_aliases": [
+        "--cold-restore-head-sha",
+        "head_sha"
+      ],
+      "value_present": true,
+      "value_type": "string",
+      "safe_value_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215",
+      "expected_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215",
+      "normalization": "trim_prefix only; validate_options checks lowercase hex and run_id/HEAD binding",
+      "passed": true,
+      "failure_reason": "none",
+      "notes": "The retained child_bootstrap heartbeat and phase timeline both contain the correct repository_head, which are sourced from parsed.head_sha before ledger authorization."
+    },
+    {
+      "stage_id": "gdscript_validate_options_success_projection",
+      "producer_path": "scripts/tools/cold_restore_vertical_slice_driver.gd:747-872",
+      "consumer_path": "scripts/tools/cold_restore_vertical_slice_driver.gd:546-571,607",
+      "field_name": "repository_head",
+      "field_aliases": [
+        "head_sha",
+        "repository_head"
+      ],
+      "value_present": false,
+      "value_type": "missing_key_materialized_as_null",
+      "safe_value_fingerprint": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "expected_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215",
+      "normalization": "validate_options constructs a fresh success Dictionary but does not copy head_sha",
+      "passed": false,
+      "failure_reason": "validated_options_projection_omits_head_sha",
+      "notes": "This is the first loss. A separate correct head_sha argument is passed to _authorize_targeted_owner_capture_diagnostic, and _targeted_diagnostic_options receives repository_head, but the validator is passed the different validation Dictionary."
+    },
+    {
+      "stage_id": "canonical_expected_binding_resolution",
+      "producer_path": "scripts/tools/cold_restore_targeted_ledger_binding_contract_v1.json:option_bindings.repository_head; scripts/tools/cold_restore_targeted_ledger_binding_validator_v1.gd:81-117",
+      "consumer_path": "scripts/tools/cold_restore_targeted_ledger_binding_validator_v1.gd:124-150",
+      "field_name": "repository_head",
+      "field_aliases": [
+        "repository_head",
+        "head_sha"
+      ],
+      "value_present": false,
+      "value_type": "null",
+      "safe_value_fingerprint": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "expected_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215",
+      "normalization": "option_bindings maps repository_head to head_sha; Dictionary.get on the missing key returns null",
+      "passed": false,
+      "failure_reason": "option_binding_head_sha_resolved_to_null",
+      "notes": "source_head_sha is not an accepted fallback and is not available in this context. No fallback should be inferred."
+    },
+    {
+      "stage_id": "ledger_validator_comparison",
+      "producer_path": "scripts/tools/cold_restore_targeted_ledger_binding_validator_v1.gd:94-152",
+      "consumer_path": "scripts/tools/cold_restore_vertical_slice_driver.gd:1104-1118",
+      "field_name": "repository_head",
+      "field_aliases": [
+        "ledger.repository_head",
+        "options.head_sha"
+      ],
+      "value_present": true,
+      "expected_value_present": false,
+      "value_type": "actual_string_expected_null",
+      "contract_expected_type": "string",
+      "safe_value_fingerprint": "066a10f78e771c6f8a42a3f08260af5f90075b02bdc49ac2ccf7054128afb215",
+      "expected_fingerprint": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "normalization": "exact wire-value equality after lowercase_hex_40 shape validation",
+      "passed": false,
+      "failure_reason": "repository_head_mismatch",
+      "notes": "The ledger actual value remains correct. The safe expected fingerprint is exactly SHA-256 of canonical JSON null."
+    }
+  ],
+  "why_prior_canonical_tests_missed": {
+    "reason": "validator tests constructed the options Dictionary directly from ledger.repository_head and populated head_sha, bypassing validate_options success projection",
+    "evidence_paths": [
+      "tests/cold_restore_targeted_ledger_binding_replay_test.gd:155-163",
+      "scripts/tools/cold_restore_targeted_ledger_replay.gd:48-56"
+    ]
+  },
+  "conclusion": {
+    "ledger_repository_head_correct": true,
+    "launch_source_head_sha_correct": true,
+    "child_cli_repository_head_correct": true,
+    "gdscript_parser_head_sha_correct": true,
+    "first_loss_is_field_omission": true,
+    "first_loss_is_alias_substitution": false,
+    "first_loss_is_dictionary_overwrite": false,
+    "validator_expected_value_kind": "canonical_json_null",
+    "owner_failure_claimed": false
+  }
+}

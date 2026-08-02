@@ -20,6 +20,20 @@ func _run() -> void:
 	_advance_slot(source, "region.a", 2, "tx.seed.2")
 
 	var save := source.to_save_data()
+	var before_preflight := _fingerprint(save)
+	var rng_before := _fingerprint(save.get("rng_state_by_region", {}))
+	var first_preflight := source.preflight_save_data(save)
+	var second_preflight := source.preflight_save_data(save)
+	_expect(bool(first_preflight.get("accepted", false)) and bool(second_preflight.get("accepted", false)), "strict region supply preflight accepts the exact saved bag and RNG cursor repeatedly")
+	_expect(before_preflight == _fingerprint(source.to_save_data()), "repeated region supply preflight mutates no rack bag journal revision or RNG cursor")
+	_expect(rng_before == _fingerprint(source.to_save_data().get("rng_state_by_region", {})), "region supply preflight consumes zero RNG draws")
+	_expect(_fingerprint(first_preflight.get("normalized_state", {})) == _fingerprint(second_preflight.get("normalized_state", {})), "region supply preflight normalization is deterministic")
+	var detached_normalized := (first_preflight.get("normalized_state", {}) as Dictionary).duplicate(true)
+	detached_normalized["gameplay_seed"] = -77
+	_expect(before_preflight == _fingerprint(source.to_save_data()), "mutating normalized region supply output cannot alias live state")
+	_verify_strict_rejections(source, save)
+	_verify_pending_transaction_preflight()
+
 	var restored: RegionSupplyRuntimeController = ControllerScript.new()
 	root.add_child(restored)
 	var applied := restored.apply_save_data(save)
@@ -69,6 +83,63 @@ func _run() -> void:
 	source.free()
 	restored.free()
 	_finish()
+
+
+func _verify_strict_rejections(controller: RegionSupplyRuntimeController, saved: Dictionary) -> void:
+	var unknown_root := saved.duplicate(true)
+	unknown_root["private_inventory"] = []
+	_expect(_preflight_rejects_without_mutation(controller, unknown_root), "region supply rejects unknown root fields")
+	var coercible_header := saved.duplicate(true)
+	coercible_header["state_version"] = "1"
+	_expect(_preflight_rejects_without_mutation(controller, coercible_header), "region supply rejects coercible schema strings")
+	var nonfinite_card := saved.duplicate(true)
+	var cards := nonfinite_card.get("cards_by_id") as Dictionary
+	(cards.get("card.00") as Dictionary)["region_supply_weight"] = INF
+	_expect(_preflight_rejects_without_mutation(controller, nonfinite_card), "region supply rejects non-finite nested card values")
+	var duplicate_order := saved.duplicate(true)
+	(duplicate_order.get("region_order") as Array).append("region.a")
+	_expect(_preflight_rejects_without_mutation(controller, duplicate_order), "region supply rejects duplicate catalog order entries")
+	var unknown_bag_card := saved.duplicate(true)
+	((unknown_bag_card.get("bags_by_region") as Dictionary).get("region.a") as Array).append("card.ghost")
+	_expect(_preflight_rejects_without_mutation(controller, unknown_bag_card), "region supply rejects future bag entries outside the saved card catalog")
+	var mismatched_listing := saved.duplicate(true)
+	var first_listing := (((mismatched_listing.get("racks_by_region") as Dictionary).get("region.a") as Array)[0] as Dictionary)
+	first_listing["source_region_id"] = "region.b"
+	_expect(_preflight_rejects_without_mutation(controller, mismatched_listing), "region supply rejects rack listings bound to another region")
+	var mismatched_transaction := saved.duplicate(true)
+	var terminal := mismatched_transaction.get("terminal_transactions") as Dictionary
+	(terminal.get("tx.seed.0") as Dictionary)["transaction_id"] = "tx.other"
+	_expect(_preflight_rejects_without_mutation(controller, mismatched_transaction), "region supply rejects transaction dictionary and receipt binding mismatch")
+
+
+func _verify_pending_transaction_preflight() -> void:
+	var controller: RegionSupplyRuntimeController = ControllerScript.new()
+	root.add_child(controller)
+	controller.configure(31337, _regions(), _cards(), 3)
+	var listing := _slot(controller, "region.a", 1)
+	var prepared := controller.prepare_slot_refill(
+		"region.a",
+		1,
+		str(listing.get("item_id")),
+		str(listing.get("supply_revision")),
+		"tx.pending.preflight"
+	)
+	_expect(bool(prepared.get("prepared", false)), "region supply pending preflight fixture prepares")
+	var prepared_state := controller.to_save_data()
+	_expect(bool(controller.preflight_save_data(prepared_state).get("accepted", false)) and _fingerprint(prepared_state) == _fingerprint(controller.to_save_data()), "region supply preflight accepts a prepared transaction without advancing its detached draw")
+	controller.commit_slot_refill("tx.pending.preflight")
+	var committed_state := controller.to_save_data()
+	_expect(bool(controller.preflight_save_data(committed_state).get("accepted", false)) and _fingerprint(committed_state) == _fingerprint(controller.to_save_data()), "region supply preflight accepts a committed rollback window without mutation")
+	controller.free()
+
+
+func _preflight_rejects_without_mutation(controller: RegionSupplyRuntimeController, candidate: Dictionary) -> bool:
+	var before := _fingerprint(controller.to_save_data())
+	var rng_before := _fingerprint(controller.to_save_data().get("rng_state_by_region", {}))
+	var result := controller.preflight_save_data(candidate)
+	return not bool(result.get("accepted", true)) \
+		and before == _fingerprint(controller.to_save_data()) \
+		and rng_before == _fingerprint(controller.to_save_data().get("rng_state_by_region", {}))
 
 
 func _advance_slot(controller: RegionSupplyRuntimeController, region_id: String, slot_index: int, tx: String) -> void:

@@ -1,8 +1,9 @@
 extends RefCounted
 class_name WorldSessionEnvelopeCodec
 
-const SCHEMA_VERSION := 2
+const SCHEMA_VERSION := 3
 const LEGACY_SCHEMA_VERSION := 1
+const PRIOR_SCHEMA_VERSION := 2
 const MIN_ACTIVE_PLAYERS := 3
 const MAX_ACTIVE_PLAYERS := 8
 const MAX_ROLE_INDEX := 23
@@ -62,8 +63,6 @@ const PLAYER_ENVELOPE_REQUIRED_KEYS := [
 	"name",
 	"seat_type",
 	"is_ai",
-	"ai_profile",
-	"ai_memory",
 	"role_index",
 	"role_card",
 	"base_starting_cash",
@@ -172,8 +171,10 @@ static func normalize(candidate: Dictionary, ordered_role_names: Array[String] =
 	var candidate_version := int(candidate.get("schema_version", -1))
 	var legacy_shape := candidate_version == LEGACY_SCHEMA_VERSION \
 		and _has_exact_keys(candidate, LEGACY_ROOT_KEYS)
+	var prior_shape := candidate_version == PRIOR_SCHEMA_VERSION \
+		and _has_exact_keys(candidate, ROOT_KEYS)
 	var current_shape := candidate_version == SCHEMA_VERSION and _has_exact_keys(candidate, ROOT_KEYS)
-	if not legacy_shape and not current_shape:
+	if not legacy_shape and not prior_shape and not current_shape:
 		return _rejection("world_session_schema_invalid")
 	if not (candidate.get("players") is Array) or not (candidate.get("districts") is Array):
 		return _rejection("world_session_collections_invalid")
@@ -196,7 +197,14 @@ static func normalize(candidate: Dictionary, ordered_role_names: Array[String] =
 	var normalized_players: Array = []
 	var role_indices: Dictionary = {}
 	for viewer_index in range(players.size()):
-		var player_result := _normalize_player(players[viewer_index], viewer_index, players.size(), districts.size(), ordered_role_names)
+		var player_result := _normalize_player(
+			players[viewer_index],
+			viewer_index,
+			players.size(),
+			districts.size(),
+			ordered_role_names,
+			legacy_shape or prior_shape
+		)
 		if not bool(player_result.get("accepted", false)):
 			return player_result
 		var runtime_player: Dictionary = player_result.get("runtime_value", {})
@@ -395,7 +403,7 @@ static func _capture_player(value: Variant, viewer_index: int, player_count: int
 	var identity_validation := _validate_player_identity(player, viewer_index, ordered_role_names)
 	if not bool(identity_validation.get("accepted", false)):
 		return identity_validation
-	var shape_validation := _validate_player_shape(player, false)
+	var shape_validation := _validate_player_shape(player, false, true)
 	if not bool(shape_validation.get("accepted", false)):
 		return shape_validation
 	var intel_result := _capture_city_intel(player, viewer_index, player_count, district_count)
@@ -404,6 +412,11 @@ static func _capture_player(value: Variant, viewer_index: int, player_count: int
 	player.erase("city_guesses")
 	player.erase("city_guess_confidence")
 	player.erase("city_guess_reasons")
+	# AI continuation is authoritative only in the dedicated `ai` section. The
+	# world/session envelope retains seat identity but never a second mutable
+	# profile or learning-memory copy.
+	player.erase("ai_profile")
+	player.erase("ai_memory")
 	player["city_intel_records"] = (intel_result.get("records", []) as Array).duplicate(true)
 	var encoded := _encode_data(player)
 	if not bool(encoded.get("accepted", false)) or not (encoded.get("value") is Dictionary):
@@ -411,7 +424,14 @@ static func _capture_player(value: Variant, viewer_index: int, player_count: int
 	return {"accepted": true, "value": (encoded.get("value") as Dictionary).duplicate(true)}
 
 
-static func _normalize_player(value: Variant, viewer_index: int, player_count: int, district_count: int, ordered_role_names: Array[String]) -> Dictionary:
+static func _normalize_player(
+	value: Variant,
+	viewer_index: int,
+	player_count: int,
+	district_count: int,
+	ordered_role_names: Array[String],
+	legacy_ai_fields_allowed: bool
+) -> Dictionary:
 	if not (value is Dictionary):
 		return _rejection("world_session_player_invalid")
 	var decoded := _decode_data(value)
@@ -420,10 +440,14 @@ static func _normalize_player(value: Variant, viewer_index: int, player_count: i
 	var player := (decoded.get("value") as Dictionary).duplicate(true)
 	if not _has_required_keys(player, PLAYER_ENVELOPE_REQUIRED_KEYS):
 		return _rejection("world_session_player_field_missing")
+	if not legacy_ai_fields_allowed and (player.has("ai_profile") or player.has("ai_memory")):
+		return _rejection("world_session_ai_state_forbidden")
+	if legacy_ai_fields_allowed and (not player.has("ai_profile") or not player.has("ai_memory")):
+		return _rejection("world_session_player_field_missing")
 	var identity_validation := _validate_player_identity(player, viewer_index, ordered_role_names)
 	if not bool(identity_validation.get("accepted", false)):
 		return identity_validation
-	var shape_validation := _validate_player_shape(player, true)
+	var shape_validation := _validate_player_shape(player, true, legacy_ai_fields_allowed)
 	if not bool(shape_validation.get("accepted", false)):
 		return shape_validation
 	if not (player.get("city_intel_records") is Array):
@@ -435,6 +459,11 @@ static func _normalize_player(value: Variant, viewer_index: int, player_count: i
 	player["city_guesses"] = (intel_result.get("guesses", {}) as Dictionary).duplicate(true)
 	player["city_guess_confidence"] = (intel_result.get("confidence", {}) as Dictionary).duplicate(true)
 	player["city_guess_reasons"] = (intel_result.get("reasons", {}) as Dictionary).duplicate(true)
+	# The AI owner applies the authoritative values after session foundation.
+	# Empty dictionaries keep the live typed actor port shape valid in between
+	# the two deterministic restore phases.
+	player["ai_profile"] = {}
+	player["ai_memory"] = {}
 	var recaptured := _capture_player(player, viewer_index, player_count, district_count, ordered_role_names)
 	if not bool(recaptured.get("accepted", false)):
 		return recaptured
@@ -469,8 +498,11 @@ static func _validate_player_identity(player: Dictionary, viewer_index: int, ord
 	return {"accepted": true}
 
 
-static func _validate_player_shape(player: Dictionary, envelope_shape: bool) -> Dictionary:
-	for field in ["ai_profile", "ai_memory", "role_card"]:
+static func _validate_player_shape(player: Dictionary, envelope_shape: bool, require_ai_fields: bool) -> Dictionary:
+	var dictionary_fields := ["role_card"]
+	if require_ai_fields:
+		dictionary_fields.append_array(["ai_profile", "ai_memory"])
+	for field in dictionary_fields:
 		if not (player.get(field) is Dictionary):
 			return _rejection("world_session_player_field_type_invalid")
 	for field in ["cash_history", "v06_transaction_ledger", "economic_ledger", "slots"]:

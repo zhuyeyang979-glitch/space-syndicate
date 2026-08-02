@@ -5,9 +5,13 @@ class_name RunRngService
 signal state_restored(state: int)
 signal plan_state_committed(state: int, draw_count_delta: int)
 
+const SAVE_SCHEMA_VERSION := 2
+const SAVE_FIELDS := ["schema_version", "rng_state", "draw_count"]
+
 var _rng := RandomNumberGenerator.new()
 var _draw_count := 0
 var _restore_count := 0
+var _runtime_draw_invocation_count := 0
 
 var state: int:
 	get:
@@ -43,21 +47,25 @@ func restore_state(value: int) -> void:
 
 func randi() -> int:
 	_draw_count += 1
+	_runtime_draw_invocation_count += 1
 	return _rng.randi()
 
 
 func randi_range(from: int, to: int) -> int:
 	_draw_count += 1
+	_runtime_draw_invocation_count += 1
 	return _rng.randi_range(from, to)
 
 
 func randf() -> float:
 	_draw_count += 1
+	_runtime_draw_invocation_count += 1
 	return _rng.randf()
 
 
 func randf_range(from: float, to: float) -> float:
 	_draw_count += 1
+	_runtime_draw_invocation_count += 1
 	return _rng.randf_range(from, to)
 
 
@@ -145,6 +153,7 @@ func _commit_plan_state(expected_checkpoint: Dictionary, terminal_cursor: Dictio
 	var delta := int(terminal_cursor.get("draw_count", _draw_count)) - _draw_count
 	_rng.state = int(terminal_cursor.get("rng_state", _rng.state))
 	_draw_count += delta
+	_runtime_draw_invocation_count += delta
 	if publish_signal:
 		plan_state_committed.emit(_rng.state, delta)
 	return {
@@ -166,33 +175,69 @@ func restore_plan_checkpoint(checkpoint: Dictionary) -> Dictionary:
 
 func to_save_data() -> Dictionary:
 	return {
-		"schema_version": 1,
+		"schema_version": SAVE_SCHEMA_VERSION,
 		"rng_state": _rng.state,
+		"draw_count": _draw_count,
+	}
+
+
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	if data.keys().size() != SAVE_FIELDS.size():
+		return {"accepted": false, "reason_code": "run_rng_save_shape_invalid"}
+	for field in SAVE_FIELDS:
+		if not data.has(field):
+			return {"accepted": false, "reason_code": "run_rng_save_shape_invalid"}
+	if not (data.get("schema_version") is int) \
+			or int(data.get("schema_version", 0)) != SAVE_SCHEMA_VERSION \
+			or not (data.get("rng_state") is int) \
+			or int(data.get("rng_state", 0)) == 0 \
+			or not (data.get("draw_count") is int) \
+			or int(data.get("draw_count", -1)) < 0:
+		return {"accepted": false, "reason_code": "run_rng_save_invalid"}
+	return {
+		"accepted": true,
+		"reason_code": "run_rng_save_valid",
+		"normalized_state": {
+			"schema_version": SAVE_SCHEMA_VERSION,
+			"rng_state": int(data.get("rng_state")),
+			"draw_count": int(data.get("draw_count")),
+		},
 	}
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
-	var schema_version := int(data.get("schema_version", -1))
-	var restored_state := int(data.get("rng_state", 0))
-	if schema_version != 1 or restored_state == 0:
+	var preflight := preflight_save_data(data)
+	if not bool(preflight.get("accepted", false)):
 		return {
 			"applied": false,
-			"reason_code": "run_rng_save_invalid",
+			"reason_code": str(preflight.get("reason_code", "run_rng_save_invalid")),
 		}
-	restore_state(restored_state)
+	var normalized := preflight.get("normalized_state", {}) as Dictionary
+	_rng.state = int(normalized.get("rng_state", 1))
+	_draw_count = int(normalized.get("draw_count", 0))
 	return {
 		"applied": true,
 		"reason_code": "run_rng_state_restored",
 		"rng_state": _rng.state,
+		"draw_count": _draw_count,
 	}
+
+
+func capture_runtime_checkpoint() -> Dictionary:
+	return to_save_data()
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	return apply_save_data(checkpoint)
 
 
 func debug_snapshot() -> Dictionary:
 	return {
 		"service_ready": _rng.state > 0,
-		"schema_version": 1,
+		"schema_version": SAVE_SCHEMA_VERSION,
 		"rng_state": _rng.state,
 		"draw_count": _draw_count,
+		"runtime_draw_invocation_count": _runtime_draw_invocation_count,
 		"restore_count": _restore_count,
 		"owns_rng_state": true,
 	}

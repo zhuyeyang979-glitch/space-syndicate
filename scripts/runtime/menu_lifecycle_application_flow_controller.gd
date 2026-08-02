@@ -15,6 +15,7 @@ const COMMERCIAL_CREDITS_SCENE := preload("res://scenes/ui/CommercialCreditsSurf
 @export var coordinator_path: NodePath
 @export var world_session_state_path: NodePath
 @export var application_flow_port_path: NodePath
+@export var save_resume_flow_path: NodePath
 @export var codex_navigation_owner_path: NodePath
 @export var game_screen_path: NodePath
 @export var open_root_on_ready := true
@@ -25,13 +26,26 @@ var _requested_shell_count := 0
 var _page_prepare_count := 0
 var _close_count := 0
 var _load_request_count := 0
+var _save_request_count := 0
 var _load_run_button: Button
+var _root_lobby: SpaceSyndicateMenuRootLobby
+var _pause_summary_board: SpaceSyndicatePauseMenuSummaryBoard
+var _connected_save_resume_flow: SaveResumeApplicationFlowController
 var _last_shell_kind: StringName = &""
+var _resume_confirmation_pending := false
 
 
 func _ready() -> void:
+	_connect_save_resume_flow()
 	if open_root_on_ready and not Engine.is_editor_hint():
 		call_deferred("open_root_menu")
+
+
+func bind_save_resume_flow(path: NodePath) -> void:
+	_disconnect_save_resume_flow()
+	save_resume_flow_path = path
+	_connect_save_resume_flow()
+	_apply_save_resume_public_state(_save_resume_public_snapshot())
 
 
 func prepare_application_page(_action_id: StringName) -> void:
@@ -90,6 +104,7 @@ func close_to_table() -> bool:
 	overlay.visible = false
 	overlay.set_body_text("", false)
 	overlay.clear_preview()
+	_resume_confirmation_pending = false
 	if not _session_finished():
 		var coordinator := _coordinator()
 		if coordinator != null:
@@ -142,15 +157,18 @@ func toggle_table_pause() -> bool:
 
 func debug_snapshot() -> Dictionary:
 	return {
-		"controller_id": "menu_lifecycle_application_flow_controller_v1",
+		"controller_id": "menu_lifecycle_application_flow_controller_v2",
 		"root_open_count": _root_open_count,
 		"pause_open_count": _pause_open_count,
 		"requested_shell_count": _requested_shell_count,
 		"page_prepare_count": _page_prepare_count,
 		"close_count": _close_count,
 		"load_request_count": _load_request_count,
+		"save_request_count": _save_request_count,
 		"last_shell_kind": String(_last_shell_kind),
 		"menu_visible": is_menu_visible(),
+		"save_resume_flow_bound": _connected_save_resume_flow != null,
+		"resume_confirmation_pending": _resume_confirmation_pending,
 		"owns_gameplay_state": false,
 		"owns_world_clock": false,
 		"owns_page_snapshots": false,
@@ -165,6 +183,8 @@ func _present_shell(title: String, body: String, can_continue: bool, show_main_a
 		return false
 	_pause_for_application_surface()
 	_load_run_button = null
+	_root_lobby = null
+	_pause_summary_board = null
 	var root_table_menu := show_main_actions and title == "太空辛迪加｜星球赌桌"
 	overlay.present_menu_shell({
 		"title": title,
@@ -184,8 +204,6 @@ func _present_shell(title: String, body: String, can_continue: bool, show_main_a
 		"quick_nav_active_id": _quick_nav_active_key(title),
 		"quick_nav_visible": not compact_page and title not in ["太空辛迪加｜星球赌桌", "暂停菜单"],
 	})
-	if show_main_actions:
-		_refresh_run_save_state()
 	overlay.refresh_current_layout()
 	return true
 
@@ -203,6 +221,7 @@ func _attach_root_lobby() -> void:
 	var overlay := _menu_overlay()
 	if overlay == null:
 		return
+	_resume_confirmation_pending = false
 	overlay.clear_preview()
 	var host := overlay.get_preview_host()
 	if host == null:
@@ -217,7 +236,8 @@ func _attach_root_lobby() -> void:
 	lobby.rules_requested.connect(_submit_application_action.bind("rules"))
 	lobby.compendium_requested.connect(_submit_application_action.bind("compendium"))
 	lobby.set_lobby(_root_lobby_snapshot())
-	_load_run_button = lobby.get_load_run_button()
+	_root_lobby = lobby
+	_load_run_button = lobby.get_resume_run_button()
 	_refresh_run_save_state()
 
 
@@ -230,9 +250,12 @@ func _attach_pause_summary() -> void:
 	if host == null:
 		return
 	host.visible = true
-	var board := PAUSE_SUMMARY_SCENE.instantiate() as Control
+	var board := PAUSE_SUMMARY_SCENE.instantiate() as SpaceSyndicatePauseMenuSummaryBoard
 	if board != null:
 		host.add_child(board)
+		_pause_summary_board = board
+		board.save_game_requested.connect(_save_run_from_menu)
+		_refresh_run_save_state()
 
 
 func _on_root_lobby_action_requested(action_id: String) -> void:
@@ -240,7 +263,7 @@ func _on_root_lobby_action_requested(action_id: String) -> void:
 		"continue":
 			close_to_table()
 		"load_run":
-			_load_run_from_menu()
+			_resume_run_from_menu()
 		"credits":
 			_open_credits()
 		"quit":
@@ -270,33 +293,79 @@ func _open_credits() -> void:
 	_last_shell_kind = &"credits"
 
 
-func _load_run_from_menu() -> void:
+func _resume_run_from_menu() -> void:
+	var flow := _save_resume_flow()
+	if flow == null:
+		_apply_save_resume_public_state(SaveResumeReceiptV06.unavailable_public_snapshot())
+		return
 	var coordinator := _coordinator()
-	if coordinator == null:
+	var requires_confirmation := coordinator != null and coordinator.save_resume_replacement_confirmation_required()
+	if requires_confirmation and not _resume_confirmation_pending:
+		_resume_confirmation_pending = true
+		if _load_run_button != null:
+			_load_run_button.text = "确认读取存档"
+			_load_run_button.tooltip_text = "再次点击将用存档替换尚未保存的当前牌桌；回到牌桌可取消。"
+		if _root_lobby != null:
+			_root_lobby.set_action_state("load_run", {
+				"label": "确认读取存档",
+				"tooltip": "再次点击将用存档替换尚未保存的当前牌桌；回到牌桌可取消。",
+				"disabled": false,
+			})
+		var overlay := _menu_overlay()
+		if overlay != null:
+			overlay.set_run_save_summary("存档：读取会替换尚未保存的当前牌桌；再次点击确认，或回到牌桌取消。")
 		return
 	_load_request_count += 1
-	var result := coordinator.request_run_load("")
-	if bool(result.get("ok", false)) and bool(result.get("applied", false)) and int(result.get("error_code", ERR_INVALID_DATA)) == OK:
-		coordinator.record_legacy_viewer_feedback("已读取保存局面。")
-		open_root_menu()
+	var confirmed := requires_confirmation and _resume_confirmation_pending
+	_resume_confirmation_pending = false
+	var receipt := flow.request_resume_game(&"root_menu", confirmed)
+	if receipt.accepted and receipt.applied:
+		close_to_table()
 	else:
-		var error_code := int(result.get("error_code", ERR_INVALID_DATA))
-		var detail := str(result.get("summary", result.get("reason_code", error_string(error_code))))
-		coordinator.record_legacy_viewer_feedback("局面读取失败：%s" % detail)
 		_request_full_refresh()
-	_refresh_run_save_state()
+
+
+func _save_run_from_menu(destructive_confirmed: bool) -> void:
+	var flow := _save_resume_flow()
+	if flow == null:
+		_apply_save_resume_public_state(SaveResumeReceiptV06.unavailable_public_snapshot())
+		return
+	_save_request_count += 1
+	flow.request_save_game(&"pause_menu", destructive_confirmed)
+	_request_full_refresh()
 
 
 func _refresh_run_save_state() -> void:
-	var overlay := _menu_overlay()
-	var coordinator := _coordinator()
-	if overlay == null or coordinator == null:
+	var flow := _save_resume_flow()
+	if flow == null:
+		_apply_save_resume_public_state(SaveResumeReceiptV06.unavailable_public_snapshot())
 		return
-	var inspection := coordinator.inspect_run_save("")
-	var has_save := bool(inspection.get("ok", false)) and bool(inspection.get("applied", false))
+	flow.inspect_slot(&"pause_menu" if _pause_summary_board != null else &"root_menu")
+
+
+func _on_save_resume_public_state_changed(snapshot: Dictionary) -> void:
+	_apply_save_resume_public_state(snapshot)
+
+
+func _apply_save_resume_public_state(snapshot: Dictionary) -> void:
+	var overlay := _menu_overlay()
+	if overlay != null:
+		overlay.set_run_save_summary(str(snapshot.get("summary", "存档：恢复服务尚未就绪。")))
+	var busy := bool(snapshot.get("busy", false))
+	var can_resume := bool(snapshot.get("can_resume", false))
+	var active_operation := str(snapshot.get("active_operation", ""))
 	if _load_run_button != null:
-		_load_run_button.disabled = not has_save
-	overlay.set_run_save_summary(str(inspection.get("summary", "存档：运行时恢复服务不可用。")))
+		_load_run_button.disabled = busy or not can_resume
+		_load_run_button.text = "读取中…" if busy and active_operation == "resume" else "继续游戏"
+		_load_run_button.tooltip_text = str(snapshot.get("summary", "从本机固定存档位继续游戏。"))
+	if _root_lobby != null:
+		_root_lobby.set_action_state("load_run", {
+			"label": "读取中…" if busy and active_operation == "resume" else "继续游戏",
+			"tooltip": str(snapshot.get("summary", "从本机固定存档位继续游戏。")),
+			"disabled": busy or not can_resume,
+		})
+	if _pause_summary_board != null:
+		_pause_summary_board.set_save_resume_state(snapshot)
 
 
 func _request_full_refresh() -> void:
@@ -321,7 +390,7 @@ func _root_lobby_snapshot() -> Dictionary:
 		"accent": Color("#f59e0b"),
 		"tooltip": "星球赌桌大厅：保存、开局、继续和资料库入口。",
 		"title": "SPACE SYNDICATE",
-		"title_tooltip": "主菜单保留开新一桌、继续牌桌、资料库和游戏规则。",
+		"title_tooltip": "主菜单保留开新一桌、回到牌桌、继续存档、资料库和游戏规则。",
 		"status": "星球赌桌｜控区、GDP与公开审计",
 		"status_tooltip": "终局按现金排名。",
 		"planet_mark": "◎",
@@ -341,9 +410,9 @@ func _root_lobby_snapshot() -> Dictionary:
 			{"id": "compendium", "kicker": "02｜资料", "label": "资料库", "detail": "图鉴、卡牌、商品、区域", "accent": Color("#f472b6")},
 		],
 		"utilities": [
-			{"id": "continue", "label": "继续牌桌" if can_continue else "暂无牌桌", "tooltip": "回到当前星球" if can_continue else "先开新一桌。", "accent": Color("#22c55e"), "disabled": not can_continue},
+			{"id": "continue", "label": "回到牌桌" if can_continue else "暂无牌桌", "tooltip": "回到当前星球" if can_continue else "先开新一桌。", "accent": Color("#22c55e"), "disabled": not can_continue},
 			{"id": "rules", "label": "游戏规则", "accent": Color("#93c5fd")},
-			{"id": "load_run", "label": "读取局面", "accent": Color("#94a3b8")},
+			{"id": "load_run", "label": "继续游戏", "tooltip": "正在检查本机存档。", "accent": Color("#94a3b8"), "disabled": true},
 			{"id": "credits", "label": "Credits", "accent": Color("#35d0c5")},
 			{"id": "quit", "label": "退出游戏", "accent": Color("#fb7185")},
 		],
@@ -402,6 +471,31 @@ func _world_session_state() -> WorldSessionState:
 
 func _application_flow_port() -> ApplicationFlowPort:
 	return get_node_or_null(application_flow_port_path) as ApplicationFlowPort if not application_flow_port_path.is_empty() else null
+
+
+func _save_resume_flow() -> SaveResumeApplicationFlowController:
+	return get_node_or_null(save_resume_flow_path) as SaveResumeApplicationFlowController if not save_resume_flow_path.is_empty() else null
+
+
+func _save_resume_public_snapshot() -> Dictionary:
+	var flow := _save_resume_flow()
+	return flow.public_snapshot() if flow != null else SaveResumeReceiptV06.unavailable_public_snapshot()
+
+
+func _connect_save_resume_flow() -> void:
+	var flow := _save_resume_flow()
+	if flow == null or flow == _connected_save_resume_flow:
+		return
+	_connected_save_resume_flow = flow
+	if not flow.public_state_changed.is_connected(_on_save_resume_public_state_changed):
+		flow.public_state_changed.connect(_on_save_resume_public_state_changed)
+
+
+func _disconnect_save_resume_flow() -> void:
+	if _connected_save_resume_flow != null \
+			and _connected_save_resume_flow.public_state_changed.is_connected(_on_save_resume_public_state_changed):
+		_connected_save_resume_flow.public_state_changed.disconnect(_on_save_resume_public_state_changed)
+	_connected_save_resume_flow = null
 
 
 func _codex_navigation_owner() -> CodexNavigationRuntimeController:

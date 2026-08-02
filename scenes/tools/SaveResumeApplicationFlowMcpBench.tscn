@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/tools/SaveResumeApplicationFlowBench.tscn" id="1_bench"]
+
+[node name="SaveResumeApplicationFlowMcpBench" type="Node"]
+
+[node name="SaveResumeApplicationFlowBench" parent="." instance=ExtResource("1_bench")]
+auto_quit = false

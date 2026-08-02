@@ -34,6 +34,7 @@ var _submission_count := 0
 var _accepted_count := 0
 var _rejected_count := 0
 var _replay_count := 0
+var _recovery_delivery_count := 0
 var _collision_count := 0
 var _stale_count := 0
 var _human_submission_count := 0
@@ -240,6 +241,9 @@ func submit_intent(intent: Dictionary, capability: GameActionAiSubmissionCapabil
 		if str(prior.get("request_fingerprint", "")) != request_fingerprint:
 			_collision_count += 1
 			return _complete(_receipt_for(intent, false, "request-id-collision", [], "none", false, true, -1, actor_kind))
+		if bool(prior.get("delivery_recovery_pending", false)):
+			_recovery_delivery_count += 1
+			return _apply_authorized_intent(intent, actor_kind, true)
 		_replay_count += 1
 		var replay := RECEIPT.replay_copy(prior.get("receipt", {}) as Dictionary)
 		if replay.is_empty():
@@ -248,7 +252,15 @@ func submit_intent(intent: Dictionary, capability: GameActionAiSubmissionCapabil
 	if not _source_revision_current(intent, actor_kind):
 		_stale_count += 1
 		return _remember_and_complete(intent, _receipt_for(intent, false, "source-revision-stale", [], "none", false, false, -1, actor_kind))
-	var outcome := _dispatch(intent)
+	return _apply_authorized_intent(intent, actor_kind)
+
+
+func _apply_authorized_intent(
+	intent: Dictionary,
+	actor_kind: String,
+	delivery_recovery := false
+) -> Dictionary:
+	var outcome := _dispatch(intent, delivery_recovery)
 	var accepted := bool(outcome.get("accepted", false))
 	var refresh_scope := str(outcome.get("refresh_scope", "full" if accepted else "none"))
 	var effect_refs: Array = []
@@ -261,12 +273,17 @@ func submit_intent(intent: Dictionary, capability: GameActionAiSubmissionCapabil
 		str(outcome.get("reason_id", "action-rejected")),
 		effect_refs,
 		refresh_scope,
-		false,
+		bool(outcome.get("idempotent_replay", false)),
 		false,
 		maxi(_operation_revision + 1, int(outcome.get("authoritative_revision", 0))),
 		actor_kind
 	)
-	return _remember_and_complete(intent, receipt, bool(outcome.get("domain_refresh_owned", false)))
+	return _remember_and_complete(
+		intent,
+		receipt,
+		bool(outcome.get("domain_refresh_owned", false)),
+		bool(outcome.get("delivery_recovery_pending", false))
+	)
 
 
 func debug_snapshot() -> Dictionary:
@@ -276,6 +293,7 @@ func debug_snapshot() -> Dictionary:
 		"accepted_count": _accepted_count,
 		"rejected_count": _rejected_count,
 		"replay_count": _replay_count,
+		"recovery_delivery_count": _recovery_delivery_count,
 		"collision_count": _collision_count,
 		"stale_count": _stale_count,
 		"human_submission_count": _human_submission_count,
@@ -298,13 +316,13 @@ func debug_snapshot() -> Dictionary:
 	}
 
 
-func _dispatch(intent: Dictionary) -> Dictionary:
+func _dispatch(intent: Dictionary, delivery_recovery := false) -> Dictionary:
 	var action_id := str(intent.get("semantic_action_id", ""))
 	var authorization := intent.get("actor_authorization", {}) as Dictionary
 	var actor_index := int(authorization.get("actor_index", -1))
 	match action_id:
 		INTENT.ACTION_CARD_PLAY:
-			return _dispatch_card_play(intent, actor_index)
+			return _dispatch_card_play(intent, actor_index, delivery_recovery)
 		INTENT.ACTION_CARD_GROUP_READY:
 			var resolution_id := _resolution_id(intent)
 			var outcome := _card_group().submit_ready(actor_index, resolution_id) if _card_group() != null else {"accepted": false, "reason_id": "card-group-port-missing"}
@@ -337,20 +355,28 @@ func _dispatch(intent: Dictionary) -> Dictionary:
 	return {"accepted": false, "reason_id": "action-unsupported", "refresh_scope": "none"}
 
 
-func _dispatch_card_play(intent: Dictionary, actor_index: int) -> Dictionary:
+func _dispatch_card_play(
+	intent: Dictionary,
+	actor_index: int,
+	delivery_recovery := false
+) -> Dictionary:
+	var authorization: Dictionary = intent.get("actor_authorization", {}) \
+		if intent.get("actor_authorization", {}) is Dictionary else {}
 	var target_ids := intent.get("target_ids", {}) as Dictionary
 	var slot_index := _slot_index(str(target_ids.get("hand_slot_id", "")))
-	var card := _card_at(actor_index, slot_index)
-	if card.is_empty() or not CARD_BINDING.matches_private_instance_ref(
-		card,
-		slot_index,
-		str(target_ids.get("card_instance_id", ""))
-	):
-		return {"accepted": false, "reason_id": "card-binding-stale", "refresh_scope": "none"}
 	var request := {
 		"player_index": actor_index,
 		"slot_index": slot_index,
 		"submission_source": str(intent.get("submission_kind", "")),
+		"request_id": str(intent.get("request_id", "")),
+		"intent_fingerprint": str(intent.get("intent_fingerprint", "")),
+		"source_revision": int(intent.get("source_revision", -1)),
+		"actor_kind_id": str(authorization.get("actor_kind_id", "")),
+		"actor_id": str(authorization.get("actor_id", "")),
+		"session_id": str(authorization.get("session_id", "")),
+		"session_revision": int(authorization.get("session_revision", -1)),
+		"hand_slot_id": str(target_ids.get("hand_slot_id", "")),
+		"card_instance_id": str(target_ids.get("card_instance_id", "")),
 	}
 	var selected_resolution_id := _parse_stable_suffix(str(target_ids.get("selected_resolution_id", "")), "card.resolution.")
 	if selected_resolution_id >= 0:
@@ -373,23 +399,50 @@ func _dispatch_card_play(intent: Dictionary, actor_index: int) -> Dictionary:
 		if player_index < 0:
 			return {"accepted": false, "reason_id": "card-target-invalid", "refresh_scope": "none"}
 		request["target_player"] = player_index
-	var result := _card_play().request_hand_play(request) if _card_play() != null else {}
+	var card_play := _card_play()
+	if card_play == null:
+		return {"accepted": false, "reason_id": "card-play-port-missing", "refresh_scope": "none"}
+	var result: Dictionary
+	if delivery_recovery:
+		result = card_play.retry_hand_play(request)
+	else:
+		var card := _card_at(actor_index, slot_index)
+		if card.is_empty() or not CARD_BINDING.matches_private_instance_ref(
+			card,
+			slot_index,
+			str(target_ids.get("card_instance_id", ""))
+		):
+			return {"accepted": false, "reason_id": "card-binding-stale", "refresh_scope": "none"}
+		result = card_play.request_hand_play(request)
 	var accepted := bool(result.get("accepted", result.get("queued", false)))
 	var v06_receipt: Dictionary = result.get("v06_receipt", {}) \
 		if result.get("v06_receipt", {}) is Dictionary else {}
+	var queued := accepted and bool(v06_receipt.get("queued", false))
 	if accepted and not v06_receipt.is_empty():
-		var finalization: Dictionary = v06_receipt.get("effect_finalization", {}) \
-			if v06_receipt.get("effect_finalization", {}) is Dictionary else {}
-		accepted = bool(v06_receipt.get("committed", false)) \
-			and bool(finalization.get("finalized", v06_receipt.get("finalized", false)))
+		if queued:
+			accepted = not CARD_BINDING.resolution_ref(
+				int(v06_receipt.get("resolution_id", -1))
+			).is_empty()
+		else:
+			var finalization: Dictionary = v06_receipt.get("effect_finalization", {}) \
+				if v06_receipt.get("effect_finalization", {}) is Dictionary else {}
+			accepted = bool(v06_receipt.get("committed", false)) \
+				and bool(finalization.get("finalized", v06_receipt.get("finalized", false)))
 	if accepted:
 		_card_play_apply_count += 1
 	return {
 		"accepted": accepted,
 		"reason_id": str(result.get("reason", "card-play-accepted" if accepted else "card-play-rejected")).replace("_", "-"),
-		"effect_ref": "card.play.%s" % str(target_ids.get("card_instance_id", "")) if accepted else "none",
+		"effect_ref": CARD_BINDING.resolution_ref(
+			int(v06_receipt.get("resolution_id", -1))
+		) if queued and accepted else (
+			"card.play.%s" % str(target_ids.get("card_instance_id", "")) if accepted else "none"
+		),
 		"authoritative_revision": _operation_revision + 1,
 		"refresh_scope": "full" if accepted else "none",
+		"idempotent_replay": bool(v06_receipt.get("idempotent_replay", false)),
+		"delivery_recovery_pending": not accepted \
+			and bool(v06_receipt.get("requires_recovery", false)),
 	}
 
 
@@ -576,8 +629,18 @@ func _authorization_reason(intent: Dictionary, capability: GameActionAiSubmissio
 	return "actor-kind-unsupported"
 
 
-func _remember_and_complete(intent: Dictionary, receipt: Dictionary, domain_refresh_owned := false) -> Dictionary:
-	_remember(str(intent.get("request_id", "")), INTENT.request_fingerprint(intent), receipt)
+func _remember_and_complete(
+	intent: Dictionary,
+	receipt: Dictionary,
+	domain_refresh_owned := false,
+	delivery_recovery_pending := false
+) -> Dictionary:
+	_remember(
+		str(intent.get("request_id", "")),
+		INTENT.request_fingerprint(intent),
+		receipt,
+		delivery_recovery_pending
+	)
 	return _complete(receipt, not domain_refresh_owned)
 
 
@@ -819,12 +882,20 @@ func _sync_journal(session_key: String) -> void:
 	_journal_session_key = session_key
 
 
-func _remember(request_id: String, request_fingerprint: String, receipt: Dictionary) -> void:
+func _remember(
+	request_id: String,
+	request_fingerprint: String,
+	receipt: Dictionary,
+	delivery_recovery_pending := false
+) -> void:
+	var already_present := _journal.has(request_id)
 	_journal[request_id] = {
 		"request_fingerprint": request_fingerprint,
 		"receipt": RECEIPT.detached_copy(receipt),
+		"delivery_recovery_pending": delivery_recovery_pending,
 	}
-	_journal_order.append(request_id)
+	if not already_present:
+		_journal_order.append(request_id)
 	while _journal_order.size() > JOURNAL_LIMIT:
 		_journal.erase(_journal_order.pop_front())
 

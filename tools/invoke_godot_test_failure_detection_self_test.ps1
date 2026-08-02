@@ -45,7 +45,7 @@ function Get-SaveFingerprint {
     )
 
     $records = [Collections.Generic.List[object]]::new()
-    foreach ($name in @("campaign_progress.save", "space_syndicate_current_run.save")) {
+    foreach ($name in @("campaign_progress.save", "space_syndicate_current_run.save", "saves\v06\current_run.save")) {
         $path = Join-Path $Root $name
         $item = Get-Item -LiteralPath $path -ErrorAction SilentlyContinue
         $records.Add([pscustomobject][ordered]@{
