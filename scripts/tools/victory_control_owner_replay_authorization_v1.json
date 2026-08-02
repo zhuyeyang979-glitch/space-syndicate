@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "contract_id": "VictoryControlOwnerReplayAuthorizationV1",
+  "authorization_id": "alpha04c-victory-control-save-v3-replay-v1",
+  "run_id_prefix": "alpha04c-victory-control-replay-v1",
+  "run_id": "alpha04c-victory-control-replay-v1-attempt-1",
+  "replay_attempt_count_before": 0,
+  "authorized_new_replay_count": 1,
+  "replay_attempt_count_after": 1,
+  "targeted_owner_capture_diagnostic_count_before": 7,
+  "targeted_owner_capture_diagnostic_count_after": 7,
+  "characterization_sha256": "7643efb4b211c881c5eed6321534e46c90a1f7a054a85d8509d08abe803f39d9",
+  "authority_matrix_sha256": "341a173e9da9e0529c50c6f65f5c3ec0fb24c1a90f61796bf29b496d13e3a30d"
+}

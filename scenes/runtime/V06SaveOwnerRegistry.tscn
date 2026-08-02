@@ -226,6 +226,7 @@ unsupported_reason = ""
 script = ExtResource("2_binding")
 section_id = "victory_control"
 owner_id = "victory_control"
+state_version = 2
 owner_path = NodePath("../../VictoryControlRuntimeController")
 capture_method = "to_save_data"
 preflight_method = "preflight_save_data"

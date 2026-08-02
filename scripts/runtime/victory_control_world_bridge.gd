@@ -2,8 +2,10 @@
 extends Node
 class_name VictoryControlWorldBridge
 
+const StrictState := preload("res://scripts/runtime/save_owner_state_v2_contract.gd")
 const BRIDGE_ID := "victory_control_world_bridge_v06"
 const CURRENCY_SCALE := 100
+const MAX_RETAINED_CAPTURE_ATTESTATIONS := 16
 
 var _world: Node
 var _world_session_state: WorldSessionState
@@ -13,6 +15,7 @@ var _product_market_controller: Node
 var _city_gdp_derivative_controller: Node
 var _military_controller: Node
 var _capture_count := 0
+var _issued_capture_fingerprints: Dictionary = {}
 
 
 func bind_world(world: Node) -> void:
@@ -41,6 +44,7 @@ func has_world() -> bool:
 
 func reset_state() -> void:
 	_capture_count = 0
+	_issued_capture_fingerprints = {}
 
 
 func capture_world_snapshot(clock_pause: Dictionary = {}, settlement_checkpoint := "read_only") -> Dictionary:
@@ -99,7 +103,7 @@ func capture_world_snapshot(clock_pause: Dictionary = {}, settlement_checkpoint 
 				"financial_positions": _financial_assets(player_index),
 			},
 		})
-	return {
+	var snapshot := {
 		"schema_version": "v0.6.victory-world.2",
 		"players": player_rows,
 		"regions": region_rows,
@@ -108,6 +112,25 @@ func capture_world_snapshot(clock_pause: Dictionary = {}, settlement_checkpoint 
 		"ordering_receipt": _ordering_receipt(settlement_checkpoint),
 		"visibility_scope": "controller_private",
 	}
+	return _attest_snapshot(snapshot)
+
+
+func is_fresh_snapshot_after_restore(snapshot: Dictionary, capture_floor: int) -> bool:
+	if not _is_data_only(snapshot) \
+			or str(snapshot.get("schema_version", "")) != "v0.6.victory-world.2" \
+			or str(snapshot.get("visibility_scope", "")) != "controller_private" \
+			or not (snapshot.get("ordering_receipt") is Dictionary):
+		return false
+	var ordering := snapshot.get("ordering_receipt") as Dictionary
+	if not (ordering.get("capture_sequence") is int) \
+			or not (ordering.get("capture_fingerprint") is String):
+		return false
+	var sequence := int(ordering.get("capture_sequence", 0))
+	var fingerprint := str(ordering.get("capture_fingerprint", ""))
+	return sequence > capture_floor \
+			and sequence <= _capture_count \
+			and str(_issued_capture_fingerprints.get(sequence, "")) == fingerprint \
+			and fingerprint == _snapshot_fingerprint(snapshot)
 
 
 func debug_snapshot() -> Dictionary:
@@ -115,6 +138,7 @@ func debug_snapshot() -> Dictionary:
 		"bridge_id": BRIDGE_ID,
 		"bridge_ready": has_world() and _region_infrastructure_controller != null and _commodity_flow_controller != null,
 		"capture_count": _capture_count,
+		"retained_capture_attestation_count": _issued_capture_fingerprints.size(),
 		"owns_gdp_formula": false,
 		"region_lifecycle_source": "RegionInfrastructureRuntimeController",
 		"gdp_source": "CommodityFlowRuntimeController.sale_receipts",
@@ -307,11 +331,38 @@ func _ordering_receipt(settlement_checkpoint: String) -> Dictionary:
 	var flow_debug: Dictionary = flow_debug_variant if flow_debug_variant is Dictionary else {}
 	return {
 		"checkpoint": settlement_checkpoint,
+		"capture_sequence": _capture_count,
 		"region_revision": int(region_debug.get("revision", 0)),
 		"flow_revision": int(flow_debug.get("flow_revision", 0)),
 		"captured_at_game_time": _world_session_state.game_time if _world_session_state != null else 0.0,
 		"victory_reads_after": ["locked_intents", "construction_repair", "unit_attacks", "region_lifecycle", "route_rebuild", "commodity_flow", "sale_receipts", "bankruptcy"],
 	}
+
+
+func _attest_snapshot(snapshot: Dictionary) -> Dictionary:
+	var result := snapshot.duplicate(true)
+	var ordering: Dictionary = result.get("ordering_receipt", {}) \
+			if result.get("ordering_receipt", {}) is Dictionary else {}
+	ordering.erase("capture_fingerprint")
+	result["ordering_receipt"] = ordering
+	var fingerprint := _snapshot_fingerprint(result)
+	ordering["capture_fingerprint"] = fingerprint
+	result["ordering_receipt"] = ordering
+	_issued_capture_fingerprints[_capture_count] = fingerprint
+	while _issued_capture_fingerprints.size() > MAX_RETAINED_CAPTURE_ATTESTATIONS:
+		var sequences := _issued_capture_fingerprints.keys()
+		sequences.sort()
+		_issued_capture_fingerprints.erase(sequences[0])
+	return result
+
+
+func _snapshot_fingerprint(snapshot: Dictionary) -> String:
+	var canonical_source := snapshot.duplicate(true)
+	var ordering: Dictionary = canonical_source.get("ordering_receipt", {}) \
+			if canonical_source.get("ordering_receipt", {}) is Dictionary else {}
+	ordering.erase("capture_fingerprint")
+	canonical_source["ordering_receipt"] = ordering
+	return StrictState.fingerprint(canonical_source)
 
 
 func _is_data_only(value: Variant) -> bool:

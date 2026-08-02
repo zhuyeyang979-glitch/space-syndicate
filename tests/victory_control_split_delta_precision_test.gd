@@ -1,6 +1,7 @@
 extends SceneTree
 
 const CONTROLLER_SCENE_PATH := "res://scenes/runtime/VictoryControlRuntimeController.tscn"
+const SAVE_FIXTURE := preload("res://tests/victory_control_save_v3_fixture.gd")
 const POST_SETTLEMENT_CHECKPOINT := "post_world_settlement"
 const EXPECTED_REASON := "public_audit_complete"
 
@@ -84,7 +85,7 @@ func _test_save_load_near_endpoint() -> void:
 	source.call("advance_world_effective", 119.99, world)
 	var applied: Dictionary = restored.call("apply_save_data", source.call("to_save_data"))
 	_expect(bool(applied.get("applied", false)) and str((restored.call("public_snapshot") as Dictionary).get("state", "")) == "audit", "near-end audit save loads without changing lifecycle state")
-	restored.call("advance_world_effective", 0.01, world)
+	restored.call("advance_world_effective", 0.01, SAVE_FIXTURE.issue_world(restored, world))
 	_expect(str((restored.call("public_snapshot") as Dictionary).get("state", "")) == "resolved", "restored near-end audit resolves with the remaining split delta")
 	_free_controllers([source, restored])
 
@@ -98,7 +99,7 @@ func _test_save_load_near_endpoint() -> void:
 	var waiting: Dictionary = checkpoint_source.call("advance_world_effective", 119.9999995, stale_world)
 	_expect(str(waiting.get("state", "")) == "audit" and str(waiting.get("reason", "")) == "awaiting_post_world_settlement_checkpoint", "epsilon endpoint still waits for the required settlement checkpoint")
 	var checkpoint_applied: Dictionary = checkpoint_restored.call("apply_save_data", checkpoint_source.call("to_save_data"))
-	checkpoint_restored.call("advance_world_effective", 0.0, _eligible_world())
+	checkpoint_restored.call("advance_world_effective", 0.0, SAVE_FIXTURE.issue_world(checkpoint_restored, _eligible_world()))
 	_expect(bool(checkpoint_applied.get("applied", false)) and str((checkpoint_restored.call("public_snapshot") as Dictionary).get("state", "")) == "resolved", "loaded epsilon endpoint resolves on zero-delta checkpoint re-evaluation")
 	_free_controllers([checkpoint_source, checkpoint_restored])
 
@@ -147,19 +148,9 @@ func _completed_controller(qualification_deltas: Array, audit_deltas: Array, lab
 
 
 func _new_controller(label: String) -> Node:
-	var packed := load(CONTROLLER_SCENE_PATH) as PackedScene
-	_expect(packed != null, "%s controller scene loads" % label)
-	if packed == null:
-		return null
-	var controller := packed.instantiate()
+	var controller := SAVE_FIXTURE.controller(self)
 	_expect(controller != null, "%s controller instantiates" % label)
 	if controller == null:
-		return null
-	root.add_child(controller)
-	var configured: Dictionary = controller.call("configure")
-	_expect(bool(configured.get("configured", false)), "%s controller configures from v0.6 resources" % label)
-	if not bool(configured.get("configured", false)):
-		controller.free()
 		return null
 	return controller
 
