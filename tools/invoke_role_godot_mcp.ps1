@@ -27,13 +27,17 @@ if (-not (Test-Path -LiteralPath $tokenPath)) {
 $connection = Get-Content -Raw -LiteralPath $connectionPath | ConvertFrom-Json
 $token = [System.IO.File]::ReadAllText($tokenPath).Trim()
 $arguments = $ArgumentsJson | ConvertFrom-Json -AsHashtable
+$jsonRpcRequestId = [guid]::NewGuid().ToString("N")
+if ($ToolName -eq "request_script_reload" -and -not $arguments.ContainsKey("request_id")) {
+    $arguments["request_id"] = $jsonRpcRequestId
+}
 $headers = @{
     "X-Funplay-MCP-Token" = $token
     "MCP-Protocol-Version" = "2025-11-25"
 }
 $body = @{
     jsonrpc = "2.0"
-    id = 1
+    id = $jsonRpcRequestId
     method = "tools/call"
     params = @{
         name = $ToolName
@@ -41,13 +45,21 @@ $body = @{
     }
 } | ConvertTo-Json -Depth 30 -Compress
 
-$response = Invoke-RestMethod `
-    -Uri ([string]$connection.endpoint) `
-    -Method Post `
-    -Headers $headers `
-    -ContentType "application/json" `
-    -Body $body `
-    -TimeoutSec $TimeoutSeconds
+try {
+    $response = Invoke-RestMethod `
+        -Uri ([string]$connection.endpoint) `
+        -Method Post `
+        -Headers $headers `
+        -ContentType "application/json" `
+        -Body $body `
+        -TimeoutSec $TimeoutSeconds
+} catch {
+    $editorProcess = Get-Process -Id ([int]$connection.pid) -ErrorAction SilentlyContinue
+    if ($editorProcess -eq $null -or $editorProcess.HasExited) {
+        throw "MCP_EDITOR_PROCESS_EXITED|pid=$($connection.pid)|endpoint=$($connection.endpoint)"
+    }
+    throw
+}
 
 if ($response.error -ne $null) {
     throw ($response.error | ConvertTo-Json -Depth 10 -Compress)

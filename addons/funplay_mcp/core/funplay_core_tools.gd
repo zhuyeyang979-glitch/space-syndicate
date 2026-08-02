@@ -2,6 +2,7 @@
 extends RefCounted
 
 const FunplayProjectSkillManager = preload("res://addons/funplay_mcp/core/funplay_project_skill_manager.gd")
+const FunplayFilesystemReloadState = preload("res://addons/funplay_mcp/core/funplay_filesystem_reload_state.gd")
 
 const SCENE_EXTENSIONS = [".tscn", ".scn"]
 const TEXT_EXTENSIONS = [
@@ -195,15 +196,45 @@ class ExecutionContext:
 var _plugin
 var _settings
 var _tool_registry
+var _filesystem_reload_state
+var _filesystem_signal_connected := false
+var _filesystem_execution_active := false
+var _internal_reload_request_sequence := 0
 
 
 func _init(plugin, settings) -> void:
 	_plugin = plugin
 	_settings = settings
+	_filesystem_reload_state = FunplayFilesystemReloadState.new()
+	_connect_filesystem_signal()
+	_sync_filesystem_state()
 
 
 func set_tool_registry(tool_registry) -> void:
 	_tool_registry = tool_registry
+
+
+func teardown() -> void:
+	if _filesystem_reload_state != null:
+		_filesystem_reload_state.begin_stopping(Time.get_ticks_msec())
+	_disconnect_filesystem_signal()
+	_tool_registry = null
+
+
+func process_pending_filesystem_reload() -> void:
+	if _filesystem_execution_active or _filesystem_reload_state == null:
+		return
+	_sync_filesystem_state()
+	var status: Dictionary = _filesystem_reload_state.get_status()
+	if str(status.get("state", "")) != FunplayFilesystemReloadState.STATE_RELOAD_QUEUED:
+		return
+	var begin: Dictionary = _filesystem_reload_state.begin_queued_reload(Time.get_ticks_msec())
+	if bool(begin.get("should_execute", false)):
+		_execute_filesystem_reload(str(begin.get("operation_id", "")))
+
+
+func is_filesystem_reload_execution_active() -> bool:
+	return _filesystem_execution_active
 
 
 func execute_code(arguments: Dictionary) -> String:
@@ -268,6 +299,10 @@ func execute_code(arguments: Dictionary) -> String:
 	})
 
 
+func get_godot_version(_arguments: Dictionary) -> String:
+	return _render_variant(Engine.get_version_info())
+
+
 func get_project_info(_arguments: Dictionary) -> String:
 	var editor = _editor()
 	var root = editor.get_edited_scene_root()
@@ -291,6 +326,17 @@ func get_project_info(_arguments: Dictionary) -> String:
 		"disabled_tool_count": _settings.disabled_tools.size() if _settings != null else 0,
 	}
 	return _render_variant(info)
+
+
+func filesystem_scan_status(arguments: Dictionary) -> String:
+	_sync_filesystem_state()
+	var status: Dictionary = _filesystem_reload_state.get_status()
+	var operation_id := str(arguments.get("operation_id", "")).strip_edges()
+	if operation_id != "":
+		status["operation"] = _filesystem_reload_state.get_operation(operation_id)
+	status["editor_pid"] = OS.get_process_id()
+	status["endpoint_alive"] = true
+	return _render_variant(status)
 
 
 func get_scene_info(_arguments: Dictionary) -> String:
@@ -3273,18 +3319,21 @@ func get_csharp_errors(arguments: Dictionary) -> String:
 
 func request_script_reload(arguments: Dictionary) -> String:
 	var path = _normalize_path(str(arguments.get("path", "")))
-	if path != "":
-		var script = load(path)
-		if script != null and script is Script:
-			var err = script.reload()
-			_refresh_filesystem()
-			return _render_variant({
-				"path": path,
-				"reload_error": err,
-			})
-
-	_refresh_filesystem()
-	return "Requested Godot resource filesystem rescan."
+	var request_id := str(arguments.get("request_id", arguments.get("_mcp_http_request_id", ""))).strip_edges()
+	if request_id == "":
+		_internal_reload_request_sequence += 1
+		request_id = "legacy-filesystem-reload-%d-%d" % [
+			OS.get_process_id(),
+			_internal_reload_request_sequence,
+		]
+	_sync_filesystem_state()
+	var result: Dictionary = _filesystem_reload_state.request_reload(
+		request_id,
+		path,
+		Time.get_ticks_msec()
+	)
+	result["path"] = path
+	return _render_variant(result)
 
 
 func log_message(arguments: Dictionary) -> String:
@@ -5389,10 +5438,124 @@ func _pascal_case(value: String) -> String:
 	return result
 
 
-func _refresh_filesystem() -> void:
-	var resource_filesystem = _editor().get_resource_filesystem()
-	if resource_filesystem != null:
-		resource_filesystem.scan()
+func _refresh_filesystem() -> Dictionary:
+	_internal_reload_request_sequence += 1
+	_sync_filesystem_state()
+	return _filesystem_reload_state.request_reload(
+		"internal-filesystem-reload-%d-%d" % [
+			OS.get_process_id(),
+			_internal_reload_request_sequence,
+		],
+		"",
+		Time.get_ticks_msec()
+	)
+
+
+func _resource_filesystem():
+	var editor = _editor()
+	if editor == null:
+		return null
+	return editor.get_resource_filesystem()
+
+
+func _connect_filesystem_signal() -> void:
+	var resource_filesystem = _resource_filesystem()
+	if resource_filesystem == null:
+		return
+	var callback := Callable(self, "_on_filesystem_changed")
+	if not resource_filesystem.filesystem_changed.is_connected(callback):
+		resource_filesystem.filesystem_changed.connect(callback)
+	_filesystem_signal_connected = true
+
+
+func _disconnect_filesystem_signal() -> void:
+	if not _filesystem_signal_connected:
+		return
+	var resource_filesystem = _resource_filesystem()
+	var callback := Callable(self, "_on_filesystem_changed")
+	if resource_filesystem != null and resource_filesystem.filesystem_changed.is_connected(callback):
+		resource_filesystem.filesystem_changed.disconnect(callback)
+	_filesystem_signal_connected = false
+
+
+func _on_filesystem_changed() -> void:
+	_sync_filesystem_state(true)
+
+
+func _sync_filesystem_state(completion_signal: bool = false) -> Dictionary:
+	if _filesystem_reload_state == null:
+		return {}
+	var resource_filesystem = _resource_filesystem()
+	if resource_filesystem == null:
+		return _filesystem_reload_state.observe_editor(
+			false,
+			false,
+			false,
+			Time.get_ticks_msec(),
+			completion_signal
+		)
+	var initial_snapshot_ready: bool = (
+		resource_filesystem.get_filesystem() != null
+		and not resource_filesystem.is_importing()
+	)
+	return _filesystem_reload_state.observe_editor(
+		resource_filesystem.is_scanning(),
+		initial_snapshot_ready,
+		true,
+		Time.get_ticks_msec(),
+		completion_signal
+	)
+
+
+func _execute_filesystem_reload(operation_id: String) -> void:
+	if operation_id == "" or _filesystem_execution_active:
+		return
+	var resource_filesystem = _resource_filesystem()
+	if resource_filesystem == null:
+		_filesystem_reload_state.fail_reload(
+			operation_id,
+			"filesystem_resource_unavailable",
+			"Godot EditorFileSystem is unavailable.",
+			Time.get_ticks_msec()
+		)
+		return
+	if resource_filesystem.is_scanning():
+		_filesystem_reload_state.fail_reload(
+			operation_id,
+			"filesystem_scan_busy",
+			"Godot EditorFileSystem is already scanning.",
+			Time.get_ticks_msec()
+		)
+		return
+
+	_filesystem_execution_active = true
+	var operation: Dictionary = _filesystem_reload_state.get_operation(operation_id)
+	for path_value in operation.get("paths", []):
+		var path := str(path_value)
+		var script = load(path)
+		if script == null or not (script is Script):
+			_filesystem_execution_active = false
+			_filesystem_reload_state.fail_reload(
+				operation_id,
+				"filesystem_script_load_failed",
+				"Script could not be loaded for reload: %s" % path,
+				Time.get_ticks_msec()
+			)
+			return
+		var reload_error: int = script.reload()
+		if reload_error != OK:
+			_filesystem_execution_active = false
+			_filesystem_reload_state.fail_reload(
+				operation_id,
+				"filesystem_script_reload_failed",
+				"Script reload failed for %s with error %d." % [path, reload_error],
+				Time.get_ticks_msec()
+			)
+			return
+
+	resource_filesystem.scan()
+	_filesystem_execution_active = false
+	_sync_filesystem_state()
 
 
 func _get_log_files(include_rotated: bool) -> Array:

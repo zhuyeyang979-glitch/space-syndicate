@@ -1,0 +1,100 @@
+extends SceneTree
+
+const SCRIPT_PATHS := [
+	"res://addons/funplay_mcp/plugin.gd",
+	"res://addons/funplay_mcp/core/funplay_filesystem_reload_state.gd",
+	"res://addons/funplay_mcp/core/funplay_core_tools.gd",
+	"res://addons/funplay_mcp/core/funplay_http_transport.gd",
+	"res://addons/funplay_mcp/core/funplay_mcp_request_handler.gd",
+	"res://addons/funplay_mcp/core/funplay_mcp_server.gd",
+	"res://addons/funplay_mcp/core/funplay_tool_registry.gd",
+]
+
+var _checks := 0
+var _failures: Array[String] = []
+
+
+func _init() -> void:
+	for path in SCRIPT_PATHS:
+		var script = load(path)
+		_expect(
+			script != null and script is Script and script.can_instantiate(),
+			"MCP script compiles and can instantiate: %s" % path
+		)
+
+	var core_source := _read("res://addons/funplay_mcp/core/funplay_core_tools.gd")
+	var request_block := _function_block(core_source, "func request_script_reload(")
+	var refresh_block := _function_block(core_source, "func _refresh_filesystem(")
+	var execute_block := _function_block(core_source, "func _execute_filesystem_reload(")
+	_expect(request_block.contains("_filesystem_reload_state.request_reload("), "reload handler only registers an operation")
+	_expect(not request_block.contains("resource_filesystem.scan()"), "reload handler never scans synchronously")
+	_expect(not refresh_block.contains("resource_filesystem.scan()"), "legacy refresh helper delegates to state owner")
+	_expect(execute_block.contains("resource_filesystem.scan()"), "single execution function owns EditorFileSystem.scan")
+	_expect(execute_block.contains("_filesystem_execution_active = true"), "scan execution raises the nested-frame guard")
+
+	var plugin_source := _read("res://addons/funplay_mcp/plugin.gd")
+	var process_block := _function_block(plugin_source, "func _process(")
+	_expect(
+		process_block.find("process_pending_filesystem_reload()") >= 0
+			and process_block.find("process_pending_filesystem_reload()") < process_block.find("_server.poll()"),
+		"queued reload executes on a later top-level plugin tick"
+	)
+	_expect(process_block.contains("is_filesystem_reload_execution_active()"), "nested editor frames skip HTTP polling during scan")
+
+	var transport_source := _read("res://addons/funplay_mcp/core/funplay_http_transport.gd")
+	var poll_once_block := _function_block(transport_source, "func _poll_once(")
+	_expect(
+		poll_once_block.find("_connections.remove_at(index)") >= 0
+			and poll_once_block.find("_connections.remove_at(index)") < poll_once_block.find("request_callback.call("),
+		"transport claims and removes a connection before dispatch"
+	)
+	_expect(transport_source.contains("if _poll_active:"), "transport suppresses nested poll")
+	_expect(transport_source.contains('"max_handler_depth"'), "transport exposes handler depth evidence")
+
+	var launcher_source := _read("res://tools/launch_role_godot_mcp.ps1")
+	_expect(launcher_source.contains('name = "filesystem_scan_status"'), "launcher queries filesystem readiness")
+	_expect(launcher_source.contains("initial_scan_completed"), "launcher waits for initial scan completion")
+
+	var invoke_source := _read("res://tools/invoke_role_godot_mcp.ps1")
+	_expect(invoke_source.contains('[guid]::NewGuid().ToString("N")'), "wrapper assigns unique JSON-RPC IDs")
+	_expect(invoke_source.contains("MCP_EDITOR_PROCESS_EXITED"), "wrapper reports typed editor exit")
+	_expect(not invoke_source.contains("id = 1"), "wrapper no longer reuses JSON-RPC id 1")
+	_finish()
+
+
+func _read(path: String) -> String:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return ""
+	var text := file.get_as_text()
+	file.close()
+	return text
+
+
+func _function_block(source: String, marker: String) -> String:
+	var start := source.find(marker)
+	if start < 0:
+		return ""
+	var finish := source.find("\nfunc ", start + marker.length())
+	if finish < 0:
+		finish = source.length()
+	return source.substr(start, finish - start)
+
+
+func _expect(condition: bool, message: String) -> void:
+	_checks += 1
+	if not condition:
+		_failures.append(message)
+
+
+func _finish() -> void:
+	print("MCP_RESCAN_SOURCE_CONTRACT_TESTS|passed=%d|total=%d" % [
+		_checks - _failures.size(),
+		_checks,
+	])
+	if not _failures.is_empty():
+		for failure in _failures:
+			push_error("Funplay MCP rescan source contract failed: %s" % failure)
+		quit(1)
+		return
+	quit(0)

@@ -9,6 +9,13 @@ var _server = TCPServer.new()
 var _connections: Array = []
 var _is_listening = false
 var _port = 0
+var _poll_active := false
+var _nested_poll_suppressed_count := 0
+var _handler_depth := 0
+var _max_handler_depth := 0
+var _reentrant_handler_entry_count := 0
+var _nested_http_dispatch_count := 0
+var _request_sequence := 0
 
 
 func listen(port: int) -> int:
@@ -31,6 +38,8 @@ func stop() -> void:
 
 	_is_listening = false
 	_port = 0
+	_poll_active = false
+	_handler_depth = 0
 
 
 func is_listening() -> bool:
@@ -44,12 +53,38 @@ func get_port() -> int:
 func poll(request_callback: Callable) -> void:
 	if not _is_listening:
 		return
+	if _poll_active:
+		_nested_poll_suppressed_count += 1
+		return
+	_poll_active = true
+	_poll_once(request_callback)
+	_poll_active = false
+
+
+func get_diagnostics() -> Dictionary:
+	return {
+		"poll_active": _poll_active,
+		"nested_http_dispatch_count": _nested_http_dispatch_count,
+		"nested_poll_suppressed_count": _nested_poll_suppressed_count,
+		"handler_depth": _handler_depth,
+		"max_handler_depth": _max_handler_depth,
+		"reentrant_handler_entry_count": _reentrant_handler_entry_count,
+		"accepted_request_count": _request_sequence,
+		"connection_count": _connections.size(),
+	}
+
+
+func _poll_once(request_callback: Callable) -> void:
+	if not _is_listening:
+		return
 
 	while _server.is_connection_available():
 		var peer = _server.take_connection()
 		peer.set_no_delay(true)
+		_request_sequence += 1
 		_connections.append({
 			"peer": peer,
+			"http_request_id": "funplay-http-%d" % _request_sequence,
 			"buffer": "",
 			"headers_parsed": false,
 			"content_length": 0,
@@ -111,15 +146,26 @@ func poll(request_callback: Callable) -> void:
 		if body_text.to_utf8_buffer().size() < int(connection["content_length"]):
 			continue
 
+		var http_request_id := str(connection.get("http_request_id", ""))
+		_connections.remove_at(index)
+		if _handler_depth > 0:
+			_reentrant_handler_entry_count += 1
+			_nested_http_dispatch_count += 1
+			_send_response(peer, _text_response(500, "Reentrant MCP request dispatch rejected"))
+			peer.disconnect_from_host()
+			continue
+		_handler_depth += 1
+		_max_handler_depth = max(_max_handler_depth, _handler_depth)
 		var response = request_callback.call(
 			str(connection["method"]),
 			str(connection["path"]),
 			body_text,
-			connection.get("headers", {})
+			connection.get("headers", {}),
+			http_request_id
 		)
+		_handler_depth -= 1
 		_send_response(peer, response)
 		peer.disconnect_from_host()
-		_connections.remove_at(index)
 
 
 func _parse_headers(header_text: String) -> Dictionary:

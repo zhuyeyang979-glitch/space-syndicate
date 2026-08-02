@@ -23,14 +23,25 @@ func _init(plugin, settings) -> void:
 
 
 func teardown() -> void:
-	if _core_tools != null and _core_tools.has_method("set_tool_registry"):
-		_core_tools.set_tool_registry(null)
+	if _core_tools != null and _core_tools.has_method("teardown"):
+		_core_tools.teardown()
 	_core_tools = null
 	_tools.clear()
 	_profiles["core"] = []
 	_profiles["full"] = []
 	_plugin = null
 	_settings = null
+
+
+func process_pending_filesystem_reload() -> void:
+	if _core_tools != null and _core_tools.has_method("process_pending_filesystem_reload"):
+		_core_tools.process_pending_filesystem_reload()
+
+
+func is_filesystem_reload_execution_active() -> bool:
+	if _core_tools == null or not _core_tools.has_method("is_filesystem_reload_execution_active"):
+		return false
+	return bool(_core_tools.is_filesystem_reload_execution_active())
 
 
 func list_tools(profile: String) -> Array:
@@ -199,6 +210,7 @@ func _register_tools() -> void:
 		"required": ["code"],
 	}, "execute_code", ["core", "full"])
 
+	_register_tool("get_godot_version", "Return the active Godot editor version.", _empty_schema(), "get_godot_version", ["core", "full"])
 	_register_tool("get_project_info", "Return current Godot project metadata and editor context.", _empty_schema(), "get_project_info", ["core", "full"])
 	_register_tool("get_scene_info", "Return focused information about the currently edited scene.", _empty_schema(), "get_scene_info", ["core", "full"])
 	_register_tool("get_scene_tree", "Return a structured summary of the currently edited scene tree.", {
@@ -478,8 +490,17 @@ func _register_tools() -> void:
 	}, "get_script_errors", ["core", "full"])
 	_register_tool("request_script_reload", "Reload one script or rescan the Godot resource filesystem.", {
 		"type": "object",
-		"properties": {"path": {"type": "string"}},
+		"properties": {
+			"path": {"type": "string"},
+			"request_id": {"type": "string"},
+		},
 	}, "request_script_reload", ["core", "full"])
+	_register_tool("filesystem_scan_status", "Return initial scan readiness and reload operation state without starting a scan.", {
+		"type": "object",
+		"properties": {
+			"operation_id": {"type": "string"},
+		},
+	}, "filesystem_scan_status", ["core", "full"])
 	_register_tool("log_message", "Write a message to Godot output using print, push_warning, or push_error.", {
 		"type": "object",
 		"properties": {
@@ -1249,9 +1270,9 @@ func _infer_tool_group(tool_name: String) -> String:
 		return "guidance"
 	if tool_name in ["map_project", "find_usages", "plan_script_refactor", "apply_script_refactor"]:
 		return "project_map"
-	if tool_name in ["get_editor_protocol_status", "get_script_errors", "validate_script", "request_script_reload", "get_console_logs", "get_performance_snapshot", "analyze_scene_complexity"]:
+	if tool_name in ["get_editor_protocol_status", "get_script_errors", "validate_script", "request_script_reload", "filesystem_scan_status", "get_console_logs", "get_performance_snapshot", "analyze_scene_complexity"]:
 		return "diagnostics"
-	if tool_name in ["get_project_info", "list_project_features", "plan_asset_import", "list_project_settings", "get_project_setting", "set_project_setting", "get_project_skills_status", "generate_project_skills"]:
+	if tool_name in ["get_godot_version", "get_project_info", "list_project_features", "plan_asset_import", "list_project_settings", "get_project_setting", "set_project_setting", "get_project_skills_status", "generate_project_skills"]:
 		return "project"
 	if tool_name in ["list_input_actions", "get_input_action", "add_input_action", "remove_input_action", "add_input_event_to_action", "clear_input_events"]:
 		return "input"

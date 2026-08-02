@@ -62,6 +62,15 @@ func _exit_tree() -> void:
 
 
 func _process(_delta: float) -> void:
+	if _tool_registry != null and _tool_registry.is_filesystem_reload_execution_active():
+		return
+
+	if _tool_registry != null:
+		_tool_registry.process_pending_filesystem_reload()
+
+	if _tool_registry != null and _tool_registry.is_filesystem_reload_execution_active():
+		return
+
 	if _server != null:
 		_server.poll()
 

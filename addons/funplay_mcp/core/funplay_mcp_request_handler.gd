@@ -28,7 +28,7 @@ func _init(settings, tool_registry, resource_provider, prompt_provider, server_n
 	_interaction_logger = interaction_logger
 
 
-func handle_request(request: Dictionary) -> Variant:
+func handle_request(request: Dictionary, request_context: Dictionary = {}) -> Variant:
 	if request.is_empty():
 		return _error_response(null, -32600, "Invalid Request")
 	if str(request.get("jsonrpc", "")) != "2.0":
@@ -56,7 +56,7 @@ func handle_request(request: Dictionary) -> Variant:
 				},
 			}
 		"tools/call":
-			return _handle_tool_call(request, params)
+			return _handle_tool_call(request, params, request_context)
 		"resources/list":
 			return {
 				"id": request.get("id"),
@@ -126,7 +126,7 @@ func _handle_initialize(request: Dictionary, params: Dictionary) -> Dictionary:
 	}
 
 
-func _handle_tool_call(request: Dictionary, params: Dictionary) -> Dictionary:
+func _handle_tool_call(request: Dictionary, params: Dictionary, request_context: Dictionary = {}) -> Dictionary:
 	var tool_name = str(params.get("name", "")).strip_edges()
 	if tool_name == "":
 		return _error_response(request.get("id"), -32602, "Invalid params: 'name' is required")
@@ -138,6 +138,10 @@ func _handle_tool_call(request: Dictionary, params: Dictionary) -> Dictionary:
 	var arguments = params.get("arguments", {})
 	if not (arguments is Dictionary):
 		arguments = {}
+	else:
+		arguments = arguments.duplicate(true)
+	if tool_name in ["request_script_reload", "filesystem_scan_status"]:
+		arguments["_mcp_http_request_id"] = str(request_context.get("http_request_id", ""))
 
 	var result_text = _tool_registry.call_tool(tool_name, arguments)
 	var structured_content: Dictionary = _build_structured_content(result_text)

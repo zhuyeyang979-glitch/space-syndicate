@@ -1,0 +1,8 @@
+{
+  "captured_at": "2026-08-02T20:56:29.5292354+09:00",
+  "effective_pr77_head": "78c777010a75cdc1a8d407fde6705f9a51ac3b56",
+  "manifest_kind": "preexisting_untracked_files",
+  "paths": [],
+  "untracked_file_count": 0,
+  "worktree": "space-syndicate-mcp-resource-rescan-reentrancy-78c7770"
+}

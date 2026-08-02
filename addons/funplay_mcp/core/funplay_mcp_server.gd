@@ -132,7 +132,13 @@ func add_interaction(name: String, status: String, message: String) -> void:
 		print("[Funplay MCP] [%s] %s: %s" % [status, name, message])
 
 
-func _handle_http_request(method: String, path: String, body_text: String, headers: Dictionary = {}) -> Dictionary:
+func _handle_http_request(
+	method: String,
+	path: String,
+	body_text: String,
+	headers: Dictionary = {},
+	http_request_id: String = ""
+) -> Dictionary:
 	if method == "GET":
 		if path == "/" or path == "/health":
 			var health: Dictionary = {
@@ -149,6 +155,7 @@ func _handle_http_request(method: String, path: String, body_text: String, heade
 			if _is_request_authenticated(headers):
 				health["project_name"] = str(ProjectSettings.get_setting("application/config/name", ""))
 				health["project_identity"] = _project_identity_hash()
+				health["transport_diagnostics"] = _transport.get_diagnostics()
 			return {
 				"status": 200,
 				"content_type": "application/json",
@@ -201,7 +208,9 @@ func _handle_http_request(method: String, path: String, body_text: String, heade
 			}),
 		}
 
-	var response = _request_handler.handle_request(request)
+	var response = _request_handler.handle_request(request, {
+		"http_request_id": http_request_id,
+	})
 	if response == null:
 		return {
 			"status": 204,

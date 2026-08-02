@@ -128,7 +128,7 @@ while ((Get-Date) -lt $deadline -and -not $process.HasExited) {
     try {
         $body = @{
             jsonrpc = "2.0"
-            id = 1
+            id = [guid]::NewGuid().ToString("N")
             method = "tools/call"
             params = @{ name = "get_project_info"; arguments = @{} }
         } | ConvertTo-Json -Depth 10 -Compress
@@ -161,6 +161,42 @@ if (-not $reportedRoot.Equals($root, [System.StringComparison]::OrdinalIgnoreCas
     throw "Endpoint $endpoint belongs to the wrong project: $reportedRoot"
 }
 
+$filesystemStatus = $null
+$filesystemDeadline = (Get-Date).AddSeconds($StartupTimeoutSeconds)
+while ((Get-Date) -lt $filesystemDeadline -and -not $process.HasExited) {
+    try {
+        $body = @{
+            jsonrpc = "2.0"
+            id = [guid]::NewGuid().ToString("N")
+            method = "tools/call"
+            params = @{ name = "filesystem_scan_status"; arguments = @{} }
+        } | ConvertTo-Json -Depth 10 -Compress
+        $requestParameters = @{
+            Uri = $endpoint
+            Method = "Post"
+            Headers = $headers
+            ContentType = "application/json"
+            Body = $body
+            TimeoutSec = 5
+        }
+        $response = Invoke-RestMethod @requestParameters
+        $filesystemStatus = $response.result.content[0].text | ConvertFrom-Json
+        if ([bool]$filesystemStatus.initial_scan_completed -and [string]$filesystemStatus.state -eq "ready") {
+            break
+        }
+    } catch {
+        $filesystemStatus = $null
+    }
+    Start-Sleep -Milliseconds 250
+}
+
+if ($process.HasExited) {
+    throw "Godot exited while waiting for initial filesystem scan with code $($process.ExitCode). See: $logPath"
+}
+if ($filesystemStatus -eq $null -or -not [bool]$filesystemStatus.initial_scan_completed) {
+    throw "Funplay MCP initial filesystem scan did not become ready at $endpoint. Godot PID: $($process.Id); log: $logPath"
+}
+
 $connection = [ordered]@{
     role = $Role
     endpoint = $endpoint
@@ -172,6 +208,8 @@ $connection = [ordered]@{
     godot_version = [string]$projectInfo.godot_version.string
     tool_profile = [string]$projectInfo.tool_profile
     renderer = $Renderer
+    filesystem_state = [string]$filesystemStatus.state
+    filesystem_generation = [int]$filesystemStatus.filesystem_generation
 }
 [System.IO.File]::WriteAllText(
     $connectionPath,

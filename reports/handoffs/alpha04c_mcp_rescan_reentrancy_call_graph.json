@@ -1,0 +1,89 @@
+{
+  "task_id": "ALPHA_0_4_C_PR77_MCP_RESOURCE_RESCAN_REENTRANCY_CRASH_REPAIR_AND_RETROACTIVE_ACCEPTANCE",
+  "effective_pr77_head": "78c777010a75cdc1a8d407fde6705f9a51ac3b56",
+  "mcp_repair_ownership": {
+    "primary_defect_owner": "game_repo_addon",
+    "repair_scope": "mixed_game_repo_addon_and_codex_wrapper_lifecycle_hardening",
+    "vendored_component": "Funplay MCP for Godot v0.9.6",
+    "wrapper_recursion_cause": false,
+    "wrapper_readiness_contributor": true
+  },
+  "failure_evidence": {
+    "failure_log_locator": "prior_session_worktree/.codex-godot/logs/godot_20260802_200216.log",
+    "failure_log_sha256": "c9c5f670c21cd39d70674511ee312c9c7645ee32da3edcaa6bfeae5ff5485958",
+    "failure_log_size_bytes": 15646563,
+    "failure_log_line_count": 183448,
+    "editor_pid": 21996,
+    "mcp_server_pid": 21996,
+    "mcp_server_process_model": "embedded_in_editor",
+    "failed_endpoint": "http://127.0.0.1:8765/",
+    "failed_operation": "request_script_reload({})"
+  },
+  "request": {
+    "http_request_id": "not_logged_before_repair",
+    "jsonrpc_request_id": 1,
+    "endpoint_method": "POST / -> tools/call -> request_script_reload",
+    "handler_entry_depth_first_collision": 2,
+    "handler_entry_depth_max_directly_visible": 114,
+    "handler_exit_depth": "no_clean_exit_observed",
+    "same_request_reentered": true,
+    "nested_dispatch_detected": true,
+    "nested_http_self_call": false
+  },
+  "filesystem": {
+    "filesystem_scan_generation": "not_implemented_before_repair",
+    "filesystem_scan_state": "initial_scan_running",
+    "reload_generation": "not_implemented_before_repair",
+    "reload_state": "synchronous_inflight_reentered",
+    "first_scan_started": true,
+    "first_scan_completed": false,
+    "refresh_filesystem_called": true,
+    "refresh_filesystem_caller": "request_script_reload",
+    "first_scan_task_collision_count": 226,
+    "stack_overflow_count": 3
+  },
+  "call_chain": [
+    "FunplayMcpPlugin._process",
+    "FunplayMcpServer.poll",
+    "FunplayHttpTransport.poll",
+    "FunplayMcpServer._handle_http_request",
+    "FunplayMcpRequestHandler.handle_request",
+    "FunplayMcpRequestHandler._handle_tool_call",
+    "FunplayToolRegistry.call_tool",
+    "FunplayCoreTools.request_script_reload",
+    "FunplayCoreTools._refresh_filesystem",
+    "EditorFileSystem.scan",
+    "Godot ProgressDialog nested Main.iteration",
+    "FunplayMcpPlugin._process",
+    "same buffered HTTP connection redispatched"
+  ],
+  "root_cause": {
+    "mcp_reentrancy_root_cause": "embedded_funplay_http_connection_redispatch_during_synchronous_editor_filesystem_scan_event_pump",
+    "mcp_reentrancy_first_causal_frame": "FunplayHttpTransport.poll",
+    "mcp_first_duplicate_scan_frame": "FunplayCoreTools._refresh_filesystem",
+    "first_reported_engine_failure_frame": "EditorProgress.add_task",
+    "maximum_observed_backtrace_index": 1023,
+    "maximum_observed_recursion_depth_frames": 1024,
+    "exact_runtime_depth": "greater_than_or_equal_to_printed_limit_exact_value_unknown",
+    "nested_http_dispatch_count_observed_minimum": 226
+  },
+  "secondary_failures": {
+    "connection_remove_out_of_bounds_count": 1,
+    "classification": "post_stack_overflow_unwind_damage",
+    "unicode_nul_diagnostic_count": 7,
+    "unicode_nul_classification": "unattributed_pre_reentrancy_scan_diagnostic",
+    "unicode_nul_is_gdscript_parse_error": false,
+    "unicode_nul_game_code_attribution": "unproven",
+    "unicode_nul_root_cause_attribution": "unproven"
+  },
+  "repair_invariants": {
+    "filesystem_state_writer_count": 1,
+    "active_scan_count_max": 1,
+    "active_reload_count_max": 1,
+    "max_handler_depth": 1,
+    "same_request_execution_count_max": 1,
+    "nested_http_dispatch_count": 0,
+    "http_handler_calls_scan": false,
+    "filesystem_signal_callback_calls_scan": false
+  }
+}
