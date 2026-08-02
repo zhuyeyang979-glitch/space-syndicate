@@ -53,6 +53,9 @@ try {
     }
     $identityCheck = Test-McpProcessIdentity -Connection $connection
     Assert-Lifecycle -Condition ([bool]$identityCheck.valid) -Name "live_process_identity_matches"
+    $roundTripConnection = $connection | ConvertTo-Json | ConvertFrom-Json
+    $roundTripIdentity = Test-McpProcessIdentity -Connection $roundTripConnection
+    Assert-Lifecycle -Condition ([bool]$roundTripIdentity.valid) -Name "json_roundtrip_preserves_process_identity"
 
     $wrongStartConnection = [pscustomobject]@{
         pid = $childIdentity.pid

@@ -48,19 +48,47 @@ function Test-McpProcessIdentity {
     }
 
     try {
-        $actualStart = $process.StartTime.ToUniversalTime().ToString("o")
+        $actualStart = [DateTimeOffset]$process.StartTime.ToUniversalTime()
+        $expectedStart = if ($Connection.process_start_time_utc -is [DateTime]) {
+            [DateTimeOffset]$Connection.process_start_time_utc.ToUniversalTime()
+        } else {
+            [DateTimeOffset]::Parse(
+                [string]$Connection.process_start_time_utc,
+                [System.Globalization.CultureInfo]::InvariantCulture,
+                [System.Globalization.DateTimeStyles]::RoundtripKind
+            )
+        }
         $actualPath = $process.MainModule.FileName
     } catch {
         return [ordered]@{ valid = $false; reason_code = "editor_process_identity_unavailable"; process = $process }
     }
 
-    if (-not $actualStart.Equals([string]$Connection.process_start_time_utc, [System.StringComparison]::Ordinal)) {
+    $startDeltaTicks = [Math]::Abs($actualStart.UtcDateTime.Ticks - $expectedStart.UtcDateTime.Ticks)
+    if ($startDeltaTicks -gt [TimeSpan]::TicksPerMillisecond) {
         return [ordered]@{ valid = $false; reason_code = "editor_pid_reused"; process = $process }
     }
     if (-not $actualPath.Equals([string]$Connection.godot_path, [System.StringComparison]::OrdinalIgnoreCase)) {
         return [ordered]@{ valid = $false; reason_code = "editor_executable_mismatch"; process = $process }
     }
     return [ordered]@{ valid = $true; reason_code = "none"; process = $process }
+}
+
+function Get-McpOptionalProperty {
+    param(
+        [AllowNull()]
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if ($null -eq $Object) {
+        return $null
+    }
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $null
+    }
+    return $property.Value
 }
 
 function Get-McpEndpointOwnerPid {

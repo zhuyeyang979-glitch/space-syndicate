@@ -35,11 +35,12 @@ function Invoke-McpTool {
         }
     } | ConvertTo-Json -Depth 30 -Compress
     $response = Invoke-RestMethod -Uri ([string]$connection.endpoint) -Method Post -Headers $headers -ContentType "application/json" -Body $body -TimeoutSec 10
-    if ($null -ne $response.error) {
+    $responseError = Get-McpOptionalProperty -Object $response -Name "error"
+    if ($null -ne $responseError) {
         if ($AllowRpcError) {
             return $response
         }
-        throw ($response.error | ConvertTo-Json -Depth 10 -Compress)
+        throw ($responseError | ConvertTo-Json -Depth 10 -Compress)
     }
     return ($response.result.content[0].text | ConvertFrom-Json)
 }

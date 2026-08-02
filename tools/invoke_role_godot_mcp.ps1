@@ -77,8 +77,9 @@ try {
     throw
 }
 
-if ($null -ne $response.error) {
-    throw ($response.error | ConvertTo-Json -Depth 10 -Compress)
+$responseError = Get-McpOptionalProperty -Object $response -Name "error"
+if ($null -ne $responseError) {
+    throw ($responseError | ConvertTo-Json -Depth 10 -Compress)
 }
 
 if ($OutputImage -ne "") {
