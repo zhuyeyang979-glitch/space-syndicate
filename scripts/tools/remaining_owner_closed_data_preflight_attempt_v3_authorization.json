@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "contract_id": "RemainingOwnerClosedDataPreflightAttemptV3Authorization",
+  "attempt_id": "alpha04c-remaining-owner-preflight-index16-18-attempt-v3",
+  "start_index": 16,
+  "end_index": 18,
+  "qualified_prior_owner_count": 8,
+  "attempt_count_before": 0,
+  "authorized_new_attempt_count": 1,
+  "attempt_count_after": 1,
+  "targeted_owner_capture_diagnostic_count_before": 7,
+  "targeted_owner_capture_diagnostic_count_after": 7,
+  "prior_attempt_v2_child_sha256": "1ad9fa14fcb803039f690beddacf8d2a30c4fad9f7577c009b1dca63029761f2",
+  "prior_attempt_v2_parent_sha256": "6f1676044510bc7e4be74b5042323e0e2faa5dc4dcd6688d1b0f542370cb495d",
+  "ai_replay_child_sha256": "649caea4ee942be5df9701379d6c1d40d8bf9e818777dabd6406071ff9ba6928",
+  "ai_replay_parent_sha256": "bcfda946435288c779e3cdfeee0aefc3bca239d78b09bb46dd262ff13dca9934",
+  "ai_replay_evidence_commit": "f5068a8bb0b987561d88fa7fed511c7a33d159d8"
+}
