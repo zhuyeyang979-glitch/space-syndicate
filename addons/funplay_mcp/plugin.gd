@@ -2,6 +2,7 @@
 extends EditorPlugin
 
 const FunplayMcpSettings = preload("res://addons/funplay_mcp/core/funplay_mcp_settings.gd")
+const FunplayCoreTools = preload("res://addons/funplay_mcp/core/funplay_core_tools.gd")
 const FunplayToolRegistry = preload("res://addons/funplay_mcp/core/funplay_tool_registry.gd")
 const FunplayResourceProvider = preload("res://addons/funplay_mcp/core/funplay_resource_provider.gd")
 const FunplayPromptProvider = preload("res://addons/funplay_mcp/core/funplay_prompt_provider.gd")
@@ -10,6 +11,7 @@ const FunplayClientConfigWriter = preload("res://addons/funplay_mcp/core/funplay
 const FunplayMcpDock = preload("res://addons/funplay_mcp/ui/funplay_mcp_dock.gd")
 
 var _settings
+var _core_tools
 var _tool_registry
 var _resource_provider
 var _prompt_provider
@@ -23,10 +25,11 @@ func _enter_tree() -> void:
 		return
 
 	_settings = FunplayMcpSettings.new()
-	_tool_registry = FunplayToolRegistry.new(self, _settings)
-	_resource_provider = FunplayResourceProvider.new(self, _settings)
+	_core_tools = FunplayCoreTools.new(self, _settings)
+	_tool_registry = FunplayToolRegistry.new(self, _settings, _core_tools)
+	_resource_provider = FunplayResourceProvider.new(self, _settings, _core_tools)
 	_resource_provider.set_tool_registry(_tool_registry)
-	_prompt_provider = FunplayPromptProvider.new(self, _settings)
+	_prompt_provider = FunplayPromptProvider.new(self, _settings, _core_tools)
 	_server = FunplayMcpServer.new(self, _settings, _tool_registry, _resource_provider, _prompt_provider)
 	_client_config_writer = FunplayClientConfigWriter.new()
 	_dock = FunplayMcpDock.new()
@@ -52,11 +55,14 @@ func _exit_tree() -> void:
 
 	if _tool_registry != null and _tool_registry.has_method("teardown"):
 		_tool_registry.teardown()
+	if _core_tools != null and _core_tools.has_method("teardown"):
+		_core_tools.teardown()
 
 	_server = null
 	_prompt_provider = null
 	_resource_provider = null
 	_tool_registry = null
+	_core_tools = null
 	_client_config_writer = null
 	_settings = null
 

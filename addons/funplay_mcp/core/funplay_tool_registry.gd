@@ -1,8 +1,6 @@
 @tool
 extends RefCounted
 
-const FunplayCoreTools = preload("res://addons/funplay_mcp/core/funplay_core_tools.gd")
-
 var _plugin
 var _settings
 var _core_tools
@@ -13,18 +11,16 @@ var _profiles: Dictionary = {
 }
 
 
-func _init(plugin, settings) -> void:
+func _init(plugin, settings, core_tools) -> void:
 	_plugin = plugin
 	_settings = settings
-	_core_tools = FunplayCoreTools.new(plugin, settings)
+	_core_tools = core_tools
 	if _core_tools.has_method("set_tool_registry"):
 		_core_tools.set_tool_registry(self)
 	_register_tools()
 
 
 func teardown() -> void:
-	if _core_tools != null and _core_tools.has_method("teardown"):
-		_core_tools.teardown()
 	_core_tools = null
 	_tools.clear()
 	_profiles["core"] = []
@@ -494,6 +490,7 @@ func _register_tools() -> void:
 			"path": {"type": "string"},
 			"request_id": {"type": "string"},
 		},
+		"required": ["request_id"],
 	}, "request_script_reload", ["core", "full"])
 	_register_tool("filesystem_scan_status", "Return initial scan readiness and reload operation state without starting a scan.", {
 		"type": "object",

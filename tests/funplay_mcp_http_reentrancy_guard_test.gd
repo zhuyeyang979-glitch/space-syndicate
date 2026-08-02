@@ -6,6 +6,8 @@ var _transport
 var _callback_count := 0
 var _connection_count_in_callback := -1
 var _failures: Array[String] = []
+var _check_total := 0
+var _check_passed := 0
 
 
 func _init() -> void:
@@ -101,17 +103,16 @@ func _listen_on_test_port() -> int:
 
 
 func _expect(condition: bool, message: String) -> void:
+	_check_total += 1
+	if condition:
+		_check_passed += 1
+		return
 	if not condition:
 		_failures.append(message)
 
 
 func _finish() -> void:
-	var passed := 2
-	if _callback_count != 1:
-		passed -= 1
-	if _connection_count_in_callback != 0:
-		passed -= 1
-	print("MCP_REENTRANCY_TESTS|passed=%d|total=2" % max(0, passed))
+	print("MCP_REENTRANCY_TESTS|passed=%d|total=%d" % [_check_passed, _check_total])
 	print("MCP_MAX_TEST_HANDLER_DEPTH|value=%d" % int(
 		_transport.get_diagnostics().get("max_handler_depth", 0)
 	))

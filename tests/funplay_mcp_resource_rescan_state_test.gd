@@ -7,6 +7,10 @@ var _scenario_passed := 0
 var _scenario_failures: Array[String] = []
 var _idempotence_total := 0
 var _idempotence_passed := 0
+var _async_total := 0
+var _async_passed := 0
+var _fake_scan_total := 0
+var _fake_scan_passed := 0
 
 
 func _init() -> void:
@@ -24,6 +28,8 @@ func _init() -> void:
 	_test_status_query_purity()
 	_test_pending_reload_single_trigger()
 	_test_failure_cold_recovery()
+	_test_async_protocol_contract()
+	_test_completion_callback_followup_reload()
 	_finish()
 
 
@@ -33,12 +39,16 @@ func _test_cold_initial_ready() -> void:
 	var running: Dictionary = state.get_status()
 	state.observe_editor(false, true, true, 1, true)
 	var ready: Dictionary = state.get_status()
+	var initial_operation: Dictionary = state.get_operation(str(ready.get("initial_scan_operation_id", "")))
 	_scenario("cold -> initial_scan_running -> ready", [
 		running.get("state") == ReloadState.STATE_INITIAL_SCAN_RUNNING,
 		ready.get("state") == ReloadState.STATE_READY,
 		bool(ready.get("initial_scan_completed", false)),
 		int(ready.get("first_scan_completion_signal_count", 0)) == 1,
 	])
+	_async_check(int(ready.get("initial_scan_start_count", 0)) == 1)
+	_async_check(int(ready.get("initial_scan_completion_count", 0)) == 1)
+	_async_check(initial_operation.get("status") == "completed")
 
 
 func _test_early_single_reload() -> void:
@@ -46,7 +56,8 @@ func _test_early_single_reload() -> void:
 	state.observe_editor(true, false, true, 0)
 	var queued: Dictionary = state.request_reload("early-one", "", 1)
 	state.observe_editor(false, true, true, 2, true)
-	var begin: Dictionary = state.begin_queued_reload(3)
+	state.record_post_initial_scan_reload_deferred_tick(3)
+	var begin: Dictionary = state.begin_queued_reload(4)
 	var operation_id := str(begin.get("operation_id", ""))
 	state.complete_reload(operation_id, 4, "test_complete")
 	var status: Dictionary = state.get_status()
@@ -54,6 +65,7 @@ func _test_early_single_reload() -> void:
 		queued.get("status") == "queued",
 		bool(begin.get("should_execute", false)),
 		int(status.get("reload_execution_count", 0)) == 1,
+		int(status.get("post_initial_scan_reload_deferred_tick_count", 0)) == 1,
 		status.get("state") == ReloadState.STATE_READY,
 	])
 
@@ -66,10 +78,11 @@ func _test_early_thirty_two_reloads() -> void:
 		var result: Dictionary = state.request_reload("early-%02d" % index, "", index + 1)
 		operation_ids[str(result.get("operation_id", ""))] = true
 	state.observe_editor(false, true, true, 40, true)
-	var begin: Dictionary = state.begin_queued_reload(41)
+	state.record_post_initial_scan_reload_deferred_tick(41)
+	var begin: Dictionary = state.begin_queued_reload(42)
 	_scenario("first scan coalesces 32 reload requests", [
 		operation_ids.size() == 1,
-		int(state.get_status().get("operation_count", 0)) == 1,
+		int(state.get_status().get("operation_count", 0)) == 2,
 		int(state.get_status().get("request_count", 0)) == 32,
 		int(state.get_operation(str(begin.get("operation_id", ""))).get("execution_count", 0)) == 1,
 	])
@@ -90,7 +103,7 @@ func _test_duplicate_request_id() -> void:
 	_idempotence_check(first.get("operation_id") == duplicate.get("operation_id"))
 	_idempotence_check(int(operation.get("execution_count", 0)) == 1)
 	var conflict: Dictionary = state.request_reload("same-request", "res://different.gd", 6)
-	_idempotence_check(conflict.get("reason_code") == "filesystem_reload_request_id_conflict")
+	_idempotence_check(conflict.get("reason_code") == "mcp_request_id_collision")
 
 
 func _test_distinct_request_coalescing() -> void:
@@ -101,7 +114,7 @@ func _test_distinct_request_coalescing() -> void:
 	_scenario("distinct queued requests coalesce paths", [
 		first.get("operation_id") == second.get("operation_id"),
 		(operation.get("paths", []) as Array).size() == 2,
-		int(state.get_status().get("operation_count", 0)) == 1,
+		int(state.get_status().get("operation_count", 0)) == 2,
 	])
 
 
@@ -167,6 +180,10 @@ func _test_endpoint_stop() -> void:
 		rejected.get("reason_code") == "filesystem_reload_stopping",
 		int(state.get_status().get("active_reload_count", -1)) == 0,
 	])
+	state.complete_stopping(4)
+	var stopped_rejection: Dictionary = state.request_reload("after-stop", "", 5)
+	_async_check(state.get_status().get("state") == ReloadState.STATE_STOPPED)
+	_async_check(stopped_rejection.get("reason_code") == "filesystem_reload_stopped")
 
 
 func _test_reload_timeout() -> void:
@@ -200,7 +217,8 @@ func _test_pending_reload_single_trigger() -> void:
 	state.request_reload("single-trigger", "", 1)
 	state.observe_editor(false, true, true, 2, true)
 	state.observe_editor(false, true, true, 3, true)
-	var begin: Dictionary = state.begin_queued_reload(4)
+	state.record_post_initial_scan_reload_deferred_tick(4)
+	var begin: Dictionary = state.begin_queued_reload(5)
 	state.complete_reload(str(begin.get("operation_id", "")), 5, "test_complete")
 	var status: Dictionary = state.get_status()
 	_scenario("duplicate completion signal triggers one reload", [
@@ -221,6 +239,42 @@ func _test_failure_cold_recovery() -> void:
 		state.get_status().get("state") == ReloadState.STATE_READY,
 		bool(state.get_status().get("initial_scan_completed", false)),
 	])
+
+
+func _test_async_protocol_contract() -> void:
+	var state = _new_state()
+	state.begin_editor_booting(0)
+	var missing: Dictionary = state.request_reload("", "", 1)
+	state.observe_editor(true, false, true, 2)
+	var first: Dictionary = state.request_reload("protocol-id", "res://a.gd", 3)
+	var collision: Dictionary = state.request_reload("protocol-id", "res://b.gd", 4)
+	_async_check(missing.get("reason_code") == "mcp_request_id_required")
+	_async_check(first.get("status") == "queued")
+	_async_check(collision.get("reason_code") == "mcp_request_id_collision")
+	_async_check(int(state.get_status().get("state_writer_count", 0)) == 1)
+	var snapshot_state = _new_state()
+	snapshot_state.observe_editor(false, true, true, 0, false)
+	_async_check(int(snapshot_state.get_status().get("initial_scan_completion_count", 0)) == 1)
+	_async_check(int(snapshot_state.get_status().get("first_scan_completion_signal_count", -1)) == 0)
+
+
+func _test_completion_callback_followup_reload() -> void:
+	var state = _new_state()
+	state.observe_editor(true, false, true, 0)
+	var early: Dictionary = state.request_reload("callback-early", "", 1)
+	state.observe_editor(false, true, true, 2, true)
+	state.record_post_initial_scan_reload_deferred_tick(3)
+	var first_begin: Dictionary = state.begin_queued_reload(4)
+	var followup: Dictionary = state.request_reload("callback-followup", "", 5)
+	state.complete_reload(str(first_begin.get("operation_id", "")), 6, "fake_callback_complete")
+	var second_begin: Dictionary = state.begin_queued_reload(7)
+	state.complete_reload(str(second_begin.get("operation_id", "")), 8, "fake_followup_complete")
+	_fake_scan_check(early.get("operation_id") == first_begin.get("operation_id"))
+	_fake_scan_check(followup.get("operation_id") == second_begin.get("operation_id"))
+	_fake_scan_check(int(state.get_status().get("reload_execution_count", 0)) == 2)
+	_fake_scan_check(int(state.get_status().get("active_scan_count_max", 0)) == 1)
+	_fake_scan_check(int(state.get_status().get("active_reload_count_max", 0)) == 1)
+	_fake_scan_check(state.get_status().get("state") == ReloadState.STATE_READY)
 
 
 func _new_state(initial_timeout := 100, reload_timeout := 100, stop_timeout := 100):
@@ -250,6 +304,18 @@ func _idempotence_check(condition: bool) -> void:
 		_idempotence_passed += 1
 
 
+func _async_check(condition: bool) -> void:
+	_async_total += 1
+	if condition:
+		_async_passed += 1
+
+
+func _fake_scan_check(condition: bool) -> void:
+	_fake_scan_total += 1
+	if condition:
+		_fake_scan_passed += 1
+
+
 func _finish() -> void:
 	print("MCP_RESCAN_STATE_MACHINE_TESTS|passed=%d|total=%d" % [
 		_scenario_passed,
@@ -259,9 +325,22 @@ func _finish() -> void:
 		_idempotence_passed,
 		_idempotence_total,
 	])
+	print("MCP_ASYNC_INITIAL_SCAN_TESTS|passed=%d|total=%d" % [
+		_async_passed,
+		_async_total,
+	])
+	print("MCP_FAKE_SCAN_INTEGRATION_TESTS|passed=%d|total=%d" % [
+		_fake_scan_passed,
+		_fake_scan_total,
+	])
 	print("MCP_MAX_TEST_HANDLER_DEPTH|value=1")
 	print("MCP_TEST_STACK_OVERFLOW_COUNT|value=0")
-	if not _scenario_failures.is_empty() or _idempotence_passed != _idempotence_total:
+	if (
+		not _scenario_failures.is_empty()
+		or _idempotence_passed != _idempotence_total
+		or _async_passed != _async_total
+		or _fake_scan_passed != _fake_scan_total
+	):
 		for failure in _scenario_failures:
 			push_error("Funplay MCP rescan state scenario failed: %s" % failure)
 		quit(1)

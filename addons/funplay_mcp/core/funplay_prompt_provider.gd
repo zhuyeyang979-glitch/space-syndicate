@@ -1,17 +1,15 @@
 @tool
 extends RefCounted
 
-const FunplayCoreTools = preload("res://addons/funplay_mcp/core/funplay_core_tools.gd")
-
 var _plugin
 var _settings
 var _core_tools
 
 
-func _init(plugin, settings) -> void:
+func _init(plugin, settings, core_tools) -> void:
 	_plugin = plugin
 	_settings = settings
-	_core_tools = FunplayCoreTools.new(plugin, settings)
+	_core_tools = core_tools
 
 
 func list_prompts() -> Array:

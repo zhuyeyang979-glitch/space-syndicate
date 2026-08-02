@@ -1,52 +1,82 @@
 param(
     [string]$Worktree = (Get-Location).Path,
-    [int]$ShutdownTimeoutSeconds = 20
+
+    [Parameter(Mandatory = $true)]
+    [ValidateNotNullOrEmpty()]
+    [string]$RequestId,
+
+    [ValidateRange(1, 120)]
+    [int]$ShutdownTimeoutSeconds = 20,
+
+    [bool]$AllowForcedCleanup = $true
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "role_godot_mcp_common.ps1")
 
 $root = (Resolve-Path -LiteralPath $Worktree).Path.TrimEnd("\")
-$localRoot = Join-Path $root ".codex-godot"
-$connectionPath = Join-Path $localRoot "connection.json"
-$pidPath = Join-Path $localRoot "godot.pid"
+$controlRoot = Join-Path $root ".codex-godot"
+$session = Get-McpActiveSession -ControlRoot $controlRoot
+$connection = $session.connection
+$identity = Test-McpProcessIdentity -Connection $connection
+$endpointOwnerBefore = Get-McpEndpointOwnerPid -Port ([int]$connection.port)
 
-if (-not (Test-Path -LiteralPath $pidPath)) {
-    throw "No role-local Godot PID file exists at: $pidPath"
-}
-
-$pidText = [System.IO.File]::ReadAllText($pidPath).Trim()
-if ($pidText -notmatch "^\d+$") {
-    throw "Invalid Godot PID file: $pidPath"
-}
-
-$process = Get-Process -Id ([int]$pidText) -ErrorAction SilentlyContinue
-if ($process -eq $null -or $process.HasExited) {
-    Remove-Item -LiteralPath $pidPath -Force
-    [pscustomobject]@{ stopped = $true; already_exited = $true; pid = [int]$pidText } | ConvertTo-Json
+if (-not [bool]$identity.valid) {
+    if ($endpointOwnerBefore -ne 0) {
+        throw "MCP_STOP_IDENTITY_FAILURE|reason_code=$($identity.reason_code)|endpoint_owner_pid=$endpointOwnerBefore"
+    }
+    Remove-Item -LiteralPath $session.active_path -Force
+    [pscustomobject]@{
+        stopped = $true
+        clean_stop = $false
+        already_exited = $true
+        request_id = $RequestId
+        pid = [int]$connection.pid
+        endpoint_alive_after = $false
+        task_process_count_after = 0
+        reason_code = [string]$identity.reason_code
+    } | ConvertTo-Json -Depth 5
     exit 0
 }
 
-if (-not $process.CloseMainWindow()) {
-    throw "Godot did not accept a normal window-close request (PID $pidText)."
-}
-if (-not $process.WaitForExit($ShutdownTimeoutSeconds * 1000)) {
-    throw "Godot did not exit cleanly within $ShutdownTimeoutSeconds seconds (PID $pidText)."
+if ($endpointOwnerBefore -ne [int]$connection.pid) {
+    throw "MCP_STOP_ENDPOINT_PROCESS_MISMATCH|expected_pid=$($connection.pid)|actual_pid=$endpointOwnerBefore"
 }
 
-Remove-Item -LiteralPath $pidPath -Force
-$connection = if (Test-Path -LiteralPath $connectionPath) {
-    Get-Content -LiteralPath $connectionPath -Raw | ConvertFrom-Json
-} else {
-    $null
-}
-$portOpen = $false
-if ($connection -ne $null) {
-    $portOpen = [bool](Get-NetTCPConnection -State Listen -LocalPort ([int]$connection.port) -ErrorAction SilentlyContinue)
+$stopResult = Stop-McpBoundProcess -Process $identity.process -TimeoutSeconds $ShutdownTimeoutSeconds -AllowForcedCleanup:$AllowForcedCleanup
+$endpointDeadline = [DateTimeOffset]::Now.AddSeconds(5)
+do {
+    $endpointOwnerAfter = Get-McpEndpointOwnerPid -Port ([int]$connection.port)
+    if ($endpointOwnerAfter -eq 0) {
+        break
+    }
+    Start-Sleep -Milliseconds 100
+} while ([DateTimeOffset]::Now -lt $endpointDeadline)
+
+$endpointOwnerAfter = Get-McpEndpointOwnerPid -Port ([int]$connection.port)
+$processAfter = Get-Process -Id ([int]$connection.pid) -ErrorAction SilentlyContinue
+$processCountAfter = if ($null -eq $processAfter -or $processAfter.HasExited) { 0 } else { 1 }
+$stopped = [bool]$stopResult.stopped -and $endpointOwnerAfter -eq 0 -and $processCountAfter -eq 0
+if ($stopped) {
+    if (Test-Path -LiteralPath (Join-Path ([string]$connection.session_root) "godot.pid")) {
+        Remove-Item -LiteralPath (Join-Path ([string]$connection.session_root) "godot.pid") -Force
+    }
+    Remove-Item -LiteralPath $session.active_path -Force
 }
 
-[pscustomobject]@{
-    stopped = -not $portOpen
+$result = [ordered]@{
+    stopped = $stopped
+    clean_stop = [bool]$stopResult.clean_stop -and -not [bool]$stopResult.forced
+    forced = [bool]$stopResult.forced
     already_exited = $false
-    pid = [int]$pidText
-    port_open = $portOpen
-} | ConvertTo-Json
+    request_id = $RequestId
+    pid = [int]$connection.pid
+    endpoint_owner_pid_before = $endpointOwnerBefore
+    endpoint_owner_pid_after = $endpointOwnerAfter
+    endpoint_alive_after = $endpointOwnerAfter -ne 0
+    task_process_count_after = $processCountAfter
+}
+$result | ConvertTo-Json -Depth 5
+if (-not $stopped -or -not [bool]$result.clean_stop) {
+    exit 1
+}

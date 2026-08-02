@@ -8,6 +8,12 @@ const SUPPORTED_PROTOCOL_VERSIONS = [
 	"2024-11-05",
 ]
 const IMAGE_DATA_URI_PREFIX = "data:image/png;base64,"
+const REQUEST_ID_REQUIRED_TOOLS := [
+	"request_script_reload",
+	"request_project_reload",
+	"request_filesystem_scan",
+	"stop_editor",
+]
 
 var _settings
 var _tool_registry
@@ -140,7 +146,9 @@ func _handle_tool_call(request: Dictionary, params: Dictionary, request_context:
 		arguments = {}
 	else:
 		arguments = arguments.duplicate(true)
-	if tool_name in ["request_script_reload", "filesystem_scan_status"]:
+	if tool_name in REQUEST_ID_REQUIRED_TOOLS and str(arguments.get("request_id", "")).strip_edges() == "":
+		return _error_response(request.get("id"), -32602, "mcp_request_id_required")
+	if tool_name == "filesystem_scan_status":
 		arguments["_mcp_http_request_id"] = str(request_context.get("http_request_id", ""))
 
 	var result_text = _tool_registry.call_tool(tool_name, arguments)
@@ -227,6 +235,8 @@ func _is_tool_error(result_text: String, structured_content: Dictionary) -> bool
 	if result_text.begins_with("Error:"):
 		return true
 	if structured_content.has("success") and not bool(structured_content.get("success")):
+		return true
+	if structured_content.has("ok") and not bool(structured_content.get("ok")):
 		return true
 	if structured_content.has("isError") and bool(structured_content.get("isError")):
 		return true

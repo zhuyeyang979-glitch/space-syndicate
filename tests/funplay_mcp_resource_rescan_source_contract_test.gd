@@ -8,6 +8,8 @@ const SCRIPT_PATHS := [
 	"res://addons/funplay_mcp/core/funplay_mcp_request_handler.gd",
 	"res://addons/funplay_mcp/core/funplay_mcp_server.gd",
 	"res://addons/funplay_mcp/core/funplay_tool_registry.gd",
+	"res://addons/funplay_mcp/core/funplay_resource_provider.gd",
+	"res://addons/funplay_mcp/core/funplay_prompt_provider.gd",
 ]
 
 var _checks := 0
@@ -27,6 +29,8 @@ func _init() -> void:
 	var refresh_block := _function_block(core_source, "func _refresh_filesystem(")
 	var execute_block := _function_block(core_source, "func _execute_filesystem_reload(")
 	_expect(request_block.contains("_filesystem_reload_state.request_reload("), "reload handler only registers an operation")
+	_expect(request_block.contains('"mcp_request_id_required"'), "reload handler rejects a missing mutation request id")
+	_expect(not request_block.contains('arguments.get("_mcp_http_request_id"'), "reload handler never substitutes an HTTP request id")
 	_expect(not request_block.contains("resource_filesystem.scan()"), "reload handler never scans synchronously")
 	_expect(not refresh_block.contains("resource_filesystem.scan()"), "legacy refresh helper delegates to state owner")
 	_expect(execute_block.contains("resource_filesystem.scan()"), "single execution function owns EditorFileSystem.scan")
@@ -40,6 +44,9 @@ func _init() -> void:
 		"queued reload executes on a later top-level plugin tick"
 	)
 	_expect(process_block.contains("is_filesystem_reload_execution_active()"), "nested editor frames skip HTTP polling during scan")
+	_expect(plugin_source.count("FunplayCoreTools.new(") == 1, "plugin constructs one shared filesystem state owner")
+	_expect(plugin_source.contains("FunplayResourceProvider.new(self, _settings, _core_tools)"), "resource provider shares the state owner")
+	_expect(plugin_source.contains("FunplayPromptProvider.new(self, _settings, _core_tools)"), "prompt provider shares the state owner")
 
 	var transport_source := _read("res://addons/funplay_mcp/core/funplay_http_transport.gd")
 	var poll_once_block := _function_block(transport_source, "func _poll_once(")
@@ -54,11 +61,27 @@ func _init() -> void:
 	var launcher_source := _read("res://tools/launch_role_godot_mcp.ps1")
 	_expect(launcher_source.contains('name = "filesystem_scan_status"'), "launcher queries filesystem readiness")
 	_expect(launcher_source.contains("initial_scan_completed"), "launcher waits for initial scan completion")
+	_expect(launcher_source.contains('"opengl3"'), "launcher defaults compatibility validation to native OpenGL")
+	_expect(launcher_source.contains("StartupTimeoutSeconds = 300"), "launcher uses a bounded full-project startup timeout")
+	_expect(launcher_source.contains("active-session.json"), "launcher isolates and records one session instance")
 
 	var invoke_source := _read("res://tools/invoke_role_godot_mcp.ps1")
 	_expect(invoke_source.contains('[guid]::NewGuid().ToString("N")'), "wrapper assigns unique JSON-RPC IDs")
 	_expect(invoke_source.contains("MCP_EDITOR_PROCESS_EXITED"), "wrapper reports typed editor exit")
 	_expect(not invoke_source.contains("id = 1"), "wrapper no longer reuses JSON-RPC id 1")
+	_expect(invoke_source.contains("MCP_REQUEST_ID_REQUIRED"), "wrapper requires caller-owned mutation request ids")
+	_expect(not invoke_source.contains('$arguments["request_id"] = $jsonRpcRequestId'), "wrapper never invents mutation request ids")
+
+	var handler_source := _read("res://addons/funplay_mcp/core/funplay_mcp_request_handler.gd")
+	for tool_name in ["request_script_reload", "request_project_reload", "request_filesystem_scan", "stop_editor"]:
+		_expect(handler_source.contains('"%s"' % tool_name), "request-id protocol covers %s" % tool_name)
+
+	var registry_source := _read("res://addons/funplay_mcp/core/funplay_tool_registry.gd")
+	_expect(registry_source.contains('"required": ["request_id"]'), "reload JSON schema requires request_id")
+
+	var stop_source := _read("res://tools/stop_role_godot_mcp.ps1")
+	_expect(stop_source.contains("[string]$RequestId"), "stop wrapper requires an explicit request id")
+	_expect(stop_source.contains("Test-McpProcessIdentity"), "stop wrapper validates process identity before closing")
 	_finish()
 
 

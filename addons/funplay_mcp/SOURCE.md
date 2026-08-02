@@ -2,6 +2,10 @@
 
 Vendored release: `v0.9.6`
 
+Local patch ID: `alpha04c-initial-scan-signal11-v1`
+
+Effective build ID: `0.9.6+alpha04c.signal11.1`
+
 Upstream: https://github.com/FunplayAI/funplay-godot-mcp
 
 Release artifact: `Funplay.GodotMcp.v0.9.6.zip`
@@ -15,6 +19,7 @@ License: MIT; see `LICENSE` in this directory.
 Local project policy:
 
 - Funplay MCP is editor tooling, not a player-facing gameplay dependency.
+- The local patch serializes filesystem scans, makes initial scan and reload operations queryable, requires caller-owned mutation request IDs, and binds wrappers to one editor process identity.
 - Each Git worktree redirects `APPDATA` and `LOCALAPPDATA`, yielding an isolated editor profile, `user://` tree, HTTP endpoint, and auth token.
 - The runtime bridge replaces the repository's retired MCP runtime autoload so headed play-mode capture and input work in every isolated worktree. It exchanges commands through role-local `user://` files; the authenticated HTTP endpoint remains editor-only.
 - Keep execute-code safety checks enabled. Only trusted local Codex tasks may connect.

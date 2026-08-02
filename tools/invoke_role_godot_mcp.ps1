@@ -6,31 +6,50 @@ param(
 
     [string]$Worktree = (Get-Location).Path,
 
+    [ValidateRange(1, 900)]
     [int]$TimeoutSeconds = 60,
 
     [string]$OutputImage = ""
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "role_godot_mcp_common.ps1")
 
 $root = (Resolve-Path -LiteralPath $Worktree).Path.TrimEnd("\")
-$localRoot = Join-Path $root ".codex-godot"
-$connectionPath = Join-Path $localRoot "connection.json"
-$tokenPath = Join-Path $localRoot "auth.token"
-if (-not (Test-Path -LiteralPath $connectionPath)) {
-    throw "Missing role-local MCP connection metadata: $connectionPath"
-}
-if (-not (Test-Path -LiteralPath $tokenPath)) {
-    throw "Missing role-local MCP token: $tokenPath"
+$controlRoot = Join-Path $root ".codex-godot"
+$session = Get-McpActiveSession -ControlRoot $controlRoot
+$connection = $session.connection
+$identity = Test-McpProcessIdentity -Connection $connection
+if (-not [bool]$identity.valid) {
+    throw "MCP_EDITOR_PROCESS_EXITED|reason_code=$($identity.reason_code)|pid=$($connection.pid)|endpoint=$($connection.endpoint)|log=$($connection.log_path)"
 }
 
-$connection = Get-Content -Raw -LiteralPath $connectionPath | ConvertFrom-Json
-$token = [System.IO.File]::ReadAllText($tokenPath).Trim()
-$arguments = $ArgumentsJson | ConvertFrom-Json -AsHashtable
-$jsonRpcRequestId = [guid]::NewGuid().ToString("N")
-if ($ToolName -eq "request_script_reload" -and -not $arguments.ContainsKey("request_id")) {
-    $arguments["request_id"] = $jsonRpcRequestId
+$endpointOwnerPid = Get-McpEndpointOwnerPid -Port ([int]$connection.port)
+if ($endpointOwnerPid -eq 0) {
+    throw "MCP_ENDPOINT_UNAVAILABLE|pid=$($connection.pid)|endpoint=$($connection.endpoint)"
 }
+if ($endpointOwnerPid -ne [int]$connection.pid) {
+    throw "MCP_ENDPOINT_PROCESS_MISMATCH|expected_pid=$($connection.pid)|actual_pid=$endpointOwnerPid"
+}
+
+$token = [System.IO.File]::ReadAllText([string]$connection.token_path).Trim()
+$arguments = $ArgumentsJson | ConvertFrom-Json -AsHashtable
+if ($null -eq $arguments) {
+    $arguments = @{}
+}
+$requestIdRequiredTools = @(
+    "request_script_reload",
+    "request_project_reload",
+    "request_filesystem_scan",
+    "stop_editor"
+)
+if ($ToolName -in $requestIdRequiredTools) {
+    if (-not $arguments.ContainsKey("request_id") -or [string]::IsNullOrWhiteSpace([string]$arguments["request_id"])) {
+        throw "MCP_REQUEST_ID_REQUIRED|tool=$ToolName"
+    }
+}
+
+$jsonRpcRequestId = [guid]::NewGuid().ToString("N")
 $headers = @{
     "X-Funplay-MCP-Token" = $token
     "MCP-Protocol-Version" = "2025-11-25"
@@ -46,22 +65,19 @@ $body = @{
 } | ConvertTo-Json -Depth 30 -Compress
 
 try {
-    $response = Invoke-RestMethod `
-        -Uri ([string]$connection.endpoint) `
-        -Method Post `
-        -Headers $headers `
-        -ContentType "application/json" `
-        -Body $body `
-        -TimeoutSec $TimeoutSeconds
+    $response = Invoke-RestMethod -Uri ([string]$connection.endpoint) -Method Post -Headers $headers -ContentType "application/json" -Body $body -TimeoutSec $TimeoutSeconds
 } catch {
-    $editorProcess = Get-Process -Id ([int]$connection.pid) -ErrorAction SilentlyContinue
-    if ($editorProcess -eq $null -or $editorProcess.HasExited) {
-        throw "MCP_EDITOR_PROCESS_EXITED|pid=$($connection.pid)|endpoint=$($connection.endpoint)"
+    $identityAfter = Test-McpProcessIdentity -Connection $connection
+    if (-not [bool]$identityAfter.valid) {
+        throw "MCP_EDITOR_PROCESS_EXITED|reason_code=$($identityAfter.reason_code)|pid=$($connection.pid)|endpoint=$($connection.endpoint)|log=$($connection.log_path)"
+    }
+    if ((Get-McpEndpointOwnerPid -Port ([int]$connection.port)) -eq 0) {
+        throw "MCP_ENDPOINT_UNAVAILABLE|pid=$($connection.pid)|endpoint=$($connection.endpoint)"
     }
     throw
 }
 
-if ($response.error -ne $null) {
+if ($null -ne $response.error) {
     throw ($response.error | ConvertTo-Json -Depth 10 -Compress)
 }
 

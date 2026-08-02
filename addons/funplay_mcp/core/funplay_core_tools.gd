@@ -4,6 +4,8 @@ extends RefCounted
 const FunplayProjectSkillManager = preload("res://addons/funplay_mcp/core/funplay_project_skill_manager.gd")
 const FunplayFilesystemReloadState = preload("res://addons/funplay_mcp/core/funplay_filesystem_reload_state.gd")
 
+static var _filesystem_state_writer_count := 0
+
 const SCENE_EXTENSIONS = [".tscn", ".scn"]
 const TEXT_EXTENSIONS = [
 	".gd", ".gdshader", ".tres", ".tscn", ".json", ".txt", ".md",
@@ -199,13 +201,18 @@ var _tool_registry
 var _filesystem_reload_state
 var _filesystem_signal_connected := false
 var _filesystem_execution_active := false
-var _internal_reload_request_sequence := 0
+var _filesystem_callback_active := false
+var _internal_filesystem_operation_sequence := 0
+var _filesystem_writer_registered := false
 
 
 func _init(plugin, settings) -> void:
 	_plugin = plugin
 	_settings = settings
+	_filesystem_state_writer_count += 1
+	_filesystem_writer_registered = true
 	_filesystem_reload_state = FunplayFilesystemReloadState.new()
+	_filesystem_reload_state.begin_editor_booting(Time.get_ticks_msec())
 	_connect_filesystem_signal()
 	_sync_filesystem_state()
 
@@ -218,15 +225,30 @@ func teardown() -> void:
 	if _filesystem_reload_state != null:
 		_filesystem_reload_state.begin_stopping(Time.get_ticks_msec())
 	_disconnect_filesystem_signal()
+	if _filesystem_reload_state != null:
+		_filesystem_reload_state.complete_stopping(Time.get_ticks_msec())
+	if _filesystem_writer_registered:
+		_filesystem_state_writer_count = maxi(0, _filesystem_state_writer_count - 1)
+		_filesystem_writer_registered = false
 	_tool_registry = null
 
 
 func process_pending_filesystem_reload() -> void:
-	if _filesystem_execution_active or _filesystem_reload_state == null:
+	if is_filesystem_reload_execution_active() or _filesystem_reload_state == null:
 		return
 	_sync_filesystem_state()
 	var status: Dictionary = _filesystem_reload_state.get_status()
 	if str(status.get("state", "")) != FunplayFilesystemReloadState.STATE_RELOAD_QUEUED:
+		return
+	var pending_operation_id := str(status.get("pending_operation_id", ""))
+	var pending_operation: Dictionary = _filesystem_reload_state.get_operation(pending_operation_id)
+	if (
+		bool(pending_operation.get("queued_during_initial_scan", false))
+		and int(status.get("post_initial_scan_reload_deferred_tick_count", 0)) < 1
+	):
+		_filesystem_reload_state.record_post_initial_scan_reload_deferred_tick(
+			Time.get_ticks_msec()
+		)
 		return
 	var begin: Dictionary = _filesystem_reload_state.begin_queued_reload(Time.get_ticks_msec())
 	if bool(begin.get("should_execute", false)):
@@ -234,7 +256,7 @@ func process_pending_filesystem_reload() -> void:
 
 
 func is_filesystem_reload_execution_active() -> bool:
-	return _filesystem_execution_active
+	return _filesystem_execution_active or _filesystem_callback_active
 
 
 func execute_code(arguments: Dictionary) -> String:
@@ -336,6 +358,9 @@ func filesystem_scan_status(arguments: Dictionary) -> String:
 		status["operation"] = _filesystem_reload_state.get_operation(operation_id)
 	status["editor_pid"] = OS.get_process_id()
 	status["endpoint_alive"] = true
+	status["filesystem_state_writer_count"] = _filesystem_state_writer_count
+	status["filesystem_callback_active"] = _filesystem_callback_active
+	status["filesystem_execution_active"] = _filesystem_execution_active
 	return _render_variant(status)
 
 
@@ -3318,14 +3343,20 @@ func get_csharp_errors(arguments: Dictionary) -> String:
 
 
 func request_script_reload(arguments: Dictionary) -> String:
-	var path = _normalize_path(str(arguments.get("path", "")))
-	var request_id := str(arguments.get("request_id", arguments.get("_mcp_http_request_id", ""))).strip_edges()
+	var raw_path := str(arguments.get("path", "")).strip_edges()
+	var path = _normalize_path(raw_path)
+	var request_id := str(arguments.get("request_id", "")).strip_edges()
 	if request_id == "":
-		_internal_reload_request_sequence += 1
-		request_id = "legacy-filesystem-reload-%d-%d" % [
-			OS.get_process_id(),
-			_internal_reload_request_sequence,
-		]
+		return _render_variant({
+			"ok": false,
+			"reason_code": "mcp_request_id_required",
+		})
+	if raw_path != "" and path == "":
+		return _render_variant({
+			"ok": false,
+			"request_id": request_id,
+			"reason_code": "mcp_invalid_reload_path",
+		})
 	_sync_filesystem_state()
 	var result: Dictionary = _filesystem_reload_state.request_reload(
 		request_id,
@@ -5439,12 +5470,12 @@ func _pascal_case(value: String) -> String:
 
 
 func _refresh_filesystem() -> Dictionary:
-	_internal_reload_request_sequence += 1
+	_internal_filesystem_operation_sequence += 1
 	_sync_filesystem_state()
 	return _filesystem_reload_state.request_reload(
-		"internal-filesystem-reload-%d-%d" % [
+		"internal-filesystem-operation-%d-%d" % [
 			OS.get_process_id(),
-			_internal_reload_request_sequence,
+			_internal_filesystem_operation_sequence,
 		],
 		"",
 		Time.get_ticks_msec()
@@ -5479,7 +5510,9 @@ func _disconnect_filesystem_signal() -> void:
 
 
 func _on_filesystem_changed() -> void:
+	_filesystem_callback_active = true
 	_sync_filesystem_state(true)
+	_filesystem_callback_active = false
 
 
 func _sync_filesystem_state(completion_signal: bool = false) -> Dictionary:

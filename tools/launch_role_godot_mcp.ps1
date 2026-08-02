@@ -11,13 +11,23 @@ param(
 
     [string]$GodotPath = "C:\Users\zhuye\AppData\Local\Programs\Godot\4.7\Godot_v4.7-stable_win64.exe",
 
-    [ValidateSet("compatibility", "forward_plus")]
+    [ValidateSet("compatibility", "compatibility_angle", "forward_plus")]
     [string]$Renderer = "compatibility",
 
-    [int]$StartupTimeoutSeconds = 90
+    [ValidateRange(30, 900)]
+    [int]$StartupTimeoutSeconds = 300,
+
+    [ValidateRange(1, 30)]
+    [int]$HttpTimeoutSeconds = 3,
+
+    [bool]$RequireFreshProjectCache = $true,
+
+    [ValidatePattern("^[a-zA-Z0-9._-]*$")]
+    [string]$SessionId = ""
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "role_godot_mcp_common.ps1")
 
 $root = (Resolve-Path -LiteralPath $Worktree).Path.TrimEnd("\")
 if (-not (Test-Path -LiteralPath (Join-Path $root "project.godot"))) {
@@ -30,32 +40,59 @@ if (-not (Test-Path -LiteralPath $GodotPath)) {
     throw "Godot executable is missing: $GodotPath"
 }
 
-$roleSlug = $Role.ToLowerInvariant()
-$localRoot = Join-Path $root ".codex-godot"
-$roamingRoot = Join-Path $localRoot "appdata-roaming"
-$localAppDataRoot = Join-Path $localRoot "appdata-local"
-$logRoot = Join-Path $localRoot "logs"
-$tokenPath = Join-Path $localRoot "auth.token"
-$endpointPath = Join-Path $localRoot "endpoint.txt"
-$connectionPath = Join-Path $localRoot "connection.json"
-$pidPath = Join-Path $localRoot "godot.pid"
+$projectCachePath = Join-Path $root ".godot"
+if ($RequireFreshProjectCache -and (Test-Path -LiteralPath $projectCachePath)) {
+    throw "MCP_PROJECT_CACHE_NOT_FRESH|path=$projectCachePath"
+}
 
-foreach ($directory in @($localRoot, $roamingRoot, $localAppDataRoot, $logRoot)) {
+$roleSlug = $Role.ToLowerInvariant()
+if ($SessionId -eq "") {
+    $SessionId = "{0}-{1}-{2}" -f $roleSlug, (Get-Date -Format "yyyyMMddTHHmmssfff"), ([guid]::NewGuid().ToString("N").Substring(0, 8))
+}
+$controlRoot = Join-Path $root ".codex-godot"
+$sessionsRoot = Join-Path $controlRoot "sessions"
+$sessionRoot = Join-Path $sessionsRoot $SessionId
+if (Test-Path -LiteralPath $sessionRoot) {
+    throw "MCP_SESSION_ID_ALREADY_EXISTS|session_id=$SessionId|path=$sessionRoot"
+}
+
+$roamingRoot = Join-Path $sessionRoot "appdata-roaming"
+$localAppDataRoot = Join-Path $sessionRoot "appdata-local"
+$logRoot = Join-Path $sessionRoot "logs"
+$tokenPath = Join-Path $sessionRoot "auth.token"
+$endpointPath = Join-Path $sessionRoot "endpoint.txt"
+$connectionPath = Join-Path $sessionRoot "connection.json"
+$pidPath = Join-Path $sessionRoot "godot.pid"
+$failurePath = Join-Path $sessionRoot "launch-failure.json"
+$activeSessionPath = Join-Path $controlRoot "active-session.json"
+foreach ($directory in @($controlRoot, $sessionsRoot, $sessionRoot, $roamingRoot, $localAppDataRoot, $logRoot)) {
     [System.IO.Directory]::CreateDirectory($directory) | Out-Null
 }
 
-if (Test-Path -LiteralPath $tokenPath) {
-    $token = [System.IO.File]::ReadAllText($tokenPath).Trim()
-} else {
-    $tokenBytes = New-Object byte[] 32
-    [System.Security.Cryptography.RandomNumberGenerator]::Fill($tokenBytes)
-    $token = [System.Convert]::ToHexString($tokenBytes).ToLowerInvariant()
-    [System.IO.File]::WriteAllText($tokenPath, $token, [System.Text.UTF8Encoding]::new($false))
-}
-if ($token -notmatch "^[0-9a-f]{64}$") {
-    throw "Invalid local Funplay MCP token at: $tokenPath"
+if (Test-Path -LiteralPath $activeSessionPath) {
+    try {
+        $prior = Get-McpActiveSession -ControlRoot $controlRoot
+        $priorIdentity = Test-McpProcessIdentity -Connection $prior.connection
+        if ([bool]$priorIdentity.valid) {
+            throw "MCP_ACTIVE_SESSION_STILL_RUNNING|pid=$($prior.connection.pid)|session_id=$($prior.connection.session_id)"
+        }
+    } catch {
+        if ($_.Exception.Message -like "MCP_ACTIVE_SESSION_STILL_RUNNING*") {
+            throw
+        }
+    }
 }
 
+$tokenBytes = New-Object byte[] 32
+[System.Security.Cryptography.RandomNumberGenerator]::Fill($tokenBytes)
+$token = [System.Convert]::ToHexString($tokenBytes).ToLowerInvariant()
+Write-McpUtf8File -Path $tokenPath -Text $token
+
+$projectText = [System.IO.File]::ReadAllText((Join-Path $root "project.godot"))
+$projectNameMatch = [regex]::Match($projectText, '(?m)^config/name="([^"]+)"')
+$projectName = if ($projectNameMatch.Success) { $projectNameMatch.Groups[1].Value } else { "SpaceSyndicate" }
+$settingsDirectory = Join-Path $roamingRoot ("Godot\app_userdata\{0}" -f $projectName)
+[System.IO.Directory]::CreateDirectory($settingsDirectory) | Out-Null
 $settingsText = @"
 [server]
 
@@ -70,151 +107,208 @@ execute_code_safety_checks_enabled=true
 
 disabled=Array[String]([])
 "@
-
-$settingsDirectory = Join-Path $roamingRoot "Godot\app_userdata\太空辛迪加"
-[System.IO.Directory]::CreateDirectory($settingsDirectory) | Out-Null
-[System.IO.File]::WriteAllText(
-    (Join-Path $settingsDirectory "funplay_mcp_settings.cfg"),
-    $settingsText,
-    [System.Text.UTF8Encoding]::new($false)
-)
-
-if (Test-Path -LiteralPath $pidPath) {
-    $existingPidText = [System.IO.File]::ReadAllText($pidPath).Trim()
-    if ($existingPidText -match "^\d+$") {
-        $existingProcess = Get-Process -Id ([int]$existingPidText) -ErrorAction SilentlyContinue
-        if ($existingProcess -ne $null -and -not $existingProcess.HasExited) {
-            throw "Role $Role already has a live Godot process (PID $existingPidText)."
-        }
-    }
-}
+Write-McpUtf8File -Path (Join-Path $settingsDirectory "funplay_mcp_settings.cfg") -Text $settingsText
 
 $endpoint = "http://127.0.0.1:$Port/"
-[System.IO.File]::WriteAllText($endpointPath, $endpoint, [System.Text.UTF8Encoding]::new($false))
-$logPath = Join-Path $logRoot ("godot_{0}.log" -f (Get-Date -Format "yyyyMMdd_HHmmss"))
+Write-McpUtf8File -Path $endpointPath -Text $endpoint
+$logPath = Join-Path $logRoot "godot.log"
+$stdoutPath = Join-Path $logRoot "editor.stdout.log"
+$stderrPath = Join-Path $logRoot "editor.stderr.log"
+$renderingMethod = if ($Renderer -eq "forward_plus") { "forward_plus" } else { "gl_compatibility" }
+$renderingDriver = switch ($Renderer) {
+    "compatibility" { "opengl3" }
+    "compatibility_angle" { "opengl3_angle" }
+    default { "vulkan" }
+}
 $arguments = @(
     "--editor",
     "--path", ('"' + $root + '"'),
     "--log-file", ('"' + $logPath + '"'),
+    "--rendering-method", $renderingMethod,
+    "--rendering-driver", $renderingDriver,
     "--resolution", "1600x960",
     "--position", "40,40"
 )
-if ($Renderer -eq "compatibility") {
-    $arguments += @("--rendering-method", "gl_compatibility", "--rendering-driver", "opengl3_angle")
-} else {
-    $arguments += @("--rendering-method", "forward_plus", "--rendering-driver", "vulkan")
-}
 $argumentString = $arguments -join " "
 $environment = @{
     "APPDATA" = $roamingRoot
     "LOCALAPPDATA" = $localAppDataRoot
 }
-
 $startProcessParameters = @{
     FilePath = $GodotPath
     ArgumentList = $argumentString
     Environment = $environment
+    RedirectStandardOutput = $stdoutPath
+    RedirectStandardError = $stderrPath
+    WorkingDirectory = $root
     PassThru = $true
     WindowStyle = "Hidden"
 }
-$process = Start-Process @startProcessParameters
-[System.IO.File]::WriteAllText($pidPath, [string]$process.Id, [System.Text.UTF8Encoding]::new($false))
 
-$headers = @{ "X-Funplay-MCP-Token" = $token; "MCP-Protocol-Version" = "2025-11-25" }
-$deadline = (Get-Date).AddSeconds($StartupTimeoutSeconds)
-$projectInfo = $null
-while ((Get-Date) -lt $deadline -and -not $process.HasExited) {
-    Start-Sleep -Milliseconds 500
-    try {
-        $body = @{
-            jsonrpc = "2.0"
-            id = [guid]::NewGuid().ToString("N")
-            method = "tools/call"
-            params = @{ name = "get_project_info"; arguments = @{} }
-        } | ConvertTo-Json -Depth 10 -Compress
-        $requestParameters = @{
-            Uri = $endpoint
-            Method = "Post"
-            Headers = $headers
-            ContentType = "application/json"
-            Body = $body
-            TimeoutSec = 5
+$process = $null
+$launchSucceeded = $false
+try {
+    $process = Start-Process @startProcessParameters
+    $identity = Get-McpProcessIdentity -Process $process
+    if ($null -eq $identity) {
+        throw "editor_process_exited_before_ready|stage=launch"
+    }
+    Write-McpUtf8File -Path $pidPath -Text ([string]$process.Id)
+
+    $headers = @{
+        "X-Funplay-MCP-Token" = $token
+        "MCP-Protocol-Version" = "2025-11-25"
+    }
+    $deadline = [DateTimeOffset]::Now.AddSeconds($StartupTimeoutSeconds)
+    $projectInfo = $null
+    $filesystemStatus = $null
+    $endpointObserved = $false
+    while ([DateTimeOffset]::Now -lt $deadline) {
+        $process.Refresh()
+        if ($process.HasExited) {
+            $native = Get-McpNativeExitEvidence -LogPath $logPath -ExitCode $process.ExitCode
+            throw "editor_process_exited_before_ready|exit_code=$($native.exit_code)|signal=$($native.signal)|log=$logPath"
         }
-        $response = Invoke-RestMethod @requestParameters
-        $projectInfo = $response.result.content[0].text | ConvertFrom-Json
-        break
-    } catch {
-        $projectInfo = $null
+
+        $listenerPid = Get-McpEndpointOwnerPid -Port $Port
+        if ($listenerPid -ne 0) {
+            $endpointObserved = $true
+            if ($listenerPid -ne $process.Id) {
+                throw "mcp_endpoint_process_mismatch|expected_pid=$($process.Id)|actual_pid=$listenerPid"
+            }
+        }
+
+        try {
+            $body = @{
+                jsonrpc = "2.0"
+                id = [guid]::NewGuid().ToString("N")
+                method = "tools/call"
+                params = @{ name = "get_project_info"; arguments = @{} }
+            } | ConvertTo-Json -Depth 10 -Compress
+            $response = Invoke-RestMethod -Uri $endpoint -Method Post -Headers $headers -ContentType "application/json" -Body $body -TimeoutSec $HttpTimeoutSeconds
+            $projectInfo = $response.result.content[0].text | ConvertFrom-Json
+
+            $body = @{
+                jsonrpc = "2.0"
+                id = [guid]::NewGuid().ToString("N")
+                method = "tools/call"
+                params = @{ name = "filesystem_scan_status"; arguments = @{} }
+            } | ConvertTo-Json -Depth 10 -Compress
+            $response = Invoke-RestMethod -Uri $endpoint -Method Post -Headers $headers -ContentType "application/json" -Body $body -TimeoutSec $HttpTimeoutSeconds
+            $filesystemStatus = $response.result.content[0].text | ConvertFrom-Json
+            if ([int]$filesystemStatus.editor_pid -ne $process.Id) {
+                throw "mcp_endpoint_editor_pid_mismatch|expected_pid=$($process.Id)|actual_pid=$($filesystemStatus.editor_pid)"
+            }
+            if ([bool]$filesystemStatus.initial_scan_completed -and [string]$filesystemStatus.state -eq "ready") {
+                break
+            }
+        } catch {
+            $process.Refresh()
+            if ($process.HasExited) {
+                $native = Get-McpNativeExitEvidence -LogPath $logPath -ExitCode $process.ExitCode
+                throw "editor_process_exited_before_ready|exit_code=$($native.exit_code)|signal=$($native.signal)|log=$logPath"
+            }
+            if ($_.Exception.Message -like "mcp_endpoint_*_mismatch*") {
+                throw
+            }
+        }
+        Start-Sleep -Milliseconds 250
+    }
+
+    if ($null -eq $projectInfo) {
+        $endpointOwnerAtTimeout = Get-McpEndpointOwnerPid -Port $Port
+        $reason = if ($endpointObserved -and $endpointOwnerAtTimeout -eq 0) {
+            "mcp_endpoint_died_before_ready"
+        } elseif ($endpointObserved) {
+            "mcp_endpoint_unresponsive_before_ready"
+        } else {
+            "mcp_endpoint_not_ready_timeout"
+        }
+        throw "$reason|pid=$($process.Id)|endpoint=$endpoint|log=$logPath"
+    }
+    if ($null -eq $filesystemStatus -or -not [bool]$filesystemStatus.initial_scan_completed) {
+        throw "initial_scan_timeout|pid=$($process.Id)|endpoint=$endpoint|log=$logPath"
+    }
+
+    $reportedRoot = ([string]$projectInfo.project_root).Replace("/", "\").TrimEnd("\")
+    if (-not $reportedRoot.Equals($root, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "mcp_endpoint_project_mismatch|expected=$root|actual=$reportedRoot"
+    }
+
+    $connection = [ordered]@{
+        schema = "RoleGodotMcpConnectionV2"
+        session_id = $SessionId
+        launch_nonce = [guid]::NewGuid().ToString("N")
+        role = $Role
+        endpoint = $endpoint
+        port = $Port
+        endpoint_owner_pid = Get-McpEndpointOwnerPid -Port $Port
+        pid = $process.Id
+        process_start_time_utc = [string]$identity.start_time_utc
+        godot_path = [string]$identity.executable_path
+        worktree = $root
+        project_cache_path = $projectCachePath
+        project_cache_was_fresh = $RequireFreshProjectCache
+        user_data_path = $roamingRoot
+        local_app_data_path = $localAppDataRoot
+        session_root = $sessionRoot
+        token_path = $tokenPath
+        log_path = $logPath
+        stdout_path = $stdoutPath
+        stderr_path = $stderrPath
+        godot_version = [string]$projectInfo.godot_version.string
+        tool_profile = [string]$projectInfo.tool_profile
+        renderer = $Renderer
+        rendering_method = $renderingMethod
+        rendering_driver = $renderingDriver
+        filesystem_state = [string]$filesystemStatus.state
+        filesystem_generation = [int]$filesystemStatus.filesystem_generation
+        filesystem_state_writer_count = [int]$filesystemStatus.filesystem_state_writer_count
+        launched_at = [DateTimeOffset]::Now.ToString("o")
+    }
+    Write-McpUtf8File -Path $connectionPath -Text ($connection | ConvertTo-Json -Depth 8)
+    $active = [ordered]@{
+        session_id = $SessionId
+        connection_path = $connectionPath
+        activated_at = [DateTimeOffset]::Now.ToString("o")
+    }
+    Write-McpUtf8File -Path $activeSessionPath -Text ($active | ConvertTo-Json -Depth 4)
+    $launchSucceeded = $true
+    $connection | ConvertTo-Json -Depth 8
+} catch {
+    $failureMessage = $_.Exception.Message
+    $cleanup = $null
+    if ($null -ne $process) {
+        $process.Refresh()
+        if (-not $process.HasExited) {
+            $cleanup = Stop-McpBoundProcess -Process $process -TimeoutSeconds 10 -AllowForcedCleanup
+        }
+    }
+    $exitCode = if ($null -ne $process -and $process.HasExited) { $process.ExitCode } else { 0 }
+    $native = Get-McpNativeExitEvidence -LogPath $logPath -ExitCode $exitCode
+    $failure = [ordered]@{
+        schema = "RoleGodotMcpLaunchFailureV1"
+        session_id = $SessionId
+        reason = $failureMessage
+        editor_pid = if ($null -ne $process) { $process.Id } else { 0 }
+        exit_code = $native.exit_code
+        signal = $native.signal
+        endpoint = $endpoint
+        endpoint_alive = (Get-McpEndpointOwnerPid -Port $Port) -ne 0
+        cleanup = $cleanup
+        log_path = $logPath
+        failed_at = [DateTimeOffset]::Now.ToString("o")
+    }
+    Write-McpUtf8File -Path $failurePath -Text ($failure | ConvertTo-Json -Depth 8)
+    throw $failureMessage
+} finally {
+    if (-not $launchSucceeded -and (Test-Path -LiteralPath $activeSessionPath)) {
+        try {
+            $active = Get-Content -Raw -LiteralPath $activeSessionPath | ConvertFrom-Json
+            if ([string]$active.session_id -eq $SessionId) {
+                Remove-Item -LiteralPath $activeSessionPath -Force
+            }
+        } catch {
+        }
     }
 }
-
-if ($process.HasExited) {
-    throw "Godot exited during startup with code $($process.ExitCode). See: $logPath"
-}
-if ($projectInfo -eq $null) {
-    throw "Funplay MCP did not become ready at $endpoint. Godot PID: $($process.Id); log: $logPath"
-}
-
-$reportedRoot = ([string]$projectInfo.project_root).Replace("/", "\").TrimEnd("\")
-if (-not $reportedRoot.Equals($root, [System.StringComparison]::OrdinalIgnoreCase)) {
-    $process.CloseMainWindow() | Out-Null
-    throw "Endpoint $endpoint belongs to the wrong project: $reportedRoot"
-}
-
-$filesystemStatus = $null
-$filesystemDeadline = (Get-Date).AddSeconds($StartupTimeoutSeconds)
-while ((Get-Date) -lt $filesystemDeadline -and -not $process.HasExited) {
-    try {
-        $body = @{
-            jsonrpc = "2.0"
-            id = [guid]::NewGuid().ToString("N")
-            method = "tools/call"
-            params = @{ name = "filesystem_scan_status"; arguments = @{} }
-        } | ConvertTo-Json -Depth 10 -Compress
-        $requestParameters = @{
-            Uri = $endpoint
-            Method = "Post"
-            Headers = $headers
-            ContentType = "application/json"
-            Body = $body
-            TimeoutSec = 5
-        }
-        $response = Invoke-RestMethod @requestParameters
-        $filesystemStatus = $response.result.content[0].text | ConvertFrom-Json
-        if ([bool]$filesystemStatus.initial_scan_completed -and [string]$filesystemStatus.state -eq "ready") {
-            break
-        }
-    } catch {
-        $filesystemStatus = $null
-    }
-    Start-Sleep -Milliseconds 250
-}
-
-if ($process.HasExited) {
-    throw "Godot exited while waiting for initial filesystem scan with code $($process.ExitCode). See: $logPath"
-}
-if ($filesystemStatus -eq $null -or -not [bool]$filesystemStatus.initial_scan_completed) {
-    throw "Funplay MCP initial filesystem scan did not become ready at $endpoint. Godot PID: $($process.Id); log: $logPath"
-}
-
-$connection = [ordered]@{
-    role = $Role
-    endpoint = $endpoint
-    port = $Port
-    pid = $process.Id
-    worktree = $root
-    token_path = $tokenPath
-    log_path = $logPath
-    godot_version = [string]$projectInfo.godot_version.string
-    tool_profile = [string]$projectInfo.tool_profile
-    renderer = $Renderer
-    filesystem_state = [string]$filesystemStatus.state
-    filesystem_generation = [int]$filesystemStatus.filesystem_generation
-}
-[System.IO.File]::WriteAllText(
-    $connectionPath,
-    ($connection | ConvertTo-Json -Depth 5),
-    [System.Text.UTF8Encoding]::new($false)
-)
-
-$connection | ConvertTo-Json -Depth 5
