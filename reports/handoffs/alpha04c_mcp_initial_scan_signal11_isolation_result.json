@@ -13,7 +13,9 @@
     "candidate_evidence_commit": "08daa52cbcd4f33472ab4edc7d416c5fdcba77ef",
     "effective_repair_commit": "5aeb7960df962254fc179edff4d91de85c03ba9d",
     "effective_patch_diff_hash": "ea8900c1d328b203cdd2927684af2581086feda3",
-    "push_allowed": false,
+    "push_allowed_by_automated_acceptance_gate": false,
+    "published_by_explicit_user_override": true,
+    "published_branch": "codex/mcp-resource-rescan-reentrancy-78c7770",
     "merge_allowed": false
   },
   "matrix": {

@@ -2,6 +2,11 @@
 
 Status: BLOCKED by one attested PR77 focused-bench error.
 
+Cloud-sync note: after this blocked report was completed, the user explicitly
+authorized publishing the complete local task branch. That authorization
+overrides the earlier no-push gate for branch backup/review only; it does not
+make acceptance GREEN and does not authorize merge into PR77 or main.
+
 ## Outcome
 
 The MCP toolchain recovery is successful. Fresh-cache startup now uses a
