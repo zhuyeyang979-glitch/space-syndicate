@@ -193,11 +193,11 @@ func _test_target_choice_focus_drift() -> void:
 		queue,
 		resolution,
 		target_choice,
-		null,
 		_market,
 		null,
 		_query,
-		coordinator
+		coordinator,
+		null
 	)
 	var begin := submission.request_hand_play({
 		"player_index": 0,

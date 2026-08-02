@@ -220,7 +220,7 @@ func _run() -> void:
 	full_snapshot.table_state = full_state
 	screen.bind_presentation_viewer(0, context.authorization_revision)
 	screen.apply_full_presentation(full_snapshot)
-	var target_after_full := overlay.district_supply_presentation_target_snapshot()
+	var target_after_full: Dictionary = overlay.call("district_supply_presentation_target_snapshot") as Dictionary
 	_expect(bool(target_after_full.get("visible", false)) and str(target_after_full.get("last_visibility_scope", "")) == "viewer_private", "full target renders the authorized private drawer")
 	var target_apply_count := int(target_after_full.get("apply_count", 0))
 	var live_snapshot := TableLivePresentationSnapshot.new()
@@ -229,10 +229,10 @@ func _run() -> void:
 	live_snapshot.authorization_revision = context.authorization_revision
 	live_snapshot.table_state = live_state
 	screen.apply_live_presentation(live_snapshot)
-	var target_after_live := overlay.district_supply_presentation_target_snapshot()
+	var target_after_live: Dictionary = overlay.call("district_supply_presentation_target_snapshot") as Dictionary
 	_expect(bool(target_after_live.get("visible", false)) and int(target_after_live.get("apply_count", -1)) == target_apply_count, "live refresh neither clears nor reapplies the district drawer")
 	screen.bind_presentation_viewer(0, context.authorization_revision + 1)
-	var target_after_rebind := overlay.district_supply_presentation_target_snapshot()
+	var target_after_rebind: Dictionary = overlay.call("district_supply_presentation_target_snapshot") as Dictionary
 	_expect(not bool(target_after_rebind.get("visible", true)) and str(target_after_rebind.get("last_visibility_scope", "")) == "closed", "authorization revision change immediately clears stale private drawer content")
 
 	var main_source_path := "/".join(["res://scripts", "main.gd"])

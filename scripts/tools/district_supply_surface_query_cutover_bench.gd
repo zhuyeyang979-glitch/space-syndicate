@@ -110,7 +110,7 @@ func _run() -> void:
 		overlay.apply_district_supply_presentation(private_surface, 0, context.authorization_revision),
 		"typed_overlay_accepts_private_surface"
 	)
-	var private_target := overlay.district_supply_presentation_target_snapshot()
+	var private_target: Dictionary = overlay.call("district_supply_presentation_target_snapshot") as Dictionary
 	_check(
 		bool(private_target.get("visible", false))
 			and str(private_target.get("last_visibility_scope", "")) == "viewer_private",
@@ -144,7 +144,7 @@ func _run() -> void:
 		overlay.apply_district_supply_presentation(public_surface, 0, context.authorization_revision),
 		"typed_overlay_accepts_public_surface"
 	)
-	var public_target := overlay.district_supply_presentation_target_snapshot()
+	var public_target: Dictionary = overlay.call("district_supply_presentation_target_snapshot") as Dictionary
 	_check(
 		bool(public_target.get("visible", false))
 			and str(public_target.get("last_visibility_scope", "")) == "public",
