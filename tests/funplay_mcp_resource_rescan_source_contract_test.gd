@@ -37,6 +37,8 @@ func _init() -> void:
 	_expect(execute_block.contains("_filesystem_execution_active = true"), "scan execution raises the nested-frame guard")
 	_expect(core_source.contains("func _publish_filesystem_readiness("), "state owner publishes out-of-band initial readiness")
 	_expect(core_source.contains("FunplayMcpFilesystemReadinessV1"), "readiness sentinel has a typed schema")
+	var state_source := _read("res://addons/funplay_mcp/core/funplay_filesystem_reload_state.gd")
+	_expect(state_source.contains("DEFAULT_INITIAL_SCAN_TIMEOUT_MSEC := 300000"), "state owner allows the bounded full-project import window")
 
 	var plugin_source := _read("res://addons/funplay_mcp/plugin.gd")
 	var process_block := _function_block(plugin_source, "func _process(")
