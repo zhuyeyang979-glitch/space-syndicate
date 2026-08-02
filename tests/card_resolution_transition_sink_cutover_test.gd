@@ -254,24 +254,33 @@ func _test_sink_exact_once_and_faults() -> void:
 
 func _test_execution_lineage_roundtrip() -> void:
 	var execution := CardResolutionExecutionRuntimeService.new()
+	var transition := CardResolutionRuntimeController.new()
 	execution.configure({})
-	var apply := execution.apply_save_data({
+	execution.set_transition_checkpoint_owner(transition)
+	var initial := execution.to_save_data()
+	var legacy_apply := execution.apply_save_data({
 		"schema_version": 1,
 		"transaction_sequence": 9,
 		"completed_resolution_ids": [3, 8],
 		"inflight_resolution_ids": [],
 	})
-	_expect(bool(apply.get("applied", false)) and execution.resolution_completed(3) and execution.resolution_completed(8), "execution exact-once IDs restore through the typed save API")
+	_expect(not bool(legacy_apply.get("applied", true)) \
+			and bool(legacy_apply.get("requires_backup", false)) \
+			and execution.to_save_data() == initial, "legacy execution lineage fails closed without partial mutation")
 	var saved := execution.to_save_data()
 	var restored := CardResolutionExecutionRuntimeService.new()
+	var restored_transition := CardResolutionRuntimeController.new()
 	restored.configure({})
+	restored.set_transition_checkpoint_owner(restored_transition)
 	var restored_apply := restored.apply_save_data(saved)
 	_expect(bool(restored_apply.get("applied", false)) and restored.to_save_data() == saved, "execution lineage save roundtrip is exact")
 	var before := restored.to_save_data()
 	var invalid := restored.apply_save_data({"schema_version": 1, "transaction_sequence": 0, "completed_resolution_ids": [3, 3], "inflight_resolution_ids": []})
 	_expect(not bool(invalid.get("applied", true)) and restored.to_save_data() == before, "invalid execution lineage fails closed without partial mutation")
 	execution.free()
+	transition.free()
 	restored.free()
+	restored_transition.free()
 
 
 func _test_public_privacy() -> void:

@@ -304,7 +304,8 @@ func _test_v1_migration_resets_live_transition_lineage() -> void:
 	var commands := _start_next_commands(harness, 105)
 	var applied := (harness.sink as CardResolutionTransitionSink).apply_transition_batch(commands)
 	var before := (harness.controller as CardResolutionRuntimeController).transition_lineage_snapshot()
-	_expect(bool(applied.get("handled", false)) and int(before.get("applied_command_count", 0)) > 0, "v1 migration oracle starts with nonempty live transition lineage")
+	var owner_before := (harness.execution as CardResolutionExecutionRuntimeService).to_save_data()
+	_expect(bool(applied.get("handled", false)) and int(before.get("applied_command_count", 0)) > 0, "legacy rejection oracle starts with nonempty live transition lineage")
 	var legacy_save := {
 		"schema_version": 1,
 		"transaction_sequence": 0,
@@ -313,8 +314,11 @@ func _test_v1_migration_resets_live_transition_lineage() -> void:
 	}
 	var restored := (harness.execution as CardResolutionExecutionRuntimeService).apply_save_data(legacy_save)
 	var after := (harness.controller as CardResolutionRuntimeController).transition_lineage_snapshot()
-	_expect(bool(restored.get("applied", false)), "v1 execution save migrates through a canonical transition checkpoint")
-	_expect(int(after.get("batch_revision", -1)) == 0 and int(after.get("next_order_index", -1)) == 0 and int(after.get("applied_command_count", -1)) == 0, "v1 migration clears live transition command lineage instead of inheriting it")
+	_expect(not bool(restored.get("applied", true)) \
+			and str(restored.get("reason_code", "")) == "card_resolution_execution_v3_closed_wire_upgrade_requires_backup" \
+			and bool(restored.get("requires_backup", false)), "v1 execution save fails closed and requires backup")
+	_expect(after == before \
+			and (harness.execution as CardResolutionExecutionRuntimeService).to_save_data() == owner_before, "legacy rejection preserves live owner and Transition lineage without partial mutation")
 	_free_harness(harness)
 
 

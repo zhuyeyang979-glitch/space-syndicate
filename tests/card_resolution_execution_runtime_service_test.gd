@@ -21,7 +21,10 @@ func _run() -> void:
 		_finish()
 		return
 	root.add_child(service)
-	service.call("configure", {"ruleset_id": "v0.4"})
+	var transition_controller := CardResolutionRuntimeController.new()
+	root.add_child(transition_controller)
+	service.call("configure", {"ruleset_id": "v0.6"})
+	service.call("set_transition_checkpoint_owner", transition_controller)
 
 	var normal := service.call("plan_execution", _request(3701, "cash_gain")) as Dictionary
 	_expect(bool(normal.get("ready", false)) and _next_kind(normal) == "counter_check", "normal execution starts with counter check")
@@ -78,16 +81,20 @@ func _run() -> void:
 			and _next_kind(retryable_commitment) == "finish_card_commitment", "unsettled commitment retains the exact failed intent")
 	var retryable_save := service.call("to_save_data") as Dictionary
 	var retryable_preflight := service.call("preflight_save_data", retryable_save) as Dictionary
-	_expect(bool(retryable_preflight.get("accepted", false)), "service-generated retryable commitment state passes its own Save v3 preflight")
+	_expect(bool(retryable_preflight.get("accepted", false)), "service-generated retryable commitment state passes its own Save v4 preflight")
 	var restored_service := packed.instantiate() as Node
 	root.add_child(restored_service)
-	restored_service.call("configure", {"ruleset_id": "v0.4"})
+	var restored_transition_controller := CardResolutionRuntimeController.new()
+	root.add_child(restored_transition_controller)
+	restored_service.call("configure", {"ruleset_id": "v0.6"})
+	restored_service.call("set_transition_checkpoint_owner", restored_transition_controller)
 	var retryable_apply := restored_service.call("apply_save_data", retryable_save) as Dictionary
 	var resumed_commitment := restored_service.call("resume_inflight_execution", 3706) as Dictionary
 	_expect(bool(retryable_apply.get("applied", false)) \
 			and bool(resumed_commitment.get("ready", false)) \
 			and _next_kind(resumed_commitment) == "finish_card_commitment", "cold-restored commitment resumes only the failed owner leg")
 	restored_service.queue_free()
+	restored_transition_controller.queue_free()
 
 	var promoted := service.call("plan_execution", _request(3705, "product_speculation")) as Dictionary
 	var promoted_order: Array[String] = []
@@ -102,6 +109,7 @@ func _run() -> void:
 	_expect(bool(snapshot.get("execution_orchestration_authority", false)) and not bool(snapshot.get("queue_authority", true)) and not bool(snapshot.get("concrete_effect_authority", true)), "execution service advertises a narrow ownership boundary")
 
 	service.queue_free()
+	transition_controller.queue_free()
 	_finish()
 
 

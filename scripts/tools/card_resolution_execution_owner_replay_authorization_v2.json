@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "contract_id": "CardResolutionExecutionOwnerReplayAuthorizationV2",
+  "authorization_id": "alpha04c-card-resolution-execution-replay-v2-authoritative-parity",
+  "run_id_prefix": "alpha04c-card-resolution-execution-replay-v2-authoritative-parity",
+  "run_id": "alpha04c-card-resolution-execution-replay-v2-authoritative-parity-attempt-2",
+  "replay_attempt_count_before": 1,
+  "authorized_new_replay_count": 1,
+  "replay_attempt_count_after": 2,
+  "targeted_owner_capture_diagnostic_count_before": 7,
+  "targeted_owner_capture_diagnostic_count_after": 7,
+  "replay_v1_child_sha256": "6eb417efebc8d01e80c55bda846bca9667c54bddabbe06af184beacd7dc36740",
+  "replay_v1_parent_sha256": "6e56a87a884c93ac0dbd2caf1850c6d209de538a763c420a2f716070f7bb0ed1",
+  "replay_v1_claim_sha256": "08d52b59f12805f1e79db7ec294d78dfc64f38a63c66e81879c12c7949b950ba",
+  "replay_v1_consumed_admission_sha256": "c629aa44323b5a7bc72c7ce1933f702e662a8763cd3f1e810550ca82073020fd"
+}

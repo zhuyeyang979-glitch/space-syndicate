@@ -7,6 +7,7 @@ const StableTargetEnvelope := preload("res://scripts/runtime/card_resolution_sta
 const StrictState := preload("res://scripts/runtime/save_owner_state_v2_contract.gd")
 const FacilityBinding := preload("res://scripts/cards/v06/queued_facility_card_action_v1.gd")
 const FacilityRestoreDependencies := preload("res://scripts/runtime/queued_facility_card_restore_dependency_contract_v06.gd")
+const ExecutionSaveWireCodecV4 := preload("res://scripts/runtime/card_resolution_execution_save_wire_codec_v4.gd")
 const SemanticWire := preload("res://scripts/semantic/semantic_wire_v1.gd")
 
 const RULESET_ID := "v0.6"
@@ -868,22 +869,29 @@ func preflight_restore_dependencies(section_state: Dictionary, all_normalized_st
 	var section_preflight := preflight_save_data(section_state)
 	if not bool(section_preflight.get("accepted", false)):
 		return _restore_dependency_rejection("card_resolution_queue_dependency_section_invalid")
+	if not (all_normalized_states.get("session") is Dictionary) \
+			or not (all_normalized_states.get("card_resolution_execution") is Dictionary) \
+			or not (all_normalized_states.get("card_resolution_history") is Dictionary):
+		return _restore_dependency_rejection("card_resolution_queue_dependency_section_missing")
+	var execution_decode := ExecutionSaveWireCodecV4.decode_save_state(
+		all_normalized_states.get("card_resolution_execution") as Dictionary
+	)
+	if not bool(execution_decode.get("ok", false)) or not (execution_decode.get("value") is Dictionary):
+		return _restore_dependency_rejection("card_resolution_queue_execution_projection_invalid")
+	var projected_states := all_normalized_states.duplicate(true)
+	projected_states["card_resolution_execution"] = (execution_decode.get("value") as Dictionary).duplicate(true)
 	var facility_dependencies := FacilityRestoreDependencies.validate(
 		section_state.duplicate(true),
-		all_normalized_states.duplicate(true)
+		projected_states.duplicate(true)
 	)
 	if not bool(facility_dependencies.get("accepted", false)):
 		return _restore_dependency_rejection(str(facility_dependencies.get(
 			"reason_code", "card_resolution_queue_facility_dependency_invalid"
 		)))
-	if not (all_normalized_states.get("session") is Dictionary) \
-			or not (all_normalized_states.get("card_resolution_execution") is Dictionary) \
-			or not (all_normalized_states.get("card_resolution_history") is Dictionary):
-		return _restore_dependency_rejection("card_resolution_queue_dependency_section_missing")
 	var context := _queue_restore_dependency_context(
-		all_normalized_states.get("session") as Dictionary,
-		all_normalized_states.get("card_resolution_execution") as Dictionary,
-		all_normalized_states.get("card_resolution_history") as Dictionary
+		projected_states.get("session") as Dictionary,
+		projected_states.get("card_resolution_execution") as Dictionary,
+		projected_states.get("card_resolution_history") as Dictionary
 	)
 	if not bool(context.get("valid", false)):
 		return _restore_dependency_rejection(str(context.get("reason_code", "card_resolution_queue_dependency_context_invalid")))

@@ -5,6 +5,7 @@ const GAME_ACTION_INTENT := preload("res://scripts/semantic/game_action_intent_v
 const GAME_ACTION_OFFER := preload("res://scripts/semantic/game_action_offer_v1.gd")
 const FACILITY_BINDING := preload("res://scripts/cards/v06/queued_facility_card_action_v1.gd")
 const COLD_RESTORE_DRIVER := preload("res://scripts/tools/cold_restore_vertical_slice_driver.gd")
+const EXECUTION_SAVE_CODEC := preload("res://scripts/runtime/card_resolution_execution_save_wire_codec_v4.gd")
 
 const FACILITY_CARD_ID := "facility.factory.life.rank_2"
 const FACILITY_INDUSTRY_ID := "life"
@@ -249,7 +250,15 @@ func _prepare_rank_two_facility_queue(coordinator: GameRuntimeCoordinator) -> Di
 	)
 	var player_after_grant := inventory.player_snapshot(actor_id)
 	var card := _card_binding(player_after_grant, FACILITY_CARD_ID)
-	_expect(bool(grant.get("committed", false)) and not card.is_empty() and not target_region_id.is_empty(), "production Inventory grants one stable Rank-II facility instance and RegionInfrastructure supplies its target")
+	_expect(
+		bool(grant.get("committed", false)) and not card.is_empty() and not target_region_id.is_empty(),
+		"production Inventory grants one stable Rank-II facility instance and RegionInfrastructure supplies its target|grant=%s|reason=%s|card_bound=%s|target_available=%s" % [
+			bool(grant.get("committed", false)),
+			str(grant.get("reason", grant.get("reason_code", ""))),
+			not card.is_empty(),
+			not target_region_id.is_empty(),
+		]
+	)
 	if not bool(grant.get("committed", false)) or card.is_empty() or target_region_id.is_empty():
 		return {}
 
@@ -424,7 +433,7 @@ func _test_facility_continues_once_after_restore(coordinator: GameRuntimeCoordin
 	})
 	var mana_settlement := mana.reservation_settlement_snapshot(reservation_id)
 	var history_state := history.to_save_data()
-	var execution_state := execution.to_save_data()
+	var execution_state := _execution_runtime_state(execution)
 	var player: Dictionary = world.players[0] if not world.players.is_empty() and world.players[0] is Dictionary else {}
 	var escrow_receipts: Dictionary = player.get("facility_card_escrow_receipts", {}) if player.get("facility_card_escrow_receipts") is Dictionary else {}
 	var escrow_receipt: Dictionary = escrow_receipts.get(escrow_id, {}) if escrow_receipts.get(escrow_id, {}) is Dictionary else {}
@@ -524,7 +533,7 @@ func _facility_owner_evidence(facility_case: Dictionary) -> Dictionary:
 		"world": (world_capture.get("normalized_state", {}) as Dictionary).duplicate(true),
 		"mana": (facility_case.get("mana") as PlayerManaRuntimeController).to_save_data(),
 		"infrastructure": (facility_case.get("infrastructure") as RegionInfrastructureRuntimeController).to_save_data(),
-		"execution": (facility_case.get("execution") as CardResolutionExecutionRuntimeService).to_save_data(),
+		"execution": _execution_runtime_state(facility_case.get("execution") as CardResolutionExecutionRuntimeService),
 		"history": (facility_case.get("history") as CardResolutionHistoryRuntimeService).to_save_data(),
 		"rng": (rng.call("to_save_data") as Dictionary).duplicate(true) if rng != null else {},
 	}
@@ -571,6 +580,14 @@ func _decoded_section(handshake: Node, envelope: Dictionary, section_id: String)
 	if handshake == null or wrapper.is_empty() or not handshake.has_method("decode_codec_value"):
 		return {}
 	var decoded: Dictionary = handshake.call("decode_codec_value", wrapper.get("owner_state"))
+	return (decoded.get("value", {}) as Dictionary).duplicate(true) \
+			if bool(decoded.get("ok", false)) and decoded.get("value") is Dictionary else {}
+
+
+func _execution_runtime_state(owner: CardResolutionExecutionRuntimeService) -> Dictionary:
+	if owner == null:
+		return {}
+	var decoded := EXECUTION_SAVE_CODEC.decode_save_state(owner.to_save_data())
 	return (decoded.get("value", {}) as Dictionary).duplicate(true) \
 			if bool(decoded.get("ok", false)) and decoded.get("value") is Dictionary else {}
 
