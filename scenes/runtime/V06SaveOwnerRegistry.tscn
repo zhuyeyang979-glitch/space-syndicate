@@ -175,6 +175,7 @@ unsupported_reason = ""
 script = ExtResource("2_binding")
 section_id = "card_resolution_execution"
 owner_id = "card_resolution_execution"
+state_version = 2
 owner_path = NodePath("../../CardResolutionExecutionRuntimeService")
 capture_method = "to_save_data"
 preflight_method = "preflight_save_data"

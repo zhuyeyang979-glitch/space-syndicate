@@ -29,6 +29,9 @@ const AUTHORIZATION_CONTRACT := preload(
 const REGISTRY_BINDING_VALIDATOR := preload(
 	"res://scripts/tools/alpha04c_registry_binding_contract_validator_v1.gd"
 )
+const EXECUTION_SAVE_WIRE_CODEC := preload(
+	"res://scripts/runtime/card_resolution_execution_save_wire_codec_v4.gd"
+)
 
 const FORMAL_FULL_RUN := false
 const EXECUTION_READY := true
@@ -4853,7 +4856,8 @@ func _queue_target_observation(context: Dictionary, resolution_id: int) -> Dicti
 			if target_validation.get("envelope", {}) is Dictionary else {}
 		stable_target_valid = bool(target_validation.get("valid", false))
 		stable_target_fingerprint = str(envelope.get("envelope_fingerprint", ""))
-	var execution_state := execution.to_save_data()
+	var execution_projection := _execution_runtime_save_projection(execution)
+	var execution_state := execution_projection.get("state", {}) as Dictionary
 	var completed_ids: Array = execution_state.get("completed_resolution_ids", []) \
 		if execution_state.get("completed_resolution_ids", []) is Array else []
 	var completed_count := _resolution_id_occurrence(completed_ids, resolution_id)
@@ -5034,8 +5038,10 @@ static func _authoritative_duplicate_observation(context: Dictionary) -> Diction
 			pending_resolution_ids.append(int(active.get("resolution_id")))
 		else:
 			pending_resolution_ids_typed = false
-	var execution_state := execution.to_save_data()
-	var execution_shape_valid := execution_state.has("completed_resolution_ids") \
+	var execution_projection := _execution_runtime_save_projection(execution)
+	var execution_state := execution_projection.get("state", {}) as Dictionary
+	var execution_shape_valid := bool(execution_projection.get("valid", false)) \
+			and execution_state.has("completed_resolution_ids") \
 			and execution_state.get("completed_resolution_ids") is Array
 	var completed_resolution_ids: Array = execution_state.get("completed_resolution_ids", []) \
 			if execution_state.get("completed_resolution_ids", []) is Array else []
@@ -5198,6 +5204,16 @@ static func _duplicate_observation_is_zero(observation: Dictionary) -> bool:
 		if not observation.has(field) or int(observation.get(field, -1)) != 0:
 			return false
 	return true
+
+
+static func _execution_runtime_save_projection(execution: CardResolutionExecutionRuntimeService) -> Dictionary:
+	if execution == null:
+		return {"valid": false, "state": {}}
+	var wire := execution.to_save_data()
+	var decoded := EXECUTION_SAVE_WIRE_CODEC.decode_save_state(wire)
+	if not bool(decoded.get("ok", false)) or not (decoded.get("value") is Dictionary):
+		return {"valid": false, "state": {}}
+	return {"valid": true, "state": (decoded.get("value") as Dictionary).duplicate(true)}
 
 
 func _resolution_id_occurrence(values: Array, resolution_id: int) -> int:
