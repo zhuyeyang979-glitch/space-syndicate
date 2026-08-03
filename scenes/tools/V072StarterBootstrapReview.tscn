@@ -1,0 +1,188 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/v072_simulation/v072_starter_bootstrap_review.gd" id="1_review"]
+
+[node name="V072StarterBootstrapReview" type="Control"]
+custom_minimum_size = Vector2(1280, 720)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_review")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.055, 0.071, 0.09, 1)
+
+[node name="SafeMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 18.0
+offset_top = 14.0
+offset_right = -18.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 2
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 2
+theme_override_constants/margin_bottom = 2
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin"]
+layout_mode = 2
+theme_override_constants/separation = 9
+
+[node name="Header" type="HBoxContainer" parent="SafeMargin/Rows"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="SafeMargin/Rows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "V0.7.2 Starter Bootstrap Review"
+theme_override_font_sizes/font_size = 23
+
+[node name="ProfileStatus" type="Label" parent="SafeMargin/Rows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "V072_STARTER_FREE_FAST | detached"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.4, 0.831, 0.741, 1)
+
+[node name="CatalogStatus" type="Label" parent="SafeMargin/Rows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Semantic keys pending"
+
+[node name="ReviewScroll" type="ScrollContainer" parent="SafeMargin/Rows"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Sections" type="VBoxContainer" parent="SafeMargin/Rows/ReviewScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="Assets" type="PanelContainer" parent="SafeMargin/Rows/ReviewScroll/Sections" groups=["v072_review_section"]]
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/Assets"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 9
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/Assets/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Heading" type="Label" parent="SafeMargin/Rows/ReviewScroll/Sections/Assets/Margin/Rows"]
+layout_mode = 2
+text = "Initialized six-color asset owner"
+theme_override_font_sizes/font_size = 16
+
+[node name="AssetGrid" type="GridContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/Assets/Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 6
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="OpeningHand" type="PanelContainer" parent="SafeMargin/Rows/ReviewScroll/Sections" groups=["v072_review_section"]]
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/OpeningHand"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 9
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/OpeningHand/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Heading" type="Label" parent="SafeMargin/Rows/ReviewScroll/Sections/OpeningHand/Margin/Rows"]
+layout_mode = 2
+text = "Deterministic shuffled opening hand"
+theme_override_font_sizes/font_size = 16
+
+[node name="HandGrid" type="GridContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/OpeningHand/Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 5
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="IdentityAndCost" type="PanelContainer" parent="SafeMargin/Rows/ReviewScroll/Sections" groups=["v072_review_section"]]
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/IdentityAndCost"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 9
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/IdentityAndCost/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Heading" type="Label" parent="SafeMargin/Rows/ReviewScroll/Sections/IdentityAndCost/Margin/Rows"]
+layout_mode = 2
+text = "Stable identity, cost gate, and voluntary merge"
+theme_override_font_sizes/font_size = 16
+
+[node name="ComparisonGrid" type="GridContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/IdentityAndCost/Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="EconomicBootstrap" type="PanelContainer" parent="SafeMargin/Rows/ReviewScroll/Sections" groups=["v072_review_section"]]
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/EconomicBootstrap"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 9
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/EconomicBootstrap/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Heading" type="Label" parent="SafeMargin/Rows/ReviewScroll/Sections/EconomicBootstrap/Margin/Rows"]
+layout_mode = 2
+text = "Starter facility GDP and first asset refresh"
+theme_override_font_sizes/font_size = 16
+
+[node name="TimelineGrid" type="GridContainer" parent="SafeMargin/Rows/ReviewScroll/Sections/EconomicBootstrap/Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="FooterStatus" type="Label" parent="SafeMargin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Frozen V0.7.2 target | human test required"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.72, 0.78, 0.84, 1)
+theme_override_font_sizes/font_size = 11

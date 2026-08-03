@@ -1,0 +1,21 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/v073_runtime/v073_sample_application_bootstrap.gd" id="1_bootstrap"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/V073RuntimeComposition.tscn" id="2_runtime"]
+[ext_resource type="PackedScene" path="res://scenes/ui/V073SampleGameScreen.tscn" id="3_screen"]
+
+[node name="V073SampleApplication" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_bootstrap")
+
+[node name="V073RuntimeComposition" parent="." instance=ExtResource("2_runtime")]
+unique_name_in_owner = true
+
+[node name="V073SampleGameScreen" parent="." instance=ExtResource("3_screen")]
+unique_name_in_owner = true
+layout_mode = 1

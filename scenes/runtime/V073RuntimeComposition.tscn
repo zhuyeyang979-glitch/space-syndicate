@@ -1,0 +1,18 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/v073_runtime/v073_sample_application_flow.gd" id="1_flow"]
+[ext_resource type="Script" path="res://scripts/v073_runtime/v073_ruleset_runtime_owner.gd" id="2_ruleset"]
+[ext_resource type="Script" path="res://scripts/v073_runtime/v073_sample_runtime_owner.gd" id="3_runtime"]
+
+[node name="V073RuntimeComposition" type="Node"]
+unique_name_in_owner = true
+editor_description = "Atomic V0.7.3 new-game-only production composition. No V0.6 authority or Save writer is reachable."
+script = ExtResource("1_flow")
+
+[node name="V073RulesetRuntimeOwner" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("2_ruleset")
+
+[node name="V073SampleRuntimeOwner" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("3_runtime")
