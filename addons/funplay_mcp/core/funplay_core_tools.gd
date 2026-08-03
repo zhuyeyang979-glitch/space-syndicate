@@ -203,6 +203,9 @@ var _filesystem_reload_state
 var _filesystem_signal_connections: Array[Dictionary] = []
 var _filesystem_execution_active := false
 var _filesystem_callback_active := false
+var _filesystem_sync_pending := false
+var _filesystem_completion_signal_pending := false
+var _filesystem_callback_sync_deferred_count := 0
 var _internal_filesystem_operation_sequence := 0
 var _filesystem_writer_registered := false
 var _filesystem_readiness_fingerprint := ""
@@ -223,7 +226,7 @@ func _init(plugin, settings) -> void:
 	)
 	_filesystem_reload_state.begin_editor_booting(Time.get_ticks_msec())
 	_connect_filesystem_signals()
-	_sync_filesystem_state()
+	_flush_pending_filesystem_signal_sync()
 
 
 func set_tool_registry(tool_registry) -> void:
@@ -246,7 +249,7 @@ func teardown() -> void:
 func process_pending_filesystem_reload() -> void:
 	if is_filesystem_reload_execution_active() or _filesystem_reload_state == null:
 		return
-	_sync_filesystem_state()
+	_flush_pending_filesystem_signal_sync()
 	var status: Dictionary = _filesystem_reload_state.get_status()
 	if str(status.get("state", "")) != FunplayFilesystemReloadState.STATE_RELOAD_QUEUED:
 		return
@@ -267,14 +270,14 @@ func is_filesystem_reload_execution_active() -> bool:
 func is_transport_poll_ready(now_msec: int, stability_msec: int) -> bool:
 	if is_filesystem_reload_execution_active() or _filesystem_reload_state == null:
 		return false
-	_sync_filesystem_state()
+	_flush_pending_filesystem_signal_sync()
 	return _filesystem_reload_state.is_transport_poll_ready(now_msec, stability_msec)
 
 
 func is_import_quiescent() -> bool:
 	if _filesystem_reload_state == null:
 		return false
-	_sync_filesystem_state()
+	_flush_pending_filesystem_signal_sync()
 	var status: Dictionary = _filesystem_reload_state.get_status()
 	return (
 		str(status.get("state", "")) == FunplayFilesystemReloadState.STATE_READY
@@ -376,7 +379,7 @@ func get_project_info(_arguments: Dictionary) -> String:
 
 
 func filesystem_scan_status(arguments: Dictionary) -> String:
-	_sync_filesystem_state()
+	_flush_pending_filesystem_signal_sync()
 	var status: Dictionary = _filesystem_reload_state.get_status()
 	var operation_id := str(arguments.get("operation_id", "")).strip_edges()
 	if operation_id != "":
@@ -385,6 +388,7 @@ func filesystem_scan_status(arguments: Dictionary) -> String:
 	status["endpoint_alive"] = true
 	status["filesystem_state_writer_count"] = _filesystem_state_writer_count
 	status["filesystem_callback_active"] = _filesystem_callback_active
+	status["filesystem_callback_sync_deferred_count"] = _filesystem_callback_sync_deferred_count
 	status["filesystem_execution_active"] = _filesystem_execution_active
 	status["readiness_file_path"] = ProjectSettings.globalize_path(FILESYSTEM_READINESS_PATH)
 	return _render_variant(status)
@@ -5585,8 +5589,17 @@ func _record_filesystem_signal(signal_name: String, paths: Array, completion_sig
 	_filesystem_callback_active = true
 	if _filesystem_reload_state != null:
 		_filesystem_reload_state.record_import_signal(signal_name, paths, Time.get_ticks_msec())
-	_sync_filesystem_state(completion_signal)
+	_filesystem_sync_pending = true
+	_filesystem_completion_signal_pending = _filesystem_completion_signal_pending or completion_signal
+	_filesystem_callback_sync_deferred_count += 1
 	_filesystem_callback_active = false
+
+
+func _flush_pending_filesystem_signal_sync() -> Dictionary:
+	var completion_signal := _filesystem_completion_signal_pending
+	_filesystem_sync_pending = false
+	_filesystem_completion_signal_pending = false
+	return _sync_filesystem_state(completion_signal)
 
 
 func _sync_filesystem_state(completion_signal: bool = false) -> Dictionary:
@@ -5646,6 +5659,7 @@ func _publish_filesystem_readiness(status: Dictionary) -> void:
 		"import_lifecycle_event_writer_count": int(status.get("import_lifecycle_event_writer_count", 0)),
 		"last_error": status.get("last_error", {}),
 		"filesystem_state_writer_count": _filesystem_state_writer_count,
+		"filesystem_callback_sync_deferred_count": _filesystem_callback_sync_deferred_count,
 		"editor_pid": OS.get_process_id(),
 		"updated_at_msec": Time.get_ticks_msec(),
 	}

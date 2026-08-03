@@ -454,17 +454,33 @@ $comparison = Compare-McpColdImportDiagnosticAttemptsV3 `
     -C2B $attempts[4] `
     -ChangedFiles $changedScripts
 Write-McpMatrixJson -Path (Join-Path $EvidenceRoot "comparison.json") -Value $comparison
-Write-McpMatrixJson -Path (Join-Path $EvidenceRoot "baseline_manifest.json") -Value $comparison.baseline_manifest
+$baselineManifest = Get-McpOptionalProperty -Object $comparison -Name "baseline_manifest"
+if ($null -ne $baselineManifest) {
+    Write-McpMatrixJson -Path (Join-Path $EvidenceRoot "baseline_manifest.json") -Value $baselineManifest
+}
+
+$targetClassifications = Get-McpOptionalProperty -Object $comparison -Name "target_classifications"
+if ($null -eq $targetClassifications) { $targetClassifications = @() }
+$targetGate = Get-McpOptionalProperty -Object $comparison -Name "target_gate"
+if ($null -eq $targetGate) {
+    $targetGate = [ordered]@{
+        schema = "McpDiagnosticGateV3"
+        green = $false
+        diagnostic_accounting_reconciled = $false
+        unclassified_diagnostic_count = 0
+        reason_code = [string]$comparison.reason_code
+    }
+}
 
 $result = [ordered]@{
     schema = "McpColdImportDiagnosticMatrixResultV3"
-    green = [bool]$comparison.valid -and [bool]$comparison.green -and [bool]$comparison.target_gate.green
+    green = [bool]$comparison.valid -and [bool]$comparison.green -and [bool]$targetGate.green
     evidence_root = $EvidenceRoot
     environment = $environment
     attempts = $attempts.ToArray()
     comparison = $comparison
-    target_classifications = $comparison.target_classifications
-    target_gate = $comparison.target_gate
+    target_classifications = $targetClassifications
+    target_gate = $targetGate
 }
 Write-McpMatrixJson -Path (Join-Path $EvidenceRoot "result.json") -Value $result
 $result | ConvertTo-Json -Depth 30
