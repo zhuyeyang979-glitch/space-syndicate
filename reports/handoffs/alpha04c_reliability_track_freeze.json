@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "freeze_id": "alpha04c.reliability_track.freeze.v1",
+  "task_id": "ALPHA_0_5_B_V073_SAMPLE_FIRST_ATOMIC_PRODUCTION_CUTOVER_AND_PLAYABLE_SLICE",
+  "status": "FROZEN_INDEPENDENT_RELIABILITY_TRACK",
+  "alpha04c_reliability_track_frozen": true,
+  "pr77_modified_by_this_task": false,
+  "production_cutover_dependency": false,
+  "remote_wip_checkpoint_merge_allowed": false,
+  "entries": [
+    {
+      "branch": "origin/codex/alpha04c-save-resume-cold-restore-5b8601b",
+      "commit": "78c777010a75cdc1a8d407fde6705f9a51ac3b56",
+      "tree": "4c8fb8e991cce450632f026dc0742ba16eec79c9",
+      "purpose": "PR #77 Alpha 0.4-C transactional Save/Resume reliability line, including Card Inventory Save v4, Monster Save v2, Execution Save v4, AI Save v3, and Victory Save v3.",
+      "merged": false,
+      "mcp_status": "PARTIAL_RELIABILITY_EVIDENCE_RETAINED",
+      "known_blocker": "game_session Session Envelope owner remains outside closed wire; PR #77 remains Draft and is not a V0.7.3 production dependency."
+    },
+    {
+      "branch": "origin/wip/mcp-tooling-frozen-6cf1d30",
+      "commit": "5aeb7960df962254fc179edff4d91de85c03ba9d",
+      "tree": "ee68f0374607c90977d6da6dae53ca824fd53acb",
+      "purpose": "MCP fresh-cache recovery import foundation retained as an ancestor of the frozen Tooling checkpoint.",
+      "merged": false,
+      "mcp_status": "TOOLING_BOOTSTRAP_LINEAGE_RETAINED",
+      "known_blocker": "Not a production gameplay commit and must not be merged as gameplay acceptance."
+    },
+    {
+      "branch": "origin/codex/player-hand-interaction-zero-candidate-fail-closed-510ebc3b",
+      "commit": "f4c4f5c9a0652728addaa2d7ae866146825bfa42",
+      "tree": "c32809784fe229205ad2b285bf4f930b2b9f9b3a",
+      "purpose": "MCP-runnable Session Start transaction contract retained for the Alpha 0.4-C reliability line.",
+      "merged": false,
+      "mcp_status": "FOCUSED_CONTRACT_EVIDENCE_RETAINED",
+      "known_blocker": "The historical exact-SHA acceptance sequence was not completed and is not resumed by the V0.7.3 sample task."
+    },
+    {
+      "branch": "origin/codex/player-hand-interaction-zero-candidate-fail-closed-510ebc3b",
+      "commit": "82725bed58817efe3b385cd74494d83e32ac9422",
+      "tree": "30788ee781f408b37219e82a8ee7f5f97b989b1c",
+      "purpose": "Product Market new-session rollback repair through Save v2.",
+      "merged": false,
+      "mcp_status": "FOCUSED_REPAIR_EVIDENCE_RETAINED",
+      "known_blocker": "Frozen with the reliability line; it is not imported into the V0.7.3 new-game-only sample."
+    },
+    {
+      "branch": "origin/codex/player-hand-interaction-zero-candidate-fail-closed-510ebc3b",
+      "commit": "510ebc3b1f80e6ef8a18e4e22b121dd9f5238337",
+      "tree": "931afeeaf31765925ead3dd2803933fdf912d087",
+      "purpose": "Card Inventory discardability typed-query repair and direct-parent baseline for the zero-candidate fix.",
+      "merged": false,
+      "mcp_status": "FOCUSED_REPAIR_EVIDENCE_RETAINED",
+      "known_blocker": "Frozen with the reliability line; no V0.6 fallback is carried into the V0.7.3 sample."
+    },
+    {
+      "branch": "origin/codex/player-hand-interaction-zero-candidate-fail-closed-510ebc3b",
+      "commit": "3e73aaa8598ee0cfe3f9f97098db194679218f20",
+      "tree": "db25e364d38b91f4725655475c44145a349ab262",
+      "purpose": "Fail-closed zero-candidate hand interaction repair without mutation or side effects.",
+      "merged": false,
+      "mcp_status": "CODE_FROZEN_EXACT_SHA_ATTEMPT_NOT_CONSUMED",
+      "known_blocker": "Historical Attempt 3 remains unconsumed; this task does not create Attempt 3 or Attempt 4."
+    },
+    {
+      "branch": "origin/wip/mcp-tooling-frozen-6cf1d30",
+      "commit": "6cf1d30f1ec2e7200409fe9f438533b0c8736595",
+      "tree": "bda747ab24524a03bcbda87956b4c6c61efc8c10",
+      "purpose": "Funplay MCP import-quiescence, process-lifecycle, and direct-parent diagnostic-disposition Tooling checkpoint.",
+      "merged": false,
+      "mcp_status": "OFFLINE_AND_MINIMAL_TOOLING_SELF_TEST_GREEN",
+      "known_blocker": "WIP checkpoint only; it is not a GREEN production PR and is not merged into the V0.7.3 gameplay branch."
+    }
+  ],
+  "preserved_outcomes": [
+    "Card Inventory Save v4",
+    "Monster Save v2",
+    "Card Resolution Execution Save v4",
+    "AI Save v3",
+    "Victory Save v3",
+    "MCP Tooling recovery lineage",
+    "Session Start transaction bench migration",
+    "Product Market rollback repair",
+    "Discardability typed-query repair",
+    "Zero-candidate hand interaction repair"
+  ],
+  "prohibited_continuations_in_sample_task": [
+    "Alpha 0.4-C Attempt 3",
+    "Alpha 0.4-C V8",
+    "Process A",
+    "Official A/B/C"
+  ]
+}
