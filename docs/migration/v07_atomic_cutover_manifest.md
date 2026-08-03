@@ -1,0 +1,316 @@
+# V0.7.3 Canonical Adapter Atomic Cutover Manifest
+
+LANE=B
+STATUS=V073_DETACHED_ADAPTER_PREFLIGHT_READY
+CANONICAL_ADAPTER_IMPLEMENTATION_STATUS=IMPLEMENTED_DETACHED_NOT_CONNECTED
+CURRENT_PRODUCTION_RUNTIME_RULESET=V0.6
+TARGET_DEVELOPMENT_RULESET=V0.7.3
+PRODUCTION_CUTOVER_AUTHORIZED=false
+V06_SAVE_TO_V073_DIRECT_RESUME=false
+V072_SAVE_TO_V073_DIRECT_RESUME=false
+V06_SAVE_REJECTION_REASON=v06_save_backup_required
+ALLOWED_SESSION_ENTRYPOINTS=[NEW_V073_GAME]
+PRODUCTION_SCENE_CHANGE=false
+MAIN_CHANGE=false
+DUAL_WRITE_ALLOWED=false
+LATEST_MAIN_BASELINE_SHA=794ccf010e661a4750efca20a4e0d2a5839b7f2b
+V073_REQUIRED_PRE_CUTOVER_GATES=[batch_boundary_owner_ready,replacement_claim_lock_ready,minimum_deck_count_ready,l1_supply_only_ready,commodity_availability_batch_ready,invalid_target_policy_ready,soft_hidden_lead_ready,balance_profile_ready,starter_definition_registry_ready,zero_initial_assets_ready,starter_zero_cost_profile_ready,standard_l1_asset_cost_ready,starter_merge_privilege_consumption_ready,starter_player_badge_ready,starter_ai_cost_semantics_ready,starter_save_identity_ready,fixed_round_robin_ready,facility_unique_slot_ready,facility_action_mode_ready,facility_slot_revalidation_ready,build_contention_fizzle_ready,anonymous_resolution_ready,ai_contention_semantics_ready,facility_contention_save_ready]
+V073_PRODUCTION_CONNECTION_COUNT=0
+V073_V06_MUTATION_COUNT=0
+V073_DUAL_WRITE_COUNT=0
+V073_RESOLUTION_ORDER_WRITER_COUNT=1
+V073_RESOLUTION_ORDER_MODIFIER_COUNT=0
+V073_INITIATIVE_AUCTION_CORE_COUNT=0
+V073_INITIATIVE_BID_SAVE_FIELD_COUNT=0
+V073_INITIATIVE_BID_UI_SURFACE_COUNT=0
+V073_AI_INITIATIVE_BID_POLICY_COUNT=0
+COMMERCIAL_ART_FOUNDATION=GREEN
+PRESENTATION_ASSET_CATALOG_READY=true
+
+The canonical Save, RNG, AI-observation, and player-projection adapters are detached `RefCounted` implementations targeting V0.7.3. They have no production scene, Main, V0.6 runtime, or V06 Save Registry connection. This document is a future atomic owner-replacement checklist, not production cutover authorization.
+
+A V0.6 Save is recognized and rejected with `v06_save_backup_required`; a detached V0.7.2 Save also fails closed unless a future test-only migration is explicitly selected. The adapter never guesses Starter identity, the unified track, personal DBG order, independent commodity inventory, 5+5 capacities, asset reservations, frozen batch order, facility action mode, prebound facility target, balance profile, or complete-macro-round state. A future production V0.7.3 release starts only through `NEW_V073_GAME`.
+
+The V0.7.3 switch has no initiative auction or cash-bid phase. `card_batch`, `anonymous_resolution`, `region_infrastructure`, and `facility_target_contention` form one `all_or_nothing` group: fixed hidden round-robin order, local action layering, explicit BUILD/UPGRADE/REPAIR modes, authoritative target revalidation, and exact-once contention Fizzle receipts switch together. The group has one order writer, zero order modifiers, and `dual_write_allowed=false`.
+
+Every player-visible cutover below declares presentation dependencies through stable semantic asset keys owned by the existing Presentation Asset Catalog. The detached Player adapter emits only `asset_key` entries; Core, AI, and Save remain asset-key agnostic, and no adapter or cutover entry names a vendor filename or third-party resource path. Presentation consumes authorized projections; it never becomes a gameplay, sunlight, Save, or RNG owner.
+
+## 1. unified_card_track
+
+- **V0.6 current owner:** CommoditySushiTrackRuntimeService, RegionSupplyRuntimeController, and ordinary-card acquisition routes.
+- **V0.7.3 target owner:** V07UnifiedCardTrackCore.
+- **Core port:** `v072.unified_track.core_authority.v3`.
+- **AI port:** `v072.unified_track.ai_observation.v3`.
+- **Player port:** `v072.unified_track.player_projection.v3`.
+- **Save adapter:** `V07CanonicalSaveAdapter#unified_card_track_cycle`.
+- **RNG streams:** unified track type, color, normal-card, commodity, and initial hidden-lead streams.
+- **Required asset keys:** `card.frame.normal`, `card.frame.commodity`, all six `icon.asset.*` keys, and `ui.panel.primary`.
+- **Required player projection:** `v072.unified_track.player_projection.v3`.
+- **Required AI observation:** `v072.unified_track.ai_observation.v3`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#unified_card_track_cycle`.
+- **Required RNG streams:** `unified_track_type_draw`, `unified_track_color_draw`, `unified_track_normal_card_draw`, `unified_track_commodity_draw`, and `initial_hidden_lead_order`.
+- **Production scene target:** `scenes/ui/PublicTrack.tscn`.
+- **Old-surface deletion gate:** Retire TopCommoditySushiTrack and regional ordinary-card surfaces only after PublicTrack renders the authorized mixed-track projection with every required key.
+- **Rollback surface:** Rebind PublicTrack to the unchanged V0.6 public-track projection and render no detached V0.7.3 track state.
+- **Pre-cutover gate:** Validate one mixed-track snapshot, stable identities, six-color cycle, hidden lead order, receipts, and five embedded RNG streams.
+- **Cutover step:** Replace every NEW_V073_GAME Core, AI, player, Save, and RNG route in one transaction.
+- **Rollback step:** Restore the detached track checkpoint and retain all V0.6 routes.
+- **Old-path deletion gate:** Delete commodity-only and regional ordinary-card authorities only after the V0.7.3 Core is the sole published owner.
+- **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
+
+## 2. normal_dbg_deck
+
+- **V0.6 current owner:** WorldSessionState card slots, PlayerHandInteractionRuntimeService, and card_inventory Save owner.
+- **V0.7.3 target owner:** V07DbgDeckCore personal deck and zone authority.
+- **Core port:** `v072.personal_dbg.core_authority.v3#normal_dbg_deck`.
+- **AI port:** `v072.personal_dbg.ai_observation.v3#normal_dbg_deck`.
+- **Player port:** `v072.personal_dbg.player_projection.v3#normal_dbg_deck`.
+- **Save adapter:** `V07CanonicalSaveAdapter#personal_dbg_and_merge.normal_dbg_deck`.
+- **RNG streams:** starter-deck shuffle and per-player reshuffle.
+- **Required asset keys:** `card.frame.normal`, `card.back.normal`, `card.badge.starter`, `icon.board.draw_pile`, `icon.board.discard_pile`, and `icon.board.shuffle`.
+- **Required player projection:** `v072.personal_dbg.player_projection.v3#normal_dbg_deck`.
+- **Required AI observation:** `v072.personal_dbg.ai_observation.v3#normal_dbg_deck`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#personal_dbg_and_merge.normal_dbg_deck`.
+- **Required RNG streams:** `starter_deck_shuffle` and `normal_deck_reshuffle_by_player`.
+- **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
+- **Old-surface deletion gate:** Retire shared-hand zones and disappearance fallbacks only after PlayerCardDock renders the authorized private DBG projection with draw, discard, shuffle, and card-back assets.
+- **Rollback surface:** Rebind PlayerCardDock to the unchanged V0.6 hand projection and expose no candidate DBG order or private zone state.
+- **Pre-cutover gate:** Validate one private 12-card DBG owner per player, all zones, capacities, identities, cursors, and quiescence.
+- **Cutover step:** Atomically replace normal-card commands, observations, projections, Save fields, and draw ownership.
+- **Rollback step:** Restore every per-player DBG checkpoint without a card draw or move.
+- **Old-path deletion gate:** Delete shared-hand and duplicate inventory writers only after all player owners publish.
+- **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
+
+## 3. normal_card_merge
+
+- **V0.6 current owner:** Ordinary-card lifecycle and effect routes without one canonical optional merge owner.
+- **V0.7.3 target owner:** V07DbgDeckCore typed normal-card merge authority.
+- **Core port:** `v072.personal_dbg.core_authority.v3#normal_card_merge`.
+- **AI port:** `v072.personal_dbg.ai_observation.v3#normal_card_merge`.
+- **Player port:** `v072.personal_dbg.player_projection.v3#normal_card_merge`.
+- **Save adapter:** `V07CanonicalSaveAdapter#personal_dbg_and_merge.normal_card_merge`.
+- **RNG stream:** `NONE`.
+- **Required asset keys:** `card.frame.normal`, `card.badge.starter`, `icon.board.merge`, `audio.card.merge`, and `vfx.card.merge`.
+- **Required player projection:** `v072.personal_dbg.player_projection.v3#normal_card_merge`.
+- **Required AI observation:** `v072.personal_dbg.ai_observation.v3#normal_card_merge`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#personal_dbg_and_merge.normal_card_merge`.
+- **Required RNG stream:** `NONE`.
+- **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
+- **Old-surface deletion gate:** Retire automatic, name-based, and independently mutating merge affordances only after PlayerCardDock renders typed candidates and receipt-driven feedback.
+- **Rollback surface:** Restore the pre-cutover PlayerCardDock card projection, clear candidate merge feedback, and publish no output card or receipt.
+- **Pre-cutover gate:** Validate typed inputs, output identity, lineage, cost, capacity, receipts, rollback, and zero RNG draws.
+- **Cutover step:** Replace all optional normal-card merge commands and receipts inside the DBG owner cutover.
+- **Rollback step:** Restore the DBG checkpoint and discard unpublished outputs.
+- **Old-path deletion gate:** Delete name-based, automatic, and independently mutating merge routes after parity.
+- **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
+
+## 4. commodity_inventory_merge
+
+- **V0.6 current owner:** Commodity inventory fields split across player state, claim routes, and card_inventory Save ownership.
+- **V0.7.3 target owner:** V07DbgDeckCore independent commodity inventory and typed merge authority.
+- **Core port:** `v072.personal_dbg.core_authority.v3#commodity_inventory_merge`.
+- **AI port:** `v072.personal_dbg.ai_observation.v3#commodity_inventory_merge`.
+- **Player port:** `v072.personal_dbg.player_projection.v3#commodity_inventory_merge`.
+- **Save adapter:** `V07CanonicalSaveAdapter#personal_dbg_and_merge.commodity_inventory_merge`.
+- **RNG stream:** `NONE`.
+- **Required asset keys:** `card.frame.commodity`, `icon.board.merge`, `audio.card.merge`, and `vfx.card.merge`.
+- **Required player projection:** `v072.personal_dbg.player_projection.v3#commodity_inventory_merge`.
+- **Required AI observation:** `v072.personal_dbg.ai_observation.v3#commodity_inventory_merge`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#personal_dbg_and_merge.commodity_inventory_merge`.
+- **Required RNG stream:** `NONE`.
+- **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
+- **Old-surface deletion gate:** Retire shared-capacity commodity surfaces and duplicate inventory writers only after PlayerCardDock renders the independent commodity projection and typed merge receipts.
+- **Rollback surface:** Restore the V0.6 commodity presentation and publish no candidate inventory or merge receipt.
+- **Pre-cutover gate:** Validate independent commodity capacity, typed lineage, privacy, and no implicit V0.6 capacity interpretation.
+- **Cutover step:** Route NEW_V073_GAME acquisition, inventory, merge, projection, and Save through each player's DBG Core.
+- **Rollback step:** Restore the commodity checkpoint and emit no claim or merge receipt.
+- **Old-path deletion gate:** Delete shared capacity aliases and duplicate inventory writers after parity.
+- **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
+
+## 5. six_color_assets
+
+- **V0.6 current owner:** PlayerManaRuntimeController, WorldSessionState resource fields, and player_mana Save owner.
+- **V0.7.3 target owner:** V07AssetBatchCore six-color asset authority.
+- **Core port:** `v072.six_color_assets.core_authority.v3`.
+- **AI port:** `v072.six_color_assets.ai_observation.v3`.
+- **Player port:** `v072.six_color_assets.player_projection.v3`.
+- **Save adapter:** `V07CanonicalSaveAdapter#six_color_assets_and_reservations.assets`.
+- **RNG stream:** `NONE`.
+- **Required asset keys:** `icon.asset.life`, `icon.asset.energy`, `icon.asset.industry`, `icon.asset.technology`, `icon.asset.commerce`, and `icon.asset.shipping`.
+- **Required player projection:** `v072.six_color_assets.player_projection.v3`.
+- **Required AI observation:** `v072.six_color_assets.ai_observation.v3`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#six_color_assets_and_reservations.assets`.
+- **Required RNG stream:** `NONE`.
+- **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
+- **Old-surface deletion gate:** Retire mana-named counters and V0.6 resource surfaces only after PlayerCardDock renders all six authorized values with shape-and-icon identification.
+- **Rollback surface:** Restore the V0.6 resource presentation and clear candidate six-color balances, reservations, and refresh feedback.
+- **Pre-cutover gate:** Validate exactly six colors, cap six, remainders, revisions, privacy, and shared asset-batch lineage.
+- **Cutover step:** Replace NEW_V073_GAME resource reads and writes while the candidate remains detached.
+- **Rollback step:** Restore the shared asset-batch checkpoint once and publish no asset delta.
+- **Old-path deletion gate:** Delete V0.6 mana and resource writers only after Core, ports, Save, and reservation parity.
+- **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
+
+## 6. card_batch
+
+- **V0.6 current owner:** RuntimeLoop action cadence plus card submission and resolution services.
+- **V0.7.3 target owner:** V073FixedOrderFacilityContentionCore fixed-order batch authority.
+- **Core port:** `v073.facility_contention.core_authority.v1#card_batch`.
+- **AI port:** `v073.facility_contention.ai_observation.v1#card_batch`.
+- **Player port:** `v073.facility_contention.player_projection.v1#card_batch`.
+- **Save adapter:** `V07CanonicalSaveAdapter#card_batch_and_anonymous_resolution.card_batch`.
+- **RNG stream:** `NONE`.
+- **Required asset keys:** `card.frame.normal`, `card.frame.commodity`, `card.frame.bound_action`, `ui.panel.primary`, `icon.board.card_count`, `icon.board.turn`, and `icon.board.target`.
+- **Required player projection:** `v073.facility_contention.player_projection.v1#card_batch`.
+- **Required AI observation:** `v073.facility_contention.ai_observation.v1#card_batch`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#card_batch_and_anonymous_resolution.card_batch`.
+- **Required RNG stream:** `NONE`.
+- **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
+- **Old-surface deletion gate:** Retire V0.6 multi-window collection and resolution-time targeting surfaces only after PlayerCardDock renders one authorized five-action local ordering projection.
+- **Rollback surface:** Restore the pre-cutover command surface, discard the candidate batch, and consume neither time nor actions.
+- **Pre-cutover gate:** Validate five-action limits, frozen hidden turn order, one-card-per-player local layers, complete prebound targets, and exact-once submission.
+- **Cutover step:** Replace NEW_V073_GAME action collection with the fixed hidden round-robin batch port in the contention atomic group.
+- **Rollback step:** Restore the shared checkpoint and discard the batch without consuming time or actions.
+- **Old-path deletion gate:** Delete V0.6 multi-window and resolution-time collection only after timing parity.
+- **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
+
+## 7. asset_reservation
+
+- **V0.6 current owner:** Execution-time affordability and resource consumers without complete pre-reservation.
+- **V0.7.3 target owner:** V07AssetBatchCore reservation ledger authority.
+- **Core port:** `v072.six_color_assets.core_authority.v3#asset_reservation`.
+- **AI port:** `v072.six_color_assets.ai_observation.v3#asset_reservation`.
+- **Player port:** `v072.six_color_assets.player_projection.v3#asset_reservation`.
+- **Save adapter:** `V07CanonicalSaveAdapter#six_color_assets_and_reservations.reservations`.
+- **RNG stream:** `NONE`.
+- **Required asset keys:** all six `icon.asset.*` keys plus `icon.board.lock`, `audio.card.lock`, and `vfx.card.lock`.
+- **Required player projection:** `v072.six_color_assets.player_projection.v3#asset_reservation`.
+- **Required AI observation:** `v072.six_color_assets.ai_observation.v3#asset_reservation`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#six_color_assets_and_reservations.reservations`.
+- **Required RNG stream:** `NONE`.
+- **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
+- **Old-surface deletion gate:** Retire execution-time affordability and duplicate cost surfaces only after PlayerCardDock renders exact reserved and available six-color values from the authorized projection.
+- **Rollback surface:** Clear candidate reservation highlights and restore the V0.6 affordability presentation without charging or releasing an authoritative asset.
+- **Pre-cutover gate:** Validate one complete reservation identity, six-color cost, batch identity, journal, and balance per action.
+- **Cutover step:** Make reservation acceptance the only NEW_V073_GAME affordability and cost-consumption authority.
+- **Rollback step:** Restore the shared checkpoint and release every candidate reservation without charge.
+- **Old-path deletion gate:** Delete execution-time affordability fallbacks and duplicate cost consumers after parity.
+- **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
+
+## 8. anonymous_resolution
+
+- **V0.6 current owner:** CardResolutionQueueRuntimeService plus execution and history services.
+- **V0.7.3 target owner:** V073FixedOrderFacilityContentionCore anonymous layered resolution authority.
+- **Core port:** `v073.facility_contention.core_authority.v1#anonymous_resolution`.
+- **AI port:** `v073.facility_contention.ai_observation.v1#anonymous_resolution`.
+- **Player port:** `v073.facility_contention.player_projection.v1#anonymous_resolution`.
+- **Save adapter:** `V07CanonicalSaveAdapter#card_batch_and_anonymous_resolution.anonymous_resolution`.
+- **RNG stream:** `NONE`.
+- **Required asset keys:** `card.frame.bound_action`, `ui.panel.primary`, `icon.board.player_order`, and `icon.board.target`.
+- **Required player projection:** `v073.facility_contention.player_projection.v1#anonymous_resolution`.
+- **Required AI observation:** `v073.facility_contention.ai_observation.v1#anonymous_resolution`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#card_batch_and_anonymous_resolution.anonymous_resolution`.
+- **Required RNG stream:** `NONE`.
+- **Production scene target:** `scenes/ui/CardResolutionTrack.tscn`.
+- **Old-surface deletion gate:** Retire owner-contiguous queues, counter controls, and late-targeting surfaces only after CardResolutionTrack renders anonymous entries without portraits, player-specific colors, or owner identity.
+- **Rollback surface:** Restore the V0.6 resolution track projection and remove every unpublished anonymous entry, receipt, target, and owner-safe placeholder.
+- **Pre-cutover gate:** Validate anonymous queue order, hidden owner binding, fixed lead cursor, prebound targets, reservations, public receipts, and privacy without a bid phase.
+- **Cutover step:** Replace NEW_V073_GAME queue, execution, and history publication with one fixed-order anonymous contention port.
+- **Rollback step:** Restore the shared checkpoint and publish no queue entry, effect, receipt, or owner identity.
+- **Old-path deletion gate:** Delete owner-contiguous queues, counters, late targeting, and duplicate writers after parity.
+- **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
+
+## 9. region_infrastructure
+
+- **V0.6 current owner:** V06SaveOwnerRegistry `region_infrastructure` plus legacy facility mode interpretation.
+- **V0.7.3 target owner:** V073FixedOrderFacilityContentionCore unique region facility slot authority.
+- **Core port:** `v073.facility_contention.core_authority.v1#region_infrastructure`.
+- **AI port:** `v073.facility_contention.ai_observation.v1#region_infrastructure`.
+- **Player port:** `v073.facility_contention.player_projection.v1#region_infrastructure`.
+- **Save adapter:** `V07CanonicalSaveAdapter#facility_target_contention.region_infrastructure`.
+- **RNG stream:** `NONE`.
+- **Required asset keys:** `model.facility.factory.base`, `model.facility.market.base`, and `icon.board.target`.
+- **Required player projection:** `v073.facility_contention.player_projection.v1#region_infrastructure`.
+- **Required AI observation:** `v073.facility_contention.ai_observation.v1#region_infrastructure`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#facility_target_contention.region_infrastructure`.
+- **Required RNG stream:** `NONE`.
+- **Production scene target:** `scenes/ui/PlanetBoard.tscn`.
+- **Old-surface deletion gate:** Retire legacy duplicate region/type/industry facility slots only after unique slot identity and generation pass.
+- **Rollback surface:** Restore the V0.6 region-infrastructure checkpoint before publishing any V0.7.3 slot mutation.
+- **Pre-cutover gate:** Validate every slot as one unique `region_id + facility_type + industry_id` identity with exact generation and occupancy.
+- **Cutover step:** Switch region infrastructure and facility slot identity in the contention atomic group.
+- **Rollback step:** Restore all region slots and generations before any candidate facility Receipt is public.
+- **Old-path deletion gate:** Delete V0.6 automatic facility mode interpretation only after the complete contention group commits.
+- **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
+
+## 10. facility_target_contention
+
+- **V0.6 current owner:** V0.6 facility card execution with resolution-time build/upgrade/repair interpretation.
+- **V0.7.3 target owner:** V073FixedOrderFacilityContentionCore prebound mode, target revalidation, and Fizzle authority.
+- **Core port:** `v073.facility_contention.core_authority.v1#facility_target_contention`.
+- **AI port:** `v073.facility_contention.ai_observation.v1#facility_target_contention`.
+- **Player port:** `v073.facility_contention.player_projection.v1#facility_target_contention`.
+- **Save adapter:** `V07CanonicalSaveAdapter#facility_target_contention`.
+- **RNG stream:** `NONE`.
+- **Required asset keys:** `card.frame.normal`, `card.frame.bound_action`, `icon.board.target`, and `icon.board.lock`.
+- **Required player projection:** `v073.facility_contention.player_projection.v1#facility_target_contention`.
+- **Required AI observation:** `v073.facility_contention.ai_observation.v1#facility_target_contention`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#facility_target_contention`.
+- **Required RNG stream:** `NONE`.
+- **Production scene target:** `scenes/ui/table/PlayerCardDock.tscn`.
+- **Old-surface deletion gate:** Retire target reselection and BUILD-to-UPGRADE/REPAIR conversion only after typed modes and Fizzle receipts pass.
+- **Rollback surface:** Restore the pre-publication contention checkpoint, with no duplicate asset release, discard, or Fizzle Receipt.
+- **Pre-cutover gate:** Validate immutable BUILD_NEW, UPGRADE_OWN, and REPAIR_OWN modes, authoritative revalidation, full asset release, discard, and no action refund.
+- **Cutover step:** Switch facility mode, target revalidation, contention Fizzle, Save, AI, and Player projection with the other three contention domains.
+- **Rollback step:** Restore the entire fixed-order contention group and publish neither a facility mutation nor Fizzle side effects.
+- **Old-path deletion gate:** Delete every automatic facility mode conversion and resolution-time target-selection path after atomic parity.
+- **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
+
+## 11. solar_efficiency
+
+- **V0.6 current owner:** SolarAvailabilityRuntimeService and world-time-derived facility efficiency.
+- **V0.7.3 target owner:** V07SolarVictoryCore solar facility efficiency authority.
+- **Core port:** `v072.solar_victory.core_authority.v3#solar_facility_efficiency_state_v1`.
+- **AI port:** `v072.solar_victory.ai_observation.v3#solar`.
+- **Player port:** `v072.solar_victory.player_projection.v3#solar`.
+- **Save adapter:** `V07CanonicalSaveAdapter#solar_facility_and_macro_victory.solar`.
+- **RNG stream:** `NONE`.
+- **Required asset keys:** `shader.planet.body`, `shader.planet.cloud`, `shader.planet.atmosphere`, `environment.night_sky_hdri_001`, and the four stable `model.facility.*.base` keys.
+- **Required player projection:** `v072.solar_victory.player_projection.v3#solar`.
+- **Required AI observation:** `v072.solar_victory.ai_observation.v3#solar`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#solar_facility_and_macro_victory.solar`.
+- **Required RNG stream:** `NONE`.
+- **Production scene target:** `scenes/ui/PlanetBoard.tscn`.
+- **Old-surface deletion gate:** Retire V0.6 solar-rate presentation bindings only after PlanetBoard renders the public Core projection on the opaque day/night planet and facility models without becoming the sunlight owner.
+- **Rollback surface:** Restore the V0.6 public solar snapshot on PlanetBoard; keep the opaque planet presentation while removing detached V0.7.3 efficiency labels.
+- **Pre-cutover gate:** Validate tagged time, sunlit state, 2.0/1.0 rates, revision, and no card or presentation authority.
+- **Cutover step:** Replace facility efficiency queries without advancing world time.
+- **Rollback step:** Restore solar state without ticking facilities, time, cards, or presentation.
+- **Old-path deletion gate:** Delete V0.6 solar-rate authority only after formula parity.
+- **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
+
+## 12. macro_round_victory_gate
+
+- **V0.6 current owner:** VictoryControlRuntimeController, RuntimeVictoryPort, and RuntimeLoop settlement routing.
+- **V0.7.3 target owner:** V07SolarVictoryCore complete-macro-round victory and FinalSettlement authority.
+- **Core port:** `v072.solar_victory.core_authority.v3#macro_round_victory_gate_state_v1`.
+- **AI port:** `v072.solar_victory.ai_observation.v3#victory_gate`.
+- **Player port:** `v072.solar_victory.player_projection.v3#victory_gate`.
+- **Save adapter:** `V07CanonicalSaveAdapter#solar_facility_and_macro_victory.victory_gate`.
+- **RNG stream:** `NONE`.
+- **Required asset keys:** `ui.panel.popup`, `icon.board.settlement`, `audio.settlement.complete`, `vfx.settlement.complete`, and `font.display`.
+- **Required player projection:** `v072.solar_victory.player_projection.v3#victory_gate`.
+- **Required AI observation:** `v072.solar_victory.ai_observation.v3#victory_gate`.
+- **Required Save adapter:** `V07CanonicalSaveAdapter#solar_facility_and_macro_victory.victory_gate`.
+- **Required RNG stream:** `NONE`.
+- **Production scene target:** `scenes/ui/FinalSettlementBoard.tscn`.
+- **Old-surface deletion gate:** Retire direct audit-to-settlement and duplicate victory surfaces only after FinalSettlementBoard renders one authorized complete-macro-round result and exact-once receipt.
+- **Rollback surface:** Restore the pre-publication settlement surface and render no candidate winner, ranking, effect, or completion receipt.
+- **Pre-cutover gate:** Validate complete-macro-round proof, pending qualification, lead parity, receipts, and zero-or-one settlement.
+- **Cutover step:** Replace victory evaluation and settlement publication in the atomic owner switch.
+- **Rollback step:** Restore the detached checkpoint before publication and never reverse a committed settlement.
+- **Old-path deletion gate:** Delete direct V0.6 audit-to-settlement and duplicate victory writers after exact-once parity.
+- **Task scope:** `production_scene_change=false`, `main_change=false`, `dual_write_allowed=false`.
+
+## Acceptance Gate
+
+The future production cutover may begin only after PR #77 lands, this adapter PR is synchronized with that main, all twelve domains pass together, and one authorized task replaces the old owners atomically. The four contention domains must switch together with no initiative auction, bid state, or legacy automatic facility-mode interpretation. Every domain has a complete projection, Save, RNG, production-surface, deletion, rollback, and stable-asset-key contract. Every domain has `dual_write_allowed=false`; no compatibility writer or implicit V0.6 Save migration may survive the commit.
