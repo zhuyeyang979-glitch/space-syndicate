@@ -168,7 +168,7 @@ function New-McpMatrixMirror {
         throw "MCP_MATRIX_WORKTREE_CREATE_FAILED|cell=$CellId|head=$Head"
     }
     $actualHead = (& git -C $mirrorPath rev-parse HEAD).Trim()
-    $sourceTree = (& git -C $mirrorPath rev-parse "HEAD^{tree}").Trim()
+    $sourceTree = (& git -C $mirrorPath show -s --format=%T HEAD).Trim()
     if ($actualHead -ne $Head) {
         throw "MCP_MATRIX_HEAD_MISMATCH|cell=$CellId|expected=$Head|actual=$actualHead"
     }
@@ -295,7 +295,7 @@ function Invoke-McpMatrixCell {
     $recoveryFailureCounts = Get-McpMatrixLogFailureCounts -Snapshot $recoveryStderr
     $statusAfter = @(& git -C ([string]$mirror.path) status --short)
     $headAfter = (& git -C ([string]$mirror.path) rev-parse HEAD).Trim()
-    $treeAfter = (& git -C ([string]$mirror.path) rev-parse "HEAD^{tree}").Trim()
+    $treeAfter = (& git -C ([string]$mirror.path) show -s --format=%T HEAD).Trim()
     $attempt = [ordered]@{
         schema = "McpColdImportDiagnosticAttemptV2"
         cell_id = $cellId
@@ -367,10 +367,10 @@ foreach ($path in @($MirrorRoot, $RuntimeDataBase, $EvidenceRoot)) {
     }
 }
 foreach ($sha in @($C0Head, $C1Head, $C2Head)) {
-    & git -C $RepositoryRoot cat-file -e "$sha^{commit}"
-    if ($LASTEXITCODE -ne 0) { throw "MCP_MATRIX_COMMIT_MISSING|sha=$sha" }
+    $objectType = (& git -C $RepositoryRoot cat-file -t $sha).Trim()
+    if ($LASTEXITCODE -ne 0 -or $objectType -ne "commit") { throw "MCP_MATRIX_COMMIT_MISSING|sha=$sha" }
 }
-$actualTargetTree = (& git -C $RepositoryRoot rev-parse "$C2Head^{tree}").Trim()
+$actualTargetTree = (& git -C $RepositoryRoot show -s --format=%T $C2Head).Trim()
 if ($actualTargetTree -ne $ExpectedTargetTree) {
     throw "MCP_MATRIX_TARGET_TREE_MISMATCH|expected=$ExpectedTargetTree|actual=$actualTargetTree"
 }

@@ -233,6 +233,8 @@ Assert-ClassificationV3 (-not [bool]$quiescenceComparison.valid -and [string]$qu
 $source = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot "role_godot_mcp_diagnostics.ps1"))
 Assert-ClassificationV3 (-not [regex]::IsMatch($source, '(?i)allowed_error_count\s*=\s*6')) "no_fixed_six_error_allowance"
 Assert-ClassificationV3 (-not [regex]::IsMatch($source, '(?i)contains\([^\r\n]*Unicode parsing error')) "no_global_unicode_allowlist"
+$matrixSource = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot "invoke_mcp_cold_import_diagnostic_matrix.ps1"))
+Assert-ClassificationV3 (-not $matrixSource.Contains('^{tree}') -and -not $matrixSource.Contains('^{commit}')) "matrix_avoids_powershell_native_caret_rev_syntax"
 
 Write-Output "DIAGNOSTIC_CLASSIFICATION_V3_TESTS|passed=$classificationPassed|total=$classificationTotal"
 Write-Output "DIAGNOSTIC_ACCOUNTING_TESTS|passed=$accountingPassed|total=$accountingTotal"
