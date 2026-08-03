@@ -555,12 +555,12 @@ func _test_track_asset_and_queue_privacy() -> void:
 	for entry_variant in anonymous_queue:
 		if not (entry_variant is Dictionary) or not WIRE.exact_fields(
 			entry_variant as Dictionary,
-			["card", "rule_allowed_target", "current_effect", "result"]
+			ASSET_BATCH_CORE.PUBLIC_QUEUE_FIELDS
 		):
 			anonymous_fields_safe = false
 	_expect(
 		anonymous_fields_safe,
-		"anonymous queue exposes exactly card, legal target, effect, and result"
+		"anonymous queue exposes the exact V0.7.1 causal-history allowlist"
 	)
 
 	var owner_leak := (

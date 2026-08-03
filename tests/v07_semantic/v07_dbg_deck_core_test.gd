@@ -117,13 +117,16 @@ func _init() -> void:
 
 func _run() -> void:
 	_test_starter_deck_and_fixed_seed()
+	_test_v072_starter_definition_cost_and_privacy_contract()
 	_test_typed_state_contract_mapping()
 	_test_play_purchase_and_batch_refill()
 	_test_discard_reshuffle()
 	_test_optional_merge_and_rejections()
+	_test_minimum_normal_deck_size_gate()
 	_test_real_unified_track_claim_bridge()
 	_test_track_claim_adversarial_binding()
 	_test_commodity_claim_inventory_and_merge()
+	_test_commodity_batch_availability_and_roundtrip()
 	_test_commodity_checkpoint_save_exact_once_and_privacy()
 	_test_checkpoint_rollback_and_exact_once()
 	_test_three_wing_projection_intent_receipt_and_privacy()
@@ -165,6 +168,26 @@ func _test_starter_deck_and_fixed_seed() -> void:
 			"starter deck has one %s L1 market" % color
 		)
 	var state := _state(core)
+	_expect(
+		Core.SCHEMA_VERSION == 3
+		and Core.STATE_VERSION == 3
+		and Core.RULESET_ID == "v0.7.2"
+		and state.get("schema_version") == 3
+		and state.get("state_version") == 3
+		and state.get("ruleset_id") == "v0.7.2",
+		"DBG interfaces and authority state identify frozen V0.7.2 version 3"
+	)
+	_expect(
+		state.get("balance_profile_id") == Core.BALANCE_PROFILE_ID
+		and state.get("balance_profile_fingerprint") \
+		== Core.BALANCE_PROFILE_FINGERPRINT
+		and Core.BALANCE_PROFILE_ID == "V072_STARTER_FREE_FAST"
+		and Core.BALANCE_PROFILE_FINGERPRINT \
+		== "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48"
+		and Core.PROFILE_FINGERPRINT_INPUT.sha256_text() \
+		== Core.BALANCE_PROFILE_FINGERPRINT,
+		"authority state is pinned to the approved V0.7.2 Starter profile"
+	)
 	_expect((state.get("hand", []) as Array).size() == 5, "fixed-seed starter deal draws five")
 	_expect((state.get("draw_pile", []) as Array).size() == 7, "seven starter cards remain in draw pile")
 	_expect((state.get("discard", []) as Array).is_empty(), "starter discard begins empty")
@@ -231,11 +254,66 @@ func _test_starter_deck_and_fixed_seed() -> void:
 	_expect(Core.is_pure_data(core.core_authority_snapshot()), "authority snapshot is closed pure data")
 	var contract: Dictionary = Core.three_wing_contract()
 	_expect(
-		str(contract.get("core_authority_schema_id", "")) == "v07.personal_dbg.core_authority.v1"
-		and str(contract.get("ai_observation_schema_id", "")) == "v07.personal_dbg.ai_observation.v1"
-		and str(contract.get("player_projection_schema_id", "")) == "v07.personal_dbg.player_projection.v1",
+		str(contract.get("core_authority_schema_id", "")) == "v072.personal_dbg.core_authority.v3"
+		and str(contract.get("ai_observation_schema_id", "")) == "v072.personal_dbg.ai_observation.v3"
+		and str(contract.get("player_projection_schema_id", "")) == "v072.personal_dbg.player_projection.v3",
 		"DBG publishes one Core authority and both three-wing projection schemas"
 	)
+
+
+func _test_v072_starter_definition_cost_and_privacy_contract() -> void:
+	var core := _new_core(FIXED_SEED + 72)
+	var state := _state(core)
+	var seen_definitions := {}
+	for card_variant in _all_cards(state):
+		var card := card_variant as Dictionary
+		seen_definitions[str(card.get("definition_id", ""))] = true
+		_expect(
+			card.get("card_instance_id") == card.get("instance_id")
+				and card.get("card_definition_id") == card.get("definition_id")
+				and card.get("origin_class") == "starter_bootstrap"
+				and card.get("asset_cost_profile") == "starter_zero_asset"
+				and card.get("primary_asset_cost") == 0
+				and card.get("secondary_asset_cost") == 0
+				and card.get("any_asset_cost") == 0
+				and card.get("starter_badge") == true
+				and card.get("track_spawn_allowed") == false
+				and card.get("purchase_allowed") == false,
+			"Starter instance retains its canonical zero-cost definition contract"
+		)
+	_expect(seen_definitions.size() == 12, "genesis creates every Starter definition exactly once")
+	var facts := core.player_projection(OWNER_ID).get("facts", {}) as Dictionary
+	var projected_hand := facts.get("hand", []) as Array
+	_expect(projected_hand.size() == 5, "owner projection exposes the five-card opening hand")
+	for card_variant in projected_hand:
+		var card := card_variant as Dictionary
+		_expect(
+			card.get("asset_cost") == 0
+				and card.get("origin_class") == "starter_bootstrap"
+				and card.get("starter_badge") == true,
+			"AI/Player-owned card facts distinguish free Starter cards"
+		)
+	var legal_target_input := _legal_target_input(core)
+	var ai: Dictionary = core.ai_observation(OWNER_ID, legal_target_input)
+	var ai_hand := (ai.get("facts", {}) as Dictionary).get("hand", []) as Array
+	_expect(
+		not legal_target_input.is_empty()
+			and ai_hand.size() == 5
+			and ((ai_hand[0] as Dictionary).get("legal_targets", []) as Array).size() == 1
+			and str(ai.get("legal_target_authority_id", ""))
+				== "v072.map.legal_target_authority.detached",
+		"AI card legality comes from a revision-bound detached target-authority input"
+	)
+	_expect(
+		core.ai_observation(OWNER_ID).is_empty(),
+		"AI observation fails closed when no legal-target authority input is supplied"
+	)
+	_expect(
+		core.ai_observation(OTHER_PLAYER_ID).is_empty()
+			and core.player_projection(OTHER_PLAYER_ID).is_empty(),
+		"rivals cannot inspect Starter identities, costs, or future draw order"
+	)
+	var contract := Core.three_wing_contract()
 	_expect(
 		not bool(contract.get("automatic_merge_allowed", true))
 		and not bool(contract.get("mid_batch_refill_allowed", true))
@@ -246,31 +324,34 @@ func _test_starter_deck_and_fixed_seed() -> void:
 
 func _test_typed_state_contract_mapping() -> void:
 	var expected := {
-		"normal_deck_state": "V07NormalDeckState",
-		"normal_hand_state": "V07NormalHandState",
-		"normal_discard_state": "V07NormalDiscardState",
-		"normal_merge_state": "V07NormalMergeState",
-		"commodity_inventory_state": "V07CommodityInventoryState",
-		"bound_source_state": "V07BoundSourceLifecycleState",
+		"normal_deck_state": "V072NormalDeckState",
+		"normal_hand_state": "V072NormalHandState",
+		"normal_discard_state": "V072NormalDiscardState",
+		"normal_merge_state": "V072NormalMergeState",
+		"commodity_inventory_state": "V072CommodityInventoryState",
+		"bound_source_state": "V072BoundSourceLifecycleState",
+		"local_queue_state": "V072LocalQueueState",
 	}
 	_expect(
-		Core.NORMAL_DECK_STATE_CONTRACT_ID == "V07NormalDeckState"
-		and Core.NORMAL_HAND_STATE_CONTRACT_ID == "V07NormalHandState"
-		and Core.NORMAL_DISCARD_STATE_CONTRACT_ID == "V07NormalDiscardState"
-		and Core.NORMAL_MERGE_STATE_CONTRACT_ID == "V07NormalMergeState"
-		and Core.COMMODITY_INVENTORY_STATE_CONTRACT_ID == "V07CommodityInventoryState"
-		and Core.BOUND_SOURCE_STATE_CONTRACT_ID == "V07BoundSourceLifecycleState",
+		Core.NORMAL_DECK_STATE_CONTRACT_ID == "V072NormalDeckState"
+		and Core.NORMAL_HAND_STATE_CONTRACT_ID == "V072NormalHandState"
+		and Core.NORMAL_DISCARD_STATE_CONTRACT_ID == "V072NormalDiscardState"
+		and Core.NORMAL_MERGE_STATE_CONTRACT_ID == "V072NormalMergeState"
+		and Core.COMMODITY_INVENTORY_STATE_CONTRACT_ID == "V072CommodityInventoryState"
+		and Core.BOUND_SOURCE_STATE_CONTRACT_ID == "V072BoundSourceLifecycleState"
+		and Core.LOCAL_QUEUE_STATE_CONTRACT_ID == "V072LocalQueueState",
 		"Prompt-required DBG state contract IDs are explicit stable constants"
 	)
 	var mapping: Dictionary = Core.typed_state_contracts()
 	_expect(
 		mapping == expected and Core.validate_typed_state_contracts(mapping).is_empty(),
-		"typed state contract map has exactly six closed DBG, commodity, and bound-source entries"
+		"typed state contract map has seven closed DBG, commodity, bound-source, and local-queue entries"
 	)
 	_expect(
 		Core.is_pure_data(mapping)
-		and mapping.get("commodity_inventory_state") == "V07CommodityInventoryState"
-		and mapping.get("bound_source_state") == "V07BoundSourceLifecycleState",
+		and mapping.get("commodity_inventory_state") == "V072CommodityInventoryState"
+		and mapping.get("bound_source_state") == "V072BoundSourceLifecycleState"
+		and mapping.get("local_queue_state") == "V072LocalQueueState",
 		"typed map is pure data and names the implemented commodity state plus an honest bound-source lifecycle contract"
 	)
 	var extra_mapping := mapping.duplicate(true)
@@ -387,7 +468,7 @@ func _test_play_purchase_and_batch_refill() -> void:
 		"play consumes no deck RNG"
 	)
 
-	var purchased_spec := (Core.starter_card_specs()[0] as Dictionary).duplicate(true)
+	var purchased_spec := Core.standard_card_spec("life", "factory", 1)
 	var purchase_intent: Dictionary = core.create_authority_intent(
 		"request.purchase.1",
 		Core.ACTION_ACCEPT_PURCHASE,
@@ -406,6 +487,52 @@ func _test_play_purchase_and_batch_refill() -> void:
 		and (after_purchase.get("draw_pile", []) as Array).size() == 7
 		and _zone_has(after_purchase.get("discard", []) as Array, purchased_id),
 		"purchased card enters discard and is not immediately usable"
+	)
+	var purchased_card := _find_card(
+		after_purchase.get("discard", []) as Array,
+		purchased_id
+	)
+	_expect(
+		purchased_card.get("definition_id") == "facility.factory.life.rank_1"
+			and purchased_card.get("origin_class") == "standard"
+			and purchased_card.get("asset_cost_profile") == "standard_rank_1"
+			and purchased_card.get("primary_asset_cost") == 1
+			and purchased_card.get("starter_badge") == false,
+		"Track purchase creates a paid standard L1 rather than a free Starter alias"
+	)
+	var before_starter_purchase: Dictionary = core.core_authority_snapshot()
+	var starter_purchase: Dictionary = core.apply_intent(core.create_authority_intent(
+		"request.purchase.starter.forbidden",
+		Core.ACTION_ACCEPT_PURCHASE,
+		{
+			"purchase_receipt_id": "track.purchase.starter.forbidden",
+			"card_spec": Core.starter_card_specs()[0],
+		}
+	))
+	_expect(
+		not bool(starter_purchase.get("success", true))
+			and starter_purchase.get("reason_code") \
+			== "purchased_card_definition_not_allowed"
+			and core.core_authority_snapshot() == before_starter_purchase,
+		"Starter definitions cannot be purchased or created again after genesis"
+	)
+	var forged_discount := purchased_spec.duplicate(true)
+	forged_discount["primary_asset_cost"] = 0
+	var forged_discount_receipt: Dictionary = core.apply_intent(
+		core.create_authority_intent(
+			"request.purchase.forged-discount",
+			Core.ACTION_ACCEPT_PURCHASE,
+			{
+				"purchase_receipt_id": "track.purchase.forged-discount",
+				"card_spec": forged_discount,
+			}
+		)
+	)
+	_expect(
+		not bool(forged_discount_receipt.get("success", true))
+			and forged_discount_receipt.get("reason_code") \
+			== "purchased_card_spec_invalid",
+		"standard L1 cannot acquire the Starter discount through a forged matching name"
 	)
 	_expect(
 		after_purchase.get("starter_rng", {}) == starter_rng_before
@@ -547,7 +674,7 @@ func _test_optional_merge_and_rejections() -> void:
 	)
 
 	var core := _new_core(FIXED_SEED)
-	var target_spec := (Core.starter_card_specs()[0] as Dictionary).duplicate(true)
+	var target_spec := Core.standard_card_spec("life", "factory", 1)
 	for purchase_index in range(2):
 		var receipt: Dictionary = core.apply_intent(core.create_authority_intent(
 			"request.merge.purchase.%d" % purchase_index,
@@ -604,6 +731,146 @@ func _test_optional_merge_and_rejections() -> void:
 		"merge lineage is persisted as authority state"
 	)
 
+	var starter_merge_core := _new_core(FIXED_SEED + 73)
+	var standard_spec := Core.standard_card_spec("life", "factory", 1)
+	var standard_purchase: Dictionary = starter_merge_core.apply_intent(
+		starter_merge_core.create_authority_intent(
+			"request.merge.starter-standard.purchase",
+			Core.ACTION_ACCEPT_PURCHASE,
+			{
+				"purchase_receipt_id": "track.merge.starter-standard.purchase",
+				"card_spec": standard_spec,
+			}
+		)
+	)
+	var starter_id := _instance_id_for_definition(
+		_state(starter_merge_core),
+		"starter.facility.factory.life.rank_1"
+	)
+	var standard_id := str(standard_purchase.get("created_instance_id", ""))
+	_expect(
+		bool(standard_purchase.get("success", false))
+			and _install_pair_in_maintenance(
+				starter_merge_core,
+				starter_id,
+				standard_id
+			),
+		"fixture places one canonical Starter and matching standard L1 in maintenance"
+	)
+	var starter_merge: Dictionary = starter_merge_core.apply_intent(
+		starter_merge_core.create_intent(
+			"request.merge.starter-standard",
+			OWNER_ID,
+			Core.ACTION_MERGE_CARDS,
+			{
+				"left_instance_id": starter_id,
+				"right_instance_id": standard_id,
+			}
+		)
+	)
+	var starter_merge_state := _state(starter_merge_core)
+	var paid_l2 := _find_card(
+		starter_merge_state.get("hand", []) as Array,
+		str(starter_merge.get("created_instance_id", ""))
+	)
+	_expect(
+		bool(starter_merge.get("success", false))
+			and starter_merge.get("source_definition_ids") == [
+				"starter.facility.factory.life.rank_1",
+				"facility.factory.life.rank_1",
+			]
+			and starter_merge.get("source_origin_classes") \
+			== ["starter_bootstrap", "standard"]
+			and starter_merge.get("output_definition_id") \
+			== "facility.factory.life.rank_2"
+			and starter_merge.get("output_origin_class") == "standard"
+			and starter_merge.get("starter_privilege_consumed") == true,
+		"Merge Receipt records both source identities and consumed Starter privilege"
+	)
+	_expect(
+		paid_l2.get("origin_class") == "standard"
+			and paid_l2.get("asset_cost_profile") == "standard_rank_2"
+			and paid_l2.get("primary_asset_cost") == 2
+			and paid_l2.get("starter_badge") == false,
+		"Starter plus standard L1 creates paid standard L2 with no inherited privilege"
+	)
+	var restored_merge_core := Core.new()
+	var merge_save: Dictionary = starter_merge_core.to_save_state()
+	_expect(
+		bool(restored_merge_core.apply_save_state(merge_save).get("applied", false)),
+		"Starter-standard merge state restores from its V0.7.2 Save"
+	)
+	var restored_paid_l2 := _find_card(
+		_state(restored_merge_core).get("hand", []) as Array,
+		str(starter_merge.get("created_instance_id", ""))
+	)
+	_expect(
+		restored_paid_l2.get("definition_id") == "facility.factory.life.rank_2"
+			and restored_paid_l2.get("origin_class") == "standard"
+			and restored_paid_l2.get("asset_cost_profile") == "standard_rank_2"
+			and restored_paid_l2.get("primary_asset_cost") == 2
+			and ((_state(restored_merge_core).get(
+				"merge_history", []
+			) as Array).back() as Dictionary).get(
+				"starter_privilege_consumed"
+			) == true,
+		"Save preserves paid output identity and Starter privilege-consumption lineage"
+	)
+
+
+func _test_minimum_normal_deck_size_gate() -> void:
+	var minimum_core := _normal_merge_count_fixture(5, FIXED_SEED + 301)
+	var minimum_state := _state(minimum_core)
+	var minimum_hand := minimum_state.get("hand", []) as Array
+	var minimum_before: Dictionary = minimum_core.core_authority_snapshot()
+	var minimum_projection: Dictionary = minimum_core.player_projection(OWNER_ID)
+	var minimum_receipt: Dictionary = minimum_core.apply_intent(
+		minimum_core.create_intent(
+			"request.merge.minimum_five",
+			OWNER_ID,
+			Core.ACTION_MERGE_CARDS,
+			{
+				"left_instance_id": str((minimum_hand[0] as Dictionary).get(
+					"instance_id", ""
+				)),
+				"right_instance_id": str((minimum_hand[1] as Dictionary).get(
+					"instance_id", ""
+				)),
+			}
+		)
+	)
+	_expect(
+		not bool(minimum_receipt.get("success", true))
+		and minimum_receipt.get("reason_code") \
+		== "minimum_normal_deck_size_violation"
+		and minimum_core.core_authority_snapshot() == minimum_before,
+		"normal merge at five total cards fails closed before identity allocation or mutation"
+	)
+	_expect(
+		((minimum_projection.get("facts", {}) as Dictionary).get(
+			"eligible_merge_pairs", []
+		) as Array).is_empty(),
+		"minimum-five projection does not advertise a merge the authority must reject"
+	)
+
+	var six_core := _normal_merge_count_fixture(6, FIXED_SEED + 302)
+	var six_hand := _state(six_core).get("hand", []) as Array
+	var six_receipt: Dictionary = six_core.apply_intent(six_core.create_intent(
+		"request.merge.minimum_six",
+		OWNER_ID,
+		Core.ACTION_MERGE_CARDS,
+		{
+			"left_instance_id": str((six_hand[0] as Dictionary).get("instance_id", "")),
+			"right_instance_id": str((six_hand[1] as Dictionary).get("instance_id", "")),
+		}
+	))
+	_expect(
+		bool(six_receipt.get("success", false))
+		and _all_cards(_state(six_core)).size() \
+		== Core.NORMAL_DECK_MINIMUM_TOTAL_CARD_COUNT,
+		"normal merge from six total cards succeeds and terminates exactly at five"
+	)
+
 
 func _test_real_unified_track_claim_bridge() -> void:
 	var proof := _real_track_claim_proof(1)
@@ -637,6 +904,18 @@ func _test_real_unified_track_claim_bridge() -> void:
 		and track_authority.call("core_authority_v1") == track_before
 		and core.core_authority_snapshot() == dbg_before,
 		"prepare reserves one DBG commodity slot with byte-identical Track and DBG authority state"
+	)
+	var reserved_lock: Dictionary = core.apply_intent(core.create_authority_intent(
+		"request.local_queue.lock.while_reserved",
+		Core.ACTION_LOCK_LOCAL_QUEUE,
+		{"batch_id": 1}
+	))
+	_expect(
+		not bool(reserved_lock.get("success", true))
+		and reserved_lock.get("reason_code") \
+		== "local_queue_lock_blocked_by_acquisition_transaction"
+		and core.core_authority_snapshot() == dbg_before,
+		"queue lock cannot race an in-flight commodity acquisition reservation"
 	)
 	var transaction_id := str(prepared.get("transaction_id", ""))
 	var composite: Dictionary = port.call("commit_v1", transaction_id)
@@ -1011,6 +1290,158 @@ func _test_commodity_claim_inventory_and_merge() -> void:
 		and abort_core.core_authority_snapshot() == wrong_actor_dbg_before,
 		"wrong actor fails in participant prepare before either authority mutates"
 	)
+
+
+func _test_commodity_batch_availability_and_roundtrip() -> void:
+	var first_proof := _real_track_group_proof(112, 3)
+	_expect(
+		not first_proof.is_empty(),
+		"availability fixture exposes two matching V0.7.2 profile commodities"
+	)
+	if first_proof.is_empty():
+		return
+	var core := _new_core(FIXED_SEED + 112)
+	var track := first_proof.get("authority") as RefCounted
+	_expect(_bind_track_authority(core, first_proof), "availability fixture pins Track lineage")
+	var port := _new_acquisition_port(core, track)
+	var first_commit: Dictionary = port.call(
+		"transact_v1",
+		first_proof.get("track_intent", {}) as Dictionary
+	)
+	var after_first := _state(core)
+	var first_inventory := after_first.get("commodity_inventory", []) as Array
+	var first_id := str((first_inventory[0] as Dictionary).get("instance_id", "")) \
+		if not first_inventory.is_empty() else ""
+	var first_available_batch := int((first_inventory[0] as Dictionary).get(
+		"available_from_batch_id", 0
+	)) if not first_inventory.is_empty() else 0
+	_expect(
+		bool(first_commit.get("accepted", false))
+		and first_available_batch == 1,
+		"commodity claimed before queue lock is available in the current batch"
+	)
+
+	var second_proof := _track_claim_proof_from_authority(
+		track,
+		"request.track.availability.locked",
+		OWNER_ID,
+		str(first_proof.get("target_definition_id", "")),
+		str(first_proof.get("target_color", ""))
+	)
+	_expect(not second_proof.is_empty(), "locked availability fixture exposes its second source")
+	if second_proof.is_empty():
+		return
+	var lock_receipt: Dictionary = core.apply_intent(core.create_authority_intent(
+		"request.local_queue.lock.batch_1",
+		Core.ACTION_LOCK_LOCAL_QUEUE,
+		{"batch_id": 1}
+	))
+	_expect(
+		bool(lock_receipt.get("success", false))
+		and bool((_state(core).get("local_queue_state", {}) as Dictionary).get(
+			"locked", false
+		)),
+		"authority locks the saved local queue for batch one"
+	)
+	var second_commit: Dictionary = port.call(
+		"transact_v1",
+		second_proof.get("track_intent", {}) as Dictionary
+	)
+	var locked_state := _state(core)
+	var locked_inventory := locked_state.get("commodity_inventory", []) as Array
+	var second_id := str((locked_inventory[1] as Dictionary).get("instance_id", "")) \
+		if locked_inventory.size() > 1 else ""
+	var second_available_batch := int((locked_inventory[1] as Dictionary).get(
+		"available_from_batch_id", 0
+	)) if locked_inventory.size() > 1 else 0
+	_expect(
+		bool(second_commit.get("accepted", false))
+		and second_available_batch == 2,
+		"commodity claimed after queue lock is available only from the next batch"
+	)
+	var unavailable_before: Dictionary = core.core_authority_snapshot()
+	var unavailable_merge: Dictionary = core.apply_intent(core.create_intent(
+		"request.commodity.merge.before_available",
+		OWNER_ID,
+		Core.ACTION_MERGE_COMMODITIES,
+		{"left_instance_id": first_id, "right_instance_id": second_id}
+	))
+	_expect(
+		not bool(unavailable_merge.get("success", true))
+		and unavailable_merge.get("reason_code") \
+		== "commodity_not_available_in_current_batch"
+		and core.core_authority_snapshot() == unavailable_before,
+		"next-batch commodity cannot merge into the immutable current queue state"
+	)
+
+	var locked_save: Dictionary = core.to_save_state()
+	var restored := Core.new()
+	_expect(
+		bool(restored.apply_save_state(
+			JSON.parse_string(JSON.stringify(locked_save)) as Dictionary
+		).get("applied", false))
+		and _state(restored) == locked_state,
+		"Save/Restore preserves local queue lock, batch, and both availability values"
+	)
+	for candidate in [core, restored]:
+		var candidate_core := candidate as RefCounted
+		candidate_core.apply_intent(candidate_core.create_authority_intent(
+			"request.availability.complete.batch_1",
+			Core.ACTION_COMPLETE_BATCH
+		))
+		candidate_core.apply_intent(candidate_core.create_intent(
+			"request.availability.end.maintenance_1",
+			OWNER_ID,
+			Core.ACTION_END_MAINTENANCE
+		))
+	var advanced_state := _state(core)
+	_expect(
+		advanced_state.get("batch_index") == 2
+		and not bool((advanced_state.get("local_queue_state", {}) as Dictionary).get(
+			"locked", true
+		))
+		and _state(restored) == advanced_state,
+		"next batch resets only the queue lock while preserving deterministic availability"
+	)
+	var merged_original: Dictionary = core.apply_intent(core.create_intent(
+		"request.commodity.merge.available.batch_2",
+		OWNER_ID,
+		Core.ACTION_MERGE_COMMODITIES,
+		{"left_instance_id": first_id, "right_instance_id": second_id}
+	))
+	var merged_restored: Dictionary = restored.apply_intent(restored.create_intent(
+		"request.commodity.merge.available.batch_2",
+		OWNER_ID,
+		Core.ACTION_MERGE_COMMODITIES,
+		{"left_instance_id": first_id, "right_instance_id": second_id}
+	))
+	var result_commodity := _find_commodity(
+		_state(core).get("commodity_inventory", []) as Array,
+		str(merged_original.get("created_instance_id", ""))
+	)
+	_expect(
+		bool(merged_original.get("success", false))
+		and merged_original == merged_restored
+		and _state(core) == _state(restored)
+		and int(result_commodity.get("available_from_batch_id", 0)) == 2,
+		"commodity merge and restored replay preserve the latest source availability batch"
+	)
+
+	var wrong_profile: Dictionary = locked_save.duplicate(true)
+	wrong_profile["balance_profile_fingerprint"] = "0".repeat(64)
+	_expect(
+		Core.validate_save_state(wrong_profile) == "save_state_schema_invalid",
+		"Save header rejects a wrong V0.7.2 profile fingerprint before restore"
+	)
+	var wrong_nested_profile: Dictionary = locked_save.duplicate(true)
+	(wrong_nested_profile.get("state", {}) as Dictionary)[
+		"balance_profile_id"
+	] = "BASELINE_V07"
+	_reseal_save(wrong_nested_profile)
+	_expect(
+		Core.validate_save_state(wrong_nested_profile) == "save_state_invariant_invalid",
+		"resealed authority state cannot silently substitute another balance profile"
+	)
 func _test_commodity_checkpoint_save_exact_once_and_privacy() -> void:
 	var core := _new_core(FIXED_SEED)
 	var first_proof := _real_track_group_proof(120, 3)
@@ -1172,7 +1603,7 @@ func _test_commodity_checkpoint_save_exact_once_and_privacy() -> void:
 		== restored_track.call("core_authority_v1"),
 		"paired cold continuation produces identical next Track and DBG authority states"
 	)
-	var ai: Dictionary = restored.ai_observation(OWNER_ID)
+	var ai: Dictionary = _ai_observation(restored)
 	var player: Dictionary = restored.player_projection(OWNER_ID)
 	_expect(
 		Core.is_pure_data(save_state)
@@ -1259,17 +1690,25 @@ func _test_checkpoint_rollback_and_exact_once() -> void:
 
 func _test_three_wing_projection_intent_receipt_and_privacy() -> void:
 	var core := _new_core(FIXED_SEED)
-	var ai: Dictionary = core.ai_observation(OWNER_ID)
+	var ai: Dictionary = _ai_observation(core)
 	var player: Dictionary = core.player_projection(OWNER_ID)
 	_expect(
-		str(ai.get("schema_id", "")) == "v07.personal_dbg.ai_observation.v1"
-		and str(player.get("schema_id", "")) == "v07.personal_dbg.player_projection.v1",
+		str(ai.get("schema_id", "")) == "v072.personal_dbg.ai_observation.v3"
+		and str(player.get("schema_id", "")) == "v072.personal_dbg.player_projection.v3",
 		"AI and Player wings have distinct typed projection identities"
 	)
+	var ai_cards_have_targets := true
+	for card_variant in (
+		(ai.get("facts", {}) as Dictionary).get("hand", []) as Array
+	):
+		ai_cards_have_targets = ai_cards_have_targets \
+			and card_variant is Dictionary \
+			and (card_variant as Dictionary).has("legal_targets")
 	_expect(
-		ai.get("facts", {}) == player.get("facts", {})
-		and ai.get("facts_fingerprint", "") == player.get("facts_fingerprint", ""),
-		"AI and Player wings project the same authoritative DBG facts"
+		(ai.get("facts", {}) as Dictionary).get("hand_count")
+			== (player.get("facts", {}) as Dictionary).get("hand_count")
+			and ai_cards_have_targets,
+		"AI and Player wings share owned DBG facts while only AI receives attested legal targets"
 	)
 	_expect(
 		core.ai_observation(OTHER_PLAYER_ID).is_empty()
@@ -1299,14 +1738,14 @@ func _test_three_wing_projection_intent_receipt_and_privacy() -> void:
 		"request.three_wing.play", OWNER_ID, Core.ACTION_PLAY_CARD, {"instance_id": card_id}
 	)
 	_expect(
-		str(intent.get("schema_id", "")) == "v07.personal_dbg.intent.v1"
+		str(intent.get("schema_id", "")) == "v072.personal_dbg.intent.v3"
 		and Core.is_pure_data(intent)
 		and str(intent.get("intent_fingerprint", "")).length() == 64,
 		"player command is a typed, fingerprinted, pure-data IntentV1"
 	)
 	var receipt: Dictionary = core.apply_intent(intent)
 	_expect(
-		str(receipt.get("schema_id", "")) == "v07.personal_dbg.authoritative_receipt.v1"
+		str(receipt.get("schema_id", "")) == "v072.personal_dbg.authoritative_receipt.v3"
 		and bool(receipt.get("success", false))
 		and str(receipt.get("receipt_fingerprint", "")).length() == 64,
 		"Core returns a typed, fingerprinted AuthoritativeReceiptV1"
@@ -1339,7 +1778,7 @@ func _test_three_wing_projection_intent_receipt_and_privacy() -> void:
 func _test_six_contract_fact_binding_and_alias_rejection() -> void:
 	var core := _new_core(FIXED_SEED)
 	var authority: Dictionary = core.core_authority_snapshot()
-	var ai: Dictionary = core.ai_observation(OWNER_ID)
+	var ai: Dictionary = _ai_observation(core)
 	var player: Dictionary = core.player_projection(OWNER_ID)
 	var hand := ((player.get("facts", {}) as Dictionary).get("hand", []) as Array)
 	var card_id := str((hand[0] as Dictionary).get("instance_id", ""))
@@ -1462,7 +1901,7 @@ func _test_save_roundtrip_and_rng_continuity() -> void:
 	_expect(bool(original.apply_intent(original.create_intent(
 		"request.save.play", OWNER_ID, Core.ACTION_PLAY_CARD, {"instance_id": first_card}
 	)).get("success", false)), "Save fixture includes a played card")
-	var purchase_spec := (Core.starter_card_specs()[3] as Dictionary).duplicate(true)
+	var purchase_spec := Core.standard_card_spec("energy", "market", 1)
 	_expect(bool(original.apply_intent(original.create_authority_intent(
 		"request.save.purchase",
 		Core.ACTION_ACCEPT_PURCHASE,
@@ -1485,8 +1924,22 @@ func _test_save_roundtrip_and_rng_continuity() -> void:
 	)
 	_expect(
 		original.player_projection(OWNER_ID) == restored.player_projection(OWNER_ID)
-		and original.ai_observation(OWNER_ID) == restored.ai_observation(OWNER_ID),
+		and _ai_observation(original) == _ai_observation(restored),
 		"restored Core reproduces both three-wing projections exactly"
+	)
+	var restored_starter := _find_card(
+		_state(restored).get("discard", []) as Array,
+		first_card
+	)
+	_expect(
+		restored_starter.get("card_instance_id") == first_card
+			and restored_starter.get("card_definition_id") \
+			== restored_starter.get("definition_id")
+			and restored_starter.get("origin_class") == "starter_bootstrap"
+			and restored_starter.get("asset_cost_profile") == "starter_zero_asset"
+			and restored_starter.get("primary_asset_cost") == 0
+			and restored_starter.get("starter_badge") == true,
+		"Starter identity and zero cost survive play, discard, JSON Save, and Restore"
 	)
 	var original_end: Dictionary = original.create_intent(
 		"request.save.continue", OWNER_ID, Core.ACTION_END_MAINTENANCE
@@ -1538,6 +1991,18 @@ func _test_save_and_rng_fail_closed() -> void:
 	var save_state: Dictionary = core.to_save_state()
 	_expect(Core.validate_intent(unused_intent).is_empty(), "intent capture validates without execution")
 	_expect(Core.validate_save_state(save_state).is_empty(), "untampered SaveStateV1 passes strict preflight")
+	var legacy_v071_save := save_state.duplicate(true)
+	legacy_v071_save["schema_id"] = "v071.personal_dbg.save_state.v2"
+	legacy_v071_save["state_version"] = 2
+	legacy_v071_save["ruleset_id"] = "v0.7.1"
+	legacy_v071_save["balance_profile_id"] = "V071_CANDIDATE_A_FAST"
+	legacy_v071_save["balance_profile_fingerprint"] = (
+		"8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a"
+	)
+	_expect(
+		Core.validate_save_state(legacy_v071_save) == "save_state_schema_invalid",
+		"V0.7.1 detached Save fails closed instead of silently resuming as V0.7.2"
+	)
 	var state_after_capture := _state(core)
 	_expect(
 		state_after_capture.get("starter_rng", {}) == starter_rng_before
@@ -1758,6 +2223,125 @@ func _test_reference_boundary() -> void:
 	)
 
 
+func _normal_merge_count_fixture(total_card_count: int, seed: int) -> RefCounted:
+	var core := _new_core(seed)
+	var checkpoint: Dictionary = core.capture_checkpoint()
+	var candidate := checkpoint.get("state", {}) as Dictionary
+	var original_cards := _all_cards(candidate)
+	var fixture_spec := Core.standard_card_spec("life", "factory", 1)
+	var hand: Array = []
+	for index in range(5):
+		hand.append(_card_instance_from_spec(
+			fixture_spec,
+			str((original_cards[index] as Dictionary).get("instance_id", ""))
+		))
+	candidate["draw_pile"] = []
+	candidate["hand"] = hand
+	candidate["committed_escrow"] = []
+	candidate["discard"] = [] if total_card_count == 5 else [
+		_card_instance_from_spec(
+			Core.standard_card_spec("energy", "market", 1),
+			str((original_cards[5] as Dictionary).get("instance_id", ""))
+		),
+	]
+	var historical_merges: Array = []
+	var history_index := 1
+	for starter_variant in Core.starter_card_specs():
+		var starter := starter_variant as Dictionary
+		var standard := Core.standard_card_spec(
+			str(starter.get("primary_color", "")),
+			str(starter.get("card_type", "")),
+			1
+		)
+		var output := Core.standard_card_spec(
+			str(starter.get("primary_color", "")),
+			str(starter.get("card_type", "")),
+			2
+		)
+		historical_merges.append({
+			"merge_id": "merge.fixture.%06d" % history_index,
+			"request_id": "request.merge.fixture.%06d" % history_index,
+			"source_instance_ids": [
+				"fixture.starter.%06d" % history_index,
+				"fixture.standard.%06d" % history_index,
+			],
+			"source_definition_ids": [
+				starter.get("definition_id"),
+				standard.get("definition_id"),
+			],
+			"source_origin_classes": ["starter_bootstrap", "standard"],
+			"result_instance_id": "fixture.result.%06d" % history_index,
+			"output_definition_id": output.get("definition_id"),
+			"output_origin_class": "standard",
+			"starter_privilege_consumed": true,
+			"semantic_id": output.get("semantic_id"),
+			"primary_color": output.get("primary_color"),
+			"card_type": output.get("card_type"),
+			"merge_family_id": output.get("merge_family_id"),
+			"level": 2,
+			"revision": history_index,
+		})
+		history_index += 1
+	candidate["merge_history"] = historical_merges
+	candidate["phase"] = Core.PHASE_MAINTENANCE
+	checkpoint["state"] = candidate
+	_reseal_checkpoint(checkpoint)
+	_expect(
+		bool(core.rollback_to_checkpoint(checkpoint).get("rolled_back", false)),
+		"minimum-deck fixture installs exactly %d valid normal-card instances" \
+		% total_card_count
+	)
+	return core
+
+
+func _card_instance_from_spec(spec: Dictionary, instance_id: String) -> Dictionary:
+	var card := spec.duplicate(true)
+	card["instance_id"] = instance_id
+	card["card_instance_id"] = instance_id
+	card["card_definition_id"] = str(spec.get("definition_id", ""))
+	card["locked"] = false
+	return card
+
+
+func _instance_id_for_definition(state: Dictionary, definition_id: String) -> String:
+	for card_variant in _all_cards(state):
+		var card := card_variant as Dictionary
+		if str(card.get("definition_id", "")) == definition_id:
+			return str(card.get("instance_id", ""))
+	return ""
+
+
+func _install_pair_in_maintenance(
+	core: RefCounted,
+	left_instance_id: String,
+	right_instance_id: String
+) -> bool:
+	var checkpoint: Dictionary = core.capture_checkpoint()
+	var candidate := checkpoint.get("state", {}) as Dictionary
+	var all_cards := _all_cards(candidate)
+	var left := _find_card(all_cards, left_instance_id)
+	var right := _find_card(all_cards, right_instance_id)
+	if left.is_empty() or right.is_empty() or left_instance_id == right_instance_id:
+		return false
+	var hand: Array = [left, right]
+	var remaining: Array = []
+	for card_variant in all_cards:
+		var card := card_variant as Dictionary
+		var instance_id := str(card.get("instance_id", ""))
+		if instance_id not in [left_instance_id, right_instance_id]:
+			remaining.append(card.duplicate(true))
+	while hand.size() < Core.HAND_LIMIT and not remaining.is_empty():
+		hand.append(remaining.pop_front())
+	candidate["hand"] = hand
+	candidate["draw_pile"] = remaining
+	candidate["committed_escrow"] = []
+	candidate["discard"] = []
+	candidate["phase"] = Core.PHASE_MAINTENANCE
+	checkpoint["state"] = candidate
+	_reseal_checkpoint(checkpoint)
+	return bool(core.rollback_to_checkpoint(checkpoint).get("rolled_back", false))
+
+
 func _bring_matching_pair_to_maintenance(core: RefCounted, semantic_id: String) -> Array:
 	for cycle in range(1, 25):
 		var state := _state(core)
@@ -1834,7 +2418,10 @@ func _new_core_for_owner(owner_player_id: String, seed_value: int) -> RefCounted
 	_expect(
 		bool(result.get("initialized", false))
 		and int(result.get("card_count", 0)) == 12
-		and int(result.get("hand_count", 0)) == 5,
+		and int(result.get("starter_card_instance_count", 0)) == 12
+		and int(result.get("hand_count", 0)) == 5
+		and int(result.get("opening_hand_starter_card_count", 0)) == 5
+		and int(result.get("opening_hand_asset_affordable_card_count", 0)) == 5,
 		"pure DBG fixture initializes from frozen starter rules"
 	)
 	return core
@@ -1852,15 +2439,22 @@ func _track_claim_arguments(
 		"instance_id": "track.card.%08d" % sequence,
 		"card_definition_id": commodity_id,
 		"card_kind": "commodity_card",
+		"level": 1,
 		"primary_color": primary_color,
 		"local_slot_index": 0,
 		"track_revision": track_revision,
+		"claimable_from_scroll_sequence": 0,
+		"claimable": true,
+		"claimability_state": "claimable",
 	}
 	var public_facts := {
 		"single_unified_track": true,
 		"allowed_card_kinds": ["normal_card", "commodity_card"],
 		"track_revision": track_revision,
+		"scroll_sequence": 1,
 		"unified_track_item_count": 1,
+		"balance_profile_id": TrackCore.BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": TrackCore.BALANCE_PROFILE_FINGERPRINT,
 		"card_kind_ratio_basis_points": {
 			"normal_card": 6000,
 			"commodity_card": 4000,
@@ -1875,13 +2469,22 @@ func _track_claim_arguments(
 			"shipping": 1666,
 		},
 		"revealed_stances": [],
+		"completed_batch_count": 0,
+		"lead_batch_cursor": 0,
+		"lead_tenure_batches": 1,
+		"color_cycle_batch_cursor": 0,
+		"color_cycle_batches": 6,
+		"lead_identity_not_directly_published": true,
+		"lead_identity_may_be_inferred_from_public_information": true,
 	}
 	var private_facts := {
 		"own_segment_items": [item],
 		"own_pending_stance": {},
+		"self_is_current_lead": false,
+		"self_influence_class": "normal",
 	}
 	var source_facts := {
-		"schema_version": 1,
+		"schema_version": TrackCore.SCHEMA_VERSION,
 		"domain_id": Core.TRACK_DOMAIN_ID,
 		"source_revision": source_revision,
 		"viewer_actor_id": actor_player_id,
@@ -1889,8 +2492,12 @@ func _track_claim_arguments(
 		"viewer_private_facts": private_facts,
 	}
 	var observation := {
-		"schema_version": 1,
+		"schema_version": TrackCore.SCHEMA_VERSION,
 		"interface_id": Core.TRACK_AI_OBSERVATION_SCHEMA_ID,
+		"ruleset_id": TrackCore.RULESET_ID,
+		"state_version": TrackCore.STATE_VERSION,
+		"balance_profile_id": TrackCore.BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": TrackCore.BALANCE_PROFILE_FINGERPRINT,
 		"domain_id": Core.TRACK_DOMAIN_ID,
 		"source_revision": source_revision,
 		"source_core_fingerprint": _test_fingerprint(source_facts),
@@ -1900,7 +2507,7 @@ func _track_claim_arguments(
 	}
 	_reseal_external(observation, "projection_fingerprint")
 	var source_identity := {
-		"schema_version": 1,
+		"schema_version": TrackCore.SCHEMA_VERSION,
 		"source_identity_id": "track.source.%s.r%d" % [
 			str(item.get("instance_id", "")), track_revision,
 		],
@@ -1912,7 +2519,7 @@ func _track_claim_arguments(
 	}
 	_reseal_external(source_identity, "identity_fingerprint")
 	var authorization := {
-		"schema_version": 1,
+		"schema_version": TrackCore.SCHEMA_VERSION,
 		"capability_id": "capability.track.claim.%03d" % sequence,
 		"authorization_id": "authorization.track.claim.%03d" % sequence,
 		"authorization_authority_id": "authority.track.reference",
@@ -1927,7 +2534,7 @@ func _track_claim_arguments(
 	_reseal_external(authorization, "authorization_fingerprint")
 	var track_request_id := "request.track.claim.%03d" % sequence
 	var track_intent := {
-		"schema_version": 1,
+		"schema_version": TrackCore.SCHEMA_VERSION,
 		"interface_id": Core.TRACK_CLAIM_INTENT_SCHEMA_ID,
 		"domain_id": Core.TRACK_DOMAIN_ID,
 		"request_id": track_request_id,
@@ -1943,7 +2550,7 @@ func _track_claim_arguments(
 	}
 	_reseal_external(track_intent, "intent_fingerprint")
 	var receipt := {
-		"schema_version": 1,
+		"schema_version": TrackCore.SCHEMA_VERSION,
 		"interface_id": Core.TRACK_CLAIM_RECEIPT_SCHEMA_ID,
 		"domain_id": Core.TRACK_DOMAIN_ID,
 		"request_id": track_request_id,
@@ -1992,8 +2599,10 @@ func _real_track_group_proof(sequence: int, required_count: int) -> Dictionary:
 			TRACK_ROSTER,
 			fixture_seed,
 			{
-				"normal_card_ratio_basis_points": 100,
-				"commodity_card_ratio_basis_points": 9900,
+				"balance_profile_id": TrackCore.BALANCE_PROFILE_ID,
+				"balance_profile_fingerprint": TrackCore.BALANCE_PROFILE_FINGERPRINT,
+				"normal_card_ratio_basis_points": 6000,
+				"commodity_card_ratio_basis_points": 4000,
 				"local_visible_slot_count": 20,
 				"match_instance_id": "match.dbg.group.%03d.%03d" % [
 					sequence,
@@ -2003,10 +2612,11 @@ func _real_track_group_proof(sequence: int, required_count: int) -> Dictionary:
 		)
 		if not bool(start_result.get("accepted", false)):
 			continue
-		var observation: Dictionary = track_core.ai_observation_v1(OWNER_ID)
-		var private_facts := observation.get("viewer_private_facts", {}) as Dictionary
+		var authority: Dictionary = track_core.core_authority_v1()
+		var authority_state := authority.get("authority_state", {}) as Dictionary
+		var track_state := authority_state.get("track_state", {}) as Dictionary
 		var groups: Dictionary = {}
-		for item_variant in private_facts.get("own_segment_items", []) as Array:
+		for item_variant in track_state.get("items", []) as Array:
 			var item := item_variant as Dictionary
 			if item.get("card_kind") != "commodity_card":
 				continue
@@ -2056,8 +2666,10 @@ func _real_track_claim_proof(
 			TRACK_ROSTER,
 			fixture_seed,
 			{
-				"normal_card_ratio_basis_points": 100,
-				"commodity_card_ratio_basis_points": 9900,
+				"balance_profile_id": TrackCore.BALANCE_PROFILE_ID,
+				"balance_profile_fingerprint": TrackCore.BALANCE_PROFILE_FINGERPRINT,
+				"normal_card_ratio_basis_points": 6000,
+				"commodity_card_ratio_basis_points": 4000,
 				"local_visible_slot_count": 20,
 				"match_instance_id": "match.dbg.claim.%03d.%03d" % [
 					sequence,
@@ -2093,55 +2705,80 @@ func _track_claim_proof_from_authority(
 	required_color: String = "",
 	excluded_instance_ids: Array = []
 ) -> Dictionary:
-	var observation: Dictionary = track_core.call("ai_observation_v1", actor_id)
-	var private_facts := observation.get("viewer_private_facts", {}) as Dictionary
-	for item_variant in private_facts.get("own_segment_items", []) as Array:
-		var item := item_variant as Dictionary
-		if item.get("card_kind") != "commodity_card" \
-				or excluded_instance_ids.has(str(item.get("instance_id", ""))):
-			continue
-		if not required_definition_id.is_empty() \
-				and item.get("card_definition_id") != required_definition_id:
-			continue
-		if not required_color.is_empty() \
-				and item.get("primary_color") != required_color:
-			continue
-		var source: Dictionary = track_core.call(
-			"visible_source_identity_v1",
-			actor_id,
-			str(item.get("instance_id", ""))
+	var search_limit := 0
+	if not required_definition_id.is_empty() or not required_color.is_empty():
+		var authority := track_core.call("core_authority_v1") as Dictionary
+		var authority_state := authority.get("authority_state", {}) as Dictionary
+		var track_state := authority_state.get("track_state", {}) as Dictionary
+		search_limit = int(track_state.get("capacity", 0)) + 1
+	for search_step in range(search_limit + 1):
+		var observation: Dictionary = track_core.call("ai_observation_v1", actor_id)
+		var private_facts := observation.get("viewer_private_facts", {}) as Dictionary
+		for item_variant in private_facts.get("own_segment_items", []) as Array:
+			var item := item_variant as Dictionary
+			if item.get("card_kind") != "commodity_card" \
+					or not bool(item.get("claimable", false)) \
+					or excluded_instance_ids.has(str(item.get("instance_id", ""))):
+				continue
+			if not required_definition_id.is_empty() \
+					and item.get("card_definition_id") != required_definition_id:
+				continue
+			if not required_color.is_empty() \
+					and item.get("primary_color") != required_color:
+				continue
+			var source: Dictionary = track_core.call(
+				"visible_source_identity_v1",
+				actor_id,
+				str(item.get("instance_id", ""))
+			)
+			var suffix := request_id.sha256_text().left(24)
+			var authorization: Dictionary = TrackCore.seal_viewer_segment_authorization_v1({
+				"schema_version": TrackCore.SCHEMA_VERSION,
+				"capability_id": "capability.dbg.real_claim.%s" % suffix,
+				"authorization_id": "authorization.dbg.real_claim.%s" % suffix,
+				"authorization_authority_id": "authority.track.reference",
+				"authorized_actor_id": actor_id,
+				"authorized_source_identity_id": source.get("source_identity_id"),
+				"authorized_source_instance_id": source.get("source_instance_id"),
+				"authorized_segment_owner_id": actor_id,
+				"source_track_revision": source.get("source_track_revision"),
+				"inventory_authority_id": Core.RNG_AUTHORITY_OWNER_ID,
+				"cash_authority_id": "authority.none",
+			})
+			var intent: Dictionary = track_core.call(
+				"build_visible_acquisition_intent_v1",
+				request_id,
+				actor_id,
+				TrackCore.ACTION_CLAIM_VISIBLE_COMMODITY,
+				source,
+				authorization
+			)
+			if intent.is_empty():
+				continue
+			return {
+				"authority": track_core,
+				"actor_id": actor_id,
+				"item": item.duplicate(true),
+				"track_intent": intent,
+				"track_ai_observation": observation,
+			}
+		if search_step >= search_limit:
+			break
+		var advance_intent: Dictionary = track_core.call(
+			"build_intent_v1",
+			"request.track.dbg_search.%s.%03d" % [
+				request_id.sha256_text().left(16),
+				search_step,
+			],
+			"system",
+			TrackCore.ACTION_ADVANCE_TRACK,
+			{"steps": 1}
 		)
-		var suffix := request_id.sha256_text().left(24)
-		var authorization: Dictionary = TrackCore.seal_viewer_segment_authorization_v1({
-			"schema_version": 1,
-			"capability_id": "capability.dbg.real_claim.%s" % suffix,
-			"authorization_id": "authorization.dbg.real_claim.%s" % suffix,
-			"authorization_authority_id": "authority.track.reference",
-			"authorized_actor_id": actor_id,
-			"authorized_source_identity_id": source.get("source_identity_id"),
-			"authorized_source_instance_id": source.get("source_instance_id"),
-			"authorized_segment_owner_id": actor_id,
-			"source_track_revision": source.get("source_track_revision"),
-			"inventory_authority_id": Core.RNG_AUTHORITY_OWNER_ID,
-			"cash_authority_id": "authority.none",
-		})
-		var intent: Dictionary = track_core.call(
-			"build_visible_acquisition_intent_v1",
-			request_id,
-			actor_id,
-			TrackCore.ACTION_CLAIM_VISIBLE_COMMODITY,
-			source,
-			authorization
+		var advance_receipt: Dictionary = track_core.call(
+			"apply_intent_v1", advance_intent
 		)
-		if intent.is_empty():
-			continue
-		return {
-			"authority": track_core,
-			"actor_id": actor_id,
-			"item": item.duplicate(true),
-			"track_intent": intent,
-			"track_ai_observation": observation,
-		}
+		if not bool(advance_receipt.get("accepted", false)):
+			return {}
 	return {}
 
 
@@ -2319,6 +2956,41 @@ func _different_color_pair(cards: Array) -> Array:
 	return []
 
 
+func _legal_target_input(
+	core: RefCounted,
+	owner_id: String = OWNER_ID
+) -> Dictionary:
+	var projection := core.call("player_projection", owner_id) as Dictionary
+	var facts := projection.get("facts", {}) as Dictionary
+	var targets := {}
+	var index := 0
+	for zone_name in ["hand", "discard"]:
+		for card_variant in facts.get(zone_name, []) as Array:
+			var instance_id := str(
+				(card_variant as Dictionary).get("instance_id", "")
+			)
+			targets[instance_id] = ["region.legal.%02d" % index]
+			index += 1
+	return core.call(
+		"build_legal_target_input",
+		owner_id,
+		"v072.map.legal_target_authority.detached",
+		7,
+		targets
+	) as Dictionary
+
+
+func _ai_observation(
+	core: RefCounted,
+	owner_id: String = OWNER_ID
+) -> Dictionary:
+	return core.call(
+		"ai_observation",
+		owner_id,
+		_legal_target_input(core, owner_id)
+	) as Dictionary
+
+
 func _contains_exact_key(value: Variant, key: String) -> bool:
 	if value is Array:
 		for item_variant in value as Array:
@@ -2428,8 +3100,8 @@ func _expect(condition: bool, message: String) -> void:
 
 func _finish() -> void:
 	if _failures.is_empty():
-		print("V0.7 DBG deck core test passed. checks=%d" % _checks)
+		print("V0.7.2 DBG deck core test passed. checks=%d" % _checks)
 		quit(0)
 		return
-	push_error("V0.7 DBG deck core test failed:\n- %s" % "\n- ".join(_failures))
+	push_error("V0.7.2 DBG deck core test failed:\n- %s" % "\n- ".join(_failures))
 	quit(1)

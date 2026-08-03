@@ -1002,7 +1002,9 @@ static func _track_public_facts_reason(facts: Dictionary) -> String:
 			or not _is_positive_integer(facts.get("lead_tenure_batches")) \
 			or int(facts.get("lead_batch_cursor", -1)) \
 				>= int(facts.get("lead_tenure_batches", 0)) \
-			or not _is_nonnegative_integer(facts.get("color_cycle_batch_cursor")) \
+			or not _is_nonnegative_integer(
+				facts.get("color_cycle_batch_cursor")
+			) \
 			or not _is_positive_integer(facts.get("color_cycle_batches")) \
 			or int(facts.get("color_cycle_batch_cursor", -1)) \
 				>= int(facts.get("color_cycle_batches", 0)) \
@@ -1052,11 +1054,16 @@ static func _track_private_facts_reason(
 			or not (facts.get("own_segment_items") is Array) \
 			or not (facts.get("own_pending_stance") is Dictionary) \
 			or not (facts.get("self_is_current_lead") is bool) \
-			or str(facts.get("self_influence_class", "")) \
-				not in ["normal", "double"] \
-			or bool(facts.get("self_is_current_lead", false)) \
-				!= (str(facts.get("self_influence_class", "")) == "double"):
+			or str(facts.get("self_influence_class", "")) not in [
+				"normal",
+				"double",
+			]:
 		return "track_private_facts_invalid"
+	var self_is_current_lead := bool(facts.get("self_is_current_lead", false))
+	var self_influence_class := str(facts.get("self_influence_class", ""))
+	if (self_is_current_lead and self_influence_class != "double") \
+			or (not self_is_current_lead and self_influence_class != "normal"):
+		return "track_self_lead_facts_inconsistent"
 	var items := facts.get("own_segment_items") as Array
 	if items.size() > total_item_count:
 		return "track_segment_item_count_invalid"

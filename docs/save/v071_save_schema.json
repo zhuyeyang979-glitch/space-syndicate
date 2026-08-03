@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "save_schema_id": "space_syndicate.v071.semantic_save.v1",
+  "constitution_id": "space_syndicate.v071.complete",
+  "ruleset_id": "v0.7.1",
+  "status": "frozen_highest_target_detached_contract",
+  "production_runtime_connected": false,
+  "canonical_adapter_schema_version": 2,
+  "balance_profile": {
+    "profile_id": "V071_CANDIDATE_A_FAST",
+    "profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+    "required_in_envelope": true,
+    "required_in_affected_domain_state": true,
+    "mismatch_policy": "fail_closed"
+  },
+  "migration_policy": {
+    "v07_save_to_v071_direct_resume": false,
+    "v06_save_to_v071_direct_resume": false,
+    "v06_save_backup_required": true,
+    "v07_detached_test_only_migration_allowed": false,
+    "missing_new_field_policy": "fail_closed",
+    "implicit_default_policy": "forbidden"
+  },
+  "sections": [
+    {
+      "section_id": "unified_card_track_cycle",
+      "section_version": 4,
+      "interface_id": "v071.unified_track.save_state.v2",
+      "required_state_fields": [
+        "completed_batch_count",
+        "lead_batch_cursor",
+        "color_cycle_batch_cursor",
+        "scroll_sequence",
+        "balance_profile_id",
+        "balance_profile_fingerprint"
+      ],
+      "required_track_item_fields": [
+        "level",
+        "claimable_from_scroll_sequence"
+      ]
+    },
+    {
+      "section_id": "personal_dbg_and_merge",
+      "section_version": 2,
+      "interface_id": "v071.personal_dbg.save_state.v2",
+      "required_state_fields": [
+        "normal_deck_minimum_count_rule_version",
+        "local_queue_state",
+        "balance_profile_id",
+        "balance_profile_fingerprint"
+      ],
+      "required_commodity_fields": [
+        "available_from_batch_id"
+      ],
+      "required_local_queue_state_fields": [
+        "batch_id",
+        "locked"
+      ]
+    },
+    {
+      "section_id": "six_color_assets_and_reservations",
+      "section_version": 2,
+      "interface_id": "v071.six_color_assets.save_state.v2",
+      "required_state_fields": [
+        "default_invalid_target_policy_id",
+        "max_asset_refresh_per_color_per_batch",
+        "balance_profile_id",
+        "balance_profile_fingerprint"
+      ]
+    },
+    {
+      "section_id": "card_batch_and_anonymous_resolution",
+      "section_version": 2,
+      "interface_id": "v071.card_batch.save_state.v2",
+      "required_state_fields": [
+        "default_invalid_target_policy_id",
+        "balance_profile_id",
+        "balance_profile_fingerprint"
+      ]
+    },
+    {
+      "section_id": "solar_facility_and_macro_victory",
+      "section_version": 4,
+      "interface_id": "v071.solar_victory.save_state.v2",
+      "required_state_fields": [
+        "balance_profile_id",
+        "balance_profile_fingerprint"
+      ]
+    }
+  ],
+  "required_restore_gates": [
+    "exact_ruleset_id",
+    "exact_section_version",
+    "exact_balance_profile_id",
+    "exact_balance_profile_fingerprint",
+    "exact_closed_state_shape",
+    "section_fingerprint_parity",
+    "rng_owner_state_parity",
+    "atomic_commit_after_all_preflight"
+  ]
+}

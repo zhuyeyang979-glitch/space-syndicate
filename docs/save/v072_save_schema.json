@@ -1,0 +1,127 @@
+{
+  "schema_version": 2,
+  "save_schema_id": "space_syndicate.v072.semantic_save.v2",
+  "constitution_id": "space_syndicate.v072.complete",
+  "ruleset_id": "v0.7.2",
+  "status": "frozen_highest_target_detached_contract",
+  "production_runtime_connected": false,
+  "canonical_adapter_schema_version": 3,
+  "balance_profile": {
+    "profile_id": "V072_STARTER_FREE_FAST",
+    "profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+    "required_in_envelope": true,
+    "required_in_affected_domain_state": true,
+    "mismatch_policy": "fail_closed_before_rng_restore"
+  },
+  "migration_policy": {
+    "v071_save_to_v072_direct_resume": false,
+    "v06_save_to_v072_direct_resume": false,
+    "v06_save_backup_required": true,
+    "v071_detached_test_only_migration_allowed": false,
+    "missing_new_field_policy": "fail_closed",
+    "implicit_default_policy": "forbidden"
+  },
+  "card_identity_fields": [
+    "card_definition_id",
+    "card_instance_id",
+    "origin_class",
+    "asset_cost_profile",
+    "level",
+    "merge_family_id"
+  ],
+  "card_identity_source": "closed_card_definition_registry",
+  "starter_identity_inferred_from_cost": false,
+  "sections": [
+    {
+      "section_id": "unified_card_track_cycle",
+      "section_version": 5,
+      "interface_id": "v072.unified_track.save_state.v3",
+      "required_state_fields": [
+        "completed_batch_count",
+        "lead_batch_cursor",
+        "color_cycle_batch_cursor",
+        "scroll_sequence",
+        "balance_profile_id",
+        "balance_profile_fingerprint"
+      ],
+      "required_track_normal_item_fields": [
+        "card_definition_id",
+        "origin_class",
+        "asset_cost_profile",
+        "primary_asset_cost",
+        "level",
+        "claimable_from_scroll_sequence"
+      ]
+    },
+    {
+      "section_id": "personal_dbg_and_merge",
+      "section_version": 3,
+      "interface_id": "v072.personal_dbg.save_state.v3",
+      "required_state_fields": [
+        "normal_deck_minimum_count_rule_version",
+        "local_queue_state",
+        "balance_profile_id",
+        "balance_profile_fingerprint"
+      ],
+      "required_zones": [
+        "normal_draw_pile",
+        "normal_hand",
+        "committed_escrow",
+        "normal_discard"
+      ],
+      "required_merge_fields": [
+        "source_definition_ids",
+        "source_origin_classes",
+        "output_definition_id",
+        "output_origin_class",
+        "starter_privilege_consumed"
+      ],
+      "required_commodity_fields": ["available_from_batch_id"]
+    },
+    {
+      "section_id": "six_color_assets_and_reservations",
+      "section_version": 3,
+      "interface_id": "v072.six_color_assets.save_state.v3",
+      "required_state_fields": [
+        "initialized_asset_owner",
+        "six_zero_balances_at_genesis",
+        "six_zero_remainders_at_genesis",
+        "default_invalid_target_policy_id",
+        "max_asset_refresh_per_color_per_batch",
+        "balance_profile_id",
+        "balance_profile_fingerprint"
+      ]
+    },
+    {
+      "section_id": "card_batch_and_anonymous_resolution",
+      "section_version": 3,
+      "interface_id": "v072.card_batch.save_state.v3",
+      "required_state_fields": [
+        "default_invalid_target_policy_id",
+        "balance_profile_id",
+        "balance_profile_fingerprint"
+      ]
+    },
+    {
+      "section_id": "solar_facility_and_macro_victory",
+      "section_version": 5,
+      "interface_id": "v072.solar_victory.save_state.v3",
+      "required_state_fields": [
+        "balance_profile_id",
+        "balance_profile_fingerprint"
+      ]
+    }
+  ],
+  "required_restore_gates": [
+    "exact_ruleset_id",
+    "exact_section_version",
+    "exact_balance_profile_id",
+    "exact_balance_profile_fingerprint",
+    "exact_closed_state_shape",
+    "closed_card_definition_identity",
+    "starter_origin_not_inferred_from_cost",
+    "section_fingerprint_parity",
+    "rng_owner_state_parity",
+    "atomic_commit_after_all_preflight"
+  ]
+}

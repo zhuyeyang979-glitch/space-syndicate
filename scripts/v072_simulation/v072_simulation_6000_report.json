@@ -1,0 +1,4053 @@
+{
+	"approved_profile_failed_balance_targets": [
+		"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+		"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+	],
+	"approved_profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+	"approved_profile_id": "V072_STARTER_FREE_FAST",
+	"configuration_count": 12,
+	"configuration_results": [
+		{
+			"configuration_fingerprint": "a65a08a02322dbe84c9050ccaee84899dcdf875a1bc61da177b4ac6980c2acd5",
+			"failed_balance_targets": [],
+			"match_count": 500,
+			"metrics": {
+				"asset_overflow_rate": 0.0,
+				"asset_spend_per_batch": 1.956,
+				"facility_slot_saturation_batch": {
+					"maximum": 19.0,
+					"mean": 18.554,
+					"median": 19.0,
+					"minimum": 18.0,
+					"p95": 19.0,
+					"sample_count": 1500
+				},
+				"first_facility_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 1500
+				},
+				"first_factory_market_chain_batch": {
+					"maximum": 2.0,
+					"mean": 1.556667,
+					"median": 2.0,
+					"minimum": 1.0,
+					"p95": 2.0,
+					"sample_count": 1500
+				},
+				"first_nonzero_asset_refresh_batch": {
+					"maximum": 2.0,
+					"mean": 2.0,
+					"median": 2.0,
+					"minimum": 2.0,
+					"p95": 2.0,
+					"sample_count": 1500
+				},
+				"first_standard_l1_affordable_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 1500
+				},
+				"first_standard_l1_played_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 1500
+				},
+				"free_starter_repeat_build_rate": 0.0,
+				"normal_purchase_to_first_draw_batches": {
+					"maximum": 5.0,
+					"mean": 1.892,
+					"median": 2.0,
+					"minimum": 0.0,
+					"p95": 4.0,
+					"sample_count": 1500
+				},
+				"normal_purchase_to_first_play_batches": {
+					"maximum": 14.0,
+					"mean": 4.826667,
+					"median": 5.0,
+					"minimum": 1.0,
+					"p95": 9.0,
+					"sample_count": 1500
+				},
+				"opening_asset_affordable_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 1500
+				},
+				"opening_legal_target_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 1500
+				},
+				"opening_starter_card_count": {
+					"maximum": 0.0,
+					"mean": 0.0,
+					"median": 0.0,
+					"minimum": 0.0,
+					"p95": 0.0,
+					"sample_count": 1500
+				},
+				"predicted_resolution_animation_seconds": {
+					"maximum": 5.4,
+					"mean": 3.5208,
+					"median": 3.0,
+					"minimum": 0.0,
+					"p95": 5.4,
+					"sample_count": 9000
+				},
+				"resolution_p95_seconds": 5.4,
+				"solar_multiplier_application_count_per_channel": 1,
+				"standard_card_action_share": 1.0,
+				"starter_action_share_batch_1": 0.0,
+				"starter_action_share_batch_10": 0.0,
+				"starter_action_share_batch_3": 0.0,
+				"starter_action_share_batch_6": 0.0,
+				"starter_creation_after_genesis_count": 0,
+				"starter_privilege_consumed_rate": 0.0,
+				"starter_privilege_inheritance_count": 0,
+				"starter_standard_merge_rate": 0.0,
+				"starter_track_spawn_count": 0,
+				"sunlit_chain_throughput_ratio": 2.0,
+				"victory_pending_tail_seconds": {
+					"maximum": 60.0,
+					"mean": 32.94,
+					"median": 30.0,
+					"minimum": 0.0,
+					"p95": 60.0,
+					"sample_count": 500
+				},
+				"zero_asset_block_rate_standard_cards_only": 0.540189
+			},
+			"player_count": 3,
+			"profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+			"profile_id": "V071_CANDIDATE_A_FAST",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 900926424,
+				"last_seed": 904878005,
+				"profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+				"profile_id": "V071_CANDIDATE_A_FAST",
+				"seed_count": 500,
+				"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+			},
+			"run_fingerprint_chain": "4ec926c26853ae373bb3bd31aa242e4df727a98eebe4bec8975ffe518265a472",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "c5e445e4c52cb0156bcf43b2b07d64eb77bfecd1354b20376bc2313cc1ecbc09",
+			"failed_balance_targets": [],
+			"match_count": 500,
+			"metrics": {
+				"asset_overflow_rate": 0.0,
+				"asset_spend_per_batch": 1.955389,
+				"facility_slot_saturation_batch": {
+					"maximum": 19.0,
+					"mean": 18.5605,
+					"median": 19.0,
+					"minimum": 18.0,
+					"p95": 19.0,
+					"sample_count": 2000
+				},
+				"first_facility_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 2000
+				},
+				"first_factory_market_chain_batch": {
+					"maximum": 2.0,
+					"mean": 1.535,
+					"median": 2.0,
+					"minimum": 1.0,
+					"p95": 2.0,
+					"sample_count": 2000
+				},
+				"first_nonzero_asset_refresh_batch": {
+					"maximum": 2.0,
+					"mean": 2.0,
+					"median": 2.0,
+					"minimum": 2.0,
+					"p95": 2.0,
+					"sample_count": 2000
+				},
+				"first_standard_l1_affordable_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 2000
+				},
+				"first_standard_l1_played_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 2000
+				},
+				"free_starter_repeat_build_rate": 0.0,
+				"normal_purchase_to_first_draw_batches": {
+					"maximum": 5.0,
+					"mean": 1.8145,
+					"median": 2.0,
+					"minimum": 0.0,
+					"p95": 4.0,
+					"sample_count": 2000
+				},
+				"normal_purchase_to_first_play_batches": {
+					"maximum": 19.0,
+					"mean": 4.804,
+					"median": 5.0,
+					"minimum": 1.0,
+					"p95": 8.0,
+					"sample_count": 2000
+				},
+				"opening_asset_affordable_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 2000
+				},
+				"opening_legal_target_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 2000
+				},
+				"opening_starter_card_count": {
+					"maximum": 0.0,
+					"mean": 0.0,
+					"median": 0.0,
+					"minimum": 0.0,
+					"p95": 0.0,
+					"sample_count": 2000
+				},
+				"predicted_resolution_animation_seconds": {
+					"maximum": 7.2,
+					"mean": 4.692933,
+					"median": 4.2,
+					"minimum": 0.0,
+					"p95": 7.2,
+					"sample_count": 9000
+				},
+				"resolution_p95_seconds": 7.2,
+				"solar_multiplier_application_count_per_channel": 1,
+				"standard_card_action_share": 1.0,
+				"starter_action_share_batch_1": 0.0,
+				"starter_action_share_batch_10": 0.0,
+				"starter_action_share_batch_3": 0.0,
+				"starter_action_share_batch_6": 0.0,
+				"starter_creation_after_genesis_count": 0,
+				"starter_privilege_consumed_rate": 0.0,
+				"starter_privilege_inheritance_count": 0,
+				"starter_standard_merge_rate": 0.0,
+				"starter_track_spawn_count": 0,
+				"sunlit_chain_throughput_ratio": 2.0,
+				"victory_pending_tail_seconds": {
+					"maximum": 90.0,
+					"mean": 43.02,
+					"median": 30.0,
+					"minimum": 0.0,
+					"p95": 90.0,
+					"sample_count": 500
+				},
+				"zero_asset_block_rate_standard_cards_only": 0.539981
+			},
+			"player_count": 4,
+			"profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+			"profile_id": "V071_CANDIDATE_A_FAST",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901026424,
+				"last_seed": 904978005,
+				"profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+				"profile_id": "V071_CANDIDATE_A_FAST",
+				"seed_count": 500,
+				"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+			},
+			"run_fingerprint_chain": "74025960ccfe71dd6d5b3ed3d4b6141af5e191e4ca5c591c213a7cf7debf793b",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "fef6991ba051a7016a780ca65a66c50419ec5665d050b10bcc184661408f0f4a",
+			"failed_balance_targets": [],
+			"match_count": 500,
+			"metrics": {
+				"asset_overflow_rate": 0.0,
+				"asset_spend_per_batch": 1.953,
+				"facility_slot_saturation_batch": {
+					"maximum": 19.0,
+					"mean": 18.580667,
+					"median": 19.0,
+					"minimum": 18.0,
+					"p95": 19.0,
+					"sample_count": 3000
+				},
+				"first_facility_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 3000
+				},
+				"first_factory_market_chain_batch": {
+					"maximum": 2.0,
+					"mean": 1.556,
+					"median": 2.0,
+					"minimum": 1.0,
+					"p95": 2.0,
+					"sample_count": 3000
+				},
+				"first_nonzero_asset_refresh_batch": {
+					"maximum": 2.0,
+					"mean": 2.0,
+					"median": 2.0,
+					"minimum": 2.0,
+					"p95": 2.0,
+					"sample_count": 3000
+				},
+				"first_standard_l1_affordable_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 3000
+				},
+				"first_standard_l1_played_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 3000
+				},
+				"free_starter_repeat_build_rate": 0.0,
+				"normal_purchase_to_first_draw_batches": {
+					"maximum": 6.0,
+					"mean": 1.855,
+					"median": 2.0,
+					"minimum": 0.0,
+					"p95": 4.0,
+					"sample_count": 3000
+				},
+				"normal_purchase_to_first_play_batches": {
+					"maximum": 19.0,
+					"mean": 4.799,
+					"median": 5.0,
+					"minimum": 1.0,
+					"p95": 8.0,
+					"sample_count": 3000
+				},
+				"opening_asset_affordable_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 3000
+				},
+				"opening_legal_target_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 3000
+				},
+				"opening_starter_card_count": {
+					"maximum": 0.0,
+					"mean": 0.0,
+					"median": 0.0,
+					"minimum": 0.0,
+					"p95": 0.0,
+					"sample_count": 3000
+				},
+				"predicted_resolution_animation_seconds": {
+					"maximum": 7.2,
+					"mean": 5.403458,
+					"median": 5.76,
+					"minimum": 1.2,
+					"p95": 7.2,
+					"sample_count": 9000
+				},
+				"resolution_p95_seconds": 7.2,
+				"solar_multiplier_application_count_per_channel": 1,
+				"standard_card_action_share": 1.0,
+				"starter_action_share_batch_1": 0.0,
+				"starter_action_share_batch_10": 0.0,
+				"starter_action_share_batch_3": 0.0,
+				"starter_action_share_batch_6": 0.0,
+				"starter_creation_after_genesis_count": 0,
+				"starter_privilege_consumed_rate": 0.0,
+				"starter_privilege_inheritance_count": 0,
+				"starter_standard_merge_rate": 0.0,
+				"starter_track_spawn_count": 0,
+				"sunlit_chain_throughput_ratio": 2.0,
+				"victory_pending_tail_seconds": {
+					"maximum": 150.0,
+					"mean": 67.44,
+					"median": 60.0,
+					"minimum": 0.0,
+					"p95": 150.0,
+					"sample_count": 500
+				},
+				"zero_asset_block_rate_standard_cards_only": 0.540503
+			},
+			"player_count": 6,
+			"profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+			"profile_id": "V071_CANDIDATE_A_FAST",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901226424,
+				"last_seed": 905178005,
+				"profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+				"profile_id": "V071_CANDIDATE_A_FAST",
+				"seed_count": 500,
+				"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+			},
+			"run_fingerprint_chain": "5e173dd5ca6848320c699f3cfc32e3f2f029d933fb372767cb5821f4af471bbe",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "74f0c943c8b1ecdcd2fc207687072b6e68ba4380ba2accf17f3e240c3e89b082",
+			"failed_balance_targets": [],
+			"match_count": 500,
+			"metrics": {
+				"asset_overflow_rate": 0.0,
+				"asset_spend_per_batch": 1.954389,
+				"facility_slot_saturation_batch": {
+					"maximum": 19.0,
+					"mean": 18.5615,
+					"median": 19.0,
+					"minimum": 18.0,
+					"p95": 19.0,
+					"sample_count": 4000
+				},
+				"first_facility_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 4000
+				},
+				"first_factory_market_chain_batch": {
+					"maximum": 2.0,
+					"mean": 1.5405,
+					"median": 2.0,
+					"minimum": 1.0,
+					"p95": 2.0,
+					"sample_count": 4000
+				},
+				"first_nonzero_asset_refresh_batch": {
+					"maximum": 2.0,
+					"mean": 2.0,
+					"median": 2.0,
+					"minimum": 2.0,
+					"p95": 2.0,
+					"sample_count": 4000
+				},
+				"first_standard_l1_affordable_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 4000
+				},
+				"first_standard_l1_played_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 4000
+				},
+				"free_starter_repeat_build_rate": 0.0,
+				"normal_purchase_to_first_draw_batches": {
+					"maximum": 7.0,
+					"mean": 1.85925,
+					"median": 2.0,
+					"minimum": 0.0,
+					"p95": 4.0,
+					"sample_count": 4000
+				},
+				"normal_purchase_to_first_play_batches": {
+					"maximum": 19.0,
+					"mean": 4.75125,
+					"median": 5.0,
+					"minimum": 1.0,
+					"p95": 8.0,
+					"sample_count": 4000
+				},
+				"opening_asset_affordable_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 4000
+				},
+				"opening_legal_target_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 4000
+				},
+				"opening_starter_card_count": {
+					"maximum": 0.0,
+					"mean": 0.0,
+					"median": 0.0,
+					"minimum": 0.0,
+					"p95": 0.0,
+					"sample_count": 4000
+				},
+				"predicted_resolution_animation_seconds": {
+					"maximum": 7.72,
+					"mean": 6.256382,
+					"median": 6.32,
+					"minimum": 2.4,
+					"p95": 7.72,
+					"sample_count": 9000
+				},
+				"resolution_p95_seconds": 7.72,
+				"solar_multiplier_application_count_per_channel": 1,
+				"standard_card_action_share": 1.0,
+				"starter_action_share_batch_1": 0.0,
+				"starter_action_share_batch_10": 0.0,
+				"starter_action_share_batch_3": 0.0,
+				"starter_action_share_batch_6": 0.0,
+				"starter_creation_after_genesis_count": 0,
+				"starter_privilege_consumed_rate": 0.0,
+				"starter_privilege_inheritance_count": 0,
+				"starter_standard_merge_rate": 0.0,
+				"starter_track_spawn_count": 0,
+				"sunlit_chain_throughput_ratio": 2.0,
+				"victory_pending_tail_seconds": {
+					"maximum": 210.0,
+					"mean": 105.18,
+					"median": 90.0,
+					"minimum": 0.0,
+					"p95": 210.0,
+					"sample_count": 500
+				},
+				"zero_asset_block_rate_standard_cards_only": 0.540247
+			},
+			"player_count": 8,
+			"profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+			"profile_id": "V071_CANDIDATE_A_FAST",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901426424,
+				"last_seed": 905378005,
+				"profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+				"profile_id": "V071_CANDIDATE_A_FAST",
+				"seed_count": 500,
+				"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+			},
+			"run_fingerprint_chain": "acf7060195a3cf0f5cc95f8d5c770bb3b77a8bf6dd4badc35213b2394338ac65",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "c1e8c46a86bf51832246abe84dc2edc6d3952d219baa162e925d8a363a56b7a7",
+			"failed_balance_targets": [
+				"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+				"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+			],
+			"match_count": 500,
+			"metrics": {
+				"asset_overflow_rate": 0.003413,
+				"asset_spend_per_batch": 0.432259,
+				"facility_slot_saturation_batch": {
+					"maximum": 17.0,
+					"mean": 12.069333,
+					"median": 12.0,
+					"minimum": 12.0,
+					"p95": 12.0,
+					"sample_count": 1500
+				},
+				"first_facility_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 1500
+				},
+				"first_factory_market_chain_batch": {
+					"maximum": 2.0,
+					"mean": 1.556667,
+					"median": 2.0,
+					"minimum": 1.0,
+					"p95": 2.0,
+					"sample_count": 1500
+				},
+				"first_nonzero_asset_refresh_batch": {
+					"maximum": 2.0,
+					"mean": 2.0,
+					"median": 2.0,
+					"minimum": 2.0,
+					"p95": 2.0,
+					"sample_count": 1500
+				},
+				"first_standard_l1_affordable_batch": {
+					"maximum": 9.0,
+					"mean": 4.941333,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 1500
+				},
+				"first_standard_l1_played_batch": {
+					"maximum": 9.0,
+					"mean": 4.941333,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 1500
+				},
+				"free_starter_repeat_build_rate": 0.575884,
+				"normal_purchase_to_first_draw_batches": {
+					"maximum": 5.0,
+					"mean": 1.872,
+					"median": 2.0,
+					"minimum": 0.0,
+					"p95": 4.0,
+					"sample_count": 1500
+				},
+				"normal_purchase_to_first_play_batches": {
+					"maximum": 6.0,
+					"mean": 2.985333,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 5.0,
+					"sample_count": 1500
+				},
+				"opening_asset_affordable_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 1500
+				},
+				"opening_legal_target_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 1500
+				},
+				"opening_starter_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 1500
+				},
+				"predicted_resolution_animation_seconds": {
+					"maximum": 5.4,
+					"mean": 3.6,
+					"median": 5.4,
+					"minimum": 0.0,
+					"p95": 5.4,
+					"sample_count": 9000
+				},
+				"resolution_p95_seconds": 5.4,
+				"solar_multiplier_application_count_per_channel": 1,
+				"standard_card_action_share": 0.215667,
+				"starter_action_share_batch_1": 1.0,
+				"starter_action_share_batch_10": 0.622663,
+				"starter_action_share_batch_3": 1.0,
+				"starter_action_share_batch_6": 0.771778,
+				"starter_creation_after_genesis_count": 0,
+				"starter_privilege_consumed_rate": 0.078167,
+				"starter_privilege_inheritance_count": 0,
+				"starter_standard_merge_rate": 0.61819,
+				"starter_track_spawn_count": 0,
+				"sunlit_chain_throughput_ratio": 2.0,
+				"victory_pending_tail_seconds": {
+					"maximum": 60.0,
+					"mean": 32.94,
+					"median": 30.0,
+					"minimum": 0.0,
+					"p95": 60.0,
+					"sample_count": 500
+				},
+				"zero_asset_block_rate_standard_cards_only": 0.043371
+			},
+			"player_count": 3,
+			"profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+			"profile_id": "V072_STARTER_FREE_FAST",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 900926424,
+				"last_seed": 904878005,
+				"profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+				"profile_id": "V072_STARTER_FREE_FAST",
+				"seed_count": 500,
+				"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+			},
+			"run_fingerprint_chain": "ec56d996009e58fe8f858614ec5826158b306ff4ac06aa4f8f6d3be7b928bf40",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "25304d52ee99584aa06abf02438e06d6643218459f7851491d9303d26e2b4d37",
+			"failed_balance_targets": [
+				"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+				"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+			],
+			"match_count": 500,
+			"metrics": {
+				"asset_overflow_rate": 0.00328,
+				"asset_spend_per_batch": 0.432639,
+				"facility_slot_saturation_batch": {
+					"maximum": 17.0,
+					"mean": 12.0585,
+					"median": 12.0,
+					"minimum": 12.0,
+					"p95": 12.0,
+					"sample_count": 2000
+				},
+				"first_facility_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 2000
+				},
+				"first_factory_market_chain_batch": {
+					"maximum": 2.0,
+					"mean": 1.535,
+					"median": 2.0,
+					"minimum": 1.0,
+					"p95": 2.0,
+					"sample_count": 2000
+				},
+				"first_nonzero_asset_refresh_batch": {
+					"maximum": 2.0,
+					"mean": 2.0,
+					"median": 2.0,
+					"minimum": 2.0,
+					"p95": 2.0,
+					"sample_count": 2000
+				},
+				"first_standard_l1_affordable_batch": {
+					"maximum": 11.0,
+					"mean": 4.9225,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 2000
+				},
+				"first_standard_l1_played_batch": {
+					"maximum": 11.0,
+					"mean": 4.9225,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 2000
+				},
+				"free_starter_repeat_build_rate": 0.575724,
+				"normal_purchase_to_first_draw_batches": {
+					"maximum": 5.0,
+					"mean": 1.8275,
+					"median": 2.0,
+					"minimum": 0.0,
+					"p95": 4.0,
+					"sample_count": 2000
+				},
+				"normal_purchase_to_first_play_batches": {
+					"maximum": 6.0,
+					"mean": 2.932,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 5.0,
+					"sample_count": 2000
+				},
+				"opening_asset_affordable_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 2000
+				},
+				"opening_legal_target_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 2000
+				},
+				"opening_starter_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 2000
+				},
+				"predicted_resolution_animation_seconds": {
+					"maximum": 7.2,
+					"mean": 4.8,
+					"median": 7.2,
+					"minimum": 0.0,
+					"p95": 7.2,
+					"sample_count": 9000
+				},
+				"resolution_p95_seconds": 7.2,
+				"solar_multiplier_application_count_per_channel": 1,
+				"standard_card_action_share": 0.216083,
+				"starter_action_share_batch_1": 1.0,
+				"starter_action_share_batch_10": 0.630841,
+				"starter_action_share_batch_3": 1.0,
+				"starter_action_share_batch_6": 0.774833,
+				"starter_creation_after_genesis_count": 0,
+				"starter_privilege_consumed_rate": 0.079583,
+				"starter_privilege_inheritance_count": 0,
+				"starter_standard_merge_rate": 0.62891,
+				"starter_track_spawn_count": 0,
+				"sunlit_chain_throughput_ratio": 2.0,
+				"victory_pending_tail_seconds": {
+					"maximum": 90.0,
+					"mean": 43.02,
+					"median": 30.0,
+					"minimum": 0.0,
+					"p95": 90.0,
+					"sample_count": 500
+				},
+				"zero_asset_block_rate_standard_cards_only": 0.040459
+			},
+			"player_count": 4,
+			"profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+			"profile_id": "V072_STARTER_FREE_FAST",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901026424,
+				"last_seed": 904978005,
+				"profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+				"profile_id": "V072_STARTER_FREE_FAST",
+				"seed_count": 500,
+				"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+			},
+			"run_fingerprint_chain": "d851d99c0c40ebd6971f7dcafe0f06d11f8c8a0d6fca0dee3282671883478588",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "fd6a998e7b2594c53e3d15aa8a6df674baf121cd16b4ebb75aadf7edd6736f87",
+			"failed_balance_targets": [
+				"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+				"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+			],
+			"match_count": 500,
+			"metrics": {
+				"asset_overflow_rate": 0.003453,
+				"asset_spend_per_batch": 0.43437,
+				"facility_slot_saturation_batch": {
+					"maximum": 19.0,
+					"mean": 12.072333,
+					"median": 12.0,
+					"minimum": 12.0,
+					"p95": 13.0,
+					"sample_count": 3000
+				},
+				"first_facility_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 3000
+				},
+				"first_factory_market_chain_batch": {
+					"maximum": 2.0,
+					"mean": 1.556,
+					"median": 2.0,
+					"minimum": 1.0,
+					"p95": 2.0,
+					"sample_count": 3000
+				},
+				"first_nonzero_asset_refresh_batch": {
+					"maximum": 2.0,
+					"mean": 2.0,
+					"median": 2.0,
+					"minimum": 2.0,
+					"p95": 2.0,
+					"sample_count": 3000
+				},
+				"first_standard_l1_affordable_batch": {
+					"maximum": 11.0,
+					"mean": 4.937667,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 3000
+				},
+				"first_standard_l1_played_batch": {
+					"maximum": 11.0,
+					"mean": 4.937667,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 3000
+				},
+				"free_starter_repeat_build_rate": 0.575378,
+				"normal_purchase_to_first_draw_batches": {
+					"maximum": 5.0,
+					"mean": 1.840667,
+					"median": 2.0,
+					"minimum": 0.0,
+					"p95": 4.0,
+					"sample_count": 3000
+				},
+				"normal_purchase_to_first_play_batches": {
+					"maximum": 6.0,
+					"mean": 2.963667,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 5.0,
+					"sample_count": 3000
+				},
+				"opening_asset_affordable_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 3000
+				},
+				"opening_legal_target_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 3000
+				},
+				"opening_starter_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 3000
+				},
+				"predicted_resolution_animation_seconds": {
+					"maximum": 6.04,
+					"mean": 4.035458,
+					"median": 6.04,
+					"minimum": 0.0,
+					"p95": 6.04,
+					"sample_count": 9000
+				},
+				"resolution_p95_seconds": 6.04,
+				"solar_multiplier_application_count_per_channel": 1,
+				"standard_card_action_share": 0.216893,
+				"starter_action_share_batch_1": 1.0,
+				"starter_action_share_batch_10": 0.640472,
+				"starter_action_share_batch_3": 1.0,
+				"starter_action_share_batch_6": 0.771889,
+				"starter_creation_after_genesis_count": 0,
+				"starter_privilege_consumed_rate": 0.077917,
+				"starter_privilege_inheritance_count": 0,
+				"starter_standard_merge_rate": 0.621538,
+				"starter_track_spawn_count": 0,
+				"sunlit_chain_throughput_ratio": 2.0,
+				"victory_pending_tail_seconds": {
+					"maximum": 150.0,
+					"mean": 67.44,
+					"median": 60.0,
+					"minimum": 0.0,
+					"p95": 150.0,
+					"sample_count": 500
+				},
+				"zero_asset_block_rate_standard_cards_only": 0.043333
+			},
+			"player_count": 6,
+			"profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+			"profile_id": "V072_STARTER_FREE_FAST",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901226424,
+				"last_seed": 905178005,
+				"profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+				"profile_id": "V072_STARTER_FREE_FAST",
+				"seed_count": 500,
+				"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+			},
+			"run_fingerprint_chain": "bc58b9091ea05dd2910811c0834a69dd887d91d6f1fd6d547d04d5f726f57a2f",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "225d57ddc537477c16d0dbbbaf3462bef731c43039e6879ca0c4ac62bc662dac",
+			"failed_balance_targets": [
+				"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+				"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+			],
+			"match_count": 500,
+			"metrics": {
+				"asset_overflow_rate": 0.00312,
+				"asset_spend_per_batch": 0.433181,
+				"facility_slot_saturation_batch": {
+					"maximum": 17.0,
+					"mean": 12.0695,
+					"median": 12.0,
+					"minimum": 12.0,
+					"p95": 13.0,
+					"sample_count": 4000
+				},
+				"first_facility_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 4000
+				},
+				"first_factory_market_chain_batch": {
+					"maximum": 2.0,
+					"mean": 1.5405,
+					"median": 2.0,
+					"minimum": 1.0,
+					"p95": 2.0,
+					"sample_count": 4000
+				},
+				"first_nonzero_asset_refresh_batch": {
+					"maximum": 2.0,
+					"mean": 2.0,
+					"median": 2.0,
+					"minimum": 2.0,
+					"p95": 2.0,
+					"sample_count": 4000
+				},
+				"first_standard_l1_affordable_batch": {
+					"maximum": 12.0,
+					"mean": 4.922,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 4000
+				},
+				"first_standard_l1_played_batch": {
+					"maximum": 12.0,
+					"mean": 4.922,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 4000
+				},
+				"free_starter_repeat_build_rate": 0.575542,
+				"normal_purchase_to_first_draw_batches": {
+					"maximum": 5.0,
+					"mean": 1.84575,
+					"median": 2.0,
+					"minimum": 0.0,
+					"p95": 4.0,
+					"sample_count": 4000
+				},
+				"normal_purchase_to_first_play_batches": {
+					"maximum": 6.0,
+					"mean": 2.9625,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 5.0,
+					"sample_count": 4000
+				},
+				"opening_asset_affordable_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 4000
+				},
+				"opening_legal_target_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 4000
+				},
+				"opening_starter_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 4000
+				},
+				"predicted_resolution_animation_seconds": {
+					"maximum": 7.72,
+					"mean": 5.158542,
+					"median": 7.72,
+					"minimum": 0.0,
+					"p95": 7.72,
+					"sample_count": 9000
+				},
+				"resolution_p95_seconds": 7.72,
+				"solar_multiplier_application_count_per_channel": 1,
+				"standard_card_action_share": 0.216403,
+				"starter_action_share_batch_1": 1.0,
+				"starter_action_share_batch_10": 0.635324,
+				"starter_action_share_batch_3": 1.0,
+				"starter_action_share_batch_6": 0.771667,
+				"starter_creation_after_genesis_count": 0,
+				"starter_privilege_consumed_rate": 0.078,
+				"starter_privilege_inheritance_count": 0,
+				"starter_standard_merge_rate": 0.61823,
+				"starter_track_spawn_count": 0,
+				"sunlit_chain_throughput_ratio": 2.0,
+				"victory_pending_tail_seconds": {
+					"maximum": 210.0,
+					"mean": 105.18,
+					"median": 90.0,
+					"minimum": 0.0,
+					"p95": 210.0,
+					"sample_count": 500
+				},
+				"zero_asset_block_rate_standard_cards_only": 0.041435
+			},
+			"player_count": 8,
+			"profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+			"profile_id": "V072_STARTER_FREE_FAST",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901426424,
+				"last_seed": 905378005,
+				"profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+				"profile_id": "V072_STARTER_FREE_FAST",
+				"seed_count": 500,
+				"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+			},
+			"run_fingerprint_chain": "c7e6e7e831c9ba336b0ecb7082459fdacd88e8bbef688a452f3947c6756225d9",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "93a550b49204cda43ca0eaab342842b496a5e699d530ea904b71c39a1ca9b29d",
+			"failed_balance_targets": [
+				"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+				"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+			],
+			"match_count": 500,
+			"metrics": {
+				"asset_overflow_rate": 0.00384,
+				"asset_spend_per_batch": 0.430778,
+				"facility_slot_saturation_batch": {
+					"maximum": 19.0,
+					"mean": 12.084,
+					"median": 12.0,
+					"minimum": 12.0,
+					"p95": 13.0,
+					"sample_count": 1500
+				},
+				"first_facility_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 1500
+				},
+				"first_factory_market_chain_batch": {
+					"maximum": 2.0,
+					"mean": 1.556667,
+					"median": 2.0,
+					"minimum": 1.0,
+					"p95": 2.0,
+					"sample_count": 1500
+				},
+				"first_nonzero_asset_refresh_batch": {
+					"maximum": 2.0,
+					"mean": 2.0,
+					"median": 2.0,
+					"minimum": 2.0,
+					"p95": 2.0,
+					"sample_count": 1500
+				},
+				"first_standard_l1_affordable_batch": {
+					"maximum": 9.0,
+					"mean": 4.941333,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 1500
+				},
+				"first_standard_l1_played_batch": {
+					"maximum": 9.0,
+					"mean": 4.941333,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 1500
+				},
+				"free_starter_repeat_build_rate": 0.576014,
+				"normal_purchase_to_first_draw_batches": {
+					"maximum": 5.0,
+					"mean": 1.872,
+					"median": 2.0,
+					"minimum": 0.0,
+					"p95": 4.0,
+					"sample_count": 1500
+				},
+				"normal_purchase_to_first_play_batches": {
+					"maximum": 6.0,
+					"mean": 2.985333,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 5.0,
+					"sample_count": 1500
+				},
+				"opening_asset_affordable_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 1500
+				},
+				"opening_legal_target_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 1500
+				},
+				"opening_starter_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 1500
+				},
+				"predicted_resolution_animation_seconds": {
+					"maximum": 5.4,
+					"mean": 3.599867,
+					"median": 5.4,
+					"minimum": 0.0,
+					"p95": 5.4,
+					"sample_count": 9000
+				},
+				"resolution_p95_seconds": 5.4,
+				"solar_multiplier_application_count_per_channel": 1,
+				"standard_card_action_share": 0.215397,
+				"starter_action_share_batch_1": 1.0,
+				"starter_action_share_batch_10": 0.622856,
+				"starter_action_share_batch_3": 1.0,
+				"starter_action_share_batch_6": 0.771778,
+				"starter_creation_after_genesis_count": 0,
+				"starter_privilege_consumed_rate": 0.0,
+				"starter_privilege_inheritance_count": 0,
+				"starter_standard_merge_rate": 0.0,
+				"starter_track_spawn_count": 0,
+				"sunlit_chain_throughput_ratio": 2.0,
+				"victory_pending_tail_seconds": {
+					"maximum": 60.0,
+					"mean": 32.94,
+					"median": 30.0,
+					"minimum": 0.0,
+					"p95": 60.0,
+					"sample_count": 500
+				},
+				"zero_asset_block_rate_standard_cards_only": 0.042795
+			},
+			"player_count": 3,
+			"profile_fingerprint": "466c86f0a930337c92d391a1b873b714a259ed31b8bd94fde49ad10a803fe579",
+			"profile_id": "V072_STARTER_FREE_NO_CROSS_MERGE",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 900926424,
+				"last_seed": 904878005,
+				"profile_fingerprint": "466c86f0a930337c92d391a1b873b714a259ed31b8bd94fde49ad10a803fe579",
+				"profile_id": "V072_STARTER_FREE_NO_CROSS_MERGE",
+				"seed_count": 500,
+				"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+			},
+			"run_fingerprint_chain": "77e7bd009a8c847979530ebfe8afceaf95ca92d084ac2225df1ca8c4a73e0a16",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "ca38a2d685d6bbcbcf1c970d705caf27ed7c1b15cf6c8741ea66c7b77f1a65d1",
+			"failed_balance_targets": [
+				"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+				"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+			],
+			"match_count": 500,
+			"metrics": {
+				"asset_overflow_rate": 0.00378,
+				"asset_spend_per_batch": 0.431917,
+				"facility_slot_saturation_batch": {
+					"maximum": 17.0,
+					"mean": 12.0775,
+					"median": 12.0,
+					"minimum": 12.0,
+					"p95": 13.0,
+					"sample_count": 2000
+				},
+				"first_facility_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 2000
+				},
+				"first_factory_market_chain_batch": {
+					"maximum": 2.0,
+					"mean": 1.535,
+					"median": 2.0,
+					"minimum": 1.0,
+					"p95": 2.0,
+					"sample_count": 2000
+				},
+				"first_nonzero_asset_refresh_batch": {
+					"maximum": 2.0,
+					"mean": 2.0,
+					"median": 2.0,
+					"minimum": 2.0,
+					"p95": 2.0,
+					"sample_count": 2000
+				},
+				"first_standard_l1_affordable_batch": {
+					"maximum": 11.0,
+					"mean": 4.9225,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 2000
+				},
+				"first_standard_l1_played_batch": {
+					"maximum": 11.0,
+					"mean": 4.9225,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 2000
+				},
+				"free_starter_repeat_build_rate": 0.575791,
+				"normal_purchase_to_first_draw_batches": {
+					"maximum": 5.0,
+					"mean": 1.8275,
+					"median": 2.0,
+					"minimum": 0.0,
+					"p95": 4.0,
+					"sample_count": 2000
+				},
+				"normal_purchase_to_first_play_batches": {
+					"maximum": 6.0,
+					"mean": 2.932,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 5.0,
+					"sample_count": 2000
+				},
+				"opening_asset_affordable_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 2000
+				},
+				"opening_legal_target_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 2000
+				},
+				"opening_starter_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 2000
+				},
+				"predicted_resolution_animation_seconds": {
+					"maximum": 7.2,
+					"mean": 4.8,
+					"median": 7.2,
+					"minimum": 0.0,
+					"p95": 7.2,
+					"sample_count": 9000
+				},
+				"resolution_p95_seconds": 7.2,
+				"solar_multiplier_application_count_per_channel": 1,
+				"standard_card_action_share": 0.215958,
+				"starter_action_share_batch_1": 1.0,
+				"starter_action_share_batch_10": 0.631842,
+				"starter_action_share_batch_3": 1.0,
+				"starter_action_share_batch_6": 0.774833,
+				"starter_creation_after_genesis_count": 0,
+				"starter_privilege_consumed_rate": 0.0,
+				"starter_privilege_inheritance_count": 0,
+				"starter_standard_merge_rate": 0.0,
+				"starter_track_spawn_count": 0,
+				"sunlit_chain_throughput_ratio": 2.0,
+				"victory_pending_tail_seconds": {
+					"maximum": 90.0,
+					"mean": 43.02,
+					"median": 30.0,
+					"minimum": 0.0,
+					"p95": 90.0,
+					"sample_count": 500
+				},
+				"zero_asset_block_rate_standard_cards_only": 0.040304
+			},
+			"player_count": 4,
+			"profile_fingerprint": "466c86f0a930337c92d391a1b873b714a259ed31b8bd94fde49ad10a803fe579",
+			"profile_id": "V072_STARTER_FREE_NO_CROSS_MERGE",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901026424,
+				"last_seed": 904978005,
+				"profile_fingerprint": "466c86f0a930337c92d391a1b873b714a259ed31b8bd94fde49ad10a803fe579",
+				"profile_id": "V072_STARTER_FREE_NO_CROSS_MERGE",
+				"seed_count": 500,
+				"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+			},
+			"run_fingerprint_chain": "ce828bd2d72ba38c65b5201bef386ba172a6785d9f3f976469974c2aa1c9f387",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "2bb827ccbe2c022fc35a6464ffd0da9d1fc426804a6e49eea497aa09a3156cb0",
+			"failed_balance_targets": [
+				"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+				"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+			],
+			"match_count": 500,
+			"metrics": {
+				"asset_overflow_rate": 0.003653,
+				"asset_spend_per_batch": 0.433537,
+				"facility_slot_saturation_batch": {
+					"maximum": 19.0,
+					"mean": 12.093667,
+					"median": 12.0,
+					"minimum": 12.0,
+					"p95": 13.0,
+					"sample_count": 3000
+				},
+				"first_facility_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 3000
+				},
+				"first_factory_market_chain_batch": {
+					"maximum": 2.0,
+					"mean": 1.556,
+					"median": 2.0,
+					"minimum": 1.0,
+					"p95": 2.0,
+					"sample_count": 3000
+				},
+				"first_nonzero_asset_refresh_batch": {
+					"maximum": 2.0,
+					"mean": 2.0,
+					"median": 2.0,
+					"minimum": 2.0,
+					"p95": 2.0,
+					"sample_count": 3000
+				},
+				"first_standard_l1_affordable_batch": {
+					"maximum": 11.0,
+					"mean": 4.937667,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 3000
+				},
+				"first_standard_l1_played_batch": {
+					"maximum": 11.0,
+					"mean": 4.937667,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 3000
+				},
+				"free_starter_repeat_build_rate": 0.575443,
+				"normal_purchase_to_first_draw_batches": {
+					"maximum": 5.0,
+					"mean": 1.840667,
+					"median": 2.0,
+					"minimum": 0.0,
+					"p95": 4.0,
+					"sample_count": 3000
+				},
+				"normal_purchase_to_first_play_batches": {
+					"maximum": 6.0,
+					"mean": 2.963667,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 5.0,
+					"sample_count": 3000
+				},
+				"opening_asset_affordable_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 3000
+				},
+				"opening_legal_target_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 3000
+				},
+				"opening_starter_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 3000
+				},
+				"predicted_resolution_animation_seconds": {
+					"maximum": 6.04,
+					"mean": 4.037556,
+					"median": 6.04,
+					"minimum": 0.0,
+					"p95": 6.04,
+					"sample_count": 9000
+				},
+				"resolution_p95_seconds": 6.04,
+				"solar_multiplier_application_count_per_channel": 1,
+				"standard_card_action_share": 0.216773,
+				"starter_action_share_batch_1": 1.0,
+				"starter_action_share_batch_10": 0.640606,
+				"starter_action_share_batch_3": 1.0,
+				"starter_action_share_batch_6": 0.772111,
+				"starter_creation_after_genesis_count": 0,
+				"starter_privilege_consumed_rate": 0.0,
+				"starter_privilege_inheritance_count": 0,
+				"starter_standard_merge_rate": 0.0,
+				"starter_track_spawn_count": 0,
+				"sunlit_chain_throughput_ratio": 2.0,
+				"victory_pending_tail_seconds": {
+					"maximum": 150.0,
+					"mean": 67.44,
+					"median": 60.0,
+					"minimum": 0.0,
+					"p95": 150.0,
+					"sample_count": 500
+				},
+				"zero_asset_block_rate_standard_cards_only": 0.043199
+			},
+			"player_count": 6,
+			"profile_fingerprint": "466c86f0a930337c92d391a1b873b714a259ed31b8bd94fde49ad10a803fe579",
+			"profile_id": "V072_STARTER_FREE_NO_CROSS_MERGE",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901226424,
+				"last_seed": 905178005,
+				"profile_fingerprint": "466c86f0a930337c92d391a1b873b714a259ed31b8bd94fde49ad10a803fe579",
+				"profile_id": "V072_STARTER_FREE_NO_CROSS_MERGE",
+				"seed_count": 500,
+				"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+			},
+			"run_fingerprint_chain": "0a8cc88478ed44952e69158206e6c93d4fe9bca0edaa26426d1a886945650799",
+			"seed_count": 500,
+			"valid": true
+		},
+		{
+			"configuration_fingerprint": "61a33d8a755d67b3bf32fed7ba2fdfa90e2e0e6a91da1a3da6c9804b63ebde40",
+			"failed_balance_targets": [
+				"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+				"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+			],
+			"match_count": 500,
+			"metrics": {
+				"asset_overflow_rate": 0.00373,
+				"asset_spend_per_batch": 0.432333,
+				"facility_slot_saturation_batch": {
+					"maximum": 18.0,
+					"mean": 12.098,
+					"median": 12.0,
+					"minimum": 12.0,
+					"p95": 13.0,
+					"sample_count": 4000
+				},
+				"first_facility_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 4000
+				},
+				"first_factory_market_chain_batch": {
+					"maximum": 2.0,
+					"mean": 1.5405,
+					"median": 2.0,
+					"minimum": 1.0,
+					"p95": 2.0,
+					"sample_count": 4000
+				},
+				"first_nonzero_asset_refresh_batch": {
+					"maximum": 2.0,
+					"mean": 2.0,
+					"median": 2.0,
+					"minimum": 2.0,
+					"p95": 2.0,
+					"sample_count": 4000
+				},
+				"first_standard_l1_affordable_batch": {
+					"maximum": 12.0,
+					"mean": 4.922,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 4000
+				},
+				"first_standard_l1_played_batch": {
+					"maximum": 12.0,
+					"mean": 4.922,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 4000
+				},
+				"free_starter_repeat_build_rate": 0.575661,
+				"normal_purchase_to_first_draw_batches": {
+					"maximum": 5.0,
+					"mean": 1.84575,
+					"median": 2.0,
+					"minimum": 0.0,
+					"p95": 4.0,
+					"sample_count": 4000
+				},
+				"normal_purchase_to_first_play_batches": {
+					"maximum": 6.0,
+					"mean": 2.9625,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 5.0,
+					"sample_count": 4000
+				},
+				"opening_asset_affordable_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 4000
+				},
+				"opening_legal_target_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 4000
+				},
+				"opening_starter_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 4000
+				},
+				"predicted_resolution_animation_seconds": {
+					"maximum": 7.72,
+					"mean": 5.162738,
+					"median": 7.72,
+					"minimum": 0.0,
+					"p95": 7.72,
+					"sample_count": 9000
+				},
+				"resolution_p95_seconds": 7.72,
+				"solar_multiplier_application_count_per_channel": 1,
+				"standard_card_action_share": 0.216167,
+				"starter_action_share_batch_1": 1.0,
+				"starter_action_share_batch_10": 0.635733,
+				"starter_action_share_batch_3": 1.0,
+				"starter_action_share_batch_6": 0.771417,
+				"starter_creation_after_genesis_count": 0,
+				"starter_privilege_consumed_rate": 0.0,
+				"starter_privilege_inheritance_count": 0,
+				"starter_standard_merge_rate": 0.0,
+				"starter_track_spawn_count": 0,
+				"sunlit_chain_throughput_ratio": 2.0,
+				"victory_pending_tail_seconds": {
+					"maximum": 210.0,
+					"mean": 105.18,
+					"median": 90.0,
+					"minimum": 0.0,
+					"p95": 210.0,
+					"sample_count": 500
+				},
+				"zero_asset_block_rate_standard_cards_only": 0.041271
+			},
+			"player_count": 8,
+			"profile_fingerprint": "466c86f0a930337c92d391a1b873b714a259ed31b8bd94fde49ad10a803fe579",
+			"profile_id": "V072_STARTER_FREE_NO_CROSS_MERGE",
+			"reason_code": "simulation_configuration_completed",
+			"replay_identity": {
+				"first_seed": 901426424,
+				"last_seed": 905378005,
+				"profile_fingerprint": "466c86f0a930337c92d391a1b873b714a259ed31b8bd94fde49ad10a803fe579",
+				"profile_id": "V072_STARTER_FREE_NO_CROSS_MERGE",
+				"seed_count": 500,
+				"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+			},
+			"run_fingerprint_chain": "6666ee8da807d386d2a20a36497754ececa657413efb8e320ae98bd414fe62a0",
+			"seed_count": 500,
+			"valid": true
+		}
+	],
+	"detached_reference_only": true,
+	"fixed_seed_schedule": {
+		"base_seed": 900626424,
+		"formula_id": "base_plus_player_count_times_100000_plus_seed_index_times_7919",
+		"profile_independent_for_paired_comparison": true
+	},
+	"human_fun_proven": false,
+	"human_test_required": true,
+	"new_rng_stream_count": 0,
+	"player_count_coverage": 4,
+	"player_counts": [
+		3,
+		4,
+		6,
+		8
+	],
+	"production_rng_used": false,
+	"production_runtime_connected": false,
+	"production_save_used": false,
+	"profile_count": 3,
+	"profile_results": [
+		{
+			"by_player_count": {
+				"3": {
+					"configuration_fingerprint": "a65a08a02322dbe84c9050ccaee84899dcdf875a1bc61da177b4ac6980c2acd5",
+					"failed_balance_targets": [],
+					"match_count": 500,
+					"metrics": {
+						"asset_overflow_rate": 0.0,
+						"asset_spend_per_batch": 1.956,
+						"facility_slot_saturation_batch": {
+							"maximum": 19.0,
+							"mean": 18.554,
+							"median": 19.0,
+							"minimum": 18.0,
+							"p95": 19.0,
+							"sample_count": 1500
+						},
+						"first_facility_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 1500
+						},
+						"first_factory_market_chain_batch": {
+							"maximum": 2.0,
+							"mean": 1.556667,
+							"median": 2.0,
+							"minimum": 1.0,
+							"p95": 2.0,
+							"sample_count": 1500
+						},
+						"first_nonzero_asset_refresh_batch": {
+							"maximum": 2.0,
+							"mean": 2.0,
+							"median": 2.0,
+							"minimum": 2.0,
+							"p95": 2.0,
+							"sample_count": 1500
+						},
+						"first_standard_l1_affordable_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 1500
+						},
+						"first_standard_l1_played_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 1500
+						},
+						"free_starter_repeat_build_rate": 0.0,
+						"normal_purchase_to_first_draw_batches": {
+							"maximum": 5.0,
+							"mean": 1.892,
+							"median": 2.0,
+							"minimum": 0.0,
+							"p95": 4.0,
+							"sample_count": 1500
+						},
+						"normal_purchase_to_first_play_batches": {
+							"maximum": 14.0,
+							"mean": 4.826667,
+							"median": 5.0,
+							"minimum": 1.0,
+							"p95": 9.0,
+							"sample_count": 1500
+						},
+						"opening_asset_affordable_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 1500
+						},
+						"opening_legal_target_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 1500
+						},
+						"opening_starter_card_count": {
+							"maximum": 0.0,
+							"mean": 0.0,
+							"median": 0.0,
+							"minimum": 0.0,
+							"p95": 0.0,
+							"sample_count": 1500
+						},
+						"predicted_resolution_animation_seconds": {
+							"maximum": 5.4,
+							"mean": 3.5208,
+							"median": 3.0,
+							"minimum": 0.0,
+							"p95": 5.4,
+							"sample_count": 9000
+						},
+						"resolution_p95_seconds": 5.4,
+						"solar_multiplier_application_count_per_channel": 1,
+						"standard_card_action_share": 1.0,
+						"starter_action_share_batch_1": 0.0,
+						"starter_action_share_batch_10": 0.0,
+						"starter_action_share_batch_3": 0.0,
+						"starter_action_share_batch_6": 0.0,
+						"starter_creation_after_genesis_count": 0,
+						"starter_privilege_consumed_rate": 0.0,
+						"starter_privilege_inheritance_count": 0,
+						"starter_standard_merge_rate": 0.0,
+						"starter_track_spawn_count": 0,
+						"sunlit_chain_throughput_ratio": 2.0,
+						"victory_pending_tail_seconds": {
+							"maximum": 60.0,
+							"mean": 32.94,
+							"median": 30.0,
+							"minimum": 0.0,
+							"p95": 60.0,
+							"sample_count": 500
+						},
+						"zero_asset_block_rate_standard_cards_only": 0.540189
+					},
+					"player_count": 3,
+					"profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+					"profile_id": "V071_CANDIDATE_A_FAST",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 900926424,
+						"last_seed": 904878005,
+						"profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+						"profile_id": "V071_CANDIDATE_A_FAST",
+						"seed_count": 500,
+						"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+					},
+					"run_fingerprint_chain": "4ec926c26853ae373bb3bd31aa242e4df727a98eebe4bec8975ffe518265a472",
+					"seed_count": 500,
+					"valid": true
+				},
+				"4": {
+					"configuration_fingerprint": "c5e445e4c52cb0156bcf43b2b07d64eb77bfecd1354b20376bc2313cc1ecbc09",
+					"failed_balance_targets": [],
+					"match_count": 500,
+					"metrics": {
+						"asset_overflow_rate": 0.0,
+						"asset_spend_per_batch": 1.955389,
+						"facility_slot_saturation_batch": {
+							"maximum": 19.0,
+							"mean": 18.5605,
+							"median": 19.0,
+							"minimum": 18.0,
+							"p95": 19.0,
+							"sample_count": 2000
+						},
+						"first_facility_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 2000
+						},
+						"first_factory_market_chain_batch": {
+							"maximum": 2.0,
+							"mean": 1.535,
+							"median": 2.0,
+							"minimum": 1.0,
+							"p95": 2.0,
+							"sample_count": 2000
+						},
+						"first_nonzero_asset_refresh_batch": {
+							"maximum": 2.0,
+							"mean": 2.0,
+							"median": 2.0,
+							"minimum": 2.0,
+							"p95": 2.0,
+							"sample_count": 2000
+						},
+						"first_standard_l1_affordable_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 2000
+						},
+						"first_standard_l1_played_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 2000
+						},
+						"free_starter_repeat_build_rate": 0.0,
+						"normal_purchase_to_first_draw_batches": {
+							"maximum": 5.0,
+							"mean": 1.8145,
+							"median": 2.0,
+							"minimum": 0.0,
+							"p95": 4.0,
+							"sample_count": 2000
+						},
+						"normal_purchase_to_first_play_batches": {
+							"maximum": 19.0,
+							"mean": 4.804,
+							"median": 5.0,
+							"minimum": 1.0,
+							"p95": 8.0,
+							"sample_count": 2000
+						},
+						"opening_asset_affordable_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 2000
+						},
+						"opening_legal_target_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 2000
+						},
+						"opening_starter_card_count": {
+							"maximum": 0.0,
+							"mean": 0.0,
+							"median": 0.0,
+							"minimum": 0.0,
+							"p95": 0.0,
+							"sample_count": 2000
+						},
+						"predicted_resolution_animation_seconds": {
+							"maximum": 7.2,
+							"mean": 4.692933,
+							"median": 4.2,
+							"minimum": 0.0,
+							"p95": 7.2,
+							"sample_count": 9000
+						},
+						"resolution_p95_seconds": 7.2,
+						"solar_multiplier_application_count_per_channel": 1,
+						"standard_card_action_share": 1.0,
+						"starter_action_share_batch_1": 0.0,
+						"starter_action_share_batch_10": 0.0,
+						"starter_action_share_batch_3": 0.0,
+						"starter_action_share_batch_6": 0.0,
+						"starter_creation_after_genesis_count": 0,
+						"starter_privilege_consumed_rate": 0.0,
+						"starter_privilege_inheritance_count": 0,
+						"starter_standard_merge_rate": 0.0,
+						"starter_track_spawn_count": 0,
+						"sunlit_chain_throughput_ratio": 2.0,
+						"victory_pending_tail_seconds": {
+							"maximum": 90.0,
+							"mean": 43.02,
+							"median": 30.0,
+							"minimum": 0.0,
+							"p95": 90.0,
+							"sample_count": 500
+						},
+						"zero_asset_block_rate_standard_cards_only": 0.539981
+					},
+					"player_count": 4,
+					"profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+					"profile_id": "V071_CANDIDATE_A_FAST",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901026424,
+						"last_seed": 904978005,
+						"profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+						"profile_id": "V071_CANDIDATE_A_FAST",
+						"seed_count": 500,
+						"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+					},
+					"run_fingerprint_chain": "74025960ccfe71dd6d5b3ed3d4b6141af5e191e4ca5c591c213a7cf7debf793b",
+					"seed_count": 500,
+					"valid": true
+				},
+				"6": {
+					"configuration_fingerprint": "fef6991ba051a7016a780ca65a66c50419ec5665d050b10bcc184661408f0f4a",
+					"failed_balance_targets": [],
+					"match_count": 500,
+					"metrics": {
+						"asset_overflow_rate": 0.0,
+						"asset_spend_per_batch": 1.953,
+						"facility_slot_saturation_batch": {
+							"maximum": 19.0,
+							"mean": 18.580667,
+							"median": 19.0,
+							"minimum": 18.0,
+							"p95": 19.0,
+							"sample_count": 3000
+						},
+						"first_facility_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 3000
+						},
+						"first_factory_market_chain_batch": {
+							"maximum": 2.0,
+							"mean": 1.556,
+							"median": 2.0,
+							"minimum": 1.0,
+							"p95": 2.0,
+							"sample_count": 3000
+						},
+						"first_nonzero_asset_refresh_batch": {
+							"maximum": 2.0,
+							"mean": 2.0,
+							"median": 2.0,
+							"minimum": 2.0,
+							"p95": 2.0,
+							"sample_count": 3000
+						},
+						"first_standard_l1_affordable_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 3000
+						},
+						"first_standard_l1_played_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 3000
+						},
+						"free_starter_repeat_build_rate": 0.0,
+						"normal_purchase_to_first_draw_batches": {
+							"maximum": 6.0,
+							"mean": 1.855,
+							"median": 2.0,
+							"minimum": 0.0,
+							"p95": 4.0,
+							"sample_count": 3000
+						},
+						"normal_purchase_to_first_play_batches": {
+							"maximum": 19.0,
+							"mean": 4.799,
+							"median": 5.0,
+							"minimum": 1.0,
+							"p95": 8.0,
+							"sample_count": 3000
+						},
+						"opening_asset_affordable_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 3000
+						},
+						"opening_legal_target_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 3000
+						},
+						"opening_starter_card_count": {
+							"maximum": 0.0,
+							"mean": 0.0,
+							"median": 0.0,
+							"minimum": 0.0,
+							"p95": 0.0,
+							"sample_count": 3000
+						},
+						"predicted_resolution_animation_seconds": {
+							"maximum": 7.2,
+							"mean": 5.403458,
+							"median": 5.76,
+							"minimum": 1.2,
+							"p95": 7.2,
+							"sample_count": 9000
+						},
+						"resolution_p95_seconds": 7.2,
+						"solar_multiplier_application_count_per_channel": 1,
+						"standard_card_action_share": 1.0,
+						"starter_action_share_batch_1": 0.0,
+						"starter_action_share_batch_10": 0.0,
+						"starter_action_share_batch_3": 0.0,
+						"starter_action_share_batch_6": 0.0,
+						"starter_creation_after_genesis_count": 0,
+						"starter_privilege_consumed_rate": 0.0,
+						"starter_privilege_inheritance_count": 0,
+						"starter_standard_merge_rate": 0.0,
+						"starter_track_spawn_count": 0,
+						"sunlit_chain_throughput_ratio": 2.0,
+						"victory_pending_tail_seconds": {
+							"maximum": 150.0,
+							"mean": 67.44,
+							"median": 60.0,
+							"minimum": 0.0,
+							"p95": 150.0,
+							"sample_count": 500
+						},
+						"zero_asset_block_rate_standard_cards_only": 0.540503
+					},
+					"player_count": 6,
+					"profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+					"profile_id": "V071_CANDIDATE_A_FAST",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901226424,
+						"last_seed": 905178005,
+						"profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+						"profile_id": "V071_CANDIDATE_A_FAST",
+						"seed_count": 500,
+						"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+					},
+					"run_fingerprint_chain": "5e173dd5ca6848320c699f3cfc32e3f2f029d933fb372767cb5821f4af471bbe",
+					"seed_count": 500,
+					"valid": true
+				},
+				"8": {
+					"configuration_fingerprint": "74f0c943c8b1ecdcd2fc207687072b6e68ba4380ba2accf17f3e240c3e89b082",
+					"failed_balance_targets": [],
+					"match_count": 500,
+					"metrics": {
+						"asset_overflow_rate": 0.0,
+						"asset_spend_per_batch": 1.954389,
+						"facility_slot_saturation_batch": {
+							"maximum": 19.0,
+							"mean": 18.5615,
+							"median": 19.0,
+							"minimum": 18.0,
+							"p95": 19.0,
+							"sample_count": 4000
+						},
+						"first_facility_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 4000
+						},
+						"first_factory_market_chain_batch": {
+							"maximum": 2.0,
+							"mean": 1.5405,
+							"median": 2.0,
+							"minimum": 1.0,
+							"p95": 2.0,
+							"sample_count": 4000
+						},
+						"first_nonzero_asset_refresh_batch": {
+							"maximum": 2.0,
+							"mean": 2.0,
+							"median": 2.0,
+							"minimum": 2.0,
+							"p95": 2.0,
+							"sample_count": 4000
+						},
+						"first_standard_l1_affordable_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 4000
+						},
+						"first_standard_l1_played_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 4000
+						},
+						"free_starter_repeat_build_rate": 0.0,
+						"normal_purchase_to_first_draw_batches": {
+							"maximum": 7.0,
+							"mean": 1.85925,
+							"median": 2.0,
+							"minimum": 0.0,
+							"p95": 4.0,
+							"sample_count": 4000
+						},
+						"normal_purchase_to_first_play_batches": {
+							"maximum": 19.0,
+							"mean": 4.75125,
+							"median": 5.0,
+							"minimum": 1.0,
+							"p95": 8.0,
+							"sample_count": 4000
+						},
+						"opening_asset_affordable_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 4000
+						},
+						"opening_legal_target_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 4000
+						},
+						"opening_starter_card_count": {
+							"maximum": 0.0,
+							"mean": 0.0,
+							"median": 0.0,
+							"minimum": 0.0,
+							"p95": 0.0,
+							"sample_count": 4000
+						},
+						"predicted_resolution_animation_seconds": {
+							"maximum": 7.72,
+							"mean": 6.256382,
+							"median": 6.32,
+							"minimum": 2.4,
+							"p95": 7.72,
+							"sample_count": 9000
+						},
+						"resolution_p95_seconds": 7.72,
+						"solar_multiplier_application_count_per_channel": 1,
+						"standard_card_action_share": 1.0,
+						"starter_action_share_batch_1": 0.0,
+						"starter_action_share_batch_10": 0.0,
+						"starter_action_share_batch_3": 0.0,
+						"starter_action_share_batch_6": 0.0,
+						"starter_creation_after_genesis_count": 0,
+						"starter_privilege_consumed_rate": 0.0,
+						"starter_privilege_inheritance_count": 0,
+						"starter_standard_merge_rate": 0.0,
+						"starter_track_spawn_count": 0,
+						"sunlit_chain_throughput_ratio": 2.0,
+						"victory_pending_tail_seconds": {
+							"maximum": 210.0,
+							"mean": 105.18,
+							"median": 90.0,
+							"minimum": 0.0,
+							"p95": 210.0,
+							"sample_count": 500
+						},
+						"zero_asset_block_rate_standard_cards_only": 0.540247
+					},
+					"player_count": 8,
+					"profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+					"profile_id": "V071_CANDIDATE_A_FAST",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901426424,
+						"last_seed": 905378005,
+						"profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+						"profile_id": "V071_CANDIDATE_A_FAST",
+						"seed_count": 500,
+						"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+					},
+					"run_fingerprint_chain": "acf7060195a3cf0f5cc95f8d5c770bb3b77a8bf6dd4badc35213b2394338ac65",
+					"seed_count": 500,
+					"valid": true
+				}
+			},
+			"configuration_count": 4,
+			"failed_balance_target_count": 0,
+			"failed_balance_targets": [],
+			"match_count": 2000,
+			"metrics": {
+				"asset_overflow_rate": 0.0,
+				"asset_spend_per_batch": 1.954413,
+				"facility_slot_saturation_batch": {
+					"maximum": 19.0,
+					"mean": 18.565714,
+					"median": 19.0,
+					"minimum": 18.0,
+					"p95": 19.0,
+					"sample_count": 10500
+				},
+				"first_facility_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 10500
+				},
+				"first_factory_market_chain_batch": {
+					"maximum": 2.0,
+					"mean": 1.54619,
+					"median": 2.0,
+					"minimum": 1.0,
+					"p95": 2.0,
+					"sample_count": 10500
+				},
+				"first_nonzero_asset_refresh_batch": {
+					"maximum": 2.0,
+					"mean": 2.0,
+					"median": 2.0,
+					"minimum": 2.0,
+					"p95": 2.0,
+					"sample_count": 10500
+				},
+				"first_standard_l1_affordable_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 10500
+				},
+				"first_standard_l1_played_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 10500
+				},
+				"free_starter_repeat_build_rate": 0.0,
+				"normal_purchase_to_first_draw_batches": {
+					"maximum": 7.0,
+					"mean": 1.85419,
+					"median": 2.0,
+					"minimum": 0.0,
+					"p95": 4.0,
+					"sample_count": 10500
+				},
+				"normal_purchase_to_first_play_batches": {
+					"maximum": 19.0,
+					"mean": 4.785714,
+					"median": 5.0,
+					"minimum": 1.0,
+					"p95": 8.0,
+					"sample_count": 10500
+				},
+				"opening_asset_affordable_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 10500
+				},
+				"opening_legal_target_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 10500
+				},
+				"opening_starter_card_count": {
+					"maximum": 0.0,
+					"mean": 0.0,
+					"median": 0.0,
+					"minimum": 0.0,
+					"p95": 0.0,
+					"sample_count": 10500
+				},
+				"predicted_resolution_animation_seconds": {
+					"maximum": 7.72,
+					"mean": 4.968393,
+					"median": 5.4,
+					"minimum": 0.0,
+					"p95": 7.72,
+					"sample_count": 36000
+				},
+				"resolution_p95_seconds": 7.72,
+				"solar_multiplier_application_count_per_channel": 1,
+				"standard_card_action_share": 1.0,
+				"starter_action_share_batch_1": 0.0,
+				"starter_action_share_batch_10": 0.0,
+				"starter_action_share_batch_3": 0.0,
+				"starter_action_share_batch_6": 0.0,
+				"starter_creation_after_genesis_count": 0,
+				"starter_privilege_consumed_rate": 0.0,
+				"starter_privilege_inheritance_count": 0,
+				"starter_standard_merge_rate": 0.0,
+				"starter_track_spawn_count": 0,
+				"sunlit_chain_throughput_ratio": 2.0,
+				"victory_pending_tail_seconds": {
+					"maximum": 210.0,
+					"mean": 62.145,
+					"median": 60.0,
+					"minimum": 0.0,
+					"p95": 150.0,
+					"sample_count": 2000
+				},
+				"zero_asset_block_rate_standard_cards_only": 0.540261
+			},
+			"player_counts": [
+				3,
+				4,
+				6,
+				8
+			],
+			"profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+			"profile_id": "V071_CANDIDATE_A_FAST",
+			"profile_result_fingerprint": "eb586ba70dd22bce032a8d13e8057939b526227ff58d5cefe4434fbbf1997d04",
+			"profile_status": "historical_v071_comparison",
+			"seed_count_per_configuration": 500
+		},
+		{
+			"by_player_count": {
+				"3": {
+					"configuration_fingerprint": "c1e8c46a86bf51832246abe84dc2edc6d3952d219baa162e925d8a363a56b7a7",
+					"failed_balance_targets": [
+						"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+						"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+					],
+					"match_count": 500,
+					"metrics": {
+						"asset_overflow_rate": 0.003413,
+						"asset_spend_per_batch": 0.432259,
+						"facility_slot_saturation_batch": {
+							"maximum": 17.0,
+							"mean": 12.069333,
+							"median": 12.0,
+							"minimum": 12.0,
+							"p95": 12.0,
+							"sample_count": 1500
+						},
+						"first_facility_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 1500
+						},
+						"first_factory_market_chain_batch": {
+							"maximum": 2.0,
+							"mean": 1.556667,
+							"median": 2.0,
+							"minimum": 1.0,
+							"p95": 2.0,
+							"sample_count": 1500
+						},
+						"first_nonzero_asset_refresh_batch": {
+							"maximum": 2.0,
+							"mean": 2.0,
+							"median": 2.0,
+							"minimum": 2.0,
+							"p95": 2.0,
+							"sample_count": 1500
+						},
+						"first_standard_l1_affordable_batch": {
+							"maximum": 9.0,
+							"mean": 4.941333,
+							"median": 5.0,
+							"minimum": 4.0,
+							"p95": 7.0,
+							"sample_count": 1500
+						},
+						"first_standard_l1_played_batch": {
+							"maximum": 9.0,
+							"mean": 4.941333,
+							"median": 5.0,
+							"minimum": 4.0,
+							"p95": 7.0,
+							"sample_count": 1500
+						},
+						"free_starter_repeat_build_rate": 0.575884,
+						"normal_purchase_to_first_draw_batches": {
+							"maximum": 5.0,
+							"mean": 1.872,
+							"median": 2.0,
+							"minimum": 0.0,
+							"p95": 4.0,
+							"sample_count": 1500
+						},
+						"normal_purchase_to_first_play_batches": {
+							"maximum": 6.0,
+							"mean": 2.985333,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 5.0,
+							"sample_count": 1500
+						},
+						"opening_asset_affordable_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 1500
+						},
+						"opening_legal_target_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 1500
+						},
+						"opening_starter_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 1500
+						},
+						"predicted_resolution_animation_seconds": {
+							"maximum": 5.4,
+							"mean": 3.6,
+							"median": 5.4,
+							"minimum": 0.0,
+							"p95": 5.4,
+							"sample_count": 9000
+						},
+						"resolution_p95_seconds": 5.4,
+						"solar_multiplier_application_count_per_channel": 1,
+						"standard_card_action_share": 0.215667,
+						"starter_action_share_batch_1": 1.0,
+						"starter_action_share_batch_10": 0.622663,
+						"starter_action_share_batch_3": 1.0,
+						"starter_action_share_batch_6": 0.771778,
+						"starter_creation_after_genesis_count": 0,
+						"starter_privilege_consumed_rate": 0.078167,
+						"starter_privilege_inheritance_count": 0,
+						"starter_standard_merge_rate": 0.61819,
+						"starter_track_spawn_count": 0,
+						"sunlit_chain_throughput_ratio": 2.0,
+						"victory_pending_tail_seconds": {
+							"maximum": 60.0,
+							"mean": 32.94,
+							"median": 30.0,
+							"minimum": 0.0,
+							"p95": 60.0,
+							"sample_count": 500
+						},
+						"zero_asset_block_rate_standard_cards_only": 0.043371
+					},
+					"player_count": 3,
+					"profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+					"profile_id": "V072_STARTER_FREE_FAST",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 900926424,
+						"last_seed": 904878005,
+						"profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+						"profile_id": "V072_STARTER_FREE_FAST",
+						"seed_count": 500,
+						"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+					},
+					"run_fingerprint_chain": "ec56d996009e58fe8f858614ec5826158b306ff4ac06aa4f8f6d3be7b928bf40",
+					"seed_count": 500,
+					"valid": true
+				},
+				"4": {
+					"configuration_fingerprint": "25304d52ee99584aa06abf02438e06d6643218459f7851491d9303d26e2b4d37",
+					"failed_balance_targets": [
+						"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+						"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+					],
+					"match_count": 500,
+					"metrics": {
+						"asset_overflow_rate": 0.00328,
+						"asset_spend_per_batch": 0.432639,
+						"facility_slot_saturation_batch": {
+							"maximum": 17.0,
+							"mean": 12.0585,
+							"median": 12.0,
+							"minimum": 12.0,
+							"p95": 12.0,
+							"sample_count": 2000
+						},
+						"first_facility_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 2000
+						},
+						"first_factory_market_chain_batch": {
+							"maximum": 2.0,
+							"mean": 1.535,
+							"median": 2.0,
+							"minimum": 1.0,
+							"p95": 2.0,
+							"sample_count": 2000
+						},
+						"first_nonzero_asset_refresh_batch": {
+							"maximum": 2.0,
+							"mean": 2.0,
+							"median": 2.0,
+							"minimum": 2.0,
+							"p95": 2.0,
+							"sample_count": 2000
+						},
+						"first_standard_l1_affordable_batch": {
+							"maximum": 11.0,
+							"mean": 4.9225,
+							"median": 5.0,
+							"minimum": 4.0,
+							"p95": 7.0,
+							"sample_count": 2000
+						},
+						"first_standard_l1_played_batch": {
+							"maximum": 11.0,
+							"mean": 4.9225,
+							"median": 5.0,
+							"minimum": 4.0,
+							"p95": 7.0,
+							"sample_count": 2000
+						},
+						"free_starter_repeat_build_rate": 0.575724,
+						"normal_purchase_to_first_draw_batches": {
+							"maximum": 5.0,
+							"mean": 1.8275,
+							"median": 2.0,
+							"minimum": 0.0,
+							"p95": 4.0,
+							"sample_count": 2000
+						},
+						"normal_purchase_to_first_play_batches": {
+							"maximum": 6.0,
+							"mean": 2.932,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 5.0,
+							"sample_count": 2000
+						},
+						"opening_asset_affordable_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 2000
+						},
+						"opening_legal_target_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 2000
+						},
+						"opening_starter_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 2000
+						},
+						"predicted_resolution_animation_seconds": {
+							"maximum": 7.2,
+							"mean": 4.8,
+							"median": 7.2,
+							"minimum": 0.0,
+							"p95": 7.2,
+							"sample_count": 9000
+						},
+						"resolution_p95_seconds": 7.2,
+						"solar_multiplier_application_count_per_channel": 1,
+						"standard_card_action_share": 0.216083,
+						"starter_action_share_batch_1": 1.0,
+						"starter_action_share_batch_10": 0.630841,
+						"starter_action_share_batch_3": 1.0,
+						"starter_action_share_batch_6": 0.774833,
+						"starter_creation_after_genesis_count": 0,
+						"starter_privilege_consumed_rate": 0.079583,
+						"starter_privilege_inheritance_count": 0,
+						"starter_standard_merge_rate": 0.62891,
+						"starter_track_spawn_count": 0,
+						"sunlit_chain_throughput_ratio": 2.0,
+						"victory_pending_tail_seconds": {
+							"maximum": 90.0,
+							"mean": 43.02,
+							"median": 30.0,
+							"minimum": 0.0,
+							"p95": 90.0,
+							"sample_count": 500
+						},
+						"zero_asset_block_rate_standard_cards_only": 0.040459
+					},
+					"player_count": 4,
+					"profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+					"profile_id": "V072_STARTER_FREE_FAST",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901026424,
+						"last_seed": 904978005,
+						"profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+						"profile_id": "V072_STARTER_FREE_FAST",
+						"seed_count": 500,
+						"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+					},
+					"run_fingerprint_chain": "d851d99c0c40ebd6971f7dcafe0f06d11f8c8a0d6fca0dee3282671883478588",
+					"seed_count": 500,
+					"valid": true
+				},
+				"6": {
+					"configuration_fingerprint": "fd6a998e7b2594c53e3d15aa8a6df674baf121cd16b4ebb75aadf7edd6736f87",
+					"failed_balance_targets": [
+						"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+						"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+					],
+					"match_count": 500,
+					"metrics": {
+						"asset_overflow_rate": 0.003453,
+						"asset_spend_per_batch": 0.43437,
+						"facility_slot_saturation_batch": {
+							"maximum": 19.0,
+							"mean": 12.072333,
+							"median": 12.0,
+							"minimum": 12.0,
+							"p95": 13.0,
+							"sample_count": 3000
+						},
+						"first_facility_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 3000
+						},
+						"first_factory_market_chain_batch": {
+							"maximum": 2.0,
+							"mean": 1.556,
+							"median": 2.0,
+							"minimum": 1.0,
+							"p95": 2.0,
+							"sample_count": 3000
+						},
+						"first_nonzero_asset_refresh_batch": {
+							"maximum": 2.0,
+							"mean": 2.0,
+							"median": 2.0,
+							"minimum": 2.0,
+							"p95": 2.0,
+							"sample_count": 3000
+						},
+						"first_standard_l1_affordable_batch": {
+							"maximum": 11.0,
+							"mean": 4.937667,
+							"median": 5.0,
+							"minimum": 4.0,
+							"p95": 7.0,
+							"sample_count": 3000
+						},
+						"first_standard_l1_played_batch": {
+							"maximum": 11.0,
+							"mean": 4.937667,
+							"median": 5.0,
+							"minimum": 4.0,
+							"p95": 7.0,
+							"sample_count": 3000
+						},
+						"free_starter_repeat_build_rate": 0.575378,
+						"normal_purchase_to_first_draw_batches": {
+							"maximum": 5.0,
+							"mean": 1.840667,
+							"median": 2.0,
+							"minimum": 0.0,
+							"p95": 4.0,
+							"sample_count": 3000
+						},
+						"normal_purchase_to_first_play_batches": {
+							"maximum": 6.0,
+							"mean": 2.963667,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 5.0,
+							"sample_count": 3000
+						},
+						"opening_asset_affordable_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 3000
+						},
+						"opening_legal_target_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 3000
+						},
+						"opening_starter_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 3000
+						},
+						"predicted_resolution_animation_seconds": {
+							"maximum": 6.04,
+							"mean": 4.035458,
+							"median": 6.04,
+							"minimum": 0.0,
+							"p95": 6.04,
+							"sample_count": 9000
+						},
+						"resolution_p95_seconds": 6.04,
+						"solar_multiplier_application_count_per_channel": 1,
+						"standard_card_action_share": 0.216893,
+						"starter_action_share_batch_1": 1.0,
+						"starter_action_share_batch_10": 0.640472,
+						"starter_action_share_batch_3": 1.0,
+						"starter_action_share_batch_6": 0.771889,
+						"starter_creation_after_genesis_count": 0,
+						"starter_privilege_consumed_rate": 0.077917,
+						"starter_privilege_inheritance_count": 0,
+						"starter_standard_merge_rate": 0.621538,
+						"starter_track_spawn_count": 0,
+						"sunlit_chain_throughput_ratio": 2.0,
+						"victory_pending_tail_seconds": {
+							"maximum": 150.0,
+							"mean": 67.44,
+							"median": 60.0,
+							"minimum": 0.0,
+							"p95": 150.0,
+							"sample_count": 500
+						},
+						"zero_asset_block_rate_standard_cards_only": 0.043333
+					},
+					"player_count": 6,
+					"profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+					"profile_id": "V072_STARTER_FREE_FAST",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901226424,
+						"last_seed": 905178005,
+						"profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+						"profile_id": "V072_STARTER_FREE_FAST",
+						"seed_count": 500,
+						"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+					},
+					"run_fingerprint_chain": "bc58b9091ea05dd2910811c0834a69dd887d91d6f1fd6d547d04d5f726f57a2f",
+					"seed_count": 500,
+					"valid": true
+				},
+				"8": {
+					"configuration_fingerprint": "225d57ddc537477c16d0dbbbaf3462bef731c43039e6879ca0c4ac62bc662dac",
+					"failed_balance_targets": [
+						"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+						"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+					],
+					"match_count": 500,
+					"metrics": {
+						"asset_overflow_rate": 0.00312,
+						"asset_spend_per_batch": 0.433181,
+						"facility_slot_saturation_batch": {
+							"maximum": 17.0,
+							"mean": 12.0695,
+							"median": 12.0,
+							"minimum": 12.0,
+							"p95": 13.0,
+							"sample_count": 4000
+						},
+						"first_facility_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 4000
+						},
+						"first_factory_market_chain_batch": {
+							"maximum": 2.0,
+							"mean": 1.5405,
+							"median": 2.0,
+							"minimum": 1.0,
+							"p95": 2.0,
+							"sample_count": 4000
+						},
+						"first_nonzero_asset_refresh_batch": {
+							"maximum": 2.0,
+							"mean": 2.0,
+							"median": 2.0,
+							"minimum": 2.0,
+							"p95": 2.0,
+							"sample_count": 4000
+						},
+						"first_standard_l1_affordable_batch": {
+							"maximum": 12.0,
+							"mean": 4.922,
+							"median": 5.0,
+							"minimum": 4.0,
+							"p95": 7.0,
+							"sample_count": 4000
+						},
+						"first_standard_l1_played_batch": {
+							"maximum": 12.0,
+							"mean": 4.922,
+							"median": 5.0,
+							"minimum": 4.0,
+							"p95": 7.0,
+							"sample_count": 4000
+						},
+						"free_starter_repeat_build_rate": 0.575542,
+						"normal_purchase_to_first_draw_batches": {
+							"maximum": 5.0,
+							"mean": 1.84575,
+							"median": 2.0,
+							"minimum": 0.0,
+							"p95": 4.0,
+							"sample_count": 4000
+						},
+						"normal_purchase_to_first_play_batches": {
+							"maximum": 6.0,
+							"mean": 2.9625,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 5.0,
+							"sample_count": 4000
+						},
+						"opening_asset_affordable_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 4000
+						},
+						"opening_legal_target_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 4000
+						},
+						"opening_starter_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 4000
+						},
+						"predicted_resolution_animation_seconds": {
+							"maximum": 7.72,
+							"mean": 5.158542,
+							"median": 7.72,
+							"minimum": 0.0,
+							"p95": 7.72,
+							"sample_count": 9000
+						},
+						"resolution_p95_seconds": 7.72,
+						"solar_multiplier_application_count_per_channel": 1,
+						"standard_card_action_share": 0.216403,
+						"starter_action_share_batch_1": 1.0,
+						"starter_action_share_batch_10": 0.635324,
+						"starter_action_share_batch_3": 1.0,
+						"starter_action_share_batch_6": 0.771667,
+						"starter_creation_after_genesis_count": 0,
+						"starter_privilege_consumed_rate": 0.078,
+						"starter_privilege_inheritance_count": 0,
+						"starter_standard_merge_rate": 0.61823,
+						"starter_track_spawn_count": 0,
+						"sunlit_chain_throughput_ratio": 2.0,
+						"victory_pending_tail_seconds": {
+							"maximum": 210.0,
+							"mean": 105.18,
+							"median": 90.0,
+							"minimum": 0.0,
+							"p95": 210.0,
+							"sample_count": 500
+						},
+						"zero_asset_block_rate_standard_cards_only": 0.041435
+					},
+					"player_count": 8,
+					"profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+					"profile_id": "V072_STARTER_FREE_FAST",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901426424,
+						"last_seed": 905378005,
+						"profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+						"profile_id": "V072_STARTER_FREE_FAST",
+						"seed_count": 500,
+						"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+					},
+					"run_fingerprint_chain": "c7e6e7e831c9ba336b0ecb7082459fdacd88e8bbef688a452f3947c6756225d9",
+					"seed_count": 500,
+					"valid": true
+				}
+			},
+			"configuration_count": 4,
+			"failed_balance_target_count": 2,
+			"failed_balance_targets": [
+				"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+				"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+			],
+			"match_count": 2000,
+			"metrics": {
+				"asset_overflow_rate": 0.003288,
+				"asset_spend_per_batch": 0.433286,
+				"facility_slot_saturation_batch": {
+					"maximum": 19.0,
+					"mean": 12.06819,
+					"median": 12.0,
+					"minimum": 12.0,
+					"p95": 13.0,
+					"sample_count": 10500
+				},
+				"first_facility_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 10500
+				},
+				"first_factory_market_chain_batch": {
+					"maximum": 2.0,
+					"mean": 1.54619,
+					"median": 2.0,
+					"minimum": 1.0,
+					"p95": 2.0,
+					"sample_count": 10500
+				},
+				"first_nonzero_asset_refresh_batch": {
+					"maximum": 2.0,
+					"mean": 2.0,
+					"median": 2.0,
+					"minimum": 2.0,
+					"p95": 2.0,
+					"sample_count": 10500
+				},
+				"first_standard_l1_affordable_batch": {
+					"maximum": 12.0,
+					"mean": 4.929333,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 10500
+				},
+				"first_standard_l1_played_batch": {
+					"maximum": 12.0,
+					"mean": 4.929333,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 10500
+				},
+				"free_starter_repeat_build_rate": 0.575579,
+				"normal_purchase_to_first_draw_batches": {
+					"maximum": 5.0,
+					"mean": 1.844571,
+					"median": 2.0,
+					"minimum": 0.0,
+					"p95": 4.0,
+					"sample_count": 10500
+				},
+				"normal_purchase_to_first_play_batches": {
+					"maximum": 6.0,
+					"mean": 2.960286,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 5.0,
+					"sample_count": 10500
+				},
+				"opening_asset_affordable_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 10500
+				},
+				"opening_legal_target_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 10500
+				},
+				"opening_starter_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 10500
+				},
+				"predicted_resolution_animation_seconds": {
+					"maximum": 7.72,
+					"mean": 4.3985,
+					"median": 5.4,
+					"minimum": 0.0,
+					"p95": 7.72,
+					"sample_count": 36000
+				},
+				"resolution_p95_seconds": 7.72,
+				"solar_multiplier_application_count_per_channel": 1,
+				"standard_card_action_share": 0.216377,
+				"starter_action_share_batch_1": 1.0,
+				"starter_action_share_batch_10": 0.634132,
+				"starter_action_share_batch_3": 1.0,
+				"starter_action_share_batch_6": 0.772349,
+				"starter_creation_after_genesis_count": 0,
+				"starter_privilege_consumed_rate": 0.078302,
+				"starter_privilege_inheritance_count": 0,
+				"starter_standard_merge_rate": 0.621206,
+				"starter_track_spawn_count": 0,
+				"sunlit_chain_throughput_ratio": 2.0,
+				"victory_pending_tail_seconds": {
+					"maximum": 210.0,
+					"mean": 62.145,
+					"median": 60.0,
+					"minimum": 0.0,
+					"p95": 150.0,
+					"sample_count": 2000
+				},
+				"zero_asset_block_rate_standard_cards_only": 0.04207
+			},
+			"player_counts": [
+				3,
+				4,
+				6,
+				8
+			],
+			"profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+			"profile_id": "V072_STARTER_FREE_FAST",
+			"profile_result_fingerprint": "4d26ee12182f7185438d9646d36859bb3c6d54ad4ba0dfd715274512286bb845",
+			"profile_status": "approved_first_human_test_sample",
+			"seed_count_per_configuration": 500
+		},
+		{
+			"by_player_count": {
+				"3": {
+					"configuration_fingerprint": "93a550b49204cda43ca0eaab342842b496a5e699d530ea904b71c39a1ca9b29d",
+					"failed_balance_targets": [
+						"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+						"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+					],
+					"match_count": 500,
+					"metrics": {
+						"asset_overflow_rate": 0.00384,
+						"asset_spend_per_batch": 0.430778,
+						"facility_slot_saturation_batch": {
+							"maximum": 19.0,
+							"mean": 12.084,
+							"median": 12.0,
+							"minimum": 12.0,
+							"p95": 13.0,
+							"sample_count": 1500
+						},
+						"first_facility_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 1500
+						},
+						"first_factory_market_chain_batch": {
+							"maximum": 2.0,
+							"mean": 1.556667,
+							"median": 2.0,
+							"minimum": 1.0,
+							"p95": 2.0,
+							"sample_count": 1500
+						},
+						"first_nonzero_asset_refresh_batch": {
+							"maximum": 2.0,
+							"mean": 2.0,
+							"median": 2.0,
+							"minimum": 2.0,
+							"p95": 2.0,
+							"sample_count": 1500
+						},
+						"first_standard_l1_affordable_batch": {
+							"maximum": 9.0,
+							"mean": 4.941333,
+							"median": 5.0,
+							"minimum": 4.0,
+							"p95": 7.0,
+							"sample_count": 1500
+						},
+						"first_standard_l1_played_batch": {
+							"maximum": 9.0,
+							"mean": 4.941333,
+							"median": 5.0,
+							"minimum": 4.0,
+							"p95": 7.0,
+							"sample_count": 1500
+						},
+						"free_starter_repeat_build_rate": 0.576014,
+						"normal_purchase_to_first_draw_batches": {
+							"maximum": 5.0,
+							"mean": 1.872,
+							"median": 2.0,
+							"minimum": 0.0,
+							"p95": 4.0,
+							"sample_count": 1500
+						},
+						"normal_purchase_to_first_play_batches": {
+							"maximum": 6.0,
+							"mean": 2.985333,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 5.0,
+							"sample_count": 1500
+						},
+						"opening_asset_affordable_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 1500
+						},
+						"opening_legal_target_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 1500
+						},
+						"opening_starter_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 1500
+						},
+						"predicted_resolution_animation_seconds": {
+							"maximum": 5.4,
+							"mean": 3.599867,
+							"median": 5.4,
+							"minimum": 0.0,
+							"p95": 5.4,
+							"sample_count": 9000
+						},
+						"resolution_p95_seconds": 5.4,
+						"solar_multiplier_application_count_per_channel": 1,
+						"standard_card_action_share": 0.215397,
+						"starter_action_share_batch_1": 1.0,
+						"starter_action_share_batch_10": 0.622856,
+						"starter_action_share_batch_3": 1.0,
+						"starter_action_share_batch_6": 0.771778,
+						"starter_creation_after_genesis_count": 0,
+						"starter_privilege_consumed_rate": 0.0,
+						"starter_privilege_inheritance_count": 0,
+						"starter_standard_merge_rate": 0.0,
+						"starter_track_spawn_count": 0,
+						"sunlit_chain_throughput_ratio": 2.0,
+						"victory_pending_tail_seconds": {
+							"maximum": 60.0,
+							"mean": 32.94,
+							"median": 30.0,
+							"minimum": 0.0,
+							"p95": 60.0,
+							"sample_count": 500
+						},
+						"zero_asset_block_rate_standard_cards_only": 0.042795
+					},
+					"player_count": 3,
+					"profile_fingerprint": "466c86f0a930337c92d391a1b873b714a259ed31b8bd94fde49ad10a803fe579",
+					"profile_id": "V072_STARTER_FREE_NO_CROSS_MERGE",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 900926424,
+						"last_seed": 904878005,
+						"profile_fingerprint": "466c86f0a930337c92d391a1b873b714a259ed31b8bd94fde49ad10a803fe579",
+						"profile_id": "V072_STARTER_FREE_NO_CROSS_MERGE",
+						"seed_count": 500,
+						"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+					},
+					"run_fingerprint_chain": "77e7bd009a8c847979530ebfe8afceaf95ca92d084ac2225df1ca8c4a73e0a16",
+					"seed_count": 500,
+					"valid": true
+				},
+				"4": {
+					"configuration_fingerprint": "ca38a2d685d6bbcbcf1c970d705caf27ed7c1b15cf6c8741ea66c7b77f1a65d1",
+					"failed_balance_targets": [
+						"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+						"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+					],
+					"match_count": 500,
+					"metrics": {
+						"asset_overflow_rate": 0.00378,
+						"asset_spend_per_batch": 0.431917,
+						"facility_slot_saturation_batch": {
+							"maximum": 17.0,
+							"mean": 12.0775,
+							"median": 12.0,
+							"minimum": 12.0,
+							"p95": 13.0,
+							"sample_count": 2000
+						},
+						"first_facility_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 2000
+						},
+						"first_factory_market_chain_batch": {
+							"maximum": 2.0,
+							"mean": 1.535,
+							"median": 2.0,
+							"minimum": 1.0,
+							"p95": 2.0,
+							"sample_count": 2000
+						},
+						"first_nonzero_asset_refresh_batch": {
+							"maximum": 2.0,
+							"mean": 2.0,
+							"median": 2.0,
+							"minimum": 2.0,
+							"p95": 2.0,
+							"sample_count": 2000
+						},
+						"first_standard_l1_affordable_batch": {
+							"maximum": 11.0,
+							"mean": 4.9225,
+							"median": 5.0,
+							"minimum": 4.0,
+							"p95": 7.0,
+							"sample_count": 2000
+						},
+						"first_standard_l1_played_batch": {
+							"maximum": 11.0,
+							"mean": 4.9225,
+							"median": 5.0,
+							"minimum": 4.0,
+							"p95": 7.0,
+							"sample_count": 2000
+						},
+						"free_starter_repeat_build_rate": 0.575791,
+						"normal_purchase_to_first_draw_batches": {
+							"maximum": 5.0,
+							"mean": 1.8275,
+							"median": 2.0,
+							"minimum": 0.0,
+							"p95": 4.0,
+							"sample_count": 2000
+						},
+						"normal_purchase_to_first_play_batches": {
+							"maximum": 6.0,
+							"mean": 2.932,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 5.0,
+							"sample_count": 2000
+						},
+						"opening_asset_affordable_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 2000
+						},
+						"opening_legal_target_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 2000
+						},
+						"opening_starter_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 2000
+						},
+						"predicted_resolution_animation_seconds": {
+							"maximum": 7.2,
+							"mean": 4.8,
+							"median": 7.2,
+							"minimum": 0.0,
+							"p95": 7.2,
+							"sample_count": 9000
+						},
+						"resolution_p95_seconds": 7.2,
+						"solar_multiplier_application_count_per_channel": 1,
+						"standard_card_action_share": 0.215958,
+						"starter_action_share_batch_1": 1.0,
+						"starter_action_share_batch_10": 0.631842,
+						"starter_action_share_batch_3": 1.0,
+						"starter_action_share_batch_6": 0.774833,
+						"starter_creation_after_genesis_count": 0,
+						"starter_privilege_consumed_rate": 0.0,
+						"starter_privilege_inheritance_count": 0,
+						"starter_standard_merge_rate": 0.0,
+						"starter_track_spawn_count": 0,
+						"sunlit_chain_throughput_ratio": 2.0,
+						"victory_pending_tail_seconds": {
+							"maximum": 90.0,
+							"mean": 43.02,
+							"median": 30.0,
+							"minimum": 0.0,
+							"p95": 90.0,
+							"sample_count": 500
+						},
+						"zero_asset_block_rate_standard_cards_only": 0.040304
+					},
+					"player_count": 4,
+					"profile_fingerprint": "466c86f0a930337c92d391a1b873b714a259ed31b8bd94fde49ad10a803fe579",
+					"profile_id": "V072_STARTER_FREE_NO_CROSS_MERGE",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901026424,
+						"last_seed": 904978005,
+						"profile_fingerprint": "466c86f0a930337c92d391a1b873b714a259ed31b8bd94fde49ad10a803fe579",
+						"profile_id": "V072_STARTER_FREE_NO_CROSS_MERGE",
+						"seed_count": 500,
+						"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+					},
+					"run_fingerprint_chain": "ce828bd2d72ba38c65b5201bef386ba172a6785d9f3f976469974c2aa1c9f387",
+					"seed_count": 500,
+					"valid": true
+				},
+				"6": {
+					"configuration_fingerprint": "2bb827ccbe2c022fc35a6464ffd0da9d1fc426804a6e49eea497aa09a3156cb0",
+					"failed_balance_targets": [
+						"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+						"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+					],
+					"match_count": 500,
+					"metrics": {
+						"asset_overflow_rate": 0.003653,
+						"asset_spend_per_batch": 0.433537,
+						"facility_slot_saturation_batch": {
+							"maximum": 19.0,
+							"mean": 12.093667,
+							"median": 12.0,
+							"minimum": 12.0,
+							"p95": 13.0,
+							"sample_count": 3000
+						},
+						"first_facility_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 3000
+						},
+						"first_factory_market_chain_batch": {
+							"maximum": 2.0,
+							"mean": 1.556,
+							"median": 2.0,
+							"minimum": 1.0,
+							"p95": 2.0,
+							"sample_count": 3000
+						},
+						"first_nonzero_asset_refresh_batch": {
+							"maximum": 2.0,
+							"mean": 2.0,
+							"median": 2.0,
+							"minimum": 2.0,
+							"p95": 2.0,
+							"sample_count": 3000
+						},
+						"first_standard_l1_affordable_batch": {
+							"maximum": 11.0,
+							"mean": 4.937667,
+							"median": 5.0,
+							"minimum": 4.0,
+							"p95": 7.0,
+							"sample_count": 3000
+						},
+						"first_standard_l1_played_batch": {
+							"maximum": 11.0,
+							"mean": 4.937667,
+							"median": 5.0,
+							"minimum": 4.0,
+							"p95": 7.0,
+							"sample_count": 3000
+						},
+						"free_starter_repeat_build_rate": 0.575443,
+						"normal_purchase_to_first_draw_batches": {
+							"maximum": 5.0,
+							"mean": 1.840667,
+							"median": 2.0,
+							"minimum": 0.0,
+							"p95": 4.0,
+							"sample_count": 3000
+						},
+						"normal_purchase_to_first_play_batches": {
+							"maximum": 6.0,
+							"mean": 2.963667,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 5.0,
+							"sample_count": 3000
+						},
+						"opening_asset_affordable_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 3000
+						},
+						"opening_legal_target_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 3000
+						},
+						"opening_starter_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 3000
+						},
+						"predicted_resolution_animation_seconds": {
+							"maximum": 6.04,
+							"mean": 4.037556,
+							"median": 6.04,
+							"minimum": 0.0,
+							"p95": 6.04,
+							"sample_count": 9000
+						},
+						"resolution_p95_seconds": 6.04,
+						"solar_multiplier_application_count_per_channel": 1,
+						"standard_card_action_share": 0.216773,
+						"starter_action_share_batch_1": 1.0,
+						"starter_action_share_batch_10": 0.640606,
+						"starter_action_share_batch_3": 1.0,
+						"starter_action_share_batch_6": 0.772111,
+						"starter_creation_after_genesis_count": 0,
+						"starter_privilege_consumed_rate": 0.0,
+						"starter_privilege_inheritance_count": 0,
+						"starter_standard_merge_rate": 0.0,
+						"starter_track_spawn_count": 0,
+						"sunlit_chain_throughput_ratio": 2.0,
+						"victory_pending_tail_seconds": {
+							"maximum": 150.0,
+							"mean": 67.44,
+							"median": 60.0,
+							"minimum": 0.0,
+							"p95": 150.0,
+							"sample_count": 500
+						},
+						"zero_asset_block_rate_standard_cards_only": 0.043199
+					},
+					"player_count": 6,
+					"profile_fingerprint": "466c86f0a930337c92d391a1b873b714a259ed31b8bd94fde49ad10a803fe579",
+					"profile_id": "V072_STARTER_FREE_NO_CROSS_MERGE",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901226424,
+						"last_seed": 905178005,
+						"profile_fingerprint": "466c86f0a930337c92d391a1b873b714a259ed31b8bd94fde49ad10a803fe579",
+						"profile_id": "V072_STARTER_FREE_NO_CROSS_MERGE",
+						"seed_count": 500,
+						"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+					},
+					"run_fingerprint_chain": "0a8cc88478ed44952e69158206e6c93d4fe9bca0edaa26426d1a886945650799",
+					"seed_count": 500,
+					"valid": true
+				},
+				"8": {
+					"configuration_fingerprint": "61a33d8a755d67b3bf32fed7ba2fdfa90e2e0e6a91da1a3da6c9804b63ebde40",
+					"failed_balance_targets": [
+						"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+						"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+					],
+					"match_count": 500,
+					"metrics": {
+						"asset_overflow_rate": 0.00373,
+						"asset_spend_per_batch": 0.432333,
+						"facility_slot_saturation_batch": {
+							"maximum": 18.0,
+							"mean": 12.098,
+							"median": 12.0,
+							"minimum": 12.0,
+							"p95": 13.0,
+							"sample_count": 4000
+						},
+						"first_facility_batch": {
+							"maximum": 1.0,
+							"mean": 1.0,
+							"median": 1.0,
+							"minimum": 1.0,
+							"p95": 1.0,
+							"sample_count": 4000
+						},
+						"first_factory_market_chain_batch": {
+							"maximum": 2.0,
+							"mean": 1.5405,
+							"median": 2.0,
+							"minimum": 1.0,
+							"p95": 2.0,
+							"sample_count": 4000
+						},
+						"first_nonzero_asset_refresh_batch": {
+							"maximum": 2.0,
+							"mean": 2.0,
+							"median": 2.0,
+							"minimum": 2.0,
+							"p95": 2.0,
+							"sample_count": 4000
+						},
+						"first_standard_l1_affordable_batch": {
+							"maximum": 12.0,
+							"mean": 4.922,
+							"median": 5.0,
+							"minimum": 4.0,
+							"p95": 7.0,
+							"sample_count": 4000
+						},
+						"first_standard_l1_played_batch": {
+							"maximum": 12.0,
+							"mean": 4.922,
+							"median": 5.0,
+							"minimum": 4.0,
+							"p95": 7.0,
+							"sample_count": 4000
+						},
+						"free_starter_repeat_build_rate": 0.575661,
+						"normal_purchase_to_first_draw_batches": {
+							"maximum": 5.0,
+							"mean": 1.84575,
+							"median": 2.0,
+							"minimum": 0.0,
+							"p95": 4.0,
+							"sample_count": 4000
+						},
+						"normal_purchase_to_first_play_batches": {
+							"maximum": 6.0,
+							"mean": 2.9625,
+							"median": 3.0,
+							"minimum": 1.0,
+							"p95": 5.0,
+							"sample_count": 4000
+						},
+						"opening_asset_affordable_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 4000
+						},
+						"opening_legal_target_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 4000
+						},
+						"opening_starter_card_count": {
+							"maximum": 5.0,
+							"mean": 5.0,
+							"median": 5.0,
+							"minimum": 5.0,
+							"p95": 5.0,
+							"sample_count": 4000
+						},
+						"predicted_resolution_animation_seconds": {
+							"maximum": 7.72,
+							"mean": 5.162738,
+							"median": 7.72,
+							"minimum": 0.0,
+							"p95": 7.72,
+							"sample_count": 9000
+						},
+						"resolution_p95_seconds": 7.72,
+						"solar_multiplier_application_count_per_channel": 1,
+						"standard_card_action_share": 0.216167,
+						"starter_action_share_batch_1": 1.0,
+						"starter_action_share_batch_10": 0.635733,
+						"starter_action_share_batch_3": 1.0,
+						"starter_action_share_batch_6": 0.771417,
+						"starter_creation_after_genesis_count": 0,
+						"starter_privilege_consumed_rate": 0.0,
+						"starter_privilege_inheritance_count": 0,
+						"starter_standard_merge_rate": 0.0,
+						"starter_track_spawn_count": 0,
+						"sunlit_chain_throughput_ratio": 2.0,
+						"victory_pending_tail_seconds": {
+							"maximum": 210.0,
+							"mean": 105.18,
+							"median": 90.0,
+							"minimum": 0.0,
+							"p95": 210.0,
+							"sample_count": 500
+						},
+						"zero_asset_block_rate_standard_cards_only": 0.041271
+					},
+					"player_count": 8,
+					"profile_fingerprint": "466c86f0a930337c92d391a1b873b714a259ed31b8bd94fde49ad10a803fe579",
+					"profile_id": "V072_STARTER_FREE_NO_CROSS_MERGE",
+					"reason_code": "simulation_configuration_completed",
+					"replay_identity": {
+						"first_seed": 901426424,
+						"last_seed": 905378005,
+						"profile_fingerprint": "466c86f0a930337c92d391a1b873b714a259ed31b8bd94fde49ad10a803fe579",
+						"profile_id": "V072_STARTER_FREE_NO_CROSS_MERGE",
+						"seed_count": 500,
+						"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1"
+					},
+					"run_fingerprint_chain": "6666ee8da807d386d2a20a36497754ececa657413efb8e320ae98bd414fe62a0",
+					"seed_count": 500,
+					"valid": true
+				}
+			},
+			"configuration_count": 4,
+			"failed_balance_target_count": 2,
+			"failed_balance_targets": [
+				"FIRST_STANDARD_L1_PLAY_MEDIAN_BATCH",
+				"STANDARD_CARD_ASSET_ECONOMY_TOO_SLOW"
+			],
+			"match_count": 2000,
+			"metrics": {
+				"asset_overflow_rate": 0.003733,
+				"asset_spend_per_batch": 0.432376,
+				"facility_slot_saturation_batch": {
+					"maximum": 19.0,
+					"mean": 12.090857,
+					"median": 12.0,
+					"minimum": 12.0,
+					"p95": 13.0,
+					"sample_count": 10500
+				},
+				"first_facility_batch": {
+					"maximum": 1.0,
+					"mean": 1.0,
+					"median": 1.0,
+					"minimum": 1.0,
+					"p95": 1.0,
+					"sample_count": 10500
+				},
+				"first_factory_market_chain_batch": {
+					"maximum": 2.0,
+					"mean": 1.54619,
+					"median": 2.0,
+					"minimum": 1.0,
+					"p95": 2.0,
+					"sample_count": 10500
+				},
+				"first_nonzero_asset_refresh_batch": {
+					"maximum": 2.0,
+					"mean": 2.0,
+					"median": 2.0,
+					"minimum": 2.0,
+					"p95": 2.0,
+					"sample_count": 10500
+				},
+				"first_standard_l1_affordable_batch": {
+					"maximum": 12.0,
+					"mean": 4.929333,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 10500
+				},
+				"first_standard_l1_played_batch": {
+					"maximum": 12.0,
+					"mean": 4.929333,
+					"median": 5.0,
+					"minimum": 4.0,
+					"p95": 7.0,
+					"sample_count": 10500
+				},
+				"free_starter_repeat_build_rate": 0.575674,
+				"normal_purchase_to_first_draw_batches": {
+					"maximum": 5.0,
+					"mean": 1.844571,
+					"median": 2.0,
+					"minimum": 0.0,
+					"p95": 4.0,
+					"sample_count": 10500
+				},
+				"normal_purchase_to_first_play_batches": {
+					"maximum": 6.0,
+					"mean": 2.960286,
+					"median": 3.0,
+					"minimum": 1.0,
+					"p95": 5.0,
+					"sample_count": 10500
+				},
+				"opening_asset_affordable_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 10500
+				},
+				"opening_legal_target_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 10500
+				},
+				"opening_starter_card_count": {
+					"maximum": 5.0,
+					"mean": 5.0,
+					"median": 5.0,
+					"minimum": 5.0,
+					"p95": 5.0,
+					"sample_count": 10500
+				},
+				"predicted_resolution_animation_seconds": {
+					"maximum": 7.72,
+					"mean": 4.40004,
+					"median": 5.4,
+					"minimum": 0.0,
+					"p95": 7.72,
+					"sample_count": 36000
+				},
+				"resolution_p95_seconds": 7.72,
+				"solar_multiplier_application_count_per_channel": 1,
+				"standard_card_action_share": 0.21619,
+				"starter_action_share_batch_1": 1.0,
+				"starter_action_share_batch_10": 0.634544,
+				"starter_action_share_batch_3": 1.0,
+				"starter_action_share_batch_6": 0.772317,
+				"starter_creation_after_genesis_count": 0,
+				"starter_privilege_consumed_rate": 0.0,
+				"starter_privilege_inheritance_count": 0,
+				"starter_standard_merge_rate": 0.0,
+				"starter_track_spawn_count": 0,
+				"sunlit_chain_throughput_ratio": 2.0,
+				"victory_pending_tail_seconds": {
+					"maximum": 210.0,
+					"mean": 62.145,
+					"median": 60.0,
+					"minimum": 0.0,
+					"p95": 150.0,
+					"sample_count": 2000
+				},
+				"zero_asset_block_rate_standard_cards_only": 0.041858
+			},
+			"player_counts": [
+				3,
+				4,
+				6,
+				8
+			],
+			"profile_fingerprint": "466c86f0a930337c92d391a1b873b714a259ed31b8bd94fde49ad10a803fe579",
+			"profile_id": "V072_STARTER_FREE_NO_CROSS_MERGE",
+			"profile_result_fingerprint": "7ae58c08705efe42320803fd9d17e9683f3303667fb77bedfbdcabbe7ccaaaa3",
+			"profile_status": "diagnostic_not_candidate_authority",
+			"seed_count_per_configuration": 500
+		}
+	],
+	"profiles": [
+		{
+			"color_cycle_batches": 6,
+			"commodity_card_ratio_basis_points": 4000,
+			"hand_maintenance_timeout_seconds": 8,
+			"human_fun_proven": false,
+			"human_test_required": true,
+			"initial_assets_per_color": 2,
+			"lead_tenure_batches": 1,
+			"max_asset_refresh_per_color_per_batch": 3,
+			"normal_card_ratio_basis_points": 6000,
+			"profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+			"profile_fingerprint_input": "V071_CANDIDATE_A_FAST|initial_assets_per_color=2|normal_card_ratio_basis_points=6000|commodity_card_ratio_basis_points=4000|single_color_net_intervention_cap_enabled=true|single_color_net_intervention_cap_basis_points=1200|max_asset_refresh_per_color_per_batch=3|hand_maintenance_timeout_seconds=8|lead_tenure_batches=1|color_cycle_batches=6",
+			"profile_id": "V071_CANDIDATE_A_FAST",
+			"profile_status": "historical_v071_comparison",
+			"single_color_net_intervention_cap_basis_points": 1200,
+			"single_color_net_intervention_cap_enabled": true,
+			"standard_l1_primary_asset_cost": 1,
+			"starter_bootstrap_enabled": false,
+			"starter_primary_asset_cost": 1,
+			"starter_standard_l1_merge_allowed": false,
+			"track_local_visible_slot_count": 5,
+			"track_scroll_interval_seconds": 5
+		},
+		{
+			"color_cycle_batches": 6,
+			"commodity_card_ratio_basis_points": 4000,
+			"hand_maintenance_timeout_seconds": 8,
+			"human_fun_proven": false,
+			"human_test_required": true,
+			"initial_assets_per_color": 0,
+			"lead_tenure_batches": 1,
+			"max_asset_refresh_per_color_per_batch": 3,
+			"normal_card_ratio_basis_points": 6000,
+			"profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+			"profile_fingerprint_input": "V072_STARTER_FREE_FAST|initial_assets_per_color=0|starter_primary_asset_cost=0|standard_l1_primary_asset_cost=1|normal_card_ratio_basis_points=6000|commodity_card_ratio_basis_points=4000|single_color_net_intervention_cap_enabled=true|single_color_net_intervention_cap_basis_points=1200|max_asset_refresh_per_color_per_batch=3|hand_maintenance_timeout_seconds=8|lead_tenure_batches=1|color_cycle_batches=6",
+			"profile_id": "V072_STARTER_FREE_FAST",
+			"profile_status": "approved_first_human_test_sample",
+			"single_color_net_intervention_cap_basis_points": 1200,
+			"single_color_net_intervention_cap_enabled": true,
+			"standard_l1_primary_asset_cost": 1,
+			"starter_bootstrap_enabled": true,
+			"starter_primary_asset_cost": 0,
+			"starter_standard_l1_merge_allowed": true,
+			"track_local_visible_slot_count": 5,
+			"track_scroll_interval_seconds": 5
+		},
+		{
+			"color_cycle_batches": 6,
+			"commodity_card_ratio_basis_points": 4000,
+			"hand_maintenance_timeout_seconds": 8,
+			"human_fun_proven": false,
+			"human_test_required": true,
+			"initial_assets_per_color": 0,
+			"lead_tenure_batches": 1,
+			"max_asset_refresh_per_color_per_batch": 3,
+			"normal_card_ratio_basis_points": 6000,
+			"profile_fingerprint": "466c86f0a930337c92d391a1b873b714a259ed31b8bd94fde49ad10a803fe579",
+			"profile_fingerprint_input": "V072_STARTER_FREE_NO_CROSS_MERGE|initial_assets_per_color=0|starter_primary_asset_cost=0|standard_l1_primary_asset_cost=1|normal_card_ratio_basis_points=6000|commodity_card_ratio_basis_points=4000|single_color_net_intervention_cap_enabled=true|single_color_net_intervention_cap_basis_points=1200|max_asset_refresh_per_color_per_batch=3|hand_maintenance_timeout_seconds=8|lead_tenure_batches=1|color_cycle_batches=6|starter_standard_l1_merge_allowed=false",
+			"profile_id": "V072_STARTER_FREE_NO_CROSS_MERGE",
+			"profile_status": "diagnostic_not_candidate_authority",
+			"single_color_net_intervention_cap_basis_points": 1200,
+			"single_color_net_intervention_cap_enabled": true,
+			"standard_l1_primary_asset_cost": 1,
+			"starter_bootstrap_enabled": true,
+			"starter_primary_asset_cost": 0,
+			"starter_standard_l1_merge_allowed": false,
+			"track_local_visible_slot_count": 5,
+			"track_scroll_interval_seconds": 5
+		}
+	],
+	"qualification_seed_floor": 500,
+	"qualification_seed_floor_met": true,
+	"report_fingerprint": "14b33e5ec35fcca01adcb6e5f7041b1767e1aa5400611fece8fa66718ea5654d",
+	"required_metric_keys": [
+		"opening_starter_card_count",
+		"opening_asset_affordable_card_count",
+		"opening_legal_target_count",
+		"first_facility_batch",
+		"first_factory_market_chain_batch",
+		"first_nonzero_asset_refresh_batch",
+		"first_standard_l1_affordable_batch",
+		"first_standard_l1_played_batch",
+		"starter_action_share_batch_1",
+		"starter_action_share_batch_3",
+		"starter_action_share_batch_6",
+		"starter_action_share_batch_10",
+		"standard_card_action_share",
+		"asset_spend_per_batch",
+		"asset_overflow_rate",
+		"zero_asset_block_rate_standard_cards_only",
+		"normal_purchase_to_first_draw_batches",
+		"normal_purchase_to_first_play_batches",
+		"starter_standard_merge_rate",
+		"starter_privilege_consumed_rate",
+		"facility_slot_saturation_batch",
+		"free_starter_repeat_build_rate",
+		"victory_pending_tail_seconds",
+		"resolution_p95_seconds",
+		"sunlit_chain_throughput_ratio"
+	],
+	"schema_version": 1,
+	"seed_count_per_configuration": 500,
+	"simulation_agent_policy_id": "v072.closed_bootstrap_heuristic.v1",
+	"simulation_batch_count_per_match": 18,
+	"simulation_id": "v072.detached.free_starter_bootstrap.v1",
+	"starter_shuffle_stream_id": "starter_deck_shuffle",
+	"total_match_count": 6000
+}

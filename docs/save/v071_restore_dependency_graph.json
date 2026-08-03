@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "graph_id": "space_syndicate.v071.detached_restore_graph.v1",
+  "ruleset_id": "v0.7.1",
+  "save_schema_id": "space_syndicate.v071.semantic_save.v1",
+  "status": "frozen_highest_target_detached_contract",
+  "production_runtime_connected": false,
+  "all_preflight_before_apply": true,
+  "checkpoint_before_apply": true,
+  "reverse_rollback_on_failure": true,
+  "atomic_commit_count": 1,
+  "balance_profile_preflight": {
+    "profile_id": "V071_CANDIDATE_A_FAST",
+    "profile_fingerprint": "8d8de8d406ca2f7d5123ecc951a606a0a08b56282bc3d6a40e0cd4d5ff50f19a",
+    "mismatch_policy": "fail_closed_before_rng_restore"
+  },
+  "nodes": [
+    {
+      "node_id": "envelope_identity",
+      "section_id": "envelope",
+      "depends_on": []
+    },
+    {
+      "node_id": "rng_stream_states",
+      "section_id": "rng_stream_states",
+      "depends_on": ["envelope_identity"]
+    },
+    {
+      "node_id": "personal_dbg_and_merge",
+      "section_id": "personal_dbg_and_merge",
+      "depends_on": ["envelope_identity", "rng_stream_states"]
+    },
+    {
+      "node_id": "hidden_lead_cycle",
+      "section_id": "unified_card_track_cycle.authority_state.hidden_lead_cycle_state",
+      "depends_on": ["envelope_identity", "rng_stream_states"]
+    },
+    {
+      "node_id": "unified_card_track_cycle",
+      "section_id": "unified_card_track_cycle",
+      "depends_on": [
+        "envelope_identity",
+        "rng_stream_states",
+        "personal_dbg_and_merge",
+        "hidden_lead_cycle"
+      ]
+    },
+    {
+      "node_id": "six_color_assets_and_reservations",
+      "section_id": "six_color_assets_and_reservations",
+      "depends_on": ["envelope_identity"]
+    },
+    {
+      "node_id": "card_batch_and_anonymous_resolution",
+      "section_id": "card_batch_and_anonymous_resolution",
+      "depends_on": [
+        "envelope_identity",
+        "personal_dbg_and_merge",
+        "hidden_lead_cycle",
+        "unified_card_track_cycle",
+        "six_color_assets_and_reservations"
+      ]
+    },
+    {
+      "node_id": "solar_facility_state",
+      "section_id": "solar_facility_and_macro_victory.state.solar",
+      "depends_on": ["envelope_identity"]
+    },
+    {
+      "node_id": "macro_round_victory_gate",
+      "section_id": "solar_facility_and_macro_victory.state.victory_gate",
+      "depends_on": [
+        "envelope_identity",
+        "hidden_lead_cycle",
+        "card_batch_and_anonymous_resolution",
+        "solar_facility_state"
+      ]
+    },
+    {
+      "node_id": "atomic_restore_commit",
+      "section_id": "transaction",
+      "depends_on": [
+        "rng_stream_states",
+        "personal_dbg_and_merge",
+        "hidden_lead_cycle",
+        "unified_card_track_cycle",
+        "six_color_assets_and_reservations",
+        "card_batch_and_anonymous_resolution",
+        "solar_facility_state",
+        "macro_round_victory_gate"
+      ]
+    }
+  ]
+}

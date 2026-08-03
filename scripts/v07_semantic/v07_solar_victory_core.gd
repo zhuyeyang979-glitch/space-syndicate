@@ -1,13 +1,23 @@
 class_name V07SolarVictoryCore
 extends RefCounted
 
-const SCHEMA_VERSION := 1
-const SAVE_SECTION_VERSION := 3
-const RULESET_ID := "v0.7"
+const SCHEMA_VERSION := 2
+const SAVE_SECTION_VERSION := 5
+const RULESET_ID := "v0.7.2"
 const SAVE_SECTION_ID := "solar_facility_and_macro_victory"
-const CHECKPOINT_SCHEMA_ID := "v07.solar_victory.checkpoint.v1"
-const TRUSTED_AUTHORITY_ID := "v07.victory.trusted_authority.reference"
-const TRUSTED_SOURCE_AUTHORITY_ID := "v07.victory.source_authority.reference"
+const CHECKPOINT_SCHEMA_ID := "v072.solar_victory.checkpoint.v3"
+const TRUSTED_AUTHORITY_ID := "v072.victory.trusted_authority.reference"
+const TRUSTED_SOURCE_AUTHORITY_ID := "v072.victory.source_authority.reference"
+const BALANCE_PROFILE_ID := "V072_STARTER_FREE_FAST"
+const BALANCE_PROFILE_FINGERPRINT := (
+	"b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48"
+)
+const CORE_INTERFACE_ID := "v072.solar_victory.core_authority.v3"
+const AI_INTERFACE_ID := "v072.solar_victory.ai_observation.v3"
+const PLAYER_INTERFACE_ID := "v072.solar_victory.player_projection.v3"
+const INTENT_INTERFACE_ID := "v072.solar_victory.intent.v3"
+const RECEIPT_INTERFACE_ID := "v072.solar_victory.authoritative_receipt.v3"
+const SAVE_INTERFACE_ID := "v072.solar_victory.save_state.v3"
 
 const AUTHORITY_IDENTITY_METHOD := "victory_authority_identity_v1"
 const CAPABILITY_IDENTITY_METHOD := "victory_capability_identity_v1"
@@ -31,8 +41,8 @@ const INTENT_KIND_IDS := [
 const PROOF_KIND_QUALIFICATION := "victory_qualification"
 const PROOF_KIND_BOUNDARY := "victory_boundary_revalidation"
 
-const SOLAR_FACILITY_EFFICIENCY_STATE_ID := "V07SolarFacilityEfficiencyState"
-const MACRO_ROUND_VICTORY_GATE_STATE_ID := "V07MacroRoundVictoryGateState"
+const SOLAR_FACILITY_EFFICIENCY_STATE_ID := "V072SolarFacilityEfficiencyState"
+const MACRO_ROUND_VICTORY_GATE_STATE_ID := "V072MacroRoundVictoryGateState"
 
 const SUNLIT_MULTIPLIER := 2.0
 const DARK_MULTIPLIER := 1.0
@@ -109,6 +119,8 @@ const MACRO_ROUND_VICTORY_GATE_STATE_FIELDS := [
 const STATE_FIELDS := [
 	"schema_version",
 	"ruleset_id",
+	"balance_profile_id",
+	"balance_profile_fingerprint",
 	"match_instance_id",
 	"genesis_fingerprint",
 	"genesis_solar_sunlit",
@@ -266,6 +278,26 @@ const BOUNDARY_PROOF_FIELDS := [
 ]
 
 
+static func interface_contract_v2() -> Dictionary:
+	return {
+		"schema_version": SCHEMA_VERSION,
+		"ruleset_id": RULESET_ID,
+		"save_section_version": SAVE_SECTION_VERSION,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
+		"interfaces": {
+			"core": CORE_INTERFACE_ID,
+			"ai_observation": AI_INTERFACE_ID,
+			"player_projection": PLAYER_INTERFACE_ID,
+			"intent": INTENT_INTERFACE_ID,
+			"authoritative_receipt": RECEIPT_INTERFACE_ID,
+			"save_state": SAVE_INTERFACE_ID,
+		},
+		"solar_multiplier_application_count_per_channel": 1,
+		"production_runtime_connected": false,
+	}
+
+
 static func create_state(
 	sunlit: bool = false,
 	macro_round_index: int = 1,
@@ -276,6 +308,8 @@ static func create_state(
 	var state := {
 		"schema_version": SCHEMA_VERSION,
 		"ruleset_id": RULESET_ID,
+		"balance_profile_id": BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
 		"match_instance_id": match_instance_id,
 		"genesis_fingerprint": "",
 		"genesis_solar_sunlit": sunlit,
@@ -775,7 +809,7 @@ static func ai_observation(state: Dictionary) -> Dictionary:
 	return {
 		"schema_version": SCHEMA_VERSION,
 		"ruleset_id": RULESET_ID,
-		"observation_id": "v07.solar_victory.ai_observation.v1",
+		"observation_id": AI_INTERFACE_ID,
 		"solar_phase_id": _solar_phase_id(state),
 		"facility_work_rate_multiplier": float(
 			(state.get("solar", {}) as Dictionary).get(
@@ -797,7 +831,7 @@ static func player_projection(state: Dictionary) -> Dictionary:
 	return {
 		"schema_version": SCHEMA_VERSION,
 		"ruleset_id": RULESET_ID,
-		"projection_id": "v07.solar_victory.player_projection.v1",
+		"projection_id": PLAYER_INTERFACE_ID,
 		"visibility_scope_id": "public",
 		"solar_phase_id": _solar_phase_id(state),
 		"facility_work_rate_multiplier": float(
@@ -820,6 +854,10 @@ static func is_valid_state(state: Dictionary) -> bool:
 			or int(state.get("schema_version", -1)) != SCHEMA_VERSION:
 		return false
 	if str(state.get("ruleset_id", "")) != RULESET_ID:
+		return false
+	if str(state.get("balance_profile_id", "")) != BALANCE_PROFILE_ID \
+			or str(state.get("balance_profile_fingerprint", "")) \
+				!= BALANCE_PROFILE_FINGERPRINT:
 		return false
 	if not _is_stable_id(state.get("match_instance_id")) \
 			or not _is_fingerprint(state.get("genesis_fingerprint")):
@@ -1826,6 +1864,8 @@ static func _business_state_fingerprint_for_components(
 	return _data_fingerprint({
 		"schema_version": state.get("schema_version"),
 		"ruleset_id": state.get("ruleset_id"),
+		"balance_profile_id": state.get("balance_profile_id"),
+		"balance_profile_fingerprint": state.get("balance_profile_fingerprint"),
 		"match_instance_id": state.get("match_instance_id"),
 		"genesis_fingerprint": state.get("genesis_fingerprint"),
 		"genesis_solar_sunlit": state.get("genesis_solar_sunlit"),
@@ -1840,6 +1880,8 @@ static func _genesis_fingerprint_for_state(state: Dictionary) -> String:
 	return _data_fingerprint({
 		"schema_version": state.get("schema_version"),
 		"ruleset_id": state.get("ruleset_id"),
+		"balance_profile_id": state.get("balance_profile_id"),
+		"balance_profile_fingerprint": state.get("balance_profile_fingerprint"),
 		"match_instance_id": state.get("match_instance_id"),
 		"genesis_solar_sunlit": state.get("genesis_solar_sunlit"),
 		"genesis_macro_round_index": state.get("genesis_macro_round_index"),

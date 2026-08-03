@@ -1,0 +1,294 @@
+{
+  "schema_version": 2,
+  "document_id": "space_syndicate.v071.human_fun_risk_register",
+  "candidate_ruleset_id": "v0.7.1",
+  "status": "FROZEN_TARGET_HUMAN_TEST_RISK_REGISTER",
+  "user_approval_required_before_constitution_freeze": false,
+  "user_approval_recorded": true,
+  "approved_profile_id": "V071_CANDIDATE_A_FAST",
+  "v071_highest_constitution_frozen": true,
+  "human_fun_proven": false,
+  "human_test_still_required": true,
+  "classification_counts": {
+    "CLASS_A_IMPLEMENTATION_CONTRADICTION": 2,
+    "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA": 6,
+    "CLASS_C_BALANCE_EXPERIMENT": 6,
+    "classified_risk_count": 14
+  },
+  "simulation_scope": {
+    "profile_ids": [
+      "BASELINE_V07",
+      "V071_CANDIDATE_A_FAST",
+      "V071_CANDIDATE_B_STRATEGIC"
+    ],
+    "player_counts": [
+      3,
+      4,
+      6,
+      8
+    ],
+    "minimum_fixed_seeds_per_configuration": 500,
+    "deterministic_simulation_can_prove_human_fun": false,
+    "simulation_agent_policy_id_required": true
+  },
+  "deterministic_preflight_result": {
+    "simulation_agent_policy_id": "v071.closed_heuristic_policy.v1",
+    "report_fingerprint": "d664b7ba8d69fe152c7194e2b357db6c996ed36681f2b031433c773ee61d815e",
+    "profile_count": 3,
+    "player_counts": [3, 4, 6, 8],
+    "seeds_per_configuration": 500,
+    "total_match_count": 6000,
+    "recommended_profile_id": "V071_CANDIDATE_A_FAST",
+    "human_fun_proven": false,
+    "profile_summaries": [
+      {
+        "profile_id": "BASELINE_V07",
+        "first_chain_median_batch": 2.0,
+        "zero_asset_blocked_action_rate": 0.092672,
+        "lead_acquisition_advantage_ratio": 1.131989,
+        "asset_overflow_rate": 0.1298,
+        "victory_pending_tail_p95_seconds": 330.0,
+        "failed_fun_targets": ["VICTORY_PENDING_TAIL_P95_SECONDS"]
+      },
+      {
+        "profile_id": "V071_CANDIDATE_A_FAST",
+        "first_chain_median_batch": 2.0,
+        "zero_asset_blocked_action_rate": 0.024953,
+        "lead_acquisition_advantage_ratio": 1.135421,
+        "asset_overflow_rate": 0.185933,
+        "victory_pending_tail_p95_seconds": 180.0,
+        "failed_fun_targets": []
+      },
+      {
+        "profile_id": "V071_CANDIDATE_B_STRATEGIC",
+        "first_chain_median_batch": 2.0,
+        "zero_asset_blocked_action_rate": 0.025544,
+        "lead_acquisition_advantage_ratio": 1.133868,
+        "asset_overflow_rate": 0.186234,
+        "victory_pending_tail_p95_seconds": 330.0,
+        "failed_fun_targets": ["VICTORY_PENDING_TAIL_P95_SECONDS"]
+      }
+    ],
+    "four_player_resolution_p95_seconds": 7.2,
+    "eight_player_resolution_p95_seconds": 7.44,
+    "lead_inference_unique_rate_recommended": 0.873833,
+    "sunlit_chain_throughput_ratio": 2.0,
+    "solar_multiplier_application_count_per_channel": 1
+  },
+  "classified_risks": [
+    {
+      "risk_id": "V071-R-A1",
+      "source_item_id": "V071-A1",
+      "classification": "CLASS_A_IMPLEMENTATION_CONTRADICTION",
+      "severity": "critical",
+      "risk": "Lead cadence collapses into the slower color-cycle cadence and breaks macro-round pacing.",
+      "evidence_required": "Independent batch cursors, same-boundary ordering tests, and Save/Restore exact-once tests.",
+      "human_question": "Can players understand when lead influence changes without a public identity reveal?"
+    },
+    {
+      "risk_id": "V071-R-A2",
+      "source_item_id": "V071-A2",
+      "classification": "CLASS_A_IMPLEMENTATION_CONTRADICTION",
+      "severity": "high",
+      "risk": "AI acts without a private fact legally available to the equivalent human seat.",
+      "evidence_required": "Player/AI semantic parity tests and zero exposure of rival lead or hidden order.",
+      "human_question": "Does AI behavior feel coherent without appearing to know another player's secret?"
+    },
+    {
+      "risk_id": "V071-R-B1",
+      "source_item_id": "V071-B1",
+      "classification": "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA",
+      "severity": "critical",
+      "risk": "Immediate replacement activation permits repeated commodity claims in one track revision.",
+      "evidence_required": "Exact-once input matrix, eight-player concurrency, and locked replacement Save/Restore.",
+      "human_question": "Is the incoming-locked state obvious without slowing track scanning?"
+    },
+    {
+      "risk_id": "V071-R-B2",
+      "source_item_id": "V071-B2",
+      "classification": "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA",
+      "severity": "critical",
+      "risk": "Optional merges can reduce the normal deck below the size needed to draw to five.",
+      "evidence_required": "All-zone card counting, rejection Receipt, and maintenance termination tests.",
+      "human_question": "Does the rejection clearly communicate why a seemingly valid merge is blocked?"
+    },
+    {
+      "risk_id": "V071-R-B3",
+      "source_item_id": "V071-B3",
+      "classification": "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA",
+      "severity": "high",
+      "risk": "Higher-level track spawns bypass merge progression and make acquisition outcomes swingy.",
+      "evidence_required": "Zero high-level track spawn tests for both normal and commodity supplies.",
+      "human_question": "Does level-one-only supply make early track choices varied enough?"
+    },
+    {
+      "risk_id": "V071-R-B4",
+      "source_item_id": "V071-B4",
+      "classification": "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA",
+      "severity": "high",
+      "risk": "A post-lock commodity can mutate an immutable current batch or be unusably ambiguous.",
+      "evidence_required": "Availability-batch persistence and current/next batch legality tests.",
+      "human_question": "Can players predict current-versus-next availability at a glance?"
+    },
+    {
+      "risk_id": "V071-R-B5",
+      "source_item_id": "V071-B5",
+      "classification": "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA",
+      "severity": "high",
+      "risk": "Invalid prebound targets produce undefined refunds, destinations, or reselection behavior.",
+      "evidence_required": "Typed policy coverage for every action and deterministic Receipt tests.",
+      "human_question": "Does a full-refund fizzle feel fair when the action slot and card are still spent?"
+    },
+    {
+      "risk_id": "V071-R-B6",
+      "source_item_id": "V071-B6",
+      "classification": "CLASS_B_STATE_MACHINE_CLOSURE_ERRATA",
+      "severity": "medium",
+      "risk": "Players may treat mathematically inferred lead identity as a privacy defect or as excessive bookkeeping.",
+      "evidence_required": "Lead inference unique-rate simulation and public-cue audits.",
+      "human_question": "Is inference satisfying deduction, irrelevant noise, or too deterministic?"
+    },
+    {
+      "risk_id": "V071-R-C1",
+      "source_item_id": "V071-C1",
+      "classification": "CLASS_C_BALANCE_EXPERIMENT",
+      "severity": "high",
+      "risk": "One starting asset per color can produce blocked openings; two can erase early scarcity.",
+      "evidence_required": "Opening chain timing, zero-asset block rate, and first-batch choice counts by player count.",
+      "human_question": "Does the opening feel constrained in an interesting way rather than stalled?"
+    },
+    {
+      "risk_id": "V071-R-C2",
+      "source_item_id": "V071-C2",
+      "classification": "CLASS_C_BALANCE_EXPERIMENT",
+      "severity": "high",
+      "risk": "Track ratio can starve DBG growth or commodity merging, especially at six and eight players.",
+      "evidence_required": "Normal purchase-to-draw and commodity Level II/III timing distributions.",
+      "human_question": "Does the mixed track offer meaningful tension without frequent dead arrivals?"
+    },
+    {
+      "risk_id": "V071-R-C3",
+      "source_item_id": "V071-C3",
+      "classification": "CLASS_C_BALANCE_EXPERIMENT",
+      "severity": "medium",
+      "risk": "No cap permits color dominance; a 12 percent cap may flatten coordinated influence.",
+      "evidence_required": "Color min/max, cap-hit rate, and lead acquisition advantage by roster size.",
+      "human_question": "Can players feel their stance matter without one coalition locking a color?"
+    },
+    {
+      "risk_id": "V071-R-C4",
+      "source_item_id": "V071-C4",
+      "classification": "CLASS_C_BALANCE_EXPERIMENT",
+      "severity": "medium",
+      "risk": "Uncapped per-batch refresh creates overflow while a cap of three may block expensive plans.",
+      "evidence_required": "Per-color overflow and zero-asset blocked-action rates.",
+      "human_question": "Is the refresh cap legible and does it reward planning rather than hoarding?"
+    },
+    {
+      "risk_id": "V071-R-C5",
+      "source_item_id": "V071-C5",
+      "classification": "CLASS_C_BALANCE_EXPERIMENT",
+      "severity": "high",
+      "risk": "Twenty-second maintenance drags; eight seconds may punish comprehension and accessibility.",
+      "evidence_required": "Maintenance timeout and optional-merge acceptance rates by experience level.",
+      "human_question": "Can first-time players inspect a merge choice comfortably within eight seconds?"
+    },
+    {
+      "risk_id": "V071-R-C6",
+      "source_item_id": "V071-C6",
+      "classification": "CLASS_C_BALANCE_EXPERIMENT",
+      "severity": "medium",
+      "risk": "One-batch lead tenure may feel noisy; two batches may amplify acquisition advantage and end-tail length.",
+      "evidence_required": "Lead advantage, macro-round duration, inference rate, and victory-pending tail by player count.",
+      "human_question": "Which cadence gives enough time to plan without making the hidden order obvious?"
+    }
+  ],
+  "cross_cutting_verification_controls": [
+    {
+      "control_id": "V071-X1-RESOLUTION-PACING",
+      "classified_risk": false,
+      "policy": {
+        "actions_1_to_12": "full_animation",
+        "actions_13_to_24": "shortened_common_animation",
+        "actions_25_to_40": "summary_for_common_economic_actions",
+        "always_full": [
+          "facility_build",
+          "monster_attack",
+          "military_attack",
+          "major_control_change",
+          "final_settlement"
+        ]
+      },
+      "guardrails": [
+        "authoritative_resolution_not_skipped",
+        "receipts_not_merged",
+        "order_not_changed",
+        "owner_not_leaked",
+        "presentation_rng_not_consumed",
+        "public_causal_history_complete"
+      ],
+      "human_question": "Does summary presentation remain understandable at the eight-player action ceiling?"
+    },
+    {
+      "control_id": "V071-X2-SOLAR-MULTIPLIER",
+      "classified_risk": false,
+      "policy": {
+        "sunlit_multiplier": 2.0,
+        "dark_multiplier": 1.0,
+        "application_count_per_declared_channel": 1,
+        "accepted_full_chain_ratio_minimum": 1.8,
+        "accepted_full_chain_ratio_maximum": 2.2,
+        "forbidden_compounded_ratios": [
+          4.0,
+          8.0
+        ]
+      },
+      "human_question": "Does the 2x solar advantage read as a strategic opportunity without requiring formula tracking?"
+    }
+  ],
+  "quantitative_preflight_targets": {
+    "first_chain_median_batch_maximum": 2,
+    "first_chain_p95_batch_maximum": 3,
+    "average_active_actions_per_player_per_batch_minimum": 1.5,
+    "average_active_actions_per_player_per_batch_maximum": 3.0,
+    "invalid_target_fizzle_rate_maximum_exclusive": 0.1,
+    "normal_purchase_to_first_draw_median_batch_maximum": 3,
+    "commodity_l2_median_seconds_maximum": 240,
+    "commodity_l3_median_seconds_maximum": 480,
+    "lead_acquisition_advantage_ratio_maximum": 1.5,
+    "asset_overflow_rate_maximum_exclusive": 0.2,
+    "zero_asset_blocked_action_rate_maximum_exclusive": 0.1,
+    "four_player_resolution_p95_seconds_maximum": 15,
+    "eight_player_resolution_p95_seconds_maximum": 25,
+    "victory_pending_tail_p95_seconds_maximum": 240,
+    "sunlit_chain_throughput_ratio_minimum": 1.8,
+    "sunlit_chain_throughput_ratio_maximum": 2.2
+  },
+  "human_sample_requirements": {
+    "simulation_is_not_human_evidence": true,
+    "required_participant_mix": [
+      "first_time_player",
+      "returning_strategy_player",
+      "accessibility_or_slower_reader"
+    ],
+    "required_observations": [
+      "opening_choice_comprehension",
+      "incoming_replacement_lock_comprehension",
+      "current_vs_next_commodity_availability",
+      "maintenance_time_pressure",
+      "invalid_target_fairness",
+      "hidden_lead_deduction_quality",
+      "six_and_eight_player_resolution_fatigue",
+      "victory_pending_tail_clarity"
+    ],
+    "approval_decision_owner": "user",
+    "constitution_frozen_before_human_review": true,
+    "human_review_required_before_production_balance_claim": true
+  },
+  "production_guards": {
+    "v07_constitution_content_change_count": 0,
+    "v07_production_connection_count": 0,
+    "v06_gameplay_value_change_count": 0,
+    "new_main_responsibility_count": 0
+  }
+}

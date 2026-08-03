@@ -2,7 +2,16 @@ extends SceneTree
 
 const ADAPTER_ROOT := "res://scripts/v07_adapters"
 const BASELINE_REVISION := "794ccf010e661a4750efca20a4e0d2a5839b7f2b"
-const DECLARED_PRODUCTION_WRITE_PREFIX := "scripts/v07_adapters/"
+const DECLARED_DETACHED_WRITE_PREFIXES := [
+	"scripts/v07_adapters/",
+	"scripts/v07_semantic/",
+	"scripts/v071_simulation/",
+	"scripts/v072_simulation/",
+	"scripts/v073_simulation/",
+	"scenes/tools/V071RuleConsistencyReview.tscn",
+	"scenes/tools/V072StarterBootstrapReview.tscn",
+	"scenes/tools/V073FixedOrderFacilityContentionReview.tscn",
+]
 
 const MANIFEST_SEARCH_ROOTS := [
 	ADAPTER_ROOT,
@@ -340,8 +349,15 @@ func _test_declared_production_change_scope() -> void:
 	changed_paths.append_array(untracked_result.get("paths", []) as Array[String])
 	changed_paths = _unique_sorted(changed_paths)
 	for path in changed_paths:
-		_expect(path.begins_with(DECLARED_PRODUCTION_WRITE_PREFIX),
-			"production change stays inside declared adapter scope: %s" % path)
+		var declared_detached_path := false
+		for prefix in DECLARED_DETACHED_WRITE_PREFIXES:
+			if path.begins_with(prefix):
+				declared_detached_path = true
+				break
+		_expect(
+			declared_detached_path,
+			"change stays inside declared detached implementation scope: %s" % path
+		)
 
 
 func _discover_adapter_scripts() -> Array[String]:

@@ -1,0 +1,130 @@
+{
+  "schema_version": 2,
+  "registry_id": "space_syndicate.v072.three_wing_domain_registry",
+  "constitution_id": "space_syndicate.v072.complete",
+  "ruleset_id": "v0.7.2",
+  "status": "frozen_highest_target_detached_contracts_executable",
+  "current_production_runtime_ruleset": "v0.6",
+  "production_runtime_connection_count": 0,
+  "v06_mutation_count": 0,
+  "dual_write_count": 0,
+  "balance_profile_id": "V072_STARTER_FREE_FAST",
+  "balance_profile_fingerprint": "b8f684ab92b06fa44671c38d041ff08b9c1ea7c2950b094705e19192f0a70f48",
+  "domains": [
+    {
+      "domain_id": "unified_card_track_cycle",
+      "implementation_file": "res://scripts/v07_semantic/v07_unified_card_track_core.gd",
+      "state_version": 5,
+      "interfaces": {
+        "core": "v072.unified_track.core_authority.v3",
+        "ai_observation": "v072.unified_track.ai_observation.v3",
+        "player_projection": "v072.unified_track.player_projection.v3",
+        "intent": "v072.unified_track.intent.v3",
+        "authoritative_receipt": "v072.unified_track.authoritative_receipt.v3",
+        "save_state": "v072.unified_track.save_state.v3"
+      },
+      "approved_closures": [
+        "independent_completed_batch_lead_and_color_cursors",
+        "outgoing_lead_color_weight_order",
+        "next_scroll_replacement_lock",
+        "level_one_standard_only_track_supply",
+        "starter_track_spawn_forbidden",
+        "soft_hidden_lead_publication",
+        "ai_self_lead_private_parity"
+      ]
+    },
+    {
+      "domain_id": "personal_dbg_and_merge",
+      "implementation_file": "res://scripts/v07_semantic/v07_dbg_deck_core.gd",
+      "state_version": 3,
+      "interfaces": {
+        "core": "v072.personal_dbg.core_authority.v3",
+        "ai_observation": "v072.personal_dbg.ai_observation.v3",
+        "player_projection": "v072.personal_dbg.player_projection.v3",
+        "intent": "v072.personal_dbg.intent.v3",
+        "authoritative_receipt": "v072.personal_dbg.authoritative_receipt.v3",
+        "save_state": "v072.personal_dbg.save_state.v3",
+        "legal_target_input": "v072.personal_dbg.legal_target_input.v1"
+      },
+      "approved_closures": [
+        "twelve_genesis_only_starter_definitions",
+        "permanent_definition_derived_zero_asset_cost",
+        "normal_deck_minimum_total_five",
+        "starter_standard_l1_voluntary_merge",
+        "starter_privilege_not_inherited",
+        "commodity_available_from_batch_id",
+        "saved_local_queue_lock",
+        "authority_attested_ai_legal_targets"
+      ]
+    },
+    {
+      "domain_id": "six_color_assets",
+      "implementation_file": "res://scripts/v07_semantic/v07_asset_batch_core.gd",
+      "state_version": 3,
+      "interfaces": {
+        "core": "v072.six_color_assets.core_authority.v3",
+        "ai_observation": "v072.six_color_assets.ai_observation.v3",
+        "player_projection": "v072.six_color_assets.player_projection.v3",
+        "intent": "v072.six_color_assets.intent.v3",
+        "authoritative_receipt": "v072.six_color_assets.authoritative_receipt.v3",
+        "save_state": "v072.six_color_assets.save_state.v3"
+      },
+      "approved_closures": [
+        "asset_owner_initialized_at_genesis",
+        "six_zero_balances_and_remainders",
+        "maximum_three_refresh_per_color_per_batch",
+        "profile_bound_zero_initial_assets"
+      ]
+    },
+    {
+      "domain_id": "card_batch_and_anonymous_resolution",
+      "implementation_file": "res://scripts/v07_semantic/v07_asset_batch_core.gd",
+      "state_version": 3,
+      "interfaces": {
+        "core": "v072.card_batch.core_authority.v3",
+        "ai_observation": "v072.card_batch.ai_observation.v3",
+        "player_projection": "v072.card_batch.player_projection.v3",
+        "intent": "v072.card_batch.intent.v3",
+        "authoritative_receipt": "v072.card_batch.authoritative_receipt.v3",
+        "save_state": "v072.card_batch.save_state.v3"
+      },
+      "approved_closures": [
+        "closed_invalid_target_policy_set",
+        "default_full_asset_refund",
+        "fizzled_normal_card_to_discard",
+        "action_slot_not_refunded",
+        "owner_anonymous_public_causal_history"
+      ]
+    },
+    {
+      "domain_id": "solar_facility_and_macro_victory",
+      "implementation_file": "res://scripts/v07_semantic/v07_solar_victory_core.gd",
+      "state_version": 3,
+      "save_section_version": 5,
+      "interfaces": {
+        "core": "v072.solar_victory.core_authority.v3",
+        "ai_observation": "v072.solar_victory.ai_observation.v3",
+        "player_projection": "v072.solar_victory.player_projection.v3",
+        "intent": "v072.solar_victory.intent.v3",
+        "authoritative_receipt": "v072.solar_victory.authoritative_receipt.v3",
+        "save_state": "v072.solar_victory.save_state.v3"
+      },
+      "approved_closures": [
+        "single_solar_multiplier_application_per_work_rate_channel",
+        "victory_pending_until_complete_macro_round"
+      ]
+    }
+  ],
+  "canonical_adapters": [
+    "space_syndicate.v072.semantic_save.v2",
+    "space_syndicate.v072.canonical_rng_adapter.v2",
+    "v072.canonical.ai_observation_adapter.v3",
+    "v072.canonical.player_projection_adapter.v3",
+    "space_syndicate.v072.atomic_cutover_manifest"
+  ],
+  "persistence_contract": "res://docs/save/v072_save_schema.json",
+  "rng_contract": "res://docs/save/v072_rng_ownership.json",
+  "version_matrix": "res://docs/migration/v071_to_v072_contract_version_matrix.json",
+  "human_fun_proven": false,
+  "human_test_required": true
+}

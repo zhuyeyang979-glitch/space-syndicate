@@ -20,6 +20,9 @@ const DOMAIN_REGISTRY_PATH := (
 const SAVE_SCHEMA_PATH := "res://docs/save/v07_save_schema.json"
 const RESTORE_GRAPH_PATH := "res://docs/save/v07_restore_dependency_graph.json"
 const RNG_OWNERSHIP_PATH := "res://docs/save/v07_rng_ownership.json"
+const V071_AGGREGATE_TEST_PATH := (
+	"res://tests/v07_semantic/v071_three_wing_contract_aggregate_test.gd"
+)
 
 
 class TrustedTimeAttestationAuthority:
@@ -797,7 +800,42 @@ var _time_attestation_sequence := 0
 
 
 func _init() -> void:
+	if UNIFIED_CORE.RULESET_ID == "v0.7.1":
+		call_deferred("_run_v071_delegate")
+		return
 	call_deferred("_run")
+
+
+func _run_v071_delegate() -> void:
+	var output: Array = []
+	var exit_code := OS.execute(
+		OS.get_executable_path(),
+		PackedStringArray([
+			"--headless",
+			"--path",
+			ProjectSettings.globalize_path("res://"),
+			"--script",
+			V071_AGGREGATE_TEST_PATH,
+		]),
+		output,
+		true
+	)
+	var joined_output := ""
+	for chunk in output:
+		joined_output += str(chunk)
+	if exit_code == 0 and joined_output.contains(
+		"V071_THREE_WING_CONTRACT_AGGREGATE_TEST|status=PASS"
+	):
+		print(
+			"V07_THREE_WING_CONTRACT_AGGREGATE_TEST|status=SUPERSEDED_BY_V071|delegate=PASS"
+		)
+		quit(0)
+		return
+	push_error(
+		"V07_THREE_WING_CONTRACT_AGGREGATE_TEST|V071 delegate failed|exit=%d|output=%s"
+			% [exit_code, joined_output]
+	)
+	quit(1)
 
 
 func _run() -> void:
