@@ -31,7 +31,7 @@ if (Test-Path -LiteralPath $FixtureRoot) {
     throw "MCP_DIAGNOSTIC_SELF_TEST_FIXTURE_EXISTS|path=$FixtureRoot"
 }
 $projectRoot = Join-Path $FixtureRoot "project"
-$runtimeRoot = Join-Path $FixtureRoot "runtime"
+$runtimeRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("mcpq-{0}" -f [guid]::NewGuid().ToString("N").Substring(0, 12))
 [System.IO.Directory]::CreateDirectory($projectRoot) | Out-Null
 $projectText = @"
 config_version=5
