@@ -73,6 +73,11 @@ func commit_interaction(actor_state: Dictionary, target_state: Dictionary, curre
 	if not _configured or not _is_data_only(actor_state) or not _is_data_only(target_state) or not _is_data_only(current_facts) or not _is_data_only(plan):
 		return _commit_rejection("invalid_commit_request")
 	var current_plan := _plan_interaction(current_facts, false)
+	if str(current_plan.get("status", "")) != STATUS_READY \
+			or not bool(current_plan.get("ready", false)):
+		return _commit_rejection(str(current_plan.get("reason", "interaction_drift")))
+	if int(current_plan.get("operation_count", 0)) <= 0:
+		return _commit_rejection("no_discardable_target_cards")
 	if not _plans_match(plan, current_plan):
 		return _commit_rejection("interaction_drift")
 	var selected_slots: Array = plan.get("selected_slots", []) if plan.get("selected_slots", []) is Array else []
@@ -149,7 +154,7 @@ func commit_interaction(actor_state: Dictionary, target_state: Dictionary, curre
 	var target_cash_before := int(after_target.get("cash", 0))
 	var penalty_requested := int(current_plan.get("target_cash_penalty", 0))
 	var penalty_paid := 0
-	if interaction_kind == KIND_DISRUPT and penalty_requested > 0:
+	if interaction_kind == KIND_DISRUPT and removed_count > 0 and penalty_requested > 0:
 		var target_available := maxi(0, target_cash_before)
 		var target_player_index := int(current_plan.get("target_player_index", -1))
 		if _cash_commitment_query_port != null and target_player_index >= 0:
@@ -165,7 +170,7 @@ func commit_interaction(actor_state: Dictionary, target_state: Dictionary, curre
 				"source_label": source_label,
 			})
 	var compensation_rule := int(current_plan.get("steal_fail_cash", 0))
-	var compensation_paid := compensation_rule if interaction_kind == KIND_STEAL and (converted_count > 0 or transferred_count <= 0) else 0
+	var compensation_paid := compensation_rule if interaction_kind == KIND_STEAL and converted_count > 0 else 0
 	if compensation_paid > 0:
 		_apply_cash_delta_to_record(after_actor, compensation_paid)
 		private_intents.append({
@@ -175,7 +180,7 @@ func commit_interaction(actor_state: Dictionary, target_state: Dictionary, curre
 			"label": source_label,
 			"detail": "牵取失败补偿",
 		})
-	var resolution_success := removed_count > 0 or locked_count > 0 or penalty_requested > 0
+	var resolution_success := removed_count > 0 or locked_count > 0 or penalty_paid > 0
 	if interaction_kind == KIND_STEAL:
 		resolution_success = transferred_count > 0 or converted_count > 0 or locked_count > 0
 	var actor_after_count := _counted_hand_size(after_actor, catalog)
@@ -282,6 +287,8 @@ func _plan_interaction(request: Dictionary, count_plan: bool) -> Dictionary:
 		return _plan_rejection("missing_inventory")
 	var candidate_variant: Variant = _inventory_service.call("discardable_slots", target_inventory)
 	var candidate_slots: Array = (candidate_variant as Array).duplicate() if candidate_variant is Array else []
+	if candidate_slots.is_empty():
+		return _plan_rejection("no_discardable_target_cards")
 	var requested_count := maxi(1, int(skill.get("hand_discard_count", 1))) if interaction_kind == KIND_DISRUPT else maxi(1, int(skill.get("hand_steal_count", 1)))
 	var operation_count := mini(requested_count, candidate_slots.size())
 	var lock_seconds := maxf(0.0, float(skill.get("hand_lock_seconds", 0.0)))
@@ -440,6 +447,7 @@ func _plan_rejection(reason: String) -> Dictionary:
 		"reason": reason,
 		"interaction_kind": "",
 		"candidate_slots": [],
+		"operation_count": 0,
 		"selection_draw_count": 0,
 	}
 

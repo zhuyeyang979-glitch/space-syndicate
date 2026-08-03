@@ -12,6 +12,8 @@ var _mutation_passed := 0
 var _mutation_total := 0
 var _privacy_passed := 0
 var _privacy_total := 0
+var _router_passed := 0
+var _router_total := 0
 var _failures: Array[String] = []
 var _observed_results: Dictionary = {}
 
@@ -79,7 +81,8 @@ func _run() -> void:
 	bench.set("_runtime_main", main)
 	var world := coordinator.world_session_state()
 	_expect_contract(world != null and world.players.size() > 0, "production World player slots are available")
-	if world != null and world.players.size() > 0:
+	if world != null and world.players.size() > 1:
+		_exercise_zero_candidate_router_matrix(coordinator, world)
 		_exercise_query_case(bench, coordinator, world, [
 			_card("private.queued", true, 0.0),
 			_card("private.ordinary", false, 0.0),
@@ -244,7 +247,7 @@ func _expect_privacy(condition: bool, message: String) -> void:
 
 func _finish() -> void:
 	var status := "PASS" if _failures.is_empty() else "FAIL"
-	print("CARD_INVENTORY_BENCH_DISCARDABILITY_MIGRATION_TEST|status=%s|queued=%s|cooldown=%s|cutover=%s|contract=%d/%d|zero_mutation=%d/%d|privacy=%d/%d|failures=%d" % [
+	print("CARD_INVENTORY_BENCH_DISCARDABILITY_MIGRATION_TEST|status=%s|queued=%s|cooldown=%s|cutover=%s|contract=%d/%d|zero_mutation=%d/%d|privacy=%d/%d|interaction_router=%d/%d|failures=%d" % [
 		status,
 		JSON.stringify(_observed_results.get("queued", [])),
 		JSON.stringify(_observed_results.get("cooldown", [])),
@@ -255,8 +258,104 @@ func _finish() -> void:
 		_mutation_total,
 		_privacy_passed,
 		_privacy_total,
+		_router_passed,
+		_router_total,
 		_failures.size(),
 	])
 	if not _failures.is_empty():
 		push_error("Card Inventory Bench discardability migration failures:\n- " + "\n- ".join(_failures))
 	get_tree().quit(0 if _failures.is_empty() else 1)
+
+func _exercise_zero_candidate_router_matrix(coordinator: GameRuntimeCoordinator, world: WorldSessionState) -> void:
+	var router := coordinator.get_node_or_null("CardEffectRuntimeRouter") as CardEffectRuntimeRouter
+	var presentation := coordinator.get_node_or_null("CardResolutionPresentationPort") as CardResolutionPresentationPort
+	var hand := coordinator.get_node_or_null("PlayerHandInteractionRuntimeService") as PlayerHandInteractionRuntimeService
+	var monster := coordinator.get_node_or_null("MonsterRuntimeController")
+	_router_expect(router != null and presentation != null and hand != null, "production Router, Hand Interaction service and presentation port are bound")
+	if router == null or presentation == null or hand == null:
+		return
+	var scenarios := [
+		{"label": "empty_steal", "kind": "player_hand_steal", "cards": []},
+		{"label": "queued_steal", "kind": "player_hand_steal", "cards": [_router_card("private.queued", true, 0.0, true)]},
+		{"label": "locked_disrupt", "kind": "player_hand_disrupt", "cards": [_router_card("private.locked", false, 8.0, true)]},
+		{"label": "special_disrupt", "kind": "player_hand_disrupt", "cards": [_router_card("private.special", false, 0.0, false)]},
+		{"label": "mixed_disrupt", "kind": "player_hand_disrupt", "cards": [_router_card("private.mix_q", true, 0.0, true), _router_card("private.mix_l", false, 4.0, true), _router_card("private.mix_s", false, 0.0, false)]},
+	]
+	for index in range(scenarios.size()):
+		var scenario: Dictionary = scenarios[index]
+		_set_router_players(world, [], scenario.get("cards", []))
+		var world_before := world.to_save_data()
+		var queue_before := coordinator.card_resolution_queue_debug()
+		var inventory_before := coordinator.card_inventory_debug()
+		var hand_before := coordinator.player_hand_interaction_debug()
+		var safety_before := coordinator.save_restore_safety_observation()
+		var rng_before := coordinator.run_rng_service().capture_plan_checkpoint()
+		var presentation_before := presentation.debug_snapshot()
+		var skill := _router_interaction_skill(str(scenario.get("kind", "")))
+		var wager_count := int(monster.call("open_wager_decision_count")) if monster != null and monster.has_method("open_wager_decision_count") else 0
+		var receipt := router.dispatch({
+			"handler_id": "target_player",
+			"active_entry": {"player_index": 0, "target_player": 1, "resolution_id": 91000 + index, "queued_order": 91000 + index},
+			"skill": skill,
+			"monster_wager_decision_count_before": wager_count,
+		})
+		var world_after := world.to_save_data()
+		var queue_after := coordinator.card_resolution_queue_debug()
+		var inventory_after := coordinator.card_inventory_debug()
+		var hand_after := coordinator.player_hand_interaction_debug()
+		var safety_after := coordinator.save_restore_safety_observation()
+		var rng_after := coordinator.run_rng_service().capture_plan_checkpoint()
+		var presentation_after := presentation.debug_snapshot()
+		var label := str(scenario.get("label", "case"))
+		_router_expect(bool(receipt.get("dispatched", false)) and not bool(receipt.get("resolved", true)) and str(receipt.get("reason", "")) == "effect_not_resolved", "%s keeps existing unresolved Router receipt" % label)
+		_router_expect(world_before == world_after, "%s does not write actor, target, cash, cards, time or World revision" % label)
+		_router_expect(queue_before == queue_after, "%s does not mutate Queue" % label)
+		_router_expect(inventory_before == inventory_after, "%s does not plan or commit Card Inventory mutation" % label)
+		_router_expect(int(hand_after.get("plan_count", 0)) - int(hand_before.get("plan_count", 0)) == 1 and int(hand_after.get("commit_attempt_count", 0)) == int(hand_before.get("commit_attempt_count", -1)) and int(hand_after.get("committed_count", 0)) == int(hand_before.get("committed_count", -1)), "%s rejects at plan and never calls commit_interaction" % label)
+		_router_expect(safety_before == safety_after and rng_before == rng_after, "%s preserves RNG, public log, private feedback and world time" % label)
+		_router_expect(int(presentation_after.get("public_event_count", 0)) == int(presentation_before.get("public_event_count", -1)), "%s publishes no public or private interaction event" % label)
+		_router_expect(not JSON.stringify(receipt).contains("private."), "%s receipt contains no private target identity" % label)
+
+
+func _set_router_players(world: WorldSessionState, actor_cards: Array, target_cards: Array) -> void:
+	var players := world.players.duplicate(true)
+	var actor: Dictionary = (players[0] as Dictionary).duplicate(true)
+	var target: Dictionary = (players[1] as Dictionary).duplicate(true)
+	actor["cash"] = 100
+	actor["cash_cents"] = 10000
+	actor["slots"] = actor_cards.duplicate(true)
+	actor["economic_ledger"] = []
+	target["cash"] = 100
+	target["cash_cents"] = 10000
+	target["slots"] = target_cards.duplicate(true)
+	target["economic_ledger"] = []
+	players[0] = actor
+	players[1] = target
+	world.players = players
+
+
+func _router_card(card_id: String, queued: bool, lock_left: float, counted: bool) -> Dictionary:
+	return {
+		"name": card_id,
+		"family_id": card_id,
+		"rank": 1,
+		"kind": "facility" if counted else "monster_bound_action",
+		"persistent": not counted,
+		"counts_toward_hand_limit": counted,
+		"queued_for_resolution": queued,
+		"lock_left": lock_left,
+	}
+
+
+func _router_interaction_skill(kind: String) -> Dictionary:
+	if kind == "player_hand_steal":
+		return {"name": "影仓牵引", "kind": kind, "hand_steal_count": 1, "hand_lock_seconds": 10.0, "steal_fail_cash": 60}
+	return {"name": "星链拆解", "kind": kind, "hand_discard_count": 1, "hand_lock_seconds": 10.0, "target_cash_penalty": 80}
+
+
+func _router_expect(condition: bool, message: String) -> void:
+	_router_total += 1
+	if condition:
+		_router_passed += 1
+	else:
+		_failures.append(message)

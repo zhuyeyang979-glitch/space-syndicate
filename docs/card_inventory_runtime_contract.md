@@ -29,7 +29,8 @@ inventory service does not keep a second hard-coded ruleset.
 | Family/rank receive plan, add, upgrade, rank-IV reject, ordinary count, fixed-skill exemption, discardability, fingerprint, remove, lock, and transfer slot mutation | `CardInventoryRuntimeService` |
 | Price, cash, purchase count, total spend, private purchase ledger, cash history, and complete purchase transaction atomicity | `DistrictPurchaseSettlementRuntimeService` |
 | Purchase window, authorization, locked context, expiry, pending-discard window state, and v1 save adapter | `DistrictPurchaseRuntimeController` |
-| Real card/player/world fact construction, random or AI target choice, card-effect order, compensation, private ledger, and public event forwarding | Thin `main.gd` compatibility adapters |
+| Target-player effect dispatch, real world fact construction, successful World player writeback, and public interaction events | `CardEffectRuntimeRouter` |
+| Remove/transfer/lock orchestration, cash penalty, converted-remove compensation, and private/public event intents | `PlayerHandInteractionRuntimeService` |
 | Role-bonus and extra-supply qualification/candidate choice | Existing card-effect adapters, delegating mutation to `CardInventoryRuntimeService` |
 | Save envelope composition | Existing `GameRuntimeCoordinator` and domain-state compatibility adapter |
 
@@ -89,9 +90,11 @@ remains five.
 
 ### Private remove and lock
 
-`main.gd` chooses a legal target slot using existing RNG/AI/effect order. The
-service plans and commits the slot removal or `lock_left` mutation. Concrete
-card details are forwarded only to the affected player's private ledger.
+`PlayerHandInteractionRuntimeService` obtains the authoritative discardable
+slot set from the inventory service, preserves stable slot order, and commits
+the remove or `lock_left` mutation. A request with no discardable target card
+is rejected during planning and cannot reach commit, cash, event, or World
+writeback. Concrete card details remain private event intents.
 
 ### Transfer and failed-steal conversion
 
@@ -99,11 +102,14 @@ Successful steal is one inventory-service transfer commit: remove the target
 slot and add or upgrade the receiver on temporary copies before replacing both
 players.
 
-If the receiver cannot accept the card and the card effect requests
-`convert_to_remove`, the service returns `converted_to_remove`: the target card
-stays removed, the receiver hand is unchanged, and `main.gd` applies the
-existing card-defined compensation. This deliberate outcome is not partial
-failure and must not be changed to automatic rollback.
+If the receiver cannot accept a card that was actually selected and removed,
+and the card effect requests `convert_to_remove`, the service returns
+`converted_to_remove`: the target card stays removed, the receiver hand is
+unchanged, and the interaction service applies the existing card-defined
+compensation once. A target that had no discardable card is not a failed
+receive and receives neither compensation nor cash penalty. This deliberate
+conversion outcome is not partial failure and must not be changed to automatic
+rollback.
 
 ## Main Compatibility Surface
 
@@ -119,7 +125,6 @@ inventory formula owners:
 - `_transfer_private_hand_card_between_players()`
 - `_grant_role_bonus_card_on_purchase()`
 - `_draw_extra_district_cards()`
-- `_apply_player_hand_disrupt()` / `_apply_player_hand_steal()`
 - `_ai_discard_slot_for_purchase()`
 
 No adapter may directly add, upgrade, replace, remove, lock, or transfer a card
@@ -155,6 +160,7 @@ discardability, remove, lock, transfer success, failed-transfer conversion,
 purchase delegation, role bonus, extra supply, human/AI parity, fingerprint
 drift, save/privacy compatibility, and permanent legacy-formula deletion.
 
-Future work may move card-effect interaction orchestration or AI ownership only
-after an equivalent characterization gate. It must not return slot mutation to
-`main.gd` or create a parallel inventory implementation.
+Player-hand interaction production dispatch now runs through
+`CardEffectRuntimeRouter` and `PlayerHandInteractionRuntimeService`. Future work
+must not return interaction orchestration or slot mutation to `main.gd`, and
+must not create a parallel inventory implementation.
