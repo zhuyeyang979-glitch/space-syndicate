@@ -11,9 +11,9 @@
     "branch": "codex/v073-sample-first-atomic-production-cutover-794ccf0",
     "pull_request": 86,
     "pull_request_url": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/86",
-    "pull_request_state": "draft_open",
-    "result_head_sha": "dbae31e1dda537e87473dc46a0fac551bc3f164f",
-    "main_result_sha": "unchanged_at_report_generation"
+    "pull_request_state": "merged",
+    "result_head_sha": "5b21551030709b523bff9ced7545c4cef1551cf6",
+    "main_result_sha": "0275196e09c17709f7d714eb7d81bda92478a41b"
   },
   "parallel_execution": {
     "requested_subagents": 6,
@@ -263,8 +263,10 @@
     "v073_human_playable_sample": true,
     "human_playable_sample_ready": true,
     "merge_to_main_allowed": true,
-    "merged_to_main": false,
-    "tag_created": false
+    "merged_to_main": true,
+    "tag_created": true,
+    "tag": "alpha-0.5-v073-playable-sample",
+    "tag_target_sha": "0275196e09c17709f7d714eb7d81bda92478a41b"
   },
   "next_task": "ALPHA_0_5_C_V073_HUMAN_PLAYTEST_INSTRUMENTATION_AND_BALANCE_ITERATION"
 }
