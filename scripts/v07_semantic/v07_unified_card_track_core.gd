@@ -2069,14 +2069,16 @@ func _refresh_track_owners() -> void:
 	var track := _state.get("track_state", {}) as Dictionary
 	var lead := _state.get("hidden_lead_cycle_state", {}) as Dictionary
 	var fixed_order := lead.get("fixed_order", []) as Array
+	var current_origin_index := fixed_order.find(str(
+		lead.get("current_lead_id", "")
+	))
 	var local_slots := int(track.get("local_visible_slot_count", 1))
 	var refreshed: Array = []
 	for item_variant in track.get("items", []) as Array:
 		var item := (item_variant as Dictionary).duplicate(true)
+		item["path_origin_index"] = current_origin_index
 		var segment_offset := int(int(item.get("path_position", 0)) / local_slots)
-		var owner_index := (
-			int(item.get("path_origin_index", 0)) + segment_offset
-		) % fixed_order.size()
+		var owner_index := (current_origin_index + segment_offset) % fixed_order.size()
 		item["segment_owner_id"] = str(fixed_order[owner_index])
 		refreshed.append(item)
 	track["items"] = refreshed
@@ -3108,6 +3110,26 @@ func _state_error(value: Dictionary) -> String:
 		if str(item.get("segment_owner_id", "")) \
 			!= str(fixed_order[expected_owner_index]):
 			return "track_segment_binding_invalid"
+	var segment_local_slots := {}
+	for actor_id_variant in roster:
+		segment_local_slots[str(actor_id_variant)] = []
+	for item_variant in items:
+		var item := item_variant as Dictionary
+		var owner_id := str(item.get("segment_owner_id", ""))
+		var local_slot_index := (
+			int(item.get("path_position", 0)) % local_slots
+		)
+		var owner_slots := segment_local_slots.get(owner_id, []) as Array
+		if owner_slots.has(local_slot_index):
+			return "track_segment_local_slot_duplicate"
+		owner_slots.append(local_slot_index)
+		segment_local_slots[owner_id] = owner_slots
+	for actor_id_variant in roster:
+		var actor_slots := (
+			segment_local_slots.get(str(actor_id_variant), []) as Array
+		)
+		if actor_slots.size() != local_slots:
+			return "track_segment_item_count_invalid"
 	var projection_revisions := value.get("projection_revisions", {}) as Dictionary
 	if not _same_string_set(projection_revisions.keys(), roster):
 		return "projection_revisions_invalid"

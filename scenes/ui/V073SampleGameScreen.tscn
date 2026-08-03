@@ -1,0 +1,715 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/v073/v073_sample_game_screen.gd" id="1_screen"]
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="2_theme"]
+[ext_resource type="PackedScene" path="res://scenes/ui/PlanetBoard.tscn" id="3_planet"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/materials/ambientcg/SheetMetal003/SheetMetal003_1K-JPG_Color.jpg" id="4_backdrop"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_board_game_icons/icons/lock.png" id="5_lock"]
+[ext_resource type="Texture2D" path="res://assets/third_party/commercial/ui/kenney_board_game_icons/icons/merge.png" id="6_merge"]
+
+[sub_resource type="StyleBoxFlat" id="StyleHeader"]
+bg_color = Color(0.055, 0.079, 0.125, 0.97)
+border_width_bottom = 2
+border_color = Color(0.22, 0.68, 0.64, 0.75)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StylePanel"]
+bg_color = Color(0.065, 0.09, 0.14, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.24, 0.31, 0.43, 0.85)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleAccent"]
+bg_color = Color(0.07, 0.13, 0.18, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.91, 0.67, 0.27, 0.9)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleOverlay"]
+bg_color = Color(0.045, 0.06, 0.095, 0.99)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.28, 0.79, 0.7, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0, 0, 0, 0.6)
+shadow_size = 18
+
+[node name="V073SampleGameScreen" type="Control"]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_screen")
+
+[node name="Backdrop" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("4_backdrop")
+expand_mode = 1
+stretch_mode = 6
+modulate = Color(0.12, 0.17, 0.25, 1)
+mouse_filter = 2
+
+[node name="BackdropTint" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.025, 0.038, 0.067, 0.86)
+mouse_filter = 2
+
+[node name="RootMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 10.0
+offset_right = -12.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="Shell" type="VBoxContainer" parent="RootMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="Header" type="PanelContainer" parent="RootMargin/Shell"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleHeader")
+
+[node name="HeaderMargin" type="MarginContainer" parent="RootMargin/Shell/Header"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 5
+
+[node name="HeaderRow" type="HBoxContainer" parent="RootMargin/Shell/Header/HeaderMargin"]
+layout_mode = 2
+theme_override_constants/separation = 9
+
+[node name="TitleStack" type="VBoxContainer" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="BrandLabel" type="Label" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow/TitleStack"]
+layout_mode = 2
+text = "SPACE SYNDICATE"
+theme_override_font_sizes/font_size = 19
+
+[node name="RulesetLabel" type="Label" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow/TitleStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "v0.7.3 · NEW GAME ONLY"
+theme_override_colors/font_color = Color(0.36, 0.84, 0.77, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="PhaseLabel" type="Label" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(106, 0)
+layout_mode = 2
+text = "待命"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TimerProgress" type="ProgressBar" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 12)
+layout_mode = 2
+max_value = 30.0
+value = 30.0
+show_percentage = false
+
+[node name="TimerLabel" type="Label" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "30 s"
+vertical_alignment = 1
+
+[node name="SaveNotice" type="Label" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(196, 0)
+layout_mode = 2
+text = "V0.7.3样品暂不支持中途保存"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.74, 0.38, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="SaveButton" type="Button" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow"]
+custom_minimum_size = Vector2(58, 0)
+layout_mode = 2
+disabled = true
+text = "保存"
+tooltip_text = "V0.7.3样品暂不支持中途保存"
+
+[node name="ContinueButton" type="Button" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow"]
+custom_minimum_size = Vector2(58, 0)
+layout_mode = 2
+disabled = true
+text = "继续"
+tooltip_text = "V0.6旧存档不会加载到V0.7.3"
+
+[node name="NewGameButton" type="Button" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(76, 0)
+layout_mode = 2
+text = "新游戏"
+
+[node name="TrackPanel" type="PanelContainer" parent="RootMargin/Shell"]
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StylePanel")
+
+[node name="TrackMargin" type="MarginContainer" parent="RootMargin/Shell/TrackPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
+
+[node name="TrackRows" type="VBoxContainer" parent="RootMargin/Shell/TrackPanel/TrackMargin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TrackHeader" type="HBoxContainer" parent="RootMargin/Shell/TrackPanel/TrackMargin/TrackRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TrackTitle" type="Label" parent="RootMargin/Shell/TrackPanel/TrackMargin/TrackRows/TrackHeader"]
+layout_mode = 2
+text = "统一卡牌轨"
+theme_override_font_sizes/font_size = 15
+
+[node name="TrackMeta" type="Label" parent="RootMargin/Shell/TrackPanel/TrackMargin/TrackRows/TrackHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "普通牌 + 商品牌"
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.62, 0.71, 0.83, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="StanceLabel" type="Label" parent="RootMargin/Shell/TrackPanel/TrackMargin/TrackRows/TrackHeader"]
+layout_mode = 2
+text = "公开决策"
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 10
+
+[node name="IncreaseOption" type="OptionButton" parent="RootMargin/Shell/TrackPanel/TrackMargin/TrackRows/TrackHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(82, 0)
+layout_mode = 2
+
+[node name="DecreaseOption" type="OptionButton" parent="RootMargin/Shell/TrackPanel/TrackMargin/TrackRows/TrackHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(82, 0)
+layout_mode = 2
+
+[node name="ApplyStanceButton" type="Button" parent="RootMargin/Shell/TrackPanel/TrackMargin/TrackRows/TrackHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "确认"
+
+[node name="TrackScroll" type="ScrollContainer" parent="RootMargin/Shell/TrackPanel/TrackMargin/TrackRows"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 2
+vertical_scroll_mode = 0
+
+[node name="TrackRail" type="HBoxContainer" parent="RootMargin/Shell/TrackPanel/TrackMargin/TrackRows/TrackScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="TableArea" type="HBoxContainer" parent="RootMargin/Shell"]
+custom_minimum_size = Vector2(0, 210)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="RosterPanel" type="PanelContainer" parent="RootMargin/Shell/TableArea"]
+custom_minimum_size = Vector2(218, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StylePanel")
+
+[node name="RosterMargin" type="MarginContainer" parent="RootMargin/Shell/TableArea/RosterPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 7
+theme_override_constants/margin_top = 7
+theme_override_constants/margin_right = 7
+theme_override_constants/margin_bottom = 7
+
+[node name="RosterRows" type="VBoxContainer" parent="RootMargin/Shell/TableArea/RosterPanel/RosterMargin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="RosterTitle" type="Label" parent="RootMargin/Shell/TableArea/RosterPanel/RosterMargin/RosterRows"]
+layout_mode = 2
+text = "玩家 ROSTER"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 13
+
+[node name="RosterGrid" type="GridContainer" parent="RootMargin/Shell/TableArea/RosterPanel/RosterMargin/RosterRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+columns = 1
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+
+[node name="PlanetBoard" parent="RootMargin/Shell/TableArea" instance=ExtResource("3_planet")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(600, 240)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="TargetPanel" type="PanelContainer" parent="RootMargin/Shell"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleAccent")
+
+[node name="TargetMargin" type="MarginContainer" parent="RootMargin/Shell/TargetPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 7
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 7
+theme_override_constants/margin_bottom = 4
+
+[node name="TargetRow" type="HBoxContainer" parent="RootMargin/Shell/TargetPanel/TargetMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TargetTitle" type="Label" parent="RootMargin/Shell/TargetPanel/TargetMargin/TargetRow"]
+custom_minimum_size = Vector2(88, 0)
+layout_mode = 2
+text = "地区目标"
+vertical_alignment = 1
+
+[node name="TargetScroll" type="ScrollContainer" parent="RootMargin/Shell/TargetPanel/TargetMargin/TargetRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_scroll_mode = 2
+vertical_scroll_mode = 0
+
+[node name="TargetRail" type="HBoxContainer" parent="RootMargin/Shell/TargetPanel/TargetMargin/TargetRow/TargetScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="DockPanel" type="PanelContainer" parent="RootMargin/Shell"]
+custom_minimum_size = Vector2(0, 198)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleHeader")
+
+[node name="DockMargin" type="MarginContainer" parent="RootMargin/Shell/DockPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 5
+
+[node name="DockRows" type="VBoxContainer" parent="RootMargin/Shell/DockPanel/DockMargin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="DockHeader" type="HBoxContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 9
+
+[node name="DockTitle" type="Label" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockHeader"]
+layout_mode = 2
+text = "HAND DOCK"
+theme_override_font_sizes/font_size = 14
+
+[node name="DeckLabel" type="Label" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "牌库 0"
+
+[node name="DiscardLabel" type="Label" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "弃牌 0"
+
+[node name="CommodityLabel" type="Label" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "商品 0 / 5"
+
+[node name="SpecialLabel" type="Label" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "特殊 0"
+
+[node name="AssetRail" type="HBoxContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 2
+theme_override_constants/separation = 4
+
+[node name="DockBody" type="HBoxContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 7
+
+[node name="HandScroll" type="ScrollContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 2
+vertical_scroll_mode = 0
+
+[node name="HandRail" type="HBoxContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/HandScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = -18
+
+[node name="QueuePanel" type="PanelContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody"]
+custom_minimum_size = Vector2(330, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StylePanel")
+
+[node name="QueueRows" type="VBoxContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/QueuePanel"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="QueueTitle" type="Label" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/QueuePanel/QueueRows"]
+layout_mode = 2
+text = "本地行动顺序"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 11
+
+[node name="QueueRail" type="VBoxContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/QueuePanel/QueueRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 2
+
+[node name="CommandRow" type="HBoxContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="MergeButton" type="Button" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/CommandRow"]
+unique_name_in_owner = true
+layout_mode = 2
+icon = ExtResource("6_merge")
+expand_icon = true
+icon_max_width = 24
+text = "主动合成"
+
+[node name="FinishMaintenanceButton" type="Button" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/CommandRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "完成维护"
+
+[node name="LockButton" type="Button" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/CommandRow"]
+unique_name_in_owner = true
+layout_mode = 2
+icon = ExtResource("5_lock")
+expand_icon = true
+icon_max_width = 24
+text = "锁定提交"
+
+[node name="AccelerateButton" type="Button" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/CommandRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "继续至终局"
+
+[node name="ActionStatus" type="Label" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/CommandRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "选择新游戏"
+vertical_alignment = 1
+text_overrun_behavior = 3
+theme_override_colors/font_color = Color(0.59, 0.72, 0.85, 1)
+
+[node name="HistoryLabel" type="RichTextLabel" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/CommandRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(290, 28)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = false
+scroll_active = false
+text = "公开历史"
+
+[node name="OverlayLayer" type="CanvasLayer" parent="."]
+layer = 50
+
+[node name="StartOverlay" type="Control" parent="OverlayLayer"]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Dim" type="ColorRect" parent="OverlayLayer/StartOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.015, 0.023, 0.04, 0.86)
+
+[node name="Center" type="CenterContainer" parent="OverlayLayer/StartOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="OverlayLayer/StartOverlay/Center"]
+custom_minimum_size = Vector2(560, 330)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleOverlay")
+
+[node name="Margin" type="MarginContainer" parent="OverlayLayer/StartOverlay/Center/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 30
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 30
+theme_override_constants/margin_bottom = 24
+
+[node name="Rows" type="VBoxContainer" parent="OverlayLayer/StartOverlay/Center/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows"]
+layout_mode = 2
+text = "SPACE SYNDICATE"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 30
+
+[node name="Subtitle" type="Label" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows"]
+layout_mode = 2
+text = "V0.7.3 · 真人可玩样品"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.35, 0.85, 0.77, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="Mode" type="Label" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows"]
+layout_mode = 2
+text = "NEW GAME ONLY"
+horizontal_alignment = 1
+
+[node name="PlayerButtons" type="HBoxContainer" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 10
+
+[node name="Start3Button" type="Button" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 48)
+layout_mode = 2
+text = "3 人"
+
+[node name="Start4Button" type="Button" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 48)
+layout_mode = 2
+text = "4 人"
+
+[node name="Start6Button" type="Button" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 48)
+layout_mode = 2
+text = "6 人"
+
+[node name="Start8Button" type="Button" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 48)
+layout_mode = 2
+text = "8 人"
+
+[node name="PersistenceNotice" type="Label" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows"]
+layout_mode = 2
+text = "V0.7.3样品暂不支持中途保存"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.96, 0.72, 0.34, 1)
+
+[node name="StartOverlayClose" type="Button" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "返回牌桌"
+
+[node name="RegionPopup" type="Control" parent="OverlayLayer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Dim" type="ColorRect" parent="OverlayLayer/RegionPopup"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.01, 0.02, 0.04, 0.65)
+
+[node name="Center" type="CenterContainer" parent="OverlayLayer/RegionPopup"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="OverlayLayer/RegionPopup/Center"]
+custom_minimum_size = Vector2(460, 270)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleOverlay")
+
+[node name="Rows" type="VBoxContainer" parent="OverlayLayer/RegionPopup/Center/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="RegionPopupTitle" type="Label" parent="OverlayLayer/RegionPopup/Center/Panel/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "地区"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 23
+
+[node name="RegionPopupBody" type="RichTextLabel" parent="OverlayLayer/RegionPopup/Center/Panel/Rows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(420, 150)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+
+[node name="RegionPopupClose" type="Button" parent="OverlayLayer/RegionPopup/Center/Panel/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "关闭"
+
+[node name="SettlementOverlay" type="Control" parent="OverlayLayer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Dim" type="ColorRect" parent="OverlayLayer/SettlementOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.01, 0.02, 0.035, 0.92)
+
+[node name="Center" type="CenterContainer" parent="OverlayLayer/SettlementOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="OverlayLayer/SettlementOverlay/Center"]
+custom_minimum_size = Vector2(620, 430)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleOverlay")
+
+[node name="Rows" type="VBoxContainer" parent="OverlayLayer/SettlementOverlay/Center/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="SettlementTitle" type="Label" parent="OverlayLayer/SettlementOverlay/Center/Panel/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "FINAL SETTLEMENT"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.96, 0.78, 0.33, 1)
+theme_override_font_sizes/font_size = 27
+
+[node name="SettlementStandings" type="VBoxContainer" parent="OverlayLayer/SettlementOverlay/Center/Panel/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 9
+
+[node name="SettlementClose" type="Button" parent="OverlayLayer/SettlementOverlay/Center/Panel/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "返回终局界面"
+
+[node name="ToastLabel" type="Label" parent="OverlayLayer"]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -270.0
+offset_top = -72.0
+offset_right = 270.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "状态"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 15

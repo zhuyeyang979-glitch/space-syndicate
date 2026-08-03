@@ -5,6 +5,9 @@ class_name V07CanonicalPlayerProjectionAdapter
 ## The capability is transient object identity; it is never copied into wire data.
 
 const WIRE := preload("res://scripts/semantic/semantic_wire_v1.gd")
+const CODEC := preload(
+	"res://scripts/v07_adapters/v07_canonical_data_codec.gd"
+)
 const TRACK_CORE := preload(
 	"res://scripts/v07_semantic/v07_unified_card_track_core.gd"
 )
@@ -393,7 +396,7 @@ func adapt_player_projection(
 		"facility_contention": contention.duplicate(true),
 		"presentation_assets": presentation_asset_contract(),
 	}
-	var projection := WIRE.sealed_copy(unsealed, "projection_fingerprint")
+	var projection := CODEC.seal(unsealed, "projection_fingerprint")
 	var validation := validation_report(projection)
 	if not bool(validation.get("valid", false)):
 		return _reject_adaptation(str(validation.get(
@@ -473,7 +476,7 @@ func debug_snapshot() -> Dictionary:
 
 
 static func validation_report(value: Variant) -> Dictionary:
-	if not (value is Dictionary) or not WIRE.is_closed_data(value):
+	if not (value is Dictionary) or not CODEC.is_pure_data(value):
 		return _invalid("canonical_projection_not_closed_data")
 	var projection := value as Dictionary
 	if not WIRE.exact_fields(projection, CANONICAL_PROJECTION_FIELDS):
@@ -534,7 +537,7 @@ static func validation_report(value: Variant) -> Dictionary:
 		return _invalid(presentation_reason)
 	if not WIRE.is_fingerprint(projection.get("projection_fingerprint")) \
 			or str(projection.get("projection_fingerprint", "")) \
-			!= WIRE.fingerprint(projection, "projection_fingerprint"):
+			!= CODEC.fingerprint(projection, "projection_fingerprint"):
 		return _invalid("canonical_projection_fingerprint_invalid")
 	return _valid()
 
@@ -778,7 +781,7 @@ static func _source_binding_reason(
 
 
 static func _source_bundle_reason(sources: Dictionary, viewer_id: String) -> String:
-	if not WIRE.is_closed_data(sources) \
+	if not CODEC.is_pure_data(sources) \
 			or not WIRE.exact_fields(sources, SOURCE_BUNDLE_FIELDS):
 		return "source_bundle_fields_invalid"
 	for field in SOURCE_BUNDLE_FIELDS:
@@ -837,7 +840,7 @@ static func _facility_contention_projection_reason(
 	viewer_id: String
 ) -> String:
 	if not WIRE.exact_fields(projection, CONTENTION_PROJECTION_FIELDS) \
-			or not WIRE.is_closed_data(projection):
+			or not CODEC.is_pure_data(projection):
 		return "facility_contention_projection_fields_invalid"
 	if projection.get("schema_version") != 1 \
 			or projection.get("state_version") != 1 \
@@ -853,7 +856,7 @@ static func _facility_contention_projection_reason(
 		return "facility_contention_projection_identity_invalid"
 	if not WIRE.is_fingerprint(projection.get("projection_fingerprint")) \
 			or str(projection.get("projection_fingerprint", "")) \
-				!= WIRE.fingerprint(projection, "projection_fingerprint"):
+				!= CODEC.fingerprint(projection, "projection_fingerprint"):
 		return "facility_contention_projection_fingerprint_invalid"
 	for public_entry_variant in projection.get("anonymous_public_queue") as Array:
 		if not (public_entry_variant is Dictionary):

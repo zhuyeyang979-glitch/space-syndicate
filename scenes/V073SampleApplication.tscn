@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/V073RuntimeComposition.tscn" id="2_runtime"]
 [ext_resource type="PackedScene" path="res://scenes/ui/V073SampleGameScreen.tscn" id="3_screen"]
 
-[node name="Main" type="Control"]
+[node name="V073SampleApplication" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

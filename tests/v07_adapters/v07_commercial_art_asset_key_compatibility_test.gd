@@ -322,73 +322,79 @@ func _test_cutover_manifest_asset_key_boundary() -> void:
 	_expect(parsed is Dictionary, "cutover manifest is strict JSON")
 	if not parsed is Dictionary:
 		return
-	var domains_variant: Variant = (parsed as Dictionary).get("domains")
-	_expect(domains_variant is Array, "cutover manifest exposes gameplay domains")
+	var manifest := parsed as Dictionary
+	_expect(
+		str(manifest.get("status", "")) == "V073_SAMPLE_PRODUCTION_CONNECTED"
+			and str(manifest.get("current_production_runtime_ruleset", ""))
+				== "v0.7.3"
+			and str(manifest.get("player_surface", ""))
+				== "res://scenes/ui/V073SampleGameScreen.tscn",
+		"production manifest binds V0.7.3 to the commercial player surface"
+	)
+	var domains_variant: Variant = manifest.get("domains")
+	_expect(domains_variant is Array, "cutover manifest exposes production domains")
 	if not domains_variant is Array:
 		return
-	var resolved_reference_count := 0
+	var domains := domains_variant as Array
+	_expect(
+		int(manifest.get("domain_count", 0)) == 19
+			and int(manifest.get("v073_production_connection_count", 0)) == 19
+			and domains.size() == 19,
+		"all nineteen production domains are connected"
+	)
 	var domain_map := {}
-	for domain_variant in domains_variant as Array:
-		if not domain_variant is Dictionary:
-			continue
-		var domain := domain_variant as Dictionary
-		var domain_id := str(domain.get("domain_id", ""))
-		domain_map[domain_id] = domain
-		var keys_variant: Variant = domain.get("required_asset_keys")
-		var keys := _string_array(keys_variant as Array) \
-			if keys_variant is Array else [] as Array[String]
-		var keys_ready := not keys.is_empty() \
-			and _unique_sorted(keys).size() == keys.size()
-		for asset_key in keys:
-			keys_ready = keys_ready and _catalog_keys.has(asset_key) \
-				and _present_tokens(asset_key, FORBIDDEN_RAW_ASSET_TOKENS).is_empty()
-			if _catalog_keys.has(asset_key):
-				resolved_reference_count += 1
+	for domain_variant in domains:
+		if domain_variant is Dictionary:
+			var domain := domain_variant as Dictionary
+			domain_map[str(domain.get("domain_id", ""))] = domain
+	for domain_id in [
+		"unified_track",
+		"personal_dbg",
+		"six_color_asset",
+		"player_projection",
+		"commercial_art_presentation",
+	]:
 		_expect(
-			keys_ready,
-			"%s resolves every required asset key through the existing Catalog"
-				% domain_id
+			_domain_connected(domain_map, domain_id),
+			"%s is connected with legacy disconnected" % domain_id
 		)
+	var player_projection := domain_map.get("player_projection", {}) as Dictionary
+	var commercial := domain_map.get("commercial_art_presentation", {}) as Dictionary
 	_expect(
-		resolved_reference_count > 0,
-		"cutover manifest has nonempty resolved presentation dependencies"
+		str(player_projection.get("production_owner", ""))
+			== "V07CanonicalPlayerProjectionAdapter"
+			and bool(player_projection.get("player_adapter_connected", false))
+			and bool(player_projection.get("ui_surface_connected", false)),
+		"player projection owns the stable presentation-key contract"
 	)
 	_expect(
-		_domain_has_keys(domain_map, "unified_card_track", [
-			"card.frame.normal", "card.frame.commodity", "ui.panel.primary",
-		]) and _domain_has_keys(domain_map, "normal_dbg_deck", [
-			"card.frame.normal", "card.back.normal", "icon.board.draw_pile",
-			"icon.board.discard_pile", "icon.board.shuffle", "card.badge.starter",
-		]),
-		"track and DBG cutovers declare their complete card presentation foundation"
+		str(commercial.get("production_owner", ""))
+			== "V073SampleGameScreen presentation-only resolver"
+			and bool(commercial.get("player_adapter_connected", false))
+			and bool(commercial.get("ui_surface_connected", false)),
+		"commercial art presentation is connected without gameplay ownership"
+	)
+	for asset_key in PLAYER_PROJECTION_ASSET_KEYS:
+		_expect(
+			_catalog_keys.has(asset_key),
+			"production presentation key resolves through Catalog: %s" % asset_key
+		)
+	var screen_source := FileAccess.get_file_as_string(
+		"res://scripts/ui/v073/v073_sample_game_screen.gd"
 	)
 	_expect(
-		_domain_has_keys(domain_map, "six_color_assets", PLAYER_PROJECTION_ASSET_KEYS.slice(0, 6)),
-		"six-color cutover declares all six stable icon keys"
-	)
-	var anonymous := domain_map.get("anonymous_resolution", {}) as Dictionary
-	var anonymous_keys := _string_array(
-		anonymous.get("required_asset_keys", []) as Array
-	)
-	var anonymous_key_text := "|".join(anonymous_keys).to_lower()
-	_expect(
-		not anonymous_key_text.contains("avatar")
-			and not anonymous_key_text.contains("player_color")
-			and not anonymous_key_text.contains("portrait"),
-		"anonymous resolution declares no portrait or player-color ownership surface"
-	)
-	var solar := domain_map.get("solar_efficiency", {}) as Dictionary
-	_expect(
-		_domain_has_keys(domain_map, "solar_efficiency", [
-			"shader.planet.body", "shader.planet.cloud",
-			"shader.planet.atmosphere", "environment.night_sky_hdri_001",
-		])
-			and str(solar.get("old_surface_deletion_gate", "")).contains(
-				"without becoming the sunlight owner"
-			),
-		"solar cutover consumes the opaque day/night presentation without moving Core ownership"
+		screen_source.contains("ICON_PATHS")
+			and screen_source.contains("COMMODITY_ART_PATHS")
+			and screen_source.contains("six_color_icon_coverage")
+			and screen_source.contains("normal_card_art_coverage")
+			and screen_source.contains("commodity_card_art_coverage"),
+		"production screen exposes six-color and complete card-art coverage gates"
 	)
 
+
+func _domain_connected(domain_map: Dictionary, domain_id: String) -> bool:
+	var domain := domain_map.get(domain_id, {}) as Dictionary
+	return not domain.is_empty() 		and str(domain.get("status", "")) == "connected" 		and str(domain.get("legacy_status", "")) == "disconnected" 		and not str(domain.get("rollback_boundary_declared", "")).is_empty()
 
 func _domain_has_keys(domain_map: Dictionary, domain_id: String, required: Array) -> bool:
 	var domain := domain_map.get(domain_id, {}) as Dictionary
