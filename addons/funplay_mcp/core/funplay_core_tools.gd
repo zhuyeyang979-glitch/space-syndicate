@@ -200,7 +200,7 @@ var _plugin
 var _settings
 var _tool_registry
 var _filesystem_reload_state
-var _filesystem_signal_connected := false
+var _filesystem_signal_connections: Array[Dictionary] = []
 var _filesystem_execution_active := false
 var _filesystem_callback_active := false
 var _internal_filesystem_operation_sequence := 0
@@ -214,8 +214,15 @@ func _init(plugin, settings) -> void:
 	_filesystem_state_writer_count += 1
 	_filesystem_writer_registered = true
 	_filesystem_reload_state = FunplayFilesystemReloadState.new()
+	_filesystem_reload_state.configure_quiescence(1500, 45000)
+	_filesystem_reload_state.configure_lifecycle(
+		_user_argument_value("--role-godot-mcp-session-id="),
+		_user_argument_value("--role-godot-mcp-project-head="),
+		OS.get_process_id(),
+		ProjectSettings.globalize_path("user://funplay_mcp_import_lifecycle.jsonl")
+	)
 	_filesystem_reload_state.begin_editor_booting(Time.get_ticks_msec())
-	_connect_filesystem_signal()
+	_connect_filesystem_signals()
 	_sync_filesystem_state()
 
 
@@ -226,7 +233,7 @@ func set_tool_registry(tool_registry) -> void:
 func teardown() -> void:
 	if _filesystem_reload_state != null:
 		_filesystem_reload_state.begin_stopping(Time.get_ticks_msec())
-	_disconnect_filesystem_signal()
+	_disconnect_filesystem_signals()
 	if _filesystem_reload_state != null:
 		_filesystem_reload_state.complete_stopping(Time.get_ticks_msec())
 		_publish_filesystem_readiness(_filesystem_reload_state.get_status())
@@ -245,13 +252,8 @@ func process_pending_filesystem_reload() -> void:
 		return
 	var pending_operation_id := str(status.get("pending_operation_id", ""))
 	var pending_operation: Dictionary = _filesystem_reload_state.get_operation(pending_operation_id)
-	if (
-		bool(pending_operation.get("queued_during_initial_scan", false))
-		and int(status.get("post_initial_scan_reload_deferred_tick_count", 0)) < 1
-	):
-		_filesystem_reload_state.record_post_initial_scan_reload_deferred_tick(
-			Time.get_ticks_msec()
-		)
+	if int(pending_operation.get("deferred_tick_count", 0)) < 1:
+		_filesystem_reload_state.record_queued_reload_deferred_tick(Time.get_ticks_msec())
 		return
 	var begin: Dictionary = _filesystem_reload_state.begin_queued_reload(Time.get_ticks_msec())
 	if bool(begin.get("should_execute", false)):
@@ -267,6 +269,19 @@ func is_transport_poll_ready(now_msec: int, stability_msec: int) -> bool:
 		return false
 	_sync_filesystem_state()
 	return _filesystem_reload_state.is_transport_poll_ready(now_msec, stability_msec)
+
+
+func is_import_quiescent() -> bool:
+	if _filesystem_reload_state == null:
+		return false
+	_sync_filesystem_state()
+	var status: Dictionary = _filesystem_reload_state.get_status()
+	return (
+		str(status.get("state", "")) == FunplayFilesystemReloadState.STATE_READY
+		and bool(status.get("import_quiescence_reached", false))
+		and int(status.get("active_import_operation_total", 1)) == 0
+		and int(status.get("known_reimport_depth", 1)) == 0
+	)
 
 
 func execute_code(arguments: Dictionary) -> String:
@@ -5499,29 +5514,78 @@ func _resource_filesystem():
 	return editor.get_resource_filesystem()
 
 
-func _connect_filesystem_signal() -> void:
+func _user_argument_value(prefix: String) -> String:
+	for argument in OS.get_cmdline_user_args():
+		var value := str(argument)
+		if value.begins_with(prefix):
+			return value.trim_prefix(prefix)
+	return ""
+
+
+func _connect_filesystem_signals() -> void:
 	var resource_filesystem = _resource_filesystem()
 	if resource_filesystem == null:
 		return
-	var callback := Callable(self, "_on_filesystem_changed")
-	if not resource_filesystem.filesystem_changed.is_connected(callback):
-		resource_filesystem.filesystem_changed.connect(callback)
-	_filesystem_signal_connected = true
+	var bindings := {
+		"filesystem_changed": Callable(self, "_on_filesystem_changed"),
+		"resources_reimporting": Callable(self, "_on_resources_reimporting"),
+		"resources_reimported": Callable(self, "_on_resources_reimported"),
+		"resources_reload": Callable(self, "_on_resources_reload"),
+		"sources_changed": Callable(self, "_on_sources_changed"),
+		"script_classes_updated": Callable(self, "_on_script_classes_updated"),
+	}
+	for signal_name in bindings:
+		if not resource_filesystem.has_signal(signal_name):
+			continue
+		var callback: Callable = bindings[signal_name]
+		if not resource_filesystem.is_connected(signal_name, callback):
+			resource_filesystem.connect(signal_name, callback)
+		_filesystem_signal_connections.append({
+			"signal_name": signal_name,
+			"callback": callback,
+		})
 
 
-func _disconnect_filesystem_signal() -> void:
-	if not _filesystem_signal_connected:
-		return
+func _disconnect_filesystem_signals() -> void:
 	var resource_filesystem = _resource_filesystem()
-	var callback := Callable(self, "_on_filesystem_changed")
-	if resource_filesystem != null and resource_filesystem.filesystem_changed.is_connected(callback):
-		resource_filesystem.filesystem_changed.disconnect(callback)
-	_filesystem_signal_connected = false
+	if resource_filesystem != null:
+		for binding in _filesystem_signal_connections:
+			var signal_name := str(binding.get("signal_name", ""))
+			var callback: Callable = binding.get("callback", Callable())
+			if signal_name != "" and callback.is_valid() and resource_filesystem.is_connected(signal_name, callback):
+				resource_filesystem.disconnect(signal_name, callback)
+	_filesystem_signal_connections.clear()
 
 
 func _on_filesystem_changed() -> void:
+	_record_filesystem_signal("filesystem_changed", [], true)
+
+
+func _on_resources_reimporting(paths: PackedStringArray) -> void:
+	_record_filesystem_signal("resources_reimporting", Array(paths))
+
+
+func _on_resources_reimported(paths: PackedStringArray) -> void:
+	_record_filesystem_signal("resources_reimported", Array(paths))
+
+
+func _on_resources_reload(paths: PackedStringArray) -> void:
+	_record_filesystem_signal("resources_reload", Array(paths))
+
+
+func _on_sources_changed(exist: bool) -> void:
+	_record_filesystem_signal("sources_changed", ["source_exists" if exist else "source_missing"])
+
+
+func _on_script_classes_updated() -> void:
+	_record_filesystem_signal("script_classes_updated", [])
+
+
+func _record_filesystem_signal(signal_name: String, paths: Array, completion_signal: bool = false) -> void:
 	_filesystem_callback_active = true
-	_sync_filesystem_state(true)
+	if _filesystem_reload_state != null:
+		_filesystem_reload_state.record_import_signal(signal_name, paths, Time.get_ticks_msec())
+	_sync_filesystem_state(completion_signal)
 	_filesystem_callback_active = false
 
 
@@ -5536,19 +5600,23 @@ func _sync_filesystem_state(completion_signal: bool = false) -> Dictionary:
 			false,
 			false,
 			Time.get_ticks_msec(),
-			completion_signal
+			completion_signal,
+			false
 		)
 	else:
+		var script_class_table_ready := ProjectSettings.get_global_class_list() is Array
 		var initial_snapshot_ready: bool = (
 			resource_filesystem.get_filesystem() != null
 			and not resource_filesystem.is_importing()
+			and script_class_table_ready
 		)
 		status = _filesystem_reload_state.observe_editor(
 			resource_filesystem.is_scanning(),
 			initial_snapshot_ready,
 			true,
 			Time.get_ticks_msec(),
-			completion_signal
+			completion_signal,
+			resource_filesystem.is_importing()
 		)
 	_publish_filesystem_readiness(status)
 	return status
@@ -5565,6 +5633,17 @@ func _publish_filesystem_readiness(status: Dictionary) -> void:
 		"initial_scan_completion_count": int(status.get("initial_scan_completion_count", 0)),
 		"reload_pending": bool(status.get("reload_pending", false)),
 		"reload_running": bool(status.get("reload_running", false)),
+		"import_generation": int(status.get("import_generation", 0)),
+		"import_quiescence_reached": bool(status.get("import_quiescence_reached", false)),
+		"import_quiescence_stable_window_msec": int(status.get("import_quiescence_stable_window_msec", 0)),
+		"import_quiescence_timeout_msec": int(status.get("import_quiescence_timeout_msec", 0)),
+		"last_import_activity_msec": int(status.get("last_import_activity_msec", -1)),
+		"known_reimport_depth": int(status.get("known_reimport_depth", 0)),
+		"active_import_operation_total": int(status.get("active_import_operation_total", 0)),
+		"active_import_operation_total_max": int(status.get("active_import_operation_total_max", 0)),
+		"ready_with_active_reimport_count": int(status.get("ready_with_active_reimport_count", 0)),
+		"import_state_writer_count": int(status.get("import_state_writer_count", 0)),
+		"import_lifecycle_event_writer_count": int(status.get("import_lifecycle_event_writer_count", 0)),
 		"last_error": status.get("last_error", {}),
 		"filesystem_state_writer_count": _filesystem_state_writer_count,
 		"editor_pid": OS.get_process_id(),
@@ -5601,12 +5680,16 @@ func _execute_filesystem_reload(operation_id: String) -> void:
 			Time.get_ticks_msec()
 		)
 		return
-	if resource_filesystem.is_scanning():
-		_filesystem_reload_state.fail_reload(
+	var status: Dictionary = _filesystem_reload_state.get_status()
+	if (
+		resource_filesystem.is_scanning()
+		or resource_filesystem.is_importing()
+		or int(status.get("known_reimport_depth", 0)) > 0
+	):
+		_filesystem_reload_state.defer_reload_before_execution(
 			operation_id,
-			"filesystem_scan_busy",
-			"Godot EditorFileSystem is already scanning.",
-			Time.get_ticks_msec()
+			Time.get_ticks_msec(),
+			"filesystem_activity_resumed_before_reload"
 		)
 		return
 

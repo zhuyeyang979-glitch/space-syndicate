@@ -10,7 +10,7 @@ const FunplayMcpServer = preload("res://addons/funplay_mcp/core/funplay_mcp_serv
 const FunplayClientConfigWriter = preload("res://addons/funplay_mcp/core/funplay_client_config_writer.gd")
 const FunplayMcpDock = preload("res://addons/funplay_mcp/ui/funplay_mcp_dock.gd")
 
-const TRANSPORT_READY_STABILITY_MSEC := 30000
+const TRANSPORT_READY_STABILITY_MSEC := 0
 
 var _settings
 var _core_tools
@@ -97,8 +97,7 @@ func _process(_delta: float) -> void:
 		)
 	)
 	if not transport_ready:
-		_transport_poll_suppressed_not_ready_count += 1
-		return
+		_transport_poll_before_initial_ready_count += 1
 
 	if _server != null:
 		_server.poll()

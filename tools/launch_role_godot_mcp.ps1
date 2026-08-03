@@ -181,7 +181,8 @@ $editorArguments = @(
     "--position", "40,40",
     "--",
     "--role-godot-mcp-session-id=$SessionId",
-    "--role-godot-mcp-role=$Role"
+    "--role-godot-mcp-role=$Role",
+    "--role-godot-mcp-project-head=$projectHeadSha"
 )
 $argumentString = $editorArguments -join " "
 $recoveryImportArguments = @(
@@ -330,7 +331,11 @@ try {
                 if ([string]$filesystemReadiness.state -eq "failed") {
                     throw "mcp_initial_scan_failed|path=$filesystemReadinessPath"
                 }
-                if ([bool]$filesystemReadiness.initial_scan_completed -and [string]$filesystemReadiness.state -eq "ready") {
+                if ([bool]$filesystemReadiness.initial_scan_completed `
+                    -and [string]$filesystemReadiness.state -eq "ready" `
+                    -and [bool]$filesystemReadiness.import_quiescence_reached `
+                    -and [int]$filesystemReadiness.known_reimport_depth -eq 0 `
+                    -and [int]$filesystemReadiness.active_import_operation_total -eq 0) {
                     if ($null -eq $readyObservedAt) {
                         $readyObservedAt = [DateTimeOffset]::Now
                     }
@@ -394,7 +399,11 @@ try {
             if ([int]$filesystemStatus.editor_pid -ne $process.Id) {
                 throw "mcp_endpoint_editor_pid_mismatch|expected_pid=$($process.Id)|actual_pid=$($filesystemStatus.editor_pid)"
             }
-            if ([bool]$filesystemStatus.initial_scan_completed -and [string]$filesystemStatus.state -eq "ready") {
+            if ([bool]$filesystemStatus.initial_scan_completed `
+                -and [string]$filesystemStatus.state -eq "ready" `
+                -and [bool]$filesystemStatus.import_quiescence_reached `
+                -and [int]$filesystemStatus.known_reimport_depth -eq 0 `
+                -and [int]$filesystemStatus.active_import_operation_total -eq 0) {
                 break
             }
         } catch {
@@ -498,6 +507,14 @@ try {
         filesystem_state = [string]$filesystemStatus.state
         filesystem_generation = [int]$filesystemStatus.filesystem_generation
         filesystem_state_writer_count = [int]$filesystemStatus.filesystem_state_writer_count
+        import_state_writer_count = [int]$filesystemStatus.import_state_writer_count
+        import_lifecycle_event_writer_count = [int]$filesystemStatus.import_lifecycle_event_writer_count
+        import_quiescence_reached = [bool]$filesystemStatus.import_quiescence_reached
+        import_quiescence_stable_window_msec = [int]$filesystemStatus.import_quiescence_stable_window_msec
+        import_quiescence_timeout_msec = [int]$filesystemStatus.import_quiescence_timeout_msec
+        active_import_operation_total = [int]$filesystemStatus.active_import_operation_total
+        active_import_operation_total_max = [int]$filesystemStatus.active_import_operation_total_max
+        known_reimport_depth = [int]$filesystemStatus.known_reimport_depth
         readiness_file_path = $filesystemReadinessPath
         pre_http_readiness_green = $true
         http_request_count_before_readiness = 0

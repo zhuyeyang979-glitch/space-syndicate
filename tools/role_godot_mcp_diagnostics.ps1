@@ -48,6 +48,9 @@ function Get-McpLogEventCategory {
         [string]$Text
     )
 
+    if ($Text.StartsWith('MCP_IMPORT_LIFECYCLE_EVENT|', [System.StringComparison]::Ordinal)) { return "import_lifecycle_event" }
+    if ($Text -match "^ERROR: Task 'reimport' already exists\.$") { return "reimport_task_conflict_root" }
+    if ($Text -match '^ERROR: Condition "!tasks\.has\(p_task\)" is true') { return "reimport_task_conflict_consequence" }
     if ($Text -match '(?i)Unicode parsing error.*Unexpected NUL character') { return "unicode_nul_diagnostic" }
     if ($Text -match '(?i)(SCRIPT ERROR|Parse Error|Parser Error|compile error)') { return "script_parse_error" }
     if ($Text -match '(?i)(failed to load|cannot load|could not load|resource.*failed)') { return "resource_load_error" }
@@ -231,6 +234,10 @@ function Get-McpRawLogSnapshot {
                 timestamp_source = if ($timestampMatch.Success) { "record_text" } else { "unavailable" }
                 stage = $Stage
                 stage_before_marker = $StageBeforeMarker
+                lifecycle_phase = $Stage
+                operation_type = "unattested"
+                operation_id = "unattested"
+                lifecycle_attribution_source = "static_stage"
                 category = $category
                 nearest_previous_log_record = "stream_start"
                 nearest_next_log_record = "stream_end"
@@ -244,6 +251,8 @@ function Get-McpRawLogSnapshot {
                 failed_load_correlated = $text -match '(?i)(failed to load|cannot load|could not load|resource.*failed)'
                 parse_failure_correlated = $text -match '(?i)(SCRIPT ERROR|Parse Error|Parser Error|compile error)'
                 runtime_failure_correlated = $text -match '(?i)(runtime error|invalid call|stack trace|crash|segmentation fault|signal 11)'
+                reimport_conflict_correlated = $category -in @("reimport_task_conflict_root", "reimport_task_conflict_consequence")
+                reimport_conflict_role = if ($category -eq "reimport_task_conflict_root") { "root" } elseif ($category -eq "reimport_task_conflict_consequence") { "consequence" } else { "none" }
                 potential_diagnostic = (Test-McpPotentialDiagnosticText -Text $text -SourceStream $SourceStream) `
                     -or -not $utf8Valid `
                     -or $framedBytes.Contains([byte]0)
@@ -253,12 +262,56 @@ function Get-McpRawLogSnapshot {
         $lineStart = $cursor + 1
     }
 
+    $currentLifecyclePhase = if ($Stage -eq "recovery_cold_import") { "recovery_import" } else { $Stage }
+    $currentOperationType = if ($Stage -eq "recovery_cold_import") { "cold_cache_bootstrap" } else { "unattested" }
+    $currentOperationId = if ($Stage -eq "recovery_cold_import") { "external-process" } else { "unattested" }
+    for ($index = 0; $index -lt $records.Count; $index += 1) {
+        $recordText = [string]$records[$index].decoded_text_utf8
+        if ([string]$records[$index].category -eq "import_lifecycle_event") {
+            try {
+                $event = $recordText.Substring('MCP_IMPORT_LIFECYCLE_EVENT|'.Length) | ConvertFrom-Json
+                $currentOperationType = [string]$event.operation_type
+                $currentOperationId = [string]$event.operation_id
+                $eventType = [string]$event.event_type
+                $currentLifecyclePhase = switch -Regex ($eventType) {
+                    '^initial_scan_' { 'initial_scan' }
+                    '^reload_' { 'reload' }
+                    '^reimport_' { if ($currentOperationType -eq 'reload') { 'reload' } else { 'reimport' } }
+                    '^script_validation_' { 'script_validation' }
+                    '^scene_load_' { 'scene_load' }
+                    '^quiescence_' { if ($currentOperationType -eq 'reload') { 'reload_quiescence' } else { 'initial_quiescence' } }
+                    default { $currentLifecyclePhase }
+                }
+                $records[$index].lifecycle_phase = $currentLifecyclePhase
+                $records[$index].operation_type = $currentOperationType
+                $records[$index].operation_id = $currentOperationId
+                $records[$index].lifecycle_attribution_source = "in_stream_lifecycle_event_v1"
+                $records[$index].potential_diagnostic = $false
+            } catch {
+                $records[$index].lifecycle_phase = "unattested"
+                $records[$index].operation_type = "unattested"
+                $records[$index].operation_id = "unattested"
+                $records[$index].lifecycle_attribution_source = "invalid_lifecycle_event"
+                $records[$index].potential_diagnostic = $true
+            }
+        } else {
+            $records[$index].lifecycle_phase = $currentLifecyclePhase
+            $records[$index].operation_type = $currentOperationType
+            $records[$index].operation_id = $currentOperationId
+            if ($currentOperationType -ne "unattested") {
+                $records[$index].lifecycle_attribution_source = "in_stream_lifecycle_event_v1"
+            }
+        }
+    }
+
     for ($index = 0; $index -lt $records.Count; $index += 1) {
         if ($index -gt 0) {
             $records[$index].nearest_previous_log_record = [string]$records[$index - 1].category
+            $records[$index]["supporting_previous_record_id"] = [int]$records[$index - 1].record_index
         }
         if ($index + 1 -lt $records.Count) {
             $records[$index].nearest_next_log_record = [string]$records[$index + 1].category
+            $records[$index]["supporting_next_record_id"] = [int]$records[$index + 1].record_index
         }
         $previousEventFound = $false
         $previousPathFound = $false
@@ -1008,5 +1061,461 @@ function Compare-McpColdImportDiagnosticAttemptsV2 {
         baseline_core_fingerprints = $baselineCoreFingerprints.ToArray()
         baseline_manifest = $manifest
         green = $comparisonGreen
+    }
+}
+
+function Test-McpDiagnosticEnvironmentV3 {
+    param([Parameter(Mandatory = $true)][object]$Environment)
+
+    $required = @(
+        "godot_executable_sha256",
+        "godot_version",
+        "tooling_runtime_build_sha256",
+        "mcp_addon_tree",
+        "launch_arguments_sha256",
+        "capture_backend"
+    )
+    $missing = @($required | Where-Object {
+        [string]::IsNullOrWhiteSpace([string](Get-McpDiagnosticObjectValueV2 -Object $Environment -Name $_ -Default ""))
+    })
+    return [ordered]@{
+        valid = $missing.Count -eq 0
+        missing_fields = $missing
+    }
+}
+
+function Get-McpDiagnosticGodotEnvironmentFingerprintV3 {
+    param([Parameter(Mandatory = $true)][object]$Environment)
+
+    $canonical = [ordered]@{
+        godot_executable_sha256 = [string]$Environment.godot_executable_sha256
+        godot_version = [string]$Environment.godot_version
+        renderer = [string](Get-McpDiagnosticObjectValueV2 -Object $Environment -Name "renderer" -Default "")
+        rendering_method = [string](Get-McpDiagnosticObjectValueV2 -Object $Environment -Name "rendering_method" -Default "")
+        rendering_driver = [string](Get-McpDiagnosticObjectValueV2 -Object $Environment -Name "rendering_driver" -Default "")
+        locale = [string](Get-McpDiagnosticObjectValueV2 -Object $Environment -Name "locale" -Default "")
+        ui_locale = [string](Get-McpDiagnosticObjectValueV2 -Object $Environment -Name "ui_locale" -Default "")
+    }
+    return Get-McpByteSha256Hex -Bytes ([System.Text.Encoding]::UTF8.GetBytes(($canonical | ConvertTo-Json -Compress)))
+}
+
+function Get-McpDiagnosticToolingEnvironmentFingerprintV3 {
+    param([Parameter(Mandatory = $true)][object]$Environment)
+
+    $canonical = [ordered]@{
+        tooling_runtime_build_sha256 = [string]$Environment.tooling_runtime_build_sha256
+        mcp_addon_tree = [string]$Environment.mcp_addon_tree
+        launch_arguments_sha256 = [string]$Environment.launch_arguments_sha256
+        capture_backend = [string]$Environment.capture_backend
+        powershell_version = [string](Get-McpDiagnosticObjectValueV2 -Object $Environment -Name "powershell_version" -Default "")
+        powershell_edition = [string](Get-McpDiagnosticObjectValueV2 -Object $Environment -Name "powershell_edition" -Default "")
+        platform = [string](Get-McpDiagnosticObjectValueV2 -Object $Environment -Name "platform" -Default "")
+    }
+    return Get-McpByteSha256Hex -Bytes ([System.Text.Encoding]::UTF8.GetBytes(($canonical | ConvertTo-Json -Compress)))
+}
+
+function Get-McpDiagnosticFingerprintV3 {
+    param(
+        [Parameter(Mandatory = $true)][object]$Diagnostic,
+        [Parameter(Mandatory = $true)][object]$Environment
+    )
+
+    $canonical = [ordered]@{
+        raw_bytes_sha256 = [string]$Diagnostic.raw_bytes_sha256
+        source_stream = [string]$Diagnostic.source_stream
+        lifecycle_phase = [string](Get-McpDiagnosticObjectValueV2 -Object $Diagnostic -Name "lifecycle_phase" -Default "unattested")
+        operation_type = [string](Get-McpDiagnosticObjectValueV2 -Object $Diagnostic -Name "operation_type" -Default "unattested")
+        associated_path = ConvertTo-McpDiagnosticComparablePath -Path ([string]$Diagnostic.associated_path) -KeepResPrefix
+        failed_load_correlated = [bool]$Diagnostic.failed_load_correlated
+        parse_failure_correlated = [bool]$Diagnostic.parse_failure_correlated
+        runtime_failure_correlated = [bool]$Diagnostic.runtime_failure_correlated
+        reimport_conflict_correlated = [bool](Get-McpDiagnosticObjectValueV2 -Object $Diagnostic -Name "reimport_conflict_correlated" -Default $false)
+        godot_environment_fingerprint = Get-McpDiagnosticGodotEnvironmentFingerprintV3 -Environment $Environment
+        tooling_environment_fingerprint = Get-McpDiagnosticToolingEnvironmentFingerprintV3 -Environment $Environment
+    }
+    return Get-McpByteSha256Hex -Bytes ([System.Text.Encoding]::UTF8.GetBytes(($canonical | ConvertTo-Json -Compress)))
+}
+
+function Get-McpDiagnosticRawFingerprintV3 {
+    param([Parameter(Mandatory = $true)][object]$Diagnostic)
+    return [string]$Diagnostic.raw_bytes_sha256
+}
+
+function Get-McpDirectDiagnosticCorrelationPathsV3 {
+    param([Parameter(Mandatory = $true)][object]$Diagnostic)
+
+    $path = ConvertTo-McpDiagnosticComparablePath -Path ([string]$Diagnostic.associated_path) -KeepResPrefix
+    if ([string]::IsNullOrWhiteSpace($path)) { return @() }
+    return @($path)
+}
+
+function Get-McpDiagnosticClassificationV3 {
+    param(
+        [Parameter(Mandatory = $true)][object]$Diagnostic,
+        [Parameter(Mandatory = $true)][object]$Environment,
+        [AllowNull()][object]$BaselineManifest = $null,
+        [string[]]$ChangedFiles = @(),
+        [bool]$CurrentAttemptIsTarget = $true,
+        [bool]$GodotHasCorrespondingDiagnostic = $true,
+        [bool]$WrapperDecodeEvidence = $false,
+        [string]$OccurrenceScope = ""
+    )
+
+    $environmentValidation = Test-McpDiagnosticEnvironmentV3 -Environment $Environment
+    $directPaths = @(Get-McpDirectDiagnosticCorrelationPathsV3 -Diagnostic $Diagnostic)
+    $changedPaths = @($directPaths | Where-Object { Test-McpPathInChangedFiles -AssociatedPath $_ -ChangedFiles $ChangedFiles })
+    $parse = [bool]$Diagnostic.parse_failure_correlated
+    $failedLoad = [bool]$Diagnostic.failed_load_correlated
+    $runtime = [bool]$Diagnostic.runtime_failure_correlated
+    $reimportConflict = [bool](Get-McpDiagnosticObjectValueV2 -Object $Diagnostic -Name "reimport_conflict_correlated" -Default $false)
+    $phase = [string](Get-McpDiagnosticObjectValueV2 -Object $Diagnostic -Name "lifecycle_phase" -Default "unattested")
+    $operationType = [string](Get-McpDiagnosticObjectValueV2 -Object $Diagnostic -Name "operation_type" -Default "unattested")
+    $fingerprint = Get-McpDiagnosticFingerprintV3 -Diagnostic $Diagnostic -Environment $Environment
+    $classification = "unclassified"
+    $reason = "insufficient_attribution_evidence"
+
+    if (-not [bool]$environmentValidation.valid) {
+        $reason = "diagnostic_environment_incomplete"
+    } elseif ($changedPaths.Count -gt 0) {
+        $classification = "changed_file_error"
+        $reason = "direct_path_matches_target_changed_file"
+    } elseif ($reimportConflict) {
+        $classification = "task_introduced_error"
+        $reason = "reimport_task_conflict"
+    } elseif ($runtime) {
+        $classification = "runtime_error"
+        $reason = "runtime_failure_correlation"
+    } elseif ($parse -or $failedLoad) {
+        $classification = "real_project_error"
+        $reason = if ($parse) { "parse_failure_correlation" } else { "failed_load_correlation" }
+    } elseif ([int]$Diagnostic.raw_nul_byte_count -gt 0) {
+        $reason = "raw_nul_requires_explicit_attribution"
+    } elseif (-not [bool]$Diagnostic.raw_utf8_valid) {
+        if (-not $GodotHasCorrespondingDiagnostic -and $WrapperDecodeEvidence) {
+            $classification = "wrapper_artifact"
+            $reason = "wrapper_decode_proven"
+        } else {
+            $reason = "invalid_utf8_without_wrapper_artifact_proof"
+        }
+    } elseif (-not [bool]$Diagnostic.potential_diagnostic) {
+        $classification = "informational"
+        $reason = "record_is_not_a_diagnostic"
+    } else {
+        $allowedFingerprints = if ($null -ne $BaselineManifest) { @($BaselineManifest.allowed_fingerprints) } else { @() }
+        $manifestSchema = if ($null -ne $BaselineManifest) { [string]$BaselineManifest.schema } else { "" }
+        $reimportConflictCount = if ($null -ne $BaselineManifest) { [int](Get-McpDiagnosticObjectValueV2 -Object $BaselineManifest -Name "reimport_conflict_count" -Default 0) } else { 0 }
+        if ($manifestSchema -eq "McpBaselineDiagnosticManifestV3" `
+            -and [bool]$BaselineManifest.attested `
+            -and $allowedFingerprints -contains $fingerprint `
+            -and $directPaths.Count -eq 0 `
+            -and -not $parse `
+            -and -not $failedLoad `
+            -and -not $runtime `
+            -and -not $reimportConflict `
+            -and $reimportConflictCount -eq 0 `
+            -and $phase -ne "unattested" `
+            -and $operationType -ne "unattested") {
+            $classification = "baseline_engine_import_diagnostic"
+            $reason = "raw_fingerprint_environment_phase_and_no_failure_correlation"
+        } elseif ($CurrentAttemptIsTarget -and $null -ne $BaselineManifest) {
+            $classification = "task_introduced_error"
+            $reason = "target_diagnostic_missing_from_v3_baseline"
+        }
+    }
+
+    return [ordered]@{
+        schema = "McpDiagnosticClassificationV3"
+        occurrence_id = "{0}:{1}:{2}:{3}" -f $(if ([string]::IsNullOrWhiteSpace($OccurrenceScope)) { "unscoped" } else { $OccurrenceScope }), [string]$Diagnostic.source_stream, [int]$Diagnostic.record_index, [int]$Diagnostic.raw_byte_start
+        classification = $classification
+        reason_code = $reason
+        raw_fingerprint = Get-McpDiagnosticRawFingerprintV3 -Diagnostic $Diagnostic
+        diagnostic_fingerprint = $fingerprint
+        source_stream = [string]$Diagnostic.source_stream
+        lifecycle_phase = $phase
+        operation_type = $operationType
+        operation_id = [string](Get-McpDiagnosticObjectValueV2 -Object $Diagnostic -Name "operation_id" -Default "unattested")
+        direct_paths = $directPaths
+        supporting_context_record_ids = @(
+            [int](Get-McpDiagnosticObjectValueV2 -Object $Diagnostic -Name "supporting_previous_record_id" -Default 0),
+            [int](Get-McpDiagnosticObjectValueV2 -Object $Diagnostic -Name "supporting_next_record_id" -Default 0)
+        ) | Where-Object { $_ -gt 0 }
+        facets = [ordered]@{
+            parse_error = $parse
+            failed_load = $failedLoad
+            runtime_error = $runtime
+            changed_file = $changedPaths.Count -gt 0
+            reimport_conflict = $reimportConflict
+            incident_role = [string](Get-McpDiagnosticObjectValueV2 -Object $Diagnostic -Name "reimport_conflict_role" -Default "root")
+        }
+        adjacent_text_context_used_as_authority = $false
+    }
+}
+
+function Get-McpDiagnosticGateV3 {
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][object[]]$Classifications,
+        [AllowNull()][object]$BaselineManifest = $null
+    )
+
+    $classes = @(
+        "baseline_engine_import_diagnostic",
+        "wrapper_artifact",
+        "real_project_error",
+        "changed_file_error",
+        "task_introduced_error",
+        "runtime_error",
+        "unclassified",
+        "informational"
+    )
+    $counts = [ordered]@{}
+    foreach ($name in $classes) { $counts[$name] = 0 }
+    $occurrenceIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $duplicates = 0
+    foreach ($item in $Classifications) {
+        $name = [string]$item.classification
+        if (-not $counts.Contains($name)) { $name = "unclassified" }
+        $counts[$name] = [int]$counts[$name] + 1
+        if (-not $occurrenceIds.Add([string]$item.occurrence_id)) { $duplicates += 1 }
+    }
+    $classifiedTotal = 0
+    foreach ($name in $classes) { $classifiedTotal += [int]$counts[$name] }
+    $realProjectRoots = @($Classifications | Where-Object {
+        ([bool]$_.facets.parse_error -or [bool]$_.facets.failed_load) -and [string]$_.facets.incident_role -ne "consequence"
+    }).Count
+    $accountingReconciled = $classifiedTotal -eq $Classifications.Count -and $duplicates -eq 0
+    $baselineValid = $true
+    if (@($Classifications | Where-Object { [string]$_.classification -eq "baseline_engine_import_diagnostic" }).Count -gt 0) {
+        $baselineValid = $null -ne $BaselineManifest `
+            -and [string]$BaselineManifest.schema -eq "McpBaselineDiagnosticManifestV3" `
+            -and [bool]$BaselineManifest.attested
+    }
+    $green = $accountingReconciled `
+        -and $baselineValid `
+        -and $realProjectRoots -eq 0 `
+        -and [int]$counts.changed_file_error -eq 0 `
+        -and [int]$counts.task_introduced_error -eq 0 `
+        -and [int]$counts.runtime_error -eq 0 `
+        -and [int]$counts.unclassified -eq 0
+    return [ordered]@{
+        schema = "McpDiagnosticGateV3"
+        green = $green
+        total_diagnostic_count = $Classifications.Count
+        counts = $counts
+        baseline_engine_diagnostic_count = [int]$counts.baseline_engine_import_diagnostic
+        wrapper_artifact_count = [int]$counts.wrapper_artifact
+        real_project_error_count = $realProjectRoots
+        changed_file_error_count = [int]$counts.changed_file_error
+        task_introduced_error_count = [int]$counts.task_introduced_error
+        runtime_error_count = [int]$counts.runtime_error
+        unclassified_diagnostic_count = [int]$counts.unclassified
+        informational_diagnostic_count = [int]$counts.informational
+        diagnostic_accounting_reconciled = $accountingReconciled
+        duplicate_diagnostic_classification_count = $duplicates
+        adjacent_text_context_used_as_authority = $false
+        supporting_context_difference_blocks_baseline = $false
+        baseline_allow_scope = "raw_fingerprint_environment_phase_and_no_failure_correlation"
+    }
+}
+
+function Get-McpAttemptAuthoritativeDiagnosticsV3 {
+    param([Parameter(Mandatory = $true)][object]$Attempt)
+
+    $recovery = Get-McpDiagnosticObjectValueV2 -Object $Attempt -Name "recovery_import_stderr"
+    return @(
+        @($Attempt.editor_stderr.diagnostics) +
+        $(if ($null -ne $recovery) { @($recovery.diagnostics) } else { @() })
+    )
+}
+
+function Compare-McpColdImportDiagnosticAttemptsV3 {
+    param(
+        [Parameter(Mandatory = $true)][object]$C0,
+        [Parameter(Mandatory = $true)][object]$C1A,
+        [Parameter(Mandatory = $true)][object]$C2A,
+        [Parameter(Mandatory = $true)][object]$C1B,
+        [Parameter(Mandatory = $true)][object]$C2B,
+        [string[]]$ChangedFiles = @()
+    )
+
+    $attempts = @($C0, $C1A, $C2A, $C1B, $C2B)
+    foreach ($attempt in $attempts) {
+        if ([string]$attempt.schema -notin @("McpColdImportDiagnosticAttemptV1", "McpColdImportDiagnosticAttemptV2")) {
+            return [ordered]@{ valid = $false; green = $false; reason_code = "matrix_attempt_schema_invalid" }
+        }
+        if (-not [bool]$attempt.cache_was_fresh -or -not [bool]$attempt.project_head_match -or -not [bool]$attempt.project_tree_match) {
+            return [ordered]@{ valid = $false; green = $false; reason_code = "matrix_attempt_identity_invalid" }
+        }
+        if (-not [bool]$attempt.initial_scan_green -or -not [bool]$attempt.import_quiescence_green) {
+            return [ordered]@{ valid = $false; green = $false; reason_code = "matrix_import_quiescence_not_green" }
+        }
+        if (-not [bool]$attempt.project_reload_green -or -not [bool]$attempt.script_discovery_green) {
+            return [ordered]@{ valid = $false; green = $false; reason_code = "matrix_operation_not_green" }
+        }
+        if ([int]$attempt.reimport_conflict_count -ne 0) {
+            return [ordered]@{ valid = $true; green = $false; reason_code = "matrix_reimport_conflict_present" }
+        }
+    }
+
+    $environmentFingerprints = @($attempts | ForEach-Object {
+        "{0}:{1}" -f `
+            (Get-McpDiagnosticGodotEnvironmentFingerprintV3 -Environment $_.environment), `
+            (Get-McpDiagnosticToolingEnvironmentFingerprintV3 -Environment $_.environment)
+    } | Sort-Object -Unique)
+    if ($environmentFingerprints.Count -ne 1) {
+        return [ordered]@{ valid = $false; green = $false; reason_code = "diagnostic_environment_mismatch" }
+    }
+
+    $diagnostics = [object[]]::new(5)
+    $diagnostics[0] = @(Get-McpAttemptAuthoritativeDiagnosticsV3 -Attempt $C0)
+    $diagnostics[1] = @(Get-McpAttemptAuthoritativeDiagnosticsV3 -Attempt $C1A)
+    $diagnostics[2] = @(Get-McpAttemptAuthoritativeDiagnosticsV3 -Attempt $C2A)
+    $diagnostics[3] = @(Get-McpAttemptAuthoritativeDiagnosticsV3 -Attempt $C1B)
+    $diagnostics[4] = @(Get-McpAttemptAuthoritativeDiagnosticsV3 -Attempt $C2B)
+    $sets = @()
+    $rawSets = @()
+    for ($index = 0; $index -lt $attempts.Count; $index += 1) {
+        $set = [ordered]@{}
+        $rawSet = [ordered]@{}
+        foreach ($diagnostic in @($diagnostics[$index])) {
+            $fingerprint = Get-McpDiagnosticFingerprintV3 -Diagnostic $diagnostic -Environment $attempts[$index].environment
+            $raw = Get-McpDiagnosticRawFingerprintV3 -Diagnostic $diagnostic
+            if (-not $set.Contains($fingerprint)) { $set[$fingerprint] = 0 }
+            if (-not $rawSet.Contains($raw)) { $rawSet[$raw] = 0 }
+            $set[$fingerprint] = [int]$set[$fingerprint] + 1
+            $rawSet[$raw] = [int]$rawSet[$raw] + 1
+        }
+        $sets += ,$set
+        $rawSets += ,$rawSet
+    }
+
+    $allowed = [System.Collections.Generic.List[string]]::new()
+    $allowedMultiplicity = [ordered]@{}
+    $targetAdditional = 0
+    $targetAdditionalRaw = 0
+    $baselineUnstableDiagnosticCount = 0
+    $baselineUnstableRawFingerprintCount = 0
+    $allKeys = @($sets[0].Keys + $sets[1].Keys + $sets[2].Keys + $sets[3].Keys + $sets[4].Keys | Sort-Object -Unique)
+    foreach ($key in $allKeys) {
+        $c0Count = if ($sets[0].Contains($key)) { [int]$sets[0][$key] } else { 0 }
+        $c1Maximum = [Math]::Max(
+            $(if ($sets[1].Contains($key)) { [int]$sets[1][$key] } else { 0 }),
+            $(if ($sets[3].Contains($key)) { [int]$sets[3][$key] } else { 0 })
+        )
+        $c2ACount = if ($sets[2].Contains($key)) { [int]$sets[2][$key] } else { 0 }
+        $c2BCount = if ($sets[4].Contains($key)) { [int]$sets[4][$key] } else { 0 }
+        $c1ACount = if ($sets[1].Contains($key)) { [int]$sets[1][$key] } else { 0 }
+        $c1BCount = if ($sets[3].Contains($key)) { [int]$sets[3][$key] } else { 0 }
+        if ($c1ACount -ne $c1BCount) {
+            $baselineUnstableDiagnosticCount += [Math]::Abs($c1ACount - $c1BCount)
+        }
+        $baselineMaximum = [Math]::Max($c0Count, $c1Maximum)
+        if ($c2ACount -ne $c2BCount) {
+            $targetAdditional += [Math]::Abs($c2ACount - $c2BCount)
+        }
+        if ($c2ACount -gt $baselineMaximum) {
+            $targetAdditional += $c2ACount - $baselineMaximum
+        }
+        if ($c2ACount -gt 0 -and $c2ACount -le $baselineMaximum -and $c2ACount -eq $c2BCount) {
+            $allowed.Add([string]$key)
+            $allowedMultiplicity[[string]$key] = $c2ACount
+        }
+    }
+    $allRawKeys = @($rawSets[0].Keys + $rawSets[1].Keys + $rawSets[2].Keys + $rawSets[3].Keys + $rawSets[4].Keys | Sort-Object -Unique)
+    foreach ($key in $allRawKeys) {
+        $c1ARawCount = if ($rawSets[1].Contains($key)) { [int]$rawSets[1][$key] } else { 0 }
+        $c1BRawCount = if ($rawSets[3].Contains($key)) { [int]$rawSets[3][$key] } else { 0 }
+        if ($c1ARawCount -ne $c1BRawCount) {
+            $baselineUnstableRawFingerprintCount += [Math]::Abs($c1ARawCount - $c1BRawCount)
+        }
+        $baselineMaximum = [Math]::Max(
+            $(if ($rawSets[0].Contains($key)) { [int]$rawSets[0][$key] } else { 0 }),
+            [Math]::Max(
+                $(if ($rawSets[1].Contains($key)) { [int]$rawSets[1][$key] } else { 0 }),
+                $(if ($rawSets[3].Contains($key)) { [int]$rawSets[3][$key] } else { 0 })
+            )
+        )
+        $targetMaximum = [Math]::Max(
+            $(if ($rawSets[2].Contains($key)) { [int]$rawSets[2][$key] } else { 0 }),
+            $(if ($rawSets[4].Contains($key)) { [int]$rawSets[4][$key] } else { 0 })
+        )
+        if ($targetMaximum -gt $baselineMaximum) { $targetAdditionalRaw += $targetMaximum - $baselineMaximum }
+    }
+
+    $targetDiagnostics = @($diagnostics[2]) + @($diagnostics[4])
+    $targetReimportConflicts = @($targetDiagnostics | Where-Object {
+        [bool](Get-McpDiagnosticObjectValueV2 -Object $_ -Name "reimport_conflict_correlated" -Default $false)
+    }).Count
+    $targetChangedFileDiagnostics = @($targetDiagnostics | Where-Object {
+        $candidate = $_
+        @((Get-McpDirectDiagnosticCorrelationPathsV3 -Diagnostic $candidate) | Where-Object {
+            Test-McpPathInChangedFiles -AssociatedPath $_ -ChangedFiles $ChangedFiles
+        }).Count -gt 0
+    }).Count
+    $targetProjectErrors = @($targetDiagnostics | Where-Object {
+        $candidate = $_
+        $hasChangedPath = @((Get-McpDirectDiagnosticCorrelationPathsV3 -Diagnostic $candidate) | Where-Object {
+            Test-McpPathInChangedFiles -AssociatedPath $_ -ChangedFiles $ChangedFiles
+        }).Count -gt 0
+        $hasReimportConflict = [bool](Get-McpDiagnosticObjectValueV2 -Object $candidate -Name "reimport_conflict_correlated" -Default $false)
+        -not $hasChangedPath `
+            -and -not $hasReimportConflict `
+            -and -not [bool]$candidate.runtime_failure_correlated `
+            -and ([bool]$candidate.parse_failure_correlated -or [bool]$candidate.failed_load_correlated)
+    }).Count
+    $targetRuntimeErrors = @($targetDiagnostics | Where-Object {
+        $candidate = $_
+        $hasChangedPath = @((Get-McpDirectDiagnosticCorrelationPathsV3 -Diagnostic $candidate) | Where-Object {
+            Test-McpPathInChangedFiles -AssociatedPath $_ -ChangedFiles $ChangedFiles
+        }).Count -gt 0
+        $hasReimportConflict = [bool](Get-McpDiagnosticObjectValueV2 -Object $candidate -Name "reimport_conflict_correlated" -Default $false)
+        -not $hasChangedPath -and -not $hasReimportConflict -and [bool]$candidate.runtime_failure_correlated
+    }).Count
+    $structuralGreen = $targetAdditional -eq 0 `
+        -and $targetAdditionalRaw -eq 0 `
+        -and $baselineUnstableDiagnosticCount -eq 0 `
+        -and $baselineUnstableRawFingerprintCount -eq 0 `
+        -and $targetReimportConflicts -eq 0 `
+        -and $targetChangedFileDiagnostics -eq 0 `
+        -and $targetProjectErrors -eq 0 `
+        -and $targetRuntimeErrors -eq 0
+    $manifest = [ordered]@{
+        schema = "McpBaselineDiagnosticManifestV3"
+        attested = $structuralGreen
+        target_head = [string]$C2A.project_head
+        target_tree = [string]$C2A.project_tree
+        environment_fingerprint = [string]$environmentFingerprints[0]
+        allowed_fingerprints = $allowed.ToArray()
+        allowed_multiplicity = $allowedMultiplicity
+        target_additional_diagnostic_count = $targetAdditional
+        target_additional_raw_fingerprint_count = $targetAdditionalRaw
+        target_changed_file_diagnostic_count = $targetChangedFileDiagnostics
+        reimport_conflict_count = $targetReimportConflicts
+        baseline_allow_scope = "raw_fingerprint_environment_phase_and_no_failure_correlation"
+    }
+    $targetClassifications = @(@($diagnostics[2]) | ForEach-Object {
+        Get-McpDiagnosticClassificationV3 -Diagnostic $_ -Environment $C2A.environment -BaselineManifest $manifest -ChangedFiles $ChangedFiles -OccurrenceScope ([string]$C2A.cell_id)
+    }) + @(@($diagnostics[4]) | ForEach-Object {
+        Get-McpDiagnosticClassificationV3 -Diagnostic $_ -Environment $C2B.environment -BaselineManifest $manifest -ChangedFiles $ChangedFiles -OccurrenceScope ([string]$C2B.cell_id)
+    })
+    $targetGate = Get-McpDiagnosticGateV3 -Classifications $targetClassifications -BaselineManifest $manifest
+    $green = $structuralGreen -and [bool]$targetGate.green
+    return [ordered]@{
+        schema = "McpColdImportDiagnosticComparisonV3"
+        valid = $true
+        green = $green
+        reason_code = if ($green) { "none" } elseif ($targetReimportConflicts -gt 0) { "matrix_reimport_conflict_present" } elseif ($baselineUnstableRawFingerprintCount -gt 0 -or $baselineUnstableDiagnosticCount -gt 0) { "baseline_repeat_not_stable" } elseif ($targetAdditionalRaw -gt 0) { "target_additional_raw_fingerprint" } elseif ($targetAdditional -gt 0) { "target_additional_diagnostic" } elseif ($targetProjectErrors -gt 0) { "target_project_error" } elseif ($targetRuntimeErrors -gt 0) { "target_runtime_error" } else { "diagnostic_gate_not_green" }
+        matrix_attempt_count = 5
+        target_additional_diagnostic_count = $targetAdditional
+        target_additional_raw_fingerprint_count = $targetAdditionalRaw
+        baseline_unstable_diagnostic_count = $baselineUnstableDiagnosticCount
+        baseline_unstable_raw_fingerprint_count = $baselineUnstableRawFingerprintCount
+        target_changed_file_diagnostic_count = $targetChangedFileDiagnostics
+        reimport_conflict_count = $targetReimportConflicts
+        target_real_project_error_count = $targetProjectErrors
+        target_runtime_error_count = $targetRuntimeErrors
+        diagnostic_accounting_reconciled = [bool]$targetGate.diagnostic_accounting_reconciled
+        baseline_manifest = $manifest
+        target_classifications = $targetClassifications
+        target_gate = $targetGate
     }
 }

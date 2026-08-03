@@ -46,6 +46,23 @@ func is_transport_poll_ready(now_msec: int, stability_msec: int) -> bool:
 	return bool(_core_tools.is_transport_poll_ready(now_msec, stability_msec))
 
 
+func is_import_quiescent() -> bool:
+	if _core_tools == null or not _core_tools.has_method("is_import_quiescent"):
+		return false
+	return bool(_core_tools.is_import_quiescent())
+
+
+func is_tool_allowed_before_import_quiescence(tool_name: String) -> bool:
+	return tool_name in [
+		"get_godot_version",
+		"get_project_info",
+		"filesystem_scan_status",
+		"request_script_reload",
+		"get_console_logs",
+		"stop_editor",
+	]
+
+
 func list_tools(profile: String) -> Array:
 	var selected_profile: String = profile if profile in _profiles else "core"
 	var tools: Array = []

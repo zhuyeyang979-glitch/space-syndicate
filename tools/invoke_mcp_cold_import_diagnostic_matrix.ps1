@@ -125,7 +125,11 @@ function Wait-McpMatrixOperation {
             throw "MCP_MATRIX_EDITOR_EXITED|operation_id=$OperationId|reason=$($identity.reason_code)"
         }
         $status = Invoke-McpMatrixTool -Connection $Connection -Name filesystem_scan_status -Arguments @{ operation_id = $OperationId }
-        if ([string]$status.operation.status -eq "completed") {
+        if ([string]$status.operation.status -eq "completed" `
+            -and [string]$status.state -eq "ready" `
+            -and [bool]$status.import_quiescence_reached `
+            -and [int]$status.known_reimport_depth -eq 0 `
+            -and [int]$status.active_import_operation_total -eq 0) {
             return $status
         }
         if ([string]$status.operation.status -eq "failed" -or [string]$status.state -eq "failed") {
@@ -168,6 +172,7 @@ function New-McpMatrixMirror {
     if ($actualHead -ne $Head) {
         throw "MCP_MATRIX_HEAD_MISMATCH|cell=$CellId|expected=$Head|actual=$actualHead"
     }
+    $projectStatusBeforeOverlay = @(& git -C $mirrorPath status --short)
     $addonDestination = Join-Path $mirrorPath "addons\funplay_mcp"
     Get-ChildItem -Force -LiteralPath $TargetAddonSource | Copy-Item -Destination $addonDestination -Recurse -Force
     $sourceAddonManifest = Get-McpMatrixDirectoryManifest -Path $TargetAddonSource
@@ -181,6 +186,7 @@ function New-McpMatrixMirror {
         project_head = $actualHead
         project_tree = $sourceTree
         source_status_before = $statusBefore
+        project_status_before_overlay = $projectStatusBeforeOverlay
         addon_overlay_source = $TargetAddonSource
         addon_manifest = $mirrorAddonManifest
         cache_absent_before = -not (Test-Path -LiteralPath (Join-Path $mirrorPath ".godot"))
@@ -228,7 +234,11 @@ function Invoke-McpMatrixCell {
         $connection = $launchJson | ConvertFrom-Json
         $projectInfo = Invoke-McpMatrixTool -Connection $connection -Name get_project_info
         $initialStatus = Invoke-McpMatrixTool -Connection $connection -Name filesystem_scan_status
-        if (-not [bool]$initialStatus.initial_scan_completed -or [string]$initialStatus.state -ne "ready") {
+        if (-not [bool]$initialStatus.initial_scan_completed `
+            -or [string]$initialStatus.state -ne "ready" `
+            -or -not [bool]$initialStatus.import_quiescence_reached `
+            -or [int]$initialStatus.known_reimport_depth -ne 0 `
+            -or [int]$initialStatus.active_import_operation_total -ne 0) {
             throw "MCP_MATRIX_INITIAL_SCAN_NOT_READY|cell=$cellId"
         }
         $reloadRequestId = "alpha04c-cold-$($cellId.ToLowerInvariant())-reload-a1"
@@ -287,7 +297,7 @@ function Invoke-McpMatrixCell {
     $headAfter = (& git -C ([string]$mirror.path) rev-parse HEAD).Trim()
     $treeAfter = (& git -C ([string]$mirror.path) rev-parse "HEAD^{tree}").Trim()
     $attempt = [ordered]@{
-        schema = "McpColdImportDiagnosticAttemptV1"
+        schema = "McpColdImportDiagnosticAttemptV2"
         cell_id = $cellId
         session_id = [string]$Cell.session_id
         port = [int]$Cell.port
@@ -304,6 +314,16 @@ function Invoke-McpMatrixCell {
         unique_cache_id = [string]$Cell.session_id
         environment = $Environment
         initial_scan_green = $null -ne $initialStatus -and [bool]$initialStatus.initial_scan_completed -and [string]$initialStatus.state -eq "ready"
+        import_quiescence_green = $null -ne $initialStatus `
+            -and [bool]$initialStatus.import_quiescence_reached `
+            -and [int]$initialStatus.known_reimport_depth -eq 0 `
+            -and [int]$initialStatus.active_import_operation_total -eq 0 `
+            -and $null -ne $reloadStatus `
+            -and [bool]$reloadStatus.import_quiescence_reached
+        import_quiescence_stable_window_msec = if ($null -ne $initialStatus) { [int]$initialStatus.import_quiescence_stable_window_msec } else { 0 }
+        import_quiescence_timeout_msec = if ($null -ne $initialStatus) { [int]$initialStatus.import_quiescence_timeout_msec } else { 0 }
+        initial_quiescence_reached_count = if ($null -ne $initialStatus) { [int]$initialStatus.import_quiescence_reached_count } else { 0 }
+        reload_quiescence_reached_count = if ($null -ne $reloadStatus) { [int]$reloadStatus.import_quiescence_reached_count } else { 0 }
         project_reload_green = $null -ne $reloadStatus -and [string]$reloadStatus.operation.status -eq "completed"
         script_discovery_green = $null -ne $scriptDiscovery -and [bool]$scriptDiscovery.green
         script_discovery = $scriptDiscovery
@@ -319,6 +339,9 @@ function Invoke-McpMatrixCell {
         script_parse_error_count = [int]$editorFailureCounts.script_parse_error_count + [int]$recoveryFailureCounts.script_parse_error_count
         failed_resource_load_count = [int]$editorFailureCounts.failed_resource_load_count + [int]$recoveryFailureCounts.failed_resource_load_count
         runtime_error_count = [int]$editorFailureCounts.runtime_error_count + [int]$recoveryFailureCounts.runtime_error_count
+        reimport_conflict_count = @($editorStderr.diagnostics + $recoveryStderr.diagnostics | Where-Object {
+            [bool](Get-McpDiagnosticObjectValueV2 -Object $_ -Name "reimport_conflict_correlated" -Default $false)
+        }).Count
         stopped_cleanly = $null -ne $stopResult -and [bool]$stopResult.stopped -and [bool]$stopResult.clean_stop
         editor_exit_code = if ($null -ne $stopResult) { $stopResult.editor_exit_code } else { $null }
         process_count_after = if ($null -ne $stopResult) { [int]$stopResult.task_process_count_after } else { 1 }
@@ -358,12 +381,12 @@ if ($actualTargetTree -ne $ExpectedTargetTree) {
 $toolingRuntime = Get-McpMatrixToolingRuntimeHash
 $godotSha = Get-McpFileSha256Hex -Path $GodotPath
 $godotVersion = (& $GodotPath --version | Select-Object -First 1).Trim()
-$addonTree = (& git -C $RepositoryRoot rev-parse "${C2Head}:addons/funplay_mcp").Trim()
+$addonTree = [string](Get-McpMatrixDirectoryManifest -Path $TargetAddonSource).manifest_sha256
 $launchTemplate = [ordered]@{
     role = "Supervisor"
     renderer = "compatibility"
     recovery = @("--import", "--recovery-mode", "--path", "<PROJECT_ROOT>", "--log-file", "<LOG_PATH>", "--rendering-method", "gl_compatibility", "--rendering-driver", "opengl3", "--", "--role-godot-mcp-session-id=<SESSION_ID>-recovery-import", "--role-godot-mcp-role=Supervisor-recovery-import")
-    editor = @("--editor", "--path", "<PROJECT_ROOT>", "--log-file", "<LOG_PATH>", "--rendering-method", "gl_compatibility", "--rendering-driver", "opengl3", "--resolution", "1600x960", "--position", "40,40", "--", "--role-godot-mcp-session-id=<SESSION_ID>", "--role-godot-mcp-role=Supervisor")
+    editor = @("--editor", "--path", "<PROJECT_ROOT>", "--log-file", "<LOG_PATH>", "--rendering-method", "gl_compatibility", "--rendering-driver", "opengl3", "--resolution", "1600x960", "--position", "40,40", "--", "--role-godot-mcp-session-id=<SESSION_ID>", "--role-godot-mcp-role=Supervisor", "--role-godot-mcp-project-head=<PROJECT_HEAD>")
 }
 $launchTemplateHash = Get-McpByteSha256Hex -Bytes ([System.Text.Encoding]::UTF8.GetBytes(($launchTemplate | ConvertTo-Json -Depth 8 -Compress)))
 $environment = [ordered]@{
@@ -394,9 +417,11 @@ $changedScripts = @(
     "tests/card_inventory_discardability_typed_query_contract_test.gd"
 )
 $cellDefinitions = @(
-    [ordered]@{ id = "C0"; head = $C0Head; port = 28820; session_id = "alpha04c-cold-c0-794ccf01-a1" },
-    [ordered]@{ id = "C1"; head = $C1Head; port = 28821; session_id = "alpha04c-cold-c1-510ebc3b-a1" },
-    [ordered]@{ id = "C2"; head = $C2Head; port = 28822; session_id = "alpha04c-cold-c2-3e73aaa8-a1" }
+    [ordered]@{ id = "C0_MAIN_A"; head = $C0Head; port = 28920; session_id = "alpha04c-quiescence-c0-main-a" },
+    [ordered]@{ id = "C1_PARENT_A"; head = $C1Head; port = 28921; session_id = "alpha04c-quiescence-c1-parent-a" },
+    [ordered]@{ id = "C2_TARGET_A"; head = $C2Head; port = 28922; session_id = "alpha04c-quiescence-c2-target-a" },
+    [ordered]@{ id = "C1_PARENT_B"; head = $C1Head; port = 28923; session_id = "alpha04c-quiescence-c1-parent-b" },
+    [ordered]@{ id = "C2_TARGET_B"; head = $C2Head; port = 28924; session_id = "alpha04c-quiescence-c2-target-b" }
 )
 foreach ($cell in $cellDefinitions) {
     & git -C $RepositoryRoot merge-base --is-ancestor ([string]$cell.head) $C2Head
@@ -405,9 +430,9 @@ foreach ($cell in $cellDefinitions) {
 }
 
 $matrixManifest = [ordered]@{
-    schema = "McpColdImportDiagnosticMatrixRunV2"
-    task_id = "ALPHA_0_4_C_MCP_COLD_IMPORT_UNICODE_NUL_BASELINE_ATTRIBUTION_GATE_REPAIR_AND_EXACT_SHA_ACCEPTANCE"
-    attempt_count = 3
+    schema = "McpColdImportDiagnosticMatrixRunV3"
+    task_id = "ALPHA_0_4_C_MCP_IMPORT_QUIESCENCE_REIMPORT_CONFLICT_AND_UNICODE_PHASE_ATTRIBUTION_REPAIR"
+    attempt_count = 5
     sequential = $true
     environment = $environment
     tooling_runtime = $toolingRuntime
@@ -421,36 +446,25 @@ $attempts = [System.Collections.Generic.List[object]]::new()
 foreach ($cell in $cellDefinitions) {
     $attempts.Add((Invoke-McpMatrixCell -Cell $cell -Environment $environment -ChangedScripts $changedScripts))
 }
-$comparison = Compare-McpColdImportDiagnosticAttemptsV2 -C0 $attempts[0] -C1 $attempts[1] -C2 $attempts[2] -ChangedFiles $changedScripts
+$comparison = Compare-McpColdImportDiagnosticAttemptsV3 `
+    -C0 $attempts[0] `
+    -C1A $attempts[1] `
+    -C2A $attempts[2] `
+    -C1B $attempts[3] `
+    -C2B $attempts[4] `
+    -ChangedFiles $changedScripts
 Write-McpMatrixJson -Path (Join-Path $EvidenceRoot "comparison.json") -Value $comparison
 Write-McpMatrixJson -Path (Join-Path $EvidenceRoot "baseline_manifest.json") -Value $comparison.baseline_manifest
 
-$targetDiagnostics = @($attempts[2].editor_stderr.diagnostics + $attempts[2].recovery_import_stderr.diagnostics)
-$targetClassifications = @($targetDiagnostics | ForEach-Object {
-    Get-McpDiagnosticClassificationV2 `
-        -Diagnostic $_ `
-        -Environment $environment `
-        -BaselineManifest $comparison.baseline_manifest `
-        -ChangedFiles $changedScripts `
-        -CurrentAttemptIsTarget $true `
-        -CurrentProjectHead $C2Head `
-        -CurrentProjectTree $ExpectedTargetTree
-})
-$targetGate = Get-McpDiagnosticGateV2 `
-    -Classifications $targetClassifications `
-    -BaselineManifest $comparison.baseline_manifest `
-    -Environment $environment `
-    -CurrentProjectHead $C2Head `
-    -CurrentProjectTree $ExpectedTargetTree
 $result = [ordered]@{
-    schema = "McpColdImportDiagnosticMatrixResultV2"
-    green = [bool]$comparison.valid -and [bool]$comparison.green -and [bool]$targetGate.green
+    schema = "McpColdImportDiagnosticMatrixResultV3"
+    green = [bool]$comparison.valid -and [bool]$comparison.green -and [bool]$comparison.target_gate.green
     evidence_root = $EvidenceRoot
     environment = $environment
     attempts = $attempts.ToArray()
     comparison = $comparison
-    target_classifications = $targetClassifications
-    target_gate = $targetGate
+    target_classifications = $comparison.target_classifications
+    target_gate = $comparison.target_gate
 }
 Write-McpMatrixJson -Path (Join-Path $EvidenceRoot "result.json") -Value $result
 $result | ConvertTo-Json -Depth 30

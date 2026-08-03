@@ -18,7 +18,7 @@ class FakeRegistry:
 	var result_text := '{"ok":true,"operation_id":"filesystem-reload-1"}'
 
 	func has_tool(name: String) -> bool:
-		return name == "request_script_reload"
+		return name in ["request_script_reload", "validate_script", "open_scene"]
 
 	func is_tool_allowed(_name: String, _profile: String) -> bool:
 		return true
@@ -26,6 +26,12 @@ class FakeRegistry:
 	func call_tool(_name: String, _arguments: Dictionary) -> String:
 		call_count += 1
 		return result_text
+
+	func is_import_quiescent() -> bool:
+		return false
+
+	func is_tool_allowed_before_import_quiescence(name: String) -> bool:
+		return name == "request_script_reload"
 
 
 class FakeProvider:
@@ -65,16 +71,31 @@ func _init() -> void:
 	_expect(bool((collision.get("result", {}) as Dictionary).get("isError", false)), "collision is marked as an MCP tool error")
 	var structured: Dictionary = (collision.get("result", {}) as Dictionary).get("structuredContent", {})
 	_expect(structured.get("reason_code") == "mcp_request_id_collision", "collision reason is preserved")
+
+	var validation_blocked: Dictionary = handler.handle_request(_request({}, "validate_script"))
+	_expect(
+		str((validation_blocked.get("error", {}) as Dictionary).get("message", "")) == "mcp_import_quiescence_required",
+		"script validation is rejected before import quiescence"
+	)
+	var scene_blocked: Dictionary = handler.handle_request(_request({}, "open_scene"))
+	_expect(
+		str((scene_blocked.get("error", {}) as Dictionary).get("message", "")) == "mcp_import_quiescence_required",
+		"scene load is rejected before import quiescence"
+	)
+	_expect(registry.call_count == 2, "quiescence-blocked tools never cross the registry boundary")
+	var diagnostics: Dictionary = handler.get_diagnostics()
+	_expect(int(diagnostics.get("import_quiescence_blocked_tool_count", 0)) == 2, "blocked pre-quiescence calls are counted")
+	_expect(int(diagnostics.get("protected_tool_dispatch_before_quiescence_count", -1)) == 0, "protected tools never dispatch before quiescence")
 	_finish()
 
 
-func _request(arguments: Dictionary) -> Dictionary:
+func _request(arguments: Dictionary, tool_name: String = "request_script_reload") -> Dictionary:
 	return {
 		"jsonrpc": "2.0",
 		"id": "offline-request-id-protocol",
 		"method": "tools/call",
 		"params": {
-			"name": "request_script_reload",
+			"name": tool_name,
 			"arguments": arguments,
 		},
 	}

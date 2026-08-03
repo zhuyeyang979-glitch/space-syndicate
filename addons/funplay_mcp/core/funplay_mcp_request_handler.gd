@@ -22,6 +22,8 @@ var _prompt_provider
 var _server_name: String
 var _server_version: String
 var _interaction_logger: Callable
+var _import_quiescence_blocked_tool_count := 0
+var _protected_tool_dispatch_before_quiescence_count := 0
 
 
 func _init(settings, tool_registry, resource_provider, prompt_provider, server_name: String, server_version: String, interaction_logger: Callable) -> void:
@@ -148,6 +150,22 @@ func _handle_tool_call(request: Dictionary, params: Dictionary, request_context:
 		arguments = arguments.duplicate(true)
 	if tool_name in REQUEST_ID_REQUIRED_TOOLS and str(arguments.get("request_id", "")).strip_edges() == "":
 		return _error_response(request.get("id"), -32602, "mcp_request_id_required")
+	var import_quiescent := true
+	if _tool_registry.has_method("is_import_quiescent"):
+		import_quiescent = bool(_tool_registry.is_import_quiescent())
+	var allowed_before_import_quiescence := false
+	if _tool_registry.has_method("is_tool_allowed_before_import_quiescence"):
+		allowed_before_import_quiescence = bool(_tool_registry.is_tool_allowed_before_import_quiescence(tool_name))
+	if (
+		_tool_registry.has_method("is_import_quiescent")
+		and _tool_registry.has_method("is_tool_allowed_before_import_quiescence")
+		and not import_quiescent
+		and not allowed_before_import_quiescence
+	):
+		_import_quiescence_blocked_tool_count += 1
+		return _error_response(request.get("id"), -32002, "mcp_import_quiescence_required")
+	if not import_quiescent and not allowed_before_import_quiescence:
+		_protected_tool_dispatch_before_quiescence_count += 1
 	if tool_name == "filesystem_scan_status":
 		arguments["_mcp_http_request_id"] = str(request_context.get("http_request_id", ""))
 
@@ -177,6 +195,13 @@ func is_protocol_version_supported(version: String) -> bool:
 
 func get_default_protocol_version() -> String:
 	return SUPPORTED_PROTOCOL_VERSIONS[0]
+
+
+func get_diagnostics() -> Dictionary:
+	return {
+		"import_quiescence_blocked_tool_count": _import_quiescence_blocked_tool_count,
+		"protected_tool_dispatch_before_quiescence_count": _protected_tool_dispatch_before_quiescence_count,
+	}
 
 
 func _project_identity_hash() -> String:

@@ -5,9 +5,11 @@ const STATE_COLD := "cold"
 const STATE_EDITOR_BOOTING := "editor_booting"
 const STATE_INITIAL_SCAN_PENDING := "initial_scan_pending"
 const STATE_INITIAL_SCAN_RUNNING := "initial_scan_running"
+const STATE_INITIAL_SCAN_QUIESCING := "initial_scan_quiescing"
 const STATE_READY := "ready"
 const STATE_RELOAD_QUEUED := "reload_queued"
 const STATE_RELOAD_RUNNING := "reload_running"
+const STATE_RELOAD_QUIESCING := "reload_quiescing"
 const STATE_FAILED := "failed"
 const STATE_STOPPING := "stopping"
 const STATE_STOPPED := "stopped"
@@ -15,6 +17,8 @@ const STATE_STOPPED := "stopped"
 const DEFAULT_INITIAL_SCAN_TIMEOUT_MSEC := 300000
 const DEFAULT_RELOAD_TIMEOUT_MSEC := 60000
 const DEFAULT_STOP_TIMEOUT_MSEC := 20000
+const DEFAULT_IMPORT_QUIESCENCE_STABLE_WINDOW_MSEC := 1500
+const DEFAULT_IMPORT_QUIESCENCE_TIMEOUT_MSEC := 45000
 
 var _state := STATE_COLD
 var _filesystem_generation := 0
@@ -23,6 +27,19 @@ var _initial_scan_started := false
 var _initial_scan_completed := false
 var _initial_scan_started_msec := 0
 var _initial_ready_since_msec := -1
+var _quiescence_started_msec := -1
+var _last_import_activity_msec := -1
+var _import_quiescence_stable_window_msec := DEFAULT_IMPORT_QUIESCENCE_STABLE_WINDOW_MSEC
+var _import_quiescence_timeout_msec := DEFAULT_IMPORT_QUIESCENCE_TIMEOUT_MSEC
+var _import_quiescence_reached := false
+var _import_quiescence_wait_count := 0
+var _import_quiescence_reached_count := 0
+var _import_generation := 0
+var _known_reimport_depth := 0
+var _is_importing_observed := false
+var _active_import_operation_total := 0
+var _active_import_operation_total_max := 0
+var _ready_with_active_reimport_count := 0
 var _initial_scan_operation_id := ""
 var _initial_scan_start_count := 0
 var _initial_scan_completion_count := 0
@@ -46,6 +63,12 @@ var _reload_timeout_msec := DEFAULT_RELOAD_TIMEOUT_MSEC
 var _stop_timeout_msec := DEFAULT_STOP_TIMEOUT_MSEC
 var _stopping_started_msec := 0
 var _transitions: Array = []
+var _lifecycle_events: Array = []
+var _lifecycle_session_id := ""
+var _lifecycle_project_head := ""
+var _lifecycle_editor_pid := 0
+var _lifecycle_event_path := ""
+var _lifecycle_event_writer_count := 1
 
 
 func configure_timeouts(initial_scan_msec: int, reload_msec: int, stop_msec: int) -> void:
@@ -54,12 +77,32 @@ func configure_timeouts(initial_scan_msec: int, reload_msec: int, stop_msec: int
 	_stop_timeout_msec = max(1, stop_msec)
 
 
+func configure_quiescence(stable_window_msec: int, timeout_msec: int) -> void:
+	_import_quiescence_stable_window_msec = maxi(0, stable_window_msec)
+	_import_quiescence_timeout_msec = maxi(1, timeout_msec)
+
+
+func configure_lifecycle(
+	session_id: String,
+	project_head: String,
+	editor_pid: int,
+	event_path: String = ""
+) -> void:
+	_lifecycle_session_id = session_id.strip_edges()
+	_lifecycle_project_head = project_head.strip_edges()
+	_lifecycle_editor_pid = editor_pid
+	_lifecycle_event_path = event_path.strip_edges()
+
+
 func is_transport_poll_ready(now_msec: int, stability_msec: int) -> bool:
 	return (
 		_initial_scan_completed
 		and _state == STATE_READY
 		and _active_scan_count == 0
 		and _active_reload_count == 0
+		and _active_import_operation_total == 0
+		and _known_reimport_depth == 0
+		and _import_quiescence_reached
 		and _initial_ready_since_msec >= 0
 		and now_msec - _initial_ready_since_msec >= maxi(0, stability_msec)
 	)
@@ -76,10 +119,9 @@ func observe_editor(
 	initial_snapshot_ready: bool,
 	editor_alive: bool,
 	now_msec: int,
-	completion_signal: bool = false
+	completion_signal: bool = false,
+	is_importing: bool = false
 ) -> Dictionary:
-	if _initial_scan_completed and completion_signal:
-		_first_scan_completion_signal_count = min(1, _first_scan_completion_signal_count + 1)
 	if _state == STATE_STOPPING:
 		_check_stop_timeout(now_msec)
 		return get_status()
@@ -92,32 +134,95 @@ func observe_editor(
 	if _state == STATE_COLD:
 		begin_editor_booting(now_msec)
 
+	_observe_import_activity(is_importing, now_msec)
+	if completion_signal and _first_scan_completion_signal_count == 0:
+		_first_scan_completion_signal_count = 1
+		_record_lifecycle_event(
+			"initial_scan_signal_completed",
+			"initial_scan",
+			_initial_scan_operation_id,
+			[],
+			now_msec
+		)
+
 	if _state == STATE_EDITOR_BOOTING:
 		_start_initial_scan(is_scanning, now_msec)
 
-	if _state in [STATE_INITIAL_SCAN_PENDING, STATE_INITIAL_SCAN_RUNNING]:
-		if now_msec - _initial_scan_started_msec > _initial_scan_timeout_msec:
+	var import_busy := is_scanning or is_importing or _known_reimport_depth > 0
+	if _state in [STATE_INITIAL_SCAN_PENDING, STATE_INITIAL_SCAN_RUNNING, STATE_INITIAL_SCAN_QUIESCING]:
+		if not _initial_scan_completed and now_msec - _initial_scan_started_msec > _initial_scan_timeout_msec:
 			_fail("initial_scan_timeout", "Initial filesystem scan did not complete before timeout.", now_msec)
-		elif is_scanning:
+		elif _initial_scan_completed and _quiescence_timed_out(now_msec):
+			_fail("import_quiescence_timeout", "Background import did not become quiescent before timeout.", now_msec)
+		elif import_busy:
+			_note_import_activity(now_msec)
 			if _state != STATE_INITIAL_SCAN_RUNNING:
-				_transition(STATE_INITIAL_SCAN_RUNNING, "editor_filesystem_scan_observed", now_msec, _initial_scan_operation_id)
-			_set_active_counts(1, 0)
+				_transition(STATE_INITIAL_SCAN_RUNNING, "editor_import_activity_observed", now_msec, _initial_scan_operation_id)
+			_set_active_counts(1 if is_scanning else 0, 0)
 		elif initial_snapshot_ready:
-			_complete_initial_scan(now_msec, completion_signal)
-	elif _state == STATE_RELOAD_RUNNING:
-		if is_scanning:
-			_set_active_counts(1, 1)
-			var active_operation: Dictionary = _operations.get(_active_operation_id, {})
-			var started_at_msec := int(active_operation.get("started_at_msec", now_msec))
-			if now_msec - started_at_msec > _reload_timeout_msec:
-				fail_reload(
-					_active_operation_id,
-					"filesystem_reload_timeout",
-					"Filesystem reload did not complete before timeout.",
+			if _state != STATE_INITIAL_SCAN_QUIESCING:
+				_begin_quiescence(
+					STATE_INITIAL_SCAN_QUIESCING,
+					"initial_scan_idle_candidate",
+					_initial_scan_operation_id,
 					now_msec
 				)
+			if _quiescence_timed_out(now_msec):
+				_fail("import_quiescence_timeout", "Initial import did not become quiescent before timeout.", now_msec)
+			elif _quiescence_reached(now_msec):
+				if _initial_scan_completed:
+					_complete_background_quiescence(now_msec)
+				else:
+					_complete_initial_scan(now_msec, completion_signal)
+	elif _state == STATE_RELOAD_QUEUED and import_busy:
+		_note_import_activity(now_msec)
+		_begin_quiescence(
+			STATE_INITIAL_SCAN_QUIESCING,
+			"import_resumed_before_queued_reload",
+			_pending_operation_id,
+			now_msec
+		)
+	elif _state in [STATE_RELOAD_RUNNING, STATE_RELOAD_QUIESCING]:
+		var active_operation: Dictionary = _operations.get(_active_operation_id, {})
+		var started_at_msec := int(active_operation.get("started_at_msec", now_msec))
+		if now_msec - started_at_msec > _reload_timeout_msec:
+			fail_reload(
+				_active_operation_id,
+				"filesystem_reload_timeout",
+				"Filesystem reload did not complete before timeout.",
+				now_msec
+			)
+		elif import_busy:
+			_note_import_activity(now_msec)
+			if _state != STATE_RELOAD_RUNNING:
+				_transition(STATE_RELOAD_RUNNING, "reload_import_activity_observed", now_msec, _active_operation_id)
+			_set_active_counts(1 if is_scanning else 0, 1)
 		else:
-			_complete_reload(_active_operation_id, now_msec, "filesystem_scan_completed")
+			if _state != STATE_RELOAD_QUIESCING:
+				_begin_quiescence(
+					STATE_RELOAD_QUIESCING,
+					"reload_idle_candidate",
+					_active_operation_id,
+					now_msec
+				)
+			if _quiescence_timed_out(now_msec):
+				fail_reload(
+					_active_operation_id,
+					"import_quiescence_timeout",
+					"Reload import did not become quiescent before timeout.",
+					now_msec
+				)
+			elif _quiescence_reached(now_msec):
+				_complete_reload(_active_operation_id, now_msec, "import_quiescence_reached")
+	elif _state == STATE_READY and import_busy:
+		_ready_with_active_reimport_count += 1
+		_note_import_activity(now_msec)
+		_begin_quiescence(
+			STATE_INITIAL_SCAN_QUIESCING,
+			"background_import_detected_after_ready",
+			_initial_scan_operation_id,
+			now_msec
+		)
 	return get_status()
 
 
@@ -162,21 +267,21 @@ func request_reload(request_id: String, path: String, now_msec: int) -> Dictiona
 			_pending_operation_id = operation_id
 			_reload_pending = true
 			_transition(STATE_RELOAD_QUEUED, "reload_request_queued", now_msec, operation_id)
-		STATE_RELOAD_RUNNING:
+		STATE_RELOAD_RUNNING, STATE_RELOAD_QUIESCING:
 			if _pending_operation_id == "":
 				_pending_operation_id = _create_operation("queued", now_msec)
 			operation_id = _pending_operation_id
 			_reload_pending = true
-		STATE_RELOAD_QUEUED, STATE_INITIAL_SCAN_PENDING, STATE_INITIAL_SCAN_RUNNING, STATE_EDITOR_BOOTING, STATE_COLD:
+		STATE_RELOAD_QUEUED, STATE_INITIAL_SCAN_PENDING, STATE_INITIAL_SCAN_RUNNING, STATE_INITIAL_SCAN_QUIESCING, STATE_EDITOR_BOOTING, STATE_COLD:
 			if _pending_operation_id == "":
 				_pending_operation_id = _create_operation("queued", now_msec)
 			operation_id = _pending_operation_id
 			_reload_pending = true
-			if _state in [STATE_INITIAL_SCAN_PENDING, STATE_INITIAL_SCAN_RUNNING, STATE_EDITOR_BOOTING, STATE_COLD]:
+			if not _initial_scan_completed and _state in [STATE_INITIAL_SCAN_PENDING, STATE_INITIAL_SCAN_RUNNING, STATE_INITIAL_SCAN_QUIESCING, STATE_EDITOR_BOOTING, STATE_COLD]:
 				var early_operation: Dictionary = _operations[operation_id]
 				early_operation["queued_during_initial_scan"] = true
 				_operations[operation_id] = early_operation
-			if not (_state in [STATE_INITIAL_SCAN_PENDING, STATE_INITIAL_SCAN_RUNNING, STATE_EDITOR_BOOTING, STATE_COLD]):
+			if not (_state in [STATE_INITIAL_SCAN_PENDING, STATE_INITIAL_SCAN_RUNNING, STATE_INITIAL_SCAN_QUIESCING, STATE_EDITOR_BOOTING, STATE_COLD]):
 				_transition(STATE_RELOAD_QUEUED, "reload_request_queued", now_msec, operation_id)
 		_:
 			return {
@@ -187,6 +292,8 @@ func request_reload(request_id: String, path: String, now_msec: int) -> Dictiona
 			}
 
 	_attach_request(operation_id, normalized_request_id, path)
+	_record_lifecycle_event("reload_requested", "reload", operation_id, [path] if path != "" else [], now_msec)
+	_record_lifecycle_event("reload_queued", "reload", operation_id, [path] if path != "" else [], now_msec)
 	var result := _request_result(normalized_request_id, false)
 	result["should_execute"] = false
 	return result
@@ -218,9 +325,45 @@ func record_post_initial_scan_reload_deferred_tick(now_msec: int) -> void:
 	_transition(STATE_RELOAD_QUEUED, "post_initial_scan_reload_deferred_tick", now_msec, _pending_operation_id)
 
 
+func record_queued_reload_deferred_tick(now_msec: int) -> void:
+	if _state != STATE_RELOAD_QUEUED or _pending_operation_id == "":
+		return
+	var operation: Dictionary = _operations.get(_pending_operation_id, {})
+	operation["deferred_tick_count"] = int(operation.get("deferred_tick_count", 0)) + 1
+	_operations[_pending_operation_id] = operation
+	if bool(operation.get("queued_during_initial_scan", false)):
+		_post_initial_scan_reload_deferred_tick_count += 1
+	_transition(STATE_RELOAD_QUEUED, "queued_reload_deferred_tick", now_msec, _pending_operation_id)
+
+
 func complete_reload(operation_id: String, now_msec: int, completion_reason: String) -> Dictionary:
+	if _state != STATE_RELOAD_QUIESCING or not _import_quiescence_reached:
+		return {
+			"ok": false,
+			"operation_id": operation_id,
+			"reason_code": "reload_completion_requires_quiescence",
+			"state": _state,
+		}
 	_complete_reload(operation_id, now_msec, completion_reason)
 	return get_operation(operation_id)
+
+
+func defer_reload_before_execution(operation_id: String, now_msec: int, reason_code: String) -> Dictionary:
+	if operation_id == "" or operation_id != _active_operation_id or not _operations.has(operation_id):
+		return {"ok": false, "reason_code": "reload_defer_operation_mismatch"}
+	var operation: Dictionary = _operations[operation_id]
+	operation["status"] = "queued"
+	operation["started_at_msec"] = 0
+	operation["execution_count"] = maxi(0, int(operation.get("execution_count", 0)) - 1)
+	_operations[operation_id] = operation
+	_reload_execution_count = maxi(0, _reload_execution_count - 1)
+	_active_operation_id = ""
+	_pending_operation_id = operation_id
+	_reload_pending = true
+	_set_active_counts(0, 0)
+	_note_import_activity(now_msec)
+	_begin_quiescence(STATE_INITIAL_SCAN_QUIESCING, reason_code, operation_id, now_msec)
+	return {"ok": true, "operation_id": operation_id, "state": _state}
 
 
 func fail_reload(operation_id: String, reason_code: String, message: String, now_msec: int) -> Dictionary:
@@ -244,6 +387,7 @@ func begin_stopping(now_msec: int) -> void:
 	_pending_operation_id = ""
 	_active_operation_id = ""
 	_set_active_counts(0, 0)
+	_set_active_import_operation_total(0)
 
 
 func complete_stopping(now_msec: int) -> void:
@@ -266,6 +410,17 @@ func reset_after_failure(now_msec: int) -> Dictionary:
 	_initial_scan_completed = false
 	_initial_scan_started_msec = now_msec
 	_initial_ready_since_msec = -1
+	_quiescence_started_msec = -1
+	_last_import_activity_msec = -1
+	_import_quiescence_reached = false
+	_import_quiescence_wait_count = 0
+	_import_quiescence_reached_count = 0
+	_import_generation = 0
+	_known_reimport_depth = 0
+	_is_importing_observed = false
+	_active_import_operation_total = 0
+	_active_import_operation_total_max = 0
+	_ready_with_active_reimport_count = 0
 	_initial_scan_operation_id = ""
 	_initial_scan_start_count = 0
 	_initial_scan_completion_count = 0
@@ -278,6 +433,7 @@ func reset_after_failure(now_msec: int) -> Dictionary:
 	_last_error = {}
 	_requests.clear()
 	_operations.clear()
+	_lifecycle_events.clear()
 	_active_scan_count_max = 0
 	_active_reload_count_max = 0
 	_duplicate_request_count = 0
@@ -294,11 +450,23 @@ func get_status() -> Dictionary:
 		"initial_scan_started": _initial_scan_started,
 		"initial_scan_completed": _initial_scan_completed,
 		"initial_ready_since_msec": _initial_ready_since_msec,
+		"import_generation": _import_generation,
+		"quiescence_started_msec": _quiescence_started_msec,
+		"last_import_activity_msec": _last_import_activity_msec,
+		"import_quiescence_reached": _import_quiescence_reached,
+		"import_quiescence_wait_count": _import_quiescence_wait_count,
+		"import_quiescence_reached_count": _import_quiescence_reached_count,
+		"import_quiescence_stable_window_msec": _import_quiescence_stable_window_msec,
+		"import_quiescence_timeout_msec": _import_quiescence_timeout_msec,
+		"known_reimport_depth": _known_reimport_depth,
+		"active_import_operation_total": _active_import_operation_total,
+		"active_import_operation_total_max": _active_import_operation_total_max,
+		"ready_with_active_reimport_count": _ready_with_active_reimport_count,
 		"initial_scan_operation_id": _initial_scan_operation_id,
 		"initial_scan_start_count": _initial_scan_start_count,
 		"initial_scan_completion_count": _initial_scan_completion_count,
 		"reload_pending": _reload_pending,
-		"reload_running": _state == STATE_RELOAD_RUNNING,
+		"reload_running": _state in [STATE_RELOAD_RUNNING, STATE_RELOAD_QUIESCING],
 		"pending_operation_id": _pending_operation_id,
 		"active_operation_id": _active_operation_id,
 		"last_error": _last_error.duplicate(true),
@@ -317,6 +485,10 @@ func get_status() -> Dictionary:
 		"reload_timeout_msec": _reload_timeout_msec,
 		"stop_timeout_msec": _stop_timeout_msec,
 		"state_writer_count": 1,
+		"import_state_writer_count": 1,
+		"import_lifecycle_event_writer_count": _lifecycle_event_writer_count,
+		"lifecycle_event_count": _lifecycle_events.size(),
+		"lifecycle_events": _lifecycle_events.duplicate(true),
 		"transitions": _transitions.duplicate(true),
 	}
 
@@ -357,6 +529,9 @@ func _start_initial_scan(is_scanning: bool, now_msec: int) -> void:
 		now_msec,
 		_initial_scan_operation_id
 	)
+	_record_lifecycle_event("initial_scan_requested", "initial_scan", _initial_scan_operation_id, [], now_msec)
+	_record_lifecycle_event("initial_scan_started", "initial_scan", _initial_scan_operation_id, [], now_msec)
+	_last_import_activity_msec = now_msec
 	_set_active_counts(1 if is_scanning else 0, 0)
 
 
@@ -365,6 +540,8 @@ func _complete_initial_scan(now_msec: int, completion_signal: bool) -> void:
 		return
 	_initial_scan_completed = true
 	_initial_ready_since_msec = now_msec
+	_import_quiescence_reached = true
+	_quiescence_started_msec = -1
 	_initial_scan_completion_count += 1
 	if completion_signal:
 		_first_scan_completion_signal_count = min(1, _first_scan_completion_signal_count + 1)
@@ -381,6 +558,158 @@ func _complete_initial_scan(now_msec: int, completion_signal: bool) -> void:
 		_transition(STATE_READY, "initial_scan_completed", now_msec, _initial_scan_operation_id)
 
 
+func _complete_background_quiescence(now_msec: int) -> void:
+	_initial_ready_since_msec = now_msec
+	_quiescence_started_msec = -1
+	_set_active_counts(0, 0)
+	if _reload_pending and _pending_operation_id != "":
+		_transition(STATE_RELOAD_QUEUED, "background_import_quiescence_with_reload_queued", now_msec, _pending_operation_id)
+	else:
+		_transition(STATE_READY, "background_import_quiescence_reached", now_msec, _initial_scan_operation_id)
+
+
+func record_import_signal(event_name: String, resource_paths: Array, now_msec: int) -> void:
+	var normalized_event := event_name.strip_edges().to_lower()
+	_note_import_activity(now_msec)
+	match normalized_event:
+		"resources_reimporting":
+			_import_generation += 1
+			_known_reimport_depth += 1
+			_set_active_import_operation_total(1)
+			_record_lifecycle_event("reimport_started", "reimport", _current_operation_id(), resource_paths, now_msec, normalized_event)
+			for path_value in resource_paths:
+				_record_lifecycle_event("reimport_resource_started", "reimport", _current_operation_id(), [path_value], now_msec, normalized_event)
+		"resources_reimported":
+			for path_value in resource_paths:
+				_record_lifecycle_event("reimport_resource_completed", "reimport", _current_operation_id(), [path_value], now_msec, normalized_event)
+			_known_reimport_depth = maxi(0, _known_reimport_depth - 1)
+			if _known_reimport_depth == 0 and not _is_importing_observed:
+				_set_active_import_operation_total(0)
+			_record_lifecycle_event("reimport_completed", "reimport", _current_operation_id(), resource_paths, now_msec, normalized_event)
+		"sources_changed", "resources_reload", "script_classes_updated", "filesystem_changed":
+			_record_lifecycle_event("reimport_completed", "filesystem_signal", _current_operation_id(), resource_paths, now_msec, normalized_event)
+
+
+func _observe_import_activity(is_importing: bool, now_msec: int) -> void:
+	if is_importing == _is_importing_observed:
+		if is_importing:
+			_note_import_activity(now_msec)
+		return
+	_is_importing_observed = is_importing
+	_note_import_activity(now_msec)
+	if is_importing:
+		_import_generation += 1
+		_set_active_import_operation_total(1)
+		_record_lifecycle_event("reimport_started", "reimport", _current_operation_id(), [], now_msec, "is_importing_true")
+	else:
+		if _known_reimport_depth == 0:
+			_set_active_import_operation_total(0)
+		_record_lifecycle_event("reimport_completed", "reimport", _current_operation_id(), [], now_msec, "is_importing_false")
+
+
+func _note_import_activity(now_msec: int) -> void:
+	_last_import_activity_msec = now_msec
+	_import_quiescence_reached = false
+
+
+func _begin_quiescence(to_state: String, reason_code: String, operation_id: String, now_msec: int) -> void:
+	if _quiescence_started_msec < 0:
+		_quiescence_started_msec = now_msec
+	if _last_import_activity_msec < 0:
+		_last_import_activity_msec = now_msec
+	_import_quiescence_reached = false
+	_import_quiescence_wait_count += 1
+	_transition(to_state, reason_code, now_msec, operation_id)
+	_record_lifecycle_event("quiescence_wait_started", _operation_type(operation_id), operation_id, [], now_msec, reason_code)
+
+
+func _quiescence_reached(now_msec: int) -> bool:
+	if _known_reimport_depth > 0 or _active_import_operation_total > 0:
+		return false
+	if _last_import_activity_msec < 0:
+		_last_import_activity_msec = now_msec
+		return false
+	if now_msec - _last_import_activity_msec < _import_quiescence_stable_window_msec:
+		return false
+	_import_quiescence_reached = true
+	_import_quiescence_reached_count += 1
+	_record_lifecycle_event("quiescence_reached", _operation_type(_current_operation_id()), _current_operation_id(), [], now_msec)
+	return true
+
+
+func _quiescence_timed_out(now_msec: int) -> bool:
+	return _quiescence_started_msec >= 0 and now_msec - _quiescence_started_msec > _import_quiescence_timeout_msec
+
+
+func _set_active_import_operation_total(value: int) -> void:
+	_active_import_operation_total = clampi(value, 0, 1)
+	_active_import_operation_total_max = maxi(
+		_active_import_operation_total_max,
+		_active_import_operation_total
+	)
+
+
+func _current_operation_id() -> String:
+	if _active_operation_id != "":
+		return _active_operation_id
+	return _initial_scan_operation_id
+
+
+func _operation_type(operation_id: String) -> String:
+	if operation_id != "" and _operations.has(operation_id):
+		return str((_operations[operation_id] as Dictionary).get("operation_type", "unknown"))
+	return "unknown"
+
+
+func _record_lifecycle_event(
+	event_type: String,
+	operation_type: String,
+	operation_id: String,
+	resource_paths: Array,
+	now_msec: int,
+	signal_name: String = ""
+) -> void:
+	var path_hashes: Array[String] = []
+	for path_value in resource_paths:
+		var path := str(path_value).strip_edges()
+		if path != "":
+			path_hashes.append(path.sha256_text())
+	path_hashes.sort()
+	var event := {
+		"schema": "McpImportLifecycleEventV1",
+		"schema_version": 1,
+		"session_id": _lifecycle_session_id,
+		"operation_id": operation_id,
+		"operation_type": operation_type,
+		"project_head": _lifecycle_project_head,
+		"filesystem_generation": _filesystem_generation,
+		"import_generation": _import_generation,
+		"state_before": _state,
+		"state_after": _state,
+		"event_type": event_type,
+		"resource_path_hash": "|".join(path_hashes).sha256_text() if not path_hashes.is_empty() else "",
+		"resource_uid": "",
+		"task_id": "",
+		"timestamp_monotonic_ns": now_msec * 1000000,
+		"editor_pid": _lifecycle_editor_pid,
+		"signal_name": signal_name,
+	}
+	_lifecycle_events.append(event)
+	if _lifecycle_session_id == "":
+		return
+	printerr("MCP_IMPORT_LIFECYCLE_EVENT|%s" % JSON.stringify(event))
+	if _lifecycle_event_path == "":
+		return
+	var file := FileAccess.open(_lifecycle_event_path, FileAccess.READ_WRITE)
+	if file == null:
+		file = FileAccess.open(_lifecycle_event_path, FileAccess.WRITE)
+	if file == null:
+		return
+	file.seek_end()
+	file.store_line(JSON.stringify(event))
+	file.close()
+
+
 func _create_operation(status: String, now_msec: int) -> String:
 	_reload_generation += 1
 	var operation_id := "filesystem-reload-%d" % _reload_generation
@@ -394,6 +723,7 @@ func _create_operation(status: String, now_msec: int) -> String:
 		"completion_reason": "",
 		"execution_count": 0,
 		"queued_during_initial_scan": false,
+		"deferred_tick_count": 0,
 		"request_ids": [],
 		"paths": [],
 	}
@@ -430,9 +760,13 @@ func _begin_reload(operation_id: String, now_msec: int) -> void:
 	_transition(STATE_RELOAD_RUNNING, "reload_execution_started", now_msec, operation_id)
 	_filesystem_generation += 1
 	_reload_execution_count += 1
+	_import_quiescence_reached = false
+	_quiescence_started_msec = -1
+	_last_import_activity_msec = now_msec
+	_record_lifecycle_event("reload_started", "reload", operation_id, operation.get("paths", []), now_msec)
 	if bool(operation.get("queued_during_initial_scan", false)):
 		_first_scan_reload_trigger_count = min(1, _first_scan_reload_trigger_count + 1)
-	_set_active_counts(1, 1)
+	_set_active_counts(0, 1)
 
 
 func _complete_reload(operation_id: String, now_msec: int, completion_reason: String) -> void:
@@ -446,6 +780,10 @@ func _complete_reload(operation_id: String, now_msec: int, completion_reason: St
 	operation["completion_reason"] = completion_reason
 	_operations[operation_id] = operation
 	_active_operation_id = ""
+	_import_quiescence_reached = true
+	_initial_ready_since_msec = now_msec
+	_quiescence_started_msec = -1
+	_record_lifecycle_event("reload_completed", "reload", operation_id, operation.get("paths", []), now_msec)
 	_transition(
 		STATE_RELOAD_QUEUED if _reload_pending and _pending_operation_id != "" else STATE_READY,
 		"reload_execution_completed",
@@ -521,6 +859,8 @@ func _fail(reason_code: String, message: String, now_msec: int) -> void:
 	_pending_operation_id = ""
 	_active_operation_id = ""
 	_set_active_counts(0, 0)
+	_set_active_import_operation_total(0)
+	_quiescence_started_msec = -1
 
 
 func _terminalize_operation(

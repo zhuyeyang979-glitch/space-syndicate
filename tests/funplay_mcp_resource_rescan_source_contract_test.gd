@@ -45,6 +45,10 @@ func _init() -> void:
 	_expect(validate_block.contains("script.reload(true)"), "validation preserves live editor instances during canonical reload")
 	var state_source := _read("res://addons/funplay_mcp/core/funplay_filesystem_reload_state.gd")
 	_expect(state_source.contains("DEFAULT_INITIAL_SCAN_TIMEOUT_MSEC := 300000"), "state owner allows the bounded full-project import window")
+	_expect(state_source.contains("STATE_INITIAL_SCAN_QUIESCING"), "state owner models initial import quiescence")
+	_expect(state_source.contains("STATE_RELOAD_QUIESCING"), "state owner models reload import quiescence")
+	_expect(state_source.contains("DEFAULT_IMPORT_QUIESCENCE_STABLE_WINDOW_MSEC := 1500"), "state owner uses the explicit monotonic stable window")
+	_expect(state_source.contains("import_quiescence_timeout"), "state owner fails closed on bounded quiescence timeout")
 
 	var plugin_source := _read("res://addons/funplay_mcp/plugin.gd")
 	var process_block := _function_block(plugin_source, "func _process(")
@@ -56,12 +60,18 @@ func _init() -> void:
 	_expect(process_block.contains("is_filesystem_reload_execution_active()"), "nested editor frames skip HTTP polling during scan")
 	_expect(process_block.contains("is_transport_poll_ready("), "transport polling waits for stable initial readiness")
 	_expect(process_block.find("is_transport_poll_ready(") < process_block.find("_server.poll()"), "readiness gate precedes transport polling")
-	_expect(plugin_source.contains("TRANSPORT_READY_STABILITY_MSEC := 30000"), "transport uses a bounded post-import stability window")
+	_expect(plugin_source.contains("TRANSPORT_READY_STABILITY_MSEC := 0"), "transport status polling relies on the event-driven quiescence owner")
 	_expect(plugin_source.contains('"transport_poll_before_initial_ready_count"'), "plugin exposes pre-readiness transport-poll evidence")
 	_expect(plugin_source.contains('"transport_poll_during_filesystem_callback_count"'), "plugin exposes filesystem-callback transport-poll evidence")
 	_expect(plugin_source.count("FunplayCoreTools.new(") == 1, "plugin constructs one shared filesystem state owner")
 	_expect(plugin_source.contains("FunplayResourceProvider.new(self, _settings, _core_tools)"), "resource provider shares the state owner")
 	_expect(plugin_source.contains("FunplayPromptProvider.new(self, _settings, _core_tools)"), "prompt provider shares the state owner")
+	_expect(core_source.contains('"resources_reimporting"'), "state owner listens for reimport start")
+	_expect(core_source.contains('"resources_reimported"'), "state owner listens for reimport completion")
+	_expect(execute_block.contains("resource_filesystem.is_importing()"), "reload execution rechecks active import state")
+	_expect(execute_block.contains("resource_filesystem.is_scanning()"), "reload execution rechecks active scan state")
+	_expect(execute_block.contains("defer_reload_before_execution("), "resumed scan or import returns reload to quiescence")
+	_expect(not execute_block.contains('"filesystem_scan_busy"'), "resumed scan is recoverable instead of terminal")
 
 	var transport_source := _read("res://addons/funplay_mcp/core/funplay_http_transport.gd")
 	var poll_once_block := _function_block(transport_source, "func _poll_once(")
@@ -111,6 +121,8 @@ func _init() -> void:
 	_expect(not invoke_source.contains('$arguments["request_id"] = $jsonRpcRequestId'), "wrapper never invents mutation request ids")
 
 	var handler_source := _read("res://addons/funplay_mcp/core/funplay_mcp_request_handler.gd")
+	_expect(handler_source.contains("mcp_import_quiescence_required"), "non-status tools fail closed before import quiescence")
+	_expect(handler_source.contains('"protected_tool_dispatch_before_quiescence_count"'), "handler exposes zero-dispatch evidence before quiescence")
 	for tool_name in ["request_script_reload", "request_project_reload", "request_filesystem_scan", "stop_editor"]:
 		_expect(handler_source.contains('"%s"' % tool_name), "request-id protocol covers %s" % tool_name)
 

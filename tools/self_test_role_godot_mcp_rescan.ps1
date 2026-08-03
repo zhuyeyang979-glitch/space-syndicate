@@ -56,7 +56,11 @@ function Wait-McpOperation {
         }
         $status = Invoke-McpTool -Name "filesystem_scan_status" -Arguments @{ operation_id = $OperationId }
         $operation = $status.operation
-        if ([string]$operation.status -eq "completed") {
+        if ([string]$operation.status -eq "completed" `
+            -and [string]$status.state -eq "ready" `
+            -and [bool]$status.import_quiescence_reached `
+            -and [int]$status.known_reimport_depth -eq 0 `
+            -and [int]$status.active_import_operation_total -eq 0) {
             return $status
         }
         if ([string]$operation.status -eq "failed" -or [string]$status.state -eq "failed") {
@@ -70,7 +74,11 @@ function Wait-McpOperation {
 $godotVersion = Invoke-McpTool -Name "get_godot_version"
 $projectInfo = Invoke-McpTool -Name "get_project_info"
 $initialStatus = Invoke-McpTool -Name "filesystem_scan_status"
-if (-not [bool]$initialStatus.initial_scan_completed -or [string]$initialStatus.state -ne "ready") {
+if (-not [bool]$initialStatus.initial_scan_completed `
+    -or [string]$initialStatus.state -ne "ready" `
+    -or -not [bool]$initialStatus.import_quiescence_reached `
+    -or [int]$initialStatus.known_reimport_depth -ne 0 `
+    -or [int]$initialStatus.active_import_operation_total -ne 0) {
     throw "MCP_INITIAL_SCAN_NOT_READY|state=$($initialStatus.state)"
 }
 
@@ -95,6 +103,7 @@ $health = Invoke-RestMethod -Uri ([string]$connection.endpoint) -Method Get -Hea
 $identityAfter = Test-McpProcessIdentity -Connection $connection
 $transport = $health.transport_diagnostics
 $lifecycle = $health.lifecycle_diagnostics
+$requestHandler = $health.request_handler_diagnostics
 $operation1 = $operation1Status.operation
 
 $failures = @()
@@ -103,6 +112,9 @@ if ([string]$finalStatus.state -ne "ready") { $failures += "filesystem_not_ready
 if ([int]$finalStatus.filesystem_state_writer_count -ne 1) { $failures += "filesystem_state_writer_count_not_one" }
 if ([int]$finalStatus.active_scan_count_max -gt 1) { $failures += "active_scan_count_exceeded_one" }
 if ([int]$finalStatus.active_reload_count_max -gt 1) { $failures += "active_reload_count_exceeded_one" }
+if (-not [bool]$finalStatus.import_quiescence_reached) { $failures += "import_quiescence_not_reached_after_reload" }
+if ([int]$finalStatus.known_reimport_depth -ne 0) { $failures += "reimport_depth_not_zero_after_reload" }
+if ([int]$finalStatus.active_import_operation_total -ne 0) { $failures += "active_import_operation_not_zero_after_reload" }
 if ([int]$finalStatus.reload_execution_count -ne 2) { $failures += "reload_execution_count_not_two" }
 if ([int]$finalStatus.duplicate_request_count -ne 1) { $failures += "duplicate_request_count_not_one" }
 if ([int]$operation1.execution_count -ne 1) { $failures += "duplicate_request_executed_again" }
@@ -112,7 +124,7 @@ if ($null -eq $missingRequest.error -or [string]$missingRequest.error.message -n
 if ([int]$transport.max_handler_depth -gt 1) { $failures += "handler_depth_exceeded_one" }
 if ([int]$transport.nested_http_dispatch_count -ne 0) { $failures += "nested_http_dispatch_detected" }
 if ([int]$transport.reentrant_handler_entry_count -ne 0) { $failures += "reentrant_handler_entry_detected" }
-if ([int]$lifecycle.transport_poll_before_initial_ready_count -ne 0) { $failures += "transport_polled_before_initial_ready" }
+if ([int]$requestHandler.protected_tool_dispatch_before_quiescence_count -ne 0) { $failures += "protected_tool_dispatched_before_quiescence" }
 if ([int]$lifecycle.transport_poll_during_filesystem_callback_count -ne 0) { $failures += "transport_polled_during_filesystem_callback" }
 if ([int]$lifecycle.transport_poll_during_handler_count -ne 0) { $failures += "transport_polled_during_handler" }
 
@@ -133,6 +145,7 @@ $result = [ordered]@{
     filesystem_status = $finalStatus
     transport_diagnostics = $transport
     lifecycle_diagnostics = $lifecycle
+    request_handler_diagnostics = $requestHandler
     failures = $failures
 }
 $result | ConvertTo-Json -Depth 20

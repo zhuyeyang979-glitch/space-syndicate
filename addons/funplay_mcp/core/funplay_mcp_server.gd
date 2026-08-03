@@ -160,6 +160,8 @@ func _handle_http_request(
 				health["project_name"] = str(ProjectSettings.get_setting("application/config/name", ""))
 				health["project_identity"] = _project_identity_hash()
 				health["transport_diagnostics"] = _transport.get_diagnostics()
+				if _request_handler != null and _request_handler.has_method("get_diagnostics"):
+					health["request_handler_diagnostics"] = _request_handler.get_diagnostics()
 				if _plugin != null and _plugin.has_method("get_lifecycle_diagnostics"):
 					health["lifecycle_diagnostics"] = _plugin.get_lifecycle_diagnostics()
 			return {
