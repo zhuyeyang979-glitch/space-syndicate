@@ -1,7 +1,11 @@
 param(
-    [string]$FixtureRoot = "E:\ss-mcp\dm4",
-    [string]$AddonSource = "E:\SpaceSyndicateWorkspace\worktrees\player-hand-zero-commit-a-exact-v3-3e73aaa8\addons\funplay_mcp",
-    [string]$GodotPath = "C:\Users\Administrator\AppData\Local\Microsoft\WinGet\Packages\GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe\Godot_v4.7-stable_win64.exe",
+    [string]$FixtureRoot = (Join-Path ([System.IO.Path]::GetTempPath()) ("alpha04c-mcp-quiescence-{0}" -f [guid]::NewGuid().ToString("N"))),
+    [string]$AddonSource = (Join-Path (Split-Path $PSScriptRoot -Parent) "addons\funplay_mcp"),
+    [string]$GodotPath = "C:\Users\zhuye\AppData\Local\Programs\Godot\4.7\Godot_v4.7-stable_win64.exe",
+    [ValidateRange(1, 65535)]
+    [int]$Port = 28830,
+    [ValidatePattern("^[a-zA-Z0-9._-]+$")]
+    [string]$SessionId = "alpha04c-import-quiescence-minimal-v3",
     [string]$ReportPath = ""
 )
 
@@ -9,6 +13,19 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot "role_godot_mcp_common.ps1")
 . (Join-Path $PSScriptRoot "role_godot_mcp_diagnostics.ps1")
+
+function Get-McpSelfTestDirectoryManifestSha256 {
+    param([Parameter(Mandatory = $true)][string]$Root)
+
+    $resolvedRoot = (Resolve-Path -LiteralPath $Root).Path.TrimEnd("\")
+    $entries = @(
+        Get-ChildItem -LiteralPath $resolvedRoot -File -Recurse | Sort-Object FullName | ForEach-Object {
+            $relative = $_.FullName.Substring($resolvedRoot.Length).TrimStart("\").Replace("\", "/")
+            "{0}:{1}" -f $relative, (Get-McpFileSha256Hex -Path $_.FullName)
+        }
+    )
+    return Get-McpByteSha256Hex -Bytes ([System.Text.Encoding]::UTF8.GetBytes(($entries -join "`n")))
+}
 
 if (Test-Path -LiteralPath $FixtureRoot) {
     throw "MCP_DIAGNOSTIC_SELF_TEST_FIXTURE_EXISTS|path=$FixtureRoot"
@@ -54,13 +71,20 @@ Get-ChildItem -Force -LiteralPath $AddonSource | Copy-Item -Destination $addonDe
 
 $offlineJson = & pwsh -NoProfile -File (Join-Path $PSScriptRoot "test_role_godot_mcp_diagnostics.ps1") | Out-String
 $offline = $offlineJson | ConvertFrom-Json
+$offlineV3Output = & pwsh -NoProfile -File (Join-Path $PSScriptRoot "test_role_godot_mcp_diagnostics_v3.ps1") | Out-String
+if ($LASTEXITCODE -ne 0) {
+    throw "MCP_DIAGNOSTIC_V3_OFFLINE_TEST_FAILED"
+}
 $connection = $null
 $stopResult = $null
+$rescanSelfTest = $null
+$scriptValidation = $null
+$sceneLoad = $null
 $failure = ""
 try {
     $launchJson = & (Join-Path $PSScriptRoot "launch_role_godot_mcp.ps1") `
         -Role Supervisor `
-        -Port 28830 `
+        -Port $Port `
         -Worktree $projectRoot `
         -RuntimeDataBase $runtimeRoot `
         -GodotPath $GodotPath `
@@ -70,8 +94,24 @@ try {
         -HttpTimeoutSeconds 3 `
         -InitialReadyStabilitySeconds 5 `
         -RequireFreshProjectCache $true `
-        -SessionId "alpha04c-diag-min-v2" | Out-String
+        -SessionId $SessionId | Out-String
     $connection = $launchJson | ConvertFrom-Json
+    $rescanSelfTestJson = & (Join-Path $PSScriptRoot "self_test_role_godot_mcp_rescan.ps1") `
+        -Worktree $projectRoot `
+        -OperationTimeoutSeconds 90 | Out-String
+    $rescanSelfTest = $rescanSelfTestJson | ConvertFrom-Json
+    $scriptValidationJson = & (Join-Path $PSScriptRoot "invoke_role_godot_mcp.ps1") `
+        -Worktree $projectRoot `
+        -ToolName validate_script `
+        -ArgumentsJson '{"path":"res://main.gd","language":"gdscript"}' `
+        -TimeoutSeconds 30 | Out-String
+    $scriptValidation = $scriptValidationJson | ConvertFrom-Json
+    $sceneLoadJson = & (Join-Path $PSScriptRoot "invoke_role_godot_mcp.ps1") `
+        -Worktree $projectRoot `
+        -ToolName open_scene `
+        -ArgumentsJson '{"path":"res://main.tscn"}' `
+        -TimeoutSeconds 30 | Out-String
+    $sceneLoad = $sceneLoadJson | ConvertFrom-Json
 } catch {
     $failure = $_.Exception.Message
 } finally {
@@ -79,7 +119,7 @@ try {
         try {
             $stopJson = & (Join-Path $PSScriptRoot "stop_role_godot_mcp.ps1") `
                 -Worktree $projectRoot `
-                -RequestId "alpha04c-diag-min-stop-v2" `
+                -RequestId "alpha04c-import-quiescence-minimal-stop-v3" `
                 -ShutdownTimeoutSeconds 20 `
                 -AllowForcedCleanup $true | Out-String
             $stopResult = $stopJson | ConvertFrom-Json
@@ -89,19 +129,26 @@ try {
     }
 }
 
-$logsRoot = Join-Path $projectRoot ".codex-godot\sessions\alpha04c-diag-min-v2\logs"
+$logsRoot = Join-Path $projectRoot ".codex-godot\sessions\$SessionId\logs"
 $stderr = Get-McpRawLogSnapshot `
     -Path (Join-Path $logsRoot "editor.stderr.log") `
     -SourceStream editor_stderr `
     -Stage startup_initial_filesystem_scan_before_endpoint_readiness
-$classifications = @($stderr.records | ForEach-Object {
-    if ([bool]$_.potential_diagnostic) {
-        [ordered]@{ classification = "unclassified" }
-    } else {
-        [ordered]@{ classification = "informational" }
-    }
+$classifications = @($stderr.diagnostics | ForEach-Object {
+    Get-McpDiagnosticClassificationV3 `
+        -Diagnostic $_ `
+        -Environment ([ordered]@{
+            godot_executable_sha256 = Get-McpFileSha256Hex -Path $GodotPath
+            godot_version = (& $GodotPath --version | Select-Object -First 1).Trim()
+            tooling_runtime_build_sha256 = Get-McpFileSha256Hex -Path (Join-Path $PSScriptRoot "role_godot_mcp_diagnostics.ps1")
+            mcp_addon_tree = Get-McpSelfTestDirectoryManifestSha256 -Root $AddonSource
+            launch_arguments_sha256 = "minimal-self-test-v3"
+            capture_backend = "file_read_all_bytes_fixed_length_v1"
+        }) `
+        -CurrentAttemptIsTarget $false `
+        -OccurrenceScope $SessionId
 })
-$gate = Get-McpDiagnosticGateV2 -Classifications $classifications
+$gate = Get-McpDiagnosticGateV3 -Classifications $classifications
 $processCount = if ($null -ne $stopResult) {
     [int]$stopResult.task_process_count_after
 } else {
@@ -109,12 +156,32 @@ $processCount = if ($null -ne $stopResult) {
         $_.Name -match '(?i)^Godot.*\.exe$' -and $_.CommandLine -like "*$projectRoot*"
     }).Count
 }
-$endpointCount = if ((Get-McpEndpointOwnerPid -Port 28830) -eq 0) { 0 } else { 1 }
+$endpointCount = if ((Get-McpEndpointOwnerPid -Port $Port) -eq 0) { 0 } else { 1 }
+$initialStatus = if ($null -ne $rescanSelfTest) { $rescanSelfTest.filesystem_status } else { $null }
+$initialQuiescenceGreen = $null -ne $connection `
+    -and [bool]$connection.import_quiescence_reached `
+    -and [int]$connection.active_import_operation_total -eq 0 `
+    -and [int]$connection.known_reimport_depth -eq 0
+$reloadQuiescenceGreen = $null -ne $initialStatus `
+    -and [bool]$initialStatus.import_quiescence_reached `
+    -and [int]$initialStatus.active_import_operation_total -eq 0 `
+    -and [int]$initialStatus.known_reimport_depth -eq 0
+$validationGreen = $null -ne $scriptValidation `
+    -and -not [bool]$scriptValidation.result.isError `
+    -and [bool]$scriptValidation.result.structuredContent.ok
+$sceneLoadGreen = $null -ne $sceneLoad -and -not [bool]$sceneLoad.result.isError
 $green = [bool]$offline.green `
+    -and $offlineV3Output.Contains("DIAGNOSTIC_CLASSIFICATION_V3_TESTS") `
     -and [bool]$gate.green `
     -and [int]$offline.false_accept_count -eq 0 `
     -and [int]$offline.false_reject_count -eq 0 `
     -and [int]$stderr.diagnostic_count -eq 0 `
+    -and $null -ne $rescanSelfTest `
+    -and [bool]$rescanSelfTest.self_test_green `
+    -and $initialQuiescenceGreen `
+    -and $reloadQuiescenceGreen `
+    -and $validationGreen `
+    -and $sceneLoadGreen `
     -and $null -ne $stopResult `
     -and [bool]$stopResult.stopped `
     -and [bool]$stopResult.clean_stop `
@@ -122,9 +189,20 @@ $green = [bool]$offline.green `
     -and $endpointCount -eq 0 `
     -and $failure -eq ""
 $result = [ordered]@{
-    schema = "McpDiagnosticToolingMinimalSelfTestV2"
+    schema = "McpImportQuiescenceMinimalSelfTestV3"
     diagnostic_tooling_self_test_green = $green
+    import_quiescence_self_test_green = $green
+    initial_import_quiescence_green = $initialQuiescenceGreen
+    recovery_import_quiescence_green = $null -ne $connection -and [bool]$connection.recovery_import_green
+    reload_quiescence_green = $reloadQuiescenceGreen
+    script_validation_green = $validationGreen
+    scene_load_green = $sceneLoadGreen
+    reimport_conflict_count = @($stderr.diagnostics | Where-Object { [bool]$_.reimport_conflict_correlated }).Count
     offline_tests = $offline
+    offline_v3_output = $offlineV3Output.Trim()
+    rescan_self_test = $rescanSelfTest
+    script_validation = $scriptValidation
+    scene_load = $sceneLoad
     no_diagnostics_green = [bool]$gate.green -and [int]$stderr.diagnostic_count -eq 0
     attested_baseline_classification_green = [int]$offline.categories.classification.passed -eq [int]$offline.categories.classification.total
     target_added_diagnostic_blocked = [int]$offline.categories.false_negative_guard.passed -eq [int]$offline.categories.false_negative_guard.total
