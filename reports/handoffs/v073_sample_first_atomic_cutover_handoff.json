@@ -9,9 +9,10 @@
     "production_commit_sha": "f49c86af20b6a65e9792aa87703154e853d4dc76",
     "production_tree": "08253aef8ac1859e7a0fa451ad278f39e919a661",
     "branch": "codex/v073-sample-first-atomic-production-cutover-794ccf0",
-    "pull_request": null,
-    "pull_request_state": "pending_creation",
-    "result_head_sha": "resolved_by_docs_only_handoff_commit",
+    "pull_request": 86,
+    "pull_request_url": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/86",
+    "pull_request_state": "draft_open",
+    "result_head_sha": "dbae31e1dda537e87473dc46a0fac551bc3f164f",
     "main_result_sha": "unchanged_at_report_generation"
   },
   "parallel_execution": {

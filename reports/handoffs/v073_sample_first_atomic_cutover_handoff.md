@@ -10,7 +10,9 @@ PRODUCTION_TREE=08253aef8ac1859e7a0fa451ad278f39e919a661
 
 BRANCH=codex/v073-sample-first-atomic-production-cutover-794ccf0
 
-PULL_REQUEST=PENDING_CREATION
+PULL_REQUEST=86
+
+PULL_REQUEST_URL=https://github.com/zhuyeyang979-glitch/space-syndicate/pull/86
 
 REQUESTED_SUBAGENTS=6
 
