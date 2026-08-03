@@ -196,6 +196,12 @@ $recoveryImportArguments = @(
     "--role-godot-mcp-role=$Role-recovery-import"
 )
 $recoveryImportArgumentString = $recoveryImportArguments -join " "
+$godotExecutableBytes = [System.IO.File]::ReadAllBytes($GodotPath)
+$godotExecutableSha256 = [System.Convert]::ToHexString(
+    [System.Security.Cryptography.SHA256]::HashData($godotExecutableBytes)
+).ToLowerInvariant()
+$editorArgumentsSha256 = Get-McpSha256Hex -Text $argumentString
+$recoveryImportArgumentsSha256 = Get-McpSha256Hex -Text $recoveryImportArgumentString
 $environment = @{
     "APPDATA" = $roamingRoot
     "LOCALAPPDATA" = $localAppDataRoot
@@ -445,6 +451,7 @@ try {
         pid = [int]$verifiedIdentity.process_id
         process_creation_time = $verifiedIdentity.process_creation_time
         godot_path = [string]$verifiedIdentity.observed_executable_path
+        godot_executable_sha256 = $godotExecutableSha256
         project_head_sha = $projectHeadSha
         process_identity = $verifiedIdentity
         worktree = $root
@@ -474,6 +481,16 @@ try {
         stdout_path = $stdoutPath
         stderr_path = $stderrPath
         godot_version = [string]$projectInfo.godot_version.string
+        editor_arguments_sha256 = $editorArgumentsSha256
+        recovery_import_arguments_sha256 = $recoveryImportArgumentsSha256
+        powershell_version = $PSVersionTable.PSVersion.ToString()
+        powershell_edition = [string]$PSVersionTable.PSEdition
+        culture = [System.Globalization.CultureInfo]::CurrentCulture.Name
+        ui_culture = [System.Globalization.CultureInfo]::CurrentUICulture.Name
+        platform = "windows"
+        stderr_capture_backend = "start_process_win32_inherited_file_handle_v1"
+        raw_diagnostic_capture_schema = "McpRawLogSnapshotV1"
+        diagnostic_classification_schema = "McpDiagnosticClassificationV2"
         tool_profile = [string]$projectInfo.tool_profile
         renderer = $Renderer
         rendering_method = $renderingMethod

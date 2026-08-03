@@ -9149,3 +9149,19 @@ deleted. Evidence and the remaining action inventory are recorded in
   run. Attempt 1 remains immutable and the new official authorization remains
   unconsumed. Next boundary is
   `ALPHA_0_4_C_PRODUCTION_SAVE_COMPLETION_DEFECT_REPAIR`.
+
+## 2026-08-03 — MCP cold-import diagnostic classification V2
+
+- Added byte-exact stderr snapshots, strict UTF-8/NUL evidence, environment-
+  bound core and strict fingerprints, changed-file correlation, integrity-
+  checked baseline manifests, and fail-closed diagnostic gate V2.
+- Added 63 offline cases and an external minimal-project endpoint self-test;
+  both are GREEN with zero false accepts/rejects and clean process teardown.
+- Ran the authorized C0/C1/C2 cold-import comparison in external mirrors with
+  one identical target addon build. All cells reproduced six pathless Unicode
+  diagnostics, but C2 alone emitted three Godot editor `reimport` task-collision
+  errors during reload, while C0 recovery stderr exposed eighteen pre-existing
+  parse/load events. Strict baseline equivalence is therefore false.
+- Attempt 2 remains historically BLOCKED. Exact-SHA Attempt 3 was not
+  authorized or consumed. No Godot project, gameplay, Bench, scene, resource,
+  Save, Main, AI, V0.7.3, FullRun, Smoke, Formal, or later-process work ran.

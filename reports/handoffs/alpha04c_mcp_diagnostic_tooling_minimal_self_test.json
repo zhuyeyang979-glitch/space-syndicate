@@ -1,0 +1,451 @@
+{
+  "schema": "McpDiagnosticToolingMinimalSelfTestV2",
+  "diagnostic_tooling_self_test_green": true,
+  "offline_tests": {
+    "schema": "McpDiagnosticClassificationOfflineTestResultV2",
+    "green": true,
+    "total_passed": 63,
+    "total": 63,
+    "false_accept_count": 0,
+    "false_reject_count": 0,
+    "categories": {
+      "classification": {
+        "passed": 13,
+        "total": 13
+      },
+      "baseline_fingerprint": {
+        "passed": 20,
+        "total": 20
+      },
+      "changed_file_correlation": {
+        "passed": 8,
+        "total": 8
+      },
+      "false_negative_guard": {
+        "passed": 22,
+        "total": 22
+      }
+    },
+    "failures": [],
+    "cases": [
+      {
+        "category": "classification",
+        "name": "no_diagnostics_green",
+        "passed": true,
+        "observed": "{\"schema\":\"McpDiagnosticGateV2\",\"green\":true,\"counts\":{\"total\":0,\"baseline_engine_import_diagnostic\":0,\"wrapper_decode_artifact\":0,\"project_script_parse_error\":0,\"project_resource_load_error\":0,\"project_runtime_error\":0,\"changed_file_error\":0,\"task_introduced_error\":0,\"informational\":0,\"unclassified\":0},\"real_project_error_count\":0,\"baseline_engine_diagnostic_count\":0,\"wrapper_artifact_count\":0,\"changed_file_error_count\":0,\"task_introduced_error_count\":0,\"runtime_error_count\":0,\"unclassified_diagnostic_count\":0,\"baseline_manifest_acceptance_valid\":true,\"baseline_multiplicity_mismatch_count\":0,\"baseline_diagnostic_allowlist_scope\":\"exact_fingerprint_and_environment_only\"}"
+      },
+      {
+        "category": "classification",
+        "name": "attested_baseline",
+        "passed": true,
+        "observed": "baseline_engine_import_diagnostic"
+      },
+      {
+        "category": "classification",
+        "name": "target_introduced",
+        "passed": true,
+        "observed": "task_introduced_error"
+      },
+      {
+        "category": "classification",
+        "name": "parse_error",
+        "passed": true,
+        "observed": "project_script_parse_error"
+      },
+      {
+        "category": "classification",
+        "name": "resource_load_error",
+        "passed": true,
+        "observed": "project_resource_load_error"
+      },
+      {
+        "category": "classification",
+        "name": "runtime_error",
+        "passed": true,
+        "observed": "project_runtime_error"
+      },
+      {
+        "category": "classification",
+        "name": "changed_file_error",
+        "passed": true,
+        "observed": "changed_file_error"
+      },
+      {
+        "category": "classification",
+        "name": "changed_context_error",
+        "passed": true,
+        "observed": "changed_file_error"
+      },
+      {
+        "category": "classification",
+        "name": "wrapper_artifact_proven",
+        "passed": true,
+        "observed": "wrapper_decode_artifact"
+      },
+      {
+        "category": "classification",
+        "name": "invalid_utf8_without_proof_unclassified",
+        "passed": true,
+        "observed": "unclassified"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "invalid_utf8_nonkeyword_fails_closed",
+        "passed": true,
+        "observed": "unclassified"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "raw_nul_nonkeyword_fails_closed",
+        "passed": true,
+        "observed": "unclassified"
+      },
+      {
+        "category": "classification",
+        "name": "informational",
+        "passed": true,
+        "observed": "informational"
+      },
+      {
+        "category": "classification",
+        "name": "missing_baseline_unclassified",
+        "passed": true,
+        "observed": "unclassified"
+      },
+      {
+        "category": "classification",
+        "name": "task_introduced_gate_blocks",
+        "passed": true,
+        "observed": "{\"schema\":\"McpDiagnosticGateV2\",\"green\":false,\"counts\":{\"total\":1,\"baseline_engine_import_diagnostic\":0,\"wrapper_decode_artifact\":0,\"project_script_parse_error\":0,\"project_resource_load_error\":0,\"project_runtime_error\":0,\"changed_file_error\":0,\"task_introduced_error\":1,\"informational\":0,\"unclassified\":0},\"real_project_error_count\":0,\"baseline_engine_diagnostic_count\":0,\"wrapper_artifact_count\":0,\"changed_file_error_count\":0,\"task_introduced_error_count\":1,\"runtime_error_count\":0,\"unclassified_diagnostic_count\":0,\"baseline_manifest_acceptance_valid\":true,\"baseline_multiplicity_mismatch_count\":0,\"baseline_diagnostic_allowlist_scope\":\"exact_fingerprint_and_environment_only\"}"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "global_matrix_green",
+        "passed": true,
+        "observed": "{\"schema\":\"McpColdImportDiagnosticComparisonV2\",\"valid\":true,\"reason_code\":\"none\",\"baseline_diagnostic_equivalent\":true,\"target_additional_diagnostic_count\":0,\"target_changed_file_diagnostic_count\":0,\"target_non_equivalent_diagnostic_count\":0,\"c0_diagnostic_count\":1,\"c1_diagnostic_count\":1,\"c2_diagnostic_count\":1,\"c0_editor_diagnostic_count\":1,\"c1_editor_diagnostic_count\":1,\"c2_editor_diagnostic_count\":1,\"c0_recovery_diagnostic_count\":0,\"c1_recovery_diagnostic_count\":0,\"c2_recovery_diagnostic_count\":0,\"matrix_real_project_error_count\":0,\"matrix_unmirrored_godot_diagnostic_count\":0,\"environment_fingerprint\":\"ae7eb62ef8bb3d93c286933030f528e66eb74ba36b34f0e362d97d385e75f04a\",\"allowed_fingerprints\":[\"863c278abaaed5c1c63840d2a354ca2559805e5cf03fb6d9c4863e0e2606bb43\"],\"allowed_multiplicity\":{\"863c278abaaed5c1c63840d2a354ca2559805e5cf03fb6d9c4863e0e2606bb43\":1},\"baseline_core_fingerprints\":[\"765146ecec8bf6cf0a481a52965c9f570596400cd159365489ef249330a38a77\"],\"baseline_manifest\":{\"schema\":\"McpBaselineDiagnosticManifestV2\",\"task_id\":\"ALPHA_0_4_C_MCP_COLD_IMPORT_UNICODE_NUL_BASELINE_ATTRIBUTION_GATE_REPAIR_AND_EXACT_SHA_ACCEPTANCE\",\"attested\":true,\"forensic_partial\":false,\"attestation_scope\":\"acceptance\",\"comparison_green\":true,\"baseline_scope\":\"global_main_parent\",\"target_head\":\"2222222222222222222222222222222222222222\",\"target_tree\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"environment_fingerprint\":\"ae7eb62ef8bb3d93c286933030f528e66eb74ba36b34f0e362d97d385e75f04a\",\"c0_head\":\"0000000000000000000000000000000000000000\",\"c1_head\":\"1111111111111111111111111111111111111111\",\"c2_head\":\"2222222222222222222222222222222222222222\",\"c0_source_is_ancestor\":true,\"c1_source_is_ancestor\":true,\"target_additional_diagnostic_count\":0,\"target_changed_file_diagnostic_count\":0,\"target_non_equivalent_diagnostic_count\":0,\"matrix_real_project_error_count\":0,\"matrix_unmirrored_godot_diagnostic_count\":0,\"allowed_fingerprints\":[\"863c278abaaed5c1c63840d2a354ca2559805e5cf03fb6d9c4863e0e2606bb43\"],\"allowed_multiplicity\":{\"863c278abaaed5c1c63840d2a354ca2559805e5cf03fb6d9c4863e0e2606bb43\":1},\"baseline_core_fingerprints\":[\"765146ecec8bf6cf0a481a52965c9f570596400cd159365489ef249330a38a77\"],\"manifest_sha256\":\"1f655ff7b9090791f5be78888c27f41d82202a56d63dc92d57d1b714d6f986d5\"},\"green\":true}"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "target_added_blocked",
+        "passed": true,
+        "observed": "1"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "partial_baseline_attestation_valid",
+        "passed": true,
+        "observed": "none"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "forensic_partial_manifest_not_acceptance",
+        "passed": true,
+        "observed": "baseline_not_acceptance_attested"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "partial_manifest_blocks_target_addition",
+        "passed": true,
+        "observed": "{\"schema\":\"McpDiagnosticGateV2\",\"green\":false,\"counts\":{\"total\":2,\"baseline_engine_import_diagnostic\":1,\"wrapper_decode_artifact\":0,\"project_script_parse_error\":0,\"project_resource_load_error\":0,\"project_runtime_error\":0,\"changed_file_error\":0,\"task_introduced_error\":1,\"informational\":0,\"unclassified\":0},\"real_project_error_count\":0,\"baseline_engine_diagnostic_count\":1,\"wrapper_artifact_count\":0,\"changed_file_error_count\":0,\"task_introduced_error_count\":1,\"runtime_error_count\":0,\"unclassified_diagnostic_count\":0,\"baseline_manifest_acceptance_valid\":false,\"baseline_multiplicity_mismatch_count\":1,\"baseline_diagnostic_allowlist_scope\":\"exact_fingerprint_and_environment_only\"}"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "exact_multiplicity_gate_green",
+        "passed": true,
+        "observed": "{\"schema\":\"McpDiagnosticGateV2\",\"green\":true,\"counts\":{\"total\":1,\"baseline_engine_import_diagnostic\":1,\"wrapper_decode_artifact\":0,\"project_script_parse_error\":0,\"project_resource_load_error\":0,\"project_runtime_error\":0,\"changed_file_error\":0,\"task_introduced_error\":0,\"informational\":0,\"unclassified\":0},\"real_project_error_count\":0,\"baseline_engine_diagnostic_count\":1,\"wrapper_artifact_count\":0,\"changed_file_error_count\":0,\"task_introduced_error_count\":0,\"runtime_error_count\":0,\"unclassified_diagnostic_count\":0,\"baseline_manifest_acceptance_valid\":true,\"baseline_multiplicity_mismatch_count\":0,\"baseline_diagnostic_allowlist_scope\":\"exact_fingerprint_and_environment_only\"}"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "duplicate_baseline_multiplicity_blocks",
+        "passed": true,
+        "observed": "{\"schema\":\"McpDiagnosticGateV2\",\"green\":false,\"counts\":{\"total\":2,\"baseline_engine_import_diagnostic\":2,\"wrapper_decode_artifact\":0,\"project_script_parse_error\":0,\"project_resource_load_error\":0,\"project_runtime_error\":0,\"changed_file_error\":0,\"task_introduced_error\":0,\"informational\":0,\"unclassified\":0},\"real_project_error_count\":0,\"baseline_engine_diagnostic_count\":2,\"wrapper_artifact_count\":0,\"changed_file_error_count\":0,\"task_introduced_error_count\":0,\"runtime_error_count\":0,\"unclassified_diagnostic_count\":0,\"baseline_manifest_acceptance_valid\":true,\"baseline_multiplicity_mismatch_count\":1,\"baseline_diagnostic_allowlist_scope\":\"exact_fingerprint_and_environment_only\"}"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "target_count_increase_blocked",
+        "passed": true,
+        "observed": "1"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "same_message_raw_diff_blocked",
+        "passed": true,
+        "observed": "1"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "raw_same_path_diff_blocked",
+        "passed": true,
+        "observed": "1"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "source_stream_diff_blocked",
+        "passed": true,
+        "observed": "1"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "stage_diff_blocked",
+        "passed": true,
+        "observed": "1"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "tooling_change_blocked",
+        "passed": true,
+        "observed": "diagnostic_environment_mismatch"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "godot_version_change_blocked",
+        "passed": true,
+        "observed": "diagnostic_environment_mismatch"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "locale_change_blocked",
+        "passed": true,
+        "observed": "diagnostic_environment_mismatch"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "corrupt_manifest_blocked",
+        "passed": true,
+        "observed": "baseline_fingerprint_file_corrupt"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "valid_manifest_json_roundtrip",
+        "passed": true,
+        "observed": "none"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "manifest_target_tree_binding_enforced",
+        "passed": true,
+        "observed": "baseline_target_tree_mismatch"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "missing_manifest_blocked",
+        "passed": true,
+        "observed": "baseline_fingerprint_missing"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "non_ancestor_blocked",
+        "passed": true,
+        "observed": "baseline_commit_not_ancestor"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "cache_reuse_blocked",
+        "passed": true,
+        "observed": "cache_reused_attempt"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "project_head_mismatch_blocked",
+        "passed": true,
+        "observed": "project_head_mismatch"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "parent_chain_baseline_attested",
+        "passed": true,
+        "observed": "parent_chain_only"
+      },
+      {
+        "category": "baseline_fingerprint",
+        "name": "unstable_cross_commit_count_blocked",
+        "passed": true,
+        "observed": "0"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "recovery_only_parse_error_blocks",
+        "passed": true,
+        "observed": "{\"schema\":\"McpColdImportDiagnosticComparisonV2\",\"valid\":true,\"reason_code\":\"matrix_project_errors_present\",\"baseline_diagnostic_equivalent\":false,\"target_additional_diagnostic_count\":1,\"target_changed_file_diagnostic_count\":0,\"target_non_equivalent_diagnostic_count\":1,\"c0_diagnostic_count\":0,\"c1_diagnostic_count\":0,\"c2_diagnostic_count\":1,\"c0_editor_diagnostic_count\":0,\"c1_editor_diagnostic_count\":0,\"c2_editor_diagnostic_count\":0,\"c0_recovery_diagnostic_count\":0,\"c1_recovery_diagnostic_count\":0,\"c2_recovery_diagnostic_count\":1,\"matrix_real_project_error_count\":1,\"matrix_unmirrored_godot_diagnostic_count\":0,\"environment_fingerprint\":\"ae7eb62ef8bb3d93c286933030f528e66eb74ba36b34f0e362d97d385e75f04a\",\"allowed_fingerprints\":[],\"allowed_multiplicity\":{},\"baseline_core_fingerprints\":[],\"baseline_manifest\":{\"schema\":\"McpBaselineDiagnosticManifestV2\",\"task_id\":\"ALPHA_0_4_C_MCP_COLD_IMPORT_UNICODE_NUL_BASELINE_ATTRIBUTION_GATE_REPAIR_AND_EXACT_SHA_ACCEPTANCE\",\"attested\":false,\"forensic_partial\":true,\"attestation_scope\":\"forensic_partial\",\"comparison_green\":false,\"baseline_scope\":\"global_main_parent\",\"target_head\":\"2222222222222222222222222222222222222222\",\"target_tree\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"environment_fingerprint\":\"ae7eb62ef8bb3d93c286933030f528e66eb74ba36b34f0e362d97d385e75f04a\",\"c0_head\":\"0000000000000000000000000000000000000000\",\"c1_head\":\"1111111111111111111111111111111111111111\",\"c2_head\":\"2222222222222222222222222222222222222222\",\"c0_source_is_ancestor\":true,\"c1_source_is_ancestor\":true,\"target_additional_diagnostic_count\":1,\"target_changed_file_diagnostic_count\":0,\"target_non_equivalent_diagnostic_count\":1,\"matrix_real_project_error_count\":1,\"matrix_unmirrored_godot_diagnostic_count\":0,\"allowed_fingerprints\":[],\"allowed_multiplicity\":{},\"baseline_core_fingerprints\":[],\"manifest_sha256\":\"2f970a1b947dd4c04d60053f508d3d1c900fc539ebefded086b3d6a1d76e5a12\"},\"green\":false}"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "unmirrored_godot_diagnostic_blocks",
+        "passed": true,
+        "observed": "{\"schema\":\"McpColdImportDiagnosticComparisonV2\",\"valid\":true,\"reason_code\":\"unmirrored_godot_diagnostic_present\",\"baseline_diagnostic_equivalent\":true,\"target_additional_diagnostic_count\":0,\"target_changed_file_diagnostic_count\":0,\"target_non_equivalent_diagnostic_count\":0,\"c0_diagnostic_count\":0,\"c1_diagnostic_count\":0,\"c2_diagnostic_count\":0,\"c0_editor_diagnostic_count\":0,\"c1_editor_diagnostic_count\":0,\"c2_editor_diagnostic_count\":0,\"c0_recovery_diagnostic_count\":0,\"c1_recovery_diagnostic_count\":0,\"c2_recovery_diagnostic_count\":0,\"matrix_real_project_error_count\":0,\"matrix_unmirrored_godot_diagnostic_count\":1,\"environment_fingerprint\":\"ae7eb62ef8bb3d93c286933030f528e66eb74ba36b34f0e362d97d385e75f04a\",\"allowed_fingerprints\":[],\"allowed_multiplicity\":{},\"baseline_core_fingerprints\":[],\"baseline_manifest\":{\"schema\":\"McpBaselineDiagnosticManifestV2\",\"task_id\":\"ALPHA_0_4_C_MCP_COLD_IMPORT_UNICODE_NUL_BASELINE_ATTRIBUTION_GATE_REPAIR_AND_EXACT_SHA_ACCEPTANCE\",\"attested\":false,\"forensic_partial\":true,\"attestation_scope\":\"forensic_partial\",\"comparison_green\":false,\"baseline_scope\":\"global_main_parent\",\"target_head\":\"2222222222222222222222222222222222222222\",\"target_tree\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"environment_fingerprint\":\"ae7eb62ef8bb3d93c286933030f528e66eb74ba36b34f0e362d97d385e75f04a\",\"c0_head\":\"0000000000000000000000000000000000000000\",\"c1_head\":\"1111111111111111111111111111111111111111\",\"c2_head\":\"2222222222222222222222222222222222222222\",\"c0_source_is_ancestor\":true,\"c1_source_is_ancestor\":true,\"target_additional_diagnostic_count\":0,\"target_changed_file_diagnostic_count\":0,\"target_non_equivalent_diagnostic_count\":0,\"matrix_real_project_error_count\":0,\"matrix_unmirrored_godot_diagnostic_count\":1,\"allowed_fingerprints\":[],\"allowed_multiplicity\":{},\"baseline_core_fingerprints\":[],\"manifest_sha256\":\"81a0d3e112a1566693877378253cc94fd0a799eac96e2311b73e2cf365c332a5\"},\"green\":false}"
+      },
+      {
+        "category": "changed_file_correlation",
+        "name": "direct_res_path",
+        "passed": true,
+        "observed": ""
+      },
+      {
+        "category": "changed_file_correlation",
+        "name": "windows_separator_normalized",
+        "passed": true,
+        "observed": ""
+      },
+      {
+        "category": "changed_file_correlation",
+        "name": "unrelated_path_rejected",
+        "passed": true,
+        "observed": ""
+      },
+      {
+        "category": "changed_file_correlation",
+        "name": "empty_path_rejected",
+        "passed": true,
+        "observed": ""
+      },
+      {
+        "category": "changed_file_correlation",
+        "name": "nearest_import_changed_detected",
+        "passed": true,
+        "observed": "{\"schema\":\"McpDiagnosticClassificationV2\",\"classification\":\"changed_file_error\",\"reason_code\":\"diagnostic_associated_with_target_changed_file\",\"raw_bytes_sha256\":\"raw-a\",\"diagnostic_fingerprint\":\"898ea820dd5408d82397304de77cb4d8bf10db44cc99be3e4d3bc7e73d7cdaf9\",\"diagnostic_core_fingerprint\":\"765146ecec8bf6cf0a481a52965c9f570596400cd159365489ef249330a38a77\",\"associated_path\":\"\",\"changed_file_correlated\":true,\"changed_file_correlation_paths\":[\"res://scripts/runtime/player_hand_interaction_runtime_service.gd\"],\"correlation_paths\":[\"res://scripts/runtime/player_hand_interaction_runtime_service.gd\"]}"
+      },
+      {
+        "category": "changed_file_correlation",
+        "name": "quoted_line_path_normalized",
+        "passed": true,
+        "observed": ""
+      },
+      {
+        "category": "changed_file_correlation",
+        "name": "absolute_mirror_path_normalized",
+        "passed": true,
+        "observed": ""
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "neighboring_project_path_blocks_baseline",
+        "passed": true,
+        "observed": "{\"schema\":\"McpColdImportDiagnosticComparisonV2\",\"valid\":true,\"reason_code\":\"diagnostic_comparison_not_green\",\"baseline_diagnostic_equivalent\":false,\"target_additional_diagnostic_count\":0,\"target_changed_file_diagnostic_count\":0,\"target_non_equivalent_diagnostic_count\":1,\"c0_diagnostic_count\":1,\"c1_diagnostic_count\":1,\"c2_diagnostic_count\":1,\"c0_editor_diagnostic_count\":1,\"c1_editor_diagnostic_count\":1,\"c2_editor_diagnostic_count\":1,\"c0_recovery_diagnostic_count\":0,\"c1_recovery_diagnostic_count\":0,\"c2_recovery_diagnostic_count\":0,\"matrix_real_project_error_count\":0,\"matrix_unmirrored_godot_diagnostic_count\":0,\"environment_fingerprint\":\"ae7eb62ef8bb3d93c286933030f528e66eb74ba36b34f0e362d97d385e75f04a\",\"allowed_fingerprints\":[],\"allowed_multiplicity\":{},\"baseline_core_fingerprints\":[\"765146ecec8bf6cf0a481a52965c9f570596400cd159365489ef249330a38a77\"],\"baseline_manifest\":{\"schema\":\"McpBaselineDiagnosticManifestV2\",\"task_id\":\"ALPHA_0_4_C_MCP_COLD_IMPORT_UNICODE_NUL_BASELINE_ATTRIBUTION_GATE_REPAIR_AND_EXACT_SHA_ACCEPTANCE\",\"attested\":false,\"forensic_partial\":true,\"attestation_scope\":\"forensic_partial\",\"comparison_green\":false,\"baseline_scope\":\"global_main_parent\",\"target_head\":\"2222222222222222222222222222222222222222\",\"target_tree\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"environment_fingerprint\":\"ae7eb62ef8bb3d93c286933030f528e66eb74ba36b34f0e362d97d385e75f04a\",\"c0_head\":\"0000000000000000000000000000000000000000\",\"c1_head\":\"1111111111111111111111111111111111111111\",\"c2_head\":\"2222222222222222222222222222222222222222\",\"c0_source_is_ancestor\":true,\"c1_source_is_ancestor\":true,\"target_additional_diagnostic_count\":0,\"target_changed_file_diagnostic_count\":0,\"target_non_equivalent_diagnostic_count\":1,\"matrix_real_project_error_count\":0,\"matrix_unmirrored_godot_diagnostic_count\":0,\"allowed_fingerprints\":[],\"allowed_multiplicity\":{},\"baseline_core_fingerprints\":[\"765146ecec8bf6cf0a481a52965c9f570596400cd159365489ef249330a38a77\"],\"manifest_sha256\":\"39dd0829e6a6b364d28f3539583f4d164a5d0f1b6b040ebae7abe1b430004813\"},\"green\":false}"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "neighboring_project_path_not_baseline",
+        "passed": true,
+        "observed": "unclassified"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "immediate_neighbor_category_in_fingerprint",
+        "passed": true,
+        "observed": "{\"schema\":\"McpColdImportDiagnosticComparisonV2\",\"valid\":true,\"reason_code\":\"diagnostic_comparison_not_green\",\"baseline_diagnostic_equivalent\":false,\"target_additional_diagnostic_count\":0,\"target_changed_file_diagnostic_count\":0,\"target_non_equivalent_diagnostic_count\":1,\"c0_diagnostic_count\":1,\"c1_diagnostic_count\":1,\"c2_diagnostic_count\":1,\"c0_editor_diagnostic_count\":1,\"c1_editor_diagnostic_count\":1,\"c2_editor_diagnostic_count\":1,\"c0_recovery_diagnostic_count\":0,\"c1_recovery_diagnostic_count\":0,\"c2_recovery_diagnostic_count\":0,\"matrix_real_project_error_count\":0,\"matrix_unmirrored_godot_diagnostic_count\":0,\"environment_fingerprint\":\"ae7eb62ef8bb3d93c286933030f528e66eb74ba36b34f0e362d97d385e75f04a\",\"allowed_fingerprints\":[],\"allowed_multiplicity\":{},\"baseline_core_fingerprints\":[\"765146ecec8bf6cf0a481a52965c9f570596400cd159365489ef249330a38a77\"],\"baseline_manifest\":{\"schema\":\"McpBaselineDiagnosticManifestV2\",\"task_id\":\"ALPHA_0_4_C_MCP_COLD_IMPORT_UNICODE_NUL_BASELINE_ATTRIBUTION_GATE_REPAIR_AND_EXACT_SHA_ACCEPTANCE\",\"attested\":false,\"forensic_partial\":true,\"attestation_scope\":\"forensic_partial\",\"comparison_green\":false,\"baseline_scope\":\"global_main_parent\",\"target_head\":\"2222222222222222222222222222222222222222\",\"target_tree\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"environment_fingerprint\":\"ae7eb62ef8bb3d93c286933030f528e66eb74ba36b34f0e362d97d385e75f04a\",\"c0_head\":\"0000000000000000000000000000000000000000\",\"c1_head\":\"1111111111111111111111111111111111111111\",\"c2_head\":\"2222222222222222222222222222222222222222\",\"c0_source_is_ancestor\":true,\"c1_source_is_ancestor\":true,\"target_additional_diagnostic_count\":0,\"target_changed_file_diagnostic_count\":0,\"target_non_equivalent_diagnostic_count\":1,\"matrix_real_project_error_count\":0,\"matrix_unmirrored_godot_diagnostic_count\":0,\"allowed_fingerprints\":[],\"allowed_multiplicity\":{},\"baseline_core_fingerprints\":[\"765146ecec8bf6cf0a481a52965c9f570596400cd159365489ef249330a38a77\"],\"manifest_sha256\":\"39dd0829e6a6b364d28f3539583f4d164a5d0f1b6b040ebae7abe1b430004813\"},\"green\":false}"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "literal_replacement_not_decoder_artifact",
+        "passed": true,
+        "observed": "{\"record_index\":1,\"raw_byte_start\":0,\"raw_byte_end\":98,\"raw_byte_end_exclusive\":98,\"message_byte_end\":96,\"message_byte_end_exclusive\":96,\"raw_length\":98,\"message_length\":96,\"raw_bytes_sha256\":\"adcbecf17b06b71d7a3754512d807614f232cb949e25de451225cb8c0dd6b3fb\",\"message_bytes_sha256\":\"660062b6986d3290250aac5ac714e8cc6529a65f909bf5e9dcfe15bd27448757\",\"raw_bytes_base64\":\"VW5pY29kZSBwYXJzaW5nIGVycm9yLCBzb21lIGNoYXJhY3RlcnMgd2VyZSByZXBsYWNlZCB3aXRoIO+/vSAoVStGRkZEKTogVW5leHBlY3RlZCBOVUwgY2hhcmFjdGVyDQo=\",\"line_ending_hex\":\"0d0a\",\"decoded_text_utf8\":\"Unicode parsing error, some characters were replaced with � (U+FFFD): Unexpected NUL character\",\"decoded_text_replacement_count\":1,\"literal_replacement_codepoint_count\":1,\"decoder_inserted_replacement_count\":0,\"raw_utf8_valid\":true,\"contains_raw_nul_byte\":false,\"raw_nul_byte_count\":0,\"source_stream\":\"editor_stderr\",\"timestamp\":null,\"timestamp_source\":\"unavailable\",\"stage\":\"startup\",\"stage_before_marker\":true,\"category\":\"unicode_nul_diagnostic\",\"nearest_previous_log_record\":\"stream_start\",\"nearest_next_log_record\":\"stream_end\",\"previous_non_diagnostic_event\":\"stream_start\",\"next_non_diagnostic_event\":\"stream_end\",\"nearest_previous_associated_path\":\"\",\"nearest_next_associated_path\":\"\",\"associated_path\":\"\",\"associated_resource\":\"\",\"associated_script\":\"\",\"failed_load_correlated\":false,\"parse_failure_correlated\":false,\"runtime_failure_correlated\":false,\"potential_diagnostic\":true,\"diagnostic_index\":1}"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "crlf_framed_hash_preserved",
+        "passed": true,
+        "observed": "{\"record_index\":1,\"raw_byte_start\":0,\"raw_byte_end\":98,\"raw_byte_end_exclusive\":98,\"message_byte_end\":96,\"message_byte_end_exclusive\":96,\"raw_length\":98,\"message_length\":96,\"raw_bytes_sha256\":\"adcbecf17b06b71d7a3754512d807614f232cb949e25de451225cb8c0dd6b3fb\",\"message_bytes_sha256\":\"660062b6986d3290250aac5ac714e8cc6529a65f909bf5e9dcfe15bd27448757\",\"raw_bytes_base64\":\"VW5pY29kZSBwYXJzaW5nIGVycm9yLCBzb21lIGNoYXJhY3RlcnMgd2VyZSByZXBsYWNlZCB3aXRoIO+/vSAoVStGRkZEKTogVW5leHBlY3RlZCBOVUwgY2hhcmFjdGVyDQo=\",\"line_ending_hex\":\"0d0a\",\"decoded_text_utf8\":\"Unicode parsing error, some characters were replaced with � (U+FFFD): Unexpected NUL character\",\"decoded_text_replacement_count\":1,\"literal_replacement_codepoint_count\":1,\"decoder_inserted_replacement_count\":0,\"raw_utf8_valid\":true,\"contains_raw_nul_byte\":false,\"raw_nul_byte_count\":0,\"source_stream\":\"editor_stderr\",\"timestamp\":null,\"timestamp_source\":\"unavailable\",\"stage\":\"startup\",\"stage_before_marker\":true,\"category\":\"unicode_nul_diagnostic\",\"nearest_previous_log_record\":\"stream_start\",\"nearest_next_log_record\":\"stream_end\",\"previous_non_diagnostic_event\":\"stream_start\",\"next_non_diagnostic_event\":\"stream_end\",\"nearest_previous_associated_path\":\"\",\"nearest_next_associated_path\":\"\",\"associated_path\":\"\",\"associated_resource\":\"\",\"associated_script\":\"\",\"failed_load_correlated\":false,\"parse_failure_correlated\":false,\"runtime_failure_correlated\":false,\"potential_diagnostic\":true,\"diagnostic_index\":1}"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "raw_nul_does_not_crash",
+        "passed": true,
+        "observed": "{\"schema\":\"McpRawLogSnapshotV1\",\"source_path\":\"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\Temp\\\\mcp-diagnostic-test-1a755b42a3314fd3b1d4b98a36445415\\\\nul.stderr.log\",\"source_stream\":\"editor_stderr\",\"stage\":\"startup\",\"exists\":true,\"file_length\":5,\"file_sha256\":\"ab6ec652b9b779d8ce69e32652f33a27bc24f7e9b60b7ec6fbb04bc7e0eea5c9\",\"snapshot_length\":5,\"last_write_time_utc\":\"2026-08-03T15:25:51.7477785Z\",\"capture_backend\":\"file_read_all_bytes_fixed_length_v1\",\"raw_nul_count\":1,\"record_count\":1,\"diagnostic_count\":1,\"records\":[{\"record_index\":1,\"raw_byte_start\":0,\"raw_byte_end\":5,\"raw_byte_end_exclusive\":5,\"message_byte_end\":3,\"message_byte_end_exclusive\":3,\"raw_length\":5,\"message_length\":3,\"raw_bytes_sha256\":\"ab6ec652b9b779d8ce69e32652f33a27bc24f7e9b60b7ec6fbb04bc7e0eea5c9\",\"message_bytes_sha256\":\"76fe3925c7167317f2df68454339f5ec3650e4062178b4f2be219b105a507907\",\"raw_bytes_base64\":\"QQBCDQo=\",\"line_ending_hex\":\"0d0a\",\"decoded_text_utf8\":\"A\\u0000B\",\"decoded_text_replacement_count\":0,\"literal_replacement_codepoint_count\":0,\"decoder_inserted_replacement_count\":0,\"raw_utf8_valid\":true,\"contains_raw_nul_byte\":true,\"raw_nul_byte_count\":1,\"source_stream\":\"editor_stderr\",\"timestamp\":null,\"timestamp_source\":\"unavailable\",\"stage\":\"startup\",\"stage_before_marker\":true,\"category\":\"other\",\"nearest_previous_log_record\":\"stream_start\",\"nearest_next_log_record\":\"stream_end\",\"previous_non_diagnostic_event\":\"stream_start\",\"next_non_diagnostic_event\":\"stream_end\",\"nearest_previous_associated_path\":\"\",\"nearest_next_associated_path\":\"\",\"associated_path\":\"\",\"associated_resource\":\"\",\"associated_script\":\"\",\"failed_load_correlated\":false,\"parse_failure_correlated\":false,\"runtime_failure_correlated\":false,\"potential_diagnostic\":true,\"diagnostic_index\":1}],\"diagnostics\":[{\"record_index\":1,\"raw_byte_start\":0,\"raw_byte_end\":5,\"raw_byte_end_exclusive\":5,\"message_byte_end\":3,\"message_byte_end_exclusive\":3,\"raw_length\":5,\"message_length\":3,\"raw_bytes_sha256\":\"ab6ec652b9b779d8ce69e32652f33a27bc24f7e9b60b7ec6fbb04bc7e0eea5c9\",\"message_bytes_sha256\":\"76fe3925c7167317f2df68454339f5ec3650e4062178b4f2be219b105a507907\",\"raw_bytes_base64\":\"QQBCDQo=\",\"line_ending_hex\":\"0d0a\",\"decoded_text_utf8\":\"A\\u0000B\",\"decoded_text_replacement_count\":0,\"literal_replacement_codepoint_count\":0,\"decoder_inserted_replacement_count\":0,\"raw_utf8_valid\":true,\"contains_raw_nul_byte\":true,\"raw_nul_byte_count\":1,\"source_stream\":\"editor_stderr\",\"timestamp\":null,\"timestamp_source\":\"unavailable\",\"stage\":\"startup\",\"stage_before_marker\":true,\"category\":\"other\",\"nearest_previous_log_record\":\"stream_start\",\"nearest_next_log_record\":\"stream_end\",\"previous_non_diagnostic_event\":\"stream_start\",\"next_non_diagnostic_event\":\"stream_end\",\"nearest_previous_associated_path\":\"\",\"nearest_next_associated_path\":\"\",\"associated_path\":\"\",\"associated_resource\":\"\",\"associated_script\":\"\",\"failed_load_correlated\":false,\"parse_failure_correlated\":false,\"runtime_failure_correlated\":false,\"potential_diagnostic\":true,\"diagnostic_index\":1}]}"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "invalid_utf8_detected",
+        "passed": true,
+        "observed": "{\"record_index\":1,\"raw_byte_start\":0,\"raw_byte_end\":3,\"raw_byte_end_exclusive\":3,\"message_byte_end\":2,\"message_byte_end_exclusive\":2,\"raw_length\":3,\"message_length\":2,\"raw_bytes_sha256\":\"b8355bbc80b12adfb40dab69e4103e4fe2eed1e54d0171ea1f86e3e9c85443b3\",\"message_bytes_sha256\":\"6f6ea0e1c9fe14449f3541a3690df7a88718fd958cf9da6582e142640a2b01df\",\"raw_bytes_base64\":\"ZoAK\",\"line_ending_hex\":\"0a\",\"decoded_text_utf8\":\"f�\",\"decoded_text_replacement_count\":1,\"literal_replacement_codepoint_count\":0,\"decoder_inserted_replacement_count\":1,\"raw_utf8_valid\":false,\"contains_raw_nul_byte\":false,\"raw_nul_byte_count\":0,\"source_stream\":\"editor_stderr\",\"timestamp\":null,\"timestamp_source\":\"unavailable\",\"stage\":\"startup\",\"stage_before_marker\":true,\"category\":\"other\",\"nearest_previous_log_record\":\"stream_start\",\"nearest_next_log_record\":\"stream_end\",\"previous_non_diagnostic_event\":\"stream_start\",\"next_non_diagnostic_event\":\"stream_end\",\"nearest_previous_associated_path\":\"\",\"nearest_next_associated_path\":\"\",\"associated_path\":\"\",\"associated_resource\":\"\",\"associated_script\":\"\",\"failed_load_correlated\":false,\"parse_failure_correlated\":false,\"runtime_failure_correlated\":false,\"potential_diagnostic\":true,\"diagnostic_index\":1}"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "empty_log_has_valid_sha_and_zero_records",
+        "passed": true,
+        "observed": "{\"schema\":\"McpRawLogSnapshotV1\",\"source_path\":\"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\Temp\\\\mcp-diagnostic-test-1a755b42a3314fd3b1d4b98a36445415\\\\empty.stderr.log\",\"source_stream\":\"editor_stderr\",\"stage\":\"startup\",\"exists\":true,\"file_length\":0,\"file_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"snapshot_length\":0,\"last_write_time_utc\":\"2026-08-03T15:25:51.7553783Z\",\"capture_backend\":\"file_read_all_bytes_fixed_length_v1\",\"raw_nul_count\":0,\"record_count\":0,\"diagnostic_count\":0,\"records\":[],\"diagnostics\":[]}"
+      },
+      {
+        "category": "changed_file_correlation",
+        "name": "path_scan_skips_intermediate_pathless_event",
+        "passed": true,
+        "observed": "res://scripts/runtime/player_hand_interaction_runtime_service.gd"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "no_global_unicode_message_allowlist",
+        "passed": true,
+        "observed": ""
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "no_hardcoded_allowed_error_count",
+        "passed": true,
+        "observed": ""
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "unknown_category_fails_closed",
+        "passed": true,
+        "observed": "{\"schema\":\"McpDiagnosticGateV2\",\"green\":false,\"counts\":{\"total\":1,\"baseline_engine_import_diagnostic\":0,\"wrapper_decode_artifact\":0,\"project_script_parse_error\":0,\"project_resource_load_error\":0,\"project_runtime_error\":0,\"changed_file_error\":0,\"task_introduced_error\":0,\"informational\":0,\"unclassified\":1},\"real_project_error_count\":0,\"baseline_engine_diagnostic_count\":0,\"wrapper_artifact_count\":0,\"changed_file_error_count\":0,\"task_introduced_error_count\":0,\"runtime_error_count\":0,\"unclassified_diagnostic_count\":1,\"baseline_manifest_acceptance_valid\":true,\"baseline_multiplicity_mismatch_count\":0,\"baseline_diagnostic_allowlist_scope\":\"exact_fingerprint_and_environment_only\"}"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "failed_load_gate_blocks",
+        "passed": true,
+        "observed": "{\"schema\":\"McpDiagnosticGateV2\",\"green\":false,\"counts\":{\"total\":1,\"baseline_engine_import_diagnostic\":0,\"wrapper_decode_artifact\":0,\"project_script_parse_error\":0,\"project_resource_load_error\":1,\"project_runtime_error\":0,\"changed_file_error\":0,\"task_introduced_error\":0,\"informational\":0,\"unclassified\":0},\"real_project_error_count\":1,\"baseline_engine_diagnostic_count\":0,\"wrapper_artifact_count\":0,\"changed_file_error_count\":0,\"task_introduced_error_count\":0,\"runtime_error_count\":0,\"unclassified_diagnostic_count\":0,\"baseline_manifest_acceptance_valid\":true,\"baseline_multiplicity_mismatch_count\":0,\"baseline_diagnostic_allowlist_scope\":\"exact_fingerprint_and_environment_only\"}"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "runtime_gate_blocks",
+        "passed": true,
+        "observed": "{\"schema\":\"McpDiagnosticGateV2\",\"green\":false,\"counts\":{\"total\":1,\"baseline_engine_import_diagnostic\":0,\"wrapper_decode_artifact\":0,\"project_script_parse_error\":0,\"project_resource_load_error\":0,\"project_runtime_error\":1,\"changed_file_error\":0,\"task_introduced_error\":0,\"informational\":0,\"unclassified\":0},\"real_project_error_count\":1,\"baseline_engine_diagnostic_count\":0,\"wrapper_artifact_count\":0,\"changed_file_error_count\":0,\"task_introduced_error_count\":0,\"runtime_error_count\":1,\"unclassified_diagnostic_count\":0,\"baseline_manifest_acceptance_valid\":true,\"baseline_multiplicity_mismatch_count\":0,\"baseline_diagnostic_allowlist_scope\":\"exact_fingerprint_and_environment_only\"}"
+      },
+      {
+        "category": "false_negative_guard",
+        "name": "corrupt_manifest_cannot_allow",
+        "passed": true,
+        "observed": "unclassified"
+      }
+    ]
+  },
+  "no_diagnostics_green": true,
+  "attested_baseline_classification_green": true,
+  "target_added_diagnostic_blocked": true,
+  "raw_nul_does_not_crash": true,
+  "endpoint_stopped_cleanly": true,
+  "diagnostic_self_test_false_accept_count": 0,
+  "diagnostic_self_test_false_reject_count": 0,
+  "process_count_after": 0,
+  "endpoint_count_after": 0,
+  "stderr": {
+    "schema": "McpRawLogSnapshotV1",
+    "source_path": "E:\\ss-mcp\\dm4\\project\\.codex-godot\\sessions\\alpha04c-diag-min-v2\\logs\\editor.stderr.log",
+    "source_stream": "editor_stderr",
+    "stage": "startup_initial_filesystem_scan_before_endpoint_readiness",
+    "exists": true,
+    "file_length": 0,
+    "file_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "snapshot_length": 0,
+    "last_write_time_utc": "2026-08-03T15:25:56.4862130Z",
+    "capture_backend": "file_read_all_bytes_fixed_length_v1",
+    "raw_nul_count": 0,
+    "record_count": 0,
+    "diagnostic_count": 0,
+    "records": [],
+    "diagnostics": []
+  },
+  "stop_result": {
+    "stopped": true,
+    "clean_stop": true,
+    "forced": false,
+    "already_exited": false,
+    "request_id": "alpha04c-diag-min-stop-v2",
+    "pid": 4996,
+    "endpoint_owner_pid_before": 4996,
+    "endpoint_owner_pid_after": 0,
+    "endpoint_alive_after": false,
+    "task_process_count_after": 0,
+    "editor_exit_code": 0
+  },
+  "failure": ""
+}

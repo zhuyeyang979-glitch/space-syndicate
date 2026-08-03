@@ -69,6 +69,12 @@ $endpointOwnerAfter = Get-McpEndpointOwnerPid -Port ([int]$connection.port)
 $processAfter = Get-Process -Id ([int]$connection.pid) -ErrorAction SilentlyContinue
 $processCountAfter = if ($null -eq $processAfter -or $processAfter.HasExited) { 0 } else { 1 }
 $stopped = [bool]$stopResult.stopped -and $endpointOwnerAfter -eq 0 -and $processCountAfter -eq 0
+$exitCodeEvidence = Get-McpSafeProperty -Object $identity.process -Name "ExitCode"
+$editorExitCode = if ($exitCodeEvidence.found -and [string]::IsNullOrWhiteSpace([string]$exitCodeEvidence.error)) {
+    [int]$exitCodeEvidence.value
+} else {
+    $null
+}
 if ($stopped) {
     if (Test-Path -LiteralPath (Join-Path ([string]$connection.session_root) "godot.pid")) {
         Remove-Item -LiteralPath (Join-Path ([string]$connection.session_root) "godot.pid") -Force
@@ -87,6 +93,7 @@ $result = [ordered]@{
     endpoint_owner_pid_after = $endpointOwnerAfter
     endpoint_alive_after = $endpointOwnerAfter -ne 0
     task_process_count_after = $processCountAfter
+    editor_exit_code = $editorExitCode
 }
 $result | ConvertTo-Json -Depth 5
 if (-not $stopped -or -not [bool]$result.clean_stop) {
