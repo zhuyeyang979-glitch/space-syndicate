@@ -43,7 +43,13 @@ if ($endpointOwnerBefore -ne [int]$connection.pid) {
     throw "MCP_STOP_ENDPOINT_PROCESS_MISMATCH|expected_pid=$($connection.pid)|actual_pid=$endpointOwnerBefore"
 }
 
-$stopResult = Stop-McpBoundProcess -Process $identity.process -TimeoutSeconds $ShutdownTimeoutSeconds -AllowForcedCleanup:$AllowForcedCleanup
+$storedProcessIdentity = Get-McpOptionalProperty -Object $connection -Name "process_identity"
+$expectedCreationTimeUtc = [string](Get-McpOptionalProperty -Object $storedProcessIdentity -Name "process_creation_time_utc")
+$stopResult = Stop-McpBoundProcess `
+    -Process $identity.process `
+    -TimeoutSeconds $ShutdownTimeoutSeconds `
+    -ExpectedCreationTimeUtc $expectedCreationTimeUtc `
+    -AllowForcedCleanup:$AllowForcedCleanup
 $endpointDeadline = [DateTimeOffset]::Now.AddSeconds(5)
 do {
     $endpointOwnerAfter = Get-McpEndpointOwnerPid -Port ([int]$connection.port)

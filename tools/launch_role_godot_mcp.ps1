@@ -44,8 +44,23 @@ if (-not (Test-Path -LiteralPath (Join-Path $root "project.godot"))) {
 if (-not (Test-Path -LiteralPath (Join-Path $root "addons\funplay_mcp\plugin.cfg"))) {
     throw "Funplay MCP addon is missing from: $root"
 }
-if (-not (Test-Path -LiteralPath $GodotPath)) {
+$GodotPath = ConvertTo-McpNormalizedPath -Path $GodotPath
+if ($GodotPath -eq "" -or -not (Test-Path -LiteralPath $GodotPath)) {
     throw "Godot executable is missing: $GodotPath"
+}
+$projectHeadSha = ""
+try {
+    $gitHead = @(& git -C $root rev-parse HEAD 2>$null)
+    if ($LASTEXITCODE -eq 0 -and $gitHead.Count -eq 1 -and [string]$gitHead[0] -match '^[0-9a-fA-F]{40}$') {
+        $projectHeadSha = ([string]$gitHead[0]).ToLowerInvariant()
+    }
+} catch {
+    $projectHeadSha = ""
+}
+if ($projectHeadSha -eq "") {
+    $projectBytes = [System.IO.File]::ReadAllBytes((Join-Path $root "project.godot"))
+    $projectHash = [System.Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($projectBytes)).ToLowerInvariant()
+    $projectHeadSha = "unversioned:$projectHash"
 }
 
 $projectCachePath = Join-Path $root ".godot"
@@ -97,8 +112,15 @@ if (Test-Path -LiteralPath $activeSessionPath) {
         if ([bool]$priorIdentity.valid) {
             throw "MCP_ACTIVE_SESSION_STILL_RUNNING|pid=$($prior.connection.pid)|session_id=$($prior.connection.session_id)"
         }
+        $priorPid = [int](Get-McpOptionalProperty -Object $prior.connection -Name "pid")
+        $priorProcess = if ($priorPid -gt 0) { Get-Process -Id $priorPid -ErrorAction SilentlyContinue } else { $null }
+        $priorPort = try { ([Uri]([string]$prior.connection.endpoint)).Port } catch { 0 }
+        $priorEndpointOwner = if ($priorPort -gt 0) { Get-McpEndpointOwnerPid -Port $priorPort } else { 0 }
+        if ($null -ne $priorProcess -or $priorEndpointOwner -ne 0) {
+            throw "MCP_ACTIVE_SESSION_IDENTITY_FAILURE|reason_code=$($priorIdentity.reason_code)|pid=$priorPid|endpoint_owner_pid=$priorEndpointOwner"
+        }
     } catch {
-        if ($_.Exception.Message -like "MCP_ACTIVE_SESSION_STILL_RUNNING*") {
+        if ($_.Exception.Message -like "MCP_ACTIVE_SESSION_STILL_RUNNING*" -or $_.Exception.Message -like "MCP_ACTIVE_SESSION_IDENTITY_FAILURE*") {
             throw
         }
     }
@@ -156,7 +178,10 @@ $editorArguments = @(
     "--rendering-method", $renderingMethod,
     "--rendering-driver", $renderingDriver,
     "--resolution", "1600x960",
-    "--position", "40,40"
+    "--position", "40,40",
+    "--",
+    "--role-godot-mcp-session-id=$SessionId",
+    "--role-godot-mcp-role=$Role"
 )
 $argumentString = $editorArguments -join " "
 $recoveryImportArguments = @(
@@ -165,7 +190,10 @@ $recoveryImportArguments = @(
     "--path", ('"' + $root + '"'),
     "--log-file", ('"' + $recoveryImportLogPath + '"'),
     "--rendering-method", $renderingMethod,
-    "--rendering-driver", $renderingDriver
+    "--rendering-driver", $renderingDriver,
+    "--",
+    "--role-godot-mcp-session-id=$SessionId-recovery-import",
+    "--role-godot-mcp-role=$Role-recovery-import"
 )
 $recoveryImportArgumentString = $recoveryImportArguments -join " "
 $environment = @{
@@ -206,9 +234,16 @@ try {
     if ($RequireFreshProjectCache) {
         $recoveryImportStartedAt = [DateTimeOffset]::Now
         $recoveryImportProcess = Start-Process @recoveryImportStartProcessParameters
-        $recoveryImportIdentity = Get-McpProcessIdentity -Process $recoveryImportProcess
-        if ($null -eq $recoveryImportIdentity) {
-            throw "recovery_import_process_exited_before_monitor|stage=launch"
+        $recoveryImportIdentity = Get-McpProcessIdentity `
+            -Process $recoveryImportProcess `
+            -Role "$Role-recovery-import" `
+            -SessionId "$SessionId-recovery-import" `
+            -ExpectedExecutablePath $GodotPath `
+            -ProjectPath $root `
+            -ProjectHeadSha $projectHeadSha `
+            -Endpoint $endpoint
+        if (-not [bool]$recoveryImportIdentity.identity_verified) {
+            throw "MCP_PROCESS_IDENTITY_FAILURE|stage=recovery_import_launch|reason_code=$($recoveryImportIdentity.failure_reason)|pid=$($recoveryImportProcess.Id)"
         }
         Write-McpUtf8File -Path $recoveryImportPidPath -Text ([string]$recoveryImportProcess.Id)
 
@@ -243,9 +278,16 @@ try {
     }
 
     $process = Start-Process @startProcessParameters
-    $identity = Get-McpProcessIdentity -Process $process
-    if ($null -eq $identity) {
-        throw "editor_process_exited_before_ready|stage=launch"
+    $identity = Get-McpProcessIdentity `
+        -Process $process `
+        -Role $Role `
+        -SessionId $SessionId `
+        -ExpectedExecutablePath $GodotPath `
+        -ProjectPath $root `
+        -ProjectHeadSha $projectHeadSha `
+        -Endpoint $endpoint
+    if (-not [bool]$identity.identity_verified) {
+        throw "MCP_PROCESS_IDENTITY_FAILURE|stage=editor_launch|reason_code=$($identity.failure_reason)|pid=$($process.Id)"
     }
     Write-McpUtf8File -Path $pidPath -Text ([string]$process.Id)
 
@@ -371,24 +413,43 @@ try {
         throw "mcp_endpoint_project_mismatch|expected=$root|actual=$reportedRoot"
     }
 
+    $verifiedIdentity = Get-McpProcessIdentity `
+        -Process $process `
+        -Role $Role `
+        -SessionId $SessionId `
+        -ExpectedExecutablePath $GodotPath `
+        -ExpectedCreationTimeUtc ([string]$identity.process_creation_time_utc) `
+        -ProjectPath $root `
+        -ProjectHeadSha $projectHeadSha `
+        -Endpoint $endpoint `
+        -RequireEndpointOwner
+    if (-not [bool]$verifiedIdentity.identity_verified) {
+        throw "MCP_PROCESS_IDENTITY_FAILURE|stage=endpoint_binding|reason_code=$($verifiedIdentity.failure_reason)|pid=$($process.Id)"
+    }
+    if (-not ([string]$verifiedIdentity.command_line_sha256).Equals([string]$identity.command_line_sha256, [System.StringComparison]::Ordinal)) {
+        throw "MCP_PROCESS_IDENTITY_FAILURE|stage=endpoint_binding|reason_code=process_command_line_mismatch|pid=$($process.Id)"
+    }
+
     $connection = [ordered]@{
-        schema = "RoleGodotMcpConnectionV2"
+        schema = "RoleGodotMcpConnectionV3"
         session_id = $SessionId
         launch_nonce = [guid]::NewGuid().ToString("N")
         role = $Role
         endpoint = $endpoint
         port = $Port
-        endpoint_owner_pid = Get-McpEndpointOwnerPid -Port $Port
-        pid = $process.Id
-        process_start_time_utc = [string]$identity.start_time_utc
-        godot_path = [string]$identity.executable_path
+        endpoint_owner_pid = [int]$verifiedIdentity.endpoint_owner_pid
+        pid = [int]$verifiedIdentity.process_id
+        process_start_time_utc = [string]$verifiedIdentity.process_creation_time_utc
+        godot_path = [string]$verifiedIdentity.observed_executable_path
+        project_head_sha = $projectHeadSha
+        process_identity = $verifiedIdentity
         worktree = $root
         project_cache_path = $projectCachePath
         project_cache_was_fresh = $projectCacheWasFresh
         recovery_import_performed = $RequireFreshProjectCache
         recovery_import_green = $recoveryImportCompleted
         recovery_import_pid = if ($null -ne $recoveryImportProcess) { $recoveryImportProcess.Id } else { 0 }
-        recovery_import_process_start_time_utc = if ($null -ne $recoveryImportIdentity) { [string]$recoveryImportIdentity.start_time_utc } else { "" }
+        recovery_import_process_start_time_utc = if ($null -ne $recoveryImportIdentity) { [string]$recoveryImportIdentity.process_creation_time_utc } else { "" }
         recovery_import_started_at = if ($null -ne $recoveryImportStartedAt) { $recoveryImportStartedAt.ToString("o") } else { "" }
         recovery_import_completed_at = if ($null -ne $recoveryImportCompletedAt) { $recoveryImportCompletedAt.ToString("o") } else { "" }
         recovery_import_timeout_seconds = $RecoveryImportTimeoutSeconds
@@ -436,26 +497,50 @@ try {
     $cleanup = $null
     $recoveryCleanup = $null
     if ($null -ne $process) {
-        $process.Refresh()
-        if (-not $process.HasExited) {
-            $cleanup = Stop-McpBoundProcess -Process $process -TimeoutSeconds 10 -AllowForcedCleanup
+        try {
+            $expectedCreationTime = if ($null -ne $identity) { [string]$identity.process_creation_time_utc } else { "" }
+            $cleanup = Stop-McpBoundProcess `
+                -Process $process `
+                -TimeoutSeconds 10 `
+                -ExpectedCreationTimeUtc $expectedCreationTime `
+                -AllowForcedCleanup
+        } catch {
+            $cleanup = [ordered]@{ stopped = $false; clean_stop = $false; forced = $false; failure_reason = "cleanup_identity_unavailable" }
         }
     }
     if ($null -ne $recoveryImportProcess) {
-        $recoveryImportProcess.Refresh()
-        if (-not $recoveryImportProcess.HasExited) {
-            $recoveryCleanup = Stop-McpBoundProcess -Process $recoveryImportProcess -TimeoutSeconds 10 -AllowForcedCleanup
+        try {
+            $expectedRecoveryCreationTime = if ($null -ne $recoveryImportIdentity) { [string]$recoveryImportIdentity.process_creation_time_utc } else { "" }
+            $recoveryCleanup = Stop-McpBoundProcess `
+                -Process $recoveryImportProcess `
+                -TimeoutSeconds 10 `
+                -ExpectedCreationTimeUtc $expectedRecoveryCreationTime `
+                -AllowForcedCleanup
+        } catch {
+            $recoveryCleanup = [ordered]@{ stopped = $false; clean_stop = $false; forced = $false; failure_reason = "cleanup_identity_unavailable" }
         }
     }
     $failureProcess = if ($null -ne $process) { $process } else { $recoveryImportProcess }
     $failureLogPath = if ($null -ne $process) { $logPath } else { $recoveryImportLogPath }
-    $exitCode = if ($null -ne $failureProcess -and $failureProcess.HasExited) { $failureProcess.ExitCode } else { 0 }
+    $failureHasExited = Get-McpSafeProperty -Object $failureProcess -Name "HasExited"
+    $failureExitCode = Get-McpSafeProperty -Object $failureProcess -Name "ExitCode"
+    $exitCode = if ($failureHasExited.found `
+        -and [string]::IsNullOrWhiteSpace([string]$failureHasExited.error) `
+        -and [bool]$failureHasExited.value `
+        -and $failureExitCode.found `
+        -and [string]::IsNullOrWhiteSpace([string]$failureExitCode.error)) {
+        [int]$failureExitCode.value
+    } else {
+        0
+    }
+    $editorPidProperty = Get-McpSafeProperty -Object $process -Name "Id"
+    $recoveryPidProperty = Get-McpSafeProperty -Object $recoveryImportProcess -Name "Id"
     $native = Get-McpNativeExitEvidence -LogPath $failureLogPath -ExitCode $exitCode
     $failure = [ordered]@{
         schema = "RoleGodotMcpLaunchFailureV1"
         session_id = $SessionId
         reason = $failureMessage
-        editor_pid = if ($null -ne $process) { $process.Id } else { 0 }
+        editor_pid = if ($editorPidProperty.found -and [string]::IsNullOrWhiteSpace([string]$editorPidProperty.error)) { [int]$editorPidProperty.value } else { 0 }
         exit_code = $native.exit_code
         signal = $native.signal
         endpoint = $endpoint
@@ -464,14 +549,14 @@ try {
         recovery_import_cleanup = $recoveryCleanup
         recovery_import_performed = $RequireFreshProjectCache
         recovery_import_green = $recoveryImportCompleted
-        recovery_import_pid = if ($null -ne $recoveryImportProcess) { $recoveryImportProcess.Id } else { 0 }
+        recovery_import_pid = if ($recoveryPidProperty.found -and [string]::IsNullOrWhiteSpace([string]$recoveryPidProperty.error)) { [int]$recoveryPidProperty.value } else { 0 }
         recovery_import_log_path = $recoveryImportLogPath
         runtime_data_root = $runtimeDataRoot
         log_path = $failureLogPath
         failed_at = [DateTimeOffset]::Now.ToString("o")
     }
     Write-McpUtf8File -Path $failurePath -Text ($failure | ConvertTo-Json -Depth 8)
-    throw $failureMessage
+    throw
 } finally {
     if (-not $launchSucceeded -and (Test-Path -LiteralPath $activeSessionPath)) {
         try {
