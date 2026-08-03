@@ -256,7 +256,11 @@ try {
             $recoveryImportProcess.Refresh()
         }
         if (-not $recoveryImportProcess.HasExited) {
-            $recoveryCleanup = Stop-McpBoundProcess -Process $recoveryImportProcess -TimeoutSeconds 10 -AllowForcedCleanup
+            $recoveryCleanup = Stop-McpBoundProcess `
+                -Process $recoveryImportProcess `
+                -TimeoutSeconds 10 `
+                -ExpectedCreationTimeToken $recoveryImportIdentity.process_creation_time `
+                -AllowForcedCleanup
             throw "recovery_import_timeout|pid=$($recoveryImportProcess.Id)|timeout_seconds=$RecoveryImportTimeoutSeconds|cleanup=$($recoveryCleanup | ConvertTo-Json -Compress)"
         }
         $recoveryImportProcess.WaitForExit()
@@ -418,7 +422,7 @@ try {
         -Role $Role `
         -SessionId $SessionId `
         -ExpectedExecutablePath $GodotPath `
-        -ExpectedCreationTimeUtc ([string]$identity.process_creation_time_utc) `
+        -ExpectedCreationTimeToken $identity.process_creation_time `
         -ProjectPath $root `
         -ProjectHeadSha $projectHeadSha `
         -Endpoint $endpoint `
@@ -431,7 +435,7 @@ try {
     }
 
     $connection = [ordered]@{
-        schema = "RoleGodotMcpConnectionV3"
+        schema = "RoleGodotMcpConnectionV4"
         session_id = $SessionId
         launch_nonce = [guid]::NewGuid().ToString("N")
         role = $Role
@@ -439,7 +443,7 @@ try {
         port = $Port
         endpoint_owner_pid = [int]$verifiedIdentity.endpoint_owner_pid
         pid = [int]$verifiedIdentity.process_id
-        process_start_time_utc = [string]$verifiedIdentity.process_creation_time_utc
+        process_creation_time = $verifiedIdentity.process_creation_time
         godot_path = [string]$verifiedIdentity.observed_executable_path
         project_head_sha = $projectHeadSha
         process_identity = $verifiedIdentity
@@ -449,9 +453,9 @@ try {
         recovery_import_performed = $RequireFreshProjectCache
         recovery_import_green = $recoveryImportCompleted
         recovery_import_pid = if ($null -ne $recoveryImportProcess) { $recoveryImportProcess.Id } else { 0 }
-        recovery_import_process_start_time_utc = if ($null -ne $recoveryImportIdentity) { [string]$recoveryImportIdentity.process_creation_time_utc } else { "" }
-        recovery_import_started_at = if ($null -ne $recoveryImportStartedAt) { $recoveryImportStartedAt.ToString("o") } else { "" }
-        recovery_import_completed_at = if ($null -ne $recoveryImportCompletedAt) { $recoveryImportCompletedAt.ToString("o") } else { "" }
+        recovery_import_process_creation_time = if ($null -ne $recoveryImportIdentity) { $recoveryImportIdentity.process_creation_time } else { $null }
+        recovery_import_started_at = if ($null -ne $recoveryImportStartedAt) { "display_utc:$($recoveryImportStartedAt.ToUniversalTime().ToString('o'))" } else { "" }
+        recovery_import_completed_at = if ($null -ne $recoveryImportCompletedAt) { "display_utc:$($recoveryImportCompletedAt.ToUniversalTime().ToString('o'))" } else { "" }
         recovery_import_timeout_seconds = $RecoveryImportTimeoutSeconds
         recovery_import_log_path = $recoveryImportLogPath
         recovery_import_stdout_path = $recoveryImportStdoutPath
@@ -481,7 +485,7 @@ try {
         pre_http_readiness_green = $true
         http_request_count_before_readiness = 0
         initial_ready_stability_seconds = $InitialReadyStabilitySeconds
-        launched_at = [DateTimeOffset]::Now.ToString("o")
+        launched_at = "display_utc:$([DateTimeOffset]::UtcNow.ToString('o'))"
     }
     Write-McpUtf8File -Path $connectionPath -Text ($connection | ConvertTo-Json -Depth 8)
     $active = [ordered]@{
@@ -498,11 +502,11 @@ try {
     $recoveryCleanup = $null
     if ($null -ne $process) {
         try {
-            $expectedCreationTime = if ($null -ne $identity) { [string]$identity.process_creation_time_utc } else { "" }
+            $expectedCreationTime = if ($null -ne $identity) { $identity.process_creation_time } else { $null }
             $cleanup = Stop-McpBoundProcess `
                 -Process $process `
                 -TimeoutSeconds 10 `
-                -ExpectedCreationTimeUtc $expectedCreationTime `
+                -ExpectedCreationTimeToken $expectedCreationTime `
                 -AllowForcedCleanup
         } catch {
             $cleanup = [ordered]@{ stopped = $false; clean_stop = $false; forced = $false; failure_reason = "cleanup_identity_unavailable" }
@@ -510,11 +514,11 @@ try {
     }
     if ($null -ne $recoveryImportProcess) {
         try {
-            $expectedRecoveryCreationTime = if ($null -ne $recoveryImportIdentity) { [string]$recoveryImportIdentity.process_creation_time_utc } else { "" }
+            $expectedRecoveryCreationTime = if ($null -ne $recoveryImportIdentity) { $recoveryImportIdentity.process_creation_time } else { $null }
             $recoveryCleanup = Stop-McpBoundProcess `
                 -Process $recoveryImportProcess `
                 -TimeoutSeconds 10 `
-                -ExpectedCreationTimeUtc $expectedRecoveryCreationTime `
+                -ExpectedCreationTimeToken $expectedRecoveryCreationTime `
                 -AllowForcedCleanup
         } catch {
             $recoveryCleanup = [ordered]@{ stopped = $false; clean_stop = $false; forced = $false; failure_reason = "cleanup_identity_unavailable" }

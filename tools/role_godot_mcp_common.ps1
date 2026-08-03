@@ -64,6 +64,12 @@ function Get-McpSafeProperty {
         return [ordered]@{ found = $false; value = $null; error = "object_is_null" }
     }
     try {
+        if ($Object -is [System.Collections.IDictionary]) {
+            if (-not $Object.Contains($Name)) {
+                return [ordered]@{ found = $false; value = $null; error = "property_missing" }
+            }
+            return [ordered]@{ found = $true; value = $Object[$Name]; error = "" }
+        }
         $property = $Object.PSObject.Properties[$Name]
         if ($null -eq $property) {
             return [ordered]@{ found = $false; value = $null; error = "property_missing" }
@@ -71,50 +77,6 @@ function Get-McpSafeProperty {
         return [ordered]@{ found = $true; value = $property.Value; error = "" }
     } catch {
         return [ordered]@{ found = $true; value = $null; error = $_.Exception.Message }
-    }
-}
-
-function ConvertTo-McpUtcTimestamp {
-    param(
-        [AllowNull()]
-        [object]$Value
-    )
-
-    if ($null -eq $Value) {
-        return ""
-    }
-    try {
-        if ($Value -is [DateTimeOffset]) {
-            return ([DateTimeOffset]$Value).ToUniversalTime().ToString("o")
-        }
-        if ($Value -is [DateTime]) {
-            return ([DateTime]$Value).ToUniversalTime().ToString("o")
-        }
-        return [DateTimeOffset]::Parse(
-            [string]$Value,
-            [System.Globalization.CultureInfo]::InvariantCulture,
-            [System.Globalization.DateTimeStyles]::RoundtripKind
-        ).ToUniversalTime().ToString("o")
-    } catch {
-        return ""
-    }
-}
-
-function Get-McpUtcMicrosecondValue {
-    param(
-        [AllowNull()]
-        [object]$Value
-    )
-
-    $timestamp = ConvertTo-McpUtcTimestamp -Value $Value
-    if ($timestamp -eq "") {
-        return [ordered]@{ valid = $false; value = [long]0 }
-    }
-    try {
-        $ticks = [DateTimeOffset]::Parse($timestamp).UtcDateTime.Ticks
-        return [ordered]@{ valid = $true; value = [long]($ticks - ($ticks % 10)) }
-    } catch {
-        return [ordered]@{ valid = $false; value = [long]0 }
     }
 }
 
@@ -129,6 +91,147 @@ function ConvertTo-McpInt32Value {
         return [ordered]@{ valid = $false; value = 0 }
     }
     return [ordered]@{ valid = $true; value = $parsed }
+}
+
+function ConvertTo-RoleGodotCreationTimeToken {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$CreationTime,
+        [string]$Source = "system_diagnostics_process_start_time"
+    )
+
+    if ($Source -ne "system_diagnostics_process_start_time") {
+        return [ordered]@{ valid = $false; failure_reason = "process_creation_time_source_invalid"; token = $null }
+    }
+    try {
+        $dateTime = if ($CreationTime -is [DateTimeOffset]) {
+            ([DateTimeOffset]$CreationTime).UtcDateTime
+        } elseif ($CreationTime -is [DateTime]) {
+            ([DateTime]$CreationTime).ToUniversalTime()
+        } else {
+            return [ordered]@{ valid = $false; failure_reason = "process_creation_time_value_invalid"; token = $null }
+        }
+        $fileTimeUtc = $dateTime.ToFileTimeUtc()
+        if ($fileTimeUtc -lt 0) {
+            return [ordered]@{ valid = $false; failure_reason = "process_creation_time_value_out_of_range"; token = $null }
+        }
+        $token = [ordered]@{
+            codec = "windows_filetime_utc_decimal_v1"
+            value = $fileTimeUtc.ToString([System.Globalization.CultureInfo]::InvariantCulture)
+            source = $Source
+        }
+        return [ordered]@{ valid = $true; failure_reason = "none"; token = $token }
+    } catch {
+        return [ordered]@{ valid = $false; failure_reason = "process_creation_time_value_out_of_range"; token = $null }
+    }
+}
+
+function ConvertFrom-RoleGodotCreationTimeToken {
+    param(
+        [AllowNull()]
+        [object]$Token,
+        [AllowEmptyString()]
+        [string]$ExpectedSource = ""
+    )
+
+    if ($null -eq $Token) {
+        return [ordered]@{ valid = $false; failure_reason = "process_creation_time_tag_missing"; filetime_utc = [long]0; source = "" }
+    }
+    $codec = Get-McpSafeProperty -Object $Token -Name "codec"
+    $value = Get-McpSafeProperty -Object $Token -Name "value"
+    $source = Get-McpSafeProperty -Object $Token -Name "source"
+    if (-not $codec.found -or -not $value.found -or -not $source.found) {
+        return [ordered]@{ valid = $false; failure_reason = "process_creation_time_tag_missing"; filetime_utc = [long]0; source = "" }
+    }
+    if ($codec.value -isnot [string] -or -not ([string]$codec.value).Equals("windows_filetime_utc_decimal_v1", [System.StringComparison]::Ordinal)) {
+        return [ordered]@{ valid = $false; failure_reason = "process_creation_time_codec_invalid"; filetime_utc = [long]0; source = [string]$source.value }
+    }
+    if ($source.value -isnot [string] -or -not ([string]$source.value).Equals("system_diagnostics_process_start_time", [System.StringComparison]::Ordinal)) {
+        return [ordered]@{ valid = $false; failure_reason = "process_creation_time_source_invalid"; filetime_utc = [long]0; source = [string]$source.value }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedSource) -and [string]$source.value -ne $ExpectedSource) {
+        return [ordered]@{ valid = $false; failure_reason = "process_creation_time_source_changed"; filetime_utc = [long]0; source = [string]$source.value }
+    }
+    if ($value.value -isnot [string] -or -not ([string]$value.value -match '^(0|[1-9][0-9]*)$')) {
+        return [ordered]@{ valid = $false; failure_reason = "process_creation_time_value_invalid"; filetime_utc = [long]0; source = [string]$source.value }
+    }
+    $parsed = [long]0
+    if (-not [long]::TryParse(
+        [string]$value.value,
+        [System.Globalization.NumberStyles]::None,
+        [System.Globalization.CultureInfo]::InvariantCulture,
+        [ref]$parsed
+    )) {
+        return [ordered]@{ valid = $false; failure_reason = "process_creation_time_value_out_of_range"; filetime_utc = [long]0; source = [string]$source.value }
+    }
+    try {
+        [DateTime]::FromFileTimeUtc($parsed) | Out-Null
+    } catch {
+        return [ordered]@{ valid = $false; failure_reason = "process_creation_time_value_out_of_range"; filetime_utc = [long]0; source = [string]$source.value }
+    }
+    return [ordered]@{
+        valid = $true
+        failure_reason = "none"
+        filetime_utc = $parsed
+        value = [string]$value.value
+        source = [string]$source.value
+    }
+}
+
+function Get-RoleGodotProcessIdentityFingerprintV3 {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Identity
+    )
+
+    $creationTime = Get-McpOptionalProperty -Object $Identity -Name "process_creation_time"
+    $stringFields = @(
+        "schema", "role", "session_id", "expected_executable_path", "observed_executable_path",
+        "executable_path_source", "command_line_sha256", "project_path", "project_head_sha",
+        "endpoint", "failure_reason"
+    )
+    foreach ($field in $stringFields) {
+        if ((Get-McpOptionalProperty -Object $Identity -Name $field) -isnot [string]) {
+            return ""
+        }
+    }
+    foreach ($field in @("codec", "value", "source")) {
+        if ((Get-McpOptionalProperty -Object $creationTime -Name $field) -isnot [string]) {
+            return ""
+        }
+    }
+    $schemaVersion = Get-McpOptionalProperty -Object $Identity -Name "schema_version"
+    $processId = Get-McpOptionalProperty -Object $Identity -Name "process_id"
+    $endpointOwnerPid = Get-McpOptionalProperty -Object $Identity -Name "endpoint_owner_pid"
+    if (-not ($schemaVersion -is [int] -or $schemaVersion -is [long]) `
+        -or -not ($processId -is [int] -or $processId -is [long]) `
+        -or -not ($endpointOwnerPid -is [int] -or $endpointOwnerPid -is [long]) `
+        -or (Get-McpOptionalProperty -Object $Identity -Name "identity_verified") -isnot [bool]) {
+        return ""
+    }
+    $canonical = [ordered]@{
+        schema = [string](Get-McpOptionalProperty -Object $Identity -Name "schema")
+        schema_version = [int](Get-McpOptionalProperty -Object $Identity -Name "schema_version")
+        role = [string](Get-McpOptionalProperty -Object $Identity -Name "role")
+        session_id = [string](Get-McpOptionalProperty -Object $Identity -Name "session_id")
+        process_id = [int](Get-McpOptionalProperty -Object $Identity -Name "process_id")
+        process_creation_time = [ordered]@{
+            codec = [string](Get-McpOptionalProperty -Object $creationTime -Name "codec")
+            value = [string](Get-McpOptionalProperty -Object $creationTime -Name "value")
+            source = [string](Get-McpOptionalProperty -Object $creationTime -Name "source")
+        }
+        expected_executable_path = [string](Get-McpOptionalProperty -Object $Identity -Name "expected_executable_path")
+        observed_executable_path = [string](Get-McpOptionalProperty -Object $Identity -Name "observed_executable_path")
+        executable_path_source = [string](Get-McpOptionalProperty -Object $Identity -Name "executable_path_source")
+        command_line_sha256 = [string](Get-McpOptionalProperty -Object $Identity -Name "command_line_sha256")
+        project_path = [string](Get-McpOptionalProperty -Object $Identity -Name "project_path")
+        project_head_sha = [string](Get-McpOptionalProperty -Object $Identity -Name "project_head_sha")
+        endpoint = [string](Get-McpOptionalProperty -Object $Identity -Name "endpoint")
+        endpoint_owner_pid = [int](Get-McpOptionalProperty -Object $Identity -Name "endpoint_owner_pid")
+        identity_verified = [bool](Get-McpOptionalProperty -Object $Identity -Name "identity_verified")
+        failure_reason = [string](Get-McpOptionalProperty -Object $Identity -Name "failure_reason")
+    }
+    return Get-McpSha256Hex -Text ($canonical | ConvertTo-Json -Depth 8 -Compress)
 }
 
 function Get-McpCimProcessRecord {
@@ -302,8 +405,8 @@ function Invoke-RoleGodotProcessIdentityProbe {
         [string]$SessionId,
         [Parameter(Mandatory = $true)]
         [string]$ExpectedExecutablePath,
-        [AllowEmptyString()]
-        [string]$ExpectedCreationTimeUtc = "",
+        [AllowNull()]
+        [object]$ExpectedCreationTimeToken = $null,
         [Parameter(Mandatory = $true)]
         [string]$ProjectPath,
         [Parameter(Mandatory = $true)]
@@ -321,7 +424,7 @@ function Invoke-RoleGodotProcessIdentityProbe {
 
     $failureReason = "none"
     $processId = 0
-    $creationTimeUtc = ""
+    $creationTimeToken = $null
     $observedExecutablePath = ""
     $executablePathSource = "none"
     $commandLine = ""
@@ -382,26 +485,31 @@ function Invoke-RoleGodotProcessIdentityProbe {
 
     if ($failureReason -eq "none") {
         $startTimeProperty = Get-McpSafeProperty -Object $Process -Name "StartTime"
-        if (-not $startTimeProperty.found -or -not [string]::IsNullOrWhiteSpace([string]$startTimeProperty.error)) {
-            $failureReason = "process_identity_incomplete"
+        if (-not $startTimeProperty.found -or -not [string]::IsNullOrWhiteSpace([string]$startTimeProperty.error) -or $null -eq $startTimeProperty.value) {
+            $failureReason = "process_creation_time_source_unavailable"
         } else {
-            $creationTimeUtc = ConvertTo-McpUtcTimestamp -Value $startTimeProperty.value
-            if ($creationTimeUtc -eq "") {
-                $failureReason = "process_identity_incomplete"
+            $encodedCreationTime = ConvertTo-RoleGodotCreationTimeToken -CreationTime $startTimeProperty.value
+            if (-not $encodedCreationTime.valid) {
+                $failureReason = [string]$encodedCreationTime.failure_reason
+            } else {
+                $creationTimeToken = $encodedCreationTime.token
             }
         }
     }
 
-    if ($failureReason -eq "none" -and -not [string]::IsNullOrWhiteSpace($ExpectedCreationTimeUtc)) {
-        $expectedCreation = ConvertTo-McpUtcTimestamp -Value $ExpectedCreationTimeUtc
-        if ($expectedCreation -eq "") {
-            $failureReason = "process_identity_incomplete"
-        } else {
-            $actualTicks = ([DateTimeOffset]::Parse($creationTimeUtc)).UtcDateTime.Ticks
-            $expectedTicks = ([DateTimeOffset]::Parse($expectedCreation)).UtcDateTime.Ticks
-            if ($actualTicks -ne $expectedTicks) {
-                $failureReason = "process_creation_time_mismatch"
-            }
+    if ($failureReason -eq "none" -and $null -ne $ExpectedCreationTimeToken) {
+        $actualCreation = ConvertFrom-RoleGodotCreationTimeToken -Token $creationTimeToken
+        $expectedSourceProperty = Get-McpSafeProperty -Object $ExpectedCreationTimeToken -Name "source"
+        $expectedSource = if ($expectedSourceProperty.found) { [string]$expectedSourceProperty.value } else { "" }
+        $expectedCreation = ConvertFrom-RoleGodotCreationTimeToken -Token $ExpectedCreationTimeToken -ExpectedSource $actualCreation.source
+        if (-not $actualCreation.valid) {
+            $failureReason = [string]$actualCreation.failure_reason
+        } elseif (-not $expectedCreation.valid) {
+            $failureReason = [string]$expectedCreation.failure_reason
+        } elseif ($expectedSource -ne [string]$actualCreation.source) {
+            $failureReason = "process_creation_time_source_changed"
+        } elseif ([long]$actualCreation.filetime_utc -ne [long]$expectedCreation.filetime_utc) {
+            $failureReason = "process_creation_time_mismatch"
         }
     }
 
@@ -424,33 +532,6 @@ function Invoke-RoleGodotProcessIdentityProbe {
             if (-not $parsedCimProcessId.valid -or [int]$parsedCimProcessId.value -ne $processId) {
                 $failureReason = "process_identity_incomplete"
             }
-        }
-    }
-
-    if ($failureReason -eq "none") {
-        $processCreationMicroseconds = Get-McpUtcMicrosecondValue -Value $creationTimeUtc
-        if (-not $processCreationMicroseconds.valid) {
-            $failureReason = "process_identity_incomplete"
-        }
-    }
-
-    if ($failureReason -eq "none") {
-        $cimCreationProperty = Get-McpSafeProperty -Object $cimResult.record -Name "CreationDate"
-        if ($cimCreationProperty.found -and [string]::IsNullOrWhiteSpace([string]$cimCreationProperty.error) -and $null -ne $cimCreationProperty.value) {
-            $cimCreation = ConvertTo-McpUtcTimestamp -Value $cimCreationProperty.value
-            if ($cimCreation -eq "") {
-                $failureReason = "process_identity_incomplete"
-            } else {
-                $actualMicroseconds = Get-McpUtcMicrosecondValue -Value $creationTimeUtc
-                $cimMicroseconds = Get-McpUtcMicrosecondValue -Value $cimCreation
-                if (-not $actualMicroseconds.valid -or -not $cimMicroseconds.valid) {
-                    $failureReason = "process_identity_incomplete"
-                } elseif ([long]$actualMicroseconds.value -ne [long]$cimMicroseconds.value) {
-                    $failureReason = "process_creation_time_mismatch"
-                }
-            }
-        } else {
-            $failureReason = "process_identity_incomplete"
         }
     }
 
@@ -506,20 +587,35 @@ function Invoke-RoleGodotProcessIdentityProbe {
         $finalStartTime = Get-McpSafeProperty -Object $Process -Name "StartTime"
         if (-not $finalHasExited.found -or -not [string]::IsNullOrWhiteSpace([string]$finalHasExited.error) -or [bool]$finalHasExited.value) {
             $failureReason = "process_exited_during_identity"
-        } elseif (-not $finalStartTime.found -or -not [string]::IsNullOrWhiteSpace([string]$finalStartTime.error)) {
-            $failureReason = "process_exited_during_identity"
-        } elseif ($creationTimeUtc -ne "" -and (ConvertTo-McpUtcTimestamp -Value $finalStartTime.value) -ne $creationTimeUtc) {
-            $failureReason = "process_creation_time_mismatch"
+        } elseif (-not $finalStartTime.found -or -not [string]::IsNullOrWhiteSpace([string]$finalStartTime.error) -or $null -eq $finalStartTime.value) {
+            if ($failureReason -eq "none") {
+                $failureReason = "process_creation_time_source_unavailable"
+            }
+        } elseif ($failureReason -eq "none") {
+            $finalCreationTime = ConvertTo-RoleGodotCreationTimeToken -CreationTime $finalStartTime.value
+            $initialCreationTime = ConvertFrom-RoleGodotCreationTimeToken -Token $creationTimeToken
+            $finalCreationDecoded = if ($finalCreationTime.valid) {
+                ConvertFrom-RoleGodotCreationTimeToken -Token $finalCreationTime.token -ExpectedSource $initialCreationTime.source
+            } else {
+                [ordered]@{ valid = $false; failure_reason = [string]$finalCreationTime.failure_reason; filetime_utc = [long]0 }
+            }
+            if (-not $initialCreationTime.valid) {
+                $failureReason = [string]$initialCreationTime.failure_reason
+            } elseif (-not $finalCreationDecoded.valid) {
+                $failureReason = [string]$finalCreationDecoded.failure_reason
+            } elseif ([long]$initialCreationTime.filetime_utc -ne [long]$finalCreationDecoded.filetime_utc) {
+                $failureReason = "process_creation_time_mismatch"
+            }
         }
     }
 
-    return [ordered]@{
-        schema = "RoleGodotProcessIdentityV2"
-        schema_version = 2
+    $identity = [ordered]@{
+        schema = "RoleGodotProcessIdentityV3"
+        schema_version = 3
         role = $Role
         session_id = $SessionId
         process_id = $processId
-        process_creation_time_utc = $creationTimeUtc
+        process_creation_time = $creationTimeToken
         expected_executable_path = $expectedExecutablePathNormalized
         observed_executable_path = $observedExecutablePath
         executable_path_source = $executablePathSource
@@ -531,12 +627,13 @@ function Invoke-RoleGodotProcessIdentityProbe {
         identity_verified = $failureReason -eq "none"
         failure_reason = $failureReason
         pid = $processId
-        start_time_utc = $creationTimeUtc
         executable_path = $observedExecutablePath
     }
+    $identity["identity_fingerprint_sha256"] = Get-RoleGodotProcessIdentityFingerprintV3 -Identity $identity
+    return $identity
 }
 
-function New-RoleGodotProcessIdentityV2 {
+function New-RoleGodotProcessIdentityV3 {
     param(
         [Parameter(Mandatory = $true)]
         [object]$Process,
@@ -546,8 +643,8 @@ function New-RoleGodotProcessIdentityV2 {
         [string]$SessionId,
         [Parameter(Mandatory = $true)]
         [string]$ExpectedExecutablePath,
-        [AllowEmptyString()]
-        [string]$ExpectedCreationTimeUtc = "",
+        [AllowNull()]
+        [object]$ExpectedCreationTimeToken = $null,
         [Parameter(Mandatory = $true)]
         [string]$ProjectPath,
         [Parameter(Mandatory = $true)]
@@ -604,11 +701,11 @@ function Get-McpProcessIdentity {
         [Parameter(Mandatory = $true)]
         [string]$Endpoint,
         [switch]$RequireEndpointOwner,
-        [AllowEmptyString()]
-        [string]$ExpectedCreationTimeUtc = ""
+        [AllowNull()]
+        [object]$ExpectedCreationTimeToken = $null
     )
 
-    return New-RoleGodotProcessIdentityV2 @PSBoundParameters
+    return New-RoleGodotProcessIdentityV3 @PSBoundParameters
 }
 
 function Test-McpProcessIdentity {
@@ -618,55 +715,140 @@ function Test-McpProcessIdentity {
     )
 
     $storedIdentity = Get-McpOptionalProperty -Object $Connection -Name "process_identity"
-    if ($null -eq $storedIdentity -or [string](Get-McpOptionalProperty -Object $storedIdentity -Name "schema") -ne "RoleGodotProcessIdentityV2") {
+    if ($null -eq $storedIdentity) {
         return [ordered]@{ valid = $false; reason_code = "process_identity_incomplete"; process = $null; identity = $null }
     }
-    if ([int](Get-McpOptionalProperty -Object $storedIdentity -Name "schema_version") -ne 2) {
+    $storedSchemaValue = Get-McpOptionalProperty -Object $storedIdentity -Name "schema"
+    $storedSchema = if ($storedSchemaValue -is [string]) { [string]$storedSchemaValue } else { "" }
+    $connectionSchemaValue = Get-McpOptionalProperty -Object $Connection -Name "schema"
+    $storedSchemaVersionValue = Get-McpOptionalProperty -Object $storedIdentity -Name "schema_version"
+    $storedFailureReasonValue = Get-McpOptionalProperty -Object $storedIdentity -Name "failure_reason"
+    $storedSchemaVersionTypeValid = $storedSchemaVersionValue -is [int] -or $storedSchemaVersionValue -is [long]
+    $storedSchemaTypeValid = $storedSchemaValue -is [string]
+    $connectionSchemaTypeValid = $connectionSchemaValue -is [string]
+    if ($storedSchemaValue -is [string] -and $storedSchema.Equals("RoleGodotProcessIdentityV2", [System.StringComparison]::Ordinal)) {
+        return [ordered]@{ valid = $false; reason_code = "process_identity_schema_v2_not_supported"; process = $null; identity = $null }
+    }
+    if (-not $connectionSchemaTypeValid `
+        -or -not ([string]$connectionSchemaValue).Equals("RoleGodotMcpConnectionV4", [System.StringComparison]::Ordinal) `
+        -or -not $storedSchemaTypeValid `
+        -or -not $storedSchema.Equals("RoleGodotProcessIdentityV3", [System.StringComparison]::Ordinal) `
+        -or -not $storedSchemaVersionTypeValid `
+        -or [long]$storedSchemaVersionValue -ne 3 `
+        -or (Get-McpOptionalProperty -Object $storedIdentity -Name "identity_verified") -isnot [bool] `
+        -or -not [bool](Get-McpOptionalProperty -Object $storedIdentity -Name "identity_verified") `
+        -or $storedFailureReasonValue -isnot [string] `
+        -or -not ([string]$storedFailureReasonValue).Equals("none", [System.StringComparison]::Ordinal)) {
         return [ordered]@{ valid = $false; reason_code = "process_identity_incomplete"; process = $null; identity = $null }
     }
 
-    $storedProcessId = ConvertTo-McpInt32Value -Value (Get-McpOptionalProperty -Object $storedIdentity -Name "process_id")
-    $connectionProcessId = ConvertTo-McpInt32Value -Value (Get-McpOptionalProperty -Object $Connection -Name "pid")
-    $connectionEndpointOwnerPid = ConvertTo-McpInt32Value -Value (Get-McpOptionalProperty -Object $Connection -Name "endpoint_owner_pid")
-    $connectionPort = ConvertTo-McpInt32Value -Value (Get-McpOptionalProperty -Object $Connection -Name "port")
-    if (-not $storedProcessId.valid -or -not $connectionProcessId.valid -or -not $connectionEndpointOwnerPid.valid -or -not $connectionPort.valid) {
+    $storedCreationTime = Get-McpOptionalProperty -Object $storedIdentity -Name "process_creation_time"
+    $storedCreationDecoded = ConvertFrom-RoleGodotCreationTimeToken -Token $storedCreationTime
+    if (-not $storedCreationDecoded.valid) {
+        return [ordered]@{ valid = $false; reason_code = [string]$storedCreationDecoded.failure_reason; process = $null; identity = $null }
+    }
+    $connectionCreationTime = Get-McpOptionalProperty -Object $Connection -Name "process_creation_time"
+    $connectionCreationDecoded = ConvertFrom-RoleGodotCreationTimeToken -Token $connectionCreationTime -ExpectedSource ([string]$storedCreationDecoded.source)
+    if (-not $connectionCreationDecoded.valid) {
+        return [ordered]@{ valid = $false; reason_code = [string]$connectionCreationDecoded.failure_reason; process = $null; identity = $null }
+    }
+    if ([long]$connectionCreationDecoded.filetime_utc -ne [long]$storedCreationDecoded.filetime_utc) {
+        return [ordered]@{ valid = $false; reason_code = "process_creation_time_mismatch"; process = $null; identity = $null }
+    }
+
+    $storedProcessIdValue = Get-McpOptionalProperty -Object $storedIdentity -Name "process_id"
+    $connectionProcessIdValue = Get-McpOptionalProperty -Object $Connection -Name "pid"
+    $connectionEndpointOwnerPidValue = Get-McpOptionalProperty -Object $Connection -Name "endpoint_owner_pid"
+    $connectionPortValue = Get-McpOptionalProperty -Object $Connection -Name "port"
+    $storedEndpointOwnerPidValue = Get-McpOptionalProperty -Object $storedIdentity -Name "endpoint_owner_pid"
+    $integerTypesValid = ($storedProcessIdValue -is [int] -or $storedProcessIdValue -is [long]) `
+        -and ($connectionProcessIdValue -is [int] -or $connectionProcessIdValue -is [long]) `
+        -and ($connectionEndpointOwnerPidValue -is [int] -or $connectionEndpointOwnerPidValue -is [long]) `
+        -and ($connectionPortValue -is [int] -or $connectionPortValue -is [long]) `
+        -and ($storedEndpointOwnerPidValue -is [int] -or $storedEndpointOwnerPidValue -is [long])
+    $storedProcessId = ConvertTo-McpInt32Value -Value $storedProcessIdValue
+    $connectionProcessId = ConvertTo-McpInt32Value -Value $connectionProcessIdValue
+    $connectionEndpointOwnerPid = ConvertTo-McpInt32Value -Value $connectionEndpointOwnerPidValue
+    $connectionPort = ConvertTo-McpInt32Value -Value $connectionPortValue
+    $storedEndpointOwnerPid = ConvertTo-McpInt32Value -Value $storedEndpointOwnerPidValue
+    if (-not $integerTypesValid `
+        -or -not $storedProcessId.valid `
+        -or -not $connectionProcessId.valid `
+        -or -not $connectionEndpointOwnerPid.valid `
+        -or -not $connectionPort.valid `
+        -or -not $storedEndpointOwnerPid.valid) {
         return [ordered]@{ valid = $false; reason_code = "process_identity_incomplete"; process = $null; identity = $null }
     }
     $processId = [int]$storedProcessId.value
-    $storedSessionId = [string](Get-McpOptionalProperty -Object $storedIdentity -Name "session_id")
-    $storedRole = [string](Get-McpOptionalProperty -Object $storedIdentity -Name "role")
-    $storedCreationTime = [string](Get-McpOptionalProperty -Object $storedIdentity -Name "process_creation_time_utc")
-    $storedObservedPath = [string](Get-McpOptionalProperty -Object $storedIdentity -Name "observed_executable_path")
-    $storedProjectPath = [string](Get-McpOptionalProperty -Object $storedIdentity -Name "project_path")
-    $storedProjectHead = [string](Get-McpOptionalProperty -Object $storedIdentity -Name "project_head_sha")
-    $storedEndpoint = [string](Get-McpOptionalProperty -Object $storedIdentity -Name "endpoint")
-    $storedEndpointOwnerPid = ConvertTo-McpInt32Value -Value (Get-McpOptionalProperty -Object $storedIdentity -Name "endpoint_owner_pid")
+    $storedSessionIdValue = Get-McpOptionalProperty -Object $storedIdentity -Name "session_id"
+    $storedRoleValue = Get-McpOptionalProperty -Object $storedIdentity -Name "role"
+    $storedObservedPathValue = Get-McpOptionalProperty -Object $storedIdentity -Name "observed_executable_path"
+    $storedExpectedPathValue = Get-McpOptionalProperty -Object $storedIdentity -Name "expected_executable_path"
+    $storedExecutablePathSourceValue = Get-McpOptionalProperty -Object $storedIdentity -Name "executable_path_source"
+    $storedCommandLineSha256Value = Get-McpOptionalProperty -Object $storedIdentity -Name "command_line_sha256"
+    $storedProjectPathValue = Get-McpOptionalProperty -Object $storedIdentity -Name "project_path"
+    $storedProjectHeadValue = Get-McpOptionalProperty -Object $storedIdentity -Name "project_head_sha"
+    $storedEndpointValue = Get-McpOptionalProperty -Object $storedIdentity -Name "endpoint"
+    $storedFingerprintValue = Get-McpOptionalProperty -Object $storedIdentity -Name "identity_fingerprint_sha256"
+    $connectionStringFields = @("session_id", "role", "godot_path", "worktree", "project_head_sha", "endpoint")
+    $identityStringFields = @(
+        "session_id", "role", "observed_executable_path", "expected_executable_path",
+        "executable_path_source", "command_line_sha256", "project_path", "project_head_sha",
+        "endpoint", "identity_fingerprint_sha256"
+    )
+    $identityStringsValid = @($identityStringFields | Where-Object { (Get-McpOptionalProperty -Object $storedIdentity -Name $_) -isnot [string] })
+    $connectionStringsValid = @($connectionStringFields | Where-Object { (Get-McpOptionalProperty -Object $Connection -Name $_) -isnot [string] })
+    if ($identityStringsValid.Count -ne 0 -or $connectionStringsValid.Count -ne 0) {
+        return [ordered]@{ valid = $false; reason_code = "process_identity_incomplete"; process = $null; identity = $null }
+    }
+    $storedSessionId = [string]$storedSessionIdValue
+    $storedRole = [string]$storedRoleValue
+    $storedObservedPath = [string]$storedObservedPathValue
+    $storedExpectedPath = [string]$storedExpectedPathValue
+    $storedExecutablePathSource = [string]$storedExecutablePathSourceValue
+    $storedCommandLineSha256 = [string]$storedCommandLineSha256Value
+    $storedProjectPath = [string]$storedProjectPathValue
+    $storedProjectHead = [string]$storedProjectHeadValue
+    $storedEndpoint = [string]$storedEndpointValue
     $storedEndpointPort = try { ([Uri]$storedEndpoint).Port } catch { 0 }
-    if (-not $storedEndpointOwnerPid.valid `
+    if ([string]::IsNullOrWhiteSpace($storedSessionId) `
+        -or [string]::IsNullOrWhiteSpace($storedRole) `
+        -or [string]::IsNullOrWhiteSpace($storedExpectedPath) `
+        -or [string]::IsNullOrWhiteSpace($storedObservedPath) `
+        -or $storedExecutablePathSource -notin @("win32_process_executable_path", "system_diagnostics_process_path", "process_main_module_filename") `
+        -or $storedCommandLineSha256 -notmatch '^[0-9a-f]{64}$' `
+        -or [string]::IsNullOrWhiteSpace($storedProjectPath) `
+        -or [string]::IsNullOrWhiteSpace($storedProjectHead) `
+        -or $storedEndpointPort -le 0 `
         -or [int]$connectionProcessId.value -ne $processId `
         -or [int]$connectionEndpointOwnerPid.value -ne [int]$storedEndpointOwnerPid.value `
         -or [int]$storedEndpointOwnerPid.value -ne $processId `
         -or [int]$connectionPort.value -ne $storedEndpointPort `
         -or -not ([string](Get-McpOptionalProperty -Object $Connection -Name "session_id")).Equals($storedSessionId, [System.StringComparison]::Ordinal) `
         -or -not ([string](Get-McpOptionalProperty -Object $Connection -Name "role")).Equals($storedRole, [System.StringComparison]::Ordinal) `
-        -or -not ([string](Get-McpOptionalProperty -Object $Connection -Name "process_start_time_utc")).Equals($storedCreationTime, [System.StringComparison]::Ordinal) `
         -or -not (ConvertTo-McpNormalizedPath -Path ([string](Get-McpOptionalProperty -Object $Connection -Name "godot_path"))).Equals($storedObservedPath, [System.StringComparison]::OrdinalIgnoreCase) `
         -or -not (ConvertTo-McpNormalizedPath -Path ([string](Get-McpOptionalProperty -Object $Connection -Name "worktree"))).Equals($storedProjectPath, [System.StringComparison]::OrdinalIgnoreCase) `
         -or -not ([string](Get-McpOptionalProperty -Object $Connection -Name "project_head_sha")).Equals($storedProjectHead, [System.StringComparison]::Ordinal) `
         -or -not ([string](Get-McpOptionalProperty -Object $Connection -Name "endpoint")).Equals($storedEndpoint, [System.StringComparison]::OrdinalIgnoreCase)) {
         return [ordered]@{ valid = $false; reason_code = "process_identity_incomplete"; process = $null; identity = $null }
     }
+
+    $storedFingerprint = [string]$storedFingerprintValue
+    $expectedStoredFingerprint = Get-RoleGodotProcessIdentityFingerprintV3 -Identity $storedIdentity
+    if ($storedFingerprint -notmatch '^[0-9a-f]{64}$' -or -not $storedFingerprint.Equals($expectedStoredFingerprint, [System.StringComparison]::Ordinal)) {
+        return [ordered]@{ valid = $false; reason_code = "process_identity_fingerprint_mismatch"; process = $null; identity = $null }
+    }
     $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
     if ($null -eq $process) {
         return [ordered]@{ valid = $false; reason_code = "process_exited_before_identity"; process = $null; identity = $null }
     }
 
-    $identity = New-RoleGodotProcessIdentityV2 `
+    $identity = New-RoleGodotProcessIdentityV3 `
         -Process $process `
         -Role ([string](Get-McpOptionalProperty -Object $storedIdentity -Name "role")) `
         -SessionId ([string](Get-McpOptionalProperty -Object $storedIdentity -Name "session_id")) `
         -ExpectedExecutablePath ([string](Get-McpOptionalProperty -Object $storedIdentity -Name "expected_executable_path")) `
-        -ExpectedCreationTimeUtc ([string](Get-McpOptionalProperty -Object $storedIdentity -Name "process_creation_time_utc")) `
+        -ExpectedCreationTimeToken $storedCreationTime `
         -ProjectPath ([string](Get-McpOptionalProperty -Object $storedIdentity -Name "project_path")) `
         -ProjectHeadSha ([string](Get-McpOptionalProperty -Object $storedIdentity -Name "project_head_sha")) `
         -Endpoint ([string](Get-McpOptionalProperty -Object $storedIdentity -Name "endpoint")) `
@@ -678,6 +860,9 @@ function Test-McpProcessIdentity {
     }
     if (-not ([string]$identity.command_line_sha256).Equals([string](Get-McpOptionalProperty -Object $storedIdentity -Name "command_line_sha256"), [System.StringComparison]::Ordinal)) {
         return [ordered]@{ valid = $false; reason_code = "process_command_line_mismatch"; process = $process; identity = $identity }
+    }
+    if (-not ([string]$identity.identity_fingerprint_sha256).Equals($storedFingerprint, [System.StringComparison]::Ordinal)) {
+        return [ordered]@{ valid = $false; reason_code = "process_identity_fingerprint_mismatch"; process = $process; identity = $identity }
     }
     if ([int]$identity.endpoint_owner_pid -ne $processId) {
         return [ordered]@{ valid = $false; reason_code = "endpoint_owner_pid_mismatch"; process = $process; identity = $identity }
@@ -697,11 +882,27 @@ function Get-McpOptionalProperty {
         return $null
     }
     try {
+        if ($Object -is [System.Collections.IDictionary]) {
+            if (-not $Object.Contains($Name)) {
+                return $null
+            }
+            $dictionaryValue = $Object[$Name]
+            if ($dictionaryValue -is [System.Array]) {
+                Write-Output -NoEnumerate $dictionaryValue
+                return
+            }
+            return $dictionaryValue
+        }
         $property = $Object.PSObject.Properties[$Name]
         if ($null -eq $property) {
             return $null
         }
-        return $property.Value
+        $propertyValue = $property.Value
+        if ($propertyValue -is [System.Array]) {
+            Write-Output -NoEnumerate $propertyValue
+            return
+        }
+        return $propertyValue
     } catch {
         return $null
     }
@@ -819,12 +1020,32 @@ function Stop-McpBoundProcess {
         [System.Diagnostics.Process]$Process,
         [Parameter(Mandatory = $true)]
         [int]$TimeoutSeconds,
-        [AllowEmptyString()]
-        [string]$ExpectedCreationTimeUtc = "",
+        [Parameter(Mandatory = $true)]
+        [AllowNull()]
+        [object]$ExpectedCreationTimeToken,
         [switch]$AllowForcedCleanup
     )
 
-    if (-not [string]::IsNullOrWhiteSpace($ExpectedCreationTimeUtc)) {
+    if ($null -eq $ExpectedCreationTimeToken) {
+        return [ordered]@{
+            stopped = $false
+            clean_stop = $false
+            forced = $false
+            close_accepted = $false
+            failure_reason = "cleanup_target_identity_unavailable"
+        }
+    }
+    if ($null -ne $ExpectedCreationTimeToken) {
+        $expectedCreationTime = ConvertFrom-RoleGodotCreationTimeToken -Token $ExpectedCreationTimeToken
+        if (-not $expectedCreationTime.valid) {
+            return [ordered]@{
+                stopped = $false
+                clean_stop = $false
+                forced = $false
+                close_accepted = $false
+                failure_reason = [string]$expectedCreationTime.failure_reason
+            }
+        }
         $liveCreationTime = Get-McpSafeProperty -Object $Process -Name "StartTime"
         if (-not $liveCreationTime.found -or -not [string]::IsNullOrWhiteSpace([string]$liveCreationTime.error)) {
             return [ordered]@{
@@ -835,7 +1056,13 @@ function Stop-McpBoundProcess {
                 failure_reason = "cleanup_target_identity_unavailable"
             }
         }
-        if ((ConvertTo-McpUtcTimestamp -Value $liveCreationTime.value) -ne (ConvertTo-McpUtcTimestamp -Value $ExpectedCreationTimeUtc)) {
+        $liveCreationEncoded = ConvertTo-RoleGodotCreationTimeToken -CreationTime $liveCreationTime.value -Source ([string]$expectedCreationTime.source)
+        $liveCreationDecoded = if ($liveCreationEncoded.valid) {
+            ConvertFrom-RoleGodotCreationTimeToken -Token $liveCreationEncoded.token -ExpectedSource ([string]$expectedCreationTime.source)
+        } else {
+            [ordered]@{ valid = $false; failure_reason = [string]$liveCreationEncoded.failure_reason; filetime_utc = [long]0 }
+        }
+        if (-not $liveCreationDecoded.valid -or [long]$liveCreationDecoded.filetime_utc -ne [long]$expectedCreationTime.filetime_utc) {
             return [ordered]@{
                 stopped = $false
                 clean_stop = $false
@@ -850,11 +1077,19 @@ function Stop-McpBoundProcess {
     $cleanStop = $acceptedClose -and $Process.WaitForExit($TimeoutSeconds * 1000)
     $forced = $false
     if (-not $cleanStop -and $AllowForcedCleanup -and -not $Process.HasExited) {
-        if (-not [string]::IsNullOrWhiteSpace($ExpectedCreationTimeUtc)) {
+        if ($null -ne $ExpectedCreationTimeToken) {
             $liveCreationTime = Get-McpSafeProperty -Object $Process -Name "StartTime"
-            if (-not $liveCreationTime.found `
-                -or -not [string]::IsNullOrWhiteSpace([string]$liveCreationTime.error) `
-                -or (ConvertTo-McpUtcTimestamp -Value $liveCreationTime.value) -ne (ConvertTo-McpUtcTimestamp -Value $ExpectedCreationTimeUtc)) {
+            $liveCreationEncoded = if ($liveCreationTime.found -and [string]::IsNullOrWhiteSpace([string]$liveCreationTime.error)) {
+                ConvertTo-RoleGodotCreationTimeToken -CreationTime $liveCreationTime.value -Source ([string]$expectedCreationTime.source)
+            } else {
+                [ordered]@{ valid = $false; failure_reason = "process_creation_time_source_unavailable"; token = $null }
+            }
+            $liveCreationDecoded = if ($liveCreationEncoded.valid) {
+                ConvertFrom-RoleGodotCreationTimeToken -Token $liveCreationEncoded.token -ExpectedSource ([string]$expectedCreationTime.source)
+            } else {
+                [ordered]@{ valid = $false; failure_reason = [string]$liveCreationEncoded.failure_reason; filetime_utc = [long]0 }
+            }
+            if (-not $liveCreationDecoded.valid -or [long]$liveCreationDecoded.filetime_utc -ne [long]$expectedCreationTime.filetime_utc) {
                 return [ordered]@{
                     stopped = $false
                     clean_stop = $false

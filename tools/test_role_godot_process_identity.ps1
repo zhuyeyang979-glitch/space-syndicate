@@ -85,7 +85,7 @@ try {
     $getProcessObject = Get-Process -Id $helperProcess.Id
     $cimRecords = @(Get-CimInstance Win32_Process -Filter "ProcessId=$($helperProcess.Id)")
 
-    $realIdentity = New-RoleGodotProcessIdentityV2 `
+    $realIdentity = New-RoleGodotProcessIdentityV3 `
         -Process $helperProcess `
         -Role "Supervisor" `
         -SessionId $sessionId `
@@ -96,10 +96,11 @@ try {
         -IdentityReadTimeoutMilliseconds 2000
 
     Invoke-IdentityCase contract "real_identity_verified" { $realIdentity.identity_verified }
-    Invoke-IdentityCase contract "schema_v2" { $realIdentity.schema -eq "RoleGodotProcessIdentityV2" -and [int]$realIdentity.schema_version -eq 2 }
+    Invoke-IdentityCase contract "schema_v3" { $realIdentity.schema -eq "RoleGodotProcessIdentityV3" -and [int]$realIdentity.schema_version -eq 3 }
     Invoke-IdentityCase contract "complete_core_fields" {
         [int]$realIdentity.process_id -eq $helperProcess.Id `
-            -and -not [string]::IsNullOrWhiteSpace([string]$realIdentity.process_creation_time_utc) `
+            -and $realIdentity.process_creation_time.value -is [string] `
+            -and [string]$realIdentity.process_creation_time.value -match '^[0-9]+$' `
             -and -not [string]::IsNullOrWhiteSpace([string]$realIdentity.observed_executable_path)
     }
     Invoke-IdentityCase contract "command_hash" { [string]$realIdentity.command_line_sha256 -match '^[0-9a-f]{64}$' }
@@ -115,9 +116,11 @@ try {
     }
     Invoke-IdentityCase contract "json_round_trip" {
         $roundTrip = $realIdentity | ConvertTo-Json -Depth 8 | ConvertFrom-Json
-        $roundTrip.schema -eq "RoleGodotProcessIdentityV2" `
+        $roundTrip.schema -eq "RoleGodotProcessIdentityV3" `
             -and [int]$roundTrip.process_id -eq $helperProcess.Id `
-            -and $roundTrip.command_line_sha256 -eq $realIdentity.command_line_sha256
+            -and $roundTrip.command_line_sha256 -eq $realIdentity.command_line_sha256 `
+            -and $roundTrip.process_creation_time.value -is [string] `
+            -and $roundTrip.process_creation_time.value -eq $realIdentity.process_creation_time.value
     }
     Invoke-IdentityCase contract "no_direct_filename_access" { $directFileNameAccessCount -eq 0 }
 
@@ -198,9 +201,10 @@ try {
     }
 
     Invoke-IdentityCase pid_reuse "creation_time_mismatch" {
-        $identity = New-RoleGodotProcessIdentityV2 `
+        $mismatchedCreation = ConvertTo-RoleGodotCreationTimeToken -CreationTime $fakeProcess.StartTime.AddSeconds(-1)
+        $identity = New-RoleGodotProcessIdentityV3 `
             -Process $fakeProcess -Role Supervisor -SessionId $fakeSession -ExpectedExecutablePath $pwshPath `
-            -ExpectedCreationTimeUtc $fakeProcess.StartTime.AddSeconds(-1).ToString("o") `
+            -ExpectedCreationTimeToken $mismatchedCreation.token `
             -ProjectPath $fakeProjectPath -ProjectHeadSha $projectHeadSha -Endpoint "http://127.0.0.1:1/" `
             -ProvidedCimProcess $fakeCim -UseProvidedCimProcess -IdentityReadTimeoutMilliseconds 0
         -not $identity.identity_verified -and $identity.failure_reason -eq "process_creation_time_mismatch"
@@ -208,14 +212,14 @@ try {
     Invoke-IdentityCase pid_reuse "already_exited" {
         $exited = $fakeProcess.PSObject.Copy()
         $exited.HasExited = $true
-        $identity = New-RoleGodotProcessIdentityV2 `
+        $identity = New-RoleGodotProcessIdentityV3 `
             -Process $exited -Role Supervisor -SessionId $fakeSession -ExpectedExecutablePath $pwshPath `
             -ProjectPath $fakeProjectPath -ProjectHeadSha $projectHeadSha -Endpoint "http://127.0.0.1:1/" `
             -ProvidedCimProcess $fakeCim -UseProvidedCimProcess -IdentityReadTimeoutMilliseconds 0
         -not $identity.identity_verified -and $identity.failure_reason -eq "process_exited_before_identity"
     }
     Invoke-IdentityCase pid_reuse "cim_missing" {
-        $identity = New-RoleGodotProcessIdentityV2 `
+        $identity = New-RoleGodotProcessIdentityV3 `
             -Process $fakeProcess -Role Supervisor -SessionId $fakeSession -ExpectedExecutablePath $pwshPath `
             -ProjectPath $fakeProjectPath -ProjectHeadSha $projectHeadSha -Endpoint "http://127.0.0.1:1/" `
             -ProvidedCimProcess $null -UseProvidedCimProcess -IdentityReadTimeoutMilliseconds 0
@@ -232,34 +236,34 @@ try {
         $exitsDuringRead | Add-Member -MemberType ScriptProperty -Name Path -Value { $this.HasExited = $true; throw "process exited" }
         $noExecutableCim = $fakeCim.PSObject.Copy()
         $noExecutableCim.ExecutablePath = ""
-        $identity = New-RoleGodotProcessIdentityV2 `
+        $identity = New-RoleGodotProcessIdentityV3 `
             -Process $exitsDuringRead -Role Supervisor -SessionId $fakeSession -ExpectedExecutablePath $pwshPath `
             -ProjectPath $fakeProjectPath -ProjectHeadSha $projectHeadSha -Endpoint "http://127.0.0.1:1/" `
             -ProvidedCimProcess $noExecutableCim -UseProvidedCimProcess -IdentityReadTimeoutMilliseconds 0
         -not $identity.identity_verified -and $identity.failure_reason -eq "process_exited_during_identity"
     }
-    Invoke-IdentityCase pid_reuse "stale_cim_creation" {
+    Invoke-IdentityCase pid_reuse "cim_creation_not_authoritative" {
         $staleCim = $fakeCim.PSObject.Copy()
         $staleCim.CreationDate = $fakeProcess.StartTime.AddMinutes(-1)
-        $identity = New-RoleGodotProcessIdentityV2 `
+        $identity = New-RoleGodotProcessIdentityV3 `
             -Process $fakeProcess -Role Supervisor -SessionId $fakeSession -ExpectedExecutablePath $pwshPath `
             -ProjectPath $fakeProjectPath -ProjectHeadSha $projectHeadSha -Endpoint "http://127.0.0.1:1/" `
             -ProvidedCimProcess $staleCim -UseProvidedCimProcess -IdentityReadTimeoutMilliseconds 0
-        -not $identity.identity_verified -and $identity.failure_reason -eq "process_creation_time_mismatch"
+        $identity.identity_verified -and $identity.failure_reason -eq "none"
     }
-    Invoke-IdentityCase pid_reuse "subsecond_cim_creation_mismatch" {
+    Invoke-IdentityCase pid_reuse "cim_subsecond_not_authoritative" {
         $staleCim = $fakeCim.PSObject.Copy()
         $staleCim.CreationDate = $fakeProcess.StartTime.AddMilliseconds(900)
-        $identity = New-RoleGodotProcessIdentityV2 `
+        $identity = New-RoleGodotProcessIdentityV3 `
             -Process $fakeProcess -Role Supervisor -SessionId $fakeSession -ExpectedExecutablePath $pwshPath `
             -ProjectPath $fakeProjectPath -ProjectHeadSha $projectHeadSha -Endpoint "http://127.0.0.1:1/" `
             -ProvidedCimProcess $staleCim -UseProvidedCimProcess -IdentityReadTimeoutMilliseconds 0
-        -not $identity.identity_verified -and $identity.failure_reason -eq "process_creation_time_mismatch"
+        $identity.identity_verified -and $identity.failure_reason -eq "none"
     }
     Invoke-IdentityCase pid_reuse "command_line_mismatch" {
         $badCim = $fakeCim.PSObject.Copy()
         $badCim.CommandLine = '"C:\pwsh.exe" --path "C:\other" --role-godot-mcp-session-id=synthetic-session'
-        $identity = New-RoleGodotProcessIdentityV2 `
+        $identity = New-RoleGodotProcessIdentityV3 `
             -Process $fakeProcess -Role Supervisor -SessionId $fakeSession -ExpectedExecutablePath $pwshPath `
             -ProjectPath $fakeProjectPath -ProjectHeadSha $projectHeadSha -Endpoint "http://127.0.0.1:1/" `
             -ProvidedCimProcess $badCim -UseProvidedCimProcess -IdentityReadTimeoutMilliseconds 0
@@ -276,7 +280,7 @@ try {
     Invoke-IdentityCase pid_reuse "malformed_pid" {
         $malformed = $fakeProcess.PSObject.Copy()
         $malformed.Id = "not-an-int"
-        $identity = New-RoleGodotProcessIdentityV2 `
+        $identity = New-RoleGodotProcessIdentityV3 `
             -Process $malformed -Role Supervisor -SessionId $fakeSession -ExpectedExecutablePath $pwshPath `
             -ProjectPath $fakeProjectPath -ProjectHeadSha $projectHeadSha -Endpoint "http://127.0.0.1:1/" `
             -ProvidedCimProcess $fakeCim -UseProvidedCimProcess -IdentityReadTimeoutMilliseconds 0
@@ -285,33 +289,34 @@ try {
     Invoke-IdentityCase pid_reuse "start_time_unavailable" {
         $missingStart = [pscustomobject]@{ Id = 4242; HasExited = $false; Path = $pwshPath; MainModule = $null; StartInfo = [pscustomobject]@{ FileName = $pwshPath } }
         $missingStart | Add-Member -MemberType ScriptProperty -Name StartTime -Value { throw "start time unavailable" }
-        $identity = New-RoleGodotProcessIdentityV2 `
+        $identity = New-RoleGodotProcessIdentityV3 `
             -Process $missingStart -Role Supervisor -SessionId $fakeSession -ExpectedExecutablePath $pwshPath `
             -ProjectPath $fakeProjectPath -ProjectHeadSha $projectHeadSha -Endpoint "http://127.0.0.1:1/" `
             -ProvidedCimProcess $fakeCim -UseProvidedCimProcess -IdentityReadTimeoutMilliseconds 0
-        -not $identity.identity_verified -and $identity.failure_reason -eq "process_identity_incomplete"
+        -not $identity.identity_verified -and $identity.failure_reason -eq "process_creation_time_source_unavailable"
     }
     Invoke-IdentityCase pid_reuse "disposed_process" {
         $disposed = Get-Process -Id $helperProcess.Id
         $disposed.Dispose()
-        $identity = New-RoleGodotProcessIdentityV2 `
+        $identity = New-RoleGodotProcessIdentityV3 `
             -Process $disposed -Role Supervisor -SessionId $sessionId -ExpectedExecutablePath $pwshPath `
             -ProjectPath $projectPath -ProjectHeadSha $projectHeadSha -Endpoint "http://127.0.0.1:1/" `
             -ProvidedCimProcess $cimRecords[0] -UseProvidedCimProcess -IdentityReadTimeoutMilliseconds 0
         -not $identity.identity_verified -and $identity.failure_reason -ne "none"
     }
     Invoke-IdentityCase pid_reuse "cleanup_creation_time_guard" {
+        $wrongCleanupCreation = ConvertTo-RoleGodotCreationTimeToken -CreationTime $helperProcess.StartTime.AddSeconds(-1)
         $cleanup = Stop-McpBoundProcess `
             -Process $helperProcess `
             -TimeoutSeconds 1 `
-            -ExpectedCreationTimeUtc $helperProcess.StartTime.AddSeconds(-1).ToString("o") `
+            -ExpectedCreationTimeToken $wrongCleanupCreation.token `
             -AllowForcedCleanup
         $helperProcess.Refresh()
         -not $cleanup.stopped -and $cleanup.failure_reason -eq "cleanup_pid_reused" -and -not $helperProcess.HasExited
     }
 
     Invoke-IdentityCase endpoint_binding "matching_owner" {
-        $identity = New-RoleGodotProcessIdentityV2 `
+        $identity = New-RoleGodotProcessIdentityV3 `
             -Process $fakeProcess -Role Supervisor -SessionId $fakeSession -ExpectedExecutablePath $pwshPath `
             -ProjectPath $fakeProjectPath -ProjectHeadSha $projectHeadSha -Endpoint "http://127.0.0.1:12345/" `
             -ProvidedCimProcess $fakeCim -UseProvidedCimProcess -RequireEndpointOwner `
@@ -319,7 +324,7 @@ try {
         $identity.identity_verified -and [int]$identity.endpoint_owner_pid -eq 4242
     }
     Invoke-IdentityCase endpoint_binding "wrong_owner" {
-        $identity = New-RoleGodotProcessIdentityV2 `
+        $identity = New-RoleGodotProcessIdentityV3 `
             -Process $fakeProcess -Role Supervisor -SessionId $fakeSession -ExpectedExecutablePath $pwshPath `
             -ProjectPath $fakeProjectPath -ProjectHeadSha $projectHeadSha -Endpoint "http://127.0.0.1:12345/" `
             -ProvidedCimProcess $fakeCim -UseProvidedCimProcess -RequireEndpointOwner `
@@ -327,7 +332,7 @@ try {
         -not $identity.identity_verified -and $identity.failure_reason -eq "endpoint_owner_pid_mismatch"
     }
     Invoke-IdentityCase endpoint_binding "missing_owner" {
-        $identity = New-RoleGodotProcessIdentityV2 `
+        $identity = New-RoleGodotProcessIdentityV3 `
             -Process $fakeProcess -Role Supervisor -SessionId $fakeSession -ExpectedExecutablePath $pwshPath `
             -ProjectPath $fakeProjectPath -ProjectHeadSha $projectHeadSha -Endpoint "http://127.0.0.1:12345/" `
             -ProvidedCimProcess $fakeCim -UseProvidedCimProcess -RequireEndpointOwner `
@@ -337,7 +342,7 @@ try {
     Invoke-IdentityCase endpoint_binding "missing_command_line" {
         $missingCommand = $fakeCim.PSObject.Copy()
         $missingCommand.CommandLine = ""
-        $identity = New-RoleGodotProcessIdentityV2 `
+        $identity = New-RoleGodotProcessIdentityV3 `
             -Process $fakeProcess -Role Supervisor -SessionId $fakeSession -ExpectedExecutablePath $pwshPath `
             -ProjectPath $fakeProjectPath -ProjectHeadSha $projectHeadSha -Endpoint "http://127.0.0.1:12345/" `
             -ProvidedCimProcess $missingCommand -UseProvidedCimProcess -RequireEndpointOwner `
@@ -345,7 +350,7 @@ try {
         -not $identity.identity_verified -and $identity.failure_reason -eq "process_command_line_unavailable"
     }
     Invoke-IdentityCase endpoint_binding "owner_changed_during_identity" {
-        $identity = New-RoleGodotProcessIdentityV2 `
+        $identity = New-RoleGodotProcessIdentityV3 `
             -Process $fakeProcess -Role Supervisor -SessionId $fakeSession -ExpectedExecutablePath $pwshPath `
             -ProjectPath $fakeProjectPath -ProjectHeadSha $projectHeadSha -Endpoint "http://127.0.0.1:12345/" `
             -ProvidedCimProcess $fakeCim -UseProvidedCimProcess -RequireEndpointOwner `
@@ -353,7 +358,7 @@ try {
         -not $identity.identity_verified -and $identity.failure_reason -eq "endpoint_owner_pid_mismatch"
     }
     Invoke-IdentityCase endpoint_binding "connection_envelope_mismatch" {
-        $inner = New-RoleGodotProcessIdentityV2 `
+        $inner = New-RoleGodotProcessIdentityV3 `
             -Process $fakeProcess -Role Supervisor -SessionId $fakeSession -ExpectedExecutablePath $pwshPath `
             -ProjectPath $fakeProjectPath -ProjectHeadSha $projectHeadSha -Endpoint "http://127.0.0.1:12345/" `
             -ProvidedCimProcess $fakeCim -UseProvidedCimProcess -RequireEndpointOwner `
@@ -365,7 +370,7 @@ try {
             port = 12345
             session_id = $fakeSession
             role = "Supervisor"
-            process_start_time_utc = $inner.process_creation_time_utc
+            process_creation_time = $inner.process_creation_time
             godot_path = $inner.observed_executable_path
             worktree = $inner.project_path
             project_head_sha = $inner.project_head_sha

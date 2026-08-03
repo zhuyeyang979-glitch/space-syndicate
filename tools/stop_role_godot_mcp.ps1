@@ -22,7 +22,13 @@ $identity = Test-McpProcessIdentity -Connection $connection
 $endpointOwnerBefore = Get-McpEndpointOwnerPid -Port ([int]$connection.port)
 
 if (-not [bool]$identity.valid) {
-    if ($endpointOwnerBefore -ne 0) {
+    $unverifiedPid = ConvertTo-McpInt32Value -Value (Get-McpOptionalProperty -Object $connection -Name "pid")
+    $unverifiedProcess = if ($unverifiedPid.valid -and [int]$unverifiedPid.value -gt 0) {
+        Get-Process -Id ([int]$unverifiedPid.value) -ErrorAction SilentlyContinue
+    } else {
+        $null
+    }
+    if ($endpointOwnerBefore -ne 0 -or $null -ne $unverifiedProcess) {
         throw "MCP_STOP_IDENTITY_FAILURE|reason_code=$($identity.reason_code)|endpoint_owner_pid=$endpointOwnerBefore"
     }
     Remove-Item -LiteralPath $session.active_path -Force
@@ -44,11 +50,11 @@ if ($endpointOwnerBefore -ne [int]$connection.pid) {
 }
 
 $storedProcessIdentity = Get-McpOptionalProperty -Object $connection -Name "process_identity"
-$expectedCreationTimeUtc = [string](Get-McpOptionalProperty -Object $storedProcessIdentity -Name "process_creation_time_utc")
+$expectedCreationTimeToken = Get-McpOptionalProperty -Object $storedProcessIdentity -Name "process_creation_time"
 $stopResult = Stop-McpBoundProcess `
     -Process $identity.process `
     -TimeoutSeconds $ShutdownTimeoutSeconds `
-    -ExpectedCreationTimeUtc $expectedCreationTimeUtc `
+    -ExpectedCreationTimeToken $expectedCreationTimeToken `
     -AllowForcedCleanup:$AllowForcedCleanup
 $endpointDeadline = [DateTimeOffset]::Now.AddSeconds(5)
 do {
