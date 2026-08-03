@@ -106,6 +106,62 @@ static func canonical_card_counts_toward_hand_limit(card: Dictionary) -> bool:
 	)
 
 
+static func discardability_facts_from_world_slots(world_slots: Array) -> Dictionary:
+	var slot_facts: Array = []
+	for slot_index in range(world_slots.size()):
+		var card_variant: Variant = world_slots[slot_index]
+		if card_variant == null or (card_variant is Dictionary and (card_variant as Dictionary).is_empty()):
+			slot_facts.append({
+				"slot_index": slot_index,
+				"occupied": false,
+				"counts_toward_hand_limit": false,
+				"queued_for_resolution": false,
+				"lock_left": 0.0,
+			})
+			continue
+		if not (card_variant is Dictionary):
+			return {
+				"valid": false,
+				"reason_code": "discardability_world_slot_malformed",
+				"slots": [],
+			}
+		var card: Dictionary = card_variant
+		var counts_variant: Variant = card.get("counts_toward_hand_limit", true)
+		var queued_variant: Variant = card.get("queued_for_resolution", false)
+		var lock_variant: Variant = card.get("lock_left", 0.0)
+		var persistent_variant: Variant = card.get("persistent", false)
+		var kind_variant: Variant = card.get("kind", "")
+		if (card.has("counts_toward_hand_limit") and not (counts_variant is bool)) \
+				or (card.has("queued_for_resolution") and not (queued_variant is bool)) \
+				or (card.has("persistent") and not (persistent_variant is bool)) \
+				or (card.has("kind") and not (kind_variant is String or kind_variant is StringName)) \
+				or not (lock_variant is int or lock_variant is float):
+			return {
+				"valid": false,
+				"reason_code": "discardability_world_slot_malformed",
+				"slots": [],
+			}
+		var lock_left := float(lock_variant)
+		if not is_finite(lock_left) or lock_left < 0.0:
+			return {
+				"valid": false,
+				"reason_code": "discardability_world_slot_malformed",
+				"slots": [],
+			}
+		slot_facts.append({
+			"slot_index": slot_index,
+			"occupied": true,
+			"counts_toward_hand_limit": canonical_card_counts_toward_hand_limit(card),
+			"queued_for_resolution": bool(queued_variant),
+			"lock_left": lock_left,
+		})
+	return {
+		"valid": true,
+		"reason_code": "discardability_facts_projected",
+		"slots": slot_facts,
+	}
+
+
 func counted_hand_size(current_facts: Dictionary) -> int:
 	if not _configured or not _is_data_only(current_facts):
 		return -1

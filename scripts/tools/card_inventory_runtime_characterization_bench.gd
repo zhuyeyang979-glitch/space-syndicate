@@ -386,22 +386,24 @@ func _cutover_discardability_owned() -> Dictionary:
 	first["queued_for_resolution"] = true
 	second["lock_left"] = 6.0
 	_reset_player(0, [first, second, third])
-	var snapshot_variant: Variant = _runtime_main.call("_card_inventory_snapshot", _player(0))
-	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
-	var coordinator := _coordinator()
-	var slots_variant: Variant = coordinator.call("card_inventory_discardable_slots", snapshot) if coordinator != null else []
-	var slots: Array = slots_variant if slots_variant is Array else []
+	var before := _player_probe(0)
+	var query := _discardable_slots_for_player_via_runtime(0)
+	var slots: Array = query.get("slots", []) if query.get("slots", []) is Array else []
+	var after := _player_probe(0)
 	var service_source := FileAccess.get_file_as_string(CARD_INVENTORY_SERVICE_SCRIPT_PATH)
 	var settlement_source := FileAccess.get_file_as_string(SETTLEMENT_SERVICE_SCRIPT_PATH)
 	var ownership := service_source.contains("func discardable_slots(") and not settlement_source.contains("func discardable_slots(")
-	var passed := slots == [2] and ownership
-	return _record("discardability_owned", "CardInventoryRuntimeService.discardable_slots", "discardability_query", {}, {}, {}, {}, {
+	var passed: bool = bool(query.get("valid", false)) and slots == [2] and ownership \
+		and before.get("fingerprint", []) == after.get("fingerprint", [])
+	return _record("discardability_owned", "GameRuntimeCoordinator.card_inventory_discardable_slots", "discardability_query", before, after, {}, {}, {
 		"phase": "cutover",
-		"observed": not snapshot.is_empty(),
+		"observed": bool(query.get("valid", false)),
 		"contract_aligned": passed,
 		"cutover_passed": passed,
 		"service_owner_checked": ownership,
-		"pure_data_checked": _is_data_only(slots),
+		"pure_data_checked": _is_data_only(query),
+		"privacy_checked": not JSON.stringify(query).contains(str(first.get("name", ""))) \
+			and not JSON.stringify(query).contains(str(second.get("name", ""))),
 		"notes": "queued and cooldown-locked cards are excluded; the ordinary unlocked slot remains discardable",
 	})
 
@@ -610,13 +612,15 @@ func _case_queued_card_not_discardable() -> Dictionary:
 	first["queued_for_resolution"] = true
 	_reset_player(0, [first, second])
 	var before := _player_probe(0)
-	var slots_variant: Variant = _runtime_main.call("_discardable_hand_slots_for_purchase", _player(0))
-	var discardable: Array = slots_variant if slots_variant is Array else []
+	var query := _discardable_slots_for_player_via_runtime(0)
+	var discardable: Array = query.get("slots", []) if query.get("slots", []) is Array else []
 	var after := _player_probe(0)
-	return _record("queued_card_not_discardable", "_discardable_hand_slots_for_purchase", "discardability_query", before, after, {}, {}, {
+	return _record("queued_card_not_discardable", "GameRuntimeCoordinator.card_inventory_discardable_slots", "discardability_query", before, after, {}, {}, {
 		"observed": not first.is_empty() and not second.is_empty(),
-		"contract_aligned": not discardable.has(0) and discardable.has(1) and before.get("fingerprint", []) == after.get("fingerprint", []),
+		"contract_aligned": bool(query.get("valid", false)) and discardable == [1] and before.get("fingerprint", []) == after.get("fingerprint", []),
 		"service_route_observed": true,
+		"privacy_checked": not JSON.stringify(query).contains(str(first.get("name", ""))) \
+			and not JSON.stringify(query).contains(str(second.get("name", ""))),
 		"notes": "queued cards remain visible but are excluded from private discard choices",
 	})
 
@@ -627,13 +631,15 @@ func _case_cooldown_locked_card_not_discardable() -> Dictionary:
 	first["lock_left"] = 8.0
 	_reset_player(0, [first, second])
 	var before := _player_probe(0)
-	var slots_variant: Variant = _runtime_main.call("_discardable_hand_slots_for_purchase", _player(0))
-	var discardable: Array = slots_variant if slots_variant is Array else []
+	var query := _discardable_slots_for_player_via_runtime(0)
+	var discardable: Array = query.get("slots", []) if query.get("slots", []) is Array else []
 	var after := _player_probe(0)
-	return _record("cooldown_locked_card_not_discardable", "_discardable_hand_slots_for_purchase", "discardability_query", before, after, {}, {}, {
+	return _record("cooldown_locked_card_not_discardable", "GameRuntimeCoordinator.card_inventory_discardable_slots", "discardability_query", before, after, {}, {}, {
 		"observed": not first.is_empty() and not second.is_empty(),
-		"contract_aligned": not discardable.has(0) and discardable.has(1) and before.get("fingerprint", []) == after.get("fingerprint", []),
+		"contract_aligned": bool(query.get("valid", false)) and discardable == [1] and before.get("fingerprint", []) == after.get("fingerprint", []),
 		"service_route_observed": true,
+		"privacy_checked": not JSON.stringify(query).contains(str(first.get("name", ""))) \
+			and not JSON.stringify(query).contains(str(second.get("name", ""))),
 		"notes": "lock_left excludes a card from private discard without changing inventory",
 	})
 
@@ -1313,6 +1319,41 @@ func _release_runtime_main() -> void:
 
 func _coordinator() -> Node:
 	return _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _runtime_main != null else null
+
+
+func _discardable_slots_for_player_via_runtime(player_index: int) -> Dictionary:
+	var coordinator := _coordinator() as GameRuntimeCoordinator
+	if coordinator == null:
+		return {"valid": false, "reason_code": "discardability_coordinator_missing", "slots": [], "inventory_facts": {}}
+	var inventory_service := coordinator.get_node_or_null("CardInventoryRuntimeService") as CardInventoryRuntimeService
+	if inventory_service == null or not inventory_service.is_ready():
+		return {"valid": false, "reason_code": "discardability_service_missing", "slots": [], "inventory_facts": {}}
+	var world := coordinator.world_session_state()
+	if world == null or player_index < 0 or player_index >= world.players.size() \
+			or not (world.players[player_index] is Dictionary):
+		return {"valid": false, "reason_code": "discardability_player_invalid", "slots": [], "inventory_facts": {}}
+	var player: Dictionary = world.players[player_index]
+	var world_slots_variant: Variant = player.get("slots", [])
+	if not player.has("slots") or not (world_slots_variant is Array):
+		return {"valid": false, "reason_code": "discardability_player_slots_malformed", "slots": [], "inventory_facts": {}}
+	var inventory_facts := CardInventoryRuntimeService.discardability_facts_from_world_slots(world_slots_variant as Array)
+	if not bool(inventory_facts.get("valid", false)) or not (inventory_facts.get("slots", []) is Array):
+		return {"valid": false, "reason_code": str(inventory_facts.get("reason_code", "discardability_facts_malformed")), "slots": [], "inventory_facts": {}}
+	var slots := coordinator.card_inventory_discardable_slots(inventory_facts)
+	var seen: Dictionary = {}
+	for slot_variant in slots:
+		if not (slot_variant is int):
+			return {"valid": false, "reason_code": "discardability_result_malformed", "slots": [], "inventory_facts": {}}
+		var slot_index := int(slot_variant)
+		if slot_index < 0 or slot_index >= (world_slots_variant as Array).size() or seen.has(slot_index):
+			return {"valid": false, "reason_code": "discardability_result_malformed", "slots": [], "inventory_facts": {}}
+		seen[slot_index] = true
+	return {
+		"valid": true,
+		"reason_code": "discardability_query_complete",
+		"slots": slots.duplicate(),
+		"inventory_facts": inventory_facts.duplicate(true),
+	}
 
 
 func _card_exists(card_id: String) -> bool:
