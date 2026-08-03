@@ -2,6 +2,7 @@ extends Node
 
 const MAIN_SCENE := preload("res://scenes/main.tscn")
 const BenchScript := preload("res://scripts/tools/card_inventory_runtime_characterization_bench.gd")
+const MARKET_FIXTURE := preload("res://tests/product_market_save_v2_test_fixture.gd")
 const BENCH_SOURCE_PATH := "res://scripts/tools/card_inventory_runtime_characterization_bench.gd"
 const MAIN_SOURCE_PATH := "res://scripts/main.gd"
 const REQUEST_SOURCE_PATH := "res://scripts/runtime/session_start_request.gd"
@@ -65,9 +66,10 @@ func _test_forty_session_transactions() -> void:
 	var runtime_loop := main.get_node_or_null(COORDINATOR_PATH + "/RuntimeLoop") as RuntimeLoop
 	var world := coordinator.world_session_state() if coordinator != null else null
 	var rng := coordinator.run_rng_service() if coordinator != null else null
-	_expect(coordinator != null and draft != null and transaction != null and session != null and lifecycle != null and runtime_loop != null and world != null and rng != null, "production Session Start composition is available")
+	var product_market := coordinator.product_market_runtime_controller() if coordinator != null else null
+	_expect(coordinator != null and draft != null and transaction != null and session != null and lifecycle != null and runtime_loop != null and world != null and rng != null and product_market != null, "production Session Start composition is available")
 	if coordinator == null or draft == null or transaction == null or session == null \
-			or lifecycle == null or runtime_loop == null or world == null or rng == null:
+			or lifecycle == null or runtime_loop == null or world == null or rng == null or product_market == null:
 		main.queue_free()
 		await get_tree().process_frame
 		return
@@ -131,6 +133,10 @@ func _test_forty_session_transactions() -> void:
 	var world_before := world.to_save_data()
 	var rng_before := rng.capture_plan_checkpoint()
 	var session_before := session.capture_new_session_checkpoint()
+	MARKET_FIXTURE.seed_non_default_runtime(product_market, 40)
+	var product_market_wire_before := product_market.to_save_data()
+	var product_market_runtime_before := MARKET_FIXTURE.authoritative_runtime_snapshot(product_market)
+	var product_market_timer_bits_before := MARKET_FIXTURE.timer_bits(product_market_wire_before)
 	transaction.set_test_fault_stage("after_runtime_apply")
 	var rollback_setup := draft.draft_snapshot()
 	var rollback_request := SessionStartRequest.create(
@@ -143,6 +149,9 @@ func _test_forty_session_transactions() -> void:
 	transaction.set_test_fault_stage("")
 	_expect(failed != null and not failed.applied and failed.rollback_complete and failed.failing_stage == "runtime_apply", "transaction-owned failure rolls the attempted replacement back")
 	_expect(world.to_save_data() == world_before and rng.capture_plan_checkpoint() == rng_before and session.capture_new_session_checkpoint() == session_before, "failed transaction preserves the prior World, RNG, and GameSession state")
+	var product_market_wire_after := product_market.to_save_data()
+	_expect(product_market_wire_after == product_market_wire_before and MARKET_FIXTURE.authoritative_runtime_snapshot(product_market) == product_market_runtime_before, "failed transaction restores exact Product Market Save wire and normalized authoritative runtime state")
+	_expect(MARKET_FIXTURE.timer_bits(product_market_wire_after) == product_market_timer_bits_before, "failed transaction restores exact Product Market timer bits")
 	_expect(not bool(runtime_loop.debug_snapshot().get("session_start_barrier_held", true)), "failed transaction releases the RuntimeLoop barrier")
 	main.queue_free()
 	await get_tree().process_frame

@@ -1753,6 +1753,20 @@ func to_save_data() -> Dictionary:
 
 
 func preflight_save_data(data: Dictionary) -> Dictionary:
+	var decoded := _decode_and_normalize_save_v2(data)
+	if not bool(decoded.get("accepted", false)):
+		return {
+			"accepted": false,
+			"reason_code": str(decoded.get("reason_code", "product_market_save_v2_invalid")),
+		}
+	return {
+		"accepted": true,
+		"reason_code": "product_market_save_v2_valid",
+		"normalized_state": (decoded.get("normalized_state", {}) as Dictionary).duplicate(true),
+	}
+
+
+func _decode_and_normalize_save_v2(data: Dictionary) -> Dictionary:
 	var transaction_preflight := ai_business_market_pressure_save_preflight()
 	if not bool(transaction_preflight.get("accepted", false)):
 		return {"accepted": false, "reason_code": str(transaction_preflight.get("reason_code", "ai_business_market_pressure_restore_blocked"))}
@@ -1801,24 +1815,26 @@ func preflight_save_data(data: Dictionary) -> Dictionary:
 		"accepted": true,
 		"reason_code": "product_market_save_v2_valid",
 		"normalized_state": (normalized_encoded.get("value", {}) as Dictionary).duplicate(true),
+		"decoded_state": normalized_raw.duplicate(true),
 	}
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
-	var preflight := preflight_save_data(data)
+	var preflight := _decode_and_normalize_save_v2(data)
 	if not bool(preflight.get("accepted", false)):
 		var blocked := runtime_state_snapshot()
 		blocked["applied"] = false
 		blocked["reason_code"] = str(preflight.get("reason_code", "product_market_save_invalid"))
 		return blocked
-	var normalized_wire := preflight.get("normalized_state", {}) as Dictionary
-	var decoded := CLOSED_SCALAR_CODEC.decode_tree(normalized_wire)
-	if not bool(decoded.get("ok", false)) or not (decoded.get("value") is Dictionary):
+	if not (preflight.get("decoded_state", {}) is Dictionary):
 		var invalid := runtime_state_snapshot()
 		invalid["applied"] = false
 		invalid["reason_code"] = "product_market_save_v2_invalid"
 		return invalid
-	var normalized := decoded.get("value", {}) as Dictionary
+	return _apply_decoded_save_v2(preflight.get("decoded_state", {}) as Dictionary)
+
+
+func _apply_decoded_save_v2(normalized: Dictionary) -> Dictionary:
 	_reset_ai_business_market_pressure_transactions()
 	product_market = (normalized.get("product_market", {}) as Dictionary).duplicate(true)
 	_clear_weather_projection(product_market)
@@ -1927,19 +1943,19 @@ func preflight_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
 
 
 func restore_new_session_checkpoint(checkpoint: Dictionary) -> Dictionary:
-	if not (checkpoint.get("product_market", {}) is Dictionary):
-		return {"restored": false, "reason_code": "product_market_new_session_checkpoint_invalid"}
-	var transaction_preflight := ai_business_market_pressure_save_preflight()
-	if not bool(transaction_preflight.get("accepted", false)):
-		return {"restored": false, "reason_code": str(transaction_preflight.get("reason_code", "ai_business_market_pressure_restore_blocked"))}
-	_reset_ai_business_market_pressure_transactions()
-	product_market = (checkpoint.get("product_market", {}) as Dictionary).duplicate(true)
-	_clear_weather_projection(product_market)
-	business_cycle_count = int(checkpoint.get("business_cycle_count", 0))
-	market_timer = float(checkpoint.get("market_timer", 8.0))
-	futures_position_sequence = maxi(0, int(checkpoint.get("futures_position_sequence", 0)))
+	var applied := apply_save_data(checkpoint)
+	if not bool(applied.get("applied", false)):
+		return {
+			"applied": false,
+			"restored": false,
+			"reason_code": str(applied.get("reason_code", "product_market_new_session_checkpoint_invalid")),
+		}
 	_normalize_loaded_futures_positions()
-	return {"restored": true, "reason_code": "product_market_new_session_checkpoint_restored"}
+	return {
+		"applied": true,
+		"restored": true,
+		"reason_code": "product_market_new_session_checkpoint_restored",
+	}
 
 
 func runtime_state_snapshot() -> Dictionary:
@@ -2032,7 +2048,7 @@ func debug_snapshot(_viewer_index := -1) -> Dictionary:
 func _normalize_loaded_futures_positions() -> void:
 	for product_variant in product_market.keys():
 		var product_name := str(product_variant)
-		var entry := market_entry(product_name)
+		var entry := (product_market.get(product_name, {}) as Dictionary).duplicate(true)
 		var normalized: Array = []
 		for position_variant in entry.get("futures_positions", []):
 			if not (position_variant is Dictionary):
