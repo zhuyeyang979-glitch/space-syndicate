@@ -82,6 +82,14 @@ var _idle_frame_samples: Array[float] = []
 var _interaction_frame_samples: Array[float] = []
 var _idle_sample_cursor := 0
 var _interaction_sample_cursor := 0
+var _v074_authoritative_surface: Dictionary = {}
+var _v074_hit_test_cells: Array = []
+var _v074_region_index_by_id: Dictionary = {}
+var _v074_surface_apply_count := 0
+var _v074_hit_test_count := 0
+var _v074_geometry_rebuild_count := 0
+var _v074_lod_projection_update_count := 0
+var _v074_last_lod := "far"
 
 
 func _ready() -> void:
@@ -225,6 +233,207 @@ func set_map(
 		_queue_sceneized_sync()
 	else:
 		_queue_sceneized_dynamic_sync()
+
+
+func apply_v074_map_view_payload(payload: Dictionary) -> bool:
+	var snapshot_variant: Variant = payload.get("snapshot", null)
+	var surface_variant: Variant = payload.get("authoritative_surface", {})
+	if not (snapshot_variant is Object) or not (surface_variant is Dictionary):
+		return false
+	if not set_v074_authoritative_surface(surface_variant as Dictionary):
+		return false
+	var snapshot := snapshot_variant as Object
+	var snapshot_districts: Variant = snapshot.get("districts")
+	var snapshot_palette: Variant = snapshot.get("palette")
+	if not (snapshot_districts is Array) or not (snapshot_palette is Array):
+		return false
+	set_map(
+		snapshot_districts as Array,
+		float(snapshot.get("width_m")),
+		float(snapshot.get("height_m")),
+		int(snapshot.get("selected_district")),
+		snapshot_palette as Array,
+		snapshot.get("movement_trails") as Array,
+		snapshot.get("action_callouts") as Array,
+		snapshot.get("map_event_effects") as Array,
+		snapshot.get("unit_markers") as Array,
+		snapshot.get("city_markers") as Array,
+		snapshot.get("route_markers") as Array,
+		str(snapshot.get("selected_trade_product")),
+		str(snapshot.get("selected_map_layer_focus"))
+	)
+	set_presentation_identity(
+		int(snapshot.get("presentation_seed")),
+		str(snapshot.get("geometry_fingerprint"))
+	)
+	var solar_variant: Variant = snapshot.get("solar_presentation")
+	if solar_variant is Dictionary:
+		set_solar_presentation_snapshot(solar_variant as Dictionary)
+	set_preview_note("V0.7.4 authoritative planet")
+	return true
+
+
+func set_v074_authoritative_surface(surface: Dictionary) -> bool:
+	if str(surface.get("schema", "")) != "V074AuthoritativePlanetSurfaceV1":
+		return false
+	if str(surface.get("ruleset_id", "")) != "v0.7.4":
+		return false
+	var region_ids := surface.get("region_ids", []) as Array
+	var boundaries := surface.get("region_boundary_lods_spherical", {}) as Dictionary
+	if region_ids.is_empty() or boundaries.size() != region_ids.size():
+		return false
+	var next_fingerprint := str(surface.get("map_fingerprint", ""))
+	var geometry_changed := next_fingerprint != str(_v074_authoritative_surface.get("map_fingerprint", ""))
+	_v074_authoritative_surface = surface.duplicate(true)
+	_v074_surface_apply_count += 1
+	if geometry_changed:
+		_v074_hit_test_cells = (surface.get("hit_test_cells", []) as Array).duplicate(true)
+		_v074_region_index_by_id.clear()
+		for index in range(region_ids.size()):
+			_v074_region_index_by_id[str(region_ids[index])] = index
+		_v074_geometry_rebuild_count += 1
+	set_meta("v074_authoritative_planet_surface", true)
+	_queue_sceneized_sync()
+	return true
+
+
+func v074_authoritative_surface_snapshot() -> Dictionary:
+	return _v074_authoritative_surface.duplicate(true)
+
+
+func v074_planet_debug_snapshot() -> Dictionary:
+	return {
+		"schema": "V074PlanetMapViewDebugV1",
+		"authoritative_surface_connected": not _v074_authoritative_surface.is_empty(),
+		"map_fingerprint": str(_v074_authoritative_surface.get("map_fingerprint", "")),
+		"region_count": (_v074_authoritative_surface.get("region_ids", []) as Array).size(),
+		"hit_test_cell_count": _v074_hit_test_cells.size(),
+		"surface_apply_count": _v074_surface_apply_count,
+		"authoritative_geometry_rebuild_count": _v074_geometry_rebuild_count,
+		"lod_projection_update_count": _v074_lod_projection_update_count,
+		"active_boundary_lod": _v074_last_lod,
+		"hit_test_count": _v074_hit_test_count,
+		"camera_gameplay_mutation_count": 0,
+		"camera_rng_draw_delta": 0,
+		"presentation_generated_geometry_count": int(_v074_authoritative_surface.get("presentation_generated_geometry_count", 0)),
+		"presentation_generated_terrain_count": int(_v074_authoritative_surface.get("presentation_generated_terrain_count", 0)),
+	}
+
+
+func get_district_at_control_position(control_position: Vector2) -> int:
+	if not _v074_authoritative_surface.is_empty():
+		return _v074_authoritative_district_at_control_position(control_position)
+	return super.get_district_at_control_position(control_position)
+
+
+func _v074_authoritative_district_at_control_position(control_position: Vector2) -> int:
+	if control_position.x < 0.0 or control_position.y < 0.0 or control_position.x > size.x or control_position.y > size.y:
+		return -1
+	_sync_projection_metrics_for_query()
+	if _globe_blend() > 0.62 and control_position.distance_to(_globe_center()) > _globe_radius():
+		return -1
+	var world_position := _screen_to_globe_world(control_position) if _globe_blend() > 0.08 else _screen_to_world(control_position)
+	var unit := _sphere_unit(world_position).normalized()
+	if unit.length_squared() < 0.9:
+		return -1
+	_v074_hit_test_count += 1
+	var best_index := -1
+	var best_dot := -INF
+	for cell_variant in _v074_hit_test_cells:
+		if not (cell_variant is Dictionary):
+			continue
+		var cell := cell_variant as Dictionary
+		var cell_unit := _v074_as_vector3(cell.get("unit_sphere", Vector3.ZERO)).normalized()
+		var alignment := unit.dot(cell_unit)
+		if alignment > best_dot:
+			best_dot = alignment
+			best_index = int(cell.get("region_index", -1))
+	if best_index >= 0 and best_index < districts.size():
+		return best_index
+	var boundaries := _v074_authoritative_surface.get("region_boundary_lods_spherical", {}) as Dictionary
+	var region_ids := _v074_authoritative_surface.get("region_ids", []) as Array
+	for index in range(region_ids.size()):
+		var lods := boundaries.get(str(region_ids[index]), {}) as Dictionary
+		if _v074_spherical_polygon_contains(unit, lods.get("near", [])):
+			return index
+	return -1
+
+
+func _district_sceneized_polygon_points(entry: Dictionary) -> PackedVector2Array:
+	var lods_variant: Variant = entry.get("boundary_lods_spherical", null)
+	if not (lods_variant is Dictionary):
+		return _sceneized_polygon_points(entry.get("polygon", []))
+	var lod_name := _v074_boundary_lod_name()
+	var lods := lods_variant as Dictionary
+	var boundary: Variant = lods.get(lod_name, lods.get("near", []))
+	var world_polygon: Array = []
+	if boundary is Array or boundary is PackedVector3Array:
+		for point_variant in boundary:
+			var unit := _v074_as_vector3(point_variant).normalized()
+			if unit.length_squared() > 0.9:
+				world_polygon.append(_world_from_sphere_unit(unit))
+	_v074_last_lod = lod_name
+	_v074_lod_projection_update_count += 1
+	if _globe_blend() <= 0.001:
+		return _v074_local_unwrapped_polygon(
+			entry.get("center", Vector2.ZERO),
+			world_polygon
+		)
+	return _sceneized_polygon_points(world_polygon)
+
+
+func _v074_local_unwrapped_polygon(
+	center_variant: Variant,
+	world_polygon: Array
+) -> PackedVector2Array:
+	if not (center_variant is Vector2) or world_polygon.size() < 3:
+		return _screen_polygon(world_polygon)
+	var center := center_variant as Vector2
+	var center_screen := _world_to_screen(center)
+	var result := PackedVector2Array()
+	for point_variant in world_polygon:
+		if not (point_variant is Vector2):
+			continue
+		var point := point_variant as Vector2
+		result.append(center_screen + _surface_delta(center, point) * _scale)
+	return result
+
+
+func _v074_boundary_lod_name() -> String:
+	if _view_zoom >= 1.42 or _globe_blend() < 0.32:
+		return "near"
+	if _view_zoom >= 0.94 or _globe_blend() < 0.78:
+		return "medium"
+	return "far"
+
+
+func _v074_spherical_polygon_contains(point: Vector3, boundary_variant: Variant) -> bool:
+	if not (boundary_variant is Array or boundary_variant is PackedVector3Array):
+		return false
+	var boundary_size := int(boundary_variant.size())
+	if boundary_size < 3:
+		return false
+	var winding := 0.0
+	for index in range(boundary_size):
+		var a := _v074_as_vector3(boundary_variant[index]).normalized()
+		var b := _v074_as_vector3(boundary_variant[(index + 1) % boundary_size]).normalized()
+		var tangent_a := (a - point * point.dot(a)).normalized()
+		var tangent_b := (b - point * point.dot(b)).normalized()
+		if tangent_a.length_squared() < 0.9 or tangent_b.length_squared() < 0.9:
+			continue
+		winding += atan2(point.dot(tangent_a.cross(tangent_b)), tangent_a.dot(tangent_b))
+	return absf(winding) > PI
+
+
+func _v074_as_vector3(value: Variant) -> Vector3:
+	if value is Vector3:
+		return value as Vector3
+	if value is Array and (value as Array).size() >= 3:
+		return Vector3(float(value[0]), float(value[1]), float(value[2]))
+	if value is Dictionary:
+		var source := value as Dictionary
+		return Vector3(float(source.get("x", 0.0)), float(source.get("y", 0.0)), float(source.get("z", 0.0)))
+	return Vector3.ZERO
 
 
 func set_optional_route_selection(product_id: String) -> bool:
@@ -451,13 +660,23 @@ func planet_surface_presentation_snapshot() -> Dictionary:
 			"sunlit": bool(district.get("sunlit", false)),
 			"facility_efficiency_multiplier": float(district.get("facility_efficiency_multiplier", 1.0)),
 		})
+	var authoritative_sun: Variant = _public_solar_snapshot.get(
+		"sun_direction",
+		_v074_authoritative_surface.get("sun_direction", Vector3.RIGHT)
+	)
 	return {
 		"camera_lon_rad": center_lon_lat.x,
 		"camera_lat_rad": center_lon_lat.y,
 		"sun_turn_ppm": int(_public_solar_snapshot.get("sun_turn_ppm", 0)),
+		"sun_direction": _v074_as_vector3(authoritative_sun).normalized(),
 		"presentation_seed": _presentation_seed,
 		"geometry_fingerprint": _geometry_fingerprint,
 		"solar_regions": solar_regions,
+		"terrain_surface_samples": _v074_authoritative_surface.get("terrain_surface_samples", []),
+		"terrain_by_region": _v074_authoritative_surface.get("terrain_by_region", {}),
+		"geography_complexity": str(_v074_authoritative_surface.get("geography_complexity", "STANDARD")),
+		"land_ocean_profile": str(_v074_authoritative_surface.get("land_ocean_profile", "BALANCED")),
+		"authoritative_surface_connected": not _v074_authoritative_surface.is_empty(),
 	}
 
 
@@ -559,6 +778,7 @@ func get_sceneization_debug_snapshot() -> Dictionary:
 	snapshot["solar_camera"] = solar_camera_debug_snapshot()
 	snapshot["weather_overlay"] = weather_overlay_debug_snapshot()
 	snapshot["optional_route_presentation"] = optional_route_presentation_snapshot()
+	snapshot["v074_authoritative_planet"] = v074_planet_debug_snapshot()
 	snapshot.merge(get_sceneized_child_snapshot(), true)
 	return snapshot
 
@@ -641,7 +861,7 @@ func _update_sceneized_projection_nodes() -> void:
 	for index in range(districts.size()):
 		var entry := districts[index] as Dictionary
 		var center_projection := _sceneized_world_projection(entry.get("center", Vector2.ZERO))
-		var points := _sceneized_polygon_points(entry.get("polygon", []))
+		var points := _district_sceneized_polygon_points(entry)
 		var polygon_node := _sceneized_district_polygon_nodes[index] as Control
 		if polygon_node != null and is_instance_valid(polygon_node):
 			polygon_node.call("configure", {
@@ -761,7 +981,7 @@ func _sync_district_polygons() -> void:
 		return
 	for index in range(districts.size()):
 		var entry: Dictionary = districts[index]
-		var points := _sceneized_polygon_points(entry.get("polygon", []))
+		var points := _district_sceneized_polygon_points(entry)
 		var center_projection := _sceneized_world_projection(entry.get("center", Vector2.ZERO))
 		var node := PlanetDistrictPolygonScene.instantiate() as Control
 		if node == null:
@@ -823,6 +1043,8 @@ func _sync_district_nodes() -> void:
 
 
 func _sceneized_nonselected_labels_compact() -> bool:
+	if not _v074_authoritative_surface.is_empty():
+		return true
 	return _sceneized_overview_compact() or _map_detail_reduced() or size.y < 320.0
 
 

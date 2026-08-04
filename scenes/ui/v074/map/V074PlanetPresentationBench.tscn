@@ -1,0 +1,82 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://tests/v074_planet_visual_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/ui/PlanetMapView.tscn" id="2_map"]
+
+[node name="V074PlanetPresentationBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_bench")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.00784314, 0.0235294, 0.0588235, 1)
+
+[node name="Header" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 14.0
+offset_top = 12.0
+offset_right = -14.0
+offset_bottom = 62.0
+grow_horizontal = 2
+
+[node name="HeaderRow" type="HBoxContainer" parent="Header"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="Header/HeaderRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "V0.7.4 Authoritative Roguelike Planet"
+theme_override_font_sizes/font_size = 20
+
+[node name="StatusLabel" type="Label" parent="Header/HeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Preparing authoritative receipt..."
+horizontal_alignment = 1
+
+[node name="FocusButton" type="Button" parent="Header/HeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Focus"
+
+[node name="ZoomButton" type="Button" parent="Header/HeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Local"
+
+[node name="ResetButton" type="Button" parent="Header/HeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Overview"
+
+[node name="MapFrame" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 14.0
+offset_top = 72.0
+offset_right = -14.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 2
+clip_contents = true
+
+[node name="PlanetMapView" parent="MapFrame" instance=ExtResource("2_map")]
+unique_name_in_owner = true
+layout_mode = 2

@@ -1,0 +1,71 @@
+{
+  "schema": "V074LaneEGlobeResponsiveHandoffV1",
+  "status": "candidate_green",
+  "branch": "codex/v074-lane-e-globe-ui-05c2415",
+  "base_sha": "05c2415014187e902592bf3a8d1291222f738694",
+  "mcp": {
+    "role": "B",
+    "endpoint": "http://127.0.0.1:9025/",
+    "godot_version": "4.7-stable",
+    "changed_script_validation": "13/13",
+    "changed_scene_load": "2/2",
+    "changed_shader_load": "1/1",
+    "project_error_count": 0,
+    "runtime_error_count": 0,
+    "play_mode_stopped_normally": true,
+    "editor_close_timeout_count": 2,
+    "editor_exact_pid_terminated_after_validation": 21204,
+    "endpoint_closed": true
+  },
+  "receipt_compatibility": {
+    "direct_map_genesis_receipt": true,
+    "single_loop_lod": true,
+    "multi_loop_lod": true,
+    "primary_loop_policy": "largest_authoritative_loop",
+    "all_loops_forwarded": true,
+    "shared_edge_fallback": true,
+    "shared_edge_vertex_generation_count": 0,
+    "top_level_microcell_centers_preferred": true,
+    "nested_microgrid_centers_fallback": true,
+    "presentation_generated_geometry_count": 0,
+    "presentation_generated_terrain_count": 0
+  },
+  "focused_tests": {
+    "presentation_adapter": "22/22",
+    "planet_map_view": "9/9",
+    "planet_shader_surface": "7/7",
+    "responsive_table_layout": "15/15",
+    "ui_collision_audit": "4/4"
+  },
+  "headed_bench": {
+    "scene": "res://scenes/ui/v074/map/V074PlanetPresentationBench.tscn",
+    "region_count": 24,
+    "geography_complexity": "COMPLEX",
+    "land_ocean_profile": "BALANCED",
+    "drag_interaction_count": 1,
+    "zoom_interaction_count": 5,
+    "zoom_before": 0.72,
+    "zoom_after": 1.12,
+    "map_selection_count": 1,
+    "selected_region_index": 9,
+    "focused_region_index": 7,
+    "surface_apply_count": 1,
+    "authoritative_geometry_rebuild_count": 1,
+    "terrain_mask_rebuild_count": 1,
+    "drag_false_selection_count": 0,
+    "factory_market_warehouse_visible": true,
+    "dateline_stage_crossing_removed": true
+  },
+  "excluded_generated_churn": {
+    "modified_import_count": 57,
+    "untracked_uid_count": 126,
+    "committed_count": 0
+  },
+  "integration_gaps": [
+    "production main.tscn wiring and screenshots",
+    "final merged Lane A core headed exercise",
+    "Region Popup and TargetRail integration",
+    "30-region frame P95 and fullscreen roundtrip",
+    "complete sample match through FinalSettlement"
+  ]
+}
