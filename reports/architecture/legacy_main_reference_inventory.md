@@ -11,7 +11,7 @@ Generated from `05c2415014187e902592bf3a8d1291222f738694` after the MCP deletion
 - Production-reachable legacy references: `0`
 - V0.7.4 active-test dependency references: `0`
 - Compatibility wrappers/replacement monoliths: `0`
-- Remaining classified textual evidence: `2655` occurrences in `424` files
+- Remaining classified textual evidence: `2649` occurrences in `424` files
 
 Textual evidence is intentionally not treated as an executable dependency. Historical documents, frozen V0.6 source oracles, and negative tests remain readable. The machine-readable companion classifies every matched line and distinguishes dependencies from negative/historical evidence.
 
@@ -21,13 +21,15 @@ Textual evidence is intentionally not treated as an executable dependency. Histo
 | --- | ---: | ---: | ---: |
 | duplicate | 252 | 1983 | 0 |
 | frozen_v06_reliability_only | 151 | 628 | 0 |
-| obsolete | 6 | 24 | 0 |
+| obsolete | 4 | 13 | 0 |
 | v073_active_test | 15 | 20 | 0 |
+| v074_active_test | 2 | 5 | 0 |
 
 ## Operational References
 
 | Path | Classification | Role | Occurrences | Dependencies | Lines |
 | --- | --- | --- | ---: | ---: | --- |
+| `scripts/architecture/v074/v074_legacy_main_retirement_audit.gd` | v074_active_test | negative_architecture_ratchet | 4 | 0 | 9, 10, 11, 13 |
 | `tests/helpers/card_resolution_main_test_harness.gd` | obsolete | retired_oracle | 2 | 0 | 4, 14 |
 | `tests/main_gd_architecture_gate_test.gd` | obsolete | retired_oracle | 4 | 0 | 5, 26, 57, 98 |
 | `tests/shared_card_window_production_cutover_v06_test.gd` | obsolete | retired_oracle | 2 | 0 | 3, 50 |
@@ -46,8 +48,7 @@ Textual evidence is intentionally not treated as an executable dependency. Histo
 | `tests/v073_production_sample_acceptance_test.gd` | v073_active_test | negative_or_historical_rule_assertion | 1 | 0 | 52 |
 | `tests/v073_simulation/v073_deterministic_contention_simulator_test.gd` | v073_active_test | negative_or_historical_rule_assertion | 1 | 0 | 120 |
 | `tests/v073_simulation/v073_fixed_order_facility_contention_review_scene_test.gd` | v073_active_test | negative_or_historical_rule_assertion | 2 | 0 | 49, 95 |
-| `tools/architecture/build_main_gd_call_graph.py` | obsolete | retired_oracle | 6 | 0 | 2, 14, 91, 115, 117, 166 |
-| `tools/architecture/check_main_gd_budget.py` | obsolete | retired_oracle | 5 | 0 | 2, 15, 36, 46, 73 |
+| `tests/v074_legacy_main_retirement_test.gd` | v074_active_test | negative_architecture_ratchet | 1 | 0 | 18 |
 
 ## Direct Loads
 

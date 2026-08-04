@@ -11,7 +11,7 @@
   "production_reachable_reference_count": 0,
   "v074_active_dependency_count": 0,
   "compatibility_wrapper_count": 0,
-  "textual_reference_occurrence_count": 2655,
+  "textual_reference_occurrence_count": 2649,
   "textual_reference_file_count": 424,
   "classification_totals": [
     {
@@ -28,14 +28,20 @@
     },
     {
       "classification": "obsolete",
-      "occurrence_count": 24,
-      "file_count": 6,
+      "occurrence_count": 13,
+      "file_count": 4,
       "dependency_count": 0
     },
     {
       "classification": "v073_active_test",
       "occurrence_count": 20,
       "file_count": 15,
+      "dependency_count": 0
+    },
+    {
+      "classification": "v074_active_test",
+      "occurrence_count": 5,
+      "file_count": 2,
       "dependency_count": 0
     }
   ],
@@ -50,6 +56,44 @@
     "action": "read_only; validate after integration"
   },
   "files": [
+    {
+      "path": "scripts/architecture/v074/v074_legacy_main_retirement_audit.gd",
+      "classification": "v074_active_test",
+      "role": "negative_architecture_ratchet",
+      "occurrence_count": 4,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 9,
+          "kind": "path_constructed"
+        },
+        {
+          "line": 10,
+          "kind": "alias_usage"
+        },
+        {
+          "line": 11,
+          "kind": "path_constructed"
+        },
+        {
+          "line": 13,
+          "kind": "root_main_constructed"
+        }
+      ]
+    },
+    {
+      "path": "tests/v074_legacy_main_retirement_test.gd",
+      "classification": "v074_active_test",
+      "role": "negative_architecture_ratchet",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 18,
+          "kind": "alias_usage"
+        }
+      ]
+    },
     {
       "path": "addons/godot_mcp/runtime/mcp_runtime.gd",
       "classification": "frozen_v06_reliability_only",
@@ -2808,68 +2852,6 @@
         {
           "line": 73,
           "kind": "path_literal"
-        }
-      ]
-    },
-    {
-      "path": "tools/architecture/build_main_gd_call_graph.py",
-      "classification": "obsolete",
-      "role": "retired_oracle",
-      "occurrence_count": 6,
-      "dependency_count": 0,
-      "references": [
-        {
-          "line": 2,
-          "kind": "path_literal"
-        },
-        {
-          "line": 14,
-          "kind": "path_literal"
-        },
-        {
-          "line": 91,
-          "kind": "path_literal"
-        },
-        {
-          "line": 115,
-          "kind": "path_literal"
-        },
-        {
-          "line": 117,
-          "kind": "root_main_literal"
-        },
-        {
-          "line": 166,
-          "kind": "path_literal"
-        }
-      ]
-    },
-    {
-      "path": "tools/architecture/check_main_gd_budget.py",
-      "classification": "obsolete",
-      "role": "retired_oracle",
-      "occurrence_count": 5,
-      "dependency_count": 0,
-      "references": [
-        {
-          "line": 2,
-          "kind": "path_literal"
-        },
-        {
-          "line": 15,
-          "kind": "path_literal"
-        },
-        {
-          "line": 36,
-          "kind": "root_main_literal"
-        },
-        {
-          "line": 46,
-          "kind": "alias_usage"
-        },
-        {
-          "line": 73,
-          "kind": "alias_usage"
         }
       ]
     },
