@@ -1,6 +1,7 @@
 # Screenshot Matrix
 
 All after-images are rendered from `res://scenes/main.tscn` with the production V0.7.3 composition.
+The near-zoom and region-focus captures include the final projection-wide district-label collision fix.
 
 ## 1366x768, four players
 

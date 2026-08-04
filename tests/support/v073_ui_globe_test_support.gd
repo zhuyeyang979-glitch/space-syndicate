@@ -323,6 +323,31 @@ static func _case_ui_rect_collision_audit(tree: SceneTree, state: Dictionary) ->
 			"planet_draw_outside_stage_count",
 		]:
 			_expect(state, int(audit.get(field, -1)) == 0, "%s %s is zero" % [str(row[0]), field])
+		var screen := context.get("screen") as Control
+		var board := screen.find_child("PlanetBoard", true, false)
+		var map := board.call("get_embedded_map_view") as Control if board != null else null
+		_expect(state, map != null, "%s production planet map exists" % str(row[0]))
+		if map != null:
+			map.call("zoom_to_local_projection")
+			await tree.create_timer(0.36).timeout
+			for _frame in range(3):
+				await tree.process_frame
+			var sceneized := map.call("get_sceneization_debug_snapshot") as Dictionary
+			_expect(
+				state,
+				int(sceneized.get("district_label_intersection_count", -1)) == 0,
+				"%s local projection district labels do not intersect" % str(row[0])
+			)
+			screen.call("_update_acceptance_state")
+			var post_interaction_audit := (_acceptance(context).get("ui_layout_collision_audit", {}) as Dictionary)
+			_expect(
+				state,
+				int(post_interaction_audit.get("interactive_control_occlusion_count", -1)) == 0,
+				"%s post-interaction controls do not overlap: %s" % [
+					str(row[0]),
+					JSON.stringify(post_interaction_audit.get("interactive_intersections", [])),
+				]
+			)
 		await _cleanup_context(tree, context)
 
 

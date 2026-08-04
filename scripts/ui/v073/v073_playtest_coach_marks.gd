@@ -77,16 +77,23 @@ func mark_count() -> int:
 
 
 func debug_snapshot() -> Dictionary:
+	var contributes_layout := (
+		_active
+		and not _suspended
+		and _root != null
+		and is_instance_valid(_root)
+		and _root.visible
+	)
 	return {
 		"mark_count": MARKS.size(),
 		"active": _active,
 		"completed": _completed,
 		"current_index": _index,
 		"placement_direction": _placement_direction,
-		"offscreen_count": _offscreen_count,
-		"target_occlusion_count": _target_occlusion_count,
-		"primary_input_block_count": _primary_input_block_count,
-		"map_center_occlusion_count": _map_center_occlusion_count,
+		"offscreen_count": _offscreen_count if contributes_layout else 0,
+		"target_occlusion_count": _target_occlusion_count if contributes_layout else 0,
+		"primary_input_block_count": _primary_input_block_count if contributes_layout else 0,
+		"map_center_occlusion_count": _map_center_occlusion_count if contributes_layout else 0,
 		"gameplay_value_change_count": 0,
 		"hidden_info_disclosure_count": 0,
 	}

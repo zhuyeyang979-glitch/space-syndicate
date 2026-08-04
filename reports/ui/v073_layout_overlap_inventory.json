@@ -135,6 +135,7 @@
   "after_gate_counts": {
     "unintended_major_panel_intersection_count": 0,
     "interactive_control_occlusion_count": 0,
+    "district_label_intersection_count": 0,
     "header_overflow_count": 0,
     "track_panel_overflow_count": 0,
     "planet_draw_outside_stage_count": 0,

@@ -16,6 +16,7 @@
     "overlap_inventory_count_after": 0,
     "unintended_major_panel_intersection_count": 0,
     "interactive_control_occlusion_count": 0,
+    "district_label_intersection_count": 0,
     "header_overflow_count": 0,
     "planet_draw_outside_stage_count": 0,
     "coach_target_occlusion_count": 0,
@@ -99,10 +100,10 @@
     "assessment": "The embedded MCP runtime is capped near 13-16 FPS even with the shader or entire map hidden. The requested 16.7 ms target is not claimed on this device; the values are reported rather than fabricated."
   },
   "automated_tests": {
-    "ui_map_suite": "153/153",
+    "ui_map_suite": "162/162",
     "coach_all_steps": "255/255",
     "responsive_layout": "7/7",
-    "rect_collision_audit": "18/18",
+    "rect_collision_audit": "27/27",
     "header_overflow": "12/12",
     "marker_safe_placement": "12/12",
     "card_hover_containment": "13/13",

@@ -574,6 +574,7 @@ func get_sceneized_child_snapshot() -> Dictionary:
 		"legacy_draw_fallback_used": legacy_draw_fallback_used,
 		"district_polygon_count": _live_node_count(_sceneized_district_polygon_nodes),
 		"district_node_count": _live_node_count(_sceneized_district_nodes),
+		"district_label_intersection_count": _district_label_intersection_count(),
 		"route_segment_count": _live_node_count(_sceneized_route_segment_nodes),
 		"movement_trail_count": _live_node_count(_sceneized_movement_trail_nodes),
 		"city_marker_count": _live_node_count(_sceneized_city_marker_nodes),
@@ -633,8 +634,8 @@ func _update_sceneized_projection_nodes() -> void:
 		return
 	_sync_projection_metrics_for_query()
 	_sync_underlay_components()
-	var overview_compact := _sceneized_overview_compact()
-	var label_positions := _overview_district_label_positions() if overview_compact else {}
+	var compact_nonselected := _sceneized_nonselected_labels_compact()
+	var label_positions := _district_label_positions(compact_nonselected)
 	var city_compact := not _should_draw_table_token_labels()
 	var city_positions := _city_marker_screen_positions(city_compact)
 	for index in range(districts.size()):
@@ -665,7 +666,7 @@ func _update_sceneized_projection_nodes() -> void:
 				"products": entry.get("products", []),
 				"screen_position": label_positions.get(index, center_projection.get("position", Vector2.ZERO)),
 				"selected": index == selected_district,
-				"compact": overview_compact and index != selected_district,
+				"compact": compact_nonselected and index != selected_district,
 				"sunlit": bool(entry.get("sunlit", false)),
 				"legal_target": bool(entry.get("legal_target", true)),
 				"accent": _palette_hex(index),
@@ -786,8 +787,8 @@ func _sync_district_nodes() -> void:
 	_sceneized_district_nodes.clear()
 	if district_layer == null:
 		return
-	var overview_compact := _sceneized_overview_compact()
-	var label_positions := _overview_district_label_positions() if overview_compact else {}
+	var compact_nonselected := _sceneized_nonselected_labels_compact()
+	var label_positions := _district_label_positions(compact_nonselected)
 	var city_compact := not _should_draw_table_token_labels()
 	var city_positions := _city_marker_screen_positions(city_compact)
 	for index in range(districts.size()):
@@ -808,7 +809,7 @@ func _sync_district_nodes() -> void:
 			"products": entry.get("products", []),
 			"screen_position": label_positions.get(index, center_projection.get("position", Vector2.ZERO)),
 			"selected": index == selected_district,
-			"compact": overview_compact and index != selected_district,
+			"compact": compact_nonselected and index != selected_district,
 			"sunlit": bool(entry.get("sunlit", false)),
 			"legal_target": bool(entry.get("legal_target", true)),
 			"accent": _palette_hex(index),
@@ -821,7 +822,11 @@ func _sync_district_nodes() -> void:
 		_sceneized_district_nodes.append(node)
 
 
-func _overview_district_label_positions() -> Dictionary:
+func _sceneized_nonselected_labels_compact() -> bool:
+	return _sceneized_overview_compact() or _map_detail_reduced() or size.y < 320.0
+
+
+func _district_label_positions(compact_nonselected: bool) -> Dictionary:
 	var result := {}
 	var occupied: Array[Rect2] = []
 	var ordered_indices: Array[int] = []
@@ -838,37 +843,79 @@ func _overview_district_label_positions() -> Dictionary:
 		if not bool(projection.get("visible", true)):
 			continue
 		var base := projection.get("position", Vector2.ZERO) as Vector2
-		var selected := index == selected_district
-		var label_size := Vector2(128, 106) if selected else Vector2(92, 28)
+		var label_size := _district_label_size(index, compact_nonselected)
 		var radial := (base - globe_center).normalized()
 		if radial.length_squared() < 0.01:
 			radial = Vector2.UP
 		var tangent := Vector2(-radial.y, radial.x)
-		var offsets: Array[Vector2] = [Vector2.ZERO]
-		if not selected:
-			offsets.append_array([
-				radial * 28.0,
-				tangent * 50.0,
-				-tangent * 50.0,
-				radial * 34.0 + tangent * 48.0,
-				radial * 34.0 - tangent * 48.0,
-				radial * 58.0,
-			])
 		var chosen := _clamp_overview_label_center(base, label_size)
-		for offset in offsets:
+		var chosen_rect := Rect2(chosen - label_size * 0.5, label_size).grow(4.0)
+		var best_overlap_area := INF
+		for offset in _district_label_candidate_offsets(radial, tangent, label_size):
 			var candidate := _clamp_overview_label_center(base + offset, label_size)
 			var candidate_rect := Rect2(candidate - label_size * 0.5, label_size).grow(4.0)
-			var overlaps_existing := false
+			var overlap_area := 0.0
 			for occupied_rect in occupied:
-				if candidate_rect.intersects(occupied_rect):
-					overlaps_existing = true
-					break
-			if not overlaps_existing:
+				if not candidate_rect.intersects(occupied_rect):
+					continue
+				var overlap := candidate_rect.intersection(occupied_rect)
+				overlap_area += overlap.size.x * overlap.size.y
+			if overlap_area < best_overlap_area:
+				best_overlap_area = overlap_area
 				chosen = candidate
+				chosen_rect = candidate_rect
+			if overlap_area <= 0.01:
 				break
 		result[index] = chosen
-		occupied.append(Rect2(chosen - label_size * 0.5, label_size).grow(4.0))
+		occupied.append(chosen_rect)
 	return result
+
+
+func _district_label_size(index: int, compact_nonselected: bool) -> Vector2:
+	if index == selected_district or not compact_nonselected:
+		return Vector2(128.0, 106.0)
+	return Vector2(92.0, 28.0)
+
+
+func _district_label_candidate_offsets(radial: Vector2, tangent: Vector2, label_size: Vector2) -> Array[Vector2]:
+	var offsets: Array[Vector2] = [Vector2.ZERO]
+	var tangent_step := label_size.x + 14.0
+	var radial_step := label_size.y + 14.0
+	offsets.append_array([
+		radial * radial_step,
+		tangent * tangent_step,
+		-tangent * tangent_step,
+		-radial * radial_step,
+	])
+	for ring in range(1, 4):
+		for radial_slot in range(-ring, ring + 1):
+			for tangent_slot in range(-ring, ring + 1):
+				if maxi(absi(radial_slot), absi(tangent_slot)) != ring:
+					continue
+				offsets.append(
+					radial * float(radial_slot) * radial_step
+					+ tangent * float(tangent_slot) * tangent_step
+				)
+	return offsets
+
+
+func _district_label_intersection_count() -> int:
+	var visible_labels: Array[Control] = []
+	for node_variant in _sceneized_district_nodes:
+		var node := node_variant as Control
+		if node != null and is_instance_valid(node) and node.visible:
+			visible_labels.append(node)
+	var intersections := 0
+	for first_index in range(visible_labels.size()):
+		var first_rect := visible_labels[first_index].get_rect().grow(2.0)
+		for second_index in range(first_index + 1, visible_labels.size()):
+			if first_rect.intersects(visible_labels[second_index].get_rect().grow(2.0)):
+				intersections += 1
+	return intersections
+
+
+func _overview_district_label_positions() -> Dictionary:
+	return _district_label_positions(true)
 
 
 func _city_marker_screen_positions(compact: bool) -> Dictionary:
