@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "task_id": "ALPHA_0_5_C1_V074_ROGUELIKE_GEOGRAPHY_WAREHOUSE_COMPLETE_FACILITY_CUTOVER_INTERACTIVE_GLOBE_RESPONSIVE_UI_AND_LEGACY_MAIN_RETIREMENT",
+  "lane": "C",
+  "status": "green_for_lane_handoff",
+  "base_sha": "05c2415014187e902592bf3a8d1291222f738694",
+  "branch": "codex/v074-lane-c-ai-dynamic-map-05c2415",
+  "ownership": {
+    "owned_files": [
+      "scripts/v074/ai/**",
+      "scenes/tools/v074/V074AIDynamicMapBench.tscn",
+      "tests/v074_ai_*.gd",
+      "reports/v074/ai/**"
+    ],
+    "production_cutover_domains": [
+      "map_ai_projection",
+      "warehouse_ai_projection"
+    ],
+    "runtime_hot_files_modified": 0,
+    "ui_hot_files_modified": 0
+  },
+  "adapter": {
+    "class_name": "V074AIDynamicMapAdapter",
+    "ruleset_id": "v0.7.4",
+    "api": "adapt(actor_id, map_receipt, public_facilities, legal_targets, own_private_facts)",
+    "indexed_query": "indexed_legal_targets_for_card",
+    "source_payload_kind": "plain_dictionary",
+    "gameplay_owner_count": 0,
+    "save_owner_count": 0,
+    "rng_owner_count": 0,
+    "query_full_slot_scan_count": 0,
+    "indexed_facility_types": [
+      "factory",
+      "market",
+      "warehouse"
+    ],
+    "indexes": [
+      "slots_by_facility_type_and_industry",
+      "regions_by_terrain",
+      "neighbors_by_region",
+      "legal_targets_by_card_definition",
+      "warehouse_slots_by_industry"
+    ]
+  },
+  "coverage": {
+    "region_counts": [6, 8, 12, 16, 20, 24, 30],
+    "max_facility_slot_count": 540,
+    "terrain_classes": ["land", "ocean"],
+    "facility_action_modes": [
+      "BUILD_NEW",
+      "UPGRADE_OWN",
+      "REPAIR_OWN"
+    ],
+    "empty_hand_observation_green": true,
+    "damaged_warehouse_zero_throughput_observation_green": true,
+    "warehouse_public_capacity_projection_green": true,
+    "warehouse_public_throughput_projection_green": true,
+    "warehouse_private_stock_disclosure_count": 0,
+    "warehouse_private_logistics_disclosure_count": 0,
+    "ai_hidden_info_violation_count": 0,
+    "hardcoded_alpha_zeta_production_reference_count": 0,
+    "factory_market_only_assumption_count": 0
+  },
+  "focused_tests": {
+    "passed": 415,
+    "total": 415,
+    "observation": "290/290",
+    "privacy": "67/67",
+    "legal_target": "31/31",
+    "architecture": "23/23",
+    "performance": "4/4",
+    "script_error_count": 0
+  },
+  "performance": {
+    "ai_target_query_30_region_p95_ms": 0.011,
+    "ai_target_query_target_ms": 16.7,
+    "ai_observation_build_30_region_p95_ms": 1219.107,
+    "query_sample_count": 10000,
+    "build_sample_count": 40,
+    "query_full_slot_scan_count": 0
+  },
+  "mcp": {
+    "role": "C",
+    "port": 9023,
+    "godot_version": "4.7-stable",
+    "changed_script_validation": "8/8",
+    "changed_scene_load": "1/1",
+    "bench_scene": "res://scenes/tools/v074/V074AIDynamicMapBench.tscn",
+    "bench_status": "GREEN - read-only indexed observation",
+    "bench_ai_target_query_30_region_p95_ms": 0.011,
+    "bench_facility_slot_count": 540,
+    "bench_source_unchanged": true,
+    "bench_full_slot_query_scan_count": 0,
+    "changed_file_error_count": 0,
+    "runtime_error_count": 0,
+    "play_mode_stopped": true,
+    "screenshot": "reports/v074/ai/v074_ai_dynamic_map_bench.png",
+    "screenshot_sha256": "3d1ff619bd4a4b5132d3808d2756f0ba74d18356965469f72ed717f6f325278e"
+  },
+  "excluded_generated_noise": {
+    "count_observed_before_staging": 132,
+    "included_in_commit": false,
+    "kinds": [
+      "baseline asset .import rewrites",
+      "unrelated legacy .gd.uid files"
+    ]
+  },
+  "known_gaps": [
+    "The active coordinator must wire this adapter to the integrated Lane A map receipt and Lane B warehouse public projection in shared runtime hot files.",
+    "Lane C validates observation, privacy, indexing, and query performance; it does not claim a production full-match or AI-policy acceptance run.",
+    "The 30-region observation build p95 is 1219.107 ms in the synthetic 540-slot fixture, so adaptation must remain receipt-revision driven and never run once per card or frame.",
+    "The first fresh-editor MCP write encountered the known filesystem first-scan reentry and unrelated baseline parse diagnostics; a clean role-local restart produced zero changed-file and runtime errors."
+  ]
+}
