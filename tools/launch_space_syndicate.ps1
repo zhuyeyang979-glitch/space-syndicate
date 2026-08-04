@@ -132,7 +132,22 @@ foreach ($candidate in (Sort-GodotCandidates $godotCandidates)) {
 
 if ($godot) {
   $godotVersion = Get-GodotDisplayVersion $godot
-  Write-LaunchLog "Launching project '$projectRoot' with Godot $godotVersion '$godot'."
+  if (-not $env:SPACE_SYNDICATE_BUILD_SHA) {
+    try {
+      $candidateBuildSha = (& git -C $projectRoot rev-parse HEAD 2>$null).Trim()
+      if ($candidateBuildSha -match '^[0-9a-fA-F]{40}$') {
+        $env:SPACE_SYNDICATE_BUILD_SHA = $candidateBuildSha.ToLowerInvariant()
+      }
+    } catch {
+      # The game remains launchable outside a Git worktree; telemetry marks it unknown-local.
+    }
+  }
+  $buildLabel = if ($env:SPACE_SYNDICATE_BUILD_SHA) {
+    $env:SPACE_SYNDICATE_BUILD_SHA
+  } else {
+    "unknown-local"
+  }
+  Write-LaunchLog "Launching project '$projectRoot' at build '$buildLabel' with Godot $godotVersion '$godot'."
   Push-Location $projectRoot
   & $godot --path $projectRoot
   Pop-Location

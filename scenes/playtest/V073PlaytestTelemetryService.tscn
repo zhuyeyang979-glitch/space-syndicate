@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://i7rqftmqh1wa"]
+
+[ext_resource type="Script" uid="uid://dy1rr8lexu68y" path="res://scripts/playtest/v073_playtest_telemetry_service.gd" id="1_telemetry"]
+
+[node name="V073PlaytestTelemetryService" type="Node" unique_id=1642692560]
+unique_name_in_owner = true
+editor_description = "Observation-only V0.7.3 playtest telemetry. Owns no gameplay, Save, RNG, clock, or public log state."
+script = ExtResource("1_telemetry")

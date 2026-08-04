@@ -1,0 +1,59 @@
+[gd_scene format=3 uid="uid://b1cf0eoghd4wf"]
+
+[ext_resource type="Script" uid="uid://bymv72kvw0703" path="res://scripts/ui/v073/v073_playtest_marker_panel.gd" id="1_marker"]
+
+[node name="V073PlaytestMarkerPanel" type="PanelContainer" unique_id=307951592]
+custom_minimum_size = Vector2(216, 34)
+mouse_filter = 1
+script = ExtResource("1_marker")
+
+[node name="MarkerRow" type="HBoxContainer" parent="." unique_id=2055282167]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="MarkerNote" type="LineEdit" parent="MarkerRow" unique_id=1973642968]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(62, 30)
+layout_mode = 2
+placeholder_text = "备注"
+max_length = 280
+
+[node name="ConfusedButton" type="Button" parent="MarkerRow" unique_id=1939390069]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(38, 30)
+layout_mode = 2
+tooltip_text = "记录困惑时刻"
+focus_mode = 0
+text = "困惑"
+
+[node name="FrustratedButton" type="Button" parent="MarkerRow" unique_id=769242347]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(38, 30)
+layout_mode = 2
+tooltip_text = "记录挫败时刻"
+focus_mode = 0
+text = "挫败"
+
+[node name="FunButton" type="Button" parent="MarkerRow" unique_id=1330858460]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(38, 30)
+layout_mode = 2
+tooltip_text = "记录有趣时刻"
+focus_mode = 0
+text = "有趣"
+
+[node name="MarkerClose" type="Button" parent="MarkerRow" unique_id=506246979]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(26, 30)
+layout_mode = 2
+tooltip_text = "收起试玩标记"
+focus_mode = 0
+text = "×"
+
+[node name="MarkerReopen" type="Button" parent="." unique_id=434543935]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "展开试玩标记"
+focus_mode = 0
+text = "试玩标记"

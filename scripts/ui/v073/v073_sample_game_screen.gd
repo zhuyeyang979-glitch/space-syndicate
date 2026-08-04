@@ -2,6 +2,10 @@ extends Control
 class_name V073SampleGameScreen
 
 signal application_intent_requested(intent: Dictionary)
+signal playtest_presentation_event(event_type: String, payload: Dictionary)
+signal playtest_feedback_submitted(feedback: Dictionary)
+signal playtest_feedback_skipped
+# MCP_FINALIZE
 
 const RULESET_ID := "v0.7.3"
 const COMPACT_VIEWPORT_HEIGHT := 820.0
@@ -90,9 +94,14 @@ const MARKET_ART_PATH := (
 @onready var _settlement_title: Label = %SettlementTitle
 @onready var _settlement_standings: VBoxContainer = %SettlementStandings
 @onready var _toast_label: Label = %ToastLabel
+@onready var _seed_input: LineEdit = %SeedInput
+@onready var _coach_marks: Node = %V073PlaytestCoachMarks
+@onready var _marker_panel: Node = %V073PlaytestMarkerPanel
+@onready var _questionnaire: Node = %V073PlaytestQuestionnaire
 
 var acceptance_state: Dictionary = {}
 var _flow: Node
+var _telemetry: Node
 var _snapshot: Dictionary = {}
 var _capabilities: Dictionary = {}
 var _selected_card_id := ""
@@ -107,6 +116,10 @@ var _normal_card_render_count := 0
 var _normal_card_art_count := 0
 var _commodity_card_render_count := 0
 var _commodity_card_art_count := 0
+var _last_public_ui_surface := "table"
+var _last_settlement_id := ""
+var _pending_track_event: Dictionary = {}
+var _pending_target_event: Dictionary = {}
 var _interaction_counts := {
 	"new_game": 0,
 	"card_selected": 0,
@@ -133,6 +146,11 @@ func _ready() -> void:
 	_start_overlay.visible = true
 	_region_popup.visible = false
 	_settlement_overlay.visible = false
+	_accelerate_button.visible = (
+		OS.get_environment("SPACE_SYNDICATE_SANITY_MODE") == "1"
+	)
+	_seed_input.text = "900626424"
+	_bind_playtest_surfaces()
 	_update_acceptance_state()
 
 
@@ -150,6 +168,13 @@ func bind_application_flow(
 		"save_notice",
 		"V0.7.3样品暂不支持中途保存"
 	))
+	_update_acceptance_state()
+
+
+func bind_playtest_telemetry(telemetry: Node) -> void:
+	_telemetry = telemetry
+	if _telemetry != null and _telemetry.has_signal("export_status_changed"):
+		_telemetry.connect("export_status_changed", _on_export_status_changed)
 	_update_acceptance_state()
 
 
@@ -172,6 +197,7 @@ func apply_snapshot(snapshot: Dictionary) -> void:
 	_refresh_queue()
 	_refresh_targets()
 	_refresh_history()
+	_refresh_playtest_context()
 	_update_acceptance_state()
 
 
@@ -188,12 +214,21 @@ func apply_receipt(receipt: Dictionary) -> void:
 			if accepted:
 				_start_overlay.visible = false
 				_interaction_counts["new_game"] += 1
+				_coach_marks.call("restart_from_settings")
 		"track.acquire":
 			if accepted:
 				_interaction_counts["track_acquired"] += 1
+				var track_type := "track_commodity_claimed" \
+					if str(_pending_track_event.get("card_kind", "")) == "commodity_card" \
+					else "track_normal_card_purchased"
+				_emit_playtest_event(track_type, _pending_track_event)
+			_pending_track_event = {}
 		"card.queue":
 			if accepted:
 				_interaction_counts["target_bound"] += 1
+				_pending_target_event["public_reason_code"] = reason_code
+				_emit_playtest_event("target_bound", _pending_target_event)
+				_pending_target_event = {}
 				_clear_selected_card()
 		"queue.reorder":
 			if accepted:
@@ -212,11 +247,13 @@ func apply_receipt(receipt: Dictionary) -> void:
 				_interaction_counts["accelerated"] += 1
 	_show_toast(reason_code, accepted)
 	_action_status.text = reason_code
+	_refresh_playtest_context()
 	_update_acceptance_state()
 
 
 func present_final_settlement(settlement: Dictionary) -> void:
 	_settlement_overlay.visible = true
+	_last_settlement_id = str(settlement.get("settlement_id", "settlement"))
 	_settlement_title.text = "FINAL SETTLEMENT · %s" % str(
 		settlement.get("winner_player_id", "")
 	)
@@ -234,6 +271,7 @@ func present_final_settlement(settlement: Dictionary) -> void:
 		_settlement_standings.add_child(label)
 	_interaction_counts["settlement_presented"] += 1
 	_update_acceptance_state()
+	_refresh_playtest_context()
 
 
 func present_runtime_fault(receipt: Dictionary) -> void:
@@ -256,19 +294,25 @@ func _process(delta: float) -> void:
 func _connect_static_controls() -> void:
 	_new_game_button.pressed.connect(func() -> void:
 		_start_overlay.visible = true
+		_refresh_playtest_context()
 	)
 	for count in [3, 4, 6, 8]:
 		var button := get_node("%%Start%dButton" % count) as Button
 		button.pressed.connect(_request_new_game.bind(count))
 	%StartOverlayClose.pressed.connect(func() -> void:
 		_start_overlay.visible = false
+		_refresh_playtest_context()
 	)
 	%RegionPopupClose.pressed.connect(func() -> void:
 		_region_popup.visible = false
+		_emit_playtest_event("ui_backtracked", {"ui_surface": "region_popup"})
+		_refresh_playtest_context()
 	)
-	%SettlementClose.pressed.connect(func() -> void:
-		_settlement_overlay.visible = false
+	%SettlementClose.pressed.connect(_acknowledge_final_settlement)
+	%GuideButton.pressed.connect(func() -> void:
+		_coach_marks.call("restart_from_settings")
 	)
+	%RandomSeedButton.pressed.connect(_set_random_seed)
 	_apply_stance_button.pressed.connect(_request_stance)
 	_merge_button.pressed.connect(_request_merge)
 	_finish_button.pressed.connect(func() -> void:
@@ -340,9 +384,12 @@ func _apply_responsive_layout() -> void:
 
 
 func _request_new_game(player_count: int) -> void:
+	var seed_value := 900626424
+	if _seed_input.text.strip_edges().is_valid_int():
+		seed_value = int(_seed_input.text.strip_edges())
 	_emit_intent("new_game.start", {
 		"player_count": player_count,
-		"seed": 730045 + player_count,
+		"seed": seed_value,
 	})
 
 
@@ -489,6 +536,7 @@ func _refresh_track() -> void:
 		), badge)
 		card.custom_minimum_size = Vector2(132, 106)
 		card.activated.connect(_on_track_card_activated)
+		card.hover_summary.connect(_on_card_hover_summary.bind("unified_track"))
 		_track_rail.add_child(card)
 		if kind == "normal_card":
 			_normal_card_render_count += 1
@@ -504,6 +552,7 @@ func _on_track_card_activated(payload: Dictionary) -> void:
 	if not bool(payload.get("claimable", false)):
 		_show_toast("替补牌将在下一次滚动后解锁", false)
 		return
+	_pending_track_event = _card_summary(payload, "unified_track")
 	_emit_intent("track.acquire", {
 		"source_instance_id": str(payload.get("instance_id", "")),
 	})
@@ -577,6 +626,7 @@ func _refresh_hand() -> void:
 		)
 		card.activated.connect(_on_hand_card_activated)
 		card.drag_started.connect(_on_hand_card_dragged)
+		card.hover_summary.connect(_on_card_hover_summary.bind("hand_dock"))
 		_hand_rail.add_child(card)
 		_normal_card_render_count += 1
 		if art != null:
@@ -599,11 +649,21 @@ func _refresh_hand() -> void:
 
 
 func _on_hand_card_activated(payload: Dictionary) -> void:
+	var incoming_id := str(payload.get("instance_id", ""))
+	if incoming_id == _selected_card_id and not incoming_id.is_empty():
+		_emit_playtest_event("card_deselected", _card_summary(payload, "hand_dock"))
+		_emit_playtest_event("target_cancelled", {"source_surface": "hand_dock"})
+		_clear_selected_card()
+		return
 	_selected_card_id = str(payload.get("instance_id", ""))
 	_selected_card_definition_id = str(payload.get("definition_id", ""))
 	_selected_card_color = str(payload.get("primary_color", ""))
 	_selected_card_type = str(payload.get("card_type", ""))
 	_interaction_counts["card_selected"] += 1
+	_last_public_ui_surface = "hand_dock"
+	var summary := _card_summary(payload, "hand_dock")
+	_emit_playtest_event("card_selected", summary)
+	_emit_playtest_event("target_selection_started", summary)
 	_action_status.text = "已选 %s · 请选择地区目标" % _card_type_label(
 		_selected_card_definition_id
 	)
@@ -651,6 +711,7 @@ func _refresh_queue() -> void:
 		up.disabled = index == 0
 		var row_index := index
 		up.pressed.connect(func() -> void:
+			_last_public_ui_surface = "queue"
 			_emit_intent("queue.reorder", {
 				"from_index": row_index,
 				"to_index": row_index - 1,
@@ -662,6 +723,7 @@ func _refresh_queue() -> void:
 		down.tooltip_text = "延后"
 		down.disabled = index >= queue.size() - 1
 		down.pressed.connect(func() -> void:
+			_last_public_ui_surface = "queue"
 			_emit_intent("queue.reorder", {
 				"from_index": row_index,
 				"to_index": row_index + 1,
@@ -717,6 +779,7 @@ func _refresh_targets() -> void:
 
 
 func _on_region_pressed(region_id: String) -> void:
+	_last_public_ui_surface = "target_panel"
 	if _selected_card_id.is_empty():
 		_show_region_popup(region_id)
 		return
@@ -724,6 +787,15 @@ func _on_region_pressed(region_id: String) -> void:
 	if option.is_empty():
 		_show_toast("该地区不是当前卡牌的合法目标", false)
 		return
+	_pending_target_event = {
+		"card_definition_id": _selected_card_definition_id,
+		"color_id": _selected_card_color,
+		"region_id": region_id,
+		"facility_type": str(option.get("facility_type", "")),
+		"facility_action_mode": str(option.get("facility_action_mode", "")),
+		"asset_cost": int(option.get("asset_cost", 0)),
+		"source_surface": "target_panel",
+	}
 	_emit_intent("card.queue", {
 		"card_instance_id": _selected_card_id,
 		"target_slot_id": str(option.get("target_slot_id", "")),
@@ -772,6 +844,12 @@ func _show_region_popup(region_id: String) -> void:
 		"日照" if bool(solar.get("sunlit", false)) else "暗面",
 	]
 	_interaction_counts["region_popup"] += 1
+	_last_public_ui_surface = "region_popup"
+	_emit_playtest_event("region_popup_opened", {
+		"region_id": region_id,
+		"ui_surface": "region_popup",
+	})
+	_refresh_playtest_context()
 	_update_acceptance_state()
 
 
@@ -847,11 +925,174 @@ func _clear_children(container: Node) -> void:
 		child.queue_free()
 
 
+func _bind_playtest_surfaces() -> void:
+	_marker_panel.connect("marker_requested", _on_marker_requested)
+	_coach_marks.connect("coach_mark_shown", _on_coach_mark_shown)
+	_coach_marks.connect("coach_mark_skipped", _on_coach_mark_skipped)
+	_questionnaire.connect(
+		"questionnaire_presented",
+		_on_questionnaire_presented
+	)
+	_questionnaire.connect(
+		"questionnaire_submitted",
+		_on_questionnaire_submitted
+	)
+	_questionnaire.connect("questionnaire_skipped", _on_questionnaire_skipped)
+	_coach_marks.call("bind_anchors", {
+		"dock": $RootMargin/Shell/DockPanel,
+		"assets": %AssetRail,
+		"hand": %HandRail,
+		"track": $RootMargin/Shell/TrackPanel,
+		"targets": $RootMargin/Shell/TargetPanel,
+		"lock": %LockButton,
+		"queue": %QueueRail,
+		"phase": %PhaseLabel,
+		"history": %HistoryLabel,
+		"save": %SaveNotice,
+	})
+	_refresh_playtest_context()
+
+
+func _emit_playtest_event(event_type: String, payload: Dictionary = {}) -> void:
+	playtest_presentation_event.emit(event_type, payload.duplicate(true))
+
+
+func _on_card_hover_summary(payload: Dictionary, surface: String) -> void:
+	_last_public_ui_surface = surface
+	var summary := _card_summary(payload, surface)
+	_emit_playtest_event("card_hover_summary", summary)
+	if surface == "unified_track":
+		_emit_playtest_event("track_offer_seen", summary)
+
+
+func _card_summary(payload: Dictionary, surface: String) -> Dictionary:
+	return {
+		"card_definition_id": str(payload.get(
+			"card_definition_id",
+			payload.get("definition_id", "unknown")
+		)),
+		"card_kind": str(payload.get("card_kind", "normal_card")),
+		"color_id": str(payload.get("primary_color", "unknown")),
+		"asset_cost": int(payload.get("primary_asset_cost", 0)),
+		"source_surface": surface,
+	}
+
+
+func _on_marker_requested(marker_type: String, note: String) -> void:
+	_emit_playtest_event("playtest_marker_recorded", {
+		"marker_type": marker_type,
+		"note": note,
+		"interaction_mode": _public_interaction_mode(),
+		"ui_surface": _last_public_ui_surface,
+	})
+
+
+func _on_coach_mark_shown(mark_id: String) -> void:
+	_emit_playtest_event("coach_mark_shown", {"mark_id": mark_id})
+
+
+func _on_coach_mark_skipped(mark_id: String, skip_all: bool) -> void:
+	_emit_playtest_event("coach_mark_skipped", {
+		"mark_id": mark_id,
+		"skip_all": skip_all,
+	})
+
+
+func _on_questionnaire_presented(settlement_id: String) -> void:
+	_emit_playtest_event("questionnaire_presented", {
+		"settlement_id": settlement_id,
+	})
+	_refresh_playtest_context()
+
+
+func _on_questionnaire_submitted(values: Dictionary) -> void:
+	playtest_feedback_submitted.emit(values.duplicate(true))
+	_refresh_playtest_context()
+
+
+func _on_questionnaire_skipped() -> void:
+	playtest_feedback_skipped.emit()
+	_refresh_playtest_context()
+
+
+func _acknowledge_final_settlement() -> void:
+	_settlement_overlay.visible = false
+	_emit_playtest_event("ui_backtracked", {
+		"ui_surface": "final_settlement",
+	})
+	_questionnaire.call(
+		"present_after_final_settlement",
+		_last_settlement_id
+	)
+	_refresh_playtest_context()
+
+
+func _set_random_seed() -> void:
+	var value := absi(
+		int(Time.get_unix_time_from_system() * 1000.0)
+		+ Time.get_ticks_msec()
+	)
+	_seed_input.text = str(maxi(1, value))
+
+
+func _refresh_playtest_context() -> void:
+	if _coach_marks == null:
+		return
+	var questionnaire_visible := bool(_questionnaire.call("is_presented"))
+	_coach_marks.call("apply_public_context", {
+		"match_started": bool(_snapshot.get("match_started", false)),
+		"phase": str(_snapshot.get("phase", "idle")),
+		"card_selected": not _selected_card_id.is_empty(),
+		"queue_count": (_snapshot.get("queued_actions", []) as Array).size(),
+		"submission_locked": bool(_snapshot.get("submission_locked", false)),
+		"modal_visible": (
+			_start_overlay.visible
+			or _region_popup.visible
+			or _settlement_overlay.visible
+			or questionnaire_visible
+		),
+	})
+
+
+func _public_interaction_mode() -> String:
+	if bool(_questionnaire.call("is_presented")):
+		return "questionnaire"
+	if _settlement_overlay.visible:
+		return "final_settlement"
+	if _region_popup.visible:
+		return "region_popup"
+	if _start_overlay.visible:
+		return "pre_game"
+	var phase := str(_snapshot.get("phase", "idle"))
+	if phase == "submission":
+		if bool(_snapshot.get("submission_locked", false)):
+			return "submission_locked"
+		if not _selected_card_id.is_empty():
+			return "target_selecting"
+		if not (_snapshot.get("queued_actions", []) as Array).is_empty():
+			return "submission_queued"
+		return "submission_idle"
+	return phase
+
+
+func _on_export_status_changed(success: bool, message: String) -> void:
+	if not is_inside_tree():
+		return
+	_show_toast(
+		"试玩报告已保存：%s" % message if success else "试玩报告导出失败：%s" % message,
+		success
+	)
+	_update_acceptance_state()
+
+
 func _update_acceptance_state() -> void:
 	var debug := {}
 	if _flow != null and _flow.has_method("debug_snapshot"):
 		debug = _flow.call("debug_snapshot") as Dictionary
 	var runtime := debug.get("runtime", {}) as Dictionary
+	var telemetry_debug := {}
+	if _telemetry != null and _telemetry.has_method("debug_snapshot"):
+		telemetry_debug = _telemetry.call("debug_snapshot") as Dictionary
 	acceptance_state = {
 		"schema": "V073SampleAcceptanceStateV1",
 		"ruleset_id": RULESET_ID,
@@ -914,4 +1155,22 @@ func _update_acceptance_state() -> void:
 		"selected_card_id": _selected_card_id,
 		"region_popup_visible": _region_popup.visible,
 		"settlement_visible": _settlement_overlay.visible,
+		"playtest_telemetry_ready": bool(telemetry_debug.get("ready", false)),
+		"playtest_hidden_info_field_count": int(telemetry_debug.get(
+			"hidden_info_field_count",
+			0
+		)),
+		"playtest_export_green": bool(telemetry_debug.get(
+			"export_succeeded",
+			false
+		)),
+		"playtest_export_paths": (
+			telemetry_debug.get("export_paths", {}) as Dictionary
+		).duplicate(true),
+		"coach_mark_count": int((_coach_marks.call(
+			"debug_snapshot"
+		) as Dictionary).get("mark_count", 0)),
+		"playtest_markers_ready": _marker_panel != null,
+		"final_questionnaire_ready": _questionnaire != null,
+		"questionnaire_visible": bool(_questionnaire.call("is_presented")),
 	}

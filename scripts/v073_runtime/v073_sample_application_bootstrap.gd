@@ -3,6 +3,10 @@ class_name V073SampleApplicationBootstrap
 
 @onready var _application_flow: V073SampleApplicationFlow = %V073RuntimeComposition
 @onready var _game_screen: Control = %V073SampleGameScreen
+@onready var _playtest_telemetry: Node = (
+	$V073RuntimeComposition/V073PlaytestTelemetryService
+)
+# MCP_FINALIZE
 
 
 func _ready() -> void:
@@ -12,6 +16,8 @@ func _ready() -> void:
 		_application_flow.identity_snapshot(),
 		_application_flow.capability_snapshot()
 	)
+	_playtest_telemetry.call("bind_sources", _application_flow, _game_screen)
+	_game_screen.call("bind_playtest_telemetry", _playtest_telemetry)
 	_game_screen.connect(
 		"application_intent_requested",
 		_on_application_intent_requested
