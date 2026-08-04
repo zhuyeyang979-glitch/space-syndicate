@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "amendment_document_id": "space_syndicate.v074.amendment_from_v073",
+  "from_constitution_id": "space_syndicate.v073.complete",
+  "to_constitution_id": "space_syndicate.v074.complete",
+  "from_ruleset_id": "v0.7.3",
+  "to_ruleset_id": "v0.7.4",
+  "status": "approved_and_frozen",
+  "inheritance_mode": "all_v073_rules_except_explicit_v074_amendments",
+  "amendments": [
+    {
+      "amendment_id": "V074-MAP-1",
+      "target_rules": ["v074.map.dynamic_region_count", "v074.map.stable_region_identity"],
+      "supersedes": ["fixed_six_region_sample_geometry", "hardcoded_alpha_zeta_region_identity"],
+      "decision": "Region count is an independent 6-30 supported request value with no constitutional hard maximum."
+    },
+    {
+      "amendment_id": "V074-MAP-2",
+      "target_rules": ["v074.map.seeded_authoritative_genesis", "v074.map.connected_spherical_partition", "v074.map.organic_boundary_complexity"],
+      "supersedes": ["presentation_only_region_randomization", "low_vertex_planar_voronoi_regions"],
+      "decision": "One seeded authoritative geodesic microcell genesis owns replayable region geometry, topology, and shared boundaries."
+    },
+    {
+      "amendment_id": "V074-MAP-3",
+      "target_rules": ["v074.map.land_ocean_terrain", "v074.map.geometric_solar_exposure"],
+      "supersedes": ["surface_only_terrain", "index_or_parity_solar_shortcut"],
+      "decision": "Land/ocean and geometric sunlight become authoritative map facts without adding terrain gameplay modifiers."
+    },
+    {
+      "amendment_id": "V074-FACILITY-1",
+      "target_rules": ["v074.facility.complete_registered_types", "v074.facility.starter_type_subset", "v074.facility.dynamic_slot_registry"],
+      "supersedes": ["starter_subset_as_complete_registry", "factory_market_only_slots", "twelve_slots_per_region"],
+      "decision": "Factory, market, and warehouse form the complete registry; only factory and market are Starters; every region receives 18 calculated slots."
+    },
+    {
+      "amendment_id": "V074-WAREHOUSE-1",
+      "target_rules": ["v074.warehouse.standard_card_identity", "v074.warehouse.capacity_and_throughput", "v074.warehouse.solar_efficiency", "v074.warehouse.public_private_projection"],
+      "supersedes": ["warehouse_retired_or_decorative"],
+      "decision": "Warehouse returns as a standard facility with real capacity/throughput, facility actions, solar efficiency, and closed privacy."
+    },
+    {
+      "amendment_id": "V074-ARCH-1",
+      "target_rules": ["v074.architecture.legacy_main_retirement"],
+      "supersedes": ["transitional_legacy_main_facade"],
+      "decision": "The legacy scripts/main.gd monolith is physically deleted without a compatibility copy."
+    }
+  ],
+  "unchanged_v073_invariants": {
+    "fixed_hidden_round_robin": true,
+    "prebound_targets": true,
+    "full_asset_reservation": true,
+    "facility_contention_fizzle": true,
+    "sunlit_multiplier": 2.0,
+    "dark_multiplier": 1.0,
+    "interactive_counters_enabled": false,
+    "new_game_only_sample": true,
+    "save_resume_enabled": false
+  },
+  "atomic_cutover_domains": [
+    "map_genesis",
+    "region_registry",
+    "terrain_registry",
+    "facility_type_registry",
+    "facility_slot_registry",
+    "warehouse_runtime",
+    "warehouse_card_catalog",
+    "warehouse_ai_projection",
+    "warehouse_player_projection",
+    "solar_geometry",
+    "planet_presentation",
+    "map_target_selection"
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "defaults_id": "space_syndicate.v074.balance_defaults.roguelike_geography_warehouse_sample",
+  "ruleset_id": "v0.7.4",
+  "status": "frozen_first_v074_human_sample_defaults_not_final_commercial_balance",
+  "source_profile": {
+    "profile_id": "v073_human_baseline_01",
+    "profile_fingerprint": "d696623d8cb3371d08c8870189927a53e48212ca30e9f276bc81b6491b01fbd2",
+    "inherited_non_amended_balance_value_change_count": 0
+  },
+  "map_defaults": {
+    "current_supported_region_count_min": 6,
+    "current_supported_region_count_max": 30,
+    "constitutional_region_count_hard_max": null,
+    "simple_default_region_count": 8,
+    "standard_default_region_count": 16,
+    "complex_default_region_count": 24,
+    "default_geography_complexity": "STANDARD",
+    "default_land_ocean_profile": "BALANCED",
+    "solar_threshold": 0.0
+  },
+  "geography_tunables": {
+    "microgrid_subdivision_by_complexity": {"SIMPLE": 2, "STANDARD": 3, "COMPLEX": 4},
+    "minimum_region_area_ratio": 0.006,
+    "maximum_region_area_ratio_to_smallest": 6.0,
+    "minimum_feature_microcell_count": 1,
+    "maximum_neighbor_count": 14,
+    "growth_organic_weight": {"SIMPLE": 0.08, "STANDARD": 0.24, "COMPLEX": 0.42},
+    "growth_terrain_alignment_weight": {"SIMPLE": 0.04, "STANDARD": 0.10, "COMPLEX": 0.16},
+    "target_land_ratio": {"CONTINENTAL": 0.68, "BALANCED": 0.52, "ARCHIPELAGO": 0.36},
+    "boundary_vertex_median_minimum": {"SIMPLE": 10, "STANDARD": 18, "COMPLEX": 28},
+    "concave_region_ratio_minimum": {"SIMPLE": 0.0, "STANDARD": 0.35, "COMPLEX": 0.60}
+  },
+  "facility_structure": {
+    "registered_facility_types": ["factory", "market", "warehouse"],
+    "starter_facility_types": ["factory", "market"],
+    "standard_track_facility_types": ["factory", "market", "warehouse"],
+    "industry_ids": ["life", "energy", "industry", "technology", "commerce", "shipping"],
+    "facility_slot_count_per_region": 18,
+    "warehouse_starter_card_count": 0
+  },
+  "warehouse_numeric_authority": {
+    "capacity": "existing_authoritative_authoring_or_lane_b_semantic_inventory",
+    "ingress_throughput": "existing_authoritative_authoring_or_lane_b_semantic_inventory",
+    "egress_throughput": "existing_authoritative_authoring_or_lane_b_semantic_inventory",
+    "silent_numeric_guess_allowed": false,
+    "sunlit_ingress_multiplier": 2.0,
+    "dark_ingress_multiplier": 1.0,
+    "sunlit_egress_multiplier": 2.0,
+    "dark_egress_multiplier": 1.0
+  },
+  "tunable_ids": [
+    "minimum_region_area_ratio",
+    "maximum_region_area_ratio_to_smallest",
+    "minimum_feature_microcell_count",
+    "maximum_neighbor_count",
+    "growth_organic_weight",
+    "growth_terrain_alignment_weight",
+    "target_land_ratio"
+  ],
+  "structural_non_tunable_ids": [
+    "current_supported_region_count_min",
+    "current_supported_region_count_max",
+    "region_count_independent_from_complexity",
+    "connected_spherical_partition",
+    "terrain_classes_land_ocean_only",
+    "registered_facility_types",
+    "starter_facility_types",
+    "facility_slot_unique_key",
+    "warehouse_not_starter",
+    "geometric_solar_exposure"
+  ]
+}
