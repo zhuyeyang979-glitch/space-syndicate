@@ -10,9 +10,9 @@
     "mcp_accepted_implementation_sha": "2aafa7de7a2d330551c4c7aef0114a1819e5ddc6",
     "mcp_accepted_implementation_tree": "167cc2803015c92487641026d265f26a77d21de4",
     "branch": "codex/v073-human-playtest-ready-804ed1f",
-    "pull_request": null,
-    "pull_request_url": "",
-    "pull_request_state_at_handoff": "pending_creation"
+    "pull_request": 87,
+    "pull_request_url": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/87",
+    "pull_request_state_at_handoff": "draft"
   },
   "parallel_execution": {
     "requested_subagents": 6,
