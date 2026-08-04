@@ -132,13 +132,33 @@ static func reference_records(paths: Array[String]) -> Array[Dictionary]:
 		for line_index in range(lines.size()):
 			var line := str(lines[line_index])
 			for token in tokens:
-				if line.contains(token):
+				if _line_is_executable_reference(line, token):
 					result.append({
 						"path": path,
 						"line": line_index + 1,
 						"token": token,
 					})
 	return result
+
+
+static func _line_is_executable_reference(line: String, token: String) -> bool:
+	if not line.contains(token):
+		return false
+	var source := line.strip_edges()
+	if source.begins_with("#"):
+		return false
+	if token == ROOT_MAIN_TOKEN:
+		return (
+			source.contains("get_node(")
+			or source.contains("get_node_or_null(")
+			or source.contains("NodePath(")
+		)
+	return (
+		source.contains("load(")
+		or source.contains("ext_resource")
+		or source.contains("ResourceLoader.")
+		or source.contains("FileAccess.get_file_as_string(")
+	)
 
 
 static func compatibility_wrapper_paths() -> Array[String]:
