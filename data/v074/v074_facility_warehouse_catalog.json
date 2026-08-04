@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "catalog_id": "space_syndicate.v074.facility_warehouse_catalog.v1",
+  "ruleset_id": "v0.7.4",
+  "balance_profile_id": "V074_ROGUELIKE_WAREHOUSE_BASELINE",
+  "balance_profile_fingerprint": "7bb3a3c9887d4c6328347b62dc4b582251bb1abbb0190493f47621863b5ee7b1",
+  "registered_facility_types": [
+    "factory",
+    "market",
+    "warehouse"
+  ],
+  "starter_facility_types": [
+    "factory",
+    "market"
+  ],
+  "standard_track_facility_types": [
+    "factory",
+    "market",
+    "warehouse"
+  ],
+  "industry_ids": [
+    "life",
+    "energy",
+    "industry",
+    "technology",
+    "commerce",
+    "shipping"
+  ],
+  "rank_profiles": {
+    "1": {
+      "capacity": 200,
+      "ingress_throughput": 50,
+      "egress_throughput": 50,
+      "repair_points": 100,
+      "primary_asset_cost": 1
+    },
+    "2": {
+      "capacity": 400,
+      "ingress_throughput": 100,
+      "egress_throughput": 100,
+      "repair_points": 200,
+      "primary_asset_cost": 2
+    },
+    "3": {
+      "capacity": 700,
+      "ingress_throughput": 175,
+      "egress_throughput": 175,
+      "repair_points": 300,
+      "primary_asset_cost": 3
+    },
+    "4": {
+      "capacity": 1100,
+      "ingress_throughput": 275,
+      "egress_throughput": 275,
+      "repair_points": 400,
+      "primary_asset_cost": 4
+    }
+  },
+  "solar_multipliers": {
+    "sunlit": 2,
+    "dark": 1
+  },
+  "commercial_art_key": "model.facility.warehouse.base",
+  "warehouse_stock_runtime_phase": "existing_external_owner_or_deferred",
+  "stock_fields_owned_by_this_catalog": false,
+  "private_logistics_fields_owned_by_this_catalog": false,
+  "source_authorities": [
+    "latest_user_decision",
+    "docs/rules/v07_game_constitution.md#sunlight-and-facility-efficiency",
+    "docs/tabletop_rulebook_v06.md#public-facilities",
+    "scripts/rules/space_syndicate_ruleset_profile_v06.gd",
+    "data/cards/card_runtime_catalog_v06.json",
+    "scripts/runtime/region_infrastructure_runtime_controller.gd",
+    "scripts/runtime/commodity_flow_runtime_controller.gd",
+    "resources/presentation/alpha01_card_illustration_catalog.tres"
+  ]
+}

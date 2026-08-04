@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "inventory_id": "space_syndicate.v074.warehouse_semantic_inventory.v1",
+  "ruleset_id": "v0.7.4",
+  "authority_order": [
+    "latest_user_decision",
+    "v07_and_v073_explicit_rules",
+    "authoritative_card_and_ruleset_authoring",
+    "existing_production_core",
+    "v06_historical_runtime",
+    "test_fixtures"
+  ],
+  "warehouse_capacity": {
+    "rank_1": 200,
+    "rank_2": 400,
+    "rank_3": 700,
+    "rank_4": 1100,
+    "unit": "commodity_units",
+    "legacy_source": [
+      "docs/tabletop_rulebook_v06.md:45",
+      "scripts/rules/space_syndicate_ruleset_profile_v06.gd:13",
+      "data/cards/card_runtime_catalog_v06.json:18961-19215"
+    ],
+    "v074_status": "reused_authoring_value"
+  },
+  "warehouse_ingress_throughput": {
+    "rank_1": 50,
+    "rank_2": 100,
+    "rank_3": 175,
+    "rank_4": 275,
+    "unit": "commodity_units_per_minute",
+    "legacy_source": [
+      "docs/tabletop_rulebook_v06.md:46",
+      "scripts/rules/space_syndicate_ruleset_profile_v06.gd:14",
+      "data/cards/card_runtime_catalog_v06.json:18962-19215"
+    ],
+    "v074_status": "reused_authoring_value"
+  },
+  "warehouse_egress_throughput": {
+    "rank_1": 50,
+    "rank_2": 100,
+    "rank_3": 175,
+    "rank_4": 275,
+    "unit": "commodity_units_per_minute",
+    "legacy_source": [
+      "docs/tabletop_rulebook_v06.md:46",
+      "scripts/rules/space_syndicate_ruleset_profile_v06.gd:14",
+      "data/cards/card_runtime_catalog_v06.json:18963-19215"
+    ],
+    "v074_status": "reused_authoring_value"
+  },
+  "warehouse_stock": {
+    "runtime_phase": "existing_external_owner_or_deferred",
+    "existing_owner": "CommodityFlowRuntimeController in the V0.6 reliability implementation",
+    "lane_b_owner_count": 0,
+    "public_projection_allowed": false,
+    "legacy_source": "scripts/runtime/commodity_flow_runtime_controller.gd",
+    "v074_status": "not_reimplemented_or_fabricated"
+  },
+  "warehouse_owner": {
+    "field": "owner_id",
+    "visibility": "public",
+    "authoritative_owner": "Region Infrastructure or Facility Owner",
+    "lane_b_world_owner_count": 0
+  },
+  "warehouse_rank": {
+    "minimum": 1,
+    "maximum": 4,
+    "visibility": "public",
+    "standard_primary_asset_cost_by_rank": [1, 2, 3, 4],
+    "v074_source": "latest_user_decision"
+  },
+  "warehouse_damage": {
+    "fields": ["damage_points", "damage_revision"],
+    "visibility": "public",
+    "repair_points_by_card_rank": [100, 200, 300, 400],
+    "legacy_source": [
+      "docs/tabletop_rulebook_v06.md:36",
+      "docs/tabletop_rulebook_v06.md:76-80",
+      "scripts/v07_semantic/v073_fixed_order_facility_contention_core.gd"
+    ]
+  },
+  "warehouse_generation": {
+    "fields": ["facility_generation", "slot_generation"],
+    "visibility": "public",
+    "legacy_source": "scripts/v07_semantic/v073_fixed_order_facility_contention_core.gd"
+  },
+  "warehouse_solar_multiplier": {
+    "sunlit": 2.0,
+    "dark": 1.0,
+    "affected_fields": ["ingress_throughput", "egress_throughput"],
+    "unaffected_fields": ["capacity", "rank", "damage_points", "primary_asset_cost"],
+    "source": "docs/rules/v07_game_constitution.md:342-361"
+  },
+  "warehouse_solar_state_refresh": {
+    "api": "V074FacilityRuntimeCore.refresh_warehouse_solar_states",
+    "transition_kind": "pure_authoritative_state_transition",
+    "input": "solar_by_region",
+    "updated_state_fields": [
+      "facility_slots",
+      "revision",
+      "warehouse_solar_refresh_count",
+      "state_fingerprint"
+    ],
+    "slot_generation_changed": false,
+    "facility_generation_changed": false,
+    "region_revision_changed": false,
+    "empty_slot_runtime_fields_changed": false,
+    "nonwarehouse_runtime_fields_changed": false
+  },
+  "public_projection": {
+    "allowed": [
+      "facility_id",
+      "facility_type",
+      "industry_id",
+      "region_id",
+      "owner_id",
+      "rank",
+      "capacity",
+      "base_ingress_throughput",
+      "base_egress_throughput",
+      "ingress_throughput",
+      "egress_throughput",
+      "damage_points",
+      "damage_revision",
+      "facility_generation",
+      "slot_generation",
+      "solar_efficiency_state",
+      "commercial_art_key",
+      "occupancy"
+    ]
+  },
+  "private_projection": {
+    "forbidden": [
+      "warehouse_stock",
+      "inventory",
+      "private_logistics",
+      "future_transport_plan",
+      "private_commodity_source",
+      "future_action",
+      "ai_private_plan"
+    ],
+    "lane_b_payload_included": false
+  },
+  "save_obligation": {
+    "v074_save_resume_enabled": false,
+    "lane_b_save_owner_count": 0,
+    "v06_save_modified": false
+  },
+  "card_identity": {
+    "starter_facility_types": ["factory", "market"],
+    "standard_track_facility_types": ["factory", "market", "warehouse"],
+    "warehouse_starter_card_count": 0,
+    "warehouse_l1_industry_coverage": 6,
+    "commercial_art_key": "model.facility.warehouse.base",
+    "historical_generic_family": "facility.orbital_warehouse",
+    "v074_family_pattern": "facility.warehouse.<industry_id>"
+  },
+  "explicitly_not_restored": [
+    "v06_cash_purchase_prices",
+    "v06_storage_rent",
+    "v06_auto_merge_when_hand_full",
+    "a_second_stock_owner",
+    "a_second_world_owner",
+    "public_private_stock_details"
+  ]
+}

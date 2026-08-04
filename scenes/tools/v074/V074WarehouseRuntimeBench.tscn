@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/v074/warehouse/v074_warehouse_runtime_bench.gd" id="1_bench"]
+
+[node name="V074WarehouseRuntimeBench" type="Node"]
+script = ExtResource("1_bench")
