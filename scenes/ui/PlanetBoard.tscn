@@ -47,18 +47,47 @@ custom_minimum_size = Vector2(0, 252)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-clip_contents = false
+clip_contents = true
 mouse_filter = 2
 
 [node name="MapHost" type="Control" parent="PlanetRows/PlanetStageViewport"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 220)
-clip_contents = false
+clip_contents = true
 mouse_filter = 1
 
 [node name="PlanetMapView" parent="PlanetRows/PlanetStageViewport/MapHost" instance=ExtResource("3_planet_map_view")]
 unique_name_in_owner = true
 layout_mode = 1
+
+[node name="PlanetCameraControls" type="HBoxContainer" parent="PlanetRows/PlanetStageViewport"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -178.0
+offset_top = 10.0
+offset_right = -54.0
+offset_bottom = 44.0
+grow_horizontal = 0
+theme_override_constants/separation = 4
+mouse_filter = 1
+z_index = 40
+
+[node name="ResetOverviewButton" type="Button" parent="PlanetRows/PlanetStageViewport/PlanetCameraControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 34)
+layout_mode = 2
+tooltip_text = "返回完整星球总览"
+text = "总览"
+
+[node name="FullscreenButton" type="Button" parent="PlanetRows/PlanetStageViewport/PlanetCameraControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 34)
+layout_mode = 2
+tooltip_text = "打开全屏星球地图"
+text = "全屏"
 
 [node name="PlaytestFlowCompass" type="PanelContainer" parent="PlanetRows/PlanetStageViewport"]
 unique_name_in_owner = true
@@ -154,3 +183,64 @@ layout_mode = 2
 text = "怪兽\n天气\n下注"
 horizontal_alignment = 1
 autowrap_mode = 3
+
+[node name="PlanetFullscreenLayer" type="CanvasLayer" parent="."]
+layer = 60
+
+[node name="PlanetFullscreenOverlay" type="Control" parent="PlanetFullscreenLayer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Dim" type="ColorRect" parent="PlanetFullscreenLayer/PlanetFullscreenOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.005, 0.012, 0.035, 0.96)
+
+[node name="MapMargin" type="MarginContainer" parent="PlanetFullscreenLayer/PlanetFullscreenOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = 24.0
+offset_right = -24.0
+offset_bottom = -24.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+
+[node name="MapPanel" type="PanelContainer" parent="PlanetFullscreenLayer/PlanetFullscreenOverlay/MapMargin"]
+layout_mode = 2
+mouse_filter = 1
+
+[node name="FullscreenMapView" parent="PlanetFullscreenLayer/PlanetFullscreenOverlay/MapMargin/MapPanel" instance=ExtResource("3_planet_map_view")]
+unique_name_in_owner = true
+layout_mode = 2
+clip_contents = true
+
+[node name="FullscreenCloseButton" type="Button" parent="PlanetFullscreenLayer/PlanetFullscreenOverlay"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 38)
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -74.0
+offset_top = 34.0
+offset_right = -32.0
+offset_bottom = 72.0
+grow_horizontal = 0
+tooltip_text = "关闭全屏地图"
+text = "×"

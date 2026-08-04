@@ -30,6 +30,7 @@ const PlanetMapRenderModelScript := preload("res://scripts/ui/map/planet_map_ren
 @onready var solar_camera_controller: Control = get_node_or_null("PlanetSolarCameraController") as Control
 @onready var optional_route_presentation_service: Node = get_node_or_null("%OptionalRoutePresentationRuntimeService")
 
+const PERFORMANCE_SAMPLE_LIMIT := 600
 const EDITABLE_LAYER_NAMES := [
 	"BackdropLayer",
 	"OrbitLayer",
@@ -71,6 +72,16 @@ var _optional_route_world_effective_seconds := -1.0
 var _optional_route_source_explicit := false
 var _optional_route_geometry_by_route_id: Dictionary = {}
 var _last_legacy_trade_product := ""
+var _presentation_seed := 1
+var _geometry_fingerprint := ""
+var _public_solar_snapshot: Dictionary = {}
+var _geometry_rebuild_count := 0
+var _projection_update_count := 0
+var _last_frame_tick_us := 0
+var _idle_frame_samples: Array[float] = []
+var _interaction_frame_samples: Array[float] = []
+var _idle_sample_cursor := 0
+var _interaction_sample_cursor := 0
 
 
 func _ready() -> void:
@@ -96,10 +107,49 @@ func _draw() -> void:
 
 func _process(delta: float) -> void:
 	super._process(delta)
+	_record_frame_timing()
 	var next_projection_signature := _current_sceneized_projection_signature()
 	if next_projection_signature != _sceneized_projection_signature:
 		_sceneized_projection_signature = next_projection_signature
-		_queue_sceneized_sync()
+		_update_sceneized_projection_nodes()
+
+
+func _record_frame_timing() -> void:
+	var now_us := Time.get_ticks_usec()
+	if _last_frame_tick_us > 0:
+		var frame_ms := float(now_us - _last_frame_tick_us) / 1000.0
+		if frame_ms > 0.0 and frame_ms < 1000.0:
+			var interacting := _dragging or _interaction_detail_timer > 0.0 or _focus_rotation_active()
+			if interacting:
+				_interaction_sample_cursor = _push_frame_sample(
+					_interaction_frame_samples,
+					_interaction_sample_cursor,
+					frame_ms
+				)
+			else:
+				_idle_sample_cursor = _push_frame_sample(
+					_idle_frame_samples,
+					_idle_sample_cursor,
+					frame_ms
+				)
+	_last_frame_tick_us = now_us
+
+
+func _push_frame_sample(samples: Array[float], cursor: int, value: float) -> int:
+	if samples.size() < PERFORMANCE_SAMPLE_LIMIT:
+		samples.append(value)
+		return samples.size() % PERFORMANCE_SAMPLE_LIMIT
+	samples[cursor] = value
+	return (cursor + 1) % PERFORMANCE_SAMPLE_LIMIT
+
+
+func _frame_p95(samples: Array[float]) -> float:
+	if samples.is_empty():
+		return 0.0
+	var ordered := samples.duplicate()
+	ordered.sort()
+	var index := clampi(ceili(float(ordered.size()) * 0.95) - 1, 0, ordered.size() - 1)
+	return float(ordered[index])
 
 
 func editable_layer_names() -> Array[String]:
@@ -158,6 +208,8 @@ func set_map(
 		visible_trade_product,
 		new_visual_layer_focus
 	)
+	if previous_map_signature != _map_signature:
+		_geometry_rebuild_count += 1
 	if previous_map_signature == _map_signature and previous_visual_signature == _visual_payload_signature:
 		return
 	var structural_signature := _sceneized_structural_payload_signature(
@@ -383,25 +435,53 @@ func _apply_optional_route_presentation() -> void:
 	_queue_sceneized_sync()
 
 
+func set_presentation_identity(presentation_seed: int, geometry_fingerprint: String) -> void:
+	_presentation_seed = presentation_seed
+	_geometry_fingerprint = geometry_fingerprint
+	_update_sceneized_projection_nodes()
+
+
+func planet_surface_presentation_snapshot() -> Dictionary:
+	var center_lon_lat := _world_to_lon_lat(_view_center_m)
+	var solar_regions: Array = []
+	for district_variant in districts:
+		var district := district_variant as Dictionary
+		solar_regions.append({
+			"region_id": str(district.get("region_id", "")),
+			"sunlit": bool(district.get("sunlit", false)),
+			"facility_efficiency_multiplier": float(district.get("facility_efficiency_multiplier", 1.0)),
+		})
+	return {
+		"camera_lon_rad": center_lon_lat.x,
+		"camera_lat_rad": center_lon_lat.y,
+		"sun_turn_ppm": int(_public_solar_snapshot.get("sun_turn_ppm", 0)),
+		"presentation_seed": _presentation_seed,
+		"geometry_fingerprint": _geometry_fingerprint,
+		"solar_regions": solar_regions,
+	}
+
+
 func reset_to_planet_overview() -> void:
 	super.reset_to_planet_overview()
-	_sceneized_projection_signature = ""
-	_queue_sceneized_sync()
+	_sceneized_projection_signature = _current_sceneized_projection_signature()
+	call_deferred("_update_sceneized_projection_nodes")
 
 
 func focus_district(index: int, keep_zoom: bool = true) -> void:
 	super.focus_district(index, keep_zoom)
-	_sceneized_projection_signature = ""
-	_queue_sceneized_sync()
+	_sceneized_projection_signature = _current_sceneized_projection_signature()
+	call_deferred("_update_sceneized_projection_nodes")
 
 
 func zoom_to_local_projection() -> void:
 	super.zoom_to_local_projection()
-	_sceneized_projection_signature = ""
-	_queue_sceneized_sync()
+	_sceneized_projection_signature = _current_sceneized_projection_signature()
+	call_deferred("_update_sceneized_projection_nodes")
 
 
 func set_solar_presentation_snapshot(snapshot: Dictionary) -> bool:
+	_public_solar_snapshot = snapshot.duplicate(true)
+	_update_sceneized_projection_nodes()
 	if solar_camera_controller == null or not solar_camera_controller.has_method("apply_public_solar_snapshot"):
 		return false
 	return bool(solar_camera_controller.call("apply_public_solar_snapshot", snapshot))
@@ -466,6 +546,14 @@ func get_sceneization_debug_snapshot() -> Dictionary:
 		"has_map_data": not districts.is_empty(),
 		"editable_layers": present_layers,
 		"preview_note": preview_note,
+		"presentation_seed": _presentation_seed,
+		"geometry_fingerprint": _geometry_fingerprint,
+		"geometry_rebuild_count": _geometry_rebuild_count,
+		"projection_update_count": _projection_update_count,
+		"planet_interaction_frame_p95_ms": _frame_p95(_interaction_frame_samples),
+		"planet_idle_frame_p95_ms": _frame_p95(_idle_frame_samples),
+		"interaction_frame_sample_count": _interaction_frame_samples.size(),
+		"idle_frame_sample_count": _idle_frame_samples.size(),
 		"runtime_focus_kind": str(get_meta("runtime_focus_kind", "")),
 	}
 	snapshot["solar_camera"] = solar_camera_debug_snapshot()
@@ -486,6 +574,7 @@ func get_sceneized_child_snapshot() -> Dictionary:
 		"legacy_draw_fallback_used": legacy_draw_fallback_used,
 		"district_polygon_count": _live_node_count(_sceneized_district_polygon_nodes),
 		"district_node_count": _live_node_count(_sceneized_district_nodes),
+		"district_label_intersection_count": _district_label_intersection_count(),
 		"route_segment_count": _live_node_count(_sceneized_route_segment_nodes),
 		"movement_trail_count": _live_node_count(_sceneized_movement_trail_nodes),
 		"city_marker_count": _live_node_count(_sceneized_city_marker_nodes),
@@ -533,6 +622,93 @@ func _queue_sceneized_dynamic_sync() -> void:
 		return
 	_sceneized_dynamic_sync_queued = true
 	call_deferred("_sync_sceneized_dynamic_children")
+
+
+func _update_sceneized_projection_nodes() -> void:
+	if not is_inside_tree() or districts.is_empty():
+		return
+	if _sceneized_district_polygon_nodes.size() != districts.size() \
+			or _sceneized_district_nodes.size() != districts.size() \
+			or _sceneized_city_marker_nodes.size() != city_markers.size():
+		_queue_sceneized_sync()
+		return
+	_sync_projection_metrics_for_query()
+	_sync_underlay_components()
+	var compact_nonselected := _sceneized_nonselected_labels_compact()
+	var label_positions := _district_label_positions(compact_nonselected)
+	var city_compact := not _should_draw_table_token_labels()
+	var city_positions := _city_marker_screen_positions(city_compact)
+	for index in range(districts.size()):
+		var entry := districts[index] as Dictionary
+		var center_projection := _sceneized_world_projection(entry.get("center", Vector2.ZERO))
+		var points := _sceneized_polygon_points(entry.get("polygon", []))
+		var polygon_node := _sceneized_district_polygon_nodes[index] as Control
+		if polygon_node != null and is_instance_valid(polygon_node):
+			polygon_node.call("configure", {
+				"index": index,
+				"name": str(entry.get("name", "District")),
+				"screen_points": points,
+				"selected": index == selected_district,
+				"sunlit": bool(entry.get("sunlit", false)),
+				"legal_target": bool(entry.get("legal_target", true)),
+				"efficiency_multiplier": float(entry.get("facility_efficiency_multiplier", 1.0)),
+				"accent": _palette_hex(index),
+			})
+			polygon_node.visible = bool(center_projection.get("visible", true)) and points.size() >= 3
+		var district_node := _sceneized_district_nodes[index] as Control
+		if district_node != null and is_instance_valid(district_node):
+			district_node.call("configure", {
+				"index": index,
+				"name": str(entry.get("name", "District")),
+				"terrain": str(entry.get("terrain", "surface")),
+				"hp": int(entry.get("hp", 0)),
+				"panic": int(entry.get("panic", 0)),
+				"products": entry.get("products", []),
+				"screen_position": label_positions.get(index, center_projection.get("position", Vector2.ZERO)),
+				"selected": index == selected_district,
+				"compact": compact_nonselected and index != selected_district,
+				"sunlit": bool(entry.get("sunlit", false)),
+				"legal_target": bool(entry.get("legal_target", true)),
+				"accent": _palette_hex(index),
+			})
+			district_node.visible = bool(center_projection.get("visible", true))
+	for index in range(city_markers.size()):
+		var marker := city_markers[index] as Dictionary
+		var projection := _sceneized_world_projection(marker.get("position", Vector2.ZERO))
+		var city_node := _sceneized_city_marker_nodes[index] as Control
+		if city_node != null and is_instance_valid(city_node):
+			city_node.call("configure", {
+				"screen_position": city_positions.get(index, projection.get("position", Vector2.ZERO)),
+				"tag": str(marker.get("tag", "C")),
+				"level": int(marker.get("level", 1)),
+				"products": marker.get("products", []),
+				"accent": _color_to_hex(marker.get("tag_color", Color("#38bdf8"))),
+				"active": bool(marker.get("active", true)),
+				"asset_key": str(marker.get("asset_key", "")),
+				"compact": city_compact,
+			})
+			city_node.visible = bool(projection.get("visible", true))
+	if selected_district >= 0 and selected_district < districts.size():
+		if _sceneized_selection_nodes.size() != 1:
+			_queue_sceneized_sync()
+			return
+		var selected_entry := districts[selected_district] as Dictionary
+		var selected_projection := _sceneized_world_projection(selected_entry.get("center", Vector2.ZERO))
+		var selection_node := _sceneized_selection_nodes[0] as Control
+		if selection_node != null and is_instance_valid(selection_node):
+			selection_node.call("configure", {
+				"index": selected_district,
+				"name": str(selected_entry.get("name", "Selected region")),
+				"detail": "当前焦点｜%s" % _terrain_display_label(str(selected_entry.get("terrain", "地表区"))),
+				"screen_position": selected_projection.get("position", Vector2.ZERO),
+				"accent": "#facc15",
+			})
+			selection_node.visible = bool(selected_projection.get("visible", true))
+	elif not _sceneized_selection_nodes.is_empty():
+		_queue_sceneized_sync()
+		return
+	_sync_weather_overlay_layout()
+	_projection_update_count += 1
 
 
 func _sync_sceneized_map_children() -> void:
@@ -586,8 +762,7 @@ func _sync_district_polygons() -> void:
 	for index in range(districts.size()):
 		var entry: Dictionary = districts[index]
 		var points := _sceneized_polygon_points(entry.get("polygon", []))
-		if points.size() < 3:
-			continue
+		var center_projection := _sceneized_world_projection(entry.get("center", Vector2.ZERO))
 		var node := PlanetDistrictPolygonScene.instantiate() as Control
 		if node == null:
 			continue
@@ -599,8 +774,12 @@ func _sync_district_polygons() -> void:
 			"name": str(entry.get("name", "District")),
 			"screen_points": points,
 			"selected": index == selected_district,
+			"sunlit": bool(entry.get("sunlit", false)),
+			"legal_target": bool(entry.get("legal_target", true)),
+			"efficiency_multiplier": float(entry.get("facility_efficiency_multiplier", 1.0)),
 			"accent": _palette_hex(index),
 		})
+		node.visible = bool(center_projection.get("visible", true)) and points.size() >= 3
 		_sceneized_district_polygon_nodes.append(node)
 
 
@@ -608,13 +787,13 @@ func _sync_district_nodes() -> void:
 	_sceneized_district_nodes.clear()
 	if district_layer == null:
 		return
-	var overview_compact := _sceneized_overview_compact()
-	var label_positions := _overview_district_label_positions() if overview_compact else {}
+	var compact_nonselected := _sceneized_nonselected_labels_compact()
+	var label_positions := _district_label_positions(compact_nonselected)
+	var city_compact := not _should_draw_table_token_labels()
+	var city_positions := _city_marker_screen_positions(city_compact)
 	for index in range(districts.size()):
 		var entry: Dictionary = districts[index]
 		var center_projection := _sceneized_world_projection(entry.get("center", Vector2.ZERO))
-		if not bool(center_projection.get("visible", true)):
-			continue
 		var node := PlanetDistrictNodeScene.instantiate() as Control
 		if node == null:
 			continue
@@ -630,9 +809,12 @@ func _sync_district_nodes() -> void:
 			"products": entry.get("products", []),
 			"screen_position": label_positions.get(index, center_projection.get("position", Vector2.ZERO)),
 			"selected": index == selected_district,
-			"compact": overview_compact and index != selected_district,
+			"compact": compact_nonselected and index != selected_district,
+			"sunlit": bool(entry.get("sunlit", false)),
+			"legal_target": bool(entry.get("legal_target", true)),
 			"accent": _palette_hex(index),
 		})
+		node.visible = bool(center_projection.get("visible", true))
 		if node.has_signal("district_pressed"):
 			node.connect("district_pressed", Callable(self, "_on_sceneized_district_pressed"))
 		if node.has_signal("district_double_pressed"):
@@ -640,7 +822,11 @@ func _sync_district_nodes() -> void:
 		_sceneized_district_nodes.append(node)
 
 
-func _overview_district_label_positions() -> Dictionary:
+func _sceneized_nonselected_labels_compact() -> bool:
+	return _sceneized_overview_compact() or _map_detail_reduced() or size.y < 320.0
+
+
+func _district_label_positions(compact_nonselected: bool) -> Dictionary:
 	var result := {}
 	var occupied: Array[Rect2] = []
 	var ordered_indices: Array[int] = []
@@ -657,26 +843,111 @@ func _overview_district_label_positions() -> Dictionary:
 		if not bool(projection.get("visible", true)):
 			continue
 		var base := projection.get("position", Vector2.ZERO) as Vector2
-		var selected := index == selected_district
-		var label_size := Vector2(128, 106) if selected else Vector2(92, 28)
+		var label_size := _district_label_size(index, compact_nonselected)
 		var radial := (base - globe_center).normalized()
 		if radial.length_squared() < 0.01:
 			radial = Vector2.UP
 		var tangent := Vector2(-radial.y, radial.x)
-		var offsets: Array[Vector2] = [Vector2.ZERO]
-		if not selected:
-			offsets.append_array([
-				radial * 28.0,
-				tangent * 50.0,
-				-tangent * 50.0,
-				radial * 34.0 + tangent * 48.0,
-				radial * 34.0 - tangent * 48.0,
-				radial * 58.0,
-			])
 		var chosen := _clamp_overview_label_center(base, label_size)
-		for offset in offsets:
+		var chosen_rect := Rect2(chosen - label_size * 0.5, label_size).grow(4.0)
+		var best_overlap_area := INF
+		for offset in _district_label_candidate_offsets(radial, tangent, label_size):
 			var candidate := _clamp_overview_label_center(base + offset, label_size)
 			var candidate_rect := Rect2(candidate - label_size * 0.5, label_size).grow(4.0)
+			var overlap_area := 0.0
+			for occupied_rect in occupied:
+				if not candidate_rect.intersects(occupied_rect):
+					continue
+				var overlap := candidate_rect.intersection(occupied_rect)
+				overlap_area += overlap.size.x * overlap.size.y
+			if overlap_area < best_overlap_area:
+				best_overlap_area = overlap_area
+				chosen = candidate
+				chosen_rect = candidate_rect
+			if overlap_area <= 0.01:
+				break
+		result[index] = chosen
+		occupied.append(chosen_rect)
+	return result
+
+
+func _district_label_size(index: int, compact_nonselected: bool) -> Vector2:
+	if index == selected_district or not compact_nonselected:
+		return Vector2(128.0, 106.0)
+	return Vector2(92.0, 28.0)
+
+
+func _district_label_candidate_offsets(radial: Vector2, tangent: Vector2, label_size: Vector2) -> Array[Vector2]:
+	var offsets: Array[Vector2] = [Vector2.ZERO]
+	var tangent_step := label_size.x + 14.0
+	var radial_step := label_size.y + 14.0
+	offsets.append_array([
+		radial * radial_step,
+		tangent * tangent_step,
+		-tangent * tangent_step,
+		-radial * radial_step,
+	])
+	for ring in range(1, 4):
+		for radial_slot in range(-ring, ring + 1):
+			for tangent_slot in range(-ring, ring + 1):
+				if maxi(absi(radial_slot), absi(tangent_slot)) != ring:
+					continue
+				offsets.append(
+					radial * float(radial_slot) * radial_step
+					+ tangent * float(tangent_slot) * tangent_step
+				)
+	return offsets
+
+
+func _district_label_intersection_count() -> int:
+	var visible_labels: Array[Control] = []
+	for node_variant in _sceneized_district_nodes:
+		var node := node_variant as Control
+		if node != null and is_instance_valid(node) and node.visible:
+			visible_labels.append(node)
+	var intersections := 0
+	for first_index in range(visible_labels.size()):
+		var first_rect := visible_labels[first_index].get_rect().grow(2.0)
+		for second_index in range(first_index + 1, visible_labels.size()):
+			if first_rect.intersects(visible_labels[second_index].get_rect().grow(2.0)):
+				intersections += 1
+	return intersections
+
+
+func _overview_district_label_positions() -> Dictionary:
+	return _district_label_positions(true)
+
+
+func _city_marker_screen_positions(compact: bool) -> Dictionary:
+	var result := {}
+	var occupied: Array[Rect2] = []
+	var marker_size := Vector2(30.0, 30.0) if compact else Vector2(86.0, 46.0)
+	var step := 34.0 if compact else 92.0
+	var offsets := [
+		Vector2.ZERO,
+		Vector2(step, 0.0),
+		Vector2(-step, 0.0),
+		Vector2(0.0, step),
+		Vector2(0.0, -step),
+		Vector2(step, step),
+		Vector2(-step, step),
+		Vector2(step, -step),
+		Vector2(-step, -step),
+		Vector2(step * 2.0, 0.0),
+		Vector2(-step * 2.0, 0.0),
+		Vector2(0.0, step * 2.0),
+		Vector2(0.0, -step * 2.0),
+	]
+	for index in range(city_markers.size()):
+		var marker := city_markers[index] as Dictionary
+		var projection := _sceneized_world_projection(marker.get("position", Vector2.ZERO))
+		if not bool(projection.get("visible", true)):
+			continue
+		var base := projection.get("position", Vector2.ZERO) as Vector2
+		var chosen := _clamp_overview_label_center(base, marker_size)
+		for offset in offsets:
+			var candidate := _clamp_overview_label_center(base + offset, marker_size)
+			var candidate_rect := Rect2(candidate - marker_size * 0.5, marker_size).grow(2.0)
 			var overlaps_existing := false
 			for occupied_rect in occupied:
 				if candidate_rect.intersects(occupied_rect):
@@ -686,9 +957,8 @@ func _overview_district_label_positions() -> Dictionary:
 				chosen = candidate
 				break
 		result[index] = chosen
-		occupied.append(Rect2(chosen - label_size * 0.5, label_size).grow(4.0))
+		occupied.append(Rect2(chosen - marker_size * 0.5, marker_size).grow(2.0))
 	return result
-
 
 func _clamp_overview_label_center(value: Vector2, label_size: Vector2) -> Vector2:
 	var half := label_size * 0.5
@@ -702,13 +972,14 @@ func _sync_city_markers() -> void:
 	_sceneized_city_marker_nodes.clear()
 	if district_layer == null:
 		return
-	for marker_variant in city_markers:
+	var city_compact := not _should_draw_table_token_labels()
+	var city_positions := _city_marker_screen_positions(city_compact)
+	for index in range(city_markers.size()):
+		var marker_variant: Variant = city_markers[index]
 		if not (marker_variant is Dictionary):
 			continue
 		var marker: Dictionary = (marker_variant as Dictionary).duplicate(true)
 		var projection := _sceneized_world_projection(marker.get("position", Vector2.ZERO))
-		if not bool(projection.get("visible", true)):
-			continue
 		var node := PlanetCityMarkerScene.instantiate() as Control
 		if node == null:
 			continue
@@ -716,13 +987,16 @@ func _sync_city_markers() -> void:
 		node.set_meta("sceneized_planet_map_kind", "city")
 		district_layer.add_child(node)
 		node.call("configure", {
-			"screen_position": projection.get("position", Vector2.ZERO),
+			"screen_position": city_positions.get(index, projection.get("position", Vector2.ZERO)),
 			"tag": str(marker.get("tag", "C")),
 			"level": int(marker.get("level", 1)),
 			"products": marker.get("products", []),
 			"accent": _color_to_hex(marker.get("tag_color", Color("#38bdf8"))),
 			"active": bool(marker.get("active", true)),
+			"asset_key": str(marker.get("asset_key", "")),
+			"compact": city_compact,
 		})
+		node.visible = bool(projection.get("visible", true))
 		_sceneized_city_marker_nodes.append(node)
 
 
@@ -924,8 +1198,6 @@ func _sync_selection_marker() -> void:
 		return
 	var entry: Dictionary = districts[selected_district]
 	var projection := _sceneized_world_projection(entry.get("center", Vector2.ZERO))
-	if not bool(projection.get("visible", true)):
-		return
 	var node := PlanetSelectionRingScene.instantiate() as Control
 	if node == null:
 		return
@@ -939,6 +1211,7 @@ func _sync_selection_marker() -> void:
 		"screen_position": projection.get("position", Vector2.ZERO),
 		"accent": "#facc15",
 	})
+	node.visible = bool(projection.get("visible", true))
 	_sceneized_selection_nodes.append(node)
 
 

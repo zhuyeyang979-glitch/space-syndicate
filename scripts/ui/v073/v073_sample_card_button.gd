@@ -55,15 +55,18 @@ func payload() -> Dictionary:
 
 func _build_content() -> void:
 	var margin := MarginContainer.new()
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_theme_constant_override("margin_left", 5)
 	margin.add_theme_constant_override("margin_top", 5)
 	margin.add_theme_constant_override("margin_right", 5)
 	margin.add_theme_constant_override("margin_bottom", 5)
 	add_child(margin)
 	var rows := VBoxContainer.new()
+	rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rows.add_theme_constant_override("separation", 2)
 	margin.add_child(rows)
 	var art_frame := PanelContainer.new()
+	art_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_frame.custom_minimum_size = Vector2(0, 48)
 	var art_style := StyleBoxFlat.new()
 	art_style.bg_color = Color("#121a2b")
@@ -79,16 +82,19 @@ func _build_content() -> void:
 	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_frame.add_child(_art)
 	_badge = Label.new()
+	_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_badge.add_theme_font_size_override("font_size", 9)
 	_badge.add_theme_color_override("font_color", Color("#f9d56e"))
 	rows.add_child(_badge)
 	_title = Label.new()
+	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_title.add_theme_font_size_override("font_size", 11)
 	rows.add_child(_title)
 	_meta = Label.new()
+	_meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_meta.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_meta.add_theme_font_size_override("font_size", 9)

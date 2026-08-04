@@ -17,7 +17,7 @@ var _compact_mode := false
 func _ready() -> void:
 	# The sceneized label owns the district click. Its presentation-only rows must
 	# not consume the event before it reaches this control.
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_set_descendant_mouse_filter_ignore(self)
 	gui_input.connect(_on_gui_input)
 	set_meta("mcp_sceneized_component", "PlanetDistrictNode")
@@ -33,7 +33,10 @@ func _set_descendant_mouse_filter_ignore(node: Node) -> void:
 func configure(data: Dictionary) -> void:
 	_region_index = int(data.get("index", -1))
 	var is_selected := bool(data.get("selected", false))
+	var is_legal_target := bool(data.get("legal_target", true))
+	var is_sunlit := bool(data.get("sunlit", false))
 	_compact_mode = bool(data.get("compact", false)) and not is_selected
+	modulate = Color.WHITE if is_legal_target else Color(0.62, 0.67, 0.74, 0.58)
 	var target_size := Vector2(92, 28) if _compact_mode else Vector2(128, 58)
 	custom_minimum_size = target_size
 	name = "PlanetDistrictNode_%02d" % max(0, _region_index)
@@ -50,7 +53,10 @@ func configure(data: Dictionary) -> void:
 		product_label.text = _joined_strings(data.get("products", []))
 		product_label.visible = not _compact_mode
 	if state_label != null:
-		state_label.text = "当前选区" if is_selected else "区域节点"
+		state_label.text = (
+			"当前选区" if is_selected
+			else ("日照 ×2.0" if is_sunlit else "暗面 ×1.0")
+		)
 		state_label.visible = not _compact_mode
 	tooltip_text = "%s｜%s｜共享生命 %d｜警戒 %d%%｜产出 %s" % [
 		str(data.get("name", "未命名区域")),

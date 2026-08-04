@@ -9101,3 +9101,33 @@ deleted. Evidence and the remaining action inventory are recorded in
 - The next player-value boundary is Alpha 0.4-C Save/Resume owner coverage and
   cold restore. UI expansion and a full V0.7 runtime cutover remain deferred
   until the current V0.6 production run can be closed, restored, and continued.
+
+## 2026-08-04 — V0.7.3 responsive table and interactive globe restoration
+
+- Replaced the height-only 104-pixel compact map rule with
+  `V073ResponsiveTableLayoutV2`, which profiles viewport width, height, and
+  player count. Header utilities are split into primary/secondary rows, the
+  Marker is a collapsed floating surface, Coach placement is viewport-safe,
+  and permanent map rails/flow compass no longer cover the planet.
+- Connected the production V0.7.3 player/public snapshot to `PlanetMapView`
+  through the read-only `V073PlanetPresentationAdapterV1`. Six Voronoi regions
+  are generated deterministically from a presentation-only seed namespace;
+  the adapter owns no gameplay, Save, or RNG state.
+- Restored the existing spherical camera path: drag rotation, wheel/touch zoom,
+  double-click focus, overview reset, fullscreen roundtrip, front-side hit
+  testing, Region Popup, and typed map target binding. A CanvasItem shader adds
+  camera-aligned surface depth, atmosphere, limb shading, and the public solar
+  terminator without introducing a second coordinate authority.
+- The responsive/collision suite, map/UI suite, production core, production
+  sample acceptance, and 3/4/6/8-player simulations pass. A real MCP
+  1-human-plus-3-AI sanity match used map rotation, zoom, Region Popup, and map
+  target binding, then reached FinalSettlement exactly once and exported its
+  playtest report with zero runtime or privacy errors.
+- The embedded MCP runtime measured interaction P95 71.883 ms and idle P95
+  66.368 ms. Shader-hidden and map-hidden controls show the same environment
+  ceiling, so no unsupported 60 FPS claim is made. Ten seconds of rotation
+  rebuilt no geometry and consumed no gameplay RNG draws.
+- V0.7.3 rules, all 19 production domains, the human baseline fingerprint,
+  balance values, New-Game-only Save boundary, AI policy, and telemetry
+  semantics are unchanged. The old human-playtest tag remains historical; the
+  replacement candidate is `alpha-0.5c1-v073-human-playtest-ui-globe-2`.

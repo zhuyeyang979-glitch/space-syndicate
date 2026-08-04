@@ -1,0 +1,149 @@
+{
+  "schema": "V073UILayoutOverlapInventoryV1",
+  "task_id": "ALPHA_0_5_C1_V073_RESPONSIVE_UI_AND_PROCEDURAL_INTERACTIVE_GLOBE_RESTORATION",
+  "base_main_sha": "f5990809cd59d3aad7d2d5f726363c76f8788094",
+  "before_evidence": {
+    "screenshot": "reports/ui/v073c1/before/desktop-1600x960.png",
+    "captured_image_size": [1528, 917],
+    "static_sources": [
+      "scenes/ui/V073SampleGameScreen.tscn@f5990809",
+      "scenes/ui/PlanetBoard.tscn@f5990809",
+      "scripts/ui/v073/v073_sample_game_screen.gd@f5990809",
+      "scripts/ui/v073/v073_playtest_coach_marks.gd@f5990809",
+      "scripts/ui/v073/v073_playtest_marker_panel.gd@f5990809"
+    ]
+  },
+  "after_evidence": {
+    "screenshots": "reports/ui/v073c1/after",
+    "audit_owner": "V073UILayoutCollisionAuditV1",
+    "responsive_owner": "V073ResponsiveTableLayoutV2",
+    "tested_viewports": ["1366x768", "1600x960", "1920x1080"],
+    "tested_player_counts": [4, 8]
+  },
+  "overlap_inventory_count_before": 9,
+  "overlap_inventory_count_after": 0,
+  "items": [
+    {
+      "id": "UI073C1-001",
+      "category": "unintended_map_overflow",
+      "node_path": "V073SampleGameScreen/RootMargin/Shell/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport",
+      "global_rect_evidence": {"compact_minimum_height_px": 104, "source": "COMPACT_PLANET_STAGE_HEIGHT"},
+      "z_index": 0,
+      "mouse_filter": "inherit",
+      "clip_contents": false,
+      "root_cause": "Compact selection used only viewport height <= 820 and forced the primary planet stage to 104 px.",
+      "resolution": "Width, height, and player-count profiles now reserve 220/340/460 px planet stages.",
+      "status_after": "resolved"
+    },
+    {
+      "id": "UI073C1-002",
+      "category": "unintended_map_overflow",
+      "node_path": "V073SampleGameScreen/.../PlanetStageViewport/MapHost/PlanetMapView",
+      "global_rect_evidence": {"rendered_bounds_px_approx": [527, 155, 688, 640], "source": "before screenshot"},
+      "z_index": 0,
+      "mouse_filter": "stop",
+      "clip_contents": false,
+      "root_cause": "PlanetBoard, MapHost, and PlanetMapView minimum sizes disagreed, while unclipped drawing and input escaped the stage.",
+      "resolution": "Container-owned stage sizing, matching map minimums, and clipped map/input bounds.",
+      "status_after": "resolved"
+    },
+    {
+      "id": "UI073C1-003",
+      "category": "unintended_panel_overlap",
+      "node_path": "PlanetBoard/PlanetRows/PlanetStageViewport/PlanetLeftSpaceRail",
+      "global_rect_evidence": {"minimum_width_px": 132, "edge": "left", "source": "base scene"},
+      "z_index": 0,
+      "mouse_filter": "ignore",
+      "clip_contents": false,
+      "root_cause": "A permanent absolute-position rail occupied the same stage as the map.",
+      "resolution": "Production rail hidden; public details remain in Region Popup.",
+      "status_after": "resolved"
+    },
+    {
+      "id": "UI073C1-004",
+      "category": "unintended_panel_overlap",
+      "node_path": "PlanetBoard/PlanetRows/PlanetStageViewport/PlanetRightSpaceRail",
+      "global_rect_evidence": {"minimum_width_px": 132, "edge": "right", "source": "base scene"},
+      "z_index": 0,
+      "mouse_filter": "ignore",
+      "clip_contents": false,
+      "root_cause": "A second permanent absolute-position rail covered the map and duplicated popup information.",
+      "resolution": "Production rail hidden; right permanent panel count is zero.",
+      "status_after": "resolved"
+    },
+    {
+      "id": "UI073C1-005",
+      "category": "unintended_panel_overlap",
+      "node_path": "PlanetBoard/PlanetRows/PlanetStageViewport/PlaytestFlowCompass",
+      "global_rect_evidence": {"minimum_size_px": [180, 60], "source": "base scene"},
+      "z_index": 0,
+      "mouse_filter": "ignore",
+      "clip_contents": false,
+      "root_cause": "The absolute flow compass competed with both rails and the primary map surface.",
+      "resolution": "Compass hidden in production; flow cues moved to Header, status, and Coach Marks.",
+      "status_after": "resolved"
+    },
+    {
+      "id": "UI073C1-006",
+      "category": "unintended_coach_occlusion",
+      "node_path": "V073SampleGameScreen/V073PlaytestCoachMarks/CoachRoot/CoachCallout",
+      "global_rect_evidence": {"before_px_approx": [610, 592, 306, 115], "source": "before screenshot"},
+      "z_index": 40,
+      "mouse_filter": "pass",
+      "clip_contents": false,
+      "root_cause": "One fixed offset and a single centered anchor candidate covered the TargetRail, map center, or current input.",
+      "resolution": "Viewport-safe candidate scoring, lifted candidates, map anchors, pointer avoidance, and 14-step regression coverage.",
+      "status_after": "resolved"
+    },
+    {
+      "id": "UI073C1-007",
+      "category": "unintended_text_overflow",
+      "node_path": "V073SampleGameScreen/RootMargin/Shell/Header/HeaderMargin/HeaderRow/V073PlaytestMarkerPanel",
+      "global_rect_evidence": {"fixed_width_consumption_px": 216, "source": "base marker scene"},
+      "z_index": 0,
+      "mouse_filter": "stop",
+      "clip_contents": false,
+      "root_cause": "The expanded Marker Panel participated in Header HBox width allocation.",
+      "resolution": "Marker moved to a CanvasLayer safe corner and defaults collapsed; Header width consumption is zero.",
+      "status_after": "resolved"
+    },
+    {
+      "id": "UI073C1-008",
+      "category": "unintended_text_overflow",
+      "node_path": "V073SampleGameScreen/RootMargin/Shell/Header/HeaderMargin/HeaderRow",
+      "global_rect_evidence": {"fixed_save_notice_width_px": 196, "source": "base scene"},
+      "z_index": 0,
+      "mouse_filter": "inherit",
+      "clip_contents": false,
+      "root_cause": "Title, phase, timer, Save notice, Save, Continue, New Game, Guide, and Marker were forced into one row.",
+      "resolution": "Primary and utility rows with compact text/tooltips and no fixed Marker allocation.",
+      "status_after": "resolved"
+    },
+    {
+      "id": "UI073C1-009",
+      "category": "unintended_input_occlusion",
+      "node_path": "V073SampleGameScreen/ToastLayer/ToastLabel",
+      "global_rect_evidence": {"surface": "Hand Dock", "source": "headed runtime probe"},
+      "z_index": 30,
+      "mouse_filter": "ignore",
+      "clip_contents": false,
+      "root_cause": "Transient action feedback was rendered over the Hand Dock safe area.",
+      "resolution": "Feedback now uses the layout-owned ActionStatus line; the overlay toast stays hidden.",
+      "status_after": "resolved"
+    }
+  ],
+  "after_gate_counts": {
+    "unintended_major_panel_intersection_count": 0,
+    "interactive_control_occlusion_count": 0,
+    "district_label_intersection_count": 0,
+    "header_overflow_count": 0,
+    "track_panel_overflow_count": 0,
+    "planet_draw_outside_stage_count": 0,
+    "planet_input_outside_stage_count": 0,
+    "target_panel_dock_overlap_count": 0,
+    "roster_planet_overlap_count": 0,
+    "coach_target_occlusion_count": 0,
+    "marker_unintended_overlap_count": 0,
+    "region_popup_unintended_overlap_count": 0
+  }
+}
