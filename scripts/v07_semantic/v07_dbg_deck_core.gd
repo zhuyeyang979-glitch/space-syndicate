@@ -11,6 +11,9 @@ const AcquisitionPort := preload(
 const CardDefinitions := preload(
 	"res://scripts/v07_semantic/v072_card_definition_registry.gd"
 )
+const V074CardDefinitions := preload(
+	"res://scripts/v074/facility/v074_card_definition_registry.gd"
+)
 
 const SCHEMA_VERSION := 3
 const STATE_VERSION := 3
@@ -1158,6 +1161,22 @@ static func card_definition(definition_id: String) -> Dictionary:
 	return CardDefinitions.definition(definition_id)
 
 
+func card_definition_for_active_profile(definition_id: String) -> Dictionary:
+	return _definition_for_registered_facility(definition_id)
+
+
+func standard_card_spec_for_active_profile(
+	primary_color: String,
+	card_type: String,
+	level: int = 1
+) -> Dictionary:
+	return _standard_card_spec_for_registered_facility(
+		primary_color,
+		card_type,
+		level
+	)
+
+
 static func typed_state_contracts() -> Dictionary:
 	return {
 		"normal_deck_state": NORMAL_DECK_STATE_CONTRACT_ID,
@@ -2202,7 +2221,7 @@ static func _track_visible_item_reason(item: Dictionary, track_revision: int) ->
 			!= (str(item.get("claimability_state", "")) == "claimable"):
 		return "track_visible_item_claimability_invalid"
 	if str(item.get("card_kind", "")) == "normal_card":
-		var definition := CardDefinitions.definition(str(item.get(
+		var definition := _definition_for_registered_facility(str(item.get(
 			"card_definition_id", ""
 		)))
 		if definition.is_empty() \
@@ -2745,7 +2764,7 @@ func _apply_merge(intent: Dictionary) -> Dictionary:
 	hand.remove_at(first_remove)
 	hand.remove_at(second_remove)
 	var result_level := int(left.get("level", 0)) + 1
-	var result_spec := standard_card_spec(
+	var result_spec := _standard_card_spec_for_registered_facility(
 		str(left.get("primary_color", "")),
 		str(left.get("card_type", "")),
 		result_level
@@ -3514,7 +3533,39 @@ static func _projected_card_valid(
 
 static func _card_spec_valid(spec: Dictionary) -> bool:
 	return _exact_fields(spec, CARD_SPEC_FIELDS) \
-		and CardDefinitions.definition_error(spec).is_empty()
+		and _definition_error_for_registered_facility(spec).is_empty()
+
+
+static func _definition_for_registered_facility(
+	definition_id: String
+) -> Dictionary:
+	if definition_id.contains(".warehouse."):
+		return V074CardDefinitions.definition(definition_id)
+	return CardDefinitions.definition(definition_id)
+
+
+static func _definition_error_for_registered_facility(
+	spec: Dictionary
+) -> String:
+	if str(spec.get("card_type", "")) == "warehouse":
+		return V074CardDefinitions.definition_error(spec)
+	return CardDefinitions.definition_error(spec)
+
+
+static func _standard_card_spec_for_registered_facility(
+	primary_color: String,
+	card_type: String,
+	level: int
+) -> Dictionary:
+	if card_type == "warehouse":
+		return V074CardDefinitions.definition(
+			V074CardDefinitions.standard_definition_id(
+				card_type,
+				primary_color,
+				level
+			)
+		)
+	return standard_card_spec(primary_color, card_type, level)
 
 
 static func _rng_valid(
@@ -3865,7 +3916,8 @@ static func _merge_history_row_valid(row: Dictionary) -> bool:
 			or not (row.get("starter_privilege_consumed") is bool) \
 			or not _stable_id(row.get("semantic_id")) \
 			or str(row.get("primary_color", "")) not in COLORS \
-			or str(row.get("card_type", "")) not in CARD_TYPES \
+			or str(row.get("card_type", "")) \
+			not in V074CardDefinitions.CARD_TYPES \
 			or not _stable_id(row.get("merge_family_id")) \
 			or not _positive_int(row.get("level")) \
 			or int(row.get("level", 0)) > MAX_CARD_LEVEL \
@@ -3874,9 +3926,15 @@ static func _merge_history_row_valid(row: Dictionary) -> bool:
 	var source_ids := row.get("source_instance_ids") as Array
 	var source_definition_ids := row.get("source_definition_ids") as Array
 	var source_origins := row.get("source_origin_classes") as Array
-	var left_definition := CardDefinitions.definition(str(source_definition_ids[0]))
-	var right_definition := CardDefinitions.definition(str(source_definition_ids[1]))
-	var output := CardDefinitions.definition(str(row.get("output_definition_id", "")))
+	var left_definition := _definition_for_registered_facility(
+		str(source_definition_ids[0])
+	)
+	var right_definition := _definition_for_registered_facility(
+		str(source_definition_ids[1])
+	)
+	var output := _definition_for_registered_facility(
+		str(row.get("output_definition_id", ""))
+	)
 	var starter_consumed := source_origins.has(CardDefinitions.ORIGIN_STARTER)
 	var sorted_origins := source_origins.duplicate()
 	sorted_origins.sort()
