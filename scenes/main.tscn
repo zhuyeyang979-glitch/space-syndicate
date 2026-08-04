@@ -1,10 +1,10 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://eu6ukbvy68o3"]
 
-[ext_resource type="Script" path="res://scripts/v073_runtime/v073_sample_application_bootstrap.gd" id="1_bootstrap"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/V073RuntimeComposition.tscn" id="2_runtime"]
-[ext_resource type="PackedScene" path="res://scenes/ui/V073SampleGameScreen.tscn" id="3_screen"]
+[ext_resource type="Script" uid="uid://bbalx3y51xruv" path="res://scripts/v073_runtime/v073_sample_application_bootstrap.gd" id="1_bootstrap"]
+[ext_resource type="PackedScene" uid="uid://cj184ckfecmom" path="res://scenes/runtime/V073RuntimeComposition.tscn" id="2_runtime"]
+[ext_resource type="PackedScene" uid="uid://b83n5s3yi6o3u" path="res://scenes/ui/V073SampleGameScreen.tscn" id="3_screen"]
 
-[node name="Main" type="Control"]
+[node name="Main" type="Control" unique_id=649603181]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -13,9 +13,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_bootstrap")
 
-[node name="V073RuntimeComposition" parent="." instance=ExtResource("2_runtime")]
-unique_name_in_owner = true
+[node name="V073RuntimeComposition" parent="." unique_id=1444593236 instance=ExtResource("2_runtime")]
 
-[node name="V073SampleGameScreen" parent="." instance=ExtResource("3_screen")]
-unique_name_in_owner = true
+[node name="V073SampleGameScreen" parent="." unique_id=1162119785 instance=ExtResource("3_screen")]
 layout_mode = 1

@@ -3,6 +3,7 @@ class_name V073SampleCardButton
 
 signal activated(payload: Dictionary)
 signal drag_started(payload: Dictionary)
+signal hover_summary(payload: Dictionary)
 
 var _payload: Dictionary = {}
 var _selected := false
@@ -130,6 +131,7 @@ func _notification(what: int) -> void:
 		pivot_offset = size * 0.5
 	elif what == NOTIFICATION_MOUSE_ENTER:
 		z_index = 20
+		hover_summary.emit(_payload.duplicate(true))
 		_animate_scale(Vector2(1.06, 1.06))
 	elif what == NOTIFICATION_MOUSE_EXIT:
 		z_index = 0

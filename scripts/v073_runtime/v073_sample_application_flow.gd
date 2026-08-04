@@ -5,10 +5,16 @@ signal projection_changed(snapshot: Dictionary)
 signal receipt_ready(receipt: Dictionary)
 signal final_settlement_presented(settlement: Dictionary)
 signal runtime_fault_presented(receipt: Dictionary)
+signal public_resolution_ready(receipt: Dictionary)
+signal playtest_observation_ready(receipt: Dictionary)
+# MCP_FINALIZE
 
 const RULESET_ID := "v0.7.3"
 const SAMPLE_MODE_ID := "NEW_V073_GAME"
 const DEFAULT_SEED := 730045
+const HUMAN_BASELINE := preload(
+	"res://scripts/playtest/v073_human_baseline_profile.gd"
+)
 
 @onready var _ruleset_owner: Node = %V073RulesetRuntimeOwner
 @onready var _runtime_owner: Node = %V073SampleRuntimeOwner
@@ -24,6 +30,10 @@ func _ready() -> void:
 		_on_final_settlement_committed
 	)
 	_runtime_owner.runtime_fault.connect(_on_runtime_fault)
+	_runtime_owner.resolution_presented.connect(_on_public_resolution_presented)
+	_runtime_owner.playtest_observation_ready.connect(
+		_on_playtest_observation_ready
+	)
 
 
 func submit_intent(intent: Dictionary) -> Dictionary:
@@ -185,6 +195,9 @@ func _start_new_game(parameters: Dictionary) -> Dictionary:
 		"ai_player_count": player_count - 1,
 		"session_id": session_id,
 		"match_id": str(started.get("match_id", "")),
+		"seed": seed_value,
+		"balance_profile_id": HUMAN_BASELINE.PROFILE_ID,
+		"balance_profile_fingerprint": HUMAN_BASELINE.PROFILE_FINGERPRINT,
 	}
 
 
@@ -232,3 +245,11 @@ func _on_final_settlement_committed(settlement: Dictionary) -> void:
 
 func _on_runtime_fault(receipt: Dictionary) -> void:
 	runtime_fault_presented.emit(receipt.duplicate(true))
+
+
+func _on_public_resolution_presented(receipt: Dictionary) -> void:
+	public_resolution_ready.emit(receipt.duplicate(true))
+
+
+func _on_playtest_observation_ready(receipt: Dictionary) -> void:
+	playtest_observation_ready.emit(receipt.duplicate(true))

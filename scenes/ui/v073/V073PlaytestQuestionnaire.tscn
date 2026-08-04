@@ -1,0 +1,146 @@
+[gd_scene format=3 uid="uid://c8cyeyy8bp5ep"]
+
+[ext_resource type="Script" uid="uid://e87kqk103ho" path="res://scripts/ui/v073/v073_playtest_questionnaire.gd" id="1_questionnaire"]
+
+[node name="V073PlaytestQuestionnaire" type="CanvasLayer" unique_id=705206330]
+layer = 60
+script = ExtResource("1_questionnaire")
+
+[node name="QuestionnaireRoot" type="Control" parent="." unique_id=1538828053]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Dim" type="ColorRect" parent="QuestionnaireRoot" unique_id=743545229]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.035, 0.06, 0.88)
+
+[node name="Margin" type="MarginContainer" parent="QuestionnaireRoot" unique_id=763001604]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 20
+
+[node name="Panel" type="PanelContainer" parent="QuestionnaireRoot/Margin" unique_id=1676487563]
+layout_mode = 2
+
+[node name="PanelMargin" type="MarginContainer" parent="QuestionnaireRoot/Margin/Panel" unique_id=1039045717]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 14
+
+[node name="Rows" type="VBoxContainer" parent="QuestionnaireRoot/Margin/Panel/PanelMargin" unique_id=1643018923]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="QuestionnaireRoot/Margin/Panel/PanelMargin/Rows" unique_id=1212906468]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "本局体验"
+
+[node name="Subtitle" type="Label" parent="QuestionnaireRoot/Margin/Panel/PanelMargin/Rows" unique_id=1858464663]
+layout_mode = 2
+text = "1 = 非常不同意，7 = 非常同意。问卷可跳过，仅保存在本地。"
+autowrap_mode = 2
+
+[node name="QuestionScroll" type="ScrollContainer" parent="QuestionnaireRoot/Margin/Panel/PanelMargin/Rows" unique_id=600724907]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="QuestionContent" type="VBoxContainer" parent="QuestionnaireRoot/Margin/Panel/PanelMargin/Rows/QuestionScroll" unique_id=243301380]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="ScaleQuestions" type="VBoxContainer" parent="QuestionnaireRoot/Margin/Panel/PanelMargin/Rows/QuestionScroll/QuestionContent" unique_id=617678623]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="MostFunLabel" type="Label" parent="QuestionnaireRoot/Margin/Panel/PanelMargin/Rows/QuestionScroll/QuestionContent" unique_id=818286842]
+layout_mode = 2
+text = "最有趣的时刻"
+
+[node name="MostFun" type="TextEdit" parent="QuestionnaireRoot/Margin/Panel/PanelMargin/Rows/QuestionScroll/QuestionContent" unique_id=258462037]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+placeholder_text = "可选"
+wrap_mode = 1
+
+[node name="MostConfusingLabel" type="Label" parent="QuestionnaireRoot/Margin/Panel/PanelMargin/Rows/QuestionScroll/QuestionContent" unique_id=1087019334]
+layout_mode = 2
+text = "最困惑的地方"
+
+[node name="MostConfusing" type="TextEdit" parent="QuestionnaireRoot/Margin/Panel/PanelMargin/Rows/QuestionScroll/QuestionContent" unique_id=1171042422]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+placeholder_text = "可选"
+wrap_mode = 1
+
+[node name="MostFrustratingLabel" type="Label" parent="QuestionnaireRoot/Margin/Panel/PanelMargin/Rows/QuestionScroll/QuestionContent" unique_id=1956402464]
+layout_mode = 2
+text = "最挫败的地方"
+
+[node name="MostFrustrating" type="TextEdit" parent="QuestionnaireRoot/Margin/Panel/PanelMargin/Rows/QuestionScroll/QuestionContent" unique_id=34791573]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+placeholder_text = "可选"
+wrap_mode = 1
+
+[node name="RuleChangeLabel" type="Label" parent="QuestionnaireRoot/Margin/Panel/PanelMargin/Rows/QuestionScroll/QuestionContent" unique_id=112473793]
+layout_mode = 2
+text = "最想修改的一条规则"
+
+[node name="RuleChange" type="TextEdit" parent="QuestionnaireRoot/Margin/Panel/PanelMargin/Rows/QuestionScroll/QuestionContent" unique_id=2003523773]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+placeholder_text = "可选"
+wrap_mode = 1
+
+[node name="ExpectedLengthLabel" type="Label" parent="QuestionnaireRoot/Margin/Panel/PanelMargin/Rows/QuestionScroll/QuestionContent" unique_id=1439983157]
+layout_mode = 2
+text = "期望的单局时长"
+
+[node name="ExpectedLength" type="LineEdit" parent="QuestionnaireRoot/Margin/Panel/PanelMargin/Rows/QuestionScroll/QuestionContent" unique_id=644570]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "例如：45 分钟"
+max_length = 500
+
+[node name="Footer" type="HBoxContainer" parent="QuestionnaireRoot/Margin/Panel/PanelMargin/Rows" unique_id=950740171]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 2
+
+[node name="QuestionnaireSkip" type="Button" parent="QuestionnaireRoot/Margin/Panel/PanelMargin/Rows/Footer" unique_id=1124952609]
+unique_name_in_owner = true
+layout_mode = 2
+text = "跳过"
+
+[node name="QuestionnaireSubmit" type="Button" parent="QuestionnaireRoot/Margin/Panel/PanelMargin/Rows/Footer" unique_id=1098953776]
+unique_name_in_owner = true
+layout_mode = 2
+text = "提交并导出"

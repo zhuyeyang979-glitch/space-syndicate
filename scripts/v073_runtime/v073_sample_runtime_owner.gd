@@ -42,6 +42,7 @@ signal state_changed(snapshot: Dictionary)
 signal action_queued(receipt: Dictionary)
 signal submission_locked(receipt: Dictionary)
 signal resolution_presented(receipt: Dictionary)
+signal playtest_observation_ready(receipt: Dictionary)
 signal final_settlement_committed(settlement: Dictionary)
 signal runtime_fault(receipt: Dictionary)
 
@@ -1824,12 +1825,14 @@ func _begin_resolution() -> void:
 
 
 func _complete_batch_resolution() -> void:
+	var local_assets_before := _local_asset_balances()
 	var refreshed := ASSET_BATCH_CORE.refresh_assets_after_batch(_asset_state)
 	if not bool(refreshed.get("accepted", false)):
 		_fail("asset_refresh_failed", refreshed)
 		return
 	_asset_state = (refreshed.get("state", {}) as Dictionary).duplicate(true)
 	_sync_asset_balances()
+	_emit_local_asset_refresh_observation(local_assets_before)
 	var completion_receipt := (
 		refreshed.get("receipt", {}) as Dictionary
 	).duplicate(true)
@@ -1865,6 +1868,48 @@ func _complete_batch_resolution() -> void:
 	_update_region_solar()
 	_phase = "maintenance"
 	_emit_local_state()
+
+
+func _local_asset_balances() -> Dictionary:
+	if _asset_state.is_empty():
+		return {}
+	var players := _asset_state.get("players", {}) as Dictionary
+	var local_player := players.get(_local_player_id, {}) as Dictionary
+	return (
+		local_player.get("assets", {}) as Dictionary
+	).duplicate(true)
+
+
+func _emit_local_asset_refresh_observation(before_assets: Dictionary) -> void:
+	var players := _asset_state.get("players", {}) as Dictionary
+	var local_player := players.get(_local_player_id, {}) as Dictionary
+	var after_assets := local_player.get("assets", {}) as Dictionary
+	var overflow := local_player.get("refresh_overflow", {}) as Dictionary
+	var refresh_count := 0
+	var overflow_total := 0
+	var safe_overflow := {}
+	for color in COLORS:
+		refresh_count += maxi(
+			0,
+			int(after_assets.get(color, 0)) - int(before_assets.get(color, 0))
+		)
+		var overflow_count := maxi(0, int(overflow.get(color, 0)))
+		safe_overflow[color] = overflow_count
+		overflow_total += overflow_count
+	playtest_observation_ready.emit({
+		"schema": "V073PlaytestObservationReceiptV1",
+		"event_type": "asset_refresh",
+		"payload": {"count": refresh_count},
+	})
+	if overflow_total > 0:
+		playtest_observation_ready.emit({
+			"schema": "V073PlaytestObservationReceiptV1",
+			"event_type": "asset_cap_overflow",
+			"payload": {
+				"count": overflow_total,
+				"overflow_by_color": safe_overflow,
+			},
+		})
 
 
 func _finish_macro_boundary() -> void:

@@ -1,0 +1,72 @@
+[gd_scene format=3 uid="uid://dkpd27ef5l4ko"]
+
+[ext_resource type="Script" uid="uid://de52sq73d5u78" path="res://scripts/ui/v073/v073_playtest_coach_marks.gd" id="1_coach"]
+
+[node name="V073PlaytestCoachMarks" type="CanvasLayer" unique_id=2035900741]
+layer = 40
+script = ExtResource("1_coach")
+
+[node name="CoachRoot" type="Control" parent="." unique_id=1989811451]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="CoachCallout" type="PanelContainer" parent="CoachRoot" unique_id=84683312]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 110)
+layout_mode = 0
+offset_left = 24.0
+offset_top = 96.0
+offset_right = 344.0
+offset_bottom = 206.0
+mouse_filter = 1
+
+[node name="Margin" type="MarginContainer" parent="CoachRoot/CoachCallout" unique_id=256533868]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="Rows" type="VBoxContainer" parent="CoachRoot/CoachCallout/Margin" unique_id=1182906732]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Header" type="HBoxContainer" parent="CoachRoot/CoachCallout/Margin/Rows" unique_id=244628216]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="CoachRoot/CoachCallout/Margin/Rows/Header" unique_id=2140573650]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "首局引导"
+
+[node name="CoachStep" type="Label" parent="CoachRoot/CoachCallout/Margin/Rows/Header" unique_id=134905381]
+unique_name_in_owner = true
+layout_mode = 2
+text = "1 / 14"
+
+[node name="CoachBody" type="Label" parent="CoachRoot/CoachCallout/Margin/Rows" unique_id=1193320239]
+unique_name_in_owner = true
+layout_mode = 2
+text = "普通手牌上限为 5。"
+autowrap_mode = 2
+
+[node name="Actions" type="HBoxContainer" parent="CoachRoot/CoachCallout/Margin/Rows" unique_id=980163534]
+layout_mode = 2
+theme_override_constants/separation = 6
+alignment = 2
+
+[node name="CoachSkipAll" type="Button" parent="CoachRoot/CoachCallout/Margin/Rows/Actions" unique_id=270785419]
+unique_name_in_owner = true
+layout_mode = 2
+text = "跳过全部"
+
+[node name="CoachNext" type="Button" parent="CoachRoot/CoachCallout/Margin/Rows/Actions" unique_id=1529692736]
+unique_name_in_owner = true
+layout_mode = 2
+text = "下一条"
