@@ -8,9 +8,15 @@ signal playtest_feedback_skipped
 # MCP_FINALIZE
 
 const RULESET_ID := "v0.7.3"
-const COMPACT_VIEWPORT_HEIGHT := 820.0
-const COMPACT_PLANET_STAGE_HEIGHT := 104.0
-const REGULAR_PLANET_STAGE_HEIGHT := 252.0
+const PlanetPresentationAdapter := preload(
+	"res://scripts/presentation/v073/v073_planet_presentation_adapter_v1.gd"
+)
+const ResponsiveTableLayout := preload(
+	"res://scripts/ui/v073/v073_responsive_table_layout_v2.gd"
+)
+const UILayoutCollisionAudit := preload(
+	"res://scripts/ui/v073/v073_ui_layout_collision_audit_v1.gd"
+)
 const COLORS := ["life", "energy", "industry", "technology", "commerce", "shipping"]
 const COLOR_LABELS := {
 	"life": "生命",
@@ -104,6 +110,16 @@ var _flow: Node
 var _telemetry: Node
 var _snapshot: Dictionary = {}
 var _capabilities: Dictionary = {}
+var _planet_presentation_adapter := PlanetPresentationAdapter.new()
+var _layout_profile: Dictionary = {}
+var _selected_region_id := ""
+var _map_presentation_apply_count := 0
+var _map_region_selection_count := 0
+var _map_target_binding_count := 0
+var _map_illegal_target_reject_count := 0
+var _map_region_popup_opened := false
+var _planet_rotation_used := false
+var _planet_zoom_used := false
 var _selected_card_id := ""
 var _selected_card_definition_id := ""
 var _selected_card_color := ""
@@ -140,6 +156,7 @@ func _ready() -> void:
 	_connect_static_controls()
 	_populate_stance_options()
 	_configure_planet_shell()
+	_connect_planet_interactions()
 	get_viewport().size_changed.connect(_apply_responsive_layout)
 	_apply_responsive_layout()
 	_region_popup_body.add_theme_constant_override("line_separation", 5)
@@ -196,6 +213,7 @@ func apply_snapshot(snapshot: Dictionary) -> void:
 	_refresh_hand()
 	_refresh_queue()
 	_refresh_targets()
+	_refresh_planet_presentation()
 	_refresh_history()
 	_refresh_playtest_context()
 	_update_acceptance_state()
@@ -360,27 +378,147 @@ func _configure_planet_shell() -> void:
 
 
 func _apply_responsive_layout() -> void:
-	var compact := get_viewport_rect().size.y <= COMPACT_VIEWPORT_HEIGHT
+	var viewport_size := get_viewport_rect().size
+	var player_count := maxi(4, (_snapshot.get("roster", []) as Array).size())
+	_layout_profile = ResponsiveTableLayout.profile_for(viewport_size, player_count)
+	var mode := str(_layout_profile.get("mode", ResponsiveTableLayout.REGULAR_DESKTOP))
+	var compact := mode == ResponsiveTableLayout.COMPACT_DESKTOP
 	var root_margin := $RootMargin as MarginContainer
 	var shell := $RootMargin/Shell as VBoxContainer
-	var stage := _planet_board.get_node_or_null(
-		"PlanetRows/PlanetStageViewport"
-	) as Control
-	if root_margin != null:
-		root_margin.offset_top = 6.0 if compact else 10.0
-		root_margin.offset_bottom = -6.0 if compact else -10.0
-	if shell != null:
-		shell.add_theme_constant_override("separation", 2 if compact else 6)
+	var header := $RootMargin/Shell/Header as Control
+	var track_panel := $RootMargin/Shell/TrackPanel as Control
+	var table_area := $RootMargin/Shell/TableArea as Control
+	var roster_panel := $RootMargin/Shell/TableArea/RosterPanel as Control
+	var target_panel := $RootMargin/Shell/TargetPanel as Control
+	var dock_panel := $RootMargin/Shell/DockPanel as Control
+	var queue_panel := $RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/QueuePanel as Control
+	var stage := _planet_board.get_node_or_null("PlanetRows/PlanetStageViewport") as Control
+	var outer_margin := 6.0 if compact else 10.0
+	root_margin.offset_top = outer_margin
+	root_margin.offset_bottom = -outer_margin
+	shell.add_theme_constant_override("separation", int(_layout_profile.get("shell_separation", 5)))
+	header.custom_minimum_size.y = float(_layout_profile.get("header_height", 82.0))
+	track_panel.custom_minimum_size.y = float(_layout_profile.get("track_height", 128.0))
+	table_area.custom_minimum_size.y = float(_layout_profile.get("table_height", 430.0))
+	target_panel.custom_minimum_size.y = float(_layout_profile.get("target_height", 38.0))
+	dock_panel.custom_minimum_size.y = float(_layout_profile.get("dock_height", 198.0))
+	roster_panel.custom_minimum_size.x = float(_layout_profile.get("roster_width", 190.0))
+	queue_panel.custom_minimum_size.x = 258.0 if compact else (340.0 if mode == ResponsiveTableLayout.WIDE_DESKTOP else 300.0)
+	_planet_board.custom_minimum_size = Vector2(0.0, float(_layout_profile.get("table_height", 430.0)))
 	if stage != null:
-		stage.custom_minimum_size.y = (
-			COMPACT_PLANET_STAGE_HEIGHT
-			if compact
-			else REGULAR_PLANET_STAGE_HEIGHT
-		)
+		stage.custom_minimum_size.y = float(_layout_profile.get("planet_stage_height", 340.0))
 		stage.update_minimum_size()
+	_planet_board.call("set_layout_mode", mode)
+	_track_rail.add_theme_constant_override("separation", 4 if compact else 8)
+	_target_rail.add_theme_constant_override("separation", 3 if compact else 5)
+	_save_notice.custom_minimum_size = Vector2(0.0, 22.0)
+	_save_notice.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_save_notice.text = "样品暂不支持保存 / 继续" if compact else "V0.7.3样品暂不支持中途保存"
+	_save_notice.tooltip_text = "V0.7.3样品暂不支持中途保存"
+	%SaveButton.custom_minimum_size.x = 48.0 if compact else 58.0
+	%ContinueButton.custom_minimum_size.x = 48.0 if compact else 58.0
+	if _marker_panel != null and _marker_panel.has_method("apply_safe_layout"):
+		_marker_panel.call("apply_safe_layout", viewport_size, mode, outer_margin + 48.0)
 	_planet_board.update_minimum_size()
-	if shell != null:
-		shell.queue_sort()
+	shell.queue_sort()
+
+
+func _connect_planet_interactions() -> void:
+	var bindings := {
+		"district_selected": Callable(self, "_on_planet_district_selected"),
+		"district_double_clicked": Callable(self, "_on_planet_district_double_clicked"),
+		"map_background_clicked": Callable(self, "_on_planet_map_background_clicked"),
+		"camera_interacted": Callable(self, "_on_planet_camera_interacted"),
+	}
+	for signal_name in bindings:
+		var callback: Callable = bindings[signal_name]
+		if _planet_board.has_signal(signal_name) and not _planet_board.is_connected(signal_name, callback):
+			_planet_board.connect(signal_name, callback)
+
+
+func _refresh_planet_presentation() -> void:
+	if not bool(_snapshot.get("match_started", false)):
+		return
+	var presentation_seed := int(_snapshot.get("presentation_match_seed", 0))
+	if presentation_seed <= 0:
+		return
+	var viewer_index := 0
+	for row_variant in _snapshot.get("roster", []) as Array:
+		var row := row_variant as Dictionary
+		if bool(row.get("is_local_player", false)):
+			viewer_index = int(row.get("public_order_index", 0))
+			break
+	var authorization_revision := _planet_presentation_adapter.authorization_revision(_snapshot)
+	_planet_board.call("bind_presentation_viewer", viewer_index, authorization_revision)
+	var map_snapshot: MapPresentationSnapshot = _planet_presentation_adapter.build_map_snapshot(
+		presentation_seed,
+		_snapshot,
+		_selected_card_id,
+		_selected_region_id
+	)
+	if map_snapshot == null:
+		return
+	_map_presentation_apply_count = int(_planet_board.call("apply_map_presentation", map_snapshot))
+
+
+func _on_planet_district_selected(index: int) -> void:
+	var region_id := _planet_presentation_adapter.region_id_for_index(
+		int(_snapshot.get("presentation_match_seed", 0)),
+		index
+	)
+	if region_id.is_empty():
+		return
+	_map_region_selection_count += 1
+	_handle_region_selection(region_id, "planet_map")
+
+
+func _on_planet_district_double_clicked(_index: int) -> void:
+	_last_public_ui_surface = "planet_map"
+
+
+func _on_planet_map_background_clicked() -> void:
+	_selected_region_id = ""
+	_last_public_ui_surface = "planet_map"
+	_refresh_planet_presentation()
+
+
+func _on_planet_camera_interacted(kind: String) -> void:
+	_last_public_ui_surface = "planet_map"
+	if kind == "drag":
+		_planet_rotation_used = true
+	elif kind in ["wheel", "touch_zoom"]:
+		_planet_zoom_used = true
+
+
+func _handle_region_selection(region_id: String, source_surface: String) -> void:
+	_selected_region_id = region_id
+	_last_public_ui_surface = source_surface
+	_refresh_planet_presentation()
+	if _selected_card_id.is_empty():
+		_map_region_popup_opened = _map_region_popup_opened or source_surface == "planet_map"
+		_show_region_popup(region_id)
+		return
+	var option := _legal_option_for_selected(region_id)
+	if option.is_empty():
+		if source_surface == "planet_map":
+			_map_illegal_target_reject_count += 1
+		_show_toast("该地区不是当前卡牌的合法目标", false)
+		return
+	if source_surface == "planet_map":
+		_map_target_binding_count += 1
+	_pending_target_event = {
+		"card_definition_id": _selected_card_definition_id,
+		"color_id": _selected_card_color,
+		"region_id": region_id,
+		"facility_type": str(option.get("facility_type", "")),
+		"facility_action_mode": str(option.get("facility_action_mode", "")),
+		"asset_cost": int(option.get("asset_cost", 0)),
+		"source_surface": source_surface,
+	}
+	_emit_intent("card.queue", {
+		"card_instance_id": _selected_card_id,
+		"target_slot_id": str(option.get("target_slot_id", "")),
+	})
 
 
 func _request_new_game(player_count: int) -> void:
@@ -479,7 +617,7 @@ func _refresh_roster() -> void:
 		var panel := PanelContainer.new()
 		panel.custom_minimum_size = Vector2(
 			92,
-			44 if get_viewport_rect().size.y <= COMPACT_VIEWPORT_HEIGHT else 54
+			44 if str(_layout_profile.get("mode", "")) == ResponsiveTableLayout.COMPACT_DESKTOP else 54
 		)
 		var style := StyleBoxFlat.new()
 		style.bg_color = Color("#172236")
@@ -669,6 +807,7 @@ func _on_hand_card_activated(payload: Dictionary) -> void:
 	)
 	_refresh_hand()
 	_refresh_targets()
+	_refresh_planet_presentation()
 	_update_acceptance_state()
 
 
@@ -683,6 +822,7 @@ func _clear_selected_card() -> void:
 	_selected_card_type = ""
 	_refresh_hand()
 	_refresh_targets()
+	_refresh_planet_presentation()
 
 
 func _refresh_queue() -> void:
@@ -757,15 +897,16 @@ func _refresh_targets() -> void:
 	]:
 		var solar := solar_by_region.get(region_id, {}) as Dictionary
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(126, 52)
+		var compact := str(_layout_profile.get("mode", "")) == ResponsiveTableLayout.COMPACT_DESKTOP
+		button.custom_minimum_size = Vector2(92.0 if compact else 112.0, 28.0)
+		button.focus_mode = Control.FOCUS_ALL
 		var sunlit := bool(solar.get("sunlit", false))
-		button.text = "%s
-%s ×%.1f" % [
+		button.text = "%s · %s ×%.1f" % [
 			_region_label(region_id),
 			"日照" if sunlit else "暗面",
 			float(solar.get("facility_efficiency_multiplier", 1.0)),
 		]
-		button.tooltip_text = "地区公开信息"
+		button.tooltip_text = "键盘与无障碍备用地区入口"
 		var legal := _legal_option_for_selected(region_id)
 		if not _selected_card_id.is_empty():
 			button.disabled = legal.is_empty()
@@ -779,27 +920,7 @@ func _refresh_targets() -> void:
 
 
 func _on_region_pressed(region_id: String) -> void:
-	_last_public_ui_surface = "target_panel"
-	if _selected_card_id.is_empty():
-		_show_region_popup(region_id)
-		return
-	var option := _legal_option_for_selected(region_id)
-	if option.is_empty():
-		_show_toast("该地区不是当前卡牌的合法目标", false)
-		return
-	_pending_target_event = {
-		"card_definition_id": _selected_card_definition_id,
-		"color_id": _selected_card_color,
-		"region_id": region_id,
-		"facility_type": str(option.get("facility_type", "")),
-		"facility_action_mode": str(option.get("facility_action_mode", "")),
-		"asset_cost": int(option.get("asset_cost", 0)),
-		"source_surface": "target_panel",
-	}
-	_emit_intent("card.queue", {
-		"card_instance_id": _selected_card_id,
-		"target_slot_id": str(option.get("target_slot_id", "")),
-	})
+	_handle_region_selection(region_id, "target_rail")
 
 
 func _legal_option_for_selected(region_id: String) -> Dictionary:
@@ -907,15 +1028,15 @@ func _region_label(region_id: String) -> String:
 
 
 func _show_toast(message: String, positive: bool) -> void:
-	_toast_label.text = message
-	_toast_label.modulate = Color("#7ce5ae") if positive else Color("#ff8f8f")
-	_toast_label.visible = true
+	_toast_label.visible = false
+	_action_status.text = message
+	_action_status.modulate = Color("#7ce5ae") if positive else Color("#ff8f8f")
 	if _toast_tween != null and _toast_tween.is_valid():
 		_toast_tween.kill()
 	_toast_tween = create_tween()
 	_toast_tween.tween_interval(2.2)
 	_toast_tween.tween_callback(func() -> void:
-		_toast_label.visible = false
+		_action_status.modulate = Color.WHITE
 	)
 
 
@@ -943,7 +1064,11 @@ func _bind_playtest_surfaces() -> void:
 		"assets": %AssetRail,
 		"hand": %HandRail,
 		"track": $RootMargin/Shell/TrackPanel,
-		"targets": $RootMargin/Shell/TargetPanel,
+		"targets": $RootMargin/Shell/TargetPanel/TargetMargin/TargetRow/TargetTitle,
+		"target_panel": $RootMargin/Shell/TargetPanel,
+		"planet": _planet_board,
+		"roster": $RootMargin/Shell/TableArea/RosterPanel,
+		"marker": _marker_panel,
 		"lock": %LockButton,
 		"queue": %QueueRail,
 		"phase": %PhaseLabel,
@@ -1039,18 +1164,21 @@ func _refresh_playtest_context() -> void:
 	if _coach_marks == null:
 		return
 	var questionnaire_visible := bool(_questionnaire.call("is_presented"))
+	var modal_visible := (
+		_start_overlay.visible
+		or _region_popup.visible
+		or _settlement_overlay.visible
+		or questionnaire_visible
+	)
+	if _marker_panel != null and _marker_panel.has_method("set_temporarily_hidden"):
+		_marker_panel.call("set_temporarily_hidden", modal_visible)
 	_coach_marks.call("apply_public_context", {
 		"match_started": bool(_snapshot.get("match_started", false)),
 		"phase": str(_snapshot.get("phase", "idle")),
 		"card_selected": not _selected_card_id.is_empty(),
 		"queue_count": (_snapshot.get("queued_actions", []) as Array).size(),
 		"submission_locked": bool(_snapshot.get("submission_locked", false)),
-		"modal_visible": (
-			_start_overlay.visible
-			or _region_popup.visible
-			or _settlement_overlay.visible
-			or questionnaire_visible
-		),
+		"modal_visible": modal_visible,
 	})
 
 
@@ -1085,6 +1213,62 @@ func _on_export_status_changed(success: bool, message: String) -> void:
 	_update_acceptance_state()
 
 
+func _layout_collision_snapshot() -> Dictionary:
+	var map_view := _planet_board.call("get_embedded_map_view") as Control
+	var coach_debug := (
+		_coach_marks.call("debug_snapshot") as Dictionary
+		if _coach_marks != null and _coach_marks.has_method("debug_snapshot")
+		else {}
+	)
+	var marker_debug := (
+		_marker_panel.call("debug_snapshot") as Dictionary
+		if _marker_panel != null and _marker_panel.has_method("debug_snapshot")
+		else {}
+	)
+	var header_controls: Array = [
+		$RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderPrimaryRow/TitleStack,
+		%PhaseLabel,
+		%TimerProgress,
+		%TimerLabel,
+		%NewGameButton,
+		%SaveNotice,
+		%SaveButton,
+		%ContinueButton,
+		%GuideButton,
+	]
+	var interactive_controls: Array = [
+		%NewGameButton,
+		%SaveButton,
+		%ContinueButton,
+		%GuideButton,
+		_merge_button,
+		_finish_button,
+		_lock_button,
+		_accelerate_button,
+		_planet_board.find_child("ResetOverviewButton", true, false),
+		_planet_board.find_child("FullscreenButton", true, false),
+	]
+	return UILayoutCollisionAudit.audit(
+		Rect2(Vector2.ZERO, get_viewport_rect().size),
+		{
+			"header": $RootMargin/Shell/Header,
+			"track": $RootMargin/Shell/TrackPanel,
+			"table": $RootMargin/Shell/TableArea,
+			"target": $RootMargin/Shell/TargetPanel,
+			"dock": $RootMargin/Shell/DockPanel,
+			"roster": $RootMargin/Shell/TableArea/RosterPanel,
+			"planet": _planet_board,
+		},
+		header_controls,
+		interactive_controls,
+		_planet_board.get_node_or_null("PlanetRows/PlanetStageViewport") as Control,
+		map_view,
+		coach_debug,
+		marker_debug,
+		_region_popup
+	)
+
+
 func _update_acceptance_state() -> void:
 	var debug := {}
 	if _flow != null and _flow.has_method("debug_snapshot"):
@@ -1093,12 +1277,23 @@ func _update_acceptance_state() -> void:
 	var telemetry_debug := {}
 	if _telemetry != null and _telemetry.has_method("debug_snapshot"):
 		telemetry_debug = _telemetry.call("debug_snapshot") as Dictionary
+	var planet_debug := {}
+	if _planet_board != null and _planet_board.has_method("map_presentation_target_debug_snapshot"):
+		planet_debug = _planet_board.call("map_presentation_target_debug_snapshot") as Dictionary
+	var map_debug := {}
+	var map_view := _planet_board.call("get_embedded_map_view") as Control
+	if map_view != null and map_view.has_method("get_sceneization_debug_snapshot"):
+		map_debug = map_view.call("get_sceneization_debug_snapshot") as Dictionary
+	var adapter_debug := _planet_presentation_adapter.debug_snapshot(
+		int(_snapshot.get("presentation_match_seed", 0))
+	)
+	var layout_audit := _layout_collision_snapshot()
 	acceptance_state = {
 		"schema": "V073SampleAcceptanceStateV1",
 		"ruleset_id": RULESET_ID,
 		"runtime_frames": _runtime_frame_count,
 		"viewport_size": get_viewport_rect().size,
-		"compact_layout": get_viewport_rect().size.y <= COMPACT_VIEWPORT_HEIGHT,
+		"compact_layout": str(_layout_profile.get("mode", "")) == ResponsiveTableLayout.COMPACT_DESKTOP,
 		"match_started": bool(_snapshot.get("match_started", false)),
 		"match_completed": str(_snapshot.get("phase", "")) == "settled",
 		"player_count": (_snapshot.get("roster", []) as Array).size(),
@@ -1119,6 +1314,52 @@ func _update_acceptance_state() -> void:
 		"outer_orbit_decoration_count": 0,
 		"planet_alpha": 1.0,
 		"backside_occluded": true,
+		"responsive_layout_owner": "V073ResponsiveTableLayoutV2",
+		"responsive_layout_mode": str(_layout_profile.get("mode", "")),
+		"ui_layout_collision_audit": layout_audit.duplicate(true),
+		"unintended_major_panel_intersection_count": int(layout_audit.get("unintended_major_panel_intersection_count", 0)),
+		"interactive_control_occlusion_count": int(layout_audit.get("interactive_control_occlusion_count", 0)),
+		"header_overflow_count": int(layout_audit.get("header_overflow_count", 0)),
+		"header_text_clip_count": int(layout_audit.get("header_text_clip_count", 0)),
+		"header_interactive_control_overlap_count": int(layout_audit.get("header_interactive_control_overlap_count", 0)),
+		"track_panel_overflow_count": int(layout_audit.get("track_panel_overflow_count", 0)),
+		"planet_draw_outside_stage_count": int(layout_audit.get("planet_draw_outside_stage_count", 0)),
+		"planet_input_outside_stage_count": int(layout_audit.get("planet_input_outside_stage_count", 0)),
+		"target_panel_dock_overlap_count": int(layout_audit.get("target_panel_dock_overlap_count", 0)),
+		"roster_planet_overlap_count": int(layout_audit.get("roster_planet_overlap_count", 0)),
+		"coach_unintended_overlap_count": int(layout_audit.get("coach_unintended_overlap_count", 0)),
+		"coach_target_occlusion_count": int(layout_audit.get("coach_target_occlusion_count", 0)),
+		"marker_unintended_overlap_count": int(layout_audit.get("marker_unintended_overlap_count", 0)),
+		"marker_panel_header_width_consumption": int(layout_audit.get("marker_panel_header_width_consumption", 0)),
+		"region_popup_unintended_overlap_count": int(layout_audit.get("region_popup_unintended_overlap_count", 0)),
+		"map_presentation_connection_count": int(adapter_debug.get("connection_count", 0)),
+		"map_presentation_apply_count": _map_presentation_apply_count,
+		"planet_placeholder_active": not bool(map_debug.get("has_map_data", false)),
+		"procedural_region_count": int(map_debug.get("district_count", 0)),
+		"region_geometry_fingerprint": str(map_debug.get("geometry_fingerprint", "")),
+		"planet_interaction_frame_p95_ms": float(map_debug.get("planet_interaction_frame_p95_ms", 0.0)),
+		"planet_idle_frame_p95_ms": float(map_debug.get("planet_idle_frame_p95_ms", 0.0)),
+		"planet_interaction_frame_sample_count": int(map_debug.get("interaction_frame_sample_count", 0)),
+		"planet_idle_frame_sample_count": int(map_debug.get("idle_frame_sample_count", 0)),
+		"region_geometry_rebuild_count": int(map_debug.get("geometry_rebuild_count", 0)),
+		"planet_presentation_gameplay_owner_count": int(adapter_debug.get("gameplay_owner_count", 0)),
+		"planet_presentation_save_owner_count": int(adapter_debug.get("save_owner_count", 0)),
+		"planet_presentation_rng_owner_count": int(adapter_debug.get("rng_owner_count", 0)),
+		"presentation_rng_gameplay_draw_delta": int(adapter_debug.get("gameplay_rng_draw_count", 0)),
+		"planet_rendering_mode": "canvas_shader_spherical_projection",
+		"planet_flat_disc_only_mode": false,
+		"planet_surface_rotates_with_camera": true,
+		"planet_primary_target_selection_surface": true,
+		"target_rail_primary_surface": false,
+		"map_region_selection_count": _map_region_selection_count,
+		"map_target_binding_count": _map_target_binding_count,
+		"map_illegal_target_reject_count": _map_illegal_target_reject_count,
+		"region_popup_opened_from_map": _map_region_popup_opened,
+		"planet_rotation_used": _planet_rotation_used,
+		"planet_zoom_used": _planet_zoom_used,
+		"fixed_left_rail_visible_count": int(planet_debug.get("fixed_left_rail_visible_count", 0)),
+		"fixed_right_rail_visible_count": int(planet_debug.get("fixed_right_rail_visible_count", 0)),
+		"flow_compass_map_overlap_count": int(planet_debug.get("flow_compass_map_overlap_count", 0)),
 		"six_color_icon_coverage": 6,
 		"color_only_identification_count": 0,
 		"normal_card_art_coverage": (

@@ -1,29 +1,39 @@
 @tool
-extends PanelContainer
+extends Control
 class_name SpaceSyndicatePlanetSelectionRing
 
-@onready var title_label: Label = %SelectionRingTitleLabel
-@onready var detail_label: Label = %SelectionRingDetailLabel
+const RING_SIZE := Vector2(44.0, 44.0)
 
 var _region_index := -1
+var _accent := Color("#facc15")
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_meta("mcp_sceneized_component", "PlanetSelectionRing")
+	queue_redraw()
 
 
 func configure(data: Dictionary) -> void:
 	_region_index = int(data.get("index", -1))
-	custom_minimum_size = Vector2(156, 74)
-	size = custom_minimum_size
-	position = _as_vector2(data.get("screen_position", Vector2.ZERO)) - custom_minimum_size * 0.5
+	_accent = Color(str(data.get("accent", "#facc15")))
+	custom_minimum_size = RING_SIZE
+	size = RING_SIZE
+	position = _as_vector2(data.get("screen_position", Vector2.ZERO)) - RING_SIZE * 0.5
 	name = "PlanetSelectionRing_%02d" % max(0, _region_index)
-	if title_label != null:
-		title_label.text = str(data.get("name", "Selected region"))
-	if detail_label != null:
-		detail_label.text = str(data.get("detail", "active focus"))
-	_refresh_style(Color(str(data.get("accent", "#facc15"))))
+	tooltip_text = "%s\n%s" % [
+		str(data.get("name", "Selected region")),
+		str(data.get("detail", "active focus")),
+	]
+	queue_redraw()
+
+
+func _draw() -> void:
+	var center := size * 0.5
+	draw_circle(center, 18.0, Color("#020617", 0.22))
+	draw_arc(center, 18.0, 0.0, TAU, 64, Color(_accent, 0.95), 3.0, true)
+	draw_arc(center, 13.0, 0.0, TAU, 48, Color(_accent, 0.34), 1.0, true)
+	draw_circle(center, 3.0, Color(_accent, 0.92))
 
 
 func debug_snapshot() -> Dictionary:
@@ -31,23 +41,8 @@ func debug_snapshot() -> Dictionary:
 		"index": _region_index,
 		"kind": "selection",
 		"visible": visible,
+		"text_panel_count": 0,
 	}
-
-
-func _refresh_style(accent: Color) -> void:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#020617", 0.12)
-	style.border_color = accent
-	style.set_border_width_all(2)
-	style.corner_radius_top_left = 8
-	style.corner_radius_top_right = 8
-	style.corner_radius_bottom_left = 8
-	style.corner_radius_bottom_right = 8
-	style.content_margin_left = 10
-	style.content_margin_right = 10
-	style.content_margin_top = 8
-	style.content_margin_bottom = 8
-	add_theme_stylebox_override("panel", style)
 
 
 func _as_vector2(value: Variant) -> Vector2:

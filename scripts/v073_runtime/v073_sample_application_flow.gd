@@ -22,6 +22,7 @@ const HUMAN_BASELINE := preload(
 var _intent_sequence := 0
 var _session_sequence := 0
 var _last_receipt: Dictionary = {}
+var _presentation_seed := DEFAULT_SEED
 
 
 func _ready() -> void:
@@ -168,6 +169,7 @@ func debug_snapshot() -> Dictionary:
 func _start_new_game(parameters: Dictionary) -> Dictionary:
 	var player_count := int(parameters.get("player_count", 4))
 	var seed_value := int(parameters.get("seed", DEFAULT_SEED))
+	_presentation_seed = seed_value
 	_session_sequence += 1
 	var session_id := "session.v073.sample.%06d" % _session_sequence
 	var activation: Dictionary = _ruleset_owner.activate_for_new_game(
@@ -236,7 +238,10 @@ func _reject(
 
 
 func _on_runtime_state_changed(snapshot: Dictionary) -> void:
-	projection_changed.emit(snapshot.duplicate(true))
+	var presentation_snapshot := snapshot.duplicate(true)
+	presentation_snapshot["presentation_match_seed"] = _presentation_seed
+	presentation_snapshot["presentation_namespace"] = "v073.planet.presentation.geometry.v1"
+	projection_changed.emit(presentation_snapshot)
 
 
 func _on_final_settlement_committed(settlement: Dictionary) -> void:

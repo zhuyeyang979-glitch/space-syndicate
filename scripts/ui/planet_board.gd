@@ -1,6 +1,12 @@
 extends PanelContainer
 class_name SpaceSyndicatePlanetBoard
 
+signal district_selected(index: int)
+signal district_double_clicked(index: int)
+signal map_background_clicked
+signal camera_interacted(kind: String)
+signal fullscreen_changed(open: bool)
+
 @onready var title_label: Label = %PlanetTitle
 @onready var hint_label: Label = %PlanetHint
 @onready var weather_forecast_strip: Control = %WeatherForecastStrip
@@ -19,6 +25,11 @@ class_name SpaceSyndicatePlanetBoard
 @onready var right_rail_title: Label = %RightRailTitle
 @onready var left_rail_fallback: Label = %LeftRailText
 @onready var right_rail_fallback: Label = %RightRailText
+@onready var reset_overview_button: Button = get_node_or_null("%ResetOverviewButton") as Button
+@onready var fullscreen_button: Button = get_node_or_null("%FullscreenButton") as Button
+@onready var fullscreen_overlay: Control = get_node_or_null("%PlanetFullscreenOverlay") as Control
+@onready var fullscreen_close_button: Button = get_node_or_null("%FullscreenCloseButton") as Button
+@onready var fullscreen_map_view: Control = get_node_or_null("%FullscreenMapView") as Control
 
 const STAGE_STAR_COUNT := 54
 const SIDE_RAIL_GAP := 8.0
@@ -39,6 +50,9 @@ var _map_presentation_target_count := 0
 var _presentation_authorized_viewer_index := -1
 var _presentation_authorization_revision := 0
 var _fullscreen_map_target: SpaceSyndicatePlanetMapView
+var _reset_overview_count := 0
+var _fullscreen_open_count := 0
+var _fullscreen_close_count := 0
 
 
 func _ready() -> void:
@@ -48,13 +62,24 @@ func _ready() -> void:
 			weather_forecast_strip.call("set_compact_mode", true)
 		if weather_forecast_strip.has_signal("region_jump_requested"):
 			weather_forecast_strip.connect("region_jump_requested", Callable(self, "_on_weather_region_jump_requested"))
-	_configure_pointer_passthrough_layers()
 	if map_host != null:
-		map_host.clip_contents = false
+		map_host.clip_contents = true
 		map_host.mouse_filter = Control.MOUSE_FILTER_PASS
 	if stage_viewport != null:
-		stage_viewport.clip_contents = false
+		stage_viewport.clip_contents = true
 		stage_viewport.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_configure_pointer_passthrough_layers()
+	_connect_map_signals(embedded_map_view)
+	if fullscreen_map_view != null:
+		bind_fullscreen_map_target(fullscreen_map_view as SpaceSyndicatePlanetMapView)
+		_connect_map_signals(fullscreen_map_view)
+		fullscreen_map_view.process_mode = Node.PROCESS_MODE_DISABLED
+	if reset_overview_button != null:
+		reset_overview_button.pressed.connect(reset_to_planet_overview)
+	if fullscreen_button != null:
+		fullscreen_button.pressed.connect(open_fullscreen_map)
+	if fullscreen_close_button != null:
+		fullscreen_close_button.pressed.connect(close_fullscreen_map)
 	call_deferred("_fit_square_stage")
 	queue_redraw()
 
@@ -66,28 +91,21 @@ func _notification(what: int) -> void:
 
 
 func set_board_state(data: Dictionary) -> void:
-	var right_rail_data: Dictionary = _right_rail_source(data)
-	right_rail_suppressed = bool(right_rail_data.get("hidden", right_rail_data.get("suppressed", false)))
 	title_label.text = str(data.get("title", "星球牌桌"))
-	hint_label.text = str(data.get("hint", "轨道外圈显示公开局势。"))
+	hint_label.text = str(data.get("hint", "拖拽旋转 · 滚轮缩放 · 双击聚焦"))
 	hint_label.add_theme_font_size_override("font_size", 10)
-	_set_space_rail(
-		left_rail_stack,
-		left_rail_title,
-		left_rail_fallback,
-		_left_rail_source(data),
-		true
-	)
-	_set_space_rail(
-		right_rail_stack,
-		right_rail_title,
-		right_rail_fallback,
-		right_rail_data,
-		false
-	)
 	_set_weather_strip(data.get("weather", {}))
-	_set_flow_compass(data.get("flow_compass", {}))
 	_configure_pointer_passthrough_layers()
+	call_deferred("_fit_square_stage")
+
+
+func set_layout_mode(mode: String) -> void:
+	var compact := mode == "COMPACT_DESKTOP"
+	if weather_forecast_strip != null:
+		weather_forecast_strip.visible = false
+		if weather_forecast_strip.has_method("set_compact_mode"):
+			weather_forecast_strip.call("set_compact_mode", true)
+	hint_label.visible = not compact
 	call_deferred("_fit_square_stage")
 
 
@@ -113,6 +131,7 @@ func bind_fullscreen_map_target(target: SpaceSyndicatePlanetMapView) -> void:
 
 
 func _apply_map_snapshot_to_target(target: SpaceSyndicatePlanetMapView, snapshot: MapPresentationSnapshot) -> void:
+	target.set_presentation_identity(snapshot.presentation_seed, snapshot.geometry_fingerprint)
 	target.set_map(
 		snapshot.districts,
 		snapshot.width_m,
@@ -147,6 +166,13 @@ func map_presentation_target_debug_snapshot() -> Dictionary:
 		"authorized_viewer_index": _presentation_authorized_viewer_index,
 		"authorization_revision": _presentation_authorization_revision,
 		"fullscreen_target_bound": _fullscreen_map_target != null,
+		"fullscreen_open": fullscreen_overlay != null and fullscreen_overlay.visible,
+		"fixed_left_rail_visible_count": 1 if left_space_rail != null and left_space_rail.visible else 0,
+		"fixed_right_rail_visible_count": 1 if right_space_rail != null and right_space_rail.visible else 0,
+		"flow_compass_map_overlap_count": 1 if playtest_flow_compass != null and playtest_flow_compass.visible else 0,
+		"reset_overview_count": _reset_overview_count,
+		"fullscreen_open_count": _fullscreen_open_count,
+		"fullscreen_close_count": _fullscreen_close_count,
 		"owns_gameplay_state": false,
 	}
 
@@ -171,13 +197,86 @@ func attach_runtime_map(map_node: Control) -> void:
 	map_node.focus_mode = Control.FOCUS_ALL
 	map_node.mouse_filter = Control.MOUSE_FILTER_STOP
 	map_node.set_meta("runtime_focus_kind", "planet_map")
-	map_node.clip_contents = false
+	map_node.clip_contents = true
 	map_node.visible = true
 	map_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	map_host.add_child(map_node)
 	embedded_map_view = map_node
 	map_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_fit_square_stage()
+
+
+func _connect_map_signals(target: Control) -> void:
+	if target == null:
+		return
+	var bindings := {
+		"district_selected": Callable(self, "_on_map_district_selected"),
+		"district_double_clicked": Callable(self, "_on_map_district_double_clicked"),
+		"map_background_clicked": Callable(self, "_on_map_background_clicked"),
+		"camera_presentation_interacted": Callable(self, "_on_map_camera_interacted"),
+	}
+	for signal_name in bindings:
+		var callback: Callable = bindings[signal_name]
+		if target.has_signal(signal_name) and not target.is_connected(signal_name, callback):
+			target.connect(signal_name, callback)
+
+
+func _on_map_district_selected(index: int) -> void:
+	district_selected.emit(index)
+
+
+func _on_map_district_double_clicked(index: int) -> void:
+	district_double_clicked.emit(index)
+
+
+func _on_map_background_clicked() -> void:
+	map_background_clicked.emit()
+
+
+func _on_map_camera_interacted(kind: String) -> void:
+	camera_interacted.emit(kind)
+
+
+func reset_to_planet_overview() -> void:
+	_reset_overview_count += 1
+	var map_view := get_embedded_map_view()
+	if map_view != null and map_view.has_method("reset_to_planet_overview"):
+		map_view.call("reset_to_planet_overview")
+	if _fullscreen_map_target != null and _fullscreen_map_target != map_view:
+		_fullscreen_map_target.reset_to_planet_overview()
+	camera_interacted.emit("reset_overview")
+
+
+func open_fullscreen_map() -> void:
+	if fullscreen_overlay == null:
+		return
+	if not fullscreen_overlay.visible:
+		_fullscreen_open_count += 1
+	fullscreen_overlay.visible = true
+	if fullscreen_map_view != null:
+		fullscreen_map_view.process_mode = Node.PROCESS_MODE_INHERIT
+		fullscreen_map_view.grab_focus()
+	fullscreen_changed.emit(true)
+
+
+func close_fullscreen_map() -> void:
+	if fullscreen_overlay == null:
+		return
+	if fullscreen_overlay.visible:
+		_fullscreen_close_count += 1
+	fullscreen_overlay.visible = false
+	if fullscreen_map_view != null:
+		fullscreen_map_view.process_mode = Node.PROCESS_MODE_DISABLED
+	var map_view := get_embedded_map_view()
+	if map_view != null:
+		map_view.grab_focus()
+	fullscreen_changed.emit(false)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if fullscreen_overlay != null and fullscreen_overlay.visible and event.is_action_pressed("ui_cancel"):
+		close_fullscreen_map()
+		get_viewport().set_input_as_handled()
 
 
 func _configure_pointer_passthrough_layers() -> void:
@@ -225,71 +324,27 @@ func _fit_square_stage() -> void:
 	var available := stage_viewport.size
 	if available.x <= 1.0 or available.y <= 1.0:
 		return
-	var max_square := maxf(1.0, minf(available.x, available.y))
-	var min_square := minf(220.0, max_square)
-	var square_side := max_square
-	var map_rect := Rect2(
-		Vector2(floor((available.x - square_side) * 0.5), floor((available.y - square_side) * 0.5)),
-		Vector2(square_side, square_side)
-	)
-	map_host.position = map_rect.position
-	map_host.size = map_rect.size
-	map_host.custom_minimum_size = Vector2(min_square, min_square)
-	_layout_flow_compass(map_rect, available)
-	_layout_space_rail(left_space_rail, true, map_rect, available)
-	_layout_space_rail(right_space_rail, false, map_rect, available)
+	map_host.position = Vector2.ZERO
+	map_host.size = available
+	map_host.custom_minimum_size = Vector2.ZERO
+	map_host.clip_contents = true
+	if embedded_map_view != null:
+		embedded_map_view.custom_minimum_size = Vector2.ZERO
+		embedded_map_view.clip_contents = true
+		embedded_map_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_layout_flow_compass(Rect2(Vector2.ZERO, available), available)
+	_layout_space_rail(left_space_rail, true, Rect2(Vector2.ZERO, available), available)
+	_layout_space_rail(right_space_rail, false, Rect2(Vector2.ZERO, available), available)
 
 
-func _layout_flow_compass(map_rect: Rect2, _available: Vector2) -> void:
-	if playtest_flow_compass == null:
-		return
-	playtest_flow_compass.visible = true
-	var compass_width := clampf(map_rect.position.x - SIDE_RAIL_GAP * 2.0, 158.0, 218.0)
-	var compass_height := 60.0
-	var x := map_rect.position.x - compass_width - SIDE_RAIL_GAP
-	if x < 8.0:
-		x = map_rect.position.x + 10.0
-	var y := map_rect.position.y + 8.0
-	playtest_flow_compass.position = Vector2(x, y)
-	playtest_flow_compass.size = Vector2(compass_width, compass_height)
+func _layout_flow_compass(_map_rect: Rect2, _available: Vector2) -> void:
+	if playtest_flow_compass != null:
+		playtest_flow_compass.visible = false
 
 
-func _layout_space_rail(rail: PanelContainer, left_side: bool, map_rect: Rect2, available: Vector2) -> void:
-	if rail == null:
-		return
-	if not left_side:
-		rail.set_meta("planet_side_lane_suppressed_for_resolution", right_rail_suppressed)
-	if not left_side and right_rail_suppressed:
+func _layout_space_rail(rail: PanelContainer, _left_side: bool, _map_rect: Rect2, _available: Vector2) -> void:
+	if rail != null:
 		rail.visible = false
-		return
-	var side_space := map_rect.position.x - SIDE_RAIL_GAP if left_side else available.x - map_rect.end.x - SIDE_RAIL_GAP
-	if side_space < SIDE_RAIL_MIN_WIDTH or map_rect.size.y < 190.0:
-		rail.visible = false
-		return
-	rail.visible = true
-	var rail_width := clampf(side_space, SIDE_RAIL_MIN_WIDTH, SIDE_RAIL_MAX_WIDTH)
-	var entry_count := _visible_rail_entry_count(left_side)
-	var rail_max_height := minf(SIDE_RAIL_MAX_HEIGHT, map_rect.size.y * 0.56)
-	var rail_min_height := minf(154.0, rail_max_height)
-	var rail_height := clampf(64.0 + float(entry_count) * 44.0, rail_min_height, rail_max_height)
-	var x := map_rect.position.x - SIDE_RAIL_GAP - rail_width if left_side else map_rect.end.x + SIDE_RAIL_GAP
-	var lane_ratio := SIDE_RAIL_LEFT_Y_RATIO if left_side else SIDE_RAIL_RIGHT_Y_RATIO
-	var y := map_rect.position.y + clampf(
-		map_rect.size.y * lane_ratio,
-		SIDE_RAIL_GAP,
-		maxf(SIDE_RAIL_GAP, map_rect.size.y - rail_height - SIDE_RAIL_GAP)
-	)
-	if not left_side:
-		var left_bottom := map_rect.position.y + map_rect.size.y * SIDE_RAIL_LEFT_Y_RATIO + SIDE_RAIL_MIN_STAGGER_PIXELS
-		y = maxf(y, left_bottom)
-	rail.position = Vector2(x, y)
-	rail.size = Vector2(rail_width, rail_height)
-	rail.custom_minimum_size = Vector2(SIDE_RAIL_MIN_WIDTH, 0)
-	rail.set_meta("planet_side_lane_skeleton", {
-		"side": "left" if left_side else "right",
-		"safe_core_ratio": PLANET_TABLE_SAFE_CORE_RATIO,
-		"stagger_pixels": SIDE_RAIL_MIN_STAGGER_PIXELS,
-	})
 
 
 func _visible_rail_entry_count(left_side: bool) -> int:

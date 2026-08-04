@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://b83n5s3yi6o3u"]
 
-[ext_resource type="Script" uid="uid://bfn1nhbbcpmjj" path="res://scripts/ui/v073/v073_sample_game_screen.gd" id="1_screen"]
+[ext_resource type="Script" uid="uid://5ei0fa5lsfir" path="res://scripts/ui/v073/v073_sample_game_screen.gd" id="1_screen"]
 [ext_resource type="Theme" uid="uid://b6nvmn6jxbux" path="res://themes/GameTheme.tres" id="2_theme"]
 [ext_resource type="PackedScene" path="res://scenes/ui/PlanetBoard.tscn" id="3_planet"]
 [ext_resource type="Texture2D" uid="uid://g38aicv5b1sf" path="res://assets/third_party/commercial/materials/ambientcg/SheetMetal003/SheetMetal003_1K-JPG_Color.jpg" id="4_backdrop"]
@@ -113,7 +113,7 @@ size_flags_vertical = 3
 theme_override_constants/separation = 6
 
 [node name="Header" type="PanelContainer" parent="RootMargin/Shell" unique_id=1446252509]
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 82)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleHeader")
 
@@ -124,28 +124,32 @@ theme_override_constants/margin_top = 5
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 5
 
-[node name="HeaderRow" type="HBoxContainer" parent="RootMargin/Shell/Header/HeaderMargin" unique_id=85736795]
+[node name="HeaderRows" type="VBoxContainer" parent="RootMargin/Shell/Header/HeaderMargin" unique_id=1728871678]
 layout_mode = 2
-theme_override_constants/separation = 9
+theme_override_constants/separation = 3
 
-[node name="TitleStack" type="VBoxContainer" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow" unique_id=583726758]
+[node name="HeaderPrimaryRow" type="HBoxContainer" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows" unique_id=179167807]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TitleStack" type="VBoxContainer" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderPrimaryRow" unique_id=583726758]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 0
 
-[node name="BrandLabel" type="Label" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow/TitleStack" unique_id=471383108]
+[node name="BrandLabel" type="Label" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderPrimaryRow/TitleStack"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 19
 text = "SPACE SYNDICATE"
 
-[node name="RulesetLabel" type="Label" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow/TitleStack" unique_id=987963374]
+[node name="RulesetLabel" type="Label" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderPrimaryRow/TitleStack"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.36, 0.84, 0.77, 1)
 theme_override_font_sizes/font_size = 10
 text = "v0.7.3 · NEW GAME ONLY"
 
-[node name="PhaseLabel" type="Label" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow" unique_id=1961168728]
+[node name="PhaseLabel" type="Label" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderPrimaryRow" unique_id=1961168728]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(106, 0)
 layout_mode = 2
@@ -153,7 +157,7 @@ text = "待命"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="TimerProgress" type="ProgressBar" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow" unique_id=511191190]
+[node name="TimerProgress" type="ProgressBar" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderPrimaryRow" unique_id=511191190]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(96, 12)
 layout_mode = 2
@@ -161,54 +165,62 @@ max_value = 30.0
 value = 30.0
 show_percentage = false
 
-[node name="TimerLabel" type="Label" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow" unique_id=1135344816]
+[node name="TimerLabel" type="Label" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderPrimaryRow" unique_id=1135344816]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(42, 0)
 layout_mode = 2
 text = "30 s"
 vertical_alignment = 1
 
-[node name="SaveNotice" type="Label" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow" unique_id=455174917]
+[node name="NewGameButton" type="Button" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderPrimaryRow" unique_id=414724471]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(76, 0)
+layout_mode = 2
+text = "新游戏"
+
+[node name="HeaderUtilityRow" type="HBoxContainer" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows" unique_id=1893880583]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="HeaderUtilitySpacer" type="Control" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderUtilityRow" unique_id=568355288]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SaveNotice" type="Label" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderUtilityRow" unique_id=455174917]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(196, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.95, 0.74, 0.38, 1)
 theme_override_font_sizes/font_size = 10
 text = "V0.7.3样品暂不支持中途保存"
-horizontal_alignment = 1
+horizontal_alignment = 2
 vertical_alignment = 1
 autowrap_mode = 2
+text_overrun_behavior = 3
 
-[node name="SaveButton" type="Button" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow" unique_id=1885915712]
+[node name="SaveButton" type="Button" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderUtilityRow" unique_id=1885915712]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(58, 0)
 layout_mode = 2
 tooltip_text = "V0.7.3样品暂不支持中途保存"
 disabled = true
 text = "保存"
 
-[node name="ContinueButton" type="Button" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow" unique_id=57364874]
+[node name="ContinueButton" type="Button" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderUtilityRow" unique_id=57364874]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(58, 0)
 layout_mode = 2
 tooltip_text = "V0.6旧存档不会加载到V0.7.3"
 disabled = true
 text = "继续"
 
-[node name="NewGameButton" type="Button" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow" unique_id=414724471]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(76, 0)
-layout_mode = 2
-text = "新游戏"
-
-[node name="GuideButton" type="Button" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow" unique_id=545842354]
+[node name="GuideButton" type="Button" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRows/HeaderUtilityRow" unique_id=545842354]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(58, 0)
 layout_mode = 2
 tooltip_text = "重新查看首局引导"
 text = "引导"
-
-[node name="V073PlaytestMarkerPanel" parent="RootMargin/Shell/Header/HeaderMargin/HeaderRow" unique_id=1152564011 instance=ExtResource("8_marker")]
-unique_name_in_owner = true
-layout_mode = 2
 
 [node name="TrackPanel" type="PanelContainer" parent="RootMargin/Shell" unique_id=1671536729]
 custom_minimum_size = Vector2(0, 140)
@@ -336,9 +348,9 @@ layout_mode = 2
 theme_override_constants/separation = 6
 
 [node name="TargetTitle" type="Label" parent="RootMargin/Shell/TargetPanel/TargetMargin/TargetRow" unique_id=586782367]
-custom_minimum_size = Vector2(88, 0)
+custom_minimum_size = Vector2(72, 0)
 layout_mode = 2
-text = "地区目标"
+text = "键盘目标"
 vertical_alignment = 1
 
 [node name="TargetScroll" type="ScrollContainer" parent="RootMargin/Shell/TargetPanel/TargetMargin/TargetRow" unique_id=1739680604]
@@ -436,7 +448,13 @@ theme_override_font_sizes/font_size = 11
 text = "本地行动顺序"
 horizontal_alignment = 1
 
-[node name="QueueRail" type="VBoxContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/QueuePanel/QueueRows" unique_id=1029840382]
+[node name="QueueScroll" type="ScrollContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/QueuePanel/QueueRows" unique_id=1411510708]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="QueueRail" type="VBoxContainer" parent="RootMargin/Shell/DockPanel/DockMargin/DockRows/DockBody/QueuePanel/QueueRows/QueueScroll" unique_id=1029840382]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
@@ -747,3 +765,19 @@ unique_name_in_owner = true
 
 [node name="V073PlaytestQuestionnaire" parent="." unique_id=856147895 instance=ExtResource("9_questionnaire")]
 unique_name_in_owner = true
+
+[node name="PlaytestUtilityLayer" type="CanvasLayer" parent="." unique_id=1057819042]
+layer = 45
+
+[node name="PlaytestSafeArea" type="Control" parent="PlaytestUtilityLayer" unique_id=303196017]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="V073PlaytestMarkerPanel" parent="PlaytestUtilityLayer/PlaytestSafeArea" unique_id=1152564011 instance=ExtResource("8_marker")]
+unique_name_in_owner = true
+layout_mode = 0
+offset_right = 223.0
+offset_bottom = 34.0

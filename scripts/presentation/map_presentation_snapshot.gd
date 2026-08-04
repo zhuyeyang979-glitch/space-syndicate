@@ -21,6 +21,8 @@ var solar_presentation: Dictionary = {}
 var weather_forecast: Dictionary = {}
 var weather_overlay: Dictionary = {}
 var motion_mode := "full"
+var presentation_seed := 0
+var geometry_fingerprint := ""
 
 
 func is_valid() -> bool:
@@ -31,4 +33,5 @@ func is_valid() -> bool:
 			unit_markers, city_markers, route_markers, selected_trade_product,
 			selected_map_layer_focus,
 			solar_presentation, weather_forecast, weather_overlay, motion_mode,
+			presentation_seed, geometry_fingerprint,
 		])

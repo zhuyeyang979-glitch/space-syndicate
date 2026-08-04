@@ -39,7 +39,6 @@ const LABEL_DENSE_ZOOM_THRESHOLD := 1.52
 const FOCUSED_LABEL_ZOOM_THRESHOLD := 1.20
 const TABLE_TOKEN_LABEL_ZOOM_THRESHOLD := 1.36
 const CALLOUT_DENSE_ZOOM_THRESHOLD := 1.42
-const PROGRAMMATIC_CLICK_ANCHOR_RADIUS := 1
 const MOTH_KAIJUICE_KAIJU_PATH := "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc.png"
 const MOTH_KAIJUICE_CELL_SIZE := Vector2(93.0, 93.0)
 const MONSTER_BATTLER_DINO_PATH := "res://assets/third_party/monster_battler/monsters/dino.png"
@@ -86,7 +85,6 @@ var _last_mouse_position := Vector2.ZERO
 var _press_district_index := -1
 var _map_signature := ""
 var _visual_payload_signature := ""
-var _programmatic_district_click_anchors: Dictionary = {}
 var _animated_redraw_timer := 0.0
 var _interaction_detail_timer := 0.0
 var _interaction_redraw_timer := 0.0
@@ -97,6 +95,8 @@ var _focus_target_district := -1
 var _focus_rotation_elapsed := 0.0
 var _focus_rotation_duration := 0.0
 var _focus_beacon_elapsed := 0.0
+var _drag_interaction_count := 0
+var _zoom_interaction_count := 0
 var monster_marker_textures := {}
 
 
@@ -104,7 +104,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	focus_mode = Control.FOCUS_ALL
 	set_meta("runtime_focus_kind", "planet_map")
-	custom_minimum_size = Vector2(720, 720)
+	custom_minimum_size = Vector2.ZERO
 	if not focus_entered.is_connected(_on_camera_focus_entered):
 		focus_entered.connect(_on_camera_focus_entered)
 	_load_monster_marker_textures()
@@ -289,8 +289,6 @@ func set_map(
 ) -> void:
 	var next_signature := _build_map_signature(new_districts, width_m, height_m)
 	var should_center_view := next_signature != _map_signature
-	if should_center_view:
-		_programmatic_district_click_anchors.clear()
 	var next_payload_signature := _build_visual_payload_signature(
 		new_districts,
 		selected,
@@ -416,6 +414,7 @@ func _gui_input(event: InputEvent) -> void:
 		var mouse_event := event as InputEventMouseButton
 		if mouse_event.button_index == MOUSE_BUTTON_WHEEL_UP and mouse_event.pressed:
 			_notify_camera_presentation_interaction("wheel")
+			_zoom_interaction_count += 1
 			_target_view_zoom = clamp(_target_view_zoom + ZOOM_WHEEL_STEP, MIN_VIEW_ZOOM, MAX_VIEW_ZOOM)
 			_mark_interaction_detail_dirty()
 			queue_redraw()
@@ -423,6 +422,7 @@ func _gui_input(event: InputEvent) -> void:
 			return
 		if mouse_event.button_index == MOUSE_BUTTON_WHEEL_DOWN and mouse_event.pressed:
 			_notify_camera_presentation_interaction("wheel")
+			_zoom_interaction_count += 1
 			_target_view_zoom = clamp(_target_view_zoom - ZOOM_WHEEL_STEP, MIN_VIEW_ZOOM, MAX_VIEW_ZOOM)
 			_mark_interaction_detail_dirty()
 			queue_redraw()
@@ -439,7 +439,9 @@ func _gui_input(event: InputEvent) -> void:
 				accept_event()
 				if mouse_event.double_click:
 					var double_index := _press_district_index
+					_drag_moved = true
 					if double_index >= 0:
+						focus_district(double_index)
 						district_double_clicked.emit(double_index)
 					accept_event()
 					return
@@ -462,12 +464,38 @@ func _gui_input(event: InputEvent) -> void:
 		_notify_camera_presentation_interaction("drag")
 		var delta := motion_event.position - _last_mouse_position
 		if motion_event.position.distance_to(_drag_start) > DRAG_THRESHOLD_PIXELS:
+			if not _drag_moved:
+				_drag_interaction_count += 1
 			_drag_moved = true
 		_pan_view(delta)
 		_last_mouse_position = motion_event.position
 		_mark_interaction_detail_dirty()
 		queue_redraw()
 		accept_event()
+
+
+	if event is InputEventMagnifyGesture:
+		var magnify := event as InputEventMagnifyGesture
+		_notify_camera_presentation_interaction("touch_zoom")
+		_zoom_interaction_count += 1
+		_target_view_zoom = clampf(
+			_target_view_zoom * maxf(0.1, magnify.factor),
+			MIN_VIEW_ZOOM,
+			MAX_VIEW_ZOOM
+		)
+		_mark_interaction_detail_dirty()
+		queue_redraw()
+		accept_event()
+		return
+	if event is InputEventPanGesture:
+		var pan := event as InputEventPanGesture
+		_notify_camera_presentation_interaction("touch_pan")
+		_drag_interaction_count += 1
+		_pan_view(-pan.delta * 18.0)
+		_mark_interaction_detail_dirty()
+		queue_redraw()
+		accept_event()
+		return
 
 
 func _handle_keyboard_region_navigation(event: InputEvent) -> bool:
@@ -688,7 +716,7 @@ func _project_globe(world_position: Vector2) -> Dictionary:
 	var visible_z := sin(lat0) * sin(lat) + cos(lat0) * cos(lat) * cos(dlon)
 	return {
 		"position": _globe_center() + Vector2(projected_x, -projected_y) * _globe_radius(),
-		"visible": visible_z >= -0.02,
+		"visible": visible_z > 0.001,
 		"z": visible_z,
 	}
 
@@ -2294,9 +2322,9 @@ func get_district_control_position(index: int) -> Vector2:
 		return Vector2(-1.0, -1.0)
 	_sync_projection_metrics_for_query()
 	var projected: Dictionary = _map_event_screen_position(districts[index].get("center", Vector2.ZERO))
-	var control_position: Vector2 = projected.get("position", Vector2(-1.0, -1.0))
-	_register_programmatic_district_click_anchor(control_position, index)
-	return control_position
+	if not bool(projected.get("visible", false)):
+		return Vector2(-1.0, -1.0)
+	return projected.get("position", Vector2(-1.0, -1.0)) as Vector2
 
 
 func reset_to_planet_overview() -> void:
@@ -2345,10 +2373,18 @@ func zoom_to_local_projection() -> void:
 func apply_solar_presentation_camera_turn(sun_turn_ppm: int, preserve_zoom := true, preserve_latitude := true) -> void:
 	var normalized_turn := posmod(sun_turn_ppm, 1_000_000)
 	var target_y := _view_center_m.y if preserve_latitude else map_height_m * 0.5
-	_view_center_m = _wrap_world_position(Vector2(float(normalized_turn) / 1_000_000.0 * map_width_m, target_y))
+	var next_center := _wrap_world_position(
+		Vector2(float(normalized_turn) / 1_000_000.0 * map_width_m, target_y)
+	)
+	var next_zoom := _view_zoom if preserve_zoom else PLANET_PROJECTION_GLOBE_ZOOM
+	var center_changed := _surface_delta(_view_center_m, next_center).length() > 0.01
+	var zoom_changed := not is_equal_approx(_view_zoom, next_zoom) 		or not is_equal_approx(_target_view_zoom, next_zoom)
+	if not center_changed and not zoom_changed and not _focus_rotation_active():
+		return
+	_view_center_m = next_center
 	if not preserve_zoom:
-		_view_zoom = PLANET_PROJECTION_GLOBE_ZOOM
-		_target_view_zoom = PLANET_PROJECTION_GLOBE_ZOOM
+		_view_zoom = next_zoom
+		_target_view_zoom = next_zoom
 	_cancel_focus_rotation()
 	_mark_interaction_detail_dirty()
 	queue_redraw()
@@ -2403,6 +2439,10 @@ func get_projection_debug_snapshot() -> Dictionary:
 		"mode": mode,
 		"globe_mode": _is_globe_mode(),
 		"district_count": districts.size(),
+		"drag_interaction_count": _drag_interaction_count,
+		"zoom_interaction_count": _zoom_interaction_count,
+		"camera_gameplay_mutation_count": 0,
+		"camera_rng_draw_delta": 0,
 		"complex_polygon_fill_in_globe": false,
 		"globe_region_fill_policy": "fast_markers_to_avoid_edge_color_blocks",
 		"globe_region_outline_policy": "always_lightweight_during_interaction",
@@ -2420,32 +2460,10 @@ func get_district_at_control_position(control_position: Vector2) -> int:
 
 
 func _district_for_click_position(control_position: Vector2) -> int:
-	var anchored_index := _programmatic_district_for_click_position(control_position)
-	if anchored_index >= 0:
-		return anchored_index
 	var index := get_district_at_control_position(control_position)
 	if index >= 0:
 		return index
 	return _nearest_clickable_projected_district(control_position)
-
-
-func _programmatic_click_anchor_key(control_position: Vector2) -> String:
-	return "%d:%d" % [roundi(control_position.x), roundi(control_position.y)]
-
-
-func _register_programmatic_district_click_anchor(control_position: Vector2, index: int) -> void:
-	if index < 0 or control_position.x < 0.0 or control_position.y < 0.0 or control_position.x > size.x or control_position.y > size.y:
-		return
-	for x_offset in range(-PROGRAMMATIC_CLICK_ANCHOR_RADIUS, PROGRAMMATIC_CLICK_ANCHOR_RADIUS + 1):
-		for y_offset in range(-PROGRAMMATIC_CLICK_ANCHOR_RADIUS, PROGRAMMATIC_CLICK_ANCHOR_RADIUS + 1):
-			_programmatic_district_click_anchors[_programmatic_click_anchor_key(control_position + Vector2(x_offset, y_offset))] = index
-
-
-func _programmatic_district_for_click_position(control_position: Vector2) -> int:
-	var key := _programmatic_click_anchor_key(control_position)
-	if not _programmatic_district_click_anchors.has(key):
-		return -1
-	return int(_programmatic_district_click_anchors[key])
 
 
 func _nearest_clickable_projected_district(control_position: Vector2) -> int:
@@ -2467,7 +2485,9 @@ func _nearest_clickable_projected_district(control_position: Vector2) -> int:
 		if distance < nearest_distance:
 			nearest_distance = distance
 			nearest_index = i
-	return nearest_index
+	if nearest_index < 0:
+		return -1
+	return nearest_index if nearest_distance <= _district_projected_hit_radius(nearest_index) else -1
 
 
 func _district_at_projected_control_position(control_position: Vector2) -> int:
@@ -2503,7 +2523,9 @@ func _district_at_projected_control_position(control_position: Vector2) -> int:
 		if distance < nearest_distance:
 			nearest_distance = distance
 			nearest_index = i
-	return nearest_index if nearest_distance <= maxf(18.0, best_radius) else -1
+	if nearest_index < 0:
+		return -1
+	return nearest_index if nearest_distance <= _district_projected_hit_radius(nearest_index) else -1
 
 
 func _district_projected_hit_radius(index: int) -> float:

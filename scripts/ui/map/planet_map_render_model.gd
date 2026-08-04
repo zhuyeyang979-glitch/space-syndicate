@@ -13,6 +13,11 @@ func build_from_map_view(map_view: Control) -> Dictionary:
 	var mode := str(snapshot.get("mode", "globe"))
 	var map_size := _as_vector2(snapshot.get("map_size_m", Vector2(1400.0, 950.0)))
 	var view_center := _as_vector2(snapshot.get("view_center_m", map_size * 0.5))
+	var surface_snapshot := {}
+	if map_view.has_method("planet_surface_presentation_snapshot"):
+		var surface_variant: Variant = map_view.call("planet_surface_presentation_snapshot")
+		if surface_variant is Dictionary:
+			surface_snapshot = surface_variant
 	var selected_index := int(map_view.get("selected_district"))
 	var districts: Array = map_view.get("districts")
 	var selected_position := _selected_position(map_view, selected_index)
@@ -23,6 +28,12 @@ func build_from_map_view(map_view: Control) -> Dictionary:
 		"viewport_size": viewport_size,
 		"map_size_m": map_size,
 		"view_center_m": view_center,
+		"camera_lon_rad": float(surface_snapshot.get("camera_lon_rad", PI)),
+		"camera_lat_rad": float(surface_snapshot.get("camera_lat_rad", 0.0)),
+		"sun_turn_ppm": int(surface_snapshot.get("sun_turn_ppm", 0)),
+		"presentation_seed": int(surface_snapshot.get("presentation_seed", 1)),
+		"geometry_fingerprint": str(surface_snapshot.get("geometry_fingerprint", "")),
+		"solar_regions": surface_snapshot.get("solar_regions", []),
 		"view_zoom": float(snapshot.get("view_zoom", 0.0)),
 		"target_view_zoom": float(snapshot.get("target_view_zoom", 0.0)),
 		"mode": mode,
@@ -60,6 +71,12 @@ func _empty_payload() -> Dictionary:
 		"viewport_size": Vector2.ZERO,
 		"map_size_m": Vector2.ZERO,
 		"view_center_m": Vector2.ZERO,
+		"camera_lon_rad": PI,
+		"camera_lat_rad": 0.0,
+		"sun_turn_ppm": 0,
+		"presentation_seed": 1,
+		"geometry_fingerprint": "",
+		"solar_regions": [],
 		"mode": "empty",
 		"globe_blend": 1.0,
 		"globe_mode": true,

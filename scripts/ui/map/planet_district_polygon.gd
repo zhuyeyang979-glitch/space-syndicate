@@ -6,6 +6,9 @@ var _region_index := -1
 var _screen_points := PackedVector2Array()
 var _accent := Color("#38bdf8")
 var _selected := false
+var _sunlit := false
+var _legal_target := true
+var _efficiency_multiplier := 1.0
 var _label := ""
 
 
@@ -20,6 +23,9 @@ func configure(data: Dictionary) -> void:
 	_screen_points = _packed_points(data.get("screen_points", []))
 	_accent = Color(str(data.get("accent", "#38bdf8")))
 	_selected = bool(data.get("selected", false))
+	_sunlit = bool(data.get("sunlit", false))
+	_legal_target = bool(data.get("legal_target", true))
+	_efficiency_multiplier = float(data.get("efficiency_multiplier", 1.0))
 	_label = str(data.get("name", "District"))
 	name = "PlanetDistrictPolygon_%02d" % max(0, _region_index)
 	queue_redraw()
@@ -32,19 +38,25 @@ func debug_snapshot() -> Dictionary:
 		"name": _label,
 		"point_count": _screen_points.size(),
 		"selected": _selected,
+		"sunlit": _sunlit,
+		"legal_target": _legal_target,
+		"efficiency_multiplier": _efficiency_multiplier,
 	}
 
 
 func _draw() -> void:
 	if _screen_points.size() < 3:
 		return
-	var fill := _accent
-	fill.a = 0.18 if _selected else 0.10
-	var outline := _accent.lightened(0.2)
-	outline.a = 0.78 if _selected else 0.38
+	var solar_tint := Color("#fde68a") if _sunlit else Color("#1e293b")
+	var fill := _accent.lerp(solar_tint, 0.20 if _sunlit else 0.34)
+	if not _legal_target:
+		fill = fill.lerp(Color("#020617"), 0.68)
+	fill.a = 0.23 if _selected else (0.13 if _legal_target else 0.055)
+	var outline := _accent.lightened(0.25) if _legal_target else Color("#475569")
+	outline.a = 0.88 if _selected else (0.48 if _legal_target else 0.24)
 	if _can_fill_polygon(_screen_points):
 		draw_colored_polygon(_screen_points, fill)
-	draw_polyline(_closed_points(_screen_points), outline, 2.0 if _selected else 1.1, true)
+	draw_polyline(_closed_points(_screen_points), outline, 2.2 if _selected else 1.2, true)
 
 
 func _packed_points(value: Variant) -> PackedVector2Array:
