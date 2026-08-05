@@ -5,6 +5,12 @@ const Request := preload("res://scripts/v074/map/map_genesis_request_v1.gd")
 const Receipt := preload("res://scripts/v074/map/map_genesis_receipt_v1.gd")
 const GenesisRng := preload("res://scripts/v074/map/v074_map_genesis_rng.gd")
 const Microgrid := preload("res://scripts/v074/map/v074_geodesic_microgrid.gd")
+const FacilityTypes := preload(
+	"res://scripts/v074/facility/v074_facility_type_registry.gd"
+)
+const FacilitySlotRegistry := preload(
+	"res://scripts/v074/facility/v074_facility_slot_registry.gd"
+)
 
 const CORE_AUTHORITY_ID := "v074.map_genesis.core_authority.v1"
 const MAP_GENESIS_OWNER_COUNT := 1
@@ -844,37 +850,19 @@ static func _vertex_edge_key(left: int, right: int) -> String:
 
 
 static func _build_facility_slot_registry(request: Dictionary) -> Dictionary:
-	var slots := {}
-	var region_count := int(request.get("region_count", 0))
-	var facility_types: Array = request.get("registered_facility_types", []) as Array
+	var facility_types: Array = (
+		request.get("registered_facility_types", []) as Array
+	)
 	var industries: Array = request.get("industry_ids", []) as Array
-	for region_index in range(region_count):
-		var region_id := _region_id(region_index)
-		for facility_variant in facility_types:
-			var facility_type := str(facility_variant)
-			for industry_variant in industries:
-				var industry_id := str(industry_variant)
-				var slot_id := "slot.%s.%s.%s" % [
-					region_id,
-					facility_type,
-					industry_id,
-				]
-				slots[slot_id] = {
-					"slot_id": slot_id,
-					"region_id": region_id,
-					"region_revision": 1,
-					"facility_type": facility_type,
-					"industry_id": industry_id,
-					"slot_generation": 0,
-					"occupancy": "empty",
-					"facility_id": null,
-					"facility_generation": null,
-					"owner_id": null,
-					"rank": null,
-					"damage_revision": null,
-					"damage_points": null,
-				}
-	return slots
+	if (
+		facility_types != FacilityTypes.REGISTERED_FACILITY_TYPES
+		or industries != FacilityTypes.INDUSTRY_IDS
+	):
+		return {}
+	var region_ids: Array[String] = []
+	for region_index in range(int(request.get("region_count", 0))):
+		region_ids.append(_region_id(region_index))
+	return FacilitySlotRegistry.build_slot_registry(region_ids)
 
 
 static func _decimate_ids(source: Array, stride: int) -> Array:
