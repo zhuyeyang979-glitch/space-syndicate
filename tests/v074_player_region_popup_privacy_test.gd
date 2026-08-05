@@ -3,6 +3,7 @@ extends SceneTree
 const Adapter := preload("res://scripts/v074/player/v074_player_map_projection_adapter.gd")
 const PopupDto := preload("res://scripts/v074/player/v074_region_popup_dto_v1.gd")
 const Bench := preload("res://scripts/v074/player/v074_player_map_projection_bench.gd")
+const SampleScreen := preload("res://scripts/ui/v074/v074_sample_game_screen.gd")
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -34,6 +35,13 @@ func _run() -> void:
 	_expect(int(warehouse.get("ingress_throughput_units", 0)) == 4, "dark ingress throughput is public")
 	_expect(int(warehouse.get("egress_throughput_units", 0)) == 3, "dark egress throughput is public")
 	_expect(str(warehouse.get("damage_state", "")) == "damaged", "warehouse damage state is public")
+	_expect(
+		SampleScreen._public_facility_owner_label({
+			"owner_public_label": "",
+			"owner_public_id": "player.ai.4",
+		}) == "player.ai.4",
+		"empty public owner label falls back to public owner id"
+	)
 	var encoded := JSON.stringify(projection)
 	for forbidden in ["warehouse_stock", "warehouse_inventory", "PRIVATE_SENTINEL", "private_logistics_plan"]:
 		_expect(not encoded.contains(forbidden), "%s is omitted" % forbidden)

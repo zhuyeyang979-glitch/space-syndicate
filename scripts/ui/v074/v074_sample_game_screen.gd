@@ -998,6 +998,15 @@ func _render_preview_region_popup(region_id: String) -> void:
 	_clear_children(_region_popup_choices)
 
 
+static func _public_facility_owner_label(facility: Dictionary) -> String:
+	var owner_label := str(facility.get("owner_public_label", "")).strip_edges()
+	if owner_label.is_empty():
+		owner_label = str(facility.get("owner_public_id", "")).strip_edges()
+	if owner_label.is_empty():
+		owner_label = "公开所有者"
+	return owner_label
+
+
 func _render_region_popup(dto: Dictionary) -> void:
 	_region_popup.visible = true
 	_region_popup_title.text = str(dto.get(
@@ -1029,10 +1038,7 @@ func _render_region_popup(dto: Dictionary) -> void:
 				facility.get("industry_id", "")
 			)),
 			int(facility.get("rank", 0)),
-			str(facility.get(
-				"owner_public_label",
-				facility.get("owner_public_id", "公开所有者")
-			)),
+			_public_facility_owner_label(facility),
 		]
 		if str(facility.get("facility_type", "")) == "warehouse":
 			line += " · 容量 %d · 入 %d · 出 %d · %s" % [
