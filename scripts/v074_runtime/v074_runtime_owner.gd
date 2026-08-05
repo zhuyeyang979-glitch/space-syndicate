@@ -634,6 +634,13 @@ func _auto_queue_and_lock(actor_id: String) -> Dictionary:
 			"reason_code": "submission_already_locked",
 			"actor_id": actor_id,
 		}
+	if actor_id == _local_player_id and not _automate_local_human:
+		if _clock_msec >= _submission_deadline_msec:
+			_clock_msec = maxi(
+				_opened_at_msec,
+				_submission_deadline_msec - 1
+			)
+		return lock_player_submission(actor_id)
 	var queue := _queued_by_player.get(actor_id, []) as Array
 	if queue.is_empty():
 		var acquisition_receipt := _auto_acquire_track_item(actor_id)

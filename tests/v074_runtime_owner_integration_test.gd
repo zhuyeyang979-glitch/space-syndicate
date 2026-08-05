@@ -29,7 +29,34 @@ func _run() -> void:
 		bool(started.get("accepted", false)),
 		"production owner starts a V0.7.4 match: %s" % JSON.stringify(started)
 	)
-	var snapshot := owner.player_snapshot(owner.local_player_id())
+	owner.set_process(false)
+	var local_id := owner.local_player_id()
+	var track_instance_id := _first_claimable_normal_track_instance_id(
+		owner,
+		local_id
+	)
+	_expect(
+		not track_instance_id.is_empty(),
+		"manual sample exposes a claimable normal track card"
+	)
+	var acquisition := owner.acquire_track_item(local_id, track_instance_id)
+	_expect(
+		bool(acquisition.get("accepted", false)),
+		"manual track purchase commits before deadline: %s"
+		% JSON.stringify(acquisition)
+	)
+	owner.call("_process", 0.01)
+	owner.call("_process", 31.0)
+	var deadline_debug := owner.debug_snapshot()
+	_expect(
+		str(deadline_debug.get("phase", "")) != "failed",
+		"deadline finalization remains live after manual track purchase"
+	)
+	_expect(
+		int(deadline_debug.get("runtime_error_count", -1)) == 0,
+		"manual track purchase does not cause an autofinalize runtime fault"
+	)
+	var snapshot := owner.player_snapshot(local_id)
 	var debug := owner.debug_snapshot()
 	_expect(str(snapshot.get("ruleset_id", "")) == "v0.7.4", "snapshot is V0.7.4")
 	_expect(int(snapshot.get("region_count", 0)) == 16, "snapshot has dynamic regions")
@@ -47,6 +74,31 @@ func _run() -> void:
 	_expect(int(debug.get("runtime_error_count", -1)) == 0, "runtime has no errors")
 	owner.queue_free()
 	_finish()
+
+
+func _first_claimable_normal_track_instance_id(
+	owner: Node,
+	actor_id: String
+) -> String:
+	var core_variant: Variant = owner.get("_track_core")
+	if not (core_variant is RefCounted):
+		return ""
+	var core := core_variant as RefCounted
+	var projection := core.call(
+		"player_projection_v1",
+		actor_id
+	) as Dictionary
+	var private_facts := (
+		projection.get("viewer_private_facts", {}) as Dictionary
+	)
+	for item_variant in private_facts.get("own_segment_items", []) as Array:
+		var item := item_variant as Dictionary
+		if (
+			bool(item.get("claimable", false))
+			and str(item.get("card_kind", "")) == "normal_card"
+		):
+			return str(item.get("instance_id", ""))
+	return ""
 
 
 func _expect(condition: bool, message: String) -> void:
