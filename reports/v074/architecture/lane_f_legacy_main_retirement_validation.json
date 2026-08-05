@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "task_id": "ALPHA_0_5_C1_V074_ROGUELIKE_GEOGRAPHY_WAREHOUSE_COMPLETE_FACILITY_CUTOVER_INTERACTIVE_GLOBE_RESPONSIVE_UI_AND_LEGACY_MAIN_RETIREMENT",
+  "lane": "F",
+  "base_sha": "05c2415014187e902592bf3a8d1291222f738694",
+  "role": "C",
+  "mcp_port": 9026,
+  "mcp_renderer": "forward_plus",
+  "legacy_main_gd_deleted": true,
+  "legacy_main_uid_deleted": true,
+  "legacy_main_line_count_after": 0,
+  "production_dependency_closure_count": 79,
+  "legacy_main_production_reference_count": 0,
+  "legacy_main_v074_active_test_dependency_count": 0,
+  "legacy_main_compatibility_wrapper_count": 0,
+  "legacy_main_dynamic_call_reference_count": 0,
+  "pure_algorithm_candidate_count": 0,
+  "pure_algorithm_extraction_count": 0,
+  "remaining_textual_reference_occurrence_count": 2649,
+  "remaining_textual_reference_file_count": 424,
+  "classification_counts": {
+    "duplicate": {
+      "files": 252,
+      "occurrences": 1983
+    },
+    "frozen_v06_reliability_only": {
+      "files": 151,
+      "occurrences": 628
+    },
+    "obsolete": {
+      "files": 4,
+      "occurrences": 13
+    },
+    "v073_active_test": {
+      "files": 15,
+      "occurrences": 20
+    },
+    "v074_active_test": {
+      "files": 2,
+      "occurrences": 5,
+      "dependency_count": 0,
+      "role": "negative_architecture_ratchet"
+    },
+    "production_reachable": {
+      "files": 0,
+      "occurrences": 0
+    },
+    "pure_algorithm_candidate": {
+      "files": 0,
+      "occurrences": 0
+    }
+  },
+  "obsolete_direct_load_sites": [
+    "tests/card_resolution_controller_consolidation_test.gd:78",
+    "tests/helpers/card_resolution_main_test_harness.gd:14"
+  ],
+  "retired_executable_files": [
+    "tools/architecture/check_main_gd_budget.py",
+    "tools/architecture/build_main_gd_call_graph.py"
+  ],
+  "focused_test": {
+    "path": "res://tests/v074_legacy_main_retirement_test.gd",
+    "passed": 8,
+    "total": 8,
+    "status": "passed"
+  },
+  "bootstrap_ratchet": {
+    "path": "res://tests/v074_bootstrap_architecture_ratchet_test.gd",
+    "target_path": "res://scripts/v074_runtime/v074_application_bootstrap.gd",
+    "reserved_source_commit": "03960728",
+    "target_present_on_lane_f": false,
+    "lane_f_status": "expected_integration_dependency",
+    "reserved_source_audit": {
+      "line_count": 53,
+      "domain_rule_count": 0,
+      "gameplay_mutation_count": 0,
+      "save_owner_count": 0,
+      "rng_owner_count": 0
+    }
+  },
+  "mcp_changed_script_validation": {
+    "passed": 3,
+    "total": 3
+  },
+  "mcp_changed_scene_load": {
+    "passed": 1,
+    "total": 1,
+    "scene": "res://scenes/main.tscn"
+  },
+  "mcp_lane_error_count": 0,
+  "mcp_project_baseline_error_file_count": 1,
+  "mcp_project_baseline_diagnostic_count": 2,
+  "mcp_task_introduced_error_count": 0,
+  "baseline_diagnostic_path": "res://scripts/tools/district_supply_surface_query_cutover_bench.gd",
+  "baseline_diagnostic_lines": [
+    113,
+    147
+  ],
+  "unrelated_import_and_uid_churn_staged": false,
+  "reserved_files_modified": false
+}

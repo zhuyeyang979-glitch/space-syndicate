@@ -1,0 +1,100 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/v074/ai/v074_ai_dynamic_map_bench.gd" id="1_bench"]
+
+[node name="V074AIDynamicMapBench" type="Control"]
+custom_minimum_size = Vector2(1100, 620)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_bench")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.035, 0.047, 0.061, 1)
+
+[node name="SafeMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 32.0
+offset_top = 28.0
+offset_right = -32.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 22
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 22
+
+[node name="Rows" type="VBoxContainer" parent="SafeMargin"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Title" type="Label" parent="SafeMargin/Rows"]
+layout_mode = 2
+text = "V0.7.4 Dynamic Map AI Observation"
+theme_override_colors/font_color = Color(0.91, 0.95, 0.98, 1)
+theme_override_font_sizes/font_size = 30
+
+[node name="Subtitle" type="Label" parent="SafeMargin/Rows"]
+layout_mode = 2
+text = "Read-only public geography and actor-authorized legal-action indexes"
+theme_override_colors/font_color = Color(0.61, 0.69, 0.76, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="Divider" type="HSeparator" parent="SafeMargin/Rows"]
+layout_mode = 2
+
+[node name="Status" type="Label" parent="SafeMargin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Running 30-region / 540-slot bench..."
+theme_override_font_sizes/font_size = 22
+
+[node name="MapSummary" type="Label" parent="SafeMargin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Map observation pending"
+theme_override_font_sizes/font_size = 17
+
+[node name="IndexSummary" type="Label" parent="SafeMargin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Index build pending"
+theme_override_font_sizes/font_size = 17
+
+[node name="PerformanceSummary" type="Label" parent="SafeMargin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Performance measurement pending"
+theme_override_font_sizes/font_size = 17
+
+[node name="PrivacySummary" type="Label" parent="SafeMargin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Privacy proof pending"
+theme_override_font_sizes/font_size = 17
+
+[node name="Spacer" type="Control" parent="SafeMargin/Rows"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Footer" type="Label" parent="SafeMargin/Rows"]
+layout_mode = 2
+text = "No gameplay owner | No Save owner | No RNG owner | No full registry scan per card"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.45, 0.78, 0.72, 1)
+theme_override_font_sizes/font_size = 14

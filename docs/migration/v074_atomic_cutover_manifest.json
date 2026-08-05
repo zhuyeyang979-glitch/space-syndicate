@@ -1,0 +1,175 @@
+{
+  "schema": "V074AtomicCutoverManifestV1",
+  "task_id": "ALPHA_0_5_C1_V074_ROGUELIKE_GEOGRAPHY_WAREHOUSE_COMPLETE_FACILITY_CUTOVER_INTERACTIVE_GLOBE_RESPONSIVE_UI_AND_LEGACY_MAIN_RETIREMENT",
+  "base_main_sha": "05c2415014187e902592bf3a8d1291222f738694",
+  "constitution_id": "space_syndicate.v074.complete",
+  "ruleset_id": "v0.7.4",
+  "current_production_runtime_ruleset": "v0.7.4",
+  "production_main_scene": "res://scenes/main.tscn",
+  "production_bootstrap": "V074ApplicationBootstrap",
+  "new_game_only": true,
+  "save_resume_enabled": false,
+  "domain_count": 15,
+  "connected_domain_count": 15,
+  "legacy_disconnected_domain_count": 15,
+  "domains": [
+    {
+      "domain": "map_genesis",
+      "target_owner": "V074MapGenesisCore",
+      "status": "connected",
+      "connected": true,
+      "legacy_disconnected": true,
+      "save_owner_declared": "none_new_game_only",
+      "rng_owner_declared": "map_genesis_rng",
+      "rollback_boundary_declared": "new_game_transaction"
+    },
+    {
+      "domain": "region_registry",
+      "target_owner": "V074MapGenesisCore",
+      "status": "connected",
+      "connected": true,
+      "legacy_disconnected": true,
+      "save_owner_declared": "none_new_game_only",
+      "rng_owner_declared": "map_genesis_rng",
+      "rollback_boundary_declared": "map_genesis_receipt"
+    },
+    {
+      "domain": "terrain_registry",
+      "target_owner": "V074MapGenesisCore",
+      "status": "connected",
+      "connected": true,
+      "legacy_disconnected": true,
+      "save_owner_declared": "none_new_game_only",
+      "rng_owner_declared": "map_genesis_rng",
+      "rollback_boundary_declared": "map_genesis_receipt"
+    },
+    {
+      "domain": "facility_type_registry",
+      "target_owner": "V074FacilityTypeRegistry",
+      "status": "connected",
+      "connected": true,
+      "legacy_disconnected": true,
+      "save_owner_declared": "none_new_game_only",
+      "rng_owner_declared": "none",
+      "rollback_boundary_declared": "immutable_registry"
+    },
+    {
+      "domain": "facility_slot_registry",
+      "target_owner": "V074MapGenesisCore",
+      "status": "connected",
+      "connected": true,
+      "legacy_disconnected": true,
+      "save_owner_declared": "none_new_game_only",
+      "rng_owner_declared": "map_genesis_rng",
+      "rollback_boundary_declared": "map_genesis_receipt"
+    },
+    {
+      "domain": "warehouse_runtime",
+      "target_owner": "V074FacilityRuntimeCore + V074WarehouseRuntimePolicy",
+      "status": "connected",
+      "connected": true,
+      "legacy_disconnected": true,
+      "save_owner_declared": "none_new_game_only",
+      "rng_owner_declared": "none",
+      "rollback_boundary_declared": "facility_batch_checkpoint"
+    },
+    {
+      "domain": "warehouse_card_catalog",
+      "target_owner": "V074CardDefinitionRegistry + V074WarehouseCardCatalog + V07UnifiedCardTrackCore",
+      "status": "connected",
+      "connected": true,
+      "legacy_disconnected": true,
+      "save_owner_declared": "none_new_game_only",
+      "rng_owner_declared": "unified_track_supply",
+      "rollback_boundary_declared": "track_acquisition_transaction"
+    },
+    {
+      "domain": "warehouse_ai_projection",
+      "target_owner": "V074DynamicMapAiObservationAdapter",
+      "status": "connected",
+      "connected": true,
+      "legacy_disconnected": true,
+      "save_owner_declared": "none",
+      "rng_owner_declared": "none",
+      "rollback_boundary_declared": "read_only_projection"
+    },
+    {
+      "domain": "warehouse_player_projection",
+      "target_owner": "V074PlayerMapProjectionAdapter",
+      "status": "connected",
+      "connected": true,
+      "legacy_disconnected": true,
+      "save_owner_declared": "none",
+      "rng_owner_declared": "none",
+      "rollback_boundary_declared": "read_only_projection"
+    },
+    {
+      "domain": "solar_geometry",
+      "target_owner": "V074MapGenesisCore",
+      "status": "connected",
+      "connected": true,
+      "legacy_disconnected": true,
+      "save_owner_declared": "none_new_game_only",
+      "rng_owner_declared": "map_genesis_rng",
+      "rollback_boundary_declared": "map_genesis_receipt"
+    },
+    {
+      "domain": "planet_presentation",
+      "target_owner": "V074PlanetPresentationAdapterV1 + PlanetMapView",
+      "status": "connected",
+      "connected": true,
+      "legacy_disconnected": true,
+      "save_owner_declared": "none",
+      "rng_owner_declared": "none",
+      "rollback_boundary_declared": "read_only_projection"
+    },
+    {
+      "domain": "map_target_selection",
+      "target_owner": "V074MapTargetBindingV1 + V074PlayerMapProjectionAdapter + V074SampleGameScreen",
+      "status": "connected",
+      "connected": true,
+      "legacy_disconnected": true,
+      "save_owner_declared": "none",
+      "rng_owner_declared": "none",
+      "rollback_boundary_declared": "typed_intent_rejection"
+    },
+    {
+      "domain": "unified_track_local_projection",
+      "target_owner": "V074SharedSushiTrackCore + V074SampleGameScreen",
+      "status": "connected",
+      "connected": true,
+      "legacy_disconnected": true,
+      "save_owner_declared": "none_projection_only",
+      "rng_owner_declared": "none",
+      "rollback_boundary_declared": "read_only_local_projection"
+    },
+    {
+      "domain": "unified_track_shared_scroll_timing",
+      "target_owner": "V074SharedSushiTrackCore",
+      "status": "connected",
+      "connected": true,
+      "legacy_disconnected": true,
+      "save_owner_declared": "none_new_game_only",
+      "rng_owner_declared": "unified_track_supply",
+      "rollback_boundary_declared": "shared_scroll_transaction"
+    },
+    {
+      "domain": "asset_pool_presentation",
+      "target_owner": "V074AssetPipPresenter + V074AssetPipGroup + V074SampleGameScreen",
+      "status": "connected",
+      "connected": true,
+      "legacy_disconnected": true,
+      "save_owner_declared": "none_presentation_only",
+      "rng_owner_declared": "none",
+      "rollback_boundary_declared": "read_only_player_projection"
+    }
+  ],
+  "required_final_counts": {
+    "connected_domain_count": 15,
+    "map_dual_write_count": 0,
+    "warehouse_dual_write_count": 0,
+    "fixed_six_region_fallback_count": 0,
+    "factory_market_only_fallback_count": 0,
+    "mixed_map_ruleset_count": 0
+  }
+}

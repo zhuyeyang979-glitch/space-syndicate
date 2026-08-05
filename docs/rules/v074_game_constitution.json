@@ -1,0 +1,301 @@
+{
+  "schema_version": 1,
+  "constitution_id": "space_syndicate.v074.complete",
+  "ruleset_id": "v0.7.4",
+  "status": "approved_and_frozen_for_atomic_production_cutover",
+  "authority": {
+    "highest_authority": "latest_explicit_user_decision",
+    "machine_readable_authority": "docs/rules/v074_game_constitution.json",
+    "human_readable_companion": "docs/rules/v074_game_constitution.md",
+    "inherits_from_constitution_id": "space_syndicate.v073.complete",
+    "inherits_from_ruleset_id": "v0.7.3",
+    "inheritance_mode": "all_v073_rules_except_explicit_v074_amendment_domains",
+    "source_v073_json_sha256": "89e4febd1de9114d1033aeae712050d48aca4fc0849a705df41281bbd1618766",
+    "historical_v073_files_mutated": false
+  },
+  "runtime_transition": {
+    "starting_production_ruleset": "v0.7.3",
+    "target_production_ruleset": "v0.7.4",
+    "atomic_cutover_required": true,
+    "dual_write_allowed": false,
+    "legacy_fallback_allowed": false,
+    "new_game_only_sample": true,
+    "save_resume_enabled": false
+  },
+  "amended_domains": [
+    "map_genesis",
+    "region_registry",
+    "terrain_classification",
+    "facility_type_registry",
+    "warehouse_runtime",
+    "facility_slot_registry",
+    "solar_geometry",
+    "map_ai_projection",
+    "map_player_projection",
+    "planet_presentation",
+    "map_target_selection",
+    "unified_track_local_projection",
+    "unified_track_shared_scroll_timing",
+    "asset_pool_presentation",
+    "legacy_main_retirement"
+  ],
+  "rules": [
+    {
+      "rule_id": "v074.map.dynamic_region_count",
+      "statement": "Region count is supplied by a MapGenesisRequest and is independent from player count, industry count, and geography complexity.",
+      "value": {
+        "region_count_fixed": false,
+        "current_supported_minimum": 6,
+        "current_supported_maximum": 30,
+        "constitutional_hard_maximum": null,
+        "stable_region_id_format": "region.%03d"
+      }
+    },
+    {
+      "rule_id": "v074.map.seeded_authoritative_genesis",
+      "statement": "One V074MapGenesisCore owns region identity, topology, terrain, facility-slot genesis, solar genesis, and the replay fingerprint.",
+      "value": {
+        "owner_count": 1,
+        "rng_stream_id": "map_genesis_rng",
+        "ui_owner_count": 0,
+        "presentation_owner_count": 0,
+        "wall_clock_entropy_allowed": false,
+        "global_random_allowed": false
+      }
+    },
+    {
+      "rule_id": "v074.map.connected_spherical_partition",
+      "statement": "The authoritative planet is a closed geodesic microcell partition. Every microcell has exactly one region, every region is edge-connected, and the global region graph is connected.",
+      "value": {
+        "region_connected_component_count": 1,
+        "global_region_adjacency_component_count": 1,
+        "sphere_coverage_error_ratio_maximum": 0.0001,
+        "shared_boundary_single_authority": true
+      }
+    },
+    {
+      "rule_id": "v074.map.land_ocean_terrain",
+      "statement": "Every region is exactly land or ocean. Terrain is authoritative identity and presentation data only in V0.7.4.",
+      "value": {
+        "terrain_classes": ["land", "ocean"],
+        "mixed_terrain_class_allowed": false,
+        "land_gameplay_modifier_count": 0,
+        "ocean_gameplay_modifier_count": 0
+      }
+    },
+    {
+      "rule_id": "v074.map.organic_boundary_complexity",
+      "statement": "SIMPLE, STANDARD, and COMPLEX alter organic spherical boundary detail independently from region count; final regions cannot be triangle or quadrilateral stand-ins.",
+      "value": {
+        "geography_complexities": ["SIMPLE", "STANDARD", "COMPLEX"],
+        "triangle_region_count_required": 0,
+        "quadrilateral_region_count_required": 0,
+        "high_frequency_jaggedness_as_complexity_allowed": false,
+        "independent_neighbor_boundaries_allowed": false
+      }
+    },
+    {
+      "rule_id": "v074.map.stable_region_identity",
+      "statement": "Authoritative region IDs are stable ordered dynamic IDs; display names are non-authoritative presentation fields.",
+      "value": {
+        "hardcoded_alpha_zeta_production_reference_count": 0,
+        "region_id_duplicate_count": 0,
+        "region_id_order_stable": true
+      }
+    },
+    {
+      "rule_id": "v074.map.geometric_solar_exposure",
+      "statement": "Solar state is derived from the dot product of a region surface normal and the authoritative sun direction.",
+      "value": {
+        "formula": "dot(region_surface_normal,sun_direction)>threshold",
+        "index_or_parity_shortcut_allowed": false,
+        "sunlit_multiplier": 2.0,
+        "dark_multiplier": 1.0,
+        "unified_track_supply_affected": false
+      }
+    },
+    {
+      "rule_id": "v074.map.ai_player_projection",
+      "statement": "AI and player projections consume dynamic region IDs, terrain, adjacency, geometric sunlight, and lawful facility-slot facts without hidden warehouse data.",
+      "value": {
+        "fixed_region_count_assumption_allowed": false,
+        "private_warehouse_stock_public": false,
+        "private_logistics_plan_public": false
+      }
+    },
+    {
+      "rule_id": "v074.map.presentation_hit_test",
+      "statement": "Presentation and hit testing consume the authoritative microcell partition; camera and presentation noise never mutate geography or gameplay RNG.",
+      "value": {
+        "planet_primary_target_surface": true,
+        "backside_click_allowed": false,
+        "presentation_rng_gameplay_draw_delta": 0
+      }
+    },
+    {
+      "rule_id": "v074.facility.complete_registered_types",
+      "statement": "The complete facility registry contains factory, market, and warehouse.",
+      "value": {
+        "registered_facility_types": ["factory", "market", "warehouse"],
+        "registered_facility_type_count": 3,
+        "warehouse_retired": false
+      }
+    },
+    {
+      "rule_id": "v074.facility.starter_type_subset",
+      "statement": "Starter eligibility is a subset of the complete facility registry and contains only factory and market.",
+      "value": {
+        "starter_facility_types": ["factory", "market"],
+        "warehouse_starter_card_count": 0,
+        "standard_track_facility_types": ["factory", "market", "warehouse"]
+      }
+    },
+    {
+      "rule_id": "v074.facility.dynamic_slot_registry",
+      "statement": "Each region receives one potential slot for every registered facility type and industry pair.",
+      "value": {
+        "slot_key_fields": ["region_id", "facility_type", "industry_id"],
+        "industry_ids": ["life", "energy", "industry", "technology", "commerce", "shipping"],
+        "facility_slots_per_region": 18,
+        "total_slot_formula": "region_count*registered_facility_type_count*industry_count",
+        "terrain_restricts_slots": false
+      }
+    },
+    {
+      "rule_id": "v074.warehouse.standard_card_identity",
+      "statement": "Warehouse is a standard normal facility card family, never a free Starter, and participates in the unified track and personal DBG.",
+      "value": {
+        "standard_l1_color_coverage": 6,
+        "purchase_destination": "personal_discard",
+        "optional_merge_enabled": true,
+        "automatic_merge_enabled": false
+      }
+    },
+    {
+      "rule_id": "v074.warehouse.capacity_and_throughput",
+      "statement": "Warehouse facilities have owner, rank, capacity, ingress throughput, egress throughput, damage, facility generation, and slot generation. Existing authoring or versioned balance defaults supply numeric values.",
+      "value": {
+        "action_modes": ["BUILD_NEW", "UPGRADE_OWN", "REPAIR_OWN"],
+        "contention_policy": "FIZZLE_FULL_ASSET_REFUND",
+        "stock_runtime_may_be_deferred_if_no_authoritative_stock_owner_exists": true,
+        "fabricated_stock_allowed": false
+      }
+    },
+    {
+      "rule_id": "v074.warehouse.solar_efficiency",
+      "statement": "Geometric sunlight multiplies warehouse ingress and egress throughput by 2.0 when sunlit and 1.0 when dark; it does not alter capacity, cost, rank, HP, assets, or track supply.",
+      "value": {
+        "sunlit_ingress_multiplier": 2.0,
+        "dark_ingress_multiplier": 1.0,
+        "sunlit_egress_multiplier": 2.0,
+        "dark_egress_multiplier": 1.0
+      }
+    },
+    {
+      "rule_id": "v074.warehouse.public_private_projection",
+      "statement": "Public projection exposes warehouse identity, owner, rank, capacity, throughput, solar state, damage, and occupancy; stock detail and private logistics remain private.",
+      "value": {
+        "public_fields": ["facility_id", "facility_type", "industry_id", "region_id", "owner_public_identity", "rank", "capacity", "ingress_throughput", "egress_throughput", "solar_efficiency_state", "damage_state", "occupancy"],
+        "private_fields": ["stock_detail", "unpublished_logistics_routes", "future_transport_plans", "private_commodity_sources", "future_actions", "ai_private_plans"]
+      }
+    },
+    {
+      "rule_id": "v074.track.local_visible_capacity",
+      "statement": "Each player's authorized local segment has ten physical visible path positions. A new game populates those positions with ten distinct real card instances while preserving the inherited 6000/4000 normal-to-commodity supply ratio and local-segment privacy.",
+      "value": {
+        "local_visible_physical_slot_capacity": 10,
+        "initial_real_card_count": 10,
+        "duplicate_instance_count": 0,
+        "horizontal_scroll_required_at_supported_desktop_widths": false,
+        "normal_card_ratio_basis_points": 6000,
+        "commodity_card_ratio_basis_points": 4000,
+        "other_player_segment_public": false,
+        "future_supply_public": false,
+        "balance_tunable": true
+      }
+    },
+    {
+      "rule_id": "v074.track.shared_scroll_vacancy",
+      "statement": "Acquiring a card removes only that instance and leaves a public noninteractive vacancy at its shared path position. Acquisition never draws, slides in, or consumes a future card; surviving cards keep their path positions and segment owners until natural shared track advancement moves them.",
+      "value": {
+        "refill_mode_id": "shared_scroll_vacancy",
+        "acquisition_immediate_replacement_count": 0,
+        "acquisition_supply_rng_draw_delta": 0,
+        "acquisition_supply_cursor_delta": 0,
+        "acquisition_instance_sequence_delta": 0,
+        "vacancy_interactive": false,
+        "natural_shared_scroll_only_refill": true,
+        "full_capacity_restored_after_vacancy_tail_exit": true,
+        "slow_presentation_motion_required": true,
+        "presentation_motion_gameplay_mutation_count": 0
+      }
+    },
+    {
+      "rule_id": "v074.presentation.asset_pool_pips",
+      "statement": "The local asset pool uses exactly six repeated symbol positions per color. Available, reserved, empty, and projected-refresh states share those six positions; projected refresh never appends false capacity slots and fraction text is not a primary display.",
+      "value": {
+        "display_mode": "repeated_symbol_pips",
+        "pip_slot_count_per_color": 6,
+        "primary_fraction_text_count": 0,
+        "projected_refresh_overlay_uses_existing_slots": true,
+        "opponent_private_asset_disclosure_count": 0,
+        "direct_runtime_state_read_count": 0,
+        "gameplay_owner_count": 0,
+        "save_owner_count": 0,
+        "rng_owner_count": 0,
+        "gameplay_mutation_count": 0
+      }
+    },
+    {
+      "rule_id": "v074.architecture.legacy_main_retirement",
+      "statement": "scripts/main.gd is physically retired after useful pure utilities are extracted. No compatibility monolith or gameplay-owning bootstrap may replace it.",
+      "value": {
+        "legacy_main_path": "scripts/main.gd",
+        "required_after_cutover": false,
+        "compatibility_wrapper_allowed": false,
+        "top_level_bootstrap_domain_rule_count": 0,
+        "top_level_bootstrap_gameplay_mutation_count": 0,
+        "top_level_bootstrap_save_owner_count": 0,
+        "top_level_bootstrap_rng_owner_count": 0
+      }
+    }
+  ],
+  "map_genesis_contract": {
+    "request_schema": "MapGenesisRequestV1",
+    "receipt_schema": "MapGenesisReceiptV1",
+    "required_request_fields": ["schema_version", "ruleset_id", "map_seed", "region_count", "geography_complexity", "land_ocean_profile", "registered_facility_types", "industry_ids"],
+    "required_receipt_fields": ["map_id", "map_seed", "map_profile_id", "region_count", "region_ids", "terrain_by_region", "region_centers_unit_sphere", "microcell_centers_unit_sphere", "region_microcell_membership", "region_boundaries_spherical", "region_boundary_lods_spherical", "adjacency_graph", "land_ocean_edges", "facility_slot_registry", "initial_sun_direction", "map_fingerprint"],
+    "ordered_boundary_lod_contract": {
+      "lods": ["far", "medium", "near"],
+      "coordinate_type": "Vector3_unit_sphere",
+      "near_minimum_vertex_count_per_loop": 5,
+      "presentation_may_synthesize_region_geometry": false
+    }
+  },
+  "map_profiles": {
+    "geography_complexities": ["SIMPLE", "STANDARD", "COMPLEX"],
+    "land_ocean_profiles": ["CONTINENTAL", "BALANCED", "ARCHIPELAGO"],
+    "default_region_counts": {"SIMPLE": 8, "STANDARD": 16, "COMPLEX": 24},
+    "region_count_independent_from_complexity": true
+  },
+  "acceptance": {
+    "minimum_generation_sample_count": 2000,
+    "required_region_counts": [6, 8, 12, 16, 20, 24, 30],
+    "generation_failure_count": 0,
+    "global_disconnected_map_count": 0,
+    "disconnected_region_count": 0,
+    "self_intersection_map_count": 0,
+    "gap_or_overlap_map_count": 0,
+    "landless_map_count": 0,
+    "oceanless_map_count": 0,
+    "warehouse_slot_parity_failure_count": 0,
+    "map_genesis_replay_parity": true,
+    "gameplay_rng_cross_draw_count": 0,
+    "unified_track_local_visible_physical_slot_capacity": 10,
+    "unified_track_initial_real_card_count": 10,
+    "unified_track_acquisition_immediate_replacement_count": 0,
+    "unified_track_acquisition_supply_rng_draw_delta": 0,
+    "asset_pip_slot_count_per_color": 6,
+    "asset_pip_primary_fraction_text_count": 0
+  }
+}

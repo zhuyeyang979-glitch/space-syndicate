@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "evidence_id": "space_syndicate.v074.lane_b_minimal_green_slice.v1",
+  "ruleset_id": "v0.7.4",
+  "base_sha": "05c2415014187e902592bf3a8d1291222f738694",
+  "branch": "codex/v074-lane-b-warehouse-05c2415",
+  "scope": "facility_registry_and_warehouse_runtime",
+  "mcp": {
+    "role": "B",
+    "port": 9022,
+    "renderer": "forward_plus",
+    "changed_script_validation": "9/9",
+    "changed_script_diagnostic_count": 0,
+    "project_script_error_count": 0,
+    "runtime_error_count": 0,
+    "warehouse_bench_scene_load": "1/1",
+    "warehouse_bench_marker": "V074_WAREHOUSE_RUNTIME_BENCH|PASS"
+  },
+  "focused_tests": [
+    {
+      "marker": "V074_FACILITY_REGISTRY_TEST|PASS",
+      "run_id": "20260804-180556-354-v074_facility_registry_test-a2a4dc50",
+      "status": "passed"
+    },
+    {
+      "marker": "V074_WAREHOUSE_RUNTIME_TEST|PASS",
+      "run_id": "20260804-180515-279-v074_warehouse_runtime_test-44e93ab9",
+      "status": "passed"
+    }
+  ],
+  "bench_receipt": {
+    "region_count": 16,
+    "facility_slot_count": 288,
+    "facility_slot_count_per_region": 18,
+    "registered_facility_types": [
+      "factory",
+      "market",
+      "warehouse"
+    ],
+    "starter_facility_types": [
+      "factory",
+      "market"
+    ],
+    "warehouse_l1_definition_count": 6,
+    "warehouse_built": true,
+    "warehouse_capacity": 200,
+    "warehouse_dark_ingress": 50.0,
+    "warehouse_sunlit_ingress": 100.0,
+    "warehouse_sunlit_egress": 100.0,
+    "warehouse_public_projection_green": true,
+    "warehouse_hidden_info_field_count": 0,
+    "warehouse_gameplay_owner_count": 0,
+    "warehouse_save_owner_count": 0,
+    "warehouse_rng_owner_count": 0
+  },
+  "solar_refresh_contract": {
+    "api": "V074FacilityRuntimeCore.refresh_warehouse_solar_states",
+    "authoritative_state_resealed": true,
+    "current_public_projection_refreshed": true,
+    "next_batch_refreshed": true,
+    "empty_slot_unchanged": true,
+    "factory_market_slot_unchanged": true,
+    "invalid_map_rejected_without_input_mutation": true
+  },
+  "integration_hooks": [
+    "Preload v074_card_definition_registry.gd from the shared DBG and Unified Track cores.",
+    "Derive shared DBG CARD_TYPES from V074CardDefinitionRegistry.CARD_TYPES.",
+    "Preload V074FacilityRuntimeCore from the V0.7.4 runtime owner and pass source card rank to action builders.",
+    "Feed Map Genesis region_ids into V074FacilitySlotRegistry.build_slot_registry.",
+    "Feed geometry-derived solar_by_region into V074FacilityRuntimeCore.refresh_warehouse_solar_states.",
+    "Consume warehouse public capacity and throughput only through player and AI projections."
+  ],
+  "known_integration_gaps": [
+    "Shared production runtime owner is not switched in Lane B.",
+    "Shared DBG and Unified Track cores are not switched in Lane B.",
+    "Map Genesis, AI, player UI, and complete-match integration belong to other lanes or the main agent.",
+    "Warehouse stock economy remains existing external ownership or deferred; no stock payload was invented."
+  ],
+  "excluded_worktree_churn": [
+    "unrelated tracked .import modifications",
+    "all generated .uid files"
+  ]
+}

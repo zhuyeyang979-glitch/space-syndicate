@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "lane_id": "V074_LANE_D_PLAYER_PROJECTION_TARGETING",
+  "status": "green",
+  "branch": "codex/v074-lane-d-player-targeting-05c2415",
+  "base_sha": "05c2415014187e902592bf3a8d1291222f738694",
+  "owned_outputs": {
+    "player_projection_adapter": "res://scripts/v074/player/v074_player_map_projection_adapter.gd",
+    "target_binding": "res://scripts/v074/player/v074_map_target_binding_v1.gd",
+    "region_popup_dto": "res://scripts/v074/player/v074_region_popup_dto_v1.gd",
+    "virtualized_target_rail": "res://scenes/ui/v074/V074VirtualizedTargetRail.tscn",
+    "mcp_bench": "res://scenes/tools/v074/V074PlayerMapProjectionBench.tscn"
+  },
+  "integration_api": {
+    "adapt": "adapt(viewer_id, map_receipt, public_facilities, legal_actions) -> Dictionary",
+    "region_popup": "region_popup(region_id) -> Dictionary",
+    "resolve_target": "resolve_target(card_instance_id, region_id, facility_type, industry_id, mode) -> typed result"
+  },
+  "contracts": {
+    "ruleset_id": "v0.7.4",
+    "region_counts_validated": [6, 16, 30],
+    "facility_types": ["factory", "market", "warehouse"],
+    "facility_action_modes": ["BUILD_NEW", "UPGRADE_OWN", "REPAIR_OWN"],
+    "facility_slots_per_region": 18,
+    "thirty_region_slot_count": 540,
+    "planet_primary_target_selection_surface": true,
+    "target_rail_primary_surface": false,
+    "target_rail_virtualized": true,
+    "target_rail_row_pool_size": 10,
+    "runtime_owner_dependency_count": 0,
+    "private_warehouse_field_disclosure_count": 0
+  },
+  "focused_validation": {
+    "v074_player_map_projection_test": "22/22",
+    "v074_player_region_popup_privacy_test": "12/12",
+    "v074_map_target_binding_test": "27/27",
+    "v074_target_rail_virtualization_test": "9/9",
+    "total": "70/70",
+    "mcp_changed_script_validation": "9/9",
+    "mcp_changed_scene_load": "2/2",
+    "mcp_bench_exercise_complete": true,
+    "mcp_runtime_error_count": 0,
+    "mcp_play_mode_stopped": true,
+    "mcp_endpoint": "127.0.0.1:9024",
+    "godot_version": "4.7-stable"
+  },
+  "privacy_allowlist": {
+    "warehouse_public": [
+      "capacity_units",
+      "ingress_throughput_units",
+      "egress_throughput_units",
+      "rank",
+      "owner_public_identity",
+      "damage_state",
+      "solar_efficiency_state",
+      "occupancy"
+    ],
+    "explicitly_omitted": [
+      "warehouse_stock",
+      "warehouse_inventory",
+      "inventory_by_commodity",
+      "private_logistics_plan",
+      "future_transport_plan",
+      "ai_plan"
+    ]
+  },
+  "baseline_tooling_note": {
+    "fresh_import_signal_11_observed": true,
+    "cause": "parent baseline import diagnostics followed by Godot 4.7 editor signal 11",
+    "mitigation": "reused ignored stable import cache from the same production lineage, then validated all owned files through the role-local MCP",
+    "baseline_generated_files_staged": false
+  },
+  "integration_gaps": [
+    "Coordinator must wire the adapter DTO into the V0.7.4 production screen and globe; V073SampleGameScreen and PlanetBoard were intentionally untouched.",
+    "Lane A/B receipt field names must be reconciled at integration if their final public contract differs from map_receipt/public_facilities/legal_actions.",
+    "TargetRail labels are integration-ready functional copy; final localization belongs to the production UI owner."
+  ]
+}

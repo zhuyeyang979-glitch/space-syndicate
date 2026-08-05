@@ -751,13 +751,18 @@ func _refresh_hand() -> void:
 			"card_kind": "normal_card",
 			"card_definition_id": str(card_data.get("definition_id", "")),
 		})
+		var is_starter := (
+			str(card_data.get("origin_class", "")) == "starter_bootstrap"
+		)
 		card.configure(
 			card_data,
 			title,
-			"零成本 Starter · 预绑定目标",
+			"零成本 Starter · 预绑定目标"
+				if is_starter
+				else "标准设施牌 · 预绑定目标",
 			art,
 			COLOR_VALUES.get(color_id, Color.WHITE),
-			"STARTER"
+			"STARTER" if is_starter else "STANDARD"
 		)
 		card.set_selected(
 			str(card_data.get("instance_id", "")) == _selected_card_id
@@ -884,17 +889,15 @@ func _refresh_queue() -> void:
 func _refresh_targets() -> void:
 	_clear_children(_target_rail)
 	var solar_by_region := {}
+	var region_ids: Array[String] = []
 	for row_variant in _snapshot.get("region_solar", []) as Array:
 		var row := row_variant as Dictionary
-		solar_by_region[str(row.get("region_id", ""))] = row
-	for region_id in [
-		"region.alpha",
-		"region.beta",
-		"region.gamma",
-		"region.delta",
-		"region.epsilon",
-		"region.zeta",
-	]:
+		var region_id := str(row.get("region_id", ""))
+		if region_id.is_empty():
+			continue
+		solar_by_region[region_id] = row
+		region_ids.append(region_id)
+	for region_id in region_ids:
 		var solar := solar_by_region.get(region_id, {}) as Dictionary
 		var button := Button.new()
 		var compact := str(_layout_profile.get("mode", "")) == ResponsiveTableLayout.COMPACT_DESKTOP

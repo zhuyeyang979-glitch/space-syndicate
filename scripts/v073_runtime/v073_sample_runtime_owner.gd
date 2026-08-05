@@ -24,14 +24,7 @@ const RULESET_ID := "v0.7.3"
 const SAMPLE_MODE_ID := "NEW_V073_GAME"
 const LOCAL_PLAYER_ID := "player.local"
 const COLORS := ["life", "energy", "industry", "technology", "commerce", "shipping"]
-const REGION_IDS := [
-	"region.alpha",
-	"region.beta",
-	"region.gamma",
-	"region.delta",
-	"region.epsilon",
-	"region.zeta",
-]
+const DEFAULT_REGION_COUNT := 6
 const SUBMISSION_WINDOW_MSEC := 30000
 const MAX_ACTIONS_PER_PLAYER := 5
 const DEFAULT_MATCH_SEED := 730045
@@ -755,7 +748,8 @@ func start_new_game(
 	player_count: int = 4,
 	seed_value: int = DEFAULT_MATCH_SEED,
 	accelerated: bool = false,
-	automate_local_human: bool = false
+	automate_local_human: bool = false,
+	map_request: Dictionary = {}
 ) -> Dictionary:
 	if player_count < 3 or player_count > 8:
 		return _reject("player_count_out_of_range")
@@ -764,24 +758,20 @@ func start_new_game(
 	_seed = seed_value
 	_accelerated = accelerated
 	_automate_local_human = automate_local_human
-	_match_id = "match.v073.sample.%d.%d" % [absi(seed_value), _match_sequence]
+	_match_id = _runtime_match_id(seed_value, _match_sequence)
+	var runtime_preparation := _prepare_runtime_new_game(map_request)
+	if not bool(runtime_preparation.get("accepted", false)):
+		return _fail("runtime_new_game_preparation_failed", runtime_preparation)
 	_player_ids.append(_local_player_id)
 	for index in range(1, player_count):
 		_player_ids.append("player.ai.%d" % index)
 
-	_track_core = TRACK_CORE.new()
+	_track_core = _create_track_core()
 	var track_started := _track_core.call(
 		"start_match",
 		_player_ids,
 		seed_value,
-		{
-			"balance_profile_id": TRACK_CORE.BALANCE_PROFILE_ID,
-			"balance_profile_fingerprint": TRACK_CORE.BALANCE_PROFILE_FINGERPRINT,
-			"normal_card_ratio_basis_points": 6000,
-			"commodity_card_ratio_basis_points": 4000,
-			"local_visible_slot_count": 5,
-			"match_instance_id": _match_id,
-		}
+		_track_start_config()
 	) as Dictionary
 	if not bool(track_started.get("accepted", false)):
 		return _fail("track_start_rejected", track_started)
@@ -844,21 +834,23 @@ func start_new_game(
 	_initialize_region_solar()
 	_begin_batch()
 	if _phase == "failed":
-		return _reject("v073_new_game_initialization_failed")
+		return _reject(_runtime_new_game_failure_reason())
 	var snapshot := player_snapshot(_local_player_id)
 	if snapshot.is_empty():
 		return _fail("canonical_player_projection_failed", {})
 	match_started.emit(snapshot)
 	state_changed.emit(snapshot)
-	return {
+	var result := {
 		"accepted": true,
-		"reason_code": "v073_new_game_started",
+		"reason_code": _runtime_new_game_reason(),
 		"match_id": _match_id,
-		"ruleset_id": RULESET_ID,
+		"ruleset_id": _runtime_ruleset_id(),
 		"player_count": _player_ids.size(),
 		"local_human_count": 1,
 		"ai_player_count": _player_ids.size() - 1,
 	}
+	result.merge(_runtime_new_game_metadata(), true)
+	return result
 
 
 func phase() -> String:
@@ -1024,7 +1016,12 @@ func lock_player_submission(actor_id: String) -> Dictionary:
 		var binding := queue[index] as Dictionary
 		var built := _build_bound_actions(actor_id, binding, index)
 		if built.is_empty():
-			return _reject_action("prebound_action_build_failed")
+			var rejection := _reject_action(
+				"prebound_action_build_failed"
+			)
+			rejection["local_action_index"] = index
+			rejection["binding"] = binding.duplicate(true)
+			return rejection
 		asset_actions.append((built.get("asset_action", {}) as Dictionary).duplicate(true))
 		facility_actions.append((built.get("facility_action", {}) as Dictionary).duplicate(true))
 	var intent := ASSET_BATCH_CORE.build_lock_intent(
@@ -1114,7 +1111,7 @@ func resolve_next_action() -> Dictionary:
 			"asset_cursor": int(_asset_state.get("resolution_cursor", -1)),
 			"facility_cursor": int(_facility_state.get("resolution_cursor", -1)),
 		})
-	var facility_outcome := FACILITY_CORE.resolve_next(_facility_state)
+	var facility_outcome := _facility_resolve_next(_facility_state)
 	if not bool(facility_outcome.get("accepted", false)):
 		return _fail("facility_resolution_failed", facility_outcome)
 	var next_facility_state := (
@@ -1221,7 +1218,7 @@ func acquire_track_item(actor_id: String, source_instance_id: String) -> Diction
 			actor_id,
 			_batch_number,
 		],
-		"authorization_authority_id": "v073.player_segment_authority",
+		"authorization_authority_id": _runtime_track_authorization_authority_id(),
 		"authorized_actor_id": actor_id,
 		"authorized_source_identity_id": str(source.get("source_identity_id", "")),
 		"authorized_source_instance_id": source_instance_id,
@@ -1360,7 +1357,7 @@ func _canonical_player_projection(viewer_id: String) -> Dictionary:
 		_asset_state,
 		viewer_id
 	)
-	var facility_projection := FACILITY_CORE.player_projection(
+	var facility_projection := _facility_player_projection(
 		_facility_state,
 		viewer_id
 	)
@@ -1407,8 +1404,8 @@ func player_snapshot(viewer_id: String) -> Dictionary:
 	if canonical.is_empty():
 		return {}
 	return {
-		"ruleset_id": RULESET_ID,
-		"sample_mode_id": SAMPLE_MODE_ID,
+		"ruleset_id": _runtime_ruleset_id(),
+		"sample_mode_id": _runtime_sample_mode_id(),
 		"match_id": _match_id,
 		"match_started": not _match_id.is_empty(),
 		"phase": _phase,
@@ -1457,7 +1454,7 @@ func _canonical_ai_observation(actor_id: String) -> Dictionary:
 	var legal_input := dbg.call(
 		"build_legal_target_input",
 		actor_id,
-		"v073.production.legal_target_authority",
+		_runtime_legal_target_authority_id(),
 		maxi(1, _batch_number),
 		targets_by_card
 	) as Dictionary
@@ -1478,7 +1475,7 @@ func _canonical_ai_observation(actor_id: String) -> Dictionary:
 		_asset_state,
 		actor_id
 	)
-	var facility_observation := FACILITY_CORE.ai_observation(
+	var facility_observation := _facility_ai_observation(
 		_facility_state,
 		actor_id
 	)
@@ -1528,7 +1525,7 @@ func ai_observation(actor_id: String) -> Dictionary:
 	if canonical.is_empty():
 		return {}
 	return {
-		"ruleset_id": RULESET_ID,
+		"ruleset_id": _runtime_ruleset_id(),
 		"actor_id": actor_id,
 		"phase": _phase,
 		"batch_number": _batch_number,
@@ -1568,7 +1565,7 @@ func run_accelerated_until_settled(max_steps: int = 2000) -> Dictionary:
 
 func debug_snapshot() -> Dictionary:
 	return {
-		"ruleset_id": RULESET_ID,
+		"ruleset_id": _runtime_ruleset_id(),
 		"match_id": _match_id,
 		"phase": _phase,
 		"batch_number": _batch_number,
@@ -1611,7 +1608,7 @@ func debug_snapshot() -> Dictionary:
 			if _track_core != null else {},
 		"asset_validation": ASSET_BATCH_CORE.validation_report(_asset_state) \
 			if not _asset_state.is_empty() else {},
-		"facility_validation": FACILITY_CORE.validation_report(_facility_state) \
+		"facility_validation": _facility_validation_report(_facility_state) \
 			if not _facility_state.is_empty() else {},
 		"solar_validation": SOLAR_VICTORY_CORE.is_valid_state(_solar_state),
 	}
@@ -1700,7 +1697,7 @@ func _auto_queue_and_lock(actor_id: String) -> Dictionary:
 			var preferred := legal[0] as Dictionary
 			for option_variant in legal:
 				var option := option_variant as Dictionary
-				if str(option.get("region_id", "")) == REGION_IDS[0] \
+				if str(option.get("region_id", "")) == _preferred_ai_region_id() \
 						and str(option.get("industry_id", "")) == COLORS[0]:
 					preferred = option
 					break
@@ -1773,7 +1770,7 @@ func _begin_batch() -> void:
 	var idle_facility_queues := {}
 	for preview_actor_id in _player_ids:
 		idle_facility_queues[preview_actor_id] = []
-	_facility_state = FACILITY_CORE.lock_batch(
+	_facility_state = _facility_lock_batch(
 		_batch_id(),
 		_player_ids,
 		_hidden_order,
@@ -1807,7 +1804,7 @@ func _begin_resolution() -> void:
 					.duplicate(true)
 			)
 		facility_queues[actor_id] = rows
-	_facility_state = FACILITY_CORE.lock_batch(
+	_facility_state = _facility_lock_batch(
 		_batch_id(),
 		_player_ids,
 		_hidden_order,
@@ -1933,7 +1930,7 @@ func _finish_macro_boundary() -> void:
 
 
 func _commit_victory() -> void:
-	var condition_id := "v073.public_facility_network_threshold"
+	var condition_id := _runtime_victory_condition_id()
 	var source_revision := _public_progress_points
 	var qualification_proof := _victory_authority.issue_qualification(
 		_solar_state,
@@ -2053,38 +2050,17 @@ func _build_bound_actions(
 		cost,
 		_zero_colors()
 	)
-	var facility_action: Dictionary
-	match _facility_mode(actor_id, slot):
-		"BUILD_NEW":
-			facility_action = FACILITY_CORE.build_new_action(
-				action_id,
-				str(card.get("instance_id", "")),
-				actor_id,
-				local_index,
-				slot,
-				reserved_assets,
-				str(card.get("origin_class", "standard"))
-			)
-		"UPGRADE_OWN":
-			facility_action = FACILITY_CORE.build_upgrade_action(
-				action_id,
-				str(card.get("instance_id", "")),
-				actor_id,
-				local_index,
-				slot,
-				reserved_assets,
-				str(card.get("origin_class", "standard"))
-			)
-		"REPAIR_OWN":
-			facility_action = FACILITY_CORE.build_repair_action(
-				action_id,
-				str(card.get("instance_id", "")),
-				actor_id,
-				local_index,
-				slot,
-				reserved_assets,
-				str(card.get("origin_class", "standard"))
-			)
+	var facility_action := _facility_build_action(
+		_facility_mode(actor_id, slot),
+		action_id,
+		str(card.get("instance_id", "")),
+		actor_id,
+		local_index,
+		slot,
+		reserved_assets,
+		str(card.get("origin_class", "standard")),
+		int(card.get("level", card.get("rank", 1)))
+	)
 	if asset_action.is_empty() or facility_action.is_empty():
 		return {}
 	return {"asset_action": asset_action, "facility_action": facility_action}
@@ -2117,8 +2093,7 @@ func _legal_slot_for_card(
 		return true
 	if str(slot.get("owner_id", "")) != actor_id:
 		return false
-	return int(slot.get("damage_points", 0)) > 0 \
-		or int(slot.get("rank", 0)) < FACILITY_CORE.MAX_FACILITY_RANK
+	return _facility_slot_card_mode_legal(actor_id, card, slot)
 
 
 func _facility_mode(actor_id: String, slot: Dictionary) -> String:
@@ -2128,14 +2103,14 @@ func _facility_mode(actor_id: String, slot: Dictionary) -> String:
 		return ""
 	if int(slot.get("damage_points", 0)) > 0:
 		return "REPAIR_OWN"
-	if int(slot.get("rank", 0)) < FACILITY_CORE.MAX_FACILITY_RANK:
+	if int(slot.get("rank", 0)) < _facility_max_rank():
 		return "UPGRADE_OWN"
 	return ""
 
 
 func _build_genesis_facility_slots() -> Array:
 	var result: Array = []
-	for region_id in REGION_IDS:
+	for region_id in _runtime_region_ids():
 		for facility_type in FACILITY_CORE.FACILITY_TYPES:
 			for industry_id in COLORS:
 				result.append(FACILITY_CORE.build_empty_slot(
@@ -2150,20 +2125,27 @@ func _build_genesis_facility_slots() -> Array:
 
 func _initialize_region_solar() -> void:
 	_region_sunlit = {}
-	for index in range(REGION_IDS.size()):
-		_region_sunlit[REGION_IDS[index]] = index < 3
+	var region_ids := _runtime_region_ids()
+	var sunlit_count := ceili(float(region_ids.size()) / 2.0)
+	for index in range(region_ids.size()):
+		_region_sunlit[region_ids[index]] = index < sunlit_count
 
 
 func _update_region_solar() -> void:
-	for index in range(REGION_IDS.size()):
-		_region_sunlit[REGION_IDS[index]] = posmod(index + _batch_number, 2) == 0
-	var alpha_sunlit := bool(_region_sunlit.get(REGION_IDS[0], false))
+	var region_ids := _runtime_region_ids()
+	for index in range(region_ids.size()):
+		_region_sunlit[region_ids[index]] = posmod(index + _batch_number, 2) == 0
+	var reference_sunlit := (
+		bool(_region_sunlit.get(region_ids[0], false))
+		if not region_ids.is_empty()
+		else false
+	)
 	var intent := {
 		"schema_version": SOLAR_VICTORY_CORE.SCHEMA_VERSION,
 		"intent_id": "intent.solar.%d" % _batch_number,
 		"intent_kind_id": SOLAR_VICTORY_CORE.INTENT_KIND_SOLAR,
 		"expected_revision": int(_solar_state.get("revision", 0)),
-		"sunlit": alpha_sunlit,
+		"sunlit": reference_sunlit,
 		"source_revision": _batch_number,
 	}
 	var outcome := SOLAR_VICTORY_CORE.apply_solar_intent(_solar_state, intent)
@@ -2308,7 +2290,7 @@ func _facility_count_for(actor_id: String) -> int:
 
 func _region_solar_projection() -> Array:
 	var result: Array = []
-	for region_id in REGION_IDS:
+	for region_id in _runtime_region_ids():
 		var sunlit := bool(_region_sunlit.get(region_id, false))
 		result.append({
 			"region_id": region_id,
@@ -2358,7 +2340,7 @@ func _build_final_settlement(settlement_id: String) -> Dictionary:
 	for index in range(standings.size()):
 		(standings[index] as Dictionary)["rank"] = index + 1
 	return {
-		"ruleset_id": RULESET_ID,
+		"ruleset_id": _runtime_ruleset_id(),
 		"settlement_id": settlement_id,
 		"title": "Final Settlement",
 		"winner_player_id": str((standings[0] as Dictionary).get("player_id", "")),
@@ -2486,3 +2468,160 @@ func _reject_action(reason_code: String) -> Dictionary:
 		_invalid_action_reasons.get(reason_code, 0)
 	) + 1
 	return {"accepted": false, "reason_code": reason_code}
+
+
+# V0.7.4 extends these seams while the V0.7.3 production behavior remains unchanged.
+func _prepare_runtime_new_game(_map_request: Dictionary) -> Dictionary:
+	return {"accepted": true, "reason_code": "v073_runtime_ready"}
+
+
+func _runtime_match_id(seed_value: int, sequence: int) -> String:
+	return "match.v073.sample.%d.%d" % [absi(seed_value), sequence]
+
+
+func _create_track_core() -> RefCounted:
+	return TRACK_CORE.new()
+
+
+func _track_start_config() -> Dictionary:
+	return {
+		"balance_profile_id": TRACK_CORE.BALANCE_PROFILE_ID,
+		"balance_profile_fingerprint": TRACK_CORE.BALANCE_PROFILE_FINGERPRINT,
+		"normal_card_ratio_basis_points": 6000,
+		"commodity_card_ratio_basis_points": 4000,
+		"local_visible_slot_count": 5,
+		"match_instance_id": _match_id,
+	}
+
+
+func _runtime_ruleset_id() -> String:
+	return RULESET_ID
+
+
+func _runtime_sample_mode_id() -> String:
+	return SAMPLE_MODE_ID
+
+
+func _runtime_new_game_reason() -> String:
+	return "v073_new_game_started"
+
+
+func _runtime_new_game_failure_reason() -> String:
+	return "v073_new_game_initialization_failed"
+
+
+func _runtime_new_game_metadata() -> Dictionary:
+	return {}
+
+
+func _runtime_legal_target_authority_id() -> String:
+	return "v073.production.legal_target_authority"
+
+
+func _runtime_track_authorization_authority_id() -> String:
+	return "v073.player_segment_authority"
+
+
+func _runtime_victory_condition_id() -> String:
+	return "v073.public_facility_network_threshold"
+
+
+func _runtime_region_ids() -> Array[String]:
+	var result: Array[String] = []
+	for index in range(DEFAULT_REGION_COUNT):
+		result.append("region.%03d" % index)
+	return result
+
+
+func _preferred_ai_region_id() -> String:
+	var region_ids := _runtime_region_ids()
+	return str(region_ids[0]) if not region_ids.is_empty() else ""
+
+
+func _facility_resolve_next(state: Dictionary) -> Dictionary:
+	return FACILITY_CORE.resolve_next(state)
+
+
+func _facility_player_projection(state: Dictionary, viewer_id: String) -> Dictionary:
+	return FACILITY_CORE.player_projection(state, viewer_id)
+
+
+func _facility_ai_observation(state: Dictionary, viewer_id: String) -> Dictionary:
+	return FACILITY_CORE.ai_observation(state, viewer_id)
+
+
+func _facility_validation_report(state: Dictionary) -> Dictionary:
+	return FACILITY_CORE.validation_report(state)
+
+
+func _facility_lock_batch(
+	batch_id: String,
+	player_ids: Array,
+	hidden_order: Array,
+	player_local_queues: Dictionary,
+	facility_slots: Array
+) -> Dictionary:
+	return FACILITY_CORE.lock_batch(
+		batch_id,
+		player_ids,
+		hidden_order,
+		player_local_queues,
+		facility_slots
+	)
+
+
+func _facility_build_action(
+	mode: String,
+	action_id: String,
+	source_card_instance_id: String,
+	actor_id: String,
+	local_action_index: int,
+	slot: Dictionary,
+	reserved_assets: Dictionary,
+	origin_class: String,
+	_source_card_rank: int
+) -> Dictionary:
+	match mode:
+		"BUILD_NEW":
+			return FACILITY_CORE.build_new_action(
+				action_id,
+				source_card_instance_id,
+				actor_id,
+				local_action_index,
+				slot,
+				reserved_assets,
+				origin_class
+			)
+		"UPGRADE_OWN":
+			return FACILITY_CORE.build_upgrade_action(
+				action_id,
+				source_card_instance_id,
+				actor_id,
+				local_action_index,
+				slot,
+				reserved_assets,
+				origin_class
+			)
+		"REPAIR_OWN":
+			return FACILITY_CORE.build_repair_action(
+				action_id,
+				source_card_instance_id,
+				actor_id,
+				local_action_index,
+				slot,
+				reserved_assets,
+				origin_class
+			)
+	return {}
+
+
+func _facility_max_rank() -> int:
+	return FACILITY_CORE.MAX_FACILITY_RANK
+
+
+func _facility_slot_card_mode_legal(
+	_actor_id: String,
+	_card: Dictionary,
+	slot: Dictionary
+) -> bool:
+	return int(slot.get("damage_points", 0)) > 0 		or int(slot.get("rank", 0)) < _facility_max_rank()

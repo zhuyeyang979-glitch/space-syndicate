@@ -12,7 +12,7 @@ func _ready() -> void:
 
 
 func configure(data: Dictionary) -> void:
-	_payload = data.duplicate(true)
+	_payload = data.duplicate(false)
 	name = "PlanetFocusRangeOverlay"
 	visible = true
 	queue_redraw()

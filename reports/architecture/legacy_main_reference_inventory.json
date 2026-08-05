@@ -1,0 +1,2880 @@
+{
+  "schema_version": 1,
+  "task_id": "ALPHA_0_5_C1_V074_ROGUELIKE_GEOGRAPHY_WAREHOUSE_COMPLETE_FACILITY_CUTOVER_INTERACTIVE_GLOBE_RESPONSIVE_UI_AND_LEGACY_MAIN_RETIREMENT",
+  "generated_from_head": "05c2415014187e902592bf3a8d1291222f738694",
+  "legacy_main_path": "scripts/main.gd",
+  "legacy_main_uid_path": "scripts/main.gd.uid",
+  "legacy_main_deleted": true,
+  "legacy_main_uid_deleted": true,
+  "production_entrypoint": "scenes/main.tscn",
+  "production_dependency_closure_count": 79,
+  "production_reachable_reference_count": 0,
+  "v074_active_dependency_count": 0,
+  "compatibility_wrapper_count": 0,
+  "textual_reference_occurrence_count": 2649,
+  "textual_reference_file_count": 424,
+  "classification_totals": [
+    {
+      "classification": "duplicate",
+      "occurrence_count": 1983,
+      "file_count": 252,
+      "dependency_count": 0
+    },
+    {
+      "classification": "frozen_v06_reliability_only",
+      "occurrence_count": 628,
+      "file_count": 151,
+      "dependency_count": 0
+    },
+    {
+      "classification": "obsolete",
+      "occurrence_count": 13,
+      "file_count": 4,
+      "dependency_count": 0
+    },
+    {
+      "classification": "v073_active_test",
+      "occurrence_count": 20,
+      "file_count": 15,
+      "dependency_count": 0
+    },
+    {
+      "classification": "v074_active_test",
+      "occurrence_count": 5,
+      "file_count": 2,
+      "dependency_count": 0
+    }
+  ],
+  "direct_legacy_load_sites": [
+    "tests/card_resolution_controller_consolidation_test.gd:78",
+    "tests/helpers/card_resolution_main_test_harness.gd:14"
+  ],
+  "reserved_integration_dependency": {
+    "path": "scripts/v074_runtime/v074_application_bootstrap.gd",
+    "source_commit": "03960728",
+    "present_on_lane_f": false,
+    "action": "read_only; validate after integration"
+  },
+  "files": [
+    {
+      "path": "scripts/architecture/v074/v074_legacy_main_retirement_audit.gd",
+      "classification": "v074_active_test",
+      "role": "negative_architecture_ratchet",
+      "occurrence_count": 4,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 9,
+          "kind": "path_constructed"
+        },
+        {
+          "line": 10,
+          "kind": "alias_usage"
+        },
+        {
+          "line": 11,
+          "kind": "path_constructed"
+        },
+        {
+          "line": 13,
+          "kind": "root_main_constructed"
+        }
+      ]
+    },
+    {
+      "path": "tests/v074_legacy_main_retirement_test.gd",
+      "classification": "v074_active_test",
+      "role": "negative_architecture_ratchet",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 18,
+          "kind": "alias_usage"
+        }
+      ]
+    },
+    {
+      "path": "addons/godot_mcp/runtime/mcp_runtime.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 245,
+          "kind": "root_main_literal"
+        }
+      ]
+    },
+    {
+      "path": "AGENTS.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 12,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 275,
+          "kind": "path_literal"
+        },
+        {
+          "line": 288,
+          "kind": "path_literal"
+        },
+        {
+          "line": 306,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 489,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 491,
+          "kind": "path_literal"
+        },
+        {
+          "line": 495,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 500,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 502,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 509,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 513,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 521,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 526,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "docs/ADR/0001-parallel-codex-boundaries.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 4,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 9,
+          "kind": "path_literal"
+        },
+        {
+          "line": 16,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 20,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 32,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/ai_runtime_ownership_contract.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 4,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 9,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 23,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 32,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 117,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 8,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 3,
+          "kind": "path_literal"
+        },
+        {
+          "line": 15,
+          "kind": "path_literal"
+        },
+        {
+          "line": 25,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 67,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 71,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 72,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 78,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 79,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/art_qa/actual_role_portraits_trial_report.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 157,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "docs/balance_audit.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 7,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "docs/card_economy_product_route_effect_runtime_contract.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 3,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 38,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 44,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 48,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/card_economy_product_route_formula_runtime_contract.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 4,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 42,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 48,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 60,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 66,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/card_flow_region_supply_production_wiring_v06.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 30,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/card_inventory_runtime_contract.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 5,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 32,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 62,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 92,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 104,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 160,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/card_play_and_region_supply_policy.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 55,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 114,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/card_play_eligibility_runtime_contract.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 29,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/card_presentation_viewmodel_runtime_contract.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 4,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 24,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 26,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 48,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 52,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/card_resolution_execution_runtime_contract.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 133,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 149,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/card_resolution_queue_ownership_boundary.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 9,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 21,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 44,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 52,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 55,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 62,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 66,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 152,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 166,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 179,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/card_visual_theme_contract.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 83,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/city_development_settlement_runtime_contract.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 3,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 5,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 15,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 56,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/city_gdp_derivative_v04_terms_contract.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 10,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 40,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/codex_b_playability_acceptance.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 9,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/CODEX_WORK_ORDERS.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 54,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "docs/commercial_playability_gate_diagnostics.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 6,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 46,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "docs/commodity_flow_ambient_and_market_backlog_v06.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 60,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/commodity_inventory_persistent_installation_runtime_contract.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 15,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/content/alpha01/handoff.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 39,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/content/alpha01/integration_request.json",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 77,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/content/alpha01/role_consumer_curation_report.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 19,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "docs/developer_manual.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 3,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 58,
+          "kind": "path_literal"
+        },
+        {
+          "line": 325,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 336,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/development_log.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 85,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 85,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 180,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 220,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 307,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 333,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 362,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 374,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 384,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 385,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 393,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 407,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 413,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 460,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 461,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 486,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 503,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 536,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 543,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 566,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 571,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 580,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 592,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 593,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 673,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 905,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 1101,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 1132,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 1134,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 1358,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 1378,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 1420,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 1584,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 1633,
+          "kind": "path_literal"
+        },
+        {
+          "line": 1779,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 1783,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 1796,
+          "kind": "path_literal"
+        },
+        {
+          "line": 1906,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 1914,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 1992,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2218,
+          "kind": "path_literal"
+        },
+        {
+          "line": 2219,
+          "kind": "path_literal"
+        },
+        {
+          "line": 2247,
+          "kind": "path_literal"
+        },
+        {
+          "line": 2281,
+          "kind": "path_literal"
+        },
+        {
+          "line": 2282,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2309,
+          "kind": "path_literal"
+        },
+        {
+          "line": 2340,
+          "kind": "path_literal"
+        },
+        {
+          "line": 2368,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2372,
+          "kind": "path_literal"
+        },
+        {
+          "line": 2400,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2407,
+          "kind": "path_literal"
+        },
+        {
+          "line": 2432,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2436,
+          "kind": "path_literal"
+        },
+        {
+          "line": 2503,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2512,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2535,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2543,
+          "kind": "path_literal"
+        },
+        {
+          "line": 2568,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2604,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2606,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2608,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2667,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2671,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2761,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2762,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2780,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2802,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2812,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2927,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2985,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 3002,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 3080,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 5244,
+          "kind": "path_literal"
+        },
+        {
+          "line": 5349,
+          "kind": "path_literal"
+        },
+        {
+          "line": 5475,
+          "kind": "path_literal"
+        },
+        {
+          "line": 7254,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 7692,
+          "kind": "path_literal"
+        },
+        {
+          "line": 7848,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 7939,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 8228,
+          "kind": "path_literal"
+        },
+        {
+          "line": 8266,
+          "kind": "path_literal"
+        },
+        {
+          "line": 8322,
+          "kind": "path_literal"
+        },
+        {
+          "line": 8587,
+          "kind": "path_literal"
+        },
+        {
+          "line": 8722,
+          "kind": "path_literal"
+        },
+        {
+          "line": 8752,
+          "kind": "path_literal"
+        },
+        {
+          "line": 8916,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "docs/development/current_file_ownership.json",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 16,
+          "kind": "path_literal"
+        },
+        {
+          "line": 64,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "docs/district_purchase_settlement_contract.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 126,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 133,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/economy_network_acceptance_report.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 4,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 42,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 93,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 112,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 199,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/final_settlement_runtime_composition_v06.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 35,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/final_settlement_visibility_truth_v06.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 3,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 11,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 39,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 46,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/game_quality_baseline.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 3,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 20,
+          "kind": "path_literal"
+        },
+        {
+          "line": 71,
+          "kind": "path_literal"
+        },
+        {
+          "line": 156,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/game_quality_report.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 20,
+          "kind": "path_literal"
+        },
+        {
+          "line": 21,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "docs/gameplay_balance_diagnostics_ownership_contract.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 6,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 66,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/gdp_formula_runtime_cutover.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 11,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 44,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/global_ui_navigation_runtime_contract.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 6,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 12,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 21,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 22,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 34,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 79,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 128,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/human_first_table_playability_gate_v06.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 22,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/installed_commodity_continuous_economy_runtime_contract.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 58,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/integration_requests/P0-CASH-AUTHORITY-COMMITMENT-BOUNDARY.json",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 4,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 29,
+          "kind": "path_literal"
+        },
+        {
+          "line": 73,
+          "kind": "path_literal"
+        },
+        {
+          "line": 74,
+          "kind": "path_literal"
+        },
+        {
+          "line": 75,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "docs/integration_requests/P2-ALPHA01-SIX-INDUSTRY-PRODUCT-ART-PROOF.json",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 24,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/integration_requests/P3-DEVELOPER-DIAGNOSTICS-HOST-CUTOVER.json",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 29,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "docs/legacy_runtime_retirement_v06.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 9,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/main_dead_compatibility_surface_retirement.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 6,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 7,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 15,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 134,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 135,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 140,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 142,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "docs/main_runtime_replacement.md",
+      "classification": "duplicate",
+      "role": "historical_evidence",
+      "occurrence_count": 139,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 5,
+          "kind": "path_literal"
+        },
+        {
+          "line": 14,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 18,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 20,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 26,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 36,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 38,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 44,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 46,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 52,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 54,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 60,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 62,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 68,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 70,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 74,
+          "kind": "path_literal"
+        },
+        {
+          "line": 78,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 82,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 84,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 86,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 92,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 94,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 98,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 102,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 108,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 110,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 118,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 120,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 167,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 169,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 172,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 173,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 174,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 177,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 179,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 189,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 190,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 191,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 197,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 199,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 205,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 207,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 213,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 215,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 221,
+          "kind…36534 tokens truncated…nd": "root_main_constructed"
+        }
+      ]
+    },
+    {
+      "path": "tests/district_product_hand_selection_cutover_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 255,
+          "kind": "path_constructed"
+        }
+      ]
+    },
+    {
+      "path": "tests/district_supply_action_port_cutover_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 45,
+          "kind": "path_constructed"
+        }
+      ]
+    },
+    {
+      "path": "tests/district_supply_surface_query_cutover_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 238,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 252,
+          "kind": "root_main_constructed"
+        }
+      ]
+    },
+    {
+      "path": "tests/economy_application_flow_cutover_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 25,
+          "kind": "root_main_constructed"
+        },
+        {
+          "line": 26,
+          "kind": "path_constructed"
+        }
+      ]
+    },
+    {
+      "path": "tests/final_settlement_runtime_composition_v06_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 40,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/full_run_quality_driver_contract_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 392,
+          "kind": "path_constructed"
+        }
+      ]
+    },
+    {
+      "path": "tests/helpers/card_resolution_main_test_harness.gd",
+      "classification": "obsolete",
+      "role": "retired_oracle",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 4,
+          "kind": "path_literal"
+        },
+        {
+          "line": 14,
+          "kind": "resource_load_via_alias"
+        }
+      ]
+    },
+    {
+      "path": "tests/intel_query_command_cutover_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 405,
+          "kind": "path_constructed"
+        }
+      ]
+    },
+    {
+      "path": "tests/layout_scene_smoke_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 104,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 1850,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2023,
+          "kind": "path_literal"
+        },
+        {
+          "line": 2024,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2026,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2028,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 2029,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 4749,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 5173,
+          "kind": "path_literal"
+        },
+        {
+          "line": 5180,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 5381,
+          "kind": "path_literal"
+        },
+        {
+          "line": 5385,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 5472,
+          "kind": "path_literal"
+        },
+        {
+          "line": 5601,
+          "kind": "path_literal"
+        },
+        {
+          "line": 5605,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 5658,
+          "kind": "path_literal"
+        },
+        {
+          "line": 5659,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 5660,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 5778,
+          "kind": "path_literal"
+        },
+        {
+          "line": 5779,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 5780,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 5924,
+          "kind": "path_literal"
+        },
+        {
+          "line": 5926,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 5931,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 5936,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 5963,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 5966,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 6128,
+          "kind": "path_literal"
+        },
+        {
+          "line": 6319,
+          "kind": "path_literal"
+        },
+        {
+          "line": 6505,
+          "kind": "path_literal"
+        },
+        {
+          "line": 6511,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 6681,
+          "kind": "path_literal"
+        },
+        {
+          "line": 6685,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 6945,
+          "kind": "path_literal"
+        },
+        {
+          "line": 6949,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 6963,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 7049,
+          "kind": "path_literal"
+        },
+        {
+          "line": 7066,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 7148,
+          "kind": "path_literal"
+        },
+        {
+          "line": 7161,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 7244,
+          "kind": "path_literal"
+        },
+        {
+          "line": 7254,
+          "kind": "path_literal"
+        },
+        {
+          "line": 7262,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 7277,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 7377,
+          "kind": "path_literal"
+        },
+        {
+          "line": 7384,
+          "kind": "path_literal"
+        },
+        {
+          "line": 7387,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 7401,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 7482,
+          "kind": "path_literal"
+        },
+        {
+          "line": 7491,
+          "kind": "path_literal"
+        },
+        {
+          "line": 7492,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 7506,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 7588,
+          "kind": "path_literal"
+        },
+        {
+          "line": 7595,
+          "kind": "path_literal"
+        },
+        {
+          "line": 7597,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 7611,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 7701,
+          "kind": "path_literal"
+        },
+        {
+          "line": 7708,
+          "kind": "path_literal"
+        },
+        {
+          "line": 7710,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 7724,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 7811,
+          "kind": "path_literal"
+        },
+        {
+          "line": 7819,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 7843,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 7892,
+          "kind": "path_literal"
+        },
+        {
+          "line": 7977,
+          "kind": "path_literal"
+        },
+        {
+          "line": 8069,
+          "kind": "path_literal"
+        },
+        {
+          "line": 8071,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 8194,
+          "kind": "path_literal"
+        },
+        {
+          "line": 8422,
+          "kind": "path_literal"
+        },
+        {
+          "line": 8425,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 8609,
+          "kind": "path_literal"
+        },
+        {
+          "line": 8610,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 8727,
+          "kind": "path_literal"
+        },
+        {
+          "line": 8729,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 8731,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 8738,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 8936,
+          "kind": "path_literal"
+        },
+        {
+          "line": 8943,
+          "kind": "path_literal"
+        },
+        {
+          "line": 8949,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 8964,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 9047,
+          "kind": "path_literal"
+        },
+        {
+          "line": 9054,
+          "kind": "path_literal"
+        },
+        {
+          "line": 9059,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 9074,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 9154,
+          "kind": "path_literal"
+        },
+        {
+          "line": 9161,
+          "kind": "path_literal"
+        },
+        {
+          "line": 9162,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 9173,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 9253,
+          "kind": "path_literal"
+        },
+        {
+          "line": 9260,
+          "kind": "path_literal"
+        },
+        {
+          "line": 9261,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 9272,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 9352,
+          "kind": "path_literal"
+        },
+        {
+          "line": 9359,
+          "kind": "path_literal"
+        },
+        {
+          "line": 9372,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 9487,
+          "kind": "path_literal"
+        },
+        {
+          "line": 9494,
+          "kind": "path_literal"
+        },
+        {
+          "line": 9495,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 9506,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 9589,
+          "kind": "path_literal"
+        },
+        {
+          "line": 9596,
+          "kind": "path_literal"
+        },
+        {
+          "line": 9597,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 9608,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 10314,
+          "kind": "path_literal"
+        },
+        {
+          "line": 10320,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "tests/main_application_flow_handler_extraction_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 4,
+          "kind": "path_constructed"
+        },
+        {
+          "line": 78,
+          "kind": "source_read_via_alias"
+        }
+      ]
+    },
+    {
+      "path": "tests/main_dependency_direction_migration_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 5,
+          "kind": "path_constructed"
+        },
+        {
+          "line": 29,
+          "kind": "source_read_via_alias"
+        }
+      ]
+    },
+    {
+      "path": "tests/main_gd_architecture_gate_test.gd",
+      "classification": "obsolete",
+      "role": "retired_oracle",
+      "occurrence_count": 4,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 5,
+          "kind": "path_literal"
+        },
+        {
+          "line": 26,
+          "kind": "source_read_via_alias"
+        },
+        {
+          "line": 57,
+          "kind": "root_main_literal"
+        },
+        {
+          "line": 98,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "tests/main_runtime_composition_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 23,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 337,
+          "kind": "path_literal"
+        },
+        {
+          "line": 339,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 398,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 463,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 471,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 476,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 489,
+          "kind": "root_main_literal"
+        },
+        {
+          "line": 666,
+          "kind": "path_literal"
+        },
+        {
+          "line": 683,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 696,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 703,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 714,
+          "kind": "path_literal"
+        },
+        {
+          "line": 726,
+          "kind": "path_literal"
+        },
+        {
+          "line": 738,
+          "kind": "path_literal"
+        },
+        {
+          "line": 754,
+          "kind": "path_literal"
+        },
+        {
+          "line": 758,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 786,
+          "kind": "path_literal"
+        },
+        {
+          "line": 796,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 812,
+          "kind": "path_literal"
+        },
+        {
+          "line": 864,
+          "kind": "path_literal"
+        },
+        {
+          "line": 901,
+          "kind": "path_literal"
+        },
+        {
+          "line": 924,
+          "kind": "path_literal"
+        },
+        {
+          "line": 978,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/main_victory_public_privacy_v06_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 137,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/monster_card_resolution_actor_propagation_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 229,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/monster_codex_public_source_service_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 42,
+          "kind": "path_constructed"
+        }
+      ]
+    },
+    {
+      "path": "tests/monster_wager_cash_commitment_query_port_cutover_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 199,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/player_card_dock_commodity_target_selection_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 76,
+          "kind": "root_main_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/player_rules_in_game_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 46,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/product_codex_public_source_service_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 90,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/public_card_track_focus_selection_cutover_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 250,
+          "kind": "path_constructed"
+        }
+      ]
+    },
+    {
+      "path": "tests/public_selection_catalog_snapshot_api_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 371,
+          "kind": "root_main_constructed"
+        },
+        {
+          "line": 378,
+          "kind": "path_constructed"
+        }
+      ]
+    },
+    {
+      "path": "tests/role_catalog_runtime_service_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 103,
+          "kind": "path_constructed"
+        }
+      ]
+    },
+    {
+      "path": "tests/role_codex_public_contract_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 112,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/run_rng_service_cutover_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 49,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/runtime_balance_report_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 10,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 20,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 22,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 23,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 24,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 192,
+          "kind": "path_literal"
+        },
+        {
+          "line": 193,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 194,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 204,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 218,
+          "kind": "path_literal"
+        },
+        {
+          "line": 220,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "tests/selected_player_actor_authority_split_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 328,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/setup_session_start_transaction_cutover_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 326,
+          "kind": "path_constructed"
+        }
+      ]
+    },
+    {
+      "path": "tests/shared_card_group_runtime_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 49,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/shared_card_window_production_cutover_v06_test.gd",
+      "classification": "obsolete",
+      "role": "retired_oracle",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 3,
+          "kind": "path_literal"
+        },
+        {
+          "line": 50,
+          "kind": "source_read_via_alias"
+        }
+      ]
+    },
+    {
+      "path": "tests/shared_partial_visibility_commodity_track_three_layer_semantics_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 330,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/smoke_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 3,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 4,
+          "kind": "path_literal"
+        },
+        {
+          "line": 108,
+          "kind": "source_read_via_alias"
+        },
+        {
+          "line": 6135,
+          "kind": "source_read_via_alias"
+        }
+      ]
+    },
+    {
+      "path": "tests/standings_application_flow_cutover_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 3,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 4,
+          "kind": "path_constructed"
+        },
+        {
+          "line": 127,
+          "kind": "source_read_via_alias"
+        },
+        {
+          "line": 132,
+          "kind": "root_main_constructed"
+        }
+      ]
+    },
+    {
+      "path": "tests/table_presentation_source_target_cutover_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 14,
+          "kind": "path_constructed"
+        },
+        {
+          "line": 22,
+          "kind": "root_main_constructed"
+        }
+      ]
+    },
+    {
+      "path": "tests/table_selection_state_cutover_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 65,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/ui_text_smoke_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 3,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 76,
+          "kind": "path_literal"
+        },
+        {
+          "line": 105,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 109,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "tests/v07_adapters/v07_adapter_architecture_contract_test.gd",
+      "classification": "v073_active_test",
+      "role": "negative_or_historical_rule_assertion",
+      "occurrence_count": 3,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 44,
+          "kind": "path_literal"
+        },
+        {
+          "line": 83,
+          "kind": "path_literal"
+        },
+        {
+          "line": 96,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/v07_adapters/v07_canonical_rng_adapter_test.gd",
+      "classification": "v073_active_test",
+      "role": "negative_or_historical_rule_assertion",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 87,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/v07_adapters/v07_canonical_save_adapter_test.gd",
+      "classification": "v073_active_test",
+      "role": "negative_or_historical_rule_assertion",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 392,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/v07_adapters/v07_latest_main_resync_test.gd",
+      "classification": "v073_active_test",
+      "role": "negative_or_historical_rule_assertion",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 73,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/v07_semantic/v07_asset_batch_core_test.gd",
+      "classification": "v073_active_test",
+      "role": "negative_or_historical_rule_assertion",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 2076,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/v07_semantic/v07_dbg_deck_core_test.gd",
+      "classification": "v073_active_test",
+      "role": "negative_or_historical_rule_assertion",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 2211,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/v07_semantic/v07_three_wing_contract_aggregate_test.gd",
+      "classification": "v073_active_test",
+      "role": "negative_or_historical_rule_assertion",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 2597,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/v07_semantic/v07_track_acquisition_authority_port_test.gd",
+      "classification": "v073_active_test",
+      "role": "negative_or_historical_rule_assertion",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 740,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "tests/v07_semantic/v072_card_definition_registry_test.gd",
+      "classification": "v073_active_test",
+      "role": "negative_or_historical_rule_assertion",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 174,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/v07_semantic/v073_fixed_order_facility_contention_core_test.gd",
+      "classification": "v073_active_test",
+      "role": "negative_or_historical_rule_assertion",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 75,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/v071_simulation/v071_rule_consistency_review_scene_test.gd",
+      "classification": "v073_active_test",
+      "role": "negative_or_historical_rule_assertion",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 34,
+          "kind": "root_main_literal"
+        },
+        {
+          "line": 40,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/v072_simulation/v072_starter_bootstrap_review_scene_test.gd",
+      "classification": "v073_active_test",
+      "role": "negative_or_historical_rule_assertion",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 31,
+          "kind": "root_main_literal"
+        },
+        {
+          "line": 38,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/v073_production_sample_acceptance_test.gd",
+      "classification": "v073_active_test",
+      "role": "negative_or_historical_rule_assertion",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 52,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/v073_simulation/v073_deterministic_contention_simulator_test.gd",
+      "classification": "v073_active_test",
+      "role": "negative_or_historical_rule_assertion",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 120,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/v073_simulation/v073_fixed_order_facility_contention_review_scene_test.gd",
+      "classification": "v073_active_test",
+      "role": "negative_or_historical_rule_assertion",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 49,
+          "kind": "root_main_literal"
+        },
+        {
+          "line": 95,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/visual_snapshot.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 2,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 79,
+          "kind": "path_literal"
+        },
+        {
+          "line": 113,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    },
+    {
+      "path": "tests/weather_presentation_runtime_service_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 81,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tests/world_session_state_cutover_test.gd",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 1,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 73,
+          "kind": "path_literal"
+        }
+      ]
+    },
+    {
+      "path": "tools/repository_safety_baseline.ps1",
+      "classification": "frozen_v06_reliability_only",
+      "role": "frozen_source_oracle",
+      "occurrence_count": 3,
+      "dependency_count": 0,
+      "references": [
+        {
+          "line": 102,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 168,
+          "kind": "descriptive_main_name"
+        },
+        {
+          "line": 169,
+          "kind": "descriptive_main_name"
+        }
+      ]
+    }
+  ]
+}

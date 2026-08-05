@@ -1,0 +1,229 @@
+[gd_scene format=3 uid="uid://cgu7xkfdt3vtj"]
+
+[ext_resource type="PackedScene" uid="uid://b83n5s3yi6o3u" path="res://scenes/ui/V073SampleGameScreen.tscn" id="1_base"]
+[ext_resource type="Script" uid="uid://b4p66uis1to0o" path="res://scripts/ui/v074/v074_sample_game_screen.gd" id="2_screen"]
+[ext_resource type="Script" uid="uid://hqp0cdn0qek0" path="res://scripts/ui/v074/v074_virtualized_target_rail.gd" id="3_target_rail"]
+
+[node name="V074GameScreen" unique_id=1948222674 instance=ExtResource("1_base")]
+script = ExtResource("2_screen")
+
+[node name="Panel" parent="OverlayLayer/StartOverlay/Center" parent_id_path=PackedInt32Array(121633171) index="0" unique_id=1351337970]
+custom_minimum_size = Vector2(640, 560)
+
+[node name="Rows" parent="OverlayLayer/StartOverlay/Center/Panel/Margin" parent_id_path=PackedInt32Array(599259527) index="0" unique_id=1797682641]
+theme_override_constants/separation = 8
+
+[node name="Subtitle" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows" index="1" unique_id=1805703551]
+unique_name_in_owner = true
+
+[node name="Mode" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows" index="2" unique_id=690375635]
+text = "NEW GAME · AUTHORITATIVE MAP GENESIS"
+
+[node name="SeedInput" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/SeedRow" parent_id_path=PackedInt32Array(667818305) index="1" unique_id=195792094]
+custom_minimum_size = Vector2(250, 0)
+
+[node name="CopySeedButton" type="Button" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/SeedRow" parent_id_path=PackedInt32Array(667818305) index="3" unique_id=1330116544]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "复制当前地图种子"
+text = "复制"
+
+[node name="Start3Button" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons" parent_id_path=PackedInt32Array(177193448) index="0" unique_id=1750003417]
+visible = false
+
+[node name="Start4Button" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons" parent_id_path=PackedInt32Array(177193448) index="1" unique_id=742214593]
+visible = false
+
+[node name="Start6Button" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons" parent_id_path=PackedInt32Array(177193448) index="2" unique_id=1578318703]
+visible = false
+
+[node name="Start8Button" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons" parent_id_path=PackedInt32Array(177193448) index="3" unique_id=1364263855]
+visible = false
+
+[node name="V074SettingsStack" type="VBoxContainer" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons" parent_id_path=PackedInt32Array(177193448) index="4" unique_id=1781280644]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="SettingsGrid" type="GridContainer" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack" index="0" unique_id=1897846416]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 7
+columns = 4
+
+[node name="RegionCountLabel" type="Label" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack/SettingsGrid" index="0" unique_id=1287358690]
+layout_mode = 2
+text = "地区"
+
+[node name="RegionCountSpinBox" type="SpinBox" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack/SettingsGrid" index="1" unique_id=1297765577]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+min_value = 6.0
+max_value = 30.0
+value = 16.0
+
+[node name="PlayerCountLabel" type="Label" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack/SettingsGrid" index="2" unique_id=619176215]
+layout_mode = 2
+text = "玩家"
+
+[node name="PlayerCountOption" type="OptionButton" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack/SettingsGrid" index="3" unique_id=1129907823]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(116, 0)
+layout_mode = 2
+
+[node name="ComplexityLabel" type="Label" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack/SettingsGrid" index="4" unique_id=703845440]
+layout_mode = 2
+text = "地理"
+
+[node name="GeographyComplexityOption" type="OptionButton" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack/SettingsGrid" index="5" unique_id=1370504168]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(142, 0)
+layout_mode = 2
+
+[node name="ProfileLabel" type="Label" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack/SettingsGrid" index="6" unique_id=831950502]
+layout_mode = 2
+text = "陆海"
+
+[node name="LandOceanProfileOption" type="OptionButton" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack/SettingsGrid" index="7" unique_id=745920313]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(142, 0)
+layout_mode = 2
+
+[node name="PreviewRow" type="HBoxContainer" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack" index="1" unique_id=1333623731]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MapPreviewLabel" type="Label" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack/PreviewRow" index="0" unique_id=710714375]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.45, 0.8, 0.75, 1)
+text = "16 regions · STANDARD · BALANCED"
+text_overrun_behavior = 3
+
+[node name="RegeneratePreviewButton" type="Button" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack/PreviewRow" index="1" unique_id=901233548]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "按当前设置重新生成权威地图预览"
+text = "重新预览"
+
+[node name="StartConfiguredButton" type="Button" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack" index="2" unique_id=384032670]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+text = "开始游戏"
+
+[node name="PersistenceNotice" parent="OverlayLayer/StartOverlay/Center/Panel/Margin/Rows" index="5" unique_id=1689317406]
+unique_name_in_owner = true
+
+[node name="Panel" parent="OverlayLayer/RegionPopup/Center" parent_id_path=PackedInt32Array(57309451) index="0" unique_id=1563049999]
+custom_minimum_size = Vector2(520, 360)
+
+[node name="RegionPopupTargetChoices" type="VBoxContainer" parent="OverlayLayer/RegionPopup/Center/Panel/Rows" parent_id_path=PackedInt32Array(1803213197) index="3" unique_id=294086106]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="PlaytestSafeArea" parent="PlaytestUtilityLayer" parent_id_path=PackedInt32Array(1057819042) index="0" unique_id=303196017]
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="V074TargetRailFloat" type="VBoxContainer" parent="PlaytestUtilityLayer/PlaytestSafeArea" index="1" unique_id=1084078597]
+z_index = 30
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -374.0
+offset_top = 104.0
+offset_right = -16.0
+offset_bottom = 104.0
+grow_horizontal = 0
+mouse_filter = 2
+
+[node name="V074VirtualizedTargetRail" type="PanelContainer" parent="PlaytestUtilityLayer/PlaytestSafeArea/V074TargetRailFloat" index="0" unique_id=1975664459]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(358, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("3_target_rail")
+
+[node name="RailRows" type="VBoxContainer" parent="PlaytestUtilityLayer/PlaytestSafeArea/V074TargetRailFloat/V074VirtualizedTargetRail" index="0" unique_id=567948262]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Header" type="HBoxContainer" parent="PlaytestUtilityLayer/PlaytestSafeArea/V074TargetRailFloat/V074VirtualizedTargetRail/RailRows" index="0" unique_id=1982816850]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ToggleButton" type="Button" parent="PlaytestUtilityLayer/PlaytestSafeArea/V074TargetRailFloat/V074VirtualizedTargetRail/RailRows/Header" index="0" unique_id=18613428]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(34, 30)
+layout_mode = 2
+tooltip_text = "展开键盘目标备用列表"
+text = ">"
+
+[node name="TitleLabel" type="Label" parent="PlaytestUtilityLayer/PlaytestSafeArea/V074TargetRailFloat/V074VirtualizedTargetRail/RailRows/Header" index="1" unique_id=76215125]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Target backup"
+vertical_alignment = 1
+
+[node name="CountLabel" type="Label" parent="PlaytestUtilityLayer/PlaytestSafeArea/V074TargetRailFloat/V074VirtualizedTargetRail/RailRows/Header" index="2" unique_id=1876844362]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="Body" type="VBoxContainer" parent="PlaytestUtilityLayer/PlaytestSafeArea/V074TargetRailFloat/V074VirtualizedTargetRail/RailRows" index="1" unique_id=1419851270]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="SearchInput" type="LineEdit" parent="PlaytestUtilityLayer/PlaytestSafeArea/V074TargetRailFloat/V074VirtualizedTargetRail/RailRows/Body" index="0" unique_id=1939504823]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "搜索地区、地形、设施或产业"
+clear_button_enabled = true
+
+[node name="TargetScroll" type="ScrollContainer" parent="PlaytestUtilityLayer/PlaytestSafeArea/V074TargetRailFloat/V074VirtualizedTargetRail/RailRows/Body" index="1" unique_id=799749445]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 170)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="VirtualContent" type="VBoxContainer" parent="PlaytestUtilityLayer/PlaytestSafeArea/V074TargetRailFloat/V074VirtualizedTargetRail/RailRows/Body/TargetScroll" index="0" unique_id=1326947776]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="TopSpacer" type="Control" parent="PlaytestUtilityLayer/PlaytestSafeArea/V074TargetRailFloat/V074VirtualizedTargetRail/RailRows/Body/TargetScroll/VirtualContent" index="0" unique_id=1066497026]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Rows" type="VBoxContainer" parent="PlaytestUtilityLayer/PlaytestSafeArea/V074TargetRailFloat/V074VirtualizedTargetRail/RailRows/Body/TargetScroll/VirtualContent" index="1" unique_id=737199736]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="BottomSpacer" type="Control" parent="PlaytestUtilityLayer/PlaytestSafeArea/V074TargetRailFloat/V074VirtualizedTargetRail/RailRows/Body/TargetScroll/VirtualContent" index="2" unique_id=1888326046]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="EmptyLabel" type="Label" parent="PlaytestUtilityLayer/PlaytestSafeArea/V074TargetRailFloat/V074VirtualizedTargetRail/RailRows/Body" index="2" unique_id=1230215418]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.7, 0.8, 1)
+text = "没有匹配目标"
+horizontal_alignment = 1

@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/map/planet_globe_backdrop.gd" id="1_script"]
-[ext_resource type="Shader" path="res://shaders/v073_planet_surface.gdshader" id="2_shader"]
+[ext_resource type="Shader" path="res://shaders/v074_planet_surface.gdshader" id="2_shader"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_surface"]
 resource_local_to_scene = true

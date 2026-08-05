@@ -4,6 +4,9 @@ class_name V07UnifiedCardTrackCore
 const CardDefinitions := preload(
 	"res://scripts/v07_semantic/v072_card_definition_registry.gd"
 )
+const V074CardDefinitions := preload(
+	"res://scripts/v074/facility/v074_card_definition_registry.gd"
+)
 
 const SCHEMA_VERSION := 2
 const STATE_VERSION := 5
@@ -345,6 +348,14 @@ const ACQUISITION_PUBLIC_FACT_FIELDS := [
 	"replacement_count",
 	"track_revision",
 ]
+const SHARED_SCROLL_ACQUISITION_PUBLIC_FACT_FIELDS := [
+	"track_item_removed",
+	"replacement_count",
+	"vacancy_count",
+	"vacated_path_position",
+	"refill_mode_id",
+	"track_revision",
+]
 const ACQUISITION_PROPOSAL_FIELDS := [
 	"schema_version",
 	"interface_id",
@@ -413,6 +424,11 @@ func start_match(roster_ids: Array, seed: int, config: Dictionary = {}) -> Dicti
 	var config_error := _config_error(config)
 	if not config_error.is_empty():
 		return _operation_result(false, config_error)
+	var definition_registry: Variant = _definition_registry_for_id(str(
+		config.get("card_definition_registry_id", CardDefinitions.REGISTRY_ID)
+	))
+	if definition_registry == null:
+		return _operation_result(false, "card_definition_registry_invalid")
 
 	var normal_ratio := int(config.get(
 		"normal_card_ratio_basis_points",
@@ -472,7 +488,8 @@ func start_match(roster_ids: Array, seed: int, config: Dictionary = {}) -> Dicti
 	var normal_supply := _new_definition_supply(
 		"normal_card",
 		normalized_seed,
-		"unified_track_normal_card_draw"
+		"unified_track_normal_card_draw",
+		definition_registry
 	)
 	var commodity_supply := _new_definition_supply(
 		"commodity_card",
@@ -580,6 +597,7 @@ func is_configured() -> bool:
 
 
 func interface_contract_v1() -> Dictionary:
+	var definition_registry: Variant = _active_card_definitions()
 	return {
 		"schema_version": SCHEMA_VERSION,
 		"state_version": STATE_VERSION,
@@ -633,9 +651,11 @@ func interface_contract_v1() -> Dictionary:
 		"track_item_claimability_field": "claimable_from_scroll_sequence",
 		"normal_track_spawn_level": TRACK_ITEM_LEVEL,
 		"commodity_track_spawn_level": TRACK_ITEM_LEVEL,
-		"normal_track_definition_registry_id": CardDefinitions.REGISTRY_ID,
+		"normal_track_definition_registry_id": str(
+			definition_registry.REGISTRY_ID
+		),
 		"normal_track_definition_ids": (
-			CardDefinitions.track_spawn_definition_ids()
+			definition_registry.track_spawn_definition_ids()
 		),
 		"starter_track_spawn_allowed": false,
 		"lead_identity_not_directly_published": true,
@@ -1629,7 +1649,8 @@ func _viewer_projection(interface_id: String, viewer_actor_id: String) -> Dictio
 			"claimability_state": "claimable" if claimable else "incoming_locked",
 		}
 		if str(item.get("card_kind", "")) == "normal_card":
-			var definition := CardDefinitions.definition(
+			var definition_registry: Variant = _active_card_definitions()
+			var definition: Dictionary = definition_registry.definition(
 				str(item.get("card_definition_id", ""))
 			)
 			projected_item["origin_class"] = str(
@@ -1936,7 +1957,9 @@ func _advance_track(steps: int) -> void:
 		var lead := _state.get("hidden_lead_cycle_state", {}) as Dictionary
 		var fixed_order := lead.get("fixed_order", []) as Array
 		var origin_index := fixed_order.find(str(lead.get("current_lead_id", "")))
-		var incoming := _draw_supply_card()
+		var incoming := _draw_supply_card(
+			_incoming_claimable_scroll_sequence_for_advance(track)
+		)
 		incoming["path_origin_index"] = origin_index
 		incoming["path_position"] = 0
 		moved.push_front(incoming)
@@ -1944,6 +1967,12 @@ func _advance_track(steps: int) -> void:
 		track["revision"] = int(track.get("revision", 0)) + 1
 		_state["track_state"] = track
 		_refresh_track_owners()
+
+
+func _incoming_claimable_scroll_sequence_for_advance(
+	track: Dictionary
+) -> int:
+	return int(track.get("scroll_sequence", 0))
 
 
 func _acquisition_live_error(intent: Dictionary) -> String:
@@ -2104,8 +2133,11 @@ func _draw_supply_card(claimable_from_scroll_sequence: int = -1) -> Dictionary:
 	) as Dictionary
 	var card_definition_id := _draw_definition(definition_supply)
 	if card_kind == "normal_card":
-		var drawn_definition := CardDefinitions.definition(card_definition_id)
-		card_definition_id = CardDefinitions.standard_definition_id(
+		var definition_registry: Variant = _active_card_definitions()
+		var drawn_definition: Dictionary = definition_registry.definition(
+			card_definition_id
+		)
+		card_definition_id = definition_registry.standard_definition_id(
 			str(drawn_definition.get("card_type", "")),
 			primary_color,
 			TRACK_ITEM_LEVEL
@@ -2172,11 +2204,12 @@ func _draw_definition(supply: Dictionary) -> String:
 static func _new_definition_supply(
 	card_kind: String,
 	seed: int,
-	stream_id: String
+	stream_id: String,
+	definition_registry: Variant = CardDefinitions
 ) -> Dictionary:
 	var templates: Array = []
 	if card_kind == "normal_card":
-		templates.assign(CardDefinitions.track_spawn_definition_ids())
+		templates.assign(definition_registry.track_spawn_definition_ids())
 	else:
 		for index in range(12):
 			templates.append("%s.reference.%02d" % [card_kind, index])
@@ -2801,14 +2834,54 @@ static func _public_facts_error(action_id: String, facts: Dictionary) -> String:
 				or not _is_positive_integer(facts.get("track_revision")):
 				return "track_advance_schema_invalid"
 		ACTION_CLAIM_VISIBLE_COMMODITY, ACTION_PURCHASE_VISIBLE_NORMAL_CARD:
-			if not _exact_fields(facts, ACQUISITION_PUBLIC_FACT_FIELDS) \
-				or facts.get("track_item_removed") != true \
-				or facts.get("replacement_count") != 1 \
-				or not _is_positive_integer(facts.get("track_revision")):
+			var legacy_schema_valid: bool = (
+				_exact_fields(facts, ACQUISITION_PUBLIC_FACT_FIELDS)
+				and facts.get("track_item_removed") == true
+				and facts.get("replacement_count") == 1
+				and _is_positive_integer(facts.get("track_revision"))
+			)
+			var shared_scroll_schema_valid: bool = (
+				_exact_fields(
+					facts,
+					SHARED_SCROLL_ACQUISITION_PUBLIC_FACT_FIELDS
+				)
+				and facts.get("track_item_removed") == true
+				and facts.get("replacement_count") == 0
+				and _is_positive_integer(facts.get("vacancy_count"))
+				and _is_nonnegative_integer(
+					facts.get("vacated_path_position")
+				)
+				and str(facts.get("refill_mode_id", "")) \
+					== "shared_scroll_vacancy"
+				and _is_positive_integer(facts.get("track_revision"))
+			)
+			if not legacy_schema_valid and not shared_scroll_schema_valid:
 				return "acquisition_schema_invalid"
 		_:
 			return "action_invalid"
 	return ""
+
+
+
+func _track_segment_item_counts_are_valid(
+	segment_local_slots: Dictionary,
+	roster: Array,
+	local_slots: int
+) -> bool:
+	for actor_id_variant in roster:
+		var actor_slots := (
+			segment_local_slots.get(str(actor_id_variant), []) as Array
+		)
+		if actor_slots.size() != local_slots:
+			return false
+	return true
+
+
+func _track_item_count_is_valid(track: Dictionary) -> bool:
+	return (
+		(track.get("items", []) as Array).size()
+		== int(track.get("capacity", 0))
+	)
 
 
 func _state_error(value: Dictionary) -> String:
@@ -2823,6 +2896,9 @@ func _state_error(value: Dictionary) -> String:
 		or str(value.get("balance_profile_fingerprint", "")) \
 			!= BALANCE_PROFILE_FINGERPRINT:
 		return "balance_profile_invalid"
+	var definition_registry: Variant = _definition_registry_for_state(value)
+	if definition_registry == null:
+		return "card_definition_registry_invalid"
 	if not _is_positive_integer(value.get("revision")) \
 		or not _is_valid_rng_state(value.get("match_seed")):
 		return "revision_or_seed_invalid"
@@ -2853,7 +2929,7 @@ func _state_error(value: Dictionary) -> String:
 		!= roster.size() * int(track.get("local_visible_slot_count", 0)):
 		return "track_capacity_invalid"
 	var items := track.get("items", []) as Array
-	if items.size() != int(track.get("capacity", 0)):
+	if not _track_item_count_is_valid(track):
 		return "track_item_count_invalid"
 	var instance_ids: Array[String] = []
 	var path_positions: Array[int] = []
@@ -2882,8 +2958,8 @@ func _state_error(value: Dictionary) -> String:
 			return "track_item_invalid"
 		if str(item.get("card_kind", "")) == "normal_card":
 			var definition_id := str(item.get("card_definition_id", ""))
-			var definition := CardDefinitions.definition(definition_id)
-			if not CardDefinitions.track_spawn_definition_ids().has(definition_id) \
+			var definition: Dictionary = definition_registry.definition(definition_id)
+			if not definition_registry.track_spawn_definition_ids().has(definition_id) \
 					or definition.is_empty() \
 					or str(definition.get("origin_class", "")) != "standard" \
 					or int(definition.get("level", 0)) != TRACK_ITEM_LEVEL \
@@ -2951,7 +3027,7 @@ func _state_error(value: Dictionary) -> String:
 				return "%s_template_invalid" % field_name
 		if field_name == "normal_supply_state" \
 				and _array_counts(templates) != _array_counts(
-					CardDefinitions.track_spawn_definition_ids()
+					definition_registry.track_spawn_definition_ids()
 				):
 			return "normal_supply_templates_not_canonical"
 		if _array_counts(templates) \
@@ -3124,12 +3200,12 @@ func _state_error(value: Dictionary) -> String:
 			return "track_segment_local_slot_duplicate"
 		owner_slots.append(local_slot_index)
 		segment_local_slots[owner_id] = owner_slots
-	for actor_id_variant in roster:
-		var actor_slots := (
-			segment_local_slots.get(str(actor_id_variant), []) as Array
-		)
-		if actor_slots.size() != local_slots:
-			return "track_segment_item_count_invalid"
+	if not _track_segment_item_counts_are_valid(
+		segment_local_slots,
+		roster,
+		local_slots
+	):
+		return "track_segment_item_count_invalid"
 	var projection_revisions := value.get("projection_revisions", {}) as Dictionary
 	if not _same_string_set(projection_revisions.keys(), roster):
 		return "projection_revisions_invalid"
@@ -3511,6 +3587,27 @@ static func _operation_result(accepted: bool, reason_code: String) -> Dictionary
 	}
 
 
+func _active_card_definitions() -> Variant:
+	return _definition_registry_for_state(_state)
+
+
+static func _definition_registry_for_state(value: Dictionary) -> Variant:
+	var supply := value.get("normal_supply_state", {}) as Dictionary
+	var templates := supply.get("templates", []) as Array
+	for definition_id_variant in templates:
+		if str(definition_id_variant).contains(".warehouse."):
+			return V074CardDefinitions
+	return CardDefinitions
+
+
+static func _definition_registry_for_id(registry_id: String) -> Variant:
+	if registry_id == CardDefinitions.REGISTRY_ID:
+		return CardDefinitions
+	if registry_id == V074CardDefinitions.REGISTRY_ID:
+		return V074CardDefinitions
+	return null
+
+
 static func _config_error(config: Dictionary) -> String:
 	if not is_pure_data(config) or not _exact_fields(
 		config,
@@ -3524,9 +3621,16 @@ static func _config_error(config: Dictionary) -> String:
 			"lead_tenure_batches",
 			"color_cycle_batches",
 			"match_instance_id",
+			"card_definition_registry_id",
 		]
 	):
 		return "config_fields_invalid"
+	var registry_id := str(config.get(
+		"card_definition_registry_id",
+		CardDefinitions.REGISTRY_ID
+	))
+	if _definition_registry_for_id(registry_id) == null:
+		return "card_definition_registry_invalid"
 	if str(config.get("balance_profile_id", BALANCE_PROFILE_ID)) \
 			!= BALANCE_PROFILE_ID:
 		return "balance_profile_id_invalid"
