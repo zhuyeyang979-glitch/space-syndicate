@@ -30,9 +30,14 @@ func _run() -> void:
 		Bench.make_legal_actions(30)
 	)
 	_expect(bool(rail.call("bind_projection", projection)), "rail binds DTO without runtime owner")
+	rail.call("set_expanded_height", 204.0)
 	rail.call("set_collapsed", false)
 	await process_frame
 	var region_debug := rail.call("debug_snapshot") as Dictionary
+	_expect(
+		is_equal_approx(float(region_debug.get("expanded_height", 0.0)), 204.0),
+		"rail accepts responsive expanded height"
+	)
 	_expect(int(region_debug.get("filtered_entry_count", 0)) == 30, "30 region rows are searchable")
 	_expect(int(region_debug.get("row_pool_size", 0)) == 10, "row pool is fixed at ten")
 	_expect(int(region_debug.get("rendered_row_count", 99)) <= 10, "rendered rows stay virtualized")

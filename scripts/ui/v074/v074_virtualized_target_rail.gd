@@ -42,6 +42,7 @@ var _activation_count := 0
 var _last_region_popup_id := ""
 var _last_binding_fingerprint := ""
 var _last_reason_code := "rail_unbound"
+var _expanded_height := 250.0
 
 
 func _ready() -> void:
@@ -95,13 +96,20 @@ func selected_card_instance_id() -> String:
 	return _selected_card_instance_id
 
 
+func set_expanded_height(value: float) -> void:
+	_expanded_height = clampf(value, 180.0, 250.0)
+	_scroll.custom_minimum_size.y = maxf(100.0, _expanded_height - 80.0)
+	if not _collapsed:
+		custom_minimum_size.y = _expanded_height
+
+
 func set_collapsed(value: bool) -> void:
 	_collapsed = value
 	_body.visible = not value
 	_toggle_button.text = ">" if value else "v"
 	_toggle_button.tooltip_text = "Open keyboard target list" if value else "Collapse keyboard target list"
 	_title_label.text = "Target backup" if value else "Keyboard target backup"
-	custom_minimum_size.y = 36.0 if value else 250.0
+	custom_minimum_size.y = 36.0 if value else _expanded_height
 	collapsed_changed.emit(value)
 	if not value:
 		call_deferred("_refresh_window")
@@ -143,6 +151,7 @@ func debug_snapshot() -> Dictionary:
 		"region_count": int(_projection.get("region_count", 0)),
 		"selected_card_instance_id": _selected_card_instance_id,
 		"collapsed": _collapsed,
+		"expanded_height": _expanded_height,
 		"searchable": true,
 		"collapsible": true,
 		"virtualized": true,

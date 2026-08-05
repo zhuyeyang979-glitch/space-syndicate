@@ -19,6 +19,7 @@ const PROFILE_RECT_KEYS := [
 	"roster_rect",
 	"planet_rect",
 	"target_rail_rect",
+	"target_rail_float_rect",
 	"hand_dock_rect",
 	"marker_button_rect",
 	"marker_panel_safe_rect",
@@ -82,6 +83,13 @@ func resolve(viewport_size: Vector2, player_count: int) -> Dictionary:
 		Vector2(planet.end.x - 154.0, planet.position.y + 8.0),
 		Vector2(146.0, 38.0)
 	)
+	var target_rail_float := Rect2(
+		planet.position + Vector2(8.0, 8.0),
+		Vector2(
+			minf(358.0, maxf(300.0, planet.size.x * 0.33)),
+			clampf(planet.size.y - 16.0, 180.0, 250.0)
+		)
+	)
 	return {
 		"schema": "V074ResponsiveTableLayoutV1",
 		"mode": mode,
@@ -96,6 +104,7 @@ func resolve(viewport_size: Vector2, player_count: int) -> Dictionary:
 		"roster_rect": roster,
 		"planet_rect": planet,
 		"target_rail_rect": target_rail,
+		"target_rail_float_rect": target_rail_float,
 		"hand_dock_rect": hand_dock,
 		"marker_button_rect": marker_button,
 		"marker_panel_safe_rect": marker_panel,

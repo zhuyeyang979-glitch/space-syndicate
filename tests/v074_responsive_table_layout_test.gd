@@ -33,6 +33,27 @@ func _run() -> void:
 		Support.add_failure(failures, int(layout.get("marker_panel_header_width_consumption", -1)) == 0, "marker consumes header width")
 		checks += 1
 		Support.add_failure(failures, bool(layout.get("target_rail_virtualized", false)) and not bool(layout.get("target_rail_primary_surface", true)), "TargetRail contract mismatch")
+		var target_float := (
+			layout.get("target_rail_float_rect", Rect2()) as Rect2
+		)
+		var planet_rect := layout.get("planet_rect", Rect2()) as Rect2
+		checks += 1
+		Support.add_failure(
+			failures,
+			planet_rect.encloses(target_float),
+			"expanded TargetRail escaped the planet safe area"
+		)
+		checks += 1
+		Support.add_failure(
+			failures,
+			not target_float.intersects(
+				layout.get("track_rect", Rect2()) as Rect2
+			)
+			and not target_float.intersects(
+				layout.get("camera_controls_rect", Rect2()) as Rect2
+			),
+			"expanded TargetRail occludes track or camera controls"
+		)
 		var content_rect := layout.get("content_rect", Rect2()) as Rect2
 		checks += 1
 		Support.add_failure(

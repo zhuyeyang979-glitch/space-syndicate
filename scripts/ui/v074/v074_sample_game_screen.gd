@@ -38,6 +38,9 @@ const TRACK_PRESENTATION_ANGULAR_SPEED := 0.45
 @onready var _player_count_option: OptionButton = %PlayerCountOption
 @onready var _preview_label: Label = %MapPreviewLabel
 @onready var _virtual_target_rail: Control = %V074VirtualizedTargetRail
+@onready var _virtual_target_rail_float: Control = (
+	$PlaytestUtilityLayer/PlaytestSafeArea/V074TargetRailFloat
+)
 @onready var _region_popup_choices: VBoxContainer = %RegionPopupTargetChoices
 
 const ACCEPTANCE_REFRESH_SECONDS := 1.0
@@ -592,6 +595,9 @@ func _apply_responsive_layout() -> void:
 	var target_rect := (
 		_layout_profile.get("target_rail_rect", Rect2()) as Rect2
 	)
+	var target_float_rect := (
+		_layout_profile.get("target_rail_float_rect", Rect2()) as Rect2
+	)
 	var hand_rect := _layout_profile.get("hand_dock_rect", Rect2()) as Rect2
 	var roster_rect := _layout_profile.get("roster_rect", Rect2()) as Rect2
 	_apply_responsive_density(mode)
@@ -599,6 +605,15 @@ func _apply_responsive_layout() -> void:
 	root_margin.offset_top = content.position.y
 	root_margin.offset_right = -content.position.x
 	root_margin.offset_bottom = -content.position.y
+	_virtual_target_rail_float.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_virtual_target_rail_float.position = target_float_rect.position
+	_virtual_target_rail_float.custom_minimum_size.x = target_float_rect.size.x
+	_virtual_target_rail_float.size = Vector2(target_float_rect.size.x, 0.0)
+	_virtual_target_rail.custom_minimum_size.x = target_float_rect.size.x
+	_virtual_target_rail.call(
+		"set_expanded_height",
+		target_float_rect.size.y
+	)
 	shell.add_theme_constant_override("separation", 2)
 	header.custom_minimum_size.y = (
 		header_primary.size.y + header_utility.size.y
@@ -1170,6 +1185,19 @@ func _update_acceptance_state() -> void:
 		else {}
 	)
 	var rail_debug := _virtual_target_rail.call("debug_snapshot") as Dictionary
+	var target_rail_float_rect := _virtual_target_rail.get_global_rect()
+	var target_rail_float_unsafe_intersection_count := 0
+	if _virtual_target_rail.visible:
+		for protected_rect in [
+			($RootMargin/Shell/Header as Control).get_global_rect(),
+			($RootMargin/Shell/TrackPanel as Control).get_global_rect(),
+			($RootMargin/Shell/TableArea/RosterPanel as Control).get_global_rect(),
+			($RootMargin/Shell/TargetPanel as Control).get_global_rect(),
+			($RootMargin/Shell/DockPanel as Control).get_global_rect(),
+			_layout_profile.get("camera_controls_rect", Rect2()) as Rect2,
+		]:
+			if target_rail_float_rect.intersects(protected_rect as Rect2):
+				target_rail_float_unsafe_intersection_count += 1
 	var track_projection := _snapshot.get(
 		"unified_track",
 		{}
@@ -1227,6 +1255,12 @@ func _update_acceptance_state() -> void:
 		),
 	})
 	layout_audit.merge(runtime_layout_audit, true)
+	layout_audit["unintended_major_panel_intersection_count"] = int(
+		layout_audit.get("unintended_major_panel_intersection_count", 0)
+	) + target_rail_float_unsafe_intersection_count
+	layout_audit["interactive_control_occlusion_count"] = int(
+		layout_audit.get("interactive_control_occlusion_count", 0)
+	) + target_rail_float_unsafe_intersection_count
 	var physical_window_size := Vector2(get_window().size)
 	var logical_viewport_size := get_viewport_rect().size
 	var physical_per_logical_y := (
@@ -1281,6 +1315,10 @@ func _update_acceptance_state() -> void:
 		rail_debug.get("virtualized", false)
 	)
 	acceptance_state["target_rail_primary_surface"] = false
+	acceptance_state["target_rail_float_rect"] = target_rail_float_rect
+	acceptance_state["target_rail_float_unsafe_intersection_count"] = (
+		target_rail_float_unsafe_intersection_count
+	)
 	acceptance_state["planet_primary_target_selection_surface"] = true
 	acceptance_state["target_rail_rendered_row_count"] = int(
 		rail_debug.get("rendered_row_count", 0)
