@@ -1,6 +1,9 @@
 extends SceneTree
 
 const Owner := preload("res://scripts/v074_runtime/v074_runtime_owner.gd")
+const WarehouseCards := preload(
+	"res://scripts/v074/warehouse/v074_warehouse_card_catalog.gd"
+)
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -31,19 +34,32 @@ func _run() -> void:
 	)
 	owner.set_process(false)
 	var local_id := owner.local_player_id()
-	var track_instance_id := _first_claimable_normal_track_instance_id(
+	var track_instance_id := _first_claimable_warehouse_track_instance_id(
 		owner,
 		local_id
 	)
 	_expect(
 		not track_instance_id.is_empty(),
-		"manual sample exposes a claimable normal track card"
+		"manual sample exposes a claimable warehouse track card"
 	)
 	var acquisition := owner.acquire_track_item(local_id, track_instance_id)
 	_expect(
 		bool(acquisition.get("accepted", false)),
-		"manual track purchase commits before deadline: %s"
+		"manual warehouse purchase commits before deadline: %s"
 		% JSON.stringify(acquisition)
+	)
+	_expect(
+		str(acquisition.get("warehouse_card_catalog_id", ""))
+		== WarehouseCards.CATALOG_ID
+		and str(acquisition.get(
+			"warehouse_catalog_purchase_destination",
+			""
+		)) == "discard"
+		and str(acquisition.get(
+			"warehouse_runtime_destination_zone",
+			""
+		)) == "personal_discard",
+		"warehouse purchase receipt carries catalog and runtime destinations"
 	)
 	owner.call("_process", 0.01)
 	owner.call("_process", 31.0)
@@ -62,6 +78,15 @@ func _run() -> void:
 	_expect(int(snapshot.get("region_count", 0)) == 16, "snapshot has dynamic regions")
 	_expect(int(debug.get("facility_slot_count", 0)) == 288, "runtime has 18 slots per region")
 	_expect(int(debug.get("map_genesis_owner_count", 0)) == 1, "one map owner is active")
+	_expect(
+		int(debug.get(
+			"warehouse_card_catalog_production_connection_count",
+			0
+		)) == 1
+		and str(debug.get("warehouse_card_catalog_id", ""))
+		== WarehouseCards.CATALOG_ID,
+		"one warehouse card catalog is production connected"
+	)
 	_expect(not owner.ai_observation("player.ai.1").is_empty(), "dynamic AI observation adapts")
 	var completed := owner.run_accelerated_until_settled(3000)
 	_expect(
@@ -76,7 +101,7 @@ func _run() -> void:
 	_finish()
 
 
-func _first_claimable_normal_track_instance_id(
+func _first_claimable_warehouse_track_instance_id(
 	owner: Node,
 	actor_id: String
 ) -> String:
@@ -96,6 +121,9 @@ func _first_claimable_normal_track_instance_id(
 		if (
 			bool(item.get("claimable", false))
 			and str(item.get("card_kind", "")) == "normal_card"
+			and str(item.get("card_definition_id", "")).contains(
+				".warehouse."
+			)
 		):
 			return str(item.get("instance_id", ""))
 	return ""

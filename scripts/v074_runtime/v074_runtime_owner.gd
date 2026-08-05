@@ -12,6 +12,9 @@ const FacilityCore := preload(
 const CardDefinitions := preload(
 	"res://scripts/v074/facility/v074_card_definition_registry.gd"
 )
+const WarehouseCardCatalog := preload(
+	"res://scripts/v074/warehouse/v074_warehouse_card_catalog.gd"
+)
 const PlayerMapAdapter := preload(
 	"res://scripts/v074/player/v074_player_map_projection_adapter.gd"
 )
@@ -81,6 +84,8 @@ func acquire_track_item(
 	source_instance_id: String
 ) -> Dictionary:
 	var warehouse_purchase := false
+	var warehouse_definition_id := ""
+	var warehouse_catalog_entry: Dictionary = {}
 	if _track_core != null:
 		var projection := (
 			_track_core.call("player_projection_v1", actor_id) as Dictionary
@@ -100,13 +105,47 @@ func acquire_track_item(
 				return _reject_action(
 					"track_replacement_locked_until_next_scroll"
 				)
-			warehouse_purchase = str(
+			warehouse_definition_id = str(
 				item.get("card_definition_id", "")
-			).contains(".warehouse.")
+			)
+			warehouse_purchase = warehouse_definition_id.contains(
+				".warehouse."
+			)
+			if warehouse_purchase:
+				warehouse_catalog_entry = (
+					WarehouseCardCatalog.catalog_entry(
+						warehouse_definition_id
+					)
+				)
+				if (
+					str(item.get("card_kind", "")) != "normal_card"
+					or warehouse_catalog_entry.is_empty()
+					or str(warehouse_catalog_entry.get(
+						"facility_type",
+						""
+					)) != "warehouse"
+					or str(warehouse_catalog_entry.get(
+						"purchase_destination",
+						""
+					)) != WarehouseCardCatalog.PURCHASE_DESTINATION
+				):
+					return _reject_action(
+						"warehouse_card_catalog_rejected"
+					)
 			break
 	var receipt := super.acquire_track_item(actor_id, source_instance_id)
 	if warehouse_purchase and bool(receipt.get("accepted", false)):
 		_warehouse_purchase_count += 1
+		receipt["warehouse_card_catalog_id"] = (
+			WarehouseCardCatalog.CATALOG_ID
+		)
+		receipt["warehouse_card_definition_id"] = warehouse_definition_id
+		receipt["warehouse_catalog_purchase_destination"] = str(
+			warehouse_catalog_entry.get("purchase_destination", "")
+		)
+		receipt["warehouse_runtime_destination_zone"] = str(
+			receipt.get("destination_zone", "")
+		)
 	return receipt
 
 
@@ -400,6 +439,11 @@ func debug_snapshot() -> Dictionary:
 	)
 	result["track_other_player_segment_disclosure_count"] = 0
 	result["track_future_supply_disclosure_count"] = 0
+	result["warehouse_card_catalog_id"] = WarehouseCardCatalog.CATALOG_ID
+	result["warehouse_card_catalog_production_connection_count"] = 1
+	result["warehouse_catalog_purchase_destination"] = (
+		WarehouseCardCatalog.PURCHASE_DESTINATION
+	)
 	result["warehouse_facility_count"] = warehouse_count
 	result["warehouse_solar_state_change_count"] = (
 		_warehouse_solar_state_change_count

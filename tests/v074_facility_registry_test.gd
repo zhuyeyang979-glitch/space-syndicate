@@ -9,6 +9,9 @@ const FacilitySlots := preload(
 const CardDefinitions := preload(
 	"res://scripts/v074/facility/v074_card_definition_registry.gd"
 )
+const WarehouseCards := preload(
+	"res://scripts/v074/warehouse/v074_warehouse_card_catalog.gd"
+)
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -22,6 +25,7 @@ func _run() -> void:
 	_test_facility_type_registry()
 	_test_dynamic_slot_counts()
 	_test_card_definition_registry()
+	_test_catalog_and_production_wiring()
 	_finish()
 
 
@@ -110,6 +114,41 @@ func _test_card_definition_registry() -> void:
 			CardDefinitions.definition_error(card).is_empty(),
 			"warehouse L1 satisfies the V072-compatible definition contract"
 		)
+
+
+func _test_catalog_and_production_wiring() -> void:
+	var contract := WarehouseCards.catalog_contract()
+	_expect(
+		str(contract.get("catalog_id", "")) == WarehouseCards.CATALOG_ID,
+		"warehouse catalog publishes its stable identity"
+	)
+	_expect(
+		int(contract.get("starter_card_count", -1)) == 0
+		and str(contract.get("purchase_destination", "")) == "discard",
+		"warehouse catalog preserves paid track-to-discard semantics"
+	)
+	_expect(
+		contract.get("standard_l1_definition_ids", [])
+		== CardDefinitions.warehouse_standard_l1_definition_ids(),
+		"warehouse catalog and definition registry agree on all six L1 cards"
+	)
+	var map_source := FileAccess.get_file_as_string(
+		"res://scripts/v074/map/v074_map_genesis_core.gd"
+	)
+	_expect(
+		map_source.contains("FacilitySlotRegistry.build_slot_registry(region_ids)"),
+		"Map Genesis delegates slots to the unique production registry"
+	)
+	var runtime_source := FileAccess.get_file_as_string(
+		"res://scripts/v074_runtime/v074_runtime_owner.gd"
+	)
+	_expect(
+		runtime_source.contains("WarehouseCardCatalog.catalog_entry")
+		and runtime_source.contains(
+			"\"warehouse_card_catalog_production_connection_count\""
+		),
+		"production Runtime validates acquisitions through the warehouse catalog"
+	)
 
 
 func _expect(condition: bool, message: String) -> void:
