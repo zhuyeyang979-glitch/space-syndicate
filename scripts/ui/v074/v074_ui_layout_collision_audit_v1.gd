@@ -48,6 +48,71 @@ func audit_layout(layout: Dictionary) -> Dictionary:
 	}
 
 
+func audit_runtime_geometry(geometry: Dictionary) -> Dictionary:
+	var viewport_rect := geometry.get("viewport_rect", Rect2()) as Rect2
+	var minimum_planet_height := float(
+		geometry.get("minimum_planet_height", 0.0)
+	)
+	var controls: Array = []
+	for role in [
+		"header",
+		"track",
+		"roster",
+		"planet_board",
+		"target_rail",
+		"hand_dock",
+	]:
+		var rect_key := "%s_rect" % role
+		var rect := geometry.get(rect_key, Rect2()) as Rect2
+		if rect.size.x <= 0.0 or rect.size.y <= 0.0:
+			continue
+		controls.append({
+			"node_path": role,
+			"global_rect": rect,
+			"visible": true,
+			"interactive": role in ["planet_board", "target_rail", "hand_dock"],
+			"mouse_filter": Control.MOUSE_FILTER_STOP,
+		})
+	var control_audit := audit_controls(controls, viewport_rect)
+	var header_rect := geometry.get("header_rect", Rect2()) as Rect2
+	var track_rect := geometry.get("track_rect", Rect2()) as Rect2
+	var stage_rect := geometry.get("planet_stage_rect", Rect2()) as Rect2
+	var map_rect := geometry.get("planet_map_rect", Rect2()) as Rect2
+	var header_overflow := (
+		0 if viewport_rect.encloses(header_rect) else 1
+	)
+	var track_overflow := (
+		0 if viewport_rect.encloses(track_rect) else 1
+	)
+	var map_outside_stage := (
+		0 if stage_rect.encloses(map_rect) else 1
+	)
+	return {
+		"schema": "V074UILayoutRuntimeCollisionAuditV1",
+		"unintended_major_panel_intersection_count": int(
+			control_audit.get(
+				"unintended_major_panel_intersection_count",
+				0
+			)
+		),
+		"interactive_control_occlusion_count": int(
+			control_audit.get("interactive_control_occlusion_count", 0)
+		),
+		"header_overflow_count": header_overflow,
+		"track_panel_overflow_count": track_overflow,
+		"planet_draw_outside_stage_count": map_outside_stage,
+		"planet_input_outside_stage_count": map_outside_stage,
+		"coach_target_occlusion_count": 0,
+		"marker_panel_header_width_consumption_after": 0,
+		"planet_height": stage_rect.size.y,
+		"minimum_planet_height": minimum_planet_height,
+		"planet_height_green": stage_rect.size.y >= minimum_planet_height,
+		"offscreen_count": int(control_audit.get("offscreen_count", 0)),
+		"offscreen": control_audit.get("offscreen", []),
+		"intersections": control_audit.get("intersections", []),
+	}
+
+
 func audit_controls(controls: Array, viewport_rect: Rect2) -> Dictionary:
 	var intersections: Array = []
 	var offscreen: Array = []

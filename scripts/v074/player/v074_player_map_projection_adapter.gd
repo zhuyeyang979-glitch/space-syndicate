@@ -301,15 +301,15 @@ static func _safe_legal_actions(values: Array, region_ids: Array) -> Array:
 			"facility_type": kind,
 			"industry_id": industry,
 			"facility_action_mode": mode,
-			"target_revision": maxi(0, int(source.get("target_revision", source.get("region_revision", 0)))),
-			"target_slot_generation": maxi(0, int(source.get("target_slot_generation", source.get("slot_generation", 0)))),
-			"expected_facility_id": str(source.get("expected_facility_id", source.get("facility_id", ""))),
-			"expected_facility_generation": maxi(0, int(source.get("expected_facility_generation", source.get("facility_generation", 0)))),
-			"expected_owner_id": str(source.get("expected_owner_id", source.get("owner_id", ""))),
-			"expected_rank": maxi(0, int(source.get("expected_rank", source.get("rank", 0)))),
-			"expected_damage_revision": maxi(0, int(source.get("expected_damage_revision", source.get("damage_revision", 0)))),
-			"asset_cost": maxi(0, int(source.get("asset_cost", source.get("primary_asset_cost", 0)))),
-			"selection_revision": maxi(0, int(source.get("selection_revision", 0))),
+			"target_revision": _nonnegative_int(source.get("target_revision", source.get("region_revision", 0))),
+			"target_slot_generation": _nonnegative_int(source.get("target_slot_generation", source.get("slot_generation", 0))),
+			"expected_facility_id": _text_or_empty(source.get("expected_facility_id", source.get("facility_id", ""))),
+			"expected_facility_generation": _nonnegative_int(source.get("expected_facility_generation", source.get("facility_generation", 0))),
+			"expected_owner_id": _text_or_empty(source.get("expected_owner_id", source.get("owner_id", ""))),
+			"expected_rank": _nonnegative_int(source.get("expected_rank", source.get("rank", 0))),
+			"expected_damage_revision": _nonnegative_int(source.get("expected_damage_revision", source.get("damage_revision", 0))),
+			"asset_cost": _nonnegative_int(source.get("asset_cost", source.get("primary_asset_cost", 0))),
+			"selection_revision": _nonnegative_int(source.get("selection_revision", 0)),
 		}
 		if not str(option.get("target_slot_id", "")).is_empty():
 			result.append(option)
@@ -474,3 +474,15 @@ func _reject_projection(reason_code: String) -> Dictionary:
 
 static func _invalid(reason_code: String) -> Dictionary:
 	return {"valid": false, "reason_code": reason_code}
+
+
+static func _nonnegative_int(value: Variant) -> int:
+	if value is int:
+		return maxi(0, int(value))
+	if value is float and is_finite(float(value)):
+		return maxi(0, int(round(float(value))))
+	return 0
+
+
+static func _text_or_empty(value: Variant) -> String:
+	return "" if value == null else str(value)

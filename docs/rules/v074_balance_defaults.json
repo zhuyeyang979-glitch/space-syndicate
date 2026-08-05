@@ -49,6 +49,24 @@
     "sunlit_egress_multiplier": 2.0,
     "dark_egress_multiplier": 1.0
   },
+  "unified_track_defaults": {
+    "local_visible_physical_slot_capacity": 10,
+    "initial_real_card_count": 10,
+    "normal_card_ratio_basis_points": 6000,
+    "commodity_card_ratio_basis_points": 4000,
+    "acquisition_refill_mode_id": "shared_scroll_vacancy",
+    "acquisition_immediate_replacement_count": 0,
+    "natural_shared_scroll_only_refill": true,
+    "slow_presentation_motion_enabled": true,
+    "presentation_drift_amplitude_px": 3.0,
+    "presentation_angular_speed": 0.45
+  },
+  "asset_pool_presentation_defaults": {
+    "display_mode": "repeated_symbol_pips",
+    "pip_slot_count_per_color": 6,
+    "primary_fraction_text_count": 0,
+    "projected_refresh_overlay_uses_existing_slots": true
+  },
   "tunable_ids": [
     "minimum_region_area_ratio",
     "maximum_region_area_ratio_to_smallest",
@@ -56,7 +74,10 @@
     "maximum_neighbor_count",
     "growth_organic_weight",
     "growth_terrain_alignment_weight",
-    "target_land_ratio"
+    "target_land_ratio",
+    "unified_track_local_visible_physical_slot_capacity",
+    "track_presentation_drift_amplitude_px",
+    "track_presentation_angular_speed"
   ],
   "structural_non_tunable_ids": [
     "current_supported_region_count_min",
@@ -68,6 +89,10 @@
     "starter_facility_types",
     "facility_slot_unique_key",
     "warehouse_not_starter",
-    "geometric_solar_exposure"
+    "geometric_solar_exposure",
+    "unified_track_shared_scroll_vacancy",
+    "unified_track_acquisition_zero_immediate_refill",
+    "asset_pip_six_positions_per_color",
+    "asset_pip_projection_only"
   ]
 }

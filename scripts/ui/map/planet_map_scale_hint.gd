@@ -16,7 +16,7 @@ func _ready() -> void:
 
 
 func configure(data: Dictionary) -> void:
-	_payload = data.duplicate(true)
+	_payload = data.duplicate(false)
 	name = "PlanetMapScaleHint"
 	visible = true
 	_apply_labels()

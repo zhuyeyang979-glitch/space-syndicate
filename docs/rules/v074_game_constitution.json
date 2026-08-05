@@ -34,6 +34,9 @@
     "map_player_projection",
     "planet_presentation",
     "map_target_selection",
+    "unified_track_local_projection",
+    "unified_track_shared_scroll_timing",
+    "asset_pool_presentation",
     "legacy_main_retirement"
   ],
   "rules": [
@@ -197,6 +200,53 @@
       }
     },
     {
+      "rule_id": "v074.track.local_visible_capacity",
+      "statement": "Each player's authorized local segment has ten physical visible path positions. A new game populates those positions with ten distinct real card instances while preserving the inherited 6000/4000 normal-to-commodity supply ratio and local-segment privacy.",
+      "value": {
+        "local_visible_physical_slot_capacity": 10,
+        "initial_real_card_count": 10,
+        "duplicate_instance_count": 0,
+        "horizontal_scroll_required_at_supported_desktop_widths": false,
+        "normal_card_ratio_basis_points": 6000,
+        "commodity_card_ratio_basis_points": 4000,
+        "other_player_segment_public": false,
+        "future_supply_public": false,
+        "balance_tunable": true
+      }
+    },
+    {
+      "rule_id": "v074.track.shared_scroll_vacancy",
+      "statement": "Acquiring a card removes only that instance and leaves a public noninteractive vacancy at its shared path position. Acquisition never draws, slides in, or consumes a future card; surviving cards keep their path positions and segment owners until natural shared track advancement moves them.",
+      "value": {
+        "refill_mode_id": "shared_scroll_vacancy",
+        "acquisition_immediate_replacement_count": 0,
+        "acquisition_supply_rng_draw_delta": 0,
+        "acquisition_supply_cursor_delta": 0,
+        "acquisition_instance_sequence_delta": 0,
+        "vacancy_interactive": false,
+        "natural_shared_scroll_only_refill": true,
+        "full_capacity_restored_after_vacancy_tail_exit": true,
+        "slow_presentation_motion_required": true,
+        "presentation_motion_gameplay_mutation_count": 0
+      }
+    },
+    {
+      "rule_id": "v074.presentation.asset_pool_pips",
+      "statement": "The local asset pool uses exactly six repeated symbol positions per color. Available, reserved, empty, and projected-refresh states share those six positions; projected refresh never appends false capacity slots and fraction text is not a primary display.",
+      "value": {
+        "display_mode": "repeated_symbol_pips",
+        "pip_slot_count_per_color": 6,
+        "primary_fraction_text_count": 0,
+        "projected_refresh_overlay_uses_existing_slots": true,
+        "opponent_private_asset_disclosure_count": 0,
+        "direct_runtime_state_read_count": 0,
+        "gameplay_owner_count": 0,
+        "save_owner_count": 0,
+        "rng_owner_count": 0,
+        "gameplay_mutation_count": 0
+      }
+    },
+    {
       "rule_id": "v074.architecture.legacy_main_retirement",
       "statement": "scripts/main.gd is physically retired after useful pure utilities are extracted. No compatibility monolith or gameplay-owning bootstrap may replace it.",
       "value": {
@@ -240,6 +290,12 @@
     "oceanless_map_count": 0,
     "warehouse_slot_parity_failure_count": 0,
     "map_genesis_replay_parity": true,
-    "gameplay_rng_cross_draw_count": 0
+    "gameplay_rng_cross_draw_count": 0,
+    "unified_track_local_visible_physical_slot_capacity": 10,
+    "unified_track_initial_real_card_count": 10,
+    "unified_track_acquisition_immediate_replacement_count": 0,
+    "unified_track_acquisition_supply_rng_draw_delta": 0,
+    "asset_pip_slot_count_per_color": 6,
+    "asset_pip_primary_fraction_text_count": 0
   }
 }

@@ -31,6 +31,11 @@ func configure(data: Dictionary) -> void:
 	queue_redraw()
 
 
+func update_projection(screen_points: Variant) -> void:
+	_screen_points = _packed_points(screen_points)
+	queue_redraw()
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"index": _region_index,

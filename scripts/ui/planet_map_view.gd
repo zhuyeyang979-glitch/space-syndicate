@@ -31,6 +31,8 @@ const PlanetMapRenderModelScript := preload("res://scripts/ui/map/planet_map_ren
 @onready var optional_route_presentation_service: Node = get_node_or_null("%OptionalRoutePresentationRuntimeService")
 
 const PERFORMANCE_SAMPLE_LIMIT := 600
+const V074_GLOBE_RADIUS_MIN_RATIO := 0.43
+const V074_GLOBE_RADIUS_MAX_RATIO := 0.485
 const EDITABLE_LAYER_NAMES := [
 	"BackdropLayer",
 	"OrbitLayer",
@@ -90,6 +92,7 @@ var _v074_hit_test_count := 0
 var _v074_geometry_rebuild_count := 0
 var _v074_lod_projection_update_count := 0
 var _v074_last_lod := "far"
+var _projection_fast_path_update_count := 0
 
 
 func _ready() -> void:
@@ -100,6 +103,28 @@ func _ready() -> void:
 		solar_camera_controller.call("bind_map_view", self)
 	set_meta("mcp_sceneized_component", "PlanetMapView")
 	_queue_sceneized_sync()
+
+
+func _globe_blend() -> float:
+	if not _v074_authoritative_surface.is_empty():
+		return 1.0
+	return super._globe_blend()
+
+
+func _globe_radius() -> float:
+	if _v074_authoritative_surface.is_empty():
+		return super._globe_radius()
+	var zoom_span := maxf(0.001, MAX_VIEW_ZOOM - MIN_VIEW_ZOOM)
+	var zoom_weight := clampf(
+		(_view_zoom - MIN_VIEW_ZOOM) / zoom_span,
+		0.0,
+		1.0
+	)
+	return minf(size.x, size.y) * lerpf(
+		V074_GLOBE_RADIUS_MIN_RATIO,
+		V074_GLOBE_RADIUS_MAX_RATIO,
+		zoom_weight
+	)
 
 
 func _draw() -> void:
@@ -311,10 +336,19 @@ func v074_planet_debug_snapshot() -> Dictionary:
 		"surface_apply_count": _v074_surface_apply_count,
 		"authoritative_geometry_rebuild_count": _v074_geometry_rebuild_count,
 		"lod_projection_update_count": _v074_lod_projection_update_count,
+		"projection_fast_path_update_count": (
+			_projection_fast_path_update_count
+		),
 		"active_boundary_lod": _v074_last_lod,
 		"hit_test_count": _v074_hit_test_count,
 		"camera_gameplay_mutation_count": 0,
 		"camera_rng_draw_delta": 0,
+		"authoritative_globe_projection_locked": (
+			not _v074_authoritative_surface.is_empty()
+		),
+		"globe_radius": _globe_radius(),
+		"view_zoom": _view_zoom,
+		"target_view_zoom": _target_view_zoom,
 		"presentation_generated_geometry_count": int(_v074_authoritative_surface.get("presentation_generated_geometry_count", 0)),
 		"presentation_generated_terrain_count": int(_v074_authoritative_surface.get("presentation_generated_terrain_count", 0)),
 	}
@@ -864,49 +898,84 @@ func _update_sceneized_projection_nodes() -> void:
 		var points := _district_sceneized_polygon_points(entry)
 		var polygon_node := _sceneized_district_polygon_nodes[index] as Control
 		if polygon_node != null and is_instance_valid(polygon_node):
-			polygon_node.call("configure", {
-				"index": index,
-				"name": str(entry.get("name", "District")),
-				"screen_points": points,
-				"selected": index == selected_district,
-				"sunlit": bool(entry.get("sunlit", false)),
-				"legal_target": bool(entry.get("legal_target", true)),
-				"efficiency_multiplier": float(entry.get("facility_efficiency_multiplier", 1.0)),
-				"accent": _palette_hex(index),
-			})
+			if polygon_node.has_method("update_projection"):
+				polygon_node.call("update_projection", points)
+				_projection_fast_path_update_count += 1
+			else:
+				polygon_node.call("configure", {
+					"index": index,
+					"name": str(entry.get("name", "District")),
+					"screen_points": points,
+					"selected": index == selected_district,
+					"sunlit": bool(entry.get("sunlit", false)),
+					"legal_target": bool(entry.get("legal_target", true)),
+					"efficiency_multiplier": float(entry.get("facility_efficiency_multiplier", 1.0)),
+					"accent": _palette_hex(index),
+				})
 			polygon_node.visible = bool(center_projection.get("visible", true)) and points.size() >= 3
 		var district_node := _sceneized_district_nodes[index] as Control
 		if district_node != null and is_instance_valid(district_node):
-			district_node.call("configure", {
-				"index": index,
-				"name": str(entry.get("name", "District")),
-				"terrain": str(entry.get("terrain", "surface")),
-				"hp": int(entry.get("hp", 0)),
-				"panic": int(entry.get("panic", 0)),
-				"products": entry.get("products", []),
-				"screen_position": label_positions.get(index, center_projection.get("position", Vector2.ZERO)),
-				"selected": index == selected_district,
-				"compact": compact_nonselected and index != selected_district,
-				"sunlit": bool(entry.get("sunlit", false)),
-				"legal_target": bool(entry.get("legal_target", true)),
-				"accent": _palette_hex(index),
-			})
+			var label_position := label_positions.get(
+				index,
+				center_projection.get("position", Vector2.ZERO)
+			) as Vector2
+			var compact_label := (
+				compact_nonselected and index != selected_district
+			)
+			var used_fast_path := false
+			if district_node.has_method("update_projection"):
+				used_fast_path = bool(district_node.call(
+					"update_projection",
+					label_position,
+					compact_label
+				))
+			if used_fast_path:
+				_projection_fast_path_update_count += 1
+			else:
+				district_node.call("configure", {
+					"index": index,
+					"name": str(entry.get("name", "District")),
+					"terrain": str(entry.get("terrain", "surface")),
+					"hp": int(entry.get("hp", 0)),
+					"panic": int(entry.get("panic", 0)),
+					"products": entry.get("products", []),
+					"screen_position": label_position,
+					"selected": index == selected_district,
+					"compact": compact_label,
+					"sunlit": bool(entry.get("sunlit", false)),
+					"legal_target": bool(entry.get("legal_target", true)),
+					"accent": _palette_hex(index),
+				})
 			district_node.visible = bool(center_projection.get("visible", true))
 	for index in range(city_markers.size()):
 		var marker := city_markers[index] as Dictionary
 		var projection := _sceneized_world_projection(marker.get("position", Vector2.ZERO))
 		var city_node := _sceneized_city_marker_nodes[index] as Control
 		if city_node != null and is_instance_valid(city_node):
-			city_node.call("configure", {
-				"screen_position": city_positions.get(index, projection.get("position", Vector2.ZERO)),
-				"tag": str(marker.get("tag", "C")),
-				"level": int(marker.get("level", 1)),
-				"products": marker.get("products", []),
-				"accent": _color_to_hex(marker.get("tag_color", Color("#38bdf8"))),
-				"active": bool(marker.get("active", true)),
-				"asset_key": str(marker.get("asset_key", "")),
-				"compact": city_compact,
-			})
+			var city_position := city_positions.get(
+				index,
+				projection.get("position", Vector2.ZERO)
+			) as Vector2
+			var used_fast_path := false
+			if city_node.has_method("update_projection"):
+				used_fast_path = bool(city_node.call(
+					"update_projection",
+					city_position,
+					city_compact
+				))
+			if used_fast_path:
+				_projection_fast_path_update_count += 1
+			else:
+				city_node.call("configure", {
+					"screen_position": city_position,
+					"tag": str(marker.get("tag", "C")),
+					"level": int(marker.get("level", 1)),
+					"products": marker.get("products", []),
+					"accent": _color_to_hex(marker.get("tag_color", Color("#38bdf8"))),
+					"active": bool(marker.get("active", true)),
+					"asset_key": str(marker.get("asset_key", "")),
+					"compact": city_compact,
+				})
 			city_node.visible = bool(projection.get("visible", true))
 	if selected_district >= 0 and selected_district < districts.size():
 		if _sceneized_selection_nodes.size() != 1:

@@ -74,6 +74,19 @@ func configure(data: Dictionary) -> void:
 	position = _as_vector2(data.get("screen_position", Vector2.ZERO)) - target_size * 0.5
 
 
+func update_projection(
+	screen_position: Variant,
+	compact_mode: bool
+) -> bool:
+	if compact_mode != _compact_mode:
+		return false
+	var target_size := size
+	if target_size.x <= 0.0 or target_size.y <= 0.0:
+		target_size = custom_minimum_size
+	position = _as_vector2(screen_position) - target_size * 0.5
+	return true
+
+
 func _terrain_label(terrain_id: String) -> String:
 	return str({
 		"land": "陆地",

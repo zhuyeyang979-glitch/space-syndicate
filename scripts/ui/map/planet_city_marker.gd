@@ -41,6 +41,19 @@ func configure(data: Dictionary) -> void:
 	_refresh_style(Color(str(data.get("accent", "#38bdf8"))), bool(data.get("active", true)))
 
 
+func update_projection(
+	screen_position: Variant,
+	compact_mode: bool
+) -> bool:
+	if compact_mode != _compact:
+		return false
+	var marker_size := size
+	if marker_size.x <= 0.0 or marker_size.y <= 0.0:
+		marker_size = custom_minimum_size
+	position = _as_vector2(screen_position) - marker_size * 0.5
+	return true
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"kind": "city",

@@ -118,6 +118,7 @@ func set_search_text(value: String) -> void:
 
 
 func focus_search() -> void:
+	visible = true
 	if _collapsed:
 		set_collapsed(false)
 	_search_input.grab_focus()

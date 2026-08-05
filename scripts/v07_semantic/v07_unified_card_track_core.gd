@@ -348,6 +348,14 @@ const ACQUISITION_PUBLIC_FACT_FIELDS := [
 	"replacement_count",
 	"track_revision",
 ]
+const SHARED_SCROLL_ACQUISITION_PUBLIC_FACT_FIELDS := [
+	"track_item_removed",
+	"replacement_count",
+	"vacancy_count",
+	"vacated_path_position",
+	"refill_mode_id",
+	"track_revision",
+]
 const ACQUISITION_PROPOSAL_FIELDS := [
 	"schema_version",
 	"interface_id",
@@ -1949,7 +1957,9 @@ func _advance_track(steps: int) -> void:
 		var lead := _state.get("hidden_lead_cycle_state", {}) as Dictionary
 		var fixed_order := lead.get("fixed_order", []) as Array
 		var origin_index := fixed_order.find(str(lead.get("current_lead_id", "")))
-		var incoming := _draw_supply_card()
+		var incoming := _draw_supply_card(
+			_incoming_claimable_scroll_sequence_for_advance(track)
+		)
 		incoming["path_origin_index"] = origin_index
 		incoming["path_position"] = 0
 		moved.push_front(incoming)
@@ -1957,6 +1967,12 @@ func _advance_track(steps: int) -> void:
 		track["revision"] = int(track.get("revision", 0)) + 1
 		_state["track_state"] = track
 		_refresh_track_owners()
+
+
+func _incoming_claimable_scroll_sequence_for_advance(
+	track: Dictionary
+) -> int:
+	return int(track.get("scroll_sequence", 0))
 
 
 func _acquisition_live_error(intent: Dictionary) -> String:
@@ -2818,14 +2834,54 @@ static func _public_facts_error(action_id: String, facts: Dictionary) -> String:
 				or not _is_positive_integer(facts.get("track_revision")):
 				return "track_advance_schema_invalid"
 		ACTION_CLAIM_VISIBLE_COMMODITY, ACTION_PURCHASE_VISIBLE_NORMAL_CARD:
-			if not _exact_fields(facts, ACQUISITION_PUBLIC_FACT_FIELDS) \
-				or facts.get("track_item_removed") != true \
-				or facts.get("replacement_count") != 1 \
-				or not _is_positive_integer(facts.get("track_revision")):
+			var legacy_schema_valid: bool = (
+				_exact_fields(facts, ACQUISITION_PUBLIC_FACT_FIELDS)
+				and facts.get("track_item_removed") == true
+				and facts.get("replacement_count") == 1
+				and _is_positive_integer(facts.get("track_revision"))
+			)
+			var shared_scroll_schema_valid: bool = (
+				_exact_fields(
+					facts,
+					SHARED_SCROLL_ACQUISITION_PUBLIC_FACT_FIELDS
+				)
+				and facts.get("track_item_removed") == true
+				and facts.get("replacement_count") == 0
+				and _is_positive_integer(facts.get("vacancy_count"))
+				and _is_nonnegative_integer(
+					facts.get("vacated_path_position")
+				)
+				and str(facts.get("refill_mode_id", "")) \
+					== "shared_scroll_vacancy"
+				and _is_positive_integer(facts.get("track_revision"))
+			)
+			if not legacy_schema_valid and not shared_scroll_schema_valid:
 				return "acquisition_schema_invalid"
 		_:
 			return "action_invalid"
 	return ""
+
+
+
+func _track_segment_item_counts_are_valid(
+	segment_local_slots: Dictionary,
+	roster: Array,
+	local_slots: int
+) -> bool:
+	for actor_id_variant in roster:
+		var actor_slots := (
+			segment_local_slots.get(str(actor_id_variant), []) as Array
+		)
+		if actor_slots.size() != local_slots:
+			return false
+	return true
+
+
+func _track_item_count_is_valid(track: Dictionary) -> bool:
+	return (
+		(track.get("items", []) as Array).size()
+		== int(track.get("capacity", 0))
+	)
 
 
 func _state_error(value: Dictionary) -> String:
@@ -2873,7 +2929,7 @@ func _state_error(value: Dictionary) -> String:
 		!= roster.size() * int(track.get("local_visible_slot_count", 0)):
 		return "track_capacity_invalid"
 	var items := track.get("items", []) as Array
-	if items.size() != int(track.get("capacity", 0)):
+	if not _track_item_count_is_valid(track):
 		return "track_item_count_invalid"
 	var instance_ids: Array[String] = []
 	var path_positions: Array[int] = []
@@ -3144,12 +3200,12 @@ func _state_error(value: Dictionary) -> String:
 			return "track_segment_local_slot_duplicate"
 		owner_slots.append(local_slot_index)
 		segment_local_slots[owner_id] = owner_slots
-	for actor_id_variant in roster:
-		var actor_slots := (
-			segment_local_slots.get(str(actor_id_variant), []) as Array
-		)
-		if actor_slots.size() != local_slots:
-			return "track_segment_item_count_invalid"
+	if not _track_segment_item_counts_are_valid(
+		segment_local_slots,
+		roster,
+		local_slots
+	):
+		return "track_segment_item_count_invalid"
 	var projection_revisions := value.get("projection_revisions", {}) as Dictionary
 	if not _same_string_set(projection_revisions.keys(), roster):
 		return "projection_revisions_invalid"

@@ -14,6 +14,12 @@ param(
     [ValidateSet("compatibility", "forward_plus")]
     [string]$Renderer = "compatibility",
 
+    [ValidateRange(640, 7680)]
+    [int]$ResolutionWidth = 1600,
+
+    [ValidateRange(480, 4320)]
+    [int]$ResolutionHeight = 960,
+
     [int]$StartupTimeoutSeconds = 90
 )
 
@@ -96,7 +102,7 @@ $arguments = @(
     "--editor",
     "--path", ('"' + $root + '"'),
     "--log-file", ('"' + $logPath + '"'),
-    "--resolution", "1600x960",
+    "--resolution", ("{0}x{1}" -f $ResolutionWidth, $ResolutionHeight),
     "--position", "40,40"
 )
 if ($Renderer -eq "compatibility") {
@@ -171,6 +177,7 @@ $connection = [ordered]@{
     godot_version = [string]$projectInfo.godot_version.string
     tool_profile = [string]$projectInfo.tool_profile
     renderer = $Renderer
+    resolution = ("{0}x{1}" -f $ResolutionWidth, $ResolutionHeight)
 }
 [System.IO.File]::WriteAllText(
     $connectionPath,

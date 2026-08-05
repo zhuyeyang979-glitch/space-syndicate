@@ -1158,7 +1158,7 @@ static func standard_card_spec(
 
 
 static func card_definition(definition_id: String) -> Dictionary:
-	return CardDefinitions.definition(definition_id)
+	return _definition_for_registered_facility(definition_id)
 
 
 func card_definition_for_active_profile(definition_id: String) -> Dictionary:
@@ -1805,12 +1805,27 @@ func _track_authority_contract_reason(authority: RefCounted) -> String:
 	if authority == null:
 		return "track_receipt_authority_missing"
 	var authority_script: Script = authority.get_script() as Script
-	if authority_script == null or authority_script != TrackCore:
+	if (
+		authority_script == null
+		or not _script_inherits_authority(authority_script, TrackCore)
+	):
 		return "track_receipt_authority_script_invalid"
 	for method_name in TRACK_AUTHORITY_METHODS:
 		if not authority.has_method(method_name):
 			return "track_receipt_authority_contract_invalid"
 	return ""
+
+
+static func _script_inherits_authority(
+	candidate: Script,
+	expected_base: Script
+) -> bool:
+	var cursor: Script = candidate
+	while cursor != null:
+		if cursor == expected_base:
+			return true
+		cursor = cursor.get_base_script()
+	return false
 
 
 func _track_authority_descriptor(authority: RefCounted) -> Dictionary:

@@ -39,6 +39,18 @@
       "decision": "Warehouse returns as a standard facility with real capacity/throughput, facility actions, solar efficiency, and closed privacy."
     },
     {
+      "amendment_id": "V074-TRACK-1",
+      "target_rules": ["v074.track.local_visible_capacity", "v074.track.shared_scroll_vacancy"],
+      "supersedes": ["five_card_local_segment_presentation", "acquisition_time_immediate_replacement"],
+      "decision": "Each authorized local segment has ten physical positions, but acquisition leaves a noninteractive vacancy and consumes no future supply; only natural shared scrolling moves the vacancy and restores full capacity after tail exit."
+    },
+    {
+      "amendment_id": "V074-ASSET-UI-1",
+      "target_rules": ["v074.presentation.asset_pool_pips"],
+      "supersedes": ["primary_fraction_asset_display", "projected_refresh_trailing_pip_slots"],
+      "decision": "Each local asset color uses exactly six symbol positions, with available, reserved, empty, and projected-refresh states represented inside those positions without changing asset rules."
+    },
+    {
       "amendment_id": "V074-ARCH-1",
       "target_rules": ["v074.architecture.legacy_main_retirement"],
       "supersedes": ["transitional_legacy_main_facade"],
@@ -52,6 +64,9 @@
     "facility_contention_fizzle": true,
     "sunlit_multiplier": 2.0,
     "dark_multiplier": 1.0,
+    "unified_track_normal_ratio_basis_points": 6000,
+    "unified_track_commodity_ratio_basis_points": 4000,
+    "track_replacement_lock": true,
     "interactive_counters_enabled": false,
     "new_game_only_sample": true,
     "save_resume_enabled": false
@@ -68,6 +83,9 @@
     "warehouse_player_projection",
     "solar_geometry",
     "planet_presentation",
-    "map_target_selection"
+    "map_target_selection",
+    "unified_track_local_projection",
+    "unified_track_shared_scroll_timing",
+    "asset_pool_presentation"
   ]
 }

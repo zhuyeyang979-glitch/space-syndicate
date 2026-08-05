@@ -1,0 +1,21 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/v074_runtime/v074_application_flow.gd" id="1_flow"]
+[ext_resource type="Script" path="res://scripts/v074_runtime/v074_ruleset_runtime_owner.gd" id="2_ruleset"]
+[ext_resource type="Script" path="res://scripts/v074_runtime/v074_runtime_owner.gd" id="3_runtime"]
+[ext_resource type="PackedScene" path="res://scenes/playtest/V073PlaytestTelemetryService.tscn" id="4_telemetry"]
+
+[node name="V074RuntimeComposition" type="Node"]
+unique_name_in_owner = true
+editor_description = "Atomic V0.7.4 new-game-only runtime composition. Map, terrain, facilities, warehouse, solar, AI, player projection and target selection are V0.7.4 authorities."
+script = ExtResource("1_flow")
+
+[node name="V074RulesetRuntimeOwner" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("2_ruleset")
+
+[node name="V074RuntimeOwner" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("3_runtime")
+
+[node name="V073PlaytestTelemetryService" parent="." instance=ExtResource("4_telemetry")]

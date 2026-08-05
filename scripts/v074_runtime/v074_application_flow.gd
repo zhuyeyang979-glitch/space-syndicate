@@ -71,7 +71,8 @@ func submit_intent(intent: Dictionary) -> Dictionary:
 				"queue_card_action",
 				_runtime_owner.call("local_player_id"),
 				str(parameters.get("card_instance_id", "")),
-				str(parameters.get("target_slot_id", ""))
+				str(parameters.get("target_slot_id", "")),
+				(parameters.get("target_binding", {}) as Dictionary)
 			) as Dictionary
 		"queue.reorder":
 			result = _runtime_owner.call(
@@ -145,6 +146,39 @@ func local_snapshot() -> Dictionary:
 	) as Dictionary
 
 
+func planet_map_view_payload(
+	selected_card_instance_id: String = "",
+	selected_region_id: String = ""
+) -> Dictionary:
+	return _runtime_owner.call(
+		"planet_map_view_payload",
+		_runtime_owner.call("local_player_id"),
+		selected_card_instance_id,
+		selected_region_id
+	) as Dictionary
+
+
+func region_popup(region_id: String) -> Dictionary:
+	return _runtime_owner.call("region_popup", region_id) as Dictionary
+
+
+func resolve_map_target(
+	card_instance_id: String,
+	region_id: String,
+	facility_type: String,
+	industry_id: String,
+	action_mode: String
+) -> Dictionary:
+	return _runtime_owner.call(
+		"resolve_map_target",
+		card_instance_id,
+		region_id,
+		facility_type,
+		industry_id,
+		action_mode
+	) as Dictionary
+
+
 func identity_snapshot() -> Dictionary:
 	return _ruleset_owner.call("identity_snapshot") as Dictionary
 
@@ -185,7 +219,7 @@ func debug_snapshot() -> Dictionary:
 		"mixed_ruleset_state_count": 0,
 		"save_adapter_connected": false,
 		"save_resume_enabled": false,
-		"cutover_domain_count": 12,
+		"cutover_domain_count": 15,
 		"connected_domain_count": int(
 			runtime_debug.get("connected_domain_count", 0)
 		),

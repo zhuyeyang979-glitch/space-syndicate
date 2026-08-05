@@ -22,7 +22,9 @@ Conflicts are resolved in this order:
 V0.7.4 exclusively owns map genesis, dynamic region identity, terrain,
 facility-type and slot registries, warehouse runtime structure, geometric
 solar facts, dynamic map projections, planet presentation, map targeting, and
-legacy Main retirement. A fixed-six test, alpha-zeta fixture,
+legacy Main retirement. It also owns the ten-position local track projection,
+shared-scroll vacancy timing, and six-position asset-pip presentation. A
+fixed-six test, alpha-zeta fixture,
 factory/market-only array, index-based sun shortcut, or old Main reference
 cannot override those decisions.
 
@@ -30,7 +32,9 @@ The V0.7.3 rules remain authoritative for all inherited domains. In
 particular, V0.7.4 keeps fixed hidden round-robin resolution, prebound targets,
 full asset reservation, contention Fizzle, zero-asset Starters, unified track,
 DBG, privacy, Victory, and FinalSettlement unless this constitution explicitly
-states otherwise.
+states otherwise. The track's 6000/4000 supply ratio, exact-once acquisition,
+replacement lock, and segment privacy remain inherited even though acquisition
+now leaves a vacancy until natural shared scrolling reaches the tail.
 
 The integration cutover must connect all amended owners at once. Before that
 merge, this Lane A implementation is detached and cannot dual-write production

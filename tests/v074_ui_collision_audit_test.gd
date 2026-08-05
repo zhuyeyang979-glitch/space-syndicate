@@ -29,4 +29,41 @@ func _run() -> void:
 	Support.add_failure(failures, int(collision_result.get("unintended_major_panel_intersection_count", 0)) == 1, "real overlap not detected")
 	checks += 1
 	Support.add_failure(failures, int(collision_result.get("interactive_control_occlusion_count", 0)) == 1, "input occlusion not detected")
+	var runtime_overflow := Audit.new().audit_runtime_geometry({
+		"viewport_rect": Rect2(0, 0, 1600, 960),
+		"header_rect": Rect2(12, -40, 1576, 94),
+		"track_rect": Rect2(12, 59, 1576, 172),
+		"roster_rect": Rect2(12, 236, 204, 486),
+		"planet_board_rect": Rect2(222, 236, 1366, 486),
+		"target_rail_rect": Rect2(12, 727, 1576, 56),
+		"hand_dock_rect": Rect2(12, 788, 1576, 212),
+		"planet_stage_rect": Rect2(223, 261, 1364, 460),
+		"planet_map_rect": Rect2(223, 261, 1364, 460),
+		"minimum_planet_height": 340.0,
+	})
+	checks += 1
+	Support.add_failure(
+		failures,
+		int(runtime_overflow.get("header_overflow_count", 0)) == 1,
+		"runtime header overflow was masked"
+	)
+	var runtime_green := Audit.new().audit_runtime_geometry({
+		"viewport_rect": Rect2(0, 0, 1600, 960),
+		"header_rect": Rect2(12, 12, 1576, 94),
+		"track_rect": Rect2(12, 111, 1576, 172),
+		"roster_rect": Rect2(12, 288, 204, 382),
+		"planet_board_rect": Rect2(222, 288, 1366, 382),
+		"target_rail_rect": Rect2(12, 675, 1576, 56),
+		"hand_dock_rect": Rect2(12, 736, 1576, 212),
+		"planet_stage_rect": Rect2(223, 313, 1364, 356),
+		"planet_map_rect": Rect2(223, 313, 1364, 356),
+		"minimum_planet_height": 340.0,
+	})
+	checks += 1
+	Support.add_failure(
+		failures,
+		int(runtime_green.get("header_overflow_count", -1)) == 0
+		and bool(runtime_green.get("planet_height_green", false)),
+		"valid runtime geometry failed responsive audit"
+	)
 	Support.print_result("V074_UI_COLLISION_AUDIT_TEST", checks, failures, self)

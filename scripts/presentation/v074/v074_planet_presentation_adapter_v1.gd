@@ -178,6 +178,7 @@ func build_authoritative_surface(map_genesis_receipt: Variant, public_projection
 			boundary_order_reconstruction_count += 1
 		membership_by_region[region_id] = _array_value(_indexed_value(receipt.get("region_microcell_membership", {}), region_id, index, []))
 	var hit_cells := _hit_test_cells(receipt, region_ids, terrain_by_region, membership_by_region)
+	var request := receipt.get("request", {}) as Dictionary
 	var current_sun := _current_sun_direction(receipt, public_projection)
 	if current_sun.length_squared() < 0.9:
 		return {}
@@ -187,8 +188,8 @@ func build_authoritative_surface(map_genesis_receipt: Variant, public_projection
 		"map_id": str(receipt.get("map_id", "")),
 		"map_seed": int(receipt.get("map_seed", 0)),
 		"map_profile_id": str(receipt.get("map_profile_id", "")),
-		"geography_complexity": str(receipt.get("geography_complexity", "STANDARD")),
-		"land_ocean_profile": str(receipt.get("land_ocean_profile", "BALANCED")),
+		"geography_complexity": str(receipt.get("geography_complexity", request.get("geography_complexity", "STANDARD"))),
+		"land_ocean_profile": str(receipt.get("land_ocean_profile", request.get("land_ocean_profile", "BALANCED"))),
 		"map_fingerprint": str(receipt.get("map_fingerprint", "")),
 		"region_ids": region_ids,
 		"terrain_by_region": terrain_by_region,

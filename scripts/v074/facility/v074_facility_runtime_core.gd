@@ -524,7 +524,8 @@ static func lock_batch(
 	player_ids: Array,
 	frozen_hidden_lead_order_at_batch_lock: Array,
 	player_local_queues: Dictionary,
-	facility_slots: Array
+	facility_slots: Array,
+	production_runtime_connected: bool = false
 ) -> Dictionary:
 	var normalized_players := _string_id_array(player_ids, false)
 	var normalized_order := _string_id_array(
@@ -586,7 +587,7 @@ static func lock_batch(
 		"ruleset_id": RULESET_ID,
 		"balance_profile_id": BALANCE_PROFILE_ID,
 		"contract_id": CORE_AUTHORITY_ID,
-		"production_runtime_connected": false,
+		"production_runtime_connected": production_runtime_connected,
 		"batch_id": batch_id,
 		"revision": 1,
 		"warehouse_solar_refresh_count": 0,
@@ -1156,7 +1157,7 @@ static func _state_error(value: Variant) -> String:
 			or state.get("ruleset_id") != RULESET_ID \
 			or state.get("balance_profile_id") != BALANCE_PROFILE_ID \
 			or state.get("contract_id") != CORE_AUTHORITY_ID \
-			or state.get("production_runtime_connected") != false \
+			or not (state.get("production_runtime_connected") is bool) \
 			or state.get("resolution_order_source") != RESOLUTION_ORDER_SOURCE \
 			or not _stable_id(state.get("batch_id")) \
 			or not _positive_integer(state.get("revision")) \

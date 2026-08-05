@@ -8,7 +8,9 @@ STATUS=approved_and_frozen_for_atomic_production_cutover
 
 V0.7.4 inherits every V0.7.3 rule outside the amended map, facility-registry,
 warehouse, solar, projection, presentation, targeting, and legacy-bootstrap
-domains. Historical V0.7.3 files and tags remain immutable.
+domains, plus the explicitly amended local unified-track capacity/timing and
+asset-pool presentation contracts. Historical V0.7.3 files and tags remain
+immutable.
 
 ## Authoritative Roguelike Planet
 
@@ -77,6 +79,38 @@ Sunlit warehouse ingress and egress use `2.0`; dark uses `1.0`. Sunlight does
 not change capacity, rank, HP, card cost, asset supply, or unified-track supply.
 Public projection may show capacity and throughput but never stock detail,
 private routes, future logistics, rival actions, or AI plans.
+
+## Shared Sushi Track
+
+Each player sees only the authorized local segment of one shared sushi track.
+That segment has ten physical path positions and begins a new game with ten
+distinct real card instances. This capacity change does not alter the inherited
+long-run supply ratio: normal cards remain 6000 basis points and commodities
+remain 4000 basis points. Other players' segments and future supply stay
+private.
+
+Acquiring a card removes that exact instance and leaves a public,
+noninteractive vacancy at its shared path position. The acquisition consumes no
+future supply card, supply RNG draw, supply cursor, or instance sequence, and it
+does not slide later cards forward. Surviving cards retain their path positions
+and segment owners. Only natural shared track advancement moves cards and the
+vacancy, draws at the queue head, and eventually restores full capacity after
+the vacancy exits the shared tail. The track keeps a slow directional
+presentation motion, but that motion owns no gameplay state and cannot advance
+the authoritative queue.
+
+## Compact Asset Pips
+
+The local six-color asset pool uses `repeated_symbol_pips` instead of primary
+fraction text. Every color group contains exactly six symbol positions: bright
+available symbols, locked reserved symbols, dim empty positions, and ghosted
+projected-refresh overlays all reuse those same six positions. No seventh or
+trailing refresh slot may imply capacity beyond six.
+
+Pips consume only the local player projection. Numeric current, available,
+reserved, cap, projected refresh, and overflow details remain available through
+tooltip, focus, and accessibility text. Pips own no gameplay, Save, RNG, world,
+or player mutation and disclose no opponent asset balance.
 
 ## Runtime And Architecture Boundary
 

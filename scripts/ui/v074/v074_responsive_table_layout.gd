@@ -10,13 +10,31 @@ const MIN_PLANET_HEIGHT := {
 	REGULAR_DESKTOP: 340.0,
 	WIDE_DESKTOP: 460.0,
 }
+const PROFILE_RECT_KEYS := [
+	"content_rect",
+	"primary_header_rect",
+	"utility_header_rect",
+	"track_rect",
+	"table_rect",
+	"roster_rect",
+	"planet_rect",
+	"target_rail_rect",
+	"hand_dock_rect",
+	"marker_button_rect",
+	"marker_panel_safe_rect",
+	"camera_controls_rect",
+]
 
 
 func resolve(viewport_size: Vector2, player_count: int) -> Dictionary:
 	var safe_size := Vector2(maxf(960.0, viewport_size.x), maxf(640.0, viewport_size.y))
 	var mode := _mode_for(safe_size, player_count)
 	var metrics := _metrics(mode, player_count)
-	var content := Rect2(Vector2.ONE * SAFE_MARGIN, safe_size - Vector2.ONE * SAFE_MARGIN * 2.0)
+	var safe_margin := 8.0 if mode == WIDE_DESKTOP else SAFE_MARGIN
+	var content := Rect2(
+		Vector2.ONE * safe_margin,
+		safe_size - Vector2.ONE * safe_margin * 2.0
+	)
 	var primary_header := Rect2(content.position, Vector2(content.size.x, float(metrics["primary_header_height"])))
 	var utility_header := Rect2(
 		Vector2(content.position.x, primary_header.end.y),
@@ -68,6 +86,7 @@ func resolve(viewport_size: Vector2, player_count: int) -> Dictionary:
 		"schema": "V074ResponsiveTableLayoutV1",
 		"mode": mode,
 		"viewport_size": safe_size,
+		"safe_margin": safe_margin,
 		"player_count": clampi(player_count, 1, 8),
 		"content_rect": content,
 		"primary_header_rect": primary_header,
@@ -91,6 +110,43 @@ func resolve(viewport_size: Vector2, player_count: int) -> Dictionary:
 	}
 
 
+func resolve_for_window(
+	physical_window_size: Vector2,
+	logical_viewport_size: Vector2,
+	player_count: int
+) -> Dictionary:
+	var profile := resolve(physical_window_size, player_count)
+	var resolved_physical_size := (
+		profile.get("viewport_size", physical_window_size) as Vector2
+	)
+	var safe_logical_size := Vector2(
+		maxf(1.0, logical_viewport_size.x),
+		maxf(1.0, logical_viewport_size.y)
+	)
+	var logical_per_physical := Vector2(
+		safe_logical_size.x / maxf(1.0, resolved_physical_size.x),
+		safe_logical_size.y / maxf(1.0, resolved_physical_size.y)
+	)
+	for key in PROFILE_RECT_KEYS:
+		var source := profile.get(key, Rect2()) as Rect2
+		profile[key] = Rect2(
+			source.position * logical_per_physical,
+			source.size * logical_per_physical
+		)
+	var mode := str(profile.get("mode", REGULAR_DESKTOP))
+	var physical_minimum := float(MIN_PLANET_HEIGHT[mode])
+	var logical_minimum := physical_minimum * logical_per_physical.y
+	var planet := profile.get("planet_rect", Rect2()) as Rect2
+	profile["viewport_size"] = safe_logical_size
+	profile["physical_window_size"] = physical_window_size
+	profile["logical_viewport_size"] = safe_logical_size
+	profile["logical_units_per_physical_pixel"] = logical_per_physical
+	profile["minimum_planet_height_physical_px"] = physical_minimum
+	profile["minimum_planet_height"] = logical_minimum
+	profile["planet_height_green"] = planet.size.y >= logical_minimum
+	return profile
+
+
 func modes() -> Array[String]:
 	return [COMPACT_DESKTOP, REGULAR_DESKTOP, WIDE_DESKTOP]
 
@@ -107,27 +163,27 @@ func _metrics(mode: String, player_count: int) -> Dictionary:
 	match mode:
 		COMPACT_DESKTOP:
 			return {
-				"primary_header_height": 40.0,
-				"utility_header_height": 36.0,
-				"track_height": 88.0,
+				"primary_header_height": 44.0,
+				"utility_header_height": 44.0,
+				"track_height": 138.0,
 				"hand_dock_height": 174.0,
-				"target_rail_height": 38.0,
+				"target_rail_height": 50.0,
 				"roster_width": 164.0 if player_count <= 4 else 178.0,
 			}
 		WIDE_DESKTOP:
 			return {
-				"primary_header_height": 38.0,
-				"utility_header_height": 34.0,
-				"track_height": 108.0,
+				"primary_header_height": 44.0,
+				"utility_header_height": 44.0,
+				"track_height": 172.0,
 				"hand_dock_height": 228.0,
-				"target_rail_height": 42.0,
+				"target_rail_height": 56.0,
 				"roster_width": 264.0 if player_count > 4 else 224.0,
 			}
 	return {
-		"primary_header_height": 40.0,
-		"utility_header_height": 36.0,
-		"track_height": 100.0,
-		"hand_dock_height": 206.0,
-		"target_rail_height": 40.0,
+		"primary_header_height": 48.0,
+		"utility_header_height": 46.0,
+		"track_height": 172.0,
+		"hand_dock_height": 212.0,
+		"target_rail_height": 56.0,
 		"roster_width": 204.0 if player_count <= 4 else 222.0,
 	}
