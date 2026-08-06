@@ -199,6 +199,12 @@ func _run() -> void:
 		successful_intents.get("warehouse", {}) as Dictionary,
 		successful_receipts.get("warehouse", {}) as Dictionary
 	)
+	_test_rebase_exact_once(
+		bridge_state,
+		successful_intents.get("warehouse", {}) as Dictionary,
+		successful_receipts.get("warehouse", {}) as Dictionary
+	)
+	_test_destruction_transition()
 	_test_generation_and_collision_guards(
 		bridge_state,
 		successful_intents.get("factory", {}) as Dictionary
@@ -238,6 +244,19 @@ func _test_contract() -> void:
 		"bridge records the audited V074 transition surface"
 	)
 	_expect(
+		bool(contract.get("rebase_preserves_exact_once_journal", false)),
+		"bridge contract preserves its journal while rebasing authority state"
+	)
+	_expect(
+		contract.get("facility_max_hp_by_rank") == {
+			1: 4,
+			2: 8,
+			3: 12,
+			4: 16,
+		},
+		"bridge exposes the frozen facility combat HP profile"
+	)
+	_expect(
 		bool(contract.get("resolved_safe_boundary_required", false))
 			and bool(contract.get("generation_lock_required", false))
 			and bool(contract.get("exact_once_journal", false)),
@@ -261,6 +280,47 @@ func _test_contract() -> void:
 	)
 
 
+func _test_rebase_exact_once(
+	bridge_state: Dictionary,
+	intent: Dictionary,
+	expected_receipt: Dictionary
+) -> void:
+	var facility_state := bridge_state.get("facility_state", {}) as Dictionary
+	var players := (facility_state.get("player_ids", []) as Array).duplicate()
+	var hidden_order := (
+		facility_state.get(
+			"frozen_hidden_lead_order_at_batch_lock",
+			[]
+		) as Array
+	).duplicate()
+	var empty_queues := {}
+	for player_id_variant in players:
+		empty_queues[str(player_id_variant)] = []
+	var rebased_facility := FacilityCore.lock_batch(
+		"batch.v075.bridge.rebase",
+		players,
+		hidden_order,
+		empty_queues,
+		(bridge_state.get("facility_slots", []) as Array).duplicate(true),
+		bool(facility_state.get("production_runtime_connected", false))
+	)
+	var rebased := Bridge.rebase_state(bridge_state, rebased_facility)
+	_expect(
+		bool(Bridge.validation_report(rebased).get("valid", false))
+			and int(rebased.get("bridge_revision", -1))
+				== int(bridge_state.get("bridge_revision", -2))
+			and rebased.get("receipt_journal")
+				== bridge_state.get("receipt_journal"),
+		"rebase changes only the current authority snapshot"
+	)
+	var replay := Bridge.apply_intent(rebased, intent)
+	_expect(
+		bool(replay.get("accepted", false))
+			and bool(replay.get("duplicate", false))
+			and replay.get("receipt") == expected_receipt
+			and replay.get("state") == rebased,
+		"rebase cannot make an already committed intent execute twice"
+	)
 func _test_exact_once(
 	state: Dictionary,
 	intent: Dictionary,
@@ -291,6 +351,59 @@ func _test_exact_once(
 			and replay.get("receipt") == first_receipt
 			and target_after == target_before,
 		"exact duplicate performs zero additional damage"
+	)
+
+
+func _test_destruction_transition() -> void:
+	var facility := FacilityCore.build_occupied_slot(
+		"region.destroy",
+		4,
+		"factory",
+		"life",
+		2,
+		"facility.destroy.factory",
+		1,
+		"player.alpha",
+		1,
+		3,
+		3
+	)
+	var facility_state := FacilityCore.lock_batch(
+		"batch.v075.bridge.destroy",
+		["player.alpha", "player.beta"],
+		["player.alpha", "player.beta"],
+		{
+			"player.alpha": [],
+			"player.beta": [],
+		},
+		[facility],
+		true
+	)
+	var bridge_state := Bridge.create_state(facility_state)
+	var intent := DamageIntent.build(
+		"effect.v075.bridge.destroy",
+		"facility.destroy.factory",
+		1,
+		1,
+		"monster_basic_attack",
+		"combat.receipt.v075.bridge.destroy"
+	)
+	var result := Bridge.apply_intent(bridge_state, intent)
+	var receipt := result.get("receipt", {}) as Dictionary
+	var slot_after := (
+		(result.get("facility_slots", []) as Array)[0] as Dictionary
+	)
+	_expect(
+		bool(result.get("accepted", false))
+			and bool(receipt.get("facility_destroyed", false))
+			and int(receipt.get("facility_max_hp", 0)) == 4
+			and int(receipt.get("damage_points_after", 0)) == 4,
+		"damage reaching facility HP commits one destroyed receipt"
+	)
+	_expect(
+		str(slot_after.get("occupancy", "")) == "empty"
+			and slot_after.get("facility_id") == null,
+		"destroyed facility releases its registered slot"
 	)
 
 
@@ -454,7 +567,7 @@ func _facility_state_fixture() -> Dictionary:
 			"player.alpha",
 			2,
 			4,
-			6
+			1
 		),
 		FacilityCore.build_occupied_slot(
 			"region.market",
@@ -480,7 +593,7 @@ func _facility_state_fixture() -> Dictionary:
 			"player.beta",
 			2,
 			5,
-			8,
+			1,
 			"sunlit"
 		),
 	]

@@ -247,10 +247,6 @@ static func replace_facility_slots(
 			return {}
 	var next_facility := current.duplicate(true)
 	next_facility["facility_slots"] = replacement_slots
-	next_facility["revision"] = int(next_facility.get(
-		"revision",
-		0
-	)) + 1
 	next_facility.erase("state_fingerprint")
 	var sealed_facility := FacilityCore._seal(
 		next_facility,

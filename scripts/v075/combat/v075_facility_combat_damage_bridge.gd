@@ -13,6 +13,12 @@ const RULESET_ID := "v0.7.5"
 const STATE_CONTRACT_ID := "V075FacilityCombatDamageBridgeStateV1"
 const RECEIPT_CONTRACT_ID := "V075FacilityCombatDamageBridgeReceiptV1"
 const FACILITY_TYPES := ["factory", "market", "warehouse"]
+const FACILITY_MAX_HP_BY_RANK := {
+	1: 4,
+	2: 8,
+	3: 12,
+	4: 16,
+}
 const MAX_SAFE_INTEGER := 9007199254740991
 
 const STATE_FIELDS := [
@@ -51,6 +57,8 @@ const RECEIPT_FIELDS := [
 	"applied_damage",
 	"damage_points_before",
 	"damage_points_after",
+	"facility_max_hp",
+	"facility_destroyed",
 	"damage_revision_before",
 	"damage_revision_after",
 	"slot_generation_before",
@@ -109,6 +117,37 @@ static func create_state(facility_state: Dictionary) -> Dictionary:
 		"state_fingerprint"
 	)
 	return state if bool(validation_report(state).get("valid", false)) else {}
+
+
+static func rebase_state(
+	state: Dictionary,
+	facility_state: Dictionary
+) -> Dictionary:
+	if not bool(validation_report(state).get("valid", false)):
+		return {}
+	if not bool(
+		FacilityCore.validation_report(facility_state).get("valid", false)
+	):
+		return {}
+	if str(facility_state.get("status", "")) != "resolved":
+		return {}
+	var slots := _sorted_facility_slots(facility_state)
+	if _contains_private_field(slots):
+		return {}
+	if (
+		facility_state == state.get("facility_state", {})
+		and slots == state.get("facility_slots", [])
+	):
+		return state.duplicate(true)
+	var next := state.duplicate(true)
+	next["facility_state"] = facility_state.duplicate(true)
+	next["facility_slots"] = slots
+	next.erase("state_fingerprint")
+	next["state_fingerprint"] = _fingerprint_without(
+		next,
+		"state_fingerprint"
+	)
+	return next if bool(validation_report(next).get("valid", false)) else {}
 
 
 static func apply_intent(
@@ -313,6 +352,7 @@ static func contract_report() -> Dictionary:
 		"state_contract_id": STATE_CONTRACT_ID,
 		"receipt_contract_id": RECEIPT_CONTRACT_ID,
 		"facility_types": FACILITY_TYPES.duplicate(),
+		"facility_max_hp_by_rank": FACILITY_MAX_HP_BY_RANK.duplicate(true),
 		"typed_intent_contract_id": DamageIntent.CONTRACT_ID,
 		"v074_direct_facility_damage_method_count": 0,
 		"v074_legal_transition_api": [
@@ -323,6 +363,7 @@ static func contract_report() -> Dictionary:
 		"resolved_safe_boundary_required": true,
 		"generation_lock_required": true,
 		"exact_once_journal": true,
+		"rebase_preserves_exact_once_journal": true,
 		"legacy_region_hp_damage_bridge_connected": false,
 		"combat_direct_facility_write_count": 0,
 		"warehouse_private_stock_reader_count": 0,
@@ -340,20 +381,38 @@ static func _build_v074_transition(
 	var solar_state := str(slot.get("solar_efficiency_state", "dark"))
 	if solar_state not in ["dark", "sunlit"]:
 		solar_state = "dark"
-	var updated_slot := FacilityCore.build_occupied_slot(
-		str(slot.get("region_id", "")),
-		int(slot.get("region_revision", 0)) + 1,
-		str(slot.get("facility_type", "")),
-		str(slot.get("industry_id", "")),
-		int(slot.get("slot_generation", 0)) + 1,
-		str(slot.get("facility_id", "")),
-		int(slot.get("facility_generation", 0)),
-		str(slot.get("owner_id", "")),
-		int(slot.get("rank", 0)),
-		int(slot.get("damage_revision", 0)) + 1,
+	var rank := int(slot.get("rank", 0))
+	var max_hp := int(FACILITY_MAX_HP_BY_RANK.get(rank, 0))
+	if max_hp <= 0:
+		return {}
+	var damage_after := (
 		int(slot.get("damage_points", 0))
-			+ int(intent.get("damage_amount", 0)),
-		solar_state
+		+ int(intent.get("damage_amount", 0))
+	)
+	var destroyed := damage_after >= max_hp
+	var updated_slot := (
+		FacilityCore.build_empty_slot(
+			str(slot.get("region_id", "")),
+			int(slot.get("region_revision", 0)) + 1,
+			str(slot.get("facility_type", "")),
+			str(slot.get("industry_id", "")),
+			int(slot.get("slot_generation", 0)) + 1
+		)
+		if destroyed
+		else FacilityCore.build_occupied_slot(
+			str(slot.get("region_id", "")),
+			int(slot.get("region_revision", 0)) + 1,
+			str(slot.get("facility_type", "")),
+			str(slot.get("industry_id", "")),
+			int(slot.get("slot_generation", 0)) + 1,
+			str(slot.get("facility_id", "")),
+			int(slot.get("facility_generation", 0)),
+			str(slot.get("owner_id", "")),
+			rank,
+			int(slot.get("damage_revision", 0)) + 1,
+			damage_after,
+			solar_state
+		)
 	)
 	if updated_slot.is_empty():
 		return {}
@@ -451,6 +510,24 @@ static func _build_receipt(
 	var applied_damage := (
 		int(intent.get("damage_amount", 0)) if accepted else 0
 	)
+	var facility_max_hp := int(FACILITY_MAX_HP_BY_RANK.get(
+		int(slot_before.get("rank", 0)),
+		0
+	))
+	var damage_points_before := maxi(
+		0,
+		int(slot_before.get("damage_points", 0))
+	)
+	var damage_points_after := (
+		mini(damage_points_before + applied_damage, facility_max_hp)
+		if accepted and facility_max_hp > 0
+		else damage_points_before
+	)
+	var facility_destroyed := (
+		accepted
+		and facility_max_hp > 0
+		and damage_points_before + applied_damage >= facility_max_hp
+	)
 	var receipt := {
 		"schema_version": SCHEMA_VERSION,
 		"contract_id": RECEIPT_CONTRACT_ID,
@@ -497,37 +574,28 @@ static func _build_receipt(
 		),
 		"facility_generation_after": maxi(
 			0,
-			int(slot_after.get(
-				"facility_generation",
-				slot_before.get("facility_generation", 0)
-			))
+			_int_or_fallback(
+				slot_after.get("facility_generation"),
+				int(slot_before.get("facility_generation", 0))
+			)
 		),
 		"requested_damage": maxi(
 			0,
 			int(intent.get("damage_amount", 0))
 		),
 		"applied_damage": applied_damage,
-		"damage_points_before": maxi(
-			0,
-			int(slot_before.get("damage_points", 0))
-		),
-		"damage_points_after": maxi(
-			0,
-			int(slot_after.get(
-				"damage_points",
-				slot_before.get("damage_points", 0)
-			))
-		),
+		"damage_points_before": damage_points_before,
+		"damage_points_after": damage_points_after,
+		"facility_max_hp": facility_max_hp,
+		"facility_destroyed": facility_destroyed,
 		"damage_revision_before": maxi(
 			0,
 			int(slot_before.get("damage_revision", 0))
 		),
-		"damage_revision_after": maxi(
-			0,
-			int(slot_after.get(
-				"damage_revision",
-				slot_before.get("damage_revision", 0)
-			))
+		"damage_revision_after": (
+			maxi(0, int(slot_before.get("damage_revision", 0))) + 1
+			if accepted
+			else maxi(0, int(slot_before.get("damage_revision", 0)))
 		),
 		"slot_generation_before": maxi(
 			0,
@@ -766,6 +834,7 @@ static func _receipt_error(value: Variant) -> String:
 		"applied_damage",
 		"damage_points_before",
 		"damage_points_after",
+		"facility_max_hp",
 		"damage_revision_before",
 		"damage_revision_after",
 		"slot_generation_before",
@@ -800,6 +869,8 @@ static func _receipt_error(value: Variant) -> String:
 		) != 0
 	):
 		return "facility_combat_bridge_receipt_forbidden_side_effect"
+	if not (receipt.get("facility_destroyed") is bool):
+		return "facility_combat_bridge_destroyed_flag_invalid"
 	if bool(receipt.get("accepted", false)):
 		if (
 			str(receipt.get("facility_type", "")) not in FACILITY_TYPES
@@ -811,11 +882,21 @@ static func _receipt_error(value: Variant) -> String:
 			or int(receipt.get("facility_generation_after", -1))
 				!= int(receipt.get("facility_generation_before", -2))
 			or int(receipt.get("requested_damage", 0)) <= 0
+			or int(receipt.get("facility_max_hp", 0)) <= 0
 			or int(receipt.get("applied_damage", 0))
 				!= int(receipt.get("requested_damage", -1))
 			or int(receipt.get("damage_points_after", -1))
-				!= int(receipt.get("damage_points_before", 0))
-					+ int(receipt.get("applied_damage", 0))
+				!= mini(
+					int(receipt.get("damage_points_before", 0))
+						+ int(receipt.get("applied_damage", 0)),
+					int(receipt.get("facility_max_hp", 0))
+				)
+			or bool(receipt.get("facility_destroyed", false))
+				!= (
+					int(receipt.get("damage_points_before", 0))
+						+ int(receipt.get("applied_damage", 0))
+						>= int(receipt.get("facility_max_hp", 0))
+				)
 			or int(receipt.get("damage_revision_after", -1))
 				!= int(receipt.get("damage_revision_before", 0)) + 1
 			or int(receipt.get("slot_generation_after", -1))
@@ -855,6 +936,7 @@ static func _receipt_error(value: Variant) -> String:
 					)
 				)
 			or int(receipt.get("effect_application_count", -1)) != 0
+			or bool(receipt.get("facility_destroyed", true))
 		):
 			return "facility_combat_bridge_failure_receipt_invalid"
 	var receipt_fingerprint := str(
@@ -961,6 +1043,10 @@ static func _contains_private_field(value: Variant) -> bool:
 
 static func _safe_id(value: Variant, fallback: String) -> String:
 	return str(value) if _stable_id(value) else fallback
+
+
+static func _int_or_fallback(value: Variant, fallback: int) -> int:
+	return fallback if value == null else int(value)
 
 
 static func _fingerprint_without(

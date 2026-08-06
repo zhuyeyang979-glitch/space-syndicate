@@ -16,18 +16,18 @@ const CombatAIAdapter := preload(
 const FacilityDamageBridge := preload(
 	"res://scripts/v075/combat/v075_facility_combat_damage_bridge.gd"
 )
+const CombatTelemetryBridge := preload(
+	"res://scripts/v075/telemetry/v075_combat_telemetry_bridge.gd"
+)
+const CombatPresentationConsumer := preload(
+	"res://scripts/v075/presentation/v075_combat_presentation_consumer.gd"
+)
 
 const V075_RULESET_ID := "v0.7.5"
 const V075_SAMPLE_MODE_ID := "NEW_V075_GAME"
 const V075_CONSTITUTION_ID := "space_syndicate.v075.complete"
 const V075_CARD_CAPACITY := 10
 const V075_CUTOVER_DOMAIN_COUNT := 29
-const FACILITY_MAX_HP_BY_RANK := {
-	1: 4,
-	2: 8,
-	3: 12,
-	4: 16,
-}
 const COMBAT_OWNER_METHODS := [
 	"initialize",
 	"begin_batch",
@@ -66,6 +66,7 @@ const PUBLIC_COMBAT_FIELDS := [
 	"movement_profile",
 	"start_region_id",
 	"destination_region_id",
+	"region_id",
 	"target_region_id",
 	"target_facility_id",
 	"target_monster_source_instance_id",
@@ -100,6 +101,9 @@ var _combat_ai_military_region_count := 0
 var _combat_ai_military_monster_count := 0
 var _combat_ai_invalid_target_count := 0
 var _processed_facility_damage_intents: Dictionary = {}
+var _facility_damage_bridge_state: Dictionary = {}
+var _combat_telemetry_bridge: RefCounted = CombatTelemetryBridge.new()
+var _combat_presentation_consumer: Node
 var _combat_public_history: Array = []
 var _combat_request_sequence := 0
 
@@ -113,6 +117,7 @@ func bind_combat_owner(owner: Node) -> Dictionary:
 				"combat_runtime_owner_method_missing:%s" % method_name
 			)
 	_combat_owner = owner
+	_connect_combat_observers()
 	return {
 		"accepted": true,
 		"reason_code": "v075_combat_runtime_owner_bound",
@@ -158,7 +163,20 @@ func start_new_game(
 	result["constitution_id"] = V075_CONSTITUTION_ID
 	result["combat_runtime_owner_count"] = 1
 	result["combat_state_writer_count"] = 1
-	result["combat_cutover_domain_count"] = 14
+	result["combat_cutover_domain_count"] = V075_CUTOVER_DOMAIN_COUNT
+	return result
+
+
+func lock_player_submission(actor_id: String) -> Dictionary:
+	if not _combat_initialized or not is_instance_valid(_combat_owner):
+		return super.lock_player_submission(actor_id)
+	var checkpoint := _combat_owner.call(
+		"capture_checkpoint",
+		"checkpoint.submission.%s.%s" % [_batch_id(), actor_id]
+	) as Dictionary
+	var result := super.lock_player_submission(actor_id)
+	if not bool(result.get("accepted", false)):
+		_combat_owner.call("rollback_checkpoint", checkpoint)
 	return result
 
 
@@ -426,6 +444,7 @@ func request_private_monster_skill(
 		"target_request": target_request,
 	}
 	var before_facility_state := _facility_state.duplicate(true)
+	var transaction_checkpoint := _capture_combat_transaction_state()
 	var checkpoint := _combat_owner.call(
 		"capture_checkpoint",
 		"checkpoint.private.%s.%06d" % [
@@ -448,7 +467,10 @@ func request_private_monster_skill(
 		result.get("facility_damage_intents", []) as Array
 	)
 	if not bool(damage_result.get("accepted", false)):
-		_combat_owner.call("rollback_checkpoint", checkpoint)
+		_rollback_combat_transaction(
+			checkpoint,
+			transaction_checkpoint
+		)
 		_facility_state = before_facility_state
 		return _reject_action("private_skill_facility_damage_commit_failed")
 	_facility_state = (
@@ -691,6 +713,39 @@ func debug_snapshot() -> Dictionary:
 	result["facility_combat_damage_receipt_count"] = (
 		_combat_facility_damage_receipt_count
 	)
+	var telemetry_debug := _combat_telemetry_bridge.call(
+		"debug_snapshot"
+	) as Dictionary
+	result["combat_telemetry"] = telemetry_debug
+	result["combat_telemetry_gameplay_owner_count"] = int(
+		telemetry_debug.get("gameplay_owner_count", -1)
+	)
+	result["combat_telemetry_rng_owner_count"] = int(
+		telemetry_debug.get("rng_owner_count", -1)
+	)
+	result["combat_telemetry_world_mutation_count"] = int(
+		telemetry_debug.get("world_mutation_count", -1)
+	)
+	result["combat_telemetry_hidden_field_count"] = int(
+		telemetry_debug.get("stored_hidden_field_count", -1)
+	)
+	result["combat_presentation"] = (
+		_combat_presentation_consumer.call("debug_snapshot") as Dictionary
+		if is_instance_valid(_combat_presentation_consumer)
+		else {}
+	)
+	result["facility_damage_bridge_receipt_count"] = int(
+		(_facility_damage_bridge_state.get(
+			"receipt_journal",
+			{}
+		) as Dictionary).size()
+	)
+	result["facility_damage_bridge_direct_write_count"] = int(
+		_facility_damage_bridge_state.get(
+			"combat_direct_facility_write_count",
+			0
+		)
+	)
 	result["monster_card_purchase_count"] = _combat_monster_purchase_count
 	result["military_card_purchase_count"] = _combat_military_purchase_count
 	result["ai_monster_private_skill_count"] = _combat_ai_private_skill_count
@@ -723,6 +778,10 @@ func _reset_runtime() -> void:
 	_combat_ai_military_monster_count = 0
 	_combat_ai_invalid_target_count = 0
 	_processed_facility_damage_intents = {}
+	_facility_damage_bridge_state = {}
+	_combat_telemetry_bridge.call("reset_for_new_match")
+	if is_instance_valid(_combat_presentation_consumer):
+		_combat_presentation_consumer.call("reset_for_new_match")
 	_combat_public_history = []
 	_combat_request_sequence = 0
 
@@ -1127,8 +1186,10 @@ func _monster_card_options(actor_id: String, card: Dictionary) -> Array:
 				continue
 			var target_identity := str(candidate.get(
 				"target_source_instance_id",
-				candidate.get("target_region_id", "")
+				""
 			))
+			if target_identity.is_empty():
+				target_identity = str(candidate.get("target_region_id", ""))
 			var target_slot_id := "combat.monster.%s.%s" % [
 				mode.to_lower(),
 				target_identity.sha256_text().substr(0, 12),
@@ -1270,6 +1331,7 @@ func _resolve_combat_public_action(
 		action_binding.get("combat_binding", {}) as Dictionary
 	)
 	var atomic_receipt_id := str(action_receipt.get("receipt_id", ""))
+	var transaction_checkpoint := _capture_combat_transaction_state()
 	var checkpoint := _combat_owner.call(
 		"capture_checkpoint",
 		"checkpoint.%s" % atomic_receipt_id
@@ -1290,7 +1352,10 @@ func _resolve_combat_public_action(
 			combat_binding.get("prebound_action", {}) as Dictionary
 		) as Dictionary
 		if not bool(resolved_action.get("accepted", false)):
-			_combat_owner.call("rollback_checkpoint", checkpoint)
+			_rollback_combat_transaction(
+				checkpoint,
+				transaction_checkpoint
+			)
 			return resolved_action
 		main_payload = (
 			resolved_action.get("receipt", {}) as Dictionary
@@ -1311,7 +1376,10 @@ func _resolve_combat_public_action(
 			_public_facilities_from_batch_state(next_public_state)
 		) as Dictionary
 		if not bool(resolved_action.get("accepted", false)):
-			_combat_owner.call("rollback_checkpoint", checkpoint)
+			_rollback_combat_transaction(
+				checkpoint,
+				transaction_checkpoint
+			)
 			return resolved_action
 		main_payload = (
 			resolved_action.get("receipt", {}) as Dictionary
@@ -1326,7 +1394,7 @@ func _resolve_combat_public_action(
 		resolved_action.get("facility_damage_intents", []) as Array
 	)
 	if not bool(damage_result.get("accepted", false)):
-		_combat_owner.call("rollback_checkpoint", checkpoint)
+		_rollback_combat_transaction(checkpoint, transaction_checkpoint)
 		return damage_result
 	next_public_state = (
 		damage_result.get("public_batch_state", next_public_state) as Dictionary
@@ -1338,14 +1406,14 @@ func _resolve_combat_public_action(
 		_public_facilities_from_batch_state(next_public_state)
 	) as Dictionary
 	if not bool(safe_boundary.get("accepted", false)):
-		_combat_owner.call("rollback_checkpoint", checkpoint)
+		_rollback_combat_transaction(checkpoint, transaction_checkpoint)
 		return safe_boundary
 	var boundary_damage := _apply_facility_damage_intents(
 		next_public_state,
 		safe_boundary.get("facility_damage_intents", []) as Array
 	)
 	if not bool(boundary_damage.get("accepted", false)):
-		_combat_owner.call("rollback_checkpoint", checkpoint)
+		_rollback_combat_transaction(checkpoint, transaction_checkpoint)
 		return boundary_damage
 	next_public_state = (
 		boundary_damage.get("public_batch_state", next_public_state) as Dictionary
@@ -1490,7 +1558,29 @@ func _apply_facility_damage_intents(
 			"reason_code": "facility_damage_substate_missing",
 		}
 	var processed_next := _processed_facility_damage_intents.duplicate(true)
+	var bridge_state_next := _facility_damage_bridge_state.duplicate(true)
+	var safe_bridge_state := _build_facility_damage_bridge_state(
+		facility_state
+	)
+	if safe_bridge_state.is_empty():
+		return {
+			"accepted": false,
+			"reason_code": "facility_damage_bridge_safe_boundary_failed",
+		}
+	if bridge_state_next.is_empty():
+		bridge_state_next = safe_bridge_state
+	else:
+		bridge_state_next = FacilityDamageBridge.rebase_state(
+			bridge_state_next,
+			safe_bridge_state.get("facility_state", {}) as Dictionary
+		)
+		if bridge_state_next.is_empty():
+			return {
+				"accepted": false,
+				"reason_code": "facility_damage_bridge_rebase_failed",
+			}
 	var receipts: Array = []
+	var committed_receipt_count := 0
 	for intent_variant in intents:
 		var intent := intent_variant as Dictionary
 		var receipt_key := "%s|%s" % [
@@ -1509,20 +1599,15 @@ func _apply_facility_damage_intents(
 				(prior.get("receipt", {}) as Dictionary).duplicate(true)
 			)
 			continue
-		var bridge_state := _build_facility_damage_bridge_state(
-			facility_state
-		)
-		if bridge_state.is_empty():
-			return {
-				"accepted": false,
-				"reason_code": "facility_damage_bridge_safe_boundary_failed",
-			}
 		var applied := FacilityDamageBridge.apply_intent(
-			bridge_state,
+			bridge_state_next,
 			intent
 		)
 		if not bool(applied.get("accepted", false)):
 			return applied
+		bridge_state_next = (
+			applied.get("state", {}) as Dictionary
+		).duplicate(true)
 		var bridged_slots := applied.get(
 			"facility_slots",
 			[]
@@ -1548,6 +1633,7 @@ func _apply_facility_damage_intents(
 			"receipt": receipt,
 		}
 		receipts.append(receipt)
+		committed_receipt_count += 1
 	var replaced := public_batch_state
 	if replaced.is_empty():
 		return {
@@ -1555,7 +1641,8 @@ func _apply_facility_damage_intents(
 			"reason_code": "facility_damage_public_batch_replace_failed",
 		}
 	_processed_facility_damage_intents = processed_next
-	_combat_facility_damage_receipt_count += receipts.size()
+	_facility_damage_bridge_state = bridge_state_next
+	_combat_facility_damage_receipt_count += committed_receipt_count
 	return {
 		"accepted": true,
 		"reason_code": "facility_damage_intents_committed",
@@ -1679,9 +1766,53 @@ func _publish_combat_event(
 	receipt["combat_receipt_id"] = stable_id
 	receipt["event_kind"] = event_kind
 	receipt["ruleset_id"] = V075_RULESET_ID
+	receipt["batch_id"] = _batch_id()
 	_combat_public_receipt_count += 1
 	_combat_public_history.append(receipt.duplicate(true))
 	resolution_presented.emit(receipt.duplicate(true))
+
+
+func consume_combat_presentation_cue(cue: Dictionary) -> Dictionary:
+	return _combat_telemetry_bridge.call(
+		"consume_public_cue",
+		cue,
+		_batch_id()
+	) as Dictionary
+
+
+func combat_presentation_consumer() -> Node:
+	return _combat_presentation_consumer
+
+
+func _connect_combat_observers() -> void:
+	if not is_instance_valid(_combat_presentation_consumer):
+		_combat_presentation_consumer = CombatPresentationConsumer.new()
+		_combat_presentation_consumer.name = "V075CombatPresentationConsumer"
+		add_child(_combat_presentation_consumer)
+	var telemetry_receipt := Callable(
+		_combat_telemetry_bridge,
+		"consume_public_receipt"
+	)
+	if not resolution_presented.is_connected(telemetry_receipt):
+		resolution_presented.connect(telemetry_receipt)
+	var presentation_receipt := Callable(
+		_combat_presentation_consumer,
+		"consume_receipt"
+	)
+	if not resolution_presented.is_connected(presentation_receipt):
+		resolution_presented.connect(presentation_receipt)
+	var telemetry_cue := Callable(
+		_combat_telemetry_bridge,
+		"consume_public_cue"
+	)
+	if not _combat_presentation_consumer.is_connected(
+		"presentation_cue_ready",
+		telemetry_cue
+	):
+		_combat_presentation_consumer.connect(
+			"presentation_cue_ready",
+			telemetry_cue
+		)
 
 
 func _emit_facility_damage_events(receipts: Array) -> void:
@@ -1689,8 +1820,22 @@ func _emit_facility_damage_events(receipts: Array) -> void:
 		var receipt := receipt_variant as Dictionary
 		var payload := receipt.duplicate(true)
 		payload["facility_type"] = str(
-			receipt.get("target_facility_type", "")
+			receipt.get(
+				"facility_type",
+				receipt.get("target_facility_type", "")
+			)
 		)
+		payload["damage_amount"] = int(receipt.get("applied_damage", 0))
+		payload["damage_before"] = int(
+			receipt.get("damage_points_before", 0)
+		)
+		payload["damage_after"] = int(
+			receipt.get("damage_points_after", 0)
+		)
+		payload["facility_damage_state"] = "damaged"
+		if bool(receipt.get("facility_destroyed", false)):
+			payload["facility_damage_state"] = "destroyed"
+			payload["destroyed"] = true
 		_publish_combat_event(
 			"facility_combat_damaged",
 			payload,
@@ -1699,6 +1844,51 @@ func _emit_facility_damage_events(receipts: Array) -> void:
 				str(receipt.get("target_facility_id", "")),
 			]
 		)
+
+
+func _capture_combat_transaction_state() -> Dictionary:
+	return {
+		"facility_damage_bridge_state": (
+			_facility_damage_bridge_state.duplicate(true)
+		),
+		"processed_facility_damage_intents": (
+			_processed_facility_damage_intents.duplicate(true)
+		),
+		"combat_facility_damage_receipt_count": (
+			_combat_facility_damage_receipt_count
+		),
+		"combat_public_receipt_count": _combat_public_receipt_count,
+		"combat_public_history": _combat_public_history.duplicate(true),
+	}
+
+
+func _restore_combat_transaction_state(checkpoint: Dictionary) -> void:
+	_facility_damage_bridge_state = (
+		checkpoint.get("facility_damage_bridge_state", {}) as Dictionary
+	).duplicate(true)
+	_processed_facility_damage_intents = (
+		checkpoint.get(
+			"processed_facility_damage_intents",
+			{}
+		) as Dictionary
+	).duplicate(true)
+	_combat_facility_damage_receipt_count = int(
+		checkpoint.get("combat_facility_damage_receipt_count", 0)
+	)
+	_combat_public_receipt_count = int(
+		checkpoint.get("combat_public_receipt_count", 0)
+	)
+	_combat_public_history = (
+		checkpoint.get("combat_public_history", []) as Array
+	).duplicate(true)
+
+
+func _rollback_combat_transaction(
+	combat_checkpoint: Dictionary,
+	runtime_checkpoint: Dictionary
+) -> void:
+	_combat_owner.call("rollback_checkpoint", combat_checkpoint)
+	_restore_combat_transaction_state(runtime_checkpoint)
 
 
 func _public_combat_payload(source: Dictionary) -> Dictionary:

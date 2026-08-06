@@ -27,6 +27,12 @@
     "commodity_card": 4000,
     "changed_by_v075": false
   },
+  "facility_combat_max_hp_by_rank": {
+    "1": 4,
+    "2": 8,
+    "3": 12,
+    "4": 16
+  },
   "normal_combat_card_cost_contract": {
     "primary_color_authority": "existing_unified_track_color_supply",
     "primary_color_selection_granularity": "per_card_instance",
@@ -186,6 +192,7 @@
   },
   "tunable_json_pointers": [
     "/unified_track_normal_subtype_weights_basis_points",
+    "/facility_combat_max_hp_by_rank",
     "/monster_family_rank_profiles",
     "/monster_card_rank_cost_profiles",
     "/autonomy_defaults",
