@@ -392,7 +392,120 @@ static func refresh_warehouse_solar_states(
 	return next
 
 
+static func apply_v075_combat_damage_intent(
+	state: Dictionary,
+	intent: Dictionary,
+	max_hp_by_rank: Dictionary
+) -> Dictionary:
+	if _state_error(state) != "":
+		return {"accepted": false, "reason_code": "facility_state_invalid"}
+	for field_name in [
+		"source_effect_id",
+		"target_facility_id",
+		"expected_generation",
+		"damage_amount",
+		"damage_kind",
+		"combat_receipt_id",
+	]:
+		if not intent.has(field_name):
+			return {
+				"accepted": false,
+				"reason_code": "facility_combat_intent_missing_%s" % field_name,
+			}
+	if (
+		not _stable_id(intent.get("source_effect_id"))
+		or not _stable_id(intent.get("target_facility_id"))
+		or not _nonnegative_integer(intent.get("expected_generation"))
+		or not _positive_integer(intent.get("damage_amount"))
+		or not _stable_id(intent.get("damage_kind"))
+		or not _stable_id(intent.get("combat_receipt_id"))
+	):
+		return {"accepted": false, "reason_code": "facility_combat_intent_invalid"}
+	var slots := state.get("facility_slots", {}) as Dictionary
+	var target_slot_id := ""
+	var target_slot: Dictionary = {}
+	for slot_id_variant in slots.keys():
+		var slot := slots.get(slot_id_variant, {}) as Dictionary
+		if (
+			str(slot.get("occupancy", "")) == "occupied"
+			and str(slot.get("facility_id", ""))
+			== str(intent.get("target_facility_id", ""))
+		):
+			target_slot_id = str(slot_id_variant)
+			target_slot = slot.duplicate(true)
+			break
+	if target_slot.is_empty():
+		return {"accepted": false, "reason_code": "facility_combat_target_missing"}
+	if int(target_slot.get("facility_generation", -1)) != int(
+		intent.get("expected_generation", -2)
+	):
+		return {"accepted": false, "reason_code": "facility_combat_generation_changed"}
+	var rank := int(target_slot.get("rank", 0))
+	var max_hp := int(max_hp_by_rank.get(rank, 0))
+	if max_hp <= 0:
+		return {"accepted": false, "reason_code": "facility_combat_hp_profile_missing"}
+	var damage_before := int(target_slot.get("damage_points", 0))
+	var damage_after := damage_before + int(intent.get("damage_amount", 0))
+	var destroyed := damage_after >= max_hp
+	var next := state.duplicate(true)
+	var next_slots := (next.get("facility_slots", {}) as Dictionary).duplicate(true)
+	if destroyed:
+		next_slots[target_slot_id] = build_empty_slot(
+			str(target_slot.get("region_id", "")),
+			int(target_slot.get("region_revision", 0)) + 1,
+			str(target_slot.get("facility_type", "")),
+			str(target_slot.get("industry_id", "")),
+			int(target_slot.get("slot_generation", 0)) + 1
+		)
+	else:
+		target_slot["damage_points"] = damage_after
+		target_slot["damage_revision"] = int(
+			target_slot.get("damage_revision", 0)
+		) + 1
+		target_slot["slot_generation"] = int(
+			target_slot.get("slot_generation", 0)
+		) + 1
+		target_slot["region_revision"] = int(
+			target_slot.get("region_revision", 0)
+		) + 1
+		if str(target_slot.get("facility_type", "")) == "warehouse":
+			target_slot = WarehouseRuntime.decorate_slot(
+				target_slot,
+				str(target_slot.get("solar_efficiency_state", "dark"))
+			)
+		next_slots[target_slot_id] = target_slot
+	next["facility_slots"] = next_slots
+	next.erase("state_fingerprint")
+	next = _seal(next, "state_fingerprint")
+	if _state_error(next) != "":
+		return {"accepted": false, "reason_code": "facility_combat_transition_invalid"}
+	return {
+		"accepted": true,
+		"reason_code": "facility_combat_damage_committed",
+		"state": next,
+		"receipt": {
+			"schema": "FacilityCombatDamageReceiptV1",
+			"combat_receipt_id": str(intent.get("combat_receipt_id", "")),
+			"source_effect_id": str(intent.get("source_effect_id", "")),
+			"target_facility_id": str(intent.get("target_facility_id", "")),
+			"target_facility_type": str(target_slot.get("facility_type", "")),
+			"target_industry_id": str(target_slot.get("industry_id", "")),
+			"target_region_id": str(target_slot.get("region_id", "")),
+			"expected_generation": int(intent.get("expected_generation", 0)),
+			"damage_amount": int(intent.get("damage_amount", 0)),
+			"damage_kind": str(intent.get("damage_kind", "")),
+			"damage_before": damage_before,
+			"damage_after": mini(damage_after, max_hp),
+			"max_hp": max_hp,
+			"destroyed": destroyed,
+			"exact_once": true,
+			"warehouse_private_stock_fields": [],
+		},
+	}
+
+
 static func warehouse_public_projection(slot: Dictionary) -> Dictionary:
+
 	return WarehouseRuntime.public_projection(slot)
 
 
