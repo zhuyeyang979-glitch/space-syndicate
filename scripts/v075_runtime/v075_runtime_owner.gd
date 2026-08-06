@@ -13,6 +13,9 @@ const CombatProjectionAdapter := preload(
 const CombatAIAdapter := preload(
 	"res://scripts/v075/ai/v075_combat_ai_adapter.gd"
 )
+const FacilityDamageBridge := preload(
+	"res://scripts/v075/combat/v075_facility_combat_damage_bridge.gd"
+)
 
 const V075_RULESET_ID := "v0.7.5"
 const V075_SAMPLE_MODE_ID := "NEW_V075_GAME"
@@ -1506,16 +1509,37 @@ func _apply_facility_damage_intents(
 				(prior.get("receipt", {}) as Dictionary).duplicate(true)
 			)
 			continue
-		var applied := FacilityCore.apply_v075_combat_damage_intent(
-			facility_state,
-			intent,
-			FACILITY_MAX_HP_BY_RANK
+		var bridge_state := _build_facility_damage_bridge_state(
+			facility_state
+		)
+		if bridge_state.is_empty():
+			return {
+				"accepted": false,
+				"reason_code": "facility_damage_bridge_safe_boundary_failed",
+			}
+		var applied := FacilityDamageBridge.apply_intent(
+			bridge_state,
+			intent
 		)
 		if not bool(applied.get("accepted", false)):
 			return applied
-		facility_state = (
-			applied.get("state", {}) as Dictionary
-		).duplicate(true)
+		var bridged_slots := applied.get(
+			"facility_slots",
+			[]
+		) as Array
+		var bridged_batch := PublicActionBatchCore.replace_facility_slots(
+			public_batch_state,
+			bridged_slots
+		)
+		if bridged_batch.is_empty():
+			return {
+				"accepted": false,
+				"reason_code": "facility_damage_public_batch_slot_replace_failed",
+			}
+		public_batch_state = bridged_batch
+		facility_state = PublicActionBatchCore.facility_substate(
+			public_batch_state
+		)
 		var receipt := (
 			applied.get("receipt", {}) as Dictionary
 		).duplicate(true)
@@ -1524,10 +1548,7 @@ func _apply_facility_damage_intents(
 			"receipt": receipt,
 		}
 		receipts.append(receipt)
-	var replaced := PublicActionBatchCore.replace_facility_substate(
-		public_batch_state,
-		facility_state
-	)
+	var replaced := public_batch_state
 	if replaced.is_empty():
 		return {
 			"accepted": false,
@@ -1542,6 +1563,57 @@ func _apply_facility_damage_intents(
 		"receipts": receipts,
 	}
 
+
+func _build_facility_damage_bridge_state(
+	facility_state: Dictionary
+) -> Dictionary:
+	var players := (
+		facility_state.get("player_ids", []) as Array
+	).duplicate()
+	var hidden_order := (
+		facility_state.get(
+			"frozen_hidden_lead_order_at_batch_lock",
+			[]
+		) as Array
+	).duplicate()
+	if players.is_empty() or hidden_order.is_empty():
+		return {}
+	var empty_queues := {}
+	for player_id_variant in players:
+		empty_queues[str(player_id_variant)] = []
+	var bridge_token := str(
+		facility_state.get("batch_id", "")
+	).sha256_text().left(24)
+	var safe_state := FacilityCore.lock_batch(
+		"batch.v075.combat.bridge.%s" % bridge_token,
+		players,
+		hidden_order,
+		empty_queues,
+		_facility_slots_from_state(facility_state),
+		bool(facility_state.get(
+			"production_runtime_connected",
+			false
+		))
+	)
+	if safe_state.is_empty() or str(
+		safe_state.get("status", "")
+	) != "resolved":
+		return {}
+	return FacilityDamageBridge.create_state(safe_state)
+
+
+func _facility_slots_from_state(facility_state: Dictionary) -> Array:
+	var slots := facility_state.get("facility_slots", {}) as Dictionary
+	var slot_ids: Array[String] = []
+	for slot_id_variant in slots.keys():
+		slot_ids.append(str(slot_id_variant))
+	slot_ids.sort()
+	var result: Array = []
+	for slot_id in slot_ids:
+		result.append(
+			(slots.get(slot_id, {}) as Dictionary).duplicate(true)
+		)
+	return result
 
 func _public_facilities_from_batch_state(state: Dictionary) -> Array:
 	var facility_state := PublicActionBatchCore.facility_substate(state)

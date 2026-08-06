@@ -216,6 +216,55 @@ static func replace_facility_substate(
 	return _seal(next)
 
 
+static func replace_facility_slots(
+	state: Dictionary,
+	facility_slots: Array
+) -> Dictionary:
+	if not bool(validation_report(state).get("valid", false)):
+		return {}
+	var current := facility_substate(state)
+	if current.is_empty():
+		return {}
+	var current_slots := current.get("facility_slots", {}) as Dictionary
+	var replacement_slots := {}
+	for slot_variant in facility_slots:
+		if not (slot_variant is Dictionary):
+			return {}
+		var slot := (slot_variant as Dictionary).duplicate(true)
+		if not bool(FacilityCore.slot_validation_report(slot).get(
+			"valid",
+			false
+		)):
+			return {}
+		var slot_id := str(slot.get("slot_id", ""))
+		if slot_id.is_empty() or replacement_slots.has(slot_id):
+			return {}
+		replacement_slots[slot_id] = slot
+	if replacement_slots.size() != current_slots.size():
+		return {}
+	for slot_id_variant in current_slots.keys():
+		if not replacement_slots.has(str(slot_id_variant)):
+			return {}
+	var next_facility := current.duplicate(true)
+	next_facility["facility_slots"] = replacement_slots
+	next_facility["revision"] = int(next_facility.get(
+		"revision",
+		0
+	)) + 1
+	next_facility.erase("state_fingerprint")
+	var sealed_facility := FacilityCore._seal(
+		next_facility,
+		"state_fingerprint"
+	)
+	if sealed_facility.is_empty() or not bool(
+		FacilityCore.validation_report(sealed_facility).get(
+			"valid",
+			false
+		)
+	):
+		return {}
+	return replace_facility_substate(state, sealed_facility)
+
 static func facility_substate(state: Dictionary) -> Dictionary:
 	if not bool(validation_report(state).get("valid", false)):
 		return {}
