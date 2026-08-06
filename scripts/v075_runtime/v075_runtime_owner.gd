@@ -35,6 +35,7 @@ const V075_COMBAT_ACQUISITION_PERIOD := 4
 const V075_COMBAT_ACQUISITION_MAX_PER_PERIOD := 1
 const V075_INITIAL_FACILITY_ACQUISITIONS_BEFORE_COMBAT := 1
 const V075_FACILITY_ACQUISITIONS_BETWEEN_COMBAT := 3
+const V075_AUTO_ACTION_LIMIT := 5
 const V075_TRACK_REFILL_MODE_ID := "shared_scroll_vacancy"
 const V075_TRACK_SLOW_SUSHI_MOTION := true
 const V075_TRACK_IMMEDIATE_REFILL_ON_ACQUISITION := false
@@ -1318,6 +1319,7 @@ func debug_snapshot() -> Dictionary:
 	result["ai_military_region_assault_count"] = _combat_ai_military_region_count
 	result["ai_military_monster_assault_count"] = _combat_ai_military_monster_count
 	result["ai_combat_invalid_target_count"] = _combat_ai_invalid_target_count
+	result["ai_action_slot_limit"] = V075_AUTO_ACTION_LIMIT
 	result["special_support_placeholder_count"] = 0
 	result["military_guard_task_count"] = 0
 	result["military_bound_action_count"] = 0
@@ -2706,7 +2708,7 @@ func _auto_queue_and_lock(actor_id: String) -> Dictionary:
 		if not bool(acquisition.get("accepted", false)):
 			return acquisition
 		var legal := _auto_legal_actions(actor_id)
-		for _action_index in range(AUTO_ACTION_LIMIT):
+		for _action_index in range(V075_AUTO_ACTION_LIMIT):
 			queue = _queued_by_player.get(actor_id, []) as Array
 			var available := _auto_available_actions(actor_id, queue, legal)
 			if available.is_empty():

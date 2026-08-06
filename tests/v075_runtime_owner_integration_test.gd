@@ -90,6 +90,10 @@ func _run() -> void:
 		"runtime debug reports no special support placeholder"
 	)
 	_expect(
+		int(debug.get("ai_action_slot_limit", 0)) == 5,
+		"V075 AI can use all five normal anonymous action slots"
+	)
+	_expect(
 		int(debug.get("old_monster_controller_production_reachable_count", -1)) == 0
 		and int(debug.get("old_military_controller_production_reachable_count", -1)) == 0,
 		"legacy combat controllers remain unreachable"
