@@ -6,6 +6,23 @@
   "status": "frozen_target_authority_manifest_not_runtime_evidence",
   "closed_world": true,
   "unknown_owner_or_port_policy": "reject_before_mutation",
+  "unified_track_card_instance_color_contract": {
+    "authoritative_owner": "existing_unified_track_supply_authority",
+    "selection_granularity": "per_card_instance",
+    "instance_field": "primary_color",
+    "selection_timing": "authoritative_supply_draw",
+    "same_definition_instances_may_have_different_primary_colors": true,
+    "monster_family_static_card_primary_color_allowed": false,
+    "military_definition_static_card_primary_color_allowed": false,
+    "combat_catalog_primary_color_override_allowed": false,
+    "catalog_track_primary_color_field_policy": "ignore_as_non_authoritative_if_present",
+    "card_action_cost_rule": "primary_asset_cost_from_authority_selected_instance_primary_color",
+    "monster_preferred_industry_color_usage": "autonomous_facility_targeting_only",
+    "preferred_industry_color_affects_card_primary_color": false,
+    "normal_subtype_selection_independent_from_primary_color": true,
+    "track_kind_ratio_authority": "v074_inherited_6000_4000",
+    "normal_subtype_weight_authority": "docs/rules/v075_combat_balance_defaults.json"
+  },
   "runtime_owner": {
     "owner_id": "V075CombatRuntimeOwner",
     "owner_count_required": 1,

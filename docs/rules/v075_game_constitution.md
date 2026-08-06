@@ -40,11 +40,12 @@ skill cards.
 
 Preferred color is used only by monster autonomous facility targeting. It does
 not recolor a normal card and does not select that card's action-cost asset.
-Every monster and military normal card keeps the existing unified-track color
-supply's `track_primary_color`; card action cost is expressed as
-`primary_asset_cost` on that color. For example, `mirror_hunter` prefers
-`shipping` facilities while its existing card primary color remains
-`technology`.
+The existing unified-track Authority independently selects `primary_color` for
+each spawned monster or military card instance. Family, definition, and catalog
+authoring cannot constrain or override that choice, so two instances of one
+definition may have different colors. Any catalog `track_primary_color` member
+is ignored as non-authoritative migration metadata. Card action cost is
+`primary_asset_cost` paid from that instance's Authority-selected color.
 
 The active military catalog contains at most four existing authored families.
 Every active military family uses the same two mission interfaces; differences

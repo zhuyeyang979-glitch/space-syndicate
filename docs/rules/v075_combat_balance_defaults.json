@@ -28,14 +28,21 @@
     "changed_by_v075": false
   },
   "normal_combat_card_cost_contract": {
-    "primary_color_source": "existing_unified_track_color_supply",
-    "profile_fields": ["track_primary_color", "primary_asset_cost"],
+    "primary_color_authority": "existing_unified_track_color_supply",
+    "primary_color_selection_granularity": "per_card_instance",
+    "instance_primary_color_field": "primary_color",
+    "profile_fields": ["primary_asset_cost"],
+    "cost_debit_rule": "primary_asset_cost_from_authority_selected_instance_primary_color",
+    "same_definition_instances_may_have_different_primary_colors": true,
+    "family_or_definition_static_primary_color_allowed": false,
+    "catalog_primary_color_override_allowed": false,
+    "catalog_track_primary_color_field_policy": "ignore_as_non_authoritative_if_present",
     "preferred_industry_color_may_select_card_cost_color": false
   },
   "monster_private_skill_cost_contract": {
     "cost_source": "explicit_skill_balance_authoring",
     "preferred_industry_color_may_select_skill_cost_color": false,
-    "first_candidate_primary_cost_color_source": "source_card_track_primary_color"
+    "card_instance_primary_color_may_select_skill_cost_color": false
   },
   "monster_family_rank_profiles": {
     "spore_tide_emperor": [
@@ -77,40 +84,40 @@
   },
   "monster_card_rank_cost_profiles": {
     "spore_tide_emperor": [
-      {"rank": 1, "purchase_cash": 6, "track_primary_color": "life", "primary_asset_cost": 2},
-      {"rank": 2, "purchase_cash": 10, "track_primary_color": "life", "primary_asset_cost": 3},
-      {"rank": 3, "purchase_cash": 15, "track_primary_color": "life", "primary_asset_cost": 4},
-      {"rank": 4, "purchase_cash": 21, "track_primary_color": "life", "primary_asset_cost": 5}
+      {"rank": 1, "purchase_cash": 6, "primary_asset_cost": 2},
+      {"rank": 2, "purchase_cash": 10, "primary_asset_cost": 3},
+      {"rank": 3, "purchase_cash": 15, "primary_asset_cost": 4},
+      {"rank": 4, "purchase_cash": 21, "primary_asset_cost": 5}
     ],
     "meteor_sentinel": [
-      {"rank": 1, "purchase_cash": 6, "track_primary_color": "energy", "primary_asset_cost": 2},
-      {"rank": 2, "purchase_cash": 10, "track_primary_color": "energy", "primary_asset_cost": 3},
-      {"rank": 3, "purchase_cash": 15, "track_primary_color": "energy", "primary_asset_cost": 4},
-      {"rank": 4, "purchase_cash": 21, "track_primary_color": "energy", "primary_asset_cost": 5}
+      {"rank": 1, "purchase_cash": 6, "primary_asset_cost": 2},
+      {"rank": 2, "purchase_cash": 10, "primary_asset_cost": 3},
+      {"rank": 3, "purchase_cash": 15, "primary_asset_cost": 4},
+      {"rank": 4, "purchase_cash": 21, "primary_asset_cost": 5}
     ],
     "sand_armor_rover": [
-      {"rank": 1, "purchase_cash": 6, "track_primary_color": "industry", "primary_asset_cost": 2},
-      {"rank": 2, "purchase_cash": 10, "track_primary_color": "industry", "primary_asset_cost": 3},
-      {"rank": 3, "purchase_cash": 15, "track_primary_color": "industry", "primary_asset_cost": 4},
-      {"rank": 4, "purchase_cash": 21, "track_primary_color": "industry", "primary_asset_cost": 5}
+      {"rank": 1, "purchase_cash": 6, "primary_asset_cost": 2},
+      {"rank": 2, "purchase_cash": 10, "primary_asset_cost": 3},
+      {"rank": 3, "purchase_cash": 15, "primary_asset_cost": 4},
+      {"rank": 4, "purchase_cash": 21, "primary_asset_cost": 5}
     ],
     "blue_edge_knight": [
-      {"rank": 1, "purchase_cash": 6, "track_primary_color": "technology", "primary_asset_cost": 2},
-      {"rank": 2, "purchase_cash": 10, "track_primary_color": "technology", "primary_asset_cost": 3},
-      {"rank": 3, "purchase_cash": 15, "track_primary_color": "technology", "primary_asset_cost": 4},
-      {"rank": 4, "purchase_cash": 21, "track_primary_color": "technology", "primary_asset_cost": 5}
+      {"rank": 1, "purchase_cash": 6, "primary_asset_cost": 2},
+      {"rank": 2, "purchase_cash": 10, "primary_asset_cost": 3},
+      {"rank": 3, "purchase_cash": 15, "primary_asset_cost": 4},
+      {"rank": 4, "purchase_cash": 21, "primary_asset_cost": 5}
     ],
     "prism_blade_colossus": [
-      {"rank": 1, "purchase_cash": 6, "track_primary_color": "commerce", "primary_asset_cost": 2},
-      {"rank": 2, "purchase_cash": 10, "track_primary_color": "commerce", "primary_asset_cost": 3},
-      {"rank": 3, "purchase_cash": 15, "track_primary_color": "commerce", "primary_asset_cost": 4},
-      {"rank": 4, "purchase_cash": 21, "track_primary_color": "commerce", "primary_asset_cost": 5}
+      {"rank": 1, "purchase_cash": 6, "primary_asset_cost": 2},
+      {"rank": 2, "purchase_cash": 10, "primary_asset_cost": 3},
+      {"rank": 3, "purchase_cash": 15, "primary_asset_cost": 4},
+      {"rank": 4, "purchase_cash": 21, "primary_asset_cost": 5}
     ],
     "mirror_hunter": [
-      {"rank": 1, "purchase_cash": 6, "track_primary_color": "technology", "primary_asset_cost": 2},
-      {"rank": 2, "purchase_cash": 10, "track_primary_color": "technology", "primary_asset_cost": 3},
-      {"rank": 3, "purchase_cash": 15, "track_primary_color": "technology", "primary_asset_cost": 4},
-      {"rank": 4, "purchase_cash": 21, "track_primary_color": "technology", "primary_asset_cost": 5}
+      {"rank": 1, "purchase_cash": 6, "primary_asset_cost": 2},
+      {"rank": 2, "purchase_cash": 10, "primary_asset_cost": 3},
+      {"rank": 3, "purchase_cash": 15, "primary_asset_cost": 4},
+      {"rank": 4, "purchase_cash": 21, "primary_asset_cost": 5}
     ]
   },
   "autonomy_defaults": {
@@ -159,22 +166,22 @@
   },
   "military_definition_rank_profiles": {
     "planetary_defense_force": [
-      {"rank": 1, "purchase_cash": 6, "track_primary_color": "industry", "primary_asset_cost": 2, "region_damage_budget": 4, "monster_damage": 2},
-      {"rank": 2, "purchase_cash": 10, "track_primary_color": "industry", "primary_asset_cost": 3, "region_damage_budget": 6, "monster_damage": 3},
-      {"rank": 3, "purchase_cash": 15, "track_primary_color": "industry", "primary_asset_cost": 4, "region_damage_budget": 8, "monster_damage": 4},
-      {"rank": 4, "purchase_cash": 21, "track_primary_color": "industry", "primary_asset_cost": 5, "region_damage_budget": 11, "monster_damage": 6}
+      {"rank": 1, "purchase_cash": 6, "primary_asset_cost": 2, "region_damage_budget": 4, "monster_damage": 2},
+      {"rank": 2, "purchase_cash": 10, "primary_asset_cost": 3, "region_damage_budget": 6, "monster_damage": 3},
+      {"rank": 3, "purchase_cash": 15, "primary_asset_cost": 4, "region_damage_budget": 8, "monster_damage": 4},
+      {"rank": 4, "purchase_cash": 21, "primary_asset_cost": 5, "region_damage_budget": 11, "monster_damage": 6}
     ],
     "air_superiority_fighter": [
-      {"rank": 1, "purchase_cash": 6, "track_primary_color": "industry", "primary_asset_cost": 2, "region_damage_budget": 3, "monster_damage": 3},
-      {"rank": 2, "purchase_cash": 10, "track_primary_color": "industry", "primary_asset_cost": 3, "region_damage_budget": 5, "monster_damage": 4},
-      {"rank": 3, "purchase_cash": 15, "track_primary_color": "industry", "primary_asset_cost": 4, "region_damage_budget": 7, "monster_damage": 6},
-      {"rank": 4, "purchase_cash": 21, "track_primary_color": "industry", "primary_asset_cost": 5, "region_damage_budget": 9, "monster_damage": 8}
+      {"rank": 1, "purchase_cash": 6, "primary_asset_cost": 2, "region_damage_budget": 3, "monster_damage": 3},
+      {"rank": 2, "purchase_cash": 10, "primary_asset_cost": 3, "region_damage_budget": 5, "monster_damage": 4},
+      {"rank": 3, "purchase_cash": 15, "primary_asset_cost": 4, "region_damage_budget": 7, "monster_damage": 6},
+      {"rank": 4, "purchase_cash": 21, "primary_asset_cost": 5, "region_damage_budget": 9, "monster_damage": 8}
     ],
     "submarine_fleet": [
-      {"rank": 1, "purchase_cash": 6, "track_primary_color": "technology", "primary_asset_cost": 2, "region_damage_budget": 5, "monster_damage": 2},
-      {"rank": 2, "purchase_cash": 10, "track_primary_color": "technology", "primary_asset_cost": 3, "region_damage_budget": 7, "monster_damage": 4},
-      {"rank": 3, "purchase_cash": 15, "track_primary_color": "technology", "primary_asset_cost": 4, "region_damage_budget": 10, "monster_damage": 5},
-      {"rank": 4, "purchase_cash": 21, "track_primary_color": "technology", "primary_asset_cost": 5, "region_damage_budget": 13, "monster_damage": 7}
+      {"rank": 1, "purchase_cash": 6, "primary_asset_cost": 2, "region_damage_budget": 5, "monster_damage": 2},
+      {"rank": 2, "purchase_cash": 10, "primary_asset_cost": 3, "region_damage_budget": 7, "monster_damage": 4},
+      {"rank": 3, "purchase_cash": 15, "primary_asset_cost": 4, "region_damage_budget": 10, "monster_damage": 5},
+      {"rank": 4, "purchase_cash": 21, "primary_asset_cost": 5, "region_damage_budget": 13, "monster_damage": 7}
     ]
   },
   "tunable_json_pointers": [
@@ -202,6 +209,9 @@
     "military_no_bound_action",
     "military_no_guard",
     "facility_damage_typed_port_only",
+    "unified_track_primary_color_authority_per_instance",
+    "normal_combat_cost_profiles_primary_asset_cost_only",
+    "combat_catalog_primary_color_override_forbidden",
     "v074_track_ratio_6000_4000_unchanged"
   ]
 }

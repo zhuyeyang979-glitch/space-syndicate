@@ -24,9 +24,12 @@ industry color per family. Runtime never infers that color from localized
 names, legacy `resource_focus`, or model color.
 
 Preferred color affects autonomous target matching only. Monster and military
-normal-card primary color remains the value supplied by the existing unified
-track color authority, and its action cost is `primary_asset_cost` on that
-`track_primary_color`. A preferred color never recolors a card or its cost.
+normal-card `primary_color` is independently selected for every spawned
+instance by the existing unified-track Authority. Family, definition, and
+catalog authoring cannot constrain or override it; two instances of one
+definition may differ. Any catalog `track_primary_color` member is ignored as
+non-authoritative migration metadata. The action cost is `primary_asset_cost`
+on that instance color. A preferred color never recolors a card or its cost.
 
 At each maintenance boundary, all active monsters plan from the same frozen
 public snapshot. Candidate targets are enemy public factories, markets, and
@@ -104,6 +107,8 @@ fallback may replace them.
 The ten-place shared sushi track keeps slow motion and acquisition vacancies.
 Buying a combat card does not refill, slide, advance the supply cursor or
 instance sequence, or draw supply RNG. Normal/Commodity supply remains
-6000/4000 basis points. Six-color asset pips keep exactly six positions. The
-dynamic 6-30 region globe, all three facility kinds, warehouse privacy, and
-deleted `scripts/main.gd` remain intact.
+6000/4000 basis points. The V0.7.5 Balance Defaults retain Normal subtype
+weights of facility/monster/military 7000/1500/1500; those tunables remain in
+the balance file and do not affect per-instance color authority. Six-color
+asset pips keep exactly six positions. The dynamic 6-30 region globe, all three
+facility kinds, warehouse privacy, and deleted `scripts/main.gd` remain intact.

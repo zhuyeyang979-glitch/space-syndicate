@@ -140,7 +140,13 @@
         "required_color_coverage": 6,
         "runtime_inference_count": 0,
         "usage": "autonomous_facility_targeting_only",
-        "normal_card_primary_color_source": "existing_unified_track_color_supply",
+        "normal_card_primary_color_source": "unified_track_authority_selected_per_instance",
+        "normal_card_instance_primary_color_field": "primary_color",
+        "primary_color_selection_granularity": "per_card_instance",
+        "same_definition_instances_may_have_different_primary_colors": true,
+        "family_or_definition_static_card_primary_color_allowed": false,
+        "catalog_primary_color_override_allowed": false,
+        "catalog_track_primary_color_field_policy": "ignore_as_non_authoritative_if_present",
         "preferred_color_affects_card_primary_color": false,
         "preferred_color_affects_card_asset_cost": false,
         "legacy_resource_focus_is_migration_reference_only": true
@@ -312,7 +318,9 @@
         "reshuffle_member": true,
         "draw_destination": "normal_hand",
         "post_resolution_destination": "personal_discard",
-        "card_action_cost_contract": "track_primary_color_plus_primary_asset_cost",
+        "card_action_cost_contract": "primary_asset_cost_from_authority_selected_instance_primary_color",
+        "rank_cost_profile_static_primary_color_field_count": 0,
+        "catalog_primary_color_override_allowed": false,
         "monster_active_skills_are_dbg_cards": false
       }
     },
@@ -340,7 +348,9 @@
         "draw_destination": "normal_hand",
         "public_anonymous_batch_member": true,
         "owner_anonymous_until_resolution": true,
-        "card_action_cost_contract": "track_primary_color_plus_primary_asset_cost",
+        "card_action_cost_contract": "primary_asset_cost_from_authority_selected_instance_primary_color",
+        "rank_cost_profile_static_primary_color_field_count": 0,
+        "catalog_primary_color_override_allowed": false,
         "active_definition_maximum": 4
       }
     },
@@ -549,6 +559,10 @@
         "track_immediate_refill_on_acquisition": false,
         "track_supply_cursor_delta_on_acquisition": 0,
         "track_supply_rng_draw_delta_on_acquisition": 0,
+        "card_instance_primary_color_authority": "existing_unified_track_color_supply",
+        "card_instance_primary_color_selection_granularity": "per_card_instance",
+        "combat_catalog_primary_color_override_allowed": false,
+        "normal_subtype_weight_authority": "docs/rules/v075_combat_balance_defaults.json",
         "normal_card_ratio_basis_points": 6000,
         "commodity_card_ratio_basis_points": 4000,
         "asset_pool_display_mode": "repeated_symbol_pips",
@@ -571,6 +585,8 @@
     "monster_autonomy_stall_count": 0,
     "military_guard_action_count": 0,
     "military_bound_action_count": 0,
+    "normal_card_cost_profile_static_primary_color_field_count": 0,
+    "combat_catalog_primary_color_runtime_override_count": 0,
     "final_settlement_count": 1
   }
 }

@@ -108,6 +108,20 @@
     "monster_skill_public_batch_queue_member": false,
     "monster_skill_normal_batch_action_slot_member": false
   },
+  "unified_track_card_instance_color_contract": {
+    "authority": "existing_unified_track_color_supply",
+    "selection_granularity": "per_card_instance",
+    "instance_field": "primary_color",
+    "same_definition_instances_may_have_different_primary_colors": true,
+    "monster_family_static_card_primary_color_allowed": false,
+    "military_definition_static_card_primary_color_allowed": false,
+    "combat_catalog_primary_color_override_allowed": false,
+    "catalog_track_primary_color_field_policy": "ignore_as_non_authoritative_if_present",
+    "card_action_cost_rule": "primary_asset_cost_from_authority_selected_instance_primary_color",
+    "preferred_industry_color_usage": "monster_autonomous_facility_targeting_only",
+    "normal_subtype_selection_changes_primary_color_authority": false,
+    "normal_subtype_weight_authority": "docs/rules/v075_combat_balance_defaults.json"
+  },
   "unchanged_v074_invariants": {
     "dynamic_region_count_supported": "6_to_30",
     "land_ocean_authoritative": true,
