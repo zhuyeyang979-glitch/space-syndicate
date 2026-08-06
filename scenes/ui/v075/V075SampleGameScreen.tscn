@@ -1,0 +1,89 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/v074/V074SampleGameScreen.tscn" id="1_base"]
+[ext_resource type="Script" path="res://scripts/ui/v075/v075_sample_game_screen.gd" id="2_wrapper"]
+[ext_resource type="PackedScene" path="res://scenes/ui/v075/V075CombatPlayerSurface.tscn" id="3_surface"]
+
+[sub_resource type="StyleBoxFlat" id="StyleCombatOverlay"]
+bg_color = Color(0.026, 0.044, 0.073, 0.985)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.26, 0.65, 0.67, 0.86)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0, 0, 0, 0.42)
+shadow_size = 14
+
+[node name="V075SampleGameScreen" instance=ExtResource("1_base")]
+script = ExtResource("2_wrapper")
+
+[node name="V075CombatOverlay" type="PanelContainer" parent="PlaytestUtilityLayer/PlaytestSafeArea"]
+unique_name_in_owner = true
+z_index = 8
+custom_minimum_size = Vector2(480, 46)
+mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleCombatOverlay")
+
+[node name="Margin" type="MarginContainer" parent="PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
+
+[node name="Rows" type="VBoxContainer" parent="PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Header" type="HBoxContainer" parent="PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay/Margin/Rows"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 32)
+theme_override_constants/separation = 7
+
+[node name="Title" type="Label" parent="PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay/Margin/Rows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 14
+text = "COMBAT · V0.7.5"
+vertical_alignment = 1
+
+[node name="Status" type="Label" parent="PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay/Margin/Rows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.45, 0.84, 0.78, 1)
+theme_override_font_sizes/font_size = 11
+text = "等待战斗投影"
+text_overrun_behavior = 3
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="CollapseButton" type="Button" parent="PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay/Margin/Rows/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 30)
+layout_mode = 2
+focus_mode = 2
+tooltip_text = "收起战斗投影"
+text = "收起"
+
+[node name="SurfaceHost" type="Control" parent="PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay/Margin/Rows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="CombatSurface" parent="PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay/Margin/Rows/SurfaceHost" instance=ExtResource("3_surface")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
