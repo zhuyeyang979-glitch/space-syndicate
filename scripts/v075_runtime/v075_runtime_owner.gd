@@ -28,6 +28,16 @@ const V075_SAMPLE_MODE_ID := "NEW_V075_GAME"
 const V075_CONSTITUTION_ID := "space_syndicate.v075.complete"
 const V075_CARD_CAPACITY := 10
 const V075_CUTOVER_DOMAIN_COUNT := 29
+const V075_TRACK_ACQUISITION_POLICY_ID := (
+	"v075.economy_dominant_combat_opportunity_v1"
+)
+const V075_COMBAT_ACQUISITION_PERIOD := 4
+const V075_COMBAT_ACQUISITION_MAX_PER_PERIOD := 1
+const V075_INITIAL_FACILITY_ACQUISITIONS_BEFORE_COMBAT := 1
+const V075_FACILITY_ACQUISITIONS_BETWEEN_COMBAT := 3
+const V075_TRACK_REFILL_MODE_ID := "shared_scroll_vacancy"
+const V075_TRACK_SLOW_SUSHI_MOTION := true
+const V075_TRACK_IMMEDIATE_REFILL_ON_ACQUISITION := false
 const COMBAT_OWNER_METHODS := [
 	"initialize",
 	"begin_batch",
@@ -113,6 +123,17 @@ var _combat_telemetry_bridge: Object = CombatTelemetryBridge.new()
 var _combat_presentation_consumer: Node
 var _combat_public_history: Array = []
 var _combat_request_sequence := 0
+var _v075_acquisition_opportunities: Dictionary = {}
+var _v075_acquisition_facility_count: Dictionary = {}
+var _v075_acquisition_monster_count: Dictionary = {}
+var _v075_acquisition_military_count: Dictionary = {}
+var _v075_acquisition_deferred_count: Dictionary = {}
+var _v075_acquisition_last_domain: Dictionary = {}
+var _v075_acquisition_facility_since_combat: Dictionary = {}
+var _v075_acquisition_last_combat_opportunity: Dictionary = {}
+var _v075_acquisition_hook_count := 0
+var _v075_acquisition_rejection_count := 0
+var _v075_acquisition_no_mutation_violation_count := 0
 
 
 func bind_combat_owner(owner: Node) -> Dictionary:
@@ -241,6 +262,415 @@ func acquire_track_item(
 			receipt["combat_card_domain"] = domain
 			receipt["event_kind"] = "%s_card_purchased" % domain
 	return receipt
+
+
+func _auto_acquire_track_item(actor_id: String) -> Dictionary:
+	var facts := _v075_track_acquisition_facts(actor_id)
+	if facts.is_empty():
+		return _v075_acquisition_noop(
+			actor_id,
+			"v075_track_acquisition_context_unavailable"
+		)
+	var baseline := _combat_ai_adapter.call(
+		"choose_track_acquisition",
+		facts,
+		{"phase": _phase}
+	) as Dictionary
+	_v075_acquisition_hook_count += 1
+	var baseline_reason := str(baseline.get("reason_code", ""))
+	if not bool(baseline.get("accepted", false)):
+		if baseline_reason == "no_legal_track_acquisition":
+			return _v075_acquisition_noop(
+				actor_id,
+				"no_claimable_track_item"
+			)
+		_v075_acquisition_rejection_count += 1
+		return _reject_action(
+			"v075_track_acquisition_policy_rejected:%s" % baseline_reason
+		)
+	var baseline_action := (
+		baseline.get("action", {}) as Dictionary
+	).duplicate(true)
+	if baseline_action.is_empty():
+		return _v075_acquisition_noop(
+			actor_id,
+			"v075_track_acquisition_action_missing"
+		)
+	var audit := (
+		baseline.get("acquisition_audit", {}) as Dictionary
+	).duplicate(true)
+	var opportunity := int(
+		_v075_acquisition_opportunities.get(actor_id, 0)
+	) + 1
+	_v075_acquisition_opportunities[actor_id] = opportunity
+	var facility_available := int(
+		audit.get("facility_candidate_count", 0)
+	) > 0
+	var combat_available := int(
+		audit.get("monster_candidate_count", 0)
+	) > 0 or int(
+		audit.get("military_candidate_count", 0)
+	) > 0
+	var selected := baseline_action
+	var selection_reason := "facility_economy_dominant"
+	if combat_available and _v075_combat_slot_open(
+		actor_id,
+		facility_available
+	):
+		var combat_action := _v075_choose_combat_track_action(
+			actor_id,
+			facts
+		)
+		if not combat_action.is_empty():
+			selected = combat_action
+			selection_reason = "bounded_combat_opportunity"
+		elif not facility_available:
+			_v075_acquisition_deferred_count[actor_id] = int(
+				_v075_acquisition_deferred_count.get(actor_id, 0)
+			) + 1
+			return _v075_acquisition_noop(
+				actor_id,
+				"v075_combat_candidate_probe_empty"
+			)
+	elif not facility_available and combat_available:
+		_v075_acquisition_deferred_count[actor_id] = int(
+			_v075_acquisition_deferred_count.get(actor_id, 0)
+		) + 1
+		return _v075_acquisition_noop(
+			actor_id,
+			"v075_combat_acquisition_rate_limited"
+		)
+	var source_instance_id := str(
+		selected.get("source_instance_id", selected.get(
+			"card_instance_id",
+			""
+		))
+	)
+	if source_instance_id.is_empty():
+		_v075_acquisition_rejection_count += 1
+		return _reject_action("v075_track_acquisition_source_missing")
+	var before := _v075_track_supply_probe()
+	var receipt := acquire_track_item(actor_id, source_instance_id)
+	var after := _v075_track_supply_probe()
+	var delta := _v075_track_supply_delta(before, after)
+	if not _v075_track_delta_is_safe(delta):
+		_v075_acquisition_no_mutation_violation_count += 1
+		return _fail("v075_track_acquisition_supply_mutation", delta)
+	receipt["v075_acquisition_policy_id"] = (
+		V075_TRACK_ACQUISITION_POLICY_ID
+	)
+	receipt["v075_acquisition_opportunity"] = opportunity
+	receipt["v075_acquisition_selection_reason"] = selection_reason
+	receipt["v075_acquisition_domain"] = str(
+		selected.get("card_domain", "")
+	)
+	receipt["v075_track_delta"] = delta.duplicate(true)
+	receipt["track_refill_mode_id"] = V075_TRACK_REFILL_MODE_ID
+	receipt["track_slow_sushi_motion"] = V075_TRACK_SLOW_SUSHI_MOTION
+	receipt["immediate_refill_on_acquisition"] = (
+		V075_TRACK_IMMEDIATE_REFILL_ON_ACQUISITION
+	)
+	if bool(receipt.get("accepted", false)):
+		var domain := str(selected.get("card_domain", ""))
+		_v075_acquisition_last_domain[actor_id] = domain
+		if domain == "facility":
+			_v075_acquisition_facility_count[actor_id] = int(
+				_v075_acquisition_facility_count.get(actor_id, 0)
+			) + 1
+			_v075_acquisition_facility_since_combat[actor_id] = int(
+				_v075_acquisition_facility_since_combat.get(actor_id, 0)
+			) + 1
+		elif domain == "monster":
+			_v075_acquisition_monster_count[actor_id] = int(
+				_v075_acquisition_monster_count.get(actor_id, 0)
+			) + 1
+			_v075_acquisition_facility_since_combat[actor_id] = 0
+			_v075_acquisition_last_combat_opportunity[actor_id] = (
+				opportunity
+			)
+		elif domain == "military":
+			_v075_acquisition_military_count[actor_id] = int(
+				_v075_acquisition_military_count.get(actor_id, 0)
+			) + 1
+			_v075_acquisition_facility_since_combat[actor_id] = 0
+			_v075_acquisition_last_combat_opportunity[actor_id] = (
+				opportunity
+			)
+	else:
+		_v075_acquisition_rejection_count += 1
+	return receipt
+
+
+func _v075_track_acquisition_facts(actor_id: String) -> Dictionary:
+	if (
+		_track_core == null
+		or _asset_state.is_empty()
+		or not _player_ids.has(actor_id)
+	):
+		return {}
+	var projection := _track_core.call(
+		"player_projection_v1",
+		actor_id
+	) as Dictionary
+	var private_facts := (
+		projection.get("viewer_private_facts", {}) as Dictionary
+	)
+	var own_items := private_facts.get("own_segment_items", []) as Array
+	var asset_observation := ASSET_BATCH_CORE.asset_ai_observation(
+		_asset_state,
+		actor_id
+	) as Dictionary
+	var available := (
+		asset_observation.get("own_available_assets", {}) as Dictionary
+	)
+	if own_items.is_empty() or available.is_empty():
+		return {}
+	return {
+		"viewer_player_id": actor_id,
+		"own_segment_items": own_items.duplicate(true),
+		"available_unreserved_assets": available.duplicate(true),
+	}
+
+
+func _v075_combat_slot_open(
+	actor_id: String,
+	facility_available: bool
+) -> bool:
+	var opportunity := int(
+		_v075_acquisition_opportunities.get(actor_id, 0)
+	)
+	var last_combat_opportunity := int(
+		_v075_acquisition_last_combat_opportunity.get(actor_id, -1)
+	)
+	if (
+		last_combat_opportunity >= 0
+		and opportunity - last_combat_opportunity
+			< V075_COMBAT_ACQUISITION_PERIOD
+	):
+		return false
+	if not facility_available:
+		return true
+	var facility_count := int(
+		_v075_acquisition_facility_count.get(actor_id, 0)
+	)
+	var combat_count := (
+		int(_v075_acquisition_monster_count.get(actor_id, 0))
+		+ int(_v075_acquisition_military_count.get(actor_id, 0))
+	)
+	if combat_count == 0:
+		return facility_count >= (
+			V075_INITIAL_FACILITY_ACQUISITIONS_BEFORE_COMBAT
+		)
+	return int(
+		_v075_acquisition_facility_since_combat.get(actor_id, 0)
+	) >= V075_FACILITY_ACQUISITIONS_BETWEEN_COMBAT
+
+
+func _v075_choose_combat_track_action(
+	actor_id: String,
+	facts: Dictionary
+) -> Dictionary:
+	var options: Dictionary = {}
+	for domain in ["monster", "military"]:
+		var filtered := _v075_filter_track_facts_by_domain(
+			facts,
+			domain
+		)
+		if filtered.is_empty():
+			continue
+		var result := _combat_ai_adapter.call(
+			"choose_track_acquisition",
+			filtered,
+			{"phase": _phase}
+		) as Dictionary
+		if not bool(result.get("accepted", false)):
+			continue
+		var action := result.get("action", {}) as Dictionary
+		if action.is_empty():
+			continue
+		options[domain] = action.duplicate(true)
+	if options.is_empty():
+		return {}
+	if options.size() == 1:
+		return (options.values()[0] as Dictionary).duplicate(true)
+	var monster_count := int(
+		_v075_acquisition_monster_count.get(actor_id, 0)
+	)
+	var military_count := int(
+		_v075_acquisition_military_count.get(actor_id, 0)
+	)
+	var last_domain := str(
+		_v075_acquisition_last_domain.get(actor_id, "")
+	)
+	var preferred_domain := ""
+	if monster_count < military_count:
+		preferred_domain = "monster"
+	elif military_count < monster_count:
+		preferred_domain = "military"
+	elif last_domain == "monster":
+		preferred_domain = "military"
+	elif last_domain == "military":
+		preferred_domain = "monster"
+	if not preferred_domain.is_empty() and options.has(preferred_domain):
+		return (options.get(preferred_domain, {}) as Dictionary).duplicate(
+			true
+		)
+	var best: Dictionary = {}
+	for action_variant in options.values():
+		var action := action_variant as Dictionary
+		if best.is_empty() or _v075_action_precedes(action, best):
+			best = action.duplicate(true)
+	return best
+
+
+func _v075_filter_track_facts_by_domain(
+	facts: Dictionary,
+	domain: String
+) -> Dictionary:
+	var filtered := facts.duplicate(true)
+	var items: Array = []
+	for item_variant in facts.get("own_segment_items", []) as Array:
+		var item := item_variant as Dictionary
+		var definition := CardDefinitionsV075.definition(
+			str(item.get("card_definition_id", ""))
+		)
+		var item_domain := CardDefinitionsV075.card_domain(
+			str(definition.get("card_type", ""))
+		)
+		if item_domain == domain:
+			items.append(item.duplicate(true))
+	if items.is_empty():
+		return {}
+	filtered["own_segment_items"] = items
+	return filtered
+
+
+func _v075_action_precedes(
+	left: Dictionary,
+	right: Dictionary
+) -> bool:
+	var left_slot := int(left.get("local_slot_index", 0))
+	var right_slot := int(right.get("local_slot_index", 0))
+	if left_slot != right_slot:
+		return left_slot < right_slot
+	var left_score := int(left.get("score", 0))
+	var right_score := int(right.get("score", 0))
+	if left_score != right_score:
+		return left_score > right_score
+	return str(left.get("stable_action_key", "")) < str(
+		right.get("stable_action_key", "")
+	)
+
+
+func _v075_acquisition_noop(
+	actor_id: String,
+	reason_code: String
+) -> Dictionary:
+	return {
+		"accepted": true,
+		"reason_code": reason_code,
+		"actor_id": actor_id,
+		"v075_acquisition_policy_id": (
+			V075_TRACK_ACQUISITION_POLICY_ID
+		),
+		"track_refill_mode_id": V075_TRACK_REFILL_MODE_ID,
+		"track_slow_sushi_motion": V075_TRACK_SLOW_SUSHI_MOTION,
+		"immediate_refill_on_acquisition": (
+			V075_TRACK_IMMEDIATE_REFILL_ON_ACQUISITION
+		),
+		"replacement_count": 0,
+		"supply_cursor_delta_on_acquisition": 0,
+		"supply_instance_sequence_delta_on_acquisition": 0,
+		"supply_rng_draw_delta_on_acquisition": 0,
+	}
+
+
+func _v075_track_supply_probe() -> Dictionary:
+	if _track_core == null:
+		return {}
+	var authority := _track_core.call("core_authority_v1") as Dictionary
+	var state := authority.get("authority_state", {}) as Dictionary
+	var track := state.get("track_state", {}) as Dictionary
+	var color_cycle := state.get("color_cycle_state", {}) as Dictionary
+	var color_supply := (
+		color_cycle.get("color_supply_state", {}) as Dictionary
+	)
+	var type_supply := state.get("type_supply_state", {}) as Dictionary
+	var normal_supply := state.get("normal_supply_state", {}) as Dictionary
+	var commodity_supply := (
+		state.get("commodity_supply_state", {}) as Dictionary
+	)
+	var debug := (
+		_track_core.call("debug_snapshot_v074") as Dictionary
+		if _track_core.has_method("debug_snapshot_v074")
+		else {}
+	)
+	return {
+		"track_revision": int(track.get("revision", 0)),
+		"item_count": (track.get("items", []) as Array).size(),
+		"vacancy_count": int(track.get("capacity", 0)) - (
+			track.get("items", []) as Array
+		).size(),
+		"next_instance_sequence": int(
+			track.get("next_instance_sequence", 0)
+		),
+		"supply_cursor_total": (
+			int(type_supply.get("cursor", 0))
+			+ int(normal_supply.get("cursor", 0))
+			+ int(commodity_supply.get("cursor", 0))
+			+ int(color_supply.get("cursor", 0))
+		),
+		"supply_rng_draw_total": (
+			int(type_supply.get("rng_draw_count", 0))
+			+ int(normal_supply.get("rng_draw_count", 0))
+			+ int(commodity_supply.get("rng_draw_count", 0))
+			+ int(color_supply.get("rng_draw_count", 0))
+		),
+		"immediate_authoritative_refill_count": int(
+			debug.get("immediate_authoritative_refill_count", 0)
+		),
+	}
+
+
+func _v075_track_supply_delta(
+	before: Dictionary,
+	after: Dictionary
+) -> Dictionary:
+	return {
+		"track_revision_delta": int(after.get("track_revision", 0))
+			- int(before.get("track_revision", 0)),
+		"track_item_count_delta": int(after.get("item_count", 0))
+			- int(before.get("item_count", 0)),
+		"vacancy_delta": int(after.get("vacancy_count", 0))
+			- int(before.get("vacancy_count", 0)),
+		"supply_cursor_delta_on_acquisition": int(
+			after.get("supply_cursor_total", 0)
+		) - int(before.get("supply_cursor_total", 0)),
+		"supply_instance_sequence_delta_on_acquisition": int(
+			after.get("next_instance_sequence", 0)
+		) - int(before.get("next_instance_sequence", 0)),
+		"supply_rng_draw_delta_on_acquisition": int(
+			after.get("supply_rng_draw_total", 0)
+		) - int(before.get("supply_rng_draw_total", 0)),
+		"immediate_authoritative_refill_delta": int(
+			after.get("immediate_authoritative_refill_count", 0)
+		) - int(before.get("immediate_authoritative_refill_count", 0)),
+		"replacement_count": 0,
+	}
+
+
+func _v075_track_delta_is_safe(delta: Dictionary) -> bool:
+	return (
+		int(delta.get("track_item_count_delta", 0)) in [0, -1]
+		and int(delta.get("vacancy_delta", 0)) in [0, 1]
+		and int(delta.get("supply_cursor_delta_on_acquisition", 0)) == 0
+		and int(delta.get(
+			"supply_instance_sequence_delta_on_acquisition",
+			0
+		)) == 0
+		and int(delta.get("supply_rng_draw_delta_on_acquisition", 0)) == 0
+		and int(delta.get("immediate_authoritative_refill_delta", 0)) == 0
+	)
 
 
 func legal_card_actions(actor_id: String) -> Array:
@@ -788,7 +1218,108 @@ func debug_snapshot() -> Dictionary:
 	result["connected_domain_count"] = (
 		V075_CUTOVER_DOMAIN_COUNT if _combat_initialized else 0
 	)
+	var acquisition_policy := v075_track_acquisition_policy_snapshot()
+	result["track_acquisition_policy"] = acquisition_policy
+	result["track_acquisition_policy_id"] = (
+		V075_TRACK_ACQUISITION_POLICY_ID
+	)
+	result["track_acquisition_hook_count"] = int(
+		acquisition_policy.get("hook_count", 0)
+	)
+	result["track_acquisition_no_mutation_violation_count"] = int(
+		acquisition_policy.get("no_mutation_violation_count", 0)
+	)
 	return result
+
+
+func v075_track_acquisition_policy_snapshot() -> Dictionary:
+	var registry_contract := CardDefinitionsV075.registry_contract()
+	return {
+		"schema": "V075TrackAcquisitionPolicyDebugV1",
+		"ruleset_id": V075_RULESET_ID,
+		"policy_id": V075_TRACK_ACQUISITION_POLICY_ID,
+		"typed_ai_hook": (
+			"V075CombatAIAdapter.choose_track_acquisition"
+		),
+		"owner_private_input_fields": [
+			"own_segment_items",
+			"available_unreserved_assets",
+		],
+		"local_visible_capacity": V075_CARD_CAPACITY,
+		"facility_economy_dominant": true,
+		"combat_acquisition_period": V075_COMBAT_ACQUISITION_PERIOD,
+		"combat_acquisition_max_per_period": (
+			V075_COMBAT_ACQUISITION_MAX_PER_PERIOD
+		),
+		"initial_facility_acquisitions_before_combat": (
+			V075_INITIAL_FACILITY_ACQUISITIONS_BEFORE_COMBAT
+		),
+		"facility_acquisitions_between_combat": (
+			V075_FACILITY_ACQUISITIONS_BETWEEN_COMBAT
+		),
+		"normal_subtype_weights_basis_points": (
+			registry_contract.get(
+				"normal_subtype_weights_basis_points",
+				{}
+			) as Dictionary
+		).duplicate(true),
+		"outer_normal_card_ratio_basis_points": int(
+			registry_contract.get(
+				"outer_normal_card_ratio_basis_points",
+				0
+			)
+		),
+		"outer_commodity_card_ratio_basis_points": int(
+			registry_contract.get(
+				"outer_commodity_card_ratio_basis_points",
+				0
+			)
+		),
+		"track_refill_mode_id": V075_TRACK_REFILL_MODE_ID,
+		"track_slow_sushi_motion": V075_TRACK_SLOW_SUSHI_MOTION,
+		"track_immediate_refill_on_acquisition": (
+			V075_TRACK_IMMEDIATE_REFILL_ON_ACQUISITION
+		),
+		"hook_count": _v075_acquisition_hook_count,
+		"opportunity_count": _v075_counter_total(
+			_v075_acquisition_opportunities
+		),
+		"facility_acquisition_count": _v075_counter_total(
+			_v075_acquisition_facility_count
+		),
+		"monster_acquisition_count": _v075_counter_total(
+			_v075_acquisition_monster_count
+		),
+		"military_acquisition_count": _v075_counter_total(
+			_v075_acquisition_military_count
+		),
+		"combat_acquisition_count": (
+			_v075_counter_total(_v075_acquisition_monster_count)
+			+ _v075_counter_total(_v075_acquisition_military_count)
+		),
+		"deferred_combat_opportunity_count": _v075_counter_total(
+			_v075_acquisition_deferred_count
+		),
+		"rejection_count": _v075_acquisition_rejection_count,
+		"no_mutation_violation_count": (
+			_v075_acquisition_no_mutation_violation_count
+		),
+		"track_direct_write_count": 0,
+		"card_injection_count": 0,
+		"asset_injection_count": 0,
+		"target_injection_count": 0,
+		"immediate_authoritative_refill_count": 0,
+		"supply_cursor_delta_on_acquisition": 0,
+		"supply_instance_sequence_delta_on_acquisition": 0,
+		"supply_rng_draw_delta_on_acquisition": 0,
+	}
+
+
+func _v075_counter_total(counter: Dictionary) -> int:
+	var total := 0
+	for value_variant in counter.values():
+		total += int(value_variant)
+	return total
 
 
 func _reset_runtime() -> void:
@@ -811,6 +1342,17 @@ func _reset_runtime() -> void:
 		_combat_presentation_consumer.call("reset_for_new_match")
 	_combat_public_history = []
 	_combat_request_sequence = 0
+	_v075_acquisition_opportunities = {}
+	_v075_acquisition_facility_count = {}
+	_v075_acquisition_monster_count = {}
+	_v075_acquisition_military_count = {}
+	_v075_acquisition_deferred_count = {}
+	_v075_acquisition_last_domain = {}
+	_v075_acquisition_facility_since_combat = {}
+	_v075_acquisition_last_combat_opportunity = {}
+	_v075_acquisition_hook_count = 0
+	_v075_acquisition_rejection_count = 0
+	_v075_acquisition_no_mutation_violation_count = 0
 
 
 func _begin_batch() -> void:
