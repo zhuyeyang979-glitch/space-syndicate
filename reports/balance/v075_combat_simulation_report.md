@@ -3,15 +3,15 @@
 Acceptance status: PARTIAL.
 Production path: V075RuntimeOwner -> V075CombatRuntimeOwner -> FinalSettlement.
 Acceleration: inherited production `_process`, delta 1.0 seconds (30 accelerated seconds), with no direct state injection.
-Requested matches: 5; executed matches: 5; elapsed: 660.265 seconds.
+Requested matches: 5; executed matches: 5; elapsed: 730.205 seconds.
 
 ## Configurations
 
-- 3p_8r_simple: 1/1 settled; mean 18840.000 ms; deadlocks 0; monsters 0; military 0.
-- 4p_16r_standard: 1/1 settled; mean 48060.000 ms; deadlocks 0; monsters 2; military 1.
-- 4p_24r_complex: 1/1 settled; mean 68428.000 ms; deadlocks 0; monsters 2; military 2.
-- 6p_24r_standard: 1/1 settled; mean 162219.000 ms; deadlocks 0; monsters 3; military 6.
-- 8p_30r_complex: 1/1 settled; mean 362640.000 ms; deadlocks 0; monsters 11; military 9.
+- 3p_8r_simple: 1/1 settled; mean 31372.000 ms; deadlocks 0; monsters 0; military 0.
+- 4p_16r_standard: 1/1 settled; mean 71835.000 ms; deadlocks 0; monsters 2; military 1.
+- 4p_24r_complex: 1/1 settled; mean 79442.000 ms; deadlocks 0; monsters 2; military 2.
+- 6p_24r_standard: 1/1 settled; mean 170674.000 ms; deadlocks 0; monsters 3; military 6.
+- 8p_30r_complex: 1/1 settled; mean 376795.000 ms; deadlocks 0; monsters 11; military 9.
 
 ## Safety Gates
 
@@ -50,6 +50,22 @@ Requested matches: 5; executed matches: 5; elapsed: 660.265 seconds.
 - FACILITY_COMBAT_DAMAGE_COUNT_GREEN=false
 - COMBAT_REQUIRED_OBSERVATIONS_GREEN=false
 - missing_required_positive_counters=["MONSTER_DEPLOY_COUNT", "MONSTER_REFRESH_COUNT", "MONSTER_UPGRADE_COUNT", "MONSTER_REPLACE_COUNT", "MONSTER_AUTONOMY_TARGET_COUNT", "MONSTER_MOVEMENT_COUNT", "MONSTER_TRAMPLE_REGION_RECEIPT_COUNT", "MONSTER_PRIVATE_SKILL_REQUEST_COUNT", "MONSTER_PRIVATE_SKILL_USE_COUNT", "MONSTER_PRIVATE_SKILL_REUSE_COUNT", "MONSTER_SKILL_COOLDOWN_RECOVERY_COUNT", "MILITARY_REGION_ASSAULT_COUNT", "MILITARY_MONSTER_ASSAULT_COUNT", "MILITARY_WITHDRAW_COUNT", "FACILITY_COMBAT_DAMAGE_COUNT"]
+
+## Root Cause Diagnostics
+
+- monster_cards_reached_hand=2
+- monster_legal_options=0
+- monster_root_cause=not_observed
+- military_cards_reached_hand=6
+- military_legal_options=90
+- military_affordable_options=0
+- military_available_options=0
+- military_queued_actions=0
+- military_root_cause=available_filter_rejected:military_asset_color_insufficient
+- max_queued_actions_per_player=3
+- direct_state_injection_count=0
+- first_monster_prebind_rejection={}
+- first_military_filter_rejection={"asset_color":"commerce","asset_shortage_count":2,"available_asset_count":0,"batch_number":6,"candidate_asset_cost":2,"queue_size":0,"queued_reserved_asset_count":0,"reason_code":"military_asset_color_insufficient","required_asset_count":2,"target_present":true,"target_slot_conflict":false,"target_slot_present":true,"task_kind":"assault_region"}
 
 ## Global Counters
 
@@ -100,13 +116,17 @@ Requested matches: 5; executed matches: 5; elapsed: 660.265 seconds.
 - MILITARY_CARD_HAND_OBSERVATION_COUNT=6
 - MONSTER_LEGAL_OPTION_OBSERVATION_COUNT=0
 - MILITARY_LEGAL_OPTION_OBSERVATION_COUNT=90
+- MILITARY_AFFORDABLE_OPTION_OBSERVATION_COUNT=0
+- MILITARY_AVAILABLE_OPTION_OBSERVATION_COUNT=0
+- MILITARY_FILTERED_OPTION_OBSERVATION_COUNT=270
+- MONSTER_PREBIND_REJECTION_OBSERVATION_COUNT=0
 - MONSTER_QUEUED_ACTION_OBSERVATION_COUNT=0
 - MILITARY_QUEUED_ACTION_OBSERVATION_COUNT=0
 - COMBAT_CARD_PURCHASE_TO_HAND_STARVATION_MATCH_COUNT=1
 - COMBAT_CARD_HAND_TO_LEGAL_STARVATION_MATCH_COUNT=2
 - COMBAT_CARD_LEGAL_TO_QUEUE_STARVATION_MATCH_COUNT=1
 - SIMULATION_LEGAL_ACTION_CACHE_HIT_COUNT=192
-- SIMULATION_CARD_LOOKUP_CACHE_HIT_COUNT=62724
+- SIMULATION_CARD_LOOKUP_CACHE_HIT_COUNT=63264
 - COMBAT_SIMULATION_MATCH_COUNT=5
 - COMBAT_SIMULATION_SETTLED_COUNT=5
 - COMBAT_SIMULATION_STEP_LIMIT_COUNT=0
@@ -125,4 +145,4 @@ Requested matches: 5; executed matches: 5; elapsed: 660.265 seconds.
 - track_immediate_authoritative_refill_count=0
 - track_ratio=6000/4000
 
-report_fingerprint=7910b0728e0962fe7454777265fa1b1112b0d0ac2e43761fca1afd0d86c596f9
+report_fingerprint=5d8f6326dfe75ba1e89fb4489db0b266121fc2f4b52f4dedc82d3eb5e9ae2864

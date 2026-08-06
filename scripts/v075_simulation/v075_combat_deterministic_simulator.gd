@@ -120,6 +120,11 @@ const DIAGNOSTIC_COUNTER_KEYS: Array = [
 	"MILITARY_CARD_HAND_OBSERVATION_COUNT",
 	"MONSTER_LEGAL_OPTION_OBSERVATION_COUNT",
 	"MILITARY_LEGAL_OPTION_OBSERVATION_COUNT",
+	"MILITARY_AFFORDABLE_OPTION_OBSERVATION_COUNT",
+	"MILITARY_AVAILABLE_OPTION_OBSERVATION_COUNT",
+	"MILITARY_FILTERED_OPTION_OBSERVATION_COUNT",
+	"MONSTER_PREBIND_REJECTION_OBSERVATION_COUNT",
+	"MONSTER_PREBIND_ACCEPT_OBSERVATION_COUNT",
 	"MONSTER_QUEUED_ACTION_OBSERVATION_COUNT",
 	"MILITARY_QUEUED_ACTION_OBSERVATION_COUNT",
 	"COMBAT_CARD_PURCHASE_TO_HAND_STARVATION_MATCH_COUNT",
@@ -204,6 +209,7 @@ func run_matrix(
 				completion_durations
 			),
 			"sample_results": _sample_rows(rows),
+			"root_cause_diagnostics": _aggregate_diagnostic_details(rows),
 			"configuration_fingerprint": fingerprint({
 				"configuration": configuration,
 				"rows": rows,
@@ -215,6 +221,10 @@ func run_matrix(
 	)
 	var safety_gates := _safety_gates(configuration_results)
 	var coverage_gates := _coverage_gates(global_metrics)
+	var root_cause_diagnostics := _aggregate_root_cause_diagnostics(
+		configuration_results,
+		global_metrics
+	)
 	var report := {
 		"schema_version": 1,
 		"simulation_id": SIMULATION_ID,
@@ -243,6 +253,7 @@ func run_matrix(
 		"performance": _aggregate_timing(configuration_results),
 		"safety_gates": safety_gates,
 		"coverage_gates": coverage_gates,
+		"root_cause_diagnostics": root_cause_diagnostics,
 		"required_formal_match_count": REQUIRED_FORMAL_MATCH_COUNT,
 		"full_match_count_green": total_match_count == REQUIRED_FORMAL_MATCH_COUNT,
 		"observability": {
@@ -634,6 +645,36 @@ func _metrics_for_match(
 	result["MILITARY_LEGAL_OPTION_OBSERVATION_COUNT"] = int(
 		simulation_performance.get("military_legal_option_observation_count", 0)
 	)
+	result["MILITARY_AFFORDABLE_OPTION_OBSERVATION_COUNT"] = int(
+		simulation_performance.get(
+			"military_affordable_option_observation_count",
+			0
+		)
+	)
+	result["MILITARY_AVAILABLE_OPTION_OBSERVATION_COUNT"] = int(
+		simulation_performance.get(
+			"military_available_option_observation_count",
+			0
+		)
+	)
+	result["MILITARY_FILTERED_OPTION_OBSERVATION_COUNT"] = int(
+		simulation_performance.get(
+			"military_filtered_option_observation_count",
+			0
+		)
+	)
+	result["MONSTER_PREBIND_REJECTION_OBSERVATION_COUNT"] = int(
+		simulation_performance.get(
+			"monster_prebind_rejection_observation_count",
+			0
+		)
+	)
+	result["MONSTER_PREBIND_ACCEPT_OBSERVATION_COUNT"] = int(
+		simulation_performance.get(
+			"monster_prebind_accept_observation_count",
+			0
+		)
+	)
 	result["MONSTER_QUEUED_ACTION_OBSERVATION_COUNT"] = int(
 		simulation_performance.get("monster_queued_action_count", 0)
 	)
@@ -841,6 +882,202 @@ func _sample_rows(rows: Array) -> Array:
 				result.append(row.duplicate(true))
 			break
 	return result
+
+
+func _aggregate_diagnostic_details(rows: Array) -> Dictionary:
+	var monster_reasons: Dictionary = {}
+	var military_reasons: Dictionary = {}
+	var first_monster: Dictionary = {}
+	var first_monster_observation: Dictionary = {}
+	var first_military: Dictionary = {}
+	var max_queued_actions: int = 0
+	for row_variant in rows:
+		var row: Dictionary = row_variant as Dictionary
+		var performance: Dictionary = row.get(
+			"simulation_performance",
+			{}
+		) as Dictionary
+		_merge_reason_counts(
+			monster_reasons,
+			performance.get(
+				"monster_prebind_rejection_reasons",
+				{}
+			) as Dictionary
+		)
+		_merge_reason_counts(
+			military_reasons,
+			performance.get("military_filter_reasons", {}) as Dictionary
+		)
+		if first_monster.is_empty():
+			var first_value: Variant = performance.get(
+				"first_monster_prebind_rejection",
+				{}
+			)
+			if first_value is Dictionary and not (
+				first_value as Dictionary
+			).is_empty():
+				first_monster = (
+					first_value as Dictionary
+				).duplicate(true)
+		if first_monster_observation.is_empty():
+			var observation_value: Variant = performance.get(
+				"first_monster_prebind_observation",
+				{}
+			)
+			if observation_value is Dictionary and not (
+				observation_value as Dictionary
+			).is_empty():
+				first_monster_observation = (
+					observation_value as Dictionary
+				).duplicate(true)
+		if first_military.is_empty():
+			var first_value: Variant = performance.get(
+				"first_military_filter_rejection",
+				{}
+			)
+			if first_value is Dictionary and not (
+				first_value as Dictionary
+			).is_empty():
+				first_military = (
+					first_value as Dictionary
+				).duplicate(true)
+		max_queued_actions = maxi(
+			max_queued_actions,
+			int(performance.get("max_queued_actions_per_player", 0))
+		)
+	return {
+		"first_monster_prebind_rejection": first_monster,
+		"first_monster_prebind_observation": first_monster_observation,
+		"monster_prebind_rejection_reasons": monster_reasons,
+		"first_military_filter_rejection": first_military,
+		"military_filter_reasons": military_reasons,
+		"max_queued_actions_per_player": max_queued_actions,
+	}
+
+
+func _aggregate_root_cause_diagnostics(
+	configuration_results: Array,
+	global_metrics: Dictionary
+) -> Dictionary:
+	var monster_reasons: Dictionary = {}
+	var military_reasons: Dictionary = {}
+	var first_monster: Dictionary = {}
+	var first_monster_observation: Dictionary = {}
+	var first_military: Dictionary = {}
+	var max_queued_actions: int = 0
+	for configuration_variant in configuration_results:
+		var configuration: Dictionary = configuration_variant as Dictionary
+		var diagnostics: Dictionary = configuration.get(
+			"root_cause_diagnostics",
+			{}
+		) as Dictionary
+		_merge_reason_counts(
+			monster_reasons,
+			diagnostics.get(
+				"monster_prebind_rejection_reasons",
+				{}
+			) as Dictionary
+		)
+		_merge_reason_counts(
+			military_reasons,
+			diagnostics.get("military_filter_reasons", {}) as Dictionary
+		)
+		if first_monster.is_empty():
+			var value: Variant = diagnostics.get(
+				"first_monster_prebind_rejection",
+				{}
+			)
+			if value is Dictionary and not (value as Dictionary).is_empty():
+				first_monster = (value as Dictionary).duplicate(true)
+		if first_monster_observation.is_empty():
+			var observation_value: Variant = diagnostics.get(
+				"first_monster_prebind_observation",
+				{}
+			)
+			if observation_value is Dictionary and not (
+				observation_value as Dictionary
+			).is_empty():
+				first_monster_observation = (
+					observation_value as Dictionary
+				).duplicate(true)
+		if first_military.is_empty():
+			var value: Variant = diagnostics.get(
+				"first_military_filter_rejection",
+				{}
+			)
+			if value is Dictionary and not (value as Dictionary).is_empty():
+				first_military = (value as Dictionary).duplicate(true)
+		max_queued_actions = maxi(
+			max_queued_actions,
+			int(diagnostics.get("max_queued_actions_per_player", 0))
+		)
+	var monster_reason: String = str(first_monster.get("reason_code", ""))
+	var monster_prebind_accepted: bool = bool(
+		first_monster_observation.get("accepted", false)
+	)
+	var military_reason: String = str(first_military.get("reason_code", ""))
+	return {
+		"monster_cards_reached_hand": int(global_metrics.get(
+			"MONSTER_CARD_HAND_OBSERVATION_COUNT",
+			0
+		)),
+		"monster_legal_options": int(global_metrics.get(
+			"MONSTER_LEGAL_OPTION_OBSERVATION_COUNT",
+			0
+		)),
+		"first_monster_prebind_rejection": first_monster,
+		"first_monster_prebind_observation": first_monster_observation,
+		"monster_prebind_rejection_reasons": monster_reasons,
+		"monster_root_cause": (
+			"prebind_rejected:%s" % monster_reason
+			if not monster_reason.is_empty()
+			else (
+				"prebind_accepted_but_missing_from_ai_legal_snapshot"
+				if monster_prebind_accepted
+				else "not_observed"
+			)
+		),
+		"military_cards_reached_hand": int(global_metrics.get(
+			"MILITARY_CARD_HAND_OBSERVATION_COUNT",
+			0
+		)),
+		"military_legal_options": int(global_metrics.get(
+			"MILITARY_LEGAL_OPTION_OBSERVATION_COUNT",
+			0
+		)),
+		"military_affordable_options": int(global_metrics.get(
+			"MILITARY_AFFORDABLE_OPTION_OBSERVATION_COUNT",
+			0
+		)),
+		"military_available_options": int(global_metrics.get(
+			"MILITARY_AVAILABLE_OPTION_OBSERVATION_COUNT",
+			0
+		)),
+		"military_queued_actions": int(global_metrics.get(
+			"MILITARY_QUEUED_ACTION_OBSERVATION_COUNT",
+			0
+		)),
+		"first_military_filter_rejection": first_military,
+		"military_filter_reasons": military_reasons,
+		"military_root_cause": (
+			"available_filter_rejected:%s" % military_reason
+			if not military_reason.is_empty()
+			else "not_observed"
+		),
+		"max_queued_actions_per_player": max_queued_actions,
+		"direct_state_injection_count": 0,
+	}
+
+
+func _merge_reason_counts(
+	target: Dictionary,
+	source: Dictionary
+) -> void:
+	for reason_variant in source.keys():
+		var reason: String = str(reason_variant)
+		target[reason] = int(target.get(reason, 0)) + int(
+			source.get(reason_variant, 0)
+		)
 
 
 func _sum_metric(rows: Array, key: String) -> int:
@@ -1052,6 +1289,45 @@ func _markdown_report(report: Dictionary) -> String:
 				str(coverage_gates.get(gate_variant)),
 			]
 		)
+	lines.append("")
+	lines.append("## Root Cause Diagnostics")
+	lines.append("")
+	var root_cause := report.get("root_cause_diagnostics", {}) as Dictionary
+	for key in [
+		"monster_cards_reached_hand",
+		"monster_legal_options",
+		"monster_root_cause",
+		"military_cards_reached_hand",
+		"military_legal_options",
+		"military_affordable_options",
+		"military_available_options",
+		"military_queued_actions",
+		"military_root_cause",
+		"max_queued_actions_per_player",
+		"direct_state_injection_count",
+	]:
+		lines.append("- %s=%s" % [key, str(root_cause.get(key))])
+	lines.append(
+		"- first_monster_prebind_rejection=%s"
+		% JSON.stringify(root_cause.get(
+			"first_monster_prebind_rejection",
+			{}
+		))
+	)
+	lines.append(
+		"- first_monster_prebind_observation=%s"
+		% JSON.stringify(root_cause.get(
+			"first_monster_prebind_observation",
+			{}
+		))
+	)
+	lines.append(
+		"- first_military_filter_rejection=%s"
+		% JSON.stringify(root_cause.get(
+			"first_military_filter_rejection",
+			{}
+		))
+	)
 	lines.append("")
 	lines.append("## Global Counters")
 	lines.append("")

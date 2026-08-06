@@ -20,6 +20,7 @@ var _simulation_phase_process_counts: Dictionary = {}
 var _simulation_cache_actor_id: String = ""
 var _simulation_legal_cache_valid: bool = false
 var _simulation_legal_cache: Array = []
+var _simulation_last_legal_actions_by_actor: Dictionary = {}
 var _simulation_card_cache: Dictionary = {}
 var _simulation_card_last_zone: Dictionary = {}
 var _simulation_monster_discard_ids: Dictionary = {}
@@ -30,6 +31,16 @@ var _simulation_monster_discard_to_hand_count: int = 0
 var _simulation_military_discard_to_hand_count: int = 0
 var _simulation_monster_legal_option_count: int = 0
 var _simulation_military_legal_option_count: int = 0
+var _simulation_military_affordable_option_count: int = 0
+var _simulation_military_available_option_count: int = 0
+var _simulation_military_filtered_option_count: int = 0
+var _simulation_monster_prebind_rejection_count: int = 0
+var _simulation_monster_prebind_accept_count: int = 0
+var _simulation_monster_prebind_rejection_reasons: Dictionary = {}
+var _simulation_military_filter_reasons: Dictionary = {}
+var _simulation_first_monster_prebind_rejection: Dictionary = {}
+var _simulation_first_monster_prebind_observation: Dictionary = {}
+var _simulation_first_military_filter_rejection: Dictionary = {}
 var _simulation_monster_queued_action_ids: Dictionary = {}
 var _simulation_military_queued_action_ids: Dictionary = {}
 var _simulation_max_queued_actions_per_player: int = 0
@@ -209,11 +220,20 @@ func legal_card_actions(actor_id: String) -> Array:
 	_simulation_legal_card_actions_call_count += 1
 	if actor_id == _simulation_cache_actor_id and _simulation_legal_cache_valid:
 		_simulation_legal_card_actions_cache_hit_count += 1
-		return _simulation_legal_cache.duplicate(true)
+		var cached: Array = _simulation_legal_cache.duplicate(true)
+		_simulation_last_legal_actions_by_actor[actor_id] = cached.duplicate(
+			true
+		)
+		_observe_monster_hand_without_legal_options(actor_id, cached)
+		return cached
 	var result: Array = super.legal_card_actions(actor_id)
+	_simulation_last_legal_actions_by_actor[actor_id] = result.duplicate(
+		true
+	)
 	if actor_id == _simulation_cache_actor_id:
 		_simulation_legal_cache = result.duplicate(true)
 		_simulation_legal_cache_valid = true
+	_observe_monster_hand_without_legal_options(actor_id, result)
 	return result
 
 
@@ -233,6 +253,23 @@ func _auto_legal_actions(actor_id: String) -> Array:
 	return result
 
 
+func _monster_card_options(actor_id: String, card: Dictionary) -> Array:
+	var result: Array = super._monster_card_options(actor_id, card)
+	if result.is_empty():
+		_observe_first_monster_prebind_rejection(actor_id, card)
+	return result
+
+
+func _auto_available_actions(
+	actor_id: String,
+	queue: Array,
+	legal: Array
+) -> Array:
+	var result: Array = super._auto_available_actions(actor_id, queue, legal)
+	_observe_military_available_filter(actor_id, queue, legal, result)
+	return result
+
+
 func _auto_queue_and_lock(actor_id: String) -> Dictionary:
 	_simulation_cache_actor_id = actor_id
 	_simulation_legal_cache_valid = false
@@ -244,6 +281,23 @@ func _auto_queue_and_lock(actor_id: String) -> Dictionary:
 	_simulation_legal_cache_valid = false
 	_simulation_legal_cache = []
 	_simulation_card_cache = {}
+	return result
+
+
+func acquire_track_item(
+	actor_id: String,
+	source_instance_id: String
+) -> Dictionary:
+	var result: Dictionary = super.acquire_track_item(
+		actor_id,
+		source_instance_id
+	)
+	# Purchase mutates only the owner's DBG discard; invalidate any pre-purchase
+	# observation captured while the queue scope was being entered.
+	if actor_id == _simulation_cache_actor_id:
+		_simulation_legal_cache_valid = false
+		_simulation_legal_cache = []
+		_simulation_card_cache = {}
 	return result
 
 
@@ -321,7 +375,345 @@ func _observe_dbg_card_lifecycle(actor_id: String) -> void:
 	var projection: Dictionary = super._dbg_projection(actor_id)
 	var facts: Dictionary = projection.get("facts", {}) as Dictionary
 	_observe_card_zone(actor_id, "discard", facts.get("discard", []) as Array)
-	_observe_card_zone(actor_id, "hand", facts.get("hand", []) as Array)
+	var hand: Array = facts.get("hand", []) as Array
+	_observe_card_zone(actor_id, "hand", hand)
+	_observe_monster_hand_without_legal_options(
+		actor_id,
+		_simulation_last_legal_actions_by_actor.get(actor_id, []) as Array
+	)
+
+
+func _observe_first_monster_prebind_rejection(
+	actor_id: String,
+	card: Dictionary
+) -> void:
+	var definition_id: String = str(card.get("definition_id", ""))
+	var definition: Dictionary = CombatCardDefinitions.definition(definition_id)
+	if definition.is_empty():
+		_record_monster_prebind_rejection({
+			"reason_code": "monster_card_definition_unknown",
+			"monster_card_mode": "DEPLOY_NEW",
+			"definition_known": false,
+			"runtime_region_count": _runtime_region_ids().size(),
+			"combat_debug_unchanged": true,
+		})
+		return
+	var regions: Array[String] = _runtime_region_ids()
+	if regions.is_empty():
+		_record_monster_prebind_rejection({
+			"reason_code": "monster_deploy_region_invalid",
+			"monster_card_mode": "DEPLOY_NEW",
+			"definition_known": true,
+			"runtime_region_count": 0,
+			"combat_debug_unchanged": true,
+		})
+		return
+	var before: Dictionary = _combat_owner.call("debug_snapshot") as Dictionary
+	var request := {
+		"request_id": "simulation.diagnostic.%s" % str(
+			card.get("instance_id", "")
+		).sha256_text().substr(0, 12),
+		"card_instance_id": str(card.get("instance_id", "")),
+		"card_definition_id": definition_id,
+		"owner_player_id": actor_id,
+		"monster_card_mode": "DEPLOY_NEW",
+		"target_region_id": regions[0],
+		"target_source_instance_id": "",
+	}
+	var prebound: Dictionary = _combat_owner.call(
+		"prebind_monster_card_action",
+		request
+	) as Dictionary
+	var after: Dictionary = _combat_owner.call("debug_snapshot") as Dictionary
+	var observation := {
+		"accepted": bool(prebound.get("accepted", false)),
+		"reason_code": str(prebound.get(
+			"reason_code",
+			"monster_prebind_result_without_reason"
+		)),
+		"monster_card_mode": "DEPLOY_NEW",
+		"definition_known": true,
+		"card_rank": int(definition.get("level", 0)),
+		"runtime_region_count": regions.size(),
+		"controlled_source_count": _owned_active_monster_count(actor_id),
+		"combat_debug_unchanged": _same_combat_debug_identity(before, after),
+	}
+	if _simulation_first_monster_prebind_observation.is_empty():
+		_simulation_first_monster_prebind_observation = observation.duplicate(
+			true
+		)
+	if bool(prebound.get("accepted", false)):
+		_simulation_monster_prebind_accept_count += 1
+		return
+	_record_monster_prebind_rejection(observation)
+
+
+func _observe_monster_hand_without_legal_options(
+	actor_id: String,
+	legal: Array
+) -> void:
+	var projection: Dictionary = super._dbg_projection(actor_id)
+	var facts: Dictionary = projection.get("facts", {}) as Dictionary
+	for card_variant in facts.get("hand", []) as Array:
+		if not (card_variant is Dictionary):
+			continue
+		var card: Dictionary = card_variant as Dictionary
+		if CombatCardDefinitions.card_domain(
+			str(card.get("card_type", ""))
+		) != "monster":
+			continue
+		var has_option: bool = false
+		for option_variant in legal:
+			if not (option_variant is Dictionary):
+				continue
+			var option: Dictionary = option_variant as Dictionary
+			if (
+				str(option.get("action_domain", "")) == "monster"
+				and str(option.get("card_instance_id", "")) == str(
+					card.get("instance_id", "")
+				)
+			):
+				has_option = true
+				break
+		if not has_option:
+			_observe_first_monster_prebind_rejection(actor_id, card)
+
+
+func _record_monster_prebind_rejection(observation: Dictionary) -> void:
+	var reason: String = str(observation.get("reason_code", ""))
+	_simulation_monster_prebind_rejection_count += 1
+	_simulation_monster_prebind_rejection_reasons[reason] = int(
+		_simulation_monster_prebind_rejection_reasons.get(reason, 0)
+	) + 1
+	if _simulation_first_monster_prebind_rejection.is_empty():
+		_simulation_first_monster_prebind_rejection = observation.duplicate(true)
+
+
+func _same_combat_debug_identity(
+	before: Dictionary,
+	after: Dictionary
+) -> bool:
+	for key in [
+		"revision",
+		"monster_source_count",
+		"combat_receipt_count",
+		"runtime_error_count",
+	]:
+		if before.get(key) != after.get(key):
+			return false
+	return true
+
+
+func _owned_active_monster_count(actor_id: String) -> int:
+	var count: int = 0
+	var monsters_value: Variant = _combat_owner.call("public_monsters")
+	if not (monsters_value is Array):
+		return 0
+	for monster_variant in monsters_value as Array:
+		if not (monster_variant is Dictionary):
+			continue
+		var monster: Dictionary = monster_variant as Dictionary
+		if (
+			str(monster.get("owner_player_id", "")) == actor_id
+			and str(monster.get("status", "")) not in [
+				"destroyed",
+				"withdrawn",
+			]
+		):
+			count += 1
+	return count
+
+
+func _observe_military_available_filter(
+	actor_id: String,
+	queue: Array,
+	legal: Array,
+	available_options: Array
+) -> void:
+	var available_ids: Dictionary = {}
+	for option_variant in available_options:
+		if not (option_variant is Dictionary):
+			continue
+		var option: Dictionary = option_variant as Dictionary
+		available_ids[_simulation_option_identity(option)] = true
+	var queued_card_ids: Dictionary = {}
+	var queued_slot_ids: Dictionary = {}
+	for binding_variant in queue:
+		if not (binding_variant is Dictionary):
+			continue
+		var binding: Dictionary = binding_variant as Dictionary
+		queued_card_ids[str(binding.get("card_instance_id", ""))] = true
+		queued_slot_ids[str(binding.get("target_slot_id", ""))] = true
+	for option_variant in legal:
+		if not (option_variant is Dictionary):
+			continue
+		var option: Dictionary = option_variant as Dictionary
+		if str(option.get("action_domain", "")) != "military":
+			continue
+		var affordability: Dictionary = _military_affordability_snapshot(
+			actor_id,
+			queue,
+			option
+		)
+		if bool(affordability.get("affordable", false)):
+			_simulation_military_affordable_option_count += 1
+		var option_available: bool = available_ids.has(
+			_simulation_option_identity(option)
+		)
+		if option_available:
+			_simulation_military_available_option_count += 1
+			continue
+		_simulation_military_filtered_option_count += 1
+		var reason: String = _military_filter_reason(
+			option,
+			queued_card_ids,
+			queued_slot_ids,
+			affordability
+		)
+		_simulation_military_filter_reasons[reason] = int(
+			_simulation_military_filter_reasons.get(reason, 0)
+		) + 1
+		if _simulation_first_military_filter_rejection.is_empty():
+			_simulation_first_military_filter_rejection = {
+				"reason_code": reason,
+				"task_kind": str(option.get("task_kind", "")),
+				"asset_color": str(affordability.get("asset_color", "")),
+				"available_asset_count": int(
+					affordability.get("available_asset_count", 0)
+				),
+				"queued_reserved_asset_count": int(
+					affordability.get("queued_reserved_asset_count", 0)
+				),
+				"candidate_asset_cost": int(
+					affordability.get("candidate_asset_cost", 0)
+				),
+				"required_asset_count": int(
+					affordability.get("required_asset_count", 0)
+				),
+				"asset_shortage_count": int(
+					affordability.get("asset_shortage_count", 0)
+				),
+				"target_present": _military_target_present(option),
+				"target_slot_present": not str(
+					option.get("target_slot_id", "")
+				).is_empty(),
+				"target_slot_conflict": queued_slot_ids.has(str(
+					option.get("target_slot_id", "")
+				)),
+				"queue_size": queue.size(),
+				"batch_number": _batch_number,
+			}
+
+
+func _military_affordability_snapshot(
+	actor_id: String,
+	queue: Array,
+	option: Dictionary
+) -> Dictionary:
+	var players: Dictionary = _asset_state.get("players", {}) as Dictionary
+	var player: Dictionary = players.get(actor_id, {}) as Dictionary
+	var assets: Dictionary = player.get("assets", {}) as Dictionary
+	var candidate: Dictionary = _card_in_hand(
+		actor_id,
+		str(option.get("card_instance_id", ""))
+	)
+	if candidate.is_empty():
+		return {
+			"affordable": false,
+			"reason_code": "military_card_not_in_hand",
+			"asset_color": "",
+			"available_asset_count": 0,
+			"queued_reserved_asset_count": 0,
+			"candidate_asset_cost": 0,
+			"required_asset_count": 0,
+			"asset_shortage_count": 0,
+		}
+	var color: String = str(candidate.get("primary_color", ""))
+	if color not in COLORS:
+		return {
+			"affordable": false,
+			"reason_code": "military_asset_color_invalid",
+			"asset_color": color,
+			"available_asset_count": 0,
+			"queued_reserved_asset_count": 0,
+			"candidate_asset_cost": int(
+				candidate.get("primary_asset_cost", 0)
+			),
+			"required_asset_count": 0,
+			"asset_shortage_count": 0,
+		}
+	var reserved: int = 0
+	for binding_variant in queue:
+		if not (binding_variant is Dictionary):
+			continue
+		var binding: Dictionary = binding_variant as Dictionary
+		var queued_card: Dictionary = _card_in_hand(
+			actor_id,
+			str(binding.get("card_instance_id", ""))
+		)
+		if str(queued_card.get("primary_color", "")) == color:
+			reserved += int(queued_card.get("primary_asset_cost", 0))
+	var candidate_cost: int = int(candidate.get("primary_asset_cost", 0))
+	var required: int = reserved + candidate_cost
+	var available: int = int(assets.get(color, 0))
+	return {
+		"affordable": required <= available,
+		"reason_code": (
+			""
+			if required <= available
+			else "military_asset_color_insufficient"
+		),
+		"asset_color": color,
+		"available_asset_count": available,
+		"queued_reserved_asset_count": reserved,
+		"candidate_asset_cost": candidate_cost,
+		"required_asset_count": required,
+		"asset_shortage_count": maxi(0, required - available),
+	}
+
+
+func _military_filter_reason(
+	option: Dictionary,
+	queued_card_ids: Dictionary,
+	queued_slot_ids: Dictionary,
+	affordability: Dictionary
+) -> String:
+	if queued_card_ids.has(str(option.get("card_instance_id", ""))):
+		return "military_card_already_queued"
+	var slot_id: String = str(option.get("target_slot_id", ""))
+	if slot_id.is_empty():
+		return "military_target_slot_missing"
+	if queued_slot_ids.has(slot_id):
+		return "military_target_slot_conflict"
+	if not _military_target_present(option):
+		return "military_target_missing"
+	var affordability_reason: String = str(
+		affordability.get("reason_code", "")
+	)
+	if not affordability_reason.is_empty():
+		return affordability_reason
+	return "military_filtered_unclassified"
+
+
+func _military_target_present(option: Dictionary) -> bool:
+	var task: String = str(option.get("task_kind", ""))
+	if task == "assault_region":
+		return not str(option.get("target_region_id", "")).is_empty()
+	if task == "assault_monster":
+		return not str(
+			option.get("target_monster_source_instance_id", "")
+		).is_empty()
+	return false
+
+
+func _simulation_option_identity(option: Dictionary) -> String:
+	var option_id: String = str(option.get("option_id", ""))
+	if not option_id.is_empty():
+		return option_id
+	return "%s|%s" % [
+		str(option.get("card_instance_id", "")),
+		str(option.get("target_slot_id", "")),
+	]
 
 
 func _observe_card_zone(
@@ -352,6 +744,11 @@ func _observe_card_zone(
 				_simulation_monster_hand_ids[card_key] = true
 				if previous_zone == "discard":
 					_simulation_monster_discard_to_hand_count += 1
+				if _simulation_first_monster_prebind_rejection.is_empty():
+					_observe_first_monster_prebind_rejection(
+						actor_id,
+						card
+					)
 		else:
 			if zone_name == "discard":
 				_simulation_military_discard_ids[card_key] = true
@@ -463,6 +860,36 @@ func simulation_performance_snapshot() -> Dictionary:
 		),
 		"military_legal_option_observation_count": (
 			_simulation_military_legal_option_count
+		),
+		"military_affordable_option_observation_count": (
+			_simulation_military_affordable_option_count
+		),
+		"military_available_option_observation_count": (
+			_simulation_military_available_option_count
+		),
+		"military_filtered_option_observation_count": (
+			_simulation_military_filtered_option_count
+		),
+		"monster_prebind_rejection_observation_count": (
+			_simulation_monster_prebind_rejection_count
+		),
+		"monster_prebind_accept_observation_count": (
+			_simulation_monster_prebind_accept_count
+		),
+		"monster_prebind_rejection_reasons": (
+			_simulation_monster_prebind_rejection_reasons.duplicate(true)
+		),
+		"military_filter_reasons": (
+			_simulation_military_filter_reasons.duplicate(true)
+		),
+		"first_monster_prebind_rejection": (
+			_simulation_first_monster_prebind_rejection.duplicate(true)
+		),
+		"first_monster_prebind_observation": (
+			_simulation_first_monster_prebind_observation.duplicate(true)
+		),
+		"first_military_filter_rejection": (
+			_simulation_first_military_filter_rejection.duplicate(true)
 		),
 		"monster_queued_action_count": (
 			_simulation_monster_queued_action_ids.size()

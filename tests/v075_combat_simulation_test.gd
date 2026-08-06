@@ -50,6 +50,9 @@ func _run() -> void:
 		)
 		quit(0)
 		return
+	if _has_argument("--diagnostic-monster"):
+		_run_monster_diagnostic()
+		return
 	var matches_per_configuration := _argument_int(
 		"--matches-per-configuration",
 		1
@@ -70,6 +73,31 @@ func _run() -> void:
 		_test_deterministic_replay(simulator, step_limit)
 	_print_summary(report)
 	_finish()
+
+
+func _run_monster_diagnostic() -> void:
+	var simulator := SIMULATOR.new()
+	var configuration_value: Variant = simulator.configurations()[1]
+	var configuration: Dictionary = {}
+	if configuration_value is Dictionary:
+		configuration = (configuration_value as Dictionary).duplicate(true)
+	var row: Dictionary = simulator.run_match(
+		configuration,
+		int(simulator.seed_for(1, 0)),
+		512
+	)
+	print(
+		"V075_MONSTER_DIAGNOSTIC_RESULT|%s"
+		% JSON.stringify({
+			"settled": bool(row.get("settled", false)),
+			"metrics": row.get("metrics", {}),
+			"simulation_performance": row.get(
+				"simulation_performance",
+				{}
+			),
+		})
+	)
+	quit(0)
 
 
 func _test_report_contract(
@@ -202,6 +230,63 @@ func _test_report_contract(
 		coverage.get("COMBAT_REQUIRED_OBSERVATIONS_GREEN") == true,
 		"all required combat lifecycle observations are green"
 	)
+	var root_cause := report.get(
+		"root_cause_diagnostics",
+		{}
+	) as Dictionary
+	_expect(
+		int(root_cause.get("direct_state_injection_count", -1)) == 0,
+		"root-cause diagnostics are read-only"
+	)
+	if (
+		int(global_metrics.get("MONSTER_CARD_HAND_OBSERVATION_COUNT", 0)) > 0
+		and int(global_metrics.get(
+			"MONSTER_LEGAL_OPTION_OBSERVATION_COUNT",
+			0
+		)) == 0
+	):
+		var monster_rejection := root_cause.get(
+			"first_monster_prebind_rejection",
+			{}
+		) as Dictionary
+		var monster_observation := root_cause.get(
+			"first_monster_prebind_observation",
+			{}
+		) as Dictionary
+		_expect(
+			(
+				not str(monster_rejection.get("reason_code", "")).is_empty()
+				and bool(monster_rejection.get(
+					"combat_debug_unchanged",
+					false
+				))
+			) or (
+				bool(monster_observation.get("accepted", false))
+				and bool(monster_observation.get(
+					"combat_debug_unchanged",
+					false
+				))
+			),
+			"monster legal starvation records a non-mutating prebind outcome"
+		)
+	if (
+		int(global_metrics.get("MILITARY_LEGAL_OPTION_OBSERVATION_COUNT", 0)) > 0
+		and int(global_metrics.get(
+			"MILITARY_QUEUED_ACTION_OBSERVATION_COUNT",
+			0
+		)) == 0
+	):
+		var military_rejection := root_cause.get(
+			"first_military_filter_rejection",
+			{}
+		) as Dictionary
+		_expect(
+			not str(military_rejection.get("reason_code", "")).is_empty()
+				and military_rejection.has("asset_color")
+				and military_rejection.has("target_present")
+				and military_rejection.has("target_slot_present"),
+			"military queue starvation records asset, target, and slot reason"
+		)
 	if matches_per_configuration == 400:
 		_expect(
 			int(report.get("total_match_count", 0)) == 2000
