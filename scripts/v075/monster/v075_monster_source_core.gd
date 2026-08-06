@@ -14,6 +14,12 @@ const SOURCE_CONTRACT_ID := "v075.monster_source.v1"
 const ACTION_CONTRACT_ID := "v075.monster_card_prebound_action.v1"
 const RECEIPT_CONTRACT_ID := "v075.monster_card_resolution_receipt.v1"
 const CHECKPOINT_CONTRACT_ID := "v075.monster_source_checkpoint.v1"
+const TRANSITION_OPERATION_CONTRACT_ID := (
+	"v075.monster_source_runtime_transition_operation.v1"
+)
+const TRANSITION_RECEIPT_CONTRACT_ID := (
+	"v075.monster_source_runtime_transition_receipt.v1"
+)
 const BASE_MONSTER_CONTROL_CAPACITY_PER_PLAYER := (
 	CapacityPort.BASE_MONSTER_CONTROL_CAPACITY_PER_PLAYER
 )
@@ -24,6 +30,24 @@ const MODE_DEPLOY_NEW := "DEPLOY_NEW"
 const MODE_REFRESH_EXISTING := "REFRESH_EXISTING"
 const MODE_UPGRADE_EXISTING := "UPGRADE_EXISTING"
 const MODE_REPLACE_EXISTING := "REPLACE_EXISTING"
+const TRANSITION_MOVE_REGION := "MOVE_REGION"
+const TRANSITION_DETECTION_RANGE := "DETECTION_RANGE"
+const TRANSITION_COMBAT_DAMAGE := "COMBAT_DAMAGE"
+const TRANSITION_DESTROY_SOURCE := "DESTROY_SOURCE"
+const TRANSITION_KINDS := [
+	TRANSITION_MOVE_REGION,
+	TRANSITION_DETECTION_RANGE,
+	TRANSITION_COMBAT_DAMAGE,
+	TRANSITION_DESTROY_SOURCE,
+]
+const DETECTION_PREFERRED_COLOR_HIT := "PREFERRED_COLOR_HIT"
+const DETECTION_NO_TARGET_GROWTH := "NO_TARGET_GROWTH"
+const DETECTION_HUNGRY_PLAN := "HUNGRY_PLAN"
+const DETECTION_TRANSITION_KINDS := [
+	DETECTION_PREFERRED_COLOR_HIT,
+	DETECTION_NO_TARGET_GROWTH,
+	DETECTION_HUNGRY_PLAN,
+]
 const CARD_MODES := [
 	MODE_DEPLOY_NEW,
 	MODE_REFRESH_EXISTING,
@@ -177,6 +201,57 @@ const RECEIPT_FIELDS := [
 	"exact_once",
 	"receipt_fingerprint",
 ]
+const TRANSITION_OPERATION_FIELDS := [
+	"schema_version",
+	"contract_id",
+	"ruleset_id",
+	"operation_id",
+	"operation_kind",
+	"source_instance_id",
+	"expected_source_generation",
+	"destination_region_id",
+	"detection_transition_kind",
+	"full_map_detection_range_hops",
+	"damage_amount",
+	"destroy_reason_id",
+	"operation_fingerprint",
+]
+const TRANSITION_RECEIPT_FIELDS := [
+	"schema_version",
+	"contract_id",
+	"ruleset_id",
+	"receipt_id",
+	"operation_id",
+	"operation_fingerprint",
+	"operation_kind",
+	"source_instance_id",
+	"source_generation",
+	"committed",
+	"state_revision",
+	"reason_code",
+	"previous_region_id",
+	"current_region_id",
+	"previous_detection_range_hops",
+	"current_detection_range_hops",
+	"detection_transition_kind",
+	"hungry_after_transition",
+	"destroy_reason_id",
+	"incoming_damage",
+	"armor_before",
+	"armor_absorbed",
+	"armor_after",
+	"hp_before",
+	"hp_damage",
+	"hp_after",
+	"damage_revision_before",
+	"damage_revision_after",
+	"status_before",
+	"status_after",
+	"animation_authority_count",
+	"frame_position_mutation_count",
+	"exact_once",
+	"receipt_fingerprint",
+]
 const STATE_FIELDS := [
 	"schema_version",
 	"contract_id",
@@ -188,6 +263,8 @@ const STATE_FIELDS := [
 	"next_source_sequence",
 	"processed_cards",
 	"receipt_journal",
+	"processed_transitions",
+	"transition_receipt_journal",
 	"state_fingerprint",
 ]
 const CHECKPOINT_FIELDS := [
@@ -257,6 +334,8 @@ static func new_state(
 		"next_source_sequence": 1,
 		"processed_cards": {},
 		"receipt_journal": [],
+		"processed_transitions": {},
+		"transition_receipt_journal": [],
 	}
 	while sources.has(_source_id_for_sequence(
 		int(unsealed.get("next_source_sequence", 1))
@@ -645,6 +724,269 @@ static func resolve_prebound_card(
 	)
 
 
+static func build_movement_transition_operation(
+	operation_id: String,
+	source_instance_id: String,
+	expected_source_generation: int,
+	destination_region_id: String
+) -> Dictionary:
+	return _build_transition_operation(
+		operation_id,
+		TRANSITION_MOVE_REGION,
+		source_instance_id,
+		expected_source_generation,
+		destination_region_id,
+		null,
+		null,
+		null,
+		null
+	)
+
+
+static func build_detection_range_transition_operation(
+	operation_id: String,
+	source_instance_id: String,
+	expected_source_generation: int,
+	detection_transition_kind: String,
+	full_map_detection_range_hops: int = 0
+) -> Dictionary:
+	return _build_transition_operation(
+		operation_id,
+		TRANSITION_DETECTION_RANGE,
+		source_instance_id,
+		expected_source_generation,
+		null,
+		detection_transition_kind,
+		(
+			null
+			if detection_transition_kind
+			== DETECTION_PREFERRED_COLOR_HIT
+			else full_map_detection_range_hops
+		),
+		null,
+		null
+	)
+
+
+static func build_combat_damage_transition_operation(
+	operation_id: String,
+	source_instance_id: String,
+	expected_source_generation: int,
+	damage_amount: int
+) -> Dictionary:
+	return _build_transition_operation(
+		operation_id,
+		TRANSITION_COMBAT_DAMAGE,
+		source_instance_id,
+		expected_source_generation,
+		null,
+		null,
+		null,
+		damage_amount,
+		null
+	)
+
+
+static func build_destroy_transition_operation(
+	operation_id: String,
+	source_instance_id: String,
+	expected_source_generation: int,
+	destroy_reason_id: String
+) -> Dictionary:
+	return _build_transition_operation(
+		operation_id,
+		TRANSITION_DESTROY_SOURCE,
+		source_instance_id,
+		expected_source_generation,
+		null,
+		null,
+		null,
+		null,
+		destroy_reason_id
+	)
+
+
+static func commit_authoritative_movement(
+	state: Dictionary,
+	operation_id: String,
+	source_instance_id: String,
+	expected_source_generation: int,
+	destination_region_id: String
+) -> Dictionary:
+	var operation := build_movement_transition_operation(
+		operation_id,
+		source_instance_id,
+		expected_source_generation,
+		destination_region_id
+	)
+	if operation.is_empty():
+		return _failure(state, "monster_movement_operation_invalid")
+	return commit_runtime_transition(state, operation)
+
+
+static func commit_detection_range_transition(
+	state: Dictionary,
+	operation_id: String,
+	source_instance_id: String,
+	expected_source_generation: int,
+	detection_transition_kind: String,
+	full_map_detection_range_hops: int = 0
+) -> Dictionary:
+	var operation := build_detection_range_transition_operation(
+		operation_id,
+		source_instance_id,
+		expected_source_generation,
+		detection_transition_kind,
+		full_map_detection_range_hops
+	)
+	if operation.is_empty():
+		return _failure(state, "monster_detection_operation_invalid")
+	return commit_runtime_transition(state, operation)
+
+
+static func commit_combat_damage(
+	state: Dictionary,
+	operation_id: String,
+	source_instance_id: String,
+	expected_source_generation: int,
+	damage_amount: int
+) -> Dictionary:
+	var operation := build_combat_damage_transition_operation(
+		operation_id,
+		source_instance_id,
+		expected_source_generation,
+		damage_amount
+	)
+	if operation.is_empty():
+		return _failure(state, "monster_damage_operation_invalid")
+	return commit_runtime_transition(state, operation)
+
+
+static func commit_destroy_transition(
+	state: Dictionary,
+	operation_id: String,
+	source_instance_id: String,
+	expected_source_generation: int,
+	destroy_reason_id: String
+) -> Dictionary:
+	var operation := build_destroy_transition_operation(
+		operation_id,
+		source_instance_id,
+		expected_source_generation,
+		destroy_reason_id
+	)
+	if operation.is_empty():
+		return _failure(state, "monster_destroy_operation_invalid")
+	return commit_runtime_transition(state, operation)
+
+
+static func commit_runtime_transition(
+	state: Dictionary,
+	operation: Dictionary
+) -> Dictionary:
+	var state_error := _state_error(state)
+	if state_error != "":
+		return _failure(state, state_error)
+	var operation_error := _transition_operation_error(operation)
+	if operation_error != "":
+		return _failure(state, operation_error)
+	var operation_id := str(operation.get("operation_id", ""))
+	var processed := (
+		state.get("processed_transitions", {}) as Dictionary
+	)
+	if processed.has(operation_id):
+		var stored := (
+			processed.get(operation_id, {}) as Dictionary
+		)
+		if (
+			str(stored.get("operation_fingerprint", ""))
+			!= str(operation.get("operation_fingerprint", ""))
+		):
+			return _failure(
+				state,
+				"monster_transition_operation_id_conflict"
+			)
+		return {
+			"accepted": true,
+			"reason_code": (
+				"monster_runtime_transition_idempotent_replay"
+			),
+			"state": state.duplicate(true),
+			"receipt": stored.duplicate(true),
+			"idempotent_replay": true,
+		}
+	var source_id := str(operation.get("source_instance_id", ""))
+	var source := source_snapshot(state, source_id)
+	if source.is_empty():
+		return _failure(state, "monster_transition_source_missing")
+	if (
+		int(operation.get("expected_source_generation", 0))
+		!= int(source.get("source_generation", -1))
+	):
+		return _failure(
+			state,
+			"monster_transition_source_generation_mismatch"
+		)
+	var transition := _apply_runtime_transition(
+		state,
+		operation,
+		source
+	)
+	if not bool(transition.get("accepted", false)):
+		return _failure(
+			state,
+			str(transition.get(
+				"reason_code",
+				"monster_runtime_transition_rejected"
+			))
+		)
+	var next_state := (
+		transition.get("state", {}) as Dictionary
+	).duplicate(true)
+	next_state.erase("state_fingerprint")
+	var next_revision := int(state.get("revision", 0)) + 1
+	next_state["revision"] = next_revision
+	var receipt := _build_transition_receipt(
+		operation,
+		transition.get("effect", {}) as Dictionary,
+		next_revision
+	)
+	if _transition_receipt_error(receipt) != "":
+		return _failure(
+			state,
+			"monster_runtime_transition_receipt_invalid"
+		)
+	var next_processed := (
+		next_state.get(
+			"processed_transitions",
+			{}
+		) as Dictionary
+	)
+	next_processed[operation_id] = receipt.duplicate(true)
+	next_state["processed_transitions"] = next_processed
+	var journal := (
+		next_state.get(
+			"transition_receipt_journal",
+			[]
+		) as Array
+	).duplicate(true)
+	journal.append(receipt.duplicate(true))
+	next_state["transition_receipt_journal"] = journal
+	next_state = _seal(next_state, "state_fingerprint")
+	if _state_error(next_state) != "":
+		return _failure(
+			state,
+			"monster_runtime_transition_state_invalid"
+		)
+	return {
+		"accepted": true,
+		"reason_code": str(receipt.get("reason_code", "")),
+		"state": next_state,
+		"receipt": receipt,
+		"idempotent_replay": false,
+	}
+
+
 static func controlled_sources_for_player(
 	state: Dictionary,
 	player_id: String
@@ -804,7 +1146,516 @@ static func contract_snapshot() -> Dictionary:
 		"ui_owner_count": 0,
 		"presentation_owner_count": 0,
 		"checkpoint_pure_data": true,
+		"runtime_transition_operation_contract_id": (
+			TRANSITION_OPERATION_CONTRACT_ID
+		),
+		"runtime_transition_receipt_contract_id": (
+			TRANSITION_RECEIPT_CONTRACT_ID
+		),
+		"runtime_transition_kinds": TRANSITION_KINDS.duplicate(),
+		"detection_transition_kinds": (
+			DETECTION_TRANSITION_KINDS.duplicate()
+		),
+		"runtime_transition_exact_once": true,
+		"runtime_owner_direct_sealed_state_write_allowed": false,
+		"movement_animation_authority_count": 0,
+		"movement_frame_position_mutation_count": 0,
 	}
+
+
+static func _build_transition_operation(
+	operation_id: String,
+	operation_kind: String,
+	source_instance_id: String,
+	expected_source_generation: int,
+	destination_region_id: Variant,
+	detection_transition_kind: Variant,
+	full_map_detection_range_hops: Variant,
+	damage_amount: Variant,
+	destroy_reason_id: Variant
+) -> Dictionary:
+	var unsealed := {
+		"schema_version": SCHEMA_VERSION,
+		"contract_id": TRANSITION_OPERATION_CONTRACT_ID,
+		"ruleset_id": RULESET_ID,
+		"operation_id": operation_id,
+		"operation_kind": operation_kind,
+		"source_instance_id": source_instance_id,
+		"expected_source_generation": expected_source_generation,
+		"destination_region_id": destination_region_id,
+		"detection_transition_kind": detection_transition_kind,
+		"full_map_detection_range_hops": (
+			full_map_detection_range_hops
+		),
+		"damage_amount": damage_amount,
+		"destroy_reason_id": destroy_reason_id,
+	}
+	var operation := _seal(
+		unsealed,
+		"operation_fingerprint"
+	)
+	return (
+		operation
+		if _transition_operation_error(operation) == ""
+		else {}
+	)
+
+
+static func _apply_runtime_transition(
+	state: Dictionary,
+	operation: Dictionary,
+	source: Dictionary
+) -> Dictionary:
+	match str(operation.get("operation_kind", "")):
+		TRANSITION_MOVE_REGION:
+			return _apply_movement_transition(
+				state,
+				operation,
+				source
+			)
+		TRANSITION_DETECTION_RANGE:
+			return _apply_detection_transition(
+				state,
+				operation,
+				source
+			)
+		TRANSITION_COMBAT_DAMAGE:
+			return _apply_damage_transition(
+				state,
+				operation,
+				source
+			)
+		TRANSITION_DESTROY_SOURCE:
+			return _apply_destroy_transition(
+				state,
+				operation,
+				source
+			)
+	return {
+		"accepted": false,
+		"reason_code": "monster_runtime_transition_kind_unknown",
+	}
+
+
+static func _apply_movement_transition(
+	state: Dictionary,
+	operation: Dictionary,
+	source: Dictionary
+) -> Dictionary:
+	var status := str(source.get("status", ""))
+	if status == "downed":
+		return {
+			"accepted": false,
+			"reason_code": "monster_movement_source_downed",
+		}
+	if status != "active":
+		return {
+			"accepted": false,
+			"reason_code": "monster_movement_source_not_active",
+		}
+	var destination := str(
+		operation.get("destination_region_id", "")
+	)
+	var previous_region := str(source.get("region_id", ""))
+	if destination == previous_region:
+		return {
+			"accepted": false,
+			"reason_code": "monster_movement_destination_unchanged",
+		}
+	var next_source := source.duplicate(true)
+	next_source.erase("source_fingerprint")
+	next_source["region_id"] = destination
+	next_source = _seal(next_source, "source_fingerprint")
+	if _source_error(next_source) != "":
+		return {
+			"accepted": false,
+			"reason_code": "monster_movement_source_commit_invalid",
+		}
+	var effect := _base_transition_effect(source)
+	effect["reason_code"] = "monster_authoritative_movement_committed"
+	effect["current_region_id"] = destination
+	return {
+		"accepted": true,
+		"state": _transition_state_with_source(
+			state,
+			next_source
+		),
+		"effect": effect,
+	}
+
+
+static func _apply_detection_transition(
+	state: Dictionary,
+	operation: Dictionary,
+	source: Dictionary
+) -> Dictionary:
+	var status := str(source.get("status", ""))
+	if status == "downed":
+		return {
+			"accepted": false,
+			"reason_code": "monster_detection_source_downed",
+		}
+	if status != "active":
+		return {
+			"accepted": false,
+			"reason_code": "monster_detection_source_not_active",
+		}
+	var transition_kind := str(
+		operation.get("detection_transition_kind", "")
+	)
+	var base_range := int(
+		source.get("base_detection_range_hops", 0)
+	)
+	var current_range := int(
+		source.get("current_detection_range_hops", 0)
+	)
+	var next_range := current_range
+	var hungry_after := false
+	var reason_code := ""
+	if transition_kind == DETECTION_PREFERRED_COLOR_HIT:
+		next_range = base_range
+		reason_code = "monster_detection_preferred_color_restored"
+	elif transition_kind == DETECTION_NO_TARGET_GROWTH:
+		var full_map_range := int(
+			operation.get("full_map_detection_range_hops", 0)
+		)
+		if full_map_range < base_range:
+			return {
+				"accepted": false,
+				"reason_code": "monster_detection_full_map_range_invalid",
+			}
+		if current_range >= full_map_range:
+			return {
+				"accepted": false,
+				"reason_code": (
+					"monster_detection_requires_hungry_plan"
+				),
+			}
+		next_range = mini(current_range + 1, full_map_range)
+		reason_code = "monster_detection_no_target_expanded"
+	elif transition_kind == DETECTION_HUNGRY_PLAN:
+		var full_map_range := int(
+			operation.get("full_map_detection_range_hops", 0)
+		)
+		if full_map_range < base_range:
+			return {
+				"accepted": false,
+				"reason_code": "monster_detection_full_map_range_invalid",
+			}
+		if current_range < full_map_range:
+			return {
+				"accepted": false,
+				"reason_code": (
+					"monster_detection_hungry_before_full_map"
+				),
+			}
+		next_range = full_map_range
+		hungry_after = true
+		reason_code = "monster_detection_hungry_plan_committed"
+	else:
+		return {
+			"accepted": false,
+			"reason_code": "monster_detection_transition_kind_invalid",
+		}
+	var next_source := source.duplicate(true)
+	next_source.erase("source_fingerprint")
+	next_source["current_detection_range_hops"] = next_range
+	next_source = _seal(next_source, "source_fingerprint")
+	if _source_error(next_source) != "":
+		return {
+			"accepted": false,
+			"reason_code": "monster_detection_source_commit_invalid",
+		}
+	var effect := _base_transition_effect(source)
+	effect["reason_code"] = reason_code
+	effect["current_detection_range_hops"] = next_range
+	effect["detection_transition_kind"] = transition_kind
+	effect["hungry_after_transition"] = hungry_after
+	return {
+		"accepted": true,
+		"state": _transition_state_with_source(
+			state,
+			next_source
+		),
+		"effect": effect,
+	}
+
+
+static func _apply_damage_transition(
+	state: Dictionary,
+	operation: Dictionary,
+	source: Dictionary
+) -> Dictionary:
+	var status := str(source.get("status", ""))
+	if status == "downed":
+		return {
+			"accepted": false,
+			"reason_code": (
+				"monster_damage_source_downed_requires_destroy"
+			),
+		}
+	if status != "active":
+		return {
+			"accepted": false,
+			"reason_code": "monster_damage_source_not_active",
+		}
+	var incoming_damage := int(operation.get("damage_amount", 0))
+	var armor_before := int(source.get("armor", 0))
+	var hp_before := int(source.get("hp", 0))
+	var absorbed := mini(armor_before, incoming_damage)
+	var hp_damage := mini(
+		hp_before,
+		incoming_damage - absorbed
+	)
+	var armor_after := armor_before - absorbed
+	var hp_after := hp_before - hp_damage
+	var next_status := "downed" if hp_after == 0 else "active"
+	var next_source := source.duplicate(true)
+	next_source.erase("source_fingerprint")
+	next_source["armor"] = armor_after
+	next_source["hp"] = hp_after
+	next_source["status"] = next_status
+	next_source["damage_revision"] = int(
+		source.get("damage_revision", 0)
+	) + 1
+	if next_status == "downed":
+		next_source["skill_states"] = _disabled_skill_states(
+			next_source.get("skill_states", {}) as Dictionary
+		)
+	next_source = _seal(next_source, "source_fingerprint")
+	if _source_error(next_source) != "":
+		return {
+			"accepted": false,
+			"reason_code": "monster_damage_source_commit_invalid",
+		}
+	var effect := _base_transition_effect(source)
+	effect["reason_code"] = (
+		"monster_combat_damage_downed"
+		if next_status == "downed"
+		else "monster_combat_damage_committed"
+	)
+	effect["incoming_damage"] = incoming_damage
+	effect["armor_absorbed"] = absorbed
+	effect["armor_after"] = armor_after
+	effect["hp_damage"] = hp_damage
+	effect["hp_after"] = hp_after
+	effect["damage_revision_after"] = int(
+		next_source.get("damage_revision", 0)
+	)
+	effect["status_after"] = next_status
+	return {
+		"accepted": true,
+		"state": _transition_state_with_source(
+			state,
+			next_source
+		),
+		"effect": effect,
+	}
+
+
+static func _apply_destroy_transition(
+	state: Dictionary,
+	operation: Dictionary,
+	source: Dictionary
+) -> Dictionary:
+	var status := str(source.get("status", ""))
+	if status != "downed":
+		return {
+			"accepted": false,
+			"reason_code": "monster_destroy_requires_downed_source",
+		}
+	var next_source := source.duplicate(true)
+	next_source.erase("source_fingerprint")
+	next_source["status"] = "destroyed"
+	next_source["damage_revision"] = int(
+		source.get("damage_revision", 0)
+	) + 1
+	next_source["skill_states"] = _revoked_skill_states(
+		next_source.get("skill_states", {}) as Dictionary
+	)
+	next_source = _seal(next_source, "source_fingerprint")
+	if _source_error(next_source) != "":
+		return {
+			"accepted": false,
+			"reason_code": "monster_destroy_source_commit_invalid",
+		}
+	var effect := _base_transition_effect(source)
+	effect["reason_code"] = "monster_destroy_transition_committed"
+	effect["destroy_reason_id"] = str(
+		operation.get("destroy_reason_id", "")
+	)
+	effect["damage_revision_after"] = int(
+		next_source.get("damage_revision", 0)
+	)
+	effect["status_after"] = "destroyed"
+	return {
+		"accepted": true,
+		"state": _transition_state_with_source(
+			state,
+			next_source
+		),
+		"effect": effect,
+	}
+
+
+static func _base_transition_effect(source: Dictionary) -> Dictionary:
+	return {
+		"reason_code": "",
+		"previous_region_id": str(source.get("region_id", "")),
+		"current_region_id": str(source.get("region_id", "")),
+		"previous_detection_range_hops": int(
+			source.get("current_detection_range_hops", 0)
+		),
+		"current_detection_range_hops": int(
+			source.get("current_detection_range_hops", 0)
+		),
+		"detection_transition_kind": "",
+		"hungry_after_transition": false,
+		"destroy_reason_id": "",
+		"incoming_damage": 0,
+		"armor_before": int(source.get("armor", 0)),
+		"armor_absorbed": 0,
+		"armor_after": int(source.get("armor", 0)),
+		"hp_before": int(source.get("hp", 0)),
+		"hp_damage": 0,
+		"hp_after": int(source.get("hp", 0)),
+		"damage_revision_before": int(
+			source.get("damage_revision", 0)
+		),
+		"damage_revision_after": int(
+			source.get("damage_revision", 0)
+		),
+		"status_before": str(source.get("status", "")),
+		"status_after": str(source.get("status", "")),
+	}
+
+
+static func _transition_state_with_source(
+	state: Dictionary,
+	source: Dictionary
+) -> Dictionary:
+	var next_state := state.duplicate(true)
+	next_state.erase("state_fingerprint")
+	var sources := next_state.get("sources", {}) as Dictionary
+	sources[str(source.get("source_instance_id", ""))] = (
+		source.duplicate(true)
+	)
+	next_state["sources"] = sources
+	return next_state
+
+
+static func _disabled_skill_states(
+	skill_states: Dictionary
+) -> Dictionary:
+	var result := {}
+	for skill_id_variant in skill_states.keys():
+		var skill_id := str(skill_id_variant)
+		var previous := (
+			skill_states.get(skill_id, {}) as Dictionary
+		)
+		var previous_status := str(previous.get("status", ""))
+		if previous_status == SKILL_LOCKED:
+			result[skill_id] = previous.duplicate(true)
+			continue
+		var resume := str(
+			previous.get("resume_status", SKILL_READY)
+		)
+		if previous_status == SKILL_COOLDOWN:
+			resume = SKILL_COOLDOWN
+		if resume not in [SKILL_READY, SKILL_COOLDOWN]:
+			resume = SKILL_READY
+		result[skill_id] = _skill_state(
+			skill_id,
+			SKILL_DISABLED,
+			(
+				int(previous.get(
+					"cooldown_batches_remaining",
+					0
+				))
+				if resume == SKILL_COOLDOWN
+				else 0
+			),
+			int(previous.get("skill_generation", 0)),
+			resume
+		)
+	return result
+
+
+static func _build_transition_receipt(
+	operation: Dictionary,
+	effect: Dictionary,
+	state_revision: int
+) -> Dictionary:
+	var unsealed := {
+		"schema_version": SCHEMA_VERSION,
+		"contract_id": TRANSITION_RECEIPT_CONTRACT_ID,
+		"ruleset_id": RULESET_ID,
+		"receipt_id": _transition_receipt_id(operation),
+		"operation_id": str(operation.get("operation_id", "")),
+		"operation_fingerprint": str(
+			operation.get("operation_fingerprint", "")
+		),
+		"operation_kind": str(operation.get("operation_kind", "")),
+		"source_instance_id": str(
+			operation.get("source_instance_id", "")
+		),
+		"source_generation": int(
+			operation.get("expected_source_generation", 0)
+		),
+		"committed": true,
+		"state_revision": state_revision,
+		"reason_code": str(effect.get("reason_code", "")),
+		"previous_region_id": str(
+			effect.get("previous_region_id", "")
+		),
+		"current_region_id": str(
+			effect.get("current_region_id", "")
+		),
+		"previous_detection_range_hops": int(
+			effect.get("previous_detection_range_hops", 0)
+		),
+		"current_detection_range_hops": int(
+			effect.get("current_detection_range_hops", 0)
+		),
+		"detection_transition_kind": str(
+			effect.get("detection_transition_kind", "")
+		),
+		"hungry_after_transition": bool(
+			effect.get("hungry_after_transition", false)
+		),
+		"destroy_reason_id": str(
+			effect.get("destroy_reason_id", "")
+		),
+		"incoming_damage": int(effect.get("incoming_damage", 0)),
+		"armor_before": int(effect.get("armor_before", 0)),
+		"armor_absorbed": int(effect.get("armor_absorbed", 0)),
+		"armor_after": int(effect.get("armor_after", 0)),
+		"hp_before": int(effect.get("hp_before", 0)),
+		"hp_damage": int(effect.get("hp_damage", 0)),
+		"hp_after": int(effect.get("hp_after", 0)),
+		"damage_revision_before": int(
+			effect.get("damage_revision_before", 0)
+		),
+		"damage_revision_after": int(
+			effect.get("damage_revision_after", 0)
+		),
+		"status_before": str(effect.get("status_before", "")),
+		"status_after": str(effect.get("status_after", "")),
+		"animation_authority_count": 0,
+		"frame_position_mutation_count": 0,
+		"exact_once": true,
+	}
+	return _seal(unsealed, "receipt_fingerprint")
+
+
+static func _transition_receipt_id(operation: Dictionary) -> String:
+	var identity := "%s|%s" % [
+		operation.get("operation_id", ""),
+		operation.get("operation_fingerprint", ""),
+	]
+	return "monster.transition.receipt.%s" % (
+		identity.sha256_text().substr(0, 24)
+	)
 
 
 static func _resolve_deploy(
@@ -1940,6 +2791,240 @@ static func _receipt_error(receipt: Dictionary) -> String:
 	return ""
 
 
+static func _transition_operation_error(
+	operation: Dictionary
+) -> String:
+	if (
+		not _is_pure_data(operation)
+		or not _exact_fields(
+			operation,
+			TRANSITION_OPERATION_FIELDS
+		)
+	):
+		return "monster_transition_operation_fields_invalid"
+	var unsealed := operation.duplicate(true)
+	var fingerprint := str(
+		unsealed.get("operation_fingerprint", "")
+	)
+	unsealed.erase("operation_fingerprint")
+	if (
+		not _fingerprint_valid(fingerprint)
+		or fingerprint != _fingerprint(unsealed)
+	):
+		return "monster_transition_operation_fingerprint_invalid"
+	var kind := str(operation.get("operation_kind", ""))
+	if (
+		operation.get("schema_version") != SCHEMA_VERSION
+		or operation.get("contract_id")
+		!= TRANSITION_OPERATION_CONTRACT_ID
+		or operation.get("ruleset_id") != RULESET_ID
+		or not _stable_id(operation.get("operation_id"))
+		or not TRANSITION_KINDS.has(kind)
+		or not _stable_id(operation.get("source_instance_id"))
+		or not _positive_integer(
+			operation.get("expected_source_generation")
+		)
+	):
+		return "monster_transition_operation_context_invalid"
+	if kind == TRANSITION_MOVE_REGION:
+		if (
+			not _stable_id(operation.get("destination_region_id"))
+			or operation.get("detection_transition_kind") != null
+			or operation.get("full_map_detection_range_hops") != null
+			or operation.get("damage_amount") != null
+			or operation.get("destroy_reason_id") != null
+		):
+			return "monster_movement_operation_fields_invalid"
+	elif kind == TRANSITION_DETECTION_RANGE:
+		var detection_kind := str(
+			operation.get("detection_transition_kind", "")
+		)
+		if (
+			operation.get("destination_region_id") != null
+			or not DETECTION_TRANSITION_KINDS.has(detection_kind)
+			or operation.get("damage_amount") != null
+			or operation.get("destroy_reason_id") != null
+		):
+			return "monster_detection_operation_fields_invalid"
+		if detection_kind == DETECTION_PREFERRED_COLOR_HIT:
+			if (
+				operation.get("full_map_detection_range_hops")
+				!= null
+			):
+				return "monster_detection_restore_range_field_invalid"
+		elif not _positive_integer(
+			operation.get("full_map_detection_range_hops")
+		):
+			return "monster_detection_full_map_range_invalid"
+	elif kind == TRANSITION_COMBAT_DAMAGE:
+		if (
+			operation.get("destination_region_id") != null
+			or operation.get("detection_transition_kind") != null
+			or operation.get("full_map_detection_range_hops") != null
+			or not _positive_integer(operation.get("damage_amount"))
+			or operation.get("destroy_reason_id") != null
+		):
+			return "monster_damage_operation_fields_invalid"
+	elif kind == TRANSITION_DESTROY_SOURCE:
+		if (
+			operation.get("destination_region_id") != null
+			or operation.get("detection_transition_kind") != null
+			or operation.get("full_map_detection_range_hops") != null
+			or operation.get("damage_amount") != null
+			or not _stable_id(operation.get("destroy_reason_id"))
+		):
+			return "monster_destroy_operation_fields_invalid"
+	return ""
+
+
+static func _transition_receipt_error(receipt: Dictionary) -> String:
+	if (
+		not _is_pure_data(receipt)
+		or not _exact_fields(
+			receipt,
+			TRANSITION_RECEIPT_FIELDS
+		)
+	):
+		return "monster_transition_receipt_fields_invalid"
+	var unsealed := receipt.duplicate(true)
+	var fingerprint := str(unsealed.get("receipt_fingerprint", ""))
+	unsealed.erase("receipt_fingerprint")
+	if (
+		not _fingerprint_valid(fingerprint)
+		or fingerprint != _fingerprint(unsealed)
+	):
+		return "monster_transition_receipt_fingerprint_invalid"
+	var kind := str(receipt.get("operation_kind", ""))
+	var detection_kind := str(
+		receipt.get("detection_transition_kind", "")
+	)
+	var destroy_reason := str(receipt.get("destroy_reason_id", ""))
+	if (
+		receipt.get("schema_version") != SCHEMA_VERSION
+		or receipt.get("contract_id")
+		!= TRANSITION_RECEIPT_CONTRACT_ID
+		or receipt.get("ruleset_id") != RULESET_ID
+		or not _stable_id(receipt.get("receipt_id"))
+		or not _stable_id(receipt.get("operation_id"))
+		or not _fingerprint_valid(
+			receipt.get("operation_fingerprint")
+		)
+		or not TRANSITION_KINDS.has(kind)
+		or not _stable_id(receipt.get("source_instance_id"))
+		or not _positive_integer(receipt.get("source_generation"))
+		or receipt.get("committed") != true
+		or not _positive_integer(receipt.get("state_revision"))
+		or not _stable_id(receipt.get("reason_code"))
+		or not _stable_id(receipt.get("previous_region_id"))
+		or not _stable_id(receipt.get("current_region_id"))
+		or not _nonnegative_integer(
+			receipt.get("previous_detection_range_hops")
+		)
+		or not _nonnegative_integer(
+			receipt.get("current_detection_range_hops")
+		)
+		or (
+			not detection_kind.is_empty()
+			and not DETECTION_TRANSITION_KINDS.has(detection_kind)
+		)
+		or not (receipt.get("hungry_after_transition") is bool)
+		or (
+			not destroy_reason.is_empty()
+			and not _stable_id(destroy_reason)
+		)
+		or not _nonnegative_integer(receipt.get("incoming_damage"))
+		or not _nonnegative_integer(receipt.get("armor_before"))
+		or not _nonnegative_integer(receipt.get("armor_absorbed"))
+		or not _nonnegative_integer(receipt.get("armor_after"))
+		or not _nonnegative_integer(receipt.get("hp_before"))
+		or not _nonnegative_integer(receipt.get("hp_damage"))
+		or not _nonnegative_integer(receipt.get("hp_after"))
+		or not _nonnegative_integer(
+			receipt.get("damage_revision_before")
+		)
+		or not _nonnegative_integer(
+			receipt.get("damage_revision_after")
+		)
+		or not SOURCE_STATUSES.has(
+			str(receipt.get("status_before", ""))
+		)
+		or not SOURCE_STATUSES.has(
+			str(receipt.get("status_after", ""))
+		)
+		or int(receipt.get("animation_authority_count", -1)) != 0
+		or int(receipt.get("frame_position_mutation_count", -1))
+		!= 0
+		or receipt.get("exact_once") != true
+	):
+		return "monster_transition_receipt_context_invalid"
+	var incoming := int(receipt.get("incoming_damage", 0))
+	var absorbed := int(receipt.get("armor_absorbed", 0))
+	var hp_damage := int(receipt.get("hp_damage", 0))
+	if kind == TRANSITION_MOVE_REGION:
+		if (
+			receipt.get("previous_region_id")
+			== receipt.get("current_region_id")
+			or not detection_kind.is_empty()
+			or receipt.get("hungry_after_transition") != false
+			or incoming != 0
+			or not destroy_reason.is_empty()
+			or receipt.get("status_before")
+			!= receipt.get("status_after")
+		):
+			return "monster_movement_receipt_invalid"
+	elif kind == TRANSITION_DETECTION_RANGE:
+		if (
+			receipt.get("previous_region_id")
+			!= receipt.get("current_region_id")
+			or detection_kind.is_empty()
+			or incoming != 0
+			or not destroy_reason.is_empty()
+			or receipt.get("status_before")
+			!= receipt.get("status_after")
+			or (
+				bool(receipt.get("hungry_after_transition", false))
+				!= (
+					detection_kind == DETECTION_HUNGRY_PLAN
+				)
+			)
+		):
+			return "monster_detection_receipt_invalid"
+	elif kind == TRANSITION_COMBAT_DAMAGE:
+		if (
+			receipt.get("previous_region_id")
+			!= receipt.get("current_region_id")
+			or not detection_kind.is_empty()
+			or incoming <= 0
+			or absorbed > incoming
+			or hp_damage > incoming - absorbed
+			or int(receipt.get("armor_after", -1))
+			!= int(receipt.get("armor_before", 0)) - absorbed
+			or int(receipt.get("hp_after", -1))
+			!= int(receipt.get("hp_before", 0)) - hp_damage
+			or int(receipt.get("damage_revision_after", -1))
+			!= int(receipt.get("damage_revision_before", 0)) + 1
+			or str(receipt.get("status_before", "")) != "active"
+			or str(receipt.get("status_after", ""))
+			not in ["active", "downed"]
+			or not destroy_reason.is_empty()
+		):
+			return "monster_damage_receipt_invalid"
+	elif kind == TRANSITION_DESTROY_SOURCE:
+		if (
+			receipt.get("previous_region_id")
+			!= receipt.get("current_region_id")
+			or not detection_kind.is_empty()
+			or incoming != 0
+			or not _stable_id(destroy_reason)
+			or str(receipt.get("status_before", "")) != "downed"
+			or str(receipt.get("status_after", "")) != "destroyed"
+			or int(receipt.get("damage_revision_after", -1))
+			!= int(receipt.get("damage_revision_before", 0)) + 1
+		):
+			return "monster_destroy_receipt_invalid"
+	return ""
+
+
 static func _state_error(state: Dictionary) -> String:
 	if (
 		not _is_pure_data(state)
@@ -2060,6 +3145,54 @@ static func _state_error(state: Dictionary) -> String:
 			)) != receipt_variant
 		):
 			return "monster_receipt_journal_entry_invalid"
+	var transition_processed_variant: Variant = state.get(
+		"processed_transitions"
+	)
+	var transition_journal_variant: Variant = state.get(
+		"transition_receipt_journal"
+	)
+	if (
+		not (transition_processed_variant is Dictionary)
+		or not (transition_journal_variant is Array)
+		or (transition_processed_variant as Dictionary).size()
+		!= (transition_journal_variant as Array).size()
+	):
+		return "monster_transition_receipt_journal_invalid"
+	for operation_id_variant in (
+		transition_processed_variant as Dictionary
+	).keys():
+		var operation_id := str(operation_id_variant)
+		var transition_receipt_variant: Variant = (
+			transition_processed_variant as Dictionary
+		).get(operation_id)
+		if (
+			not _stable_id(operation_id)
+			or not (transition_receipt_variant is Dictionary)
+			or _transition_receipt_error(
+				transition_receipt_variant as Dictionary
+			) != ""
+			or str((transition_receipt_variant as Dictionary).get(
+				"operation_id",
+				""
+			)) != operation_id
+		):
+			return "monster_processed_transition_invalid"
+	for transition_receipt_variant in (
+		transition_journal_variant as Array
+	):
+		if (
+			not (transition_receipt_variant is Dictionary)
+			or _transition_receipt_error(
+				transition_receipt_variant as Dictionary
+			) != ""
+			or (transition_processed_variant as Dictionary).get(str(
+				(transition_receipt_variant as Dictionary).get(
+					"operation_id",
+					""
+				)
+			)) != transition_receipt_variant
+		):
+			return "monster_transition_journal_entry_invalid"
 	return ""
 
 
