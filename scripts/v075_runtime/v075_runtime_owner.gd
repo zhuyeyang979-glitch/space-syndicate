@@ -134,6 +134,7 @@ var _v075_acquisition_last_combat_opportunity: Dictionary = {}
 var _v075_acquisition_hook_count := 0
 var _v075_acquisition_rejection_count := 0
 var _v075_acquisition_no_mutation_violation_count := 0
+var _v075_submission_rollback_count := 0
 
 
 func bind_combat_owner(owner: Node) -> Dictionary:
@@ -218,14 +219,122 @@ func start_new_game(
 func lock_player_submission(actor_id: String) -> Dictionary:
 	if not _combat_initialized or not is_instance_valid(_combat_owner):
 		return super.lock_player_submission(actor_id)
+	var runtime_checkpoint := _v075_capture_submission_checkpoint()
 	var checkpoint := _combat_owner.call(
 		"capture_checkpoint",
 		"checkpoint.submission.%s.%s" % [_batch_id(), actor_id]
 	) as Dictionary
 	var result := super.lock_player_submission(actor_id)
 	if not bool(result.get("accepted", false)):
+		_v075_restore_submission_checkpoint(runtime_checkpoint)
 		_combat_owner.call("rollback_checkpoint", checkpoint)
+		_v075_submission_rollback_count += 1
 	return result
+
+
+func _v075_capture_submission_checkpoint() -> Dictionary:
+	var dbg_checkpoints: Array = []
+	for owner_id_variant in _dbg_by_player.keys():
+		var owner_variant: Variant = _dbg_by_player.get(owner_id_variant)
+		var owner := owner_variant as Object
+		if owner == null:
+			continue
+		var checkpoint: Variant = {}
+		var rollback_method := ""
+		if owner.has_method("capture_checkpoint_v1"):
+			checkpoint = owner.call("capture_checkpoint_v1")
+			rollback_method = "rollback_v1"
+		elif owner.has_method("capture_checkpoint"):
+			checkpoint = owner.call("capture_checkpoint")
+			rollback_method = "rollback"
+		if checkpoint is Dictionary and not (
+			checkpoint as Dictionary
+		).is_empty():
+			dbg_checkpoints.append({
+				"owner_id": str(owner_id_variant),
+				"owner": owner,
+				"checkpoint": (checkpoint as Dictionary).duplicate(true),
+				"rollback_method": rollback_method,
+			})
+	return {
+		"phase": _phase,
+		"clock_msec": _clock_msec,
+		"opened_at_msec": _opened_at_msec,
+		"submission_deadline_msec": _submission_deadline_msec,
+		"hidden_order": _hidden_order.duplicate(),
+		"asset_state": _asset_state.duplicate(true),
+		"asset_balances": _asset_balances.duplicate(true),
+		"facility_state": _facility_state.duplicate(true),
+		"queued_by_player": _queued_by_player.duplicate(true),
+		"locked_by_player": _locked_by_player.duplicate(true),
+		"maintenance_done": _maintenance_done.duplicate(true),
+		"public_history": _public_history.duplicate(true),
+		"public_progress_points": _public_progress_points,
+		"final_settlement": _final_settlement.duplicate(true),
+		"ai_submission_started": _ai_submission_started,
+		"dbg_checkpoints": dbg_checkpoints,
+	}
+
+
+func _v075_restore_submission_checkpoint(checkpoint: Dictionary) -> void:
+	for row_variant in checkpoint.get("dbg_checkpoints", []) as Array:
+		var row := row_variant as Dictionary
+		var owner := row.get("owner") as Object
+		var method_name := str(row.get("rollback_method", ""))
+		if (
+			owner != null
+			and is_instance_valid(owner)
+			and not method_name.is_empty()
+			and owner.has_method(method_name)
+		):
+			owner.call(
+				method_name,
+				row.get("checkpoint", {}) as Dictionary
+			)
+	_phase = str(checkpoint.get("phase", _phase))
+	_clock_msec = int(checkpoint.get("clock_msec", _clock_msec))
+	_opened_at_msec = int(
+		checkpoint.get("opened_at_msec", _opened_at_msec)
+	)
+	_submission_deadline_msec = int(
+		checkpoint.get(
+			"submission_deadline_msec",
+			_submission_deadline_msec
+		)
+	)
+	_hidden_order = (
+		checkpoint.get("hidden_order", []) as Array
+	).duplicate()
+	_asset_state = (
+		checkpoint.get("asset_state", {}) as Dictionary
+	).duplicate(true)
+	_asset_balances = (
+		checkpoint.get("asset_balances", {}) as Dictionary
+	).duplicate(true)
+	_facility_state = (
+		checkpoint.get("facility_state", {}) as Dictionary
+	).duplicate(true)
+	_queued_by_player = (
+		checkpoint.get("queued_by_player", {}) as Dictionary
+	).duplicate(true)
+	_locked_by_player = (
+		checkpoint.get("locked_by_player", {}) as Dictionary
+	).duplicate(true)
+	_maintenance_done = (
+		checkpoint.get("maintenance_done", {}) as Dictionary
+	).duplicate(true)
+	_public_history = (
+		checkpoint.get("public_history", []) as Array
+	).duplicate(true)
+	_public_progress_points = int(
+		checkpoint.get("public_progress_points", _public_progress_points)
+	)
+	_final_settlement = (
+		checkpoint.get("final_settlement", {}) as Dictionary
+	).duplicate(true)
+	_ai_submission_started = bool(
+		checkpoint.get("ai_submission_started", _ai_submission_started)
+	)
 
 
 func acquire_track_item(
@@ -1229,6 +1338,9 @@ func debug_snapshot() -> Dictionary:
 	result["track_acquisition_no_mutation_violation_count"] = int(
 		acquisition_policy.get("no_mutation_violation_count", 0)
 	)
+	result["submission_transaction_rollback_count"] = (
+		_v075_submission_rollback_count
+	)
 	return result
 
 
@@ -1353,6 +1465,7 @@ func _reset_runtime() -> void:
 	_v075_acquisition_hook_count = 0
 	_v075_acquisition_rejection_count = 0
 	_v075_acquisition_no_mutation_violation_count = 0
+	_v075_submission_rollback_count = 0
 
 
 func _begin_batch() -> void:
@@ -1702,7 +1815,7 @@ func _monster_card_options(actor_id: String, card: Dictionary) -> Array:
 	var definition_id := str(card.get("definition_id", ""))
 	var regions := _runtime_region_ids()
 	var own_sources: Array = []
-	for source_variant in _combat_owner.call("public_monsters") as Array:
+	for source_variant in _v075_public_monsters():
 		var source := source_variant as Dictionary
 		if str(source.get("owner_player_id", "")) == actor_id and str(
 			source.get("status", "")
@@ -1809,7 +1922,7 @@ func _military_card_options(actor_id: String, card: Dictionary) -> Array:
 			""
 		))
 	var monster_ids: Array[String] = []
-	for source_variant in _combat_owner.call("public_monsters") as Array:
+	for source_variant in _v075_public_monsters():
 		var source := source_variant as Dictionary
 		if (
 			str(source.get("owner_player_id", "")) != actor_id
@@ -2531,10 +2644,7 @@ func _combat_ai_private_facts(actor_id: String) -> Dictionary:
 				(row.get("legal_task_kinds", []) as Array).append(task)
 			military_options_by_card[card_id] = row
 	var owned: Array = []
-	var zone := _combat_owner.call(
-		"owner_private_skill_zone",
-		actor_id
-	) as Array
+	var zone := _v075_owner_skill_zone(actor_id)
 	for source_variant in zone:
 		var source := (source_variant as Dictionary).duplicate(true)
 		var skills: Array = []
@@ -2570,9 +2680,7 @@ func _combat_ai_public_facts() -> Dictionary:
 			"batch_active"
 		)),
 		"facilities": _public_facility_slots(),
-		"monsters": (
-			_combat_owner.call("public_monsters") as Array
-		).duplicate(true),
+		"monsters": _v075_public_monsters(),
 		"regions": _runtime_region_ids(),
 	}
 
@@ -2721,7 +2829,7 @@ func _private_skill_target_request(
 	if target_kind == "enemy_public_monster":
 		var monster_id := explicit_id
 		if monster_id.is_empty():
-			for monster_variant in _combat_owner.call("public_monsters") as Array:
+			for monster_variant in _v075_public_monsters():
 				var monster := monster_variant as Dictionary
 				if (
 					str(monster.get("owner_player_id", "")) != actor_id
@@ -2736,15 +2844,39 @@ func _private_skill_target_request(
 	return {}
 
 
+func _v075_public_monsters() -> Array:
+	if (
+		not is_instance_valid(_combat_owner)
+		or not _combat_owner.has_method("public_monsters")
+	):
+		return []
+	var value: Variant = _combat_owner.call("public_monsters")
+	if value is Array:
+		return (value as Array).duplicate(true)
+	return []
+
+
+func _v075_owner_skill_zone(owner_id: String) -> Array:
+	if (
+		not is_instance_valid(_combat_owner)
+		or not _combat_owner.has_method("owner_private_skill_zone")
+	):
+		return []
+	var value: Variant = _combat_owner.call(
+		"owner_private_skill_zone",
+		owner_id
+	)
+	if value is Array:
+		return (value as Array).duplicate(true)
+	return []
+
+
 func _owner_skill_by_id(
 	owner_id: String,
 	source_id: String,
 	skill_id: String
 ) -> Dictionary:
-	for source_variant in _combat_owner.call(
-		"owner_private_skill_zone",
-		owner_id
-	) as Array:
+	for source_variant in _v075_owner_skill_zone(owner_id):
 		var source := source_variant as Dictionary
 		if str(source.get("source_instance_id", "")) != source_id:
 			continue
@@ -2756,7 +2888,7 @@ func _owner_skill_by_id(
 
 
 func _public_monster_by_id(source_id: String) -> Dictionary:
-	for source_variant in _combat_owner.call("public_monsters") as Array:
+	for source_variant in _v075_public_monsters():
 		var source := source_variant as Dictionary
 		if str(source.get("source_instance_id", "")) == source_id:
 			return source.duplicate(true)
