@@ -14,6 +14,9 @@ const CardDefinitions := preload(
 const V074CardDefinitions := preload(
 	"res://scripts/v074/facility/v074_card_definition_registry.gd"
 )
+const V075CardDefinitions := preload(
+	"res://scripts/v075/cards/v075_card_definition_registry.gd"
+)
 
 const SCHEMA_VERSION := 3
 const STATE_VERSION := 3
@@ -2247,8 +2250,9 @@ static func _track_visible_item_reason(item: Dictionary, track_revision: int) ->
 				or item.get("origin_class") != definition.get("origin_class") \
 				or item.get("asset_cost_profile") \
 				!= definition.get("asset_cost_profile") \
+				or not _positive_int(item.get("primary_asset_cost")) \
 				or item.get("primary_asset_cost") \
-				!= STANDARD_L1_PRIMARY_ASSET_COST \
+				!= definition.get("primary_asset_cost") \
 				or item.get("starter_badge") != false:
 			return "track_visible_normal_definition_invalid"
 	return ""
@@ -3554,6 +3558,11 @@ static func _card_spec_valid(spec: Dictionary) -> bool:
 static func _definition_for_registered_facility(
 	definition_id: String
 ) -> Dictionary:
+	if (
+		definition_id.begins_with("monster.")
+		or definition_id.begins_with("military.")
+	):
+		return V075CardDefinitions.definition(definition_id)
 	if definition_id.contains(".warehouse."):
 		return V074CardDefinitions.definition(definition_id)
 	return CardDefinitions.definition(definition_id)
@@ -3562,7 +3571,10 @@ static func _definition_for_registered_facility(
 static func _definition_error_for_registered_facility(
 	spec: Dictionary
 ) -> String:
-	if str(spec.get("card_type", "")) == "warehouse":
+	var card_type := str(spec.get("card_type", ""))
+	if V075CardDefinitions.card_domain(card_type) in ["monster", "military"]:
+		return V075CardDefinitions.definition_error(spec)
+	if card_type == "warehouse":
 		return V074CardDefinitions.definition_error(spec)
 	return CardDefinitions.definition_error(spec)
 
@@ -3572,6 +3584,14 @@ static func _standard_card_spec_for_registered_facility(
 	card_type: String,
 	level: int
 ) -> Dictionary:
+	if V075CardDefinitions.card_domain(card_type) in ["monster", "military"]:
+		return V075CardDefinitions.definition(
+			V075CardDefinitions.standard_definition_id(
+				card_type,
+				primary_color,
+				level
+			)
+		)
 	if card_type == "warehouse":
 		return V074CardDefinitions.definition(
 			V074CardDefinitions.standard_definition_id(
@@ -3932,7 +3952,7 @@ static func _merge_history_row_valid(row: Dictionary) -> bool:
 			or not _stable_id(row.get("semantic_id")) \
 			or str(row.get("primary_color", "")) not in COLORS \
 			or str(row.get("card_type", "")) \
-			not in V074CardDefinitions.CARD_TYPES \
+			not in V075CardDefinitions.CARD_TYPES \
 			or not _stable_id(row.get("merge_family_id")) \
 			or not _positive_int(row.get("level")) \
 			or int(row.get("level", 0)) > MAX_CARD_LEVEL \
