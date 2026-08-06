@@ -6,6 +6,9 @@ const SIMULATOR := preload(
 const SIMULATOR_PATH := (
 	"res://scripts/v075_simulation/v075_combat_deterministic_simulator.gd"
 )
+const BASE_SEED := 900626424
+const DEFAULT_SCOPE_MATCHES := 1
+const DEFAULT_FORMAL_MATCHES := 400
 const EXPECTED_CONFIGURATION_IDS := [
 	"3p_8r_simple",
 	"4p_16r_standard",
@@ -50,6 +53,12 @@ func _run() -> void:
 		)
 		quit(0)
 		return
+	if _has_argument("--scope-only"):
+		_run_scope_only()
+		return
+	if _has_argument("--aggregate"):
+		_run_aggregate_report()
+		return
 	if _has_argument("--diagnostic-monster"):
 		_run_monster_diagnostic()
 		return
@@ -60,36 +69,196 @@ func _run() -> void:
 	var step_limit := _argument_int("--step-limit", 512)
 	var write_report := _has_argument("--write-report")
 	var simulator := SIMULATOR.new()
+	_test_shard_planner(simulator)
+	var options := _simulation_options_from_arguments(write_report)
 	var report := simulator.run_matrix(
 		matches_per_configuration,
 		step_limit,
-		{
-			"write_report": write_report,
-			"progress_interval": _argument_int("--progress-interval", 0),
-		}
+		options
 	)
-	_test_report_contract(report, matches_per_configuration)
+	if _is_shard_options(options):
+		_test_shard_report_contract(report)
+	else:
+		_test_report_contract(report, matches_per_configuration)
 	if _has_argument("--replay"):
 		_test_deterministic_replay(simulator, step_limit)
 	_print_summary(report)
 	_finish()
 
 
+func _run_scope_only() -> void:
+	var simulator := SIMULATOR.new()
+	_test_shard_planner(simulator)
+	var matches_per_configuration := _argument_int(
+		"--matches-per-configuration",
+		DEFAULT_SCOPE_MATCHES
+	)
+	var scope := simulator.build_shard_manifest(
+		matches_per_configuration,
+		_simulation_options_from_arguments(false)
+	)
+	print("V075_COMBAT_SIMULATION_SCOPE|%s" % JSON.stringify(scope))
+	quit(0 if bool(scope.get("accepted", false)) and _failures.is_empty() else 1)
+
+
+func _test_shard_planner(simulator: RefCounted) -> void:
+	var explicit := simulator.build_shard_manifest(
+		4,
+		{
+			"configuration_index_start": 1,
+			"configuration_index_end_exclusive": 3,
+			"match_index_start": 2,
+			"match_index_end_exclusive": 4,
+		}
+	) as Dictionary
+	_expect(
+		bool(explicit.get("accepted", false))
+			and int(explicit.get("requested_match_count", 0)) == 4,
+		"explicit configuration and match ranges produce four jobs"
+	)
+	var all_jobs: Dictionary = {}
+	var all_seeds: Dictionary = {}
+	for shard_id in range(4):
+		var shard := simulator.build_shard_manifest(
+			400,
+			{"shard_count": 4, "shard_id": shard_id}
+		) as Dictionary
+		_expect(
+			bool(shard.get("accepted", false)),
+			"round-robin shard %d has a valid manifest" % shard_id
+		)
+		for job_variant in shard.get("jobs", []) as Array:
+			var job := job_variant as Dictionary
+			var job_key := "%d:%d" % [
+				int(job.get("configuration_index", -1)),
+				int(job.get("match_index", -1)),
+			]
+			all_jobs[job_key] = int(all_jobs.get(job_key, 0)) + 1
+			var seed_key := str(int(job.get("seed", 0)))
+			all_seeds[seed_key] = int(all_seeds.get(seed_key, 0)) + 1
+	_expect(
+		all_jobs.size() == 2000 and _not_duplicate_counts(all_jobs),
+		"four shard manifests cover each formal job exactly once"
+	)
+	_expect(
+		all_seeds.size() == 2000 and _not_duplicate_counts(all_seeds),
+		"four shard manifests cover each formal seed exactly once"
+	)
+	var invalid := simulator.build_shard_manifest(
+		400,
+		{"shard_id": 1}
+	) as Dictionary
+	_expect(
+		not bool(invalid.get("accepted", true))
+			and str(invalid.get("reason_code", ""))
+				== "shard_count_required_for_shard_id",
+		"shard id cannot silently run without a shard count"
+	)
+
+
+func _run_aggregate_report() -> void:
+	var simulator := SIMULATOR.new()
+	var inputs := _argument_values("--aggregate-input")
+	var options := {
+		"write_report": _has_argument("--write-report")
+			or not _argument_value("--report-json", "").is_empty()
+			or not _argument_value("--report-md", "").is_empty(),
+		"report_json_path": _argument_value("--report-json", ""),
+		"report_md_path": _argument_value("--report-md", ""),
+		"formal_matches_per_configuration": _argument_int(
+			"--formal-matches-per-configuration",
+			DEFAULT_FORMAL_MATCHES
+		),
+	}
+	var report := simulator.aggregate_report_files(inputs, options)
+	var total := int(report.get("total_match_count", 0))
+	if total == DEFAULT_FORMAL_MATCHES * EXPECTED_CONFIGURATION_IDS.size():
+		_test_report_contract(report, DEFAULT_FORMAL_MATCHES)
+	else:
+		_test_aggregate_report_contract(report)
+	_print_summary(report)
+	_finish()
+
+
 func _run_monster_diagnostic() -> void:
 	var simulator := SIMULATOR.new()
-	var configuration_value: Variant = simulator.configurations()[1]
+	var configuration_index := clampi(
+		_argument_int("--diagnostic-configuration-index", 1),
+		0,
+		simulator.configurations().size() - 1
+	)
+	var match_index := maxi(0, _argument_int("--diagnostic-match-index", 0))
+	var configuration_value: Variant = simulator.configurations()[
+		configuration_index
+	]
 	var configuration: Dictionary = {}
 	if configuration_value is Dictionary:
 		configuration = (configuration_value as Dictionary).duplicate(true)
+	var seed_value := _argument_int(
+		"--diagnostic-match-seed",
+		int(simulator.seed_for(configuration_index, match_index))
+	)
+	configuration["map_seed"] = _argument_int(
+		"--diagnostic-map-seed",
+		seed_value
+	)
 	var row: Dictionary = simulator.run_match(
 		configuration,
-		int(simulator.seed_for(1, 0)),
-		512
+		seed_value,
+		_argument_int("--step-limit", 512)
 	)
+	if _has_argument("--diagnostic-seed-scan"):
+		var metrics := row.get("metrics", {}) as Dictionary
+		var combat_identity := (
+			(row.get("identity", {}) as Dictionary).get("combat", {})
+			as Dictionary
+		)
+		print("V075_SEED_SCAN|%s" % JSON.stringify({
+			"match_seed": seed_value,
+			"map_seed": int(configuration.get("map_seed", seed_value)),
+			"settled": bool(row.get("settled", false)),
+			"monster_purchase": int(metrics.get(
+				"MONSTER_CARD_PURCHASE_COUNT",
+				0
+			)),
+			"monster_first_purchase_batch": int(combat_identity.get(
+				"first_monster_card_purchase_batch",
+				-1
+			)),
+			"monster_hand": int(metrics.get(
+				"MONSTER_CARD_HAND_OBSERVATION_COUNT",
+				0
+			)),
+			"monster_resolved": int(metrics.get("MONSTER_DEPLOY_COUNT", 0))
+				+ int(metrics.get("MONSTER_REFRESH_COUNT", 0))
+				+ int(metrics.get("MONSTER_UPGRADE_COUNT", 0))
+				+ int(metrics.get("MONSTER_REPLACE_COUNT", 0)),
+			"military_purchase": int(metrics.get(
+				"MILITARY_CARD_PURCHASE_COUNT",
+				0
+			)),
+			"military_first_purchase_batch": int(combat_identity.get(
+				"first_military_card_purchase_batch",
+				-1
+			)),
+			"military_hand": int(metrics.get(
+				"MILITARY_CARD_HAND_OBSERVATION_COUNT",
+				0
+			)),
+			"military_resolved": int(metrics.get(
+				"MILITARY_REGION_ASSAULT_COUNT",
+				0
+			)) + int(metrics.get("MILITARY_MONSTER_ASSAULT_COUNT", 0)),
+			"runtime_errors": int(metrics.get("COMBAT_RUNTIME_ERROR_COUNT", 0)),
+		}))
+		quit(0)
+		return
 	print(
 		"V075_MONSTER_DIAGNOSTIC_RESULT|%s"
 		% JSON.stringify({
 			"settled": bool(row.get("settled", false)),
+			"duration_msec": int(row.get("duration_msec", 0)),
+			"timing": row.get("timing", {}),
 			"metrics": row.get("metrics", {}),
 			"simulation_performance": row.get(
 				"simulation_performance",
@@ -352,6 +521,134 @@ func _print_summary(report: Dictionary) -> void:
 	)
 
 
+func _simulation_options_from_arguments(write_report: bool) -> Dictionary:
+	var options := {
+		"write_report": write_report,
+		"progress_interval": _argument_int("--progress-interval", 0),
+	}
+	var mapping := {
+		"--configuration-index": "configuration_index",
+		"--configuration-index-start": "configuration_index_start",
+		"--configuration-index-end": "configuration_index_end_exclusive",
+		"--configuration-index-end-exclusive": "configuration_index_end_exclusive",
+		"--match-index-start": "match_index_start",
+		"--match-index-end": "match_index_end_exclusive",
+		"--match-index-end-exclusive": "match_index_end_exclusive",
+		"--match-index-count": "match_index_count",
+		"--shard-id": "shard_id",
+		"--shard-count": "shard_count",
+		"--formal-matches-per-configuration": (
+			"formal_matches_per_configuration"
+		),
+	}
+	for argument_prefix_variant in mapping.keys():
+		var argument_prefix := str(argument_prefix_variant)
+		var value := _argument_value(argument_prefix, "")
+		if value.is_empty() or not value.is_valid_int():
+			continue
+		options[str(mapping.get(argument_prefix, ""))] = maxi(0, int(value))
+	var report_json := _argument_value("--report-json", "")
+	var report_md := _argument_value("--report-md", "")
+	if not report_json.is_empty():
+		options["report_json_path"] = report_json
+	if not report_md.is_empty():
+		options["report_md_path"] = report_md
+	return options
+
+
+func _is_shard_options(options: Dictionary) -> bool:
+	for key in [
+		"configuration_index",
+		"configuration_index_start",
+		"configuration_index_end_exclusive",
+		"match_index_start",
+		"match_index_end_exclusive",
+		"match_index_count",
+		"shard_id",
+		"shard_count",
+	]:
+		if options.has(key):
+			return true
+	return false
+
+
+func _test_shard_report_contract(report: Dictionary) -> void:
+	_expect(
+		str(report.get("report_kind", "")) == "v075.combat.simulation.shard.v1",
+		"shard report declares the V075 shard schema"
+	)
+	var scope := report.get("execution_scope", {}) as Dictionary
+	_expect(
+		bool(scope.get("seed_deduplication", false))
+			and str(scope.get("seed_formula_id", ""))
+				== "base_plus_configuration_million_plus_match_7919",
+		"shard scope declares deterministic seed ownership"
+	)
+	var rows := report.get("shard_rows", []) as Array
+	_expect(
+		rows.size() == int(report.get("total_match_count", -1)),
+		"shard report retains one public row per executed match"
+	)
+	var jobs: Dictionary = {}
+	var seeds: Dictionary = {}
+	for row_variant in rows:
+		var row := row_variant as Dictionary
+		var configuration_index := int(row.get("configuration_index", -1))
+		var match_index := int(row.get("match_index", -1))
+		var job_key := "%d:%d" % [configuration_index, match_index]
+		jobs[job_key] = int(jobs.get(job_key, 0)) + 1
+		var seed := int(row.get("seed", 0))
+		seeds[str(seed)] = int(seeds.get(str(seed), 0)) + 1
+		_expect(
+			seed == int(simulator_seed_for(configuration_index, match_index)),
+			"shard row seed matches its configuration and match index"
+		)
+	_expect(
+		_not_duplicate_counts(jobs) and _not_duplicate_counts(seeds),
+		"shard rows have unique job and seed identities"
+	)
+	_expect(
+		int((report.get("observability", {}) as Dictionary).get(
+			"direct_monster_injection_count",
+			-1
+		)) == 0,
+		"shard uses no direct state injection"
+	)
+
+
+func _test_aggregate_report_contract(report: Dictionary) -> void:
+	_expect(
+		str(report.get("report_kind", ""))
+			== "v075.combat.simulation.aggregate.v1",
+		"aggregate report declares the V075 aggregate schema"
+	)
+	var aggregation := report.get("aggregation", {}) as Dictionary
+	_expect(
+		int(aggregation.get("duplicate_job_count", -1)) == 0
+			and int(aggregation.get("duplicate_seed_count", -1)) == 0
+			and int(aggregation.get("seed_mismatch_count", -1)) == 0
+			and int(aggregation.get("out_of_declared_scope_count", -1)) == 0,
+		"aggregate report rejects duplicate or mismatched seeds"
+	)
+	_expect(
+		int(aggregation.get("missing_job_count", -1)) >= 0
+			and int(aggregation.get("unique_job_count", -1))
+				== int(report.get("total_match_count", -2)),
+		"aggregate report accounts for every unique job"
+	)
+
+
+func _not_duplicate_counts(counts: Dictionary) -> bool:
+	for value_variant in counts.values():
+		if int(value_variant) > 1:
+			return false
+	return true
+
+
+func simulator_seed_for(configuration_index: int, match_index: int) -> int:
+	return BASE_SEED + configuration_index * 1000000 + match_index * 7919
+
+
 func _argument_int(prefix: String, fallback: int) -> int:
 	for argument_variant in OS.get_cmdline_user_args():
 		var argument := str(argument_variant)
@@ -360,6 +657,25 @@ func _argument_int(prefix: String, fallback: int) -> int:
 			if value.is_valid_int():
 				return maxi(1, int(value))
 	return fallback
+
+
+func _argument_value(prefix: String, fallback: String) -> String:
+	for argument_variant in OS.get_cmdline_user_args():
+		var argument := str(argument_variant)
+		if argument.begins_with(prefix + "="):
+			return argument.trim_prefix(prefix + "=")
+	return fallback
+
+
+func _argument_values(prefix: String) -> Array[String]:
+	var result: Array[String] = []
+	for argument_variant in OS.get_cmdline_user_args():
+		var argument := str(argument_variant)
+		if argument.begins_with(prefix + "="):
+			var value := argument.trim_prefix(prefix + "=")
+			if not value.is_empty():
+				result.append(value)
+	return result
 
 
 func _has_argument(expected: String) -> bool:

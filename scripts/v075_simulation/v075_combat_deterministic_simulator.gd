@@ -15,6 +15,10 @@ const REPORT_MD_PATH := "res://reports/balance/v075_combat_simulation_report.md"
 const BASE_SEED := 900626424
 const DEFAULT_MATCHES_PER_CONFIGURATION := 400
 const DEFAULT_STEP_LIMIT := 512
+const SHARD_SCHEMA_VERSION := 1
+const SHARD_REPORT_KIND := "v075.combat.simulation.shard.v1"
+const AGGREGATE_REPORT_KIND := "v075.combat.simulation.aggregate.v1"
+const SEED_FORMULA_ID := "base_plus_configuration_million_plus_match_7919"
 const CONFIGURATIONS: Array = [
 	{
 		"configuration_id": "3p_8r_simple",
@@ -146,87 +150,296 @@ func seed_for(configuration_index: int, match_index: int) -> int:
 	return BASE_SEED + configuration_index * 1000000 + match_index * 7919
 
 
+func build_shard_manifest(
+	matches_per_configuration: int = DEFAULT_MATCHES_PER_CONFIGURATION,
+	options: Dictionary = {}
+) -> Dictionary:
+	var count := maxi(1, matches_per_configuration)
+	var formal_count := maxi(1, int(options.get(
+		"formal_matches_per_configuration",
+		DEFAULT_MATCHES_PER_CONFIGURATION
+	)))
+	var configuration_start := int(options.get(
+		"configuration_index_start",
+		0
+	))
+	var configuration_end := int(options.get(
+		"configuration_index_end_exclusive",
+		CONFIGURATIONS.size()
+	))
+	if options.has("configuration_index"):
+		configuration_start = int(options.get("configuration_index", -1))
+		configuration_end = configuration_start + 1
+	var match_start := int(options.get("match_index_start", 0))
+	var match_end := int(options.get(
+		"match_index_end_exclusive",
+		match_start + count
+	))
+	if options.has("match_index_count"):
+		match_end = match_start + int(options.get("match_index_count", 0))
+	var validation_error := ""
+	if configuration_start < 0 or configuration_end > CONFIGURATIONS.size():
+		validation_error = "configuration_index_range_out_of_bounds"
+	elif configuration_start >= configuration_end:
+		validation_error = "configuration_index_range_empty"
+	elif match_start < 0 or match_start >= formal_count:
+		validation_error = "match_index_start_out_of_bounds"
+	elif match_end <= match_start or match_end > formal_count:
+		validation_error = "match_index_end_out_of_bounds"
+	var shard_count := int(options.get("shard_count", 0))
+	var shard_id := int(options.get("shard_id", 0))
+	if validation_error.is_empty() and shard_count != 0:
+		if shard_count < 1 or shard_id < 0 or shard_id >= shard_count:
+			validation_error = "shard_id_or_count_invalid"
+	elif validation_error.is_empty() and options.has("shard_id"):
+		validation_error = "shard_count_required_for_shard_id"
+	if not validation_error.is_empty():
+		return {
+			"accepted": false,
+			"reason_code": validation_error,
+			"schema_version": SHARD_SCHEMA_VERSION,
+		}
+	var configuration_indices: Array[int] = []
+	for configuration_index in range(configuration_start, configuration_end):
+		configuration_indices.append(configuration_index)
+	var jobs: Array = []
+	var seen_seeds: Dictionary = {}
+	var duplicate_seed_count := 0
+	var all_job_count := 0
+	for configuration_index in configuration_indices:
+		for match_index in range(match_start, match_end):
+			var flat_index := all_job_count
+			all_job_count += 1
+			if shard_count != 0 and flat_index % shard_count != shard_id:
+				continue
+			var seed_value := seed_for(configuration_index, match_index)
+			var seed_key := str(seed_value)
+			if seen_seeds.has(seed_key):
+				duplicate_seed_count += 1
+				continue
+			seen_seeds[seed_key] = true
+			jobs.append({
+				"configuration_index": configuration_index,
+				"match_index": match_index,
+				"seed": seed_value,
+			})
+	if duplicate_seed_count > 0:
+		return {
+			"accepted": false,
+			"reason_code": "seed_collision_within_shard",
+			"schema_version": SHARD_SCHEMA_VERSION,
+			"duplicate_seed_count": duplicate_seed_count,
+		}
+	var explicit_scope := (
+		options.has("configuration_index")
+		or options.has("configuration_index_start")
+		or options.has("configuration_index_end_exclusive")
+		or options.has("match_index_start")
+		or options.has("match_index_end_exclusive")
+		or options.has("match_index_count")
+		or options.has("shard_count")
+		or options.has("shard_id")
+	)
+	return {
+		"accepted": true,
+		"schema_version": SHARD_SCHEMA_VERSION,
+		"scope_kind": "shard" if explicit_scope else "default_matrix",
+		"configuration_index_start": configuration_start,
+		"configuration_index_end_exclusive": configuration_end,
+		"configuration_indices": configuration_indices,
+		"match_index_start": match_start,
+		"match_index_end_exclusive": match_end,
+		"formal_matches_per_configuration": formal_count,
+		"requested_matches_per_configuration": match_end - match_start,
+		"requested_match_count": jobs.size(),
+		"matrix_match_count": (
+			CONFIGURATIONS.size() * formal_count
+		),
+		"shard_id": shard_id if shard_count != 0 else -1,
+		"shard_count": shard_count if shard_count != 0 else 1,
+		"partition_mode": (
+			"round_robin_flattened_jobs" if shard_count != 0 else "explicit_range"
+		),
+		"seed_formula_id": SEED_FORMULA_ID,
+		"seed_deduplication": true,
+		"duplicate_seed_count": 0,
+		"jobs": jobs,
+	}
+
+
 func run_matrix(
 	matches_per_configuration: int = DEFAULT_MATCHES_PER_CONFIGURATION,
 	step_limit: int = DEFAULT_STEP_LIMIT,
 	options: Dictionary = {}
 ) -> Dictionary:
-	var count := maxi(1, matches_per_configuration)
 	var limit := maxi(1, step_limit)
+	var scope := build_shard_manifest(matches_per_configuration, options)
+	if not bool(scope.get("accepted", false)):
+		return _invalid_execution_report(scope)
 	var started_usec := Time.get_ticks_usec()
-	var configuration_results: Array = []
-	var all_fingerprints: Array[String] = []
-	var total_match_count := 0
-	for configuration_index in range(CONFIGURATIONS.size()):
+	var rows: Array = []
+	var completed_jobs := 0
+	for job_variant in scope.get("jobs", []) as Array:
+		var job := job_variant as Dictionary
+		var configuration_index := int(job.get("configuration_index", -1))
+		var match_index := int(job.get("match_index", -1))
 		var configuration := CONFIGURATIONS[configuration_index] as Dictionary
-		var rows: Array = []
-		var aggregate := _empty_metrics()
-		var durations: Array = []
-		var step_counts: Array = []
-		var bind_durations: Array = []
-		var start_durations: Array = []
-		var completion_durations: Array = []
-		for match_index in range(count):
-			var seed_value := seed_for(configuration_index, match_index)
-			var row := run_match(configuration, seed_value, limit)
-			rows.append(_public_match_row(row))
-			_merge_metrics(aggregate, row.get("metrics", {}) as Dictionary)
-			durations.append(int(row.get("duration_msec", 0)))
-			step_counts.append(int(row.get("steps", 0)))
-			var row_timing: Dictionary = row.get("timing", {}) as Dictionary
-			bind_durations.append(int(row_timing.get("bind_msec", 0)))
-			start_durations.append(int(row_timing.get("start_msec", 0)))
-			completion_durations.append(int(
-				row_timing.get("completion_msec", 0)
-			))
-			all_fingerprints.append(str(row.get("fingerprint", "")))
-			total_match_count += 1
-			var interval := int(options.get("progress_interval", 0))
-			if interval > 0 and total_match_count % interval == 0:
-				print(
-					"V075_COMBAT_SIMULATION_PROGRESS|matches=%d|configuration=%s"
-					% [total_match_count, configuration.get("configuration_id", "")]
-				)
-		configuration_results.append({
-			"configuration_id": str(configuration.get("configuration_id", "")),
-			"player_count": int(configuration.get("player_count", 0)),
-			"region_count": int(configuration.get("region_count", 0)),
-			"geography_complexity": str(
-				configuration.get("geography_complexity", "")
-			),
-			"match_count": rows.size(),
-			"settled_match_count": _sum_metric(rows, "COMBAT_SIMULATION_SETTLED_COUNT"),
-			"step_limit_match_count": _sum_metric(
-				rows,
-				"COMBAT_SIMULATION_DEADLOCK_COUNT"
-			),
-			"metrics": aggregate,
-						"timing": _timing_summary(
-				durations,
-				step_counts,
-				bind_durations,
-				start_durations,
-				completion_durations
-			),
-			"sample_results": _sample_rows(rows),
-			"root_cause_diagnostics": _aggregate_diagnostic_details(rows),
-			"configuration_fingerprint": fingerprint({
-				"configuration": configuration,
-				"rows": rows,
-			}),
-		})
+		var row := run_match(
+			configuration,
+			int(job.get("seed", seed_for(configuration_index, match_index))),
+			limit,
+			configuration_index,
+			match_index
+		)
+		rows.append(_public_match_row(row))
+		completed_jobs += 1
+		var interval := int(options.get("progress_interval", 0))
+		if interval > 0 and completed_jobs % interval == 0:
+			print(
+				"V075_COMBAT_SIMULATION_PROGRESS|matches=%d|configuration=%s"
+				% [completed_jobs, configuration.get("configuration_id", "")]
+			)
 	var elapsed_msec := int((Time.get_ticks_usec() - started_usec) / 1000)
-	var global_metrics := _aggregate_configuration_metrics(
-		configuration_results
-	)
+	var report := _build_report_from_rows(rows, scope, elapsed_msec, options)
+	if bool(options.get("write_report", false)):
+		var report_paths := _report_paths_for_scope(scope, options)
+		write_report(
+			report,
+			str(report_paths.get("json_path", "")),
+			str(report_paths.get("md_path", ""))
+		)
+	return report
+
+
+func _configuration_index_for_id(configuration_id: String) -> int:
+	for configuration_index in range(CONFIGURATIONS.size()):
+		if str((CONFIGURATIONS[configuration_index] as Dictionary).get(
+			"configuration_id",
+			""
+		)) == configuration_id:
+			return configuration_index
+	return -1
+
+
+func _configuration_result(
+	configuration_index: int,
+	rows: Array
+) -> Dictionary:
+	var configuration := CONFIGURATIONS[configuration_index] as Dictionary
+	var aggregate := _empty_metrics()
+	var durations: Array = []
+	var step_counts: Array = []
+	var bind_durations: Array = []
+	var start_durations: Array = []
+	var completion_durations: Array = []
+	for row_variant in rows:
+		var row := row_variant as Dictionary
+		_merge_metrics(aggregate, row.get("metrics", {}) as Dictionary)
+		durations.append(int(row.get("duration_msec", 0)))
+		step_counts.append(int(row.get("steps", 0)))
+		var row_timing: Dictionary = row.get("timing", {}) as Dictionary
+		bind_durations.append(int(row_timing.get("bind_msec", 0)))
+		start_durations.append(int(row_timing.get("start_msec", 0)))
+		completion_durations.append(int(
+			row_timing.get("completion_msec", 0)
+		))
+	return {
+		"configuration_index": configuration_index,
+		"configuration_id": str(configuration.get("configuration_id", "")),
+		"player_count": int(configuration.get("player_count", 0)),
+		"region_count": int(configuration.get("region_count", 0)),
+		"geography_complexity": str(
+			configuration.get("geography_complexity", "")
+		),
+		"match_count": rows.size(),
+		"settled_match_count": _sum_metric(rows, "COMBAT_SIMULATION_SETTLED_COUNT"),
+		"step_limit_match_count": _sum_metric(
+			rows,
+			"COMBAT_SIMULATION_DEADLOCK_COUNT"
+		),
+		"metrics": aggregate,
+		"timing": _timing_summary(
+			durations,
+			step_counts,
+			bind_durations,
+			start_durations,
+			completion_durations
+		),
+		"sample_results": _sample_rows(rows),
+		"root_cause_diagnostics": _aggregate_diagnostic_details(rows),
+		"configuration_fingerprint": fingerprint({
+			"configuration": configuration,
+			"rows": rows,
+		}),
+	}
+
+
+func _build_report_from_rows(
+	rows: Array,
+	scope: Dictionary,
+	elapsed_msec: int,
+	options: Dictionary = {}
+) -> Dictionary:
+	var rows_by_configuration: Dictionary = {}
+	for row_variant in rows:
+		if not (row_variant is Dictionary):
+			continue
+		var row := row_variant as Dictionary
+		var configuration_index := int(row.get(
+			"configuration_index",
+			_configuration_index_for_id(str(row.get("configuration_id", "")))
+		))
+		var bucket := rows_by_configuration.get(
+			configuration_index,
+			[]
+		) as Array
+		bucket.append(row)
+		rows_by_configuration[configuration_index] = bucket
+	var configuration_results: Array = []
+	for configuration_index_variant in scope.get(
+		"configuration_indices",
+		[]
+	) as Array:
+		var configuration_index := int(configuration_index_variant)
+		configuration_results.append(_configuration_result(
+			configuration_index,
+			rows_by_configuration.get(configuration_index, []) as Array
+		))
+	var global_metrics := _aggregate_configuration_metrics(configuration_results)
 	var safety_gates := _safety_gates(configuration_results)
 	var coverage_gates := _coverage_gates(global_metrics)
 	var root_cause_diagnostics := _aggregate_root_cause_diagnostics(
 		configuration_results,
 		global_metrics
 	)
+	var formal_matches_per_configuration := int(scope.get(
+		"formal_matches_per_configuration",
+		DEFAULT_MATCHES_PER_CONFIGURATION
+	))
+	var formal_match_count := formal_matches_per_configuration * CONFIGURATIONS.size()
+	var performance := _aggregate_timing(
+		configuration_results,
+		formal_matches_per_configuration,
+		CONFIGURATIONS.size()
+	)
+	performance["ideal_parallel_wall_msec_lower_bound"] = (
+		_parallel_wall_time_estimates(int(performance.get(
+			"estimated_full_run_msec",
+			0
+		)))
+	)
+	var report_scope := scope.duplicate(true)
+	report_scope.erase("jobs")
+	report_scope["job_count"] = rows.size()
+	var report_kind := str(options.get(
+		"report_kind",
+		SHARD_REPORT_KIND
+			if str(scope.get("scope_kind", "")) == "shard"
+			else SIMULATION_ID
+	))
 	var report := {
-		"schema_version": 1,
+		"schema_version": SHARD_SCHEMA_VERSION,
+		"report_kind": report_kind,
 		"simulation_id": SIMULATION_ID,
 		"ruleset_id": RULESET_ID,
 		"production_path": {
@@ -241,21 +454,33 @@ func run_matrix(
 			"track_and_dbg_are_runtime_owned": true,
 			"direct_state_injection_count": 0,
 		},
-		"configuration_count": CONFIGURATIONS.size(),
+		"configuration_count": configuration_results.size(),
+		"matrix_configuration_count": CONFIGURATIONS.size(),
 		"configurations": CONFIGURATIONS.duplicate(true),
-		"matches_per_configuration": count,
-		"requested_match_count": count * CONFIGURATIONS.size(),
-		"total_match_count": total_match_count,
+		"matches_per_configuration": int(scope.get(
+			"requested_matches_per_configuration",
+			0
+		)),
+		"formal_matches_per_configuration": formal_matches_per_configuration,
+		"requested_match_count": int(scope.get(
+			"requested_match_count",
+			rows.size()
+		)),
+		"total_match_count": rows.size(),
 		"elapsed_msec": elapsed_msec,
 		"elapsed_seconds": float(elapsed_msec) / 1000.0,
+		"execution_scope": report_scope,
 		"configuration_results": configuration_results,
 		"global_metrics": global_metrics,
-		"performance": _aggregate_timing(configuration_results),
+		"performance_profile": _aggregate_performance_profile(rows),
+		"performance": performance,
 		"safety_gates": safety_gates,
 		"coverage_gates": coverage_gates,
 		"root_cause_diagnostics": root_cause_diagnostics,
-		"required_formal_match_count": REQUIRED_FORMAL_MATCH_COUNT,
-		"full_match_count_green": total_match_count == REQUIRED_FORMAL_MATCH_COUNT,
+		"required_formal_match_count": formal_match_count,
+		"full_match_count_green": (
+			rows.size() == formal_match_count
+		),
 		"observability": {
 			"opponent_private_facts_read_count": 0,
 			"private_warehouse_stock_read_count": 0,
@@ -273,22 +498,410 @@ func run_matrix(
 		"human_fun_proven": false,
 		"human_test_required": true,
 	}
+	if bool(options.get(
+		"include_match_rows",
+		str(scope.get("scope_kind", "")) == "shard"
+	)):
+		report["shard_rows"] = rows.duplicate(true)
 	report["acceptance_status"] = _acceptance_status(
-		total_match_count,
+		rows.size(),
 		safety_gates,
-		coverage_gates
+		coverage_gates,
+		formal_match_count
+	)
+	report["report_fingerprint"] = fingerprint(report)
+	_last_report = report.duplicate(true)
+	return report
+
+
+func _invalid_execution_report(scope: Dictionary) -> Dictionary:
+	var report := {
+		"schema_version": SHARD_SCHEMA_VERSION,
+		"report_kind": "v075.combat.simulation.invalid.v1",
+		"simulation_id": SIMULATION_ID,
+		"ruleset_id": RULESET_ID,
+		"acceptance_status": "BLOCKED",
+		"execution_scope": scope.duplicate(true),
+		"execution_error": str(scope.get("reason_code", "invalid_scope")),
+		"configuration_count": 0,
+		"matrix_configuration_count": CONFIGURATIONS.size(),
+		"requested_match_count": 0,
+		"total_match_count": 0,
+		"required_formal_match_count": REQUIRED_FORMAL_MATCH_COUNT,
+		"full_match_count_green": false,
+	}
+	report["report_fingerprint"] = fingerprint(report)
+	_last_report = report.duplicate(true)
+	return report
+
+
+func _report_paths_for_scope(
+	scope: Dictionary,
+	options: Dictionary
+) -> Dictionary:
+	var json_path := str(options.get("report_json_path", ""))
+	var md_path := str(options.get("report_md_path", ""))
+	if str(scope.get("scope_kind", "")) != "shard":
+		return {"json_path": json_path, "md_path": md_path}
+	var shard_count := int(scope.get("shard_count", 1))
+	var shard_id := int(scope.get("shard_id", -1))
+	var suffix := ""
+	if shard_id >= 0:
+		suffix = ".shard-%03d-of-%03d" % [shard_id, shard_count]
+	else:
+		suffix = ".shard-c%d-%d-m%d-%d" % [
+			int(scope.get("configuration_index_start", 0)),
+			int(scope.get("configuration_index_end_exclusive", 0)),
+			int(scope.get("match_index_start", 0)),
+			int(scope.get("match_index_end_exclusive", 0)),
+		]
+	if json_path.is_empty():
+		json_path = REPORT_JSON_PATH.trim_suffix(".json") + suffix + ".json"
+	if md_path.is_empty():
+		md_path = REPORT_MD_PATH.trim_suffix(".md") + suffix + ".md"
+	return {"json_path": json_path, "md_path": md_path}
+
+
+func _aggregate_performance_profile(rows: Array) -> Dictionary:
+	var sum_keys := [
+		"profile_public_core_usec",
+		"profile_resolve_total_usec",
+		"profile_sync_facility_usec",
+		"profile_sync_asset_usec",
+		"profile_auto_queue_usec",
+		"profile_ai_observation_usec",
+		"profile_legal_actions_usec",
+		"profile_available_actions_usec",
+		"profile_acquisition_usec",
+		"profile_lock_usec",
+	]
+	var sums: Dictionary = {}
+	for key_variant in sum_keys:
+		sums[str(key_variant)] = 0
+	var phase_usec: Dictionary = {}
+	var phase_counts: Dictionary = {}
+	var resolution_count := 0
+	var profiled_call_usec_total := 0
+	var phase_process_usec_total := 0
+	var profile_row_count := 0
+	for row_variant in rows:
+		var row := row_variant as Dictionary
+		var performance := row.get("simulation_performance", {}) as Dictionary
+		if performance.is_empty():
+			continue
+		profile_row_count += 1
+		for key_variant in sum_keys:
+			var key := str(key_variant)
+			sums[key] = int(sums.get(key, 0)) + int(
+				performance.get(key, 0)
+			)
+		resolution_count += int(performance.get("profile_resolution_count", 0))
+		profiled_call_usec_total += int(performance.get(
+			"profiled_call_usec_total",
+			0
+		))
+		phase_process_usec_total += int(performance.get(
+			"phase_process_usec_total",
+			0
+		))
+		for phase_key_variant in (performance.get(
+			"phase_process_usec",
+			{}
+		) as Dictionary).keys():
+			var phase_key := str(phase_key_variant)
+			phase_usec[phase_key] = int(phase_usec.get(phase_key, 0)) + int(
+				(performance.get("phase_process_usec", {}) as Dictionary).get(
+					phase_key_variant,
+					0
+				)
+			)
+		for phase_key_variant in (performance.get(
+			"phase_process_counts",
+			{}
+		) as Dictionary).keys():
+			var phase_key := str(phase_key_variant)
+			phase_counts[phase_key] = int(
+				phase_counts.get(phase_key, 0)
+			) + int((performance.get(
+				"phase_process_counts",
+				{}
+			) as Dictionary).get(phase_key_variant, 0))
+	var mean_usec: Dictionary = {}
+	for key_variant in sum_keys:
+		var key := str(key_variant)
+		mean_usec[key] = _round_float(
+			float(sums.get(key, 0)) / maxf(1.0, float(profile_row_count))
+		)
+	return {
+		"schema_version": 1,
+		"profile_row_count": profile_row_count,
+		"sum_usec": sums,
+		"mean_usec_per_match": mean_usec,
+		"phase_process_usec": phase_usec,
+		"phase_process_counts": phase_counts,
+		"profile_resolution_count": resolution_count,
+		"profiled_call_usec_total": profiled_call_usec_total,
+		"phase_process_usec_total": phase_process_usec_total,
+	}
+
+
+func _parallel_wall_time_estimates(serial_msec: int) -> Dictionary:
+	var result := {}
+	for worker_count in [1, 2, 4, 8, 16, 32]:
+		result[str(worker_count)] = int(ceili(
+			float(serial_msec) / float(worker_count)
+		))
+	return result
+
+
+func aggregate_report_files(
+	paths: Array,
+	options: Dictionary = {}
+) -> Dictionary:
+	var reports: Array = []
+	var read_errors: Array[String] = []
+	for path_variant in paths:
+		var path := str(path_variant)
+		if path.is_empty() or not FileAccess.file_exists(path):
+			read_errors.append("report_file_missing:%s" % path)
+			continue
+		var parsed: Variant = JSON.parse_string(
+			FileAccess.get_file_as_string(path)
+		)
+		if not (parsed is Dictionary):
+			read_errors.append("report_json_invalid:%s" % path)
+			continue
+		reports.append(parsed as Dictionary)
+	if not read_errors.is_empty():
+		return _invalid_execution_report({
+			"accepted": false,
+			"reason_code": "aggregate_input_invalid",
+			"read_errors": read_errors,
+		})
+	return aggregate_reports(reports, options)
+
+
+func aggregate_reports(
+	reports: Array,
+	options: Dictionary = {}
+) -> Dictionary:
+	var formal_matches_per_configuration := maxi(1, int(options.get(
+		"formal_matches_per_configuration",
+		DEFAULT_MATCHES_PER_CONFIGURATION
+	)))
+	var unique_rows: Array = []
+	var seen_jobs: Dictionary = {}
+	var seen_seeds: Dictionary = {}
+	var duplicate_job_count := 0
+	var duplicate_seed_count := 0
+	var seed_mismatch_count := 0
+	var out_of_declared_scope_count := 0
+	var schema_error_count := 0
+	var source_report_fingerprints: Array[String] = []
+	for report_variant in reports:
+		if not (report_variant is Dictionary):
+			schema_error_count += 1
+			continue
+		var report := report_variant as Dictionary
+		if str(report.get("simulation_id", "")) != SIMULATION_ID \
+			or str(report.get("ruleset_id", "")) != RULESET_ID \
+			or str(report.get("report_kind", "")) != SHARD_REPORT_KIND:
+			schema_error_count += 1
+			continue
+		if int(report.get(
+			"formal_matches_per_configuration",
+			formal_matches_per_configuration
+		)) != formal_matches_per_configuration:
+			schema_error_count += 1
+			continue
+		var source_fingerprint := str(report.get("report_fingerprint", ""))
+		if not source_fingerprint.is_empty():
+			source_report_fingerprints.append(source_fingerprint)
+		var shard_rows_variant: Variant = report.get("shard_rows", null)
+		if not (shard_rows_variant is Array):
+			schema_error_count += 1
+			continue
+		var report_scope := report.get("execution_scope", {}) as Dictionary
+		var manifest_options := {
+			"configuration_index_start": int(report_scope.get(
+				"configuration_index_start",
+				-1
+			)),
+			"configuration_index_end_exclusive": int(report_scope.get(
+				"configuration_index_end_exclusive",
+				-1
+			)),
+			"match_index_start": int(report_scope.get(
+				"match_index_start",
+				-1
+			)),
+			"match_index_end_exclusive": int(report_scope.get(
+				"match_index_end_exclusive",
+				-1
+			)),
+			"formal_matches_per_configuration": formal_matches_per_configuration,
+		}
+		if str(report_scope.get("partition_mode", "")) \
+			== "round_robin_flattened_jobs":
+			manifest_options["shard_count"] = int(report_scope.get(
+				"shard_count",
+				0
+			))
+			manifest_options["shard_id"] = int(report_scope.get(
+				"shard_id",
+				-1
+			))
+		var declared_manifest := build_shard_manifest(
+			formal_matches_per_configuration,
+			manifest_options
+		) as Dictionary
+		if not bool(declared_manifest.get("accepted", false)):
+			schema_error_count += 1
+			continue
+		var declared_jobs: Dictionary = {}
+		for declared_job_variant in declared_manifest.get("jobs", []) as Array:
+			var declared_job := declared_job_variant as Dictionary
+			declared_jobs["%d:%d" % [
+				int(declared_job.get("configuration_index", -1)),
+				int(declared_job.get("match_index", -1)),
+			]] = true
+		for row_variant in shard_rows_variant as Array:
+			if not (row_variant is Dictionary):
+				schema_error_count += 1
+				continue
+			var row := (row_variant as Dictionary).duplicate(true)
+			var configuration_index := int(row.get("configuration_index", -1))
+			var match_index := int(row.get("match_index", -1))
+			if configuration_index < 0 \
+				or configuration_index >= CONFIGURATIONS.size() \
+				or match_index < 0 \
+				or match_index >= formal_matches_per_configuration:
+				schema_error_count += 1
+				continue
+			var expected_seed := seed_for(configuration_index, match_index)
+			if int(row.get("seed", expected_seed)) != expected_seed:
+				seed_mismatch_count += 1
+				continue
+			var job_key := "%d:%d" % [configuration_index, match_index]
+			if not declared_jobs.has(job_key):
+				out_of_declared_scope_count += 1
+				continue
+			var seed_key := str(expected_seed)
+			if seen_jobs.has(job_key):
+				duplicate_job_count += 1
+				continue
+			if seen_seeds.has(seed_key):
+				duplicate_seed_count += 1
+				continue
+			seen_jobs[job_key] = true
+			seen_seeds[seed_key] = true
+			unique_rows.append(row)
+	var missing_job_count := 0
+	for configuration_index in range(CONFIGURATIONS.size()):
+		for match_index in range(formal_matches_per_configuration):
+			if not seen_jobs.has("%d:%d" % [configuration_index, match_index]):
+				missing_job_count += 1
+	unique_rows.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		var left_key := "%04d:%04d" % [
+			int(left.get("configuration_index", -1)),
+			int(left.get("match_index", -1)),
+		]
+		var right_key := "%04d:%04d" % [
+			int(right.get("configuration_index", -1)),
+			int(right.get("match_index", -1)),
+		]
+		return left_key < right_key
+	)
+	var scope := {
+		"accepted": true,
+		"schema_version": SHARD_SCHEMA_VERSION,
+		"scope_kind": "aggregate",
+		"configuration_index_start": 0,
+		"configuration_index_end_exclusive": CONFIGURATIONS.size(),
+		"configuration_indices": range(CONFIGURATIONS.size()),
+		"match_index_start": 0,
+		"match_index_end_exclusive": formal_matches_per_configuration,
+		"formal_matches_per_configuration": formal_matches_per_configuration,
+		"requested_matches_per_configuration": formal_matches_per_configuration,
+		"requested_match_count": CONFIGURATIONS.size() * formal_matches_per_configuration,
+		"matrix_match_count": CONFIGURATIONS.size() * formal_matches_per_configuration,
+		"shard_id": -1,
+		"shard_count": reports.size(),
+		"partition_mode": "aggregated_shards",
+		"seed_formula_id": SEED_FORMULA_ID,
+		"seed_deduplication": true,
+	}
+	var report := _build_report_from_rows(
+		unique_rows,
+		scope,
+		0,
+		{
+			"report_kind": AGGREGATE_REPORT_KIND,
+			"include_match_rows": false,
+		}
+	)
+	source_report_fingerprints.sort()
+	report["aggregation"] = {
+		"schema_version": SHARD_SCHEMA_VERSION,
+		"input_report_count": reports.size(),
+		"source_report_fingerprints": source_report_fingerprints,
+		"unique_job_count": unique_rows.size(),
+		"expected_job_count": CONFIGURATIONS.size() * formal_matches_per_configuration,
+		"missing_job_count": missing_job_count,
+		"duplicate_job_count": duplicate_job_count,
+		"duplicate_seed_count": duplicate_seed_count,
+		"seed_mismatch_count": seed_mismatch_count,
+		"out_of_declared_scope_count": out_of_declared_scope_count,
+		"schema_error_count": schema_error_count,
+		"seed_deduplication_green": (
+			duplicate_seed_count == 0 and seed_mismatch_count == 0
+		),
+	}
+	if not (safety_gates_are_green(report) and coverage_gates_are_green(report)):
+		report["acceptance_status"] = "BLOCKED" \
+			if schema_error_count > 0 or duplicate_job_count > 0 \
+			or duplicate_seed_count > 0 or seed_mismatch_count > 0 \
+			or out_of_declared_scope_count > 0 \
+			else "PARTIAL"
+	elif missing_job_count > 0 or unique_rows.size() \
+			!= CONFIGURATIONS.size() * formal_matches_per_configuration:
+		report["acceptance_status"] = "PARTIAL"
+	else:
+		report["acceptance_status"] = "GREEN"
+	report["full_match_count_green"] = (
+		report["acceptance_status"] == "GREEN"
 	)
 	report["report_fingerprint"] = fingerprint(report)
 	_last_report = report.duplicate(true)
 	if bool(options.get("write_report", false)):
-		write_report(report)
+		write_report(
+			report,
+			str(options.get("report_json_path", "")),
+			str(options.get("report_md_path", ""))
+		)
 	return report
+
+
+func safety_gates_are_green(report: Dictionary) -> bool:
+	for value_variant in (report.get("safety_gates", {}) as Dictionary).values():
+		if value_variant is bool and not bool(value_variant):
+			return false
+	return true
+
+
+func coverage_gates_are_green(report: Dictionary) -> bool:
+	return bool((report.get("coverage_gates", {}) as Dictionary).get(
+		"COMBAT_REQUIRED_OBSERVATIONS_GREEN",
+		false
+	))
 
 
 func run_match(
 	configuration: Dictionary,
 	seed_value: int,
-	step_limit: int = DEFAULT_STEP_LIMIT
+	step_limit: int = DEFAULT_STEP_LIMIT,
+	configuration_index: int = -1,
+	match_index: int = -1
 ) -> Dictionary:
 	var started_usec: int = Time.get_ticks_usec()
 	var runtime := RuntimeOwner.new()
@@ -312,7 +925,7 @@ func run_match(
 			true,
 			true,
 			{
-				"map_seed": seed_value,
+				"map_seed": int(configuration.get("map_seed", seed_value)),
 				"region_count": int(configuration.get("region_count", 0)),
 				"geography_complexity": str(
 					configuration.get("geography_complexity", "STANDARD")
@@ -377,8 +990,14 @@ func run_match(
 			"monster_card_purchase_count": int(
 				debug.get("monster_card_purchase_count", 0)
 			),
+			"first_monster_card_purchase_batch": int(
+				debug.get("first_monster_card_purchase_batch", -1)
+			),
 			"military_card_purchase_count": int(
 				debug.get("military_card_purchase_count", 0)
+			),
+			"first_military_card_purchase_batch": int(
+				debug.get("first_military_card_purchase_batch", -1)
 			),
 			"monster_card_mode_counts": (
 				(debug.get("combat", {}) as Dictionary).get(
@@ -423,6 +1042,8 @@ func run_match(
 		"settlement_id": str(final_settlement.get("settlement_id", "")),
 	}
 	var row := {
+		"configuration_index": configuration_index,
+		"match_index": match_index,
 		"configuration_id": str(configuration.get("configuration_id", "")),
 		"seed": seed_value,
 		"start_receipt": {
@@ -458,14 +1079,20 @@ func run_match(
 	return row
 
 
-func write_report(report: Dictionary) -> Dictionary:
-	var json_file := FileAccess.open(REPORT_JSON_PATH, FileAccess.WRITE)
+func write_report(
+	report: Dictionary,
+	json_path: String = "",
+	md_path: String = ""
+) -> Dictionary:
+	var resolved_json_path := REPORT_JSON_PATH if json_path.is_empty() else json_path
+	var resolved_md_path := REPORT_MD_PATH if md_path.is_empty() else md_path
+	var json_file := FileAccess.open(resolved_json_path, FileAccess.WRITE)
 	if json_file == null:
 		return {"accepted": false, "reason_code": "json_report_open_failed"}
 	json_file.store_string(JSON.stringify(report, "	") + "\n")
 	json_file.close()
 	var markdown := _markdown_report(report)
-	var md_file := FileAccess.open(REPORT_MD_PATH, FileAccess.WRITE)
+	var md_file := FileAccess.open(resolved_md_path, FileAccess.WRITE)
 	if md_file == null:
 		return {"accepted": false, "reason_code": "markdown_report_open_failed"}
 	md_file.store_string(markdown)
@@ -473,8 +1100,8 @@ func write_report(report: Dictionary) -> Dictionary:
 	return {
 		"accepted": true,
 		"reason_code": "v075_combat_simulation_report_written",
-		"json_path": REPORT_JSON_PATH,
-		"markdown_path": REPORT_MD_PATH,
+		"json_path": resolved_json_path,
+		"markdown_path": resolved_md_path,
 		"report_fingerprint": str(report.get("report_fingerprint", "")),
 	}
 
@@ -808,13 +1435,14 @@ func _coverage_gates(metrics: Dictionary) -> Dictionary:
 func _acceptance_status(
 	total_match_count: int,
 	safety_gates: Dictionary,
-	coverage_gates: Dictionary
+	coverage_gates: Dictionary,
+	required_match_count: int = REQUIRED_FORMAL_MATCH_COUNT
 ) -> String:
 	for value_variant in safety_gates.values():
 		if value_variant is bool and not bool(value_variant):
 			return "BLOCKED"
 	if (
-		total_match_count != REQUIRED_FORMAL_MATCH_COUNT
+		total_match_count != required_match_count
 		or not bool(coverage_gates.get(
 			"COMBAT_REQUIRED_OBSERVATIONS_GREEN",
 			false
@@ -852,6 +1480,8 @@ func _autonomy_terminal_stalls(monsters: Array, settled: bool) -> int:
 
 func _public_match_row(row: Dictionary) -> Dictionary:
 	return {
+		"configuration_index": int(row.get("configuration_index", -1)),
+		"match_index": int(row.get("match_index", -1)),
 		"configuration_id": str(row.get("configuration_id", "")),
 		"seed": int(row.get("seed", 0)),
 		"settled": bool(row.get("settled", false)),
@@ -1128,7 +1758,11 @@ func _sorted_float_values(values: Array) -> Array:
 	return result
 
 
-func _aggregate_timing(results: Array) -> Dictionary:
+func _aggregate_timing(
+	results: Array,
+	formal_matches_per_configuration: int = DEFAULT_MATCHES_PER_CONFIGURATION,
+	formal_configuration_count: int = CONFIGURATIONS.size()
+) -> Dictionary:
 	var values: Array = []
 	for row_variant in results:
 		var row := row_variant as Dictionary
@@ -1138,8 +1772,8 @@ func _aggregate_timing(results: Array) -> Dictionary:
 		"configuration_mean_msec": _mean(values),
 		"configuration_max_mean_msec": _maximum(values),
 		"estimated_full_run_msec": int(
-			_mean(values) * DEFAULT_MATCHES_PER_CONFIGURATION
-			* CONFIGURATIONS.size()
+			_mean(values) * formal_matches_per_configuration
+			* formal_configuration_count
 		),
 	}
 
@@ -1243,6 +1877,63 @@ func _markdown_report(report: Dictionary) -> String:
 			float(report.get("elapsed_seconds", 0.0)),
 		]
 	)
+	lines.append("")
+	var scope := report.get("execution_scope", {}) as Dictionary
+	lines.append("## Execution Scope")
+	lines.append("")
+	lines.append(
+		"- scope_kind=%s; configurations=%s; match_range=[%d,%d)."
+		% [
+			str(scope.get("scope_kind", "default_matrix")),
+			JSON.stringify(scope.get("configuration_indices", [])),
+			int(scope.get("match_index_start", 0)),
+			int(scope.get("match_index_end_exclusive", 0)),
+		]
+	)
+	lines.append(
+		"- seed_formula_id=%s; seed_deduplication=%s; shard=%d/%d."
+		% [
+			str(scope.get("seed_formula_id", SEED_FORMULA_ID)),
+			str(scope.get("seed_deduplication", false)),
+			int(scope.get("shard_id", -1)),
+			int(scope.get("shard_count", 1)),
+		]
+	)
+	var aggregation := report.get("aggregation", {}) as Dictionary
+	if not aggregation.is_empty():
+		lines.append(
+			"- aggregate_inputs=%d; unique_jobs=%d; expected_jobs=%d; missing_jobs=%d; duplicate_jobs=%d; duplicate_seeds=%d."
+			% [
+				int(aggregation.get("input_report_count", 0)),
+				int(aggregation.get("unique_job_count", 0)),
+				int(aggregation.get("expected_job_count", 0)),
+				int(aggregation.get("missing_job_count", 0)),
+				int(aggregation.get("duplicate_job_count", 0)),
+				int(aggregation.get("duplicate_seed_count", 0)),
+			]
+		)
+	var profile := report.get("performance_profile", {}) as Dictionary
+	if not profile.is_empty():
+		lines.append(
+			"- profiler_rows=%d; profile_resolution_count=%d; profile_sum_usec=%s."
+			% [
+				int(profile.get("profile_row_count", 0)),
+				int(profile.get("profile_resolution_count", 0)),
+				JSON.stringify(profile.get("sum_usec", {})),
+			]
+		)
+	var performance := report.get("performance", {}) as Dictionary
+	if not performance.is_empty():
+		lines.append(
+			"- serial_estimate_msec=%d; ideal_parallel_wall_msec_lower_bound=%s."
+			% [
+				int(performance.get("estimated_full_run_msec", 0)),
+				JSON.stringify(performance.get(
+					"ideal_parallel_wall_msec_lower_bound",
+					{}
+				)),
+			]
+		)
 	lines.append("")
 	lines.append("## Configurations")
 	lines.append("")

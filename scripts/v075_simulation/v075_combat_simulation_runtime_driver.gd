@@ -7,6 +7,9 @@ const AssetBatchCore := preload(
 const CombatCardDefinitions := preload(
 	"res://scripts/v075/cards/v075_card_definition_registry.gd"
 )
+const ProfilePublicActionBatchCore := preload(
+	"res://scripts/v075/runtime/v075_public_action_batch_core.gd"
+)
 
 const SIMULATION_PROCESS_DELTA_SECONDS := 1.0
 
@@ -17,6 +20,7 @@ var _simulation_private_skill_fast_skip_count: int = 0
 var _simulation_presentation_observer_disabled: bool = true
 var _simulation_process_call_count: int = 0
 var _simulation_phase_process_counts: Dictionary = {}
+var _simulation_phase_process_usec: Dictionary = {}
 var _simulation_cache_actor_id: String = ""
 var _simulation_legal_cache_valid: bool = false
 var _simulation_legal_cache: Array = []
@@ -31,6 +35,9 @@ var _simulation_monster_discard_to_hand_count: int = 0
 var _simulation_military_discard_to_hand_count: int = 0
 var _simulation_monster_legal_option_count: int = 0
 var _simulation_military_legal_option_count: int = 0
+var _simulation_direct_monster_legal_option_count: int = 0
+var _simulation_direct_military_legal_option_count: int = 0
+var _simulation_first_combat_legal_projection_gap: Dictionary = {}
 var _simulation_military_affordable_option_count: int = 0
 var _simulation_military_available_option_count: int = 0
 var _simulation_military_filtered_option_count: int = 0
@@ -49,6 +56,19 @@ var _simulation_committed_skill_uses_by_key: Dictionary = {}
 var _simulation_private_skill_reuse_commit_count: int = 0
 var _simulation_observed_skill_commit_count: int = 0
 var _simulation_observed_skill_fizzle_count: int = 0
+var _simulation_runtime_failure: Dictionary = {}
+var _simulation_profile_public_core_usec: int = 0
+var _simulation_profile_resolve_total_usec: int = 0
+var _simulation_profile_sync_facility_usec: int = 0
+var _simulation_profile_sync_asset_usec: int = 0
+var _simulation_profile_resolution_count: int = 0
+var _simulation_profile_auto_queue_usec: int = 0
+var _simulation_profile_ai_observation_usec: int = 0
+var _simulation_profile_legal_actions_usec: int = 0
+var _simulation_profile_available_actions_usec: int = 0
+var _simulation_profile_acquisition_usec: int = 0
+var _simulation_profile_lock_usec: int = 0
+var _simulation_profile_enabled: bool = false
 
 
 func run_simulation_until_settled(max_steps: int = 2000) -> Dictionary:
@@ -56,6 +76,7 @@ func run_simulation_until_settled(max_steps: int = 2000) -> Dictionary:
 		return _reject("match_not_started")
 	_accelerated = true
 	_automate_local_human = true
+	_simulation_profile_enabled = "--profile-resolution" in OS.get_cmdline_user_args()
 	var was_coalesced: bool = _projection_emit_coalesced
 	_projection_emit_coalesced = true
 	var steps: int = 0
@@ -65,7 +86,11 @@ func run_simulation_until_settled(max_steps: int = 2000) -> Dictionary:
 			_simulation_phase_process_counts.get(phase_before, 0)
 		) + 1
 		# The inherited production process owns every phase and receipt transition.
+		var phase_started := Time.get_ticks_usec()
 		super._process(SIMULATION_PROCESS_DELTA_SECONDS)
+		_simulation_phase_process_usec[phase_before] = int(
+			_simulation_phase_process_usec.get(phase_before, 0)
+		) + Time.get_ticks_usec() - phase_started
 		steps += 1
 		_simulation_process_call_count += 1
 		_observe_private_skill_resolution_deltas()
@@ -95,6 +120,98 @@ func run_simulation_until_settled(max_steps: int = 2000) -> Dictionary:
 			"direct_state_injection_count": 0,
 		},
 	}
+
+
+func _fail(reason_code: String, detail: Dictionary) -> Dictionary:
+	if _simulation_runtime_failure.is_empty():
+		var nested_reasons: Array[String] = []
+		_collect_reason_codes(detail, nested_reasons, 0)
+		_simulation_runtime_failure = {
+			"reason_code": reason_code,
+			"nested_reason_codes": nested_reasons,
+			"phase": _phase,
+			"batch_number": _batch_number,
+		}
+	return super._fail(reason_code, detail)
+
+
+func resolve_next_action() -> Dictionary:
+	if _simulation_profile_enabled:
+		var core_started := Time.get_ticks_usec()
+		ProfilePublicActionBatchCore.resolve_next_authority_owned(_facility_state)
+		_simulation_profile_public_core_usec += (
+			Time.get_ticks_usec() - core_started
+		)
+	var started := Time.get_ticks_usec()
+	var result := super.resolve_next_action()
+	_simulation_profile_resolve_total_usec += Time.get_ticks_usec() - started
+	_simulation_profile_resolution_count += 1
+	return result
+
+
+func _sync_facility_slots() -> void:
+	if not _simulation_profile_enabled:
+		super._sync_facility_slots()
+		return
+	var started := Time.get_ticks_usec()
+	super._sync_facility_slots()
+	_simulation_profile_sync_facility_usec += Time.get_ticks_usec() - started
+
+
+func _sync_asset_balances() -> void:
+	if not _simulation_profile_enabled:
+		super._sync_asset_balances()
+		return
+	var started := Time.get_ticks_usec()
+	super._sync_asset_balances()
+	_simulation_profile_sync_asset_usec += Time.get_ticks_usec() - started
+
+
+func ai_observation(actor_id: String) -> Dictionary:
+	if not _simulation_profile_enabled:
+		return super.ai_observation(actor_id)
+	var started := Time.get_ticks_usec()
+	var result := super.ai_observation(actor_id)
+	_simulation_profile_ai_observation_usec += Time.get_ticks_usec() - started
+	return result
+
+
+func _auto_acquire_track_item(actor_id: String) -> Dictionary:
+	if not _simulation_profile_enabled:
+		return super._auto_acquire_track_item(actor_id)
+	var started := Time.get_ticks_usec()
+	var result := super._auto_acquire_track_item(actor_id)
+	_simulation_profile_acquisition_usec += Time.get_ticks_usec() - started
+	return result
+
+
+func lock_player_submission(actor_id: String) -> Dictionary:
+	if not _simulation_profile_enabled:
+		return super.lock_player_submission(actor_id)
+	var started := Time.get_ticks_usec()
+	var result := super.lock_player_submission(actor_id)
+	_simulation_profile_lock_usec += Time.get_ticks_usec() - started
+	return result
+
+
+func _collect_reason_codes(
+	value: Variant,
+	result: Array[String],
+	depth: int
+) -> void:
+	if depth > 5:
+		return
+	if value is Dictionary:
+		var row := value as Dictionary
+		if row.has("reason_code"):
+			var reason := str(row.get("reason_code", ""))
+			if not reason.is_empty() and reason not in result:
+				result.append(reason)
+		for child_variant in row.values():
+			_collect_reason_codes(child_variant, result, depth + 1)
+	elif value is Array:
+		for child_variant in value as Array:
+			_collect_reason_codes(child_variant, result, depth + 1)
 
 
 func _combat_ai_private_facts(actor_id: String) -> Dictionary:
@@ -217,6 +334,7 @@ func _combat_ai_private_facts(actor_id: String) -> Dictionary:
 
 
 func legal_card_actions(actor_id: String) -> Array:
+	var started := Time.get_ticks_usec() if _simulation_profile_enabled else 0
 	_simulation_legal_card_actions_call_count += 1
 	if actor_id == _simulation_cache_actor_id and _simulation_legal_cache_valid:
 		_simulation_legal_card_actions_cache_hit_count += 1
@@ -225,6 +343,10 @@ func legal_card_actions(actor_id: String) -> Array:
 			true
 		)
 		_observe_monster_hand_without_legal_options(actor_id, cached)
+		if _simulation_profile_enabled:
+			_simulation_profile_legal_actions_usec += (
+				Time.get_ticks_usec() - started
+			)
 		return cached
 	var result: Array = super.legal_card_actions(actor_id)
 	_simulation_last_legal_actions_by_actor[actor_id] = result.duplicate(
@@ -234,12 +356,66 @@ func legal_card_actions(actor_id: String) -> Array:
 		_simulation_legal_cache = result.duplicate(true)
 		_simulation_legal_cache_valid = true
 	_observe_monster_hand_without_legal_options(actor_id, result)
+	if _simulation_profile_enabled:
+		_simulation_profile_legal_actions_usec += Time.get_ticks_usec() - started
 	return result
 
 
 func _auto_legal_actions(actor_id: String) -> Array:
 	var result: Array = super._auto_legal_actions(actor_id)
-	_observe_dbg_card_lifecycle(actor_id)
+	var direct: Array = legal_card_actions(actor_id)
+	var result_ids: Dictionary = {}
+	for existing_variant in result:
+		if existing_variant is Dictionary:
+			result_ids[_simulation_option_identity(existing_variant as Dictionary)] = true
+	# AI observations historically carried only the facility subset. The
+	# authority's own legal projection is the source of truth for combat cards;
+	# merge those options without exposing any rival-private fields.
+	for direct_variant in direct:
+		if not (direct_variant is Dictionary):
+			continue
+		var direct_option := direct_variant as Dictionary
+		var domain := str(direct_option.get("action_domain", ""))
+		if domain not in ["monster", "military"]:
+			continue
+		var identity := _simulation_option_identity(direct_option)
+		if not result_ids.has(identity):
+			result.append(direct_option.duplicate(true))
+			result_ids[identity] = true
+	var projected_counts := _combat_legal_counts(result)
+	var direct_counts := _combat_legal_counts(direct)
+	_simulation_direct_monster_legal_option_count += int(
+		direct_counts.get("monster", 0)
+	)
+	_simulation_direct_military_legal_option_count += int(
+		direct_counts.get("military", 0)
+	)
+	if (
+		_simulation_first_combat_legal_projection_gap.is_empty()
+		and (
+			int(direct_counts.get("monster", 0))
+				> int(projected_counts.get("monster", 0))
+			or int(direct_counts.get("military", 0))
+				> int(projected_counts.get("military", 0))
+		)
+	):
+		_simulation_first_combat_legal_projection_gap = {
+			"phase": _phase,
+			"batch_number": _batch_number,
+			"actor_is_local": actor_id == _local_player_id,
+			"direct_monster_count": int(direct_counts.get("monster", 0)),
+			"projected_monster_count": int(
+				projected_counts.get("monster", 0)
+			),
+			"direct_military_count": int(direct_counts.get("military", 0)),
+			"projected_military_count": int(
+				projected_counts.get("military", 0)
+			),
+			"direct_legal_count": direct.size(),
+			"projected_legal_count": result.size(),
+		}
+	if _simulation_profile_enabled:
+		_observe_dbg_card_lifecycle(actor_id)
 	for option_variant in result:
 		if not (option_variant is Dictionary):
 			continue
@@ -250,6 +426,20 @@ func _auto_legal_actions(actor_id: String) -> Array:
 			_simulation_monster_legal_option_count += 1
 		elif domain == "military":
 			_simulation_military_legal_option_count += 1
+	return result
+
+
+func _combat_legal_counts(options: Array) -> Dictionary:
+	var result := {"monster": 0, "military": 0}
+	for option_variant in options:
+		if not (option_variant is Dictionary):
+			continue
+		var domain := str((option_variant as Dictionary).get(
+			"action_domain",
+			""
+		))
+		if result.has(domain):
+			result[domain] = int(result.get(domain, 0)) + 1
 	return result
 
 
@@ -265,12 +455,18 @@ func _auto_available_actions(
 	queue: Array,
 	legal: Array
 ) -> Array:
+	var started := Time.get_ticks_usec() if _simulation_profile_enabled else 0
 	var result: Array = super._auto_available_actions(actor_id, queue, legal)
-	_observe_military_available_filter(actor_id, queue, legal, result)
+	if _simulation_profile_enabled:
+		_observe_military_available_filter(actor_id, queue, legal, result)
+		_simulation_profile_available_actions_usec += (
+			Time.get_ticks_usec() - started
+		)
 	return result
 
 
 func _auto_queue_and_lock(actor_id: String) -> Dictionary:
+	var started := Time.get_ticks_usec() if _simulation_profile_enabled else 0
 	_simulation_cache_actor_id = actor_id
 	_simulation_legal_cache_valid = false
 	_simulation_legal_cache = []
@@ -281,6 +477,8 @@ func _auto_queue_and_lock(actor_id: String) -> Dictionary:
 	_simulation_legal_cache_valid = false
 	_simulation_legal_cache = []
 	_simulation_card_cache = {}
+	if _simulation_profile_enabled:
+		_simulation_profile_auto_queue_usec += Time.get_ticks_usec() - started
 	return result
 
 
@@ -323,6 +521,9 @@ func request_private_monster_skill(
 		parameters
 	)
 	if bool(result.get("accepted", false)):
+		_simulation_legal_cache_valid = false
+		_simulation_legal_cache = []
+		_simulation_card_cache = {}
 		_simulation_pending_skill_request_keys.append(
 			"%s|%s|%s" % [
 				actor_id,
@@ -409,6 +610,17 @@ func _observe_first_monster_prebind_rejection(
 		})
 		return
 	var before: Dictionary = _combat_owner.call("debug_snapshot") as Dictionary
+	if str(before.get("phase", "")) != "batch_active":
+		_record_monster_prebind_rejection({
+			"reason_code": "monster_card_prebind_probe_skipped_non_active_phase",
+			"monster_card_mode": "DEPLOY_NEW",
+			"definition_known": true,
+			"card_rank": int(definition.get("level", 0)),
+			"runtime_region_count": regions.size(),
+			"controlled_source_count": _owned_active_monster_count(actor_id),
+			"combat_debug_unchanged": true,
+		})
+		return
 	var request := {
 		"request_id": "simulation.diagnostic.%s" % str(
 			card.get("instance_id", "")
@@ -821,7 +1033,23 @@ func _pop_pending_skill_request_key() -> String:
 
 
 func simulation_performance_snapshot() -> Dictionary:
+	var profiled_call_usec := (
+		_simulation_profile_public_core_usec
+		+ _simulation_profile_resolve_total_usec
+		+ _simulation_profile_sync_facility_usec
+		+ _simulation_profile_sync_asset_usec
+		+ _simulation_profile_auto_queue_usec
+		+ _simulation_profile_ai_observation_usec
+		+ _simulation_profile_legal_actions_usec
+		+ _simulation_profile_available_actions_usec
+		+ _simulation_profile_acquisition_usec
+		+ _simulation_profile_lock_usec
+	)
+	var phase_wall_usec := 0
+	for value_variant in _simulation_phase_process_usec.values():
+		phase_wall_usec += int(value_variant)
 	return {
+		"profile_schema_version": 1,
 		"acceleration_mode": "inherited_process_submission_window_delta",
 		"process_delta_seconds": SIMULATION_PROCESS_DELTA_SECONDS,
 		"accelerated_clock_delta_seconds": (
@@ -831,6 +1059,7 @@ func simulation_performance_snapshot() -> Dictionary:
 		"direct_state_injection_count": 0,
 		"process_call_count": _simulation_process_call_count,
 		"phase_process_counts": _simulation_phase_process_counts.duplicate(true),
+		"phase_process_usec": _simulation_phase_process_usec.duplicate(true),
 		"legal_card_actions_call_count": _simulation_legal_card_actions_call_count,
 		"legal_card_actions_cache_hit_count": (
 			_simulation_legal_card_actions_cache_hit_count
@@ -861,6 +1090,31 @@ func simulation_performance_snapshot() -> Dictionary:
 		"military_legal_option_observation_count": (
 			_simulation_military_legal_option_count
 		),
+		"direct_monster_legal_option_observation_count": (
+			_simulation_direct_monster_legal_option_count
+		),
+		"direct_military_legal_option_observation_count": (
+			_simulation_direct_military_legal_option_count
+		),
+		"first_combat_legal_projection_gap": (
+			_simulation_first_combat_legal_projection_gap.duplicate(true)
+		),
+		"runtime_failure": _simulation_runtime_failure.duplicate(true),
+		"profile_public_core_usec": _simulation_profile_public_core_usec,
+		"profile_resolve_total_usec": _simulation_profile_resolve_total_usec,
+		"profile_sync_facility_usec": _simulation_profile_sync_facility_usec,
+		"profile_sync_asset_usec": _simulation_profile_sync_asset_usec,
+		"profile_resolution_count": _simulation_profile_resolution_count,
+		"profile_auto_queue_usec": _simulation_profile_auto_queue_usec,
+		"profile_ai_observation_usec": _simulation_profile_ai_observation_usec,
+		"profile_legal_actions_usec": _simulation_profile_legal_actions_usec,
+		"profile_available_actions_usec": (
+			_simulation_profile_available_actions_usec
+		),
+		"profile_acquisition_usec": _simulation_profile_acquisition_usec,
+		"profile_lock_usec": _simulation_profile_lock_usec,
+		"profiled_call_usec_total": profiled_call_usec,
+		"phase_process_usec_total": phase_wall_usec,
 		"military_affordable_option_observation_count": (
 			_simulation_military_affordable_option_count
 		),
