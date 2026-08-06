@@ -45,6 +45,7 @@ func _run() -> void:
 		"asset availability comes from AssetCore projection"
 	)
 	var records := _collect_real_track_records(adapter, available_assets)
+	_test_zero_assets_do_not_gate_cash_purchase(adapter, records)
 	_expect(
 		records.has("facility"),
 		"real ten-slot track produces a legal facility acquisition"
@@ -74,6 +75,34 @@ func _run() -> void:
 		available_assets
 	)
 	_finish()
+
+
+func _test_zero_assets_do_not_gate_cash_purchase(
+	adapter: RefCounted,
+	records: Dictionary
+) -> void:
+	var record := records.get("mixed", {}) as Dictionary
+	var facts := (record.get("facts", {}) as Dictionary).duplicate(true)
+	var zero_assets := {}
+	for color_id in COLORS:
+		zero_assets[color_id] = 0
+	facts["available_unreserved_assets"] = zero_assets
+	var result := adapter.enumerate_track_acquisition_candidates(
+		facts,
+		{"phase": "batch_active"}
+	) as Dictionary
+	var candidates := result.get("candidates", []) as Array
+	_expect(
+		bool(result.get("accepted", false)) and not candidates.is_empty(),
+		"zero play assets do not hide cash-purchasable normal cards"
+	)
+	for candidate_variant in candidates:
+		var candidate := candidate_variant as Dictionary
+		_expect(
+			str(candidate.get("purchase_cost_source", ""))
+				== "cash_authority",
+			"zero-asset acquisition remains delegated to cash authority"
+		)
 
 
 func _test_contract_snapshot(adapter: RefCounted) -> void:
@@ -300,12 +329,12 @@ func _test_record_invariants(
 			)) == 0,
 			"acquisition intent injects no target or supply movement"
 		)
-		var color := str(candidate.get("primary_color", ""))
 		_expect(
-			int(available_assets.get(color, -1)) >= int(
-				candidate.get("primary_asset_cost", 999)
-			),
-			"acquisition intent is affordable from unreserved assets"
+			str(candidate.get("purchase_cost_source", ""))
+				== "cash_authority"
+				and int(candidate.get("play_asset_cost", -1))
+					== int(candidate.get("primary_asset_cost", -2)),
+			"track purchase uses cash authority while retaining the later play asset cost"
 		)
 		_expect(
 			str(candidate.get("card_domain", "")) in [

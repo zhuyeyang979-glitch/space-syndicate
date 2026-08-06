@@ -181,6 +181,7 @@ static func make_authority_snapshot() -> Dictionary:
 			"player.local": [
 				{
 					"source_instance_id": "monster.tech.local.01",
+					"source_generation": 4,
 					"owner_player_id": "player.local",
 					"monster_display_name": "棱镜技术巨兽",
 					"rank": 4,
@@ -277,6 +278,40 @@ static func make_authority_snapshot() -> Dictionary:
 				"military_card_selected": true,
 				"can_assault_region": true,
 				"can_assault_monster": true,
+				"military_options": [
+					{
+						"option_id": "option.military.region.local",
+						"owner_player_id": "player.local",
+						"card_instance_id": "dbg.military.local.01",
+						"card_definition_id": "military.submarine_fleet.life.rank_1",
+						"target_slot_id": "combat.military.assault_region.region.14",
+						"task_kind": "assault_region",
+						"target_region_id": "region.14",
+						"target_monster_source_instance_id": "",
+						"target_source_generation": 0,
+						"launch_region_id": "region.07",
+						"asset_cost_by_color": {"life": 1},
+						"enabled": true,
+						"disabled_reason": "none",
+						"action_domain": "military",
+					},
+					{
+						"option_id": "option.military.monster.local",
+						"owner_player_id": "player.local",
+						"card_instance_id": "dbg.military.local.01",
+						"card_definition_id": "military.submarine_fleet.life.rank_1",
+						"target_slot_id": "combat.military.assault_monster.monster.ai.02",
+						"task_kind": "assault_monster",
+						"target_region_id": "",
+						"target_monster_source_instance_id": "monster.industry.ai.02",
+						"target_source_generation": 2,
+						"launch_region_id": "region.07",
+						"asset_cost_by_color": {"life": 1},
+						"enabled": true,
+						"disabled_reason": "none",
+						"action_domain": "military",
+					},
+				],
 			},
 			"player.ai.1": {
 				"military_card_selected": true,
@@ -355,19 +390,18 @@ func _on_presentation_cue_ready(cue: Dictionary) -> void:
 	_surface.show_presentation_cue(cue)
 
 
-func _on_private_target_selection_requested(
-	source_instance_id: String,
-	skill_definition_id: String,
-	target_contract: String
-) -> void:
+func _on_private_target_selection_requested(request: Dictionary) -> void:
+	var source_instance_id := str(request.get("source_instance_id", ""))
+	var target_binding := request.get("target_binding", {}) as Dictionary
 	_event_label.text = "私密目标选择 · %s · %s" % [
-		target_contract,
+		str(target_binding.get("target_kind", "")),
 		source_instance_id,
 	]
 	# The real Combat Owner binds this signal to a private target selector.
 
 
-func _on_military_mission_selected(task_kind: String) -> void:
+func _on_military_mission_selected(option: Dictionary) -> void:
+	var task_kind := str(option.get("task_kind", ""))
 	_event_label.text = (
 		"任务已选择 · %s · 结算后立即撤离"
 		% (

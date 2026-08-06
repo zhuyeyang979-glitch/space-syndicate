@@ -82,6 +82,7 @@ var _warehouse_trample_damage_count := 0
 var _private_skill_request_count := 0
 var _private_skill_commit_count := 0
 var _private_skill_fizzle_count := 0
+var _private_skill_last_fizzle_reason := ""
 var _skill_cooldown_recovery_count := 0
 var _military_region_assault_count := 0
 var _military_monster_assault_count := 0
@@ -236,6 +237,44 @@ func prebind_monster_card_action(request: Dictionary) -> Dictionary:
 	var source_definition := CombatCatalog.monster_source_definition(family_id)
 	if card_definition.is_empty() or source_definition.is_empty():
 		return _failure("monster_card_definition_unknown")
+	var normalized_request := {
+		"request_id": str(request.get("request_id", "")),
+		"card_instance_id": str(request.get("card_instance_id", "")),
+		"card_definition_id": definition_id,
+		"owner_player_id": str(request.get("owner_player_id", "")),
+		"card_rank": int(card_definition.get("level", 0)),
+		"monster_card_mode": str(request.get("monster_card_mode", "")),
+		"target_region_id": str(request.get("target_region_id", "")),
+		"target_source_instance_id": str(
+			request.get("target_source_instance_id", "")
+		),
+	}
+	return MonsterSourceCore.prebind_card_mode(
+		_monster_state,
+		normalized_request,
+		source_definition
+	)
+
+
+func preview_monster_card_action(request: Dictionary) -> Dictionary:
+	# Legal-action projection is a read-only query. Invalid candidate regions
+	# must not increment the authoritative runtime-error counter.
+	if not _initialized or _phase in TERMINAL_PHASES:
+		return {
+			"accepted": false,
+			"reason_code": "monster_card_prebind_phase_invalid",
+		}
+	var definition_id := str(request.get("card_definition_id", ""))
+	var card_definition := CardDefinitions.definition(definition_id)
+	var family_id := CardDefinitions.monster_family_id_from_card_type(
+		str(card_definition.get("card_type", ""))
+	)
+	var source_definition := CombatCatalog.monster_source_definition(family_id)
+	if card_definition.is_empty() or source_definition.is_empty():
+		return {
+			"accepted": false,
+			"reason_code": "monster_card_definition_unknown",
+		}
 	var normalized_request := {
 		"request_id": str(request.get("request_id", "")),
 		"card_instance_id": str(request.get("card_instance_id", "")),
@@ -515,6 +554,7 @@ func request_private_skill(
 		)
 	if built.is_empty():
 		return _failure("private_skill_request_invalid")
+	var request_checkpoint := _checkpoint_state()
 	var owner_id := str(built.get("owner_player_id", ""))
 	var asset_view := AssetCore.monster_skill_available_asset_view(
 		asset_state,
@@ -554,6 +594,7 @@ func request_private_skill(
 	).duplicate(true)
 	_revision += 1
 	if not bool(applied.get("accepted", false)):
+		_restore_checkpoint_state(request_checkpoint)
 		return {
 			"accepted": false,
 			"reason_code": str(applied.get("reason_code", "")),
@@ -563,10 +604,13 @@ func request_private_skill(
 			).duplicate(true),
 		}
 	if bool(applied.get("execution_due", false)):
-		return resolve_private_skill_safe_boundary(
+		var boundary_result := resolve_private_skill_safe_boundary(
 			next_asset_state,
 			public_facilities
 		)
+		if not bool(boundary_result.get("accepted", false)):
+			_restore_checkpoint_state(request_checkpoint)
+		return boundary_result
 	return {
 		"accepted": true,
 		"reason_code": "private_skill_waiting_for_safe_boundary",
@@ -583,6 +627,7 @@ func resolve_private_skill_safe_boundary(
 	asset_state: Dictionary,
 	public_facilities: Array
 ) -> Dictionary:
+	var boundary_checkpoint := _checkpoint_state()
 	var next_asset_state := asset_state.duplicate(true)
 	var facility_intents: Array = []
 	var public_results: Array = []
@@ -592,7 +637,11 @@ func resolve_private_skill_safe_boundary(
 		if not bool(taken.get("accepted", false)):
 			if str(taken.get("reason_code", "")) == "no_private_skill_ready_at_boundary":
 				break
-			return _failure("private_skill_take_failed", taken)
+			return _rollback_private_skill_boundary_failure(
+				boundary_checkpoint,
+				"private_skill_take_failed",
+				taken
+			)
 		_skill_state = (taken.get("state", {}) as Dictionary).duplicate(true)
 		var execution := (
 			taken.get("execution_intent", {}) as Dictionary
@@ -613,7 +662,11 @@ func resolve_private_skill_safe_boundary(
 			effect_receipt
 		)
 		if not bool(resolved.get("accepted", false)):
-			return _failure("private_skill_resolution_failed", resolved)
+			return _rollback_private_skill_boundary_failure(
+				boundary_checkpoint,
+				"private_skill_resolution_failed",
+				resolved
+			)
 		_skill_state = (resolved.get("state", {}) as Dictionary).duplicate(true)
 		var settlement := resolved.get(
 			"asset_settlement_intent",
@@ -631,7 +684,11 @@ func resolve_private_skill_safe_boundary(
 				settlement
 			)
 		if not bool(asset_result.get("accepted", false)):
-			return _failure("private_skill_asset_settlement_failed", asset_result)
+			return _rollback_private_skill_boundary_failure(
+				boundary_checkpoint,
+				"private_skill_asset_settlement_failed",
+				asset_result
+			)
 		next_asset_state = (
 			asset_result.get("state", {}) as Dictionary
 		).duplicate(true)
@@ -640,7 +697,14 @@ func resolve_private_skill_safe_boundary(
 				evaluation
 			)
 			if not bool(monster_effect_result.get("accepted", false)):
-				return monster_effect_result
+				return _rollback_private_skill_boundary_failure(
+					boundary_checkpoint,
+					str(monster_effect_result.get(
+						"reason_code",
+						"private_skill_monster_effect_commit_failed"
+					)),
+					monster_effect_result
+				)
 			for intent_variant in evaluation.get(
 				"facility_damage_intents",
 				[]
@@ -912,6 +976,20 @@ func public_monsters() -> Array:
 
 
 func owner_private_skill_zone(owner_player_id: String) -> Array:
+	return _owner_private_skill_zone(owner_player_id, [])
+
+
+func owner_private_skill_zone_for_public_facts(
+	owner_player_id: String,
+	public_facilities: Array
+) -> Array:
+	return _owner_private_skill_zone(owner_player_id, public_facilities)
+
+
+func _owner_private_skill_zone(
+	owner_player_id: String,
+	public_facilities: Array
+) -> Array:
 	var projection := MonsterSkillCore.owner_private_projection(
 		_skill_state,
 		owner_player_id
@@ -925,11 +1003,16 @@ func owner_private_skill_zone(owner_player_id: String) -> Array:
 		var skills: Array = []
 		for card_variant in source.get("skill_cards", []) as Array:
 			var card := card_variant as Dictionary
+			var skill_id := str(card.get("skill_definition_id", ""))
 			var authored := CombatCatalog.monster_skill_definition(
-				str(card.get("skill_definition_id", ""))
+				skill_id
 			)
+			var profile := CombatCatalog.monster_skill_profile(skill_id)
+			var target_contract := (
+				card.get("target_contract", {}) as Dictionary
+			).duplicate(true)
 			skills.append({
-				"skill_definition_id": str(card.get("skill_definition_id", "")),
+				"skill_definition_id": skill_id,
 				"display_name": str(authored.get(
 					"legacy_action_name_zh",
 					card.get("skill_definition_id", "")
@@ -938,19 +1021,28 @@ func owner_private_skill_zone(owner_player_id: String) -> Array:
 				"asset_cost_by_color": (
 					card.get("asset_cost_by_color", {}) as Dictionary
 				).duplicate(true),
-				"target_contract": (
-					card.get("target_contract", {}) as Dictionary
-				).duplicate(true),
+				"target_contract": target_contract,
+				"target_binding": _owner_skill_target_binding(
+					public_source,
+					target_contract,
+					owner_player_id,
+					profile,
+					public_facilities
+				),
 				"cooldown_remaining_batches": int(
 					card.get("cooldown_remaining_batches", 0)
 				),
 				"ultimate": bool(card.get("ultimate", false)),
 				"required_rank": int(card.get("required_rank", 0)),
 				"public_effect_id": str(card.get("public_effect_id", "")),
+				"effect_kind": str(profile.get("effect_kind", "")),
 			})
 		result.append({
 			"source_instance_id": str(source.get("source_instance_id", "")),
+			"source_generation": int(source.get("source_generation", 0)),
 			"owner_player_id": owner_player_id,
+			"hp": int(public_source.get("hp", 0)),
+			"max_hp": int(public_source.get("max_hp", 0)),
 			"monster_display_name": str(public_source.get("display_name", "")),
 			"rank": int(source.get("rank", 0)),
 			"status": str(source.get("status", "")),
@@ -960,6 +1052,144 @@ func owner_private_skill_zone(owner_player_id: String) -> Array:
 			"skills": skills,
 		})
 	return result
+
+
+func _owner_skill_target_binding(
+	source: Dictionary,
+	contract: Dictionary,
+	owner_player_id: String,
+	profile: Dictionary,
+	public_facilities: Array
+) -> Dictionary:
+	var target_kind := str(contract.get("target_kind", ""))
+	var source_id := str(source.get("source_instance_id", ""))
+	if target_kind == "self_source":
+		return {
+			"target_kind": "monster",
+			"target_id": source_id,
+			"target_source_generation": int(source.get("source_generation", 0)),
+		}
+	if target_kind == "enemy_public_facility":
+		var facility_id := str(source.get("tracked_facility_id", ""))
+		var region_id := str(source.get("tracked_region_id", ""))
+		var facility_generation := 0
+		if not public_facilities.is_empty():
+			var candidates: Array[Dictionary] = []
+			for facility_variant in public_facilities:
+				if not (facility_variant is Dictionary):
+					continue
+				var facility := facility_variant as Dictionary
+				if (
+					_facility_is_enemy_legal(source, facility)
+					and _target_in_skill_range(
+						source,
+						str(facility.get("region_id", "")),
+						profile
+					)
+				):
+					candidates.append(facility.duplicate(true))
+			candidates.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+				return str(left.get("facility_id", "")) < str(
+					right.get("facility_id", "")
+				)
+			)
+			if not candidates.is_empty():
+				var tracked_candidate := _facility_by_id(
+					candidates,
+					facility_id
+				)
+				var selected := (
+					tracked_candidate
+					if not tracked_candidate.is_empty()
+					else candidates[0]
+				)
+				facility_id = str(selected.get("facility_id", ""))
+				region_id = str(selected.get("region_id", ""))
+				facility_generation = int(
+					selected.get("facility_generation", 0)
+				)
+		if (
+			facility_id.is_empty()
+			or region_id.is_empty()
+			or facility_generation <= 0
+			or not _target_in_skill_range(source, region_id, profile)
+		):
+			return {}
+		return {
+			"target_kind": "facility",
+			"target_id": facility_id,
+			"target_facility_id": facility_id,
+			"target_facility_generation": facility_generation,
+		}
+	if target_kind in [
+		"enemy_facilities_in_public_region",
+		"enemy_facilities_in_current_region",
+	]:
+		var region_id := (
+			str(source.get("region_id", ""))
+			if target_kind == "enemy_facilities_in_current_region"
+			else str(source.get("tracked_region_id", ""))
+		)
+		if not public_facilities.is_empty() and target_kind == (
+			"enemy_facilities_in_public_region"
+		):
+			var candidate_regions: Array[String] = []
+			for facility_variant in public_facilities:
+				if not (facility_variant is Dictionary):
+					continue
+				var facility := facility_variant as Dictionary
+				var candidate_region := str(facility.get("region_id", ""))
+				if (
+					_facility_is_enemy_legal(source, facility)
+					and not candidate_region.is_empty()
+					and _target_in_skill_range(source, candidate_region, profile)
+					and candidate_region not in candidate_regions
+				):
+					candidate_regions.append(candidate_region)
+			candidate_regions.sort()
+			if not candidate_regions.is_empty():
+				if region_id not in candidate_regions:
+					region_id = candidate_regions[0]
+		if (
+			region_id.is_empty()
+			or not _target_in_skill_range(source, region_id, profile)
+		):
+			return {}
+		return {
+			"target_kind": "region",
+			"target_id": region_id,
+			"target_region_id": region_id,
+		}
+	if target_kind == "enemy_public_monster":
+		var candidates: Array[Dictionary] = []
+		for monster_variant in public_monsters():
+			if not (monster_variant is Dictionary):
+				continue
+			var monster := monster_variant as Dictionary
+			if (
+				str(monster.get("owner_player_id", "")) != owner_player_id
+				and str(monster.get("status", "")) == "active"
+				and _target_in_skill_range(
+					source,
+					str(monster.get("region_id", "")),
+					profile
+				)
+			):
+				candidates.append(monster.duplicate(true))
+		candidates.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+			return str(left.get("source_instance_id", "")) < str(
+				right.get("source_instance_id", "")
+			)
+		)
+		if candidates.is_empty():
+			return {}
+		var target := candidates[0]
+		return {
+			"target_kind": "monster",
+			"target_id": str(target.get("source_instance_id", "")),
+			"target_source_generation": int(target.get("source_generation", 0)),
+		}
+	return {}
 
 
 func projection_authority_for_viewer(
@@ -1034,6 +1264,9 @@ func debug_snapshot() -> Dictionary:
 		"monster_private_skill_request_count": _private_skill_request_count,
 		"monster_private_skill_commit_count": _private_skill_commit_count,
 		"monster_private_skill_fizzle_count": _private_skill_fizzle_count,
+		"monster_private_skill_last_fizzle_reason": (
+			_private_skill_last_fizzle_reason
+		),
 		"monster_skill_cooldown_recovery_count": _skill_cooldown_recovery_count,
 		"monster_public_skill_card_disclosure_count": int(
 			privacy.get("public_skill_card_disclosure_count", 0)
@@ -1086,7 +1319,16 @@ func _evaluate_private_skill(
 	))
 	if effect_kind == "single_facility_damage":
 		var facility := _facility_by_id(public_facilities, target_id)
-		if not _facility_is_enemy_legal(source, facility):
+		var target_generation := int(target_request.get(
+			"target_facility_generation",
+			0
+		))
+		if (
+			target_generation <= 0
+			or int(facility.get("facility_generation", -1))
+			!= target_generation
+			or not _facility_is_enemy_legal(source, facility)
+		):
 			return _skill_fizzle("facility_target_invalid_at_boundary")
 		if not _target_in_skill_range(source, str(facility.get("region_id", "")), profile):
 			return _skill_fizzle("facility_target_out_of_range")
@@ -1096,7 +1338,7 @@ func _evaluate_private_skill(
 			"monster_private_skill",
 			[{
 				"target_facility_id": str(facility.get("facility_id", "")),
-				"expected_generation": int(facility.get("facility_generation", 0)),
+				"expected_generation": target_generation,
 				"damage_amount": amount,
 			}]
 		)
@@ -1149,8 +1391,15 @@ func _evaluate_private_skill(
 		)
 	if effect_kind == "single_monster_damage":
 		var target := _public_monster_by_id(target_id)
+		var target_generation := int(target_request.get(
+			"target_source_generation",
+			0
+		))
 		if (
 			target.is_empty()
+			or target_generation <= 0
+			or int(target.get("source_generation", -1))
+			!= target_generation
 			or str(target.get("owner_player_id", ""))
 			== str(source.get("owner_player_id", ""))
 			or str(target.get("status", "")) != "active"
@@ -1165,12 +1414,12 @@ func _evaluate_private_skill(
 			"target_kind": "monster",
 			"target_id": target_id,
 			"target_region_id": str(target.get("region_id", "")),
-			"source_generation": int(target.get("source_generation", 0)),
+			"source_generation": target_generation,
 		}, amount, [])
 		result["monster_damage_effects"] = [{
 			"operation_id": "operation.skill.%s" % str(execution.get("execution_id", "")),
 			"target_source_instance_id": target_id,
-			"expected_source_generation": int(target.get("source_generation", 0)),
+			"expected_source_generation": target_generation,
 			"damage_amount": amount,
 		}]
 		return result
@@ -1452,6 +1701,7 @@ func _skill_commit(
 
 
 func _skill_fizzle(reason_code: String) -> Dictionary:
+	_private_skill_last_fizzle_reason = reason_code
 	return {
 		"committed": false,
 		"reason_code": reason_code,
@@ -1546,6 +1796,25 @@ func _checkpoint_state() -> Dictionary:
 		"last_autonomy_plan": _last_autonomy_plan.duplicate(true),
 		"tracked_targets_by_source": _tracked_targets_by_source.duplicate(true),
 		"public_results": _public_results.duplicate(true),
+		"monster_card_mode_counts": _monster_card_mode_counts.duplicate(true),
+		"autonomy_target_count": _autonomy_target_count,
+		"hungry_fallback_count": _hungry_fallback_count,
+		"movement_count": _movement_count,
+		"trample_region_receipt_count": _trample_region_receipt_count,
+		"factory_trample_damage_count": _factory_trample_damage_count,
+		"market_trample_damage_count": _market_trample_damage_count,
+		"warehouse_trample_damage_count": _warehouse_trample_damage_count,
+		"private_skill_request_count": _private_skill_request_count,
+		"private_skill_commit_count": _private_skill_commit_count,
+		"private_skill_fizzle_count": _private_skill_fizzle_count,
+		"private_skill_last_fizzle_reason": _private_skill_last_fizzle_reason,
+		"skill_cooldown_recovery_count": _skill_cooldown_recovery_count,
+		"military_region_assault_count": _military_region_assault_count,
+		"military_monster_assault_count": _military_monster_assault_count,
+		"military_withdraw_count": _military_withdraw_count,
+		"facility_damage_intent_count": _facility_damage_intent_count,
+		"monster_damage_commit_count": _monster_damage_commit_count,
+		"runtime_error_count": _runtime_error_count,
 	}
 
 
@@ -1569,6 +1838,62 @@ func _restore_checkpoint_state(state: Dictionary) -> void:
 	_last_autonomy_plan = (state.get("last_autonomy_plan", {}) as Dictionary).duplicate(true)
 	_tracked_targets_by_source = (state.get("tracked_targets_by_source", {}) as Dictionary).duplicate(true)
 	_public_results = (state.get("public_results", []) as Array).duplicate(true)
+	_monster_card_mode_counts = (
+		state.get("monster_card_mode_counts", {}) as Dictionary
+	).duplicate(true)
+	_autonomy_target_count = int(state.get("autonomy_target_count", 0))
+	_hungry_fallback_count = int(state.get("hungry_fallback_count", 0))
+	_movement_count = int(state.get("movement_count", 0))
+	_trample_region_receipt_count = int(
+		state.get("trample_region_receipt_count", 0)
+	)
+	_factory_trample_damage_count = int(
+		state.get("factory_trample_damage_count", 0)
+	)
+	_market_trample_damage_count = int(
+		state.get("market_trample_damage_count", 0)
+	)
+	_warehouse_trample_damage_count = int(
+		state.get("warehouse_trample_damage_count", 0)
+	)
+	_private_skill_request_count = int(
+		state.get("private_skill_request_count", 0)
+	)
+	_private_skill_commit_count = int(
+		state.get("private_skill_commit_count", 0)
+	)
+	_private_skill_fizzle_count = int(
+		state.get("private_skill_fizzle_count", 0)
+	)
+	_private_skill_last_fizzle_reason = str(
+		state.get("private_skill_last_fizzle_reason", "")
+	)
+	_skill_cooldown_recovery_count = int(
+		state.get("skill_cooldown_recovery_count", 0)
+	)
+	_military_region_assault_count = int(
+		state.get("military_region_assault_count", 0)
+	)
+	_military_monster_assault_count = int(
+		state.get("military_monster_assault_count", 0)
+	)
+	_military_withdraw_count = int(state.get("military_withdraw_count", 0))
+	_facility_damage_intent_count = int(
+		state.get("facility_damage_intent_count", 0)
+	)
+	_monster_damage_commit_count = int(
+		state.get("monster_damage_commit_count", 0)
+	)
+	_runtime_error_count = int(state.get("runtime_error_count", 0))
+
+
+func _rollback_private_skill_boundary_failure(
+	checkpoint_state: Dictionary,
+	reason_code: String,
+	detail: Dictionary
+) -> Dictionary:
+	_restore_checkpoint_state(checkpoint_state)
+	return _failure(reason_code, detail)
 
 
 func _reset_runtime_state() -> void:
@@ -1607,6 +1932,7 @@ func _reset_runtime_state() -> void:
 	_private_skill_request_count = 0
 	_private_skill_commit_count = 0
 	_private_skill_fizzle_count = 0
+	_private_skill_last_fizzle_reason = ""
 	_skill_cooldown_recovery_count = 0
 	_military_region_assault_count = 0
 	_military_monster_assault_count = 0

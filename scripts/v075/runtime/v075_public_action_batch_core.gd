@@ -27,8 +27,8 @@ static func lock_batch(
 		return {}
 
 	var queues := {}
-	var facility_queues := {}
 	var seen_action_ids := {}
+	var facility_target_slots_at_batch_lock := {}
 	for player_id in players:
 		var queue_variant: Variant = player_local_queues.get(player_id)
 		if not (queue_variant is Array):
@@ -37,7 +37,6 @@ static func lock_batch(
 		if source_queue.size() > MAX_ACTIONS_PER_PLAYER:
 			return {}
 		var queue: Array = []
-		var facility_queue: Array = []
 		for local_index in range(source_queue.size()):
 			var action_variant: Variant = source_queue[local_index]
 			if not (action_variant is Dictionary):
@@ -58,11 +57,18 @@ static func lock_batch(
 			seen_action_ids[action_id] = true
 			queue.append(action)
 			if domain == "facility":
-				var facility_action := action.duplicate(true)
-				facility_action.erase("action_domain")
-				facility_queue.append(facility_action)
+				var target_slot := _facility_slot_snapshot(
+					action,
+					facility_slots
+				)
+				if target_slot.is_empty():
+					return {}
+				facility_target_slots_at_batch_lock[action_id] = target_slot
 		queues[player_id] = queue
-		facility_queues[player_id] = facility_queue
+
+	var facility_queues := {}
+	for player_id in players:
+		facility_queues[player_id] = []
 
 	var facility_state := FacilityCore.lock_batch(
 		batch_id,
@@ -100,6 +106,9 @@ static func lock_batch(
 		"anonymous_global_queue": public_queue,
 		"resolution_cursor": 0,
 		"facility_substate": facility_state,
+		"facility_target_slots_at_batch_lock": (
+			facility_target_slots_at_batch_lock.duplicate(true)
+		),
 		"processed_action_ids": {},
 		"resolution_receipts": [],
 	}
@@ -109,6 +118,25 @@ static func lock_batch(
 static func resolve_next(state: Dictionary) -> Dictionary:
 	if not bool(validation_report(state).get("valid", false)):
 		return {"accepted": false, "reason_code": "public_action_state_invalid"}
+	return _resolve_next_validated(state, false)
+
+
+static func resolve_next_authority_owned(state: Dictionary) -> Dictionary:
+	# RuntimeOwner has sole custody of this state between strict lock/replace
+	# boundaries. The transition and output are identical to resolve_next();
+	# only the repeated full-tree input validation and deep copy are skipped.
+	if not _authority_owned_state_header_valid(state):
+		return {
+			"accepted": false,
+			"reason_code": "public_action_authority_state_invalid",
+		}
+	return _resolve_next_validated(state, true)
+
+
+static func _resolve_next_validated(
+	state: Dictionary,
+	authority_owned: bool
+) -> Dictionary:
 	if str(state.get("status", "")) == "resolved":
 		return {"accepted": false, "reason_code": "public_action_batch_resolved"}
 	var queue := state.get("authority_queue", []) as Array
@@ -126,17 +154,19 @@ static func resolve_next(state: Dictionary) -> Dictionary:
 			return {
 				"accepted": true,
 				"reason_code": "public_action_exact_once_replay",
-				"state": state.duplicate(true),
+				"state": state.duplicate(not authority_owned),
 				"receipt": (prior[prior_index] as Dictionary).duplicate(true),
 			}
 		return {"accepted": false, "reason_code": "public_action_ledger_invalid"}
 
-	var next := state.duplicate(true)
+	var next := state.duplicate(not authority_owned)
 	var domain := str(entry.get("action_domain", ""))
 	var receipt: Dictionary
 	if domain == "facility":
-		var facility_outcome := FacilityCore.resolve_next(
-			next.get("facility_substate", {}) as Dictionary
+		var facility_outcome := _resolve_facility_entry(
+			next,
+			entry,
+			authority_owned
 		)
 		if not bool(facility_outcome.get("accepted", false)):
 			return {
@@ -146,16 +176,28 @@ static func resolve_next(state: Dictionary) -> Dictionary:
 			}
 		var facility_receipt := facility_outcome.get("receipt", {}) as Dictionary
 		if str(facility_receipt.get("action_id", "")) != action_id:
-			return {"accepted": false, "reason_code": "facility_delegate_order_mismatch"}
+			return {
+				"accepted": false,
+				"reason_code": "facility_delegate_order_mismatch",
+				"expected_action_id": action_id,
+				"actual_action_id": str(facility_receipt.get("action_id", "")),
+			}
 		next["facility_substate"] = (
-			facility_outcome.get("state", {}) as Dictionary
-		).duplicate(true)
-		receipt = _facility_receipt(entry, facility_receipt)
+			facility_outcome.get("facility_substate", {}) as Dictionary
+		).duplicate(not authority_owned)
+		receipt = _facility_receipt(
+			str(next.get("batch_id", "")),
+			entry,
+			facility_receipt
+		)
 	else:
 		receipt = {
 			"schema_version": SCHEMA_VERSION,
 			"contract_id": "v075.public_action_batch.receipt.v1",
-			"receipt_id": "receipt.%s" % str(entry.get("anonymous_action_id", "")),
+			"receipt_id": _receipt_id(
+				str(next.get("batch_id", "")),
+				entry
+			),
 			"batch_id": str(next.get("batch_id", "")),
 			"state_revision": int(next.get("revision", 0)) + 1,
 			"anonymous_action_id": str(entry.get("anonymous_action_id", "")),
@@ -171,6 +213,7 @@ static func resolve_next(state: Dictionary) -> Dictionary:
 			"exact_once": true,
 			"action_binding": action.duplicate(true),
 		}
+		receipt["receipt_fingerprint"] = _fingerprint(receipt)
 	next["resolution_cursor"] = cursor + 1
 	next["revision"] = int(next.get("revision", 0)) + 1
 	next["status"] = (
@@ -178,19 +221,23 @@ static func resolve_next(state: Dictionary) -> Dictionary:
 		if int(next.get("resolution_cursor", 0)) >= queue.size()
 		else "resolution_ready"
 	)
-	var public_queue := next.get("anonymous_global_queue", []) as Array
+	var public_queue := (
+		next.get("anonymous_global_queue", []) as Array
+	).duplicate(true)
 	var public_entry := (public_queue[cursor] as Dictionary).duplicate(true)
 	public_entry["resolution_status"] = "resolved"
 	public_entry["public_reason_code"] = str(receipt.get("reason_code", ""))
 	public_queue[cursor] = public_entry
 	next["anonymous_global_queue"] = public_queue
-	var receipts := next.get("resolution_receipts", []) as Array
+	var receipts := (
+		next.get("resolution_receipts", []) as Array
+	).duplicate(false)
 	processed = (next.get("processed_action_ids", {}) as Dictionary).duplicate(true)
 	processed[action_id] = receipts.size()
 	receipts.append(receipt.duplicate(true))
 	next["processed_action_ids"] = processed
 	next["resolution_receipts"] = receipts
-	next = _seal(next)
+	next = _seal_authority_owned(next) if authority_owned else _seal(next)
 	return {
 		"accepted": true,
 		"reason_code": "public_action_resolved",
@@ -278,6 +325,11 @@ static func player_projection(state: Dictionary, viewer_id: String) -> Dictionar
 		return {}
 	projection["ruleset_id"] = RULESET_ID
 	projection["mixed_action_batch_contract_id"] = CONTRACT_ID
+	projection["facility_substate_revision"] = projection.get(
+		"state_revision",
+		0
+	)
+	projection["state_revision"] = int(state.get("revision", 0))
 	projection["anonymous_global_queue"] = (
 		state.get("anonymous_global_queue", []) as Array
 	).duplicate(true)
@@ -298,6 +350,11 @@ static func ai_observation(state: Dictionary, viewer_id: String) -> Dictionary:
 		return {}
 	observation["ruleset_id"] = RULESET_ID
 	observation["mixed_action_batch_contract_id"] = CONTRACT_ID
+	observation["facility_substate_revision"] = observation.get(
+		"state_revision",
+		0
+	)
+	observation["state_revision"] = int(state.get("revision", 0))
 	observation["anonymous_global_queue"] = (
 		state.get("anonymous_global_queue", []) as Array
 	).duplicate(true)
@@ -316,6 +373,11 @@ static func public_projection(state: Dictionary) -> Dictionary:
 	if projection.is_empty():
 		return {}
 	projection["ruleset_id"] = RULESET_ID
+	projection["facility_substate_revision"] = projection.get(
+		"state_revision",
+		0
+	)
+	projection["state_revision"] = int(state.get("revision", 0))
 	projection["anonymous_global_queue"] = (
 		state.get("anonymous_global_queue", []) as Array
 	).duplicate(true)
@@ -331,7 +393,8 @@ static func validation_report(value: Variant) -> Dictionary:
 		"schema_version", "ruleset_id", "contract_id", "batch_id", "revision",
 		"status", "player_ids", "frozen_hidden_order", "player_local_queues",
 		"authority_queue", "anonymous_global_queue", "resolution_cursor",
-		"facility_substate", "processed_action_ids", "resolution_receipts",
+		"facility_substate", "facility_target_slots_at_batch_lock",
+		"processed_action_ids", "resolution_receipts",
 		"state_fingerprint",
 	]:
 		if not state.has(key):
@@ -350,13 +413,67 @@ static func validation_report(value: Variant) -> Dictionary:
 		var cursor := int(state.get("resolution_cursor", -1))
 		if public_queue.size() != queue.size() or cursor < 0 or cursor > queue.size():
 			errors.append("queue_cursor_invalid")
+		if str(state.get("status", "")) == "resolution_ready" and cursor >= queue.size():
+			errors.append("ready_cursor_invalid")
 		if str(state.get("status", "")) == "resolved" and cursor != queue.size():
 			errors.append("resolved_cursor_invalid")
+		var receipts := state.get("resolution_receipts", []) as Array
+		var processed := state.get("processed_action_ids", {}) as Dictionary
+		if receipts.size() != cursor or processed.size() != cursor:
+			errors.append("exact_once_ledger_size_invalid")
+		else:
+			var seen_receipt_ids: Dictionary = {}
+			for index in range(cursor):
+				var entry := queue[index] as Dictionary
+				var receipt := receipts[index] as Dictionary
+				var action_id := str(entry.get("action_id", ""))
+				var receipt_id := str(receipt.get("receipt_id", ""))
+				if (
+					action_id.is_empty()
+					or str(receipt.get("action_id", "")) != action_id
+					or int(processed.get(action_id, -1)) != index
+					or receipt_id.is_empty()
+					or seen_receipt_ids.has(receipt_id)
+					or not _receipt_binding_valid(
+						receipt,
+						entry,
+						str(state.get("batch_id", ""))
+					)
+				):
+					errors.append("exact_once_ledger_binding_invalid")
+					break
+				seen_receipt_ids[receipt_id] = true
 		var facility_report := FacilityCore.validation_report(
 			state.get("facility_substate", {}) as Dictionary
 		)
 		if not bool(facility_report.get("valid", false)):
 			errors.append("facility_substate_invalid")
+		var target_slots_variant: Variant = state.get(
+			"facility_target_slots_at_batch_lock"
+		)
+		if not (target_slots_variant is Dictionary):
+			errors.append("facility_target_slots_invalid")
+		else:
+			var target_slots := target_slots_variant as Dictionary
+			var current_slots := (
+				state.get("facility_substate", {}) as Dictionary
+			).get("facility_slots", {}) as Dictionary
+			for action_id_variant in target_slots.keys():
+				var action_id := str(action_id_variant)
+				var slot_variant: Variant = target_slots.get(action_id_variant)
+				if (
+					not (slot_variant is Dictionary)
+					or not bool(FacilityCore.slot_validation_report(slot_variant).get(
+						"valid",
+						false
+					))
+					or not current_slots.has(str((slot_variant as Dictionary).get(
+						"slot_id",
+						""
+					)))
+				):
+					errors.append("facility_target_slot_invalid")
+					break
 		var unsealed := state.duplicate(true)
 		unsealed.erase("state_fingerprint")
 		if str(state.get("state_fingerprint", "")) != _fingerprint(unsealed):
@@ -389,15 +506,64 @@ static func _build_authority_queue(order: Array[String], queues: Dictionary) -> 
 
 
 static func _facility_receipt(
+	batch_id: String,
 	entry: Dictionary,
 	facility_receipt: Dictionary
 ) -> Dictionary:
 	var receipt := facility_receipt.duplicate(true)
+	# FacilityCore's legacy receipt id is local to its anonymous queue. The
+	# mixed V075 authority spans batches, so bind the public receipt identity to
+	# both batch and anonymous action before sealing the V075 wrapper.
+	receipt["receipt_id"] = _receipt_id(batch_id, entry)
+	receipt["batch_id"] = batch_id
 	receipt["action_domain"] = "facility"
 	receipt["anonymous_action_id"] = str(entry.get("anonymous_action_id", ""))
 	receipt["exact_once"] = true
 	receipt["action_binding"] = {}
+	receipt.erase("receipt_fingerprint")
+	receipt["receipt_fingerprint"] = _fingerprint(receipt)
 	return receipt
+
+
+static func _receipt_id(batch_id: String, entry: Dictionary) -> String:
+	var binding := {
+		"batch_id": batch_id,
+		"anonymous_action_id": str(entry.get("anonymous_action_id", "")),
+		"action_id": str(entry.get("action_id", "")),
+		"actor_id": str(entry.get("actor_id", "")),
+		"action_domain": str(entry.get("action_domain", "")),
+		"action": (entry.get("action", {}) as Dictionary).duplicate(true),
+	}
+	return "receipt.%s.%s.%s" % [
+		batch_id,
+		str(entry.get("anonymous_action_id", "")),
+		_fingerprint(binding).substr(0, 16),
+	]
+
+
+static func _receipt_binding_valid(
+	receipt: Dictionary,
+	entry: Dictionary,
+	batch_id: String
+) -> bool:
+	if (
+		not bool(receipt.get("exact_once", false))
+		or str(receipt.get("batch_id", "")) != batch_id
+		or str(receipt.get("anonymous_action_id", ""))
+			!= str(entry.get("anonymous_action_id", ""))
+		or str(receipt.get("action_id", "")) != str(entry.get("action_id", ""))
+		or str(receipt.get("actor_id", "")) != str(entry.get("actor_id", ""))
+		or str(receipt.get("action_domain", ""))
+			!= str(entry.get("action_domain", ""))
+		or str(receipt.get("receipt_id", "")) != _receipt_id(batch_id, entry)
+	):
+		return false
+	var fingerprint := str(receipt.get("receipt_fingerprint", ""))
+	if fingerprint.length() != 64:
+		return false
+	var unsealed := receipt.duplicate(true)
+	unsealed.erase("receipt_fingerprint")
+	return fingerprint == _fingerprint(unsealed)
 
 
 static func _action_domain(action: Dictionary) -> String:
@@ -409,11 +575,181 @@ static func _action_domain(action: Dictionary) -> String:
 	return ""
 
 
+static func _facility_slot_snapshot(
+	action: Dictionary,
+	facility_slots: Array
+) -> Dictionary:
+	var target_slot_id := str(action.get("target_slot_id", ""))
+	for slot_variant in facility_slots:
+		if (
+			slot_variant is Dictionary
+			and str((slot_variant as Dictionary).get("slot_id", ""))
+				== target_slot_id
+		):
+			return (slot_variant as Dictionary).duplicate(true)
+	return {}
+
+
+static func _resolve_facility_entry(
+	state: Dictionary,
+	entry: Dictionary,
+	authority_owned: bool
+) -> Dictionary:
+	var action := entry.get("action", {}) as Dictionary
+	var facility_action := action.duplicate(true)
+	facility_action.erase("action_domain")
+	if FacilityCore._action_error(facility_action) != "":
+		return {
+			"accepted": false,
+			"reason_code": "facility_delegate_action_invalid",
+		}
+	var facility_state := state.get("facility_substate", {}) as Dictionary
+	var current_slots := facility_state.get("facility_slots", {}) as Dictionary
+	var slot_id := str(facility_action.get("target_slot_id", ""))
+	if not current_slots.has(slot_id):
+		return {
+			"accepted": false,
+			"reason_code": "facility_delegate_slot_missing",
+		}
+	var current_slot := current_slots.get(slot_id, {}) as Dictionary
+	var invalid_reason := FacilityCore._revalidation_reason(
+		facility_action,
+		current_slot
+	)
+	# The resolved V0.7.4 substate is an immutable slot snapshot here. Copy the
+	# dictionary shell and the target slot only; FacilityCore still owns every
+	# revalidation, transition, warehouse decoration, and Receipt field.
+	var next_facility := facility_state.duplicate(false)
+	next_facility["facility_slots"] = current_slots.duplicate(false)
+	if invalid_reason.is_empty():
+		FacilityCore._apply_successful_action(next_facility, facility_action)
+	next_facility.erase("state_fingerprint")
+	next_facility["state_fingerprint"] = FacilityCore._fingerprint(
+		next_facility
+	)
+	var target_slot := (
+		(next_facility.get("facility_slots", {}) as Dictionary).get(
+			slot_id,
+			{}
+		) as Dictionary
+	)
+	var facility_commit_valid := (
+		not str(next_facility.get("state_fingerprint", "")).is_empty()
+		and bool(FacilityCore.slot_validation_report(target_slot).get(
+			"valid",
+			false
+		))
+	)
+	if not authority_owned:
+		facility_commit_valid = facility_commit_valid and bool(
+			FacilityCore.validation_report(next_facility).get("valid", false)
+		)
+	if not facility_commit_valid:
+		return {
+			"accepted": false,
+			"reason_code": "facility_delegate_commit_invalid",
+		}
+	var facility_receipt := FacilityCore._build_receipt(
+		next_facility,
+		{
+			"anonymous_action_id": str(entry.get(
+				"anonymous_action_id",
+				""
+			)),
+		},
+		facility_action,
+		invalid_reason,
+		int(state.get("revision", 0)) + 1
+	)
+	if FacilityCore._receipt_error(facility_receipt) != "":
+		return {
+			"accepted": false,
+			"reason_code": "facility_delegate_receipt_invalid",
+		}
+	return {
+		"accepted": true,
+		"reason_code": str(facility_receipt.get("reason_code", "")),
+		"facility_substate": next_facility,
+		"receipt": facility_receipt,
+	}
+
+
 static func _seal(value: Dictionary) -> Dictionary:
 	var result := value.duplicate(true)
 	result.erase("state_fingerprint")
 	result["state_fingerprint"] = _fingerprint(result)
 	return result
+
+
+static func _seal_authority_owned(value: Dictionary) -> Dictionary:
+	var result := value.duplicate(false)
+	result.erase("state_fingerprint")
+	result["state_fingerprint"] = _fingerprint(result)
+	return result
+
+
+static func _authority_owned_state_header_valid(state: Dictionary) -> bool:
+	if (
+		int(state.get("schema_version", 0)) != SCHEMA_VERSION
+		or str(state.get("ruleset_id", "")) != RULESET_ID
+		or str(state.get("contract_id", "")) != CONTRACT_ID
+		or not _stable_id(str(state.get("batch_id", "")))
+		or str(state.get("status", "")) not in ["resolution_ready", "resolved"]
+		or not (state.get("authority_queue") is Array)
+		or not (state.get("anonymous_global_queue") is Array)
+		or not (state.get("processed_action_ids") is Dictionary)
+		or not (state.get("resolution_receipts") is Array)
+		or not (state.get("facility_substate") is Dictionary)
+		or str(state.get("state_fingerprint", "")).length() != 64
+	):
+		return false
+	var unsealed := state.duplicate(false)
+	unsealed.erase("state_fingerprint")
+	if str(state.get("state_fingerprint", "")) != _fingerprint(unsealed):
+		return false
+	var queue := state.get("authority_queue", []) as Array
+	var public_queue := state.get("anonymous_global_queue", []) as Array
+	var cursor := int(state.get("resolution_cursor", -1))
+	var facility_state := state.get("facility_substate", {}) as Dictionary
+	if (
+		cursor < 0
+		or cursor > queue.size()
+		or public_queue.size() != queue.size()
+		or str(facility_state.get("status", "")) != "resolved"
+		or str(facility_state.get("state_fingerprint", "")).length() != 64
+	):
+		return false
+	var receipts := state.get("resolution_receipts", []) as Array
+	var processed := state.get("processed_action_ids", {}) as Dictionary
+	if receipts.size() != cursor or processed.size() != cursor:
+		return false
+	var seen_receipt_ids: Dictionary = {}
+	for index in range(cursor):
+		var entry := queue[index] as Dictionary
+		var receipt := receipts[index] as Dictionary
+		var action_id := str(entry.get("action_id", ""))
+		if (
+			receipt.is_empty()
+			or not _receipt_binding_valid(
+				receipt,
+				entry,
+				str(state.get("batch_id", ""))
+			)
+			or str(receipt.get("action_id", "")) != action_id
+			or int(processed.get(action_id, -1)) != index
+		):
+			return false
+		var receipt_id := str(receipt.get("receipt_id", ""))
+		if receipt_id.is_empty() or seen_receipt_ids.has(receipt_id):
+			return false
+		seen_receipt_ids[receipt_id] = true
+	return (
+		cursor >= 0
+		and cursor <= queue.size()
+		and public_queue.size() == queue.size()
+		and str(facility_state.get("status", "")) == "resolved"
+		and str(facility_state.get("state_fingerprint", "")).length() == 64
+	)
 
 
 static func _fingerprint(value: Variant) -> String:

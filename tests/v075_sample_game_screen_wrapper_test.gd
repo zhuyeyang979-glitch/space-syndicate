@@ -110,11 +110,25 @@ func _run() -> void:
 		"PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay/Margin/Rows/SurfaceHost/CombatSurface"
 	) as V075CombatPlayerSurface
 	surface.private_target_selection_requested.emit(
-		"monster.tech.local.01",
-		"skill.tech.prism.l1",
-		"enemy_facility"
+		{
+			"source_instance_id": "monster.tech.local.01",
+			"skill_definition_id": "skill.tech.prism.l1",
+			"target_binding": {
+				"target_kind": "monster",
+				"target_id": "monster.tech.local.01",
+			},
+		}
 	)
-	surface.military_mission_selected.emit("assault_region")
+	surface.military_mission_selected.emit({
+		"option_id": "option.military.region.local",
+		"owner_player_id": "player.local",
+		"card_instance_id": "dbg.military.local.01",
+		"card_definition_id": "military.submarine_fleet.life.rank_1",
+		"target_slot_id": "combat.military.assault_region.region.14",
+		"task_kind": "assault_region",
+		"target_region_id": "region.14",
+		"target_monster_source_instance_id": "",
+	})
 	await process_frame
 	debug = screen.combat_debug_snapshot()
 	var private_intent_count := 0
@@ -133,6 +147,13 @@ func _run() -> void:
 				_expect(
 					str(intent.get("combat_channel", "")) == "public_batch",
 					"military intent remains an ordinary batch action"
+				)
+				_expect(
+					str((intent.get("parameters", {}) as Dictionary).get(
+						"option_id",
+						""
+					)) == "option.military.region.local",
+					"military intent preserves the selected option identity"
 				)
 	_expect(
 		private_intent_count == 1
@@ -177,9 +198,14 @@ func _run() -> void:
 	await process_frame
 	var intents_before_terminal := private_intent_count + military_intent_count
 	surface.private_target_selection_requested.emit(
-		"monster.tech.local.01",
-		"skill.tech.prism.l1",
-		"enemy_facility"
+		{
+			"source_instance_id": "monster.tech.local.01",
+			"skill_definition_id": "skill.tech.prism.l1",
+			"target_binding": {
+				"target_kind": "monster",
+				"target_id": "monster.tech.local.01",
+			},
+		}
 	)
 	await process_frame
 	var terminal_debug := screen.combat_debug_snapshot()

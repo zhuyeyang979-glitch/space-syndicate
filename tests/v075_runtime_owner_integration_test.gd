@@ -6,6 +6,8 @@ const RuntimeOwner := preload(
 const CombatOwner := preload(
 	"res://scripts/v075/runtime/v075_combat_runtime_owner.gd"
 )
+const SAMPLE_MATCH_SEED := 901626424
+const SAMPLE_MAP_SEED := 900626424
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -22,15 +24,16 @@ func _run() -> void:
 	var combat := CombatOwner.new()
 	host.add_child(runtime)
 	host.add_child(combat)
+	runtime.runtime_fault.connect(_on_runtime_fault)
 	var bound := runtime.bind_combat_owner(combat)
 	_expect(bool(bound.get("accepted", false)), "combat owner binds")
 	var started := runtime.start_new_game(
 		4,
-		900626424,
+		SAMPLE_MATCH_SEED,
 		true,
 		true,
 		{
-			"map_seed": 900626424,
+			"map_seed": SAMPLE_MAP_SEED,
 			"region_count": 16,
 			"geography_complexity": "STANDARD",
 			"land_ocean_profile": "BALANCED",
@@ -99,6 +102,43 @@ func _run() -> void:
 		"legacy combat controllers remain unreachable"
 	)
 	var accelerated := runtime.run_accelerated_until_settled(4000)
+	if not bool(accelerated.get("accepted", false)):
+		var stalled_debug := accelerated.get("debug", {}) as Dictionary
+		var stalled_combat := stalled_debug.get("combat", {}) as Dictionary
+		print("V075_RUNTIME_STALL_DIAGNOSTIC|%s" % JSON.stringify({
+			"reason_code": accelerated.get("reason_code", ""),
+			"steps": accelerated.get("steps", 0),
+			"phase": accelerated.get("phase", ""),
+			"batch_number": stalled_debug.get("batch_number", 0),
+			"public_progress_points": stalled_debug.get(
+				"public_progress_points",
+				0
+			),
+			"public_progress_target": stalled_debug.get(
+				"public_progress_target",
+				0
+			),
+			"queued_action_count": _queued_action_count(runtime),
+			"track_scroll_sequence": stalled_debug.get(
+				"track_scroll_sequence",
+				0
+			),
+			"combat": {
+				"phase": stalled_combat.get("phase", ""),
+				"receipt_count": stalled_combat.get("combat_receipt_count", 0),
+				"monster_sources": stalled_combat.get("monster_source_count", 0),
+				"monster_moves": stalled_combat.get("monster_movement_count", 0),
+				"military_region": stalled_combat.get(
+					"military_region_assault_count",
+					0
+				),
+				"military_monster": stalled_combat.get(
+					"military_monster_assault_count",
+					0
+				),
+			},
+			"runtime_error_count": stalled_debug.get("runtime_error_count", 0),
+		}))
 
 	_expect(
 		bool(accelerated.get("accepted", false)),
@@ -113,9 +153,129 @@ func _run() -> void:
 		int(final_debug.get("final_settlement_count", 0)) == 1,
 		"final settlement count is one"
 	)
+	var combat_debug := final_debug.get("combat", {}) as Dictionary
+	var monster_modes := combat_debug.get(
+		"monster_card_mode_counts",
+		{}
+	) as Dictionary
+	var resolved_combat_actions := (
+		int(monster_modes.get("DEPLOY_NEW", 0))
+		+ int(monster_modes.get("REFRESH_EXISTING", 0))
+		+ int(monster_modes.get("UPGRADE_EXISTING", 0))
+		+ int(monster_modes.get("REPLACE_EXISTING", 0))
+		+ int(combat_debug.get("military_region_assault_count", 0))
+		+ int(combat_debug.get("military_monster_assault_count", 0))
+	)
+	if resolved_combat_actions == 0:
+		var aggregate_dbg := {
+			"player_projection_count": 0,
+			"queued_action_count": 0,
+			"hand_count": 0,
+			"draw_pile_count": 0,
+			"discard_count": 0,
+		}
+		for player_id in [
+			"player.local",
+			"player.ai.1",
+			"player.ai.2",
+			"player.ai.3",
+		]:
+			var player_view := runtime.player_snapshot(player_id)
+			if player_view.is_empty():
+				continue
+			aggregate_dbg["player_projection_count"] = int(
+				aggregate_dbg.get("player_projection_count", 0)
+			) + 1
+			aggregate_dbg["queued_action_count"] = int(
+				aggregate_dbg.get("queued_action_count", 0)
+			) + (player_view.get("queued_actions", []) as Array).size()
+			var dbg_facts := (
+				(player_view.get("canonical_player_projection", {}) as Dictionary)
+				.get("personal_dbg", {}) as Dictionary
+			).get("facts", {}) as Dictionary
+			for count_field in [
+				"hand_count",
+				"draw_pile_count",
+				"discard_count",
+			]:
+				aggregate_dbg[count_field] = int(
+					aggregate_dbg.get(count_field, 0)
+				) + int(dbg_facts.get(count_field, 0))
+		print(
+			"V075_NATURAL_COMBAT_DIAGNOSTIC|%s"
+			% JSON.stringify({
+				"monster_card_purchase_count": int(final_debug.get(
+					"monster_card_purchase_count",
+					0
+				)),
+				"military_card_purchase_count": int(final_debug.get(
+					"military_card_purchase_count",
+					0
+				)),
+				"first_monster_card_purchase_batch": int(final_debug.get(
+					"first_monster_card_purchase_batch",
+					-1
+				)),
+				"first_military_card_purchase_batch": int(final_debug.get(
+					"first_military_card_purchase_batch",
+					-1
+				)),
+				"monster_card_mode_counts": monster_modes.duplicate(true),
+				"military_region_assault_count": int(combat_debug.get(
+					"military_region_assault_count",
+					0
+				)),
+				"military_monster_assault_count": int(combat_debug.get(
+					"military_monster_assault_count",
+					0
+				)),
+				"final_settlement_count": int(final_debug.get(
+					"final_settlement_count",
+					0
+				)),
+				"batch_number": int(final_debug.get("batch_number", 0)),
+				"aggregate_dbg": aggregate_dbg,
+			})
+		)
+	_expect(
+		resolved_combat_actions > 0,
+		"fixed-seed natural DBG loop resolves a combat card before settlement"
+	)
 	_finish()
 
 
+func _queued_action_count(runtime: RuntimeOwner) -> int:
+	var total := 0
+	for player_id in [
+		"player.local",
+		"player.ai.1",
+		"player.ai.2",
+		"player.ai.3",
+	]:
+		var snapshot := runtime.player_snapshot(player_id)
+		total += (snapshot.get("queued_actions", []) as Array).size()
+	return total
+
+
+func _on_runtime_fault(receipt: Dictionary) -> void:
+	var detail := receipt.get("detail", {}) as Dictionary
+	var bridge_receipt := detail.get("receipt", {}) as Dictionary
+	print("V075_RUNTIME_FAULT_DIAGNOSTIC|%s" % JSON.stringify({
+		"reason_code": receipt.get("reason_code", ""),
+		"detail_reason_code": detail.get("reason_code", ""),
+		"detail_accepted": detail.get("accepted", false),
+		"detail_duplicate": detail.get("duplicate", false),
+		"target_facility_id": bridge_receipt.get("target_facility_id", ""),
+		"expected_generation": bridge_receipt.get("expected_generation", -1),
+		"facility_generation_before": bridge_receipt.get(
+			"facility_generation_before",
+			-1
+		),
+		"damage_kind": bridge_receipt.get("damage_kind", ""),
+		"requested_damage": bridge_receipt.get("requested_damage", 0),
+		"bridge_receipt_reason_code": bridge_receipt.get("reason_code", ""),
+		"facility_slot_count": (detail.get("facility_slots", []) as Array).size(),
+	}))
 func _expect(condition: bool, message: String) -> void:
 	_checks += 1
 	if not condition:

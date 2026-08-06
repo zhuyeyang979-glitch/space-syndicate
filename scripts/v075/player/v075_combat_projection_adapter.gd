@@ -260,6 +260,19 @@ func _project_owner_skill_sources(
 					projected_skill[field] = _safe_copy(
 						skill.get(field)
 					)
+			var normalized_contract := _normalized_target_contract(
+				skill.get("target_contract", {})
+			)
+			projected_skill["target_contract"] = normalized_contract
+			var target_binding := skill.get("target_binding", {}) as Dictionary
+			if target_binding.is_empty():
+				target_binding = _derive_target_binding(
+					normalized_contract,
+					source,
+					authority_snapshot,
+					viewer_player_id
+				)
+			projected_skill["target_binding"] = target_binding.duplicate(true)
 			var state := str(projected_skill.get("state", "DISABLED"))
 			projected_skill["can_request"] = (
 				combat_requests_allowed
@@ -273,6 +286,7 @@ func _project_owner_skill_sources(
 			"source_instance_id": str(
 				source.get("source_instance_id", "")
 			),
+			"source_generation": int(source.get("source_generation", 0)),
 			"owner_player_id": viewer_player_id,
 			"monster_display_name": str(
 				source.get("monster_display_name", "")
@@ -306,26 +320,173 @@ func _project_military_options(
 	if not (viewer_facts is Dictionary):
 		return []
 	var facts := viewer_facts as Dictionary
-	if not bool(facts.get("military_card_selected", false)):
+	var result: Array[Dictionary] = []
+	var options_variant: Variant = facts.get("military_options", [])
+	if not (options_variant is Array):
 		return []
-	return [
-		{
-			"task_kind": "assault_region",
-			"display_name": "攻击地区",
-			"icon_asset_key": "icon.board.target",
-			"enabled": combat_requests_allowed and bool(
-				facts.get("can_assault_region", false)
+	for option_variant in options_variant as Array:
+		if not (option_variant is Dictionary):
+			continue
+		var option := option_variant as Dictionary
+		if not _military_option_valid(option, viewer_player_id):
+			continue
+		var projected := {
+			"option_id": str(option.get("option_id", "")),
+			"owner_player_id": viewer_player_id,
+			"card_instance_id": str(option.get("card_instance_id", "")),
+			"card_definition_id": str(option.get("card_definition_id", "")),
+			"card_generation": maxi(1, int(option.get("card_generation", 1))),
+			"target_slot_id": str(option.get("target_slot_id", "")),
+			"task_kind": str(option.get("task_kind", "")),
+			"target_region_id": str(option.get("target_region_id", "")),
+			"target_monster_source_instance_id": str(option.get(
+				"target_monster_source_instance_id",
+				""
+			)),
+			"target_source_generation": int(option.get(
+				"target_source_generation",
+				0
+			)),
+			"launch_region_id": str(option.get("launch_region_id", "")),
+			"asset_cost_by_color": (
+				option.get("asset_cost_by_color", {}) as Dictionary
+			).duplicate(true),
+			"display_name": (
+				"攻击地区"
+				if str(option.get("task_kind", "")) == "assault_region"
+				else "攻击怪兽"
 			),
-		},
-		{
-			"task_kind": "assault_monster",
-			"display_name": "攻击怪兽",
-			"icon_asset_key": "vfx.monster.attack_smoke",
-			"enabled": combat_requests_allowed and bool(
-				facts.get("can_assault_monster", false)
+			"icon_asset_key": (
+				"icon.board.target"
+				if str(option.get("task_kind", "")) == "assault_region"
+				else "vfx.monster.attack_smoke"
 			),
-		},
-	]
+			"enabled": combat_requests_allowed and bool(
+				option.get("enabled", false)
+			),
+			"disabled_reason": str(option.get("disabled_reason", "none")),
+			"action_domain": "military",
+		}
+		result.append(projected)
+	result.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		return str(left.get("option_id", "")) < str(
+			right.get("option_id", "")
+		)
+	)
+	return result
+
+
+func _normalized_target_contract(value: Variant) -> Dictionary:
+	if value is Dictionary:
+		return (value as Dictionary).duplicate(true)
+	var legacy := str(value)
+	var kind: String = str({
+		"self": "self_source",
+		"enemy_facility": "enemy_public_facility",
+		"enemy_monster": "enemy_public_monster",
+		"region": "enemy_facilities_in_public_region",
+	}.get(legacy, legacy))
+	return {"target_kind": kind} if not legacy.is_empty() else {}
+
+
+func _derive_target_binding(
+	contract: Dictionary,
+	source: Dictionary,
+	authority_snapshot: Dictionary,
+	viewer_player_id: String
+) -> Dictionary:
+	var target_kind := str(contract.get("target_kind", ""))
+	var source_id := str(source.get("source_instance_id", ""))
+	var source_generation := int(source.get("source_generation", 0))
+	if target_kind == "self_source":
+		return {
+			"target_kind": "monster",
+			"target_id": source_id,
+			"target_source_generation": source_generation,
+		}
+	if target_kind == "enemy_public_facility":
+		var facility_id := str(source.get("tracked_facility_id", ""))
+		if facility_id.is_empty():
+			for facility_variant in authority_snapshot.get("public_facilities", []) as Array:
+				var facility := facility_variant as Dictionary
+				if str(facility.get("owner_player_id", "")) == viewer_player_id:
+					continue
+				if str(facility.get("status", "active")) == "destroyed":
+					continue
+				facility_id = str(facility.get("facility_id", ""))
+				if not facility_id.is_empty():
+					break
+		if facility_id.is_empty():
+			return {}
+		return {
+			"target_kind": "facility",
+			"target_id": facility_id,
+			"target_facility_id": facility_id,
+		}
+	if target_kind in [
+		"enemy_facilities_in_public_region",
+		"enemy_facilities_in_current_region",
+	]:
+		var region_id := (
+			str(source.get("region_id", ""))
+			if target_kind == "enemy_facilities_in_current_region"
+			else str(source.get("tracked_region_id", ""))
+		)
+		if region_id.is_empty():
+			return {}
+		return {
+			"target_kind": "region",
+			"target_id": region_id,
+			"target_region_id": region_id,
+		}
+	if target_kind == "enemy_public_monster":
+		var monster_ids: Array[String] = []
+		for monster_variant in authority_snapshot.get("public_monsters", []) as Array:
+			var monster := monster_variant as Dictionary
+			if str(monster.get("owner_player_id", "")) == viewer_player_id:
+				continue
+			if str(monster.get("status", "active")) != "active":
+				continue
+			var id := str(monster.get("source_instance_id", ""))
+			if not id.is_empty():
+				monster_ids.append(id)
+		monster_ids.sort()
+		if monster_ids.is_empty():
+			return {}
+		var selected_id := monster_ids[0]
+		for monster_variant in authority_snapshot.get("public_monsters", []) as Array:
+			var monster := monster_variant as Dictionary
+			if str(monster.get("source_instance_id", "")) == selected_id:
+				return {
+					"target_kind": "monster",
+					"target_id": selected_id,
+					"target_source_generation": int(monster.get("source_generation", 0)),
+				}
+	return {}
+
+
+func _military_option_valid(option: Dictionary, viewer_player_id: String) -> bool:
+	if str(option.get("action_domain", "military")) != "military":
+		return false
+	if str(option.get("owner_player_id", viewer_player_id)) != viewer_player_id:
+		return false
+	for field_name in [
+		"option_id",
+		"card_instance_id",
+		"card_definition_id",
+		"target_slot_id",
+	]:
+		if str(option.get(field_name, "")).is_empty():
+			return false
+	var task_kind := str(option.get("task_kind", ""))
+	if task_kind == "assault_region":
+		return not str(option.get("target_region_id", "")).is_empty()
+	if task_kind == "assault_monster":
+		return not str(option.get(
+			"target_monster_source_instance_id",
+			""
+		)).is_empty()
+	return false
 
 
 func _public_monster_precedes(

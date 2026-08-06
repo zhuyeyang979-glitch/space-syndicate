@@ -297,16 +297,16 @@ func _test_cross_owner_submission_failure_contract() -> void:
     var failed := runtime.call("lock_player_submission", actor) as Dictionary
     _expect(not bool(failed.get("accepted", false)), "downstream DBG failure rejects submission lock")
     _expect(
-        str(failed.get("reason_code", "")) == "dbg_queue_lock_failed",
-        "downstream failure preserves its typed reason"
+        str(failed.get("reason_code", "")) == "submission_checkpoint_unavailable",
+        "missing rollback capability rejects before any ownership writer"
     )
     _expect(
         _runtime_ownership_snapshot(runtime, actor) == before,
         "submission failure rolls back asset and DBG ownership after downstream rejection"
     )
     _expect(
-        failing_dbg.mutation_count == 1,
-        "failure fixture proves the downstream ownership writer was reached"
+        failing_dbg.mutation_count == 0,
+        "checkpoint preflight prevents an unrollbackable DBG mutation"
     )
     _dispose(runtime)
 

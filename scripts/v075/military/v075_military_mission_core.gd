@@ -896,11 +896,19 @@ static func _public_facility_view(value: Variant) -> Dictionary:
 	if not (value is Dictionary):
 		return {}
 	var source := value as Dictionary
+	if source.has("occupancy") and str(source.get(
+		"occupancy",
+		""
+	)) != "occupied":
+		return {}
 	var facility_id := str(source.get("facility_id", ""))
-	var generation := int(source.get(
+	var generation_value: Variant = source.get(
 		"facility_generation",
 		source.get("generation", 0)
-	))
+	)
+	if not _positive_integer(generation_value):
+		return {}
+	var generation := int(generation_value)
 	var owner_player_id := str(source.get(
 		"owner_player_id",
 		source.get("owner_id", "")

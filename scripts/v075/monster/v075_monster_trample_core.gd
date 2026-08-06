@@ -1,6 +1,10 @@
 extends RefCounted
 class_name V075MonsterTrampleCore
 
+const FacilityDamageIntent := preload(
+	"res://scripts/v075/combat/facility_combat_damage_intent_v1.gd"
+)
+
 const SCHEMA_VERSION := 1
 const RULESET_ID := "v0.7.5"
 const MOVEMENT_RECEIPT_CONTRACT_ID := "MonsterMovementReceiptV1"
@@ -127,17 +131,17 @@ static func resolve_movement(
 				]
 			)
 			intent_ids.append(combat_receipt_id)
-			damage_intents.append({
-				"schema_version": SCHEMA_VERSION,
-				"contract_id": FACILITY_DAMAGE_INTENT_CONTRACT_ID,
-				"ruleset_id": RULESET_ID,
-				"source_effect_id": region_receipt_id,
-				"target_facility_id": facility.get("facility_id"),
-				"expected_generation": facility.get("facility_generation"),
-				"damage_amount": amount,
-				"damage_kind": "monster_ground_trample",
-				"combat_receipt_id": combat_receipt_id,
-			})
+			var damage_intent := FacilityDamageIntent.build(
+				region_receipt_id,
+				str(facility.get("facility_id", "")),
+				int(facility.get("facility_generation", 0)),
+				amount,
+				"monster_ground_trample",
+				combat_receipt_id
+			)
+			if damage_intent.is_empty():
+				return _failure("trample_facility_damage_intent_invalid")
+			damage_intents.append(damage_intent)
 		var candidate_ids: Array[String] = []
 		for candidate_variant in candidates:
 			candidate_ids.append(

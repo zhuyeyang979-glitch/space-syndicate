@@ -1301,7 +1301,9 @@ static func resolve_current(
 		"source_instance_id": next_entry.get("source_instance_id"),
 		"source_generation": next_entry.get("source_generation"),
 		"outcome": "resolved" if committed else "fizzled",
-		"reason_code": reason_code,
+		"reason_code": (
+			reason_code if committed else "private_skill_fizzled"
+		),
 		"public_effect_id": (
 			definition.get("public_effect_id") if committed else ""
 		),
@@ -1696,6 +1698,14 @@ static func owner_private_projection(
 static func public_projection(state: Dictionary) -> Dictionary:
 	if _state_error(state) != "":
 		return {}
+	var public_used_sources := {}
+	for result_variant in state.get("public_results") as Array:
+		var result := result_variant as Dictionary
+		if result.get("batch_id") == state.get("batch_id"):
+			public_used_sources[str(result.get(
+				"source_instance_id",
+				""
+			))] = true
 	var summaries: Array = []
 	for source_id in _sorted_keys(state.get("sources") as Dictionary):
 		var source := (state.get("sources") as Dictionary).get(
@@ -1710,8 +1720,8 @@ static func public_projection(state: Dictionary) -> Dictionary:
 			"unlocked_skill_count": (
 				source.get("unlocked_skill_definition_ids") as Array
 			).size(),
-			"batch_active_skill_use_count": source.get(
-				"batch_active_skill_use_count"
+			"batch_active_skill_use_count": (
+				1 if public_used_sources.has(source_id) else 0
 			),
 		})
 	var results: Array = []

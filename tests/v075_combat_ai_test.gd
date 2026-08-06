@@ -65,6 +65,7 @@ func _run() -> void:
 		"owned_monsters": [
 			{
 				"source_instance_id": "monster.tech.local.01",
+				"source_generation": 1,
 				"owner_player_id": "player.local",
 				"status": "active",
 				"batch_active_skill_used": false,
@@ -96,6 +97,7 @@ func _run() -> void:
 		"facilities": [
 			{
 				"facility_id": "factory.02.technology",
+				"facility_generation": 1,
 				"owner_player_id": "player.ai.1",
 				"region_id": "region.02",
 				"status": "active",
@@ -104,6 +106,7 @@ func _run() -> void:
 		"monsters": [
 			{
 				"source_instance_id": "monster.ai.01",
+				"source_generation": 1,
 				"owner_player_id": "player.ai.1",
 				"status": "active",
 			},

@@ -13,6 +13,16 @@ func _init() -> void:
 
 func _run() -> void:
 	var facilities := [
+		{
+			"slot_id": "slot.region.006.factory.life.00",
+			"region_id": "region.006",
+			"facility_type": "factory",
+			"industry_id": "life",
+			"occupancy": "empty",
+			"facility_id": null,
+			"facility_generation": null,
+			"owner_id": null,
+		},
 		_facility("facility.warehouse.c", "warehouse", "shipping"),
 		_facility("facility.factory.a", "factory", "industry"),
 		_facility("facility.market.b", "market", "commerce"),

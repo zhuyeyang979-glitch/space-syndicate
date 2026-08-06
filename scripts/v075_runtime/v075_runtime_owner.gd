@@ -7,6 +7,12 @@ const CardDefinitionsV075 := preload(
 const PublicActionBatchCore := preload(
 	"res://scripts/v075/runtime/v075_public_action_batch_core.gd"
 )
+const CombatCatalog := preload(
+	"res://scripts/v075/combat/v075_combat_catalog.gd"
+)
+const MonsterAutonomyCore := preload(
+	"res://scripts/v075/monster/v075_monster_autonomy_core.gd"
+)
 const CombatProjectionAdapter := preload(
 	"res://scripts/v075/player/v075_combat_projection_adapter.gd"
 )
@@ -15,6 +21,9 @@ const CombatAIAdapter := preload(
 )
 const FacilityDamageBridge := preload(
 	"res://scripts/v075/combat/v075_facility_combat_damage_bridge.gd"
+)
+const FacilityDamageIntent := preload(
+	"res://scripts/v075/combat/facility_combat_damage_intent_v1.gd"
 )
 const CombatTelemetryBridge := preload(
 	"res://scripts/v075/telemetry/v075_combat_telemetry_bridge.gd"
@@ -33,7 +42,7 @@ const V075_TRACK_ACQUISITION_POLICY_ID := (
 )
 const V075_COMBAT_ACQUISITION_PERIOD := 4
 const V075_COMBAT_ACQUISITION_MAX_PER_PERIOD := 1
-const V075_INITIAL_FACILITY_ACQUISITIONS_BEFORE_COMBAT := 1
+const V075_INITIAL_FACILITY_ACQUISITIONS_BEFORE_COMBAT := 0
 const V075_FACILITY_ACQUISITIONS_BETWEEN_COMBAT := 3
 const V075_AUTO_ACTION_LIMIT := 5
 const V075_TRACK_REFILL_MODE_ID := "shared_scroll_vacancy"
@@ -114,6 +123,8 @@ var _combat_facility_damage_receipt_count := 0
 var _combat_private_skill_request_count := 0
 var _combat_monster_purchase_count := 0
 var _combat_military_purchase_count := 0
+var _combat_first_monster_purchase_batch := -1
+var _combat_first_military_purchase_batch := -1
 var _combat_ai_private_skill_count := 0
 var _combat_ai_military_region_count := 0
 var _combat_ai_military_monster_count := 0
@@ -136,6 +147,10 @@ var _v075_acquisition_hook_count := 0
 var _v075_acquisition_rejection_count := 0
 var _v075_acquisition_no_mutation_violation_count := 0
 var _v075_submission_rollback_count := 0
+var _v075_submission_legal_actions_cache: Dictionary = {}
+var _v075_submission_card_cache: Dictionary = {}
+var _v075_track_projection_cache: Dictionary = {}
+var _v075_public_facility_slots_cache: Array = []
 
 
 func bind_combat_owner(owner: Node) -> Dictionary:
@@ -220,65 +235,56 @@ func start_new_game(
 func lock_player_submission(actor_id: String) -> Dictionary:
 	if not _combat_initialized or not is_instance_valid(_combat_owner):
 		return super.lock_player_submission(actor_id)
-	var runtime_checkpoint := _v075_capture_submission_checkpoint()
+	var runtime_checkpoint := _v075_capture_submission_checkpoint(actor_id)
+	if runtime_checkpoint.is_empty():
+		return _reject_action("submission_checkpoint_unavailable")
 	var checkpoint := _combat_owner.call(
 		"capture_checkpoint",
 		"checkpoint.submission.%s.%s" % [_batch_id(), actor_id]
 	) as Dictionary
+	if checkpoint.is_empty():
+		return _reject_action("combat_submission_checkpoint_unavailable")
 	var result := super.lock_player_submission(actor_id)
 	if not bool(result.get("accepted", false)):
-		_v075_restore_submission_checkpoint(runtime_checkpoint)
-		_combat_owner.call("rollback_checkpoint", checkpoint)
+		var runtime_rollback := _v075_restore_submission_checkpoint(
+			runtime_checkpoint
+		)
+		var combat_rollback := _combat_owner.call(
+			"rollback_checkpoint",
+			checkpoint
+		) as Dictionary
+		if (
+			not bool(runtime_rollback.get("accepted", false))
+			or not _rollback_result_accepted(combat_rollback)
+		):
+			return _fail("submission_rollback_failed", {
+				"runtime_rollback": runtime_rollback,
+				"combat_rollback": combat_rollback,
+			})
 		_v075_submission_rollback_count += 1
+	_clear_v075_submission_caches()
+	_clear_v075_track_projection_cache()
 	return result
 
 
-func _v075_capture_submission_checkpoint() -> Dictionary:
-	var dbg_checkpoints: Array = []
-	for owner_id_variant in _dbg_by_player.keys():
-		var owner_variant: Variant = _dbg_by_player.get(owner_id_variant)
-		var owner := owner_variant as Object
-		if owner == null:
-			continue
-		var checkpoint: Variant = {}
-		var rollback_method := ""
-		if owner.has_method("capture_checkpoint_v1"):
-			checkpoint = owner.call("capture_checkpoint_v1")
-			rollback_method = "rollback_v1"
-		elif owner.has_method("capture_checkpoint"):
-			checkpoint = owner.call("capture_checkpoint")
-			rollback_method = "rollback"
-		if checkpoint is Dictionary and not (
-			checkpoint as Dictionary
-		).is_empty():
-			dbg_checkpoints.append({
-				"owner_id": str(owner_id_variant),
-				"owner": owner,
-				"checkpoint": (checkpoint as Dictionary).duplicate(true),
-				"rollback_method": rollback_method,
-			})
+func _v075_capture_submission_checkpoint(actor_id: String) -> Dictionary:
+	var dbg_checkpoint := _v075_capture_dbg_checkpoint(actor_id)
+	if dbg_checkpoint.is_empty():
+		return {}
 	return {
+		"accepted": true,
 		"phase": _phase,
-		"clock_msec": _clock_msec,
-		"opened_at_msec": _opened_at_msec,
-		"submission_deadline_msec": _submission_deadline_msec,
-		"hidden_order": _hidden_order.duplicate(),
-		"asset_state": _asset_state.duplicate(true),
-		"asset_balances": _asset_balances.duplicate(true),
-		"facility_state": _facility_state.duplicate(true),
-		"queued_by_player": _queued_by_player.duplicate(true),
-		"locked_by_player": _locked_by_player.duplicate(true),
-		"maintenance_done": _maintenance_done.duplicate(true),
-		"public_history": _public_history.duplicate(true),
-		"public_progress_points": _public_progress_points,
-		"final_settlement": _final_settlement.duplicate(true),
-		"ai_submission_started": _ai_submission_started,
-		"dbg_checkpoints": dbg_checkpoints,
+		"runtime_error_count": _runtime_error_count,
+		"dbg_checkpoints": [dbg_checkpoint],
 	}
 
 
-func _v075_restore_submission_checkpoint(checkpoint: Dictionary) -> void:
-	for row_variant in checkpoint.get("dbg_checkpoints", []) as Array:
+func _v075_restore_submission_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	var rollback_ok := true
+	var rollback_results: Array = []
+	var rows := checkpoint.get("dbg_checkpoints", []) as Array
+	for row_index in range(rows.size() - 1, -1, -1):
+		var row_variant: Variant = rows[row_index]
 		var row := row_variant as Dictionary
 		var owner := row.get("owner") as Object
 		var method_name := str(row.get("rollback_method", ""))
@@ -288,54 +294,57 @@ func _v075_restore_submission_checkpoint(checkpoint: Dictionary) -> void:
 			and not method_name.is_empty()
 			and owner.has_method(method_name)
 		):
-			owner.call(
+			var result := owner.call(
 				method_name,
 				row.get("checkpoint", {}) as Dictionary
-			)
+			) as Dictionary
+			rollback_results.append(result.duplicate(true))
+			if not _rollback_result_accepted(result):
+				rollback_ok = false
+		else:
+			rollback_ok = false
 	_phase = str(checkpoint.get("phase", _phase))
-	_clock_msec = int(checkpoint.get("clock_msec", _clock_msec))
-	_opened_at_msec = int(
-		checkpoint.get("opened_at_msec", _opened_at_msec)
+	_runtime_error_count = int(
+		checkpoint.get("runtime_error_count", _runtime_error_count)
 	)
-	_submission_deadline_msec = int(
-		checkpoint.get(
-			"submission_deadline_msec",
-			_submission_deadline_msec
-		)
-	)
-	_hidden_order = (
-		checkpoint.get("hidden_order", []) as Array
-	).duplicate()
-	_asset_state = (
-		checkpoint.get("asset_state", {}) as Dictionary
-	).duplicate(true)
-	_asset_balances = (
-		checkpoint.get("asset_balances", {}) as Dictionary
-	).duplicate(true)
-	_facility_state = (
-		checkpoint.get("facility_state", {}) as Dictionary
-	).duplicate(true)
-	_queued_by_player = (
-		checkpoint.get("queued_by_player", {}) as Dictionary
-	).duplicate(true)
-	_locked_by_player = (
-		checkpoint.get("locked_by_player", {}) as Dictionary
-	).duplicate(true)
-	_maintenance_done = (
-		checkpoint.get("maintenance_done", {}) as Dictionary
-	).duplicate(true)
-	_public_history = (
-		checkpoint.get("public_history", []) as Array
-	).duplicate(true)
-	_public_progress_points = int(
-		checkpoint.get("public_progress_points", _public_progress_points)
-	)
-	_final_settlement = (
-		checkpoint.get("final_settlement", {}) as Dictionary
-	).duplicate(true)
-	_ai_submission_started = bool(
-		checkpoint.get("ai_submission_started", _ai_submission_started)
-	)
+	return {
+		"accepted": rollback_ok,
+		"reason_code": "submission_checkpoint_restored"
+			if rollback_ok
+			else "submission_checkpoint_restore_failed",
+		"rollback_results": rollback_results,
+	}
+
+
+func _v075_capture_dbg_checkpoint(owner_id: String) -> Dictionary:
+	var owner_variant: Variant = _dbg_by_player.get(owner_id)
+	var owner := owner_variant as Object
+	if owner == null or not is_instance_valid(owner):
+		return {}
+	var checkpoint: Variant = {}
+	var rollback_method := ""
+	if owner.has_method("capture_checkpoint_v1") and owner.has_method(
+		"rollback_v1"
+	):
+		checkpoint = owner.call("capture_checkpoint_v1")
+		rollback_method = "rollback_v1"
+	elif owner.has_method("capture_checkpoint") and owner.has_method(
+		"rollback"
+	):
+		checkpoint = owner.call("capture_checkpoint")
+		rollback_method = "rollback"
+	if not checkpoint is Dictionary or (checkpoint as Dictionary).is_empty():
+		return {}
+	return {
+		"owner_id": owner_id,
+		"owner": owner,
+		"checkpoint": (checkpoint as Dictionary).duplicate(true),
+		"rollback_method": rollback_method,
+	}
+
+
+func _rollback_result_accepted(result: Dictionary) -> bool:
+	return bool(result.get("accepted", result.get("rolled_back", false)))
 
 
 func acquire_track_item(
@@ -344,10 +353,7 @@ func acquire_track_item(
 ) -> Dictionary:
 	var domain := ""
 	if _track_core != null:
-		var projection := _track_core.call(
-			"player_projection_v1",
-			actor_id
-		) as Dictionary
+		var projection := _v075_track_projection(actor_id)
 		var private_facts := (
 			projection.get("viewer_private_facts", {}) as Dictionary
 		)
@@ -363,11 +369,17 @@ func acquire_track_item(
 			)
 			break
 	var receipt := super.acquire_track_item(actor_id, source_instance_id)
+	_clear_v075_track_projection_cache()
 	if bool(receipt.get("accepted", false)):
+		_clear_v075_submission_caches()
 		if domain == "monster":
 			_combat_monster_purchase_count += 1
+			if _combat_first_monster_purchase_batch < 0:
+				_combat_first_monster_purchase_batch = _batch_number
 		elif domain == "military":
 			_combat_military_purchase_count += 1
+			if _combat_first_military_purchase_batch < 0:
+				_combat_first_military_purchase_batch = _batch_number
 		if domain in ["monster", "military"]:
 			receipt["combat_card_domain"] = domain
 			receipt["event_kind"] = "%s_card_purchased" % domain
@@ -413,6 +425,16 @@ func _auto_acquire_track_item(actor_id: String) -> Dictionary:
 		_v075_acquisition_opportunities.get(actor_id, 0)
 	) + 1
 	_v075_acquisition_opportunities[actor_id] = opportunity
+	var warehouse_action := _v075_choose_warehouse_action(
+		actor_id,
+		facts
+	)
+	if (
+		str(baseline_action.get("card_domain", "")) == "facility"
+		and not warehouse_action.is_empty()
+		and not _v075_player_has_warehouse(actor_id)
+	):
+		baseline_action = warehouse_action
 	var facility_available := int(
 		audit.get("facility_candidate_count", 0)
 	) > 0
@@ -425,7 +447,8 @@ func _auto_acquire_track_item(actor_id: String) -> Dictionary:
 	var selection_reason := "facility_economy_dominant"
 	if combat_available and _v075_combat_slot_open(
 		actor_id,
-		facility_available
+		facility_available,
+		facts
 	):
 		var combat_action := _v075_choose_combat_track_action(
 			actor_id,
@@ -460,8 +483,14 @@ func _auto_acquire_track_item(actor_id: String) -> Dictionary:
 		_v075_acquisition_rejection_count += 1
 		return _reject_action("v075_track_acquisition_source_missing")
 	var before := _v075_track_supply_probe()
+	if before.is_empty():
+		_v075_acquisition_rejection_count += 1
+		return _reject_action("v075_track_supply_probe_unavailable")
 	var receipt := acquire_track_item(actor_id, source_instance_id)
 	var after := _v075_track_supply_probe()
+	if after.is_empty():
+		_v075_acquisition_no_mutation_violation_count += 1
+		return _fail("v075_track_supply_probe_lost_after_acquisition", {})
 	var delta := _v075_track_supply_delta(before, after)
 	if not _v075_track_delta_is_safe(delta):
 		_v075_acquisition_no_mutation_violation_count += 1
@@ -518,10 +547,7 @@ func _v075_track_acquisition_facts(actor_id: String) -> Dictionary:
 		or not _player_ids.has(actor_id)
 	):
 		return {}
-	var projection := _track_core.call(
-		"player_projection_v1",
-		actor_id
-	) as Dictionary
+	var projection := _v075_track_projection(actor_id)
 	var private_facts := (
 		projection.get("viewer_private_facts", {}) as Dictionary
 	)
@@ -533,7 +559,7 @@ func _v075_track_acquisition_facts(actor_id: String) -> Dictionary:
 	var available := (
 		asset_observation.get("own_available_assets", {}) as Dictionary
 	)
-	if own_items.is_empty() or available.is_empty():
+	if own_items.is_empty() or not _v075_complete_asset_projection(available):
 		return {}
 	return {
 		"viewer_player_id": actor_id,
@@ -542,10 +568,26 @@ func _v075_track_acquisition_facts(actor_id: String) -> Dictionary:
 	}
 
 
+func _v075_complete_asset_projection(available: Dictionary) -> bool:
+	for color_id in COLORS:
+		if not available.has(color_id):
+			return false
+		var value: Variant = available.get(color_id)
+		if typeof(value) != TYPE_INT or int(value) < 0:
+			return false
+	return true
+
+
 func _v075_combat_slot_open(
 	actor_id: String,
-	facility_available: bool
+	facility_available: bool,
+	facts: Dictionary = {}
 ) -> bool:
+	if (
+		not facts.is_empty()
+		and _v075_pending_monster_merge_candidate(actor_id, facts)
+	):
+		return true
 	var opportunity := int(
 		_v075_acquisition_opportunities.get(actor_id, 0)
 	)
@@ -576,11 +618,58 @@ func _v075_combat_slot_open(
 	) >= V075_FACILITY_ACQUISITIONS_BETWEEN_COMBAT
 
 
+func _v075_pending_monster_merge_candidate(
+	actor_id: String,
+	facts: Dictionary
+) -> bool:
+	var active_families: Array[String] = []
+	for source_variant in _v075_public_monsters():
+		var source := source_variant as Dictionary
+		if (
+			str(source.get("owner_player_id", "")) == actor_id
+			and str(source.get("status", "")) == "active"
+			and int(source.get("rank", 0)) == 1
+		):
+			var family_id := str(source.get("monster_family_id", ""))
+			if not family_id.is_empty() and family_id not in active_families:
+				active_families.append(family_id)
+	if active_families.is_empty():
+		return false
+	var known_merge_families := _v075_known_monster_merge_families(
+		actor_id,
+		active_families
+	)
+	if known_merge_families.is_empty():
+		return false
+	for item_variant in facts.get("own_segment_items", []) as Array:
+		var item := item_variant as Dictionary
+		var definition := CardDefinitionsV075.definition(str(item.get(
+			"card_definition_id",
+			""
+		)))
+		if (
+			CardDefinitionsV075.card_domain(str(definition.get("card_type", "")))
+			== "monster"
+			and active_families.has(
+				CardDefinitionsV075.monster_family_id_from_card_type(
+					str(definition.get("card_type", ""))
+				)
+			)
+			and known_merge_families.has(str(definition.get(
+				"merge_family_id",
+				""
+			)))
+		):
+			return true
+	return false
+
+
 func _v075_choose_combat_track_action(
 	actor_id: String,
 	facts: Dictionary
 ) -> Dictionary:
 	var options: Dictionary = {}
+	var monster_merge_progress_action: Dictionary = {}
 	for domain in ["monster", "military"]:
 		var filtered := _v075_filter_track_facts_by_domain(
 			facts,
@@ -598,11 +687,36 @@ func _v075_choose_combat_track_action(
 		var action := result.get("action", {}) as Dictionary
 		if action.is_empty():
 			continue
+		if domain == "monster":
+			var matching_family_action := _v075_choose_matching_monster_action(
+				actor_id,
+				filtered
+			)
+			if not matching_family_action.is_empty():
+				action = matching_family_action
+				if _v075_monster_action_advances_known_merge(actor_id, action):
+					monster_merge_progress_action = action.duplicate(true)
 		options[domain] = action.duplicate(true)
 	if options.is_empty():
 		return {}
+	# A visible exact merge-family duplicate is the only natural path from the
+	# L1-only supply track to a higher-rank monster card. It is owner-private,
+	# deterministic information from the player's own hand/discard, so prefer
+	# it before alternating between otherwise equivalent combat domains.
+	if not monster_merge_progress_action.is_empty():
+		return monster_merge_progress_action
 	if options.size() == 1:
 		return (options.values()[0] as Dictionary).duplicate(true)
+	if (
+		_v075_actor_prefers_monster_upgrade(actor_id)
+		and _v075_has_active_monster(actor_id)
+		and options.has("monster")
+	):
+		# Keep the upgrade-oriented owner on the normal combat track until a
+		# second same-family card can reach the personal hand and maintenance.
+		# This changes only deterministic choice ordering; acquisition, DBG,
+		# asset, and track authorities remain the same.
+		return (options.get("monster", {}) as Dictionary).duplicate(true)
 	var monster_count := int(
 		_v075_acquisition_monster_count.get(actor_id, 0)
 	)
@@ -633,6 +747,17 @@ func _v075_choose_combat_track_action(
 	return best
 
 
+func _v075_has_active_monster(actor_id: String) -> bool:
+	for source_variant in _v075_public_monsters():
+		var source := source_variant as Dictionary
+		if (
+			str(source.get("owner_player_id", "")) == actor_id
+			and str(source.get("status", "")) in ["active", "downed"]
+		):
+			return true
+	return false
+
+
 func _v075_filter_track_facts_by_domain(
 	facts: Dictionary,
 	domain: String
@@ -653,6 +778,146 @@ func _v075_filter_track_facts_by_domain(
 		return {}
 	filtered["own_segment_items"] = items
 	return filtered
+
+
+func _v075_choose_matching_monster_action(
+	actor_id: String,
+	facts: Dictionary
+) -> Dictionary:
+	if not _v075_actor_prefers_monster_upgrade(actor_id):
+		return {}
+	var active_families: Array[String] = []
+	for source_variant in _v075_public_monsters():
+		var source := source_variant as Dictionary
+		if (
+			str(source.get("owner_player_id", "")) == actor_id
+			and str(source.get("status", "")) in ["active", "downed"]
+		):
+			var family_id := str(source.get("monster_family_id", ""))
+			if not family_id.is_empty() and family_id not in active_families:
+				active_families.append(family_id)
+	active_families.sort()
+	var known_merge_families := _v075_known_monster_merge_families(
+		actor_id,
+		active_families
+	)
+	for family_id in active_families:
+		var exact_merge_items: Array = []
+		var items: Array = []
+		for item_variant in facts.get("own_segment_items", []) as Array:
+			var item := item_variant as Dictionary
+			var definition := CardDefinitionsV075.definition(
+				str(item.get("card_definition_id", ""))
+			)
+			var card_type := str(definition.get("card_type", ""))
+			if (
+				CardDefinitionsV075.card_domain(card_type) == "monster"
+				and CardDefinitionsV075.monster_family_id_from_card_type(
+					card_type
+				) == family_id
+			):
+				items.append(item.duplicate(true))
+				if known_merge_families.has(str(definition.get(
+					"merge_family_id",
+					""
+				))):
+					exact_merge_items.append(item.duplicate(true))
+		if items.is_empty():
+			continue
+		var filtered := facts.duplicate(true)
+		if not exact_merge_items.is_empty():
+			filtered["own_segment_items"] = exact_merge_items
+		else:
+			filtered["own_segment_items"] = items
+		var chosen := _combat_ai_adapter.call(
+			"choose_track_acquisition",
+			filtered,
+			{"phase": _phase}
+		) as Dictionary
+		if bool(chosen.get("accepted", false)):
+			return (chosen.get("action", {}) as Dictionary).duplicate(true)
+	return {}
+
+
+func _v075_known_monster_merge_families(
+	actor_id: String,
+	active_families: Array[String]
+) -> Dictionary:
+	var result := {}
+	var facts := _dbg_projection(actor_id).get("facts", {}) as Dictionary
+	for zone_name in ["hand", "discard"]:
+		for card_variant in facts.get(zone_name, []) as Array:
+			var card := card_variant as Dictionary
+			var card_type := str(card.get("card_type", ""))
+			if CardDefinitionsV075.card_domain(card_type) != "monster":
+				continue
+			var family_id := (
+				CardDefinitionsV075.monster_family_id_from_card_type(card_type)
+			)
+			if family_id not in active_families:
+				continue
+			var merge_family_id := str(card.get("merge_family_id", ""))
+			if not merge_family_id.is_empty():
+				result[merge_family_id] = true
+	return result
+
+
+func _v075_monster_action_advances_known_merge(
+	actor_id: String,
+	action: Dictionary
+) -> bool:
+	var definition := CardDefinitionsV075.definition(
+		str(action.get("card_definition_id", ""))
+	)
+	if CardDefinitionsV075.card_domain(str(definition.get(
+		"card_type",
+		""
+	))) != "monster":
+		return false
+	var family_id := CardDefinitionsV075.monster_family_id_from_card_type(
+		str(definition.get("card_type", ""))
+	)
+	return _v075_known_monster_merge_families(
+		actor_id,
+		[family_id]
+	).has(str(definition.get("merge_family_id", "")))
+
+
+func _v075_choose_warehouse_action(
+	actor_id: String,
+	facts: Dictionary
+) -> Dictionary:
+	var filtered := facts.duplicate(true)
+	var items: Array = []
+	for item_variant in facts.get("own_segment_items", []) as Array:
+		var item := item_variant as Dictionary
+		var definition := CardDefinitionsV075.definition(
+			str(item.get("card_definition_id", ""))
+		)
+		if str(definition.get("card_type", "")) == "warehouse":
+			items.append(item.duplicate(true))
+	if items.is_empty():
+		return {}
+	filtered["own_segment_items"] = items
+	var chosen := _combat_ai_adapter.call(
+		"choose_track_acquisition",
+		filtered,
+		{"phase": _phase, "actor_id": actor_id}
+	) as Dictionary
+	if not bool(chosen.get("accepted", false)):
+		return {}
+	return (chosen.get("action", {}) as Dictionary).duplicate(true)
+
+
+func _v075_player_has_warehouse(actor_id: String) -> bool:
+	for facility_variant in _public_occupied_facilities():
+		var facility := facility_variant as Dictionary
+		if (
+			_facility_owner_id(facility) == actor_id
+			and str(facility.get("facility_type", "")) == "warehouse"
+		):
+			return true
+	return false
 
 
 func _v075_action_precedes(
@@ -698,43 +963,40 @@ func _v075_acquisition_noop(
 func _v075_track_supply_probe() -> Dictionary:
 	if _track_core == null:
 		return {}
-	var authority := _track_core.call("core_authority_v1") as Dictionary
-	var state := authority.get("authority_state", {}) as Dictionary
-	var track := state.get("track_state", {}) as Dictionary
-	var color_cycle := state.get("color_cycle_state", {}) as Dictionary
-	var color_supply := (
-		color_cycle.get("color_supply_state", {}) as Dictionary
-	)
-	var type_supply := state.get("type_supply_state", {}) as Dictionary
-	var normal_supply := state.get("normal_supply_state", {}) as Dictionary
-	var commodity_supply := (
-		state.get("commodity_supply_state", {}) as Dictionary
-	)
-	var debug := (
-		_track_core.call("debug_snapshot_v074") as Dictionary
-		if _track_core.has_method("debug_snapshot_v074")
-		else {}
-	)
+	if not _track_core.has_method("debug_snapshot_v074"):
+		return {}
+	var debug := _track_core.call("debug_snapshot_v074") as Dictionary
+	if (
+		str(debug.get("schema", "")) != "V074SharedSushiTrackDebugV1"
+		or str(debug.get("refill_mode_id", ""))
+			!= V075_TRACK_REFILL_MODE_ID
+	):
+		return {}
+	for field_name in [
+		"track_revision",
+		"item_count",
+		"vacancy_count",
+		"next_instance_sequence",
+		"supply_cursor_total",
+		"supply_rng_draw_total",
+		"immediate_authoritative_refill_count",
+	]:
+		if (
+			not debug.has(field_name)
+			or typeof(debug.get(field_name)) != TYPE_INT
+			or int(debug.get(field_name, -1)) < 0
+		):
+			return {}
 	return {
-		"track_revision": int(track.get("revision", 0)),
-		"item_count": (track.get("items", []) as Array).size(),
-		"vacancy_count": int(track.get("capacity", 0)) - (
-			track.get("items", []) as Array
-		).size(),
+		"track_revision": int(debug.get("track_revision", 0)),
+		"item_count": int(debug.get("item_count", 0)),
+		"vacancy_count": int(debug.get("vacancy_count", 0)),
 		"next_instance_sequence": int(
-			track.get("next_instance_sequence", 0)
+			debug.get("next_instance_sequence", 0)
 		),
-		"supply_cursor_total": (
-			int(type_supply.get("cursor", 0))
-			+ int(normal_supply.get("cursor", 0))
-			+ int(commodity_supply.get("cursor", 0))
-			+ int(color_supply.get("cursor", 0))
-		),
-		"supply_rng_draw_total": (
-			int(type_supply.get("rng_draw_count", 0))
-			+ int(normal_supply.get("rng_draw_count", 0))
-			+ int(commodity_supply.get("rng_draw_count", 0))
-			+ int(color_supply.get("rng_draw_count", 0))
+		"supply_cursor_total": int(debug.get("supply_cursor_total", 0)),
+		"supply_rng_draw_total": int(
+			debug.get("supply_rng_draw_total", 0)
 		),
 		"immediate_authoritative_refill_count": int(
 			debug.get("immediate_authoritative_refill_count", 0)
@@ -784,8 +1046,18 @@ func _v075_track_delta_is_safe(delta: Dictionary) -> bool:
 
 
 func legal_card_actions(actor_id: String) -> Array:
+	if _phase == "submission" and _v075_submission_legal_actions_cache.has(
+		actor_id
+	):
+		return (
+			_v075_submission_legal_actions_cache.get(actor_id, []) as Array
+		).duplicate(true)
 	var result := super.legal_card_actions(actor_id)
-	if not _combat_initialized or not _player_ids.has(actor_id):
+	if (
+		not _combat_initialized
+		or not _player_ids.has(actor_id)
+		or _phase != "submission"
+	):
 		return result
 	var facts := _dbg_projection(actor_id).get("facts", {}) as Dictionary
 	for card_variant in facts.get("hand", []) as Array:
@@ -802,6 +1074,60 @@ func legal_card_actions(actor_id: String) -> Array:
 			right.get("option_id", "")
 		)
 	)
+	if _phase == "submission":
+		_v075_submission_legal_actions_cache[actor_id] = result.duplicate(true)
+	return result
+
+
+func _auto_legal_actions(actor_id: String) -> Array:
+	# The parent AI DTO is presentation-shaped and scans this projection again.
+	# One authoritative V075 legal query is enough for both facility and combat
+	# choices; keep the actor-local fields intact and never expose rival data.
+	var all_options := legal_card_actions(actor_id)
+	var result: Array = []
+	var known: Dictionary = {}
+	for option_variant in all_options:
+		if not (option_variant is Dictionary):
+			continue
+		var option := option_variant as Dictionary
+		var domain := str(option.get("action_domain", "facility"))
+		if domain not in ["monster", "military"]:
+			result.append(option.duplicate(true))
+			continue
+		var identity := _combat_option_identity(option)
+		if not known.has(identity):
+			result.append(option.duplicate(true))
+			known[identity] = true
+	return result
+
+
+func _combat_option_identity(option: Dictionary) -> String:
+	return "%s|%s|%s|%s" % [
+		str(option.get("action_domain", "")),
+		str(option.get("card_instance_id", "")),
+		str(option.get("target_slot_id", "")),
+		str(option.get("monster_card_mode", option.get("task_kind", ""))),
+	]
+
+
+func _card_in_hand(actor_id: String, card_instance_id: String) -> Dictionary:
+	if _phase == "submission":
+		var actor_cache := _v075_submission_card_cache.get(
+			actor_id,
+			{}
+		) as Dictionary
+		if actor_cache.has(card_instance_id):
+			return (
+				actor_cache.get(card_instance_id, {}) as Dictionary
+			).duplicate(true)
+	var result := super._card_in_hand(actor_id, card_instance_id)
+	if _phase == "submission":
+		var actor_cache := _v075_submission_card_cache.get(
+			actor_id,
+			{}
+		) as Dictionary
+		actor_cache[card_instance_id] = result.duplicate(true)
+		_v075_submission_card_cache[actor_id] = actor_cache
 	return result
 
 
@@ -816,12 +1142,15 @@ func queue_card_action(
 		str(card.get("card_type", ""))
 	)
 	if domain not in ["monster", "military"]:
-		return super.queue_card_action(
+		var facility_receipt := super.queue_card_action(
 			actor_id,
 			card_instance_id,
 			target_slot_id,
 			target_binding
 		)
+		if bool(facility_receipt.get("accepted", false)):
+			_clear_v075_submission_caches()
+		return facility_receipt
 	if _phase != "submission":
 		return _reject_action("submission_window_not_open")
 	if not _player_ids.has(actor_id) or bool(
@@ -869,6 +1198,7 @@ func queue_card_action(
 	}
 	queue.append(binding)
 	_queued_by_player[actor_id] = queue
+	_clear_v075_submission_caches()
 	var receipt := {
 		"accepted": true,
 		"reason_code": "v075_combat_card_action_prebound",
@@ -914,6 +1244,28 @@ func queue_monster_card_action(
 	return _reject_action("monster_card_mode_has_no_legal_prebound_target")
 
 
+func reorder_queued_action(
+	actor_id: String,
+	from_index: int,
+	to_index: int
+) -> Dictionary:
+	var receipt := super.reorder_queued_action(
+		actor_id,
+		from_index,
+		to_index
+	)
+	if bool(receipt.get("accepted", false)):
+		_clear_v075_submission_caches()
+	return receipt
+
+
+func remove_queued_action(actor_id: String, action_id: String) -> Dictionary:
+	var receipt := super.remove_queued_action(actor_id, action_id)
+	if bool(receipt.get("accepted", false)):
+		_clear_v075_submission_caches()
+	return receipt
+
+
 func queue_military_card_action(
 	actor_id: String,
 	card_instance_id: String,
@@ -955,25 +1307,36 @@ func queue_selected_military_mission(
 ) -> Dictionary:
 	var card_instance_id := str(parameters.get("card_instance_id", ""))
 	if card_instance_id.is_empty():
-		for card_variant in (_dbg_projection(actor_id).get(
-			"facts",
-			{}
-		) as Dictionary).get("hand", []) as Array:
-			var card := card_variant as Dictionary
-			if CardDefinitionsV075.card_domain(
-				str(card.get("card_type", ""))
-			) == "military":
-				card_instance_id = str(card.get("instance_id", ""))
-				break
-	if card_instance_id.is_empty():
-		return _reject_action("military_card_not_selected_or_available")
-	return queue_military_card_action(
-		actor_id,
-		card_instance_id,
-		task_kind,
-		str(parameters.get("target_region_id", "")),
-		str(parameters.get("target_monster_source_instance_id", ""))
-	)
+		return _reject_action("military_card_option_identity_missing")
+	if str(parameters.get("option_id", "")).is_empty():
+		return _reject_action("military_option_id_missing")
+	if str(parameters.get("target_slot_id", "")).is_empty():
+		return _reject_action("military_target_slot_missing")
+	var option_id := str(parameters.get("option_id", ""))
+	for option_variant in legal_card_actions(actor_id):
+		var option := option_variant as Dictionary
+		if (
+			str(option.get("action_domain", "")) == "military"
+			and str(option.get("option_id", "")) == option_id
+			and str(option.get("card_instance_id", "")) == card_instance_id
+			and str(option.get("task_kind", "")) == task_kind
+			and str(option.get("target_slot_id", "")) == str(
+				parameters.get("target_slot_id", "")
+			)
+			and str(option.get("target_region_id", "")) == str(
+				parameters.get("target_region_id", "")
+			)
+			and str(option.get("target_monster_source_instance_id", "")) == str(
+				parameters.get("target_monster_source_instance_id", "")
+			)
+		):
+			return queue_card_action(
+				actor_id,
+				card_instance_id,
+				str(option.get("target_slot_id", "")),
+				option
+			)
+	return _reject_action("military_option_identity_stale")
 
 
 func request_private_monster_skill(
@@ -1023,10 +1386,17 @@ func request_private_monster_skill(
 		"request_private_skill",
 		request,
 		_asset_state,
-		_public_facility_slots()
+		_public_occupied_facilities()
 	) as Dictionary
 	_combat_private_skill_request_count += 1
 	if not bool(result.get("accepted", false)):
+		var rollback := _rollback_combat_transaction(
+			checkpoint,
+			transaction_checkpoint
+		)
+		_facility_state = before_facility_state
+		if not bool(rollback.get("accepted", false)):
+			return _reject_action("private_skill_transaction_rollback_failed")
 		return result
 	var next_public_state := _facility_state.duplicate(true)
 	var damage_result := _apply_facility_damage_intents(
@@ -1034,11 +1404,13 @@ func request_private_monster_skill(
 		result.get("facility_damage_intents", []) as Array
 	)
 	if not bool(damage_result.get("accepted", false)):
-		_rollback_combat_transaction(
+		var rollback := _rollback_combat_transaction(
 			checkpoint,
 			transaction_checkpoint
 		)
 		_facility_state = before_facility_state
+		if not bool(rollback.get("accepted", false)):
+			return _reject_action("private_skill_transaction_rollback_failed")
 		return _reject_action("private_skill_facility_damage_commit_failed")
 	_facility_state = (
 		damage_result.get("public_batch_state", next_public_state) as Dictionary
@@ -1048,6 +1420,11 @@ func request_private_monster_skill(
 	).duplicate(true)
 	_sync_asset_balances()
 	_sync_facility_slots()
+	# A private skill can consume assets or damage a public target before the
+	# next AI/legal-action query. Never reuse a submission snapshot across that
+	# authority boundary.
+	_clear_v075_submission_caches()
+	_clear_v075_track_projection_cache()
 	for public_variant in result.get("public_results", []) as Array:
 		_publish_combat_event(
 			"monster_private_skill_resolved",
@@ -1063,6 +1440,7 @@ func request_private_monster_skill(
 	_emit_local_state()
 	var receipt := result.duplicate(true)
 	receipt.erase("facility_damage_intents")
+	receipt.erase("asset_state")
 	receipt["event_kind"] = "monster_private_skill_requested"
 	receipt["combat_channel"] = "private_instant_serial"
 	return receipt
@@ -1071,6 +1449,7 @@ func request_private_monster_skill(
 func resolve_next_action() -> Dictionary:
 	if _phase != "resolving":
 		return _reject_action("resolution_not_active")
+	_clear_v075_submission_caches()
 	var alignment_reason := _resolution_alignment_reason()
 	if not alignment_reason.is_empty():
 		_dual_authority_count += 1
@@ -1078,33 +1457,51 @@ func resolve_next_action() -> Dictionary:
 			"asset_cursor": int(_asset_state.get("resolution_cursor", -1)),
 			"public_cursor": int(_facility_state.get("resolution_cursor", -1)),
 		})
-	var public_outcome := PublicActionBatchCore.resolve_next(_facility_state)
+	var public_outcome := PublicActionBatchCore.resolve_next_authority_owned(
+		_facility_state
+	)
 	if not bool(public_outcome.get("accepted", false)):
 		return _fail("public_action_resolution_failed", public_outcome)
 	var next_public_state := (
 		public_outcome.get("state", {}) as Dictionary
-	).duplicate(true)
+	).duplicate(false)
 	var action_receipt := (
 		public_outcome.get("receipt", {}) as Dictionary
 	).duplicate(true)
 	var action_id := str(action_receipt.get("action_id", ""))
 	var actor_id := str(action_receipt.get("actor_id", ""))
 	var action_domain := str(action_receipt.get("action_domain", "facility"))
+	var source_card_id := _source_card_id_for_action(actor_id, action_id)
+	var resolution_checkpoint := _capture_resolution_checkpoint(
+		actor_id,
+		action_domain,
+		action_id,
+		source_card_id
+	)
+	if resolution_checkpoint.is_empty():
+		return _fail("resolution_checkpoint_unavailable", {
+			"action_id": action_id,
+			"action_domain": action_domain,
+		})
 	var resolved := true
 	var combat_result: Dictionary = {}
 	var combat_damage_receipts: Array = []
 	if action_domain in ["monster", "military"]:
 		combat_result = _resolve_combat_public_action(
 			action_receipt,
-			next_public_state
+			next_public_state,
+			resolution_checkpoint
 		)
 		if not bool(combat_result.get("accepted", false)):
-			return _fail("combat_public_action_failed", combat_result)
+			if bool(combat_result.get("transaction_rolled_back", false)):
+				return _fail("combat_public_action_failed", combat_result)
+			return _fail_after_resolution_rollback(
+				"combat_public_action_failed",
+				combat_result,
+				resolution_checkpoint
+			)
 		next_public_state = (
 			combat_result.get("public_batch_state", next_public_state) as Dictionary
-		).duplicate(true)
-		_asset_state = (
-			combat_result.get("asset_state", _asset_state) as Dictionary
 		).duplicate(true)
 		resolved = bool(combat_result.get("resolved", false))
 		combat_damage_receipts = (
@@ -1112,16 +1509,21 @@ func resolve_next_action() -> Dictionary:
 		).duplicate(true)
 	elif str(action_receipt.get("outcome_id", "")) == "facility_action_fizzled":
 		resolved = false
+	var candidate_asset_state := _asset_state.duplicate(true)
+	if action_domain in ["monster", "military"]:
+		candidate_asset_state = (
+			combat_result.get("asset_state", candidate_asset_state) as Dictionary
+		).duplicate(true)
 	var asset_outcome: Dictionary
 	if resolved:
 		asset_outcome = ASSET_BATCH_CORE.settle_next_action(
-			_asset_state,
+			candidate_asset_state,
 			action_id,
 			"success"
 		)
 	else:
 		asset_outcome = ASSET_BATCH_CORE.settle_invalid_target(
-			_asset_state,
+			candidate_asset_state,
 			action_id,
 			str(combat_result.get(
 				"reason_code",
@@ -1129,8 +1531,11 @@ func resolve_next_action() -> Dictionary:
 			))
 		)
 	if not bool(asset_outcome.get("accepted", false)):
-		return _fail("asset_resolution_failed", asset_outcome)
-	var source_card_id := _source_card_id_for_action(actor_id, action_id)
+		return _fail_after_resolution_rollback(
+			"asset_resolution_failed",
+			asset_outcome,
+			resolution_checkpoint
+		)
 	if not source_card_id.is_empty():
 		var dbg := _dbg_by_player.get(actor_id) as RefCounted
 		var play_intent := dbg.call(
@@ -1142,7 +1547,11 @@ func resolve_next_action() -> Dictionary:
 		) as Dictionary
 		var play_receipt := dbg.call("apply_intent", play_intent) as Dictionary
 		if not bool(play_receipt.get("success", false)):
-			return _fail("dbg_card_resolution_failed", play_receipt)
+			return _fail_after_resolution_rollback(
+				"dbg_card_resolution_failed",
+				play_receipt,
+				resolution_checkpoint
+			)
 	_facility_state = next_public_state
 	_asset_state = (
 		asset_outcome.get("state", {}) as Dictionary
@@ -1159,6 +1568,13 @@ func resolve_next_action() -> Dictionary:
 		resolved
 	)
 	_public_history.append(public_receipt.duplicate(true))
+	for event_variant in combat_result.get("staged_events", []) as Array:
+		var staged_event := event_variant as Dictionary
+		_publish_combat_event(
+			str(staged_event.get("event_kind", "")),
+			staged_event.get("payload", {}) as Dictionary,
+			str(staged_event.get("receipt_id", ""))
+		)
 	resolution_presented.emit(public_receipt.duplicate(true))
 	_emit_facility_damage_events(combat_damage_receipts)
 	if str(_facility_state.get("status", "")) == "resolved":
@@ -1166,6 +1582,101 @@ func resolve_next_action() -> Dictionary:
 	else:
 		_emit_local_state()
 	return public_receipt
+
+
+func _capture_resolution_checkpoint(
+	actor_id: String,
+	action_domain: String,
+	action_id: String,
+	source_card_id: String
+) -> Dictionary:
+	var checkpoint := {
+		"runtime_combat": {},
+		"combat_checkpoint": {},
+		"dbg_checkpoint": {},
+	}
+	if action_domain in ["monster", "military"]:
+		if (
+			not is_instance_valid(_combat_owner)
+			or not _combat_owner.has_method("capture_checkpoint")
+			or not _combat_owner.has_method("rollback_checkpoint")
+		):
+			return {}
+		var combat_checkpoint := _combat_owner.call(
+			"capture_checkpoint",
+			"checkpoint.resolution.%s.%s" % [_batch_id(), action_id]
+		) as Dictionary
+		if combat_checkpoint.is_empty():
+			return {}
+		checkpoint["runtime_combat"] = _capture_combat_transaction_state()
+		checkpoint["combat_checkpoint"] = combat_checkpoint.duplicate(true)
+	if not source_card_id.is_empty():
+		var dbg_checkpoint := _v075_capture_dbg_checkpoint(actor_id)
+		if dbg_checkpoint.is_empty():
+			return {}
+		checkpoint["dbg_checkpoint"] = dbg_checkpoint
+	return checkpoint
+
+
+func _rollback_resolution_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	var rollback_ok := true
+	var rollback_results: Array = []
+	var dbg_row := checkpoint.get("dbg_checkpoint", {}) as Dictionary
+	if not dbg_row.is_empty():
+		var owner := dbg_row.get("owner") as Object
+		var method_name := str(dbg_row.get("rollback_method", ""))
+		if (
+			owner == null
+			or not is_instance_valid(owner)
+			or method_name.is_empty()
+			or not owner.has_method(method_name)
+		):
+			rollback_ok = false
+		else:
+			var dbg_result := owner.call(
+				method_name,
+				dbg_row.get("checkpoint", {}) as Dictionary
+			) as Dictionary
+			rollback_results.append(dbg_result.duplicate(true))
+			rollback_ok = rollback_ok and _rollback_result_accepted(dbg_result)
+	var combat_checkpoint := checkpoint.get("combat_checkpoint", {}) as Dictionary
+	if not combat_checkpoint.is_empty():
+		if not is_instance_valid(_combat_owner):
+			rollback_ok = false
+		else:
+			var combat_result := _combat_owner.call(
+				"rollback_checkpoint",
+				combat_checkpoint
+			) as Dictionary
+			rollback_results.append(combat_result.duplicate(true))
+			rollback_ok = rollback_ok and _rollback_result_accepted(
+				combat_result
+			)
+	_restore_combat_transaction_state(
+		checkpoint.get("runtime_combat", {}) as Dictionary
+	)
+	return {
+		"accepted": rollback_ok,
+		"reason_code": "resolution_checkpoint_restored"
+			if rollback_ok
+			else "resolution_checkpoint_restore_failed",
+		"rollback_results": rollback_results,
+	}
+
+
+func _fail_after_resolution_rollback(
+	reason_code: String,
+	detail: Dictionary,
+	checkpoint: Dictionary
+) -> Dictionary:
+	var rollback := _rollback_resolution_checkpoint(checkpoint)
+	if not bool(rollback.get("accepted", false)):
+		return _fail("resolution_rollback_failed", {
+			"failure_reason_code": reason_code,
+			"failure": detail.duplicate(true),
+			"rollback": rollback,
+		})
+	return _fail(reason_code, detail)
 
 
 func _canonical_player_projection(viewer_id: String) -> Dictionary:
@@ -1231,6 +1742,50 @@ func player_snapshot(viewer_id: String) -> Dictionary:
 		snapshot["combat_player_projection"] = projection.duplicate(true)
 		snapshot["combat_public_history"] = _combat_public_history.duplicate(true)
 	return snapshot
+
+
+func _ai_legal_actions(actor_id: String) -> Array:
+	var result: Array = []
+	for option_variant in legal_card_actions(actor_id):
+		var option := option_variant as Dictionary
+		if str(option.get("action_domain", "facility")) in [
+			"monster",
+			"military",
+		]:
+			continue
+		result.append({
+			"card_instance_id": str(option.get("card_instance_id", "")),
+			"card_definition_id": str(option.get(
+				"card_definition_id",
+				""
+			)),
+			"facility_type": str(option.get("facility_type", "")),
+			"industry_id": str(option.get("industry_id", "")),
+			"action_mode": str(option.get("facility_action_mode", "")),
+			"target_slot_id": str(option.get("target_slot_id", "")),
+			"region_id": str(option.get("target_region_id", "")),
+		})
+	return result
+
+
+func _ai_own_cards(actor_id: String) -> Array:
+	var facts := _dbg_projection(actor_id).get("facts", {}) as Dictionary
+	var result: Array = []
+	for card_variant in facts.get("hand", []) as Array:
+		var card := card_variant as Dictionary
+		if CardDefinitionsV075.card_domain(str(card.get(
+			"card_type",
+			""
+		))) != "facility":
+			continue
+		result.append({
+			"card_instance_id": str(card.get("instance_id", "")),
+			"card_definition_id": str(card.get("definition_id", "")),
+			"facility_type": str(card.get("card_type", "")),
+			"industry_id": str(card.get("primary_color", "")),
+			"rank": int(card.get("level", 1)),
+		})
+	return result
 
 
 func ai_observation(actor_id: String) -> Dictionary:
@@ -1315,6 +1870,12 @@ func debug_snapshot() -> Dictionary:
 	)
 	result["monster_card_purchase_count"] = _combat_monster_purchase_count
 	result["military_card_purchase_count"] = _combat_military_purchase_count
+	result["first_monster_card_purchase_batch"] = (
+		_combat_first_monster_purchase_batch
+	)
+	result["first_military_card_purchase_batch"] = (
+		_combat_first_military_purchase_batch
+	)
 	result["ai_monster_private_skill_count"] = _combat_ai_private_skill_count
 	result["ai_military_region_assault_count"] = _combat_ai_military_region_count
 	result["ai_military_monster_assault_count"] = _combat_ai_military_monster_count
@@ -1445,6 +2006,8 @@ func _reset_runtime() -> void:
 	_combat_private_skill_request_count = 0
 	_combat_monster_purchase_count = 0
 	_combat_military_purchase_count = 0
+	_combat_first_monster_purchase_batch = -1
+	_combat_first_military_purchase_batch = -1
 	_combat_ai_private_skill_count = 0
 	_combat_ai_military_region_count = 0
 	_combat_ai_military_monster_count = 0
@@ -1468,9 +2031,14 @@ func _reset_runtime() -> void:
 	_v075_acquisition_rejection_count = 0
 	_v075_acquisition_no_mutation_violation_count = 0
 	_v075_submission_rollback_count = 0
+	_v075_public_facility_slots_cache = []
+	_clear_v075_submission_caches()
+	_clear_v075_track_projection_cache()
 
 
 func _begin_batch() -> void:
+	_clear_v075_submission_caches()
+	_clear_v075_track_projection_cache()
 	super._begin_batch()
 	if _combat_initialized and _phase != "failed":
 		var result := _begin_combat_batch()
@@ -1478,6 +2046,46 @@ func _begin_batch() -> void:
 			_fail("combat_batch_start_failed", result)
 			return
 		_emit_local_state()
+
+
+func _clear_v075_submission_caches() -> void:
+	_v075_submission_legal_actions_cache = {}
+	_v075_submission_card_cache = {}
+
+
+func _v075_track_projection(actor_id: String) -> Dictionary:
+	if _phase == "submission" and _v075_track_projection_cache.has(actor_id):
+		return (
+			_v075_track_projection_cache.get(actor_id, {}) as Dictionary
+		).duplicate(true)
+	if _track_core == null:
+		return {}
+	var projection := _track_core.call(
+		"player_projection_v1",
+		actor_id
+	) as Dictionary
+	if _phase == "submission" and not projection.is_empty():
+		_v075_track_projection_cache[actor_id] = projection.duplicate(true)
+	return projection
+
+
+func _clear_v075_track_projection_cache() -> void:
+	_v075_track_projection_cache = {}
+
+
+func set_track_stance(
+	actor_id: String,
+	increase_color: String,
+	decrease_color: String
+) -> Dictionary:
+	var result := super.set_track_stance(
+		actor_id,
+		increase_color,
+		decrease_color
+	)
+	if bool(result.get("accepted", false)):
+		_clear_v075_track_projection_cache()
+	return result
 
 
 func _complete_batch_resolution() -> void:
@@ -1588,35 +2196,100 @@ func _facility_lock_batch(
 
 
 func _sync_facility_slots() -> void:
-	var source_state := _facility_state
-	if bool(PublicActionBatchCore.validation_report(
+	var source_state := _facility_state.get(
+		"facility_substate",
 		_facility_state
-	).get("valid", false)):
-		source_state = PublicActionBatchCore.facility_substate(_facility_state)
+	) as Dictionary
 	var slots := source_state.get("facility_slots", {}) as Dictionary
 	var ids: Array[String] = []
 	for id_variant in slots.keys():
 		ids.append(str(id_variant))
 	ids.sort()
 	_facility_slots = []
+	_v075_public_facility_slots_cache = []
 	for slot_id in ids:
-		_facility_slots.append(
-			(slots.get(slot_id, {}) as Dictionary).duplicate(true)
+		var slot := slots.get(slot_id, {}) as Dictionary
+		_facility_slots.append(slot)
+		_v075_public_facility_slots_cache.append(
+			_v075_public_facility_row(slot)
 		)
+
+
+func _sync_asset_balances() -> void:
+	var players := _asset_state.get("players", {}) as Dictionary
+	for actor_id in _player_ids:
+		var player := players.get(actor_id, {}) as Dictionary
+		var assets_value: Variant = player.get("assets", {})
+		if assets_value is Dictionary and _v075_complete_asset_projection(
+			assets_value as Dictionary
+		):
+			_asset_balances[actor_id] = (
+				assets_value as Dictionary
+			).duplicate(true)
 
 
 func _public_facility_slots() -> Array:
 	if _facility_state.is_empty():
 		return []
-	var source_state := _facility_state
-	if bool(PublicActionBatchCore.validation_report(
-		_facility_state
-	).get("valid", false)):
-		source_state = PublicActionBatchCore.facility_substate(_facility_state)
-	var projection := FacilityCore.public_projection(source_state)
+	return _v075_public_facility_slots_cache.duplicate(true)
+
+
+func _v075_public_facility_row(slot: Dictionary) -> Dictionary:
+	return {
+		"slot_id": slot.get("slot_id"),
+		"region_id": slot.get("region_id"),
+		"facility_type": slot.get("facility_type"),
+		"industry_id": slot.get("industry_id"),
+		"slot_generation": slot.get("slot_generation"),
+		"occupancy": slot.get("occupancy"),
+		"facility_id": slot.get("facility_id"),
+		"facility_generation": slot.get("facility_generation"),
+		"owner_id": slot.get("owner_id"),
+		"owner_player_id": slot.get("owner_id"),
+		"rank": slot.get("rank"),
+		"damage_revision": slot.get("damage_revision"),
+		"damage_points": slot.get("damage_points"),
+		"capacity": slot.get("capacity"),
+		"base_ingress_throughput": slot.get("base_ingress_throughput"),
+		"base_egress_throughput": slot.get("base_egress_throughput"),
+		"ingress_throughput": slot.get("ingress_throughput"),
+		"egress_throughput": slot.get("egress_throughput"),
+		"solar_efficiency_state": slot.get("solar_efficiency_state"),
+		"commercial_art_key": slot.get("commercial_art_key"),
+		"warehouse_stock_runtime_phase": slot.get(
+			"warehouse_stock_runtime_phase"
+		),
+	}
+
+
+func _public_occupied_facilities() -> Array:
+	return _occupied_public_facility_rows(_public_facility_slots())
+
+
+func _occupied_public_facility_rows(rows: Array) -> Array:
+	var result: Array = []
+	for row_variant in rows:
+		var row := row_variant as Dictionary
+		if not _facility_is_publicly_occupied(row):
+			continue
+		result.append(row.duplicate(true))
+	return result
+
+
+func _facility_is_publicly_occupied(facility: Dictionary) -> bool:
+	var generation: Variant = facility.get("facility_generation")
 	return (
-		projection.get("public_facility_slots", []) as Array
-	).duplicate(true)
+		str(facility.get("occupancy", "occupied")) == "occupied"
+		and not str(facility.get("facility_id", "")).is_empty()
+		and not _facility_owner_id(facility).is_empty()
+		and generation is int
+		and int(generation) > 0
+		and str(facility.get("facility_type", "")) in [
+			"factory",
+			"market",
+			"warehouse",
+		]
+	)
 
 
 func _build_bound_actions(
@@ -1718,7 +2391,7 @@ func _build_bound_actions(
 					binding.get("target_monster_source_instance_id", "")
 				),
 			},
-			_public_facility_slots()
+			_public_occupied_facilities()
 		) as Dictionary
 		if not bool(lock.get("accepted", false)):
 			return {}
@@ -1808,7 +2481,7 @@ func _begin_combat_batch() -> Dictionary:
 		_batch_id(),
 		maxi(0, _batch_number - 1),
 		_asset_state,
-		_public_facility_slots()
+		_public_occupied_facilities()
 	) as Dictionary
 
 
@@ -1845,6 +2518,8 @@ func _monster_card_options(actor_id: String, card: Dictionary) -> Array:
 						source.get("source_instance_id", "")
 					),
 				})
+		var deploy_preview_checked := false
+		var deploy_preview_accepted := false
 		for candidate_variant in candidates:
 			var candidate := candidate_variant as Dictionary
 			var request := {
@@ -1862,12 +2537,26 @@ func _monster_card_options(actor_id: String, card: Dictionary) -> Array:
 					candidate.get("target_source_instance_id", "")
 				),
 			}
-			var prebound := _combat_owner.call(
-				"prebind_monster_card_action",
-				request
-			) as Dictionary
-			if not bool(prebound.get("accepted", false)):
-				continue
+			if mode == "DEPLOY_NEW" and deploy_preview_checked:
+				if not deploy_preview_accepted:
+					continue
+			else:
+				var preview_method := (
+					"preview_monster_card_action"
+					if _combat_owner.has_method("preview_monster_card_action")
+					else "prebind_monster_card_action"
+				)
+				var prebound := _combat_owner.call(
+					preview_method,
+					request
+				) as Dictionary
+				if mode == "DEPLOY_NEW":
+					deploy_preview_checked = true
+					deploy_preview_accepted = bool(
+						prebound.get("accepted", false)
+					)
+				if not bool(prebound.get("accepted", false)):
+					continue
 			var target_identity := str(candidate.get(
 				"target_source_instance_id",
 				""
@@ -1886,6 +2575,7 @@ func _monster_card_options(actor_id: String, card: Dictionary) -> Array:
 				"actor_id": actor_id,
 				"card_instance_id": str(card.get("instance_id", "")),
 				"card_definition_id": definition_id,
+				"card_rank": int(card.get("level", 0)),
 				"primary_color": str(card.get("primary_color", "")),
 				"asset_cost": int(card.get("primary_asset_cost", 0)),
 				"action_domain": "monster",
@@ -1903,7 +2593,7 @@ func _monster_card_options(actor_id: String, card: Dictionary) -> Array:
 func _military_card_options(actor_id: String, card: Dictionary) -> Array:
 	var result: Array = []
 	var regions := {}
-	for facility_variant in _public_facility_slots():
+	for facility_variant in _public_occupied_facilities():
 		var facility := facility_variant as Dictionary
 		if _facility_owner_id(facility) == actor_id or str(
 			facility.get("status", "active")
@@ -2005,7 +2695,8 @@ func _combat_option_by_identity(
 
 func _resolve_combat_public_action(
 	action_receipt: Dictionary,
-	next_public_state: Dictionary
+	next_public_state: Dictionary,
+	existing_checkpoint: Dictionary = {}
 ) -> Dictionary:
 	var action_domain := str(action_receipt.get("action_domain", ""))
 	var action_binding := (
@@ -2015,17 +2706,24 @@ func _resolve_combat_public_action(
 		action_binding.get("combat_binding", {}) as Dictionary
 	)
 	var atomic_receipt_id := str(action_receipt.get("receipt_id", ""))
-	var transaction_checkpoint := _capture_combat_transaction_state()
-	var checkpoint := _combat_owner.call(
-		"capture_checkpoint",
-		"checkpoint.%s" % atomic_receipt_id
-	) as Dictionary
+	var transaction_checkpoint := _combat_public_action_checkpoint(
+		existing_checkpoint,
+		atomic_receipt_id
+	)
+	if transaction_checkpoint.is_empty():
+		return {
+			"accepted": false,
+			"reason_code": "combat_public_action_checkpoint_unavailable",
+		}
 	var begun := _combat_owner.call(
 		"begin_public_receipt",
 		atomic_receipt_id
 	) as Dictionary
 	if not bool(begun.get("accepted", false)):
-		return begun
+		return _rollback_failed_combat_public_action(
+			begun,
+			transaction_checkpoint
+		)
 	var resolved_action: Dictionary
 	var event_kind := ""
 	var main_payload: Dictionary = {}
@@ -2036,11 +2734,10 @@ func _resolve_combat_public_action(
 			combat_binding.get("prebound_action", {}) as Dictionary
 		) as Dictionary
 		if not bool(resolved_action.get("accepted", false)):
-			_rollback_combat_transaction(
-				checkpoint,
+			return _rollback_failed_combat_public_action(
+				resolved_action,
 				transaction_checkpoint
 			)
-			return resolved_action
 		main_payload = (
 			resolved_action.get("receipt", {}) as Dictionary
 		).duplicate(true)
@@ -2052,7 +2749,10 @@ func _resolve_combat_public_action(
 			"REFRESH_EXISTING": "monster_refreshed",
 			"UPGRADE_EXISTING": "monster_upgraded",
 			"REPLACE_EXISTING": "monster_replaced",
-		}.get(str(main_payload.get("monster_card_mode", "")), "monster_deployed")
+		}.get(
+			str(main_payload.get("monster_card_mode", "")),
+			"monster_deployed"
+		)
 	else:
 		resolved_action = _combat_owner.call(
 			"resolve_military_action",
@@ -2060,11 +2760,10 @@ func _resolve_combat_public_action(
 			_public_facilities_from_batch_state(next_public_state)
 		) as Dictionary
 		if not bool(resolved_action.get("accepted", false)):
-			_rollback_combat_transaction(
-				checkpoint,
+			return _rollback_failed_combat_public_action(
+				resolved_action,
 				transaction_checkpoint
 			)
-			return resolved_action
 		main_payload = (
 			resolved_action.get("receipt", {}) as Dictionary
 		).duplicate(true)
@@ -2078,8 +2777,10 @@ func _resolve_combat_public_action(
 		resolved_action.get("facility_damage_intents", []) as Array
 	)
 	if not bool(damage_result.get("accepted", false)):
-		_rollback_combat_transaction(checkpoint, transaction_checkpoint)
-		return damage_result
+		return _rollback_failed_combat_public_action(
+			damage_result,
+			transaction_checkpoint
+		)
 	next_public_state = (
 		damage_result.get("public_batch_state", next_public_state) as Dictionary
 	).duplicate(true)
@@ -2090,34 +2791,42 @@ func _resolve_combat_public_action(
 		_public_facilities_from_batch_state(next_public_state)
 	) as Dictionary
 	if not bool(safe_boundary.get("accepted", false)):
-		_rollback_combat_transaction(checkpoint, transaction_checkpoint)
-		return safe_boundary
+		return _rollback_failed_combat_public_action(
+			safe_boundary,
+			transaction_checkpoint
+		)
 	var boundary_damage := _apply_facility_damage_intents(
 		next_public_state,
 		safe_boundary.get("facility_damage_intents", []) as Array
 	)
 	if not bool(boundary_damage.get("accepted", false)):
-		_rollback_combat_transaction(checkpoint, transaction_checkpoint)
-		return boundary_damage
+		return _rollback_failed_combat_public_action(
+			boundary_damage,
+			transaction_checkpoint
+		)
 	next_public_state = (
 		boundary_damage.get("public_batch_state", next_public_state) as Dictionary
 	).duplicate(true)
-	_publish_combat_event(event_kind, main_payload, atomic_receipt_id)
+	var staged_events: Array = [{
+		"event_kind": event_kind,
+		"payload": main_payload.duplicate(true),
+		"receipt_id": atomic_receipt_id,
+	}]
 	if action_domain == "military":
-		_publish_combat_event(
-			"military_withdrawn",
-			main_payload,
-			"withdrawal.%s" % atomic_receipt_id
-		)
+		staged_events.append({
+			"event_kind": "military_withdrawn",
+			"payload": main_payload.duplicate(true),
+			"receipt_id": "withdrawal.%s" % atomic_receipt_id,
+		})
 	for public_variant in safe_boundary.get("public_results", []) as Array:
-		_publish_combat_event(
-			"monster_private_skill_resolved",
-			public_variant as Dictionary,
-			str((public_variant as Dictionary).get(
+		staged_events.append({
+			"event_kind": "monster_private_skill_resolved",
+			"payload": (public_variant as Dictionary).duplicate(true),
+			"receipt_id": str((public_variant as Dictionary).get(
 				"public_result_id",
 				""
-			))
-		)
+			)),
+		})
 	var receipts := damage_result.get("receipts", []) as Array
 	receipts.append_array(
 		boundary_damage.get("receipts", []) as Array
@@ -2127,6 +2836,7 @@ func _resolve_combat_public_action(
 		"reason_code": str(main_payload.get("reason_code", "")),
 		"resolved": action_resolved,
 		"event_kind": event_kind,
+		"staged_events": staged_events,
 		"combat_receipt": _public_combat_payload(main_payload),
 		"public_batch_state": next_public_state,
 		"asset_state": (
@@ -2136,13 +2846,87 @@ func _resolve_combat_public_action(
 	}
 
 
+func _combat_public_action_checkpoint(
+	existing_checkpoint: Dictionary,
+	atomic_receipt_id: String
+) -> Dictionary:
+	var existing_combat := existing_checkpoint.get(
+		"combat_checkpoint",
+		{}
+	) as Dictionary
+	var existing_runtime := existing_checkpoint.get(
+		"runtime_combat",
+		{}
+	) as Dictionary
+	if not existing_combat.is_empty() and not existing_runtime.is_empty():
+		return {
+			"combat_checkpoint": existing_combat,
+			"runtime_combat": existing_runtime,
+		}
+	if (
+		not is_instance_valid(_combat_owner)
+		or not _combat_owner.has_method("capture_checkpoint")
+		or not _combat_owner.has_method("rollback_checkpoint")
+	):
+		return {}
+	var combat_checkpoint := _combat_owner.call(
+		"capture_checkpoint",
+		"checkpoint.%s" % atomic_receipt_id
+	) as Dictionary
+	if combat_checkpoint.is_empty():
+		return {}
+	return {
+		"combat_checkpoint": combat_checkpoint,
+		"runtime_combat": _capture_combat_transaction_state(),
+	}
+
+
+func _rollback_failed_combat_public_action(
+	failure: Dictionary,
+	transaction_checkpoint: Dictionary
+) -> Dictionary:
+	var rollback := _rollback_combat_transaction(
+		transaction_checkpoint.get("combat_checkpoint", {}) as Dictionary,
+		transaction_checkpoint.get("runtime_combat", {}) as Dictionary
+	)
+	var result := failure.duplicate(true)
+	result["transaction_rolled_back"] = bool(rollback.get("accepted", false))
+	if not bool(rollback.get("accepted", false)):
+		result["reason_code"] = "combat_transaction_rollback_failed"
+		result["rollback_failure"] = rollback
+	return result
+
+
 func _resolve_combat_maintenance() -> Dictionary:
+	if (
+		not is_instance_valid(_combat_owner)
+		or not _combat_owner.has_method("capture_checkpoint")
+		or not _combat_owner.has_method("rollback_checkpoint")
+	):
+		return {
+			"accepted": false,
+			"reason_code": "combat_maintenance_checkpoint_unavailable",
+		}
+	var checkpoint := _combat_owner.call(
+		"capture_checkpoint",
+		"checkpoint.maintenance.%s" % _batch_id()
+	) as Dictionary
+	if checkpoint.is_empty():
+		return {
+			"accepted": false,
+			"reason_code": "combat_maintenance_checkpoint_unavailable",
+		}
+	var transaction_checkpoint := _capture_combat_transaction_state()
 	var phased := _combat_owner.call(
 		"set_phase",
 		"maintenance_before_autonomy"
 	) as Dictionary
 	if not bool(phased.get("accepted", false)):
-		return phased
+		return _fail_after_maintenance_rollback(
+			phased,
+			checkpoint,
+			transaction_checkpoint
+		)
 	var next_public_state := _facility_state.duplicate(true)
 	var next_asset_state := _asset_state.duplicate(true)
 	var safe_boundary := _combat_owner.call(
@@ -2151,7 +2935,11 @@ func _resolve_combat_maintenance() -> Dictionary:
 		_public_facilities_from_batch_state(next_public_state)
 	) as Dictionary
 	if not bool(safe_boundary.get("accepted", false)):
-		return safe_boundary
+		return _fail_after_maintenance_rollback(
+			safe_boundary,
+			checkpoint,
+			transaction_checkpoint
+		)
 	next_asset_state = (
 		safe_boundary.get("asset_state", next_asset_state) as Dictionary
 	).duplicate(true)
@@ -2160,23 +2948,39 @@ func _resolve_combat_maintenance() -> Dictionary:
 		safe_boundary.get("facility_damage_intents", []) as Array
 	)
 	if not bool(skill_damage.get("accepted", false)):
-		return skill_damage
+		return _fail_after_maintenance_rollback(
+			skill_damage,
+			checkpoint,
+			transaction_checkpoint
+		)
 	next_public_state = (
 		skill_damage.get("public_batch_state", next_public_state) as Dictionary
 	).duplicate(true)
 	var facilities := _public_facilities_from_batch_state(next_public_state)
 	var planned := _combat_owner.call("plan_autonomy", facilities) as Dictionary
 	if not bool(planned.get("accepted", false)):
-		return planned
+		return _fail_after_maintenance_rollback(
+			planned,
+			checkpoint,
+			transaction_checkpoint
+		)
 	var autonomy := _combat_owner.call("resolve_autonomy", facilities) as Dictionary
 	if not bool(autonomy.get("accepted", false)):
-		return autonomy
+		return _fail_after_maintenance_rollback(
+			autonomy,
+			checkpoint,
+			transaction_checkpoint
+		)
 	var autonomy_damage := _apply_facility_damage_intents(
 		next_public_state,
 		autonomy.get("facility_damage_intents", []) as Array
 	)
 	if not bool(autonomy_damage.get("accepted", false)):
-		return autonomy_damage
+		return _fail_after_maintenance_rollback(
+			autonomy_damage,
+			checkpoint,
+			transaction_checkpoint
+		)
 	next_public_state = (
 		autonomy_damage.get("public_batch_state", next_public_state) as Dictionary
 	).duplicate(true)
@@ -2229,10 +3033,59 @@ func _resolve_combat_maintenance() -> Dictionary:
 	}
 
 
+func _fail_after_maintenance_rollback(
+	failure: Dictionary,
+	checkpoint: Dictionary,
+	transaction_checkpoint: Dictionary
+) -> Dictionary:
+	var rollback := _rollback_combat_authority_transaction(
+		checkpoint,
+		transaction_checkpoint
+	)
+	if not bool(rollback.get("accepted", false)):
+		return {
+			"accepted": false,
+			"reason_code": "combat_maintenance_rollback_failed",
+			"failure": failure.duplicate(true),
+			"rollback": rollback,
+		}
+	return failure
+
+
+func _rollback_combat_authority_transaction(
+	checkpoint: Dictionary,
+	transaction_checkpoint: Dictionary
+) -> Dictionary:
+	if not is_instance_valid(_combat_owner):
+		return {
+			"accepted": false,
+			"reason_code": "combat_owner_missing_during_rollback",
+		}
+	var result := _combat_owner.call(
+		"rollback_checkpoint",
+		checkpoint
+	) as Dictionary
+	_restore_combat_transaction_state(transaction_checkpoint)
+	return {
+		"accepted": _rollback_result_accepted(result),
+		"reason_code": "combat_transaction_restored"
+			if _rollback_result_accepted(result)
+			else "combat_transaction_restore_failed",
+		"combat_rollback": result.duplicate(true),
+	}
+
+
 func _apply_facility_damage_intents(
 	public_batch_state: Dictionary,
 	intents: Array
 ) -> Dictionary:
+	if intents.is_empty():
+		return {
+			"accepted": true,
+			"reason_code": "facility_damage_intents_empty",
+			"public_batch_state": public_batch_state.duplicate(false),
+			"receipts": [],
+		}
 	var facility_state := PublicActionBatchCore.facility_substate(
 		public_batch_state
 	)
@@ -2267,11 +3120,20 @@ func _apply_facility_damage_intents(
 	var committed_receipt_count := 0
 	for intent_variant in intents:
 		var intent := intent_variant as Dictionary
+		var intent_report: Dictionary = FacilityDamageIntent.validation_report(
+			intent
+		)
+		if not bool(intent_report.get("valid", false)):
+			return {
+				"accepted": false,
+				"reason_code": "facility_damage_intent_invalid",
+				"detail": intent_report,
+			}
 		var receipt_key := "%s|%s" % [
 			str(intent.get("combat_receipt_id", "")),
 			str(intent.get("target_facility_id", "")),
 		]
-		var fingerprint := JSON.stringify(intent).sha256_text().to_lower()
+		var fingerprint := str(intent.get("intent_fingerprint", ""))
 		if processed_next.has(receipt_key):
 			var prior := processed_next.get(receipt_key, {}) as Dictionary
 			if str(prior.get("fingerprint", "")) != fingerprint:
@@ -2387,15 +3249,22 @@ func _facility_slots_from_state(facility_state: Dictionary) -> Array:
 	return result
 
 func _public_facilities_from_batch_state(state: Dictionary) -> Array:
-	var facility_state := PublicActionBatchCore.facility_substate(state)
+	var facility_state := state.get("facility_substate", {}) as Dictionary
 	if facility_state.is_empty():
 		return []
-	return (
-		FacilityCore.public_projection(facility_state).get(
-			"public_facility_slots",
-			[]
-		) as Array
-	).duplicate(true)
+	var slots := facility_state.get("facility_slots", {}) as Dictionary
+	var slot_ids: Array[String] = []
+	for slot_id_variant in slots.keys():
+		slot_ids.append(str(slot_id_variant))
+	slot_ids.sort()
+	var rows: Array = []
+	for slot_id in slot_ids:
+		var row := _v075_public_facility_row(
+			slots.get(slot_id, {}) as Dictionary
+		)
+		if _facility_is_publicly_occupied(row):
+			rows.append(row)
+	return rows
 
 
 func _public_action_receipt(
@@ -2570,9 +3439,28 @@ func _restore_combat_transaction_state(checkpoint: Dictionary) -> void:
 func _rollback_combat_transaction(
 	combat_checkpoint: Dictionary,
 	runtime_checkpoint: Dictionary
-) -> void:
-	_combat_owner.call("rollback_checkpoint", combat_checkpoint)
+) -> Dictionary:
+	var combat_result := {}
+	if (
+		is_instance_valid(_combat_owner)
+		and _combat_owner.has_method("rollback_checkpoint")
+		and not combat_checkpoint.is_empty()
+	):
+		combat_result = _combat_owner.call(
+			"rollback_checkpoint",
+			combat_checkpoint
+		) as Dictionary
 	_restore_combat_transaction_state(runtime_checkpoint)
+	var accepted := _rollback_result_accepted(combat_result)
+	return {
+		"accepted": accepted,
+		"reason_code": (
+			"combat_transaction_rolled_back"
+			if accepted
+			else "combat_owner_rollback_failed"
+		),
+		"combat_result": combat_result.duplicate(true),
+	}
 
 
 func _public_combat_payload(source: Dictionary) -> Dictionary:
@@ -2596,10 +3484,14 @@ func _combat_player_private_facts(viewer_id: String) -> Dictionary:
 			break
 	var has_region := false
 	var has_monster := false
+	var military_options: Array[Dictionary] = []
 	for option_variant in legal_card_actions(viewer_id):
 		var option := option_variant as Dictionary
 		if str(option.get("action_domain", "")) != "military":
 			continue
+		military_options.append(
+			_military_private_option(option, viewer_id)
+		)
 		if str(option.get("task_kind", "")) == "assault_region":
 			has_region = true
 		elif str(option.get("task_kind", "")) == "assault_monster":
@@ -2608,55 +3500,94 @@ func _combat_player_private_facts(viewer_id: String) -> Dictionary:
 		"military_card_selected": military_selected,
 		"can_assault_region": has_region,
 		"can_assault_monster": has_monster,
+		"military_options": military_options,
 	}
 
 
 func _combat_ai_private_facts(actor_id: String) -> Dictionary:
-	var monster_options_by_card := {}
-	var military_options_by_card := {}
+	var monster_options_by_card: Dictionary = {}
+	var military_options_by_card: Dictionary = {}
+	var military_options: Array[Dictionary] = []
 	for option_variant in legal_card_actions(actor_id):
 		var option := option_variant as Dictionary
 		var card_id := str(option.get("card_instance_id", ""))
 		var domain := str(option.get("action_domain", ""))
 		if domain == "monster":
-			var row := monster_options_by_card.get(card_id, {
+			var default_row := {
 				"card_instance_id": card_id,
 				"card_definition_id": str(option.get("card_definition_id", "")),
-				"card_rank": 1,
+				"card_rank": int(option.get("card_rank", 0)),
 				"legal_modes": [],
 				"prebound_target_by_mode": {},
-			}) as Dictionary
+			}
+			var row := monster_options_by_card.get(
+				card_id,
+				default_row
+			) as Dictionary
 			var mode := str(option.get("monster_card_mode", ""))
-			if mode not in row.get("legal_modes", []) as Array:
-				(row.get("legal_modes", []) as Array).append(mode)
-			(row.get("prebound_target_by_mode", {}) as Dictionary)[mode] = (
+			var legal_modes: Array = []
+			var legal_modes_value: Variant = row.get("legal_modes", [])
+			if legal_modes_value is Array:
+				legal_modes = (legal_modes_value as Array).duplicate(true)
+			if mode not in legal_modes:
+				legal_modes.append(mode)
+			row["legal_modes"] = legal_modes
+			var targets: Dictionary = {}
+			var targets_value: Variant = row.get(
+				"prebound_target_by_mode",
+				{}
+			)
+			if targets_value is Dictionary:
+				targets = (targets_value as Dictionary).duplicate(true)
+			targets[mode] = (
 				str(option.get("target_region_id", ""))
 				if mode == "DEPLOY_NEW"
 				else str(option.get("target_source_instance_id", ""))
 			)
+			row["prebound_target_by_mode"] = targets
 			monster_options_by_card[card_id] = row
 		elif domain == "military":
-			var row := military_options_by_card.get(card_id, {
+			var private_option := _military_private_option(option, actor_id)
+			military_options.append(private_option)
+			var default_row := {
 				"card_instance_id": card_id,
 				"card_definition_id": str(option.get("card_definition_id", "")),
 				"legal_task_kinds": [],
-			}) as Dictionary
+				"options": [],
+			}
+			var row := military_options_by_card.get(
+				card_id,
+				default_row
+			) as Dictionary
 			var task := str(option.get("task_kind", ""))
-			if task not in row.get("legal_task_kinds", []) as Array:
-				(row.get("legal_task_kinds", []) as Array).append(task)
+			var task_kinds: Array = []
+			var task_kinds_value: Variant = row.get("legal_task_kinds", [])
+			if task_kinds_value is Array:
+				task_kinds = (task_kinds_value as Array).duplicate(true)
+			if task not in task_kinds:
+				task_kinds.append(task)
+			row["legal_task_kinds"] = task_kinds
+			var option_rows := row.get("options", []) as Array
+			option_rows.append(private_option.duplicate(true))
+			row["options"] = option_rows
 			military_options_by_card[card_id] = row
 	var owned: Array = []
-	var zone := _v075_owner_skill_zone(actor_id)
+	var zone := _v075_owner_skill_zone(
+		actor_id,
+		_public_occupied_facilities()
+	)
 	for source_variant in zone:
 		var source := (source_variant as Dictionary).duplicate(true)
 		var skills: Array = []
-		for skill_variant in source.get("skills", []) as Array:
-			var skill := (skill_variant as Dictionary).duplicate(true)
-			var contract := skill.get("target_contract", {}) as Dictionary
-			skill["target_contract"] = _ai_target_contract(
-				str(contract.get("target_kind", ""))
-			)
-			skills.append(skill)
+		var source_skills: Variant = source.get("skills", [])
+		if source_skills is Array:
+			for skill_variant in source_skills as Array:
+				var skill := (skill_variant as Dictionary).duplicate(true)
+				var contract := skill.get("target_contract", {}) as Dictionary
+				skill["target_contract"] = _ai_target_contract(
+					str(contract.get("target_kind", ""))
+				)
+				skills.append(skill)
 		source["private_skills"] = skills
 		source.erase("skills")
 		owned.append(source)
@@ -2668,6 +3599,7 @@ func _combat_ai_private_facts(actor_id: String) -> Dictionary:
 		"viewer_player_id": actor_id,
 		"monster_card_options": monster_options_by_card.values(),
 		"military_card_options": military_options_by_card.values(),
+		"military_options": military_options,
 		"owned_monsters": owned,
 		"available_unreserved_assets": (
 			asset_view.get("own_available_assets", {}) as Dictionary
@@ -2681,9 +3613,66 @@ func _combat_ai_public_facts() -> Dictionary:
 			"phase",
 			"batch_active"
 		)),
-		"facilities": _public_facility_slots(),
+		"facilities": _public_occupied_facilities(),
 		"monsters": _v075_public_monsters(),
 		"regions": _runtime_region_ids(),
+	}
+
+
+func _military_private_option(
+	option: Dictionary,
+	owner_player_id: String
+) -> Dictionary:
+	var task_kind := str(option.get("task_kind", ""))
+	var target_monster_id := str(option.get(
+		"target_monster_source_instance_id",
+		""
+	))
+	var target_generation := int(option.get("target_source_generation", 0))
+	if task_kind == "assault_monster" and not target_monster_id.is_empty():
+		for monster_variant in _v075_public_monsters():
+			var monster := monster_variant as Dictionary
+			if str(monster.get("source_instance_id", "")) == target_monster_id:
+				target_generation = int(monster.get("source_generation", 0))
+				break
+	var launch_region_id := ""
+	var launch_regions: Array[String] = []
+	for facility_variant in _public_occupied_facilities():
+		var facility := facility_variant as Dictionary
+		if (
+			_facility_owner_id(facility) == owner_player_id
+			and str(facility.get("status", "active")) != "destroyed"
+		):
+			var region_id := str(facility.get("region_id", ""))
+			if not region_id.is_empty():
+				launch_regions.append(region_id)
+	launch_regions.sort()
+	if not launch_regions.is_empty():
+		launch_region_id = launch_regions[0]
+	var primary_color := str(option.get("primary_color", ""))
+	var primary_cost := maxi(0, int(option.get("asset_cost", 0)))
+	var asset_cost_by_color := {}
+	if not primary_color.is_empty() and primary_cost > 0:
+		asset_cost_by_color[primary_color] = primary_cost
+	return {
+		"option_id": str(option.get("option_id", "")),
+		"owner_player_id": owner_player_id,
+		"card_instance_id": str(option.get("card_instance_id", "")),
+		"card_definition_id": str(option.get("card_definition_id", "")),
+		"card_generation": maxi(1, int(option.get("card_generation", 1))),
+		"target_slot_id": str(option.get("target_slot_id", "")),
+		"task_kind": task_kind,
+		"target_region_id": str(option.get("target_region_id", "")),
+		"target_monster_source_instance_id": target_monster_id,
+		"target_source_generation": target_generation,
+		"launch_region_id": launch_region_id,
+		"asset_cost_by_color": asset_cost_by_color,
+		"enabled": not launch_region_id.is_empty(),
+		"disabled_reason": (
+			"none" if not launch_region_id.is_empty()
+			else "owned_launch_facility_required"
+		),
+		"action_domain": "military",
 	}
 
 
@@ -2713,7 +3702,7 @@ func _auto_queue_and_lock(actor_id: String) -> Dictionary:
 			var available := _auto_available_actions(actor_id, queue, legal)
 			if available.is_empty():
 				break
-			var preferred := _preferred_v075_ai_action(available)
+			var preferred := _preferred_v075_ai_action(available, actor_id)
 			var action_domain := str(preferred.get("action_domain", "facility"))
 			var combat_binding := (
 				preferred
@@ -2737,11 +3726,153 @@ func _auto_queue_and_lock(actor_id: String) -> Dictionary:
 	return lock_player_submission(actor_id)
 
 
+func _auto_available_actions(
+	actor_id: String,
+	queue: Array,
+	legal: Array
+) -> Array:
+	var inherited := super._auto_available_actions(actor_id, queue, legal)
+	var reserve := _v075_combat_asset_reserve_by_color(
+		actor_id,
+		queue,
+		legal
+	)
+	var result: Array = []
+	for option_variant in inherited:
+		var option := option_variant as Dictionary
+		if str(option.get("action_domain", "facility")) in [
+			"monster",
+			"military",
+		] or _v075_action_preserves_combat_asset_reserve(
+			actor_id,
+			option,
+			queue,
+			reserve
+		):
+			result.append(option.duplicate(true))
+	return result
+
+
+func _v075_combat_asset_reserve_by_color(
+	actor_id: String,
+	queue: Array,
+	legal: Array
+) -> Dictionary:
+	var reserve := {}
+	for color_id in COLORS:
+		reserve[color_id] = 0
+	var players := _asset_state.get("players", {}) as Dictionary
+	var available := (
+		players.get(actor_id, {}) as Dictionary
+	).get("assets", {}) as Dictionary
+	var queued_card_ids := {}
+	for binding_variant in queue:
+		queued_card_ids[str((binding_variant as Dictionary).get(
+			"card_instance_id",
+			""
+		))] = true
+	# Keep one affordable combat opportunity alive per player/batch. Reserving
+	# one card per color can starve the facility economy and is not the intended
+	# first-sample policy.
+	var selected_card_id := ""
+	var selected_color := ""
+	var selected_cost := 0
+	var selected_domain := ""
+	var seen_card_ids: Dictionary = {}
+	for option_variant in legal:
+		var option := option_variant as Dictionary
+		var domain := str(option.get("action_domain", ""))
+		if domain not in ["monster", "military"]:
+			continue
+		var card_id := str(option.get("card_instance_id", ""))
+		if (
+			card_id.is_empty()
+			or queued_card_ids.has(card_id)
+			or seen_card_ids.has(card_id)
+		):
+			continue
+		seen_card_ids[card_id] = true
+		var card := _card_in_hand(actor_id, card_id)
+		if card.is_empty():
+			continue
+		var color_id := str(card.get("primary_color", ""))
+		var cost := maxi(0, int(card.get("primary_asset_cost", 0)))
+		if (
+			color_id not in COLORS
+			or cost == 0
+			or cost > int(available.get(color_id, 0))
+		):
+			continue
+		var better := selected_card_id.is_empty()
+		if not better and cost < selected_cost:
+			better = true
+		if not better and cost == selected_cost:
+			if domain == "monster" and selected_domain != "monster":
+				better = true
+			elif domain == selected_domain and card_id < selected_card_id:
+				better = true
+		if better:
+			selected_card_id = card_id
+			selected_color = color_id
+			selected_cost = cost
+			selected_domain = domain
+	if not selected_card_id.is_empty():
+		reserve[selected_color] = selected_cost
+	return reserve
+
+
+func _v075_action_preserves_combat_asset_reserve(
+	actor_id: String,
+	option: Dictionary,
+	queue: Array,
+	reserve: Dictionary
+) -> bool:
+	var players := _asset_state.get("players", {}) as Dictionary
+	var player := players.get(actor_id, {}) as Dictionary
+	var available := player.get("assets", {}) as Dictionary
+	var committed := {}
+	for color_id in COLORS:
+		committed[color_id] = 0
+	for binding_variant in queue:
+		var binding := binding_variant as Dictionary
+		var queued_card := _card_in_hand(
+			actor_id,
+			str(binding.get("card_instance_id", ""))
+		)
+		var queued_color := str(queued_card.get("primary_color", ""))
+		if queued_color in COLORS:
+			committed[queued_color] = int(committed.get(
+				queued_color,
+				0
+			)) + int(queued_card.get("primary_asset_cost", 0))
+	var candidate := _card_in_hand(
+		actor_id,
+		str(option.get("card_instance_id", ""))
+	)
+	var candidate_color := str(candidate.get("primary_color", ""))
+	if candidate_color not in COLORS:
+		return false
+	committed[candidate_color] = int(committed.get(
+		candidate_color,
+		0
+	)) + int(candidate.get("primary_asset_cost", 0))
+	for color_id in COLORS:
+		if (
+			int(committed.get(color_id, 0))
+			+ int(reserve.get(color_id, 0))
+			> int(available.get(color_id, 0))
+		):
+			return false
+	return true
+
+
 func _auto_request_private_skill(actor_id: String) -> void:
 	if not _combat_initialized:
 		return
+	# Private skills have a separate decision surface. Card transitions and
+	# military missions must not hide a ready skill from the AI's instant lane.
 	var chosen := _combat_ai_adapter.call(
-		"choose_action",
+		"choose_private_skill",
 		_combat_ai_private_facts(actor_id),
 		_combat_ai_public_facts()
 	) as Dictionary
@@ -2757,16 +3888,101 @@ func _auto_request_private_skill(actor_id: String) -> void:
 		_combat_ai_invalid_target_count += 1
 
 
-func _preferred_v075_ai_action(legal: Array) -> Dictionary:
-	for domain_mode in [
+func _auto_maintenance(actor_id: String) -> void:
+	var facts := _dbg_projection(actor_id).get("facts", {}) as Dictionary
+	var pairs := facts.get("eligible_merge_pairs", []) as Array
+	var advancing_monster_pair: Array = []
+	var monster_pair: Array = []
+	var warehouse_pair: Array = []
+	var active_rank_by_family := {}
+	for source_variant in _v075_public_monsters():
+		var source := source_variant as Dictionary
+		if (
+			str(source.get("owner_player_id", "")) == actor_id
+			and str(source.get("status", "")) in ["active", "downed"]
+		):
+			active_rank_by_family[str(source.get(
+				"monster_family_id",
+				""
+			))] = int(source.get("rank", 0))
+	for pair_variant in pairs:
+		var pair := pair_variant as Array
+		if pair.size() != 2:
+			continue
+		var left := _dbg_card_by_id(facts, str(pair[0]))
+		var right := _dbg_card_by_id(facts, str(pair[1]))
+		var left_domain := CardDefinitionsV075.card_domain(
+			str(left.get("card_type", ""))
+		)
+		var right_domain := CardDefinitionsV075.card_domain(
+			str(right.get("card_type", ""))
+		)
+		if left_domain == "monster" and right_domain == "monster":
+			if monster_pair.is_empty():
+				monster_pair = pair.duplicate()
+			var family_id := CardDefinitionsV075.monster_family_id_from_card_type(
+				str(left.get("card_type", ""))
+			)
+			if (
+				active_rank_by_family.has(family_id)
+				and int(left.get("level", 0)) + 1
+				> int(active_rank_by_family.get(family_id, 0))
+			):
+				advancing_monster_pair = pair.duplicate()
+				break
+		elif (
+			warehouse_pair.is_empty()
+			and str(left.get("card_type", "")) == "warehouse"
+			and str(right.get("card_type", "")) == "warehouse"
+		):
+			warehouse_pair = pair.duplicate()
+	var selected_pair := advancing_monster_pair
+	if selected_pair.is_empty():
+		selected_pair = monster_pair
+	if selected_pair.is_empty():
+		selected_pair = warehouse_pair
+	if selected_pair.is_empty() and not pairs.is_empty():
+		selected_pair = (pairs[0] as Array).duplicate()
+	if selected_pair.size() == 2:
+		merge_normal_pair(
+			actor_id,
+			str(selected_pair[0]),
+			str(selected_pair[1])
+		)
+	finish_maintenance(actor_id)
+
+
+func _preferred_v075_ai_action(
+	legal: Array,
+	actor_id: String = ""
+) -> Dictionary:
+	var stable_actor_id := actor_id
+	if stable_actor_id.is_empty() and not legal.is_empty():
+		stable_actor_id = str(
+			(legal[0] as Dictionary).get("actor_id", "")
+		)
+	var military_modes := ["assault_monster", "assault_region"]
+	var stable_number := int(
+		stable_actor_id.sha256_text().substr(0, 8).hex_to_int()
+	)
+	if (stable_number + _batch_number) % 2 == 0:
+		military_modes = ["assault_region", "assault_monster"]
+	var held_refresh_option_ids: Dictionary = {}
+	for option_variant in legal:
+		var option := option_variant as Dictionary
+		if _v075_should_hold_monster_refresh(actor_id, option):
+			held_refresh_option_ids[str(option.get("option_id", ""))] = true
+	var domain_modes := [
 		"monster:UPGRADE_EXISTING",
 		"monster:REFRESH_EXISTING",
 		"monster:DEPLOY_NEW",
 		"monster:REPLACE_EXISTING",
-		"military:assault_region",
-		"military:assault_monster",
-	]:
+	]
+	for military_mode in military_modes:
+		domain_modes.append("military:%s" % military_mode)
+	for domain_mode in domain_modes:
 		var parts: PackedStringArray = str(domain_mode).split(":")
+		var matching: Array = []
 		for option_variant in legal:
 			var option := option_variant as Dictionary
 			if str(option.get("action_domain", "")) != str(parts[0]):
@@ -2776,8 +3992,190 @@ func _preferred_v075_ai_action(legal: Array) -> Dictionary:
 				""
 			))
 			if mode == str(parts[1]):
-				return option.duplicate(true)
-	return _preferred_v074_ai_action(legal)
+				if (
+					str(domain_mode) == "monster:REFRESH_EXISTING"
+					and held_refresh_option_ids.has(str(option.get(
+						"option_id",
+						""
+					)))
+				):
+					continue
+				matching.append(option.duplicate(true))
+		if not matching.is_empty():
+			if str(domain_mode) == "monster:DEPLOY_NEW":
+				return _preferred_monster_deployment_option(matching)
+			return (matching[0] as Dictionary).duplicate(true)
+	if held_refresh_option_ids.is_empty():
+		return _preferred_v074_ai_action(legal)
+	var fallback_legal: Array = []
+	for option_variant in legal:
+		var option := option_variant as Dictionary
+		if not held_refresh_option_ids.has(str(option.get("option_id", ""))):
+			fallback_legal.append(option.duplicate(true))
+	if not fallback_legal.is_empty():
+		return _preferred_v074_ai_action(fallback_legal)
+	# Holding is a preference, not a deadlock permission. If the hand has no
+	# other legal action, consume the refresh card through the normal authority.
+	for option_variant in legal:
+		var option := option_variant as Dictionary
+		if held_refresh_option_ids.has(str(option.get("option_id", ""))):
+			return option.duplicate(true)
+	return {}
+
+
+func _v075_should_hold_monster_refresh(
+	actor_id: String,
+	option: Dictionary
+) -> bool:
+	if (
+		str(option.get("action_domain", "")) != "monster"
+		or str(option.get("monster_card_mode", "")) != "REFRESH_EXISTING"
+	):
+		return false
+	var card_definition := CardDefinitionsV075.definition(
+		str(option.get("card_definition_id", ""))
+	)
+	if int(card_definition.get("level", 0)) != 1:
+		return false
+	if not _v075_actor_prefers_monster_upgrade(actor_id):
+		return false
+	var source_id := str(option.get("target_source_instance_id", ""))
+	var source := _public_monster_by_id(source_id)
+	if (
+		source.is_empty()
+		or str(source.get("owner_player_id", "")) != actor_id
+		or str(source.get("status", "")) != "active"
+		or int(source.get("rank", 0)) != 1
+	):
+		return false
+	var family_id := CardDefinitionsV075.monster_family_id_from_card_type(
+		str(card_definition.get("card_type", ""))
+	)
+	if family_id != str(source.get("monster_family_id", "")):
+		return false
+	var facts := _dbg_projection(actor_id).get("facts", {}) as Dictionary
+	var matching_hand_count := 0
+	for card_variant in facts.get("hand", []) as Array:
+		var card := card_variant as Dictionary
+		if str(card.get("merge_family_id", "")) == str(
+			card_definition.get("merge_family_id", "")
+		):
+			matching_hand_count += 1
+	return matching_hand_count >= 1
+
+
+func _v075_actor_prefers_monster_upgrade(actor_id: String) -> bool:
+	if actor_id.is_empty():
+		return false
+	return int(
+		actor_id.sha256_text().substr(0, 8).hex_to_int()
+	) % 2 == 0
+
+
+func _preferred_monster_deployment_option(options: Array) -> Dictionary:
+	var topology := MonsterAutonomyCore.topology_snapshot_from_map_receipt(
+		_map_genesis_receipt
+	)
+	if not bool(topology.get("accepted", false)):
+		return (options[0] as Dictionary).duplicate(true)
+	var facilities := _public_occupied_facilities()
+	var best := {}
+	var best_score := -2147483648
+	var best_key := ""
+	for option_variant in options:
+		var option := option_variant as Dictionary
+		var score := _monster_deployment_route_score(
+			option,
+			topology,
+			facilities
+		)
+		var stable_key := "%s|%s|%s" % [
+			str(option.get("card_instance_id", "")),
+			str(option.get("target_region_id", "")),
+			str(option.get("option_id", "")),
+		]
+		if (
+			best.is_empty()
+			or score > best_score
+			or (score == best_score and stable_key < best_key)
+		):
+			best = option.duplicate(true)
+			best_score = score
+			best_key = stable_key
+	return best
+
+
+func _monster_deployment_route_score(
+	option: Dictionary,
+	topology: Dictionary,
+	public_facilities: Array
+) -> int:
+	var card_definition := CardDefinitionsV075.definition(
+		str(option.get("card_definition_id", ""))
+	)
+	var family_id := CardDefinitionsV075.monster_family_id_from_card_type(
+		str(card_definition.get("card_type", ""))
+	)
+	var source_definition := CombatCatalog.monster_source_definition(family_id)
+	if source_definition.is_empty():
+		return 0
+	var preferred_color := str(
+		source_definition.get("preferred_industry_color", "")
+	)
+	var actor_id := str(option.get("actor_id", ""))
+	var start_region_id := str(option.get("target_region_id", ""))
+	var nearest_path: Array = []
+	for facility_variant in public_facilities:
+		var facility := facility_variant as Dictionary
+		if (
+			_facility_owner_id(facility) == actor_id
+			or str(facility.get("industry_id", "")) != preferred_color
+			or str(facility.get("status", "active")) == "destroyed"
+		):
+			continue
+		var path := MonsterAutonomyCore.shortest_path(
+			topology,
+			start_region_id,
+			str(facility.get("region_id", ""))
+		)
+		if path.is_empty():
+			continue
+		if nearest_path.is_empty() or path.size() < nearest_path.size():
+			nearest_path = path
+	if nearest_path.is_empty():
+		return 0
+	var hops := nearest_path.size() - 1
+	var base_range := int(
+		source_definition.get("base_detection_range_hops", 0)
+	)
+	var score := 0
+	if hops >= 2 and hops <= base_range:
+		score = 100000 + hops * 1000
+	elif hops == 1:
+		score = 80000
+	elif hops > base_range:
+		score = 50000 - hops * 100
+	else:
+		score = 10000
+	if str(source_definition.get("movement_profile", "")) == "ground_trample":
+		score += 10000
+	if nearest_path.size() > 1:
+		var first_edge_distance := MonsterAutonomyCore.path_distance_milli_arc(
+			topology,
+			[nearest_path[0], nearest_path[1]]
+		)
+		var rank := clampi(int(card_definition.get("level", 1)), 1, 4)
+		var budgets := source_definition.get(
+			"movement_budget_milli_arc_by_rank",
+			[]
+		) as Array
+		if budgets.size() >= rank and first_edge_distance > 0:
+			score += (
+				5000
+				if first_edge_distance <= int(budgets[rank - 1])
+				else -5000
+			)
+	return score
 
 
 func _private_skill_target_request(
@@ -2787,7 +4185,91 @@ func _private_skill_target_request(
 	parameters: Dictionary
 ) -> Dictionary:
 	var contract := skill.get("target_contract", {}) as Dictionary
+	if contract.is_empty() and skill.get("target_contract", "") is String:
+		contract = {
+			"target_kind": {
+				"self": "self_source",
+				"enemy_facility": "enemy_public_facility",
+				"enemy_monster": "enemy_public_monster",
+				"region": "enemy_facilities_in_public_region",
+			}.get(str(skill.get("target_contract", "")), "")
+		}
 	var target_kind := str(contract.get("target_kind", ""))
+	if parameters.has("target_binding"):
+		var binding := parameters.get("target_binding", {}) as Dictionary
+		if binding.is_empty():
+			return {}
+		var binding_kind := str(binding.get("target_kind", ""))
+		var binding_id := str(binding.get("target_id", ""))
+		if binding_id.is_empty():
+			return {}
+		if target_kind == "self_source":
+			var self_generation := int(binding.get(
+				"target_source_generation",
+				0
+			))
+			if binding_kind != "monster" or binding_id != str(
+				source.get("source_instance_id", "")
+			) or self_generation <= 0:
+				return {}
+			return {
+				"target_kind": target_kind,
+				"target_id": binding_id,
+				"target_source_generation": self_generation,
+			}
+		if target_kind == "enemy_public_facility":
+			var facility_generation := int(binding.get(
+				"target_facility_generation",
+				0
+			))
+			if (
+				binding_kind != "facility"
+				or str(binding.get("target_facility_id", "")) != binding_id
+				or binding.has("target_region_id")
+				or facility_generation <= 0
+			):
+				return {}
+			return {
+				"target_kind": target_kind,
+				"target_id": binding_id,
+				"target_facility_id": binding_id,
+				"target_facility_generation": facility_generation,
+			}
+		if target_kind in [
+			"enemy_facilities_in_public_region",
+			"enemy_facilities_in_current_region",
+		]:
+			if (
+				binding_kind != "region"
+				or str(binding.get("target_region_id", "")) != binding_id
+				or binding.has("target_facility_id")
+			):
+				return {}
+			return {
+				"target_kind": target_kind,
+				"target_id": binding_id,
+				"target_region_id": binding_id,
+			}
+		if target_kind == "enemy_public_monster":
+			var monster_generation := int(binding.get(
+				"target_source_generation",
+				0
+			))
+			if (
+				binding_kind != "monster"
+				or str(binding.get(
+					"target_monster_source_instance_id",
+					binding_id
+				)) != binding_id
+				or monster_generation <= 0
+			):
+				return {}
+			return {
+				"target_kind": target_kind,
+				"target_id": binding_id,
+				"target_source_generation": monster_generation,
+			}
+		return {}
 	var explicit_id := str(parameters.get(
 		"target_id",
 		parameters.get("target_facility_id", parameters.get(
@@ -2799,6 +4281,9 @@ func _private_skill_target_request(
 		return {
 			"target_kind": "self_source",
 			"target_id": str(source.get("source_instance_id", "")),
+			"target_source_generation": int(
+				source.get("source_generation", 0)
+			),
 		}
 	if target_kind == "enemy_public_facility":
 		var facility_id := explicit_id
@@ -2806,10 +4291,14 @@ func _private_skill_target_request(
 			facility_id = str(source.get("tracked_facility_id", ""))
 		if facility_id.is_empty():
 			facility_id = _first_enemy_facility_id(actor_id)
+		var facility := _public_facility_by_id(facility_id)
 		return {
 			"target_kind": target_kind,
 			"target_id": facility_id,
-		} if not facility_id.is_empty() else {}
+			"target_facility_generation": int(
+				facility.get("facility_generation", 0)
+			),
+		} if not facility.is_empty() else {}
 	if target_kind in [
 		"enemy_facilities_in_public_region",
 		"enemy_facilities_in_current_region",
@@ -2839,10 +4328,14 @@ func _private_skill_target_request(
 				):
 					monster_id = str(monster.get("source_instance_id", ""))
 					break
+		var monster := _public_monster_by_id(monster_id)
 		return {
 			"target_kind": target_kind,
 			"target_id": monster_id,
-		} if not monster_id.is_empty() else {}
+			"target_source_generation": int(
+				monster.get("source_generation", 0)
+			),
+		} if not monster.is_empty() else {}
 	return {}
 
 
@@ -2858,16 +4351,29 @@ func _v075_public_monsters() -> Array:
 	return []
 
 
-func _v075_owner_skill_zone(owner_id: String) -> Array:
+func _v075_owner_skill_zone(
+	owner_id: String,
+	public_facilities: Array = []
+) -> Array:
 	if (
 		not is_instance_valid(_combat_owner)
 		or not _combat_owner.has_method("owner_private_skill_zone")
 	):
 		return []
-	var value: Variant = _combat_owner.call(
-		"owner_private_skill_zone",
-		owner_id
-	)
+	var value: Variant
+	if (
+		not public_facilities.is_empty()
+		and _combat_owner.has_method(
+			"owner_private_skill_zone_for_public_facts"
+		)
+	):
+		value = _combat_owner.call(
+			"owner_private_skill_zone_for_public_facts",
+			owner_id,
+			public_facilities
+		)
+	else:
+		value = _combat_owner.call("owner_private_skill_zone", owner_id)
 	if value is Array:
 		return (value as Array).duplicate(true)
 	return []
@@ -2897,9 +4403,17 @@ func _public_monster_by_id(source_id: String) -> Dictionary:
 	return {}
 
 
+func _public_facility_by_id(facility_id: String) -> Dictionary:
+	for facility_variant in _public_occupied_facilities():
+		var facility := facility_variant as Dictionary
+		if str(facility.get("facility_id", "")) == facility_id:
+			return facility.duplicate(true)
+	return {}
+
+
 func _first_enemy_facility_id(actor_id: String) -> String:
 	var ids: Array[String] = []
-	for facility_variant in _public_facility_slots():
+	for facility_variant in _public_occupied_facilities():
 		var facility := facility_variant as Dictionary
 		if (
 			_facility_owner_id(facility) != actor_id
@@ -2912,7 +4426,7 @@ func _first_enemy_facility_id(actor_id: String) -> String:
 
 func _first_enemy_facility_region(actor_id: String) -> String:
 	var ids: Array[String] = []
-	for facility_variant in _public_facility_slots():
+	for facility_variant in _public_occupied_facilities():
 		var facility := facility_variant as Dictionary
 		var region_id := str(facility.get("region_id", ""))
 		if (

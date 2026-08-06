@@ -63,6 +63,40 @@ func _run() -> void:
 		and not public_text.contains("cooldown_remaining_batches"),
 		"public projection contains no card, request, target, or cooldown detail"
 	)
+	var asset_receipt := Core.build_asset_reservation_receipt(
+		submitted.get("asset_reservation_request") as Dictionary,
+		true,
+		"reservation_committed",
+		2
+	)
+	var reserved := Core.apply_asset_reservation_receipt(
+		state,
+		asset_receipt
+	)
+	state = reserved.get("state") as Dictionary
+	var pending_public_source := (
+		Core.public_projection(state).get("sources") as Array
+	)[0] as Dictionary
+	_expect(
+		int(pending_public_source.get(
+			"batch_active_skill_use_count",
+			-1
+		)) == 0,
+		"a pending private request does not disclose the batch use"
+	)
+	var resolved := Fixture.resolve(state)
+	var resolved_public_source := (
+		Core.public_projection(
+			resolved.get("state") as Dictionary
+		).get("sources") as Array
+	)[0] as Dictionary
+	_expect(
+		int(resolved_public_source.get(
+			"batch_active_skill_use_count",
+			-1
+		)) == 1,
+		"the batch use becomes public only with the public result"
+	)
 	var leaked := public_projection.duplicate(true)
 	leaked["skill_definition_id"] = "skill.owner.1"
 	_expect(

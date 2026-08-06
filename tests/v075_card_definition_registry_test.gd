@@ -78,6 +78,22 @@ func _run() -> void:
 		and int(monster.get("primary_asset_cost", 0)) == 2,
 		"monster card keeps track color and V075 rank-one cost"
 	)
+	var monster_other_color := Registry.definition(
+		Registry.standard_definition_id(
+			"monster.spore_tide_emperor",
+			"life",
+			1
+		)
+	)
+	_expect(
+		str(monster.get("merge_family_id", ""))
+			== str(monster_other_color.get("merge_family_id", ""))
+			and DbgCore._merge_eligibility_reason(
+				monster,
+				monster_other_color
+			) == "",
+		"same-family monster cards merge across independent track cost colors"
+	)
 	var military := Registry.definition(
 		Registry.standard_definition_id(
 			"military.air_superiority_fighter",

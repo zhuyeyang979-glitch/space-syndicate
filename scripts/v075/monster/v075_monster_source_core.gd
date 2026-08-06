@@ -607,9 +607,6 @@ static func prebind_card_mode(
 		or not (state.get("player_ids", []) as Array).has(
 			str(request.get("owner_player_id", ""))
 		)
-		or (state.get("processed_cards", {}) as Dictionary).has(
-			str(request.get("card_instance_id", ""))
-		)
 	):
 		return _bind_failure("monster_card_request_context_invalid")
 	var bind_context := _mode_context(
@@ -673,15 +670,15 @@ static func resolve_prebound_card(
 	var action_error := _action_error(action)
 	if action_error != "":
 		return _failure(state, action_error)
-	var card_instance_id := str(action.get("card_instance_id", ""))
+	var request_id := str(action.get("request_id", ""))
 	var processed := state.get("processed_cards", {}) as Dictionary
-	if processed.has(card_instance_id):
-		var stored := processed.get(card_instance_id, {}) as Dictionary
+	if processed.has(request_id):
+		var stored := processed.get(request_id, {}) as Dictionary
 		if (
 			str(stored.get("action_fingerprint", ""))
 			!= str(action.get("action_fingerprint", ""))
 		):
-			return _failure(state, "monster_card_instance_already_consumed")
+			return _failure(state, "monster_card_request_id_conflict")
 		return {
 			"accepted": true,
 			"reason_code": "monster_card_resolution_idempotent_replay",
@@ -2228,7 +2225,7 @@ static func _commit_resolution(
 	var processed := (
 		next_state.get("processed_cards", {}) as Dictionary
 	)
-	processed[str(action.get("card_instance_id", ""))] = (
+	processed[str(action.get("request_id", ""))] = (
 		receipt.duplicate(true)
 	)
 	next_state["processed_cards"] = processed
@@ -3333,28 +3330,28 @@ static func _state_error(state: Dictionary) -> String:
 		!= (journal_variant as Array).size()
 	):
 		return "monster_receipt_journal_invalid"
-	for card_id_variant in (processed_variant as Dictionary).keys():
-		var card_id := str(card_id_variant)
+	for request_id_variant in (processed_variant as Dictionary).keys():
+		var request_id := str(request_id_variant)
 		var receipt_variant: Variant = (
 			processed_variant as Dictionary
-		).get(card_id)
+		).get(request_id)
 		if (
-			not _stable_id(card_id)
+			not _stable_id(request_id)
 			or not (receipt_variant is Dictionary)
 			or _receipt_error(receipt_variant as Dictionary) != ""
 			or str((receipt_variant as Dictionary).get(
-				"card_instance_id",
+				"request_id",
 				""
-			)) != card_id
+			)) != request_id
 		):
-			return "monster_processed_card_invalid"
+			return "monster_processed_card_action_invalid"
 	for receipt_variant in journal_variant as Array:
 		if (
 			not (receipt_variant is Dictionary)
 			or _receipt_error(receipt_variant as Dictionary) != ""
 			or (processed_variant as Dictionary).get(str(
 				(receipt_variant as Dictionary).get(
-					"card_instance_id",
+					"request_id",
 					""
 				)
 			)) != receipt_variant

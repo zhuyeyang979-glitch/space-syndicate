@@ -3,8 +3,6 @@ class_name V075SampleGameScreen
 
 signal combat_projection_applied(projection: Dictionary)
 signal combat_receipt_processed(receipt_id: String, result: Dictionary)
-signal combat_private_skill_intent_requested(intent: Dictionary)
-signal combat_military_intent_requested(intent: Dictionary)
 
 const V075_RULESET_ID := "v0.7.5"
 const BASE_V074_RULESET_ID := "v0.7.4"
@@ -593,51 +591,55 @@ func _on_presentation_cue_ready(cue: Dictionary) -> void:
 		_combat_surface.call("show_presentation_cue", cue)
 
 
-func _on_private_target_selection_requested(
-	source_instance_id: String,
-	skill_definition_id: String,
-	target_contract: String
-) -> void:
+func _on_private_target_selection_requested(request: Dictionary) -> void:
 	if _is_combat_terminal():
 		return
-	if source_instance_id.is_empty() or skill_definition_id.is_empty():
+	var source_instance_id := str(request.get("source_instance_id", ""))
+	var skill_definition_id := str(request.get("skill_definition_id", ""))
+	var target_binding := request.get("target_binding", {}) as Dictionary
+	if (
+		source_instance_id.is_empty()
+		or skill_definition_id.is_empty()
+		or target_binding.is_empty()
+	):
 		return
+	var parameters := request.duplicate(true)
+	parameters["execution_mode"] = _private_skill_execution_mode()
 	var intent := _issue_combat_intent(
 		_private_skill_intent_kind(),
-		{
-			"source_instance_id": source_instance_id,
-			"skill_definition_id": skill_definition_id,
-			"target_contract": target_contract,
-			"execution_mode": PRIVATE_SKILL_EXECUTION_MODE,
-		},
+		parameters,
 		true
 	)
 	if intent.is_empty():
 		return
 	_combat_private_intent_count += 1
-	combat_private_skill_intent_requested.emit(intent.duplicate(true))
 	_combat_status.text = "私密技能请求已交给安全边界"
 	_update_acceptance_state()
 
 
-func _on_military_mission_selected(task_kind: String) -> void:
+func _on_military_mission_selected(option: Dictionary) -> void:
+	var task_kind := str(option.get("task_kind", ""))
 	if _is_combat_terminal() or task_kind not in [
 		"assault_region",
 		"assault_monster",
 	]:
 		return
+	if (
+		str(option.get("option_id", "")).is_empty()
+		or str(option.get("card_instance_id", "")).is_empty()
+		or str(option.get("target_slot_id", "")).is_empty()
+	):
+		return
+	var parameters := option.duplicate(true)
+	parameters["execution_mode"] = _military_execution_mode()
 	var intent := _issue_combat_intent(
 		_military_intent_kind(),
-		{
-			"task_kind": task_kind,
-			"execution_mode": MILITARY_EXECUTION_MODE,
-		},
+		parameters,
 		false
 	)
 	if intent.is_empty():
 		return
 	_combat_military_intent_count += 1
-	combat_military_intent_requested.emit(intent.duplicate(true))
 	_combat_status.text = (
 		"攻击地区" if task_kind == "assault_region" else "攻击怪兽"
 	) + " · 已提交普通行动"
@@ -674,6 +676,22 @@ func _issue_combat_intent(
 	_last_combat_intent_kind = intent_kind
 	application_intent_requested.emit(intent.duplicate(true))
 	return intent
+
+
+func _private_skill_execution_mode() -> String:
+	var combat_capabilities := _v075_capabilities.get("combat", {}) as Dictionary
+	return str(combat_capabilities.get(
+		"private_skill_execution_mode",
+		PRIVATE_SKILL_EXECUTION_MODE
+	))
+
+
+func _military_execution_mode() -> String:
+	var combat_capabilities := _v075_capabilities.get("combat", {}) as Dictionary
+	return str(combat_capabilities.get(
+		"military_execution_mode",
+		MILITARY_EXECUTION_MODE
+	))
 
 
 func _extract_combat_projection(snapshot: Dictionary) -> Dictionary:
@@ -981,8 +999,24 @@ func _resolve_combat_layout() -> void:
 	_combat_overlay.position = panel_rect.position - safe_origin
 	_combat_overlay.size = panel_rect.size
 	_combat_surface_host.custom_minimum_size = Vector2(0.0, 0.0)
-	_combat_surface.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_combat_surface.custom_minimum_size = Vector2(0.0, 0.0)
+	if _combat_surface_host is ScrollContainer:
+		_combat_surface.set_anchors_and_offsets_preset(
+			Control.PRESET_TOP_WIDE
+		)
+		_combat_surface.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_combat_surface.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		var content_height := 410.0
+		if _combat_surface.has_method("preferred_content_height"):
+			content_height = float(
+				_combat_surface.call("preferred_content_height")
+			)
+		_combat_surface.custom_minimum_size = Vector2(
+			0.0,
+			content_height
+		)
+	else:
+		_combat_surface.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_combat_surface.custom_minimum_size = Vector2(0.0, 0.0)
 
 
 func v075_combat_layout_for_geometry(

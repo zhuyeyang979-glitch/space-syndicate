@@ -1191,6 +1191,9 @@ func _metrics_for_match(
 	result["MONSTER_PRIVATE_SKILL_FIZZLE_COUNT"] = int(
 		combat.get("monster_private_skill_fizzle_count", 0)
 	)
+	result["MONSTER_PRIVATE_SKILL_LAST_FIZZLE_REASON"] = str(
+		combat.get("monster_private_skill_last_fizzle_reason", "")
+	)
 	result["MONSTER_SKILL_COOLDOWN_RECOVERY_COUNT"] = int(
 		combat.get("monster_skill_cooldown_recovery_count", 0)
 	)

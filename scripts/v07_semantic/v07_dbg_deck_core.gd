@@ -3212,7 +3212,17 @@ func _allowed_intent_kinds() -> Array:
 static func _merge_eligibility_reason(left: Dictionary, right: Dictionary) -> String:
 	if bool(left.get("locked", false)) or bool(right.get("locked", false)):
 		return "merge_card_locked"
-	if str(left.get("primary_color", "")) != str(right.get("primary_color", "")):
+	var left_is_monster := V075CardDefinitions.card_domain(
+		str(left.get("card_type", ""))
+	) == "monster"
+	var right_is_monster := V075CardDefinitions.card_domain(
+		str(right.get("card_type", ""))
+	) == "monster"
+	if (
+		(not left_is_monster or not right_is_monster)
+		and str(left.get("primary_color", ""))
+			!= str(right.get("primary_color", ""))
+	):
 		return "merge_primary_color_mismatch"
 	if str(left.get("card_type", "")) != str(right.get("card_type", "")):
 		return "merge_card_type_mismatch"

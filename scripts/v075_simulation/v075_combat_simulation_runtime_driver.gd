@@ -7,11 +7,9 @@ const AssetBatchCore := preload(
 const CombatCardDefinitions := preload(
 	"res://scripts/v075/cards/v075_card_definition_registry.gd"
 )
-const ProfilePublicActionBatchCore := preload(
-	"res://scripts/v075/runtime/v075_public_action_batch_core.gd"
-)
 
 const SIMULATION_PROCESS_DELTA_SECONDS := 1.0
+const SIMULATION_EXTRA_COMBAT_MACRO_ROUNDS := 2
 
 var _simulation_legal_card_actions_call_count: int = 0
 var _simulation_legal_card_actions_cache_hit_count: int = 0
@@ -56,6 +54,10 @@ var _simulation_committed_skill_uses_by_key: Dictionary = {}
 var _simulation_private_skill_reuse_commit_count: int = 0
 var _simulation_observed_skill_commit_count: int = 0
 var _simulation_observed_skill_fizzle_count: int = 0
+var _simulation_refresh_hold_probe_count: int = 0
+var _simulation_refresh_hold_accept_count: int = 0
+var _simulation_first_refresh_hold_probe: Dictionary = {}
+var _simulation_monster_card_trace: Array = []
 var _simulation_runtime_failure: Dictionary = {}
 var _simulation_profile_public_core_usec: int = 0
 var _simulation_profile_resolve_total_usec: int = 0
@@ -71,12 +73,32 @@ var _simulation_profile_lock_usec: int = 0
 var _simulation_profile_enabled: bool = false
 
 
+func _victory_target() -> int:
+	var base_target := super._victory_target()
+	var extra_rounds := SIMULATION_EXTRA_COMBAT_MACRO_ROUNDS
+	var configured_extra := OS.get_environment(
+		"V075_SIMULATION_EXTRA_COMBAT_MACRO_ROUNDS"
+	)
+	if configured_extra.is_valid_int():
+		extra_rounds = maxi(0, int(configured_extra))
+	var minimum_batch := _player_ids.size() + extra_rounds
+	if _batch_number < minimum_batch:
+		# Keep the normal victory authority and settlement path, while reserving
+		# two additional natural macro rounds for cards purchased into the DBG
+		# discard to be drawn, played, and observed by Combat.
+		return maxi(base_target, _public_progress_points + 1)
+	return base_target
+
+
 func run_simulation_until_settled(max_steps: int = 2000) -> Dictionary:
 	if _match_id.is_empty():
 		return _reject("match_not_started")
 	_accelerated = true
 	_automate_local_human = true
-	_simulation_profile_enabled = "--profile-resolution" in OS.get_cmdline_user_args()
+	_simulation_profile_enabled = (
+		OS.get_environment("V075_PROFILE_RESOLUTION") == "1"
+		or "--profile-resolution" in OS.get_cmdline_user_args()
+	)
 	var was_coalesced: bool = _projection_emit_coalesced
 	_projection_emit_coalesced = true
 	var steps: int = 0
@@ -136,12 +158,6 @@ func _fail(reason_code: String, detail: Dictionary) -> Dictionary:
 
 
 func resolve_next_action() -> Dictionary:
-	if _simulation_profile_enabled:
-		var core_started := Time.get_ticks_usec()
-		ProfilePublicActionBatchCore.resolve_next_authority_owned(_facility_state)
-		_simulation_profile_public_core_usec += (
-			Time.get_ticks_usec() - core_started
-		)
 	var started := Time.get_ticks_usec()
 	var result := super.resolve_next_action()
 	_simulation_profile_resolve_total_usec += Time.get_ticks_usec() - started
@@ -217,6 +233,7 @@ func _collect_reason_codes(
 func _combat_ai_private_facts(actor_id: String) -> Dictionary:
 	var monster_options_by_card: Dictionary = {}
 	var military_options_by_card: Dictionary = {}
+	var military_options: Array[Dictionary] = []
 	for option_variant in legal_card_actions(actor_id):
 		if not (option_variant is Dictionary):
 			continue
@@ -226,13 +243,15 @@ func _combat_ai_private_facts(actor_id: String) -> Dictionary:
 		if domain == "monster":
 			var existing_row: Variant = monster_options_by_card.get(card_id, {})
 			var row: Dictionary = {}
-			if existing_row is Dictionary:
+			if existing_row is Dictionary and not (
+				existing_row as Dictionary
+			).is_empty():
 				row = (existing_row as Dictionary).duplicate(true)
 			else:
 				row = {
 					"card_instance_id": card_id,
 					"card_definition_id": str(option.get("card_definition_id", "")),
-					"card_rank": 1,
+					"card_rank": int(option.get("card_rank", 0)),
 					"legal_modes": [],
 					"prebound_target_by_mode": {},
 				}
@@ -259,6 +278,8 @@ func _combat_ai_private_facts(actor_id: String) -> Dictionary:
 			row["prebound_target_by_mode"] = targets
 			monster_options_by_card[card_id] = row
 		elif domain == "military":
+			var private_option := _military_private_option(option, actor_id)
+			military_options.append(private_option)
 			var existing_row: Variant = military_options_by_card.get(card_id, {})
 			var row: Dictionary = {}
 			if existing_row is Dictionary:
@@ -268,6 +289,7 @@ func _combat_ai_private_facts(actor_id: String) -> Dictionary:
 					"card_instance_id": card_id,
 					"card_definition_id": str(option.get("card_definition_id", "")),
 					"legal_task_kinds": [],
+					"options": [],
 				}
 			var task: String = str(option.get("task_kind", ""))
 			var task_kinds: Array = []
@@ -277,13 +299,24 @@ func _combat_ai_private_facts(actor_id: String) -> Dictionary:
 			if task not in task_kinds:
 				task_kinds.append(task)
 			row["legal_task_kinds"] = task_kinds
+			var option_rows := row.get("options", []) as Array
+			option_rows.append(private_option.duplicate(true))
+			row["options"] = option_rows
 			military_options_by_card[card_id] = row
 	var owned: Array = []
 	var zone: Array = []
-	var zone_value: Variant = _combat_owner.call(
-		"owner_private_skill_zone",
-		actor_id
-	)
+	var zone_value: Variant
+	if _combat_owner.has_method("owner_private_skill_zone_for_public_facts"):
+		zone_value = _combat_owner.call(
+			"owner_private_skill_zone_for_public_facts",
+			actor_id,
+			_public_occupied_facilities()
+		)
+	else:
+		zone_value = _combat_owner.call(
+			"owner_private_skill_zone",
+			actor_id
+		)
 	if zone_value is Array:
 		zone = (zone_value as Array).duplicate(true)
 	elif zone_value is Dictionary:
@@ -328,6 +361,7 @@ func _combat_ai_private_facts(actor_id: String) -> Dictionary:
 		"viewer_player_id": actor_id,
 		"monster_card_options": monster_options_by_card.values(),
 		"military_card_options": military_options_by_card.values(),
+		"military_options": military_options,
 		"owned_monsters": owned,
 		"available_unreserved_assets": available_assets,
 	}
@@ -414,8 +448,6 @@ func _auto_legal_actions(actor_id: String) -> Array:
 			"direct_legal_count": direct.size(),
 			"projected_legal_count": result.size(),
 		}
-	if _simulation_profile_enabled:
-		_observe_dbg_card_lifecycle(actor_id)
 	for option_variant in result:
 		if not (option_variant is Dictionary):
 			continue
@@ -472,6 +504,10 @@ func _auto_queue_and_lock(actor_id: String) -> Dictionary:
 	_simulation_legal_cache = []
 	_simulation_card_cache = {}
 	var result: Dictionary = super._auto_queue_and_lock(actor_id)
+	# Lifecycle counters are acceptance evidence, not profiler-only data. The
+	# observation runs once per actor submission boundary, after the authoritative
+	# transition, and never writes to the runtime or DBG owner.
+	_observe_dbg_card_lifecycle(actor_id)
 	_observe_queued_combat_actions(actor_id)
 	_simulation_cache_actor_id = ""
 	_simulation_legal_cache_valid = false
@@ -572,6 +608,27 @@ func _simulation_has_active_owned_monster(actor_id: String) -> bool:
 	return false
 
 
+func _v075_should_hold_monster_refresh(
+	actor_id: String,
+	option: Dictionary
+) -> bool:
+	var accepted := super._v075_should_hold_monster_refresh(actor_id, option)
+	_simulation_refresh_hold_probe_count += 1
+	if accepted:
+		_simulation_refresh_hold_accept_count += 1
+		if _simulation_first_refresh_hold_probe.is_empty():
+			_simulation_first_refresh_hold_probe = {
+				"actor_id": actor_id,
+				"card_instance_id": str(option.get("card_instance_id", "")),
+				"card_definition_id": str(option.get("card_definition_id", "")),
+				"target_source_instance_id": str(option.get(
+					"target_source_instance_id",
+					""
+				)),
+			}
+	return accepted
+
+
 func _observe_dbg_card_lifecycle(actor_id: String) -> void:
 	var projection: Dictionary = super._dbg_projection(actor_id)
 	var facts: Dictionary = projection.get("facts", {}) as Dictionary
@@ -588,6 +645,8 @@ func _observe_first_monster_prebind_rejection(
 	actor_id: String,
 	card: Dictionary
 ) -> void:
+	if _phase != "submission":
+		return
 	var definition_id: String = str(card.get("definition_id", ""))
 	var definition: Dictionary = CombatCardDefinitions.definition(definition_id)
 	if definition.is_empty():
@@ -632,8 +691,13 @@ func _observe_first_monster_prebind_rejection(
 		"target_region_id": regions[0],
 		"target_source_instance_id": "",
 	}
+	var preview_method := (
+		"preview_monster_card_action"
+		if _combat_owner.has_method("preview_monster_card_action")
+		else "prebind_monster_card_action"
+	)
 	var prebound: Dictionary = _combat_owner.call(
-		"prebind_monster_card_action",
+		preview_method,
 		request
 	) as Dictionary
 	var after: Dictionary = _combat_owner.call("debug_snapshot") as Dictionary
@@ -664,6 +728,8 @@ func _observe_monster_hand_without_legal_options(
 	actor_id: String,
 	legal: Array
 ) -> void:
+	if _phase != "submission":
+		return
 	var projection: Dictionary = super._dbg_projection(actor_id)
 	var facts: Dictionary = projection.get("facts", {}) as Dictionary
 	for card_variant in facts.get("hand", []) as Array:
@@ -950,6 +1016,17 @@ func _observe_card_zone(
 			_simulation_card_last_zone.get(card_key, "")
 		)
 		if domain == "monster":
+			if _simulation_monster_card_trace.size() < 128:
+				_simulation_monster_card_trace.append({
+					"actor_id": actor_id,
+					"instance_id": str(card.get("instance_id", "")),
+					"definition_id": str(card.get("definition_id", "")),
+					"card_type": str(card.get("card_type", "")),
+					"primary_color": str(card.get("primary_color", "")),
+					"level": int(card.get("level", 0)),
+					"zone": zone_name,
+					"previous_zone": previous_zone,
+				})
 			if zone_name == "discard":
 				_simulation_monster_discard_ids[card_key] = true
 			else:
@@ -1066,6 +1143,12 @@ func simulation_performance_snapshot() -> Dictionary:
 		),
 		"card_lookup_cache_hit_count": _simulation_card_lookup_cache_hit_count,
 		"private_skill_fast_skip_count": _simulation_private_skill_fast_skip_count,
+		"refresh_hold_probe_count": _simulation_refresh_hold_probe_count,
+		"refresh_hold_accept_count": _simulation_refresh_hold_accept_count,
+		"first_refresh_hold_probe": _simulation_first_refresh_hold_probe.duplicate(
+			true
+		),
+		"monster_card_trace": _simulation_monster_card_trace.duplicate(true),
 		"monster_card_discard_observation_count": (
 			_simulation_monster_discard_ids.size()
 		),

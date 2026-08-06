@@ -7,6 +7,9 @@ const Autonomy := preload(
 const Trample := preload(
 	"res://scripts/v075/monster/v075_monster_trample_core.gd"
 )
+const FacilityDamageIntent := preload(
+	"res://scripts/v075/combat/facility_combat_damage_intent_v1.gd"
+)
 const MapGenesis := preload(
 	"res://scripts/v074/map/v074_map_genesis_core.gd"
 )
@@ -629,6 +632,14 @@ static func _case_ground_trample() -> Dictionary:
 			== _sum_int_field(receipts, "allocated_damage"),
 		"damage_budget_not_replicated"
 	)
+	for intent_variant in intents:
+		_expect(
+			failures,
+			bool(FacilityDamageIntent.validation_report(
+				intent_variant
+			).get("valid", false)),
+			"facility_damage_intent_typed_and_sealed"
+		)
 	_expect(
 		failures,
 		int(result.get("direct_facility_write_count", -1)) == 0
@@ -649,7 +660,7 @@ static func _case_ground_trample() -> Dictionary:
 			"facility_damage_intent_count": intents.size(),
 			"target_facility_ids": target_ids,
 		},
-		8
+		8 + intents.size()
 	)
 
 

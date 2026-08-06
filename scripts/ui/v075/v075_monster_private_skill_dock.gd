@@ -1,11 +1,7 @@
 extends PanelContainer
 class_name V075MonsterPrivateSkillDock
 
-signal private_target_selection_requested(
-	source_instance_id: String,
-	skill_definition_id: String,
-	target_contract: String
-)
+signal private_target_selection_requested(request: Dictionary)
 
 const CATALOG := preload(
 	"res://resources/presentation/alpha01_card_illustration_catalog.tres"
@@ -41,6 +37,11 @@ const TARGET_LABELS := {
 	"enemy_facility": "敌方设施",
 	"enemy_monster": "敌方怪兽",
 	"region": "地区",
+	"self_source": "自身",
+	"enemy_public_facility": "敌方设施",
+	"enemy_public_monster": "敌方怪兽",
+	"enemy_facilities_in_public_region": "地区",
+	"enemy_facilities_in_current_region": "当前地区",
 }
 
 @onready var _title_label: Label = %TitleLabel
@@ -54,6 +55,7 @@ var _owner_visible := false
 var _requests_allowed := false
 var _rendered_cost_pip_count := 0
 var _state_counts: Dictionary = {}
+var _invalid_target_binding_count := 0
 
 
 func _ready() -> void:
@@ -105,6 +107,8 @@ func debug_snapshot() -> Dictionary:
 		"public_batch_queue_member": false,
 		"normal_hand_member": false,
 		"private_target_signal_contract": true,
+		"private_target_binding_dictionary": true,
+		"invalid_target_binding_count": _invalid_target_binding_count,
 		"gameplay_mutation_count": 0,
 		"rng_draw_count": 0,
 	}
@@ -116,6 +120,7 @@ func _render() -> void:
 	_clear_children(_skill_cards)
 	_rendered_cost_pip_count = 0
 	_state_counts.clear()
+	_invalid_target_binding_count = 0
 	visible = _owner_visible
 	if not _owner_visible:
 		return
@@ -141,6 +146,10 @@ func _build_skill_card(skill: Dictionary) -> Button:
 		and bool(skill.get("can_request", false))
 		and state == "READY"
 	)
+	var target_binding := skill.get("target_binding", {}) as Dictionary
+	if not _target_binding_valid(skill, target_binding):
+		can_request = false
+		_invalid_target_binding_count += 1
 	var button := Button.new()
 	button.name = "Skill_%s" % _safe_node_name(
 		str(skill.get("skill_definition_id", "unknown"))
@@ -159,6 +168,10 @@ func _build_skill_card(skill: Dictionary) -> Button:
 		"skill_definition_id",
 		str(skill.get("skill_definition_id", ""))
 	)
+	button.set_meta(
+		"target_binding",
+		target_binding.duplicate(true)
+	)
 	button.set_meta("skill_state", state)
 	button.set_meta(
 		"asset_cost_by_color",
@@ -169,11 +182,7 @@ func _build_skill_card(skill: Dictionary) -> Button:
 	button.set_meta("accessibility_label", button.tooltip_text)
 	_apply_skill_style(button, state, bool(skill.get("ultimate", false)))
 	button.pressed.connect(
-		_on_skill_pressed.bind(
-			str(_source.get("source_instance_id", "")),
-			str(skill.get("skill_definition_id", "")),
-			str(skill.get("target_contract", "none"))
-		)
+		_on_skill_pressed.bind(_skill_request(skill, target_binding))
 	)
 
 	var margin := MarginContainer.new()
@@ -227,7 +236,7 @@ func _build_skill_card(skill: Dictionary) -> Button:
 	target_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	target_label.text = "目标 · %s" % str(
 		TARGET_LABELS.get(
-			str(skill.get("target_contract", "none")),
+			_target_kind(skill),
 			"指定目标"
 		)
 	)
@@ -318,7 +327,7 @@ func _tooltip_text(skill: Dictionary) -> String:
 		_state_text(skill),
 		str(
 			TARGET_LABELS.get(
-				str(skill.get("target_contract", "none")),
+				_target_kind(skill),
 				"指定目标"
 			)
 		),
@@ -395,18 +404,56 @@ func _ultimate_card_count() -> int:
 	return count
 
 
-func _on_skill_pressed(
-	source_instance_id: String,
-	skill_definition_id: String,
-	target_contract: String
-) -> void:
+func _on_skill_pressed(request: Dictionary) -> void:
 	if not _owner_visible or not _requests_allowed:
 		return
-	private_target_selection_requested.emit(
-		source_instance_id,
-		skill_definition_id,
-		target_contract
-	)
+	var source_instance_id := str(request.get("source_instance_id", ""))
+	var skill_definition_id := str(request.get("skill_definition_id", ""))
+	if source_instance_id.is_empty() or skill_definition_id.is_empty():
+		return
+	private_target_selection_requested.emit(request.duplicate(true))
+
+
+func _skill_request(skill: Dictionary, target_binding: Dictionary) -> Dictionary:
+	return {
+		"source_instance_id": str(_source.get("source_instance_id", "")),
+		"source_generation": int(_source.get("source_generation", 0)),
+		"skill_definition_id": str(skill.get("skill_definition_id", "")),
+		"target_binding": target_binding.duplicate(true),
+		"target_contract": (
+			(skill.get("target_contract", {}) as Dictionary).duplicate(true)
+			if skill.get("target_contract", {}) is Dictionary
+			else {}
+		),
+	}
+
+
+func _target_kind(skill: Dictionary) -> String:
+	var contract: Variant = skill.get("target_contract", {})
+	if contract is Dictionary:
+		return str((contract as Dictionary).get("target_kind", "none"))
+	return str(contract)
+
+
+func _target_binding_valid(skill: Dictionary, binding: Dictionary) -> bool:
+	var target_kind := _target_kind(skill)
+	if target_kind in ["none", "self", "self_source"]:
+		return target_kind == "none" or (
+			not str(binding.get("target_id", "")).is_empty()
+			and str(binding.get("target_kind", "")) in [
+				"self_source",
+				"monster",
+			]
+		)
+	if binding.is_empty() or str(binding.get("target_id", "")).is_empty():
+		return false
+	if str(binding.get("target_kind", "")) not in [
+		"facility",
+		"region",
+		"monster",
+	]:
+		return false
+	return true
 
 
 func _clear_children(parent: Node) -> void:

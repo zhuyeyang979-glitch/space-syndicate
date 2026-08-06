@@ -650,7 +650,7 @@ func simulator_seed_for(configuration_index: int, match_index: int) -> int:
 
 
 func _argument_int(prefix: String, fallback: int) -> int:
-	for argument_variant in OS.get_cmdline_user_args():
+	for argument_variant in _command_line_arguments():
 		var argument := str(argument_variant)
 		if argument.begins_with(prefix + "="):
 			var value := argument.trim_prefix(prefix + "=")
@@ -660,7 +660,7 @@ func _argument_int(prefix: String, fallback: int) -> int:
 
 
 func _argument_value(prefix: String, fallback: String) -> String:
-	for argument_variant in OS.get_cmdline_user_args():
+	for argument_variant in _command_line_arguments():
 		var argument := str(argument_variant)
 		if argument.begins_with(prefix + "="):
 			return argument.trim_prefix(prefix + "=")
@@ -669,7 +669,7 @@ func _argument_value(prefix: String, fallback: String) -> String:
 
 func _argument_values(prefix: String) -> Array[String]:
 	var result: Array[String] = []
-	for argument_variant in OS.get_cmdline_user_args():
+	for argument_variant in _command_line_arguments():
 		var argument := str(argument_variant)
 		if argument.begins_with(prefix + "="):
 			var value := argument.trim_prefix(prefix + "=")
@@ -679,10 +679,17 @@ func _argument_values(prefix: String) -> Array[String]:
 
 
 func _has_argument(expected: String) -> bool:
-	for argument_variant in OS.get_cmdline_user_args():
+	for argument_variant in _command_line_arguments():
 		if str(argument_variant) == expected:
 			return true
 	return false
+
+
+func _command_line_arguments() -> Array:
+	var result: Array = []
+	result.append_array(OS.get_cmdline_user_args())
+	result.append_array(OS.get_cmdline_args())
+	return result
 
 
 func _has_case_insensitive_duplicate_keys(values: Dictionary) -> bool:

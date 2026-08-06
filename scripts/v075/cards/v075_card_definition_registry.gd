@@ -228,6 +228,10 @@ static func merge_family_id(card_type: String, color_id: String) -> String:
 		return ""
 	if card_type in FACILITY_CARD_TYPES:
 		return "facility.%s.%s" % [card_type, color_id]
+	if card_type.begins_with("monster."):
+		# Monster reinforcement is keyed by family and rank. The per-instance
+		# primary color remains the independent track cost authority.
+		return "unit.%s" % card_type
 	return "unit.%s.%s" % [card_type, color_id]
 
 

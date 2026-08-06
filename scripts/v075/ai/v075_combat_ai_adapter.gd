@@ -142,6 +142,29 @@ func choose_action(
 	}
 
 
+func choose_private_skill(
+	own_private_facts: Dictionary,
+	public_facts: Dictionary
+) -> Dictionary:
+	var result := enumerate_candidates(own_private_facts, public_facts)
+	var candidates := result.get("candidates", []) as Array
+	for candidate_variant in candidates:
+		if not (candidate_variant is Dictionary):
+			continue
+		var candidate := candidate_variant as Dictionary
+		if str(candidate.get("action_kind", "")) == "monster_private_skill":
+			return {
+				"accepted": true,
+				"reason_code": "none",
+				"action": candidate.duplicate(true),
+			}
+	return {
+		"accepted": false,
+		"reason_code": "no_ready_private_skill",
+		"action": {},
+	}
+
+
 func enumerate_track_acquisition_candidates(
 	own_private_facts: Dictionary,
 	public_facts: Dictionary = {}
@@ -495,7 +518,7 @@ func _available_asset_view(facts: Dictionary) -> Dictionary:
 
 func _track_acquisition_candidate(
 	item: Dictionary,
-	available_assets: Dictionary,
+	_available_assets: Dictionary,
 	own_private_facts: Dictionary
 ) -> Dictionary:
 	if str(item.get("card_kind", "")) != "normal_card":
@@ -543,8 +566,6 @@ func _track_acquisition_candidate(
 	var cost := int(cost_variant)
 	if cost < 0 or cost != int(definition.get("primary_asset_cost", -1)):
 		return {}
-	if int(available_assets.get(primary_color, 0)) < cost:
-		return {}
 	if item.has("level") and int(item.get("level", 0)) != int(
 		definition.get("level", 0)
 	):
@@ -585,6 +606,8 @@ func _track_acquisition_candidate(
 		"card_rank": int(definition.get("level", 0)),
 		"primary_color": primary_color,
 		"primary_asset_cost": cost,
+		"play_asset_cost": cost,
+		"purchase_cost_source": "cash_authority",
 		"track_revision": int(item.get("track_revision", 0)),
 		"local_slot_index": local_slot_index,
 		"claimable": true,
@@ -762,18 +785,43 @@ func _append_private_skill_candidates(
 			var skill := skill_variant as Dictionary
 			if str(skill.get("state", "")) != "READY":
 				continue
+			if (
+				str(skill.get("effect_kind", "")) == "self_heal"
+				and int(source.get("hp", 0)) >= int(source.get("max_hp", 0))
+			):
+				continue
 			var cost := (
 				skill.get("asset_cost_by_color", {}) as Dictionary
 			)
 			if not _can_pay(cost, available_assets):
 				continue
-			var target := _stable_skill_target(
-				str(skill.get("target_contract", "none")),
-				str(own_private_facts.get("viewer_player_id", "")),
-				source_id,
-				public_facts
-			)
+			var target_binding := skill.get("target_binding", {}) as Dictionary
+			var target: Dictionary = {}
+			if not target_binding.is_empty():
+				target = {
+					"valid": true,
+					"target_kind": str(target_binding.get(
+						"target_kind",
+						""
+					)),
+					"target_id": str(target_binding.get(
+						"target_id",
+						""
+					)),
+				}
+			else:
+				var contract := str(skill.get("target_contract", "none"))
+				target = _stable_skill_target(
+					contract,
+					str(own_private_facts.get("viewer_player_id", "")),
+					source_id,
+					public_facts
+				)
 			if not bool(target.get("valid", false)):
+				continue
+			if target_binding.is_empty():
+				target_binding = _ai_target_binding(target)
+			if target_binding.is_empty():
 				continue
 			var candidate := {
 				"action_kind": "monster_private_skill",
@@ -788,6 +836,7 @@ func _append_private_skill_candidates(
 				),
 				"target_kind": str(target.get("target_kind", "none")),
 				"target_id": str(target.get("target_id", "")),
+				"target_binding": target_binding.duplicate(true),
 				"score": 880
 					+ (
 						80
@@ -810,69 +859,174 @@ func _append_military_candidates(
 	own_private_facts: Dictionary,
 	public_facts: Dictionary
 ) -> void:
-	var viewer_id := str(own_private_facts.get("viewer_player_id", ""))
-	var region_id := _first_enemy_facility_region(
-		viewer_id,
-		public_facts
-	)
-	var monster_id := _first_enemy_monster_id(
-		viewer_id,
-		public_facts
-	)
-	for card_variant in own_private_facts.get(
-		"military_card_options",
+	var detailed_options: Array = []
+	var detailed_value: Variant = own_private_facts.get(
+		"military_options",
 		[]
-	) as Array:
-		if not (card_variant is Dictionary):
-			continue
-		var card := card_variant as Dictionary
-		var card_instance_id := str(
-			card.get("card_instance_id", "")
+	)
+	if detailed_value is Array:
+		detailed_options = (detailed_value as Array).duplicate(true)
+	if detailed_options.is_empty() and not own_private_facts.has(
+		"military_options"
+	):
+		# Older semantic fixtures expose only the task contract. Keep this
+		# adapter-compatible path deterministic, while the production projection
+		# always supplies authoritative option_id/target_slot_id DTOs.
+		var viewer_id := str(own_private_facts.get("viewer_player_id", ""))
+		var region_id := _first_enemy_facility_region(
+			viewer_id,
+			public_facts
 		)
-		if card_instance_id.is_empty():
-			continue
-		for task_variant in card.get(
-			"legal_task_kinds",
+		var monster_id := _first_enemy_monster_id(
+			viewer_id,
+			public_facts
+		)
+		for card_variant in own_private_facts.get(
+			"military_card_options",
 			[]
 		) as Array:
-			var task_kind := str(task_variant)
-			if task_kind not in MILITARY_TASK_KINDS:
+			if not (card_variant is Dictionary):
 				continue
-			var target_id := (
-				region_id
-				if task_kind == "assault_region"
-				else monster_id
-			)
-			if target_id.is_empty():
+			var card := card_variant as Dictionary
+			var card_instance_id := str(card.get("card_instance_id", ""))
+			if card_instance_id.is_empty():
 				continue
-			var candidate := {
-				"action_kind": "military_mission",
-				"task_kind": task_kind,
-				"card_instance_id": card_instance_id,
-				"card_definition_id": str(
-					card.get("card_definition_id", "")
-				),
-				"target_region_id": (
-					target_id
+			for task_variant in card.get("legal_task_kinds", []) as Array:
+				var task_kind := str(task_variant)
+				if task_kind not in MILITARY_TASK_KINDS:
+					continue
+				var target_id := (
+					region_id
 					if task_kind == "assault_region"
-					else ""
-				),
-				"target_monster_source_instance_id": (
-					target_id
-					if task_kind == "assault_monster"
-					else ""
-				),
-				"one_shot_withdrawal": true,
-				"score": (
-					640
-					if task_kind == "assault_monster"
-					else 610
-				),
-			}
-			candidate["stable_action_key"] = _stable_action_key(
-				candidate
-			)
-			candidates.append(candidate)
+					else monster_id
+				)
+				if target_id.is_empty():
+					continue
+				var stable_suffix := "%s|%s|%s" % [
+					card_instance_id,
+					task_kind,
+					target_id,
+				]
+				var candidate := {
+					"action_kind": "military_mission",
+					"task_kind": task_kind,
+					"option_id": "legacy_ai|%s" % stable_suffix,
+					"card_instance_id": card_instance_id,
+					"card_definition_id": str(
+						card.get("card_definition_id", "")
+					),
+					"target_slot_id": "combat.military.%s.%s" % [
+						task_kind,
+						target_id,
+					],
+					"target_region_id": (
+						target_id if task_kind == "assault_region" else ""
+					),
+					"target_monster_source_instance_id": (
+						target_id if task_kind == "assault_monster" else ""
+					),
+					"target_source_generation": 1,
+					"launch_region_id": "",
+					"asset_cost_by_color": {},
+					"one_shot_withdrawal": true,
+					"legacy_semantic_projection": true,
+					"score": 640 if task_kind == "assault_monster" else 610,
+				}
+				candidate["stable_action_key"] = _stable_action_key(candidate)
+				candidates.append(candidate)
+		return
+	if detailed_options.is_empty():
+		for card_variant in own_private_facts.get(
+			"military_card_options",
+			[]
+		) as Array:
+			if not (card_variant is Dictionary):
+				continue
+			for option_variant in (card_variant as Dictionary).get(
+				"options",
+				[]
+			) as Array:
+				if option_variant is Dictionary:
+					detailed_options.append(
+						(option_variant as Dictionary).duplicate(true)
+					)
+	for option_variant in detailed_options:
+		if not (option_variant is Dictionary):
+			continue
+		var option := option_variant as Dictionary
+		if not bool(option.get("enabled", false)):
+			continue
+		var task_kind := str(option.get("task_kind", ""))
+		if task_kind not in MILITARY_TASK_KINDS:
+			continue
+		if (
+			str(option.get("option_id", "")).is_empty()
+			or str(option.get("card_instance_id", "")).is_empty()
+			or str(option.get("target_slot_id", "")).is_empty()
+		):
+			continue
+		var target_id := (
+			str(option.get("target_region_id", ""))
+			if task_kind == "assault_region"
+			else str(option.get("target_monster_source_instance_id", ""))
+		)
+		if target_id.is_empty():
+			continue
+		var candidate := {
+			"action_kind": "military_mission",
+			"task_kind": task_kind,
+			"option_id": str(option.get("option_id", "")),
+			"card_instance_id": str(option.get("card_instance_id", "")),
+			"card_definition_id": str(option.get("card_definition_id", "")),
+			"target_slot_id": str(option.get("target_slot_id", "")),
+			"target_region_id": (
+				target_id if task_kind == "assault_region" else ""
+			),
+			"target_monster_source_instance_id": (
+				target_id if task_kind == "assault_monster" else ""
+			),
+			"target_source_generation": int(option.get(
+				"target_source_generation",
+				0
+			)),
+			"launch_region_id": str(option.get("launch_region_id", "")),
+			"asset_cost_by_color": (
+				option.get("asset_cost_by_color", {}) as Dictionary
+			).duplicate(true),
+			"one_shot_withdrawal": true,
+			"score": 640 if task_kind == "assault_monster" else 610,
+		}
+		candidate["stable_action_key"] = _stable_action_key(candidate)
+		candidates.append(candidate)
+
+
+func _ai_target_binding(target: Dictionary) -> Dictionary:
+	var target_kind := str(target.get("target_kind", ""))
+	var target_id := str(target.get("target_id", ""))
+	if target_id.is_empty():
+		return {}
+	var result := {
+		"target_kind": target_kind,
+		"target_id": target_id,
+	}
+	match target_kind:
+		"facility":
+			result["target_facility_id"] = target_id
+			if target.has("target_facility_generation"):
+				result["target_facility_generation"] = int(
+					target.get("target_facility_generation", 0)
+				)
+		"region":
+			result["target_region_id"] = target_id
+		"monster":
+			result["target_monster_source_instance_id"] = target_id
+			if target.has("target_source_generation"):
+				result["target_source_generation"] = int(
+					target.get("target_source_generation", 0)
+				)
+		_:
+			return {}
+	return result
 
 
 func _stable_skill_target(
@@ -890,9 +1044,16 @@ func _stable_skill_target(
 			}
 		"self":
 			return {
-				"valid": not source_id.is_empty(),
+				"valid": (
+					not source_id.is_empty()
+					and _source_generation(source_id, public_facts) > 0
+				),
 				"target_kind": "monster",
 				"target_id": source_id,
+				"target_source_generation": _source_generation(
+					source_id,
+					public_facts
+				),
 			}
 		"enemy_facility":
 			var facility_id := _first_enemy_facility_id(
@@ -900,9 +1061,16 @@ func _stable_skill_target(
 				public_facts
 			)
 			return {
-				"valid": not facility_id.is_empty(),
+				"valid": (
+					not facility_id.is_empty()
+					and _facility_generation(facility_id, public_facts) > 0
+				),
 				"target_kind": "facility",
 				"target_id": facility_id,
+				"target_facility_generation": _facility_generation(
+					facility_id,
+					public_facts
+				),
 			}
 		"enemy_monster":
 			var monster_id := _first_enemy_monster_id(
@@ -910,9 +1078,16 @@ func _stable_skill_target(
 				public_facts
 			)
 			return {
-				"valid": not monster_id.is_empty(),
+				"valid": (
+					not monster_id.is_empty()
+					and _source_generation(monster_id, public_facts) > 0
+				),
 				"target_kind": "monster",
 				"target_id": monster_id,
+				"target_source_generation": _source_generation(
+					monster_id,
+					public_facts
+				),
 			}
 		"region":
 			var region_id := _first_public_region_id(public_facts)
@@ -946,6 +1121,28 @@ func _first_enemy_facility_id(
 			candidates.append(facility_id)
 	candidates.sort()
 	return candidates[0] if not candidates.is_empty() else ""
+
+
+func _facility_generation(
+	facility_id: String,
+	public_facts: Dictionary
+) -> int:
+	for facility_variant in public_facts.get("facilities", []) as Array:
+		var facility := facility_variant as Dictionary
+		if str(facility.get("facility_id", "")) == facility_id:
+			return int(facility.get("facility_generation", 0))
+	return 0
+
+
+func _source_generation(
+	source_id: String,
+	public_facts: Dictionary
+) -> int:
+	for source_variant in public_facts.get("monsters", []) as Array:
+		var source := source_variant as Dictionary
+		if str(source.get("source_instance_id", "")) == source_id:
+			return int(source.get("source_generation", 0))
+	return 0
 
 
 func _first_enemy_facility_region(

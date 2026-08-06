@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scripts/ui/v075/v075_military_mission_panel.gd" id="1_script"]
 
 [node name="V075MilitaryMissionPanel" type="PanelContainer"]
-custom_minimum_size = Vector2(320, 118)
+custom_minimum_size = Vector2(320, 154)
 size_flags_horizontal = 3
 script = ExtResource("1_script")
 
@@ -29,6 +29,24 @@ theme_override_colors/font_color = Color(0.94, 0.67, 0.53, 1)
 theme_override_font_sizes/font_size = 11
 text = "攻击后撤离"
 vertical_alignment = 1
+
+[node name="TargetMenus" type="HBoxContainer" parent="Margin/Rows"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="AssaultRegionOption" type="OptionButton" parent="Margin/Rows/TargetMenus"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(144, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "地区目标"
+
+[node name="AssaultMonsterOption" type="OptionButton" parent="Margin/Rows/TargetMenus"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(144, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "怪兽目标"
 
 [node name="TaskButtons" type="HBoxContainer" parent="Margin/Rows"]
 layout_mode = 2

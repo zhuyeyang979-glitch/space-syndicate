@@ -1,12 +1,8 @@
 extends Control
 class_name V075CombatPlayerSurface
 
-signal private_target_selection_requested(
-	source_instance_id: String,
-	skill_definition_id: String,
-	target_contract: String
-)
-signal military_mission_selected(task_kind: String)
+signal private_target_selection_requested(request: Dictionary)
+signal military_mission_selected(option: Dictionary)
 
 const CATALOG := preload(
 	"res://resources/presentation/alpha01_card_illustration_catalog.tres"
@@ -44,6 +40,7 @@ const RANK_LABELS := ["", "I", "II", "III", "IV"]
 @onready var _unlocked_label: Label = %UnlockedSkillCount
 @onready var _batch_used_badge: Label = %BatchUsedBadge
 @onready var _private_grid: GridContainer = %PrivateGrid
+@onready var _rows: VBoxContainer = $Rows
 @onready var _skill_dock: V075MonsterPrivateSkillDock = %SkillDock
 @onready var _military_panel: V075MilitaryMissionPanel = %MilitaryPanel
 @onready var _presentation_strip: PanelContainer = %PresentationStrip
@@ -53,6 +50,7 @@ var _projection: Dictionary = {}
 var _selected_public_monster: Dictionary = {}
 var _layout_mode := "COMPACT"
 var _viewer_is_owner := false
+var _viewer_can_submit_military := false
 var _last_cue: Dictionary = {}
 var _presentation_cue_fingerprints: Dictionary = {}
 var _presentation_cue_applied_count := 0
@@ -87,6 +85,14 @@ func apply_projection(
 	_render_public_monster()
 	_render_private_surfaces()
 	_resolve_layout()
+	call_deferred("_resolve_layout")
+
+
+func preferred_content_height() -> float:
+	if not is_instance_valid(_rows):
+		return 410.0
+	var content_height := _rows.get_combined_minimum_size().y + 20.0
+	return maxf(410.0, content_height)
 
 
 func show_presentation_cue(cue: Dictionary) -> Dictionary:
@@ -159,6 +165,7 @@ func debug_snapshot() -> Dictionary:
 			else 0
 		),
 		"viewer_is_owner": _viewer_is_owner,
+		"viewer_can_submit_military": _viewer_can_submit_military,
 		"selected_source_instance_id": str(
 			_selected_public_monster.get("source_instance_id", "")
 		),
@@ -182,6 +189,9 @@ func debug_snapshot() -> Dictionary:
 		"military_task_kinds": (
 			military_debug.get("task_kinds", []) as Array
 		).duplicate(),
+		"military_option_identity_count": int(
+			military_debug.get("option_identity_count", 0)
+		),
 		"military_bound_action_ui_count": int(
 			military_debug.get("bound_action_ui_count", 0)
 		),
@@ -201,6 +211,43 @@ func debug_snapshot() -> Dictionary:
 		),
 		"presentation_gameplay_mutation_count": 0,
 		"presentation_rng_draw_delta": 0,
+	}
+
+
+func debug_geometry_audit() -> Dictionary:
+	var controls: Array[Control] = []
+	for candidate in [
+		_public_panel,
+		_skill_dock,
+		_military_panel,
+		_presentation_strip,
+	]:
+		if is_instance_valid(candidate) and candidate.visible:
+			controls.append(candidate)
+	var overlap_count := 0
+	var outside_count := 0
+	var surface_rect := get_global_rect()
+	var rects := {}
+	for control in controls:
+		var rect := control.get_global_rect()
+		rects[control.name] = rect
+		if not surface_rect.encloses(rect):
+			outside_count += 1
+	for left_index in range(controls.size()):
+		for right_index in range(left_index + 1, controls.size()):
+			var intersection := controls[left_index].get_global_rect().intersection(
+				controls[right_index].get_global_rect()
+			)
+			if intersection.size.x > 0.5 and intersection.size.y > 0.5:
+				overlap_count += 1
+	return {
+		"schema": "V075CombatSurfaceGeometryAuditV1",
+		"visible_control_count": controls.size(),
+		"unintended_overlap_count": overlap_count,
+		"outside_surface_count": outside_count,
+		"private_grid_columns": _private_grid.columns,
+		"surface_rect": surface_rect,
+		"rects": rects,
 	}
 
 
@@ -355,6 +402,12 @@ func _render_private_surfaces() -> void:
 						""
 					)
 				) == source_id
+				and str(
+					(source_variant as Dictionary).get(
+						"owner_player_id",
+						""
+					)
+				) == viewer_id
 			):
 				skill_source = (
 					source_variant as Dictionary
@@ -365,15 +418,27 @@ func _render_private_surfaces() -> void:
 		_viewer_is_owner and not skill_source.is_empty(),
 		bool(_projection.get("combat_requests_allowed", false))
 	)
-	_military_panel.configure(
-		_projection.get("military_task_options", []) as Array,
-		not viewer_id.is_empty()
-	)
+	var military_options: Array = []
+	for option_variant in _projection.get(
+		"military_task_options",
+		[]
+	) as Array:
+		if not (option_variant is Dictionary):
+			continue
+		var option := option_variant as Dictionary
+		if str(option.get("owner_player_id", "")) != viewer_id:
+			continue
+		if str(option.get("action_domain", "military")) != "military":
+			continue
+		military_options.append(option.duplicate(true))
+	_viewer_can_submit_military = not military_options.is_empty()
+	_military_panel.configure(military_options, _viewer_can_submit_military)
 
 
 func _render_empty() -> void:
 	_public_panel.visible = false
 	_viewer_is_owner = false
+	_viewer_can_submit_military = false
 	_skill_dock.clear_private_data()
 	_military_panel.configure([], false)
 
@@ -382,8 +447,15 @@ func _resolve_layout() -> void:
 	if not is_instance_valid(_private_grid):
 		return
 	var width := size.x
-	_layout_mode = "WIDE" if width >= 980.0 else "COMPACT"
-	_private_grid.columns = 2 if _layout_mode == "WIDE" else 1
+	var available_width := maxf(0.0, width - 20.0)
+	var required_two_column_width := (
+		_skill_dock.custom_minimum_size.x
+		+ _military_panel.custom_minimum_size.x
+		+ float(_private_grid.get_theme_constant("h_separation"))
+	)
+	var two_column := available_width >= required_two_column_width
+	_layout_mode = "WIDE" if two_column else "COMPACT"
+	_private_grid.columns = 2 if two_column else 1
 
 
 func _apply_styles() -> void:
@@ -548,19 +620,30 @@ func _string_array(values: Array) -> Array[String]:
 	return result
 
 
-func _on_private_target_selection_requested(
-	source_instance_id: String,
-	skill_definition_id: String,
-	target_contract: String
-) -> void:
-	private_target_selection_requested.emit(
-		source_instance_id,
-		skill_definition_id,
-		target_contract
-	)
-
-
-func _on_military_mission_selected(task_kind: String) -> void:
-	if task_kind not in ["assault_region", "assault_monster"]:
+func _on_private_target_selection_requested(request: Dictionary) -> void:
+	if (
+		not _viewer_is_owner
+		or request.is_empty()
+		or str(request.get("source_instance_id", "")) != str(
+			_selected_public_monster.get("source_instance_id", "")
+		)
+		or not (request.get("target_binding", {}) is Dictionary)
+	):
 		return
-	military_mission_selected.emit(task_kind)
+	private_target_selection_requested.emit(request.duplicate(true))
+
+
+func _on_military_mission_selected(option: Dictionary) -> void:
+	if (
+		not _viewer_can_submit_military
+		or option.is_empty()
+		or str(option.get("owner_player_id", "")) != str(
+			_projection.get("viewer_player_id", "")
+		)
+		or str(option.get("task_kind", "")) not in [
+		"assault_region",
+		"assault_monster",
+		]
+	):
+		return
+	military_mission_selected.emit(option.duplicate(true))

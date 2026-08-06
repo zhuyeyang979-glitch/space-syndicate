@@ -308,8 +308,131 @@ func _run() -> void:
 			and int(military_debug.get("task_button_count", 0)) == 2,
 		"military UI contains only two one-shot assault tasks"
 	)
+	_expect(
+		int(military_debug.get("option_menu_item_count", 0)) == 2
+			and str(
+				(military_debug.get("selected_option_ids", {}) as Dictionary).get(
+					"assault_region", ""
+				)
+			) == "option.military.region.local"
+			and str(
+				(military_debug.get("selected_option_ids", {}) as Dictionary).get(
+					"assault_monster", ""
+				)
+			) == "option.military.monster.local",
+		"military controls retain complete prebound option identities"
+	)
 
 	var surface := screen.get_node(COMBAT_SURFACE_PATH) as Control
+	var surface_node := surface as V075CombatPlayerSurface
+	var selected_military: Array[Dictionary] = []
+	surface_node.military_mission_selected.connect(
+		func(option: Dictionary) -> void:
+			selected_military.append(option.duplicate(true))
+	)
+	var military_panel := surface_node.get_node(
+		"Rows/PrivateGrid/MilitaryPanel"
+	) as V075MilitaryMissionPanel
+	var region_option: Dictionary = {}
+	for option_variant in owner_projection.get(
+		"military_task_options",
+		[]
+	) as Array:
+		if (
+			option_variant is Dictionary
+			and str((option_variant as Dictionary).get("task_kind", ""))
+				== "assault_region"
+		):
+			region_option = (option_variant as Dictionary).duplicate(true)
+			break
+	var alternate_region := region_option.duplicate(true)
+	alternate_region["option_id"] = "option.military.region.alternate"
+	alternate_region["target_slot_id"] = "combat.military.assault_region.region.19"
+	alternate_region["target_region_id"] = "region.19"
+	military_panel.configure(
+		[
+			region_option.duplicate(true),
+			alternate_region,
+			(owner_projection.get("military_task_options", []) as Array)[1],
+		],
+		true
+	)
+	var alternate_selected := military_panel.select_option_id(
+			"assault_region",
+			"option.military.region.alternate"
+		)
+	var stale_selected := military_panel.select_option_id(
+		"assault_region",
+		"option.military.region.stale"
+	)
+	_expect(
+		alternate_selected
+			and not stale_selected
+			and str(
+				(military_panel.debug_snapshot().get(
+					"selected_option_ids", {}
+				) as Dictionary).get("assault_region", "")
+			) == "option.military.region.alternate",
+		"military option selector rejects stale identity and preserves selected DTO"
+	)
+	var region_button := military_panel.get_node(
+		"Margin/Rows/TaskButtons/AssaultRegionButton"
+	) as Button
+	region_button.emit_signal("pressed")
+	_expect(
+		selected_military.size() == 1
+			and str(selected_military[0].get("option_id", ""))
+				== "option.military.region.alternate"
+			and str(selected_military[0].get("target_region_id", ""))
+				== "region.19",
+		"military button submits the selected option without a first-card fallback"
+	)
+	var geometry := surface_node.debug_geometry_audit()
+	_expect(
+		int(geometry.get("unintended_overlap_count", 1)) == 0
+			and int(geometry.get("outside_surface_count", 1)) == 0,
+		"owner combat surface child rectangles do not overlap or escape"
+	)
+	var rival_projection := adapter.project_for_viewer(
+		authority,
+		"player.rival"
+	)
+
+	screen.apply_combat_projection(
+		owner_projection,
+		"monster.industry.ai.02"
+	)
+	await process_frame
+	var rival_monster_surface := (
+		screen.combat_debug_snapshot().get("surface", {}) as Dictionary
+	)
+	_expect(
+		not bool(rival_monster_surface.get("viewer_is_owner", true))
+			and bool(rival_monster_surface.get("viewer_can_submit_military", false))
+			and bool(
+				(rival_monster_surface.get("military_panel", {}) as Dictionary).get(
+					"visible", false
+				)
+			),
+		"owner retains military controls while inspecting a rival monster"
+	)
+	screen.apply_combat_projection(
+		rival_projection,
+		"monster.tech.local.01"
+	)
+	await process_frame
+	var rival_private_surface := (
+		screen.combat_debug_snapshot().get("surface", {}) as Dictionary
+	)
+	_expect(
+		not bool(rival_private_surface.get("viewer_can_submit_military", true))
+			and not bool(
+				(rival_private_surface.get("military_panel", {}) as Dictionary).get(
+					"visible", true
+				)
+			),
+		"rival projection fails closed for private military controls"
+	)
 	_expect(
 		_count_surface_tokens(
 			surface,
@@ -327,10 +450,6 @@ func _run() -> void:
 		"combat surface has no placeholder guard or bound-action UI"
 	)
 
-	var rival_projection := adapter.project_for_viewer(
-		authority,
-		"player.rival"
-	)
 	screen.apply_combat_projection(
 		rival_projection,
 		"monster.tech.local.01"

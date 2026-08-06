@@ -57,6 +57,17 @@ func _run() -> void:
 			== 2,
 		"owner military projection has exactly two tasks"
 	)
+	for option_variant in owner_projection.get(
+		"military_task_options",
+		[]
+	) as Array:
+		var option := option_variant as Dictionary
+		_expect(
+			not str(option.get("option_id", "")).is_empty()
+			and not str(option.get("card_instance_id", "")).is_empty()
+			and not str(option.get("target_slot_id", "")).is_empty(),
+			"owner military option keeps card and target identity"
+		)
 	_expect(
 		(rival_projection.get("military_task_options", []) as Array).is_empty(),
 		"rival receives no owner military command choice"
@@ -173,8 +184,14 @@ func _run() -> void:
 	surface.size = Vector2(900.0, 620.0)
 	await process_frame
 	_expect(
+		int(surface.debug_snapshot().get("private_grid_columns", 0)) == 2,
+		"900px combat surface fits measured two-column children"
+	)
+	surface.size = Vector2(660.0, 620.0)
+	await process_frame
+	_expect(
 		int(surface.debug_snapshot().get("private_grid_columns", 0)) == 1,
-		"compact combat surface stacks without internal wrap"
+		"660px combat surface stacks without internal wrap"
 	)
 	surface.apply_projection(
 		rival_projection,
