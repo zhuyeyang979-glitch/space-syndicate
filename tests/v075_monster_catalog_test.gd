@@ -58,7 +58,23 @@ func _run() -> void:
 			.size() == 4,
 			"family has four ordered skills for %s" % family_id
 		)
+		for budget_variant in (
+			definition.get("movement_budget_milli_arc_by_rank", []) as Array
+		):
+			var budget := int(budget_variant)
+			_expect(
+				budget >= 2000000 and budget <= 3000000,
+				"movement budget matches dynamic-map geodesic scale for %s"
+					% family_id
+			)
 	_expect(colors.size() == 6, "runtime preferred color coverage is unique")
+	_expect(
+		int(Catalog.trample_balance().get(
+			"trample_distance_step_milli_arc",
+			0
+		)) == 250000,
+		"trample distance step matches the audited map scale"
+	)
 
 	var skill_ids: Array[String] = []
 	for definition_variant in Catalog.monster_skill_definitions():
