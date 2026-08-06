@@ -52,9 +52,39 @@ const MODE_SCORE := {
 	"UPGRADE_EXISTING": 940,
 	"REPLACE_EXISTING": 680,
 }
+const CardDefinitionsV075 := preload(
+	"res://scripts/v075/cards/v075_card_definition_registry.gd"
+)
+const COLORS := [
+	"life",
+	"energy",
+	"industry",
+	"technology",
+	"commerce",
+	"shipping",
+]
+const TRACK_LOCAL_VISIBLE_CAPACITY := 10
+const TRACK_REFILL_MODE := "shared_scroll_vacancy"
+const TRACK_SLOW_SUSHI_MOTION := true
+const TRACK_IMMEDIATE_REFILL_ON_ACQUISITION := false
+const OUTER_NORMAL_CARD_RATIO_BPS := 6000
+const OUTER_COMMODITY_CARD_RATIO_BPS := 4000
+const NORMAL_SUBTYPE_WEIGHT_BPS := {
+	"facility": 7000,
+	"monster": 1500,
+	"military": 1500,
+}
+const ACQUISITION_DOMAIN_TIE_BREAKER := {
+	"facility": 30,
+	"monster": 20,
+	"military": 10,
+}
 
 var _enumeration_count := 0
 var _rejection_count := 0
+var _acquisition_enumeration_count := 0
+var _acquisition_rejection_count := 0
+var _natural_purchase_intent_count := 0
 var _last_reason_code := "not_evaluated"
 
 
@@ -110,6 +140,156 @@ func choose_action(
 		"reason_code": "none",
 		"action": (candidates[0] as Dictionary).duplicate(true),
 	}
+
+
+func enumerate_track_acquisition_candidates(
+	own_private_facts: Dictionary,
+	public_facts: Dictionary = {}
+) -> Dictionary:
+	_acquisition_enumeration_count += 1
+	var privacy: Dictionary = privacy_report(
+		own_private_facts,
+		public_facts
+	)
+	if not bool(privacy.get("valid", false)):
+		_acquisition_rejection_count += 1
+		_last_reason_code = str(
+			privacy.get("reason_code", "privacy_contract_invalid")
+		)
+		return _acquisition_result([], _last_reason_code, {})
+	var phase := str(public_facts.get("phase", "batch_active"))
+	if phase in TERMINAL_PHASES:
+		_last_reason_code = "terminal_combat_quiescent"
+		return _acquisition_result([], _last_reason_code, {})
+	var balance_error := _acquisition_balance_error()
+	if not balance_error.is_empty():
+		_acquisition_rejection_count += 1
+		_last_reason_code = balance_error
+		return _acquisition_result([], balance_error, {})
+	var track_view: Dictionary = _track_items_view(own_private_facts)
+	if not bool(track_view.get("present", false)):
+		_acquisition_rejection_count += 1
+		_last_reason_code = "track_projection_missing"
+		return _acquisition_result([], _last_reason_code, {})
+	var asset_view: Dictionary = _available_asset_view(own_private_facts)
+	if not bool(asset_view.get("valid", false)):
+		_acquisition_rejection_count += 1
+		_last_reason_code = str(
+			asset_view.get("reason_code", "asset_projection_missing")
+		)
+		return _acquisition_result([], _last_reason_code, {
+			"track_item_count": (
+				(track_view.get("items", []) as Array).size()
+			),
+		})
+	var items: Array = track_view.get("items", []) as Array
+	var available_assets: Dictionary = (
+		asset_view.get("assets", {}) as Dictionary
+	)
+	var candidates: Array[Dictionary] = []
+	var seen_instance_ids: Dictionary = {}
+	var invalid_projection_row_count := 0
+	for item_variant in items:
+		if not (item_variant is Dictionary):
+			invalid_projection_row_count += 1
+			continue
+		var item := item_variant as Dictionary
+		var candidate: Dictionary = _track_acquisition_candidate(
+			item,
+			available_assets,
+			own_private_facts
+		)
+		if candidate.is_empty():
+			invalid_projection_row_count += 1
+			continue
+		var instance_id := str(candidate.get("source_instance_id", ""))
+		if seen_instance_ids.has(instance_id):
+			invalid_projection_row_count += 1
+			continue
+		seen_instance_ids[instance_id] = true
+		candidates.append(candidate)
+	candidates.sort_custom(_candidate_precedes)
+	_last_reason_code = (
+		"none"
+		if not candidates.is_empty()
+		else "no_legal_track_acquisition"
+	)
+	return _acquisition_result(
+		candidates,
+		_last_reason_code,
+		{
+			"track_item_count": items.size(),
+			"invalid_projection_row_count": invalid_projection_row_count,
+		}
+	)
+
+
+func enumerate_acquisition_candidates(
+	own_private_facts: Dictionary,
+	public_facts: Dictionary = {}
+) -> Dictionary:
+	return enumerate_track_acquisition_candidates(
+		own_private_facts,
+		public_facts
+	)
+
+
+func choose_track_acquisition(
+	own_private_facts: Dictionary,
+	public_facts: Dictionary = {}
+) -> Dictionary:
+	var result: Dictionary = enumerate_track_acquisition_candidates(
+		own_private_facts,
+		public_facts
+	)
+	var candidates: Array = result.get("candidates", []) as Array
+	if candidates.is_empty():
+		return {
+			"accepted": false,
+			"reason_code": str(
+				result.get(
+					"reason_code",
+					"no_legal_track_acquisition"
+				)
+			),
+			"action": {},
+			"acquisition_audit": (
+				result.get("acquisition_audit", {}) as Dictionary
+			).duplicate(true),
+		}
+	_natural_purchase_intent_count += 1
+	var action := (candidates[0] as Dictionary).duplicate(true)
+	return {
+		"accepted": true,
+		"reason_code": "natural_track_acquisition_intent_ready",
+		"action": action,
+		"acquisition_intent": action.duplicate(true),
+		"acquisition_audit": (
+			result.get("acquisition_audit", {}) as Dictionary
+		).duplicate(true),
+	}
+
+
+func choose_acquisition(
+	own_private_facts: Dictionary,
+	public_facts: Dictionary = {}
+) -> Dictionary:
+	return choose_track_acquisition(
+		own_private_facts,
+		public_facts
+	)
+
+
+func audit_natural_acquisition(
+	own_private_facts: Dictionary,
+	public_facts: Dictionary = {}
+) -> Dictionary:
+	var result: Dictionary = enumerate_track_acquisition_candidates(
+		own_private_facts,
+		public_facts
+	)
+	result["audit_only"] = true
+	return result
 
 
 func privacy_report(
@@ -187,7 +367,323 @@ func debug_snapshot() -> Dictionary:
 		"rng_draw_count": 0,
 		"enumeration_count": _enumeration_count,
 		"rejection_count": _rejection_count,
+		"acquisition_enumeration_count": _acquisition_enumeration_count,
+		"acquisition_rejection_count": _acquisition_rejection_count,
+		"natural_purchase_intent_count": _natural_purchase_intent_count,
+		"track_local_visible_capacity": TRACK_LOCAL_VISIBLE_CAPACITY,
+		"track_refill_mode": TRACK_REFILL_MODE,
+		"track_slow_sushi_motion": TRACK_SLOW_SUSHI_MOTION,
+		"track_immediate_refill_on_acquisition": (
+			TRACK_IMMEDIATE_REFILL_ON_ACQUISITION
+		),
+		"outer_normal_card_ratio_basis_points": (
+			OUTER_NORMAL_CARD_RATIO_BPS
+		),
+		"outer_commodity_card_ratio_basis_points": (
+			OUTER_COMMODITY_CARD_RATIO_BPS
+		),
+		"normal_subtype_weights_basis_points": (
+			NORMAL_SUBTYPE_WEIGHT_BPS.duplicate()
+		),
+		"track_mutation_count": 0,
+		"supply_cursor_delta_on_acquisition": 0,
+		"supply_rng_draw_delta_on_acquisition": 0,
 		"last_reason_code": _last_reason_code,
+	}
+
+
+func _acquisition_balance_error() -> String:
+	var contract: Dictionary = CardDefinitionsV075.registry_contract()
+	var weights: Dictionary = (
+		contract.get("normal_subtype_weights_basis_points", {})
+		as Dictionary
+	)
+	if weights != NORMAL_SUBTYPE_WEIGHT_BPS:
+		return "normal_subtype_balance_contract_changed"
+	if int(contract.get("outer_normal_card_ratio_basis_points", -1)) != (
+		OUTER_NORMAL_CARD_RATIO_BPS
+	):
+		return "outer_normal_ratio_contract_changed"
+	if int(contract.get("outer_commodity_card_ratio_basis_points", -1)) != (
+		OUTER_COMMODITY_CARD_RATIO_BPS
+	):
+		return "outer_commodity_ratio_contract_changed"
+	return ""
+
+
+func _track_items_view(facts: Dictionary) -> Dictionary:
+	var direct: Variant = facts.get("own_segment_items", null)
+	if direct is Array:
+		return {
+			"present": true,
+			"items": (direct as Array).duplicate(true),
+		}
+	for container_key in ["track_projection", "unified_track", "track"]:
+		var container_variant: Variant = facts.get(container_key, null)
+		if not (container_variant is Dictionary):
+			continue
+		var container := container_variant as Dictionary
+		var nested_direct: Variant = container.get(
+			"own_segment_items",
+			null
+		)
+		if nested_direct is Array:
+			return {
+				"present": true,
+				"items": (nested_direct as Array).duplicate(true),
+			}
+		var private_variant: Variant = container.get(
+			"viewer_private_facts",
+			container.get("private_facts", {})
+		)
+		if not (private_variant is Dictionary):
+			continue
+		var private_facts := private_variant as Dictionary
+		var nested_items: Variant = private_facts.get(
+			"own_segment_items",
+			null
+		)
+		if nested_items is Array:
+			return {
+				"present": true,
+				"items": (nested_items as Array).duplicate(true),
+			}
+	return {
+		"present": false,
+		"items": [],
+	}
+
+
+func _available_asset_view(facts: Dictionary) -> Dictionary:
+	var raw: Variant = facts.get("available_unreserved_assets", null)
+	if not (raw is Dictionary):
+		var projection_variant: Variant = facts.get(
+			"six_color_assets",
+			null
+		)
+		if projection_variant is Dictionary:
+			raw = (projection_variant as Dictionary).get(
+				"own_available_assets",
+				null
+			)
+	if not (raw is Dictionary):
+		return {
+			"valid": false,
+			"reason_code": "asset_projection_missing",
+		}
+	var source := raw as Dictionary
+	var assets: Dictionary = {}
+	for color_id in COLORS:
+		if not source.has(color_id):
+			return {
+				"valid": false,
+				"reason_code": "asset_projection_incomplete",
+			}
+		var value: Variant = source.get(color_id)
+		if typeof(value) != TYPE_INT or int(value) < 0:
+			return {
+				"valid": false,
+				"reason_code": "asset_projection_invalid",
+			}
+		assets[color_id] = int(value)
+	return {
+		"valid": true,
+		"reason_code": "asset_projection_valid",
+		"assets": assets,
+	}
+
+
+func _track_acquisition_candidate(
+	item: Dictionary,
+	available_assets: Dictionary,
+	own_private_facts: Dictionary
+) -> Dictionary:
+	if str(item.get("card_kind", "")) != "normal_card":
+		return {}
+	if not bool(item.get("claimable", false)):
+		return {}
+	if item.has("claimability_state") and str(
+		item.get("claimability_state", "")
+	) != "claimable":
+		return {}
+	var instance_id := str(item.get("instance_id", ""))
+	var definition_id := str(item.get("card_definition_id", ""))
+	if instance_id.is_empty() or definition_id.is_empty():
+		return {}
+	var definition: Dictionary = CardDefinitionsV075.definition(
+		definition_id
+	)
+	if definition.is_empty() or not bool(
+		definition.get("purchase_allowed", false)
+	) or not bool(definition.get("track_spawn_allowed", false)):
+		return {}
+	if str(definition.get("origin_class", "")) != "standard":
+		return {}
+	if bool(item.get("starter_badge", false)):
+		return {}
+	if item.has("segment_owner_id") and str(
+		item.get("segment_owner_id", "")
+	) != str(own_private_facts.get("viewer_player_id", "")):
+		return {}
+	var domain := CardDefinitionsV075.card_domain(
+		str(definition.get("card_type", ""))
+	)
+	if not NORMAL_SUBTYPE_WEIGHT_BPS.has(domain):
+		return {}
+	var primary_color := str(item.get("primary_color", ""))
+	if primary_color not in COLORS or primary_color != str(
+		definition.get("primary_color", "")
+	):
+		return {}
+	if not item.has("primary_asset_cost"):
+		return {}
+	var cost_variant: Variant = item.get("primary_asset_cost")
+	if typeof(cost_variant) != TYPE_INT:
+		return {}
+	var cost := int(cost_variant)
+	if cost < 0 or cost != int(definition.get("primary_asset_cost", -1)):
+		return {}
+	if int(available_assets.get(primary_color, 0)) < cost:
+		return {}
+	if item.has("level") and int(item.get("level", 0)) != int(
+		definition.get("level", 0)
+	):
+		return {}
+	var local_slot_index := maxi(0, int(item.get("local_slot_index", 0)))
+	var domain_weight := int(NORMAL_SUBTYPE_WEIGHT_BPS.get(domain, 0))
+	var tie_breaker := int(
+		ACQUISITION_DOMAIN_TIE_BREAKER.get(domain, 0)
+	)
+	var score := domain_weight * 1000
+	score += maxi(0, 100 - cost)
+	score += maxi(0, TRACK_LOCAL_VISIBLE_CAPACITY - local_slot_index)
+	score += tie_breaker
+	var follow_up_contract: Dictionary = {}
+	if domain == "monster":
+		follow_up_contract = {
+			"requires_prebound_mode": true,
+			"allowed_modes": MONSTER_CARD_MODES.duplicate(),
+		}
+	elif domain == "military":
+		follow_up_contract = {
+			"requires_prebound_task": true,
+			"allowed_task_kinds": MILITARY_TASK_KINDS.duplicate(),
+		}
+	else:
+		follow_up_contract = {
+			"requires_facility_target_prebind": true,
+		}
+	var candidate := {
+		"action_kind": "track_acquisition",
+		"acquisition_kind": "normal_card",
+		"card_kind": "normal_card",
+		"card_instance_id": instance_id,
+		"source_instance_id": instance_id,
+		"card_definition_id": definition_id,
+		"card_domain": domain,
+		"card_type": str(definition.get("card_type", "")),
+		"card_rank": int(definition.get("level", 0)),
+		"primary_color": primary_color,
+		"primary_asset_cost": cost,
+		"track_revision": int(item.get("track_revision", 0)),
+		"local_slot_index": local_slot_index,
+		"claimable": true,
+		"target_bound": false,
+		"target_id": "",
+		"mode_prebound": false,
+		"follow_up_contract": follow_up_contract,
+		"domain_weight_basis_points": domain_weight,
+		"priority_reason": (
+			"facility_economy_dominant"
+			if domain == "facility"
+			else "combat_card_opportunity_when_facility_unavailable"
+		),
+		"track_refill_mode": TRACK_REFILL_MODE,
+		"slow_sushi_motion": TRACK_SLOW_SUSHI_MOTION,
+		"immediate_refill_on_acquisition": (
+			TRACK_IMMEDIATE_REFILL_ON_ACQUISITION
+		),
+		"supply_cursor_delta_on_acquisition": 0,
+		"supply_rng_draw_delta_on_acquisition": 0,
+		"score": score,
+	}
+	candidate["stable_action_key"] = _stable_action_key(candidate)
+	return candidate
+
+
+func _acquisition_result(
+	candidates: Array[Dictionary],
+	reason_code: String,
+	metadata: Dictionary
+) -> Dictionary:
+	var domain_counts := {
+		"facility": 0,
+		"monster": 0,
+		"military": 0,
+	}
+	for candidate_variant in candidates:
+		var candidate := candidate_variant as Dictionary
+		var domain := str(candidate.get("card_domain", ""))
+		if domain_counts.has(domain):
+			domain_counts[domain] = int(domain_counts.get(domain, 0)) + 1
+	var top_domain := ""
+	if not candidates.is_empty():
+		top_domain = str((candidates[0] as Dictionary).get(
+			"card_domain",
+			""
+		))
+	var audit := {
+		"baseline_root_cause_code": (
+			"v074_facility_only_auto_acquisition_bypassed_combat_adapter"
+		),
+		"adapter_acquisition_hook": (
+			"V075CombatAIAdapter.choose_track_acquisition"
+		),
+		"track_visible_capacity": TRACK_LOCAL_VISIBLE_CAPACITY,
+		"track_item_count": int(metadata.get("track_item_count", 0)),
+		"invalid_projection_row_count": int(
+			metadata.get("invalid_projection_row_count", 0)
+		),
+		"facility_candidate_count": int(domain_counts.get("facility", 0)),
+		"monster_candidate_count": int(domain_counts.get("monster", 0)),
+		"military_candidate_count": int(domain_counts.get("military", 0)),
+		"top_domain": top_domain,
+		"facility_economy_dominant": (
+			top_domain.is_empty() or top_domain == "facility"
+		),
+		"outer_normal_card_ratio_basis_points": (
+			OUTER_NORMAL_CARD_RATIO_BPS
+		),
+		"outer_commodity_card_ratio_basis_points": (
+			OUTER_COMMODITY_CARD_RATIO_BPS
+		),
+		"normal_subtype_weights_basis_points": (
+			NORMAL_SUBTYPE_WEIGHT_BPS.duplicate()
+		),
+		"track_refill_mode": TRACK_REFILL_MODE,
+		"slow_sushi_motion": TRACK_SLOW_SUSHI_MOTION,
+		"immediate_refill_on_acquisition": (
+			TRACK_IMMEDIATE_REFILL_ON_ACQUISITION
+		),
+		"supply_cursor_delta_on_acquisition": 0,
+		"supply_rng_draw_delta_on_acquisition": 0,
+		"track_mutation_count": 0,
+		"card_injection_count": 0,
+		"asset_injection_count": 0,
+		"target_injection_count": 0,
+		"rng_draw_count": 0,
+	}
+	return {
+		"schema": "V075CombatAINaturalAcquisitionV1",
+		"ruleset_id": RULESET_ID,
+		"accepted": reason_code in [
+			"none",
+			"no_legal_track_acquisition",
+		],
+		"reason_code": reason_code,
+		"candidate_count": candidates.size(),
+		"candidates": candidates.duplicate(true),
+		"acquisition_audit": audit,
 	}
 
 
