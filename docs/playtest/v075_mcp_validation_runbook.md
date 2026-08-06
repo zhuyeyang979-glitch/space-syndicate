@@ -345,10 +345,9 @@ if ($ProbeExitCode -ne 0) { throw "MCP production probe failed: $ProbeExitCode" 
 ```
 
 The probe's `status=PASS` means all supplied static manifests and supplied PNG
-dimensions passed. Its `v075_production_wiring_gap=true` is informational when
-the current task intentionally leaves `main.tscn` on V0.7.4; it must be handed
-to the coordinator instead of being hidden. A missing screenshot manifest is
-reported as a warning, while malformed or missing supplied screenshots fail.
+dimensions passed. Its `v075_production_wiring_gap=true` is a failure signal
+for this cutover, not an expected V0.7.4 handoff. A missing screenshot manifest
+is reported as a warning, while malformed or missing supplied screenshots fail.
 
 ## Shutdown And Evidence
 
@@ -382,10 +381,9 @@ and must remain distinguishable from task-introduced failures:
   signal 11 while rebuilding the commercial-asset import cache; the immediate
   Forward Plus relaunch recovered. This is editor-cache evidence, not a
   gameplay receipt error.
-- The current `scenes/main.tscn` still references
-  `V074RuntimeComposition.tscn` and `V074SampleGameScreen.tscn`; the V0.7.5
-  screen is loadable but not production-wired in this Lane. That is the only
-  expected integration handoff here.
+- The final `scenes/main.tscn` must reference the V0.7.5 bootstrap,
+  `V075RuntimeComposition.tscn`, and `V075SampleGameScreen.tscn`; the probe
+  treats a V0.7.4-only composition as a production wiring failure.
 - The embedded runtime bridge returned `1528x917` for all three requested
   launch resolutions. This is a visual-tooling gap, not evidence that the
   underlying responsive layout is wrong; the runbook preserves the actual

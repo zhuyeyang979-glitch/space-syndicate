@@ -7,7 +7,9 @@ const MCP_BRIDGE_SCRIPT_PATH := "res://tools/funplay_mcp_stdio.cmd"
 const MCP_LAUNCH_SCRIPT_PATH := "res://tools/launch_role_godot_mcp.ps1"
 const MCP_INVOKE_SCRIPT_PATH := "res://tools/invoke_role_godot_mcp.ps1"
 const MCP_STOP_SCRIPT_PATH := "res://tools/stop_role_godot_mcp.ps1"
-const APPLICATION_FLOW_PATH := "res://scripts/v074_runtime/v074_application_flow.gd"
+const APPLICATION_FLOW_PATH := "res://scripts/v075_runtime/v075_application_flow.gd"
+const APPLICATION_BOOTSTRAP_PATH := "res://scripts/v075_runtime/v075_application_bootstrap.gd"
+const RUNTIME_COMPOSITION_PATH := "res://scenes/runtime/V075RuntimeComposition.tscn"
 const SAMPLE_SCREEN_PATH := "res://scenes/ui/v075/V075SampleGameScreen.tscn"
 const SAMPLE_SCREEN_SCRIPT_PATH := "res://scripts/ui/v075/v075_sample_game_screen.gd"
 const PNG_SIGNATURE := [
@@ -80,14 +82,35 @@ func _run() -> void:
 	)
 
 	var main_text := _read_text(main_scene)
-	var v075_wired := (
-		"V075SampleGameScreen.tscn" in main_text
-		or "v075_runtime" in main_text
+	var v075_wiring := {
+		"bootstrap": "v075_application_bootstrap.gd" in main_text,
+		"composition": "V075RuntimeComposition.tscn" in main_text,
+		"screen": "V075SampleGameScreen.tscn" in main_text,
+	}
+	var v075_wired := true
+	for wiring_variant in v075_wiring.values():
+		v075_wired = v075_wired and bool(wiring_variant)
+	_check(
+		v075_wired,
+		"v075_main_scene_production_wiring_is_connected"
 	)
+	for wiring_key in v075_wiring.keys():
+		_check(
+			bool(v075_wiring.get(wiring_key, false)),
+			"v075_main_scene_wiring:%s" % str(wiring_key)
+		)
 	var flow_checks := {
 		"application_flow": _resource_loadable(
 			APPLICATION_FLOW_PATH,
 			"script"
+		),
+		"application_bootstrap": _resource_loadable(
+			APPLICATION_BOOTSTRAP_PATH,
+			"script"
+		),
+		"runtime_composition": _resource_loadable(
+			RUNTIME_COMPOSITION_PATH,
+			"scene"
 		),
 		"sample_screen": _resource_loadable(
 			SAMPLE_SCREEN_PATH,
@@ -150,6 +173,7 @@ func _run() -> void:
 				"scene"
 			),
 			"v075_main_scene_wired": v075_wired,
+			"v075_main_scene_wiring": v075_wiring.duplicate(),
 			"v075_production_wiring_gap": not v075_wired,
 		},
 		"mcp_config": {
