@@ -10,6 +10,8 @@ const PRIVATE_PROJECTION_ID := "V075MonsterPrivateSkillOwnerProjectionV1"
 const PUBLIC_PROJECTION_ID := "V075MonsterSkillPublicProjectionV1"
 const SKILL_DEFINITION_ID := "V075MonsterSkillDefinitionV1"
 const SOURCE_SNAPSHOT_ID := "V075MonsterSkillSourceSnapshotV1"
+const SOURCE_CORE_SNAPSHOT_ID := "v075.monster_source.v1"
+const SOURCE_CORE_SCHEMA_VERSION := "1.0.0"
 const REQUEST_ID := "V075MonsterPrivateSkillRequestV1"
 const ASSET_RESERVATION_REQUEST_ID := "V075MonsterSkillAssetReservationRequestV1"
 const ASSET_RESERVATION_RECEIPT_ID := "V075MonsterSkillAssetReservationReceiptV1"
@@ -21,6 +23,92 @@ const MAX_SAFE_INTEGER := 9007199254740991
 
 const COLORS := ["life", "energy", "industry", "technology", "commerce", "shipping"]
 const SOURCE_STATUSES := ["active", "downed", "destroyed", "withdrawn"]
+const SKILL_STATUSES := [
+	"LOCKED_BY_RANK",
+	"READY",
+	"PENDING_SAFE_BOUNDARY",
+	"RESOLVING",
+	"COOLDOWN",
+	"DISABLED",
+	"REVOKED",
+]
+const SKILL_RESUME_STATUSES := [
+	"LOCKED_BY_RANK",
+	"READY",
+	"COOLDOWN",
+	"REVOKED",
+]
+const SOURCE_CORE_MOVEMENT_PROFILES := [
+	"ground_trample",
+	"flying_no_trample",
+	"teleport_no_trample",
+]
+const SOURCE_CORE_FACILITY_TYPES := ["factory", "market", "warehouse"]
+const SKILL_DEFINITION_FIELDS := [
+	"schema_version",
+	"contract_id",
+	"skill_definition_id",
+	"public_effect_id",
+	"required_rank",
+	"ultimate",
+	"asset_cost_by_color",
+	"target_contract",
+	"range_contract",
+	"cooldown_batches",
+	"cooldown_on_fizzle",
+	"public_presentation_key",
+	"definition_fingerprint",
+]
+const SOURCE_SNAPSHOT_FIELDS := [
+	"schema_version",
+	"contract_id",
+	"source_instance_id",
+	"source_generation",
+	"owner_player_id",
+	"rank",
+	"status",
+	"skill_definition_ids",
+	"unlocked_skill_definition_ids",
+	"source_fingerprint",
+]
+const SOURCE_CORE_FIELDS := [
+	"schema_version",
+	"contract_id",
+	"ruleset_id",
+	"source_instance_id",
+	"source_definition_id",
+	"definition_fingerprint",
+	"monster_family_id",
+	"owner_player_id",
+	"region_id",
+	"source_generation",
+	"rank",
+	"hp",
+	"max_hp",
+	"armor",
+	"status",
+	"damage_revision",
+	"preferred_industry_color",
+	"facility_type_preference",
+	"base_detection_range_hops",
+	"current_detection_range_hops",
+	"movement_profile",
+	"movement_budget_milli_arc",
+	"unlocked_skill_definition_ids",
+	"skill_states",
+	"batch_active_skill_use_count",
+	"created_from_card_instance_id",
+	"withdrawal_reason",
+	"kill_reward_count",
+	"source_fingerprint",
+]
+const SOURCE_CORE_SKILL_STATE_FIELDS := [
+	"skill_definition_id",
+	"status",
+	"cooldown_batches_remaining",
+	"skill_generation",
+	"resume_status",
+]
 const REQUEST_PHASES := [
 	"batch_active",
 	"public_resolution_between_receipts",
@@ -232,85 +320,22 @@ static func create_state(
 ) -> Dictionary:
 	if not _stable_id(batch_id) or batch_index < 0:
 		return {}
-	var definitions := {}
-	for definition_variant in skill_definitions:
-		if not _sealed_contract_valid(
-			definition_variant,
-			SKILL_DEFINITION_ID,
-			"definition_fingerprint"
-		):
-			return {}
-		var definition := definition_variant as Dictionary
-		var skill_id := str(definition.get("skill_definition_id", ""))
-		if definitions.has(skill_id):
-			return {}
-		definitions[skill_id] = definition.duplicate(true)
+	var definitions := _normalize_skill_definitions(skill_definitions)
 	if definitions.is_empty():
 		return {}
 
 	var sources := {}
 	for snapshot_variant in source_snapshots:
-		if not _sealed_contract_valid(
+		var snapshot := _normalize_source_snapshot(
 			snapshot_variant,
-			SOURCE_SNAPSHOT_ID,
-			"source_fingerprint"
-		):
+			definitions
+		)
+		if snapshot.is_empty():
 			return {}
-		var snapshot := snapshot_variant as Dictionary
 		var source_id := str(snapshot.get("source_instance_id", ""))
 		if sources.has(source_id):
 			return {}
-		var all_ids := _id_array(snapshot.get("skill_definition_ids"), false)
-		var unlocked_ids := _id_array(
-			snapshot.get("unlocked_skill_definition_ids"),
-			true
-		)
-		var skill_states := {}
-		for skill_id in all_ids:
-			if not definitions.has(skill_id):
-				return {}
-			var definition := definitions.get(skill_id) as Dictionary
-			if (
-				unlocked_ids.has(skill_id)
-				and int(definition.get("required_rank", 0))
-				> int(snapshot.get("rank", 0))
-			):
-				return {}
-			var skill_status := "LOCKED_BY_RANK"
-			var resume_status := "LOCKED_BY_RANK"
-			if unlocked_ids.has(skill_id):
-				match str(snapshot.get("status", "")):
-					"active":
-						skill_status = "READY"
-						resume_status = "READY"
-					"downed":
-						skill_status = "DISABLED"
-						resume_status = "READY"
-					_:
-						skill_status = "REVOKED"
-						resume_status = "REVOKED"
-			skill_states[skill_id] = {
-				"skill_definition_id": skill_id,
-				"status": skill_status,
-				"resume_status": resume_status,
-				"cooldown_remaining_batches": 0,
-				"last_request_id": "",
-			}
-		sources[source_id] = {
-			"source_instance_id": source_id,
-			"source_generation": int(snapshot.get("source_generation", 0)),
-			"owner_player_id": str(snapshot.get("owner_player_id", "")),
-			"rank": int(snapshot.get("rank", 0)),
-			"status": str(snapshot.get("status", "")),
-			"skill_definition_ids": all_ids,
-			"unlocked_skill_definition_ids": unlocked_ids,
-			"skill_states": skill_states,
-			"batch_active_skill_use_count": 0,
-			"pending_batch_use_request_id": "",
-			"last_batch_use_id": "",
-		}
-	if sources.is_empty():
-		return {}
+		sources[source_id] = _private_source_from_snapshot(snapshot)
 
 	var lineage_id := "combat.private.skill.%s" % _fingerprint({
 		"batch_id": batch_id,
@@ -342,6 +367,192 @@ static func create_state(
 		"receipt_journal": [],
 		"public_results": [],
 	})
+
+
+static func register_source_snapshot(
+	state: Dictionary,
+	snapshot_variant: Variant
+) -> Dictionary:
+	if _state_error(state) != "":
+		return _failure(state, "state_invalid")
+	var snapshot := _normalize_source_snapshot(
+		snapshot_variant,
+		state.get("skill_definitions") as Dictionary
+	)
+	if snapshot.is_empty():
+		return _failure(state, "source_snapshot_invalid")
+	var source_id := str(snapshot.get("source_instance_id", ""))
+	var sources := state.get("sources") as Dictionary
+	if sources.has(source_id):
+		var existing := sources.get(source_id) as Dictionary
+		if str(existing.get(
+			"registration_source_fingerprint",
+			""
+		)) == str(snapshot.get("source_fingerprint", "")):
+			return {
+				"accepted": true,
+				"replayed": true,
+				"reason_code": "source_snapshot_already_registered",
+				"state": state.duplicate(true),
+				"receipt": {},
+			}
+		return _failure(state, "source_registration_collision")
+
+	var next := state.duplicate(true)
+	(next.get("sources") as Dictionary)[source_id] = (
+		_private_source_from_snapshot(snapshot)
+	)
+	_increment_revision(next)
+	var receipt := _operation_receipt(
+		next,
+		"register_source_snapshot",
+		source_id,
+		true,
+		"source_snapshot_registered",
+		{
+			"source_instance_id": source_id,
+			"source_generation": snapshot.get("source_generation"),
+			"source_contract_id": snapshot.get("source_contract_id"),
+			"source_fingerprint": snapshot.get("source_fingerprint"),
+		}
+	)
+	_append_receipt(next, receipt)
+	return {
+		"accepted": true,
+		"replayed": false,
+		"reason_code": "source_snapshot_registered",
+		"state": _reseal_state(next),
+		"receipt": receipt,
+	}
+
+
+static func sync_source_snapshot(
+	state: Dictionary,
+	snapshot_variant: Variant
+) -> Dictionary:
+	if _state_error(state) != "":
+		return _failure(state, "state_invalid")
+	var snapshot := _normalize_source_snapshot(
+		snapshot_variant,
+		state.get("skill_definitions") as Dictionary
+	)
+	if snapshot.is_empty():
+		return _failure(state, "source_snapshot_invalid")
+	var source_id := str(snapshot.get("source_instance_id", ""))
+	var sources := state.get("sources") as Dictionary
+	if not sources.has(source_id):
+		return _failure(state, "source_not_registered")
+	var current := sources.get(source_id) as Dictionary
+	var incoming_fingerprint := str(snapshot.get("source_fingerprint", ""))
+	if (
+		str(current.get("last_source_snapshot_fingerprint", ""))
+		== incoming_fingerprint
+		and str(current.get("last_source_snapshot_contract_id", ""))
+		== str(snapshot.get("source_contract_id", ""))
+		and _private_source_matches_snapshot(current, snapshot)
+	):
+		return {
+			"accepted": true,
+			"replayed": true,
+			"reason_code": "source_snapshot_already_synchronized",
+			"state": state.duplicate(true),
+			"receipt": {},
+			"newly_ready_skill_definition_ids": [],
+			"existing_cooldown_reset_count": 0,
+		}
+
+	var current_generation := int(current.get("source_generation", 0))
+	var incoming_generation := int(snapshot.get("source_generation", 0))
+	if incoming_generation < current_generation:
+		return _failure(state, "source_snapshot_generation_stale")
+	if str(current.get("owner_player_id", "")) != str(
+		snapshot.get("owner_player_id", "")
+	):
+		return _failure(state, "source_snapshot_owner_changed")
+
+	var transition := {}
+	if incoming_generation > current_generation:
+		var replacement := _private_source_from_snapshot(snapshot)
+		replacement["registration_source_fingerprint"] = current.get(
+			"registration_source_fingerprint",
+			""
+		)
+		transition = {
+			"accepted": true,
+			"reason_code": "source_generation_synchronized",
+			"source": replacement,
+			"newly_ready_skill_definition_ids": (
+				replacement.get("unlocked_skill_definition_ids") as Array
+			).duplicate(),
+			"existing_cooldown_reset_count": 0,
+			"generation_replaced": true,
+		}
+	else:
+		transition = _same_generation_source_transition(current, snapshot)
+		if not bool(transition.get("accepted", false)):
+			return _failure(
+				state,
+				str(transition.get(
+					"reason_code",
+					"source_snapshot_transition_invalid"
+				))
+			)
+
+	var next := state.duplicate(true)
+	(next.get("sources") as Dictionary)[source_id] = (
+		transition.get("source") as Dictionary
+	).duplicate(true)
+	_increment_revision(next)
+	var reason_code := str(transition.get(
+		"reason_code",
+		"source_snapshot_synchronized"
+	))
+	var receipt := _operation_receipt(
+		next,
+		"sync_source_snapshot",
+		source_id,
+		true,
+		reason_code,
+		{
+			"source_instance_id": source_id,
+			"previous_source_generation": current_generation,
+			"source_generation": incoming_generation,
+			"source_contract_id": snapshot.get("source_contract_id"),
+			"source_fingerprint": incoming_fingerprint,
+			"generation_replaced": transition.get(
+				"generation_replaced",
+				false
+			),
+			"newly_ready_skill_definition_ids": transition.get(
+				"newly_ready_skill_definition_ids",
+				[]
+			),
+			"existing_cooldown_reset_count": transition.get(
+				"existing_cooldown_reset_count",
+				0
+			),
+		}
+	)
+	_append_receipt(next, receipt)
+	return {
+		"accepted": true,
+		"replayed": false,
+		"reason_code": reason_code,
+		"state": _reseal_state(next),
+		"receipt": receipt,
+		"generation_replaced": transition.get(
+			"generation_replaced",
+			false
+		),
+		"newly_ready_skill_definition_ids": transition.get(
+			"newly_ready_skill_definition_ids",
+			[]
+		),
+		"existing_cooldown_reset_count": transition.get(
+			"existing_cooldown_reset_count",
+			0
+		),
+	}
 
 
 static func set_phase(state: Dictionary, phase: String) -> Dictionary:
@@ -469,6 +680,7 @@ static func submit_request(
 		"owner_player_id": request.get("owner_player_id"),
 		"source_instance_id": source_id,
 		"source_generation": request.get("source_generation"),
+		"source_action_generation": source.get("action_generation"),
 		"skill_definition_id": skill_id,
 		"target_request": _copy(request.get("target_request")),
 		"authority_receive_sequence": receive_sequence,
@@ -639,23 +851,37 @@ static func apply_asset_reservation_receipt(
 	var next_queue := next.get("private_queue") as Array
 	var next_entry := next_queue[queue_index] as Dictionary
 	var source := (next.get("sources") as Dictionary).get(
-		next_entry.get("source_instance_id")
+		next_entry.get("source_instance_id"),
+		{}
 	) as Dictionary
-	var skill_state := (source.get("skill_states") as Dictionary).get(
-		next_entry.get("skill_definition_id")
-	) as Dictionary
+	var generation_matches := (
+		int(source.get("source_generation", -1))
+		== int(next_entry.get("source_generation", -2))
+		and int(source.get("action_generation", -1))
+		== int(next_entry.get("source_action_generation", -2))
+	)
+	var skill_state := {}
+	if generation_matches:
+		skill_state = (source.get("skill_states") as Dictionary).get(
+			next_entry.get("skill_definition_id"),
+			{}
+		) as Dictionary
 	var request_id := str(next_entry.get("request_id", ""))
 	var accepted := bool(asset_receipt.get("accepted", false))
 	var reason_code := str(asset_receipt.get("reason_code", ""))
 	if accepted:
 		next_entry["stage"] = "PENDING_SAFE_BOUNDARY"
 		next_entry["asset_reservation_accepted"] = true
-		source["pending_batch_use_request_id"] = ""
-		source["batch_active_skill_use_count"] = 1
-		source["last_batch_use_id"] = str(next.get("batch_id", ""))
-		if str(source.get("status", "")) == "active":
-			skill_state["status"] = "PENDING_SAFE_BOUNDARY"
-			skill_state["resume_status"] = "READY"
+		if generation_matches:
+			source["pending_batch_use_request_id"] = ""
+			source["batch_active_skill_use_count"] = 1
+			source["last_batch_use_id"] = str(next.get("batch_id", ""))
+			if (
+				str(source.get("status", "")) == "active"
+				and not skill_state.is_empty()
+			):
+				skill_state["status"] = "PENDING_SAFE_BOUNDARY"
+				skill_state["resume_status"] = "READY"
 		(next.get("request_ledger") as Dictionary)[request_id]["stage"] = (
 			"PENDING_SAFE_BOUNDARY"
 		)
@@ -664,7 +890,11 @@ static func apply_asset_reservation_receipt(
 		)
 	else:
 		next_queue.remove_at(queue_index)
-		if str(source.get("pending_batch_use_request_id", "")) == request_id:
+		if (
+			generation_matches
+			and str(source.get("pending_batch_use_request_id", ""))
+			== request_id
+		):
 			source["pending_batch_use_request_id"] = ""
 		(next.get("request_ledger") as Dictionary)[request_id]["stage"] = (
 			"REJECTED_ASSET_RESERVATION"
@@ -830,11 +1060,21 @@ static func take_next_ready_request(state: Dictionary) -> Dictionary:
 		(next.get("private_queue") as Array)[queue_index] as Dictionary
 	)
 	var source := (next.get("sources") as Dictionary).get(
-		next_entry.get("source_instance_id")
+		next_entry.get("source_instance_id"),
+		{}
 	) as Dictionary
-	var skill_state := (source.get("skill_states") as Dictionary).get(
-		next_entry.get("skill_definition_id")
-	) as Dictionary
+	var generation_matches := (
+		int(source.get("source_generation", -1))
+		== int(next_entry.get("source_generation", -2))
+		and int(source.get("action_generation", -1))
+		== int(next_entry.get("source_action_generation", -2))
+	)
+	var skill_state := {}
+	if generation_matches:
+		skill_state = (source.get("skill_states") as Dictionary).get(
+			next_entry.get("skill_definition_id"),
+			{}
+		) as Dictionary
 	var definition := (next.get("skill_definitions") as Dictionary).get(
 		next_entry.get("skill_definition_id")
 	) as Dictionary
@@ -855,6 +1095,9 @@ static func take_next_ready_request(state: Dictionary) -> Dictionary:
 		"owner_player_id": next_entry.get("owner_player_id"),
 		"source_instance_id": next_entry.get("source_instance_id"),
 		"source_generation": next_entry.get("source_generation"),
+		"source_action_generation": next_entry.get(
+			"source_action_generation"
+		),
 		"skill_definition_id": next_entry.get("skill_definition_id"),
 		"public_effect_id": definition.get("public_effect_id"),
 		"public_presentation_key": definition.get(
@@ -872,7 +1115,11 @@ static func take_next_ready_request(state: Dictionary) -> Dictionary:
 	next_entry["stage"] = "RESOLVING"
 	next_entry["execution_intent"] = execution_intent.duplicate(true)
 	next["resolving_request_id"] = next_entry.get("request_id")
-	if str(source.get("status", "")) == "active":
+	if (
+		generation_matches
+		and str(source.get("status", "")) == "active"
+		and not skill_state.is_empty()
+	):
 		skill_state["status"] = "RESOLVING"
 	_increment_revision(next)
 	return {
@@ -992,12 +1239,22 @@ static func resolve_current(
 	var next_queue := next.get("private_queue") as Array
 	var next_entry := next_queue[queue_index] as Dictionary
 	var source := (next.get("sources") as Dictionary).get(
-		next_entry.get("source_instance_id")
+		next_entry.get("source_instance_id"),
+		{}
 	) as Dictionary
 	var skill_id := str(next_entry.get("skill_definition_id", ""))
-	var skill_state := (source.get("skill_states") as Dictionary).get(
-		skill_id
-	) as Dictionary
+	var generation_matches := (
+		int(source.get("source_generation", -1))
+		== int(next_entry.get("source_generation", -2))
+		and int(source.get("action_generation", -1))
+		== int(next_entry.get("source_action_generation", -2))
+	)
+	var skill_state := {}
+	if generation_matches:
+		skill_state = (source.get("skill_states") as Dictionary).get(
+			skill_id,
+			{}
+		) as Dictionary
 	var definition := (next.get("skill_definitions") as Dictionary).get(
 		skill_id
 	) as Dictionary
@@ -1007,19 +1264,22 @@ static func resolve_current(
 	if source_reason != "":
 		committed = false
 		reason_code = source_reason
-	if str(skill_state.get("status", "")) != "RESOLVING":
+	if generation_matches and str(skill_state.get(
+		"status",
+		""
+	)) != "RESOLVING":
 		committed = false
 		if reason_code == "resolved":
 			reason_code = "skill_state_invalid_at_boundary"
 
 	var settlement_action := "release"
-	if committed:
+	if committed and generation_matches:
 		settlement_action = "commit"
 		var cooldown := int(definition.get("cooldown_batches", 0))
 		skill_state["cooldown_remaining_batches"] = cooldown
 		skill_state["status"] = "COOLDOWN" if cooldown > 0 else "READY"
 		skill_state["resume_status"] = skill_state.get("status")
-	else:
+	elif generation_matches:
 		skill_state["cooldown_remaining_batches"] = 0
 		match str(source.get("status", "")):
 			"active":
@@ -1394,6 +1654,10 @@ static func owner_private_projection(
 			var entry := entry_variant as Dictionary
 			if (
 				str(entry.get("source_instance_id", "")) == source_id
+				and int(entry.get("source_generation", -1))
+				== int(source.get("source_generation", -2))
+				and int(entry.get("source_action_generation", -1))
+				== int(source.get("action_generation", -2))
 				and str(entry.get("owner_player_id", ""))
 				== viewer_player_id
 			):
@@ -1583,6 +1847,559 @@ static func debug_snapshot(state: Dictionary) -> Dictionary:
 	}
 
 
+static func _normalize_skill_definitions(
+	skill_definitions: Array
+) -> Dictionary:
+	var definitions := {}
+	for definition_variant in skill_definitions:
+		if not (definition_variant is Dictionary):
+			return {}
+		var definition := definition_variant as Dictionary
+		if not _skill_definition_valid(definition):
+			return {}
+		var skill_id := str(definition.get("skill_definition_id", ""))
+		if definitions.has(skill_id):
+			return {}
+		definitions[skill_id] = definition.duplicate(true)
+	return definitions
+
+
+static func _skill_definition_valid(definition: Dictionary) -> bool:
+	if (
+		not _exact_fields(definition, SKILL_DEFINITION_FIELDS)
+		or not _sealed_contract_valid(
+			definition,
+			SKILL_DEFINITION_ID,
+			"definition_fingerprint"
+		)
+	):
+		return false
+	var rank := int(definition.get("required_rank", 0))
+	return (
+		_stable_id(definition.get("skill_definition_id"))
+		and _stable_id(definition.get("public_effect_id"))
+		and rank >= 1
+		and rank <= 4
+		and definition.get("ultimate") is bool
+		and bool(definition.get("ultimate", false)) == (rank == 4)
+		and _asset_map_valid(definition.get("asset_cost_by_color"))
+		and _target_contract_valid(definition.get("target_contract"))
+		and definition.get("range_contract") is Dictionary
+		and _is_pure_data(definition.get("range_contract"))
+		and _nonnegative_integer(definition.get("cooldown_batches"))
+		and definition.get("cooldown_on_fizzle") == false
+		and _stable_id(definition.get("public_presentation_key"))
+	)
+
+
+static func _normalize_source_snapshot(
+	value: Variant,
+	definitions: Dictionary
+) -> Dictionary:
+	if not (value is Dictionary) or not _is_pure_data(value):
+		return {}
+	var snapshot := value as Dictionary
+	var normalized := {}
+	match str(snapshot.get("contract_id", "")):
+		SOURCE_SNAPSHOT_ID:
+			normalized = _normalize_lightweight_source_snapshot(snapshot)
+		SOURCE_CORE_SNAPSHOT_ID:
+			normalized = _normalize_source_core_snapshot(snapshot)
+		_:
+			return {}
+	if (
+		normalized.is_empty()
+		or not _normalized_source_context_valid(normalized, definitions)
+	):
+		return {}
+	return normalized
+
+
+static func _normalize_lightweight_source_snapshot(
+	snapshot: Dictionary
+) -> Dictionary:
+	if (
+		not _exact_fields(snapshot, SOURCE_SNAPSHOT_FIELDS)
+		or not _sealed_contract_valid(
+			snapshot,
+			SOURCE_SNAPSHOT_ID,
+			"source_fingerprint"
+		)
+	):
+		return {}
+	var all_ids := _id_array(snapshot.get("skill_definition_ids"), false)
+	var unlocked_ids := _id_array(
+		snapshot.get("unlocked_skill_definition_ids"),
+		true
+	)
+	if (
+		not (snapshot.get("skill_definition_ids") is Array)
+		or all_ids.size()
+		!= (snapshot.get("skill_definition_ids") as Array).size()
+		or not (snapshot.get("unlocked_skill_definition_ids") is Array)
+		or unlocked_ids.size()
+		!= (snapshot.get("unlocked_skill_definition_ids") as Array).size()
+	):
+		return {}
+	return {
+		"source_contract_id": SOURCE_SNAPSHOT_ID,
+		"source_fingerprint": snapshot.get("source_fingerprint"),
+		"source_instance_id": snapshot.get("source_instance_id"),
+		"source_generation": snapshot.get("source_generation"),
+		"source_definition_id": "",
+		"monster_family_id": "",
+		"owner_player_id": snapshot.get("owner_player_id"),
+		"rank": snapshot.get("rank"),
+		"status": snapshot.get("status"),
+		"skill_definition_ids": all_ids,
+		"unlocked_skill_definition_ids": unlocked_ids,
+	}
+
+
+static func _normalize_source_core_snapshot(
+	snapshot: Dictionary
+) -> Dictionary:
+	if not _source_core_snapshot_valid(snapshot):
+		return {}
+	var skill_states := snapshot.get("skill_states") as Dictionary
+	return {
+		"source_contract_id": SOURCE_CORE_SNAPSHOT_ID,
+		"source_fingerprint": snapshot.get("source_fingerprint"),
+		"source_instance_id": snapshot.get("source_instance_id"),
+		"source_generation": snapshot.get("source_generation"),
+		"source_definition_id": snapshot.get("source_definition_id"),
+		"monster_family_id": snapshot.get("monster_family_id"),
+		"owner_player_id": snapshot.get("owner_player_id"),
+		"rank": snapshot.get("rank"),
+		"status": snapshot.get("status"),
+		"skill_definition_ids": _id_array(skill_states.keys(), false),
+		"unlocked_skill_definition_ids": _id_array(
+			snapshot.get("unlocked_skill_definition_ids"),
+			true
+		),
+	}
+
+
+static func _normalized_source_context_valid(
+	snapshot: Dictionary,
+	definitions: Dictionary
+) -> bool:
+	var all_ids := snapshot.get("skill_definition_ids") as Array
+	var unlocked_ids := snapshot.get(
+		"unlocked_skill_definition_ids"
+	) as Array
+	var rank := int(snapshot.get("rank", 0))
+	if (
+		not _stable_id(snapshot.get("source_instance_id"))
+		or not _positive_integer(snapshot.get("source_generation"))
+		or not _stable_id(snapshot.get("owner_player_id"))
+		or rank < 1
+		or rank > 4
+		or not SOURCE_STATUSES.has(str(snapshot.get("status", "")))
+		or all_ids.is_empty()
+	):
+		return false
+	for unlocked_id_variant in unlocked_ids:
+		if not all_ids.has(str(unlocked_id_variant)):
+			return false
+	for skill_id_variant in all_ids:
+		var skill_id := str(skill_id_variant)
+		if not definitions.has(skill_id):
+			return false
+		var definition := definitions.get(skill_id) as Dictionary
+		var should_be_unlocked := int(definition.get(
+			"required_rank",
+			0
+		)) <= rank
+		if unlocked_ids.has(skill_id) != should_be_unlocked:
+			return false
+	return true
+
+
+static func _source_core_snapshot_valid(snapshot: Dictionary) -> bool:
+	if (
+		not _exact_fields(snapshot, SOURCE_CORE_FIELDS)
+		or snapshot.get("schema_version") != SOURCE_CORE_SCHEMA_VERSION
+		or snapshot.get("contract_id") != SOURCE_CORE_SNAPSHOT_ID
+		or snapshot.get("ruleset_id") != RULESET_ID
+	):
+		return false
+	var fingerprint := str(snapshot.get("source_fingerprint", ""))
+	var unsealed := snapshot.duplicate(true)
+	unsealed.erase("source_fingerprint")
+	if (
+		not _fingerprint_valid(fingerprint)
+		or _fingerprint(unsealed) != fingerprint
+	):
+		return false
+	var rank := int(snapshot.get("rank", 0))
+	var status := str(snapshot.get("status", ""))
+	var hp := int(snapshot.get("hp", -1))
+	var max_hp := int(snapshot.get("max_hp", -1))
+	var unlocked := _id_array(
+		snapshot.get("unlocked_skill_definition_ids"),
+		true
+	)
+	var facilities := _id_array(
+		snapshot.get("facility_type_preference"),
+		false
+	)
+	if (
+		not _stable_id(snapshot.get("source_instance_id"))
+		or not _stable_id(snapshot.get("source_definition_id"))
+		or not _fingerprint_valid(snapshot.get("definition_fingerprint"))
+		or not _stable_id(snapshot.get("monster_family_id"))
+		or not _stable_id(snapshot.get("owner_player_id"))
+		or not _stable_id(snapshot.get("region_id"))
+		or not _positive_integer(snapshot.get("source_generation"))
+		or rank < 1
+		or rank > 4
+		or not _nonnegative_integer(snapshot.get("hp"))
+		or not _positive_integer(snapshot.get("max_hp"))
+		or hp > max_hp
+		or not _nonnegative_integer(snapshot.get("armor"))
+		or not SOURCE_STATUSES.has(status)
+		or not _nonnegative_integer(snapshot.get("damage_revision"))
+		or not COLORS.has(str(snapshot.get(
+			"preferred_industry_color",
+			""
+		)))
+		or not (snapshot.get("facility_type_preference") is Array)
+		or facilities.size()
+		!= (snapshot.get("facility_type_preference") as Array).size()
+		or not _nonnegative_integer(snapshot.get(
+			"base_detection_range_hops"
+		))
+		or not _nonnegative_integer(snapshot.get(
+			"current_detection_range_hops"
+		))
+		or not SOURCE_CORE_MOVEMENT_PROFILES.has(str(snapshot.get(
+			"movement_profile",
+			""
+		)))
+		or not _positive_integer(snapshot.get("movement_budget_milli_arc"))
+		or not (snapshot.get("unlocked_skill_definition_ids") is Array)
+		or unlocked.size()
+		!= (snapshot.get("unlocked_skill_definition_ids") as Array).size()
+		or unlocked.size() != rank
+		or not _nonnegative_integer(snapshot.get(
+			"batch_active_skill_use_count"
+		))
+		or int(snapshot.get("batch_active_skill_use_count", -1)) > 1
+		or not _stable_id(snapshot.get("created_from_card_instance_id"))
+		or not _nonnegative_integer(snapshot.get("kill_reward_count"))
+		or int(snapshot.get("kill_reward_count", -1)) != 0
+	):
+		return false
+	for facility_type in facilities:
+		if not SOURCE_CORE_FACILITY_TYPES.has(facility_type):
+			return false
+	if status == "active" and hp <= 0:
+		return false
+	if status == "downed" and hp != 0:
+		return false
+	if (
+		status == "withdrawn"
+		and str(snapshot.get("withdrawal_reason", "")) != "replaced"
+	):
+		return false
+	if (
+		status != "withdrawn"
+		and not str(snapshot.get("withdrawal_reason", "")).is_empty()
+	):
+		return false
+	if not (snapshot.get("skill_states") is Dictionary):
+		return false
+	var skill_states := snapshot.get("skill_states") as Dictionary
+	if skill_states.is_empty():
+		return false
+	for skill_id_variant in skill_states.keys():
+		var skill_id := str(skill_id_variant)
+		var skill_state_variant: Variant = skill_states.get(skill_id)
+		if (
+			not _stable_id(skill_id)
+			or not (skill_state_variant is Dictionary)
+			or not _source_core_skill_state_valid(
+				skill_state_variant as Dictionary,
+				skill_id
+			)
+		):
+			return false
+		var skill_status := str((skill_state_variant as Dictionary).get(
+			"status",
+			""
+		))
+		var is_unlocked := unlocked.has(skill_id)
+		if status == "active":
+			if (
+				is_unlocked
+				and ["LOCKED_BY_RANK", "DISABLED", "REVOKED"].has(
+					skill_status
+				)
+			):
+				return false
+			if not is_unlocked and skill_status != "LOCKED_BY_RANK":
+				return false
+		elif status == "downed":
+			if is_unlocked and skill_status != "DISABLED":
+				return false
+			if not is_unlocked and skill_status != "LOCKED_BY_RANK":
+				return false
+		elif skill_status != "REVOKED":
+			return false
+	return true
+
+
+static func _source_core_skill_state_valid(
+	skill_state: Dictionary,
+	skill_id: String
+) -> bool:
+	if (
+		not _exact_fields(skill_state, SOURCE_CORE_SKILL_STATE_FIELDS)
+		or str(skill_state.get("skill_definition_id", "")) != skill_id
+		or not SKILL_STATUSES.has(str(skill_state.get("status", "")))
+		or not _nonnegative_integer(skill_state.get(
+			"cooldown_batches_remaining"
+		))
+		or not _nonnegative_integer(skill_state.get("skill_generation"))
+		or not SKILL_RESUME_STATUSES.has(str(skill_state.get(
+			"resume_status",
+			""
+		)))
+	):
+		return false
+	var status := str(skill_state.get("status", ""))
+	var cooldown := int(skill_state.get("cooldown_batches_remaining", 0))
+	if status == "COOLDOWN" and cooldown <= 0:
+		return false
+	if ["LOCKED_BY_RANK", "READY"].has(status) and cooldown != 0:
+		return false
+	return true
+
+
+static func _private_source_from_snapshot(snapshot: Dictionary) -> Dictionary:
+	var all_ids := snapshot.get("skill_definition_ids") as Array
+	var unlocked_ids := snapshot.get(
+		"unlocked_skill_definition_ids"
+	) as Array
+	var source_status := str(snapshot.get("status", ""))
+	var generation := int(snapshot.get("source_generation", 0))
+	var skill_states := {}
+	for skill_id_variant in all_ids:
+		var skill_id := str(skill_id_variant)
+		var status := "LOCKED_BY_RANK"
+		var resume_status := "LOCKED_BY_RANK"
+		if ["destroyed", "withdrawn"].has(source_status):
+			status = "REVOKED"
+			resume_status = "REVOKED"
+		elif unlocked_ids.has(skill_id):
+			if source_status == "active":
+				status = "READY"
+				resume_status = "READY"
+			else:
+				status = "DISABLED"
+				resume_status = "READY"
+		skill_states[skill_id] = {
+			"skill_definition_id": skill_id,
+			"status": status,
+			"resume_status": resume_status,
+			"cooldown_remaining_batches": 0,
+			"last_request_id": "",
+		}
+	return {
+		"source_instance_id": snapshot.get("source_instance_id"),
+		"source_generation": generation,
+		"action_generation": generation,
+		"source_definition_id": snapshot.get("source_definition_id", ""),
+		"monster_family_id": snapshot.get("monster_family_id", ""),
+		"owner_player_id": snapshot.get("owner_player_id"),
+		"rank": snapshot.get("rank"),
+		"status": source_status,
+		"skill_definition_ids": all_ids.duplicate(),
+		"unlocked_skill_definition_ids": unlocked_ids.duplicate(),
+		"skill_states": skill_states,
+		"batch_active_skill_use_count": 0,
+		"pending_batch_use_request_id": "",
+		"last_batch_use_id": "",
+		"registration_source_fingerprint": snapshot.get(
+			"source_fingerprint"
+		),
+		"last_source_snapshot_contract_id": snapshot.get(
+			"source_contract_id"
+		),
+		"last_source_snapshot_fingerprint": snapshot.get(
+			"source_fingerprint"
+		),
+	}
+
+
+static func _same_generation_source_transition(
+	current: Dictionary,
+	snapshot: Dictionary
+) -> Dictionary:
+	var all_ids := snapshot.get("skill_definition_ids") as Array
+	var unlocked_ids := snapshot.get(
+		"unlocked_skill_definition_ids"
+	) as Array
+	var old_unlocked := current.get(
+		"unlocked_skill_definition_ids"
+	) as Array
+	var old_status := str(current.get("status", ""))
+	var new_status := str(snapshot.get("status", ""))
+	if current.get("skill_definition_ids") != all_ids:
+		return {
+			"accepted": false,
+			"reason_code": "source_snapshot_skill_identity_changed",
+		}
+	if int(snapshot.get("rank", 0)) < int(current.get("rank", 0)):
+		return {
+			"accepted": false,
+			"reason_code": "source_snapshot_rank_regressed",
+		}
+	for old_id_variant in old_unlocked:
+		if not unlocked_ids.has(str(old_id_variant)):
+			return {
+				"accepted": false,
+				"reason_code": "source_snapshot_skill_relocked",
+			}
+	if (
+		["destroyed", "withdrawn"].has(old_status)
+		and new_status != old_status
+	):
+		return {
+			"accepted": false,
+			"reason_code": "source_snapshot_terminal_transition_invalid",
+		}
+	for identity_field in ["source_definition_id", "monster_family_id"]:
+		var old_identity := str(current.get(identity_field, ""))
+		var new_identity := str(snapshot.get(identity_field, ""))
+		if (
+			not old_identity.is_empty()
+			and not new_identity.is_empty()
+			and old_identity != new_identity
+		):
+			return {
+				"accepted": false,
+				"reason_code": "source_snapshot_semantic_identity_changed",
+			}
+
+	var next := current.duplicate(true)
+	var next_skill_states := next.get("skill_states") as Dictionary
+	var cooldowns_before := {}
+	for old_id_variant in old_unlocked:
+		var old_id := str(old_id_variant)
+		cooldowns_before[old_id] = int(
+			(next_skill_states.get(old_id) as Dictionary).get(
+				"cooldown_remaining_batches",
+				0
+			)
+		)
+	var newly_ready: Array[String] = []
+	for skill_id_variant in all_ids:
+		var skill_id := str(skill_id_variant)
+		var previously_unlocked := old_unlocked.has(skill_id)
+		var skill_state := next_skill_states.get(skill_id) as Dictionary
+		if ["destroyed", "withdrawn"].has(new_status):
+			skill_state["status"] = "REVOKED"
+			skill_state["resume_status"] = "REVOKED"
+			continue
+		if not unlocked_ids.has(skill_id):
+			skill_state["status"] = "LOCKED_BY_RANK"
+			skill_state["resume_status"] = "LOCKED_BY_RANK"
+			skill_state["cooldown_remaining_batches"] = 0
+			continue
+		if not previously_unlocked:
+			skill_state = {
+				"skill_definition_id": skill_id,
+				"status": "READY" if new_status == "active" else "DISABLED",
+				"resume_status": "READY",
+				"cooldown_remaining_batches": 0,
+				"last_request_id": "",
+			}
+			next_skill_states[skill_id] = skill_state
+			if new_status == "active":
+				newly_ready.append(skill_id)
+			continue
+		var cooldown := int(skill_state.get(
+			"cooldown_remaining_batches",
+			0
+		))
+		if new_status == "downed":
+			skill_state["status"] = "DISABLED"
+			skill_state["resume_status"] = (
+				"COOLDOWN" if cooldown > 0 else "READY"
+			)
+		elif str(skill_state.get("status", "")) == "DISABLED":
+			skill_state["status"] = "COOLDOWN" if cooldown > 0 else "READY"
+			skill_state["resume_status"] = skill_state.get("status")
+
+	next["rank"] = snapshot.get("rank")
+	next["status"] = new_status
+	next["unlocked_skill_definition_ids"] = unlocked_ids.duplicate()
+	if not str(snapshot.get("source_definition_id", "")).is_empty():
+		next["source_definition_id"] = snapshot.get("source_definition_id")
+	if not str(snapshot.get("monster_family_id", "")).is_empty():
+		next["monster_family_id"] = snapshot.get("monster_family_id")
+	next["last_source_snapshot_contract_id"] = snapshot.get(
+		"source_contract_id"
+	)
+	next["last_source_snapshot_fingerprint"] = snapshot.get(
+		"source_fingerprint"
+	)
+	var cooldown_reset_count := 0
+	for old_id_variant in cooldowns_before.keys():
+		var old_id := str(old_id_variant)
+		if int((next_skill_states.get(old_id) as Dictionary).get(
+			"cooldown_remaining_batches",
+			0
+		)) != int(cooldowns_before.get(old_id)):
+			cooldown_reset_count += 1
+	var reason_code := "source_snapshot_synchronized"
+	if ["destroyed", "withdrawn"].has(new_status):
+		reason_code = "source_snapshot_revoked"
+	elif int(snapshot.get("rank", 0)) > int(current.get("rank", 0)):
+		reason_code = "source_snapshot_upgraded"
+	elif old_status == "downed" and new_status == "active":
+		reason_code = "source_snapshot_refreshed"
+	return {
+		"accepted": true,
+		"reason_code": reason_code,
+		"source": next,
+		"newly_ready_skill_definition_ids": newly_ready,
+		"existing_cooldown_reset_count": cooldown_reset_count,
+		"generation_replaced": false,
+	}
+
+
+static func _private_source_matches_snapshot(
+	current: Dictionary,
+	snapshot: Dictionary
+) -> bool:
+	if (
+		int(current.get("source_generation", -1))
+		!= int(snapshot.get("source_generation", -2))
+		or int(current.get("rank", -1))
+		!= int(snapshot.get("rank", -2))
+		or str(current.get("status", ""))
+		!= str(snapshot.get("status", ""))
+		or current.get("skill_definition_ids")
+		!= snapshot.get("skill_definition_ids")
+		or current.get("unlocked_skill_definition_ids")
+		!= snapshot.get("unlocked_skill_definition_ids")
+	):
+		return false
+	for identity_field in ["source_definition_id", "monster_family_id"]:
+		var incoming_identity := str(snapshot.get(identity_field, ""))
+		var current_identity := str(current.get(identity_field, ""))
+		if (
+			not incoming_identity.is_empty()
+			and not current_identity.is_empty()
+			and incoming_identity != current_identity
+		):
+			return false
+	return true
+
+
 static func _preaccept_reason(
 	state: Dictionary,
 	request: Dictionary,
@@ -1666,8 +2483,11 @@ static func _source_execution_reason(
 	source: Dictionary,
 	entry: Dictionary
 ) -> String:
-	if int(source.get("source_generation", -1)) != int(
-		entry.get("source_generation", -2)
+	if (
+		int(source.get("source_generation", -1))
+		!= int(entry.get("source_generation", -2))
+		or int(source.get("action_generation", -1))
+		!= int(entry.get("source_action_generation", -2))
 	):
 		return "source_generation_changed_at_boundary"
 	match str(source.get("status", "")):
@@ -1978,6 +2798,10 @@ static func _nonnegative_integer(value: Variant) -> bool:
 		and int(value) >= 0
 		and int(value) <= MAX_SAFE_INTEGER
 	)
+
+
+static func _positive_integer(value: Variant) -> bool:
+	return _nonnegative_integer(value) and int(value) > 0
 
 
 static func _exact_fields(
