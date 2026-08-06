@@ -49,6 +49,13 @@ const COMBAT_OWNER_METHODS := [
 	"rollback_checkpoint",
 	"debug_snapshot",
 ]
+const COMBAT_TELEMETRY_METHODS := [
+	"consume_public_receipt",
+	"consume_public_cue",
+	"recent_events",
+	"reset_for_new_match",
+	"debug_snapshot",
+]
 const PUBLIC_COMBAT_FIELDS := [
 	"public_effect_id",
 	"source_instance_id",
@@ -102,7 +109,7 @@ var _combat_ai_military_monster_count := 0
 var _combat_ai_invalid_target_count := 0
 var _processed_facility_damage_intents: Dictionary = {}
 var _facility_damage_bridge_state: Dictionary = {}
-var _combat_telemetry_bridge: RefCounted = CombatTelemetryBridge.new()
+var _combat_telemetry_bridge: Object = CombatTelemetryBridge.new()
 var _combat_presentation_consumer: Node
 var _combat_public_history: Array = []
 var _combat_request_sequence := 0
@@ -123,6 +130,26 @@ func bind_combat_owner(owner: Node) -> Dictionary:
 		"reason_code": "v075_combat_runtime_owner_bound",
 		"combat_runtime_owner_count": 1,
 		"combat_state_writer_count": 1,
+	}
+
+
+func bind_combat_telemetry_service(service: Object) -> Dictionary:
+	if not is_instance_valid(service):
+		return _reject_action("combat_telemetry_service_missing")
+	if is_instance_valid(_combat_presentation_consumer):
+		return _reject_action("combat_observers_already_connected")
+	for method_name in COMBAT_TELEMETRY_METHODS:
+		if not service.has_method(method_name):
+			return _reject_action(
+				"combat_telemetry_method_missing:%s" % method_name
+			)
+	_combat_telemetry_bridge = service
+	return {
+		"accepted": true,
+		"reason_code": "v075_combat_telemetry_service_bound",
+		"combat_telemetry_gameplay_owner_count": 0,
+		"combat_telemetry_rng_owner_count": 0,
+		"combat_telemetry_world_mutation_count": 0,
 	}
 
 
