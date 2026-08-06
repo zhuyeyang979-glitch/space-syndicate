@@ -14,6 +14,17 @@ const EVENT_ASSET_KEYS := {
 		"vfx.asset.refresh",
 		"audio.monster.attack",
 	],
+	"monster_refreshed": [
+		"vfx.asset.refresh",
+	],
+	"monster_upgraded": [
+		"vfx.asset.refresh",
+		"audio.monster.attack",
+	],
+	"monster_replaced": [
+		"vfx.asset.refresh",
+		"audio.monster.attack",
+	],
 	"monster_moved": [
 		"model.shipping.route_marker",
 	],
@@ -69,6 +80,9 @@ const PUBLIC_CUE_FIELDS := [
 	"public_effect_id",
 	"source_public_name",
 	"source_rank",
+	"old_rank",
+	"new_rank",
+	"refresh_percent",
 	"preferred_industry_color",
 	"movement_profile",
 	"start_region_id",

@@ -80,10 +80,67 @@ func _run() -> void:
 		and "audio.monster.attack" in asset_keys,
 		"cue uses existing stable commercial asset keys"
 	)
+	var transition_cases := [
+		{
+			"receipt_id": "receipt.monster.refresh.001",
+			"event_kind": "monster_refreshed",
+			"refresh_percent": 25,
+			"hp_before": 10,
+			"hp_after": 20,
+		},
+		{
+			"receipt_id": "receipt.monster.upgrade.001",
+			"event_kind": "monster_upgraded",
+			"old_rank": 1,
+			"new_rank": 2,
+		},
+		{
+			"receipt_id": "receipt.monster.replace.001",
+			"event_kind": "monster_replaced",
+			"old_rank": 3,
+			"new_rank": 1,
+		},
+	]
+	for case_variant in transition_cases:
+		var case := case_variant as Dictionary
+		var transition_receipt := case.duplicate(true)
+		transition_receipt["combat_receipt_id"] = str(
+			transition_receipt.get("receipt_id", "")
+		)
+		transition_receipt.erase("receipt_id")
+		transition_receipt["preferred_industry_color"] = "technology"
+		var applied := consumer.consume_receipt(transition_receipt)
+		var replayed := consumer.consume_receipt(
+			transition_receipt.duplicate(true)
+		)
+		var transition_cue := applied.get("cue", {}) as Dictionary
+		var transition_payload := (
+			transition_cue.get("public_payload", {}) as Dictionary
+		)
+		_expect(
+			bool(applied.get("applied", false))
+				and str(replayed.get("reason_code", ""))
+					== "combat_presentation_receipt_duplicate",
+			"%s transition presentation is exact-once"
+				% str(case.get("event_kind", ""))
+		)
+		for field_name in [
+			"old_rank",
+			"new_rank",
+			"refresh_percent",
+			"hp_before",
+			"hp_after",
+		]:
+			if case.has(field_name):
+				_expect(
+					transition_payload.get(field_name) == case.get(field_name),
+					"%s keeps public %s parity"
+						% [str(case.get("event_kind", "")), field_name]
+				)
 	var debug := consumer.debug_snapshot()
 	_expect(
-		int(debug.get("applied_receipt_count", 0)) == 1
-		and int(debug.get("duplicate_receipt_count", 0)) == 2
+		int(debug.get("applied_receipt_count", 0)) == 4
+		and int(debug.get("duplicate_receipt_count", 0)) == 5
 		and int(debug.get("collision_receipt_count", 0)) == 1,
 		"presentation exact-once counters are stable"
 	)
