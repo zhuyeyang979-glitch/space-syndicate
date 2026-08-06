@@ -33,11 +33,15 @@ const MODE_REPLACE_EXISTING := "REPLACE_EXISTING"
 const TRANSITION_MOVE_REGION := "MOVE_REGION"
 const TRANSITION_DETECTION_RANGE := "DETECTION_RANGE"
 const TRANSITION_COMBAT_DAMAGE := "COMBAT_DAMAGE"
+const TRANSITION_PRIVATE_SKILL_SELF_HEAL := "PRIVATE_SKILL_SELF_HEAL"
+const TRANSITION_PRIVATE_SKILL_ARMOR_GAIN := "PRIVATE_SKILL_ARMOR_GAIN"
 const TRANSITION_DESTROY_SOURCE := "DESTROY_SOURCE"
 const TRANSITION_KINDS := [
 	TRANSITION_MOVE_REGION,
 	TRANSITION_DETECTION_RANGE,
 	TRANSITION_COMBAT_DAMAGE,
+	TRANSITION_PRIVATE_SKILL_SELF_HEAL,
+	TRANSITION_PRIVATE_SKILL_ARMOR_GAIN,
 	TRANSITION_DESTROY_SOURCE,
 ]
 const DETECTION_PREFERRED_COLOR_HIT := "PREFERRED_COLOR_HIT"
@@ -787,6 +791,44 @@ static func build_combat_damage_transition_operation(
 	)
 
 
+static func build_private_skill_self_heal_operation(
+	operation_id: String,
+	source_instance_id: String,
+	expected_source_generation: int,
+	healing_amount: int
+) -> Dictionary:
+	return _build_transition_operation(
+		operation_id,
+		TRANSITION_PRIVATE_SKILL_SELF_HEAL,
+		source_instance_id,
+		expected_source_generation,
+		null,
+		null,
+		null,
+		healing_amount,
+		null
+	)
+
+
+static func build_private_skill_armor_gain_operation(
+	operation_id: String,
+	source_instance_id: String,
+	expected_source_generation: int,
+	armor_amount: int
+) -> Dictionary:
+	return _build_transition_operation(
+		operation_id,
+		TRANSITION_PRIVATE_SKILL_ARMOR_GAIN,
+		source_instance_id,
+		expected_source_generation,
+		null,
+		null,
+		null,
+		armor_amount,
+		null
+	)
+
+
 static func build_destroy_transition_operation(
 	operation_id: String,
 	source_instance_id: String,
@@ -859,6 +901,42 @@ static func commit_combat_damage(
 	)
 	if operation.is_empty():
 		return _failure(state, "monster_damage_operation_invalid")
+	return commit_runtime_transition(state, operation)
+
+
+static func commit_private_skill_self_heal(
+	state: Dictionary,
+	operation_id: String,
+	source_instance_id: String,
+	expected_source_generation: int,
+	healing_amount: int
+) -> Dictionary:
+	var operation := build_private_skill_self_heal_operation(
+		operation_id,
+		source_instance_id,
+		expected_source_generation,
+		healing_amount
+	)
+	if operation.is_empty():
+		return _failure(state, "monster_skill_self_heal_operation_invalid")
+	return commit_runtime_transition(state, operation)
+
+
+static func commit_private_skill_armor_gain(
+	state: Dictionary,
+	operation_id: String,
+	source_instance_id: String,
+	expected_source_generation: int,
+	armor_amount: int
+) -> Dictionary:
+	var operation := build_private_skill_armor_gain_operation(
+		operation_id,
+		source_instance_id,
+		expected_source_generation,
+		armor_amount
+	)
+	if operation.is_empty():
+		return _failure(state, "monster_skill_armor_gain_operation_invalid")
 	return commit_runtime_transition(state, operation)
 
 
@@ -1225,6 +1303,18 @@ static func _apply_runtime_transition(
 				operation,
 				source
 			)
+		TRANSITION_PRIVATE_SKILL_SELF_HEAL:
+			return _apply_private_skill_self_heal_transition(
+				state,
+				operation,
+				source
+			)
+		TRANSITION_PRIVATE_SKILL_ARMOR_GAIN:
+			return _apply_private_skill_armor_gain_transition(
+				state,
+				operation,
+				source
+			)
 		TRANSITION_DESTROY_SOURCE:
 			return _apply_destroy_transition(
 				state,
@@ -1449,6 +1539,92 @@ static func _apply_damage_transition(
 			state,
 			next_source
 		),
+		"effect": effect,
+	}
+
+
+static func _apply_private_skill_self_heal_transition(
+	state: Dictionary,
+	operation: Dictionary,
+	source: Dictionary
+) -> Dictionary:
+	if str(source.get("status", "")) != "active":
+		return {
+			"accepted": false,
+			"reason_code": "monster_skill_self_heal_source_not_active",
+		}
+	var amount := int(operation.get("damage_amount", 0))
+	var hp_before := int(source.get("hp", 0))
+	var max_hp := int(source.get("max_hp", 0))
+	if amount <= 0 or hp_before >= max_hp:
+		return {
+			"accepted": false,
+			"reason_code": "monster_skill_self_heal_not_needed",
+		}
+	var hp_after := mini(max_hp, hp_before + amount)
+	var next_source := source.duplicate(true)
+	next_source.erase("source_fingerprint")
+	next_source["hp"] = hp_after
+	next_source["damage_revision"] = int(
+		source.get("damage_revision", 0)
+	) + 1
+	next_source = _seal(next_source, "source_fingerprint")
+	if _source_error(next_source) != "":
+		return {
+			"accepted": false,
+			"reason_code": "monster_skill_self_heal_source_commit_invalid",
+		}
+	var effect := _base_transition_effect(source)
+	effect["reason_code"] = "monster_private_skill_self_heal_committed"
+	effect["hp_after"] = hp_after
+	effect["damage_revision_after"] = int(
+		next_source.get("damage_revision", 0)
+	)
+	return {
+		"accepted": true,
+		"state": _transition_state_with_source(state, next_source),
+		"effect": effect,
+	}
+
+
+static func _apply_private_skill_armor_gain_transition(
+	state: Dictionary,
+	operation: Dictionary,
+	source: Dictionary
+) -> Dictionary:
+	if str(source.get("status", "")) != "active":
+		return {
+			"accepted": false,
+			"reason_code": "monster_skill_armor_gain_source_not_active",
+		}
+	var amount := int(operation.get("damage_amount", 0))
+	var armor_before := int(source.get("armor", 0))
+	if amount <= 0 or armor_before > MAX_SAFE_INTEGER - amount:
+		return {
+			"accepted": false,
+			"reason_code": "monster_skill_armor_gain_amount_invalid",
+		}
+	var next_source := source.duplicate(true)
+	next_source.erase("source_fingerprint")
+	next_source["armor"] = armor_before + amount
+	next_source["damage_revision"] = int(
+		source.get("damage_revision", 0)
+	) + 1
+	next_source = _seal(next_source, "source_fingerprint")
+	if _source_error(next_source) != "":
+		return {
+			"accepted": false,
+			"reason_code": "monster_skill_armor_gain_source_commit_invalid",
+		}
+	var effect := _base_transition_effect(source)
+	effect["reason_code"] = "monster_private_skill_armor_gain_committed"
+	effect["armor_after"] = int(next_source.get("armor", 0))
+	effect["damage_revision_after"] = int(
+		next_source.get("damage_revision", 0)
+	)
+	return {
+		"accepted": true,
+		"state": _transition_state_with_source(state, next_source),
 		"effect": effect,
 	}
 
@@ -2865,6 +3041,18 @@ static func _transition_operation_error(
 			or operation.get("destroy_reason_id") != null
 		):
 			return "monster_damage_operation_fields_invalid"
+	elif kind in [
+		TRANSITION_PRIVATE_SKILL_SELF_HEAL,
+		TRANSITION_PRIVATE_SKILL_ARMOR_GAIN,
+	]:
+		if (
+			operation.get("destination_region_id") != null
+			or operation.get("detection_transition_kind") != null
+			or operation.get("full_map_detection_range_hops") != null
+			or not _positive_integer(operation.get("damage_amount"))
+			or operation.get("destroy_reason_id") != null
+		):
+			return "monster_private_skill_effect_operation_fields_invalid"
 	elif kind == TRANSITION_DESTROY_SOURCE:
 		if (
 			operation.get("destination_region_id") != null
@@ -3009,6 +3197,33 @@ static func _transition_receipt_error(receipt: Dictionary) -> String:
 			or not destroy_reason.is_empty()
 		):
 			return "monster_damage_receipt_invalid"
+	elif kind in [
+		TRANSITION_PRIVATE_SKILL_SELF_HEAL,
+		TRANSITION_PRIVATE_SKILL_ARMOR_GAIN,
+	]:
+		if (
+			receipt.get("previous_region_id")
+			!= receipt.get("current_region_id")
+			or not detection_kind.is_empty()
+			or incoming != 0
+			or receipt.get("armor_absorbed") != 0
+			or not destroy_reason.is_empty()
+			or str(receipt.get("status_before", "")) != "active"
+			or str(receipt.get("status_after", "")) != "active"
+			or int(receipt.get("damage_revision_after", -1))
+			!= int(receipt.get("damage_revision_before", 0)) + 1
+			or (
+				kind == TRANSITION_PRIVATE_SKILL_SELF_HEAL
+				and int(receipt.get("hp_after", -1))
+				<= int(receipt.get("hp_before", 0))
+			)
+			or (
+				kind == TRANSITION_PRIVATE_SKILL_ARMOR_GAIN
+				and int(receipt.get("armor_after", -1))
+				<= int(receipt.get("armor_before", 0))
+			)
+		):
+			return "monster_private_skill_effect_receipt_invalid"
 	elif kind == TRANSITION_DESTROY_SOURCE:
 		if (
 			receipt.get("previous_region_id")

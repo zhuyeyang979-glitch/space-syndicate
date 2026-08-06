@@ -366,9 +366,37 @@ static func military_rank_profile(
 
 
 static func trample_balance() -> Dictionary:
-	return (
-		balance_defaults().get("trample_defaults", {}) as Dictionary
-	).duplicate(true)
+	var source := balance_defaults().get("trample_defaults", {}) as Dictionary
+	var damage_source := source.get(
+		"trample_damage_per_step_by_rank",
+		{}
+	) as Dictionary
+	var cap_source := source.get(
+		"trample_damage_cap_per_region_by_rank",
+		{}
+	) as Dictionary
+	var damage_by_rank := {}
+	var cap_by_rank := {}
+	for rank in range(1, 5):
+		var rank_key := str(rank)
+		damage_by_rank[rank_key] = int(damage_source.get(rank_key, 0))
+		cap_by_rank[rank_key] = int(cap_source.get(rank_key, 0))
+	return {
+		"trample_distance_step_milli_arc": int(source.get(
+			"trample_distance_step_milli_arc",
+			0
+		)),
+		"trample_damage_per_step_by_rank": damage_by_rank,
+		"trample_damage_cap_per_region_by_rank": cap_by_rank,
+		"positive_distance_minimum_step_count": int(source.get(
+			"positive_distance_minimum_step_count",
+			0
+		)),
+		"default_forced_movement_trample": bool(source.get(
+			"default_forced_movement_trample",
+			false
+		)),
+	}
 
 
 static func monster_family_id_from_card_type(card_type: String) -> String:
