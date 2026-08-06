@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "manifest_id": "space_syndicate.v075.combat_authority",
+  "constitution_id": "space_syndicate.v075.complete",
+  "ruleset_id": "v0.7.5",
+  "status": "frozen_target_authority_manifest_not_runtime_evidence",
+  "closed_world": true,
+  "unknown_owner_or_port_policy": "reject_before_mutation",
+  "runtime_owner": {
+    "owner_id": "V075CombatRuntimeOwner",
+    "owner_count_required": 1,
+    "writer_count_required": 1,
+    "owned_state": [
+      "monster_sources",
+      "monster_skill_states",
+      "monster_private_instant_sequence",
+      "military_mission_transactions",
+      "combat_receipt_journal",
+      "combat_exact_once_state"
+    ],
+    "forbidden_state": [
+      "map_topology",
+      "region_geometry",
+      "facility_state",
+      "warehouse_private_stock",
+      "player_asset_balances",
+      "player_asset_reservations_outside_combat_request",
+      "dbg_deck",
+      "dbg_hand",
+      "dbg_discard",
+      "victory_state",
+      "production_save_slots",
+      "rules_rng_state"
+    ]
+  },
+  "pure_cores": [
+    {
+      "core_id": "V075MonsterSourceCore",
+      "responsibilities": ["control_capacity_validation", "card_mode_legality", "source_transition_plan", "rank_hp_skill_unlock_plan"],
+      "owns_runtime_state": false,
+      "owns_rng": false
+    },
+    {
+      "core_id": "V075MonsterAutonomyCore",
+      "responsibilities": ["public_facility_candidate_filter", "shortest_path_targeting", "hungry_fallback", "frozen_movement_plan"],
+      "owns_runtime_state": false,
+      "owns_rng": false
+    },
+    {
+      "core_id": "V075MonsterTrampleCore",
+      "responsibilities": ["fixed_point_segment_aggregation", "per_region_damage_formula", "stable_facility_budget_allocation"],
+      "owns_runtime_state": false,
+      "owns_rng": false
+    },
+    {
+      "core_id": "V075MonsterPrivateSkillCore",
+      "responsibilities": ["private_request_validation", "safe_boundary_order", "skill_reservation_plan", "cooldown_and_fizzle_transition"],
+      "owns_runtime_state": false,
+      "owns_rng": false
+    },
+    {
+      "core_id": "V075MilitaryMissionCore",
+      "responsibilities": ["two_task_legality", "locked_target_envelope", "region_budget_distribution", "monster_assault_and_withdrawal_plan"],
+      "owns_runtime_state": false,
+      "owns_rng": false
+    },
+    {
+      "core_id": "V075CombatDamageCore",
+      "responsibilities": ["armor_then_hp_calculation", "damage_intent_construction", "public_damage_receipt_projection"],
+      "owns_runtime_state": false,
+      "owns_rng": false
+    }
+  ],
+  "typed_ports": [
+    {
+      "port_id": "V075MapCombatSnapshotPortV1",
+      "external_owner": "V074MapRuntimeOwner",
+      "direction": "read_only_into_combat",
+      "allowed_fields": ["map_id", "map_revision", "region_ids", "adjacency_graph", "region_centers_unit_sphere", "fixed_point_arc_segments"],
+      "forbidden_operations": ["write_region", "write_adjacency", "write_geometry", "consume_map_rng"]
+    },
+    {
+      "port_id": "V075PublicFacilityCombatQueryPortV1",
+      "external_owner": "RegionInfrastructureOwner",
+      "direction": "read_only_into_combat",
+      "allowed_fields": ["facility_id", "facility_generation", "facility_type", "industry_id", "region_id", "owner_player_id", "damage_state", "destroyed"],
+      "forbidden_fields": ["warehouse_private_stock", "warehouse_private_routes", "future_facility_action", "private_logistics_plan"]
+    },
+    {
+      "port_id": "FacilityCombatDamageIntentV1",
+      "external_owner": "RegionInfrastructureOwner",
+      "direction": "intent_out_receipt_in",
+      "required_intent_fields": ["source_effect_id", "target_facility_id", "expected_generation", "damage_amount", "damage_kind", "combat_receipt_id"],
+      "direct_write_allowed": false
+    },
+    {
+      "port_id": "CharacterMonsterControlCapacityPortV1",
+      "external_owner": "CharacterSemanticOwner",
+      "direction": "read_only_into_combat",
+      "allowed_fields": ["player_id", "character_revision", "monster_control_capacity_modifier"],
+      "hardcoded_character_name_allowed": false
+    },
+    {
+      "port_id": "V075CombatAssetReservationPortV1",
+      "external_owner": "PlayerAssetRuntimeOwner",
+      "direction": "prepare_commit_rollback_finalize",
+      "allowed_operations": ["query_available_unreserved", "prepare_private_skill_reservation", "commit_private_skill_debit", "release_private_skill_reservation"],
+      "forbidden_operations": ["debit_public_action_reservation", "direct_balance_write", "asset_refresh", "asset_rng_draw"]
+    },
+    {
+      "port_id": "V075CombatDbgLifecyclePortV1",
+      "external_owner": "DbgRuntimeOwner",
+      "direction": "intent_out_receipt_in",
+      "allowed_operations": ["lock_normal_card_mode", "commit_monster_card_to_discard", "commit_military_card_to_discard", "query_owned_card_identity"],
+      "forbidden_operations": ["direct_deck_write", "direct_hand_write", "direct_discard_write", "future_draw_peek", "supply_cursor_advance"]
+    },
+    {
+      "port_id": "V075CombatVictoryQueryPortV1",
+      "external_owner": "VictoryRuntimeOwner",
+      "direction": "read_only_into_combat_and_revalidation_request_out",
+      "allowed_fields": ["victory_phase", "terminal", "final_settlement_committed"],
+      "combat_may_write_victory": false
+    },
+    {
+      "port_id": "V075CombatClockBoundaryPortV1",
+      "external_owner": "ApplicationFlowOwner",
+      "direction": "safe_boundary_events_into_combat",
+      "allowed_events": ["public_receipt_committed", "public_batch_complete", "maintenance_before_autonomy", "victory_pending", "final_settlement"],
+      "wall_clock_drives_rules": false
+    }
+  ],
+  "authority_matrix": [
+    {"state_or_decision": "monster_source_state", "writer": "V075CombatRuntimeOwner", "readers": ["owner_projection", "public_projection", "authorized_ai_projection"]},
+    {"state_or_decision": "monster_target_and_path_plan", "writer": "V075CombatRuntimeOwner_from_V075MonsterAutonomyCore", "readers": ["public_projection", "presentation"]},
+    {"state_or_decision": "monster_private_skill_request_and_order", "writer": "V075CombatRuntimeOwner", "readers": ["owner_projection"], "public": false},
+    {"state_or_decision": "military_mission_transaction", "writer": "V075CombatRuntimeOwner", "readers": ["owner_projection_until_public_resolution", "public_receipt_after_resolution"]},
+    {"state_or_decision": "facility_state", "writer": "RegionInfrastructureOwner", "readers": ["public_facility_projection", "authorized_owner_projection"]},
+    {"state_or_decision": "player_assets", "writer": "PlayerAssetRuntimeOwner", "readers": ["owner_projection", "authorized_ai_projection"]},
+    {"state_or_decision": "dbg_piles", "writer": "DbgRuntimeOwner", "readers": ["owner_projection", "authorized_ai_projection"]},
+    {"state_or_decision": "map_topology", "writer": "V074MapRuntimeOwner", "readers": ["combat_public_snapshot", "ai", "player_projection", "presentation"]},
+    {"state_or_decision": "combat_presentation", "writer": "CombatPresentationOwner", "readers": ["player_ui"], "gameplay_mutation_count": 0},
+    {"state_or_decision": "combat_telemetry", "writer": "CombatTelemetrySink", "readers": ["developer_reports"], "gameplay_mutation_count": 0}
+  ],
+  "privacy_contract": {
+    "public_monster_allowlist": ["source_instance_id", "source_generation", "public_owner_identity", "monster_family_id", "display_name", "rank", "hp", "max_hp", "armor", "status", "preferred_industry_color", "region_id", "tracked_region_id", "tracked_facility_id", "expected_region_path", "unlocked_skill_count", "batch_active_skill_used"],
+    "owner_monster_skill_allowlist": ["skill_definition_id", "private_skill_name", "skill_state", "asset_cost_by_color", "target_contract", "range_contract", "cooldown_remaining_batches", "ultimate", "pending_private_target"],
+    "rival_forbidden_fields": ["skill_definition_id", "private_skill_name", "skill_state_detail", "asset_cost_by_color", "target_contract", "range_contract", "cooldown_remaining_batches", "pending_private_target", "future_skill_request", "private_instant_sequence"],
+    "warehouse_forbidden_fields": ["private_stock", "private_sources", "private_routes", "future_logistics_plan"],
+    "ai_direct_combat_owner_access": false
+  },
+  "exact_once_contract": {
+    "journal_owner": "V075CombatRuntimeOwner",
+    "identity_fields": ["combat_receipt_id", "source_effect_id", "source_instance_id", "source_generation"],
+    "effect_kinds": ["monster_card_transition", "monster_move", "monster_trample_region", "monster_basic_attack", "monster_private_skill", "military_region_assault", "military_monster_assault", "military_withdrawal", "facility_combat_damage"],
+    "duplicate_commit_policy": "return_original_receipt_without_mutation",
+    "checkpoint_rollback_must_restore_journal": true
+  },
+  "production_reachability": {
+    "required_entry_owner": "V075CombatRuntimeOwner",
+    "forbidden_nodes_or_scripts": ["MonsterRuntimeController", "MilitaryRuntimeController", "scripts/runtime/monster_runtime_controller.gd", "scripts/runtime/military_runtime_controller.gd"],
+    "forbidden_compatibility_files": ["scripts/main.gd", "main_legacy.gd", "combat_main.gd", "monster_main.gd", "military_main.gd"],
+    "legacy_semantic_read_allowed": true,
+    "legacy_pure_algorithm_extraction_allowed": true,
+    "legacy_controller_instance_allowed": false,
+    "legacy_fallback_allowed": false
+  },
+  "atomic_cutover": {
+    "domain_count": 14,
+    "domains": ["combat_catalog", "monster_source_registry", "monster_card_modes", "monster_autonomy", "monster_movement", "monster_trample", "monster_private_skill_authority", "monster_skill_cooldown", "military_mission_authority", "facility_combat_damage_port", "combat_ai_projection", "combat_player_projection", "combat_presentation", "combat_telemetry"],
+    "all_domains_must_connect_same_commit": true,
+    "dual_write_count_required": 0,
+    "legacy_fallback_count_required": 0,
+    "mixed_ruleset_count_required": 0
+  },
+  "runtime_claims": {
+    "connected_domain_count": 0,
+    "reason": "Lane A freezes target authority and does not claim production wiring.",
+    "coordinator_must_replace_with_same_sha_mcp_evidence": true
+  }
+}

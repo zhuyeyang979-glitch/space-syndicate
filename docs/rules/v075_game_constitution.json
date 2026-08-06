@@ -1,0 +1,576 @@
+{
+  "schema_version": 1,
+  "constitution_id": "space_syndicate.v075.complete",
+  "ruleset_id": "v0.7.5",
+  "status": "approved_and_frozen_for_atomic_production_cutover",
+  "authority": {
+    "highest_authority": "latest_explicit_user_decision",
+    "machine_readable_authority": "docs/rules/v075_game_constitution.json",
+    "human_readable_companion": "docs/rules/v075_game_constitution.md",
+    "inherits_from_constitution_id": "space_syndicate.v074.complete",
+    "inherits_from_ruleset_id": "v0.7.4",
+    "inheritance_mode": "all_v074_rules_outside_explicit_v075_combat_amendment_domains",
+    "source_v074_json_sha256": "f20a4bb2f1eb682a555042caa6b6a37d294da296446b9c65b34ffd14954144e8",
+    "source_v074_markdown_sha256": "dc5b9654ca5f255459df3380e1bc7d4446ec03ce6da8ad58b52dc69b0f0c07a0",
+    "historical_v074_files_mutated": false,
+    "balance_defaults_path": "docs/rules/v075_combat_balance_defaults.json",
+    "authority_manifest_path": "docs/rules/v075_combat_authority_manifest.json",
+    "active_catalog_path": "data/v075/v075_combat_active_catalog.json"
+  },
+  "closed_world_contract": {
+    "combat_domain_complete": true,
+    "rule_record_required_keys": ["rule_id", "domain", "statement", "value"],
+    "unknown_rule_id_policy": "reject_before_mutation",
+    "unknown_enum_value_policy": "reject_before_mutation",
+    "missing_required_field_policy": "reject_before_mutation",
+    "implicit_localized_identity_allowed": false,
+    "implicit_numeric_default_allowed": false,
+    "numeric_tunables_allowed_in_constitution": false,
+    "combat_rule_count": 30,
+    "combat_rule_ids": [
+      "v075.monster.control_capacity",
+      "v075.monster.card_modes",
+      "v075.monster.preferred_industry_color",
+      "v075.monster.autonomous_targeting",
+      "v075.monster.autonomous_movement",
+      "v075.monster.ground_trample",
+      "v075.monster.fixed_point_geodesic_distance",
+      "v075.monster.rank_skill_unlock",
+      "v075.monster.private_instant_skill_zone",
+      "v075.monster.instant_safe_boundary",
+      "v075.monster.cooldown_and_reuse",
+      "v075.monster.public_private_projection",
+      "v075.monster.normal_dbg_membership",
+      "v075.monster.active_catalog_scope",
+      "v075.military.normal_dbg_membership",
+      "v075.military.assault_region",
+      "v075.military.assault_monster",
+      "v075.military.one_shot_withdrawal",
+      "v075.military.no_bound_actions",
+      "v075.military.no_guard_task",
+      "v075.combat.facility_damage_bridge",
+      "v075.combat.exact_once",
+      "v075.combat.dynamic_map_integration",
+      "v075.combat.runtime_authority",
+      "v075.combat.ai_projection",
+      "v075.combat.presentation_authority_independence",
+      "v075.combat.telemetry_privacy",
+      "v075.combat.checkpoint_boundary",
+      "v075.combat.terminal_quiescence",
+      "v075.combat.v074_regression_preservation"
+    ]
+  },
+  "runtime_transition": {
+    "starting_production_ruleset": "v0.7.4",
+    "target_production_ruleset": "v0.7.5",
+    "atomic_cutover_required": true,
+    "dual_write_allowed": false,
+    "legacy_fallback_allowed": false,
+    "mixed_ruleset_allowed": false,
+    "new_game_only_sample": true,
+    "save_resume_enabled": false,
+    "production_runtime_claimed_by_constitution_freeze": false
+  },
+  "amended_domains": [
+    "combat_catalog",
+    "monster_source_registry",
+    "monster_card_modes",
+    "monster_autonomy",
+    "monster_movement",
+    "monster_trample",
+    "monster_private_skill_authority",
+    "monster_skill_cooldown",
+    "military_mission_authority",
+    "facility_combat_damage_port",
+    "combat_ai_projection",
+    "combat_player_projection",
+    "combat_presentation",
+    "combat_telemetry"
+  ],
+  "superseded_contracts": {
+    "bound_action_source_kinds_before": ["monster", "military"],
+    "bound_action_source_kinds_after": ["monster"],
+    "superseded_rule_ids": [
+      "v07.bound_action.lifecycle",
+      "v07.bound_action.batch_capacity"
+    ],
+    "military_bound_action_enabled": false,
+    "monster_skill_public_batch_queue_member": false,
+    "monster_skill_counts_as_normal_five_action_slot": false,
+    "old_monster_runtime_controller_production_reachable": false,
+    "old_military_runtime_controller_production_reachable": false
+  },
+  "rules": [
+    {
+      "rule_id": "v075.monster.control_capacity",
+      "domain": "monster_source",
+      "statement": "A normal player may control one active monster plus a typed character semantic modifier; capacity loss never destroys an existing monster but blocks further deployment until the count is legal.",
+      "value": {
+        "base_active_monster_capacity_per_player": 1,
+        "modifier_port": "CharacterMonsterControlCapacityPortV1",
+        "hardcoded_character_name_exception_count": 0,
+        "ui_capacity_writer_count": 0,
+        "forced_kill_on_capacity_loss_count": 0
+      }
+    },
+    {
+      "rule_id": "v075.monster.card_modes",
+      "domain": "monster_card_resolution",
+      "statement": "Every monster card locks exactly one explicit mode and exact source or region target before public batch lock; resolution cannot auto-convert mode or retarget.",
+      "value": {
+        "allowed_modes": ["DEPLOY_NEW", "REFRESH_EXISTING", "UPGRADE_EXISTING", "REPLACE_EXISTING"],
+        "mode_prebound": true,
+        "mode_auto_conversion_count": 0,
+        "target_reselection_count": 0,
+        "refresh_max_hp_basis_points_by_card_rank": {"1": 2500, "2": 5000, "3": 7500, "4": 10000},
+        "upgrade_heals_to_new_max_hp": true,
+        "upgrade_resets_existing_cooldowns": false,
+        "replacement_withdrawn_is_kill": false,
+        "replacement_kill_reward_count": 0,
+        "card_destination_after_resolution": "personal_discard"
+      }
+    },
+    {
+      "rule_id": "v075.monster.preferred_industry_color",
+      "domain": "monster_catalog",
+      "statement": "Every active monster family explicitly authors exactly one preferred industry color; runtime inference from display name, model color, or legacy resource_focus is forbidden.",
+      "value": {
+        "allowed_industry_colors": ["life", "energy", "industry", "technology", "commerce", "shipping"],
+        "active_family_count": 6,
+        "required_color_coverage": 6,
+        "runtime_inference_count": 0,
+        "usage": "autonomous_facility_targeting_only",
+        "normal_card_primary_color_source": "existing_unified_track_color_supply",
+        "preferred_color_affects_card_primary_color": false,
+        "preferred_color_affects_card_asset_cost": false,
+        "legacy_resource_focus_is_migration_reference_only": true
+      }
+    },
+    {
+      "rule_id": "v075.monster.autonomous_targeting",
+      "domain": "monster_autonomy",
+      "statement": "At maintenance, each active monster deterministically selects the nearest reachable enemy public facility whose industry_id matches its preferred color using the frozen dynamic-region adjacency snapshot.",
+      "value": {
+        "candidate_facility_types": ["factory", "market", "warehouse"],
+        "required_candidate_fields": ["facility_id", "facility_generation", "facility_type", "industry_id", "region_id", "owner_player_id", "damage_state", "destroyed"],
+        "owner_facilities_are_targets": false,
+        "private_asset_reader_count": 0,
+        "private_warehouse_stock_reader_count": 0,
+        "distance_metric": "dynamic_region_adjacency_shortest_path_hops",
+        "tie_break_order": ["facility_type_preference", "authoring_target_priority", "facility_damage_state", "facility_id_lexicographic"],
+        "no_match_behavior": "expand_detection_range_by_one_hop_next_batch",
+        "full_map_no_match_behavior": "hungry_nearest_any_enemy_public_facility",
+        "matching_color_reappearance_behavior": "restore_color_priority_and_base_detection_range",
+        "camera_or_pixel_input_count": 0
+      }
+    },
+    {
+      "rule_id": "v075.monster.autonomous_movement",
+      "domain": "monster_autonomy",
+      "statement": "All monster targets and paths are planned simultaneously from one frozen public snapshot; authority changes region identity only by committed movement receipts while presentation animates the frozen plan.",
+      "value": {
+        "batch_order": [
+          "complete_public_actions",
+          "drain_accepted_private_skills_at_safe_boundary",
+          "freeze_autonomy_input",
+          "compute_all_targets_and_paths",
+          "freeze_all_movement_plans",
+          "present_in_stable_internal_order",
+          "commit_aggregated_trample",
+          "commit_arrival_basic_attacks",
+          "maintenance",
+          "victory_revalidation"
+        ],
+        "target_snapshot_count_per_maintenance": 1,
+        "target_order_bias_count": 0,
+        "authoritative_position_updated_per_animation_frame": false,
+        "land_ocean_passability_modifier_count": 0
+      }
+    },
+    {
+      "rule_id": "v075.monster.ground_trample",
+      "domain": "monster_trample",
+      "statement": "Only ground_trample movement damages enemy facilities along traversed regions; flying and teleport movement do not trample, and forced movement defaults to no trample.",
+      "value": {
+        "movement_damage_profiles": ["ground_trample", "flying_no_trample", "teleport_no_trample"],
+        "trample_target_facility_types": ["factory", "market", "warehouse"],
+        "trample_unit_damage_count": 0,
+        "trample_region_hp_mutation_count": 0,
+        "flying_trample_damage_count": 0,
+        "teleport_trample_damage_count": 0,
+        "default_forced_movement_trample": false,
+        "positive_distance_minimum_step_count": 1,
+        "per_region_cap_required": true,
+        "target_order": ["preferred_color_enemy_facilities", "other_enemy_facilities", "facility_id_lexicographic"]
+      }
+    },
+    {
+      "rule_id": "v075.monster.fixed_point_geodesic_distance",
+      "domain": "monster_trample",
+      "statement": "Trample identity is derived only from deterministic fixed-point spherical arc distance aggregated once per traversed region; visual geometry complexity cannot change damage.",
+      "value": {
+        "distance_field": "distance_milli_arc",
+        "distance_type": "nonnegative_integer",
+        "path_field": "ordered_region_path",
+        "segment_fields": ["region_id", "distance_milli_arc"],
+        "same_region_segments_aggregated_before_damage": true,
+        "float_accumulator_is_final_damage_identity": false,
+        "polygon_vertex_count_input": false,
+        "microcell_count_input": false,
+        "screen_pixel_distance_input": false,
+        "camera_projection_input": false,
+        "loop_count_required": 0,
+        "formula": "min(max(1,floor(distance_milli_arc/trample_distance_step_milli_arc))*trample_damage_per_step_by_rank[rank],trample_damage_cap_per_region_by_rank[rank])",
+        "numeric_parameter_authority": "docs/rules/v075_combat_balance_defaults.json"
+      }
+    },
+    {
+      "rule_id": "v075.monster.rank_skill_unlock",
+      "domain": "monster_private_skill",
+      "statement": "Monster rank unlocks one through four owner-private active skills; the fourth rank-four skill is the sole ultimate and automatic abilities never count as skill cards.",
+      "value": {
+        "active_skill_count_by_rank": {"1": 1, "2": 2, "3": 3, "4": 4},
+        "rank_four_ultimate_count": 1,
+        "ultimate_required_skill_ordinal": 4,
+        "automatic_abilities_excluded": ["preferred_color", "autonomous_targeting", "autonomous_movement", "ground_trample", "arrival_basic_attack", "passive_traits"],
+        "active_skill_definition_count": 24
+      }
+    },
+    {
+      "rule_id": "v075.monster.private_instant_skill_zone",
+      "domain": "monster_private_skill",
+      "statement": "Monster active skills live only in the owner's private source-bound dock and execute through a private serial authority; they never enter public card queues, hand, deck, discard, commodity inventory, or merge flows.",
+      "value": {
+        "execution_mode": "private_instant_serial",
+        "public_batch_queue_member": false,
+        "normal_five_action_rotation_member": false,
+        "public_arrangement_member": false,
+        "normal_hand_member": false,
+        "normal_deck_member": false,
+        "normal_discard_member": false,
+        "commodity_inventory_member": false,
+        "mergeable": false,
+        "private_sequence_owner": "V075CombatRuntimeOwner",
+        "max_uses_per_source_per_batch": 1
+      }
+    },
+    {
+      "rule_id": "v075.monster.instant_safe_boundary",
+      "domain": "monster_private_skill",
+      "statement": "A legal private skill request resolves immediately when no atomic transaction is active, otherwise at the first safe receipt boundary without interrupting, rolling back, or peeking into future public actions.",
+      "value": {
+        "allowed_request_phases": ["batch_active", "public_resolution_between_receipts", "maintenance_before_autonomy"],
+        "forbidden_request_phases": ["victory_resolved", "final_settlement", "terminal"],
+        "atomic_transaction_reentry_allowed": false,
+        "interrupt_current_atomic_action": false,
+        "next_safe_boundary_required": true,
+        "interactive_counters_enabled": false,
+        "ordering": ["authority_receive_sequence", "stable_player_id", "request_id"],
+        "internal_order_public": false,
+        "future_public_queue_reader_count": 0
+      }
+    },
+    {
+      "rule_id": "v075.monster.cooldown_and_reuse",
+      "domain": "monster_private_skill",
+      "statement": "A successful skill consumes only available unreserved assets and enters batch cooldown; accepted requests that fizzle refund assets, start no cooldown, and consume the source's one-use batch allowance.",
+      "value": {
+        "skill_states": ["LOCKED_BY_RANK", "READY", "PENDING_SAFE_BOUNDARY", "RESOLVING", "COOLDOWN", "DISABLED", "REVOKED"],
+        "asset_source": "available_unreserved_assets",
+        "public_action_reserved_assets_consumable": false,
+        "reservation_lifetime": "single_atomic_private_skill_request",
+        "accepted_fizzle_asset_refund": "full",
+        "accepted_fizzle_cooldown_started": false,
+        "accepted_fizzle_consumes_batch_use": true,
+        "preacceptance_rejection_consumes_assets": false,
+        "preacceptance_rejection_consumes_batch_use": false,
+        "upgrade_resets_existing_cooldown": false,
+        "newly_unlocked_skill_initial_state": "READY",
+        "downed_skill_state": "DISABLED",
+        "destroyed_withdrawn_replaced_skill_state": "REVOKED"
+      }
+    },
+    {
+      "rule_id": "v075.monster.public_private_projection",
+      "domain": "combat_projection",
+      "statement": "Public projection exposes monster body and committed public combat facts; only the owner projection exposes skill definitions, names, costs, targets, and cooldown detail.",
+      "value": {
+        "public_fields": ["source_instance_id", "source_generation", "public_owner_identity", "monster_family_id", "display_name", "rank", "hp", "max_hp", "armor", "status", "preferred_industry_color", "region_id", "tracked_region_id", "tracked_facility_id", "expected_region_path", "unlocked_skill_count", "batch_active_skill_used"],
+        "owner_private_fields": ["skill_definition_id", "private_skill_name", "asset_cost_by_color", "target_contract", "range_contract", "cooldown_batches", "cooldown_remaining_batches", "ultimate", "pending_private_target"],
+        "rival_forbidden_fields": ["skill_definition_id", "private_skill_name", "skill_list", "asset_cost_by_color", "cooldown_batches", "cooldown_remaining_batches", "pending_private_target", "future_skill_request", "private_instant_sequence"],
+        "public_skill_card_disclosure_count": 0,
+        "future_skill_target_disclosure_count": 0
+      }
+    },
+    {
+      "rule_id": "v075.monster.normal_dbg_membership",
+      "domain": "dbg_card_lifecycle",
+      "statement": "Monster deployment cards are normal cards that purchase to personal discard, reshuffle, draw into the normal hand, resolve one prebound monster mode, and return to personal discard.",
+      "value": {
+        "unified_track_kind": "normal_card",
+        "purchase_destination": "personal_discard",
+        "reshuffle_member": true,
+        "draw_destination": "normal_hand",
+        "post_resolution_destination": "personal_discard",
+        "card_action_cost_contract": "track_primary_color_plus_primary_asset_cost",
+        "monster_active_skills_are_dbg_cards": false
+      }
+    },
+    {
+      "rule_id": "v075.monster.active_catalog_scope",
+      "domain": "combat_catalog",
+      "statement": "The first V0.7.5 candidate contains exactly six active monster families covering all six preferred colors and exactly four authored active skills per family.",
+      "value": {
+        "active_monster_family_count": 6,
+        "preferred_color_coverage": 6,
+        "active_skills_per_family": 4,
+        "active_monster_skill_definition_count": 24,
+        "neutral_monster_enabled": false,
+        "catalog_authority": "data/v075/v075_combat_active_catalog.json"
+      }
+    },
+    {
+      "rule_id": "v075.military.normal_dbg_membership",
+      "domain": "dbg_card_lifecycle",
+      "statement": "Military cards are normal DBG cards: purchase to personal discard, reshuffle, draw, enter the ordinary anonymous batch, resolve one mission, withdraw, and return to personal discard.",
+      "value": {
+        "unified_track_kind": "normal_card",
+        "purchase_destination": "personal_discard",
+        "reshuffle_member": true,
+        "draw_destination": "normal_hand",
+        "public_anonymous_batch_member": true,
+        "owner_anonymous_until_resolution": true,
+        "card_action_cost_contract": "track_primary_color_plus_primary_asset_cost",
+        "active_definition_maximum": 4
+      }
+    },
+    {
+      "rule_id": "v075.military.assault_region",
+      "domain": "military_mission",
+      "statement": "ASSAULT_REGION locks one region and its then-enemy factory, market, and warehouse generations; one fixed total damage budget is distributed round-robin over the locked stable facility order without adding replacement targets.",
+      "value": {
+        "mission_kind": "assault_region",
+        "player_selects": ["target_region_id"],
+        "locked_fields": ["target_region_id", "target_region_revision", "target_facility_ids", "target_facility_generations", "stable_facility_order", "region_strike_damage_budget"],
+        "eligible_facility_types": ["factory", "market", "warehouse"],
+        "friendly_facility_targeting_allowed": false,
+        "full_damage_per_facility_replication_count": 0,
+        "allocation_algorithm": "one_damage_unit_per_still_legal_locked_facility_in_stable_round_robin_until_budget_exhausted",
+        "retarget_count": 0,
+        "all_targets_invalid_behavior": "fizzle_without_reselection"
+      }
+    },
+    {
+      "rule_id": "v075.military.assault_monster",
+      "domain": "military_mission",
+      "statement": "ASSAULT_MONSTER locks one exact monster source instance and generation, attacks it once at its current public region if still legal, and never retargets.",
+      "value": {
+        "mission_kind": "assault_monster",
+        "locked_fields": ["target_monster_source_instance_id", "target_source_generation", "target_monster_revision", "public_target_region_id"],
+        "same_source_may_move_before_resolution": true,
+        "generation_change_invalidates_target": true,
+        "destroyed_withdrawn_replaced_invalidates_target": true,
+        "retarget_count": 0,
+        "military_vs_military_task_count": 0
+      }
+    },
+    {
+      "rule_id": "v075.military.one_shot_withdrawal",
+      "domain": "military_mission",
+      "statement": "A military card creates no persistent source; after one region or monster assault, including a fizzle, the mission withdraws and the card enters personal discard.",
+      "value": {
+        "persistent_source_count": 0,
+        "mission_effect_count": 1,
+        "withdraw_after_resolution": true,
+        "withdraw_after_fizzle": true,
+        "post_mission_card_destination": "personal_discard",
+        "subsequent_command_count": 0,
+        "military_cooldown_count": 0,
+        "additional_control_capacity_limit": false
+      }
+    },
+    {
+      "rule_id": "v075.military.no_bound_actions",
+      "domain": "military_mission",
+      "statement": "Military cards and missions grant no source-bound action cards, private military skill dock, cooldown, or reusable command.",
+      "value": {
+        "bound_action_enabled": false,
+        "bound_action_count": 0,
+        "private_skill_dock_count": 0,
+        "reusable_command_count": 0,
+        "bound_action_source_kinds_after": ["monster"]
+      }
+    },
+    {
+      "rule_id": "v075.military.no_guard_task",
+      "domain": "military_mission",
+      "statement": "Military mission choice contains only assault_region and assault_monster; guard, protect, defend, and intercept variants are invalid in Core, AI, UI, Save, and telemetry.",
+      "value": {
+        "allowed_task_kinds": ["assault_region", "assault_monster"],
+        "allowed_task_kind_count": 2,
+        "forbidden_task_kinds": ["guard_region", "protect_region", "defend_region", "intercept_region"],
+        "guard_task_count": 0,
+        "guard_ui_count": 0
+      }
+    },
+    {
+      "rule_id": "v075.combat.facility_damage_bridge",
+      "domain": "combat_ports",
+      "statement": "Combat never writes facility state directly; it emits FacilityCombatDamageIntentV1 for the Region Infrastructure Owner to validate, commit or reject, and receipt.",
+      "value": {
+        "intent_schema": "FacilityCombatDamageIntentV1",
+        "required_intent_fields": ["source_effect_id", "target_facility_id", "expected_generation", "damage_amount", "damage_kind", "combat_receipt_id"],
+        "facility_owner": "RegionInfrastructureOwner",
+        "combat_direct_facility_write_count": 0,
+        "supported_facility_types": ["factory", "market", "warehouse"],
+        "warehouse_private_stock_disclosure_count": 0,
+        "warehouse_private_logistics_disclosure_count": 0
+      }
+    },
+    {
+      "rule_id": "v075.combat.exact_once",
+      "domain": "combat_runtime",
+      "statement": "Every monster movement, per-region trample, arrival attack, private skill, military mission, and facility damage effect carries stable identity and is committed at most once through the Combat Receipt Journal.",
+      "value": {
+        "journal_owner": "V075CombatRuntimeOwner",
+        "effect_identity_fields": ["combat_receipt_id", "source_effect_id", "source_instance_id", "source_generation"],
+        "duplicate_effect_count_required": 0,
+        "duplicate_trample_damage_count_required": 0,
+        "presentation_duplicate_count_required": 0,
+        "rollback_replay_repeat_count_required": 0
+      }
+    },
+    {
+      "rule_id": "v075.combat.dynamic_map_integration",
+      "domain": "combat_ports",
+      "statement": "Combat consumes stable dynamic region IDs, adjacency, region centers, and fixed-point arc segments from V0.7.4 map projections; it never assumes six regions or uses array-index distance.",
+      "value": {
+        "supported_region_count_minimum": 6,
+        "supported_region_count_maximum": 30,
+        "fixed_six_region_assumption_allowed": false,
+        "alpha_zeta_region_identity_allowed": false,
+        "region_array_index_distance_allowed": false,
+        "map_write_count": 0,
+        "land_ocean_combat_modifier_count": 0
+      }
+    },
+    {
+      "rule_id": "v075.combat.runtime_authority",
+      "domain": "combat_architecture",
+      "statement": "One V075CombatRuntimeOwner is the sole writer for combat state while pure Cores calculate plans and typed ports delegate map, facility, asset, DBG, Victory, and Save responsibilities.",
+      "value": {
+        "runtime_owner_id": "V075CombatRuntimeOwner",
+        "runtime_owner_count": 1,
+        "combat_state_writer_count": 1,
+        "dual_authority_count": 0,
+        "owned_state": ["monster_sources", "monster_skill_states", "monster_private_instant_sequence", "military_mission_transactions", "combat_receipt_journal", "combat_exact_once_state"],
+        "forbidden_owned_state": ["map_topology", "facility_state", "player_assets", "dbg_deck_or_discard", "victory", "production_save_slots"],
+        "prohibited_production_controllers": ["MonsterRuntimeController", "MilitaryRuntimeController"],
+        "copied_legacy_combat_monolith_count": 0
+      }
+    },
+    {
+      "rule_id": "v075.combat.ai_projection",
+      "domain": "combat_ai",
+      "statement": "AI receives only its own private combat facts plus public facilities, public monsters, dynamic adjacency, and legal targets; it never reads rival private skills, warehouses, future missions, or hidden queue ownership.",
+      "value": {
+        "own_private_allowed": ["owned_monster_sources", "owned_skill_definitions", "owned_skill_cooldowns", "owned_available_assets"],
+        "public_allowed": ["public_facilities", "public_monsters", "dynamic_region_adjacency", "legal_targets"],
+        "forbidden": ["rival_skill_definitions", "rival_skill_cooldowns", "rival_pending_skills", "rival_skill_targets", "warehouse_private_stock", "rival_future_military_target", "complete_hidden_lead_order"],
+        "direct_runtime_controller_reader_count": 0,
+        "invalid_target_count_required": 0,
+        "hidden_information_violation_count_required": 0
+      }
+    },
+    {
+      "rule_id": "v075.combat.presentation_authority_independence",
+      "domain": "combat_presentation",
+      "statement": "Combat presentation consumes committed plans and receipts, may animate full combat feedback, and owns no state, path, damage, RNG, or receipt timing.",
+      "value": {
+        "gameplay_mutation_count": 0,
+        "rules_rng_draw_delta": 0,
+        "path_decision_count": 0,
+        "damage_decision_count": 0,
+        "authority_receipt_delay_ms": 0,
+        "public_skill_card_face_visible": false,
+        "reduced_motion_semantic_parity_required": true
+      }
+    },
+    {
+      "rule_id": "v075.combat.telemetry_privacy",
+      "domain": "combat_telemetry",
+      "statement": "Combat telemetry is read-only and records only authorized owner-private or public event summaries; rival private skills, internal instant order, warehouse stock, and AI plans are forbidden.",
+      "value": {
+        "gameplay_owner_count": 0,
+        "rng_owner_count": 0,
+        "world_mutation_count": 0,
+        "forbidden_fields": ["rival_skill_definition_id", "rival_skill_target", "rival_skill_cooldown", "private_instant_sequence", "warehouse_private_stock", "ai_private_combat_plan"],
+        "hidden_field_count_required": 0
+      }
+    },
+    {
+      "rule_id": "v075.combat.checkpoint_boundary",
+      "domain": "combat_checkpoint",
+      "statement": "Detached pure-data combat checkpoints support rollback and exact-once tests but never write production Save slots in the V0.7.5 new-game-only candidate.",
+      "value": {
+        "checkpoint_types": ["CombatCheckpointV1", "MonsterSourceCheckpointV1", "MonsterSkillCheckpointV1", "MilitaryMissionCheckpointV1"],
+        "pure_data": true,
+        "capture_mutation_count": 0,
+        "production_save_write_count": 0,
+        "production_save_owner_connected": false,
+        "save_resume_enabled": false
+      }
+    },
+    {
+      "rule_id": "v075.combat.terminal_quiescence",
+      "domain": "combat_terminal",
+      "statement": "Victory pending rejects new private skill requests; accepted requests complete or deterministically fizzle before the single FinalSettlement, after which combat is fully quiescent.",
+      "value": {
+        "new_request_after_victory_pending_allowed": false,
+        "accepted_request_terminal_policy": "complete_or_fizzle_before_final_settlement",
+        "terminal_pending_combat_request_count_required": 0,
+        "post_settlement_combat_effect_count_required": 0,
+        "final_settlement_count_required": 1,
+        "duplicate_settlement_count_required": 0,
+        "combat_victory_condition_count_added": 0
+      }
+    },
+    {
+      "rule_id": "v075.combat.v074_regression_preservation",
+      "domain": "v074_inheritance",
+      "statement": "V0.7.5 combat changes preserve the complete V0.7.4 dynamic map, warehouse, ten-position shared sushi vacancy track, six-color asset pips, and physical deletion of scripts/main.gd.",
+      "value": {
+        "dynamic_region_count_supported": [6, 30],
+        "facility_types": ["factory", "market", "warehouse"],
+        "facility_slots_per_region": 18,
+        "unified_track_visible_capacity": 10,
+        "track_refill_mode": "shared_scroll_vacancy",
+        "track_slow_sushi_motion": true,
+        "track_immediate_refill_on_acquisition": false,
+        "track_supply_cursor_delta_on_acquisition": 0,
+        "track_supply_rng_draw_delta_on_acquisition": 0,
+        "normal_card_ratio_basis_points": 6000,
+        "commodity_card_ratio_basis_points": 4000,
+        "asset_pool_display_mode": "repeated_symbol_pips",
+        "asset_pip_slot_count_per_color": 6,
+        "legacy_main_gd_required": false
+      }
+    }
+  ],
+  "acceptance": {
+    "active_monster_family_count": 6,
+    "active_monster_preferred_color_coverage": 6,
+    "active_monster_skill_definition_count": 24,
+    "active_military_definition_maximum": 4,
+    "military_task_kinds": ["assault_region", "assault_monster"],
+    "minimum_combat_simulation_match_count": 2000,
+    "combat_simulation_deadlock_count": 0,
+    "combat_invalid_target_count": 0,
+    "combat_duplicate_effect_count": 0,
+    "combat_hidden_information_violation_count": 0,
+    "monster_autonomy_stall_count": 0,
+    "military_guard_action_count": 0,
+    "military_bound_action_count": 0,
+    "final_settlement_count": 1
+  }
+}
