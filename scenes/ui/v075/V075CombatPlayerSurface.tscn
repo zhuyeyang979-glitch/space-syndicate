@@ -1,0 +1,183 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/v075/v075_combat_player_surface.gd" id="1_surface"]
+[ext_resource type="PackedScene" path="res://scenes/ui/v075/V075MonsterPrivateSkillDock.tscn" id="2_skill"]
+[ext_resource type="PackedScene" path="res://scenes/ui/v075/V075MilitaryMissionPanel.tscn" id="3_military"]
+
+[node name="V075CombatPlayerSurface" type="Control"]
+custom_minimum_size = Vector2(640, 410)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_surface")
+
+[node name="Rows" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="PublicMonsterPanel" type="PanelContainer" parent="Rows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 192)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="Rows/PublicMonsterPanel"]
+layout_mode = 2
+
+[node name="Rows" type="VBoxContainer" parent="Rows/PublicMonsterPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="IdentityRow" type="HBoxContainer" parent="Rows/PublicMonsterPanel/Margin/Rows"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MonsterName" type="Label" parent="Rows/PublicMonsterPanel/Margin/Rows/IdentityRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 20
+text = "怪兽"
+
+[node name="MonsterRank" type="Label" parent="Rows/PublicMonsterPanel/Margin/Rows/IdentityRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.79, 0.97, 1)
+text = "L1 · I"
+vertical_alignment = 1
+
+[node name="MonsterStatus" type="Label" parent="Rows/PublicMonsterPanel/Margin/Rows/IdentityRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.86, 0.65, 1)
+text = "活动"
+vertical_alignment = 1
+
+[node name="BatchUsedBadge" type="Label" parent="Rows/PublicMonsterPanel/Margin/Rows/IdentityRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.86, 0.65, 1)
+theme_override_font_sizes/font_size = 11
+text = "本批可用"
+vertical_alignment = 1
+
+[node name="InfoRow" type="HBoxContainer" parent="Rows/PublicMonsterPanel/Margin/Rows"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 14
+
+[node name="Preferred" type="HBoxContainer" parent="Rows/PublicMonsterPanel/Margin/Rows/InfoRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="PreferredColorIcon" type="TextureRect" parent="Rows/PublicMonsterPanel/Margin/Rows/InfoRow/Preferred"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(26, 26)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PreferredColorLabel" type="Label" parent="Rows/PublicMonsterPanel/Margin/Rows/InfoRow/Preferred"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "偏好 · 工业"
+vertical_alignment = 1
+
+[node name="Vitals" type="VBoxContainer" parent="Rows/PublicMonsterPanel/Margin/Rows/InfoRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="HpBar" type="ProgressBar" parent="Rows/PublicMonsterPanel/Margin/Rows/InfoRow/Vitals"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(190, 12)
+layout_mode = 2
+size_flags_horizontal = 3
+show_percentage = false
+
+[node name="HpLabel" type="Label" parent="Rows/PublicMonsterPanel/Margin/Rows/InfoRow/Vitals"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "HP 0 / 0"
+
+[node name="ArmorLabel" type="Label" parent="Rows/PublicMonsterPanel/Margin/Rows/InfoRow/Vitals"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.7, 0.8, 1)
+theme_override_font_sizes/font_size = 11
+text = "护甲 0"
+
+[node name="Position" type="VBoxContainer" parent="Rows/PublicMonsterPanel/Margin/Rows/InfoRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="RegionLabel" type="Label" parent="Rows/PublicMonsterPanel/Margin/Rows/InfoRow/Position"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "当前 · 未知地区"
+
+[node name="TargetLabel" type="Label" parent="Rows/PublicMonsterPanel/Margin/Rows/InfoRow/Position"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.53, 0.78, 0.83, 1)
+text = "追踪 · 待机"
+text_overrun_behavior = 3
+
+[node name="UnlockedSkillCount" type="Label" parent="Rows/PublicMonsterPanel/Margin/Rows/InfoRow/Position"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.74, 0.67, 0.9, 1)
+text = "已解锁 0 招"
+
+[node name="PathLabel" type="Label" parent="Rows/PublicMonsterPanel/Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.58, 0.68, 0.78, 1)
+text = "路径 · 本批待机"
+text_overrun_behavior = 3
+
+[node name="PrivateGrid" type="GridContainer" parent="Rows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 154)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="SkillDock" parent="Rows/PrivateGrid" instance=ExtResource("2_skill")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="MilitaryPanel" parent="Rows/PrivateGrid" instance=ExtResource("3_military")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="PresentationStrip" type="PanelContainer" parent="Rows"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+
+[node name="PresentationLabel" type="Label" parent="Rows/PresentationStrip"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.58, 0.9, 0.82, 1)
+text = "公开战斗回执"
+horizontal_alignment = 1
+vertical_alignment = 1

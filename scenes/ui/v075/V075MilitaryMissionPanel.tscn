@@ -1,0 +1,54 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/v075/v075_military_mission_panel.gd" id="1_script"]
+
+[node name="V075MilitaryMissionPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(320, 118)
+size_flags_horizontal = 3
+script = ExtResource("1_script")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+
+[node name="Rows" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="Header" type="HBoxContainer" parent="Margin/Rows"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="Title" type="Label" parent="Margin/Rows/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "军队任务"
+
+[node name="OneShotBadge" type="Label" parent="Margin/Rows/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.94, 0.67, 0.53, 1)
+theme_override_font_sizes/font_size = 11
+text = "攻击后撤离"
+vertical_alignment = 1
+
+[node name="TaskButtons" type="HBoxContainer" parent="Margin/Rows"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 7
+
+[node name="AssaultRegionButton" type="Button" parent="Margin/Rows/TaskButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(144, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_neighbor_right = NodePath("../AssaultMonsterButton")
+tooltip_text = "选择一个含敌方设施的地区，按固定总伤害预算攻击"
+text = "攻击地区"
+
+[node name="AssaultMonsterButton" type="Button" parent="Margin/Rows/TaskButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(144, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_neighbor_left = NodePath("../AssaultRegionButton")
+tooltip_text = "选择一个公开敌方怪兽，攻击一次后撤离"
+text = "攻击怪兽"
