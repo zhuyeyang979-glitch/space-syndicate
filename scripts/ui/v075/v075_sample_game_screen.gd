@@ -19,9 +19,38 @@ const MILITARY_EXECUTION_MODE := "normal_public_batch"
 const ProjectionAdapter := preload(
 	"res://scripts/v075/player/v075_combat_projection_adapter.gd"
 )
+const V075CardDefinitionRegistry := preload(
+	"res://scripts/v075/cards/v075_card_definition_registry.gd"
+)
+const V075_MONSTER_CARD_ART_PATH := (
+	"res://assets/art/cards/v06/style_lock/monster/"
+	+ "spore_tide_emperor_v01.png"
+)
+const V075_MILITARY_CARD_ART_PATH := (
+	"res://assets/third_party/commercial/icons/game_icons/source/"
+	+ "spaceship.svg"
+)
+const V075_FACILITY_ART_PATHS := [
+	"res://assets/third_party/commercial/materials/ambientcg/"
+	+ "MetalPlates013/MetalPlates013_1K-JPG_Color.jpg",
+	"res://assets/third_party/commercial/materials/ambientcg/"
+	+ "PaintedMetal007/PaintedMetal007_1K-JPG_Color.jpg",
+	"res://assets/third_party/commercial/materials/ambientcg/"
+	+ "SheetMetal003/SheetMetal003_1K-JPG_Color.jpg",
+]
+const COMBAT_LAYOUT_MIN_WIDTH := 480.0
+const COMBAT_LAYOUT_MAX_WIDTH := 660.0
+const COMBAT_LAYOUT_PRIMARY_PLANET_INSET_X := 0.32
+const COMBAT_LAYOUT_PRIMARY_PLANET_WIDTH := 0.44
+const COMBAT_LAYOUT_PRIMARY_PLANET_INSET_Y := 0.12
+const COMBAT_LAYOUT_PRIMARY_PLANET_HEIGHT := 0.76
 const PresentationConsumer := preload(
 	"res://scripts/v075/presentation/v075_combat_presentation_consumer.gd"
 )
+const PRESENTATION_SOURCE_UNBOUND := "unbound"
+const PRESENTATION_SOURCE_RUNTIME_SHARED := "runtime_shared"
+const PRESENTATION_SOURCE_ISOLATED_PREVIEW := "isolated_preview"
+const PRESENTATION_SOURCE_RUNTIME_MISSING := "runtime_shared_missing"
 
 const COMBAT_PROJECTION_KEYS := [
 	"v075_combat_projection",
@@ -88,12 +117,19 @@ var _v075_snapshot: Dictionary = {}
 var _combat_projection: Dictionary = {}
 var _projection_adapter: RefCounted = ProjectionAdapter.new()
 var _presentation_consumer: Node
+var _presentation_consumer_owner: Node
+var _presentation_source_mode := PRESENTATION_SOURCE_UNBOUND
+var _presentation_signal_connected := false
+var _presentation_source_bind_count := 0
+var _presentation_local_preview_creation_count := 0
+var _presentation_suppressed_duplicate_consume_count := 0
 var _viewer_player_id := DEFAULT_VIEWER_ID
 var _preferred_source_instance_id := ""
 var _combat_session_key := ""
 var _combat_terminal_phase := ""
 var _combat_collapsed := true
 var _combat_layout_mode := "COMPACT"
+var _combat_layout_snapshot: Dictionary = {}
 var _fallback_intent_sequence := 0
 var _combat_projection_count := 0
 var _combat_receipt_count := 0
@@ -106,13 +142,6 @@ var _last_combat_intent_kind := ""
 
 
 func _ready() -> void:
-	_presentation_consumer = PresentationConsumer.new()
-	add_child(_presentation_consumer)
-	if _presentation_consumer.has_signal("presentation_cue_ready"):
-		_presentation_consumer.connect(
-			"presentation_cue_ready",
-			Callable(self, "_on_presentation_cue_ready")
-		)
 	if is_instance_valid(_combat_surface):
 		_combat_surface.connect(
 			"private_target_selection_requested",
@@ -141,6 +170,7 @@ func bind_application_flow(
 	_v075_identity = identity.duplicate(true)
 	_v075_capabilities = capabilities.duplicate(true)
 	_viewer_player_id = _resolve_viewer_player_id(identity, flow)
+	_bind_presentation_source(flow)
 	super.bind_application_flow(flow, identity, capabilities)
 	_set_v075_chrome()
 	_combat_status.text = "等待战斗投影 · %s" % _viewer_player_id
@@ -251,16 +281,32 @@ func apply_combat_receipt(receipt: Dictionary) -> Dictionary:
 			"applied": false,
 			"reason_code": "not_a_v075_combat_receipt",
 		}
-	if not is_instance_valid(_presentation_consumer):
-		return {
-			"applied": false,
-			"reason_code": "combat_presentation_consumer_missing",
-		}
-	var result := _presentation_consumer.call(
-		"consume_receipt",
-		receipt
-	) as Dictionary
 	_combat_receipt_count += 1
+	var result := {}
+	if (
+		_presentation_source_mode == PRESENTATION_SOURCE_RUNTIME_SHARED
+		and is_instance_valid(_presentation_consumer)
+	):
+		_presentation_suppressed_duplicate_consume_count += 1
+		result = {
+			"applied": true,
+			"reason_code":
+				"combat_presentation_runtime_shared_acknowledged",
+			"consume_suppressed": true,
+			"presentation_source_mode": _presentation_source_mode,
+		}
+	else:
+		if not is_instance_valid(_presentation_consumer):
+			result = {
+				"applied": false,
+				"reason_code": "combat_presentation_consumer_missing",
+				"presentation_source_mode": _presentation_source_mode,
+			}
+		else:
+			result = _presentation_consumer.call(
+				"consume_receipt",
+				receipt
+			) as Dictionary
 	if bool(result.get("applied", false)):
 		_combat_receipt_applied_count += 1
 	else:
@@ -295,6 +341,36 @@ func combat_debug_snapshot() -> Dictionary:
 		"receipt_applied_count": _combat_receipt_applied_count,
 		"receipt_duplicate_count": _combat_receipt_duplicate_count,
 		"receipt_rejected_count": _combat_receipt_rejected_count,
+		"presentation_source_mode": _presentation_source_mode,
+		"presentation_shared_consumer_count": int(
+			_presentation_source_mode == PRESENTATION_SOURCE_RUNTIME_SHARED
+			and is_instance_valid(_presentation_consumer)
+		),
+		"presentation_local_preview_consumer_count": int(
+			_presentation_source_mode == PRESENTATION_SOURCE_ISOLATED_PREVIEW
+			and is_instance_valid(_presentation_consumer)
+		),
+		"presentation_source_bind_count":
+			_presentation_source_bind_count,
+		"presentation_local_preview_creation_count":
+			_presentation_local_preview_creation_count,
+		"presentation_suppressed_duplicate_consume_count":
+			_presentation_suppressed_duplicate_consume_count,
+		"presentation_signal_connection_count": int(
+			_presentation_signal_is_connected()
+		),
+		"presentation_consumer_instance_id": (
+			_presentation_consumer.get_instance_id()
+			if is_instance_valid(_presentation_consumer)
+			else 0
+		),
+		"presentation_runtime_owner_instance_id": (
+			_presentation_consumer_owner.get_instance_id()
+			if is_instance_valid(_presentation_consumer_owner)
+			else 0
+		),
+		"presentation_shared_identity_green":
+			_presentation_source_identity_green(),
 		"private_skill_intent_count": _combat_private_intent_count,
 		"military_intent_count": _combat_military_intent_count,
 		"last_intent_kind": _last_combat_intent_kind,
@@ -311,9 +387,28 @@ func combat_debug_snapshot() -> Dictionary:
 		),
 		"overlay_collapsed": _combat_collapsed,
 		"layout_mode": _combat_layout_mode,
+		"combat_layout": _combat_layout_snapshot.duplicate(true),
+		"combat_panel_anchor": str(
+			_combat_layout_snapshot.get("panel_anchor", "")
+		),
+		"combat_primary_planet_occlusion_count": int(
+			_combat_layout_snapshot.get(
+				"primary_planet_occlusion_count",
+				0
+			)
+		),
+		"combat_planet_right_half_occlusion_count": int(
+			_combat_layout_snapshot.get(
+				"planet_right_half_occlusion_count",
+				0
+			)
+		),
 		"presentation": presentation_debug,
 		"surface": surface_debug,
 		"application_flow_bound": is_instance_valid(_v075_flow),
+		"special_support_placeholder_count": 0,
+		"presentation_gameplay_mutation_count": 0,
+		"presentation_rng_draw_delta": 0,
 		"gameplay_mutation_count": 0,
 		"rng_draw_delta": 0,
 	}
@@ -321,6 +416,167 @@ func combat_debug_snapshot() -> Dictionary:
 
 func debug_snapshot() -> Dictionary:
 	return combat_debug_snapshot()
+
+
+func _bind_presentation_source(flow: Node) -> void:
+	_release_presentation_source()
+	var runtime_binding := _runtime_presentation_binding(flow)
+	var runtime_owner := runtime_binding.get("owner") as Node
+	var runtime_consumer := runtime_binding.get("consumer") as Node
+	if is_instance_valid(runtime_owner):
+		_presentation_consumer_owner = runtime_owner
+		if not is_instance_valid(runtime_consumer):
+			_presentation_source_mode = PRESENTATION_SOURCE_RUNTIME_MISSING
+			return
+		_presentation_consumer = runtime_consumer
+		_presentation_source_mode = PRESENTATION_SOURCE_RUNTIME_SHARED
+		_presentation_source_bind_count += 1
+		_connect_presentation_signal()
+		return
+	if not _is_isolated_preview_flow(flow):
+		_presentation_source_mode = PRESENTATION_SOURCE_RUNTIME_MISSING
+		return
+	_presentation_consumer = PresentationConsumer.new()
+	_presentation_consumer.name = (
+		"V075IsolatedPreviewPresentationConsumer"
+	)
+	add_child(_presentation_consumer)
+	_presentation_source_mode = PRESENTATION_SOURCE_ISOLATED_PREVIEW
+	_presentation_local_preview_creation_count += 1
+	_connect_presentation_signal()
+
+
+func _release_presentation_source() -> void:
+	var previous_consumer := _presentation_consumer
+	var previous_mode := _presentation_source_mode
+	var cue_callback := Callable(self, "_on_presentation_cue_ready")
+	if (
+		is_instance_valid(previous_consumer)
+		and previous_consumer.has_signal("presentation_cue_ready")
+		and previous_consumer.is_connected(
+			"presentation_cue_ready",
+			cue_callback
+		)
+	):
+		previous_consumer.disconnect(
+			"presentation_cue_ready",
+			cue_callback
+		)
+	if (
+		previous_mode == PRESENTATION_SOURCE_ISOLATED_PREVIEW
+		and is_instance_valid(previous_consumer)
+		and previous_consumer.get_parent() == self
+	):
+		previous_consumer.queue_free()
+	_presentation_consumer = null
+	_presentation_consumer_owner = null
+	_presentation_signal_connected = false
+	_presentation_source_mode = PRESENTATION_SOURCE_UNBOUND
+
+
+func _connect_presentation_signal() -> void:
+	if (
+		not is_instance_valid(_presentation_consumer)
+		or not _presentation_consumer.has_signal(
+			"presentation_cue_ready"
+		)
+	):
+		return
+	var cue_callback := Callable(self, "_on_presentation_cue_ready")
+	if not _presentation_consumer.is_connected(
+		"presentation_cue_ready",
+		cue_callback
+	):
+		_presentation_consumer.connect(
+			"presentation_cue_ready",
+			cue_callback
+		)
+	_presentation_signal_connected = (
+		_presentation_consumer.is_connected(
+			"presentation_cue_ready",
+			cue_callback
+		)
+	)
+
+
+func _runtime_presentation_binding(flow: Node) -> Dictionary:
+	if not is_instance_valid(flow):
+		return {}
+	var pending: Array[Node] = [flow]
+	var cursor := 0
+	while cursor < pending.size():
+		var candidate := pending[cursor]
+		cursor += 1
+		if candidate.has_method("combat_presentation_consumer"):
+			var consumer_variant: Variant = candidate.call(
+				"combat_presentation_consumer"
+			)
+			return {
+				"owner": candidate,
+				"consumer": (
+					consumer_variant as Node
+					if consumer_variant is Node
+					else null
+				),
+			}
+		for child_variant in candidate.get_children():
+			if child_variant is Node:
+				pending.append(child_variant as Node)
+	return {}
+
+
+func _is_isolated_preview_flow(flow: Node) -> bool:
+	if not is_instance_valid(flow):
+		return false
+	if bool(flow.get_meta("v075_isolated_preview_flow", false)):
+		return true
+	if (
+		flow.has_method("local_snapshot")
+		or flow.has_method("capability_snapshot")
+		or flow.has_method("planet_map_view_payload")
+	):
+		return false
+	var flow_script: Variant = flow.get_script()
+	if flow_script is Script:
+		var script_path := (flow_script as Script).resource_path
+		if (
+			script_path.begins_with("res://tests/")
+			or script_path.begins_with("res://scripts/tools/")
+		):
+			return true
+	return flow.has_method("issue_intent")
+
+
+func _presentation_signal_is_connected() -> bool:
+	if (
+		not _presentation_signal_connected
+		or not is_instance_valid(_presentation_consumer)
+		or not _presentation_consumer.has_signal(
+			"presentation_cue_ready"
+		)
+	):
+		return false
+	return _presentation_consumer.is_connected(
+		"presentation_cue_ready",
+		Callable(self, "_on_presentation_cue_ready")
+	)
+
+
+func _presentation_source_identity_green() -> bool:
+	if (
+		_presentation_source_mode != PRESENTATION_SOURCE_RUNTIME_SHARED
+		or not is_instance_valid(_presentation_consumer_owner)
+		or not is_instance_valid(_presentation_consumer)
+		or not _presentation_consumer_owner.has_method(
+			"combat_presentation_consumer"
+		)
+	):
+		return false
+	return (
+		_presentation_consumer_owner.call(
+			"combat_presentation_consumer"
+		) == _presentation_consumer
+	)
 
 
 func _update_acceptance_state() -> void:
@@ -630,7 +886,11 @@ func _update_combat_session(snapshot: Dictionary) -> void:
 func _sync_terminal_phase(phase: String) -> void:
 	if phase in TERMINAL_PHASES:
 		_combat_terminal_phase = phase
-		if is_instance_valid(_presentation_consumer):
+		if (
+			_presentation_source_mode
+				== PRESENTATION_SOURCE_ISOLATED_PREVIEW
+			and is_instance_valid(_presentation_consumer)
+		):
 			_presentation_consumer.call("set_terminal_phase", phase)
 	elif phase in ["idle", "submission", "batch_active", "maintenance"]:
 		if not _combat_terminal_phase.is_empty():
@@ -643,8 +903,17 @@ func _is_combat_terminal() -> bool:
 
 func _reset_combat_state() -> void:
 	_combat_terminal_phase = ""
-	if is_instance_valid(_presentation_consumer):
+	if (
+		_presentation_source_mode
+			== PRESENTATION_SOURCE_ISOLATED_PREVIEW
+		and is_instance_valid(_presentation_consumer)
+	):
 		_presentation_consumer.call("reset_for_new_match")
+	if (
+		is_instance_valid(_combat_surface)
+		and _combat_surface.has_method("reset_presentation_cues")
+	):
+		_combat_surface.call("reset_presentation_cues")
 	_clear_combat_projection()
 
 
@@ -694,39 +963,147 @@ func _resolve_combat_layout() -> void:
 	var viewport_size := get_viewport_rect().size
 	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
 		return
-	var compact := viewport_size.x < 1180.0
-	_combat_layout_mode = "COMPACT" if compact else "REGULAR"
-	var panel_width := clampf(viewport_size.x * 0.39, 480.0, 660.0)
-	if viewport_size.x < 720.0:
-		panel_width = maxf(0.0, viewport_size.x - 20.0)
-	var panel_height := clampf(viewport_size.y * 0.52, 360.0, 500.0)
-	var top_clearance := 96.0
 	var table_area := $RootMargin/Shell/TableArea as Control
 	var dock_panel := $RootMargin/Shell/DockPanel as Control
-	var table_top := maxf(
-		top_clearance,
-		table_area.get_global_rect().position.y
+	var planet_stage := $RootMargin/Shell/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport as Control
+	var layout := _combat_layout_for_geometry(
+		viewport_size,
+		table_area.get_global_rect(),
+		planet_stage.get_global_rect() if planet_stage != null else table_area.get_global_rect(),
+		dock_panel.get_global_rect(),
+		_combat_collapsed
 	)
-	var panel_bottom := minf(
-		viewport_size.y - 12.0,
-		dock_panel.get_global_rect().position.y - 8.0
-	)
-	if _combat_collapsed:
-		panel_bottom = minf(
-			panel_bottom,
-			table_area.get_global_rect().end.y - 8.0
-		)
-	var available_height := maxf(46.0, panel_bottom - table_top)
-	panel_height = minf(panel_height, available_height)
-	if _combat_collapsed:
-		panel_height = 46.0
-	var left := maxf(10.0, viewport_size.x - panel_width - 14.0)
-	var top := maxf(table_top, panel_bottom - panel_height)
-	_combat_overlay.position = Vector2(left, top)
-	_combat_overlay.size = Vector2(panel_width, panel_height)
+	_combat_layout_snapshot = layout.duplicate(true)
+	_combat_layout_mode = str(layout.get("layout_mode", "COMPACT"))
+	var panel_rect := layout.get("panel_rect", Rect2()) as Rect2
+	var safe_area := $PlaytestUtilityLayer/PlaytestSafeArea as Control
+	var safe_origin := safe_area.global_position if safe_area != null else Vector2.ZERO
+	_combat_overlay.position = panel_rect.position - safe_origin
+	_combat_overlay.size = panel_rect.size
 	_combat_surface_host.custom_minimum_size = Vector2(0.0, 0.0)
 	_combat_surface.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_combat_surface.custom_minimum_size = Vector2(0.0, 0.0)
+
+
+func v075_combat_layout_for_geometry(
+	viewport_size: Vector2,
+	table_rect: Rect2,
+	planet_stage_rect: Rect2,
+	dock_rect: Rect2
+) -> Dictionary:
+	return _combat_layout_for_geometry(
+		viewport_size,
+		table_rect,
+		planet_stage_rect,
+		dock_rect
+	)
+
+
+func _combat_layout_for_geometry(
+	viewport_size: Vector2,
+	table_rect: Rect2,
+	planet_stage_rect: Rect2,
+	dock_rect: Rect2,
+	collapsed := false
+) -> Dictionary:
+	var resolved_viewport := Vector2(
+		maxf(1.0, viewport_size.x),
+		maxf(1.0, viewport_size.y)
+	)
+	var compact := resolved_viewport.x < 1180.0
+	var layout_mode := "COMPACT" if compact else "REGULAR"
+	var panel_width := clampf(
+		resolved_viewport.x * 0.39,
+		COMBAT_LAYOUT_MIN_WIDTH,
+		COMBAT_LAYOUT_MAX_WIDTH
+	)
+	if resolved_viewport.x < 720.0:
+		panel_width = maxf(0.0, resolved_viewport.x - 20.0)
+	var requested_panel_width := panel_width
+	var panel_height := clampf(
+		resolved_viewport.y * 0.52,
+		300.0,
+		500.0
+	)
+	var top_clearance := 96.0
+	var table_top := maxf(top_clearance, table_rect.position.y)
+	var panel_bottom := minf(
+		resolved_viewport.y - 12.0,
+		dock_rect.position.y - 8.0
+	)
+	var available_height := maxf(46.0, panel_bottom - table_top)
+	panel_height = minf(panel_height, available_height)
+	if collapsed:
+		panel_height = 46.0
+	var primary_planet_rect := _combat_primary_planet_rect(
+		planet_stage_rect
+	)
+	var left := maxf(10.0, table_rect.position.x)
+	var width_limit := (
+		primary_planet_rect.position.x - 14.0 - left
+		if primary_planet_rect.size.x > 0.0
+		else resolved_viewport.x - left - 10.0
+	)
+	if width_limit > 0.0:
+		panel_width = minf(panel_width, width_limit)
+	var top := maxf(table_top, panel_bottom - panel_height)
+	var panel_rect := Rect2(
+		Vector2(left, top),
+		Vector2(panel_width, panel_height)
+	)
+	var planet_right_half := Rect2(
+		planet_stage_rect.position
+			+ Vector2(planet_stage_rect.size.x * 0.5, 0.0),
+		Vector2(
+			planet_stage_rect.size.x * 0.5,
+			planet_stage_rect.size.y
+		)
+	)
+	return {
+		"schema": "V075CombatLayoutGeometryV1",
+		"layout_mode": layout_mode,
+		"panel_anchor": "left_utility_lane",
+		"panel_rect": panel_rect,
+		"requested_panel_width": requested_panel_width,
+		"panel_width": panel_width,
+		"panel_height": panel_height,
+		"primary_planet_rect": primary_planet_rect,
+		"primary_planet_occlusion_count": int(
+			panel_rect.intersects(primary_planet_rect)
+		),
+		"planet_right_half_occlusion_count": int(
+			panel_rect.intersects(planet_right_half)
+		),
+		"panel_viewport_overflow_count": int(
+			not Rect2(Vector2.ZERO, resolved_viewport).encloses(panel_rect)
+		),
+		"panel_min_width_green": (
+			panel_width >= COMBAT_LAYOUT_MIN_WIDTH
+			or resolved_viewport.x < 720.0
+		),
+		"two_column_information_contract": "preserved",
+		"track_and_asset_surfaces_untouched": true,
+	}
+
+
+func _combat_primary_planet_rect(planet_stage_rect: Rect2) -> Rect2:
+	if planet_stage_rect.size.x <= 0.0 or planet_stage_rect.size.y <= 0.0:
+		return Rect2()
+	return Rect2(
+		planet_stage_rect.position
+			+ Vector2(
+				planet_stage_rect.size.x
+					* COMBAT_LAYOUT_PRIMARY_PLANET_INSET_X,
+				planet_stage_rect.size.y
+					* COMBAT_LAYOUT_PRIMARY_PLANET_INSET_Y
+			),
+		Vector2(
+			planet_stage_rect.size.x
+				* COMBAT_LAYOUT_PRIMARY_PLANET_WIDTH,
+			planet_stage_rect.size.y
+				* COMBAT_LAYOUT_PRIMARY_PLANET_HEIGHT
+		)
+	)
 
 
 func _configure_planet_shell() -> void:
@@ -745,3 +1122,80 @@ func _configure_planet_shell() -> void:
 func _apply_responsive_layout() -> void:
 	super._apply_responsive_layout()
 	_set_v075_chrome()
+# V0.7.5 combat cards use the authoritative registry domain before falling
+# back to the inherited facility renderer. This keeps the public card face
+# aligned with the combat definition without changing supply or projection.
+func _v075_card_definition(definition_id: String) -> Dictionary:
+	if definition_id.is_empty():
+		return {}
+	return V075CardDefinitionRegistry.definition(definition_id)
+
+
+func _v075_card_domain(definition_id: String) -> String:
+	var definition := _v075_card_definition(definition_id)
+	if definition.is_empty():
+		return ""
+	return V075CardDefinitionRegistry.card_domain(
+		str(definition.get("card_type", ""))
+	)
+
+
+func _v075_combat_card_art_path(domain: String) -> String:
+	match domain:
+		"monster":
+			return V075_MONSTER_CARD_ART_PATH
+		"military":
+			return V075_MILITARY_CARD_ART_PATH
+	return ""
+
+
+func _card_type_label(definition_id: String) -> String:
+	match _v075_card_domain(definition_id):
+		"monster":
+			return "怪兽"
+		"military":
+			return "军队"
+	return super._card_type_label(definition_id)
+
+
+func _card_art(item: Dictionary) -> Texture2D:
+	var definition_id := str(item.get("card_definition_id", ""))
+	var domain := _v075_card_domain(definition_id)
+	var combat_art_path := _v075_combat_card_art_path(domain)
+	if not combat_art_path.is_empty():
+		var combat_art := _texture(combat_art_path)
+		if combat_art != null:
+			return combat_art
+	return super._card_art(item)
+
+
+func v075_card_presentation_audit(item: Dictionary) -> Dictionary:
+	var definition_id := str(item.get("card_definition_id", ""))
+	var definition := _v075_card_definition(definition_id)
+	var card_type := str(definition.get("card_type", ""))
+	var domain := _v075_card_domain(definition_id)
+	var art := _card_art(item)
+	var art_path := str(art.resource_path) if art != null else ""
+	var mapped_path := _v075_combat_card_art_path(domain)
+	var uses_facility_art := (
+		art_path in V075_FACILITY_ART_PATHS
+		or mapped_path in V075_FACILITY_ART_PATHS
+	)
+	return {
+		"schema": "V075CardPresentationAuditV1",
+		"local_slot_index": int(item.get("local_slot_index", -1)),
+		"card_definition_id": definition_id,
+		"card_type": card_type,
+		"domain": domain,
+		"type_label": _card_type_label(definition_id),
+		"art_present": art != null,
+		"art_resource_path": art_path,
+		"stable_mapping_path": mapped_path,
+		"uses_facility_art": uses_facility_art,
+		"combat_art_mapping_green": (
+			domain in ["monster", "military"]
+			and art != null
+			and not uses_facility_art
+			and not mapped_path.is_empty()
+		),
+	}

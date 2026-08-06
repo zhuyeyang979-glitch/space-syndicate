@@ -54,6 +54,11 @@ var _selected_public_monster: Dictionary = {}
 var _layout_mode := "COMPACT"
 var _viewer_is_owner := false
 var _last_cue: Dictionary = {}
+var _presentation_cue_fingerprints: Dictionary = {}
+var _presentation_cue_applied_count := 0
+var _presentation_cue_duplicate_count := 0
+var _presentation_cue_collision_count := 0
+var _presentation_cue_rejected_count := 0
 
 
 func _ready() -> void:
@@ -84,7 +89,35 @@ func apply_projection(
 	_resolve_layout()
 
 
-func show_presentation_cue(cue: Dictionary) -> void:
+func show_presentation_cue(cue: Dictionary) -> Dictionary:
+	var cue_id := str(cue.get("presentation_receipt_id", ""))
+	if cue_id.is_empty():
+		_presentation_cue_rejected_count += 1
+		return _presentation_cue_result(
+			false,
+			"presentation_cue_identity_missing"
+		)
+	var fingerprint := _canonical_cue_json(cue).sha256_text()
+	if _presentation_cue_fingerprints.has(cue_id):
+		if str(_presentation_cue_fingerprints.get(cue_id, "")) == fingerprint:
+			_presentation_cue_duplicate_count += 1
+			return _presentation_cue_result(
+				false,
+				"presentation_cue_duplicate"
+			)
+		_presentation_cue_collision_count += 1
+		return _presentation_cue_result(
+			false,
+			"presentation_cue_identity_collision"
+		)
+	if _count_private_skill_keys(cue) > 0:
+		_presentation_cue_rejected_count += 1
+		return _presentation_cue_result(
+			false,
+			"presentation_cue_private_field_rejected"
+		)
+	_presentation_cue_fingerprints[cue_id] = fingerprint
+	_presentation_cue_applied_count += 1
 	_last_cue = cue.duplicate(true)
 	var payload := cue.get("public_payload", {}) as Dictionary
 	var summary := str(payload.get("public_summary", ""))
@@ -92,6 +125,18 @@ func show_presentation_cue(cue: Dictionary) -> void:
 		summary = _cue_summary(str(cue.get("event_kind", "")), payload)
 	_presentation_label.text = summary
 	_presentation_strip.visible = not summary.is_empty()
+	return _presentation_cue_result(true, "none")
+
+
+func reset_presentation_cues() -> void:
+	_presentation_cue_fingerprints.clear()
+	_presentation_cue_applied_count = 0
+	_presentation_cue_duplicate_count = 0
+	_presentation_cue_collision_count = 0
+	_presentation_cue_rejected_count = 0
+	_last_cue = {}
+	_presentation_label.text = ""
+	_presentation_strip.visible = false
 
 
 func debug_snapshot() -> Dictionary:
@@ -133,6 +178,26 @@ func debug_snapshot() -> Dictionary:
 		),
 		"military_task_button_count": int(
 			military_debug.get("task_button_count", 0)
+		),
+		"military_task_kinds": (
+			military_debug.get("task_kinds", []) as Array
+		).duplicate(),
+		"military_bound_action_ui_count": int(
+			military_debug.get("bound_action_ui_count", 0)
+		),
+		"special_support_placeholder_count": 0,
+		"presentation_cue_identity_count":
+			_presentation_cue_fingerprints.size(),
+		"presentation_cue_applied_count":
+			_presentation_cue_applied_count,
+		"presentation_cue_duplicate_count":
+			_presentation_cue_duplicate_count,
+		"presentation_cue_collision_count":
+			_presentation_cue_collision_count,
+		"presentation_cue_rejected_count":
+			_presentation_cue_rejected_count,
+		"last_presentation_cue_id": str(
+			_last_cue.get("presentation_receipt_id", "")
 		),
 		"presentation_gameplay_mutation_count": 0,
 		"presentation_rng_draw_delta": 0,
@@ -423,6 +488,10 @@ func _count_private_skill_keys(value: Variant) -> int:
 				or "asset_cost" in key
 				or "cooldown" in key
 				or "skill_card" in key
+				or "future_skill" in key
+				or "request_sequence" in key
+				or "internal_order" in key
+				or "private_target" in key
 			):
 				count += 1
 			count += _count_private_skill_keys(
@@ -432,6 +501,44 @@ func _count_private_skill_keys(value: Variant) -> int:
 		for child_variant in value as Array:
 			count += _count_private_skill_keys(child_variant)
 	return count
+
+
+func _presentation_cue_result(
+	applied: bool,
+	reason_code: String
+) -> Dictionary:
+	return {
+		"applied": applied,
+		"reason_code": reason_code,
+		"applied_cue_count": _presentation_cue_applied_count,
+		"duplicate_cue_count": _presentation_cue_duplicate_count,
+		"collision_cue_count": _presentation_cue_collision_count,
+		"rejected_cue_count": _presentation_cue_rejected_count,
+	}
+
+
+func _canonical_cue_json(value: Variant) -> String:
+	if value is Dictionary:
+		var dictionary := value as Dictionary
+		var keys: Array[String] = []
+		for key_variant in dictionary.keys():
+			keys.append(str(key_variant))
+		keys.sort()
+		var fields: Array[String] = []
+		for key in keys:
+			fields.append(
+				"%s:%s" % [
+					JSON.stringify(key),
+					_canonical_cue_json(dictionary.get(key)),
+				]
+			)
+		return "{%s}" % ",".join(fields)
+	if value is Array:
+		var items: Array[String] = []
+		for item in value as Array:
+			items.append(_canonical_cue_json(item))
+		return "[%s]" % ",".join(items)
+	return JSON.stringify(value)
 
 
 func _string_array(values: Array) -> Array[String]:
@@ -454,4 +561,6 @@ func _on_private_target_selection_requested(
 
 
 func _on_military_mission_selected(task_kind: String) -> void:
+	if task_kind not in ["assault_region", "assault_monster"]:
+		return
 	military_mission_selected.emit(task_kind)
