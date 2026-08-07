@@ -112,6 +112,21 @@ func _run() -> void:
 			"skill_definition_id": "skill.owner.privacy",
 		}
 	)
+	var stale_generation_rejected := runtime.request_private_monster_skill(
+		"player.owner",
+		{
+			"source_instance_id": "monster.owner.privacy",
+			"source_generation": 2,
+			"skill_definition_id": "skill.owner.privacy",
+		}
+	)
+	_expect(
+		not bool(stale_generation_rejected.get("accepted", true))
+		and str(stale_generation_rejected.get("reason_code", ""))
+			== "private_skill_source_generation_stale"
+		and combat.rollback_count == 1,
+		"stale monster source generation is rejected before the skill boundary"
+	)
 	var rejected_text := JSON.stringify(rejected)
 	_expect(
 		not bool(rejected.get("accepted", true))

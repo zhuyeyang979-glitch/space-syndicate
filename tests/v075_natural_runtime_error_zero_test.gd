@@ -6,7 +6,7 @@ const Simulator := preload(
 
 const DEFAULT_CONFIGURATION_INDEX := 0
 const DEFAULT_MATCH_INDEX := 0
-const DEFAULT_STEP_LIMIT := 128
+const DEFAULT_STEP_LIMIT := 512
 const COMBAT_ACTION_KEYS := [
 	"MONSTER_DEPLOY_COUNT",
 	"MONSTER_REFRESH_COUNT",
@@ -65,6 +65,7 @@ func _run() -> void:
 		configuration_index,
 		match_index
 	)
+
 	_test_natural_match(row)
 	_finish(row, configuration_index, match_seed)
 

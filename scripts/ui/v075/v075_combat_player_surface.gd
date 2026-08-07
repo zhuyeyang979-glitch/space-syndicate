@@ -24,6 +24,7 @@ const COLOR_VALUES := {
 	"shipping": Color("#67d8d5"),
 }
 const RANK_LABELS := ["", "I", "II", "III", "IV"]
+const PRESENTATION_HISTORY_LIMIT := 4
 
 @onready var _public_panel: PanelContainer = %PublicMonsterPanel
 @onready var _name_label: Label = %MonsterName
@@ -55,6 +56,7 @@ var _layout_mode := "COMPACT"
 var _viewer_is_owner := false
 var _viewer_can_submit_military := false
 var _last_cue: Dictionary = {}
+var _presentation_history: Array[String] = []
 var _presentation_cue_fingerprints: Dictionary = {}
 var _presentation_cue_applied_count := 0
 var _presentation_cue_duplicate_count := 0
@@ -66,6 +68,8 @@ var _presentation_tween: Tween
 
 func _ready() -> void:
 	_apply_styles()
+	_presentation_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_presentation_label.max_lines_visible = PRESENTATION_HISTORY_LIMIT
 	_skill_dock.private_target_selection_requested.connect(
 		_on_private_target_selection_requested
 	)
@@ -134,7 +138,11 @@ func show_presentation_cue(cue: Dictionary) -> Dictionary:
 	var summary := str(payload.get("public_summary", ""))
 	if summary.is_empty():
 		summary = _cue_summary(str(cue.get("event_kind", "")), payload)
-	_presentation_label.text = summary
+	if not summary.is_empty():
+		_presentation_history.push_front(summary)
+		while _presentation_history.size() > PRESENTATION_HISTORY_LIMIT:
+			_presentation_history.pop_back()
+	_presentation_label.text = "\n".join(_presentation_history)
 	var asset_keys := cue.get("asset_keys", []) as Array
 	_cue_asset_label.text = _presentation_asset_caption(asset_keys)
 	_cue_icon.texture = _first_cue_texture(asset_keys)
@@ -148,7 +156,7 @@ func show_presentation_cue(cue: Dictionary) -> Dictionary:
 	_presentation_tween.set_ease(Tween.EASE_OUT)
 	_presentation_tween.tween_property(_cue_progress, "value", 100.0, 0.34)
 	_presentation_animation_count += 1
-	_presentation_strip.visible = not summary.is_empty()
+	_presentation_strip.visible = not _presentation_history.is_empty()
 	return _presentation_cue_result(true, "none")
 
 
@@ -160,6 +168,7 @@ func reset_presentation_cues() -> void:
 	_presentation_cue_rejected_count = 0
 	_presentation_animation_count = 0
 	_last_cue = {}
+	_presentation_history.clear()
 	_presentation_label.text = ""
 	_cue_asset_label.text = ""
 	_cue_icon.texture = null
@@ -239,6 +248,8 @@ func debug_snapshot() -> Dictionary:
 		"last_presentation_cue_id": str(
 			_last_cue.get("presentation_receipt_id", "")
 		),
+		"presentation_history_count": _presentation_history.size(),
+		"presentation_history": _presentation_history.duplicate(),
 		"presentation_gameplay_mutation_count": 0,
 		"presentation_rng_draw_delta": 0,
 	}
@@ -546,26 +557,58 @@ func _cue_summary(
 	match event_kind:
 		"monster_deployed":
 			return "怪兽已部署"
+		"monster_refreshed":
+			return "同族怪兽恢复 %d%% 最大生命" % int(
+				payload.get("refresh_percent", 0)
+			)
+		"monster_upgraded":
+			return "怪兽升级至 L%d" % int(
+				payload.get("new_rank", payload.get("source_rank", 1))
+			)
+		"monster_replaced":
+			return "旧怪兽撤回 · 新怪兽已部署"
 		"monster_moved":
 			return "怪兽沿公开路径移动"
 		"monster_trample_resolved":
-			return "践踏结算 · %d 伤害" % int(
-				payload.get("damage_amount", 0)
-			)
+			return "践踏 %s · %d 伤害" % [
+				str(payload.get("region_id", "")),
+				int(payload.get(
+					"region_damage_budget",
+					payload.get("damage_amount", 0)
+				)),
+			]
 		"monster_basic_attack":
 			return "基础攻击 · %d 伤害" % int(
 				payload.get("damage_amount", 0)
 			)
 		"monster_private_skill_resolved":
 			return "怪兽释放技能 · 公开效果已结算"
+		"monster_skill_cooldown_started":
+			return "怪兽技能进入冷却"
+		"monster_skill_ready":
+			return "怪兽技能冷却完成"
+		"monster_damaged":
+			return "怪兽受到 %d 伤害" % int(
+				payload.get("damage_amount", 0)
+			)
+		"monster_downed":
+			return "怪兽倒地"
+		"monster_destroyed":
+			return "怪兽被摧毁"
+		"monster_withdrawn":
+			return "怪兽已撤回"
 		"military_region_assault":
-			return "军队攻击地区后撤离"
+			return "军队完成地区攻击"
 		"military_monster_assault":
-			return "军队攻击怪兽后撤离"
+			return "军队完成怪兽攻击"
+		"military_withdrawn":
+			return "军队任务完成 · 已撤离并弃置"
 		"facility_combat_damaged":
 			return "%s设施受损" % str(
 				payload.get("facility_type", "")
 			)
+		"armor_absorbed":
+			return "护甲吸收伤害"
 	return ""
 
 
@@ -685,11 +728,19 @@ func _string_array(values: Array) -> Array[String]:
 
 
 func _on_private_target_selection_requested(request: Dictionary) -> void:
+	var requested_generation := int(request.get("source_generation", 0))
+	var selected_generation := int(
+		_selected_public_monster.get("source_generation", 0)
+	)
 	if (
 		not _viewer_is_owner
 		or request.is_empty()
 		or str(request.get("source_instance_id", "")) != str(
 			_selected_public_monster.get("source_instance_id", "")
+		)
+		or (
+			requested_generation > 0
+			and requested_generation != selected_generation
 		)
 		or not (request.get("target_binding", {}) is Dictionary)
 	):

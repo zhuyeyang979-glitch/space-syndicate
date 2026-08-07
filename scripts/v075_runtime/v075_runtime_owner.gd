@@ -45,6 +45,7 @@ const V075_COMBAT_ACQUISITION_MAX_PER_PERIOD := 1
 const V075_INITIAL_FACILITY_ACQUISITIONS_BEFORE_COMBAT := 0
 const V075_FACILITY_ACQUISITIONS_BETWEEN_COMBAT := 3
 const V075_AUTO_ACTION_LIMIT := 5
+
 const V075_MONSTER_UPGRADE_COHORT_MODULUS := 3
 const V075_MONSTER_UPGRADE_COHORT_BUCKET := 0
 const V075_TRACK_REFILL_MODE_ID := "shared_scroll_vacancy"
@@ -1405,6 +1406,19 @@ func queue_selected_military_mission(
 			and str(option.get("target_monster_source_instance_id", "")) == str(
 				parameters.get("target_monster_source_instance_id", "")
 			)
+			and (
+				not parameters.has("card_generation")
+				or int(option.get("card_generation", 1)) == int(
+					parameters.get("card_generation", 0)
+				)
+			)
+			and (
+				task_kind != "assault_monster"
+				or not parameters.has("target_source_generation")
+				or int(option.get("target_source_generation", 0)) == int(
+					parameters.get("target_source_generation", 0)
+				)
+			)
 		):
 			return queue_card_action(
 				actor_id,
@@ -1423,9 +1437,19 @@ func request_private_monster_skill(
 		return _reject_action("private_skill_actor_or_runtime_invalid")
 	var source_id := str(parameters.get("source_instance_id", ""))
 	var skill_id := str(parameters.get("skill_definition_id", ""))
+	var requested_source_generation := int(parameters.get(
+		"source_generation",
+		0
+	))
 	var source := _public_monster_by_id(source_id)
 	if source.is_empty() or str(source.get("owner_player_id", "")) != actor_id:
 		return _reject_action("private_skill_source_not_owned")
+	var current_source_generation := int(source.get("source_generation", 0))
+	if (
+		requested_source_generation > 0
+		and requested_source_generation != current_source_generation
+	):
+		return _reject_action("private_skill_source_generation_stale")
 	var skill := _owner_skill_by_id(actor_id, source_id, skill_id)
 	if skill.is_empty():
 		return _reject_action("private_skill_definition_not_available")
@@ -2588,6 +2612,13 @@ func _track_start_config() -> Dictionary:
 	}
 
 
+
+
+
+
+
+
+
 func _runtime_ruleset_id() -> String:
 	return V075_RULESET_ID
 
@@ -2802,6 +2833,12 @@ func _military_option(
 	target_monster_id: String
 ) -> Dictionary:
 	var target_id := target_region_id if task_kind == "assault_region" else target_monster_id
+	var target_source_generation := 0
+	if task_kind == "assault_monster" and not target_monster_id.is_empty():
+		var target_monster := _public_monster_by_id(target_monster_id)
+		target_source_generation = int(
+			target_monster.get("source_generation", 0)
+		)
 	var target_slot_id := "combat.military.%s.%s" % [
 		task_kind,
 		target_id.sha256_text().substr(0, 12),
@@ -2814,6 +2851,10 @@ func _military_option(
 		"actor_id": actor_id,
 		"card_instance_id": str(card.get("instance_id", "")),
 		"card_definition_id": str(card.get("definition_id", "")),
+		"card_generation": maxi(1, int(card.get(
+			"card_generation",
+			card.get("generation", 1)
+		))),
 		"primary_color": str(card.get("primary_color", "")),
 		"asset_cost": int(card.get("primary_asset_cost", 0)),
 		"action_domain": "military",

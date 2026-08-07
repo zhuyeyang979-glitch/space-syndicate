@@ -160,6 +160,66 @@ func _run() -> void:
 	var surface := screen.get_node(
 		"PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay/Margin/Rows/SurfaceHost/CombatSurface"
 	) as V075CombatPlayerSurface
+	var map_view := screen.get_node(
+		"RootMargin/Shell/TableArea/PlanetBoard/PlanetRows/"
+		+ "PlanetStageViewport/MapHost/PlanetMapView"
+	) as Control
+	var map_districts: Array = []
+	var map_centers := {
+		"region.04": Vector2(160.0, 190.0),
+		"region.07": Vector2(280.0, 300.0),
+		"region.08": Vector2(390.0, 360.0),
+		"region.10": Vector2(510.0, 430.0),
+		"region.11": Vector2(620.0, 330.0),
+		"region.14": Vector2(740.0, 470.0),
+	}
+	for region_id_variant in map_centers.keys():
+		var region_id := str(region_id_variant)
+		var center := map_centers.get(region_id) as Vector2
+		map_districts.append({
+			"region_id": region_id,
+			"name": region_id,
+			"center": center,
+			"polygon": [
+				center + Vector2(-30.0, -24.0),
+				center + Vector2(30.0, -24.0),
+				center + Vector2(30.0, 24.0),
+				center + Vector2(-30.0, 24.0),
+			],
+			"terrain": "land",
+			"terrain_class": "land",
+			"legal_target": true,
+			"products": [],
+		})
+	var map_palette: Array = []
+	for _district in map_districts:
+		map_palette.append(Color("#27485f"))
+	map_view.call(
+		"set_map",
+		map_districts,
+		1000.0,
+		700.0,
+		-1,
+		map_palette,
+		[],
+		[],
+		[],
+		[],
+		[],
+		[],
+		"",
+		"all"
+	)
+	screen.apply_combat_projection(
+		projection,
+		"monster.tech.local.01"
+	)
+	await process_frame
+	var map_projection_debug := screen.combat_debug_snapshot()
+	_expect(
+		int(map_projection_debug.get("combat_map_marker_count", 0)) == 2,
+		"combat projection places both public monsters on the production map"
+	)
 	surface.private_target_selection_requested.emit(
 		{
 			"source_instance_id": "monster.tech.local.01",
@@ -219,8 +279,13 @@ func _run() -> void:
 		"event_kind": "monster_moved",
 		"source_rank": 2,
 		"movement_profile": "ground_trample",
-		"start_region_id": "region.01",
-		"destination_region_id": "region.02",
+		"start_region_id": "region.07",
+		"destination_region_id": "region.14",
+		"ordered_region_path": [
+			"region.07",
+			"region.10",
+			"region.14",
+		],
 		"public_summary": "公开路径已结算",
 	}
 	var first_result := screen.apply_combat_receipt(receipt)
@@ -244,6 +309,53 @@ func _run() -> void:
 		bool(surface_after_receipt.get("presentation_asset_key_visible", false))
 		and int(surface_after_receipt.get("presentation_animation_count", 0)) == 1,
 		"public cue renders an asset key and a presentation pulse"
+	)
+	_expect(
+		int(after_receipt.get("combat_map_trail_count", 0)) == 2
+		and int(after_receipt.get("combat_map_callout_count", 0)) >= 1,
+		"public movement receipt renders two production map trail segments"
+	)
+	for sequence_receipt in [
+		{
+			"combat_receipt_id": "wrapper.receipt.002",
+			"event_kind": "monster_trample_resolved",
+			"source_instance_id": "monster.tech.local.01",
+			"preferred_industry_color": "technology",
+			"region_id": "region.10",
+			"distance_milli_arc": 170,
+			"region_damage_budget": 6,
+		},
+		{
+			"combat_receipt_id": "wrapper.receipt.003",
+			"event_kind": "military_region_assault",
+			"target_region_id": "region.14",
+			"region_damage_budget": 12,
+			"military_tier": 2,
+		},
+		{
+			"combat_receipt_id": "wrapper.receipt.004",
+			"event_kind": "military_withdrawn",
+			"target_region_id": "region.14",
+			"military_tier": 2,
+		},
+	]:
+		screen.apply_combat_receipt(sequence_receipt)
+	await process_frame
+	var after_sequence := screen.combat_debug_snapshot()
+	var sequence_surface := after_sequence.get("surface", {}) as Dictionary
+	var presentation_history := JSON.stringify(
+		sequence_surface.get("presentation_history", [])
+	)
+	_expect(
+		int(after_sequence.get("combat_map_effect_count", 0)) >= 2
+		and int(after_sequence.get("combat_map_callout_count", 0)) >= 4,
+		"trample, military attack and withdrawal remain visible in map layers"
+	)
+	_expect(
+		int(sequence_surface.get("presentation_history_count", 0)) == 4
+		and "军队完成地区攻击" in presentation_history
+		and "已撤离并弃置" in presentation_history,
+		"withdrawal appends to receipt history without erasing the attack cue"
 	)
 
 	screen.apply_snapshot({

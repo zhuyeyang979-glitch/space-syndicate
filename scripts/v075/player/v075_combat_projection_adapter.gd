@@ -15,12 +15,14 @@ const PUBLIC_MONSTER_FIELDS := [
 	"armor",
 	"preferred_industry_color",
 	"region_id",
-	"tracked_region_id",
-	"tracked_facility_id",
-	"projected_path",
 	"unlocked_skill_count",
 	"batch_active_skill_used",
 	"status",
+]
+const OWNER_NAVIGATION_FIELDS := [
+	"tracked_region_id",
+	"tracked_facility_id",
+	"projected_path",
 ]
 const PRIVATE_SKILL_FIELDS := [
 	"skill_definition_id",
@@ -77,7 +79,10 @@ func project_for_viewer(
 			if not (source_variant is Dictionary):
 				continue
 			public_monsters.append(
-				_project_public_monster(source_variant as Dictionary)
+				_project_public_monster(
+					source_variant as Dictionary,
+					viewer_player_id
+				)
 			)
 	public_monsters.sort_custom(_public_monster_precedes)
 
@@ -140,16 +145,22 @@ func public_projection(authority_snapshot: Dictionary) -> Dictionary:
 
 
 func privacy_report(projection: Dictionary) -> Dictionary:
+	var viewer_id := str(projection.get("viewer_player_id", ""))
 	var public_disclosure_count := 0
+	var opponent_future_target_disclosure_count := 0
 	for source_variant in projection.get("public_monsters", []) as Array:
 		if not (source_variant is Dictionary):
 			public_disclosure_count += 1
 			continue
+		var source := source_variant as Dictionary
 		public_disclosure_count += _forbidden_fragment_count(
-			source_variant,
+			source,
 			PUBLIC_MONSTER_FORBIDDEN_FRAGMENTS
 		)
-	var viewer_id := str(projection.get("viewer_player_id", ""))
+		if str(source.get("owner_player_id", "")) != viewer_id:
+			for field in OWNER_NAVIGATION_FIELDS:
+				if source.has(field):
+					opponent_future_target_disclosure_count += 1
 	var opponent_private_disclosure_count := 0
 	for source_variant in projection.get(
 		"own_monster_skill_sources",
@@ -175,6 +186,7 @@ func privacy_report(projection: Dictionary) -> Dictionary:
 			invalid_military_task_count += 1
 	var valid := (
 		public_disclosure_count == 0
+		and opponent_future_target_disclosure_count == 0
 		and opponent_private_disclosure_count == 0
 		and invalid_military_task_count == 0
 	)
@@ -188,6 +200,8 @@ func privacy_report(projection: Dictionary) -> Dictionary:
 		"public_skill_card_disclosure_count": public_disclosure_count,
 		"future_skill_target_disclosure_count":
 			_count_exact_key(projection.get("public_monsters", []), "future_skill_target"),
+		"opponent_future_target_disclosure_count":
+			opponent_future_target_disclosure_count,
 		"opponent_private_skill_disclosure_count":
 			opponent_private_disclosure_count,
 		"invalid_military_task_count": invalid_military_task_count,
@@ -200,19 +214,30 @@ func debug_snapshot() -> Dictionary:
 		"ruleset_id": RULESET_ID,
 		"projection_count": _projection_count,
 		"public_monster_field_count": PUBLIC_MONSTER_FIELDS.size(),
+		"owner_navigation_field_count": OWNER_NAVIGATION_FIELDS.size(),
 		"military_task_kinds": MILITARY_TASK_KINDS.duplicate(),
 		"military_guard_ui_count": 0,
 		"last_privacy_report": _last_privacy_report.duplicate(true),
 	}
 
 
-func _project_public_monster(source: Dictionary) -> Dictionary:
+func _project_public_monster(
+	source: Dictionary,
+	viewer_player_id: String
+) -> Dictionary:
 	var projected := {}
 	for field in PUBLIC_MONSTER_FIELDS:
 		if source.has(field):
 			projected[field] = _safe_copy(source.get(field))
-	if not projected.has("projected_path"):
-		projected["projected_path"] = []
+	if (
+		not viewer_player_id.is_empty()
+		and str(source.get("owner_player_id", "")) == viewer_player_id
+	):
+		for field in OWNER_NAVIGATION_FIELDS:
+			if source.has(field):
+				projected[field] = _safe_copy(source.get(field))
+		if not projected.has("projected_path"):
+			projected["projected_path"] = []
 	if not projected.has("unlocked_skill_count"):
 		projected["unlocked_skill_count"] = 0
 	if not projected.has("batch_active_skill_used"):

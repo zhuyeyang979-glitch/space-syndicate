@@ -106,6 +106,16 @@ const TERMINAL_PHASES := [
 	"final_settlement",
 	"terminal",
 ]
+const COMBAT_MAP_CUE_HISTORY_LIMIT := 12
+const COMBAT_MAP_COLOR_VALUES := {
+	"life": Color("#76d89b"),
+	"energy": Color("#f3cd68"),
+	"industry": Color("#f08a74"),
+	"technology": Color("#7fb6ff"),
+	"commerce": Color("#d993ef"),
+	"shipping": Color("#67d8d5"),
+}
+const COMBAT_MAP_DEFAULT_COLOR := Color("#74d9c6")
 
 @onready var _combat_overlay: PanelContainer = (
 	$PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay
@@ -156,6 +166,14 @@ var _combat_private_intent_count := 0
 var _combat_military_intent_count := 0
 var _last_combat_intent_kind := ""
 var _monster_mode_popup_card_id := ""
+var _combat_map_cues: Array[Dictionary] = []
+var _combat_map_projection_apply_count := 0
+var _combat_map_cue_apply_count := 0
+var _combat_map_marker_count := 0
+var _combat_map_trail_count := 0
+var _combat_map_effect_count := 0
+var _combat_map_callout_count := 0
+var _combat_map_last_sync_signature := ""
 
 
 func _ready() -> void:
@@ -264,7 +282,9 @@ func apply_combat_projection(
 	projection: Dictionary,
 	preferred_source_instance_id := ""
 ) -> void:
-	var normalized := _normalize_projection(projection)
+	# An explicit projection call is the deliberate Observatory viewer switch;
+	# snapshot ingestion remains bound to the authenticated viewer.
+	var normalized := _normalize_projection(projection, true)
 	if normalized.is_empty():
 		_clear_combat_projection()
 		return
@@ -291,6 +311,7 @@ func apply_combat_projection(
 	_combat_overlay.visible = true
 	_combat_status.text = _projection_status(normalized)
 	_set_combat_surface_visibility()
+	_sync_combat_map_projection()
 	combat_projection_applied.emit(normalized.duplicate(true))
 	_resolve_combat_layout()
 
@@ -300,8 +321,11 @@ func apply_combat_authority_snapshot(
 	viewer_player_id := "",
 	preferred_source_instance_id := ""
 ) -> void:
-	if not viewer_player_id.is_empty():
-		_viewer_player_id = viewer_player_id
+	if (
+		not viewer_player_id.is_empty()
+		and viewer_player_id != _viewer_player_id
+	):
+		return
 	var projection := _projection_adapter.call(
 		"project_for_viewer",
 		authority_snapshot,
@@ -438,6 +462,14 @@ func combat_debug_snapshot() -> Dictionary:
 				0
 			)
 		),
+		"combat_map_projection_apply_count":
+			_combat_map_projection_apply_count,
+		"combat_map_cue_apply_count": _combat_map_cue_apply_count,
+		"combat_map_cue_history_count": _combat_map_cues.size(),
+		"combat_map_marker_count": _combat_map_marker_count,
+		"combat_map_trail_count": _combat_map_trail_count,
+		"combat_map_effect_count": _combat_map_effect_count,
+		"combat_map_callout_count": _combat_map_callout_count,
 		"presentation": presentation_debug,
 		"surface": surface_debug,
 		"application_flow_bound": is_instance_valid(_v075_flow),
@@ -624,8 +656,21 @@ func _update_acceptance_state() -> void:
 
 
 func _on_presentation_cue_ready(cue: Dictionary) -> void:
+	var cue_result := {
+		"applied": true,
+	}
 	if is_instance_valid(_combat_surface):
-		_combat_surface.call("show_presentation_cue", cue)
+		cue_result = _combat_surface.call(
+			"show_presentation_cue",
+			cue
+		) as Dictionary
+	if not bool(cue_result.get("applied", false)):
+		return
+	_combat_map_cues.append(cue.duplicate(true))
+	while _combat_map_cues.size() > COMBAT_MAP_CUE_HISTORY_LIMIT:
+		_combat_map_cues.pop_front()
+	_combat_map_cue_apply_count += 1
+	_sync_combat_map_projection()
 
 
 func _on_private_target_selection_requested(request: Dictionary) -> void:
@@ -771,7 +816,10 @@ func _project_authority(authority_snapshot: Dictionary) -> Dictionary:
 	) as Dictionary
 
 
-func _normalize_projection(candidate: Dictionary) -> Dictionary:
+func _normalize_projection(
+	candidate: Dictionary,
+	allow_viewer_switch := false
+) -> Dictionary:
 	if candidate.is_empty():
 		return {}
 	var schema := str(candidate.get("schema", ""))
@@ -780,11 +828,26 @@ func _normalize_projection(candidate: Dictionary) -> Dictionary:
 		or candidate.has("own_monster_skill_sources")
 		or candidate.has("military_task_options")
 	):
+		var candidate_viewer_id := str(
+			candidate.get("viewer_player_id", "")
+		)
+		if (
+			candidate_viewer_id.is_empty()
+			or (
+				not allow_viewer_switch
+				and candidate_viewer_id != _viewer_player_id
+			)
+		):
+			return {}
 		var projection := candidate.duplicate(true)
 		projection["schema"] = "V075CombatPlayerProjectionV1"
 		projection["ruleset_id"] = V075_RULESET_ID
-		if str(projection.get("viewer_player_id", "")).is_empty():
-			projection["viewer_player_id"] = _viewer_player_id
+		var privacy := _projection_adapter.call(
+			"privacy_report",
+			projection
+		) as Dictionary
+		if not bool(privacy.get("valid", false)):
+			return {}
 		return projection
 	if candidate.has("public_monsters") or candidate.has("monsters"):
 		return _project_authority(candidate)
@@ -916,6 +979,7 @@ func _clear_combat_projection() -> void:
 		)
 	_combat_status.text = "等待战斗投影"
 	_set_combat_surface_visibility()
+	_sync_combat_map_projection()
 
 
 func _update_combat_session(snapshot: Dictionary) -> void:
@@ -958,6 +1022,8 @@ func _is_combat_terminal() -> bool:
 
 func _reset_combat_state() -> void:
 	_combat_terminal_phase = ""
+	_combat_map_cues.clear()
+	_combat_map_last_sync_signature = ""
 	if (
 		_presentation_source_mode
 			== PRESENTATION_SOURCE_ISOLATED_PREVIEW
@@ -1486,3 +1552,454 @@ func v075_card_presentation_audit(item: Dictionary) -> Dictionary:
 			and not mapped_path.is_empty()
 		),
 	}
+
+
+func _refresh_planet_presentation() -> void:
+	super._refresh_planet_presentation()
+	call_deferred("_sync_combat_map_projection")
+
+
+func _combat_map_view() -> Control:
+	if not is_instance_valid(_planet_board):
+		return null
+	var map_view_variant: Variant = _planet_board.call(
+		"get_embedded_map_view"
+	)
+	return (
+		map_view_variant as Control
+		if map_view_variant is Control
+		else null
+	)
+
+
+func _sync_combat_map_projection() -> bool:
+	var map_view := _combat_map_view()
+	if not is_instance_valid(map_view) or not map_view.has_method("set_map"):
+		return false
+	var districts := _combat_array(map_view.get("districts"))
+	var palette := _combat_array(map_view.get("palette"))
+	if districts.is_empty() or palette.size() != districts.size():
+		return false
+	var centers := _combat_region_centers(districts)
+	if centers.is_empty():
+		return false
+
+	var base_markers := _without_v075_combat_rows(
+		map_view.get("auto_monster_markers")
+	)
+	var markers := base_markers.duplicate(true)
+	markers.append_array(_combat_monster_markers(centers))
+
+	var base_trails := _without_v075_combat_rows(
+		map_view.get("movement_trails")
+	)
+	var base_effects := _without_v075_combat_rows(
+		map_view.get("map_event_effects")
+	)
+	var base_callouts := _without_v075_combat_rows(
+		map_view.get("action_callouts")
+	)
+	var trails := base_trails.duplicate(true)
+	var effects := base_effects.duplicate(true)
+	var callouts := base_callouts.duplicate(true)
+	for cue in _combat_map_cues:
+		_append_combat_cue_layers(
+			cue,
+			centers,
+			trails,
+			effects,
+			callouts
+		)
+
+	var sync_signature := _combat_sync_signature({
+		"districts": districts,
+		"markers": markers,
+		"trails": trails,
+		"effects": effects,
+		"callouts": callouts,
+	})
+	if sync_signature == _combat_map_last_sync_signature:
+		return true
+	_combat_map_last_sync_signature = sync_signature
+	_combat_map_marker_count = markers.size() - base_markers.size()
+	_combat_map_trail_count = trails.size() - base_trails.size()
+	_combat_map_effect_count = effects.size() - base_effects.size()
+	_combat_map_callout_count = callouts.size() - base_callouts.size()
+	map_view.call(
+		"set_map",
+		districts,
+		float(map_view.get("map_width_m")),
+		float(map_view.get("map_height_m")),
+		int(map_view.get("selected_district")),
+		palette,
+		trails,
+		callouts,
+		effects,
+		markers,
+		_combat_array(map_view.get("city_markers")),
+		_combat_array(map_view.get("trade_route_markers")),
+		str(map_view.get("trade_product")),
+		str(map_view.get("visual_layer_focus"))
+	)
+	_combat_map_projection_apply_count += 1
+	return true
+
+
+func _combat_sync_signature(value: Variant) -> String:
+	if value is Dictionary:
+		var dictionary := value as Dictionary
+		var keys: Array[String] = []
+		for key_variant in dictionary.keys():
+			keys.append(str(key_variant))
+		keys.sort()
+		var fields: Array[String] = []
+		for key in keys:
+			fields.append(
+				"%s:%s" % [
+					JSON.stringify(key),
+					_combat_sync_signature(dictionary.get(key)),
+				]
+			)
+		return "{%s}" % ",".join(fields)
+	if value is Array:
+		var items: Array[String] = []
+		for item in value as Array:
+			items.append(_combat_sync_signature(item))
+		return "[%s]" % ",".join(items)
+	return JSON.stringify(value)
+
+
+func _combat_array(value: Variant) -> Array:
+	return (
+		(value as Array).duplicate(true)
+		if value is Array
+		else []
+	)
+
+
+func _without_v075_combat_rows(value: Variant) -> Array:
+	var rows: Array = []
+	if not (value is Array):
+		return rows
+	for row_variant in value as Array:
+		if (
+			row_variant is Dictionary
+			and bool(
+				(row_variant as Dictionary).get(
+					"v075_combat_presentation",
+					false
+				)
+			)
+		):
+			continue
+		rows.append(
+			(row_variant as Dictionary).duplicate(true)
+			if row_variant is Dictionary
+			else row_variant
+		)
+	return rows
+
+
+func _combat_region_centers(districts: Array) -> Dictionary:
+	var centers := {}
+	for district_variant in districts:
+		if not (district_variant is Dictionary):
+			continue
+		var district := district_variant as Dictionary
+		var region_id := str(district.get("region_id", ""))
+		var center_variant: Variant = district.get("center")
+		if region_id.is_empty() or not (center_variant is Vector2):
+			continue
+		centers[region_id] = center_variant
+	return centers
+
+
+func _combat_monster_markers(centers: Dictionary) -> Array:
+	var markers: Array = []
+	for source_variant in _combat_projection.get(
+		"public_monsters",
+		[]
+	) as Array:
+		if not (source_variant is Dictionary):
+			continue
+		var source := source_variant as Dictionary
+		var region_id := str(source.get("region_id", ""))
+		if region_id.is_empty() or not centers.has(region_id):
+			continue
+		var color_id := str(
+			source.get("preferred_industry_color", "")
+		)
+		var accent := _combat_map_color(color_id)
+		var display_name := str(
+			source.get(
+				"display_name",
+				source.get("monster_family_id", "怪兽")
+			)
+		)
+		markers.append({
+			"v075_combat_presentation": true,
+			"source_instance_id": str(
+				source.get("source_instance_id", "")
+			),
+			"owner_player_id": str(
+				source.get("owner_player_id", "")
+			),
+			"position": centers.get(region_id),
+			"name": display_name,
+			"label": "L%d" % int(source.get("rank", 1)),
+			"glyph": "M",
+			"display_subtitle": (
+				"HP %d/%d · 护甲 %d · 偏好%s"
+				% [
+					int(source.get("hp", 0)),
+					int(source.get("max_hp", 0)),
+					int(source.get("armor", 0)),
+					_combat_color_label(color_id),
+				]
+			),
+			"color": accent,
+			"secondary": accent.lightened(0.28),
+			"model_asset_key": str(
+				source.get("model_asset_key", "")
+			),
+			"status": str(source.get("status", "active")),
+			"region_id": region_id,
+		})
+	return markers
+
+
+func _append_combat_cue_layers(
+	cue: Dictionary,
+	centers: Dictionary,
+	trails: Array,
+	effects: Array,
+	callouts: Array
+) -> void:
+	var event_kind := str(cue.get("event_kind", ""))
+	var payload := cue.get("public_payload", {}) as Dictionary
+	var accent := _combat_map_cue_color(event_kind, payload)
+	var target_region_id := _combat_cue_target_region(payload)
+	if event_kind == "monster_moved":
+		var path := payload.get("ordered_region_path", []) as Array
+		for index in range(maxi(0, path.size() - 1)):
+			var from_region_id := str(path[index])
+			var to_region_id := str(path[index + 1])
+			if (
+				not centers.has(from_region_id)
+				or not centers.has(to_region_id)
+			):
+				continue
+			trails.append({
+				"v075_combat_presentation": true,
+				"from": centers.get(from_region_id),
+				"to": centers.get(to_region_id),
+				"label": "怪兽自动移动",
+				"style": "monster",
+				"life": 6.0,
+				"duration": 6.0,
+				"color": accent,
+				"source_region_id": from_region_id,
+				"target_region_id": to_region_id,
+			})
+	elif event_kind == "monster_trample_resolved":
+		if centers.has(target_region_id):
+			effects.append({
+				"v075_combat_presentation": true,
+				"kind": "impact",
+				"position": centers.get(target_region_id),
+				"label": "践踏 %d" % int(payload.get(
+					"region_damage_budget",
+					payload.get("damage_amount", 0)
+				)),
+				"life": 6.0,
+				"duration": 6.0,
+				"radius_m": 110.0,
+				"motion_family": "monster_trample",
+				"effect_layer": "combat",
+				"color": accent,
+				"region_id": target_region_id,
+			})
+	elif event_kind in [
+		"monster_deployed",
+		"monster_refreshed",
+		"monster_upgraded",
+		"monster_replaced",
+		"monster_basic_attack",
+		"monster_private_skill_resolved",
+		"monster_damaged",
+		"monster_downed",
+		"monster_destroyed",
+		"facility_combat_damaged",
+		"armor_absorbed",
+		"military_region_assault",
+		"military_monster_assault",
+	]:
+		if centers.has(target_region_id):
+			effects.append({
+				"v075_combat_presentation": true,
+				"kind": (
+					"beam"
+					if event_kind in [
+						"monster_basic_attack",
+						"monster_private_skill_resolved",
+					]
+					else "impact"
+				),
+				"from": centers.get(
+					str(payload.get("start_region_id", "")),
+					centers.get(target_region_id)
+				),
+				"to": centers.get(target_region_id),
+				"position": centers.get(target_region_id),
+				"label": _combat_map_cue_summary(
+					event_kind,
+					payload
+				),
+				"life": 6.0,
+				"duration": 6.0,
+				"radius_m": 90.0,
+				"motion_family": event_kind,
+				"effect_layer": "combat",
+				"color": accent,
+				"region_id": target_region_id,
+			})
+	var summary := _combat_map_cue_summary(event_kind, payload)
+	if summary.is_empty():
+		return
+	callouts.append({
+		"v075_combat_presentation": true,
+		"title": _combat_map_cue_title(event_kind),
+		"detail": summary,
+		"life": 8.0,
+		"duration": 8.0,
+		"color": accent,
+		"event_kind": event_kind,
+		"region_id": target_region_id,
+	})
+
+
+func _combat_cue_target_region(payload: Dictionary) -> String:
+	for field in [
+		"region_id",
+		"target_region_id",
+		"destination_region_id",
+		"start_region_id",
+	]:
+		var region_id := str(payload.get(field, ""))
+		if not region_id.is_empty():
+			return region_id
+	var target_source_id := str(
+		payload.get("target_monster_source_instance_id", "")
+	)
+	if target_source_id.is_empty():
+		return ""
+	for source_variant in _combat_projection.get(
+		"public_monsters",
+		[]
+	) as Array:
+		if not (source_variant is Dictionary):
+			continue
+		var source := source_variant as Dictionary
+		if str(source.get("source_instance_id", "")) == target_source_id:
+			return str(source.get("region_id", ""))
+	return ""
+
+
+func _combat_map_cue_title(event_kind: String) -> String:
+	if event_kind.begins_with("military_"):
+		return "军队"
+	if event_kind == "facility_combat_damaged":
+		return "设施受损"
+	if event_kind == "monster_trample_resolved":
+		return "怪兽践踏"
+	return "怪兽"
+
+
+func _combat_map_cue_summary(
+	event_kind: String,
+	payload: Dictionary
+) -> String:
+	match event_kind:
+		"monster_deployed":
+			return "怪兽部署至 %s" % _combat_cue_target_region(payload)
+		"monster_refreshed":
+			return "同族牌恢复 %d%% 最大生命" % int(
+				payload.get("refresh_percent", 0)
+			)
+		"monster_upgraded":
+			return "升级至 L%d，旧技能冷却保持" % int(
+				payload.get("new_rank", payload.get("source_rank", 1))
+			)
+		"monster_replaced":
+			return "旧怪兽撤回，新怪兽部署"
+		"monster_moved":
+			return "沿动态地区最短路径移动"
+		"monster_trample_resolved":
+			return "%s · 距离 %d · 伤害 %d" % [
+				str(payload.get("region_id", "")),
+				int(payload.get("distance_milli_arc", 0)),
+				int(payload.get(
+					"region_damage_budget",
+					payload.get("damage_amount", 0)
+				)),
+			]
+		"monster_basic_attack":
+			return "到达后基础攻击 · %d 伤害" % int(
+				payload.get("damage_amount", 0)
+			)
+		"monster_private_skill_resolved":
+			return "私密技能公开效果已结算"
+		"monster_damaged":
+			return "怪兽受到 %d 伤害" % int(
+				payload.get("damage_amount", 0)
+			)
+		"monster_downed":
+			return "怪兽倒地"
+		"monster_destroyed":
+			return "怪兽被摧毁"
+		"military_region_assault":
+			return "区域总伤害预算已分配"
+		"military_monster_assault":
+			return "锁定怪兽受到一次攻击"
+		"military_withdrawn":
+			return "任务完成，军队撤离并进入弃牌池"
+		"facility_combat_damaged":
+			return "%s · %s设施受到战斗伤害" % [
+				_combat_cue_target_region(payload),
+				str(payload.get("facility_type", "")),
+			]
+		"armor_absorbed":
+			return "护甲吸收伤害"
+	return ""
+
+
+func _combat_map_cue_color(
+	event_kind: String,
+	payload: Dictionary
+) -> Color:
+	if event_kind.begins_with("military_"):
+		return Color("#ef9a74")
+	if event_kind == "facility_combat_damaged":
+		return Color("#e4bd69")
+	return _combat_map_color(
+		str(payload.get("preferred_industry_color", ""))
+	)
+
+
+func _combat_map_color(color_id: String) -> Color:
+	var value: Variant = COMBAT_MAP_COLOR_VALUES.get(
+		color_id,
+		COMBAT_MAP_DEFAULT_COLOR
+	)
+	return value as Color if value is Color else COMBAT_MAP_DEFAULT_COLOR
+
+
+func _combat_color_label(color_id: String) -> String:
+	return str({
+		"life": "生命",
+		"energy": "能源",
+		"industry": "工业",
+		"technology": "科技",
+		"commerce": "商业",
+		"shipping": "航运",
+	}.get(color_id, color_id))

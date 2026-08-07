@@ -72,9 +72,14 @@ func _run() -> void:
 		(rival_projection.get("military_task_options", []) as Array).is_empty(),
 		"rival receives no owner military command choice"
 	)
-	var public_monster := (
-		owner_projection.get("public_monsters", []) as Array
-	)[0] as Dictionary
+	var public_monster := _public_source(
+		owner_projection,
+		"monster.tech.local.01"
+	)
+	var rival_view_of_owner := _public_source(
+		rival_projection,
+		"monster.tech.local.01"
+	)
 	for field in [
 		"display_name",
 		"rank",
@@ -89,7 +94,17 @@ func _run() -> void:
 	]:
 		_expect(
 			public_monster.has(field),
-			"public monster exposes %s" % field
+			"owner monster projection exposes %s" % field
+		)
+	for private_navigation_field in [
+		"tracked_region_id",
+		"tracked_facility_id",
+		"projected_path",
+	]:
+		_expect(
+			not rival_view_of_owner.has(private_navigation_field),
+			"rival monster projection hides %s"
+				% private_navigation_field
 		)
 	for forbidden in [
 		"skill_definition_id",
@@ -113,6 +128,17 @@ func _run() -> void:
 		) == 0,
 		"owner projection passes public/private privacy audit"
 	)
+	var rival_privacy := adapter.privacy_report(rival_projection)
+	_expect(
+		bool(rival_privacy.get("valid", false))
+		and int(
+			rival_privacy.get(
+				"opponent_future_target_disclosure_count",
+				1
+			)
+		) == 0,
+		"rival projection discloses no future monster target or path"
+	)
 	_expect(
 		authority == before,
 		"projection adapter does not mutate authority input"
@@ -124,6 +150,16 @@ func _run() -> void:
 			public_projection.get("military_task_options", []) as Array
 		).is_empty(),
 		"public-only projection strips all private zones"
+	)
+	var public_view_of_owner := _public_source(
+		public_projection,
+		"monster.tech.local.01"
+	)
+	_expect(
+		not public_view_of_owner.has("tracked_region_id")
+		and not public_view_of_owner.has("tracked_facility_id")
+		and not public_view_of_owner.has("projected_path"),
+		"public-only projection strips future target navigation"
 	)
 	var downed_authority := authority.duplicate(true)
 	var downed_zone := (
@@ -212,6 +248,24 @@ func _run() -> void:
 	)
 	surface.queue_free()
 	_finish()
+
+
+func _public_source(
+	projection: Dictionary,
+	source_instance_id: String
+) -> Dictionary:
+	for source_variant in projection.get("public_monsters", []) as Array:
+		if (
+			source_variant is Dictionary
+			and str(
+				(source_variant as Dictionary).get(
+					"source_instance_id",
+					""
+				)
+			) == source_instance_id
+		):
+			return (source_variant as Dictionary).duplicate(true)
+	return {}
 
 
 func _contains_key(value: Variant, expected: String) -> bool:
