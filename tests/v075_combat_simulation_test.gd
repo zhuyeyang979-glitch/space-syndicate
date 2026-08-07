@@ -78,6 +78,7 @@ func _run() -> void:
 	)
 	if _is_shard_options(options):
 		_test_shard_report_contract(report)
+		_test_source_sha_aggregation(simulator, report)
 	else:
 		_test_report_contract(report, matches_per_configuration)
 	if _has_argument("--replay"):
@@ -282,6 +283,14 @@ func _test_report_contract(
 		str(report.get("ruleset_id", "")) == "v0.7.5",
 		"report uses the V0.7.5 ruleset"
 	)
+	var expected_source_sha := OS.get_environment(
+		"V075_SIMULATION_SOURCE_SHA"
+	).strip_edges()
+	if not expected_source_sha.is_empty():
+		_expect(
+			str(report.get("source_commit_sha", "")) == expected_source_sha,
+			"report records the exact simulation source commit"
+		)
 	_expect(
 		int(report.get("configuration_count", 0)) == 5,
 		"report covers exactly five requested configurations"
@@ -577,6 +586,14 @@ func _test_shard_report_contract(report: Dictionary) -> void:
 		str(report.get("report_kind", "")) == "v075.combat.simulation.shard.v1",
 		"shard report declares the V075 shard schema"
 	)
+	var expected_source_sha := OS.get_environment(
+		"V075_SIMULATION_SOURCE_SHA"
+	).strip_edges()
+	if not expected_source_sha.is_empty():
+		_expect(
+			str(report.get("source_commit_sha", "")) == expected_source_sha,
+			"shard records the exact simulation source commit"
+		)
 	var scope := report.get("execution_scope", {}) as Dictionary
 	_expect(
 		bool(scope.get("seed_deduplication", false))
@@ -623,6 +640,22 @@ func _test_aggregate_report_contract(report: Dictionary) -> void:
 		"aggregate report declares the V075 aggregate schema"
 	)
 	var aggregation := report.get("aggregation", {}) as Dictionary
+	var expected_source_sha := OS.get_environment(
+		"V075_SIMULATION_SOURCE_SHA"
+	).strip_edges()
+	if not expected_source_sha.is_empty():
+		_expect(
+			str(report.get("source_commit_sha", "")) == expected_source_sha
+			and int(aggregation.get(
+				"source_commit_sha_missing_count",
+				-1
+			)) == 0
+			and int(aggregation.get(
+				"source_commit_sha_mismatch_count",
+				-1
+			)) == 0,
+			"aggregate report preserves one complete exact source SHA"
+		)
 	_expect(
 		int(aggregation.get("duplicate_job_count", -1)) == 0
 			and int(aggregation.get("duplicate_seed_count", -1)) == 0
@@ -635,6 +668,72 @@ func _test_aggregate_report_contract(report: Dictionary) -> void:
 			and int(aggregation.get("unique_job_count", -1))
 				== int(report.get("total_match_count", -2)),
 		"aggregate report accounts for every unique job"
+	)
+
+
+func _test_source_sha_aggregation(
+	simulator: RefCounted,
+	shard_report: Dictionary
+) -> void:
+	var expected_source_sha := OS.get_environment(
+		"V075_SIMULATION_SOURCE_SHA"
+	).strip_edges()
+	if expected_source_sha.is_empty():
+		return
+	var valid := simulator.aggregate_reports(
+		[shard_report],
+		{"formal_matches_per_configuration": DEFAULT_FORMAL_MATCHES}
+	) as Dictionary
+	var valid_aggregation := valid.get("aggregation", {}) as Dictionary
+	_expect(
+		str(valid.get("source_commit_sha", "")) == expected_source_sha
+		and int(valid_aggregation.get(
+			"source_commit_sha_missing_count",
+			-1
+		)) == 0
+		and int(valid_aggregation.get(
+			"source_commit_sha_mismatch_count",
+			-1
+		)) == 0,
+		"one complete shard source SHA survives aggregation"
+	)
+	var missing := shard_report.duplicate(true)
+	missing.erase("source_commit_sha")
+	var missing_result := simulator.aggregate_reports(
+		[missing],
+		{"formal_matches_per_configuration": DEFAULT_FORMAL_MATCHES}
+	) as Dictionary
+	var missing_aggregation := (
+		missing_result.get("aggregation", {}) as Dictionary
+	)
+	_expect(
+		str(missing_result.get("acceptance_status", "")) == "BLOCKED"
+		and int(missing_aggregation.get(
+			"source_commit_sha_missing_count",
+			0
+		)) == 1
+		and int(missing_aggregation.get(
+			"source_commit_sha_mismatch_count",
+			0
+		)) >= 1,
+		"an all-missing shard source SHA blocks aggregation"
+	)
+	var mismatched := shard_report.duplicate(true)
+	mismatched["source_commit_sha"] = "0000000000000000000000000000000000000000"
+	var mismatch_result := simulator.aggregate_reports(
+		[shard_report, mismatched],
+		{"formal_matches_per_configuration": DEFAULT_FORMAL_MATCHES}
+	) as Dictionary
+	var mismatch_aggregation := (
+		mismatch_result.get("aggregation", {}) as Dictionary
+	)
+	_expect(
+		str(mismatch_result.get("acceptance_status", "")) == "BLOCKED"
+		and int(mismatch_aggregation.get(
+			"source_commit_sha_mismatch_count",
+			0
+		)) >= 1,
+		"mismatched shard source SHAs block aggregation"
 	)
 
 

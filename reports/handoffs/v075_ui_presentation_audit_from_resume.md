@@ -31,7 +31,7 @@ The existing V0.7.5 worktree and branch were preserved:
 WORKTREE=space-syndicate-v075-monster-military-combat-bd0af5c
 BRANCH=codex/v075-monster-military-combat-bd0af5c
 HEAD=a4a06b96d39b20a94418c4a1c02c74e6af17b9c6
-BASE_MAIN_SHA=bd0af5c99c5267cdbe7d66c01034f80bb4d704fd
+BASE_MAIN_SHA=bd0af5c99c5267cdbe7d66c01034f80db4d704fd
 CURRENT_TASK_NO_RESET=true
 CURRENT_TASK_NEW_USER_FILES_PRESERVED=true
 ```

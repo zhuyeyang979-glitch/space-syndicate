@@ -96,19 +96,46 @@ func _run() -> void:
 			"target_request": {
 				"target_kind": "enemy_public_facility",
 				"target_id": "facility.enemy.factory.000",
+				"target_facility_generation": 1,
 			},
 		},
 		asset_state,
 		facilities
 	)
-	_expect(bool(skill_result.get("accepted", false)), "private skill resolves immediately")
+	_expect(
+		bool(skill_result.get("accepted", false))
+		and str(skill_result.get("reason_code", ""))
+			== "private_skill_safe_boundary_drained"
+		and int(skill_result.get("resolved_count", 0)) == 1,
+		"private skill resolves immediately at the current safe boundary"
+	)
 	asset_state = skill_result.get("asset_state", {}) as Dictionary
+	var alpha_asset_row := (
+		(asset_state.get("players", {}) as Dictionary).get(
+			"player.alpha",
+			{}
+		) as Dictionary
+	)
 	_expect(
 		int((AssetCore.monster_skill_available_asset_view(
 			asset_state,
 			"player.alpha"
 		).get("own_available_assets", {}) as Dictionary).get("life", -1)) == 5,
 		"private skill commits exactly one available life asset"
+	)
+	_expect(
+		int((alpha_asset_row.get("assets", {}) as Dictionary).get(
+			"life",
+			-1
+		)) == 5
+		and alpha_asset_row.get("reserved_totals", {}) == _all_six(0),
+		"immediate settlement debits the asset owner and clears its reservation"
+	)
+	_expect(
+		(skill_result.get("facility_damage_intents", []) as Array).size() == 1
+		and (skill_result.get("public_results", []) as Array).size() == 1
+		and (skill_result.get("resolution_receipts", []) as Array).size() == 1,
+		"immediate settlement returns one damage intent, public result, and private operation receipt"
 	)
 	var second_skill := owner.request_private_skill(
 		{
@@ -120,6 +147,7 @@ func _run() -> void:
 			"target_request": {
 				"target_kind": "enemy_public_facility",
 				"target_id": "facility.enemy.factory.000",
+				"target_facility_generation": 1,
 			},
 		},
 		asset_state,
@@ -164,6 +192,7 @@ func _run() -> void:
 			"target_request": {
 				"target_kind": "enemy_public_facility",
 				"target_id": "facility.enemy.warehouse.002",
+				"target_facility_generation": 1,
 			},
 		},
 		asset_state,

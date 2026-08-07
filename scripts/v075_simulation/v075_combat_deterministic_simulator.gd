@@ -19,6 +19,7 @@ const SHARD_SCHEMA_VERSION := 1
 const SHARD_REPORT_KIND := "v075.combat.simulation.shard.v1"
 const AGGREGATE_REPORT_KIND := "v075.combat.simulation.aggregate.v1"
 const SEED_FORMULA_ID := "base_plus_configuration_million_plus_match_7919"
+const SOURCE_COMMIT_SHA_ENV := "V075_SIMULATION_SOURCE_SHA"
 const CONFIGURATIONS: Array = [
 	{
 		"configuration_id": "3p_8r_simple",
@@ -442,6 +443,7 @@ func _build_report_from_rows(
 		"report_kind": report_kind,
 		"simulation_id": SIMULATION_ID,
 		"ruleset_id": RULESET_ID,
+		"source_commit_sha": OS.get_environment(SOURCE_COMMIT_SHA_ENV).strip_edges(),
 		"production_path": {
 			"runtime_owner": "V075RuntimeOwner",
 			"combat_owner": "V075CombatRuntimeOwner",
@@ -520,6 +522,7 @@ func _invalid_execution_report(scope: Dictionary) -> Dictionary:
 		"report_kind": "v075.combat.simulation.invalid.v1",
 		"simulation_id": SIMULATION_ID,
 		"ruleset_id": RULESET_ID,
+		"source_commit_sha": OS.get_environment(SOURCE_COMMIT_SHA_ENV).strip_edges(),
 		"acceptance_status": "BLOCKED",
 		"execution_scope": scope.duplicate(true),
 		"execution_error": str(scope.get("reason_code", "invalid_scope")),
@@ -698,6 +701,8 @@ func aggregate_reports(
 	var out_of_declared_scope_count := 0
 	var schema_error_count := 0
 	var source_report_fingerprints: Array[String] = []
+	var source_commit_shas: Array[String] = []
+	var source_commit_sha_missing_count := 0
 	for report_variant in reports:
 		if not (report_variant is Dictionary):
 			schema_error_count += 1
@@ -717,6 +722,13 @@ func aggregate_reports(
 		var source_fingerprint := str(report.get("report_fingerprint", ""))
 		if not source_fingerprint.is_empty():
 			source_report_fingerprints.append(source_fingerprint)
+		var source_commit_sha := str(
+			report.get("source_commit_sha", "")
+		).strip_edges()
+		if source_commit_sha.is_empty():
+			source_commit_sha_missing_count += 1
+		elif source_commit_sha not in source_commit_shas:
+			source_commit_shas.append(source_commit_sha)
 		var shard_rows_variant: Variant = report.get("shard_rows", null)
 		if not (shard_rows_variant is Array):
 			schema_error_count += 1
@@ -840,6 +852,13 @@ func aggregate_reports(
 			"include_match_rows": false,
 		}
 	)
+	var source_commit_sha_mismatch_count := maxi(0, source_commit_shas.size() - 1)
+	var aggregate_source_commit_sha := (
+		source_commit_shas[0] if not source_commit_shas.is_empty() else ""
+	)
+	if source_commit_sha_missing_count > 0:
+		source_commit_sha_mismatch_count += source_commit_sha_missing_count
+	report["source_commit_sha"] = aggregate_source_commit_sha
 	source_report_fingerprints.sort()
 	report["aggregation"] = {
 		"schema_version": SHARD_SCHEMA_VERSION,
@@ -853,6 +872,9 @@ func aggregate_reports(
 		"seed_mismatch_count": seed_mismatch_count,
 		"out_of_declared_scope_count": out_of_declared_scope_count,
 		"schema_error_count": schema_error_count,
+		"source_commit_sha_mismatch_count": source_commit_sha_mismatch_count,
+		"source_commit_sha_missing_count": source_commit_sha_missing_count,
+		"source_commit_sha_set": source_commit_shas.duplicate(),
 		"seed_deduplication_green": (
 			duplicate_seed_count == 0 and seed_mismatch_count == 0
 		),
@@ -862,6 +884,7 @@ func aggregate_reports(
 			if schema_error_count > 0 or duplicate_job_count > 0 \
 			or duplicate_seed_count > 0 or seed_mismatch_count > 0 \
 			or out_of_declared_scope_count > 0 \
+			or source_commit_sha_mismatch_count > 0 \
 			else "PARTIAL"
 	elif missing_job_count > 0 or unique_rows.size() \
 			!= CONFIGURATIONS.size() * formal_matches_per_configuration:
@@ -1868,6 +1891,10 @@ func _markdown_report(report: Dictionary) -> String:
 	)
 	lines.append(
 		"Production path: V075RuntimeOwner -> V075CombatRuntimeOwner -> FinalSettlement."
+	)
+	lines.append(
+		"Source commit SHA: %s."
+		% str(report.get("source_commit_sha", "UNDECLARED"))
 	)
 	lines.append(
 		"Acceleration: inherited production `_process`, delta 1.0 seconds (30 accelerated seconds), with no direct state injection."

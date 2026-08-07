@@ -605,7 +605,28 @@ func request_private_skill(
 		)
 		if not bool(boundary_result.get("accepted", false)):
 			_restore_checkpoint_state(request_checkpoint)
-		return boundary_result
+			return boundary_result
+		next_asset_state = (
+			boundary_result.get("asset_state", next_asset_state) as Dictionary
+		).duplicate(true)
+		return {
+			"accepted": true,
+			"reason_code": "private_skill_safe_boundary_drained",
+			"asset_state": next_asset_state,
+			"receipt": (
+				applied.get("receipt", {}) as Dictionary
+			).duplicate(true),
+			"facility_damage_intents": (
+				boundary_result.get("facility_damage_intents", []) as Array
+			).duplicate(true),
+			"public_results": (
+				boundary_result.get("public_results", []) as Array
+			).duplicate(true),
+			"resolution_receipts": (
+				boundary_result.get("resolution_receipts", []) as Array
+			).duplicate(true),
+			"resolved_count": int(boundary_result.get("resolved_count", 0)),
+		}
 	return {
 		"accepted": true,
 		"reason_code": "private_skill_waiting_for_safe_boundary",

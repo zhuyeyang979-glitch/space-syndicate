@@ -710,7 +710,8 @@ func _observe_first_monster_prebind_rejection(
 ) -> void:
 	if _phase != "submission":
 		return
-	var definition_id: String = str(card.get("definition_id", ""))
+	var card_instance_id := _card_instance_id(card)
+	var definition_id := _card_definition_id(card)
 	var definition: Dictionary = CombatCardDefinitions.definition(definition_id)
 	if definition.is_empty():
 		_record_monster_prebind_rejection({
@@ -745,9 +746,9 @@ func _observe_first_monster_prebind_rejection(
 		return
 	var request := {
 		"request_id": "simulation.diagnostic.%s" % str(
-			card.get("instance_id", "")
+			card_instance_id
 		).sha256_text().substr(0, 12),
-		"card_instance_id": str(card.get("instance_id", "")),
+		"card_instance_id": card_instance_id,
 		"card_definition_id": definition_id,
 		"owner_player_id": actor_id,
 		"monster_card_mode": "DEPLOY_NEW",
@@ -803,6 +804,7 @@ func _observe_monster_hand_without_legal_options(
 			str(card.get("card_type", ""))
 		) != "monster":
 			continue
+		var card_instance_id := _card_instance_id(card)
 		var has_option: bool = false
 		for option_variant in legal:
 			if not (option_variant is Dictionary):
@@ -811,7 +813,7 @@ func _observe_monster_hand_without_legal_options(
 			if (
 				str(option.get("action_domain", "")) == "monster"
 				and str(option.get("card_instance_id", "")) == str(
-					card.get("instance_id", "")
+					card_instance_id
 				)
 			):
 				has_option = true
@@ -1066,14 +1068,20 @@ func _observe_card_zone(
 		if not (card_variant is Dictionary):
 			continue
 		var card: Dictionary = card_variant as Dictionary
+		var card_instance_id := _card_instance_id(card)
+		var definition_id := _card_definition_id(card)
+		var card_type := str(card.get("card_type", ""))
+		if card_type.is_empty():
+			var definition := CombatCardDefinitions.definition(definition_id)
+			card_type = str(definition.get("card_type", ""))
 		var domain: String = CombatCardDefinitions.card_domain(
-			str(card.get("card_type", ""))
+			card_type
 		)
 		if domain not in ["monster", "military"]:
 			continue
 		var card_key: String = "%s|%s" % [
 			actor_id,
-			str(card.get("instance_id", "")),
+			card_instance_id,
 		]
 		var previous_zone: String = str(
 			_simulation_card_last_zone.get(card_key, "")
@@ -1082,9 +1090,9 @@ func _observe_card_zone(
 			if _simulation_monster_card_trace.size() < 128:
 				_simulation_monster_card_trace.append({
 					"actor_id": actor_id,
-					"instance_id": str(card.get("instance_id", "")),
-					"definition_id": str(card.get("definition_id", "")),
-					"card_type": str(card.get("card_type", "")),
+					"instance_id": card_instance_id,
+					"definition_id": definition_id,
+					"card_type": card_type,
 					"primary_color": str(card.get("primary_color", "")),
 					"level": int(card.get("level", 0)),
 					"zone": zone_name,
@@ -1110,6 +1118,20 @@ func _observe_card_zone(
 				if previous_zone == "discard":
 					_simulation_military_discard_to_hand_count += 1
 		_simulation_card_last_zone[card_key] = zone_name
+
+
+func _card_instance_id(card: Dictionary) -> String:
+	var value := str(card.get("instance_id", ""))
+	if value.is_empty():
+		value = str(card.get("card_instance_id", ""))
+	return value
+
+
+func _card_definition_id(card: Dictionary) -> String:
+	var value := str(card.get("definition_id", ""))
+	if value.is_empty():
+		value = str(card.get("card_definition_id", ""))
+	return value
 
 
 func _observe_queued_combat_actions(actor_id: String) -> void:

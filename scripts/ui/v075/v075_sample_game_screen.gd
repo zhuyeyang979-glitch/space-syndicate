@@ -217,6 +217,13 @@ func apply_receipt(receipt: Dictionary) -> void:
 	_update_acceptance_state()
 
 
+func apply_owner_private_receipt(receipt: Dictionary) -> void:
+	if str(receipt.get("receipt_scope", "")) != "owner_private":
+		return
+	super.apply_receipt(receipt)
+	_update_acceptance_state()
+
+
 func present_final_settlement(settlement: Dictionary) -> void:
 	_sync_terminal_phase("final_settlement")
 	super.present_final_settlement(settlement)

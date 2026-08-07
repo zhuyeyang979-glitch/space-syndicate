@@ -3,6 +3,7 @@ class_name V075ApplicationFlow
 
 signal projection_changed(snapshot: Dictionary)
 signal receipt_ready(receipt: Dictionary)
+signal owner_private_receipt_ready(receipt: Dictionary)
 signal final_settlement_presented(settlement: Dictionary)
 signal runtime_fault_presented(receipt: Dictionary)
 signal public_resolution_ready(receipt: Dictionary)
@@ -12,6 +13,7 @@ const RULESET_ID := "v0.7.5"
 const SAMPLE_MODE_ID := "NEW_V075_GAME"
 const DEFAULT_SEED := 900626424
 const CUTOVER_DOMAIN_COUNT := 29
+const PRIVATE_SKILL_INTENT_KIND := "combat.monster_private_skill.request"
 
 @onready var _ruleset_owner: Node = %V075RulesetRuntimeOwner
 @onready var _runtime_owner: Node = %V075RuntimeOwner
@@ -58,17 +60,19 @@ func submit_intent(intent: Dictionary) -> Dictionary:
 	var intent_kind := str(intent.get("intent_kind", "")).strip_edges()
 	var parameters := intent.get("parameters", {}) as Dictionary
 	if intent_id.is_empty() or intent_kind.is_empty():
-		return _publish_receipt(_reject(
+		return _publish_intent_rejection(
 			intent_id,
 			intent_kind,
+			parameters,
 			"typed_intent_identity_invalid"
-		))
+		)
 	if not _composition_ready:
-		return _publish_receipt(_reject(
+		return _publish_intent_rejection(
 			intent_id,
 			intent_kind,
+			parameters,
 			"v075_runtime_composition_not_ready"
-		))
+		)
 	var actor_id := str(_runtime_owner.call("local_player_id"))
 	var result: Dictionary
 	match intent_kind:
@@ -132,7 +136,7 @@ func submit_intent(intent: Dictionary) -> Dictionary:
 				"run_accelerated_until_settled",
 				int(parameters.get("max_steps", 2000))
 			) as Dictionary
-		"combat.monster_private_skill.request":
+		PRIVATE_SKILL_INTENT_KIND:
 			result = _runtime_owner.call(
 				"request_private_monster_skill",
 				actor_id,
@@ -161,6 +165,16 @@ func submit_intent(intent: Dictionary) -> Dictionary:
 				intent_kind,
 				"typed_intent_kind_unsupported"
 			)
+	if intent_kind == PRIVATE_SKILL_INTENT_KIND:
+		return _publish_owner_private_receipt(
+			_bind_owner_private_skill_receipt(
+				intent_id,
+				intent_kind,
+				actor_id,
+				parameters,
+				result
+			)
+		)
 	return _publish_receipt(_bind_receipt(intent_id, intent_kind, result))
 
 
@@ -385,6 +399,75 @@ func _bind_receipt(
 func _publish_receipt(receipt: Dictionary) -> Dictionary:
 	_last_receipt = receipt.duplicate(true)
 	receipt_ready.emit(receipt.duplicate(true))
+	return receipt
+
+
+func _publish_intent_rejection(
+	intent_id: String,
+	intent_kind: String,
+	parameters: Dictionary,
+	reason_code: String
+) -> Dictionary:
+	var rejection := _reject(intent_id, intent_kind, reason_code)
+	if intent_kind == PRIVATE_SKILL_INTENT_KIND:
+		return _publish_owner_private_receipt(
+			_bind_owner_private_skill_receipt(
+				intent_id,
+				intent_kind,
+				"",
+				parameters,
+				rejection
+			)
+		)
+	return _publish_receipt(rejection)
+
+
+func _bind_owner_private_skill_receipt(
+	intent_id: String,
+	intent_kind: String,
+	actor_id: String,
+	parameters: Dictionary,
+	result: Dictionary
+) -> Dictionary:
+	var accepted := bool(result.get("accepted", false))
+	return {
+		"schema": "V075OwnerPrivateApplicationReceiptV1",
+		"accepted": accepted,
+		"reason_code": str(result.get(
+			"reason_code",
+			"private_skill_request_rejected"
+		)),
+		"event_kind": (
+			"monster_private_skill_requested"
+			if accepted
+			else "monster_private_skill_request_rejected"
+		),
+		"combat_channel": "private_instant_serial",
+		"receipt_scope": "owner_private",
+		"request_status": "accepted" if accepted else "rejected",
+		"owner_player_id": actor_id,
+		"source_instance_id": str(parameters.get(
+			"source_instance_id",
+			""
+		)),
+		"skill_definition_id": str(parameters.get(
+			"skill_definition_id",
+			""
+		)),
+		"intent_id": intent_id,
+		"intent_kind": intent_kind,
+		"ruleset_id": RULESET_ID,
+	}
+
+
+func _publish_owner_private_receipt(receipt: Dictionary) -> Dictionary:
+	_last_receipt = {
+		"schema": "V075ApplicationReceiptRedactionV1",
+		"accepted": bool(receipt.get("accepted", false)),
+		"receipt_scope": "owner_private_redacted",
+		"ruleset_id": RULESET_ID,
+	}
+	owner_private_receipt_ready.emit(receipt.duplicate(true))
 	return receipt
 
 

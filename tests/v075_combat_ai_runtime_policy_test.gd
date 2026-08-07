@@ -625,6 +625,67 @@ func _test_rank_one_owner_pursues_one_natural_upgrade(
 		"an active rank-one source rejects an unrelated family during acquisition: %s"
 			% JSON.stringify(active_family_action)
 	)
+	_test_non_upgrade_cohort_uses_refresh_and_replace(runtime)
+
+
+func _test_non_upgrade_cohort_uses_refresh_and_replace(
+	runtime: RuntimeHarness
+) -> void:
+	var actor_id := "player.local"
+	var source_id := "monster.source.local"
+	runtime.fixture_monsters = [{
+		"source_instance_id": source_id,
+		"owner_player_id": actor_id,
+		"monster_family_id": "blue_edge_knight",
+		"status": "active",
+		"rank": 1,
+	}]
+	runtime.fixture_facts = {
+		"hand": [{
+			"instance_id": "dbg.player.local.blue.refresh",
+			"card_type": "monster.blue_edge_knight",
+			"merge_family_id": "unit.monster.blue_edge_knight",
+			"level": 1,
+		}],
+		"discard": [{
+			"instance_id": "dbg.player.local.blue.duplicate",
+			"card_type": "monster.blue_edge_knight",
+			"merge_family_id": "unit.monster.blue_edge_knight",
+			"level": 1,
+		}],
+	}
+	var refresh_option := {
+		"option_id": "option.local.refresh",
+		"actor_id": actor_id,
+		"action_domain": "monster",
+		"monster_card_mode": "REFRESH_EXISTING",
+		"card_instance_id": "dbg.player.local.blue.refresh",
+		"card_definition_id": "monster.blue_edge_knight.life.rank_1",
+		"target_source_instance_id": source_id,
+	}
+	var replace_option := {
+		"option_id": "option.local.replace",
+		"actor_id": actor_id,
+		"action_domain": "monster",
+		"monster_card_mode": "REPLACE_EXISTING",
+		"card_instance_id": "dbg.player.local.mirror.replace",
+		"card_definition_id": "monster.mirror_hunter.energy.rank_1",
+		"target_source_instance_id": source_id,
+	}
+	_expect(
+		not runtime.prefers_monster_upgrade(actor_id),
+		"a stable non-upgrade cohort remains free to use refresh and replace"
+	)
+	var refresh := runtime.preferred_action([refresh_option], actor_id)
+	_expect(
+		str(refresh.get("monster_card_mode", "")) == "REFRESH_EXISTING",
+		"the non-upgrade cohort uses a legal same-family refresh"
+	)
+	var replacement := runtime.preferred_action([replace_option], actor_id)
+	_expect(
+		str(replacement.get("monster_card_mode", "")) == "REPLACE_EXISTING",
+		"the non-upgrade cohort does not hold a legal different-family replacement"
+	)
 
 
 func _has_card_option(options: Array, card_instance_id: String) -> bool:

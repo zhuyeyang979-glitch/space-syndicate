@@ -22,6 +22,9 @@ func _ready() -> void:
 	)
 	_application_flow.projection_changed.connect(_on_projection_changed)
 	_application_flow.receipt_ready.connect(_on_receipt_ready)
+	_application_flow.owner_private_receipt_ready.connect(
+		_on_owner_private_receipt_ready
+	)
 	_application_flow.final_settlement_presented.connect(
 		_on_final_settlement_presented
 	)
@@ -40,6 +43,10 @@ func _on_projection_changed(snapshot: Dictionary) -> void:
 
 func _on_receipt_ready(receipt: Dictionary) -> void:
 	_game_screen.call("apply_receipt", receipt)
+
+
+func _on_owner_private_receipt_ready(receipt: Dictionary) -> void:
+	_game_screen.call("apply_owner_private_receipt", receipt)
 
 
 func _on_final_settlement_presented(settlement: Dictionary) -> void:

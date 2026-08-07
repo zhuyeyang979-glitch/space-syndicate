@@ -45,6 +45,8 @@ const V075_COMBAT_ACQUISITION_MAX_PER_PERIOD := 1
 const V075_INITIAL_FACILITY_ACQUISITIONS_BEFORE_COMBAT := 0
 const V075_FACILITY_ACQUISITIONS_BETWEEN_COMBAT := 3
 const V075_AUTO_ACTION_LIMIT := 5
+const V075_MONSTER_UPGRADE_COHORT_MODULUS := 3
+const V075_MONSTER_UPGRADE_COHORT_BUCKET := 0
 const V075_TRACK_REFILL_MODE_ID := "shared_scroll_vacancy"
 const V075_TRACK_SLOW_SUSHI_MOTION := true
 const V075_TRACK_IMMEDIATE_REFILL_ON_ACQUISITION := false
@@ -629,6 +631,8 @@ func _v075_pending_monster_merge_candidate(
 	actor_id: String,
 	facts: Dictionary
 ) -> bool:
+	if not _v075_actor_prefers_monster_upgrade(actor_id):
+		return false
 	var active_families: Array[String] = []
 	for source_variant in _v075_public_monsters():
 		var source := source_variant as Dictionary
@@ -699,7 +703,9 @@ func _v075_choose_combat_track_action(
 		var action := result.get("action", {}) as Dictionary
 		if action.is_empty():
 			continue
-		if domain == "monster":
+		if domain == "monster" and _v075_actor_prefers_monster_upgrade(
+			actor_id
+		):
 			var matching_family_action := _v075_choose_matching_monster_action(
 				actor_id,
 				filtered
@@ -1467,6 +1473,11 @@ func request_private_monster_skill(
 		_facility_state = before_facility_state
 		if not bool(rollback.get("accepted", false)):
 			return _reject_action("private_skill_transaction_rollback_failed")
+		_record_private_skill_request_telemetry(
+			str(request.get("request_id", "")),
+			int(source.get("rank", 0)),
+			false
+		)
 		return _private_skill_failure_application_receipt(result)
 	var next_public_state := _facility_state.duplicate(true)
 	var damage_result := _apply_facility_damage_intents(
@@ -1481,6 +1492,11 @@ func request_private_monster_skill(
 		_facility_state = before_facility_state
 		if not bool(rollback.get("accepted", false)):
 			return _reject_action("private_skill_transaction_rollback_failed")
+		_record_private_skill_request_telemetry(
+			str(request.get("request_id", "")),
+			int(source.get("rank", 0)),
+			false
+		)
 		return _reject_action("private_skill_facility_damage_commit_failed")
 	_facility_state = (
 		damage_result.get("public_batch_state", next_public_state) as Dictionary
@@ -1495,6 +1511,11 @@ func request_private_monster_skill(
 	# authority boundary.
 	_clear_v075_submission_caches()
 	_clear_v075_track_projection_cache()
+	_record_private_skill_request_telemetry(
+		str(request.get("request_id", "")),
+		int(source.get("rank", 0)),
+		true
+	)
 	for public_variant in result.get("public_results", []) as Array:
 		_publish_combat_event(
 			"monster_private_skill_resolved",
@@ -1508,18 +1529,40 @@ func request_private_monster_skill(
 		damage_result.get("receipts", []) as Array
 	)
 	_emit_local_state()
-	var receipt := result.duplicate(true)
-	receipt.erase("facility_damage_intents")
-	receipt.erase("asset_state")
-	receipt["event_kind"] = "monster_private_skill_requested"
-	receipt["combat_channel"] = "private_instant_serial"
-	return receipt
+	return _private_skill_success_application_receipt(
+		actor_id,
+		source_id,
+		int(source.get("source_generation", 0)),
+		skill_id
+	)
+
+
+func _private_skill_success_application_receipt(
+	actor_id: String,
+	source_id: String,
+	source_generation: int,
+	skill_id: String
+) -> Dictionary:
+	return {
+		"schema": "V075MonsterPrivateSkillOwnerReceiptV1",
+		"accepted": true,
+		"reason_code": "private_skill_request_accepted",
+		"event_kind": "monster_private_skill_requested",
+		"combat_channel": "private_instant_serial",
+		"receipt_scope": "owner_private",
+		"request_status": "accepted",
+		"owner_player_id": actor_id,
+		"source_instance_id": source_id,
+		"source_generation": source_generation,
+		"skill_definition_id": skill_id,
+	}
 
 
 func _private_skill_failure_application_receipt(
 	result: Dictionary
 ) -> Dictionary:
 	return {
+		"schema": "V075MonsterPrivateSkillOwnerReceiptV1",
 		"accepted": false,
 		"reason_code": str(result.get(
 			"reason_code",
@@ -1527,7 +1570,37 @@ func _private_skill_failure_application_receipt(
 		)),
 		"event_kind": "monster_private_skill_request_rejected",
 		"combat_channel": "private_instant_serial",
+		"receipt_scope": "owner_private",
+		"request_status": "rejected",
 	}
+
+
+func _record_private_skill_request_telemetry(
+	request_id: String,
+	source_rank: int,
+	accepted: bool
+) -> void:
+	if request_id.is_empty() or not is_instance_valid(_combat_telemetry_bridge):
+		return
+	# This receipt is consumed only by telemetry. Its opaque ID is used for
+	# exact-once binding and is not copied into the stored event payload.
+	_combat_telemetry_bridge.call(
+		"consume_public_receipt",
+		{
+			"combat_receipt_id": "combat.skill.request.audit.%s" % (
+				request_id.sha256_text().substr(0, 24)
+			),
+			"event_kind": "monster_private_skill_requested",
+			"ruleset_id": V075_RULESET_ID,
+			"batch_id": _batch_id(),
+			"source_rank": maxi(1, source_rank),
+			"request_result": "accepted" if accepted else "rejected",
+			"public_reason_code": (
+				"request_accepted" if accepted else "request_rejected"
+			),
+		},
+		_batch_id()
+	)
 
 
 func resolve_next_action() -> Dictionary:
@@ -4244,6 +4317,7 @@ func _v075_should_hold_replace_for_active_pair(
 	if (
 		str(option.get("action_domain", "")) != "monster"
 		or str(option.get("monster_card_mode", "")) != "REPLACE_EXISTING"
+		or not _v075_actor_prefers_monster_upgrade(actor_id)
 	):
 		return false
 	var active_family_id := ""
@@ -4273,6 +4347,16 @@ func _v075_should_hold_replace_for_active_pair(
 
 func _v075_actor_prefers_monster_upgrade(actor_id: String) -> bool:
 	if actor_id.is_empty():
+		return false
+	# Stable cohorts let production AI exercise refresh/replace as well as the
+	# longer duplicate-merge-upgrade plan without consulting hidden deck order.
+	var stable_number := int(
+		actor_id.sha256_text().substr(0, 8).hex_to_int()
+	)
+	if (
+		stable_number % V075_MONSTER_UPGRADE_COHORT_MODULUS
+		!= V075_MONSTER_UPGRADE_COHORT_BUCKET
+	):
 		return false
 	for source_variant in _v075_public_monsters():
 		var source := source_variant as Dictionary
