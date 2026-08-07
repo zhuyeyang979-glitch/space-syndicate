@@ -58,6 +58,9 @@ var _simulation_refresh_hold_probe_count: int = 0
 var _simulation_refresh_hold_accept_count: int = 0
 var _simulation_first_refresh_hold_probe: Dictionary = {}
 var _simulation_monster_card_trace: Array = []
+var _simulation_monster_merge_pair_observation_count: int = 0
+var _simulation_monster_merge_commit_count: int = 0
+var _simulation_first_monster_merge_pair: Dictionary = {}
 var _simulation_runtime_failure: Dictionary = {}
 var _simulation_profile_public_core_usec: int = 0
 var _simulation_profile_resolve_total_usec: int = 0
@@ -629,6 +632,66 @@ func _v075_should_hold_monster_refresh(
 	return accepted
 
 
+func _auto_maintenance(actor_id: String) -> void:
+	var before_facts := super._dbg_projection(actor_id).get(
+		"facts",
+		{}
+	) as Dictionary
+	var before_high_rank_count := _simulation_high_rank_monster_card_count(
+		before_facts
+	)
+	for pair_variant in before_facts.get("eligible_merge_pairs", []) as Array:
+		var pair := pair_variant as Array
+		if pair.size() != 2:
+			continue
+		var left := _dbg_card_by_id(before_facts, str(pair[0]))
+		var right := _dbg_card_by_id(before_facts, str(pair[1]))
+		if (
+			CombatCardDefinitions.card_domain(str(left.get("card_type", "")))
+			!= "monster"
+			or CombatCardDefinitions.card_domain(str(right.get(
+				"card_type",
+				""
+			))) != "monster"
+		):
+			continue
+		_simulation_monster_merge_pair_observation_count += 1
+		if _simulation_first_monster_merge_pair.is_empty():
+			_simulation_first_monster_merge_pair = {
+				"actor_id": actor_id,
+				"batch_number": _batch_number,
+				"left_instance_id": str(left.get("instance_id", "")),
+				"right_instance_id": str(right.get("instance_id", "")),
+				"card_type": str(left.get("card_type", "")),
+				"level": int(left.get("level", 0)),
+			}
+		break
+	super._auto_maintenance(actor_id)
+	var after_facts := super._dbg_projection(actor_id).get(
+		"facts",
+		{}
+	) as Dictionary
+	if _simulation_high_rank_monster_card_count(after_facts) \
+			> before_high_rank_count:
+		_simulation_monster_merge_commit_count += 1
+
+
+func _simulation_high_rank_monster_card_count(facts: Dictionary) -> int:
+	var result := 0
+	for zone_name in ["hand", "discard"]:
+		for card_variant in facts.get(zone_name, []) as Array:
+			var card := card_variant as Dictionary
+			if (
+				CombatCardDefinitions.card_domain(str(card.get(
+					"card_type",
+					""
+				))) == "monster"
+				and int(card.get("level", 0)) > 1
+			):
+				result += 1
+	return result
+
+
 func _observe_dbg_card_lifecycle(actor_id: String) -> void:
 	var projection: Dictionary = super._dbg_projection(actor_id)
 	var facts: Dictionary = projection.get("facts", {}) as Dictionary
@@ -1026,6 +1089,7 @@ func _observe_card_zone(
 					"level": int(card.get("level", 0)),
 					"zone": zone_name,
 					"previous_zone": previous_zone,
+					"batch_number": _batch_number,
 				})
 			if zone_name == "discard":
 				_simulation_monster_discard_ids[card_key] = true
@@ -1149,6 +1213,13 @@ func simulation_performance_snapshot() -> Dictionary:
 			true
 		),
 		"monster_card_trace": _simulation_monster_card_trace.duplicate(true),
+		"monster_merge_pair_observation_count": (
+			_simulation_monster_merge_pair_observation_count
+		),
+		"monster_merge_commit_count": _simulation_monster_merge_commit_count,
+		"first_monster_merge_pair": (
+			_simulation_first_monster_merge_pair.duplicate(true)
+		),
 		"monster_card_discard_observation_count": (
 			_simulation_monster_discard_ids.size()
 		),

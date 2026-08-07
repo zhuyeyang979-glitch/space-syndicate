@@ -650,6 +650,11 @@ func _v075_pending_monster_merge_candidate(
 		return false
 	for item_variant in facts.get("own_segment_items", []) as Array:
 		var item := item_variant as Dictionary
+		if (
+			not bool(item.get("claimable", false))
+			or str(item.get("card_kind", "")) != "normal_card"
+		):
+			continue
 		var definition := CardDefinitionsV075.definition(str(item.get(
 			"card_definition_id",
 			""
@@ -712,18 +717,18 @@ func _v075_choose_combat_track_action(
 	# it before alternating between otherwise equivalent combat domains.
 	if not monster_merge_progress_action.is_empty():
 		return monster_merge_progress_action
-	if options.size() == 1:
-		return (options.values()[0] as Dictionary).duplicate(true)
 	if (
 		_v075_actor_prefers_monster_upgrade(actor_id)
 		and _v075_has_active_monster(actor_id)
-		and options.has("monster")
 	):
-		# Keep the upgrade-oriented owner on the normal combat track until a
-		# second same-family card can reach the personal hand and maintenance.
-		# This changes only deterministic choice ordering; acquisition, DBG,
-		# asset, and track authorities remain the same.
-		return (options.get("monster", {}) as Dictionary).duplicate(true)
+		# Do not dilute an active rank-one family with unrelated replacement
+		# cards. A same-family duplicate was handled above; otherwise use a
+		# military opportunity or let the caller retain facility dominance.
+		if options.has("military"):
+			return (options.get("military", {}) as Dictionary).duplicate(true)
+		return {}
+	if options.size() == 1:
+		return (options.values()[0] as Dictionary).duplicate(true)
 	var monster_count := int(
 		_v075_acquisition_monster_count.get(actor_id, 0)
 	)
@@ -791,8 +796,6 @@ func _v075_choose_matching_monster_action(
 	actor_id: String,
 	facts: Dictionary
 ) -> Dictionary:
-	if not _v075_actor_prefers_monster_upgrade(actor_id):
-		return {}
 	var active_families: Array[String] = []
 	for source_variant in _v075_public_monsters():
 		var source := source_variant as Dictionary
@@ -804,15 +807,61 @@ func _v075_choose_matching_monster_action(
 			if not family_id.is_empty() and family_id not in active_families:
 				active_families.append(family_id)
 	active_families.sort()
+	# While an active rank-one source exists, acquisition is an upgrade
+	# commitment: only that source family may be selected. An unrelated family
+	# would force a Replace transition before a merge and can strand the two
+	# equal-rank cards in different DBG zones. Once no rank-one source remains,
+	# normal deployment/replacement choice may consider the owner's other
+	# families again.
+	var active_rank_one_families: Array[String] = []
+	for source_variant in _v075_public_monsters():
+		var source := source_variant as Dictionary
+		if (
+			str(source.get("owner_player_id", "")) == actor_id
+			and str(source.get("status", "")) in ["active", "downed"]
+			and int(source.get("rank", 0)) == 1
+		):
+			var family_id := str(source.get("monster_family_id", ""))
+			if not family_id.is_empty() and family_id not in active_rank_one_families:
+				active_rank_one_families.append(family_id)
+	active_rank_one_families.sort()
+	var candidate_families := active_families.duplicate()
+	if not active_rank_one_families.is_empty():
+		candidate_families = active_rank_one_families.duplicate()
+	else:
+		var personal_families: Array[String] = []
+		var dbg_facts := _dbg_projection(actor_id).get("facts", {}) as Dictionary
+		for zone_name in ["hand", "discard"]:
+			for card_variant in dbg_facts.get(zone_name, []) as Array:
+				var card := card_variant as Dictionary
+				var card_type := str(card.get("card_type", ""))
+				if CardDefinitionsV075.card_domain(card_type) != "monster":
+					continue
+				var family_id := (
+					CardDefinitionsV075.monster_family_id_from_card_type(card_type)
+				)
+				if (
+					not family_id.is_empty()
+					and family_id not in candidate_families
+					and family_id not in personal_families
+				):
+					personal_families.append(family_id)
+		personal_families.sort()
+		candidate_families.append_array(personal_families)
 	var known_merge_families := _v075_known_monster_merge_families(
 		actor_id,
-		active_families
+		candidate_families
 	)
-	for family_id in active_families:
+	for family_id in candidate_families:
 		var exact_merge_items: Array = []
 		var items: Array = []
 		for item_variant in facts.get("own_segment_items", []) as Array:
 			var item := item_variant as Dictionary
+			if (
+				not bool(item.get("claimable", false))
+				or str(item.get("card_kind", "")) != "normal_card"
+			):
+				continue
 			var definition := CardDefinitionsV075.definition(
 				str(item.get("card_definition_id", ""))
 			)
@@ -851,6 +900,20 @@ func _v075_known_monster_merge_families(
 	active_families: Array[String]
 ) -> Dictionary:
 	var result := {}
+	# The active rank-one source was created from a normal DBG card that remains
+	# in the owner's deck lineage even while its hidden draw-pile position is not
+	# projected. The public source proves family membership without exposing or
+	# inspecting draw order.
+	for source_variant in _v075_public_monsters():
+		var source := source_variant as Dictionary
+		var family_id := str(source.get("monster_family_id", ""))
+		if (
+			str(source.get("owner_player_id", "")) == actor_id
+			and str(source.get("status", "")) in ["active", "downed"]
+			and int(source.get("rank", 0)) == 1
+			and family_id in active_families
+		):
+			result["unit.monster.%s" % family_id] = true
 	var facts := _dbg_projection(actor_id).get("facts", {}) as Dictionary
 	for zone_name in ["hand", "discard"]:
 		for card_variant in facts.get(zone_name, []) as Array:
@@ -3864,6 +3927,11 @@ func _v075_combat_asset_reserve_by_color(
 		var domain := str(option.get("action_domain", ""))
 		if domain not in ["monster", "military"]:
 			continue
+		if (
+			domain == "monster"
+			and _v075_should_hold_monster_refresh(actor_id, option)
+		):
+			continue
 		var card_id := str(option.get("card_instance_id", ""))
 		if (
 			card_id.is_empty()
@@ -4024,11 +4092,14 @@ func _auto_maintenance(actor_id: String) -> void:
 	if selected_pair.is_empty() and not pairs.is_empty():
 		selected_pair = (pairs[0] as Array).duplicate()
 	if selected_pair.size() == 2:
-		merge_normal_pair(
+		var merged := merge_normal_pair(
 			actor_id,
 			str(selected_pair[0]),
 			str(selected_pair[1])
 		)
+		if not bool(merged.get("success", merged.get("accepted", false))):
+			_fail("v075_auto_maintenance_merge_failed", merged)
+			return
 	finish_maintenance(actor_id)
 
 
@@ -4048,10 +4119,23 @@ func _preferred_v075_ai_action(
 	if (stable_number + _batch_number) % 2 == 0:
 		military_modes = ["assault_region", "assault_monster"]
 	var held_refresh_option_ids: Dictionary = {}
+	var held_refresh_merge_family_ids: Dictionary = {}
+	var held_replace_option_ids: Dictionary = {}
 	for option_variant in legal:
 		var option := option_variant as Dictionary
 		if _v075_should_hold_monster_refresh(actor_id, option):
 			held_refresh_option_ids[str(option.get("option_id", ""))] = true
+			var definition := CardDefinitionsV075.definition(
+				str(option.get("card_definition_id", ""))
+			)
+			var merge_family_id := str(definition.get(
+				"merge_family_id",
+				""
+			))
+			if not merge_family_id.is_empty():
+				held_refresh_merge_family_ids[merge_family_id] = true
+		if _v075_should_hold_replace_for_active_pair(actor_id, option):
+			held_replace_option_ids[str(option.get("option_id", ""))] = true
 	var domain_modes := [
 		"monster:UPGRADE_EXISTING",
 		"monster:REFRESH_EXISTING",
@@ -4080,26 +4164,43 @@ func _preferred_v075_ai_action(
 					)))
 				):
 					continue
+				if (
+					str(domain_mode) == "monster:REPLACE_EXISTING"
+					and held_replace_option_ids.has(str(option.get(
+						"option_id",
+						""
+					)))
+				):
+					continue
 				matching.append(option.duplicate(true))
 		if not matching.is_empty():
 			if str(domain_mode) == "monster:DEPLOY_NEW":
 				return _preferred_monster_deployment_option(matching)
+			if str(domain_mode) == "monster:REPLACE_EXISTING":
+				return _preferred_monster_replacement_option(
+					matching,
+					actor_id
+				)
 			return (matching[0] as Dictionary).duplicate(true)
-	if held_refresh_option_ids.is_empty():
+	if held_refresh_option_ids.is_empty() and held_replace_option_ids.is_empty():
 		return _preferred_v074_ai_action(legal)
 	var fallback_legal: Array = []
 	for option_variant in legal:
 		var option := option_variant as Dictionary
-		if not held_refresh_option_ids.has(str(option.get("option_id", ""))):
+		var option_id := str(option.get("option_id", ""))
+		if (
+			not held_refresh_option_ids.has(option_id)
+			and not held_replace_option_ids.has(option_id)
+		):
 			fallback_legal.append(option.duplicate(true))
 	if not fallback_legal.is_empty():
 		return _preferred_v074_ai_action(fallback_legal)
-	# Holding is a preference, not a deadlock permission. If the hand has no
-	# other legal action, consume the refresh card through the normal authority.
-	for option_variant in legal:
-		var option := option_variant as Dictionary
-		if held_refresh_option_ids.has(str(option.get("option_id", ""))):
-			return option.duplicate(true)
+	# Keep one visible card from the active rank-one family in hand while its
+	# duplicate travels through the normal discard/reshuffle/draw lifecycle.
+	# This uses only the owner's current hand and the public active source; it
+	# never inspects or reorders the hidden draw pile.
+	if not held_refresh_merge_family_ids.is_empty():
+		return {}
 	return {}
 
 
@@ -4133,15 +4234,41 @@ func _v075_should_hold_monster_refresh(
 	)
 	if family_id != str(source.get("monster_family_id", "")):
 		return false
-	var facts := _dbg_projection(actor_id).get("facts", {}) as Dictionary
-	var matching_hand_count := 0
-	for card_variant in facts.get("hand", []) as Array:
-		var card := card_variant as Dictionary
-		if str(card.get("merge_family_id", "")) == str(
-			card_definition.get("merge_family_id", "")
+	return true
+
+
+func _v075_should_hold_replace_for_active_pair(
+	actor_id: String,
+	option: Dictionary
+) -> bool:
+	if (
+		str(option.get("action_domain", "")) != "monster"
+		or str(option.get("monster_card_mode", "")) != "REPLACE_EXISTING"
+	):
+		return false
+	var active_family_id := ""
+	for source_variant in _v075_public_monsters():
+		var source := source_variant as Dictionary
+		if (
+			str(source.get("owner_player_id", "")) == actor_id
+			and str(source.get("status", "")) in ["active", "downed"]
+			and int(source.get("rank", 0)) == 1
 		):
-			matching_hand_count += 1
-	return matching_hand_count >= 1
+			active_family_id = str(source.get("monster_family_id", ""))
+			break
+	if active_family_id.is_empty():
+		return false
+	var active_merge_family_id := "unit.monster.%s" % active_family_id
+	var active_family_card_count := 0
+	var facts := _dbg_projection(actor_id).get("facts", {}) as Dictionary
+	for zone_name in ["hand", "discard"]:
+		for card_variant in facts.get(zone_name, []) as Array:
+			if str((card_variant as Dictionary).get(
+				"merge_family_id",
+				""
+			)) == active_merge_family_id:
+				active_family_card_count += 1
+	return active_family_card_count >= 2
 
 
 func _v075_actor_prefers_monster_upgrade(actor_id: String) -> bool:
@@ -4156,6 +4283,49 @@ func _v075_actor_prefers_monster_upgrade(actor_id: String) -> bool:
 		):
 			return true
 	return false
+
+
+func _preferred_monster_replacement_option(
+	options: Array,
+	actor_id: String
+) -> Dictionary:
+	var family_counts := {}
+	var facts := _dbg_projection(actor_id).get("facts", {}) as Dictionary
+	for zone_name in ["hand", "discard"]:
+		for card_variant in facts.get(zone_name, []) as Array:
+			var card := card_variant as Dictionary
+			var card_type := str(card.get("card_type", ""))
+			if CardDefinitionsV075.card_domain(card_type) != "monster":
+				continue
+			var family_id := (
+				CardDefinitionsV075.monster_family_id_from_card_type(card_type)
+			)
+			family_counts[family_id] = int(family_counts.get(
+				family_id,
+				0
+			)) + 1
+	var best: Dictionary = {}
+	var best_count := -1
+	var best_key := ""
+	for option_variant in options:
+		var option := option_variant as Dictionary
+		var definition := CardDefinitionsV075.definition(
+			str(option.get("card_definition_id", ""))
+		)
+		var family_id := CardDefinitionsV075.monster_family_id_from_card_type(
+			str(definition.get("card_type", ""))
+		)
+		var count := int(family_counts.get(family_id, 0))
+		var stable_key := str(option.get("option_id", ""))
+		if (
+			best.is_empty()
+			or count > best_count
+			or (count == best_count and stable_key < best_key)
+		):
+			best = option.duplicate(true)
+			best_count = count
+			best_key = stable_key
+	return best
 
 
 func _preferred_monster_deployment_option(options: Array) -> Dictionary:

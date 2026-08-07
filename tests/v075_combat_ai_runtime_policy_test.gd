@@ -69,6 +69,12 @@ class RuntimeHarness extends V075RuntimeOwner:
 	func prefers_monster_upgrade(actor_id: String) -> bool:
 		return _v075_actor_prefers_monster_upgrade(actor_id)
 
+	func choose_matching_monster_action(
+		actor_id: String,
+		facts: Dictionary
+	) -> Dictionary:
+		return _v075_choose_matching_monster_action(actor_id, facts)
+
 	func _public_occupied_facilities() -> Array:
 		return fixture_facilities.duplicate(true)
 
@@ -405,24 +411,230 @@ func _test_rank_one_owner_pursues_one_natural_upgrade(
 		runtime.prefers_monster_upgrade(actor_id),
 		"an owner with an active rank-one monster pursues its natural duplicate"
 	)
+	var single_refresh := runtime.preferred_action([refresh_option], actor_id)
+	_expect(
+		single_refresh.is_empty(),
+		"one active-family card stays in hand for a naturally drawn duplicate"
+	)
+	(runtime.fixture_facts.get("discard", []) as Array).append({
+		"instance_id": "dbg.player.ai.2.monster.blue-edge.duplicate",
+		"definition_id": "monster.blue_edge_knight.energy.rank_1",
+		"card_type": "monster.blue_edge_knight",
+		"merge_family_id": merge_family_id,
+		"primary_color": "energy",
+		"level": 1,
+	})
 	var alternate := runtime.preferred_action(
 		[refresh_option, military_option],
 		actor_id
 	)
 	_expect(
 		str(alternate.get("action_domain", "")) == "military",
-		"a held refresh yields to another legal action while preserving the card"
+		"a known discard duplicate makes refresh yield to another legal action"
 	)
-	var only_refresh := runtime.preferred_action([refresh_option], actor_id)
+	var reserve_assets := {}
+	for color_id in COLORS:
+		reserve_assets[color_id] = 0
+	reserve_assets["life"] = 2
+	runtime.configure_assets(actor_id, reserve_assets)
+	var facility_card := {
+		"instance_id": "dbg.player.ai.2.facility.life",
+		"card_type": "factory",
+		"primary_color": "life",
+		"primary_asset_cost": 1,
+	}
+	(runtime.fixture_facts.get("hand", []) as Array).append(facility_card)
+	var facility_option := {
+		"option_id": "option.facility.life.after-hold",
+		"card_instance_id": facility_card.get("instance_id"),
+		"facility_type": "factory",
+		"target_slot_id": "slot.region.000.factory.life.00",
+	}
+	var available_while_holding := runtime.available_actions(
+		actor_id,
+		[],
+		[refresh_option, facility_option]
+	)
 	_expect(
-		str(only_refresh.get("monster_card_mode", "")) == "REFRESH_EXISTING",
-		"holding never turns the only legal action into an empty submission"
+		_has_card_option(
+			available_while_holding,
+			str(facility_card.get("instance_id", ""))
+		),
+		"a held monster card does not reserve assets away from hand-cycling actions"
+	)
+	var discard_only_refresh := runtime.preferred_action(
+		[refresh_option],
+		actor_id
+	)
+	_expect(
+		discard_only_refresh.is_empty(),
+		"a hidden reshuffle cannot consume the visible active-family merge seed"
+	)
+	var duplicate_card := (
+		(runtime.fixture_facts.get("discard", []) as Array).pop_back()
+		as Dictionary
+	)
+	(runtime.fixture_facts.get("hand", []) as Array).append(duplicate_card)
+	var duplicate_refresh := refresh_option.duplicate(true)
+	duplicate_refresh["option_id"] = "option.monster.refresh.blue-edge.duplicate"
+	duplicate_refresh["card_instance_id"] = (
+		"dbg.player.ai.2.monster.blue-edge.duplicate"
+	)
+	duplicate_refresh["card_definition_id"] = (
+		"monster.blue_edge_knight.energy.rank_1"
+	)
+	var held_pair := runtime.preferred_action(
+		[refresh_option, duplicate_refresh],
+		actor_id
+	)
+	_expect(
+		held_pair.is_empty(),
+		"a complete same-family pair stays in hand for the imminent maintenance merge"
 	)
 	runtime.fixture_monsters[0]["rank"] = 2
 	_expect(
 		not runtime.prefers_monster_upgrade(actor_id),
 		"the deterministic acquisition preference ends after the first upgrade"
 	)
+	runtime.fixture_monsters[0]["rank"] = 1
+	runtime.fixture_facts = {
+		"hand": [
+			{
+				"instance_id": "dbg.player.ai.2.mirror.1",
+				"card_type": "monster.mirror_hunter",
+				"merge_family_id": "unit.monster.mirror_hunter",
+				"level": 1,
+			},
+			{
+				"instance_id": "dbg.player.ai.2.mirror.2",
+				"card_type": "monster.mirror_hunter",
+				"merge_family_id": "unit.monster.mirror_hunter",
+				"level": 1,
+			},
+			{
+				"instance_id": "dbg.player.ai.2.spore.1",
+				"card_type": "monster.spore_tide_emperor",
+				"merge_family_id": "unit.monster.spore_tide_emperor",
+				"level": 1,
+			},
+		],
+		"discard": [],
+	}
+	var replacement_options := [
+		{
+			"option_id": "option.replace.spore",
+			"actor_id": actor_id,
+			"action_domain": "monster",
+			"monster_card_mode": "REPLACE_EXISTING",
+			"card_instance_id": "dbg.player.ai.2.spore.1",
+			"card_definition_id": "monster.spore_tide_emperor.life.rank_1",
+		},
+		{
+			"option_id": "option.replace.mirror",
+			"actor_id": actor_id,
+			"action_domain": "monster",
+			"monster_card_mode": "REPLACE_EXISTING",
+			"card_instance_id": "dbg.player.ai.2.mirror.1",
+			"card_definition_id": "monster.mirror_hunter.energy.rank_1",
+		},
+	]
+	var replacement := runtime.preferred_action(
+		replacement_options,
+		actor_id
+	)
+	_expect(
+		str(replacement.get("card_instance_id", ""))
+			== "dbg.player.ai.2.mirror.1",
+		"replacement aligns the active family with the strongest owned merge pair"
+	)
+	runtime.fixture_facts = {
+		"hand": [
+			{
+				"instance_id": "dbg.player.ai.2.blue.1",
+				"card_type": "monster.blue_edge_knight",
+				"merge_family_id": "unit.monster.blue_edge_knight",
+				"level": 1,
+			},
+			{
+				"instance_id": "dbg.player.ai.2.mirror.only",
+				"card_type": "monster.mirror_hunter",
+				"merge_family_id": "unit.monster.mirror_hunter",
+				"level": 1,
+			},
+		],
+		"discard": [{
+			"instance_id": "dbg.player.ai.2.blue.2",
+			"card_type": "monster.blue_edge_knight",
+			"merge_family_id": "unit.monster.blue_edge_knight",
+			"level": 1,
+		}],
+	}
+	var held_replacement := runtime.preferred_action(
+		[replacement_options[1]],
+		actor_id
+	)
+	_expect(
+		held_replacement.is_empty(),
+		"an owned active-family pair cannot be broken by an unrelated replacement"
+	)
+	var active_family_track := TrackProjectionStub.new()
+	var active_family_items := [
+		{
+			"instance_id": "track.blue.active",
+			"card_kind": "normal_card",
+			"claimable": true,
+			"card_definition_id": (
+				"monster.blue_edge_knight.energy.rank_1"
+			),
+			"primary_color": "energy",
+			"primary_asset_cost": 2,
+		},
+		{
+			"instance_id": "track.mirror.unrelated",
+			"card_kind": "normal_card",
+			"claimable": true,
+			"card_definition_id": "monster.mirror_hunter.life.rank_1",
+			"primary_color": "life",
+			"primary_asset_cost": 2,
+		},
+	]
+	active_family_track.projection = {
+		"viewer_private_facts": {
+			"own_segment_items": active_family_items,
+		},
+	}
+	var acquisition_assets := {}
+	for color_id in COLORS:
+		acquisition_assets[color_id] = 10
+	runtime.configure_acquisition_probe(
+		active_family_track,
+		{"players": {actor_id: {"assets": acquisition_assets}}},
+		actor_id
+	)
+	var active_family_action := runtime.choose_matching_monster_action(
+		actor_id,
+		{
+			"viewer_player_id": actor_id,
+			"own_segment_items": active_family_items,
+			"available_unreserved_assets": acquisition_assets,
+		}
+	)
+	_expect(
+		str(active_family_action.get("card_definition_id", ""))
+			== "monster.blue_edge_knight.energy.rank_1",
+		"an active rank-one source rejects an unrelated family during acquisition: %s"
+			% JSON.stringify(active_family_action)
+	)
+
+
+func _has_card_option(options: Array, card_instance_id: String) -> bool:
+	for option_variant in options:
+		if str((option_variant as Dictionary).get(
+			"card_instance_id",
+			""
+		)) == card_instance_id:
+			return true
+	return false
 
 
 func _expect(condition: bool, message: String) -> void:
