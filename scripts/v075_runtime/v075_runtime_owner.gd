@@ -111,6 +111,12 @@ const PUBLIC_COMBAT_FIELDS := [
 	"status",
 	"reason_code",
 	"public_summary",
+	"public_presentation_key",
+	"effect_summary_key",
+	"armor_absorbed",
+	"status_changes",
+	"facility_damage_receipt_ids",
+	"facility_damage_state",
 ]
 
 var _combat_owner: Node
@@ -120,6 +126,7 @@ var _combat_initialized := false
 var _combat_autonomy_completed_batch_id := ""
 var _combat_public_receipt_count := 0
 var _combat_facility_damage_receipt_count := 0
+var _combat_facility_damage_fizzle_count := 0
 var _combat_private_skill_request_count := 0
 var _combat_monster_purchase_count := 0
 var _combat_military_purchase_count := 0
@@ -1397,7 +1404,7 @@ func request_private_monster_skill(
 		_facility_state = before_facility_state
 		if not bool(rollback.get("accepted", false)):
 			return _reject_action("private_skill_transaction_rollback_failed")
-		return result
+		return _private_skill_failure_application_receipt(result)
 	var next_public_state := _facility_state.duplicate(true)
 	var damage_result := _apply_facility_damage_intents(
 		next_public_state,
@@ -1444,6 +1451,20 @@ func request_private_monster_skill(
 	receipt["event_kind"] = "monster_private_skill_requested"
 	receipt["combat_channel"] = "private_instant_serial"
 	return receipt
+
+
+func _private_skill_failure_application_receipt(
+	result: Dictionary
+) -> Dictionary:
+	return {
+		"accepted": false,
+		"reason_code": str(result.get(
+			"reason_code",
+			"private_skill_request_rejected"
+		)),
+		"event_kind": "monster_private_skill_request_rejected",
+		"combat_channel": "private_instant_serial",
+	}
 
 
 func resolve_next_action() -> Dictionary:
@@ -1835,6 +1856,9 @@ func debug_snapshot() -> Dictionary:
 	result["facility_combat_damage_receipt_count"] = (
 		_combat_facility_damage_receipt_count
 	)
+	result["facility_combat_damage_fizzle_count"] = (
+		_combat_facility_damage_fizzle_count
+	)
 	var telemetry_debug := _combat_telemetry_bridge.call(
 		"debug_snapshot"
 	) as Dictionary
@@ -2003,6 +2027,7 @@ func _reset_runtime() -> void:
 	_combat_autonomy_completed_batch_id = ""
 	_combat_public_receipt_count = 0
 	_combat_facility_damage_receipt_count = 0
+	_combat_facility_damage_fizzle_count = 0
 	_combat_private_skill_request_count = 0
 	_combat_monster_purchase_count = 0
 	_combat_military_purchase_count = 0
@@ -3118,6 +3143,7 @@ func _apply_facility_damage_intents(
 			}
 	var receipts: Array = []
 	var committed_receipt_count := 0
+	var fizzle_receipt_count := 0
 	for intent_variant in intents:
 		var intent := intent_variant as Dictionary
 		var intent_report: Dictionary = FacilityDamageIntent.validation_report(
@@ -3150,7 +3176,33 @@ func _apply_facility_damage_intents(
 			intent
 		)
 		if not bool(applied.get("accepted", false)):
-			return applied
+			var fizzle_reason := str(applied.get("reason_code", ""))
+			var fizzle_receipt := (
+				applied.get("receipt", {}) as Dictionary
+			).duplicate(true)
+			if (
+				fizzle_reason not in [
+					"facility_combat_damage_target_missing",
+					"facility_combat_damage_target_not_occupied",
+					"facility_combat_damage_generation_stale",
+				]
+				or not bool(
+					FacilityDamageBridge.receipt_validation_report(
+						fizzle_receipt
+					).get("valid", false)
+				)
+			):
+				return applied
+			# A previously valid target can disappear earlier in the same atomic
+			# combat boundary. Commit one zero-damage Fizzle Receipt and never
+			# retarget; replay returns this receipt without a second effect.
+			processed_next[receipt_key] = {
+				"fingerprint": fingerprint,
+				"receipt": fizzle_receipt,
+			}
+			receipts.append(fizzle_receipt)
+			fizzle_receipt_count += 1
+			continue
 		bridge_state_next = (
 			applied.get("state", {}) as Dictionary
 		).duplicate(true)
@@ -3189,6 +3241,7 @@ func _apply_facility_damage_intents(
 	_processed_facility_damage_intents = processed_next
 	_facility_damage_bridge_state = bridge_state_next
 	_combat_facility_damage_receipt_count += committed_receipt_count
+	_combat_facility_damage_fizzle_count += fizzle_receipt_count
 	return {
 		"accepted": true,
 		"reason_code": "facility_damage_intents_committed",
@@ -3386,6 +3439,17 @@ func _emit_facility_damage_events(receipts: Array) -> void:
 			receipt.get("damage_points_after", 0)
 		)
 		payload["facility_damage_state"] = "damaged"
+		if not bool(receipt.get("accepted", false)):
+			payload["facility_damage_state"] = "fizzled"
+			_publish_combat_event(
+				"facility_combat_damage_fizzled",
+				payload,
+				"facility.fizzle.%s.%s" % [
+					str(receipt.get("combat_receipt_id", "")),
+					str(receipt.get("target_facility_id", "")),
+				]
+			)
+			continue
 		if bool(receipt.get("facility_destroyed", false)):
 			payload["facility_damage_state"] = "destroyed"
 			payload["destroyed"] = true
@@ -3410,6 +3474,9 @@ func _capture_combat_transaction_state() -> Dictionary:
 		"combat_facility_damage_receipt_count": (
 			_combat_facility_damage_receipt_count
 		),
+		"combat_facility_damage_fizzle_count": (
+			_combat_facility_damage_fizzle_count
+		),
 		"combat_public_receipt_count": _combat_public_receipt_count,
 		"combat_public_history": _combat_public_history.duplicate(true),
 	}
@@ -3427,6 +3494,9 @@ func _restore_combat_transaction_state(checkpoint: Dictionary) -> void:
 	).duplicate(true)
 	_combat_facility_damage_receipt_count = int(
 		checkpoint.get("combat_facility_damage_receipt_count", 0)
+	)
+	_combat_facility_damage_fizzle_count = int(
+		checkpoint.get("combat_facility_damage_fizzle_count", 0)
 	)
 	_combat_public_receipt_count = int(
 		checkpoint.get("combat_public_receipt_count", 0)
@@ -3465,9 +3535,15 @@ func _rollback_combat_transaction(
 
 func _public_combat_payload(source: Dictionary) -> Dictionary:
 	var result := {}
+	var public_target := source.get("public_target", {}) as Dictionary
+	var public_result := source.get("public_result", {}) as Dictionary
 	for field_name in PUBLIC_COMBAT_FIELDS:
 		if source.has(field_name):
 			result[field_name] = _pure_copy(source.get(field_name))
+		elif public_target.has(field_name):
+			result[field_name] = _pure_copy(public_target.get(field_name))
+		elif public_result.has(field_name):
+			result[field_name] = _pure_copy(public_result.get(field_name))
 	return result
 
 
@@ -3703,6 +3779,10 @@ func _auto_queue_and_lock(actor_id: String) -> Dictionary:
 			if available.is_empty():
 				break
 			var preferred := _preferred_v075_ai_action(available, actor_id)
+			# A selector may decline every currently available binding. Lock the
+			# legal empty submission instead of creating an invalid card target.
+			if preferred.is_empty():
+				break
 			var action_domain := str(preferred.get("action_domain", "facility"))
 			var combat_binding := (
 				preferred
@@ -4067,9 +4147,15 @@ func _v075_should_hold_monster_refresh(
 func _v075_actor_prefers_monster_upgrade(actor_id: String) -> bool:
 	if actor_id.is_empty():
 		return false
-	return int(
-		actor_id.sha256_text().substr(0, 8).hex_to_int()
-	) % 2 == 0
+	for source_variant in _v075_public_monsters():
+		var source := source_variant as Dictionary
+		if (
+			str(source.get("owner_player_id", "")) == actor_id
+			and str(source.get("status", "")) in ["active", "downed"]
+			and int(source.get("rank", 0)) == 1
+		):
+			return true
+	return false
 
 
 func _preferred_monster_deployment_option(options: Array) -> Dictionary:

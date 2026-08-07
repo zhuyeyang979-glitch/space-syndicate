@@ -1,9 +1,6 @@
 extends Node
 class_name V075CombatRuntimeOwner
 
-signal combat_receipt_committed(receipt: Dictionary)
-signal public_combat_result_ready(receipt: Dictionary)
-
 const MonsterSourceCore := preload(
 	"res://scripts/v075/monster/v075_monster_source_core.gd"
 )
@@ -573,7 +570,6 @@ func request_private_skill(
 		return {
 			"accepted": false,
 			"reason_code": str(submitted.get("reason_code", "")),
-			"asset_state": asset_state.duplicate(true),
 			"receipt": (
 				submitted.get("receipt", {}) as Dictionary
 			).duplicate(true),
@@ -598,7 +594,6 @@ func request_private_skill(
 		return {
 			"accepted": false,
 			"reason_code": str(applied.get("reason_code", "")),
-			"asset_state": next_asset_state,
 			"receipt": (
 				applied.get("receipt", {}) as Dictionary
 			).duplicate(true),
@@ -1770,8 +1765,6 @@ func _record_receipt(
 	})
 	_processed_receipt_keys[key] = envelope.duplicate(true)
 	_combat_receipt_journal.append(envelope.duplicate(true))
-	combat_receipt_committed.emit(envelope.duplicate(true))
-	public_combat_result_ready.emit(envelope.duplicate(true))
 	return envelope
 
 

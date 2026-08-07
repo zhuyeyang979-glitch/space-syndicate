@@ -116,6 +116,101 @@ func _run() -> void:
 		"production bridge replay does not duplicate damage or counters"
 	)
 
+	var fizzle_checkpoint := runtime.call(
+		"_capture_combat_transaction_state"
+	) as Dictionary
+	var destroyed_fixture := _mixed_batch_fixture()
+	var destroyed_state := (
+		destroyed_fixture.get("state", {}) as Dictionary
+	)
+	var destroyed_facility := (
+		destroyed_fixture.get("facility", {}) as Dictionary
+	)
+	var destroy_intent := DamageIntent.build(
+		"effect.runtime.bridge.destroy",
+		str(destroyed_facility.get("facility_id", "")),
+		int(destroyed_facility.get("facility_generation", 0)),
+		12,
+		"monster_basic_attack",
+		"combat.runtime.bridge.destroy"
+	)
+	var stale_after_destroy := DamageIntent.build(
+		"effect.runtime.bridge.stale.after.destroy",
+		str(destroyed_facility.get("facility_id", "")),
+		int(destroyed_facility.get("facility_generation", 0)),
+		1,
+		"monster_ground_trample",
+		"combat.runtime.bridge.stale.after.destroy"
+	)
+	var destroy_batch := runtime.call(
+		"_apply_facility_damage_intents",
+		destroyed_state,
+		[destroy_intent, stale_after_destroy]
+	) as Dictionary
+	var destroy_receipts := destroy_batch.get("receipts", []) as Array
+	var destroy_debug := runtime.debug_snapshot()
+	_expect(
+		bool(destroy_batch.get("accepted", false))
+			and destroy_receipts.size() == 2
+			and bool((destroy_receipts[0] as Dictionary).get(
+				"facility_destroyed",
+				false
+			))
+			and not bool((destroy_receipts[1] as Dictionary).get(
+				"accepted",
+				true
+			))
+			and int((destroy_receipts[1] as Dictionary).get(
+				"applied_damage",
+				-1
+			)) == 0
+			and str((destroy_receipts[1] as Dictionary).get(
+				"reason_code",
+				""
+			)) == "facility_combat_damage_target_missing",
+		"a target destroyed earlier in one boundary commits a zero-damage fizzle"
+	)
+	_expect(
+		int(destroy_debug.get("facility_combat_damage_receipt_count", -1)) == 2
+		and int(destroy_debug.get("facility_combat_damage_fizzle_count", -1)) == 1
+		and int(destroy_debug.get("facility_damage_bridge_receipt_count", -1)) == 2,
+		"a stale-target fizzle is separate from two actual bridge damage receipts"
+	)
+	var stale_replay := runtime.call(
+		"_apply_facility_damage_intents",
+		destroy_batch.get("public_batch_state", {}) as Dictionary,
+		[stale_after_destroy]
+	) as Dictionary
+	_expect(
+		bool(stale_replay.get("accepted", false))
+			and (stale_replay.get("receipts", []) as Array).size() == 1
+			and (stale_replay.get("receipts", []) as Array)[0]
+				== destroy_receipts[1]
+			and int(runtime.debug_snapshot().get(
+				"facility_combat_damage_fizzle_count",
+				-1
+			)) == 1,
+		"a stale-target fizzle is exact-once and never retargets"
+	)
+	runtime.call("_emit_facility_damage_events", [destroy_receipts[1]])
+	var public_history := runtime.get("_combat_public_history") as Array
+	var fizzle_event := public_history[public_history.size() - 1] as Dictionary
+	_expect(
+		str(fizzle_event.get("event_kind", ""))
+			== "facility_combat_damage_fizzled"
+		and str(fizzle_event.get("facility_damage_state", "")) == "fizzled"
+		and int(fizzle_event.get("damage_amount", -1)) == 0,
+		"a zero-damage fizzle never publishes a facility damaged event"
+	)
+	runtime.call("_restore_combat_transaction_state", fizzle_checkpoint)
+	_expect(
+		int(runtime.debug_snapshot().get(
+			"facility_combat_damage_fizzle_count",
+			-1
+		)) == 0,
+		"transaction rollback restores the facility fizzle counter"
+	)
+
 	var stale := BatchCore.resolve_next(damaged_state)
 	_expect(
 		bool(stale.get("accepted", false))

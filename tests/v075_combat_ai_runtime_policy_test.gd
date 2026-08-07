@@ -8,6 +8,7 @@ class RuntimeHarness extends V075RuntimeOwner:
 	var fixture_legal: Array = []
 	var fixture_facts: Dictionary = {"hand": [], "discard": []}
 	var fixture_facilities: Array = []
+	var fixture_monsters: Array = []
 
 	func legal_card_actions(_actor_id: String) -> Array:
 		return fixture_legal.duplicate(true)
@@ -65,8 +66,14 @@ class RuntimeHarness extends V075RuntimeOwner:
 	func initial_combat_slot_open(actor_id: String) -> bool:
 		return _v075_combat_slot_open(actor_id, true)
 
+	func prefers_monster_upgrade(actor_id: String) -> bool:
+		return _v075_actor_prefers_monster_upgrade(actor_id)
+
 	func _public_occupied_facilities() -> Array:
 		return fixture_facilities.duplicate(true)
+
+	func _v075_public_monsters() -> Array:
+		return fixture_monsters.duplicate(true)
 
 
 const ACTOR_ID := "player.ai.1"
@@ -95,6 +102,7 @@ func _run() -> void:
 	_test_owned_combat_card_reserves_its_action_assets(runtime)
 	_test_monster_deployment_prefers_public_two_hop_route(runtime)
 	_test_military_task_selection_is_stable_and_balanced(runtime)
+	_test_rank_one_owner_pursues_one_natural_upgrade(runtime)
 	_expect(
 		runtime.initial_combat_slot_open(ACTOR_ID),
 		"first visible combat opportunity opens before settlement pacing closes"
@@ -350,6 +358,70 @@ func _test_military_task_selection_is_stable_and_balanced(
 		and str(first.get("task_kind", ""))
 		!= str(next_batch.get("task_kind", "")),
 		"military task selection alternates by stable public batch facts"
+	)
+
+
+func _test_rank_one_owner_pursues_one_natural_upgrade(
+	runtime: RuntimeHarness
+) -> void:
+	var actor_id := "player.ai.2"
+	var source_id := "monster.source.ai.2"
+	var card_id := "dbg.player.ai.2.monster.blue-edge"
+	var merge_family_id := "unit.monster.blue_edge_knight"
+	runtime.fixture_monsters = [{
+		"source_instance_id": source_id,
+		"owner_player_id": actor_id,
+		"monster_family_id": "blue_edge_knight",
+		"status": "active",
+		"rank": 1,
+	}]
+	runtime.fixture_facts = {
+		"hand": [{
+			"instance_id": card_id,
+			"definition_id": "monster.blue_edge_knight.life.rank_1",
+			"card_type": "monster.blue_edge_knight",
+			"merge_family_id": merge_family_id,
+			"primary_color": "life",
+			"level": 1,
+		}],
+		"discard": [],
+	}
+	var refresh_option := {
+		"option_id": "option.monster.refresh.blue-edge",
+		"actor_id": actor_id,
+		"action_domain": "monster",
+		"monster_card_mode": "REFRESH_EXISTING",
+		"card_instance_id": card_id,
+		"card_definition_id": "monster.blue_edge_knight.life.rank_1",
+		"target_source_instance_id": source_id,
+	}
+	var military_option := {
+		"option_id": "option.military.region.after-refresh",
+		"actor_id": actor_id,
+		"action_domain": "military",
+		"task_kind": "assault_region",
+	}
+	_expect(
+		runtime.prefers_monster_upgrade(actor_id),
+		"an owner with an active rank-one monster pursues its natural duplicate"
+	)
+	var alternate := runtime.preferred_action(
+		[refresh_option, military_option],
+		actor_id
+	)
+	_expect(
+		str(alternate.get("action_domain", "")) == "military",
+		"a held refresh yields to another legal action while preserving the card"
+	)
+	var only_refresh := runtime.preferred_action([refresh_option], actor_id)
+	_expect(
+		str(only_refresh.get("monster_card_mode", "")) == "REFRESH_EXISTING",
+		"holding never turns the only legal action into an empty submission"
+	)
+	runtime.fixture_monsters[0]["rank"] = 2
+	_expect(
+		not runtime.prefers_monster_upgrade(actor_id),
+		"the deterministic acquisition preference ends after the first upgrade"
 	)
 
 
