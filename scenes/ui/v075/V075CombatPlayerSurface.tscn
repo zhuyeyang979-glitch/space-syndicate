@@ -171,13 +171,43 @@ layout_mode = 2
 [node name="PresentationStrip" type="PanelContainer" parent="Rows"]
 unique_name_in_owner = true
 visible = false
-custom_minimum_size = Vector2(0, 28)
+custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
 
-[node name="PresentationLabel" type="Label" parent="Rows/PresentationStrip"]
+[node name="CueRow" type="HBoxContainer" parent="Rows/PresentationStrip"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CueIcon" type="TextureRect" parent="Rows/PresentationStrip/CueRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+visible = false
+
+[node name="PresentationLabel" type="Label" parent="Rows/PresentationStrip/CueRow"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.58, 0.9, 0.82, 1)
 text = "公开战斗回执"
-horizontal_alignment = 1
+text_overrun_behavior = 3
 vertical_alignment = 1
+
+[node name="CueAssetLabel" type="Label" parent="Rows/PresentationStrip/CueRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.48, 0.66, 0.75, 1)
+theme_override_font_sizes/font_size = 10
+text = "效果"
+text_overrun_behavior = 3
+vertical_alignment = 1
+
+[node name="CueProgress" type="ProgressBar" parent="Rows/PresentationStrip/CueRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(68, 6)
+layout_mode = 2
+size_flags_vertical = 4
+show_percentage = false

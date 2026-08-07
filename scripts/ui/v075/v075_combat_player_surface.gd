@@ -44,7 +44,10 @@ const RANK_LABELS := ["", "I", "II", "III", "IV"]
 @onready var _skill_dock: V075MonsterPrivateSkillDock = %SkillDock
 @onready var _military_panel: V075MilitaryMissionPanel = %MilitaryPanel
 @onready var _presentation_strip: PanelContainer = %PresentationStrip
+@onready var _cue_icon: TextureRect = %CueIcon
 @onready var _presentation_label: Label = %PresentationLabel
+@onready var _cue_asset_label: Label = %CueAssetLabel
+@onready var _cue_progress: ProgressBar = %CueProgress
 
 var _projection: Dictionary = {}
 var _selected_public_monster: Dictionary = {}
@@ -57,6 +60,8 @@ var _presentation_cue_applied_count := 0
 var _presentation_cue_duplicate_count := 0
 var _presentation_cue_collision_count := 0
 var _presentation_cue_rejected_count := 0
+var _presentation_animation_count := 0
+var _presentation_tween: Tween
 
 
 func _ready() -> void:
@@ -130,6 +135,19 @@ func show_presentation_cue(cue: Dictionary) -> Dictionary:
 	if summary.is_empty():
 		summary = _cue_summary(str(cue.get("event_kind", "")), payload)
 	_presentation_label.text = summary
+	var asset_keys := cue.get("asset_keys", []) as Array
+	_cue_asset_label.text = _presentation_asset_caption(asset_keys)
+	_cue_icon.texture = _first_cue_texture(asset_keys)
+	_cue_icon.modulate = _cue_color(str(cue.get("event_kind", "")))
+	_cue_icon.visible = _cue_icon.texture != null
+	_cue_progress.value = 0.0
+	if _presentation_tween != null and _presentation_tween.is_valid():
+		_presentation_tween.kill()
+	_presentation_tween = create_tween()
+	_presentation_tween.set_trans(Tween.TRANS_SINE)
+	_presentation_tween.set_ease(Tween.EASE_OUT)
+	_presentation_tween.tween_property(_cue_progress, "value", 100.0, 0.34)
+	_presentation_animation_count += 1
 	_presentation_strip.visible = not summary.is_empty()
 	return _presentation_cue_result(true, "none")
 
@@ -140,8 +158,15 @@ func reset_presentation_cues() -> void:
 	_presentation_cue_duplicate_count = 0
 	_presentation_cue_collision_count = 0
 	_presentation_cue_rejected_count = 0
+	_presentation_animation_count = 0
 	_last_cue = {}
 	_presentation_label.text = ""
+	_cue_asset_label.text = ""
+	_cue_icon.texture = null
+	_cue_icon.visible = false
+	_cue_progress.value = 0.0
+	if _presentation_tween != null and _presentation_tween.is_valid():
+		_presentation_tween.kill()
 	_presentation_strip.visible = false
 
 
@@ -206,6 +231,11 @@ func debug_snapshot() -> Dictionary:
 			_presentation_cue_collision_count,
 		"presentation_cue_rejected_count":
 			_presentation_cue_rejected_count,
+		"presentation_animation_count": _presentation_animation_count,
+		"presentation_asset_key_visible": not _cue_asset_label.text.is_empty(),
+		"presentation_event_kind_visible": not str(
+			_last_cue.get("event_kind", "")
+		).is_empty(),
 		"last_presentation_cue_id": str(
 			_last_cue.get("presentation_receipt_id", "")
 		),
@@ -537,6 +567,40 @@ func _cue_summary(
 				payload.get("facility_type", "")
 			)
 	return ""
+
+
+func _first_cue_texture(asset_keys: Array) -> Texture2D:
+	for key_variant in asset_keys:
+		var resource := CATALOG.resource_for_asset_key(
+			StringName(str(key_variant))
+		)
+		if resource is Texture2D:
+			return resource as Texture2D
+	var fallback := CATALOG.resource_for_asset_key(&"icon.board.target")
+	return fallback as Texture2D if fallback is Texture2D else null
+
+
+func _presentation_asset_caption(asset_keys: Array) -> String:
+	if asset_keys.is_empty():
+		return "效果"
+	var captions: Array[String] = []
+	for key_variant in asset_keys.slice(0, mini(2, asset_keys.size())):
+		var key := str(key_variant)
+		var suffix := key.rsplit(".", true, 1)[-1]
+		captions.append(suffix.replace("_", " "))
+	return " · ".join(captions)
+
+
+func _cue_color(event_kind: String) -> Color:
+	if event_kind.begins_with("military_"):
+		return Color("#ef9a74")
+	if event_kind == "facility_combat_damaged":
+		return Color("#e4bd69")
+	if event_kind == "monster_trample_resolved":
+		return Color("#d9a36b")
+	if event_kind == "monster_private_skill_resolved":
+		return Color("#ba9bff")
+	return Color("#74d9c6")
 
 
 func _public_skill_disclosure_count() -> int:

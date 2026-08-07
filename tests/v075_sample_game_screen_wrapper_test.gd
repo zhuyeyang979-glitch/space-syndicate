@@ -106,6 +106,57 @@ func _run() -> void:
 		"owner surface keeps four private skills and two military actions"
 	)
 
+	# Monster cards must use the combat legal-action projection directly. The
+	# inherited map rail is reserved for facility bindings and must not consume
+	# a monster mode selection.
+	screen.apply_snapshot({
+		"ruleset_id": "v0.7.5",
+		"phase": "submission",
+		"match_started": false,
+		"legal_actions": [{
+			"action_domain": "monster",
+			"card_instance_id": "card.monster.local.01",
+			"card_definition_id": "monster.spore_tide_emperor.life.rank_1",
+			"monster_card_mode": "DEPLOY_NEW",
+			"target_slot_id": "combat.monster.deploy_new.region.01",
+			"target_region_id": "region.01",
+			"target_source_instance_id": "",
+			"mode_prebound": true,
+		}],
+		"personal_dbg": {"facts": {"hand": []}},
+		"combat_player_projection": projection,
+	})
+	screen.call("_on_hand_card_activated", {
+		"instance_id": "card.monster.local.01",
+		"definition_id": "monster.spore_tide_emperor.life.rank_1",
+		"card_type": "monster.spore_tide_emperor",
+		"primary_color": "life",
+	})
+	await process_frame
+	var mode_choices := screen.get_node(
+		"OverlayLayer/RegionPopup/Center/Panel/Rows/RegionPopupTargetChoices"
+	) as VBoxContainer
+	var first_mode_row := mode_choices.get_child(0) as HBoxContainer
+	_expect(
+		mode_choices.get_child_count() == 4
+		and first_mode_row != null
+		and (first_mode_row.get_child(1) as Button).text == "部署新怪兽",
+		"monster hand selection exposes four explicit mode rows"
+	)
+	(first_mode_row.get_child(1) as Button).pressed.emit()
+	await process_frame
+	var monster_queue_intent: Dictionary = {}
+	if not emitted.is_empty():
+		monster_queue_intent = emitted.back().duplicate(true)
+	_expect(
+		str(monster_queue_intent.get("intent_kind", "")) == "card.queue"
+		and str((monster_queue_intent.get("parameters", {}) as Dictionary).get(
+			"target_slot_id",
+			""
+		)) == "combat.monster.deploy_new.region.01",
+		"monster mode uses the normal card queue intent without map resolution"
+	)
+
 	var surface := screen.get_node(
 		"PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay/Margin/Rows/SurfaceHost/CombatSurface"
 	) as V075CombatPlayerSurface
@@ -187,6 +238,12 @@ func _run() -> void:
 		and int(after_receipt.get("gameplay_mutation_count", -1)) == 0
 		and int(after_receipt.get("rng_draw_delta", -1)) == 0,
 		"presentation forwarding remains read-only"
+	)
+	var surface_after_receipt := after_receipt.get("surface", {}) as Dictionary
+	_expect(
+		bool(surface_after_receipt.get("presentation_asset_key_visible", false))
+		and int(surface_after_receipt.get("presentation_animation_count", 0)) == 1,
+		"public cue renders an asset key and a presentation pulse"
 	)
 
 	screen.apply_snapshot({

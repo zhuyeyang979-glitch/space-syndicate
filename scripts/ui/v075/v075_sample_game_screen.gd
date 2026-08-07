@@ -13,6 +13,24 @@ const DEFAULT_PRIVATE_SKILL_INTENT_KIND := (
 const DEFAULT_MILITARY_INTENT_KIND := "combat.military_mission.select"
 const PRIVATE_SKILL_EXECUTION_MODE := "private_instant_serial"
 const MILITARY_EXECUTION_MODE := "normal_public_batch"
+const MONSTER_CARD_MODES := [
+	"DEPLOY_NEW",
+	"REFRESH_EXISTING",
+	"UPGRADE_EXISTING",
+	"REPLACE_EXISTING",
+]
+const MONSTER_CARD_MODE_LABELS := {
+	"DEPLOY_NEW": "部署新怪兽",
+	"REFRESH_EXISTING": "同族回血",
+	"UPGRADE_EXISTING": "同族升级",
+	"REPLACE_EXISTING": "异族替换",
+}
+const MONSTER_CARD_MODE_HINTS := {
+	"DEPLOY_NEW": "容量以内且没有同族活动来源时，在预绑定地区部署",
+	"REFRESH_EXISTING": "同族等级不高于当前来源，按牌面等级恢复生命",
+	"UPGRADE_EXISTING": "同族牌等级更高，升至牌面等级并恢复新最大生命",
+	"REPLACE_EXISTING": "容量已满且族群不同，撤回旧来源并部署新来源",
+}
 
 const ProjectionAdapter := preload(
 	"res://scripts/v075/player/v075_combat_projection_adapter.gd"
@@ -137,6 +155,7 @@ var _combat_receipt_rejected_count := 0
 var _combat_private_intent_count := 0
 var _combat_military_intent_count := 0
 var _last_combat_intent_kind := ""
+var _monster_mode_popup_card_id := ""
 
 
 func _ready() -> void:
@@ -207,6 +226,17 @@ func apply_snapshot(snapshot: Dictionary) -> void:
 
 func apply_receipt(receipt: Dictionary) -> void:
 	super.apply_receipt(receipt)
+	if (
+		str(receipt.get("intent_kind", "")) == "card.queue"
+		and bool(receipt.get("accepted", false))
+		and str((receipt.get("binding", {}) as Dictionary).get(
+			"action_domain",
+			""
+		)) == "monster"
+	):
+		_region_popup.visible = false
+		_monster_mode_popup_card_id = ""
+		_clear_selected_card()
 	if (
 		str(receipt.get("intent_kind", "")) == "new_game.start"
 		and bool(receipt.get("accepted", false))
@@ -1163,6 +1193,222 @@ func _configure_planet_shell() -> void:
 func _apply_responsive_layout() -> void:
 	super._apply_responsive_layout()
 	_set_v075_chrome()
+
+
+func _refresh_targets() -> void:
+	# Combat cards have typed runtime targets, not V0.7.4 facility bindings.
+	# Keep the inherited map rail for facilities and hide it while a combat card
+	# is waiting for its explicit owner-private mode/mission choice.
+	var combat_domain := _v075_card_domain(_selected_card_definition_id)
+	var target_panel := $RootMargin/Shell/TargetPanel as Control
+	if combat_domain in ["monster", "military"]:
+		if target_panel != null:
+			target_panel.visible = false
+		return
+	if target_panel != null:
+		target_panel.visible = true
+	super._refresh_targets()
+
+
+func _on_hand_card_activated(payload: Dictionary) -> void:
+	var definition_id := str(payload.get("definition_id", ""))
+	var domain := _v075_card_domain(definition_id)
+	if domain != "monster":
+		_region_popup.visible = false
+		_monster_mode_popup_card_id = ""
+		super._on_hand_card_activated(payload)
+		return
+	var incoming_id := str(payload.get("instance_id", ""))
+	if incoming_id.is_empty():
+		return
+	if incoming_id == _selected_card_id:
+		_region_popup.visible = false
+		_monster_mode_popup_card_id = ""
+		_clear_selected_card()
+		return
+	_selected_card_id = incoming_id
+	_selected_card_definition_id = definition_id
+	_selected_card_color = str(payload.get("primary_color", ""))
+	_selected_card_type = str(payload.get("card_type", ""))
+	_interaction_counts["card_selected"] += 1
+	_last_public_ui_surface = "hand_dock"
+	var summary := _card_summary(payload, "hand_dock")
+	_emit_playtest_event("card_selected", summary)
+	_emit_playtest_event("monster_card_mode_selection_started", summary)
+	_action_status.text = "已选怪兽牌 · 请选择预绑定模式"
+	_refresh_hand()
+	_refresh_targets()
+	_render_monster_card_mode_popup(payload)
+	_update_acceptance_state()
+
+
+func _render_monster_card_mode_popup(payload: Dictionary) -> void:
+	var card_id := str(payload.get("instance_id", ""))
+	var options := _monster_card_options_for_card(card_id)
+	_monster_mode_popup_card_id = card_id
+	_region_popup.visible = true
+	_region_popup_title.text = "怪兽牌 · 预绑定模式"
+	_region_popup_body.text = (
+		"[indent][b]%s[/b] · %s\n"
+		+ "模式在锁定前选择；结算时不会自动转换。\n"
+		+ "当前合法模式 %d / 4[/indent]"
+	) % [
+		_card_type_label(str(payload.get("definition_id", ""))),
+		str(COLOR_LABELS.get(
+			str(payload.get("primary_color", "")),
+			payload.get("primary_color", "")
+		)),
+		options.size(),
+	]
+	_clear_children(_region_popup_choices)
+	for mode in MONSTER_CARD_MODES:
+		var mode_options: Array = []
+		for option_variant in options:
+			var option := option_variant as Dictionary
+			if str(option.get("monster_card_mode", "")) == mode:
+				mode_options.append(option)
+		if not mode_options.is_empty():
+			var row := HBoxContainer.new()
+			row.custom_minimum_size = Vector2(0.0, 42.0)
+			row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_theme_constant_override("separation", 7)
+			var target_menu := OptionButton.new()
+			target_menu.custom_minimum_size = Vector2(0.0, 42.0)
+			target_menu.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			target_menu.fit_to_longest_item = false
+			target_menu.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+			for option_variant in mode_options:
+				var option := option_variant as Dictionary
+				var target_index := target_menu.item_count
+				target_menu.add_item(_monster_mode_target_label(option))
+				target_menu.set_item_metadata(
+					target_index,
+					option.duplicate(true)
+				)
+			target_menu.select(0)
+			var choose_button := Button.new()
+			choose_button.custom_minimum_size = Vector2(132.0, 42.0)
+			choose_button.text = str(MONSTER_CARD_MODE_LABELS.get(mode, mode))
+			choose_button.tooltip_text = str(
+				MONSTER_CARD_MODE_HINTS.get(mode, "")
+			)
+			_apply_monster_mode_button_style(choose_button, mode)
+			choose_button.pressed.connect(func() -> void:
+				var selected := target_menu.get_item_metadata(
+					target_menu.selected
+				) as Dictionary
+				_queue_monster_card_mode(selected)
+			)
+			row.add_child(target_menu)
+			row.add_child(choose_button)
+			_region_popup_choices.add_child(row)
+		if mode_options.is_empty():
+			var unavailable := Label.new()
+			unavailable.custom_minimum_size = Vector2(0.0, 26.0)
+			unavailable.text = "%s · 当前不可用" % str(
+				MONSTER_CARD_MODE_LABELS.get(mode, mode)
+			)
+			unavailable.add_theme_color_override(
+				"font_color",
+				Color("#68788d")
+			)
+			_region_popup_choices.add_child(unavailable)
+
+
+func _monster_card_options_for_card(card_id: String) -> Array:
+	var result: Array = []
+	if card_id.is_empty():
+		return result
+	for option_variant in _v075_snapshot.get("legal_actions", []) as Array:
+		if not (option_variant is Dictionary):
+			continue
+		var option := option_variant as Dictionary
+		if (
+			str(option.get("action_domain", "")) == "monster"
+			and str(option.get("card_instance_id", "")) == card_id
+			and str(option.get("monster_card_mode", "")) in MONSTER_CARD_MODES
+			and bool(option.get("mode_prebound", true))
+		):
+			result.append(option.duplicate(true))
+	result.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		var left_mode := MONSTER_CARD_MODES.find(
+			str(left.get("monster_card_mode", ""))
+		)
+		var right_mode := MONSTER_CARD_MODES.find(
+			str(right.get("monster_card_mode", ""))
+		)
+		if left_mode != right_mode:
+			return left_mode < right_mode
+		return str(left.get("option_id", "")) < str(
+			right.get("option_id", "")
+		)
+	)
+	return result
+
+
+func _monster_mode_target_label(option: Dictionary) -> String:
+	var mode := str(option.get("monster_card_mode", ""))
+	if mode == "DEPLOY_NEW":
+		return "部署至 %s" % str(option.get("target_region_id", ""))
+	return "来源 %s" % str(option.get("target_source_instance_id", ""))
+
+
+func _queue_monster_card_mode(option: Dictionary) -> void:
+	if (
+		option.is_empty()
+		or str(option.get("card_instance_id", "")) != _monster_mode_popup_card_id
+		or str(option.get("monster_card_mode", "")) not in MONSTER_CARD_MODES
+		or not bool(option.get("mode_prebound", true))
+	):
+		_show_toast("怪兽模式选项已过期，请重新选择手牌", false)
+		return
+	_emit_playtest_event("monster_card_mode_selected", {
+		"card_instance_id": str(option.get("card_instance_id", "")),
+		"monster_card_mode": str(option.get("monster_card_mode", "")),
+		"target_region_id": str(option.get("target_region_id", "")),
+		"target_source_instance_id": str(option.get(
+			"target_source_instance_id",
+			""
+		)),
+	})
+	_action_status.text = "%s · 已预绑定，等待锁定" % str(
+		MONSTER_CARD_MODE_LABELS.get(
+			str(option.get("monster_card_mode", "")),
+			option.get("monster_card_mode", "")
+		)
+	)
+	_emit_intent("card.queue", {
+		"card_instance_id": str(option.get("card_instance_id", "")),
+		"target_slot_id": str(option.get("target_slot_id", "")),
+		"target_binding": option.duplicate(true),
+	})
+
+
+func _apply_monster_mode_button_style(button: Button, mode: String) -> void:
+	var accent := Color("#55d6bc")
+	if mode == "REFRESH_EXISTING":
+		accent = Color("#75d994")
+	elif mode == "UPGRADE_EXISTING":
+		accent = Color("#7bb8ff")
+	elif mode == "REPLACE_EXISTING":
+		accent = Color("#e48c78")
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = Color("#162238")
+	normal.border_color = accent.darkened(0.35)
+	normal.set_border_width_all(1)
+	normal.set_corner_radius_all(5)
+	normal.content_margin_left = 12.0
+	normal.content_margin_right = 12.0
+	var hover := normal.duplicate() as StyleBoxFlat
+	hover.bg_color = accent.darkened(0.68)
+	hover.border_color = accent
+	hover.set_border_width_all(2)
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("focus", hover)
+	button.add_theme_stylebox_override("pressed", hover)
+
+
 # V0.7.5 combat cards use the authoritative registry domain before falling
 # back to the inherited facility renderer. This keeps the public card face
 # aligned with the combat definition without changing supply or projection.
