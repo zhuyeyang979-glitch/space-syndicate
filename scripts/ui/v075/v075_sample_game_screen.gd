@@ -1318,11 +1318,15 @@ func _resolve_combat_layout() -> void:
 	var viewport_size := get_viewport_rect().size
 	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
 		return
+	var responsive_width := float(get_window().size.x)
+	if responsive_width <= 0.0:
+		responsive_width = viewport_size.x
 	var root_scroll := $RootMargin as ScrollContainer
 	var layout := _combat_layout_plan(
 		viewport_size,
 		root_scroll.get_global_rect().size,
-		_combat_collapsed
+		_combat_collapsed,
+		responsive_width
 	)
 	_combat_layout_mode = str(layout.get("layout_mode", "COMPACT"))
 	var panel_size := layout.get("panel_size", Vector2()) as Vector2
@@ -1392,16 +1396,20 @@ func _finish_combat_host_layout_settle() -> void:
 func _combat_layout_plan(
 	viewport_size: Vector2,
 	safe_size: Vector2,
-	collapsed: bool
+	collapsed: bool,
+	responsive_width: float = -1.0
 ) -> Dictionary:
 	var resolved_viewport := Vector2(
 		maxf(1.0, viewport_size.x),
 		maxf(1.0, viewport_size.y)
 	)
+	var resolved_responsive_width := (
+		responsive_width if responsive_width > 0.0 else resolved_viewport.x
+	)
 	var layout_mode := "REGULAR"
-	if resolved_viewport.x < COMBAT_LAYOUT_NARROW_MAX_WIDTH:
+	if resolved_responsive_width < COMBAT_LAYOUT_NARROW_MAX_WIDTH:
 		layout_mode = "NARROW"
-	elif resolved_viewport.x < COMBAT_LAYOUT_REGULAR_MIN_WIDTH:
+	elif resolved_responsive_width < COMBAT_LAYOUT_REGULAR_MIN_WIDTH:
 		layout_mode = "COMPACT"
 	var available_width := maxf(
 		1.0,
@@ -1421,6 +1429,7 @@ func _combat_layout_plan(
 	return {
 		"schema": "V075CombatLayoutPlanV2",
 		"layout_mode": layout_mode,
+		"responsive_physical_width": resolved_responsive_width,
 		"panel_anchor": "production_flow_stack",
 		"panel_size": Vector2(panel_width, panel_height),
 		"available_width": available_width,
@@ -1627,6 +1636,7 @@ func _refresh_combat_geometry_snapshot() -> void:
 		"schema": "V075CombatLayoutGeometryV3",
 		"geometry_source": "instantiated_production_controls",
 		"layout_mode": _combat_layout_mode,
+		"responsive_physical_width": float(get_window().size.x),
 		"panel_anchor": "production_flow_stack",
 		"viewport_rect": viewport_rect,
 		"safe_area_rect": safe_rect,
