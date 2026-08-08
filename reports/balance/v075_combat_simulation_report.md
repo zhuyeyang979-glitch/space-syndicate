@@ -1,5 +1,9 @@
 # V0.7.5 Combat Simulation Report
 
+Evidence role: **historical opening-PR partial sample only**. This five-match
+artifact predates the C4 authoritative card-identity closure, does not attest the
+eventual final PR SHA, and is not an input to formal 2,000-match acceptance.
+
 Acceptance status: PARTIAL.
 Production path: V075RuntimeOwner -> V075CombatRuntimeOwner -> FinalSettlement.
 Acceleration: inherited production `_process`, delta 1.0 seconds (30 accelerated seconds), with no direct state injection.

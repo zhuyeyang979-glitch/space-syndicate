@@ -1,4 +1,8 @@
 {
+	"evidence_role": "historical_opening_pr_partial_sample",
+	"formal_acceptance_authority": false,
+	"superseded_for_acceptance": true,
+	"supersession_reason": "Five-match opening-PR sample predates C4 authoritative card identity and does not attest the eventual final PR SHA.",
 	"acceptance_status": "PARTIAL",
 	"configuration_count": 5,
 	"configuration_results": [

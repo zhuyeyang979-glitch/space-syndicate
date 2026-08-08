@@ -9131,3 +9131,77 @@ deleted. Evidence and the remaining action inventory are recorded in
   balance values, New-Game-only Save boundary, AI policy, and telemetry
   semantics are unchanged. The old human-playtest tag remains historical; the
   replacement candidate is `alpha-0.5c1-v073-human-playtest-ui-globe-2`.
+
+## 2026-08-08 — PR #90 V0.7.5 acceptance reconciliation (BLOCKED)
+
+- Anchored the audit to unchanged `origin/main` `bd0af5c` and Draft PR #90
+  head `08378ca`. Migrated `ui_text_smoke_test.gd` and `visual_snapshot.gd`
+  from disconnected V0.7.4 production oracles to the real V0.7.5 entry,
+  bootstrap, composition, and screen chain. Both tests pass, and five explicit
+  absence/reachability proofs cover the retired owners without restoring
+  `scripts/main.gd`.
+- Tightened private-skill and military identity boundaries: authenticated
+  viewer projections, typed target IDs and generations, canonical DTO
+  forwarding, fail-closed stale/hostile input, no human-path first-target
+  fallback, measured terminal quiescence, and receipt-derived duplicate
+  detection. A real `Skill_*` button now proves one canonical UI submission
+  through Dock, Surface, Screen, Bootstrap, Flow, and Runtime.
+- The focused matrix is 17/18 green with zero script errors. The remaining
+  deterministic failure is `v075_natural_runtime_error_zero_test.gd`: the
+  match settles exactly once with zero runtime, privacy, and duplicate-effect
+  errors, but produces zero combat actions. Strict military identity exposes
+  that the current authoritative hand/card lifecycle does not supply a
+  positive `card_generation`; inventing a projection default would be a false
+  acceptance, while adding that lifecycle would cross this task's forbidden
+  Save-schema/owner boundary.
+- All five formal simulation configurations accept their requested 400-match
+  shard scopes, but no current 2,000-job aggregate was run. The tracked
+  five-match PARTIAL report remains historical and cannot be relabeled GREEN.
+  Real 480/640/660/900/1366/1600/1920 child geometry and asset-reserve lanes
+  are also not proven: current acceptance fields include hard-coded values and
+  small-width minimum-size conflicts.
+- Exact-SHA MCP, production-probe, and three-real-viewport evidence was not
+  started after these blockers. GitHub still reports zero checks. No V0.7.5
+  constitution/balance, Save schema, V0.7.6, or `scripts/main.gd` change was
+  made; no commit or push was created, and PR #90 remains Draft.
+
+## 2026-08-08 — PR #90 V0.7.5 C4 pre-freeze closure
+
+- Replaced the synthetic `card_generation` boundary with one owner-private DBG
+  contract that seals immutable card identity and the current hand lifecycle.
+  Queue, lock, and pre-resolution all revalidate the same canonical binding;
+  forged, rival, missing, cross-match, and stale-after-redraw bindings fail
+  closed. Success and legal Fizzle each complete the normal personal-discard
+  lifecycle exactly once without adding a Save field or moving DBG ownership
+  into Combat.
+- Made the production combat surface responsive through its real `main.tscn`
+  composition and accessible scroll path. Actual safe-area, planet, dock,
+  track, reserve-lane, descendant-control, and resource-binding geometry now
+  drives acceptance. Nine combat card definitions resolve distinct typed
+  presentation assets instead of generic hard-coded monster/military icons.
+- Removed three acceptance false greens and added adversarial controls for
+  stale identity, child overlap, invalid/wrong-type resources, reserve-lane
+  overlap, and declared-versus-runtime viewport mismatch. The seven production
+  viewports (480, 640, 660, 900, 1366x768, 1600x960, 1920x1080) pass `7/7`;
+  UI text and visual contracts also pass on the V0.7.5 production chain.
+- Added independent Combat-owner and outer facility-effect witnesses. Fresh
+  Success and Fizzle receipts commit once; exact replay changes no HP, revision,
+  DBG lifecycle, public history, presentation, or telemetry state. Identity
+  collision, native-ledger loss, malformed witness/receipt state, and orphan
+  replay all fail closed, while resolution/transaction rollback preserves the
+  processed, witness, and bridge ledgers together.
+- Hardened the Godot runner to preserve raw stream bytes and hashes, strictly
+  decode UTF-8/UTF-16, and fail closed for NUL, replacement characters,
+  warnings, errors, missing markers, incomplete capture, or residual process
+  state. The inherited six Unicode diagnostics were traced to the sole
+  production `"\\u0000"` GDScript sentinel and removed with an exact missing-key
+  check. Raw decoding is `6/6`, failure detection is `9/9`, import-mode handling
+  is `5/5`, and the final focused matrix is `29/29` with zero diagnostics and
+  eight natural combat actions.
+- Added a bounded Windows PR workflow pinned to Godot 4.7 and a fixed checkout
+  action. It exercises runner negative controls plus check-only, stale-target,
+  identity, privacy, exact-once, UI/visual, geometry, and seven-viewport gates.
+  The old five-match simulation files are explicitly historical PARTIAL
+  evidence. Formal 2,000-match simulation, exact-SHA MCP, three desktop-size
+  captures, and the Ready transition remain external post-freeze gates and are
+  intentionally not claimed by this tracked log entry.
