@@ -3,8 +3,8 @@ class_name V075MilitaryMissionPanel
 
 signal mission_selected(option: Dictionary)
 
-const CATALOG := preload(
-	"res://resources/presentation/alpha01_card_illustration_catalog.tres"
+const V075CardDefinitionRegistry := preload(
+	"res://scripts/v075/cards/v075_card_definition_registry.gd"
 )
 const TASK_KINDS := [
 	"assault_region",
@@ -19,26 +19,13 @@ const TASK_KINDS := [
 var _owner_visible := false
 var _options: Array[Dictionary] = []
 var _selected_by_task: Dictionary = {}
-var _preferred_option_id_by_task: Dictionary = {}
+var _preferred_option_by_task: Dictionary = {}
 var _invalid_option_count := 0
+var _presentation_binding_failure_count := 0
 
 
 func _ready() -> void:
 	_apply_panel_style()
-	_region_button.icon = CATALOG.resource_for_asset_key(
-		&"icon.board.target"
-	) as Texture2D
-	_monster_button.icon = CATALOG.resource_for_asset_key(
-		&"vfx.monster.attack_smoke"
-	) as Texture2D
-	_region_button.set_meta(
-		"stable_asset_key",
-		"icon.board.target"
-	)
-	_monster_button.set_meta(
-		"stable_asset_key",
-		"vfx.monster.attack_smoke"
-	)
 	_region_button.pressed.connect(
 		_on_task_pressed.bind("assault_region")
 	)
@@ -63,13 +50,11 @@ func configure(
 	options: Array,
 	owner_visible := true
 ) -> void:
-	_preferred_option_id_by_task.clear()
+	_preferred_option_by_task.clear()
 	for task_kind in TASK_KINDS:
 		var previous := _selected_by_task.get(task_kind, {}) as Dictionary
 		if not previous.is_empty():
-			_preferred_option_id_by_task[task_kind] = str(
-				previous.get("option_id", "")
-			)
+			_preferred_option_by_task[task_kind] = previous.duplicate(true)
 	_options.clear()
 	_selected_by_task.clear()
 	for option_variant in options:
@@ -119,6 +104,13 @@ func debug_snapshot() -> Dictionary:
 			),
 		},
 		"invalid_option_count": _invalid_option_count,
+		"presentation_binding_failure_count": (
+			_presentation_binding_failure_count
+		),
+		"button_presentation_bindings": {
+			"assault_region": _button_presentation_debug(_region_button),
+			"assault_monster": _button_presentation_debug(_monster_button),
+		},
 		"guard_ui_count": guard_count,
 		"bound_action_ui_count": 0,
 		"military_skill_dock_count": 0,
@@ -136,6 +128,7 @@ func _render() -> void:
 	visible = _owner_visible and not _options.is_empty()
 	_selected_by_task.clear()
 	_invalid_option_count = 0
+	_presentation_binding_failure_count = 0
 	for task_kind in TASK_KINDS:
 		var candidates: Array[Dictionary] = []
 		for option in _options:
@@ -156,32 +149,37 @@ func _populate_option_menu(
 ) -> void:
 	var menu := _menu_for_task(task_kind)
 	menu.clear()
-	var preferred_id := str(
-		_preferred_option_id_by_task.get(task_kind, "")
-	)
+	var preferred := _preferred_option_by_task.get(task_kind, {}) as Dictionary
 	var preferred_index := -1
 	var first_enabled_index := -1
 	for option in candidates:
 		var index := menu.item_count
 		menu.add_item(_option_menu_label(option))
 		menu.set_item_metadata(index, option.duplicate(true))
-		var enabled := bool(option.get("enabled", false))
+		var icon := _presentation_texture(option)
+		menu.set_item_icon(index, icon)
+		var presentation_green := icon != null
+		if not presentation_green:
+			_presentation_binding_failure_count += 1
+		var enabled := (
+			bool(option.get("enabled", false)) and presentation_green
+		)
 		menu.set_item_disabled(index, not enabled)
 		if enabled and first_enabled_index < 0:
 			first_enabled_index = index
-		if str(option.get("option_id", "")) == preferred_id:
+		if (
+			not preferred.is_empty()
+			and _same_option_identity(option, preferred)
+		):
 			preferred_index = index
 	var selected_index := preferred_index
-	if selected_index < 0 or menu.is_item_disabled(selected_index):
-		selected_index = first_enabled_index
-	if selected_index < 0 and menu.item_count > 0:
-		selected_index = 0
-	if selected_index >= 0:
+	if selected_index >= 0 and not menu.is_item_disabled(selected_index):
 		menu.select(selected_index)
 		_selected_by_task[task_kind] = (
 			menu.get_item_metadata(selected_index) as Dictionary
 		).duplicate(true)
 	else:
+		menu.select(-1)
 		_selected_by_task.erase(task_kind)
 	menu.disabled = menu.item_count == 0 or first_enabled_index < 0
 
@@ -191,10 +189,11 @@ func _sync_task_controls() -> void:
 		var option := _selected_by_task.get(task_kind, {}) as Dictionary
 		var button := _button_for_task(task_kind)
 		button.set_meta("selected_option", option.duplicate(true))
+		_bind_button_presentation(button, option)
 		button.tooltip_text = _option_tooltip(option)
 		button.disabled = option.is_empty() or not bool(
 			option.get("enabled", false)
-		)
+		) or not _option_presentation_green(option)
 		button.mouse_default_cursor_shape = (
 			Control.CURSOR_POINTING_HAND
 			if not button.disabled
@@ -209,11 +208,15 @@ func _on_option_selected(index: int, task_kind: String) -> void:
 	if index < 0 or index >= menu.item_count:
 		return
 	var option := menu.get_item_metadata(index) as Dictionary
-	if not _option_identity_valid(option) or not bool(option.get("enabled", false)):
+	if (
+		not _option_identity_valid(option)
+		or not _option_presentation_green(option)
+		or not bool(option.get("enabled", false))
+	):
 		_invalid_option_count += 1
 		return
 	_selected_by_task[task_kind] = option.duplicate(true)
-	_preferred_option_id_by_task[task_kind] = str(option.get("option_id", ""))
+	_preferred_option_by_task[task_kind] = option.duplicate(true)
 	_sync_task_controls()
 
 
@@ -226,6 +229,7 @@ func select_option_id(task_kind: String, option_id: String) -> bool:
 		if (
 			str(option.get("option_id", "")) == option_id
 			and _option_identity_valid(option)
+			and _option_presentation_green(option)
 			and bool(option.get("enabled", false))
 		):
 			menu.select(index)
@@ -273,9 +277,90 @@ func _button_for_task(task_kind: String) -> Button:
 	return _region_button if task_kind == "assault_region" else _monster_button
 
 
+func _presentation_descriptor(option: Dictionary) -> Dictionary:
+	var descriptor := V075CardDefinitionRegistry.presentation_descriptor(
+		str(option.get("card_definition_id", ""))
+	)
+	if descriptor.is_empty():
+		return {}
+	if (
+		str(descriptor.get("domain", "")) != "military"
+		or not V075CardDefinitionRegistry.presentation_descriptor_error(
+			descriptor
+		).is_empty()
+	):
+		return {}
+	return descriptor
+
+
+func _presentation_texture(option: Dictionary) -> Texture2D:
+	var descriptor := _presentation_descriptor(option)
+	if descriptor.is_empty():
+		return null
+	return V075CardDefinitionRegistry.presentation_texture(
+		str(option.get("card_definition_id", ""))
+	)
+
+
+func _option_presentation_green(option: Dictionary) -> bool:
+	return not _presentation_descriptor(option).is_empty() \
+		and _presentation_texture(option) != null
+
+
+func _bind_button_presentation(button: Button, option: Dictionary) -> void:
+	button.icon = null
+	for meta_key in [
+		"bound_card_definition_id",
+		"presentation_asset_key",
+		"presentation_resource_path",
+	]:
+		if button.has_meta(meta_key):
+			button.remove_meta(meta_key)
+	var descriptor := _presentation_descriptor(option)
+	var texture := _presentation_texture(option)
+	if descriptor.is_empty() or texture == null:
+		return
+	button.icon = texture
+	button.set_meta(
+		"bound_card_definition_id",
+		str(option.get("card_definition_id", ""))
+	)
+	button.set_meta(
+		"presentation_asset_key",
+		str(descriptor.get("presentation_asset_key", ""))
+	)
+	button.set_meta(
+		"presentation_resource_path",
+		str(descriptor.get("resource_path", ""))
+	)
+
+
+func _button_presentation_debug(button: Button) -> Dictionary:
+	if not is_instance_valid(button):
+		return {}
+	return {
+		"card_definition_id": str(
+			button.get_meta("bound_card_definition_id", "")
+		),
+		"presentation_asset_key": str(
+			button.get_meta("presentation_asset_key", "")
+		),
+		"resource_path": str(
+			button.get_meta("presentation_resource_path", "")
+		),
+		"texture_bound": button.icon != null,
+		"texture_resource_path": (
+			str(button.icon.resource_path) if button.icon != null else ""
+		),
+	}
+
+
 func _option_identity_valid(option: Dictionary) -> bool:
 	var task_kind := str(option.get("task_kind", ""))
-	if task_kind not in TASK_KINDS:
+	if (
+		task_kind not in TASK_KINDS
+		or str(option.get("action_domain", "")) != "military"
+	):
 		return false
 	for field_name in [
 		"option_id",
@@ -286,20 +371,85 @@ func _option_identity_valid(option: Dictionary) -> bool:
 	]:
 		if str(option.get(field_name, "")).is_empty():
 			return false
-	if option.has("card_generation") and int(option.get("card_generation", 0)) < 1:
+	if not _card_action_binding_valid(option):
 		return false
 	if task_kind == "assault_region":
-		return not str(option.get("target_region_id", "")).is_empty()
+		return (
+			not str(option.get("target_region_id", "")).is_empty()
+			and str(option.get(
+				"target_monster_source_instance_id",
+				""
+			)).is_empty()
+			and not option.has("target_source_generation")
+		)
 	var target_id := str(
 		option.get("target_monster_source_instance_id", "")
 	)
 	if target_id.is_empty():
 		return false
-	if option.has("target_source_generation") and int(
-		option.get("target_source_generation", 0)
-	) < 1:
+	if not _positive_int_field(option, "target_source_generation"):
 		return false
-	return true
+	return str(option.get("target_region_id", "")).is_empty()
+
+
+func _same_option_identity(left: Dictionary, right: Dictionary) -> bool:
+	for field_name in [
+		"option_id",
+		"owner_player_id",
+		"card_instance_id",
+		"card_definition_id",
+		"target_slot_id",
+		"task_kind",
+		"target_region_id",
+		"target_monster_source_instance_id",
+		"action_domain",
+	]:
+		if str(left.get(field_name, "")) != str(right.get(field_name, "")):
+			return false
+	if (
+		not _card_action_binding_valid(left)
+		or not _card_action_binding_valid(right)
+		or left.get("card_action_binding") != right.get("card_action_binding")
+	):
+		return false
+	if str(left.get("task_kind", "")) == "assault_region":
+		return (
+			not left.has("target_source_generation")
+			and not right.has("target_source_generation")
+		)
+	return (
+		_positive_int_field(left, "target_source_generation")
+		and _positive_int_field(right, "target_source_generation")
+		and left.get("target_source_generation")
+			== right.get("target_source_generation")
+	)
+
+
+func _card_action_binding_valid(option: Dictionary) -> bool:
+	var binding_variant: Variant = option.get("card_action_binding")
+	if not (binding_variant is Dictionary):
+		return false
+	var binding := binding_variant as Dictionary
+	return (
+		not binding.is_empty()
+		and str(binding.get("owner_player_id", ""))
+			== str(option.get("owner_player_id", ""))
+		and str(binding.get("card_instance_id", ""))
+			== str(option.get("card_instance_id", ""))
+		and str(binding.get("card_definition_id", ""))
+			== str(option.get("card_definition_id", ""))
+		and binding.get("authoritative_zone") == "hand"
+		and _positive_int_field(binding, "zone_revision")
+		and str(binding.get("binding_fingerprint", "")).length() == 64
+	)
+
+
+func _positive_int_field(source: Dictionary, field_name: String) -> bool:
+	return (
+		source.has(field_name)
+		and typeof(source.get(field_name)) == TYPE_INT
+		and int(source.get(field_name)) > 0
+	)
 
 
 func _option_precedes(left: Dictionary, right: Dictionary) -> bool:

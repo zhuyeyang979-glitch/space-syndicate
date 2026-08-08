@@ -3,9 +3,13 @@ class_name V075CombatPlayerSurface
 
 signal private_target_selection_requested(request: Dictionary)
 signal military_mission_selected(option: Dictionary)
+signal responsive_minimum_resolved(preferred_height: float)
 
 const CATALOG := preload(
 	"res://resources/presentation/alpha01_card_illustration_catalog.tres"
+)
+const ResponsiveAcceptanceAudit := preload(
+	"res://scripts/ui/v075/v075_responsive_acceptance_audit.gd"
 )
 const COLOR_LABELS := {
 	"life": "生命",
@@ -25,6 +29,8 @@ const COLOR_VALUES := {
 }
 const RANK_LABELS := ["", "I", "II", "III", "IV"]
 const PRESENTATION_HISTORY_LIMIT := 4
+const PRIVATE_TWO_COLUMN_MIN_CONTENT_WIDTH := 620.0
+const LAYOUT_EPSILON := 0.5
 
 @onready var _public_panel: PanelContainer = %PublicMonsterPanel
 @onready var _name_label: Label = %MonsterName
@@ -40,6 +46,9 @@ const PRESENTATION_HISTORY_LIMIT := 4
 @onready var _path_label: Label = %PathLabel
 @onready var _unlocked_label: Label = %UnlockedSkillCount
 @onready var _batch_used_badge: Label = %BatchUsedBadge
+@onready var _info_grid: GridContainer = (
+	$Rows/PublicMonsterPanel/Margin/Rows/InfoRow
+)
 @onready var _private_grid: GridContainer = %PrivateGrid
 @onready var _rows: VBoxContainer = $Rows
 @onready var _skill_dock: V075MonsterPrivateSkillDock = %SkillDock
@@ -64,6 +73,8 @@ var _presentation_cue_collision_count := 0
 var _presentation_cue_rejected_count := 0
 var _presentation_animation_count := 0
 var _presentation_tween: Tween
+var _layout_settle_scheduled := false
+var _last_resolved_preferred_height := -1.0
 
 
 func _ready() -> void:
@@ -157,6 +168,7 @@ func show_presentation_cue(cue: Dictionary) -> Dictionary:
 	_presentation_tween.tween_property(_cue_progress, "value", 100.0, 0.34)
 	_presentation_animation_count += 1
 	_presentation_strip.visible = not _presentation_history.is_empty()
+	_schedule_layout_settle()
 	return _presentation_cue_result(true, "none")
 
 
@@ -177,6 +189,7 @@ func reset_presentation_cues() -> void:
 	if _presentation_tween != null and _presentation_tween.is_valid():
 		_presentation_tween.kill()
 	_presentation_strip.visible = false
+	_schedule_layout_settle()
 
 
 func debug_snapshot() -> Dictionary:
@@ -256,40 +269,16 @@ func debug_snapshot() -> Dictionary:
 
 
 func debug_geometry_audit() -> Dictionary:
-	var controls: Array[Control] = []
-	for candidate in [
-		_public_panel,
-		_skill_dock,
-		_military_panel,
-		_presentation_strip,
-	]:
-		if is_instance_valid(candidate) and candidate.visible:
-			controls.append(candidate)
-	var overlap_count := 0
-	var outside_count := 0
-	var surface_rect := get_global_rect()
-	var rects := {}
-	for control in controls:
-		var rect := control.get_global_rect()
-		rects[control.name] = rect
-		if not surface_rect.encloses(rect):
-			outside_count += 1
-	for left_index in range(controls.size()):
-		for right_index in range(left_index + 1, controls.size()):
-			var intersection := controls[left_index].get_global_rect().intersection(
-				controls[right_index].get_global_rect()
-			)
-			if intersection.size.x > 0.5 and intersection.size.y > 0.5:
-				overlap_count += 1
-	return {
-		"schema": "V075CombatSurfaceGeometryAuditV1",
-		"visible_control_count": controls.size(),
-		"unintended_overlap_count": overlap_count,
-		"outside_surface_count": outside_count,
-		"private_grid_columns": _private_grid.columns,
-		"surface_rect": surface_rect,
-		"rects": rects,
-	}
+	var audit := ResponsiveAcceptanceAudit.audit_control_tree(self)
+	audit["schema"] = "V075CombatSurfaceGeometryAuditV2"
+	audit["private_grid_columns"] = _private_grid.columns
+	audit["layout_mode"] = _layout_mode
+	audit["rows_combined_minimum_height"] = (
+		_rows.get_combined_minimum_size().y
+	)
+	audit["preferred_content_height"] = preferred_content_height()
+	audit["surface_custom_minimum_height"] = custom_minimum_size.y
+	return audit
 
 
 func _select_public_monster(
@@ -425,9 +414,16 @@ func _render_private_surfaces() -> void:
 	var owner_id := str(
 		_selected_public_monster.get("owner_player_id", "")
 	)
+	var selected_generation := int(
+		_selected_public_monster.get("source_generation", 0)
+	)
 	_viewer_is_owner = (
 		not viewer_id.is_empty()
 		and viewer_id == owner_id
+		and _positive_int_field(
+			_selected_public_monster,
+			"source_generation"
+		)
 	)
 	var skill_source := {}
 	if _viewer_is_owner:
@@ -449,6 +445,12 @@ func _render_private_surfaces() -> void:
 						""
 					)
 				) == viewer_id
+				and _positive_int_field(
+					source_variant as Dictionary,
+					"source_generation"
+				)
+				and (source_variant as Dictionary).get("source_generation")
+					== _selected_public_monster.get("source_generation")
 			):
 				skill_source = (
 					source_variant as Dictionary
@@ -489,14 +491,62 @@ func _resolve_layout() -> void:
 		return
 	var width := size.x
 	var available_width := maxf(0.0, width - 20.0)
-	var required_two_column_width := (
-		_skill_dock.custom_minimum_size.x
-		+ _military_panel.custom_minimum_size.x
+	var required_two_column_width := maxf(
+		PRIVATE_TWO_COLUMN_MIN_CONTENT_WIDTH,
+		_skill_dock.get_combined_minimum_size().x
+		+ _military_panel.get_combined_minimum_size().x
 		+ float(_private_grid.get_theme_constant("h_separation"))
 	)
 	var two_column := available_width >= required_two_column_width
 	_layout_mode = "WIDE" if two_column else "COMPACT"
-	_private_grid.columns = 2 if two_column else 1
+	var private_columns := 2 if two_column else 1
+	# The three public-fact groups are a row at normal widths and a readable
+	# vertical stack at the 480px acceptance viewport. No child is clipped.
+	var info_columns := 1 if available_width < 520.0 else 3
+	var column_count_changed := (
+		_private_grid.columns != private_columns
+		or _info_grid.columns != info_columns
+	)
+	_private_grid.columns = private_columns
+	_info_grid.columns = info_columns
+	if column_count_changed:
+		_private_grid.queue_sort()
+		_info_grid.queue_sort()
+		_rows.queue_sort()
+	_schedule_layout_settle()
+
+
+func _schedule_layout_settle() -> void:
+	if _layout_settle_scheduled:
+		return
+	_layout_settle_scheduled = true
+	# GridContainer publishes its new combined minimum after the queued sort.
+	# The outer production ScrollContainer must consume that settled value,
+	# otherwise a one-column layout can be clipped at the previous height.
+	call_deferred("_prepare_settled_layout_minimum")
+
+
+func _prepare_settled_layout_minimum() -> void:
+	_private_grid.update_minimum_size()
+	_info_grid.update_minimum_size()
+	_rows.update_minimum_size()
+	_private_grid.queue_sort()
+	_info_grid.queue_sort()
+	_rows.queue_sort()
+	call_deferred("_publish_settled_layout_minimum")
+
+
+func _publish_settled_layout_minimum() -> void:
+	_layout_settle_scheduled = false
+	var resolved_height := preferred_content_height()
+	if (
+		_last_resolved_preferred_height >= 0.0
+		and absf(resolved_height - _last_resolved_preferred_height)
+			<= LAYOUT_EPSILON
+	):
+		return
+	_last_resolved_preferred_height = resolved_height
+	responsive_minimum_resolved.emit(resolved_height)
 
 
 func _apply_styles() -> void:
@@ -728,24 +778,10 @@ func _string_array(values: Array) -> Array[String]:
 
 
 func _on_private_target_selection_requested(request: Dictionary) -> void:
-	var requested_generation := int(request.get("source_generation", 0))
-	var selected_generation := int(
-		_selected_public_monster.get("source_generation", 0)
-	)
-	if (
-		not _viewer_is_owner
-		or request.is_empty()
-		or str(request.get("source_instance_id", "")) != str(
-			_selected_public_monster.get("source_instance_id", "")
-		)
-		or (
-			requested_generation > 0
-			and requested_generation != selected_generation
-		)
-		or not (request.get("target_binding", {}) is Dictionary)
-	):
+	var canonical_request := _current_private_skill_request(request)
+	if canonical_request.is_empty():
 		return
-	private_target_selection_requested.emit(request.duplicate(true))
+	private_target_selection_requested.emit(canonical_request)
 
 
 func _on_military_mission_selected(option: Dictionary) -> void:
@@ -761,4 +797,200 @@ func _on_military_mission_selected(option: Dictionary) -> void:
 		]
 	):
 		return
-	military_mission_selected.emit(option.duplicate(true))
+	var canonical_option := _current_military_option(option)
+	if canonical_option.is_empty():
+		return
+	military_mission_selected.emit(canonical_option)
+
+
+func _current_private_skill_request(candidate: Dictionary) -> Dictionary:
+	if not _viewer_is_owner or candidate.is_empty():
+		return {}
+	var viewer_id := str(_projection.get("viewer_player_id", ""))
+	var source_id := str(_selected_public_monster.get(
+		"source_instance_id",
+		""
+	))
+	var source_generation := int(_selected_public_monster.get(
+		"source_generation",
+		0
+	))
+	var skill_id := str(candidate.get("skill_definition_id", ""))
+	if (
+		viewer_id.is_empty()
+		or source_id.is_empty()
+		or not _positive_int_field(
+			_selected_public_monster,
+			"source_generation"
+		)
+		or str(candidate.get("source_instance_id", "")) != source_id
+		or not _positive_int_field(candidate, "source_generation")
+		or candidate.get("source_generation")
+			!= _selected_public_monster.get("source_generation")
+		or skill_id.is_empty()
+	):
+		return {}
+	for source_variant in _projection.get(
+		"own_monster_skill_sources",
+		[]
+	) as Array:
+		if not (source_variant is Dictionary):
+			continue
+		var source := source_variant as Dictionary
+		if (
+			str(source.get("source_instance_id", "")) != source_id
+			or str(source.get("owner_player_id", "")) != viewer_id
+			or not _positive_int_field(source, "source_generation")
+			or source.get("source_generation")
+				!= candidate.get("source_generation")
+		):
+			continue
+		for skill_variant in source.get("skills", []) as Array:
+			if not (skill_variant is Dictionary):
+				continue
+			var skill := skill_variant as Dictionary
+			if (
+				str(skill.get("skill_definition_id", "")) != skill_id
+				or not bool(skill.get("can_request", false))
+				or str(skill.get("state", "")) != "READY"
+			):
+				continue
+			var expected_binding := skill.get("target_binding", {}) as Dictionary
+			var candidate_binding := candidate.get("target_binding", {}) as Dictionary
+			var expected_contract := skill.get("target_contract", {}) as Dictionary
+			var candidate_contract := candidate.get("target_contract", {}) as Dictionary
+			if (
+				expected_binding.is_empty()
+				or not _same_flat_dictionary(
+					candidate_binding,
+					expected_binding
+				)
+				or not _same_flat_dictionary(
+					candidate_contract,
+					expected_contract
+				)
+			):
+				return {}
+			return {
+				"source_instance_id": source_id,
+				"source_generation": source_generation,
+				"skill_definition_id": skill_id,
+				"target_binding": expected_binding.duplicate(true),
+				"target_contract": expected_contract.duplicate(true),
+			}
+	return {}
+
+
+func _current_military_option(candidate: Dictionary) -> Dictionary:
+	var viewer_id := str(_projection.get("viewer_player_id", ""))
+	if (
+		viewer_id.is_empty()
+		or str(candidate.get("owner_player_id", "")) != viewer_id
+		or str(candidate.get("action_domain", "")) != "military"
+		or not _card_action_binding_valid(candidate, viewer_id)
+	):
+		return {}
+	var task_kind := str(candidate.get("task_kind", ""))
+	if (
+		(task_kind == "assault_monster" and (
+			not _positive_int_field(candidate, "target_source_generation")
+		))
+		or (task_kind == "assault_region" and candidate.has(
+			"target_source_generation"
+		))
+		or task_kind not in ["assault_region", "assault_monster"]
+	):
+		return {}
+	for option_variant in _projection.get("military_task_options", []) as Array:
+		if not (option_variant is Dictionary):
+			continue
+		var option := option_variant as Dictionary
+		if (
+			bool(option.get("enabled", false))
+			and _same_military_option_identity(candidate, option)
+		):
+			return option.duplicate(true)
+	return {}
+
+
+func _same_military_option_identity(
+	left: Dictionary,
+	right: Dictionary
+) -> bool:
+	for field_name in [
+		"option_id",
+		"owner_player_id",
+		"card_instance_id",
+		"card_definition_id",
+		"target_slot_id",
+		"task_kind",
+		"target_region_id",
+		"target_monster_source_instance_id",
+		"action_domain",
+	]:
+		if str(left.get(field_name, "")) != str(right.get(field_name, "")):
+			return false
+	if (
+		not _card_action_binding_valid(
+			left,
+			str(left.get("owner_player_id", ""))
+		)
+		or not _card_action_binding_valid(
+			right,
+			str(right.get("owner_player_id", ""))
+		)
+		or left.get("card_action_binding") != right.get("card_action_binding")
+	):
+		return false
+	if str(left.get("task_kind", "")) == "assault_region":
+		return (
+			not left.has("target_source_generation")
+			and not right.has("target_source_generation")
+		)
+	return (
+		_positive_int_field(left, "target_source_generation")
+		and _positive_int_field(right, "target_source_generation")
+		and left.get("target_source_generation")
+			== right.get("target_source_generation")
+	)
+
+
+func _card_action_binding_valid(
+	option: Dictionary,
+	expected_owner_id: String
+) -> bool:
+	var binding_variant: Variant = option.get("card_action_binding")
+	if not (binding_variant is Dictionary):
+		return false
+	var binding := binding_variant as Dictionary
+	return (
+		not binding.is_empty()
+		and str(binding.get("owner_player_id", "")) == expected_owner_id
+		and str(binding.get("card_instance_id", ""))
+			== str(option.get("card_instance_id", ""))
+		and str(binding.get("card_definition_id", ""))
+			== str(option.get("card_definition_id", ""))
+		and binding.get("authoritative_zone") == "hand"
+		and _positive_int_field(binding, "zone_revision")
+		and str(binding.get("binding_fingerprint", "")).length() == 64
+	)
+
+
+func _positive_int_field(source: Dictionary, field_name: String) -> bool:
+	return (
+		source.has(field_name)
+		and typeof(source.get(field_name)) == TYPE_INT
+		and int(source.get(field_name)) > 0
+	)
+
+
+func _same_flat_dictionary(left: Dictionary, right: Dictionary) -> bool:
+	if left.size() != right.size():
+		return false
+	for key_variant in left.keys():
+		if (
+			not right.has(key_variant)
+			or left.get(key_variant) != right.get(key_variant)
+		):
+			return false
+	return true

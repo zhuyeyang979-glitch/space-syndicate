@@ -5,7 +5,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/v075/V075MilitaryMissionPanel.tscn" id="3_military"]
 
 [node name="V075CombatPlayerSurface" type="Control"]
-custom_minimum_size = Vector2(640, 410)
+custom_minimum_size = Vector2(0, 410)
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -72,10 +72,12 @@ theme_override_font_sizes/font_size = 11
 text = "本批可用"
 vertical_alignment = 1
 
-[node name="InfoRow" type="HBoxContainer" parent="Rows/PublicMonsterPanel/Margin/Rows"]
+[node name="InfoRow" type="GridContainer" parent="Rows/PublicMonsterPanel/Margin/Rows"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 14
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 7
+columns = 3
 
 [node name="Preferred" type="HBoxContainer" parent="Rows/PublicMonsterPanel/Margin/Rows/InfoRow"]
 layout_mode = 2

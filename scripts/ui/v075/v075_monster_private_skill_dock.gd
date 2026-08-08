@@ -73,8 +73,14 @@ func configure(
 	owner_visible: bool,
 	requests_allowed: bool
 ) -> void:
-	_source = skill_source.duplicate(true) if owner_visible else {}
-	_owner_visible = owner_visible
+	var source_identity_valid := (
+		owner_visible
+		and not str(skill_source.get("source_instance_id", "")).is_empty()
+		and _positive_int_field(skill_source, "source_generation")
+		and not str(skill_source.get("owner_player_id", "")).is_empty()
+	)
+	_source = skill_source.duplicate(true) if source_identity_valid else {}
+	_owner_visible = source_identity_valid
 	_requests_allowed = requests_allowed
 	_render()
 
@@ -129,13 +135,18 @@ func _render() -> void:
 	)
 	_title_label.text = "%s · 私密技能" % monster_name
 	var skills := _source.get("skills", []) as Array
-	_empty_label.visible = skills.is_empty()
-	_skill_scroll.visible = not skills.is_empty()
 	for skill_variant in skills:
 		if not (skill_variant is Dictionary):
 			continue
 		var skill := skill_variant as Dictionary
+		var target_binding := skill.get("target_binding", {}) as Dictionary
+		if not _target_binding_valid(skill, target_binding):
+			_invalid_target_binding_count += 1
+			continue
 		_skill_cards.add_child(_build_skill_card(skill))
+	var rendered_skill_count := _skill_cards.get_child_count()
+	_empty_label.visible = rendered_skill_count == 0
+	_skill_scroll.visible = rendered_skill_count > 0
 
 
 func _build_skill_card(skill: Dictionary) -> Button:
@@ -149,7 +160,6 @@ func _build_skill_card(skill: Dictionary) -> Button:
 	var target_binding := skill.get("target_binding", {}) as Dictionary
 	if not _target_binding_valid(skill, target_binding):
 		can_request = false
-		_invalid_target_binding_count += 1
 	var button := Button.new()
 	button.name = "Skill_%s" % _safe_node_name(
 		str(skill.get("skill_definition_id", "unknown"))
@@ -409,7 +419,13 @@ func _on_skill_pressed(request: Dictionary) -> void:
 		return
 	var source_instance_id := str(request.get("source_instance_id", ""))
 	var skill_definition_id := str(request.get("skill_definition_id", ""))
-	if source_instance_id.is_empty() or skill_definition_id.is_empty():
+	var target_binding := request.get("target_binding", {}) as Dictionary
+	if (
+		source_instance_id.is_empty()
+		or skill_definition_id.is_empty()
+		or not _positive_int_field(request, "source_generation")
+		or not _target_binding_valid(request, target_binding)
+	):
 		return
 	private_target_selection_requested.emit(request.duplicate(true))
 
@@ -437,23 +453,75 @@ func _target_kind(skill: Dictionary) -> String:
 
 func _target_binding_valid(skill: Dictionary, binding: Dictionary) -> bool:
 	var target_kind := _target_kind(skill)
-	if target_kind in ["none", "self", "self_source"]:
-		return target_kind == "none" or (
-			not str(binding.get("target_id", "")).is_empty()
-			and str(binding.get("target_kind", "")) in [
-				"self_source",
-				"monster",
-			]
+	var binding_kind := str(binding.get("target_kind", ""))
+	var target_id := str(binding.get("target_id", ""))
+	if binding.is_empty() or target_id.is_empty():
+		return false
+	if target_kind in ["self", "self_source"]:
+		return (
+			binding_kind == "monster"
+			and target_id == str(_source.get("source_instance_id", ""))
+			and _positive_int_field(binding, "target_source_generation")
+			and binding.get("target_source_generation")
+				== _source.get("source_generation")
+			and not binding.has("target_facility_id")
+			and not binding.has("target_region_id")
+			and (
+				not binding.has("target_monster_source_instance_id")
+				or str(binding.get(
+					"target_monster_source_instance_id",
+					""
+				)) == target_id
+			)
 		)
-	if binding.is_empty() or str(binding.get("target_id", "")).is_empty():
-		return false
-	if str(binding.get("target_kind", "")) not in [
-		"facility",
-		"region",
-		"monster",
+	if target_kind == "enemy_public_facility":
+		return (
+			binding_kind == "facility"
+			and str(binding.get("target_facility_id", "")) == target_id
+			and _positive_int_field(
+				binding,
+				"target_facility_generation"
+			)
+			and not binding.has("target_region_id")
+			and not binding.has("target_monster_source_instance_id")
+			and not binding.has("target_source_generation")
+		)
+	if target_kind in [
+		"enemy_facilities_in_public_region",
+		"enemy_facilities_in_current_region",
 	]:
-		return false
-	return true
+		return (
+			binding_kind == "region"
+			and str(binding.get("target_region_id", "")) == target_id
+			and not binding.has("target_facility_id")
+			and not binding.has("target_facility_generation")
+			and not binding.has("target_monster_source_instance_id")
+			and not binding.has("target_source_generation")
+		)
+	if target_kind == "enemy_public_monster":
+		return (
+			binding_kind == "monster"
+			and _positive_int_field(binding, "target_source_generation")
+			and not binding.has("target_facility_id")
+			and not binding.has("target_facility_generation")
+			and not binding.has("target_region_id")
+			and (
+				not binding.has("target_monster_source_instance_id")
+				or str(binding.get(
+					"target_monster_source_instance_id",
+					""
+				)) == target_id
+			)
+		)
+	return false
+
+
+func _positive_int_field(source: Dictionary, field_name: String) -> bool:
+	return (
+		source.has(field_name)
+		and typeof(source.get(field_name)) == TYPE_INT
+		and int(source.get(field_name)) > 0
+	)
 
 
 func _clear_children(parent: Node) -> void:

@@ -88,6 +88,79 @@ const DEFINITION_FIELDS := [
 	"track_spawn_allowed",
 	"purchase_allowed",
 ]
+const PRESENTATION_DESCRIPTOR_FIELDS := [
+	"definition_id",
+	"card_type",
+	"domain",
+	"presentation_asset_key",
+	"resource_path",
+	"resource_type",
+]
+const COMBAT_PRESENTATION_BY_CARD_TYPE := {
+	"monster.spore_tide_emperor": {
+		"presentation_asset_key": "alpha01_art_004",
+		"resource_path": (
+			"res://assets/art/cards/v06/style_lock/monster/"
+			+ "spore_tide_emperor_v01.png"
+		),
+	},
+	"monster.meteor_sentinel": {
+		"presentation_asset_key": "monster_body.meteor_sentinel",
+		"resource_path": (
+			"res://assets/third_party/kenney_cc0/space/enemyUFO.png"
+		),
+	},
+	"monster.sand_armor_rover": {
+		"presentation_asset_key": "monster_body.sand_armor_rover",
+		"resource_path": (
+			"res://assets/third_party/monster_battler/monsters/rock.png"
+		),
+	},
+	"monster.blue_edge_knight": {
+		"presentation_asset_key": "monster_body.blue_edge_knight",
+		"resource_path": (
+			"res://assets/third_party/superpowers_cc0/medieval-fantasy/"
+			+ "monsters/snake.png"
+		),
+	},
+	"monster.prism_blade_colossus": {
+		"presentation_asset_key": "monster_body.prism_blade_colossus",
+		"resource_path": (
+			"res://assets/third_party/monster_battler/monsters/dino.png"
+		),
+	},
+	"monster.mirror_hunter": {
+		"presentation_asset_key": "monster_body.mirror_hunter",
+		"resource_path": (
+			"res://assets/third_party/kenney_cc0/hexagon/alienBlue.png"
+		),
+	},
+	"military.planetary_defense_force": {
+		"presentation_asset_key": (
+			"procedural.military.planetary_defense_force"
+		),
+		"resource_path": (
+			"res://assets/third_party/moth_kaijuice/city/npcs/"
+			+ "mothkaiju_npc_soldier.png"
+		),
+	},
+	"military.air_superiority_fighter": {
+		"presentation_asset_key": (
+			"procedural.military.air_superiority_fighter"
+		),
+		"resource_path": (
+			"res://assets/third_party/commercial/icons/game_icons/source/"
+			+ "spaceship.svg"
+		),
+	},
+	"military.submarine_fleet": {
+		"presentation_asset_key": "procedural.military.submarine_fleet",
+		"resource_path": (
+			"res://assets/third_party/moth_kaijuice/city/npcs/"
+			+ "mothkaiju_npc_tank.png"
+		),
+	},
+}
 
 
 static func registry_contract() -> Dictionary:
@@ -281,6 +354,61 @@ static func definition_error(value: Dictionary) -> String:
 	if value != canonical:
 		return "definition_contract_mismatch"
 	return ""
+
+
+static func presentation_descriptor(definition_id: String) -> Dictionary:
+	var card_definition := definition(definition_id)
+	if card_definition.is_empty():
+		return {}
+	var card_type := str(card_definition.get("card_type", ""))
+	var domain := card_domain(card_type)
+	if domain not in ["monster", "military"]:
+		return {}
+	var profile_variant: Variant = COMBAT_PRESENTATION_BY_CARD_TYPE.get(
+		card_type
+	)
+	if not (profile_variant is Dictionary):
+		return {}
+	var profile := profile_variant as Dictionary
+	return {
+		"definition_id": definition_id,
+		"card_type": card_type,
+		"domain": domain,
+		"presentation_asset_key": str(
+			profile.get("presentation_asset_key", "")
+		),
+		"resource_path": str(profile.get("resource_path", "")),
+		"resource_type": "Texture2D",
+	}
+
+
+static func presentation_descriptor_error(value: Dictionary) -> String:
+	if not _exact_fields(value, PRESENTATION_DESCRIPTOR_FIELDS):
+		return "presentation_descriptor_fields_invalid"
+	var canonical := presentation_descriptor(str(value.get("definition_id", "")))
+	if canonical.is_empty():
+		return "presentation_definition_unknown"
+	if value != canonical:
+		return "presentation_descriptor_mismatch"
+	return ""
+
+
+static func presentation_texture(definition_id: String) -> Texture2D:
+	var descriptor := presentation_descriptor(definition_id)
+	if descriptor.is_empty():
+		return null
+	var resource_path := str(descriptor.get("resource_path", ""))
+	if not ResourceLoader.exists(resource_path, "Texture2D"):
+		return null
+	return ResourceLoader.load(resource_path, "Texture2D") as Texture2D
+
+
+static func combat_presentation_card_types() -> Array[String]:
+	var result: Array[String] = []
+	for card_type_variant in COMBAT_PRESENTATION_BY_CARD_TYPE.keys():
+		result.append(str(card_type_variant))
+	result.sort()
+	return result
 
 
 static func resolve_primary_asset_cost(definition_id: String) -> Dictionary:

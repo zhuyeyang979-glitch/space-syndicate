@@ -38,14 +38,6 @@ const ProjectionAdapter := preload(
 const V075CardDefinitionRegistry := preload(
 	"res://scripts/v075/cards/v075_card_definition_registry.gd"
 )
-const V075_MONSTER_CARD_ART_PATH := (
-	"res://assets/art/cards/v06/style_lock/monster/"
-	+ "spore_tide_emperor_v01.png"
-)
-const V075_MILITARY_CARD_ART_PATH := (
-	"res://assets/third_party/commercial/icons/game_icons/source/"
-	+ "spaceship.svg"
-)
 const V075_FACILITY_ART_PATHS := [
 	"res://assets/third_party/commercial/materials/ambientcg/"
 	+ "MetalPlates013/MetalPlates013_1K-JPG_Color.jpg",
@@ -54,12 +46,13 @@ const V075_FACILITY_ART_PATHS := [
 	"res://assets/third_party/commercial/materials/ambientcg/"
 	+ "SheetMetal003/SheetMetal003_1K-JPG_Color.jpg",
 ]
-const COMBAT_LAYOUT_MIN_WIDTH := 480.0
-const COMBAT_LAYOUT_MAX_WIDTH := 660.0
-const COMBAT_LAYOUT_PRIMARY_PLANET_INSET_X := 0.32
-const COMBAT_LAYOUT_PRIMARY_PLANET_WIDTH := 0.44
-const COMBAT_LAYOUT_PRIMARY_PLANET_INSET_Y := 0.12
-const COMBAT_LAYOUT_PRIMARY_PLANET_HEIGHT := 0.76
+const COMBAT_LAYOUT_MAX_WIDTH := 668.0
+const COMBAT_LAYOUT_NARROW_MAX_WIDTH := 720.0
+const COMBAT_LAYOUT_REGULAR_MIN_WIDTH := 1480.0
+const COMBAT_LAYOUT_HORIZONTAL_GUTTER := 12.0
+const COMBAT_LAYOUT_MIN_HEIGHT := 300.0
+const COMBAT_LAYOUT_MAX_HEIGHT := 500.0
+const GEOMETRY_INTERSECTION_EPSILON := 0.5
 const PresentationConsumer := preload(
 	"res://scripts/v075/presentation/v075_combat_presentation_consumer.gd"
 )
@@ -118,22 +111,23 @@ const COMBAT_MAP_COLOR_VALUES := {
 const COMBAT_MAP_DEFAULT_COLOR := Color("#74d9c6")
 
 @onready var _combat_overlay: PanelContainer = (
-	$PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay
+	%V075CombatOverlay
 )
+@onready var _combat_stack_host: HBoxContainer = %V075CombatStackHost
 @onready var _combat_surface_host: Control = (
-	$PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay/Margin/Rows/SurfaceHost
+	%SurfaceHost
 )
 @onready var _combat_surface: Control = (
-	$PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay/Margin/Rows/SurfaceHost/CombatSurface
+	%CombatSurface
 )
 @onready var _combat_title: Label = (
-	$PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay/Margin/Rows/Header/Title
+	%Title
 )
 @onready var _combat_status: Label = (
-	$PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay/Margin/Rows/Header/Status
+	%Status
 )
 @onready var _combat_collapse_button: Button = (
-	$PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay/Margin/Rows/Header/CollapseButton
+	%CollapseButton
 )
 
 var _v075_flow: Node
@@ -156,6 +150,9 @@ var _combat_terminal_phase := ""
 var _combat_collapsed := true
 var _combat_layout_mode := "COMPACT"
 var _combat_layout_snapshot: Dictionary = {}
+var _combat_surface_preferred_height := -1.0
+var _combat_layout_remeasure_scheduled := false
+var _combat_host_layout_settle_scheduled := false
 var _fallback_intent_sequence := 0
 var _combat_projection_count := 0
 var _combat_receipt_count := 0
@@ -186,9 +183,15 @@ func _ready() -> void:
 			"military_mission_selected",
 			Callable(self, "_on_military_mission_selected")
 		)
+		if _combat_surface.has_signal("responsive_minimum_resolved"):
+			_combat_surface.connect(
+				"responsive_minimum_resolved",
+				Callable(self, "_on_combat_surface_minimum_resolved")
+			)
 	_combat_collapse_button.pressed.connect(_toggle_combat_surface)
-	get_viewport().size_changed.connect(_resolve_combat_layout)
+	get_viewport().size_changed.connect(_on_combat_viewport_size_changed)
 	super._ready()
+	_dock_target_rail_in_production_flow()
 	_set_v075_chrome()
 	_combat_title.text = "COMBAT · V0.7.5"
 	_combat_status.text = "等待战斗投影"
@@ -282,9 +285,7 @@ func apply_combat_projection(
 	projection: Dictionary,
 	preferred_source_instance_id := ""
 ) -> void:
-	# An explicit projection call is the deliberate Observatory viewer switch;
-	# snapshot ingestion remains bound to the authenticated viewer.
-	var normalized := _normalize_projection(projection, true)
+	var normalized := _normalize_projection(projection)
 	if normalized.is_empty():
 		_clear_combat_projection()
 		return
@@ -314,6 +315,10 @@ func apply_combat_projection(
 	_sync_combat_map_projection()
 	combat_projection_applied.emit(normalized.duplicate(true))
 	_resolve_combat_layout()
+	# CombatSurface resolves its narrow grid on a deferred pass. Re-measure its
+	# combined minimum after that pass so SurfaceHost selects fill vs scroll from
+	# the final content height, not the previous frame's shape.
+	call_deferred("_resolve_combat_layout")
 
 
 func apply_combat_authority_snapshot(
@@ -676,16 +681,10 @@ func _on_presentation_cue_ready(cue: Dictionary) -> void:
 func _on_private_target_selection_requested(request: Dictionary) -> void:
 	if _is_combat_terminal():
 		return
-	var source_instance_id := str(request.get("source_instance_id", ""))
-	var skill_definition_id := str(request.get("skill_definition_id", ""))
-	var target_binding := request.get("target_binding", {}) as Dictionary
-	if (
-		source_instance_id.is_empty()
-		or skill_definition_id.is_empty()
-		or target_binding.is_empty()
-	):
+	var canonical_request := _current_private_skill_request(request)
+	if canonical_request.is_empty():
 		return
-	var parameters := request.duplicate(true)
+	var parameters := canonical_request.duplicate(true)
 	parameters["execution_mode"] = _private_skill_execution_mode()
 	var intent := _issue_combat_intent(
 		_private_skill_intent_kind(),
@@ -706,13 +705,10 @@ func _on_military_mission_selected(option: Dictionary) -> void:
 		"assault_monster",
 	]:
 		return
-	if (
-		str(option.get("option_id", "")).is_empty()
-		or str(option.get("card_instance_id", "")).is_empty()
-		or str(option.get("target_slot_id", "")).is_empty()
-	):
+	var canonical_option := _current_military_option(option)
+	if canonical_option.is_empty():
 		return
-	var parameters := option.duplicate(true)
+	var parameters := canonical_option.duplicate(true)
 	parameters["execution_mode"] = _military_execution_mode()
 	var intent := _issue_combat_intent(
 		_military_intent_kind(),
@@ -726,6 +722,221 @@ func _on_military_mission_selected(option: Dictionary) -> void:
 		"攻击地区" if task_kind == "assault_region" else "攻击怪兽"
 	) + " · 已提交普通行动"
 	_update_acceptance_state()
+
+
+func _current_private_skill_request(candidate: Dictionary) -> Dictionary:
+	if (
+		candidate.is_empty()
+		or str(_combat_projection.get("viewer_player_id", ""))
+			!= _viewer_player_id
+	):
+		return {}
+	var source_id := str(candidate.get("source_instance_id", ""))
+	var source_generation := int(candidate.get("source_generation", 0))
+	var skill_id := str(candidate.get("skill_definition_id", ""))
+	if (
+		source_id.is_empty()
+		or source_id != _preferred_source_instance_id
+		or not _positive_int_field(candidate, "source_generation")
+		or skill_id.is_empty()
+	):
+		return {}
+	var public_source := _combat_public_source(source_id)
+	if (
+		public_source.is_empty()
+		or str(public_source.get("owner_player_id", "")) != _viewer_player_id
+		or not _positive_int_field(public_source, "source_generation")
+		or public_source.get("source_generation")
+			!= candidate.get("source_generation")
+	):
+		return {}
+	for source_variant in _combat_projection.get(
+		"own_monster_skill_sources",
+		[]
+	) as Array:
+		if not (source_variant is Dictionary):
+			continue
+		var source := source_variant as Dictionary
+		if (
+			str(source.get("source_instance_id", "")) != source_id
+			or str(source.get("owner_player_id", "")) != _viewer_player_id
+			or not _positive_int_field(source, "source_generation")
+			or source.get("source_generation")
+				!= candidate.get("source_generation")
+		):
+			continue
+		for skill_variant in source.get("skills", []) as Array:
+			if not (skill_variant is Dictionary):
+				continue
+			var skill := skill_variant as Dictionary
+			if (
+				str(skill.get("skill_definition_id", "")) != skill_id
+				or not bool(skill.get("can_request", false))
+				or str(skill.get("state", "")) != "READY"
+			):
+				continue
+			var expected_binding := skill.get("target_binding", {}) as Dictionary
+			var requested_binding := candidate.get(
+				"target_binding",
+				{}
+			) as Dictionary
+			var expected_contract := skill.get("target_contract", {}) as Dictionary
+			var requested_contract := candidate.get(
+				"target_contract",
+				{}
+			) as Dictionary
+			if (
+				expected_binding.is_empty()
+				or not _same_flat_dictionary(
+					requested_binding,
+					expected_binding
+				)
+				or not _same_flat_dictionary(
+					requested_contract,
+					expected_contract
+				)
+			):
+				return {}
+			return {
+				"source_instance_id": source_id,
+				"source_generation": source_generation,
+				"skill_definition_id": skill_id,
+				"target_binding": expected_binding.duplicate(true),
+				"target_contract": expected_contract.duplicate(true),
+			}
+	return {}
+
+
+func _current_military_option(candidate: Dictionary) -> Dictionary:
+	if (
+		candidate.is_empty()
+		or str(_combat_projection.get("viewer_player_id", ""))
+			!= _viewer_player_id
+		or str(candidate.get("owner_player_id", "")) != _viewer_player_id
+		or str(candidate.get("action_domain", "")) != "military"
+		or not _card_action_binding_valid(candidate, _viewer_player_id)
+	):
+		return {}
+	var task_kind := str(candidate.get("task_kind", ""))
+	if (
+		(task_kind == "assault_monster" and (
+			not _positive_int_field(candidate, "target_source_generation")
+		))
+		or (task_kind == "assault_region" and candidate.has(
+			"target_source_generation"
+		))
+		or task_kind not in ["assault_region", "assault_monster"]
+	):
+		return {}
+	for option_variant in _combat_projection.get(
+		"military_task_options",
+		[]
+	) as Array:
+		if not (option_variant is Dictionary):
+			continue
+		var option := option_variant as Dictionary
+		if (
+			bool(option.get("enabled", false))
+			and _same_military_option_identity(candidate, option)
+		):
+			return option.duplicate(true)
+	return {}
+
+
+func _same_military_option_identity(
+	left: Dictionary,
+	right: Dictionary
+) -> bool:
+	for field_name in [
+		"option_id",
+		"owner_player_id",
+		"card_instance_id",
+		"card_definition_id",
+		"target_slot_id",
+		"task_kind",
+		"target_region_id",
+		"target_monster_source_instance_id",
+		"action_domain",
+	]:
+		if str(left.get(field_name, "")) != str(right.get(field_name, "")):
+			return false
+	if (
+		not _card_action_binding_valid(
+			left,
+			str(left.get("owner_player_id", ""))
+		)
+		or not _card_action_binding_valid(
+			right,
+			str(right.get("owner_player_id", ""))
+		)
+		or left.get("card_action_binding") != right.get("card_action_binding")
+	):
+		return false
+	if str(left.get("task_kind", "")) == "assault_region":
+		return (
+			not left.has("target_source_generation")
+			and not right.has("target_source_generation")
+		)
+	return (
+		_positive_int_field(left, "target_source_generation")
+		and _positive_int_field(right, "target_source_generation")
+		and left.get("target_source_generation")
+			== right.get("target_source_generation")
+	)
+
+
+func _card_action_binding_valid(
+	option: Dictionary,
+	expected_owner_id: String
+) -> bool:
+	var binding_variant: Variant = option.get("card_action_binding")
+	if not (binding_variant is Dictionary):
+		return false
+	var binding := binding_variant as Dictionary
+	return (
+		not binding.is_empty()
+		and str(binding.get("owner_player_id", "")) == expected_owner_id
+		and str(binding.get("card_instance_id", ""))
+			== str(option.get("card_instance_id", ""))
+		and str(binding.get("card_definition_id", ""))
+			== str(option.get("card_definition_id", ""))
+		and binding.get("authoritative_zone") == "hand"
+		and _positive_int_field(binding, "zone_revision")
+		and str(binding.get("binding_fingerprint", "")).length() == 64
+	)
+
+
+func _positive_int_field(source: Dictionary, field_name: String) -> bool:
+	return (
+		source.has(field_name)
+		and typeof(source.get(field_name)) == TYPE_INT
+		and int(source.get(field_name)) > 0
+	)
+
+
+func _combat_public_source(source_instance_id: String) -> Dictionary:
+	for source_variant in _combat_projection.get("public_monsters", []) as Array:
+		if (
+			source_variant is Dictionary
+			and str((source_variant as Dictionary).get(
+				"source_instance_id",
+				""
+			)) == source_instance_id
+		):
+			return (source_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _same_flat_dictionary(left: Dictionary, right: Dictionary) -> bool:
+	if left.size() != right.size():
+		return false
+	for key_variant in left.keys():
+		if (
+			not right.has(key_variant)
+			or left.get(key_variant) != right.get(key_variant)
+		):
+			return false
+	return true
 
 
 func _issue_combat_intent(
@@ -816,10 +1027,7 @@ func _project_authority(authority_snapshot: Dictionary) -> Dictionary:
 	) as Dictionary
 
 
-func _normalize_projection(
-	candidate: Dictionary,
-	allow_viewer_switch := false
-) -> Dictionary:
+func _normalize_projection(candidate: Dictionary) -> Dictionary:
 	if candidate.is_empty():
 		return {}
 	var schema := str(candidate.get("schema", ""))
@@ -833,10 +1041,7 @@ func _normalize_projection(
 		)
 		if (
 			candidate_viewer_id.is_empty()
-			or (
-				not allow_viewer_switch
-				and candidate_viewer_id != _viewer_player_id
-			)
+			or candidate_viewer_id != _viewer_player_id
 		):
 			return {}
 		var projection := candidate.duplicate(true)
@@ -915,7 +1120,9 @@ func _projection_for_phase(
 		return projection
 	var quiescent := projection.duplicate(true)
 	quiescent["combat_requests_allowed"] = false
-	quiescent["terminal_combat_quiescent"] = true
+	quiescent["terminal_combat_quiescent"] = bool(
+		projection.get("terminal_combat_quiescent", false)
+	)
 	var skill_sources: Array[Dictionary] = []
 	for source_variant in quiescent.get(
 		"own_monster_skill_sources",
@@ -1076,40 +1283,62 @@ func _toggle_combat_surface() -> void:
 	_combat_collapsed = not _combat_collapsed
 	_set_combat_surface_visibility()
 	_resolve_combat_layout()
+	# Containers finish the expanded/collapsed minimum-size negotiation on the
+	# following frame. Re-measure once so a populated surface cannot retain the
+	# previous state's fill-vs-scroll decision.
+	call_deferred("_resolve_combat_layout")
+
+
+func _on_combat_viewport_size_changed() -> void:
+	_resolve_combat_layout()
+	# The private grid also changes its column count on resize. Its combined
+	# minimum is authoritative only after that deferred container pass.
+	call_deferred("_resolve_combat_layout")
+
+
+func _on_combat_surface_minimum_resolved(preferred_height: float) -> void:
+	_combat_surface_preferred_height = maxf(410.0, preferred_height)
+	if _combat_layout_remeasure_scheduled:
+		return
+	_combat_layout_remeasure_scheduled = true
+	call_deferred("_remeasure_combat_layout_from_surface")
+
+
+func _remeasure_combat_layout_from_surface() -> void:
+	_combat_layout_remeasure_scheduled = false
+	_resolve_combat_layout()
 
 
 func _resolve_combat_layout() -> void:
-	if not is_instance_valid(_combat_overlay):
+	if (
+		not is_instance_valid(_combat_overlay)
+		or not is_instance_valid(_combat_stack_host)
+	):
 		return
 	var viewport_size := get_viewport_rect().size
 	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
 		return
-	var table_area := $RootMargin/Shell/TableArea as Control
-	var dock_panel := $RootMargin/Shell/DockPanel as Control
-	var planet_stage := $RootMargin/Shell/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport as Control
-	var layout := _combat_layout_for_geometry(
+	var root_scroll := $RootMargin as ScrollContainer
+	var layout := _combat_layout_plan(
 		viewport_size,
-		table_area.get_global_rect(),
-		planet_stage.get_global_rect() if planet_stage != null else table_area.get_global_rect(),
-		dock_panel.get_global_rect(),
+		root_scroll.get_global_rect().size,
 		_combat_collapsed
 	)
-	_combat_layout_snapshot = layout.duplicate(true)
 	_combat_layout_mode = str(layout.get("layout_mode", "COMPACT"))
-	var panel_rect := layout.get("panel_rect", Rect2()) as Rect2
-	var safe_area := $PlaytestUtilityLayer/PlaytestSafeArea as Control
-	var safe_origin := safe_area.global_position if safe_area != null else Vector2.ZERO
-	_combat_overlay.position = panel_rect.position - safe_origin
-	_combat_overlay.size = panel_rect.size
+	var panel_size := layout.get("panel_size", Vector2()) as Vector2
+	_combat_overlay.custom_minimum_size = panel_size
+	_combat_overlay.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_combat_overlay.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_combat_surface_host.custom_minimum_size = Vector2(0.0, 0.0)
 	if _combat_surface_host is ScrollContainer:
 		_combat_surface.set_anchors_and_offsets_preset(
 			Control.PRESET_TOP_WIDE
 		)
 		_combat_surface.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_combat_surface.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		var content_height := 410.0
-		if _combat_surface.has_method("preferred_content_height"):
+		if _combat_surface_preferred_height >= 0.0:
+			content_height = _combat_surface_preferred_height
+		elif _combat_surface.has_method("preferred_content_height"):
 			content_height = float(
 				_combat_surface.call("preferred_content_height")
 			)
@@ -1117,130 +1346,459 @@ func _resolve_combat_layout() -> void:
 			0.0,
 			content_height
 		)
+		# Fill a taller desktop host from its top edge; when content is taller,
+		# retain its real minimum so the ScrollContainer exposes a usable range.
+		_combat_surface.size_flags_vertical = (
+			Control.SIZE_SHRINK_BEGIN
+			if content_height
+				> _combat_surface_host.size.y + GEOMETRY_INTERSECTION_EPSILON
+			else Control.SIZE_EXPAND_FILL
+		)
+		(_combat_surface_host as ScrollContainer).queue_sort()
 	else:
 		_combat_surface.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		_combat_surface.custom_minimum_size = Vector2(0.0, 0.0)
+	_combat_stack_host.queue_sort()
+	($RootMargin/Shell as VBoxContainer).queue_sort()
+	_schedule_combat_host_layout_settle()
 
 
-func v075_combat_layout_for_geometry(
+func _schedule_combat_host_layout_settle() -> void:
+	if _combat_host_layout_settle_scheduled:
+		return
+	_combat_host_layout_settle_scheduled = true
+	call_deferred("_prepare_combat_host_layout_settle")
+
+
+func _prepare_combat_host_layout_settle() -> void:
+	if (
+		is_instance_valid(_combat_surface)
+		and is_instance_valid(_combat_surface_host)
+	):
+		_combat_surface.update_minimum_size()
+		_combat_surface_host.update_minimum_size()
+		if _combat_surface_host is ScrollContainer:
+			(_combat_surface_host as ScrollContainer).queue_sort()
+	call_deferred("_finish_combat_host_layout_settle")
+
+
+func _finish_combat_host_layout_settle() -> void:
+	_combat_host_layout_settle_scheduled = false
+	if _combat_surface_host is ScrollContainer:
+		(_combat_surface_host as ScrollContainer).queue_sort()
+	_refresh_combat_geometry_snapshot()
+
+
+func _combat_layout_plan(
 	viewport_size: Vector2,
-	table_rect: Rect2,
-	planet_stage_rect: Rect2,
-	dock_rect: Rect2
-) -> Dictionary:
-	return _combat_layout_for_geometry(
-		viewport_size,
-		table_rect,
-		planet_stage_rect,
-		dock_rect
-	)
-
-
-func _combat_layout_for_geometry(
-	viewport_size: Vector2,
-	table_rect: Rect2,
-	planet_stage_rect: Rect2,
-	dock_rect: Rect2,
-	collapsed := false
+	safe_size: Vector2,
+	collapsed: bool
 ) -> Dictionary:
 	var resolved_viewport := Vector2(
 		maxf(1.0, viewport_size.x),
 		maxf(1.0, viewport_size.y)
 	)
-	var compact := resolved_viewport.x < 1180.0
-	var layout_mode := "COMPACT" if compact else "REGULAR"
-	var panel_width := clampf(
-		resolved_viewport.x * 0.39,
-		COMBAT_LAYOUT_MIN_WIDTH,
-		COMBAT_LAYOUT_MAX_WIDTH
-	)
-	if resolved_viewport.x < 720.0:
-		panel_width = maxf(0.0, resolved_viewport.x - 20.0)
-	var requested_panel_width := panel_width
-	var panel_height := clampf(
-		resolved_viewport.y * 0.52,
-		300.0,
-		500.0
-	)
-	var top_clearance := 96.0
-	var table_top := maxf(top_clearance, table_rect.position.y)
-	var panel_bottom := minf(
-		resolved_viewport.y - 12.0,
-		dock_rect.position.y - 8.0
-	)
-	var available_height := maxf(46.0, panel_bottom - table_top)
-	panel_height = minf(panel_height, available_height)
-	if collapsed:
-		panel_height = 46.0
-	var primary_planet_rect := _combat_primary_planet_rect(
-		planet_stage_rect
-	)
-	var left := maxf(10.0, table_rect.position.x)
-	var width_limit := (
-		primary_planet_rect.position.x - 14.0 - left
-		if primary_planet_rect.size.x > 0.0
-		else resolved_viewport.x - left - 10.0
-	)
-	if width_limit > 0.0:
-		panel_width = minf(panel_width, width_limit)
-	var top := maxf(table_top, panel_bottom - panel_height)
-	var panel_rect := Rect2(
-		Vector2(left, top),
-		Vector2(panel_width, panel_height)
-	)
-	var planet_right_half := Rect2(
-		planet_stage_rect.position
-			+ Vector2(planet_stage_rect.size.x * 0.5, 0.0),
-		Vector2(
-			planet_stage_rect.size.x * 0.5,
-			planet_stage_rect.size.y
+	var layout_mode := "REGULAR"
+	if resolved_viewport.x < COMBAT_LAYOUT_NARROW_MAX_WIDTH:
+		layout_mode = "NARROW"
+	elif resolved_viewport.x < COMBAT_LAYOUT_REGULAR_MIN_WIDTH:
+		layout_mode = "COMPACT"
+	var available_width := maxf(
+		1.0,
+		minf(
+			resolved_viewport.x - COMBAT_LAYOUT_HORIZONTAL_GUTTER * 2.0,
+			maxf(1.0, safe_size.x)
 		)
 	)
+	var panel_width := minf(COMBAT_LAYOUT_MAX_WIDTH, available_width)
+	var panel_height := clampf(
+		minf(resolved_viewport.y * 0.55, maxf(1.0, safe_size.y)),
+		COMBAT_LAYOUT_MIN_HEIGHT,
+		COMBAT_LAYOUT_MAX_HEIGHT
+	)
+	if collapsed:
+		panel_height = 46.0
 	return {
-		"schema": "V075CombatLayoutGeometryV1",
+		"schema": "V075CombatLayoutPlanV2",
 		"layout_mode": layout_mode,
-		"panel_anchor": "left_utility_lane",
-		"panel_rect": panel_rect,
-		"requested_panel_width": requested_panel_width,
+		"panel_anchor": "production_flow_stack",
+		"panel_size": Vector2(panel_width, panel_height),
+		"available_width": available_width,
 		"panel_width": panel_width,
 		"panel_height": panel_height,
-		"primary_planet_rect": primary_planet_rect,
-		"primary_planet_occlusion_count": int(
-			panel_rect.intersects(primary_planet_rect)
-		),
-		"planet_right_half_occlusion_count": int(
-			panel_rect.intersects(planet_right_half)
-		),
-		"panel_viewport_overflow_count": int(
-			not Rect2(Vector2.ZERO, resolved_viewport).encloses(panel_rect)
-		),
-		"panel_min_width_green": (
-			panel_width >= COMBAT_LAYOUT_MIN_WIDTH
-			or resolved_viewport.x < 720.0
-		),
-		"two_column_information_contract": "preserved",
-		"track_and_asset_surfaces_untouched": true,
+		"acceptance_geometry_source": "runtime_control_rects_required",
 	}
 
 
-func _combat_primary_planet_rect(planet_stage_rect: Rect2) -> Rect2:
-	if planet_stage_rect.size.x <= 0.0 or planet_stage_rect.size.y <= 0.0:
-		return Rect2()
-	return Rect2(
-		planet_stage_rect.position
-			+ Vector2(
-				planet_stage_rect.size.x
-					* COMBAT_LAYOUT_PRIMARY_PLANET_INSET_X,
-				planet_stage_rect.size.y
-					* COMBAT_LAYOUT_PRIMARY_PLANET_INSET_Y
-			),
-		Vector2(
-			planet_stage_rect.size.x
-				* COMBAT_LAYOUT_PRIMARY_PLANET_WIDTH,
-			planet_stage_rect.size.y
-				* COMBAT_LAYOUT_PRIMARY_PLANET_HEIGHT
+func _dock_target_rail_in_production_flow() -> void:
+	if (
+		not is_instance_valid(_virtual_target_rail_float)
+		or not is_instance_valid(_virtual_target_rail)
+		or not is_instance_valid(_combat_stack_host)
+		or not is_instance_valid(_marker_panel)
+	):
+		return
+	var shell := $RootMargin/Shell as VBoxContainer
+	var track_panel := $RootMargin/Shell/TrackPanel as Control
+	if _virtual_target_rail_float.get_parent() != shell:
+		_virtual_target_rail_float.reparent(shell)
+	if (_marker_panel as Control).get_parent() != shell:
+		(_marker_panel as Control).reparent(shell)
+	if (_marker_panel as Control).get_index() != track_panel.get_index() + 1:
+		shell.move_child(_marker_panel as Control, track_panel.get_index() + 1)
+	if _combat_stack_host.get_index() != (_marker_panel as Control).get_index() + 1:
+		shell.move_child(
+			_combat_stack_host,
+			(_marker_panel as Control).get_index() + 1
 		)
+	if _virtual_target_rail_float.get_index() != _combat_stack_host.get_index() + 1:
+		shell.move_child(
+			_virtual_target_rail_float,
+			_combat_stack_host.get_index() + 1
+		)
+	# V0.7.4 positions this rail in a CanvasLayer using an absolute desktop
+	# rectangle. V0.7.5 keeps the same production node and interactions, but
+	# makes it a normal flow child so an opened rail cannot cover combat/table UI.
+	_virtual_target_rail_float.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_virtual_target_rail_float.position = Vector2.ZERO
+	_virtual_target_rail_float.custom_minimum_size = Vector2.ZERO
+	_virtual_target_rail_float.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_virtual_target_rail_float.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_virtual_target_rail.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_virtual_target_rail.position = Vector2.ZERO
+	_virtual_target_rail.custom_minimum_size.x = 0.0
+	_virtual_target_rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_virtual_target_rail.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_virtual_target_rail_float.z_index = 0
+	(_marker_panel as Control).set_anchors_preset(Control.PRESET_TOP_LEFT)
+	(_marker_panel as Control).position = Vector2.ZERO
+	(_marker_panel as Control).size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	(_marker_panel as Control).size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	(_marker_panel as Control).z_index = 0
+	shell.queue_sort()
+
+
+func _refresh_combat_geometry_snapshot() -> void:
+	if not is_instance_valid(_combat_overlay):
+		return
+	var viewport_rect := Rect2(Vector2.ZERO, get_viewport_rect().size)
+	var root_scroll := $RootMargin as ScrollContainer
+	var shell := $RootMargin/Shell as VBoxContainer
+	var table_area := $RootMargin/Shell/TableArea as Control
+	var track_panel := $RootMargin/Shell/TrackPanel as Control
+	var dock_panel := $RootMargin/Shell/DockPanel as Control
+	var asset_rail := (
+		$RootMargin/Shell/DockPanel/DockMargin/DockRows/DockHeader/AssetRail
+		as Control
 	)
+	var planet_stage := (
+		$RootMargin/Shell/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport
+		as Control
+	)
+	var panel_rect := _combat_overlay.get_global_rect()
+	var safe_rect := root_scroll.get_global_rect()
+	var shell_rect := shell.get_global_rect()
+	var table_rect := table_area.get_global_rect()
+	var track_rect := track_panel.get_global_rect()
+	var dock_rect := dock_panel.get_global_rect()
+	var asset_rect := asset_rail.get_global_rect()
+	var planet_rect := planet_stage.get_global_rect()
+	var surface_host_rect := (_combat_surface_host as Control).get_global_rect()
+	var combat_surface_rect := _combat_surface.get_global_rect()
+	var utility_rail_rect := _virtual_target_rail.get_global_rect()
+	var utility_rail_visible := (
+		_virtual_target_rail.visible
+		and _virtual_target_rail.is_visible_in_tree()
+	)
+	var marker_rect := Rect2()
+	var marker_visible := false
+	var marker_offscreen_count := 0
+	if is_instance_valid(_marker_panel):
+		marker_rect = (_marker_panel as Control).get_global_rect()
+		marker_visible = (
+			(_marker_panel as Control).visible
+			and (_marker_panel as Control).is_visible_in_tree()
+		)
+		if _marker_panel.has_method("debug_snapshot"):
+			marker_offscreen_count = int(
+				(_marker_panel.call("debug_snapshot") as Dictionary).get(
+					"offscreen_count",
+					1
+				)
+			)
+	var planet_right_half := Rect2(
+		planet_rect.position + Vector2(planet_rect.size.x * 0.5, 0.0),
+		Vector2(planet_rect.size.x * 0.5, planet_rect.size.y)
+	)
+	var surface_audit := {}
+	if _combat_surface.has_method("debug_geometry_audit"):
+		surface_audit = _combat_surface.call("debug_geometry_audit") as Dictionary
+	var child_overlap_count := int(
+		surface_audit.get("unintended_overlap_count", 0)
+	)
+	var child_outside_count := int(
+		surface_audit.get("outside_surface_count", 0)
+	)
+	var child_unreachable_count := int(
+		surface_audit.get("unreachable_clipped_control_count", 0)
+	)
+	var planet_overlap_count := _rect_overlap_count(panel_rect, planet_rect)
+	var track_overlap_count := _rect_overlap_count(panel_rect, track_rect)
+	var dock_overlap_count := _rect_overlap_count(panel_rect, dock_rect)
+	var asset_overlap_count := _rect_overlap_count(panel_rect, asset_rect)
+	var utility_rail_overlap_count := 0
+	if utility_rail_visible:
+		for protected_rect in [
+			panel_rect,
+			track_rect,
+			table_rect,
+			planet_rect,
+			dock_rect,
+			asset_rect,
+		]:
+			utility_rail_overlap_count += _rect_overlap_count(
+				utility_rail_rect,
+				protected_rect as Rect2
+			)
+	var marker_overlap_count := 0
+	if marker_visible:
+		for protected_rect in [
+			panel_rect,
+			track_rect,
+			table_rect,
+			planet_rect,
+			dock_rect,
+			asset_rect,
+		]:
+			marker_overlap_count += _rect_overlap_count(
+				marker_rect,
+				protected_rect as Rect2
+			)
+		if utility_rail_visible:
+			marker_overlap_count += _rect_overlap_count(
+				marker_rect,
+				utility_rail_rect
+			)
+	var protected_rects := [table_rect, planet_rect, dock_rect, asset_rect]
+	if utility_rail_visible:
+		protected_rects.append(utility_rail_rect)
+	if marker_visible:
+		protected_rects.append(marker_rect)
+	var protected_nonempty_count := 0
+	var protected_content_containment_count := 0
+	var protected_scroll_reachable_count := 0
+	for protected_rect in protected_rects:
+		var resolved_rect := protected_rect as Rect2
+		if (
+			resolved_rect.size.x > GEOMETRY_INTERSECTION_EPSILON
+			and resolved_rect.size.y > GEOMETRY_INTERSECTION_EPSILON
+		):
+			protected_nonempty_count += 1
+		if _rect_encloses_with_epsilon(shell_rect, resolved_rect):
+			protected_content_containment_count += 1
+		if _rect_reachable_by_root_scroll(
+			resolved_rect,
+			safe_rect,
+			root_scroll
+		):
+			protected_scroll_reachable_count += 1
+	var horizontal_bar := root_scroll.get_h_scroll_bar()
+	var vertical_bar := root_scroll.get_v_scroll_bar()
+	var horizontal_scroll_range := maxf(
+		0.0,
+		horizontal_bar.max_value - horizontal_bar.page
+	)
+	var vertical_scroll_range := maxf(
+		0.0,
+		vertical_bar.max_value - vertical_bar.page
+	)
+	var surface_vertical_scroll_range := 0.0
+	if _combat_surface_host is ScrollContainer:
+		var surface_vertical_bar := (
+			(_combat_surface_host as ScrollContainer).get_v_scroll_bar()
+		)
+		surface_vertical_scroll_range = maxf(
+			0.0,
+			surface_vertical_bar.max_value - surface_vertical_bar.page
+		)
+	var panel_overflow_count := int(not viewport_rect.encloses(panel_rect))
+	var safe_overflow_count := int(not safe_rect.encloses(panel_rect))
+	_combat_layout_snapshot = {
+		"schema": "V075CombatLayoutGeometryV3",
+		"geometry_source": "instantiated_production_controls",
+		"layout_mode": _combat_layout_mode,
+		"panel_anchor": "production_flow_stack",
+		"viewport_rect": viewport_rect,
+		"safe_area_rect": safe_rect,
+		"shell_content_rect": shell_rect,
+		"panel_rect": panel_rect,
+		"table_rect": table_rect,
+		"track_rect": track_rect,
+		"dock_rect": dock_rect,
+		"asset_reserve_lane_rect": asset_rect,
+		"planet_stage_rect": planet_rect,
+		"combat_surface_host_rect": surface_host_rect,
+		"combat_surface_content_rect": combat_surface_rect,
+		"combat_surface_preferred_content_height": float(
+			surface_audit.get("preferred_content_height", 0.0)
+		),
+		"combat_surface_rows_combined_minimum_height": float(
+			surface_audit.get("rows_combined_minimum_height", 0.0)
+		),
+		"combat_surface_host_vertical_scroll_range": (
+			surface_vertical_scroll_range
+		),
+		"combat_surface_content_origin_green": (
+			absf(combat_surface_rect.position.x - surface_host_rect.position.x)
+				<= GEOMETRY_INTERSECTION_EPSILON
+			and absf(combat_surface_rect.position.y - surface_host_rect.position.y)
+				<= GEOMETRY_INTERSECTION_EPSILON
+		),
+		"utility_target_rail_rect": utility_rail_rect,
+		"utility_marker_rect": marker_rect,
+		"panel_width": panel_rect.size.x,
+		"panel_height": panel_rect.size.y,
+		"panel_available_width": safe_rect.size.x,
+		"panel_viewport_overflow_count": panel_overflow_count,
+		"panel_safe_area_overflow_count": safe_overflow_count,
+		"panel_width_green": (
+			panel_rect.size.x > 0.0
+			and panel_rect.size.x <= safe_rect.size.x + GEOMETRY_INTERSECTION_EPSILON
+		),
+		"primary_planet_occlusion_count": planet_overlap_count,
+		"planet_right_half_occlusion_count": _rect_overlap_count(
+			panel_rect,
+			planet_right_half
+		),
+		"track_panel_overlap_count": track_overlap_count,
+		"dock_panel_overlap_count": dock_overlap_count,
+		"asset_reserve_lane_overlap_count": asset_overlap_count,
+		"utility_target_rail_visible": utility_rail_visible,
+		"utility_target_rail_parent_is_flow": (
+			_virtual_target_rail_float.get_parent() == shell
+		),
+		"utility_target_rail_flow_index_green": (
+			_virtual_target_rail_float.get_index()
+				== _combat_stack_host.get_index() + 1
+		),
+		"utility_target_rail_overlap_count": utility_rail_overlap_count,
+		"utility_marker_visible": marker_visible,
+		"utility_marker_parent_is_flow": (
+			is_instance_valid(_marker_panel)
+			and (_marker_panel as Control).get_parent() == shell
+		),
+		"utility_marker_flow_index_green": (
+			is_instance_valid(_marker_panel)
+			and (_marker_panel as Control).get_index()
+				== track_panel.get_index() + 1
+			and _combat_stack_host.get_index()
+				== (_marker_panel as Control).get_index() + 1
+		),
+		"utility_marker_offscreen_count": marker_offscreen_count,
+		"utility_marker_overlap_count": marker_overlap_count,
+		"protected_surface_nonempty_count": protected_nonempty_count,
+		"protected_surface_content_containment_count": (
+			protected_content_containment_count
+		),
+		"protected_surface_scroll_reachable_count": (
+			protected_scroll_reachable_count
+		),
+		"protected_surface_expected_count": protected_rects.size(),
+		"root_horizontal_scroll_range": horizontal_scroll_range,
+		"root_vertical_scroll_range": vertical_scroll_range,
+		"ui_child_collision_count": child_overlap_count,
+		"ui_child_outside_surface_count": child_outside_count,
+		"ui_child_unreachable_clipped_control_count": (
+			child_unreachable_count
+		),
+		"private_grid_columns": int(
+			surface_audit.get("private_grid_columns", 0)
+		),
+		"two_column_information_contract": (
+			child_overlap_count == 0 and child_unreachable_count == 0
+		),
+		"track_and_asset_surfaces_untouched": (
+			track_overlap_count == 0
+			and dock_overlap_count == 0
+			and asset_overlap_count == 0
+		),
+		"root_scroll_accessible": (
+			root_scroll.horizontal_scroll_mode
+				!= ScrollContainer.SCROLL_MODE_DISABLED
+			and root_scroll.vertical_scroll_mode
+				!= ScrollContainer.SCROLL_MODE_DISABLED
+			and root_scroll.follow_focus
+		),
+	}
+
+
+func v075_responsive_geometry_audit() -> Dictionary:
+	_refresh_combat_geometry_snapshot()
+	return _combat_layout_snapshot.duplicate(true)
+
+
+func _rect_overlap_count(left: Rect2, right: Rect2) -> int:
+	var intersection := left.intersection(right)
+	return int(
+		intersection.size.x > GEOMETRY_INTERSECTION_EPSILON
+		and intersection.size.y > GEOMETRY_INTERSECTION_EPSILON
+	)
+
+
+func _rect_encloses_with_epsilon(outer: Rect2, inner: Rect2) -> bool:
+	return (
+		inner.position.x >= outer.position.x - GEOMETRY_INTERSECTION_EPSILON
+		and inner.position.y >= outer.position.y - GEOMETRY_INTERSECTION_EPSILON
+		and inner.end.x <= outer.end.x + GEOMETRY_INTERSECTION_EPSILON
+		and inner.end.y <= outer.end.y + GEOMETRY_INTERSECTION_EPSILON
+	)
+
+
+func _rect_reachable_by_root_scroll(
+	target_rect: Rect2,
+	safe_rect: Rect2,
+	root_scroll: ScrollContainer
+) -> bool:
+	if (
+		target_rect.size.x <= GEOMETRY_INTERSECTION_EPSILON
+		or target_rect.size.y <= GEOMETRY_INTERSECTION_EPSILON
+	):
+		return false
+	var horizontal_bar := root_scroll.get_h_scroll_bar()
+	var vertical_bar := root_scroll.get_v_scroll_bar()
+	var horizontal_before := float(root_scroll.scroll_horizontal)
+	var vertical_before := float(root_scroll.scroll_vertical)
+	var horizontal_after := maxf(
+		0.0,
+		horizontal_bar.max_value - horizontal_bar.page - horizontal_before
+	)
+	var vertical_after := maxf(
+		0.0,
+		vertical_bar.max_value - vertical_bar.page - vertical_before
+	)
+	var horizontal_reachable := true
+	if target_rect.end.x <= safe_rect.position.x:
+		horizontal_reachable = (
+			horizontal_before + GEOMETRY_INTERSECTION_EPSILON
+				>= safe_rect.position.x - target_rect.end.x
+		)
+	elif target_rect.position.x >= safe_rect.end.x:
+		horizontal_reachable = (
+			horizontal_after + GEOMETRY_INTERSECTION_EPSILON
+				>= target_rect.position.x - safe_rect.end.x
+		)
+	var vertical_reachable := true
+	if target_rect.end.y <= safe_rect.position.y:
+		vertical_reachable = (
+			vertical_before + GEOMETRY_INTERSECTION_EPSILON
+				>= safe_rect.position.y - target_rect.end.y
+		)
+	elif target_rect.position.y >= safe_rect.end.y:
+		vertical_reachable = (
+			vertical_after + GEOMETRY_INTERSECTION_EPSILON
+				>= target_rect.position.y - safe_rect.end.y
+		)
+	return horizontal_reachable and vertical_reachable
 
 
 func _configure_planet_shell() -> void:
@@ -1258,6 +1816,7 @@ func _configure_planet_shell() -> void:
 
 func _apply_responsive_layout() -> void:
 	super._apply_responsive_layout()
+	_dock_target_rail_in_production_flow()
 	_set_v075_chrome()
 
 
@@ -1493,13 +2052,12 @@ func _v075_card_domain(definition_id: String) -> String:
 	)
 
 
-func _v075_combat_card_art_path(domain: String) -> String:
-	match domain:
-		"monster":
-			return V075_MONSTER_CARD_ART_PATH
-		"military":
-			return V075_MILITARY_CARD_ART_PATH
-	return ""
+func _v075_combat_card_art_path(definition_id: String) -> String:
+	return str(
+		V075CardDefinitionRegistry.presentation_descriptor(
+			definition_id
+		).get("resource_path", "")
+	)
 
 
 func _card_type_label(definition_id: String) -> String:
@@ -1514,11 +2072,10 @@ func _card_type_label(definition_id: String) -> String:
 func _card_art(item: Dictionary) -> Texture2D:
 	var definition_id := str(item.get("card_definition_id", ""))
 	var domain := _v075_card_domain(definition_id)
-	var combat_art_path := _v075_combat_card_art_path(domain)
-	if not combat_art_path.is_empty():
-		var combat_art := _texture(combat_art_path)
-		if combat_art != null:
-			return combat_art
+	if domain in ["monster", "military"]:
+		# Known combat definitions fail closed when their typed presentation
+		# resource cannot be loaded; facility art must never mask that failure.
+		return V075CardDefinitionRegistry.presentation_texture(definition_id)
 	return super._card_art(item)
 
 
@@ -1527,15 +2084,26 @@ func v075_card_presentation_audit(item: Dictionary) -> Dictionary:
 	var definition := _v075_card_definition(definition_id)
 	var card_type := str(definition.get("card_type", ""))
 	var domain := _v075_card_domain(definition_id)
+	var descriptor := V075CardDefinitionRegistry.presentation_descriptor(
+		definition_id
+	)
+	var descriptor_error := (
+		V075CardDefinitionRegistry.presentation_descriptor_error(descriptor)
+		if not descriptor.is_empty()
+		else "presentation_descriptor_missing"
+	)
 	var art := _card_art(item)
 	var art_path := str(art.resource_path) if art != null else ""
-	var mapped_path := _v075_combat_card_art_path(domain)
+	var mapped_path := _v075_combat_card_art_path(definition_id)
+	var expected_art := V075CardDefinitionRegistry.presentation_texture(
+		definition_id
+	)
 	var uses_facility_art := (
 		art_path in V075_FACILITY_ART_PATHS
 		or mapped_path in V075_FACILITY_ART_PATHS
 	)
 	return {
-		"schema": "V075CardPresentationAuditV1",
+		"schema": "V075CardPresentationAuditV2",
 		"local_slot_index": int(item.get("local_slot_index", -1)),
 		"card_definition_id": definition_id,
 		"card_type": card_type,
@@ -1544,10 +2112,24 @@ func v075_card_presentation_audit(item: Dictionary) -> Dictionary:
 		"art_present": art != null,
 		"art_resource_path": art_path,
 		"stable_mapping_path": mapped_path,
+		"presentation_asset_key": str(
+			descriptor.get("presentation_asset_key", "")
+		),
+		"presentation_descriptor_error": descriptor_error,
+		"resource_loader_exists": (
+			ResourceLoader.exists(mapped_path, "Texture2D")
+			if not mapped_path.is_empty()
+			else false
+		),
+		"resource_loaded_as_texture": expected_art != null,
+		"instance_binding_green": art != null and art == expected_art,
 		"uses_facility_art": uses_facility_art,
 		"combat_art_mapping_green": (
 			domain in ["monster", "military"]
+			and descriptor_error.is_empty()
 			and art != null
+			and art == expected_art
+			and art_path == mapped_path
 			and not uses_facility_art
 			and not mapped_path.is_empty()
 		),
