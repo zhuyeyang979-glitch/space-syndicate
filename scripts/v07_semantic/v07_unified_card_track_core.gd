@@ -7,6 +7,9 @@ const CardDefinitions := preload(
 const V074CardDefinitions := preload(
 	"res://scripts/v074/facility/v074_card_definition_registry.gd"
 )
+const V075CardDefinitions := preload(
+	"res://scripts/v075/cards/v075_card_definition_registry.gd"
+)
 
 const SCHEMA_VERSION := 2
 const STATE_VERSION := 5
@@ -2963,7 +2966,9 @@ func _state_error(value: Dictionary) -> String:
 					or definition.is_empty() \
 					or str(definition.get("origin_class", "")) != "standard" \
 					or int(definition.get("level", 0)) != TRACK_ITEM_LEVEL \
-					or int(definition.get("primary_asset_cost", -1)) != 1 \
+					or not _is_positive_integer(
+						definition.get("primary_asset_cost")
+					) \
 					or str(definition.get("primary_color", "")) \
 						!= str(item.get("primary_color", "")) \
 					or definition.get("track_spawn_allowed") != true:
@@ -3595,6 +3600,13 @@ static func _definition_registry_for_state(value: Dictionary) -> Variant:
 	var supply := value.get("normal_supply_state", {}) as Dictionary
 	var templates := supply.get("templates", []) as Array
 	for definition_id_variant in templates:
+		var definition_id := str(definition_id_variant)
+		if (
+			definition_id.begins_with("monster.")
+			or definition_id.begins_with("military.")
+		):
+			return V075CardDefinitions
+	for definition_id_variant in templates:
 		if str(definition_id_variant).contains(".warehouse."):
 			return V074CardDefinitions
 	return CardDefinitions
@@ -3605,6 +3617,8 @@ static func _definition_registry_for_id(registry_id: String) -> Variant:
 		return CardDefinitions
 	if registry_id == V074CardDefinitions.REGISTRY_ID:
 		return V074CardDefinitions
+	if registry_id == V075CardDefinitions.REGISTRY_ID:
+		return V075CardDefinitions
 	return null
 
 

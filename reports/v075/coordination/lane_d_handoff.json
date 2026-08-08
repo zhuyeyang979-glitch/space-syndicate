@@ -1,0 +1,150 @@
+{
+  "schema": "V075LaneDHandoffV1",
+  "status": "GREEN",
+  "lane": "D",
+  "task_id": "ALPHA_0_5_C2_V075_MONSTER_AUTONOMY_PRIVATE_INSTANT_SKILLS_AND_MILITARY_ASSAULT_MISSIONS_PRODUCTION_CUTOVER",
+  "branch": "codex/v075-lane-d-private-skills-bd0af5c",
+  "base_sha": "bd0af5c99c5267cdbe7d66c01034f80db4d704fd",
+  "worktree": "C:/Users/zhuye/Documents/New project/space-syndicate-v075-lane-d-bd0af5c",
+  "owned_files": [
+    "scripts/v075/monster/v075_monster_private_skill_core.gd",
+    "scripts/v075/monster/v075_monster_private_skill_core.gd.uid",
+    "scripts/v075/combat/v075_combat_checkpoint_v1.gd",
+    "scripts/v075/combat/v075_combat_checkpoint_v1.gd.uid",
+    "scripts/tools/v075/v075_monster_private_skill_bench.gd",
+    "scripts/tools/v075/v075_monster_private_skill_bench.gd.uid",
+    "scenes/tools/v075/V075MonsterPrivateSkillBench.tscn",
+    "tests/v075_monster_private_skill_visibility_test.gd",
+    "tests/v075_monster_private_skill_visibility_test.gd.uid",
+    "tests/v075_monster_private_skill_safe_boundary_test.gd",
+    "tests/v075_monster_private_skill_safe_boundary_test.gd.uid",
+    "tests/v075_monster_private_skill_sequence_test.gd",
+    "tests/v075_monster_private_skill_sequence_test.gd.uid",
+    "tests/v075_monster_private_skill_asset_reservation_test.gd",
+    "tests/v075_monster_private_skill_asset_reservation_test.gd.uid",
+    "tests/v075_monster_private_skill_fizzle_test.gd",
+    "tests/v075_monster_private_skill_fizzle_test.gd.uid",
+    "tests/v075_monster_one_skill_per_batch_test.gd",
+    "tests/v075_monster_one_skill_per_batch_test.gd.uid",
+    "tests/v075_monster_skill_cooldown_reuse_test.gd",
+    "tests/v075_monster_skill_cooldown_reuse_test.gd.uid",
+    "tests/v075_monster_skill_upgrade_unlock_test.gd",
+    "tests/v075_monster_skill_upgrade_unlock_test.gd.uid",
+    "tests/v075_combat_checkpoint_rollback_test.gd",
+    "tests/v075_combat_checkpoint_rollback_test.gd.uid",
+    "reports/v075/coordination/lane_d_handoff.json",
+    "reports/v075/coordination/lane_d_handoff.md"
+  ],
+  "read_only_dependencies": [
+    "scripts/v07_semantic/v07_asset_batch_core.gd",
+    "scripts/v074/facility/v074_facility_runtime_core.gd",
+    "scripts/runtime/commodity_flow_post_commit_receipt_consumer.gd",
+    "scenes/tools/CommodityFlowPostCommitExactOnceBench.tscn",
+    "AGENTS.md"
+  ],
+  "expected_outputs": [
+    "owner-private instant skill pure core",
+    "typed asset reservation and settlement contracts",
+    "safe-boundary private serial queue",
+    "owner/public projections",
+    "cooldown and source lifecycle transitions",
+    "detached pure checkpoint rollback",
+    "real MCP bench",
+    "nine focused tests"
+  ],
+  "hot_file_conflicts": [],
+  "production_cutover_domains": [
+    "monster_private_instant_skill_authority_contract",
+    "combat_detached_checkpoint_contract"
+  ],
+  "production_wiring_modified": false,
+  "runtime_ui_main_catalog_modified": false,
+  "contracts": {
+    "ruleset_id": "v0.7.5",
+    "execution_mode": "private_instant_serial",
+    "queue_order": [
+      "authority_receive_sequence",
+      "owner_player_id",
+      "request_id"
+    ],
+    "max_uses_per_source_per_batch": 1,
+    "immediate_without_atomic_transaction": true,
+    "next_safe_boundary_after_receipt": true,
+    "atomic_reentry_allowed": false,
+    "asset_balance_state_owned": false,
+    "direct_asset_write_count": 0,
+    "fizzle_full_reservation_release": true,
+    "fizzle_cooldown_start_count": 0,
+    "fizzle_batch_use_consumed": true,
+    "upgrade_existing_cooldown_reset_count": 0,
+    "new_skill_initial_ready": true,
+    "destroyed_withdrawn_replaced_revoke": true,
+    "downed_disabled_recovery_preserves_cooldown": true,
+    "public_skill_card_disclosure_count": 0,
+    "future_skill_target_disclosure_count": 0
+  },
+  "typed_ports": {
+    "reservation_request": "V075MonsterSkillAssetReservationRequestV1",
+    "reservation_receipt": "V075MonsterSkillAssetReservationReceiptV1",
+    "execution_intent": "V075MonsterPrivateSkillExecutionIntentV1",
+    "effect_receipt": "V075MonsterPrivateSkillEffectReceiptV1",
+    "asset_settlement_intent": "V075MonsterSkillAssetSettlementIntentV1",
+    "owner_projection": "V075MonsterPrivateSkillOwnerProjectionV1",
+    "public_projection": "V075MonsterSkillPublicProjectionV1"
+  },
+  "checkpoint": {
+    "contracts": [
+      "CombatCheckpointV1",
+      "MonsterSourceCheckpointV1",
+      "MonsterSkillCheckpointV1",
+      "MilitaryMissionCheckpointV1"
+    ],
+    "detached": true,
+    "pure_data": true,
+    "lineage_bound": true,
+    "receipt_prefix_bound": true,
+    "capture_mutation_count": 0,
+    "production_save_write_count": 0,
+    "production_save_owner_connected": false
+  },
+  "focused_tests": {
+    "script_validation": "9/9",
+    "execution": "9/9",
+    "assertions": "66/66",
+    "failed": 0
+  },
+  "mcp": {
+    "role": "B",
+    "logical_lane": "D",
+    "port": 7574,
+    "godot_version": "4.7-stable",
+    "scene": "res://scenes/tools/v075/V075MonsterPrivateSkillBench.tscn",
+    "bench_complete": true,
+    "bench_passed": true,
+    "checks": 28,
+    "failures": 0,
+    "public_skill_card_disclosure_count": 0,
+    "direct_asset_write_count": 0,
+    "fizzle_cooldown_start_count": 0,
+    "checkpoint_pure_data": true,
+    "error_log_count": 0,
+    "play_mode_stopped": true,
+    "editor_stopped": true,
+    "port_open_after_stop": false
+  },
+  "integration_required_from_main_agent": [
+    "Create and own the one V075CombatRuntimeOwner state instance.",
+    "Pass only the acting owner's own_available_assets projection to submit_request.",
+    "Send reservation requests to the Asset Owner and apply its typed receipt.",
+    "Drain an immediate request before opening another public Receipt, or drain it immediately after complete_atomic_receipt.",
+    "Resolve targets/effects through the appropriate combat/facility ports, then apply the effect receipt.",
+    "Send commit/release settlement intents back to the Asset Owner exactly once.",
+    "Use owner_private_projection only for the matching viewer and public_projection for rivals.",
+    "Call advance_batch exactly once at the authoritative batch boundary.",
+    "Capture/rollback detached checkpoint data only under the coordinator's full combat transaction fence."
+  ],
+  "known_parent_diagnostics": {
+    "task_introduced_count": 0,
+    "note": "The first editor import exposed pre-existing unrelated parser diagnostics and an old @tool bench that called quit. Final Lane D validation used the dedicated non-tool bench and reported zero Lane D/runtime errors."
+  }
+}

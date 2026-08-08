@@ -69,9 +69,18 @@ func _commit_visible_acquisition(source_instance_id: String) -> Dictionary:
 
 func debug_snapshot_v074() -> Dictionary:
 	var track := _state.get("track_state", {}) as Dictionary
+	var item_count := (track.get("items", []) as Array).size()
 	return {
 		"schema": "V074SharedSushiTrackDebugV1",
 		"refill_mode_id": REFILL_MODE_ID,
+		"track_revision": int(track.get("revision", 0)),
+		"capacity": int(track.get("capacity", 0)),
+		"item_count": item_count,
+		"next_instance_sequence": int(
+			track.get("next_instance_sequence", 0)
+		),
+		"supply_cursor_total": _supply_cursor_total(),
+		"supply_rng_draw_total": _supply_rng_draw_total(),
 		"acquisition_commit_count": _acquisition_commit_count,
 		"immediate_authoritative_refill_count": (
 			_immediate_authoritative_refill_count
@@ -87,7 +96,7 @@ func debug_snapshot_v074() -> Dictionary:
 		),
 		"vacancy_count": (
 			int(track.get("capacity", 0))
-			- (track.get("items", []) as Array).size()
+			- item_count
 		),
 		"scroll_sequence": int(track.get("scroll_sequence", 0)),
 	}

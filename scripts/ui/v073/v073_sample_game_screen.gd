@@ -383,7 +383,7 @@ func _apply_responsive_layout() -> void:
 	_layout_profile = ResponsiveTableLayout.profile_for(viewport_size, player_count)
 	var mode := str(_layout_profile.get("mode", ResponsiveTableLayout.REGULAR_DESKTOP))
 	var compact := mode == ResponsiveTableLayout.COMPACT_DESKTOP
-	var root_margin := $RootMargin as MarginContainer
+	var root_margin := $RootMargin as ScrollContainer
 	var shell := $RootMargin/Shell as VBoxContainer
 	var header := $RootMargin/Shell/Header as Control
 	var track_panel := $RootMargin/Shell/TrackPanel as Control

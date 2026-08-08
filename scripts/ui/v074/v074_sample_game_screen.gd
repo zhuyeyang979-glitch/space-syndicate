@@ -568,7 +568,7 @@ func _apply_responsive_layout() -> void:
 		"mode",
 		ResponsiveLayoutV074.REGULAR_DESKTOP
 	))
-	var root_margin := $RootMargin as MarginContainer
+	var root_margin := $RootMargin as ScrollContainer
 	var shell := $RootMargin/Shell as VBoxContainer
 	var header := $RootMargin/Shell/Header as Control
 	var track_panel := $RootMargin/Shell/TrackPanel as Control

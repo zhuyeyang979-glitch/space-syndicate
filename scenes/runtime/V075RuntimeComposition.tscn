@@ -1,0 +1,31 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/v075_runtime/v075_application_flow.gd" id="1_flow"]
+[ext_resource type="Script" path="res://scripts/v075_runtime/v075_ruleset_runtime_owner.gd" id="2_ruleset"]
+[ext_resource type="Script" path="res://scripts/v075_runtime/v075_runtime_owner.gd" id="3_runtime"]
+[ext_resource type="Script" path="res://scripts/v075/runtime/v075_combat_runtime_owner.gd" id="4_combat"]
+[ext_resource type="Script" path="res://scripts/v075/telemetry/v075_combat_telemetry_service.gd" id="5_combat_telemetry"]
+[ext_resource type="PackedScene" path="res://scenes/playtest/V073PlaytestTelemetryService.tscn" id="6_playtest_telemetry"]
+
+[node name="V075RuntimeComposition" type="Node"]
+unique_name_in_owner = true
+editor_description = "Atomic V0.7.5 new-game-only composition. Ruleset, map/economy runtime, combat authority and read-only telemetry are connected through typed ports."
+script = ExtResource("1_flow")
+
+[node name="V075RulesetRuntimeOwner" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("2_ruleset")
+
+[node name="V075RuntimeOwner" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("3_runtime")
+
+[node name="V075CombatRuntimeOwner" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("4_combat")
+
+[node name="V075CombatTelemetryService" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("5_combat_telemetry")
+
+[node name="V073PlaytestTelemetryService" parent="." instance=ExtResource("6_playtest_telemetry")]

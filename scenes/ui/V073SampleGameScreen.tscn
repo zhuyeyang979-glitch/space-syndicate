@@ -90,7 +90,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.025, 0.038, 0.067, 0.86)
 
-[node name="RootMargin" type="MarginContainer" parent="." unique_id=1186783040]
+[node name="RootMargin" type="ScrollContainer" parent="." unique_id=1186783040]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -101,10 +101,9 @@ offset_right = -12.0
 offset_bottom = -10.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 0
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 0
-theme_override_constants/margin_bottom = 0
+horizontal_scroll_mode = 1
+vertical_scroll_mode = 1
+follow_focus = true
 
 [node name="Shell" type="VBoxContainer" parent="RootMargin" unique_id=1927996692]
 layout_mode = 2

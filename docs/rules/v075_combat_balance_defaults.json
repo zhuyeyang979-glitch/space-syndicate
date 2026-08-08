@@ -1,0 +1,224 @@
+{
+  "schema_version": 1,
+  "defaults_id": "space_syndicate.v075.combat_balance_defaults.first_human_candidate",
+  "constitution_id": "space_syndicate.v075.complete",
+  "ruleset_id": "v0.7.5",
+  "status": "frozen_first_v075_human_sample_defaults_not_final_commercial_balance",
+  "human_fun_proven": false,
+  "human_test_required": true,
+  "simulation_validation_required": true,
+  "simulation_may_silently_mutate_defaults": false,
+  "source_profile": {
+    "inherits_noncombat_defaults_from": "space_syndicate.v074.balance_defaults.roguelike_geography_warehouse_sample",
+    "source_path": "docs/rules/v074_balance_defaults.json",
+    "inherited_noncombat_balance_value_change_count": 0,
+    "legacy_combat_values_are_reference_only": true
+  },
+  "unified_track_normal_subtype_weights_basis_points": {
+    "facility": 7000,
+    "monster": 1500,
+    "military": 1500,
+    "sum": 10000,
+    "selection_rationale": "Conservative midpoint combat shares preserve a seventy-percent facility core while giving both combat card kinds natural access.",
+    "required_simulation_report": "reports/balance/v075_combat_simulation_report.json"
+  },
+  "inherited_track_kind_ratio_basis_points": {
+    "normal_card": 6000,
+    "commodity_card": 4000,
+    "changed_by_v075": false
+  },
+  "facility_combat_max_hp_by_rank": {
+    "1": 4,
+    "2": 8,
+    "3": 12,
+    "4": 16
+  },
+  "normal_combat_card_cost_contract": {
+    "primary_color_authority": "existing_unified_track_color_supply",
+    "primary_color_selection_granularity": "per_card_instance",
+    "instance_primary_color_field": "primary_color",
+    "profile_fields": ["primary_asset_cost"],
+    "cost_debit_rule": "primary_asset_cost_from_authority_selected_instance_primary_color",
+    "same_definition_instances_may_have_different_primary_colors": true,
+    "family_or_definition_static_primary_color_allowed": false,
+    "catalog_primary_color_override_allowed": false,
+    "catalog_track_primary_color_field_policy": "ignore_as_non_authoritative_if_present",
+    "preferred_industry_color_may_select_card_cost_color": false
+  },
+  "monster_private_skill_cost_contract": {
+    "cost_source": "explicit_skill_balance_authoring",
+    "preferred_industry_color_may_select_skill_cost_color": false,
+    "card_instance_primary_color_may_select_skill_cost_color": false
+  },
+  "monster_family_rank_profiles": {
+    "spore_tide_emperor": [
+      {"rank": 1, "max_hp": 50, "armor": 0, "base_detection_range_hops": 2, "movement_budget_milli_arc": 2000000, "basic_attack_damage": 2},
+      {"rank": 2, "max_hp": 65, "armor": 1, "base_detection_range_hops": 2, "movement_budget_milli_arc": 2150000, "basic_attack_damage": 3},
+      {"rank": 3, "max_hp": 82, "armor": 2, "base_detection_range_hops": 2, "movement_budget_milli_arc": 2300000, "basic_attack_damage": 4},
+      {"rank": 4, "max_hp": 102, "armor": 3, "base_detection_range_hops": 2, "movement_budget_milli_arc": 2450000, "basic_attack_damage": 6}
+    ],
+    "meteor_sentinel": [
+      {"rank": 1, "max_hp": 30, "armor": 0, "base_detection_range_hops": 3, "movement_budget_milli_arc": 2400000, "basic_attack_damage": 2},
+      {"rank": 2, "max_hp": 42, "armor": 1, "base_detection_range_hops": 3, "movement_budget_milli_arc": 2600000, "basic_attack_damage": 3},
+      {"rank": 3, "max_hp": 56, "armor": 2, "base_detection_range_hops": 3, "movement_budget_milli_arc": 2800000, "basic_attack_damage": 4},
+      {"rank": 4, "max_hp": 72, "armor": 3, "base_detection_range_hops": 3, "movement_budget_milli_arc": 3000000, "basic_attack_damage": 5}
+    ],
+    "sand_armor_rover": [
+      {"rank": 1, "max_hp": 40, "armor": 2, "base_detection_range_hops": 2, "movement_budget_milli_arc": 2100000, "basic_attack_damage": 2},
+      {"rank": 2, "max_hp": 54, "armor": 3, "base_detection_range_hops": 2, "movement_budget_milli_arc": 2250000, "basic_attack_damage": 3},
+      {"rank": 3, "max_hp": 70, "armor": 4, "base_detection_range_hops": 2, "movement_budget_milli_arc": 2400000, "basic_attack_damage": 5},
+      {"rank": 4, "max_hp": 90, "armor": 5, "base_detection_range_hops": 2, "movement_budget_milli_arc": 2550000, "basic_attack_damage": 7}
+    ],
+    "blue_edge_knight": [
+      {"rank": 1, "max_hp": 50, "armor": 1, "base_detection_range_hops": 2, "movement_budget_milli_arc": 2300000, "basic_attack_damage": 2},
+      {"rank": 2, "max_hp": 64, "armor": 2, "base_detection_range_hops": 2, "movement_budget_milli_arc": 2500000, "basic_attack_damage": 3},
+      {"rank": 3, "max_hp": 80, "armor": 3, "base_detection_range_hops": 2, "movement_budget_milli_arc": 2700000, "basic_attack_damage": 5},
+      {"rank": 4, "max_hp": 100, "armor": 4, "base_detection_range_hops": 2, "movement_budget_milli_arc": 2900000, "basic_attack_damage": 7}
+    ],
+    "prism_blade_colossus": [
+      {"rank": 1, "max_hp": 45, "armor": 2, "base_detection_range_hops": 2, "movement_budget_milli_arc": 2000000, "basic_attack_damage": 2},
+      {"rank": 2, "max_hp": 58, "armor": 3, "base_detection_range_hops": 2, "movement_budget_milli_arc": 2200000, "basic_attack_damage": 4},
+      {"rank": 3, "max_hp": 74, "armor": 4, "base_detection_range_hops": 2, "movement_budget_milli_arc": 2400000, "basic_attack_damage": 5},
+      {"rank": 4, "max_hp": 94, "armor": 5, "base_detection_range_hops": 2, "movement_budget_milli_arc": 2600000, "basic_attack_damage": 8}
+    ],
+    "mirror_hunter": [
+      {"rank": 1, "max_hp": 45, "armor": 0, "base_detection_range_hops": 3, "movement_budget_milli_arc": 2400000, "basic_attack_damage": 2},
+      {"rank": 2, "max_hp": 57, "armor": 1, "base_detection_range_hops": 3, "movement_budget_milli_arc": 2600000, "basic_attack_damage": 3},
+      {"rank": 3, "max_hp": 72, "armor": 2, "base_detection_range_hops": 3, "movement_budget_milli_arc": 2800000, "basic_attack_damage": 4},
+      {"rank": 4, "max_hp": 90, "armor": 3, "base_detection_range_hops": 3, "movement_budget_milli_arc": 3000000, "basic_attack_damage": 6}
+    ]
+  },
+  "monster_card_rank_cost_profiles": {
+    "spore_tide_emperor": [
+      {"rank": 1, "purchase_cash": 6, "primary_asset_cost": 2},
+      {"rank": 2, "purchase_cash": 10, "primary_asset_cost": 3},
+      {"rank": 3, "purchase_cash": 15, "primary_asset_cost": 4},
+      {"rank": 4, "purchase_cash": 21, "primary_asset_cost": 5}
+    ],
+    "meteor_sentinel": [
+      {"rank": 1, "purchase_cash": 6, "primary_asset_cost": 2},
+      {"rank": 2, "purchase_cash": 10, "primary_asset_cost": 3},
+      {"rank": 3, "purchase_cash": 15, "primary_asset_cost": 4},
+      {"rank": 4, "purchase_cash": 21, "primary_asset_cost": 5}
+    ],
+    "sand_armor_rover": [
+      {"rank": 1, "purchase_cash": 6, "primary_asset_cost": 2},
+      {"rank": 2, "purchase_cash": 10, "primary_asset_cost": 3},
+      {"rank": 3, "purchase_cash": 15, "primary_asset_cost": 4},
+      {"rank": 4, "purchase_cash": 21, "primary_asset_cost": 5}
+    ],
+    "blue_edge_knight": [
+      {"rank": 1, "purchase_cash": 6, "primary_asset_cost": 2},
+      {"rank": 2, "purchase_cash": 10, "primary_asset_cost": 3},
+      {"rank": 3, "purchase_cash": 15, "primary_asset_cost": 4},
+      {"rank": 4, "purchase_cash": 21, "primary_asset_cost": 5}
+    ],
+    "prism_blade_colossus": [
+      {"rank": 1, "purchase_cash": 6, "primary_asset_cost": 2},
+      {"rank": 2, "purchase_cash": 10, "primary_asset_cost": 3},
+      {"rank": 3, "purchase_cash": 15, "primary_asset_cost": 4},
+      {"rank": 4, "purchase_cash": 21, "primary_asset_cost": 5}
+    ],
+    "mirror_hunter": [
+      {"rank": 1, "purchase_cash": 6, "primary_asset_cost": 2},
+      {"rank": 2, "purchase_cash": 10, "primary_asset_cost": 3},
+      {"rank": 3, "purchase_cash": 15, "primary_asset_cost": 4},
+      {"rank": 4, "purchase_cash": 21, "primary_asset_cost": 5}
+    ]
+  },
+  "autonomy_defaults": {
+    "detection_range_expansion_hops_per_missed_batch": 1,
+    "hungry_threshold": "base_range_reaches_whole_dynamic_map",
+    "same_batch_target_replan_count": 0,
+    "land_ocean_passability_modifier_count": 0
+  },
+  "trample_defaults": {
+    "trample_distance_step_milli_arc": 250000,
+    "trample_damage_per_step_by_rank": {"1": 1, "2": 2, "3": 3, "4": 4},
+    "trample_damage_cap_per_region_by_rank": {"1": 3, "2": 5, "3": 7, "4": 9},
+    "positive_distance_minimum_step_count": 1,
+    "default_forced_movement_trample": false
+  },
+  "monster_skill_profiles": {
+    "skill.monster.spore_tide_emperor.corrosive_breath": {"asset_cost_by_color": {"life": 1, "energy": 0, "industry": 0, "technology": 0, "commerce": 0, "shipping": 0}, "effect_kind": "single_facility_damage", "primary_amount": 2, "maximum_range_hops": 1, "cooldown_batches": 1, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+    "skill.monster.spore_tide_emperor.miasma_cannon": {"asset_cost_by_color": {"life": 2, "energy": 0, "industry": 0, "technology": 0, "commerce": 0, "shipping": 0}, "effect_kind": "region_facility_damage_budget", "primary_amount": 4, "maximum_range_hops": 2, "cooldown_batches": 2, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+    "skill.monster.spore_tide_emperor.miasma_barrier": {"asset_cost_by_color": {"life": 2, "energy": 0, "industry": 0, "technology": 0, "commerce": 0, "shipping": 0}, "effect_kind": "self_armor_gain", "primary_amount": 3, "maximum_range_hops": 0, "cooldown_batches": 2, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+    "skill.monster.spore_tide_emperor.calamity_pressure": {"asset_cost_by_color": {"life": 4, "energy": 0, "industry": 0, "technology": 0, "commerce": 0, "shipping": 0}, "effect_kind": "region_facility_damage_budget", "primary_amount": 8, "maximum_range_hops": 2, "cooldown_batches": 3, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+
+    "skill.monster.meteor_sentinel.spark_shock": {"asset_cost_by_color": {"life": 0, "energy": 1, "industry": 0, "technology": 0, "commerce": 0, "shipping": 0}, "effect_kind": "single_facility_damage", "primary_amount": 2, "maximum_range_hops": 2, "cooldown_batches": 1, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+    "skill.monster.meteor_sentinel.high_altitude_cyclone": {"asset_cost_by_color": {"life": 0, "energy": 2, "industry": 0, "technology": 0, "commerce": 0, "shipping": 0}, "effect_kind": "single_monster_damage", "primary_amount": 3, "maximum_range_hops": 1, "cooldown_batches": 2, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+    "skill.monster.meteor_sentinel.white_spectrum_ray": {"asset_cost_by_color": {"life": 0, "energy": 2, "industry": 0, "technology": 0, "commerce": 0, "shipping": 0}, "effect_kind": "single_facility_damage", "primary_amount": 5, "maximum_range_hops": 3, "cooldown_batches": 2, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+    "skill.monster.meteor_sentinel.orbital_grapple": {"asset_cost_by_color": {"life": 0, "energy": 4, "industry": 0, "technology": 0, "commerce": 0, "shipping": 0}, "effect_kind": "single_monster_damage", "primary_amount": 8, "maximum_range_hops": 2, "cooldown_batches": 3, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+
+    "skill.monster.sand_armor_rover.heavy_shell_charge": {"asset_cost_by_color": {"life": 0, "energy": 0, "industry": 1, "technology": 0, "commerce": 0, "shipping": 0}, "effect_kind": "single_facility_damage", "primary_amount": 3, "maximum_range_hops": 1, "cooldown_batches": 1, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+    "skill.monster.sand_armor_rover.tail_sweep": {"asset_cost_by_color": {"life": 0, "energy": 0, "industry": 2, "technology": 0, "commerce": 0, "shipping": 0}, "effect_kind": "current_region_facility_damage_budget", "primary_amount": 4, "maximum_range_hops": 0, "cooldown_batches": 1, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+    "skill.monster.sand_armor_rover.burrow_armor": {"asset_cost_by_color": {"life": 0, "energy": 0, "industry": 2, "technology": 0, "commerce": 0, "shipping": 0}, "effect_kind": "self_armor_gain", "primary_amount": 4, "maximum_range_hops": 0, "cooldown_batches": 2, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+    "skill.monster.sand_armor_rover.mudslide": {"asset_cost_by_color": {"life": 0, "energy": 0, "industry": 4, "technology": 0, "commerce": 0, "shipping": 0}, "effect_kind": "region_facility_damage_budget", "primary_amount": 9, "maximum_range_hops": 1, "cooldown_batches": 3, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+
+    "skill.monster.blue_edge_knight.blue_edge_light_slash": {"asset_cost_by_color": {"life": 0, "energy": 0, "industry": 0, "technology": 1, "commerce": 0, "shipping": 0}, "effect_kind": "single_facility_damage", "primary_amount": 2, "maximum_range_hops": 1, "cooldown_batches": 1, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+    "skill.monster.blue_edge_knight.rotating_blade_crash": {"asset_cost_by_color": {"life": 0, "energy": 0, "industry": 0, "technology": 2, "commerce": 0, "shipping": 0}, "effect_kind": "current_region_facility_damage_budget", "primary_amount": 4, "maximum_range_hops": 0, "cooldown_batches": 1, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+    "skill.monster.blue_edge_knight.heat_load_ray": {"asset_cost_by_color": {"life": 0, "energy": 0, "industry": 0, "technology": 2, "commerce": 0, "shipping": 0}, "effect_kind": "single_facility_damage", "primary_amount": 6, "maximum_range_hops": 2, "cooldown_batches": 2, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+    "skill.monster.blue_edge_knight.heat_load_flash": {"asset_cost_by_color": {"life": 0, "energy": 0, "industry": 0, "technology": 4, "commerce": 0, "shipping": 0}, "effect_kind": "self_heal", "primary_amount": 10, "maximum_range_hops": 0, "cooldown_batches": 3, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+
+    "skill.monster.prism_blade_colossus.electric_kick": {"asset_cost_by_color": {"life": 0, "energy": 0, "industry": 0, "technology": 0, "commerce": 1, "shipping": 0}, "effect_kind": "single_facility_damage", "primary_amount": 3, "maximum_range_hops": 1, "cooldown_batches": 1, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+    "skill.monster.prism_blade_colossus.flash_hand_blade": {"asset_cost_by_color": {"life": 0, "energy": 0, "industry": 0, "technology": 0, "commerce": 2, "shipping": 0}, "effect_kind": "single_facility_damage", "primary_amount": 4, "maximum_range_hops": 1, "cooldown_batches": 1, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+    "skill.monster.prism_blade_colossus.horizontal_rift_blade": {"asset_cost_by_color": {"life": 0, "energy": 0, "industry": 0, "technology": 0, "commerce": 2, "shipping": 0}, "effect_kind": "region_facility_damage_budget", "primary_amount": 5, "maximum_range_hops": 2, "cooldown_batches": 2, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+    "skill.monster.prism_blade_colossus.vertical_rift_blade": {"asset_cost_by_color": {"life": 0, "energy": 0, "industry": 0, "technology": 0, "commerce": 4, "shipping": 0}, "effect_kind": "region_facility_damage_budget", "primary_amount": 10, "maximum_range_hops": 2, "cooldown_batches": 3, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+
+    "skill.monster.mirror_hunter.refracted_weak_ray": {"asset_cost_by_color": {"life": 0, "energy": 0, "industry": 0, "technology": 1, "commerce": 0, "shipping": 0}, "effect_kind": "single_facility_damage", "primary_amount": 2, "maximum_range_hops": 2, "cooldown_batches": 1, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+    "skill.monster.mirror_hunter.low_grade_bomb": {"asset_cost_by_color": {"life": 0, "energy": 0, "industry": 0, "technology": 2, "commerce": 0, "shipping": 0}, "effect_kind": "region_facility_damage_budget", "primary_amount": 4, "maximum_range_hops": 2, "cooldown_batches": 2, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+    "skill.monster.mirror_hunter.improved_ray": {"asset_cost_by_color": {"life": 0, "energy": 0, "industry": 0, "technology": 2, "commerce": 0, "shipping": 0}, "effect_kind": "single_facility_damage", "primary_amount": 6, "maximum_range_hops": 3, "cooldown_batches": 2, "cooldown_on_fizzle": false, "forced_movement_trample": false},
+    "skill.monster.mirror_hunter.high_grade_ray": {"asset_cost_by_color": {"life": 0, "energy": 0, "industry": 0, "technology": 4, "commerce": 0, "shipping": 0}, "effect_kind": "single_facility_damage", "primary_amount": 10, "maximum_range_hops": 4, "cooldown_batches": 3, "cooldown_on_fizzle": false, "forced_movement_trample": false}
+  },
+  "military_definition_rank_profiles": {
+    "planetary_defense_force": [
+      {"rank": 1, "purchase_cash": 6, "primary_asset_cost": 2, "region_damage_budget": 4, "monster_damage": 2},
+      {"rank": 2, "purchase_cash": 10, "primary_asset_cost": 3, "region_damage_budget": 6, "monster_damage": 3},
+      {"rank": 3, "purchase_cash": 15, "primary_asset_cost": 4, "region_damage_budget": 8, "monster_damage": 4},
+      {"rank": 4, "purchase_cash": 21, "primary_asset_cost": 5, "region_damage_budget": 11, "monster_damage": 6}
+    ],
+    "air_superiority_fighter": [
+      {"rank": 1, "purchase_cash": 6, "primary_asset_cost": 2, "region_damage_budget": 3, "monster_damage": 3},
+      {"rank": 2, "purchase_cash": 10, "primary_asset_cost": 3, "region_damage_budget": 5, "monster_damage": 4},
+      {"rank": 3, "purchase_cash": 15, "primary_asset_cost": 4, "region_damage_budget": 7, "monster_damage": 6},
+      {"rank": 4, "purchase_cash": 21, "primary_asset_cost": 5, "region_damage_budget": 9, "monster_damage": 8}
+    ],
+    "submarine_fleet": [
+      {"rank": 1, "purchase_cash": 6, "primary_asset_cost": 2, "region_damage_budget": 5, "monster_damage": 2},
+      {"rank": 2, "purchase_cash": 10, "primary_asset_cost": 3, "region_damage_budget": 7, "monster_damage": 4},
+      {"rank": 3, "purchase_cash": 15, "primary_asset_cost": 4, "region_damage_budget": 10, "monster_damage": 5},
+      {"rank": 4, "purchase_cash": 21, "primary_asset_cost": 5, "region_damage_budget": 13, "monster_damage": 7}
+    ]
+  },
+  "tunable_json_pointers": [
+    "/unified_track_normal_subtype_weights_basis_points",
+    "/facility_combat_max_hp_by_rank",
+    "/monster_family_rank_profiles",
+    "/monster_card_rank_cost_profiles",
+    "/autonomy_defaults",
+    "/trample_defaults/trample_distance_step_milli_arc",
+    "/trample_defaults/trample_damage_per_step_by_rank",
+    "/trample_defaults/trample_damage_cap_per_region_by_rank",
+    "/monster_skill_profiles",
+    "/military_definition_rank_profiles"
+  ],
+  "structural_non_tunable_ids": [
+    "active_monster_family_count_6",
+    "preferred_color_coverage_6_of_6",
+    "four_skills_per_monster_family",
+    "rank_four_skill_four_is_ultimate",
+    "base_monster_control_capacity_1",
+    "monster_card_modes_exact_four",
+    "monster_skill_private_instant_serial",
+    "one_monster_skill_use_per_source_per_batch",
+    "military_task_kinds_exact_two",
+    "military_one_shot_withdrawal",
+    "military_no_bound_action",
+    "military_no_guard",
+    "facility_damage_typed_port_only",
+    "unified_track_primary_color_authority_per_instance",
+    "normal_combat_cost_profiles_primary_asset_cost_only",
+    "combat_catalog_primary_color_override_forbidden",
+    "v074_track_ratio_6000_4000_unchanged"
+  ]
+}

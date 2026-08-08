@@ -2,6 +2,9 @@ extends SceneTree
 
 const MANIFEST_PATH := "res://docs/migration/v074_atomic_cutover_manifest.json"
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
+const V074_COMPOSITION_PATH := "res://scenes/runtime/V074RuntimeComposition.tscn"
+const V074_BOOTSTRAP_PATH := "res://scripts/v074_runtime/v074_application_bootstrap.gd"
+const V074_SCREEN_PATH := "res://scenes/ui/v074/V074SampleGameScreen.tscn"
 const LEGACY_MAIN_PATH := "res://scripts/main.gd"
 
 const EXPECTED_TOP_LEVEL_FIELDS := [
@@ -232,13 +235,17 @@ func _run() -> void:
 		)
 	var main_text := _read_text(MAIN_SCENE_PATH)
 	_expect(
-		main_text.contains(
-			"res://scripts/v074_runtime/v074_application_bootstrap.gd"
-		),
-		"main loads V074 bootstrap"
+		FileAccess.file_exists(V074_BOOTSTRAP_PATH),
+		"frozen V074 bootstrap remains available"
 	)
-	_expect(main_text.contains("V074RuntimeComposition"), "main loads V074 composition")
-	_expect(main_text.contains("V074SampleGameScreen"), "main loads V074 screen")
+	_expect(
+		FileAccess.file_exists(V074_COMPOSITION_PATH),
+		"frozen V074 composition remains available"
+	)
+	_expect(
+		FileAccess.file_exists(V074_SCREEN_PATH),
+		"frozen V074 screen remains available"
+	)
 	_expect(not main_text.contains("scripts/main.gd"), "main has no legacy script path")
 	_expect(not FileAccess.file_exists(LEGACY_MAIN_PATH), "legacy scripts/main.gd is absent")
 	_finish(

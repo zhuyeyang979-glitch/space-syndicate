@@ -1,0 +1,200 @@
+name: V075 PR Acceptance
+
+"on":
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bounded-acceptance:
+    runs-on: windows-2022
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout exact source SHA
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify source identity and patch whitespace
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $expectedHead = if ("${{ github.event_name }}" -eq "pull_request") {
+            "${{ github.event.pull_request.head.sha }}"
+          } else {
+            "${{ github.sha }}"
+          }
+          $actualHead = (git rev-parse HEAD).Trim()
+          if ($actualHead -cne $expectedHead) {
+            throw "Checkout mismatch: expected=$expectedHead actual=$actualHead"
+          }
+          $diffBase = if ("${{ github.event_name }}" -eq "pull_request") {
+            "${{ github.event.pull_request.base.sha }}"
+          } else {
+            "bd0af5c99c5267cdbe7d66c01034f80db4d704fd"
+          }
+          $mergeBase = (git merge-base $diffBase HEAD).Trim()
+          if ($mergeBase -cne $diffBase) {
+            throw "Unexpected PR merge base: expected=$diffBase actual=$mergeBase"
+          }
+          git diff --check "$diffBase...HEAD"
+          if ($LASTEXITCODE -ne 0) {
+            throw "git diff --check failed for $diffBase...HEAD"
+          }
+
+      - name: Install pinned Godot 4.7
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $archive = Join-Path $env:RUNNER_TEMP "Godot_v4.7-stable_win64.exe.zip"
+          $installRoot = Join-Path $env:RUNNER_TEMP "godot-4.7-stable"
+          Invoke-WebRequest `
+            -Uri "https://github.com/godotengine/godot-builds/releases/download/4.7-stable/Godot_v4.7-stable_win64.exe.zip" `
+            -OutFile $archive
+          Expand-Archive -LiteralPath $archive -DestinationPath $installRoot -Force
+          $godot = Get-ChildItem -LiteralPath $installRoot -Filter "Godot_v4.7-stable_win64.exe" -Recurse -File | Select-Object -First 1
+          if ($null -eq $godot) {
+            throw "Pinned Godot GUI executable was not found after extraction."
+          }
+          $expectedSha256 = "b2ca888d5115a6cedee564764a2ee494a625f2ec2edbabd010fe33c9a88a6bf8"
+          $actualSha256 = (Get-FileHash -LiteralPath $godot.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualSha256 -cne $expectedSha256) {
+            throw "Godot SHA-256 mismatch: expected=$expectedSha256 actual=$actualSha256"
+          }
+          "GODOT_GUI_PATH=$($godot.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Prove runner decoding and failure gates
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $toolRoot = Join-Path $env:GITHUB_WORKSPACE "tools"
+          $evidenceRoot = Join-Path $env:RUNNER_TEMP "v075-runner-evidence"
+          & pwsh -NoProfile -File (Join-Path $toolRoot "invoke_godot_test_raw_decoder_self_test.ps1") `
+            -EvidenceRoot (Join-Path $evidenceRoot "raw-decoder")
+          if ($LASTEXITCODE -ne 0) { throw "Raw decoder self-test failed." }
+          & pwsh -NoProfile -File (Join-Path $toolRoot "invoke_godot_test_failure_detection_self_test.ps1") `
+            -GodotPath $env:GODOT_GUI_PATH `
+            -EvidenceRoot (Join-Path $evidenceRoot "failure-detection")
+          if ($LASTEXITCODE -ne 0) { throw "Failure-detection self-test failed." }
+          & pwsh -NoProfile -File (Join-Path $toolRoot "invoke_godot_test_self_test.ps1") `
+            -GodotPath $env:GODOT_GUI_PATH `
+            -EvidenceRoot (Join-Path $evidenceRoot "import-modes")
+          if ($LASTEXITCODE -ne 0) { throw "Import-mode self-test failed." }
+
+      - name: Run bounded V075 production gates
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $runner = Join-Path $env:GITHUB_WORKSPACE "tools\invoke_godot_test.ps1"
+          $logRoot = Join-Path $env:RUNNER_TEMP "v075-pr-acceptance"
+
+          function Invoke-GodotGate {
+            param(
+              [Parameter(Mandatory = $true)][string]$Script,
+              [string]$Marker = "",
+              [string[]]$Arguments = @(),
+              [bool]$EnsureImported = $false,
+              [int]$TimeoutSeconds = 300
+            )
+            $command = @(
+              "-NoProfile", "-File", $runner,
+              "-ProjectPath", $env:GITHUB_WORKSPACE,
+              "-GodotPath", $env:GODOT_GUI_PATH,
+              "-TestScript", $Script,
+              "-LogRoot", $logRoot,
+              "-TimeoutSeconds", "$TimeoutSeconds"
+            )
+            if ($EnsureImported) { $command += "-EnsureImported" }
+            if (-not [string]::IsNullOrEmpty($Marker)) {
+              $command += @("-ExpectedCompletionMarker", $Marker)
+            }
+            if ($Arguments.Count -gt 0) {
+              $command += @(
+                "-TestArgumentJson",
+                (ConvertTo-Json -InputObject @($Arguments) -Compress)
+              )
+            }
+            & pwsh @command
+            if ($LASTEXITCODE -ne 0) {
+              throw "Godot gate failed: $Script exit=$LASTEXITCODE"
+            }
+          }
+
+          Invoke-GodotGate `
+            -Script "res://tests/smoke_test.gd" `
+            -Arguments @("--check-only") `
+            -EnsureImported $true `
+            -TimeoutSeconds 600
+          Invoke-GodotGate `
+            -Script "res://tests/card_resolution_stable_target_envelope_test.gd" `
+            -Marker "CardResolutionStableTargetEnvelope:"
+          Invoke-GodotGate `
+            -Script "res://tests/v075_constitution_authority_contract_test.gd" `
+            -Marker "V075_CONSTITUTION_AUTHORITY_CONTRACT_TEST|status=PASS"
+          Invoke-GodotGate `
+            -Script "res://tests/ui_text_smoke_test.gd" `
+            -Marker "UI text smoke test passed."
+          Invoke-GodotGate `
+            -Script "res://tests/visual_snapshot.gd" `
+            -Marker "Visual contract test passed."
+          Invoke-GodotGate `
+            -Script "res://tests/v075_authoritative_card_identity_lifecycle_binding_test.gd" `
+            -Marker "V075_AUTHORITATIVE_CARD_IDENTITY_TEST|status=PASS"
+          Invoke-GodotGate `
+            -Script "res://tests/v075_combat_public_private_projection_test.gd" `
+            -Marker "V075_COMBAT_PUBLIC_PRIVATE_PROJECTION_TEST|status=PASS"
+          Invoke-GodotGate `
+            -Script "res://tests/v07_semantic/v07_dbg_deck_core_test.gd" `
+            -Marker "V0.7.2 DBG deck core test passed."
+          Invoke-GodotGate `
+            -Script "res://tests/v075_combat_card_dbg_lifecycle_integration_test.gd" `
+            -Marker "V075_COMBAT_CARD_DBG_LIFECYCLE_INTEGRATION_TEST|status=PASS|"
+          Invoke-GodotGate `
+            -Script "res://tests/v075_combat_dbg_personal_lifecycle_test.gd" `
+            -Marker "V075_COMBAT_DBG_PERSONAL_LIFECYCLE_TEST|status=PASS|"
+          Invoke-GodotGate `
+            -Script "res://tests/v075_terminal_combat_quiescence_test.gd" `
+            -Marker "V075_TERMINAL_COMBAT_QUIESCENCE_TEST|status=PASS|"
+          Invoke-GodotGate `
+            -Script "res://tests/v075_application_private_skill_receipt_privacy_test.gd" `
+            -Marker "V075_APPLICATION_PRIVATE_SKILL_RECEIPT_PRIVACY_TEST|PASS|"
+          Invoke-GodotGate `
+            -Script "res://tests/v075_private_skill_failure_privacy_test.gd" `
+            -Marker "V075_PRIVATE_SKILL_FAILURE_PRIVACY_TEST|PASS|"
+          Invoke-GodotGate `
+            -Script "res://tests/v075_combat_ai_natural_acquisition_test.gd" `
+            -Marker "V075_COMBAT_AI_NATURAL_ACQUISITION_TEST|status=PASS|"
+          Invoke-GodotGate `
+            -Script "res://tests/v075_runtime_facility_bridge_integration_test.gd" `
+            -Marker "V075_RUNTIME_FACILITY_BRIDGE_INTEGRATION_TEST|"
+          Invoke-GodotGate `
+            -Script "res://tests/v075_combat_resolution_fail_once_test.gd" `
+            -Marker "V075_COMBAT_RESOLUTION_FAIL_ONCE_TEST|"
+          Invoke-GodotGate `
+            -Script "res://tests/v075_geometry_asset_false_green_negative_test.gd" `
+            -Marker "V075_GEOMETRY_ASSET_FALSE_GREEN_NEGATIVE_TEST|"
+          $env:V075_SIMULATION_SOURCE_SHA = (git rev-parse HEAD).Trim()
+          Invoke-GodotGate `
+            -Script "res://tests/v075_combat_simulation_test.gd" `
+            -Marker "V075_COMBAT_SIMULATION_TEST_RESULT|status=PASS" `
+            -Arguments @(
+              "--matches-per-configuration=400",
+              "--formal-matches-per-configuration=400",
+              "--configuration-index=0",
+              "--match-index-start=0",
+              "--match-index-end-exclusive=1",
+              "--step-limit=512"
+            ) `
+            -TimeoutSeconds 600
+          Invoke-GodotGate `
+            -Script "res://tests/v075_responsive_viewport_matrix_test.gd" `
+            -Marker "V075_RESPONSIVE_VIEWPORT_MATRIX_TEST|" `
+            -TimeoutSeconds 600
+          Invoke-GodotGate `
+            -Script "res://tests/v075_responsive_viewport_headed_capture.gd" `
+            -Marker "V075_RESPONSIVE_VIEWPORT_HEADED_CAPTURE|status=PASS|case=parse-only" `
+            -Arguments @("--parse-only")

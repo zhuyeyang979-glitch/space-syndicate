@@ -14,6 +14,9 @@ const CardDefinitions := preload(
 const V074CardDefinitions := preload(
 	"res://scripts/v074/facility/v074_card_definition_registry.gd"
 )
+const V075CardDefinitions := preload(
+	"res://scripts/v075/cards/v075_card_definition_registry.gd"
+)
 
 const SCHEMA_VERSION := 3
 const STATE_VERSION := 3
@@ -46,6 +49,24 @@ const INTENT_SCHEMA_ID := "v072.personal_dbg.intent.v3"
 const RECEIPT_SCHEMA_ID := "v072.personal_dbg.authoritative_receipt.v3"
 const SAVE_SCHEMA_ID := "v072.personal_dbg.save_state.v3"
 const CHECKPOINT_SCHEMA_ID := "v072.personal_dbg.checkpoint.v3"
+const CARD_ACTION_BINDING_SCHEMA_ID := (
+	"v07.personal_dbg.authoritative_card_action_binding.v1"
+)
+const CARD_ACTION_BINDING_FIELDS := [
+	"schema_id",
+	"schema_version",
+	"authority_domain_id",
+	"authority_lineage_fingerprint",
+	"owner_player_id",
+	"card_instance_id",
+	"card_definition_id",
+	"immutable_identity_fingerprint",
+	"authoritative_zone",
+	"zone_revision",
+	"lifecycle_evidence_fingerprint",
+	"expected_action_lifecycle",
+	"binding_fingerprint",
+]
 
 const NORMAL_DECK_STATE_CONTRACT_ID := "V072NormalDeckState"
 const NORMAL_HAND_STATE_CONTRACT_ID := "V072NormalHandState"
@@ -1349,6 +1370,152 @@ func player_projection(viewer_player_id: String) -> Dictionary:
 	}
 
 
+## Issues an owner-private, transient reference to a card that is currently
+## executable from the authoritative hand. The contract is derived from saved
+## DBG facts, but is never persisted into the DBG state or Save document.
+func authoritative_card_action_binding_v1(
+	viewer_player_id: String,
+	card_instance_id: String,
+	expected_action_lifecycle: String
+) -> Dictionary:
+	if (
+		not _viewer_is_owner(viewer_player_id)
+		or not _stable_id(card_instance_id)
+		or not _stable_id(expected_action_lifecycle)
+		or str(_state.get("phase", "")) != PHASE_BATCH
+	):
+		return {}
+	var hand := _state.get("hand", []) as Array
+	var card_index := _card_index(hand, card_instance_id)
+	if card_index < 0:
+		return {}
+	var card := hand[card_index] as Dictionary
+	if bool(card.get("locked", false)):
+		return {}
+	var owner_player_id := str(_state.get("owner_player_id", ""))
+	var card_definition_id := str(card.get("definition_id", ""))
+	var bound_source := _bound_source_entry(_state.get("bound_source_state"))
+	if (
+		not _stable_id(owner_player_id)
+		or not _stable_id(card_definition_id)
+		or bound_source.is_empty()
+		or not _stable_id(bound_source.get("match_instance_id"))
+		or not _fingerprint_string(bound_source.get("lineage_fingerprint"))
+		or str(card.get("card_instance_id", "")) != card_instance_id
+		or str(card.get("card_definition_id", "")) != card_definition_id
+	):
+		return {}
+	var lineage_fingerprint := _fingerprint({
+		"schema_id": CARD_ACTION_BINDING_SCHEMA_ID,
+		"authority_domain_id": DOMAIN_ID,
+		"owner_player_id": owner_player_id,
+		"track_match_instance_id": str(bound_source.get(
+			"match_instance_id",
+			""
+		)),
+		"track_lineage_fingerprint": str(bound_source.get(
+			"lineage_fingerprint",
+			""
+		)),
+		"balance_profile_fingerprint": BALANCE_PROFILE_FINGERPRINT,
+	})
+	var immutable_identity_fingerprint := _fingerprint({
+		"authority_domain_id": DOMAIN_ID,
+		"authority_lineage_fingerprint": lineage_fingerprint,
+		"owner_player_id": owner_player_id,
+		"card_instance_id": card_instance_id,
+		"card_definition_id": card_definition_id,
+		"semantic_id": str(card.get("semantic_id", "")),
+		"origin_class": str(card.get("origin_class", "")),
+		"card_type": str(card.get("card_type", "")),
+		"merge_family_id": str(card.get("merge_family_id", "")),
+		"primary_color": str(card.get("primary_color", "")),
+		"level": int(card.get("level", 0)),
+		"primary_asset_cost": int(card.get("primary_asset_cost", -1)),
+		"secondary_asset_cost": int(card.get("secondary_asset_cost", -1)),
+		"any_asset_cost": int(card.get("any_asset_cost", -1)),
+	})
+	var zone_revision := int(_state.get("batch_index", 0))
+	if zone_revision < 1:
+		return {}
+	var lifecycle_evidence_fingerprint := _fingerprint({
+		"authority_domain_id": DOMAIN_ID,
+		"authority_lineage_fingerprint": lineage_fingerprint,
+		"owner_player_id": owner_player_id,
+		"immutable_identity_fingerprint": immutable_identity_fingerprint,
+		"authoritative_zone": "hand",
+		"zone_revision": zone_revision,
+		"expected_action_lifecycle": expected_action_lifecycle,
+	})
+	var binding := {
+		"schema_id": CARD_ACTION_BINDING_SCHEMA_ID,
+		"schema_version": 1,
+		"authority_domain_id": DOMAIN_ID,
+		"authority_lineage_fingerprint": lineage_fingerprint,
+		"owner_player_id": owner_player_id,
+		"card_instance_id": card_instance_id,
+		"card_definition_id": card_definition_id,
+		"immutable_identity_fingerprint": immutable_identity_fingerprint,
+		"authoritative_zone": "hand",
+		"zone_revision": zone_revision,
+		"lifecycle_evidence_fingerprint": lifecycle_evidence_fingerprint,
+		"expected_action_lifecycle": expected_action_lifecycle,
+	}
+	binding["binding_fingerprint"] = _fingerprint(binding)
+	return binding
+
+
+## Re-derives the current owner-private contract from live DBG authority and
+## compares the complete typed payload. A caller-supplied self-hash is never
+## accepted as authority on its own.
+func validate_card_action_binding_v1(
+	actor_player_id: String,
+	candidate_binding: Dictionary,
+	expected_action_lifecycle: String
+) -> Dictionary:
+	if not _viewer_is_owner(actor_player_id):
+		return {"accepted": false, "reason_code": "card_binding_actor_not_owner"}
+	if not _exact_fields(candidate_binding, CARD_ACTION_BINDING_FIELDS):
+		return {"accepted": false, "reason_code": "card_binding_shape_invalid"}
+	if (
+		candidate_binding.get("schema_id") != CARD_ACTION_BINDING_SCHEMA_ID
+		or candidate_binding.get("schema_version") != 1
+		or candidate_binding.get("authority_domain_id") != DOMAIN_ID
+		or candidate_binding.get("owner_player_id") != actor_player_id
+		or candidate_binding.get("authoritative_zone") != "hand"
+		or candidate_binding.get("expected_action_lifecycle")
+			!= expected_action_lifecycle
+		or not _positive_int(candidate_binding.get("zone_revision"))
+	):
+		return {"accepted": false, "reason_code": "card_binding_identity_invalid"}
+	for fingerprint_field in [
+		"authority_lineage_fingerprint",
+		"immutable_identity_fingerprint",
+		"lifecycle_evidence_fingerprint",
+		"binding_fingerprint",
+	]:
+		if not _fingerprint_string(candidate_binding.get(fingerprint_field)):
+			return {
+				"accepted": false,
+				"reason_code": "card_binding_fingerprint_invalid",
+			}
+	var card_instance_id := str(candidate_binding.get("card_instance_id", ""))
+	var canonical := authoritative_card_action_binding_v1(
+		actor_player_id,
+		card_instance_id,
+		expected_action_lifecycle
+	)
+	if canonical.is_empty():
+		return {"accepted": false, "reason_code": "card_binding_not_current_hand"}
+	if candidate_binding != canonical:
+		return {"accepted": false, "reason_code": "card_binding_stale_or_forged"}
+	return {
+		"accepted": true,
+		"reason_code": "card_binding_authoritative",
+		"binding": canonical.duplicate(true),
+	}
+
+
 func create_intent(
 	request_id: String,
 	actor_player_id: String,
@@ -2247,8 +2414,9 @@ static func _track_visible_item_reason(item: Dictionary, track_revision: int) ->
 				or item.get("origin_class") != definition.get("origin_class") \
 				or item.get("asset_cost_profile") \
 				!= definition.get("asset_cost_profile") \
+				or not _positive_int(item.get("primary_asset_cost")) \
 				or item.get("primary_asset_cost") \
-				!= STANDARD_L1_PRIMARY_ASSET_COST \
+				!= definition.get("primary_asset_cost") \
 				or item.get("starter_badge") != false:
 			return "track_visible_normal_definition_invalid"
 	return ""
@@ -3208,7 +3376,17 @@ func _allowed_intent_kinds() -> Array:
 static func _merge_eligibility_reason(left: Dictionary, right: Dictionary) -> String:
 	if bool(left.get("locked", false)) or bool(right.get("locked", false)):
 		return "merge_card_locked"
-	if str(left.get("primary_color", "")) != str(right.get("primary_color", "")):
+	var left_is_monster := V075CardDefinitions.card_domain(
+		str(left.get("card_type", ""))
+	) == "monster"
+	var right_is_monster := V075CardDefinitions.card_domain(
+		str(right.get("card_type", ""))
+	) == "monster"
+	if (
+		(not left_is_monster or not right_is_monster)
+		and str(left.get("primary_color", ""))
+			!= str(right.get("primary_color", ""))
+	):
 		return "merge_primary_color_mismatch"
 	if str(left.get("card_type", "")) != str(right.get("card_type", "")):
 		return "merge_card_type_mismatch"
@@ -3554,6 +3732,11 @@ static func _card_spec_valid(spec: Dictionary) -> bool:
 static func _definition_for_registered_facility(
 	definition_id: String
 ) -> Dictionary:
+	if (
+		definition_id.begins_with("monster.")
+		or definition_id.begins_with("military.")
+	):
+		return V075CardDefinitions.definition(definition_id)
 	if definition_id.contains(".warehouse."):
 		return V074CardDefinitions.definition(definition_id)
 	return CardDefinitions.definition(definition_id)
@@ -3562,7 +3745,10 @@ static func _definition_for_registered_facility(
 static func _definition_error_for_registered_facility(
 	spec: Dictionary
 ) -> String:
-	if str(spec.get("card_type", "")) == "warehouse":
+	var card_type := str(spec.get("card_type", ""))
+	if V075CardDefinitions.card_domain(card_type) in ["monster", "military"]:
+		return V075CardDefinitions.definition_error(spec)
+	if card_type == "warehouse":
 		return V074CardDefinitions.definition_error(spec)
 	return CardDefinitions.definition_error(spec)
 
@@ -3572,6 +3758,14 @@ static func _standard_card_spec_for_registered_facility(
 	card_type: String,
 	level: int
 ) -> Dictionary:
+	if V075CardDefinitions.card_domain(card_type) in ["monster", "military"]:
+		return V075CardDefinitions.definition(
+			V075CardDefinitions.standard_definition_id(
+				card_type,
+				primary_color,
+				level
+			)
+		)
 	if card_type == "warehouse":
 		return V074CardDefinitions.definition(
 			V074CardDefinitions.standard_definition_id(
@@ -3932,7 +4126,7 @@ static func _merge_history_row_valid(row: Dictionary) -> bool:
 			or not _stable_id(row.get("semantic_id")) \
 			or str(row.get("primary_color", "")) not in COLORS \
 			or str(row.get("card_type", "")) \
-			not in V074CardDefinitions.CARD_TYPES \
+			not in V075CardDefinitions.CARD_TYPES \
 			or not _stable_id(row.get("merge_family_id")) \
 			or not _positive_int(row.get("level")) \
 			or int(row.get("level", 0)) > MAX_CARD_LEVEL \

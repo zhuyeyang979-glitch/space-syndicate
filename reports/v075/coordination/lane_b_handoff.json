@@ -1,0 +1,154 @@
+{
+  "task_id": "ALPHA_0_5_C2_V075_MONSTER_AUTONOMY_PRIVATE_INSTANT_SKILLS_AND_MILITARY_ASSAULT_MISSIONS_PRODUCTION_CUTOVER",
+  "lane": "B",
+  "status": "GREEN",
+  "base_sha": "bd0af5c99c5267cdbe7d66c01034f80db4d704fd",
+  "branch": "codex/v075-lane-b-monster-source-bd0af5c",
+  "worktree": "C:/Users/zhuye/Documents/New project/space-syndicate-v075-lane-b-bd0af5c",
+  "owned_files": [
+    "scripts/v075/monster/v075_monster_source_core.gd",
+    "scripts/v075/monster/v075_character_monster_capacity_port.gd",
+    "scripts/tools/v075/v075_monster_source_core_bench.gd",
+    "scenes/tools/v075/V075MonsterSourceCoreBench.tscn",
+    "tests/v075_monster_control_capacity_test.gd",
+    "tests/v075_character_monster_capacity_port_test.gd",
+    "tests/v075_monster_deploy_mode_test.gd",
+    "tests/v075_monster_refresh_mode_test.gd",
+    "tests/v075_monster_upgrade_mode_test.gd",
+    "tests/v075_monster_replace_mode_test.gd",
+    "tests/v075_monster_refresh_25_50_75_100_test.gd",
+    "tests/v075_monster_upgrade_no_cooldown_reset_test.gd",
+    "reports/v075/coordination/lane_b_handoff.json",
+    "reports/v075/coordination/lane_b_handoff.md"
+  ],
+  "generated_uid_sidecars": [
+    "scripts/v075/monster/v075_monster_source_core.gd.uid",
+    "scripts/v075/monster/v075_character_monster_capacity_port.gd.uid",
+    "scripts/tools/v075/v075_monster_source_core_bench.gd.uid",
+    "tests/v075_monster_control_capacity_test.gd.uid",
+    "tests/v075_character_monster_capacity_port_test.gd.uid",
+    "tests/v075_monster_deploy_mode_test.gd.uid",
+    "tests/v075_monster_refresh_mode_test.gd.uid",
+    "tests/v075_monster_upgrade_mode_test.gd.uid",
+    "tests/v075_monster_replace_mode_test.gd.uid",
+    "tests/v075_monster_refresh_25_50_75_100_test.gd.uid",
+    "tests/v075_monster_upgrade_no_cooldown_reset_test.gd.uid"
+  ],
+  "read_only_dependencies": [
+    "AGENTS.md",
+    "scripts/v074/facility/v074_facility_runtime_core.gd",
+    "scripts/v074/map/v074_map_genesis_core.gd",
+    "scripts/v074/warehouse/v074_warehouse_runtime_policy.gd",
+    "scripts/runtime/monster_catalog_v06.gd",
+    "scripts/runtime/monster_runtime_controller.gd"
+  ],
+  "expected_outputs": [
+    "pure deterministic monster source core",
+    "typed character capacity port",
+    "four explicitly prebound monster card modes",
+    "rank, HP, skill unlock, cooldown preservation, and replacement contracts",
+    "pure-data checkpoint capture and rollback",
+    "real MCP Bench and focused tests"
+  ],
+  "hot_file_conflicts": [],
+  "production_cutover_domains": [
+    "monster_source_state",
+    "monster_control_capacity",
+    "monster_card_mode_resolution",
+    "monster_rank_hp_skill_unlock",
+    "monster_checkpoint_rollback"
+  ],
+  "contracts": {
+    "ruleset_id": "v0.7.5",
+    "core_contract_id": "v075.monster_source_core.v1",
+    "capacity_port_contract_id": "v075.character_monster_capacity_port.v1",
+    "base_monster_control_capacity_per_player": 1,
+    "character_capacity_modifier_port": true,
+    "capacity_drop_forced_kill_count": 0,
+    "monster_card_mode_prebound": true,
+    "monster_card_mode_auto_conversion_count": 0,
+    "card_modes": [
+      "DEPLOY_NEW",
+      "REFRESH_EXISTING",
+      "UPGRADE_EXISTING",
+      "REPLACE_EXISTING"
+    ],
+    "refresh_percent_by_rank": {
+      "1": 25,
+      "2": 50,
+      "3": 75,
+      "4": 100
+    },
+    "upgrade_full_heal": true,
+    "upgrade_cooldown_reset_count": 0,
+    "new_skill_initial_ready": true,
+    "replace_old_source_status": "withdrawn",
+    "replace_kill_reward_count": 0,
+    "checkpoint_pure_data": true,
+    "checkpoint_in_place_mutation_count": 0,
+    "rng_owner_count": 0,
+    "ui_owner_count": 0
+  },
+  "integration_api": {
+    "definition_required_fields": [
+      "source_definition_id",
+      "monster_family_id",
+      "preferred_industry_color",
+      "facility_type_preference",
+      "base_detection_range_hops",
+      "movement_profile",
+      "movement_budget_milli_arc_by_rank",
+      "max_hp_by_rank",
+      "armor_by_rank",
+      "active_skill_definition_ids"
+    ],
+    "active_skill_definition_count_per_family": 4,
+    "capacity_entrypoint": "apply_character_capacity_semantic",
+    "card_lock_entrypoint": "prebind_card_mode",
+    "card_resolution_entrypoint": "resolve_prebound_card",
+    "checkpoint_entrypoints": [
+      "capture_checkpoint",
+      "restore_checkpoint",
+      "rollback_to_checkpoint"
+    ],
+    "card_destination_on_resolution": "personal_discard",
+    "direct_dbg_write_count": 0
+  },
+  "focused_tests": {
+    "script_count": 8,
+    "passed": 8,
+    "failed": 0,
+    "assertion_count": 55,
+    "assertion_failure_count": 0
+  },
+  "mcp": {
+    "role": "B",
+    "port": 7572,
+    "godot_version": "4.7-stable (official)",
+    "renderer": "forward_plus",
+    "bench_scene": "res://scenes/tools/v075/V075MonsterSourceCoreBench.tscn",
+    "bench_status": "PASS",
+    "bench_check_count": 14,
+    "bench_failure_count": 0,
+    "changed_script_validation": "11/11",
+    "changed_scene_load": "1/1",
+    "runtime_error_count": 0,
+    "stopped": true,
+    "port_open_after_stop": false
+  },
+  "forbidden_surface_audit": {
+    "old_monster_controller_reference_count": 0,
+    "old_military_controller_reference_count": 0,
+    "legacy_main_reference_count": 0,
+    "main_scene_write_count": 0,
+    "rng_call_count": 0,
+    "ui_or_player_index_capacity_exception_count": 0
+  },
+  "workspace_note": {
+    "initial_status": "clean",
+    "godot_import_noise_present_outside_owned_paths": true,
+    "noise_staged_count": 0,
+    "noise_origin": "Godot 4.7 compatibility-renderer editor crash during first project import; forward_plus MCP run remained stable",
+    "coordinator_action": "Cherry-pick the Lane B commit; do not copy or stage unrelated import noise from this worktree"
+  }
+}
