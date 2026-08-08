@@ -13,7 +13,8 @@ Runner exit codes are the Godot exit code for a completed test, 124 for timeout,
 succeeds), 126 when an import bootstrap fails without a more specific exit code,
 127 when Godot reports an error despite exiting zero, 128 when an explicitly
 required completion marker is absent, 129 for incomplete/invalid/NUL raw capture,
-and 130 for an unclassified warning. The console wrapper is deliberately rejected
+    130 for an unclassified warning, and 131 when a required headed client-window
+    handshake or exact client-size probe fails. The console wrapper is deliberately rejected
 because it can return before the real process.
 
 .EXAMPLE
@@ -74,6 +75,16 @@ param(
 
     [string[]]$TestArgument = @(),
 
+    [string]$TestArgumentJson = "",
+
+    [switch]$HeadedClientProbe,
+
+    [ValidatePattern('^[1-9][0-9]{2,4}x[1-9][0-9]{2,4}$')]
+    [string]$ExpectedClientSize = "",
+
+    [ValidateRange(1, 120)]
+    [int]$WindowProbeTimeoutSeconds = 20,
+
     [string]$LogRoot = (Join-Path $env:LOCALAPPDATA "SpaceSyndicate\godot_test_runs"),
 
     [string]$ExpectedCompletionMarker = "",
@@ -82,6 +93,46 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+if (-not [string]::IsNullOrWhiteSpace($TestArgumentJson)) {
+    if ($PSBoundParameters.ContainsKey("TestArgument")) {
+        throw "Use either -TestArgument or -TestArgumentJson, not both."
+    }
+    $parsedTestArguments = ConvertFrom-Json `
+        -InputObject $TestArgumentJson `
+        -NoEnumerate
+    if ($parsedTestArguments -isnot [Array]) {
+        throw "TestArgumentJson must be a JSON array of strings."
+    }
+    $normalizedTestArguments = [Collections.Generic.List[string]]::new()
+    foreach ($parsedTestArgument in $parsedTestArguments) {
+        if ($parsedTestArgument -isnot [string]) {
+            throw "Every TestArgumentJson item must be a string."
+        }
+        $normalizedTestArguments.Add([string]$parsedTestArgument)
+    }
+    $TestArgument = @($normalizedTestArguments)
+}
+
+if ($HeadedClientProbe) {
+    if ($PSCmdlet.ParameterSetName -ne "Script") {
+        throw "-HeadedClientProbe is supported only for a script driver."
+    }
+    if ([string]::IsNullOrWhiteSpace($ExpectedClientSize)) {
+        throw "-ExpectedClientSize is required with -HeadedClientProbe."
+    }
+} elseif (-not [string]::IsNullOrWhiteSpace($ExpectedClientSize)) {
+    throw "-ExpectedClientSize requires -HeadedClientProbe."
+}
+
+foreach ($argument in @($TestArgument)) {
+    if (
+        $argument.StartsWith("--window-probe-ready=", [StringComparison]::Ordinal) -or
+        $argument.StartsWith("--window-probe-ack=", [StringComparison]::Ordinal)
+    ) {
+        throw "Window probe handshake paths are owned by the runner."
+    }
+}
 
 function Test-CommandLineContains {
     param(
@@ -300,6 +351,530 @@ function New-GodotProcessStartInfo {
         $startInfo.Environment[[string]$entry.Key] = [string]$entry.Value
     }
     return $startInfo
+}
+
+function Initialize-GodotWindowProbeNative {
+    if ($null -ne ("SpaceSyndicate.GodotWindowProbeNative" -as [type])) {
+        return
+    }
+
+    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+namespace SpaceSyndicate {
+    public static class GodotWindowProbeNative {
+        public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RECT {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct POINT {
+            public int X;
+            public int Y;
+        }
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool IsWindowVisible(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool IsIconic(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool GetClientRect(IntPtr hWnd, out RECT rect);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool ClientToScreen(IntPtr hWnd, ref POINT point);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        public static extern uint GetDpiForWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
+    }
+}
+'@
+}
+
+function Get-ProcessVisibleWindow {
+    param(
+        [Parameter(Mandatory = $true)]
+        [Diagnostics.Process]$Process
+    )
+
+    $candidates = [Collections.Generic.List[object]]::new()
+    try {
+        $Process.Refresh()
+        $mainWindow = $Process.MainWindowHandle
+        if ($mainWindow -ne [IntPtr]::Zero) {
+            [uint32]$ownerProcessId = 0
+            [void][SpaceSyndicate.GodotWindowProbeNative]::GetWindowThreadProcessId(
+                $mainWindow,
+                [ref]$ownerProcessId
+            )
+            if (
+                [int]$ownerProcessId -eq $Process.Id -and
+                [SpaceSyndicate.GodotWindowProbeNative]::IsWindowVisible($mainWindow) -and
+                -not [SpaceSyndicate.GodotWindowProbeNative]::IsIconic($mainWindow)
+            ) {
+                $candidates.Add([pscustomobject][ordered]@{
+                    handle = $mainWindow
+                    source = "MainWindowHandle"
+                    area = [int64]::MaxValue
+                })
+            }
+        }
+    } catch {
+        # EnumWindows below is the authoritative fallback.
+    }
+
+    $enumHandles = [Collections.Generic.List[int64]]::new()
+    $callback = [SpaceSyndicate.GodotWindowProbeNative+EnumWindowsProc]{
+        param([IntPtr]$windowHandle, [IntPtr]$unused)
+        [uint32]$ownerProcessId = 0
+        [void][SpaceSyndicate.GodotWindowProbeNative]::GetWindowThreadProcessId(
+            $windowHandle,
+            [ref]$ownerProcessId
+        )
+        if (
+            [int]$ownerProcessId -eq $Process.Id -and
+            [SpaceSyndicate.GodotWindowProbeNative]::IsWindowVisible($windowHandle) -and
+            -not [SpaceSyndicate.GodotWindowProbeNative]::IsIconic($windowHandle)
+        ) {
+            $enumHandles.Add($windowHandle.ToInt64())
+        }
+        return $true
+    }
+    [void][SpaceSyndicate.GodotWindowProbeNative]::EnumWindows(
+        $callback,
+        [IntPtr]::Zero
+    )
+    foreach ($handleValue in $enumHandles) {
+        $handle = [IntPtr]::new($handleValue)
+        $rect = [SpaceSyndicate.GodotWindowProbeNative+RECT]::new()
+        if (-not [SpaceSyndicate.GodotWindowProbeNative]::GetClientRect(
+            $handle,
+            [ref]$rect
+        )) {
+            continue
+        }
+        $width = [Math]::Max(0, $rect.Right - $rect.Left)
+        $height = [Math]::Max(0, $rect.Bottom - $rect.Top)
+        $candidates.Add([pscustomobject][ordered]@{
+            handle = $handle
+            source = "EnumWindows"
+            area = [int64]$width * [int64]$height
+        })
+    }
+
+    if ($candidates.Count -eq 0) {
+        return $null
+    }
+    return @($candidates | Sort-Object -Property area -Descending)[0]
+}
+
+function Write-AtomicUtf8Json {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [object]$Value
+    )
+
+    $encoding = [Text.UTF8Encoding]::new($false)
+    $temporaryPath = "$Path.$([guid]::NewGuid().ToString('N')).tmp"
+    $json = $Value | ConvertTo-Json -Depth 10
+    [IO.File]::WriteAllText($temporaryPath, $json, $encoding)
+    [IO.File]::Move($temporaryPath, $Path, $true)
+}
+
+function Save-WindowClientPng {
+    param(
+        [Parameter(Mandatory = $true)]
+        [IntPtr]$WindowHandle,
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(1, 32768)]
+        [int]$Width,
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(1, 32768)]
+        [int]$Height,
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $parent = [IO.Path]::GetDirectoryName($Path)
+    if (-not [string]::IsNullOrWhiteSpace($parent)) {
+        [IO.Directory]::CreateDirectory($parent) | Out-Null
+    }
+    [void][SpaceSyndicate.GodotWindowProbeNative]::SetForegroundWindow($WindowHandle)
+    Start-Sleep -Milliseconds 250
+    $preCaptureRect = [SpaceSyndicate.GodotWindowProbeNative+RECT]::new()
+    if (-not [SpaceSyndicate.GodotWindowProbeNative]::GetClientRect(
+        $WindowHandle,
+        [ref]$preCaptureRect
+    )) {
+        throw "GetClientRect failed immediately before client capture."
+    }
+    $preCaptureWidth = $preCaptureRect.Right - $preCaptureRect.Left
+    $preCaptureHeight = $preCaptureRect.Bottom - $preCaptureRect.Top
+    if ($preCaptureWidth -ne $Width -or $preCaptureHeight -ne $Height) {
+        throw (
+            "Client size changed before capture: expected={0}x{1} actual={2}x{3}" -f
+            $Width,
+            $Height,
+            $preCaptureWidth,
+            $preCaptureHeight
+        )
+    }
+    $point = [SpaceSyndicate.GodotWindowProbeNative+POINT]::new()
+    $point.X = 0
+    $point.Y = 0
+    if (-not [SpaceSyndicate.GodotWindowProbeNative]::ClientToScreen(
+        $WindowHandle,
+        [ref]$point
+    )) {
+        throw "ClientToScreen failed for the headed Godot window."
+    }
+    $bitmap = [Drawing.Bitmap]::new(
+        $Width,
+        $Height,
+        [Drawing.Imaging.PixelFormat]::Format32bppArgb
+    )
+    $graphics = $null
+    try {
+        $graphics = [Drawing.Graphics]::FromImage($bitmap)
+        $graphics.CopyFromScreen(
+            $point.X,
+            $point.Y,
+            0,
+            0,
+            $bitmap.Size,
+            [Drawing.CopyPixelOperation]::SourceCopy
+        )
+        $bitmap.Save($Path, [Drawing.Imaging.ImageFormat]::Png)
+    } finally {
+        if ($null -ne $graphics) {
+            $graphics.Dispose()
+        }
+        $bitmap.Dispose()
+    }
+    $postCaptureSamples = [Collections.Generic.List[object]]::new()
+    for ($sampleIndex = 0; $sampleIndex -lt 3; $sampleIndex += 1) {
+        if (
+            -not [SpaceSyndicate.GodotWindowProbeNative]::IsWindowVisible($WindowHandle) -or
+            [SpaceSyndicate.GodotWindowProbeNative]::IsIconic($WindowHandle)
+        ) {
+            throw "Headed Godot window stopped being visible after capture."
+        }
+        $postCaptureRect = [SpaceSyndicate.GodotWindowProbeNative+RECT]::new()
+        if (-not [SpaceSyndicate.GodotWindowProbeNative]::GetClientRect(
+            $WindowHandle,
+            [ref]$postCaptureRect
+        )) {
+            throw "GetClientRect failed after client capture."
+        }
+        $postCaptureWidth = $postCaptureRect.Right - $postCaptureRect.Left
+        $postCaptureHeight = $postCaptureRect.Bottom - $postCaptureRect.Top
+        $postCaptureSamples.Add([pscustomobject][ordered]@{
+            sampled_at_utc = [DateTime]::UtcNow.ToString("o")
+            width = $postCaptureWidth
+            height = $postCaptureHeight
+        })
+        if ($postCaptureWidth -ne $Width -or $postCaptureHeight -ne $Height) {
+            throw (
+                "Client size changed during capture: expected={0}x{1} actual={2}x{3}" -f
+                $Width,
+                $Height,
+                $postCaptureWidth,
+                $postCaptureHeight
+            )
+        }
+        if ($sampleIndex -lt 2) {
+            Start-Sleep -Milliseconds 100
+        }
+    }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "Client PNG was not created: $Path"
+    }
+    return [pscustomobject][ordered]@{
+        path = $Path
+        width = $Width
+        height = $Height
+        byte_length = [int64](Get-Item -LiteralPath $Path).Length
+        sha256 = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+        capture_method = "win32_client_copy_from_screen"
+        pre_capture_client_width = $preCaptureWidth
+        pre_capture_client_height = $preCaptureHeight
+        post_capture_client_width = $postCaptureWidth
+        post_capture_client_height = $postCaptureHeight
+        post_capture_exact_sample_count = $postCaptureSamples.Count
+        post_capture_samples = @($postCaptureSamples)
+        capture_source_client_origin = [ordered]@{ x = $point.X; y = $point.Y }
+        capture_source_client_rect = [ordered]@{
+            width = $preCaptureWidth
+            height = $preCaptureHeight
+        }
+    }
+}
+
+function Invoke-HeadedClientWindowProbe {
+    param(
+        [Parameter(Mandatory = $true)]
+        [Diagnostics.Process]$Process,
+        [Parameter(Mandatory = $true)]
+        [string]$ExpectedSize,
+        [Parameter(Mandatory = $true)]
+        [string]$ReadyPath,
+        [Parameter(Mandatory = $true)]
+        [string]$AckPath,
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(1, 120)]
+        [int]$ProbeTimeoutSeconds
+    )
+
+    Initialize-GodotWindowProbeNative
+    $match = [regex]::Match($ExpectedSize, '^(?<width>\d+)x(?<height>\d+)$')
+    $expectedWidth = [int]$match.Groups['width'].Value
+    $expectedHeight = [int]$match.Groups['height'].Value
+    $samples = [Collections.Generic.List[object]]::new()
+    $readyRecord = $null
+    $readySha256 = ""
+    $windowRecord = $null
+    $clientCapture = $null
+    $stableExactSampleCount = 0
+    $failureReason = "probe_timeout"
+    $deadline = [DateTime]::UtcNow.AddSeconds($ProbeTimeoutSeconds)
+    $previousDpiContext = [SpaceSyndicate.GodotWindowProbeNative]::SetThreadDpiAwarenessContext(
+        [IntPtr]::new(-4)
+    )
+
+    try {
+        while ([DateTime]::UtcNow -lt $deadline) {
+            if ($Process.HasExited) {
+                $failureReason = "process_exited_before_probe_ack"
+                break
+            }
+
+            if ($null -eq $readyRecord -and (Test-Path -LiteralPath $ReadyPath -PathType Leaf)) {
+                try {
+                    $readyBytes = [IO.File]::ReadAllBytes($ReadyPath)
+                    $readyText = [Text.UTF8Encoding]::new($false, $true).GetString($readyBytes)
+                    $candidateReady = ConvertFrom-Json -InputObject $readyText -AsHashtable
+                    if ($candidateReady -isnot [Collections.IDictionary]) {
+                        throw "ready payload is not a JSON object"
+                    }
+                    if ([int]$candidateReady.process_id -ne $Process.Id) {
+                        throw "ready process_id does not match the launched Godot process"
+                    }
+                    if ([string]$candidateReady.expected_client_size -ne $ExpectedSize) {
+                        throw "ready expected_client_size does not match the runner request"
+                    }
+                    $readyRecord = $candidateReady
+                    $readySha256 = [Convert]::ToHexString(
+                        [Security.Cryptography.SHA256]::HashData($readyBytes)
+                    ).ToLowerInvariant()
+                } catch {
+                    $failureReason = "ready_invalid: $($_.Exception.Message)"
+                    Start-Sleep -Milliseconds 50
+                    continue
+                }
+            }
+
+            if ($null -eq $readyRecord) {
+                Start-Sleep -Milliseconds 50
+                continue
+            }
+
+            $candidateWindow = Get-ProcessVisibleWindow -Process $Process
+            if ($null -eq $candidateWindow) {
+                $failureReason = "visible_window_not_found"
+                Start-Sleep -Milliseconds 50
+                continue
+            }
+            $windowRecord = $candidateWindow
+            $windowHandle = [IntPtr]$candidateWindow.handle
+            $readyHandle = [int64]$readyRecord.native_hwnd_decimal
+            if ($readyHandle -ne 0 -and $readyHandle -ne $windowHandle.ToInt64()) {
+                $failureReason = "driver_and_external_window_handle_mismatch"
+                $stableExactSampleCount = 0
+                Start-Sleep -Milliseconds 50
+                continue
+            }
+
+            $rect = [SpaceSyndicate.GodotWindowProbeNative+RECT]::new()
+            if (-not [SpaceSyndicate.GodotWindowProbeNative]::GetClientRect(
+                $windowHandle,
+                [ref]$rect
+            )) {
+                $failureReason = "get_client_rect_failed"
+                $stableExactSampleCount = 0
+                Start-Sleep -Milliseconds 50
+                continue
+            }
+            $width = $rect.Right - $rect.Left
+            $height = $rect.Bottom - $rect.Top
+            $sample = [pscustomobject][ordered]@{
+                sampled_at_utc = [DateTime]::UtcNow.ToString("o")
+                left = $rect.Left
+                top = $rect.Top
+                right = $rect.Right
+                bottom = $rect.Bottom
+                width = $width
+                height = $height
+            }
+            if ($samples.Count -lt 50) {
+                $samples.Add($sample)
+            }
+            if ($width -eq $expectedWidth -and $height -eq $expectedHeight) {
+                $stableExactSampleCount += 1
+            } else {
+                $stableExactSampleCount = 0
+                $failureReason = "client_size_mismatch_${width}x${height}"
+            }
+            if ($stableExactSampleCount -ge 3) {
+                $capturePath = [string]$readyRecord.capture_path
+                if (
+                    [string]::IsNullOrWhiteSpace($capturePath) -or
+                    -not [IO.Path]::IsPathFullyQualified($capturePath)
+                ) {
+                    $failureReason = "ready_capture_path_is_not_absolute"
+                    break
+                }
+                try {
+                    $clientCapture = Save-WindowClientPng `
+                        -WindowHandle $windowHandle `
+                        -Width $width `
+                        -Height $height `
+                        -Path $capturePath
+                } catch {
+                    $failureReason = "client_capture_failed: $($_.Exception.Message)"
+                    break
+                }
+                $ack = [ordered]@{
+                    schema = "space_syndicate.godot_headed_client_probe_ack.v1"
+                    status = "PASS"
+                    process_id = $Process.Id
+                    expected_client_size = $ExpectedSize
+                    client_width = $width
+                    client_height = $height
+                    hwnd_decimal = $windowHandle.ToInt64().ToString()
+                    hwnd_hex = "0x{0:X}" -f $windowHandle.ToInt64()
+                    hwnd_source = [string]$candidateWindow.source
+                    dpi = [int][SpaceSyndicate.GodotWindowProbeNative]::GetDpiForWindow($windowHandle)
+                    ready_sha256 = $readySha256
+                    probe_nonce = [string]$readyRecord.probe_nonce
+                    stable_exact_sample_count = $stableExactSampleCount
+                    client_capture_path = $clientCapture.path
+                    client_capture_width = $clientCapture.width
+                    client_capture_height = $clientCapture.height
+                    client_capture_bytes = $clientCapture.byte_length
+                    client_capture_sha256 = $clientCapture.sha256
+                    client_capture_method = $clientCapture.capture_method
+                    pre_capture_client_width = $clientCapture.pre_capture_client_width
+                    pre_capture_client_height = $clientCapture.pre_capture_client_height
+                    post_capture_client_width = $clientCapture.post_capture_client_width
+                    post_capture_client_height = $clientCapture.post_capture_client_height
+                    post_capture_exact_sample_count = $clientCapture.post_capture_exact_sample_count
+                    post_capture_samples = @($clientCapture.post_capture_samples)
+                    capture_source_client_origin = $clientCapture.capture_source_client_origin
+                    capture_source_client_rect = $clientCapture.capture_source_client_rect
+                }
+                Write-AtomicUtf8Json -Path $AckPath -Value $ack
+                return [pscustomobject][ordered]@{
+                    required = $true
+                    status = "passed"
+                    failure_reason = $null
+                    expected_client_size = $ExpectedSize
+                    ready_path = $ReadyPath
+                    ready_sha256 = $readySha256
+                    probe_nonce = [string]$readyRecord.probe_nonce
+                    ack_path = $AckPath
+                    process_id = $Process.Id
+                    hwnd_decimal = $windowHandle.ToInt64().ToString()
+                    hwnd_hex = "0x{0:X}" -f $windowHandle.ToInt64()
+                    hwnd_source = [string]$candidateWindow.source
+                    dpi = [int]$ack.dpi
+                    stable_exact_sample_count = $stableExactSampleCount
+                    exact_match = $true
+                    client_capture = $clientCapture
+                    samples = @($samples)
+                }
+            }
+            Start-Sleep -Milliseconds 100
+        }
+    } finally {
+        if ($previousDpiContext -ne [IntPtr]::Zero) {
+            [void][SpaceSyndicate.GodotWindowProbeNative]::SetThreadDpiAwarenessContext(
+                $previousDpiContext
+            )
+        }
+    }
+
+    $failureAck = [ordered]@{
+        schema = "space_syndicate.godot_headed_client_probe_ack.v1"
+        status = "FAIL"
+        process_id = $Process.Id
+        expected_client_size = $ExpectedSize
+        ready_sha256 = $readySha256
+        probe_nonce = if ($null -ne $readyRecord) {
+            [string]$readyRecord.probe_nonce
+        } else { "" }
+        failure_reason = $failureReason
+        stable_exact_sample_count = $stableExactSampleCount
+    }
+    try {
+        Write-AtomicUtf8Json -Path $AckPath -Value $failureAck
+    } catch {
+        $failureReason = "$failureReason;ack_write_failed:$($_.Exception.Message)"
+    }
+    return [pscustomobject][ordered]@{
+        required = $true
+        status = "failed"
+        failure_reason = $failureReason
+        expected_client_size = $ExpectedSize
+        ready_path = $ReadyPath
+        ready_sha256 = $readySha256
+        probe_nonce = if ($null -ne $readyRecord) {
+            [string]$readyRecord.probe_nonce
+        } else { "" }
+        ack_path = $AckPath
+        process_id = $Process.Id
+        hwnd_decimal = if ($null -ne $windowRecord) {
+            ([IntPtr]$windowRecord.handle).ToInt64().ToString()
+        } else { "" }
+        hwnd_hex = if ($null -ne $windowRecord) {
+            "0x{0:X}" -f ([IntPtr]$windowRecord.handle).ToInt64()
+        } else { "" }
+        hwnd_source = if ($null -ne $windowRecord) {
+            [string]$windowRecord.source
+        } else { "" }
+        dpi = 0
+        stable_exact_sample_count = $stableExactSampleCount
+        exact_match = $false
+        client_capture = $clientCapture
+        samples = @($samples)
+    }
 }
 
 function Get-GodotDiagnosticAudit {
@@ -522,7 +1097,9 @@ function Invoke-GodotBlockingProcess {
         [string]$AppDataPath,
         [Parameter(Mandatory = $true)]
         [string]$LocalAppDataPath,
-        [string]$ExpectedMarker = ""
+        [string]$ExpectedMarker = "",
+        [AllowNull()]
+        [Collections.IDictionary]$HeadedProbe = $null
     )
 
     $startedAt = [DateTime]::UtcNow
@@ -538,6 +1115,7 @@ function Invoke-GodotBlockingProcess {
         -ArgumentList $ArgumentList `
         -EnvironmentVariables $environmentVariables
     $timedOut = $false
+    $processExited = $false
     $processId = $null
     $processExitCode = $null
     $cleanupProcessIds = @()
@@ -549,6 +1127,24 @@ function Invoke-GodotBlockingProcess {
     $stderrTask = $null
     $stdoutCaptureComplete = $false
     $stderrCaptureComplete = $false
+    $windowProbe = [pscustomobject][ordered]@{
+        required = $false
+        status = "not_requested"
+        failure_reason = $null
+        expected_client_size = $null
+        ready_path = $null
+        ready_sha256 = ""
+        ack_path = $null
+        process_id = $null
+        hwnd_decimal = ""
+        hwnd_hex = ""
+        hwnd_source = ""
+        dpi = 0
+        stable_exact_sample_count = 0
+        exact_match = $false
+        client_capture = $null
+        samples = @()
+    }
 
     try {
         if (-not $process.Start()) {
@@ -570,7 +1166,40 @@ function Invoke-GodotBlockingProcess {
         $stdoutTask = $process.StandardOutput.BaseStream.CopyToAsync($stdoutRawStream)
         $stderrTask = $process.StandardError.BaseStream.CopyToAsync($stderrRawStream)
 
-        $processExited = $process.WaitForExit($ProcessTimeoutSeconds * 1000)
+        if ($null -ne $HeadedProbe) {
+            $windowProbe = Invoke-HeadedClientWindowProbe `
+                -Process $process `
+                -ExpectedSize ([string]$HeadedProbe.expected_client_size) `
+                -ReadyPath ([string]$HeadedProbe.ready_path) `
+                -AckPath ([string]$HeadedProbe.ack_path) `
+                -ProbeTimeoutSeconds ([int]$HeadedProbe.timeout_seconds)
+            if ($windowProbe.status -ne "passed") {
+                $processExited = $process.WaitForExit(5000)
+                if (-not $processExited) {
+                    [void](Stop-ScopedProcessTree `
+                        -Process $process `
+                        -ResolvedProjectPath $ResolvedProjectPath `
+                        -ResolvedGodotPath $ResolvedGodotPath)
+                    try {
+                        $processExited = $process.WaitForExit(10000)
+                    } catch {
+                        $processExited = $false
+                    }
+                }
+            }
+        }
+
+        $processDeadline = $startedAt.AddSeconds($ProcessTimeoutSeconds)
+        while (
+            -not $processExited -and
+            [DateTime]::UtcNow -lt $processDeadline
+        ) {
+            try {
+                $processExited = $process.WaitForExit(250)
+            } catch {
+                $processExited = $true
+            }
+        }
         if (-not $processExited) {
             $timedOut = $true
             $stopRequested = Stop-ScopedProcessTree `
@@ -667,6 +1296,8 @@ function Invoke-GodotBlockingProcess {
         125
     } elseif ($null -eq $processExitCode) {
         126
+    } elseif ($windowProbe.required -and $windowProbe.status -ne "passed") {
+        131
     } elseif ($rawCaptureFailure) {
         129
     } elseif ($processExitCode -ne 0) {
@@ -688,6 +1319,8 @@ function Invoke-GodotBlockingProcess {
         "orphaned"
     } elseif ($cleanupProcessIds.Count -gt 0) {
         "orphan_cleaned"
+    } elseif ($windowProbe.required -and $windowProbe.status -ne "passed") {
+        "headed_window_probe_failed"
     } elseif ($rawCaptureFailure) {
         "raw_capture_error"
     } elseif ($processExitCode -ne 0) {
@@ -723,6 +1356,7 @@ function Invoke-GodotBlockingProcess {
         stdout_capture = $stdoutCapture
         stderr_capture = $stderrCapture
         raw_capture_failure = $rawCaptureFailure
+        window_probe = $windowProbe
         godot_log = $GodotLogPath
         appdata = $AppDataPath
         localappdata = $LocalAppDataPath
@@ -799,17 +1433,38 @@ $importStdoutPath = Join-Path $runDirectory "import.stdout.log"
 $importStderrPath = Join-Path $runDirectory "import.stderr.log"
 $importGodotLogPath = Join-Path $runDirectory "import.godot.log"
 $resultPath = Join-Path $runDirectory "result.json"
-$arguments = @(
-    "--headless",
-    "--path", $ProjectPath,
-    "--log-file", $godotLogPath
-)
+$windowReadyPath = Join-Path $runDirectory "window-ready.json"
+$windowAckPath = Join-Path $runDirectory "window-ack.json"
+$arguments = @()
+if ($HeadedClientProbe) {
+    $arguments += @("--windowed", "--resolution", $ExpectedClientSize)
+} else {
+    $arguments += "--headless"
+}
+$arguments += @("--path", $ProjectPath, "--log-file", $godotLogPath)
 if ($targetType -eq "scene") {
     $arguments += @("--scene", $Scene)
 } else {
     $arguments += @("--script", $TestScript)
 }
 $arguments += @($TestArgument)
+if ($HeadedClientProbe) {
+    $arguments += @(
+        "--window-probe-ready=$windowReadyPath",
+        "--window-probe-ack=$windowAckPath",
+        "--expected-client-size=$ExpectedClientSize"
+    )
+}
+$headedProbeConfig = if ($HeadedClientProbe) {
+    [ordered]@{
+        expected_client_size = $ExpectedClientSize
+        ready_path = $windowReadyPath
+        ack_path = $windowAckPath
+        timeout_seconds = $WindowProbeTimeoutSeconds
+    }
+} else {
+    $null
+}
 
 $classCachePath = Join-Path $ProjectPath ".godot\global_script_class_cache.cfg"
 $cacheBefore = Get-ClassCacheAudit -Path $classCachePath
@@ -956,7 +1611,8 @@ if ($importReady) {
         -GodotLogPath $godotLogPath `
         -AppDataPath $isolatedAppDataPath `
         -LocalAppDataPath $isolatedLocalAppDataPath `
-        -ExpectedMarker $ExpectedCompletionMarker
+        -ExpectedMarker $ExpectedCompletionMarker `
+        -HeadedProbe $headedProbeConfig
 }
 
 $status = if ($testStarted) { $testProcess.status } else { $importFailureStatus }
@@ -1001,6 +1657,9 @@ $result = [ordered]@{
     test_script = if ($targetType -eq "script") { $TestScript } else { $null }
     scene = if ($targetType -eq "scene") { $Scene } else { $null }
     test_arguments = @($TestArgument)
+    headed_client_probe = [bool]$HeadedClientProbe
+    expected_client_size = if ($HeadedClientProbe) { $ExpectedClientSize } else { $null }
+    window_probe_timeout_seconds = $WindowProbeTimeoutSeconds
     project_path = $ProjectPath
     godot_path = $GodotPath
     godot_product_version = $godotVersion
@@ -1027,6 +1686,7 @@ $result = [ordered]@{
     stdout_capture = if ($testStarted) { $testProcess.stdout_capture } else { $null }
     stderr_capture = if ($testStarted) { $testProcess.stderr_capture } else { $null }
     raw_capture_failure = if ($testStarted) { $testProcess.raw_capture_failure } else { $null }
+    window_probe = if ($testStarted) { $testProcess.window_probe } else { $null }
     godot_log = if ($testStarted) { $godotLogPath } else { $null }
     isolated_user_data_root = $isolatedProfileRoot
     appdata = $isolatedAppDataPath
@@ -1044,7 +1704,7 @@ $result = [ordered]@{
     cleanup_process_ids = $reportedCleanupProcessIds
     remaining_project_runtime_process_ids = @($remainingRuntimeIds)
 }
-$result | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $resultPath -Encoding utf8
+$result | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $resultPath -Encoding utf8
 $result["result_json"] = $resultPath
-$result | ConvertTo-Json -Depth 5 -Compress | Write-Output
+$result | ConvertTo-Json -Depth 10 -Compress | Write-Output
 exit $runnerExitCode

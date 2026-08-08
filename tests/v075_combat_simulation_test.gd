@@ -37,6 +37,24 @@ const REQUIRED_POSITIVE_COUNTER_KEYS := [
 	"MILITARY_WITHDRAW_COUNT",
 	"FACILITY_COMBAT_DAMAGE_COUNT",
 ]
+const REQUIRED_ZERO_COUNTER_KEYS := [
+	"COMBAT_SIMULATION_DEADLOCK_COUNT",
+	"COMBAT_INVALID_TARGET_COUNT",
+	"COMBAT_NONFINITE_COUNT",
+	"COMBAT_DUPLICATE_EFFECT_COUNT",
+	"COMBAT_HIDDEN_INFO_VIOLATION_COUNT",
+	"MONSTER_CONTROL_CAP_VIOLATION_COUNT",
+	"MONSTER_AUTONOMY_STALL_COUNT",
+	"MILITARY_GUARD_ACTION_COUNT",
+	"MILITARY_BOUND_ACTION_COUNT",
+	"COMBAT_RUNTIME_ERROR_COUNT",
+	"COMBAT_DUAL_WRITE_COUNT",
+	"COMBAT_LEGACY_FALLBACK_COUNT",
+	"TRACK_IMMEDIATE_AUTHORITATIVE_REFILL_COUNT",
+	"TRACK_SUPPLY_CURSOR_DELTA_ON_ACQUISITION",
+	"TRACK_SUPPLY_INSTANCE_SEQUENCE_DELTA_ON_ACQUISITION",
+	"TRACK_SUPPLY_RNG_DRAW_DELTA_ON_ACQUISITION",
+]
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -76,6 +94,8 @@ func _run() -> void:
 		step_limit,
 		options
 	)
+	if bool(options.get("write_report", false)):
+		_test_written_report(simulator, report)
 	if _is_shard_options(options):
 		_test_shard_report_contract(report)
 		_test_source_sha_aggregation(simulator, report)
@@ -172,11 +192,12 @@ func _run_aggregate_report() -> void:
 		),
 	}
 	var report := simulator.aggregate_report_files(inputs, options)
+	if bool(options.get("write_report", false)):
+		_test_written_report(simulator, report)
 	var total := int(report.get("total_match_count", 0))
+	_test_aggregate_report_contract(report)
 	if total == DEFAULT_FORMAL_MATCHES * EXPECTED_CONFIGURATION_IDS.size():
 		_test_report_contract(report, DEFAULT_FORMAL_MATCHES)
-	else:
-		_test_aggregate_report_contract(report)
 	_print_summary(report)
 	_finish()
 
@@ -283,6 +304,7 @@ func _test_report_contract(
 		str(report.get("ruleset_id", "")) == "v0.7.5",
 		"report uses the V0.7.5 ruleset"
 	)
+	_test_harness_identity(report, "report")
 	var expected_source_sha := OS.get_environment(
 		"V075_SIMULATION_SOURCE_SHA"
 	).strip_edges()
@@ -398,6 +420,11 @@ func _test_report_contract(
 			"%s metrics have unique case-insensitive JSON keys"
 			% str(row.get("configuration_id", ""))
 		)
+	for key in REQUIRED_ZERO_COUNTER_KEYS:
+		_expect(
+			int(global_metrics.get(key, -1)) == 0,
+			"formal matrix records zero %s" % key
+		)
 	for key in REQUIRED_POSITIVE_COUNTER_KEYS:
 		_expect(
 			int(global_metrics.get(key, 0)) > 0,
@@ -405,8 +432,17 @@ func _test_report_contract(
 		)
 	var coverage := report.get("coverage_gates", {}) as Dictionary
 	_expect(
-		coverage.get("COMBAT_REQUIRED_OBSERVATIONS_GREEN") == true,
+		coverage.get("COMBAT_REQUIRED_OBSERVATIONS_GREEN") == true
+			and int(coverage.get(
+				"MISSING_REQUIRED_POSITIVE_COUNTER_COUNT",
+				-1
+			)) == 0,
 		"all required combat lifecycle observations are green"
+	)
+	_expect(
+		int(global_metrics.get("COMBAT_ACTION_COUNT", 0)) > 0
+			and coverage.get("COMBAT_ACTION_COUNT_GREEN") == true,
+		"formal matrix records at least one natural combat action"
 	)
 	var root_cause := report.get(
 		"root_cause_diagnostics",
@@ -586,6 +622,7 @@ func _test_shard_report_contract(report: Dictionary) -> void:
 		str(report.get("report_kind", "")) == "v075.combat.simulation.shard.v1",
 		"shard report declares the V075 shard schema"
 	)
+	_test_harness_identity(report, "shard report")
 	var expected_source_sha := OS.get_environment(
 		"V075_SIMULATION_SOURCE_SHA"
 	).strip_edges()
@@ -639,23 +676,62 @@ func _test_aggregate_report_contract(report: Dictionary) -> void:
 			== "v075.combat.simulation.aggregate.v1",
 		"aggregate report declares the V075 aggregate schema"
 	)
+	_test_harness_identity(report, "aggregate report")
 	var aggregation := report.get("aggregation", {}) as Dictionary
-	var expected_source_sha := OS.get_environment(
-		"V075_SIMULATION_SOURCE_SHA"
-	).strip_edges()
-	if not expected_source_sha.is_empty():
-		_expect(
-			str(report.get("source_commit_sha", "")) == expected_source_sha
+	_expect(
+		int(aggregation.get("schema_error_count", -1)) == 0
 			and int(aggregation.get(
-				"source_commit_sha_missing_count",
+				"report_fingerprint_invalid_count",
+				-1
+			)) == 0
+			and int(aggregation.get("out_of_declared_scope_count", -1)) == 0,
+		"aggregate report rejects invalid schemas, fingerprints, or scope"
+	)
+	_expect(
+		int(aggregation.get("harness_fingerprint_missing_count", -1)) == 0
+			and int(aggregation.get(
+				"harness_fingerprint_mismatch_count",
 				-1
 			)) == 0
 			and int(aggregation.get(
-				"source_commit_sha_mismatch_count",
+				"harness_component_mismatch_count",
 				-1
-			)) == 0,
-			"aggregate report preserves one complete exact source SHA"
-		)
+			)) == 0
+			and (aggregation.get(
+				"harness_fingerprint_set",
+				[]
+			) as Array).size() == 1
+			and str((aggregation.get(
+				"harness_fingerprint_set",
+				[]
+			) as Array)[0]) == str(report.get("harness_fingerprint", "")),
+		"aggregate report preserves one complete harness fingerprint"
+	)
+	_expect(
+		(aggregation.get("source_report_fingerprints", []) as Array).size()
+			== int(aggregation.get("input_report_count", -1)),
+		"aggregate report preserves one fingerprint per input shard"
+	)
+	var expected_source_sha := OS.get_environment(
+		"V075_SIMULATION_SOURCE_SHA"
+	).strip_edges()
+	_expect(
+		not expected_source_sha.is_empty()
+		and str(report.get("source_commit_sha", "")) == expected_source_sha
+		and int(aggregation.get(
+			"expected_source_commit_sha_missing_count",
+			-1
+		)) == 0
+		and int(aggregation.get(
+			"source_commit_sha_missing_count",
+			-1
+		)) == 0
+		and int(aggregation.get(
+			"source_commit_sha_mismatch_count",
+			-1
+		)) == 0,
+		"aggregate process declares and preserves one complete exact source SHA"
+	)
 	_expect(
 		int(aggregation.get("duplicate_job_count", -1)) == 0
 			and int(aggregation.get("duplicate_seed_count", -1)) == 0
@@ -668,6 +744,26 @@ func _test_aggregate_report_contract(report: Dictionary) -> void:
 			and int(aggregation.get("unique_job_count", -1))
 				== int(report.get("total_match_count", -2)),
 		"aggregate report accounts for every unique job"
+	)
+	if int(report.get("total_match_count", 0)) \
+		== DEFAULT_FORMAL_MATCHES * EXPECTED_CONFIGURATION_IDS.size():
+		_expect(
+			int(aggregation.get("missing_job_count", -1)) == 0
+				and int(aggregation.get("unique_job_count", -1)) == 2000
+				and int(aggregation.get("expected_job_count", -1)) == 2000,
+			"formal aggregate covers every one of the 2000 unique jobs"
+		)
+	var simulator := SIMULATOR.new()
+	_expect(
+		simulator.aggregate_acceptance_status(
+			true,
+			true,
+			true,
+			0,
+			2000,
+			2000
+		) == "BLOCKED",
+		"structural aggregation failures override green safety and coverage"
 	)
 
 
@@ -697,8 +793,96 @@ func _test_source_sha_aggregation(
 		)) == 0,
 		"one complete shard source SHA survives aggregation"
 	)
+	OS.set_environment("V075_SIMULATION_SOURCE_SHA", "")
+	var missing_expected_result := simulator.aggregate_reports(
+		[shard_report],
+		{"formal_matches_per_configuration": DEFAULT_FORMAL_MATCHES}
+	) as Dictionary
+	OS.set_environment("V075_SIMULATION_SOURCE_SHA", expected_source_sha)
+	var missing_expected_aggregation := (
+		missing_expected_result.get("aggregation", {}) as Dictionary
+	)
+	_expect(
+		str(missing_expected_result.get("acceptance_status", "")) == "BLOCKED"
+		and int(missing_expected_aggregation.get(
+			"expected_source_commit_sha_missing_count",
+			0
+		)) == 1,
+		"aggregate fails closed when its exact source SHA environment is absent"
+	)
+	var round_trip_variant: Variant = JSON.parse_string(
+		JSON.stringify(shard_report)
+	)
+	_expect(
+		round_trip_variant is Dictionary,
+		"shard report survives JSON serialization and parsing"
+	)
+	if round_trip_variant is Dictionary:
+		var round_trip_result := simulator.aggregate_reports(
+			[round_trip_variant],
+			{"formal_matches_per_configuration": DEFAULT_FORMAL_MATCHES}
+		) as Dictionary
+		var round_trip_aggregation := (
+			round_trip_result.get("aggregation", {}) as Dictionary
+		)
+		_expect(
+			int(round_trip_aggregation.get(
+				"report_fingerprint_invalid_count",
+				-1
+			)) == 0,
+			"disk-equivalent JSON preserves the shard report fingerprint"
+		)
+	var coverage_green := shard_report.duplicate(true)
+	for row_variant in coverage_green.get("shard_rows", []) as Array:
+		var row := row_variant as Dictionary
+		var metrics := row.get("metrics", {}) as Dictionary
+		for key in REQUIRED_POSITIVE_COUNTER_KEYS:
+			metrics[key] = maxi(1, int(metrics.get(key, 0)))
+		metrics["COMBAT_ACTION_COUNT"] = maxi(1, int(metrics.get(
+			"COMBAT_ACTION_COUNT",
+			0
+		)))
+		row["metrics"] = metrics
+	_reseal_report(simulator, coverage_green)
+	var duplicate_green_result := simulator.aggregate_reports(
+		[coverage_green, coverage_green],
+		{"formal_matches_per_configuration": DEFAULT_FORMAL_MATCHES}
+	) as Dictionary
+	var duplicate_green_aggregation := (
+		duplicate_green_result.get("aggregation", {}) as Dictionary
+	)
+	_expect(
+		str(duplicate_green_result.get("acceptance_status", "")) == "BLOCKED"
+			and simulator.safety_gates_are_green(duplicate_green_result)
+			and simulator.coverage_gates_are_green(duplicate_green_result)
+			and int(duplicate_green_aggregation.get(
+				"duplicate_job_count",
+				0
+			)) > 0,
+		"duplicate jobs block aggregation even with green safety and coverage"
+	)
+	var runtime_error_report := shard_report.duplicate(true)
+	var runtime_error_rows := runtime_error_report.get("shard_rows", []) as Array
+	if not runtime_error_rows.is_empty():
+		var runtime_error_row := runtime_error_rows[0] as Dictionary
+		var runtime_error_metrics := (
+			runtime_error_row.get("metrics", {}) as Dictionary
+		)
+		runtime_error_metrics["COMBAT_RUNTIME_ERROR_COUNT"] = 1
+		runtime_error_row["metrics"] = runtime_error_metrics
+	_reseal_report(simulator, runtime_error_report)
+	var runtime_error_result := simulator.aggregate_reports(
+		[runtime_error_report],
+		{"formal_matches_per_configuration": DEFAULT_FORMAL_MATCHES}
+	) as Dictionary
+	_expect(
+		str(runtime_error_result.get("acceptance_status", "")) == "BLOCKED"
+			and not simulator.safety_gates_are_green(runtime_error_result),
+		"a runtime error counter blocks aggregation"
+	)
 	var missing := shard_report.duplicate(true)
 	missing.erase("source_commit_sha")
+	_reseal_report(simulator, missing)
 	var missing_result := simulator.aggregate_reports(
 		[missing],
 		{"formal_matches_per_configuration": DEFAULT_FORMAL_MATCHES}
@@ -720,6 +904,7 @@ func _test_source_sha_aggregation(
 	)
 	var mismatched := shard_report.duplicate(true)
 	mismatched["source_commit_sha"] = "0000000000000000000000000000000000000000"
+	_reseal_report(simulator, mismatched)
 	var mismatch_result := simulator.aggregate_reports(
 		[shard_report, mismatched],
 		{"formal_matches_per_configuration": DEFAULT_FORMAL_MATCHES}
@@ -735,6 +920,137 @@ func _test_source_sha_aggregation(
 		)) >= 1,
 		"mismatched shard source SHAs block aggregation"
 	)
+	var tampered := shard_report.duplicate(true)
+	tampered["source_commit_sha"] = "1111111111111111111111111111111111111111"
+	var tampered_result := simulator.aggregate_reports(
+		[tampered],
+		{"formal_matches_per_configuration": DEFAULT_FORMAL_MATCHES}
+	) as Dictionary
+	var tampered_aggregation := (
+		tampered_result.get("aggregation", {}) as Dictionary
+	)
+	_expect(
+		str(tampered_result.get("acceptance_status", "")) == "BLOCKED"
+		and int(tampered_aggregation.get(
+			"report_fingerprint_invalid_count",
+			0
+		)) == 1,
+		"a tampered shard report fingerprint blocks aggregation"
+	)
+	var missing_harness := shard_report.duplicate(true)
+	missing_harness.erase("harness_fingerprint")
+	missing_harness.erase("harness_component_sha256")
+	_reseal_report(simulator, missing_harness)
+	var missing_harness_result := simulator.aggregate_reports(
+		[missing_harness],
+		{"formal_matches_per_configuration": DEFAULT_FORMAL_MATCHES}
+	) as Dictionary
+	var missing_harness_aggregation := (
+		missing_harness_result.get("aggregation", {}) as Dictionary
+	)
+	_expect(
+		str(missing_harness_result.get("acceptance_status", "")) == "BLOCKED"
+		and int(missing_harness_aggregation.get(
+			"harness_fingerprint_missing_count",
+			0
+		)) == 1,
+		"a missing shard harness fingerprint blocks aggregation"
+	)
+	var mismatched_harness := shard_report.duplicate(true)
+	var mismatched_components := (
+		mismatched_harness.get("harness_component_sha256", {}) as Dictionary
+	).duplicate(true)
+	mismatched_components[SIMULATOR_PATH] = (
+		"2222222222222222222222222222222222222222222222222222222222222222"
+	)
+	mismatched_harness["harness_component_sha256"] = mismatched_components
+	mismatched_harness["harness_fingerprint"] = simulator.fingerprint(
+		mismatched_components
+	)
+	_reseal_report(simulator, mismatched_harness)
+	var mismatched_harness_result := simulator.aggregate_reports(
+		[mismatched_harness],
+		{"formal_matches_per_configuration": DEFAULT_FORMAL_MATCHES}
+	) as Dictionary
+	var mismatched_harness_aggregation := (
+		mismatched_harness_result.get("aggregation", {}) as Dictionary
+	)
+	_expect(
+		str(mismatched_harness_result.get("acceptance_status", "")) == "BLOCKED"
+		and int(mismatched_harness_aggregation.get(
+			"harness_fingerprint_mismatch_count",
+			0
+		)) == 1,
+		"a mismatched shard harness fingerprint blocks aggregation"
+	)
+
+
+func _test_written_report(simulator: RefCounted, report: Dictionary) -> void:
+	var json_path := _argument_value("--report-json", "")
+	if not json_path.is_empty():
+		var parsed_variant: Variant = null
+		if FileAccess.file_exists(json_path):
+			parsed_variant = JSON.parse_string(
+				FileAccess.get_file_as_string(json_path)
+			)
+		_expect(
+			parsed_variant is Dictionary,
+			"written JSON report exists and parses as a dictionary"
+		)
+		if parsed_variant is Dictionary:
+			var parsed := parsed_variant as Dictionary
+			var payload := parsed.duplicate(true)
+			var declared_fingerprint := str(payload.get(
+				"report_fingerprint",
+				""
+			))
+			payload.erase("report_fingerprint")
+			_expect(
+				declared_fingerprint == str(report.get(
+					"report_fingerprint",
+					""
+				))
+					and declared_fingerprint == simulator.fingerprint(payload),
+				"written JSON report round-trips its sealed fingerprint"
+			)
+	var md_path := _argument_value("--report-md", "")
+	if not md_path.is_empty():
+		_expect(
+			FileAccess.file_exists(md_path)
+				and not FileAccess.get_file_as_string(md_path).is_empty(),
+			"written Markdown report exists and is nonempty"
+		)
+
+
+func _test_harness_identity(report: Dictionary, label: String) -> void:
+	var simulator := SIMULATOR.new()
+	var expected := simulator.harness_identity() as Dictionary
+	_expect(
+		bool(expected.get("accepted", false))
+			and str(report.get("harness_fingerprint", ""))
+				== str(expected.get("fingerprint", ""))
+			and (report.get(
+				"harness_component_sha256",
+				{}
+			) as Dictionary) == (expected.get(
+				"component_sha256",
+				{}
+			) as Dictionary),
+		"%s records the current immutable harness identity" % label
+	)
+	var payload := report.duplicate(true)
+	var declared_fingerprint := str(payload.get("report_fingerprint", ""))
+	payload.erase("report_fingerprint")
+	_expect(
+		declared_fingerprint.length() == 64
+			and declared_fingerprint == simulator.fingerprint(payload),
+		"%s fingerprint seals its complete payload" % label
+	)
+
+
+func _reseal_report(simulator: RefCounted, report: Dictionary) -> void:
+	report.erase("report_fingerprint")
+	report["report_fingerprint"] = simulator.fingerprint(report)
 
 
 func _not_duplicate_counts(counts: Dictionary) -> bool:

@@ -20,6 +20,12 @@ const SHARD_REPORT_KIND := "v075.combat.simulation.shard.v1"
 const AGGREGATE_REPORT_KIND := "v075.combat.simulation.aggregate.v1"
 const SEED_FORMULA_ID := "base_plus_configuration_million_plus_match_7919"
 const SOURCE_COMMIT_SHA_ENV := "V075_SIMULATION_SOURCE_SHA"
+const HARNESS_SOURCE_PATHS := [
+	"res://tests/v075_combat_simulation_test.gd",
+	"res://scripts/v075_simulation/v075_combat_deterministic_simulator.gd",
+	"res://scripts/v075_simulation/v075_combat_simulation_runtime_driver.gd",
+	"res://tools/invoke_godot_test.ps1",
+]
 const CONFIGURATIONS: Array = [
 	{
 		"configuration_id": "3p_8r_simple",
@@ -116,6 +122,17 @@ const REQUIRED_POSITIVE_COUNTER_KEYS: Array = [
 	"MILITARY_REGION_ASSAULT_COUNT",
 	"MILITARY_MONSTER_ASSAULT_COUNT",
 	"MILITARY_WITHDRAW_COUNT",
+	"FACILITY_COMBAT_DAMAGE_COUNT",
+]
+const COMBAT_ACTION_COUNTER_KEYS: Array = [
+	"MONSTER_DEPLOY_COUNT",
+	"MONSTER_REFRESH_COUNT",
+	"MONSTER_UPGRADE_COUNT",
+	"MONSTER_REPLACE_COUNT",
+	"MONSTER_PRIVATE_SKILL_USE_COUNT",
+	"MONSTER_TRAMPLE_REGION_RECEIPT_COUNT",
+	"MILITARY_REGION_ASSAULT_COUNT",
+	"MILITARY_MONSTER_ASSAULT_COUNT",
 	"FACILITY_COMBAT_DAMAGE_COUNT",
 ]
 const DIAGNOSTIC_COUNTER_KEYS: Array = [
@@ -438,12 +455,17 @@ func _build_report_from_rows(
 			if str(scope.get("scope_kind", "")) == "shard"
 			else SIMULATION_ID
 	))
+	var harness := harness_identity()
 	var report := {
 		"schema_version": SHARD_SCHEMA_VERSION,
 		"report_kind": report_kind,
 		"simulation_id": SIMULATION_ID,
 		"ruleset_id": RULESET_ID,
 		"source_commit_sha": OS.get_environment(SOURCE_COMMIT_SHA_ENV).strip_edges(),
+		"harness_fingerprint": str(harness.get("fingerprint", "")),
+		"harness_component_sha256": (
+			harness.get("component_sha256", {}) as Dictionary
+		).duplicate(true),
 		"production_path": {
 			"runtime_owner": "V075RuntimeOwner",
 			"combat_owner": "V075CombatRuntimeOwner",
@@ -517,12 +539,17 @@ func _build_report_from_rows(
 
 
 func _invalid_execution_report(scope: Dictionary) -> Dictionary:
+	var harness := harness_identity()
 	var report := {
 		"schema_version": SHARD_SCHEMA_VERSION,
 		"report_kind": "v075.combat.simulation.invalid.v1",
 		"simulation_id": SIMULATION_ID,
 		"ruleset_id": RULESET_ID,
 		"source_commit_sha": OS.get_environment(SOURCE_COMMIT_SHA_ENV).strip_edges(),
+		"harness_fingerprint": str(harness.get("fingerprint", "")),
+		"harness_component_sha256": (
+			harness.get("component_sha256", {}) as Dictionary
+		).duplicate(true),
 		"acceptance_status": "BLOCKED",
 		"execution_scope": scope.duplicate(true),
 		"execution_error": str(scope.get("reason_code", "invalid_scope")),
@@ -700,14 +727,42 @@ func aggregate_reports(
 	var seed_mismatch_count := 0
 	var out_of_declared_scope_count := 0
 	var schema_error_count := 0
+	var report_fingerprint_invalid_count := 0
 	var source_report_fingerprints: Array[String] = []
 	var source_commit_shas: Array[String] = []
 	var source_commit_sha_missing_count := 0
+	var source_commit_sha_value_mismatch_count := 0
+	var harness_fingerprints: Array[String] = []
+	var harness_fingerprint_missing_count := 0
+	var harness_fingerprint_mismatch_count := 0
+	var harness_component_mismatch_count := 0
+	var current_harness := harness_identity()
+	var current_harness_fingerprint := str(current_harness.get(
+		"fingerprint",
+		""
+	))
+	var expected_source_commit_sha := OS.get_environment(
+		SOURCE_COMMIT_SHA_ENV
+	).strip_edges()
+	var expected_source_commit_sha_missing_count := (
+		1 if expected_source_commit_sha.is_empty() else 0
+	)
 	for report_variant in reports:
 		if not (report_variant is Dictionary):
 			schema_error_count += 1
 			continue
 		var report := report_variant as Dictionary
+		var declared_report_fingerprint := str(report.get(
+			"report_fingerprint",
+			""
+		))
+		var report_payload := report.duplicate(true)
+		report_payload.erase("report_fingerprint")
+		if declared_report_fingerprint.length() != 64 \
+			or fingerprint(report_payload) != declared_report_fingerprint:
+			report_fingerprint_invalid_count += 1
+			schema_error_count += 1
+			continue
 		if str(report.get("simulation_id", "")) != SIMULATION_ID \
 			or str(report.get("ruleset_id", "")) != RULESET_ID \
 			or str(report.get("report_kind", "")) != SHARD_REPORT_KIND:
@@ -719,16 +774,37 @@ func aggregate_reports(
 		)) != formal_matches_per_configuration:
 			schema_error_count += 1
 			continue
-		var source_fingerprint := str(report.get("report_fingerprint", ""))
-		if not source_fingerprint.is_empty():
-			source_report_fingerprints.append(source_fingerprint)
+		source_report_fingerprints.append(declared_report_fingerprint)
+		var harness_fingerprint := str(report.get(
+			"harness_fingerprint",
+			""
+		)).strip_edges()
+		var harness_components_variant: Variant = report.get(
+			"harness_component_sha256",
+			null
+		)
+		if harness_fingerprint.is_empty():
+			harness_fingerprint_missing_count += 1
+		elif not (harness_components_variant is Dictionary) \
+			or fingerprint(harness_components_variant) != harness_fingerprint:
+			harness_component_mismatch_count += 1
+		elif current_harness_fingerprint.is_empty() \
+			or harness_fingerprint != current_harness_fingerprint:
+			harness_fingerprint_mismatch_count += 1
+		if not harness_fingerprint.is_empty() \
+			and harness_fingerprint not in harness_fingerprints:
+			harness_fingerprints.append(harness_fingerprint)
 		var source_commit_sha := str(
 			report.get("source_commit_sha", "")
 		).strip_edges()
 		if source_commit_sha.is_empty():
 			source_commit_sha_missing_count += 1
-		elif source_commit_sha not in source_commit_shas:
-			source_commit_shas.append(source_commit_sha)
+		else:
+			if source_commit_sha not in source_commit_shas:
+				source_commit_shas.append(source_commit_sha)
+			if not expected_source_commit_sha.is_empty() \
+				and source_commit_sha != expected_source_commit_sha:
+				source_commit_sha_value_mismatch_count += 1
 		var shard_rows_variant: Variant = report.get("shard_rows", null)
 		if not (shard_rows_variant is Array):
 			schema_error_count += 1
@@ -852,7 +928,11 @@ func aggregate_reports(
 			"include_match_rows": false,
 		}
 	)
-	var source_commit_sha_mismatch_count := maxi(0, source_commit_shas.size() - 1)
+	var source_commit_sha_mismatch_count := (
+		source_commit_sha_value_mismatch_count
+		if not expected_source_commit_sha.is_empty()
+		else maxi(0, source_commit_shas.size() - 1)
+	)
 	var aggregate_source_commit_sha := (
 		source_commit_shas[0] if not source_commit_shas.is_empty() else ""
 	)
@@ -860,6 +940,8 @@ func aggregate_reports(
 		source_commit_sha_mismatch_count += source_commit_sha_missing_count
 	report["source_commit_sha"] = aggregate_source_commit_sha
 	source_report_fingerprints.sort()
+	source_commit_shas.sort()
+	harness_fingerprints.sort()
 	report["aggregation"] = {
 		"schema_version": SHARD_SCHEMA_VERSION,
 		"input_report_count": reports.size(),
@@ -872,25 +954,43 @@ func aggregate_reports(
 		"seed_mismatch_count": seed_mismatch_count,
 		"out_of_declared_scope_count": out_of_declared_scope_count,
 		"schema_error_count": schema_error_count,
+		"report_fingerprint_invalid_count": report_fingerprint_invalid_count,
 		"source_commit_sha_mismatch_count": source_commit_sha_mismatch_count,
 		"source_commit_sha_missing_count": source_commit_sha_missing_count,
+		"expected_source_commit_sha_missing_count": (
+			expected_source_commit_sha_missing_count
+		),
 		"source_commit_sha_set": source_commit_shas.duplicate(),
+		"harness_fingerprint_missing_count": harness_fingerprint_missing_count,
+		"harness_fingerprint_mismatch_count": harness_fingerprint_mismatch_count,
+		"harness_component_mismatch_count": harness_component_mismatch_count,
+		"harness_fingerprint_set": harness_fingerprints.duplicate(),
 		"seed_deduplication_green": (
 			duplicate_seed_count == 0 and seed_mismatch_count == 0
 		),
 	}
-	if not (safety_gates_are_green(report) and coverage_gates_are_green(report)):
-		report["acceptance_status"] = "BLOCKED" \
-			if schema_error_count > 0 or duplicate_job_count > 0 \
-			or duplicate_seed_count > 0 or seed_mismatch_count > 0 \
-			or out_of_declared_scope_count > 0 \
-			or source_commit_sha_mismatch_count > 0 \
-			else "PARTIAL"
-	elif missing_job_count > 0 or unique_rows.size() \
-			!= CONFIGURATIONS.size() * formal_matches_per_configuration:
-		report["acceptance_status"] = "PARTIAL"
-	else:
-		report["acceptance_status"] = "GREEN"
+	var structural_blocked := schema_error_count > 0 \
+		or report_fingerprint_invalid_count > 0 \
+		or duplicate_job_count > 0 \
+		or duplicate_seed_count > 0 \
+		or seed_mismatch_count > 0 \
+		or out_of_declared_scope_count > 0 \
+		or expected_source_commit_sha_missing_count > 0 \
+		or source_commit_sha_mismatch_count > 0 \
+		or harness_fingerprint_missing_count > 0 \
+		or harness_fingerprint_mismatch_count > 0 \
+		or harness_component_mismatch_count > 0 \
+		or not bool(current_harness.get("accepted", false))
+	var expected_job_count := CONFIGURATIONS.size() \
+		* formal_matches_per_configuration
+	report["acceptance_status"] = aggregate_acceptance_status(
+		structural_blocked,
+		safety_gates_are_green(report),
+		coverage_gates_are_green(report),
+		missing_job_count,
+		unique_rows.size(),
+		expected_job_count
+	)
 	report["full_match_count_green"] = (
 		report["acceptance_status"] == "GREEN"
 	)
@@ -913,10 +1013,11 @@ func safety_gates_are_green(report: Dictionary) -> bool:
 
 
 func coverage_gates_are_green(report: Dictionary) -> bool:
-	return bool((report.get("coverage_gates", {}) as Dictionary).get(
+	var gates := report.get("coverage_gates", {}) as Dictionary
+	return bool(gates.get(
 		"COMBAT_REQUIRED_OBSERVATIONS_GREEN",
 		false
-	))
+	)) and bool(gates.get("COMBAT_ACTION_COUNT_GREEN", false))
 
 
 func run_match(
@@ -1238,6 +1339,13 @@ func _metrics_for_match(
 	result["FACILITY_COMBAT_DAMAGE_COUNT"] = int(
 		debug.get("facility_combat_damage_receipt_count", 0)
 	)
+	var combat_action_count := 0
+	for combat_action_key_variant in COMBAT_ACTION_COUNTER_KEYS:
+		combat_action_count += int(result.get(
+			str(combat_action_key_variant),
+			0
+		))
+	result["COMBAT_ACTION_COUNT"] = combat_action_count
 	result["FINAL_SETTLEMENT_COUNT"] = int(
 		debug.get("final_settlement_count", 0)
 	)
@@ -1380,6 +1488,7 @@ func _empty_metrics() -> Dictionary:
 		"TRACK_RATIO_CONTRACT_VIOLATION_COUNT",
 		"TRACK_ASSET_PIP_REGRESSION_FAILURE_COUNT",
 		"DUPLICATE_SETTLEMENT_COUNT",
+		"COMBAT_ACTION_COUNT",
 	]:
 		result[key] = 0
 	return result
@@ -1441,6 +1550,9 @@ func _safety_gates(results: Array) -> Dictionary:
 		) == int(metrics.get("COMBAT_SIMULATION_SETTLED_COUNT", 0))
 			and int(metrics.get("DUPLICATE_SETTLEMENT_COUNT", 0)) == 0,
 	}
+	for key_variant in ZERO_COUNTER_KEYS:
+		var key := str(key_variant)
+		gates["%s_GREEN" % key] = int(metrics.get(key, 0)) == 0
 	return gates
 
 
@@ -1455,6 +1567,11 @@ func _coverage_gates(metrics: Dictionary) -> Dictionary:
 			missing.append(key)
 	gates["COMBAT_REQUIRED_OBSERVATIONS_GREEN"] = missing.is_empty()
 	gates["missing_required_positive_counters"] = missing
+	gates["MISSING_REQUIRED_POSITIVE_COUNTER_COUNT"] = missing.size()
+	gates["COMBAT_ACTION_COUNT_GREEN"] = int(metrics.get(
+		"COMBAT_ACTION_COUNT",
+		0
+	)) > 0
 	return gates
 
 
@@ -1474,6 +1591,23 @@ func _acceptance_status(
 			false
 		))
 	):
+		return "PARTIAL"
+	return "GREEN"
+
+
+func aggregate_acceptance_status(
+	structural_blocked: bool,
+	safety_green: bool,
+	coverage_green: bool,
+	missing_job_count: int,
+	unique_job_count: int,
+	expected_job_count: int
+) -> String:
+	if structural_blocked or not safety_green:
+		return "BLOCKED"
+	if not coverage_green \
+		or missing_job_count > 0 \
+		or unique_job_count != expected_job_count:
 		return "PARTIAL"
 	return "GREEN"
 
@@ -1843,6 +1977,36 @@ func _timing_summary_empty() -> Dictionary:
 	}
 
 
+func harness_identity() -> Dictionary:
+	var components: Dictionary = {}
+	for path_variant in HARNESS_SOURCE_PATHS:
+		var path := str(path_variant)
+		if not FileAccess.file_exists(path):
+			return {
+				"accepted": false,
+				"reason_code": "harness_component_missing",
+				"missing_path": path,
+				"component_sha256": components,
+				"fingerprint": "",
+			}
+		var component_sha256 := FileAccess.get_sha256(path)
+		if component_sha256.length() != 64:
+			return {
+				"accepted": false,
+				"reason_code": "harness_component_hash_invalid",
+				"invalid_path": path,
+				"component_sha256": components,
+				"fingerprint": "",
+			}
+		components[path] = component_sha256
+	return {
+		"accepted": true,
+		"reason_code": "",
+		"component_sha256": components,
+		"fingerprint": fingerprint(components),
+	}
+
+
 func fingerprint(value: Variant) -> String:
 	return _canonical(value).sha256_text()
 
@@ -1856,7 +2020,10 @@ func _canonical(value: Variant) -> String:
 		TYPE_INT:
 			return str(int(value))
 		TYPE_FLOAT:
-			return String.num(float(value), 17)
+			var number := float(value)
+			if number == floor(number):
+				return str(int(number))
+			return String.num(number, 17)
 		TYPE_STRING, TYPE_STRING_NAME:
 			return JSON.stringify(str(value))
 		TYPE_ARRAY:
