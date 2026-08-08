@@ -12,6 +12,9 @@ const AssetCore := preload(
 const Registry := preload(
 	"res://scripts/v075/cards/v075_card_definition_registry.gd"
 )
+const PresentationBench := preload(
+	"res://scripts/tools/v075/v075_combat_player_surface_bench.gd"
+)
 
 const PLAYER_ID := "player.ai.1"
 const ROSTER := [
@@ -409,37 +412,98 @@ func _test_combat_follow_up_contracts(
 		and bool(military_contract.get("requires_prebound_task", false)),
 		"military acquisition advertises exactly two assault tasks"
 	)
+	var monster_card_id := str(monster_candidate.get("card_instance_id", ""))
+	var monster_definition_id := str(monster_candidate.get(
+		"card_definition_id",
+		""
+	))
+	var monster_binding := PresentationBench.make_card_action_binding_fixture(
+		PLAYER_ID,
+		monster_card_id,
+		monster_definition_id,
+		3
+	)
+	var monster_options: Array = []
+	for mode_variant in monster_contract.get("allowed_modes", []) as Array:
+		var mode := str(mode_variant)
+		var target_id := (
+			"region.contract.deploy"
+			if mode == "DEPLOY_NEW"
+			else "monster.contract.source"
+		)
+		monster_options.append({
+			"option_id": "option.contract.monster.%s" % mode.to_lower(),
+			"action_domain": "monster",
+			"card_instance_id": monster_card_id,
+			"card_definition_id": monster_definition_id,
+			"card_rank": int(monster_candidate.get("card_rank", 1)),
+			"monster_card_mode": mode,
+			"target_slot_id": "combat.contract.monster.%s" % mode.to_lower(),
+			"target_region_id": target_id if mode == "DEPLOY_NEW" else "",
+			"target_source_instance_id": target_id if mode != "DEPLOY_NEW" else "",
+			"card_action_binding": monster_binding.duplicate(true),
+		})
+	var military_card_id := str(military_candidate.get("card_instance_id", ""))
+	var military_definition_id := str(military_candidate.get(
+		"card_definition_id",
+		""
+	))
+	var military_binding := PresentationBench.make_card_action_binding_fixture(
+		PLAYER_ID,
+		military_card_id,
+		military_definition_id,
+		3
+	)
+	var military_options: Array = [{
+		"option_id": "option.contract.military.region",
+		"owner_player_id": PLAYER_ID,
+		"action_domain": "military",
+		"card_instance_id": military_card_id,
+		"card_definition_id": military_definition_id,
+		"card_action_binding": military_binding.duplicate(true),
+		"target_slot_id": "combat.contract.military.region",
+		"task_kind": "assault_region",
+		"target_region_id": "region.contract.deploy",
+		"target_monster_source_instance_id": "",
+		"launch_region_id": "region.contract.launch",
+		"asset_cost_by_color": {},
+		"enabled": true,
+	}, {
+		"option_id": "option.contract.military.monster",
+		"owner_player_id": PLAYER_ID,
+		"action_domain": "military",
+		"card_instance_id": military_card_id,
+		"card_definition_id": military_definition_id,
+		"card_action_binding": military_binding.duplicate(true),
+		"target_slot_id": "combat.contract.military.monster",
+		"task_kind": "assault_monster",
+		"target_region_id": "",
+		"target_monster_source_instance_id": "monster.contract.enemy",
+		"target_source_generation": 1,
+		"launch_region_id": "region.contract.launch",
+		"asset_cost_by_color": {},
+		"enabled": true,
+	}]
 	var own := {
 		"viewer_player_id": PLAYER_ID,
 		"available_unreserved_assets": available_assets.duplicate(true),
 		"monster_card_options": [{
-			"card_instance_id": str(
-				monster_candidate.get("card_instance_id", "")
-			),
-			"card_definition_id": str(
-				monster_candidate.get("card_definition_id", "")
-			),
+			"card_instance_id": monster_card_id,
+			"card_definition_id": monster_definition_id,
 			"card_rank": int(monster_candidate.get("card_rank", 1)),
 			"legal_modes": monster_contract.get("allowed_modes", []),
-			"prebound_target_by_mode": {
-				"DEPLOY_NEW": "region.contract.deploy",
-				"REFRESH_EXISTING": "monster.contract.source",
-				"UPGRADE_EXISTING": "monster.contract.source",
-				"REPLACE_EXISTING": "monster.contract.source",
-			},
+			"options": monster_options,
 		}],
 		"military_card_options": [{
-			"card_instance_id": str(
-				military_candidate.get("card_instance_id", "")
-			),
-			"card_definition_id": str(
-				military_candidate.get("card_definition_id", "")
-			),
+			"card_instance_id": military_card_id,
+			"card_definition_id": military_definition_id,
 			"legal_task_kinds": military_contract.get(
 				"allowed_task_kinds",
 				[]
 			),
+			"options": military_options,
 		}],
+		"military_options": military_options,
 		"owned_monsters": [],
 	}
 	var public := {

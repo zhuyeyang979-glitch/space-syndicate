@@ -54,18 +54,9 @@ class RuntimeHarness extends V075RuntimeOwner:
 		_source_id: String,
 		skill_id: String
 	) -> Dictionary:
-		return {"skill_definition_id": skill_id}
-
-	func _private_skill_target_request(
-		_actor_id: String,
-		_source: Dictionary,
-		_skill: Dictionary,
-		_parameters: Dictionary
-	) -> Dictionary:
 		return {
-			"target_kind": "self_source",
-			"target_id": "monster.owner.telemetry",
-			"target_source_generation": 1,
+			"skill_definition_id": skill_id,
+			"target_contract": {"target_kind": "self_source"},
 		}
 
 	func _public_occupied_facilities() -> Array:
@@ -107,8 +98,14 @@ func _run() -> void:
 		"player.owner",
 		{
 			"source_instance_id": "monster.owner.telemetry",
+			"source_generation": 1,
 			"skill_definition_id": "skill.owner.telemetry",
 			"target_facility_id": "facility.rival.future",
+			"target_binding": {
+				"target_kind": "monster",
+				"target_id": "monster.owner.telemetry",
+				"target_source_generation": 1,
+			},
 		}
 	)
 	_expect(

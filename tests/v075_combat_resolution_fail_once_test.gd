@@ -300,7 +300,25 @@ class ResolutionCombatOwner extends Node:
 
 
 class FailingDbgOwner extends RefCounted:
+	const BINDING_SCHEMA_ID := "v07.personal_dbg.authoritative_card_action_binding.v1"
+	const BINDING_LIFECYCLE_ID := "v075.combat.queue_resolve_personal_discard"
+	const BINDING_FIELDS := [
+		"schema_id",
+		"schema_version",
+		"authority_domain_id",
+		"authority_lineage_fingerprint",
+		"owner_player_id",
+		"card_instance_id",
+		"card_definition_id",
+		"immutable_identity_fingerprint",
+		"authoritative_zone",
+		"zone_revision",
+		"lifecycle_evidence_fingerprint",
+		"expected_action_lifecycle",
+		"binding_fingerprint",
+	]
 	var card: Dictionary
+	var owner_id := ""
 	var authority_state: Dictionary = {
 		"batch_index": 0,
 		"lock_count": 0,
@@ -312,8 +330,79 @@ class FailingDbgOwner extends RefCounted:
 	var rollback_count := 0
 
 
-	func _init(card_value: Dictionary) -> void:
+	func _init(card_value: Dictionary, owner_value: String) -> void:
 		card = card_value.duplicate(true)
+		owner_id = owner_value
+
+
+	func authoritative_card_action_binding_v1(
+		actor_id: String,
+		card_instance_id: String,
+		expected_lifecycle: String
+	) -> Dictionary:
+		if (
+			actor_id != owner_id
+			or card_instance_id != str(card.get("instance_id", ""))
+			or expected_lifecycle != BINDING_LIFECYCLE_ID
+		):
+			return {}
+		var authority_lineage := JSON.stringify({
+			"authority": "faithful.fail.once.dbg",
+			"owner": owner_id,
+		}).sha256_text()
+		var immutable_identity := JSON.stringify({
+			"authority_lineage": authority_lineage,
+			"owner": owner_id,
+			"card_instance_id": card_instance_id,
+			"card_definition_id": str(card.get("definition_id", "")),
+		}).sha256_text()
+		var lifecycle_evidence := JSON.stringify({
+			"immutable_identity": immutable_identity,
+			"zone": "hand",
+			"zone_revision": 1,
+			"expected_lifecycle": expected_lifecycle,
+		}).sha256_text()
+		var binding := {
+			"schema_id": BINDING_SCHEMA_ID,
+			"schema_version": 1,
+			"authority_domain_id": "v07.personal_dbg",
+			"authority_lineage_fingerprint": authority_lineage,
+			"owner_player_id": owner_id,
+			"card_instance_id": card_instance_id,
+			"card_definition_id": str(card.get("definition_id", "")),
+			"immutable_identity_fingerprint": immutable_identity,
+			"authoritative_zone": "hand",
+			"zone_revision": 1,
+			"lifecycle_evidence_fingerprint": lifecycle_evidence,
+			"expected_action_lifecycle": expected_lifecycle,
+		}
+		binding["binding_fingerprint"] = JSON.stringify(binding).sha256_text()
+		return binding
+
+
+	func validate_card_action_binding_v1(
+		actor_id: String,
+		candidate: Dictionary,
+		expected_lifecycle: String
+	) -> Dictionary:
+		var canonical := authoritative_card_action_binding_v1(
+			actor_id,
+			str(candidate.get("card_instance_id", "")),
+			expected_lifecycle
+		)
+		var exact_shape := candidate.size() == BINDING_FIELDS.size()
+		for field_name in BINDING_FIELDS:
+			exact_shape = exact_shape and candidate.has(field_name)
+		var accepted := (
+			exact_shape
+			and not canonical.is_empty()
+			and candidate == canonical
+		)
+		return {
+			"accepted": accepted,
+			"reason_code": "none" if accepted else "fake_card_binding_invalid",
+			"binding": canonical.duplicate(true) if accepted else {},
+		}
 
 
 	func player_projection(actor_id: String) -> Dictionary:
@@ -582,15 +671,25 @@ func _new_locked_runtime() -> Dictionary:
 			"empty rival submission locks before the combat resolution fixture"
 		)
 
-	var dbg := FailingDbgOwner.new(_military_card())
+	var dbg := FailingDbgOwner.new(_military_card(), local_id)
 	var dbg_by_player := runtime.get("_dbg_by_player") as Dictionary
 	dbg_by_player[local_id] = dbg
 	runtime.call("_clear_v075_submission_caches")
+	var card_action_binding := runtime.call(
+		"_authoritative_card_action_binding",
+		local_id,
+		str(_military_card().get("instance_id", ""))
+	) as Dictionary
+	_expect(
+		not card_action_binding.is_empty(),
+		"resolution fixture uses a strict canonical DBG card binding"
+	)
 	var queued_by_player := runtime.get("_queued_by_player") as Dictionary
 	queued_by_player[local_id] = [
 		_military_binding(
 			local_id,
-			str(facility.get("region_id", ""))
+			str(facility.get("region_id", "")),
+			card_action_binding
 		)
 	]
 
@@ -688,7 +787,11 @@ func _military_card() -> Dictionary:
 	}
 
 
-func _military_binding(actor_id: String, target_region_id: String) -> Dictionary:
+func _military_binding(
+	actor_id: String,
+	target_region_id: String,
+	card_action_binding: Dictionary
+) -> Dictionary:
 	var card := _military_card()
 	return {
 		"actor_id": actor_id,
@@ -703,6 +806,7 @@ func _military_binding(actor_id: String, target_region_id: String) -> Dictionary
 		"task_kind": "assault_region",
 		"action_domain": "military",
 		"target_bound": true,
+		"card_action_binding": card_action_binding.duplicate(true),
 	}
 
 

@@ -1,7 +1,10 @@
 extends SceneTree
 
 const VISUAL_SCENES := [
-	"res://scenes/ui/GameScreen.tscn",
+	"res://scenes/ui/v075/V075SampleGameScreen.tscn",
+	"res://scenes/ui/v075/V075CombatPlayerSurface.tscn",
+	"res://scenes/ui/v075/V075MonsterPrivateSkillDock.tscn",
+	"res://scenes/ui/v075/V075MilitaryMissionPanel.tscn",
 	"res://scenes/ui/PlayerBoard.tscn",
 	"res://scenes/ui/CardFace.tscn",
 	"res://scenes/ui/table/TopCommoditySushiTrack.tscn",
@@ -30,19 +33,6 @@ const MAP_COMPONENT_SCENES := [
 	"res://scenes/ui/map/PlanetMapScaleHint.tscn",
 ]
 
-const RETIRED_GENERATED_UI_HELPERS := [
-	"_add_player_hand_rack",
-	"_add_player_action_tray",
-	"_add_selected_district_action_panel",
-	"_add_first_summon_prompt",
-	"_add_player_resource_cubes",
-	"_add_player_tableau",
-	"_add_player_seat_cards",
-	"_add_bid_control_card",
-	"_add_owner_guess_card",
-	"_add_card_resolution_track",
-]
-
 var _failures: Array[String] = []
 
 
@@ -56,7 +46,8 @@ func _run() -> void:
 		var packed := load(scene_path) as PackedScene
 		_expect(packed != null, "%s loads as a visual scene" % scene_path)
 
-	var game_screen := _instantiate("res://scenes/ui/GameScreen.tscn")
+	var production_screen := _instantiate("res://scenes/ui/v075/V075SampleGameScreen.tscn")
+	var combat_surface := _instantiate("res://scenes/ui/v075/V075CombatPlayerSurface.tscn")
 	var player_board := _instantiate("res://scenes/ui/PlayerBoard.tscn")
 	var player_card_dock := _instantiate("res://scenes/ui/table/PlayerCardDock.tscn")
 	var planet_map := _instantiate("res://scenes/ui/PlanetMapView.tscn")
@@ -64,21 +55,24 @@ func _run() -> void:
 	var card_track := _instantiate("res://scenes/ui/CardResolutionTrack.tscn")
 	var overlay := _instantiate("res://scenes/ui/OverlayLayer.tscn")
 
-	_expect(_has_nodes(game_screen, ["Background", "TopBar", "TopCommoditySushiTrack", "PlayerRosterPanel", "PlanetBoard", "PlayerBoard", "PlayerCardDock", "ContextDetailDrawer", "OverlayLayer"]), "GameScreen provides the contextual scene-owned table composition and production Player Card Dock")
-	_expect(game_screen != null and game_screen.find_child("PublicTrack", true, false) == null, "GameScreen excludes the retired PublicTrack node")
-	_expect(game_screen != null and game_screen.find_children("TopCommoditySushiTrack", "", true, false).size() == 1, "GameScreen composes exactly one TopCommoditySushiTrack node")
+	_expect(_has_nodes(production_screen, ["Backdrop", "RootMargin", "PlanetBoard", "V074VirtualizedTargetRail", "V075CombatOverlay", "CombatSurface"]), "V075SampleGameScreen exposes the inherited table shell, V0.7.4 target rail and V0.7.5 combat overlay")
+	_expect(production_screen != null and production_screen.find_children("V075CombatOverlay", "", true, false).size() == 1 and production_screen.find_children("CombatSurface", "", true, false).size() == 1, "V075SampleGameScreen composes exactly one combat overlay and one combat player surface")
+	_expect(_has_nodes(combat_surface, ["PublicMonsterPanel", "SkillDock", "MilitaryPanel", "PresentationStrip"]), "V075CombatPlayerSurface exposes its four stable visual regions")
 	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "PlayerCommandTableau", "CompactCurrentActionSurface"]) \
 		and player_board.find_child("PlayerHandTableau", true, false) == null \
-		and player_board.find_child("HandRack", true, false) == null, "PlayerBoard retains resources and one compact non-card action context with no duplicate production hand surface")
-	_expect(_has_nodes(player_card_dock, ["BoundActionCards", "NormalHandCards", "CommodityCards", "CardDockCapacitySummary", "CardDockActionFeedback"]), "PlayerCardDock exposes three readable typed card lanes and feedback")
+		and player_board.find_child("HandRack", true, false) == null, "shared historical PlayerBoard retains resources and one compact non-card action context")
+	_expect(_has_nodes(player_card_dock, ["BoundActionCards", "NormalHandCards", "CommodityCards", "CardDockCapacitySummary", "CardDockActionFeedback"]), "shared historical PlayerCardDock exposes three readable typed card lanes and feedback")
 	_expect(_has_nodes(planet_map, ["BackdropLayer", "OrbitLayer", "DistrictLayer", "RouteLayer", "MonsterLayer", "SelectionLayer", "EffectLayer", "CalloutLayer", "DebugOverlayLayer"]), "PlanetMapView exposes editable visual layers")
 	_expect(_has_nodes(commodity_track, ["TrackMargin", "HeaderRow", "BeltViewport", "CommodityTrackItemHost", "CommodityTrackEmptyLabel"]), "TopCommoditySushiTrack exposes stable header, belt, item, and empty-state regions")
 	_expect(_has_nodes(card_track, ["HistoryRail", "ActiveResolutionSlot", "QueueRail", "NextQueueRail", "AuctionResponseLayer", "PrivacyHintLayer"]), "CardResolutionTrack exposes stable visual lanes and privacy feedback")
 	_expect(_has_nodes(overlay, ["SideDrawerLayer", "TooltipLayer", "DragPreviewLayer", "ModalLayer", "RuntimeSurfaceLayer", "PublicBidDecisionPanel"]), "OverlayLayer separates detail, pointer, transient bid, decision, and runtime surfaces")
 
-	var main_source := _source("res://scripts/main.gd")
 	var main_scene_source := _source("res://scenes/main.tscn")
-	var game_screen_scene_source := _source("res://scenes/ui/GameScreen.tscn")
+	var v075_screen_scene_source := _source("res://scenes/ui/v075/V075SampleGameScreen.tscn")
+	var v075_screen_source := _source("res://scripts/ui/v075/v075_sample_game_screen.gd")
+	var v075_bootstrap_source := _source("res://scripts/v075_runtime/v075_application_bootstrap.gd")
+	var v075_application_flow_source := _source("res://scripts/v075_runtime/v075_application_flow.gd")
+	var v075_runtime_composition_source := _source("res://scenes/runtime/V075RuntimeComposition.tscn")
 	var map_scene_source := _source("res://scenes/ui/PlanetMapView.tscn")
 	var map_script_source := _source("res://scripts/ui/planet_map_view.gd")
 	var card_face_source := _source("res://scripts/ui/card_face.gd")
@@ -87,9 +81,12 @@ func _run() -> void:
 	var visual_event_source := _source("res://scripts/ui/visual_event_layer.gd")
 	var targeting_source := _source("res://scripts/ui/targeting_overlay.gd")
 
-	_expect(main_scene_source.contains("GameScreen.tscn") and main_scene_source.contains("RuntimeGameScreen"), "main.tscn embeds the real GameScreen")
-	_expect(not game_screen_scene_source.contains("res://scenes/ui/PublicTrack.tscn"), "GameScreen no longer references the retired PublicTrack scene")
-	_expect(game_screen_scene_source.count("res://scenes/ui/table/TopCommoditySushiTrack.tscn") == 1, "GameScreen references the TopCommoditySushiTrack scene exactly once")
+	_expect(_contains_all(main_scene_source, ["res://scripts/v075_runtime/v075_application_bootstrap.gd", "res://scenes/runtime/V075RuntimeComposition.tscn", "res://scenes/ui/v075/V075SampleGameScreen.tscn", "V075RuntimeComposition", "V075GameScreen"]), "main.tscn embeds the complete V0.7.5 production composition")
+	_expect(v075_screen_scene_source.contains("res://scenes/ui/v074/V074SampleGameScreen.tscn") and v075_screen_scene_source.count("res://scenes/ui/v075/V075CombatPlayerSurface.tscn") == 1 and _contains_all(v075_screen_scene_source, ["V075CombatOverlay", "CombatSurface"]), "V075SampleGameScreen deliberately extends the shared V0.7.4 shell and sceneizes exactly one V0.7.5 combat surface")
+	_expect(production_screen != null and production_screen.has_method("v075_responsive_geometry_audit") and production_screen.get_node_or_null("RootMargin") is ScrollContainer, "V075SampleGameScreen exposes a runtime geometry audit and an accessible production root scroll")
+	_expect(v075_bootstrap_source.contains("_game_screen.application_intent_requested.connect(") and v075_bootstrap_source.contains('_application_flow.call("submit_intent", intent)'), "V075ApplicationBootstrap connects the production screen to the current application flow")
+	_expect(v075_application_flow_source.contains("func submit_intent(intent: Dictionary) -> Dictionary:") and _contains_all(v075_runtime_composition_source, ["V075RulesetRuntimeOwner", "V075RuntimeOwner", "V075CombatRuntimeOwner", "V075CombatTelemetryService"]), "V075RuntimeComposition exposes the current typed application flow and runtime owners")
+	_expect(_has_no_nodes(production_screen, ["RuntimeGameScreen", "TopCommoditySushiTrack", "PlayerRosterPanel", "PlayerBoard", "PlayerCardDock", "ContextDetailDrawer"]), "[retired-proof 5/5] the instantiated V0.7.5 production screen has none of the historical split-shell GameScreen nodes")
 	_expect(map_scene_source.contains("PlanetGlobeBackdrop") and map_scene_source.contains("PlanetFocusRangeOverlay") and map_scene_source.contains("PlanetMapScaleHint"), "PlanetMapView keeps stable editor-visible anchor components")
 	_expect(map_script_source.contains("sceneized_visual_cutover_enabled := true") and map_script_source.contains("legacy_draw_fallback_enabled := false"), "sceneized map rendering remains the default")
 	_expect(map_script_source.contains("PlanetDistrictPolygonScene") and map_script_source.contains("PlanetRouteSegmentScene") and map_script_source.contains("PlanetMonsterTokenScene"), "map render ownership resolves to component scenes")
@@ -107,12 +104,7 @@ func _run() -> void:
 	_expect(FileAccess.file_exists("res://assets/third_party/kenney_cc0/LICENSE.md"), "Kenney attribution is present")
 	_expect(FileAccess.file_exists("res://assets/third_party/game_icons_ccby/license.txt"), "Game-icons attribution is present")
 
-	_expect(not main_source.contains("BUILD_LEGACY_RUNTIME_TABLE") and not main_scene_source.contains("LegacyRuntimeTable"), "legacy generated table stays retired")
-	for helper_variant: Variant in RETIRED_GENERATED_UI_HELPERS:
-		var helper_name := str(helper_variant)
-		_expect(not main_source.contains("func %s(" % helper_name), "%s stays outside main.gd" % helper_name)
-
-	for node in [game_screen, player_board, planet_map, commodity_track, card_track, overlay]:
+	for node in [production_screen, combat_surface, player_board, player_card_dock, planet_map, commodity_track, card_track, overlay]:
 		if node != null:
 			node.free()
 	_finish()
@@ -132,6 +124,22 @@ func _has_nodes(root: Node, node_names: Array) -> bool:
 		return false
 	for node_name_variant: Variant in node_names:
 		if root.find_child(str(node_name_variant), true, false) == null:
+			return false
+	return true
+
+
+func _has_no_nodes(root: Node, node_names: Array) -> bool:
+	if root == null:
+		return false
+	for node_name_variant: Variant in node_names:
+		if root.find_child(str(node_name_variant), true, false) != null:
+			return false
+	return true
+
+
+func _contains_all(text: String, needles: Array) -> bool:
+	for needle_variant: Variant in needles:
+		if not text.contains(str(needle_variant)):
 			return false
 	return true
 

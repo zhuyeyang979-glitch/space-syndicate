@@ -225,8 +225,27 @@ func _test_combat_checkpoint_rolls_back_partial_military_lock() -> void:
         _dispose(runtime)
         return
 
-    var first := _military_binding(hand, "action.rollback.first", "region.000")
-    var second := _military_binding(hand, "action.rollback.invalid", "")
+    var card_action_binding := runtime.call(
+        "_authoritative_card_action_binding",
+        actor,
+        str(hand.get("instance_id", ""))
+    ) as Dictionary
+    _expect(
+        not card_action_binding.is_empty(),
+        "submission fixture uses a DBG-issued authoritative card binding"
+    )
+    var first := _military_binding(
+        hand,
+        "action.rollback.first",
+        "region.000",
+        card_action_binding
+    )
+    var second := _military_binding(
+        hand,
+        "action.rollback.invalid",
+        "",
+        card_action_binding
+    )
     var queues := (runtime.get("_queued_by_player") as Dictionary).duplicate(true)
     queues[actor] = [first, second]
     runtime.set("_queued_by_player", queues)
@@ -280,7 +299,21 @@ func _test_cross_owner_submission_failure_contract() -> void:
     if hand.is_empty():
         _dispose(runtime)
         return
-    var first := _military_binding(hand, "action.rollback.dbg", "region.000")
+    var card_action_binding := runtime.call(
+        "_authoritative_card_action_binding",
+        actor,
+        str(hand.get("instance_id", ""))
+    ) as Dictionary
+    _expect(
+        not card_action_binding.is_empty(),
+        "cross-owner fixture captures the original DBG authority binding"
+    )
+    var first := _military_binding(
+        hand,
+        "action.rollback.dbg",
+        "region.000",
+        card_action_binding
+    )
     var queues := (runtime.get("_queued_by_player") as Dictionary).duplicate(true)
     queues[actor] = [first]
     runtime.set("_queued_by_player", queues)
@@ -346,7 +379,12 @@ func _first_private_hand_card(runtime: Node, actor_id: String) -> Dictionary:
     return {}
 
 
-func _military_binding(card: Dictionary, action_id: String, region_id: String) -> Dictionary:
+func _military_binding(
+    card: Dictionary,
+    action_id: String,
+    region_id: String,
+    card_action_binding: Dictionary
+) -> Dictionary:
     return {
         "actor_id": "player.local",
         "action_id": action_id,
@@ -360,6 +398,7 @@ func _military_binding(card: Dictionary, action_id: String, region_id: String) -
         "task_kind": "assault_region",
         "action_domain": "military",
         "target_bound": true,
+        "card_action_binding": card_action_binding.duplicate(true),
     }
 
 

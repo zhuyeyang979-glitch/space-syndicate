@@ -74,6 +74,14 @@ func _run() -> void:
 		authority,
 		"player.local"
 	)
+	var region_military_option: Dictionary = {}
+	var monster_military_option: Dictionary = {}
+	for option_variant in projection.get("military_task_options", []) as Array:
+		var projected_option := option_variant as Dictionary
+		if str(projected_option.get("task_kind", "")) == "assault_region":
+			region_military_option = projected_option.duplicate(true)
+		elif str(projected_option.get("task_kind", "")) == "assault_monster":
+			monster_military_option = projected_option.duplicate(true)
 	screen.apply_snapshot({
 		"ruleset_id": "v0.7.5",
 		"phase": "batch_active",
@@ -114,6 +122,7 @@ func _run() -> void:
 		"phase": "submission",
 		"match_started": false,
 		"legal_actions": [{
+			"option_id": "option.monster.local.binding",
 			"action_domain": "monster",
 			"card_instance_id": "card.monster.local.01",
 			"card_definition_id": "monster.spore_tide_emperor.life.rank_1",
@@ -122,6 +131,12 @@ func _run() -> void:
 			"target_region_id": "region.01",
 			"target_source_instance_id": "",
 			"mode_prebound": true,
+			"card_action_binding": Bench.make_card_action_binding_fixture(
+				"player.local",
+				"card.monster.local.01",
+				"monster.spore_tide_emperor.life.rank_1",
+				7
+			),
 		}],
 		"personal_dbg": {"facts": {"hand": []}},
 		"combat_player_projection": projection,
@@ -158,7 +173,8 @@ func _run() -> void:
 	)
 
 	var surface := screen.get_node(
-		"PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay/Margin/Rows/SurfaceHost/CombatSurface"
+		"RootMargin/Shell/V075CombatStackHost/V075CombatOverlay/"
+		+ "Margin/Rows/SurfaceHost/CombatSurface"
 	) as V075CombatPlayerSurface
 	var map_view := screen.get_node(
 		"RootMargin/Shell/TableArea/PlanetBoard/PlanetRows/"
@@ -220,6 +236,7 @@ func _run() -> void:
 		int(map_projection_debug.get("combat_map_marker_count", 0)) == 2,
 		"combat projection places both public monsters on the production map"
 	)
+	var emitted_before_invalid_identity := emitted.size()
 	surface.private_target_selection_requested.emit(
 		{
 			"source_instance_id": "monster.tech.local.01",
@@ -227,19 +244,49 @@ func _run() -> void:
 			"target_binding": {
 				"target_kind": "monster",
 				"target_id": "monster.tech.local.01",
+				"target_source_generation": 4,
 			},
+			"target_contract": {"target_kind": "self_source"},
 		}
 	)
-	surface.military_mission_selected.emit({
-		"option_id": "option.military.region.local",
-		"owner_player_id": "player.local",
-		"card_instance_id": "dbg.military.local.01",
-		"card_definition_id": "military.submarine_fleet.life.rank_1",
-		"target_slot_id": "combat.military.assault_region.region.14",
-		"task_kind": "assault_region",
-		"target_region_id": "region.14",
-		"target_monster_source_instance_id": "",
-	})
+	var missing_card_binding := region_military_option.duplicate(true)
+	missing_card_binding.erase("card_action_binding")
+	surface.military_mission_selected.emit(missing_card_binding)
+	surface.private_target_selection_requested.emit(
+		{
+			"source_instance_id": "monster.tech.local.01",
+			"source_generation": 3,
+			"skill_definition_id": "skill.tech.prism.l1",
+			"target_binding": {
+				"target_kind": "monster",
+				"target_id": "monster.tech.local.01",
+				"target_source_generation": 3,
+			},
+			"target_contract": {"target_kind": "self_source"},
+		}
+	)
+	var stale_monster_option := monster_military_option.duplicate(true)
+	stale_monster_option["target_source_generation"] = 1
+	surface.military_mission_selected.emit(stale_monster_option)
+	await process_frame
+	_expect(
+		emitted.size() == emitted_before_invalid_identity,
+		"missing or stale source/card/target binding produces no canonical submission"
+	)
+	surface.private_target_selection_requested.emit(
+		{
+			"source_instance_id": "monster.tech.local.01",
+			"source_generation": 4,
+			"skill_definition_id": "skill.tech.prism.l1",
+			"target_binding": {
+				"target_kind": "monster",
+				"target_id": "monster.tech.local.01",
+				"target_source_generation": 4,
+			},
+			"target_contract": {"target_kind": "self_source"},
+		}
+	)
+	surface.military_mission_selected.emit(region_military_option)
 	await process_frame
 	debug = screen.combat_debug_snapshot()
 	var private_intent_count := 0
@@ -369,11 +416,14 @@ func _run() -> void:
 	surface.private_target_selection_requested.emit(
 		{
 			"source_instance_id": "monster.tech.local.01",
+			"source_generation": 4,
 			"skill_definition_id": "skill.tech.prism.l1",
 			"target_binding": {
 				"target_kind": "monster",
 				"target_id": "monster.tech.local.01",
+				"target_source_generation": 4,
 			},
+			"target_contract": {"target_kind": "self_source"},
 		}
 	)
 	await process_frame

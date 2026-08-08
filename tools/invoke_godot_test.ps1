@@ -11,9 +11,10 @@ removes only the verified process tree started by this invocation.
 Runner exit codes are the Godot exit code for a completed test, 124 for timeout,
 125 when a completed process leaves a scoped runtime process (even if cleanup
 succeeds), 126 when an import bootstrap fails without a more specific exit code,
-127 when Godot reports a script/parser/runtime error despite exiting zero, and
-128 when an explicitly required completion marker is absent. The console wrapper
-is deliberately rejected because it can return before the real process.
+127 when Godot reports an error despite exiting zero, 128 when an explicitly
+required completion marker is absent, 129 for incomplete/invalid/NUL raw capture,
+and 130 for an unclassified warning. The console wrapper is deliberately rejected
+because it can return before the real process.
 
 .EXAMPLE
 pwsh -File tools/invoke_godot_test.ps1 `
@@ -314,6 +315,10 @@ function Get-GodotDiagnosticAudit {
     $markerRequired = -not [string]::IsNullOrEmpty($ExpectedMarker)
     $markerFound = $false
     $scriptErrors = [Collections.Generic.List[object]]::new()
+    $diagnosticKeys = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal
+    )
+    $diagnostics = [Collections.Generic.List[object]]::new()
 
     foreach ($path in $LogPaths) {
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
@@ -329,7 +334,34 @@ function Get-GodotDiagnosticAudit {
                 message = $match.Value.Trim()
             })
         }
+        foreach ($line in ($content -split "`r?`n")) {
+            $diagnosticMatch = [regex]::Match(
+                $line,
+                '^\s*(WARNING|ERROR):\s*(.+)$',
+                [Text.RegularExpressions.RegexOptions]::IgnoreCase
+            )
+            if (-not $diagnosticMatch.Success) {
+                continue
+            }
+            $severity = $diagnosticMatch.Groups[1].Value.ToUpperInvariant()
+            $message = $diagnosticMatch.Groups[2].Value.Trim()
+            $key = "$severity|$message"
+            if ($diagnosticKeys.Add($key)) {
+                $diagnostics.Add([pscustomobject][ordered]@{
+                    severity = $severity
+                    message = $message
+                    invalid_uid = $message.IndexOf(
+                        "invalid UID:",
+                        [StringComparison]::OrdinalIgnoreCase
+                    ) -ge 0
+                })
+            }
+        }
     }
+
+    $taskErrors = @($diagnostics | Where-Object { $_.severity -eq "ERROR" })
+    $unclassified = @($diagnostics | Where-Object { $_.severity -eq "WARNING" })
+    $invalidUids = @($diagnostics | Where-Object { $_.invalid_uid })
 
     return [pscustomobject][ordered]@{
         script_error_count = $scriptErrors.Count
@@ -338,6 +370,11 @@ function Get-GodotDiagnosticAudit {
         marker_required = $markerRequired
         expected_completion_marker = if ($markerRequired) { $ExpectedMarker } else { $null }
         marker_found = if ($markerRequired) { $markerFound } else { $null }
+        diagnostic_count = $diagnostics.Count
+        task_introduced_error_count = $taskErrors.Count
+        unclassified_diagnostic_count = $unclassified.Count
+        invalid_uid_unclassified_count = $invalidUids.Count
+        diagnostics = @($diagnostics)
     }
 }
 
@@ -390,6 +427,80 @@ function Get-ClassCacheAudit {
     }
 }
 
+function Convert-RawLogToNormalizedText {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RawPath,
+        [Parameter(Mandatory = $true)]
+        [string]$TextPath,
+        [Parameter(Mandatory = $true)]
+        [bool]$CaptureComplete
+    )
+
+    [byte[]]$bytes = [byte[]]::new(0)
+    if (Test-Path -LiteralPath $RawPath -PathType Leaf) {
+        $bytes = [IO.File]::ReadAllBytes($RawPath)
+    }
+    $encodingName = "utf-8"
+    $strictDecode = $true
+    $offset = 0
+    $count = $bytes.Length
+    $encoding = [Text.UTF8Encoding]::new($false, $true)
+    if ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE) {
+        $encodingName = "utf-16le-bom"
+        $encoding = [Text.UnicodeEncoding]::new($false, $true, $true)
+        $offset = 2
+        $count -= 2
+    } elseif ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFE -and $bytes[1] -eq 0xFF) {
+        $encodingName = "utf-16be-bom"
+        $encoding = [Text.UnicodeEncoding]::new($true, $true, $true)
+        $offset = 2
+        $count -= 2
+    } elseif (
+        $bytes.Length -ge 3 -and
+        $bytes[0] -eq 0xEF -and
+        $bytes[1] -eq 0xBB -and
+        $bytes[2] -eq 0xBF
+    ) {
+        $encodingName = "utf-8-bom"
+        $offset = 3
+        $count -= 3
+    }
+
+    try {
+        $text = $encoding.GetString($bytes, $offset, $count)
+    } catch {
+        $strictDecode = $false
+        $encodingName = "$encodingName-invalid"
+        $text = [Text.UTF8Encoding]::new($false, $false).GetString($bytes)
+    }
+    [IO.File]::WriteAllText($TextPath, $text, [Text.UTF8Encoding]::new($false))
+    $rawNulCount = @($bytes | Where-Object { $_ -eq 0 }).Count
+    $decodedNulCharacterCount = @(
+        $text.ToCharArray() | Where-Object { [int]$_ -eq 0 }
+    ).Count
+    $replacementCharacterCount = @(
+        $text.ToCharArray() | Where-Object { [int]$_ -eq 0xFFFD }
+    ).Count
+    $rawSha256 = if (Test-Path -LiteralPath $RawPath -PathType Leaf) {
+        (Get-FileHash -LiteralPath $RawPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    } else {
+        $null
+    }
+    return [pscustomobject][ordered]@{
+        raw_path = $RawPath
+        text_path = $TextPath
+        byte_length = [int64]$bytes.Length
+        sha256 = $rawSha256
+        encoding = $encodingName
+        strict_decode = $strictDecode
+        raw_nul_count = $rawNulCount
+        decoded_nul_character_count = $decodedNulCharacterCount
+        replacement_character_count = $replacementCharacterCount
+        capture_complete = $CaptureComplete
+    }
+}
+
 function Invoke-GodotBlockingProcess {
     param(
         [Parameter(Mandatory = $true)]
@@ -430,14 +541,34 @@ function Invoke-GodotBlockingProcess {
     $processId = $null
     $processExitCode = $null
     $cleanupProcessIds = @()
+    $stdoutRawPath = [IO.Path]::ChangeExtension($StdoutPath, "raw.bin")
+    $stderrRawPath = [IO.Path]::ChangeExtension($StderrPath, "raw.bin")
+    $stdoutRawStream = $null
+    $stderrRawStream = $null
+    $stdoutTask = $null
+    $stderrTask = $null
+    $stdoutCaptureComplete = $false
+    $stderrCaptureComplete = $false
 
     try {
         if (-not $process.Start()) {
             throw "Godot process did not start."
         }
         $processId = $process.Id
-        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-        $stderrTask = $process.StandardError.ReadToEndAsync()
+        $stdoutRawStream = [IO.File]::Open(
+            $stdoutRawPath,
+            [IO.FileMode]::Create,
+            [IO.FileAccess]::Write,
+            [IO.FileShare]::Read
+        )
+        $stderrRawStream = [IO.File]::Open(
+            $stderrRawPath,
+            [IO.FileMode]::Create,
+            [IO.FileAccess]::Write,
+            [IO.FileShare]::Read
+        )
+        $stdoutTask = $process.StandardOutput.BaseStream.CopyToAsync($stdoutRawStream)
+        $stderrTask = $process.StandardError.BaseStream.CopyToAsync($stderrRawStream)
 
         $processExited = $process.WaitForExit($ProcessTimeoutSeconds * 1000)
         if (-not $processExited) {
@@ -479,22 +610,43 @@ function Invoke-GodotBlockingProcess {
             }
         }
 
-        $stdout = if ($stdoutTask.Wait(1000)) {
-            $stdoutTask.GetAwaiter().GetResult()
-        } else {
-            "[runner] stdout capture remained open after the bounded process shutdown window."
+        $stdoutCaptureComplete = $stdoutTask.Wait(5000)
+        if ($stdoutCaptureComplete) {
+            $stdoutTask.GetAwaiter().GetResult() | Out-Null
         }
-        $stderr = if ($stderrTask.Wait(1000)) {
-            $stderrTask.GetAwaiter().GetResult()
-        } else {
-            "[runner] stderr capture remained open after the bounded process shutdown window."
+        $stderrCaptureComplete = $stderrTask.Wait(5000)
+        if ($stderrCaptureComplete) {
+            $stderrTask.GetAwaiter().GetResult() | Out-Null
         }
-        Set-Content -LiteralPath $StdoutPath -Value $stdout -Encoding utf8 -NoNewline
-        Set-Content -LiteralPath $StderrPath -Value $stderr -Encoding utf8 -NoNewline
     } finally {
         $stopwatch.Stop()
+        if ($null -ne $stdoutRawStream) {
+            $stdoutRawStream.Dispose()
+        }
+        if ($null -ne $stderrRawStream) {
+            $stderrRawStream.Dispose()
+        }
         $process.Dispose()
     }
+
+    $stdoutCapture = Convert-RawLogToNormalizedText `
+        -RawPath $stdoutRawPath `
+        -TextPath $StdoutPath `
+        -CaptureComplete $stdoutCaptureComplete
+    $stderrCapture = Convert-RawLogToNormalizedText `
+        -RawPath $stderrRawPath `
+        -TextPath $StderrPath `
+        -CaptureComplete $stderrCaptureComplete
+    $rawCaptureFailure = (
+        -not $stdoutCapture.capture_complete -or
+        -not $stderrCapture.capture_complete -or
+        -not $stdoutCapture.strict_decode -or
+        -not $stderrCapture.strict_decode -or
+        $stdoutCapture.decoded_nul_character_count -gt 0 -or
+        $stderrCapture.decoded_nul_character_count -gt 0 -or
+        $stdoutCapture.replacement_character_count -gt 0 -or
+        $stderrCapture.replacement_character_count -gt 0
+    )
 
     if (-not (Test-Path -LiteralPath $GodotLogPath -PathType Leaf)) {
         New-Item -ItemType File -Path $GodotLogPath | Out-Null
@@ -515,10 +667,16 @@ function Invoke-GodotBlockingProcess {
         125
     } elseif ($null -eq $processExitCode) {
         126
+    } elseif ($rawCaptureFailure) {
+        129
     } elseif ($processExitCode -ne 0) {
         [int]$processExitCode
     } elseif ($diagnosticAudit.script_error_count -gt 0) {
         127
+    } elseif ($diagnosticAudit.task_introduced_error_count -gt 0) {
+        127
+    } elseif ($diagnosticAudit.unclassified_diagnostic_count -gt 0) {
+        130
     } elseif ($diagnosticAudit.marker_required -and -not $diagnosticAudit.marker_found) {
         128
     } else {
@@ -530,10 +688,16 @@ function Invoke-GodotBlockingProcess {
         "orphaned"
     } elseif ($cleanupProcessIds.Count -gt 0) {
         "orphan_cleaned"
+    } elseif ($rawCaptureFailure) {
+        "raw_capture_error"
     } elseif ($processExitCode -ne 0) {
         "failed"
     } elseif ($diagnosticAudit.script_error_count -gt 0) {
         "script_error"
+    } elseif ($diagnosticAudit.task_introduced_error_count -gt 0) {
+        "project_error"
+    } elseif ($diagnosticAudit.unclassified_diagnostic_count -gt 0) {
+        "unclassified_diagnostic"
     } elseif ($diagnosticAudit.marker_required -and -not $diagnosticAudit.marker_found) {
         "marker_missing"
     } else {
@@ -554,6 +718,11 @@ function Invoke-GodotBlockingProcess {
         command_arguments = @($ArgumentList)
         stdout_log = $StdoutPath
         stderr_log = $StderrPath
+        stdout_raw_log = $stdoutRawPath
+        stderr_raw_log = $stderrRawPath
+        stdout_capture = $stdoutCapture
+        stderr_capture = $stderrCapture
+        raw_capture_failure = $rawCaptureFailure
         godot_log = $GodotLogPath
         appdata = $AppDataPath
         localappdata = $LocalAppDataPath
@@ -563,6 +732,11 @@ function Invoke-GodotBlockingProcess {
         marker_required = $diagnosticAudit.marker_required
         expected_completion_marker = $diagnosticAudit.expected_completion_marker
         marker_found = $diagnosticAudit.marker_found
+        diagnostic_count = $diagnosticAudit.diagnostic_count
+        task_introduced_error_count = $diagnosticAudit.task_introduced_error_count
+        unclassified_diagnostic_count = $diagnosticAudit.unclassified_diagnostic_count
+        invalid_uid_unclassified_count = $diagnosticAudit.invalid_uid_unclassified_count
+        diagnostics = $diagnosticAudit.diagnostics
         cleanup_process_ids = @($cleanupProcessIds)
         remaining_project_runtime_process_ids = @($remainingRuntime | ForEach-Object { [int]$_.ProcessId })
     }
@@ -684,6 +858,16 @@ $importRecord = [ordered]@{
     stdout_log = $null
     stderr_log = $null
     godot_log = $null
+    stdout_raw_log = $null
+    stderr_raw_log = $null
+    stdout_capture = $null
+    stderr_capture = $null
+    raw_capture_failure = $null
+    diagnostic_count = 0
+    task_introduced_error_count = 0
+    unclassified_diagnostic_count = 0
+    invalid_uid_unclassified_count = 0
+    diagnostics = @()
     cleanup_process_ids = @()
     remaining_project_runtime_process_ids = @()
     cache_present_after = [bool]$cacheBefore.present
@@ -779,11 +963,15 @@ $status = if ($testStarted) { $testProcess.status } else { $importFailureStatus 
 $runnerExitCode = if ($testStarted) { [int]$testProcess.runner_exit_code } else { [int]$importFailureExitCode }
 $remainingRuntimeIds = [Collections.Generic.HashSet[int]]::new()
 foreach ($processId in @($importRecord.remaining_project_runtime_process_ids)) {
-    $remainingRuntimeIds.Add([int]$processId) | Out-Null
+    if ($null -ne $processId) {
+        $remainingRuntimeIds.Add([int]$processId) | Out-Null
+    }
 }
 if ($testStarted) {
     foreach ($processId in @($testProcess.remaining_project_runtime_process_ids)) {
-        $remainingRuntimeIds.Add([int]$processId) | Out-Null
+        if ($null -ne $processId) {
+            $remainingRuntimeIds.Add([int]$processId) | Out-Null
+        }
     }
 }
 $reportedCommandArguments = [Collections.Generic.List[string]]::new()
@@ -793,11 +981,15 @@ if ($testStarted) {
         $reportedCommandArguments.Add([string]$argument)
     }
     foreach ($cleanupProcessId in @($testProcess.cleanup_process_ids)) {
-        $reportedCleanupProcessIds.Add([int]$cleanupProcessId)
+        if ($null -ne $cleanupProcessId) {
+            $reportedCleanupProcessIds.Add([int]$cleanupProcessId)
+        }
     }
 } else {
     foreach ($cleanupProcessId in @($importRecord.cleanup_process_ids)) {
-        $reportedCleanupProcessIds.Add([int]$cleanupProcessId)
+        if ($null -ne $cleanupProcessId) {
+            $reportedCleanupProcessIds.Add([int]$cleanupProcessId)
+        }
     }
 }
 
@@ -830,12 +1022,22 @@ $result = [ordered]@{
     command_arguments = $reportedCommandArguments
     stdout_log = if ($testStarted) { $stdoutPath } else { $null }
     stderr_log = if ($testStarted) { $stderrPath } else { $null }
+    stdout_raw_log = if ($testStarted) { $testProcess.stdout_raw_log } else { $null }
+    stderr_raw_log = if ($testStarted) { $testProcess.stderr_raw_log } else { $null }
+    stdout_capture = if ($testStarted) { $testProcess.stdout_capture } else { $null }
+    stderr_capture = if ($testStarted) { $testProcess.stderr_capture } else { $null }
+    raw_capture_failure = if ($testStarted) { $testProcess.raw_capture_failure } else { $null }
     godot_log = if ($testStarted) { $godotLogPath } else { $null }
     isolated_user_data_root = $isolatedProfileRoot
     appdata = $isolatedAppDataPath
     localappdata = $isolatedLocalAppDataPath
     script_error_count = if ($testStarted) { $testProcess.script_error_count } else { $importRecord.script_error_count }
     first_script_error = if ($testStarted) { $testProcess.first_script_error } else { $importRecord.first_script_error }
+    diagnostic_count = if ($testStarted) { $testProcess.diagnostic_count } else { $importRecord.diagnostic_count }
+    task_introduced_error_count = if ($testStarted) { $testProcess.task_introduced_error_count } else { $importRecord.task_introduced_error_count }
+    unclassified_diagnostic_count = if ($testStarted) { $testProcess.unclassified_diagnostic_count } else { $importRecord.unclassified_diagnostic_count }
+    invalid_uid_unclassified_count = if ($testStarted) { $testProcess.invalid_uid_unclassified_count } else { $importRecord.invalid_uid_unclassified_count }
+    diagnostics = if ($testStarted) { $testProcess.diagnostics } else { $importRecord.diagnostics }
     marker_required = if ($testStarted) { $testProcess.marker_required } else { -not [string]::IsNullOrEmpty($ExpectedCompletionMarker) }
     expected_completion_marker = if ([string]::IsNullOrEmpty($ExpectedCompletionMarker)) { $null } else { $ExpectedCompletionMarker }
     marker_found = if ($testStarted) { $testProcess.marker_found } else { $null }

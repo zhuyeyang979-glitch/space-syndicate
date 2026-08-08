@@ -1,0 +1,7 @@
+extends SceneTree
+
+func _init() -> void:
+	print("WARNING: RUNNER_MIRRORED_WARNING_FIXTURE")
+	printerr("WARNING: RUNNER_MIRRORED_WARNING_FIXTURE")
+	print("GODOT_TEST_RUNNER_FIXTURE_COMPLETE")
+	quit(0)

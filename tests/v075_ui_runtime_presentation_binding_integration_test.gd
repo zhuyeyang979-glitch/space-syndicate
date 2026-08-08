@@ -12,8 +12,11 @@ const CombatOwner := preload(
 const ProjectionAdapter := preload(
 	"res://scripts/v075/player/v075_combat_projection_adapter.gd"
 )
-const ResponsiveLayout := preload(
-	"res://scripts/ui/v074/v074_responsive_table_layout.gd"
+const V075CardDefinitionRegistry := preload(
+	"res://scripts/v075/cards/v075_card_definition_registry.gd"
+)
+const PresentationCatalog := preload(
+	"res://resources/presentation/alpha01_card_illustration_catalog.tres"
 )
 const Bench := preload(
 	"res://scripts/tools/v075/v075_combat_player_surface_bench.gd"
@@ -23,7 +26,7 @@ const EXPECTED_MILITARY_TASKS := [
 	"assault_monster",
 ]
 const COMBAT_SURFACE_PATH := (
-	"PlaytestUtilityLayer/PlaytestSafeArea/V075CombatOverlay/"
+	"RootMargin/Shell/V075CombatStackHost/V075CombatOverlay/"
 	+ "Margin/Rows/SurfaceHost/CombatSurface"
 )
 
@@ -86,6 +89,10 @@ func _run() -> void:
 	var screen := ScreenScene.instantiate() as V075SampleGameScreen
 	root.add_child(screen)
 	await process_frame
+	var application_intents: Array[Dictionary] = []
+	screen.application_intent_requested.connect(func(intent: Dictionary) -> void:
+		application_intents.append(intent.duplicate(true))
+	)
 	screen.bind_application_flow(
 		flow,
 		{
@@ -140,82 +147,38 @@ func _run() -> void:
 			)
 			and str(
 				fixed_card_audit.get("stable_mapping_path", "")
-			).ends_with("spaceship.svg"),
+			).ends_with("mothkaiju_npc_tank.png"),
 		"fixed military card uses recognizable stable combat art, not facility art"
 	)
 
-	var layout_resolver := ResponsiveLayout.new()
-	for layout_case in [
-		{"label": "1366x768", "size": Vector2(1366.0, 768.0)},
-		{"label": "1600x960", "size": Vector2(1600.0, 960.0)},
-		{"label": "1920x1080", "size": Vector2(1920.0, 1080.0)},
-	]:
-		var layout_size := layout_case.get("size", Vector2.ZERO) as Vector2
-		var layout_profile := layout_resolver.resolve_for_window(
-			layout_size,
-			layout_size,
-			4
-		)
-		var combat_layout := screen.call(
-			"v075_combat_layout_for_geometry",
-			layout_size,
-			layout_profile.get("table_rect", Rect2()),
-			layout_profile.get("planet_rect", Rect2()),
-			layout_profile.get("hand_dock_rect", Rect2())
-		) as Dictionary
-		var panel_rect := combat_layout.get(
-			"panel_rect",
-			Rect2()
-		) as Rect2
-		var layout_label := str(layout_case.get("label", "resolution"))
-		_expect(
-			int(
-				combat_layout.get(
-					"panel_viewport_overflow_count",
-					1
-				)
-			) == 0
-				and bool(
-					combat_layout.get("panel_min_width_green", false)
-				),
-			"%s combat panel stays in-bounds with compact width" % layout_label
-		)
-		_expect(
-			str(combat_layout.get("panel_anchor", "")) ==
-				"left_utility_lane"
-				and int(
-					combat_layout.get(
-						"primary_planet_occlusion_count",
-						1
-					)
-				) == 0
-				and int(
-					combat_layout.get(
-						"planet_right_half_occlusion_count",
-						1
-					)
-				) == 0,
-			"%s combat panel leaves the planet operation core and right half clear"
-				% layout_label
-		)
-		_expect(
-			panel_rect.size.x >= 480.0
-				and panel_rect.size.y >= 300.0
-				and bool(
-					combat_layout.get(
-						"two_column_information_contract",
-						""
-					) == "preserved"
-				)
-				and bool(
-					combat_layout.get(
-						"track_and_asset_surfaces_untouched",
-						false
-					)
-				),
-			"%s keeps the two-column information contract and existing track/Pip surfaces"
-				% layout_label
-		)
+	screen.call("_toggle_combat_surface")
+	await process_frame
+	await process_frame
+	var combat_layout := screen.call(
+		"v075_responsive_geometry_audit"
+	) as Dictionary
+	_expect(
+		str(combat_layout.get("geometry_source", ""))
+			== "instantiated_production_controls"
+			and str(combat_layout.get("panel_anchor", ""))
+				== "production_flow_stack"
+			and bool(combat_layout.get("root_scroll_accessible", false)),
+		"combat geometry comes from the instantiated flow layout and accessible root scroll"
+	)
+	_expect(
+		int(combat_layout.get("panel_viewport_overflow_count", 1)) == 0
+			and int(combat_layout.get("panel_safe_area_overflow_count", 1)) == 0
+			and bool(combat_layout.get("panel_width_green", false)),
+		"combat panel actual rect stays inside the runtime viewport and safe area"
+	)
+	_expect(
+		int(combat_layout.get("primary_planet_occlusion_count", 1)) == 0
+			and int(combat_layout.get("asset_reserve_lane_overlap_count", 1)) == 0
+			and int(combat_layout.get("track_panel_overlap_count", 1)) == 0
+			and int(combat_layout.get("dock_panel_overlap_count", 1)) == 0
+			and int(combat_layout.get("ui_child_collision_count", 1)) == 0,
+		"actual combat, planet, track, dock, asset and child rects are collision-free"
+	)
 
 	var screen_debug := screen.combat_debug_snapshot()
 	_expect(
@@ -314,13 +277,13 @@ func _run() -> void:
 				(military_debug.get("selected_option_ids", {}) as Dictionary).get(
 					"assault_region", ""
 				)
-			) == "option.military.region.local"
+			).is_empty()
 			and str(
 				(military_debug.get("selected_option_ids", {}) as Dictionary).get(
 					"assault_monster", ""
 				)
-			) == "option.military.monster.local",
-		"military controls retain complete prebound option identities"
+			).is_empty(),
+		"military controls expose candidates without auto-selecting the first identity"
 	)
 
 	var surface := screen.get_node(COMBAT_SURFACE_PATH) as Control
@@ -380,13 +343,117 @@ func _run() -> void:
 	) as Button
 	region_button.emit_signal("pressed")
 	_expect(
-		selected_military.size() == 1
-			and str(selected_military[0].get("option_id", ""))
-				== "option.military.region.alternate"
-			and str(selected_military[0].get("target_region_id", ""))
-				== "region.19",
-		"military button submits the selected option without a first-card fallback"
+		selected_military.is_empty(),
+		"surface rejects a panel option absent from the current projection"
 	)
+	surface_node.apply_projection(owner_projection, "monster.tech.local.01")
+	await process_frame
+	var canonical_region_selected := military_panel.select_option_id(
+		"assault_region",
+		"option.military.region.local"
+	)
+	var region_descriptor := (
+		V075CardDefinitionRegistry.presentation_descriptor(
+			str(region_option.get("card_definition_id", ""))
+		)
+	)
+	var region_texture := (
+		V075CardDefinitionRegistry.presentation_texture(
+			str(region_option.get("card_definition_id", ""))
+		)
+	)
+	var region_menu := military_panel.get_node(
+		"Margin/Rows/TargetMenus/AssaultRegionOption"
+	) as OptionButton
+	var selected_region_index := region_menu.selected
+	var selected_region_icon := (
+		region_menu.get_item_icon(selected_region_index)
+		if selected_region_index >= 0
+		else null
+	)
+	var presentation_debug := military_panel.debug_snapshot()
+	var region_button_binding := (
+		(presentation_debug.get(
+			"button_presentation_bindings",
+			{}
+		) as Dictionary).get("assault_region", {}) as Dictionary
+	)
+	_expect(
+		canonical_region_selected
+			and not region_descriptor.is_empty()
+			and region_texture != null
+			and selected_region_icon == region_texture
+			and region_button.icon == region_texture
+			and str(region_button_binding.get("card_definition_id", ""))
+				== str(region_option.get("card_definition_id", ""))
+			and str(region_button_binding.get("resource_path", ""))
+				== str(region_descriptor.get("resource_path", ""))
+			and int(
+				presentation_debug.get(
+					"presentation_binding_failure_count",
+					1
+				)
+			) == 0,
+		"military menu item and selected task button bind the exact card-definition Texture2D"
+	)
+	var skill_dock := surface_node.get_node(
+		"Rows/PrivateGrid/SkillDock"
+	) as Control
+	var skill_cost_pip_count := 0
+	var skill_cost_pip_binding_failure_count := 0
+	for pip_variant in skill_dock.find_children("*", "TextureRect", true, false):
+		var pip := pip_variant as TextureRect
+		var asset_key := str(pip.get_meta("stable_asset_key", ""))
+		if not asset_key.begins_with("icon.asset."):
+			continue
+		skill_cost_pip_count += 1
+		var expected_pip := PresentationCatalog.resource_for_asset_key(
+			StringName(asset_key)
+		) as Texture2D
+		if expected_pip == null or pip.texture != expected_pip:
+			skill_cost_pip_binding_failure_count += 1
+	_expect(
+		skill_cost_pip_count > 0
+			and skill_cost_pip_binding_failure_count == 0,
+		"owner SkillDock cost pips bind their catalog-resolved Texture2D resources"
+	)
+	region_button.emit_signal("pressed")
+	_expect(
+		canonical_region_selected
+		and selected_military.size() == 1
+		and str(selected_military[0].get("option_id", ""))
+			== "option.military.region.local"
+		and str((selected_military[0].get(
+			"card_action_binding",
+			{}
+		) as Dictionary).get("binding_fingerprint", "")).length() == 64,
+		"explicit current military identity submits with its exact DBG binding"
+	)
+	var next_lifecycle_region := region_option.duplicate(true)
+	var next_lifecycle_binding := (
+		next_lifecycle_region.get("card_action_binding", {}) as Dictionary
+	).duplicate(true)
+	next_lifecycle_binding["zone_revision"] = int(
+		next_lifecycle_binding.get("zone_revision", 0)
+	) + 1
+	next_lifecycle_binding["binding_fingerprint"] = (
+		"next-lifecycle-binding"
+	).sha256_text()
+	next_lifecycle_region["card_action_binding"] = next_lifecycle_binding
+	military_panel.configure([next_lifecycle_region], true)
+	var stale_reconfigure_debug := military_panel.debug_snapshot()
+	region_button.emit_signal("pressed")
+	_expect(
+		str((stale_reconfigure_debug.get(
+			"selected_option_ids",
+			{}
+		) as Dictionary).get("assault_region", "")).is_empty()
+		and region_button.disabled
+		and selected_military.size() == 1,
+		"lifecycle binding change clears stale selection without choosing the first candidate"
+	)
+	surface_node.apply_projection(owner_projection, "monster.tech.local.01")
+	await process_frame
 	var geometry := surface_node.debug_geometry_audit()
 	_expect(
 		int(geometry.get("unintended_overlap_count", 1)) == 0
@@ -395,7 +462,7 @@ func _run() -> void:
 	)
 	var rival_projection := adapter.project_for_viewer(
 		authority,
-		"player.rival"
+		"player.ai.1"
 	)
 
 	screen.apply_combat_projection(
@@ -416,9 +483,10 @@ func _run() -> void:
 			),
 		"owner retains military controls while inspecting a rival monster"
 	)
+	var intents_before_hostile_projection := application_intents.size()
 	screen.apply_combat_projection(
 		rival_projection,
-		"monster.tech.local.01"
+		"monster.industry.ai.02"
 	)
 	await process_frame
 	var rival_private_surface := (
@@ -426,12 +494,31 @@ func _run() -> void:
 	)
 	_expect(
 		not bool(rival_private_surface.get("viewer_can_submit_military", true))
+			and not bool(rival_private_surface.get("public_monster_visible", true))
 			and not bool(
 				(rival_private_surface.get("military_panel", {}) as Dictionary).get(
 					"visible", true
 				)
 			),
-		"rival projection fails closed for private military controls"
+		"authenticated screen rejects a rival-owned projection in full"
+	)
+	var hostile_request := {
+		"source_instance_id": "monster.industry.ai.02",
+		"source_generation": 2,
+		"skill_definition_id": "skill.industry.orc.l1",
+		"target_binding": {
+			"target_kind": "facility",
+			"target_id": "warehouse.14.technology",
+			"target_facility_id": "warehouse.14.technology",
+			"target_facility_generation": 1,
+		},
+		"target_contract": {"target_kind": "enemy_public_facility"},
+	}
+	surface_node.private_target_selection_requested.emit(hostile_request)
+	await process_frame
+	_expect(
+		application_intents.size() == intents_before_hostile_projection,
+		"rival private DTO produces no application submission"
 	)
 	_expect(
 		_count_surface_tokens(
@@ -450,8 +537,16 @@ func _run() -> void:
 		"combat surface has no placeholder guard or bound-action UI"
 	)
 
+	var stale_owner_projection := owner_projection.duplicate(true)
+	var stale_owner_source := (
+		(stale_owner_projection.get(
+			"own_monster_skill_sources",
+			[]
+		) as Array)[0] as Dictionary
+	)
+	stale_owner_source["source_generation"] = 3
 	screen.apply_combat_projection(
-		rival_projection,
+		stale_owner_projection,
 		"monster.tech.local.01"
 	)
 	await process_frame
@@ -471,12 +566,18 @@ func _run() -> void:
 					1
 				)
 			) == 0,
-		"rival sees the monster but no private skills costs or cooldowns"
+		"same-owner stale-generation DTO displays no skills costs or cooldowns"
 	)
 	_expect(
-		bool(rival_surface.get("public_monster_visible", false)),
-		"rival retains the public monster presentation"
+		not bool(rival_surface.get("public_monster_visible", true))
+		and application_intents.size() == intents_before_hostile_projection,
+		"stale DTO is rejected in full and produces no submission"
 	)
+	screen.apply_combat_projection(
+		owner_projection,
+		"monster.tech.local.01"
+	)
+	await process_frame
 
 	var receipt := {
 		"ruleset_id": "v0.7.5",

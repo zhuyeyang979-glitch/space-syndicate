@@ -218,7 +218,7 @@ func _run() -> void:
 func _test_mixed_public_batch_failure_and_retry() -> void:
     var runtime := _runtime_with_fake_combat()
     var combat := runtime.get_meta("combat") as FailingCompletionCombatOwner
-    var fixture := _mixed_batch_fixture()
+    var fixture := _mixed_batch_fixture(runtime)
     var batch_state := fixture.get("state", {}) as Dictionary
     var facility := fixture.get("facility", {}) as Dictionary
     var intent := _damage_intent_script.call(
@@ -378,7 +378,7 @@ func _runtime_with_fake_combat() -> Node:
     return runtime
 
 
-func _mixed_batch_fixture() -> Dictionary:
+func _mixed_batch_fixture(runtime: Node) -> Dictionary:
     var occupied := _facility_core_script.call(
         "build_occupied_slot",
         "region.rollback.001",
@@ -413,11 +413,24 @@ func _mixed_batch_fixture() -> Dictionary:
         "standard",
         1
     ) as Dictionary
+    var card := _first_private_hand_card(runtime, "player.local")
+    var card_action_binding := runtime.call(
+        "_authoritative_card_action_binding",
+        "player.local",
+        str(card.get("instance_id", ""))
+    ) as Dictionary
+    _expect(
+        not card.is_empty() and not card_action_binding.is_empty(),
+        "mixed fixture uses a DBG-issued authoritative card binding"
+    )
     var combat_action := {
         "action_id": "action.combat.mixed.001",
         "actor_id": "player.local",
         "local_action_index": 0,
         "action_domain": "military",
+        "source_card_instance_id": str(card.get("instance_id", "")),
+        "source_card_definition_id": str(card.get("definition_id", "")),
+        "card_action_binding": card_action_binding.duplicate(true),
         "combat_binding": {"mission_id": "mission.mixed.001"},
     }
     var state := _batch_core_script.call(
@@ -432,6 +445,18 @@ func _mixed_batch_fixture() -> Dictionary:
         [occupied, empty]
     ) as Dictionary
     return {"state": state, "facility": occupied}
+
+
+func _first_private_hand_card(runtime: Node, actor_id: String) -> Dictionary:
+    var projection := runtime.call("_dbg_projection", actor_id) as Dictionary
+    var facts := projection.get("facts", {}) as Dictionary
+    for card_variant in facts.get("hand", []) as Array:
+        if not (card_variant is Dictionary):
+            continue
+        var card := card_variant as Dictionary
+        if not str(card.get("instance_id", "")).is_empty():
+            return card.duplicate(true)
+    return {}
 
 
 func _runtime_ownership_snapshot(runtime: Node, actor_id: String) -> Dictionary:

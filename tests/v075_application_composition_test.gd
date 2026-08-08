@@ -9,11 +9,30 @@ const V075_COMPOSITION_PATH := "res://scenes/runtime/V075RuntimeComposition.tscn
 const V075_COMBAT_OWNER_PATH := "res://scripts/v075/runtime/v075_combat_runtime_owner.gd"
 const V075_SCREEN_PATH := "res://scenes/ui/v075/V075SampleGameScreen.tscn"
 const V075_SCREEN_SCRIPT_PATH := "res://scripts/ui/v075/v075_sample_game_screen.gd"
+const V075_SURFACE_SCRIPT_PATH := (
+	"res://scripts/ui/v075/v075_combat_player_surface.gd"
+)
+const V075_SKILL_DOCK_SCRIPT_PATH := (
+	"res://scripts/ui/v075/v075_monster_private_skill_dock.gd"
+)
 const V073_TELEMETRY_SCENE_PATH := "res://scenes/playtest/V073PlaytestTelemetryService.tscn"
 const V073_TELEMETRY_SCRIPT_PATH := "res://scripts/playtest/v073_playtest_telemetry_service.gd"
 const V074_COMPOSITION_PATH := "res://scenes/runtime/V074RuntimeComposition.tscn"
 const LEGACY_MAIN_PATH := "res://scripts/main.gd"
 const LEGACY_MAIN_UID_PATH := "res://scripts/main.gd.uid"
+const PRIVATE_SKILL_INTENT_KIND := "combat.monster_private_skill.request"
+const PRIVATE_SKILL_SOURCE_ID := "monster.ui.single_submission.01"
+const PRIVATE_SKILL_DEFINITION_ID := "skill.ui.single_submission.l1"
+const COMBAT_SURFACE_NODE_PATH := (
+	"V075GameScreen/RootMargin/Shell/V075CombatStackHost/"
+	+ "V075CombatOverlay/Margin/Rows/SurfaceHost/CombatSurface"
+)
+const SKILL_DOCK_NODE_PATH := (
+	COMBAT_SURFACE_NODE_PATH + "/Rows/PrivateGrid/SkillDock"
+)
+const SKILL_CARDS_NODE_PATH := (
+	SKILL_DOCK_NODE_PATH + "/Margin/Rows/SkillScroll/SkillCards"
+)
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -21,6 +40,12 @@ var _main_combat_owner_count := 0
 var _composition_combat_owner_count := 0
 var _composition_telemetry_count := 0
 var _v074_composition_reachable_count := 0
+var _private_skill_button_press_count := 0
+var _private_skill_flow_issue_delta := -1
+var _private_skill_flow_submit_delta := -1
+var _private_skill_owner_receipt_delta := -1
+var _private_skill_runtime_entry_delta := -1
+var _private_skill_non_ui_ai_caller_count := 0
 
 
 func _init() -> void:
@@ -33,6 +58,7 @@ func _run() -> void:
 	_test_main_static_contract(main_source)
 	_test_v075_source_contracts()
 	_test_scene_instantiation()
+	await _test_private_skill_button_exact_once()
 	_finish()
 
 
@@ -158,6 +184,354 @@ func _test_v075_source_contracts() -> void:
 			not source.contains(V074_COMPOSITION_PATH),
 			"V075 production script has no V074 composition fallback: %s" % source_path
 		)
+	var dock_source := _read_text(V075_SKILL_DOCK_SCRIPT_PATH)
+	var surface_source := _read_text(V075_SURFACE_SCRIPT_PATH)
+	var screen_source := _read_text(V075_SCREEN_SCRIPT_PATH)
+	var bootstrap_source := _read_text(V075_BOOTSTRAP_PATH)
+	var flow_source := _read_text(V075_FLOW_PATH)
+	var runtime_source := _read_text(V075_RUNTIME_PATH)
+	_expect(
+		_count_occurrences(
+			dock_source,
+			"_on_skill_pressed.bind(_skill_request(skill, target_binding))"
+		) == 1
+		and _count_occurrences(
+			dock_source,
+			"private_target_selection_requested.emit(request.duplicate(true))"
+		) == 1,
+		"one real Skill button has one dock emission route"
+	)
+	_expect(
+		_count_occurrences(
+			surface_source,
+			"private_target_selection_requested.emit(canonical_request)"
+		) == 1
+		and _count_occurrences(
+			screen_source,
+			"application_intent_requested.emit(intent.duplicate(true))"
+		) == 1,
+		"private skill crosses one surface route and one screen intent route"
+	)
+	_expect(
+		_count_occurrences(
+			bootstrap_source,
+			'_application_flow.call("submit_intent", intent)'
+		) == 1
+		and _count_occurrences(
+			flow_source,
+			'"request_private_monster_skill",'
+		) == 1,
+		"bootstrap and application flow expose one player-UI runtime submission route"
+	)
+	_private_skill_non_ui_ai_caller_count = _count_occurrences(
+		runtime_source,
+		"request_private_monster_skill(actor_id, request_parameters)"
+	)
+	_expect(
+		_private_skill_non_ui_ai_caller_count == 1,
+		"the separate non-UI AI private-skill caller remains explicit and singular"
+	)
+
+
+func _test_private_skill_button_exact_once() -> void:
+	var main_instance := _instantiate_scene(
+		MAIN_SCENE_PATH,
+		"main exact-once scene"
+	)
+	if main_instance == null:
+		return
+	root.add_child(main_instance)
+	await process_frame
+	await process_frame
+
+	var screen := main_instance.get_node_or_null("V075GameScreen")
+	var flow := main_instance.get_node_or_null("V075RuntimeComposition")
+	var runtime := main_instance.get_node_or_null(
+		"V075RuntimeComposition/V075RuntimeOwner"
+	)
+	var surface := main_instance.get_node_or_null(COMBAT_SURFACE_NODE_PATH)
+	var skill_dock := main_instance.get_node_or_null(SKILL_DOCK_NODE_PATH)
+	_expect(screen != null, "exact-once main exposes the production V075 screen")
+	_expect(flow != null, "exact-once main exposes the production application flow")
+	_expect(runtime != null, "exact-once main exposes the production runtime owner")
+	_expect(surface != null, "exact-once main exposes the production combat surface")
+	_expect(skill_dock != null, "exact-once main exposes the production skill dock")
+	if (
+		screen == null
+		or flow == null
+		or runtime == null
+		or surface == null
+		or skill_dock == null
+	):
+		main_instance.queue_free()
+		await process_frame
+		return
+
+	screen.call(
+		"apply_combat_projection",
+		_private_skill_button_projection(),
+		PRIVATE_SKILL_SOURCE_ID
+	)
+	await process_frame
+	var skill_cards := main_instance.get_node_or_null(SKILL_CARDS_NODE_PATH)
+	var skill_button := _first_enabled_skill_button(skill_cards)
+	_expect(
+		skill_cards != null,
+		"typed owner projection reaches the production SkillCards container"
+	)
+	_expect(
+		skill_button != null,
+		"typed owner projection renders one enabled real Skill_* button"
+	)
+	if skill_button == null:
+		main_instance.queue_free()
+		await process_frame
+		return
+	_expect(
+		skill_button.name == "Skill_skill_ui_single_submission_l1",
+		"the exact-once fixture resolves the expected stable Skill_* node"
+	)
+	_expect(
+		not skill_button.disabled,
+		"the exact-once Skill_* button is genuinely requestable"
+	)
+
+	_expect(
+		skill_button.get_signal_connection_list(&"pressed").size() == 1,
+		"the real Skill_* button has one production pressed connection"
+	)
+	_expect(
+		skill_dock.get_signal_connection_list(
+			&"private_target_selection_requested"
+		).size() == 1,
+		"the skill dock has one production target-request connection"
+	)
+	_expect(
+		surface.get_signal_connection_list(
+			&"private_target_selection_requested"
+		).size() == 1,
+		"the combat surface has one production target-request connection"
+	)
+	_expect(
+		screen.get_signal_connection_list(
+			&"application_intent_requested"
+		).size() == 1,
+		"the production screen has one bootstrap submission connection"
+	)
+
+	var observed := {
+		"button": 0,
+		"dock": 0,
+		"surface": 0,
+		"screen": 0,
+		"owner_receipt": 0,
+	}
+	var screen_intents: Array[Dictionary] = []
+	var owner_receipts: Array[Dictionary] = []
+	skill_button.pressed.connect(func() -> void:
+		observed["button"] = int(observed.get("button", 0)) + 1
+	)
+	skill_dock.connect(
+		&"private_target_selection_requested",
+		func(_request: Dictionary) -> void:
+			observed["dock"] = int(observed.get("dock", 0)) + 1
+	)
+	surface.connect(
+		&"private_target_selection_requested",
+		func(_request: Dictionary) -> void:
+			observed["surface"] = int(observed.get("surface", 0)) + 1
+	)
+	screen.connect(
+		&"application_intent_requested",
+		func(intent: Dictionary) -> void:
+			observed["screen"] = int(observed.get("screen", 0)) + 1
+			screen_intents.append(intent.duplicate(true))
+	)
+	flow.connect(
+		&"owner_private_receipt_ready",
+		func(receipt: Dictionary) -> void:
+			observed["owner_receipt"] = int(
+				observed.get("owner_receipt", 0)
+			) + 1
+			owner_receipts.append(receipt.duplicate(true))
+	)
+
+	var flow_before := flow.call("debug_snapshot") as Dictionary
+	var runtime_before := runtime.call("debug_snapshot") as Dictionary
+	var screen_before := screen.call("combat_debug_snapshot") as Dictionary
+	skill_button.pressed.emit()
+	await process_frame
+	var flow_after := flow.call("debug_snapshot") as Dictionary
+	var runtime_after := runtime.call("debug_snapshot") as Dictionary
+	var screen_after := screen.call("combat_debug_snapshot") as Dictionary
+	_expect(
+		runtime_before.has("private_skill_submission_entry_count")
+		and runtime_after.has("private_skill_submission_entry_count"),
+		"runtime debug exposes the private-skill submission entry counter"
+	)
+
+	_private_skill_button_press_count = int(observed.get("button", 0))
+	_private_skill_flow_issue_delta = _counter_delta(
+		flow_before,
+		flow_after,
+		"private_skill_issue_count"
+	)
+	_private_skill_flow_submit_delta = _counter_delta(
+		flow_before,
+		flow_after,
+		"private_skill_submit_count"
+	)
+	_private_skill_owner_receipt_delta = _counter_delta(
+		flow_before,
+		flow_after,
+		"private_skill_owner_receipt_count"
+	)
+	_private_skill_runtime_entry_delta = _counter_delta(
+		runtime_before,
+		runtime_after,
+		"private_skill_submission_entry_count"
+	)
+	var screen_intent_delta := _counter_delta(
+		screen_before,
+		screen_after,
+		"private_skill_intent_count"
+	)
+	_expect(
+		_private_skill_button_press_count == 1
+		and int(observed.get("dock", 0)) == 1
+		and int(observed.get("surface", 0)) == 1
+		and int(observed.get("screen", 0)) == 1,
+		"one real Skill_* press crosses dock, surface and screen exactly once"
+	)
+	_expect(
+		screen_intent_delta == 1
+		and _private_skill_flow_issue_delta == 1
+		and _private_skill_flow_submit_delta == 1,
+		"one screen intent is issued and submitted by the real flow exactly once"
+	)
+	_expect(
+		_private_skill_owner_receipt_delta == 1
+		and int(observed.get("owner_receipt", 0)) == 1,
+		"one application submission publishes one owner-private receipt"
+	)
+	_expect(
+		_private_skill_runtime_entry_delta == 1,
+		"one application submission enters the runtime owner exactly once"
+	)
+	var screen_intent := (
+		screen_intents[0]
+		if screen_intents.size() == 1
+		else {}
+	) as Dictionary
+	var owner_receipt := (
+		owner_receipts[0]
+		if owner_receipts.size() == 1
+		else {}
+	) as Dictionary
+	_expect(
+		not screen_intent.is_empty()
+		and not owner_receipt.is_empty()
+		and str(screen_intent.get("intent_id", "")) == str(
+			owner_receipt.get("intent_id", "")
+		)
+		and str(screen_intent.get("intent_kind", ""))
+			== PRIVATE_SKILL_INTENT_KIND,
+		"screen intent and owner-private receipt retain one canonical identity"
+	)
+	_expect(
+		not owner_receipt.is_empty()
+		and not bool(owner_receipt.get("accepted", true))
+		and str(owner_receipt.get("reason_code", ""))
+			== "private_skill_actor_or_runtime_invalid",
+		"synthetic UI-only projection reaches runtime and fails closed without state injection"
+	)
+
+	main_instance.queue_free()
+	await process_frame
+
+
+func _private_skill_button_projection() -> Dictionary:
+	return {
+		"schema": "V075CombatPlayerProjectionV1",
+		"ruleset_id": "v0.7.5",
+		"viewer_player_id": "player.local",
+		"phase": "batch_active",
+		"combat_requests_allowed": true,
+		"terminal_combat_quiescent": false,
+		"public_monsters": [{
+			"source_instance_id": PRIVATE_SKILL_SOURCE_ID,
+			"source_generation": 1,
+			"monster_family_id": "monster.technology.single_submission",
+			"owner_player_id": "player.local",
+			"display_name": "单次提交校验怪兽",
+			"rank": 1,
+			"hp": 10,
+			"max_hp": 10,
+			"armor": 0,
+			"preferred_industry_color": "technology",
+			"region_id": "region.single_submission",
+			"unlocked_skill_count": 1,
+			"batch_active_skill_used": false,
+			"status": "active",
+		}],
+		"own_monster_skill_sources": [{
+			"source_instance_id": PRIVATE_SKILL_SOURCE_ID,
+			"source_generation": 1,
+			"owner_player_id": "player.local",
+			"monster_display_name": "单次提交校验怪兽",
+			"rank": 1,
+			"status": "active",
+			"batch_active_skill_used": false,
+			"skills": [{
+				"skill_definition_id": PRIVATE_SKILL_DEFINITION_ID,
+				"display_name": "单次提交校验技能",
+				"state": "READY",
+				"can_request": true,
+				"asset_cost_by_color": {},
+				"target_contract": {
+					"target_kind": "self_source",
+				},
+				"target_binding": {
+					"target_kind": "monster",
+					"target_id": PRIVATE_SKILL_SOURCE_ID,
+					"target_monster_source_instance_id": (
+						PRIVATE_SKILL_SOURCE_ID
+					),
+					"target_source_generation": 1,
+				},
+				"cooldown_remaining_batches": 0,
+				"ultimate": false,
+				"required_rank": 1,
+				"public_effect_id": "effect.single_submission",
+			}],
+		}],
+		"military_task_options": [],
+		"public_monster_count": 1,
+		"own_private_skill_source_count": 1,
+	}
+
+
+func _first_enabled_skill_button(skill_cards: Node) -> Button:
+	if not is_instance_valid(skill_cards):
+		return null
+	for child_variant in skill_cards.get_children():
+		if (
+			child_variant is Button
+			and str((child_variant as Button).name).begins_with("Skill_")
+			and not (child_variant as Button).disabled
+		):
+			return child_variant as Button
+	return null
+
+
+func _counter_delta(
+	before: Dictionary,
+	after: Dictionary,
+	field_name: String
+) -> int:
+	if not before.has(field_name) or not after.has(field_name):
+		return -1
+	return int(after.get(field_name, 0)) - int(before.get(field_name, 0))
 
 
 func _test_scene_instantiation() -> void:
@@ -378,6 +752,12 @@ func _finish() -> void:
 		+ "|status=%s|passed=%d|total=%d"
 		+ "|main_combat_owner_count=%d|composition_combat_owner_count=%d"
 		+ "|composition_telemetry_count=%d|v074_composition_reachable_count=%d"
+		+ "|private_skill_button_press_count=%d"
+		+ "|private_skill_flow_issue_delta=%d"
+		+ "|private_skill_flow_submit_delta=%d"
+		+ "|private_skill_owner_receipt_delta=%d"
+		+ "|private_skill_runtime_entry_delta=%d"
+		+ "|private_skill_non_ui_ai_caller_count=%d"
 		+ "|details=%s"
 	)
 	print(summary_format % [
@@ -388,6 +768,12 @@ func _finish() -> void:
 		_composition_combat_owner_count,
 		_composition_telemetry_count,
 		_v074_composition_reachable_count,
+		_private_skill_button_press_count,
+		_private_skill_flow_issue_delta,
+		_private_skill_flow_submit_delta,
+		_private_skill_owner_receipt_delta,
+		_private_skill_runtime_entry_delta,
+		_private_skill_non_ui_ai_caller_count,
 		JSON.stringify(_failures),
 	])
 	quit(0 if _failures.is_empty() else 1)

@@ -125,6 +125,12 @@ func debug_snapshot() -> Dictionary:
 
 
 static func make_authority_snapshot() -> Dictionary:
+	var military_card_binding := make_card_action_binding_fixture(
+		"player.local",
+		"dbg.military.local.01",
+		"military.submarine_fleet.life.rank_1",
+		7
+	)
 	return {
 		"phase": "batch_active",
 		"public_monsters": [
@@ -196,6 +202,11 @@ static func make_authority_snapshot() -> Dictionary:
 								"technology": 1,
 							},
 							"target_contract": "self",
+							"target_binding": {
+								"target_kind": "monster",
+								"target_id": "monster.tech.local.01",
+								"target_source_generation": 4,
+							},
 							"cooldown_remaining_batches": 0,
 							"ultimate": false,
 							"required_rank": 1,
@@ -210,6 +221,12 @@ static func make_authority_snapshot() -> Dictionary:
 								"energy": 1,
 							},
 							"target_contract": "enemy_facility",
+							"target_binding": {
+								"target_kind": "facility",
+								"target_id": "warehouse.14.technology",
+								"target_facility_id": "warehouse.14.technology",
+								"target_facility_generation": 1,
+							},
 							"cooldown_remaining_batches": 2,
 							"ultimate": false,
 							"required_rank": 2,
@@ -224,6 +241,12 @@ static func make_authority_snapshot() -> Dictionary:
 								"industry": 1,
 							},
 							"target_contract": "enemy_monster",
+							"target_binding": {
+								"target_kind": "monster",
+								"target_id": "monster.industry.ai.02",
+								"target_monster_source_instance_id": "monster.industry.ai.02",
+								"target_source_generation": 2,
+							},
 							"cooldown_remaining_batches": 0,
 							"ultimate": false,
 							"required_rank": 3,
@@ -239,6 +262,11 @@ static func make_authority_snapshot() -> Dictionary:
 								"commerce": 1,
 							},
 							"target_contract": "region",
+							"target_binding": {
+								"target_kind": "region",
+								"target_id": "region.14",
+								"target_region_id": "region.14",
+							},
 							"cooldown_remaining_batches": 0,
 							"ultimate": true,
 							"required_rank": 4,
@@ -250,6 +278,7 @@ static func make_authority_snapshot() -> Dictionary:
 			"player.ai.1": [
 				{
 					"source_instance_id": "monster.industry.ai.02",
+					"source_generation": 2,
 					"owner_player_id": "player.ai.1",
 					"monster_display_name": "铸炉工业巨兽",
 					"rank": 2,
@@ -264,6 +293,12 @@ static func make_authority_snapshot() -> Dictionary:
 								"industry": 1,
 							},
 							"target_contract": "enemy_facility",
+							"target_binding": {
+								"target_kind": "facility",
+								"target_id": "warehouse.14.technology",
+								"target_facility_id": "warehouse.14.technology",
+								"target_facility_generation": 1,
+							},
 							"cooldown_remaining_batches": 0,
 							"ultimate": false,
 							"required_rank": 1,
@@ -284,11 +319,11 @@ static func make_authority_snapshot() -> Dictionary:
 						"owner_player_id": "player.local",
 						"card_instance_id": "dbg.military.local.01",
 						"card_definition_id": "military.submarine_fleet.life.rank_1",
+						"card_action_binding": military_card_binding.duplicate(true),
 						"target_slot_id": "combat.military.assault_region.region.14",
 						"task_kind": "assault_region",
 						"target_region_id": "region.14",
 						"target_monster_source_instance_id": "",
-						"target_source_generation": 0,
 						"launch_region_id": "region.07",
 						"asset_cost_by_color": {"life": 1},
 						"enabled": true,
@@ -300,6 +335,7 @@ static func make_authority_snapshot() -> Dictionary:
 						"owner_player_id": "player.local",
 						"card_instance_id": "dbg.military.local.01",
 						"card_definition_id": "military.submarine_fleet.life.rank_1",
+						"card_action_binding": military_card_binding.duplicate(true),
 						"target_slot_id": "combat.military.assault_monster.monster.ai.02",
 						"task_kind": "assault_monster",
 						"target_region_id": "",
@@ -320,6 +356,43 @@ static func make_authority_snapshot() -> Dictionary:
 			},
 		},
 	}
+
+
+static func make_card_action_binding_fixture(
+	owner_player_id: String,
+	card_instance_id: String,
+	card_definition_id: String,
+	zone_revision: int
+) -> Dictionary:
+	var lineage := ("bench|%s" % owner_player_id).sha256_text()
+	var identity := ("%s|%s|%s" % [
+		owner_player_id,
+		card_instance_id,
+		card_definition_id,
+	]).sha256_text()
+	var evidence := ("%s|%s|hand|%d" % [
+		lineage,
+		identity,
+		zone_revision,
+	]).sha256_text()
+	var binding := {
+		"schema_id": "v07.personal_dbg.authoritative_card_action_binding.v1",
+		"schema_version": 1,
+		"authority_domain_id": "v07.personal_dbg",
+		"authority_lineage_fingerprint": lineage,
+		"owner_player_id": owner_player_id,
+		"card_instance_id": card_instance_id,
+		"card_definition_id": card_definition_id,
+		"immutable_identity_fingerprint": identity,
+		"authoritative_zone": "hand",
+		"zone_revision": zone_revision,
+		"lifecycle_evidence_fingerprint": evidence,
+		"expected_action_lifecycle": (
+			"v075.combat.queue_resolve_personal_discard"
+		),
+	}
+	binding["binding_fingerprint"] = JSON.stringify(binding).sha256_text()
+	return binding
 
 
 static func make_projection(viewer_id: String) -> Dictionary:

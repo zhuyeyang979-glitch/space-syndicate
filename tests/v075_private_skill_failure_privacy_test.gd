@@ -67,18 +67,9 @@ class RuntimeHarness extends V075RuntimeOwner:
 		_source_id: String,
 		skill_id: String
 	) -> Dictionary:
-		return {"skill_definition_id": skill_id}
-
-	func _private_skill_target_request(
-		_actor_id: String,
-		_source: Dictionary,
-		_skill: Dictionary,
-		_parameters: Dictionary
-	) -> Dictionary:
 		return {
-			"target_kind": "self_source",
-			"target_id": "monster.owner.privacy",
-			"target_source_generation": 1,
+			"skill_definition_id": skill_id,
+			"target_contract": {"target_kind": "self_source"},
 		}
 
 	func _public_occupied_facilities() -> Array:
@@ -109,7 +100,25 @@ func _run() -> void:
 		"player.owner",
 		{
 			"source_instance_id": "monster.owner.privacy",
+			"source_generation": 1,
 			"skill_definition_id": "skill.owner.privacy",
+			"target_binding": {
+				"target_kind": "monster",
+				"target_id": "monster.owner.privacy",
+				"target_source_generation": 1,
+			},
+		}
+	)
+	var missing_generation_rejected := runtime.request_private_monster_skill(
+		"player.owner",
+		{
+			"source_instance_id": "monster.owner.privacy",
+			"skill_definition_id": "skill.owner.privacy",
+			"target_binding": {
+				"target_kind": "monster",
+				"target_id": "monster.owner.privacy",
+				"target_source_generation": 1,
+			},
 		}
 	)
 	var stale_generation_rejected := runtime.request_private_monster_skill(
@@ -118,7 +127,33 @@ func _run() -> void:
 			"source_instance_id": "monster.owner.privacy",
 			"source_generation": 2,
 			"skill_definition_id": "skill.owner.privacy",
+			"target_binding": {
+				"target_kind": "monster",
+				"target_id": "monster.owner.privacy",
+				"target_source_generation": 2,
+			},
 		}
+	)
+	var mixed_target_rejected := runtime.request_private_monster_skill(
+		"player.owner",
+		{
+			"source_instance_id": "monster.owner.privacy",
+			"source_generation": 1,
+			"skill_definition_id": "skill.owner.privacy",
+			"target_binding": {
+				"target_kind": "monster",
+				"target_id": "monster.owner.privacy",
+				"target_source_generation": 1,
+				"target_region_id": "region.injected",
+			},
+		}
+	)
+	_expect(
+		not bool(missing_generation_rejected.get("accepted", true))
+		and str(missing_generation_rejected.get("reason_code", ""))
+			== "private_skill_source_generation_missing"
+		and combat.rollback_count == 1,
+		"missing monster source generation is rejected before reservation"
 	)
 	_expect(
 		not bool(stale_generation_rejected.get("accepted", true))
@@ -126,6 +161,13 @@ func _run() -> void:
 			== "private_skill_source_generation_stale"
 		and combat.rollback_count == 1,
 		"stale monster source generation is rejected before the skill boundary"
+	)
+	_expect(
+		not bool(mixed_target_rejected.get("accepted", true))
+		and str(mixed_target_rejected.get("reason_code", ""))
+			== "private_skill_has_no_legal_target"
+		and combat.rollback_count == 1,
+		"mixed private target identity is rejected before reservation"
 	)
 	var rejected_text := JSON.stringify(rejected)
 	_expect(
@@ -182,6 +224,27 @@ func _run() -> void:
 		and not public_text.contains("facility.rival.secret")
 		and not public_text.contains("future_target"),
 		"public effect projection excludes private card and future-target fields"
+	)
+	var rejection_count_before := int(runtime.get(
+		"_v075_public_card_identity_rejection_count"
+	))
+	var poisoned_payload := runtime.public_payload({
+		"public_effect_id": "public.effect.poisoned",
+		"public_result": {
+			"status_changes": [{
+				"nested": {
+					"binding_fingerprint": "f".repeat(64),
+				},
+			}],
+		},
+	})
+	_expect(
+		poisoned_payload.is_empty()
+		and int(runtime.get(
+			"_v075_public_card_identity_rejection_count"
+		)) == rejection_count_before + 1
+		and int(runtime.get("_hidden_info_violation_count")) >= 1,
+		"allowlisted nested status data cannot smuggle a private card binding"
 	)
 	_finish()
 
