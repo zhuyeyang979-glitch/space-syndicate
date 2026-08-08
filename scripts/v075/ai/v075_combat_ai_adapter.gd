@@ -35,6 +35,16 @@ const FORBIDDEN_PUBLIC_KEYS := [
 	"authority_state",
 	"rng_state",
 ]
+const FORBIDDEN_PUBLIC_EXACT_KEYS := [
+	"card_action_binding",
+	"authority_lineage_fingerprint",
+	"immutable_identity_fingerprint",
+	"authoritative_zone",
+	"zone_revision",
+	"lifecycle_evidence_fingerprint",
+	"expected_action_lifecycle",
+	"binding_fingerprint",
+]
 const FORBIDDEN_OWN_SCOPE_KEYS := [
 	"opponent_skill",
 	"other_private_skill",
@@ -99,7 +109,11 @@ func enumerate_candidates(
 		_last_reason_code = str(
 			privacy.get("reason_code", "privacy_contract_invalid")
 		)
-		return _result([], _last_reason_code)
+		return _result(
+			[],
+			_last_reason_code,
+			int(privacy.get("hidden_info_violation_count", 0))
+		)
 	if str(public_facts.get("phase", "")) in TERMINAL_PHASES:
 		_last_reason_code = "terminal_combat_quiescent"
 		return _result([], _last_reason_code)
@@ -128,10 +142,15 @@ func choose_action(
 	var result := enumerate_candidates(own_private_facts, public_facts)
 	var candidates := result.get("candidates", []) as Array
 	if candidates.is_empty():
+		var result_reason := str(result.get(
+			"reason_code",
+			"no_legal_combat_action"
+		))
 		return {
 			"accepted": false,
-			"reason_code": str(
-				result.get("reason_code", "no_legal_combat_action")
+			"reason_code": result_reason,
+			"hidden_info_violation_count": int(
+				result.get("hidden_info_violation_count", 0)
 			),
 			"action": {},
 		}
@@ -158,9 +177,20 @@ func choose_private_skill(
 				"reason_code": "none",
 				"action": candidate.duplicate(true),
 			}
+	var result_reason := str(result.get(
+		"reason_code",
+		"no_legal_combat_action"
+	))
 	return {
 		"accepted": false,
-		"reason_code": "no_ready_private_skill",
+		"reason_code": (
+			result_reason
+			if result_reason not in ["none", "no_legal_combat_action"]
+			else "no_ready_private_skill"
+		),
+		"hidden_info_violation_count": int(
+			result.get("hidden_info_violation_count", 0)
+		),
 		"action": {},
 	}
 
@@ -179,7 +209,11 @@ func enumerate_track_acquisition_candidates(
 		_last_reason_code = str(
 			privacy.get("reason_code", "privacy_contract_invalid")
 		)
-		return _acquisition_result([], _last_reason_code, {})
+		return _acquisition_result([], _last_reason_code, {
+			"hidden_info_violation_count": int(
+				privacy.get("hidden_info_violation_count", 0)
+			),
+		})
 	var phase := str(public_facts.get("phase", "batch_active"))
 	if phase in TERMINAL_PHASES:
 		_last_reason_code = "terminal_combat_quiescent"
@@ -319,6 +353,19 @@ func privacy_report(
 	own_private_facts: Dictionary,
 	public_facts: Dictionary
 ) -> Dictionary:
+	var public_identity_violation := _first_exact_key(
+		public_facts,
+		FORBIDDEN_PUBLIC_EXACT_KEYS
+	)
+	if not public_identity_violation.is_empty():
+		return {
+			"valid": false,
+			"reason_code": (
+				"public_facts_contains_private_card_identity:%s"
+				% public_identity_violation
+			),
+			"hidden_info_violation_count": 1,
+		}
 	var public_violation := _first_forbidden_key(
 		public_facts,
 		FORBIDDEN_PUBLIC_KEYS
@@ -706,6 +753,9 @@ func _acquisition_result(
 		"reason_code": reason_code,
 		"candidate_count": candidates.size(),
 		"candidates": candidates.duplicate(true),
+		"hidden_info_violation_count": int(
+			metadata.get("hidden_info_violation_count", 0)
+		),
 		"acquisition_audit": audit,
 	}
 
@@ -721,20 +771,33 @@ func _append_monster_card_candidates(
 		if not (card_variant is Dictionary):
 			continue
 		var card := card_variant as Dictionary
-		var card_instance_id := str(
-			card.get("card_instance_id", "")
-		)
-		var definition_id := str(card.get("card_definition_id", ""))
-		if card_instance_id.is_empty() or definition_id.is_empty():
-			continue
-		var target_by_mode := (
-			card.get("prebound_target_by_mode", {}) as Dictionary
-		)
-		for mode_variant in card.get("legal_modes", []) as Array:
-			var mode := str(mode_variant)
+		for option_variant in card.get("options", []) as Array:
+			if not (option_variant is Dictionary):
+				continue
+			var option := option_variant as Dictionary
+			var card_instance_id := str(option.get("card_instance_id", ""))
+			var definition_id := str(option.get("card_definition_id", ""))
+			var mode := str(option.get("monster_card_mode", ""))
 			if mode not in MONSTER_CARD_MODES:
 				continue
-			var target_id := str(target_by_mode.get(mode, ""))
+			var card_action_binding := option.get(
+				"card_action_binding",
+				{}
+			) as Dictionary
+			if (
+				card_instance_id.is_empty()
+				or definition_id.is_empty()
+				or str(option.get("option_id", "")).is_empty()
+				or str(option.get("target_slot_id", "")).is_empty()
+				or card_action_binding.is_empty()
+			):
+				continue
+			var target_id := str(option.get(
+				"target_region_id" if mode == "DEPLOY_NEW" else (
+					"target_source_instance_id"
+				),
+				""
+			))
 			if target_id.is_empty():
 				continue
 			var target_field := (
@@ -746,11 +809,14 @@ func _append_monster_card_candidates(
 				"action_kind": "monster_card",
 				"monster_card_mode": mode,
 				"mode_prebound": true,
+				"option_id": str(option.get("option_id", "")),
 				"card_instance_id": card_instance_id,
 				"card_definition_id": definition_id,
+				"target_slot_id": str(option.get("target_slot_id", "")),
+				"card_action_binding": card_action_binding.duplicate(true),
 				target_field: target_id,
 				"score": int(MODE_SCORE.get(mode, 0))
-					+ clampi(int(card.get("card_rank", 1)), 1, 4) * 5,
+					+ clampi(int(option.get("card_rank", 1)), 1, 4) * 5,
 			}
 			candidate["stable_action_key"] = _stable_action_key(candidate)
 			candidates.append(candidate)
@@ -857,7 +923,7 @@ func _append_private_skill_candidates(
 func _append_military_candidates(
 	candidates: Array[Dictionary],
 	own_private_facts: Dictionary,
-	public_facts: Dictionary
+	_public_facts: Dictionary
 ) -> void:
 	var detailed_options: Array = []
 	var detailed_value: Variant = own_private_facts.get(
@@ -866,75 +932,6 @@ func _append_military_candidates(
 	)
 	if detailed_value is Array:
 		detailed_options = (detailed_value as Array).duplicate(true)
-	if detailed_options.is_empty() and not own_private_facts.has(
-		"military_options"
-	):
-		# Older semantic fixtures expose only the task contract. Keep this
-		# adapter-compatible path deterministic, while the production projection
-		# always supplies authoritative option_id/target_slot_id DTOs.
-		var viewer_id := str(own_private_facts.get("viewer_player_id", ""))
-		var region_id := _first_enemy_facility_region(
-			viewer_id,
-			public_facts
-		)
-		var monster_id := _first_enemy_monster_id(
-			viewer_id,
-			public_facts
-		)
-		for card_variant in own_private_facts.get(
-			"military_card_options",
-			[]
-		) as Array:
-			if not (card_variant is Dictionary):
-				continue
-			var card := card_variant as Dictionary
-			var card_instance_id := str(card.get("card_instance_id", ""))
-			if card_instance_id.is_empty():
-				continue
-			for task_variant in card.get("legal_task_kinds", []) as Array:
-				var task_kind := str(task_variant)
-				if task_kind not in MILITARY_TASK_KINDS:
-					continue
-				var target_id := (
-					region_id
-					if task_kind == "assault_region"
-					else monster_id
-				)
-				if target_id.is_empty():
-					continue
-				var stable_suffix := "%s|%s|%s" % [
-					card_instance_id,
-					task_kind,
-					target_id,
-				]
-				var candidate := {
-					"action_kind": "military_mission",
-					"task_kind": task_kind,
-					"option_id": "legacy_ai|%s" % stable_suffix,
-					"card_instance_id": card_instance_id,
-					"card_definition_id": str(
-						card.get("card_definition_id", "")
-					),
-					"target_slot_id": "combat.military.%s.%s" % [
-						task_kind,
-						target_id,
-					],
-					"target_region_id": (
-						target_id if task_kind == "assault_region" else ""
-					),
-					"target_monster_source_instance_id": (
-						target_id if task_kind == "assault_monster" else ""
-					),
-					"target_source_generation": 1,
-					"launch_region_id": "",
-					"asset_cost_by_color": {},
-					"one_shot_withdrawal": true,
-					"legacy_semantic_projection": true,
-					"score": 640 if task_kind == "assault_monster" else 610,
-				}
-				candidate["stable_action_key"] = _stable_action_key(candidate)
-				candidates.append(candidate)
-		return
 	if detailed_options.is_empty():
 		for card_variant in own_private_facts.get(
 			"military_card_options",
@@ -963,6 +960,8 @@ func _append_military_candidates(
 			str(option.get("option_id", "")).is_empty()
 			or str(option.get("card_instance_id", "")).is_empty()
 			or str(option.get("target_slot_id", "")).is_empty()
+			or not (option.get("card_action_binding") is Dictionary)
+			or (option.get("card_action_binding", {}) as Dictionary).is_empty()
 		):
 			continue
 		var target_id := (
@@ -978,6 +977,9 @@ func _append_military_candidates(
 			"option_id": str(option.get("option_id", "")),
 			"card_instance_id": str(option.get("card_instance_id", "")),
 			"card_definition_id": str(option.get("card_definition_id", "")),
+			"card_action_binding": (
+				option.get("card_action_binding", {}) as Dictionary
+			).duplicate(true),
 			"target_slot_id": str(option.get("target_slot_id", "")),
 			"target_region_id": (
 				target_id if task_kind == "assault_region" else ""
@@ -985,10 +987,6 @@ func _append_military_candidates(
 			"target_monster_source_instance_id": (
 				target_id if task_kind == "assault_monster" else ""
 			),
-			"target_source_generation": int(option.get(
-				"target_source_generation",
-				0
-			)),
 			"launch_region_id": str(option.get("launch_region_id", "")),
 			"asset_cost_by_color": (
 				option.get("asset_cost_by_color", {}) as Dictionary
@@ -996,6 +994,13 @@ func _append_military_candidates(
 			"one_shot_withdrawal": true,
 			"score": 640 if task_kind == "assault_monster" else 610,
 		}
+		if task_kind == "assault_monster":
+			if not _positive_int_field(option, "target_source_generation"):
+				continue
+			candidate["target_source_generation"] = int(option.get(
+				"target_source_generation",
+				0
+			))
 		candidate["stable_action_key"] = _stable_action_key(candidate)
 		candidates.append(candidate)
 
@@ -1230,12 +1235,25 @@ func _candidate_precedes(
 	)
 
 
+func _positive_int_field(source: Dictionary, field_name: String) -> bool:
+	return (
+		source.has(field_name)
+		and typeof(source.get(field_name)) == TYPE_INT
+		and int(source.get(field_name)) > 0
+	)
+
+
 func _stable_action_key(candidate: Dictionary) -> String:
 	return "|".join([
 		str(candidate.get("action_kind", "")),
 		str(candidate.get("monster_card_mode", "")),
 		str(candidate.get("task_kind", "")),
 		str(candidate.get("card_instance_id", "")),
+		str(candidate.get("option_id", "")),
+		str((candidate.get("card_action_binding", {}) as Dictionary).get(
+			"binding_fingerprint",
+			""
+		)),
 		str(candidate.get("source_instance_id", "")),
 		str(candidate.get("skill_definition_id", "")),
 		str(candidate.get("target_region_id", "")),
@@ -1251,7 +1269,8 @@ func _stable_action_key(candidate: Dictionary) -> String:
 
 func _result(
 	candidates: Array[Dictionary],
-	reason_code: String
+	reason_code: String,
+	hidden_info_violation_count: int = 0
 ) -> Dictionary:
 	return {
 		"schema": "V075CombatAICandidateSetV1",
@@ -1264,6 +1283,7 @@ func _result(
 		"reason_code": reason_code,
 		"candidate_count": candidates.size(),
 		"candidates": candidates.duplicate(true),
+		"hidden_info_violation_count": hidden_info_violation_count,
 	}
 
 
@@ -1290,6 +1310,27 @@ func _first_forbidden_key(
 				child_variant,
 				forbidden_fragments
 			)
+			if not nested.is_empty():
+				return nested
+	return ""
+
+
+func _first_exact_key(value: Variant, forbidden_keys: Array) -> String:
+	if value is Dictionary:
+		var dictionary := value as Dictionary
+		for key_variant in dictionary.keys():
+			var key := str(key_variant)
+			if key in forbidden_keys:
+				return key
+			var nested := _first_exact_key(
+				dictionary.get(key_variant),
+				forbidden_keys
+			)
+			if not nested.is_empty():
+				return nested
+	elif value is Array:
+		for child_variant in value as Array:
+			var nested := _first_exact_key(child_variant, forbidden_keys)
 			if not nested.is_empty():
 				return nested
 	return ""

@@ -560,10 +560,52 @@ static func set_phase(state: Dictionary, phase: String) -> Dictionary:
 		return _failure(state, "state_invalid")
 	if not REQUEST_PHASES.has(phase) and not TERMINAL_PHASES.has(phase):
 		return _failure(state, "phase_invalid")
+	if TERMINAL_PHASES.has(phase):
+		var quiescence := terminal_quiescence_report(state)
+		if not bool(quiescence.get("green", false)):
+			return _failure(state, "terminal_phase_not_quiescent")
 	var next := state.duplicate(true)
 	next["phase"] = phase
 	_increment_revision(next)
 	return _success(next, "phase_updated")
+
+
+static func terminal_quiescence_report(state: Dictionary) -> Dictionary:
+	var state_reason := _state_error(state)
+	if state_reason != "":
+		return {
+			"schema": "V075MonsterSkillTerminalQuiescenceV1",
+			"valid": false,
+			"green": false,
+			"reason_code": state_reason,
+			"private_queue_count": -1,
+			"resolving_count": -1,
+			"atomic_inflight_count": -1,
+		}
+	var private_queue_count := (state.get("private_queue") as Array).size()
+	var resolving_count := int(
+		str(state.get("resolving_request_id", "")) != ""
+	)
+	var atomic_inflight_count := int(bool(
+		(state.get("atomic_transaction") as Dictionary).get(
+			"inflight",
+			false
+		)
+	))
+	var green := (
+		private_queue_count == 0
+		and resolving_count == 0
+		and atomic_inflight_count == 0
+	)
+	return {
+		"schema": "V075MonsterSkillTerminalQuiescenceV1",
+		"valid": true,
+		"green": green,
+		"reason_code": "none" if green else "private_skill_work_pending",
+		"private_queue_count": private_queue_count,
+		"resolving_count": resolving_count,
+		"atomic_inflight_count": atomic_inflight_count,
+	}
 
 
 static func submit_request(

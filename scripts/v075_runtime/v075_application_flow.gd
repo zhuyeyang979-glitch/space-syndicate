@@ -24,6 +24,9 @@ var _intent_sequence := 0
 var _session_sequence := 0
 var _last_receipt: Dictionary = {}
 var _composition_ready := false
+var _private_skill_issue_count := 0
+var _private_skill_submit_count := 0
+var _private_skill_owner_receipt_count := 0
 
 
 func _ready() -> void:
@@ -137,6 +140,7 @@ func submit_intent(intent: Dictionary) -> Dictionary:
 				int(parameters.get("max_steps", 2000))
 			) as Dictionary
 		PRIVATE_SKILL_INTENT_KIND:
+			_private_skill_submit_count += 1
 			result = _runtime_owner.call(
 				"request_private_monster_skill",
 				actor_id,
@@ -180,6 +184,8 @@ func submit_intent(intent: Dictionary) -> Dictionary:
 
 func issue_intent(intent_kind: String, parameters: Dictionary = {}) -> Dictionary:
 	_intent_sequence += 1
+	if intent_kind == PRIVATE_SKILL_INTENT_KIND:
+		_private_skill_issue_count += 1
 	return {
 		"schema": "V075ApplicationIntentV1",
 		"intent_id": "intent.v075.sample.%06d" % _intent_sequence,
@@ -282,6 +288,11 @@ func debug_snapshot() -> Dictionary:
 		"runtime": runtime_debug,
 		"combat_telemetry": telemetry_debug,
 		"last_receipt": _last_receipt.duplicate(true),
+		"private_skill_issue_count": _private_skill_issue_count,
+		"private_skill_submit_count": _private_skill_submit_count,
+		"private_skill_owner_receipt_count": (
+			_private_skill_owner_receipt_count
+		),
 	}
 
 
@@ -461,6 +472,7 @@ func _bind_owner_private_skill_receipt(
 
 
 func _publish_owner_private_receipt(receipt: Dictionary) -> Dictionary:
+	_private_skill_owner_receipt_count += 1
 	_last_receipt = {
 		"schema": "V075ApplicationReceiptRedactionV1",
 		"accepted": bool(receipt.get("accepted", false)),

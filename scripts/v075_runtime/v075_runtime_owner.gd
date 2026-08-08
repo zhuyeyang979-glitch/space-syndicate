@@ -45,12 +45,24 @@ const V075_COMBAT_ACQUISITION_MAX_PER_PERIOD := 1
 const V075_INITIAL_FACILITY_ACQUISITIONS_BEFORE_COMBAT := 0
 const V075_FACILITY_ACQUISITIONS_BETWEEN_COMBAT := 3
 const V075_AUTO_ACTION_LIMIT := 5
+const FACILITY_EFFECT_WITNESS_SCHEMA := "V075FacilityEffectCommitWitnessV1"
+const FACILITY_EFFECT_WITNESS_FIELDS := [
+	"schema",
+	"input_fingerprint",
+	"outcome_class",
+	"receipt_fingerprint",
+]
+const FACILITY_EFFECT_OUTCOMES := ["committed", "fizzled"]
+const FACILITY_EFFECT_PROCESSED_FIELDS := ["fingerprint", "receipt"]
 
 const V075_MONSTER_UPGRADE_COHORT_MODULUS := 3
 const V075_MONSTER_UPGRADE_COHORT_BUCKET := 0
 const V075_TRACK_REFILL_MODE_ID := "shared_scroll_vacancy"
 const V075_TRACK_SLOW_SUSHI_MOTION := true
 const V075_TRACK_IMMEDIATE_REFILL_ON_ACQUISITION := false
+const CARD_ACTION_LIFECYCLE_ID := (
+	"v075.combat.queue_resolve_personal_discard"
+)
 const COMBAT_OWNER_METHODS := [
 	"initialize",
 	"begin_batch",
@@ -131,6 +143,7 @@ var _combat_public_receipt_count := 0
 var _combat_facility_damage_receipt_count := 0
 var _combat_facility_damage_fizzle_count := 0
 var _combat_private_skill_request_count := 0
+var _private_skill_submission_entry_count := 0
 var _combat_monster_purchase_count := 0
 var _combat_military_purchase_count := 0
 var _combat_first_monster_purchase_batch := -1
@@ -140,6 +153,12 @@ var _combat_ai_military_region_count := 0
 var _combat_ai_military_monster_count := 0
 var _combat_ai_invalid_target_count := 0
 var _processed_facility_damage_intents: Dictionary = {}
+var _facility_effect_commit_witness: Dictionary = {}
+var _facility_effect_attempt_count := 0
+var _facility_effect_replay_count := 0
+var _facility_effect_duplicate_commit_count := 0
+var _facility_effect_identity_collision_count := 0
+var _facility_effect_orphan_replay_count := 0
 var _facility_damage_bridge_state: Dictionary = {}
 var _combat_telemetry_bridge: Object = CombatTelemetryBridge.new()
 var _combat_presentation_consumer: Node
@@ -157,6 +176,7 @@ var _v075_acquisition_hook_count := 0
 var _v075_acquisition_rejection_count := 0
 var _v075_acquisition_no_mutation_violation_count := 0
 var _v075_submission_rollback_count := 0
+var _v075_public_card_identity_rejection_count := 0
 var _v075_submission_legal_actions_cache: Dictionary = {}
 var _v075_submission_card_cache: Dictionary = {}
 var _v075_track_projection_cache: Dictionary = {}
@@ -1251,6 +1271,25 @@ func queue_card_action(
 	)
 	if selected.is_empty():
 		return _reject_action("combat_target_binding_invalid_or_stale")
+	var card_action_validation := _validate_card_action_binding(
+		actor_id,
+		selected.get("card_action_binding", {}) as Dictionary
+	)
+	if not bool(card_action_validation.get("accepted", false)):
+		return _reject_action(str(card_action_validation.get(
+			"reason_code",
+			"combat_card_action_binding_invalid_or_stale"
+		)))
+	var card_action_binding := (
+		card_action_validation.get("binding", {}) as Dictionary
+	).duplicate(true)
+	if (
+		str(card_action_binding.get("card_instance_id", ""))
+			!= card_instance_id
+		or str(card_action_binding.get("card_definition_id", ""))
+			!= str(card.get("definition_id", ""))
+	):
+		return _reject_action("combat_card_action_binding_identity_mismatch")
 	var binding := {
 		"actor_id": actor_id,
 		"action_id": "action.%s.%s.%02d" % [
@@ -1272,6 +1311,7 @@ func queue_card_action(
 		"task_kind": str(selected.get("task_kind", "")),
 		"action_domain": domain,
 		"target_bound": true,
+		"card_action_binding": card_action_binding,
 	}
 	queue.append(binding)
 	_queued_by_player[actor_id] = queue
@@ -1294,8 +1334,11 @@ func queue_monster_card_action(
 	card_instance_id: String,
 	monster_card_mode: String,
 	target_region_id: String = "",
-	target_source_instance_id: String = ""
+	target_source_instance_id: String = "",
+	card_action_binding: Dictionary = {}
 ) -> Dictionary:
+	if card_action_binding.is_empty():
+		return _reject_action("monster_card_action_binding_missing")
 	for option_variant in legal_card_actions(actor_id):
 		var option := option_variant as Dictionary
 		if (
@@ -1311,6 +1354,7 @@ func queue_monster_card_action(
 				or str(option.get("target_source_instance_id", ""))
 				== target_source_instance_id
 			)
+			and option.get("card_action_binding") == card_action_binding
 		):
 			return queue_card_action(
 				actor_id,
@@ -1348,8 +1392,29 @@ func queue_military_card_action(
 	card_instance_id: String,
 	task_kind: String,
 	target_region_id: String = "",
-	target_monster_source_instance_id: String = ""
+	target_monster_source_instance_id: String = "",
+	card_action_binding: Dictionary = {}
 ) -> Dictionary:
+	if (
+		card_instance_id.is_empty()
+		or card_action_binding.is_empty()
+		or task_kind not in ["assault_region", "assault_monster"]
+		or (
+			task_kind == "assault_region"
+			and (
+				target_region_id.is_empty()
+				or not target_monster_source_instance_id.is_empty()
+			)
+		)
+		or (
+			task_kind == "assault_monster"
+			and (
+				target_monster_source_instance_id.is_empty()
+				or not target_region_id.is_empty()
+			)
+		)
+	):
+		return _reject_action("military_target_identity_missing_or_mixed")
 	for option_variant in legal_card_actions(actor_id):
 		var option := option_variant as Dictionary
 		if (
@@ -1367,6 +1432,7 @@ func queue_military_card_action(
 					""
 				)) == target_monster_source_instance_id
 			)
+			and option.get("card_action_binding") == card_action_binding
 		):
 			return queue_card_action(
 				actor_id,
@@ -1389,6 +1455,40 @@ func queue_selected_military_mission(
 		return _reject_action("military_option_id_missing")
 	if str(parameters.get("target_slot_id", "")).is_empty():
 		return _reject_action("military_target_slot_missing")
+	if str(parameters.get("owner_player_id", "")) != actor_id:
+		return _reject_action("military_option_owner_identity_mismatch")
+	var card_action_binding := parameters.get(
+		"card_action_binding",
+		{}
+	) as Dictionary
+	if card_action_binding.is_empty():
+		return _reject_action("military_card_action_binding_missing")
+	var target_region_id := str(parameters.get("target_region_id", ""))
+	var target_monster_id := str(parameters.get(
+		"target_monster_source_instance_id",
+		""
+	))
+	var target_source_generation := int(parameters.get(
+		"target_source_generation",
+		0
+	))
+	if (
+		(task_kind == "assault_region" and (
+			target_region_id.is_empty()
+			or not target_monster_id.is_empty()
+			or parameters.has("target_source_generation")
+		))
+		or (task_kind == "assault_monster" and (
+			target_monster_id.is_empty()
+			or not target_region_id.is_empty()
+			or not _positive_int_field(
+				parameters,
+				"target_source_generation"
+			)
+		))
+		or task_kind not in ["assault_region", "assault_monster"]
+	):
+		return _reject_action("military_target_identity_missing_or_mixed")
 	var option_id := str(parameters.get("option_id", ""))
 	for option_variant in legal_card_actions(actor_id):
 		var option := option_variant as Dictionary
@@ -1406,18 +1506,11 @@ func queue_selected_military_mission(
 			and str(option.get("target_monster_source_instance_id", "")) == str(
 				parameters.get("target_monster_source_instance_id", "")
 			)
-			and (
-				not parameters.has("card_generation")
-				or int(option.get("card_generation", 1)) == int(
-					parameters.get("card_generation", 0)
-				)
-			)
+			and option.get("card_action_binding") == card_action_binding
 			and (
 				task_kind != "assault_monster"
-				or not parameters.has("target_source_generation")
-				or int(option.get("target_source_generation", 0)) == int(
-					parameters.get("target_source_generation", 0)
-				)
+				or int(option.get("target_source_generation", 0))
+					== target_source_generation
 			)
 		):
 			return queue_card_action(
@@ -1433,21 +1526,20 @@ func request_private_monster_skill(
 	actor_id: String,
 	parameters: Dictionary
 ) -> Dictionary:
+	_private_skill_submission_entry_count += 1
 	if not _combat_initialized or not _player_ids.has(actor_id):
 		return _reject_action("private_skill_actor_or_runtime_invalid")
 	var source_id := str(parameters.get("source_instance_id", ""))
 	var skill_id := str(parameters.get("skill_definition_id", ""))
-	var requested_source_generation := int(parameters.get(
-		"source_generation",
-		0
-	))
 	var source := _public_monster_by_id(source_id)
 	if source.is_empty() or str(source.get("owner_player_id", "")) != actor_id:
 		return _reject_action("private_skill_source_not_owned")
-	var current_source_generation := int(source.get("source_generation", 0))
+	if not _positive_int_field(parameters, "source_generation"):
+		return _reject_action("private_skill_source_generation_missing")
 	if (
-		requested_source_generation > 0
-		and requested_source_generation != current_source_generation
+		not _positive_int_field(source, "source_generation")
+		or parameters.get("source_generation")
+			!= source.get("source_generation")
 	):
 		return _reject_action("private_skill_source_generation_stale")
 	var skill := _owner_skill_by_id(actor_id, source_id, skill_id)
@@ -1550,7 +1642,7 @@ func request_private_monster_skill(
 			))
 		)
 	_emit_facility_damage_events(
-		damage_result.get("receipts", []) as Array
+		damage_result.get("newly_committed_receipts", []) as Array
 	)
 	_emit_local_state()
 	return _private_skill_success_application_receipt(
@@ -1686,7 +1778,10 @@ func resolve_next_action() -> Dictionary:
 		).duplicate(true)
 		resolved = bool(combat_result.get("resolved", false))
 		combat_damage_receipts = (
-			combat_result.get("facility_damage_receipts", []) as Array
+			combat_result.get(
+				"facility_damage_newly_committed_receipts",
+				[]
+			) as Array
 		).duplicate(true)
 	elif str(action_receipt.get("outcome_id", "")) == "facility_action_fizzled":
 		resolved = false
@@ -1717,6 +1812,30 @@ func resolve_next_action() -> Dictionary:
 			asset_outcome,
 			resolution_checkpoint
 		)
+	# Build and privacy-audit the public receipt before committing any global
+	# facility/asset/progress state. A red publication boundary must leave the
+	# authority snapshot and all exact-once ledgers at the checkpoint.
+	var public_receipt := _public_action_receipt(
+		action_receipt,
+		combat_result,
+		resolved
+	)
+	var public_receipt_leak_count := _private_card_identity_leak_count(
+		public_receipt
+	)
+	if public_receipt_leak_count > 0:
+		_register_private_card_identity_rejection(
+			public_receipt_leak_count
+		)
+		return _fail_after_resolution_rollback(
+			"public_receipt_private_card_identity_leak",
+			{
+				"accepted": false,
+				"reason_code": "public_receipt_private_card_identity_leak",
+				"private_card_identity_leak_count": public_receipt_leak_count,
+			},
+			resolution_checkpoint
+		)
 	if not source_card_id.is_empty():
 		var dbg := _dbg_by_player.get(actor_id) as RefCounted
 		var play_intent := dbg.call(
@@ -1743,11 +1862,6 @@ func resolve_next_action() -> Dictionary:
 		action_receipt.get("outcome_id", "")
 	) == "facility_action_resolved":
 		_public_progress_points += 1
-	var public_receipt := _public_action_receipt(
-		action_receipt,
-		combat_result,
-		resolved
-	)
 	_public_history.append(public_receipt.duplicate(true))
 	for event_variant in combat_result.get("staged_events", []) as Array:
 		var staged_event := event_variant as Dictionary
@@ -1772,7 +1886,10 @@ func _capture_resolution_checkpoint(
 	source_card_id: String
 ) -> Dictionary:
 	var checkpoint := {
-		"runtime_combat": {},
+		# Facility-domain resolution can still fail after touching DBG/assets or
+		# privacy gates. Preserve the outer facility exact-once ledgers for every
+		# domain so rollback can never erase an earlier combat effect witness.
+		"runtime_combat": _capture_combat_transaction_state(),
 		"combat_checkpoint": {},
 		"dbg_checkpoint": {},
 	}
@@ -1789,7 +1906,6 @@ func _capture_resolution_checkpoint(
 		) as Dictionary
 		if combat_checkpoint.is_empty():
 			return {}
-		checkpoint["runtime_combat"] = _capture_combat_transaction_state()
 		checkpoint["combat_checkpoint"] = combat_checkpoint.duplicate(true)
 	if not source_card_id.is_empty():
 		var dbg_checkpoint := _v075_capture_dbg_checkpoint(actor_id)
@@ -1833,9 +1949,11 @@ func _rollback_resolution_checkpoint(checkpoint: Dictionary) -> Dictionary:
 			rollback_ok = rollback_ok and _rollback_result_accepted(
 				combat_result
 			)
-	_restore_combat_transaction_state(
-		checkpoint.get("runtime_combat", {}) as Dictionary
-	)
+	var runtime_combat := checkpoint.get("runtime_combat", {}) as Dictionary
+	if runtime_combat.is_empty():
+		rollback_ok = false
+	else:
+		_restore_combat_transaction_state(runtime_combat)
 	return {
 		"accepted": rollback_ok,
 		"reason_code": "resolution_checkpoint_restored"
@@ -1921,7 +2039,15 @@ func player_snapshot(viewer_id: String) -> Dictionary:
 		) as Dictionary
 		snapshot["v075_combat_projection"] = projection
 		snapshot["combat_player_projection"] = projection.duplicate(true)
-		snapshot["combat_public_history"] = _combat_public_history.duplicate(true)
+		var combat_public_history := _combat_public_history.duplicate(true)
+		var history_leak_count := _private_card_identity_leak_count({
+			"public_history": snapshot.get("public_history", []),
+			"combat_public_history": combat_public_history,
+		})
+		if history_leak_count > 0:
+			_register_private_card_identity_rejection(history_leak_count)
+			return {}
+		snapshot["combat_public_history"] = combat_public_history
 	return snapshot
 
 
@@ -1999,10 +2125,96 @@ func debug_snapshot() -> Dictionary:
 		if _combat_initialized and is_instance_valid(_combat_owner)
 		else {}
 	)
+	var facility_integrity := _facility_effect_integrity_report(
+		_processed_facility_damage_intents,
+		_facility_effect_commit_witness,
+		_facility_damage_bridge_state
+	)
+	var facility_effect_lifetime_violation_count := (
+		_facility_effect_duplicate_commit_count
+		+ _facility_effect_identity_collision_count
+		+ _facility_effect_orphan_replay_count
+	)
+	var facility_effect_static_violation_count := int(
+		facility_integrity.get("violation_count", 0)
+	)
+	var facility_effect_violation_count := (
+		facility_effect_lifetime_violation_count
+		+ facility_effect_static_violation_count
+	)
+	if not combat_debug.is_empty():
+		combat_debug["combat_duplicate_effect_count"] = int(
+			combat_debug.get("combat_duplicate_effect_count", 0)
+		) + facility_effect_violation_count
+		var effect_integrity := (
+			combat_debug.get("combat_effect_integrity", {}) as Dictionary
+		).duplicate(true)
+		effect_integrity["outer_facility_attempt_count"] = (
+			_facility_effect_attempt_count
+		)
+		effect_integrity["outer_facility_commit_witness_count"] = (
+			_facility_effect_commit_witness.size()
+		)
+		effect_integrity["outer_facility_processed_count"] = int(
+			facility_integrity.get("processed_count", 0)
+		)
+		effect_integrity["outer_facility_committed_witness_count"] = int(
+			facility_integrity.get("committed_witness_count", 0)
+		)
+		effect_integrity["outer_facility_fizzled_witness_count"] = int(
+			facility_integrity.get("fizzled_witness_count", 0)
+		)
+		effect_integrity["outer_facility_bridge_commit_count"] = int(
+			facility_integrity.get("bridge_commit_count", 0)
+		)
+		effect_integrity["outer_facility_replay_count"] = (
+			_facility_effect_replay_count
+		)
+		effect_integrity["outer_facility_duplicate_commit_count"] = (
+			_facility_effect_duplicate_commit_count
+		)
+		effect_integrity["outer_facility_identity_collision_count"] = (
+			_facility_effect_identity_collision_count
+		)
+		effect_integrity["outer_facility_orphan_replay_count"] = (
+			_facility_effect_orphan_replay_count
+		)
+		effect_integrity["outer_facility_invalid_bridge_state_count"] = int(
+			facility_integrity.get("invalid_bridge_state_count", 0)
+		)
+		effect_integrity["outer_facility_invalid_processed_entry_count"] = int(
+			facility_integrity.get("invalid_processed_entry_count", 0)
+		)
+		effect_integrity["outer_facility_invalid_witness_count"] = int(
+			facility_integrity.get("invalid_witness_count", 0)
+		)
+		effect_integrity["outer_facility_ledger_divergence_count"] = int(
+			facility_integrity.get("ledger_divergence_count", 0)
+		)
+		effect_integrity["outer_facility_static_violation_count"] = (
+			facility_effect_static_violation_count
+		)
+		effect_integrity["outer_facility_lifetime_violation_count"] = (
+			facility_effect_lifetime_violation_count
+		)
+		effect_integrity["outer_facility_integrity_reason_code"] = str(
+			facility_integrity.get("reason_code", "")
+		)
+		effect_integrity["outer_facility_violation_count"] = (
+			facility_effect_violation_count
+		)
+		effect_integrity["violation_count"] = int(
+			effect_integrity.get("violation_count", 0)
+		) + facility_effect_violation_count
+		effect_integrity["green"] = int(
+			effect_integrity.get("violation_count", 0)
+		) == 0
+		combat_debug["combat_effect_integrity"] = effect_integrity
 	result["ruleset_id"] = V075_RULESET_ID
 	result["constitution_id"] = V075_CONSTITUTION_ID
 	result["current_production_runtime_ruleset"] = V075_RULESET_ID
 	result["combat"] = combat_debug
+	result["facility_effect_integrity"] = facility_integrity
 	result["combat_runtime_owner_count"] = int(
 		combat_debug.get("combat_runtime_owner_count", 0)
 	)
@@ -2018,6 +2230,9 @@ func debug_snapshot() -> Dictionary:
 	)
 	result["facility_combat_damage_fizzle_count"] = (
 		_combat_facility_damage_fizzle_count
+	)
+	result["private_skill_submission_entry_count"] = (
+		_private_skill_submission_entry_count
 	)
 	var telemetry_debug := _combat_telemetry_bridge.call(
 		"debug_snapshot"
@@ -2087,6 +2302,9 @@ func debug_snapshot() -> Dictionary:
 	)
 	result["submission_transaction_rollback_count"] = (
 		_v075_submission_rollback_count
+	)
+	result["public_card_identity_rejection_count"] = (
+		_v075_public_card_identity_rejection_count
 	)
 	return result
 
@@ -2189,6 +2407,7 @@ func _reset_runtime() -> void:
 	_combat_facility_damage_receipt_count = 0
 	_combat_facility_damage_fizzle_count = 0
 	_combat_private_skill_request_count = 0
+	_private_skill_submission_entry_count = 0
 	_combat_monster_purchase_count = 0
 	_combat_military_purchase_count = 0
 	_combat_first_monster_purchase_batch = -1
@@ -2198,6 +2417,12 @@ func _reset_runtime() -> void:
 	_combat_ai_military_monster_count = 0
 	_combat_ai_invalid_target_count = 0
 	_processed_facility_damage_intents = {}
+	_facility_effect_commit_witness = {}
+	_facility_effect_attempt_count = 0
+	_facility_effect_replay_count = 0
+	_facility_effect_duplicate_commit_count = 0
+	_facility_effect_identity_collision_count = 0
+	_facility_effect_orphan_replay_count = 0
 	_facility_damage_bridge_state = {}
 	_combat_telemetry_bridge.call("reset_for_new_match")
 	if is_instance_valid(_combat_presentation_consumer):
@@ -2216,6 +2441,7 @@ func _reset_runtime() -> void:
 	_v075_acquisition_rejection_count = 0
 	_v075_acquisition_no_mutation_violation_count = 0
 	_v075_submission_rollback_count = 0
+	_v075_public_card_identity_rejection_count = 0
 	_v075_public_facility_slots_cache = []
 	_clear_v075_submission_caches()
 	_clear_v075_track_projection_cache()
@@ -2294,7 +2520,12 @@ func _commit_victory() -> void:
 			return
 	super._commit_victory()
 	if _combat_initialized and _phase == "settled":
-		_combat_owner.call("set_phase", "final_settlement")
+		var settled := _combat_owner.call(
+			"set_phase",
+			"final_settlement"
+		) as Dictionary
+		if not bool(settled.get("accepted", false)):
+			_fail("combat_final_settlement_rejected", settled)
 
 
 func _apply_geometric_solar(
@@ -2485,11 +2716,30 @@ func _build_bound_actions(
 	var domain := str(binding.get("action_domain", "facility"))
 	if domain not in ["monster", "military"]:
 		return super._build_bound_actions(actor_id, binding, local_index)
+	var card_action_validation := _validate_card_action_binding(
+		actor_id,
+		binding.get("card_action_binding", {}) as Dictionary
+	)
+	if not bool(card_action_validation.get("accepted", false)):
+		return {}
+	var authoritative_card_binding := (
+		card_action_validation.get("binding", {}) as Dictionary
+	).duplicate(true)
+	if str(authoritative_card_binding.get(
+		"card_instance_id",
+		""
+	)) != str(binding.get("card_instance_id", "")):
+		return {}
 	var card := _card_in_hand(
 		actor_id,
 		str(binding.get("card_instance_id", ""))
 	)
 	if card.is_empty():
+		return {}
+	if str(authoritative_card_binding.get(
+		"card_definition_id",
+		""
+	)) != str(card.get("definition_id", "")):
 		return {}
 	var action_id := str(binding.get("action_id", ""))
 	var primary_color := str(card.get("primary_color", ""))
@@ -2592,6 +2842,8 @@ func _build_bound_actions(
 		"local_action_index": local_index,
 		"action_domain": domain,
 		"source_card_instance_id": str(card.get("instance_id", "")),
+		"source_card_definition_id": str(card.get("definition_id", "")),
+		"card_action_binding": authoritative_card_binding,
 		"combat_binding": combat_binding,
 	}
 	return {
@@ -2680,6 +2932,16 @@ func _begin_combat_batch() -> Dictionary:
 func _monster_card_options(actor_id: String, card: Dictionary) -> Array:
 	var result: Array = []
 	var definition_id := str(card.get("definition_id", ""))
+	var card_action_binding := _authoritative_card_action_binding(
+		actor_id,
+		str(card.get("instance_id", ""))
+	)
+	if card_action_binding.is_empty():
+		return result
+	var binding_key := str(card_action_binding.get(
+		"binding_fingerprint",
+		""
+	)).substr(0, 12)
 	var regions := _runtime_region_ids()
 	var own_sources: Array = []
 	for source_variant in _v075_public_monsters():
@@ -2760,8 +3022,9 @@ func _monster_card_options(actor_id: String, card: Dictionary) -> Array:
 				target_identity.sha256_text().substr(0, 12),
 			]
 			result.append({
-				"option_id": "option.%s.%s" % [
+				"option_id": "option.%s.%s.%s" % [
 					str(card.get("instance_id", "")).sha256_text().substr(0, 10),
+					binding_key,
 					target_slot_id.sha256_text().substr(0, 10),
 				],
 				"actor_id": actor_id,
@@ -2778,12 +3041,19 @@ func _monster_card_options(actor_id: String, card: Dictionary) -> Array:
 					candidate.get("target_source_instance_id", "")
 				),
 				"mode_prebound": true,
+				"card_action_binding": card_action_binding.duplicate(true),
 			})
 	return result
 
 
 func _military_card_options(actor_id: String, card: Dictionary) -> Array:
 	var result: Array = []
+	var card_action_binding := _authoritative_card_action_binding(
+		actor_id,
+		str(card.get("instance_id", ""))
+	)
+	if card_action_binding.is_empty():
+		return result
 	var regions := {}
 	for facility_variant in _public_occupied_facilities():
 		var facility := facility_variant as Dictionary
@@ -2798,13 +3068,16 @@ func _military_card_options(actor_id: String, card: Dictionary) -> Array:
 			region_ids.append(str(region_id_variant))
 	region_ids.sort()
 	for region_id in region_ids:
-		result.append(_military_option(
+		var region_option := _military_option(
 			actor_id,
 			card,
+			card_action_binding,
 			"assault_region",
 			region_id,
 			""
-		))
+		)
+		if not region_option.is_empty():
+			result.append(region_option)
 	var monster_ids: Array[String] = []
 	for source_variant in _v075_public_monsters():
 		var source := source_variant as Dictionary
@@ -2815,46 +3088,128 @@ func _military_card_options(actor_id: String, card: Dictionary) -> Array:
 			monster_ids.append(str(source.get("source_instance_id", "")))
 	monster_ids.sort()
 	for source_id in monster_ids:
-		result.append(_military_option(
+		var monster_option := _military_option(
 			actor_id,
 			card,
+			card_action_binding,
 			"assault_monster",
 			"",
 			source_id
-		))
+		)
+		if not monster_option.is_empty():
+			result.append(monster_option)
 	return result
+
+
+func _authoritative_card_action_binding(
+	actor_id: String,
+	card_instance_id: String
+) -> Dictionary:
+	if (
+		not _dbg_by_player.has(actor_id)
+		or actor_id.is_empty()
+		or card_instance_id.is_empty()
+	):
+		return {}
+	var dbg := _dbg_by_player.get(actor_id) as RefCounted
+	if (
+		not is_instance_valid(dbg)
+		or not dbg.has_method("authoritative_card_action_binding_v1")
+	):
+		return {}
+	return dbg.call(
+		"authoritative_card_action_binding_v1",
+		actor_id,
+		card_instance_id,
+		CARD_ACTION_LIFECYCLE_ID
+	) as Dictionary
+
+
+func _validate_card_action_binding(
+	actor_id: String,
+	candidate_binding: Dictionary
+) -> Dictionary:
+	if not _dbg_by_player.has(actor_id):
+		return {
+			"accepted": false,
+			"reason_code": "card_binding_authority_missing",
+		}
+	var dbg := _dbg_by_player.get(actor_id) as RefCounted
+	if (
+		not is_instance_valid(dbg)
+		or not dbg.has_method("validate_card_action_binding_v1")
+	):
+		return {
+			"accepted": false,
+			"reason_code": "card_binding_authority_method_missing",
+		}
+	return dbg.call(
+		"validate_card_action_binding_v1",
+		actor_id,
+		candidate_binding,
+		CARD_ACTION_LIFECYCLE_ID
+	) as Dictionary
+
+
+func _positive_int_field(source: Dictionary, field_name: String) -> bool:
+	return (
+		source.has(field_name)
+		and typeof(source.get(field_name)) == TYPE_INT
+		and int(source.get(field_name)) > 0
+	)
 
 
 func _military_option(
 	actor_id: String,
 	card: Dictionary,
+	card_action_binding: Dictionary,
 	task_kind: String,
 	target_region_id: String,
 	target_monster_id: String
 ) -> Dictionary:
+	if (
+		card_action_binding.is_empty()
+		or str(card.get("instance_id", "")).is_empty()
+		or str(card.get("definition_id", "")).is_empty()
+		or (task_kind == "assault_region" and (
+			target_region_id.is_empty()
+			or not target_monster_id.is_empty()
+		))
+		or (task_kind == "assault_monster" and (
+			target_monster_id.is_empty()
+			or not target_region_id.is_empty()
+		))
+		or task_kind not in ["assault_region", "assault_monster"]
+	):
+		return {}
 	var target_id := target_region_id if task_kind == "assault_region" else target_monster_id
 	var target_source_generation := 0
 	if task_kind == "assault_monster" and not target_monster_id.is_empty():
 		var target_monster := _public_monster_by_id(target_monster_id)
+		if not _positive_int_field(target_monster, "source_generation"):
+			return {}
 		target_source_generation = int(
 			target_monster.get("source_generation", 0)
 		)
+		if target_source_generation < 1:
+			return {}
 	var target_slot_id := "combat.military.%s.%s" % [
 		task_kind,
 		target_id.sha256_text().substr(0, 12),
 	]
-	return {
-		"option_id": "option.%s.%s" % [
+	var option := {
+		"option_id": "option.%s.%s.%s" % [
 			str(card.get("instance_id", "")).sha256_text().substr(0, 10),
+			str(card_action_binding.get(
+				"binding_fingerprint",
+				""
+			)).substr(0, 12),
 			target_slot_id.sha256_text().substr(0, 10),
 		],
 		"actor_id": actor_id,
 		"card_instance_id": str(card.get("instance_id", "")),
 		"card_definition_id": str(card.get("definition_id", "")),
-		"card_generation": maxi(1, int(card.get(
-			"card_generation",
-			card.get("generation", 1)
-		))),
+		"card_action_binding": card_action_binding.duplicate(true),
 		"primary_color": str(card.get("primary_color", "")),
 		"asset_cost": int(card.get("primary_asset_cost", 0)),
 		"action_domain": "military",
@@ -2864,6 +3219,9 @@ func _military_option(
 		"target_monster_source_instance_id": target_monster_id,
 		"mode_prebound": true,
 	}
+	if task_kind == "assault_monster":
+		option["target_source_generation"] = target_source_generation
+	return option
 
 
 func _combat_option_by_identity(
@@ -2878,18 +3236,51 @@ func _combat_option_by_identity(
 			str(option.get("card_instance_id", "")) == card_instance_id
 			and str(option.get("target_slot_id", "")) == target_slot_id
 		):
-			if not target_binding.is_empty():
+			if target_binding.is_empty():
+				return {}
+			for field_name in [
+				"action_domain",
+				"option_id",
+				"card_instance_id",
+				"card_definition_id",
+				"target_slot_id",
+				"card_action_binding",
+			]:
+				if (
+					not target_binding.has(field_name)
+					or target_binding.get(field_name) != option.get(field_name)
+				):
+					return {}
+			if str(option.get("action_domain", "")) == "military":
 				for field_name in [
-					"action_domain",
-					"monster_card_mode",
 					"task_kind",
 					"target_region_id",
-					"target_source_instance_id",
 					"target_monster_source_instance_id",
 				]:
-					if target_binding.has(field_name) and target_binding.get(
-						field_name
-					) != option.get(field_name):
+					if (
+						not target_binding.has(field_name)
+						or target_binding.get(field_name) != option.get(field_name)
+					):
+						return {}
+				if str(option.get("task_kind", "")) == "assault_monster":
+					if (
+						not target_binding.has("target_source_generation")
+						or target_binding.get("target_source_generation")
+							!= option.get("target_source_generation")
+					):
+						return {}
+				elif target_binding.has("target_source_generation"):
+					return {}
+			else:
+				for field_name in [
+					"monster_card_mode",
+					"target_region_id",
+					"target_source_instance_id",
+				]:
+					if (
+						not target_binding.has(field_name)
+						or target_binding.get(field_name) != option.get(field_name)
+					):
 						return {}
 			return option.duplicate(true)
 	return {}
@@ -2904,6 +3295,32 @@ func _resolve_combat_public_action(
 	var action_binding := (
 		action_receipt.get("action_binding", {}) as Dictionary
 	)
+	var actor_id := str(action_receipt.get("actor_id", ""))
+	var card_action_validation := _validate_card_action_binding(
+		actor_id,
+		action_binding.get("card_action_binding", {}) as Dictionary
+	)
+	if not bool(card_action_validation.get("accepted", false)):
+		return {
+			"accepted": false,
+			"reason_code": str(card_action_validation.get(
+				"reason_code",
+				"card_action_binding_invalid_before_resolution"
+			)),
+		}
+	var authoritative_card_binding := (
+		card_action_validation.get("binding", {}) as Dictionary
+	)
+	if (
+		str(authoritative_card_binding.get("card_instance_id", ""))
+			!= str(action_binding.get("source_card_instance_id", ""))
+		or str(authoritative_card_binding.get("card_definition_id", ""))
+			!= str(action_binding.get("source_card_definition_id", ""))
+	):
+		return {
+			"accepted": false,
+			"reason_code": "card_action_binding_identity_mismatch_before_resolution",
+		}
 	var combat_binding := (
 		action_binding.get("combat_binding", {}) as Dictionary
 	)
@@ -3009,22 +3426,53 @@ func _resolve_combat_public_action(
 	next_public_state = (
 		boundary_damage.get("public_batch_state", next_public_state) as Dictionary
 	).duplicate(true)
+	var public_payload_rejections_before := (
+		_v075_public_card_identity_rejection_count
+	)
+	var public_main_payload := _public_combat_payload(main_payload)
+	if _v075_public_card_identity_rejection_count != (
+		public_payload_rejections_before
+	):
+		return _rollback_failed_combat_public_action(
+			{
+				"accepted": false,
+				"reason_code": "public_combat_payload_private_card_identity_leak",
+			},
+			transaction_checkpoint
+		)
 	var staged_events: Array = [{
 		"event_kind": event_kind,
-		"payload": main_payload.duplicate(true),
+		"payload": public_main_payload.duplicate(true),
 		"receipt_id": atomic_receipt_id,
 	}]
 	if action_domain == "military":
 		staged_events.append({
 			"event_kind": "military_withdrawn",
-			"payload": main_payload.duplicate(true),
+			"payload": public_main_payload.duplicate(true),
 			"receipt_id": "withdrawal.%s" % atomic_receipt_id,
 		})
 	for public_variant in safe_boundary.get("public_results", []) as Array:
+		var public_result := public_variant as Dictionary
+		public_payload_rejections_before = (
+			_v075_public_card_identity_rejection_count
+		)
+		var public_result_payload := _public_combat_payload(public_result)
+		if _v075_public_card_identity_rejection_count != (
+			public_payload_rejections_before
+		):
+			return _rollback_failed_combat_public_action(
+				{
+					"accepted": false,
+					"reason_code": (
+						"public_combat_payload_private_card_identity_leak"
+					),
+				},
+				transaction_checkpoint
+			)
 		staged_events.append({
 			"event_kind": "monster_private_skill_resolved",
-			"payload": (public_variant as Dictionary).duplicate(true),
-			"receipt_id": str((public_variant as Dictionary).get(
+			"payload": public_result_payload,
+			"receipt_id": str(public_result.get(
 				"public_result_id",
 				""
 			)),
@@ -3033,18 +3481,27 @@ func _resolve_combat_public_action(
 	receipts.append_array(
 		boundary_damage.get("receipts", []) as Array
 	)
+	var newly_committed_receipts := (
+		damage_result.get("newly_committed_receipts", []) as Array
+	).duplicate(true)
+	newly_committed_receipts.append_array(
+		boundary_damage.get("newly_committed_receipts", []) as Array
+	)
 	return {
 		"accepted": true,
 		"reason_code": str(main_payload.get("reason_code", "")),
 		"resolved": action_resolved,
 		"event_kind": event_kind,
 		"staged_events": staged_events,
-		"combat_receipt": _public_combat_payload(main_payload),
+		"combat_receipt": public_main_payload,
 		"public_batch_state": next_public_state,
 		"asset_state": (
 			safe_boundary.get("asset_state", _asset_state) as Dictionary
 		).duplicate(true),
 		"facility_damage_receipts": receipts,
+		"facility_damage_newly_committed_receipts": (
+			newly_committed_receipts
+		),
 	}
 
 
@@ -3223,9 +3680,11 @@ func _resolve_combat_maintenance() -> Dictionary:
 			attack,
 			str(attack.get("combat_receipt_id", ""))
 		)
-	var facility_receipts := skill_damage.get("receipts", []) as Array
+	var facility_receipts := (
+		skill_damage.get("newly_committed_receipts", []) as Array
+	).duplicate(true)
 	facility_receipts.append_array(
-		autonomy_damage.get("receipts", []) as Array
+		autonomy_damage.get("newly_committed_receipts", []) as Array
 	)
 	_emit_facility_damage_events(facility_receipts)
 	return {
@@ -3281,12 +3740,29 @@ func _apply_facility_damage_intents(
 	public_batch_state: Dictionary,
 	intents: Array
 ) -> Dictionary:
+	var existing_integrity := _facility_effect_integrity_report(
+		_processed_facility_damage_intents,
+		_facility_effect_commit_witness,
+		_facility_damage_bridge_state
+	)
+	if not bool(existing_integrity.get("green", false)):
+		var existing_reason := str(existing_integrity.get(
+			"reason_code",
+			"facility_damage_effect_integrity_invalid"
+		))
+		_register_facility_effect_integrity_violation(existing_reason)
+		return {
+			"accepted": false,
+			"reason_code": existing_reason,
+			"effect_integrity": existing_integrity,
+		}
 	if intents.is_empty():
 		return {
 			"accepted": true,
 			"reason_code": "facility_damage_intents_empty",
 			"public_batch_state": public_batch_state.duplicate(false),
 			"receipts": [],
+			"newly_committed_receipts": [],
 		}
 	var facility_state := PublicActionBatchCore.facility_substate(
 		public_batch_state
@@ -3297,6 +3773,7 @@ func _apply_facility_damage_intents(
 			"reason_code": "facility_damage_substate_missing",
 		}
 	var processed_next := _processed_facility_damage_intents.duplicate(true)
+	var witness_next := _facility_effect_commit_witness.duplicate(true)
 	var bridge_state_next := _facility_damage_bridge_state.duplicate(true)
 	var safe_bridge_state := _build_facility_damage_bridge_state(
 		facility_state
@@ -3308,7 +3785,13 @@ func _apply_facility_damage_intents(
 		}
 	if bridge_state_next.is_empty():
 		bridge_state_next = safe_bridge_state
-	else:
+	elif (
+		bridge_state_next.get("facility_slots", [])
+		!= safe_bridge_state.get("facility_slots", [])
+	):
+		# The bridge owns its internal resolved-batch identity. Rebase only when
+		# the authoritative slots changed outside the bridge; rebuilding the same
+		# slots would otherwise mutate internal metadata on an exact replay.
 		bridge_state_next = FacilityDamageBridge.rebase_state(
 			bridge_state_next,
 			safe_bridge_state.get("facility_state", {}) as Dictionary
@@ -3319,10 +3802,12 @@ func _apply_facility_damage_intents(
 				"reason_code": "facility_damage_bridge_rebase_failed",
 			}
 	var receipts: Array = []
+	var newly_committed_receipts: Array = []
 	var committed_receipt_count := 0
 	var fizzle_receipt_count := 0
 	for intent_variant in intents:
 		var intent := intent_variant as Dictionary
+		_facility_effect_attempt_count += 1
 		var intent_report: Dictionary = FacilityDamageIntent.validation_report(
 			intent
 		)
@@ -3337,17 +3822,53 @@ func _apply_facility_damage_intents(
 			str(intent.get("target_facility_id", "")),
 		]
 		var fingerprint := str(intent.get("intent_fingerprint", ""))
+		var prior_witness := witness_next.get(receipt_key, {}) as Dictionary
+		var bridge_journal := (
+			bridge_state_next.get("receipt_journal", {}) as Dictionary
+		)
+		var bridge_has_commit := bridge_journal.has(fingerprint)
 		if processed_next.has(receipt_key):
 			var prior := processed_next.get(receipt_key, {}) as Dictionary
-			if str(prior.get("fingerprint", "")) != fingerprint:
+			var replay_integrity := _facility_effect_entry_report(
+				receipt_key,
+				prior,
+				prior_witness,
+				bridge_journal
+			)
+			if not bool(replay_integrity.get("green", false)):
+				var replay_reason := str(replay_integrity.get(
+					"reason_code",
+					"facility_damage_effect_integrity_invalid"
+				))
+				_register_facility_effect_integrity_violation(replay_reason)
+				return {
+					"accepted": false,
+					"reason_code": replay_reason,
+					"effect_integrity": replay_integrity,
+				}
+			if str(replay_integrity.get("input_fingerprint", "")) != fingerprint:
+				_facility_effect_identity_collision_count += 1
 				return {
 					"accepted": false,
 					"reason_code": "facility_damage_receipt_collision",
 				}
+			_facility_effect_replay_count += 1
 			receipts.append(
 				(prior.get("receipt", {}) as Dictionary).duplicate(true)
 			)
 			continue
+		if not prior_witness.is_empty():
+			_facility_effect_duplicate_commit_count += 1
+			return {
+				"accepted": false,
+				"reason_code": "facility_damage_native_ledger_divergence",
+			}
+		if bridge_has_commit:
+			_facility_effect_orphan_replay_count += 1
+			return {
+				"accepted": false,
+				"reason_code": "facility_damage_outer_witness_missing_for_bridge_replay",
+			}
 		var applied := FacilityDamageBridge.apply_intent(
 			bridge_state_next,
 			intent
@@ -3375,11 +3896,27 @@ func _apply_facility_damage_intents(
 			# retarget; replay returns this receipt without a second effect.
 			processed_next[receipt_key] = {
 				"fingerprint": fingerprint,
-				"receipt": fizzle_receipt,
+				"receipt": fizzle_receipt.duplicate(true),
 			}
-			receipts.append(fizzle_receipt)
+			witness_next[receipt_key] = {
+				"schema": FACILITY_EFFECT_WITNESS_SCHEMA,
+				"input_fingerprint": fingerprint,
+				"outcome_class": "fizzled",
+				"receipt_fingerprint": str(fizzle_receipt.get(
+					"receipt_fingerprint",
+					""
+				)),
+			}
+			receipts.append(fizzle_receipt.duplicate(true))
+			newly_committed_receipts.append(fizzle_receipt.duplicate(true))
 			fizzle_receipt_count += 1
 			continue
+		if bool(applied.get("duplicate", false)):
+			_facility_effect_orphan_replay_count += 1
+			return {
+				"accepted": false,
+				"reason_code": "facility_damage_unclassified_bridge_replay",
+			}
 		bridge_state_next = (
 			applied.get("state", {}) as Dictionary
 		).duplicate(true)
@@ -3405,9 +3942,19 @@ func _apply_facility_damage_intents(
 		).duplicate(true)
 		processed_next[receipt_key] = {
 			"fingerprint": fingerprint,
-			"receipt": receipt,
+			"receipt": receipt.duplicate(true),
 		}
-		receipts.append(receipt)
+		witness_next[receipt_key] = {
+			"schema": FACILITY_EFFECT_WITNESS_SCHEMA,
+			"input_fingerprint": fingerprint,
+			"outcome_class": "committed",
+			"receipt_fingerprint": str(receipt.get(
+				"receipt_fingerprint",
+				""
+			)),
+		}
+		receipts.append(receipt.duplicate(true))
+		newly_committed_receipts.append(receipt.duplicate(true))
 		committed_receipt_count += 1
 	var replaced := public_batch_state
 	if replaced.is_empty():
@@ -3415,7 +3962,24 @@ func _apply_facility_damage_intents(
 			"accepted": false,
 			"reason_code": "facility_damage_public_batch_replace_failed",
 		}
+	var next_integrity := _facility_effect_integrity_report(
+		processed_next,
+		witness_next,
+		bridge_state_next
+	)
+	if not bool(next_integrity.get("green", false)):
+		var next_reason := str(next_integrity.get(
+			"reason_code",
+			"facility_damage_effect_postcondition_invalid"
+		))
+		_register_facility_effect_integrity_violation(next_reason)
+		return {
+			"accepted": false,
+			"reason_code": next_reason,
+			"effect_integrity": next_integrity,
+		}
 	_processed_facility_damage_intents = processed_next
+	_facility_effect_commit_witness = witness_next
 	_facility_damage_bridge_state = bridge_state_next
 	_combat_facility_damage_receipt_count += committed_receipt_count
 	_combat_facility_damage_fizzle_count += fizzle_receipt_count
@@ -3424,7 +3988,304 @@ func _apply_facility_damage_intents(
 		"reason_code": "facility_damage_intents_committed",
 		"public_batch_state": replaced,
 		"receipts": receipts,
+		"newly_committed_receipts": newly_committed_receipts,
 	}
+
+
+func _facility_effect_integrity_report(
+	processed: Dictionary,
+	witnesses: Dictionary,
+	bridge_state: Dictionary
+) -> Dictionary:
+	var invalid_bridge_state_count := 0
+	var invalid_processed_entry_count := 0
+	var invalid_witness_count := 0
+	var ledger_divergence_count := 0
+	var committed_witness_count := 0
+	var fizzled_witness_count := 0
+	var first_reason := ""
+	var bridge_journal: Dictionary = {}
+	if not bridge_state.is_empty():
+		var bridge_report := FacilityDamageBridge.validation_report(bridge_state)
+		if not bool(bridge_report.get("valid", false)):
+			invalid_bridge_state_count += 1
+			first_reason = "facility_damage_bridge_state_integrity_invalid"
+		else:
+			bridge_journal = (
+				bridge_state.get("receipt_journal", {}) as Dictionary
+			)
+	elif not processed.is_empty() or not witnesses.is_empty():
+		ledger_divergence_count += 1
+		first_reason = "facility_damage_bridge_ledger_divergence"
+
+	var seen_fingerprints := {}
+	var committed_fingerprints := {}
+	for key_variant in processed.keys():
+		var receipt_key := str(key_variant)
+		var entry := _facility_effect_entry_report(
+			receipt_key,
+			processed.get(key_variant),
+			witnesses.get(receipt_key),
+			bridge_journal
+		)
+		if not bool(entry.get("green", false)):
+			var category := str(entry.get("category", "ledger"))
+			if category == "processed":
+				invalid_processed_entry_count += 1
+			elif category == "witness":
+				invalid_witness_count += 1
+			else:
+				ledger_divergence_count += 1
+			if first_reason.is_empty():
+				first_reason = str(entry.get(
+					"reason_code",
+					"facility_damage_effect_integrity_invalid"
+				))
+			continue
+		var fingerprint := str(entry.get("input_fingerprint", ""))
+		if seen_fingerprints.has(fingerprint):
+			ledger_divergence_count += 1
+			if first_reason.is_empty():
+				first_reason = "facility_damage_duplicate_fingerprint_binding"
+			continue
+		seen_fingerprints[fingerprint] = true
+		var outcome_class := str(entry.get("outcome_class", ""))
+		if outcome_class == "committed":
+			committed_witness_count += 1
+			committed_fingerprints[fingerprint] = true
+		else:
+			fizzled_witness_count += 1
+
+	for key_variant in witnesses.keys():
+		if not processed.has(str(key_variant)):
+			ledger_divergence_count += 1
+			if first_reason.is_empty():
+				first_reason = "facility_damage_native_ledger_divergence"
+
+	for fingerprint_variant in bridge_journal.keys():
+		if not committed_fingerprints.has(str(fingerprint_variant)):
+			ledger_divergence_count += 1
+			if first_reason.is_empty():
+				first_reason = "facility_damage_bridge_ledger_divergence"
+
+	var violation_count := (
+		invalid_bridge_state_count
+		+ invalid_processed_entry_count
+		+ invalid_witness_count
+		+ ledger_divergence_count
+	)
+	return {
+		"schema": "V075FacilityEffectIntegrityReportV1",
+		"green": violation_count == 0,
+		"reason_code": (
+			"facility_damage_effect_integrity_green"
+			if violation_count == 0
+			else first_reason
+		),
+		"processed_count": processed.size(),
+		"witness_count": witnesses.size(),
+		"committed_witness_count": committed_witness_count,
+		"fizzled_witness_count": fizzled_witness_count,
+		"bridge_commit_count": bridge_journal.size(),
+		"invalid_bridge_state_count": invalid_bridge_state_count,
+		"invalid_processed_entry_count": invalid_processed_entry_count,
+		"invalid_witness_count": invalid_witness_count,
+		"ledger_divergence_count": ledger_divergence_count,
+		"violation_count": violation_count,
+	}
+
+
+func _facility_effect_entry_report(
+	receipt_key: String,
+	processed_variant: Variant,
+	witness_variant: Variant,
+	bridge_journal: Dictionary
+) -> Dictionary:
+	if not (processed_variant is Dictionary):
+		return _facility_effect_entry_failure(
+			"processed",
+			"facility_damage_processed_entry_invalid"
+		)
+	var processed := processed_variant as Dictionary
+	if not _facility_dictionary_has_exact_fields(
+		processed,
+		FACILITY_EFFECT_PROCESSED_FIELDS
+	):
+		return _facility_effect_entry_failure(
+			"processed",
+			"facility_damage_processed_entry_shape_invalid"
+		)
+	var fingerprint_variant: Variant = processed.get("fingerprint")
+	if not _facility_fingerprint_valid(fingerprint_variant):
+		return _facility_effect_entry_failure(
+			"processed",
+			"facility_damage_processed_fingerprint_invalid"
+		)
+	var fingerprint := str(fingerprint_variant)
+	var receipt_variant: Variant = processed.get("receipt")
+	if not (receipt_variant is Dictionary):
+		return _facility_effect_entry_failure(
+			"processed",
+			"facility_damage_processed_receipt_invalid"
+		)
+	var receipt := receipt_variant as Dictionary
+	if not bool(
+		FacilityDamageBridge.receipt_validation_report(receipt).get(
+			"valid",
+			false
+		)
+	):
+		return _facility_effect_entry_failure(
+			"processed",
+			"facility_damage_processed_receipt_invalid"
+		)
+	if str(receipt.get("intent_fingerprint", "")) != fingerprint:
+		return _facility_effect_entry_failure(
+			"processed",
+			"facility_damage_processed_receipt_fingerprint_divergence"
+		)
+	var expected_key := "%s|%s" % [
+		str(receipt.get("combat_receipt_id", "")),
+		str(receipt.get("target_facility_id", "")),
+	]
+	if receipt_key.is_empty() or receipt_key != expected_key:
+		return _facility_effect_entry_failure(
+			"processed",
+			"facility_damage_processed_receipt_key_divergence"
+		)
+
+	if not (witness_variant is Dictionary):
+		return _facility_effect_entry_failure(
+			"witness",
+			"facility_damage_witness_missing_for_native_replay"
+		)
+	var witness := witness_variant as Dictionary
+	if not _facility_dictionary_has_exact_fields(
+		witness,
+		FACILITY_EFFECT_WITNESS_FIELDS
+	):
+		return _facility_effect_entry_failure(
+			"witness",
+			"facility_damage_witness_shape_invalid"
+		)
+	if str(witness.get("schema", "")) != FACILITY_EFFECT_WITNESS_SCHEMA:
+		return _facility_effect_entry_failure(
+			"witness",
+			"facility_damage_witness_schema_invalid"
+		)
+	if str(witness.get("input_fingerprint", "")) != fingerprint:
+		return _facility_effect_entry_failure(
+			"witness",
+			"facility_damage_replay_witness_collision"
+		)
+	var outcome_class := str(witness.get("outcome_class", ""))
+	if outcome_class not in FACILITY_EFFECT_OUTCOMES:
+		return _facility_effect_entry_failure(
+			"witness",
+			"facility_damage_witness_outcome_invalid"
+		)
+	var receipt_fingerprint_variant: Variant = witness.get(
+		"receipt_fingerprint"
+	)
+	if not _facility_fingerprint_valid(receipt_fingerprint_variant):
+		return _facility_effect_entry_failure(
+			"witness",
+			"facility_damage_witness_receipt_fingerprint_invalid"
+		)
+	var receipt_fingerprint := str(receipt_fingerprint_variant)
+	if str(receipt.get("receipt_fingerprint", "")) != receipt_fingerprint:
+		return _facility_effect_entry_failure(
+			"ledger",
+			"facility_damage_processed_witness_receipt_divergence"
+		)
+
+	var bridge_has_commit := bridge_journal.has(fingerprint)
+	if outcome_class == "committed":
+		if not bool(receipt.get("accepted", false)) or not bridge_has_commit:
+			return _facility_effect_entry_failure(
+				"ledger",
+				"facility_damage_bridge_ledger_divergence"
+			)
+		var bridge_receipt_variant: Variant = bridge_journal.get(fingerprint)
+		if not (bridge_receipt_variant is Dictionary):
+			return _facility_effect_entry_failure(
+				"ledger",
+				"facility_damage_bridge_receipt_invalid"
+			)
+		var bridge_receipt := bridge_receipt_variant as Dictionary
+		if (
+			not bool(FacilityDamageBridge.receipt_validation_report(
+				bridge_receipt
+			).get("valid", false))
+			or bridge_receipt != receipt
+		):
+			return _facility_effect_entry_failure(
+				"ledger",
+				"facility_damage_bridge_receipt_collision"
+			)
+	elif bool(receipt.get("accepted", true)) or bridge_has_commit:
+		return _facility_effect_entry_failure(
+			"ledger",
+			"facility_damage_bridge_ledger_divergence"
+		)
+
+	return {
+		"green": true,
+		"reason_code": "facility_damage_effect_entry_green",
+		"category": "",
+		"input_fingerprint": fingerprint,
+		"outcome_class": outcome_class,
+	}
+
+
+func _facility_effect_entry_failure(
+	category: String,
+	reason_code: String
+) -> Dictionary:
+	return {
+		"green": false,
+		"reason_code": reason_code,
+		"category": category,
+		"input_fingerprint": "",
+		"outcome_class": "",
+	}
+
+
+func _facility_dictionary_has_exact_fields(
+	value: Dictionary,
+	fields: Array
+) -> bool:
+	if value.size() != fields.size():
+		return false
+	for field_variant in fields:
+		if not value.has(str(field_variant)):
+			return false
+	return true
+
+
+func _facility_fingerprint_valid(value: Variant) -> bool:
+	if not (value is String):
+		return false
+	var fingerprint := str(value)
+	return (
+		fingerprint.length() == 64
+		and fingerprint == fingerprint.to_lower()
+		and fingerprint.is_valid_hex_number(false)
+	)
+
+
+func _register_facility_effect_integrity_violation(
+	reason_code: String
+) -> void:
+	if reason_code in [
+		"facility_damage_native_ledger_divergence",
+		"facility_damage_duplicate_fingerprint_binding",
+	]:
+		_facility_effect_duplicate_commit_count += 1
+	elif "collision" in reason_code or "fingerprint" in reason_code:
+		_facility_effect_identity_collision_count += 1
+	else:
+		_facility_effect_orphan_replay_count += 1
 
 
 func _build_facility_damage_bridge_state(
@@ -3545,7 +4406,17 @@ func _publish_combat_event(
 	var stable_id := receipt_id
 	if stable_id.is_empty():
 		stable_id = "combat.public.%06d" % (_combat_public_receipt_count + 1)
+	var rejection_count_before := _v075_public_card_identity_rejection_count
 	var receipt := _public_combat_payload(payload)
+	if _v075_public_card_identity_rejection_count != rejection_count_before:
+		return
+	if _private_card_identity_leak_count(receipt) > 0:
+		# `_public_combat_payload` normally rejects before this point. Keep the
+		# emission boundary fail-closed if the sanitizer contract ever regresses.
+		_register_private_card_identity_rejection(
+			_private_card_identity_leak_count(receipt)
+		)
+		return
 	receipt["combat_receipt_id"] = stable_id
 	receipt["event_kind"] = event_kind
 	receipt["ruleset_id"] = V075_RULESET_ID
@@ -3648,6 +4519,9 @@ func _capture_combat_transaction_state() -> Dictionary:
 		"processed_facility_damage_intents": (
 			_processed_facility_damage_intents.duplicate(true)
 		),
+		"facility_effect_commit_witness": (
+			_facility_effect_commit_witness.duplicate(true)
+		),
 		"combat_facility_damage_receipt_count": (
 			_combat_facility_damage_receipt_count
 		),
@@ -3668,6 +4542,9 @@ func _restore_combat_transaction_state(checkpoint: Dictionary) -> void:
 			"processed_facility_damage_intents",
 			{}
 		) as Dictionary
+	).duplicate(true)
+	_facility_effect_commit_witness = (
+		checkpoint.get("facility_effect_commit_witness", {}) as Dictionary
 	).duplicate(true)
 	_combat_facility_damage_receipt_count = int(
 		checkpoint.get("combat_facility_damage_receipt_count", 0)
@@ -3721,7 +4598,31 @@ func _public_combat_payload(source: Dictionary) -> Dictionary:
 			result[field_name] = _pure_copy(public_target.get(field_name))
 		elif public_result.has(field_name):
 			result[field_name] = _pure_copy(public_result.get(field_name))
+	var leak_count := _private_card_identity_leak_count(result)
+	if leak_count > 0:
+		_register_private_card_identity_rejection(leak_count)
+		return {}
 	return result
+
+
+func _private_card_identity_leak_count(value: Variant) -> int:
+	if (
+		not is_instance_valid(_combat_projection_adapter)
+		or not _combat_projection_adapter.has_method(
+			"private_card_identity_leak_count"
+		)
+	):
+		return 1
+	return int(_combat_projection_adapter.call(
+		"private_card_identity_leak_count",
+		value
+	))
+
+
+func _register_private_card_identity_rejection(count: int) -> void:
+	var positive_count := maxi(1, count)
+	_v075_public_card_identity_rejection_count += positive_count
+	_hidden_info_violation_count += positive_count
 
 
 func _combat_player_private_facts(viewer_id: String) -> Dictionary:
@@ -3772,6 +4673,7 @@ func _combat_ai_private_facts(actor_id: String) -> Dictionary:
 				"card_rank": int(option.get("card_rank", 0)),
 				"legal_modes": [],
 				"prebound_target_by_mode": {},
+				"options": [],
 			}
 			var row := monster_options_by_card.get(
 				card_id,
@@ -3798,6 +4700,9 @@ func _combat_ai_private_facts(actor_id: String) -> Dictionary:
 				else str(option.get("target_source_instance_id", ""))
 			)
 			row["prebound_target_by_mode"] = targets
+			var option_rows := row.get("options", []) as Array
+			option_rows.append(option.duplicate(true))
+			row["options"] = option_rows
 			monster_options_by_card[card_id] = row
 		elif domain == "military":
 			var private_option := _military_private_option(option, actor_id)
@@ -3882,12 +4787,6 @@ func _military_private_option(
 		""
 	))
 	var target_generation := int(option.get("target_source_generation", 0))
-	if task_kind == "assault_monster" and not target_monster_id.is_empty():
-		for monster_variant in _v075_public_monsters():
-			var monster := monster_variant as Dictionary
-			if str(monster.get("source_instance_id", "")) == target_monster_id:
-				target_generation = int(monster.get("source_generation", 0))
-				break
 	var launch_region_id := ""
 	var launch_regions: Array[String] = []
 	for facility_variant in _public_occupied_facilities():
@@ -3907,17 +4806,18 @@ func _military_private_option(
 	var asset_cost_by_color := {}
 	if not primary_color.is_empty() and primary_cost > 0:
 		asset_cost_by_color[primary_color] = primary_cost
-	return {
+	var projected := {
 		"option_id": str(option.get("option_id", "")),
 		"owner_player_id": owner_player_id,
 		"card_instance_id": str(option.get("card_instance_id", "")),
 		"card_definition_id": str(option.get("card_definition_id", "")),
-		"card_generation": maxi(1, int(option.get("card_generation", 1))),
+		"card_action_binding": (
+			option.get("card_action_binding", {}) as Dictionary
+		).duplicate(true),
 		"target_slot_id": str(option.get("target_slot_id", "")),
 		"task_kind": task_kind,
 		"target_region_id": str(option.get("target_region_id", "")),
 		"target_monster_source_instance_id": target_monster_id,
-		"target_source_generation": target_generation,
 		"launch_region_id": launch_region_id,
 		"asset_cost_by_color": asset_cost_by_color,
 		"enabled": not launch_region_id.is_empty(),
@@ -3927,6 +4827,9 @@ func _military_private_option(
 		),
 		"action_domain": "military",
 	}
+	if task_kind == "assault_monster":
+		projected["target_source_generation"] = target_generation
+	return projected
 
 
 func _auto_queue_and_lock(actor_id: String) -> Dictionary:
@@ -4143,7 +5046,21 @@ func _auto_request_private_skill(actor_id: String) -> void:
 	var action := chosen.get("action", {}) as Dictionary
 	if str(action.get("action_kind", "")) != "monster_private_skill":
 		return
-	var result := request_private_monster_skill(actor_id, action)
+	var source := _public_monster_by_id(str(action.get(
+		"source_instance_id",
+		""
+	)))
+	var source_generation := int(source.get("source_generation", 0))
+	if (
+		source.is_empty()
+		or str(source.get("owner_player_id", "")) != actor_id
+		or source_generation < 1
+	):
+		_combat_ai_invalid_target_count += 1
+		return
+	var request_parameters := action.duplicate(true)
+	request_parameters["source_generation"] = source_generation
+	var result := request_private_monster_skill(actor_id, request_parameters)
 	if bool(result.get("accepted", false)):
 		_combat_ai_private_skill_count += 1
 	else:
@@ -4576,147 +5493,134 @@ func _private_skill_target_request(
 			}.get(str(skill.get("target_contract", "")), "")
 		}
 	var target_kind := str(contract.get("target_kind", ""))
-	if parameters.has("target_binding"):
-		var binding := parameters.get("target_binding", {}) as Dictionary
-		if binding.is_empty():
-			return {}
-		var binding_kind := str(binding.get("target_kind", ""))
-		var binding_id := str(binding.get("target_id", ""))
-		if binding_id.is_empty():
-			return {}
-		if target_kind == "self_source":
-			var self_generation := int(binding.get(
-				"target_source_generation",
-				0
-			))
-			if binding_kind != "monster" or binding_id != str(
-				source.get("source_instance_id", "")
-			) or self_generation <= 0:
-				return {}
-			return {
-				"target_kind": target_kind,
-				"target_id": binding_id,
-				"target_source_generation": self_generation,
-			}
-		if target_kind == "enemy_public_facility":
-			var facility_generation := int(binding.get(
-				"target_facility_generation",
-				0
-			))
-			if (
-				binding_kind != "facility"
-				or str(binding.get("target_facility_id", "")) != binding_id
-				or binding.has("target_region_id")
-				or facility_generation <= 0
-			):
-				return {}
-			return {
-				"target_kind": target_kind,
-				"target_id": binding_id,
-				"target_facility_id": binding_id,
-				"target_facility_generation": facility_generation,
-			}
-		if target_kind in [
-			"enemy_facilities_in_public_region",
-			"enemy_facilities_in_current_region",
-		]:
-			if (
-				binding_kind != "region"
-				or str(binding.get("target_region_id", "")) != binding_id
-				or binding.has("target_facility_id")
-			):
-				return {}
-			return {
-				"target_kind": target_kind,
-				"target_id": binding_id,
-				"target_region_id": binding_id,
-			}
-		if target_kind == "enemy_public_monster":
-			var monster_generation := int(binding.get(
-				"target_source_generation",
-				0
-			))
-			if (
-				binding_kind != "monster"
-				or str(binding.get(
-					"target_monster_source_instance_id",
-					binding_id
-				)) != binding_id
-				or monster_generation <= 0
-			):
-				return {}
-			return {
-				"target_kind": target_kind,
-				"target_id": binding_id,
-				"target_source_generation": monster_generation,
-			}
+	var binding_variant: Variant = parameters.get("target_binding", null)
+	if not (binding_variant is Dictionary):
 		return {}
-	var explicit_id := str(parameters.get(
-		"target_id",
-		parameters.get("target_facility_id", parameters.get(
-			"target_monster_source_instance_id",
-			parameters.get("target_region_id", "")
-		))
-	))
+	var binding := binding_variant as Dictionary
+	var binding_kind := str(binding.get("target_kind", ""))
+	var binding_id := str(binding.get("target_id", ""))
+	if binding.is_empty() or binding_id.is_empty():
+		return {}
 	if target_kind == "self_source":
+		var self_generation := int(binding.get(
+			"target_source_generation",
+			0
+		))
+		if (
+			binding_kind != "monster"
+			or binding_id != str(source.get("source_instance_id", ""))
+			or not _positive_int_field(binding, "target_source_generation")
+			or not _positive_int_field(source, "source_generation")
+			or binding.get("target_source_generation")
+				!= source.get("source_generation")
+			or binding.has("target_facility_id")
+			or binding.has("target_facility_generation")
+			or binding.has("target_region_id")
+			or (
+				binding.has("target_monster_source_instance_id")
+				and str(binding.get(
+					"target_monster_source_instance_id",
+					""
+				)) != binding_id
+			)
+		):
+			return {}
 		return {
 			"target_kind": "self_source",
-			"target_id": str(source.get("source_instance_id", "")),
-			"target_source_generation": int(
-				source.get("source_generation", 0)
-			),
+			"target_id": binding_id,
+			"target_source_generation": self_generation,
 		}
 	if target_kind == "enemy_public_facility":
-		var facility_id := explicit_id
-		if facility_id.is_empty():
-			facility_id = str(source.get("tracked_facility_id", ""))
-		if facility_id.is_empty():
-			facility_id = _first_enemy_facility_id(actor_id)
-		var facility := _public_facility_by_id(facility_id)
+		var facility_generation := int(binding.get(
+			"target_facility_generation",
+			0
+		))
+		if (
+			binding_kind != "facility"
+			or str(binding.get("target_facility_id", "")) != binding_id
+			or not _positive_int_field(
+				binding,
+				"target_facility_generation"
+			)
+			or binding.has("target_region_id")
+			or binding.has("target_monster_source_instance_id")
+			or binding.has("target_source_generation")
+		):
+			return {}
+		var facility := _public_facility_by_id(binding_id)
+		if (
+			facility.is_empty()
+			or not _positive_int_field(facility, "facility_generation")
+			or facility.get("facility_generation")
+				!= binding.get("target_facility_generation")
+			or _facility_owner_id(facility) == actor_id
+			or str(facility.get("status", "active")) == "destroyed"
+		):
+			return {}
 		return {
 			"target_kind": target_kind,
-			"target_id": facility_id,
-			"target_facility_generation": int(
-				facility.get("facility_generation", 0)
-			),
-		} if not facility.is_empty() else {}
+			"target_id": binding_id,
+			"target_facility_id": binding_id,
+			"target_facility_generation": facility_generation,
+		}
 	if target_kind in [
 		"enemy_facilities_in_public_region",
 		"enemy_facilities_in_current_region",
 	]:
-		var region_id := (
-			str(source.get("region_id", ""))
-			if target_kind == "enemy_facilities_in_current_region"
-			else explicit_id
-		)
-		if region_id.is_empty():
-			region_id = str(source.get("tracked_region_id", ""))
-		if region_id.is_empty():
-			region_id = _first_enemy_facility_region(actor_id)
+		if (
+			binding_kind != "region"
+			or str(binding.get("target_region_id", "")) != binding_id
+			or binding.has("target_facility_id")
+			or binding.has("target_facility_generation")
+			or binding.has("target_monster_source_instance_id")
+			or binding.has("target_source_generation")
+			or (
+				target_kind == "enemy_facilities_in_current_region"
+				and binding_id != str(source.get("region_id", ""))
+			)
+			or not _enemy_facility_region_current(actor_id, binding_id)
+		):
+			return {}
 		return {
 			"target_kind": target_kind,
-			"target_id": region_id,
-			"target_region_id": region_id,
-		} if not region_id.is_empty() else {}
+			"target_id": binding_id,
+			"target_region_id": binding_id,
+		}
 	if target_kind == "enemy_public_monster":
-		var monster_id := explicit_id
-		if monster_id.is_empty():
-			for monster_variant in _v075_public_monsters():
-				var monster := monster_variant as Dictionary
-				if (
-					str(monster.get("owner_player_id", "")) != actor_id
-					and str(monster.get("status", "")) == "active"
-				):
-					monster_id = str(monster.get("source_instance_id", ""))
-					break
-		var monster := _public_monster_by_id(monster_id)
+		var monster_generation := int(binding.get(
+			"target_source_generation",
+			0
+		))
+		if (
+			binding_kind != "monster"
+			or not _positive_int_field(binding, "target_source_generation")
+			or binding.has("target_facility_id")
+			or binding.has("target_facility_generation")
+			or binding.has("target_region_id")
+			or (
+				binding.has("target_monster_source_instance_id")
+				and str(binding.get(
+					"target_monster_source_instance_id",
+					""
+				)) != binding_id
+			)
+		):
+			return {}
+		var monster := _public_monster_by_id(binding_id)
+		if (
+			monster.is_empty()
+			or str(monster.get("owner_player_id", "")) == actor_id
+			or str(monster.get("status", "")) != "active"
+			or not _positive_int_field(monster, "source_generation")
+			or monster.get("source_generation")
+				!= binding.get("target_source_generation")
+		):
+			return {}
 		return {
 			"target_kind": target_kind,
-			"target_id": monster_id,
-			"target_source_generation": int(
-				monster.get("source_generation", 0)
-			),
-		} if not monster.is_empty() else {}
+			"target_id": binding_id,
+			"target_source_generation": monster_generation,
+		}
 	return {}
 
 
@@ -4792,33 +5696,21 @@ func _public_facility_by_id(facility_id: String) -> Dictionary:
 	return {}
 
 
-func _first_enemy_facility_id(actor_id: String) -> String:
-	var ids: Array[String] = []
+func _enemy_facility_region_current(
+	actor_id: String,
+	region_id: String
+) -> bool:
+	if region_id.is_empty():
+		return false
 	for facility_variant in _public_occupied_facilities():
 		var facility := facility_variant as Dictionary
 		if (
 			_facility_owner_id(facility) != actor_id
 			and str(facility.get("status", "active")) != "destroyed"
+			and str(facility.get("region_id", "")) == region_id
 		):
-			ids.append(str(facility.get("facility_id", "")))
-	ids.sort()
-	return ids[0] if not ids.is_empty() else ""
-
-
-func _first_enemy_facility_region(actor_id: String) -> String:
-	var ids: Array[String] = []
-	for facility_variant in _public_occupied_facilities():
-		var facility := facility_variant as Dictionary
-		var region_id := str(facility.get("region_id", ""))
-		if (
-			_facility_owner_id(facility) != actor_id
-			and str(facility.get("status", "active")) != "destroyed"
-			and not region_id.is_empty()
-			and region_id not in ids
-		):
-			ids.append(region_id)
-	ids.sort()
-	return ids[0] if not ids.is_empty() else ""
+			return true
+	return false
 
 
 func _facility_owner_id(facility: Dictionary) -> String:

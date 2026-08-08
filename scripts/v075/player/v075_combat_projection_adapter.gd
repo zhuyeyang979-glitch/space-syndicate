@@ -1,6 +1,9 @@
 extends RefCounted
 class_name V075CombatProjectionAdapter
 
+const V075CardDefinitionRegistry := preload(
+	"res://scripts/v075/cards/v075_card_definition_registry.gd"
+)
 const RULESET_ID := "v0.7.5"
 const PUBLIC_MONSTER_FIELDS := [
 	"source_instance_id",
@@ -39,6 +42,31 @@ const MILITARY_TASK_KINDS := [
 	"assault_region",
 	"assault_monster",
 ]
+const CARD_ACTION_BINDING_FIELDS := [
+	"schema_id",
+	"schema_version",
+	"authority_domain_id",
+	"authority_lineage_fingerprint",
+	"owner_player_id",
+	"card_instance_id",
+	"card_definition_id",
+	"immutable_identity_fingerprint",
+	"authoritative_zone",
+	"zone_revision",
+	"lifecycle_evidence_fingerprint",
+	"expected_action_lifecycle",
+	"binding_fingerprint",
+]
+const PRIVATE_CARD_IDENTITY_KEYS := [
+	"card_action_binding",
+	"authority_lineage_fingerprint",
+	"immutable_identity_fingerprint",
+	"authoritative_zone",
+	"zone_revision",
+	"lifecycle_evidence_fingerprint",
+	"expected_action_lifecycle",
+	"binding_fingerprint",
+]
 const TERMINAL_PHASES := [
 	"victory_pending",
 	"victory_resolved",
@@ -69,6 +97,15 @@ func project_for_viewer(
 	_projection_count += 1
 	var phase := str(authority_snapshot.get("phase", "batch_active"))
 	var combat_requests_allowed := phase not in TERMINAL_PHASES
+	var terminal_quiescence: Variant = authority_snapshot.get(
+		"terminal_quiescence",
+		{}
+	)
+	var terminal_combat_quiescent := (
+		phase in TERMINAL_PHASES
+		and terminal_quiescence is Dictionary
+		and bool((terminal_quiescence as Dictionary).get("green", false))
+	)
 	var public_monsters: Array[Dictionary] = []
 	var source_rows: Variant = authority_snapshot.get(
 		"public_monsters",
@@ -102,7 +139,7 @@ func project_for_viewer(
 		"viewer_player_id": viewer_player_id,
 		"phase": phase,
 		"combat_requests_allowed": combat_requests_allowed,
-		"terminal_combat_quiescent": phase in TERMINAL_PHASES,
+		"terminal_combat_quiescent": terminal_combat_quiescent,
 		"public_monsters": public_monsters,
 		"own_monster_skill_sources": own_skill_sources,
 		"military_task_options": military_options,
@@ -117,7 +154,7 @@ func project_for_viewer(
 			"viewer_player_id": viewer_player_id,
 			"phase": phase,
 			"combat_requests_allowed": false,
-			"terminal_combat_quiescent": phase in TERMINAL_PHASES,
+			"terminal_combat_quiescent": terminal_combat_quiescent,
 			"public_monsters": [],
 			"own_monster_skill_sources": [],
 			"military_task_options": [],
@@ -144,11 +181,22 @@ func public_projection(authority_snapshot: Dictionary) -> Dictionary:
 	return projection
 
 
+func private_card_identity_leak_count(value: Variant) -> int:
+	return _count_exact_keys(value, PRIVATE_CARD_IDENTITY_KEYS)
+
+
 func privacy_report(projection: Dictionary) -> Dictionary:
 	var viewer_id := str(projection.get("viewer_player_id", ""))
+	var public_monsters := projection.get("public_monsters", []) as Array
+	var public_scope := projection.duplicate(true)
+	public_scope.erase("own_monster_skill_sources")
+	public_scope.erase("military_task_options")
+	var private_card_identity_disclosure_count := (
+		private_card_identity_leak_count(public_scope)
+	)
 	var public_disclosure_count := 0
 	var opponent_future_target_disclosure_count := 0
-	for source_variant in projection.get("public_monsters", []) as Array:
+	for source_variant in public_monsters:
 		if not (source_variant is Dictionary):
 			public_disclosure_count += 1
 			continue
@@ -162,6 +210,8 @@ func privacy_report(projection: Dictionary) -> Dictionary:
 				if source.has(field):
 					opponent_future_target_disclosure_count += 1
 	var opponent_private_disclosure_count := 0
+	var stale_private_source_count := 0
+	var invalid_private_skill_identity_count := 0
 	for source_variant in projection.get(
 		"own_monster_skill_sources",
 		[]
@@ -172,6 +222,26 @@ func privacy_report(projection: Dictionary) -> Dictionary:
 		var source := source_variant as Dictionary
 		if str(source.get("owner_player_id", "")) != viewer_id:
 			opponent_private_disclosure_count += 1
+			continue
+		if not _private_source_identity_current(
+			source,
+			viewer_id,
+			public_monsters
+		):
+			stale_private_source_count += 1
+			continue
+		for skill_variant in source.get("skills", []) as Array:
+			if not (skill_variant is Dictionary):
+				invalid_private_skill_identity_count += 1
+				continue
+			var skill := skill_variant as Dictionary
+			if not _skill_target_binding_valid(
+				skill,
+				source,
+				viewer_id,
+				projection
+			):
+				invalid_private_skill_identity_count += 1
 	var invalid_military_task_count := 0
 	for option_variant in projection.get(
 		"military_task_options",
@@ -180,14 +250,19 @@ func privacy_report(projection: Dictionary) -> Dictionary:
 		if not (option_variant is Dictionary):
 			invalid_military_task_count += 1
 			continue
-		if str(
-			(option_variant as Dictionary).get("task_kind", "")
-		) not in MILITARY_TASK_KINDS:
+		if not _military_option_valid(
+			option_variant as Dictionary,
+			viewer_id,
+			projection
+		):
 			invalid_military_task_count += 1
 	var valid := (
 		public_disclosure_count == 0
+		and private_card_identity_disclosure_count == 0
 		and opponent_future_target_disclosure_count == 0
 		and opponent_private_disclosure_count == 0
+		and stale_private_source_count == 0
+		and invalid_private_skill_identity_count == 0
 		and invalid_military_task_count == 0
 	)
 	return {
@@ -198,12 +273,18 @@ func privacy_report(projection: Dictionary) -> Dictionary:
 			else "combat_projection_privacy_invalid"
 		),
 		"public_skill_card_disclosure_count": public_disclosure_count,
+		"private_card_identity_disclosure_count": (
+			private_card_identity_disclosure_count
+		),
 		"future_skill_target_disclosure_count":
 			_count_exact_key(projection.get("public_monsters", []), "future_skill_target"),
 		"opponent_future_target_disclosure_count":
 			opponent_future_target_disclosure_count,
 		"opponent_private_skill_disclosure_count":
 			opponent_private_disclosure_count,
+		"stale_private_source_count": stale_private_source_count,
+		"invalid_private_skill_identity_count":
+			invalid_private_skill_identity_count,
 		"invalid_military_task_count": invalid_military_task_count,
 	}
 
@@ -268,7 +349,11 @@ func _project_owner_skill_sources(
 		if not (source_variant is Dictionary):
 			continue
 		var source := source_variant as Dictionary
-		if str(source.get("owner_player_id", "")) != viewer_player_id:
+		if not _private_source_identity_current(
+			source,
+			viewer_player_id,
+			authority_snapshot.get("public_monsters", []) as Array
+		):
 			continue
 		var source_status := str(source.get("status", "active"))
 		var batch_used := bool(
@@ -290,13 +375,13 @@ func _project_owner_skill_sources(
 			)
 			projected_skill["target_contract"] = normalized_contract
 			var target_binding := skill.get("target_binding", {}) as Dictionary
-			if target_binding.is_empty():
-				target_binding = _derive_target_binding(
-					normalized_contract,
-					source,
-					authority_snapshot,
-					viewer_player_id
-				)
+			if not _skill_target_binding_valid(
+				skill,
+				source,
+				viewer_player_id,
+				authority_snapshot
+			):
+				continue
 			projected_skill["target_binding"] = target_binding.duplicate(true)
 			var state := str(projected_skill.get("state", "DISABLED"))
 			projected_skill["can_request"] = (
@@ -353,24 +438,37 @@ func _project_military_options(
 		if not (option_variant is Dictionary):
 			continue
 		var option := option_variant as Dictionary
-		if not _military_option_valid(option, viewer_player_id):
+		if not _military_option_valid(
+			option,
+			viewer_player_id,
+			authority_snapshot
+		):
+			continue
+		var task_kind := str(option.get("task_kind", ""))
+		var card_definition_id := str(
+			option.get("card_definition_id", "")
+		)
+		var presentation := (
+			V075CardDefinitionRegistry.presentation_descriptor(
+				card_definition_id
+			)
+		)
+		if presentation.is_empty():
 			continue
 		var projected := {
 			"option_id": str(option.get("option_id", "")),
 			"owner_player_id": viewer_player_id,
 			"card_instance_id": str(option.get("card_instance_id", "")),
-			"card_definition_id": str(option.get("card_definition_id", "")),
-			"card_generation": maxi(1, int(option.get("card_generation", 1))),
+			"card_definition_id": card_definition_id,
+			"card_action_binding": (
+				option.get("card_action_binding", {}) as Dictionary
+			).duplicate(true),
 			"target_slot_id": str(option.get("target_slot_id", "")),
-			"task_kind": str(option.get("task_kind", "")),
+			"task_kind": task_kind,
 			"target_region_id": str(option.get("target_region_id", "")),
 			"target_monster_source_instance_id": str(option.get(
 				"target_monster_source_instance_id",
 				""
-			)),
-			"target_source_generation": int(option.get(
-				"target_source_generation",
-				0
 			)),
 			"launch_region_id": str(option.get("launch_region_id", "")),
 			"asset_cost_by_color": (
@@ -378,13 +476,14 @@ func _project_military_options(
 			).duplicate(true),
 			"display_name": (
 				"攻击地区"
-				if str(option.get("task_kind", "")) == "assault_region"
+				if task_kind == "assault_region"
 				else "攻击怪兽"
 			),
-			"icon_asset_key": (
-				"icon.board.target"
-				if str(option.get("task_kind", "")) == "assault_region"
-				else "vfx.monster.attack_smoke"
+			"icon_asset_key": str(
+				presentation.get("presentation_asset_key", "")
+			),
+			"presentation_resource_path": str(
+				presentation.get("resource_path", "")
 			),
 			"enabled": combat_requests_allowed and bool(
 				option.get("enabled", false)
@@ -392,6 +491,11 @@ func _project_military_options(
 			"disabled_reason": str(option.get("disabled_reason", "none")),
 			"action_domain": "military",
 		}
+		if task_kind == "assault_monster":
+			projected["target_source_generation"] = int(option.get(
+				"target_source_generation",
+				0
+			))
 		result.append(projected)
 	result.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
 		return str(left.get("option_id", "")) < str(
@@ -414,86 +518,199 @@ func _normalized_target_contract(value: Variant) -> Dictionary:
 	return {"target_kind": kind} if not legacy.is_empty() else {}
 
 
-func _derive_target_binding(
-	contract: Dictionary,
+func _private_source_identity_current(
 	source: Dictionary,
-	authority_snapshot: Dictionary,
-	viewer_player_id: String
-) -> Dictionary:
-	var target_kind := str(contract.get("target_kind", ""))
+	viewer_player_id: String,
+	public_monsters: Array
+) -> bool:
 	var source_id := str(source.get("source_instance_id", ""))
 	var source_generation := int(source.get("source_generation", 0))
-	if target_kind == "self_source":
-		return {
-			"target_kind": "monster",
-			"target_id": source_id,
-			"target_source_generation": source_generation,
-		}
-	if target_kind == "enemy_public_facility":
-		var facility_id := str(source.get("tracked_facility_id", ""))
-		if facility_id.is_empty():
-			for facility_variant in authority_snapshot.get("public_facilities", []) as Array:
-				var facility := facility_variant as Dictionary
-				if str(facility.get("owner_player_id", "")) == viewer_player_id:
-					continue
-				if str(facility.get("status", "active")) == "destroyed":
-					continue
-				facility_id = str(facility.get("facility_id", ""))
-				if not facility_id.is_empty():
-					break
-		if facility_id.is_empty():
-			return {}
-		return {
-			"target_kind": "facility",
-			"target_id": facility_id,
-			"target_facility_id": facility_id,
-		}
-	if target_kind in [
+	return (
+		not viewer_player_id.is_empty()
+		and str(source.get("owner_player_id", "")) == viewer_player_id
+		and not source_id.is_empty()
+		and _positive_int_field(source, "source_generation")
+		and _public_monster_identity_current(
+			source_id,
+			source_generation,
+			viewer_player_id,
+			public_monsters,
+			false
+		)
+	)
+
+
+func _skill_target_binding_valid(
+	skill: Dictionary,
+	source: Dictionary,
+	viewer_player_id: String,
+	authority_snapshot: Dictionary
+) -> bool:
+	if str(skill.get("skill_definition_id", "")).is_empty():
+		return false
+	var contract := _normalized_target_contract(
+		skill.get("target_contract", {})
+	)
+	var authored_kind := str(contract.get("target_kind", ""))
+	var binding_variant: Variant = skill.get("target_binding", {})
+	if not (binding_variant is Dictionary):
+		return false
+	var binding := binding_variant as Dictionary
+	var binding_kind := str(binding.get("target_kind", ""))
+	var target_id := str(binding.get("target_id", ""))
+	if binding.is_empty() or target_id.is_empty():
+		return false
+	if authored_kind == "self_source":
+		return (
+			binding_kind == "monster"
+			and target_id == str(source.get("source_instance_id", ""))
+			and _positive_int_field(binding, "target_source_generation")
+			and _positive_int_field(source, "source_generation")
+			and binding.get("target_source_generation")
+				== source.get("source_generation")
+			and not binding.has("target_facility_id")
+			and not binding.has("target_region_id")
+			and (
+				not binding.has("target_monster_source_instance_id")
+				or str(binding.get(
+					"target_monster_source_instance_id",
+					""
+				)) == target_id
+			)
+		)
+	if authored_kind == "enemy_public_facility":
+		if (
+			binding_kind != "facility"
+			or str(binding.get("target_facility_id", "")) != target_id
+			or not _positive_int_field(
+				binding,
+				"target_facility_generation"
+			)
+			or binding.has("target_region_id")
+			or binding.has("target_monster_source_instance_id")
+			or binding.has("target_source_generation")
+		):
+			return false
+		return _facility_binding_current(
+			binding,
+			viewer_player_id,
+			authority_snapshot.get("public_facilities", []) as Array
+		)
+	if authored_kind in [
 		"enemy_facilities_in_public_region",
 		"enemy_facilities_in_current_region",
 	]:
-		var region_id := (
-			str(source.get("region_id", ""))
-			if target_kind == "enemy_facilities_in_current_region"
-			else str(source.get("tracked_region_id", ""))
+		return (
+			binding_kind == "region"
+			and str(binding.get("target_region_id", "")) == target_id
+			and not binding.has("target_facility_id")
+			and not binding.has("target_facility_generation")
+			and not binding.has("target_monster_source_instance_id")
+			and not binding.has("target_source_generation")
 		)
-		if region_id.is_empty():
-			return {}
-		return {
-			"target_kind": "region",
-			"target_id": region_id,
-			"target_region_id": region_id,
-		}
-	if target_kind == "enemy_public_monster":
-		var monster_ids: Array[String] = []
-		for monster_variant in authority_snapshot.get("public_monsters", []) as Array:
-			var monster := monster_variant as Dictionary
-			if str(monster.get("owner_player_id", "")) == viewer_player_id:
-				continue
-			if str(monster.get("status", "active")) != "active":
-				continue
-			var id := str(monster.get("source_instance_id", ""))
-			if not id.is_empty():
-				monster_ids.append(id)
-		monster_ids.sort()
-		if monster_ids.is_empty():
-			return {}
-		var selected_id := monster_ids[0]
-		for monster_variant in authority_snapshot.get("public_monsters", []) as Array:
-			var monster := monster_variant as Dictionary
-			if str(monster.get("source_instance_id", "")) == selected_id:
-				return {
-					"target_kind": "monster",
-					"target_id": selected_id,
-					"target_source_generation": int(monster.get("source_generation", 0)),
-				}
-	return {}
+	if authored_kind == "enemy_public_monster":
+		if (
+			binding_kind != "monster"
+			or not _positive_int_field(binding, "target_source_generation")
+			or binding.has("target_facility_id")
+			or binding.has("target_facility_generation")
+			or binding.has("target_region_id")
+			or (
+				binding.has("target_monster_source_instance_id")
+				and str(binding.get(
+					"target_monster_source_instance_id",
+					""
+				)) != target_id
+			)
+		):
+			return false
+		return _public_monster_identity_current(
+			target_id,
+			int(binding.get("target_source_generation", 0)),
+			viewer_player_id,
+			authority_snapshot.get("public_monsters", []) as Array,
+			true
+		)
+	return false
 
 
-func _military_option_valid(option: Dictionary, viewer_player_id: String) -> bool:
+func _facility_binding_current(
+	binding: Dictionary,
+	viewer_player_id: String,
+	public_facilities: Array
+) -> bool:
+	# Some combat projections intentionally omit the public facility roster.
+	# In that shape the positive typed generation remains mandatory and the
+	# runtime authority performs the final exact-generation comparison.
+	if public_facilities.is_empty():
+		return true
+	var target_id := str(binding.get("target_id", ""))
+	var target_generation := int(binding.get(
+		"target_facility_generation",
+		0
+	))
+	for facility_variant in public_facilities:
+		if not (facility_variant is Dictionary):
+			continue
+		var facility := facility_variant as Dictionary
+		var owner_id := str(facility.get(
+			"owner_player_id",
+			facility.get("owner_id", "")
+		))
+		if (
+			str(facility.get("facility_id", "")) == target_id
+			and _positive_int_field(facility, "facility_generation")
+			and int(facility.get("facility_generation", 0)) == target_generation
+			and owner_id != viewer_player_id
+			and str(facility.get("status", "active")) != "destroyed"
+		):
+			return true
+	return false
+
+
+func _public_monster_identity_current(
+	source_instance_id: String,
+	source_generation: int,
+	viewer_player_id: String,
+	public_monsters: Array,
+	require_rival: bool
+) -> bool:
+	if source_instance_id.is_empty() or source_generation < 1:
+		return false
+	for monster_variant in public_monsters:
+		if not (monster_variant is Dictionary):
+			continue
+		var monster := monster_variant as Dictionary
+		var owner_id := str(monster.get("owner_player_id", ""))
+		if (
+			str(monster.get("source_instance_id", "")) != source_instance_id
+			or not _positive_int_field(monster, "source_generation")
+			or int(monster.get("source_generation", 0)) != source_generation
+			or (
+				require_rival
+				and (
+					owner_id == viewer_player_id
+					or str(monster.get("status", "active")) != "active"
+				)
+			)
+			or (not require_rival and owner_id != viewer_player_id)
+		):
+			continue
+		return true
+	return false
+
+
+func _military_option_valid(
+	option: Dictionary,
+	viewer_player_id: String,
+	authority_snapshot: Dictionary
+) -> bool:
 	if str(option.get("action_domain", "military")) != "military":
 		return false
-	if str(option.get("owner_player_id", viewer_player_id)) != viewer_player_id:
+	if (
+		viewer_player_id.is_empty()
+		or str(option.get("owner_player_id", "")) != viewer_player_id
+	):
 		return false
 	for field_name in [
 		"option_id",
@@ -503,15 +720,91 @@ func _military_option_valid(option: Dictionary, viewer_player_id: String) -> boo
 	]:
 		if str(option.get(field_name, "")).is_empty():
 			return false
+	if not _card_action_binding_valid_for_option(
+		option.get("card_action_binding", {}) as Dictionary,
+		option,
+		viewer_player_id
+	):
+		return false
 	var task_kind := str(option.get("task_kind", ""))
 	if task_kind == "assault_region":
-		return not str(option.get("target_region_id", "")).is_empty()
+		return (
+			not str(option.get("target_region_id", "")).is_empty()
+			and str(option.get(
+				"target_monster_source_instance_id",
+				""
+			)).is_empty()
+			and not option.has("target_source_generation")
+		)
 	if task_kind == "assault_monster":
-		return not str(option.get(
+		var target_id := str(option.get(
 			"target_monster_source_instance_id",
 			""
-		)).is_empty()
+		))
+		var target_generation := int(option.get(
+			"target_source_generation",
+			0
+		))
+		if (
+			target_id.is_empty()
+			or not _positive_int_field(option, "target_source_generation")
+			or not str(option.get("target_region_id", "")).is_empty()
+		):
+			return false
+		return _public_monster_identity_current(
+			target_id,
+			target_generation,
+			viewer_player_id,
+			authority_snapshot.get("public_monsters", []) as Array,
+			true
+		)
 	return false
+
+
+func _card_action_binding_valid_for_option(
+	binding: Dictionary,
+	option: Dictionary,
+	viewer_player_id: String
+) -> bool:
+	if binding.size() != CARD_ACTION_BINDING_FIELDS.size():
+		return false
+	for field_name in CARD_ACTION_BINDING_FIELDS:
+		if not binding.has(field_name):
+			return false
+	if (
+		binding.get("schema_id")
+			!= "v07.personal_dbg.authoritative_card_action_binding.v1"
+		or binding.get("schema_version") != 1
+		or binding.get("authority_domain_id") != "v07.personal_dbg"
+		or str(binding.get("owner_player_id", "")) != viewer_player_id
+		or str(binding.get("card_instance_id", ""))
+			!= str(option.get("card_instance_id", ""))
+		or str(binding.get("card_definition_id", ""))
+			!= str(option.get("card_definition_id", ""))
+		or binding.get("authoritative_zone") != "hand"
+		or not _positive_int_field(binding, "zone_revision")
+		or binding.get("expected_action_lifecycle")
+			!= "v075.combat.queue_resolve_personal_discard"
+	):
+		return false
+	for fingerprint_field in [
+		"authority_lineage_fingerprint",
+		"immutable_identity_fingerprint",
+		"lifecycle_evidence_fingerprint",
+		"binding_fingerprint",
+	]:
+		var fingerprint := str(binding.get(fingerprint_field, ""))
+		if fingerprint.length() != 64 or not fingerprint.is_valid_hex_number(false):
+			return false
+	return true
+
+
+func _positive_int_field(source: Dictionary, field_name: String) -> bool:
+	return (
+		source.has(field_name)
+		and typeof(source.get(field_name)) == TYPE_INT
+		and int(source.get(field_name)) > 0
+	)
 
 
 func _public_monster_precedes(
@@ -590,4 +883,11 @@ func _count_exact_key(value: Variant, expected_key: String) -> int:
 	elif value is Array:
 		for child_variant in value as Array:
 			count += _count_exact_key(child_variant, expected_key)
+	return count
+
+
+func _count_exact_keys(value: Variant, expected_keys: Array) -> int:
+	var count := 0
+	for expected_key_variant in expected_keys:
+		count += _count_exact_key(value, str(expected_key_variant))
 	return count

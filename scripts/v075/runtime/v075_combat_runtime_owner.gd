@@ -35,6 +35,7 @@ const CombatCheckpoint := preload(
 const RULESET_ID := "v0.7.5"
 const CONSTITUTION_ID := "space_syndicate.v075.complete"
 const OWNER_ID := "v075.combat.runtime_owner.v1"
+const EFFECT_WITNESS_SCHEMA := "V075CombatEffectCommitWitnessV1"
 const CUTOVER_DOMAIN_COUNT := 14
 const TERMINAL_PHASES := [
 	"victory_pending",
@@ -57,6 +58,7 @@ var _processed_receipt_keys: Dictionary = {}
 var _processed_movement_ids: Dictionary = {}
 var _processed_autonomy_plans: Dictionary = {}
 var _combat_receipt_journal: Array = []
+var _effect_commit_witness: Dictionary = {}
 var _last_autonomy_plan: Dictionary = {}
 var _tracked_targets_by_source: Dictionary = {}
 var _public_results: Array = []
@@ -87,6 +89,12 @@ var _military_withdraw_count := 0
 var _facility_damage_intent_count := 0
 var _monster_damage_commit_count := 0
 var _runtime_error_count := 0
+var _effect_attempt_count := 0
+var _effect_replay_count := 0
+var _effect_duplicate_commit_count := 0
+var _effect_identity_collision_count := 0
+var _effect_orphan_replay_count := 0
+var _effect_invalid_identity_count := 0
 
 
 func initialize(
@@ -207,6 +215,10 @@ func begin_batch(
 func set_phase(phase: String) -> Dictionary:
 	if not _initialized:
 		return _failure("combat_runtime_not_initialized")
+	if phase in TERMINAL_PHASES:
+		var quiescence := terminal_quiescence_report()
+		if not bool(quiescence.get("green", false)):
+			return _failure("combat_terminal_not_quiescent", quiescence)
 	var skill_phase := phase
 	if phase == "victory_pending":
 		skill_phase = "victory_resolved"
@@ -220,6 +232,39 @@ func set_phase(phase: String) -> Dictionary:
 		"accepted": true,
 		"reason_code": "combat_phase_updated",
 		"phase": _phase,
+	}
+
+
+func terminal_quiescence_report() -> Dictionary:
+	var skill_report := MonsterSkillCore.terminal_quiescence_report(
+		_skill_state
+	)
+	var unresolved_military_lock_count := 0
+	for mission_id_variant in _military_locks.keys():
+		if not _processed_missions.has(str(mission_id_variant)):
+			unresolved_military_lock_count += 1
+	var green := (
+		bool(skill_report.get("valid", false))
+		and bool(skill_report.get("green", false))
+		and unresolved_military_lock_count == 0
+	)
+	return {
+		"schema": "V075CombatTerminalQuiescenceV1",
+		"green": green,
+		"reason_code": "none" if green else "combat_work_pending",
+		"private_queue_count": int(skill_report.get(
+			"private_queue_count",
+			-1
+		)),
+		"private_skill_resolving_count": int(skill_report.get(
+			"resolving_count",
+			-1
+		)),
+		"private_skill_atomic_inflight_count": int(skill_report.get(
+			"atomic_inflight_count",
+			-1
+		)),
+		"unresolved_military_lock_count": unresolved_military_lock_count,
 	}
 
 
@@ -299,41 +344,67 @@ func resolve_monster_card_action(action: Dictionary) -> Dictionary:
 		action
 	)
 	if not bool(result.get("accepted", false)):
+		_note_native_effect_rejection(result)
 		return _failure("monster_card_resolution_failed", result)
-	_monster_state = (result.get("state", {}) as Dictionary).duplicate(true)
-	var sync_result := _synchronize_skill_sources()
-	if not bool(sync_result.get("accepted", false)):
-		return sync_result
 	var receipt := (result.get("receipt", {}) as Dictionary).duplicate(true)
+	var native_replay := bool(result.get("idempotent_replay", false))
+	var effect_gate := _classify_effect_attempt(
+		"monster_card_resolution",
+		str(receipt.get("request_id", "")),
+		str(receipt.get("action_fingerprint", "")),
+		native_replay,
+		str(receipt.get("outcome_id", "")),
+		str(receipt.get("receipt_id", "")),
+		str(receipt.get("receipt_fingerprint", ""))
+	)
+	if not bool(effect_gate.get("accepted", false)):
+		return _failure(str(effect_gate.get(
+			"reason_code",
+			"monster_card_effect_witness_rejected"
+		)), effect_gate)
+	var newly_committed := bool(effect_gate.get("newly_committed", false))
+	if newly_committed:
+		var previous_monster_state := _monster_state.duplicate(true)
+		var previous_skill_state := _skill_state.duplicate(true)
+		_monster_state = (result.get("state", {}) as Dictionary).duplicate(true)
+		var sync_result := _synchronize_skill_sources()
+		if not bool(sync_result.get("accepted", false)):
+			_monster_state = previous_monster_state
+			_skill_state = previous_skill_state
+			return sync_result
+		_commit_effect_witness(effect_gate)
 	if (
-		str(receipt.get("outcome_id", "")) == "monster_card_resolved"
-		and not bool(result.get("idempotent_replay", false))
+		newly_committed
+		and str(receipt.get("outcome_id", "")) == "monster_card_resolved"
 	):
 		var mode := str(receipt.get("monster_card_mode", ""))
 		if _monster_card_mode_counts.has(mode):
 			_monster_card_mode_counts[mode] = int(
 				_monster_card_mode_counts.get(mode, 0)
 			) + 1
+	if newly_committed:
 		_record_receipt(
-			"monster_card_resolved",
+			str(receipt.get("outcome_id", "monster_card_settled")),
 			receipt,
 			str(receipt.get("receipt_id", ""))
 		)
-	_revision += 1
+		_revision += 1
+	var lifecycle_intent := {}
+	if newly_committed:
+		lifecycle_intent = {
+			"intent_kind": "complete_normal_card_to_personal_discard",
+			"card_instance_id": str(receipt.get("card_instance_id", "")),
+			"destination_zone": "personal_discard",
+			"direct_mutation_allowed": false,
+		}
 	return {
 		"accepted": true,
 		"reason_code": str(result.get("reason_code", "")),
 		"receipt": receipt,
 		"outcome_id": str(receipt.get("outcome_id", "")),
-		"idempotent_replay": bool(
-			result.get("idempotent_replay", false)
-		),
-		"dbg_lifecycle_intent": {
-			"intent_kind": "complete_normal_card_to_personal_discard",
-			"card_instance_id": str(receipt.get("card_instance_id", "")),
-			"destination_zone": "personal_discard",
-			"direct_mutation_allowed": false,
-		},
+		"idempotent_replay": native_replay,
+		"newly_committed": newly_committed,
+		"dbg_lifecycle_intent": lifecycle_intent,
 	}
 
 
@@ -417,18 +488,44 @@ func resolve_military_action(
 	mission_id: String,
 	public_facilities: Array
 ) -> Dictionary:
-	if _processed_missions.has(mission_id):
+	var locked := _military_locks.get(mission_id, {}) as Dictionary
+	var native_replay := _processed_missions.has(mission_id)
+	if native_replay:
+		var replay_receipt := (
+			_processed_missions.get(mission_id, {}) as Dictionary
+		).duplicate(true)
+		var replay_input_fingerprint := str(locked.get("lock_fingerprint", ""))
+		if replay_input_fingerprint.is_empty():
+			var prior_witness := _effect_commit_witness.get(
+				"military_mission|%s" % mission_id,
+				{}
+			) as Dictionary
+			replay_input_fingerprint = str(prior_witness.get(
+				"input_fingerprint",
+				""
+			))
+		var replay_gate := _classify_effect_attempt(
+			"military_mission",
+			mission_id,
+			replay_input_fingerprint,
+			true,
+			str(replay_receipt.get("outcome", "")),
+			str(replay_receipt.get("combat_receipt_id", "")),
+			str(replay_receipt.get("receipt_fingerprint", ""))
+		)
+		if not bool(replay_gate.get("accepted", false)):
+			return _failure(str(replay_gate.get(
+				"reason_code",
+				"military_effect_witness_rejected"
+			)), replay_gate)
 		return {
 			"accepted": true,
 			"reason_code": "military_mission_exact_once_replay",
 			"replayed": true,
-			"receipt": (
-				_processed_missions.get(mission_id, {}) as Dictionary
-			).duplicate(true),
+			"receipt": replay_receipt,
 			"facility_damage_intents": [],
 			"monster_damage_receipts": [],
 		}
-	var locked := _military_locks.get(mission_id, {}) as Dictionary
 	if locked.is_empty():
 		return _failure("military_mission_lock_missing")
 	var task_kind := str(locked.get("task_kind", ""))
@@ -450,6 +547,20 @@ func resolve_military_action(
 		)
 	):
 		return _failure("military_mission_receipt_invalid", receipt)
+	var effect_gate := _classify_effect_attempt(
+		"military_mission",
+		mission_id,
+		str(locked.get("lock_fingerprint", "")),
+		false,
+		str(receipt.get("outcome", "")),
+		str(receipt.get("combat_receipt_id", "")),
+		str(receipt.get("receipt_fingerprint", ""))
+	)
+	if not bool(effect_gate.get("accepted", false)):
+		return _failure(str(effect_gate.get(
+			"reason_code",
+			"military_effect_witness_rejected"
+		)), effect_gate)
 	var monster_damage_receipts: Array = []
 	for intent_variant in receipt.get("monster_damage_intents", []) as Array:
 		var damage_result := apply_monster_damage_intent(
@@ -461,6 +572,7 @@ func resolve_military_action(
 			(damage_result.get("receipt", {}) as Dictionary).duplicate(true)
 		)
 	_processed_missions[mission_id] = receipt.duplicate(true)
+	_commit_effect_witness(effect_gate)
 	_military_withdraw_count += 1
 	if task_kind == MilitaryMissionCore.TASK_ASSAULT_REGION:
 		_military_region_assault_count += 1
@@ -683,6 +795,33 @@ func resolve_private_skill_safe_boundary(
 				"private_skill_resolution_failed",
 				resolved
 			)
+		var operation_receipt := (
+			resolved.get("receipt", {}) as Dictionary
+		).duplicate(true)
+		var native_replay := bool(resolved.get("replayed", false))
+		var effect_gate := _classify_effect_attempt(
+			"private_skill_execution",
+			str(execution.get("execution_id", "")),
+			str(execution.get("execution_fingerprint", "")),
+			native_replay,
+			"resolved" if bool(resolved.get("committed", false)) else "fizzled",
+			str(operation_receipt.get("receipt_id", "")),
+			str(operation_receipt.get("receipt_fingerprint", ""))
+		)
+		if not bool(effect_gate.get("accepted", false)):
+			return _rollback_private_skill_boundary_failure(
+				boundary_checkpoint,
+				str(effect_gate.get(
+					"reason_code",
+					"private_skill_effect_witness_rejected"
+				)),
+				effect_gate
+			)
+		if native_replay:
+			_skill_state = (
+				resolved.get("state", {}) as Dictionary
+			).duplicate(true)
+			continue
 		_skill_state = (resolved.get("state", {}) as Dictionary).duplicate(true)
 		var settlement := resolved.get(
 			"asset_settlement_intent",
@@ -731,21 +870,20 @@ func resolve_private_skill_safe_boundary(
 			_private_skill_commit_count += 1
 		else:
 			_private_skill_fizzle_count += 1
+		_commit_effect_witness(effect_gate)
 		var public_result := (
 			resolved.get("public_result", {}) as Dictionary
 		).duplicate(true)
 		public_results.append(public_result)
 		_public_results.append(public_result.duplicate(true))
-		var operation_receipt := (
-			resolved.get("receipt", {}) as Dictionary
-		).duplicate(true)
 		resolution_receipts.append(operation_receipt)
 		_record_receipt(
 			"monster_private_skill",
-			public_result,
-			str(public_result.get("public_result_id", ""))
+			operation_receipt,
+			str(operation_receipt.get("receipt_id", ""))
 		)
-	_revision += 1
+	if not resolution_receipts.is_empty():
+		_revision += 1
 	return {
 		"accepted": true,
 		"reason_code": "private_skill_safe_boundary_drained",
@@ -806,7 +944,22 @@ func resolve_autonomy(public_facilities: Array) -> Dictionary:
 	if _last_autonomy_plan.is_empty():
 		return _failure("monster_autonomy_plan_missing")
 	var plan_key := str(_last_autonomy_plan.get("plan_fingerprint", ""))
-	if _processed_autonomy_plans.has(plan_key):
+	var native_replay := _processed_autonomy_plans.has(plan_key)
+	var autonomy_gate := _classify_effect_attempt(
+		"monster_autonomy_plan",
+		plan_key,
+		plan_key,
+		native_replay,
+		"monster_autonomy_resolved",
+		"receipt.autonomy.%s" % plan_key.substr(0, 24),
+		plan_key
+	)
+	if not bool(autonomy_gate.get("accepted", false)):
+		return _failure(str(autonomy_gate.get(
+			"reason_code",
+			"monster_autonomy_effect_witness_rejected"
+		)), autonomy_gate)
+	if native_replay:
 		return {
 			"accepted": true,
 			"reason_code": "monster_autonomy_exact_once_replay",
@@ -841,35 +994,40 @@ func resolve_autonomy(public_facilities: Array) -> Dictionary:
 			)
 			if not bool(trample.get("accepted", false)):
 				return _failure("monster_trample_resolution_failed", trample)
-			var moved := MonsterSourceCore.commit_authoritative_movement(
-				_monster_state,
+			var movement_operation := (
+				MonsterSourceCore.build_movement_transition_operation(
 				"operation.%s" % str(movement.get("movement_id", "")),
 				source_id,
 				int(source.get("source_generation", 0)),
 				str(movement.get("destination_region_id", ""))
+				)
+			)
+			var moved := _commit_monster_transition_operation(
+				movement_operation,
+				"monster_transition"
 			)
 			if not bool(moved.get("accepted", false)):
 				return _failure("monster_movement_commit_failed", moved)
-			_monster_state = (moved.get("state", {}) as Dictionary).duplicate(true)
-			_processed_movement_ids[str(movement.get("movement_id", ""))] = true
-			_movement_count += 1
-			movement_receipts.append(movement.duplicate(true))
-			_record_receipt(
-				"monster_moved",
-				movement,
-				str(movement.get("movement_id", ""))
-			)
-			for region_variant in trample.get("region_receipts", []) as Array:
-				var region_receipt := region_variant as Dictionary
-				trample_receipts.append(region_receipt.duplicate(true))
-				_trample_region_receipt_count += 1
-			for intent_variant in trample.get(
-				"facility_damage_intents",
-				[]
-			) as Array:
-				var intent := (intent_variant as Dictionary).duplicate(true)
-				facility_intents.append(intent)
-				_count_trample_facility_type(intent, public_facilities)
+			if bool(moved.get("newly_committed", false)):
+				_processed_movement_ids[str(movement.get("movement_id", ""))] = true
+				_movement_count += 1
+				movement_receipts.append(movement.duplicate(true))
+				_record_receipt(
+					"monster_moved",
+					moved.get("receipt", {}) as Dictionary,
+					str(movement_operation.get("operation_id", ""))
+				)
+				for region_variant in trample.get("region_receipts", []) as Array:
+					var region_receipt := region_variant as Dictionary
+					trample_receipts.append(region_receipt.duplicate(true))
+					_trample_region_receipt_count += 1
+				for intent_variant in trample.get(
+					"facility_damage_intents",
+					[]
+				) as Array:
+					var intent := (intent_variant as Dictionary).duplicate(true)
+					facility_intents.append(intent)
+					_count_trample_facility_type(intent, public_facilities)
 		if bool(source_plan.get("reached_target_region", false)):
 			var attack := _build_basic_attack(source_plan, public_facilities)
 			if bool(attack.get("accepted", false)):
@@ -888,6 +1046,7 @@ func resolve_autonomy(public_facilities: Array) -> Dictionary:
 	if not bool(sync_result.get("accepted", false)):
 		return sync_result
 	_facility_damage_intent_count += facility_intents.size()
+	_commit_effect_witness(autonomy_gate)
 	_revision += 1
 	return {
 		"accepted": true,
@@ -910,31 +1069,59 @@ func apply_monster_damage_intent(intent: Dictionary) -> Dictionary:
 	var source := MonsterSourceCore.source_snapshot(_monster_state, source_id)
 	if source.is_empty():
 		return _failure("monster_damage_target_missing")
-	var result := MonsterSourceCore.commit_combat_damage(
-		_monster_state,
+	var operation := MonsterSourceCore.build_combat_damage_transition_operation(
 		"operation.%s" % str(intent.get("combat_receipt_id", "")),
 		source_id,
 		int(intent.get("expected_source_generation", 0)),
 		int(intent.get("damage_amount", 0))
 	)
-	if not bool(result.get("accepted", false)):
-		return _failure("monster_damage_commit_failed", result)
-	_monster_state = (result.get("state", {}) as Dictionary).duplicate(true)
-	var sync_result := _synchronize_skill_sources()
-	if not bool(sync_result.get("accepted", false)):
-		return sync_result
-	_monster_damage_commit_count += 1
-	var receipt := (result.get("receipt", {}) as Dictionary).duplicate(true)
-	_record_receipt(
-		"monster_damaged",
-		receipt,
-		str(receipt.get("receipt_id", ""))
+	var result := MonsterSourceCore.commit_runtime_transition(
+		_monster_state,
+		operation
 	)
-	_revision += 1
+	if not bool(result.get("accepted", false)):
+		_note_native_effect_rejection(result)
+		return _failure("monster_damage_commit_failed", result)
+	var receipt := (result.get("receipt", {}) as Dictionary).duplicate(true)
+	var native_replay := bool(result.get("idempotent_replay", false))
+	var effect_gate := _classify_effect_attempt(
+		"monster_transition",
+		str(operation.get("operation_id", "")),
+		str(intent.get("intent_fingerprint", "")),
+		native_replay,
+		str(operation.get("operation_kind", "")),
+		str(receipt.get("receipt_id", "")),
+		str(receipt.get("receipt_fingerprint", ""))
+	)
+	if not bool(effect_gate.get("accepted", false)):
+		return _failure(str(effect_gate.get(
+			"reason_code",
+			"monster_damage_effect_witness_rejected"
+		)), effect_gate)
+	var newly_committed := bool(effect_gate.get("newly_committed", false))
+	if newly_committed:
+		var previous_monster_state := _monster_state.duplicate(true)
+		var previous_skill_state := _skill_state.duplicate(true)
+		_monster_state = (result.get("state", {}) as Dictionary).duplicate(true)
+		var sync_result := _synchronize_skill_sources()
+		if not bool(sync_result.get("accepted", false)):
+			_monster_state = previous_monster_state
+			_skill_state = previous_skill_state
+			return sync_result
+		_commit_effect_witness(effect_gate)
+		_monster_damage_commit_count += 1
+		_record_receipt(
+			"monster_damaged",
+			receipt,
+			str(receipt.get("receipt_id", ""))
+		)
+		_revision += 1
 	return {
 		"accepted": true,
 		"reason_code": str(result.get("reason_code", "")),
 		"receipt": receipt,
+		"idempotent_replay": native_replay,
+		"newly_committed": newly_committed,
 	}
 
 
@@ -1109,21 +1296,17 @@ func _owner_skill_target_binding(
 					right.get("facility_id", "")
 				)
 			)
-			if not candidates.is_empty():
-				var tracked_candidate := _facility_by_id(
-					candidates,
-					facility_id
-				)
-				var selected := (
-					tracked_candidate
-					if not tracked_candidate.is_empty()
-					else candidates[0]
-				)
-				facility_id = str(selected.get("facility_id", ""))
-				region_id = str(selected.get("region_id", ""))
-				facility_generation = int(
-					selected.get("facility_generation", 0)
-				)
+			var tracked_candidate := _facility_by_id(
+				candidates,
+				facility_id
+			)
+			if tracked_candidate.is_empty():
+				return {}
+			facility_id = str(tracked_candidate.get("facility_id", ""))
+			region_id = str(tracked_candidate.get("region_id", ""))
+			facility_generation = int(
+				tracked_candidate.get("facility_generation", 0)
+			)
 		if (
 			facility_id.is_empty()
 			or region_id.is_empty()
@@ -1163,9 +1346,8 @@ func _owner_skill_target_binding(
 				):
 					candidate_regions.append(candidate_region)
 			candidate_regions.sort()
-			if not candidate_regions.is_empty():
-				if region_id not in candidate_regions:
-					region_id = candidate_regions[0]
+			if region_id not in candidate_regions:
+				return {}
 		if (
 			region_id.is_empty()
 			or not _target_in_skill_range(source, region_id, profile)
@@ -1177,34 +1359,11 @@ func _owner_skill_target_binding(
 			"target_region_id": region_id,
 		}
 	if target_kind == "enemy_public_monster":
-		var candidates: Array[Dictionary] = []
-		for monster_variant in public_monsters():
-			if not (monster_variant is Dictionary):
-				continue
-			var monster := monster_variant as Dictionary
-			if (
-				str(monster.get("owner_player_id", "")) != owner_player_id
-				and str(monster.get("status", "")) == "active"
-				and _target_in_skill_range(
-					source,
-					str(monster.get("region_id", "")),
-					profile
-				)
-			):
-				candidates.append(monster.duplicate(true))
-		candidates.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
-			return str(left.get("source_instance_id", "")) < str(
-				right.get("source_instance_id", "")
-			)
-		)
-		if candidates.is_empty():
-			return {}
-		var target := candidates[0]
-		return {
-			"target_kind": "monster",
-			"target_id": str(target.get("source_instance_id", "")),
-			"target_source_generation": int(target.get("source_generation", 0)),
-		}
+		# No authoritative enemy-monster identity is tracked on this source.
+		# Exposing the first legal public monster would turn display order into a
+		# gameplay decision, so this skill stays unavailable until a typed target
+		# selection supplies an exact id and generation.
+		return {}
 	return {}
 
 
@@ -1214,6 +1373,7 @@ func projection_authority_for_viewer(
 ) -> Dictionary:
 	return {
 		"phase": _phase,
+		"terminal_quiescence": terminal_quiescence_report(),
 		"public_monsters": public_monsters(),
 		"private_skill_zones_by_player": {
 			viewer_player_id: owner_private_skill_zone(viewer_player_id),
@@ -1248,6 +1408,10 @@ func debug_snapshot() -> Dictionary:
 	var privacy := MonsterSkillCore.public_projection_privacy_report(
 		MonsterSkillCore.public_projection(_skill_state)
 	)
+	var receipt_integrity := combat_receipt_integrity_report(
+		_combat_receipt_journal
+	)
+	var effect_integrity := _effect_witness_report()
 	return {
 		"schema": "V075CombatRuntimeDebugV1",
 		"ruleset_id": RULESET_ID,
@@ -1297,7 +1461,12 @@ func debug_snapshot() -> Dictionary:
 		"facility_damage_intent_count": _facility_damage_intent_count,
 		"monster_damage_commit_count": _monster_damage_commit_count,
 		"combat_receipt_count": _combat_receipt_journal.size(),
-		"combat_duplicate_effect_count": 0,
+		"combat_duplicate_effect_count": int(effect_integrity.get(
+			"violation_count",
+			-1
+		)),
+		"combat_effect_integrity": effect_integrity,
+		"combat_receipt_integrity": receipt_integrity,
 		"runtime_error_count": _runtime_error_count,
 		"old_monster_controller_production_reachable_count": 0,
 		"old_military_controller_production_reachable_count": 0,
@@ -1306,6 +1475,43 @@ func debug_snapshot() -> Dictionary:
 		),
 		"production_save_write_count": 0,
 		"save_owner_connected": false,
+	}
+
+
+static func combat_receipt_integrity_report(receipts: Array) -> Dictionary:
+	var fingerprints_by_id: Dictionary = {}
+	var duplicate_receipt_row_count := 0
+	var receipt_identity_collision_count := 0
+	var invalid_receipt_identity_count := 0
+	for receipt_variant in receipts:
+		if not (receipt_variant is Dictionary):
+			invalid_receipt_identity_count += 1
+			continue
+		var receipt := receipt_variant as Dictionary
+		var receipt_id := str(receipt.get("receipt_id", ""))
+		var fingerprint := str(receipt.get("receipt_fingerprint", ""))
+		if receipt_id.is_empty() or fingerprint.is_empty():
+			invalid_receipt_identity_count += 1
+			continue
+		if fingerprints_by_id.has(receipt_id):
+			if str(fingerprints_by_id.get(receipt_id, "")) == fingerprint:
+				duplicate_receipt_row_count += 1
+			else:
+				receipt_identity_collision_count += 1
+			continue
+		fingerprints_by_id[receipt_id] = fingerprint
+	return {
+		"schema": "V075CombatReceiptIntegrityV1",
+		"green": (
+			duplicate_receipt_row_count == 0
+			and receipt_identity_collision_count == 0
+			and invalid_receipt_identity_count == 0
+		),
+		"receipt_count": receipts.size(),
+		"unique_receipt_id_count": fingerprints_by_id.size(),
+		"duplicate_receipt_row_count": duplicate_receipt_row_count,
+		"receipt_identity_collision_count": receipt_identity_collision_count,
+		"invalid_receipt_identity_count": invalid_receipt_identity_count,
 	}
 
 
@@ -1465,43 +1671,84 @@ func _evaluate_private_skill(
 func _commit_evaluated_monster_effects(evaluation: Dictionary) -> Dictionary:
 	for effect_variant in evaluation.get("monster_damage_effects", []) as Array:
 		var effect := effect_variant as Dictionary
-		var result := MonsterSourceCore.commit_combat_damage(
-			_monster_state,
+		var operation := MonsterSourceCore.build_combat_damage_transition_operation(
 			str(effect.get("operation_id", "")),
 			str(effect.get("target_source_instance_id", "")),
 			int(effect.get("expected_source_generation", 0)),
 			int(effect.get("damage_amount", 0))
 		)
+		var result := _commit_monster_transition_operation(
+			operation,
+			"monster_transition"
+		)
 		if not bool(result.get("accepted", false)):
 			return _failure("private_skill_monster_damage_failed", result)
-		_monster_state = (result.get("state", {}) as Dictionary).duplicate(true)
-		_monster_damage_commit_count += 1
+		if bool(result.get("newly_committed", false)):
+			_monster_damage_commit_count += 1
 	for effect_variant in evaluation.get("self_effects", []) as Array:
 		var effect := effect_variant as Dictionary
-		var result: Dictionary
+		var operation: Dictionary
 		if str(effect.get("effect_kind", "")) == "self_heal":
-			result = MonsterSourceCore.commit_private_skill_self_heal(
-				_monster_state,
+			operation = MonsterSourceCore.build_private_skill_self_heal_operation(
 				str(effect.get("operation_id", "")),
 				str(effect.get("source_instance_id", "")),
 				int(effect.get("expected_source_generation", 0)),
 				int(effect.get("amount", 0))
 			)
 		else:
-			result = MonsterSourceCore.commit_private_skill_armor_gain(
-				_monster_state,
+			operation = MonsterSourceCore.build_private_skill_armor_gain_operation(
 				str(effect.get("operation_id", "")),
 				str(effect.get("source_instance_id", "")),
 				int(effect.get("expected_source_generation", 0)),
 				int(effect.get("amount", 0))
 			)
+		var result := _commit_monster_transition_operation(
+			operation,
+			"monster_transition"
+		)
 		if not bool(result.get("accepted", false)):
 			return _failure("private_skill_self_effect_failed", result)
-		_monster_state = (result.get("state", {}) as Dictionary).duplicate(true)
 	var sync_result := _synchronize_skill_sources()
 	if not bool(sync_result.get("accepted", false)):
 		return sync_result
 	return {"accepted": true, "reason_code": "private_skill_effects_committed"}
+
+
+func _commit_monster_transition_operation(
+	operation: Dictionary,
+	effect_domain: String
+) -> Dictionary:
+	var result := MonsterSourceCore.commit_runtime_transition(
+		_monster_state,
+		operation
+	)
+	if not bool(result.get("accepted", false)):
+		_note_native_effect_rejection(result)
+		return result
+	var receipt := (result.get("receipt", {}) as Dictionary).duplicate(true)
+	var native_replay := bool(result.get("idempotent_replay", false))
+	var effect_gate := _classify_effect_attempt(
+		effect_domain,
+		str(operation.get("operation_id", "")),
+		str(operation.get("operation_fingerprint", "")),
+		native_replay,
+		str(operation.get("operation_kind", "")),
+		str(receipt.get("receipt_id", "")),
+		str(receipt.get("receipt_fingerprint", ""))
+	)
+	if not bool(effect_gate.get("accepted", false)):
+		return effect_gate
+	var newly_committed := bool(effect_gate.get("newly_committed", false))
+	if newly_committed:
+		_monster_state = (result.get("state", {}) as Dictionary).duplicate(true)
+		_commit_effect_witness(effect_gate)
+	return {
+		"accepted": true,
+		"reason_code": str(result.get("reason_code", "")),
+		"receipt": receipt,
+		"idempotent_replay": native_replay,
+		"newly_committed": newly_committed,
+	}
 
 
 func _commit_detection_plan(
@@ -1514,8 +1761,7 @@ func _commit_detection_plan(
 		transition_kind = MonsterSourceCore.DETECTION_NO_TARGET_GROWTH
 	elif state_kind in ["hungry_tracking", "hungry_waiting"]:
 		transition_kind = MonsterSourceCore.DETECTION_HUNGRY_PLAN
-	var result := MonsterSourceCore.commit_detection_range_transition(
-		_monster_state,
+	var operation := MonsterSourceCore.build_detection_range_transition_operation(
 		"operation.detection.%s.%s" % [_batch_id, source.get("source_instance_id")],
 		str(source.get("source_instance_id", "")),
 		int(source.get("source_generation", 0)),
@@ -1525,9 +1771,12 @@ func _commit_detection_plan(
 			int(source.get("base_detection_range_hops", 0))
 		)
 	)
+	var result := _commit_monster_transition_operation(
+		operation,
+		"monster_transition"
+	)
 	if not bool(result.get("accepted", false)):
 		return _failure("monster_detection_commit_failed", result)
-	_monster_state = (result.get("state", {}) as Dictionary).duplicate(true)
 	return {"accepted": true, "reason_code": "monster_detection_committed"}
 
 
@@ -1761,6 +2010,149 @@ func _count_trample_facility_type(
 			_warehouse_trample_damage_count += 1
 
 
+func _classify_effect_attempt(
+	effect_domain: String,
+	authority_effect_id: String,
+	input_fingerprint: String,
+	native_replay: bool,
+	outcome_class: String,
+	receipt_id: String,
+	receipt_fingerprint: String
+) -> Dictionary:
+	_effect_attempt_count += 1
+	if (
+		effect_domain.is_empty()
+		or authority_effect_id.is_empty()
+		or input_fingerprint.is_empty()
+		or outcome_class.is_empty()
+	):
+		_effect_invalid_identity_count += 1
+		return {
+			"accepted": false,
+			"reason_code": "combat_effect_identity_invalid",
+		}
+	var witness_key := "%s|%s" % [effect_domain, authority_effect_id]
+	var prior := _effect_commit_witness.get(witness_key, {}) as Dictionary
+	if not prior.is_empty():
+		if str(prior.get("input_fingerprint", "")) != input_fingerprint:
+			_effect_identity_collision_count += 1
+			return {
+				"accepted": false,
+				"reason_code": "combat_effect_identity_collision",
+				"witness_key": witness_key,
+			}
+		if not native_replay:
+			# The independent witness survived while the native exact-once ledger
+			# did not. Accepting this candidate would apply the same authority
+			# effect twice, so fail before assigning any candidate state.
+			_effect_duplicate_commit_count += 1
+			return {
+				"accepted": false,
+				"reason_code": "combat_effect_native_ledger_divergence",
+				"witness_key": witness_key,
+			}
+		if (
+			(not receipt_id.is_empty()
+				and str(prior.get("receipt_id", "")) != receipt_id)
+			or (not receipt_fingerprint.is_empty()
+				and str(prior.get("receipt_fingerprint", ""))
+					!= receipt_fingerprint)
+		):
+			_effect_identity_collision_count += 1
+			return {
+				"accepted": false,
+				"reason_code": "combat_effect_replay_receipt_collision",
+				"witness_key": witness_key,
+			}
+		_effect_replay_count += 1
+		return {
+			"accepted": true,
+			"reason_code": "combat_effect_exact_once_replay",
+			"newly_committed": false,
+			"witness_key": witness_key,
+			"entry": prior.duplicate(true),
+		}
+	if native_replay:
+		_effect_orphan_replay_count += 1
+		return {
+			"accepted": false,
+			"reason_code": "combat_effect_witness_missing_for_native_replay",
+			"witness_key": witness_key,
+		}
+	return {
+		"accepted": true,
+		"reason_code": "combat_effect_first_commit_candidate",
+		"newly_committed": true,
+		"witness_key": witness_key,
+		"entry": {
+			"schema": EFFECT_WITNESS_SCHEMA,
+			"effect_domain": effect_domain,
+			"authority_effect_id": authority_effect_id,
+			"input_fingerprint": input_fingerprint,
+			"outcome_class": outcome_class,
+			"receipt_id": receipt_id,
+			"receipt_fingerprint": receipt_fingerprint,
+			"batch_id": _batch_id,
+		},
+	}
+
+
+func _note_native_effect_rejection(result: Dictionary) -> void:
+	var reason_code := str(result.get("reason_code", ""))
+	if "conflict" in reason_code or "collision" in reason_code:
+		_effect_identity_collision_count += 1
+
+
+func _commit_effect_witness(classification: Dictionary) -> void:
+	if not bool(classification.get("newly_committed", false)):
+		return
+	var witness_key := str(classification.get("witness_key", ""))
+	var entry := classification.get("entry", {}) as Dictionary
+	if witness_key.is_empty() or entry.is_empty():
+		_effect_invalid_identity_count += 1
+		return
+	_effect_commit_witness[witness_key] = entry.duplicate(true)
+
+
+func _effect_witness_report() -> Dictionary:
+	var invalid_entry_count := 0
+	for key_variant in _effect_commit_witness:
+		var key := str(key_variant)
+		var entry := _effect_commit_witness.get(key_variant, {}) as Dictionary
+		if (
+			entry.is_empty()
+			or str(entry.get("schema", "")) != EFFECT_WITNESS_SCHEMA
+			or "%s|%s" % [
+				str(entry.get("effect_domain", "")),
+				str(entry.get("authority_effect_id", "")),
+			] != key
+			or str(entry.get("input_fingerprint", "")).is_empty()
+			or str(entry.get("outcome_class", "")).is_empty()
+		):
+			invalid_entry_count += 1
+	var violation_count := (
+		_effect_duplicate_commit_count
+		+ _effect_identity_collision_count
+		+ _effect_orphan_replay_count
+		+ _effect_invalid_identity_count
+		+ invalid_entry_count
+	)
+	return {
+		"schema": "V075CombatEffectIntegrityV1",
+		"green": violation_count == 0,
+		"scope": "combat_owner_authority_mutations_and_facility_intent_issuance",
+		"attempt_count": _effect_attempt_count,
+		"commit_witness_count": _effect_commit_witness.size(),
+		"replay_count": _effect_replay_count,
+		"duplicate_commit_count": _effect_duplicate_commit_count,
+		"identity_collision_count": _effect_identity_collision_count,
+		"orphan_replay_count": _effect_orphan_replay_count,
+		"invalid_identity_count": _effect_invalid_identity_count,
+		"invalid_witness_entry_count": invalid_entry_count,
+		"violation_count": violation_count,
+	}
+
+
 func _record_receipt(
 	event_kind: String,
 	payload: Dictionary,
@@ -1794,6 +2186,7 @@ func _checkpoint_state() -> Dictionary:
 		"lineage_id": _lineage_id,
 		"revision": _revision,
 		"receipt_journal": _combat_receipt_journal.duplicate(true),
+		"effect_commit_witness": _effect_commit_witness.duplicate(true),
 		"initialized": _initialized,
 		"player_ids": _player_ids.duplicate(),
 		"phase": _phase,
@@ -1836,6 +2229,9 @@ func _restore_checkpoint_state(state: Dictionary) -> void:
 	_lineage_id = str(state.get("lineage_id", ""))
 	_revision = int(state.get("revision", 0))
 	_combat_receipt_journal = (state.get("receipt_journal", []) as Array).duplicate(true)
+	_effect_commit_witness = (
+		state.get("effect_commit_witness", {}) as Dictionary
+	).duplicate(true)
 	_initialized = bool(state.get("initialized", false))
 	_player_ids.assign(state.get("player_ids", []) as Array)
 	_phase = str(state.get("phase", "idle"))
@@ -1925,6 +2321,7 @@ func _reset_runtime_state() -> void:
 	_processed_movement_ids = {}
 	_processed_autonomy_plans = {}
 	_combat_receipt_journal = []
+	_effect_commit_witness = {}
 	_last_autonomy_plan = {}
 	_tracked_targets_by_source = {}
 	_public_results = []
@@ -1954,6 +2351,12 @@ func _reset_runtime_state() -> void:
 	_facility_damage_intent_count = 0
 	_monster_damage_commit_count = 0
 	_runtime_error_count = 0
+	_effect_attempt_count = 0
+	_effect_replay_count = 0
+	_effect_duplicate_commit_count = 0
+	_effect_identity_collision_count = 0
+	_effect_orphan_replay_count = 0
+	_effect_invalid_identity_count = 0
 
 
 func _failure(
