@@ -9196,12 +9196,35 @@ deleted. Evidence and the remaining action inventory are recorded in
   state. The inherited six Unicode diagnostics were traced to the sole
   production `"\\u0000"` GDScript sentinel and removed with an exact missing-key
   check. Raw decoding is `6/6`, failure detection is `9/9`, import-mode handling
-  is `5/5`, and the final focused matrix is `29/29` with zero diagnostics and
-  eight natural combat actions.
+  is `5/5`, and the latest dirty-worktree focused preflight is `30/30` with
+  zero diagnostics and eight natural combat actions.
 - Added a bounded Windows PR workflow pinned to Godot 4.7 and a fixed checkout
   action. It exercises runner negative controls plus check-only, stale-target,
-  identity, privacy, exact-once, UI/visual, geometry, and seven-viewport gates.
+  identity, privacy, exact-once, UI/visual, geometry, seven-viewport, headed
+  driver parse-only, and one-match production-simulation gates. Simulation
+  reports now bind the exact source SHA plus a dynamic four-component harness
+  fingerprint; missing/mismatched source, tampered reports, duplicate jobs or
+  seeds, schema errors, and any zero-counter violation structurally block the
+  aggregate before coverage can be considered. The bounded one-match preflight
+  passes `28/28` report-contract checks with zero diagnostics.
+- Added a standalone headed evidence path that preserves the production
+  `canvas_items/expand` coordinate spaces while using physical `Window.size`
+  for responsive breakpoints. The dirty-worktree preflight passes all three
+  requested client sizes (`1366x768`, `1600x960`, `1920x1080`), with exact
+  Godot Window/DisplayServer, pre/post Win32 client, original PNG IHDR, PID,
+  HWND, nonce, ready-SHA, and capture-hash binding. Twelve adversarial
+  wrong-size/SHA/nonce controls are detected, all three PNG hashes differ, and
+  manual visual review found the combat panel, four private skills, two typed
+  military selections, text, and resources readable without obvious overlap
+  or rival-private leakage. This remains disclosed presentation staging and is
+  not natural-gameplay or exact-SHA evidence.
+- Reworked the MCP closure runbook to use the PR merge base, live remote SHA,
+  strict MCP `isError`, per-scene path/tree checks, main-play/runtime-ready and
+  zero-diagnostic gates, plus PID/executable/creation-time/command-line/port
+  ownership on launch and clean stop. Embedded fixed-size captures are
+  diagnostic only; the external headed images are the three-size authority.
   The old five-match simulation files are explicitly historical PARTIAL
-  evidence. Formal 2,000-match simulation, exact-SHA MCP, three desktop-size
-  captures, and the Ready transition remain external post-freeze gates and are
-  intentionally not claimed by this tracked log entry.
+  evidence. Final-SHA GitHub workflow/checks, formal 2,000-match simulation,
+  exact-SHA MCP, three desktop-size captures, and the Ready transition remain
+  external post-freeze gates and are intentionally not claimed by this tracked
+  log entry.
