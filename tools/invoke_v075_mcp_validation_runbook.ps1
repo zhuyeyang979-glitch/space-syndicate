@@ -40,7 +40,11 @@ function Get-RunnerFileSha256 {
 }
 
 function Get-RunnerCanonicalSha256Hex {
-    param([Parameter(Mandatory = $true)][byte[]]$Bytes)
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [byte[]]$Bytes
+    )
     return [Convert]::ToHexString(
         [Security.Cryptography.SHA256]::HashData($Bytes)
     ).ToLowerInvariant()
@@ -135,6 +139,52 @@ function Get-RunnerCanonicalFileMapSha256 {
     return Get-RunnerCanonicalSha256Hex -Bytes $bytes
 }
 
+function Get-RunnerHeadBlobContentSha256 {
+    param(
+        [Parameter(Mandatory = $true)][string]$Root,
+        [Parameter(Mandatory = $true)][string]$RelativePath
+    )
+    if ([IO.Path]::IsPathRooted($RelativePath) `
+        -or $RelativePath.Contains("\") `
+        -or $RelativePath.Contains("..")) {
+        throw "Invalid HEAD blob path: $RelativePath"
+    }
+    $info = [Diagnostics.ProcessStartInfo]::new()
+    $info.FileName = (Get-Command git -ErrorAction Stop).Source
+    $info.UseShellExecute = $false
+    $info.CreateNoWindow = $true
+    $info.RedirectStandardOutput = $true
+    $info.RedirectStandardError = $true
+    foreach ($argument in @(
+        "-C",
+        [IO.Path]::GetFullPath($Root),
+        "cat-file",
+        "blob",
+        "HEAD:$RelativePath"
+    )) {
+        $info.ArgumentList.Add([string]$argument)
+    }
+    $process = [Diagnostics.Process]::new()
+    $process.StartInfo = $info
+    $stream = [IO.MemoryStream]::new()
+    try {
+        if (-not $process.Start()) {
+            throw "Failed to start git cat-file for: $RelativePath"
+        }
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        $process.StandardOutput.BaseStream.CopyTo($stream)
+        $process.WaitForExit()
+        $stderr = $stderrTask.GetAwaiter().GetResult()
+        if ($process.ExitCode -ne 0) {
+            throw "git cat-file failed for $RelativePath`: $stderr"
+        }
+        return Get-RunnerCanonicalSha256Hex -Bytes $stream.ToArray()
+    } finally {
+        $stream.Dispose()
+        $process.Dispose()
+    }
+}
+
 function Get-RunnerCanonicalImportAuthority {
     $paths = [string[]]@(
         'assets/third_party/commercial/materials/ambientcg/MetalPlates013/MetalPlates013_1K-JPG_AmbientOcclusion.jpg.import'
@@ -195,13 +245,177 @@ function Get-RunnerCanonicalImportAuthority {
         'assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png.import'
         'assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png.import'
     )
+    $generatedContentSha256ByPath = [ordered]@{
+        'assets/third_party/commercial/materials/ambientcg/MetalPlates013/MetalPlates013_1K-JPG_AmbientOcclusion.jpg.import' = '4da7221717b4f2752966c9723cf0cbd42838a800603ef876cc766d4926ea80ec'
+        'assets/third_party/commercial/materials/ambientcg/MetalPlates013/MetalPlates013_1K-JPG_Color.jpg.import' = '1c64d1fedd928b361a68a850d56d6afc750a65717ea78f2cfd66bdb338a732e0'
+        'assets/third_party/commercial/materials/ambientcg/MetalPlates013/MetalPlates013_1K-JPG_Metalness.jpg.import' = '855ec517b36278ec33a191c620e6178c51c4e8bbfb3d1d5980cb17b42d031a43'
+        'assets/third_party/commercial/materials/ambientcg/MetalPlates013/MetalPlates013_1K-JPG_NormalGL.jpg.import' = '42167f6a88401570a8ca3e80516afdc787fe9b8cdf90cc8153f30fb46618271d'
+        'assets/third_party/commercial/materials/ambientcg/MetalPlates013/MetalPlates013_1K-JPG_Roughness.jpg.import' = '34e427a4c5672a64c2de0e6437d9f49fda4b05e52c5e4f374c5a6f618da67eb7'
+        'assets/third_party/commercial/materials/ambientcg/NightSkyHDRI001/NightSkyHDRI001_2K_HDR.exr.import' = 'ef64adb100afff0f87ddd8539e3222b40670fb46d8f30cb28a66f26161402569'
+        'assets/third_party/commercial/materials/ambientcg/PaintedMetal007/PaintedMetal007_1K-JPG_AmbientOcclusion.jpg.import' = 'b4bbd8b055b17bb794503da1a92033e6a8f2d63de7da4e1df90fc74ae5f50675'
+        'assets/third_party/commercial/materials/ambientcg/PaintedMetal007/PaintedMetal007_1K-JPG_Color.jpg.import' = '32466ca5887b05066e7380c24d7cdfe1396b0d81602273ca7f0fa07cb55996c8'
+        'assets/third_party/commercial/materials/ambientcg/PaintedMetal007/PaintedMetal007_1K-JPG_Metalness.jpg.import' = '1cd1128832bc0d7c9986a8e121027aad57ccf2a5ce24d877fce188b4221101a0'
+        'assets/third_party/commercial/materials/ambientcg/PaintedMetal007/PaintedMetal007_1K-JPG_NormalGL.jpg.import' = '828e3c9753301fc6c56c5baf1cf23210ff2715401f4a60ef2a2f9b4c8ed50ab3'
+        'assets/third_party/commercial/materials/ambientcg/PaintedMetal007/PaintedMetal007_1K-JPG_Roughness.jpg.import' = '579f640a75ffc2dd42db5804c834287facbcfca202e66f604f426e423cfd123d'
+        'assets/third_party/commercial/materials/ambientcg/SheetMetal003/SheetMetal003_1K-JPG_Color.jpg.import' = '1f799d917333c01d91eae55eb5e025b8fd64f60caae5af4ecddce5b519d89370'
+        'assets/third_party/commercial/materials/ambientcg/SheetMetal003/SheetMetal003_1K-JPG_Metalness.jpg.import' = '75fedd705a1e564e7a6395aa27cb6360ffe896ff872f447c4e32e4c6a38cb6e4'
+        'assets/third_party/commercial/materials/ambientcg/SheetMetal003/SheetMetal003_1K-JPG_NormalGL.jpg.import' = '13139de3a6cdf08a7d05ec528e6298f0263e7be8424e55f1dd5b3a6887126088'
+        'assets/third_party/commercial/materials/ambientcg/SheetMetal003/SheetMetal003_1K-JPG_Roughness.jpg.import' = 'a1fdf1e043ad821d9817f263f9db564205cbf61cf1321c5b67f72b57dbfb7cb4'
+        'assets/third_party/commercial/models/quaternius/animated_mech/gltf/George_George_Texture.png.import' = '710df2f2c329393627e3f627fce3361abead9fd48bb0300e1b0d02698ed7f819'
+        'assets/third_party/commercial/models/quaternius/animated_mech/gltf/Leela_Leela_Texture.png.import' = 'dae8fb42e4fded9d0367f198fb830bae8600528b4684d52f37cb5cacce4eeea6'
+        'assets/third_party/commercial/models/quaternius/animated_mech/gltf/Mike_Mike_Texture.png.import' = 'ffc01746ec02897688de436f6a909c51b2c21ead416a67a462ef5a1acbb7a856'
+        'assets/third_party/commercial/models/quaternius/animated_mech/gltf/Stan_Stan_Texture.png.import' = '36b0127588095950aada28871bb9c906c90780e956b889e5551b347125981e2c'
+        'assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Decals.png.import' = 'fe4d29a59a20ac3b71f714ba9a2acab35e448d6290ddd430a2322025b3e14499'
+        'assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_BaseColor.png.import' = 'd5dc1c3c7a894918fc8c447ba6b56f60bb819b0494c0c66b76e21638991aa06b'
+        'assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_Normal.png.import' = 'eefdbbc6d6e5bbd1ea80d457c4ed4d304a5f53b73356ffe03050dbbaaed8bb7f'
+        'assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_PaddedWall_ORM.png.import' = '85783ede15e2f9e6f92db8b619e1227767c3fd0d9b17605f772f54389f6ef7e1'
+        'assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_BaseColor_Red.png.import' = '0c143e5527eb56e05063818baa6eda2aca818d5a24823362afedceb295c5095c'
+        'assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_Normal.png.import' = '2a7d9155e22f7105613d9bd9ef30a632af93e53326e3caf687ac7ea469f12a70'
+        'assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_01_ORM.png.import' = '87b24ef48119b1f873c3af2643c58cc7555007605a9aec65702a82b1fd21aaa5'
+        'assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_BaseColor_Red.png.import' = '51db96ffb2e5800f180cbbf739c7acea445b29bf175ae08ee4dd3071f0562fd5'
+        'assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_Normal.png.import' = 'c829723147ee4fb90759877003244699674a0108278c062bf9b05de06cad6daf'
+        'assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_02_ORM.png.import' = '123a78b207e2db47af2505d01d6a8992065a96e494ac30ea9f9cda94893a0c0f'
+        'assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_BaseColor.png.import' = 'd406cf401ad4f8153aa9886b48e4feba47961f10d52f4035e971bc8d3afcfc5e'
+        'assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_Normal.png.import' = '1801e31f0764353dd52a6ea21610daa6969bd2b958c7f37219c6b8d4e200c26e'
+        'assets/third_party/commercial/models/quaternius/modular_scifi_megakit/gltf/T_Trim_03_ORM.png.import' = '1eed4872a6cfdb93346f9b03ad8d6e146be9ec5e215a836446dcecc05b2948d3'
+        'assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_BaseColor_png.png.import' = '12b2d91fdeabbe0eadbe3f3086b97e1819fc553197a44b79b9ee37871343bbab'
+        'assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_Normal.png.import' = '589640efe20d38c394f153d676cbbe6e3b52702a08c4751140c568f9522cc27e'
+        'assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Enemies_ORM.png.import' = 'c8919b8e2862233dd272be6b4281cca0e480aba4b0f244669be94151692f4f0d'
+        'assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_BaseColor.png.import' = '01dea3d2eeeb8bc71d5831b6cffc69f957b8ed7cc6da4afd23a5dbcc1e7f7b06'
+        'assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_Normal.png.import' = '38644404d665febcac0da7ea6002d06c488fd95f928c65690c149c235cdfef47'
+        'assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Props_Crates_ORM.png.import' = '6d63f858e7347945f5c81d154a908e8e91cc2b2c6bfa50f5f79c92464990c0aa'
+        'assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_BaseColor_Red.png.import' = 'e6a7f835b15ed715e7d042b8bd6e5a9bcb8836047c195010690358e5ed0dfdba'
+        'assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_Normal.png.import' = 'de79ddbc772804b3630adaf36f732c022297bf95c6ebddff116e8a32143e1cb7'
+        'assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_01_ORM.png.import' = '795f3db32c11954ad36e0483fc2fd74782c3caba6a5620b78afb57f6208b1054'
+        'assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_BaseColor_Red.png.import' = 'd0f2a5a7e509d34aacb87621cd4ad6f890d21adc90f62c110d17e21c066337e3'
+        'assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_Normal.png.import' = '361e6a1a180bbc26c294508d6f3100b76d81ab080ad56e2329f8ecdb415214d5'
+        'assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_02_ORM.png.import' = '45b3b0852af2462e2a59fd059d208f6f1b6daf12666f6d965fba5d33c8240881'
+        'assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_BaseColor.png.import' = '36d5da1f783b1f47b17609ceadf37d13a624d111b6d6bd964c0dce8288eb33db'
+        'assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Cables.png.import' = '2db3a228258258563d52bec86632e6f6c595570dd7eac91f7d3569c7e4034def'
+        'assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_Normal.png.import' = '261d7637b2288ebaae313f680c2cd1473aa0933bec60ecb3dcac0fbb7d21b275'
+        'assets/third_party/commercial/models/quaternius/scifi_essentials/gltf/T_Trim_03_ORM.png.import' = 'e93a5f31f8a70e5358e6275eec047aed353ab0425313555016b3c6961b8cb103'
+        'assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Armabee_Evolved_Atlas_Monsters.png.import' = '5095073679387537b659f827e7cfff960df3c08fd9adf8d1c423f0156a36ba3f'
+        'assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Dragon_Evolved_Atlas_Monsters.png.import' = 'dd040690debfe6564b5b656f38b6fc9f5df2fcca9e71a012d0b966002c32dc58'
+        'assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Ghost_Skull_Atlas_Monsters.png.import' = '4cf874f7f97a33da640cee933c8d5b030bf5382b0ef1535c4e6d2a3f1c23b008'
+        'assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Monkroose_Atlas_Monsters.png.import' = 'af8d6b31932d40813ac6c0795c8c402019104cb5908086a57b6a53b0cedc76df'
+        'assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Orc_Skull_Atlas_Monsters.png.import' = '199524f4d17e82980a4a7307186a2d1cce98d1abae6a84f2d82355c4f9b54ec4'
+        'assets/third_party/commercial/models/quaternius/ultimate_monsters/gltf/Squidle_Atlas_Monsters.png.import' = 'ccbc0a572fe1bf0fd455233e8eec63658efec67cda83e01240eb287450d9b1eb'
+        'assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Omen_Omen_Orange.png.import' = '7557c54d8e0f2ab863b8d3f5dddeb531cc0387cbda10b4e7e7e86bc127eda476'
+        'assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Pancake_Pancake_Orange.png.import' = '211d4b620782e02c6c8775d08b2b6add295809a6c54a6f3d4f0374ecf6b33e5d'
+        'assets/third_party/commercial/models/quaternius/ultimate_spaceships/gltf/Striker_Striker_Orange.png.import' = 'fbdf14b646ffd340094cc08699e05f06d2a8c98bb58d5108acc052578781dd7a'
+    }
     return [pscustomobject][ordered]@{
         schema = "SpaceSyndicateCanonicalImportChurnV1"
         expected_count = 57
         path_set_sha256 = "07f42abff08810ffd90a52434907d2b534f9d251cb6f28f0d7ae6c71aa82e92e"
         baseline_map_sha256 = "5cab13bdea7341a8d90feec19c1b0d4a17d286ca5fb7ee7d43445855a8d6bd0f"
         generated_map_sha256 = "e06f20ca88d54b40f7350744814e8f9e2d7714585e2172aed317c51ebca5a315"
+        generated_content_sha256_by_path = $generatedContentSha256ByPath
         paths = $paths
+    }
+}
+
+function Test-RunnerCanonicalImportState {
+    param(
+        [Parameter(Mandatory = $true)][object]$CandidateMap,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [string[]]$ReportedPaths,
+        [Parameter(Mandatory = $true)][object[]]$CurrentRows
+    )
+    $issues = [Collections.Generic.List[string]]::new()
+    $candidatePaths = [string[]]@($CandidateMap.Keys)
+    [Array]::Sort($candidatePaths, [StringComparer]::Ordinal)
+    $currentByPath = [Collections.Generic.Dictionary[string,string]]::new(
+        [StringComparer]::Ordinal
+    )
+    foreach ($row in @($CurrentRows)) {
+        if ($null -eq $row) {
+            $issues.Add("current_row_null")
+            continue
+        }
+        $pathProperty = $row.PSObject.Properties["path"]
+        $shaProperty = $row.PSObject.Properties["content_sha256"]
+        if ($null -eq $pathProperty -or $null -eq $shaProperty) {
+            $issues.Add("current_row_schema_invalid")
+            continue
+        }
+        $path = [string]$pathProperty.Value
+        $sha = [string]$shaProperty.Value
+        if ([string]::IsNullOrWhiteSpace($path) `
+            -or -not [regex]::IsMatch($sha, "\A[0-9a-f]{64}\z") `
+            -or $currentByPath.ContainsKey($path)) {
+            $issues.Add("current_row_identity_invalid:$path")
+            continue
+        }
+        $currentByPath.Add($path, $sha)
+    }
+    $reportedSet = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal
+    )
+    foreach ($path in @($ReportedPaths)) {
+        if ([string]::IsNullOrWhiteSpace($path) `
+            -or -not $reportedSet.Add($path)) {
+            $issues.Add("reported_path_invalid_or_duplicate:$path")
+            continue
+        }
+        if (-not $CandidateMap.ContainsKey($path)) {
+            $issues.Add("reported_path_unknown:$path")
+        }
+    }
+    if ($candidatePaths.Count -eq 0 `
+        -or $currentByPath.Count -ne $candidatePaths.Count) {
+        $issues.Add("current_closed_set_count_invalid")
+    }
+    foreach ($path in $currentByPath.Keys) {
+        if (-not $CandidateMap.ContainsKey($path)) {
+            $issues.Add("current_path_unknown:$path")
+        }
+    }
+    foreach ($path in $candidatePaths) {
+        $candidate = $CandidateMap[$path]
+        $baseline = [string]$candidate.baseline_content_sha256
+        $generated = [string]$candidate.generated_content_sha256
+        if (-not [regex]::IsMatch($baseline, "\A[0-9a-f]{64}\z") `
+            -or -not [regex]::IsMatch($generated, "\A[0-9a-f]{64}\z")) {
+            $issues.Add("candidate_hash_invalid:$path")
+            continue
+        }
+        if (-not $currentByPath.ContainsKey($path)) {
+            $issues.Add("current_path_missing:$path")
+            continue
+        }
+        $expected = if ($reportedSet.Contains($path)) {
+            $generated
+        } else {
+            $baseline
+        }
+        if ($currentByPath[$path] -cne $expected) {
+            $issues.Add("current_content_mismatch:$path")
+        }
+    }
+    $green = $issues.Count -eq 0
+    $state = "INVALID_PARTIAL_UNKNOWN_OR_TAMPERED"
+    $safePaths = [string[]]@()
+    if ($green) {
+        $safePaths = [string[]]@($reportedSet)
+        [Array]::Sort($safePaths, [StringComparer]::Ordinal)
+        if ($safePaths.Count -eq 0) {
+            $state = "HEAD_CLEAN"
+        } elseif ($safePaths.Count -eq $candidatePaths.Count) {
+            $state = "CANONICAL_GENERATED_57"
+        } else {
+            $state = "CANONICAL_GENERATED_SUBSET"
+        }
+    }
+    return [pscustomobject][ordered]@{
+        green = $green
+        state = $state
+        authority_count = $candidatePaths.Count
+        reported_count = $reportedSet.Count
+        current_count = $currentByPath.Count
+        safe_paths = $safePaths
+        issues = @($issues)
     }
 }
 
@@ -928,6 +1142,8 @@ function Invoke-RunnerTransientFailureCleanup {
         cached_drift = @()
         safe_import_cleanup = @()
         safe_uid_cleanup = @()
+        unsafe_import = @()
+        unsafe_uid = @()
         unsafe_allowlisted = @()
         unknown_tracked_drift = @()
         unknown_untracked_drift = @()
@@ -942,6 +1158,8 @@ function Invoke-RunnerTransientFailureCleanup {
         cleanup_green = $false
     }
     $observationOnlyReasons = [Collections.Generic.List[string]]::new()
+    $unsafeImportRows = [Collections.Generic.List[object]]::new()
+    $unsafeUidRows = [Collections.Generic.List[object]]::new()
     $unsafeAllowlisted = [Collections.Generic.List[object]]::new()
     $safeImportRows = [Collections.Generic.List[object]]::new()
     $safeUidRows = [Collections.Generic.List[object]]::new()
@@ -1063,19 +1281,21 @@ function Invoke-RunnerTransientFailureCleanup {
                     }
                     $authorityImportRows = [string[]]@(
                         $authorityImportMap.Values | ForEach-Object {
-                            "{0}|{1}|{2}" -f @(
+                            "{0}|{1}|{2}|{3}" -f @(
                                 [string]$_.path,
                                 [string]$_.head_blob_sha,
-                                [string]$_.baseline_content_sha256
+                                [string]$_.baseline_content_sha256,
+                                [string]$_.generated_content_sha256
                             )
                         }
                     )
                     $memoryImportRows = [string[]]@(
                         $inMemoryImportMap.Values | ForEach-Object {
-                            "{0}|{1}|{2}" -f @(
+                            "{0}|{1}|{2}|{3}" -f @(
                                 [string]$_.path,
                                 [string]$_.head_blob_sha,
-                                [string]$_.baseline_content_sha256
+                                [string]$_.baseline_content_sha256,
+                                [string]$_.generated_content_sha256
                             )
                         }
                     )
@@ -1137,71 +1357,61 @@ function Invoke-RunnerTransientFailureCleanup {
     $result.unknown_tracked_drift = @($unknownTracked)
     $canonicalImportAuthority = Get-RunnerCanonicalImportAuthority
     $canonicalImportPaths = [string[]]@($canonicalImportAuthority.paths)
-    $importState = "HEAD_CLEAN"
-    if ($trackedRows.Count -eq 0) {
-        try {
-            $cleanMapSha = Get-RunnerCanonicalFileMapSha256 `
+    $importState = "INVALID_PARTIAL_UNKNOWN_OR_TAMPERED"
+    try {
+        $currentCanonicalImportRows = [Collections.Generic.List[object]]::new()
+        foreach ($relativePath in $canonicalImportPaths) {
+            $absolutePath = Resolve-CleanupChildPath `
                 -Root $Worktree `
-                -Paths $canonicalImportPaths
-            if ($cleanMapSha -cne [string]$canonicalImportAuthority.baseline_map_sha256) {
-                throw "canonical baseline map changed without reported drift"
+                -RelativePath $relativePath
+            if (-not (Test-Path -LiteralPath $absolutePath -PathType Leaf)) {
+                throw "canonical import file is missing: $relativePath"
             }
-        } catch {
-            $importState = "INVALID_PARTIAL_UNKNOWN_OR_TAMPERED"
-            $observationOnlyReasons.Add("canonical_import_baseline_invalid")
-            $unsafeAllowlisted.Add([pscustomobject]@{
-                path = "<canonical-import-set>"
-                kind = "tracked_import"
-                reason = $_.Exception.Message
+            $currentCanonicalImportRows.Add([pscustomobject]@{
+                path = $relativePath
+                content_sha256 = Get-RunnerFileSha256 $absolutePath
             })
         }
-    } else {
-        try {
-            if ($unknownTracked.Count -ne 0 `
-                -or $trackedRows.Count -ne [int]$canonicalImportAuthority.expected_count `
-                -or (Get-RunnerCanonicalPathSetSha256 -Paths $trackedRows) `
-                    -cne [string]$canonicalImportAuthority.path_set_sha256) {
-                throw "tracked drift is not the complete canonical 57-path set"
-            }
-            $generatedMapSha = Get-RunnerCanonicalFileMapSha256 `
-                -Root $Worktree `
-                -Paths $canonicalImportPaths
-            if ($generatedMapSha `
-                -cne [string]$canonicalImportAuthority.generated_map_sha256) {
-                throw "tracked import bytes are not the canonical generated state"
-            }
-            foreach ($relativePath in $canonicalImportPaths) {
-                $candidate = $authorityImportMap[$relativePath]
-                $headBlobRows = @(Invoke-RunnerGit -Root $Worktree -Arguments @(
-                    "rev-parse", "--verify", "$frozenHead`:$relativePath"
-                ))
-                $absolutePath = Resolve-CleanupChildPath `
-                    -Root $Worktree `
-                    -RelativePath $relativePath
-                if ($null -eq $candidate `
-                    -or $headBlobRows.Count -ne 1 `
-                    -or $headBlobRows[0].Trim() `
-                        -cne [string]$candidate.head_blob_sha) {
-                    throw "canonical import HEAD identity changed: $relativePath"
-                }
-                $safeImportRows.Add([pscustomobject]@{
-                    path = $relativePath
-                    before_sha256 = [string]$candidate.baseline_content_sha256
-                    observed_sha256 = Get-RunnerFileSha256 $absolutePath
-                    candidate = $candidate
-                })
-            }
-            $importState = "CANONICAL_GENERATED_57"
-        } catch {
-            $importState = "INVALID_PARTIAL_UNKNOWN_OR_TAMPERED"
-            $observationOnlyReasons.Add("canonical_import_state_invalid")
-            $unsafeAllowlisted.Add([pscustomobject]@{
-                path = "<canonical-import-set>"
-                kind = "tracked_import"
-                reason = $_.Exception.Message
-            })
-            $safeImportRows.Clear()
+        $importAssessment = Test-RunnerCanonicalImportState `
+            -CandidateMap $authorityImportMap `
+            -ReportedPaths ([string[]]$trackedRows) `
+            -CurrentRows ([object[]]$currentCanonicalImportRows.ToArray())
+        if (-not [bool]$importAssessment.green) {
+            throw "canonical import state rejected: $($importAssessment.issues -join ',')"
         }
+        $importState = [string]$importAssessment.state
+        foreach ($relativePath in [string[]]@($importAssessment.safe_paths)) {
+            $candidate = $authorityImportMap[$relativePath]
+            $headBlobRows = @(Invoke-RunnerGit -Root $Worktree -Arguments @(
+                "rev-parse", "--verify", "$frozenHead`:$relativePath"
+            ))
+            $absolutePath = Resolve-CleanupChildPath `
+                -Root $Worktree `
+                -RelativePath $relativePath
+            if ($null -eq $candidate `
+                -or $headBlobRows.Count -ne 1 `
+                -or $headBlobRows[0].Trim() `
+                    -cne [string]$candidate.head_blob_sha) {
+                throw "canonical import HEAD identity changed: $relativePath"
+            }
+            $safeImportRows.Add([pscustomobject]@{
+                path = $relativePath
+                before_sha256 = [string]$candidate.baseline_content_sha256
+                observed_sha256 = Get-RunnerFileSha256 $absolutePath
+                candidate = $candidate
+            })
+        }
+    } catch {
+        $importState = "INVALID_PARTIAL_UNKNOWN_OR_TAMPERED"
+        $observationOnlyReasons.Add("canonical_import_state_invalid")
+        $unsafeImportRow = [pscustomobject]@{
+            path = "<canonical-import-set>"
+            kind = "tracked_import"
+            reason = $_.Exception.Message
+        }
+        $unsafeImportRows.Add($unsafeImportRow)
+        $unsafeAllowlisted.Add($unsafeImportRow)
+        $safeImportRows.Clear()
     }
     if ($unknownTracked.Count -ne 0) {
         $observationOnlyReasons.Add("unknown_tracked_drift")
@@ -1289,14 +1499,16 @@ function Invoke-RunnerTransientFailureCleanup {
                         absolute_path = $absoluteUidPath
                     })
                 } catch {
-                    $unsafeAllowlisted.Add([pscustomobject]@{
+                    $unsafeUidRow = [pscustomobject]@{
                         path = $relativePath
                         kind = "generated_uid"
                         reason = $_.Exception.Message
-                    })
+                    }
+                    $unsafeUidRows.Add($unsafeUidRow)
+                    $unsafeAllowlisted.Add($unsafeUidRow)
                 }
             }
-            if ($unsafeAllowlisted.Count -eq 0 `
+            if ($unsafeUidRows.Count -eq 0 `
                 -and $validUidRows.Count -eq $authorityUidMap.Count) {
                 foreach ($row in $validUidRows) { $safeUidRows.Add($row) }
                 $uidState = "EXACT_EXTERNAL_ALLOWLIST"
@@ -1388,6 +1600,8 @@ function Invoke-RunnerTransientFailureCleanup {
                 generated_uid_missing_paths = @($missingUidPaths)
                 safe_import_candidates = @($safeImportRows)
                 safe_uid_candidates = @($safeUidRows)
+                unsafe_import = @($unsafeImportRows)
+                unsafe_uid = @($unsafeUidRows)
                 unsafe_allowlisted = @($unsafeAllowlisted)
                 unknown_tracked_drift = @($unknownTracked)
                 unknown_untracked_drift = @($unknownUntracked)
@@ -1466,6 +1680,8 @@ function Invoke-RunnerTransientFailureCleanup {
             }
         }
     }
+    $result.unsafe_import = @($unsafeImportRows)
+    $result.unsafe_uid = @($unsafeUidRows)
     $result.unsafe_allowlisted = @($unsafeAllowlisted)
     if ($unsafeAllowlisted.Count -ne 0) {
         $Issues.Add("Unsafe allowlisted drift was preserved and remains acceptance-red.")
@@ -1522,8 +1738,9 @@ function Invoke-RunnerTransientFailureCleanup {
         $finalUnexpectedIgnoredUidRows
     )
     $expectedImportCleanupCount = if (
-        $importState -ceq "CANONICAL_GENERATED_57"
-    ) { [int]$canonicalImportAuthority.expected_count } else { 0 }
+        $importState -ceq "CANONICAL_GENERATED_SUBSET" `
+        -or $importState -ceq "CANONICAL_GENERATED_57"
+    ) { $trackedRows.Count } else { 0 }
     $expectedUidCleanupCount = if (
         $uidState -ceq "EXACT_EXTERNAL_ALLOWLIST"
     ) { $authorityUidMap.Count } else { 0 }
@@ -1632,6 +1849,33 @@ if ($postParseWorkingBlobRows.Count -ne 1 `
 }
 
 if ($ValidateOnly) {
+    $validationUidWarningFunctionNames = [string[]]@(
+        "Get-McpDiagnosticRows",
+        "Get-McpUidRegenerationPendingSetGate"
+    )
+    $validationUidWarningExtractedFunctionCount = 0
+    foreach ($validationUidWarningFunctionName in $validationUidWarningFunctionNames) {
+        $validationUidWarningDefinitions = @(
+            $combinedValidation.ast.FindAll({
+                param($candidate)
+                $candidate `
+                    -is [Management.Automation.Language.FunctionDefinitionAst] `
+                    -and [string]$candidate.Name `
+                        -ceq $validationUidWarningFunctionName
+            }, $true)
+        )
+        if ($validationUidWarningDefinitions.Count -ne 1) {
+            throw (
+                "Expected one production UID warning function definition: " +
+                "$validationUidWarningFunctionName actual=" +
+                $validationUidWarningDefinitions.Count
+            )
+        }
+        $validationUidWarningFunctionSource = `
+            [string]$validationUidWarningDefinitions[0].Extent.Text
+        . ([scriptblock]::Create($validationUidWarningFunctionSource))
+        $validationUidWarningExtractedFunctionCount += 1
+    }
     $forbiddenDoubleBackslashReplacement = '.Replace("\\", "/")'
     $requiredSingleBackslashReplacement = '.Replace("\", "/")'
     $singleBackslashReplacementCount = [regex]::Matches(
@@ -1659,16 +1903,174 @@ if ($ValidateOnly) {
     $validationImportPaths = [string[]]@($validationImportAuthority.paths)
     $validationImportPathSetSha = Get-RunnerCanonicalPathSetSha256 `
         -Paths $validationImportPaths
-    $validationImportBaselineSha = Get-RunnerCanonicalFileMapSha256 `
-        -Root $gitRoot `
-        -Paths $validationImportPaths
+    $validationGeneratedHashMap = `
+        $validationImportAuthority.generated_content_sha256_by_path
+    $validationGeneratedRows = [Collections.Generic.List[string]]::new()
+    $validationBaselineMapRows = [Collections.Generic.List[string]]::new()
+    $validationImportCandidateMap = `
+        [Collections.Generic.Dictionary[string,object]]::new(
+            [StringComparer]::Ordinal
+        )
+    $validationBaselineRows = [Collections.Generic.List[object]]::new()
+    $validationCurrentRows = [Collections.Generic.List[object]]::new()
+    foreach ($validationPath in $validationImportPaths) {
+        if ($null -eq $validationGeneratedHashMap `
+            -or -not $validationGeneratedHashMap.Contains($validationPath)) {
+            throw "Canonical generated import authority is missing: $validationPath"
+        }
+        $validationGeneratedSha = [string]$validationGeneratedHashMap[$validationPath]
+        if (-not [regex]::IsMatch($validationGeneratedSha, '\A[0-9a-f]{64}\z')) {
+            throw "Canonical generated import hash is invalid: $validationPath"
+        }
+        $validationAbsolutePath = Resolve-CleanupChildPath `
+            -Root $gitRoot `
+            -RelativePath $validationPath
+        $validationBaselineContentSha = Get-RunnerHeadBlobContentSha256 `
+            -Root $gitRoot `
+            -RelativePath $validationPath
+        $validationCurrentContentSha = Get-RunnerFileSha256 $validationAbsolutePath
+        $validationGeneratedRows.Add(
+            "$validationPath$([char]0)$validationGeneratedSha"
+        )
+        $validationBaselineMapRows.Add(
+            "$validationPath$([char]0)$validationBaselineContentSha"
+        )
+        $validationImportCandidateMap.Add($validationPath, [pscustomobject]@{
+            path = $validationPath
+            baseline_content_sha256 = $validationBaselineContentSha
+            generated_content_sha256 = $validationGeneratedSha
+        })
+        $validationBaselineRows.Add([pscustomobject]@{
+            path = $validationPath
+            content_sha256 = $validationBaselineContentSha
+        })
+        $validationCurrentRows.Add([pscustomobject]@{
+            path = $validationPath
+            content_sha256 = $validationCurrentContentSha
+        })
+    }
+    if ($validationGeneratedHashMap.Count -ne $validationImportPaths.Count) {
+        throw "Canonical generated import authority is not a closed 57-path set."
+    }
+    $validationGeneratedMapSha = Get-RunnerCanonicalSha256Hex -Bytes (
+        [Text.UTF8Encoding]::new($false, $true).GetBytes(
+            [string]::Join("`n", [string[]]$validationGeneratedRows.ToArray())
+        )
+    )
+    $validationImportBaselineSha = Get-RunnerCanonicalSha256Hex -Bytes (
+        [Text.UTF8Encoding]::new($false, $true).GetBytes(
+            [string]::Join(
+                "`n",
+                [string[]]$validationBaselineMapRows.ToArray()
+            )
+        )
+    )
     if ($validationImportPaths.Count `
             -ne [int]$validationImportAuthority.expected_count `
         -or $validationImportPathSetSha `
             -cne [string]$validationImportAuthority.path_set_sha256 `
         -or $validationImportBaselineSha `
-            -cne [string]$validationImportAuthority.baseline_map_sha256) {
+            -cne [string]$validationImportAuthority.baseline_map_sha256 `
+        -or $validationGeneratedMapSha `
+            -cne [string]$validationImportAuthority.generated_map_sha256) {
         throw "Canonical import authority failed offline validation."
+    }
+    $validationReportedImportPaths = [string[]]@(
+        Invoke-RunnerGit `
+            -Root $gitRoot `
+            -Arguments @("diff", "--name-only", "HEAD", "--", "*.import") |
+            ForEach-Object { ([string]$_).Trim().Replace("\", "/") } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Sort-Object -Unique
+    )
+    $validationCurrentAssessment = Test-RunnerCanonicalImportState `
+        -CandidateMap $validationImportCandidateMap `
+        -ReportedPaths $validationReportedImportPaths `
+        -CurrentRows ([object[]]$validationCurrentRows.ToArray())
+    if (-not [bool]$validationCurrentAssessment.green) {
+        throw "Current canonical import state is unknown or tampered."
+    }
+    $validationEmptyAssessment = Test-RunnerCanonicalImportState `
+        -CandidateMap $validationImportCandidateMap `
+        -ReportedPaths ([string[]]@()) `
+        -CurrentRows ([object[]]$validationBaselineRows.ToArray())
+    $validationSubsetPaths = [string[]]@(
+        $validationImportPaths[0],
+        $validationImportPaths[1]
+    )
+    $validationSubsetSet = [Collections.Generic.HashSet[string]]::new(
+        $validationSubsetPaths,
+        [StringComparer]::Ordinal
+    )
+    $validationSubsetRows = [object[]]@(
+        foreach ($validationPath in $validationImportPaths) {
+            [pscustomobject]@{
+                path = $validationPath
+                content_sha256 = if ($validationSubsetSet.Contains($validationPath)) {
+                    [string]$validationGeneratedHashMap[$validationPath]
+                } else {
+                    [string]$validationImportCandidateMap[$validationPath].baseline_content_sha256
+                }
+            }
+        }
+    )
+    $validationSubsetAssessment = Test-RunnerCanonicalImportState `
+        -CandidateMap $validationImportCandidateMap `
+        -ReportedPaths $validationSubsetPaths `
+        -CurrentRows $validationSubsetRows
+    $validationFullRows = [object[]]@(
+        foreach ($validationPath in $validationImportPaths) {
+            [pscustomobject]@{
+                path = $validationPath
+                content_sha256 = [string]$validationGeneratedHashMap[$validationPath]
+            }
+        }
+    )
+    $validationFullAssessment = Test-RunnerCanonicalImportState `
+        -CandidateMap $validationImportCandidateMap `
+        -ReportedPaths $validationImportPaths `
+        -CurrentRows $validationFullRows
+    $validationTamperRows = [object[]]@($validationSubsetRows | ForEach-Object {
+        [pscustomobject]@{
+            path = [string]$_.path
+            content_sha256 = [string]$_.content_sha256
+        }
+    })
+    $validationTamperRows[0].content_sha256 = ('0' * 64)
+    $validationTamperAssessment = Test-RunnerCanonicalImportState `
+        -CandidateMap $validationImportCandidateMap `
+        -ReportedPaths $validationSubsetPaths `
+        -CurrentRows $validationTamperRows
+    $validationUnknownAssessment = Test-RunnerCanonicalImportState `
+        -CandidateMap $validationImportCandidateMap `
+        -ReportedPaths ([string[]]@($validationSubsetPaths + @(
+            'assets/unknown/not-authorized.import'
+        ))) `
+        -CurrentRows $validationSubsetRows
+    $validationImportClassifierGreen = `
+        [bool]$validationCurrentAssessment.green `
+        -and [bool]$validationEmptyAssessment.green `
+        -and [string]$validationEmptyAssessment.state -ceq 'HEAD_CLEAN' `
+        -and @($validationEmptyAssessment.safe_paths).Count -eq 0 `
+        -and [bool]$validationSubsetAssessment.green `
+        -and [string]$validationSubsetAssessment.state `
+            -ceq 'CANONICAL_GENERATED_SUBSET' `
+        -and @($validationSubsetAssessment.safe_paths).Count `
+            -eq $validationSubsetPaths.Count `
+        -and (Get-RunnerCanonicalPathSetSha256 `
+            -Paths ([string[]]@($validationSubsetAssessment.safe_paths))) `
+            -ceq (Get-RunnerCanonicalPathSetSha256 -Paths $validationSubsetPaths) `
+        -and [bool]$validationFullAssessment.green `
+        -and [string]$validationFullAssessment.state `
+            -ceq 'CANONICAL_GENERATED_57' `
+        -and @($validationFullAssessment.safe_paths).Count `
+            -eq $validationImportPaths.Count `
+        -and -not [bool]$validationTamperAssessment.green `
+        -and @($validationTamperAssessment.safe_paths).Count -eq 0 `
+        -and -not [bool]$validationUnknownAssessment.green `
+        -and @($validationUnknownAssessment.safe_paths).Count -eq 0
+    if (-not $validationImportClassifierGreen) {
+        throw "Canonical import subset classifier self-test failed."
     }
     $validationUidPerformed = $false
     $validationUidEntryCount = 0
@@ -1708,6 +2110,295 @@ if ($ValidateOnly) {
         $validationUidEntryCount = @($validationUidAuthority.candidates).Count
         $validationUidSetSha = [string]$validationUidAuthority.uid_entry_set_sha256
     }
+    $validationUidWarningRealAllowlistTestPerformed = $validationUidPerformed
+    $validationUidWarningCandidates = if ($validationUidPerformed) {
+        @($validationUidAuthority.candidates)
+    } else {
+        @([pscustomobject][ordered]@{
+            path = "tests/fixtures/uid_warning_probe.gd.uid"
+            source_path = "tests/fixtures/uid_warning_probe.gd"
+            uid_value = "uid://validationprobe"
+            uid_content_sha256 = ('1' * 64)
+            uid_byte_length = 20
+        })
+    }
+    if ($validationUidPerformed -and $validationUidWarningCandidates.Count -ne 202) {
+        throw (
+            "Real UID warning classifier validation requires the exact 202-entry " +
+            "allowlist."
+        )
+    }
+    $validationUidWarningCandidateMap = `
+        [Collections.Generic.Dictionary[string,object]]::new(
+            [StringComparer]::Ordinal
+        )
+    foreach ($validationUidWarningCandidate in $validationUidWarningCandidates) {
+        $validationUidWarningCandidateMap.Add(
+            [string]$validationUidWarningCandidate.path,
+            $validationUidWarningCandidate
+        )
+    }
+    $validationUidWarningPositiveLines = [object[]]@(
+        $validationUidWarningCandidates |
+            Sort-Object -Property source_path |
+            ForEach-Object {
+                'WARNING: Missing .uid file for path "res://{0}". The file was re-created from cache.' -f `
+                    [string]$_.source_path
+            }
+    )
+    $validationUidWarningPositiveDiagnostics = @(
+        Get-McpDiagnosticRows `
+            -Lines $validationUidWarningPositiveLines `
+            -Channel "editor_launch" `
+            -UidCandidateMap $validationUidWarningCandidateMap
+    )
+    $validationUidWarningPositiveGate = `
+        Get-McpUidRegenerationPendingSetGate `
+            -DiagnosticRows ([object[]]$validationUidWarningPositiveDiagnostics) `
+            -LaunchLines $validationUidWarningPositiveLines `
+            -UidCandidateMap $validationUidWarningCandidateMap
+    $validationUidWarningInvalidPositiveRows = @(
+        $validationUidWarningPositiveDiagnostics | Where-Object {
+            [string]$_.severity -cne "pending" `
+                -or [string]$_.classification `
+                    -cne "pending_uid_regeneration_candidate" `
+                -or [string]$_.channel -cne "editor_launch" `
+                -or -not [bool]$_.raw_warning `
+                -or -not $validationUidWarningCandidateMap.ContainsKey(
+                    [string]$_.uid_relative_path
+                ) `
+                -or [string]$validationUidWarningCandidateMap[
+                    [string]$_.uid_relative_path
+                ].source_path -cne [string]$_.source_path
+        }
+    )
+    $validationUidWarningProbeCandidate = $validationUidWarningCandidates[0]
+    $validationUidWarningProbeLine = `
+        'WARNING: Missing .uid file for path "res://{0}". The file was re-created from cache.' -f `
+            [string]$validationUidWarningProbeCandidate.source_path
+    $validationUidWarningNegativeSpecs = @(
+        [pscustomobject]@{
+            channel = "runtime"
+            line = $validationUidWarningProbeLine
+            severity = "unclassified"
+            classification = "uid_regeneration_warning_wrong_channel"
+        },
+        [pscustomobject]@{
+            channel = "editor_launch"
+            line = 'WARNING: Missing .uid file for path "res://tests/not-authorized.gd". The file was re-created from cache.'
+            severity = "unclassified"
+            classification = "uid_regeneration_warning_not_authorized"
+        },
+        [pscustomobject]@{
+            channel = "editor_launch"
+            line = $validationUidWarningProbeLine.Replace("WARNING:", "Warning:")
+            severity = "unclassified"
+            classification = "unmatched_warning"
+        },
+        [pscustomobject]@{
+            channel = "editor_launch"
+            line = " $validationUidWarningProbeLine"
+            severity = "unclassified"
+            classification = "unmatched_warning"
+        },
+        [pscustomobject]@{
+            channel = "editor_launch"
+            line = $validationUidWarningProbeLine.Substring(
+                0,
+                $validationUidWarningProbeLine.Length - 1
+            )
+            severity = "unclassified"
+            classification = "unmatched_warning"
+        },
+        [pscustomobject]@{
+            channel = "editor_launch"
+            line = "$validationUidWarningProbeLine "
+            severity = "unclassified"
+            classification = "unmatched_warning"
+        },
+        [pscustomobject]@{
+            channel = "editor_launch"
+            line = "WARNING: generic warning"
+            severity = "unclassified"
+            classification = "unmatched_warning"
+        },
+        [pscustomobject]@{
+            channel = "editor_launch"
+            line = "WARNING generic warning without a colon"
+            severity = "unclassified"
+            classification = "unmatched_warning"
+        },
+        [pscustomobject]@{
+            channel = "editor_launch"
+            line = "diagnostic$([char]0)text"
+            severity = "unclassified"
+            classification = "invalid_console_text"
+        },
+        [pscustomobject]@{
+            channel = "editor_launch"
+            line = "diagnostic$([char]0xFFFD)text"
+            severity = "unclassified"
+            classification = "invalid_console_text"
+        },
+        [pscustomobject]@{
+            channel = "editor_launch"
+            line = "ERROR: validation probe"
+            severity = "error"
+            classification = "diagnostic_error"
+        }
+    )
+    $validationUidWarningNegativeRows = [Collections.Generic.List[object]]::new()
+    foreach ($validationUidWarningNegativeSpec in $validationUidWarningNegativeSpecs) {
+        $validationUidWarningNegativeResult = @(
+            Get-McpDiagnosticRows `
+                -Lines ([object[]]@([string]$validationUidWarningNegativeSpec.line)) `
+                -Channel ([string]$validationUidWarningNegativeSpec.channel) `
+                -UidCandidateMap $validationUidWarningCandidateMap
+        )
+        $validationUidWarningNegativeExpectedRawWarning = [regex]::IsMatch(
+            [string]$validationUidWarningNegativeSpec.line,
+            '\bWARNING\b',
+            [Text.RegularExpressions.RegexOptions]::IgnoreCase -bor `
+                [Text.RegularExpressions.RegexOptions]::CultureInvariant
+        )
+        if ($validationUidWarningNegativeResult.Count -ne 1 `
+            -or [string]$validationUidWarningNegativeResult[0].severity `
+                -cne [string]$validationUidWarningNegativeSpec.severity `
+            -or [string]$validationUidWarningNegativeResult[0].classification `
+                -cne [string]$validationUidWarningNegativeSpec.classification `
+            -or [string]$validationUidWarningNegativeResult[0].channel `
+                -cne [string]$validationUidWarningNegativeSpec.channel `
+            -or $validationUidWarningNegativeResult[0].raw_warning -isnot [bool] `
+            -or [bool]$validationUidWarningNegativeResult[0].raw_warning `
+                -ne $validationUidWarningNegativeExpectedRawWarning `
+            -or [int64]$validationUidWarningNegativeResult[0].line_number -ne 1 `
+            -or [string]$validationUidWarningNegativeResult[0].line `
+                -cne [string]$validationUidWarningNegativeSpec.line) {
+            throw (
+                "UID warning classifier negative self-test failed: " +
+                [string]$validationUidWarningNegativeSpec.classification
+            )
+        }
+        $validationUidWarningNegativeRows.Add(
+            $validationUidWarningNegativeResult[0]
+        )
+    }
+    $validationUidWarningDuplicateDiagnostics = [object[]]@(
+        @($validationUidWarningPositiveDiagnostics) +
+            @($validationUidWarningPositiveDiagnostics[0])
+    )
+    $validationUidWarningDuplicateGate = `
+        Get-McpUidRegenerationPendingSetGate `
+            -DiagnosticRows $validationUidWarningDuplicateDiagnostics `
+            -LaunchLines $validationUidWarningPositiveLines `
+            -UidCandidateMap $validationUidWarningCandidateMap
+    $validationUidWarningMissingDiagnostics = [object[]]@(
+        $validationUidWarningPositiveDiagnostics |
+            Select-Object -First (
+                $validationUidWarningPositiveDiagnostics.Count - 1
+            )
+    )
+    $validationUidWarningMissingGate = `
+        Get-McpUidRegenerationPendingSetGate `
+            -DiagnosticRows $validationUidWarningMissingDiagnostics `
+            -LaunchLines $validationUidWarningPositiveLines `
+            -UidCandidateMap $validationUidWarningCandidateMap
+    $validationUidWarningProbeRow = $validationUidWarningPositiveDiagnostics[0]
+    $validationUidWarningTamperSpecs = @(
+        [pscustomobject]@{ name = "channel"; property = "channel"; value = "runtime" },
+        [pscustomobject]@{ name = "raw_false"; property = "raw_warning"; value = $false },
+        [pscustomobject]@{ name = "raw_string"; property = "raw_warning"; value = "false" },
+        [pscustomobject]@{ name = "line_zero"; property = "line_number"; value = [int64]0 },
+        [pscustomobject]@{
+            name = "line_out_of_range"
+            property = "line_number"
+            value = [int64]($validationUidWarningPositiveLines.Count + 1)
+        },
+        [pscustomobject]@{ name = "line_text"; property = "line"; value = "WARNING: tampered" },
+        [pscustomobject]@{
+            name = "source_path"
+            property = "source_path"
+            value = "tests/fixtures/tampered.gd"
+        },
+        [pscustomobject]@{
+            name = "uid_relative_path"
+            property = "uid_relative_path"
+            value = "tests/fixtures/tampered.gd.uid"
+        },
+        [pscustomobject]@{
+            name = "uid_value"
+            property = "expected_uid_value"
+            value = "uid://tampered"
+        },
+        [pscustomobject]@{
+            name = "uid_sha256"
+            property = "expected_uid_content_sha256"
+            value = ("0" * 64)
+        },
+        [pscustomobject]@{
+            name = "uid_byte_length"
+            property = "expected_uid_byte_length"
+            value = [int64]$validationUidWarningProbeRow.expected_uid_byte_length + 1
+        }
+    )
+    $validationUidWarningTamperRejections = `
+        [Collections.Generic.List[object]]::new()
+    foreach ($validationUidWarningTamperSpec in $validationUidWarningTamperSpecs) {
+        $validationUidWarningTamperedDiagnostics = [object[]]@(
+            $validationUidWarningPositiveDiagnostics | ForEach-Object {
+                [pscustomobject][ordered]@{
+                    severity = $_.severity
+                    classification = $_.classification
+                    channel = $_.channel
+                    line_number = $_.line_number
+                    line = $_.line
+                    raw_warning = $_.raw_warning
+                    source_path = $_.source_path
+                    uid_relative_path = $_.uid_relative_path
+                    expected_uid_value = $_.expected_uid_value
+                    expected_uid_content_sha256 = $_.expected_uid_content_sha256
+                    expected_uid_byte_length = $_.expected_uid_byte_length
+                }
+            }
+        )
+        $validationUidWarningTamperedDiagnostics[0].PSObject.Properties[
+            [string]$validationUidWarningTamperSpec.property
+        ].Value = $validationUidWarningTamperSpec.value
+        $validationUidWarningTamperedGate = `
+            Get-McpUidRegenerationPendingSetGate `
+                -DiagnosticRows $validationUidWarningTamperedDiagnostics `
+                -LaunchLines $validationUidWarningPositiveLines `
+                -UidCandidateMap $validationUidWarningCandidateMap
+        if ([bool]$validationUidWarningTamperedGate.green `
+            -or [int]$validationUidWarningTamperedGate.invalid_authority_binding_count `
+                -le 0) {
+            throw (
+                "UID warning tamper self-test was not rejected: " +
+                [string]$validationUidWarningTamperSpec.name
+            )
+        }
+        $validationUidWarningTamperRejections.Add([pscustomobject]@{
+            name = [string]$validationUidWarningTamperSpec.name
+            rejected = $true
+            invalid_authority_binding_count = `
+                [int]$validationUidWarningTamperedGate.invalid_authority_binding_count
+        })
+    }
+    $validationUidWarningClassifierGreen = `
+        $validationUidWarningExtractedFunctionCount -eq 2 `
+        -and $validationUidWarningPositiveDiagnostics.Count `
+            -eq $validationUidWarningCandidates.Count `
+        -and $validationUidWarningInvalidPositiveRows.Count -eq 0 `
+        -and [bool]$validationUidWarningPositiveGate.green `
+        -and $validationUidWarningNegativeRows.Count `
+            -eq $validationUidWarningNegativeSpecs.Count `
+        -and -not [bool]$validationUidWarningDuplicateGate.green `
+        -and -not [bool]$validationUidWarningMissingGate.green `
+        -and $validationUidWarningTamperRejections.Count `
+            -eq $validationUidWarningTamperSpecs.Count
+    if (-not $validationUidWarningClassifierGreen) {
+        throw "Extracted production UID warning classifier self-test failed."
+    }
     [ordered]@{
         schema = "SpaceSyndicateV075McpRunbookValidationV2"
         status = "PASS"
@@ -1732,9 +2423,58 @@ if ($ValidateOnly) {
         canonical_import_path_count = $validationImportPaths.Count
         canonical_import_path_set_sha256 = $validationImportPathSetSha
         canonical_import_baseline_map_sha256 = $validationImportBaselineSha
+        canonical_import_generated_map_sha256 = $validationGeneratedMapSha
+        canonical_import_classifier_green = $validationImportClassifierGreen
+        canonical_import_current_state = [string]$validationCurrentAssessment.state
+        canonical_import_current_reported_count = `
+            $validationReportedImportPaths.Count
+        canonical_import_current_state_green = `
+            [bool]$validationCurrentAssessment.green
+        canonical_import_classifier_empty_green = [bool]$validationEmptyAssessment.green
+        canonical_import_classifier_subset_green = [bool]$validationSubsetAssessment.green
+        canonical_import_classifier_full_green = [bool]$validationFullAssessment.green
+        canonical_import_classifier_tamper_rejected = `
+            -not [bool]$validationTamperAssessment.green
+        canonical_import_classifier_unknown_rejected = `
+            -not [bool]$validationUnknownAssessment.green
         uid_allowlist_validation_performed = $validationUidPerformed
         uid_allowlist_entry_count = $validationUidEntryCount
         uid_allowlist_entry_set_sha256 = $validationUidSetSha
+        uid_warning_classifier_extracted = $true
+        uid_warning_classifier_extracted_function_count = `
+            $validationUidWarningExtractedFunctionCount
+        uid_warning_classifier_green = $validationUidWarningClassifierGreen
+        uid_warning_classifier_positive_case_count = `
+            $validationUidWarningPositiveDiagnostics.Count
+        uid_warning_classifier_negative_case_count = `
+            $validationUidWarningNegativeRows.Count
+        uid_warning_classifier_closed_set_green = `
+            [bool]$validationUidWarningPositiveGate.green
+        uid_warning_classifier_duplicate_rejected = `
+            -not [bool]$validationUidWarningDuplicateGate.green
+        uid_warning_classifier_missing_rejected = `
+            -not [bool]$validationUidWarningMissingGate.green
+        uid_warning_classifier_authority_tamper_rejected = `
+            $validationUidWarningTamperRejections.Count `
+                -eq $validationUidWarningTamperSpecs.Count
+        uid_warning_classifier_tamper_case_count = `
+            $validationUidWarningTamperRejections.Count
+        uid_warning_classifier_tamper_rejections = `
+            @($validationUidWarningTamperRejections)
+        uid_warning_classifier_runtime_fail_closed_green = `
+            @($validationUidWarningNegativeRows | Where-Object {
+                [string]$_.classification `
+                    -ceq "uid_regeneration_warning_wrong_channel"
+            }).Count -eq 1
+        uid_warning_classifier_unmatched_fail_closed_green = `
+            @($validationUidWarningNegativeRows | Where-Object {
+                [string]$_.classification -ceq "unmatched_warning"
+            }).Count -eq 6
+        uid_warning_classifier_real_allowlist_test_performed = `
+            $validationUidWarningRealAllowlistTestPerformed
+        uid_warning_classifier_real_allowlist_entry_count = if (
+            $validationUidWarningRealAllowlistTestPerformed
+        ) { $validationUidWarningCandidates.Count } else { 0 }
         godot_started = $false
         mcp_started = $false
         formal_started = $false

@@ -658,6 +658,336 @@ func _update_acceptance_state() -> void:
 	acceptance_state["combat_wrapper"] = combat_debug_snapshot()
 	acceptance_state["combat_direct_runtime_owner_count"] = 0
 	acceptance_state["combat_direct_rng_owner_count"] = 0
+	acceptance_state["runtime_acceptance_debug"] = (
+		_runtime_acceptance_debug_snapshot()
+		if bool(acceptance_state.get("match_completed", false))
+		else {}
+	)
+
+
+func _runtime_acceptance_debug_snapshot() -> Dictionary:
+	if (
+		not is_instance_valid(_v075_flow)
+		or not _v075_flow.has_method("debug_snapshot")
+	):
+		return {}
+	var composition_variant: Variant = _v075_flow.call("debug_snapshot")
+	if not (composition_variant is Dictionary):
+		return {}
+	var composition_debug := composition_variant as Dictionary
+	if (
+		not _has_string_fields(
+			composition_debug,
+			["schema", "ruleset_id"]
+		)
+		or composition_debug["schema"]
+			!= "V075RuntimeCompositionDebugV1"
+		or composition_debug["ruleset_id"] != V075_RULESET_ID
+		or not _has_dictionary_fields(composition_debug, ["runtime"])
+	):
+		return {}
+	var runtime_debug := composition_debug["runtime"] as Dictionary
+	if (
+		not _has_string_fields(runtime_debug, ["ruleset_id", "phase"])
+		or runtime_debug["ruleset_id"] != V075_RULESET_ID
+		or runtime_debug["phase"] != "settled"
+		or not _has_dictionary_fields(
+			runtime_debug,
+			[
+				"combat",
+				"facility_effect_integrity",
+				"combat_presentation",
+				"combat_telemetry",
+			]
+		)
+		or not _has_nonnegative_int_fields(
+			runtime_debug,
+			[
+				"facility_combat_damage_receipt_count",
+				"combat_public_receipt_count",
+				"final_settlement_count",
+				"duplicate_settlement_count",
+				"final_settlement_public_log_count",
+				"final_settlement_presentation_count",
+				"runtime_error_count",
+				"hidden_info_violation_count",
+				"combat_telemetry_hidden_field_count",
+				"combat_telemetry_gameplay_owner_count",
+				"combat_telemetry_rng_owner_count",
+				"combat_telemetry_world_mutation_count",
+				"invalid_action_count",
+				"ai_combat_invalid_target_count",
+				"nonfinite_count",
+			]
+		)
+	):
+		return {}
+	var combat_debug := runtime_debug["combat"] as Dictionary
+	if (
+		not _has_dictionary_fields(
+			combat_debug,
+			[
+				"monster_card_mode_counts",
+				"combat_effect_integrity",
+				"combat_receipt_integrity",
+			]
+		)
+		or not _has_nonnegative_int_fields(
+			combat_debug,
+			[
+				"monster_private_skill_commit_count",
+				"monster_trample_region_receipt_count",
+				"military_region_assault_count",
+				"military_monster_assault_count",
+				"runtime_error_count",
+				"combat_duplicate_effect_count",
+			]
+		)
+	):
+		return {}
+	var monster_modes := (
+		combat_debug["monster_card_mode_counts"] as Dictionary
+	)
+	var effect_integrity := (
+		combat_debug["combat_effect_integrity"] as Dictionary
+	)
+	var receipt_integrity := (
+		combat_debug["combat_receipt_integrity"] as Dictionary
+	)
+	var facility_integrity := (
+		runtime_debug["facility_effect_integrity"] as Dictionary
+	)
+	var presentation_debug := (
+		runtime_debug["combat_presentation"] as Dictionary
+	)
+	var telemetry_debug := (
+		runtime_debug["combat_telemetry"] as Dictionary
+	)
+	if (
+		not _has_nonnegative_int_fields(
+			monster_modes,
+			MONSTER_CARD_MODES
+		)
+		or not _has_boolean_fields(effect_integrity, ["green"])
+		or not _has_nonnegative_int_fields(
+			effect_integrity,
+			["violation_count"]
+		)
+		or not _has_boolean_fields(receipt_integrity, ["green"])
+		or not _has_boolean_fields(facility_integrity, ["green"])
+		or not _has_nonnegative_int_fields(
+			presentation_debug,
+			[
+				"applied_receipt_count",
+				"duplicate_receipt_count",
+				"collision_receipt_count",
+				"rejected_receipt_count",
+				"presentation_gameplay_mutation_count",
+				"presentation_rng_draw_delta",
+			]
+		)
+		or not _has_string_fields(
+			telemetry_debug,
+			["schema", "ruleset_id"]
+		)
+		or telemetry_debug["schema"]
+			!= "V075CombatTelemetryServiceDebugV1"
+		or telemetry_debug["ruleset_id"] != V075_RULESET_ID
+		or not _has_nonnegative_int_fields(
+			telemetry_debug,
+			[
+				"hidden_input_field_count",
+				"opponent_skill_definition_input_count",
+				"opponent_skill_target_input_count",
+				"opponent_skill_cooldown_input_count",
+				"instant_sequence_input_count",
+				"warehouse_private_stock_input_count",
+				"ai_private_plan_input_count",
+				"stored_hidden_field_count",
+				"gameplay_owner_count",
+				"rng_owner_count",
+				"world_mutation_count",
+			]
+		)
+	):
+		return {}
+	# Keep the public acceptance surface to scalar counters and integrity verdicts.
+	# Runtime IDs, receipts, validation state, and presentation payloads stay private.
+	return {
+		"schema": "V075RuntimeAcceptanceDebugV1",
+		"ruleset_id": runtime_debug["ruleset_id"],
+		"phase": runtime_debug["phase"],
+		"combat": {
+			"monster_card_mode_counts": {
+				"DEPLOY_NEW": monster_modes["DEPLOY_NEW"],
+				"REFRESH_EXISTING": monster_modes["REFRESH_EXISTING"],
+				"UPGRADE_EXISTING": monster_modes["UPGRADE_EXISTING"],
+				"REPLACE_EXISTING": monster_modes["REPLACE_EXISTING"],
+			},
+			"monster_private_skill_commit_count": (
+				combat_debug["monster_private_skill_commit_count"]
+			),
+			"monster_trample_region_receipt_count": (
+				combat_debug["monster_trample_region_receipt_count"]
+			),
+			"military_region_assault_count": (
+				combat_debug["military_region_assault_count"]
+			),
+			"military_monster_assault_count": (
+				combat_debug["military_monster_assault_count"]
+			),
+			"runtime_error_count": combat_debug["runtime_error_count"],
+			"combat_duplicate_effect_count": (
+				combat_debug["combat_duplicate_effect_count"]
+			),
+			"combat_effect_integrity": {
+				"green": effect_integrity["green"],
+				"violation_count": effect_integrity["violation_count"],
+			},
+			"combat_receipt_integrity": {
+				"green": receipt_integrity["green"],
+			},
+		},
+		"facility_combat_damage_receipt_count": (
+			runtime_debug["facility_combat_damage_receipt_count"]
+		),
+		"facility_effect_integrity": {
+			"green": facility_integrity["green"],
+		},
+		"combat_presentation": {
+			"applied_receipt_count": (
+				presentation_debug["applied_receipt_count"]
+			),
+			"duplicate_receipt_count": (
+				presentation_debug["duplicate_receipt_count"]
+			),
+			"collision_receipt_count": (
+				presentation_debug["collision_receipt_count"]
+			),
+			"rejected_receipt_count": (
+				presentation_debug["rejected_receipt_count"]
+			),
+			"presentation_gameplay_mutation_count": (
+				presentation_debug["presentation_gameplay_mutation_count"]
+			),
+			"presentation_rng_draw_delta": (
+				presentation_debug["presentation_rng_draw_delta"]
+			),
+		},
+		"combat_public_receipt_count": (
+			runtime_debug["combat_public_receipt_count"]
+		),
+		"final_settlement_count": runtime_debug["final_settlement_count"],
+		"duplicate_settlement_count": (
+			runtime_debug["duplicate_settlement_count"]
+		),
+		"final_settlement_public_log_count": (
+			runtime_debug["final_settlement_public_log_count"]
+		),
+		"final_settlement_presentation_count": (
+			runtime_debug["final_settlement_presentation_count"]
+		),
+		"runtime_error_count": runtime_debug["runtime_error_count"],
+		"hidden_info_violation_count": (
+			runtime_debug["hidden_info_violation_count"]
+		),
+		"combat_telemetry": {
+			"schema": telemetry_debug["schema"],
+			"ruleset_id": telemetry_debug["ruleset_id"],
+			"hidden_input_field_count": (
+				telemetry_debug["hidden_input_field_count"]
+			),
+			"opponent_skill_definition_input_count": (
+				telemetry_debug["opponent_skill_definition_input_count"]
+			),
+			"opponent_skill_target_input_count": (
+				telemetry_debug["opponent_skill_target_input_count"]
+			),
+			"opponent_skill_cooldown_input_count": (
+				telemetry_debug["opponent_skill_cooldown_input_count"]
+			),
+			"instant_sequence_input_count": (
+				telemetry_debug["instant_sequence_input_count"]
+			),
+			"warehouse_private_stock_input_count": (
+				telemetry_debug["warehouse_private_stock_input_count"]
+			),
+			"ai_private_plan_input_count": (
+				telemetry_debug["ai_private_plan_input_count"]
+			),
+			"stored_hidden_field_count": (
+				telemetry_debug["stored_hidden_field_count"]
+			),
+			"gameplay_owner_count": telemetry_debug["gameplay_owner_count"],
+			"rng_owner_count": telemetry_debug["rng_owner_count"],
+			"world_mutation_count": telemetry_debug["world_mutation_count"],
+		},
+		"combat_telemetry_hidden_field_count": (
+			runtime_debug["combat_telemetry_hidden_field_count"]
+		),
+		"combat_telemetry_gameplay_owner_count": (
+			runtime_debug["combat_telemetry_gameplay_owner_count"]
+		),
+		"combat_telemetry_rng_owner_count": (
+			runtime_debug["combat_telemetry_rng_owner_count"]
+		),
+		"combat_telemetry_world_mutation_count": (
+			runtime_debug["combat_telemetry_world_mutation_count"]
+		),
+		"invalid_action_count": runtime_debug["invalid_action_count"],
+		"ai_combat_invalid_target_count": (
+			runtime_debug["ai_combat_invalid_target_count"]
+		),
+		"nonfinite_count": runtime_debug["nonfinite_count"],
+	}
+
+
+func _has_dictionary_fields(source: Dictionary, fields: Array) -> bool:
+	for field_variant in fields:
+		if not (field_variant is String):
+			return false
+		if (
+			not source.has(field_variant)
+			or not (source.get(field_variant) is Dictionary)
+		):
+			return false
+	return true
+
+
+func _has_string_fields(source: Dictionary, fields: Array) -> bool:
+	for field_variant in fields:
+		if not (field_variant is String):
+			return false
+		if (
+			not source.has(field_variant)
+			or not (source.get(field_variant) is String)
+		):
+			return false
+	return true
+
+
+func _has_boolean_fields(source: Dictionary, fields: Array) -> bool:
+	for field_variant in fields:
+		if not (field_variant is String):
+			return false
+		if (
+			not source.has(field_variant)
+			or not (source.get(field_variant) is bool)
+		):
+			return false
+	return true
+
+
+func _has_nonnegative_int_fields(source: Dictionary, fields: Array) -> bool:
+	for field_variant in fields:
+		if not (field_variant is String):
+			return false
+		if not source.has(field_variant):
+			return false
+		var value: Variant = source.get(field_variant)
+		if not (value is int) or value < 0:
+			return false
+	return true
 
 
 func _on_presentation_cue_ready(cue: Dictionary) -> void:

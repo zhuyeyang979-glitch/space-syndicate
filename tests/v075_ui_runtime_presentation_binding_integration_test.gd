@@ -645,6 +645,74 @@ func _run() -> void:
 		"shared public cue strips every private skill field"
 	)
 
+	var runtime_before_publish := runtime.call("debug_snapshot") as Dictionary
+	var consumer_before_publish := shared_consumer.call(
+		"debug_snapshot"
+	) as Dictionary
+	var screen_before_publish := screen.combat_debug_snapshot()
+	var surface_before_publish := (
+		screen_before_publish.get("surface", {}) as Dictionary
+	)
+	_expect(
+		int(screen_before_publish.get("receipt_count", -1)) == 0
+		and int(screen_before_publish.get("receipt_applied_count", -1)) == 0
+		and int(screen_before_publish.get("receipt_rejected_count", -1)) == 0
+		and int(screen_before_publish.get(
+			"presentation_suppressed_duplicate_consume_count",
+			-1
+		)) == 0,
+		"production shared presentation starts with zero direct screen receipts"
+	)
+	runtime.call(
+		"_publish_combat_event",
+		"military_region_assault",
+		{
+			"target_region_id": "region.14",
+			"damage_amount": 3,
+			"task_kind": "assault_region",
+			"public_summary": "Public military assault resolved",
+		},
+		"ui.runtime.presentation.002"
+	)
+	await process_frame
+	var runtime_after_publish := runtime.call("debug_snapshot") as Dictionary
+	var consumer_after_publish := shared_consumer.call(
+		"debug_snapshot"
+	) as Dictionary
+	var screen_after_publish := screen.combat_debug_snapshot()
+	var surface_after_publish := (
+		screen_after_publish.get("surface", {}) as Dictionary
+	)
+	_expect(
+		int(runtime_after_publish.get("combat_public_receipt_count", -1))
+			- int(runtime_before_publish.get("combat_public_receipt_count", -1))
+			== 1
+		and int(consumer_after_publish.get("applied_receipt_count", -1))
+			- int(consumer_before_publish.get("applied_receipt_count", -1))
+			== 1
+		and int(screen_after_publish.get("combat_map_cue_apply_count", -1))
+			- int(screen_before_publish.get("combat_map_cue_apply_count", -1))
+			== 1
+		and int(surface_after_publish.get(
+			"presentation_cue_applied_count",
+			-1
+		)) - int(surface_before_publish.get(
+			"presentation_cue_applied_count",
+			-1
+		)) == 1,
+		"one public runtime receipt traverses consumer, map and surface exactly once"
+	)
+	_expect(
+		int(screen_after_publish.get("receipt_count", -1)) == 0
+		and int(screen_after_publish.get("receipt_applied_count", -1)) == 0
+		and int(screen_after_publish.get("receipt_rejected_count", -1)) == 0
+		and int(screen_after_publish.get(
+			"presentation_suppressed_duplicate_consume_count",
+			-1
+		)) == 0,
+		"runtime publication reaches UI only through the shared cue signal"
+	)
+
 	var forwarded := screen.apply_combat_receipt(receipt)
 	await process_frame
 	screen_debug = screen.combat_debug_snapshot()
@@ -658,7 +726,7 @@ func _run() -> void:
 		"screen acknowledges forwarded receipt without consuming it again"
 	)
 	_expect(
-		int(consumer_debug.get("applied_receipt_count", 0)) == 1
+		int(consumer_debug.get("applied_receipt_count", 0)) == 2
 			and int(
 				consumer_debug.get("duplicate_receipt_count", 0)
 			) == 0
@@ -673,7 +741,7 @@ func _run() -> void:
 					"presentation_cue_applied_count",
 					0
 				)
-			) == 1
+			) == 2
 			and int(
 				cue_surface.get(
 					"presentation_cue_duplicate_count",

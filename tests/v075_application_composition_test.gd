@@ -596,7 +596,72 @@ func _test_scene_instantiation() -> void:
 		screen_instance.free()
 
 
+func _test_application_receipt_binding_contract(flow: Node) -> void:
+	var finish_receipt := flow.call(
+		"_bind_receipt",
+		"intent-maintenance-finish-success",
+		"maintenance.finish",
+		{
+			"success": true,
+			"reason_code": "maintenance_ended",
+		}
+	) as Dictionary
+	_expect(
+		finish_receipt.get("accepted") is bool
+		and bool(finish_receipt.get("accepted", false)),
+		"maintenance.finish success binds accepted=true for UI consumption"
+	)
+	_expect(
+		finish_receipt.get("schema", "") == "V075ApplicationReceiptV1"
+		and finish_receipt.get("intent_id", "") \
+			== "intent-maintenance-finish-success"
+		and finish_receipt.get("intent_kind", "") == "maintenance.finish"
+		and finish_receipt.get("reason_code", "") == "maintenance_ended"
+		and bool(finish_receipt.get("success", false))
+		and finish_receipt.get("ruleset_id", "") == "v0.7.5",
+		"maintenance.finish success retains the full receipt contract consumed by UI"
+	)
+
+	var failed_receipt := flow.call(
+		"_bind_receipt",
+		"intent-failed",
+		"maintenance.finish",
+		{"success": false}
+	) as Dictionary
+	_expect(
+		failed_receipt.has("accepted")
+		and failed_receipt.get("accepted") is bool
+		and not bool(failed_receipt.get("accepted", true)),
+		"failed result binds accepted=false when accepted is absent"
+	)
+
+	var explicit_reject := flow.call(
+		"_bind_receipt",
+		"intent-explicit-reject",
+		"maintenance.finish",
+		{
+			"success": true,
+			"accepted": false,
+		}
+	) as Dictionary
+	var explicit_accept := flow.call(
+		"_bind_receipt",
+		"intent-explicit-accept",
+		"maintenance.finish",
+		{
+			"success": false,
+			"accepted": true,
+		}
+	) as Dictionary
+	_expect(
+		not bool(explicit_reject.get("accepted", true))
+		and bool(explicit_accept.get("accepted", false)),
+		"explicit accepted values take priority over contradictory success values"
+	)
+
+
 func _test_composition_instance(composition: Node) -> void:
+	_test_application_receipt_binding_contract(composition)
 	var flow_nodes := _nodes_with_script(composition, V075_FLOW_PATH)
 	var ruleset_nodes := _nodes_with_script(composition, V075_RULESET_PATH)
 	var runtime_nodes := _nodes_with_script(composition, V075_RUNTIME_PATH)

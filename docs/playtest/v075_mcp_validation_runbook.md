@@ -415,8 +415,9 @@ $ExactShaManifestPath = Join-Path `
     "exact-sha-changed-manifest.json"
 
 # Freeze a closed transient-artifact authority before Godot starts. The 57
-# tracked imports are accepted only in one of two byte-exact states: the HEAD
-# baseline or the complete canonical Godot 4.7 generated set. Generated UID
+# tracked imports are accepted only when every path is byte-exact HEAD or
+# byte-exact canonical Godot 4.7 output; HEAD, generated subsets, and the full
+# generated set are distinct closed states. Generated UID
 # authority comes from a separate controlled-preimport worktree and an
 # independently frozen external SHA; runtime suffix discovery is never
 # authority.
@@ -424,9 +425,36 @@ $CanonicalImportAuthority = Get-RunnerCanonicalImportAuthority
 $CanonicalImportPaths = [string[]]@($CanonicalImportAuthority.paths)
 $CanonicalImportPathSetSha256 = Get-RunnerCanonicalPathSetSha256 `
     -Paths $CanonicalImportPaths
+$CanonicalGeneratedImportHashMap = `
+    $CanonicalImportAuthority.generated_content_sha256_by_path
+$CanonicalGeneratedImportRows = [Collections.Generic.List[string]]::new()
+foreach ($Path in $CanonicalImportPaths) {
+    if ($null -eq $CanonicalGeneratedImportHashMap `
+        -or -not $CanonicalGeneratedImportHashMap.Contains($Path)) {
+        throw "The canonical generated import authority is missing: $Path"
+    }
+    $GeneratedContentSha256 = [string]$CanonicalGeneratedImportHashMap[$Path]
+    if (-not [regex]::IsMatch($GeneratedContentSha256, '\A[0-9a-f]{64}\z')) {
+        throw "The canonical generated import hash is invalid: $Path"
+    }
+    $CanonicalGeneratedImportRows.Add(
+        "$Path$([char]0)$GeneratedContentSha256"
+    )
+}
+$CanonicalGeneratedImportMapSha256 = Get-RunnerCanonicalSha256Hex -Bytes (
+    [Text.UTF8Encoding]::new($false, $true).GetBytes(
+        [string]::Join(
+            "`n",
+            [string[]]$CanonicalGeneratedImportRows.ToArray()
+        )
+    )
+)
 if ($CanonicalImportPaths.Count -ne [int]$CanonicalImportAuthority.expected_count `
     -or $CanonicalImportPathSetSha256 `
-        -cne [string]$CanonicalImportAuthority.path_set_sha256) {
+        -cne [string]$CanonicalImportAuthority.path_set_sha256 `
+    -or $CanonicalGeneratedImportHashMap.Count -ne $CanonicalImportPaths.Count `
+    -or $CanonicalGeneratedImportMapSha256 `
+        -cne [string]$CanonicalImportAuthority.generated_map_sha256) {
     throw "The canonical tracked-import path authority is internally inconsistent."
 }
 $PreRunCanonicalImportMapSha256 = Get-RunnerCanonicalFileMapSha256 `
@@ -443,6 +471,8 @@ $ImportCandidates = @(
             path = $Path
             head_blob_sha = Get-HeadBlobSha $Path
             baseline_content_sha256 = Get-FileSha256 $AbsolutePath
+            generated_content_sha256 = `
+                [string]$CanonicalGeneratedImportHashMap[$Path]
         }
     }
 )
@@ -497,6 +527,8 @@ $ExactShaManifest.canonical_import_path_set_sha256 = `
     $CanonicalImportPathSetSha256
 $ExactShaManifest.canonical_import_baseline_map_sha256 = `
     $PreRunCanonicalImportMapSha256
+$ExactShaManifest.canonical_import_generated_map_sha256 = `
+    $CanonicalGeneratedImportMapSha256
 Write-AtomicUtf8Json $ExactShaManifestPath $ExactShaManifest
 $ExactShaManifestEvidenceSha256 = Get-FileSha256 $ExactShaManifestPath
 $ImportCandidateMap = [Collections.Generic.Dictionary[string,object]]::new(
@@ -855,6 +887,41 @@ function Get-RequiredJsonObject {
         throw "Required JSON property is not an object: $ObjectLabel.$Name"
     }
     return $Value
+}
+
+function Assert-ExactJsonObjectKeys {
+    param(
+        [Parameter(Mandatory = $true)][object]$Object,
+        [Parameter(Mandatory = $true)][string[]]$ExpectedKeys,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+    $ExpectedSet = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal
+    )
+    foreach ($ExpectedKey in $ExpectedKeys) {
+        if (-not $ExpectedSet.Add($ExpectedKey)) {
+            throw "$Label expected-key contract contains a duplicate: $ExpectedKey"
+        }
+    }
+    $ActualKeys = [string[]]@(
+        $Object.PSObject.Properties | ForEach-Object { [string]$_.Name }
+    )
+    $UnexpectedKeys = [string[]]@(
+        $ActualKeys | Where-Object { -not $ExpectedSet.Contains($_) }
+    )
+    $MissingKeys = [string[]]@(
+        $ExpectedKeys | Where-Object { $ActualKeys -cnotcontains $_ }
+    )
+    if ($ActualKeys.Count -ne $ExpectedSet.Count `
+        -or $UnexpectedKeys.Count -ne 0 `
+        -or $MissingKeys.Count -ne 0) {
+        throw (
+            "$Label is not an exact closed JSON object: missing=[{0}] " +
+            "unexpected=[{1}]" -f
+            ($MissingKeys -join ","),
+            ($UnexpectedKeys -join ",")
+        )
+    }
 }
 
 function Get-RequiredJsonArray {
@@ -1641,9 +1708,12 @@ foreach ($ExpectedNode in $RequiredLiveNodes) {
 Perform a real child-runtime UI path next. `simulate_mouse_button` runs in the
 editor process and is not accepted as gameplay evidence. Query each production
 button's live geometry, then send a mouse tap through `send_runtime_input`.
-The two required actions are the real configured-new-game button and the real
-accelerate button. For each action, read the authoritative application receipt
-and the screen's public `acceptance_state` after the UI consumed that receipt:
+The required chain starts with the real configured-new-game button, then uses a
+bounded sequence of the real submission-lock and finish-maintenance buttons
+until the production settlement overlay appears. For every action, read the
+authoritative application receipt and the screen's public `acceptance_state`
+after the UI consumed that receipt; the sanity-only accelerate button is not
+part of this probe:
 
 ```powershell
 function Invoke-LiveRuntimeButtonTap {
@@ -1792,6 +1862,7 @@ function Get-LiveRuntimeProperty {
 function Wait-LiveRuntimeReceipt {
     param(
         [Parameter(Mandatory = $true)][string]$ExpectedIntentKind,
+        [string]$PreviousIntentId = "",
         [int]$TimeoutSeconds = 60
     )
     $Deadline = [DateTimeOffset]::UtcNow.AddSeconds($TimeoutSeconds)
@@ -1803,7 +1874,12 @@ function Wait-LiveRuntimeReceipt {
                 -PropertyName "_last_receipt" `
                 -Label "V075RuntimeComposition" `
                 -TimeoutSeconds ([Math]::Min(15, $TimeoutSeconds))
-            if ([string]$Receipt.intent_kind -ceq $ExpectedIntentKind) {
+            $IntentKind = [string]$Receipt.intent_kind
+            $IntentId = [string]$Receipt.intent_id
+            if ($IntentKind -ceq $ExpectedIntentKind `
+                -and -not [string]::IsNullOrWhiteSpace($IntentId) `
+                -and ([string]::IsNullOrEmpty($PreviousIntentId) `
+                    -or $IntentId -cne $PreviousIntentId)) {
                 return $Receipt
             }
         } catch {
@@ -1811,13 +1887,89 @@ function Wait-LiveRuntimeReceipt {
             # transient only inside this bounded receipt poll.
             $LastReceiptError = $_.Exception.Message
         }
-        $null = Invoke-McpJson "wait_msec" @{ duration = 500 }
+        $null = Invoke-McpJson "wait_msec" @{ duration = 250 }
     } while ([DateTimeOffset]::UtcNow -lt $Deadline)
     throw (
-        "Timed out waiting for authoritative receipt: {0}; last_bridge_error={1}" -f
+        "Timed out waiting for new authoritative receipt: {0}; previous={1}; last_bridge_error={2}" -f
         $ExpectedIntentKind,
+        $PreviousIntentId,
         $LastReceiptError
     )
+}
+
+function Get-LiveRuntimeButtonActionState {
+    param(
+        [Parameter(Mandatory = $true)][string]$NodePath,
+        [Parameter(Mandatory = $true)][string]$Label,
+        [int]$TimeoutSeconds = 30
+    )
+    $Button = Get-LiveRuntimeNodeResult `
+        -NodePath $NodePath `
+        -Label $Label `
+        -Properties @("disabled") `
+        -TimeoutSeconds $TimeoutSeconds
+    if ((Get-RequiredString $Button "name" "button_state") `
+            -cne (($NodePath -split "/")[-1]) `
+        -or (Get-RequiredString $Button "type" "button_state") -cne "Button") {
+        throw "Production button identity mismatch: $Label"
+    }
+    $Properties = Get-RequiredJsonObject `
+        $Button "properties" "button_state"
+    $Requested = Get-RequiredJsonObject `
+        $Button "requested_properties" "button_state"
+    $Size = Get-RequiredJsonObject `
+        $Properties "size" "button_state.properties"
+    $Visible = Get-RequiredBoolean `
+        $Properties "visible" "button_state.properties"
+    $Disabled = Get-RequiredBoolean `
+        $Requested "disabled" "button_state.requested_properties"
+    $Width = Get-RequiredFiniteNumber `
+        $Size "x" "button_state.properties.size"
+    $Height = Get-RequiredFiniteNumber `
+        $Size "y" "button_state.properties.size"
+    return [pscustomobject][ordered]@{
+        actionable = $Visible -and -not $Disabled `
+            -and $Width -gt 0 -and $Height -gt 0
+        visible = $Visible
+        disabled = $Disabled
+        width = $Width
+        height = $Height
+    }
+}
+
+function Wait-LiveRuntimeText {
+    param(
+        [Parameter(Mandatory = $true)][string]$NodePath,
+        [Parameter(Mandatory = $true)][string]$ExpectedText,
+        [Parameter(Mandatory = $true)][string]$Label,
+        [int]$TimeoutSeconds = 30
+    )
+    $Deadline = [DateTimeOffset]::UtcNow.AddSeconds($TimeoutSeconds)
+    $LastText = ""
+    do {
+        $LastText = [string](Get-LiveRuntimeProperty `
+            -NodePath $NodePath `
+            -PropertyName "text" `
+            -Label $Label `
+            -TimeoutSeconds ([Math]::Min(15, $TimeoutSeconds)))
+        if ($LastText -ceq $ExpectedText) {
+            return $LastText
+        }
+        if ($LastText.StartsWith("RUNTIME FAULT", [StringComparison]::Ordinal)) {
+            throw "Production UI entered a runtime fault: $LastText"
+        }
+        $null = Invoke-McpJson "wait_msec" @{ duration = 250 }
+    } while ([DateTimeOffset]::UtcNow -lt $Deadline)
+    throw "Timed out waiting for $Label text '$ExpectedText'; last='$LastText'"
+}
+
+function Get-ApplicationReceiptSucceeded {
+    param([Parameter(Mandatory = $true)][object]$Receipt)
+    $AcceptedProperty = $Receipt.PSObject.Properties["accepted"]
+    if ($null -ne $AcceptedProperty) {
+        return Get-RequiredBoolean $Receipt "accepted" "application_receipt"
+    }
+    return Get-RequiredBoolean $Receipt "success" "application_receipt"
 }
 
 function Assert-V075AcceptanceState {
@@ -1847,6 +1999,13 @@ $InitialNewGameCount = Get-RequiredIntegralCount `
     $InitialInteractions "new_game" "initial_acceptance_state.interaction_counts"
 $InitialAcceleratedCount = Get-RequiredIntegralCount `
     $InitialInteractions "accelerated" "initial_acceptance_state.interaction_counts"
+$InitialSubmissionLockedCount = Get-RequiredIntegralCount `
+    $InitialInteractions "submission_locked" "initial_acceptance_state.interaction_counts"
+$InitialMaintenanceFinishedCount = Get-RequiredIntegralCount `
+    $InitialInteractions "maintenance_finished" `
+    "initial_acceptance_state.interaction_counts"
+$InitialSettlementPresentedCount = Get-RequiredIntegralCount `
+    $InitialInteractions "settlement_presented" "initial_acceptance_state.interaction_counts"
 
 $RandomSeedTap = Invoke-LiveRuntimeButtonTap `
     -NodePath "V075GameScreen/OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/SeedRow/RandomSeedButton" `
@@ -1864,51 +2023,6 @@ if (-not [int64]::TryParse(
     [ref]$SeedNumber
 ) -or $SeedNumber -le 0) {
     throw "The real RandomSeedButton did not produce a positive integer seed."
-}
-
-$StartTap = Invoke-LiveRuntimeButtonTap `
-    -NodePath "V075GameScreen/OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack/StartConfiguredButton" `
-    -Label "StartConfiguredButton" `
-    -TimeoutSeconds 60
-$StartReceipt = Wait-LiveRuntimeReceipt `
-    -ExpectedIntentKind "new_game.start" `
-    -TimeoutSeconds 60
-$null = Invoke-McpJson "wait_msec" @{ duration = 250 }
-$StartAcceptance = Get-LiveRuntimeProperty `
-    -NodePath "V075GameScreen" `
-    -PropertyName "acceptance_state" `
-    -Label "V075GameScreen"
-$StartInteractions = Assert-V075AcceptanceState `
-    $StartAcceptance "start_acceptance_state"
-if ((Get-RequiredString $StartReceipt "schema" "start_receipt") `
-        -cne "V075ApplicationReceiptV1" `
-    -or (Get-RequiredString $StartReceipt "intent_kind" "start_receipt") `
-        -cne "new_game.start" `
-    -or -not (Get-RequiredBoolean $StartReceipt "accepted" "start_receipt") `
-    -or (Get-RequiredString $StartReceipt "reason_code" "start_receipt") `
-        -cne "v075_new_game_application_flow_committed" `
-    -or (Get-RequiredString $StartReceipt "ruleset_id" "start_receipt") `
-        -cne "v0.7.5" `
-    -or [string]::IsNullOrWhiteSpace(
-        (Get-RequiredString $StartReceipt "intent_id" "start_receipt")
-    ) `
-    -or [string]::IsNullOrWhiteSpace(
-        (Get-RequiredString $StartReceipt "match_id" "start_receipt")
-    ) `
-    -or [string]::IsNullOrWhiteSpace(
-        (Get-RequiredString $StartReceipt "session_id" "start_receipt")
-    ) `
-    -or (Get-RequiredString $StartReceipt "sample_mode_id" "start_receipt") `
-        -cne "NEW_V075_GAME" `
-    -or -not (Get-RequiredBoolean `
-        $StartAcceptance "match_started" "start_acceptance_state") `
-    -or (Get-RequiredIntegralCount `
-        $StartInteractions "new_game" "start_acceptance_state.interaction_counts") `
-        -ne ($InitialNewGameCount + 1) `
-    -or (Get-RequiredIntegralCount `
-        $StartInteractions "accelerated" "start_acceptance_state.interaction_counts") `
-        -ne $InitialAcceleratedCount) {
-    throw "Real UI new-game action was not accepted and consumed exactly once."
 }
 
 $RootScroll = Get-LiveRuntimeNodeResult `
@@ -1951,6 +2065,37 @@ $ScrollEvents = @(
         }
     }
 )
+
+$StartTap = Invoke-LiveRuntimeButtonTap `
+    -NodePath "V075GameScreen/OverlayLayer/StartOverlay/Center/Panel/Margin/Rows/PlayerButtons/V074SettingsStack/StartConfiguredButton" `
+    -Label "StartConfiguredButton" `
+    -TimeoutSeconds 60
+$StartReceipt = Wait-LiveRuntimeReceipt `
+    -ExpectedIntentKind "new_game.start" `
+    -TimeoutSeconds 60
+if ((Get-RequiredString $StartReceipt "schema" "start_receipt") `
+        -cne "V075ApplicationReceiptV1" `
+    -or (Get-RequiredString $StartReceipt "intent_kind" "start_receipt") `
+        -cne "new_game.start" `
+    -or -not (Get-RequiredBoolean $StartReceipt "accepted" "start_receipt") `
+    -or (Get-RequiredString $StartReceipt "reason_code" "start_receipt") `
+        -cne "v075_new_game_application_flow_committed" `
+    -or (Get-RequiredString $StartReceipt "ruleset_id" "start_receipt") `
+        -cne "v0.7.5" `
+    -or [string]::IsNullOrWhiteSpace(
+        (Get-RequiredString $StartReceipt "intent_id" "start_receipt")
+    ) `
+    -or [string]::IsNullOrWhiteSpace(
+        (Get-RequiredString $StartReceipt "match_id" "start_receipt")
+    ) `
+    -or [string]::IsNullOrWhiteSpace(
+        (Get-RequiredString $StartReceipt "session_id" "start_receipt")
+    ) `
+    -or (Get-RequiredString $StartReceipt "sample_mode_id" "start_receipt") `
+        -cne "NEW_V075_GAME") {
+    throw "Real UI new-game action was not accepted by the production flow."
+}
+
 $ScrollResponse = Invoke-McpJson "send_runtime_input" @{
     events = $ScrollEvents
     timeout_msec = 60000
@@ -1988,15 +2133,131 @@ if ($RootScrollVerticalAfter -le $RootScrollVerticalBefore) {
     )
 }
 
-$AccelerateTap = Invoke-LiveRuntimeButtonTap `
-    -NodePath "V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/DockRows/CommandRow/AccelerateButton" `
-    -Label "AccelerateButton" `
-    -RequiredClipNodePath "V075GameScreen/RootMargin" `
-    -TimeoutSeconds 180
-$AccelerateReceipt = Wait-LiveRuntimeReceipt `
-    -ExpectedIntentKind "sample.accelerate" `
-    -TimeoutSeconds 180
-$null = Invoke-McpJson "wait_msec" @{ duration = 250 }
+$LockButtonPath = (
+    "V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/" +
+    "DockRows/CommandRow/LockButton"
+)
+$FinishButtonPath = (
+    "V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/" +
+    "DockRows/CommandRow/FinishMaintenanceButton"
+)
+$SettlementOverlayPath = "V075GameScreen/OverlayLayer/SettlementOverlay"
+$ActionStatusPath = (
+    "V075GameScreen/RootMargin/Shell/DockPanel/DockMargin/" +
+    "DockRows/CommandRow/ActionStatus"
+)
+$GameplayTaps = @()
+$GameplayReceipts = @()
+$LockReceipts = @()
+$FinishReceipts = @()
+$PreviousIntentId = Get-RequiredString $StartReceipt "intent_id" "start_receipt"
+$GameplayDeadline = [DateTimeOffset]::UtcNow.AddMinutes(10)
+$MaxGameplayBatches = 32
+$Settled = $false
+while ([DateTimeOffset]::UtcNow -lt $GameplayDeadline) {
+    $Settlement = Get-LiveRuntimeNodeResult `
+        -NodePath $SettlementOverlayPath `
+        -Label "SettlementOverlay" `
+        -TimeoutSeconds 30
+    $SettlementProperties = Get-RequiredJsonObject `
+        $Settlement "properties" "SettlementOverlay"
+    if (Get-RequiredBoolean `
+        $SettlementProperties "visible" "SettlementOverlay.properties") {
+        $Settled = $true
+        break
+    }
+    if ($LockReceipts.Count -ge $MaxGameplayBatches `
+        -or $FinishReceipts.Count -ge $MaxGameplayBatches) {
+        throw "Natural production UI loop exceeded its batch bound."
+    }
+
+    $LockState = Get-LiveRuntimeButtonActionState `
+        -NodePath $LockButtonPath `
+        -Label "LockButton"
+    if ($LockState.actionable) {
+        $Tap = Invoke-LiveRuntimeButtonTap `
+            -NodePath $LockButtonPath `
+            -Label "LockButton" `
+            -RequiredClipNodePath "V075GameScreen/RootMargin"
+        $Receipt = Wait-LiveRuntimeReceipt `
+            -ExpectedIntentKind "submission.lock" `
+            -PreviousIntentId $PreviousIntentId
+        if ((Get-RequiredString $Receipt "schema" "lock_receipt") `
+                -cne "V075ApplicationReceiptV1" `
+            -or -not (Get-RequiredBoolean $Receipt "accepted" "lock_receipt") `
+            -or (Get-RequiredString $Receipt "reason_code" "lock_receipt") `
+                -cne "submission_locked_with_full_asset_reservation" `
+            -or (Get-RequiredString $Receipt "ruleset_id" "lock_receipt") `
+                -cne "v0.7.5") {
+            throw "Natural production LockButton receipt is invalid."
+        }
+        $PreviousIntentId = Get-RequiredString `
+            $Receipt "intent_id" "lock_receipt"
+        $null = Wait-LiveRuntimeText `
+            -NodePath $ActionStatusPath `
+            -ExpectedText (Get-RequiredString `
+                $Receipt "reason_code" "lock_receipt") `
+            -Label "ActionStatus after submission.lock"
+        $GameplayTaps += $Tap
+        $GameplayReceipts += $Receipt
+        $LockReceipts += $Receipt
+        continue
+    }
+
+    $FinishState = Get-LiveRuntimeButtonActionState `
+        -NodePath $FinishButtonPath `
+        -Label "FinishMaintenanceButton"
+    if ($FinishState.actionable) {
+        $Tap = Invoke-LiveRuntimeButtonTap `
+            -NodePath $FinishButtonPath `
+            -Label "FinishMaintenanceButton" `
+            -RequiredClipNodePath "V075GameScreen/RootMargin"
+        $Receipt = Wait-LiveRuntimeReceipt `
+            -ExpectedIntentKind "maintenance.finish" `
+            -PreviousIntentId $PreviousIntentId
+        if ((Get-RequiredString $Receipt "schema" "finish_receipt") `
+                -cne "V075ApplicationReceiptV1" `
+            -or -not (Get-RequiredBoolean $Receipt "accepted" "finish_receipt") `
+            -or -not (Get-RequiredBoolean $Receipt "success" "finish_receipt") `
+            -or (Get-RequiredString $Receipt "reason_code" "finish_receipt") `
+                -cne "maintenance_ended" `
+            -or (Get-RequiredString $Receipt "ruleset_id" "finish_receipt") `
+                -cne "v0.7.5") {
+            throw "Natural production FinishMaintenanceButton receipt is invalid."
+        }
+        $PreviousIntentId = Get-RequiredString `
+            $Receipt "intent_id" "finish_receipt"
+        $null = Wait-LiveRuntimeText `
+            -NodePath $ActionStatusPath `
+            -ExpectedText (Get-RequiredString `
+                $Receipt "reason_code" "finish_receipt") `
+            -Label "ActionStatus after maintenance.finish"
+        $GameplayTaps += $Tap
+        $GameplayReceipts += $Receipt
+        $FinishReceipts += $Receipt
+        continue
+    }
+
+    $ActionStatus = [string](Get-LiveRuntimeProperty `
+        -NodePath $ActionStatusPath `
+        -PropertyName "text" `
+        -Label "ActionStatus" `
+        -TimeoutSeconds 15)
+    if ($ActionStatus.StartsWith("RUNTIME FAULT", [StringComparison]::Ordinal)) {
+        throw "Natural production UI loop entered runtime fault: $ActionStatus"
+    }
+    $null = Invoke-McpJson "wait_msec" @{ duration = 250 }
+}
+if (-not $Settled `
+    -or $LockReceipts.Count -le 0 `
+    -or $LockReceipts.Count -ne $FinishReceipts.Count `
+    -or $GameplayReceipts.Count -le 0 `
+    -or (Get-RequiredString `
+        $GameplayReceipts[-1] "intent_kind" "final_gameplay_receipt") `
+        -cne "maintenance.finish") {
+    throw "Natural production UI chain did not settle by complete Lock/Finish batches."
+}
+
 $GameplayAcceptance = Get-LiveRuntimeProperty `
     -NodePath "V075GameScreen" `
     -PropertyName "acceptance_state" `
@@ -2004,31 +2265,61 @@ $GameplayAcceptance = Get-LiveRuntimeProperty `
     -TimeoutSeconds 60
 $GameplayInteractions = Assert-V075AcceptanceState `
     $GameplayAcceptance "gameplay_acceptance_state"
-if ((Get-RequiredString $AccelerateReceipt "schema" "accelerate_receipt") `
-        -cne "V075ApplicationReceiptV1" `
-    -or (Get-RequiredString $AccelerateReceipt "intent_kind" "accelerate_receipt") `
-        -cne "sample.accelerate" `
-    -or -not (Get-RequiredBoolean `
-        $AccelerateReceipt "accepted" "accelerate_receipt") `
-    -or (Get-RequiredString $AccelerateReceipt "reason_code" "accelerate_receipt") `
-        -cne "sample_match_completed" `
-    -or (Get-RequiredString $AccelerateReceipt "ruleset_id" "accelerate_receipt") `
-        -cne "v0.7.5" `
-    -or (Get-RequiredString $AccelerateReceipt "phase" "accelerate_receipt") `
-        -cne "settled" `
-    -or -not (Get-RequiredBoolean `
+if (-not (Get-RequiredBoolean `
         $GameplayAcceptance "match_started" "gameplay_acceptance_state") `
     -or -not (Get-RequiredBoolean `
         $GameplayAcceptance "match_completed" "gameplay_acceptance_state") `
-    -or (Get-RequiredString $AccelerateReceipt "intent_id" "accelerate_receipt") `
-        -ceq (Get-RequiredString $StartReceipt "intent_id" "start_receipt") `
+    -or -not (Get-RequiredBoolean `
+        $GameplayAcceptance "settlement_visible" "gameplay_acceptance_state") `
     -or (Get-RequiredIntegralCount `
         $GameplayInteractions "new_game" "gameplay_acceptance_state.interaction_counts") `
         -ne ($InitialNewGameCount + 1) `
     -or (Get-RequiredIntegralCount `
         $GameplayInteractions "accelerated" "gameplay_acceptance_state.interaction_counts") `
-        -ne ($InitialAcceleratedCount + 1)) {
-    throw "Real UI accelerate action was not accepted and consumed exactly once."
+        -ne $InitialAcceleratedCount `
+    -or (Get-RequiredIntegralCount `
+        $GameplayInteractions "submission_locked" `
+        "gameplay_acceptance_state.interaction_counts") `
+        -ne ($InitialSubmissionLockedCount + $LockReceipts.Count) `
+    -or (Get-RequiredIntegralCount `
+        $GameplayInteractions "maintenance_finished" `
+        "gameplay_acceptance_state.interaction_counts") `
+        -ne ($InitialMaintenanceFinishedCount + $FinishReceipts.Count) `
+    -or (Get-RequiredIntegralCount `
+        $GameplayInteractions "settlement_presented" `
+        "gameplay_acceptance_state.interaction_counts") `
+        -ne ($InitialSettlementPresentedCount + 1)) {
+    throw "Natural production UI gameplay was not consumed and settled exactly once."
+}
+$Debug = Get-RequiredJsonObject `
+    $GameplayAcceptance "runtime_acceptance_debug" "gameplay_acceptance_state"
+Assert-ExactJsonObjectKeys `
+    -Object $Debug `
+    -Label "gameplay_acceptance_state.runtime_acceptance_debug" `
+    -ExpectedKeys @(
+        "schema", "ruleset_id", "phase", "combat",
+        "facility_combat_damage_receipt_count", "facility_effect_integrity",
+        "combat_presentation", "combat_public_receipt_count",
+        "final_settlement_count", "duplicate_settlement_count",
+        "final_settlement_public_log_count",
+        "final_settlement_presentation_count", "runtime_error_count",
+        "hidden_info_violation_count", "combat_telemetry",
+        "combat_telemetry_hidden_field_count",
+        "combat_telemetry_gameplay_owner_count",
+        "combat_telemetry_rng_owner_count",
+        "combat_telemetry_world_mutation_count", "invalid_action_count",
+        "ai_combat_invalid_target_count", "nonfinite_count"
+    )
+if ((Get-RequiredString `
+        $Debug "schema" "gameplay_acceptance_state.runtime_acceptance_debug") `
+        -cne "V075RuntimeAcceptanceDebugV1" `
+    -or (Get-RequiredString `
+        $Debug "ruleset_id" "gameplay_acceptance_state.runtime_acceptance_debug") `
+        -cne "v0.7.5" `
+    -or (Get-RequiredString `
+        $Debug "phase" "gameplay_acceptance_state.runtime_acceptance_debug") `
+        -cne "settled") {
+    throw "Final runtime debug is not settled."
 }
 $CombatUi = Get-RequiredJsonObject `
     $GameplayAcceptance "combat_wrapper" "gameplay_acceptance_state"
@@ -2052,10 +2343,25 @@ if ($GameplayRuntimeErrorCount -ne 0 `
     -or $CombatUiReceiptDuplicateCount -ne 0) {
     throw "Real UI production gameplay safety counters are not zero."
 }
-$Debug = Get-RequiredJsonObject $AccelerateReceipt "debug" "accelerate_receipt"
 $CombatDebug = Get-RequiredJsonObject $Debug "combat" "terminal_receipt.debug"
+Assert-ExactJsonObjectKeys `
+    -Object $CombatDebug `
+    -Label "runtime_acceptance_debug.combat" `
+    -ExpectedKeys @(
+        "monster_card_mode_counts", "monster_private_skill_commit_count",
+        "monster_trample_region_receipt_count", "military_region_assault_count",
+        "military_monster_assault_count", "runtime_error_count",
+        "combat_duplicate_effect_count", "combat_effect_integrity",
+        "combat_receipt_integrity"
+    )
 $MonsterModes = Get-RequiredJsonObject `
     $CombatDebug "monster_card_mode_counts" "terminal_receipt.debug.combat"
+Assert-ExactJsonObjectKeys `
+    -Object $MonsterModes `
+    -Label "runtime_acceptance_debug.combat.monster_card_mode_counts" `
+    -ExpectedKeys @(
+        "DEPLOY_NEW", "REFRESH_EXISTING", "UPGRADE_EXISTING", "REPLACE_EXISTING"
+    )
 $MonsterDeployCount = Get-RequiredIntegralCount `
     $MonsterModes "DEPLOY_NEW" "terminal_receipt.debug.combat.monster_card_mode_counts"
 $MonsterRefreshCount = Get-RequiredIntegralCount `
@@ -2091,12 +2397,37 @@ $FacilityIntegrity = Get-RequiredJsonObject `
     $Debug "facility_effect_integrity" "terminal_receipt.debug"
 $Presentation = Get-RequiredJsonObject `
     $Debug "combat_presentation" "terminal_receipt.debug"
+Assert-ExactJsonObjectKeys `
+    -Object $EffectIntegrity `
+    -Label "runtime_acceptance_debug.combat.combat_effect_integrity" `
+    -ExpectedKeys @("green", "violation_count")
+Assert-ExactJsonObjectKeys `
+    -Object $ReceiptIntegrity `
+    -Label "runtime_acceptance_debug.combat.combat_receipt_integrity" `
+    -ExpectedKeys @("green")
+Assert-ExactJsonObjectKeys `
+    -Object $FacilityIntegrity `
+    -Label "runtime_acceptance_debug.facility_effect_integrity" `
+    -ExpectedKeys @("green")
+Assert-ExactJsonObjectKeys `
+    -Object $Presentation `
+    -Label "runtime_acceptance_debug.combat_presentation" `
+    -ExpectedKeys @(
+        "applied_receipt_count", "duplicate_receipt_count",
+        "collision_receipt_count", "rejected_receipt_count",
+        "presentation_gameplay_mutation_count", "presentation_rng_draw_delta"
+    )
 $McpCombatPublicReceiptCount = Get-RequiredIntegralCount `
     $Debug "combat_public_receipt_count" "terminal_receipt.debug"
 $McpPresentationAppliedReceiptCount = Get-RequiredIntegralCount `
     $Presentation "applied_receipt_count" "terminal_receipt.debug.combat_presentation"
 $McpUiPresentationCueConsumedCount = Get-RequiredIntegralCount `
     $CombatUi "combat_map_cue_apply_count" "acceptance_state.combat_wrapper"
+$CombatSurfaceUi = Get-RequiredJsonObject `
+    $CombatUi "surface" "acceptance_state.combat_wrapper"
+$McpSurfacePresentationCueConsumedCount = Get-RequiredIntegralCount `
+    $CombatSurfaceUi "presentation_cue_applied_count" `
+    "acceptance_state.combat_wrapper.surface"
 $FinalSettlementCount = Get-RequiredIntegralCount `
     $Debug "final_settlement_count" "terminal_receipt.debug"
 $DuplicateSettlementCount = Get-RequiredIntegralCount `
@@ -2113,13 +2444,25 @@ $DebugHiddenInfoViolationCount = Get-RequiredIntegralCount `
     $Debug "hidden_info_violation_count" "terminal_receipt.debug"
 $CombatTelemetry = Get-RequiredJsonObject `
     $Debug "combat_telemetry" "terminal_receipt.debug"
+Assert-ExactJsonObjectKeys `
+    -Object $CombatTelemetry `
+    -Label "runtime_acceptance_debug.combat_telemetry" `
+    -ExpectedKeys @(
+        "schema", "ruleset_id", "hidden_input_field_count",
+        "opponent_skill_definition_input_count",
+        "opponent_skill_target_input_count",
+        "opponent_skill_cooldown_input_count",
+        "instant_sequence_input_count", "warehouse_private_stock_input_count",
+        "ai_private_plan_input_count", "stored_hidden_field_count",
+        "gameplay_owner_count", "rng_owner_count", "world_mutation_count"
+    )
 if ((Get-RequiredString `
         $CombatTelemetry "schema" "terminal_receipt.debug.combat_telemetry") `
-        -cne "V075CombatTelemetryBridgeDebugV1" `
+        -cne "V075CombatTelemetryServiceDebugV1" `
     -or (Get-RequiredString `
         $CombatTelemetry "ruleset_id" "terminal_receipt.debug.combat_telemetry") `
         -cne "v0.7.5") {
-    throw "Combat telemetry debug identity is not the V0.7.5 bridge contract."
+    throw "Combat telemetry debug identity is not the V0.7.5 service contract."
 }
 $CombatTelemetryHiddenInputFieldCount = Get-RequiredIntegralCount `
     $CombatTelemetry "hidden_input_field_count" `
@@ -2214,7 +2557,6 @@ if ($McpCombatActionCount -le 0 `
     -or $DebugRuntimeErrorCount -ne 0 `
     -or $CombatRuntimeErrorCount -ne 0 `
     -or $DebugHiddenInfoViolationCount -ne 0 `
-    -or $CombatTelemetryHiddenInputFieldCount -ne 0 `
     -or $CombatTelemetryOpponentSkillDefinitionInputCount -ne 0 `
     -or $CombatTelemetryOpponentSkillTargetInputCount -ne 0 `
     -or $CombatTelemetryOpponentSkillCooldownInputCount -ne 0 `
@@ -2242,49 +2584,63 @@ if ($McpCombatActionCount -le 0 `
     -or -not $ReceiptIntegrityGreen `
     -or -not $FacilityIntegrityGreen `
     -or $McpPresentationAppliedReceiptCount -le 0 `
+    -or $McpPresentationAppliedReceiptCount `
+        -ne $McpCombatPublicReceiptCount `
     -or $McpUiPresentationCueConsumedCount -ne $McpPresentationAppliedReceiptCount `
+    -or $McpSurfacePresentationCueConsumedCount `
+        -ne $McpPresentationAppliedReceiptCount `
     -or $CombatUiSharedConsumerCount -ne 1 `
     -or $CombatUiSignalConnectionCount -ne 1 `
     -or -not $CombatUiSharedIdentityGreen `
-    -or $CombatUiReceiptCount -ne $McpCombatPublicReceiptCount `
-    -or $CombatUiReceiptAppliedCount -ne $McpCombatPublicReceiptCount `
+    -or $CombatUiReceiptCount -ne 0 `
+    -or $CombatUiReceiptAppliedCount -ne 0 `
     -or $CombatUiReceiptRejectedCount -ne 0 `
-    -or $CombatUiSuppressedDuplicateConsumeCount `
-        -ne $McpCombatPublicReceiptCount `
+    -or $CombatUiSuppressedDuplicateConsumeCount -ne 0 `
     -or $PresentationDuplicateReceiptCount -ne 0 `
+    -or $PresentationCollisionReceiptCount -ne 0 `
     -or $PresentationGameplayMutationCount -ne 0 `
     -or $PresentationRngDrawDelta -ne 0) {
-    throw "The authoritative terminal receipt failed the production combat/safety gate."
+    throw "The natural production runtime state failed the combat/safety gate."
 }
-$AcceptedApplicationReceipts = @(
-    $StartReceipt,
-    $AccelerateReceipt
-) | Where-Object {
-    Get-RequiredBoolean $_ "accepted" "accepted_application_receipts[]"
-}
+$ProductionApplicationTaps = @($StartTap) + @($GameplayTaps)
+$ProductionApplicationReceipts = @($StartReceipt) + @($GameplayReceipts)
+$SuccessfulApplicationReceipts = @(
+    $ProductionApplicationReceipts | Where-Object {
+        Get-ApplicationReceiptSucceeded $_
+    }
+)
 $UniqueApplicationReceiptIds = @(
-    $AcceptedApplicationReceipts |
-        ForEach-Object { [string]$_.intent_id } |
+    $ProductionApplicationReceipts |
+        ForEach-Object {
+            Get-RequiredString $_ "intent_id" "application_receipt"
+        } |
         Sort-Object -Unique
 )
-$McpProductionApplicationActionCount = @($StartTap, $AccelerateTap).Count
-$McpProductionApplicationReceiptCount = $AcceptedApplicationReceipts.Count
+$McpProductionApplicationActionCount = $ProductionApplicationTaps.Count
+$McpProductionApplicationReceiptCount = $SuccessfulApplicationReceipts.Count
 $McpProductionApplicationUniqueReceiptIdCount = $UniqueApplicationReceiptIds.Count
-$McpProductionUiReceiptConsumedCount = (
+$McpProductionUiReceiptConsumedCount = `
     (Get-RequiredIntegralCount `
-        $GameplayInteractions "new_game" "gameplay_acceptance_state.interaction_counts") `
-        - $InitialNewGameCount
-) + (
-    (Get-RequiredIntegralCount `
-        $GameplayInteractions "accelerated" "gameplay_acceptance_state.interaction_counts") `
-        - $InitialAcceleratedCount
-)
-if ($McpProductionApplicationActionCount -ne 2 `
-    -or $McpProductionApplicationReceiptCount -ne 2 `
+        $GameplayInteractions "new_game" `
+        "gameplay_acceptance_state.interaction_counts") `
+    - $InitialNewGameCount `
+    + (Get-RequiredIntegralCount `
+        $GameplayInteractions "submission_locked" `
+        "gameplay_acceptance_state.interaction_counts") `
+    - $InitialSubmissionLockedCount `
+    + (Get-RequiredIntegralCount `
+        $GameplayInteractions "maintenance_finished" `
+        "gameplay_acceptance_state.interaction_counts") `
+    - $InitialMaintenanceFinishedCount
+$McpProductionUiInputCount = 1 + $ProductionApplicationTaps.Count
+if ($McpProductionApplicationActionCount -le 2 `
+    -or $McpProductionApplicationReceiptCount `
+        -ne $McpProductionApplicationActionCount `
     -or $McpProductionApplicationUniqueReceiptIdCount `
         -ne $McpProductionApplicationReceiptCount `
-    -or $McpProductionUiReceiptConsumedCount -ne 2) {
-    throw "Production application action/receipt/consumption counts are not exactly derived as two."
+    -or $McpProductionUiReceiptConsumedCount `
+        -ne $McpProductionApplicationReceiptCount) {
+    throw "Production application action/receipt/consumption counts diverged."
 }
 $FinalEvents = Invoke-McpJson "get_runtime_events" @{
     max_events = 200
@@ -2327,7 +2683,7 @@ if (-not (Get-RequiredBoolean `
 }
 "MCP_PRODUCTION_GAMEPLAY_PROBE_MODE=UI_INPUT"
 "MCP_PRODUCTION_RANDOM_SEED=$SeedValue"
-"MCP_PRODUCTION_UI_INPUT_COUNT=$(@($RandomSeedTap, $StartTap, $AccelerateTap).Count)"
+"MCP_PRODUCTION_UI_INPUT_COUNT=$McpProductionUiInputCount"
 "MCP_ROOT_SCROLL_VERTICAL_BEFORE=$RootScrollVerticalBefore"
 "MCP_ROOT_SCROLL_VERTICAL_AFTER=$RootScrollVerticalAfter"
 "MCP_PRODUCTION_APPLICATION_ACTION_COUNT=$McpProductionApplicationActionCount"
@@ -2335,19 +2691,23 @@ if (-not (Get-RequiredBoolean `
 "MCP_PRODUCTION_APPLICATION_UNIQUE_RECEIPT_ID_COUNT=$McpProductionApplicationUniqueReceiptIdCount"
 "MCP_PRODUCTION_ACTION_COUNT=$McpCombatActionCount"
 "MCP_PRODUCTION_ACTION_COUNT_DOMAIN=combat_action"
-"MCP_PRODUCTION_ACTION_COUNT_SOURCE=terminal_receipt.debug.combat_plus_facility_damage"
+"MCP_PRODUCTION_ACTION_COUNT_SOURCE=acceptance_state.runtime_acceptance_debug.combat_plus_facility_damage"
 "MCP_PRODUCTION_RECEIPT_COUNT=$McpCombatPublicReceiptCount"
 "MCP_PRODUCTION_RECEIPT_COUNT_DOMAIN=combat_public_receipt"
-"MCP_PRODUCTION_RECEIPT_COUNT_SOURCE=terminal_receipt.debug.combat_public_receipt_count"
+"MCP_PRODUCTION_RECEIPT_COUNT_SOURCE=acceptance_state.runtime_acceptance_debug.combat_public_receipt_count"
 "MCP_PRODUCTION_UI_RECEIPT_CONSUMED_COUNT=$McpProductionUiReceiptConsumedCount"
 "MCP_COMBAT_ACTION_COUNT=$McpCombatActionCount"
 "MCP_COMBAT_PUBLIC_RECEIPT_COUNT=$McpCombatPublicReceiptCount"
 "MCP_PRESENTATION_APPLIED_RECEIPT_COUNT=$McpPresentationAppliedReceiptCount"
 "MCP_UI_PRESENTATION_CUE_CONSUMED_COUNT=$McpUiPresentationCueConsumedCount"
+"MCP_SURFACE_PRESENTATION_CUE_CONSUMED_COUNT=$McpSurfacePresentationCueConsumedCount"
 "MCP_PRESENTATION_COLLISION_RECEIPT_COUNT=$PresentationCollisionReceiptCount"
 "MCP_PRESENTATION_REJECTED_RECEIPT_COUNT=$PresentationRejectedReceiptCount"
-"MCP_PRESENTATION_COLLISION_REJECTED_GATE=DIAGNOSTIC_NONBLOCKING_C4_1"
+"MCP_PRESENTATION_APPLIED_EQUALS_COMBAT_PUBLIC=true"
+"MCP_PRESENTATION_COLLISION_GATE=HARD_ZERO_C4_1"
+"MCP_PRESENTATION_REJECTED_GATE=DIAGNOSTIC_NONBLOCKING_C4_1"
 "MCP_COMBAT_TELEMETRY_HIDDEN_INPUT_FIELD_COUNT=$CombatTelemetryHiddenInputFieldCount"
+"MCP_COMBAT_TELEMETRY_HIDDEN_INPUT_GATE=DIAGNOSTIC_NONBLOCKING_C4_1"
 "MCP_COMBAT_TELEMETRY_PRIVATE_INPUT_COUNT=$($CombatTelemetryOpponentSkillDefinitionInputCount + $CombatTelemetryOpponentSkillTargetInputCount + $CombatTelemetryOpponentSkillCooldownInputCount + $CombatTelemetryInstantSequenceInputCount + $CombatTelemetryWarehousePrivateStockInputCount + $CombatTelemetryAiPrivatePlanInputCount)"
 "MCP_COMBAT_TELEMETRY_STORED_HIDDEN_FIELD_COUNT=$CombatTelemetryStoredHiddenFieldCount"
 "MCP_COMBAT_TELEMETRY_GAMEPLAY_OWNER_COUNT=$CombatTelemetryGameplayOwnerCount"
@@ -2357,16 +2717,291 @@ if (-not (Get-RequiredBoolean `
 "MCP_FINAL_RUNTIME_EVENT_ERROR_COUNT=$($InvalidFinalRuntimeEvents.Count)"
 "MCP_PRODUCTION_GAMEPLAY_PROBE_GREEN=true"
 
-function Get-McpDiagnosticRows([object[]]$Lines) {
-    foreach ($LineValue in $Lines) {
-        $Line = [string]$LineValue
-        if ($Line -match '(?i)(SCRIPT ERROR|PARSE ERROR|PARSER ERROR|RUNTIME ERROR|ERROR:)') {
-            [pscustomobject]@{ severity = "error"; line = $Line }
-        } elseif ($Line -match '(?i)WARNING:' `
-            -or $Line.Contains([string][char]0) `
-            -or $Line.Contains([string][char]0xFFFD)) {
-            [pscustomobject]@{ severity = "unclassified"; line = $Line }
+function Get-McpDiagnosticRows {
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [object[]]$Lines,
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("editor_launch", "runtime")]
+        [string]$Channel,
+        [Parameter(Mandatory = $true)]
+        [Collections.Generic.Dictionary[string,object]]$UidCandidateMap
+    )
+    $CultureInvariant = [Text.RegularExpressions.RegexOptions]::CultureInvariant
+    $IgnoreCaseInvariant = `
+        [Text.RegularExpressions.RegexOptions]::IgnoreCase `
+        -bor $CultureInvariant
+    $UidRegenerationPattern = [regex]::new(
+        '\AWARNING: Missing \.uid file for path "res://(?<source>[^"\r\n]+)"\. The file was re-created from cache\.\z',
+        $CultureInvariant
+    )
+    for ($LineIndex = 0; $LineIndex -lt $Lines.Count; $LineIndex += 1) {
+        $Line = [string]$Lines[$LineIndex]
+        $LineNumber = $LineIndex + 1
+        $RawWarning = [regex]::IsMatch(
+            $Line,
+            '\bWARNING\b',
+            $IgnoreCaseInvariant
+        )
+        if ([regex]::IsMatch(
+                $Line,
+                '(SCRIPT ERROR|PARSE ERROR|PARSER ERROR|RUNTIME ERROR|ERROR:)',
+                $IgnoreCaseInvariant
+            )) {
+            [pscustomobject][ordered]@{
+                severity = "error"
+                classification = "diagnostic_error"
+                channel = $Channel
+                line_number = $LineNumber
+                line = $Line
+                raw_warning = $RawWarning
+                source_path = ""
+                uid_relative_path = ""
+                expected_uid_value = ""
+                expected_uid_content_sha256 = ""
+                expected_uid_byte_length = 0
+            }
+            continue
         }
+        if ($Line.Contains([string][char]0) `
+            -or $Line.Contains([string][char]0xFFFD)) {
+            [pscustomobject][ordered]@{
+                severity = "unclassified"
+                classification = "invalid_console_text"
+                channel = $Channel
+                line_number = $LineNumber
+                line = $Line
+                raw_warning = $RawWarning
+                source_path = ""
+                uid_relative_path = ""
+                expected_uid_value = ""
+                expected_uid_content_sha256 = ""
+                expected_uid_byte_length = 0
+            }
+            continue
+        }
+        $UidRegenerationMatch = $UidRegenerationPattern.Match($Line)
+        if ($UidRegenerationMatch.Success) {
+            $SourcePath = [string]$UidRegenerationMatch.Groups["source"].Value
+            $UidRelativePath = "$SourcePath.uid"
+            if ($Channel -cne "editor_launch") {
+                [pscustomobject][ordered]@{
+                    severity = "unclassified"
+                    classification = "uid_regeneration_warning_wrong_channel"
+                    channel = $Channel
+                    line_number = $LineNumber
+                    line = $Line
+                    raw_warning = $true
+                    source_path = $SourcePath
+                    uid_relative_path = $UidRelativePath
+                    expected_uid_value = ""
+                    expected_uid_content_sha256 = ""
+                    expected_uid_byte_length = 0
+                }
+                continue
+            }
+            if (-not $UidCandidateMap.ContainsKey($UidRelativePath)) {
+                [pscustomobject][ordered]@{
+                    severity = "unclassified"
+                    classification = "uid_regeneration_warning_not_authorized"
+                    channel = $Channel
+                    line_number = $LineNumber
+                    line = $Line
+                    raw_warning = $true
+                    source_path = $SourcePath
+                    uid_relative_path = $UidRelativePath
+                    expected_uid_value = ""
+                    expected_uid_content_sha256 = ""
+                    expected_uid_byte_length = 0
+                }
+                continue
+            }
+            $UidCandidate = $UidCandidateMap[$UidRelativePath]
+            if ([string]$UidCandidate.path -cne $UidRelativePath `
+                -or [string]$UidCandidate.source_path -cne $SourcePath) {
+                [pscustomobject][ordered]@{
+                    severity = "unclassified"
+                    classification = "uid_regeneration_authority_identity_mismatch"
+                    channel = $Channel
+                    line_number = $LineNumber
+                    line = $Line
+                    raw_warning = $true
+                    source_path = $SourcePath
+                    uid_relative_path = $UidRelativePath
+                    expected_uid_value = ""
+                    expected_uid_content_sha256 = ""
+                    expected_uid_byte_length = 0
+                }
+                continue
+            }
+            [pscustomobject][ordered]@{
+                severity = "pending"
+                classification = "pending_uid_regeneration_candidate"
+                channel = $Channel
+                line_number = $LineNumber
+                line = $Line
+                raw_warning = $true
+                source_path = $SourcePath
+                uid_relative_path = $UidRelativePath
+                expected_uid_value = [string]$UidCandidate.uid_value
+                expected_uid_content_sha256 = `
+                    [string]$UidCandidate.uid_content_sha256
+                expected_uid_byte_length = `
+                    [int64]$UidCandidate.uid_byte_length
+            }
+            continue
+        }
+        if ($RawWarning) {
+            [pscustomobject][ordered]@{
+                severity = "unclassified"
+                classification = "unmatched_warning"
+                channel = $Channel
+                line_number = $LineNumber
+                line = $Line
+                raw_warning = $true
+                source_path = ""
+                uid_relative_path = ""
+                expected_uid_value = ""
+                expected_uid_content_sha256 = ""
+                expected_uid_byte_length = 0
+            }
+        }
+    }
+}
+
+function Get-McpUidRegenerationPendingSetGate {
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [object[]]$DiagnosticRows,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [object[]]$LaunchLines,
+        [Parameter(Mandatory = $true)]
+        [Collections.Generic.Dictionary[string,object]]$UidCandidateMap
+    )
+    $ExpectedSourceSet = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal
+    )
+    $ExpectedUidSet = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal
+    )
+    $ExpectedSourceDuplicateCount = 0
+    foreach ($UidPath in $UidCandidateMap.Keys) {
+        $Candidate = $UidCandidateMap[$UidPath]
+        if (-not $ExpectedUidSet.Add([string]$UidPath)) {
+            $ExpectedSourceDuplicateCount += 1
+        }
+        if (-not $ExpectedSourceSet.Add([string]$Candidate.source_path)) {
+            $ExpectedSourceDuplicateCount += 1
+        }
+    }
+    $PendingRows = @(
+        $DiagnosticRows | Where-Object {
+            [string]$_.severity -ceq "pending" `
+                -and [string]$_.classification `
+                    -ceq "pending_uid_regeneration_candidate"
+        }
+    )
+    $ActualSourceSet = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal
+    )
+    $ActualUidSet = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal
+    )
+    $DuplicateSourceCount = 0
+    $DuplicateUidCount = 0
+    $InvalidAuthorityBindingCount = 0
+    foreach ($Row in $PendingRows) {
+        if (-not $ActualSourceSet.Add([string]$Row.source_path)) {
+            $DuplicateSourceCount += 1
+        }
+        if (-not $ActualUidSet.Add([string]$Row.uid_relative_path)) {
+            $DuplicateUidCount += 1
+        }
+        $RowUidPath = [string]$Row.uid_relative_path
+        if (-not $UidCandidateMap.ContainsKey($RowUidPath)) {
+            $InvalidAuthorityBindingCount += 1
+            continue
+        }
+        $AuthorityCandidate = $UidCandidateMap[$RowUidPath]
+        $LineNumberIsIntegral = $Row.line_number -is [sbyte] `
+            -or $Row.line_number -is [byte] `
+            -or $Row.line_number -is [int16] `
+            -or $Row.line_number -is [uint16] `
+            -or $Row.line_number -is [int32] `
+            -or $Row.line_number -is [uint32] `
+            -or $Row.line_number -is [int64] `
+            -or $Row.line_number -is [uint64]
+        $ExpectedLengthIsIntegral = $Row.expected_uid_byte_length -is [sbyte] `
+            -or $Row.expected_uid_byte_length -is [byte] `
+            -or $Row.expected_uid_byte_length -is [int16] `
+            -or $Row.expected_uid_byte_length -is [uint16] `
+            -or $Row.expected_uid_byte_length -is [int32] `
+            -or $Row.expected_uid_byte_length -is [uint32] `
+            -or $Row.expected_uid_byte_length -is [int64] `
+            -or $Row.expected_uid_byte_length -is [uint64]
+        $LineNumber = if ($LineNumberIsIntegral) {
+            [int64]$Row.line_number
+        } else {
+            [int64]0
+        }
+        if ([string]$Row.channel -cne "editor_launch" `
+            -or $Row.raw_warning -isnot [bool] `
+            -or -not [bool]$Row.raw_warning `
+            -or -not $LineNumberIsIntegral `
+            -or $LineNumber -le 0 `
+            -or $LineNumber -gt $LaunchLines.Count `
+            -or [string]$Row.line -cne [string]$LaunchLines[$LineNumber - 1] `
+            -or [string]$Row.line -cne (
+                'WARNING: Missing .uid file for path "res://{0}". The file was re-created from cache.' -f `
+                    [string]$AuthorityCandidate.source_path
+            ) `
+            -or [string]$Row.source_path `
+                -cne [string]$AuthorityCandidate.source_path `
+            -or [string]$Row.uid_relative_path `
+                -cne [string]$AuthorityCandidate.path `
+            -or [string]$Row.expected_uid_value `
+                -cne [string]$AuthorityCandidate.uid_value `
+            -or [string]$Row.expected_uid_content_sha256 `
+                -cne [string]$AuthorityCandidate.uid_content_sha256 `
+            -or -not $ExpectedLengthIsIntegral `
+            -or [int64]$Row.expected_uid_byte_length `
+                -ne [int64]$AuthorityCandidate.uid_byte_length) {
+            $InvalidAuthorityBindingCount += 1
+        }
+    }
+    $ExpectedSourcePathSetSha256 = Get-RunnerCanonicalPathSetSha256 `
+        -Paths ([string[]]@($ExpectedSourceSet))
+    $ExpectedUidPathSetSha256 = Get-RunnerCanonicalPathSetSha256 `
+        -Paths ([string[]]@($ExpectedUidSet))
+    $ActualSourcePathSetSha256 = Get-RunnerCanonicalPathSetSha256 `
+        -Paths ([string[]]@($ActualSourceSet))
+    $ActualUidPathSetSha256 = Get-RunnerCanonicalPathSetSha256 `
+        -Paths ([string[]]@($ActualUidSet))
+    $Green = $ExpectedSourceDuplicateCount -eq 0 `
+        -and $PendingRows.Count -eq $UidCandidateMap.Count `
+        -and $ActualSourceSet.Count -eq $UidCandidateMap.Count `
+        -and $ActualUidSet.Count -eq $UidCandidateMap.Count `
+        -and $DuplicateSourceCount -eq 0 `
+        -and $DuplicateUidCount -eq 0 `
+        -and $InvalidAuthorityBindingCount -eq 0 `
+        -and $ActualSourcePathSetSha256 -ceq $ExpectedSourcePathSetSha256 `
+        -and $ActualUidPathSetSha256 -ceq $ExpectedUidPathSetSha256
+    return [pscustomobject][ordered]@{
+        green = $Green
+        authority_count = $UidCandidateMap.Count
+        pending_count = $PendingRows.Count
+        pending_unique_source_count = $ActualSourceSet.Count
+        pending_unique_uid_count = $ActualUidSet.Count
+        duplicate_source_count = $DuplicateSourceCount
+        duplicate_uid_count = $DuplicateUidCount
+        invalid_authority_binding_count = $InvalidAuthorityBindingCount
+        expected_source_path_set_sha256 = $ExpectedSourcePathSetSha256
+        actual_source_path_set_sha256 = $ActualSourcePathSetSha256
+        expected_uid_path_set_sha256 = $ExpectedUidPathSetSha256
+        actual_uid_path_set_sha256 = $ActualUidPathSetSha256
     }
 }
 
@@ -2608,8 +3243,18 @@ if ((Get-FileSha256 $RuntimeLogEvidencePath) -cne $RuntimeLogSha256 `
 $StrictUtf8 = [Text.UTF8Encoding]::new($false, $true)
 $FinalRuntimeLogLines = @([IO.File]::ReadAllLines($RuntimeLogEvidencePath, $StrictUtf8))
 $LaunchLogLines = @([IO.File]::ReadAllLines($LaunchLogEvidencePath, $StrictUtf8))
-$ProjectDiagnostics = @(Get-McpDiagnosticRows $LaunchLogLines)
-$RuntimeDiagnostics = @(Get-McpDiagnosticRows $FinalRuntimeLogLines)
+$ProjectDiagnostics = @(
+    Get-McpDiagnosticRows `
+        -Lines ([object[]]$LaunchLogLines) `
+        -Channel "editor_launch" `
+        -UidCandidateMap $UidCandidateMap
+)
+$RuntimeDiagnostics = @(
+    Get-McpDiagnosticRows `
+        -Lines ([object[]]$FinalRuntimeLogLines) `
+        -Channel "runtime" `
+        -UidCandidateMap $UidCandidateMap
+)
 $McpProjectErrorCount = (
     $ProjectScriptErrorCount `
     + @($ProjectDiagnostics | Where-Object severity -eq "error").Count
@@ -2619,14 +3264,44 @@ $McpUnclassifiedDiagnosticCount = @(
     @($ProjectDiagnostics + $RuntimeDiagnostics) |
         Where-Object severity -eq "unclassified"
 ).Count
+$McpUidRegenerationPendingRows = @(
+    $ProjectDiagnostics | Where-Object {
+        [string]$_.severity -ceq "pending" `
+            -and [string]$_.classification `
+                -ceq "pending_uid_regeneration_candidate"
+    }
+)
+$McpRuntimePendingDiagnosticCount = @(
+    $RuntimeDiagnostics | Where-Object severity -eq "pending"
+).Count
+$McpRawWarningCount = @(
+    @($ProjectDiagnostics + $RuntimeDiagnostics) |
+        Where-Object { [bool]$_.raw_warning }
+).Count
+$McpUidRegenerationPendingSetGate = Get-McpUidRegenerationPendingSetGate `
+    -DiagnosticRows ([object[]]$ProjectDiagnostics) `
+    -LaunchLines ([object[]]$LaunchLogLines) `
+    -UidCandidateMap $UidCandidateMap
 if ($McpProjectErrorCount -ne 0 `
     -or $McpRuntimeErrorCount -ne 0 `
-    -or $McpUnclassifiedDiagnosticCount -ne 0) {
-    throw "MCP console diagnostics are not clean after verified role stop."
+    -or $McpUnclassifiedDiagnosticCount -ne 0 `
+    -or $McpRuntimePendingDiagnosticCount -ne 0 `
+    -or $UidCandidateMap.Count -ne 202 `
+    -or $McpRawWarningCount -ne $UidCandidateMap.Count `
+    -or $McpUidRegenerationPendingRows.Count -ne $UidCandidateMap.Count `
+    -or -not [bool]$McpUidRegenerationPendingSetGate.green) {
+    throw (
+        "MCP console diagnostics did not pass the exact pending UID " +
+        "regeneration candidate gate after verified role stop."
+    )
 }
 "MCP_PROJECT_ERROR_COUNT=$McpProjectErrorCount"
 "MCP_RUNTIME_ERROR_COUNT=$McpRuntimeErrorCount"
 "MCP_UNCLASSIFIED_DIAGNOSTIC_COUNT=$McpUnclassifiedDiagnosticCount"
+"MCP_RAW_WARNING_COUNT=$McpRawWarningCount"
+"MCP_UID_REGENERATION_PENDING_COUNT=$($McpUidRegenerationPendingRows.Count)"
+"MCP_UID_REGENERATION_PENDING_SOURCE_PATH_SET_SHA256=$($McpUidRegenerationPendingSetGate.actual_source_path_set_sha256)"
+"MCP_UID_REGENERATION_PENDING_UID_PATH_SET_SHA256=$($McpUidRegenerationPendingSetGate.actual_uid_path_set_sha256)"
 "MCP_CONSOLE_EPOCH_BOUND=true"
 "MCP_CONSOLE_EPOCH_SHA256=$ConsoleEpochSha256"
 "MCP_CONSOLE_PLAY_REQUEST_UTC=$($PlayRequestUtc.ToString("o"))"
@@ -2670,7 +3345,11 @@ if ($PostMcpCleanupIssues.Count -ne 0 `
     -or -not [bool]$PostMcpTransientCleanup.cleanup_green `
     -or [string]$PostMcpTransientCleanup.uid_state `
         -cne "EXACT_EXTERNAL_ALLOWLIST" `
-    -or @("HEAD_CLEAN", "CANONICAL_GENERATED_57") `
+    -or @(
+        "HEAD_CLEAN",
+        "CANONICAL_GENERATED_SUBSET",
+        "CANONICAL_GENERATED_57"
+    ) `
         -cnotcontains [string]$PostMcpTransientCleanup.import_state) {
     throw (
         "Post-MCP exact transient cleanup failed before headed capture: " +
@@ -2688,8 +3367,244 @@ if ([string]::IsNullOrWhiteSpace($PostMcpTransientObservationPath) `
 }
 $PostMcpTransientObservationSha256 = Get-FileSha256 `
     $PostMcpTransientObservationPath
+$PostMcpTransientObservationBytes = [IO.File]::ReadAllBytes(
+    $PostMcpTransientObservationPath
+)
+$PostMcpTransientObservation = (
+    [Text.UTF8Encoding]::new($false, $true).GetString(
+        $PostMcpTransientObservationBytes
+    ) | ConvertFrom-Json
+)
+$PostMcpSafeUidCandidates = @(
+    $PostMcpTransientObservation.safe_uid_candidates
+)
+$PostMcpUidEvidenceRows = @($PostMcpTransientObservation.uid_evidence)
+$PostMcpSafeUidByPath = [Collections.Generic.Dictionary[string,object]]::new(
+    [StringComparer]::Ordinal
+)
+foreach ($SafeUidCandidate in $PostMcpSafeUidCandidates) {
+    $SafeUidPath = [string]$SafeUidCandidate.path
+    if ($PostMcpSafeUidByPath.ContainsKey($SafeUidPath)) {
+        throw "Post-MCP UID observation contains a duplicate candidate: $SafeUidPath"
+    }
+    $PostMcpSafeUidByPath.Add($SafeUidPath, $SafeUidCandidate)
+}
+$PostMcpUidEvidenceByPath = `
+    [Collections.Generic.Dictionary[string,object]]::new(
+        [StringComparer]::Ordinal
+    )
+foreach ($UidEvidenceRow in $PostMcpUidEvidenceRows) {
+    $UidEvidenceRelativePath = [string]$UidEvidenceRow.path
+    if ($PostMcpUidEvidenceByPath.ContainsKey($UidEvidenceRelativePath)) {
+        throw (
+            "Post-MCP UID observation contains duplicate byte evidence: " +
+            $UidEvidenceRelativePath
+        )
+    }
+    $PostMcpUidEvidenceByPath.Add($UidEvidenceRelativePath, $UidEvidenceRow)
+}
+$PostMcpRemovedUidPaths = [string[]]@(
+    $PostMcpTransientCleanup.safe_uid_cleanup
+)
+$PostMcpRemovedUidPathSetSha256 = Get-RunnerCanonicalPathSetSha256 `
+    -Paths $PostMcpRemovedUidPaths
+$UidRegenerationExactByteMatchCount = 0
+foreach ($AuthorizedUidPath in $UidCandidateMap.Keys) {
+    if (-not $PostMcpSafeUidByPath.ContainsKey($AuthorizedUidPath) `
+        -or -not $PostMcpUidEvidenceByPath.ContainsKey($AuthorizedUidPath)) {
+        throw "Post-MCP UID exact-byte evidence is missing: $AuthorizedUidPath"
+    }
+    $AuthorizedUidCandidate = $UidCandidateMap[$AuthorizedUidPath]
+    $ObservedSafeUidCandidate = $PostMcpSafeUidByPath[$AuthorizedUidPath]
+    $ObservedUidEvidence = $PostMcpUidEvidenceByPath[$AuthorizedUidPath]
+    $ObservedUidEvidencePath = [string]$ObservedUidEvidence.evidence_path
+    if ([string]$ObservedSafeUidCandidate.source_path `
+            -cne [string]$AuthorizedUidCandidate.source_path `
+        -or [string]$ObservedSafeUidCandidate.uid_value `
+            -cne [string]$AuthorizedUidCandidate.uid_value `
+        -or [string]$ObservedSafeUidCandidate.uid_sha256 `
+            -cne [string]$AuthorizedUidCandidate.uid_content_sha256 `
+        -or [int64]$ObservedSafeUidCandidate.uid_byte_length `
+            -ne [int64]$AuthorizedUidCandidate.uid_byte_length `
+        -or [string]::IsNullOrWhiteSpace($ObservedUidEvidencePath) `
+        -or -not (Test-Path `
+            -LiteralPath $ObservedUidEvidencePath `
+            -PathType Leaf) `
+        -or [string]$ObservedUidEvidence.sha256 `
+            -cne [string]$AuthorizedUidCandidate.uid_content_sha256 `
+        -or [int64]$ObservedUidEvidence.byte_count `
+            -ne [int64]$AuthorizedUidCandidate.uid_byte_length `
+        -or (Get-FileSha256 $ObservedUidEvidencePath) `
+            -cne [string]$AuthorizedUidCandidate.uid_content_sha256) {
+        throw "Post-MCP UID bytes differ from authority: $AuthorizedUidPath"
+    }
+    $UidRegenerationExactByteMatchCount += 1
+}
+if ([string]$PostMcpTransientObservation.schema `
+        -cne "SpaceSyndicateV075McpRunbookTransientObservationV2" `
+    -or [string]$PostMcpTransientObservation.context `
+        -cne "post_mcp_pre_viewport" `
+    -or [string]$PostMcpTransientObservation.frozen_head -cne $HeadSha `
+    -or [string]$PostMcpTransientObservation.frozen_tree -cne $TreeSha `
+    -or [string]$PostMcpTransientObservation.current_head -cne $HeadSha `
+    -or [string]$PostMcpTransientObservation.current_tree -cne $TreeSha `
+    -or [string]$PostMcpTransientObservation.authority_sha256 `
+        -cne $TransientArtifactAuthoritySha256 `
+    -or [string]$PostMcpTransientObservation.generated_uid_state `
+        -cne "EXACT_EXTERNAL_ALLOWLIST" `
+    -or @($PostMcpTransientObservation.observation_only_reasons).Count -ne 0 `
+    -or @($PostMcpTransientObservation.unsafe_uid).Count -ne 0 `
+    -or @($PostMcpTransientObservation.unknown_untracked_drift).Count -ne 0 `
+    -or @($PostMcpTransientObservation.unexpected_ignored_uid_paths).Count -ne 0 `
+    -or [int]$PostMcpTransientObservation.generated_uid_missing_count -ne 0 `
+    -or $PostMcpSafeUidByPath.Count -ne $UidCandidateMap.Count `
+    -or $PostMcpUidEvidenceByPath.Count -ne $UidCandidateMap.Count `
+    -or $UidRegenerationExactByteMatchCount -ne $UidCandidateMap.Count `
+    -or $PostMcpRemovedUidPaths.Count -ne $UidCandidateMap.Count `
+    -or $PostMcpRemovedUidPathSetSha256 `
+        -cne [string]$McpUidRegenerationPendingSetGate.actual_uid_path_set_sha256) {
+    throw "Post-MCP UID warning promotion evidence is incomplete or cross-epoch."
+}
+$PostMcpCleanupResultEvidence = [ordered]@{
+    schema = "SpaceSyndicateExactShaPostMcpCleanupResultV1"
+    completed_at_utc = [DateTimeOffset]::UtcNow.ToString("o")
+    head_sha = $HeadSha
+    tree_sha = $TreeSha
+    context = "post_mcp_pre_viewport"
+    issues = @($PostMcpCleanupIssues)
+    observation_only = [bool]$PostMcpTransientCleanup.observation_only
+    observation_path = $PostMcpTransientObservationPath
+    observation_sha256 = $PostMcpTransientObservationSha256
+    import_state = [string]$PostMcpTransientCleanup.import_state
+    uid_state = [string]$PostMcpTransientCleanup.uid_state
+    import_restore_count = @(
+        $PostMcpTransientCleanup.safe_import_cleanup
+    ).Count
+    uid_remove_count = @($PostMcpTransientCleanup.safe_uid_cleanup).Count
+    final_head = [string]$PostMcpTransientCleanup.final_head
+    final_tree = [string]$PostMcpTransientCleanup.final_tree
+    final_status = @($PostMcpTransientCleanup.final_status)
+    final_tracked_drift = @($PostMcpTransientCleanup.final_tracked_drift)
+    final_untracked_drift = @($PostMcpTransientCleanup.final_untracked_drift)
+    final_unexpected_ignored_uid_paths = @(
+        $PostMcpTransientCleanup.final_unexpected_ignored_uid_paths
+    )
+    cleanup_green = [bool]$PostMcpTransientCleanup.cleanup_green
+}
+$PostMcpCleanupResultEvidencePath = Join-Path `
+    $ValidationEvidenceRoot `
+    "post-mcp-cleanup-result.json"
+Write-AtomicUtf8Json `
+    -Path $PostMcpCleanupResultEvidencePath `
+    -Value $PostMcpCleanupResultEvidence
+$PostMcpCleanupResultEvidenceSha256 = Get-FileSha256 `
+    $PostMcpCleanupResultEvidencePath
+$PostMcpObservedAtUtc = [DateTimeOffset]::MinValue
+if (-not [DateTimeOffset]::TryParse(
+        [string]$PostMcpTransientObservation.observed_at_utc,
+        [Globalization.CultureInfo]::InvariantCulture,
+        [Globalization.DateTimeStyles]::RoundtripKind,
+        [ref]$PostMcpObservedAtUtc
+    ) `
+    -or $PostMcpObservedAtUtc -lt $FinalLogReadUtc) {
+    throw "Post-MCP cleanup observation is outside the stopped Role-A epoch."
+}
+$UidRegenerationControlledAtUtc = [DateTimeOffset]::UtcNow
+if ($PostMcpObservedAtUtc -gt $UidRegenerationControlledAtUtc) {
+    throw "Post-MCP cleanup observation timestamp is in the future."
+}
+$UidRegenerationEditorConsoleSha256 = Get-FileSha256 $LaunchLogEvidencePath
+$UidRegenerationLaunchEpochIdentity = "{0}|{1}|{2}|{3}|{4}|{5}" -f @(
+    $HeadSha,
+    $TreeSha,
+    [int]$LaunchResult.pid,
+    $LaunchProcessStartUtc.ToString("o"),
+    $LaunchLogEvidencePath.ToLowerInvariant(),
+    $UidRegenerationEditorConsoleSha256
+)
+$UidRegenerationLaunchEpochSha256 = Get-RunnerCanonicalSha256Hex -Bytes (
+    [Text.UTF8Encoding]::new($false, $true).GetBytes(
+        $UidRegenerationLaunchEpochIdentity
+    )
+)
+$ControlledUidRegenerationWarningRows = @(
+    foreach ($PendingUidWarning in $McpUidRegenerationPendingRows) {
+        [pscustomobject][ordered]@{
+            line_number = [int64]$PendingUidWarning.line_number
+            line = [string]$PendingUidWarning.line
+            channel = [string]$PendingUidWarning.channel
+            raw_warning = [bool]$PendingUidWarning.raw_warning
+            source_path = [string]$PendingUidWarning.source_path
+            uid_relative_path = [string]$PendingUidWarning.uid_relative_path
+            expected_uid_value = [string]$PendingUidWarning.expected_uid_value
+            expected_uid_content_sha256 = `
+                [string]$PendingUidWarning.expected_uid_content_sha256
+            expected_uid_byte_length = `
+                [int64]$PendingUidWarning.expected_uid_byte_length
+            initial_classification = "pending_uid_regeneration_candidate"
+            final_classification = "controlled_uid_regeneration"
+        }
+    }
+)
+$UidRegenerationWarningReceipt = [ordered]@{
+    schema = "SpaceSyndicateExactShaUidRegenerationWarningReceiptV1"
+    status = "CONTROLLED"
+    transition = `
+        "pending_uid_regeneration_candidate->controlled_uid_regeneration"
+    controlled_at_utc = $UidRegenerationControlledAtUtc.ToString("o")
+    cleanup_observed_at_utc = $PostMcpObservedAtUtc.ToString("o")
+    head_sha = $HeadSha
+    tree_sha = $TreeSha
+    initial_manifest_path = $ExactShaManifestPath
+    initial_manifest_evidence_sha256 = $ExactShaManifestEvidenceSha256
+    initial_uid_present_count = 0
+    launch_pid = [int]$LaunchResult.pid
+    launch_process_start_utc = $LaunchProcessStartUtc.ToString("o")
+    launch_epoch_sha256 = $UidRegenerationLaunchEpochSha256
+    console_epoch_sha256 = $ConsoleEpochSha256
+    runtime_console_path = $RuntimeLogEvidencePath
+    runtime_console_sha256 = $RuntimeLogSha256
+    editor_console_path = $LaunchLogEvidencePath
+    editor_console_sha256 = $UidRegenerationEditorConsoleSha256
+    allowlist_source_path = $UidAllowlistSourcePath
+    allowlist_sha256 = $UidAllowlistSourceSha256
+    allowlist_entry_set_sha256 = `
+        [string]$UidAllowlistValidation.uid_entry_set_sha256
+    allowlist_entry_count = $UidCandidateMap.Count
+    raw_warning_count = $McpRawWarningCount
+    pending_candidate_count = $McpUidRegenerationPendingRows.Count
+    controlled_warning_count = $ControlledUidRegenerationWarningRows.Count
+    runtime_warning_count = @(
+        $RuntimeDiagnostics | Where-Object { [bool]$_.raw_warning }
+    ).Count
+    unclassified_diagnostic_count = $McpUnclassifiedDiagnosticCount
+    source_path_set_sha256 = `
+        [string]$McpUidRegenerationPendingSetGate.actual_source_path_set_sha256
+    uid_path_set_sha256 = `
+        [string]$McpUidRegenerationPendingSetGate.actual_uid_path_set_sha256
+    uid_exact_state = [string]$PostMcpTransientCleanup.uid_state
+    uid_exact_byte_match_count = $UidRegenerationExactByteMatchCount
+    uid_cleanup_remove_count = $PostMcpRemovedUidPaths.Count
+    cleanup_green = [bool]$PostMcpTransientCleanup.cleanup_green
+    cleanup_context = "post_mcp_pre_viewport"
+    cleanup_observation_path = $PostMcpTransientObservationPath
+    cleanup_observation_sha256 = $PostMcpTransientObservationSha256
+    cleanup_result_path = $PostMcpCleanupResultEvidencePath
+    cleanup_result_sha256 = $PostMcpCleanupResultEvidenceSha256
+    warnings = $ControlledUidRegenerationWarningRows
+}
+$UidRegenerationWarningReceiptPath = Join-Path `
+    $ValidationEvidenceRoot `
+    "uid-regeneration-warning-classification-receipt.json"
+Write-AtomicUtf8Json `
+    -Path $UidRegenerationWarningReceiptPath `
+    -Value $UidRegenerationWarningReceipt
+$UidRegenerationWarningReceiptSha256 = Get-FileSha256 `
+    $UidRegenerationWarningReceiptPath
 "MCP_POST_MCP_TRANSIENT_CLEANUP_GREEN=true"
 "MCP_POST_MCP_TRANSIENT_OBSERVATION_SHA256=$PostMcpTransientObservationSha256"
+"MCP_UID_REGENERATION_CONTROLLED_COUNT=$($ControlledUidRegenerationWarningRows.Count)"
+"MCP_UID_REGENERATION_WARNING_RECEIPT_SHA256=$UidRegenerationWarningReceiptSha256"
 
 $ViewportEvidenceRoot = Join-Path $ValidationEvidenceRoot "headed-viewports"
 $ViewportRaw = & pwsh -NoLogo -NoProfile -File `
@@ -2849,35 +3764,42 @@ if ($UnexpectedTracked.Count -ne 0) {
         ($UnexpectedTracked -join "`n")
     )
 }
-$CanonicalImportState = "HEAD_CLEAN"
-$PostRunCanonicalImportMapSha256 = ""
-if ($TrackedDrift.Count -eq 0) {
-    $PostRunCanonicalImportMapSha256 = Get-RunnerCanonicalFileMapSha256 `
-        -Root $Worktree `
-        -Paths $CanonicalImportPaths
-    if ($PostRunCanonicalImportMapSha256 `
-        -cne [string]$CanonicalImportAuthority.baseline_map_sha256) {
-        throw "No import drift was reported, but the canonical baseline map changed."
+$CurrentCanonicalImportRows = [object[]]@(
+    foreach ($RelativeImportPath in $CanonicalImportPaths) {
+        $AbsoluteImportPath = Resolve-WorktreeChildPath $RelativeImportPath
+        if (-not (Test-Path -LiteralPath $AbsoluteImportPath -PathType Leaf)) {
+            throw "Canonical import file is missing: $RelativeImportPath"
+        }
+        [pscustomobject][ordered]@{
+            path = $RelativeImportPath
+            content_sha256 = Get-FileSha256 $AbsoluteImportPath
+        }
     }
-} else {
-    if ($TrackedDrift.Count -ne [int]$CanonicalImportAuthority.expected_count `
-        -or (Get-RunnerCanonicalPathSetSha256 -Paths $TrackedDrift) `
-            -cne [string]$CanonicalImportAuthority.path_set_sha256) {
-        throw "Tracked import drift is not the complete canonical 57-path set."
-    }
-    $PostRunCanonicalImportMapSha256 = Get-RunnerCanonicalFileMapSha256 `
-        -Root $Worktree `
-        -Paths $CanonicalImportPaths
-    if ($PostRunCanonicalImportMapSha256 `
-        -cne [string]$CanonicalImportAuthority.generated_map_sha256) {
-        throw "Tracked import bytes are not the canonical generated state."
-    }
-    $CanonicalImportState = "CANONICAL_GENERATED_57"
+)
+$CanonicalImportAssessment = Test-RunnerCanonicalImportState `
+    -CandidateMap $ImportCandidateMap `
+    -ReportedPaths ([string[]]$TrackedDrift) `
+    -CurrentRows $CurrentCanonicalImportRows
+if (-not [bool]$CanonicalImportAssessment.green) {
+    throw (
+        "Tracked import drift failed the frozen per-path authority: {0}" -f
+        (@($CanonicalImportAssessment.issues) -join ",")
+    )
 }
-$TransientImports = if ($CanonicalImportState -eq "CANONICAL_GENERATED_57") {
-    [string[]]@($CanonicalImportPaths)
-} else {
-    [string[]]@()
+$CanonicalImportState = [string]$CanonicalImportAssessment.state
+$TransientImports = [string[]]@($CanonicalImportAssessment.safe_paths)
+$PostRunCanonicalImportMapSha256 = Get-RunnerCanonicalFileMapSha256 `
+    -Root $Worktree `
+    -Paths $CanonicalImportPaths
+if ($CanonicalImportState -ceq "HEAD_CLEAN" `
+    -and $PostRunCanonicalImportMapSha256 `
+        -cne [string]$CanonicalImportAuthority.baseline_map_sha256) {
+    throw "Canonical clean import map differs from the frozen HEAD baseline."
+}
+if ($CanonicalImportState -ceq "CANONICAL_GENERATED_57" `
+    -and $PostRunCanonicalImportMapSha256 `
+        -cne [string]$CanonicalImportAuthority.generated_map_sha256) {
+    throw "Canonical full import map differs from the frozen generated state."
 }
 $ObservedImports = @(
     foreach ($RelativeImportPath in $TransientImports) {
@@ -2886,7 +3808,9 @@ $ObservedImports = @(
         if ($null -eq $Candidate `
             -or -not (Test-Path -LiteralPath $AbsoluteImportPath -PathType Leaf) `
             -or (Get-HeadBlobSha $RelativeImportPath) `
-                -cne [string]$Candidate.head_blob_sha) {
+                -cne [string]$Candidate.head_blob_sha `
+            -or (Get-FileSha256 $AbsoluteImportPath) `
+                -cne [string]$Candidate.generated_content_sha256) {
             throw "Canonical import HEAD identity changed: $RelativeImportPath"
         }
         [pscustomobject][ordered]@{
@@ -2920,13 +3844,28 @@ $TransientUids = [string[]]@(
 $MissingUids = [string[]]@(
     $UidCandidateMap.Keys | Where-Object { $AllUntracked -cnotcontains $_ }
 )
-if ($TransientUids.Count -ne $UidCandidateMap.Count `
-    -or $MissingUids.Count -ne 0) {
+$PostViewportUidState = if (
+    $TransientUids.Count -eq 0 `
+    -and $MissingUids.Count -eq $UidCandidateMap.Count
+) {
+    "ABSENT"
+} elseif (
+    $TransientUids.Count -eq $UidCandidateMap.Count `
+    -and $MissingUids.Count -eq 0
+) {
+    "EXACT_EXTERNAL_ALLOWLIST"
+} else {
     throw (
-        "Generated UID set is not the complete frozen allowlist: " +
+        "Post-viewport generated UID state is partial or tampered: " +
         "observed=$($TransientUids.Count) missing=$($MissingUids.Count)"
     )
 }
+$ExpectedPostViewportUidRemoveCount = if (
+    $PostViewportUidState -ceq "EXACT_EXTERNAL_ALLOWLIST"
+) { $UidCandidateMap.Count } else { 0 }
+$ExpectedPostViewportUidMissingCount = if (
+    $PostViewportUidState -ceq "ABSENT"
+) { $UidCandidateMap.Count } else { 0 }
 $IgnoredUidRows = @(
     Invoke-CheckedGit -Arguments @(
         "-c", "core.quotepath=false", "ls-files", "--others", "--ignored",
@@ -3032,11 +3971,13 @@ $TransientObservation = [ordered]@{
     generated_uid_entry_set_sha256 = `
         [string]$UidAllowlistValidation.uid_entry_set_sha256
     generated_uid_authorized_count = $UidCandidateMap.Count
+    generated_uid_state = $PostViewportUidState
     uid_count = $ObservedUids.Count
     uid_missing_count = $MissingUids.Count
     uid_unknown_count = $UnexpectedUntracked.Count
     observed_uid_subset_of_authority = $true
-    generated_uid_allowlist_exact_set_match = $true
+    generated_uid_allowlist_exact_set_match = `
+        ($PostViewportUidState -ceq "EXACT_EXTERNAL_ALLOWLIST")
     uids = $ObservedUids
 }
 $TransientObservationPath = Join-Path `
@@ -3045,10 +3986,10 @@ $TransientObservationPath = Join-Path `
 Write-AtomicUtf8Json $TransientObservationPath $TransientObservation
 $TransientObservationSha256 = Get-FileSha256 $TransientObservationPath
 
-if ($CanonicalImportState -eq "CANONICAL_GENERATED_57") {
+if ($TransientImports.Count -gt 0) {
     $null = Invoke-CheckedGit -Arguments ([string[]]@(
         @("restore", "--source=HEAD", "--worktree", "--") +
-        @($CanonicalImportPaths)
+        @($TransientImports)
     ))
 }
 $PostRestoreCanonicalImportMapSha256 = Get-RunnerCanonicalFileMapSha256 `
@@ -3105,14 +4046,16 @@ $FinalRemainingAuthorizedUidPaths = @(
     }
 )
 $ExpectedImportRestoreCount = if (
-    $CanonicalImportState -ceq "CANONICAL_GENERATED_57"
-) { [int]$CanonicalImportAuthority.expected_count } else { 0 }
+    $CanonicalImportState -ceq "CANONICAL_GENERATED_SUBSET" `
+    -or $CanonicalImportState -ceq "CANONICAL_GENERATED_57"
+) { $TrackedDrift.Count } else { 0 }
 if ($FinalTrackedDrift.Count -ne 0 `
     -or $FinalUntrackedDrift.Count -ne 0 `
     -or $FinalIgnoredUidRows.Count -ne 0 `
     -or $FinalRemainingAuthorizedUidPaths.Count -ne 0 `
     -or $TransientImports.Count -ne $ExpectedImportRestoreCount `
-    -or $TransientUids.Count -ne $UidCandidateMap.Count) {
+    -or $TransientUids.Count -ne $ExpectedPostViewportUidRemoveCount `
+    -or $MissingUids.Count -ne $ExpectedPostViewportUidMissingCount) {
     throw "Final transient cleanup identity/count re-attestation failed."
 }
 
@@ -3197,6 +4140,238 @@ if ($FinalHeadSha -cne $HeadSha `
     -or $FinalResources.Count -ne $Resources.Count) {
     throw "Final exact-SHA HEAD/tree/remote/manifest re-attestation failed."
 }
+$FinalUidRegenerationEvidenceMismatchCount = 0
+foreach ($AuthorizedUidPath in $UidCandidateMap.Keys) {
+    if (-not $PostMcpUidEvidenceByPath.ContainsKey($AuthorizedUidPath)) {
+        $FinalUidRegenerationEvidenceMismatchCount += 1
+        continue
+    }
+    $FinalUidEvidenceRow = $PostMcpUidEvidenceByPath[$AuthorizedUidPath]
+    $FinalUidEvidencePath = [string]$FinalUidEvidenceRow.evidence_path
+    if ([string]::IsNullOrWhiteSpace($FinalUidEvidencePath) `
+        -or -not (Test-Path -LiteralPath $FinalUidEvidencePath -PathType Leaf) `
+        -or (Get-FileSha256 $FinalUidEvidencePath) `
+            -cne [string]$UidCandidateMap[
+                $AuthorizedUidPath
+            ].uid_content_sha256) {
+        $FinalUidRegenerationEvidenceMismatchCount += 1
+    }
+}
+$UidRegenerationWarningReceiptReadback = $null
+if (-not (Test-Path `
+        -LiteralPath $UidRegenerationWarningReceiptPath `
+        -PathType Leaf) `
+    -or (Get-FileSha256 $UidRegenerationWarningReceiptPath) `
+        -cne $UidRegenerationWarningReceiptSha256 `
+    -or -not (Test-Path -LiteralPath $RuntimeLogEvidencePath -PathType Leaf) `
+    -or (Get-FileSha256 $RuntimeLogEvidencePath) -cne $RuntimeLogSha256 `
+    -or -not (Test-Path -LiteralPath $LaunchLogEvidencePath -PathType Leaf) `
+    -or (Get-FileSha256 $LaunchLogEvidencePath) `
+        -cne $UidRegenerationEditorConsoleSha256 `
+    -or -not (Test-Path `
+        -LiteralPath $PostMcpTransientObservationPath `
+        -PathType Leaf) `
+    -or (Get-FileSha256 $PostMcpTransientObservationPath) `
+        -cne $PostMcpTransientObservationSha256 `
+    -or -not (Test-Path `
+        -LiteralPath $PostMcpCleanupResultEvidencePath `
+        -PathType Leaf) `
+    -or (Get-FileSha256 $PostMcpCleanupResultEvidencePath) `
+        -cne $PostMcpCleanupResultEvidenceSha256 `
+    -or $FinalUidRegenerationEvidenceMismatchCount -ne 0) {
+    throw "The controlled UID warning receipt or its bound evidence changed."
+}
+$FinalRuntimeLogSha256 = Get-FileSha256 $RuntimeLogEvidencePath
+$FinalRuntimeLogLines = @(
+    [IO.File]::ReadAllLines($RuntimeLogEvidencePath, $StrictUtf8)
+)
+$FinalRuntimeDiagnostics = @(
+    Get-McpDiagnosticRows `
+        -Lines ([object[]]$FinalRuntimeLogLines) `
+        -Channel "runtime" `
+        -UidCandidateMap $UidCandidateMap
+)
+$FinalRuntimeWarningCount = @(
+    $FinalRuntimeDiagnostics | Where-Object { [bool]$_.raw_warning }
+).Count
+$FinalRuntimeErrorCount = @(
+    $FinalRuntimeDiagnostics | Where-Object { [string]$_.severity -ceq "error" }
+).Count
+$FinalRuntimeUnclassifiedCount = @(
+    $FinalRuntimeDiagnostics | Where-Object {
+        [string]$_.severity -ceq "unclassified"
+    }
+).Count
+$FinalRuntimePendingCount = @(
+    $FinalRuntimeDiagnostics | Where-Object { [string]$_.severity -ceq "pending" }
+).Count
+$FinalRuntimeDiagnosticReclassificationGreen = `
+    $FinalRuntimeWarningCount -eq 0 `
+    -and $FinalRuntimeErrorCount -eq 0 `
+    -and $FinalRuntimeUnclassifiedCount -eq 0 `
+    -and $FinalRuntimePendingCount -eq 0
+if (-not $FinalRuntimeDiagnosticReclassificationGreen) {
+    throw "Final runtime log no longer passes the zero-diagnostic warning gate."
+}
+$FinalLaunchLogLines = @(
+    [IO.File]::ReadAllLines($LaunchLogEvidencePath, $StrictUtf8)
+)
+$FinalProjectDiagnostics = @(
+    Get-McpDiagnosticRows `
+        -Lines ([object[]]$FinalLaunchLogLines) `
+        -Channel "editor_launch" `
+        -UidCandidateMap $UidCandidateMap
+)
+$FinalUidRegenerationPendingSetGate = `
+    Get-McpUidRegenerationPendingSetGate `
+        -DiagnosticRows ([object[]]$FinalProjectDiagnostics) `
+        -LaunchLines ([object[]]$FinalLaunchLogLines) `
+        -UidCandidateMap $UidCandidateMap
+$FinalUidRegenerationPendingRows = @(
+    $FinalProjectDiagnostics | Where-Object {
+        [string]$_.severity -ceq "pending" `
+            -and [string]$_.classification `
+                -ceq "pending_uid_regeneration_candidate"
+    }
+)
+if (-not [bool]$FinalUidRegenerationPendingSetGate.green `
+    -or $FinalUidRegenerationPendingRows.Count -ne $UidCandidateMap.Count `
+    -or @($FinalProjectDiagnostics | Where-Object {
+        [string]$_.severity -ceq "error" `
+            -or [string]$_.severity -ceq "unclassified"
+    }).Count -ne 0) {
+    throw "Final editor log no longer passes the production UID warning gate."
+}
+$FinalUidRegenerationPendingByUid = `
+    [Collections.Generic.Dictionary[string,object]]::new(
+        [StringComparer]::Ordinal
+    )
+foreach ($FinalPendingRow in $FinalUidRegenerationPendingRows) {
+    $FinalUidRegenerationPendingByUid.Add(
+        [string]$FinalPendingRow.uid_relative_path,
+        $FinalPendingRow
+    )
+}
+$UidRegenerationWarningReceiptReadbackBytes = [IO.File]::ReadAllBytes(
+    $UidRegenerationWarningReceiptPath
+)
+$UidRegenerationWarningReceiptReadback = (
+    [Text.UTF8Encoding]::new($false, $true).GetString(
+        $UidRegenerationWarningReceiptReadbackBytes
+    ) | ConvertFrom-Json
+)
+$UidRegenerationWarningReceiptRows = @(
+    $UidRegenerationWarningReceiptReadback.warnings
+)
+$InvalidUidRegenerationWarningReceiptRows = `
+    [Collections.Generic.List[object]]::new()
+$ReceiptUidPathSet = [Collections.Generic.HashSet[string]]::new(
+    [StringComparer]::Ordinal
+)
+foreach ($ReceiptWarningRow in $UidRegenerationWarningReceiptRows) {
+    $ReceiptUidPath = [string]$ReceiptWarningRow.uid_relative_path
+    if (-not $ReceiptUidPathSet.Add($ReceiptUidPath) `
+        -or -not $FinalUidRegenerationPendingByUid.ContainsKey($ReceiptUidPath)) {
+        $InvalidUidRegenerationWarningReceiptRows.Add($ReceiptWarningRow)
+        continue
+    }
+    $FinalPendingRow = $FinalUidRegenerationPendingByUid[$ReceiptUidPath]
+    if ([string]$ReceiptWarningRow.channel -cne "editor_launch" `
+        -or $ReceiptWarningRow.raw_warning -isnot [bool] `
+        -or -not [bool]$ReceiptWarningRow.raw_warning `
+        -or [int64]$ReceiptWarningRow.line_number `
+            -ne [int64]$FinalPendingRow.line_number `
+        -or [string]$ReceiptWarningRow.line -cne [string]$FinalPendingRow.line `
+        -or [string]$ReceiptWarningRow.source_path `
+            -cne [string]$FinalPendingRow.source_path `
+        -or [string]$ReceiptWarningRow.expected_uid_value `
+            -cne [string]$FinalPendingRow.expected_uid_value `
+        -or [string]$ReceiptWarningRow.expected_uid_content_sha256 `
+            -cne [string]$FinalPendingRow.expected_uid_content_sha256 `
+        -or [int64]$ReceiptWarningRow.expected_uid_byte_length `
+            -ne [int64]$FinalPendingRow.expected_uid_byte_length `
+        -or [string]$ReceiptWarningRow.initial_classification `
+            -cne "pending_uid_regeneration_candidate" `
+        -or [string]$ReceiptWarningRow.final_classification `
+            -cne "controlled_uid_regeneration") {
+        $InvalidUidRegenerationWarningReceiptRows.Add($ReceiptWarningRow)
+    }
+}
+if ([string]$UidRegenerationWarningReceiptReadback.schema `
+        -cne "SpaceSyndicateExactShaUidRegenerationWarningReceiptV1" `
+    -or [string]$UidRegenerationWarningReceiptReadback.status `
+        -cne "CONTROLLED" `
+    -or [string]$UidRegenerationWarningReceiptReadback.transition `
+        -cne "pending_uid_regeneration_candidate->controlled_uid_regeneration" `
+    -or [string]$UidRegenerationWarningReceiptReadback.head_sha -cne $HeadSha `
+    -or [string]$UidRegenerationWarningReceiptReadback.tree_sha -cne $TreeSha `
+    -or [int]$UidRegenerationWarningReceiptReadback.launch_pid `
+        -ne [int]$LaunchResult.pid `
+    -or [string]$UidRegenerationWarningReceiptReadback.launch_process_start_utc `
+        -cne $LaunchProcessStartUtc.ToString("o") `
+    -or [string]$UidRegenerationWarningReceiptReadback.controlled_at_utc `
+        -cne $UidRegenerationControlledAtUtc.ToString("o") `
+    -or [string]$UidRegenerationWarningReceiptReadback.cleanup_observed_at_utc `
+        -cne $PostMcpObservedAtUtc.ToString("o") `
+    -or [string]$UidRegenerationWarningReceiptReadback.initial_manifest_path `
+        -cne $ExactShaManifestPath `
+    -or [string]$UidRegenerationWarningReceiptReadback.initial_manifest_evidence_sha256 `
+        -cne $ExactShaManifestEvidenceSha256 `
+    -or [int]$UidRegenerationWarningReceiptReadback.initial_uid_present_count `
+        -ne 0 `
+    -or [string]$UidRegenerationWarningReceiptReadback.launch_epoch_sha256 `
+        -cne $UidRegenerationLaunchEpochSha256 `
+    -or [string]$UidRegenerationWarningReceiptReadback.console_epoch_sha256 `
+        -cne $ConsoleEpochSha256 `
+    -or [string]$UidRegenerationWarningReceiptReadback.runtime_console_path `
+        -cne $RuntimeLogEvidencePath `
+    -or [string]$UidRegenerationWarningReceiptReadback.runtime_console_sha256 `
+        -cne $FinalRuntimeLogSha256 `
+    -or [string]$UidRegenerationWarningReceiptReadback.editor_console_sha256 `
+        -cne $UidRegenerationEditorConsoleSha256 `
+    -or [string]$UidRegenerationWarningReceiptReadback.allowlist_sha256 `
+        -cne $UidAllowlistSourceSha256 `
+    -or [string]$UidRegenerationWarningReceiptReadback.allowlist_entry_set_sha256 `
+        -cne [string]$UidAllowlistValidation.uid_entry_set_sha256 `
+    -or [int]$UidRegenerationWarningReceiptReadback.allowlist_entry_count `
+        -ne $UidCandidateMap.Count `
+    -or [int]$UidRegenerationWarningReceiptReadback.raw_warning_count `
+        -ne $UidCandidateMap.Count `
+    -or [int]$UidRegenerationWarningReceiptReadback.pending_candidate_count `
+        -ne $UidCandidateMap.Count `
+    -or [int]$UidRegenerationWarningReceiptReadback.controlled_warning_count `
+        -ne $UidCandidateMap.Count `
+    -or [int]$UidRegenerationWarningReceiptReadback.runtime_warning_count `
+        -ne $FinalRuntimeWarningCount `
+    -or -not $FinalRuntimeDiagnosticReclassificationGreen `
+    -or [int]$UidRegenerationWarningReceiptReadback.unclassified_diagnostic_count `
+        -ne 0 `
+    -or [string]$UidRegenerationWarningReceiptReadback.source_path_set_sha256 `
+        -cne [string]$McpUidRegenerationPendingSetGate.actual_source_path_set_sha256 `
+    -or [string]$UidRegenerationWarningReceiptReadback.uid_path_set_sha256 `
+        -cne [string]$McpUidRegenerationPendingSetGate.actual_uid_path_set_sha256 `
+    -or [string]$UidRegenerationWarningReceiptReadback.uid_exact_state `
+        -cne "EXACT_EXTERNAL_ALLOWLIST" `
+    -or [int]$UidRegenerationWarningReceiptReadback.uid_exact_byte_match_count `
+        -ne $UidCandidateMap.Count `
+    -or [int]$UidRegenerationWarningReceiptReadback.uid_cleanup_remove_count `
+        -ne $UidCandidateMap.Count `
+    -or -not [bool]$UidRegenerationWarningReceiptReadback.cleanup_green `
+    -or [string]$UidRegenerationWarningReceiptReadback.cleanup_context `
+        -cne "post_mcp_pre_viewport" `
+    -or [string]$UidRegenerationWarningReceiptReadback.cleanup_observation_path `
+        -cne $PostMcpTransientObservationPath `
+    -or [string]$UidRegenerationWarningReceiptReadback.cleanup_observation_sha256 `
+        -cne $PostMcpTransientObservationSha256 `
+    -or [string]$UidRegenerationWarningReceiptReadback.cleanup_result_path `
+        -cne $PostMcpCleanupResultEvidencePath `
+    -or [string]$UidRegenerationWarningReceiptReadback.cleanup_result_sha256 `
+        -cne $PostMcpCleanupResultEvidenceSha256 `
+    -or $UidRegenerationWarningReceiptRows.Count -ne $UidCandidateMap.Count `
+    -or $ReceiptUidPathSet.Count -ne $UidCandidateMap.Count `
+    -or $InvalidUidRegenerationWarningReceiptRows.Count -ne 0) {
+    throw "Final controlled UID warning receipt re-attestation failed."
+}
 if (-not (Test-Path -LiteralPath $UidAllowlistSourcePath -PathType Leaf) `
     -or (Get-FileSha256 $UidAllowlistSourcePath) -cne $UidAllowlistSourceSha256 `
     -or (Get-FileSha256 $UidAllowlistEvidencePath) `
@@ -3206,7 +4381,8 @@ if (-not (Test-Path -LiteralPath $UidAllowlistSourcePath -PathType Leaf) `
     -or $FinalRemainingAuthorizedUidPaths.Count -ne 0 `
     -or $FinalUntrackedDrift.Count -ne 0 `
     -or $FinalIgnoredUidRows.Count -ne 0 `
-    -or $TransientUids.Count -ne $UidCandidateMap.Count) {
+    -or $TransientUids.Count -ne $ExpectedPostViewportUidRemoveCount `
+    -or $MissingUids.Count -ne $ExpectedPostViewportUidMissingCount) {
     throw "Final generated-UID authority re-attestation failed."
 }
 $FinalReattestation = [ordered]@{
@@ -3219,6 +4395,8 @@ $FinalReattestation = [ordered]@{
     post_mcp_transient_observation_path = $PostMcpTransientObservationPath
     post_mcp_transient_observation_sha256 = `
         $PostMcpTransientObservationSha256
+    post_mcp_cleanup_result_path = $PostMcpCleanupResultEvidencePath
+    post_mcp_cleanup_result_sha256 = $PostMcpCleanupResultEvidenceSha256
     post_mcp_import_state = [string]$PostMcpTransientCleanup.import_state
     post_mcp_uid_state = [string]$PostMcpTransientCleanup.uid_state
     post_mcp_import_restore_count = @(
@@ -3227,6 +4405,46 @@ $FinalReattestation = [ordered]@{
     post_mcp_uid_remove_count = @(
         $PostMcpTransientCleanup.safe_uid_cleanup
     ).Count
+    uid_regeneration_warning_receipt_path = `
+        $UidRegenerationWarningReceiptPath
+    uid_regeneration_warning_receipt_sha256 = `
+        $UidRegenerationWarningReceiptSha256
+    uid_regeneration_warning_status = `
+        [string]$UidRegenerationWarningReceiptReadback.status
+    uid_regeneration_warning_raw_count = `
+        [int]$UidRegenerationWarningReceiptReadback.raw_warning_count
+    uid_regeneration_warning_pending_count = `
+        [int]$UidRegenerationWarningReceiptReadback.pending_candidate_count
+    uid_regeneration_warning_controlled_count = `
+        [int]$UidRegenerationWarningReceiptReadback.controlled_warning_count
+    uid_regeneration_warning_runtime_count = `
+        [int]$UidRegenerationWarningReceiptReadback.runtime_warning_count
+    uid_regeneration_warning_source_path_set_sha256 = `
+        [string]$UidRegenerationWarningReceiptReadback.source_path_set_sha256
+    uid_regeneration_warning_uid_path_set_sha256 = `
+        [string]$UidRegenerationWarningReceiptReadback.uid_path_set_sha256
+    uid_regeneration_warning_launch_epoch_sha256 = `
+        $UidRegenerationLaunchEpochSha256
+    uid_regeneration_warning_runtime_console_path = `
+        $RuntimeLogEvidencePath
+    uid_regeneration_warning_runtime_console_sha256 = `
+        $FinalRuntimeLogSha256
+    uid_regeneration_warning_runtime_reclassification_green = `
+        $FinalRuntimeDiagnosticReclassificationGreen
+    uid_regeneration_warning_runtime_error_count = $FinalRuntimeErrorCount
+    uid_regeneration_warning_runtime_unclassified_count = `
+        $FinalRuntimeUnclassifiedCount
+    uid_regeneration_warning_runtime_pending_count = $FinalRuntimePendingCount
+    uid_regeneration_warning_editor_console_sha256 = `
+        $UidRegenerationEditorConsoleSha256
+    uid_regeneration_exact_byte_match_count = `
+        $UidRegenerationExactByteMatchCount
+    uid_regeneration_final_evidence_mismatch_count = `
+        $FinalUidRegenerationEvidenceMismatchCount
+    uid_regeneration_cleanup_green = `
+        [bool]$PostMcpTransientCleanup.cleanup_green
+    uid_regeneration_cleanup_observation_sha256 = `
+        $PostMcpTransientObservationSha256
     canonical_import_state = $CanonicalImportState
     canonical_import_path_set_sha256 = $CanonicalImportPathSetSha256
     canonical_import_postrun_map_sha256 = $PostRunCanonicalImportMapSha256
@@ -3241,13 +4459,23 @@ $FinalReattestation = [ordered]@{
     generated_uid_entry_count = $UidCandidateMap.Count
     generated_uid_entry_set_sha256 = `
         [string]$UidAllowlistValidation.uid_entry_set_sha256
-    generated_uid_observed_count = $TransientUids.Count
-    generated_uid_removed_count = $TransientUids.Count
+    post_viewport_probe_uid_state = $PostViewportUidState
+    post_viewport_probe_uid_state_accepted = $true
+    post_viewport_probe_uid_reappeared = `
+        ($PostViewportUidState -ceq "EXACT_EXTERNAL_ALLOWLIST")
+    post_viewport_probe_uid_observed_count = $TransientUids.Count
+    post_viewport_probe_uid_removed_count = $TransientUids.Count
+    post_viewport_probe_uid_missing_count = $MissingUids.Count
+    generated_uid_observed_count = $PostMcpSafeUidByPath.Count
+    generated_uid_removed_count = $PostMcpRemovedUidPaths.Count
     generated_uid_remaining_count = $FinalRemainingAuthorizedUidPaths.Count
-    generated_uid_missing_count = 0
+    generated_uid_missing_count = `
+        [int]$PostMcpTransientObservation.generated_uid_missing_count
     generated_uid_unknown_count = $FinalUntrackedDrift.Count
     generated_uid_ignored_unknown_count = $FinalIgnoredUidRows.Count
-    generated_uid_allowlist_exact_set_match = $true
+    generated_uid_allowlist_exact_set_match = `
+        ([string]$PostMcpTransientCleanup.uid_state `
+            -ceq "EXACT_EXTERNAL_ALLOWLIST")
     canonical_import_restore_count = $TransientImports.Count
     canonical_import_expected_restore_count = $ExpectedImportRestoreCount
     final_tracked_drift_count = $FinalTrackedDrift.Count
@@ -3257,10 +4485,15 @@ $FinalReattestation = [ordered]@{
     changed_resource_evidence_sha256 = $ResourceEvidenceSha256
     changed_script_passed_count = $ScriptPassed
     changed_scene_passed_count = @($SceneResults | Where-Object passed).Count
+    combat_public_receipt_count = $McpCombatPublicReceiptCount
+    presentation_applied_receipt_count = $McpPresentationAppliedReceiptCount
+    presentation_applied_equals_combat_public = `
+        ($McpPresentationAppliedReceiptCount -eq $McpCombatPublicReceiptCount)
     presentation_duplicate_receipt_count = $PresentationDuplicateReceiptCount
     presentation_collision_receipt_count = $PresentationCollisionReceiptCount
     presentation_rejected_receipt_count = $PresentationRejectedReceiptCount
-    presentation_collision_rejected_gate = `
+    presentation_collision_gate = "HARD_ZERO_C4_1"
+    presentation_rejected_gate = `
         "DIAGNOSTIC_NONBLOCKING_C4_1"
     presentation_gameplay_mutation_count = $PresentationGameplayMutationCount
     presentation_rng_draw_delta = $PresentationRngDrawDelta
@@ -3292,7 +4525,9 @@ $FinalReattestation = [ordered]@{
     embedded_capture_ihdr_width = $EmbeddedDiagnosticCapture.ihdr_width
     embedded_capture_ihdr_height = $EmbeddedDiagnosticCapture.ihdr_height
     runtime_console_path = $RuntimeLogEvidencePath
-    runtime_console_sha256 = $RuntimeLogSha256
+    runtime_console_sha256 = $FinalRuntimeLogSha256
+    runtime_diagnostic_reclassification_green = `
+        $FinalRuntimeDiagnosticReclassificationGreen
     editor_console_path = $LaunchLogEvidencePath
     editor_console_sha256 = Get-FileSha256 $LaunchLogEvidencePath
     stop_evidence_path = $StopEvidencePath
@@ -3346,9 +4581,9 @@ changed scene opened/total
 changed-resource total, JSON parse total, and ResourceLoader-kind total
 raw get_play_state path, semantic-limitation flag, and independently queried live root/node identities
 real UI input mode, application action/receipt counts, combat action/public-receipt counts, and UI cue-consumption count
-console epoch PID/play-start/final-log binding, final log SHA/count, and project/runtime/unclassified counts
+console epoch PID/play-start/final-log binding, final log SHA/count, raw warning/pending/controlled counts, and project/runtime/unclassified counts
 canonical import path/baseline/generated map SHAs, externally frozen UID allowlist SHA/entry-set SHA,
-observed UID raw hashes/lengths, transient observation SHA, and post-clean exact restore state
+observed UID raw hashes/lengths, controlled-warning receipt SHA, transient observation SHA, and post-clean exact restore state
 requested/Window-viewport/DisplayServer/pre+post-GetClientRect/client-PNG/IHDR dimensions for all three cases
 probe marker JSON and exit code
 editor/runtime crash or connection gaps, with log path

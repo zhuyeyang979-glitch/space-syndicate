@@ -400,6 +400,8 @@ func _bind_receipt(
 	result: Dictionary
 ) -> Dictionary:
 	var receipt := result.duplicate(true)
+	if not receipt.has("accepted") and receipt.has("success"):
+		receipt["accepted"] = bool(receipt.get("success", false))
 	receipt["schema"] = "V075ApplicationReceiptV1"
 	receipt["intent_id"] = intent_id
 	receipt["intent_kind"] = intent_kind

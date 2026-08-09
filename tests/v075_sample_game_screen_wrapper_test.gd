@@ -15,6 +15,8 @@ class FakeFlow:
 	extends Node
 
 	var issued: Array[Dictionary] = []
+	var composition_debug: Dictionary = {"runtime": {}}
+	var planet_map_view_payload_call_count := 0
 	var _sequence := 0
 
 	func issue_intent(
@@ -33,7 +35,14 @@ class FakeFlow:
 		return intent
 
 	func debug_snapshot() -> Dictionary:
-		return {"runtime": {}}
+		return composition_debug.duplicate(true)
+
+	func planet_map_view_payload(
+		_selected_card_id: String,
+		_selected_region_id: String
+	) -> Dictionary:
+		planet_map_view_payload_call_count += 1
+		return {}
 
 
 var _checks := 0
@@ -49,6 +58,7 @@ func _run() -> void:
 	root.add_child(screen)
 	await process_frame
 	var flow := FakeFlow.new()
+	flow.set_meta("v075_isolated_preview_flow", true)
 	root.add_child(flow)
 	var emitted: Array[Dictionary] = []
 	screen.application_intent_requested.connect(
@@ -103,7 +113,9 @@ func _run() -> void:
 	)
 	_expect(
 		int(debug.get("projection_count", 0)) == 1
-		and bool(debug.get("application_flow_bound", false)),
+		and bool(debug.get("application_flow_bound", false))
+		and str(debug.get("presentation_source_mode", ""))
+			== "isolated_preview",
 		"application-flow snapshot reaches the combat surface"
 	)
 	var surface_debug := debug.get("surface", {}) as Dictionary
@@ -434,9 +446,321 @@ func _run() -> void:
 		"terminal combat rejects new private requests"
 	)
 
+	flow.composition_debug = _valid_runtime_acceptance_source()
+	screen.apply_snapshot({
+		"ruleset_id": "v0.7.5",
+		"phase": "settled",
+		"match_started": true,
+	})
+	await process_frame
+	_expect(
+		flow.planet_map_view_payload_call_count == 1,
+		"settled started snapshot exercises the map payload contract once"
+	)
+	var runtime_acceptance := screen.acceptance_state.get(
+		"runtime_acceptance_debug",
+		{}
+	) as Dictionary
+	var expected_acceptance := _expected_runtime_acceptance_debug()
+	_expect(
+		runtime_acceptance == expected_acceptance
+		and _same_variant_shape(runtime_acceptance, expected_acceptance),
+		"settled acceptance debug is an exact closed and strictly typed whitelist"
+	)
+	_expect(
+		not _contains_forbidden_acceptance_key(runtime_acceptance),
+		"acceptance whitelist excludes runtime identifiers, receipts and payloads"
+	)
+
+	var invalid_sources: Array[Dictionary] = []
+	var invalid_dictionary := _valid_runtime_acceptance_source()
+	var invalid_dictionary_runtime := (
+		invalid_dictionary["runtime"] as Dictionary
+	)
+	invalid_dictionary_runtime["combat"] = []
+	invalid_sources.append({
+		"label": "dictionary",
+		"source": invalid_dictionary,
+	})
+	var invalid_string := _valid_runtime_acceptance_source()
+	var invalid_string_runtime := invalid_string["runtime"] as Dictionary
+	invalid_string_runtime["phase"] = 75
+	invalid_sources.append({
+		"label": "string",
+		"source": invalid_string,
+	})
+	var invalid_boolean := _valid_runtime_acceptance_source()
+	var invalid_boolean_runtime := invalid_boolean["runtime"] as Dictionary
+	var invalid_boolean_combat := (
+		invalid_boolean_runtime["combat"] as Dictionary
+	)
+	var invalid_effect_integrity := (
+		invalid_boolean_combat["combat_effect_integrity"] as Dictionary
+	)
+	invalid_effect_integrity["green"] = 1
+	invalid_sources.append({
+		"label": "boolean",
+		"source": invalid_boolean,
+	})
+	var invalid_string_count := _valid_runtime_acceptance_source()
+	var invalid_string_count_runtime := (
+		invalid_string_count["runtime"] as Dictionary
+	)
+	invalid_string_count_runtime["runtime_error_count"] = "0"
+	invalid_sources.append({
+		"label": "string count",
+		"source": invalid_string_count,
+	})
+	var invalid_float_count := _valid_runtime_acceptance_source()
+	var invalid_float_count_runtime := (
+		invalid_float_count["runtime"] as Dictionary
+	)
+	invalid_float_count_runtime["runtime_error_count"] = 0.0
+	invalid_sources.append({
+		"label": "float count",
+		"source": invalid_float_count,
+	})
+	var invalid_negative_count := _valid_runtime_acceptance_source()
+	var invalid_negative_count_runtime := (
+		invalid_negative_count["runtime"] as Dictionary
+	)
+	invalid_negative_count_runtime["nonfinite_count"] = -1
+	invalid_sources.append({
+		"label": "negative count",
+		"source": invalid_negative_count,
+	})
+	var invalid_missing_count := _valid_runtime_acceptance_source()
+	var invalid_missing_count_runtime := (
+		invalid_missing_count["runtime"] as Dictionary
+	)
+	invalid_missing_count_runtime.erase("combat_public_receipt_count")
+	invalid_sources.append({
+		"label": "missing count",
+		"source": invalid_missing_count,
+	})
+	for invalid_case in invalid_sources:
+		flow.composition_debug = (
+			invalid_case["source"] as Dictionary
+		).duplicate(true)
+		var rejected_debug := screen.call(
+			"_runtime_acceptance_debug_snapshot"
+		) as Dictionary
+		_expect(
+			rejected_debug.is_empty(),
+			"acceptance debug fails closed for %s drift" % invalid_case["label"]
+		)
+
 	screen.queue_free()
 	flow.queue_free()
 	_finish()
+
+
+func _valid_runtime_acceptance_source() -> Dictionary:
+	return {
+		"schema": "V075RuntimeCompositionDebugV1",
+		"ruleset_id": "v0.7.5",
+		"last_receipt": {"visibility_scope": "actor_private"},
+		"runtime": {
+			"ruleset_id": "v0.7.5",
+			"phase": "settled",
+			"match_id": "private.match.001",
+			"combat": {
+				"monster_card_mode_counts": {
+					"DEPLOY_NEW": 2,
+					"REFRESH_EXISTING": 3,
+					"UPGRADE_EXISTING": 4,
+					"REPLACE_EXISTING": 5,
+					"source_instance_id": "private.source.001",
+				},
+				"monster_private_skill_commit_count": 6,
+				"monster_trample_region_receipt_count": 7,
+				"military_region_assault_count": 8,
+				"military_monster_assault_count": 9,
+				"runtime_error_count": 0,
+				"combat_duplicate_effect_count": 0,
+				"combat_effect_integrity": {
+					"green": true,
+					"violation_count": 0,
+					"validation_state": {"private": true},
+				},
+				"combat_receipt_integrity": {
+					"green": true,
+					"last_receipt": {"private": true},
+				},
+				"private_payload": {"owner_player_id": "player.local"},
+			},
+			"facility_combat_damage_receipt_count": 10,
+			"facility_effect_integrity": {
+				"green": true,
+				"owner_player_id": "player.local",
+			},
+			"combat_presentation": {
+				"applied_receipt_count": 11,
+				"duplicate_receipt_count": 0,
+				"collision_receipt_count": 0,
+				"rejected_receipt_count": 12,
+				"presentation_gameplay_mutation_count": 0,
+				"presentation_rng_draw_delta": 0,
+				"last_cue": {"public_payload": {"damage_amount": 3}},
+			},
+			"combat_public_receipt_count": 11,
+			"final_settlement_count": 1,
+			"duplicate_settlement_count": 0,
+			"final_settlement_public_log_count": 1,
+			"final_settlement_presentation_count": 1,
+			"runtime_error_count": 0,
+			"hidden_info_violation_count": 0,
+			"combat_telemetry": {
+				"schema": "V075CombatTelemetryServiceDebugV1",
+				"ruleset_id": "v0.7.5",
+				"hidden_input_field_count": 13,
+				"opponent_skill_definition_input_count": 0,
+				"opponent_skill_target_input_count": 0,
+				"opponent_skill_cooldown_input_count": 0,
+				"instant_sequence_input_count": 0,
+				"warehouse_private_stock_input_count": 0,
+				"ai_private_plan_input_count": 0,
+				"stored_hidden_field_count": 0,
+				"gameplay_owner_count": 0,
+				"rng_owner_count": 0,
+				"world_mutation_count": 0,
+				"last_event": {"private_payload": {"hidden": true}},
+			},
+			"combat_telemetry_hidden_field_count": 0,
+			"combat_telemetry_gameplay_owner_count": 0,
+			"combat_telemetry_rng_owner_count": 0,
+			"combat_telemetry_world_mutation_count": 0,
+			"invalid_action_count": 0,
+			"ai_combat_invalid_target_count": 0,
+			"nonfinite_count": 0,
+			"last_receipt": {"visibility_scope": "actor_private"},
+		},
+	}
+
+
+func _expected_runtime_acceptance_debug() -> Dictionary:
+	return {
+		"schema": "V075RuntimeAcceptanceDebugV1",
+		"ruleset_id": "v0.7.5",
+		"phase": "settled",
+		"combat": {
+			"monster_card_mode_counts": {
+				"DEPLOY_NEW": 2,
+				"REFRESH_EXISTING": 3,
+				"UPGRADE_EXISTING": 4,
+				"REPLACE_EXISTING": 5,
+			},
+			"monster_private_skill_commit_count": 6,
+			"monster_trample_region_receipt_count": 7,
+			"military_region_assault_count": 8,
+			"military_monster_assault_count": 9,
+			"runtime_error_count": 0,
+			"combat_duplicate_effect_count": 0,
+			"combat_effect_integrity": {
+				"green": true,
+				"violation_count": 0,
+			},
+			"combat_receipt_integrity": {"green": true},
+		},
+		"facility_combat_damage_receipt_count": 10,
+		"facility_effect_integrity": {"green": true},
+		"combat_presentation": {
+			"applied_receipt_count": 11,
+			"duplicate_receipt_count": 0,
+			"collision_receipt_count": 0,
+			"rejected_receipt_count": 12,
+			"presentation_gameplay_mutation_count": 0,
+			"presentation_rng_draw_delta": 0,
+		},
+		"combat_public_receipt_count": 11,
+		"final_settlement_count": 1,
+		"duplicate_settlement_count": 0,
+		"final_settlement_public_log_count": 1,
+		"final_settlement_presentation_count": 1,
+		"runtime_error_count": 0,
+		"hidden_info_violation_count": 0,
+		"combat_telemetry": {
+			"schema": "V075CombatTelemetryServiceDebugV1",
+			"ruleset_id": "v0.7.5",
+			"hidden_input_field_count": 13,
+			"opponent_skill_definition_input_count": 0,
+			"opponent_skill_target_input_count": 0,
+			"opponent_skill_cooldown_input_count": 0,
+			"instant_sequence_input_count": 0,
+			"warehouse_private_stock_input_count": 0,
+			"ai_private_plan_input_count": 0,
+			"stored_hidden_field_count": 0,
+			"gameplay_owner_count": 0,
+			"rng_owner_count": 0,
+			"world_mutation_count": 0,
+		},
+		"combat_telemetry_hidden_field_count": 0,
+		"combat_telemetry_gameplay_owner_count": 0,
+		"combat_telemetry_rng_owner_count": 0,
+		"combat_telemetry_world_mutation_count": 0,
+		"invalid_action_count": 0,
+		"ai_combat_invalid_target_count": 0,
+		"nonfinite_count": 0,
+	}
+
+
+func _same_variant_shape(actual: Variant, expected: Variant) -> bool:
+	if typeof(actual) != typeof(expected):
+		return false
+	if actual is Dictionary:
+		var actual_dictionary := actual as Dictionary
+		var expected_dictionary := expected as Dictionary
+		if actual_dictionary.size() != expected_dictionary.size():
+			return false
+		for key_variant in expected_dictionary:
+			if (
+				not actual_dictionary.has(key_variant)
+				or not _same_variant_shape(
+					actual_dictionary[key_variant],
+					expected_dictionary[key_variant]
+				)
+			):
+				return false
+	elif actual is Array:
+		var actual_array := actual as Array
+		var expected_array := expected as Array
+		if actual_array.size() != expected_array.size():
+			return false
+		for index in range(expected_array.size()):
+			if not _same_variant_shape(
+				actual_array[index],
+				expected_array[index]
+			):
+				return false
+	return true
+
+
+func _contains_forbidden_acceptance_key(value: Variant) -> bool:
+	if value is Dictionary:
+		var dictionary := value as Dictionary
+		for key_variant in dictionary:
+			if key_variant in [
+				"match_id",
+				"session_id",
+				"intent_id",
+				"request_id",
+				"source_instance_id",
+				"owner_player_id",
+				"last_receipt",
+				"last_cue",
+				"last_event",
+				"private_payload",
+				"public_payload",
+				"validation_state",
+			]:
+				return true
+			if _contains_forbidden_acceptance_key(dictionary[key_variant]):
+				return true
+	elif value is Array:
+		for item in (value as Array):
+			if _contains_forbidden_acceptance_key(item):
+				return true
+	return false
 
 
 func _expect(condition: bool, message: String) -> void:
