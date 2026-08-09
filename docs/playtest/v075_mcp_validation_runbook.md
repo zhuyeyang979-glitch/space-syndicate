@@ -970,7 +970,65 @@ if ((Get-RequiredString $ToolCatalog "profile" "list_tool_catalog") -cne "core" 
         -CaseSensitive | Where-Object SideIndicator -ceq "<=").Count -ne 0) {
     throw "MCP core tool catalog does not expose every tool required by this run."
 }
+
+# Funplay 0.9.6 can re-enter its HTTP poll loop when request_script_reload
+# starts a filesystem scan before the editor's initial scan is quiescent. The
+# exact run therefore waits beyond the observed cold-start window and then
+# requires three independent non-scanning samples before issuing the reload.
+$ReloadQuiescenceMinimumSeconds = 120
+$ReloadQuiescenceStartedAt = [DateTimeOffset]::UtcNow
+Start-Sleep -Seconds $ReloadQuiescenceMinimumSeconds
+$ReloadScanDeadline = [DateTimeOffset]::UtcNow.AddSeconds(60)
+$ReloadNonScanningSampleCount = 0
+$ReloadReadinessResponses = [Collections.Generic.List[object]]::new()
+do {
+    $ReloadReadinessResponse = Invoke-McpJson "execute_code" @{
+        code = @'
+var filesystem = EditorInterface.get_resource_filesystem()
+return {
+    "filesystem_available": filesystem != null,
+    "filesystem_scanning": true if filesystem == null else filesystem.is_scanning()
+}
+'@
+        context_mode = "dictionary"
+        include_metadata = $true
+        safety_checks = $true
+    }
+    $ReloadReadinessResponses.Add($ReloadReadinessResponse)
+    $ReloadReadinessResult = Get-RequiredJsonObject `
+        $ReloadReadinessResponse.result.structuredContent `
+        "result" `
+        "reload readiness execute_code"
+    $ReloadFilesystemAvailable = Get-RequiredBoolean `
+        $ReloadReadinessResult `
+        "filesystem_available" `
+        "reload readiness execute_code.result"
+    $ReloadFilesystemScanning = Get-RequiredBoolean `
+        $ReloadReadinessResult `
+        "filesystem_scanning" `
+        "reload readiness execute_code.result"
+    if ($ReloadFilesystemAvailable -and -not $ReloadFilesystemScanning) {
+        $ReloadNonScanningSampleCount += 1
+    } else {
+        $ReloadNonScanningSampleCount = 0
+    }
+    if ($ReloadNonScanningSampleCount -lt 3) {
+        Start-Sleep -Seconds 2
+    }
+} while (
+    $ReloadNonScanningSampleCount -lt 3 `
+        -and [DateTimeOffset]::UtcNow -lt $ReloadScanDeadline
+)
+if ($ReloadNonScanningSampleCount -ne 3) {
+    throw "Godot resource filesystem did not become stably quiescent before reload."
+}
 $null = Invoke-McpJson "request_script_reload" @{ path = "res://" }
+$ReloadQuiescenceElapsedSeconds = [Math]::Round(
+    ([DateTimeOffset]::UtcNow - $ReloadQuiescenceStartedAt).TotalSeconds,
+    3
+)
+"MCP_RELOAD_QUIESCENCE_SECONDS=$ReloadQuiescenceElapsedSeconds"
+"MCP_RELOAD_NONSCANNING_SAMPLE_COUNT=$ReloadNonScanningSampleCount"
 $ProjectInfoResponse | ConvertTo-Json -Depth 30
 $CapabilityResponse | ConvertTo-Json -Depth 30
 $ToolCatalogResponse | ConvertTo-Json -Depth 30

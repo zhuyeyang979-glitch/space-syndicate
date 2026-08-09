@@ -578,7 +578,7 @@ function Write-ImmutableFailureJson {
 function Write-ImmutableFailureText {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
-        [Parameter(Mandatory = $true)][string]$Value
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Value
     )
     if (Test-Path -LiteralPath $Path) {
         throw "Refusing to overwrite failure evidence: $Path"
