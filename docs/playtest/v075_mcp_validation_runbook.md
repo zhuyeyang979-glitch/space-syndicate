@@ -223,7 +223,7 @@ $null = Invoke-CheckedGit -Arguments @(
 )
 
 function Convert-ToResPath([string]$Path) {
-    return "res://" + ($Path.Replace("\\", "/"))
+    return "res://" + ($Path.Replace("\", "/"))
 }
 
 $Scripts = @($Changed | Where-Object { $_ -match "\.gd$" } |
@@ -1105,7 +1105,7 @@ $ScriptResults = foreach ($Path in $Scripts) {
 $EligibleProjectScripts = @(
     Get-ChildItem -LiteralPath $ProjectRoot -Recurse -File -Filter "*.gd" |
         ForEach-Object {
-            $relative = [IO.Path]::GetRelativePath($ProjectRoot, $_.FullName).Replace("\\", "/")
+            $relative = [IO.Path]::GetRelativePath($ProjectRoot, $_.FullName).Replace("\", "/")
             "res://$relative"
         } |
         Sort-Object -Unique

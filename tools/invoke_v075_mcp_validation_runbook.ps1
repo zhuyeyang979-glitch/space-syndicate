@@ -911,6 +911,7 @@ function Invoke-RunnerTransientFailureCleanup {
         [Parameter(Mandatory = $true)][string]$FailureId,
         [string]$Context = "failure_finalizer",
         [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
         [Collections.Generic.List[string]]$Issues
     )
     $result = [ordered]@{
@@ -1631,6 +1632,29 @@ if ($postParseWorkingBlobRows.Count -ne 1 `
 }
 
 if ($ValidateOnly) {
+    $forbiddenDoubleBackslashReplacement = '.Replace("\\", "/")'
+    $requiredSingleBackslashReplacement = '.Replace("\", "/")'
+    $singleBackslashReplacementCount = [regex]::Matches(
+        $combinedSource,
+        [regex]::Escape($requiredSingleBackslashReplacement)
+    ).Count
+    if ($combinedSource.Contains($forbiddenDoubleBackslashReplacement) `
+        -or $singleBackslashReplacementCount -lt 2) {
+        throw "Windows path separator normalization contract failed."
+    }
+    $cleanupCommand = Get-Command `
+        -Name Invoke-RunnerTransientFailureCleanup `
+        -CommandType Function
+    $issuesParameter = $cleanupCommand.Parameters["Issues"]
+    $allowEmptyCollectionCount = @(
+        $issuesParameter.Attributes |
+            Where-Object {
+                $_ -is [System.Management.Automation.AllowEmptyCollectionAttribute]
+            }
+    ).Count
+    if ($allowEmptyCollectionCount -ne 1) {
+        throw "Transient cleanup must accept an empty issue collection."
+    }
     $validationImportAuthority = Get-RunnerCanonicalImportAuthority
     $validationImportPaths = [string[]]@($validationImportAuthority.paths)
     $validationImportPathSetSha = Get-RunnerCanonicalPathSetSha256 `
@@ -1701,6 +1725,9 @@ if ($ValidateOnly) {
         combined_parse_error_count = 0
         forbidden_top_level_control_count = 0
         execution_model = "same_scope_dot_sourced_scriptblocks"
+        windows_path_separator_contract_green = $true
+        windows_path_separator_replacement_count = $singleBackslashReplacementCount
+        transient_cleanup_empty_issue_binding_green = $true
         canonical_import_authority_green = $true
         canonical_import_path_count = $validationImportPaths.Count
         canonical_import_path_set_sha256 = $validationImportPathSetSha
