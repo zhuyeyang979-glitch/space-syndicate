@@ -212,7 +212,7 @@ func _check_district_supply_boundary(main: Node, players: Array) -> void:
 	if overlay != null:
 		_expect(overlay.apply_district_supply_presentation(opponent_surface, 0, viewer_context.authorization_revision), "typed target accepts the public browse surface")
 		await _wait_frames(2)
-		var drawer := screen.get_district_supply_drawer()
+		var drawer := screen.get_district_supply_drawer() as SpaceSyndicateDistrictSupplyDrawer
 		var public_drawer_text := _visible_control_text(drawer)
 		_expect(not public_drawer_text.contains("¥%d" % AI_CASH_SENTINEL), "public opponent drawer omits exact rival cash")
 		_expect(overlay.apply_district_supply_presentation(own_surface, 0, viewer_context.authorization_revision), "typed target accepts the authorized local surface")

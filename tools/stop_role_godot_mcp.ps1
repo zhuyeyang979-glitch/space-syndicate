@@ -7,6 +7,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$processIdentityModule = Join-Path `
+    $PSScriptRoot `
+    "role_godot_mcp_process_identity.psm1"
+Import-Module -Name $processIdentityModule -Force -ErrorAction Stop
+
 $root = (Resolve-Path -LiteralPath $Worktree).Path.TrimEnd("\")
 $localRoot = Join-Path $root ".codex-godot"
 $connectionPath = Join-Path $localRoot "connection.json"
@@ -118,18 +123,20 @@ if ($null -eq $process -or $process.HasExited) {
     }
 }
 if ($null -ne $process -and -not $process.HasExited) {
-    $expectedStart = [DateTime]::Parse(
-        [string]$connection.process_start_time_utc,
-        [Globalization.CultureInfo]::InvariantCulture,
-        [Globalization.DateTimeStyles]::RoundtripKind
-    ).ToUniversalTime()
+    try {
+        $startIdentityMatches = Test-RoleGodotProcessStartIdentity `
+            -ExpectedToken $connection.process_start_time_utc `
+            -ActualStartTime $process.StartTime
+    } catch {
+        throw "Stored role process creation-time token is invalid."
+    }
     $actualPath = $process.Path
     $processCommand = Get-CimInstance `
         Win32_Process `
         -Filter "ProcessId = $($process.Id)" `
         -ErrorAction Stop
     $identityVerified = (
-        $process.StartTime.ToUniversalTime() -eq $expectedStart -and
+        $startIdentityMatches -and
         [string]$actualPath -ieq [string]$connection.godot_path -and
         (Test-CommandLineWorktreeBinding `
             -CommandLine ([string]$processCommand.CommandLine) `

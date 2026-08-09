@@ -20,8 +20,13 @@ const SHARD_REPORT_KIND := "v075.combat.simulation.shard.v1"
 const AGGREGATE_REPORT_KIND := "v075.combat.simulation.aggregate.v1"
 const SEED_FORMULA_ID := "base_plus_configuration_million_plus_match_7919"
 const SOURCE_COMMIT_SHA_ENV := "V075_SIMULATION_SOURCE_SHA"
+const AUTHORITY_RESULT_SCHEMA_VERSION := 1
+const GLOBAL_MATRIX_CONTRACT_KIND := "v075.combat.simulation.global_matrix_contract.v1"
+const AUTHORITY_RESULT_KIND := "v075.combat.simulation.job_result.v1"
+const AUTHORITY_HEARTBEAT_KIND := "v075.combat.simulation.heartbeat.v1"
 const HARNESS_SOURCE_PATHS := [
 	"res://tests/v075_combat_simulation_test.gd",
+	"res://tests/v075_simulation_resume_contract_test.gd",
 	"res://scripts/v075_simulation/v075_combat_deterministic_simulator.gd",
 	"res://scripts/v075_simulation/v075_combat_simulation_runtime_driver.gd",
 	"res://tools/invoke_godot_test.ps1",
@@ -291,41 +296,1328 @@ func run_matrix(
 	options: Dictionary = {}
 ) -> Dictionary:
 	var limit := maxi(1, step_limit)
-	var scope := build_shard_manifest(matches_per_configuration, options)
+	var execution_options := options.duplicate(true)
+	var scope := build_shard_manifest(matches_per_configuration, execution_options)
 	if not bool(scope.get("accepted", false)):
 		return _invalid_execution_report(scope)
+	var authority := authority_contract_context(scope, execution_options, limit)
+	if not bool(authority.get("accepted", false)):
+		return _authority_blocked_report(scope, authority, [], 0)
+	if bool(authority.get("enabled", false)):
+		scope["assignment_shard_id"] = int(authority.get("shard_id", -1))
+		scope["assignment_shard_count"] = int(authority.get("shard_count", 0))
 	var started_usec := Time.get_ticks_usec()
 	var rows: Array = []
 	var completed_jobs := 0
-	for job_variant in scope.get("jobs", []) as Array:
+	var authority_observability := {
+		"enabled": bool(authority.get("enabled", false)),
+		"authority_path": str(authority.get("authority_path", "")),
+		"final_head_sha": str(authority.get("final_head_sha", "")),
+		"final_tree_sha": str(authority.get("final_tree_sha", "")),
+		"authority_manifest_sha256": str(authority.get(
+			"authority_manifest_sha256",
+			""
+		)),
+		"harness_hash": str(authority.get("harness_hash", "")),
+		"simulation_id": str(authority.get("simulation_id", "")),
+		"ruleset_id": str(authority.get("ruleset_id", "")),
+		"step_limit": int(authority.get("step_limit", 0)),
+		"worker_id": str(authority.get("worker_id", "")),
+		"shard_id": int(authority.get("shard_id", -1)),
+		"shard_count": int(authority.get("shard_count", 0)),
+		"executed_match_count": 0,
+		"resumed_match_count": 0,
+		"committed_result_count": 0,
+		"heartbeat_commit_count": 0,
+		"blocked_conflict_count": 0,
+		"heartbeat_only_skips_match": false,
+	}
+	var jobs := scope.get("jobs", []) as Array
+	for job_ordinal in range(jobs.size()):
+		var job_variant: Variant = jobs[job_ordinal]
 		var job := job_variant as Dictionary
 		var configuration_index := int(job.get("configuration_index", -1))
 		var match_index := int(job.get("match_index", -1))
 		var configuration := CONFIGURATIONS[configuration_index] as Dictionary
-		var row := run_match(
-			configuration,
-			int(job.get("seed", seed_for(configuration_index, match_index))),
-			limit,
-			configuration_index,
-			match_index
-		)
-		rows.append(_public_match_row(row))
+		var public_row: Dictionary = {}
+		if bool(authority.get("enabled", false)):
+			var inspection := inspect_authority_job_result(
+				authority,
+				job,
+				job_ordinal
+			)
+			if not bool(inspection.get("accepted", false)):
+				authority_observability["blocked_conflict_count"] = 1
+				authority_observability["block_reason_code"] = str(
+					inspection.get("reason_code", "authority_result_conflict")
+				)
+				return _authority_blocked_report(
+					scope,
+					authority_observability,
+					rows,
+					int((Time.get_ticks_usec() - started_usec) / 1000)
+				)
+			if str(inspection.get("action", "")) == "skip":
+				public_row = (
+					inspection.get("match_row", {}) as Dictionary
+				).duplicate(true)
+				authority_observability["resumed_match_count"] = int(
+					authority_observability.get("resumed_match_count", 0)
+				) + 1
+			else:
+				var executed_row := run_match(
+					configuration,
+					int(job.get(
+						"seed",
+						seed_for(configuration_index, match_index)
+					)),
+					limit,
+					configuration_index,
+					match_index
+				)
+				public_row = _public_match_row(executed_row)
+				authority_observability["executed_match_count"] = int(
+					authority_observability.get("executed_match_count", 0)
+				) + 1
+			var commit := commit_authority_job_result(
+				authority,
+				job,
+				public_row,
+				job_ordinal
+			)
+			if not bool(commit.get("accepted", false)):
+				authority_observability["blocked_conflict_count"] = 1
+				authority_observability["block_reason_code"] = str(
+					commit.get("reason_code", "authority_commit_failed")
+				)
+				return _authority_blocked_report(
+					scope,
+					authority_observability,
+					rows,
+					int((Time.get_ticks_usec() - started_usec) / 1000)
+				)
+			public_row = (
+				commit.get("match_row", public_row) as Dictionary
+			).duplicate(true)
+			public_row = _formal_match_row(
+				public_row,
+				commit.get("result_record", {}) as Dictionary
+			)
+			if str(commit.get("action", "")) == "committed":
+				authority_observability["committed_result_count"] = int(
+					authority_observability.get("committed_result_count", 0)
+				) + 1
+			if bool(commit.get("heartbeat_committed", false)):
+				authority_observability["heartbeat_commit_count"] = int(
+					authority_observability.get("heartbeat_commit_count", 0)
+				) + 1
+		else:
+			var legacy_row := run_match(
+				configuration,
+				int(job.get("seed", seed_for(configuration_index, match_index))),
+				limit,
+				configuration_index,
+				match_index
+			)
+			public_row = _public_match_row(legacy_row)
+		rows.append(public_row)
 		completed_jobs += 1
-		var interval := int(options.get("progress_interval", 0))
+		var interval := int(execution_options.get("progress_interval", 0))
 		if interval > 0 and completed_jobs % interval == 0:
 			print(
 				"V075_COMBAT_SIMULATION_PROGRESS|matches=%d|configuration=%s"
 				% [completed_jobs, configuration.get("configuration_id", "")]
 			)
 	var elapsed_msec := int((Time.get_ticks_usec() - started_usec) / 1000)
-	var report := _build_report_from_rows(rows, scope, elapsed_msec, options)
-	if bool(options.get("write_report", false)):
-		var report_paths := _report_paths_for_scope(scope, options)
+	if bool(authority.get("enabled", false)):
+		authority_observability["completed_match_count"] = rows.size()
+		authority_observability["persistence_status"] = "GREEN"
+		execution_options["_authority_observability"] = authority_observability
+	var report := _build_report_from_rows(
+		rows,
+		scope,
+		elapsed_msec,
+		execution_options
+	)
+	if bool(execution_options.get("write_report", false)):
+		var report_paths := _report_paths_for_scope(scope, execution_options)
 		write_report(
 			report,
 			str(report_paths.get("json_path", "")),
 			str(report_paths.get("md_path", ""))
 		)
+	return report
+
+
+func _formal_match_row(match_row: Dictionary, result_record: Dictionary) -> Dictionary:
+	var row := match_row.duplicate(true)
+	row["formal_job_identity"] = (
+		result_record.get("job_identity", {}) as Dictionary
+	).duplicate(true)
+	row["formal_job_identity_canonical_json"] = str(result_record.get(
+		"job_identity_canonical_json",
+		""
+	))
+	row["formal_job_identity_sha256"] = str(result_record.get(
+		"job_identity_sha256",
+		""
+	))
+	return row
+
+
+func authority_contract_context(
+	scope: Dictionary,
+	options: Dictionary,
+	step_limit: int = DEFAULT_STEP_LIMIT
+) -> Dictionary:
+	var requested_path := str(options.get("authority_path", "")).strip_edges()
+	if requested_path.is_empty():
+		return {
+			"accepted": true,
+			"enabled": false,
+			"reason_code": "authority_resume_disabled",
+		}
+	var authority_path := _external_authority_path(requested_path)
+	if authority_path.is_empty():
+		return _authority_contract_error("authority_path_not_external_absolute")
+	var has_assignment_shard := options.has("assignment_shard_id") \
+		or options.has("assignment_shard_count")
+	if has_assignment_shard \
+			and (not options.has("assignment_shard_id") \
+				or not options.has("assignment_shard_count")):
+		return _authority_contract_error("assignment_shard_metadata_incomplete")
+	var shard_id := int(options.get(
+		"assignment_shard_id",
+		scope.get("shard_id", -1)
+	))
+	var shard_count := int(options.get(
+		"assignment_shard_count",
+		scope.get("shard_count", 0)
+	))
+	if str(scope.get("scope_kind", "")) != "shard" \
+			or shard_id < 0 \
+			or shard_count < 1 \
+			or shard_id >= shard_count:
+		return _authority_contract_error("authority_requires_explicit_shard")
+	var final_head_sha := str(options.get("final_head_sha", "")).strip_edges()
+	var final_tree_sha := str(options.get("final_tree_sha", "")).strip_edges()
+	if not _is_git_sha(final_head_sha):
+		return _authority_contract_error("final_head_sha_invalid")
+	if not _is_git_sha(final_tree_sha):
+		return _authority_contract_error("final_tree_sha_invalid")
+	var declared_source_sha := OS.get_environment(
+		SOURCE_COMMIT_SHA_ENV
+	).strip_edges()
+	if declared_source_sha.is_empty() or declared_source_sha != final_head_sha:
+		return _authority_contract_error("source_sha_environment_mismatch")
+	var worker_id := str(options.get("worker_id", "")).strip_edges()
+	if not _is_safe_worker_id(worker_id):
+		return _authority_contract_error("worker_id_invalid")
+	if step_limit < 1:
+		return _authority_contract_error("step_limit_invalid")
+	var authority_manifest_sha256 := str(options.get(
+		"authority_manifest_sha256",
+		""
+	)).strip_edges()
+	if not _is_sha256(authority_manifest_sha256):
+		return _authority_contract_error("authority_manifest_sha256_invalid")
+	var matrix_contract := _global_matrix_contract(scope)
+	if matrix_contract.is_empty():
+		return _authority_contract_error("global_matrix_contract_invalid")
+	var harness := harness_identity()
+	if not bool(harness.get("accepted", false)):
+		return _authority_contract_error(str(harness.get(
+			"reason_code",
+			"harness_identity_invalid"
+		)))
+	var harness_hash := str(harness.get("fingerprint", ""))
+	var expected_harness_hash := str(options.get(
+		"expected_harness_hash",
+		""
+	)).strip_edges()
+	if not expected_harness_hash.is_empty() \
+			and expected_harness_hash != harness_hash:
+		return _authority_contract_error("expected_harness_hash_mismatch")
+	return {
+		"accepted": true,
+		"enabled": true,
+		"reason_code": "",
+		"authority_path": authority_path,
+		"final_head_sha": final_head_sha,
+		"final_tree_sha": final_tree_sha,
+		"authority_manifest_sha256": authority_manifest_sha256,
+		"global_matrix_contract": matrix_contract,
+		"harness_hash": harness_hash,
+		"harness_component_sha256": (
+			harness.get("component_sha256", {}) as Dictionary
+		).duplicate(true),
+		"worker_id": worker_id,
+		"shard_id": shard_id,
+		"shard_count": shard_count,
+		"simulation_id": SIMULATION_ID,
+		"ruleset_id": RULESET_ID,
+		"step_limit": step_limit,
+		"resume_enabled": true,
+	}
+
+
+func authority_job_paths(
+	authority: Dictionary,
+	job: Dictionary,
+	job_ordinal: int
+) -> Dictionary:
+	var identity := _authority_job_identity(authority, job, job_ordinal)
+	if identity.is_empty():
+		return {}
+	var authority_path := str(authority.get("authority_path", ""))
+	var worker_id := str(authority.get("worker_id", ""))
+	var configuration_id := str(identity.get("configuration_id", ""))
+	var shard_id := int(authority.get("shard_id", -1))
+	var match_index := int(identity.get("match_index", -1))
+	var seed_value := int(identity.get("seed", 0))
+	var slot_name := "c%02d-%s-match-%06d-seed-%d" % [
+		int(identity.get("configuration_index", -1)),
+		_safe_path_segment(configuration_id),
+		match_index,
+		seed_value,
+	]
+	var shard_segment := "shard-%03d-of-%03d" % [
+		shard_id,
+		int(authority.get("shard_count", 0)),
+	]
+	var result_path := authority_path.path_join(
+			"results"
+		).path_join("%s.json" % slot_name)
+	var heartbeat_directory := authority_path.path_join(
+			"heartbeats"
+		).path_join(worker_id).path_join(shard_segment)
+	if not _authority_target_path_is_safe(authority_path, result_path, false) \
+			or not _authority_target_path_is_safe(
+				authority_path,
+				heartbeat_directory,
+				true
+			):
+		return {}
+	return {
+		"result_path": result_path,
+		"heartbeat_directory": heartbeat_directory,
+		"slot_name": slot_name,
+	}
+
+
+func inspect_authority_job_result(
+	authority: Dictionary,
+	job: Dictionary,
+	job_ordinal: int
+) -> Dictionary:
+	if not bool(authority.get("accepted", false)) \
+			or not bool(authority.get("enabled", false)):
+		return {
+			"accepted": false,
+			"action": "block",
+			"reason_code": "authority_context_not_enabled",
+		}
+	var paths := authority_job_paths(authority, job, job_ordinal)
+	var result_path := str(paths.get("result_path", ""))
+	if result_path.is_empty():
+		return {
+			"accepted": false,
+			"action": "block",
+			"reason_code": "authority_job_path_invalid",
+		}
+	if not _authority_target_path_is_safe(
+		str(authority.get("authority_path", "")),
+		result_path,
+		false
+	):
+		return {
+			"accepted": false,
+			"action": "block",
+			"reason_code": "authority_result_path_became_unsafe",
+		}
+	if not FileAccess.file_exists(result_path):
+		return {
+			"accepted": true,
+			"action": "run",
+			"reason_code": "immutable_result_missing",
+			"result_path": result_path,
+		}
+	var parsed: Variant = JSON.parse_string(
+		FileAccess.get_file_as_string(result_path)
+	)
+	if not (parsed is Dictionary):
+		return {
+			"accepted": false,
+			"action": "block",
+			"reason_code": "immutable_result_json_invalid",
+			"result_path": result_path,
+		}
+	var validation := _validate_authority_result_record(
+		parsed as Dictionary,
+		authority,
+		job,
+		job_ordinal
+	)
+	if not bool(validation.get("accepted", false)):
+		validation["action"] = "block"
+		validation["result_path"] = result_path
+		return validation
+	return {
+		"accepted": true,
+		"action": "skip",
+		"reason_code": "exact_immutable_result_valid",
+		"result_path": result_path,
+		"result_record": (parsed as Dictionary).duplicate(true),
+		"match_row": (
+			(parsed as Dictionary).get("match_row", {}) as Dictionary
+		).duplicate(true),
+	}
+
+
+func commit_authority_job_result(
+	authority: Dictionary,
+	job: Dictionary,
+	match_row: Dictionary,
+	job_ordinal: int
+) -> Dictionary:
+	var inspection := inspect_authority_job_result(
+		authority,
+		job,
+		job_ordinal
+	)
+	if not bool(inspection.get("accepted", false)):
+		return inspection
+	var record: Dictionary = {}
+	var action := str(inspection.get("action", ""))
+	if action == "skip":
+		record = (
+			inspection.get("result_record", {}) as Dictionary
+		).duplicate(true)
+		match_row = (
+			inspection.get("match_row", {}) as Dictionary
+		).duplicate(true)
+	else:
+		record = _build_authority_result_record(
+			authority,
+			job,
+			match_row,
+			job_ordinal
+		)
+		var record_validation := _validate_authority_result_record(
+			record,
+			authority,
+			job,
+			job_ordinal
+		)
+		if not bool(record_validation.get("accepted", false)):
+			record_validation["action"] = "block"
+			return record_validation
+		var result_path := str(inspection.get("result_path", ""))
+		var result_write := _atomic_write_immutable_json(
+			result_path,
+			record,
+			str(authority.get("authority_path", ""))
+		)
+		if not bool(result_write.get("accepted", false)):
+			return {
+				"accepted": false,
+				"action": "block",
+				"reason_code": str(result_write.get(
+					"reason_code",
+					"immutable_result_write_failed"
+				)),
+				"result_path": result_path,
+			}
+		if bool(result_write.get("already_exists", false)):
+			var raced := inspect_authority_job_result(
+				authority,
+				job,
+				job_ordinal
+			)
+			if not bool(raced.get("accepted", false)) \
+					or str(raced.get("action", "")) != "skip":
+				return {
+					"accepted": false,
+					"action": "block",
+					"reason_code": "immutable_result_race_conflict",
+					"result_path": result_path,
+				}
+			record = (
+				raced.get("result_record", {}) as Dictionary
+			).duplicate(true)
+			match_row = (
+				raced.get("match_row", {}) as Dictionary
+			).duplicate(true)
+			action = "skip"
+		else:
+			action = "committed"
+	var heartbeat := _commit_authority_heartbeat(
+		authority,
+		job,
+		record,
+		job_ordinal
+	)
+	if not bool(heartbeat.get("accepted", false)):
+		return {
+			"accepted": false,
+			"action": "block",
+			"reason_code": str(heartbeat.get(
+				"reason_code",
+				"heartbeat_write_failed_after_result_commit"
+			)),
+			"result_committed": true,
+			"result_path": str(inspection.get("result_path", "")),
+		}
+	return {
+		"accepted": true,
+		"action": action,
+		"reason_code": "",
+		"match_row": match_row.duplicate(true),
+		"result_record": record.duplicate(true),
+		"result_path": str(inspection.get("result_path", "")),
+		"heartbeat_path": str(heartbeat.get("heartbeat_path", "")),
+		"heartbeat_committed": bool(heartbeat.get("committed", false)),
+	}
+
+
+func _authority_contract_error(reason_code: String) -> Dictionary:
+	return {
+		"accepted": false,
+		"enabled": true,
+		"reason_code": reason_code,
+	}
+
+
+func _external_authority_path(path: String) -> String:
+	var raw := path.replace("\\", "/")
+	if raw.begins_with("//") or raw.find(":", 2) >= 0:
+		return ""
+	for segment_variant in raw.split("/", false):
+		var segment := str(segment_variant)
+		if segment == "." \
+				or segment == ".." \
+				or segment.ends_with(".") \
+				or segment.ends_with(" ") \
+				or segment.contains("~"):
+			return ""
+	var normalized := raw.simplify_path().trim_suffix("/")
+	if normalized.is_empty() \
+			or normalized.begins_with("res://") \
+			or normalized.begins_with("user://") \
+			or not normalized.is_absolute_path():
+		return ""
+	# Godot cannot prove arbitrary Windows aliases after the process starts. Fail
+	# closed for every existing symlink/junction component; the formal caller must
+	# additionally pass only a physically canonical path from its preflight.
+	if _path_chain_contains_link(normalized):
+		return ""
+	var project_root := ProjectSettings.globalize_path(
+		"res://"
+	).replace("\\", "/").simplify_path().trim_suffix("/")
+	var comparable_path := normalized.to_lower()
+	var comparable_root := project_root.to_lower()
+	if comparable_path == comparable_root \
+			or comparable_path.begins_with("%s/" % comparable_root):
+		return ""
+	return normalized
+
+
+func _path_chain_contains_link(path: String) -> bool:
+	var cursor := path
+	while not cursor.is_empty():
+		if FileAccess.file_exists(cursor) or DirAccess.dir_exists_absolute(cursor):
+			var parent := cursor.get_base_dir()
+			var entry_name := cursor.get_file()
+			if not entry_name.is_empty() and parent != cursor:
+				var parent_access := DirAccess.open(parent)
+				if parent_access != null and parent_access.is_link(entry_name):
+					return true
+		var next_cursor := cursor.get_base_dir()
+		if next_cursor.is_empty() or next_cursor == cursor:
+			break
+		cursor = next_cursor
+	return false
+
+
+func _authority_target_path_is_safe(
+	authority_root: String,
+	target_path: String,
+	target_is_directory: bool
+) -> bool:
+	var canonical_root := _external_authority_path(authority_root)
+	if canonical_root.is_empty():
+		return false
+	var normalized_target := target_path.replace(
+		"\\",
+		"/"
+	).simplify_path().trim_suffix("/")
+	var target_exists := FileAccess.file_exists(normalized_target) \
+		or DirAccess.dir_exists_absolute(normalized_target)
+	if target_exists and _external_authority_path(normalized_target).is_empty():
+		return false
+	var target_parent := (
+		normalized_target if target_is_directory else normalized_target.get_base_dir()
+	)
+	var canonical_parent := _external_authority_path(target_parent)
+	if canonical_parent.is_empty():
+		return false
+	var comparable_root := canonical_root.to_lower()
+	var comparable_parent := canonical_parent.to_lower()
+	return comparable_parent == comparable_root \
+		or comparable_parent.begins_with("%s/" % comparable_root)
+
+
+func _is_git_sha(value: String) -> bool:
+	if value.length() != 40 or value != value.to_lower():
+		return false
+	for character in value:
+		if not "0123456789abcdef".contains(character):
+			return false
+	return true
+
+
+func _is_sha256(value: String) -> bool:
+	if value.length() != 64:
+		return false
+	for character in value:
+		if not "0123456789abcdef".contains(character):
+			return false
+	return true
+
+
+func _safe_path_segment(value: String) -> String:
+	var result := ""
+	for character in value:
+		if "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-".contains(
+			character
+		):
+			result += character
+	return result
+
+
+func _is_safe_worker_id(value: String) -> bool:
+	if value.is_empty() \
+			or value.length() > 64 \
+			or _safe_path_segment(value) != value \
+			or value == "." \
+			or value == ".." \
+			or value.begins_with(".") \
+			or value.ends_with("."):
+		return false
+	var device_stem := value.split(".", false, 1)[0].to_upper()
+	if device_stem in ["CON", "PRN", "AUX", "NUL", "CLOCK$"]:
+		return false
+	if device_stem.length() == 4 \
+			and (device_stem.begins_with("COM") or device_stem.begins_with("LPT")) \
+			and "123456789".contains(device_stem.right(1)):
+		return false
+	return true
+
+
+func _global_matrix_contract(scope: Dictionary) -> Dictionary:
+	if not bool(scope.get("accepted", false)):
+		return {}
+	var formal_count := int(scope.get("formal_matches_per_configuration", 0))
+	if formal_count < 1:
+		return {}
+	return {
+		"schema_version": AUTHORITY_RESULT_SCHEMA_VERSION,
+		"contract_kind": GLOBAL_MATRIX_CONTRACT_KIND,
+		"simulation_id": SIMULATION_ID,
+		"ruleset_id": RULESET_ID,
+		"configuration_catalog": CONFIGURATIONS.duplicate(true),
+		"formal_matches_per_configuration": formal_count,
+		"canonical_job_count": CONFIGURATIONS.size() * formal_count,
+		"base_seed": BASE_SEED,
+		"seed_formula_id": SEED_FORMULA_ID,
+	}
+
+
+func _authority_job_identity(
+	authority: Dictionary,
+	job: Dictionary,
+	_job_ordinal: int
+) -> Dictionary:
+	for integer_field in ["configuration_index", "match_index", "seed"]:
+		if not _has_json_integer(job, integer_field):
+			return {}
+	var configuration_index := int(job.get("configuration_index", -1))
+	if configuration_index < 0 or configuration_index >= CONFIGURATIONS.size():
+		return {}
+	var configuration := CONFIGURATIONS[configuration_index] as Dictionary
+	var match_index := int(job.get("match_index", -1))
+	var seed_value := int(job.get("seed", 0))
+	var matrix_contract := authority.get("global_matrix_contract", {}) as Dictionary
+	if match_index < 0 or seed_value != seed_for(
+		configuration_index,
+		match_index
+	) \
+			or match_index >= int(matrix_contract.get(
+				"formal_matches_per_configuration",
+				0
+			)):
+		return {}
+	return {
+		"final_head_sha": str(authority.get("final_head_sha", "")),
+		"final_tree_sha": str(authority.get("final_tree_sha", "")),
+		"authority_manifest_sha256": str(authority.get(
+			"authority_manifest_sha256",
+			""
+		)),
+		"harness_fingerprint": str(authority.get("harness_hash", "")),
+		"simulation_id": str(authority.get("simulation_id", "")),
+		"ruleset_id": str(authority.get("ruleset_id", "")),
+		"configuration_id": str(configuration.get("configuration_id", "")),
+		"configuration_index": configuration_index,
+		"match_index": match_index,
+		"seed": seed_value,
+		"step_limit": int(authority.get("step_limit", 0)),
+	}
+
+
+func _authority_job_identity_canonical_json(identity: Dictionary) -> String:
+	var fields: Array[String] = []
+	for field_name in [
+		"final_head_sha",
+		"final_tree_sha",
+		"authority_manifest_sha256",
+		"harness_fingerprint",
+		"simulation_id",
+		"ruleset_id",
+		"configuration_index",
+		"configuration_id",
+		"match_index",
+		"seed",
+		"step_limit",
+	]:
+		var value: Variant = identity.get(field_name)
+		if field_name in [
+			"configuration_index",
+			"match_index",
+			"seed",
+			"step_limit",
+		]:
+			fields.append("%s:%d" % [JSON.stringify(field_name), int(value)])
+		else:
+			fields.append("%s:%s" % [
+				JSON.stringify(field_name),
+				JSON.stringify(str(value)),
+			])
+	return "{%s}" % ",".join(fields)
+
+
+func _authority_job_identity_sha256(identity: Dictionary) -> String:
+	return _authority_job_identity_canonical_json(identity).sha256_text()
+
+
+func _build_authority_result_record(
+	authority: Dictionary,
+	job: Dictionary,
+	match_row: Dictionary,
+	job_ordinal: int
+) -> Dictionary:
+	var job_identity := _authority_job_identity(authority, job, job_ordinal)
+	var metrics := match_row.get("metrics", {}) as Dictionary
+	var completed_at_utc := "%sZ" % Time.get_datetime_string_from_system(
+		true,
+		false
+	)
+	var record := {
+		"schema_version": AUTHORITY_RESULT_SCHEMA_VERSION,
+		"result_kind": AUTHORITY_RESULT_KIND,
+		"final_head_sha": str(job_identity.get("final_head_sha", "")),
+		"final_tree_sha": str(job_identity.get("final_tree_sha", "")),
+		"authority_manifest_sha256": str(job_identity.get(
+			"authority_manifest_sha256",
+			""
+		)),
+		"global_matrix_contract": (
+			authority.get("global_matrix_contract", {}) as Dictionary
+		).duplicate(true),
+		"harness_hash": str(job_identity.get("harness_fingerprint", "")),
+		"harness_fingerprint": str(job_identity.get(
+			"harness_fingerprint",
+			""
+		)),
+		"harness_component_sha256": (
+			authority.get("harness_component_sha256", {}) as Dictionary
+		).duplicate(true),
+		"simulation_id": str(job_identity.get("simulation_id", "")),
+		"ruleset_id": str(job_identity.get("ruleset_id", "")),
+		"step_limit": int(job_identity.get("step_limit", 0)),
+		"worker_id": str(authority.get("worker_id", "")),
+		"configuration_id": str(job_identity.get("configuration_id", "")),
+		"configuration_index": int(job_identity.get(
+			"configuration_index",
+			-1
+		)),
+		"shard_id": int(authority.get("shard_id", -1)),
+		"shard_count": int(authority.get("shard_count", 0)),
+		"job_ordinal_in_shard": job_ordinal,
+		"match_index": int(job_identity.get("match_index", -1)),
+		"seed": int(job_identity.get("seed", 0)),
+		"completed_match_count": job_ordinal + 1,
+		"last_completed_at": completed_at_utc,
+		"settled": bool(match_row.get("settled", false)),
+		"runtime_error_count": int(metrics.get(
+			"COMBAT_RUNTIME_ERROR_COUNT",
+			0
+		)),
+		"combat_action_count": int(metrics.get("COMBAT_ACTION_COUNT", 0)),
+		"duplicate_effect_count": int(metrics.get(
+			"COMBAT_DUPLICATE_EFFECT_COUNT",
+			0
+		)),
+		"hidden_info_violation_count": int(metrics.get(
+			"COMBAT_HIDDEN_INFO_VIOLATION_COUNT",
+			0
+		)),
+		"final_settlement_count": int(metrics.get(
+			"FINAL_SETTLEMENT_COUNT",
+			0
+		)),
+		"duplicate_settlement_count": int(metrics.get(
+			"DUPLICATE_SETTLEMENT_COUNT",
+			0
+		)),
+		"job_identity": job_identity.duplicate(true),
+		"job_identity_canonical_json": _authority_job_identity_canonical_json(
+			job_identity
+		),
+		"job_identity_sha256": _authority_job_identity_sha256(job_identity),
+		"job_identity_hash": _authority_job_identity_sha256(job_identity),
+		"match_row": match_row.duplicate(true),
+		"match_row_fingerprint": fingerprint(match_row),
+	}
+	record["record_fingerprint"] = fingerprint(record)
+	return record
+
+
+func _validate_authority_result_record(
+	record: Dictionary,
+	authority: Dictionary,
+	job: Dictionary,
+	job_ordinal: int
+) -> Dictionary:
+	if not _has_json_integer(record, "schema_version") \
+			or int(record.get("schema_version")) \
+				!= AUTHORITY_RESULT_SCHEMA_VERSION \
+			or not _has_exact_type(record, "result_kind", TYPE_STRING) \
+			or record.get("result_kind") != AUTHORITY_RESULT_KIND:
+		return {"accepted": false, "reason_code": "result_schema_mismatch"}
+	for string_field in [
+		"final_head_sha",
+		"final_tree_sha",
+		"authority_manifest_sha256",
+		"harness_hash",
+		"harness_fingerprint",
+		"simulation_id",
+		"ruleset_id",
+		"worker_id",
+		"configuration_id",
+		"last_completed_at",
+		"job_identity_canonical_json",
+		"job_identity_sha256",
+		"job_identity_hash",
+		"match_row_fingerprint",
+		"record_fingerprint",
+	]:
+		if not _has_exact_type(record, string_field, TYPE_STRING):
+			return {
+				"accepted": false,
+				"reason_code": "result_string_type_invalid:%s" % string_field,
+			}
+	for integer_field in [
+		"step_limit",
+		"configuration_index",
+		"shard_id",
+		"shard_count",
+		"job_ordinal_in_shard",
+		"match_index",
+		"seed",
+		"completed_match_count",
+		"runtime_error_count",
+		"combat_action_count",
+		"duplicate_effect_count",
+		"hidden_info_violation_count",
+		"final_settlement_count",
+		"duplicate_settlement_count",
+	]:
+		if not _has_json_integer(record, integer_field):
+			return {
+				"accepted": false,
+				"reason_code": "result_integer_type_invalid:%s" % integer_field,
+			}
+	if not _has_exact_type(record, "settled", TYPE_BOOL):
+		return {"accepted": false, "reason_code": "result_bool_type_invalid:settled"}
+	for dictionary_field in [
+		"global_matrix_contract",
+		"harness_component_sha256",
+		"job_identity",
+		"match_row",
+	]:
+		if not _has_exact_type(record, dictionary_field, TYPE_DICTIONARY):
+			return {
+				"accepted": false,
+				"reason_code": "result_dictionary_type_invalid:%s" % dictionary_field,
+			}
+	var declared_record_fingerprint := str(record.get("record_fingerprint"))
+	var payload := record.duplicate(true)
+	payload.erase("record_fingerprint")
+	if not _is_sha256(declared_record_fingerprint) \
+			or fingerprint(payload) != declared_record_fingerprint:
+		return {"accepted": false, "reason_code": "result_hash_mismatch"}
+	var expected_identity := _authority_job_identity(
+		authority,
+		job,
+		job_ordinal
+	)
+	var actual_identity := record.get("job_identity") as Dictionary
+	if expected_identity.is_empty() \
+			or not _strict_job_identity_schema(actual_identity):
+		return {"accepted": false, "reason_code": "result_identity_missing"}
+	var expected_identity_canonical_json := (
+		_authority_job_identity_canonical_json(expected_identity)
+	)
+	var expected_identity_hash := expected_identity_canonical_json.sha256_text()
+	if _canonical(actual_identity) != _canonical(expected_identity) \
+			or record.get("job_identity_canonical_json") \
+				!= expected_identity_canonical_json \
+			or record.get("job_identity_sha256") != expected_identity_hash \
+			or record.get("job_identity_hash") != expected_identity_hash:
+		return {"accepted": false, "reason_code": "result_identity_conflict"}
+	var matrix_contract := record.get("global_matrix_contract") as Dictionary
+	if _canonical(matrix_contract) != _canonical(authority.get(
+		"global_matrix_contract",
+		{}
+	)):
+		return {"accepted": false, "reason_code": "result_matrix_contract_conflict"}
+	var harness_components := record.get("harness_component_sha256") as Dictionary
+	if not _strict_sha256_dictionary(harness_components) \
+			or fingerprint(harness_components) \
+				!= str(expected_identity.get("harness_fingerprint", "")) \
+			or _canonical(harness_components) \
+				!= _canonical(authority.get("harness_component_sha256", {})):
+		return {"accepted": false, "reason_code": "result_harness_conflict"}
+	for field_name in [
+		"final_head_sha",
+		"final_tree_sha",
+		"authority_manifest_sha256",
+		"harness_fingerprint",
+		"harness_hash",
+		"simulation_id",
+		"ruleset_id",
+		"step_limit",
+		"configuration_id",
+		"configuration_index",
+		"match_index",
+		"seed",
+	]:
+		var identity_field_name: String = (
+			"harness_fingerprint" if field_name == "harness_hash" else field_name
+		)
+		if _canonical(record.get(field_name)) \
+				!= _canonical(expected_identity.get(identity_field_name)):
+			return {
+				"accepted": false,
+				"reason_code": "result_field_conflict:%s" % field_name,
+			}
+	var recorded_worker_id := str(record.get("worker_id"))
+	var recorded_shard_id := int(record.get("shard_id"))
+	var recorded_shard_count := int(record.get("shard_count"))
+	var recorded_job_ordinal := int(record.get("job_ordinal_in_shard"))
+	if not _is_safe_worker_id(recorded_worker_id) \
+			or recorded_shard_count < 1 \
+			or recorded_shard_id < 0 \
+			or recorded_shard_id >= recorded_shard_count \
+			or recorded_job_ordinal < 0 \
+			or int(record.get("completed_match_count")) != recorded_job_ordinal + 1 \
+			or str(record.get("last_completed_at")).is_empty():
+		return {
+			"accepted": false,
+			"reason_code": "result_execution_observation_invalid",
+		}
+	var row := record.get("match_row") as Dictionary
+	var row_schema_error := _strict_match_row_schema_error(row)
+	if not row_schema_error.is_empty():
+		return {"accepted": false, "reason_code": row_schema_error}
+	if record.get("match_row_fingerprint") != fingerprint(row):
+		return {"accepted": false, "reason_code": "result_match_row_hash_mismatch"}
+	if int(row.get("configuration_index", -1)) \
+			!= int(expected_identity.get("configuration_index", -1)) \
+			or str(row.get("configuration_id", "")) \
+				!= str(expected_identity.get("configuration_id", "")) \
+			or int(row.get("match_index", -1)) \
+				!= int(expected_identity.get("match_index", -1)) \
+			or int(row.get("seed", 0)) != int(expected_identity.get("seed", 0)):
+		return {"accepted": false, "reason_code": "result_row_identity_conflict"}
+	var row_identity := row.get("identity") as Dictionary
+	if fingerprint(row_identity) != row.get("fingerprint"):
+		return {"accepted": false, "reason_code": "result_row_hash_mismatch"}
+	var metrics := row.get("metrics", {}) as Dictionary
+	for required_key_variant in _empty_metrics().keys():
+		var required_key := str(required_key_variant)
+		if not _has_json_integer(metrics, required_key):
+			return {
+				"accepted": false,
+				"reason_code": "result_metric_type_invalid:%s" % required_key,
+			}
+	for metric_key_variant in metrics.keys():
+		var metric_key := str(metric_key_variant)
+		if not _has_json_integer(metrics, metric_key):
+			return {
+				"accepted": false,
+				"reason_code": "result_metric_type_invalid:%s" % metric_key,
+			}
+	if int(metrics.get("COMBAT_SIMULATION_MATCH_COUNT", 0)) != 1 \
+			or int(metrics.get("COMBAT_SIMULATION_SETTLED_COUNT", 0)) \
+				!= (1 if bool(row.get("settled", false)) else 0):
+		return {"accepted": false, "reason_code": "result_match_metric_invalid"}
+	var expected_metrics := {
+		"runtime_error_count": int(metrics.get("COMBAT_RUNTIME_ERROR_COUNT", 0)),
+		"combat_action_count": int(metrics.get("COMBAT_ACTION_COUNT", 0)),
+		"duplicate_effect_count": int(metrics.get(
+			"COMBAT_DUPLICATE_EFFECT_COUNT",
+			0
+		)),
+		"hidden_info_violation_count": int(metrics.get(
+			"COMBAT_HIDDEN_INFO_VIOLATION_COUNT",
+			0
+		)),
+		"final_settlement_count": int(metrics.get("FINAL_SETTLEMENT_COUNT", 0)),
+		"duplicate_settlement_count": int(metrics.get(
+			"DUPLICATE_SETTLEMENT_COUNT",
+			0
+		)),
+	}
+	for metric_field_variant in expected_metrics.keys():
+		var metric_field := str(metric_field_variant)
+		if int(record.get(metric_field)) != int(expected_metrics.get(
+			metric_field,
+			-2
+		)):
+			return {
+				"accepted": false,
+				"reason_code": "result_metric_conflict:%s" % metric_field,
+			}
+	if record.get("settled") != row.get("settled"):
+		return {"accepted": false, "reason_code": "result_settled_conflict"}
+	return {"accepted": true, "reason_code": ""}
+
+
+func _has_exact_type(source: Dictionary, key: String, expected_type: int) -> bool:
+	return source.has(key) and typeof(source.get(key)) == expected_type
+
+
+func _has_json_integer(source: Dictionary, key: String) -> bool:
+	if not source.has(key):
+		return false
+	var value: Variant = source.get(key)
+	if typeof(value) == TYPE_INT:
+		return true
+	if typeof(value) != TYPE_FLOAT:
+		return false
+	var number := float(value)
+	return is_finite(number) and number == floor(number)
+
+
+func _strict_job_identity_schema(identity: Dictionary) -> bool:
+	for string_field in [
+		"final_head_sha",
+		"final_tree_sha",
+		"authority_manifest_sha256",
+		"harness_fingerprint",
+		"simulation_id",
+		"ruleset_id",
+		"configuration_id",
+	]:
+		if not _has_exact_type(identity, string_field, TYPE_STRING):
+			return false
+	for integer_field in [
+		"configuration_index",
+		"match_index",
+		"seed",
+		"step_limit",
+	]:
+		if not _has_json_integer(identity, integer_field):
+			return false
+	return identity.size() == 11 \
+		and _is_git_sha(str(identity.get("final_head_sha"))) \
+		and _is_git_sha(str(identity.get("final_tree_sha"))) \
+		and _is_sha256(str(identity.get("authority_manifest_sha256"))) \
+		and _is_sha256(str(identity.get("harness_fingerprint")))
+
+
+func _strict_sha256_dictionary(source: Dictionary) -> bool:
+	if source.is_empty():
+		return false
+	for key_variant in source.keys():
+		if typeof(key_variant) != TYPE_STRING:
+			return false
+		var value: Variant = source.get(key_variant)
+		if typeof(value) != TYPE_STRING or not _is_sha256(str(value)):
+			return false
+	return true
+
+
+func _strict_match_row_schema_error(row: Dictionary) -> String:
+	for string_field in ["configuration_id", "phase", "fingerprint"]:
+		if not _has_exact_type(row, string_field, TYPE_STRING):
+			return "result_row_string_type_invalid:%s" % string_field
+	for integer_field in [
+		"configuration_index",
+		"match_index",
+		"seed",
+		"steps",
+		"duration_msec",
+	]:
+		if not _has_json_integer(row, integer_field):
+			return "result_row_integer_type_invalid:%s" % integer_field
+	if not _has_exact_type(row, "settled", TYPE_BOOL):
+		return "result_row_bool_type_invalid:settled"
+	for dictionary_field in [
+		"timing",
+		"simulation_performance",
+		"completion",
+		"metrics",
+		"identity",
+	]:
+		if not _has_exact_type(row, dictionary_field, TYPE_DICTIONARY):
+			return "result_row_dictionary_type_invalid:%s" % dictionary_field
+	return ""
+
+
+func _commit_authority_heartbeat(
+	authority: Dictionary,
+	job: Dictionary,
+	result_record: Dictionary,
+	job_ordinal: int
+) -> Dictionary:
+	var paths := authority_job_paths(authority, job, job_ordinal)
+	var heartbeat_directory := str(paths.get("heartbeat_directory", ""))
+	var result_fingerprint := str(result_record.get("record_fingerprint", ""))
+	var heartbeat := {
+		"schema_version": AUTHORITY_RESULT_SCHEMA_VERSION,
+		"heartbeat_kind": AUTHORITY_HEARTBEAT_KIND,
+		"final_head_sha": str(result_record.get("final_head_sha", "")),
+		"final_tree_sha": str(result_record.get("final_tree_sha", "")),
+		"authority_manifest_sha256": str(result_record.get(
+			"authority_manifest_sha256",
+			""
+		)),
+		"harness_hash": str(result_record.get("harness_hash", "")),
+		"harness_fingerprint": str(result_record.get(
+			"harness_fingerprint",
+			""
+		)),
+		"simulation_id": str(result_record.get("simulation_id", "")),
+		"ruleset_id": str(result_record.get("ruleset_id", "")),
+		"step_limit": int(result_record.get("step_limit", 0)),
+		"worker_id": str(authority.get("worker_id", "")),
+		"configuration_id": str(result_record.get("configuration_id", "")),
+		"configuration_index": int(result_record.get(
+			"configuration_index",
+			-1
+		)),
+		"shard_id": int(authority.get("shard_id", -1)),
+		"shard_count": int(authority.get("shard_count", 0)),
+		"job_ordinal_in_shard": job_ordinal,
+		"match_index": int(result_record.get("match_index", -1)),
+		"seed": int(result_record.get("seed", 0)),
+		"completed_match_count": job_ordinal + 1,
+		"last_completed_match_index": int(result_record.get(
+			"match_index",
+			-1
+		)),
+		"last_completed_seed": int(result_record.get("seed", 0)),
+		"last_completed_at": str(result_record.get(
+			"last_completed_at",
+			""
+		)),
+		"settled": bool(result_record.get("settled", false)),
+		"runtime_error_count": int(result_record.get(
+			"runtime_error_count",
+			0
+		)),
+		"combat_action_count": int(result_record.get(
+			"combat_action_count",
+			0
+		)),
+		"duplicate_effect_count": int(result_record.get(
+			"duplicate_effect_count",
+			0
+		)),
+		"hidden_info_violation_count": int(result_record.get(
+			"hidden_info_violation_count",
+			0
+		)),
+		"final_settlement_count": int(result_record.get(
+			"final_settlement_count",
+			0
+		)),
+		"duplicate_settlement_count": int(result_record.get(
+			"duplicate_settlement_count",
+			0
+		)),
+		"job_identity_sha256": str(result_record.get(
+			"job_identity_sha256",
+			""
+		)),
+		"job_identity_hash": str(result_record.get("job_identity_hash", "")),
+		"result_fingerprint": result_fingerprint,
+	}
+	heartbeat["heartbeat_fingerprint"] = fingerprint(heartbeat)
+	var heartbeat_name := "%06d-%s-%s.json" % [
+		int(heartbeat.get("completed_match_count", 0)),
+		str(heartbeat.get("job_identity_hash", "")).left(16),
+		result_fingerprint.left(16),
+	]
+	var heartbeat_path := heartbeat_directory.path_join(heartbeat_name)
+	var write_result := _atomic_write_immutable_json(
+		heartbeat_path,
+		heartbeat,
+		str(authority.get("authority_path", ""))
+	)
+	if bool(write_result.get("already_exists", false)):
+		var existing_variant: Variant = JSON.parse_string(
+			FileAccess.get_file_as_string(heartbeat_path)
+		)
+		if existing_variant is Dictionary \
+				and fingerprint(existing_variant) == fingerprint(heartbeat):
+			return {
+				"accepted": true,
+				"committed": false,
+				"heartbeat_path": heartbeat_path,
+			}
+		# Heartbeats are observability only. Preserve a conflicting stale file and
+		# publish a fresh atomic heartbeat; only immutable result conflicts block.
+		heartbeat_path = heartbeat_directory.path_join(
+			"%s-recovery-%d.json" % [heartbeat_name.trim_suffix(".json"), Time.get_ticks_usec()]
+		)
+		write_result = _atomic_write_immutable_json(
+			heartbeat_path,
+			heartbeat,
+			str(authority.get("authority_path", ""))
+		)
+	if not bool(write_result.get("accepted", false)) \
+			or bool(write_result.get("already_exists", false)):
+		return {
+			"accepted": false,
+			"reason_code": "heartbeat_atomic_write_failed",
+			"heartbeat_path": heartbeat_path,
+		}
+	return {
+		"accepted": true,
+		"committed": true,
+		"heartbeat_path": heartbeat_path,
+	}
+
+
+func _atomic_write_immutable_json(
+	path: String,
+	payload: Dictionary,
+	authority_root: String = ""
+) -> Dictionary:
+	if path.is_empty():
+		return {"accepted": false, "reason_code": "atomic_path_empty"}
+	if not authority_root.is_empty() \
+			and not _authority_target_path_is_safe(authority_root, path, false):
+		return {"accepted": false, "reason_code": "atomic_path_unsafe"}
+	if FileAccess.file_exists(path):
+		return {
+			"accepted": true,
+			"already_exists": true,
+			"path": path,
+		}
+	var parent := path.get_base_dir()
+	if parent.is_empty():
+		return {"accepted": false, "reason_code": "atomic_parent_create_failed"}
+	var parent_error := DirAccess.make_dir_recursive_absolute(parent)
+	if parent_error != OK and parent_error != ERR_ALREADY_EXISTS:
+		return {"accepted": false, "reason_code": "atomic_parent_create_failed"}
+	if not authority_root.is_empty() \
+			and not _authority_target_path_is_safe(authority_root, path, false):
+		return {"accepted": false, "reason_code": "atomic_parent_became_unsafe"}
+	var content := JSON.stringify(payload, "\t") + "\n"
+	var temporary_path := "%s.tmp.%d.%d" % [
+		path,
+		OS.get_process_id(),
+		Time.get_ticks_usec(),
+	]
+	var file := FileAccess.open(temporary_path, FileAccess.WRITE)
+	if file == null:
+		return {"accepted": false, "reason_code": "atomic_temp_open_failed"}
+	file.store_string(content)
+	file.flush()
+	file.close()
+	if FileAccess.get_file_as_string(temporary_path) != content:
+		DirAccess.remove_absolute(temporary_path)
+		return {"accepted": false, "reason_code": "atomic_temp_verify_failed"}
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(temporary_path)
+		return {
+			"accepted": true,
+			"already_exists": true,
+			"path": path,
+		}
+	if not authority_root.is_empty() \
+			and not _authority_target_path_is_safe(authority_root, path, false):
+		DirAccess.remove_absolute(temporary_path)
+		return {"accepted": false, "reason_code": "atomic_target_became_unsafe"}
+	var rename_error := DirAccess.rename_absolute(temporary_path, path)
+	if rename_error != OK:
+		DirAccess.remove_absolute(temporary_path)
+		if FileAccess.file_exists(path):
+			return {
+				"accepted": true,
+				"already_exists": true,
+				"path": path,
+			}
+		return {
+			"accepted": false,
+			"reason_code": "atomic_rename_failed",
+			"error_code": rename_error,
+		}
+	if not authority_root.is_empty() \
+			and not _authority_target_path_is_safe(authority_root, path, false):
+		return {"accepted": false, "reason_code": "atomic_installed_path_unsafe"}
+	var installed_variant: Variant = JSON.parse_string(
+		FileAccess.get_file_as_string(path)
+	)
+	if not (installed_variant is Dictionary) \
+			or fingerprint(installed_variant) != fingerprint(payload):
+		return {
+			"accepted": false,
+			"reason_code": "atomic_installed_verify_failed",
+			"path": path,
+		}
+	return {
+		"accepted": true,
+		"already_exists": false,
+		"path": path,
+	}
+
+
+func _authority_blocked_report(
+	scope: Dictionary,
+	authority_state: Dictionary,
+	completed_rows: Array,
+	elapsed_msec: int
+) -> Dictionary:
+	var blocked_scope := scope.duplicate(true)
+	blocked_scope.erase("jobs")
+	blocked_scope["accepted"] = false
+	blocked_scope["reason_code"] = str(authority_state.get(
+		"reason_code",
+		authority_state.get("block_reason_code", "authority_resume_blocked")
+	))
+	var report := _invalid_execution_report(blocked_scope)
+	report["authority_resume"] = authority_state.duplicate(true)
+	report["partial_completed_match_count"] = completed_rows.size()
+	report["elapsed_msec"] = elapsed_msec
+	report.erase("report_fingerprint")
+	report["report_fingerprint"] = fingerprint(report)
+	_last_report = report.duplicate(true)
 	return report
 
 
@@ -522,6 +1814,17 @@ func _build_report_from_rows(
 		"human_fun_proven": false,
 		"human_test_required": true,
 	}
+	if options.has("_authority_observability"):
+		report["authority_resume"] = (
+			options.get("_authority_observability", {}) as Dictionary
+		).duplicate(true)
+	if str(scope.get("scope_kind", "")) == "shard":
+		var shard_gates := _shard_acceptance_gates(rows)
+		report["shard_acceptance_gates"] = shard_gates
+		report["shard_acceptance_status"] = (
+			"GREEN" if bool(shard_gates.get("SHARD_ACCEPTANCE_GREEN", false))
+			else "BLOCKED"
+		)
 	if bool(options.get(
 		"include_match_rows",
 		str(scope.get("scope_kind", "")) == "shard"
@@ -573,8 +1876,14 @@ func _report_paths_for_scope(
 	var md_path := str(options.get("report_md_path", ""))
 	if str(scope.get("scope_kind", "")) != "shard":
 		return {"json_path": json_path, "md_path": md_path}
-	var shard_count := int(scope.get("shard_count", 1))
-	var shard_id := int(scope.get("shard_id", -1))
+	var shard_count := int(scope.get(
+		"assignment_shard_count",
+		scope.get("shard_count", 1)
+	))
+	var shard_id := int(scope.get(
+		"assignment_shard_id",
+		scope.get("shard_id", -1)
+	))
 	var suffix := ""
 	if shard_id >= 0:
 		suffix = ".shard-%03d-of-%03d" % [shard_id, shard_count]
@@ -721,6 +2030,7 @@ func aggregate_reports(
 	)))
 	var unique_rows: Array = []
 	var seen_jobs: Dictionary = {}
+	var seen_coordinates: Dictionary = {}
 	var seen_seeds: Dictionary = {}
 	var duplicate_job_count := 0
 	var duplicate_seed_count := 0
@@ -736,6 +2046,28 @@ func aggregate_reports(
 	var harness_fingerprint_missing_count := 0
 	var harness_fingerprint_mismatch_count := 0
 	var harness_component_mismatch_count := 0
+	var exact_identity_mode := bool(options.get(
+		"require_exact_job_identity",
+		false
+	))
+	for candidate_variant in reports:
+		if candidate_variant is Dictionary:
+			var candidate := candidate_variant as Dictionary
+			var candidate_authority_variant: Variant = candidate.get(
+				"authority_resume",
+				null
+			)
+			if candidate_authority_variant is Dictionary \
+					and bool((candidate_authority_variant as Dictionary).get(
+						"enabled",
+						false
+					)):
+				exact_identity_mode = true
+				break
+	var exact_identity_error_count := 0
+	var authority_global_missing_count := 0
+	var authority_global_mismatch_count := 0
+	var aggregate_authority: Dictionary = {}
 	var current_harness := harness_identity()
 	var current_harness_fingerprint := str(current_harness.get(
 		"fingerprint",
@@ -805,6 +2137,77 @@ func aggregate_reports(
 			if not expected_source_commit_sha.is_empty() \
 				and source_commit_sha != expected_source_commit_sha:
 				source_commit_sha_value_mismatch_count += 1
+		if exact_identity_mode:
+			var authority_variant: Variant = report.get("authority_resume", null)
+			if not (authority_variant is Dictionary) \
+					or not bool((authority_variant as Dictionary).get(
+						"enabled",
+						false
+					)):
+				authority_global_missing_count += 1
+				continue
+			var report_authority := authority_variant as Dictionary
+			var authority_schema_green := true
+			for string_field in [
+				"final_head_sha",
+				"final_tree_sha",
+				"authority_manifest_sha256",
+				"harness_hash",
+				"simulation_id",
+				"ruleset_id",
+			]:
+				if not _has_exact_type(report_authority, string_field, TYPE_STRING):
+					authority_schema_green = false
+					break
+			if not _has_json_integer(report_authority, "step_limit"):
+				authority_schema_green = false
+			var candidate_authority := {
+				"final_head_sha": str(report_authority.get("final_head_sha", "")),
+				"final_tree_sha": str(report_authority.get("final_tree_sha", "")),
+				"authority_manifest_sha256": str(report_authority.get(
+					"authority_manifest_sha256",
+					""
+				)),
+				"harness_fingerprint": str(report_authority.get(
+					"harness_hash",
+					""
+				)),
+				"simulation_id": str(report_authority.get("simulation_id", "")),
+				"ruleset_id": str(report_authority.get("ruleset_id", "")),
+				"step_limit": int(report_authority.get("step_limit", 0)),
+			}
+			if not authority_schema_green \
+					or not _is_git_sha(str(candidate_authority.get(
+						"final_head_sha",
+						""
+					))) \
+					or not _is_git_sha(str(candidate_authority.get(
+						"final_tree_sha",
+						""
+					))) \
+					or not _is_sha256(str(candidate_authority.get(
+						"authority_manifest_sha256",
+						""
+					))) \
+					or not _is_sha256(str(candidate_authority.get(
+						"harness_fingerprint",
+						""
+					))) \
+					or int(candidate_authority.get("step_limit", 0)) < 1 \
+					or str(candidate_authority.get("simulation_id", "")) \
+						!= SIMULATION_ID \
+					or str(candidate_authority.get("ruleset_id", "")) != RULESET_ID \
+					or str(candidate_authority.get("final_head_sha", "")) \
+						!= source_commit_sha \
+					or str(candidate_authority.get("harness_fingerprint", "")) \
+						!= harness_fingerprint:
+				authority_global_mismatch_count += 1
+				continue
+			if aggregate_authority.is_empty():
+				aggregate_authority = candidate_authority.duplicate(true)
+			elif _canonical(aggregate_authority) != _canonical(candidate_authority):
+				authority_global_mismatch_count += 1
+				continue
 		var shard_rows_variant: Variant = report.get("shard_rows", null)
 		if not (shard_rows_variant is Array):
 			schema_error_count += 1
@@ -870,24 +2273,89 @@ func aggregate_reports(
 			if int(row.get("seed", expected_seed)) != expected_seed:
 				seed_mismatch_count += 1
 				continue
-			var job_key := "%d:%d" % [configuration_index, match_index]
-			if not declared_jobs.has(job_key):
+			var coordinate_key := "%d:%d" % [configuration_index, match_index]
+			if not declared_jobs.has(coordinate_key):
 				out_of_declared_scope_count += 1
 				continue
+			var job_key := coordinate_key
+			if exact_identity_mode:
+				var identity_variant: Variant = row.get(
+					"formal_job_identity",
+					null
+				)
+				if not (identity_variant is Dictionary) \
+						or not _has_exact_type(
+							row,
+							"formal_job_identity_canonical_json",
+							TYPE_STRING
+						) \
+						or not _has_exact_type(
+							row,
+							"formal_job_identity_sha256",
+							TYPE_STRING
+						):
+					exact_identity_error_count += 1
+					continue
+				var expected_row_identity := aggregate_authority.duplicate(true)
+				expected_row_identity["configuration_index"] = configuration_index
+				expected_row_identity["configuration_id"] = str(
+					(CONFIGURATIONS[configuration_index] as Dictionary).get(
+						"configuration_id",
+						""
+					)
+				)
+				expected_row_identity["match_index"] = match_index
+				expected_row_identity["seed"] = expected_seed
+				var actual_identity := identity_variant as Dictionary
+				var expected_canonical_json := (
+					_authority_job_identity_canonical_json(expected_row_identity)
+				)
+				var expected_identity_sha256 := expected_canonical_json.sha256_text()
+				if not _strict_job_identity_schema(actual_identity) \
+						or _canonical(actual_identity) \
+							!= _canonical(expected_row_identity) \
+						or str(row.get(
+							"formal_job_identity_canonical_json",
+							""
+						)) != expected_canonical_json \
+						or str(row.get("formal_job_identity_sha256", "")) \
+							!= expected_identity_sha256:
+					exact_identity_error_count += 1
+					continue
+				job_key = expected_identity_sha256
 			var seed_key := str(expected_seed)
-			if seen_jobs.has(job_key):
+			if seen_jobs.has(job_key) or seen_coordinates.has(coordinate_key):
 				duplicate_job_count += 1
 				continue
 			if seen_seeds.has(seed_key):
 				duplicate_seed_count += 1
 				continue
 			seen_jobs[job_key] = true
+			seen_coordinates[coordinate_key] = job_key
 			seen_seeds[seed_key] = true
 			unique_rows.append(row)
 	var missing_job_count := 0
 	for configuration_index in range(CONFIGURATIONS.size()):
 		for match_index in range(formal_matches_per_configuration):
-			if not seen_jobs.has("%d:%d" % [configuration_index, match_index]):
+			var expected_job_key := "%d:%d" % [configuration_index, match_index]
+			if exact_identity_mode and not aggregate_authority.is_empty():
+				var expected_matrix_identity := aggregate_authority.duplicate(true)
+				expected_matrix_identity["configuration_index"] = configuration_index
+				expected_matrix_identity["configuration_id"] = str(
+					(CONFIGURATIONS[configuration_index] as Dictionary).get(
+						"configuration_id",
+						""
+					)
+				)
+				expected_matrix_identity["match_index"] = match_index
+				expected_matrix_identity["seed"] = seed_for(
+					configuration_index,
+					match_index
+				)
+				expected_job_key = _authority_job_identity_sha256(
+					expected_matrix_identity
+				)
+			if not seen_jobs.has(expected_job_key):
 				missing_job_count += 1
 	unique_rows.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
 		var left_key := "%04d:%04d" % [
@@ -944,6 +2412,8 @@ func aggregate_reports(
 	harness_fingerprints.sort()
 	report["aggregation"] = {
 		"schema_version": SHARD_SCHEMA_VERSION,
+		"exact_job_identity_mode": exact_identity_mode,
+		"aggregate_authority": aggregate_authority.duplicate(true),
 		"input_report_count": reports.size(),
 		"source_report_fingerprints": source_report_fingerprints,
 		"unique_job_count": unique_rows.size(),
@@ -964,6 +2434,9 @@ func aggregate_reports(
 		"harness_fingerprint_missing_count": harness_fingerprint_missing_count,
 		"harness_fingerprint_mismatch_count": harness_fingerprint_mismatch_count,
 		"harness_component_mismatch_count": harness_component_mismatch_count,
+		"exact_identity_error_count": exact_identity_error_count,
+		"authority_global_missing_count": authority_global_missing_count,
+		"authority_global_mismatch_count": authority_global_mismatch_count,
 		"harness_fingerprint_set": harness_fingerprints.duplicate(),
 		"seed_deduplication_green": (
 			duplicate_seed_count == 0 and seed_mismatch_count == 0
@@ -980,6 +2453,10 @@ func aggregate_reports(
 		or harness_fingerprint_missing_count > 0 \
 		or harness_fingerprint_mismatch_count > 0 \
 		or harness_component_mismatch_count > 0 \
+		or (exact_identity_mode and aggregate_authority.is_empty()) \
+		or exact_identity_error_count > 0 \
+		or authority_global_missing_count > 0 \
+		or authority_global_mismatch_count > 0 \
 		or not bool(current_harness.get("accepted", false))
 	var expected_job_count := CONFIGURATIONS.size() \
 		* formal_matches_per_configuration
@@ -1573,6 +3050,61 @@ func _coverage_gates(metrics: Dictionary) -> Dictionary:
 		0
 	)) > 0
 	return gates
+
+
+func _shard_acceptance_gates(rows: Array) -> Dictionary:
+	var metrics := _empty_metrics()
+	var settled_count := 0
+	var final_exact_once_count := 0
+	for row_variant in rows:
+		var row := row_variant as Dictionary
+		var row_metrics := row.get("metrics", {}) as Dictionary
+		_merge_metrics(metrics, row_metrics)
+		if bool(row.get("settled", false)):
+			settled_count += 1
+		if bool(row.get("settled", false)) \
+				and int(row_metrics.get("FINAL_SETTLEMENT_COUNT", 0)) == 1 \
+				and int(row_metrics.get("DUPLICATE_SETTLEMENT_COUNT", 0)) == 0:
+			final_exact_once_count += 1
+	var safety_zero := true
+	for key_variant in ZERO_COUNTER_KEYS:
+		if int(metrics.get(str(key_variant), 0)) != 0:
+			safety_zero = false
+			break
+	for key in [
+		"COMBAT_SIMULATION_STEP_LIMIT_COUNT",
+		"DUPLICATE_SETTLEMENT_COUNT",
+		"TRACK_SHARED_SCROLL_VACANCY_VIOLATION_COUNT",
+		"TRACK_RATIO_CONTRACT_VIOLATION_COUNT",
+		"TRACK_ASSET_PIP_REGRESSION_FAILURE_COUNT",
+	]:
+		if int(metrics.get(key, 0)) != 0:
+			safety_zero = false
+	var rare_positive_missing: Array[String] = []
+	for key_variant in REQUIRED_POSITIVE_COUNTER_KEYS:
+		var key := str(key_variant)
+		if int(metrics.get(key, 0)) <= 0:
+			rare_positive_missing.append(key)
+	var has_rows := not rows.is_empty()
+	var all_settled := has_rows and settled_count == rows.size()
+	var final_exact_once := has_rows and final_exact_once_count == rows.size()
+	var combat_action_green := int(metrics.get("COMBAT_ACTION_COUNT", 0)) > 0
+	return {
+		"SHARD_SAFETY_ZERO_GREEN": safety_zero,
+		"SHARD_ALL_MATCHES_SETTLED_GREEN": all_settled,
+		"SHARD_FINAL_SETTLEMENT_EXACT_ONCE_GREEN": final_exact_once,
+		"SHARD_COMBAT_ACTION_COUNT_GREEN": combat_action_green,
+		"SHARD_ACCEPTANCE_GREEN": safety_zero \
+			and all_settled \
+			and final_exact_once \
+			and combat_action_green,
+		"match_count": rows.size(),
+		"settled_match_count": settled_count,
+		"final_settlement_exact_once_match_count": final_exact_once_count,
+		"combat_action_count": int(metrics.get("COMBAT_ACTION_COUNT", 0)),
+		"rare_positive_gate_scope": "aggregate_only",
+		"rare_positive_missing_in_shard_informational": rare_positive_missing,
+	}
 
 
 func _acceptance_status(

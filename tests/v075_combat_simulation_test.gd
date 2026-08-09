@@ -175,6 +175,13 @@ func _test_shard_planner(simulator: RefCounted) -> void:
 				== "shard_count_required_for_shard_id",
 		"shard id cannot silently run without a shard count"
 	)
+	var disabled_authority := simulator.authority_contract_context(explicit, {}) \
+		as Dictionary
+	_expect(
+		bool(disabled_authority.get("accepted", false))
+			and not bool(disabled_authority.get("enabled", true)),
+		"authority resume is opt-in and leaves the default matrix path unchanged"
+	)
 
 
 func _run_aggregate_report() -> void:
@@ -582,6 +589,8 @@ func _simulation_options_from_arguments(write_report: bool) -> Dictionary:
 		"--match-index-count": "match_index_count",
 		"--shard-id": "shard_id",
 		"--shard-count": "shard_count",
+		"--assignment-shard-id": "assignment_shard_id",
+		"--assignment-shard-count": "assignment_shard_count",
 		"--formal-matches-per-configuration": (
 			"formal_matches_per_configuration"
 		),
@@ -598,6 +607,19 @@ func _simulation_options_from_arguments(write_report: bool) -> Dictionary:
 		options["report_json_path"] = report_json
 	if not report_md.is_empty():
 		options["report_md_path"] = report_md
+	var string_mapping := {
+		"--authority-path": "authority_path",
+		"--final-head-sha": "final_head_sha",
+		"--final-tree-sha": "final_tree_sha",
+		"--authority-manifest-sha256": "authority_manifest_sha256",
+		"--worker-id": "worker_id",
+		"--expected-harness-hash": "expected_harness_hash",
+	}
+	for argument_prefix_variant in string_mapping.keys():
+		var argument_prefix := str(argument_prefix_variant)
+		var value := _argument_value(argument_prefix, "")
+		if not value.is_empty():
+			options[str(string_mapping.get(argument_prefix, ""))] = value
 	return options
 
 
@@ -611,6 +633,8 @@ func _is_shard_options(options: Dictionary) -> bool:
 		"match_index_count",
 		"shard_id",
 		"shard_count",
+		"assignment_shard_id",
+		"assignment_shard_count",
 	]:
 		if options.has(key):
 			return true
@@ -668,6 +692,40 @@ func _test_shard_report_contract(report: Dictionary) -> void:
 		)) == 0,
 		"shard uses no direct state injection"
 	)
+	var shard_gates := report.get("shard_acceptance_gates", {}) as Dictionary
+	_expect(
+		str(shard_gates.get("rare_positive_gate_scope", ""))
+			== "aggregate_only",
+		"rare positive observations are aggregate-only, not per-shard vetoes"
+	)
+	var shard_required_gates_green := (
+		bool(shard_gates.get("SHARD_SAFETY_ZERO_GREEN", false))
+		and bool(shard_gates.get("SHARD_ALL_MATCHES_SETTLED_GREEN", false))
+		and bool(shard_gates.get(
+			"SHARD_FINAL_SETTLEMENT_EXACT_ONCE_GREEN",
+			false
+		))
+		and bool(shard_gates.get("SHARD_COMBAT_ACTION_COUNT_GREEN", false))
+	)
+	var declared_shard_green := str(
+		report.get("shard_acceptance_status", "")
+	) == "GREEN"
+	_expect(
+		bool(shard_gates.get("SHARD_ACCEPTANCE_GREEN", false))
+			== shard_required_gates_green
+			and declared_shard_green == shard_required_gates_green,
+		"shard acceptance uses only safety, settlement, and real action gates"
+	)
+	if report.has("authority_resume"):
+		var authority := report.get("authority_resume", {}) as Dictionary
+		_expect(
+			bool(authority.get("enabled", false))
+				and not bool(authority.get(
+					"heartbeat_only_skips_match",
+					true
+				)),
+			"authority resume never treats a heartbeat as a completed job"
+		)
 
 
 func _test_aggregate_report_contract(report: Dictionary) -> void:

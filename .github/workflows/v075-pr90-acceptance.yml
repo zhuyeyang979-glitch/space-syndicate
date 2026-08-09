@@ -84,6 +84,14 @@ jobs:
             -GodotPath $env:GODOT_GUI_PATH `
             -EvidenceRoot (Join-Path $evidenceRoot "import-modes")
           if ($LASTEXITCODE -ne 0) { throw "Import-mode self-test failed." }
+          & pwsh -NoProfile -File (Join-Path $toolRoot "invoke_godot_test_process_telemetry_self_test.ps1")
+          if ($LASTEXITCODE -ne 0) { throw "Process-telemetry self-test failed." }
+          & pwsh -NoProfile -File (Join-Path $toolRoot "role_godot_mcp_process_identity_self_test.ps1")
+          if ($LASTEXITCODE -ne 0) { throw "Role Godot MCP process-identity self-test failed." }
+          & pwsh -NoProfile -File (Join-Path $toolRoot "invoke_v075_mcp_validation_runbook.ps1") -ValidateOnly
+          if ($LASTEXITCODE -ne 0) { throw "Exact-SHA MCP runbook lifecycle validation failed." }
+          & pwsh -NoProfile -File (Join-Path $env:GITHUB_WORKSPACE "tests\v075_formal_authority_tooling_self_test.ps1")
+          if ($LASTEXITCODE -ne 0) { throw "Formal-authority tooling self-test failed." }
 
       - name: Run bounded V075 production gates
         shell: pwsh
@@ -177,6 +185,9 @@ jobs:
           Invoke-GodotGate `
             -Script "res://tests/v075_geometry_asset_false_green_negative_test.gd" `
             -Marker "V075_GEOMETRY_ASSET_FALSE_GREEN_NEGATIVE_TEST|"
+          # Retired V0.6 AI-facility, district-supply, and human-table oracles
+          # remain in changed-script MCP parse coverage only. Active V0.7.5
+          # production behavior is covered by the bounded gates above.
           $env:V075_SIMULATION_SOURCE_SHA = (git rev-parse HEAD).Trim()
           Invoke-GodotGate `
             -Script "res://tests/v075_combat_simulation_test.gd" `
@@ -190,6 +201,9 @@ jobs:
               "--step-limit=512"
             ) `
             -TimeoutSeconds 600
+          Invoke-GodotGate `
+            -Script "res://tests/v075_simulation_resume_contract_test.gd" `
+            -Marker "V075_SIMULATION_RESUME_CONTRACT|checks=18|failures=0|status=PASS"
           Invoke-GodotGate `
             -Script "res://tests/v075_responsive_viewport_matrix_test.gd" `
             -Marker "V075_RESPONSIVE_VIEWPORT_MATRIX_TEST|" `

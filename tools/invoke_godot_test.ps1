@@ -13,8 +13,10 @@ Runner exit codes are the Godot exit code for a completed test, 124 for timeout,
 succeeds), 126 when an import bootstrap fails without a more specific exit code,
 127 when Godot reports an error despite exiting zero, 128 when an explicitly
 required completion marker is absent, 129 for incomplete/invalid/NUL raw capture,
-    130 for an unclassified warning, and 131 when a required headed client-window
-    handshake or exact client-size probe fails. The console wrapper is deliberately rejected
+130 for an unclassified warning, 131 when a required headed client-window
+handshake or exact client-size probe fails, and 132 when explicitly requested
+live process telemetry cannot be sampled or atomically published. The console
+wrapper is deliberately rejected
 because it can return before the real process.
 
 .EXAMPLE
@@ -89,7 +91,9 @@ param(
 
     [string]$ExpectedCompletionMarker = "",
 
-    [string]$IsolatedUserDataRoot = ""
+    [string]$IsolatedUserDataRoot = "",
+
+    [string]$LiveTelemetryPath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -502,11 +506,373 @@ function Write-AtomicUtf8Json {
         [object]$Value
     )
 
+    $fullPath = [IO.Path]::GetFullPath($Path)
+    $parentPath = [IO.Path]::GetDirectoryName($fullPath)
+    if ([string]::IsNullOrWhiteSpace($parentPath)) {
+        throw "Atomic JSON path has no parent directory: $fullPath"
+    }
+    [IO.Directory]::CreateDirectory($parentPath) | Out-Null
+
     $encoding = [Text.UTF8Encoding]::new($false)
-    $temporaryPath = "$Path.$([guid]::NewGuid().ToString('N')).tmp"
+    $temporaryPath = Join-Path $parentPath ("{0}.{1}.tmp" -f [IO.Path]::GetFileName($fullPath), [guid]::NewGuid().ToString("N"))
     $json = $Value | ConvertTo-Json -Depth 10
-    [IO.File]::WriteAllText($temporaryPath, $json, $encoding)
-    [IO.File]::Move($temporaryPath, $Path, $true)
+    try {
+        [IO.File]::WriteAllText($temporaryPath, $json, $encoding)
+        [IO.File]::Move($temporaryPath, $fullPath, $true)
+    } finally {
+        if (Test-Path -LiteralPath $temporaryPath -PathType Leaf) {
+            Remove-Item -LiteralPath $temporaryPath -Force
+        }
+    }
+}
+
+function Assert-PathChainHasNoReparsePoint {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Label
+    )
+
+    $fullPath = [IO.Path]::GetFullPath($Path)
+    foreach ($segment in $fullPath.Split(@('\', '/'), [StringSplitOptions]::RemoveEmptyEntries)) {
+        if ($segment -match '~[0-9]+') {
+            throw "$Label must not use an 8.3 path alias: $fullPath"
+        }
+    }
+
+    $cursor = $fullPath.TrimEnd('\', '/')
+    while (-not [string]::IsNullOrWhiteSpace($cursor)) {
+        if (Test-Path -LiteralPath $cursor) {
+            $item = Get-Item -LiteralPath $cursor -Force
+            if (
+                ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
+                -not [string]::IsNullOrWhiteSpace([string]$item.LinkType) -or
+                $null -ne $item.Target
+            ) {
+                throw "$Label path chain contains a reparse point, junction, or symbolic link: $($item.FullName)"
+            }
+        }
+        $parent = [IO.Path]::GetDirectoryName($cursor)
+        if ([string]::IsNullOrWhiteSpace($parent) -or [string]::Equals($parent, $cursor, [StringComparison]::OrdinalIgnoreCase)) {
+            break
+        }
+        $cursor = $parent.TrimEnd('\', '/')
+    }
+}
+
+function Resolve-LiveTelemetryPath {
+    param(
+        [AllowEmptyString()]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$ResolvedProjectPath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return ""
+    }
+
+    $fullPath = [IO.Path]::GetFullPath($Path)
+    $projectRoot = [IO.Path]::GetFullPath($ResolvedProjectPath).TrimEnd('\', '/')
+    Assert-PathChainHasNoReparsePoint -Path $projectRoot -Label "Project worktree"
+    Assert-PathChainHasNoReparsePoint -Path $fullPath -Label "Live telemetry"
+    $projectPrefix = $projectRoot + [IO.Path]::DirectorySeparatorChar
+    if (
+        [string]::Equals($fullPath.TrimEnd('\', '/'), $projectRoot, [StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($projectPrefix, [StringComparison]::OrdinalIgnoreCase)
+    ) {
+        throw "Live telemetry must stay outside the project worktree: $fullPath"
+    }
+    if (Test-Path -LiteralPath $fullPath -PathType Container) {
+        throw "Live telemetry path must be a file, not a directory: $fullPath"
+    }
+
+    $parentPath = [IO.Path]::GetDirectoryName($fullPath)
+    if ([string]::IsNullOrWhiteSpace($parentPath)) {
+        throw "Live telemetry path has no parent directory: $fullPath"
+    }
+    if ([string]::IsNullOrWhiteSpace([IO.Path]::GetFileName($fullPath))) {
+        throw "Live telemetry path must name a file: $fullPath"
+    }
+    [IO.Directory]::CreateDirectory($parentPath) | Out-Null
+    Assert-PathChainHasNoReparsePoint -Path $parentPath -Label "Live telemetry parent"
+
+    $resolvedProjectRoot = (Resolve-Path -LiteralPath $projectRoot).ProviderPath.TrimEnd('\', '/')
+    $resolvedParent = (Resolve-Path -LiteralPath $parentPath).ProviderPath.TrimEnd('\', '/')
+    $resolvedFullPath = Join-Path $resolvedParent ([IO.Path]::GetFileName($fullPath))
+    $resolvedProjectPrefix = $resolvedProjectRoot + [IO.Path]::DirectorySeparatorChar
+    if (
+        [string]::Equals($resolvedFullPath.TrimEnd('\', '/'), $resolvedProjectRoot, [StringComparison]::OrdinalIgnoreCase) -or
+        $resolvedFullPath.StartsWith($resolvedProjectPrefix, [StringComparison]::OrdinalIgnoreCase)
+    ) {
+        throw "Live telemetry physical path must stay outside the project worktree: $resolvedFullPath"
+    }
+    return $resolvedFullPath
+}
+
+function New-ProcessStartToken {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(1, [int]::MaxValue)]
+        [int]$ProcessId,
+        [Parameter(Mandatory = $true)]
+        [DateTime]$StartTimeUtc
+    )
+
+    return "{0}:{1}" -f $ProcessId, $StartTimeUtc.ToUniversalTime().Ticks
+}
+
+function New-ProcessTelemetryState {
+    param(
+        [AllowEmptyString()]
+        [string]$LivePath = "",
+        [AllowEmptyString()]
+        [string]$RunId = "",
+        [AllowEmptyString()]
+        [string]$Phase = "process",
+        [AllowEmptyString()]
+        [string]$TargetPath = ""
+    )
+
+    $requested = -not [string]::IsNullOrWhiteSpace($LivePath)
+    return [ordered]@{
+        schema = "SpaceSyndicateGodotProcessTelemetryV1"
+        requested = $requested
+        status = if ($requested) { "pending" } else { "not_requested" }
+        live_telemetry_path = if ($requested) { $LivePath } else { $null }
+        run_id = $RunId
+        phase = $Phase
+        target_path = $TargetPath
+        process_id = $null
+        process_start_token = $null
+        godot_pid = $null
+        godot_start_token = $null
+        process_started_at_utc = $null
+        sampled_at_utc = $null
+        ended_at_utc = $null
+        sample_count = 0
+        write_count = 0
+        cpu_time_seconds = 0.0
+        working_set_bytes = [int64]0
+        peak_working_set_bytes = [int64]0
+        process_exit_code = $null
+        runner_exit_code = $null
+        timed_out = $false
+        failure_stage = $null
+        failure_message = $null
+        final_sample_status = if ($requested) { "pending" } else { "not_requested" }
+        final_sample_message = $null
+    }
+}
+
+function Get-ProcessObjectResourceTelemetrySample {
+    param(
+        [Parameter(Mandatory = $true)]
+        [Diagnostics.Process]$Process,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ExpectedStartToken
+    )
+
+    try {
+        $Process.Refresh()
+        $processId = $Process.Id
+        $startTimeUtc = $Process.StartTime.ToUniversalTime()
+        $observedStartToken = New-ProcessStartToken `
+            -ProcessId $processId `
+            -StartTimeUtc $startTimeUtc
+        if (-not [string]::Equals(
+            $observedStartToken,
+            $ExpectedStartToken,
+            [StringComparison]::Ordinal
+        )) {
+            throw "Process identity changed for PID $processId. expected='$ExpectedStartToken' observed='$observedStartToken'"
+        }
+
+        $cpuTimeSeconds = [Math]::Round($Process.TotalProcessorTime.TotalSeconds, 6)
+        $workingSetBytes = [int64]$Process.WorkingSet64
+        $peakWorkingSetBytes = [int64]$Process.PeakWorkingSet64
+        if ($cpuTimeSeconds -lt 0.0 -or $workingSetBytes -lt 0 -or $peakWorkingSetBytes -lt 0) {
+            throw "Process resource counters were negative for PID $processId."
+        }
+        return [pscustomobject][ordered]@{
+            process_id = $processId
+            process_start_token = $observedStartToken
+            godot_pid = $processId
+            godot_start_token = $observedStartToken
+            process_started_at_utc = $startTimeUtc.ToString("o")
+            sampled_at_utc = [DateTime]::UtcNow.ToString("o")
+            cpu_time_seconds = $cpuTimeSeconds
+            working_set_bytes = $workingSetBytes
+            peak_working_set_bytes = [Math]::Max($peakWorkingSetBytes, $workingSetBytes)
+        }
+    } catch {
+        throw "Process telemetry enumeration failed: $($_.Exception.Message)"
+    }
+}
+
+function Get-ProcessResourceTelemetrySample {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(1, [int]::MaxValue)]
+        [int]$ProcessId,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ExpectedStartToken
+    )
+
+    $sampleProcess = $null
+    try {
+        $sampleProcess = [Diagnostics.Process]::GetProcessById($ProcessId)
+        return Get-ProcessObjectResourceTelemetrySample `
+            -Process $sampleProcess `
+            -ExpectedStartToken $ExpectedStartToken
+    } catch {
+        throw "Process telemetry enumeration failed for PID ${ProcessId}: $($_.Exception.Message)"
+    } finally {
+        if ($null -ne $sampleProcess) {
+            $sampleProcess.Dispose()
+        }
+    }
+}
+
+function Update-ProcessTelemetryState {
+    param(
+        [Parameter(Mandatory = $true)]
+        [Collections.IDictionary]$State,
+        [Parameter(Mandatory = $true)]
+        [object]$Sample
+    )
+
+    if (-not [bool]$State["requested"]) {
+        throw "Cannot update process telemetry that was not requested."
+    }
+    if (
+        $null -ne $State["process_start_token"] -and
+        -not [string]::Equals(
+            [string]$State["process_start_token"],
+            [string]$Sample.process_start_token,
+            [StringComparison]::Ordinal
+        )
+    ) {
+        throw "Process telemetry sample start token changed."
+    }
+
+    $previousCpuSeconds = [double]$State["cpu_time_seconds"]
+    $sampleCpuSeconds = [double]$Sample.cpu_time_seconds
+    if ($sampleCpuSeconds + 0.000001 -lt $previousCpuSeconds) {
+        throw "Process CPU time moved backwards. previous=$previousCpuSeconds sample=$sampleCpuSeconds"
+    }
+
+    $State["status"] = "running"
+    $State["process_id"] = [int]$Sample.process_id
+    $State["process_start_token"] = [string]$Sample.process_start_token
+    $State["godot_pid"] = [int]$Sample.process_id
+    $State["godot_start_token"] = [string]$Sample.process_start_token
+    $State["process_started_at_utc"] = [string]$Sample.process_started_at_utc
+    $State["sampled_at_utc"] = [string]$Sample.sampled_at_utc
+    $State["sample_count"] = [int]$State["sample_count"] + 1
+    $State["cpu_time_seconds"] = $sampleCpuSeconds
+    $State["working_set_bytes"] = [int64]$Sample.working_set_bytes
+    $State["peak_working_set_bytes"] = [Math]::Max(
+        [int64]$State["peak_working_set_bytes"],
+        [Math]::Max(
+            [int64]$Sample.peak_working_set_bytes,
+            [int64]$Sample.working_set_bytes
+        )
+    )
+}
+
+function Set-ProcessTelemetryFailure {
+    param(
+        [Parameter(Mandatory = $true)]
+        [Collections.IDictionary]$State,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Stage,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Message
+    )
+
+    $State["status"] = "failed"
+    $State["failure_stage"] = $Stage
+    $State["failure_message"] = $Message
+    $State["ended_at_utc"] = [DateTime]::UtcNow.ToString("o")
+}
+
+function Publish-ProcessTelemetryState {
+    param(
+        [Parameter(Mandatory = $true)]
+        [Collections.IDictionary]$State
+    )
+
+    if (-not [bool]$State["requested"]) {
+        return
+    }
+    $State["write_count"] = [int]$State["write_count"] + 1
+    Write-AtomicUtf8Json `
+        -Path ([string]$State["live_telemetry_path"]) `
+        -Value $State
+}
+
+function Get-TelemetryGatedRunnerOutcome {
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$TelemetryFailed,
+        [Parameter(Mandatory = $true)]
+        [string]$Status,
+        [Parameter(Mandatory = $true)]
+        [int]$RunnerExitCode
+    )
+
+    if ($TelemetryFailed) {
+        return [pscustomobject][ordered]@{
+            status = "telemetry_failed"
+            runner_exit_code = 132
+        }
+    }
+    return [pscustomobject][ordered]@{
+        status = $Status
+        runner_exit_code = $RunnerExitCode
+    }
+}
+
+function Select-EffectiveProcessTelemetry {
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$TestStarted,
+        [AllowNull()]
+        [object]$TestProcess,
+        [Parameter(Mandatory = $true)]
+        [Collections.IDictionary]$ImportRecord
+    )
+
+    if ($TestStarted) {
+        return $TestProcess.process_telemetry
+    }
+    if ([bool]$ImportRecord["attempted"]) {
+        return $ImportRecord["process_telemetry"]
+    }
+    return $null
+}
+
+function Get-ProcessTelemetryResultFields {
+    param(
+        [AllowNull()]
+        [object]$State
+    )
+
+    return [ordered]@{
+        process_start_token = if ($null -ne $State) { $State.process_start_token } else { $null }
+        godot_start_token = if ($null -ne $State) { $State.process_start_token } else { $null }
+        telemetry_sample_count = if ($null -ne $State) { [int]$State.sample_count } else { 0 }
+        cpu_time_seconds = if ($null -ne $State) { [double]$State.cpu_time_seconds } else { 0.0 }
+        working_set_bytes = if ($null -ne $State) { [int64]$State.working_set_bytes } else { [int64]0 }
+        peak_working_set_bytes = if ($null -ne $State) { [int64]$State.peak_working_set_bytes } else { [int64]0 }
+        process_telemetry = $State
+    }
 }
 
 function Save-WindowClientPng {
@@ -638,6 +1004,38 @@ function Save-WindowClientPng {
     }
 }
 
+function Invoke-HeadedTelemetryTick {
+    param(
+        [Parameter(Mandatory = $true)]
+        [Diagnostics.Process]$Process,
+        [AllowNull()]
+        [scriptblock]$TelemetryTick
+    )
+
+    if ($null -eq $TelemetryTick) {
+        return $true
+    }
+    try {
+        if ($Process.HasExited) {
+            return $false
+        }
+        & $TelemetryTick
+        return $true
+    } catch {
+        try {
+            if ($Process.HasExited) {
+                return $false
+            }
+        } catch {
+            return $false
+        }
+        throw [InvalidOperationException]::new(
+            "PROCESS_TELEMETRY_TICK_FAILED|$($_.Exception.Message)",
+            $_.Exception
+        )
+    }
+}
+
 function Invoke-HeadedClientWindowProbe {
     param(
         [Parameter(Mandatory = $true)]
@@ -650,7 +1048,9 @@ function Invoke-HeadedClientWindowProbe {
         [string]$AckPath,
         [Parameter(Mandatory = $true)]
         [ValidateRange(1, 120)]
-        [int]$ProbeTimeoutSeconds
+        [int]$ProbeTimeoutSeconds,
+        [AllowNull()]
+        [scriptblock]$TelemetryTick = $null
     )
 
     Initialize-GodotWindowProbeNative
@@ -665,6 +1065,7 @@ function Invoke-HeadedClientWindowProbe {
     $stableExactSampleCount = 0
     $failureReason = "probe_timeout"
     $deadline = [DateTime]::UtcNow.AddSeconds($ProbeTimeoutSeconds)
+    $nextTelemetryTickAt = [DateTime]::UtcNow
     $previousDpiContext = [SpaceSyndicate.GodotWindowProbeNative]::SetThreadDpiAwarenessContext(
         [IntPtr]::new(-4)
     )
@@ -674,6 +1075,13 @@ function Invoke-HeadedClientWindowProbe {
             if ($Process.HasExited) {
                 $failureReason = "process_exited_before_probe_ack"
                 break
+            }
+            if ($null -ne $TelemetryTick -and [DateTime]::UtcNow -ge $nextTelemetryTickAt) {
+                if (-not (Invoke-HeadedTelemetryTick -Process $Process -TelemetryTick $TelemetryTick)) {
+                    $failureReason = "process_exited_during_probe_telemetry_tick"
+                    break
+                }
+                $nextTelemetryTickAt = [DateTime]::UtcNow.AddMilliseconds(250)
             }
 
             if ($null -eq $readyRecord -and (Test-Path -LiteralPath $ReadyPath -PathType Leaf)) {
@@ -762,12 +1170,27 @@ function Invoke-HeadedClientWindowProbe {
                     break
                 }
                 try {
+                    if ($null -ne $TelemetryTick) {
+                        if (-not (Invoke-HeadedTelemetryTick -Process $Process -TelemetryTick $TelemetryTick)) {
+                            $failureReason = "process_exited_before_client_capture"
+                            break
+                        }
+                    }
                     $clientCapture = Save-WindowClientPng `
                         -WindowHandle $windowHandle `
                         -Width $width `
                         -Height $height `
                         -Path $capturePath
+                    if ($null -ne $TelemetryTick) {
+                        if (-not (Invoke-HeadedTelemetryTick -Process $Process -TelemetryTick $TelemetryTick)) {
+                            $failureReason = "process_exited_after_client_capture"
+                            break
+                        }
+                    }
                 } catch {
+                    if ($_.Exception.Message.StartsWith("PROCESS_TELEMETRY_TICK_FAILED|", [StringComparison]::Ordinal)) {
+                        throw
+                    }
                     $failureReason = "client_capture_failed: $($_.Exception.Message)"
                     break
                 }
@@ -1099,7 +1522,15 @@ function Invoke-GodotBlockingProcess {
         [string]$LocalAppDataPath,
         [string]$ExpectedMarker = "",
         [AllowNull()]
-        [Collections.IDictionary]$HeadedProbe = $null
+        [Collections.IDictionary]$HeadedProbe = $null,
+        [AllowEmptyString()]
+        [string]$LiveTelemetryPath = "",
+        [AllowEmptyString()]
+        [string]$TelemetryRunId = "",
+        [AllowEmptyString()]
+        [string]$TelemetryPhase = "process",
+        [AllowEmptyString()]
+        [string]$TelemetryTargetPath = ""
     )
 
     $startedAt = [DateTime]::UtcNow
@@ -1127,6 +1558,13 @@ function Invoke-GodotBlockingProcess {
     $stderrTask = $null
     $stdoutCaptureComplete = $false
     $stderrCaptureComplete = $false
+    $processTelemetry = New-ProcessTelemetryState `
+        -LivePath $LiveTelemetryPath `
+        -RunId $TelemetryRunId `
+        -Phase $TelemetryPhase `
+        -TargetPath $TelemetryTargetPath
+    $telemetryFailure = $false
+    $rootProcessRemaining = $false
     $windowProbe = [pscustomobject][ordered]@{
         required = $false
         status = "not_requested"
@@ -1166,13 +1604,75 @@ function Invoke-GodotBlockingProcess {
         $stdoutTask = $process.StandardOutput.BaseStream.CopyToAsync($stdoutRawStream)
         $stderrTask = $process.StandardError.BaseStream.CopyToAsync($stderrRawStream)
 
-        if ($null -ne $HeadedProbe) {
-            $windowProbe = Invoke-HeadedClientWindowProbe `
-                -Process $process `
-                -ExpectedSize ([string]$HeadedProbe.expected_client_size) `
-                -ReadyPath ([string]$HeadedProbe.ready_path) `
-                -AckPath ([string]$HeadedProbe.ack_path) `
-                -ProbeTimeoutSeconds ([int]$HeadedProbe.timeout_seconds)
+        if ([bool]$processTelemetry["requested"]) {
+            try {
+                $processStartTimeUtc = $process.StartTime.ToUniversalTime()
+                $processStartToken = New-ProcessStartToken `
+                    -ProcessId $processId `
+                    -StartTimeUtc $processStartTimeUtc
+                $processTelemetry["process_id"] = $processId
+                $processTelemetry["process_start_token"] = $processStartToken
+                $processTelemetry["process_started_at_utc"] = $processStartTimeUtc.ToString("o")
+                $initialTelemetrySample = Get-ProcessResourceTelemetrySample `
+                    -ProcessId $processId `
+                    -ExpectedStartToken $processStartToken
+                Update-ProcessTelemetryState `
+                    -State $processTelemetry `
+                    -Sample $initialTelemetrySample
+            } catch {
+                $telemetryFailure = $true
+                Set-ProcessTelemetryFailure `
+                    -State $processTelemetry `
+                    -Stage "process_enumeration" `
+                    -Message $_.Exception.Message
+            }
+
+            if (-not $telemetryFailure) {
+                try {
+                    Publish-ProcessTelemetryState -State $processTelemetry
+                } catch {
+                    $telemetryFailure = $true
+                    Set-ProcessTelemetryFailure `
+                        -State $processTelemetry `
+                        -Stage "telemetry_write" `
+                        -Message $_.Exception.Message
+                }
+            }
+        }
+
+        $headedTelemetryTick = $null
+        if (-not $telemetryFailure -and [bool]$processTelemetry["requested"]) {
+            $headedTelemetryTick = {
+                $headedTelemetrySample = Get-ProcessResourceTelemetrySample `
+                    -ProcessId $processId `
+                    -ExpectedStartToken ([string]$processTelemetry["process_start_token"])
+                Update-ProcessTelemetryState `
+                    -State $processTelemetry `
+                    -Sample $headedTelemetrySample
+                Publish-ProcessTelemetryState -State $processTelemetry
+            }.GetNewClosure()
+        }
+
+        if (-not $telemetryFailure -and $null -ne $HeadedProbe) {
+            try {
+                $windowProbe = Invoke-HeadedClientWindowProbe `
+                    -Process $process `
+                    -ExpectedSize ([string]$HeadedProbe.expected_client_size) `
+                    -ReadyPath ([string]$HeadedProbe.ready_path) `
+                    -AckPath ([string]$HeadedProbe.ack_path) `
+                    -ProbeTimeoutSeconds ([int]$HeadedProbe.timeout_seconds) `
+                    -TelemetryTick $headedTelemetryTick
+            } catch {
+                if ($_.Exception.Message.StartsWith("PROCESS_TELEMETRY_TICK_FAILED|", [StringComparison]::Ordinal)) {
+                    $telemetryFailure = $true
+                    Set-ProcessTelemetryFailure `
+                        -State $processTelemetry `
+                        -Stage "headed_probe_telemetry" `
+                        -Message $_.Exception.Message.Substring("PROCESS_TELEMETRY_TICK_FAILED|".Length)
+                } else {
+                    throw
+                }
+            }
             if ($windowProbe.status -ne "passed") {
                 $processExited = $process.WaitForExit(5000)
                 if (-not $processExited) {
@@ -1191,6 +1691,7 @@ function Invoke-GodotBlockingProcess {
 
         $processDeadline = $startedAt.AddSeconds($ProcessTimeoutSeconds)
         while (
+            -not $telemetryFailure -and
             -not $processExited -and
             [DateTime]::UtcNow -lt $processDeadline
         ) {
@@ -1199,8 +1700,69 @@ function Invoke-GodotBlockingProcess {
             } catch {
                 $processExited = $true
             }
+            if (-not $processExited -and [bool]$processTelemetry["requested"]) {
+                try {
+                    $telemetrySample = Get-ProcessResourceTelemetrySample `
+                        -ProcessId $processId `
+                        -ExpectedStartToken ([string]$processTelemetry["process_start_token"])
+                    Update-ProcessTelemetryState `
+                        -State $processTelemetry `
+                        -Sample $telemetrySample
+                } catch {
+                    $exitedDuringSample = $false
+                    try {
+                        $exitedDuringSample = $process.HasExited
+                    } catch {
+                        $exitedDuringSample = $false
+                    }
+                    if ($exitedDuringSample) {
+                        $processExited = $true
+                    } else {
+                        $telemetryFailure = $true
+                        Set-ProcessTelemetryFailure `
+                            -State $processTelemetry `
+                            -Stage "process_enumeration" `
+                            -Message $_.Exception.Message
+                    }
+                }
+                if (-not $processExited -and -not $telemetryFailure) {
+                    try {
+                        Publish-ProcessTelemetryState -State $processTelemetry
+                    } catch {
+                        $telemetryFailure = $true
+                        Set-ProcessTelemetryFailure `
+                            -State $processTelemetry `
+                            -Stage "telemetry_write" `
+                            -Message $_.Exception.Message
+                    }
+                }
+            }
         }
-        if (-not $processExited) {
+        if ($telemetryFailure -and -not $processExited) {
+            $telemetryStopSucceeded = Stop-ScopedProcessTree `
+                -Process $process `
+                -ResolvedProjectPath $ResolvedProjectPath `
+                -ResolvedGodotPath $ResolvedGodotPath
+            try {
+                $processExited = $process.WaitForExit(10000)
+            } catch {
+                $processExited = $false
+            }
+            try {
+                $rootProcessRemaining = -not $process.HasExited
+            } catch {
+                $rootProcessRemaining = -not $telemetryStopSucceeded
+            }
+            if ($rootProcessRemaining) {
+                $cleanupMessage = "Telemetry failure cleanup could not verify root PID $processId stopped."
+                $processTelemetry["failure_message"] = if ([string]::IsNullOrWhiteSpace([string]$processTelemetry["failure_message"])) {
+                    $cleanupMessage
+                } else {
+                    "$($processTelemetry["failure_message"]); $cleanupMessage"
+                }
+            }
+        }
+        if (-not $telemetryFailure -and -not $processExited) {
             $timedOut = $true
             $stopRequested = Stop-ScopedProcessTree `
                 -Process $process `
@@ -1221,6 +1783,46 @@ function Invoke-GodotBlockingProcess {
                 $processExitCode = $process.ExitCode
             } catch {
                 $processExitCode = $null
+            }
+        }
+
+        if ($processExited -and -not $telemetryFailure -and [bool]$processTelemetry["requested"]) {
+            try {
+                $finalTelemetrySample = Get-ProcessObjectResourceTelemetrySample `
+                    -Process $process `
+                    -ExpectedStartToken ([string]$processTelemetry["process_start_token"])
+                Update-ProcessTelemetryState `
+                    -State $processTelemetry `
+                    -Sample $finalTelemetrySample
+                $processTelemetry["final_sample_status"] = "captured"
+            } catch {
+                $confirmedExited = $false
+                try {
+                    $confirmedExited = $process.HasExited
+                } catch {
+                    $confirmedExited = $true
+                }
+                if ($confirmedExited) {
+                    $processTelemetry["final_sample_status"] = "exit_race_unavailable"
+                    $processTelemetry["final_sample_message"] = $_.Exception.Message
+                } else {
+                    $telemetryFailure = $true
+                    Set-ProcessTelemetryFailure `
+                        -State $processTelemetry `
+                        -Stage "final_process_enumeration" `
+                        -Message $_.Exception.Message
+                }
+            }
+            if (-not $telemetryFailure) {
+                try {
+                    Publish-ProcessTelemetryState -State $processTelemetry
+                } catch {
+                    $telemetryFailure = $true
+                    Set-ProcessTelemetryFailure `
+                        -State $processTelemetry `
+                        -Stage "telemetry_write" `
+                        -Message $_.Exception.Message
+                }
             }
         }
 
@@ -1287,10 +1889,21 @@ function Invoke-GodotBlockingProcess {
             -ResolvedProjectPath $ResolvedProjectPath `
             -ResolvedGodotPath $ResolvedGodotPath
     )
+    $remainingRuntimeIds = [Collections.Generic.List[int]]::new()
+    if ($rootProcessRemaining -and $null -ne $processId) {
+        $remainingRuntimeIds.Add([int]$processId)
+    }
+    foreach ($remainingProcess in $remainingRuntime) {
+        if (-not $remainingRuntimeIds.Contains([int]$remainingProcess.ProcessId)) {
+            $remainingRuntimeIds.Add([int]$remainingProcess.ProcessId)
+        }
+    }
     $diagnosticAudit = Get-GodotDiagnosticAudit `
         -LogPaths @($StdoutPath, $StderrPath, $GodotLogPath) `
         -ExpectedMarker $ExpectedMarker
-    $runnerExitCode = if ($timedOut) {
+    $runnerExitCode = if ($telemetryFailure) {
+        132
+    } elseif ($timedOut) {
         124
     } elseif ($cleanupProcessIds.Count -gt 0 -or $remainingRuntime.Count -gt 0) {
         125
@@ -1313,7 +1926,9 @@ function Invoke-GodotBlockingProcess {
     } else {
         [int]$processExitCode
     }
-    $status = if ($timedOut) {
+    $status = if ($telemetryFailure) {
+        "telemetry_failed"
+    } elseif ($timedOut) {
         "timed_out"
     } elseif ($remainingRuntime.Count -gt 0) {
         "orphaned"
@@ -1337,9 +1952,47 @@ function Invoke-GodotBlockingProcess {
         "passed"
     }
 
+    if ([bool]$processTelemetry["requested"]) {
+        $processTelemetry["process_exit_code"] = $processExitCode
+        $processTelemetry["runner_exit_code"] = $runnerExitCode
+        $processTelemetry["timed_out"] = $timedOut
+        if (-not $telemetryFailure) {
+            $processTelemetry["status"] = if ($timedOut) { "timed_out" } else { "completed" }
+            $processTelemetry["ended_at_utc"] = [DateTime]::UtcNow.ToString("o")
+        }
+        if (
+            -not $telemetryFailure -or
+            [string]$processTelemetry["failure_stage"] -ne "telemetry_write"
+        ) {
+            try {
+                Publish-ProcessTelemetryState -State $processTelemetry
+            } catch {
+                $telemetryFailure = $true
+                Set-ProcessTelemetryFailure `
+                    -State $processTelemetry `
+                    -Stage "telemetry_write" `
+                    -Message $_.Exception.Message
+                $processTelemetry["runner_exit_code"] = 132
+                $runnerExitCode = 132
+                $status = "telemetry_failed"
+            }
+        }
+    }
+
+    $telemetryGatedOutcome = Get-TelemetryGatedRunnerOutcome `
+        -TelemetryFailed $telemetryFailure `
+        -Status $status `
+        -RunnerExitCode $runnerExitCode
+    $status = $telemetryGatedOutcome.status
+    $runnerExitCode = [int]$telemetryGatedOutcome.runner_exit_code
+    if ([bool]$processTelemetry["requested"]) {
+        $processTelemetry["runner_exit_code"] = $runnerExitCode
+    }
+
     return [pscustomobject][ordered]@{
         status = $status
         process_id = $processId
+        godot_pid = $processId
         timeout_seconds = $ProcessTimeoutSeconds
         timed_out = $timedOut
         process_exit_code = $processExitCode
@@ -1348,6 +2001,13 @@ function Invoke-GodotBlockingProcess {
         started_at_utc = $startedAt.ToString("o")
         duration_seconds = [Math]::Round($stopwatch.Elapsed.TotalSeconds, 3)
         duration = [Math]::Round($stopwatch.Elapsed.TotalSeconds, 3)
+        process_start_token = $processTelemetry["process_start_token"]
+        godot_start_token = $processTelemetry["process_start_token"]
+        telemetry_sample_count = [int]$processTelemetry["sample_count"]
+        cpu_time_seconds = [double]$processTelemetry["cpu_time_seconds"]
+        working_set_bytes = [int64]$processTelemetry["working_set_bytes"]
+        peak_working_set_bytes = [int64]$processTelemetry["peak_working_set_bytes"]
+        process_telemetry = $processTelemetry
         command_arguments = @($ArgumentList)
         stdout_log = $StdoutPath
         stderr_log = $StderrPath
@@ -1372,13 +2032,16 @@ function Invoke-GodotBlockingProcess {
         invalid_uid_unclassified_count = $diagnosticAudit.invalid_uid_unclassified_count
         diagnostics = $diagnosticAudit.diagnostics
         cleanup_process_ids = @($cleanupProcessIds)
-        remaining_project_runtime_process_ids = @($remainingRuntime | ForEach-Object { [int]$_.ProcessId })
+        remaining_project_runtime_process_ids = @($remainingRuntimeIds)
     }
 }
 
 $ProjectPath = (Resolve-Path -LiteralPath $ProjectPath).Path.TrimEnd('\', '/')
 $GodotPath = (Resolve-Path -LiteralPath $GodotPath).Path
 $LogRoot = [IO.Path]::GetFullPath($LogRoot)
+$LiveTelemetryPath = Resolve-LiveTelemetryPath `
+    -Path $LiveTelemetryPath `
+    -ResolvedProjectPath $ProjectPath
 
 if (-not (Test-Path -LiteralPath (Join-Path $ProjectPath "project.godot") -PathType Leaf)) {
     throw "project.godot was not found under $ProjectPath"
@@ -1503,12 +2166,20 @@ $importRecord = [ordered]@{
     process_status = $null
     succeeded = $null
     process_id = $null
+    godot_pid = $null
     timeout_seconds = $ImportTimeoutSeconds
     timed_out = $false
     process_exit_code = $null
     runner_exit_code = $null
     started_at_utc = $null
     duration_seconds = 0.0
+    process_start_token = $null
+    godot_start_token = $null
+    telemetry_sample_count = 0
+    cpu_time_seconds = 0.0
+    working_set_bytes = [int64]0
+    peak_working_set_bytes = [int64]0
+    process_telemetry = $null
     command_arguments = @()
     stdout_log = $null
     stderr_log = $null
@@ -1558,7 +2229,11 @@ if ($importMode -eq "ensure" -and $cacheBefore.valid) {
         -StderrPath $importStderrPath `
         -GodotLogPath $importGodotLogPath `
         -AppDataPath $isolatedAppDataPath `
-        -LocalAppDataPath $isolatedLocalAppDataPath
+        -LocalAppDataPath $isolatedLocalAppDataPath `
+        -LiveTelemetryPath $LiveTelemetryPath `
+        -TelemetryRunId $runId `
+        -TelemetryPhase "import" `
+        -TelemetryTargetPath $targetPath
     $importRecord.process_status = $importProcess.status
     foreach ($property in $importProcess.PSObject.Properties) {
         if ($property.Name -ne "status") {
@@ -1612,7 +2287,11 @@ if ($importReady) {
         -AppDataPath $isolatedAppDataPath `
         -LocalAppDataPath $isolatedLocalAppDataPath `
         -ExpectedMarker $ExpectedCompletionMarker `
-        -HeadedProbe $headedProbeConfig
+        -HeadedProbe $headedProbeConfig `
+        -LiveTelemetryPath $LiveTelemetryPath `
+        -TelemetryRunId $runId `
+        -TelemetryPhase "test" `
+        -TelemetryTargetPath $targetPath
 }
 
 $status = if ($testStarted) { $testProcess.status } else { $importFailureStatus }
@@ -1649,6 +2328,13 @@ if ($testStarted) {
     }
 }
 
+$effectiveProcessTelemetry = Select-EffectiveProcessTelemetry `
+    -TestStarted $testStarted `
+    -TestProcess $testProcess `
+    -ImportRecord $importRecord
+$effectiveProcessTelemetryFields = Get-ProcessTelemetryResultFields `
+    -State $effectiveProcessTelemetry
+
 $result = [ordered]@{
     run_id = $runId
     status = $status
@@ -1663,6 +2349,7 @@ $result = [ordered]@{
     project_path = $ProjectPath
     godot_path = $GodotPath
     godot_product_version = $godotVersion
+    live_telemetry_path = if ([string]::IsNullOrWhiteSpace($LiveTelemetryPath)) { $null } else { $LiveTelemetryPath }
     ensure_imported = [bool]$EnsureImported
     refresh_import = [bool]$RefreshImport
     import_mode = $importMode
@@ -1670,6 +2357,7 @@ $result = [ordered]@{
     import = $importRecord
     test_started = $testStarted
     process_id = if ($testStarted) { $testProcess.process_id } else { $null }
+    godot_pid = if ($testStarted) { $testProcess.godot_pid } elseif ($importRecord.attempted) { $importRecord.godot_pid } else { $null }
     timeout_seconds = $TimeoutSeconds
     timed_out = if ($testStarted) { $testProcess.timed_out } else { $importRecord.timed_out }
     process_exit_code = if ($testStarted) { $testProcess.process_exit_code } else { $null }
@@ -1678,6 +2366,13 @@ $result = [ordered]@{
     started_at_utc = if ($testStarted) { $testProcess.started_at_utc } else { $importRecord.started_at_utc }
     duration_seconds = if ($testStarted) { $testProcess.duration_seconds } else { $importRecord.duration_seconds }
     duration = if ($testStarted) { $testProcess.duration } else { $importRecord.duration_seconds }
+    process_start_token = $effectiveProcessTelemetryFields.process_start_token
+    godot_start_token = $effectiveProcessTelemetryFields.godot_start_token
+    telemetry_sample_count = $effectiveProcessTelemetryFields.telemetry_sample_count
+    cpu_time_seconds = $effectiveProcessTelemetryFields.cpu_time_seconds
+    working_set_bytes = $effectiveProcessTelemetryFields.working_set_bytes
+    peak_working_set_bytes = $effectiveProcessTelemetryFields.peak_working_set_bytes
+    process_telemetry = $effectiveProcessTelemetryFields.process_telemetry
     command_arguments = $reportedCommandArguments
     stdout_log = if ($testStarted) { $stdoutPath } else { $null }
     stderr_log = if ($testStarted) { $stderrPath } else { $null }
