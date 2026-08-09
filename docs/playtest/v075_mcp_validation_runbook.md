@@ -1045,15 +1045,29 @@ call `open_scene`, followed by `get_scene_info` and `get_scene_tree`; do not cal
 `save_scene`.
 
 ```powershell
+$ProjectRoot = [IO.Path]::GetFullPath($Worktree).TrimEnd([char[]]@('\', '/'))
 $ScriptResults = foreach ($Path in $Scripts) {
     $Response = Invoke-McpJson "validate_script" @{
         path = $Path
         language = "gdscript"
         run_build = $false
-    }
+    } -TimeoutSeconds 180
     $Payload = $Response.result.structuredContent
+    $ValidationSuccess = Get-RequiredBoolean $Payload "success" "validate_script"
     $ReturnedPath = Get-RequiredString $Payload "path" "validate_script"
     $ReturnedLanguage = Get-RequiredString $Payload "language" "validate_script"
+    $ReturnedResourcePath = Get-RequiredString $Payload "resource_path" "validate_script"
+    $ValidationMode = Get-RequiredString $Payload "validation_mode" "validate_script"
+    $ReadOk = Get-RequiredBoolean $Payload "read_ok" "validate_script"
+    $ValidationAttempted = Get-RequiredBoolean `
+        $Payload "validation_attempted" "validate_script"
+    $ValidatorProjectRoot = Get-RequiredString `
+        $Payload "validator_project_root" "validate_script"
+    $ValidatorProjectRootFull = [IO.Path]::GetFullPath($ValidatorProjectRoot).TrimEnd(
+        [char[]]@('\', '/')
+    )
+    $ValidatorWorkerDiagnosticCount = Get-RequiredIntegralCount `
+        $Payload "validator_worker_log_diagnostic_header_count" "validate_script"
     $ValidationOk = Get-RequiredBoolean $Payload "ok" "validate_script"
     $ErrorCode = Get-RequiredIntegralCount $Payload "error_code" "validate_script"
     $DiagnosticCount = Get-RequiredIntegralCount `
@@ -1063,9 +1077,22 @@ $ScriptResults = foreach ($Path in $Scripts) {
         path = $Path
         returned_path = $ReturnedPath
         returned_language = $ReturnedLanguage
-        ok = $ValidationOk `
+        returned_resource_path = $ReturnedResourcePath
+        validation_mode = $ValidationMode
+        read_ok = $ReadOk
+        validation_attempted = $ValidationAttempted
+        validator_project_root = $ValidatorProjectRootFull
+        validator_worker_diagnostic_count = $ValidatorWorkerDiagnosticCount
+        ok = $ValidationSuccess `
+            -and $ValidationOk `
             -and $ReturnedPath -ceq $Path `
             -and $ReturnedLanguage -ceq "gdscript" `
+            -and $ReturnedResourcePath -ceq $Path `
+            -and $ValidationMode -ceq "isolated_process" `
+            -and $ReadOk `
+            -and $ValidationAttempted `
+            -and $ValidatorProjectRootFull -ceq $ProjectRoot `
+            -and $ValidatorWorkerDiagnosticCount -eq 0 `
             -and $ErrorCode -eq 0 `
             -and $DiagnosticCount -eq 0 `
             -and $Diagnostics.Count -eq 0
@@ -1075,14 +1102,12 @@ $ScriptResults = foreach ($Path in $Scripts) {
     }
 }
 
-$ProjectRoot = [IO.Path]::GetFullPath($Worktree)
 $EligibleProjectScripts = @(
     Get-ChildItem -LiteralPath $ProjectRoot -Recurse -File -Filter "*.gd" |
         ForEach-Object {
             $relative = [IO.Path]::GetRelativePath($ProjectRoot, $_.FullName).Replace("\\", "/")
             "res://$relative"
         } |
-        Where-Object { $_ -notlike "res://addons/funplay_mcp/*" } |
         Sort-Object -Unique
 )
 $EligibleSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -1095,25 +1120,53 @@ $ProjectScriptErrorResponse = Invoke-McpJson "get_script_errors" @{
     language = "gdscript"
     max_files = 3000
     run_build = $false
-}
+} -TimeoutSeconds 180
 $ProjectScriptErrorPayload = $ProjectScriptErrorResponse.result.structuredContent
+$ProjectScriptSuccess = Get-RequiredBoolean `
+    $ProjectScriptErrorPayload "success" "get_script_errors"
+$ProjectScriptComplete = Get-RequiredBoolean `
+    $ProjectScriptErrorPayload "complete" "get_script_errors"
+$ProjectScriptScopeTruncated = Get-RequiredBoolean `
+    $ProjectScriptErrorPayload "scope_truncated" "get_script_errors"
 $ProjectScriptScanPath = Get-RequiredString `
     $ProjectScriptErrorPayload "path" "get_script_errors"
 $ProjectScriptChecked = Get-RequiredIntegralCount `
     $ProjectScriptErrorPayload "checked" "get_script_errors"
+$ProjectScriptRequested = Get-RequiredIntegralCount `
+    $ProjectScriptErrorPayload "requested_count" "get_script_errors"
+$ProjectScriptValidated = Get-RequiredIntegralCount `
+    $ProjectScriptErrorPayload "validated_count" "get_script_errors"
+$ProjectScriptMaxFiles = Get-RequiredIntegralCount `
+    $ProjectScriptErrorPayload "max_files" "get_script_errors"
+$ProjectScriptWorkerDiagnosticCount = Get-RequiredIntegralCount `
+    $ProjectScriptErrorPayload `
+    "validator_worker_log_diagnostic_header_count" `
+    "get_script_errors"
 $ProjectScriptErrorCount = Get-RequiredIntegralCount `
     $ProjectScriptErrorPayload "error_count" "get_script_errors"
 $ProjectScriptErrors = Get-RequiredJsonArray `
     $ProjectScriptErrorPayload "errors" "get_script_errors"
-if ($ProjectScriptScanPath -cne "res://" `
+if (-not $ProjectScriptSuccess `
+    -or -not $ProjectScriptComplete `
+    -or $ProjectScriptScopeTruncated `
+    -or $ProjectScriptScanPath -cne "res://" `
     -or $ProjectScriptChecked -ne $EligibleProjectScripts.Count `
+    -or $ProjectScriptRequested -ne $EligibleProjectScripts.Count `
+    -or $ProjectScriptValidated -ne $EligibleProjectScripts.Count `
+    -or $ProjectScriptMaxFiles -ne 3000 `
+    -or $ProjectScriptWorkerDiagnosticCount -ne 0 `
     -or $ProjectScriptErrorCount -ne 0 `
     -or $ProjectScriptErrors.Count -ne 0) {
     throw (
-        "Project script scan failed or was incomplete: path={0} checked={1}/{2} errors={3}" -f
+        "Project script scan failed or was incomplete: path={0} checked={1}/{2} requested={3} validated={4} max_files={5} complete={6} worker_diagnostics={7} errors={8}" -f
         $ProjectScriptScanPath,
         $ProjectScriptChecked,
         $EligibleProjectScripts.Count,
+        $ProjectScriptRequested,
+        $ProjectScriptValidated,
+        $ProjectScriptMaxFiles,
+        $ProjectScriptComplete,
+        $ProjectScriptWorkerDiagnosticCount,
         $ProjectScriptErrorCount
     )
 }
@@ -1125,9 +1178,20 @@ $ScriptScopeCoverage = foreach ($Path in $Scripts) {
         scope = "res://"
         independently_eligible = $Eligible
         scope_checked = $ProjectScriptChecked
+        scope_requested = $ProjectScriptRequested
+        scope_validated = $ProjectScriptValidated
+        scope_complete = $ProjectScriptComplete
+        scope_truncated = $ProjectScriptScopeTruncated
+        worker_diagnostic_count = $ProjectScriptWorkerDiagnosticCount
         scope_error_count = $ProjectScriptErrorCount
         covered = $Eligible `
+            -and $ProjectScriptSuccess `
+            -and $ProjectScriptComplete `
+            -and -not $ProjectScriptScopeTruncated `
             -and $ProjectScriptChecked -eq $EligibleProjectScripts.Count `
+            -and $ProjectScriptRequested -eq $EligibleProjectScripts.Count `
+            -and $ProjectScriptValidated -eq $EligibleProjectScripts.Count `
+            -and $ProjectScriptWorkerDiagnosticCount -eq 0 `
             -and $ProjectScriptErrorCount -eq 0
     }
 }
@@ -1186,6 +1250,12 @@ if ($SceneResults.Count -ne $Scenes.Count `
 "MCP_CHANGED_SCRIPT_VALIDATION=$ScriptPassed/$($Scripts.Count)"
 "MCP_SCRIPT_ERROR_SCOPE_COVERAGE=$ScriptScopeCovered/$($Scripts.Count)"
 "MCP_PROJECT_SCRIPT_CHECKED=$ProjectScriptChecked/$($EligibleProjectScripts.Count)"
+"MCP_PROJECT_SCRIPT_REQUESTED=$ProjectScriptRequested/$($EligibleProjectScripts.Count)"
+"MCP_PROJECT_SCRIPT_VALIDATED=$ProjectScriptValidated/$($EligibleProjectScripts.Count)"
+"MCP_PROJECT_SCRIPT_MAX_FILES=$ProjectScriptMaxFiles"
+"MCP_PROJECT_SCRIPT_VALIDATION_COMPLETE=$($ProjectScriptComplete.ToString().ToLowerInvariant())"
+"MCP_PROJECT_SCRIPT_SCOPE_TRUNCATED=$($ProjectScriptScopeTruncated.ToString().ToLowerInvariant())"
+"MCP_PROJECT_SCRIPT_WORKER_DIAGNOSTIC_COUNT=$ProjectScriptWorkerDiagnosticCount"
 "MCP_PROJECT_SCRIPT_ERROR_COUNT=$ProjectScriptErrorCount"
 "MCP_CHANGED_SCENE_LOAD=$(@($SceneResults | Where-Object passed).Count)/$($Scenes.Count)"
 ```
