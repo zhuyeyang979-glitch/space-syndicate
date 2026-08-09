@@ -631,6 +631,268 @@ $script:McpRawEvidence = [Collections.Generic.List[object]]::new()
 $McpRawEvidenceRoot = Join-Path $ValidationEvidenceRoot "mcp-raw"
 [IO.Directory]::CreateDirectory($McpRawEvidenceRoot) | Out-Null
 
+function Get-McpRuntimeQueryTimeoutBudget {
+    param(
+        [ValidateRange(1, 600)]
+        [int]$RequestedSeconds
+    )
+    $BridgeSeconds = [Math]::Min(30, $RequestedSeconds)
+    return [pscustomobject][ordered]@{
+        requested_seconds = $RequestedSeconds
+        bridge_timeout_seconds = $BridgeSeconds
+        bridge_timeout_msec = $BridgeSeconds * 1000
+        transport_timeout_seconds = [Math]::Min(600, $BridgeSeconds + 15)
+    }
+}
+
+function Get-McpRawEvidenceIntegrityGate {
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [object[]]$Rows,
+        [Parameter(Mandatory = $true)][string]$RawRoot
+    )
+    $Issues = [Collections.Generic.List[string]]::new()
+    $FailedSequences = [Collections.Generic.HashSet[int]]::new()
+    $InvokeErrorSequences = [Collections.Generic.HashSet[int]]::new()
+    $RawPaths = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::OrdinalIgnoreCase
+    )
+    $RawVerifiedCount = 0
+    $RawRootFull = [IO.Path]::GetFullPath($RawRoot).TrimEnd("\", "/")
+    if (-not (Test-Path -LiteralPath $RawRootFull -PathType Container)) {
+        $Issues.Add("MCP raw evidence root is absent: $RawRootFull")
+    }
+    if ($Rows.Count -eq 0) {
+        $Issues.Add("MCP raw evidence ledger is empty.")
+    }
+    for ($RowIndex = 0; $RowIndex -lt $Rows.Count; $RowIndex += 1) {
+        $Row = $Rows[$RowIndex]
+        $ExpectedSequence = $RowIndex + 1
+        $Sequence = $ExpectedSequence
+        $SequenceProperty = $Row.PSObject.Properties["sequence"]
+        try {
+            if ($null -eq $SequenceProperty -or $null -eq $SequenceProperty.Value) {
+                throw "missing"
+            }
+            $Sequence = [Convert]::ToInt32(
+                $SequenceProperty.Value,
+                [Globalization.CultureInfo]::InvariantCulture
+            )
+        } catch {
+            $Issues.Add("MCP raw row $ExpectedSequence has no integral sequence.")
+            $null = $FailedSequences.Add($ExpectedSequence)
+            $Sequence = $ExpectedSequence
+        }
+        if ($Sequence -ne $ExpectedSequence) {
+            $Issues.Add(
+                "MCP raw sequence is not contiguous/in-order: expected=$ExpectedSequence actual=$Sequence"
+            )
+            $null = $FailedSequences.Add($ExpectedSequence)
+        }
+
+        $ValidationProperty = $Row.PSObject.Properties["validation_succeeded"]
+        if ($null -eq $ValidationProperty `
+            -or $ValidationProperty.Value -isnot [bool] `
+            -or -not [bool]$ValidationProperty.Value) {
+            $Issues.Add("MCP raw row did not complete validation: sequence=$Sequence")
+            $null = $FailedSequences.Add($ExpectedSequence)
+        }
+        $ExitProperty = $Row.PSObject.Properties["invoke_exit_code"]
+        if ($null -eq $ExitProperty `
+            -or $null -eq $ExitProperty.Value `
+            -or [int]$ExitProperty.Value -ne 0) {
+            $Issues.Add("MCP raw row has nonzero invoke exit: sequence=$Sequence")
+            $null = $FailedSequences.Add($ExpectedSequence)
+        }
+        $InvocationFailureProperty = $Row.PSObject.Properties["invocation_failure"]
+        if ($null -eq $InvocationFailureProperty `
+            -or $InvocationFailureProperty.Value -isnot [bool] `
+            -or [bool]$InvocationFailureProperty.Value) {
+            $Issues.Add("MCP raw row has an invocation failure: sequence=$Sequence")
+            $null = $FailedSequences.Add($ExpectedSequence)
+        }
+        $RawCreatedProperty = $Row.PSObject.Properties["raw_wire_response_created"]
+        if ($null -eq $RawCreatedProperty `
+            -or $RawCreatedProperty.Value -isnot [bool] `
+            -or -not [bool]$RawCreatedProperty.Value) {
+            $Issues.Add("MCP raw row has no wire response: sequence=$Sequence")
+            $null = $FailedSequences.Add($ExpectedSequence)
+        }
+        $FailureStageProperty = $Row.PSObject.Properties["failure_stage"]
+        $FailureMessageProperty = $Row.PSObject.Properties["failure_message"]
+        if ($null -eq $FailureStageProperty `
+            -or $null -eq $FailureMessageProperty `
+            -or -not [string]::IsNullOrWhiteSpace(
+                [string]$FailureStageProperty.Value
+            ) `
+            -or -not [string]::IsNullOrWhiteSpace(
+                [string]$FailureMessageProperty.Value
+            )) {
+            $Issues.Add("MCP raw row retains a validation failure: sequence=$Sequence")
+            $null = $FailedSequences.Add($ExpectedSequence)
+        }
+
+        $StartedAt = [DateTimeOffset]::MinValue
+        $CompletedAt = [DateTimeOffset]::MinValue
+        $ElapsedProperty = $Row.PSObject.Properties["elapsed_msec"]
+        $ElapsedMsec = -1.0
+        try {
+            if ($null -eq $ElapsedProperty -or $null -eq $ElapsedProperty.Value) {
+                throw "missing"
+            }
+            $ElapsedMsec = [Convert]::ToDouble(
+                $ElapsedProperty.Value,
+                [Globalization.CultureInfo]::InvariantCulture
+            )
+        } catch {
+            $ElapsedMsec = -1.0
+        }
+        if (-not [DateTimeOffset]::TryParse(
+                [string]$Row.started_at_utc,
+                [Globalization.CultureInfo]::InvariantCulture,
+                [Globalization.DateTimeStyles]::RoundtripKind,
+                [ref]$StartedAt
+            ) `
+            -or -not [DateTimeOffset]::TryParse(
+                [string]$Row.completed_at_utc,
+                [Globalization.CultureInfo]::InvariantCulture,
+                [Globalization.DateTimeStyles]::RoundtripKind,
+                [ref]$CompletedAt
+            ) `
+            -or $CompletedAt -lt $StartedAt `
+            -or [double]::IsNaN($ElapsedMsec) `
+            -or [double]::IsInfinity($ElapsedMsec) `
+            -or $ElapsedMsec -lt 0) {
+            $Issues.Add("MCP raw row timing is invalid: sequence=$Sequence")
+            $null = $FailedSequences.Add($ExpectedSequence)
+        }
+
+        $InvokeErrorPathProperty = $Row.PSObject.Properties["invoke_error_path"]
+        $InvokeErrorSha256Property = `
+            $Row.PSObject.Properties["invoke_error_sha256"]
+        $InvokeErrorPath = if ($null -eq $InvokeErrorPathProperty) {
+            ""
+        } else {
+            [string]$InvokeErrorPathProperty.Value
+        }
+        $InvokeErrorSha256 = if ($null -eq $InvokeErrorSha256Property) {
+            ""
+        } else {
+            [string]$InvokeErrorSha256Property.Value
+        }
+        if ($null -eq $InvokeErrorPathProperty `
+            -or $null -eq $InvokeErrorSha256Property `
+            -or -not [string]::IsNullOrWhiteSpace($InvokeErrorPath) `
+            -or -not [string]::IsNullOrWhiteSpace($InvokeErrorSha256)) {
+            $Issues.Add("MCP raw row references invoke-error evidence: sequence=$Sequence")
+            $null = $FailedSequences.Add($ExpectedSequence)
+            $null = $InvokeErrorSequences.Add($ExpectedSequence)
+        }
+
+        $RawPath = [string]$Row.raw_path
+        try {
+            if ([string]::IsNullOrWhiteSpace($RawPath) `
+                -or -not [IO.Path]::IsPathFullyQualified($RawPath)) {
+                throw "raw path is absent or not absolute"
+            }
+            $RawPathFull = [IO.Path]::GetFullPath($RawPath)
+            if (-not $RawPathFull.StartsWith(
+                    $RawRootFull + [IO.Path]::DirectorySeparatorChar,
+                    [StringComparison]::OrdinalIgnoreCase
+                ) `
+                -or -not $RawPaths.Add($RawPathFull) `
+                -or -not (Test-Path -LiteralPath $RawPathFull -PathType Leaf)) {
+                throw "raw path is outside the root, duplicate, or absent"
+            }
+            [byte[]]$RawBytes = [IO.File]::ReadAllBytes($RawPathFull)
+            $ActualRawSha256 = [Convert]::ToHexString(
+                [Security.Cryptography.SHA256]::HashData($RawBytes)
+            ).ToLowerInvariant()
+            $RawByteCountProperty = $Row.PSObject.Properties["raw_byte_count"]
+            if ($null -eq $RawByteCountProperty `
+                -or $null -eq $RawByteCountProperty.Value `
+                -or [string]$Row.raw_sha256 -cnotmatch '\A[0-9a-f]{64}\z' `
+                -or $ActualRawSha256 -cne [string]$Row.raw_sha256 `
+                -or [int64]$RawBytes.Length `
+                    -ne [int64]$RawByteCountProperty.Value) {
+                throw "raw response hash/byte count differs"
+            }
+            $RawVerifiedCount += 1
+        } catch {
+            $Issues.Add("MCP raw row file integrity failed: sequence=$Sequence detail=$_")
+            $null = $FailedSequences.Add($ExpectedSequence)
+        }
+    }
+    [string[]]$OrphanInvokeErrorPaths = @()
+    if (Test-Path -LiteralPath $RawRootFull -PathType Container) {
+        $OrphanInvokeErrorPaths = [string[]]@(
+            Get-ChildItem `
+                -LiteralPath $RawRootFull `
+                -Filter "*.invoke-error.json" `
+                -File `
+                -Recurse `
+                -Force |
+                ForEach-Object { $_.FullName } |
+                Sort-Object
+        )
+    }
+    foreach ($OrphanInvokeErrorPath in $OrphanInvokeErrorPaths) {
+        $Issues.Add("MCP invoke-error artifact exists: $OrphanInvokeErrorPath")
+    }
+    [string[]]$ActualRawResponsePaths = @()
+    if (Test-Path -LiteralPath $RawRootFull -PathType Container) {
+        $ActualRawResponsePaths = [string[]]@(
+            Get-ChildItem `
+                -LiteralPath $RawRootFull `
+                -Filter "*.jsonrpc.json" `
+                -File `
+                -Recurse `
+                -Force |
+                ForEach-Object { [IO.Path]::GetFullPath($_.FullName) } |
+                Sort-Object
+        )
+    }
+    $ActualRawResponseSet = [Collections.Generic.HashSet[string]]::new(
+        $ActualRawResponsePaths,
+        [StringComparer]::OrdinalIgnoreCase
+    )
+    [string[]]$OrphanRawResponsePaths = @(
+        $ActualRawResponsePaths |
+            Where-Object { -not $RawPaths.Contains($_) }
+    )
+    [string[]]$MissingRawResponsePaths = @(
+        $RawPaths |
+            Where-Object { -not $ActualRawResponseSet.Contains($_) } |
+            Sort-Object
+    )
+    foreach ($OrphanRawResponsePath in $OrphanRawResponsePaths) {
+        $Issues.Add("Unledgered MCP raw response exists: $OrphanRawResponsePath")
+    }
+    foreach ($MissingRawResponsePath in $MissingRawResponsePaths) {
+        $Issues.Add("Ledger raw path is not a JSON-RPC response: $MissingRawResponsePath")
+    }
+    return [pscustomobject][ordered]@{
+        green = $Issues.Count -eq 0
+        response_count = $Rows.Count
+        sequence_first = if ($Rows.Count -eq 0) { 0 } else { 1 }
+        sequence_last = if ($Rows.Count -eq 0) { 0 } else { $Rows.Count }
+        validated_success_count = $Rows.Count - $FailedSequences.Count
+        failed_attempt_count = $FailedSequences.Count
+        invoke_error_count = $InvokeErrorSequences.Count
+        orphan_invoke_error_count = $OrphanInvokeErrorPaths.Count
+        actual_raw_response_count = $ActualRawResponsePaths.Count
+        ledger_raw_response_count = $RawPaths.Count
+        orphan_raw_response_count = $OrphanRawResponsePaths.Count
+        missing_raw_response_count = $MissingRawResponsePaths.Count
+        raw_file_verified_count = $RawVerifiedCount
+        orphan_invoke_error_paths = [object[]]$OrphanInvokeErrorPaths
+        orphan_raw_response_paths = [object[]]$OrphanRawResponsePaths
+        missing_raw_response_paths = [object[]]$MissingRawResponsePaths
+        issues = [object[]]$Issues.ToArray()
+    }
+}
+
 function Invoke-McpJson {
     param(
         [Parameter(Mandatory = $true)][string]$ToolName,
@@ -638,6 +900,8 @@ function Invoke-McpJson {
         [string]$OutputImage = "",
         [ValidateRange(1, 600)][int]$TimeoutSeconds = 60
     )
+    $InvocationStartedAtUtc = [DateTimeOffset]::UtcNow
+    $InvocationStopwatch = [Diagnostics.Stopwatch]::StartNew()
     $script:McpRawSequence += 1
     $ToolSlug = [regex]::Replace($ToolName, "[^A-Za-z0-9_.-]", "_")
     $RawEvidencePath = Join-Path $McpRawEvidenceRoot (
@@ -742,70 +1006,101 @@ function Invoke-McpJson {
         } else {
             $null
         }
+        validation_succeeded = $false
+        failure_stage = $null
+        failure_message = $null
+        started_at_utc = $InvocationStartedAtUtc.ToString("o")
+        completed_at_utc = $null
+        elapsed_msec = $null
     }
     $script:McpRawEvidence.Add($EvidenceRow)
-    if ($null -ne $RawDecodeFailure) {
-        throw "MCP raw HTTP response is not strict UTF-8 ($ToolName): $RawEvidencePath"
-    }
-    if ($null -ne $InvocationFailure) {
-        throw (
-            "MCP invoke script threw before a JSON-RPC envelope could be parsed " +
-            "($ToolName): error=$InvokeErrorPath detail=$InvocationFailure"
+    $ValidationStage = "raw_utf8"
+    try {
+        if ($null -ne $RawDecodeFailure) {
+            throw "MCP raw HTTP response is not strict UTF-8 ($ToolName): $RawEvidencePath"
+        }
+        $ValidationStage = "invoke_process"
+        if ($null -ne $InvocationFailure) {
+            throw (
+                "MCP invoke script threw before a JSON-RPC envelope could be parsed " +
+                "($ToolName): error=$InvokeErrorPath detail=$InvocationFailure"
+            )
+        }
+        if ($InvokeExitCode -ne 0) {
+            throw "MCP invoke script failed ($ToolName): exit=$InvokeExitCode error=$InvokeErrorPath"
+        }
+        $ValidationStage = "raw_presence"
+        if (-not $RawExists) {
+            throw "MCP invoke produced no raw HTTP response ($ToolName): error=$InvokeErrorPath"
+        }
+        $ValidationStage = "raw_json"
+        try {
+            $response = $RawText | ConvertFrom-Json
+        } catch {
+            $ParseError = [ordered]@{
+                schema = "SpaceSyndicateMcpInvocationErrorV1"
+                sequence = $script:McpRawSequence
+                tool_name = $ToolName
+                arguments_sha256 = $ArgumentsSha256
+                failed_at_utc = [DateTimeOffset]::UtcNow.ToString("o")
+                invoke_exit_code = $InvokeExitCode
+                invocation_failure = "Raw HTTP response is not valid JSON: $_"
+                response_file_created = $true
+                child_output = @($InvokeOutput | ForEach-Object { [string]$_ })
+            }
+            Write-AtomicUtf8Json $InvokeErrorPath $ParseError
+            $EvidenceRow.invoke_error_path = $InvokeErrorPath
+            $EvidenceRow.invoke_error_sha256 = Get-FileSha256 $InvokeErrorPath
+            throw "MCP raw HTTP response is not valid JSON ($ToolName): $RawEvidencePath"
+        }
+        $ValidationStage = "jsonrpc_identity"
+        if ((Get-RequiredString $response "jsonrpc" "jsonrpc") -cne "2.0" `
+            -or (Get-RequiredIntegralCount $response "id" "jsonrpc") -ne 1) {
+            throw "MCP JSON-RPC envelope identity is invalid: $ToolName"
+        }
+        $ValidationStage = "jsonrpc_error"
+        if ($null -ne $response.error) {
+            throw ($response.error | ConvertTo-Json -Depth 20 -Compress)
+        }
+        $ValidationStage = "jsonrpc_result"
+        $Result = Get-RequiredJsonObject $response "result" "jsonrpc"
+        $ValidationStage = "tool_is_error"
+        if (Get-RequiredBoolean $Result "isError" "jsonrpc.result") {
+            $detail = if ($null -ne $response.result.structuredContent.error) {
+                [string]$response.result.structuredContent.error
+            } else {
+                [string]$response.result.content[0].text
+            }
+            throw "MCP tool returned isError=true ($ToolName): $detail"
+        }
+        $Structured = $response.result.structuredContent
+        if ($null -ne $Structured) {
+            $SuccessProperty = $Structured.PSObject.Properties["success"]
+            $ValidationStage = "structured_success_type"
+            if ($null -ne $SuccessProperty `
+                -and $SuccessProperty.Value -isnot [bool]) {
+                throw "MCP structuredContent.success is not Boolean: $ToolName"
+            }
+            $ValidationStage = "structured_success_false"
+            if ($null -ne $SuccessProperty -and -not $SuccessProperty.Value) {
+                throw "MCP tool returned structuredContent.success=false: $ToolName"
+            }
+        }
+        $EvidenceRow.validation_succeeded = $true
+        $ValidationStage = "complete"
+        return $response
+    } catch {
+        $EvidenceRow.failure_stage = $ValidationStage
+        $EvidenceRow.failure_message = $_.Exception.Message
+        throw
+    } finally {
+        $InvocationStopwatch.Stop()
+        $EvidenceRow.completed_at_utc = [DateTimeOffset]::UtcNow.ToString("o")
+        $EvidenceRow.elapsed_msec = [Math]::Round(
+            $InvocationStopwatch.Elapsed.TotalMilliseconds,
+            3
         )
     }
-    if ($InvokeExitCode -ne 0) {
-        throw "MCP invoke script failed ($ToolName): exit=$InvokeExitCode error=$InvokeErrorPath"
-    }
-    if (-not $RawExists) {
-        throw "MCP invoke produced no raw HTTP response ($ToolName): error=$InvokeErrorPath"
-    }
-    try {
-        $response = $RawText | ConvertFrom-Json
-    } catch {
-        $ParseError = [ordered]@{
-            schema = "SpaceSyndicateMcpInvocationErrorV1"
-            sequence = $script:McpRawSequence
-            tool_name = $ToolName
-            arguments_sha256 = $ArgumentsSha256
-            failed_at_utc = [DateTimeOffset]::UtcNow.ToString("o")
-            invoke_exit_code = $InvokeExitCode
-            invocation_failure = "Raw HTTP response is not valid JSON: $_"
-            response_file_created = $true
-            child_output = @($InvokeOutput | ForEach-Object { [string]$_ })
-        }
-        Write-AtomicUtf8Json $InvokeErrorPath $ParseError
-        $EvidenceRow.invoke_error_path = $InvokeErrorPath
-        $EvidenceRow.invoke_error_sha256 = Get-FileSha256 $InvokeErrorPath
-        throw "MCP raw HTTP response is not valid JSON ($ToolName): $RawEvidencePath"
-    }
-    if ((Get-RequiredString $response "jsonrpc" "jsonrpc") -cne "2.0" `
-        -or (Get-RequiredIntegralCount $response "id" "jsonrpc") -ne 1) {
-        throw "MCP JSON-RPC envelope identity is invalid: $ToolName"
-    }
-    if ($null -ne $response.error) {
-        throw ($response.error | ConvertTo-Json -Depth 20 -Compress)
-    }
-    $Result = Get-RequiredJsonObject $response "result" "jsonrpc"
-    if (Get-RequiredBoolean $Result "isError" "jsonrpc.result") {
-        $detail = if ($null -ne $response.result.structuredContent.error) {
-            [string]$response.result.structuredContent.error
-        } else {
-            [string]$response.result.content[0].text
-        }
-        throw "MCP tool returned isError=true ($ToolName): $detail"
-    }
-    $Structured = $response.result.structuredContent
-    if ($null -ne $Structured) {
-        $SuccessProperty = $Structured.PSObject.Properties["success"]
-        if ($null -ne $SuccessProperty `
-            -and $SuccessProperty.Value -isnot [bool]) {
-            throw "MCP structuredContent.success is not Boolean: $ToolName"
-        }
-        if ($null -ne $SuccessProperty -and -not $SuccessProperty.Value) {
-            throw "MCP tool returned structuredContent.success=false: $ToolName"
-        }
-    }
-    return $response
 }
 
 function Get-RequiredJsonPropertyValue {
@@ -1618,12 +1913,14 @@ function Get-LiveRuntimeNodeResult {
         [string[]]$Properties = @(),
         [int]$TimeoutSeconds = 60
     )
+    $TimeoutBudget = Get-McpRuntimeQueryTimeoutBudget `
+        -RequestedSeconds $TimeoutSeconds
     $Response = Invoke-McpJson "query_runtime_node" @{
         node_path = $NodePath
         properties = @($Properties)
         include_children = $false
-        timeout_msec = $TimeoutSeconds * 1000
-    } -TimeoutSeconds $TimeoutSeconds
+        timeout_msec = $TimeoutBudget.bridge_timeout_msec
+    } -TimeoutSeconds $TimeoutBudget.transport_timeout_seconds
     $Payload = $Response.result.structuredContent
     $Result = Get-RequiredJsonObject $Payload "result" "query_runtime_node"
     if (-not (Get-RequiredBoolean $Payload "success" "query_runtime_node") `
@@ -1866,34 +2163,26 @@ function Wait-LiveRuntimeReceipt {
         [int]$TimeoutSeconds = 60
     )
     $Deadline = [DateTimeOffset]::UtcNow.AddSeconds($TimeoutSeconds)
-    $LastReceiptError = ""
     do {
-        try {
-            $Receipt = Get-LiveRuntimeProperty `
-                -NodePath "V075RuntimeComposition" `
-                -PropertyName "_last_receipt" `
-                -Label "V075RuntimeComposition" `
-                -TimeoutSeconds ([Math]::Min(15, $TimeoutSeconds))
-            $IntentKind = [string]$Receipt.intent_kind
-            $IntentId = [string]$Receipt.intent_id
-            if ($IntentKind -ceq $ExpectedIntentKind `
-                -and -not [string]::IsNullOrWhiteSpace($IntentId) `
-                -and ([string]::IsNullOrEmpty($PreviousIntentId) `
-                    -or $IntentId -cne $PreviousIntentId)) {
-                return $Receipt
-            }
-        } catch {
-            # Child bridge restarts during a real new-game transition are
-            # transient only inside this bounded receipt poll.
-            $LastReceiptError = $_.Exception.Message
+        $Receipt = Get-LiveRuntimeProperty `
+            -NodePath "V075RuntimeComposition" `
+            -PropertyName "_last_receipt" `
+            -Label "V075RuntimeComposition" `
+            -TimeoutSeconds ([Math]::Min(15, $TimeoutSeconds))
+        $IntentKind = [string]$Receipt.intent_kind
+        $IntentId = [string]$Receipt.intent_id
+        if ($IntentKind -ceq $ExpectedIntentKind `
+            -and -not [string]::IsNullOrWhiteSpace($IntentId) `
+            -and ([string]::IsNullOrEmpty($PreviousIntentId) `
+                -or $IntentId -cne $PreviousIntentId)) {
+            return $Receipt
         }
         $null = Invoke-McpJson "wait_msec" @{ duration = 250 }
     } while ([DateTimeOffset]::UtcNow -lt $Deadline)
     throw (
-        "Timed out waiting for new authoritative receipt: {0}; previous={1}; last_bridge_error={2}" -f
+        "Timed out waiting for new authoritative receipt: {0}; previous={1}" -f
         $ExpectedIntentKind,
-        $PreviousIntentId,
-        $LastReceiptError
+        $PreviousIntentId
     )
 }
 
@@ -1951,7 +2240,7 @@ function Wait-LiveRuntimeText {
             -NodePath $NodePath `
             -PropertyName "text" `
             -Label $Label `
-            -TimeoutSeconds ([Math]::Min(15, $TimeoutSeconds)))
+            -TimeoutSeconds ([Math]::Min(30, $TimeoutSeconds)))
         if ($LastText -ceq $ExpectedText) {
             return $LastText
         }
@@ -2242,7 +2531,7 @@ while ([DateTimeOffset]::UtcNow -lt $GameplayDeadline) {
         -NodePath $ActionStatusPath `
         -PropertyName "text" `
         -Label "ActionStatus" `
-        -TimeoutSeconds 15)
+        -TimeoutSeconds 30)
     if ($ActionStatus.StartsWith("RUNTIME FAULT", [StringComparison]::Ordinal)) {
         throw "Natural production UI loop entered runtime fault: $ActionStatus"
     }
@@ -3317,21 +3606,77 @@ if ($McpProjectErrorCount -ne 0 `
 "MCP_CONSOLE_RUNTIME_LINE_COUNT=$($FinalRuntimeLogLines.Count)"
 "MCP_CONSOLE_EDITOR_LINE_COUNT=$($LaunchLogLines.Count)"
 
+$McpRawEvidenceRows = [object[]]@($script:McpRawEvidence)
+$McpRawEvidenceIntegrity = Get-McpRawEvidenceIntegrityGate `
+    -Rows $McpRawEvidenceRows `
+    -RawRoot $McpRawEvidenceRoot
+if (-not [bool]$McpRawEvidenceIntegrity.green `
+    -or [int]$McpRawEvidenceIntegrity.failed_attempt_count -ne 0 `
+    -or [int]$McpRawEvidenceIntegrity.invoke_error_count -ne 0 `
+    -or [int]$McpRawEvidenceIntegrity.orphan_invoke_error_count -ne 0 `
+    -or [int]$McpRawEvidenceIntegrity.orphan_raw_response_count -ne 0 `
+    -or [int]$McpRawEvidenceIntegrity.missing_raw_response_count -ne 0 `
+    -or [int]$McpRawEvidenceIntegrity.actual_raw_response_count `
+        -ne $McpRawEvidenceRows.Count `
+    -or [int]$McpRawEvidenceIntegrity.ledger_raw_response_count `
+        -ne $McpRawEvidenceRows.Count `
+    -or [int]$McpRawEvidenceIntegrity.validated_success_count `
+        -ne $McpRawEvidenceRows.Count `
+    -or [int]$McpRawEvidenceIntegrity.raw_file_verified_count `
+        -ne $McpRawEvidenceRows.Count) {
+    throw (
+        "MCP raw evidence ledger failed its success boundary: {0}" -f
+        ($McpRawEvidenceIntegrity | ConvertTo-Json -Depth 12 -Compress)
+    )
+}
 $McpRawEvidenceManifest = [ordered]@{
-    schema = "SpaceSyndicateExactShaMcpRawEvidenceManifestV1"
+    schema = "SpaceSyndicateExactShaMcpRawEvidenceManifestV2"
     head_sha = $HeadSha
     tree_sha = $TreeSha
     launch_pid = [int]$LaunchResult.pid
     launch_process_start_utc = $LaunchProcessStartUtc.ToString("o")
-    response_count = $script:McpRawEvidence.Count
-    responses = @($script:McpRawEvidence)
+    response_count = $McpRawEvidenceRows.Count
+    sequence_first = [int]$McpRawEvidenceIntegrity.sequence_first
+    sequence_last = [int]$McpRawEvidenceIntegrity.sequence_last
+    validated_success_count = `
+        [int]$McpRawEvidenceIntegrity.validated_success_count
+    failed_attempt_count = [int]$McpRawEvidenceIntegrity.failed_attempt_count
+    invoke_error_count = [int]$McpRawEvidenceIntegrity.invoke_error_count
+    orphan_invoke_error_count = `
+        [int]$McpRawEvidenceIntegrity.orphan_invoke_error_count
+    actual_raw_response_count = `
+        [int]$McpRawEvidenceIntegrity.actual_raw_response_count
+    ledger_raw_response_count = `
+        [int]$McpRawEvidenceIntegrity.ledger_raw_response_count
+    orphan_raw_response_count = `
+        [int]$McpRawEvidenceIntegrity.orphan_raw_response_count
+    orphan_raw_response_paths = `
+        [object[]]$McpRawEvidenceIntegrity.orphan_raw_response_paths
+    missing_raw_response_count = `
+        [int]$McpRawEvidenceIntegrity.missing_raw_response_count
+    missing_raw_response_paths = `
+        [object[]]$McpRawEvidenceIntegrity.missing_raw_response_paths
+    raw_file_verified_count = `
+        [int]$McpRawEvidenceIntegrity.raw_file_verified_count
+    integrity_green = [bool]$McpRawEvidenceIntegrity.green
+    integrity = $McpRawEvidenceIntegrity
+    responses = $McpRawEvidenceRows
 }
 $McpRawEvidenceManifestPath = Join-Path `
     $ValidationEvidenceRoot `
     "mcp-raw-evidence-manifest.json"
 Write-AtomicUtf8Json $McpRawEvidenceManifestPath $McpRawEvidenceManifest
 $McpRawEvidenceManifestSha256 = Get-FileSha256 $McpRawEvidenceManifestPath
-"MCP_RAW_RESPONSE_COUNT=$($script:McpRawEvidence.Count)"
+"MCP_RAW_RESPONSE_COUNT=$($McpRawEvidenceRows.Count)"
+"MCP_RAW_VALIDATED_SUCCESS_COUNT=$($McpRawEvidenceIntegrity.validated_success_count)"
+"MCP_RAW_FAILED_ATTEMPT_COUNT=$($McpRawEvidenceIntegrity.failed_attempt_count)"
+"MCP_RAW_INVOKE_ERROR_COUNT=$($McpRawEvidenceIntegrity.invoke_error_count)"
+"MCP_RAW_ORPHAN_INVOKE_ERROR_COUNT=$($McpRawEvidenceIntegrity.orphan_invoke_error_count)"
+"MCP_RAW_ACTUAL_RESPONSE_COUNT=$($McpRawEvidenceIntegrity.actual_raw_response_count)"
+"MCP_RAW_LEDGER_RESPONSE_COUNT=$($McpRawEvidenceIntegrity.ledger_raw_response_count)"
+"MCP_RAW_ORPHAN_RESPONSE_COUNT=$($McpRawEvidenceIntegrity.orphan_raw_response_count)"
+"MCP_RAW_MISSING_RESPONSE_COUNT=$($McpRawEvidenceIntegrity.missing_raw_response_count)"
+"MCP_RAW_INTEGRITY_GREEN=$($McpRawEvidenceIntegrity.green.ToString().ToLowerInvariant())"
 "MCP_RAW_EVIDENCE_MANIFEST_SHA256=$McpRawEvidenceManifestSha256"
 
 $PostMcpCleanupIssues = [Collections.Generic.List[string]]::new()
@@ -4385,6 +4730,80 @@ if (-not (Test-Path -LiteralPath $UidAllowlistSourcePath -PathType Leaf) `
     -or $MissingUids.Count -ne $ExpectedPostViewportUidMissingCount) {
     throw "Final generated-UID authority re-attestation failed."
 }
+$FinalMcpRawEvidenceManifestReadback = $null
+if (-not (Test-Path `
+        -LiteralPath $McpRawEvidenceManifestPath `
+        -PathType Leaf) `
+    -or (Get-FileSha256 $McpRawEvidenceManifestPath) `
+        -cne $McpRawEvidenceManifestSha256) {
+    throw "MCP raw evidence manifest changed before final re-attestation."
+}
+try {
+    $FinalMcpRawEvidenceManifestReadback = (
+        [Text.UTF8Encoding]::new($false, $true).GetString(
+            [IO.File]::ReadAllBytes($McpRawEvidenceManifestPath)
+        ) | ConvertFrom-Json
+    )
+} catch {
+    throw "MCP raw evidence manifest is not strict UTF-8 JSON: $_"
+}
+$FinalMcpRawEvidenceRows = [object[]]@(
+    $FinalMcpRawEvidenceManifestReadback.responses
+)
+$FinalMcpRawEvidenceIntegrity = Get-McpRawEvidenceIntegrityGate `
+    -Rows $FinalMcpRawEvidenceRows `
+    -RawRoot $McpRawEvidenceRoot
+if ([string]$FinalMcpRawEvidenceManifestReadback.schema `
+        -cne "SpaceSyndicateExactShaMcpRawEvidenceManifestV2" `
+    -or [string]$FinalMcpRawEvidenceManifestReadback.head_sha -cne $HeadSha `
+    -or [string]$FinalMcpRawEvidenceManifestReadback.tree_sha -cne $TreeSha `
+    -or [int]$FinalMcpRawEvidenceManifestReadback.launch_pid `
+        -ne [int]$LaunchResult.pid `
+    -or [string]$FinalMcpRawEvidenceManifestReadback.launch_process_start_utc `
+        -cne $LaunchProcessStartUtc.ToString("o") `
+    -or [int]$FinalMcpRawEvidenceManifestReadback.response_count `
+        -ne $McpRawEvidenceRows.Count `
+    -or $FinalMcpRawEvidenceRows.Count -ne $McpRawEvidenceRows.Count `
+    -or [int]$FinalMcpRawEvidenceManifestReadback.sequence_first -ne 1 `
+    -or [int]$FinalMcpRawEvidenceManifestReadback.sequence_last `
+        -ne $McpRawEvidenceRows.Count `
+    -or [int]$FinalMcpRawEvidenceManifestReadback.validated_success_count `
+        -ne $McpRawEvidenceRows.Count `
+    -or [int]$FinalMcpRawEvidenceManifestReadback.failed_attempt_count -ne 0 `
+    -or [int]$FinalMcpRawEvidenceManifestReadback.invoke_error_count -ne 0 `
+    -or [int]$FinalMcpRawEvidenceManifestReadback.orphan_invoke_error_count -ne 0 `
+    -or [int]$FinalMcpRawEvidenceManifestReadback.actual_raw_response_count `
+        -ne $McpRawEvidenceRows.Count `
+    -or [int]$FinalMcpRawEvidenceManifestReadback.ledger_raw_response_count `
+        -ne $McpRawEvidenceRows.Count `
+    -or [int]$FinalMcpRawEvidenceManifestReadback.orphan_raw_response_count `
+        -ne 0 `
+    -or @($FinalMcpRawEvidenceManifestReadback.orphan_raw_response_paths).Count `
+        -ne 0 `
+    -or [int]$FinalMcpRawEvidenceManifestReadback.missing_raw_response_count `
+        -ne 0 `
+    -or @($FinalMcpRawEvidenceManifestReadback.missing_raw_response_paths).Count `
+        -ne 0 `
+    -or [int]$FinalMcpRawEvidenceManifestReadback.raw_file_verified_count `
+        -ne $McpRawEvidenceRows.Count `
+    -or $FinalMcpRawEvidenceManifestReadback.integrity_green -isnot [bool] `
+    -or -not [bool]$FinalMcpRawEvidenceManifestReadback.integrity_green `
+    -or -not [bool]$FinalMcpRawEvidenceIntegrity.green `
+    -or [int]$FinalMcpRawEvidenceIntegrity.failed_attempt_count -ne 0 `
+    -or [int]$FinalMcpRawEvidenceIntegrity.invoke_error_count -ne 0 `
+    -or [int]$FinalMcpRawEvidenceIntegrity.orphan_invoke_error_count -ne 0 `
+    -or [int]$FinalMcpRawEvidenceIntegrity.actual_raw_response_count `
+        -ne $McpRawEvidenceRows.Count `
+    -or [int]$FinalMcpRawEvidenceIntegrity.ledger_raw_response_count `
+        -ne $McpRawEvidenceRows.Count `
+    -or [int]$FinalMcpRawEvidenceIntegrity.orphan_raw_response_count -ne 0 `
+    -or [int]$FinalMcpRawEvidenceIntegrity.missing_raw_response_count -ne 0 `
+    -or [int]$FinalMcpRawEvidenceIntegrity.validated_success_count `
+        -ne $McpRawEvidenceRows.Count `
+    -or [int]$FinalMcpRawEvidenceIntegrity.raw_file_verified_count `
+        -ne $McpRawEvidenceRows.Count) {
+    throw "Final MCP raw evidence ledger re-attestation failed."
+}
 $FinalReattestation = [ordered]@{
     schema = "SpaceSyndicateExactShaFinalReattestationV1"
     reattested_at_utc = [DateTimeOffset]::UtcNow.ToString("o")
@@ -4480,7 +4899,34 @@ $FinalReattestation = [ordered]@{
     canonical_import_expected_restore_count = $ExpectedImportRestoreCount
     final_tracked_drift_count = $FinalTrackedDrift.Count
     final_untracked_drift_count = $FinalUntrackedDrift.Count
+    mcp_raw_evidence_manifest_path = $McpRawEvidenceManifestPath
     mcp_raw_evidence_manifest_sha256 = $McpRawEvidenceManifestSha256
+    mcp_raw_response_count = $FinalMcpRawEvidenceRows.Count
+    mcp_raw_sequence_first = [int]$FinalMcpRawEvidenceIntegrity.sequence_first
+    mcp_raw_sequence_last = [int]$FinalMcpRawEvidenceIntegrity.sequence_last
+    mcp_raw_validated_success_count = `
+        [int]$FinalMcpRawEvidenceIntegrity.validated_success_count
+    mcp_raw_failed_attempt_count = `
+        [int]$FinalMcpRawEvidenceIntegrity.failed_attempt_count
+    mcp_raw_invoke_error_count = `
+        [int]$FinalMcpRawEvidenceIntegrity.invoke_error_count
+    mcp_raw_orphan_invoke_error_count = `
+        [int]$FinalMcpRawEvidenceIntegrity.orphan_invoke_error_count
+    mcp_raw_actual_response_count = `
+        [int]$FinalMcpRawEvidenceIntegrity.actual_raw_response_count
+    mcp_raw_ledger_response_count = `
+        [int]$FinalMcpRawEvidenceIntegrity.ledger_raw_response_count
+    mcp_raw_orphan_response_count = `
+        [int]$FinalMcpRawEvidenceIntegrity.orphan_raw_response_count
+    mcp_raw_orphan_response_paths = `
+        [object[]]$FinalMcpRawEvidenceIntegrity.orphan_raw_response_paths
+    mcp_raw_missing_response_count = `
+        [int]$FinalMcpRawEvidenceIntegrity.missing_raw_response_count
+    mcp_raw_missing_response_paths = `
+        [object[]]$FinalMcpRawEvidenceIntegrity.missing_raw_response_paths
+    mcp_raw_file_verified_count = `
+        [int]$FinalMcpRawEvidenceIntegrity.raw_file_verified_count
+    mcp_raw_integrity_green = [bool]$FinalMcpRawEvidenceIntegrity.green
     changed_resource_evidence_path = $ResourceEvidencePath
     changed_resource_evidence_sha256 = $ResourceEvidenceSha256
     changed_script_passed_count = $ScriptPassed

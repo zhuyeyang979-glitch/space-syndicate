@@ -1876,6 +1876,266 @@ if ($ValidateOnly) {
         . ([scriptblock]::Create($validationUidWarningFunctionSource))
         $validationUidWarningExtractedFunctionCount += 1
     }
+    $validationMcpEvidenceFunctionNames = [string[]]@(
+        "Get-McpRuntimeQueryTimeoutBudget",
+        "Get-McpRawEvidenceIntegrityGate"
+    )
+    $validationMcpEvidenceExtractedFunctionCount = 0
+    foreach ($validationMcpEvidenceFunctionName in $validationMcpEvidenceFunctionNames) {
+        $validationMcpEvidenceDefinitions = @(
+            $combinedValidation.ast.FindAll({
+                param($candidate)
+                $candidate `
+                    -is [Management.Automation.Language.FunctionDefinitionAst] `
+                    -and [string]$candidate.Name `
+                        -ceq $validationMcpEvidenceFunctionName
+            }, $true)
+        )
+        if ($validationMcpEvidenceDefinitions.Count -ne 1) {
+            throw (
+                "Expected one production MCP evidence function definition: " +
+                "$validationMcpEvidenceFunctionName actual=" +
+                $validationMcpEvidenceDefinitions.Count
+            )
+        }
+        . ([scriptblock]::Create(
+            [string]$validationMcpEvidenceDefinitions[0].Extent.Text
+        ))
+        $validationMcpEvidenceExtractedFunctionCount += 1
+    }
+    $validationBudget15 = Get-McpRuntimeQueryTimeoutBudget -RequestedSeconds 15
+    $validationBudget30 = Get-McpRuntimeQueryTimeoutBudget -RequestedSeconds 30
+    $validationBudget60 = Get-McpRuntimeQueryTimeoutBudget -RequestedSeconds 60
+    $validationMcpTimeoutBudgetGreen = `
+        [int]$validationBudget15.bridge_timeout_seconds -eq 15 `
+        -and [int]$validationBudget15.bridge_timeout_msec -eq 15000 `
+        -and [int]$validationBudget15.transport_timeout_seconds -eq 30 `
+        -and [int]$validationBudget30.bridge_timeout_seconds -eq 30 `
+        -and [int]$validationBudget30.bridge_timeout_msec -eq 30000 `
+        -and [int]$validationBudget30.transport_timeout_seconds -eq 45 `
+        -and [int]$validationBudget60.bridge_timeout_seconds -eq 30 `
+        -and [int]$validationBudget60.bridge_timeout_msec -eq 30000 `
+        -and [int]$validationBudget60.transport_timeout_seconds -eq 45
+    if (-not $validationMcpTimeoutBudgetGreen) {
+        throw "Extracted production MCP timeout-budget self-test failed."
+    }
+
+    function New-ValidationMcpRawRow {
+        param(
+            [Parameter(Mandatory = $true)][int]$Sequence,
+            [Parameter(Mandatory = $true)][string]$RawPath
+        )
+        return [pscustomobject][ordered]@{
+            sequence = $Sequence
+            tool_name = "validation_probe"
+            arguments = @{}
+            arguments_sha256 = ("0" * 64)
+            timeout_seconds = 30
+            output_image = ""
+            invoke_exit_code = 0
+            invocation_failure = $false
+            raw_wire_response_created = $true
+            raw_path = $RawPath
+            raw_sha256 = Get-RunnerFileSha256 $RawPath
+            raw_byte_count = [int64](Get-Item -LiteralPath $RawPath).Length
+            invoke_error_path = $null
+            invoke_error_sha256 = $null
+            validation_succeeded = $true
+            failure_stage = $null
+            failure_message = $null
+            started_at_utc = "2026-08-09T00:00:00.0000000+00:00"
+            completed_at_utc = "2026-08-09T00:00:00.0010000+00:00"
+            elapsed_msec = 1.0
+        }
+    }
+
+    $validationMcpTempRoot = [IO.Path]::GetFullPath(
+        [IO.Path]::GetTempPath()
+    ).TrimEnd("\", "/")
+    $validationMcpFixtureName = `
+        "SpaceSyndicate-v075-mcp-ledger-validation-" + `
+        [guid]::NewGuid().ToString("N")
+    $validationMcpFixtureRoot = [IO.Path]::GetFullPath(
+        (Join-Path $validationMcpTempRoot $validationMcpFixtureName)
+    )
+    if (-not $validationMcpFixtureRoot.StartsWith(
+            $validationMcpTempRoot + [IO.Path]::DirectorySeparatorChar,
+            [StringComparison]::OrdinalIgnoreCase
+        ) `
+        -or [IO.Path]::GetFileName($validationMcpFixtureRoot) `
+            -cne $validationMcpFixtureName) {
+        throw "MCP raw-ledger self-test fixture escaped the temp root."
+    }
+    $null = [IO.Directory]::CreateDirectory($validationMcpFixtureRoot)
+    try {
+        $validationMcpPositiveRoot = Join-Path `
+            $validationMcpFixtureRoot `
+            "positive"
+        $validationMcpSwallowedRoot = Join-Path `
+            $validationMcpFixtureRoot `
+            "swallowed"
+        $validationMcpOrphanRoot = Join-Path `
+            $validationMcpFixtureRoot `
+            "orphan"
+        $validationMcpEmptyRoot = Join-Path `
+            $validationMcpFixtureRoot `
+            "empty"
+        foreach ($validationMcpFixtureDirectory in @(
+                $validationMcpPositiveRoot,
+                $validationMcpSwallowedRoot,
+                $validationMcpOrphanRoot,
+                $validationMcpEmptyRoot
+            )) {
+            $null = [IO.Directory]::CreateDirectory(
+                $validationMcpFixtureDirectory
+            )
+        }
+        [byte[]]$validationMcpRawBytes = `
+            [Text.UTF8Encoding]::new($false, $true).GetBytes(
+                '{"jsonrpc":"2.0","id":1,"result":{"ok":true}}'
+            )
+        $validationMcpGoodRawPath = Join-Path `
+            $validationMcpPositiveRoot `
+            "0001-validation-probe.jsonrpc.json"
+        $validationMcpSwallowedFirstRawPath = Join-Path `
+            $validationMcpSwallowedRoot `
+            "0001-validation-probe.jsonrpc.json"
+        $validationMcpSwallowedSecondRawPath = Join-Path `
+            $validationMcpSwallowedRoot `
+            "0002-validation-probe.jsonrpc.json"
+        $validationMcpOrphanLedgerRawPath = Join-Path `
+            $validationMcpOrphanRoot `
+            "0001-validation-probe.jsonrpc.json"
+        $validationMcpOrphanUnledgeredRawPath = Join-Path `
+            $validationMcpOrphanRoot `
+            "0002-unledgered.jsonrpc.json"
+        foreach ($validationMcpFixturePath in @(
+                $validationMcpGoodRawPath,
+                $validationMcpSwallowedFirstRawPath,
+                $validationMcpSwallowedSecondRawPath,
+                $validationMcpOrphanLedgerRawPath,
+                $validationMcpOrphanUnledgeredRawPath
+            )) {
+            [IO.File]::WriteAllBytes(
+                $validationMcpFixturePath,
+                $validationMcpRawBytes
+            )
+        }
+
+        $validationMcpGoodRow = New-ValidationMcpRawRow `
+            -Sequence 1 `
+            -RawPath $validationMcpGoodRawPath
+        $validationMcpPositiveGate = Get-McpRawEvidenceIntegrityGate `
+            -Rows ([object[]]@($validationMcpGoodRow)) `
+            -RawRoot $validationMcpPositiveRoot
+        if (-not [bool]$validationMcpPositiveGate.green `
+            -or [int]$validationMcpPositiveGate.response_count -ne 1 `
+            -or [int]$validationMcpPositiveGate.validated_success_count -ne 1 `
+            -or [int]$validationMcpPositiveGate.failed_attempt_count -ne 0 `
+            -or [int]$validationMcpPositiveGate.invoke_error_count -ne 0 `
+            -or [int]$validationMcpPositiveGate.orphan_invoke_error_count -ne 0 `
+            -or [int]$validationMcpPositiveGate.actual_raw_response_count -ne 1 `
+            -or [int]$validationMcpPositiveGate.ledger_raw_response_count -ne 1 `
+            -or [int]$validationMcpPositiveGate.orphan_raw_response_count -ne 0 `
+            -or [int]$validationMcpPositiveGate.missing_raw_response_count -ne 0 `
+            -or [int]$validationMcpPositiveGate.raw_file_verified_count -ne 1) {
+            throw "Extracted production MCP raw-ledger positive self-test failed."
+        }
+
+        $validationMcpGapRow = New-ValidationMcpRawRow `
+            -Sequence 2 `
+            -RawPath $validationMcpGoodRawPath
+        $validationMcpGapGate = Get-McpRawEvidenceIntegrityGate `
+            -Rows ([object[]]@($validationMcpGapRow)) `
+            -RawRoot $validationMcpPositiveRoot
+        $validationMcpTamperRow = New-ValidationMcpRawRow `
+            -Sequence 1 `
+            -RawPath $validationMcpGoodRawPath
+        $validationMcpTamperRow.raw_sha256 = ("f" * 64)
+        $validationMcpTamperGate = Get-McpRawEvidenceIntegrityGate `
+            -Rows ([object[]]@($validationMcpTamperRow)) `
+            -RawRoot $validationMcpPositiveRoot
+        $validationMcpMissingRow = New-ValidationMcpRawRow `
+            -Sequence 1 `
+            -RawPath $validationMcpGoodRawPath
+        $validationMcpMissingRow.raw_path = Join-Path `
+            $validationMcpEmptyRoot `
+            "0001-missing.jsonrpc.json"
+        $validationMcpMissingGate = Get-McpRawEvidenceIntegrityGate `
+            -Rows ([object[]]@($validationMcpMissingRow)) `
+            -RawRoot $validationMcpEmptyRoot
+        $validationMcpSwallowedFailureRow = New-ValidationMcpRawRow `
+            -Sequence 1 `
+            -RawPath $validationMcpSwallowedFirstRawPath
+        $validationMcpSwallowedFailureRow.invoke_exit_code = 1
+        $validationMcpSwallowedFailureRow.invocation_failure = $true
+        $validationMcpSwallowedFailureRow.validation_succeeded = $false
+        $validationMcpSwallowedFailureRow.failure_stage = "invoke_process"
+        $validationMcpSwallowedFailureRow.failure_message = "synthetic timeout"
+        $validationMcpSwallowedFailureRow.invoke_error_path = Join-Path `
+            $validationMcpSwallowedRoot `
+            "synthetic.invoke-error.json"
+        $validationMcpSwallowedFailureRow.invoke_error_sha256 = ("e" * 64)
+        $validationMcpLaterSuccessRow = New-ValidationMcpRawRow `
+            -Sequence 2 `
+            -RawPath $validationMcpSwallowedSecondRawPath
+        $validationMcpSwallowedFailureGate = Get-McpRawEvidenceIntegrityGate `
+            -Rows ([object[]]@(
+                $validationMcpSwallowedFailureRow,
+                $validationMcpLaterSuccessRow
+            )) `
+            -RawRoot $validationMcpSwallowedRoot
+        $validationMcpEmptyGate = Get-McpRawEvidenceIntegrityGate `
+            -Rows ([object[]]@()) `
+            -RawRoot $validationMcpEmptyRoot
+        $validationMcpOrphanRow = New-ValidationMcpRawRow `
+            -Sequence 1 `
+            -RawPath $validationMcpOrphanLedgerRawPath
+        $validationMcpOrphanGate = Get-McpRawEvidenceIntegrityGate `
+            -Rows ([object[]]@($validationMcpOrphanRow)) `
+            -RawRoot $validationMcpOrphanRoot
+        $validationMcpLedgerNegativeCaseCount = 6
+        $validationMcpLedgerNegativeGreen = `
+            -not [bool]$validationMcpGapGate.green `
+            -and [int]$validationMcpGapGate.failed_attempt_count -eq 1 `
+            -and -not [bool]$validationMcpTamperGate.green `
+            -and [int]$validationMcpTamperGate.failed_attempt_count -eq 1 `
+            -and -not [bool]$validationMcpMissingGate.green `
+            -and [int]$validationMcpMissingGate.failed_attempt_count -eq 1 `
+            -and [int]$validationMcpMissingGate.missing_raw_response_count -eq 1 `
+            -and -not [bool]$validationMcpSwallowedFailureGate.green `
+            -and [int]$validationMcpSwallowedFailureGate.failed_attempt_count -eq 1 `
+            -and [int]$validationMcpSwallowedFailureGate.invoke_error_count -eq 1 `
+            -and -not [bool]$validationMcpEmptyGate.green `
+            -and -not [bool]$validationMcpOrphanGate.green `
+            -and [int]$validationMcpOrphanGate.actual_raw_response_count -eq 2 `
+            -and [int]$validationMcpOrphanGate.ledger_raw_response_count -eq 1 `
+            -and [int]$validationMcpOrphanGate.orphan_raw_response_count -eq 1 `
+            -and [string]$validationMcpOrphanGate.orphan_raw_response_paths[0] `
+                -ceq [IO.Path]::GetFullPath($validationMcpOrphanUnledgeredRawPath)
+        if (-not $validationMcpLedgerNegativeGreen) {
+            throw "Extracted production MCP raw-ledger negative self-test failed."
+        }
+    } finally {
+        $validationMcpCleanupRoot = [IO.Path]::GetFullPath(
+            $validationMcpFixtureRoot
+        )
+        if (-not $validationMcpCleanupRoot.StartsWith(
+                $validationMcpTempRoot + [IO.Path]::DirectorySeparatorChar,
+                [StringComparison]::OrdinalIgnoreCase
+            ) `
+            -or [IO.Path]::GetFileName($validationMcpCleanupRoot) `
+                -cne $validationMcpFixtureName) {
+            throw "Refusing unsafe MCP raw-ledger fixture cleanup path."
+        }
+        if (Test-Path -LiteralPath $validationMcpCleanupRoot) {
+            Remove-Item `
+                -LiteralPath $validationMcpCleanupRoot `
+                -Recurse `
+                -Force `
+                -ErrorAction Stop
+        }
+    }
     $forbiddenDoubleBackslashReplacement = '.Replace("\\", "/")'
     $requiredSingleBackslashReplacement = '.Replace("\", "/")'
     $singleBackslashReplacementCount = [regex]::Matches(
@@ -2400,7 +2660,7 @@ if ($ValidateOnly) {
         throw "Extracted production UID warning classifier self-test failed."
     }
     [ordered]@{
-        schema = "SpaceSyndicateV075McpRunbookValidationV2"
+        schema = "SpaceSyndicateV075McpRunbookValidationV3"
         status = "PASS"
         runbook_path = $resolvedRunbook
         git_worktree = $gitRoot
@@ -2419,6 +2679,36 @@ if ($ValidateOnly) {
         windows_path_separator_contract_green = $true
         windows_path_separator_replacement_count = $singleBackslashReplacementCount
         transient_cleanup_empty_issue_binding_green = $true
+        mcp_evidence_extracted_function_count = `
+            $validationMcpEvidenceExtractedFunctionCount
+        mcp_timeout_budget_green = $validationMcpTimeoutBudgetGreen
+        mcp_timeout_budget_15_bridge_seconds = `
+            [int]$validationBudget15.bridge_timeout_seconds
+        mcp_timeout_budget_15_transport_seconds = `
+            [int]$validationBudget15.transport_timeout_seconds
+        mcp_timeout_budget_30_bridge_seconds = `
+            [int]$validationBudget30.bridge_timeout_seconds
+        mcp_timeout_budget_30_transport_seconds = `
+            [int]$validationBudget30.transport_timeout_seconds
+        mcp_timeout_budget_60_bridge_seconds = `
+            [int]$validationBudget60.bridge_timeout_seconds
+        mcp_timeout_budget_60_transport_seconds = `
+            [int]$validationBudget60.transport_timeout_seconds
+        mcp_raw_ledger_positive_green = [bool]$validationMcpPositiveGate.green
+        mcp_raw_ledger_negative_green = $validationMcpLedgerNegativeGreen
+        mcp_raw_ledger_negative_case_count = `
+            $validationMcpLedgerNegativeCaseCount
+        mcp_raw_ledger_sequence_gap_rejected = `
+            -not [bool]$validationMcpGapGate.green
+        mcp_raw_ledger_hash_tamper_rejected = `
+            -not [bool]$validationMcpTamperGate.green
+        mcp_raw_ledger_missing_raw_rejected = `
+            -not [bool]$validationMcpMissingGate.green
+        mcp_raw_ledger_swallowed_failure_rejected = `
+            -not [bool]$validationMcpSwallowedFailureGate.green
+        mcp_raw_ledger_empty_rejected = -not [bool]$validationMcpEmptyGate.green
+        mcp_raw_ledger_orphan_raw_rejected = `
+            -not [bool]$validationMcpOrphanGate.green
         canonical_import_authority_green = $true
         canonical_import_path_count = $validationImportPaths.Count
         canonical_import_path_set_sha256 = $validationImportPathSetSha
