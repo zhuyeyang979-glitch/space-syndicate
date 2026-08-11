@@ -1,0 +1,27 @@
+extends SceneTree
+
+const AtomicRuntimeTestSuite := preload(
+	"res://tests/support/v075_atomic_runtime_test_suite.gd"
+)
+const CASE_ID := "runtime_owner_no_residual_private_skill_state"
+const RESULT_LABEL := "V075_RUNTIME_OWNER_NO_RESIDUAL_PRIVATE_SKILL_STATE_TEST"
+
+
+func _init() -> void:
+	call_deferred("_run")
+
+
+func _run() -> void:
+	var report := AtomicRuntimeTestSuite.run_case(self, CASE_ID)
+	var passed := str(report.get("status", "FAIL")) == "PASS"
+	print(
+		"%s|status=%s|checks=%d|failures=%d|details=%s"
+		% [
+			RESULT_LABEL,
+			str(report.get("status", "FAIL")),
+			int(report.get("checks", 0)),
+			int(report.get("failure_count", -1)),
+			JSON.stringify(report.get("failures", [])),
+		]
+	)
+	quit(0 if passed else 1)

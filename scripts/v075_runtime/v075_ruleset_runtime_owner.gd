@@ -25,7 +25,30 @@ var _activation_count := 0
 var _save_request_count := 0
 var _load_request_count := 0
 var _last_session_id := ""
+var _pending_activation: Dictionary = {}
+var _committed_activation: Dictionary = {}
+var _finalized_activation: Dictionary = {}
+var _publication_in_progress := false
+var _published_activation_count := 0
+var _activation_rollback_count := 0
+var _new_game_publication_stage_authority: Callable = Callable()
+var _new_game_publication_stage_authority_required := false
 
+
+func _new_game_publication_stage_authorized(required_stage: String) -> bool:
+	if not _new_game_publication_stage_authority_required:
+		return true
+	if not _new_game_publication_stage_authority.is_valid():
+		return false
+	var authorization: Variant = (
+		_new_game_publication_stage_authority.call(required_stage)
+	)
+	return typeof(authorization) == TYPE_BOOL and bool(authorization)
+
+
+func _clear_new_game_publication_stage_authority() -> void:
+	_new_game_publication_stage_authority = Callable()
+	_new_game_publication_stage_authority_required = false
 
 func activate_for_new_game(
 	session_id: String,
@@ -33,9 +56,49 @@ func activate_for_new_game(
 	local_human_count: int = REQUIRED_LOCAL_HUMAN_COUNT,
 	map_request: Dictionary = {}
 ) -> Dictionary:
+	var prepared := prepare_new_game_activation(
+		session_id,
+		player_count,
+		local_human_count,
+		map_request
+	)
+	if not bool(prepared.get("accepted", false)):
+		return prepared
+	var transaction_id := str(prepared.get("transaction_id", ""))
+	var committed := commit_prepared_new_game(transaction_id)
+	if not bool(committed.get("accepted", false)):
+		rollback_new_game_activation(transaction_id)
+		return committed
+	var sealed := seal_committed_new_game_publication(transaction_id)
+	if not bool(sealed.get("accepted", false)):
+		rollback_new_game_activation(transaction_id)
+		return sealed
+	var finalized := finalize_committed_new_game(transaction_id)
+	if not bool(finalized.get("accepted", false)):
+		rollback_new_game_activation(transaction_id)
+		return finalized
+	emit_finalized_new_game(transaction_id)
+	return finalized
+
+
+func prepare_new_game_activation(
+	session_id: String,
+	player_count: int,
+	local_human_count: int = REQUIRED_LOCAL_HUMAN_COUNT,
+	map_request: Dictionary = {},
+	publication_stage_authority: Callable = Callable()
+) -> Dictionary:
+	if (
+		not _pending_activation.is_empty()
+		or not _committed_activation.is_empty()
+		or not _finalized_activation.is_empty()
+		or _publication_in_progress
+	):
+		return _rejection("ruleset_activation_transaction_in_progress")
+	var normalized_session_id := session_id.strip_edges()
 	var receipt := validate_new_game_request({
 		"mode_id": SAMPLE_MODE_ID,
-		"session_id": session_id,
+		"session_id": normalized_session_id,
 		"player_count": player_count,
 		"local_human_count": local_human_count,
 		"ai_player_count": player_count - local_human_count,
@@ -43,17 +106,207 @@ func activate_for_new_game(
 	})
 	if not bool(receipt.get("accepted", false)):
 		return receipt
-	_activation_count += 1
-	_last_session_id = session_id.strip_edges()
-	var identity := identity_snapshot()
-	ruleset_activated.emit(identity)
-	return {
-		"accepted": true,
-		"reason_code": "v075_new_game_ruleset_activated",
-		"identity": identity,
+	_new_game_publication_stage_authority = publication_stage_authority
+	_new_game_publication_stage_authority_required = (
+		publication_stage_authority.is_valid()
+	)
+	var transaction_id := "ruleset.new_game.%s.%06d" % [
+		normalized_session_id.sha256_text().left(16),
+		_activation_count + 1,
+	]
+	_pending_activation = {
+		"schema": "V075RulesetActivationTransactionV1",
+		"transaction_id": transaction_id,
+		"session_id": normalized_session_id,
+		"checkpoint_activation_count": _activation_count,
+		"checkpoint_last_session_id": _last_session_id,
+		"checkpoint_published_activation_count": (
+			_published_activation_count
+		),
 		"map_request": (
 			receipt.get("map_request", {}) as Dictionary
 		).duplicate(true),
+		"sealed": false,
+	}
+	return {
+		"accepted": true,
+		"reason_code": "v075_new_game_ruleset_prepared",
+		"transaction_id": transaction_id,
+		"session_id": normalized_session_id,
+		"map_request": (
+			_pending_activation.get("map_request", {}) as Dictionary
+		).duplicate(true),
+	}
+
+
+func commit_prepared_new_game(transaction_id: String) -> Dictionary:
+	if (
+		_pending_activation.is_empty()
+		or transaction_id.is_empty()
+		or transaction_id != str(_pending_activation.get(
+			"transaction_id",
+			""
+		))
+	):
+		return _rejection("ruleset_activation_transaction_invalid")
+	_committed_activation = _pending_activation.duplicate(true)
+	_pending_activation = {}
+	_activation_count += 1
+	_last_session_id = str(_committed_activation.get("session_id", ""))
+	return {
+		"accepted": true,
+		"reason_code": "v075_new_game_ruleset_committed",
+		"transaction_id": transaction_id,
+		"identity": identity_snapshot(),
+		"map_request": (
+			_committed_activation.get("map_request", {}) as Dictionary
+		).duplicate(true),
+	}
+
+
+func seal_committed_new_game_publication(
+	transaction_id: String
+) -> Dictionary:
+	if (
+		_committed_activation.is_empty()
+		or transaction_id.is_empty()
+		or transaction_id != str(_committed_activation.get(
+			"transaction_id",
+			""
+		))
+	):
+		return _rejection("ruleset_activation_publication_not_ready")
+	_committed_activation["sealed"] = true
+	return {
+		"accepted": true,
+		"reason_code": "v075_ruleset_publication_sealed",
+		"transaction_id": transaction_id,
+		"pending_initialization_rollback": true,
+	}
+
+
+func finalize_committed_new_game(transaction_id: String) -> Dictionary:
+	if (
+		_committed_activation.is_empty()
+		or not bool(_committed_activation.get("sealed", false))
+		or transaction_id.is_empty()
+		or transaction_id != str(_committed_activation.get(
+			"transaction_id",
+			""
+		))
+	):
+		return _rejection("ruleset_activation_publication_not_sealed")
+	var finalized := _committed_activation.duplicate(true)
+	var normalized_map := (
+		finalized.get("map_request", {}) as Dictionary
+	).duplicate(true)
+	_committed_activation = {}
+	_published_activation_count += 1
+	var identity := identity_snapshot()
+	var receipt := {
+		"accepted": true,
+		"reason_code": "v075_new_game_ruleset_activated",
+		"transaction_id": transaction_id,
+		"identity": identity.duplicate(true),
+		"map_request": normalized_map,
+		"pending_initialization_rollback": false,
+		"ruleset_signal_publication_count": 1,
+	}
+	finalized["identity"] = identity.duplicate(true)
+	finalized["receipt"] = receipt.duplicate(true)
+	_finalized_activation = finalized
+	_publication_in_progress = true
+	return receipt
+
+
+func emit_finalized_new_game(transaction_id: String) -> void:
+	if (
+		not _publication_in_progress
+		or not _new_game_publication_stage_authorized(
+			"publish_ruleset_signal"
+		)
+		or _finalized_activation.is_empty()
+		or transaction_id.is_empty()
+		or transaction_id != str(_finalized_activation.get(
+			"transaction_id",
+			""
+		))
+	):
+		return
+	var identity := (
+		_finalized_activation.get("identity", {}) as Dictionary
+	).duplicate(true)
+	if identity.is_empty():
+		return
+	_finalized_activation = {}
+	ruleset_activated.emit(identity)
+	_publication_in_progress = false
+	_clear_new_game_publication_stage_authority()
+
+
+func publish_committed_new_game(transaction_id: String) -> Dictionary:
+	var finalized := finalize_committed_new_game(transaction_id)
+	if not bool(finalized.get("accepted", false)):
+		return finalized
+	emit_finalized_new_game(transaction_id)
+	return finalized
+
+
+func rollback_new_game_activation(transaction_id: String) -> Dictionary:
+	if _publication_in_progress or not _finalized_activation.is_empty():
+		return _rejection("ruleset_activation_publication_in_progress")
+	var transaction: Dictionary
+	if (
+		not _pending_activation.is_empty()
+		and transaction_id == str(_pending_activation.get(
+			"transaction_id",
+			""
+		))
+	):
+		transaction = _pending_activation.duplicate(true)
+	elif (
+		not _committed_activation.is_empty()
+		and transaction_id == str(_committed_activation.get(
+			"transaction_id",
+			""
+		))
+	):
+		transaction = _committed_activation.duplicate(true)
+	else:
+		return _rejection("ruleset_activation_rollback_transaction_invalid")
+	_activation_count = int(transaction.get(
+		"checkpoint_activation_count",
+		_activation_count
+	))
+	_last_session_id = str(transaction.get(
+		"checkpoint_last_session_id",
+		_last_session_id
+	))
+	_published_activation_count = int(transaction.get(
+		"checkpoint_published_activation_count",
+		_published_activation_count
+	))
+	_pending_activation = {}
+	_committed_activation = {}
+	_finalized_activation = {}
+	_publication_in_progress = false
+	_clear_new_game_publication_stage_authority()
+	_activation_rollback_count += 1
+	return {
+		"accepted": true,
+		"reason_code": "v075_ruleset_activation_rolled_back",
+		"transaction_id": transaction_id,
+		"activation_count": _activation_count,
+		"last_session_id": _last_session_id,
+		"activation_transaction_stage": _activation_transaction_stage(),
+		"pending_initialization_rollback": (
+			_activation_transaction_stage() in [
+				"prepared",
+				"committed",
+				"publication_sealed",
+			]
+		),
+		"published_activation_count": _published_activation_count,
 	}
 
 
@@ -179,6 +432,15 @@ func identity_snapshot() -> Dictionary:
 		),
 		"activation_count": _activation_count,
 		"last_session_id": _last_session_id,
+		"activation_transaction_stage": _activation_transaction_stage(),
+		"pending_initialization_rollback": (
+			_activation_transaction_stage() in [
+				"prepared",
+				"committed",
+				"publication_sealed",
+			]
+		),
+		"published_activation_count": _published_activation_count,
 	}
 
 
@@ -232,9 +494,30 @@ func capability_snapshot() -> Dictionary:
 	}
 
 
+func _activation_transaction_stage() -> String:
+	if not _pending_activation.is_empty():
+		return "prepared"
+	if not _committed_activation.is_empty():
+		return (
+			"publication_sealed"
+			if bool(_committed_activation.get("sealed", false))
+			else "committed"
+		)
+	return "idle"
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"identity": identity_snapshot(),
+		"activation_transaction_stage": _activation_transaction_stage(),
+		"activation_publication_finalized": (
+			not _finalized_activation.is_empty()
+		),
+		"activation_publication_in_progress": (
+			_publication_in_progress
+		),
+		"activation_rollback_count": _activation_rollback_count,
+		"published_activation_count": _published_activation_count,
 		"capabilities": capability_snapshot(),
 		"save_request_count": _save_request_count,
 		"load_request_count": _load_request_count,

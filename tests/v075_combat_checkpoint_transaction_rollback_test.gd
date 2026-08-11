@@ -10,13 +10,24 @@ var _checks := 0
 var _failures: Array[String] = []
 
 
+class BeginBatchFailRuntime extends V075RuntimeOwner:
+    func _facility_lock_batch(
+        _batch_id: String,
+        _player_ids: Array,
+        _hidden_order: Array,
+        _player_local_queues: Dictionary,
+        _facility_slots: Array
+    ) -> Dictionary:
+        return {}
+
 class FailingCompletionCombatOwner extends Node:
     var checkpoint_script: Script
     var facility_intent: Dictionary = {}
     var fail_completion_once := true
     var lineage_id := "fake.combat.mixed"
     var revision := 1
-    var phase := "ready"
+    var initialized := false
+    var phase := "idle"
     var batch_id := ""
     var military_locks: Dictionary = {}
     var processed_missions: Dictionary = {}
@@ -24,13 +35,75 @@ class FailingCompletionCombatOwner extends Node:
     var receipt_journal: Array = []
     var rollback_count := 0
     var completion_count := 0
+    var fail_initialize := false
+    var failed_initialize_reset_count := 0
+    var active_initialization_ownership_token := ""
+    var completed_initialization_cleanup_results_by_token: Dictionary = {}
 
     func _init(checkpoint: Script = null) -> void:
         checkpoint_script = checkpoint
 
+    func begin_initialization_transaction(context: Dictionary) -> Dictionary:
+        var transaction_id := str(context.get("ownership_token", ""))
+        var accepted := (
+            not transaction_id.is_empty()
+            and active_initialization_ownership_token.is_empty()
+            and not completed_initialization_cleanup_results_by_token.has(transaction_id)
+        )
+        if accepted:
+            active_initialization_ownership_token = transaction_id
+        return {
+            "schema": "V075CombatInitializationTransactionReceiptV1",
+            "accepted": accepted,
+            "reason_code": (
+                "fake_initialization_transaction_bound"
+                if accepted
+                else "fake_initialization_transaction_rejected"
+            ),
+        }
     func initialize(_players: Array, _map: Dictionary, _semantics: Dictionary = {}) -> Dictionary:
+        if fail_initialize:
+            return {"accepted": false, "reason_code": "injected_initialize_failure"}
+        initialized = true
+        phase = "ready"
         return {"accepted": true, "reason_code": "fake_initialized"}
 
+    func cleanup_failed_initialization(context: Dictionary) -> Dictionary:
+        failed_initialize_reset_count += 1
+        var transaction_id := str(context.get("ownership_token", ""))
+        var duplicate := completed_initialization_cleanup_results_by_token.has(transaction_id)
+        var accepted := duplicate or (
+            not transaction_id.is_empty()
+            and transaction_id == active_initialization_ownership_token
+        )
+        if accepted and not duplicate:
+            initialized = false
+            phase = "idle"
+            batch_id = ""
+            military_locks.clear()
+            processed_missions.clear()
+            processed_receipt_keys.clear()
+            receipt_journal.clear()
+            active_initialization_ownership_token = ""
+            completed_initialization_cleanup_results_by_token[transaction_id] = true
+        var residuals := _failed_initialization_residuals()
+        var result := {
+            "schema": "V075FailedInitializationCleanupResultV1",
+            "accepted": accepted,
+            "reason_code": (
+                "combat_failed_initialization_cleaned"
+                if accepted
+                else "fake_initialization_transaction_mismatch"
+            ),
+            "failed_cleanup_stage": "" if accepted else "transaction_ownership",
+            "cleanup_invocation_count": failed_initialize_reset_count,
+            "already_clean": duplicate,
+            "external_state_mutation_count": 0,
+            "cleanup_owned_state_only": true,
+        }
+        for field_name in residuals:
+            result[field_name] = residuals.get(field_name)
+        return result
     func begin_batch(next_batch_id: String, _batch_index: int, _assets: Dictionary, _facilities: Array) -> Dictionary:
         batch_id = next_batch_id
         phase = "batch_active"
@@ -155,11 +228,51 @@ class FailingCompletionCombatOwner extends Node:
 
     func debug_snapshot() -> Dictionary:
         return {
+            "initialized": initialized,
+            "phase": phase,
             "military_lock_count": military_locks.size(),
             "processed_mission_count": processed_missions.size(),
             "processed_receipt_key_count": processed_receipt_keys.size(),
             "completion_count": completion_count,
             "rollback_count": rollback_count,
+            "failed_initialization_residuals": (
+                _failed_initialization_residuals()
+            ),
+        }
+
+    func _failed_initialization_residuals() -> Dictionary:
+        var remaining_binding_count := 1 if initialized else 0
+        var remaining_instant_sequence_count := (
+            processed_receipt_keys.size()
+            + (1 if not batch_id.is_empty() else 0)
+        )
+        var remaining_military_mission_count := (
+            military_locks.size()
+            + processed_missions.size()
+        )
+        var remaining_receipt_count := receipt_journal.size()
+        var remaining_state_entry_count := (
+            remaining_binding_count
+            + remaining_instant_sequence_count
+            + remaining_military_mission_count
+            + remaining_receipt_count
+            + (1 if phase != "idle" else 0)
+        )
+        return {
+            "remaining_binding_count": remaining_binding_count,
+            "remaining_subscription_count": 0,
+            "remaining_private_skill_count": 0,
+            "remaining_instant_sequence_count": (
+                remaining_instant_sequence_count
+            ),
+            "remaining_military_mission_count": (
+                remaining_military_mission_count
+            ),
+            "remaining_receipt_count": remaining_receipt_count,
+            "remaining_ai_binding_count": 0,
+            "remaining_player_projection_binding_count": 0,
+            "remaining_telemetry_binding_count": 0,
+            "remaining_state_entry_count": remaining_state_entry_count,
         }
 
     func state_snapshot() -> Dictionary:
@@ -211,6 +324,8 @@ func _run() -> void:
         _finish()
         return
     _test_mixed_public_batch_failure_and_retry()
+    _test_failed_start_is_atomic_and_lock_fails_closed()
+    _test_parent_begin_batch_rejection_is_atomic()
     _test_terminal_combat_quiescence()
     _finish()
 
@@ -353,6 +468,153 @@ func _test_terminal_combat_quiescence() -> void:
     _dispose(runtime)
 
 
+func _test_failed_start_is_atomic_and_lock_fails_closed() -> void:
+    var runtime := _runtime_script.new() as Node
+    var combat := FailingCompletionCombatOwner.new(_checkpoint_script)
+    combat.fail_initialize = true
+    root.add_child(runtime)
+    root.add_child(combat)
+    runtime.set_meta("combat", combat)
+    var bound := runtime.call("bind_combat_owner", combat) as Dictionary
+    _expect(bool(bound.get("accepted", false)), "failed-start fixture binds Combat")
+    var lock_before_start := runtime.call(
+        "lock_player_submission",
+        "player.local"
+    ) as Dictionary
+    _expect(
+        not bool(lock_before_start.get("accepted", true))
+            and str(lock_before_start.get("reason_code", ""))
+                == "combat_runtime_unavailable",
+        "submission lock fails closed while Combat is uninitialized"
+    )
+    var signal_counts := {
+        "match_started": 0,
+        "state_changed": 0,
+        "runtime_fault": 0,
+    }
+    runtime.connect("match_started", func(_snapshot: Dictionary) -> void:
+        signal_counts["match_started"] = int(
+            signal_counts.get("match_started", 0)
+        ) + 1
+    )
+    runtime.connect("state_changed", func(_snapshot: Dictionary) -> void:
+        signal_counts["state_changed"] = int(
+            signal_counts.get("state_changed", 0)
+        ) + 1
+    )
+    runtime.connect("runtime_fault", func(_receipt: Dictionary) -> void:
+        signal_counts["runtime_fault"] = int(
+            signal_counts.get("runtime_fault", 0)
+        ) + 1
+    )
+    var match_sequence_before := int(runtime.get("_match_sequence"))
+    var failed := runtime.call(
+        "start_new_game",
+        4,
+        900626424,
+        false,
+        false,
+        {
+            "map_seed": 900626424,
+            "region_count": 16,
+            "geography_complexity": "STANDARD",
+            "land_ocean_profile": "BALANCED",
+        }
+    ) as Dictionary
+    _expect(
+        not bool(failed.get("accepted", true))
+            and str(failed.get("reason_code", ""))
+                == "combat_runtime_initialization_failed",
+        "Combat initialization failure rejects the whole new-game transaction"
+    )
+    _expect(
+        int(signal_counts.get("match_started", -1)) == 0
+            and int(signal_counts.get("state_changed", -1)) == 0
+            and int(signal_counts.get("runtime_fault", -1)) == 1,
+        "failed start publishes no match or snapshot and exactly one fault"
+    )
+    _expect(
+        (runtime.call("player_ids") as Array).is_empty()
+            and (runtime.call("player_snapshot", "player.local") as Dictionary).is_empty()
+            and int(runtime.get("_match_sequence")) == match_sequence_before,
+        "failed start leaves no player snapshot and restores match sequence"
+    )
+    _expect(
+        not bool(runtime.get("_combat_initialized"))
+            and combat.failed_initialize_reset_count == 1,
+        "failed start clears partial Combat state exactly once"
+    )
+    _dispose(runtime)
+
+
+func _test_parent_begin_batch_rejection_is_atomic() -> void:
+    var runtime := BeginBatchFailRuntime.new()
+    var combat := FailingCompletionCombatOwner.new(_checkpoint_script)
+    root.add_child(runtime)
+    root.add_child(combat)
+    var bound := runtime.call("bind_combat_owner", combat) as Dictionary
+    _expect(
+        bool(bound.get("accepted", false)),
+        "begin-batch failure fixture binds Combat"
+    )
+    var signal_counts := {
+        "match_started": 0,
+        "state_changed": 0,
+        "runtime_fault": 0,
+    }
+    runtime.connect("match_started", func(_snapshot: Dictionary) -> void:
+        signal_counts["match_started"] = int(
+            signal_counts.get("match_started", 0)
+        ) + 1
+    )
+    runtime.connect("state_changed", func(_snapshot: Dictionary) -> void:
+        signal_counts["state_changed"] = int(
+            signal_counts.get("state_changed", 0)
+        ) + 1
+    )
+    runtime.connect("runtime_fault", func(_receipt: Dictionary) -> void:
+        signal_counts["runtime_fault"] = int(
+            signal_counts.get("runtime_fault", 0)
+        ) + 1
+    )
+    var match_sequence_before := int(runtime.get("_match_sequence"))
+    var failed := runtime.call(
+        "start_new_game",
+        4,
+        900626424,
+        false,
+        false,
+        {
+            "map_seed": 900626424,
+            "region_count": 16,
+            "geography_complexity": "STANDARD",
+            "land_ocean_profile": "BALANCED",
+        }
+    ) as Dictionary
+    _expect(
+        not bool(failed.get("accepted", true))
+            and str(failed.get("reason_code", ""))
+                == "v075_new_game_initialization_failed",
+        "plain inherited begin-batch rejection is one failed start"
+    )
+    _expect(
+        (runtime.call("player_ids") as Array).is_empty()
+            and (runtime.call("map_genesis_receipt") as Dictionary).is_empty()
+            and str(runtime.get("_phase")) == "idle"
+            and int(runtime.get("_match_sequence")) == match_sequence_before
+            and not bool(runtime.get("_combat_initialized")),
+        "plain inherited begin-batch rejection rolls back partial runtime state"
+    )
+    _expect(
+        int(signal_counts.get("match_started", -1)) == 0
+            and int(signal_counts.get("state_changed", -1)) == 0
+            and int(signal_counts.get("runtime_fault", -1)) == 1
+            and combat.failed_initialize_reset_count == 1,
+        "plain begin-batch rejection publishes one fault and resets Combat"
+    )
+    runtime.queue_free()
+    combat.queue_free()
+
 func _runtime_with_fake_combat() -> Node:
     var runtime := _runtime_script.new() as Node
     var combat := FailingCompletionCombatOwner.new(_checkpoint_script)
@@ -485,8 +747,13 @@ func _zero_assets() -> Dictionary:
 
 
 func _dispose(runtime: Node) -> void:
+    var combat: Node = null
+    if is_instance_valid(runtime) and runtime.has_meta("combat"):
+        combat = runtime.get_meta("combat") as Node
     if is_instance_valid(runtime):
         runtime.queue_free()
+    if is_instance_valid(combat):
+        combat.queue_free()
 
 
 func _expect(condition: bool, message: String) -> void:

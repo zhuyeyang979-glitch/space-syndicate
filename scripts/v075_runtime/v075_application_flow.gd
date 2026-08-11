@@ -27,6 +27,12 @@ var _composition_ready := false
 var _private_skill_issue_count := 0
 var _private_skill_submit_count := 0
 var _private_skill_owner_receipt_count := 0
+var _new_game_transaction_in_progress := false
+var _new_game_transaction_stage := "idle"
+var _last_new_game_transaction_stage := "idle"
+var _new_game_reentry_rejection_count := 0
+var _new_game_publication_count := 0
+var _new_game_rollback_count := 0
 
 
 func _ready() -> void:
@@ -293,6 +299,31 @@ func debug_snapshot() -> Dictionary:
 		"private_skill_owner_receipt_count": (
 			_private_skill_owner_receipt_count
 		),
+		"session_sequence": _session_sequence,
+		"new_game_transaction_in_progress": (
+			_new_game_transaction_in_progress
+		),
+		"new_game_transaction_stage": _new_game_transaction_stage,
+		"last_new_game_transaction_stage": (
+			_last_new_game_transaction_stage
+		),
+		"pending_initialization_rollback": (
+			_new_game_transaction_stage in [
+				"prepare",
+				"owner_initialize",
+				"ruleset_session_commit",
+				"owner_activate",
+				"pre_publication",
+				"finalize_runtime_publication",
+				"finalize_ruleset_publication",
+				"rollback",
+			]
+		),
+		"new_game_reentry_rejection_count": (
+			_new_game_reentry_rejection_count
+		),
+		"new_game_publication_count": _new_game_publication_count,
+		"new_game_rollback_count": _new_game_rollback_count,
 	}
 
 
@@ -319,36 +350,192 @@ func _preview_map(parameters: Dictionary) -> Dictionary:
 
 
 func _start_new_game(parameters: Dictionary) -> Dictionary:
+	if _new_game_transaction_in_progress:
+		_new_game_reentry_rejection_count += 1
+		return {
+			"accepted": false,
+			"reason_code": "v075_new_game_transaction_in_progress",
+			"ruleset_id": RULESET_ID,
+		}
+	var runtime_idle := _runtime_owner.call(
+		"validate_new_game_initialization_idle"
+	) as Dictionary
+	if not bool(runtime_idle.get("accepted", false)):
+		return runtime_idle
+	_new_game_transaction_in_progress = true
+	_new_game_transaction_stage = "prepare"
+	var result := _execute_new_game_transaction(parameters)
+	_last_new_game_transaction_stage = (
+		"complete"
+		if bool(result.get("accepted", false))
+		else _new_game_transaction_stage
+	)
+	_new_game_transaction_in_progress = false
+	_new_game_transaction_stage = "idle"
+	return result
+
+
+func _new_game_publication_stage_authorized(required_stage: String) -> bool:
+	return (
+		_new_game_transaction_in_progress
+		and required_stage == _new_game_transaction_stage
+		and required_stage in [
+			"publish_runtime_signals",
+			"publish_ruleset_signal",
+			"complete_runtime_publication",
+		]
+	)
+
+func _execute_new_game_transaction(parameters: Dictionary) -> Dictionary:
 	var player_count := int(parameters.get("player_count", 4))
 	var seed_value := int(parameters.get("seed", DEFAULT_SEED))
+	var publication_stage_authority := Callable(
+		self,
+		"_new_game_publication_stage_authorized"
+	)
 	var normalized := _ruleset_owner.call(
 		"normalize_map_request",
 		_map_request_from_parameters(parameters)
 	) as Dictionary
 	if not bool(normalized.get("accepted", false)):
+		_new_game_transaction_stage = "validation_failed"
 		return normalized
 	var map_request := normalized.get("request", {}) as Dictionary
-	_session_sequence += 1
-	var session_id := "session.v075.sample.%06d" % _session_sequence
-	var activation := _ruleset_owner.call(
-		"activate_for_new_game",
+	var previous_session_sequence := _session_sequence
+	var next_session_sequence := previous_session_sequence + 1
+	var session_id := "session.v075.sample.%06d" % next_session_sequence
+	var ruleset_prepared := _ruleset_owner.call(
+		"prepare_new_game_activation",
 		session_id,
 		player_count,
 		1,
-		map_request
+		map_request,
+		publication_stage_authority
 	) as Dictionary
-	if not bool(activation.get("accepted", false)):
-		return activation
-	var started := _runtime_owner.call(
-		"start_new_game",
+	if not bool(ruleset_prepared.get("accepted", false)):
+		_new_game_transaction_stage = "ruleset_prepare_failed"
+		return ruleset_prepared
+	var ruleset_transaction_id := str(ruleset_prepared.get(
+		"transaction_id",
+		""
+	))
+	_new_game_transaction_stage = "owner_initialize"
+	var runtime_prepared := _runtime_owner.call(
+		"prepare_new_game",
 		player_count,
 		seed_value,
 		false,
 		false,
-		map_request
+		map_request,
+		false,
+		publication_stage_authority
+	) as Dictionary
+	if not bool(runtime_prepared.get("accepted", false)):
+		var cancelled := _ruleset_owner.call(
+			"rollback_new_game_activation",
+			ruleset_transaction_id
+		) as Dictionary
+		_new_game_transaction_stage = "owner_initialize_failed"
+		if not bool(cancelled.get("accepted", false)):
+			return _application_transaction_rollback_failure(
+				runtime_prepared,
+				cancelled,
+				{}
+			)
+		return _public_failure_projection(runtime_prepared)
+	var runtime_transaction_id := str(runtime_prepared.get(
+		"transaction_id",
+		""
+	))
+	_new_game_transaction_stage = "ruleset_session_commit"
+	var ruleset_committed := _ruleset_owner.call(
+		"commit_prepared_new_game",
+		ruleset_transaction_id
+	) as Dictionary
+	if not bool(ruleset_committed.get("accepted", false)):
+		return _rollback_prepared_new_game(
+			runtime_transaction_id,
+			ruleset_transaction_id,
+			previous_session_sequence,
+			ruleset_committed
+		)
+	_session_sequence = next_session_sequence
+	_new_game_transaction_stage = "owner_activate"
+	var runtime_activated := _runtime_owner.call(
+		"activate_prepared_new_game",
+		runtime_transaction_id
+	) as Dictionary
+	if not bool(runtime_activated.get("accepted", false)):
+		return _rollback_prepared_new_game(
+			runtime_transaction_id,
+			ruleset_transaction_id,
+			previous_session_sequence,
+			runtime_activated
+		)
+	_new_game_transaction_stage = "pre_publication"
+	var runtime_sealed := _runtime_owner.call(
+		"seal_prepared_new_game_publication",
+		runtime_transaction_id
+	) as Dictionary
+	if not bool(runtime_sealed.get("accepted", false)):
+		return _rollback_prepared_new_game(
+			runtime_transaction_id,
+			ruleset_transaction_id,
+			previous_session_sequence,
+			runtime_sealed
+		)
+	var ruleset_sealed := _ruleset_owner.call(
+		"seal_committed_new_game_publication",
+		ruleset_transaction_id
+	) as Dictionary
+	if not bool(ruleset_sealed.get("accepted", false)):
+		return _rollback_prepared_new_game(
+			runtime_transaction_id,
+			ruleset_transaction_id,
+			previous_session_sequence,
+			ruleset_sealed
+		)
+	_new_game_transaction_stage = "finalize_runtime_publication"
+	var started := _runtime_owner.call(
+		"finalize_prepared_new_game_publication",
+		runtime_transaction_id
 	) as Dictionary
 	if not bool(started.get("accepted", false)):
-		return started
+		return _rollback_prepared_new_game(
+			runtime_transaction_id,
+			ruleset_transaction_id,
+			previous_session_sequence,
+			started
+		)
+	_new_game_transaction_stage = "finalize_ruleset_publication"
+	var activation := _ruleset_owner.call(
+		"finalize_committed_new_game",
+		ruleset_transaction_id
+	) as Dictionary
+	if not bool(activation.get("accepted", false)):
+		return _rollback_prepared_new_game(
+			runtime_transaction_id,
+			ruleset_transaction_id,
+			previous_session_sequence,
+			activation
+		)
+	_new_game_transaction_stage = "publish_runtime_signals"
+	_runtime_owner.call(
+		"emit_finalized_new_game_signals",
+		runtime_transaction_id
+	)
+	_new_game_transaction_stage = "publish_ruleset_signal"
+	_ruleset_owner.call(
+		"emit_finalized_new_game",
+		ruleset_transaction_id
+	)
+	_new_game_transaction_stage = "complete_runtime_publication"
+	_runtime_owner.call(
+		"complete_finalized_new_game_publication",
+		runtime_transaction_id
+	)
+	_new_game_publication_count += 1
+	_new_game_transaction_stage = "complete"
 	return {
 		"accepted": true,
 		"reason_code": "v075_new_game_application_flow_committed",
@@ -375,7 +562,173 @@ func _start_new_game(parameters: Dictionary) -> Dictionary:
 		"combat_balance_profile_fingerprint": str(
 			started.get("combat_balance_profile_fingerprint", "")
 		),
+		"runtime_signal_publication_count": int(started.get(
+			"runtime_signal_publication_count",
+			0
+		)),
+		"ruleset_signal_publication_count": int(activation.get(
+			"ruleset_signal_publication_count",
+			0
+		)),
+		"pending_initialization_rollback": false,
 	}
+
+
+func _rollback_prepared_new_game(
+	runtime_transaction_id: String,
+	ruleset_transaction_id: String,
+	previous_session_sequence: int,
+	primary_failure: Dictionary
+) -> Dictionary:
+	_new_game_transaction_stage = "rollback"
+	_session_sequence = previous_session_sequence
+	var ruleset_rollback := _ruleset_owner.call(
+		"rollback_new_game_activation",
+		ruleset_transaction_id
+	) as Dictionary
+	var runtime_rollback := _runtime_owner.call(
+		"abort_prepared_new_game",
+		runtime_transaction_id,
+		primary_failure
+	) as Dictionary
+	_new_game_rollback_count += 1
+	var rollback_reason_variant: Variant = runtime_rollback.get("reason_code")
+	var rollback_reason_is_string := (
+		typeof(rollback_reason_variant) == TYPE_STRING
+	)
+	var runtime_rollback_failed := (
+		runtime_rollback.is_empty()
+		or not rollback_reason_is_string
+		or (
+			str(rollback_reason_variant)
+			in [
+				"prepared_new_game_abort_transaction_invalid",
+				"initialization_failed_and_cleanup_failed",
+			]
+		)
+		or runtime_rollback.has("cleanup_failure")
+	)
+	if (
+		not bool(ruleset_rollback.get("accepted", false))
+		or runtime_rollback_failed
+	):
+		return _application_transaction_rollback_failure(
+			primary_failure,
+			ruleset_rollback,
+			runtime_rollback
+		)
+	return _public_failure_projection(runtime_rollback)
+
+
+func _application_transaction_rollback_failure(
+	primary_failure: Dictionary,
+	ruleset_rollback: Dictionary,
+	runtime_rollback: Dictionary
+) -> Dictionary:
+	return {
+		"schema": "V075ApplicationNewGameTransactionFailureV1",
+		"accepted": false,
+		"reason_code": "v075_new_game_transaction_rollback_failed",
+		"primary_failure": _public_failure_projection(primary_failure),
+		"ruleset_rollback": _public_failure_projection(ruleset_rollback),
+		"runtime_rollback": _public_failure_projection(runtime_rollback),
+	}
+
+
+func _public_failure_field_has_safe_type(
+	field_name: String,
+	value: Variant
+) -> bool:
+	if field_name in [
+		"schema",
+		"reason_code",
+		"ruleset_id",
+		"failed_stage",
+		"failed_cleanup_stage",
+	]:
+		return typeof(value) == TYPE_STRING
+	if field_name in [
+		"accepted",
+		"already_clean",
+		"cleanup_owned_state_only",
+		"composition_binding_parity",
+	]:
+		return typeof(value) == TYPE_BOOL
+	if field_name in [
+		"cleanup_invocation_count",
+		"external_state_mutation_count",
+		"composition_object_binding_delta_count",
+		"composition_ai_binding_delta_count",
+		"composition_player_projection_delta_count",
+		"composition_telemetry_delta_count",
+		"composition_subscription_delta_count",
+		"remaining_binding_count",
+		"remaining_subscription_count",
+		"remaining_private_skill_count",
+		"remaining_instant_sequence_count",
+		"remaining_military_mission_count",
+		"remaining_receipt_count",
+		"remaining_ai_binding_count",
+		"remaining_player_projection_binding_count",
+		"remaining_telemetry_binding_count",
+		"remaining_state_entry_count",
+	]:
+		return typeof(value) == TYPE_INT
+	return false
+
+
+func _public_failure_projection(source: Dictionary) -> Dictionary:
+	var projection: Dictionary = {}
+	for field_name in [
+		"schema",
+		"accepted",
+		"reason_code",
+		"ruleset_id",
+		"failed_stage",
+		"failed_cleanup_stage",
+		"cleanup_invocation_count",
+		"already_clean",
+		"external_state_mutation_count",
+		"cleanup_owned_state_only",
+		"composition_binding_parity",
+		"composition_object_binding_delta_count",
+		"composition_ai_binding_delta_count",
+		"composition_player_projection_delta_count",
+		"composition_telemetry_delta_count",
+		"composition_subscription_delta_count",
+		"remaining_binding_count",
+		"remaining_subscription_count",
+		"remaining_private_skill_count",
+		"remaining_instant_sequence_count",
+		"remaining_military_mission_count",
+		"remaining_receipt_count",
+		"remaining_ai_binding_count",
+		"remaining_player_projection_binding_count",
+		"remaining_telemetry_binding_count",
+		"remaining_state_entry_count",
+	]:
+		if (
+			source.has(field_name)
+			and _public_failure_field_has_safe_type(
+				field_name,
+				source.get(field_name)
+			)
+		):
+			projection[field_name] = source.get(field_name)
+	for nested_field_name in [
+		"primary_initialization_failure",
+		"cleanup_failure",
+		"detail",
+		"cleanup",
+	]:
+		if (
+			source.has(nested_field_name)
+			and source.get(nested_field_name) is Dictionary
+		):
+			projection[nested_field_name] = _public_failure_projection(
+				source.get(nested_field_name) as Dictionary
+			)
+	return projection
 
 
 func _map_request_from_parameters(parameters: Dictionary) -> Dictionary:

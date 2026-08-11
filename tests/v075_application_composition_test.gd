@@ -34,6 +34,113 @@ const SKILL_CARDS_NODE_PATH := (
 	SKILL_DOCK_NODE_PATH + "/Margin/Rows/SkillScroll/SkillCards"
 )
 
+class StartRuntimeProbe extends Node:
+	var should_accept := false
+	var trace: Dictionary = {}
+	var transaction_id := "runtime.probe.001"
+	var transaction_stage := "idle"
+
+
+	func _init(accept_start: bool, shared_trace: Dictionary) -> void:
+		should_accept = accept_start
+		trace = shared_trace
+
+
+	func validate_new_game_initialization_idle() -> Dictionary:
+		(trace.get("events", []) as Array).append("runtime_preflight")
+		return {
+			"accepted": true,
+			"reason_code": "probe_runtime_idle",
+		}
+
+
+	func prepare_new_game(
+		_player_count: int,
+		_seed_value: int,
+		_accelerated: bool,
+		_automate_local_human: bool,
+		_map_request: Dictionary,
+		_publish_fault_on_failure: bool,
+		_publication_stage_authority: Callable = Callable()
+	) -> Dictionary:
+		(trace.get("events", []) as Array).append("runtime_prepare")
+		if not should_accept:
+			return {
+				"accepted": false,
+				"reason_code": "probe_runtime_rejected",
+			}
+		transaction_stage = "owner_initialized"
+		return {
+			"accepted": true,
+			"reason_code": "probe_runtime_prepared",
+			"transaction_id": transaction_id,
+			"match_id": "match.probe.001",
+		}
+
+
+	func activate_prepared_new_game(id: String) -> Dictionary:
+		(trace.get("events", []) as Array).append("runtime_activate")
+		if id != transaction_id or transaction_stage != "owner_initialized":
+			return {"accepted": false, "reason_code": "probe_activation_invalid"}
+		transaction_stage = "owner_activated"
+		return {"accepted": true, "reason_code": "probe_runtime_activated"}
+
+
+	func seal_prepared_new_game_publication(id: String) -> Dictionary:
+		(trace.get("events", []) as Array).append("runtime_seal")
+		if id != transaction_id or transaction_stage != "owner_activated":
+			return {"accepted": false, "reason_code": "probe_seal_invalid"}
+		transaction_stage = "publication_sealed"
+		return {"accepted": true, "reason_code": "probe_runtime_sealed"}
+
+
+	func finalize_prepared_new_game_publication(
+		id: String
+	) -> Dictionary:
+		(trace.get("events", []) as Array).append("runtime_finalize")
+		if id != transaction_id or transaction_stage != "publication_sealed":
+			return {"accepted": false, "reason_code": "probe_finalize_invalid"}
+		transaction_stage = "publication_finalized"
+		return {
+			"accepted": true,
+			"reason_code": "probe_runtime_started",
+			"match_id": "match.probe.001",
+			"runtime_signal_publication_count": 1,
+		}
+
+
+	func emit_finalized_new_game_signals(id: String) -> void:
+		if id != transaction_id or transaction_stage != "publication_finalized":
+			return
+		(trace.get("events", []) as Array).append("runtime_emit")
+		transaction_stage = "published_waiting_completion"
+
+
+	func complete_finalized_new_game_publication(id: String) -> void:
+		if (
+			id != transaction_id
+			or transaction_stage != "published_waiting_completion"
+		):
+			return
+		(trace.get("events", []) as Array).append("runtime_complete")
+		transaction_stage = "idle"
+
+
+	func abort_prepared_new_game(
+		id: String,
+		failure: Dictionary
+	) -> Dictionary:
+		(trace.get("events", []) as Array).append("runtime_abort")
+		transaction_stage = "idle"
+		return {
+			"accepted": false,
+			"reason_code": str(failure.get(
+				"reason_code",
+				"probe_runtime_aborted"
+			)),
+			"transaction_id": id,
+		}
+
 var _checks := 0
 var _failures: Array[String] = []
 var _main_combat_owner_count := 0
@@ -57,10 +164,94 @@ func _run() -> void:
 	var main_source := _read_text(MAIN_SCENE_PATH)
 	_test_main_static_contract(main_source)
 	_test_v075_source_contracts()
+	_test_application_start_transaction()
 	_test_scene_instantiation()
 	await _test_private_skill_button_exact_once()
 	_finish()
 
+
+func _test_application_start_transaction() -> void:
+	var flow_script := load(V075_FLOW_PATH) as Script
+	var ruleset_script := load(V075_RULESET_PATH) as Script
+	_expect(
+		flow_script != null and ruleset_script != null,
+		"application start transaction dependencies load"
+	)
+	if flow_script == null or ruleset_script == null:
+		return
+
+	var failed_trace := {"events": []}
+	var failed_flow := flow_script.new() as Node
+	var failed_ruleset := ruleset_script.new() as Node
+	var failed_runtime := StartRuntimeProbe.new(false, failed_trace)
+	failed_flow.set("_ruleset_owner", failed_ruleset)
+	failed_flow.set("_runtime_owner", failed_runtime)
+	failed_ruleset.connect(
+		"ruleset_activated",
+		func(_identity: Dictionary) -> void:
+			(failed_trace.get("events", []) as Array).append("activation")
+	)
+	var rejected := failed_flow.call(
+		"_start_new_game",
+		{"player_count": 4, "seed": 900626424}
+	) as Dictionary
+	var failed_identity := (
+		failed_ruleset.call("identity_snapshot") as Dictionary
+	)
+	_expect(
+		not bool(rejected.get("accepted", true))
+			and str(rejected.get("reason_code", ""))
+				== "probe_runtime_rejected"
+			and (failed_trace.get("events", []) as Array)
+				== ["runtime_preflight", "runtime_prepare"]
+			and int(failed_identity.get("activation_count", -1)) == 0
+			and str(failed_identity.get("last_session_id", "")).is_empty()
+			and int(failed_flow.get("_session_sequence")) == 0,
+		"runtime rejection leaves ruleset activation, session, and signal uncommitted"
+	)
+	failed_flow.free()
+	failed_ruleset.free()
+	failed_runtime.free()
+
+	var success_trace := {"events": []}
+	var success_flow := flow_script.new() as Node
+	var success_ruleset := ruleset_script.new() as Node
+	var success_runtime := StartRuntimeProbe.new(true, success_trace)
+	success_flow.set("_ruleset_owner", success_ruleset)
+	success_flow.set("_runtime_owner", success_runtime)
+	success_ruleset.connect(
+		"ruleset_activated",
+		func(_identity: Dictionary) -> void:
+			(success_trace.get("events", []) as Array).append("activation")
+	)
+	var committed := success_flow.call(
+		"_start_new_game",
+		{"player_count": 4, "seed": 900626424}
+	) as Dictionary
+	var success_identity := (
+		success_ruleset.call("identity_snapshot") as Dictionary
+	)
+	_expect(
+		bool(committed.get("accepted", false))
+			and (success_trace.get("events", []) as Array) == [
+				"runtime_preflight",
+				"runtime_prepare",
+				"runtime_activate",
+				"runtime_seal",
+				"runtime_finalize",
+				"runtime_emit",
+				"activation",
+				"runtime_complete",
+			]
+			and int(success_identity.get("activation_count", -1)) == 1
+			and str(success_identity.get("last_session_id", ""))
+				== "session.v075.sample.000001"
+			and int(success_flow.get("_session_sequence")) == 1,
+		"runtime success precedes one ruleset and session commit"
+	)
+	success_flow.free()
+	success_ruleset.free()
+	success_runtime.free()
 
 func _test_required_files() -> void:
 	for path in [

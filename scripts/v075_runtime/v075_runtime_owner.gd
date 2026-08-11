@@ -65,6 +65,8 @@ const CARD_ACTION_LIFECYCLE_ID := (
 )
 const COMBAT_OWNER_METHODS := [
 	"initialize",
+	"cleanup_failed_initialization",
+	"begin_initialization_transaction",
 	"begin_batch",
 	"set_phase",
 	"prebind_monster_card_action",
@@ -181,6 +183,14 @@ var _v075_submission_legal_actions_cache: Dictionary = {}
 var _v075_submission_card_cache: Dictionary = {}
 var _v075_track_projection_cache: Dictionary = {}
 var _v075_public_facility_slots_cache: Array = []
+var _new_game_transaction_stage := "idle"
+var _new_game_transaction: Dictionary = {}
+var _new_game_publication_count := 0
+var _new_game_abort_count := 0
+var _new_game_cleanup_failure_count := 0
+var _new_game_initialization_attempt_sequence := 0
+var _new_game_publication_stage_authority: Callable = Callable()
+var _new_game_publication_stage_authority_required := false
 
 
 func bind_combat_owner(owner: Node) -> Dictionary:
@@ -221,6 +231,21 @@ func bind_combat_telemetry_service(service: Object) -> Dictionary:
 	}
 
 
+func _new_game_publication_stage_authorized(required_stage: String) -> bool:
+	if not _new_game_publication_stage_authority_required:
+		return true
+	if not _new_game_publication_stage_authority.is_valid():
+		return false
+	var authorization: Variant = (
+		_new_game_publication_stage_authority.call(required_stage)
+	)
+	return typeof(authorization) == TYPE_BOOL and bool(authorization)
+
+
+func _clear_new_game_publication_stage_authority() -> void:
+	_new_game_publication_stage_authority = Callable()
+	_new_game_publication_stage_authority_required = false
+
 func start_new_game(
 	player_count: int = 4,
 	seed_value: int = DEFAULT_MATCH_SEED,
@@ -228,8 +253,338 @@ func start_new_game(
 	automate_local_human: bool = false,
 	map_request: Dictionary = {}
 ) -> Dictionary:
+	var prepared := prepare_new_game(
+		player_count,
+		seed_value,
+		accelerated,
+		automate_local_human,
+		map_request,
+		true
+	)
+	if not bool(prepared.get("accepted", false)):
+		return prepared
+	var transaction_id := str(prepared.get("transaction_id", ""))
+	var activated := activate_prepared_new_game(transaction_id)
+	if not bool(activated.get("accepted", false)):
+		return abort_prepared_new_game(transaction_id, activated)
+	var sealed := seal_prepared_new_game_publication(transaction_id)
+	if not bool(sealed.get("accepted", false)):
+		return abort_prepared_new_game(transaction_id, sealed)
+	var finalized := finalize_prepared_new_game_publication(
+		transaction_id
+	)
+	if not bool(finalized.get("accepted", false)):
+		return abort_prepared_new_game(transaction_id, finalized)
+	emit_finalized_new_game_signals(transaction_id)
+	complete_finalized_new_game_publication(transaction_id)
+	return finalized
+
+
+func validate_new_game_initialization_idle() -> Dictionary:
+	if _new_game_transaction_stage != "idle":
+		return _reject("new_game_transaction_in_progress")
+	if not _new_game_runtime_idle_for_initialization():
+		return _reject("new_game_requires_idle_runtime")
 	if not is_instance_valid(_combat_owner):
 		return _reject("combat_runtime_owner_not_bound")
+	return {
+		"accepted": true,
+		"reason_code": "v075_new_game_initialization_idle",
+	}
+
+
+func _new_game_runtime_idle_for_initialization() -> bool:
+	if (
+		_phase != "idle"
+		or not _player_ids.is_empty()
+		or not _match_id.is_empty()
+		or _track_core != null
+		or not _map_genesis_receipt.is_empty()
+		or _combat_initialized
+	):
+		return false
+	if (
+		is_instance_valid(_combat_owner)
+		and _combat_owner.has_method("debug_snapshot")
+	):
+		var combat_debug := (
+			_combat_owner.call("debug_snapshot") as Dictionary
+		)
+		var residuals := (
+			combat_debug.get(
+				"failed_initialization_residuals",
+				{}
+			) as Dictionary
+		)
+		if (
+			bool(combat_debug.get("initialized", false))
+			or str(combat_debug.get("phase", "idle")) != "idle"
+			or bool(combat_debug.get(
+				"initialization_transaction_active",
+				false
+			))
+			or (
+				not residuals.is_empty()
+				and int(residuals.get(
+					"remaining_state_entry_count",
+					-1
+				)) != 0
+			)
+		):
+			return false
+	return true
+
+
+func _initialization_signal_connection_signatures(
+	source: Object,
+	signal_name: StringName
+) -> Array:
+	var signatures: Array = []
+	if not is_instance_valid(source) or not source.has_signal(signal_name):
+		return signatures
+	for connection_variant in source.get_signal_connection_list(signal_name):
+		var connection := connection_variant as Dictionary
+		var target_callable: Callable = connection.get(
+			"callable",
+			Callable()
+		)
+		signatures.append({
+			"signal": str(signal_name),
+			"target_instance_id": (
+				target_callable.get_object_id()
+				if target_callable.is_valid()
+				else 0
+			),
+			"method": (
+				str(target_callable.get_method())
+				if target_callable.is_valid()
+				else ""
+			),
+			"flags": int(connection.get("flags", 0)),
+		})
+	signatures.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		return JSON.stringify(left) < JSON.stringify(right)
+	)
+	return signatures
+
+
+func _initialization_composition_delta_count(
+	before: Dictionary,
+	after: Dictionary,
+	field_names: Array
+) -> int:
+	var delta_count := 0
+	for field_name_variant in field_names:
+		var field_name := str(field_name_variant)
+		if before.get(field_name) != after.get(field_name):
+			delta_count += 1
+	return delta_count
+
+
+func _add_cleanup_residual_delta(
+	result: Dictionary,
+	field_name: String,
+	delta_count: int
+) -> void:
+	if (
+		delta_count <= 0
+		or not result.has(field_name)
+		or typeof(result.get(field_name)) != TYPE_INT
+	):
+		return
+	result[field_name] = int(result.get(field_name)) + delta_count
+
+
+func _capture_initialization_composition_state() -> Dictionary:
+	var telemetry_debug: Dictionary = {}
+	if (
+		is_instance_valid(_combat_telemetry_bridge)
+		and _combat_telemetry_bridge.has_method("debug_snapshot")
+	):
+		telemetry_debug = (
+			_combat_telemetry_bridge.call("debug_snapshot") as Dictionary
+		).duplicate(true)
+	var presentation_debug: Dictionary = {}
+	if (
+		is_instance_valid(_combat_presentation_consumer)
+		and _combat_presentation_consumer.has_method("debug_snapshot")
+	):
+		presentation_debug = (
+			_combat_presentation_consumer.call("debug_snapshot") as Dictionary
+		).duplicate(true)
+	var combat_owner_parent := (
+		_combat_owner.get_parent()
+		if is_instance_valid(_combat_owner)
+		else null
+	)
+	var presentation_parent := (
+		_combat_presentation_consumer.get_parent()
+		if is_instance_valid(_combat_presentation_consumer)
+		else null
+	)
+	return {
+		"combat_owner_instance_id": (
+			_combat_owner.get_instance_id()
+			if is_instance_valid(_combat_owner)
+			else 0
+		),
+		"combat_owner_parent_instance_id": (
+			combat_owner_parent.get_instance_id()
+			if is_instance_valid(combat_owner_parent)
+			else 0
+		),
+		"combat_projection_adapter_instance_id": (
+			_combat_projection_adapter.get_instance_id()
+			if is_instance_valid(_combat_projection_adapter)
+			else 0
+		),
+		"combat_ai_adapter_instance_id": (
+			_combat_ai_adapter.get_instance_id()
+			if is_instance_valid(_combat_ai_adapter)
+			else 0
+		),
+		"combat_telemetry_instance_id": (
+			_combat_telemetry_bridge.get_instance_id()
+			if is_instance_valid(_combat_telemetry_bridge)
+			else 0
+		),
+		"combat_presentation_instance_id": (
+			_combat_presentation_consumer.get_instance_id()
+			if is_instance_valid(_combat_presentation_consumer)
+			else 0
+		),
+		"combat_presentation_parent_instance_id": (
+			presentation_parent.get_instance_id()
+			if is_instance_valid(presentation_parent)
+			else 0
+		),
+		"match_started_connections": (
+			_initialization_signal_connection_signatures(
+				self,
+				&"match_started"
+			)
+		),
+		"state_changed_connections": (
+			_initialization_signal_connection_signatures(
+				self,
+				&"state_changed"
+			)
+		),
+		"runtime_fault_connections": (
+			_initialization_signal_connection_signatures(
+				self,
+				&"runtime_fault"
+			)
+		),
+		"final_settlement_connections": (
+			_initialization_signal_connection_signatures(
+				self,
+				&"final_settlement_committed"
+			)
+		),
+		"resolution_presented_connections": (
+			_initialization_signal_connection_signatures(
+				self,
+				&"resolution_presented"
+			)
+		),
+		"playtest_observation_connections": (
+			_initialization_signal_connection_signatures(
+				self,
+				&"playtest_observation_ready"
+			)
+		),
+		"presentation_cue_connections": (
+			_initialization_signal_connection_signatures(
+				_combat_presentation_consumer,
+				&"presentation_cue_ready"
+			)
+		),
+		"telemetry_debug": telemetry_debug,
+		"presentation_debug": presentation_debug,
+	}
+
+
+func _reset_new_game_observers() -> void:
+	if (
+		is_instance_valid(_combat_telemetry_bridge)
+		and _combat_telemetry_bridge.has_method("reset_for_new_match")
+	):
+		_combat_telemetry_bridge.call("reset_for_new_match")
+	if (
+		is_instance_valid(_combat_presentation_consumer)
+		and _combat_presentation_consumer.has_method("reset_for_new_match")
+	):
+		_combat_presentation_consumer.call("reset_for_new_match")
+
+
+func prepare_new_game(
+	player_count: int = 4,
+	seed_value: int = DEFAULT_MATCH_SEED,
+	accelerated: bool = false,
+	automate_local_human: bool = false,
+	map_request: Dictionary = {},
+	publish_fault_on_failure: bool = false,
+	publication_stage_authority: Callable = Callable()
+) -> Dictionary:
+	var preflight := validate_new_game_initialization_idle()
+	if not bool(preflight.get("accepted", false)):
+		return preflight
+	_new_game_publication_stage_authority = publication_stage_authority
+	_new_game_publication_stage_authority_required = (
+		publication_stage_authority.is_valid()
+	)
+	var signals_were_blocked := is_blocking_signals()
+	var previous_match_sequence := _match_sequence
+	var composition_checkpoint := (
+		_capture_initialization_composition_state()
+	)
+	_new_game_initialization_attempt_sequence += 1
+	var transaction_id := "runtime.new_game.%s.%06d" % [
+		str(absi(seed_value)),
+		previous_match_sequence + 1,
+	]
+	var initialization_ownership_token := JSON.stringify({
+		"runtime_instance_id": get_instance_id(),
+		"attempt_sequence": _new_game_initialization_attempt_sequence,
+		"transaction_id": transaction_id,
+	}).sha256_text().to_lower()
+	_new_game_transaction_stage = "prepare"
+	_new_game_transaction = {
+		"schema": "V075RuntimeNewGameTransactionV1",
+		"transaction_id": transaction_id,
+		"initialization_ownership_token": initialization_ownership_token,
+		"previous_match_sequence": previous_match_sequence,
+		"signals_were_blocked": signals_were_blocked,
+		"publish_fault_on_failure": publish_fault_on_failure,
+		"composition_checkpoint": composition_checkpoint.duplicate(true),
+	}
+	set_block_signals(true)
+	var begin_transaction_variant: Variant = _combat_owner.call(
+		"begin_initialization_transaction",
+		{
+			"schema": "V075CombatInitializationTransactionContextV1",
+			"ownership_token": initialization_ownership_token,
+		}
+	)
+	var begin_transaction: Dictionary = {}
+	if begin_transaction_variant is Dictionary:
+		begin_transaction = (
+			begin_transaction_variant as Dictionary
+		).duplicate(true)
+	if (
+		begin_transaction.get("schema")
+			!= "V075CombatInitializationTransactionReceiptV1"
+		or typeof(begin_transaction.get("accepted")) != TYPE_BOOL
+		or not bool(begin_transaction.get("accepted"))
+	):
+		return _abort_v075_new_game(
+			"combat_initialization_transaction_begin_failed",
+			begin_transaction,
+			previous_match_sequence,
+			signals_were_blocked,
+			publish_fault_on_failure
+		)
 	var started := super.start_new_game(
 		player_count,
 		seed_value,
@@ -238,7 +593,19 @@ func start_new_game(
 		map_request
 	)
 	if not bool(started.get("accepted", false)):
-		return started
+		var failure_detail: Dictionary = {}
+		if started.get("detail", {}) is Dictionary:
+			failure_detail = (
+				started.get("detail", {}) as Dictionary
+			).duplicate(true)
+		return _abort_v075_new_game(
+			_strict_public_failure_reason_code(started, "v075_new_game_failed"),
+			failure_detail,
+			previous_match_sequence,
+			signals_were_blocked,
+			publish_fault_on_failure
+		)
+	_new_game_transaction_stage = "owner_initialize"
 	var initialized := _combat_owner.call(
 		"initialize",
 		_player_ids,
@@ -246,25 +613,877 @@ func start_new_game(
 		{}
 	) as Dictionary
 	if not bool(initialized.get("accepted", false)):
-		return _fail("combat_runtime_initialization_failed", initialized)
+		return _abort_v075_new_game(
+			"combat_runtime_initialization_failed",
+			initialized,
+			previous_match_sequence,
+			signals_were_blocked,
+			publish_fault_on_failure
+		)
 	_combat_initialized = true
 	var batch_started := _begin_combat_batch()
 	if not bool(batch_started.get("accepted", false)):
-		return _fail("combat_batch_initialization_failed", batch_started)
-	_emit_local_state()
+		return _abort_v075_new_game(
+			"combat_batch_initialization_failed",
+			batch_started,
+			previous_match_sequence,
+			signals_were_blocked,
+			publish_fault_on_failure
+		)
+	var snapshot := player_snapshot(_local_player_id)
+	if snapshot.is_empty():
+		return _abort_v075_new_game(
+			"v075_initial_player_projection_failed",
+			{},
+			previous_match_sequence,
+			signals_were_blocked,
+			publish_fault_on_failure
+		)
 	var result := started.duplicate(true)
-	result["reason_code"] = "v075_new_game_started"
+	result["reason_code"] = "v075_new_game_prepared"
 	result["ruleset_id"] = V075_RULESET_ID
 	result["constitution_id"] = V075_CONSTITUTION_ID
 	result["combat_runtime_owner_count"] = 1
 	result["combat_state_writer_count"] = 1
 	result["combat_cutover_domain_count"] = V075_CUTOVER_DOMAIN_COUNT
+	result["transaction_id"] = transaction_id
+	result["transaction_stage"] = "owner_initialized"
+	_new_game_transaction["started"] = result.duplicate(true)
+	_new_game_transaction["snapshot"] = snapshot.duplicate(true)
+	_new_game_transaction_stage = "owner_initialized"
 	return result
+
+
+func activate_prepared_new_game(transaction_id: String) -> Dictionary:
+	if (
+		_new_game_transaction_stage != "owner_initialized"
+		or transaction_id.is_empty()
+		or transaction_id != str(_new_game_transaction.get("transaction_id", ""))
+	):
+		return _reject("prepared_new_game_transaction_invalid")
+	var snapshot := player_snapshot(_local_player_id)
+	var combat_debug := _combat_owner.call("debug_snapshot") as Dictionary
+	if (
+		not _combat_initialized
+		or snapshot.is_empty()
+		or str(snapshot.get("ruleset_id", "")) != V075_RULESET_ID
+		or _map_genesis_receipt.is_empty()
+		or _player_ids.size() < 3
+		or not bool(combat_debug.get("initialized", false))
+		or str(combat_debug.get("phase", "")) == "idle"
+	):
+		return _reject("prepared_new_game_activation_validation_failed")
+	var state_fingerprint := JSON.stringify(snapshot).sha256_text().to_lower()
+	if state_fingerprint.is_empty():
+		return _reject("prepared_new_game_fingerprint_failed")
+	_new_game_transaction["snapshot"] = snapshot.duplicate(true)
+	_new_game_transaction["final_state_fingerprint"] = state_fingerprint
+	_new_game_transaction_stage = "owner_activated"
+	return {
+		"accepted": true,
+		"reason_code": "v075_new_game_owner_activated",
+		"transaction_id": transaction_id,
+		"transaction_stage": _new_game_transaction_stage,
+		"final_state_fingerprint": state_fingerprint,
+	}
+
+
+func seal_prepared_new_game_publication(transaction_id: String) -> Dictionary:
+	if (
+		_new_game_transaction_stage != "owner_activated"
+		or transaction_id.is_empty()
+		or transaction_id != str(_new_game_transaction.get("transaction_id", ""))
+	):
+		return _reject("prepared_new_game_publication_not_ready")
+	_new_game_transaction_stage = "publication_sealed"
+	return {
+		"accepted": true,
+		"reason_code": "v075_new_game_publication_sealed",
+		"transaction_id": transaction_id,
+		"pending_initialization_rollback": true,
+	}
+
+
+func finalize_prepared_new_game_publication(
+	transaction_id: String
+) -> Dictionary:
+	if (
+		_new_game_transaction_stage != "publication_sealed"
+		or transaction_id.is_empty()
+		or transaction_id != str(_new_game_transaction.get("transaction_id", ""))
+	):
+		return _reject("prepared_new_game_publication_not_sealed")
+	var result := (
+		_new_game_transaction.get("started", {}) as Dictionary
+	).duplicate(true)
+	result["reason_code"] = "v075_new_game_started"
+	result["transaction_stage"] = "complete"
+	result["pending_initialization_rollback"] = false
+	result["runtime_signal_publication_count"] = 1
+	_new_game_transaction["finalized_receipt"] = result.duplicate(true)
+	_new_game_transaction_stage = "publication_finalized"
+	return result
+
+
+func emit_finalized_new_game_signals(transaction_id: String) -> void:
+	if (
+		_new_game_transaction_stage != "publication_finalized"
+		or not _new_game_publication_stage_authorized(
+			"publish_runtime_signals"
+		)
+		or transaction_id.is_empty()
+		or transaction_id != str(_new_game_transaction.get(
+			"transaction_id",
+			""
+		))
+		or (
+			_new_game_transaction.get(
+				"finalized_receipt",
+				{}
+			) as Dictionary
+		).is_empty()
+	):
+		return
+	var snapshot := (
+		_new_game_transaction.get("snapshot", {}) as Dictionary
+	).duplicate(true)
+	if snapshot.is_empty():
+		return
+	var signals_were_blocked := bool(
+		_new_game_transaction.get("signals_were_blocked", false)
+	)
+	_new_game_transaction_stage = "publishing"
+	_reset_new_game_observers()
+	set_block_signals(signals_were_blocked)
+	_new_game_publication_count += 1
+	if not signals_were_blocked:
+		match_started.emit(snapshot.duplicate(true))
+		state_changed.emit(snapshot.duplicate(true))
+	_new_game_transaction_stage = "published_waiting_completion"
+
+
+func complete_finalized_new_game_publication(
+	transaction_id: String
+) -> void:
+	if (
+		_new_game_transaction_stage != "published_waiting_completion"
+		or not _new_game_publication_stage_authorized(
+			"complete_runtime_publication"
+		)
+		or transaction_id.is_empty()
+		or transaction_id != str(_new_game_transaction.get(
+			"transaction_id",
+			""
+		))
+	):
+		return
+	_new_game_transaction = {}
+	_new_game_transaction_stage = "idle"
+	_clear_new_game_publication_stage_authority()
+
+
+func publish_prepared_new_game(transaction_id: String) -> Dictionary:
+	var finalized := finalize_prepared_new_game_publication(
+		transaction_id
+	)
+	if not bool(finalized.get("accepted", false)):
+		return finalized
+	emit_finalized_new_game_signals(transaction_id)
+	complete_finalized_new_game_publication(transaction_id)
+	return finalized
+
+
+func _strict_public_failure_reason_code(
+	source: Dictionary,
+	fallback: String
+) -> String:
+	var value: Variant = source.get("reason_code")
+	if (
+		typeof(value) == TYPE_STRING
+		and not str(value).is_empty()
+	):
+		return str(value)
+	return fallback
+
+func abort_prepared_new_game(
+	transaction_id: String,
+	primary_failure: Dictionary
+) -> Dictionary:
+	if (
+		_new_game_transaction_stage in [
+			"idle",
+			"publishing",
+			"published_waiting_completion",
+		]
+		or transaction_id.is_empty()
+		or transaction_id != str(_new_game_transaction.get("transaction_id", ""))
+	):
+		return _reject("prepared_new_game_abort_transaction_invalid")
+	return _abort_v075_new_game(
+		_strict_public_failure_reason_code(
+			primary_failure,
+			"v075_prepared_new_game_aborted"
+		),
+		primary_failure,
+		int(_new_game_transaction.get(
+			"previous_match_sequence",
+			_match_sequence
+		)),
+		bool(_new_game_transaction.get("signals_were_blocked", false)),
+		bool(_new_game_transaction.get("publish_fault_on_failure", false))
+	)
+
+
+func _abort_v075_new_game(
+	reason_code: String,
+	detail: Dictionary,
+	previous_match_sequence: int,
+	signals_were_blocked: bool,
+	publish_fault: bool
+) -> Dictionary:
+	var failed_stage := _new_game_transaction_stage
+	var transaction_id := str(_new_game_transaction.get(
+		"transaction_id",
+		""
+	))
+	var primary_failure := {
+		"accepted": false,
+		"reason_code": reason_code,
+		"failed_stage": failed_stage,
+		"detail": _sanitize_initialization_failure_detail(detail),
+	}
+	var cleanup_result: Dictionary = {}
+	var cleanup_invoked := false
+	if (
+		is_instance_valid(_combat_owner)
+		and _combat_owner.has_method("cleanup_failed_initialization")
+	):
+		cleanup_invoked = true
+		var cleanup_variant: Variant = _combat_owner.call(
+			"cleanup_failed_initialization",
+			{
+				"schema": "V075FailedInitializationCleanupContextV1",
+				"ownership_token": str(_new_game_transaction.get(
+					"initialization_ownership_token",
+					""
+				)),
+				"failed_stage": failed_stage,
+				"primary_reason_code": reason_code,
+			}
+		)
+		if cleanup_variant is Dictionary:
+			cleanup_result = (
+				cleanup_variant as Dictionary
+			).duplicate(true)
+	else:
+		cleanup_result = {
+			"accepted": false,
+			"reason_code": "cleanup_failed_initialization_contract_missing",
+			"failed_cleanup_stage": "contract",
+			"remaining_binding_count": -1,
+			"remaining_subscription_count": -1,
+		}
+	var combat_cleanup_verification := (
+		_verify_combat_cleanup_residuals()
+	)
+	var actual_combat_residuals := (
+		combat_cleanup_verification.get("residuals", {}) as Dictionary
+	)
+	var cleanup_contract_valid := (
+		_failed_initialization_cleanup_result_contract_valid(
+			cleanup_result
+		)
+	)
+	if not cleanup_contract_valid:
+		cleanup_result = _failed_initialization_cleanup_contract_failure(
+			actual_combat_residuals,
+			cleanup_invoked,
+			cleanup_result
+		)
+	if not bool(combat_cleanup_verification.get("verified", false)):
+		cleanup_result = cleanup_result.duplicate(true)
+		var cleanup_reported_success := (
+			typeof(cleanup_result.get("accepted")) == TYPE_BOOL
+			and bool(cleanup_result.get("accepted"))
+		)
+		cleanup_result["accepted"] = false
+		if (
+			not cleanup_contract_valid
+			or cleanup_reported_success
+			or not cleanup_result.has("failed_cleanup_stage")
+			or typeof(cleanup_result.get("failed_cleanup_stage"))
+				!= TYPE_STRING
+			or str(cleanup_result.get("failed_cleanup_stage")).is_empty()
+		):
+			cleanup_result["failed_cleanup_stage"] = (
+				"combat_residual_verification"
+			)
+		for residual_field in [
+			"remaining_binding_count",
+			"remaining_subscription_count",
+			"remaining_private_skill_count",
+			"remaining_instant_sequence_count",
+			"remaining_military_mission_count",
+			"remaining_receipt_count",
+			"remaining_ai_binding_count",
+			"remaining_player_projection_binding_count",
+			"remaining_telemetry_binding_count",
+			"remaining_state_entry_count",
+		]:
+			if (
+				actual_combat_residuals.has(residual_field)
+				and typeof(actual_combat_residuals.get(residual_field))
+					== TYPE_INT
+			):
+				var reported_count := 0
+				if (
+					cleanup_result.has(residual_field)
+					and typeof(cleanup_result.get(residual_field))
+						== TYPE_INT
+				):
+					reported_count = maxi(
+						0,
+						int(cleanup_result.get(residual_field))
+					)
+				cleanup_result[residual_field] = maxi(
+					reported_count,
+					maxi(
+						0,
+						int(actual_combat_residuals.get(
+							residual_field
+						))
+					)
+				)
+	var composition_checkpoint := (
+		_new_game_transaction.get(
+			"composition_checkpoint",
+			{}
+		) as Dictionary
+	).duplicate(true)
+	_reset_runtime()
+	var composition_after := _capture_initialization_composition_state()
+	var object_binding_delta_count := (
+		_initialization_composition_delta_count(
+			composition_checkpoint,
+			composition_after,
+			[
+				"combat_owner_instance_id",
+				"combat_owner_parent_instance_id",
+			]
+		)
+	)
+	var ai_binding_delta_count := (
+		_initialization_composition_delta_count(
+			composition_checkpoint,
+			composition_after,
+			["combat_ai_adapter_instance_id"]
+		)
+	)
+	var player_projection_delta_count := (
+		_initialization_composition_delta_count(
+			composition_checkpoint,
+			composition_after,
+			[
+				"combat_projection_adapter_instance_id",
+				"combat_presentation_instance_id",
+				"combat_presentation_parent_instance_id",
+				"presentation_debug",
+			]
+		)
+	)
+	var telemetry_delta_count := (
+		_initialization_composition_delta_count(
+			composition_checkpoint,
+			composition_after,
+			[
+				"combat_telemetry_instance_id",
+				"telemetry_debug",
+			]
+		)
+	)
+	var subscription_delta_count := (
+		_initialization_composition_delta_count(
+			composition_checkpoint,
+			composition_after,
+			[
+				"match_started_connections",
+				"state_changed_connections",
+				"runtime_fault_connections",
+				"final_settlement_connections",
+				"resolution_presented_connections",
+				"playtest_observation_connections",
+				"presentation_cue_connections",
+			]
+		)
+	)
+	var external_state_mutation_count := (
+		object_binding_delta_count
+		+ ai_binding_delta_count
+		+ player_projection_delta_count
+		+ telemetry_delta_count
+		+ subscription_delta_count
+	)
+	var composition_binding_parity := (
+		not composition_checkpoint.is_empty()
+		and external_state_mutation_count == 0
+	)
+	cleanup_result = cleanup_result.duplicate(true)
+	cleanup_result["composition_object_binding_delta_count"] = (
+		object_binding_delta_count
+	)
+	cleanup_result["composition_ai_binding_delta_count"] = (
+		ai_binding_delta_count
+	)
+	cleanup_result["composition_player_projection_delta_count"] = (
+		player_projection_delta_count
+	)
+	cleanup_result["composition_telemetry_delta_count"] = (
+		telemetry_delta_count
+	)
+	cleanup_result["composition_subscription_delta_count"] = (
+		subscription_delta_count
+	)
+	_add_cleanup_residual_delta(
+		cleanup_result,
+		"remaining_binding_count",
+		object_binding_delta_count
+			+ ai_binding_delta_count
+			+ player_projection_delta_count
+			+ telemetry_delta_count
+	)
+	_add_cleanup_residual_delta(
+		cleanup_result,
+		"remaining_subscription_count",
+		subscription_delta_count
+	)
+	_add_cleanup_residual_delta(
+		cleanup_result,
+		"remaining_ai_binding_count",
+		ai_binding_delta_count
+	)
+	_add_cleanup_residual_delta(
+		cleanup_result,
+		"remaining_player_projection_binding_count",
+		player_projection_delta_count
+	)
+	_add_cleanup_residual_delta(
+		cleanup_result,
+		"remaining_telemetry_binding_count",
+		telemetry_delta_count
+	)
+	_add_cleanup_residual_delta(
+		cleanup_result,
+		"external_state_mutation_count",
+		external_state_mutation_count
+	)
+	if not composition_binding_parity:
+		var combat_cleanup_was_accepted := (
+			typeof(cleanup_result.get("accepted")) == TYPE_BOOL
+			and bool(cleanup_result.get("accepted"))
+		)
+		cleanup_result["accepted"] = false
+		if (
+			combat_cleanup_was_accepted
+			or not cleanup_result.has("failed_cleanup_stage")
+			or str(cleanup_result.get("failed_cleanup_stage")).is_empty()
+		):
+			cleanup_result["failed_cleanup_stage"] = (
+				"composition_binding_parity"
+			)
+		cleanup_result["cleanup_owned_state_only"] = false
+	cleanup_result["composition_binding_parity"] = (
+		composition_binding_parity
+	)
+	var cleanup_accepted := _failed_initialization_cleanup_accepted(
+		cleanup_result
+	)
+	_match_sequence = previous_match_sequence
+	_new_game_transaction = {}
+	_new_game_transaction_stage = "idle"
+	_clear_new_game_publication_stage_authority()
+	_new_game_abort_count += 1
+	_runtime_error_count += 1
+	var receipt: Dictionary
+	var sanitized_cleanup_result := (
+		_sanitize_initialization_failure_detail(cleanup_result)
+	)
+	if cleanup_accepted:
+		receipt = {
+			"schema": "V075InitializationFailureV1",
+			"accepted": false,
+			"reason_code": reason_code,
+			"detail": _sanitize_initialization_failure_detail(detail),
+			"failed_stage": failed_stage,
+			"cleanup": sanitized_cleanup_result.duplicate(true),
+		}
+	else:
+		_new_game_cleanup_failure_count += 1
+		receipt = {
+			"schema": "V075InitializationFailureV1",
+			"accepted": false,
+			"reason_code": "initialization_failed_and_cleanup_failed",
+			"failed_stage": failed_stage,
+			"primary_initialization_failure": primary_failure.duplicate(true),
+			"cleanup_failure": sanitized_cleanup_result.duplicate(true),
+		}
+		for cleanup_field in [
+			"failed_cleanup_stage",
+			"cleanup_invocation_count",
+			"already_clean",
+			"external_state_mutation_count",
+			"cleanup_owned_state_only",
+			"composition_binding_parity",
+			"composition_object_binding_delta_count",
+			"composition_ai_binding_delta_count",
+			"composition_player_projection_delta_count",
+			"composition_telemetry_delta_count",
+			"composition_subscription_delta_count",
+			"remaining_binding_count",
+			"remaining_subscription_count",
+			"remaining_private_skill_count",
+			"remaining_instant_sequence_count",
+			"remaining_military_mission_count",
+			"remaining_receipt_count",
+			"remaining_ai_binding_count",
+			"remaining_player_projection_binding_count",
+			"remaining_telemetry_binding_count",
+			"remaining_state_entry_count",
+		]:
+			if sanitized_cleanup_result.has(cleanup_field):
+				receipt[cleanup_field] = sanitized_cleanup_result.get(
+					cleanup_field
+				)
+	set_block_signals(signals_were_blocked)
+	if publish_fault and not signals_were_blocked:
+		runtime_fault.emit(receipt.duplicate(true))
+	return receipt
+
+
+func _verify_combat_cleanup_residuals() -> Dictionary:
+	var verification := {
+		"verified": false,
+		"residuals": {},
+	}
+	if (
+		not is_instance_valid(_combat_owner)
+		or not _combat_owner.has_method("debug_snapshot")
+	):
+		return verification
+	var debug_variant: Variant = _combat_owner.call("debug_snapshot")
+	if not (debug_variant is Dictionary):
+		return verification
+	var combat_debug := debug_variant as Dictionary
+	var residual_variant: Variant = combat_debug.get(
+		"failed_initialization_residuals"
+	)
+	if not (residual_variant is Dictionary):
+		return verification
+	var residuals := residual_variant as Dictionary
+	verification["residuals"] = residuals.duplicate(true)
+	if (
+		not combat_debug.has("initialized")
+		or typeof(combat_debug.get("initialized")) != TYPE_BOOL
+		or bool(combat_debug.get("initialized"))
+		or not combat_debug.has("phase")
+		or typeof(combat_debug.get("phase")) != TYPE_STRING
+		or str(combat_debug.get("phase")) != "idle"
+	):
+		return verification
+	for residual_field in [
+		"remaining_binding_count",
+		"remaining_subscription_count",
+		"remaining_private_skill_count",
+		"remaining_instant_sequence_count",
+		"remaining_military_mission_count",
+		"remaining_receipt_count",
+		"remaining_ai_binding_count",
+		"remaining_player_projection_binding_count",
+		"remaining_telemetry_binding_count",
+		"remaining_state_entry_count",
+	]:
+		if (
+			not residuals.has(residual_field)
+			or typeof(residuals.get(residual_field)) != TYPE_INT
+			or int(residuals.get(residual_field)) != 0
+		):
+			return verification
+	verification["verified"] = true
+	return verification
+
+
+func _failed_initialization_cleanup_result_contract_valid(
+	result: Dictionary
+) -> bool:
+	var string_fields := [
+		"schema",
+		"reason_code",
+		"failed_cleanup_stage",
+	]
+	var boolean_fields := [
+		"accepted",
+		"already_clean",
+		"cleanup_owned_state_only",
+	]
+	var integer_fields := [
+		"cleanup_invocation_count",
+		"external_state_mutation_count",
+		"remaining_binding_count",
+		"remaining_subscription_count",
+		"remaining_private_skill_count",
+		"remaining_instant_sequence_count",
+		"remaining_military_mission_count",
+		"remaining_receipt_count",
+		"remaining_ai_binding_count",
+		"remaining_player_projection_binding_count",
+		"remaining_telemetry_binding_count",
+		"remaining_state_entry_count",
+	]
+	for field_name in string_fields:
+		if (
+			not result.has(field_name)
+			or typeof(result.get(field_name)) != TYPE_STRING
+		):
+			return false
+	for field_name in boolean_fields:
+		if (
+			not result.has(field_name)
+			or typeof(result.get(field_name)) != TYPE_BOOL
+		):
+			return false
+	for field_name in integer_fields:
+		if (
+			not result.has(field_name)
+			or typeof(result.get(field_name)) != TYPE_INT
+			or int(result.get(field_name)) < 0
+		):
+			return false
+	if (
+		result.get("schema")
+			!= "V075FailedInitializationCleanupResultV1"
+		or int(result.get("cleanup_invocation_count")) < 1
+	):
+		return false
+	if bool(result.get("accepted")):
+		if (
+			result.get("reason_code")
+				!= "combat_failed_initialization_cleaned"
+			or not str(result.get("failed_cleanup_stage")).is_empty()
+			or not bool(result.get("cleanup_owned_state_only"))
+			or int(result.get("external_state_mutation_count")) != 0
+		):
+			return false
+		for count_field in integer_fields:
+			if (
+				count_field != "cleanup_invocation_count"
+				and int(result.get(count_field)) != 0
+			):
+				return false
+	else:
+		if (
+			str(result.get("reason_code")).is_empty()
+			or str(result.get("failed_cleanup_stage")).is_empty()
+		):
+			return false
+	return true
+
+
+func _failed_initialization_cleanup_contract_failure(
+	actual_residuals: Dictionary,
+	cleanup_invoked: bool,
+	raw_result: Dictionary
+) -> Dictionary:
+	var invocation_count := 1 if cleanup_invoked else 0
+	if (
+		raw_result.has("cleanup_invocation_count")
+		and typeof(raw_result.get("cleanup_invocation_count")) == TYPE_INT
+	):
+		invocation_count = maxi(
+			invocation_count,
+			maxi(0, int(raw_result.get("cleanup_invocation_count")))
+		)
+	var result := {
+		"schema": "V075FailedInitializationCleanupResultV1",
+		"accepted": false,
+		"reason_code": "cleanup_failed_initialization_result_invalid",
+		"failed_cleanup_stage": "cleanup_result_contract",
+		"cleanup_invocation_count": invocation_count,
+		"already_clean": false,
+		"external_state_mutation_count": 0,
+		"cleanup_owned_state_only": false,
+	}
+	for residual_field in [
+		"remaining_binding_count",
+		"remaining_subscription_count",
+		"remaining_private_skill_count",
+		"remaining_instant_sequence_count",
+		"remaining_military_mission_count",
+		"remaining_receipt_count",
+		"remaining_ai_binding_count",
+		"remaining_player_projection_binding_count",
+		"remaining_telemetry_binding_count",
+		"remaining_state_entry_count",
+	]:
+		result[residual_field] = (
+			int(actual_residuals.get(residual_field))
+			if (
+				actual_residuals.has(residual_field)
+				and typeof(actual_residuals.get(residual_field)) == TYPE_INT
+			)
+			else -1
+		)
+	return result
+
+func _failed_initialization_cleanup_accepted(result: Dictionary) -> bool:
+	var string_fields := [
+		"schema",
+		"reason_code",
+		"failed_cleanup_stage",
+	]
+	var boolean_fields := [
+		"accepted",
+		"already_clean",
+		"cleanup_owned_state_only",
+		"composition_binding_parity",
+	]
+	var integer_fields := [
+		"cleanup_invocation_count",
+		"external_state_mutation_count",
+		"remaining_binding_count",
+		"remaining_subscription_count",
+		"remaining_private_skill_count",
+		"remaining_instant_sequence_count",
+		"remaining_military_mission_count",
+		"remaining_receipt_count",
+		"remaining_ai_binding_count",
+		"remaining_player_projection_binding_count",
+		"remaining_telemetry_binding_count",
+		"remaining_state_entry_count",
+	]
+	for field_name in string_fields:
+		if (
+			not result.has(field_name)
+			or typeof(result.get(field_name)) != TYPE_STRING
+		):
+			return false
+	for field_name in boolean_fields:
+		if (
+			not result.has(field_name)
+			or typeof(result.get(field_name)) != TYPE_BOOL
+		):
+			return false
+	for field_name in integer_fields:
+		if (
+			not result.has(field_name)
+			or typeof(result.get(field_name)) != TYPE_INT
+		):
+			return false
+	if (
+		result.get("schema")
+			!= "V075FailedInitializationCleanupResultV1"
+		or not bool(result.get("accepted"))
+		or result.get("reason_code")
+			!= "combat_failed_initialization_cleaned"
+		or not str(result.get("failed_cleanup_stage")).is_empty()
+		or int(result.get("cleanup_invocation_count")) < 1
+		or not bool(result.get("cleanup_owned_state_only"))
+		or not bool(result.get("composition_binding_parity"))
+	):
+		return false
+	for count_field in integer_fields:
+		if (
+			count_field != "cleanup_invocation_count"
+			and int(result.get(count_field)) != 0
+		):
+			return false
+	return true
+
+
+func _initialization_failure_field_has_safe_type(
+	field_name: String,
+	value: Variant
+) -> bool:
+	if field_name in [
+		"schema",
+		"reason_code",
+		"ruleset_id",
+		"failed_stage",
+		"failed_cleanup_stage",
+	]:
+		return typeof(value) == TYPE_STRING
+	if field_name in [
+		"accepted",
+		"already_clean",
+		"cleanup_owned_state_only",
+		"composition_binding_parity",
+	]:
+		return typeof(value) == TYPE_BOOL
+	if field_name in [
+		"cleanup_invocation_count",
+		"external_state_mutation_count",
+		"composition_object_binding_delta_count",
+		"composition_ai_binding_delta_count",
+		"composition_player_projection_delta_count",
+		"composition_telemetry_delta_count",
+		"composition_subscription_delta_count",
+		"remaining_binding_count",
+		"remaining_subscription_count",
+		"remaining_private_skill_count",
+		"remaining_instant_sequence_count",
+		"remaining_military_mission_count",
+		"remaining_receipt_count",
+		"remaining_ai_binding_count",
+		"remaining_player_projection_binding_count",
+		"remaining_telemetry_binding_count",
+		"remaining_state_entry_count",
+	]:
+		return typeof(value) == TYPE_INT
+	return false
+
+
+func _sanitize_initialization_failure_detail(source: Dictionary) -> Dictionary:
+	var sanitized: Dictionary = {}
+	for field_name in [
+		"schema",
+		"accepted",
+		"reason_code",
+		"ruleset_id",
+		"failed_stage",
+		"failed_cleanup_stage",
+		"already_clean",
+		"cleanup_invocation_count",
+		"external_state_mutation_count",
+		"cleanup_owned_state_only",
+		"composition_binding_parity",
+		"composition_object_binding_delta_count",
+		"composition_ai_binding_delta_count",
+		"composition_player_projection_delta_count",
+		"composition_telemetry_delta_count",
+		"composition_subscription_delta_count",
+		"remaining_binding_count",
+		"remaining_subscription_count",
+		"remaining_private_skill_count",
+		"remaining_instant_sequence_count",
+		"remaining_military_mission_count",
+		"remaining_receipt_count",
+		"remaining_ai_binding_count",
+		"remaining_player_projection_binding_count",
+		"remaining_telemetry_binding_count",
+		"remaining_state_entry_count",
+	]:
+		if (
+			source.has(field_name)
+			and _initialization_failure_field_has_safe_type(
+				field_name,
+				source.get(field_name)
+			)
+		):
+			sanitized[field_name] = source.get(field_name)
+	return sanitized
 
 
 func lock_player_submission(actor_id: String) -> Dictionary:
 	if not _combat_initialized or not is_instance_valid(_combat_owner):
-		return super.lock_player_submission(actor_id)
+		return _reject_action("combat_runtime_unavailable")
 	var runtime_checkpoint := _v075_capture_submission_checkpoint(actor_id)
 	if runtime_checkpoint.is_empty():
 		return _reject_action("submission_checkpoint_unavailable")
@@ -2306,6 +3525,25 @@ func debug_snapshot() -> Dictionary:
 	result["public_card_identity_rejection_count"] = (
 		_v075_public_card_identity_rejection_count
 	)
+	result["new_game_transaction_stage"] = _new_game_transaction_stage
+	result["new_game_transaction_in_progress"] = (
+		_new_game_transaction_stage != "idle"
+	)
+	result["pending_initialization_rollback"] = (
+		_new_game_transaction_stage in [
+			"prepare",
+			"owner_initialize",
+			"owner_initialized",
+			"owner_activated",
+			"publication_sealed",
+			"publication_finalized",
+		]
+	)
+	result["new_game_publication_count"] = _new_game_publication_count
+	result["new_game_abort_count"] = _new_game_abort_count
+	result["new_game_cleanup_failure_count"] = (
+		_new_game_cleanup_failure_count
+	)
 	return result
 
 
@@ -2400,6 +3638,9 @@ func _v075_counter_total(counter: Dictionary) -> int:
 
 
 func _reset_runtime() -> void:
+	var reset_new_game_observers := (
+		_new_game_transaction_stage == "idle"
+	)
 	super._reset_runtime()
 	_combat_initialized = false
 	_combat_autonomy_completed_batch_id = ""
@@ -2424,9 +3665,8 @@ func _reset_runtime() -> void:
 	_facility_effect_identity_collision_count = 0
 	_facility_effect_orphan_replay_count = 0
 	_facility_damage_bridge_state = {}
-	_combat_telemetry_bridge.call("reset_for_new_match")
-	if is_instance_valid(_combat_presentation_consumer):
-		_combat_presentation_consumer.call("reset_for_new_match")
+	if reset_new_game_observers:
+		_reset_new_game_observers()
 	_combat_public_history = []
 	_combat_request_sequence = 0
 	_v075_acquisition_opportunities = {}

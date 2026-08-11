@@ -95,7 +95,86 @@ var _effect_duplicate_commit_count := 0
 var _effect_identity_collision_count := 0
 var _effect_orphan_replay_count := 0
 var _effect_invalid_identity_count := 0
+var _failed_initialization_cleanup_count := 0
+var _last_failed_initialization_cleanup_stage := ""
+var _active_initialization_ownership_token := ""
+var _completed_initialization_cleanup_results_by_token: Dictionary = {}
 
+
+func begin_initialization_transaction(context: Dictionary) -> Dictionary:
+	var schema_value: Variant = context.get("schema")
+	var transaction_value: Variant = context.get("ownership_token")
+	var transaction_id := (
+		str(transaction_value)
+		if typeof(transaction_value) == TYPE_STRING
+		else ""
+	)
+	if (
+		typeof(schema_value) != TYPE_STRING
+		or str(schema_value)
+			!= "V075CombatInitializationTransactionContextV1"
+		or transaction_id.is_empty()
+	):
+		return _initialization_transaction_receipt(
+			false,
+			"combat_initialization_transaction_context_invalid",
+			false
+		)
+	if transaction_id == _active_initialization_ownership_token:
+		return _initialization_transaction_receipt(
+			true,
+			"combat_initialization_transaction_already_bound",
+			true
+		)
+	if _completed_initialization_cleanup_results_by_token.has(transaction_id):
+		return _initialization_transaction_receipt(
+			false,
+			"combat_initialization_transaction_already_cleaned",
+			false
+		)
+	if not _active_initialization_ownership_token.is_empty():
+		return _initialization_transaction_receipt(
+			false,
+			"combat_initialization_transaction_conflict",
+			false
+		)
+	var residual := _failed_initialization_residual_snapshot()
+	if (
+		_initialized
+		or _phase != "idle"
+		or int(residual.get("remaining_state_entry_count", -1)) != 0
+	):
+		return _initialization_transaction_receipt(
+			false,
+			"combat_initialization_owner_not_idle",
+			false
+		)
+	_active_initialization_ownership_token = transaction_id
+	return _initialization_transaction_receipt(
+		true,
+		"combat_initialization_transaction_bound",
+		false
+	)
+
+
+func _initialization_transaction_receipt(
+	accepted: bool,
+	reason_code: String,
+	already_bound: bool
+) -> Dictionary:
+	return {
+		"schema": "V075CombatInitializationTransactionReceiptV1",
+		"accepted": accepted,
+		"reason_code": reason_code,
+		"already_bound": already_bound,
+		"active_initialization_transaction_count": (
+			0 if _active_initialization_ownership_token.is_empty() else 1
+		),
+		"completed_initialization_cleanup_count": (
+			_completed_initialization_cleanup_results_by_token.size()
+		),
+		"transaction_token_disclosure_count": 0,
+	}
 
 func initialize(
 	player_ids: Array,
@@ -157,6 +236,245 @@ func initialize(
 		"direct_dbg_write_count": 0,
 	}
 
+
+func cleanup_failed_initialization(context: Dictionary) -> Dictionary:
+	var before := _failed_initialization_residual_snapshot()
+	var transaction_field_present := context.has("ownership_token")
+	var transaction_value: Variant = context.get("ownership_token")
+	var transaction_id := (
+		str(transaction_value)
+		if typeof(transaction_value) == TYPE_STRING
+		else ""
+	)
+	var typed_transaction_request := (
+		typeof(transaction_value) == TYPE_STRING
+		and not transaction_id.is_empty()
+	)
+	var legacy_transaction_request := (
+		not transaction_field_present
+		or (
+			typeof(transaction_value) == TYPE_STRING
+			and transaction_id.is_empty()
+		)
+	)
+	var completed_transaction_request := (
+		typed_transaction_request
+		and _completed_initialization_cleanup_results_by_token.has(
+			transaction_id
+		)
+	)
+	_failed_initialization_cleanup_count += 1
+	_last_failed_initialization_cleanup_stage = str(context.get(
+		"failed_stage",
+		"unspecified"
+	))
+	if completed_transaction_request:
+		return _failed_initialization_cleanup_receipt(
+			_zero_failed_initialization_residual_snapshot(),
+			true,
+			"combat_failed_initialization_cleaned",
+			"",
+			true
+		)
+	var transaction_matches_active := (
+		typed_transaction_request
+		and transaction_id == _active_initialization_ownership_token
+	)
+	var legacy_request_allowed := (
+		legacy_transaction_request
+		and _active_initialization_ownership_token.is_empty()
+	)
+	if not transaction_matches_active and not legacy_request_allowed:
+		return _failed_initialization_cleanup_receipt(
+			before,
+			false,
+			"combat_failed_initialization_transaction_mismatch",
+			"transaction_ownership",
+			false
+		)
+	var already_clean := (
+		not _initialized
+		and int(before.get("remaining_state_entry_count", -1)) == 0
+	)
+	_reset_runtime_state()
+	if transaction_matches_active:
+		_active_initialization_ownership_token = ""
+		_completed_initialization_cleanup_results_by_token[
+			transaction_id
+		] = true
+	var residual := _failed_initialization_residual_snapshot()
+	var accepted := (
+		not _initialized
+		and _phase == "idle"
+		and int(residual.get("remaining_binding_count", -1)) == 0
+		and int(residual.get("remaining_subscription_count", -1)) == 0
+		and int(residual.get("remaining_private_skill_count", -1)) == 0
+		and int(residual.get("remaining_instant_sequence_count", -1)) == 0
+		and int(residual.get("remaining_military_mission_count", -1)) == 0
+		and int(residual.get("remaining_receipt_count", -1)) == 0
+		and int(residual.get("remaining_ai_binding_count", -1)) == 0
+		and int(residual.get(
+			"remaining_player_projection_binding_count",
+			-1
+		)) == 0
+		and int(residual.get("remaining_telemetry_binding_count", -1)) == 0
+		and int(residual.get("remaining_state_entry_count", -1)) == 0
+	)
+	return _failed_initialization_cleanup_receipt(
+		residual,
+		accepted,
+		(
+			"combat_failed_initialization_cleaned"
+			if accepted
+			else "combat_failed_initialization_cleanup_incomplete"
+		),
+		"" if accepted else _last_failed_initialization_cleanup_stage,
+		already_clean
+	)
+
+
+func _zero_failed_initialization_residual_snapshot() -> Dictionary:
+	return {
+		"remaining_binding_count": 0,
+		"remaining_subscription_count": 0,
+		"remaining_private_skill_count": 0,
+		"remaining_instant_sequence_count": 0,
+		"remaining_military_mission_count": 0,
+		"remaining_receipt_count": 0,
+		"remaining_ai_binding_count": 0,
+		"remaining_player_projection_binding_count": 0,
+		"remaining_telemetry_binding_count": 0,
+		"remaining_state_entry_count": 0,
+	}
+
+
+func _failed_initialization_cleanup_receipt(
+	residual: Dictionary,
+	accepted: bool,
+	reason_code: String,
+	failed_cleanup_stage: String,
+	already_clean: bool
+) -> Dictionary:
+	var result := residual.duplicate(true)
+	result["schema"] = "V075FailedInitializationCleanupResultV1"
+	result["accepted"] = accepted
+	result["reason_code"] = reason_code
+	result["failed_cleanup_stage"] = failed_cleanup_stage
+	result["cleanup_invocation_count"] = (
+		_failed_initialization_cleanup_count
+	)
+	result["already_clean"] = already_clean
+	result["external_state_mutation_count"] = 0
+	result["cleanup_owned_state_only"] = true
+	return result
+
+func _failed_initialization_residual_snapshot() -> Dictionary:
+	var remaining_subscription_count := 0
+	for signal_info_variant in get_signal_list():
+		var signal_info := signal_info_variant as Dictionary
+		var signal_name := StringName(signal_info.get("name", ""))
+		if not signal_name.is_empty():
+			remaining_subscription_count += (
+				get_signal_connection_list(signal_name).size()
+			)
+	var mode_counter_count := 0
+	for mode_count_variant in _monster_card_mode_counts.values():
+		mode_counter_count += maxi(0, int(mode_count_variant))
+	var remaining_private_skill_count := (
+		_skill_state.size()
+		+ _private_skill_request_count
+		+ _private_skill_commit_count
+		+ _private_skill_fizzle_count
+		+ (1 if not _private_skill_last_fizzle_reason.is_empty() else 0)
+		+ _skill_cooldown_recovery_count
+	)
+	var remaining_ai_binding_count := (
+		_processed_autonomy_plans.size()
+		+ _last_autonomy_plan.size()
+		+ _autonomy_target_count
+		+ _hungry_fallback_count
+	)
+	var remaining_instant_sequence_count := (
+		_processed_receipt_keys.size()
+		+ _processed_movement_ids.size()
+		+ _processed_autonomy_plans.size()
+		+ _last_autonomy_plan.size()
+		+ (1 if not _batch_id.is_empty() else 0)
+		+ (1 if _batch_index != -1 else 0)
+	)
+	var remaining_military_mission_count := (
+		_military_locks.size()
+		+ _processed_missions.size()
+		+ _military_region_assault_count
+		+ _military_monster_assault_count
+		+ _military_withdraw_count
+	)
+	var remaining_receipt_count := (
+		_combat_receipt_journal.size()
+		+ _public_results.size()
+		+ _effect_commit_witness.size()
+		+ _facility_damage_intent_count
+		+ _monster_damage_commit_count
+	)
+	var remaining_player_projection_binding_count := (
+		_tracked_targets_by_source.size()
+	)
+	var remaining_binding_count := (
+		_player_ids.size()
+		+ (1 if _initialized else 0)
+		+ (1 if not _active_initialization_ownership_token.is_empty() else 0)
+	)
+	var remaining_telemetry_binding_count := (
+		remaining_subscription_count
+	)
+	var remaining_state_entry_count := (
+		_player_ids.size()
+		+ _topology_snapshot.size()
+		+ _monster_state.size()
+		+ remaining_private_skill_count
+		+ remaining_instant_sequence_count
+		+ remaining_military_mission_count
+		+ remaining_receipt_count
+		+ remaining_ai_binding_count
+		+ remaining_player_projection_binding_count
+		+ remaining_subscription_count
+		+ mode_counter_count
+		+ _movement_count
+		+ _trample_region_receipt_count
+		+ _factory_trample_damage_count
+		+ _market_trample_damage_count
+		+ _warehouse_trample_damage_count
+		+ _runtime_error_count
+		+ _effect_attempt_count
+		+ _effect_replay_count
+		+ _effect_duplicate_commit_count
+		+ _effect_identity_collision_count
+		+ _effect_orphan_replay_count
+		+ _effect_invalid_identity_count
+		+ (1 if _initialized else 0)
+		+ (1 if _phase != "idle" else 0)
+		+ (1 if not _batch_id.is_empty() else 0)
+		+ (1 if _batch_index != -1 else 0)
+		+ (1 if not _lineage_id.is_empty() else 0)
+		+ (1 if _revision != 0 else 0)
+		+ (1 if not _active_initialization_ownership_token.is_empty() else 0)
+	)
+	return {
+		"remaining_binding_count": remaining_binding_count,
+		"remaining_subscription_count": remaining_subscription_count,
+		"remaining_private_skill_count": remaining_private_skill_count,
+		"remaining_instant_sequence_count": remaining_instant_sequence_count,
+		"remaining_military_mission_count": remaining_military_mission_count,
+		"remaining_receipt_count": remaining_receipt_count,
+		"remaining_ai_binding_count": remaining_ai_binding_count,
+		"remaining_player_projection_binding_count": (
+			remaining_player_projection_binding_count
+		),
+		"remaining_telemetry_binding_count": (
+			remaining_telemetry_binding_count
+		),
+		"remaining_state_entry_count": remaining_state_entry_count,
+	}
 
 func begin_batch(
 	batch_id: String,
@@ -1475,6 +1793,22 @@ func debug_snapshot() -> Dictionary:
 		),
 		"production_save_write_count": 0,
 		"save_owner_connected": false,
+		"failed_initialization_cleanup_count": (
+			_failed_initialization_cleanup_count
+		),
+		"last_failed_initialization_cleanup_stage": (
+			_last_failed_initialization_cleanup_stage
+		),
+		"initialization_transaction_active": (
+			not _active_initialization_ownership_token.is_empty()
+		),
+		"completed_initialization_cleanup_count": (
+			_completed_initialization_cleanup_results_by_token.size()
+		),
+		"initialization_transaction_token_disclosure_count": 0,
+		"failed_initialization_residuals": (
+			_failed_initialization_residual_snapshot()
+		),
 	}
 
 

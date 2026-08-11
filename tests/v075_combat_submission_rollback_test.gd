@@ -10,8 +10,12 @@ class FakeCombatOwner extends Node:
     var checkpoint_script: Script
     var lineage_id := "fake.combat.submission"
     var revision := 1
-    var phase := "ready"
+    var initialized := false
+    var phase := "idle"
     var batch_id := ""
+    var active_initialization_ownership_token := ""
+    var completed_initialization_cleanup_results_by_token: Dictionary = {}
+    var failed_initialization_cleanup_count := 0
     var military_locks: Dictionary = {}
     var processed_missions: Dictionary = {}
     var receipt_journal: Array = []
@@ -20,7 +24,72 @@ class FakeCombatOwner extends Node:
     func _init(checkpoint: Script = null) -> void:
         checkpoint_script = checkpoint
 
+    func begin_initialization_transaction(context: Dictionary) -> Dictionary:
+        var transaction_id := str(context.get("ownership_token", ""))
+        var accepted := (
+            not transaction_id.is_empty()
+            and active_initialization_ownership_token.is_empty()
+            and not completed_initialization_cleanup_results_by_token.has(transaction_id)
+        )
+        if accepted:
+            active_initialization_ownership_token = transaction_id
+        return {
+            "schema": "V075CombatInitializationTransactionReceiptV1",
+            "accepted": accepted,
+            "reason_code": (
+                "fake_initialization_transaction_bound"
+                if accepted
+                else "fake_initialization_transaction_rejected"
+            ),
+        }
+
+    func cleanup_failed_initialization(context: Dictionary) -> Dictionary:
+        failed_initialization_cleanup_count += 1
+        var transaction_id := str(context.get("ownership_token", ""))
+        var duplicate := completed_initialization_cleanup_results_by_token.has(transaction_id)
+        var accepted := duplicate or (
+            not transaction_id.is_empty()
+            and transaction_id == active_initialization_ownership_token
+        )
+        if accepted and not duplicate:
+            initialized = false
+            phase = "idle"
+            batch_id = ""
+            military_locks.clear()
+            processed_missions.clear()
+            receipt_journal.clear()
+            active_initialization_ownership_token = ""
+            completed_initialization_cleanup_results_by_token[transaction_id] = true
+        var result := {
+            "schema": "V075FailedInitializationCleanupResultV1",
+            "accepted": accepted,
+            "reason_code": (
+                "combat_failed_initialization_cleaned"
+                if accepted
+                else "fake_initialization_transaction_mismatch"
+            ),
+            "failed_cleanup_stage": "" if accepted else "transaction_ownership",
+            "cleanup_invocation_count": failed_initialization_cleanup_count,
+            "already_clean": duplicate,
+            "external_state_mutation_count": 0,
+            "cleanup_owned_state_only": true,
+        }
+        for field_name in [
+            "remaining_binding_count",
+            "remaining_subscription_count",
+            "remaining_private_skill_count",
+            "remaining_instant_sequence_count",
+            "remaining_military_mission_count",
+            "remaining_receipt_count",
+            "remaining_ai_binding_count",
+            "remaining_player_projection_binding_count",
+            "remaining_telemetry_binding_count",
+            "remaining_state_entry_count",
+        ]:
+            result[field_name] = 0
+        return result
     func initialize(_players: Array, _map: Dictionary, _semantics: Dictionary = {}) -> Dictionary:
+        initialized = true
         phase = "ready"
         return {"accepted": true, "reason_code": "fake_initialized"}
 
@@ -128,6 +197,8 @@ class FakeCombatOwner extends Node:
 
     func debug_snapshot() -> Dictionary:
         return {
+            "initialized": initialized,
+            "phase": phase,
             "military_lock_count": military_locks.size(),
             "processed_mission_count": processed_missions.size(),
             "rollback_count": rollback_count,
