@@ -3,6 +3,9 @@ extends SceneTree
 const Query := preload(
 	"res://scripts/v075_runtime/game_runtime_context_query.gd"
 )
+const GlobeSupport := preload(
+	"res://tests/support/v073_ui_globe_test_support.gd"
+)
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -73,6 +76,28 @@ func _run() -> void:
 		"runtime_composition_missing"
 	)
 	empty_root.free()
+
+	var structural_root := Node.new()
+	structural_root.add_child(FakeRuntimeComposition.new())
+	structural_root.add_child(FakeGameScreen.new())
+	_expect_reason(
+		Query.from_application(structural_root),
+		"runtime_composition_missing"
+	)
+	structural_root.free()
+
+	var named_but_untyped_root := Node.new()
+	var named_but_untyped_runtime := Node.new()
+	named_but_untyped_runtime.name = "V073RuntimeComposition"
+	var named_but_untyped_screen := Node.new()
+	named_but_untyped_screen.name = "V073SampleGameScreen"
+	named_but_untyped_root.add_child(named_but_untyped_runtime)
+	named_but_untyped_root.add_child(named_but_untyped_screen)
+	_expect_reason(
+		Query.from_application(named_but_untyped_root),
+		"runtime_composition_missing"
+	)
+	named_but_untyped_root.free()
 
 	var legacy_root := Node.new()
 	var legacy_runtime := FakeRuntimeComposition.new()
@@ -154,6 +179,49 @@ func _run() -> void:
 		"runtime_not_active"
 	)
 	_set_active_fixture(runtime, screen, telemetry)
+	runtime.debug["cutover_domain_count"] = 28
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"runtime_not_active"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	(runtime.debug["runtime"] as Dictionary)[
+		"combat_runtime_owner_count"
+	] = 2
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"runtime_not_active"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	(runtime.debug["runtime"] as Dictionary)["combat"][
+		"combat_state_writer_count"
+	] = 2
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"runtime_not_active"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	runtime.debug["connected_domain_count"] = 0
+	runtime.debug["cutover_domain_count"] = 0
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"runtime_not_active"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	(runtime.debug["runtime"] as Dictionary)["phase"] = "invented_phase"
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"runtime_not_active"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	(runtime.debug["runtime"] as Dictionary)["combat"]["phase"] = (
+		"invented_phase"
+	)
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"runtime_not_active"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
 	(runtime.debug["runtime"] as Dictionary)["combat"]["phase"] = "idle"
 	var inactive_combat := Query.bind(
 		root,
@@ -184,6 +252,18 @@ func _run() -> void:
 		"game_screen_missing"
 	)
 	_set_active_fixture(runtime, screen, telemetry)
+	telemetry.debug["schema"] = "UnknownTelemetryDebugV1"
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"unsupported_ruleset_context"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	telemetry.debug["source_session_id"] = 1
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"unsupported_ruleset_context"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
 	telemetry.debug["ready"] = false
 	_expect_reason(
 		Query.bind(root, runtime, screen, telemetry),
@@ -197,6 +277,12 @@ func _run() -> void:
 	)
 	_set_active_fixture(runtime, screen, telemetry)
 	telemetry.debug["source_flow_instance_id"] = runtime.get_instance_id() + 1
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"telemetry_service_missing"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	telemetry.debug["source_screen_instance_id"] = screen.get_instance_id() + 1
 	_expect_reason(
 		Query.bind(root, runtime, screen, telemetry),
 		"telemetry_service_missing"
@@ -222,6 +308,21 @@ func _run() -> void:
 	_expect(bool(ready.get("game_screen_ready", false)), "screen readiness is projected")
 	_expect(bool(ready.get("telemetry_ready", false)), "telemetry readiness is projected")
 	_expect(bool(ready.get("combat_owner_active", false)), "combat owner activity is projected")
+	var failed_context := GlobeSupport._failed_main_context(
+		"runtime_not_active"
+	)
+	var helper_state := {"checks": 0, "failures": []}
+	_expect(
+		not failed_context.is_empty()
+		and not GlobeSupport._context_ready(
+			helper_state,
+			failed_context,
+			"failure dictionary remains failed"
+		)
+		and int(helper_state.get("checks", 0)) == 1
+		and (helper_state.get("failures", []) as Array).size() == 1,
+		"nonempty failed main-context dictionary is never treated as success"
+	)
 	root.free()
 	_finish()
 
@@ -265,6 +366,8 @@ func _set_active_fixture(
 			"match_id": "match.fixture.1",
 			"phase": "submission",
 			"active_rule_owner_count": 1,
+			"combat_runtime_owner_count": 1,
+			"combat_state_writer_count": 1,
 			"connected_domain_count": 29,
 			"cutover_domain_count": 29,
 			"combat_telemetry_gameplay_owner_count": 0,
@@ -277,7 +380,7 @@ func _set_active_fixture(
 				"schema": "V075CombatRuntimeDebugV1",
 				"ruleset_id": "v0.7.5",
 				"initialized": true,
-				"phase": "ready",
+				"phase": "batch_active",
 				"combat_runtime_owner_count": 1,
 				"combat_state_writer_count": 1,
 				"connected_domain_count": 6,

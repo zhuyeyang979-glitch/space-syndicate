@@ -30,6 +30,21 @@ const TELEMETRY_METHODS: Array[StringName] = [
 	&"debug_snapshot",
 	&"events_snapshot",
 ]
+const ACTIVE_RUNTIME_PHASES: Array[String] = [
+	"submission",
+	"resolving",
+	"maintenance",
+	"settled",
+]
+const ACTIVE_COMBAT_PHASES: Array[String] = [
+	"batch_active",
+	"public_resolution_between_receipts",
+	"maintenance_before_autonomy",
+	"victory_pending",
+	"victory_resolved",
+	"final_settlement",
+	"terminal",
+]
 
 var _application_root: Node
 var _runtime_composition: Node
@@ -249,6 +264,8 @@ func snapshot() -> Dictionary:
 			runtime,
 			[
 				"active_rule_owner_count",
+				"combat_runtime_owner_count",
+				"combat_state_writer_count",
 				"combat_telemetry_gameplay_owner_count",
 				"combat_telemetry_rng_owner_count",
 				"combat_telemetry_world_mutation_count",
@@ -292,9 +309,37 @@ func snapshot() -> Dictionary:
 		and int(typed_bindings["combat_state_writer_count"]) == 1
 		and int(typed_bindings["combat_telemetry_service_count"]) == 1
 		and bool(typed_bindings["combat_initialized"])
-		and composition["connected_domain_count"] == composition["cutover_domain_count"]
-		and runtime["connected_domain_count"] == runtime["cutover_domain_count"]
-		and combat["connected_domain_count"] == combat["cutover_domain_count"]
+		and runtime["combat_runtime_owner_count"] == 1
+		and runtime["combat_state_writer_count"] == 1
+		and combat["combat_runtime_owner_count"] == 1
+		and combat["combat_state_writer_count"] == 1
+		and (
+			composition["combat_runtime_owner_count"]
+			== runtime["combat_runtime_owner_count"]
+		)
+		and (
+			composition["combat_state_writer_count"]
+			== runtime["combat_state_writer_count"]
+		)
+		and (
+			runtime["combat_runtime_owner_count"]
+			== combat["combat_runtime_owner_count"]
+		)
+		and (
+			runtime["combat_state_writer_count"]
+			== combat["combat_state_writer_count"]
+		)
+		and _complete_domain_binding(composition)
+		and _complete_domain_binding(runtime)
+		and _complete_domain_binding(combat)
+		and (
+			composition["connected_domain_count"]
+			== runtime["connected_domain_count"]
+		)
+		and (
+			composition["cutover_domain_count"]
+			== runtime["cutover_domain_count"]
+		)
 		and composition["combat_telemetry_gameplay_owner_count"] == 0
 		and runtime["combat_telemetry_gameplay_owner_count"] == 0
 		and runtime["combat_telemetry_rng_owner_count"] == 0
@@ -307,8 +352,8 @@ func snapshot() -> Dictionary:
 		bool(typed_bindings["combat_initialized"])
 		and int(typed_bindings["combat_runtime_owner_count"]) == 1
 		and int(typed_bindings["combat_state_writer_count"]) == 1
-		and combat["phase"] not in ["", "idle", "failed"]
-		and combat["connected_domain_count"] == combat["cutover_domain_count"]
+		and combat["phase"] in ACTIVE_COMBAT_PHASES
+		and _complete_domain_binding(combat)
 		and combat_telemetry["gameplay_owner_count"] == 0
 		and combat_telemetry["rng_owner_count"] == 0
 		and combat_telemetry["world_mutation_count"] == 0
@@ -319,7 +364,7 @@ func snapshot() -> Dictionary:
 		and typed_bindings_ready
 		and combat_owner_active
 		and not (runtime["match_id"] as String).is_empty()
-		and runtime["phase"] not in ["", "idle", "failed"]
+		and runtime["phase"] in ACTIVE_RUNTIME_PHASES
 		and runtime["active_rule_owner_count"] == 1
 		and runtime["new_game_transaction_stage"] == "idle"
 		and not runtime["new_game_transaction_in_progress"]
@@ -399,13 +444,20 @@ static func _has_methods(node: Node, method_names: Array[StringName]) -> bool:
 
 
 static func _has_unported_runtime_context(application_candidate: Node) -> bool:
-	return (
-		application_candidate.get_node_or_null("V073RuntimeComposition") != null
-		and application_candidate.get_node_or_null("V073SampleGameScreen") != null
-	) or (
-		application_candidate.get_node_or_null("V074RuntimeComposition") != null
-		and application_candidate.get_node_or_null("V074GameScreen") != null
-	)
+	for paths in [
+		["V073RuntimeComposition", "V073SampleGameScreen"],
+		["V074RuntimeComposition", "V074GameScreen"],
+	]:
+		var runtime := application_candidate.get_node_or_null(paths[0])
+		var screen := application_candidate.get_node_or_null(paths[1])
+		if (
+			is_instance_valid(runtime)
+			and is_instance_valid(screen)
+			and _has_methods(runtime, RUNTIME_METHODS)
+			and _has_methods(screen, SCREEN_METHODS)
+		):
+			return true
+	return false
 
 
 static func _has_exact_schema(value: Dictionary, schema: String) -> bool:
@@ -438,3 +490,10 @@ static func _has_boolean_fields(value: Dictionary, fields: Array[String]) -> boo
 		if not value.has(field) or not (value[field] is bool):
 			return false
 	return true
+
+
+static func _complete_domain_binding(value: Dictionary) -> bool:
+	return (
+		value["cutover_domain_count"] > 0
+		and value["connected_domain_count"] == value["cutover_domain_count"]
+	)
