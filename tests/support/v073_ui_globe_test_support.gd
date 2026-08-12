@@ -7,6 +7,9 @@ const Adapter := preload("res://scripts/presentation/v073/v073_planet_presentati
 const ResponsiveLayout := preload("res://scripts/ui/v073/v073_responsive_table_layout_v2.gd")
 const LayoutAudit := preload("res://scripts/ui/v073/v073_ui_layout_collision_audit_v1.gd")
 const Baseline := preload("res://scripts/playtest/v073_human_baseline_profile.gd")
+const RuntimeContextQuery := preload(
+	"res://scripts/v075_runtime/game_runtime_context_query.gd"
+)
 const FIXED_SEED := 900626424
 
 
@@ -220,8 +223,7 @@ static func _case_planet_region_hit(tree: SceneTree, state: Dictionary) -> void:
 
 static func _case_map_target_binding(tree: SceneTree, state: Dictionary) -> void:
 	var context := await _main_context(tree, Vector2i(1600, 960), 4)
-	if context.is_empty():
-		_expect(state, false, "production main starts")
+	if not _context_ready(state, context, "production main starts"):
 		return
 	var flow := context.get("flow") as Node
 	var screen := context.get("screen") as Control
@@ -251,8 +253,7 @@ static func _case_map_target_binding(tree: SceneTree, state: Dictionary) -> void
 
 static func _case_map_region_popup(tree: SceneTree, state: Dictionary) -> void:
 	var context := await _main_context(tree, Vector2i(1600, 960), 4)
-	if context.is_empty():
-		_expect(state, false, "production main starts")
+	if not _context_ready(state, context, "production main starts"):
 		return
 	var screen := context.get("screen") as Control
 	screen.call("_on_planet_district_selected", 0)
@@ -266,8 +267,7 @@ static func _case_map_region_popup(tree: SceneTree, state: Dictionary) -> void:
 
 static func _case_map_no_gameplay_mutation(tree: SceneTree, state: Dictionary) -> void:
 	var context := await _main_context(tree, Vector2i(1600, 960), 4)
-	if context.is_empty():
-		_expect(state, false, "production main starts")
+	if not _context_ready(state, context, "production main starts"):
 		return
 	var flow := context.get("flow") as Node
 	var screen := context.get("screen") as Control
@@ -310,8 +310,11 @@ static func _case_responsive_table_layout(state: Dictionary) -> void:
 static func _case_ui_rect_collision_audit(tree: SceneTree, state: Dictionary) -> void:
 	for row in [[Vector2i(1366, 768), 4], [Vector2i(1600, 960), 4], [Vector2i(1920, 1080), 8]]:
 		var context := await _main_context(tree, row[0] as Vector2i, int(row[1]))
-		if context.is_empty():
-			_expect(state, false, "%s production main starts" % str(row[0]))
+		if not _context_ready(
+			state,
+			context,
+			"%s production main starts" % str(row[0])
+		):
 			continue
 		var audit := (_acceptance(context).get("ui_layout_collision_audit", {}) as Dictionary)
 		_expect(state, str(audit.get("schema", "")) == LayoutAudit.SCHEMA, "%s uses collision audit V1" % str(row[0]))
@@ -354,8 +357,11 @@ static func _case_ui_rect_collision_audit(tree: SceneTree, state: Dictionary) ->
 static func _case_header_overflow(tree: SceneTree, state: Dictionary) -> void:
 	for size in [Vector2i(1366, 768), Vector2i(1600, 960), Vector2i(1920, 1080)]:
 		var context := await _main_context(tree, size, 4)
-		if context.is_empty():
-			_expect(state, false, "%s production main starts" % str(size))
+		if not _context_ready(
+			state,
+			context,
+			"%s production main starts" % str(size)
+		):
 			continue
 		var acceptance := _acceptance(context)
 		for field in ["header_overflow_count", "header_text_clip_count", "header_interactive_control_overlap_count"]:
@@ -368,8 +374,11 @@ static func _case_header_overflow(tree: SceneTree, state: Dictionary) -> void:
 static func _case_coach_safe_placement(tree: SceneTree, state: Dictionary) -> void:
 	for size in [Vector2i(1366, 768), Vector2i(1600, 960), Vector2i(1920, 1080)]:
 		var context := await _main_context(tree, size, 4)
-		if context.is_empty():
-			_expect(state, false, "%s production main starts" % str(size))
+		if not _context_ready(
+			state,
+			context,
+			"%s production main starts" % str(size)
+		):
 			continue
 		for _frame in range(3):
 			await tree.process_frame
@@ -398,8 +407,11 @@ static func _case_coach_safe_placement(tree: SceneTree, state: Dictionary) -> vo
 static func _case_marker_safe_placement(tree: SceneTree, state: Dictionary) -> void:
 	for size in [Vector2i(1366, 768), Vector2i(1600, 960), Vector2i(1920, 1080)]:
 		var context := await _main_context(tree, size, 4)
-		if context.is_empty():
-			_expect(state, false, "%s production main starts" % str(size))
+		if not _context_ready(
+			state,
+			context,
+			"%s production main starts" % str(size)
+		):
 			continue
 		var marker := (context.get("screen") as Control).find_child("V073PlaytestMarkerPanel", true, false)
 		marker.call("set_temporarily_hidden", false)
@@ -415,8 +427,7 @@ static func _case_marker_safe_placement(tree: SceneTree, state: Dictionary) -> v
 
 static func _case_card_hover_containment(tree: SceneTree, state: Dictionary) -> void:
 	var context := await _main_context(tree, Vector2i(1366, 768), 4)
-	if context.is_empty():
-		_expect(state, false, "production main starts")
+	if not _context_ready(state, context, "production main starts"):
 		return
 	var screen := context.get("screen") as Control
 	var hand_scroll := screen.find_child("HandScroll", true, false) as ScrollContainer
@@ -433,10 +444,9 @@ static func _case_card_hover_containment(tree: SceneTree, state: Dictionary) -> 
 
 static func _case_playtest_telemetry_regression(tree: SceneTree, state: Dictionary) -> void:
 	var context := await _main_context(tree, Vector2i(1600, 960), 4)
-	if context.is_empty():
-		_expect(state, false, "production main starts")
+	if not _context_ready(state, context, "production main starts"):
 		return
-	var telemetry := (context.get("application") as Node).get_node_or_null("V073RuntimeComposition/V073PlaytestTelemetryService")
+	var telemetry := context.get("telemetry") as Node
 	_expect(state, telemetry != null, "telemetry service remains connected")
 	if telemetry != null:
 		var debug := telemetry.call("debug_snapshot") as Dictionary
@@ -468,34 +478,87 @@ static func _main_context(tree: SceneTree, viewport_size: Vector2i, player_count
 	tree.root.size = viewport_size
 	var packed := load(MAIN_SCENE) as PackedScene
 	if packed == null:
-		return {}
+		return _failed_main_context("main_root_missing")
 	var application := packed.instantiate()
+	if application == null:
+		return _failed_main_context("main_root_missing")
 	tree.root.add_child(application)
 	for _frame in range(3):
 		await tree.process_frame
-	var flow := application.get_node_or_null("V073RuntimeComposition")
-	var screen := application.get_node_or_null("V073SampleGameScreen") as Control
-	if flow == null or screen == null:
-		application.queue_free()
-		await tree.process_frame
-		return {}
+	var query := RuntimeContextQuery.from_application(application)
+	var preflight := query.call("snapshot") as Dictionary
+	if str(preflight.get("reason_code", "")) != "runtime_not_active":
+		await _discard_main_application(tree, application)
+		return _failed_main_context(
+			str(preflight.get("reason_code", "runtime_composition_missing")),
+			preflight
+		)
+	var flow := query.call("runtime_composition") as Node
+	var screen := query.call("game_screen") as Control
 	var intent := flow.call("issue_intent", "new_game.start", {
 		"player_count": player_count,
 		"seed": FIXED_SEED,
 	}) as Dictionary
 	var receipt := flow.call("submit_intent", intent) as Dictionary
 	if not bool(receipt.get("accepted", false)):
-		application.queue_free()
-		await tree.process_frame
-		return {}
+		await _discard_main_application(tree, application)
+		return _failed_main_context("runtime_not_active", {
+			"receipt": receipt.duplicate(true),
+		})
 	screen.call("apply_snapshot", flow.call("local_snapshot") as Dictionary)
 	for _frame in range(4):
 		await tree.process_frame
+	var context_snapshot := query.call("snapshot") as Dictionary
+	if not bool(context_snapshot.get("ready", false)):
+		await _discard_main_application(tree, application)
+		return _failed_main_context(
+			str(context_snapshot.get("reason_code", "runtime_not_active")),
+			context_snapshot
+		)
 	return {
+		"ready": true,
+		"reason_code": "ready",
 		"application": application,
 		"flow": flow,
 		"screen": screen,
+		"telemetry": query.call("telemetry_service") as Node,
+		"runtime_context": context_snapshot,
 	}
+
+
+static func _failed_main_context(
+	reason_code: String,
+	detail: Dictionary = {}
+) -> Dictionary:
+	return {
+		"ready": false,
+		"reason_code": reason_code,
+		"runtime_context": detail.duplicate(true),
+	}
+
+
+static func _context_ready(
+	state: Dictionary,
+	context: Dictionary,
+	message: String
+) -> bool:
+	var ready := bool(context.get("ready", false))
+	_expect(
+		state,
+		ready,
+		"%s: %s" % [message, str(context.get("reason_code", "unknown"))]
+	)
+	return ready
+
+
+static func _discard_main_application(
+	tree: SceneTree,
+	application: Node
+) -> void:
+	if is_instance_valid(application):
+		application.queue_free()
+	for _frame in range(2):
+		await tree.process_frame
 
 
 static func _map_context(tree: SceneTree) -> Dictionary:

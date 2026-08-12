@@ -1,0 +1,220 @@
+extends SceneTree
+
+const Query := preload(
+	"res://scripts/v075_runtime/game_runtime_context_query.gd"
+)
+
+var _checks := 0
+var _failures: Array[String] = []
+
+
+class FakeRuntimeComposition:
+	extends Node
+	var identity := {}
+	var debug := {}
+
+	func identity_snapshot() -> Dictionary:
+		return identity.duplicate(true)
+
+	func debug_snapshot() -> Dictionary:
+		return debug.duplicate(true)
+
+	func issue_intent(_kind: String, _parameters: Dictionary = {}) -> Dictionary:
+		return {}
+
+	func submit_intent(_intent: Dictionary) -> Dictionary:
+		return {}
+
+	func local_snapshot() -> Dictionary:
+		return {}
+
+
+class FakeGameScreen:
+	extends Control
+	var debug := {}
+
+	func bind_application_flow(
+		_flow: Node,
+		_identity: Dictionary,
+		_capabilities: Dictionary
+	) -> void:
+		pass
+
+	func apply_snapshot(_snapshot: Dictionary) -> void:
+		pass
+
+	func debug_snapshot() -> Dictionary:
+		return debug.duplicate(true)
+
+
+class FakeTelemetryService:
+	extends Node
+	var debug := {}
+
+	func bind_sources(_flow: Node, _screen: Node) -> void:
+		pass
+
+	func debug_snapshot() -> Dictionary:
+		return debug.duplicate(true)
+
+	func events_snapshot() -> Array:
+		return []
+
+
+func _init() -> void:
+	call_deferred("_run")
+
+
+func _run() -> void:
+	_expect_reason(Query.from_application(null), "main_root_missing")
+	var empty_root := Node.new()
+	_expect_reason(
+		Query.from_application(empty_root),
+		"runtime_composition_missing"
+	)
+	empty_root.free()
+
+	var legacy_root := Node.new()
+	legacy_root.add_child(FakeRuntimeComposition.new())
+	legacy_root.add_child(FakeGameScreen.new())
+	_expect_reason(
+		Query.from_application(legacy_root),
+		"legacy_node_path_only"
+	)
+	legacy_root.free()
+
+	var root := Node.new()
+	var runtime := FakeRuntimeComposition.new()
+	var screen := FakeGameScreen.new()
+	var telemetry := FakeTelemetryService.new()
+	root.add_child(runtime)
+	root.add_child(screen)
+	root.add_child(telemetry)
+	_expect_reason(
+		Query.bind(root, null, screen, telemetry),
+		"runtime_composition_missing"
+	)
+	_expect_reason(
+		Query.bind(root, runtime, null, telemetry),
+		"game_screen_missing"
+	)
+	_expect_reason(
+		Query.bind(root, runtime, screen, null),
+		"telemetry_service_missing"
+	)
+
+	_set_active_fixture(runtime, screen, telemetry)
+	runtime.debug["ruleset_id"] = "v0.7.other"
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"unsupported_ruleset_context"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	runtime.identity["activation_count"] = 0
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"runtime_not_active"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	screen.debug["application_flow_bound"] = false
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"game_screen_missing"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	telemetry.debug["ready"] = false
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"telemetry_service_missing"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	var ready := Query.bind(
+		root,
+		runtime,
+		screen,
+		telemetry
+	).call("snapshot") as Dictionary
+	_expect(bool(ready.get("ready", false)), "active typed context is ready")
+	_expect(str(ready.get("reason_code", "")) == "ready", "ready reason is explicit")
+	_expect(str(ready.get("ruleset_id", "")) == "v0.7.5", "ruleset is projected")
+	_expect(str(ready.get("session_state", "")) == "committed", "session commit is projected")
+	_expect(bool(ready.get("runtime_active", false)), "runtime active is projected")
+	_expect(bool(ready.get("game_screen_ready", false)), "screen readiness is projected")
+	_expect(bool(ready.get("telemetry_ready", false)), "telemetry readiness is projected")
+	_expect(bool(ready.get("combat_owner_active", false)), "combat owner activity is projected")
+	root.free()
+	_finish()
+
+
+func _set_active_fixture(
+	runtime: FakeRuntimeComposition,
+	screen: FakeGameScreen,
+	telemetry: FakeTelemetryService
+) -> void:
+	runtime.identity = {
+		"ruleset_id": "v0.7.5",
+		"last_session_id": "session.fixture.1",
+		"activation_count": 1,
+		"published_activation_count": 1,
+		"activation_transaction_stage": "idle",
+	}
+	runtime.debug = {
+		"ruleset_id": "v0.7.5",
+		"composition_ready": true,
+		"ruleset_owner_count": 1,
+		"gameplay_owner_count": 1,
+		"combat_runtime_owner_count": 1,
+		"combat_state_writer_count": 1,
+		"combat_telemetry_service_count": 1,
+		"last_receipt": {
+			"accepted": true,
+			"session_id": "session.fixture.1",
+		},
+		"new_game_transaction_stage": "idle",
+		"new_game_transaction_in_progress": false,
+		"pending_initialization_rollback": false,
+		"runtime": {
+			"ruleset_id": "v0.7.5",
+			"match_id": "match.fixture.1",
+			"phase": "submission",
+			"active_rule_owner_count": 1,
+			"new_game_transaction_stage": "idle",
+			"new_game_transaction_in_progress": false,
+			"pending_initialization_rollback": false,
+			"combat": {"initialized": true},
+		},
+	}
+	screen.debug = {
+		"ruleset_id": "v0.7.5",
+		"application_flow_bound": true,
+	}
+	telemetry.debug = {
+		"ready": true,
+		"session_id": "telemetry.fixture.1",
+	}
+
+
+func _expect_reason(query: Query, reason_code: String) -> void:
+	var snapshot := query.call("snapshot") as Dictionary
+	_expect(not bool(snapshot.get("ready", true)), "%s is rejected" % reason_code)
+	_expect(
+		str(snapshot.get("reason_code", "")) == reason_code,
+		"%s reason is exact" % reason_code
+	)
+
+
+func _expect(condition: bool, message: String) -> void:
+	_checks += 1
+	if not condition:
+		_failures.append(message)
+
+
+func _finish() -> void:
+	var passed := _failures.is_empty()
+	print("GAME_RUNTIME_CONTEXT_QUERY_TEST|status=%s|passed=%d|total=%d|details=%s" % [
+		"PASS" if passed else "FAIL",
+		_checks - _failures.size(),
+		_checks,
+		JSON.stringify(_failures),
+	])
+	quit(0 if passed else 1)

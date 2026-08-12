@@ -1,6 +1,10 @@
 extends Control
 class_name V075ApplicationBootstrap
 
+const RuntimeContextQuery := preload(
+	"res://scripts/v075_runtime/game_runtime_context_query.gd"
+)
+
 @onready var _application_flow: Node = %V075RuntimeComposition
 @onready var _game_screen: Control = %V075GameScreen
 @onready var _playtest_telemetry: Node = (
@@ -30,6 +34,15 @@ func _ready() -> void:
 	)
 	_application_flow.runtime_fault_presented.connect(
 		_on_runtime_fault_presented
+	)
+
+
+func game_runtime_context_query() -> RuntimeContextQuery:
+	return RuntimeContextQuery.bind(
+		self,
+		_application_flow,
+		_game_screen,
+		_playtest_telemetry
 	)
 
 

@@ -65,7 +65,7 @@ func _run() -> void:
 	var flow := FlowHarness.new()
 	flow.name = "V075RuntimeCompositionHarness"
 	var runtime := RuntimeOwner.new() as Node
-	runtime.name = "V074RuntimeOwner"
+	runtime.name = "V075RuntimeOwner"
 	var combat := CombatOwner.new() as Node
 	combat.name = "V075CombatRuntimeOwner"
 	flow.add_child(runtime)
