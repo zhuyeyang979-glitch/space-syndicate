@@ -75,8 +75,12 @@ func _run() -> void:
 	empty_root.free()
 
 	var legacy_root := Node.new()
-	legacy_root.add_child(FakeRuntimeComposition.new())
-	legacy_root.add_child(FakeGameScreen.new())
+	var legacy_runtime := FakeRuntimeComposition.new()
+	legacy_runtime.name = "V073RuntimeComposition"
+	var legacy_screen := FakeGameScreen.new()
+	legacy_screen.name = "V073SampleGameScreen"
+	legacy_root.add_child(legacy_runtime)
+	legacy_root.add_child(legacy_screen)
 	_expect_reason(
 		Query.from_application(legacy_root),
 		"legacy_node_path_only"
@@ -116,6 +120,64 @@ func _run() -> void:
 		"runtime_not_active"
 	)
 	_set_active_fixture(runtime, screen, telemetry)
+	runtime.debug["last_receipt"] = {
+		"accepted": false,
+		"intent_kind": "card.queue",
+		"session_id": "unrelated.later.receipt",
+	}
+	_expect_ready(
+		Query.bind(root, runtime, screen, telemetry),
+		"later business receipt does not revoke a published session"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	runtime.identity["ruleset_id"] = ""
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"unsupported_ruleset_context"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	runtime.identity["activation_count"] = "1"
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"unsupported_ruleset_context"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	runtime.debug["new_game_transaction_in_progress"] = true
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"runtime_not_active"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	runtime.debug["connected_domain_count"] = 28
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"runtime_not_active"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	(runtime.debug["runtime"] as Dictionary)["combat"]["phase"] = "idle"
+	var inactive_combat := Query.bind(
+		root,
+		runtime,
+		screen,
+		telemetry
+	).call("snapshot") as Dictionary
+	_expect(
+		str(inactive_combat.get("reason_code", "")) == "runtime_not_active",
+		"idle combat rejects runtime readiness"
+	)
+	_expect(
+		not bool(inactive_combat.get("combat_owner_active", true)),
+		"idle combat is not projected as active"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	(runtime.debug["combat_telemetry"] as Dictionary)[
+		"gameplay_owner_count"
+	] = 1
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"runtime_not_active"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
 	screen.debug["application_flow_bound"] = false
 	_expect_reason(
 		Query.bind(root, runtime, screen, telemetry),
@@ -126,6 +188,24 @@ func _run() -> void:
 	_expect_reason(
 		Query.bind(root, runtime, screen, telemetry),
 		"telemetry_service_missing"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	telemetry.debug["source_session_id"] = "session.fixture.other"
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"telemetry_service_missing"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	telemetry.debug["source_flow_instance_id"] = runtime.get_instance_id() + 1
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"telemetry_service_missing"
+	)
+	_set_active_fixture(runtime, screen, telemetry)
+	telemetry.debug["source_ruleset_id"] = "v0.7.other"
+	_expect_reason(
+		Query.bind(root, runtime, screen, telemetry),
+		"unsupported_ruleset_context"
 	)
 	_set_active_fixture(runtime, screen, telemetry)
 	var ready := Query.bind(
@@ -157,8 +237,10 @@ func _set_active_fixture(
 		"activation_count": 1,
 		"published_activation_count": 1,
 		"activation_transaction_stage": "idle",
+		"pending_initialization_rollback": false,
 	}
 	runtime.debug = {
+		"schema": "V075RuntimeCompositionDebugV1",
 		"ruleset_id": "v0.7.5",
 		"composition_ready": true,
 		"ruleset_owner_count": 1,
@@ -166,6 +248,11 @@ func _set_active_fixture(
 		"combat_runtime_owner_count": 1,
 		"combat_state_writer_count": 1,
 		"combat_telemetry_service_count": 1,
+		"combat_telemetry_gameplay_owner_count": 0,
+		"connected_domain_count": 29,
+		"cutover_domain_count": 29,
+		"new_game_publication_count": 1,
+		"last_published_session_id": "session.fixture.1",
 		"last_receipt": {
 			"accepted": true,
 			"session_id": "session.fixture.1",
@@ -178,19 +265,50 @@ func _set_active_fixture(
 			"match_id": "match.fixture.1",
 			"phase": "submission",
 			"active_rule_owner_count": 1,
+			"connected_domain_count": 29,
+			"cutover_domain_count": 29,
+			"combat_telemetry_gameplay_owner_count": 0,
+			"combat_telemetry_rng_owner_count": 0,
+			"combat_telemetry_world_mutation_count": 0,
 			"new_game_transaction_stage": "idle",
 			"new_game_transaction_in_progress": false,
 			"pending_initialization_rollback": false,
-			"combat": {"initialized": true},
+			"combat": {
+				"schema": "V075CombatRuntimeDebugV1",
+				"ruleset_id": "v0.7.5",
+				"initialized": true,
+				"phase": "ready",
+				"combat_runtime_owner_count": 1,
+				"combat_state_writer_count": 1,
+				"connected_domain_count": 6,
+				"cutover_domain_count": 6,
+				"initialization_transaction_active": false,
+			},
+		},
+		"combat_telemetry": {
+			"schema": "V075CombatTelemetryServiceDebugV1",
+			"ruleset_id": "v0.7.5",
+			"gameplay_owner_count": 0,
+			"rng_owner_count": 0,
+			"world_mutation_count": 0,
 		},
 	}
 	screen.debug = {
+		"schema": "V075SampleGameScreenCombatDebugV1",
 		"ruleset_id": "v0.7.5",
 		"application_flow_bound": true,
 	}
 	telemetry.debug = {
+		"schema": "V073PlaytestTelemetryDebugV1",
 		"ready": true,
 		"session_id": "telemetry.fixture.1",
+		"source_session_id": "session.fixture.1",
+		"source_ruleset_id": "v0.7.5",
+		"source_flow_instance_id": runtime.get_instance_id(),
+		"source_screen_instance_id": screen.get_instance_id(),
+		"gameplay_owner_count": 0,
+		"rng_owner_count": 0,
+		"world_mutation_count": 0,
 	}
 
 
@@ -200,6 +318,15 @@ func _expect_reason(query: Query, reason_code: String) -> void:
 	_expect(
 		str(snapshot.get("reason_code", "")) == reason_code,
 		"%s reason is exact" % reason_code
+	)
+
+
+func _expect_ready(query: Query, message: String) -> void:
+	var snapshot := query.call("snapshot") as Dictionary
+	_expect(
+		bool(snapshot.get("ready", false))
+		and str(snapshot.get("reason_code", "")) == "ready",
+		message
 	)
 
 

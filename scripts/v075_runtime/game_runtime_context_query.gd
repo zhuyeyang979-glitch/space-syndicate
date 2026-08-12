@@ -143,87 +143,201 @@ func snapshot() -> Dictionary:
 
 	var identity := identity_value as Dictionary
 	var composition := composition_value as Dictionary
-	var runtime := composition.get("runtime", {}) as Dictionary
-	var combat := runtime.get("combat", {}) as Dictionary
 	var screen := screen_value as Dictionary
 	var telemetry := telemetry_value as Dictionary
-	var receipt := composition.get("last_receipt", {}) as Dictionary
-	var ruleset_id := str(identity.get("ruleset_id", "")).strip_edges()
-	var runtime_ruleset_id := str(runtime.get("ruleset_id", "")).strip_edges()
-	var screen_ruleset_id := str(screen.get("ruleset_id", "")).strip_edges()
-	var composition_ruleset_id := str(
-		composition.get("ruleset_id", "")
-	).strip_edges()
-	var ruleset_supported := (
+	if (
+		not _has_exact_schema(
+			composition,
+			"V075RuntimeCompositionDebugV1"
+		)
+		or not _has_dictionary_fields(composition, ["runtime", "combat_telemetry"])
+		or not _has_string_fields(
+			identity,
+			[
+				"ruleset_id",
+				"last_session_id",
+				"activation_transaction_stage",
+			]
+		)
+		or not _has_integer_fields(
+			identity,
+			["activation_count", "published_activation_count"]
+		)
+		or not _has_boolean_fields(identity, ["pending_initialization_rollback"])
+		or not _has_string_fields(composition, ["ruleset_id", "new_game_transaction_stage", "last_published_session_id"])
+		or not _has_integer_fields(
+			composition,
+			[
+				"ruleset_owner_count",
+				"gameplay_owner_count",
+				"combat_runtime_owner_count",
+				"combat_state_writer_count",
+				"combat_telemetry_service_count",
+				"combat_telemetry_gameplay_owner_count",
+				"connected_domain_count",
+				"cutover_domain_count",
+				"new_game_publication_count",
+			]
+		)
+		or not _has_boolean_fields(
+			composition,
+			[
+				"composition_ready",
+				"new_game_transaction_in_progress",
+				"pending_initialization_rollback",
+			]
+		)
+		or not _has_exact_schema(screen, "V075SampleGameScreenCombatDebugV1")
+		or not _has_string_fields(screen, ["ruleset_id"])
+		or not _has_boolean_fields(screen, ["application_flow_bound"])
+		or not _has_exact_schema(telemetry, "V073PlaytestTelemetryDebugV1")
+		or not _has_string_fields(
+			telemetry,
+			["source_ruleset_id", "source_session_id", "session_id"]
+		)
+		or not _has_boolean_fields(telemetry, ["ready"])
+		or not _has_integer_fields(
+			telemetry,
+			[
+				"gameplay_owner_count",
+				"rng_owner_count",
+				"world_mutation_count",
+				"source_flow_instance_id",
+				"source_screen_instance_id",
+			]
+		)
+	):
+		return _with_reason(result, REASON_UNSUPPORTED_RULESET_CONTEXT)
+	var runtime := composition["runtime"] as Dictionary
+	var combat := runtime.get("combat", {}) as Dictionary
+	var combat_telemetry := composition["combat_telemetry"] as Dictionary
+	var ruleset_id := identity["ruleset_id"] as String
+	var runtime_ruleset_id := str(runtime.get("ruleset_id", ""))
+	var screen_ruleset_id := screen["ruleset_id"] as String
+	var composition_ruleset_id := composition["ruleset_id"] as String
+	var ruleset_supported: bool = (
 		not ruleset_id.is_empty()
 		and composition_ruleset_id == ruleset_id
-		and runtime_ruleset_id in ["", ruleset_id]
-		and screen_ruleset_id in ["", ruleset_id]
+		and runtime_ruleset_id == ruleset_id
+		and screen_ruleset_id == ruleset_id
 	)
 	result["ruleset_id"] = ruleset_id
 	if not ruleset_supported:
 		return _with_reason(result, REASON_UNSUPPORTED_RULESET_CONTEXT)
 
-	var session_id := str(identity.get("last_session_id", "")).strip_edges()
-	var activation_count := int(identity.get("activation_count", 0))
-	var published_activation_count := int(
-		identity.get("published_activation_count", 0)
-	)
-	var session_committed := (
+	var session_id := (identity["last_session_id"] as String).strip_edges()
+	var activation_count := identity["activation_count"] as int
+	var published_activation_count := identity["published_activation_count"] as int
+	var session_committed: bool = (
 		activation_count > 0
 		and published_activation_count == activation_count
 		and not session_id.is_empty()
-		and str(identity.get("activation_transaction_stage", "")) == "idle"
-		and bool(receipt.get("accepted", false))
-		and str(receipt.get("session_id", "")) == session_id
-		and str(composition.get("new_game_transaction_stage", "")) == "idle"
-		and not bool(composition.get("new_game_transaction_in_progress", true))
-		and not bool(composition.get("pending_initialization_rollback", true))
+		and identity["activation_transaction_stage"] == "idle"
+		and not identity["pending_initialization_rollback"]
+		and composition["new_game_transaction_stage"] == "idle"
+		and not composition["new_game_transaction_in_progress"]
+		and not composition["pending_initialization_rollback"]
+		and composition["new_game_publication_count"] == published_activation_count
+		and composition["last_published_session_id"] == session_id
 	)
+	if not session_committed:
+		result["session_state"] = "not_committed"
+		return _with_reason(result, REASON_RUNTIME_NOT_ACTIVE)
+	if (
+		not _has_string_fields(runtime, ["ruleset_id", "match_id", "phase", "new_game_transaction_stage"])
+		or not _has_integer_fields(
+			runtime,
+			[
+				"active_rule_owner_count",
+				"combat_telemetry_gameplay_owner_count",
+				"combat_telemetry_rng_owner_count",
+				"combat_telemetry_world_mutation_count",
+				"connected_domain_count",
+				"cutover_domain_count",
+			]
+		)
+		or not _has_boolean_fields(runtime, ["new_game_transaction_in_progress", "pending_initialization_rollback"])
+		or not _has_exact_schema(combat, "V075CombatRuntimeDebugV1")
+		or not _has_string_fields(combat, ["ruleset_id", "phase"])
+		or not _has_integer_fields(
+			combat,
+			[
+				"combat_runtime_owner_count",
+				"combat_state_writer_count",
+				"connected_domain_count",
+				"cutover_domain_count",
+			]
+		)
+		or not _has_boolean_fields(combat, ["initialized"])
+		or not _has_exact_schema(combat_telemetry, "V075CombatTelemetryServiceDebugV1")
+		or not _has_string_fields(combat_telemetry, ["ruleset_id"])
+		or not _has_integer_fields(combat_telemetry, ["gameplay_owner_count", "rng_owner_count", "world_mutation_count"])
+		or combat["ruleset_id"] != ruleset_id
+		or combat_telemetry["ruleset_id"] != ruleset_id
+		or telemetry["source_ruleset_id"] != ruleset_id
+	):
+		return _with_reason(result, REASON_UNSUPPORTED_RULESET_CONTEXT)
 	var typed_bindings := {
-		"ruleset_owner_count": int(
-			composition.get("ruleset_owner_count", 0)
-		),
-		"gameplay_owner_count": int(
-			composition.get("gameplay_owner_count", 0)
-		),
-		"combat_runtime_owner_count": int(
-			composition.get("combat_runtime_owner_count", 0)
-		),
-		"combat_state_writer_count": int(
-			composition.get("combat_state_writer_count", 0)
-		),
-		"combat_telemetry_service_count": int(
-			composition.get("combat_telemetry_service_count", 0)
-		),
-		"combat_initialized": bool(combat.get("initialized", false)),
+		"ruleset_owner_count": composition["ruleset_owner_count"],
+		"gameplay_owner_count": composition["gameplay_owner_count"],
+		"combat_runtime_owner_count": composition["combat_runtime_owner_count"],
+		"combat_state_writer_count": composition["combat_state_writer_count"],
+		"combat_telemetry_service_count": composition["combat_telemetry_service_count"],
+		"combat_initialized": combat["initialized"],
 	}
-	var typed_bindings_ready := (
+	var typed_bindings_ready: bool = (
 		int(typed_bindings["ruleset_owner_count"]) == 1
 		and int(typed_bindings["gameplay_owner_count"]) == 1
 		and int(typed_bindings["combat_runtime_owner_count"]) == 1
 		and int(typed_bindings["combat_state_writer_count"]) == 1
 		and int(typed_bindings["combat_telemetry_service_count"]) == 1
 		and bool(typed_bindings["combat_initialized"])
+		and composition["connected_domain_count"] == composition["cutover_domain_count"]
+		and runtime["connected_domain_count"] == runtime["cutover_domain_count"]
+		and combat["connected_domain_count"] == combat["cutover_domain_count"]
+		and composition["combat_telemetry_gameplay_owner_count"] == 0
+		and runtime["combat_telemetry_gameplay_owner_count"] == 0
+		and runtime["combat_telemetry_rng_owner_count"] == 0
+		and runtime["combat_telemetry_world_mutation_count"] == 0
+		and combat_telemetry["gameplay_owner_count"] == 0
+		and combat_telemetry["rng_owner_count"] == 0
+		and combat_telemetry["world_mutation_count"] == 0
 	)
-	var runtime_active := (
-		bool(composition.get("composition_ready", false))
+	var combat_owner_active: bool = (
+		bool(typed_bindings["combat_initialized"])
+		and int(typed_bindings["combat_runtime_owner_count"]) == 1
+		and int(typed_bindings["combat_state_writer_count"]) == 1
+		and combat["phase"] not in ["", "idle", "failed"]
+		and combat["connected_domain_count"] == combat["cutover_domain_count"]
+		and combat_telemetry["gameplay_owner_count"] == 0
+		and combat_telemetry["rng_owner_count"] == 0
+		and combat_telemetry["world_mutation_count"] == 0
+	)
+	var runtime_active: bool = (
+		composition["composition_ready"]
 		and session_committed
 		and typed_bindings_ready
-		and not str(runtime.get("match_id", "")).is_empty()
-		and str(runtime.get("phase", "")) not in ["", "idle", "failed"]
-		and int(runtime.get("active_rule_owner_count", 0)) == 1
-		and str(runtime.get("new_game_transaction_stage", "")) == "idle"
-		and not bool(runtime.get("new_game_transaction_in_progress", true))
-		and not bool(runtime.get("pending_initialization_rollback", true))
+		and combat_owner_active
+		and not (runtime["match_id"] as String).is_empty()
+		and runtime["phase"] not in ["", "idle", "failed"]
+		and runtime["active_rule_owner_count"] == 1
+		and runtime["new_game_transaction_stage"] == "idle"
+		and not runtime["new_game_transaction_in_progress"]
+		and not runtime["pending_initialization_rollback"]
 	)
-	var game_screen_ready := (
-		bool(screen.get("application_flow_bound", false))
+	var game_screen_ready: bool = (
+		screen["application_flow_bound"]
 		and screen_ruleset_id == ruleset_id
 	)
-	var telemetry_ready := (
-		bool(telemetry.get("ready", false))
-		and not str(telemetry.get("session_id", "")).is_empty()
+	var telemetry_ready: bool = (
+		telemetry["ready"]
+		and telemetry["source_session_id"] == session_id
+		and not (telemetry["session_id"] as String).is_empty()
+		and telemetry["source_flow_instance_id"] == _runtime_composition.get_instance_id()
+		and telemetry["source_screen_instance_id"] == _game_screen.get_instance_id()
+		and telemetry["gameplay_owner_count"] == 0
+		and telemetry["rng_owner_count"] == 0
+		and telemetry["world_mutation_count"] == 0
 	)
 	result.merge({
 		"session_state": "committed" if session_committed else "not_committed",
@@ -231,11 +345,7 @@ func snapshot() -> Dictionary:
 		"game_screen_ready": game_screen_ready,
 		"telemetry_ready": telemetry_ready,
 		"typed_owner_bindings": typed_bindings,
-		"combat_owner_active": (
-			bool(typed_bindings["combat_initialized"])
-			and int(typed_bindings["combat_runtime_owner_count"]) == 1
-			and int(typed_bindings["combat_state_writer_count"]) == 1
-		),
+		"combat_owner_active": combat_owner_active,
 	}, true)
 	if not runtime_active:
 		return _with_reason(result, REASON_RUNTIME_NOT_ACTIVE)
@@ -289,17 +399,42 @@ static func _has_methods(node: Node, method_names: Array[StringName]) -> bool:
 
 
 static func _has_unported_runtime_context(application_candidate: Node) -> bool:
-	var nodes: Array[Node] = []
-	_collect_nodes(application_candidate, nodes)
-	var runtime_count := 0
-	var screen_count := 0
-	for node in nodes:
-		runtime_count += int(_has_methods(node, RUNTIME_METHODS))
-		screen_count += int(_has_methods(node, SCREEN_METHODS))
-	return runtime_count == 1 and screen_count == 1
+	return (
+		application_candidate.get_node_or_null("V073RuntimeComposition") != null
+		and application_candidate.get_node_or_null("V073SampleGameScreen") != null
+	) or (
+		application_candidate.get_node_or_null("V074RuntimeComposition") != null
+		and application_candidate.get_node_or_null("V074GameScreen") != null
+	)
 
 
-static func _collect_nodes(node: Node, output: Array[Node]) -> void:
-	output.append(node)
-	for child in node.get_children():
-		_collect_nodes(child as Node, output)
+static func _has_exact_schema(value: Dictionary, schema: String) -> bool:
+	return value.get("schema") is String and value["schema"] == schema
+
+
+static func _has_dictionary_fields(value: Dictionary, fields: Array[String]) -> bool:
+	for field in fields:
+		if not value.has(field) or not (value[field] is Dictionary):
+			return false
+	return true
+
+
+static func _has_string_fields(value: Dictionary, fields: Array[String]) -> bool:
+	for field in fields:
+		if not value.has(field) or not (value[field] is String):
+			return false
+	return true
+
+
+static func _has_integer_fields(value: Dictionary, fields: Array[String]) -> bool:
+	for field in fields:
+		if not value.has(field) or not (value[field] is int):
+			return false
+	return true
+
+
+static func _has_boolean_fields(value: Dictionary, fields: Array[String]) -> bool:
+	for field in fields:
+		if not value.has(field) or not (value[field] is bool):
+			return false
+	return true

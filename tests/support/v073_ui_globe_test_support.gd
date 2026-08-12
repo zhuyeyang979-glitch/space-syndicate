@@ -110,8 +110,7 @@ static func _case_region_geometry_seed_determinism(state: Dictionary) -> void:
 
 static func _case_planet_map_snapshot_connection(tree: SceneTree, state: Dictionary) -> void:
 	var context := await _main_context(tree, Vector2i(1600, 960), 4)
-	_expect(state, not context.is_empty(), "production main starts")
-	if context.is_empty():
+	if not _context_ready(state, context, "production main starts"):
 		return
 	var acceptance := _acceptance(context)
 	_expect(state, int(acceptance.get("map_presentation_connection_count", 0)) == 1, "one map presentation adapter is connected")
@@ -510,10 +509,19 @@ static func _main_context(tree: SceneTree, viewport_size: Vector2i, player_count
 		await tree.process_frame
 	var context_snapshot := query.call("snapshot") as Dictionary
 	if not bool(context_snapshot.get("ready", false)):
+		var query_diagnostics := {
+			"query": context_snapshot.duplicate(true),
+			"identity": flow.call("identity_snapshot") as Dictionary,
+			"composition": flow.call("debug_snapshot") as Dictionary,
+			"screen": screen.call("debug_snapshot") as Dictionary,
+			"telemetry": query.call("telemetry_service").call(
+				"debug_snapshot"
+			) as Dictionary,
+		}
 		await _discard_main_application(tree, application)
 		return _failed_main_context(
 			str(context_snapshot.get("reason_code", "runtime_not_active")),
-			context_snapshot
+			query_diagnostics
 		)
 	return {
 		"ready": true,

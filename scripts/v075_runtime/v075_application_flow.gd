@@ -33,6 +33,7 @@ var _last_new_game_transaction_stage := "idle"
 var _new_game_reentry_rejection_count := 0
 var _new_game_publication_count := 0
 var _new_game_rollback_count := 0
+var _last_published_session_id := ""
 
 
 func _ready() -> void:
@@ -323,6 +324,7 @@ func debug_snapshot() -> Dictionary:
 			_new_game_reentry_rejection_count
 		),
 		"new_game_publication_count": _new_game_publication_count,
+		"last_published_session_id": _last_published_session_id,
 		"new_game_rollback_count": _new_game_rollback_count,
 	}
 
@@ -535,6 +537,7 @@ func _execute_new_game_transaction(parameters: Dictionary) -> Dictionary:
 		runtime_transaction_id
 	)
 	_new_game_publication_count += 1
+	_last_published_session_id = session_id
 	_new_game_transaction_stage = "complete"
 	return {
 		"accepted": true,

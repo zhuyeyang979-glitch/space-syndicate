@@ -43,6 +43,8 @@ var _latest_snapshot: Dictionary = {}
 var _previous_projection: Dictionary = {}
 var _feedback: Dictionary = {}
 var _session_id := ""
+var _source_session_id := ""
+var _source_ruleset_id := ""
 var _build_sha := "unknown-local"
 var _seed := 0
 var _player_count := 0
@@ -178,6 +180,14 @@ func debug_snapshot() -> Dictionary:
 	return {
 		"schema": "V073PlaytestTelemetryDebugV1",
 		"ready": _flow != null and _screen != null,
+		"source_ruleset_id": _source_ruleset_id,
+		"source_session_id": _source_session_id,
+		"source_flow_instance_id": (
+			_flow.get_instance_id() if is_instance_valid(_flow) else 0
+		),
+		"source_screen_instance_id": (
+			_screen.get_instance_id() if is_instance_valid(_screen) else 0
+		),
 		"event_schema_version": EventV1.SCHEMA_VERSION,
 		"event_type_count": EventV1.EVENT_TYPES.size(),
 		"event_count": _events.size(),
@@ -346,9 +356,11 @@ func _start_session(receipt: Dictionary) -> void:
 	_session_started_ticks = Time.get_ticks_msec()
 	_session_started_at = Time.get_datetime_string_from_system(true)
 	_session_ended_at = ""
+	_source_session_id = str(receipt.get("session_id", "")).strip_edges()
+	_source_ruleset_id = str(receipt.get("ruleset_id", "")).strip_edges()
 	_session_id = "v073-%d-%s" % [
 		int(Time.get_unix_time_from_system()),
-		str(receipt.get("session_id", "session")).sha256_text().left(10),
+		_source_session_id.sha256_text().left(10),
 	]
 	_last_phase = str(_latest_snapshot.get("phase", "submission"))
 	_planning_started_elapsed_ms = 0
