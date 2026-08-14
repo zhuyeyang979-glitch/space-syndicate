@@ -11,8 +11,6 @@
     "allowed_industry_colors": ["life", "energy", "industry", "technology", "commerce", "shipping"],
     "allowed_facility_types": ["factory", "market", "warehouse"],
     "allowed_monster_movement_profiles": ["ground_trample", "flying_no_trample", "teleport_no_trample"],
-    "allowed_monster_card_modes": ["DEPLOY_NEW", "REFRESH_EXISTING", "UPGRADE_EXISTING", "REPLACE_EXISTING"],
-    "allowed_military_task_kinds": ["assault_region", "assault_monster"],
     "numeric_balance_authority": "docs/rules/v075_combat_balance_defaults.json",
     "normal_card_primary_color_authority": "existing_unified_track_color_supply",
     "normal_card_cost_contract": "track_primary_color_plus_primary_asset_cost",
@@ -46,7 +44,6 @@
       "card_illustration_key": "alpha01_art_004",
       "audio_event_key": "audio.monster.attack",
       "presentation_event_keys": ["monster_spawn_pulse", "monster_move_trail", "monster_attack_windup", "monster_attack_impact"],
-      "card_modes": ["DEPLOY_NEW", "REFRESH_EXISTING", "UPGRADE_EXISTING", "REPLACE_EXISTING"],
       "skill_definitions": [
         {
           "skill_definition_id": "skill.monster.spore_tide_emperor.corrosive_breath",
@@ -122,7 +119,6 @@
       "card_illustration_key": "monster_body.meteor_sentinel",
       "audio_event_key": "audio.monster.attack",
       "presentation_event_keys": ["monster_spawn_pulse", "monster_move_trail", "monster_attack_windup", "monster_attack_impact"],
-      "card_modes": ["DEPLOY_NEW", "REFRESH_EXISTING", "UPGRADE_EXISTING", "REPLACE_EXISTING"],
       "skill_definitions": [
         {
           "skill_definition_id": "skill.monster.meteor_sentinel.spark_shock",
@@ -198,7 +194,6 @@
       "card_illustration_key": "monster_body.sand_armor_rover",
       "audio_event_key": "audio.monster.attack",
       "presentation_event_keys": ["monster_spawn_pulse", "monster_move_trail", "monster_attack_windup", "monster_attack_impact"],
-      "card_modes": ["DEPLOY_NEW", "REFRESH_EXISTING", "UPGRADE_EXISTING", "REPLACE_EXISTING"],
       "skill_definitions": [
         {
           "skill_definition_id": "skill.monster.sand_armor_rover.heavy_shell_charge",
@@ -274,7 +269,6 @@
       "card_illustration_key": "monster_body.blue_edge_knight",
       "audio_event_key": "audio.monster.attack",
       "presentation_event_keys": ["monster_spawn_pulse", "monster_move_trail", "monster_attack_windup", "monster_attack_impact"],
-      "card_modes": ["DEPLOY_NEW", "REFRESH_EXISTING", "UPGRADE_EXISTING", "REPLACE_EXISTING"],
       "skill_definitions": [
         {
           "skill_definition_id": "skill.monster.blue_edge_knight.blue_edge_light_slash",
@@ -350,7 +344,6 @@
       "card_illustration_key": "monster_body.prism_blade_colossus",
       "audio_event_key": "audio.monster.attack",
       "presentation_event_keys": ["monster_spawn_pulse", "monster_move_trail", "monster_attack_windup", "monster_attack_impact"],
-      "card_modes": ["DEPLOY_NEW", "REFRESH_EXISTING", "UPGRADE_EXISTING", "REPLACE_EXISTING"],
       "skill_definitions": [
         {
           "skill_definition_id": "skill.monster.prism_blade_colossus.electric_kick",
@@ -426,7 +419,6 @@
       "card_illustration_key": "monster_body.mirror_hunter",
       "audio_event_key": "audio.monster.attack",
       "presentation_event_keys": ["monster_spawn_pulse", "monster_move_trail", "monster_attack_windup", "monster_attack_impact"],
-      "card_modes": ["DEPLOY_NEW", "REFRESH_EXISTING", "UPGRADE_EXISTING", "REPLACE_EXISTING"],
       "skill_definitions": [
         {
           "skill_definition_id": "skill.monster.mirror_hunter.refracted_weak_ray",
@@ -495,7 +487,6 @@
       "localization_key": "military.planetary_defense_force.name",
       "track_primary_color": "industry",
       "card_rank_merge_family": "unit.military.planetary_defense_force",
-      "mission_kinds": ["assault_region", "assault_monster"],
       "rank_profile_ref": "/military_definition_rank_profiles/planetary_defense_force",
       "commercial_model_asset_key_by_rank": {"1": "model.military.tier1", "2": "model.military.tier2", "3": "model.military.tier3", "4": "model.military.tier4"},
       "card_illustration_key": "procedural.military.planetary_defense_force",
@@ -513,7 +504,6 @@
       "localization_key": "military.air_superiority_fighter.name",
       "track_primary_color": "industry",
       "card_rank_merge_family": "unit.military.air_superiority_fighter",
-      "mission_kinds": ["assault_region", "assault_monster"],
       "rank_profile_ref": "/military_definition_rank_profiles/air_superiority_fighter",
       "commercial_model_asset_key_by_rank": {"1": "model.military.tier1", "2": "model.military.tier2", "3": "model.military.tier3", "4": "model.military.tier4"},
       "card_illustration_key": "procedural.military.air_superiority_fighter",
@@ -531,7 +521,6 @@
       "localization_key": "military.submarine_fleet.name",
       "track_primary_color": "technology",
       "card_rank_merge_family": "unit.military.submarine_fleet",
-      "mission_kinds": ["assault_region", "assault_monster"],
       "rank_profile_ref": "/military_definition_rank_profiles/submarine_fleet",
       "commercial_model_asset_key_by_rank": {"1": "model.military.tier1", "2": "model.military.tier2", "3": "model.military.tier3", "4": "model.military.tier4"},
       "card_illustration_key": "procedural.military.submarine_fleet",

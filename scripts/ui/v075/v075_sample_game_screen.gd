@@ -13,12 +13,10 @@ const DEFAULT_PRIVATE_SKILL_INTENT_KIND := (
 const DEFAULT_MILITARY_INTENT_KIND := "combat.military_mission.select"
 const PRIVATE_SKILL_EXECUTION_MODE := "private_instant_serial"
 const MILITARY_EXECUTION_MODE := "normal_public_batch"
-const MONSTER_CARD_MODES := [
-	"DEPLOY_NEW",
-	"REFRESH_EXISTING",
-	"UPGRADE_EXISTING",
-	"REPLACE_EXISTING",
-]
+const CapabilityCatalog := preload(
+	"res://scripts/v075/combat/v075_combat_capability_catalog.gd"
+)
+const MONSTER_CARD_MODES := CapabilityCatalog.MONSTER_CARD_MODES
 const MONSTER_CARD_MODE_LABELS := {
 	"DEPLOY_NEW": "部署新怪兽",
 	"REFRESH_EXISTING": "同族回血",
@@ -1030,10 +1028,7 @@ func _on_private_target_selection_requested(request: Dictionary) -> void:
 
 func _on_military_mission_selected(option: Dictionary) -> void:
 	var task_kind := str(option.get("task_kind", ""))
-	if _is_combat_terminal() or task_kind not in [
-		"assault_region",
-		"assault_monster",
-	]:
+	if _is_combat_terminal() or not CapabilityCatalog.is_military_mission_kind(task_kind):
 		return
 	var canonical_option := _current_military_option(option)
 	if canonical_option.is_empty():
@@ -1155,7 +1150,7 @@ func _current_military_option(candidate: Dictionary) -> Dictionary:
 		or (task_kind == "assault_region" and candidate.has(
 			"target_source_generation"
 		))
-		or task_kind not in ["assault_region", "assault_monster"]
+		or not CapabilityCatalog.is_military_mission_kind(task_kind)
 	):
 		return {}
 	for option_variant in _combat_projection.get(
@@ -1200,6 +1195,12 @@ func _same_military_option_identity(
 			str(right.get("owner_player_id", ""))
 		)
 		or left.get("card_action_binding") != right.get("card_action_binding")
+		or str(left.get("candidate_fingerprint", "")).is_empty()
+		or left.get("candidate_fingerprint")
+			!= right.get("candidate_fingerprint")
+		or left.get("military_target_envelope")
+			!= right.get("military_target_envelope")
+		or left.get("target_binding") != right.get("target_binding")
 	):
 		return false
 	if str(left.get("task_kind", "")) == "assault_region":

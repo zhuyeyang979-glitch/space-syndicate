@@ -7,6 +7,9 @@ const MonsterSourceCore := preload(
 const MonsterSkillCore := preload(
 	"res://scripts/v075/monster/v075_monster_private_skill_core.gd"
 )
+const CapabilityCatalog := preload(
+	"res://scripts/v075/combat/v075_combat_capability_catalog.gd"
+)
 
 const CATALOG_PATH := "res://data/v075/v075_combat_active_catalog.json"
 const BALANCE_PATH := "res://docs/rules/v075_combat_balance_defaults.json"
@@ -48,6 +51,17 @@ static func validation_report() -> Dictionary:
 		errors.append("active_catalog_missing")
 	if balance.is_empty():
 		errors.append("combat_balance_defaults_missing")
+	var capability_report := CapabilityCatalog.validation_report()
+	if not bool(capability_report.get("valid", false)):
+		errors.append("combat_capability_catalog_invalid")
+	var duplicate_capability_definition_count := 0
+	var closed_world := catalog_data.get("closed_world_contract", {}) as Dictionary
+	for field_name in [
+		"allowed_monster_card_modes",
+		"allowed_military_task_kinds",
+	]:
+		if closed_world.has(field_name):
+			duplicate_capability_definition_count += 1
 	if str(catalog_data.get("ruleset_id", "")) != RULESET_ID:
 		errors.append("active_catalog_ruleset_invalid")
 	if str(balance.get("ruleset_id", "")) != RULESET_ID:
@@ -73,6 +87,8 @@ static func validation_report() -> Dictionary:
 			errors.append("monster_family_not_dictionary")
 			continue
 		var family := family_variant as Dictionary
+		if family.has("card_modes"):
+			duplicate_capability_definition_count += 1
 		var family_id := str(family.get("monster_family_id", ""))
 		var preferred_color := str(
 			family.get("preferred_industry_color", "")
@@ -138,17 +154,16 @@ static func validation_report() -> Dictionary:
 			errors.append("military_definition_identity_invalid")
 		else:
 			military_ids.append(definition_id)
-		if definition.get("mission_kinds", []) != [
-			"assault_region",
-			"assault_monster",
-		]:
-			errors.append("military_task_contract_invalid")
+		if definition.has("mission_kinds"):
+			duplicate_capability_definition_count += 1
 		if (
 			bool(definition.get("persistent_source", true))
 			or int(definition.get("bound_action_count", -1)) != 0
 			or int(definition.get("guard_task_count", -1)) != 0
 		):
 			errors.append("military_forbidden_capability_present")
+	if duplicate_capability_definition_count != 0:
+		errors.append("combat_capability_duplicate_definition_present")
 	return {
 		"valid": errors.is_empty(),
 		"error_count": errors.size(),
@@ -163,6 +178,10 @@ static func validation_report() -> Dictionary:
 		"active_monster_preferred_color_coverage": preferred_colors.size(),
 		"active_military_definition_count": military_ids.size(),
 		"monster_l4_ultimate_count": ultimate_count,
+		"capability_catalog_owner_count": 1,
+		"capability_duplicate_definition_count": (
+			duplicate_capability_definition_count
+		),
 	}
 
 
@@ -181,7 +200,9 @@ static func monster_family(family_id: String) -> Dictionary:
 	for family_variant in catalog().get("monster_families", []) as Array:
 		var family := family_variant as Dictionary
 		if str(family.get("monster_family_id", "")) == family_id:
-			return family.duplicate(true)
+			var result := family.duplicate(true)
+			result["card_modes"] = CapabilityCatalog.monster_card_modes()
+			return result
 	return {}
 
 
@@ -348,7 +369,9 @@ static func military_definition(definition_id: String) -> Dictionary:
 			"military_definition_id",
 			""
 		)) == definition_id:
-			return definition.duplicate(true)
+			var result := definition.duplicate(true)
+			result["mission_kinds"] = CapabilityCatalog.military_mission_kinds()
+			return result
 	return {}
 
 

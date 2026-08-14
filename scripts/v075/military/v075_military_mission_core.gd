@@ -7,6 +7,9 @@ const CombatDamageCore := preload(
 const FacilityDamageIntent := preload(
 	"res://scripts/v075/combat/facility_combat_damage_intent_v1.gd"
 )
+const CapabilityCatalog := preload(
+	"res://scripts/v075/combat/v075_combat_capability_catalog.gd"
+)
 
 const SCHEMA_VERSION := 1
 const RULESET_ID := "v0.7.5"
@@ -18,9 +21,13 @@ const WITHDRAWAL_CONTRACT_ID := "MilitaryWithdrawalIntentV1"
 const DBG_LIFECYCLE_CONTRACT_ID := "NormalDbgCardZoneIntentV1"
 const ASSET_SETTLEMENT_CONTRACT_ID := "ReservedAssetSettlementIntentV1"
 
-const TASK_ASSAULT_REGION := "assault_region"
-const TASK_ASSAULT_MONSTER := "assault_monster"
-const TASK_KINDS := [TASK_ASSAULT_REGION, TASK_ASSAULT_MONSTER]
+const TASK_ASSAULT_REGION := (
+	CapabilityCatalog.MILITARY_MISSION_ASSAULT_REGION
+)
+const TASK_ASSAULT_MONSTER := (
+	CapabilityCatalog.MILITARY_MISSION_ASSAULT_MONSTER
+)
+const TASK_KINDS := CapabilityCatalog.MILITARY_MISSION_KINDS
 const FACILITY_TYPES := ["factory", "market", "warehouse"]
 const MONSTER_LEGAL_STATUSES := ["active", "downed"]
 const MAX_DAMAGE_BUDGET := 10000
@@ -102,7 +109,15 @@ const RECEIPT_FIELDS := [
 	"outcome",
 	"reason_code",
 	"target_region_id",
+	"expected_region_revision",
+	"locked_enemy_facility_ids",
+	"facility_generations",
+	"target_monster_source_instance_id",
+	"target_source_generation",
+	"target_monster_revision",
+	"target_monster_owner_player_id",
 	"public_target_region_id",
+	"lock_fingerprint",
 	"facility_damage_intents",
 	"monster_damage_intents",
 	"military_withdrawal_intent",
@@ -413,8 +428,9 @@ static func resolve_region_assault(
 		var facility_id := str(facility.get("facility_id", ""))
 		if not current_by_id.has(facility_id):
 			current_by_id[facility_id] = facility
+	var locked_targets := locked.get("locked_facility_targets", []) as Array
 	var legal_targets: Array = []
-	for target_variant in locked.get("locked_facility_targets", []) as Array:
+	for target_variant in locked_targets:
 		var target := target_variant as Dictionary
 		var target_id := str(target.get("target_facility_id", ""))
 		var current := current_by_id.get(target_id, {}) as Dictionary
@@ -423,6 +439,17 @@ static func resolve_region_assault(
 				):
 			continue
 		legal_targets.append(target.duplicate(true))
+	if legal_targets.size() != locked_targets.size():
+		return _build_receipt(
+			locked,
+			"fizzled",
+			"locked_facility_target_invalid",
+			[],
+			[],
+			0,
+			0,
+			str(locked.get("target_region_id", ""))
+		)
 	if legal_targets.is_empty():
 		return _build_receipt(
 			locked,
@@ -513,6 +540,12 @@ static func resolve_monster_assault(
 		current = monster
 		break
 	var target_valid := not current.is_empty() 		and int(current.get("source_generation", -1)) 		== int(locked.get("target_source_generation", -2)) 		and int(current.get("source_revision", -1)) 		>= int(locked.get("target_monster_revision", 0)) 		and str(current.get("owner_player_id", "")) 		== str(locked.get("target_monster_owner_player_id", "")) 		and str(current.get("owner_player_id", "")) 		!= str(locked.get("owner_player_id", "")) 		and str(current.get("status", "")) in MONSTER_LEGAL_STATUSES 		and _stable_id(current.get("region_id"))
+	target_valid = target_valid and (
+		int(current.get("source_revision", -1))
+			== int(locked.get("target_monster_revision", -2))
+		and str(current.get("region_id", ""))
+			== str(locked.get("public_target_region_id", ""))
+	)
 	if not target_valid:
 		return _build_receipt(
 			locked,
@@ -529,9 +562,9 @@ static func resolve_monster_assault(
 		str(locked.get("source_effect_id", "")),
 		target_id,
 		int(locked.get("target_source_generation", 0)),
-		int(current.get("source_revision", 0)),
+		int(locked.get("target_monster_revision", 0)),
 		int(locked.get("monster_damage", 0)),
-		current_region_id,
+		str(locked.get("public_target_region_id", "")),
 		_combat_receipt_id(locked)
 	)
 	if damage_intent.is_empty():
@@ -581,6 +614,46 @@ static func receipt_validation_report(value: Variant) -> Dictionary:
 				"resolved", "fizzled"
 			] 			or str(receipt.get("mission_state_after", "")) 			!= "withdrawn":
 		errors.append("military_mission_receipt_state_invalid")
+	if not _fingerprint_valid(receipt.get("lock_fingerprint")):
+		errors.append("military_mission_receipt_lock_fingerprint_invalid")
+	var task_kind := str(receipt.get("task_kind", ""))
+	var facility_ids := receipt.get("locked_enemy_facility_ids", []) as Array
+	var facility_generations := receipt.get("facility_generations", {}) as Dictionary
+	if task_kind == TASK_ASSAULT_REGION:
+		var previous_id := ""
+		if (
+			not _stable_id(receipt.get("target_region_id"))
+			or not _nonnegative_integer(receipt.get("expected_region_revision"))
+			or facility_ids.is_empty()
+			or facility_generations.size() != facility_ids.size()
+			or not str(receipt.get("target_monster_source_instance_id", "")).is_empty()
+			or int(receipt.get("target_source_generation", -1)) != 0
+			or int(receipt.get("target_monster_revision", 0)) != -1
+			or not str(receipt.get("target_monster_owner_player_id", "")).is_empty()
+		):
+			errors.append("military_region_receipt_target_binding_invalid")
+		for facility_id_variant in facility_ids:
+			var facility_id := str(facility_id_variant)
+			if (
+				not _stable_id(facility_id)
+				or (not previous_id.is_empty() and facility_id <= previous_id)
+				or not _positive_integer(facility_generations.get(facility_id))
+			):
+				errors.append("military_region_receipt_facility_binding_invalid")
+			previous_id = facility_id
+	elif task_kind == TASK_ASSAULT_MONSTER:
+		if (
+			not str(receipt.get("target_region_id", "")).is_empty()
+			or int(receipt.get("expected_region_revision", 0)) != -1
+			or not facility_ids.is_empty()
+			or not facility_generations.is_empty()
+			or not _stable_id(receipt.get("target_monster_source_instance_id"))
+			or not _positive_integer(receipt.get("target_source_generation"))
+			or not _nonnegative_integer(receipt.get("target_monster_revision"))
+			or not _stable_id(receipt.get("target_monster_owner_player_id"))
+			or not _stable_id(receipt.get("public_target_region_id"))
+		):
+			errors.append("military_monster_receipt_target_binding_invalid")
 	for field in [
 		"allocated_damage_total",
 		"locked_target_count",
@@ -857,6 +930,17 @@ static func _build_receipt(
 		if str(locked.get("task_kind", "")) == TASK_ASSAULT_REGION
 		else 1
 	)
+	var locked_enemy_facility_ids: Array[String] = []
+	var facility_generations := {}
+	for target_variant in locked.get("locked_facility_targets", []) as Array:
+		var target := target_variant as Dictionary
+		var facility_id := str(target.get("target_facility_id", ""))
+		locked_enemy_facility_ids.append(facility_id)
+		facility_generations[facility_id] = int(target.get(
+			"expected_generation",
+			0
+		))
+	locked_enemy_facility_ids.sort()
 	var receipt := {
 		"schema_version": SCHEMA_VERSION,
 		"contract_id": RECEIPT_CONTRACT_ID,
@@ -869,7 +953,30 @@ static func _build_receipt(
 		"outcome": outcome,
 		"reason_code": reason_code,
 		"target_region_id": str(locked.get("target_region_id", "")),
+		"expected_region_revision": int(locked.get(
+			"target_region_revision",
+			-1
+		)),
+		"locked_enemy_facility_ids": locked_enemy_facility_ids,
+		"facility_generations": facility_generations,
+		"target_monster_source_instance_id": str(locked.get(
+			"target_monster_source_instance_id",
+			""
+		)),
+		"target_source_generation": int(locked.get(
+			"target_source_generation",
+			0
+		)),
+		"target_monster_revision": int(locked.get(
+			"target_monster_revision",
+			-1
+		)),
+		"target_monster_owner_player_id": str(locked.get(
+			"target_monster_owner_player_id",
+			""
+		)),
 		"public_target_region_id": public_target_region_id,
+		"lock_fingerprint": str(locked.get("lock_fingerprint", "")),
 		"facility_damage_intents": facility_damage_intents.duplicate(true),
 		"monster_damage_intents": monster_damage_intents.duplicate(true),
 		"military_withdrawal_intent": withdrawal,

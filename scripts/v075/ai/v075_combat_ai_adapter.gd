@@ -2,16 +2,14 @@ extends RefCounted
 class_name V075CombatAIAdapter
 
 const RULESET_ID := "v0.7.5"
-const MONSTER_CARD_MODES := [
-	"DEPLOY_NEW",
-	"REFRESH_EXISTING",
-	"UPGRADE_EXISTING",
-	"REPLACE_EXISTING",
-]
-const MILITARY_TASK_KINDS := [
-	"assault_region",
-	"assault_monster",
-]
+const CapabilityCatalog := preload(
+	"res://scripts/v075/combat/v075_combat_capability_catalog.gd"
+)
+const CombatCandidate := preload(
+	"res://scripts/v075/ai/v075_ai_combat_action_candidate_v1.gd"
+)
+const MONSTER_CARD_MODES := CapabilityCatalog.MONSTER_CARD_MODES
+const MILITARY_TASK_KINDS := CapabilityCatalog.MILITARY_MISSION_KINDS
 const TERMINAL_PHASES := [
 	"victory_pending",
 	"victory_resolved",
@@ -44,6 +42,27 @@ const FORBIDDEN_PUBLIC_EXACT_KEYS := [
 	"lifecycle_evidence_fingerprint",
 	"expected_action_lifecycle",
 	"binding_fingerprint",
+	"candidate_fingerprint",
+	"prebound_monster_action",
+	"action_fingerprint",
+	"definition_snapshot",
+	"bound_state_revision",
+	"military_target_envelope",
+	"envelope_fingerprint",
+	"combat_private_facts",
+	"combat_candidates",
+	"monster_mode_candidates",
+	"military_mission_candidates",
+	"military_options",
+	"target_binding",
+	"public_information_fingerprint",
+	"private_information_fingerprint",
+	"priority_features",
+	"expected_world_revision",
+	"expected_region_revision",
+	"expected_hp_revision",
+	"target_source_generation",
+	"target_generation",
 ]
 const FORBIDDEN_OWN_SCOPE_KEYS := [
 	"opponent_skill",
@@ -775,49 +794,17 @@ func _append_monster_card_candidates(
 			if not (option_variant is Dictionary):
 				continue
 			var option := option_variant as Dictionary
-			var card_instance_id := str(option.get("card_instance_id", ""))
-			var definition_id := str(option.get("card_definition_id", ""))
 			var mode := str(option.get("monster_card_mode", ""))
-			if mode not in MONSTER_CARD_MODES:
+			if not CapabilityCatalog.is_monster_card_mode(mode):
 				continue
-			var card_action_binding := option.get(
-				"card_action_binding",
-				{}
-			) as Dictionary
-			if (
-				card_instance_id.is_empty()
-				or definition_id.is_empty()
-				or str(option.get("option_id", "")).is_empty()
-				or str(option.get("target_slot_id", "")).is_empty()
-				or card_action_binding.is_empty()
-			):
+			var score := int(MODE_SCORE.get(mode, 0)) + clampi(
+				int(option.get("card_rank", 1)),
+				1,
+				4
+			) * 5
+			var candidate := CombatCandidate.monster_candidate(option, score)
+			if candidate.is_empty():
 				continue
-			var target_id := str(option.get(
-				"target_region_id" if mode == "DEPLOY_NEW" else (
-					"target_source_instance_id"
-				),
-				""
-			))
-			if target_id.is_empty():
-				continue
-			var target_field := (
-				"target_region_id"
-				if mode == "DEPLOY_NEW"
-				else "target_source_instance_id"
-			)
-			var candidate := {
-				"action_kind": "monster_card",
-				"monster_card_mode": mode,
-				"mode_prebound": true,
-				"option_id": str(option.get("option_id", "")),
-				"card_instance_id": card_instance_id,
-				"card_definition_id": definition_id,
-				"target_slot_id": str(option.get("target_slot_id", "")),
-				"card_action_binding": card_action_binding.duplicate(true),
-				target_field: target_id,
-				"score": int(MODE_SCORE.get(mode, 0))
-					+ clampi(int(option.get("card_rank", 1)), 1, 4) * 5,
-			}
 			candidate["stable_action_key"] = _stable_action_key(candidate)
 			candidates.append(candidate)
 
@@ -954,53 +941,14 @@ func _append_military_candidates(
 		if not bool(option.get("enabled", false)):
 			continue
 		var task_kind := str(option.get("task_kind", ""))
-		if task_kind not in MILITARY_TASK_KINDS:
+		if not CapabilityCatalog.is_military_mission_kind(task_kind):
 			continue
-		if (
-			str(option.get("option_id", "")).is_empty()
-			or str(option.get("card_instance_id", "")).is_empty()
-			or str(option.get("target_slot_id", "")).is_empty()
-			or not (option.get("card_action_binding") is Dictionary)
-			or (option.get("card_action_binding", {}) as Dictionary).is_empty()
-		):
+		var score := 640 if task_kind == (
+			CapabilityCatalog.MILITARY_MISSION_ASSAULT_MONSTER
+		) else 610
+		var candidate := CombatCandidate.military_candidate(option, score)
+		if candidate.is_empty():
 			continue
-		var target_id := (
-			str(option.get("target_region_id", ""))
-			if task_kind == "assault_region"
-			else str(option.get("target_monster_source_instance_id", ""))
-		)
-		if target_id.is_empty():
-			continue
-		var candidate := {
-			"action_kind": "military_mission",
-			"task_kind": task_kind,
-			"option_id": str(option.get("option_id", "")),
-			"card_instance_id": str(option.get("card_instance_id", "")),
-			"card_definition_id": str(option.get("card_definition_id", "")),
-			"card_action_binding": (
-				option.get("card_action_binding", {}) as Dictionary
-			).duplicate(true),
-			"target_slot_id": str(option.get("target_slot_id", "")),
-			"target_region_id": (
-				target_id if task_kind == "assault_region" else ""
-			),
-			"target_monster_source_instance_id": (
-				target_id if task_kind == "assault_monster" else ""
-			),
-			"launch_region_id": str(option.get("launch_region_id", "")),
-			"asset_cost_by_color": (
-				option.get("asset_cost_by_color", {}) as Dictionary
-			).duplicate(true),
-			"one_shot_withdrawal": true,
-			"score": 640 if task_kind == "assault_monster" else 610,
-		}
-		if task_kind == "assault_monster":
-			if not _positive_int_field(option, "target_source_generation"):
-				continue
-			candidate["target_source_generation"] = int(option.get(
-				"target_source_generation",
-				0
-			))
 		candidate["stable_action_key"] = _stable_action_key(candidate)
 		candidates.append(candidate)
 
@@ -1245,6 +1193,7 @@ func _positive_int_field(source: Dictionary, field_name: String) -> bool:
 
 func _stable_action_key(candidate: Dictionary) -> String:
 	return "|".join([
+		str(candidate.get("variant_type", "")),
 		str(candidate.get("action_kind", "")),
 		str(candidate.get("monster_card_mode", "")),
 		str(candidate.get("task_kind", "")),
@@ -1264,6 +1213,7 @@ func _stable_action_key(candidate: Dictionary) -> String:
 			)
 		),
 		str(candidate.get("target_id", "")),
+		str(candidate.get("candidate_fingerprint", "")),
 	])
 
 
@@ -1272,6 +1222,17 @@ func _result(
 	reason_code: String,
 	hidden_info_violation_count: int = 0
 ) -> Dictionary:
+	var monster_candidates: Array[Dictionary] = []
+	var military_candidates: Array[Dictionary] = []
+	for candidate in candidates:
+		if str(candidate.get("variant_type", "")) == (
+			CombatCandidate.VARIANT_MONSTER_CARD
+		):
+			monster_candidates.append(candidate.duplicate(true))
+		elif str(candidate.get("variant_type", "")) == (
+			CombatCandidate.VARIANT_MILITARY_MISSION
+		):
+			military_candidates.append(candidate.duplicate(true))
 	return {
 		"schema": "V075CombatAICandidateSetV1",
 		"ruleset_id": RULESET_ID,
@@ -1283,6 +1244,10 @@ func _result(
 		"reason_code": reason_code,
 		"candidate_count": candidates.size(),
 		"candidates": candidates.duplicate(true),
+		"monster_mode_capabilities": CapabilityCatalog.monster_card_modes(),
+		"monster_mode_candidates": monster_candidates,
+		"military_mission_capabilities": CapabilityCatalog.military_mission_kinds(),
+		"military_mission_candidates": military_candidates,
 		"hidden_info_violation_count": hidden_info_violation_count,
 	}
 

@@ -1,8 +1,14 @@
 extends RefCounted
 class_name V075CombatProjectionAdapter
 
-const V075CardDefinitionRegistry := preload(
+const CardDefinitionRegistry := preload(
 	"res://scripts/v075/cards/v075_card_definition_registry.gd"
+)
+const CapabilityCatalog := preload(
+	"res://scripts/v075/combat/v075_combat_capability_catalog.gd"
+)
+const CombatCandidate := preload(
+	"res://scripts/v075/ai/v075_ai_combat_action_candidate_v1.gd"
 )
 const RULESET_ID := "v0.7.5"
 const PUBLIC_MONSTER_FIELDS := [
@@ -38,10 +44,7 @@ const PRIVATE_SKILL_FIELDS := [
 	"required_rank",
 	"public_effect_id",
 ]
-const MILITARY_TASK_KINDS := [
-	"assault_region",
-	"assault_monster",
-]
+const MILITARY_TASK_KINDS := CapabilityCatalog.MILITARY_MISSION_KINDS
 const CARD_ACTION_BINDING_FIELDS := [
 	"schema_id",
 	"schema_version",
@@ -66,6 +69,26 @@ const PRIVATE_CARD_IDENTITY_KEYS := [
 	"lifecycle_evidence_fingerprint",
 	"expected_action_lifecycle",
 	"binding_fingerprint",
+	"candidate_fingerprint",
+	"prebound_monster_action",
+	"action_fingerprint",
+	"definition_snapshot",
+	"bound_state_revision",
+	"military_target_envelope",
+	"envelope_fingerprint",
+	"combat_private_facts",
+	"combat_candidates",
+	"monster_mode_candidates",
+	"military_mission_candidates",
+	"military_options",
+	"target_binding",
+	"public_information_fingerprint",
+	"private_information_fingerprint",
+	"priority_features",
+	"expected_world_revision",
+	"expected_region_revision",
+	"target_source_generation",
+	"target_generation",
 ]
 const TERMINAL_PHASES := [
 	"victory_pending",
@@ -140,6 +163,8 @@ func project_for_viewer(
 		"phase": phase,
 		"combat_requests_allowed": combat_requests_allowed,
 		"terminal_combat_quiescent": terminal_combat_quiescent,
+		"monster_mode_capabilities": CapabilityCatalog.monster_card_modes(),
+		"military_mission_capabilities": CapabilityCatalog.military_mission_kinds(),
 		"public_monsters": public_monsters,
 		"own_monster_skill_sources": own_skill_sources,
 		"military_task_options": military_options,
@@ -449,7 +474,7 @@ func _project_military_options(
 			option.get("card_definition_id", "")
 		)
 		var presentation := (
-			V075CardDefinitionRegistry.presentation_descriptor(
+			CardDefinitionRegistry.presentation_descriptor(
 				card_definition_id
 			)
 		)
@@ -457,9 +482,12 @@ func _project_military_options(
 			continue
 		var projected := {
 			"option_id": str(option.get("option_id", "")),
+			"candidate_id": str(option.get("candidate_id", "")),
+			"candidate_fingerprint": str(option.get("candidate_fingerprint", "")),
 			"owner_player_id": viewer_player_id,
 			"card_instance_id": str(option.get("card_instance_id", "")),
 			"card_definition_id": card_definition_id,
+			"card_generation": int(option.get("card_generation", 0)),
 			"card_action_binding": (
 				option.get("card_action_binding", {}) as Dictionary
 			).duplicate(true),
@@ -470,9 +498,18 @@ func _project_military_options(
 				"target_monster_source_instance_id",
 				""
 			)),
-			"launch_region_id": str(option.get("launch_region_id", "")),
 			"asset_cost_by_color": (
 				option.get("asset_cost_by_color", {}) as Dictionary
+			).duplicate(true),
+			"primary_color": str(option.get("primary_color", "")),
+			"asset_cost": int(option.get("asset_cost", 0)),
+			"primary_asset_cost": int(option.get("primary_asset_cost", 0)),
+			"expected_world_revision": int(option.get("expected_world_revision", 0)),
+			"military_target_envelope": (
+				option.get("military_target_envelope", {}) as Dictionary
+			).duplicate(true),
+			"target_binding": (
+				option.get("target_binding", {}) as Dictionary
 			).duplicate(true),
 			"display_name": (
 				"攻击地区"
@@ -496,6 +533,10 @@ func _project_military_options(
 				"target_source_generation",
 				0
 			))
+		else:
+			projected["expected_region_revision"] = int(
+				option.get("expected_region_revision", -1)
+			)
 		result.append(projected)
 	result.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
 		return str(left.get("option_id", "")) < str(
@@ -705,6 +746,13 @@ func _military_option_valid(
 	viewer_player_id: String,
 	authority_snapshot: Dictionary
 ) -> bool:
+	var normalized := CombatCandidate.military_candidate(option, 0)
+	if (
+		normalized.is_empty()
+		or normalized.get("candidate_fingerprint")
+			!= option.get("candidate_fingerprint")
+	):
+		return false
 	if str(option.get("action_domain", "military")) != "military":
 		return false
 	if (

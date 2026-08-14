@@ -31,7 +31,7 @@ func _run() -> void:
 	)
 	var receipt := Core.resolve_monster_assault(
 		locked,
-		[_monster(4, 14, "region.019", "monster.enemy.001")]
+		[_monster(4, 12, "region.002", "monster.enemy.001")]
 	)
 	var intents := receipt.get("monster_damage_intents", []) as Array
 	var intent := intents[0] as Dictionary if intents.size() == 1 else {}
@@ -48,8 +48,21 @@ func _run() -> void:
 		"attack preserves locked source identity and generation"
 	)
 	_expect(
-		str(intent.get("public_target_region_id", "")) == "region.019",
-		"same source is attacked in its current public region"
+		str(intent.get("public_target_region_id", "")) == "region.002"
+			and int(intent.get("observed_source_revision", -1)) == 12,
+		"attack preserves the exact locked revision and public region"
+	)
+	var drifted := Core.resolve_monster_assault(
+		locked,
+		[_monster(4, 14, "region.019", "monster.enemy.001")]
+	)
+	_expect(
+		str(drifted.get("outcome", "")) == "fizzled"
+			and str(drifted.get("reason_code", ""))
+				== "locked_monster_target_invalid"
+			and (drifted.get("monster_damage_intents", []) as Array).is_empty()
+			and int(drifted.get("retarget_count", -1)) == 0,
+		"revision or region drift fizzles without current-state retargeting"
 	)
 	_expect(
 		str(receipt.get("mission_state_after", "")) == "withdrawn",

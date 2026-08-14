@@ -3,13 +3,13 @@ class_name V075MilitaryMissionPanel
 
 signal mission_selected(option: Dictionary)
 
-const V075CardDefinitionRegistry := preload(
+const CardDefinitionRegistry := preload(
 	"res://scripts/v075/cards/v075_card_definition_registry.gd"
 )
-const TASK_KINDS := [
-	"assault_region",
-	"assault_monster",
-]
+const CapabilityCatalog := preload(
+	"res://scripts/v075/combat/v075_combat_capability_catalog.gd"
+)
+const TASK_KINDS := CapabilityCatalog.MILITARY_MISSION_KINDS
 
 @onready var _region_button: Button = %AssaultRegionButton
 @onready var _monster_button: Button = %AssaultMonsterButton
@@ -278,14 +278,14 @@ func _button_for_task(task_kind: String) -> Button:
 
 
 func _presentation_descriptor(option: Dictionary) -> Dictionary:
-	var descriptor := V075CardDefinitionRegistry.presentation_descriptor(
+	var descriptor := CardDefinitionRegistry.presentation_descriptor(
 		str(option.get("card_definition_id", ""))
 	)
 	if descriptor.is_empty():
 		return {}
 	if (
 		str(descriptor.get("domain", "")) != "military"
-		or not V075CardDefinitionRegistry.presentation_descriptor_error(
+		or not CardDefinitionRegistry.presentation_descriptor_error(
 			descriptor
 		).is_empty()
 	):
@@ -297,7 +297,7 @@ func _presentation_texture(option: Dictionary) -> Texture2D:
 	var descriptor := _presentation_descriptor(option)
 	if descriptor.is_empty():
 		return null
-	return V075CardDefinitionRegistry.presentation_texture(
+	return CardDefinitionRegistry.presentation_texture(
 		str(option.get("card_definition_id", ""))
 	)
 

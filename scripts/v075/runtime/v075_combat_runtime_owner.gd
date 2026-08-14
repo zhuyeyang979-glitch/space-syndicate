@@ -22,6 +22,9 @@ const CombatDamageCore := preload(
 const CombatCatalog := preload(
 	"res://scripts/v075/combat/v075_combat_catalog.gd"
 )
+const CapabilityCatalog := preload(
+	"res://scripts/v075/combat/v075_combat_capability_catalog.gd"
+)
 const CardDefinitions := preload(
 	"res://scripts/v075/cards/v075_card_definition_registry.gd"
 )
@@ -65,12 +68,7 @@ var _public_results: Array = []
 var _lineage_id := ""
 var _revision := 0
 
-var _monster_card_mode_counts := {
-	"DEPLOY_NEW": 0,
-	"REFRESH_EXISTING": 0,
-	"UPGRADE_EXISTING": 0,
-	"REPLACE_EXISTING": 0,
-}
+var _monster_card_mode_counts := CapabilityCatalog.zero_monster_mode_counts()
 var _autonomy_target_count := 0
 var _hungry_fallback_count := 0
 var _movement_count := 0
@@ -608,6 +606,9 @@ func prebind_monster_card_action(request: Dictionary) -> Dictionary:
 		"target_source_instance_id": str(
 			request.get("target_source_instance_id", "")
 		),
+		"expected_region_revision": int(
+			request.get("expected_region_revision", -1)
+		),
 	}
 	return MonsterSourceCore.prebind_card_mode(
 		_monster_state,
@@ -646,12 +647,19 @@ func preview_monster_card_action(request: Dictionary) -> Dictionary:
 		"target_source_instance_id": str(
 			request.get("target_source_instance_id", "")
 		),
+		"expected_region_revision": int(
+			request.get("expected_region_revision", -1)
+		),
 	}
 	return MonsterSourceCore.prebind_card_mode(
 		_monster_state,
 		normalized_request,
 		source_definition
 	)
+
+
+func validate_monster_prebound_action(action: Dictionary) -> Dictionary:
+	return MonsterSourceCore.prebound_action_validation_report(action)
 
 
 func resolve_monster_card_action(action: Dictionary) -> Dictionary:
@@ -730,8 +738,23 @@ func build_military_lock(
 	binding: Dictionary,
 	public_facilities: Array
 ) -> Dictionary:
+	var preview := preview_military_lock(binding, public_facilities)
+	if not bool(preview.get("accepted", false)):
+		return _failure(
+			str(preview.get("reason_code", "military_mission_lock_failed")),
+			preview.get("detail", {}) as Dictionary
+		)
+	return commit_military_lock(
+		preview.get("locked_mission", {}) as Dictionary
+	)
+
+
+func preview_military_lock(
+	binding: Dictionary,
+	public_facilities: Array
+) -> Dictionary:
 	if not _initialized or _phase in TERMINAL_PHASES:
-		return _failure("military_lock_phase_invalid")
+		return _military_preview_failure("military_lock_phase_invalid")
 	var definition_id := str(binding.get("card_definition_id", ""))
 	var card_definition := CardDefinitions.definition(definition_id)
 	var military_id := CardDefinitions.military_definition_id_from_card_type(
@@ -740,7 +763,7 @@ func build_military_lock(
 	var rank := int(card_definition.get("level", 0))
 	var profile := CombatCatalog.military_rank_profile(military_id, rank)
 	if card_definition.is_empty() or profile.is_empty():
-		return _failure("military_card_definition_unknown")
+		return _military_preview_failure("military_card_definition_unknown")
 	var task_kind := str(binding.get("task_kind", ""))
 	var request_id := str(binding.get("request_id", ""))
 	var mission_id := str(binding.get("mission_id", ""))
@@ -766,7 +789,7 @@ func build_military_lock(
 			str(binding.get("target_monster_source_instance_id", ""))
 		)
 	else:
-		return _failure("military_task_kind_invalid")
+		return _military_preview_failure("military_task_kind_invalid")
 	var card_authority := MilitaryMissionCore.build_card_authority(
 		definition_id,
 		rank,
@@ -791,14 +814,118 @@ func build_military_lock(
 		)
 	var lock_report := MilitaryMissionCore.mission_lock_validation_report(locked)
 	if not bool(lock_report.get("valid", false)):
-		return _failure("military_mission_lock_failed", locked)
+		return _military_preview_failure(
+			"military_mission_lock_failed",
+			locked
+		)
 	var locked_mission := locked.duplicate(true)
+	return {
+		"accepted": true,
+		"reason_code": "military_mission_lock_previewed",
+		"locked_mission": locked_mission,
+		"target_envelope": military_target_envelope(locked_mission),
+		"state_mutation_count": 0,
+	}
+
+
+func commit_military_lock(locked_mission: Dictionary) -> Dictionary:
+	if not _initialized or _phase in TERMINAL_PHASES:
+		return _failure("military_lock_phase_invalid")
+	var lock_report := MilitaryMissionCore.mission_lock_validation_report(
+		locked_mission
+	)
+	if not bool(lock_report.get("valid", false)):
+		return _failure("military_mission_lock_failed", lock_report)
+	var mission_id := str(locked_mission.get("mission_id", ""))
+	if _military_locks.has(mission_id):
+		return _failure("military_mission_lock_identity_conflict")
 	_military_locks[mission_id] = locked_mission
 	_revision += 1
 	return {
 		"accepted": true,
 		"reason_code": "military_mission_locked",
-		"locked_mission": locked_mission,
+		"locked_mission": locked_mission.duplicate(true),
+		"target_envelope": military_target_envelope(locked_mission),
+	}
+
+
+func military_target_envelope(locked_mission: Dictionary) -> Dictionary:
+	var lock_report := MilitaryMissionCore.mission_lock_validation_report(
+		locked_mission
+	)
+	if not bool(lock_report.get("valid", false)):
+		return {}
+	var task_kind := str(locked_mission.get("task_kind", ""))
+	var envelope := {
+		"schema_version": "1.0.0",
+		"contract_id": "v075.military.target_envelope.v1",
+		"task_kind": task_kind,
+		"public_information_fingerprint": "",
+		"envelope_fingerprint": "",
+	}
+	if task_kind == MilitaryMissionCore.TASK_ASSAULT_REGION:
+		var facility_ids: Array[String] = []
+		var facility_generations := {}
+		for target_variant in locked_mission.get(
+			"locked_facility_targets",
+			[]
+		) as Array:
+			var target := target_variant as Dictionary
+			var facility_id := str(target.get("target_facility_id", ""))
+			facility_ids.append(facility_id)
+			facility_generations[facility_id] = int(
+				target.get("expected_generation", 0)
+			)
+		facility_ids.sort()
+		envelope["target_region_id"] = str(
+			locked_mission.get("target_region_id", "")
+		)
+		envelope["expected_region_revision"] = int(
+			locked_mission.get("target_region_revision", -1)
+		)
+		envelope["locked_enemy_facility_ids"] = facility_ids
+		envelope["facility_generations"] = facility_generations
+		envelope["region_damage_budget"] = int(
+			locked_mission.get("region_strike_damage_budget", 0)
+		)
+	else:
+		envelope["target_monster_source_instance_id"] = str(
+			locked_mission.get("target_monster_source_instance_id", "")
+		)
+		envelope["target_source_generation"] = int(
+			locked_mission.get("target_source_generation", 0)
+		)
+		envelope["target_monster_revision"] = int(
+			locked_mission.get("target_monster_revision", -1)
+		)
+		envelope["target_monster_owner_player_id"] = str(
+			locked_mission.get("target_monster_owner_player_id", "")
+		)
+		envelope["public_target_region_id"] = str(
+			locked_mission.get("public_target_region_id", "")
+		)
+		envelope["monster_damage"] = int(
+			locked_mission.get("monster_damage", 0)
+		)
+	var public_payload := envelope.duplicate(true)
+	public_payload.erase("public_information_fingerprint")
+	public_payload.erase("envelope_fingerprint")
+	envelope["public_information_fingerprint"] = _fingerprint(public_payload)
+	var fingerprint_payload := envelope.duplicate(true)
+	fingerprint_payload.erase("envelope_fingerprint")
+	envelope["envelope_fingerprint"] = _fingerprint(fingerprint_payload)
+	return envelope
+
+
+func _military_preview_failure(
+	reason_code: String,
+	detail: Dictionary = {}
+) -> Dictionary:
+	return {
+		"accepted": false,
+		"reason_code": reason_code,
+		"detail": detail.duplicate(true),
+		"state_mutation_count": 0,
 	}
 
 
@@ -1737,6 +1864,7 @@ func debug_snapshot() -> Dictionary:
 		"owner_id": OWNER_ID,
 		"initialized": _initialized,
 		"phase": _phase,
+		"revision": _revision,
 		"batch_id": _batch_id,
 		"batch_index": _batch_index,
 		"combat_runtime_owner_count": 1,
@@ -2661,12 +2789,7 @@ func _reset_runtime_state() -> void:
 	_public_results = []
 	_lineage_id = ""
 	_revision = 0
-	_monster_card_mode_counts = {
-		"DEPLOY_NEW": 0,
-		"REFRESH_EXISTING": 0,
-		"UPGRADE_EXISTING": 0,
-		"REPLACE_EXISTING": 0,
-	}
+	_monster_card_mode_counts = CapabilityCatalog.zero_monster_mode_counts()
 	_autonomy_target_count = 0
 	_hungry_fallback_count = 0
 	_movement_count = 0

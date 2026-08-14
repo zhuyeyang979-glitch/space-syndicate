@@ -4,6 +4,9 @@ class_name V075MonsterSourceCore
 const CapacityPort := preload(
 	"res://scripts/v075/monster/v075_character_monster_capacity_port.gd"
 )
+const CapabilityCatalog := preload(
+	"res://scripts/v075/combat/v075_combat_capability_catalog.gd"
+)
 
 const SCHEMA_VERSION := "1.0.0"
 const RULESET_ID := "v0.7.5"
@@ -26,10 +29,16 @@ const BASE_MONSTER_CONTROL_CAPACITY_PER_PLAYER := (
 const MAX_MONSTER_RANK := 4
 const MAX_SAFE_INTEGER := 9007199254740991
 
-const MODE_DEPLOY_NEW := "DEPLOY_NEW"
-const MODE_REFRESH_EXISTING := "REFRESH_EXISTING"
-const MODE_UPGRADE_EXISTING := "UPGRADE_EXISTING"
-const MODE_REPLACE_EXISTING := "REPLACE_EXISTING"
+const MODE_DEPLOY_NEW := CapabilityCatalog.MONSTER_MODE_DEPLOY_NEW
+const MODE_REFRESH_EXISTING := (
+	CapabilityCatalog.MONSTER_MODE_REFRESH_EXISTING
+)
+const MODE_UPGRADE_EXISTING := (
+	CapabilityCatalog.MONSTER_MODE_UPGRADE_EXISTING
+)
+const MODE_REPLACE_EXISTING := (
+	CapabilityCatalog.MONSTER_MODE_REPLACE_EXISTING
+)
 const TRANSITION_MOVE_REGION := "MOVE_REGION"
 const TRANSITION_DETECTION_RANGE := "DETECTION_RANGE"
 const TRANSITION_COMBAT_DAMAGE := "COMBAT_DAMAGE"
@@ -52,12 +61,7 @@ const DETECTION_TRANSITION_KINDS := [
 	DETECTION_NO_TARGET_GROWTH,
 	DETECTION_HUNGRY_PLAN,
 ]
-const CARD_MODES := [
-	MODE_DEPLOY_NEW,
-	MODE_REFRESH_EXISTING,
-	MODE_UPGRADE_EXISTING,
-	MODE_REPLACE_EXISTING,
-]
+const CARD_MODES := CapabilityCatalog.MONSTER_CARD_MODES
 const SOURCE_STATUSES := ["active", "downed", "destroyed", "withdrawn"]
 const CONTROLLED_STATUSES := ["active", "downed"]
 const PREFERRED_COLORS := [
@@ -162,6 +166,8 @@ const ACTION_FIELDS := [
 	"monster_card_mode",
 	"target_source_instance_id",
 	"target_source_generation",
+	"expected_hp_revision",
+	"expected_region_revision",
 	"deployment_region_id",
 	"bound_state_revision",
 	"definition_snapshot",
@@ -180,6 +186,12 @@ const RECEIPT_FIELDS := [
 	"card_definition_id",
 	"owner_player_id",
 	"monster_card_mode",
+	"target_region_id",
+	"target_source_instance_id",
+	"target_source_generation",
+	"expected_hp_revision",
+	"expected_region_revision",
+	"bound_state_revision",
 	"accepted",
 	"outcome_id",
 	"reason_code",
@@ -640,6 +652,12 @@ static func prebind_card_mode(
 		"target_source_generation": int(
 			bind_context.get("target_source_generation", 0)
 		),
+		"expected_hp_revision": int(
+			bind_context.get("expected_hp_revision", -1)
+		),
+		"expected_region_revision": int(
+			request.get("expected_region_revision", -1)
+		),
 		"deployment_region_id": str(
 			bind_context.get("deployment_region_id", "")
 		),
@@ -686,6 +704,14 @@ static func resolve_prebound_card(
 			"receipt": stored.duplicate(true),
 			"idempotent_replay": true,
 		}
+	if int(state.get("revision", 0)) < int(action.get("bound_state_revision", 0)):
+		return _commit_resolution(
+			state,
+			action,
+			{},
+			false,
+			"monster_bound_state_revision_regressed"
+		)
 	var resolution_context := _mode_context(
 		state,
 		_action_as_request(action),
@@ -1180,6 +1206,26 @@ static func validation_report(state: Dictionary) -> Dictionary:
 			if error == ""
 			else 0
 		),
+	}
+
+
+static func prebound_action_validation_report(value: Variant) -> Dictionary:
+	var reason_code := "monster_card_prebound_action_invalid"
+	if value is Dictionary:
+		var detail := _action_error(value as Dictionary)
+		if detail.is_empty():
+			return {
+				"valid": true,
+				"reason_code": "monster_card_prebound_action_valid",
+				"error_count": 0,
+				"errors": [],
+			}
+		reason_code = detail
+	return {
+		"valid": false,
+		"reason_code": reason_code,
+		"error_count": 1,
+		"errors": [reason_code],
 	}
 
 
@@ -2161,6 +2207,24 @@ static func _commit_resolution(
 		"monster_card_mode": str(
 			action.get("monster_card_mode", "")
 		),
+		"target_region_id": str(
+			action.get("deployment_region_id", "")
+		),
+		"target_source_instance_id": str(
+			action.get("target_source_instance_id", "")
+		),
+		"target_source_generation": int(
+			action.get("target_source_generation", 0)
+		),
+		"expected_hp_revision": int(
+			action.get("expected_hp_revision", -1)
+		),
+		"expected_region_revision": int(
+			action.get("expected_region_revision", -1)
+		),
+		"bound_state_revision": int(
+			action.get("bound_state_revision", 0)
+		),
 		"accepted": true,
 		"outcome_id": (
 			"monster_card_resolved"
@@ -2289,6 +2353,7 @@ static func _mode_context(
 			"reason_code": "",
 			"target_source_instance_id": "",
 			"target_source_generation": 0,
+			"expected_hp_revision": -1,
 			"deployment_region_id": target_region_id,
 		}
 	if target.is_empty():
@@ -2306,6 +2371,13 @@ static func _mode_context(
 		!= int(target.get("source_generation", -1))
 	):
 		return {"reason_code": "monster_target_source_generation_changed"}
+	if (
+		is_resolution
+		and mode == MODE_REFRESH_EXISTING
+		and int(request.get("expected_hp_revision", -1))
+			!= int(target.get("damage_revision", -2))
+	):
+		return {"reason_code": "monster_refresh_hp_revision_changed"}
 	if mode in [MODE_REFRESH_EXISTING, MODE_UPGRADE_EXISTING]:
 		if (
 			str(target.get("monster_family_id", ""))
@@ -2341,6 +2413,11 @@ static func _mode_context(
 		"target_source_generation": int(
 			target.get("source_generation", 0)
 		),
+		"expected_hp_revision": (
+			int(target.get("damage_revision", 0))
+			if mode == MODE_REFRESH_EXISTING
+			else -1
+		),
 		"deployment_region_id": (
 			target_region_id
 			if mode == MODE_REPLACE_EXISTING
@@ -2370,6 +2447,9 @@ static func _action_as_request(action: Dictionary) -> Dictionary:
 		),
 		"target_source_generation": int(
 			action.get("target_source_generation", 0)
+		),
+		"expected_hp_revision": int(
+			action.get("expected_hp_revision", -1)
 		),
 		"target_region_id": str(
 			action.get("deployment_region_id", "")
@@ -2825,6 +2905,12 @@ static func _action_error(action: Dictionary) -> String:
 	var target_generation := int(
 		action.get("target_source_generation", 0)
 	)
+	var expected_hp_revision: Variant = action.get(
+		"expected_hp_revision", null
+	)
+	var expected_region_revision: Variant = action.get(
+		"expected_region_revision", null
+	)
 	if (
 		action.get("schema_version") != SCHEMA_VERSION
 		or action.get("contract_id") != ACTION_CONTRACT_ID
@@ -2837,6 +2923,7 @@ static func _action_error(action: Dictionary) -> String:
 		or int(action.get("card_rank", 0)) > MAX_MONSTER_RANK
 		or not CARD_MODES.has(mode)
 		or not _positive_integer(action.get("bound_state_revision"))
+		or typeof(expected_region_revision) != TYPE_INT
 		or not (action.get("definition_snapshot") is Dictionary)
 		or _definition_error(
 			action.get("definition_snapshot") as Dictionary
@@ -2849,6 +2936,8 @@ static func _action_error(action: Dictionary) -> String:
 		if (
 			not target_id.is_empty()
 			or target_generation != 0
+			or expected_hp_revision != -1
+			or int(expected_region_revision) < -1
 			or not _stable_id(action.get("deployment_region_id"))
 		):
 			return "monster_deploy_prebound_target_invalid"
@@ -2857,6 +2946,19 @@ static func _action_error(action: Dictionary) -> String:
 			not _stable_id(target_id)
 			or target_generation <= 0
 			or not _stable_id(action.get("deployment_region_id"))
+			or (
+				mode == MODE_REFRESH_EXISTING
+				and not _nonnegative_integer(expected_hp_revision)
+			)
+			or (
+				mode != MODE_REFRESH_EXISTING
+				and expected_hp_revision != -1
+			)
+			or (
+				mode == MODE_REPLACE_EXISTING
+				and int(expected_region_revision) < -1
+			)
+			or (mode != MODE_REPLACE_EXISTING and expected_region_revision != -1)
 		):
 			return "monster_existing_prebound_target_invalid"
 	return ""
@@ -2878,6 +2980,12 @@ static func _receipt_error(receipt: Dictionary) -> String:
 		return "monster_card_receipt_fingerprint_invalid"
 	var mode := str(receipt.get("monster_card_mode", ""))
 	var outcome := str(receipt.get("outcome_id", ""))
+	var target_id := str(receipt.get("target_source_instance_id", ""))
+	var target_generation := int(receipt.get("target_source_generation", 0))
+	var expected_hp_revision: Variant = receipt.get("expected_hp_revision")
+	var expected_region_revision: Variant = receipt.get(
+		"expected_region_revision"
+	)
 	if (
 		receipt.get("schema_version") != SCHEMA_VERSION
 		or receipt.get("contract_id") != RECEIPT_CONTRACT_ID
@@ -2889,6 +2997,10 @@ static func _receipt_error(receipt: Dictionary) -> String:
 		or not _stable_id(receipt.get("card_definition_id"))
 		or not _stable_id(receipt.get("owner_player_id"))
 		or not CARD_MODES.has(mode)
+		or not _stable_id(receipt.get("target_region_id"))
+		or typeof(expected_hp_revision) != TYPE_INT
+		or typeof(expected_region_revision) != TYPE_INT
+		or not _positive_integer(receipt.get("bound_state_revision"))
 		or receipt.get("accepted") != true
 		or outcome not in [
 			"monster_card_resolved",
@@ -2927,6 +3039,33 @@ static func _receipt_error(receipt: Dictionary) -> String:
 		or receipt.get("exact_once") != true
 	):
 		return "monster_card_receipt_context_invalid"
+	if mode == MODE_DEPLOY_NEW:
+		if (
+			not target_id.is_empty()
+			or target_generation != 0
+			or expected_hp_revision != -1
+			or int(expected_region_revision) < -1
+		):
+			return "monster_deploy_receipt_target_invalid"
+	else:
+		if (
+			not _stable_id(target_id)
+			or target_generation <= 0
+			or (
+				mode == MODE_REFRESH_EXISTING
+				and not _nonnegative_integer(expected_hp_revision)
+			)
+			or (
+				mode != MODE_REFRESH_EXISTING
+				and expected_hp_revision != -1
+			)
+			or (
+				mode == MODE_REPLACE_EXISTING
+				and int(expected_region_revision) < -1
+			)
+			or (mode != MODE_REPLACE_EXISTING and expected_region_revision != -1)
+		):
+			return "monster_existing_receipt_target_invalid"
 	if outcome == "monster_card_fizzled":
 		if (
 			not str(receipt.get("source_instance_id", "")).is_empty()

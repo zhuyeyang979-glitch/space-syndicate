@@ -465,7 +465,6 @@ func _test_combat_follow_up_contracts(
 		"task_kind": "assault_region",
 		"target_region_id": "region.contract.deploy",
 		"target_monster_source_instance_id": "",
-		"launch_region_id": "region.contract.launch",
 		"asset_cost_by_color": {},
 		"enabled": true,
 	}, {
@@ -480,7 +479,6 @@ func _test_combat_follow_up_contracts(
 		"target_region_id": "",
 		"target_monster_source_instance_id": "monster.contract.enemy",
 		"target_source_generation": 1,
-		"launch_region_id": "region.contract.launch",
 		"asset_cost_by_color": {},
 		"enabled": true,
 	}]
@@ -524,7 +522,8 @@ func _test_combat_follow_up_contracts(
 	var combat_result: Dictionary = adapter.enumerate_candidates(own, public)
 	var modes: Dictionary = {}
 	var task_kinds: Dictionary = {}
-	for candidate_variant in combat_result.get("candidates", []) as Array:
+	var legal_candidates := combat_result.get("candidates", []) as Array
+	for candidate_variant in legal_candidates:
 		var candidate := candidate_variant as Dictionary
 		var mode := str(candidate.get("monster_card_mode", ""))
 		if not mode.is_empty():
@@ -533,10 +532,13 @@ func _test_combat_follow_up_contracts(
 		if not task.is_empty():
 			task_kinds[task] = true
 	_expect(
-		modes.size() == 4
-		and task_kinds.has("assault_region")
-		and task_kinds.has("assault_monster"),
-		"natural combat cards retain legal prebound mode/task choices"
+		legal_candidates.is_empty()
+		and modes.is_empty()
+		and task_kinds.is_empty(),
+		(
+			"supported combat catalogs remain available while raw options "
+			+ "without typed prebinding fail closed"
+		)
 	)
 
 

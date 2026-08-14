@@ -7,6 +7,9 @@ const SurfaceScene := preload(
 const ProjectionAdapter := preload(
 	"res://scripts/v075/player/v075_combat_projection_adapter.gd"
 )
+const CombatCandidate := preload(
+	"res://scripts/v075/ai/v075_ai_combat_action_candidate_v1.gd"
+)
 const PresentationConsumer := preload(
 	"res://scripts/v075/presentation/v075_combat_presentation_consumer.gd"
 )
@@ -314,39 +317,12 @@ static func make_authority_snapshot() -> Dictionary:
 				"can_assault_region": true,
 				"can_assault_monster": true,
 				"military_options": [
-					{
-						"option_id": "option.military.region.local",
-						"owner_player_id": "player.local",
-						"card_instance_id": "dbg.military.local.01",
-						"card_definition_id": "military.submarine_fleet.life.rank_1",
-						"card_action_binding": military_card_binding.duplicate(true),
-						"target_slot_id": "combat.military.assault_region.region.14",
-						"task_kind": "assault_region",
-						"target_region_id": "region.14",
-						"target_monster_source_instance_id": "",
-						"launch_region_id": "region.07",
-						"asset_cost_by_color": {"life": 1},
-						"enabled": true,
-						"disabled_reason": "none",
-						"action_domain": "military",
-					},
-					{
-						"option_id": "option.military.monster.local",
-						"owner_player_id": "player.local",
-						"card_instance_id": "dbg.military.local.01",
-						"card_definition_id": "military.submarine_fleet.life.rank_1",
-						"card_action_binding": military_card_binding.duplicate(true),
-						"target_slot_id": "combat.military.assault_monster.monster.ai.02",
-						"task_kind": "assault_monster",
-						"target_region_id": "",
-						"target_monster_source_instance_id": "monster.industry.ai.02",
-						"target_source_generation": 2,
-						"launch_region_id": "region.07",
-						"asset_cost_by_color": {"life": 1},
-						"enabled": true,
-						"disabled_reason": "none",
-						"action_domain": "military",
-					},
+					make_military_option_fixture(
+						"assault_region", military_card_binding
+					),
+					make_military_option_fixture(
+						"assault_monster", military_card_binding
+					),
 				],
 			},
 			"player.ai.1": {
@@ -356,6 +332,87 @@ static func make_authority_snapshot() -> Dictionary:
 			},
 		},
 	}
+
+
+static func make_military_option_fixture(
+	task_kind: String,
+	card_action_binding: Dictionary
+) -> Dictionary:
+	var envelope := {
+		"schema_version": "1.0.0",
+		"contract_id": "v075.military.target_envelope.v1",
+		"task_kind": task_kind,
+		"public_information_fingerprint": "",
+		"envelope_fingerprint": "",
+	}
+	if task_kind == "assault_region":
+		envelope.merge({
+			"target_region_id": "region.14",
+			"expected_region_revision": 9,
+			"locked_enemy_facility_ids": ["facility.enemy.14"],
+			"facility_generations": {"facility.enemy.14": 1},
+			"region_damage_budget": 4,
+		})
+	else:
+		envelope.merge({
+			"target_monster_source_instance_id": "monster.industry.ai.02",
+			"target_source_generation": 2,
+			"target_monster_revision": 5,
+			"target_monster_owner_player_id": "player.ai.1",
+			"public_target_region_id": "region.11",
+			"monster_damage": 3,
+		})
+	var public_payload := envelope.duplicate(true)
+	public_payload.erase("public_information_fingerprint")
+	public_payload.erase("envelope_fingerprint")
+	envelope["public_information_fingerprint"] = _canonical_hash(public_payload)
+	var envelope_payload := envelope.duplicate(true)
+	envelope_payload.erase("envelope_fingerprint")
+	envelope["envelope_fingerprint"] = _canonical_hash(envelope_payload)
+	var option := {
+		"option_id": (
+			"option.military.region.local"
+			if task_kind == "assault_region"
+			else "option.military.monster.local"
+		),
+		"owner_player_id": "player.local",
+		"card_instance_id": "dbg.military.local.01",
+		"card_definition_id": "military.submarine_fleet.life.rank_1",
+		"card_generation": 7,
+		"card_action_binding": card_action_binding.duplicate(true),
+		"target_slot_id": "combat.military.%s" % task_kind,
+		"task_kind": task_kind,
+		"target_region_id": (
+			"region.14" if task_kind == "assault_region" else ""
+		),
+		"target_monster_source_instance_id": (
+			"monster.industry.ai.02"
+			if task_kind == "assault_monster"
+			else ""
+		),
+		"primary_color": "life",
+		"asset_cost": 1,
+		"primary_asset_cost": 1,
+		"asset_cost_by_color": {"life": 1},
+		"expected_world_revision": 3,
+		"military_target_envelope": envelope,
+		"enabled": true,
+		"disabled_reason": "none",
+		"action_domain": "military",
+	}
+	if task_kind == "assault_region":
+		option["expected_region_revision"] = 9
+	else:
+		option["target_source_generation"] = 2
+	var candidate := CombatCandidate.military_candidate(option, 0)
+	if candidate.is_empty():
+		return {}
+	option["candidate_id"] = candidate.get("candidate_id")
+	option["candidate_fingerprint"] = candidate.get("candidate_fingerprint")
+	option["target_binding"] = (
+		candidate.get("target_binding", {}) as Dictionary
+	).duplicate(true)
+	return option
 
 
 static func make_card_action_binding_fixture(
@@ -391,8 +448,33 @@ static func make_card_action_binding_fixture(
 			"v075.combat.queue_resolve_personal_discard"
 		),
 	}
-	binding["binding_fingerprint"] = JSON.stringify(binding).sha256_text()
+	binding["binding_fingerprint"] = _canonical_hash(binding)
 	return binding
+
+
+static func _canonical_hash(value: Variant) -> String:
+	return _canonical_json(value).sha256_text()
+
+
+static func _canonical_json(value: Variant) -> String:
+	if value is Dictionary:
+		var keys: Array[String] = []
+		for key_variant in (value as Dictionary).keys():
+			keys.append(str(key_variant))
+		keys.sort()
+		var pairs: Array[String] = []
+		for key in keys:
+			pairs.append("%s:%s" % [
+				JSON.stringify(key),
+				_canonical_json((value as Dictionary).get(key)),
+			])
+		return "{%s}" % ",".join(pairs)
+	if value is Array:
+		var rows: Array[String] = []
+		for child in value as Array:
+			rows.append(_canonical_json(child))
+		return "[%s]" % ",".join(rows)
+	return JSON.stringify(value)
 
 
 static func make_projection(viewer_id: String) -> Dictionary:

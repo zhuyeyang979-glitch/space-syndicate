@@ -10,6 +10,9 @@ const PublicActionBatchCore := preload(
 const CombatCatalog := preload(
 	"res://scripts/v075/combat/v075_combat_catalog.gd"
 )
+const CapabilityCatalog := preload(
+	"res://scripts/v075/combat/v075_combat_capability_catalog.gd"
+)
 const MonsterAutonomyCore := preload(
 	"res://scripts/v075/monster/v075_monster_autonomy_core.gd"
 )
@@ -18,6 +21,9 @@ const CombatProjectionAdapter := preload(
 )
 const CombatAIAdapter := preload(
 	"res://scripts/v075/ai/v075_combat_ai_adapter.gd"
+)
+const CombatCandidate := preload(
+	"res://scripts/v075/ai/v075_ai_combat_action_candidate_v1.gd"
 )
 const FacilityDamageBridge := preload(
 	"res://scripts/v075/combat/v075_facility_combat_damage_bridge.gd"
@@ -70,8 +76,13 @@ const COMBAT_OWNER_METHODS := [
 	"begin_batch",
 	"set_phase",
 	"prebind_monster_card_action",
+	"preview_monster_card_action",
+	"validate_monster_prebound_action",
 	"resolve_monster_card_action",
 	"build_military_lock",
+	"preview_military_lock",
+	"commit_military_lock",
+	"military_target_envelope",
 	"resolve_military_action",
 	"begin_public_receipt",
 	"complete_public_receipt",
@@ -2381,10 +2392,20 @@ func legal_card_actions(actor_id: String) -> Array:
 		var domain := CardDefinitionsV075.card_domain(
 			str(card.get("card_type", ""))
 		)
+		var raw_combat_options: Array = []
 		if domain == "monster":
-			result.append_array(_monster_card_options(actor_id, card))
+			raw_combat_options = _monster_card_options(actor_id, card)
 		elif domain == "military":
-			result.append_array(_military_card_options(actor_id, card))
+			raw_combat_options = _military_card_options(actor_id, card)
+		for raw_variant in raw_combat_options:
+			var raw_option := raw_variant as Dictionary
+			var typed_candidate: Dictionary = {}
+			if domain == "monster":
+				typed_candidate = CombatCandidate.monster_candidate(raw_option, 0)
+			elif domain == "military":
+				typed_candidate = CombatCandidate.military_candidate(raw_option, 0)
+			if not typed_candidate.is_empty():
+				result.append(typed_candidate)
 	result.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
 		return str(left.get("option_id", "")) < str(
 			right.get("option_id", "")
@@ -2407,7 +2428,33 @@ func _auto_legal_actions(actor_id: String) -> Array:
 			continue
 		var option := option_variant as Dictionary
 		var domain := str(option.get("action_domain", "facility"))
-		if domain not in ["monster", "military"]:
+		if domain == "monster":
+			var candidate: Dictionary = option.duplicate(true)
+			if not bool(CombatCandidate.validation_report(candidate).get(
+				"valid",
+				false
+			)):
+				candidate = CombatCandidate.monster_candidate(option, 0)
+			if candidate.is_empty():
+				continue
+			candidate["stable_action_key"] = str(
+				candidate.get("candidate_fingerprint", "")
+			)
+			option = candidate
+		elif domain == "military":
+			var candidate: Dictionary = option.duplicate(true)
+			if not bool(CombatCandidate.validation_report(candidate).get(
+				"valid",
+				false
+			)):
+				candidate = CombatCandidate.military_candidate(option, 0)
+			if candidate.is_empty():
+				continue
+			candidate["stable_action_key"] = str(
+				candidate.get("candidate_fingerprint", "")
+			)
+			option = candidate
+		else:
 			result.append(option.duplicate(true))
 			continue
 		var identity := _combat_option_identity(option)
@@ -2532,6 +2579,33 @@ func queue_card_action(
 		"target_bound": true,
 		"card_action_binding": card_action_binding,
 	}
+	for lineage_field in [
+		"option_id",
+		"candidate_id",
+		"variant_type",
+		"candidate_fingerprint",
+		"target_binding",
+		"prebound_monster_action",
+		"military_target_envelope",
+		"expected_world_revision",
+		"expected_region_revision",
+		"expected_hp_revision",
+		"target_source_generation",
+		"card_generation",
+	]:
+		if not selected.has(lineage_field):
+			continue
+		var lineage_value: Variant = selected.get(lineage_field)
+		if lineage_value is Dictionary:
+			binding[lineage_field] = (
+				lineage_value as Dictionary
+			).duplicate(true)
+		elif lineage_value is Array:
+			binding[lineage_field] = (
+				lineage_value as Array
+			).duplicate(true)
+		else:
+			binding[lineage_field] = lineage_value
 	queue.append(binding)
 	_queued_by_player[actor_id] = queue
 	_clear_v075_submission_caches()
@@ -2554,34 +2628,28 @@ func queue_monster_card_action(
 	monster_card_mode: String,
 	target_region_id: String = "",
 	target_source_instance_id: String = "",
-	card_action_binding: Dictionary = {}
+	prebound_candidate: Dictionary = {}
 ) -> Dictionary:
-	if card_action_binding.is_empty():
-		return _reject_action("monster_card_action_binding_missing")
-	for option_variant in legal_card_actions(actor_id):
-		var option := option_variant as Dictionary
-		if (
-			str(option.get("action_domain", "")) == "monster"
-			and str(option.get("card_instance_id", "")) == card_instance_id
-			and str(option.get("monster_card_mode", "")) == monster_card_mode
-			and (
-				target_region_id.is_empty()
-				or str(option.get("target_region_id", "")) == target_region_id
-			)
-			and (
-				target_source_instance_id.is_empty()
-				or str(option.get("target_source_instance_id", ""))
-				== target_source_instance_id
-			)
-			and option.get("card_action_binding") == card_action_binding
-		):
-			return queue_card_action(
-				actor_id,
-				card_instance_id,
-				str(option.get("target_slot_id", "")),
-				option
-			)
-	return _reject_action("monster_card_mode_has_no_legal_prebound_target")
+	if (
+		prebound_candidate.is_empty()
+		or not bool(CombatCandidate.validation_report(
+			prebound_candidate
+		).get("valid", false))
+		or str(prebound_candidate.get("action_domain", "")) != "monster"
+		or str(prebound_candidate.get("card_instance_id", "")) != card_instance_id
+		or str(prebound_candidate.get("monster_card_mode", "")) != monster_card_mode
+		or str(prebound_candidate.get("target_region_id", "")) != target_region_id
+		or str(prebound_candidate.get("target_source_instance_id", ""))
+			!= target_source_instance_id
+		or str(prebound_candidate.get("candidate_fingerprint", "")).is_empty()
+	):
+		return _reject_action("monster_prebound_candidate_missing_or_mismatched")
+	return queue_card_action(
+		actor_id,
+		card_instance_id,
+		str(prebound_candidate.get("target_slot_id", "")),
+		prebound_candidate
+	)
 
 
 func reorder_queued_action(
@@ -2612,54 +2680,34 @@ func queue_military_card_action(
 	task_kind: String,
 	target_region_id: String = "",
 	target_monster_source_instance_id: String = "",
-	card_action_binding: Dictionary = {}
+	prebound_candidate: Dictionary = {}
 ) -> Dictionary:
 	if (
 		card_instance_id.is_empty()
-		or card_action_binding.is_empty()
-		or task_kind not in ["assault_region", "assault_monster"]
-		or (
-			task_kind == "assault_region"
-			and (
-				target_region_id.is_empty()
-				or not target_monster_source_instance_id.is_empty()
-			)
-		)
-		or (
-			task_kind == "assault_monster"
-			and (
-				target_monster_source_instance_id.is_empty()
-				or not target_region_id.is_empty()
-			)
-		)
+		or prebound_candidate.is_empty()
+		or not bool(CombatCandidate.validation_report(
+			prebound_candidate
+		).get("valid", false))
+		or not CapabilityCatalog.is_military_mission_kind(task_kind)
+		or str(prebound_candidate.get("action_domain", "")) != "military"
+		or str(prebound_candidate.get("card_instance_id", "")) != card_instance_id
+		or str(prebound_candidate.get("task_kind", "")) != task_kind
+		or str(prebound_candidate.get("target_region_id", "")) != target_region_id
+		or str(prebound_candidate.get(
+			"target_monster_source_instance_id",
+			""
+		)) != target_monster_source_instance_id
+		or str(prebound_candidate.get("candidate_fingerprint", "")).is_empty()
+		or prebound_candidate.get("target_binding")
+			!= prebound_candidate.get("military_target_envelope")
 	):
-		return _reject_action("military_target_identity_missing_or_mixed")
-	for option_variant in legal_card_actions(actor_id):
-		var option := option_variant as Dictionary
-		if (
-			str(option.get("action_domain", "")) == "military"
-			and str(option.get("card_instance_id", "")) == card_instance_id
-			and str(option.get("task_kind", "")) == task_kind
-			and (
-				target_region_id.is_empty()
-				or str(option.get("target_region_id", "")) == target_region_id
-			)
-			and (
-				target_monster_source_instance_id.is_empty()
-				or str(option.get(
-					"target_monster_source_instance_id",
-					""
-				)) == target_monster_source_instance_id
-			)
-			and option.get("card_action_binding") == card_action_binding
-		):
-			return queue_card_action(
-				actor_id,
-				card_instance_id,
-				str(option.get("target_slot_id", "")),
-				option
-			)
-	return _reject_action("military_task_has_no_legal_prebound_target")
+		return _reject_action("military_prebound_candidate_missing_or_mismatched")
+	return queue_card_action(
+		actor_id,
+		card_instance_id,
+		str(prebound_candidate.get("target_slot_id", "")),
+		prebound_candidate
+	)
 
 
 func queue_selected_military_mission(
@@ -2680,16 +2728,21 @@ func queue_selected_military_mission(
 		"card_action_binding",
 		{}
 	) as Dictionary
-	if card_action_binding.is_empty():
+	if (
+		card_action_binding.is_empty()
+		or str(parameters.get("candidate_fingerprint", "")).is_empty()
+		or not bool(CombatCandidate.validation_report(parameters).get(
+			"valid",
+			false
+		))
+		or parameters.get("target_binding")
+			!= parameters.get("military_target_envelope")
+	):
 		return _reject_action("military_card_action_binding_missing")
 	var target_region_id := str(parameters.get("target_region_id", ""))
 	var target_monster_id := str(parameters.get(
 		"target_monster_source_instance_id",
 		""
-	))
-	var target_source_generation := int(parameters.get(
-		"target_source_generation",
-		0
 	))
 	if (
 		(task_kind == "assault_region" and (
@@ -2705,40 +2758,15 @@ func queue_selected_military_mission(
 				"target_source_generation"
 			)
 		))
-		or task_kind not in ["assault_region", "assault_monster"]
+		or not CapabilityCatalog.is_military_mission_kind(task_kind)
 	):
 		return _reject_action("military_target_identity_missing_or_mixed")
-	var option_id := str(parameters.get("option_id", ""))
-	for option_variant in legal_card_actions(actor_id):
-		var option := option_variant as Dictionary
-		if (
-			str(option.get("action_domain", "")) == "military"
-			and str(option.get("option_id", "")) == option_id
-			and str(option.get("card_instance_id", "")) == card_instance_id
-			and str(option.get("task_kind", "")) == task_kind
-			and str(option.get("target_slot_id", "")) == str(
-				parameters.get("target_slot_id", "")
-			)
-			and str(option.get("target_region_id", "")) == str(
-				parameters.get("target_region_id", "")
-			)
-			and str(option.get("target_monster_source_instance_id", "")) == str(
-				parameters.get("target_monster_source_instance_id", "")
-			)
-			and option.get("card_action_binding") == card_action_binding
-			and (
-				task_kind != "assault_monster"
-				or int(option.get("target_source_generation", 0))
-					== target_source_generation
-			)
-		):
-			return queue_card_action(
-				actor_id,
-				card_instance_id,
-				str(option.get("target_slot_id", "")),
-				option
-			)
-	return _reject_action("military_option_identity_stale")
+	return queue_card_action(
+		actor_id,
+		card_instance_id,
+		str(parameters.get("target_slot_id", "")),
+		parameters
+	)
 
 
 func request_private_monster_skill(
@@ -3331,6 +3359,12 @@ func ai_observation(actor_id: String) -> Dictionary:
 	observation["combat_candidates"] = (
 		candidates.get("candidates", []) as Array
 	).duplicate(true)
+	observation["monster_mode_capabilities"] = (
+		candidates.get("monster_mode_capabilities", []) as Array
+	).duplicate()
+	observation["military_mission_capabilities"] = (
+		candidates.get("military_mission_capabilities", []) as Array
+	).duplicate()
 	observation["combat_hidden_info_violation_count"] = int(
 		candidates.get("hidden_info_violation_count", 0)
 	)
@@ -3894,6 +3928,7 @@ func _v075_public_facility_row(slot: Dictionary) -> Dictionary:
 	return {
 		"slot_id": slot.get("slot_id"),
 		"region_id": slot.get("region_id"),
+		"region_revision": slot.get("region_revision"),
 		"facility_type": slot.get("facility_type"),
 		"industry_id": slot.get("industry_id"),
 		"slot_generation": slot.get("slot_generation"),
@@ -3916,6 +3951,15 @@ func _v075_public_facility_row(slot: Dictionary) -> Dictionary:
 			"warehouse_stock_runtime_phase"
 		),
 	}
+
+
+func _facility_authority_revision() -> int:
+	var source_state := _facility_state.get(
+		"facility_substate",
+		_facility_state
+	) as Dictionary
+	var revision: Variant = source_state.get("revision", 0)
+	return int(revision) if typeof(revision) == TYPE_INT and int(revision) >= 0 else 0
 
 
 func _public_occupied_facilities() -> Array:
@@ -4025,48 +4069,85 @@ func _build_bound_actions(
 		return {}
 	var combat_binding: Dictionary
 	if domain == "monster":
-		var prebound := _combat_owner.call(
-			"prebind_monster_card_action",
-			{
-				"request_id": "request.%s" % action_id,
-				"card_instance_id": str(card.get("instance_id", "")),
-				"card_definition_id": str(card.get("definition_id", "")),
-				"owner_player_id": actor_id,
-				"monster_card_mode": str(binding.get("monster_card_mode", "")),
-				"target_region_id": str(binding.get("target_region_id", "")),
-				"target_source_instance_id": str(
-					binding.get("target_source_instance_id", "")
-				),
-			}
+		var prebound_action := (
+			binding.get("prebound_monster_action", {}) as Dictionary
+		).duplicate(true)
+		var validation := _combat_owner.call(
+			"validate_monster_prebound_action",
+			prebound_action
 		) as Dictionary
-		if not bool(prebound.get("accepted", false)):
+		if not bool(validation.get("valid", false)):
+			return {}
+		if (
+			str(prebound_action.get("card_instance_id", ""))
+				!= str(card.get("instance_id", ""))
+			or str(prebound_action.get("card_definition_id", ""))
+				!= str(card.get("definition_id", ""))
+			or str(prebound_action.get("owner_player_id", "")) != actor_id
+			or str(prebound_action.get("monster_card_mode", ""))
+				!= str(binding.get("monster_card_mode", ""))
+			or str(prebound_action.get("deployment_region_id", ""))
+				!= str(binding.get("target_region_id", ""))
+			or str(prebound_action.get("target_source_instance_id", ""))
+				!= str(binding.get("target_source_instance_id", ""))
+			or int(prebound_action.get("target_source_generation", 0))
+				!= int(binding.get("target_source_generation", 0))
+			or int(prebound_action.get("expected_hp_revision", -2))
+				!= int(binding.get("expected_hp_revision", -1))
+			or int(prebound_action.get("expected_region_revision", -2))
+				!= int(binding.get("expected_region_revision", -1))
+		):
+			return {}
+		var mode := str(binding.get("monster_card_mode", ""))
+		if mode in [
+			CapabilityCatalog.MONSTER_MODE_DEPLOY_NEW,
+			CapabilityCatalog.MONSTER_MODE_REPLACE_EXISTING,
+		] and int(binding.get("expected_region_revision", -1)) != (
+			_facility_authority_revision()
+		):
 			return {}
 		combat_binding = {
-			"prebound_action": (
-				prebound.get("action", {}) as Dictionary
-			).duplicate(true),
+			"prebound_action": prebound_action,
+			"candidate_fingerprint": str(
+				binding.get("candidate_fingerprint", "")
+			),
 		}
 	else:
 		var mission_id := "mission.%s" % action_id
-		var lock := _combat_owner.call(
-			"build_military_lock",
-			{
-				"request_id": "request.%s" % mission_id,
-				"mission_id": mission_id,
-				"owner_player_id": actor_id,
-				"card_instance_id": str(card.get("instance_id", "")),
-				"card_definition_id": str(card.get("definition_id", "")),
-				"action_slot_id": action_id,
-				"asset_reservation_id": "reservation.%s" % action_id,
-				"committed_escrow_revision": maxi(1, _batch_number),
-				"target_region_revision": maxi(1, _batch_number),
-				"task_kind": str(binding.get("task_kind", "")),
-				"target_region_id": str(binding.get("target_region_id", "")),
-				"target_monster_source_instance_id": str(
-					binding.get("target_monster_source_instance_id", "")
-				),
-			},
+		var formal_binding := {
+			"request_id": "request.%s" % mission_id,
+			"mission_id": mission_id,
+			"owner_player_id": actor_id,
+			"card_instance_id": str(card.get("instance_id", "")),
+			"card_definition_id": str(card.get("definition_id", "")),
+			"action_slot_id": action_id,
+			"asset_reservation_id": "reservation.%s" % action_id,
+			"committed_escrow_revision": maxi(1, _batch_number),
+			"target_region_revision": _facility_authority_revision(),
+			"task_kind": str(binding.get("task_kind", "")),
+			"target_region_id": str(binding.get("target_region_id", "")),
+			"target_monster_source_instance_id": str(
+				binding.get("target_monster_source_instance_id", "")
+			),
+		}
+		var preview := _combat_owner.call(
+			"preview_military_lock",
+			formal_binding,
 			_public_occupied_facilities()
+		) as Dictionary
+		if not bool(preview.get("accepted", false)):
+			return {}
+		var expected_envelope := (
+			binding.get("military_target_envelope", {}) as Dictionary
+		).duplicate(true)
+		var current_envelope := (
+			preview.get("target_envelope", {}) as Dictionary
+		).duplicate(true)
+		if expected_envelope.is_empty() or current_envelope != expected_envelope:
+			return {}
+		var lock := _combat_owner.call(
+			"commit_military_lock",
+			preview.get("locked_mission", {}) as Dictionary
 		) as Dictionary
 		if not bool(lock.get("accepted", false)):
 			return {}
@@ -4075,6 +4156,10 @@ func _build_bound_actions(
 			"locked_mission": (
 				lock.get("locked_mission", {}) as Dictionary
 			).duplicate(true),
+			"military_target_envelope": current_envelope,
+			"candidate_fingerprint": str(
+				binding.get("candidate_fingerprint", "")
+			),
 		}
 	var public_action := {
 		"action_id": action_id,
@@ -4183,6 +4268,7 @@ func _monster_card_options(actor_id: String, card: Dictionary) -> Array:
 		""
 	)).substr(0, 12)
 	var regions := _runtime_region_ids()
+	regions.sort()
 	var own_sources: Array = []
 	for source_variant in _v075_public_monsters():
 		var source := source_variant as Dictionary
@@ -4190,19 +4276,30 @@ func _monster_card_options(actor_id: String, card: Dictionary) -> Array:
 			source.get("status", "")
 		) not in ["destroyed", "withdrawn"]:
 			own_sources.append(source)
-	for mode in [
-		"DEPLOY_NEW",
-		"REFRESH_EXISTING",
-		"UPGRADE_EXISTING",
-		"REPLACE_EXISTING",
-	]:
+	own_sources.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		return str(left.get("source_instance_id", "")) < str(
+			right.get("source_instance_id", "")
+		)
+	)
+	var expected_region_revision := _facility_authority_revision()
+	for mode in CapabilityCatalog.monster_card_modes():
 		var candidates: Array = []
-		if mode == "DEPLOY_NEW":
+		if mode == CapabilityCatalog.MONSTER_MODE_DEPLOY_NEW:
 			for region_id in regions:
 				candidates.append({
 					"target_region_id": region_id,
 					"target_source_instance_id": "",
 				})
+		elif mode == CapabilityCatalog.MONSTER_MODE_REPLACE_EXISTING:
+			for source_variant in own_sources:
+				var source := source_variant as Dictionary
+				for region_id in regions:
+					candidates.append({
+						"target_region_id": region_id,
+						"target_source_instance_id": str(
+							source.get("source_instance_id", "")
+						),
+					})
 		else:
 			for source_variant in own_sources:
 				var source := source_variant as Dictionary
@@ -4212,15 +4309,19 @@ func _monster_card_options(actor_id: String, card: Dictionary) -> Array:
 						source.get("source_instance_id", "")
 					),
 				})
-		var deploy_preview_checked := false
-		var deploy_preview_accepted := false
 		for candidate_variant in candidates:
 			var candidate := candidate_variant as Dictionary
+			var target_key := "%s|%s|%s" % [
+				mode,
+				str(candidate.get("target_source_instance_id", "")),
+				str(candidate.get("target_region_id", "")),
+			]
 			var request := {
-				"request_id": "preview.%s.%s.%s" % [
-					str(card.get("instance_id", "")),
+				"request_id": "candidate.%s.%s.%s.%s" % [
+					_batch_id().sha256_text().substr(0, 10),
+					str(card.get("instance_id", "")).sha256_text().substr(0, 10),
 					mode.to_lower(),
-					str(candidate).sha256_text().substr(0, 8),
+					target_key.sha256_text().substr(0, 12),
 				],
 				"card_instance_id": str(card.get("instance_id", "")),
 				"card_definition_id": definition_id,
@@ -4230,38 +4331,37 @@ func _monster_card_options(actor_id: String, card: Dictionary) -> Array:
 				"target_source_instance_id": str(
 					candidate.get("target_source_instance_id", "")
 				),
+				"expected_region_revision": (
+					expected_region_revision
+					if mode in [
+						CapabilityCatalog.MONSTER_MODE_DEPLOY_NEW,
+						CapabilityCatalog.MONSTER_MODE_REPLACE_EXISTING,
+					]
+					else -1
+				),
 			}
-			if mode == "DEPLOY_NEW" and deploy_preview_checked:
-				if not deploy_preview_accepted:
-					continue
-			else:
-				var preview_method := (
-					"preview_monster_card_action"
-					if _combat_owner.has_method("preview_monster_card_action")
-					else "prebind_monster_card_action"
-				)
-				var prebound := _combat_owner.call(
-					preview_method,
-					request
-				) as Dictionary
-				if mode == "DEPLOY_NEW":
-					deploy_preview_checked = true
-					deploy_preview_accepted = bool(
-						prebound.get("accepted", false)
-					)
-				if not bool(prebound.get("accepted", false)):
-					continue
-			var target_identity := str(candidate.get(
-				"target_source_instance_id",
-				""
-			))
-			if target_identity.is_empty():
-				target_identity = str(candidate.get("target_region_id", ""))
+			var prebound := _combat_owner.call(
+				"preview_monster_card_action",
+				request
+			) as Dictionary
+			if not bool(prebound.get("accepted", false)):
+				continue
+			var action := (
+				prebound.get("action", {}) as Dictionary
+			).duplicate(true)
+			if action.is_empty():
+				continue
+			var target_identity := "%s|%d|%s|%s" % [
+				str(action.get("target_source_instance_id", "")),
+				int(action.get("target_source_generation", 0)),
+				str(action.get("deployment_region_id", "")),
+				str(action.get("action_fingerprint", "")),
+			]
 			var target_slot_id := "combat.monster.%s.%s" % [
 				mode.to_lower(),
 				target_identity.sha256_text().substr(0, 12),
 			]
-			result.append({
+			var option := {
 				"option_id": "option.%s.%s.%s" % [
 					str(card.get("instance_id", "")).sha256_text().substr(0, 10),
 					binding_key,
@@ -4270,19 +4370,31 @@ func _monster_card_options(actor_id: String, card: Dictionary) -> Array:
 				"actor_id": actor_id,
 				"card_instance_id": str(card.get("instance_id", "")),
 				"card_definition_id": definition_id,
+				"card_generation": int(card_action_binding.get("zone_revision", 0)),
 				"card_rank": int(card.get("level", 0)),
 				"primary_color": str(card.get("primary_color", "")),
 				"asset_cost": int(card.get("primary_asset_cost", 0)),
 				"action_domain": "monster",
 				"monster_card_mode": mode,
 				"target_slot_id": target_slot_id,
-				"target_region_id": str(candidate.get("target_region_id", "")),
-				"target_source_instance_id": str(
-					candidate.get("target_source_instance_id", "")
-				),
+				"target_region_id": str(action.get("deployment_region_id", "")),
+				"target_source_instance_id": str(action.get("target_source_instance_id", "")),
+				"target_source_generation": int(action.get("target_source_generation", 0)),
+				"expected_hp_revision": int(action.get("expected_hp_revision", -1)),
+				"expected_world_revision": int(action.get("bound_state_revision", 0)),
+				"prebound_monster_action": action,
 				"mode_prebound": true,
 				"card_action_binding": card_action_binding.duplicate(true),
-			})
+			}
+			if mode in [
+				CapabilityCatalog.MONSTER_MODE_DEPLOY_NEW,
+				CapabilityCatalog.MONSTER_MODE_REPLACE_EXISTING,
+			]:
+				option["expected_region_revision"] = int(action.get(
+					"expected_region_revision",
+					-1
+				))
+			result.append(option)
 	return result
 
 
@@ -4419,36 +4531,64 @@ func _military_option(
 			target_monster_id.is_empty()
 			or not target_region_id.is_empty()
 		))
-		or task_kind not in ["assault_region", "assault_monster"]
+		or not CapabilityCatalog.is_military_mission_kind(task_kind)
 	):
 		return {}
 	var target_id := target_region_id if task_kind == "assault_region" else target_monster_id
-	var target_source_generation := 0
-	if task_kind == "assault_monster" and not target_monster_id.is_empty():
-		var target_monster := _public_monster_by_id(target_monster_id)
-		if not _positive_int_field(target_monster, "source_generation"):
-			return {}
-		target_source_generation = int(
-			target_monster.get("source_generation", 0)
-		)
-		if target_source_generation < 1:
-			return {}
 	var target_slot_id := "combat.military.%s.%s" % [
 		task_kind,
 		target_id.sha256_text().substr(0, 12),
 	]
-	var option := {
-		"option_id": "option.%s.%s.%s" % [
+	var option_id := "option.%s.%s.%s" % [
 			str(card.get("instance_id", "")).sha256_text().substr(0, 10),
 			str(card_action_binding.get(
 				"binding_fingerprint",
 				""
 			)).substr(0, 12),
 			target_slot_id.sha256_text().substr(0, 10),
-		],
+		]
+	var preview_id := "%s.%s.%s" % [
+		_batch_id().sha256_text().substr(0, 10),
+		option_id.sha256_text().substr(0, 12),
+		task_kind,
+	]
+	var expected_region_revision := _facility_authority_revision()
+	var preview := _combat_owner.call(
+		"preview_military_lock",
+		{
+			"request_id": "request.preview.%s" % preview_id,
+			"mission_id": "mission.preview.%s" % preview_id,
+			"owner_player_id": actor_id,
+			"card_instance_id": str(card.get("instance_id", "")),
+			"card_definition_id": str(card.get("definition_id", "")),
+			"action_slot_id": "action.preview.%s" % preview_id,
+			"asset_reservation_id": "reservation.preview.%s" % preview_id,
+			"committed_escrow_revision": maxi(
+				1,
+				int(card_action_binding.get("zone_revision", 0))
+			),
+			"target_region_revision": expected_region_revision,
+			"task_kind": task_kind,
+			"target_region_id": target_region_id,
+			"target_monster_source_instance_id": target_monster_id,
+		},
+		_public_occupied_facilities()
+	) as Dictionary
+	if not bool(preview.get("accepted", false)):
+		return {}
+	var envelope := (
+		preview.get("target_envelope", {}) as Dictionary
+	).duplicate(true)
+	if envelope.is_empty():
+		return {}
+	var combat_debug := _combat_owner.call("debug_snapshot") as Dictionary
+	var option := {
+		"option_id": option_id,
 		"actor_id": actor_id,
+		"owner_player_id": actor_id,
 		"card_instance_id": str(card.get("instance_id", "")),
 		"card_definition_id": str(card.get("definition_id", "")),
+		"card_generation": int(card_action_binding.get("zone_revision", 0)),
 		"card_action_binding": card_action_binding.duplicate(true),
 		"primary_color": str(card.get("primary_color", "")),
 		"asset_cost": int(card.get("primary_asset_cost", 0)),
@@ -4457,10 +4597,18 @@ func _military_option(
 		"target_slot_id": target_slot_id,
 		"target_region_id": target_region_id,
 		"target_monster_source_instance_id": target_monster_id,
+		"expected_world_revision": int(combat_debug.get("revision", 0)),
+		"military_target_envelope": envelope,
 		"mode_prebound": true,
 	}
 	if task_kind == "assault_monster":
-		option["target_source_generation"] = target_source_generation
+		option["target_source_generation"] = int(
+			envelope.get("target_source_generation", 0)
+		)
+	else:
+		option["expected_region_revision"] = int(
+			envelope.get("expected_region_revision", -1)
+		)
 	return option
 
 
@@ -4476,53 +4624,34 @@ func _combat_option_by_identity(
 			str(option.get("card_instance_id", "")) == card_instance_id
 			and str(option.get("target_slot_id", "")) == target_slot_id
 		):
-			if target_binding.is_empty():
+			if (
+				target_binding.is_empty()
+				or not target_binding.has("candidate_fingerprint")
+				or str(target_binding.get("candidate_fingerprint", "")).is_empty()
+			):
 				return {}
-			for field_name in [
-				"action_domain",
-				"option_id",
-				"card_instance_id",
-				"card_definition_id",
-				"target_slot_id",
-				"card_action_binding",
-			]:
-				if (
-					not target_binding.has(field_name)
-					or target_binding.get(field_name) != option.get(field_name)
-				):
-					return {}
-			if str(option.get("action_domain", "")) == "military":
-				for field_name in [
-					"task_kind",
-					"target_region_id",
-					"target_monster_source_instance_id",
-				]:
-					if (
-						not target_binding.has(field_name)
-						or target_binding.get(field_name) != option.get(field_name)
-					):
-						return {}
-				if str(option.get("task_kind", "")) == "assault_monster":
-					if (
-						not target_binding.has("target_source_generation")
-						or target_binding.get("target_source_generation")
-							!= option.get("target_source_generation")
-					):
-						return {}
-				elif target_binding.has("target_source_generation"):
-					return {}
-			else:
-				for field_name in [
-					"monster_card_mode",
-					"target_region_id",
-					"target_source_instance_id",
-				]:
-					if (
-						not target_binding.has(field_name)
-						or target_binding.get(field_name) != option.get(field_name)
-					):
-						return {}
-			return option.duplicate(true)
+			var canonical: Dictionary = {}
+			var domain := str(option.get("action_domain", ""))
+			if bool(CombatCandidate.validation_report(option).get(
+				"valid",
+				false
+			)):
+				canonical = option.duplicate(true)
+			elif domain == "monster":
+				canonical = CombatCandidate.monster_candidate(option, 0)
+			elif domain == "military":
+				canonical = CombatCandidate.military_candidate(option, 0)
+			if (
+				canonical.is_empty()
+				or canonical.get("candidate_fingerprint")
+					!= target_binding.get("candidate_fingerprint")
+				or canonical.get("target_binding")
+					!= target_binding.get("target_binding")
+				or target_binding.get("card_action_binding", {})
+					!= canonical.get("card_action_binding", {})
+			):
+				return {}
+			return canonical
 	return {}
 
 
@@ -5883,9 +6012,10 @@ func _combat_player_private_facts(viewer_id: String) -> Dictionary:
 		var option := option_variant as Dictionary
 		if str(option.get("action_domain", "")) != "military":
 			continue
-		military_options.append(
-			_military_private_option(option, viewer_id)
-		)
+		var private_option := _military_private_option(option, viewer_id)
+		if private_option.is_empty():
+			continue
+		military_options.append(private_option)
 		if str(option.get("task_kind", "")) == "assault_region":
 			has_region = true
 		elif str(option.get("task_kind", "")) == "assault_monster":
@@ -5911,60 +6041,30 @@ func _combat_ai_private_facts(actor_id: String) -> Dictionary:
 				"card_instance_id": card_id,
 				"card_definition_id": str(option.get("card_definition_id", "")),
 				"card_rank": int(option.get("card_rank", 0)),
-				"legal_modes": [],
-				"prebound_target_by_mode": {},
 				"options": [],
 			}
 			var row := monster_options_by_card.get(
 				card_id,
 				default_row
 			) as Dictionary
-			var mode := str(option.get("monster_card_mode", ""))
-			var legal_modes: Array = []
-			var legal_modes_value: Variant = row.get("legal_modes", [])
-			if legal_modes_value is Array:
-				legal_modes = (legal_modes_value as Array).duplicate(true)
-			if mode not in legal_modes:
-				legal_modes.append(mode)
-			row["legal_modes"] = legal_modes
-			var targets: Dictionary = {}
-			var targets_value: Variant = row.get(
-				"prebound_target_by_mode",
-				{}
-			)
-			if targets_value is Dictionary:
-				targets = (targets_value as Dictionary).duplicate(true)
-			targets[mode] = (
-				str(option.get("target_region_id", ""))
-				if mode == "DEPLOY_NEW"
-				else str(option.get("target_source_instance_id", ""))
-			)
-			row["prebound_target_by_mode"] = targets
 			var option_rows := row.get("options", []) as Array
 			option_rows.append(option.duplicate(true))
 			row["options"] = option_rows
 			monster_options_by_card[card_id] = row
 		elif domain == "military":
 			var private_option := _military_private_option(option, actor_id)
+			if private_option.is_empty():
+				continue
 			military_options.append(private_option)
 			var default_row := {
 				"card_instance_id": card_id,
 				"card_definition_id": str(option.get("card_definition_id", "")),
-				"legal_task_kinds": [],
 				"options": [],
 			}
 			var row := military_options_by_card.get(
 				card_id,
 				default_row
 			) as Dictionary
-			var task := str(option.get("task_kind", ""))
-			var task_kinds: Array = []
-			var task_kinds_value: Variant = row.get("legal_task_kinds", [])
-			if task_kinds_value is Array:
-				task_kinds = (task_kinds_value as Array).duplicate(true)
-			if task not in task_kinds:
-				task_kinds.append(task)
-			row["legal_task_kinds"] = task_kinds
 			var option_rows := row.get("options", []) as Array
 			option_rows.append(private_option.duplicate(true))
 			row["options"] = option_rows
@@ -5995,6 +6095,8 @@ func _combat_ai_private_facts(actor_id: String) -> Dictionary:
 	)
 	return {
 		"viewer_player_id": actor_id,
+		"monster_mode_capabilities": CapabilityCatalog.monster_card_modes(),
+		"military_mission_capabilities": CapabilityCatalog.military_mission_kinds(),
 		"monster_card_options": monster_options_by_card.values(),
 		"military_card_options": military_options_by_card.values(),
 		"military_options": military_options,
@@ -6021,36 +6123,31 @@ func _military_private_option(
 	option: Dictionary,
 	owner_player_id: String
 ) -> Dictionary:
+	var canonical := CombatCandidate.military_candidate(option, 0)
+	if canonical.is_empty():
+		return {}
+	option = canonical
 	var task_kind := str(option.get("task_kind", ""))
 	var target_monster_id := str(option.get(
 		"target_monster_source_instance_id",
 		""
 	))
 	var target_generation := int(option.get("target_source_generation", 0))
-	var launch_region_id := ""
-	var launch_regions: Array[String] = []
-	for facility_variant in _public_occupied_facilities():
-		var facility := facility_variant as Dictionary
-		if (
-			_facility_owner_id(facility) == owner_player_id
-			and str(facility.get("status", "active")) != "destroyed"
-		):
-			var region_id := str(facility.get("region_id", ""))
-			if not region_id.is_empty():
-				launch_regions.append(region_id)
-	launch_regions.sort()
-	if not launch_regions.is_empty():
-		launch_region_id = launch_regions[0]
 	var primary_color := str(option.get("primary_color", ""))
-	var primary_cost := maxi(0, int(option.get("asset_cost", 0)))
-	var asset_cost_by_color := {}
-	if not primary_color.is_empty() and primary_cost > 0:
-		asset_cost_by_color[primary_color] = primary_cost
+	var primary_cost := int(option.get("primary_asset_cost", -1))
+	if primary_cost < 0:
+		return {}
+	var asset_cost_by_color := (
+		option.get("asset_cost", {}) as Dictionary
+	).duplicate(true)
 	var projected := {
 		"option_id": str(option.get("option_id", "")),
+		"candidate_id": str(option.get("candidate_id", "")),
+		"candidate_fingerprint": str(option.get("candidate_fingerprint", "")),
 		"owner_player_id": owner_player_id,
 		"card_instance_id": str(option.get("card_instance_id", "")),
 		"card_definition_id": str(option.get("card_definition_id", "")),
+		"card_generation": int(option.get("card_generation", 0)),
 		"card_action_binding": (
 			option.get("card_action_binding", {}) as Dictionary
 		).duplicate(true),
@@ -6058,17 +6155,27 @@ func _military_private_option(
 		"task_kind": task_kind,
 		"target_region_id": str(option.get("target_region_id", "")),
 		"target_monster_source_instance_id": target_monster_id,
-		"launch_region_id": launch_region_id,
 		"asset_cost_by_color": asset_cost_by_color,
-		"enabled": not launch_region_id.is_empty(),
-		"disabled_reason": (
-			"none" if not launch_region_id.is_empty()
-			else "owned_launch_facility_required"
-		),
+		"primary_color": primary_color,
+		"asset_cost": primary_cost,
+		"primary_asset_cost": primary_cost,
+		"expected_world_revision": int(option.get("expected_world_revision", 0)),
+		"military_target_envelope": (
+			option.get("military_target_envelope", {}) as Dictionary
+		).duplicate(true),
+		"target_binding": (
+			option.get("target_binding", {}) as Dictionary
+		).duplicate(true),
+		"enabled": true,
+		"disabled_reason": "none",
 		"action_domain": "military",
 	}
 	if task_kind == "assault_monster":
 		projected["target_source_generation"] = target_generation
+	else:
+		projected["expected_region_revision"] = int(
+			option.get("expected_region_revision", -1)
+		)
 	return projected
 
 
@@ -6378,17 +6485,20 @@ func _preferred_v075_ai_action(
 	legal: Array,
 	actor_id: String = ""
 ) -> Dictionary:
+	if legal.is_empty():
+		return {}
 	var stable_actor_id := actor_id
 	if stable_actor_id.is_empty() and not legal.is_empty():
 		stable_actor_id = str(
 			(legal[0] as Dictionary).get("actor_id", "")
 		)
-	var military_modes := ["assault_monster", "assault_region"]
+	var military_modes := CapabilityCatalog.military_mission_kinds()
+	military_modes.reverse()
 	var stable_number := int(
 		stable_actor_id.sha256_text().substr(0, 8).hex_to_int()
 	)
 	if (stable_number + _batch_number) % 2 == 0:
-		military_modes = ["assault_region", "assault_monster"]
+		military_modes = CapabilityCatalog.military_mission_kinds()
 	var held_refresh_option_ids: Dictionary = {}
 	var held_refresh_merge_family_ids: Dictionary = {}
 	var held_replace_option_ids: Dictionary = {}
@@ -6407,28 +6517,45 @@ func _preferred_v075_ai_action(
 				held_refresh_merge_family_ids[merge_family_id] = true
 		if _v075_should_hold_replace_for_active_pair(actor_id, option):
 			held_replace_option_ids[str(option.get("option_id", ""))] = true
-	var domain_modes := [
-		"monster:UPGRADE_EXISTING",
-		"monster:REFRESH_EXISTING",
-		"monster:DEPLOY_NEW",
-		"monster:REPLACE_EXISTING",
+	var domain_modes: Array[Dictionary] = [
+		{
+			"domain": "monster",
+			"mode": CapabilityCatalog.MONSTER_MODE_UPGRADE_EXISTING,
+		},
+		{
+			"domain": "monster",
+			"mode": CapabilityCatalog.MONSTER_MODE_REFRESH_EXISTING,
+		},
+		{
+			"domain": "monster",
+			"mode": CapabilityCatalog.MONSTER_MODE_DEPLOY_NEW,
+		},
+		{
+			"domain": "monster",
+			"mode": CapabilityCatalog.MONSTER_MODE_REPLACE_EXISTING,
+		},
 	]
 	for military_mode in military_modes:
-		domain_modes.append("military:%s" % military_mode)
+		domain_modes.append({
+			"domain": "military",
+			"mode": military_mode,
+		})
 	for domain_mode in domain_modes:
-		var parts: PackedStringArray = str(domain_mode).split(":")
+		var domain := str(domain_mode.get("domain", ""))
+		var selected_mode := str(domain_mode.get("mode", ""))
 		var matching: Array = []
 		for option_variant in legal:
 			var option := option_variant as Dictionary
-			if str(option.get("action_domain", "")) != str(parts[0]):
+			if str(option.get("action_domain", "")) != domain:
 				continue
 			var mode := str(option.get(
-				"monster_card_mode" if str(parts[0]) == "monster" else "task_kind",
+				"monster_card_mode" if domain == "monster" else "task_kind",
 				""
 			))
-			if mode == str(parts[1]):
+			if mode == selected_mode:
 				if (
-					str(domain_mode) == "monster:REFRESH_EXISTING"
+					domain == "monster"
+					and selected_mode == CapabilityCatalog.MONSTER_MODE_REFRESH_EXISTING
 					and held_refresh_option_ids.has(str(option.get(
 						"option_id",
 						""
@@ -6436,7 +6563,8 @@ func _preferred_v075_ai_action(
 				):
 					continue
 				if (
-					str(domain_mode) == "monster:REPLACE_EXISTING"
+					domain == "monster"
+					and selected_mode == CapabilityCatalog.MONSTER_MODE_REPLACE_EXISTING
 					and held_replace_option_ids.has(str(option.get(
 						"option_id",
 						""
@@ -6445,9 +6573,9 @@ func _preferred_v075_ai_action(
 					continue
 				matching.append(option.duplicate(true))
 		if not matching.is_empty():
-			if str(domain_mode) == "monster:DEPLOY_NEW":
+			if domain == "monster" and selected_mode == CapabilityCatalog.MONSTER_MODE_DEPLOY_NEW:
 				return _preferred_monster_deployment_option(matching)
-			if str(domain_mode) == "monster:REPLACE_EXISTING":
+			if domain == "monster" and selected_mode == CapabilityCatalog.MONSTER_MODE_REPLACE_EXISTING:
 				return _preferred_monster_replacement_option(
 					matching,
 					actor_id

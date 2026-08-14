@@ -950,21 +950,12 @@ func _test_military_one_shot_lifecycle(dbg_result: Dictionary) -> void:
 		else {}
 	)
 	_expect(
-		monster_intents.size() == 1
-			and str(
-				monster_intent.get(
-					"target_monster_source_instance_id",
-					""
-				)
-			) == "monster.rival.lifecycle"
-			and int(
-				monster_intent.get("expected_source_generation", -1)
-			) == 4
-			and str(
-				monster_intent.get("public_target_region_id", "")
-			) == "region.028"
+		monster_intents.is_empty()
+			and str(monster_receipt.get("outcome", "")) == "fizzled"
+			and str(monster_receipt.get("reason_code", ""))
+				== "locked_monster_target_invalid"
 			and int(monster_receipt.get("retarget_count", -1)) == 0,
-		"assault_monster follows the locked identity without retargeting"
+		"assault_monster revision and region drift fizzles without retargeting"
 	)
 	_assert_withdraw_to_discard(
 		monster_receipt,

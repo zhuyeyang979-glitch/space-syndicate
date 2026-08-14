@@ -527,7 +527,7 @@ func _run() -> void:
 									and str(fizzled.get("outcome_id", ""))
 										== "monster_action_fizzled"
 									and str(fizzled.get("reason_code", ""))
-										== "monster_refresh_full_hp_illegal"
+										== "monster_refresh_hp_revision_changed"
 									and bool(fizzled.get(
 										"asset_reservation_released",
 										false

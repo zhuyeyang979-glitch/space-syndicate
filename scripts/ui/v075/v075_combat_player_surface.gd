@@ -11,6 +11,9 @@ const CATALOG := preload(
 const ResponsiveAcceptanceAudit := preload(
 	"res://scripts/ui/v075/v075_responsive_acceptance_audit.gd"
 )
+const CapabilityCatalog := preload(
+	"res://scripts/v075/combat/v075_combat_capability_catalog.gd"
+)
 const COLOR_LABELS := {
 	"life": "生命",
 	"energy": "能源",
@@ -414,9 +417,6 @@ func _render_private_surfaces() -> void:
 	var owner_id := str(
 		_selected_public_monster.get("owner_player_id", "")
 	)
-	var selected_generation := int(
-		_selected_public_monster.get("source_generation", 0)
-	)
 	_viewer_is_owner = (
 		not viewer_id.is_empty()
 		and viewer_id == owner_id
@@ -791,10 +791,7 @@ func _on_military_mission_selected(option: Dictionary) -> void:
 		or str(option.get("owner_player_id", "")) != str(
 			_projection.get("viewer_player_id", "")
 		)
-		or str(option.get("task_kind", "")) not in [
-		"assault_region",
-		"assault_monster",
-		]
+		or not CapabilityCatalog.is_military_mission_kind(option.get("task_kind"))
 	):
 		return
 	var canonical_option := _current_military_option(option)
@@ -898,7 +895,7 @@ func _current_military_option(candidate: Dictionary) -> Dictionary:
 		or (task_kind == "assault_region" and candidate.has(
 			"target_source_generation"
 		))
-		or task_kind not in ["assault_region", "assault_monster"]
+		or not CapabilityCatalog.is_military_mission_kind(task_kind)
 	):
 		return {}
 	for option_variant in _projection.get("military_task_options", []) as Array:
@@ -940,6 +937,12 @@ func _same_military_option_identity(
 			str(right.get("owner_player_id", ""))
 		)
 		or left.get("card_action_binding") != right.get("card_action_binding")
+		or str(left.get("candidate_fingerprint", "")).is_empty()
+		or left.get("candidate_fingerprint")
+			!= right.get("candidate_fingerprint")
+		or left.get("military_target_envelope")
+			!= right.get("military_target_envelope")
+		or left.get("target_binding") != right.get("target_binding")
 	):
 		return false
 	if str(left.get("task_kind", "")) == "assault_region":
