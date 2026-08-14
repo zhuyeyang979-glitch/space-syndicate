@@ -135,6 +135,14 @@ class ResolutionCombatOwner extends Node:
 		return {"accepted": true, "action": request.duplicate(true)}
 
 
+	func preview_monster_card_action(request: Dictionary) -> Dictionary:
+		return prebind_monster_card_action(request)
+
+
+	func validate_monster_prebound_action(action: Dictionary) -> Dictionary:
+		return {"valid": not action.is_empty(), "errors": []}
+
+
 	func resolve_monster_card_action(_action: Dictionary) -> Dictionary:
 		return {
 			"accepted": true,
@@ -157,6 +165,110 @@ class ResolutionCombatOwner extends Node:
 			"reason_code": "fake_military_locked",
 			"locked_mission": binding.duplicate(true),
 		}
+
+
+	func preview_military_lock(
+		binding: Dictionary,
+		public_facilities: Array
+	) -> Dictionary:
+		var locked := binding.duplicate(true)
+		var targets: Array = []
+		for facility_variant in public_facilities:
+			var facility := facility_variant as Dictionary
+			if (
+				str(facility.get("region_id", ""))
+					!= str(binding.get("target_region_id", ""))
+				or str(facility.get("owner_player_id", ""))
+					== str(binding.get("owner_player_id", ""))
+			):
+				continue
+			targets.append({
+				"target_facility_id": str(facility.get("facility_id", "")),
+				"expected_generation": int(facility.get("facility_generation", 0)),
+			})
+		locked["locked_facility_targets"] = targets
+		locked["region_strike_damage_budget"] = 1
+		var envelope := military_target_envelope(locked)
+		return {
+			"accepted": not envelope.is_empty(),
+			"reason_code": "fake_military_previewed",
+			"locked_mission": locked,
+			"target_envelope": envelope,
+			"state_mutation_count": 0,
+		}
+
+
+	func commit_military_lock(locked_mission: Dictionary) -> Dictionary:
+		var mission_id := str(locked_mission.get("mission_id", ""))
+		if mission_id.is_empty() or military_locks.has(mission_id):
+			return {"accepted": false, "reason_code": "fake_mission_lock_invalid"}
+		military_locks[mission_id] = locked_mission.duplicate(true)
+		revision += 1
+		return {
+			"accepted": true,
+			"reason_code": "fake_military_locked",
+			"locked_mission": locked_mission.duplicate(true),
+			"target_envelope": military_target_envelope(locked_mission),
+		}
+
+
+	func military_target_envelope(locked_mission: Dictionary) -> Dictionary:
+		var facility_ids: Array[String] = []
+		var generations := {}
+		for target_variant in locked_mission.get("locked_facility_targets", []) as Array:
+			var target := target_variant as Dictionary
+			var facility_id := str(target.get("target_facility_id", ""))
+			facility_ids.append(facility_id)
+			generations[facility_id] = int(target.get("expected_generation", 0))
+		facility_ids.sort()
+		if facility_ids.is_empty():
+			return {}
+		var envelope := {
+			"schema_version": "1.0.0",
+			"contract_id": "v075.military.target_envelope.v1",
+			"task_kind": str(locked_mission.get("task_kind", "")),
+			"public_information_fingerprint": "",
+			"envelope_fingerprint": "",
+			"target_region_id": str(locked_mission.get("target_region_id", "")),
+			"expected_region_revision": int(locked_mission.get("target_region_revision", -1)),
+			"locked_enemy_facility_ids": facility_ids,
+			"facility_generations": generations,
+			"region_damage_budget": int(locked_mission.get("region_strike_damage_budget", 0)),
+		}
+		var public_payload := envelope.duplicate(true)
+		public_payload.erase("public_information_fingerprint")
+		public_payload.erase("envelope_fingerprint")
+		envelope["public_information_fingerprint"] = _candidate_hash(public_payload)
+		var fingerprint_payload := envelope.duplicate(true)
+		fingerprint_payload.erase("envelope_fingerprint")
+		envelope["envelope_fingerprint"] = _candidate_hash(fingerprint_payload)
+		return envelope
+
+
+	func _candidate_hash(value: Variant) -> String:
+		return _candidate_canonical_json(value).sha256_text().to_lower()
+
+
+	func _candidate_canonical_json(value: Variant) -> String:
+		if value is Dictionary:
+			var source := value as Dictionary
+			var keys: Array[String] = []
+			for key_variant in source.keys():
+				keys.append(str(key_variant))
+			keys.sort()
+			var pairs: Array[String] = []
+			for key in keys:
+				pairs.append("%s:%s" % [
+					JSON.stringify(key),
+					_candidate_canonical_json(source.get(key)),
+				])
+			return "{%s}" % ",".join(pairs)
+		if value is Array:
+			var rows: Array[String] = []
+			for child in value as Array:
+				rows.append(_candidate_canonical_json(child))
+			return "[%s]" % ",".join(rows)
+		return JSON.stringify(value)
 
 
 	func resolve_military_action(
@@ -325,6 +437,7 @@ class ResolutionCombatOwner extends Node:
 		return {
 			"initialized": initialized,
 			"phase": phase,
+			"revision": revision,
 			"combat_runtime_owner_count": 1,
 			"combat_state_writer_count": 1,
 			"military_lock_count": military_locks.size(),
@@ -758,14 +871,26 @@ func _new_locked_runtime() -> Dictionary:
 		not card_action_binding.is_empty(),
 		"resolution fixture uses a strict canonical DBG card binding"
 	)
-	var queued_by_player := runtime.get("_queued_by_player") as Dictionary
-	queued_by_player[local_id] = [
-		_military_binding(
-			local_id,
-			str(facility.get("region_id", "")),
-			card_action_binding
-		)
-	]
+	var candidate: Dictionary = {}
+	for option_variant in runtime.call("legal_card_actions", local_id) as Array:
+		var option := option_variant as Dictionary
+		if (
+			str(option.get("action_domain", "")) == "military"
+			and str(option.get("task_kind", "")) == "assault_region"
+			and str(option.get("target_region_id", ""))
+				== str(facility.get("region_id", ""))
+		):
+			candidate = option.duplicate(true)
+			break
+	_expect(not candidate.is_empty(), "resolution fixture acquires one typed military candidate")
+	var queued := runtime.call(
+		"queue_card_action",
+		local_id,
+		str(_military_card().get("instance_id", "")),
+		str(candidate.get("target_slot_id", "")),
+		candidate
+	) as Dictionary
+	_expect(bool(queued.get("accepted", false)), "resolution fixture queues the typed military candidate")
 
 	var local_lock := runtime.call(
 		"lock_player_submission",
@@ -858,29 +983,6 @@ func _military_card() -> Dictionary:
 		"origin_class": "standard",
 		"level": 1,
 		"rank": 1,
-	}
-
-
-func _military_binding(
-	actor_id: String,
-	target_region_id: String,
-	card_action_binding: Dictionary
-) -> Dictionary:
-	var card := _military_card()
-	return {
-		"actor_id": actor_id,
-		"action_id": "action.resolution.fail.once",
-		"card_instance_id": str(card.get("instance_id", "")),
-		"card_definition_id": str(card.get("definition_id", "")),
-		"target_slot_id": "slot.resolution.fail.once",
-		"target_region_id": target_region_id,
-		"target_source_instance_id": "",
-		"target_monster_source_instance_id": "",
-		"monster_card_mode": "",
-		"task_kind": "assault_region",
-		"action_domain": "military",
-		"target_bound": true,
-		"card_action_binding": card_action_binding.duplicate(true),
 	}
 
 
