@@ -1,7 +1,7 @@
 # 《Space Syndicate / 太空辛迪加》V0.7.5 开发者交接日志
 
-> 交接基线：PR #90 Head `6d4d52dfbc8001c919ac569dcab2e3b53f968d34`，Tree `95c899ceb552a9214edc4ab7e6076ea6e6c7c02c`。  
-> 状态标签：**LIVE** 已由当前产品代码或正式规则确认；**TEST_ONLY** 仅为测试夹具/离线验证能力；**PLANNED** 尚未实现；**RETIRED** 已禁止重新引入；**UNVERIFIED** 当前没有足够证据。  
+> 交接基线：PR #90 Head `6d4d52dfbc8001c919ac569dcab2e3b53f968d34`，Tree `95c899ceb552a9214edc4ab7e6076ea6e6c7c02c`。
+> 状态标签：**LIVE** 已由当前产品代码或正式规则确认；**TEST_ONLY** 仅为测试夹具/离线验证能力；**PLANNED** 尚未实现；**RETIRED** 已禁止重新引入；**UNVERIFIED** 当前没有足够证据。
 > 当前终态：**BLOCKED**。PR #90 尚未合并；CI 成功，但本地完整 1—79 Release Acceptance 在 Gate 1 产品 PASS 后被 Runner 记账条件阻断。
 
 ## 1. 五分钟总览
