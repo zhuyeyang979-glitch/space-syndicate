@@ -20,6 +20,11 @@
 | 新 Head CI | PASS | Run `31956611702` |
 | Revision 002 ReleaseRunPlan Dry Run | 6/6 PASS | 1—79、2—79、3—79、60—79、仅 79、非连续；无 Godot |
 | 现有 Runner full-plan 穷尽审计 | NO AUTHORIZED ENTRYPOINT | 6 个候选实例／5 个唯一 Worker SHA；只读、无 Godot |
+| Gate 1 Source Contract V2 Revision | PASS | 唯一 post-repair Tooling Revision；产品文件 0 |
+| 最终 Preflight Attempt 003 | 18/18 PASS | Worker Dry Run 6/6；Manifest 负例 8/8；Aggregate 负例 4/4 |
+| Full-formal Aggregate fixture | PASS | 79 当前来源；79 Receipt；0 reuse |
+| Frozen-reuse Aggregate fixture | PASS | 1 真实冻结复用 + 78 当前来源；78 Receipt |
+| 真实冻结 Result 投影 | PASS | Raw Result → Normalize → Row → Receipt |
 | 新 Head Acceptance Clone | PASS | exact Head/Tree；clean；Windows long-path enabled |
 | 新 Head Canonical Import | NOT_RUN | pre-product Manifest blocker 前未消耗 |
 | 新 Head Formal Gate 1—79 | NOT_STARTED | execution count 0；Godot starts 0 |
@@ -29,8 +34,8 @@
 
 旧 Head Gate 16 的四项失败均属于 submission rollback/exact-once 产品断言。修复恢复最小 Combat Owner 的既有 fallback，没有改变真实 typed Owner 路径、规则、数值、测试或 Canonical Manifest。
 
-新 Head pre-product blocker：Revision 002 Worker SHA `dbb27a69d4c94d27f437d4dd12b4910f4ff363c3cfa9139539d2c6341415259d` 的 Manifest 无条件要求同 Head Gate 1 reuse。新 Head 没有可合法复用的 Raw Gate 1 Result，且完整计划必须新跑 Gate 1。Blocker Evidence SHA `ba70bec044b245338f94c6efd5eb04664ee8adc3708cf393713a56c95339b7df`。
+历史 blocker 保持原样冻结：Blocker Evidence SHA `ba70bec044b245338f94c6efd5eb04664ee8adc3708cf393713a56c95339b7df`，Exhaustion Audit SHA `17500b45a0c5362fe425d2666cebd68595c947f462bdb23a47ce39b7df`。
 
-只读穷尽审计进一步证明不存在可直接使用的密封入口：Revision 001/002 都有无条件 Gate 1 reuse 合同，旧 full-range Worker 则缺失 plan-bound 首记账与 Product Executor／Evidence Projector 解耦。Exhaustion Audit SHA `17500b45a0c5362fe425d2666cebd68595c947f462bdb23a47ce39b7df`，状态 `NO_AUTHORIZED_EXISTING_ENTRYPOINT`。
+新合同的正式计划为 Gate 1—79，Plan SHA `55323dab888060b0214c00c81c43993af9b69c28a28939f84f34b569f0b78e85`；Manifest SHA `1be88a6b41e9e2154a4f59c85c30095767379f2c01ef3d9fada0fd363493e68c`；Worker SHA `675f5ad470fb26bc377731e1ba9e7380c9852d33b4200fdca0c72ac6f9a5d8bd`；Projector SHA `f9dc0a85ddc2861eb14645044aef8bcfa3f32c103558a29a65a53a3547cc0509`；Preflight Report SHA `38c434c83247180afe4051ea15e53f52ddccae4857473ae257ae852036f278ae`。
 
-当前 Godot/Worker/7576/7586 均为 0。必须先获得一次明确的 post-repair Tooling Revision 授权；预检完成后再单独请求一次完整 1—79 产品 Attempt 授权。
+当前 Godot/Worker/7576/7586 均为 0，Canonical Import 与 Formal Execution 均为 0，产品 Attempt 未消耗。Runner-only 任务已经完成；必须单独授权 `PR90_REPAIRED_HEAD_FULL_GATE1_79_FORMAL_ATTEMPT_001` 才能启动第一个产品 Godot 进程。

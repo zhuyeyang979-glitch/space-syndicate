@@ -1,6 +1,6 @@
 {
   "schema_version": "V075CloudHandoffManifestV1",
-  "observed_utc": "2026-08-16T16:17:38.388Z",
+  "observed_utc": "2026-08-16T16:42:40.640Z",
   "final_status": "BLOCKED",
   "product_version": "v0.7.5",
   "main_sha": "bd0af5c99c5267cdbe7d66c01034f80db4d704fd",
@@ -42,14 +42,36 @@
       "existing_legal_entrypoint": false,
       "audit_mode": "READ_ONLY_NO_GODOT"
     },
+    "gate1_source_contract_v2": {
+      "status": "PASS",
+      "tooling_revision_count": 1,
+      "final_preflight_attempt": 3,
+      "preflight_report_sha256": "38c434c83247180afe4051ea15e53f52ddccae4857473ae257ae852036f278ae",
+      "worker_sha256": "675f5ad470fb26bc377731e1ba9e7380c9852d33b4200fdca0c72ac6f9a5d8bd",
+      "projector_sha256": "f9dc0a85ddc2861eb14645044aef8bcfa3f32c103558a29a65a53a3547cc0509",
+      "formal_plan_sha256": "55323dab888060b0214c00c81c43993af9b69c28a28939f84f34b569f0b78e85",
+      "formal_manifest_sha256": "1be88a6b41e9e2154a4f59c85c30095767379f2c01ef3d9fada0fd363493e68c",
+      "formal_gate_range": "1-79",
+      "formal_gate_count": 79,
+      "formal_gate1_source_mode": "FORMAL_IN_PLAN",
+      "formal_manifest_reuse_property_count": 0,
+      "worker_dry_run": "6/6_PASS",
+      "manifest_negative_cases": "8/8_PASS",
+      "aggregate_negative_cases": "4/4_PASS",
+      "real_frozen_result_projection": "PASS",
+      "full_formal_aggregate_fixture": "PASS_79_RECEIPTS_0_REUSE",
+      "frozen_reuse_aggregate_fixture": "PASS_78_RECEIPTS_1_REUSE",
+      "godot_started": false,
+      "product_attempt_consumed": false
+    },
     "new_head_acceptance_clone": "EXACT_CLEAN",
     "new_head_canonical_import": "NOT_RUN",
     "new_head_formal_execution_count": 0,
     "new_head_authorized_count_consumed": 0,
     "new_head_product_attempt_consumed": false,
     "new_head_gate_1_to_79": "NOT_STARTED",
-    "new_head_formal_runner_status": "BLOCKED_PRE_PRODUCT",
-    "new_head_formal_disposition": "FULL_SUITE_MANIFEST_REQUIRES_UNAVAILABLE_SAME_HEAD_GATE1_REUSE_ATTESTATION",
+    "new_head_formal_runner_status": "PREFLIGHT_PASS_AWAITING_FORMAL_ATTEMPT_AUTHORIZATION",
+    "new_head_formal_disposition": "GATE1_SOURCE_CONTRACT_V2_PREFLIGHT_PASS_AWAITING_FORMAL_AUTHORIZATION",
     "product_gate_progress": "0/79_ON_CURRENT_HEAD",
     "aggregate_79": "NOT_RUN",
     "post_aggregate_review": "NOT_RUN"
@@ -84,13 +106,13 @@
   },
   "known_blockers": [
     {
-      "blocker_id": "full_plan_manifest_requires_unavailable_same_head_gate1_reuse_attestation",
-      "classification": "RUNNER_TOOLING_PREFLIGHT",
-      "summary": "Revision 002 correctly binds accounting to the first planned Gate, but its manifest always requires a matching Gate 1 reuse attestation. The repaired Head must run a fresh Gate 1-79 suite and has no immutable Gate 1 raw result eligible for reuse. A read-only audit of six sealed candidate instances found no authorized existing full-plan entrypoint.",
+      "blocker_id": "formal_attempt_authorization_required",
+      "classification": "AUTHORIZATION_BOUNDARY",
+      "summary": "Gate 1 Source Contract V2 and the sealed full-plan Runner preflight are PASS. Product execution remains at zero because the Runner-only authorization did not authorize the first Godot process or a full Gate 1-79 product Attempt.",
       "product_failure_attested": false,
       "automatic_retry_allowed": false,
       "new_head_attempt_consumed": false,
-      "required_authority": "ONE_POST_REPAIR_PRE_PRODUCT_TOOLING_REVISION"
+      "required_authority": "PR90_REPAIRED_HEAD_FULL_GATE1_79_FORMAL_ATTEMPT_001"
     }
   ],
   "known_nonblocking_debt": [
@@ -154,7 +176,14 @@
     "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-continuation-002/formal-attempt-002/evidence/gate-16/20260816-153740-631-v075_combat_submission_rollback_test-f232d8b1/result.json",
     "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence/full-suite-manifest-gate1-reuse-blocker.json",
     "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence/existing-runner-full-plan-exhaustion-audit.json",
-    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence/existing-runner-full-plan-exhaustion-audit.md"
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence/existing-runner-full-plan-exhaustion-audit.md",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence-gate1-source-contract-revision-001/preflight-attempt-failure.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence-gate1-source-contract-revision-001-attempt-002/preflight-attempt-failure.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence-gate1-source-contract-revision-001-attempt-003/full-head-gate1-source-contract-preflight-report.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence-gate1-source-contract-revision-001-attempt-003/preflight-complete-seal.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence-gate1-source-contract-revision-001-attempt-003/gate1-source-contract-static-audit.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence-gate1-source-contract-revision-001-attempt-003/release-run-plan-1-79-v1.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence-gate1-source-contract-revision-001-attempt-003/pr90-repaired-head-release-full-001-formal-manifest.json"
   ],
   "handoff_documents": [
     "docs/handoff/SPACE_SYNDICATE_DEVELOPER_HANDOFF_ZH.md",
@@ -165,11 +194,11 @@
     "docs/handoff/V076_FUTURE_DEVELOPMENT_ROADMAP_ZH.md",
     "docs/handoff/NEXT_DEVELOPER_FIRST_TASK_PROMPT.md"
   ],
-  "next_task_id": "PR90_RELEASE_FULL_HEAD_GATE1_REUSE_OPTIONAL_MANIFEST_CONTRACT_REPAIR",
+  "next_task_id": "PR90_REPAIRED_HEAD_FULL_GATE1_79_FORMAL_ATTEMPT_001",
   "next_prompt_path": "docs/handoff/NEXT_DEVELOPER_FIRST_TASK_PROMPT.md",
-  "reported_token_usage": null,
-  "reported_token_usage_note": "The current runtime exposes no active goal token counter; no numeric token usage is fabricated.",
-  "token_budget_target": 4500000,
+  "reported_token_usage": 2256723,
+  "reported_token_usage_note": "Observed from the active goal counter during Handoff publication; final response overhead is not included.",
+  "token_budget_target": 2800000,
   "handoff_documentation_target": 800000,
   "contingency_target": 700000
 }

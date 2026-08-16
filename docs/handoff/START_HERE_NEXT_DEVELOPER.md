@@ -10,13 +10,13 @@
 
 历史产品结果：旧 Head `6d4d52df...` 的 Release Continuation 002 已真实完成 Gate 2—15（14/14 PASS），Gate 16 `v075_combat_submission_rollback_test.gd` 产品失败并停止。唯一允许的产品修复已提交为 `1e948a15`：真实 Combat Owner 保持 typed preview/validate/commit 路径，只有最小必需合同 Owner 回退到既有 `prebind_monster_card_action` / `build_military_lock`。Gate 15、16、60 定向验证和新 Head CI 均 PASS。
 
-当前精确阻塞发生在新 Head 的第一个 Godot 进程之前：已封存 Revision 002 的动态计划 Dry Run 为 6/6 PASS，但其 Manifest Validator 无条件要求 `gate1_reuse_attestation` 且要求 Head/Tree 匹配。新 Head 必须完整新跑 Gate 1—79，不能复用旧 Head Gate 1；CI 没有保存可复用的 Raw `result.json`。不得伪造 Attestation。当前任务只授权了两个 pre-product Tooling Revision，不能擅自创建第三个。
+原 pre-product blocker 已在一个明确授权的独立 Tooling Revision 中修复。Gate 1 来源合同 V2 现在由 ReleaseRunPlan 决定：完整计划使用 `FORMAL_IN_PLAN`，Manifest 禁止任何 reuse 字段，Aggregate 接受 79 个当前正式 Result/Receipt；排除 Gate 1 的计划使用 `FROZEN_REUSE`，必须提供真实同 Head/Tree Attestation。
 
-随后完成的只读穷尽审计覆盖 6 个密封 Worker 候选实例（5 个唯一 Worker SHA），结论为 `NO_AUTHORIZED_EXISTING_ENTRYPOINT`。Revision 001/002 保留了正确的 plan-bound accounting，却都无条件要求 Gate 1 reuse；更早的 full-range Worker 虽不要求 reuse，却会回退到硬编码首 Gate 和未解耦的产品/证据合同。审计 JSON SHA 为 `17500b45a0c5362fe425d2666cebd68595c947f462bdb23a47ce39b7df`，因此不存在可以绕过新授权直接启动的旧入口。
+最终 Preflight Attempt 003 为 PASS：六类相同 Worker Dry Run 6/6、Manifest 负例 8/8、Aggregate 负例 4/4、真实冻结 Result 投影 PASS、full-formal Aggregate fixture 为 79 Receipt/0 reuse、旧复用模式为 78 Receipt/1 reuse。Worker SHA `675f5ad470fb26bc377731e1ba9e7380c9852d33b4200fdca0c72ac6f9a5d8bd`，Preflight Report SHA `38c434c83247180afe4051ea15e53f52ddccae4857473ae257ae852036f278ae`。前两个 Preflight 尝试是 append-only Tooling 失败，均未启动 Godot。
 
 不得做：不得修改/重跑旧 Formal Attempt；不得补写旧 Receipt/Row/Summary；不得把 CI 日志伪装成 Gate 1 Raw Result；不得自动开始新 Head Attempt；不得再改产品、测试或 Gate Manifest；不得做 V0.7.6。
 
-第一任务：取得一次明确的 post-repair Tooling Revision 授权，使 Gate 1 reuse 按计划条件化：计划包含 Gate 1 时禁止 reuse 并聚合 79 个新 Formal Result；计划从 Gate 2 或更后开始时才要求真实匹配的 reuse Attestation。用相同 Worker 无 Godot Dry Run 全链验证后，停止并请求一次完整 1—79 Attempt 授权。
+第一任务：明确授权 `PR90_REPAIRED_HEAD_FULL_GATE1_79_FORMAL_ATTEMPT_001`。只允许使用已封存的 Plan、Manifest、Worker、Projector 和 Launcher，完整执行 Gate 1—79 一次；当前 Handoff 和 Preflight 本身不授权产品 Godot 进程。
 
 状态标签：V0.7.5 规则与代码为 **LIVE**；Detached checkpoint 为 **TEST_ONLY**；V0.7.6 为 **PLANNED_NOT_IMPLEMENTED**。
 
