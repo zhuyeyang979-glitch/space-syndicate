@@ -59,6 +59,21 @@
   "release_tag": null,
   "v076_implementation": false,
   "v076_poc_started": false,
+  "queued_workflow_directions": {
+    "mcp_workflow_direction_queued": true,
+    "mcp_pilot_started": false,
+    "mcp_pilot_non_blocking": true,
+    "current_task_interrupted_by_mcp_pilot": false,
+    "current_attempt_modified_by_mcp_pilot": false,
+    "selected_primary_token_candidate": "HaD0Yun/Doyunha-Gopeak",
+    "selected_primary_headless_candidate": "Erodenn/godot-mcp-runtime",
+    "selected_single_server_fallback": "wgt19861219/godot-mcp-enhanced",
+    "deterministic_combat_direction_queued": true,
+    "open_source_pilot_started": false,
+    "new_architecture_branch_created": false,
+    "production_cutover_performed": false,
+    "v076_blocked_by_mcp_pilot": false
+  },
   "known_blockers": [
     {
       "blocker_id": "full_plan_manifest_requires_unavailable_same_head_gate1_reuse_attestation",

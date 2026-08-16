@@ -17,3 +17,5 @@
 第一任务：取得一次明确的 post-repair Tooling Revision 授权，使 Gate 1 reuse 按计划条件化：计划包含 Gate 1 时禁止 reuse 并聚合 79 个新 Formal Result；计划从 Gate 2 或更后开始时才要求真实匹配的 reuse Attestation。用相同 Worker 无 Godot Dry Run 全链验证后，停止并请求一次完整 1—79 Attempt 授权。
 
 状态标签：V0.7.5 规则与代码为 **LIVE**；Detached checkpoint 为 **TEST_ONLY**；V0.7.6 为 **PLANNED_NOT_IMPLEMENTED**。
+
+后续方向已排队但未启动：分层 Godot 工作流/MCP 效率试验与服务器权威确定性战斗 POC。`MCP_PILOT_STARTED=false`，`OPEN_SOURCE_PILOT_STARTED=false`，不得让这些方向绕过或阻塞 PR #90 当前门禁。

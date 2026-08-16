@@ -2,6 +2,12 @@
 
 全部状态：**PLANNED_NOT_IMPLEMENTED**。本任务没有创建 V0.7.6 分支或 POC。
 
+已排队的非阻塞方向：
+
+- `MCP_WORKFLOW_DIRECTION_QUEUED=true`，但 `MCP_PILOT_STARTED=false`。候选固定为 GoPeak compact、godot-mcp-runtime 与必要时的 godot-mcp-enhanced；试验只能在 disposable exact-SHA Clone，不能改 PR #90，也不能阻塞 V0.7.6。
+- `DETERMINISTIC_COMBAT_DIRECTION_QUEUED=true`，但 `OPEN_SOURCE_PILOT_STARTED=false`。候选架构为 Server-Authoritative Deterministic Command Simulation，只把 monster/military physical movement、combat window、cooldown、Direct Action ETA 与 effect schedule 放入固定点 Tick；不把整个经济游戏改成高频 Tick。
+- 当前 Release 任务没有更换 MCP、安装 Addon、创建架构分支或生产切换。
+
 ## 前置门
 
 1. 修复 PR #90 full-plan Manifest：计划包含 Gate 1 时禁止 reuse；计划从后续 Gate 开始时才要求真实 Attestation。

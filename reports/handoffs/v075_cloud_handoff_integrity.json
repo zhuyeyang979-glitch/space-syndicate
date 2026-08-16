@@ -13,8 +13,8 @@
     },
     {
       "path": "docs/handoff/START_HERE_NEXT_DEVELOPER.md",
-      "bytes": 2108,
-      "sha256": "c9dfb38e3ff625ba63fb46b08513342e8060fcfe64a9fb68c62278ad95dfd29a"
+      "bytes": 2348,
+      "sha256": "cae13bdda52c63b6f342ce02ce8c20a8682ae29d8a35ac7bd2047559b409f20b"
     },
     {
       "path": "docs/handoff/SPACE_SYNDICATE_RULEBOOK_V075_ZH.md",
@@ -33,8 +33,8 @@
     },
     {
       "path": "docs/handoff/V076_FUTURE_DEVELOPMENT_ROADMAP_ZH.md",
-      "bytes": 1782,
-      "sha256": "aa4fa9133187b604dac15d5bfafe06550d409827681df8e24543625797784624"
+      "bytes": 2498,
+      "sha256": "4f9fdedc49d2c48ee086d575f642c5fface79afcdff4e228bc13d44e11000df5"
     },
     {
       "path": "docs/handoff/NEXT_DEVELOPER_FIRST_TASK_PROMPT.md",
@@ -43,8 +43,8 @@
     },
     {
       "path": "reports/handoffs/v075_cloud_handoff_manifest.json",
-      "bytes": 7999,
-      "sha256": "abe211d3a582210dbf18e5f5a4319a7f8d792274b7ea6578e06d1e4b9fa7f64c"
+      "bytes": 8683,
+      "sha256": "38a16602d4bfe18ad418cb056d6cd25599f64a38f9b077d8710fa88ef47b865c"
     }
   ]
 }
