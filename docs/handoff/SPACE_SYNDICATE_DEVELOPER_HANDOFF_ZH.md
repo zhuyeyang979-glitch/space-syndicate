@@ -14,7 +14,7 @@ PR #90 当前仍为 GitHub Draft、可合并，最新 CI Run `31956611702` 为 S
 
 但 PR #90 还不能合并。旧 Head `6d4d52df` 的正式 Continuation 002 已完成 Gate 2—15（14/14 PASS），Gate 16 `v075_combat_submission_rollback_test.gd` 真实产品 FAIL 后停止；Raw SHA 为 `a72f48f06175286e38c5d82a6d4c08f15ee53e3eec7a1a91b8a63e9db7268b9b`。修复后 Gate 15、16、60 均 PASS，新 Head CI 也 PASS，但这些不是新 Head 的完整 79 Gate Release 证据。【LIVE/UNVERIFIED；来源：冻结 Formal Attempt、定向 Result、GitHub Actions】
 
-下一位开发者的第一件事不是做 V0.7.6，而是取得一次新的 post-repair Tooling Revision 授权，修复 full-plan Manifest/Aggregate 的 Gate 1 reuse 条件。Revision 002 已经把首次记账绑定到 `ReleaseRunPlanV1.ordered_gate_ids[0]`，六类无 Godot Dry Run 为 6/6 PASS；当前缺口是 Manifest 无条件要求同 Head Gate 1 reuse。计划包含 Gate 1 时必须禁止 reuse 并聚合 79 个新 Formal Result，计划从 Gate 2 或之后开始时才要求真实 Attestation。【PLANNED；来源：pre-product blocker Evidence】
+下一位开发者的第一件事不是做 V0.7.6，而是取得一次新的 post-repair Tooling Revision 授权，修复 full-plan Manifest/Aggregate 的 Gate 1 reuse 条件。Revision 002 已经把首次记账绑定到 `ReleaseRunPlanV1.ordered_gate_ids[0]`，六类无 Godot Dry Run 为 6/6 PASS；当前缺口是 Manifest 无条件要求同 Head Gate 1 reuse。计划包含 Gate 1 时必须禁止 reuse 并聚合 79 个新 Formal Result，计划从 Gate 2 或之后开始时才要求真实 Attestation。只读穷尽审计覆盖 6 个密封候选实例（5 个唯一 Worker SHA），状态为 `NO_AUTHORIZED_EXISTING_ENTRYPOINT`，Audit SHA `17500b45a0c5362fe425d2666cebd68595c947f462bdb23a47ce39b7df`。【PLANNED；来源：pre-product blocker 与 exhaustion audit Evidence】
 
 ## 2. 当前里程碑时间线
 
@@ -242,6 +242,7 @@ flowchart LR
 | 唯一产品修复 | COMMITTED | `1e948a15` | `v075_runtime_owner.gd` | 否 |
 | 修复后 Gate 15/16/60 | 3/3 PASS | commit 前同一产品内容 | Raw SHA 已登记 | 否 |
 | Revision 002 Plan Dry Run | 6/6 PASS，无 Godot | Tooling only | Worker SHA `dbb27a69…259d` | 否 |
+| 现有 Runner full-plan 穷尽审计 | NO AUTHORIZED ENTRYPOINT | 新 Head | Audit SHA `17500b45…b1a` | 是，需新授权 |
 | 新 Head Acceptance Clone | exact/clean | `1e948a15` | Head/Tree/status parity | 否 |
 | 新 Head Canonical Import | NOT_RUN | `1e948a15` | pre-product stop | 是，Runner |
 | 新 Head Formal Gate 1—79 | NOT_STARTED | `1e948a15` | execution count 0 | 是，Runner |
@@ -254,6 +255,8 @@ flowchart LR
 | PR #90 | OPEN DRAFT，mergeable | `1e948a15` | GitHub PR #90 | 是 |
 
 当前首失败发生在产品启动之前：Revision 002 Worker 的 Manifest required-fields 与 validator 无条件读取 `gate1_reuse_attestation`，并要求 `reuse_eligible=true`、Gate 1、Head/Tree 与当前 Manifest 完全一致。新 Head 必须完整新跑 Gate 1—79，旧 Head Attestation 不可复用；CI 没有发布 Raw Result，不能据日志生成 Attestation。新 Head `execution-start.json` 不存在，执行计数、授权消耗与 Godot starts 均为 0。【LIVE Tooling fact】
+
+在此之后的独立只读审计穷尽了 6 个密封 Worker 候选实例（5 个唯一 SHA）。Revision 001/002 具有正确的动态首 Gate 记账与 Product/Evidence 分离，但都无条件要求 Gate 1 reuse；较早 full-range Worker 不要求 reuse，却硬编码 Gate 1 或 Gate 3，并缺失当前产品结果权威与证据投影合同。结论为 `NO_AUTHORIZED_EXISTING_ENTRYPOINT`；不能通过旧 Worker、内部函数直调、空 Attestation 或旧 Head 证据绕过。【LIVE Tooling fact；Audit SHA `17500b45…b1a`】
 
 ## 9. 已知问题与技术债务
 
@@ -352,7 +355,7 @@ pwsh -File tools/invoke_godot_test.ps1 `
 
 MCP 与 Viewport 仅在 79/79 后执行仓库已有 runbook：`tools/invoke_v075_mcp_validation_runbook.ps1`、`tools/invoke_v075_responsive_viewport_capture.ps1`。Headless 与 2,000 局必须遵循 Release Manifest，一次执行、首失败停止。
 
-查看当前阻塞 Evidence：先读新 Head `full-suite-manifest-gate1-reuse-blocker.json`，再只读旧 Head Continuation 002 的 `product-execution-complete.json`、Gate 16 Raw Result 与 Summary。不要修改任何旧 Formal Root，也不要为新 Head制造不存在的 Gate 1 Attestation。
+查看当前阻塞 Evidence：先读新 Head `full-suite-manifest-gate1-reuse-blocker.json` 和 `existing-runner-full-plan-exhaustion-audit.json`，再只读旧 Head Continuation 002 的 `product-execution-complete.json`、Gate 16 Raw Result 与 Summary。不要修改任何旧 Formal Root，也不要为新 Head制造不存在的 Gate 1 Attestation。
 
 ## 14. 术语表
 
@@ -584,4 +587,4 @@ MCP 与 Viewport 仅在 79/79 后执行仓库已有 runbook：`tools/invoke_v075
 
 ## 交接结论
 
-PR #90 的产品修复已在新 Head 通过 CI 和 Gate 15 定向验证，最新 Gate 1 也真实产品 PASS；当前唯一阻塞是 Release Runner 首 Gate accounting trigger 写死 Gate 3。此结论不授权重跑。下一位开发者应先做 Runner-only 修复和无 Godot全链证明，再请求一次新 Attempt；在 79/79、Review、MCP、Viewport、Headless、2,000 局全部完成前，PR #90 不得合并，V0.7.6 不得生产切换。
+PR #90 的产品修复已在新 Head 通过 CI 与 Gate 15/16/60 定向验证；新 Head 的正式 Gate 1—79 尚未启动，不能把旧 Head Gate 1 PASS 或 CI 日志迁移为新 Head Result。当前唯一阻塞是现有 Revision 002 的 Formal Manifest/Preflight/Aggregate 无条件要求不可用的同 Head Gate 1 reuse；只读穷尽审计已确认没有合法旧入口。此结论不授权产品 Attempt。下一位开发者必须先取得 post-repair Runner-only Revision 授权，完成相同 Worker 的无 Godot full-formal 全链证明，再单独请求一次新 Head Gate 1—79 Attempt；在 79/79、Review、MCP、Viewport、Headless、2,000 局全部完成前，PR #90 不得合并，V0.7.6 不得生产切换。

@@ -12,6 +12,8 @@
 
 当前精确阻塞发生在新 Head 的第一个 Godot 进程之前：已封存 Revision 002 的动态计划 Dry Run 为 6/6 PASS，但其 Manifest Validator 无条件要求 `gate1_reuse_attestation` 且要求 Head/Tree 匹配。新 Head 必须完整新跑 Gate 1—79，不能复用旧 Head Gate 1；CI 没有保存可复用的 Raw `result.json`。不得伪造 Attestation。当前任务只授权了两个 pre-product Tooling Revision，不能擅自创建第三个。
 
+随后完成的只读穷尽审计覆盖 6 个密封 Worker 候选实例（5 个唯一 Worker SHA），结论为 `NO_AUTHORIZED_EXISTING_ENTRYPOINT`。Revision 001/002 保留了正确的 plan-bound accounting，却都无条件要求 Gate 1 reuse；更早的 full-range Worker 虽不要求 reuse，却会回退到硬编码首 Gate 和未解耦的产品/证据合同。审计 JSON SHA 为 `17500b45a0c5362fe425d2666cebd68595c947f462bdb23a47ce39b7df`，因此不存在可以绕过新授权直接启动的旧入口。
+
 不得做：不得修改/重跑旧 Formal Attempt；不得补写旧 Receipt/Row/Summary；不得把 CI 日志伪装成 Gate 1 Raw Result；不得自动开始新 Head Attempt；不得再改产品、测试或 Gate Manifest；不得做 V0.7.6。
 
 第一任务：取得一次明确的 post-repair Tooling Revision 授权，使 Gate 1 reuse 按计划条件化：计划包含 Gate 1 时禁止 reuse 并聚合 79 个新 Formal Result；计划从 Gate 2 或更后开始时才要求真实匹配的 reuse Attestation。用相同 Worker 无 Godot Dry Run 全链验证后，停止并请求一次完整 1—79 Attempt 授权。

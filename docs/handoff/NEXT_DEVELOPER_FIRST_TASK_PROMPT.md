@@ -29,10 +29,15 @@ FIRST_FAILURE_CLASS=FULL_SUITE_MANIFEST_REQUIRES_UNAVAILABLE_SAME_HEAD_GATE1_REU
 NEW_HEAD_FORMAL_EXECUTION_COUNT=0
 NEW_HEAD_GODOT_STARTED=false
 BLOCKER_EVIDENCE_SHA256=ba70bec044b245338f94c6efd5eb04664ee8adc3708cf393713a56c95339b7df
+EXISTING_RUNNER_EXHAUSTION_AUDIT_SHA256=17500b45a0c5362fe425d2666cebd68595c947f462bdb23a47ce39b7df
+EXISTING_LEGAL_NEW_HEAD_FULL_PLAN_ENTRY=false
+SEALED_WORKER_CANDIDATE_INSTANCE_COUNT=6
+UNIQUE_WORKER_CANDIDATE_SHA_COUNT=5
 
 目标：
 1. 不修改、不重跑、不覆盖任何历史 Attempt；不补写历史 Receipt/Row/Summary。
 2. 本 Prompt 只授权一个独立、post-repair Runner Tooling Revision；产品代码、测试、Canonical Gate Manifest、规则和新 Head不得改变。
+   现有密封入口已穷尽审计；不得改用会回退 plan-bound accounting 或 Product/Evidence 解耦合同的旧 full-range Worker。
 3. 保留 Revision 002 的 ReleaseRunPlan、first-product-process accounting、Raw Product Authority、Evidence Projector 和 projection replay 合同。
 4. 将 Gate 1 reuse 改为由计划决定：计划包含 Gate 1 时，Manifest 必须拒绝 reuse 输入，Aggregate 只消费 79 个新 Formal Authority/Receipt；计划不含 Gate 1 时，必须要求真实同 Head/Tree reuse Attestation。
 5. 不允许 null/空路径/假 Attestation 作为兼容填充值；CI 日志不能替代 Raw Result。

@@ -1,6 +1,6 @@
 {
   "schema_version": "V075CloudHandoffManifestV1",
-  "observed_utc": "2026-08-16T16:00:55.517Z",
+  "observed_utc": "2026-08-16T16:17:38.388Z",
   "final_status": "BLOCKED",
   "product_version": "v0.7.5",
   "main_sha": "bd0af5c99c5267cdbe7d66c01034f80db4d704fd",
@@ -34,6 +34,14 @@
       "gate_60": "PASS:aa456b28c7320da83b479cc641a4cb78da624d214c7247104b9c38c50ad2c1ba"
     },
     "release_run_plan_dry_run": "6/6_PASS_NO_GODOT",
+    "existing_runner_full_plan_exhaustion_audit": {
+      "status": "NO_AUTHORIZED_EXISTING_ENTRYPOINT",
+      "sha256": "17500b45a0c5362fe425d2666cebd68595c947f462bdb23a47ce39b7df",
+      "worker_candidate_instance_count": 6,
+      "unique_worker_candidate_sha_count": 5,
+      "existing_legal_entrypoint": false,
+      "audit_mode": "READ_ONLY_NO_GODOT"
+    },
     "new_head_acceptance_clone": "EXACT_CLEAN",
     "new_head_canonical_import": "NOT_RUN",
     "new_head_formal_execution_count": 0,
@@ -78,7 +86,7 @@
     {
       "blocker_id": "full_plan_manifest_requires_unavailable_same_head_gate1_reuse_attestation",
       "classification": "RUNNER_TOOLING_PREFLIGHT",
-      "summary": "Revision 002 correctly binds accounting to the first planned Gate, but its manifest always requires a matching Gate 1 reuse attestation. The repaired Head must run a fresh Gate 1-79 suite and has no immutable Gate 1 raw result eligible for reuse.",
+      "summary": "Revision 002 correctly binds accounting to the first planned Gate, but its manifest always requires a matching Gate 1 reuse attestation. The repaired Head must run a fresh Gate 1-79 suite and has no immutable Gate 1 raw result eligible for reuse. A read-only audit of six sealed candidate instances found no authorized existing full-plan entrypoint.",
       "product_failure_attested": false,
       "automatic_retry_allowed": false,
       "new_head_attempt_consumed": false,
@@ -144,7 +152,9 @@
     "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-continuation-002/formal-attempt-002/evidence/execution-start.json",
     "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-continuation-002/formal-attempt-002/evidence/product-execution-complete.json",
     "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-continuation-002/formal-attempt-002/evidence/gate-16/20260816-153740-631-v075_combat_submission_rollback_test-f232d8b1/result.json",
-    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence/full-suite-manifest-gate1-reuse-blocker.json"
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence/full-suite-manifest-gate1-reuse-blocker.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence/existing-runner-full-plan-exhaustion-audit.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence/existing-runner-full-plan-exhaustion-audit.md"
   ],
   "handoff_documents": [
     "docs/handoff/SPACE_SYNDICATE_DEVELOPER_HANDOFF_ZH.md",
