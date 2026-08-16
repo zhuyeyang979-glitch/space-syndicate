@@ -1,0 +1,90 @@
+{
+  "schema_version": "PR90ExactShaMcpUidAuthorityPrestartBlockerHandoffV1",
+  "observed_utc": "2026-08-16T23:00:12.4966269Z",
+  "status": "BLOCKED_EXACT_SHA_MCP_PRESTART",
+  "product": {
+    "pr_number": 90,
+    "head_sha": "16ba8532b53cc598a422060039aaee49c862057b",
+    "tree_sha": "faa91174fa45fad6254c3a743b8400b7fdf614f7",
+    "ci_run_id": 31975708077,
+    "ci_status": "SUCCESS",
+    "pr_state": "OPEN_DRAFT",
+    "pr_mergeable": true
+  },
+  "formal_product_acceptance": {
+    "run_id": "pr90-gate63-repaired-head-release-full-001",
+    "attempt_id": "formal-attempt-001",
+    "execution_count": 1,
+    "planned_gate_count": 79,
+    "started_count": 79,
+    "completed_count": 79,
+    "pass_count": 79,
+    "fail_count": 0,
+    "formal_receipt_count": 79,
+    "reuse_attestation_count": 0,
+    "summary_sha256": "d041a0b8ccbdcb4585365e25ce16bc753757a8d2e5868685377200cfacd2007b",
+    "aggregate_sha256": "f046baaa958b7a9a15bbfd8b847200ac3406b28626d4eb7efa8eda1384473b03"
+  },
+  "post_aggregate_review": {
+    "review_a": "GO",
+    "review_b": "GO",
+    "review_c": "GO",
+    "p0_count": 0,
+    "p1_count": 0,
+    "real_product_issue_found": false
+  },
+  "exact_sha_mcp_failure": {
+    "run_id": "16ba8532b53c-20260816T225934819Z-0fe3e209",
+    "failed_block_index": 3,
+    "first_failure_class": "UID_ALLOWLIST_ENTRY_SET_HASH_INVALID",
+    "message": "The frozen UID allowlist entry-set hash is invalid.",
+    "mcp_role_started": false,
+    "editor_started": false,
+    "product_runtime_started": false,
+    "primary_failure_sha256": "a0fd0fb947c8729279c4df3168d5b770a1b03ff1febb137bd07b1e5db173e8df",
+    "final_failure_sha256": "f0a57b465b5f81b62eeb5949c2330fa564204b0af1fa007edde32715cb5e6e5f",
+    "transient_observation_sha256": "55a159a917e5adae85a83b48ae92a2045a8a551d051acbd3494a2a062846d7ff"
+  },
+  "uid_authorities": {
+    "failed_input_001": {
+      "file_sha256": "468be020c0c88d1ee1f58c7d5ce14a80c218d252bdf1f0876a14b53cdb5e560c",
+      "entry_count": 215,
+      "declared_entry_set_sha256": "e744234619d31a4080f37683f189451da0ab052836454370342a4e20cc2080fb",
+      "recomputed_entry_set_sha256": "ec22a3f71805a64dae8fae60a54f8bf327185dcd08f2b68ca8633a930f65f805",
+      "entry_set_match": false
+    },
+    "available_not_used_002": {
+      "file_sha256": "02236b076bc2a14ce3f1d55ae256be91526e11afeb6453af5815a7844d653cd1",
+      "entry_count": 215,
+      "declared_entry_set_sha256": "ec22a3f71805a64dae8fae60a54f8bf327185dcd08f2b68ca8633a930f65f805",
+      "used_by_failed_runbook": false
+    }
+  },
+  "transient_observation": {
+    "canonical_import_state": "INVALID_PARTIAL_UNKNOWN_OR_TAMPERED",
+    "generated_uid_state": "ABSENT",
+    "unknown_ignored_import_path_count": 57,
+    "observation_only_reasons": [
+      "transient_authority_unavailable",
+      "canonical_import_state_invalid",
+      "unsafe_allowlisted_drift"
+    ]
+  },
+  "machine_state_after_failure": {
+    "godot_process_count": 0,
+    "port_7576_count": 0,
+    "port_7586_count": 0,
+    "clone_tracked_delta": 0,
+    "clone_untracked_delta": 0
+  },
+  "later_release_stages": {
+    "viewport_status": "NOT_RUN",
+    "headless_matrix_status": "NOT_RUN",
+    "product_headless_2000_status": "NOT_RUN",
+    "pr90_merged": false,
+    "v076_branch_created": false,
+    "v076_poc_started": false
+  },
+  "automatic_retry_allowed": false,
+  "next_task": "PR90_RELEASE_EXACT_SHA_MCP_UID_ALLOWLIST_AUTHORITY_SELECTION_CONTINUATION"
+}

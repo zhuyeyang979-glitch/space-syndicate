@@ -1,20 +1,20 @@
 {
   "schema_version": "V075CloudHandoffIntegrityV1",
-  "observed_utc": "2026-08-16T21:31:01.6841110Z",
+  "observed_utc": "2026-08-16T23:00:12.4966269Z",
   "hash_algorithm": "SHA-256",
-  "expected_file_count": 10,
+  "expected_file_count": 12,
   "self_excluded_due_non_recursive_hash": true,
   "self_path": "reports/handoffs/v075_cloud_handoff_integrity.json",
   "files": [
     {
       "path": "docs/handoff/SPACE_SYNDICATE_DEVELOPER_HANDOFF_ZH.md",
-      "bytes": 88685,
-      "sha256": "4750c7fe7bc981dc822a8588909fb9e38a439ec030a3e29495714fc8d64e49cf"
+      "bytes": 88418,
+      "sha256": "1caee290d768b296e92421a9f0bef2cd76f7e9aa5455ddd2306a51bfa8415edb"
     },
     {
       "path": "docs/handoff/START_HERE_NEXT_DEVELOPER.md",
-      "bytes": 2774,
-      "sha256": "048bf14004ae8493b4076beeaf3b142f3e01d6a6298b1233d366ad3e812c25d5"
+      "bytes": 2678,
+      "sha256": "dcf2ecf02131e99297985b883168f6ac2734b82ca88a5bbaf73e24fb0160ad35"
     },
     {
       "path": "docs/handoff/SPACE_SYNDICATE_RULEBOOK_V075_ZH.md",
@@ -28,8 +28,8 @@
     },
     {
       "path": "docs/handoff/V075_TEST_AND_RELEASE_EVIDENCE.md",
-      "bytes": 3435,
-      "sha256": "932d9bca069a0328a46c62d9c8679432375fd18da7ce44b1145e4c4cc8d9804a"
+      "bytes": 3518,
+      "sha256": "2b48e24244ef7b15f57d3186f15f5d9aeb5bdc49ab8bd8dffc1321653d4817e7"
     },
     {
       "path": "docs/handoff/V076_FUTURE_DEVELOPMENT_ROADMAP_ZH.md",
@@ -38,13 +38,13 @@
     },
     {
       "path": "docs/handoff/NEXT_DEVELOPER_FIRST_TASK_PROMPT.md",
-      "bytes": 3721,
-      "sha256": "3043b03e764804c59c9c0c17f3248bda4e33b44716562f1d308ea78b7ec7c366"
+      "bytes": 3694,
+      "sha256": "d947fa69d80b08194a4ecfd59832e6eb094a352363df202f1e5c5c62d7b936a1"
     },
     {
       "path": "reports/handoffs/v075_cloud_handoff_manifest.json",
-      "bytes": 18505,
-      "sha256": "94bcb93a321107c2a54c274cc0092d86d60dedbd9b7ad3024e2cc52779223423"
+      "bytes": 21400,
+      "sha256": "39024f572814c59ae67a81ff6b000cba01c8645f9358d605b71c8ae53e110d7e"
     },
     {
       "path": "reports/handoffs/pr90_gate63_planet_map_layout_tooling_blocker.json",
@@ -55,6 +55,16 @@
       "path": "reports/handoffs/pr90_gate63_planet_map_layout_tooling_blocker.md",
       "bytes": 2821,
       "sha256": "1b0ee9e1d3cd15c0c60dadb3745b00fc288f07ff1f60cda1203eed9017b765b0"
+    },
+    {
+      "path": "reports/handoffs/pr90_exact_sha_mcp_uid_authority_prestart_blocker.json",
+      "bytes": 3418,
+      "sha256": "a6cada03ce032cf68fe7fd7c43bb6c8f9699b898f172c466ca080c76872a7398"
+    },
+    {
+      "path": "reports/handoffs/pr90_exact_sha_mcp_uid_authority_prestart_blocker.md",
+      "bytes": 2113,
+      "sha256": "2b2b2929e5473e6b6737960144dd22572c75277f90b61026a1917ccc3aa77cb3"
     }
   ]
 }

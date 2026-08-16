@@ -1,21 +1,23 @@
 # START HERE — 下一开发者入口
 
-当前状态：**PR #90 BLOCKED，尚未合并**。权威产品 Head 为 `1e948a15e17faffe648722fd596fac01a4525426`，Tree 为 `8508df4e900a73c058566f00fc556ec1d11e08ca`，CI Run `31956611702` SUCCESS；GitHub PR 仍为 OPEN DRAFT、MERGEABLE。
+当前状态：**PR #90 仍为 OPEN DRAFT，尚未合并；产品 Gate 已 79/79 PASS，但 Release 链在 Exact-SHA MCP 启动前被 Tooling Authority 阻断。**
+
+权威产品 Head 为 `16ba8532b53cc598a422060039aaee49c862057b`，Tree 为 `faa91174fa45fad6254c3a743b8400b7fdf614f7`。GitHub CI Run `31975708077` SUCCESS；PR #90 为 OPEN DRAFT、MERGEABLE。
 
 先读：
 
-1. `reports/handoffs/pr90_gate63_planet_map_layout_tooling_blocker.md`
+1. `reports/handoffs/pr90_exact_sha_mcp_uid_authority_prestart_blocker.md`
 2. `docs/handoff/V075_TEST_AND_RELEASE_EVIDENCE.md`
 3. `docs/handoff/NEXT_DEVELOPER_FIRST_TASK_PROMPT.md`
 
-最新正式现场是 `pr90-repaired-head-release-full-002 / formal-attempt-002`，不是旧的 Attempt 001。Attempt 002 只执行一次并永久冻结：Execution Start SHA-256 `fa7a040ede31658fd213426befae018b8fc090381671b3900a62e275f26c50e4`，Summary SHA-256 `fe0a969a56d7a5030f037336b1a521adcc36c1b13dceef2d3d55ff845b915875`。Gate 1—62 为 62 PASS；Gate 63 为 `PRODUCT_GATE_FAILURE`；Gate 64—79 未启动。不得修改、补写、覆盖或重跑该 Attempt。
+最新完整 Formal Run 是 `pr90-gate63-repaired-head-release-full-001 / formal-attempt-001`。该运行只执行一次，Gate 1—79 全部来自当前 Head/Tree，79/79 PASS，79 份 Formal Receipt，0 份复用证明，产品失败 0，Runner 失败 0。Summary SHA-256 为 `d041a0b8ccbdcb4585365e25ce16bc753757a8d2e5868685377200cfacd2007b`；Aggregate SHA-256 为 `f046baaa958b7a9a15bbfd8b847200ac3406b28626d4eb7efa8eda1384473b03`。
 
-Gate 63 的产品进程真实退出 0，required marker 命中，业务断言 18/18；但 stderr 有一条 Canonical 未分类布局 warning，所以正式 Gate 必须失败，不能用业务断言覆盖。Raw Result SHA-256 为 `240fda2cbb17db6d5903663412eb47a97a284e58270fd10db4b61eed9a1c41ff`。
+Post-Aggregate Reviews A/B/C 均为 GO，P0=0、P1=0。Review B 覆盖怪兽、军队、设施损伤、AI、资产、DBG 与 exact-once；未发现真实产品问题。
 
-根因已经明确为 `TEST_FIXTURE_LAYOUT_CONTRACT_DEFECT`。生产 `PlanetMapView` 是 Full Rect，真实 `MapHost` 或 Container 是唯一布局 Owner；生产脚本不会在 `_ready()` 后强制写根尺寸。测试在 `tests/v074_planet_map_view_test.gd:20` 对已经拉伸的 View 写固定 size，导致 Godot 报告 opposite anchors 不相等。正确修复是固定尺寸 Test Host → Full Rect `PlanetMapView` → 等待布局 → 验证 Host/View 尺寸一致，覆盖 1000×650、1366×768、1600×960、1920×1080。`tests/v074_planet_shader_surface_test.gd:19` 是直接相关同模式 fixture。
+唯一正式 Exact-SHA MCP Runbook 在 Block 3 fail-closed，发生在 MCP Role、Editor 和产品 Runtime 启动之前。首失败：`The frozen UID allowlist entry-set hash is invalid.` 使用的 Authority 001 文件 SHA-256 为 `468be020c0c88d1ee1f58c7d5ce14a80c218d252bdf1f0876a14b53cdb5e560c`；其声明 entry-set SHA 为 `e744234619d31a4080f37683f189451da0ab052836454370342a4e20cc2080fb`，按 Runbook 合同重建后为 `ec22a3f71805a64dae8fae60a54f8bf327185dcd08f2b68ca8633a930f65f805`。
 
-当前没有执行修复，因为授权要求 `MCP_ONLY_GODOT_CODE_EDIT=true`。已安装 Godot MCP 没有 `.gd` 读取、写入或 patch 工具；MCP 启动的 Editor 也无法由 Computer Use 取得可控窗口。没有使用直接文件编辑绕过该约束：产品代码变化 0、测试变化 0、Gate 63 重跑 0、Formal 新 Attempt 0。
+Authority 002 随后已存在且声明了正确 entry-set SHA，文件 SHA-256 为 `02236b076bc2a14ce3f1d55ae256be91526e11afeb6453af5815a7844d653cd1`，但它没有被失败的正式 Runbook 使用。不得据此自动重跑。Failure Finalizer 还将 57 个 ignored `.import` 路径标为当前 closed-set authority 未覆盖，必须在任何新授权前完成只读解释和 prestart 审计。
 
-第一任务：执行 `PR90_GATE63_PLANET_MAP_LAYOUT_CURRENT_MCP_SCRIPT_EDIT_CAPABILITY`。必须提供可审计的当前 MCP GDScript patch 能力，或取得用户对直接文件编辑的明确放宽授权。能力到位后才可修改两个相关 test fixtures、运行 Gate 63 聚焦验证和 Gate 63—79 开发预演；全部 17/17 通过后才形成新 Head并进入最终 Release。
+当前现场：Godot 进程 0，7576/7586 监听 0，Exact-SHA Clone tracked/untracked delta 0。Viewport、Headless 3/4/6/8、Product Headless 2,000、PR Ready/Merge、V0.7.6 分支与 POC 均未启动。
 
-当前 Godot、Release Worker、受保护端口均为 0。V0.7.6、MCP 效率 Pilot 与确定性战斗 POC 均未启动；不得用新工具或新架构绕过 Gate 63。
+下一任务：`PR90_RELEASE_EXACT_SHA_MCP_UID_ALLOWLIST_AUTHORITY_SELECTION_CONTINUATION`。该任务必须先验证 Authority 002 的文件哈希、entry-set 哈希、Head/Tree、来源 Clone 和 215 个 UID 条目；同时证明 57 个 ignored `.import` sidecar 的来源与安全处理方式。未经用户明确授权，不得启动新的 Exact-SHA MCP Runbook。

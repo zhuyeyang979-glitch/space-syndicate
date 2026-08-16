@@ -1,6 +1,6 @@
 {
   "schema_version": "V075CloudHandoffManifestV1",
-  "observed_utc": "2026-08-16T21:31:01.6841110Z",
+  "observed_utc": "2026-08-16T23:00:12.4966269Z",
   "final_status": "BLOCKED",
   "product_version": "v0.7.5",
   "main_sha": "bd0af5c99c5267cdbe7d66c01034f80db4d704fd",
@@ -9,11 +9,35 @@
   "pr90_state": "OPEN_DRAFT",
   "pr90_mergeable": true,
   "pr90_head_branch": "codex/v075-monster-military-combat-bd0af5c",
-  "pr90_head_sha": "1e948a15e17faffe648722fd596fac01a4525426",
-  "pr90_tree_sha": "8508df4e900a73c058566f00fc556ec1d11e08ca",
-  "ci_run_id": 31956611702,
+  "pr90_head_sha": "16ba8532b53cc598a422060039aaee49c862057b",
+  "pr90_tree_sha": "faa91174fa45fad6254c3a743b8400b7fdf614f7",
+  "ci_run_id": 31975708077,
   "ci_status": "SUCCESS",
-  "ci_url": "https://github.com/zhuyeyang979-glitch/space-syndicate/actions/runs/31956611702",
+  "ci_url": "https://github.com/zhuyeyang979-glitch/space-syndicate/actions/runs/31975708077",
+  "current_release_closure": {
+    "formal_run_id": "pr90-gate63-repaired-head-release-full-001",
+    "formal_attempt_id": "formal-attempt-001",
+    "formal_execution_count": 1,
+    "gate_1_to_79": "79/79_PASS",
+    "formal_receipt_count": 79,
+    "reuse_attestation_count": 0,
+    "formal_summary_sha256": "d041a0b8ccbdcb4585365e25ce16bc753757a8d2e5868685377200cfacd2007b",
+    "aggregate_sha256": "f046baaa958b7a9a15bbfd8b847200ac3406b28626d4eb7efa8eda1384473b03",
+    "post_aggregate_review_a": "GO",
+    "post_aggregate_review_b": "GO",
+    "post_aggregate_review_c": "GO",
+    "post_aggregate_p0": 0,
+    "post_aggregate_p1": 0,
+    "real_product_issue_found": false,
+    "exact_sha_mcp_status": "BLOCKED_PRESTART_UID_ALLOWLIST_ENTRY_SET_HASH_INVALID",
+    "exact_sha_mcp_failed_block_index": 3,
+    "mcp_role_started": false,
+    "product_runtime_started": false,
+    "viewport_status": "NOT_RUN",
+    "headless_matrix_status": "NOT_RUN",
+    "product_headless_2000_status": "NOT_RUN"
+  },
+  "gate_status_historical_snapshot": true,
   "gate_status": {
     "old_head_sha": "6d4d52dfbc8001c919ac569dcab2e3b53f968d34",
     "old_head_formal_run_id": "pr90-new-head-release-focused-continuation-002",
@@ -140,7 +164,7 @@
     "aggregate_79": "NOT_RUN",
     "post_aggregate_review": "NOT_RUN"
   },
-  "mcp_status": "NOT_RUN_CURRENT_MCP_SCRIPT_EDIT_CAPABILITY_BLOCKER",
+  "mcp_status": "BLOCKED_PRESTART_UID_ALLOWLIST_ENTRY_SET_HASH_INVALID",
   "viewport_status": "NOT_RUN",
   "headless_status": "NOT_RUN",
   "product_2000_status": {
@@ -170,20 +194,23 @@
   },
   "known_blockers": [
     {
-      "blocker_id": "current_mcp_gdscript_edit_capability_missing",
-      "classification": "TOOLING_CAPABILITY_CONSTRAINT",
-      "summary": "Gate 63 needs a test-fixture-only GDScript repair, but the task requires MCP-only Godot code edits. The installed Godot MCP has no .gd read, write, or patch tool, and the MCP-launched Editor window could not be acquired by Computer Use.",
-      "gate_63_root_cause_class": "TEST_FIXTURE_LAYOUT_CONTRACT_DEFECT",
-      "production_layout_defect_attested": false,
-      "direct_filesystem_godot_code_edit_count": 0,
-      "product_runtime_code_change_count": 0,
-      "test_fixture_change_count": 0,
+      "blocker_id": "exact_sha_mcp_uid_allowlist_entry_set_hash_invalid",
+      "classification": "RELEASE_TOOLING_AUTHORITY_PREFLIGHT",
+      "summary": "The exact-SHA MCP Runbook failed closed in block 3 before MCP Role, Editor, or product Runtime start because Authority 001 declared UID entry-set SHA e744...80fb while the contract rebuild produced ec22...f805.",
+      "failed_authority_file_sha256": "468be020c0c88d1ee1f58c7d5ce14a80c218d252bdf1f0876a14b53cdb5e560c",
+      "available_authority_002_file_sha256": "02236b076bc2a14ce3f1d55ae256be91526e11afeb6453af5815a7844d653cd1",
+      "unknown_ignored_import_path_count": 57,
+      "product_failure_attested": false,
       "automatic_retry_allowed": false,
-      "authorized_formal_attempt_count": 0,
-      "required_authority": "PR90_GATE63_PLANET_MAP_LAYOUT_CURRENT_MCP_SCRIPT_EDIT_CAPABILITY"
+      "required_authority": "PR90_RELEASE_EXACT_SHA_MCP_UID_ALLOWLIST_AUTHORITY_SELECTION_CONTINUATION"
     }
   ],
   "resolved_historical_blockers": [
+    {
+      "blocker_id": "gate63_test_fixture_layout_contract_defect",
+      "classification": "TEST_FIXTURE_LAYOUT_CONTRACT",
+      "disposition": "REPAIRED_ON_HEAD_16BA8532_AND_FORMAL_GATE63_PASS"
+    },
     {
       "blocker_id": "formal_clone_current_head_import_cache_missing",
       "classification": "RUNNER_PREFLIGHT_ENVIRONMENT_CONTRACT",
@@ -273,7 +300,12 @@
     "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-repaired-head-release-full-002/formal-attempt-002/evidence/summary.json",
     "E:/SpaceSyndicateWorkspace/product-repair-evidence/pr90-gate63-layout-repair/reports/handoffs/gate63_planet_map_layout_root_cause.json#sha256=6659be182e9bd0ef19f820a007b5fbe6b555b46b0bbd0041e50c9a71bc61e71b",
     "E:/SpaceSyndicateWorkspace/product-repair-evidence/pr90-gate63-layout-repair/reports/handoffs/ui_test_anchor_size_contract_matrix.json#sha256=893be0f5be7a326296269a366d3d428dcd0ae9695712f95bfb86062bfd80828f",
-    "E:/SpaceSyndicateWorkspace/product-repair-evidence/pr90-gate63-layout-repair/reports/handoffs/pr90_gate63_layout_tooling_blocker_update.json#sha256=55c61146cbdeabfc52c89cc82808361ed010abeff5c85d18bcb8fb41a94f3e0d"
+    "E:/SpaceSyndicateWorkspace/product-repair-evidence/pr90-gate63-layout-repair/reports/handoffs/pr90_gate63_layout_tooling_blocker_update.json#sha256=55c61146cbdeabfc52c89cc82808361ed010abeff5c85d18bcb8fb41a94f3e0d",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/16ba8532b53cc598a422060039aaee49c862057b/pr90-gate63-repaired-head-release-full-001/formal-attempt-001/evidence/summary.json#sha256=d041a0b8ccbdcb4585365e25ce16bc753757a8d2e5868685377200cfacd2007b",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/16ba8532b53cc598a422060039aaee49c862057b/pr90-gate63-repaired-head-release-full-001/formal-attempt-001/evidence/aggregate-product-focused-79.json#sha256=f046baaa958b7a9a15bbfd8b847200ac3406b28626d4eb7efa8eda1384473b03",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/16ba8532b53cc598a422060039aaee49c862057b/release-chain/exact-sha-mcp-evidence/16ba8532b53c-20260816T225934819Z-0fe3e209/runbook-failure-20260816T225933064Z-a5c50608-primary.json#sha256=a0fd0fb947c8729279c4df3168d5b770a1b03ff1febb137bd07b1e5db173e8df",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/16ba8532b53cc598a422060039aaee49c862057b/release-chain/exact-sha-mcp-evidence/16ba8532b53c-20260816T225934819Z-0fe3e209/runbook-failure-20260816T225933064Z-a5c50608-final.json#sha256=f0a57b465b5f81b62eeb5949c2330fa564204b0af1fa007edde32715cb5e6e5f",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/16ba8532b53cc598a422060039aaee49c862057b/release-chain/exact-sha-mcp-evidence/16ba8532b53c-20260816T225934819Z-0fe3e209/runbook-failure-20260816T225933064Z-a5c50608-transient-observation.json#sha256=55a159a917e5adae85a83b48ae92a2045a8a551d051acbd3494a2a062846d7ff"
   ],
   "handoff_documents": [
     "docs/handoff/SPACE_SYNDICATE_DEVELOPER_HANDOFF_ZH.md",
@@ -284,9 +316,11 @@
     "docs/handoff/V076_FUTURE_DEVELOPMENT_ROADMAP_ZH.md",
     "docs/handoff/NEXT_DEVELOPER_FIRST_TASK_PROMPT.md",
     "reports/handoffs/pr90_gate63_planet_map_layout_tooling_blocker.json",
-    "reports/handoffs/pr90_gate63_planet_map_layout_tooling_blocker.md"
+    "reports/handoffs/pr90_gate63_planet_map_layout_tooling_blocker.md",
+    "reports/handoffs/pr90_exact_sha_mcp_uid_authority_prestart_blocker.json",
+    "reports/handoffs/pr90_exact_sha_mcp_uid_authority_prestart_blocker.md"
   ],
-  "next_task_id": "PR90_GATE63_PLANET_MAP_LAYOUT_CURRENT_MCP_SCRIPT_EDIT_CAPABILITY",
+  "next_task_id": "PR90_RELEASE_EXACT_SHA_MCP_UID_ALLOWLIST_AUTHORITY_SELECTION_CONTINUATION",
   "next_prompt_path": "docs/handoff/NEXT_DEVELOPER_FIRST_TASK_PROMPT.md",
   "reported_token_usage": 2256723,
   "reported_token_usage_note": "Historical value from the preceding Handoff publication. Current Formal Attempt task token usage is unavailable from this runtime.",
