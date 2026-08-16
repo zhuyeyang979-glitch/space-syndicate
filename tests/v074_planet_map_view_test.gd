@@ -4,6 +4,12 @@ const Support := preload("res://tests/v074_planet_test_support.gd")
 const Adapter := preload("res://scripts/presentation/v074/v074_planet_presentation_adapter_v1.gd")
 const PlanetScene := preload("res://scenes/ui/PlanetMapView.tscn")
 const PolygonScene := preload("res://scenes/ui/map/PlanetDistrictPolygon.tscn")
+const TEST_LAYOUT_SIZES := [
+	Vector2(1000.0, 650.0),
+	Vector2(1366.0, 768.0),
+	Vector2(1600.0, 960.0),
+	Vector2(1920.0, 1080.0),
+]
 
 
 func _init() -> void:
@@ -15,10 +21,17 @@ func _run() -> void:
 	var checks := 0
 	var receipt := Support.build_receipt(16, "STANDARD")
 	var payload := Adapter.new().build_map_view_payload(receipt, Support.public_projection(receipt))
+	var host := Control.new()
+	host.name = "PlanetMapViewTestHost"
+	host.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	host.size = TEST_LAYOUT_SIZES[0]
+	root.add_child(host)
 	var view := PlanetScene.instantiate() as Control
-	root.add_child(view)
-	view.size = Vector2(1000.0, 650.0)
+	host.add_child(view)
+	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	view.set("programmatic_focus_animation_enabled", false)
+	await process_frame
+	await process_frame
 	var polygon := PolygonScene.instantiate() as Control
 	var valid_concave_polygon := PackedVector2Array([
 		Vector2(0.0, 0.0),
@@ -57,6 +70,17 @@ func _run() -> void:
 	Support.add_failure(failures, applied, "authoritative payload did not apply")
 	checks += 1
 	Support.add_failure(failures, int(view.get("districts").size()) == 16, "view district count mismatch")
+	var layout_failures := await _validate_test_host_layouts(host, view)
+	failures.append_array(layout_failures)
+	print(
+		"V074_PLANET_MAP_VIEW_LAYOUT_MATRIX|status=%s|passed=%d|total=%d|details=%s"
+		% [
+			"PASS" if layout_failures.is_empty() else "FAIL",
+			TEST_LAYOUT_SIZES.size() - layout_failures.size(),
+			TEST_LAYOUT_SIZES.size(),
+			JSON.stringify(layout_failures),
+		]
+	)
 	view.call("focus_district", 0, false)
 	await process_frame
 	var center := view.call("get_district_control_position", 0) as Vector2
@@ -159,6 +183,66 @@ func _run() -> void:
 		and radius <= minf(view.size.x, view.size.y) * 0.486,
 		"authoritative globe zoom escaped bounded stage radius"
 	)
-	view.queue_free()
+	host.queue_free()
 	await process_frame
 	Support.print_result("V074_PLANET_MAP_VIEW_TEST", checks, failures, self)
+
+
+func _validate_test_host_layouts(host: Control, view: Control) -> Array:
+	var failures: Array = []
+	for target_size: Vector2 in TEST_LAYOUT_SIZES:
+		host.size = target_size
+		await process_frame
+		var first_layout_size := view.size
+		await process_frame
+		var stable_layout_size := view.size
+		view.call("focus_district", 0, false)
+		view.call("_update_sceneized_projection_nodes")
+		await process_frame
+		var focused_layout_size := view.size
+		var center := view.call("get_district_control_position", 0) as Vector2
+		var hit := int(view.call("get_district_at_control_position", center))
+		var anchors_ok := (
+			is_zero_approx(view.anchor_left)
+			and is_zero_approx(view.anchor_top)
+			and is_equal_approx(view.anchor_right, 1.0)
+			and is_equal_approx(view.anchor_bottom, 1.0)
+		)
+		var offsets_ok := (
+			is_zero_approx(view.offset_left)
+			and is_zero_approx(view.offset_top)
+			and is_zero_approx(view.offset_right)
+			and is_zero_approx(view.offset_bottom)
+		)
+		var size_ok := (
+			host.size.is_equal_approx(target_size)
+			and first_layout_size.is_equal_approx(target_size)
+			and stable_layout_size.is_equal_approx(target_size)
+			and focused_layout_size.is_equal_approx(target_size)
+		)
+		var surface := view.get_rect()
+		var interaction_ok := (
+			surface.has_area()
+			and surface.has_point(center)
+			and hit == 0
+		)
+		if not (
+			view.is_node_ready()
+			and anchors_ok
+			and offsets_ok
+			and size_ok
+			and interaction_ok
+		):
+			failures.append(
+				"layout %dx%d failed: host=%s first=%s stable=%s focused=%s center=%s hit=%d anchors=%s offsets=%s"
+				% [
+					int(target_size.x), int(target_size.y), str(host.size),
+					str(first_layout_size), str(stable_layout_size), str(focused_layout_size),
+					str(center), hit, str(anchors_ok), str(offsets_ok),
+				]
+			)
+	host.size = TEST_LAYOUT_SIZES[0]
+	view.call("reset_to_planet_overview")
+	await process_frame
+	await process_frame
+	return failures
