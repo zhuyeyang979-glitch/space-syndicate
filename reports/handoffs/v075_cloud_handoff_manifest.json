@@ -1,0 +1,148 @@
+{
+  "schema_version": "V075CloudHandoffManifestV1",
+  "observed_utc": "2026-08-16T14:17:48.451Z",
+  "final_status": "BLOCKED",
+  "product_version": "v0.7.5",
+  "main_sha": "bd0af5c99c5267cdbe7d66c01034f80db4d704fd",
+  "main_tree": "3069691d93f9256d41a8f1c61dd8b5f2fe581c6f",
+  "pr90_number": 90,
+  "pr90_state": "OPEN_DRAFT",
+  "pr90_mergeable": true,
+  "pr90_head_branch": "codex/v075-monster-military-combat-bd0af5c",
+  "pr90_head_sha": "6d4d52dfbc8001c919ac569dcab2e3b53f968d34",
+  "pr90_tree_sha": "95c899ceb552a9214edc4ab7e6076ea6e6c7c02c",
+  "ci_run_id": 31894893974,
+  "ci_status": "SUCCESS",
+  "ci_url": "https://github.com/zhuyeyang979-glitch/space-syndicate/actions/runs/31894893974",
+  "gate_status": {
+    "canonical_import": {
+      "status": "PASS",
+      "execution_count": 1,
+      "rerun_count": 0,
+      "ignored_sidecar_parity": "215/215"
+    },
+    "result_cardinality_selftest": "65/65_PASS",
+    "full_v3_binder_dry_run": "79/79_PASS_NO_GODOT",
+    "gate15_focused_repair": {
+      "status": "36/36_PASS",
+      "result_sha256": "7a34c09fbae3fa0f561295335a5e415663eec9c2236006b68cf34fc20aca0dcc"
+    },
+    "formal_run_id": "pr90-new-head-release-focused-001",
+    "formal_execution_count": 1,
+    "formal_authorized_count_consumed": 1,
+    "gate_1_product_result": {
+      "status": "PASS",
+      "formal_receipt_exists": false,
+      "raw_result_sha256": "7b7c94847d6678f17f1b0a9b5d79aaecaba970fed02eb82aa45339277c5f8f5f"
+    },
+    "formal_runner_status": "BLOCKED",
+    "formal_disposition": "GATE1_PRODUCT_PASS_THEN_RUNNER_ACCOUNTING_FIRST_GATE_TRIGGER_HARDCODED_TO_GATE3",
+    "gate_2_to_79": "NOT_RUN",
+    "product_gate_progress": "1/79",
+    "aggregate_79": "NOT_RUN",
+    "post_aggregate_review": "NOT_RUN"
+  },
+  "mcp_status": "NOT_RUN",
+  "viewport_status": "NOT_RUN",
+  "headless_status": "NOT_RUN",
+  "product_2000_status": {
+    "status": "NOT_RUN",
+    "completed_count": 0,
+    "required_count": 2000
+  },
+  "pr90_merged": false,
+  "pr90_merge_sha": null,
+  "release_tag": null,
+  "v076_implementation": false,
+  "v076_poc_started": false,
+  "known_blockers": [
+    {
+      "blocker_id": "runner_accounting_authority_not_written_for_full_run_gate1",
+      "classification": "RUNNER_FAILURE_AFTER_PRODUCT_RESULT",
+      "summary": "The formal worker writes execution-start accounting only when currentGate equals 3 and hardcodes FirstGateId 3; the verified full plan starts at Gate 1.",
+      "product_failure_attested": false,
+      "automatic_retry_allowed": false
+    }
+  ],
+  "known_nonblocking_debt": [
+    "V0.7.5 production Save/Continue remains new-game-only and unverified for full Combat roundtrip.",
+    "The Combat Authority Manifest contains an early connected_domain_count statement that requires Exact-SHA runtime evidence before documentation correction.",
+    "Viewport experience, full headless matrix, 2000-match performance, and cross-platform deterministic behavior remain unverified.",
+    "V0.7.6 deterministic combat, physical ETA, directional movement, Combat Observatory, state hash, snapshot, and replay are planned but not implemented."
+  ],
+  "live_rule_files": [
+    "docs/rules/v075_game_constitution.json",
+    "docs/rules/v075_game_constitution.md",
+    "docs/rules/v075_amendment_from_v074.json",
+    "docs/rules/v075_amendment_from_v074.md",
+    "docs/rules/v075_combat_authority_manifest.json",
+    "docs/rules/v075_combat_balance_defaults.json",
+    "docs/rules/v074_game_constitution.json",
+    "docs/rules/v074_game_constitution.md",
+    "docs/rules/v07_game_constitution.json",
+    "docs/rules/v07_game_constitution.md"
+  ],
+  "planned_rule_files": [
+    "docs/handoff/V076_FUTURE_DEVELOPMENT_ROADMAP_ZH.md"
+  ],
+  "core_source_files": [
+    "scenes/main.tscn",
+    "scripts/v075_runtime/v075_application_bootstrap.gd",
+    "scripts/v075_runtime/v075_application_flow.gd",
+    "scripts/v075_runtime/v075_runtime_owner.gd",
+    "scripts/v075/runtime/v075_combat_runtime_owner.gd",
+    "scripts/v075/combat/v075_combat_capability_catalog.gd",
+    "scripts/v075/ai/v075_ai_combat_action_candidate_v1.gd",
+    "scripts/v075/ai/v075_combat_ai_adapter.gd",
+    "scripts/v075/monster/v075_monster_source_core.gd",
+    "scripts/v075/monster/v075_monster_autonomy_core.gd",
+    "scripts/v075/monster/v075_monster_private_skill_core.gd",
+    "scripts/v075/monster/v075_monster_trample_core.gd",
+    "scripts/v075/military/v075_military_mission_core.gd",
+    "scripts/v074/map/v074_map_genesis_core.gd",
+    "scripts/v074/facility/v074_facility_runtime_core.gd",
+    "scripts/v074/track/v074_shared_sushi_track_core.gd",
+    "scripts/v074/warehouse/v074_warehouse_runtime_policy.gd"
+  ],
+  "core_test_files": [
+    "tests/smoke_test.gd",
+    "tests/v075_constitution_authority_contract_test.gd",
+    "tests/v075_runtime_owner_integration_test.gd",
+    "tests/v075_application_flow_atomic_activation_test.gd",
+    "tests/v075_application_flow_sync_reentry_test.gd",
+    "tests/v075_combat_checkpoint_transaction_rollback_test.gd",
+    "tests/v075_authoritative_card_identity_lifecycle_binding_test.gd",
+    "tests/v075_combat_ai_runtime_policy_test.gd",
+    "tests/v075_combat_public_private_projection_test.gd",
+    "tests/v075_terminal_combat_quiescence_test.gd",
+    "tests/v075_responsive_viewport_matrix_test.gd",
+    "tests/v074_legacy_main_retirement_test.gd"
+  ],
+  "evidence_paths": [
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-001/tooling-preflight/canonical-import-001/canonical-import-evidence-classified.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-001/tooling-preflight/worker-dry-run-v3-001/bootstrap-dry-run-report.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-001/tooling-preflight/command-closure-v3-002.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-001/tooling-preflight/preflight-v3-final-001.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-001/tooling-preflight/release-manifest-final-v3.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-001/formal-attempt-freeze-attestation.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-001/formal-attempt/evidence/attempt-accounting-boundary-unresolved-incident.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-001/formal-attempt/evidence/gate-01/20260815-164048-543-smoke_test-ef63c4e8/result.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-001/formal-attempt/evidence/gate-01/godot-start-witness-wire-v1.json"
+  ],
+  "handoff_documents": [
+    "docs/handoff/SPACE_SYNDICATE_DEVELOPER_HANDOFF_ZH.md",
+    "docs/handoff/START_HERE_NEXT_DEVELOPER.md",
+    "docs/handoff/SPACE_SYNDICATE_RULEBOOK_V075_ZH.md",
+    "docs/handoff/V075_ARCHITECTURE_AND_OWNER_MAP.md",
+    "docs/handoff/V075_TEST_AND_RELEASE_EVIDENCE.md",
+    "docs/handoff/V076_FUTURE_DEVELOPMENT_ROADMAP_ZH.md",
+    "docs/handoff/NEXT_DEVELOPER_FIRST_TASK_PROMPT.md"
+  ],
+  "next_task_id": "PR90_RELEASE_RUNNER_FULL_RANGE_FIRST_GATE_ACCOUNTING_TRIGGER_REPAIR",
+  "next_prompt_path": "docs/handoff/NEXT_DEVELOPER_FIRST_TASK_PROMPT.md",
+  "reported_token_usage": null,
+  "reported_token_usage_note": "The current runtime exposes no active goal token counter; no numeric token usage is fabricated.",
+  "token_budget_target": 4500000,
+  "handoff_documentation_target": 800000,
+  "contingency_target": 700000
+}

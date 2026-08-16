@@ -1,0 +1,50 @@
+{
+  "schema_version": "V075CloudHandoffIntegrityV1",
+  "observed_utc": "2026-08-16T14:17:48.451Z",
+  "hash_algorithm": "SHA-256",
+  "expected_file_count": 8,
+  "self_excluded_due_non_recursive_hash": true,
+  "self_path": "reports/handoffs/v075_cloud_handoff_integrity.json",
+  "files": [
+    {
+      "path": "docs/handoff/SPACE_SYNDICATE_DEVELOPER_HANDOFF_ZH.md",
+      "bytes": 85399,
+      "sha256": "634f6bf6381e1f1dd35adb68afefe15354b6e4393458fefa71c973f52c04b8bf"
+    },
+    {
+      "path": "docs/handoff/START_HERE_NEXT_DEVELOPER.md",
+      "bytes": 1243,
+      "sha256": "e8e328b55642db17321ecc0b15745a4802f35c46166dcf4270bb600ee7597115"
+    },
+    {
+      "path": "docs/handoff/SPACE_SYNDICATE_RULEBOOK_V075_ZH.md",
+      "bytes": 2449,
+      "sha256": "34698bb719448504fa325b0ca1c0e1194b376bb55b1add169f84c3ec152667ce"
+    },
+    {
+      "path": "docs/handoff/V075_ARCHITECTURE_AND_OWNER_MAP.md",
+      "bytes": 1502,
+      "sha256": "f2126e76feef31f018ff5f12c2920fc2a444e1618b34dd287d4f430139005b36"
+    },
+    {
+      "path": "docs/handoff/V075_TEST_AND_RELEASE_EVIDENCE.md",
+      "bytes": 1639,
+      "sha256": "901b82b704e85e5f38571bd2ec93f055704f7529ba0014a713d40231403e2745"
+    },
+    {
+      "path": "docs/handoff/V076_FUTURE_DEVELOPMENT_ROADMAP_ZH.md",
+      "bytes": 1671,
+      "sha256": "836e5cd38c00bc9e28901c03b2df1a8edc7e8fff624e86284bb725eb0e49bc35"
+    },
+    {
+      "path": "docs/handoff/NEXT_DEVELOPER_FIRST_TASK_PROMPT.md",
+      "bytes": 2031,
+      "sha256": "4a28d14c7dfd6b5cd9aa70b6b690ebc376ccf8bdc92fe3d594521057aa7f515d"
+    },
+    {
+      "path": "reports/handoffs/v075_cloud_handoff_manifest.json",
+      "bytes": 7996,
+      "sha256": "3aa7daf2065e6eb141fbd2fb79d7ff592059ba1395d239f07057a88a4ecc9a75"
+    }
+  ]
+}
