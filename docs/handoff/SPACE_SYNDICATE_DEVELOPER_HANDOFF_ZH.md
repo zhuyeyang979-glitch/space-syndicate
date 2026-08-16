@@ -1,8 +1,10 @@
 # 《Space Syndicate / 太空辛迪加》V0.7.5 开发者交接日志
 
+> **2026-08-17 当前覆盖状态（优先于本文后续历史段落）**：Formal Attempt 001 的 Import/Raw diagnostics 工具问题已经在后续预检中修复；随后获授权的 `pr90-repaired-head-release-full-002 / formal-attempt-002` 已执行一次并永久冻结。Gate 1—62 为 62 PASS，Gate 63 因一条 anchor/size warning 正式 fail-closed，Gate 64—79 未启动。Gate 63 业务断言为 18/18，但不能覆盖 Canonical diagnostics 失败。根因是测试 fixture 把 Full Rect `PlanetMapView` 直接挂到 `SceneTree.root` 后写固定 size；生产父链有单一布局 Owner，没有生产缺陷证据。当前任务要求 Godot 文件只能经当前 MCP 修改，而已安装 MCP 没有 `.gd` 读写/patch 工具，Editor 窗口也无法由 Computer Use 接管，因此修复尚未发生。下一任务为 `PR90_GATE63_PLANET_MAP_LAYOUT_CURRENT_MCP_SCRIPT_EDIT_CAPABILITY`。完整当前证据见 `reports/handoffs/pr90_gate63_planet_map_layout_tooling_blocker.{json,md}`；后续关于 Formal Attempt 001 的段落仅保留为历史记录，不再代表当前阻塞。
+
 > 交接基线：PR #90 Head `1e948a15e17faffe648722fd596fac01a4525426`，Tree `8508df4e900a73c058566f00fc556ec1d11e08ca`。
 > 状态标签：**LIVE** 已由当前产品代码或正式规则确认；**TEST_ONLY** 仅为测试夹具/离线验证能力；**PLANNED** 尚未实现；**RETIRED** 已禁止重新引入；**UNVERIFIED** 当前没有足够证据。
-> 当前终态：**BLOCKED_AFTER_FORMAL_GATE1_RUNNER_AND_IMPORT_PRECONDITION_FAILURE**。PR #90 尚未合并；新 Head CI 成功。唯一正式 Attempt 已消费并永久冻结：Gate 1 Godot 进程真实启动，但当前 Head Clone 没有 Canonical Import Cache，随后 Raw `diagnostics` singleton 又因序列化为 object 被 Normalizer fail closed；Gate 2—79 未启动。
+> 当前终态：**BLOCKED_BEFORE_GATE63_FIXTURE_REPAIR_DUE_CURRENT_MCP_SCRIPT_EDIT_CAPABILITY_MISSING**。PR #90 尚未合并；Head/Tree 与 CI 保持不变。Formal Attempt 002 已冻结，Gate 1—62 PASS，Gate 63 FAIL，Gate 64—79 未启动。
 
 ## 1. 五分钟总览
 

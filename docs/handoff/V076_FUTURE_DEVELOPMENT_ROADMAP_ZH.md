@@ -10,9 +10,10 @@
 
 ## 前置门
 
-1. 修复 PR #90 full-plan Manifest：计划包含 Gate 1 时禁止 reuse；计划从后续 Gate 开始时才要求真实 Attestation。
-2. 新授权下完整执行新 Head Gate 1—79，再完成三路 Review、Exact-SHA MCP、Viewport、Headless Matrix、2,000 局。
-3. 用 merge commit 合并 PR #90 并按 Release Manifest 打 Tag。
+1. 在不修改 Formal Attempt 002 的前提下修复 Gate 63 测试布局合同；当前必须先解决 Godot MCP 缺少 `.gd` patch 能力的工具阻塞。
+2. Gate 63 聚焦验证与 Gate 63—79 开发预演全部通过后形成新 Head，并完成唯一一次新 Head Gate 1—79 Formal Release。
+3. 三路 Review、Exact-SHA MCP、Viewport、Headless Matrix 与 2,000 局全部通过后，用 merge commit 合并 PR #90 并按 Release Manifest 打 Tag。
+4. PR #90 合并后立即创建独立 V0.7.6 Detached POC A 分支；不得在 PR #90 合并前提前实施。
 
 ## Detached POC
 
