@@ -3,8 +3,8 @@
 ```text
 你是《Space Syndicate / 太空辛迪加》的主开发 Agent。
 
-TASK_ID=PR90_REPAIRED_HEAD_FULL_GATE1_79_FORMAL_ATTEMPT_001
-EXECUTION_MODE=USE_SEALED_GATE1_SOURCE_CONTRACT_V2_RUN_FULL_GATE1_79_ONCE_THEN_CONDITIONAL_RELEASE_CHAIN
+TASK_ID=PR90_RELEASE_HEAD_BOUND_IMPORT_CACHE_AND_RAW_DIAGNOSTICS_CARDINALITY_REPAIR
+EXECUTION_MODE=FREEZE_FORMAL_ATTEMPT_001_REPAIR_TOOLING_PREFLIGHT_ONLY_THEN_REQUEST_NEW_FORMAL_AUTHORIZATION
 
 产品身份：
 PR_NUMBER=90
@@ -16,140 +16,153 @@ CI_STATUS=SUCCESS
 PR_STATE=OPEN_DRAFT
 PR_MERGEABLE=true
 
-历史产品事实：
-OLD_HEAD_SHA=6d4d52dfbc8001c919ac569dcab2e3b53f968d34
-OLD_RELEASE_GATE_2_TO_15=14/14_PASS
-OLD_RELEASE_GATE_16=PRODUCT_FAIL
-OLD_RELEASE_GATE_16_RAW_SHA256=a72f48f06175286e38c5d82a6d4c08f15ee53e3eec7a1a91b8a63e9db7268b9b
-PRODUCT_REPAIR_CYCLE_COUNT=1
-PRODUCT_REPAIR_COMMIT=1e948a15e17faffe648722fd596fac01a4525426
-POST_REPAIR_TARGETED_GATE_15_16_60=3/3_PASS
+冻结正式现场：
+FROZEN_RUN_ID=pr90-repaired-head-release-full-001
+FROZEN_ATTEMPT_ID=release-full-attempt-001
+FROZEN_EXECUTION_COUNT=1
+FROZEN_AUTHORIZED_COUNT_CONSUMED=1
+FROZEN_PRODUCT_ATTEMPT_CONSUMED=true
+FROZEN_GATE1_GODOT_STARTED=true
+FROZEN_GATE1_PRODUCT_PID=26632
+FROZEN_GATE2_TO_79_STARTED=false
+FROZEN_AUTOMATIC_RETRY_COUNT=0
 
-已完成的 Runner-only 修复：
-GATE1_SOURCE_CONTRACT_VERSION=V2
-TOOLING_REVISION_COUNT=1
-TOOLING_REVISION_ID=release-full-head-gate1-reuse-optional-tooling-revision-001
-FINAL_PREFLIGHT_ATTEMPT=3
-FINAL_PREFLIGHT_STATUS=PASS
-FINAL_PREFLIGHT_REPORT_SHA256=38c434c83247180afe4051ea15e53f52ddccae4857473ae257ae852036f278ae
-PREFLIGHT_COMPLETE_SEAL_REQUIRED=true
+FROZEN_EXECUTION_START_SHA256=dc7cf44a053fac2095ca6e1b29f72216b437f578bcf948f88ff53e6776c9deda
+FROZEN_GATE1_RAW_RESULT_SHA256=fc7fea93e7e097892959b25493f51d7dd12239c3885880476217c60750f36736
+FROZEN_SUMMARY_SHA256=7579e862f42ecead8e78885c6b079b7e647a6d9b54bc6b8268ac5dae0446114b
 
-前两个 Preflight Attempt 是 append-only Tooling 失败：
-- Attempt 1：PowerShell if positional invocation；Worker/Godot 0。
-- Attempt 2：Where-Object operator tokenization；六类 Dry Run 已完成，Godot 0。
-- 两者均未消耗产品 Attempt，且不得删除或覆盖。
+正式冻结语义：
+FROZEN_SUMMARY_STATUS=RUNNER_BLOCKED
+FROZEN_PRODUCT_STARTED_COUNT=1
+FROZEN_PRODUCT_COMPLETED_COUNT=0
+FROZEN_PRODUCT_PASS_COUNT=0
+FROZEN_PRODUCT_FAIL_COUNT=0
+FROZEN_PRODUCT_FAILURE_ATTESTED=false
+FROZEN_RUNNER_FIRST_FAILURE_CLASS=PRODUCT_EXECUTOR_INVALID
+FROZEN_RUNNER_FIRST_FAILURE_MESSAGE=product_executor_diagnostics_wrong_type
 
-密封正式输入：
-FORMAL_RUN_ID=pr90-repaired-head-release-full-001
-FORMAL_ATTEMPT_ID=release-full-attempt-001
-FORMAL_GATE_RANGE=1-79
-FORMAL_GATE_COUNT=79
+不得修改、删除、覆盖、补写或重跑 Formal Attempt 001。不得生成缺失的 Gate Row/Receipt，不得把 Raw failure 描述成已证明的产品回归，不得恢复已消费配额。
 
-FORMAL_PLAN_SHA256=55323dab888060b0214c00c81c43993af9b69c28a28939f84f34b569f0b78e85
-FORMAL_MANIFEST_SHA256=1be88a6b41e9e2154a4f59c85c30095767379f2c01ef3d9fada0fd363493e68c
-FORMAL_WORKER_SHA256=675f5ad470fb26bc377731e1ba9e7380c9852d33b4200fdca0c72ac6f9a5d8bd
-FORMAL_PROJECTOR_SHA256=f9dc0a85ddc2861eb14645044aef8bcfa3f32c103558a29a65a53a3547cc0509
-FORMAL_LAUNCHER_SHA256=a82052f7e311987bdc33499a5c71b390d20e3028a33fc6348a2f34119ec93762
+Raw 产品进程事实：
+- Gate 1 `res://tests/smoke_test.gd --check-only` 已真实启动一次。
+- duration=0.75 秒，process_exit_code=1，timed_out=false。
+- script_error_count=1158。
+- first_script_error=`Could not find type "MenuLifecycleApplicationFlowController" in the current scope.`
+- Raw diagnostic_count=1，但 JSON `diagnostics` 是单一 object，不是 array。
+- stderr SHA256=`87688623de10c92cd314fe6ea54306df30e944c67ecb80c4a528af628dbf33a8`。
 
-FORMAL_PLAN_PATH=
-E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence-gate1-source-contract-revision-001-attempt-003/release-run-plan-1-79-v1.json
+根因 A：当前 Head 的 Import Cache 没有进入正式 Clone。
+- Acceptance Clone 完全没有 `.godot` 目录。
+- `.godot/global_script_class_cache.cfg` 不存在。
+- Raw Result 明确记录 cache_present_before=false、cache_invalid_reason_before=missing、import_mode=none。
+- Formal Manifest 引用的 Canonical Import Evidence 路径属于旧 Head `6d4d52df...`。
+- 首批报错涉及的 class_name 均在当前 Head 源码真实存在。
 
-FORMAL_MANIFEST_PATH=
-E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence-gate1-source-contract-revision-001-attempt-003/pr90-repaired-head-release-full-001-formal-manifest.json
+正式分类：
+FIRST_BLOCKER_CLASS=FORMAL_CLONE_CURRENT_HEAD_CANONICAL_IMPORT_CACHE_MISSING
+PRODUCT_CODE_REGRESSION_ATTESTED=false
 
-FORMAL_ROOT=
-E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-repaired-head-release-full-001/formal-attempt-001
+根因 B：Raw diagnostics 基数不稳定。
+- 唯一诊断被 JSON 序列化为 object。
+- Normalizer 正确 fail closed 为 `product_executor_diagnostics_wrong_type`。
+- Product Executor 因此没有形成 PASS 或 FAIL Authority，也没有继续 Gate 2。
 
-Gate 1 来源合同：
-- Full Plan 包含 Gate 1，必须使用 FORMAL_IN_PLAN。
-- Formal Manifest 中 gate1_reuse_attestation 属性数量必须为 0。
-- Gate 1 必须在本 Attempt 真实执行一次。
-- Aggregate 必须由 79 个当前正式 Product Authority + 79 个当前正式 Receipt 构成。
-- reuse_attestation_count 必须为 0。
-- 不得使用旧 Head Gate 1、CI 日志、空路径、null 或假 Attestation。
+正式分类：
+SECOND_BLOCKER_CLASS=RAW_DIAGNOSTICS_SINGLETON_ARRAY_COLLAPSED_TO_OBJECT
 
-已证明：
-RELEASE_RUN_PLAN_DRY_RUN=6/6_PASS
-MANIFEST_NEGATIVE_CASES=8/8_PASS
-AGGREGATE_NEGATIVE_CASES=4/4_PASS
-REAL_FROZEN_RESULT_PROJECTION=PASS
-FULL_FORMAL_AGGREGATE_FIXTURE=PASS_79_RECEIPTS_0_REUSE
-FROZEN_REUSE_AGGREGATE_FIXTURE=PASS_78_RECEIPTS_1_REUSE
-AST_ERROR_COUNT=0
-HARDCODED_ACCOUNTING_GATE_ID_COUNT_AFTER=0
-EXACT_REUSED_COMPONENT_BYTE_PARITY=13/13
-PRODUCT_EXECUTOR_DEPENDS_ON_EVIDENCE_PROJECTOR=false
-EVIDENCE_PROJECTOR_FAILURE_STOPS_PRODUCT_EXECUTION=false
+本任务只授权一个新的 append-only Tooling Revision。允许修改仓库外 Release Runner/Preflight/Test Runner/Result Writer/Schema Self-Test/Manifest Builder；不允许修改 PR #90 产品代码、Godot 项目、测试、Canonical Gate Manifest、Gate 顺序、Gate 预期、规则或数值。
 
-本 Prompt 明确授权：
-AUTHORIZED_PRODUCT_ATTEMPT_COUNT=1
-AUTHORIZED_GATE_EXECUTION_COUNT=79
-AUTHORIZED_GATE_IDS=1..79
-AUTOMATIC_PRODUCT_RETRY_ALLOWED=false
+必须建立 `HeadBoundCanonicalImportEvidenceV1`：
+- head_sha、tree_sha、clone_root；
+- Godot path/version/SHA、renderer、import settings fingerprint；
+- import started/ended、exit code、timeout；
+- cache path、cache size、cache SHA256、cache fingerprint；
+- sidecar classification parity；
+- canonical payload SHA256。
+
+Formal Launcher 在任何产品 Gate 前必须验证：
+1. Import Evidence Head/Tree 等于 Manifest Head/Tree；
+2. Evidence clone_root 等于正式 Acceptance Clone；
+3. cache 文件当前真实存在；
+4. cache SHA/fingerprint 与 Evidence 一致；
+5. Godot 与 renderer/import settings 身份一致；
+6. clone tracked/index delta 为 0。
+
+不得接受：
+- 旧 Head Import Evidence；
+- 只有 Evidence 但缓存物理文件不存在；
+- 其他 Clone 的缓存路径；
+- cache SHA 漂移；
+- 通过 CI SUCCESS 推定 Import 已完成。
+
+当前 Head 尚未执行有效 Canonical Import，因此本 Tooling Preflight 允许在一个新的 exact-sha disposable Acceptance Clone 中执行一次 Canonical Import。Import 属于 Tooling Preflight，不是产品 Gate Attempt；不得运行任何 Gate 脚本。Import 完成后密封 Clone、Evidence、Manifest 和全部 Runner 字节。不得重复 Import。
+
+必须修复 Raw diagnostics writer 合同：
+- Raw Result 中 `diagnostics` 始终为 JSON array；
+- 零诊断必须为 `[]`；
+- 单诊断必须为 `[record]`，不得折叠为 object；
+- 多诊断保持稳定顺序；
+- null、string、number、嵌套数组、null element 均 fail closed；
+- diagnostic_count 必须与数组长度一致；
+- Normalizer 不得把任意 object 静默包装为数组；
+- 不关闭 StrictMode，不吞掉错误，不伪造 message。
+
+至少 Self-Test：
+1. diagnostics=[]；
+2. 单元素数组 JSON roundtrip；
+3. 多元素数组 JSON roundtrip；
+4. object 被拒绝；
+5. null + count 0 按声明合同处理；
+6. null + count >0 被拒绝；
+7. null element 被拒绝；
+8. string/number/nested array 被拒绝；
+9. diagnostic_count mismatch 被拒绝；
+10. 当前冻结 Raw Result 只读重放产生明确 legacy-cardinality blocker，不修改原文件；
+11. synthetic corrected singleton array 能 Normalize→Authority→Row→Receipt→Progress→Summary；
+12. Result JSON serialization/deserialization fingerprint parity。
+
+Import 负例至少覆盖：
+1. old-head evidence；
+2. missing cache；
+3. wrong cache SHA；
+4. wrong clone root；
+5. wrong tree；
+6. dirty clone；
+7. valid exact-head cache。
+
+正式预检要求：
+HEAD_BOUND_IMPORT_SELFTEST=PASS
+RAW_DIAGNOSTICS_CARDINALITY_SELFTEST=PASS
+CURRENT_HEAD_CANONICAL_IMPORT_STATUS=PASS
+CURRENT_HEAD_IMPORT_EXECUTION_COUNT=1
+CURRENT_HEAD_IMPORT_CACHE_PRESENT=true
+CURRENT_HEAD_IMPORT_CACHE_FINGERPRINT_GREEN=true
+FORMAL_CLONE_HEAD_TREE_CLEAN=true
+FORMAL_WORKER_AST_ERROR_COUNT=0
+FORMAL_DRY_RUN_PASS=true
+FORMAL_DRY_RUN_GODOT_GATE_START_COUNT=0
+PRODUCT_ATTEMPT_CONSUMED_BY_PREFLIGHT=false
+
+预检必须证明 Gate 1 的正式命令在不启动 Gate Godot 的 command-plan/binder dry run 中将使用已导入的 exact-head Clone。预检结束后不得修改密封 Worker、Result Writer、Normalizer、Manifest、Plan、Launcher 或 Clone Cache 字节。
+
+本任务明确不授权：
+AUTHORIZED_PRODUCT_ATTEMPT_COUNT=0
+AUTHORIZED_GATE_EXECUTION_COUNT=0
+AUTOMATIC_RETRY_ALLOWED=false
 AUTOMATIC_CONTINUATION_CREATION_ALLOWED=false
-CANONICAL_IMPORT_RERUN_ALLOWED=false
 PRODUCT_REPAIR_CYCLE_ALLOWED=false
 
-只有以下全部成立才可调用密封 Launcher：
-1. 实时 PR Head、直接 PR Ref、直接 Branch Ref、Acceptance Clone Head 全等于指定 Head。
-2. Acceptance Clone Tree 等于指定 Tree，tracked/index delta 都为 0。
-3. CI 仍为 SUCCESS，PR 仍 OPEN、DRAFT、MERGEABLE。
-4. Plan、Manifest、Worker、Projector、Launcher SHA 与密封值完全一致。
-5. Formal Root 不存在。
-6. Godot、Release Worker、7576、7586 都为 0。
-7. 所有历史 Attempt 和三个 Preflight Root 的字节未修改。
+预检全绿后，停止并请求新的明确授权：
+PR90_REPAIRED_HEAD_FULL_GATE1_79_FORMAL_ATTEMPT_002
 
-Attempt 边界：
-- 第一个产品 Godot 进程成功创建时消耗唯一 Attempt。
-- execution-start.json 必须由 Gate 1 的真实产品进程创建点立即写入。
-- Gate 1 尚未创建产品进程时，Attempt 未消耗。
-- 进程创建后，即使 Witness、Progress、Receipt、Summary 或 Aggregate 失败，也不得恢复配额。
+新的 Attempt 必须使用新的 run/attempt/root，不得复用或覆盖 Attempt 001。只有用户明确授权后，才能完整执行 Gate 1—79 一次。首个真实产品失败停止；Runner 失败冻结；不得自动再试。
 
-正式执行：
-- 只执行 Gate 1—79 一次。
-- 每 Gate 保存 Raw Result、Product Authority、Normalized Result、Row、Receipt 和进程身份。
-- 首个真实产品失败立即停止；不得重跑、自动修复或创建 Continuation。
-- 投影失败记录到 backlog，并继续后续产品 Gate；不得使已权威 PASS 的产品结果失效。
-- Runner 自身无法继续时冻结现场；不得把它描述为产品失败。
-
-只有 79 个当前 Head 产品 Gate 全 PASS 才生成：
-AGGREGATED_PRODUCT_FOCUSED_TESTS=79/79
-AGGREGATED_PRODUCT_FOCUSED_STATUS=PASS
-GATE1_SOURCE_MODE=FORMAL_IN_PLAN
-FORMAL_RECEIPT_COUNT=79
-REUSE_ATTESTATION_COUNT=0
-
-79/79 后按顺序、每阶段一次：
-1. Post-Aggregate Review A/B/C，要求 P0=0、P1=0。
-2. Exact-SHA MCP。
-3. 真实 Viewport 样品局。
-4. Headless 3/4/6/8。
-5. Product Headless 2,000。
-6. 刷新 PR #90 描述、转 Ready、使用 merge commit 合入 main。
-7. 发布最终 docs-only 云端 Handoff；PR #91 不合入产品分支。
-
-任何阶段首失败立即停止，不重跑 Gate 1—79，不自动创建下一 Attempt。
-
-禁止：
-- 修改 PR #90 产品代码、测试、Canonical Gate Manifest、规则、Gate 顺序或预期；
-- 修改密封 Runner 字节；
-- 修改或补写历史 Attempt；
-- 重新 Import；
-- squash 或 rebase merge；
-- 实施 V0.7.6、启动 MCP 迁移或确定性战斗 POC。
+后续 Release 链仍然只有在 79/79 后才允许：Post-Aggregate Review、Exact-SHA MCP、Viewport、Headless 3/4/6/8、Product Headless 2,000、PR Ready、merge commit、Tag 和最终 Handoff。
 
 V076_IMPLEMENTATION=false
 V076_POC_STARTED=false
+MCP_PILOT_STARTED=false
+PR90_MERGED=false
 
-若 Formal Gate 失败：
-NEXT_TASK=PR90_PRODUCT_GATE_<ID>_<EXACT_DOMAIN>_BLOCKED_NO_REPAIR_CYCLE
-
-若 Runner 失败：
-NEXT_TASK=PR90_REPAIRED_HEAD_RELEASE_RUNNER_<EXACT_BLOCKER>
-
-若后续 Release Stage 失败：
-NEXT_TASK=PR90_<EXACT_STAGE>_CONTINUATION
-
-若全部完成并合并：
-NEXT_TASK=ALPHA_0_6_V076_DETERMINISTIC_POC_AND_PRODUCTION_PLANNING
+完成本任务后更新 docs-only Handoff，报告精确 Revision、Import Evidence SHA、Cache Fingerprint、Self-Test 数量、密封 Runner SHA、Godot/Worker/端口归零和下一授权字符串。
 ```

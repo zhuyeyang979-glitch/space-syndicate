@@ -2,7 +2,7 @@
 
 > 交接基线：PR #90 Head `1e948a15e17faffe648722fd596fac01a4525426`，Tree `8508df4e900a73c058566f00fc556ec1d11e08ca`。
 > 状态标签：**LIVE** 已由当前产品代码或正式规则确认；**TEST_ONLY** 仅为测试夹具/离线验证能力；**PLANNED** 尚未实现；**RETIRED** 已禁止重新引入；**UNVERIFIED** 当前没有足够证据。
-> 当前终态：**BLOCKED_AWAITING_FORMAL_ATTEMPT_AUTHORIZATION**。PR #90 尚未合并；新 Head CI 成功。旧 Head Gate 16 产品失败已用唯一修复周期修复，Gate 1 Source Contract V2 的 Runner-only 预检已 PASS；新 Head Gate 1—79 尚未获单独产品 Attempt 授权。
+> 当前终态：**BLOCKED_AFTER_FORMAL_GATE1_RUNNER_AND_IMPORT_PRECONDITION_FAILURE**。PR #90 尚未合并；新 Head CI 成功。唯一正式 Attempt 已消费并永久冻结：Gate 1 Godot 进程真实启动，但当前 Head Clone 没有 Canonical Import Cache，随后 Raw `diagnostics` singleton 又因序列化为 object 被 Normalizer fail closed；Gate 2—79 未启动。
 
 ## 1. 五分钟总览
 
@@ -14,7 +14,7 @@ PR #90 当前仍为 GitHub Draft、可合并，最新 CI Run `31956611702` 为 S
 
 但 PR #90 还不能合并。旧 Head `6d4d52df` 的正式 Continuation 002 已完成 Gate 2—15（14/14 PASS），Gate 16 `v075_combat_submission_rollback_test.gd` 真实产品 FAIL 后停止；Raw SHA 为 `a72f48f06175286e38c5d82a6d4c08f15ee53e3eec7a1a91b8a63e9db7268b9b`。修复后 Gate 15、16、60 均 PASS，新 Head CI 也 PASS，但这些不是新 Head 的完整 79 Gate Release 证据。【LIVE/UNVERIFIED；来源：冻结 Formal Attempt、定向 Result、GitHub Actions】
 
-下一位开发者的第一件事不是做 V0.7.6，而是明确授权 `PR90_REPAIRED_HEAD_FULL_GATE1_79_FORMAL_ATTEMPT_001`。唯一 post-repair Tooling Revision 已把 Gate 1 来源条件化：full plan 使用 `FORMAL_IN_PLAN` 并禁止 reuse 属性，continuation plan 使用 `FROZEN_REUSE` 并要求真实同 Head/Tree Attestation。Attempt 003 的 18/18 总检查、6/6 Worker Dry Run、8/8 Manifest 负例、4/4 Aggregate 负例和真实 Result 投影均 PASS。【LIVE Tooling；来源：Preflight Seal】
+下一位开发者的第一件事不是做 V0.7.6，也不是重跑 Formal Attempt 001，而是执行 `PR90_RELEASE_HEAD_BOUND_IMPORT_CACHE_AND_RAW_DIAGNOSTICS_CARDINALITY_REPAIR`。它只修复新的 append-only Tooling Preflight：Import Evidence 必须与当前 Head/Tree/Clone 和物理 Cache 绑定；Raw diagnostics 无论 0/1/N 项都必须保持 JSON array。修复全绿后仍要另行请求新的完整产品 Attempt 授权。【LIVE Tooling；来源：Formal Attempt 001 Raw Result、Execution Start 与 Summary】
 
 ## 2. 当前里程碑时间线
 
@@ -36,9 +36,9 @@ PR #90 统一了怪兽四模式与军队两任务的 capability catalog，使“
 
 ### 本任务实际完成与未完成
 
-已完成：旧工具链冻结与 Result/Cardinality/Binding 证据；ReleaseRunPlanV1 与 first-product-process accounting 修复；旧 Head Gate 2—15 的 14 项 PASS；Gate 16 产品失败定位；一次允许的产品修复；Gate 15/16/60 定向 PASS；新 Head CI SUCCESS；新 Head 四方身份与干净 Acceptance Clone；Gate 1 Source Contract V2；六类相同 Worker Dry Run、reuse 正负例、真实 Result Projection 与双模式 Aggregate；所有历史 Attempt 保持不可变。【LIVE/TEST_ONLY；来源：Acceptance Evidence 与 Preflight Seal】
+已完成：旧工具链冻结与 Result/Cardinality/Binding 证据；ReleaseRunPlanV1 与 first-product-process accounting 修复；旧 Head Gate 2—15 的 14 项 PASS；Gate 16 产品失败定位；一次允许的产品修复；Gate 15/16/60 定向 PASS；新 Head CI SUCCESS；新 Head 四方身份与干净 Acceptance Clone；Gate 1 Source Contract V2；六类相同 Worker Dry Run、reuse 正负例、真实 Result Projection 与双模式 Aggregate；正式 Attempt 001 的 Gate 1 进程启动、Raw Result、Runner stop 与零残留已冻结。【LIVE/TEST_ONLY；来源：Acceptance Evidence、Preflight Seal、Formal Attempt 001】
 
-未完成：新 Head Canonical Import、正式 Gate 1—79、79/79 Aggregate、Post-Aggregate Review、Exact-SHA MCP、Viewport、3/4/6/8 Headless Matrix、2,000 局 Product Headless、PR Ready、merge commit、Release Tag。【UNVERIFIED/NOT_RUN；来源：本次 pre-product blocker】
+未完成：当前 Head 有效 Canonical Import、可判定的 Gate 1 Product Authority、Gate 2—79、79/79 Aggregate、Post-Aggregate Review、Exact-SHA MCP、Viewport、3/4/6/8 Headless Matrix、2,000 局 Product Headless、PR Ready、merge commit、Release Tag。【UNVERIFIED/NOT_RUN；来源：Formal Attempt 001 blocker】
 
 ## 3. 玩家当前能做什么
 
@@ -247,8 +247,10 @@ flowchart LR
 | V2 Final Preflight Attempt 003 | 18/18 PASS，无 Godot | 新 Head | Report `38c434c8…78ae` | 否 |
 | Full Aggregate fixture | PASS，79 Receipt/0 reuse | 新 Head | `FORMAL_IN_PLAN` | 否，Tooling-only |
 | 新 Head Acceptance Clone | exact/clean | `1e948a15` | Head/Tree/status parity | 否 |
-| 新 Head Canonical Import | NOT_RUN | `1e948a15` | pre-product stop | 是，Runner |
-| 新 Head Formal Gate 1—79 | NOT_STARTED | `1e948a15` | execution count 0 | 是，Runner |
+| 新 Head Canonical Import | NOT_AVAILABLE_IN_FORMAL_CLONE | `1e948a15` | `.godot/global_script_class_cache.cfg` 缺失 | 是，Runner/Preflight |
+| Formal Attempt 001 | RUNNER_BLOCKED | `1e948a15` | execution 1；Attempt consumed | 是 |
+| Gate 1 Raw Invocation | FAILED_ENVIRONMENT_PRECONDITION | `1e948a15` | Raw `fc7fea93…6736`；exit 1；1,158 parse errors | 是，未形成 Product Authority |
+| Gate 2—79 | NOT_STARTED | `1e948a15` | Runner stopped after Gate 1 | 是 |
 | Aggregate 79/79 | NOT_RUN | `1e948a15` | 无 | 是 |
 | Post-Aggregate Review | NOT_RUN | `1e948a15` | 无 | 是 |
 | Exact-SHA MCP | NOT_RUN | `1e948a15` | 无 | 是 |
@@ -257,21 +259,21 @@ flowchart LR
 | Product Headless 2,000 | NOT_RUN | `1e948a15` | 无 | 是 |
 | PR #90 | OPEN DRAFT，mergeable | `1e948a15` | GitHub PR #90 | 是 |
 
-当前首失败发生在产品启动之前：Revision 002 Worker 的 Manifest required-fields 与 validator 无条件读取 `gate1_reuse_attestation`，并要求 `reuse_eligible=true`、Gate 1、Head/Tree 与当前 Manifest 完全一致。新 Head 必须完整新跑 Gate 1—79，旧 Head Attestation 不可复用；CI 没有发布 Raw Result，不能据日志生成 Attestation。新 Head `execution-start.json` 不存在，执行计数、授权消耗与 Godot starts 均为 0。【LIVE Tooling fact】
+Formal Attempt 001 的 Gate 1 Godot PID `26632` 已真实创建，所以 `execution-start.json` 权威记录 execution/authorized count 均为 1，产品 Attempt 已消费。进程在 0.75 秒后退出 1；Raw Result SHA `fc7fea93e7e097892959b25493f51d7dd12239c3885880476217c60750f36736`，首条错误是无法找到 `MenuLifecycleApplicationFlowController`。该类型及后续首批缺失类型在 exact Head 源码均有真实 class_name 声明，但 Formal Clone 完全没有 `.godot` 目录；Raw Result 也记录 Import 未请求、class cache missing。【LIVE Tooling/environment fact】
 
 在此之后的独立只读审计穷尽了 6 个密封 Worker 候选实例（5 个唯一 SHA）。Revision 001/002 具有正确的动态首 Gate 记账与 Product/Evidence 分离，但都无条件要求 Gate 1 reuse；较早 full-range Worker 不要求 reuse，却硬编码 Gate 1 或 Gate 3，并缺失当前产品结果权威与证据投影合同。结论为 `NO_AUTHORIZED_EXISTING_ENTRYPOINT`；不能通过旧 Worker、内部函数直调、空 Attestation 或旧 Head 证据绕过。【LIVE Tooling fact；Audit SHA `17500b45…b1a`】
 
-上述 blocker 已由唯一获授权的 post-repair Tooling Revision 解决。V2 Formal Manifest 使用 `FORMAL_IN_PLAN` 且 reuse 属性数为 0；Plan 为新 Head Gate 1—79；合成 full Aggregate 为 79 当前来源、79 Receipt、0 reuse。最终 Preflight Report SHA 为 `38c434c83247180afe4051ea15e53f52ddccae4857473ae257ae852036f278ae`。当前阻塞不再是 Runner 合同，而是尚未获得独立的产品 Attempt 授权。【LIVE Tooling fact】
+原 Gate 1 来源 blocker 已由唯一获授权的 post-repair Tooling Revision 解决；它没有覆盖当前新发现的 Head-bound Import Cache 合同。Formal Manifest 的 `canonical_import_evidence` 指向旧 Head `6d4d52df...`，预检只校验了 Evidence 字节，没有证明当前 Head Clone 的 cache 物理存在。Raw Result 又把唯一 diagnostics 序列化为 object；Normalizer 因 `product_executor_diagnostics_wrong_type` 正确 fail closed。正式 Summary 因此为 `RUNNER_BLOCKED`，product started=1、completed/pass/fail=0，Gate 2—79 未启动。【LIVE Tooling fact】
 
 ## 9. 已知问题与技术债务
 
 ### 产品问题
 
-旧 Head Gate 16 的 Combat submission rollback/exact-once 产品问题已用唯一修复周期解决，修复后 Gate 15、16、60 和新 Head CI 均 PASS。但新 Head Gate 1—79 尚未正式启动，因此“新 Head 无产品问题”是 **UNVERIFIED**，不能写成 PASS。
+旧 Head Gate 16 的 Combat submission rollback/exact-once 产品问题已用唯一修复周期解决，修复后 Gate 15、16、60 和新 Head CI 均 PASS。Formal Gate 1 的 Raw Godot invocation 确实失败，但当前证据将其归因于缺失 current-head class cache，且 Product Executor 未形成产品 FAIL Authority。因此 `PRODUCT_CODE_REGRESSION_ATTESTED=false`；“新 Head 无产品问题”仍是 **UNVERIFIED**，不能写成 PASS。
 
 ### Runner / Tooling 债务（当前阻塞）
 
-`first_planned_gate_id` 与产品进程创建后立即记账已经在 Revision 002 修复。Gate 1 reuse 条件与 full-plan Aggregate cardinality 已由 V2 修复并通过正负例：计划包含 Gate 1 时禁止 reuse，计划排除 Gate 1 时强制真实同 Head/Tree reuse。剩余工作是一次明确授权的产品 Gate 1—79 Attempt，不再授权新的 Runner 字节。
+`first_planned_gate_id`、产品进程创建后立即记账、Gate 1 reuse 条件与 full-plan Aggregate cardinality 已修复且本次 execution-start 证明记账触发有效。当前 Runner/Preflight 仍有两个明确 blocker：Import Evidence 没有绑定当前 Head Clone 的物理 cache；Raw diagnostics singleton array 在 JSON 写出时折叠为 object。只能在新的 append-only Tooling Revision 中修复，不能修改或重跑 Formal Attempt 001。
 
 另外要保留 V3 cardinality、Start Witness Wire 与 Product Executor/Evidence Projector 解耦。不能为修 trigger 倒退到 Raw `.Count`、`@($null)`、关闭 StrictMode 或让 projection failure 抹除产品 PASS。
 
@@ -307,13 +309,13 @@ V0.7.5 Combat 仍是 new-game-only；Detached checkpoint 是 TEST_ONLY。生产 
 
 ## 11. 下一开发者的三步计划
 
-### 第一步：只修 Runner，并证明不触碰产品
+### 第一步：冻结 Formal Attempt 001
 
-从 `handoff/pr90-blocked-6d4d52df` 阅读本交接，再只读核验 Preflight Attempt 003 的 Seal、Plan、Manifest、Worker 与 Projector SHA。Runner-only 修复已经完成；不要创建第二个 post-repair Revision，也不要修改已密封字节。
+从 `handoff/pr90-blocked-6d4d52df` 阅读本交接，核验 Formal Attempt 001 的 Execution Start、Raw Result 与 Summary SHA。不得补写 Row/Receipt，不得删除日志，不得在原 Root 继续运行；确认 Godot/Worker/7576/7586 为 0。
 
-### 第二步：请求新的正式 Attempt 授权，再完成产品门
+### 第二步：修复 Head-bound Import 与 Raw diagnostics array 合同
 
-新 Head Attempt 尚未消耗，Tooling 预检已经全绿。向用户请求 `PR90_REPAIRED_HEAD_FULL_GATE1_79_FORMAL_ATTEMPT_001`；新 Attempt 必须独立 append-only，Gate 1 必须新执行且不得接入旧 Head reuse。首产品失败即停，不自动创建 Continuation，也不再开启第二个产品修复周期。
+执行 `PR90_RELEASE_HEAD_BOUND_IMPORT_CACHE_AND_RAW_DIAGNOSTICS_CARDINALITY_REPAIR`。新的 Tooling Preflight 可以为当前 Head 在 disposable exact-sha Clone 执行一次 Canonical Import，但不得启动任何产品 Gate；必须证明 Evidence Head/Tree/Clone/Cache SHA 一致，并证明 diagnostics 0/1/N 项 JSON roundtrip 均保持 array。全绿后密封新 Runner 字节，再请求 `PR90_REPAIRED_HEAD_FULL_GATE1_79_FORMAL_ATTEMPT_002`；不得自动启动。
 
 ### 第三步：只有 79/79 后进入 Release Acceptance
 
@@ -384,7 +386,7 @@ MCP 与 Viewport 仅在 79/79 后执行仓库已有 runbook：`tools/invoke_v075
 
 【LIVE】规则判定应遵循“身份、结构、数值、实现、证据”五层分工。Constitution 决定合法枚举、Owner、端口和生命周期；Balance Defaults 决定可以调节的数值；Registry 或资源定义决定具体卡牌、设施、怪兽与军队目录；Core/Owner 决定运行时唯一写入路径；测试与 Release Evidence 证明特定 Head 上是否通过。不要在 UI 字符串、模型颜色、场景节点名称或测试夹具常量里反向推导规则。比如怪兽 family 的 preferred color 只服务自治目标，而同一张怪兽牌实例的 `primary_color` 仍由统一供应轨 Authority 独立产生；二者在画面上都可能显示颜色，却不是同一权威字段。
 
-【LIVE】状态标签必须跟随每一条重要结论。`LIVE` 表示当前代码或冻结规则已经具备该能力，不代表本次 Release Acceptance 全绿；`TEST_ONLY` 表示能力只用于夹具、离线检查或 Detached checkpoint，不能承诺给玩家；`PLANNED` 表示路线图；`RETIRED` 表示禁止回流；`UNVERIFIED` 表示本次证据不足。尤其要注意，“CI PASS”“某个定向 Gate PASS”“产品完整可发布”是三个不同层次。本次新 Head 的 CI 与 Gate 15/16/60 定向验证是 PASS，但新 Head 正式 Gate 1—79 与后续 Release 链是 NOT_RUN，所以产品仍然 BLOCKED。
+【LIVE】状态标签必须跟随每一条重要结论。`LIVE` 表示当前代码或冻结规则已经具备该能力，不代表本次 Release Acceptance 全绿；`TEST_ONLY` 表示能力只用于夹具、离线检查或 Detached checkpoint，不能承诺给玩家；`PLANNED` 表示路线图；`RETIRED` 表示禁止回流；`UNVERIFIED` 表示本次证据不足。尤其要注意，“CI PASS”“某个定向 Gate PASS”“产品完整可发布”是三个不同层次。本次新 Head 的 CI 与 Gate 15/16/60 定向验证是 PASS，但正式 Attempt 001 在 Gate 1 的 Runner/Import 前置条件上停止，Gate 2—79 与后续 Release 链是 NOT_RUN，所以产品仍然 BLOCKED。
 
 【LIVE】遇到来源冲突时，不要通过编辑一段文档制造表面一致。先记录冲突双方、各自语境、版本和是否有 Exact-SHA 运行证据，再交给后续任务决定。例如 Combat Authority Manifest 中早期 `connected_domain_count=0` 的目标清单语境，与 PR #90 已出现的生产 wiring 代码和定向测试存在时间差。本交接把它列为文档陈旧项，而不是擅自将 Manifest 改成新事实。只有新 Head 完整 Gate 与 Exact-SHA MCP 形成证据后，才适合更新这类声明。
 
@@ -472,19 +474,19 @@ MCP 与 Viewport 仅在 79/79 后执行仓库已有 runbook：`tools/invoke_v075
 
 ### 开发者实操附录 F：如何判断产品 PASS、Runner FAIL 与冻结证据
 
-【LIVE Tooling】一次正式 Gate 至少包含两条相邻但独立的链。产品执行链启动 Godot，在 exact Head/Tree、测试路径和参数上产生 stdout/stderr 与 Raw Result；证据投影链再把结果规范化为 Gate Row、Receipt、Progress、Summary 和 Aggregate。前者回答“产品做了什么”，后者回答“Runner 是否成功记录”。把两条链拆开，是本次能够保留 Gate 1 真实 PASS、同时诚实报告 Release BLOCKED 的关键。
+【LIVE Tooling】一次正式 Gate 至少包含两条相邻但独立的链。产品执行链启动 Godot，在 exact Head/Tree、测试路径和参数上产生 stdout/stderr 与 Raw Result；证据投影链再把结果规范化为 Gate Row、Receipt、Progress、Summary 和 Aggregate。前者回答“产品进程观察到了什么”，后者回答“该观察能否成为版本化 Product Authority”。本次 Gate 1 有 Raw failure，但因 current-head Import Cache 缺失且 Raw diagnostics 类型不合法，没有形成 Product PASS 或 FAIL Authority；不能把它补写成任一结论。
 
 【LIVE Tooling】一个 Raw Result 要成为 Product Result Authority，至少要能证明 gate/test identity 与 Head/Tree 匹配、进程确实启动、exit code、timeout、required marker、脚本/资源/runtime/task/UID/unclassified 诊断、残留进程，并且原始字节有稳定 SHA。旧 Head Gate 1 与 Gate 2—15 的 PASS 仍是历史权威，旧 Head Gate 16 则满足真实 PRODUCT FAIL 合同。任何这些结果都不能迁移成新 Head 的产品结论。
 
-【LIVE Tooling】产品结果出现之后，progress、heartbeat、observer、row、receipt、summary 或 aggregate 失败属于 `RUNNER_FAILURE_AFTER_PRODUCT_RESULT`。它阻止整个 Attempt 宣称完成，却不把已经满足权威条件的产品 PASS 反写成 FAIL。旧 Head 的首次记账与新 Head Gate 1 来源合同均已在 Tooling Preflight 修复；当前只是 `FORMAL_ATTEMPT_AUTHORIZATION_REQUIRED`，产品失败 attested 为 false，Attempt 未消耗。
+【LIVE Tooling】产品结果出现之后，progress、heartbeat、observer、row、receipt、summary 或 aggregate 失败属于 `RUNNER_FAILURE_AFTER_PRODUCT_RESULT`。它阻止整个 Attempt 宣称完成，却不把已经满足权威条件的产品 PASS 反写成 FAIL。本次不同：Raw Result 在 Product Authority 规范化前已因 diagnostics wrong type 被拒绝，而且执行环境缺少 current-head class cache，因此 Product Authority 尚未形成。Attempt 已消费，产品失败 attested 为 false。
 
-【LIVE Tooling】冻结意味着停止继续“修补现场”。Formal Root 中已经存在的十三个文件以 canonical payload SHA 进入 freeze attestation；不得补写缺失 `execution-start.json`、Gate 1 Formal Receipt/Row/Summary，不得删除 incident，也不得在同一路径重跑。补写会让未来读者无法区分“当时实际发生”与“事后推测应该发生”，还会破坏 append-only 证据链。Gate 1 可以在新的、明确授权的 Attempt 中重跑或通过新的复用政策处理，但决定权来自新授权，不来自文档作者。
+【LIVE Tooling】冻结意味着停止继续“修补现场”。Formal Attempt 001 当前有 29 个文件；`execution-start.json`、Raw Result、`product-execution-complete.json` 与 Summary 均已存在，但 Gate Row/Receipt 不存在。不得补写缺失投影、删除 incident 或在同一路径重跑。补写会让未来读者无法区分“当时实际发生”与“事后推测应该发生”，还会破坏 append-only 证据链。
 
-【LIVE Tooling】历史 Run 001 disposition 仍应表述为 `GATE1_PRODUCT_PASS_THEN_RUNNER_ACCOUNTING_FIRST_GATE_TRIGGER_HARDCODED_TO_GATE3`；历史 Continuation 002 应表述为 `GATE_2_TO_15_PASS_THEN_GATE16_PRODUCT_FAIL`；新 Head旧 blocker 为 `FULL_SUITE_MANIFEST_REQUIRES_UNAVAILABLE_SAME_HEAD_GATE1_REUSE_ATTESTATION_BEFORE_PRODUCT_START`。当前 disposition 是 `GATE1_SOURCE_CONTRACT_V2_PREFLIGHT_PASS_AWAITING_FORMAL_AUTHORIZATION`。四者不能合并成一个含糊的“Gate failed”。
+【LIVE Tooling】历史 Run 001 disposition 仍应表述为 `GATE1_PRODUCT_PASS_THEN_RUNNER_ACCOUNTING_FIRST_GATE_TRIGGER_HARDCODED_TO_GATE3`；历史 Continuation 002 应表述为 `GATE_2_TO_15_PASS_THEN_GATE16_PRODUCT_FAIL`；新 Head旧 blocker 为 `FULL_SUITE_MANIFEST_REQUIRES_UNAVAILABLE_SAME_HEAD_GATE1_REUSE_ATTESTATION_BEFORE_PRODUCT_START`。当前 Formal Attempt 001 disposition 是 `GATE1_RAW_ENVIRONMENT_FAILURE_THEN_PRODUCT_EXECUTOR_DIAGNOSTICS_WRONG_TYPE_RUNNER_BLOCKED`。四者不能合并成一个含糊的“Gate failed”。
 
-【LIVE Tooling】Runner 修复已在 Tooling Preflight 完成，未启动 Godot也未消耗产品 Attempt。`first_planned_gate_id`、reuse 计划条件与 full-plan Aggregate cardinality 均已证明；full plan 拒绝 reuse、continuation plan 缺 reuse fail closed、真实同 Head reuse 可接受、79 个新来源不混入 reuse。
+【LIVE Tooling】Gate 1 Source Contract V2 修复本身在 Tooling Preflight 完成时没有启动 Godot或消耗产品 Attempt；`first_planned_gate_id`、reuse 计划条件与 full-plan Aggregate cardinality 均已证明。随后独立 Formal Attempt 001 已启动 Godot并消耗配额，新发现的 Import/diagnostics blocker 不推翻前述 V2 结论，但要求新的限定 Tooling Repair。
 
-【LIVE Tooling】只有新授权明确给出 run ID、gate range、execution count、Head/Tree、Import 复用、自动重试政策和失败停止规则后，才可以创建新的 Formal Root 并启动第一个产品 Godot 进程。首个真实产品失败立即冻结；Runner 在产品结果后失败也冻结，但可建立独立 append-only reuse attestation。两种故障都不能在未修改 Head 上自动重跑，更不能创建未授权 Continuation。
+【LIVE Tooling】只有新的 Tooling Repair 先证明 current-head Import Cache 与 diagnostics array 合同全绿，再由新授权明确给出 run ID、gate range、execution count、Head/Tree、Import Evidence、自动重试政策和失败停止规则，才可以创建新的 Formal Root。Attempt 001 已消费；同一 Root 和同一 Attempt ID 永远不得再用。
 
 ### 开发者实操附录 G：接手 PR #90 的文件级路线与审查问题
 
@@ -506,7 +508,7 @@ MCP 与 Viewport 仅在 79/79 后执行仓库已有 runbook：`tools/invoke_v075
 
 【LIVE Tooling】`PR90_RELEASE_FULL_HEAD_GATE1_REUSE_OPTIONAL_MANIFEST_CONTRACT_REPAIR` 已完成。它只创建一个独立 Tooling Revision，没有修改 PR #90 代码、测试、Canonical Manifest、Gate 顺序、数值或冻结 Evidence；静态审查、reuse 正负 Self-Test、六类同 Worker Dry Run、双模式 Aggregate 和真实 Result Projection 均全绿。
 
-【LIVE Tooling】Preflight Seal 已记录修复合同、命令闭包、Self-Test matrix、Dry Run、来源 Head/Tree、旧冻结指纹和进程/端口归零。预检成功不等于获得产品配额；下一授权必须精确为 `PR90_REPAIRED_HEAD_FULL_GATE1_79_FORMAL_ATTEMPT_001`，full plan 新跑 Gate 1 且 reuse count 为 0。
+【LIVE Tooling】Preflight Seal 证明了 Gate 1 来源合同和命令闭包，却没有证明 current-head Formal Clone 的 `.godot` Cache 物理存在，也没有覆盖 Raw singleton diagnostics 的 JSON array 基数。下一任务必须精确为 `PR90_RELEASE_HEAD_BOUND_IMPORT_CACHE_AND_RAW_DIAGNOSTICS_CARDINALITY_REPAIR`；它只授权 Tooling Preflight，不授权任何产品 Gate。
 
 【PLANNED】如果新 Attempt 获准并完成 Gate 1—79 全部 PASS，Aggregate 才能写 79/79。随后三路 Post-Aggregate Review 都要达到 P0=0、P1=0，才进入 Exact-SHA MCP；MCP 必须在相同产品 Head/Tree 上验证 project reload、changed scripts/scenes/resources、真实 main composition、Combat 关键路径和零新增 runtime/task 错误。MCP 失败不是继续跑 Viewport 的理由。
 
@@ -514,7 +516,7 @@ MCP 与 Viewport 仅在 79/79 后执行仓库已有 runbook：`tools/invoke_v075
 
 【PLANNED】只有 CI SUCCESS、79/79、Review GO、Exact-SHA MCP PASS、Viewport PASS、Headless Matrix PASS、2,000 局 PASS、source/clone clean、PR mergeable 全部同时成立，才能把 PR #90 标为 Ready 并使用 merge commit 合入。禁止 squash 或 rebase merge。合入后再按 Release Manifest 打标签、同步 main、完成 Handoff；在此之前 V0.7.6 `IMPLEMENTATION=false`、POC 不启动、分支不创建。
 
-【PLANNED】若 Runner 修复预检失败，NEXT_TASK 应指向精确 tooling blocker；若正式 Gate 出现产品失败，NEXT_TASK 应指向 `PR90_PRODUCT_GATE_<ID>_<DOMAIN>_REPAIR`；若 Post-Aggregate Review 出现 P1，则指向对应 product diff review；若 MCP/Viewport/Headless/2,000 失败，则使用精确 stage continuation。任何情况下都不自动创建下一个 Attempt，用户必须看到冻结事实后重新授权。
+【PLANNED】本次已按 Runner/Import blocker 停止；没有第二个产品修复周期。Tooling Repair 全绿后 NEXT_AUTHORIZATION 才是 `PR90_REPAIRED_HEAD_FULL_GATE1_79_FORMAL_ATTEMPT_002`。若未来正式 Gate 在有效环境中形成真实产品 FAIL Authority，则只能冻结并报告 `PR90_PRODUCT_GATE_<ID>_<DOMAIN>_BLOCKED_NO_REPAIR_CYCLE`。任何情况下都不自动创建下一个 Attempt。
 
 【PLANNED_NOT_IMPLEMENTED】只有 PR #90 真正合入 main 后，V0.7.6 才从 Detached POC 开始。POC 限定怪兽 L1 定向移动、军队物理 ETA/too_late、同 Tick 两个私密行动稳定排序与隐私，采用服务器权威、固定点 Command Simulation、有限迟到窗口、Receipt 和独立 Presentation Timeline。它不重写整个经济游戏，不建立第二 RNG Owner，不复制 GPL 代码，不把新 MCP 试验变成产品门。POC 通过后仍需另行授权 production adapter。
 
@@ -548,7 +550,7 @@ MCP 与 Viewport 仅在 79/79 后执行仓库已有 runbook：`tools/invoke_v075
 
 【LIVE Tooling】每份跨运行复用证明都要回答来源 run ID、物理 result path、原始 SHA、gate/test identity、Head/Tree、exit/timeout/marker、诊断计数、残留进程、规范化 SHA、观察时间和 canonical payload SHA。复用证明不是旧 Formal Receipt，也不能声称旧 Attempt 完成了未完成的 Progress/Summary。这个 distinction 让产品计算结果可保留，同时让 Runner 历史仍然诚实。
 
-【LIVE Tooling】Canonical Import 是每个产品 Head 的昂贵且有身份含义的步骤。本 Head 已执行一次并达到 215/215 ignored sidecar parity；Runner 重启或 Observer 失败不授权重新 Import。只有 Head/Tree、源资源、Import 设置、Godot 版本、Renderer 变化，或缓存损坏有证据时，才应在新任务政策下决定是否重做。文档分支不改变产品 Tree，因此也不触发 Import。
+【LIVE Tooling】Canonical Import 是每个产品 Head 的昂贵且有身份含义的步骤。历史旧 Head 有 215/215 ignored sidecar parity，但 Formal Attempt 001 的当前 Head Clone 没有 `.godot` 目录；旧 Head Evidence 不能证明新 Head Cache。下一 Tooling Repair 可为当前 Head 执行一次 Canonical Import，并必须把 Head/Tree/Clone/Godot/Renderer/Cache SHA 绑定进新 Evidence。Runner 重启或 Observer 失败不能再次授权 Import。
 
 【LIVE Tooling】进程与端口归零不是形式检查。Godot、Worker、Observer 或 Runtime Bridge 残留可能继续写日志、占用用户数据目录、改变下一 Gate 的端口或让“新启动”实际附着旧进程。每次冻结和每个正式阶段结束都应记录相关 PID、命令行、工作目录、受保护端口与停止结果；如果无法安全识别 owner，先停止而不是按名字批量杀死无关用户程序。本次冻结已确认 Godot、Worker 和受保护端口均为零。
 
@@ -562,7 +564,7 @@ MCP 与 Viewport 仅在 79/79 后执行仓库已有 runbook：`tools/invoke_v075
 
 【LIVE】若接手者只能记住三个检查点：第一，任何产品写入都必须有且只有一个 Owner；第二，任何玩家/AI 决策都必须携带精确 identity、generation、revision 与 reservation，通过同一 validator/runtime；第三，任何 PASS 都必须绑定 exact Head/Tree 与不可变 Result，Runner 后续失败另行分类。地图、卡牌、Combat、隐私、回放和 Release Runner 的复杂问题，都可以沿这三个检查点定位。
 
-【LIVE Tooling】本交接发布完成后，用户仍需显式启动下一产品任务。Docs PR 不是 Attempt 授权、不是 PR #90 Ready 信号，也不是 V0.7.6 开工信号。下一开发者应复制 `NEXT_DEVELOPER_FIRST_TASK_PROMPT.md` 并获得完整 1—79 正式授权；Runner-only 修复无需重做。
+【LIVE Tooling】本交接发布完成后，用户仍需显式启动下一 Tooling Repair。Docs PR 不是 Attempt 授权、不是 PR #90 Ready 信号，也不是 V0.7.6 开工信号。下一开发者应复制 `NEXT_DEVELOPER_FIRST_TASK_PROMPT.md`；该 Prompt 明确 `AUTHORIZED_PRODUCT_ATTEMPT_COUNT=0`。
 
 ### 开发者实操附录 K：Release 链各阶段究竟证明什么
 
@@ -576,7 +578,7 @@ MCP 与 Viewport 仅在 79/79 后执行仓库已有 runbook：`tools/invoke_v075
 
 【PLANNED】PR Ready 与 merge 是所有上游证据的结果，不是开始 Release 验证的按钮。合并前还要确认 source worktree clean、Acceptance Clone tracked/index delta 为零、PR 仍 mergeable、CI 仍对应产品 Head。Merge method 固定为 merge commit，以保留产品分支历史；标签来自正式 Release Manifest。任何上游状态 NOT_RUN、NO_GO 或 FAIL 都应让 `PR90_READY=false`。
 
-【LIVE】本次状态可以用最短的可审计表达概括：旧 Head Gate 2—15 PASS、Gate 16 PRODUCT FAIL；唯一产品修复已提交为新 Head `1e948a15`，Gate 15/16/60 与 CI PASS；Gate 1 Source Contract V2 Preflight 18/18 PASS，Formal Manifest 为 `FORMAL_IN_PLAN`、79 Receipt/0 reuse；但正式 Gate 1—79 仍 NOT_RUN、Attempt 0 次，正在等待明确产品授权；PR #90 仍是 OPEN DRAFT，未合并；V0.7.6 未实施。
+【LIVE】本次状态可以用最短的可审计表达概括：旧 Head Gate 2—15 PASS、Gate 16 PRODUCT FAIL；唯一产品修复已提交为新 Head `1e948a15`，Gate 15/16/60 与 CI PASS；Gate 1 Source Contract V2 Preflight 18/18 PASS；Formal Attempt 001 已消费，Gate 1 Raw invocation 因 current-head class cache 缺失退出 1，随后 diagnostics singleton object 使 Product Executor fail closed，Gate 2—79 未启动；PR #90 仍 OPEN DRAFT、未合并；V0.7.6 未实施。
 
 【LIVE】如果云端 CI、GitHub PR 页面与本地 Evidence 在时间上出现差异，先比较 commit SHA、tree SHA、run ID 和 observed time，再判断是否真的漂移。不要只看文件修改日期、分支显示名或“最新”字样。产品身份必须同时由实时 PR Head、直接远端 PR ref、直接远端 branch ref 与 Acceptance Clone Head/Tree 支持；共享 mirror 只能作缓存线索，不能单独决定权威身份。真实漂移应在启动新进程前停止，而不是尝试把旧 Evidence 迁移到新 Head。
 
@@ -592,4 +594,4 @@ MCP 与 Viewport 仅在 79/79 后执行仓库已有 runbook：`tools/invoke_v075
 
 ## 交接结论
 
-PR #90 的产品修复已在新 Head 通过 CI 与 Gate 15/16/60 定向验证；Gate 1 Source Contract V2 的相同 Worker 无 Godot全链预检也已完成。新 Head 正式 Gate 1—79 尚未启动，不能把 Tooling fixture、旧 Head Gate 1 PASS 或 CI 日志迁移为新 Head产品 Result。当前唯一阻塞是缺少 `PR90_REPAIRED_HEAD_FULL_GATE1_79_FORMAL_ATTEMPT_001` 明确授权；在 79/79、Review、MCP、Viewport、Headless、2,000 局全部完成前，PR #90 不得合并，V0.7.6 不得生产切换。
+PR #90 的产品修复已在新 Head 通过 CI 与 Gate 15/16/60 定向验证；Gate 1 Source Contract V2 的无 Godot全链预检也已完成。正式 Attempt 001 随后证明了两个预检盲点：Manifest 接受了旧 Head Import Evidence，却没有证明当前 Clone 的 class cache 存在；Raw singleton diagnostics 没有保持数组。Attempt 已消费并冻结，产品 PASS/FAIL Authority 均未形成。下一步只能先完成 `PR90_RELEASE_HEAD_BOUND_IMPORT_CACHE_AND_RAW_DIAGNOSTICS_CARDINALITY_REPAIR`；在新的 79/79、Review、MCP、Viewport、Headless、2,000 局全部完成前，PR #90 不得合并，V0.7.6 不得生产切换。

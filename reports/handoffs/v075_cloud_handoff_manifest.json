@@ -1,6 +1,6 @@
 {
   "schema_version": "V075CloudHandoffManifestV1",
-  "observed_utc": "2026-08-16T16:42:40.640Z",
+  "observed_utc": "2026-08-16T17:55:26.1125462Z",
   "final_status": "BLOCKED",
   "product_version": "v0.7.5",
   "main_sha": "bd0af5c99c5267cdbe7d66c01034f80db4d704fd",
@@ -64,15 +64,45 @@
       "godot_started": false,
       "product_attempt_consumed": false
     },
-    "new_head_acceptance_clone": "EXACT_CLEAN",
-    "new_head_canonical_import": "NOT_RUN",
-    "new_head_formal_execution_count": 0,
-    "new_head_authorized_count_consumed": 0,
-    "new_head_product_attempt_consumed": false,
-    "new_head_gate_1_to_79": "NOT_STARTED",
-    "new_head_formal_runner_status": "PREFLIGHT_PASS_AWAITING_FORMAL_ATTEMPT_AUTHORIZATION",
-    "new_head_formal_disposition": "GATE1_SOURCE_CONTRACT_V2_PREFLIGHT_PASS_AWAITING_FORMAL_AUTHORIZATION",
-    "product_gate_progress": "0/79_ON_CURRENT_HEAD",
+    "new_head_acceptance_clone": "EXACT_CLEAN_TRACKED_STATE_BUT_NO_DOT_GODOT_CACHE",
+    "new_head_canonical_import": "FORMAL_CLONE_CURRENT_HEAD_CACHE_MISSING",
+    "new_head_formal_execution_count": 1,
+    "new_head_authorized_count_consumed": 1,
+    "new_head_product_attempt_consumed": true,
+    "new_head_formal_attempt_001": {
+      "run_id": "pr90-repaired-head-release-full-001",
+      "attempt_id": "release-full-attempt-001",
+      "status": "RUNNER_BLOCKED",
+      "execution_start_sha256": "dc7cf44a053fac2095ca6e1b29f72216b437f578bcf948f88ff53e6776c9deda",
+      "summary_sha256": "7579e862f42ecead8e78885c6b079b7e647a6d9b54bc6b8268ac5dae0446114b",
+      "product_started_count": 1,
+      "product_completed_count": 0,
+      "product_pass_count": 0,
+      "product_fail_count": 0,
+      "product_failure_attested": false,
+      "runner_first_failure_class": "PRODUCT_EXECUTOR_INVALID",
+      "runner_first_failure_message": "product_executor_diagnostics_wrong_type",
+      "automatic_retry_count": 0,
+      "gate_2_to_79_started": false
+    },
+    "new_head_gate_1_raw_invocation": {
+      "status": "FAILED_ENVIRONMENT_PRECONDITION_NO_PRODUCT_AUTHORITY",
+      "raw_result_sha256": "fc7fea93e7e097892959b25493f51d7dd12239c3885880476217c60750f36736",
+      "stderr_sha256": "87688623de10c92cd314fe6ea54306df30e944c67ecb80c4a528af628dbf33a8",
+      "process_exit_code": 1,
+      "timed_out": false,
+      "duration_seconds": 0.75,
+      "script_error_count": 1158,
+      "first_script_error": "Could not find type MenuLifecycleApplicationFlowController in the current scope.",
+      "diagnostic_count": 1,
+      "diagnostics_json_kind": "object",
+      "class_cache_present_before": false,
+      "class_cache_invalid_reason_before": "missing"
+    },
+    "new_head_gate_1_to_79": "RUNNER_BLOCKED_AFTER_GATE1_RAW_INVOCATION",
+    "new_head_formal_runner_status": "FORMAL_ATTEMPT_001_FROZEN_RUNNER_BLOCKED",
+    "new_head_formal_disposition": "GATE1_RAW_ENVIRONMENT_FAILURE_THEN_PRODUCT_EXECUTOR_DIAGNOSTICS_WRONG_TYPE_RUNNER_BLOCKED",
+    "product_gate_progress": "0/79_PRODUCT_AUTHORITIES;1/79_RAW_INVOCATIONS",
     "aggregate_79": "NOT_RUN",
     "post_aggregate_review": "NOT_RUN"
   },
@@ -106,13 +136,22 @@
   },
   "known_blockers": [
     {
-      "blocker_id": "formal_attempt_authorization_required",
-      "classification": "AUTHORIZATION_BOUNDARY",
-      "summary": "Gate 1 Source Contract V2 and the sealed full-plan Runner preflight are PASS. Product execution remains at zero because the Runner-only authorization did not authorize the first Godot process or a full Gate 1-79 product Attempt.",
+      "blocker_id": "formal_clone_current_head_import_cache_missing",
+      "classification": "RUNNER_PREFLIGHT_ENVIRONMENT_CONTRACT",
+      "summary": "Formal Attempt 001 used an exact clean current-head clone with no .godot directory or global_script_class_cache.cfg. The manifest referenced old-head canonical import evidence and did not prove that a current-head cache physically existed in the formal clone. Gate 1 therefore emitted 1158 unresolved class_name parse errors.",
       "product_failure_attested": false,
       "automatic_retry_allowed": false,
-      "new_head_attempt_consumed": false,
-      "required_authority": "PR90_REPAIRED_HEAD_FULL_GATE1_79_FORMAL_ATTEMPT_001"
+      "new_head_attempt_consumed": true,
+      "required_authority": "PR90_RELEASE_HEAD_BOUND_IMPORT_CACHE_AND_RAW_DIAGNOSTICS_CARDINALITY_REPAIR"
+    },
+    {
+      "blocker_id": "raw_diagnostics_singleton_array_collapsed_to_object",
+      "classification": "RUNNER_RAW_RESULT_SCHEMA",
+      "summary": "The raw writer serialized one diagnostic as a JSON object instead of a one-element array. The normalizer correctly failed closed with product_executor_diagnostics_wrong_type, so no product PASS or FAIL authority was created and Gate 2-79 did not start.",
+      "product_failure_attested": false,
+      "automatic_retry_allowed": false,
+      "new_head_attempt_consumed": true,
+      "required_authority": "PR90_RELEASE_HEAD_BOUND_IMPORT_CACHE_AND_RAW_DIAGNOSTICS_CARDINALITY_REPAIR"
     }
   ],
   "known_nonblocking_debt": [
@@ -183,7 +222,11 @@
     "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence-gate1-source-contract-revision-001-attempt-003/preflight-complete-seal.json",
     "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence-gate1-source-contract-revision-001-attempt-003/gate1-source-contract-static-audit.json",
     "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence-gate1-source-contract-revision-001-attempt-003/release-run-plan-1-79-v1.json",
-    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence-gate1-source-contract-revision-001-attempt-003/pr90-repaired-head-release-full-001-formal-manifest.json"
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence-gate1-source-contract-revision-001-attempt-003/pr90-repaired-head-release-full-001-formal-manifest.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-repaired-head-release-full-001/formal-attempt-001/evidence/execution-start.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-repaired-head-release-full-001/formal-attempt-001/evidence/gate-01/20260816-175249-220-smoke_test-9a86d0ea/result.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-repaired-head-release-full-001/formal-attempt-001/evidence/product-execution-complete.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-repaired-head-release-full-001/formal-attempt-001/evidence/summary.json"
   ],
   "handoff_documents": [
     "docs/handoff/SPACE_SYNDICATE_DEVELOPER_HANDOFF_ZH.md",
@@ -194,10 +237,11 @@
     "docs/handoff/V076_FUTURE_DEVELOPMENT_ROADMAP_ZH.md",
     "docs/handoff/NEXT_DEVELOPER_FIRST_TASK_PROMPT.md"
   ],
-  "next_task_id": "PR90_REPAIRED_HEAD_FULL_GATE1_79_FORMAL_ATTEMPT_001",
+  "next_task_id": "PR90_RELEASE_HEAD_BOUND_IMPORT_CACHE_AND_RAW_DIAGNOSTICS_CARDINALITY_REPAIR",
   "next_prompt_path": "docs/handoff/NEXT_DEVELOPER_FIRST_TASK_PROMPT.md",
   "reported_token_usage": 2256723,
-  "reported_token_usage_note": "Observed from the active goal counter during Handoff publication; final response overhead is not included.",
+  "reported_token_usage_note": "Historical value from the preceding Handoff publication. Current Formal Attempt task token usage is unavailable from this runtime.",
+  "latest_task_reported_token_usage": "UNAVAILABLE_FROM_RUNTIME",
   "token_budget_target": 2800000,
   "handoff_documentation_target": 800000,
   "contingency_target": 700000

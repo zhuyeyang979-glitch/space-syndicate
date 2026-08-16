@@ -26,8 +26,11 @@
 | Frozen-reuse Aggregate fixture | PASS | 1 真实冻结复用 + 78 当前来源；78 Receipt |
 | 真实冻结 Result 投影 | PASS | Raw Result → Normalize → Row → Receipt |
 | 新 Head Acceptance Clone | PASS | exact Head/Tree；clean；Windows long-path enabled |
-| 新 Head Canonical Import | NOT_RUN | pre-product Manifest blocker 前未消耗 |
-| 新 Head Formal Gate 1—79 | NOT_STARTED | execution count 0；Godot starts 0 |
+| 新 Head Canonical Import | NOT_AVAILABLE_IN_FORMAL_CLONE | Clone 无 `.godot/global_script_class_cache.cfg`；Manifest 引用旧 Head Import Evidence |
+| 新 Head Formal Attempt 001 | RUNNER_BLOCKED | execution count 1；Attempt consumed；Gate 1 Godot started once |
+| 新 Head Gate 1 Raw Invocation | FAILED_ENVIRONMENT_PRECONDITION | exit 1；timeout false；1,158 个缺失 class_name 解析错误；Raw SHA `fc7fea93e7e097892959b25493f51d7dd12239c3885880476217c60750f36736` |
+| 新 Head Gate 1 Product Authority | NOT_ATTESTED | Raw `diagnostics` 为 object；Normalizer fail closed：`product_executor_diagnostics_wrong_type` |
+| 新 Head Gate 2—79 | NOT_STARTED | Gate 1 后 Runner 无法继续；不得自动重跑 |
 | 79/79 Aggregate | NOT_RUN | 阻塞 |
 | Review/MCP/Viewport/Headless/2,000 | NOT_RUN | 阻塞 |
 | PR merge/tag | NOT_RUN | 阻塞 |
@@ -38,4 +41,6 @@
 
 新合同的正式计划为 Gate 1—79，Plan SHA `55323dab888060b0214c00c81c43993af9b69c28a28939f84f34b569f0b78e85`；Manifest SHA `1be88a6b41e9e2154a4f59c85c30095767379f2c01ef3d9fada0fd363493e68c`；Worker SHA `675f5ad470fb26bc377731e1ba9e7380c9852d33b4200fdca0c72ac6f9a5d8bd`；Projector SHA `f9dc0a85ddc2861eb14645044aef8bcfa3f32c103558a29a65a53a3547cc0509`；Preflight Report SHA `38c434c83247180afe4051ea15e53f52ddccae4857473ae257ae852036f278ae`。
 
-当前 Godot/Worker/7576/7586 均为 0，Canonical Import 与 Formal Execution 均为 0，产品 Attempt 未消耗。Runner-only 任务已经完成；必须单独授权 `PR90_REPAIRED_HEAD_FULL_GATE1_79_FORMAL_ATTEMPT_001` 才能启动第一个产品 Godot 进程。
+正式 Attempt 001 已消费且永久冻结。`execution-start.json` SHA 为 `dc7cf44a053fac2095ca6e1b29f72216b437f578bcf948f88ff53e6776c9deda`；Raw Result SHA 为 `fc7fea93e7e097892959b25493f51d7dd12239c3885880476217c60750f36736`；Summary SHA 为 `7579e862f42ecead8e78885c6b079b7e647a6d9b54bc6b8268ac5dae0446114b`。Summary 正式状态是 `RUNNER_BLOCKED`，`product_started_count=1`、`product_completed_count=0`、`product_pass_count=0`、`product_fail_count=0`，首 Runner 失败为 `PRODUCT_EXECUTOR_INVALID / product_executor_diagnostics_wrong_type`。
+
+Raw Godot 日志说明产品进程确实退出 1，但不能据此证明 PR #90 产品代码回归：Acceptance Clone 没有 `.godot` 或 global class cache，首批所有“找不到类型”的 class_name 均在当前 Head 源码中真实声明。下一任务必须同时修复 Head-bound Import Cache provisioning 和 Raw diagnostics array cardinality，并在新的预检中证明无缓存 clone 会 fail closed、有效当前 Head 缓存会通过到可判定产品结果。当前 Godot/Worker/7576/7586 均为 0，Clone Head/Tree 未变且工作树干净；不授权自动运行新的产品 Attempt。
