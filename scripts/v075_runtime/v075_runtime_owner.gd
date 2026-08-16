@@ -4064,43 +4064,67 @@ func _build_bound_actions(
 		return {}
 	var combat_binding: Dictionary
 	if domain == "monster":
-		var prebound_action := (
-			binding.get("prebound_monster_action", {}) as Dictionary
-		).duplicate(true)
-		var validation := _combat_owner.call(
-			"validate_monster_prebound_action",
-			prebound_action
-		) as Dictionary
-		if not bool(validation.get("valid", false)):
-			return {}
-		if (
-			str(prebound_action.get("card_instance_id", ""))
-				!= str(card.get("instance_id", ""))
-			or str(prebound_action.get("card_definition_id", ""))
-				!= str(card.get("definition_id", ""))
-			or str(prebound_action.get("owner_player_id", "")) != actor_id
-			or str(prebound_action.get("monster_card_mode", ""))
-				!= str(binding.get("monster_card_mode", ""))
-			or str(prebound_action.get("deployment_region_id", ""))
-				!= str(binding.get("target_region_id", ""))
-			or str(prebound_action.get("target_source_instance_id", ""))
-				!= str(binding.get("target_source_instance_id", ""))
-			or int(prebound_action.get("target_source_generation", 0))
-				!= int(binding.get("target_source_generation", 0))
-			or int(prebound_action.get("expected_hp_revision", -2))
-				!= int(binding.get("expected_hp_revision", -1))
-			or int(prebound_action.get("expected_region_revision", -2))
-				!= int(binding.get("expected_region_revision", -1))
-		):
-			return {}
-		var mode := str(binding.get("monster_card_mode", ""))
-		if mode in [
-			CapabilityCatalog.MONSTER_MODE_DEPLOY_NEW,
-			CapabilityCatalog.MONSTER_MODE_REPLACE_EXISTING,
-		] and int(binding.get("expected_region_revision", -1)) != (
-			_facility_authority_revision()
-		):
-			return {}
+		var prebound_action: Dictionary
+		if _combat_owner.has_method("validate_monster_prebound_action"):
+			prebound_action = (
+				binding.get("prebound_monster_action", {}) as Dictionary
+			).duplicate(true)
+			var validation := _combat_owner.call(
+				"validate_monster_prebound_action",
+				prebound_action
+			) as Dictionary
+			if not bool(validation.get("valid", false)):
+				return {}
+			if (
+				str(prebound_action.get("card_instance_id", ""))
+					!= str(card.get("instance_id", ""))
+				or str(prebound_action.get("card_definition_id", ""))
+					!= str(card.get("definition_id", ""))
+				or str(prebound_action.get("owner_player_id", "")) != actor_id
+				or str(prebound_action.get("monster_card_mode", ""))
+					!= str(binding.get("monster_card_mode", ""))
+				or str(prebound_action.get("deployment_region_id", ""))
+					!= str(binding.get("target_region_id", ""))
+				or str(prebound_action.get("target_source_instance_id", ""))
+					!= str(binding.get("target_source_instance_id", ""))
+				or int(prebound_action.get("target_source_generation", 0))
+					!= int(binding.get("target_source_generation", 0))
+				or int(prebound_action.get("expected_hp_revision", -2))
+					!= int(binding.get("expected_hp_revision", -1))
+				or int(prebound_action.get("expected_region_revision", -2))
+					!= int(binding.get("expected_region_revision", -1))
+			):
+				return {}
+			var mode := str(binding.get("monster_card_mode", ""))
+			if mode in [
+				CapabilityCatalog.MONSTER_MODE_DEPLOY_NEW,
+				CapabilityCatalog.MONSTER_MODE_REPLACE_EXISTING,
+			] and int(binding.get("expected_region_revision", -1)) != (
+				_facility_authority_revision()
+			):
+				return {}
+		else:
+			var legacy_prebound := _combat_owner.call(
+				"prebind_monster_card_action",
+				{
+					"request_id": "request.%s" % action_id,
+					"card_instance_id": str(card.get("instance_id", "")),
+					"card_definition_id": str(card.get("definition_id", "")),
+					"owner_player_id": actor_id,
+					"monster_card_mode": str(binding.get("monster_card_mode", "")),
+					"target_region_id": str(binding.get("target_region_id", "")),
+					"target_source_instance_id": str(
+						binding.get("target_source_instance_id", "")
+					),
+				}
+			) as Dictionary
+			if not bool(legacy_prebound.get("accepted", false)):
+				return {}
+			prebound_action = (
+				legacy_prebound.get("action", {}) as Dictionary
+			).duplicate(true)
+			if prebound_action.is_empty():
+				return {}
 		combat_binding = {
 			"prebound_action": prebound_action,
 			"candidate_fingerprint": str(
@@ -4125,25 +4149,37 @@ func _build_bound_actions(
 				binding.get("target_monster_source_instance_id", "")
 			),
 		}
-		var preview := _combat_owner.call(
-			"preview_military_lock",
-			formal_binding,
-			_public_occupied_facilities()
-		) as Dictionary
-		if not bool(preview.get("accepted", false)):
-			return {}
-		var expected_envelope := (
-			binding.get("military_target_envelope", {}) as Dictionary
-		).duplicate(true)
-		var current_envelope := (
-			preview.get("target_envelope", {}) as Dictionary
-		).duplicate(true)
-		if expected_envelope.is_empty() or current_envelope != expected_envelope:
-			return {}
-		var lock := _combat_owner.call(
-			"commit_military_lock",
-			preview.get("locked_mission", {}) as Dictionary
-		) as Dictionary
+		var current_envelope: Dictionary = {}
+		var lock: Dictionary
+		if (
+			_combat_owner.has_method("preview_military_lock")
+			and _combat_owner.has_method("commit_military_lock")
+		):
+			var preview := _combat_owner.call(
+				"preview_military_lock",
+				formal_binding,
+				_public_occupied_facilities()
+			) as Dictionary
+			if not bool(preview.get("accepted", false)):
+				return {}
+			var expected_envelope := (
+				binding.get("military_target_envelope", {}) as Dictionary
+			).duplicate(true)
+			current_envelope = (
+				preview.get("target_envelope", {}) as Dictionary
+			).duplicate(true)
+			if expected_envelope.is_empty() or current_envelope != expected_envelope:
+				return {}
+			lock = _combat_owner.call(
+				"commit_military_lock",
+				preview.get("locked_mission", {}) as Dictionary
+			) as Dictionary
+		else:
+			lock = _combat_owner.call(
+				"build_military_lock",
+				formal_binding,
+				_public_occupied_facilities()
+			) as Dictionary
 		if not bool(lock.get("accepted", false)):
 			return {}
 		combat_binding = {
@@ -4151,11 +4187,12 @@ func _build_bound_actions(
 			"locked_mission": (
 				lock.get("locked_mission", {}) as Dictionary
 			).duplicate(true),
-			"military_target_envelope": current_envelope,
 			"candidate_fingerprint": str(
 				binding.get("candidate_fingerprint", "")
 			),
 		}
+		if not current_envelope.is_empty():
+			combat_binding["military_target_envelope"] = current_envelope
 	var public_action := {
 		"action_id": action_id,
 		"actor_id": actor_id,
