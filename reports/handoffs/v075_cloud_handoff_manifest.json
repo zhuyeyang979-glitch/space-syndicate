@@ -1,6 +1,6 @@
 {
   "schema_version": "V075CloudHandoffManifestV1",
-  "observed_utc": "2026-08-16T14:17:48.451Z",
+  "observed_utc": "2026-08-16T16:00:55.517Z",
   "final_status": "BLOCKED",
   "product_version": "v0.7.5",
   "main_sha": "bd0af5c99c5267cdbe7d66c01034f80db4d704fd",
@@ -9,36 +9,40 @@
   "pr90_state": "OPEN_DRAFT",
   "pr90_mergeable": true,
   "pr90_head_branch": "codex/v075-monster-military-combat-bd0af5c",
-  "pr90_head_sha": "6d4d52dfbc8001c919ac569dcab2e3b53f968d34",
-  "pr90_tree_sha": "95c899ceb552a9214edc4ab7e6076ea6e6c7c02c",
-  "ci_run_id": 31894893974,
+  "pr90_head_sha": "1e948a15e17faffe648722fd596fac01a4525426",
+  "pr90_tree_sha": "8508df4e900a73c058566f00fc556ec1d11e08ca",
+  "ci_run_id": 31956611702,
   "ci_status": "SUCCESS",
-  "ci_url": "https://github.com/zhuyeyang979-glitch/space-syndicate/actions/runs/31894893974",
+  "ci_url": "https://github.com/zhuyeyang979-glitch/space-syndicate/actions/runs/31956611702",
   "gate_status": {
-    "canonical_import": {
-      "status": "PASS",
-      "execution_count": 1,
-      "rerun_count": 0,
-      "ignored_sidecar_parity": "215/215"
+    "old_head_sha": "6d4d52dfbc8001c919ac569dcab2e3b53f968d34",
+    "old_head_formal_run_id": "pr90-new-head-release-focused-continuation-002",
+    "old_head_gate_2_to_15": "14/14_PASS",
+    "old_head_gate_16": {
+      "status": "PRODUCT_FAIL",
+      "raw_result_sha256": "a72f48f06175286e38c5d82a6d4c08f15ee53e3eec7a1a91b8a63e9db7268b9b"
     },
-    "result_cardinality_selftest": "65/65_PASS",
-    "full_v3_binder_dry_run": "79/79_PASS_NO_GODOT",
-    "gate15_focused_repair": {
-      "status": "36/36_PASS",
-      "result_sha256": "7a34c09fbae3fa0f561295335a5e415663eec9c2236006b68cf34fc20aca0dcc"
+    "product_repair": {
+      "cycle_count": 1,
+      "commit_sha": "1e948a15e17faffe648722fd596fac01a4525426",
+      "changed_file_count": 1,
+      "changed_file": "scripts/v075_runtime/v075_runtime_owner.gd"
     },
-    "formal_run_id": "pr90-new-head-release-focused-001",
-    "formal_execution_count": 1,
-    "formal_authorized_count_consumed": 1,
-    "gate_1_product_result": {
-      "status": "PASS",
-      "formal_receipt_exists": false,
-      "raw_result_sha256": "7b7c94847d6678f17f1b0a9b5d79aaecaba970fed02eb82aa45339277c5f8f5f"
+    "targeted_post_repair": {
+      "gate_15": "PASS:6d785b3ebd605460690f2ea5deeef1cabdad935bcc1a70f975c4cc22a05b80e8",
+      "gate_16": "PASS:e96b8ffa965dbfc3020180b56d3d44c387deed819cfaf4f19aa61b25e7eea101",
+      "gate_60": "PASS:aa456b28c7320da83b479cc641a4cb78da624d214c7247104b9c38c50ad2c1ba"
     },
-    "formal_runner_status": "BLOCKED",
-    "formal_disposition": "GATE1_PRODUCT_PASS_THEN_RUNNER_ACCOUNTING_FIRST_GATE_TRIGGER_HARDCODED_TO_GATE3",
-    "gate_2_to_79": "NOT_RUN",
-    "product_gate_progress": "1/79",
+    "release_run_plan_dry_run": "6/6_PASS_NO_GODOT",
+    "new_head_acceptance_clone": "EXACT_CLEAN",
+    "new_head_canonical_import": "NOT_RUN",
+    "new_head_formal_execution_count": 0,
+    "new_head_authorized_count_consumed": 0,
+    "new_head_product_attempt_consumed": false,
+    "new_head_gate_1_to_79": "NOT_STARTED",
+    "new_head_formal_runner_status": "BLOCKED_PRE_PRODUCT",
+    "new_head_formal_disposition": "FULL_SUITE_MANIFEST_REQUIRES_UNAVAILABLE_SAME_HEAD_GATE1_REUSE_ATTESTATION",
+    "product_gate_progress": "0/79_ON_CURRENT_HEAD",
     "aggregate_79": "NOT_RUN",
     "post_aggregate_review": "NOT_RUN"
   },
@@ -57,11 +61,13 @@
   "v076_poc_started": false,
   "known_blockers": [
     {
-      "blocker_id": "runner_accounting_authority_not_written_for_full_run_gate1",
-      "classification": "RUNNER_FAILURE_AFTER_PRODUCT_RESULT",
-      "summary": "The formal worker writes execution-start accounting only when currentGate equals 3 and hardcodes FirstGateId 3; the verified full plan starts at Gate 1.",
+      "blocker_id": "full_plan_manifest_requires_unavailable_same_head_gate1_reuse_attestation",
+      "classification": "RUNNER_TOOLING_PREFLIGHT",
+      "summary": "Revision 002 correctly binds accounting to the first planned Gate, but its manifest always requires a matching Gate 1 reuse attestation. The repaired Head must run a fresh Gate 1-79 suite and has no immutable Gate 1 raw result eligible for reuse.",
       "product_failure_attested": false,
-      "automatic_retry_allowed": false
+      "automatic_retry_allowed": false,
+      "new_head_attempt_consumed": false,
+      "required_authority": "ONE_POST_REPAIR_PRE_PRODUCT_TOOLING_REVISION"
     }
   ],
   "known_nonblocking_debt": [
@@ -119,15 +125,11 @@
     "tests/v074_legacy_main_retirement_test.gd"
   ],
   "evidence_paths": [
-    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-001/tooling-preflight/canonical-import-001/canonical-import-evidence-classified.json",
-    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-001/tooling-preflight/worker-dry-run-v3-001/bootstrap-dry-run-report.json",
-    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-001/tooling-preflight/command-closure-v3-002.json",
-    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-001/tooling-preflight/preflight-v3-final-001.json",
-    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-001/tooling-preflight/release-manifest-final-v3.json",
-    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-001/formal-attempt-freeze-attestation.json",
-    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-001/formal-attempt/evidence/attempt-accounting-boundary-unresolved-incident.json",
-    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-001/formal-attempt/evidence/gate-01/20260815-164048-543-smoke_test-ef63c4e8/result.json",
-    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-001/formal-attempt/evidence/gate-01/godot-start-witness-wire-v1.json"
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-continuation-002/preflight-evidence-revision-002/release-continuation-002-preflight-report.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-continuation-002/formal-attempt-002/evidence/execution-start.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-continuation-002/formal-attempt-002/evidence/product-execution-complete.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/6d4d52dfbc8001c919ac569dcab2e3b53f968d34/pr90-new-head-release-focused-continuation-002/formal-attempt-002/evidence/gate-16/20260816-153740-631-v075_combat_submission_rollback_test-f232d8b1/result.json",
+    "E:/SpaceSyndicateWorkspace/product-acceptance-v2/pr90/1e948a15e17faffe648722fd596fac01a4525426/pr90-new-head-release-repair-cycle-001/preflight-evidence/full-suite-manifest-gate1-reuse-blocker.json"
   ],
   "handoff_documents": [
     "docs/handoff/SPACE_SYNDICATE_DEVELOPER_HANDOFF_ZH.md",
@@ -138,7 +140,7 @@
     "docs/handoff/V076_FUTURE_DEVELOPMENT_ROADMAP_ZH.md",
     "docs/handoff/NEXT_DEVELOPER_FIRST_TASK_PROMPT.md"
   ],
-  "next_task_id": "PR90_RELEASE_RUNNER_FULL_RANGE_FIRST_GATE_ACCOUNTING_TRIGGER_REPAIR",
+  "next_task_id": "PR90_RELEASE_FULL_HEAD_GATE1_REUSE_OPTIONAL_MANIFEST_CONTRACT_REPAIR",
   "next_prompt_path": "docs/handoff/NEXT_DEVELOPER_FIRST_TASK_PROMPT.md",
   "reported_token_usage": null,
   "reported_token_usage_note": "The current runtime exposes no active goal token counter; no numeric token usage is fabricated.",

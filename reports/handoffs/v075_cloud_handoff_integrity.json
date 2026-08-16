@@ -1,6 +1,6 @@
 {
   "schema_version": "V075CloudHandoffIntegrityV1",
-  "observed_utc": "2026-08-16T14:17:48.451Z",
+  "observed_utc": "2026-08-16T16:00:55.517Z",
   "hash_algorithm": "SHA-256",
   "expected_file_count": 8,
   "self_excluded_due_non_recursive_hash": true,
@@ -8,13 +8,13 @@
   "files": [
     {
       "path": "docs/handoff/SPACE_SYNDICATE_DEVELOPER_HANDOFF_ZH.md",
-      "bytes": 85395,
-      "sha256": "ef886b7ddc34f162b37af237dbe7c620a20f9e3033c56db89533b5ed491cba63"
+      "bytes": 85394,
+      "sha256": "99bc210f6800aac6a62fec5b79bf1bc30789dc58071e4fbcad1e5e71e046d935"
     },
     {
       "path": "docs/handoff/START_HERE_NEXT_DEVELOPER.md",
-      "bytes": 1243,
-      "sha256": "e8e328b55642db17321ecc0b15745a4802f35c46166dcf4270bb600ee7597115"
+      "bytes": 2108,
+      "sha256": "c9dfb38e3ff625ba63fb46b08513342e8060fcfe64a9fb68c62278ad95dfd29a"
     },
     {
       "path": "docs/handoff/SPACE_SYNDICATE_RULEBOOK_V075_ZH.md",
@@ -28,23 +28,23 @@
     },
     {
       "path": "docs/handoff/V075_TEST_AND_RELEASE_EVIDENCE.md",
-      "bytes": 1639,
-      "sha256": "901b82b704e85e5f38571bd2ec93f055704f7529ba0014a713d40231403e2745"
+      "bytes": 2271,
+      "sha256": "73eaaef3f9931b4b10febc8f6c63db0ec9b1fbded07789c4576ebb0d2c3c2fc5"
     },
     {
       "path": "docs/handoff/V076_FUTURE_DEVELOPMENT_ROADMAP_ZH.md",
-      "bytes": 1671,
-      "sha256": "836e5cd38c00bc9e28901c03b2df1a8edc7e8fff624e86284bb725eb0e49bc35"
+      "bytes": 1782,
+      "sha256": "aa4fa9133187b604dac15d5bfafe06550d409827681df8e24543625797784624"
     },
     {
       "path": "docs/handoff/NEXT_DEVELOPER_FIRST_TASK_PROMPT.md",
-      "bytes": 2031,
-      "sha256": "4a28d14c7dfd6b5cd9aa70b6b690ebc376ccf8bdc92fe3d594521057aa7f515d"
+      "bytes": 2903,
+      "sha256": "addf592c5eb29677e9d309ee766832637c7f83b2cb7d05cb87b449320e21e122"
     },
     {
       "path": "reports/handoffs/v075_cloud_handoff_manifest.json",
-      "bytes": 7996,
-      "sha256": "3aa7daf2065e6eb141fbd2fb79d7ff592059ba1395d239f07057a88a4ecc9a75"
+      "bytes": 7999,
+      "sha256": "abe211d3a582210dbf18e5f5a4319a7f8d792274b7ea6578e06d1e4b9fa7f64c"
     }
   ]
 }

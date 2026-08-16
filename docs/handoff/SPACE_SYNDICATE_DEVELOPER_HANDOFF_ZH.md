@@ -1,8 +1,8 @@
 # 《Space Syndicate / 太空辛迪加》V0.7.5 开发者交接日志
 
-> 交接基线：PR #90 Head `6d4d52dfbc8001c919ac569dcab2e3b53f968d34`，Tree `95c899ceb552a9214edc4ab7e6076ea6e6c7c02c`。
+> 交接基线：PR #90 Head `1e948a15e17faffe648722fd596fac01a4525426`，Tree `8508df4e900a73c058566f00fc556ec1d11e08ca`。
 > 状态标签：**LIVE** 已由当前产品代码或正式规则确认；**TEST_ONLY** 仅为测试夹具/离线验证能力；**PLANNED** 尚未实现；**RETIRED** 已禁止重新引入；**UNVERIFIED** 当前没有足够证据。
-> 当前终态：**BLOCKED**。PR #90 尚未合并；CI 成功，但本地完整 1—79 Release Acceptance 在 Gate 1 产品 PASS 后被 Runner 记账条件阻断。
+> 当前终态：**BLOCKED**。PR #90 尚未合并；新 Head CI 成功。旧 Head Release Gate 16 的产品失败已用唯一修复周期修复，但新 Head 完整 1—79 Attempt 在第一个 Godot 进程之前被 Runner Manifest 的无条件 Gate 1 reuse 要求阻断。
 
 ## 1. 五分钟总览
 
@@ -10,11 +10,11 @@
 
 当前产品入口是 `scenes/main.tscn`。它加载 `V075RuntimeComposition` 和 `V075SampleGameScreen`，由 `scripts/v075_runtime/v075_application_bootstrap.gd` 负责装配；旧的 `scripts/main.gd` 已从生产路径删除，不能恢复为巨型 God Object。【LIVE；来源：`scenes/main.tscn`、`tests/v074_legacy_main_retirement_test.gd`】
 
-PR #90 当前仍为 GitHub Draft、可合并，最新 CI Run `31894893974` 为 SUCCESS。最新产品修复只从 `V075RuntimeOwner.COMBAT_OWNER_METHODS` 的必需绑定表移除了五个可选 capability 方法；没有改数值、测试、Canonical Gate Manifest 或规则预期。Gate 15 的定向回归已达到 36/36 PASS。【LIVE；来源：commit `6d4d52df`、仓库外 Gate 15 Result SHA-256 `7a34c09fbae3fa0f561295335a5e415663eec9c2236006b68cf34fc20aca0dcc`】
+PR #90 当前仍为 GitHub Draft、可合并，最新 CI Run `31956611702` 为 SUCCESS。唯一产品修复 commit `1e948a15` 只修改 `V075RuntimeOwner._build_bound_actions()`：真实 typed Combat Owner 仍走 preview/validate/commit；只实现最小必需合同的历史/测试 Owner 回退到既有 `prebind_monster_card_action` 与 `build_military_lock`。没有改数值、测试、Canonical Gate Manifest 或规则预期。【LIVE；来源：commit `1e948a15`、Gate 15/16/60 定向 Result】
 
-但 PR #90 还不能合并。新 Head 的唯一完整产品 Attempt 从 Gate 1 开始，Gate 1 `smoke_test.gd --check-only` 已真实 PASS：Godot exit 0、未超时、零诊断、零残留，Raw Result SHA-256 为 `7b7c94847d6678f17f1b0a9b5d79aaecaba970fed02eb82aa45339277c5f8f5f`。随后 Runner 仍以 `currentGate == 3` 作为首次写 `execution-start.json` 的条件；在完整运行的 Gate 1 上该条件不成立，后续读取 accounting authority 时停止。因此这是 **RUNNER_FAILURE_AFTER_PRODUCT_RESULT**，不是 Gate 1 产品失败。【LIVE；来源：冻结 attestation `formal-attempt-freeze-attestation.json` 与 Formal Evidence】
+但 PR #90 还不能合并。旧 Head `6d4d52df` 的正式 Continuation 002 已完成 Gate 2—15（14/14 PASS），Gate 16 `v075_combat_submission_rollback_test.gd` 真实产品 FAIL 后停止；Raw SHA 为 `a72f48f06175286e38c5d82a6d4c08f15ee53e3eec7a1a91b8a63e9db7268b9b`。修复后 Gate 15、16、60 均 PASS，新 Head CI 也 PASS，但这些不是新 Head 的完整 79 Gate Release 证据。【LIVE/UNVERIFIED；来源：冻结 Formal Attempt、定向 Result、GitHub Actions】
 
-下一位开发者的第一件事不是做 V0.7.6，而是修复并完整审计“首次计划 Gate”记账触发：不得再写死 Gate 3，应从已验证 Manifest/Plan 取得 `gate_start` 或首记录 Gate ID；还要覆盖 Gate 1、Gate 3 和任意合法非 1 起始计划的无 Godot自测。修好 Runner 后必须取得用户新的正式 Attempt 授权，不能重跑本次冻结 Attempt。【PLANNED；来源：本次首失败】
+下一位开发者的第一件事不是做 V0.7.6，而是取得一次新的 post-repair Tooling Revision 授权，修复 full-plan Manifest/Aggregate 的 Gate 1 reuse 条件。Revision 002 已经把首次记账绑定到 `ReleaseRunPlanV1.ordered_gate_ids[0]`，六类无 Godot Dry Run 为 6/6 PASS；当前缺口是 Manifest 无条件要求同 Head Gate 1 reuse。计划包含 Gate 1 时必须禁止 reuse 并聚合 79 个新 Formal Result，计划从 Gate 2 或之后开始时才要求真实 Attestation。【PLANNED；来源：pre-product blocker Evidence】
 
 ## 2. 当前里程碑时间线
 
@@ -32,13 +32,13 @@ V0.7.5 只修改战斗域，继承 V0.7.4 的地图、设施、仓库、轨道�
 
 ### PR #90：Gate 60 能力目录与预绑定修复，随后产品落地收口
 
-PR #90 统一了怪兽四模式与军队两任务的 capability catalog，使“完整支持目录”和“当前世界可行动候选”不再混淆，并把 card identity、target、generation/revision 从候选一路保存到 queue、runtime 和 receipt。最新修复进一步把五个可选 capability 方法移出 Combat owner 的必需绑定表，保留历史/测试 double 的结构兼容，同时不降低真实能力校验。【LIVE；来源：`docs/architecture/v075_ai_combat_capability_authority_matrix.md`、commit `6d4d52df`】
+PR #90 统一了怪兽四模式与军队两任务的 capability catalog，使“完整支持目录”和“当前世界可行动候选”不再混淆，并把 card identity、target、generation/revision 从候选一路保存到 queue、runtime 和 receipt。commit `1e948a15` 进一步在 action build 阶段保留 typed Owner 的严格路径，同时恢复最小合同 Owner 的既有 fallback，修复 submission rollback/exact-once 兼容性而不降低真实能力校验。【LIVE；来源：`docs/architecture/v075_ai_combat_capability_authority_matrix.md`、commit `1e948a15`】
 
 ### 本任务实际完成与未完成
 
-已完成：Result Cardinality V3 预检、65 项 cardinality self-test、59+ 冻结/真实结果回放、Command Binding Dry Run、旧 Head Gate 3—14 的 12 项 PASS、Gate 15 首次真实产品失败定位、一次允许的产品修复、Gate 15 定向 36/36、新 Head CI SUCCESS、新 Head Canonical Import 1 次、215/215 sidecar 分类、全 1—79 V3 无 Godot Dry Run 79/79、静态闭包 GO、新正式 Attempt 的 Gate 1 真实产品 PASS，以及不可变冻结。【LIVE/TEST_ONLY；来源：Acceptance Evidence】
+已完成：旧工具链冻结与 Result/Cardinality/Binding 证据；ReleaseRunPlanV1 与 first-product-process accounting 修复；六类计划 Dry Run 6/6；旧 Head Gate 2—15 的 14 项 PASS；Gate 16 产品失败定位；一次允许的产品修复；Gate 15/16/60 定向 PASS；新 Head CI SUCCESS；新 Head 四方身份与干净 Acceptance Clone；所有历史 Attempt 保持不可变。【LIVE/TEST_ONLY；来源：Acceptance Evidence】
 
-未完成：新 Head Gate 2—79、79/79 Aggregate、Post-Aggregate Review、Exact-SHA MCP、Viewport、3/4/6/8 Headless Matrix、2,000 局 Product Headless、PR Ready、merge commit、Release Tag。【UNVERIFIED/NOT_RUN；来源：本次冻结状态】
+未完成：新 Head Canonical Import、正式 Gate 1—79、79/79 Aggregate、Post-Aggregate Review、Exact-SHA MCP、Viewport、3/4/6/8 Headless Matrix、2,000 局 Product Headless、PR Ready、merge commit、Release Tag。【UNVERIFIED/NOT_RUN；来源：本次 pre-product blocker】
 
 ## 3. 玩家当前能做什么
 
@@ -236,31 +236,34 @@ flowchart LR
 
 | 阶段 | 状态 | Head | 证据 | 是否阻塞 |
 |---|---|---|---|---|
-| GitHub CI | PASS | `6d4d52df` | Run `31894893974` | 否 |
-| Gate 15 定向修复 | 36/36 PASS | `6d4d52df` 工作树内容 | 仓库外 `gate15-focused-repair-001` | 否 |
-| 新 Head Canonical Import | PASS，1 次，215/215 | `6d4d52df` | `canonical-import-evidence-classified.json` | 否 |
-| 新 Head V3 Dry Run | 79/79 PASS，无 Godot | `6d4d52df` | `worker-dry-run-v3-001/bootstrap-dry-run-report.json` | 否 |
-| 新 Head Formal Gate 1 | 产品 PASS，Runner 后失败 | `6d4d52df` | Raw SHA `7b7c9484…f5f` | 是，Runner |
-| Gate 2—79 | NOT_RUN | `6d4d52df` | 无 | 是 |
-| Aggregate 79/79 | NOT_RUN | `6d4d52df` | 无 | 是 |
-| Post-Aggregate Review | NOT_RUN | `6d4d52df` | 无 | 是 |
-| Exact-SHA MCP | NOT_RUN | `6d4d52df` | 无 | 是 |
-| Viewport | NOT_RUN | `6d4d52df` | 无 | 是 |
-| Headless 3/4/6/8 | NOT_RUN | `6d4d52df` | 无 | 是 |
-| Product Headless 2,000 | NOT_RUN | `6d4d52df` | 无 | 是 |
-| PR #90 | OPEN DRAFT，mergeable | `6d4d52df` | GitHub PR #90 | 是 |
+| GitHub CI | PASS | `1e948a15` | Run `31956611702` | 否 |
+| 旧 Head Gate 2—15 | 14/14 PASS | `6d4d52df` | Release Continuation 002 | 否，历史 |
+| 旧 Head Gate 16 | PRODUCT FAIL | `6d4d52df` | Raw SHA `a72f48f…268b9b` | 否，已修复 |
+| 唯一产品修复 | COMMITTED | `1e948a15` | `v075_runtime_owner.gd` | 否 |
+| 修复后 Gate 15/16/60 | 3/3 PASS | commit 前同一产品内容 | Raw SHA 已登记 | 否 |
+| Revision 002 Plan Dry Run | 6/6 PASS，无 Godot | Tooling only | Worker SHA `dbb27a69…259d` | 否 |
+| 新 Head Acceptance Clone | exact/clean | `1e948a15` | Head/Tree/status parity | 否 |
+| 新 Head Canonical Import | NOT_RUN | `1e948a15` | pre-product stop | 是，Runner |
+| 新 Head Formal Gate 1—79 | NOT_STARTED | `1e948a15` | execution count 0 | 是，Runner |
+| Aggregate 79/79 | NOT_RUN | `1e948a15` | 无 | 是 |
+| Post-Aggregate Review | NOT_RUN | `1e948a15` | 无 | 是 |
+| Exact-SHA MCP | NOT_RUN | `1e948a15` | 无 | 是 |
+| Viewport | NOT_RUN | `1e948a15` | 无 | 是 |
+| Headless 3/4/6/8 | NOT_RUN | `1e948a15` | 无 | 是 |
+| Product Headless 2,000 | NOT_RUN | `1e948a15` | 无 | 是 |
+| PR #90 | OPEN DRAFT，mergeable | `1e948a15` | GitHub PR #90 | 是 |
 
-冻结首失败：正式 Worker 在获得 Gate 1 PASS Raw Result 与 Godot Start Witness 后，仍只在 `currentGate == 3` 时写 accounting authority。完整计划从 Gate 1 开始，所以 `execution-start.json` 未生成；随后 Gate-started 构建读取其 SHA 时报 `release_file_missing`。Formal Root 未补写 receipt/row/summary，Attempt 执行计数和授权消耗均为 1。【LIVE Tooling fact】
+当前首失败发生在产品启动之前：Revision 002 Worker 的 Manifest required-fields 与 validator 无条件读取 `gate1_reuse_attestation`，并要求 `reuse_eligible=true`、Gate 1、Head/Tree 与当前 Manifest 完全一致。新 Head 必须完整新跑 Gate 1—79，旧 Head Attestation 不可复用；CI 没有发布 Raw Result，不能据日志生成 Attestation。新 Head `execution-start.json` 不存在，执行计数、授权消耗与 Godot starts 均为 0。【LIVE Tooling fact】
 
 ## 9. 已知问题与技术债务
 
 ### 产品问题
 
-当前没有在新 Head Gate 1 发现产品失败；旧 Head Gate 15 的 Combat transaction/rollback 产品问题已用一次修复周期解决并定向 36/36。但 Gate 2—79 未在新 Head 完整执行，因此“无其他产品问题”是 **UNVERIFIED**，不能写成 PASS。
+旧 Head Gate 16 的 Combat submission rollback/exact-once 产品问题已用唯一修复周期解决，修复后 Gate 15、16、60 和新 Head CI 均 PASS。但新 Head Gate 1—79 尚未正式启动，因此“新 Head 无产品问题”是 **UNVERIFIED**，不能写成 PASS。
 
 ### Runner / Tooling 债务（当前阻塞）
 
-首次 accounting trigger 写死 Gate 3，而不是 Manifest `gate_start`/Plan first record。影响：从 Gate 1 开始的完整 run 产生真实 PASS 后无法写 execution authority，Gate Row/Receipt/Progress/Summary 全部停止。建议：建立 `first_planned_gate_id` 单一来源；Self-Test 至少覆盖 1—79、3—79、60—79 以及任意合法 singleton，证明首次 product process 创建后 append-only 写一次 accounting authority。不得回写旧 Attempt，不得伪造 Gate 1 Formal Receipt。
+`first_planned_gate_id` 与产品进程创建后立即记账已经在 Revision 002 修复并通过 6/6 Dry Run。当前债务是 reuse 输入仍被写成所有计划的必填项。正确合同必须分支：计划包含 Gate 1 时禁止 reuse，当前 Attempt 应产生 79 个新 Authority/Receipt；计划从 Gate 2 或之后开始时才允许并强制真实同 Head/Tree reuse Attestation。不得用 null、空路径、假对象或 CI 日志绕过。
 
 另外要保留 V3 cardinality、Start Witness Wire 与 Product Executor/Evidence Projector 解耦。不能为修 trigger 倒退到 Raw `.Count`、`@($null)`、关闭 StrictMode 或让 projection failure 抹除产品 PASS。
 
@@ -298,11 +301,11 @@ V0.7.5 Combat 仍是 new-game-only；Detached checkpoint 是 TEST_ONLY。生产 
 
 ### 第一步：只修 Runner，并证明不触碰产品
 
-从 `handoff/pr90-blocked-6d4d52df` 阅读本交接，再从 PR #90 Head 建 Disposable Clone。检查冻结 attestation 与 Raw Result，不修改 Formal Root。修复工具包中 `if ($script:currentGate -eq 3)` 与 `-FirstGateId 3`：值必须来自已验证 Manifest/Plan 的首 Gate。新增无 Godot Self-Test 和相同 Worker Dry Run，覆盖 1、3、60 起点与空参数 Gate。验收目标：0 Godot、0 product file diff、V3 Dry Run 全绿、旧冻结指纹不变。
+从 `handoff/pr90-blocked-6d4d52df` 阅读本交接，再只读检查 Revision 002 与新 Head blocker Evidence。取得一次明确的 post-repair Tooling Revision 授权后，在独立目录中使 `gate1_reuse_attestation` 按计划条件化，并让 Aggregate 对 full plan 只接受 79 个新 Formal 来源。相同 Worker 无 Godot Dry Run 覆盖 1—79、2—79、3—79、60—79、singleton、非连续以及 reuse required/forbidden 正负例。验收目标：0 Godot、0 产品 diff、旧冻结指纹不变。
 
 ### 第二步：请求新的正式 Attempt 授权，再完成产品门
 
-当前 Attempt 已消耗，Automatic Retry=false。把预检证据和修复 diff 提交用户，取得一次新的完整 1—79 授权。新 Attempt 必须独立 append-only；Gate 1 的旧 Raw PASS 可作为诊断证据，但由于用户要求新 Head 完整套件，是否复用必须由新授权明确。首产品失败即停，不自动创建 Continuation。
+新 Head Attempt 尚未消耗。Tooling 预检全绿后向用户请求一次完整 1—79 授权；新 Attempt 必须独立 append-only，Gate 1 必须新执行且不得接入旧 Head reuse。首产品失败即停，不自动创建 Continuation，也不再开启第二个产品修复周期。
 
 ### 第三步：只有 79/79 后进入 Release Acceptance
 
@@ -331,7 +334,7 @@ V0.7.5 Combat 仍是 new-game-only；Detached checkpoint 是 TEST_ONLY。生产 
 ```powershell
 git clone https://github.com/zhuyeyang979-glitch/space-syndicate.git space-syndicate
 git -C space-syndicate fetch origin --prune
-git -C space-syndicate checkout --detach 6d4d52dfbc8001c919ac569dcab2e3b53f968d34
+git -C space-syndicate checkout --detach 1e948a15e17faffe648722fd596fac01a4525426
 git -C space-syndicate rev-parse HEAD
 git -C space-syndicate rev-parse 'HEAD^{tree}'
 git -C space-syndicate status --short
@@ -349,7 +352,7 @@ pwsh -File tools/invoke_godot_test.ps1 `
 
 MCP 与 Viewport 仅在 79/79 后执行仓库已有 runbook：`tools/invoke_v075_mcp_validation_runbook.ps1`、`tools/invoke_v075_responsive_viewport_capture.ps1`。Headless 与 2,000 局必须遵循 Release Manifest，一次执行、首失败停止。
 
-查看当前阻塞 Evidence：先读 `formal-attempt-freeze-attestation.json`，再读 Formal Root 下 `attempt-accounting-boundary-unresolved-incident.json`、Gate 1 `result.json` 和 `godot-start-witness-wire-v1.json`。不要在 Formal Root 中补写 `execution-start.json`、Receipt 或 Summary。
+查看当前阻塞 Evidence：先读新 Head `full-suite-manifest-gate1-reuse-blocker.json`，再只读旧 Head Continuation 002 的 `product-execution-complete.json`、Gate 16 Raw Result 与 Summary。不要修改任何旧 Formal Root，也不要为新 Head制造不存在的 Gate 1 Attestation。
 
 ## 14. 术语表
 
@@ -373,11 +376,11 @@ MCP 与 Viewport 仅在 79/79 后执行仓库已有 runbook：`tools/invoke_v075
 
 【LIVE】规则判定应遵循“身份、结构、数值、实现、证据”五层分工。Constitution 决定合法枚举、Owner、端口和生命周期；Balance Defaults 决定可以调节的数值；Registry 或资源定义决定具体卡牌、设施、怪兽与军队目录；Core/Owner 决定运行时唯一写入路径；测试与 Release Evidence 证明特定 Head 上是否通过。不要在 UI 字符串、模型颜色、场景节点名称或测试夹具常量里反向推导规则。比如怪兽 family 的 preferred color 只服务自治目标，而同一张怪兽牌实例的 `primary_color` 仍由统一供应轨 Authority 独立产生；二者在画面上都可能显示颜色，却不是同一权威字段。
 
-【LIVE】状态标签必须跟随每一条重要结论。`LIVE` 表示当前代码或冻结规则已经具备该能力，不代表本次 Release Acceptance 全绿；`TEST_ONLY` 表示能力只用于夹具、离线检查或 Detached checkpoint，不能承诺给玩家；`PLANNED` 表示路线图；`RETIRED` 表示禁止回流；`UNVERIFIED` 表示本次证据不足。尤其要注意，“CI PASS”“某个定向 Gate PASS”“产品完整可发布”是三个不同层次。本次新 Head 的 CI 与 Gate 15 定向验证是 PASS，Gate 1 的产品进程也 PASS，但 Gate 2—79 与后续 Release 链是 NOT_RUN，所以产品仍然 BLOCKED。
+【LIVE】状态标签必须跟随每一条重要结论。`LIVE` 表示当前代码或冻结规则已经具备该能力，不代表本次 Release Acceptance 全绿；`TEST_ONLY` 表示能力只用于夹具、离线检查或 Detached checkpoint，不能承诺给玩家；`PLANNED` 表示路线图；`RETIRED` 表示禁止回流；`UNVERIFIED` 表示本次证据不足。尤其要注意，“CI PASS”“某个定向 Gate PASS”“产品完整可发布”是三个不同层次。本次新 Head 的 CI 与 Gate 15/16/60 定向验证是 PASS，但新 Head 正式 Gate 1—79 与后续 Release 链是 NOT_RUN，所以产品仍然 BLOCKED。
 
 【LIVE】遇到来源冲突时，不要通过编辑一段文档制造表面一致。先记录冲突双方、各自语境、版本和是否有 Exact-SHA 运行证据，再交给后续任务决定。例如 Combat Authority Manifest 中早期 `connected_domain_count=0` 的目标清单语境，与 PR #90 已出现的生产 wiring 代码和定向测试存在时间差。本交接把它列为文档陈旧项，而不是擅自将 Manifest 改成新事实。只有新 Head 完整 Gate 与 Exact-SHA MCP 形成证据后，才适合更新这类声明。
 
-【RETIRED】以下阅读习惯会重新制造规则漂移：看到旧 V0.6 名称就增加 compatibility fallback；把测试 reference 当生产 Owner；从 localized display name 推导 card type；从数组位置推导地区或玩家身份；为了让一个旧 double 通过而扩大必需绑定接口；把 README 的规划段落写成当前玩法。PR #90 最新修复恰好说明了这一点：五个 capability 是合法的可选能力，但不属于所有 Combat Owner/test double 必须实现的最小绑定合同。把“支持时如何调用”和“绑定时必须存在”拆开，既不降低真实运行时验证，也避免历史 double 被错误判定为产品故障。
+【RETIRED】以下阅读习惯会重新制造规则漂移：看到旧 V0.6 名称就增加无边界 compatibility fallback；把测试 reference 当生产 Owner；从 localized display name 推导 card type；从数组位置推导地区或玩家身份；为了让一个旧 double 通过而扩大必需绑定接口；把 README 的规划段落写成当前玩法。PR #90 最新修复只恢复已经存在的最小 Owner fallback，并在 typed 方法存在时保留严格预览/校验/提交路径；它没有把 optional capability 重新提升为全局必需合同，也没有降低真实 Owner 的校验。
 
 ### 开发者实操附录 B：从新局到 FinalSettlement 的完整一局心智模型
 
@@ -457,21 +460,21 @@ MCP 与 Viewport 仅在 79/79 后执行仓库已有 runbook：`tools/invoke_v075
 
 【LIVE】Telemetry 是只读观察者，不是旁路 API。它可以记录 public receipt、性能时间和允许的错误分类；不能记录 rival skill definition/target/cooldown、complete private instant sequence、Warehouse stock、AI plan 或 raw save payload。调试日志也必须遵守同一规则，尤其不要因为 `--verbose` 或异常序列化就把整个 object dump 到共享 Evidence。
 
-【UNVERIFIED】PR #90 包含大量隐私、AI 与 Presentation 聚焦测试，但本次新 Head 没有完成 Gate 2—79、真实 Viewport 和两千局，所以不能声称所有侧信道已在 Release 层证明为零。下一次完整 Attempt 若在相关 Gate 发现真实产品失败，应冻结该 Raw Result，停止后续产品链，并开精确产品修复任务；不能用 Runner 修复把真实隐私失败重分类。
+【UNVERIFIED】PR #90 包含大量隐私、AI 与 Presentation 聚焦测试，但本次新 Head 没有完成正式 Gate 1—79、真实 Viewport 和两千局，所以不能声称所有侧信道已在 Release 层证明为零。下一次完整 Attempt 若在相关 Gate 发现真实产品失败，应冻结该 Raw Result，停止后续产品链；不能用 Runner 修复把真实隐私失败重分类。唯一产品修复周期已用完，不能自动继续修复。
 
 ### 开发者实操附录 F：如何判断产品 PASS、Runner FAIL 与冻结证据
 
 【LIVE Tooling】一次正式 Gate 至少包含两条相邻但独立的链。产品执行链启动 Godot，在 exact Head/Tree、测试路径和参数上产生 stdout/stderr 与 Raw Result；证据投影链再把结果规范化为 Gate Row、Receipt、Progress、Summary 和 Aggregate。前者回答“产品做了什么”，后者回答“Runner 是否成功记录”。把两条链拆开，是本次能够保留 Gate 1 真实 PASS、同时诚实报告 Release BLOCKED 的关键。
 
-【LIVE Tooling】一个 Raw Result 要成为 Product Result Authority，至少要能证明 gate/test identity 与 Head/Tree 匹配、进程确实启动、exit code 为零、没有 timeout、required marker 命中、脚本/资源/runtime/task/UID/unclassified 等诊断计数为零、残留进程为零，并且原始字节有稳定 SHA。Gate 1 满足这些条件：`smoke_test.gd --check-only`、exit 0、未超时、零诊断、零残留，Raw SHA 为 `7b7c94847d6678f17f1b0a9b5d79aaecaba970fed02eb82aa45339277c5f8f5f`。
+【LIVE Tooling】一个 Raw Result 要成为 Product Result Authority，至少要能证明 gate/test identity 与 Head/Tree 匹配、进程确实启动、exit code、timeout、required marker、脚本/资源/runtime/task/UID/unclassified 诊断、残留进程，并且原始字节有稳定 SHA。旧 Head Gate 1 与 Gate 2—15 的 PASS 仍是历史权威，旧 Head Gate 16 则满足真实 PRODUCT FAIL 合同。任何这些结果都不能迁移成新 Head 的产品结论。
 
-【LIVE Tooling】产品结果出现之后，progress、heartbeat、observer、row、receipt、summary 或 aggregate 失败属于 `RUNNER_FAILURE_AFTER_PRODUCT_RESULT`。它阻止整个 Attempt 宣称完成，却不把已经满足权威条件的产品 PASS 反写成 FAIL。本次 Worker 在 full range 中仍把首次 accounting 写入条件硬编码为 Gate 3；Gate 1 产品结束后没有 `execution-start.json`，随后构建 gate-started 证据时读取不存在 authority SHA 而停止。首失败因此是 Runner accounting，不是 smoke test。
+【LIVE Tooling】产品结果出现之后，progress、heartbeat、observer、row、receipt、summary 或 aggregate 失败属于 `RUNNER_FAILURE_AFTER_PRODUCT_RESULT`。它阻止整个 Attempt 宣称完成，却不把已经满足权威条件的产品 PASS 反写成 FAIL。旧 Head 的首次记账硬编码问题已由 Revision 002 修复；当前新 Head blocker 在任何产品结果之前，因此分类为 `RUNNER_TOOLING_PREFLIGHT`，产品失败 attested 为 false，Attempt 未消耗。
 
 【LIVE Tooling】冻结意味着停止继续“修补现场”。Formal Root 中已经存在的十三个文件以 canonical payload SHA 进入 freeze attestation；不得补写缺失 `execution-start.json`、Gate 1 Formal Receipt/Row/Summary，不得删除 incident，也不得在同一路径重跑。补写会让未来读者无法区分“当时实际发生”与“事后推测应该发生”，还会破坏 append-only 证据链。Gate 1 可以在新的、明确授权的 Attempt 中重跑或通过新的复用政策处理，但决定权来自新授权，不来自文档作者。
 
-【LIVE Tooling】当前 frozen disposition 应完整表述为 `GATE1_PRODUCT_PASS_THEN_RUNNER_ACCOUNTING_FIRST_GATE_TRIGGER_HARDCODED_TO_GATE3`。Execution count 与 authorized count consumed 都为一；Gate 2—79 未启动；Formal Receipt backfill count 为零；产品失败 attested 为 false。任何报告若只写“Gate 1 failed”会把 Runner 错误冒充产品错误；若只写“Gate 1 passed, everything green”又会掩盖 78 项未执行与后续链空缺。
+【LIVE Tooling】历史 Run 001 disposition 仍应表述为 `GATE1_PRODUCT_PASS_THEN_RUNNER_ACCOUNTING_FIRST_GATE_TRIGGER_HARDCODED_TO_GATE3`；历史 Continuation 002 应表述为 `GATE_2_TO_15_PASS_THEN_GATE16_PRODUCT_FAIL`。当前新 Head disposition 是 `FULL_SUITE_MANIFEST_REQUIRES_UNAVAILABLE_SAME_HEAD_GATE1_REUSE_ATTESTATION_BEFORE_PRODUCT_START`。三者不能合并成一个含糊的“Gate failed”。
 
-【LIVE Tooling】下一次 Runner 修复必须先在 Tooling Preflight 完成，不启动 Godot也不消耗产品 Attempt。正确设计应从已验证 Effective Plan 取得 `first_planned_gate_id`，而不是比较固定数字。Self-Test 至少覆盖 1—79、3—79、60—79、合法 singleton、零附加参数 Gate，以及 start witness/authority/row/receipt/progress/summary 的 roundtrip。预检还应复用 V3 cardinality 和 collection binding 合同，保持 StrictMode，拒绝 `@($null)`、Raw `.Count` 猜测与 optional property 直接访问。
+【LIVE Tooling】下一次 Runner 修复必须先在 Tooling Preflight 完成，不启动 Godot也不消耗产品 Attempt。`first_planned_gate_id` 已经动态化，后续重点是 reuse 的计划条件与 full-plan Aggregate cardinality。Self-Test 除原六类计划外，还要证明 full plan 拒绝 reuse、continuation plan 缺 reuse fail closed、同 Head真实 reuse 才可接受、79 个新来源不与 reuse 混入。预检仍应保持 StrictMode 与既有 cardinality/collection/normalization 合同。
 
 【LIVE Tooling】只有新授权明确给出 run ID、gate range、execution count、Head/Tree、Import 复用、自动重试政策和失败停止规则后，才可以创建新的 Formal Root 并启动第一个产品 Godot 进程。首个真实产品失败立即冻结；Runner 在产品结果后失败也冻结，但可建立独立 append-only reuse attestation。两种故障都不能在未修改 Head 上自动重跑，更不能创建未授权 Continuation。
 
@@ -479,7 +482,7 @@ MCP 与 Viewport 仅在 79/79 后执行仓库已有 runbook：`tools/invoke_v075
 
 【LIVE】接手者第一轮只读导航建议按依赖方向进行。先读 `docs/handoff/START_HERE_NEXT_DEVELOPER.md` 和本主文档，确认 BLOCKED 终态；再读 V0.7.5 Constitution、Combat Authority Manifest 与 Balance Defaults，建立规则边界；随后看 `v075_application_bootstrap.gd`、`v075_application_flow.gd`、`v075_runtime_owner.gd` 和 `v075_combat_runtime_owner.gd`，理解从装配到 Combat Owner 的调用链；最后按具体失败查看 capability catalog、AI adapter、monster/military cores 与对应 tests。不要从一个测试文件直接猜整个架构。
 
-【LIVE】PR #90 产品 diff 的核心审查问题是：完整能力目录是否与当前合法候选分离；optional capability 是否只在功能调用时校验而不污染基础绑定；card/source/target identity 与 generation/revision 是否贯穿 preview、queue、runtime、receipt；AI 是否与玩家共享同一 Authority pipeline；rollback 是否恢复 reservation 与 journal；external owner failure 是否不会留下半提交状态。最新五方法变更只调整绑定合同，不应改变这些问题的答案。
+【LIVE】PR #90 产品 diff 的核心审查问题是：完整能力目录是否与当前合法候选分离；optional capability 是否只在功能调用时校验而不污染基础绑定；card/source/target identity 与 generation/revision 是否贯穿 preview、queue、runtime、receipt；AI 是否与玩家共享同一 Authority pipeline；rollback 是否恢复 reservation 与 journal；external owner failure 是否不会留下半提交状态。commit `1e948a15` 在 typed 方法存在时保留严格路径，只在最小合同 Owner 上调用既有 fallback；后续 Review 仍要确认这些边界。
 
 【LIVE】Application Flow 审查时要特别看同步重入。一个 typed port 调用可能在同一调用栈内回调或失败，事务状态必须在所有出口成对清理；不能依赖下一帧、动画完成或 UI 关闭释放 lock。Checkpoint 只能为 transaction rollback/exact-once 服务，不能变成 production Save。若失败发生在外部 Owner commit 前，应恢复内部 reservation/journal；若外部 commit 已返回 receipt，重试必须根据 receipt identity 去重，而不能重复伤害。
 
@@ -489,13 +492,13 @@ MCP 与 Viewport 仅在 79/79 后执行仓库已有 runbook：`tools/invoke_v075
 
 【LIVE】测试改动原则很严格：当前 BLOCKER 属于仓库外 adapted Runner，用户没有授权修改产品测试、Canonical Gate Manifest、Gate 顺序或期望。Runner 修复应在独立工具包或明确允许的 docs/tooling scope 中完成，并通过静态 diff 证明 `scripts/`、`scenes/`、`resources/`、`tests/` 和 Canonical Manifest 零变化。若修复必须触碰这些区域，停止并请求范围扩展，不要把它包装成“测试基础设施小改”。
 
-【LIVE】Git 与 Evidence 身份也要分开。产品权威 Head 是 `6d4d52dfbc8001c919ac569dcab2e3b53f968d34`，Tree 是 `95c899ceb552a9214edc4ab7e6076ea6e6c7c02c`。Docs-only Handoff 分支以该 Head 为 base，只增加 `docs/handoff/` 与 `reports/handoffs/`；它不是新的产品候选，也不改变 PR #90 产品 Tree 的验收结论。未来产品 Attempt 仍必须指向 PR #90 的产品 Head/Tree，而不是把文档提交 SHA 当作已验证游戏 SHA。
+【LIVE】Git 与 Evidence 身份也要分开。当前产品权威 Head 是 `1e948a15e17faffe648722fd596fac01a4525426`，Tree 是 `8508df4e900a73c058566f00fc556ec1d11e08ca`。Docs-only Handoff 分支仍源自较早产品 base，只增加 `docs/handoff/` 与 `reports/handoffs/`；它不是新的产品候选，也不改变 PR #90 产品 Tree。未来 Attempt 必须重新实时核验 PR #90 Head/Tree，不能把文档提交 SHA 当作游戏 SHA。
 
 ### 开发者实操附录 H：下一次任务的完成定义与停止条件
 
-【PLANNED】第一阶段任务名应精确指向 `PR90_RELEASE_RUNNER_FULL_RANGE_FIRST_GATE_ACCOUNTING_TRIGGER_REPAIR`。目标是消除首次 Gate 写死值，建立来自 Effective Plan 的单一 accounting start boundary，并让同一个 Worker 在多种合法 gate range 上完成无 Godot全链。它不是产品修复，不允许改 PR #90 代码、测试、Manifest、Gate 顺序、数值或冻结 Evidence。完成标志是静态审查 GO、Self-Test 全绿、V3 Full Dry Run 79/79、旧 Formal payload SHA 不变、Godot process count 零。
+【PLANNED】第一阶段任务名应精确指向 `PR90_RELEASE_FULL_HEAD_GATE1_REUSE_OPTIONAL_MANIFEST_CONTRACT_REPAIR`。目标是获得一次 post-repair Tooling Revision 授权，使 reuse 与 Aggregate 来源由 ReleaseRunPlan 决定。它不是产品修复，不允许改 PR #90 代码、测试、Canonical Manifest、Gate 顺序、数值或冻结 Evidence。完成标志是静态审查 GO、reuse 正负 Self-Test 全绿、六类同 Worker Dry Run 全绿、旧 Formal payload SHA 不变、Godot process count 零。
 
-【PLANNED】预检交付给用户时，应同时展示修复 diff、命令闭包、Self-Test case matrix、Dry Run 结果、来源 Head/Tree、旧冻结指纹与进程/端口归零。然后明确请求一次新的正式 Attempt 授权。不能把预检成功解释为默认获得配额；也不能因为 Gate 1 旧 Raw PASS 很可信就自行决定跳过或重跑。新的授权应回答完整 range、是否允许复用、Import policy、首失败停止和后续 Release chain。
+【PLANNED】预检交付给用户时，应同时展示修复 diff、命令闭包、Self-Test case matrix、Dry Run 结果、来源 Head/Tree、旧冻结指纹与进程/端口归零。然后明确请求一次新的完整 1—79 Attempt 授权。不能把预检成功解释为默认获得配额；full plan 必须新跑 Gate 1，不得带入旧 reuse。新的授权还要回答 Import policy、首失败停止和后续 Release chain。
 
 【PLANNED】如果新 Attempt 获准并完成 Gate 1—79 全部 PASS，Aggregate 才能写 79/79。随后三路 Post-Aggregate Review 都要达到 P0=0、P1=0，才进入 Exact-SHA MCP；MCP 必须在相同产品 Head/Tree 上验证 project reload、changed scripts/scenes/resources、真实 main composition、Combat 关键路径和零新增 runtime/task 错误。MCP 失败不是继续跑 Viewport 的理由。
 
@@ -565,7 +568,7 @@ MCP 与 Viewport 仅在 79/79 后执行仓库已有 runbook：`tools/invoke_v075
 
 【PLANNED】PR Ready 与 merge 是所有上游证据的结果，不是开始 Release 验证的按钮。合并前还要确认 source worktree clean、Acceptance Clone tracked/index delta 为零、PR 仍 mergeable、CI 仍对应产品 Head。Merge method 固定为 merge commit，以保留产品分支历史；标签来自正式 Release Manifest。任何上游状态 NOT_RUN、NO_GO 或 FAIL 都应让 `PR90_READY=false`。
 
-【LIVE】本次状态可以用最短的可审计表达概括：产品 Head 已有一次有限修复，CI PASS，Gate 15 定向 36/36，Canonical Import PASS，Dry Run 79/79；正式 Gate 1 产品 PASS 后 Runner accounting 失败；Gate 2—79 与全部后续 Release 阶段 NOT_RUN；PR #90 仍是 OPEN DRAFT，未合并；V0.7.6 未实施。后续任何报告都应保留这条基线，直到新的不可变证据逐项替换 NOT_RUN。
+【LIVE】本次状态可以用最短的可审计表达概括：旧 Head Gate 2—15 PASS、Gate 16 PRODUCT FAIL；唯一产品修复已提交为新 Head `1e948a15`，Gate 15/16/60 与 CI PASS；Revision 002 Dry Run 6/6；但新 Head full-suite Manifest 仍无条件要求不可用的 Gate 1 reuse，因此 Canonical Import 与正式 Gate 1—79 均 NOT_RUN、Attempt 0 次；PR #90 仍是 OPEN DRAFT，未合并；V0.7.6 未实施。
 
 【LIVE】如果云端 CI、GitHub PR 页面与本地 Evidence 在时间上出现差异，先比较 commit SHA、tree SHA、run ID 和 observed time，再判断是否真的漂移。不要只看文件修改日期、分支显示名或“最新”字样。产品身份必须同时由实时 PR Head、直接远端 PR ref、直接远端 branch ref 与 Acceptance Clone Head/Tree 支持；共享 mirror 只能作缓存线索，不能单独决定权威身份。真实漂移应在启动新进程前停止，而不是尝试把旧 Evidence 迁移到新 Head。
 

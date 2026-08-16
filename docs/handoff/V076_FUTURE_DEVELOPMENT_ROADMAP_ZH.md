@@ -4,8 +4,8 @@
 
 ## 前置门
 
-1. 修复 PR #90 Runner 首 Gate accounting trigger。
-2. 新授权下完成 79/79、三路 Review、Exact-SHA MCP、Viewport、Headless Matrix、2,000 局。
+1. 修复 PR #90 full-plan Manifest：计划包含 Gate 1 时禁止 reuse；计划从后续 Gate 开始时才要求真实 Attestation。
+2. 新授权下完整执行新 Head Gate 1—79，再完成三路 Review、Exact-SHA MCP、Viewport、Headless Matrix、2,000 局。
 3. 用 merge commit 合并 PR #90 并按 Release Manifest 打 Tag。
 
 ## Detached POC
