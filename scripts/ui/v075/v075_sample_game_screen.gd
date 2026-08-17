@@ -378,7 +378,10 @@ func apply_combat_receipt(receipt: Dictionary) -> Dictionary:
 		else:
 			_combat_receipt_rejected_count += 1
 	var receipt_id := str(
-		receipt.get("combat_receipt_id", receipt.get("receipt_id", ""))
+		receipt.get(
+			"presentation_receipt_id",
+			receipt.get("combat_receipt_id", receipt.get("receipt_id", ""))
+		)
 	)
 	combat_receipt_processed.emit(receipt_id, result.duplicate(true))
 	_update_acceptance_state()
@@ -1577,9 +1580,15 @@ func _reset_combat_state() -> void:
 
 
 func _is_combat_receipt(receipt: Dictionary) -> bool:
-	var event_kind := str(receipt.get("event_kind", receipt.get("kind", "")))
+	var event_kind := str(
+		receipt.get(
+			"presentation_kind",
+			receipt.get("event_kind", receipt.get("kind", ""))
+		)
+	)
 	return (
-		not str(receipt.get("combat_receipt_id", "")).is_empty()
+		not str(receipt.get("presentation_receipt_id", "")).is_empty()
+		or not str(receipt.get("combat_receipt_id", "")).is_empty()
 		or event_kind in COMBAT_EVENT_KINDS
 	)
 

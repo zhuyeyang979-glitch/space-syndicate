@@ -9,6 +9,9 @@ const RuntimeOwner := preload(
 const CombatOwner := preload(
 	"res://scripts/v075/runtime/v075_combat_runtime_owner.gd"
 )
+const PresentationIdentity := preload(
+	"res://scripts/v075/presentation/v075_presentation_receipt_identity_v2.gd"
+)
 const ProjectionAdapter := preload(
 	"res://scripts/v075/player/v075_combat_projection_adapter.gd"
 )
@@ -596,9 +599,22 @@ func _run() -> void:
 		"future_skill_target": "facility.hidden.future",
 	}
 	var receipt_before := receipt.duplicate(true)
+	var v2_receipt := PresentationIdentity.build_public(
+		"ui.runtime.presentation.001",
+		PresentationIdentity.source_fingerprint(
+			"ui.runtime.presentation.001",
+			receipt
+		),
+		0,
+		"monster_private_skill_resolved",
+		0,
+		"v0.7.5",
+		"session.ui.runtime.presentation.integration",
+		receipt
+	)
 	runtime.emit_signal(
-		"resolution_presented",
-		receipt.duplicate(true)
+		"combat_presentation_receipt_ready",
+		v2_receipt.duplicate(true)
 	)
 	await process_frame
 
@@ -644,6 +660,34 @@ func _run() -> void:
 			and not _contains_key(public_cue, "future_skill_target"),
 		"shared public cue strips every private skill field"
 	)
+	_expect(
+		str(public_cue.get("audience_scope", "")) == "PUBLIC"
+			and str(public_cue.get("source_receipt_id", ""))
+				== "ui.runtime.presentation.001"
+			and str(public_cue.get("canonical_payload_fingerprint", "")).length()
+				== 64,
+		"shared public cue carries sealed V2 lineage, audience and fingerprint"
+	)
+	var observer_only_variant := public_cue.duplicate(true)
+	observer_only_variant["observer_correlation_id"] = (
+		"observer.presentation.transport.changed"
+	)
+	observer_only_variant["observer_correlation_fingerprint"] = (
+		"observer-metadata-not-a-surface-identity"
+	)
+	var observer_only_replay := surface_node.show_presentation_cue(
+		observer_only_variant
+	)
+	var observer_surface_debug := surface_node.debug_snapshot()
+	_expect(
+		str(observer_only_replay.get("reason_code", ""))
+			== "presentation_cue_duplicate"
+			and int(observer_surface_debug.get(
+				"presentation_cue_collision_count",
+				-1
+			)) == 0,
+		"observer correlation cannot become a downstream cue identity dialect"
+	)
 
 	var runtime_before_publish := runtime.call("debug_snapshot") as Dictionary
 	var consumer_before_publish := shared_consumer.call(
@@ -663,6 +707,13 @@ func _run() -> void:
 		)) == 0,
 		"production shared presentation starts with zero direct screen receipts"
 	)
+	runtime.set("_match_id", "match.ui.runtime.presentation.integration")
+	var runtime_source_id := "source.ui.runtime.presentation.002"
+	var runtime_source := {
+		"receipt_id": runtime_source_id,
+		"state_revision": 2,
+		"event_kind": "military_region_assault",
+	}
 	runtime.call(
 		"_publish_combat_event",
 		"military_region_assault",
@@ -672,7 +723,13 @@ func _run() -> void:
 			"task_kind": "assault_region",
 			"public_summary": "Public military assault resolved",
 		},
-		"ui.runtime.presentation.002"
+		"ui.runtime.presentation.002",
+		runtime_source_id,
+		PresentationIdentity.source_fingerprint(
+			runtime_source_id,
+			runtime_source
+		),
+		2
 	)
 	await process_frame
 	var runtime_after_publish := runtime.call("debug_snapshot") as Dictionary
@@ -747,8 +804,8 @@ func _run() -> void:
 					"presentation_cue_duplicate_count",
 					-1
 				)
-			) == 0,
-		"receipt forwarding leaves both exact-once journals unchanged"
+			) == 1,
+		"receipt forwarding leaves both exact-once journals unchanged beyond the explicit observer-only replay"
 	)
 	_expect(
 		receipt == receipt_before

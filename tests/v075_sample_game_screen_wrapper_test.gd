@@ -9,6 +9,9 @@ const Bench := preload(
 const ProjectionAdapter := preload(
 	"res://scripts/v075/player/v075_combat_projection_adapter.gd"
 )
+const PresentationIdentity := preload(
+	"res://scripts/v075/presentation/v075_presentation_receipt_identity_v2.gd"
+)
 
 
 class FakeFlow:
@@ -347,8 +350,11 @@ func _run() -> void:
 		],
 		"public_summary": "公开路径已结算",
 	}
-	var first_result := screen.apply_combat_receipt(receipt)
-	var duplicate_result := screen.apply_combat_receipt(receipt.duplicate(true))
+	var receipt_v2 := _v2(receipt, 0)
+	var first_result := screen.apply_combat_receipt(receipt_v2)
+	var duplicate_result := screen.apply_combat_receipt(
+		receipt_v2.duplicate(true)
+	)
 	var after_receipt := screen.combat_debug_snapshot()
 	_expect(
 		bool(first_result.get("applied", false))
@@ -374,6 +380,7 @@ func _run() -> void:
 		and int(after_receipt.get("combat_map_callout_count", 0)) >= 1,
 		"public movement receipt renders two production map trail segments"
 	)
+	var presentation_sequence := 1
 	for sequence_receipt in [
 		{
 			"combat_receipt_id": "wrapper.receipt.002",
@@ -398,7 +405,10 @@ func _run() -> void:
 			"military_tier": 2,
 		},
 	]:
-		screen.apply_combat_receipt(sequence_receipt)
+		screen.apply_combat_receipt(
+			_v2(sequence_receipt as Dictionary, presentation_sequence)
+		)
+		presentation_sequence += 1
 	await process_frame
 	var after_sequence := screen.combat_debug_snapshot()
 	var sequence_surface := after_sequence.get("surface", {}) as Dictionary
@@ -636,6 +646,20 @@ func _valid_runtime_acceptance_source() -> Dictionary:
 			"last_receipt": {"visibility_scope": "actor_private"},
 		},
 	}
+
+
+func _v2(raw_receipt: Dictionary, sequence: int) -> Dictionary:
+	var source_id := str(raw_receipt.get("combat_receipt_id", ""))
+	return PresentationIdentity.build_public(
+		source_id,
+		PresentationIdentity.source_fingerprint(source_id, raw_receipt),
+		sequence,
+		str(raw_receipt.get("event_kind", "")),
+		0,
+		"v0.7.5",
+		"session.sample.game.screen.wrapper.test",
+		raw_receipt
+	)
 
 
 func _expected_runtime_acceptance_debug() -> Dictionary:

@@ -3,6 +3,9 @@ extends SceneTree
 const Consumer := preload(
 	"res://scripts/v075/presentation/v075_combat_presentation_consumer.gd"
 )
+const Identity := preload(
+	"res://scripts/v075/presentation/v075_presentation_receipt_identity_v2.gd"
+)
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -30,19 +33,20 @@ func _run() -> void:
 		"cooldown_remaining_batches": 3,
 		"future_skill_target": "hidden.future.target",
 	}
-	var first := consumer.consume_receipt(receipt)
-	var duplicate := consumer.consume_receipt(receipt.duplicate(true))
+	var v2_receipt := _v2(receipt, 0)
+	var first := consumer.consume_receipt(v2_receipt)
+	var duplicate := consumer.consume_receipt(v2_receipt.duplicate(true))
 	var reordered_receipt := {}
-	var reversed_keys := receipt.keys()
+	var reversed_keys := v2_receipt.keys()
 	reversed_keys.reverse()
 	for key_variant in reversed_keys:
 		reordered_receipt[key_variant] = _deep_reverse_dictionaries(
-			receipt.get(key_variant)
+			v2_receipt.get(key_variant)
 		)
 	var reordered_duplicate := consumer.consume_receipt(reordered_receipt)
 	var collision_receipt := receipt.duplicate(true)
 	collision_receipt["damage_amount"] = 9
-	var collision := consumer.consume_receipt(collision_receipt)
+	var collision := consumer.consume_receipt(_v2(collision_receipt, 0))
 	_expect(bool(first.get("applied", false)), "first combat receipt is applied")
 	_expect(
 		str(duplicate.get("reason_code", "")) ==
@@ -109,9 +113,10 @@ func _run() -> void:
 		)
 		transition_receipt.erase("receipt_id")
 		transition_receipt["preferred_industry_color"] = "technology"
-		var applied := consumer.consume_receipt(transition_receipt)
+		var transition_v2 := _v2(transition_receipt, 1 + transition_cases.find(case))
+		var applied := consumer.consume_receipt(transition_v2)
 		var replayed := consumer.consume_receipt(
-			transition_receipt.duplicate(true)
+			transition_v2.duplicate(true)
 		)
 		var transition_cue := applied.get("cue", {}) as Dictionary
 		var transition_payload := (
@@ -151,12 +156,12 @@ func _run() -> void:
 		"presentation never mutates gameplay or delays authority"
 	)
 	consumer.set_terminal_phase("final_settlement")
-	var after_terminal := consumer.consume_receipt({
+	var after_terminal := consumer.consume_receipt(_v2({
 		"combat_receipt_id": "receipt.post.settlement",
 		"event_kind": "monster_moved",
 		"start_region_id": "region.01",
 		"destination_region_id": "region.02",
-	})
+	}, 4))
 	_expect(
 		not bool(after_terminal.get("applied", true))
 		and str(after_terminal.get("reason_code", "")) ==
@@ -165,6 +170,22 @@ func _run() -> void:
 	)
 	consumer.queue_free()
 	_finish()
+
+
+func _v2(raw_receipt: Dictionary, sequence: int) -> Dictionary:
+	var source_id := str(
+		raw_receipt.get("combat_receipt_id", raw_receipt.get("receipt_id", ""))
+	)
+	return Identity.build_public(
+		source_id,
+		Identity.source_fingerprint(source_id, raw_receipt),
+		sequence,
+		str(raw_receipt.get("event_kind", raw_receipt.get("kind", ""))),
+		0,
+		"v0.7.5",
+		"session.presentation.exact.once.test",
+		raw_receipt
+	)
 
 
 func _deep_reverse_dictionaries(value: Variant) -> Variant:

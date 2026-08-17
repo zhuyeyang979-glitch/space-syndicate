@@ -153,6 +153,17 @@ func _run() -> void:
 		int(final_debug.get("final_settlement_count", 0)) == 1,
 		"final settlement count is one"
 	)
+	var presentation_debug := (
+		final_debug.get("combat_presentation", {}) as Dictionary
+	)
+	_expect(
+		int(presentation_debug.get("applied_receipt_count", 0)) > 0
+			and int(presentation_debug.get("collision_receipt_count", -1)) == 0
+			and int(presentation_debug.get("duplicate_receipt_count", -1)) == 0
+			and int(final_debug.get("presentation_identity_rejection_count", -1))
+				== 0,
+		"fixed-seed natural runtime applies V2 presentation receipts without collision"
+	)
 	var combat_debug := final_debug.get("combat", {}) as Dictionary
 	var monster_modes := combat_debug.get(
 		"monster_card_mode_counts",

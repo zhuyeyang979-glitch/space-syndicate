@@ -9,6 +9,9 @@ const AIAdapter := preload(
 const Presentation := preload(
 	"res://scripts/v075/presentation/v075_combat_presentation_consumer.gd"
 )
+const PresentationIdentity := preload(
+	"res://scripts/v075/presentation/v075_presentation_receipt_identity_v2.gd"
+)
 const Telemetry := preload(
 	"res://scripts/v075/telemetry/v075_combat_telemetry_contract.gd"
 )
@@ -89,12 +92,27 @@ func _run() -> void:
 	var presentation := Presentation.new()
 	root.add_child(presentation)
 	presentation.set_terminal_phase("final_settlement")
-	var post_settlement := presentation.consume_receipt({
+	var terminal_raw := {
 		"combat_receipt_id": "terminal.receipt.001",
 		"event_kind": "military_monster_assault",
 		"target_kind": "monster",
 		"damage_amount": 4,
-	})
+	}
+	var post_settlement := presentation.consume_receipt(
+		PresentationIdentity.build_public(
+			"terminal.receipt.001",
+			PresentationIdentity.source_fingerprint(
+				"terminal.receipt.001",
+				terminal_raw
+			),
+			0,
+			"military_monster_assault",
+			0,
+			"v0.7.5",
+			"session.terminal.quiescence.test",
+			terminal_raw
+		)
+	)
 	_expect(
 		not bool(post_settlement.get("applied", true)),
 		"terminal presentation rejects post-settlement effect"

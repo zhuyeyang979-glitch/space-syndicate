@@ -1,0 +1,69 @@
+{
+  "schema": "V075PresentationCollisionPairsFixtureV1",
+  "source_head_sha": "16ba8532b53cc598a422060039aaee49c862057b",
+  "source_tree_sha": "faa91174fa45fad6254c3a743b8400b7fdf614f7",
+  "session_id": "match.v075.sample.1786975827704.1",
+  "pairs": [
+    {
+      "case_id": "frozen_pair_monster_deploy",
+      "legacy_receipt_id": "receipt.batch.match.v075.sample.1786975827704.1.0004.anonymous.000000.15a0d5e7f7493a5b",
+      "source_receipt_fingerprint": "c3556853859993624d8b08aec0e87fbd2e7280575611c2ac10df0b5b3746fe10",
+      "source_authority_sequence": 0,
+      "presentation_kind": "monster_deployed",
+      "first_payload": {
+        "monster_card_mode": "DEPLOY_NEW",
+        "new_rank": 1,
+        "old_rank": 0,
+        "reason_code": "monster_card_mode_resolved",
+        "refresh_percent": 0,
+        "source_generation": 1,
+        "source_instance_id": "monster.source.00000001",
+        "target_region_id": "region.008"
+      },
+      "second_payload": {
+        "accepted": true,
+        "action_domain": "monster",
+        "combat_public_result": {
+          "monster_card_mode": "DEPLOY_NEW",
+          "new_rank": 1,
+          "old_rank": 0,
+          "reason_code": "monster_card_mode_resolved",
+          "refresh_percent": 0,
+          "source_generation": 1,
+          "source_instance_id": "monster.source.00000001",
+          "target_region_id": "region.008"
+        },
+        "outcome_id": "monster_action_resolved",
+        "reason_code": "monster_card_mode_resolved"
+      }
+    },
+    {
+      "case_id": "frozen_pair_military_region_assault",
+      "legacy_receipt_id": "receipt.batch.match.v075.sample.1786975827704.1.0004.anonymous.000002.93f5858866f31e8c",
+      "source_receipt_fingerprint": "e770bbc88d1a25be6b628d2efc39fb9443ec5ae883f3b3509bb0bbd173d5a4ae",
+      "source_authority_sequence": 2,
+      "presentation_kind": "military_region_assault",
+      "first_payload": {
+        "outcome": "fizzled",
+        "reason_code": "facility_damage_intent_build_failed",
+        "target_monster_source_instance_id": "",
+        "target_region_id": "region.000",
+        "task_kind": "assault_region"
+      },
+      "second_payload": {
+        "accepted": true,
+        "action_domain": "military",
+        "combat_public_result": {
+          "outcome": "fizzled",
+          "reason_code": "facility_damage_intent_build_failed",
+          "target_monster_source_instance_id": "",
+          "target_region_id": "region.000",
+          "task_kind": "assault_region"
+        },
+        "outcome_id": "military_action_fizzled",
+        "reason_code": "facility_damage_intent_build_failed"
+      }
+    }
+  ],
+  "private_payload_plaintext_count": 0
+}

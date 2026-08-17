@@ -3,6 +3,10 @@ class_name V075CombatPresentationConsumer
 
 signal presentation_cue_ready(cue: Dictionary)
 
+const PresentationReceiptIdentity := preload(
+	"res://scripts/v075/presentation/v075_presentation_receipt_identity_v2.gd"
+)
+
 const RULESET_ID := "v0.7.5"
 const TERMINAL_PHASES := [
 	"victory_resolved",
@@ -76,40 +80,6 @@ const EVENT_ASSET_KEYS := {
 		"vfx.facility.factory_smoke",
 	],
 }
-const PUBLIC_CUE_FIELDS := [
-	"public_effect_id",
-	"source_public_name",
-	"source_rank",
-	"old_rank",
-	"new_rank",
-	"refresh_percent",
-	"preferred_industry_color",
-	"movement_profile",
-	"source_instance_id",
-	"movement_id",
-	"trample_region_receipt_id",
-	"start_region_id",
-	"destination_region_id",
-	"region_id",
-	"target_region_id",
-	"target_facility_id",
-	"target_monster_source_instance_id",
-	"target_kind",
-	"ordered_region_path",
-	"distance_milli_arc",
-	"region_damage_budget",
-	"allocated_damage",
-	"unallocated_damage",
-	"damage_amount",
-	"armor_absorbed",
-	"hp_before",
-	"hp_after",
-	"status",
-	"facility_type",
-	"facility_damage_state",
-	"military_tier",
-	"public_summary",
-]
 const CUE_FORBIDDEN_FRAGMENTS := [
 	"skill_definition",
 	"skill_card",
@@ -134,18 +104,21 @@ var _last_cue: Dictionary = {}
 
 
 func consume_receipt(receipt: Dictionary) -> Dictionary:
-	var receipt_id := str(
-		receipt.get(
-			"combat_receipt_id",
-			receipt.get("receipt_id", "")
-		)
-	)
-	var event_kind := str(
-		receipt.get("event_kind", receipt.get("kind", ""))
-	)
-	if receipt_id.is_empty() or event_kind.is_empty():
+	var validation := PresentationReceiptIdentity.validate(receipt)
+	if not bool(validation.get("valid", false)):
 		_rejected_count += 1
-		return _result(false, "combat_presentation_receipt_invalid")
+		var invalid := _result(false, "combat_presentation_receipt_invalid")
+		invalid["validation_reason_code"] = str(
+			validation.get("reason_code", "presentation_receipt_v2_invalid")
+		)
+		return invalid
+	var receipt_id := str(receipt.get("presentation_receipt_id", ""))
+	var event_kind := str(receipt.get("presentation_kind", ""))
+	if str(receipt.get("audience_scope", "")) != (
+		PresentationReceiptIdentity.PUBLIC_AUDIENCE_SCOPE
+	):
+		_rejected_count += 1
+		return _result(false, "combat_presentation_audience_unauthorized")
 	if not _terminal_phase.is_empty():
 		_rejected_count += 1
 		return _result(false, "post_settlement_combat_effect_rejected")
@@ -153,7 +126,9 @@ func consume_receipt(receipt: Dictionary) -> Dictionary:
 		_rejected_count += 1
 		return _result(false, "combat_presentation_event_unsupported")
 
-	var fingerprint := _receipt_fingerprint(receipt)
+	var fingerprint := str(
+		receipt.get("canonical_payload_fingerprint", "")
+	)
 	if _receipt_bindings.has(receipt_id):
 		var binding := _receipt_bindings.get(receipt_id, {}) as Dictionary
 		if str(binding.get("fingerprint", "")) != fingerprint:
@@ -165,11 +140,7 @@ func consume_receipt(receipt: Dictionary) -> Dictionary:
 		_duplicate_count += 1
 		return _result(false, "combat_presentation_receipt_duplicate")
 
-	var cue := _build_public_cue(
-		receipt_id,
-		event_kind,
-		receipt
-	)
+	var cue := _build_public_cue(receipt)
 	var privacy := cue_privacy_report(cue)
 	if not bool(privacy.get("valid", false)):
 		_rejected_count += 1
@@ -177,6 +148,12 @@ func consume_receipt(receipt: Dictionary) -> Dictionary:
 	_receipt_bindings[receipt_id] = {
 		"event_kind": event_kind,
 		"fingerprint": fingerprint,
+		"source_receipt_id": str(receipt.get("source_receipt_id", "")),
+		"source_authority_sequence": int(
+			receipt.get("source_authority_sequence", -1)
+		),
+		"presentation_ordinal": int(receipt.get("presentation_ordinal", -1)),
+		"audience_scope": str(receipt.get("audience_scope", "")),
 	}
 	_cue_history.append(cue.duplicate(true))
 	_applied_count += 1
@@ -272,21 +249,39 @@ func debug_snapshot() -> Dictionary:
 	}
 
 
-func _build_public_cue(
-	receipt_id: String,
-	event_kind: String,
-	receipt: Dictionary
-) -> Dictionary:
-	var public_payload := {}
-	for field in PUBLIC_CUE_FIELDS:
-		if receipt.has(field):
-			public_payload[field] = _safe_copy(receipt.get(field))
+func _build_public_cue(receipt: Dictionary) -> Dictionary:
+	var receipt_id := str(receipt.get("presentation_receipt_id", ""))
+	var event_kind := str(receipt.get("presentation_kind", ""))
+	var public_payload := (
+		receipt.get("canonical_payload", {}) as Dictionary
+	).duplicate(true)
 	var cue := {
 		"schema": "V075CombatPresentationCueV1",
 		"ruleset_id": RULESET_ID,
 		"presentation_receipt_id": receipt_id,
+		"source_receipt_id": str(receipt.get("source_receipt_id", "")),
+		"source_receipt_fingerprint": str(
+			receipt.get("source_receipt_fingerprint", "")
+		),
+		"observer_correlation_id": str(
+			receipt.get("observer_correlation_id", "")
+		),
+		"observer_correlation_fingerprint": str(
+			receipt.get("observer_correlation_fingerprint", "")
+		),
+		"source_authority_sequence": int(
+			receipt.get("source_authority_sequence", -1)
+		),
+		"presentation_ordinal": int(receipt.get("presentation_ordinal", -1)),
+		"audience_scope": str(receipt.get("audience_scope", "")),
+		"audience_key_fingerprint": str(
+			receipt.get("audience_key_fingerprint", "")
+		),
+		"canonical_payload_fingerprint": str(
+			receipt.get("canonical_payload_fingerprint", "")
+		),
 		"event_kind": event_kind,
-		"asset_keys": _asset_keys_for(event_kind, receipt),
+		"asset_keys": _asset_keys_for(event_kind, public_payload),
 		"public_payload": public_payload,
 		"presentation_only": true,
 		"gameplay_mutation_count": 0,
@@ -335,34 +330,6 @@ func _asset_keys_for(
 	return keys
 
 
-func _receipt_fingerprint(receipt: Dictionary) -> String:
-	return _canonical_json(receipt).sha256_text()
-
-
-func _canonical_json(value: Variant) -> String:
-	if value is Dictionary:
-		var dictionary := value as Dictionary
-		var keys: Array[String] = []
-		for key_variant in dictionary.keys():
-			keys.append(str(key_variant))
-		keys.sort()
-		var fields: Array[String] = []
-		for key in keys:
-			fields.append(
-				"%s:%s" % [
-					JSON.stringify(key),
-					_canonical_json(dictionary.get(key)),
-				]
-			)
-		return "{%s}" % ",".join(fields)
-	if value is Array:
-		var items: Array[String] = []
-		for item in value as Array:
-			items.append(_canonical_json(item))
-		return "[%s]" % ",".join(items)
-	return JSON.stringify(value)
-
-
 func _result(applied: bool, reason_code: String) -> Dictionary:
 	return {
 		"applied": applied,
@@ -372,14 +339,6 @@ func _result(applied: bool, reason_code: String) -> Dictionary:
 		"collision_receipt_count": _collision_count,
 		"rejected_receipt_count": _rejected_count,
 	}
-
-
-func _safe_copy(value: Variant) -> Variant:
-	if value is Dictionary:
-		return (value as Dictionary).duplicate(true)
-	if value is Array:
-		return (value as Array).duplicate(true)
-	return value
 
 
 func _forbidden_fragment_count(

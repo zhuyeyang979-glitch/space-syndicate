@@ -16,10 +16,11 @@ const RECEIPT_ID_KEYS := [
 	"public_receipt_id",
 ]
 const CUE_ID_KEYS := [
+	"observer_correlation_id",
+	"source_receipt_id",
 	"presentation_receipt_id",
 	"combat_receipt_id",
 	"receipt_id",
-	"source_receipt_id",
 ]
 const HIDDEN_FIELD_FRAGMENTS := [
 	"skill_definition",

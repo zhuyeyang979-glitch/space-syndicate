@@ -1,5 +1,9 @@
 extends SceneTree
 
+const PresentationIdentity := preload(
+	"res://scripts/v075/presentation/v075_presentation_receipt_identity_v2.gd"
+)
+
 const RUNTIME_OWNER_PATH := (
 	"res://scripts/v075_runtime/v075_runtime_owner.gd"
 )
@@ -106,7 +110,7 @@ func _run() -> void:
 	)
 	var presentation_link := _find_connection(
 		signal_sources,
-		["public_combat_result_ready", "resolution_presented"],
+		["combat_presentation_receipt_ready"],
 		"consume_receipt"
 	)
 	_expect(
@@ -118,7 +122,7 @@ func _run() -> void:
 	_expect(
 		not presentation_link.is_empty(),
 		"production_runtime_presentation_receipt_connection_missing:"
-			+ "expected public_combat_result_ready/resolution_presented"
+			+ "expected combat_presentation_receipt_ready"
 			+ " -> consume_receipt"
 	)
 	if receipt_link.is_empty() or presentation_link.is_empty():
@@ -160,12 +164,23 @@ func _run() -> void:
 
 	var receipt := _public_receipt()
 	var receipt_before := receipt.duplicate(true)
+	var source_id := str(receipt.get("combat_receipt_id", ""))
+	var presentation_receipt := PresentationIdentity.build_public(
+		source_id,
+		PresentationIdentity.source_fingerprint(source_id, receipt),
+		0,
+		str(receipt.get("event_kind", "")),
+		0,
+		"v0.7.5",
+		"session.runtime.telemetry.bridge.integration",
+		receipt
+	)
 	_emit_link(receipt_link, receipt)
 	if not _same_signal_link(receipt_link, presentation_link):
-		_emit_link(presentation_link, receipt)
+		_emit_link(presentation_link, presentation_receipt)
 	_emit_link(receipt_link, receipt)
 	if not _same_signal_link(receipt_link, presentation_link):
-		_emit_link(presentation_link, receipt)
+		_emit_link(presentation_link, presentation_receipt)
 
 	var telemetry_debug := telemetry.call("debug_snapshot") as Dictionary
 	var presentation_debug := (

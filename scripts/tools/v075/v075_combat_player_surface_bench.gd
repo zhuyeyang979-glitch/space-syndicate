@@ -13,6 +13,9 @@ const CombatCandidate := preload(
 const PresentationConsumer := preload(
 	"res://scripts/v075/presentation/v075_combat_presentation_consumer.gd"
 )
+const PresentationIdentity := preload(
+	"res://scripts/v075/presentation/v075_presentation_receipt_identity_v2.gd"
+)
 const CATALOG := preload(
 	"res://resources/presentation/alpha01_card_illustration_catalog.tres"
 )
@@ -521,7 +524,7 @@ func _apply_mode(mode: String) -> void:
 
 
 func _emit_demo_receipt() -> void:
-	_last_presentation_result = _presentation.consume_receipt({
+	var raw_receipt := {
 		"combat_receipt_id": "bench.combat.receipt.001",
 		"event_kind": "monster_private_skill_resolved",
 		"public_effect_id": "effect.region.cataclysm",
@@ -537,7 +540,22 @@ func _emit_demo_receipt() -> void:
 			"technology": 3,
 		},
 		"cooldown_remaining_batches": 3,
-	})
+	}
+	_last_presentation_result = _presentation.consume_receipt(
+		PresentationIdentity.build_public(
+			"bench.combat.receipt.001",
+			PresentationIdentity.source_fingerprint(
+				"bench.combat.receipt.001",
+				raw_receipt
+			),
+			0,
+			"monster_private_skill_resolved",
+			0,
+			"v0.7.5",
+			"session.combat.player.surface.bench",
+			raw_receipt
+		)
+	)
 	_event_label.text = "Receipt consumed exactly once · duplicate-safe"
 
 

@@ -126,7 +126,12 @@ func show_presentation_cue(cue: Dictionary) -> Dictionary:
 			false,
 			"presentation_cue_identity_missing"
 		)
-	var fingerprint := _canonical_cue_json(cue).sha256_text()
+	# Observer correlation is transport-only metadata. It must not become a
+	# second Presentation identity dialect at the local animation surface.
+	var semantic_cue := cue.duplicate(true)
+	semantic_cue.erase("observer_correlation_id")
+	semantic_cue.erase("observer_correlation_fingerprint")
+	var fingerprint := _canonical_cue_json(semantic_cue).sha256_text()
 	if _presentation_cue_fingerprints.has(cue_id):
 		if str(_presentation_cue_fingerprints.get(cue_id, "")) == fingerprint:
 			_presentation_cue_duplicate_count += 1

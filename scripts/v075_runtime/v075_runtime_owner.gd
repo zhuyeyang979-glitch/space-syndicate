@@ -1,6 +1,8 @@
 extends "res://scripts/v074_runtime/v074_runtime_owner.gd"
 class_name V075RuntimeOwner
 
+signal combat_presentation_receipt_ready(receipt: Dictionary)
+
 const CardDefinitionsV075 := preload(
 	"res://scripts/v075/cards/v075_card_definition_registry.gd"
 )
@@ -36,6 +38,9 @@ const CombatTelemetryBridge := preload(
 )
 const CombatPresentationConsumer := preload(
 	"res://scripts/v075/presentation/v075_combat_presentation_consumer.gd"
+)
+const PresentationReceiptIdentity := preload(
+	"res://scripts/v075/presentation/v075_presentation_receipt_identity_v2.gd"
 )
 
 const V075_RULESET_ID := "v0.7.5"
@@ -101,8 +106,10 @@ const COMBAT_TELEMETRY_METHODS := [
 ]
 const PUBLIC_COMBAT_FIELDS := [
 	"public_effect_id",
+	"source_public_name",
 	"source_instance_id",
 	"source_generation",
+	"source_rank",
 	"monster_family_id",
 	"monster_card_mode",
 	"old_rank",
@@ -114,6 +121,8 @@ const PUBLIC_COMBAT_FIELDS := [
 	"armor_after",
 	"preferred_industry_color",
 	"movement_profile",
+	"movement_id",
+	"trample_region_receipt_id",
 	"start_region_id",
 	"destination_region_id",
 	"region_id",
@@ -123,12 +132,16 @@ const PUBLIC_COMBAT_FIELDS := [
 	"target_kind",
 	"ordered_region_path",
 	"distance_milli_arc",
+	"region_damage_budget",
+	"allocated_damage",
+	"unallocated_damage",
 	"damage_amount",
 	"damage_before",
 	"damage_after",
 	"max_hp",
 	"destroyed",
 	"facility_type",
+	"military_tier",
 	"task_kind",
 	"outcome",
 	"status",
@@ -172,6 +185,7 @@ var _combat_telemetry_bridge: Object = CombatTelemetryBridge.new()
 var _combat_presentation_consumer: Node
 var _combat_public_history: Array = []
 var _combat_request_sequence := 0
+var _presentation_identity_rejection_count := 0
 var _v075_acquisition_opportunities: Dictionary = {}
 var _v075_acquisition_facility_count: Dictionary = {}
 var _v075_acquisition_monster_count: Dictionary = {}
@@ -504,6 +518,12 @@ func _capture_initialization_composition_state() -> Dictionary:
 			_initialization_signal_connection_signatures(
 				_combat_presentation_consumer,
 				&"presentation_cue_ready"
+			)
+		),
+		"presentation_receipt_connections": (
+			_initialization_signal_connection_signatures(
+				self,
+				&"combat_presentation_receipt_ready"
 			)
 		),
 		"telemetry_debug": telemetry_debug,
@@ -1019,6 +1039,7 @@ func _abort_v075_new_game(
 				"resolution_presented_connections",
 				"playtest_observation_connections",
 				"presentation_cue_connections",
+				"presentation_receipt_connections",
 			]
 		)
 	)
@@ -2874,15 +2895,10 @@ func request_private_monster_skill(
 		int(source.get("rank", 0)),
 		true
 	)
-	for public_variant in result.get("public_results", []) as Array:
-		_publish_combat_event(
-			"monster_private_skill_resolved",
-			public_variant as Dictionary,
-			str((public_variant as Dictionary).get(
-				"public_result_id",
-				""
-			))
-		)
+	_publish_private_skill_public_results(
+		result.get("public_results", []) as Array,
+		result.get("resolution_receipts", []) as Array
+	)
 	_emit_facility_damage_events(
 		damage_result.get("newly_committed_receipts", []) as Array
 	)
@@ -2972,6 +2988,9 @@ func resolve_next_action() -> Dictionary:
 			"asset_cursor": int(_asset_state.get("resolution_cursor", -1)),
 			"public_cursor": int(_facility_state.get("resolution_cursor", -1)),
 		})
+	var source_authority_sequence := int(
+		_facility_state.get("resolution_cursor", -1)
+	)
 	var public_outcome := PublicActionBatchCore.resolve_next_authority_owned(
 		_facility_state
 	)
@@ -3005,7 +3024,8 @@ func resolve_next_action() -> Dictionary:
 		combat_result = _resolve_combat_public_action(
 			action_receipt,
 			next_public_state,
-			resolution_checkpoint
+			resolution_checkpoint,
+			source_authority_sequence
 		)
 		if not bool(combat_result.get("accepted", false)):
 			if bool(combat_result.get("transaction_rolled_back", false)):
@@ -3110,7 +3130,11 @@ func resolve_next_action() -> Dictionary:
 		_publish_combat_event(
 			str(staged_event.get("event_kind", "")),
 			staged_event.get("payload", {}) as Dictionary,
-			str(staged_event.get("receipt_id", ""))
+			str(staged_event.get("receipt_id", "")),
+			str(staged_event.get("source_receipt_id", "")),
+			str(staged_event.get("source_receipt_fingerprint", "")),
+			int(staged_event.get("source_authority_sequence", -1)),
+			int(staged_event.get("presentation_ordinal", 0))
 		)
 	resolution_presented.emit(public_receipt.duplicate(true))
 	_emit_facility_damage_events(combat_damage_receipts)
@@ -3473,6 +3497,18 @@ func debug_snapshot() -> Dictionary:
 		combat_debug.get("combat_dual_authority_count", 0)
 	)
 	result["combat_public_receipt_count"] = _combat_public_receipt_count
+	result["presentation_source_sequence_authority"] = (
+		"UPSTREAM_AUTHORITY_RECEIPT_OR_COMBAT_REVISION"
+	)
+	result["presentation_identity_rejection_count"] = (
+		_presentation_identity_rejection_count
+	)
+	result["presentation_receipt_identity_schema"] = (
+		PresentationReceiptIdentity.SCHEMA
+	)
+	result["presentation_identity_scope_model"] = (
+		"MODEL_A_GLOBAL_UNIQUE_RECEIPT_ID_INCLUDES_AUDIENCE_SCOPE"
+	)
 	result["facility_combat_damage_receipt_count"] = (
 		_combat_facility_damage_receipt_count
 	)
@@ -3698,6 +3734,7 @@ func _reset_runtime() -> void:
 		_reset_new_game_observers()
 	_combat_public_history = []
 	_combat_request_sequence = 0
+	_presentation_identity_rejection_count = 0
 	_v075_acquisition_opportunities = {}
 	_v075_acquisition_facility_count = {}
 	_v075_acquisition_monster_count = {}
@@ -4690,7 +4727,8 @@ func _combat_option_by_identity(
 func _resolve_combat_public_action(
 	action_receipt: Dictionary,
 	next_public_state: Dictionary,
-	existing_checkpoint: Dictionary = {}
+	existing_checkpoint: Dictionary = {},
+	source_authority_sequence: int = -1
 ) -> Dictionary:
 	var action_domain := str(action_receipt.get("action_domain", ""))
 	var action_binding := (
@@ -4845,15 +4883,38 @@ func _resolve_combat_public_action(
 		"event_kind": event_kind,
 		"payload": public_main_payload.duplicate(true),
 		"receipt_id": atomic_receipt_id,
+		"source_receipt_id": atomic_receipt_id,
+		"source_receipt_fingerprint": str(
+			action_receipt.get("receipt_fingerprint", "")
+		),
+		"source_authority_sequence": source_authority_sequence,
+		"presentation_ordinal": 0,
 	}]
 	if action_domain == "military":
 		staged_events.append({
 			"event_kind": "military_withdrawn",
 			"payload": public_main_payload.duplicate(true),
 			"receipt_id": "withdrawal.%s" % atomic_receipt_id,
+			"source_receipt_id": atomic_receipt_id,
+			"source_receipt_fingerprint": str(
+				action_receipt.get("receipt_fingerprint", "")
+			),
+			"source_authority_sequence": source_authority_sequence,
+			"presentation_ordinal": 1,
 		})
-	for public_variant in safe_boundary.get("public_results", []) as Array:
-		var public_result := public_variant as Dictionary
+	var boundary_public_results := (
+		safe_boundary.get("public_results", []) as Array
+	)
+	var boundary_source_receipts := (
+		safe_boundary.get("resolution_receipts", []) as Array
+	)
+	for public_index in range(boundary_public_results.size()):
+		var public_result := boundary_public_results[public_index] as Dictionary
+		var source_receipt := (
+			boundary_source_receipts[public_index] as Dictionary
+			if public_index < boundary_source_receipts.size()
+			else {}
+		)
 		public_payload_rejections_before = (
 			_v075_public_card_identity_rejection_count
 		)
@@ -4877,6 +4938,14 @@ func _resolve_combat_public_action(
 				"public_result_id",
 				""
 			)),
+			"source_receipt_id": str(source_receipt.get("receipt_id", "")),
+			"source_receipt_fingerprint": str(
+				source_receipt.get("receipt_fingerprint", "")
+			),
+			"source_authority_sequence": int(
+				source_receipt.get("state_revision", -1)
+			),
+			"presentation_ordinal": 0,
 		})
 	var receipts := damage_result.get("receipts", []) as Array
 	receipts.append_array(
@@ -5048,18 +5117,22 @@ func _resolve_combat_maintenance() -> Dictionary:
 	_asset_state = next_asset_state
 	_sync_facility_slots()
 	_sync_asset_balances()
-	for public_variant in safe_boundary.get("public_results", []) as Array:
-		_publish_combat_event(
-			"monster_private_skill_resolved",
-			public_variant as Dictionary,
-			str((public_variant as Dictionary).get("public_result_id", ""))
-		)
+	_publish_private_skill_public_results(
+		safe_boundary.get("public_results", []) as Array,
+		safe_boundary.get("resolution_receipts", []) as Array
+	)
+	var autonomy_authority_sequence := int(
+		(_combat_owner.call("debug_snapshot") as Dictionary).get("revision", -1)
+	)
 	for movement_variant in autonomy.get("movement_receipts", []) as Array:
 		var movement := movement_variant as Dictionary
 		_publish_combat_event(
 			"monster_moved",
 			movement,
-			str(movement.get("movement_id", ""))
+			str(movement.get("movement_id", "")),
+			str(movement.get("movement_id", "")),
+			str(movement.get("movement_receipt_fingerprint", "")),
+			autonomy_authority_sequence
 		)
 	for trample_variant in autonomy.get(
 		"trample_region_receipts",
@@ -5069,17 +5142,26 @@ func _resolve_combat_maintenance() -> Dictionary:
 		_publish_combat_event(
 			"monster_trample_resolved",
 			trample,
-			str(trample.get("combat_receipt_id", trample.get(
-				"receipt_id",
-				""
-			)))
+			str(trample.get("trample_region_receipt_id", "")),
+			str(trample.get("trample_region_receipt_id", "")),
+			PresentationReceiptIdentity.source_fingerprint(
+				str(trample.get("trample_region_receipt_id", "")),
+				trample
+			),
+			autonomy_authority_sequence
 		)
 	for attack_variant in autonomy.get("basic_attack_receipts", []) as Array:
 		var attack := attack_variant as Dictionary
 		_publish_combat_event(
 			"monster_basic_attack",
 			attack,
-			str(attack.get("combat_receipt_id", ""))
+			str(attack.get("combat_receipt_id", "")),
+			str(attack.get("combat_receipt_id", "")),
+			PresentationReceiptIdentity.source_fingerprint(
+				str(attack.get("combat_receipt_id", "")),
+				attack
+			),
+			autonomy_authority_sequence
 		)
 	var facility_receipts := (
 		skill_damage.get("newly_committed_receipts", []) as Array
@@ -5800,13 +5882,24 @@ func _public_action_receipt(
 func _publish_combat_event(
 	event_kind: String,
 	payload: Dictionary,
-	receipt_id: String
+	observer_correlation_id: String,
+	source_receipt_id: String,
+	source_receipt_fingerprint: String,
+	source_authority_sequence: int,
+	presentation_ordinal: int = 0
 ) -> void:
-	if event_kind.is_empty():
+	if (
+		event_kind.is_empty()
+		or observer_correlation_id.is_empty()
+		or source_receipt_id.is_empty()
+		or not PresentationReceiptIdentity.valid_sha256(
+			source_receipt_fingerprint
+		)
+		or source_authority_sequence < 0
+		or presentation_ordinal < 0
+	):
+		_presentation_identity_rejection_count += 1
 		return
-	var stable_id := receipt_id
-	if stable_id.is_empty():
-		stable_id = "combat.public.%06d" % (_combat_public_receipt_count + 1)
 	var rejection_count_before := _v075_public_card_identity_rejection_count
 	var receipt := _public_combat_payload(payload)
 	if _v075_public_card_identity_rejection_count != rejection_count_before:
@@ -5818,13 +5911,54 @@ func _publish_combat_event(
 			_private_card_identity_leak_count(receipt)
 		)
 		return
-	receipt["combat_receipt_id"] = stable_id
+	receipt["combat_receipt_id"] = observer_correlation_id
 	receipt["event_kind"] = event_kind
 	receipt["ruleset_id"] = V075_RULESET_ID
 	receipt["batch_id"] = _batch_id()
+	var presentation_receipt := PresentationReceiptIdentity.build_public(
+		source_receipt_id,
+		source_receipt_fingerprint,
+		source_authority_sequence,
+		event_kind,
+		presentation_ordinal,
+		V075_RULESET_ID,
+		_match_id,
+		receipt,
+		observer_correlation_id
+	)
+	var presentation_validation := PresentationReceiptIdentity.validate(
+		presentation_receipt
+	)
+	if not bool(presentation_validation.get("valid", false)):
+		_presentation_identity_rejection_count += 1
+		return
 	_combat_public_receipt_count += 1
 	_combat_public_history.append(receipt.duplicate(true))
 	resolution_presented.emit(receipt.duplicate(true))
+	combat_presentation_receipt_ready.emit(
+		presentation_receipt.duplicate(true)
+	)
+
+
+func _publish_private_skill_public_results(
+	public_results: Array,
+	source_receipts: Array
+) -> void:
+	for source_index in range(public_results.size()):
+		var public_result := public_results[source_index] as Dictionary
+		var source_receipt := (
+			source_receipts[source_index] as Dictionary
+			if source_index < source_receipts.size()
+			else {}
+		)
+		_publish_combat_event(
+			"monster_private_skill_resolved",
+			public_result,
+			str(public_result.get("public_result_id", "")),
+			str(source_receipt.get("receipt_id", "")),
+			str(source_receipt.get("receipt_fingerprint", "")),
+			int(source_receipt.get("state_revision", -1))
+		)
 
 
 func consume_combat_presentation_cue(cue: Dictionary) -> Dictionary:
@@ -5854,8 +5988,10 @@ func _connect_combat_observers() -> void:
 		_combat_presentation_consumer,
 		"consume_receipt"
 	)
-	if not resolution_presented.is_connected(presentation_receipt):
-		resolution_presented.connect(presentation_receipt)
+	if not combat_presentation_receipt_ready.is_connected(
+		presentation_receipt
+	):
+		combat_presentation_receipt_ready.connect(presentation_receipt)
 	var telemetry_cue := Callable(
 		_combat_telemetry_bridge,
 		"consume_public_cue"
@@ -5896,7 +6032,10 @@ func _emit_facility_damage_events(receipts: Array) -> void:
 				"facility.fizzle.%s.%s" % [
 					str(receipt.get("combat_receipt_id", "")),
 					str(receipt.get("target_facility_id", "")),
-				]
+				],
+				str(receipt.get("receipt_id", "")),
+				str(receipt.get("receipt_fingerprint", "")),
+				int(receipt.get("bridge_revision_after", -1))
 			)
 			continue
 		if bool(receipt.get("facility_destroyed", false)):
@@ -5908,7 +6047,10 @@ func _emit_facility_damage_events(receipts: Array) -> void:
 			"facility.%s.%s" % [
 				str(receipt.get("combat_receipt_id", "")),
 				str(receipt.get("target_facility_id", "")),
-			]
+			],
+			str(receipt.get("receipt_id", "")),
+			str(receipt.get("receipt_fingerprint", "")),
+			int(receipt.get("bridge_revision_after", -1))
 		)
 
 
@@ -5931,6 +6073,9 @@ func _capture_combat_transaction_state() -> Dictionary:
 		),
 		"combat_public_receipt_count": _combat_public_receipt_count,
 		"combat_public_history": _combat_public_history.duplicate(true),
+		"presentation_identity_rejection_count": (
+			_presentation_identity_rejection_count
+		),
 	}
 
 
@@ -5959,6 +6104,9 @@ func _restore_combat_transaction_state(checkpoint: Dictionary) -> void:
 	_combat_public_history = (
 		checkpoint.get("combat_public_history", []) as Array
 	).duplicate(true)
+	_presentation_identity_rejection_count = int(
+		checkpoint.get("presentation_identity_rejection_count", 0)
+	)
 
 
 func _rollback_combat_transaction(
