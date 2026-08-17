@@ -12,6 +12,15 @@ const RuntimeOwner := preload(
 const CombatOwner := preload(
 	"res://scripts/v075/runtime/v075_combat_runtime_owner.gd"
 )
+const PresentationReceiptIdentity := preload(
+	"res://scripts/v075/presentation/v075_presentation_receipt_identity_v2.gd"
+)
+const RuntimeCompositionScene := preload(
+	"res://scenes/runtime/V075RuntimeComposition.tscn"
+)
+const PRESENTATION_TOPOLOGY_CONTRACT_PATH := (
+	"res://docs/architecture/v075_presentation_observer_topology_v2.json"
+)
 
 const PARAMETERS := {
 	"player_count": 4,
@@ -21,6 +30,12 @@ const PARAMETERS := {
 	"geography_complexity": "STANDARD",
 	"land_ocean_profile": "BALANCED",
 }
+
+const PRESENTATION_TOPOLOGY_REQUIRED_EDGE_COUNT := 3
+const PRESENTATION_TOPOLOGY_EXACT_EDGE_COUNT := 1
+const PRESENTATION_TOPOLOGY_ABSENT_EDGE_COUNT := 0
+const PRESENTATION_TOPOLOGY_CONNECTION_FLAGS := 0
+const PRESENTATION_TOPOLOGY_OWNERSHIP := "composition"
 
 
 class FailingInitializeCombatOwner extends V075CombatRuntimeOwner:
@@ -1879,23 +1894,160 @@ static func _case_runtime_owner_no_residual_bindings(
 	tree: SceneTree,
 	state: Dictionary
 ) -> void:
+	var production_topology := (
+		_production_presentation_observer_topology_snapshot(tree)
+	)
+	var topology_contract := _presentation_topology_contract()
+	_expect(
+		state,
+		str(topology_contract.get("schema", ""))
+			== "PresentationObserverTopologyV2"
+			and int(topology_contract.get("required_edge_count", -1))
+				== PRESENTATION_TOPOLOGY_REQUIRED_EDGE_COUNT,
+		"machine-readable PresentationObserverTopologyV2 contract loads"
+	)
+	for edge_variant in topology_contract.get("edges", []) as Array:
+		var required_edge := edge_variant as Dictionary
+		if not bool(required_edge.get("required", false)):
+			continue
+		_expect(
+			state,
+			_presentation_topology_edge_count(
+				production_topology,
+				str(required_edge.get("source_object_role", "")),
+				str(required_edge.get("source_signal", "")),
+				str(required_edge.get("target_object_role", "")),
+				str(required_edge.get("target_method", "")),
+				int(required_edge.get("connection_flags", -1)),
+				str(required_edge.get("ownership", ""))
+			) == int(required_edge.get("current_connection_count", -1)),
+			"production Composition matches contract %s" % str(
+				required_edge.get("edge_id", "UNKNOWN_EDGE")
+			)
+		)
+	var expected_out_of_scope := topology_contract.get(
+		"classified_out_of_scope_connections",
+		[]
+	) as Array
+	_expect(
+		state,
+		expected_out_of_scope.size()
+			== int(topology_contract.get(
+				"classified_out_of_scope_connection_count",
+				-1
+			))
+			and _presentation_topology_out_of_scope_connections(
+				production_topology
+			).size() == expected_out_of_scope.size(),
+		"production scope-excluded connection count matches the contract"
+	)
+	for connection_variant in expected_out_of_scope:
+		var expected_connection := connection_variant as Dictionary
+		_expect(
+			state,
+			_presentation_topology_edge_count(
+				production_topology,
+				str(expected_connection.get("source_object_role", "")),
+				str(expected_connection.get("source_signal", "")),
+				str(expected_connection.get("target_object_role", "")),
+				str(expected_connection.get("target_method", "")),
+				int(expected_connection.get("connection_flags", -1)),
+				str(expected_connection.get("ownership", ""))
+			) == PRESENTATION_TOPOLOGY_EXACT_EDGE_COUNT,
+			"production scope-excluded connection matches its full signature"
+		)
+	_expect(
+		state,
+		bool(production_topology.get("composition_ready", false))
+			and bool(production_topology.get(
+				"production_telemetry_service_bound",
+				false
+			)),
+		"production V075RuntimeComposition binds its telemetry service"
+	)
+	_expect(
+		state,
+		_presentation_topology_all_edges(production_topology).size()
+			== PRESENTATION_TOPOLOGY_REQUIRED_EDGE_COUNT
+			and _presentation_topology_duplicate_edge_count(
+				production_topology
+			) == PRESENTATION_TOPOLOGY_ABSENT_EDGE_COUNT
+			and _presentation_topology_unclassified_edge_count(
+				production_topology
+			) == PRESENTATION_TOPOLOGY_ABSENT_EDGE_COUNT,
+		"production Composition has three classified non-duplicate Presentation edges"
+	)
+	_expect(
+		state,
+		_presentation_topology_edge_count(
+			production_topology,
+			"V075RuntimeOwner",
+			"resolution_presented",
+			"CombatTelemetryBridge",
+			"consume_public_receipt",
+			PRESENTATION_TOPOLOGY_CONNECTION_FLAGS,
+			PRESENTATION_TOPOLOGY_OWNERSHIP
+		) == PRESENTATION_TOPOLOGY_EXACT_EDGE_COUNT,
+		"production Composition EDGE_A matches the complete stable signature"
+	)
+	_expect(
+		state,
+		_presentation_topology_edge_count(
+			production_topology,
+			"V075RuntimeOwner",
+			"combat_presentation_receipt_ready",
+			"V075CombatPresentationConsumer",
+			"consume_receipt",
+			PRESENTATION_TOPOLOGY_CONNECTION_FLAGS,
+			PRESENTATION_TOPOLOGY_OWNERSHIP
+		) == PRESENTATION_TOPOLOGY_EXACT_EDGE_COUNT,
+		"production Composition EDGE_B matches the complete stable signature"
+	)
+	_expect(
+		state,
+		_presentation_topology_edge_count(
+			production_topology,
+			"V075CombatPresentationConsumer",
+			"presentation_cue_ready",
+			"CombatTelemetryBridge",
+			"consume_public_cue",
+			PRESENTATION_TOPOLOGY_CONNECTION_FLAGS,
+			PRESENTATION_TOPOLOGY_OWNERSHIP
+		) == PRESENTATION_TOPOLOGY_EXACT_EDGE_COUNT,
+		"production Composition EDGE_C matches the complete stable signature"
+	)
+	_expect(
+		state,
+		_presentation_topology_edge_count(
+			production_topology,
+			"V075RuntimeOwner",
+			"resolution_presented",
+			"V075CombatPresentationConsumer",
+			"consume_receipt",
+			PRESENTATION_TOPOLOGY_CONNECTION_FLAGS,
+			PRESENTATION_TOPOLOGY_OWNERSHIP
+		) == PRESENTATION_TOPOLOGY_ABSENT_EDGE_COUNT,
+		"production Composition keeps the legacy Presentation edge absent"
+	)
+	_expect(
+		state,
+		_presentation_topology_edge_count(
+			production_topology,
+			"V075RuntimeOwner",
+			"resolution_presented",
+			"V075ApplicationFlow",
+			"_on_public_resolution_presented",
+			PRESENTATION_TOPOLOGY_CONNECTION_FLAGS,
+			"application_flow"
+		) == PRESENTATION_TOPOLOGY_EXACT_EDGE_COUNT,
+		"production Application Flow listener is classified outside Presentation scope"
+	)
 	var fixture := _runtime_fixture(tree, FailingInitializeCombatOwner.new())
 	var runtime := fixture.get("runtime") as Node
 	var combat := fixture.get("combat") as Node
-	var owner_before := runtime.get("_combat_owner") as Node
-	var presentation_before := runtime.call(
-		"combat_presentation_consumer"
-	) as Node
-	var connection_count_before := runtime.get_signal_connection_list(
-		"resolution_presented"
-	).size()
+	var topology_before := _presentation_observer_topology_snapshot(runtime)
 	var failed := _start_runtime(runtime)
-	var connection_count_after := runtime.get_signal_connection_list(
-		"resolution_presented"
-	).size()
-	var presentation_after := runtime.call(
-		"combat_presentation_consumer"
-	) as Node
+	var topology_after := _presentation_observer_topology_snapshot(runtime)
 	var residual := (
 		combat.call("debug_snapshot") as Dictionary
 	).get("failed_initialization_residuals", {}) as Dictionary
@@ -1907,14 +2059,481 @@ static func _case_runtime_owner_no_residual_bindings(
 	)
 	_expect(
 		state,
-		runtime.get("_combat_owner") == owner_before
-			and owner_before == combat
-			and presentation_after == presentation_before
-			and connection_count_after == connection_count_before
-			and connection_count_after == 2,
-		"cleanup preserves pre-existing composition owner and observer bindings"
+		int(topology_before.get("combat_owner_instance_id", 0))
+			== int(topology_after.get("combat_owner_instance_id", -1))
+			and int(topology_after.get("combat_owner_instance_id", 0))
+				== combat.get_instance_id(),
+		"cleanup preserves the pre-existing Combat Owner identity"
+	)
+	_expect(
+		state,
+		int(topology_before.get("presentation_consumer_instance_id", 0))
+			== int(topology_after.get(
+				"presentation_consumer_instance_id",
+				-1
+			)),
+		"cleanup preserves the pre-existing Presentation Consumer identity"
+	)
+	_expect(
+		state,
+		int(topology_before.get("telemetry_bridge_instance_id", 0))
+			== int(topology_after.get("telemetry_bridge_instance_id", -1)),
+		"cleanup preserves the pre-existing Telemetry Bridge identity"
+	)
+	_expect(
+		state,
+		_presentation_topology_edge_count(
+			topology_after,
+			"V075RuntimeOwner",
+			"resolution_presented",
+			"CombatTelemetryBridge",
+			"consume_public_receipt",
+			PRESENTATION_TOPOLOGY_CONNECTION_FLAGS,
+			PRESENTATION_TOPOLOGY_OWNERSHIP
+		) == PRESENTATION_TOPOLOGY_EXACT_EDGE_COUNT,
+		"dedicated topology EDGE_A exists exactly once"
+	)
+	_expect(
+		state,
+		_presentation_topology_edge_count(
+			topology_after,
+			"V075RuntimeOwner",
+			"combat_presentation_receipt_ready",
+			"V075CombatPresentationConsumer",
+			"consume_receipt",
+			PRESENTATION_TOPOLOGY_CONNECTION_FLAGS,
+			PRESENTATION_TOPOLOGY_OWNERSHIP
+		) == PRESENTATION_TOPOLOGY_EXACT_EDGE_COUNT,
+		"dedicated topology EDGE_B exists exactly once"
+	)
+	_expect(
+		state,
+		_presentation_topology_edge_count(
+			topology_after,
+			"V075CombatPresentationConsumer",
+			"presentation_cue_ready",
+			"CombatTelemetryBridge",
+			"consume_public_cue",
+			PRESENTATION_TOPOLOGY_CONNECTION_FLAGS,
+			PRESENTATION_TOPOLOGY_OWNERSHIP
+		) == PRESENTATION_TOPOLOGY_EXACT_EDGE_COUNT,
+		"dedicated topology EDGE_C exists exactly once"
+	)
+	_expect(
+		state,
+		_presentation_topology_edge_count(
+			topology_after,
+			"V075RuntimeOwner",
+			"resolution_presented",
+			"V075CombatPresentationConsumer",
+			"consume_receipt",
+			PRESENTATION_TOPOLOGY_CONNECTION_FLAGS,
+			PRESENTATION_TOPOLOGY_OWNERSHIP
+		) == PRESENTATION_TOPOLOGY_ABSENT_EDGE_COUNT,
+		"legacy resolution-to-Presentation Consumer edge remains absent"
+	)
+	_expect(
+		state,
+		topology_before.get("resolution_presented_signatures")
+			== topology_after.get("resolution_presented_signatures"),
+		"cleanup preserves the complete resolution bus signature set"
+	)
+	_expect(
+		state,
+		topology_before.get("presentation_receipt_signatures")
+			== topology_after.get("presentation_receipt_signatures"),
+		"cleanup preserves the complete Presentation receipt signature set"
+	)
+	_expect(
+		state,
+		topology_before.get("presentation_cue_signatures")
+			== topology_after.get("presentation_cue_signatures"),
+		"cleanup preserves the complete Presentation cue signature set"
+	)
+	_expect(
+		state,
+		_presentation_topology_delta_count(
+			topology_before,
+			topology_after
+		) == PRESENTATION_TOPOLOGY_ABSENT_EDGE_COUNT,
+		"cleanup adds no observer subscriptions"
+	)
+	_expect(
+		state,
+		_presentation_topology_delta_count(
+			topology_after,
+			topology_before
+		) == PRESENTATION_TOPOLOGY_ABSENT_EDGE_COUNT,
+		"cleanup removes no observer subscriptions"
+	)
+	_expect(
+		state,
+		_presentation_topology_duplicate_edge_count(topology_after)
+			== PRESENTATION_TOPOLOGY_ABSENT_EDGE_COUNT,
+		"cleanup leaves no duplicate observer subscriptions"
+	)
+	_expect(
+		state,
+		_presentation_topology_unclassified_edge_count(topology_after)
+			== PRESENTATION_TOPOLOGY_ABSENT_EDGE_COUNT,
+		"all Presentation observer edges have classified object roles"
+	)
+	_expect(
+		state,
+		_presentation_topology_all_edges(topology_after).size()
+			== PRESENTATION_TOPOLOGY_REQUIRED_EDGE_COUNT,
+		"the dedicated Presentation observer topology contains three required edges"
+	)
+	var second_cleanup := combat.call(
+		"cleanup_failed_initialization",
+		{"failed_stage": "combat_initialize_idempotence_probe"}
+	) as Dictionary
+	var topology_after_second_cleanup := (
+		_presentation_observer_topology_snapshot(runtime)
+	)
+	_expect(
+		state,
+		bool(second_cleanup.get("accepted", false))
+			and bool(second_cleanup.get("already_clean", false))
+			and topology_after_second_cleanup == topology_after,
+		"second cleanup is idempotent and preserves the topology"
+	)
+	var rebound := runtime.call("bind_combat_owner", combat) as Dictionary
+	var topology_after_rebind := _presentation_observer_topology_snapshot(runtime)
+	_expect(
+		state,
+		bool(rebound.get("accepted", false))
+			and topology_after_rebind == topology_after
+			and _presentation_topology_duplicate_edge_count(
+				topology_after_rebind
+			) == PRESENTATION_TOPOLOGY_ABSENT_EDGE_COUNT,
+		"re-binding observers cannot create duplicate subscriptions"
+	)
+	var presentation_after_rebind := runtime.call(
+		"combat_presentation_consumer"
+	) as Node
+	var cue_observation := {"count": 0}
+	presentation_after_rebind.connect(
+		&"presentation_cue_ready",
+		func(_cue: Dictionary) -> void:
+			cue_observation["count"] = int(cue_observation.get("count", 0)) + 1
+	)
+	var exact_once_source := {
+		"combat_receipt_id": "receipt.topology.cleanup.rebind.001",
+		"event_kind": "monster_private_skill_resolved",
+		"public_effect_id": "effect.topology.cleanup.rebind",
+		"source_public_name": "Topology Probe",
+		"source_rank": 1,
+		"preferred_industry_color": "technology",
+		"target_kind": "region",
+		"target_region_id": "region.01",
+		"damage_amount": 1,
+	}
+	var source_receipt_id := str(exact_once_source.get("combat_receipt_id", ""))
+	var exact_once_receipt := PresentationReceiptIdentity.build_public(
+		source_receipt_id,
+		PresentationReceiptIdentity.source_fingerprint(
+			source_receipt_id,
+			exact_once_source
+		),
+		0,
+		str(exact_once_source.get("event_kind", "")),
+		0,
+		"v0.7.5",
+		"session.topology.cleanup.rebind.test",
+		exact_once_source
+	)
+	runtime.emit_signal(
+		&"combat_presentation_receipt_ready",
+		exact_once_receipt
+	)
+	runtime.emit_signal(
+		&"combat_presentation_receipt_ready",
+		exact_once_receipt.duplicate(true)
+	)
+	_expect(
+		state,
+		not exact_once_receipt.is_empty()
+			and int(cue_observation.get("count", 0))
+				== PRESENTATION_TOPOLOGY_EXACT_EDGE_COUNT,
+		"cleanup plus rebind delivers one V2 receipt to one Presentation cue"
+	)
+	_expect(
+		state,
+		topology_before == topology_after,
+		(
+			"cleanup preserves the dedicated presentation observer topology "
+			+ "and pre-existing composition identities"
+		)
 	)
 	_destroy_fixture(fixture)
+
+
+static func _presentation_observer_topology_snapshot(runtime: Node) -> Dictionary:
+	var combat := runtime.get("_combat_owner") as Node
+	var presentation := runtime.call(
+		"combat_presentation_consumer"
+	) as Node
+	var telemetry := runtime.get("_combat_telemetry_bridge") as Object
+	return {
+		"combat_owner_instance_id": (
+			combat.get_instance_id() if is_instance_valid(combat) else 0
+		),
+		"presentation_consumer_instance_id": (
+			presentation.get_instance_id()
+			if is_instance_valid(presentation)
+			else 0
+		),
+		"telemetry_bridge_instance_id": (
+			telemetry.get_instance_id() if is_instance_valid(telemetry) else 0
+		),
+		"resolution_presented_signatures": (
+			_presentation_observer_edge_signatures(
+				runtime,
+				"V075RuntimeOwner",
+				&"resolution_presented",
+				runtime,
+				presentation,
+				telemetry
+			)
+		),
+		"presentation_receipt_signatures": (
+			_presentation_observer_edge_signatures(
+				runtime,
+				"V075RuntimeOwner",
+				&"combat_presentation_receipt_ready",
+				runtime,
+				presentation,
+				telemetry
+			)
+		),
+		"presentation_cue_signatures": (
+			_presentation_observer_edge_signatures(
+				presentation,
+				"V075CombatPresentationConsumer",
+				&"presentation_cue_ready",
+				runtime,
+				presentation,
+				telemetry
+			)
+		),
+	}
+
+
+static func _presentation_topology_contract() -> Dictionary:
+	var file := FileAccess.open(
+		PRESENTATION_TOPOLOGY_CONTRACT_PATH,
+		FileAccess.READ
+	)
+	if file == null:
+		return {}
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	return parsed as Dictionary if parsed is Dictionary else {}
+
+
+static func _production_presentation_observer_topology_snapshot(
+	tree: SceneTree
+) -> Dictionary:
+	var composition := RuntimeCompositionScene.instantiate() as Node
+	if composition == null:
+		return {}
+	tree.root.add_child(composition)
+	var runtime := composition.get_node_or_null("V075RuntimeOwner") as Node
+	if runtime == null:
+		composition.free()
+		return {}
+	var topology := _presentation_observer_topology_snapshot(runtime)
+	var telemetry := runtime.get("_combat_telemetry_bridge") as Object
+	var telemetry_script_path := ""
+	if is_instance_valid(telemetry) and telemetry.get_script() is Script:
+		telemetry_script_path = str(
+			(telemetry.get_script() as Script).resource_path
+		)
+	topology["composition_ready"] = bool(composition.get("_composition_ready"))
+	topology["production_telemetry_service_bound"] = (
+		telemetry_script_path
+			== "res://scripts/v075/telemetry/v075_combat_telemetry_service.gd"
+	)
+	composition.free()
+	return topology
+
+
+static func _presentation_observer_edge_signatures(
+	source: Object,
+	source_role: String,
+	signal_name: StringName,
+	runtime: Node,
+	presentation: Node,
+	telemetry: Object
+) -> Array:
+	var signatures: Array = []
+	if not is_instance_valid(source) or not source.has_signal(signal_name):
+		return signatures
+	for connection_variant in source.get_signal_connection_list(signal_name):
+		var connection := connection_variant as Dictionary
+		var target_callable: Callable = connection.get("callable", Callable())
+		var target := instance_from_id(target_callable.get_object_id())
+		var target_role := _presentation_observer_target_role(
+			target,
+			runtime,
+			presentation,
+			telemetry
+		)
+		signatures.append({
+			"source_object_role": source_role,
+			"source_signal": str(signal_name),
+			"target_object_role": target_role,
+			"target_method": str(target_callable.get_method()),
+			"ownership": _presentation_observer_ownership(
+				source_role,
+				str(signal_name),
+				target_role,
+				str(target_callable.get_method()),
+				int(connection.get("flags", 0))
+			),
+			"connection_flags": int(connection.get("flags", 0)),
+		})
+	signatures.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		return JSON.stringify(left) < JSON.stringify(right)
+	)
+	return signatures
+
+
+static func _presentation_observer_target_role(
+	target: Object,
+	runtime: Node,
+	presentation: Node,
+	telemetry: Object
+) -> String:
+	if target == runtime:
+		return "V075RuntimeOwner"
+	if target == presentation:
+		return "V075CombatPresentationConsumer"
+	if target == telemetry:
+		return "CombatTelemetryBridge"
+	if is_instance_valid(target) and target.get_script() is Script:
+		var script_path := str((target.get_script() as Script).resource_path)
+		if script_path == "res://scripts/v075_runtime/v075_application_flow.gd":
+			return "V075ApplicationFlow"
+	return "UNCLASSIFIED"
+
+
+static func _presentation_observer_ownership(
+	source_role: String,
+	source_signal: String,
+	target_role: String,
+	target_method: String,
+	connection_flags: int
+) -> String:
+	if target_role in [
+		"CombatTelemetryBridge",
+		"V075CombatPresentationConsumer",
+	]:
+		return PRESENTATION_TOPOLOGY_OWNERSHIP
+	if (
+		source_role == "V075RuntimeOwner"
+		and source_signal == "resolution_presented"
+		and target_role == "V075ApplicationFlow"
+		and target_method == "_on_public_resolution_presented"
+		and connection_flags == PRESENTATION_TOPOLOGY_CONNECTION_FLAGS
+	):
+		return "application_flow"
+	return "unclassified"
+
+
+static func _presentation_topology_all_connections(topology: Dictionary) -> Array:
+	var connections: Array = []
+	for field_name in [
+		"resolution_presented_signatures",
+		"presentation_receipt_signatures",
+		"presentation_cue_signatures",
+	]:
+		connections.append_array(topology.get(field_name, []) as Array)
+	return connections
+
+
+static func _presentation_topology_all_edges(topology: Dictionary) -> Array:
+	var edges: Array = []
+	for edge_variant in _presentation_topology_all_connections(topology):
+		var edge := edge_variant as Dictionary
+		if str(edge.get("ownership", "")) == PRESENTATION_TOPOLOGY_OWNERSHIP:
+			edges.append(edge)
+	return edges
+
+
+static func _presentation_topology_out_of_scope_connections(
+	topology: Dictionary
+) -> Array:
+	var connections: Array = []
+	for edge_variant in _presentation_topology_all_connections(topology):
+		var edge := edge_variant as Dictionary
+		if str(edge.get("ownership", "")) == "application_flow":
+			connections.append(edge)
+	return connections
+
+
+static func _presentation_topology_edge_count(
+	topology: Dictionary,
+	source_role: String,
+	source_signal: String,
+	target_role: String,
+	target_method: String,
+	connection_flags: int,
+	ownership: String
+) -> int:
+	var count := 0
+	for edge_variant in _presentation_topology_all_connections(topology):
+		var edge := edge_variant as Dictionary
+		if (
+			str(edge.get("source_object_role", "")) == source_role
+			and str(edge.get("source_signal", "")) == source_signal
+			and str(edge.get("target_object_role", "")) == target_role
+			and str(edge.get("target_method", "")) == target_method
+			and int(edge.get("connection_flags", -1)) == connection_flags
+			and str(edge.get("ownership", "")) == ownership
+		):
+			count += 1
+	return count
+
+
+static func _presentation_topology_delta_count(
+	baseline: Dictionary,
+	candidate: Dictionary
+) -> int:
+	var candidate_edges := _presentation_topology_all_connections(candidate)
+	var delta_count := 0
+	for edge_variant in _presentation_topology_all_connections(baseline):
+		if not candidate_edges.has(edge_variant):
+			delta_count += 1
+	return delta_count
+
+
+static func _presentation_topology_duplicate_edge_count(
+	topology: Dictionary
+) -> int:
+	var seen: Dictionary = {}
+	var duplicate_count := 0
+	for edge_variant in _presentation_topology_all_connections(topology):
+		var key := JSON.stringify(edge_variant)
+		if seen.has(key):
+			duplicate_count += 1
+		else:
+			seen[key] = true
+	return duplicate_count
+
+
+static func _presentation_topology_unclassified_edge_count(
+	topology: Dictionary
+) -> int:
+	var unclassified_count := 0
+	for edge_variant in _presentation_topology_all_connections(topology):
+		var edge := edge_variant as Dictionary
+		if (
+			str(edge.get("target_object_role", "")) == "UNCLASSIFIED"
+			or str(edge.get("ownership", "")) == "unclassified"
+		):
+			unclassified_count += 1
+	return unclassified_count
 
 
 static func _case_runtime_owner_no_residual_private_skill_state(
